@@ -1,0 +1,29 @@
+schemaVersion: 1
+kind: product_catalog
+sourceOfTruth: true
+items:
+  - id: product.learning_platform
+    type: product
+    title: Learning Platform
+    status: draft
+    ownerDomain: Business
+    summary: Menschen systematisch zu Embedded- und Softwareentwicklern ausbilden.
+    realizes:
+      - BG-001
+      - BG-002
+      - BG-004
+      - BG-005
+    usesKnowledgeBase:
+      - knowledge_base.distributed_engineering_knowledge
+
+  - id: product.simple_ide
+    type: product
+    title: Simple IDE
+    status: draft
+    ownerDomain: Business
+    summary: Embedded-Projekte moeglichst einfach entwickeln.
+    realizes:
+      - BG-003
+    usesKnowledgeBase:
+      - knowledge_base.distributed_engineering_knowledge
+

@@ -1,0 +1,89 @@
+schemaVersion: 1
+kind: technical_capability_catalog
+sourceOfTruth: true
+note: TechnicalCapabilities beschreiben Hardware-Faehigkeiten. Sie sind nicht identisch mit SystemCapabilities.
+items:
+  - id: capability.processor_esp32
+    type: technical_capability
+    title: ESP32 ProcessorBoard
+    status: draft
+    ownerDomain: Hardware
+    summary: ESP32-kompatibles Board fuer Projektvarianten.
+
+  - id: capability.display_output
+    type: technical_capability
+    title: Display-Ausgabe
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit zur Darstellung von Text, Status oder Grafik auf einem Display.
+
+  - id: capability.digital_input
+    type: technical_capability
+    title: Digitaler Eingang
+    status: draft
+    ownerDomain: Hardware
+    summary: Eingabe ueber Button, Schalter oder aehnliche digitale Signale.
+
+  - id: capability.digital_output
+    type: technical_capability
+    title: Digitaler Ausgang
+    status: draft
+    ownerDomain: Hardware
+    summary: Schaltbarer Ausgang fuer Aktoren oder Signale.
+
+  - id: capability.actuator_driver
+    type: technical_capability
+    title: Aktor-Treiber
+    status: draft
+    ownerDomain: Hardware
+    summary: Treiberstufe fuer Pumpe, Ventil, Relais, MOSFET oder aehnliche Aktoren.
+
+  - id: capability.soil_moisture_measurement
+    type: technical_capability
+    title: Bodenfeuchtigkeit messen
+    status: draft
+    ownerDomain: Hardware
+    summary: Bodenfeuchtigkeit erfassen fuer sensorgestuetzte Regelung.
+
+  - id: capability.wifi
+    type: technical_capability
+    title: WiFi
+    status: draft
+    ownerDomain: Hardware
+    summary: Netzwerkfaehigkeit fuer Webserver, OTA, Cloud oder KI-Integration.
+
+  - id: capability.ota
+    type: technical_capability
+    title: OTA
+    status: draft
+    ownerDomain: Hardware
+    summary: Over-the-Air Update-Faehigkeit.
+
+  - id: capability.spi
+    type: technical_capability
+    title: SPI
+    status: draft
+    ownerDomain: Hardware
+    summary: Serielle Schnittstelle fuer Module wie RFID-Reader.
+
+  - id: capability.rfid_reading
+    type: technical_capability
+    title: RFID lesen
+    status: draft
+    ownerDomain: Hardware
+    summary: RFID-Karten oder Tags erkennen und auslesen.
+
+  - id: capability.servo_control
+    type: technical_capability
+    title: Servo-Steuerung
+    status: draft
+    ownerDomain: Hardware
+    summary: Servo als mechanischen Aktor ansteuern.
+
+  - id: capability.item_identification
+    type: technical_capability
+    title: Item Identification
+    status: draft
+    ownerDomain: Hardware
+    summary: Bauteile oder Behaelter identifizieren, z. B. per QR oder RFID.
+

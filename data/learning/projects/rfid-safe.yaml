@@ -1,0 +1,105 @@
+schemaVersion: 1
+id: project.rfid_safe
+slug: rfid-safe
+type: learning_project
+status: draft
+title: RFID-Tresor
+ownerDomain: Learning
+summary: Ein kleiner Tresor wird per RFID-Karte entsperrt und vermittelt SPI, RFID, Servo/Aktorik und Zustandsautomaten.
+
+businessGoals:
+  - BG-001
+  - BG-002
+  - BG-004
+  - BG-005
+customerJourneys:
+  - CJ-002
+  - CJ-003
+  - CJ-006
+audiences:
+  primary:
+    - audience.maker
+    - audience.hobby_developer
+    - audience.embedded_beginner
+  secondary:
+    - audience.student
+    - audience.teacher
+valuePropositions:
+  - value.visible_result
+  - value.security_concept_intro
+  - value.hardware_reuse
+
+learningGoals:
+  - learning_goal.embedded_basics
+  - learning_goal.embedded_advanced
+developsCompetencies:
+  - competency.spi_basics
+  - competency.rfid_basics
+  - competency.servo_control
+  - competency.state_machine
+  - competency.access_logic
+  - competency.error_handling
+
+variants:
+  - id: project.rfid_safe.variant.esp32
+    title: ESP32 mit RFID und Servo
+    technicalConstraints:
+      - capability.processor_esp32
+      - capability.spi
+      - capability.rfid_reading
+      - capability.servo_control
+    optionalCapabilities:
+      - capability.display_output
+      - capability.wifi
+  - id: project.rfid_safe.variant.arduino
+    title: Arduino mit RFID und Servo
+    technicalConstraints:
+      - capability.spi
+      - capability.rfid_reading
+      - capability.servo_control
+
+softwareModules:
+  - software_module.rfid_reader
+  - software_module.access_control
+  - software_module.servo_lock
+  - software_module.state_engine
+  - software_module.feedback_layer
+
+stages:
+  - id: stage.rfid_safe.1
+    title: RFID-Karte lesen
+    goal: RFID-Modul anschliessen und Karten-ID fachlich verstehen.
+    learningFocus:
+      - competency.spi_basics
+      - competency.rfid_basics
+  - id: stage.rfid_safe.2
+    title: Schloss ansteuern
+    goal: Servo oder Aktor als Verriegelung verwenden.
+    learningFocus:
+      - competency.servo_control
+  - id: stage.rfid_safe.3
+    title: Zugangslogik
+    goal: Erlaubte und abgelehnte Karten als Zustandsautomat modellieren.
+    learningFocus:
+      - competency.access_logic
+      - competency.state_machine
+
+risks:
+  - risk.weak_security_expectation
+  - risk.servo_power_supply
+openDecisions:
+  - decision.rfid_safe.reference_reader
+  - decision.rfid_safe.lock_mechanism
+roadmap:
+  - roadmap.rfid_safe
+dependencies:
+  requires:
+    - capability.spi
+    - capability.rfid_reading
+    - capability.servo_control
+  optional:
+    - capability.display_output
+    - capability.wifi
+
+generatedDocuments:
+  markdown: docs/generated/projects/rfid-safe.md

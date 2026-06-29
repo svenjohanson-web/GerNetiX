@@ -1,0 +1,104 @@
+schemaVersion: 1
+id: project.kanban_gridfinity_inventory
+slug: kanban-gridfinity-inventory
+type: learning_project
+status: draft
+title: Kanban-/Gridfinity-Inventarsystem
+ownerDomain: Learning
+summary: Ein modulares Inventarsystem verbindet Lagerorganisation, Bauteilverwaltung, Etiketten, optional RFID/QR und spaeter Web-App-Anbindung.
+
+businessGoals:
+  - BG-001
+  - BG-002
+  - BG-004
+  - BG-005
+customerJourneys:
+  - CJ-002
+  - CJ-003
+  - CJ-005
+  - CJ-007
+audiences:
+  primary:
+    - audience.maker
+    - audience.hobby_developer
+    - audience.school
+  secondary:
+    - audience.teacher
+    - audience.company
+valuePropositions:
+  - value.hardware_inventory
+  - value.practical_workshop_organization
+  - value.project_recommendations_from_inventory
+
+learningGoals:
+  - learning_goal.embedded_basics
+  - learning_goal.iot_basics
+  - learning_goal.tooling_and_workflows
+developsCompetencies:
+  - competency.inventory_modeling
+  - competency.qr_or_rfid_identification
+  - competency.data_modeling
+  - competency.user_workflow_design
+  - competency.hardware_inventory
+  - competency.web_integration_basics
+
+variants:
+  - id: project.kanban_gridfinity_inventory.variant.offline_labels
+    title: Offline mit Etiketten und manueller Pflege
+    technicalConstraints:
+      - capability.printable_labels
+    optionalCapabilities:
+      - capability.qr_code
+  - id: project.kanban_gridfinity_inventory.variant.rfid_or_qr
+    title: QR/RFID-gestuetztes Inventar
+    technicalConstraints:
+      - capability.item_identification
+    optionalCapabilities:
+      - capability.rfid_reading
+      - capability.qr_code
+      - capability.wifi
+
+softwareModules:
+  - software_module.inventory_model
+  - software_module.item_identifier
+  - software_module.location_model
+  - software_module.reorder_logic
+  - software_module.project_recommendation
+
+stages:
+  - id: stage.kanban_gridfinity_inventory.1
+    title: Inventarstruktur modellieren
+    goal: Bauteile, Behaelter und Lagerorte fachlich strukturieren.
+    learningFocus:
+      - competency.inventory_modeling
+      - competency.data_modeling
+  - id: stage.kanban_gridfinity_inventory.2
+    title: Identifikation ergaenzen
+    goal: Bauteile oder Boxen per QR oder RFID wiedererkennen.
+    learningFocus:
+      - competency.qr_or_rfid_identification
+  - id: stage.kanban_gridfinity_inventory.3
+    title: Projektvorschlaege aus Bestand
+    goal: Vorhandene Hardware mit passenden Projekten verknuepfen.
+    learningFocus:
+      - competency.hardware_inventory
+      - competency.project_matching
+
+risks:
+  - risk.overmodeling_inventory
+  - risk.rfid_or_qr_complexity
+openDecisions:
+  - decision.kanban_gridfinity_inventory.id_method
+  - decision.kanban_gridfinity_inventory.scope_v1
+roadmap:
+  - roadmap.kanban_gridfinity_inventory
+dependencies:
+  requires:
+    - capability.inventory_structure
+  optional:
+    - capability.qr_code
+    - capability.rfid_reading
+    - capability.wifi
+
+generatedDocuments:
+  markdown: docs/generated/projects/kanban-gridfinity-inventory.md

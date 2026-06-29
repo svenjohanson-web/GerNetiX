@@ -1,0 +1,490 @@
+schemaVersion: 1
+id: project.smart_plant_watering
+slug: smart-plant-watering
+title: Intelligente Pflanzenbewaesserungsstation
+status: draft
+type: learning_project_idea
+language: de
+
+traceability:
+  businessGoals:
+    - BG-001
+    - BG-002
+    - BG-004
+    - BG-005
+  customerJourneys:
+    - CJ-002
+    - CJ-003
+    - CJ-004
+    - CJ-005
+    - CJ-006
+  source: idea
+
+summary:
+  short: Automatische Pflanzenbewaesserung von einfacher Zeitsteuerung bis sensorgestuetzter Regelung mit optionaler Vernetzung.
+  problem: Pflanzen brauchen regelmaessig Wasser, aber der richtige Zeitpunkt haengt von realen Umgebungsbedingungen ab.
+  solution: Das Projekt fuehrt von zeitgesteuerter Bewaesserung zu Sensorik, Regelung, Fehlerbehandlung und optionaler IoT-Anbindung.
+  didacticCore: Unterschied zwischen offener Steuerung und geschlossenem Regelkreis.
+
+audience:
+  primary:
+    - Maker
+    - Hobbyentwickler
+    - Schueler
+    - Studierende
+    - Embedded-Einsteiger
+  secondary:
+    - Lehrer
+    - Schulen
+    - Nutzer mit vorhandener Arduino- oder ESP32-Hardware
+    - fortgeschrittene Nutzer mit Interesse an IoT und Automatisierung
+  notes: Zielgruppen steuern keine Berechtigungen und sind keine Metamodell-Artefakte.
+
+customerValue:
+  - praxisnahes Embedded-Projekt mit sichtbarem Ergebnis
+  - klarer Einstieg in Sensoren und Aktoren
+  - verstaendlicher Vergleich von Steuerung und Regelung
+  - gute Erweiterbarkeit von Arduino bis ESP32
+  - kostenguenstige Hardware moeglich
+  - vorhandene Komponenten koennen wiederverwendet werden
+  - spaeterer Ausbau in Richtung WLAN, Webserver, OTA und Cloud moeglich
+
+learning:
+  learningGoals:
+    - Embedded Grundlagen
+    - IoT Grundlagen
+    - Embedded Fortgeschrittene
+  competencies:
+    core:
+      - Unterschied zwischen Steuerung und Regelung verstehen
+      - digitale Ein- und Ausgaenge verwenden
+      - Sensorwerte erfassen
+      - Aktoren ansteuern
+      - Zeitsteuerungen modellieren
+      - Zustandsautomaten verwenden
+      - modularen Softwareaufbau verstehen
+      - Hardwareabstraktion verstehen
+      - Fehlerbehandlung planen
+      - Erweiterbarkeit beruecksichtigen
+    optional:
+      - WLAN mit ESP32 nutzen
+      - lokalen Webserver fachlich einordnen
+      - OTA-Updates verstehen
+      - Cloud-Anbindung vorbereiten
+      - Benachrichtigungen planen
+      - Datenaufzeichnung und Statistiken verwenden
+      - Schwellenwerte und Hysterese verstehen
+
+project:
+  vision: >
+    Die intelligente Pflanzenbewaesserungsstation ist ein praxisnahes Embedded-Projekt,
+    das automatische Bewaesserung, Sensorik, Aktorik und spaeter Vernetzung miteinander verbindet.
+  motivation: >
+    Der Benutzer baut ein System mit echtem Alltagsnutzen und erkennt dabei, warum reine
+    Zeitsteuerung und sensorgestuetzte Regelung fachlich unterschiedliche Konzepte sind.
+  practicalContext:
+    - Pflanzenart
+    - Topfgroesse
+    - Erde
+    - Raumtemperatur
+    - Licht
+    - Verdunstung
+    - Sensorposition
+    - Wasserreservoir
+    - Pumpe oder Ventil
+    - Stromversorgung
+
+concepts:
+  foundations:
+    - title: Sensor
+      description: Misst einen Zustand, zum Beispiel Bodenfeuchtigkeit.
+    - title: Aktor
+      description: Veraendert die Umwelt, zum Beispiel durch Pumpe oder Ventil.
+    - title: Steuerung
+      description: Fuehrt eine Aktion nach Plan aus, ohne Rueckmeldung ueber den realen Zustand.
+    - title: Regelung
+      description: Nutzt Messwerte, um ueber eine Aktion zu entscheiden.
+    - title: Hysterese
+      description: Verhindert staendiges Ein- und Ausschalten an einer Schwelle.
+  comparisons:
+    - title: Steuerung vs. Regelung
+      left:
+        name: Steuerung
+        description: Zeitgesteuerte Bewaesserung ohne Rueckmeldung vom Pflanzenzustand.
+        strengths:
+          - einfach
+          - guenstig
+          - ideal fuer erste Aktoransteuerung
+        weaknesses:
+          - Risiko von Unter- oder Ueberbewaesserung
+          - keine Sensorbewertung
+      right:
+        name: Regelung
+        description: Bewaesserung anhand gemessener Bodenfeuchtigkeit.
+        strengths:
+          - reagiert auf reale Bedingungen
+          - vermittelt Sensorintegration
+          - naeher an echter Automatisierung
+        weaknesses:
+          - komplexer
+          - benoetigt Kalibrierung und Fehlerbehandlung
+
+architecture:
+  hardware:
+    variants:
+      - id: variant.arduino
+        title: Variante A - Arduino
+        focus:
+          - Embedded-Grundlagen
+          - einfache Hardware
+          - geringe Kosten
+          - keine WLAN-Anbindung
+        pros:
+          - guenstig
+          - einfach
+          - robuste Lernumgebung
+          - gute Trennung der Grundlagen
+        cons:
+          - keine integrierte WLAN-Funktion
+          - begrenzter Ausbau in Richtung Webserver, OTA oder Cloud
+        useCases:
+          - Schulunterricht
+          - Einsteigerprojekt
+          - Grundlagen fuer digitale Ausgaenge und Sensorik
+      - id: variant.esp32
+        title: Variante B - ESP32
+        focus:
+          - WLAN
+          - Weboberflaeche
+          - OTA
+          - Cloud-Anbindung
+          - erweiterte Funktionen
+        pros:
+          - integriertes WLAN
+          - leistungsfaehiger als einfache Arduino-Boards
+          - gute Basis fuer Webserver, OTA und Cloud
+        cons:
+          - hoeherer Einstieg
+          - mehr Konfigurationsaufwand
+          - WLAN und Sicherheit koennen vom Kernlernziel ablenken
+        useCases:
+          - IoT-Einstieg
+          - Datenaufzeichnung
+          - Fernueberwachung
+          - Folgeprojekt fuer Simple IDE und Device Management
+    components:
+      mandatory:
+        - Mikrocontroller
+        - Pumpe oder Ventil
+        - Treiberstufe
+        - Stromversorgung
+        - Wasserreservoir
+        - Schlauch
+      optional:
+        - Bodenfeuchtigkeitssensor
+        - Wasserstandssensor
+        - Temperatur- oder Luftfeuchtigkeitssensor
+        - Display
+        - Status-LED
+        - Buzzer
+        - Taster
+        - Gehaeuse
+        - Batterie oder Akku
+    sensors:
+      - name: kapazitiver Bodenfeuchtigkeitssensor
+        notes: Fuer Lernprojekte meist besser geeignet, weil weniger korrosionsanfaellig.
+      - name: resistiver Bodenfeuchtigkeitssensor
+        notes: Guenstig, aber langfristig weniger robust.
+      - name: Wasserstandssensor
+        notes: Verbessert Sicherheit durch Erkennung von Trockenlauf.
+      - name: Durchflusssensor
+        notes: Fuer Version 1 vermutlich zu komplex, spaeter interessant.
+    actuators:
+      - name: kleine Wasserpumpe
+        notes: Anschaulich und flexibel fuer Einsteiger.
+      - name: Magnetventil
+        notes: Eher fuer fortgeschrittene Varianten mit geeigneter Wasserquelle.
+      - name: Relaismodul
+        notes: Didaktisch einfach, aber mechanisch.
+      - name: MOSFET-Treiber
+        notes: Technisch eleganter, benoetigt mehr Verstaendnis fuer Treiberstufen.
+  software:
+    modules:
+      - id: module.plant_model
+        title: Plant Model
+        responsibility: Beschreibt Pflanze, Schwellenwerte und Pflegeparameter.
+      - id: module.sensor_layer
+        title: Sensor Layer
+        responsibility: Liest Bodenfeuchtigkeit und optionale Umweltdaten.
+      - id: module.actuator_layer
+        title: Actuator Layer
+        responsibility: Steuert Pumpe, Ventil, Relais oder MOSFET.
+      - id: module.control_mode
+        title: Control Mode
+        responsibility: Beschreibt zeitgesteuerte Bewaesserung.
+      - id: module.regulation_mode
+        title: Regulation Mode
+        responsibility: Beschreibt Bewaesserung anhand von Sensorwerten.
+      - id: module.state_engine
+        title: State Engine
+        responsibility: Verwaltet Zustaende wie idle, measuring, watering, waiting und error.
+      - id: module.safety_layer
+        title: Safety Layer
+        responsibility: Begrenzt Laufzeit, erkennt Fehler und verhindert Dauerbetrieb.
+      - id: module.connectivity_layer
+        title: Connectivity Layer
+        responsibility: Behandelt WLAN, Webserver und Cloud optional.
+    offline:
+      - zeitgesteuerte Bewaesserung
+      - sensorgestuetzte Bewaesserung
+      - lokale Einstellungen
+      - lokale Fehlerbehandlung
+    online:
+      - WLAN-Konfiguration
+      - lokale Weboberflaeche
+      - OTA-Updates
+      - Cloud-Anbindung
+      - Benachrichtigungen
+      - Statistiken
+
+technicalConstraints:
+  - id: constraint.processor_board
+    type: mandatory
+    capability: processor.board
+    description: Mikrocontroller-Board fuer Steuerung oder Regelung.
+  - id: constraint.digital_output
+    type: mandatory
+    capability: digital.output
+    description: Ausgang fuer Aktoransteuerung.
+  - id: constraint.actuator_driver
+    type: mandatory
+    capability: actuator.driver
+    description: Treiberstufe fuer Pumpe oder Ventil.
+  - id: constraint.soil_moisture_sensor
+    type: optional
+    capability: sensor.soil_moisture
+    description: Pflicht fuer Regelungsstufen, optional fuer reine Steuerung.
+  - id: constraint.wifi
+    type: optional
+    capability: communication.wifi
+    description: Benoetigt fuer Webserver, OTA und Cloud.
+  - id: constraint.ota
+    type: optional
+    capability: firmware.ota
+    description: Benoetigt fuer OTA-Ausbaustufen.
+
+stages:
+  - id: stage.1
+    title: Zeitgesteuerte Bewaesserung
+    goal: Einfache Steuerung, Aktorik und Zeitlogik verstehen.
+    features:
+      - feste Bewaesserungsintervalle
+      - keine Sensorwerte
+      - maximale Laufzeit als Sicherheitsgrenze
+    learningFocus:
+      - digitale Ausgaenge
+      - Zeitsteuerung
+      - Aktoransteuerung
+  - id: stage.2
+    title: Manuelle Eingabe und Statusanzeige
+    goal: Benutzerinteraktion und Systemzustand sichtbar machen.
+    features:
+      - Taster fuer manuelles Bewaessern
+      - LED oder Display fuer Status
+      - einfache Fehleranzeige
+    learningFocus:
+      - digitale Eingaenge
+      - Statusmodell
+  - id: stage.3
+    title: Sensorgestuetzte Regelung
+    goal: Messwerte nutzen und Regelentscheidungen treffen.
+    features:
+      - Bodenfeuchtigkeit messen
+      - Schwellenwert verwenden
+      - Hysterese oder Wartezeit erklaeren
+    learningFocus:
+      - Sensorintegration
+      - Regelung
+      - Messwertbewertung
+  - id: stage.4
+    title: Fehlerbehandlung und Sicherheit
+    goal: Robuste Automatisierung verstehen.
+    features:
+      - Trockenlauf vermeiden
+      - Sensorfehler erkennen
+      - maximale Pumpenlaufzeit begrenzen
+    learningFocus:
+      - Fehlerbehandlung
+      - Sicherheit
+  - id: stage.5
+    title: ESP32 mit WLAN und Weboberflaeche
+    goal: Lokale Vernetzung als Erweiterung einfuehren.
+    features:
+      - WLAN optional
+      - lokaler Webserver
+      - Status ueber Weboberflaeche
+    learningFocus:
+      - WLAN
+      - Weboberflaeche
+      - IoT-Grundlagen
+  - id: stage.6
+    title: OTA und Datenaufzeichnung
+    goal: Wartbarkeit und Verlauf verstehen.
+    features:
+      - OTA-Updates
+      - Messwertverlauf
+      - einfache Statistiken
+    learningFocus:
+      - OTA
+      - Datenaufzeichnung
+  - id: stage.7
+    title: Cloud und Benachrichtigungen
+    goal: Vernetzte Systeme und externe Dienste einordnen.
+    features:
+      - Cloud-Anbindung optional
+      - Benachrichtigung bei leerem Tank oder Fehler
+      - langfristige Datenauswertung
+    learningFocus:
+      - Cloud-Anbindung
+      - Benachrichtigungen
+
+extensions:
+  functional:
+    - mehrere Pflanzen
+    - Pflanzenprofile
+    - automatische Kalibrierung
+    - saisonale Anpassung
+    - Urlaubsmodus
+    - Wassersparmodus
+  hardware:
+    - Display
+    - Wasserstandssensor
+    - Durchflusssensor
+    - groesseres Reservoir
+    - Akku oder Solarbetrieb
+    - mehrere Pumpen oder Ventile
+  platform:
+    - Hardware-Matching fuer Arduino- und ESP32-Varianten
+    - Folgeprojekte fuer IoT, OTA und Cloud
+    - Lernpfad Automatisierung
+    - Lernpfad Sensorik und Regelung
+    - Lernpfad Smart Garden
+
+risks:
+  functional:
+    - Benutzer verwechseln Steuerung und Regelung, wenn der Unterschied nicht klar inszeniert wird.
+    - Zu fruehe WLAN- oder Cloud-Funktionen koennen vom Kernlernziel ablenken.
+  technical:
+    - Sensorwerte koennen stark schwanken.
+    - Sensoren koennen falsch positioniert sein.
+    - Resistive Sensoren koennen korrodieren.
+    - Pumpen koennen zu viel Strom ziehen.
+    - Wasser kann Elektronik beschaedigen.
+    - Pumpe kann trockenlaufen.
+    - WLAN kann instabil sein.
+  typicalMistakes:
+    - gemeinsame Masseverbindung vergessen
+    - falsche Versorgungsspannung
+    - Aktor direkt am Mikrocontroller-Pin betrieben
+    - Sensorwerte ohne Kalibrierung interpretiert
+    - keine maximale Pumpenlaufzeit definiert
+    - kein Fehlerzustand vorgesehen
+
+openDecisions:
+  - id: decision.start_variant
+    question: Soll Variante A mit Arduino oder direkt mit ESP32 starten?
+    options:
+      - Arduino zuerst
+      - ESP32 zuerst
+      - beide Varianten parallel
+    impact: Bestimmt Einstiegshoehe, Hardwarekosten und spaetere IoT-Erweiterbarkeit.
+  - id: decision.actuator
+    question: Wird fuer Version 1 eine Pumpe oder ein Ventil empfohlen?
+    options:
+      - Pumpe
+      - Ventil
+    impact: Beeinflusst Hardwareaufbau, Sicherheit und didaktische Einfachheit.
+  - id: decision.sensor_in_v1
+    question: Soll Version 1 bereits einen Sensor enthalten oder zuerst nur zeitgesteuert arbeiten?
+    options:
+      - zuerst zeitgesteuert
+      - direkt mit Bodenfeuchtigkeitssensor
+    impact: Bestimmt, ob Steuerung und Regelung in einem Projekt oder in zwei Stufen eingefuehrt werden.
+  - id: decision.project_variants
+    question: Werden Arduino- und ESP32-Variante als zwei ProjectVariants desselben LearningProject modelliert?
+    options:
+      - ein LearningProject mit zwei ProjectVariants
+      - zwei getrennte LearningProjects
+    impact: Beeinflusst Metamodell-Zuordnung, Wiederverwendung und Lernpfade.
+
+roadmap:
+  - phase: 1
+    title: Projektdefinition
+    goal: Fachlichen Nutzen klaeren und Steuerung/Regelung didaktisch trennen.
+    outcomes:
+      - stabile Projektspezifikation
+      - offene Architekturentscheidungen sichtbar
+      - Grundlage fuer Requirements
+  - phase: 2
+    title: Einfache Steuerung
+    goal: Zeitgesteuerte Bewaesserung fachlich umsetzen.
+    outcomes:
+      - Intervall definiert
+      - Aktor zeitlich begrenzt aktiviert
+      - maximale Laufzeit als Sicherheitsregel definiert
+  - phase: 3
+    title: Sensorintegration
+    goal: Bodenfeuchtigkeit messen und Sensorgrenzen verstehen.
+    outcomes:
+      - Messwert sichtbar
+      - trockene und feuchte Erde vergleichbar
+      - Kalibrierung fachlich eingefuehrt
+  - phase: 4
+    title: Regelung
+    goal: Geschlossenen Regelkreis verstehen.
+    outcomes:
+      - Schwellenwert definiert
+      - Hysterese oder Wartezeit eingefuehrt
+      - Zustand nach Bewaesserung erneut bewertet
+  - phase: 5
+    title: Fehlerbehandlung
+    goal: Robuste Automatisierung verstehen.
+    outcomes:
+      - Trockenlauf betrachtet
+      - Sensorfehler betrachtet
+      - Fehleranzeige vorgesehen
+  - phase: 6
+    title: ESP32 und lokale Vernetzung
+    goal: WLAN und lokalen Webserver als Erweiterung einfuehren.
+    outcomes:
+      - Messwerte lokal sichtbar
+      - Einstellungen lokal aenderbar
+      - Status ueber Weboberflaeche betrachtbar
+  - phase: 7
+    title: OTA, Cloud und Benachrichtigungen
+    goal: Wartbarkeit und vernetzte Funktionen verstehen.
+    outcomes:
+      - OTA als optionaler Baustein beschrieben
+      - Datenaufzeichnung beschrieben
+      - Cloud-Anbindung als Folgeprojekt eingeordnet
+
+generatedDocuments:
+  markdown:
+    target: docs/project-smart-plant-watering.md
+    sections:
+      - Projektvision
+      - Kundennutzen
+      - Zielgruppe
+      - Praxisbezug
+      - Lernziele
+      - Fachliche Grundlagen
+      - Unterschied zwischen Steuerung und Regelung
+      - Hardwarearchitektur
+      - Softwarearchitektur
+      - Benoetigte Komponenten
+      - Moegliche Sensoren und Aktoren
+      - Ausbaustufen
+      - Erweiterungsmoeglichkeiten
+      - Risiken und typische Fehlerquellen
+      - Offene Architekturentscheidungen
+      - Roadmap

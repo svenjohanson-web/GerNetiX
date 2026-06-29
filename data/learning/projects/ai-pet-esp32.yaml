@@ -1,0 +1,104 @@
+schemaVersion: 1
+id: project.ai_pet_esp32
+slug: ai-pet-esp32
+type: learning_project
+status: draft
+title: KI-Haustier / Tamagotchi AI
+ownerDomain: Learning
+summary: Virtuelles Haustier auf einem ESP32 mit Display, offline nutzbar und optional mit KI-Dialogen erweiterbar.
+
+businessGoals:
+  - BG-001
+  - BG-002
+  - BG-003
+  - BG-005
+customerJourneys:
+  - CJ-003
+  - CJ-004
+  - CJ-006
+audiences:
+  primary:
+    - audience.maker
+    - audience.hobby_developer
+    - audience.student
+  secondary:
+    - audience.teacher
+    - audience.school
+valuePropositions:
+  - value.visible_result
+  - value.playful_embedded_learning
+  - value.optional_ai_extension
+
+learningGoals:
+  - learning_goal.embedded_basics
+  - learning_goal.iot_basics
+  - learning_goal.embedded_advanced
+developsCompetencies:
+  - competency.esp32_project_setup
+  - competency.display_control
+  - competency.input_handling
+  - competency.state_machine
+  - competency.local_persistence
+  - competency.wifi_basics
+  - competency.online_offline_design
+
+variants:
+  - id: project.ai_pet_esp32.variant.basic_display
+    title: ESP32 mit Display und Button
+    technicalConstraints:
+      - capability.processor_esp32
+      - capability.display_output
+      - capability.digital_input
+    optionalCapabilities:
+      - capability.wifi
+      - capability.audio_output
+      - capability.microphone_input
+
+softwareModules:
+  - software_module.pet_core
+  - software_module.state_engine
+  - software_module.display_layer
+  - software_module.input_layer
+  - software_module.persistence_layer
+  - software_module.connectivity_layer
+  - software_module.ai_adapter
+
+stages:
+  - id: stage.ai_pet_esp32.1
+    title: Offline-Haustier
+    goal: Figur, Zustand und einfache Interaktion lokal darstellen.
+    learningFocus:
+      - competency.display_control
+      - competency.input_handling
+      - competency.state_machine
+  - id: stage.ai_pet_esp32.2
+    title: Persistenter Zustand
+    goal: Haustierzustand lokal speichern und beim Neustart wiederherstellen.
+    learningFocus:
+      - competency.local_persistence
+  - id: stage.ai_pet_esp32.3
+    title: Optionale Online-Funktionen
+    goal: WLAN und spaeter KI-Dialoge optional einbinden.
+    learningFocus:
+      - competency.wifi_basics
+      - competency.online_offline_design
+
+risks:
+  - risk.too_many_features_for_beginner
+  - risk.online_dependency
+  - risk.ai_costs_and_privacy
+openDecisions:
+  - decision.ai_pet_esp32.reference_display
+  - decision.ai_pet_esp32.openai_stage
+roadmap:
+  - roadmap.ai_pet_esp32
+dependencies:
+  requires:
+    - capability.processor_esp32
+    - capability.display_output
+  optional:
+    - capability.wifi
+    - system_capability.ai_assistant
+
+generatedDocuments:
+  markdown: docs/generated/projects/ai-pet-esp32.md

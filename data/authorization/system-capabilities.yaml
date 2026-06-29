@@ -1,0 +1,54 @@
+schemaVersion: 1
+kind: system_capability_catalog
+sourceOfTruth: true
+note: SystemCapabilities beschreiben Produktfunktionen und Berechtigungen. Sie sind nicht identisch mit TechnicalCapabilities.
+items:
+  - id: system_capability.ide_flash_usb
+    type: system_capability
+    title: IDE Flash USB
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf per USB flashen.
+
+  - id: system_capability.ide_flash_ota
+    type: system_capability
+    title: IDE Flash OTA
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf OTA flashen.
+
+  - id: system_capability.ai_assistant
+    type: system_capability
+    title: AI Assistant
+    status: draft
+    ownerDomain: Authorization
+    summary: Optionale KI-Unterstuetzung oder KI-Interaktion.
+
+  - id: system_capability.admin_users
+    type: system_capability
+    title: Admin Users
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzerverwaltung administrieren.
+
+  - id: system_capability.admin_hardware
+    type: system_capability
+    title: Admin Hardware
+    status: draft
+    ownerDomain: Authorization
+    summary: Hardware-Katalog administrieren.
+
+  - id: system_capability.admin_learning
+    type: system_capability
+    title: Admin Learning
+    status: draft
+    ownerDomain: Authorization
+    summary: Learning Goals, Projekte und Lerninhalte administrieren.
+
+  - id: system_capability.admin_authorization
+    type: system_capability
+    title: Admin Authorization
+    status: draft
+    ownerDomain: Authorization
+    summary: Plaene, Rollen und SystemCapabilities administrieren.
+

@@ -1,0 +1,46 @@
+schemaVersion: 1
+kind: learning_goal_catalog
+sourceOfTruth: true
+items:
+  - id: learning_goal.embedded_basics
+    type: learning_goal
+    title: Embedded Grundlagen
+    status: draft
+    ownerDomain: Learning
+    summary: Grundlegende Embedded-Kompetenzen.
+
+  - id: learning_goal.embedded_advanced
+    type: learning_goal
+    title: Embedded Fortgeschrittene
+    status: draft
+    ownerDomain: Learning
+    summary: Fortgeschrittene Embedded-Konzepte.
+
+  - id: learning_goal.iot_basics
+    type: learning_goal
+    title: IoT Grundlagen
+    status: draft
+    ownerDomain: Learning
+    summary: Grundlagen fuer WLAN, Vernetzung, Webserver, OTA und Cloud-Anbindung.
+
+  - id: learning_goal.robotics
+    type: learning_goal
+    title: Robotik
+    status: draft
+    ownerDomain: Learning
+    summary: Lernziel fuer Robotik-Projekte.
+
+  - id: learning_goal.automation_basics
+    type: learning_goal
+    title: Automatisierung Grundlagen
+    status: draft
+    ownerDomain: Learning
+    summary: Grundlagen von Steuerung, Regelung, Sensorik und Aktorik.
+
+  - id: learning_goal.tooling_and_workflows
+    type: learning_goal
+    title: Tooling und Workflows
+    status: draft
+    ownerDomain: Learning
+    summary: Arbeitsablaeufe, Inventarisierung und Werkzeugnutzung strukturieren.
+

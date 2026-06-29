@@ -1,0 +1,32 @@
+schemaVersion: 1
+kind: principle_catalog
+sourceOfTruth: true
+items:
+  - id: principle.knowledge_more_expensive_than_code
+    type: principle
+    title: Wissen ist teurer als Code
+    status: approved
+    ownerDomain: Business
+    summary: Code implementiert Wissen; das Metamodell und YAML-first Daten bewahren Wissen.
+
+  - id: principle.yaml_is_source_of_truth
+    type: principle
+    title: YAML ist Source of Truth
+    status: approved
+    ownerDomain: CrossDomain
+    summary: Strukturierte YAML-Dateien sind fuehrend. Markdown ist Lesesicht oder generierter Output.
+
+  - id: principle.top_down_development
+    type: principle
+    title: Top-Down-Entwicklung
+    status: approved
+    ownerDomain: CrossDomain
+    summary: Vision, Business Goals, Customer Journeys und Requirements bestimmen Metamodell, Datenmodell und Implementierung.
+
+  - id: principle.non_root_artifact_requires_upstream
+    type: validation_rule
+    title: Kein nicht-root Artefakt ohne Upstream-Beziehung
+    status: approved
+    ownerDomain: CrossDomain
+    summary: Jedes nicht-root Artefakt braucht eine nachvollziehbare Beziehung zu Vision, Business Goal, Customer Journey oder Requirement.
+

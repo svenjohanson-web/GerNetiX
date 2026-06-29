@@ -1,0 +1,22 @@
+schemaVersion: 1
+kind: vision_catalog
+sourceOfTruth: true
+items:
+  - id: vision.gernetix
+    type: vision
+    title: GerNetiX Engineering Knowledge Platform
+    status: draft
+    ownerDomain: Business
+    summary: Plattform zur nachhaltigen Bewahrung und Nutzung von Engineering-Wissen fuer Embedded-Lernen und einfache Entwicklung.
+    purpose:
+      - Engineering-Wissen dauerhaft erhalten.
+      - Embedded-Lernen systematisch begleiten.
+      - Einfache Entwicklungswerkzeuge fuer Embedded-Projekte bereitstellen.
+    products:
+      - product.learning_platform
+      - product.simple_ide
+    principles:
+      - principle.knowledge_more_expensive_than_code
+      - principle.yaml_is_source_of_truth
+      - principle.top_down_development
+

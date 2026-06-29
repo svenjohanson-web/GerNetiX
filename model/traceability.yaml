@@ -1,0 +1,812 @@
+schemaVersion: 1
+generatedFrom:
+  - data/**/*.yaml
+  - model/relations.yaml
+status: generated_model
+note: YAML under data/ is the source of truth. This file is an aggregated traceability view. Markdown is a readable documentation view.
+
+entities:
+  - id: vision.gernetix
+    type: vision
+    title: GerNetiX Engineering Knowledge Platform
+    summary: Plattform zur nachhaltigen Bewahrung und Nutzung von Engineering-Wissen fuer Embedded-Lernen und einfache Entwicklung.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - README.md
+      - docs/principles.md
+      - docs/products.md
+      - docs/vision-business-goals-customer-journeys.md
+
+  - id: principle.knowledge_more_expensive_than_code
+    type: principle
+    title: Wissen ist teurer als Code
+    summary: Code implementiert Wissen; das Metamodell und YAML-first Daten bewahren Wissen.
+    status: approved
+    ownerDomain: Business
+    sources:
+      - docs/principles.md
+      - docs/documentation-strategy.md
+
+  - id: product.learning_platform
+    type: product
+    title: Learning Platform
+    summary: Menschen systematisch zu Embedded- und Softwareentwicklern ausbilden.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - README.md
+      - docs/products.md
+
+  - id: product.simple_ide
+    type: product
+    title: Simple IDE
+    summary: Embedded-Projekte moeglichst einfach entwickeln.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - README.md
+      - docs/products.md
+
+  - id: knowledge_base.distributed_engineering_knowledge
+    type: knowledge_base
+    title: Gemeinsame verteilte Wissensbasis
+    summary: Wissen entsteht aus eindeutigen Artefakten, Beziehungen, Traceability und Referenzen zwischen Domaenen; keine zentrale Knowledge-Domaene.
+    status: approved
+    ownerDomain: CrossDomain
+    sources:
+      - docs/domains.md
+      - docs/metamodel.md
+
+  - id: BG-001
+    type: business_goal
+    title: Bestehende Kunden kontinuierlich begleiten
+    summary: Bestehende Kunden kontinuierlich mit passenden neuen Lernangeboten begleiten.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/vision-business-goals-customer-journeys.md
+
+  - id: BG-002
+    type: business_goal
+    title: Einstieg in Embedded vereinfachen
+    summary: Den Einstieg in Embedded-Entwicklung moeglichst einfach machen.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/vision-business-goals-customer-journeys.md
+
+  - id: BG-003
+    type: business_goal
+    title: Einstiegshuerde durch einfache IDE reduzieren
+    summary: Die Einstiegshuerde durch eine einfache IDE reduzieren.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/vision-business-goals-customer-journeys.md
+
+  - id: BG-004
+    type: business_goal
+    title: Vorhandene Hardware optimal nutzen
+    summary: Vorhandene Hardware optimal nutzen und passende Projekte empfehlen.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/vision-business-goals-customer-journeys.md
+
+  - id: BG-005
+    type: business_goal
+    title: Engineering-Wissen dauerhaft erhalten
+    summary: Engineering-Wissen dauerhaft erhalten.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/vision-business-goals-customer-journeys.md
+
+  - id: CJ-001
+    type: customer_journey
+    title: Neuer Benutzer entdeckt die Plattform
+    summary: Lerngebiet auswaehlen, Kurs kaufen, Hardware kennenlernen, Projekt starten.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/vision-business-goals-customer-journeys.md
+      - docs/customer-journey.md
+
+  - id: CJ-002
+    type: customer_journey
+    title: Benutzer inventarisiert vorhandene Hardware
+    summary: Hardware inventarisieren, Matching, Projektvorschlaege und Lernpfad ableiten.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/vision-business-goals-customer-journeys.md
+      - docs/customer-journey.md
+
+  - id: CJ-003
+    type: customer_journey
+    title: Benutzer beginnt ein Projekt
+    summary: Projekt beginnen, durchfuehren, Kompetenzen aufbauen und Projekt abschliessen.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/vision-business-goals-customer-journeys.md
+      - docs/customer-journey.md
+
+  - id: CJ-004
+    type: customer_journey
+    title: Benutzer kehrt spaeter zurueck
+    summary: Projektzustand und Conditions pruefen, Projekt fortsetzen.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/vision-business-goals-customer-journeys.md
+      - docs/customer-journey.md
+
+  - id: CJ-005
+    type: customer_journey
+    title: Benutzer besitzt Hardware, aber noch nicht alle Lernziele
+    summary: Passende neue Lernangebote empfehlen, Kurs kaufen, neue Projekte freischalten.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/vision-business-goals-customer-journeys.md
+      - docs/customer-journey.md
+
+  - id: CJ-006
+    type: customer_journey
+    title: Benutzer besitzt ein neues ProcessorBoard
+    summary: Board registrieren, Pairing, Provisioning, OTA einrichten und IDE verwenden.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/vision-business-goals-customer-journeys.md
+      - docs/customer-journey.md
+
+  - id: CJ-007
+    type: customer_journey
+    title: Administrator erweitert die Plattform
+    summary: Hardware anlegen, Learning Goals erweitern, Projekte ergaenzen, Capabilities pflegen.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/vision-business-goals-customer-journeys.md
+      - docs/customer-journey.md
+
+  - id: audience.maker
+    type: audience
+    title: Maker
+    summary: Nutzer, die eigene technische Projekte bauen und erweitern moechten.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/personas-roles-permissions.md
+      - data/learning/projects/*.yaml
+
+  - id: audience.hobby_developer
+    type: audience
+    title: Hobbyentwickler
+    summary: Privat lernende oder experimentierende Entwickler.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/personas-roles-permissions.md
+      - data/learning/projects/*.yaml
+
+  - id: audience.student
+    type: audience
+    title: Studierende und Schueler
+    summary: Lernende im schulischen oder akademischen Kontext.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/personas-roles-permissions.md
+      - data/learning/projects/*.yaml
+
+  - id: audience.teacher
+    type: audience
+    title: Lehrer
+    summary: Lehrende, die Projekte fuer Unterricht und Lernangebote nutzen.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/personas-roles-permissions.md
+      - data/learning/projects/*.yaml
+
+  - id: audience.school
+    type: audience
+    title: Schulen
+    summary: Institutionen, die Lernprojekte einsetzen.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/personas-roles-permissions.md
+      - data/learning/projects/*.yaml
+
+  - id: audience.embedded_beginner
+    type: audience
+    title: Embedded-Einsteiger
+    summary: Nutzer mit wenig Embedded-Vorerfahrung.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/personas-roles-permissions.md
+      - data/learning/projects/*.yaml
+
+  - id: audience.company
+    type: audience
+    title: Unternehmen
+    summary: Organisationen mit Bedarf an Lern-, Inventar- oder Embedded-Workflows.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - docs/personas-roles-permissions.md
+      - data/learning/projects/kanban-gridfinity-inventory.yaml
+
+  - id: value.visible_result
+    type: value_proposition
+    title: Sichtbares Ergebnis
+    summary: Nutzer erhalten ein direkt sichtbares und motivierendes Projektergebnis.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/learning/projects/ai-pet-esp32.yaml
+      - data/learning/projects/rfid-safe.yaml
+
+  - id: value.practical_embedded_project
+    type: value_proposition
+    title: Praxisnahes Embedded-Projekt
+    summary: Projekt mit echtem Alltagsnutzen und sichtbarer Embedded-Funktion.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/learning/projects/smart-plant-watering.yaml
+
+  - id: value.hardware_reuse
+    type: value_proposition
+    title: Hardware wiederverwenden
+    summary: Vorhandene Hardware wird fuer passende Projekte nutzbar gemacht.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/learning/projects/smart-plant-watering.yaml
+      - data/learning/projects/rfid-safe.yaml
+
+  - id: value.control_vs_regulation
+    type: value_proposition
+    title: Steuerung vs Regelung verstehen
+    summary: Offene Steuerung und geschlossener Regelkreis werden praktisch gegenuebergestellt.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/learning/projects/smart-plant-watering.yaml
+
+  - id: value.playful_embedded_learning
+    type: value_proposition
+    title: Spielerisches Embedded-Lernen
+    summary: Emotional motivierendes Projekt mit sichtbarer Interaktion.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/learning/projects/ai-pet-esp32.yaml
+
+  - id: value.optional_ai_extension
+    type: value_proposition
+    title: Optionale KI-Erweiterung
+    summary: OpenAI/KI wird optional als spaetere Erweiterung statt als Einstiegshuerde behandelt.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/learning/projects/ai-pet-esp32.yaml
+      - docs/project-ai-pet-esp32.md
+
+  - id: value.hardware_inventory
+    type: value_proposition
+    title: Hardware inventarisieren
+    summary: Vorhandene Hardware strukturieren und fuer Projektvorschlaege nutzbar machen.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/learning/projects/kanban-gridfinity-inventory.yaml
+
+  - id: value.project_recommendations_from_inventory
+    type: value_proposition
+    title: Projektvorschlaege aus Bestand
+    summary: Aus inventarisierter Hardware werden passende Projekte und Lernangebote abgeleitet.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/learning/projects/kanban-gridfinity-inventory.yaml
+
+  - id: learning_goal.embedded_basics
+    type: learning_goal
+    title: Embedded Grundlagen
+    summary: Grundlegende Embedded-Kompetenzen.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - docs/metamodel-learning-platform.md
+      - data/learning/projects/*.yaml
+
+  - id: learning_goal.embedded_advanced
+    type: learning_goal
+    title: Embedded Fortgeschrittene
+    summary: Fortgeschrittene Embedded-Konzepte.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - docs/metamodel-learning-platform.md
+      - data/learning/projects/*.yaml
+
+  - id: learning_goal.iot_basics
+    type: learning_goal
+    title: IoT Grundlagen
+    summary: Grundlagen fuer WLAN, Vernetzung, Webserver, OTA und Cloud-Anbindung.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - docs/metamodel-learning-platform.md
+      - data/learning/projects/*.yaml
+
+  - id: learning_goal.robotics
+    type: learning_goal
+    title: Robotik
+    summary: Lernziel fuer Robotik-Projekte.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - docs/metamodel-learning-platform.md
+
+  - id: learning_goal.automation_basics
+    type: learning_goal
+    title: Automatisierung Grundlagen
+    summary: Grundlagen von Steuerung, Regelung, Sensorik und Aktorik.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/smart-plant-watering.yaml
+
+  - id: learning_goal.tooling_and_workflows
+    type: learning_goal
+    title: Tooling und Workflows
+    summary: Arbeitsablaeufe, Inventarisierung und Werkzeugnutzung strukturieren.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/kanban-gridfinity-inventory.yaml
+
+  - id: project.ai_pet_esp32
+    type: learning_project
+    title: KI-Haustier / Tamagotchi AI
+    summary: Virtuelles Haustier auf ESP32 mit Display, offline nutzbar und optional KI-erweiterbar.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/ai-pet-esp32.yaml
+      - docs/project-ai-pet-esp32.md
+
+  - id: project.smart_plant_watering
+    type: learning_project
+    title: Intelligente Pflanzenbewaesserungsstation
+    summary: Automatische Pflanzenbewaesserung von Zeitsteuerung bis sensorgestuetzter Regelung mit optionaler IoT-Erweiterung.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/smart-plant-watering.yaml
+      - data/project-ideas/smart-plant-watering.yaml
+      - docs/project-smart-plant-watering.md
+
+  - id: project.rfid_safe
+    type: learning_project
+    title: RFID-Tresor
+    summary: Tresor per RFID-Karte entsperren; vermittelt SPI, RFID, Servo/Aktorik und Zustandsautomaten.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/rfid-safe.yaml
+
+  - id: project.kanban_gridfinity_inventory
+    type: learning_project
+    title: Kanban-/Gridfinity-Inventarsystem
+    summary: Lagerorganisation, Bauteilverwaltung, Etiketten und optional QR/RFID/Web-App-Anbindung.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/kanban-gridfinity-inventory.yaml
+
+  - id: metamodel.learning_platform
+    type: metamodel
+    title: Metamodell Learning Platform
+    summary: Fachliche Single Source of Truth fuer Learning Platform, Hardware, Account, Authorization und Device Management.
+    status: draft
+    ownerDomain: CrossDomain
+    sources:
+      - docs/metamodel-learning-platform.md
+      - docs/metamodel-learning-platform-review.md
+
+  - id: architecture.yaml_first_repository
+    type: architecture_decision
+    title: YAML-first Repository-Struktur
+    summary: YAML ist Source of Truth, Markdown ist generiertes Ausgabeformat.
+    status: approved
+    ownerDomain: CrossDomain
+    sources:
+      - docs/yaml-first-repository-structure.md
+      - docs/project-idea-data-model.md
+
+  - id: architecture.top_down_development
+    type: architecture_decision
+    title: Top-down-Entwicklung
+    summary: Vision, Business Goals, Customer Journeys und Requirements bestimmen Metamodell, Datenmodell und Implementierung.
+    status: approved
+    ownerDomain: CrossDomain
+    sources:
+      - docs/documentation-strategy.md
+      - docs/development-process.md
+
+  - id: architecture.domain_ownership
+    type: architecture_decision
+    title: Fachliche Heimatdomaene je Artefakt
+    summary: Jede Klasse besitzt genau einen fachlichen Eigentuemer; andere Domaenen referenzieren nur.
+    status: approved
+    ownerDomain: CrossDomain
+    sources:
+      - docs/domains.md
+
+  - id: architecture.no_central_knowledge_domain
+    type: architecture_decision
+    title: Keine zentrale Knowledge-Domaene
+    summary: Die gemeinsame Wissensbasis entsteht verteilt ueber Domaenen und Beziehungen.
+    status: approved
+    ownerDomain: CrossDomain
+    sources:
+      - docs/domains.md
+      - docs/metamodel.md
+
+  - id: architecture.project_flow_item
+    type: architecture_decision
+    title: ProjectFlowItem statt ProjectContentItem
+    summary: Reihenfolge im Projektablauf wird ueber ProjectFlowItem modelliert, nicht an Lesson oder ProjectStep.
+    status: approved
+    ownerDomain: Learning
+    sources:
+      - docs/metamodel-learning-platform.md
+      - docs/metamodel-learning-platform-review.md
+
+  - id: architecture.condition_entity
+    type: architecture_decision
+    title: Condition als eigenstaendiges Artefakt
+    summary: Pre- und PostConditions werden als wiederverwendbare Conditions modelliert, nicht als Freitext.
+    status: approved
+    ownerDomain: Learning
+    sources:
+      - docs/metamodel-learning-platform.md
+
+  - id: architecture.capability_split
+    type: architecture_decision
+    title: TechnicalCapability und SystemCapability trennen
+    summary: Hardware-Faehigkeiten und Produktberechtigungen duerfen nicht vermischt werden.
+    status: approved
+    ownerDomain: CrossDomain
+    sources:
+      - docs/metamodel-learning-platform-review.md
+      - docs/personas-roles-permissions.md
+
+  - id: architecture.permission_precedence
+    type: architecture_decision
+    title: Berechtigungsprioritaet Override vor Plan vor Default
+    summary: Effektive Berechtigungen werden aus AccountSystemCapabilityOverride, PlanSystemCapability und System Default berechnet; DENY gewinnt.
+    status: approved
+    ownerDomain: Authorization
+    sources:
+      - docs/metamodel-learning-platform.md
+      - docs/personas-roles-permissions.md
+
+  - id: architecture.registered_processor_board
+    type: architecture_decision
+    title: RegisteredProcessorBoard trennt konkretes Board vom Produkttyp
+    summary: ProcessorBoard ist Produkttyp, RegisteredProcessorBoard ist konkretes Board mit Pairing, Credential, Firmware und OTA-State.
+    status: approved
+    ownerDomain: DeviceManagement
+    sources:
+      - docs/metamodel-learning-platform.md
+      - docs/metamodel-learning-platform-review.md
+
+  - id: requirement_model.decomposition_ends_at_work_package
+    type: requirement_rule
+    title: Dekomposition endet bei Work Packages
+    summary: Technische Details wie APIs, Views, Services oder Tests sind keine eigenen Requirements.
+    status: approved
+    ownerDomain: CrossDomain
+    sources:
+      - docs/requirements.md
+      - docs/development-process.md
+
+  - id: requirement.project_requirements_missing
+    type: gap
+    title: Konkrete Requirements fuer Projekte fehlen noch
+    summary: Projekte sind beschrieben, aber noch nicht in konkrete Requirements und Work Packages zerlegt.
+    status: open
+    ownerDomain: Learning
+    sources:
+      - docs/open-questions.md
+      - data/learning/projects/*.yaml
+
+  - id: capability.processor_esp32
+    type: technical_capability
+    title: ESP32 ProcessorBoard
+    summary: ESP32-kompatibles Board fuer Projektvarianten.
+    status: referenced
+    ownerDomain: Hardware
+    sources:
+      - data/learning/projects/*.yaml
+
+  - id: capability.display_output
+    type: technical_capability
+    title: Display-Ausgabe
+    summary: Faehigkeit zur Darstellung von Text, Status oder Grafik auf einem Display.
+    status: referenced
+    ownerDomain: Hardware
+    sources:
+      - data/learning/projects/*.yaml
+
+  - id: capability.digital_input
+    type: technical_capability
+    title: Digitaler Eingang
+    summary: Eingabe ueber Button, Schalter oder aehnliche digitale Signale.
+    status: referenced
+    ownerDomain: Hardware
+    sources:
+      - data/learning/projects/ai-pet-esp32.yaml
+
+  - id: capability.digital_output
+    type: technical_capability
+    title: Digitaler Ausgang
+    summary: Schaltbarer Ausgang fuer Aktoren oder Signale.
+    status: referenced
+    ownerDomain: Hardware
+    sources:
+      - data/learning/projects/smart-plant-watering.yaml
+
+  - id: capability.actuator_driver
+    type: technical_capability
+    title: Aktor-Treiber
+    summary: Treiberstufe fuer Pumpe, Ventil, Relais, MOSFET oder aehnliche Aktoren.
+    status: referenced
+    ownerDomain: Hardware
+    sources:
+      - data/learning/projects/smart-plant-watering.yaml
+
+  - id: capability.soil_moisture_measurement
+    type: technical_capability
+    title: Bodenfeuchtigkeit messen
+    summary: Bodenfeuchtigkeit erfassen fuer sensorgestuetzte Regelung.
+    status: referenced
+    ownerDomain: Hardware
+    sources:
+      - data/learning/projects/smart-plant-watering.yaml
+
+  - id: capability.wifi
+    type: technical_capability
+    title: WiFi
+    summary: Netzwerkfaehigkeit fuer Webserver, OTA, Cloud oder KI-Integration.
+    status: referenced
+    ownerDomain: Hardware
+    sources:
+      - data/learning/projects/*.yaml
+
+  - id: capability.ota
+    type: technical_capability
+    title: OTA
+    summary: Over-the-Air Update-Faehigkeit.
+    status: referenced
+    ownerDomain: Hardware
+    sources:
+      - data/learning/projects/smart-plant-watering.yaml
+
+  - id: capability.spi
+    type: technical_capability
+    title: SPI
+    summary: Serielle Schnittstelle fuer Module wie RFID-Reader.
+    status: referenced
+    ownerDomain: Hardware
+    sources:
+      - data/learning/projects/rfid-safe.yaml
+
+  - id: capability.rfid_reading
+    type: technical_capability
+    title: RFID lesen
+    summary: RFID-Karten oder Tags erkennen und auslesen.
+    status: referenced
+    ownerDomain: Hardware
+    sources:
+      - data/learning/projects/rfid-safe.yaml
+
+  - id: capability.servo_control
+    type: technical_capability
+    title: Servo-Steuerung
+    summary: Servo als mechanischen Aktor ansteuern.
+    status: referenced
+    ownerDomain: Hardware
+    sources:
+      - data/learning/projects/rfid-safe.yaml
+
+  - id: capability.item_identification
+    type: technical_capability
+    title: Item Identification
+    summary: Bauteile oder Behaelter identifizieren, z. B. per QR oder RFID.
+    status: referenced
+    ownerDomain: Hardware
+    sources:
+      - data/learning/projects/kanban-gridfinity-inventory.yaml
+
+  - id: system_capability.ide_flash_usb
+    type: system_capability
+    title: IDE Flash USB
+    summary: Benutzer darf per USB flashen.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - docs/personas-roles-permissions.md
+
+  - id: system_capability.ide_flash_ota
+    type: system_capability
+    title: IDE Flash OTA
+    summary: Benutzer darf OTA flashen.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - docs/personas-roles-permissions.md
+
+  - id: system_capability.ai_assistant
+    type: system_capability
+    title: AI Assistant
+    summary: Optionale KI-Unterstuetzung oder KI-Interaktion.
+    status: referenced
+    ownerDomain: Authorization
+    sources:
+      - data/learning/projects/ai-pet-esp32.yaml
+
+  - id: component.backend
+    type: architecture_component
+    title: Backend
+    summary: Spaeterer Implementierungsbaustein; folgt Metamodell und Datenmodell.
+    status: future
+    ownerDomain: Technical
+    sources:
+      - docs/development-process.md
+
+  - id: component.frontend
+    type: architecture_component
+    title: Frontend
+    summary: Spaeterer Implementierungsbaustein; folgt Metamodell und Datenmodell.
+    status: future
+    ownerDomain: Technical
+    sources:
+      - docs/development-process.md
+
+  - id: component.database
+    type: architecture_component
+    title: Datenbank
+    summary: Wird aus YAML/Metamodell abgeleitet; nicht fuehrende Quelle.
+    status: future
+    ownerDomain: Technical
+    sources:
+      - docs/yaml-first-repository-structure.md
+      - docs/metamodel.md
+
+  - id: component.generated_markdown
+    type: architecture_component
+    title: Generierte Markdown-Dokumentation
+    summary: Leseschicht aus YAML, nicht Source of Truth.
+    status: draft
+    ownerDomain: Documentation
+    sources:
+      - docs/yaml-first-repository-structure.md
+
+  - id: component.openai_adapter
+    type: architecture_component
+    title: OpenAI / AI Adapter
+    summary: Optionaler Adapter fuer KI-gestuetzte Interaktion in Projekten wie KI-Haustier.
+    status: optional
+    ownerDomain: Learning
+    sources:
+      - docs/project-ai-pet-esp32.md
+      - data/learning/projects/ai-pet-esp32.yaml
+
+  - id: component.ota
+    type: architecture_component
+    title: OTA
+    summary: Update-Funktion fuer gepairte Boards mit aktivem Credential.
+    status: draft
+    ownerDomain: DeviceManagement
+    sources:
+      - docs/metamodel-learning-platform.md
+      - data/learning/projects/*.yaml
+
+  - id: risk.water_and_electronics
+    type: risk
+    title: Wasser und Elektronik
+    summary: Wasser kann Elektronik beschaedigen und ist bei Pflanzenbewaesserung fachlich relevant.
+    status: open
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/smart-plant-watering.yaml
+      - docs/project-smart-plant-watering.md
+
+  - id: risk.online_dependency
+    type: risk
+    title: Online-Abhaengigkeit
+    summary: Online-Funktionen duerfen Offline-Basisprojekt nicht blockieren.
+    status: open
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/ai-pet-esp32.yaml
+
+  - id: risk.weak_security_expectation
+    type: risk
+    title: Falsche Sicherheitserwartung
+    summary: RFID-Tresor darf nicht als echte Sicherheitsloesung missverstanden werden.
+    status: open
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/rfid-safe.yaml
+
+  - id: risk.overmodeling_inventory
+    type: risk
+    title: Overmodeling Inventar
+    summary: Inventarsystem kann durch zu fruehe Modellkomplexitaet ueberladen werden.
+    status: open
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/kanban-gridfinity-inventory.yaml
+
+  - id: gap.concrete_requirements_missing
+    type: gap
+    title: Konkrete Requirements fehlen
+    summary: Es gibt Regeln fuer Requirements, aber noch keine vollstaendige konkrete Requirement-Liste pro Customer Journey und Projekt.
+    status: open
+    ownerDomain: CrossDomain
+    sources:
+      - docs/requirements.md
+      - docs/open-questions.md
+
+  - id: gap.capability_catalog_missing
+    type: gap
+    title: Zentraler Capability-Katalog initial angelegt
+    summary: Capabilities werden in Projekt-YAMLs referenziert. Eine erste zentrale Quelle liegt unter data/hardware/technical-capabilities.yaml; Detailattribute und Kategorien fehlen noch.
+    status: mitigated
+    ownerDomain: Hardware
+    sources:
+      - data/learning/projects/*.yaml
+      - docs/yaml-first-repository-structure.md
+      - data/hardware/technical-capabilities.yaml
+
+  - id: gap.task_model_missing
+    type: gap
+    title: Task-Modell fehlt
+    summary: Tasks sind als Konzept erwaehnt, aber noch nicht als YAML-Entitaeten mit Zielbezug vorhanden.
+    status: open
+    ownerDomain: CrossDomain
+    sources:
+      - docs/development-process.md
+
+  - id: open_question.account_skill_level_scope
+    type: open_question
+    title: AccountSkillLevel global oder domaenenbezogen
+    summary: Zu klaeren ist, ob AccountSkillLevel global, domaenenbezogen oder beides ist.
+    status: open
+    ownerDomain: Account
+    sources:
+      - docs/open-questions.md
+      - docs/metamodel-learning-platform-review.md
+
+  - id: open_question.teacher_plan_scope
+    type: open_question
+    title: Teacher Plan Standard oder Testkontext
+    summary: Zu klaeren ist, ob Teacher Plan produktiver Standardplan oder Test-/Schulkontext ist.
+    status: open
+    ownerDomain: Authorization
+    sources:
+      - docs/open-questions.md
+      - docs/personas-roles-permissions.md

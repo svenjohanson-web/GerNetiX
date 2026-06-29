@@ -1,0 +1,40 @@
+schemaVersion: 1
+kind: risk_catalog
+sourceOfTruth: true
+items:
+  - id: risk.water_and_electronics
+    type: risk
+    title: Wasser und Elektronik
+    status: open
+    ownerDomain: Learning
+    summary: Wasser kann Elektronik beschaedigen und ist bei Pflanzenbewaesserung fachlich relevant.
+    affects:
+      - project.smart_plant_watering
+
+  - id: risk.online_dependency
+    type: risk
+    title: Online-Abhaengigkeit
+    status: open
+    ownerDomain: Learning
+    summary: Online-Funktionen duerfen Offline-Basisprojekt nicht blockieren.
+    affects:
+      - project.ai_pet_esp32
+
+  - id: risk.weak_security_expectation
+    type: risk
+    title: Falsche Sicherheitserwartung
+    status: open
+    ownerDomain: Learning
+    summary: RFID-Tresor darf nicht als echte Sicherheitsloesung missverstanden werden.
+    affects:
+      - project.rfid_safe
+
+  - id: risk.overmodeling_inventory
+    type: risk
+    title: Overmodeling Inventar
+    status: open
+    ownerDomain: Learning
+    summary: Inventarsystem kann durch zu fruehe Modellkomplexitaet ueberladen werden.
+    affects:
+      - project.kanban_gridfinity_inventory
+

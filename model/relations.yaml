@@ -1,0 +1,362 @@
+schemaVersion: 1
+status: generated_model
+relations:
+  - from: vision.gernetix
+    relation: supports
+    to: product.learning_platform
+    confidence: high
+  - from: vision.gernetix
+    relation: supports
+    to: product.simple_ide
+    confidence: high
+  - from: principle.knowledge_more_expensive_than_code
+    relation: drives
+    to: architecture.top_down_development
+    confidence: high
+  - from: principle.knowledge_more_expensive_than_code
+    relation: drives
+    to: architecture.yaml_first_repository
+    confidence: high
+  - from: architecture.yaml_first_repository
+    relation: realizes
+    to: knowledge_base.distributed_engineering_knowledge
+    confidence: high
+  - from: architecture.no_central_knowledge_domain
+    relation: constrains
+    to: knowledge_base.distributed_engineering_knowledge
+    confidence: high
+  - from: architecture.domain_ownership
+    relation: constrains
+    to: metamodel.learning_platform
+    confidence: high
+
+  - from: BG-001
+    relation: derives_from
+    to: vision.gernetix
+    confidence: high
+  - from: BG-002
+    relation: derives_from
+    to: vision.gernetix
+    confidence: high
+  - from: BG-003
+    relation: derives_from
+    to: vision.gernetix
+    confidence: high
+  - from: BG-004
+    relation: derives_from
+    to: vision.gernetix
+    confidence: high
+  - from: BG-005
+    relation: derives_from
+    to: vision.gernetix
+    confidence: high
+
+  - from: CJ-001
+    relation: supports
+    to: BG-002
+    confidence: high
+  - from: CJ-002
+    relation: supports
+    to: BG-004
+    confidence: high
+  - from: CJ-003
+    relation: supports
+    to: BG-002
+    confidence: high
+  - from: CJ-004
+    relation: supports
+    to: BG-005
+    confidence: high
+  - from: CJ-005
+    relation: supports
+    to: BG-001
+    confidence: high
+  - from: CJ-006
+    relation: supports
+    to: BG-003
+    confidence: medium
+  - from: CJ-007
+    relation: supports
+    to: BG-005
+    confidence: medium
+
+  - from: product.learning_platform
+    relation: realizes
+    to: BG-001
+    confidence: high
+  - from: product.learning_platform
+    relation: realizes
+    to: BG-002
+    confidence: high
+  - from: product.learning_platform
+    relation: realizes
+    to: BG-004
+    confidence: high
+  - from: product.learning_platform
+    relation: realizes
+    to: BG-005
+    confidence: high
+  - from: product.simple_ide
+    relation: realizes
+    to: BG-003
+    confidence: high
+
+  - from: project.ai_pet_esp32
+    relation: belongs_to
+    to: product.learning_platform
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: belongs_to
+    to: product.learning_platform
+    confidence: high
+  - from: project.rfid_safe
+    relation: belongs_to
+    to: product.learning_platform
+    confidence: high
+  - from: project.kanban_gridfinity_inventory
+    relation: belongs_to
+    to: product.learning_platform
+    confidence: high
+
+  - from: project.ai_pet_esp32
+    relation: supports
+    to: BG-001
+    confidence: high
+  - from: project.ai_pet_esp32
+    relation: supports
+    to: BG-002
+    confidence: high
+  - from: project.ai_pet_esp32
+    relation: supports
+    to: BG-003
+    confidence: high
+  - from: project.ai_pet_esp32
+    relation: supports
+    to: BG-005
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: supports
+    to: BG-001
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: supports
+    to: BG-002
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: supports
+    to: BG-004
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: supports
+    to: BG-005
+    confidence: high
+  - from: project.rfid_safe
+    relation: supports
+    to: BG-001
+    confidence: high
+  - from: project.rfid_safe
+    relation: supports
+    to: BG-002
+    confidence: high
+  - from: project.rfid_safe
+    relation: supports
+    to: BG-004
+    confidence: high
+  - from: project.rfid_safe
+    relation: supports
+    to: BG-005
+    confidence: high
+  - from: project.kanban_gridfinity_inventory
+    relation: supports
+    to: BG-001
+    confidence: high
+  - from: project.kanban_gridfinity_inventory
+    relation: supports
+    to: BG-002
+    confidence: high
+  - from: project.kanban_gridfinity_inventory
+    relation: supports
+    to: BG-004
+    confidence: high
+  - from: project.kanban_gridfinity_inventory
+    relation: supports
+    to: BG-005
+    confidence: high
+
+  - from: project.ai_pet_esp32
+    relation: supports
+    to: CJ-003
+    confidence: high
+  - from: project.ai_pet_esp32
+    relation: supports
+    to: CJ-004
+    confidence: high
+  - from: project.ai_pet_esp32
+    relation: supports
+    to: CJ-006
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: supports
+    to: CJ-002
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: supports
+    to: CJ-003
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: supports
+    to: CJ-004
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: supports
+    to: CJ-005
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: supports
+    to: CJ-006
+    confidence: high
+  - from: project.rfid_safe
+    relation: supports
+    to: CJ-002
+    confidence: high
+  - from: project.rfid_safe
+    relation: supports
+    to: CJ-003
+    confidence: high
+  - from: project.rfid_safe
+    relation: supports
+    to: CJ-006
+    confidence: high
+  - from: project.kanban_gridfinity_inventory
+    relation: supports
+    to: CJ-002
+    confidence: high
+  - from: project.kanban_gridfinity_inventory
+    relation: supports
+    to: CJ-003
+    confidence: high
+  - from: project.kanban_gridfinity_inventory
+    relation: supports
+    to: CJ-005
+    confidence: high
+  - from: project.kanban_gridfinity_inventory
+    relation: supports
+    to: CJ-007
+    confidence: high
+
+  - from: project.ai_pet_esp32
+    relation: uses
+    to: capability.processor_esp32
+    confidence: high
+  - from: project.ai_pet_esp32
+    relation: uses
+    to: capability.display_output
+    confidence: high
+  - from: project.ai_pet_esp32
+    relation: optionally_uses
+    to: capability.wifi
+    confidence: high
+  - from: project.ai_pet_esp32
+    relation: optionally_uses
+    to: system_capability.ai_assistant
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: uses
+    to: capability.digital_output
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: uses
+    to: capability.actuator_driver
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: optionally_uses
+    to: capability.soil_moisture_measurement
+    confidence: high
+  - from: project.smart_plant_watering
+    relation: optionally_uses
+    to: capability.wifi
+    confidence: high
+  - from: project.rfid_safe
+    relation: uses
+    to: capability.spi
+    confidence: high
+  - from: project.rfid_safe
+    relation: uses
+    to: capability.rfid_reading
+    confidence: high
+  - from: project.rfid_safe
+    relation: uses
+    to: capability.servo_control
+    confidence: high
+  - from: project.kanban_gridfinity_inventory
+    relation: uses
+    to: capability.item_identification
+    confidence: high
+
+  - from: capability.wifi
+    relation: enables
+    to: component.ota
+    confidence: medium
+  - from: component.ota
+    relation: depends_on
+    to: architecture.registered_processor_board
+    confidence: high
+  - from: component.openai_adapter
+    relation: enables
+    to: project.ai_pet_esp32
+    confidence: high
+
+  - from: architecture.capability_split
+    relation: affects
+    to: capability.wifi
+    confidence: high
+  - from: architecture.capability_split
+    relation: affects
+    to: system_capability.ide_flash_ota
+    confidence: high
+  - from: architecture.permission_precedence
+    relation: affects
+    to: system_capability.ide_flash_usb
+    confidence: high
+  - from: architecture.permission_precedence
+    relation: affects
+    to: system_capability.ide_flash_ota
+    confidence: high
+
+  - from: risk.water_and_electronics
+    relation: affects
+    to: project.smart_plant_watering
+    confidence: high
+  - from: risk.online_dependency
+    relation: affects
+    to: project.ai_pet_esp32
+    confidence: high
+  - from: risk.weak_security_expectation
+    relation: affects
+    to: project.rfid_safe
+    confidence: high
+  - from: risk.overmodeling_inventory
+    relation: affects
+    to: project.kanban_gridfinity_inventory
+    confidence: high
+
+  - from: gap.concrete_requirements_missing
+    relation: blocks
+    to: requirement_model.decomposition_ends_at_work_package
+    confidence: medium
+  - from: gap.capability_catalog_missing
+    relation: affects
+    to: architecture.yaml_first_repository
+    confidence: medium
+  - from: gap.task_model_missing
+    relation: affects
+    to: architecture.top_down_development
+    confidence: high
+  - from: open_question.account_skill_level_scope
+    relation: affects
+    to: metamodel.learning_platform
+    confidence: high
+  - from: open_question.teacher_plan_scope
+    relation: affects
+    to: architecture.permission_precedence
+    confidence: medium

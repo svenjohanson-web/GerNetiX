@@ -1,0 +1,75 @@
+schemaVersion: 1
+kind: business_goal_catalog
+sourceOfTruth: true
+items:
+  - id: BG-001
+    type: business_goal
+    title: Bestehende Kunden kontinuierlich begleiten
+    status: draft
+    ownerDomain: Business
+    summary: Bestehende Kunden kontinuierlich mit passenden neuen Lernangeboten begleiten.
+    derivesFrom:
+      - vision.gernetix
+    usedBy:
+      - product.learning_platform
+      - project.ai_pet_esp32
+      - project.smart_plant_watering
+      - project.rfid_safe
+      - project.kanban_gridfinity_inventory
+
+  - id: BG-002
+    type: business_goal
+    title: Einstieg in Embedded vereinfachen
+    status: draft
+    ownerDomain: Business
+    summary: Den Einstieg in Embedded-Entwicklung moeglichst einfach machen.
+    derivesFrom:
+      - vision.gernetix
+    usedBy:
+      - product.learning_platform
+      - project.ai_pet_esp32
+      - project.smart_plant_watering
+      - project.rfid_safe
+      - project.kanban_gridfinity_inventory
+
+  - id: BG-003
+    type: business_goal
+    title: Einstiegshuerde durch einfache IDE reduzieren
+    status: draft
+    ownerDomain: Business
+    summary: Die Einstiegshuerde durch eine einfache IDE reduzieren.
+    derivesFrom:
+      - vision.gernetix
+    usedBy:
+      - product.simple_ide
+      - project.ai_pet_esp32
+
+  - id: BG-004
+    type: business_goal
+    title: Vorhandene Hardware optimal nutzen
+    status: draft
+    ownerDomain: Business
+    summary: Vorhandene Hardware optimal nutzen und passende Projekte empfehlen.
+    derivesFrom:
+      - vision.gernetix
+    usedBy:
+      - product.learning_platform
+      - project.smart_plant_watering
+      - project.rfid_safe
+      - project.kanban_gridfinity_inventory
+
+  - id: BG-005
+    type: business_goal
+    title: Engineering-Wissen dauerhaft erhalten
+    status: draft
+    ownerDomain: Business
+    summary: Engineering-Wissen dauerhaft erhalten.
+    derivesFrom:
+      - vision.gernetix
+    usedBy:
+      - product.learning_platform
+      - project.ai_pet_esp32
+      - project.smart_plant_watering
+      - project.rfid_safe
+      - project.kanban_gridfinity_inventory
+

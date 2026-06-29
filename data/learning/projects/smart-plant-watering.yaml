@@ -1,0 +1,118 @@
+schemaVersion: 1
+id: project.smart_plant_watering
+slug: smart-plant-watering
+type: learning_project
+status: draft
+title: Intelligente Pflanzenbewaesserungsstation
+ownerDomain: Learning
+summary: Automatische Pflanzenbewaesserung von Zeitsteuerung bis sensorgestuetzter Regelung mit optionaler IoT-Erweiterung.
+
+businessGoals:
+  - BG-001
+  - BG-002
+  - BG-004
+  - BG-005
+customerJourneys:
+  - CJ-002
+  - CJ-003
+  - CJ-004
+  - CJ-005
+  - CJ-006
+audiences:
+  primary:
+    - audience.maker
+    - audience.hobby_developer
+    - audience.student
+    - audience.embedded_beginner
+  secondary:
+    - audience.teacher
+    - audience.school
+valuePropositions:
+  - value.practical_embedded_project
+  - value.control_vs_regulation
+  - value.hardware_reuse
+
+learningGoals:
+  - learning_goal.embedded_basics
+  - learning_goal.iot_basics
+  - learning_goal.automation_basics
+developsCompetencies:
+  - competency.digital_outputs
+  - competency.sensor_integration
+  - competency.actuator_control
+  - competency.control_vs_regulation
+  - competency.state_machine
+  - competency.error_handling
+  - competency.hardware_abstraction
+
+variants:
+  - id: project.smart_plant_watering.variant.arduino
+    title: Arduino
+    technicalConstraints:
+      - capability.digital_output
+      - capability.actuator_driver
+    optionalCapabilities:
+      - capability.analog_input
+      - capability.soil_moisture_measurement
+  - id: project.smart_plant_watering.variant.esp32
+    title: ESP32
+    technicalConstraints:
+      - capability.processor_esp32
+      - capability.digital_output
+      - capability.actuator_driver
+    optionalCapabilities:
+      - capability.analog_input
+      - capability.soil_moisture_measurement
+      - capability.wifi
+      - capability.ota
+
+softwareModules:
+  - software_module.plant_model
+  - software_module.sensor_layer
+  - software_module.actuator_layer
+  - software_module.control_mode
+  - software_module.regulation_mode
+  - software_module.safety_layer
+  - software_module.connectivity_layer
+
+stages:
+  - id: stage.smart_plant_watering.1
+    title: Zeitgesteuerte Bewaesserung
+    goal: Einfache Steuerung, Aktorik und Zeitlogik verstehen.
+    learningFocus:
+      - competency.digital_outputs
+      - competency.actuator_control
+  - id: stage.smart_plant_watering.2
+    title: Sensorgestuetzte Regelung
+    goal: Bodenfeuchtigkeit messen und Regelentscheidung treffen.
+    learningFocus:
+      - competency.sensor_integration
+      - competency.control_vs_regulation
+  - id: stage.smart_plant_watering.3
+    title: ESP32 IoT-Erweiterung
+    goal: WLAN, Weboberflaeche, OTA und Datenaufzeichnung optional ergaenzen.
+    learningFocus:
+      - competency.wifi_basics
+      - competency.ota_updates
+
+risks:
+  - risk.water_and_electronics
+  - risk.sensor_noise
+  - risk.pump_overcurrent
+openDecisions:
+  - decision.smart_plant_watering.start_variant
+  - decision.smart_plant_watering.actuator
+  - decision.smart_plant_watering.sensor_in_v1
+roadmap:
+  - roadmap.smart_plant_watering
+dependencies:
+  requires:
+    - capability.digital_output
+    - capability.actuator_driver
+  optional:
+    - capability.soil_moisture_measurement
+    - capability.wifi
+    - capability.ota
+
+generatedDocuments:
+  markdown: docs/generated/projects/smart-plant-watering.md

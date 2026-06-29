@@ -1,0 +1,54 @@
+schemaVersion: 1
+kind: audience_catalog
+sourceOfTruth: true
+note: Zielgruppen gehoeren zu Business, Customer Journeys und Marketing. Sie steuern keine Berechtigungen.
+items:
+  - id: audience.maker
+    type: audience
+    title: Maker
+    status: draft
+    ownerDomain: Business
+    summary: Nutzer, die eigene technische Projekte bauen und erweitern moechten.
+
+  - id: audience.hobby_developer
+    type: audience
+    title: Hobbyentwickler
+    status: draft
+    ownerDomain: Business
+    summary: Privat lernende oder experimentierende Entwickler.
+
+  - id: audience.student
+    type: audience
+    title: Studierende und Schueler
+    status: draft
+    ownerDomain: Business
+    summary: Lernende im schulischen oder akademischen Kontext.
+
+  - id: audience.teacher
+    type: audience
+    title: Lehrer
+    status: draft
+    ownerDomain: Business
+    summary: Lehrende, die Projekte fuer Unterricht und Lernangebote nutzen.
+
+  - id: audience.school
+    type: audience
+    title: Schulen
+    status: draft
+    ownerDomain: Business
+    summary: Institutionen, die Lernprojekte einsetzen.
+
+  - id: audience.embedded_beginner
+    type: audience
+    title: Embedded-Einsteiger
+    status: draft
+    ownerDomain: Business
+    summary: Nutzer mit wenig Embedded-Vorerfahrung.
+
+  - id: audience.company
+    type: audience
+    title: Unternehmen
+    status: draft
+    ownerDomain: Business
+    summary: Organisationen mit Bedarf an Lern-, Inventar- oder Embedded-Workflows.
+

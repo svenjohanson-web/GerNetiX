@@ -1,0 +1,101 @@
+schemaVersion: 1
+kind: customer_journey_catalog
+sourceOfTruth: true
+items:
+  - id: CJ-001
+    type: customer_journey
+    title: Neuer Benutzer entdeckt die Plattform
+    status: draft
+    ownerDomain: Business
+    summary: Lerngebiet auswaehlen, Kurs kaufen, Hardware kennenlernen, Projekt starten.
+    supports:
+      - BG-002
+    steps:
+      - Lerngebiet auswaehlen
+      - Kurs kaufen
+      - Hardware kennenlernen
+      - Projekt starten
+
+  - id: CJ-002
+    type: customer_journey
+    title: Benutzer inventarisiert vorhandene Hardware
+    status: draft
+    ownerDomain: Business
+    summary: Hardware inventarisieren, Matching, Projektvorschlaege und Lernpfad ableiten.
+    supports:
+      - BG-004
+    steps:
+      - Vorhandene Hardware inventarisieren
+      - Hardware Matching durchfuehren
+      - Projektvorschlaege erhalten
+      - Lernpfad ableiten
+
+  - id: CJ-003
+    type: customer_journey
+    title: Benutzer beginnt ein Projekt
+    status: draft
+    ownerDomain: Business
+    summary: Projekt beginnen, durchfuehren, Kompetenzen aufbauen und Projekt abschliessen.
+    supports:
+      - BG-002
+    steps:
+      - Projekt beginnen
+      - Projekt durchfuehren
+      - Kompetenzen aufbauen
+      - Projekt abschliessen
+
+  - id: CJ-004
+    type: customer_journey
+    title: Benutzer kehrt spaeter zurueck
+    status: draft
+    ownerDomain: Business
+    summary: Projektzustand und Conditions pruefen, Projekt fortsetzen.
+    supports:
+      - BG-005
+    steps:
+      - Projektzustand pruefen
+      - Conditions pruefen
+      - Projekt fortsetzen
+
+  - id: CJ-005
+    type: customer_journey
+    title: Benutzer besitzt Hardware, aber noch nicht alle Lernziele
+    status: draft
+    ownerDomain: Business
+    summary: Passende neue Lernangebote empfehlen, Kurs kaufen, neue Projekte freischalten.
+    supports:
+      - BG-001
+    steps:
+      - Passende neue Lernangebote empfehlen
+      - Kurs kaufen
+      - Neue Projekte freischalten
+
+  - id: CJ-006
+    type: customer_journey
+    title: Benutzer besitzt ein neues ProcessorBoard
+    status: draft
+    ownerDomain: Business
+    summary: Board registrieren, Pairing, Provisioning, OTA einrichten und IDE verwenden.
+    supports:
+      - BG-003
+    steps:
+      - Board registrieren
+      - Pairing durchfuehren
+      - Provisioning durchfuehren
+      - OTA einrichten
+      - IDE verwenden
+
+  - id: CJ-007
+    type: customer_journey
+    title: Administrator erweitert die Plattform
+    status: draft
+    ownerDomain: Business
+    summary: Hardware anlegen, Learning Goals erweitern, Projekte ergaenzen, Capabilities pflegen.
+    supports:
+      - BG-005
+    steps:
+      - Hardware anlegen
+      - Learning Goals erweitern
+      - Projekte ergaenzen
+      - Capabilities pflegen
+

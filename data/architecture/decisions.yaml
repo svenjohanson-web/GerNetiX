@@ -1,0 +1,74 @@
+schemaVersion: 1
+kind: architecture_decision_catalog
+sourceOfTruth: true
+items:
+  - id: architecture.yaml_first_repository
+    type: architecture_decision
+    title: YAML-first Repository-Struktur
+    status: approved
+    ownerDomain: CrossDomain
+    summary: YAML ist Source of Truth, Markdown ist generiertes Ausgabeformat.
+
+  - id: architecture.top_down_development
+    type: architecture_decision
+    title: Top-down-Entwicklung
+    status: approved
+    ownerDomain: CrossDomain
+    summary: Vision, Business Goals, Customer Journeys und Requirements bestimmen Metamodell, Datenmodell und Implementierung.
+
+  - id: architecture.domain_ownership
+    type: architecture_decision
+    title: Fachliche Heimatdomaene je Artefakt
+    status: approved
+    ownerDomain: CrossDomain
+    summary: Jede Klasse besitzt genau einen fachlichen Eigentuemer; andere Domaenen referenzieren nur.
+
+  - id: architecture.no_central_knowledge_domain
+    type: architecture_decision
+    title: Keine zentrale Knowledge-Domaene
+    status: approved
+    ownerDomain: CrossDomain
+    summary: Die gemeinsame Wissensbasis entsteht verteilt ueber Domaenen und Beziehungen.
+
+  - id: architecture.project_flow_item
+    type: architecture_decision
+    title: ProjectFlowItem statt ProjectContentItem
+    status: approved
+    ownerDomain: Learning
+    summary: Reihenfolge im Projektablauf wird ueber ProjectFlowItem modelliert, nicht an Lesson oder ProjectStep.
+
+  - id: architecture.condition_entity
+    type: architecture_decision
+    title: Condition als eigenstaendiges Artefakt
+    status: approved
+    ownerDomain: Learning
+    summary: Pre- und PostConditions werden als wiederverwendbare Conditions modelliert, nicht als Freitext.
+
+  - id: architecture.capability_split
+    type: architecture_decision
+    title: TechnicalCapability und SystemCapability trennen
+    status: approved
+    ownerDomain: CrossDomain
+    summary: Hardware-Faehigkeiten und Produktberechtigungen duerfen nicht vermischt werden.
+
+  - id: architecture.permission_precedence
+    type: architecture_decision
+    title: Berechtigungsprioritaet Override vor Plan vor Default
+    status: approved
+    ownerDomain: Authorization
+    summary: Effektive Berechtigungen werden aus AccountSystemCapabilityOverride, PlanSystemCapability und System Default berechnet; DENY gewinnt.
+
+  - id: architecture.registered_processor_board
+    type: architecture_decision
+    title: RegisteredProcessorBoard trennt konkretes Board vom Produkttyp
+    status: approved
+    ownerDomain: DeviceManagement
+    summary: ProcessorBoard ist Produkttyp, RegisteredProcessorBoard ist konkretes Board mit Pairing, Credential, Firmware und OTA-State.
+
+  - id: requirement_model.decomposition_ends_at_work_package
+    type: requirement_rule
+    title: Dekomposition endet bei Work Packages
+    status: approved
+    ownerDomain: CrossDomain
+    summary: Technische Details wie APIs, Views, Services oder Tests sind keine eigenen Requirements.
+

@@ -1,0 +1,60 @@
+schemaVersion: 1
+kind: value_proposition_catalog
+sourceOfTruth: true
+items:
+  - id: value.visible_result
+    type: value_proposition
+    title: Sichtbares Ergebnis
+    status: draft
+    ownerDomain: Business
+    summary: Nutzer erhalten ein direkt sichtbares und motivierendes Projektergebnis.
+
+  - id: value.practical_embedded_project
+    type: value_proposition
+    title: Praxisnahes Embedded-Projekt
+    status: draft
+    ownerDomain: Business
+    summary: Projekt mit echtem Alltagsnutzen und sichtbarer Embedded-Funktion.
+
+  - id: value.hardware_reuse
+    type: value_proposition
+    title: Hardware wiederverwenden
+    status: draft
+    ownerDomain: Business
+    summary: Vorhandene Hardware wird fuer passende Projekte nutzbar gemacht.
+
+  - id: value.control_vs_regulation
+    type: value_proposition
+    title: Steuerung vs Regelung verstehen
+    status: draft
+    ownerDomain: Business
+    summary: Offene Steuerung und geschlossener Regelkreis werden praktisch gegenuebergestellt.
+
+  - id: value.playful_embedded_learning
+    type: value_proposition
+    title: Spielerisches Embedded-Lernen
+    status: draft
+    ownerDomain: Business
+    summary: Emotional motivierendes Projekt mit sichtbarer Interaktion.
+
+  - id: value.optional_ai_extension
+    type: value_proposition
+    title: Optionale KI-Erweiterung
+    status: draft
+    ownerDomain: Business
+    summary: OpenAI/KI wird optional als spaetere Erweiterung statt als Einstiegshuerde behandelt.
+
+  - id: value.hardware_inventory
+    type: value_proposition
+    title: Hardware inventarisieren
+    status: draft
+    ownerDomain: Business
+    summary: Vorhandene Hardware strukturieren und fuer Projektvorschlaege nutzbar machen.
+
+  - id: value.project_recommendations_from_inventory
+    type: value_proposition
+    title: Projektvorschlaege aus Bestand
+    status: draft
+    ownerDomain: Business
+    summary: Aus inventarisierter Hardware werden passende Projekte und Lernangebote abgeleitet.
+

@@ -1,0 +1,50 @@
+schemaVersion: 1
+kind: gap_catalog
+sourceOfTruth: true
+items:
+  - id: gap.concrete_requirements_missing
+    type: gap
+    title: Konkrete Requirements fehlen
+    status: open
+    ownerDomain: CrossDomain
+    summary: Es gibt Regeln fuer Requirements, aber noch keine vollstaendige konkrete Requirement-Liste pro Customer Journey und Projekt.
+    blocks:
+      - requirement_model.decomposition_ends_at_work_package
+
+  - id: gap.capability_catalog_missing
+    type: gap
+    title: Zentraler Capability-Katalog war unvollstaendig
+    status: mitigated
+    ownerDomain: Hardware
+    summary: Capabilities waren nur referenziert. Eine erste zentrale Datei liegt nun unter data/hardware/technical-capabilities.yaml.
+    followsUp:
+      - data_quality.complete_capability_details
+
+  - id: gap.task_model_missing
+    type: gap
+    title: Task-Modell fehlt
+    status: open
+    ownerDomain: CrossDomain
+    summary: Tasks sind als Konzept erwaehnt, aber noch nicht als YAML-Entitaeten mit Zielbezug vorhanden.
+
+  - id: gap.generated_views_not_automated
+    type: gap
+    title: Generierte Lesesichten werden noch manuell gepflegt
+    status: open
+    ownerDomain: Documentation
+    summary: Markdown- und Mermaid-Dateien sind als Lesesichten vorhanden, werden aber noch nicht automatisch aus YAML erzeugt.
+
+  - id: open_question.account_skill_level_scope
+    type: open_question
+    title: AccountSkillLevel global oder domaenenbezogen
+    status: open
+    ownerDomain: Account
+    summary: Zu klaeren ist, ob AccountSkillLevel global, domaenenbezogen oder beides ist.
+
+  - id: open_question.teacher_plan_scope
+    type: open_question
+    title: Teacher Plan Standard oder Testkontext
+    status: open
+    ownerDomain: Authorization
+    summary: Zu klaeren ist, ob Teacher Plan produktiver Standardplan oder Test-/Schulkontext ist.
+
