@@ -21,6 +21,7 @@ Fuehrende YAML-Quellen:
 - [Technical Capabilities](data/hardware/technical-capabilities.yaml)
 - [System Capabilities](data/authorization/system-capabilities.yaml)
 - [Architekturentscheidungen](data/architecture/decisions.yaml)
+- [Architektur-Strukturelemente](data/architecture/structural-elements.yaml)
 - [Offene Punkte](data/gaps/open-gaps.yaml)
 
 Startdokumente:

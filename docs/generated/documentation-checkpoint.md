@@ -29,6 +29,7 @@ Abgedeckt sind:
 - AccountProjectProgress als Arbeitskontext eines Benutzers
 - AccountCompetencyProgress und AccountCompetencyEvidence
 - RegisteredProcessorBoard, Pairing, BoardCredential, Firmware und OTA
+- Architektur-Strukturelemente User IDE, Admin Tool, Recovery Tool und Provisioning Tool
 - Berechtigungs-Vorrangregeln
 - Anforderungen, Work Packages, Implementierung und Tests als getrennte Ebenen
 - Business Goals BG-001 bis BG-005

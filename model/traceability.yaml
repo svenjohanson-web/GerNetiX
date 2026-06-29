@@ -724,6 +724,42 @@ entities:
       - docs/metamodel-learning-platform.md
       - data/learning/projects/*.yaml
 
+  - id: app.user_ide
+    type: architecture_structural_element
+    title: User IDE
+    summary: Nutzerwerkzeug fuer einfache Embedded-Entwicklung, Projektbearbeitung, Flashen und Pairing-Code-Eingabe.
+    status: draft
+    ownerDomain: IDE
+    sources:
+      - data/architecture/structural-elements.yaml
+
+  - id: app.admin_tool
+    type: architecture_structural_element
+    title: Admin Tool
+    summary: Verwaltungswerkzeug fuer Inhalte, Hardware-Katalog, Capabilities, Accounts und Berechtigungen.
+    status: draft
+    ownerDomain: CrossDomain
+    sources:
+      - data/architecture/structural-elements.yaml
+
+  - id: app.recovery_tool
+    type: architecture_structural_element
+    title: Recovery Tool
+    summary: Wiederherstellungswerkzeug fuer Boards, USB-Erkennung, erneute Registrierung und Credential-Recovery.
+    status: draft
+    ownerDomain: DeviceManagement
+    sources:
+      - data/architecture/structural-elements.yaml
+
+  - id: app.provisioning_tool
+    type: architecture_structural_element
+    title: Provisioning / Inbetriebnahme Tool
+    summary: Inbetriebnahme-Werkzeug fuer Erstinstallation, Firmware, Credentials, Registrierung und Pairing-Vorbereitung.
+    status: draft
+    ownerDomain: DeviceManagement
+    sources:
+      - data/architecture/structural-elements.yaml
+
   - id: risk.water_and_electronics
     type: risk
     title: Wasser und Elektronik

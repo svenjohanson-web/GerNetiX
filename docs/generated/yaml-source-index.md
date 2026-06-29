@@ -32,6 +32,7 @@ YAML bleibt die Source of Truth; Markdown dient nur der Orientierung.
 ## Architecture
 
 - `data/architecture/decisions.yaml`: Architekturentscheidungen und Modellregeln
+- `data/architecture/structural-elements.yaml`: grundlegende Architektur-Strukturelemente wie User IDE, Admin Tool, Recovery Tool und Provisioning Tool
 
 ## Risiken und offene Punkte
 
@@ -58,4 +59,3 @@ docs/vision-business-goals-customer-journeys.md
 docs/generated/traceability-overview.md
 docs/generated/business-view.md
 ```
-

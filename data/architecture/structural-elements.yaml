@@ -1,0 +1,144 @@
+schemaVersion: 1
+kind: architecture_structural_element_catalog
+sourceOfTruth: true
+note: Diese Datei beschreibt grundlegende Architektur-Strukturelemente. Sie sind keine LearningProjects und keine technischen Implementierungsdetails.
+items:
+  - id: app.user_ide
+    type: architecture_structural_element
+    subtype: application
+    title: User IDE
+    status: draft
+    ownerDomain: IDE
+    summary: Nutzerwerkzeug fuer einfache Embedded-Entwicklung, Projektbearbeitung, Flashen, Pairing-Code-Eingabe und spaeteres Arbeiten mit Lernprojekten.
+    primaryUsers:
+      - role.learner
+      - audience.maker
+      - audience.hobby_developer
+      - audience.embedded_beginner
+    supports:
+      - BG-003
+      - CJ-003
+      - CJ-006
+    usesDomains:
+      - Learning
+      - Hardware
+      - DeviceManagement
+      - Account
+      - Authorization
+    usesSystemCapabilities:
+      - system_capability.ide_flash_usb
+      - system_capability.ide_flash_ota
+    responsibilities:
+      - Projektkontext anzeigen
+      - Board-Verbindung herstellen
+      - Pairing-Code entgegennehmen
+      - USB-Flash ausloesen
+      - OTA-Flash ausloesen, wenn erlaubt und technisch moeglich
+    nonResponsibilities:
+      - LearningProject-Fachlogik besitzen
+      - Hardware-Katalog fachlich verwalten
+      - Berechtigungen berechnen
+      - Board-Credentials verwalten
+
+  - id: app.admin_tool
+    type: architecture_structural_element
+    subtype: application
+    title: Admin Tool
+    status: draft
+    ownerDomain: CrossDomain
+    summary: Verwaltungswerkzeug fuer Plattformadministration, Inhalte, Hardware-Katalog, Capabilities, Accounts und Berechtigungen.
+    primaryUsers:
+      - role.administrator
+      - role.content_editor
+      - role.support
+    supports:
+      - CJ-007
+      - BG-005
+    usesDomains:
+      - Business
+      - Learning
+      - Hardware
+      - Account
+      - Authorization
+      - DeviceManagement
+    usesSystemCapabilities:
+      - system_capability.admin_users
+      - system_capability.admin_hardware
+      - system_capability.admin_learning
+      - system_capability.admin_authorization
+    responsibilities:
+      - Learning Goals pflegen
+      - Projekte und Projektvarianten pflegen
+      - TechnicalCapabilities und Hardware-Katalog pflegen
+      - Plaene und SystemCapabilities administrieren
+      - Accounts und Rollen administrieren
+    nonResponsibilities:
+      - Projektcode ausfuehren
+      - Board-Firmware direkt provisionieren
+      - Nutzer-Lernfortschritt fachlich faelschen
+
+  - id: app.recovery_tool
+    type: architecture_structural_element
+    subtype: application
+    title: Recovery Tool
+    status: draft
+    ownerDomain: DeviceManagement
+    summary: Technisches Wiederherstellungswerkzeug fuer Boards, die per USB erkannt, repariert, neu registriert oder mit Credentials versorgt werden muessen.
+    primaryUsers:
+      - role.support
+      - role.administrator
+    supports:
+      - CJ-006
+    usesDomains:
+      - Hardware
+      - DeviceManagement
+      - Account
+      - Authorization
+    responsibilities:
+      - Board per USB erkennen
+      - Wiederherstellungszustand pruefen
+      - Board erneut registrieren
+      - Credentials erneuern oder wiederherstellen
+      - Recovery-Firmware aufspielen
+    nonResponsibilities:
+      - LearningProject-Inhalte pflegen
+      - Plaene und Lizenzen verwalten
+      - Hardware-Produkttyp aendern
+    constraints:
+      - Pairing darf den Besitzer aendern, niemals den ProcessorBoard-Typ.
+      - HMAC-Schluessel werden niemals im Klartext gespeichert.
+
+  - id: app.provisioning_tool
+    type: architecture_structural_element
+    subtype: application
+    title: Provisioning / Inbetriebnahme Tool
+    status: draft
+    ownerDomain: DeviceManagement
+    summary: Werkzeug fuer Erstinbetriebnahme von ProcessorBoards, initiales Flashen, Credential-Erzeugung, Registrierung und Vorbereitung des Pairings.
+    primaryUsers:
+      - role.administrator
+      - role.support
+      - role.teacher
+    supports:
+      - CJ-006
+      - CJ-007
+    usesDomains:
+      - Hardware
+      - DeviceManagement
+      - Account
+      - Authorization
+    responsibilities:
+      - Erstinstallation durchfuehren
+      - Firmware initial aufspielen
+      - Board-Credentials erzeugen oder referenzieren
+      - RegisteredProcessorBoard anlegen
+      - Pairing vorbereiten
+      - OTA-Zustand initialisieren
+    nonResponsibilities:
+      - Projektablauf eines LearningProject bestimmen
+      - Lernfortschritt eines Accounts verwalten
+      - Produktberechtigungen fachlich berechnen
+    constraints:
+      - Pro RegisteredProcessorBoard existiert genau ein aktives Credential.
+      - OTA darf nur fuer gepairte Boards mit aktivem Credential verwendet werden.
+

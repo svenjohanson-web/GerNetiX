@@ -73,6 +73,21 @@ Wichtige Entitaetstypen:
 - `component.openai_adapter`
 - `component.ota`
 
+## Architektur-Strukturelemente
+
+Fuehrende Quelle:
+
+- `data/architecture/structural-elements.yaml`
+
+Strukturelemente:
+
+- `app.user_ide`: Nutzerwerkzeug fuer einfache Embedded-Entwicklung, Projektbearbeitung, Flashen und Pairing-Code-Eingabe.
+- `app.admin_tool`: Verwaltungswerkzeug fuer Inhalte, Hardware-Katalog, Capabilities, Accounts und Berechtigungen.
+- `app.recovery_tool`: Wiederherstellungswerkzeug fuer Boards, USB-Erkennung, erneute Registrierung und Credential-Recovery.
+- `app.provisioning_tool`: Inbetriebnahme-Werkzeug fuer Erstinstallation, Firmware, Credentials, Registrierung und Pairing-Vorbereitung.
+
+Diese Elemente sind grundlegende Architektur-Strukturelemente. Sie sind keine LearningProjects und keine technischen Detail-Tasks.
+
 ## Hardware und Software
 
 Hardware wird ueber TechnicalCapabilities beschrieben.
@@ -83,6 +98,9 @@ Software-Module in Projekt-YAMLs sind fachliche Bausteine, keine Code-Module.
 ## Cloud, OTA, KI
 
 - OTA gehoert zum Device Management und setzt gepairte Boards mit aktivem Credential voraus.
+- Recovery Tool und Provisioning Tool gehoeren fachlich zum Device Management.
+- Die User IDE ist Konsument der Fachdomaenen und besitzt moeglichst keine eigene Fachlogik.
+- Das Admin Tool ist ein Cross-Domain-Verwaltungswerkzeug, besitzt aber nicht die Fachlogik der verwalteten Domaenen.
 - KI/OpenAI ist aktuell optionaler Adapter fuer das KI-Haustier.
 - Cloud-Anbindung ist in der Pflanzenbewaesserung als spaetere Ausbaustufe modelliert, aber noch nicht als zentrale Architektur-Entitaet ausgearbeitet.
 

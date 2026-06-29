@@ -306,6 +306,74 @@ relations:
     to: project.ai_pet_esp32
     confidence: high
 
+  - from: app.user_ide
+    relation: realizes
+    to: BG-003
+    confidence: high
+  - from: app.user_ide
+    relation: supports
+    to: CJ-003
+    confidence: high
+  - from: app.user_ide
+    relation: supports
+    to: CJ-006
+    confidence: high
+  - from: app.user_ide
+    relation: uses
+    to: system_capability.ide_flash_usb
+    confidence: high
+  - from: app.user_ide
+    relation: uses
+    to: system_capability.ide_flash_ota
+    confidence: high
+
+  - from: app.admin_tool
+    relation: supports
+    to: CJ-007
+    confidence: high
+  - from: app.admin_tool
+    relation: realizes
+    to: BG-005
+    confidence: high
+  - from: app.admin_tool
+    relation: uses
+    to: system_capability.admin_users
+    confidence: high
+  - from: app.admin_tool
+    relation: uses
+    to: system_capability.admin_hardware
+    confidence: high
+  - from: app.admin_tool
+    relation: uses
+    to: system_capability.admin_learning
+    confidence: high
+  - from: app.admin_tool
+    relation: uses
+    to: system_capability.admin_authorization
+    confidence: high
+
+  - from: app.recovery_tool
+    relation: supports
+    to: CJ-006
+    confidence: high
+  - from: app.recovery_tool
+    relation: uses
+    to: architecture.registered_processor_board
+    confidence: high
+
+  - from: app.provisioning_tool
+    relation: supports
+    to: CJ-006
+    confidence: high
+  - from: app.provisioning_tool
+    relation: supports
+    to: CJ-007
+    confidence: medium
+  - from: app.provisioning_tool
+    relation: uses
+    to: architecture.registered_processor_board
+    confidence: high
+
   - from: architecture.capability_split
     relation: affects
     to: capability.wifi
