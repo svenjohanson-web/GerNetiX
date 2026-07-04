@@ -1,4 +1,4 @@
-﻿#include <Arduino.h>
+#include <Arduino.h>
 #include <ArduinoOTA.h>
 #include <WiFi.h>
 #include "config.h"
@@ -7,8 +7,28 @@
 #define LED_BUILTIN 2
 #endif
 
+#ifndef GERNETIX_WIFI_MODE_NODE
+#define GERNETIX_WIFI_MODE_NODE 1
+#endif
+
+#ifndef GERNETIX_WIFI_MODE_ACCESS_POINT
+#define GERNETIX_WIFI_MODE_ACCESS_POINT 2
+#endif
+
+#ifndef GERNETIX_WIFI_MODE
+#define GERNETIX_WIFI_MODE GERNETIX_WIFI_MODE_NODE
+#endif
+
 static uint32_t lastBlinkAt = 0;
 static bool ledState = false;
+
+const char *wifiModeName() {
+#if GERNETIX_WIFI_MODE == GERNETIX_WIFI_MODE_ACCESS_POINT
+  return "access_point";
+#else
+  return "node";
+#endif
+}
 
 void setupOta() {
   ArduinoOTA.setHostname(GERNETIX_OTA_HOSTNAME);
@@ -28,7 +48,7 @@ void setupOta() {
   ArduinoOTA.begin();
 }
 
-void setupWifi() {
+void setupNodeWifi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(GERNETIX_WIFI_SSID, GERNETIX_WIFI_PASSWORD);
 
@@ -39,8 +59,41 @@ void setupWifi() {
   }
 
   Serial.println();
-  Serial.print("WiFi connected: ");
+  Serial.print("Node IP: ");
   Serial.println(WiFi.localIP());
+}
+
+void setupAccessPointWifi() {
+  WiFi.mode(WIFI_AP);
+
+  const bool started = WiFi.softAP(
+    GERNETIX_AP_SSID,
+    GERNETIX_AP_PASSWORD,
+    GERNETIX_AP_CHANNEL,
+    GERNETIX_AP_HIDDEN,
+    GERNETIX_AP_MAX_CLIENTS
+  );
+
+  if (!started) {
+    Serial.println("Access point start failed");
+    return;
+  }
+
+  Serial.print("Access point SSID: ");
+  Serial.println(GERNETIX_AP_SSID);
+  Serial.print("Access point IP: ");
+  Serial.println(WiFi.softAPIP());
+}
+
+void setupWifi() {
+  Serial.print("WiFi mode: ");
+  Serial.println(wifiModeName());
+
+#if GERNETIX_WIFI_MODE == GERNETIX_WIFI_MODE_ACCESS_POINT
+  setupAccessPointWifi();
+#else
+  setupNodeWifi();
+#endif
 }
 
 void setup() {
