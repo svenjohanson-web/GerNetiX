@@ -1,4 +1,4 @@
-﻿schemaVersion: 1
+schemaVersion: 1
 kind: product_offering_catalog
 standardCourseAccessTerm:
   duration: P1Y
@@ -154,17 +154,17 @@ items:
     targetQuestion:
       question: Was interessiert dich als naechster Schritt?
       options:
-        - id: option.infrastructure_only
+        - optionKey: infrastructure_only
           title: Bestehende Infrastruktur nutzen
-          offer: course.iot_everyday_infrastructure
+          target: course.iot_everyday_infrastructure
           rationale: Sinnvoll, wenn Nutzer schnell eine alltagstaugliche Loesung mit Home Assistant, lokalem Server oder vorhandenen Smart-Home-Produkten wollen.
-        - id: option.own_app_only
+        - optionKey: own_app_only
           title: Eigene Smartphone-App entwickeln
-          offer: course.smartphone_app_development
+          target: course.smartphone_app_development
           rationale: Sinnvoll, wenn Nutzer bewusst Android-/iOS-Entwicklung, Toolchains, Accounts, Signierung und App-Freigabe lernen wollen.
-        - id: option.bundle
+        - optionKey: bundle
           title: Bundle kaufen
-          offer: product_offering.iot_everyday_app_bundle
+          target: product_offering.iot_everyday_app_bundle
           rationale: Sinnvoll, wenn Nutzer beide Wege verstehen wollen; Bundle bietet Preisvorteil gegenueber Einzelkauf.
     pricingStrategy:
       model: bundle_discount

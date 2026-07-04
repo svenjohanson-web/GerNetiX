@@ -1,4 +1,4 @@
-﻿schemaVersion: 1
+schemaVersion: 1
 kind: business_requirement_catalog
 sourceStatus: legacy_import_source
 items:
@@ -609,8 +609,8 @@ items:
     implementationStatus: Not Started
     ownerDomain: DeviceManagement
     summary: GerNetiX muss intern provisionierte Boards als konkrete Devices registrieren koennen, inklusive Seriennummer, Hardwareprofil, Provisionierungscharge, Firmwarestand, Credential-Referenz und Support-/Garantiegrundlage.
-    derivedFromBusinessGoals:
-      - BG-006
+    derivedFromBusinessCapabilities:
+      - BC-042
       - BG-007
     supportsCustomerJourneys:
       - CJ-006
@@ -634,8 +634,8 @@ items:
     implementationStatus: Not Started
     ownerDomain: DeviceManagement
     summary: Nutzer muessen eigene oder GerNetiX-provisionierte Hardware in ihrem Profil registrieren und einem Account zuordnen koennen, ohne dass Besitz, Echtheit und Supportanspruch fachlich vermischt werden.
-    derivedFromBusinessGoals:
-      - BG-004
+    derivedFromBusinessCapabilities:
+      - BC-042
       - BG-006
     supportsCustomerJourneys:
       - CJ-002
@@ -658,8 +658,8 @@ items:
     implementationStatus: Not Started
     ownerDomain: DeviceManagement
     summary: Ein GerNetiX Board muss seine Echtheit ueber einen Challenge-Response-Mechanismus wie HMAC nachweisen koennen, damit kopierte Seriennummern keinen Support-, Garantie- oder Fernwartungsanspruch erzeugen.
-    derivedFromBusinessGoals:
-      - BG-006
+    derivedFromBusinessCapabilities:
+      - BC-042
       - BG-007
     derivedFromRequirements:
       - requirement.device_manufacturer_registration
@@ -680,8 +680,8 @@ items:
     implementationStatus: Not Started
     ownerDomain: DeviceManagement
     summary: Selbst gekaufte oder selbst gebaute Hardware muss inventarisiert, gematcht und bei technischer Eignung genutzt werden koennen, bleibt aber als community_unverified gekennzeichnet und erzeugt keinen GerNetiX-Hardware-Support- oder Garantieanspruch.
-    derivedFromBusinessGoals:
-      - BG-004
+    derivedFromBusinessCapabilities:
+      - BC-042
       - BG-006
     derivedFromRequirements:
       - requirement.device_customer_registration_and_pairing
@@ -701,9 +701,8 @@ items:
     implementationStatus: Not Started
     ownerDomain: IDE
     summary: Wenn ein Setup-Rezept oder Lernprojekt OTA-Flash erlaubt, muss die IDE aus dem Account-Device-Inventar alle kompatiblen Devices anhand TechnicalCapabilities, Boardprofil, Online-Status und OTA-Status anzeigen und den Nutzer ein Zielgeraet auswaehlen lassen.
-    derivedFromBusinessGoals:
-      - BG-003
-      - BG-004
+    derivedFromBusinessCapabilities:
+      - BC-042
       - BG-007
     derivedFromRequirements:
       - requirement.device_customer_registration_and_pairing
@@ -729,8 +728,8 @@ items:
     implementationStatus: Not Started
     ownerDomain: DeviceManagement
     summary: Support und Reklamation muessen nachvollziehbar pruefen koennen, ob ein konkretes Device von GerNetiX provisioniert oder verkauft wurde, welchem Account es zugeordnet ist, ob ein gueltiger Echtheitsnachweis vorliegt und welcher Supportanspruch daraus entsteht.
-    derivedFromBusinessGoals:
-      - BG-006
+    derivedFromBusinessCapabilities:
+      - BC-042
       - BG-007
     derivedFromRequirements:
       - requirement.device_manufacturer_registration
@@ -755,8 +754,8 @@ items:
     implementationStatus: Not Started
     ownerDomain: DeviceManagement
     summary: Administratoren und berechtigte Supportrollen muessen im Admin Tool konkrete Devices suchen und deren Device-Status, Pairing-Status, Connectivity-Status, OTA-Status, Lifecycle, GerNetiX-Verified-vs-Community-Einstufung, Credential-Historie und Support-Entitlement pruefen koennen.
-    derivedFromBusinessGoals:
-      - BG-006
+    derivedFromBusinessCapabilities:
+      - BC-042
       - BG-007
     derivedFromRequirements:
       - requirement.device_customer_registration_and_pairing
@@ -788,8 +787,8 @@ items:
     implementationStatus: Not Started
     ownerDomain: Authorization
     summary: Admin, Support und interne Rollen duerfen kundenrelevante Daten nur fuer einen konkreten Zweck, mit gueltigem Consent oder anderer dokumentierter Rechtsgrundlage und mit Audit-Log einsehen. Ohne Consent muessen Detaildaten maskiert oder gesperrt bleiben.
-    derivedFromBusinessGoals:
-      - BG-006
+    derivedFromBusinessCapabilities:
+      - BC-043
       - BG-007
     derivedFromRequirements:
       - requirement.device_admin_status_inspection

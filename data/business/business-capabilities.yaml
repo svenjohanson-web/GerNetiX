@@ -477,3 +477,51 @@ items:
       - requirement.ai_cost_margin_reporting
       - requirement.ai_suspicious_usage_detection
 
+
+  - id: BC-042
+    type: business_capability
+    title: Device Management bereitstellen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Die Plattform kann konkrete Devices registrieren, pairen, als GerNetiX-verified oder Community-Hardware unterscheiden, OTA-Ziele aus dem Account-Profil ableiten und Support-/Garantieansprueche nachvollziehbar pruefen.
+    supports:
+      - BG-004
+      - BG-006
+      - BG-007
+    providedByMeasures:
+      - measure.hardware_kits
+    realizedBySystemCapabilities:
+      - system_capability.ide_flash_ota
+      - system_capability.cloud_flash
+      - system_capability.support_registered_board_check
+      - system_capability.admin_device_management
+    affectedArchitectureArtifacts:
+      - architecture_artifact.device_management_server
+    derivesRequirements:
+      - requirement.device_manufacturer_registration
+      - requirement.device_customer_registration_and_pairing
+      - requirement.device_authenticity_challenge_response
+      - requirement.community_hardware_supported_without_entitlement
+      - requirement.ide_ota_device_selection_from_profile
+      - requirement.device_support_entitlement_traceability
+      - requirement.device_admin_status_inspection
+
+  - id: BC-043
+    type: business_capability
+    title: Kundenrelevante Daten consentbasiert schuetzen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Authorization
+    summary: Die Plattform kann kundenrelevante Daten erkennen, Admin-/Support-Einsicht an Consent oder dokumentierte Rechtsgrundlagen binden, Daten maskieren und jeden Zugriff auditieren.
+    supports:
+      - BG-006
+      - BG-007
+      - BG-008
+    referencesBusinessRules:
+      - BR-CUSTOMER-DATA-CONSENT
+    affectedArchitectureArtifacts:
+      - app.admin_tool
+      - architecture_artifact.device_management_server
+    derivesRequirements:
+      - requirement.customer_data_consent_for_admin_access

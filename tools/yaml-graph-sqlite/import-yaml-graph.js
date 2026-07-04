@@ -158,7 +158,7 @@ const FIELD_RELATION_OVERRIDES = new Map([
   ["realizesSystemCapabilities", "realizes"],
   ["grantsSystemCapabilities", "grants"],
   ["realizesRequirements", "realizes"],
-  ["derivedFromRequirements", "derived_from"],
+  ["derivedFromRequirements", "derives_from"],
   ["containsMeasures", "contains"],
   ["parentMeasures", "belongs_to"],
   ["containsCourses", "contains"],

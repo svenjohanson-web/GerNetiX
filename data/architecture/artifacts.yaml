@@ -74,7 +74,7 @@ items:
       - requirement.community_ai_assistant_admin_configuration
       - requirement.community_ai_assistant_monitoring
       - requirement.community_ai_assistant_moderation
-    components:
+    containsArchitectureComponents:
       - component.community_rag_pipeline
       - component.community_vector_database
       - component.community_embedding_service
@@ -117,7 +117,7 @@ items:
       - requirement.community_hardware_supported_without_entitlement
       - requirement.ide_ota_device_selection_from_profile
       - requirement.device_support_entitlement_traceability
-    components:
+    containsArchitectureComponents:
       - component.device_registry
       - component.device_pairing
       - component.device_authenticity

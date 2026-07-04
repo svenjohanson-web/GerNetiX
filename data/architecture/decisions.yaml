@@ -12,11 +12,14 @@ items:
 
   - id: architecture.sqlite_graph_canonical_model
     type: architecture_decision
-    title: SQLite-Graph als kanonische Modellstruktur
+    title: Graphmodell als Point of Truth
     status: approved
     ownerDomain: CrossDomain
-    summary: Der validierte SQLite-Graph ist die kanonische Pflege-, Pruef- und Abfragestruktur fuer Artefakte und Beziehungen. YAML bleibt Legacy-Import, Bootstrap oder Export, solange die Aequivalenz nachweisbar ist.
+    summary: Die validierten Graphen sind der fachliche Point of Truth fuer Artefakte und Beziehungen. Der SQLite-Graph ist die aktuelle kanonische Pflege-, Pruef- und Abfragestruktur; YAML bleibt Legacy-Import, Bootstrap oder Export, solange die Aequivalenz nachweisbar ist.
+    references:
+      - principle.sqlite_graph_is_canonical_model
     rules:
+      - Der Graph gewinnt bei Widerspruechen gegenueber YAML, Markdown, generierten Lesesichten oder manuell gepflegten Dokumenten.
       - YAML-Dateien duerfen nicht parallel fachlich weitergepflegt werden, wenn der SQLite-Graph dieselbe Struktur fehlerfrei abbildet.
       - Aenderungen am fachlichen Modell erfolgen kuenftig im Graphmodell oder ueber Werkzeuge, die direkt auf dem Graphmodell schreiben.
       - YAML-Exporte muessen aus dem Graphmodell erzeugt werden, nicht umgekehrt.
