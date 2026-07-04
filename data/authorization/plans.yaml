@@ -1,4 +1,4 @@
-schemaVersion: 1
+﻿schemaVersion: 1
 kind: plan_catalog
 sourceStatus: legacy_import_source
 items:
@@ -10,6 +10,8 @@ items:
     summary: Kostenloser Tarif mit normaler Community-Nutzung ohne KI-Community-Assistent.
     grantsSystemCapabilities:
       - system_capability.community_free_participation
+      - system_capability.learning_free_content
+      - system_capability.learning_project_preview
 
   - id: plan.premium
     type: plan
@@ -19,4 +21,11 @@ items:
     summary: Kostenpflichtiger Tarif, der Premium-Funktionen wie den KI-Community-Assistenten freischalten kann.
     grantsSystemCapabilities:
       - system_capability.community_free_participation
+      - system_capability.learning_free_content
+      - system_capability.learning_project_preview
       - system_capability.community_ai_assistant
+      - system_capability.learning_paid_course_content
+      - system_capability.learning_premium_project_content
+      - system_capability.learning_project_assets
+      - system_capability.learning_connected_extensions
+

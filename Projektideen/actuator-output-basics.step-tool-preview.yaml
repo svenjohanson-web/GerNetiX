@@ -1,0 +1,109 @@
+﻿schemaVersion: 1
+kind: step_tool_preview
+id: step_tool_preview.actuator_output_basics
+projectIdeaId: project_idea.actuator_output_basics
+projectVariantId: variant.basic_gpio_pwm_node
+tool:
+  path: tools/guided-code-lesson/index.html
+  implementation: static_html_js
+  lessonFile: blink.ino
+learnerProfileExample:
+  boardKey: esp32_devkit_v1
+knownBoardPins:
+  esp32_devkit_v1:
+    title: ESP32 DevKit V1
+    ledPin: 2
+  unknown:
+    title: Unbekanntes Board
+    ledPin: null
+purpose: Sichtbare Vorschau, wie aus einer Projektidee konkrete ProjectFlowItems und gefuehrte Code-Schritte werden koennen.
+modelMapping:
+  projectIdea: project_idea.actuator_output_basics
+  sequenceObject: ProjectFlowItem
+  executableContent: ProjectStep
+  didacticPatternField: pattern
+  visibleToolFields:
+    - title
+    - text
+    - outcome
+    - focusLines
+    - editableLines
+    - expectedContains
+steps:
+  - id: step.actuator_output_basics.01_system_boundary
+    flowItemId: project_flow_item.actuator_output_basics.01
+    pattern: step_pattern.system_boundary
+    title: Systemgrenze sichtbar machen
+    outcome: Der Pin wird als Grenze zwischen Software und Hardware verstanden.
+    toolBehavior:
+      focusLines: [3]
+      editableLines: []
+  - id: step.actuator_output_basics.02_pin_definition
+    flowItemId: project_flow_item.actuator_output_basics.02
+    pattern: step_pattern.guided_code_walkthrough
+    title: Den verwendeten Pin benennen
+    outcome: Der Lernende erkennt die Verbindung zwischen Board-Pin und Code-Konstante.
+    toolBehavior:
+      focusLines: [3]
+      editableLines: [3]
+      validation:
+        type: knownBoardPinOrIntegerRange
+        line: 3
+        label: LED_PIN
+        min: 0
+        max: 8
+        profileField: boardKey
+        knownBoardPins:
+          esp32_devkit_v1: 2
+  - id: step.actuator_output_basics.03_output_mode
+    flowItemId: project_flow_item.actuator_output_basics.03
+    pattern: step_pattern.minimal_local_function
+    title: Pin als Ausgang konfigurieren
+    outcome: Input und Output werden als unterschiedliche Rollen eines Pins verstanden.
+    toolBehavior:
+      focusLines: [7]
+      editableLines: []
+  - id: step.actuator_output_basics.04_first_blink
+    flowItemId: project_flow_item.actuator_output_basics.04
+    pattern: step_pattern.observable_effect
+    title: High, Pause, Low, Pause
+    outcome: Ein zeitlicher Programmablauf wird als sichtbares Hardwareverhalten gelesen.
+    toolBehavior:
+      focusLines: [11, 12, 13, 14]
+      editableLines: []
+  - id: step.actuator_output_basics.05_parameter_experiment
+    flowItemId: project_flow_item.actuator_output_basics.05
+    pattern: step_pattern.parameter_experiment
+    title: Blinkgeschwindigkeit aendern
+    outcome: Ein Parameter wird als Stellgroesse fuer beobachtbares Verhalten verstanden.
+    toolBehavior:
+      focusLines: [4, 12, 14]
+      editableLines: [4]
+      expectedContains: BLINK_DELAY_MS = 500
+  - id: step.actuator_output_basics.06_problem_cpu_busy
+    flowItemId: project_flow_item.actuator_output_basics.06
+    pattern: step_pattern.problem_observation
+    title: Das Delay blockiert die CPU
+    outcome: Die Grenze der naiven Delay-Loesung wird als echtes technisches Problem sichtbar.
+    toolBehavior:
+      focusLines: [12, 14]
+      editableLines: []
+  - id: step.actuator_output_basics.07_solution_pwm
+    flowItemId: project_flow_item.actuator_output_basics.07
+    pattern: step_pattern.solution_introduction
+    title: PWM als Entlastung einfuehren
+    outcome: PWM wird als ausgelagerte zeitkritische Arbeit verstanden.
+    toolBehavior:
+      focusLines: [11, 12, 13, 14]
+      editableLines: []
+  - id: step.actuator_output_basics.08_reflection
+    flowItemId: project_flow_item.actuator_output_basics.08
+    pattern: step_pattern.reflection_inspiration_sales_bridge
+    title: Was wurde wirklich gelernt?
+    outcome: Der Schnupperkurs endet mit Transfer auf weitere Aktoren und Connected-Projekte.
+    toolBehavior:
+      focusLines: [3, 4, 7, 11, 12, 13, 14]
+      editableLines: []
+
+
+

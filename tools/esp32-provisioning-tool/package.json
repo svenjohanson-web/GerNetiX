@@ -1,0 +1,10 @@
+﻿{
+  "name": "esp32-provisioning-tool",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "provision": "node src/provision.js",
+    "check": "node src/provision.js --dry-run"
+  }
+}

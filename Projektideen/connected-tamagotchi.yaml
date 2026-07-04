@@ -1,0 +1,408 @@
+﻿schemaVersion: 1
+kind: learning_project_idea
+id: project_idea.connected_tamagotchi
+slug: connected-tamagotchi
+title: Connected Tamagotchi
+projectStatus: idea
+domain: embedded_iot_connected_systems
+summary: Lernprojekt fuer State Machines, Persistenz, Zeit, Backend-Logik, mehrere Clients und Architekturentscheidungen zwischen Offline- und Online-Betrieb.
+salesRole: Premium-/Advanced-Projekt fuer Connected Embedded Systems.
+accessPolicy:
+  accessTier: premium_subscription_or_paid_course
+  courseAccessTerm:
+    standardDuration: P1Y
+    meaning: Kurskauf gewaehrt ein Jahr Zugriff auf die Lernplattform und die freigeschalteten Kursinhalte.
+    notAOneTimeDocumentDelivery: true
+    downloadableMaterials:
+      mayExist: true
+      role: Ergaenzende Materialien wie PDF koennen bereitgestellt werden, ersetzen aber nicht die Plattformleistung.
+    governedBy:
+      - BR-COURSE-ACCESS-001
+      - architecture.permission_precedence
+    requiredGrant:
+      - system_capability.learning_one_year_course_access
+    accessDecision: Effektiver Zugriff wird aus Kurskauf, Plan, Grants und Account-Overrides berechnet.
+    retentionIntent: Der Zugriffzeitraum dient auch dazu, Nutzer mit neuen passenden Projektinspirationen, Erweiterungen und Folgeangeboten zurueckzuholen.
+    noDeliveryPromise:
+      rule: BR-COURSE-ACCESS-002
+      summary: Neue Projekte oder Erweiterungen koennen im Zugriffzeitraum erscheinen, sind aber nicht als garantierte Liefermenge oder fester Veroeffentlichungsrhythmus versprochen.
+  grantModel:
+    principle: Effektiver Zugriff wird ueber SystemCapabilities berechnet; Account-Override gewinnt vor Plan vor Default.
+    references:
+      - architecture.permission_precedence
+  fullAccess:
+    requiredGrants:
+      - system_capability.learning_premium_project_content
+      - system_capability.learning_project_assets
+    grantSources:
+      - course_purchase_grant
+      - plan.premium
+      - account_system_capability_override
+    grants:
+      - read_course_content
+      - build_project_variants
+      - access_backend_lessons
+  connectedExtensions:
+    requiredGrants:
+      - system_capability.learning_connected_extensions
+    grantSources:
+      - plan.premium
+      - account_system_capability_override
+    rationale: Backend-, MQTT-, Multi-Client- und Plattformfunktionen duerfen zusaetzlich berechtigt werden.
+  previewAccess:
+    requiredGrants:
+      - system_capability.learning_project_preview
+    grantSources:
+      - plan.free
+      - plan.premium
+      - account_system_capability_override
+  monetizationRole: advanced_premium_project
+  upgradePath:
+    - purchase_connected_systems_course
+    - subscribe_premium
+  authorizationNotes:
+    - Offline-Standalone-Abschnitte koennen lokal realisierbar sein; Zugriff auf die komplette Lernfuehrung bleibt kauf- oder aboabhaengig.
+targetAudience:
+  - Lernende nach GPIO/PWM/Webserver-Grundlagen
+  - Nutzer, die verteilte Systeme und Plattformgrenzen verstehen wollen
+recommendedHardware:
+  - Artefakt fuer interactive_client mit display_output und user_input
+  - optional Artefakt fuer local_state_holder
+  - optional Artefakt fuer reliable_time_source
+  - optional Artefakt fuer energy_storage und power_management
+technicalRequirements:
+  modelingPrinciple: Connected-Projekte beschreiben Client-, Server-, Zeit- und Synchronisationsrollen; konkrete ESP-Boards, Apps und Backend-Hosts werden spaeter zugeordnet.
+  requiredCapabilityBundles:
+    - id: bundle.interactive_client
+      role: interactive_client
+      cardinality: one_or_more
+      requiredCapabilities:
+        - display_output
+        - user_input
+      purpose: Erfasst Eingaben und zeigt den Zustand des Tamagotchis an.
+  optionalCapabilityBundles:
+    - id: bundle.local_state_holder
+      role: local_state_holder
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - persistent_storage
+        - local_state_machine
+      purpose: Ermoeglicht Standalone-Betrieb mit lokalem Zustand.
+    - id: bundle.time_source
+      role: time_source
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - reliable_time_source
+      purpose: Ermoeglicht Alterung und zeitbasierte Transitionen.
+    - id: bundle.authoritative_backend
+      role: authoritative_backend
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - backend_state_machine
+        - server_persistence
+        - time_authority
+        - request_response_commands
+      purpose: Besitzt die Wahrheit, validiert Eingaben und berechnet Zustandsaenderungen.
+    - id: bundle.state_distribution
+      role: state_distribution
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - publish_subscribe_state_updates
+        - multi_client_synchronization
+      purpose: Verteilt den autoritativen Zustand an unbekannte oder wechselnde Clients.
+    - id: bundle.connected_client
+      role: connected_client
+      cardinality: zero_or_more
+      requiredCapabilities:
+        - wireless_network
+      purpose: Verbindet eingebettete Clients mit Backend oder lokalem Server.
+  hardwareCatalogMapping: ESP32 mit Display, Mobile-App, Desktop-App, Web-App, RTC-Modul, Home Server und Cloud-Backend sind spaetere Realisierungen dieser Rollen.
+implementationBoundary:
+  localRealization:
+    principle: Display, Eingabe, lokale State Machine, Persistenz und RTC-/Zeit-Experimente koennen lokal ohne WLAN betrachtet werden.
+    possibleHardwareClass:
+      - Arduino-kompatible Mikrocontrollerklasse, wenn Display, Speicher und Zeitquelle ausreichen
+      - ESP-Klasse fuer lokale oder vernetzte Client-Varianten
+    requiredCapabilities:
+      - display_output
+      - user_input
+      - persistent_storage_optional
+      - reliable_time_source_optional
+  connectedRealization:
+    trigger: Sobald Backend-Autoritaet, Multi-Client-Synchronisation, MQTT/PubSub oder Webserver Teil der Variante werden.
+    requiredCapabilities:
+      - wireless_network
+      - network_client_or_local_webserver
+      - publish_subscribe_state_updates_optional
+    catalogImplication: Dann braucht der Client selbst Netzwerkfaehigkeit oder ein Gateway; ein reiner Arduino-Nano-Knoten ist dafuer ohne Zusatzartefakt nicht ausreichend.
+learningIntent:
+  - State Machine und Datenmodell anhand eines greifbaren Produkts verstehen.
+  - RAM, persistente Speicherung und Zeitbezug unterscheiden.
+  - Grenzen eines ESP-Boards ohne RTC erkennen.
+  - Programmlogik bewusst zwischen Client und Backend verorten.
+  - HTTP fuer Commands und MQTT/PubSub fuer State-Updates begruenden.
+  - Mehrere Clients mit einer autoritativen Wahrheit verbinden.
+didacticFlow:
+  - Tamagotchi als lokales Datenmodell einfuehren.
+  - Zustaende und Events als State Machine modellieren.
+  - Display und Eingaben auf dem ESP32 umsetzen.
+  - Reset-Problem erleben: RAM verliert Zustand.
+  - Persistenz einfuehren: Zustand speichern und laden.
+  - Zeitproblem erleben: Ohne RTC kann das Tamagotchi offline nicht korrekt altern.
+  - Standalone-Loesungen vergleichen: RTC, Batterie, NTP, Power Management.
+  - Lokalen ESP-Webserver als erste Connected-Variante nutzen.
+  - Backend-Variante einfuehren: Programmlogik lebt im Server, Clients senden nur Inputs.
+  - Commands per HTTP/Request-Response an das Backend senden.
+  - State-Updates per MQTT/PubSub an unbekannte oder wechselnde Clients verteilen.
+  - ESP32, Mobile-App, Desktop-App und Web-App als unterschiedliche Clients betrachten.
+  - Abschlusskapitel: Offline- und Online-Architektur gegeneinander abwaegen.
+architecturePrinciples:
+  - Clients erzeugen nicht die Wahrheit, sondern melden Eingaben und zeigen Ausgaben.
+  - Das Backend besitzt Zustand, Zeit, State Machine und Persistenz.
+  - Das Backend entscheidet, welche Inputs zulaessig sind.
+  - Commands sind gezielt, validiert und beantwortet.
+  - State-Updates sind verteilt, abonnierbar und entkoppelt.
+tradeoffs:
+  online_backend:
+    advantages:
+      - zentrale Programmlogik
+      - schnelle Updates ohne Client-Neuflash
+      - eine autoritative State Machine
+      - mehrere Clients bleiben synchron
+      - bessere Beobachtbarkeit und Versionierung
+    disadvantages:
+      - Netzwerkabhaengigkeit
+      - Home-Server oder Cloud erforderlich
+      - Betriebs- und Infrastrukturkosten
+      - geringe Offline-Faehigkeit des ESP32-Clients
+  offline_standalone:
+    advantages:
+      - funktioniert ohne Netzwerk
+      - keine Serverkosten
+      - direkte lokale Kontrolle
+      - geeignet fuer portable Geraete
+    disadvantages:
+      - Zeitproblem ohne RTC
+      - lokale Logik schwerer zu aktualisieren
+      - Synchronisierung mehrerer Clients schwierig
+      - Version Drift wahrscheinlicher
+variants:
+  - id: variant.standalone_display_client
+    title: Standalone-Client mit Display
+    notes: Alles lebt lokal auf einem Geraet; gut fuer Persistenz, Zeitquelle und Power Management.
+    capabilityRequirements:
+      roles:
+        - role: interactive_client
+          cardinality: exactly_one
+          requiredCapabilities:
+            - display_output
+            - user_input
+            - persistent_storage
+            - local_state_machine
+        - role: time_source
+          cardinality: zero_or_one
+          requiredCapabilities:
+            - reliable_time_source
+  - id: variant.local_webserver_client
+    title: Lokaler Webserver auf dem Geraet
+    notes: Handy interagiert direkt mit dem eingebetteten Geraet.
+    capabilityRequirements:
+      roles:
+        - role: connected_interactive_client
+          cardinality: exactly_one
+          requiredCapabilities:
+            - display_output
+            - user_input
+            - wireless_network
+            - local_webserver
+            - persistent_storage
+            - local_state_machine
+  - id: variant.backend_authoritative_state
+    title: Backend als autoritative State Machine
+    notes: Server besitzt Logik, Zeit und Persistenz; Clients senden Eingaben.
+    capabilityRequirements:
+      roles:
+        - role: interactive_client
+          cardinality: one_or_more
+          requiredCapabilities:
+            - display_output
+            - user_input
+            - network_client
+        - role: authoritative_backend
+          cardinality: exactly_one
+          requiredCapabilities:
+            - backend_state_machine
+            - server_persistence
+            - time_authority
+            - request_response_commands
+  - id: variant.multi_client_pubsub_state
+    title: Mehrere Clients mit PubSub-State-Updates
+    notes: Eingebettete, mobile, Desktop- oder Web-Clients abonnieren denselben Zustand.
+    capabilityRequirements:
+      roles:
+        - role: interactive_client
+          cardinality: one_or_more
+          requiredCapabilities:
+            - display_output
+            - user_input
+            - network_client
+        - role: state_distribution_service
+          cardinality: exactly_one
+          requiredCapabilities:
+            - publish_subscribe_state_updates
+            - multi_client_synchronization
+        - role: authoritative_backend
+          cardinality: exactly_one
+          requiredCapabilities:
+            - backend_state_machine
+            - server_persistence
+            - time_authority
+crossCuttingChapters:
+  - id: reusable_chapter.guided_code_walkthrough
+    title: Gefuehrter Code-Walkthrough mit Zeilenfokus
+    appliesWhen:
+      - Projekt fuehrt neuen Code ein oder verbindet Codezeilen mit beobachtbarer Hardwarewirkung.
+    requiredCapabilities:
+      - capability.guided_code_highlighting
+      - capability.code_step_explanation
+      - capability.parameter_experiment
+      - capability.hardware_effect_observation
+    chapterRole: Wiederkehrendes Unterkapitel fuer schrittweises Codeverstaendnis mit fokussierter Hervorhebung und kleinen Experimenten.
+    keyTradeoff: Geringe kognitive Last gegen langsamere, aber stabilere Einfuehrung in Code und Hardwarewirkung.  - id: reusable_chapter.embedded_webserver_basics
+    title: Embedded Webserver fuer Status und Bedienung
+    preconditions:
+      chapters:
+        - reusable_chapter.connectivity_foundations
+      capabilities:
+        - capability.wifi
+        - capability.network_configuration
+        - capability.local_network_service    appliesWhen:
+      - Projektvariante stellt Status, Messwerte, Parameter oder Bedienung direkt per lokalem Webserver bereit.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.local_network_service
+      - capability.embedded_webserver
+      - capability.web_ui_status_view
+      - capability.web_ui_control
+      - capability.http_endpoint
+    chapterRole: Wiederkehrendes Unterkapitel fuer lokale Weboberflaechen und einfache HTTP-Endpunkte auf dem Geraet.
+    keyTradeoff: Lokale Einfachheit gegen Sicherheit, Remote-Zugriff, parallele Nutzer und Backend-/App-Bedarf.  - id: reusable_chapter.connectivity_foundations
+    title: Connectivity-Grundlagen fuer WLAN, Zeit und Updates
+    appliesWhen:
+      - Projektvariante nutzt WLAN, lokalen Webserver, Uhrzeit aus dem Netzwerk, Backend, Push, Remote Monitoring oder OTA-/Update-Vorbereitung.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.network_configuration
+      - capability.network_time_sync
+      - capability.local_network_service
+      - capability.remote_update_preparation
+    chapterRole: Wiederkehrendes Unterkapitel fuer nutzbare Netzwerkstrukturen, nicht fuer eine tiefe WiFi-Stack-Implementierung.
+    keyTradeoff: Lokale Funktion gegen Netzwerkabhaengigkeit, Komfort, Updatefaehigkeit und Fehlerbehandlung.  - id: reusable_chapter.power_management_battery_operation
+    title: Power-Management bei Akku- oder Batteriebetrieb
+    appliesWhen:
+      - Projekt wird mit Akku, Batterie oder begrenzter Energieversorgung betrieben.
+      - Sensoren, Funkmodule, Anzeigen oder Aktoren muessen nicht dauerhaft aktiv sein.
+    requiredCapabilities:
+      - capability.energy_storage
+      - capability.battery_powered_operation
+      - capability.power_management
+      - capability.low_power_mode
+      - capability.energy_budget_estimation
+    chapterRole: Wiederkehrendes Unterkapitel zur Frage, wie lange das Geraet mit Akku sinnvoll betrieben werden kann.
+    keyTradeoff: Akkulaufzeit gegen Messintervall, Reaktionszeit, Funkhaeufigkeit und Komfort.
+completionInspiration:
+  didacticPurpose: Nach dem Connected-Tamagotchi zeigen, dass Backend-Logik, State-Synchronisation und Multi-Client-Denken auf viele Produktideen uebertragbar sind.
+  learnerReflection:
+    - Du kannst entscheiden, ob Logik lokal oder im Backend leben soll.
+    - Du verstehst autoritativen Zustand, Persistenz und Zeitsynchronisation.
+    - Du kannst mehrere Clients an einen gemeinsamen Zustand anbinden.
+  inspirationProjects:
+    - id: inspiration.shared_household_device
+      title: Gemeinsames Haushaltsgeraet mit mehreren Clients
+      summary: Mehrere Personen oder Geraete sehen denselben Zustand und senden Aktionen an eine zentrale Logik.
+      reusedCapabilities:
+        - backend_state_machine
+        - multi_client_synchronization
+        - publish_subscribe_state_updates
+    - id: inspiration.remote_pet_or_plant_care
+      title: Remote Care fuer Haustier- oder Pflanzen-Demo
+      summary: Zustandsmodell, Erinnerungen und Aktionen werden von mehreren Clients genutzt.
+      reusedCapabilities:
+        - server_persistence
+        - time_authority
+        - request_response_commands
+  nextCourseSuggestions:
+    - id: suggestion.iot_everyday_infrastructure
+      title: IoT im Alltag mit bestehender Infrastruktur
+      rationale: Nutzt etablierte Systeme wie Home Assistant, lokalen Server, Alexa-/Smart-Home-Anbindungen oder vorhandene Marktprodukte, um schnell alltagstaugliche Bedienung und Automatisierung zu erreichen.
+    - id: suggestion.smartphone_app_development
+      title: App-Entwicklung fuer Smartphones
+      rationale: Zeigt den anspruchsvolleren Weg zur eigenen Android- oder iOS-App inklusive Plattformhuerden, Build-/Deploy-Prozessen, Accounts, Freigabewegen und App-spezifischer Bedienlogik.
+    - id: suggestion.iot_everyday
+      title: IoT im Alltag
+      rationale: Uebertraegt Connected-Architektur auf Heimnetz, sichere Erreichbarkeit und Alltagsgeraete.
+    - id: suggestion.distributed_systems_basics
+      title: Verteilte Systeme Basics
+      rationale: Vertieft Synchronisation, Autoritaet, Versionierung und Nebenlaeufigkeit.
+  progressionPaths:
+    - id: path.existing_infrastructure
+      title: Bestehende Infrastruktur nutzen
+      summary: Home Assistant, lokaler Server, Alexa-/Smart-Home-Anbindungen oder etablierte Marktprodukte nehmen viel Integrationsarbeit ab und machen schnelle Alltagsloesungen moeglich.
+      fit:
+        - Nutzer will schnell ein brauchbares Ergebnis.
+        - Nutzer moechte nicht sofort App Stores, Mobile-Builds oder Plattformfreigaben lernen.
+        - Bestehende Infrastruktur ist akzeptabel oder sogar gewuenscht.
+    - id: path.own_smartphone_app
+      title: Eigene Smartphone-App entwickeln
+      summary: Eigene App fuer Android oder iOS bietet maximale Kontrolle, bringt aber organisatorische und technische Huerden mit sich.
+      fit:
+        - Nutzer moechte eine eigene App statt bestehender Smart-Home-Oberflaechen.
+        - Nutzer ist bereit, Android/iOS-Toolchains, Accounts, Signierung, Deployment und Freigabeprozesse zu lernen.
+        - Das Projekt soll spaeter produktnaeher oder individueller wirken.
+      courseBridge: Wenn dir Home Assistant oder bestehende Infrastruktur nicht zusagt, ist App-Entwicklung fuer Smartphones der naechste Zusatzkurs.
+  salesStrategy:
+    decisionQuestion: Was interessiert dich als naechster Schritt?
+    singleCourseOptions:
+      - id: course.iot_everyday_infrastructure
+        title: IoT im Alltag mit bestehender Infrastruktur
+        fit: Du moechtest Home Assistant, lokalen Server, Alexa-/Smart-Home-Anbindungen oder vorhandene Marktprodukte nutzen.
+      - id: course.smartphone_app_development
+        title: App-Entwicklung fuer Smartphones
+        fit: Du moechtest eine eigene Android- oder iOS-App fuer deine IoT-Anwendungsfaelle entwickeln.
+    bundleOption:
+      id: product_offering.iot_everyday_app_bundle
+      title: IoT im Alltag + Smartphone-App Bundle
+      pricingLogic: Beide Kurse zusammen zu einem Sonderpreis gegenueber Einzelkauf.
+    pricingPlaceholders:
+      infrastructureCourseRegularPrice: TBD
+      smartphoneAppCourseRegularPrice: TBD
+      bundleSpecialPrice: TBD
+    rationale:
+      - Nutzer koennen nur den fuer sie passenden Weg kaufen.
+      - Das Bundle ist attraktiv, wenn beide Wege interessant sind.
+      - Preise bleiben Angebotsdaten und werden nicht hart in der Projektidee festgelegt.
+  salesBridge:
+    freeMessage: Du hast Connected-Systeme an einem Spielmodell verstanden. Jetzt kannst du dieselben Muster auf echte Alltags- und Produktideen uebertragen.
+openQuestions:
+  - Welche Display-Hardware ist fuer den Kurs robust und gut verfuegbar?
+  - Soll zuerst Standalone oder direkt Backend-first gelehrt werden?
+  - Welche Companion-App-Plattform ist fuer die erste Verkaufseinheit sinnvoll?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

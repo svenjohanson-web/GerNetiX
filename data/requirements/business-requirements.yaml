@@ -1,4 +1,4 @@
-schemaVersion: 1
+﻿schemaVersion: 1
 kind: business_requirement_catalog
 sourceStatus: legacy_import_source
 items:
@@ -492,3 +492,112 @@ items:
     verifiedByTestArtifacts:
       - test_artifact.community_ai_assistant_moderation
 
+
+  - id: requirement.account_competency_profile
+    type: requirement
+    title: Kompetenzprofil je Account fuehren
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Die Plattform muss je Account nachvollziehbar speichern, welche Kompetenzen der Nutzer erreicht, begonnen, vertieft oder noch nicht nachgewiesen hat. Das Kompetenzprofil dient nicht nur der Fortschrittsanzeige, sondern als Grundlage fuer Feedback, Empfehlungen und Kundenbindung.
+    derivedFromBusinessCapabilities:
+      - BC-025
+    affectsDataModels:
+      - data_model.account_competency_profile
+      - data_model.account_competency_progress
+      - data_model.account_competency_evidence
+    affectsApiArtifacts:
+      - api_artifact.account_competency_profile
+
+  - id: requirement.competency_evidence_feedback
+    type: requirement
+    title: Kompetenznachweise als Nutzerfeedback sichtbar machen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Nach abgeschlossenen Lernschritten, Projekten oder Kompetenznachweisen muss der Nutzer sehen koennen, welche Kompetenz er dadurch erworben oder vertieft hat und wodurch dieser Nachweis begruendet ist.
+    derivedFromBusinessCapabilities:
+      - BC-025
+    derivedFromRequirements:
+      - requirement.account_competency_profile
+    affectsDataModels:
+      - data_model.account_competency_evidence
+      - data_model.account_learning_feedback_event
+    affectsApiArtifacts:
+      - api_artifact.account_competency_profile
+      - api_artifact.learning_feedback
+
+  - id: requirement.competency_based_learning_recommendations
+    type: requirement
+    title: Naechste Lernschritte kompetenzbasiert empfehlen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Die Plattform muss aus Kompetenzprofil, Lernfortschritt, Interessen, Hardwarebestand, gekauften Kursen und Projektkontext passende naechste Lernschritte, Vertiefungen, Alternativpfade oder Anschlusskurse empfehlen koennen.
+    derivedFromBusinessCapabilities:
+      - BC-025
+    derivedFromRequirements:
+      - requirement.account_competency_profile
+    affectsDataModels:
+      - data_model.learning_recommendation
+      - data_model.account_competency_profile
+    affectsApiArtifacts:
+      - api_artifact.learning_recommendations
+
+  - id: requirement.non_linear_learning_progression
+    type: requirement
+    title: Nichtlineare Lernfortsetzung unterstuetzen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Lernfortschritt darf nicht nur als starre Projektfolge eins, zwei, drei, vier modelliert werden. Nutzer muessen nachgewiesene Kompetenzen vertiefen, alternative Projektpfade waehlen, spaetere Projekte vorbereiten oder gezielt Zwischenschritte wie 5.1 absolvieren koennen.
+    derivedFromBusinessCapabilities:
+      - BC-025
+    derivedFromRequirements:
+      - requirement.competency_based_learning_recommendations
+    affectsDataModels:
+      - data_model.learning_recommendation
+      - data_model.account_project_progress
+      - data_model.account_competency_progress
+    affectsApiArtifacts:
+      - api_artifact.learning_recommendations
+
+  - id: requirement.learning_step_completion_conditions
+    type: requirement
+    title: Lernschritte ueber Completion Conditions abschliessen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: ProjectSteps duerfen nur dann als abgeschlossen gelten, wenn ihre fachlich definierten Completion Conditions erfuellt sind, zum Beispiel gelesen, Code validiert, Build erfolgreich, Flash erfolgreich oder Nutzerfeedback abgegeben.
+    derivedFromBusinessCapabilities:
+      - BC-025
+    derivedFromRequirements:
+      - requirement.account_competency_profile
+    affectsDataModels:
+      - data_model.project_step_completion_condition
+      - data_model.account_project_progress
+      - data_model.account_competency_evidence
+    affectsApiArtifacts:
+      - api_artifact.learning_step_completion
+    verifiedByTestArtifacts:
+      - test_artifact.learning_step_completion_conditions
+      - test_artifact.learning_step_build_flash_feedback_completion
+
+  - id: requirement.board_execution_adapter_for_learning_steps
+    type: requirement
+    title: Board-Ausfuehrung fuer Lernschritte abstrahieren
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Lernschritte, die Build, Flash oder Board-Feedback voraussetzen, muessen ueber einen austauschbaren Adapter gegen echte Hardware, simulierte Hardware oder Testdoubles ausgefuehrt und geprueft werden koennen.
+    derivedFromBusinessCapabilities:
+      - BC-025
+    derivedFromRequirements:
+      - requirement.learning_step_completion_conditions
+    affectsDataModels:
+      - data_model.learning_step_execution_result
+    affectsApiArtifacts:
+      - api_artifact.learning_step_completion
+    verifiedByTestArtifacts:
+      - test_artifact.board_execution_adapter_contract
+      - test_artifact.learning_step_build_flash_feedback_completion

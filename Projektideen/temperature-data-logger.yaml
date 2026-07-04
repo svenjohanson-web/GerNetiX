@@ -1,0 +1,392 @@
+﻿schemaVersion: 1
+kind: learning_project_idea
+id: project_idea.temperature_data_logger
+slug: temperature-data-logger
+title: Temperatur-Datenlogger
+projectStatus: idea
+domain: embedded_iot_sensorics
+summary: Lernprojekt fuer Sensorik, Messwertbildung, Genauigkeit, Zeitreihen, mehrere Messknoten und zentrale Visualisierung.
+salesRole: Premium-/Advanced-Projekt fuer Sensorik und IoT-Datenaggregation.
+accessPolicy:
+  accessTier: paid_course_or_subscription
+  courseAccessTerm:
+    standardDuration: P1Y
+    meaning: Kurskauf gewaehrt ein Jahr Zugriff auf die Lernplattform und die freigeschalteten Kursinhalte.
+    notAOneTimeDocumentDelivery: true
+    downloadableMaterials:
+      mayExist: true
+      role: Ergaenzende Materialien wie PDF koennen bereitgestellt werden, ersetzen aber nicht die Plattformleistung.
+    governedBy:
+      - BR-COURSE-ACCESS-001
+      - architecture.permission_precedence
+    requiredGrant:
+      - system_capability.learning_one_year_course_access
+    accessDecision: Effektiver Zugriff wird aus Kurskauf, Plan, Grants und Account-Overrides berechnet.
+    retentionIntent: Der Zugriffzeitraum dient auch dazu, Nutzer mit neuen passenden Projektinspirationen, Erweiterungen und Folgeangeboten zurueckzuholen.
+    noDeliveryPromise:
+      rule: BR-COURSE-ACCESS-002
+      summary: Neue Projekte oder Erweiterungen koennen im Zugriffzeitraum erscheinen, sind aber nicht als garantierte Liefermenge oder fester Veroeffentlichungsrhythmus versprochen.
+  grantModel:
+    principle: Effektiver Zugriff wird ueber SystemCapabilities berechnet; Account-Override gewinnt vor Plan vor Default.
+    references:
+      - architecture.permission_precedence
+  fullAccess:
+    requiredGrants:
+      - system_capability.learning_paid_course_content
+      - system_capability.learning_project_assets
+    grantSources:
+      - course_purchase_grant
+      - plan.premium
+      - account_system_capability_override
+    grants:
+      - read_course_content
+      - build_local_project
+      - access_project_assets
+  previewAccess:
+    requiredGrants:
+      - system_capability.learning_project_preview
+    grantSources:
+      - plan.free
+      - plan.premium
+      - account_system_capability_override
+    rationale: Sensorik-Grundidee darf sichtbar sein, die vollstaendige Projektfuehrung ist Teil eines bezahlten Angebots.
+  monetizationRole: premium_learning_project
+  upgradePath:
+    - purchase_sensorics_course
+    - subscribe_premium
+  authorizationNotes:
+    - Lokale Arduino-/Mikrocontroller-Varianten koennen fachlich enthalten sein, ohne dass kostenlose Nutzer automatisch Zugriff auf alle Lektionen erhalten.
+    - Connected- oder Logging-Erweiterungen koennen zusaetzliche IDE-/Plattformrechte benoetigen.
+targetAudience:
+  - Lernende nach GPIO/PWM/Webserver-Grundlagen
+  - Nutzer, die Sensoren, Messwerte und verteilte Datenlogger verstehen wollen
+recommendedHardware:
+  - Artefakt fuer measurement_node
+  - Artefakt fuer temperature_measurement
+  - optional weitere measurement_node-Artefakte fuer Aggregation
+  - optional Artefakt fuer analog_measurement_path
+  - optional Artefakt fuer aggregation_server
+technicalRequirements:
+  modelingPrinciple: Das Projekt fordert Mess- und Kommunikationsfaehigkeiten; konkrete Sensoren, Boards und Server werden spaeter ueber den Hardware-Katalog oder Infrastruktur-Katalog gemappt.
+  requiredCapabilityBundles:
+    - id: bundle.measurement_node
+      role: measurement_node
+      cardinality: one_or_more
+      requiredCapabilities:
+        - programmable_microcontroller
+        - sensor_input
+        - timestamped_data
+      purpose: Nimmt Messwerte auf und kann sie mit Zeitbezug bereitstellen.
+    - id: bundle.temperature_sensor
+      role: temperature_sensor
+      cardinality: one_per_measurement_node
+      requiredCapabilities:
+        - temperature_measurement
+      purpose: Wandelt Temperatur in ein vom Messknoten lesbares Signal um.
+  optionalCapabilityBundles:
+    - id: bundle.connected_measurement_node
+      role: connected_measurement_node
+      cardinality: zero_or_more
+      requiredCapabilities:
+        - wireless_network
+        - local_webserver
+      purpose: Macht Messwerte direkt im Netzwerk abrufbar.
+    - id: bundle.aggregation_server
+      role: aggregation_server
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - data_aggregation
+        - time_series_storage
+        - graph_visualization
+      purpose: Zentralisiert mehrere Messknoten und stellt Verlaeufe dar.
+    - id: bundle.analog_measurement_path
+      role: analog_measurement_path
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - analog_input
+        - adc_conversion
+        - measurement_circuit
+        - calibration
+      purpose: Erlaubt Vertiefung mit Spannungsteiler, ADC, Referenz und Abgleich.
+  hardwareCatalogMapping: ESP32, ESP8266, digitale Temperatursensoren, analoge Sensoren, Raspberry Pi, PC oder Cloud-Backend sind spaetere Realisierungen dieser Rollen.
+implementationBoundary:
+  localRealization:
+    principle: Einzelmessung, Rohwertumrechnung, Kalibrierung und lokales Speichern koennen auf einer Arduino-kompatiblen Klasse stattfinden, wenn Sensorinterface und Speicher ausreichen.
+    possibleHardwareClass:
+      - Arduino-kompatible Mikrocontrollerklasse fuer lokale Sensorik
+      - ESP-Klasse fuer lokale oder vernetzte Sensorik
+    requiredCapabilities:
+      - programmable_microcontroller
+      - sensor_input
+      - temperature_measurement_interface
+      - timestamped_data_optional
+  connectedRealization:
+    trigger: Sobald Messwerte per Webserver, Funknetz, Aggregation, Home Server oder Cloud bereitgestellt werden.
+    requiredCapabilities:
+      - wireless_network
+      - remote_data_upload_or_local_webserver
+    catalogImplication: Dann braucht der Messknoten selbst Netzwerkfaehigkeit oder ein zusaetzliches Kommunikationsartefakt.
+learningIntent:
+  - Verstehen, wie eine physikalische Groesse zu einer elektrischen Groesse wird.
+  - Sensorprinzipien wie Widerstand, Spannung, digitaler Ausgang und Protokoll unterscheiden.
+  - Rohwerte einlesen und in reale Temperaturwerte umrechnen.
+  - Messabweichung, Genauigkeit, Wiederholgenauigkeit und Kalibrierung einordnen.
+  - Messwerte mit Zeitstempel als Zeitreihe speichern.
+  - Einzelne Sensor-Webserver gegen zentrale Aggregation abwaegen.
+didacticFlow:
+  - Was ist ein Sensor?
+  - Physikalische Groesse Temperatur in elektrische Groesse ueberfuehren.
+  - Digitale und analoge Sensorprinzipien vergleichen.
+  - Einfachen Temperatursensor einlesen.
+  - Rohwert, Einheit und Skalierung erklaeren.
+  - Aus Rohwerten reale Temperaturen berechnen.
+  - Messabweichung, Toleranz, Genauigkeit und Wiederholgenauigkeit einfuehren.
+  - Messwert mit Zeitstempel speichern.
+  - Einen Sensor per lokalem Webserver auslesen.
+  - Problem erleben: Mehrere Sensoren bedeuten mehrere Webserver.
+  - Aggregation einfuehren: Master-Knoten oder externer Server sammelt Messdaten.
+  - Temperaturverlaeufe als Graph darstellen.
+  - Abschlusskapitel: Lokal, Master-Knoten, Home Server oder Cloud abwaegen.
+coreInsights:
+  - Ein Mikrocontroller versteht keine Temperatur, sondern elektrische Signale, digitale Protokolle oder Rohwerte.
+  - Ein Messwert ohne Zeitbezug ist nur eine Momentaufnahme.
+  - Zeitreihen machen Trends, Min/Max und Vergleiche sichtbar.
+  - Einzelne Webserver sind einfach, aber fuer viele Sensoren unkomfortabel.
+  - Aggregation wird notwendig, sobald mehrere Messknoten entstehen.
+variants:
+  - id: variant.single_sensor_local_webserver
+    title: Ein Sensor mit lokalem Webserver
+    notes: Einfachste IoT-Variante zum Verstehen.
+    capabilityRequirements:
+      roles:
+        - role: connected_measurement_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - programmable_microcontroller
+            - sensor_input
+            - temperature_measurement_interface
+            - wireless_network
+            - local_webserver
+        - role: temperature_sensor
+          cardinality: exactly_one
+          requiredCapabilities:
+            - temperature_measurement
+  - id: variant.multiple_sensor_nodes_master
+    title: Mehrere Messknoten mit zentralem Master
+    notes: Ein Knoten sammelt Daten und stellt eine zentrale Ansicht bereit.
+    capabilityRequirements:
+      roles:
+        - role: measurement_node
+          cardinality: two_or_more
+          requiredCapabilities:
+            - sensor_input
+            - temperature_measurement_interface
+            - node_communication
+        - role: aggregation_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - data_aggregation
+            - local_webserver
+            - graph_visualization
+  - id: variant.home_server_aggregator
+    title: Externer Home Server als Aggregator
+    notes: Infrastruktur-Artefakt speichert Zeitreihen und zeigt Graphen.
+    capabilityRequirements:
+      roles:
+        - role: connected_measurement_node
+          cardinality: one_or_more
+          requiredCapabilities:
+            - wireless_network
+            - remote_data_upload
+        - role: aggregation_server
+          cardinality: exactly_one
+          requiredCapabilities:
+            - data_aggregation
+            - time_series_storage
+            - graph_visualization
+  - id: variant.cloud_backend_logger
+    title: Cloud-/Backend-Datenlogger
+    notes: Spaetere Variante fuer Remote-Zugriff und groessere Datenhaltung.
+    capabilityRequirements:
+      roles:
+        - role: connected_measurement_node
+          cardinality: one_or_more
+          requiredCapabilities:
+            - wireless_network
+            - remote_data_upload
+        - role: cloud_backend
+          cardinality: exactly_one
+          requiredCapabilities:
+            - remote_ingestion
+            - time_series_storage
+            - remote_visualization
+  - id: variant.analog_sensor_measurement_circuit
+    title: Analoger Sensor mit Messschaltung
+    notes: Vertiefung fuer Spannungsteiler, ADC, Referenz, Verstaerkung und Kalibrierung.
+    capabilityRequirements:
+      roles:
+        - role: analog_measurement_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - analog_input
+            - adc_conversion
+            - calibration
+        - role: analog_temperature_sensor_path
+          cardinality: exactly_one
+          requiredCapabilities:
+            - resistance_or_voltage_based_temperature_signal
+            - measurement_circuit
+crossCuttingChapters:
+  - id: reusable_chapter.guided_code_walkthrough
+    title: Gefuehrter Code-Walkthrough mit Zeilenfokus
+    appliesWhen:
+      - Projekt fuehrt neuen Code ein oder verbindet Codezeilen mit beobachtbarer Hardwarewirkung.
+    requiredCapabilities:
+      - capability.guided_code_highlighting
+      - capability.code_step_explanation
+      - capability.parameter_experiment
+      - capability.hardware_effect_observation
+    chapterRole: Wiederkehrendes Unterkapitel fuer schrittweises Codeverstaendnis mit fokussierter Hervorhebung und kleinen Experimenten.
+    keyTradeoff: Geringe kognitive Last gegen langsamere, aber stabilere Einfuehrung in Code und Hardwarewirkung.  - id: reusable_chapter.embedded_webserver_basics
+    title: Embedded Webserver fuer Status und Bedienung
+    preconditions:
+      chapters:
+        - reusable_chapter.connectivity_foundations
+      capabilities:
+        - capability.wifi
+        - capability.network_configuration
+        - capability.local_network_service    appliesWhen:
+      - Projektvariante stellt Status, Messwerte, Parameter oder Bedienung direkt per lokalem Webserver bereit.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.local_network_service
+      - capability.embedded_webserver
+      - capability.web_ui_status_view
+      - capability.web_ui_control
+      - capability.http_endpoint
+    chapterRole: Wiederkehrendes Unterkapitel fuer lokale Weboberflaechen und einfache HTTP-Endpunkte auf dem Geraet.
+    keyTradeoff: Lokale Einfachheit gegen Sicherheit, Remote-Zugriff, parallele Nutzer und Backend-/App-Bedarf.  - id: reusable_chapter.connectivity_foundations
+    title: Connectivity-Grundlagen fuer WLAN, Zeit und Updates
+    appliesWhen:
+      - Projektvariante nutzt WLAN, lokalen Webserver, Uhrzeit aus dem Netzwerk, Backend, Push, Remote Monitoring oder OTA-/Update-Vorbereitung.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.network_configuration
+      - capability.network_time_sync
+      - capability.local_network_service
+      - capability.remote_update_preparation
+    chapterRole: Wiederkehrendes Unterkapitel fuer nutzbare Netzwerkstrukturen, nicht fuer eine tiefe WiFi-Stack-Implementierung.
+    keyTradeoff: Lokale Funktion gegen Netzwerkabhaengigkeit, Komfort, Updatefaehigkeit und Fehlerbehandlung.  - id: reusable_chapter.power_management_battery_operation
+    title: Power-Management bei Akku- oder Batteriebetrieb
+    appliesWhen:
+      - Projekt wird mit Akku, Batterie oder begrenzter Energieversorgung betrieben.
+      - Sensoren, Funkmodule, Anzeigen oder Aktoren muessen nicht dauerhaft aktiv sein.
+    requiredCapabilities:
+      - capability.energy_storage
+      - capability.battery_powered_operation
+      - capability.power_management
+      - capability.low_power_mode
+      - capability.energy_budget_estimation
+    chapterRole: Wiederkehrendes Unterkapitel zur Frage, wie lange das Geraet mit Akku sinnvoll betrieben werden kann.
+    keyTradeoff: Akkulaufzeit gegen Messintervall, Reaktionszeit, Funkhaeufigkeit und Komfort.
+completionInspiration:
+  didacticPurpose: Nach dem Sensorik-Projekt zeigen, dass Messwerte, Zeitreihen und Visualisierung auf viele Alltagsprobleme uebertragbar sind.
+  learnerReflection:
+    - Du kannst physikalische Groessen als elektrische oder digitale Messwerte erfassen.
+    - Du kannst Rohwerte in fachliche Werte umrechnen.
+    - Du kannst Messwerte ueber Zeit speichern und als Verlauf interpretieren.
+  inspirationProjects:
+    - id: inspiration.rain_barrel_level_monitor
+      title: Regenfass-Fuellstand beobachten
+      summary: Ein Regenfass hat Zustaende wie leer, voll oder teilweise gefuellt; je nach Genauigkeitsanspruch kommen unterschiedliche Sensorprinzipien infrage.
+      reusedCapabilities:
+        - sensor_input
+        - measurement_conversion
+        - timestamped_data
+        - wireless_network_optional
+      learningTransfer:
+        - Sensorik wurde bereits gelernt.
+        - Messwertumrechnung wurde bereits gelernt.
+        - Datenbereitstellung oder Verlaufsauswertung wurde bereits gelernt.
+    - id: inspiration.fridge_temperature_monitor
+      title: Temperaturverlauf im Kuehlschrank ueberwachen
+      summary: Temperaturdaten zeigen, ob ein Geraet stabil arbeitet oder Grenzwerte verletzt.
+      reusedCapabilities:
+        - temperature_measurement
+        - timestamped_data
+        - trend_visualization
+  nextCourseSuggestions:
+    - id: suggestion.iot_everyday_infrastructure
+      title: IoT im Alltag mit bestehender Infrastruktur
+      rationale: Nutzt etablierte Systeme wie Home Assistant, lokalen Server, Alexa-/Smart-Home-Anbindungen oder vorhandene Marktprodukte, um schnell alltagstaugliche Bedienung und Automatisierung zu erreichen.
+    - id: suggestion.smartphone_app_development
+      title: App-Entwicklung fuer Smartphones
+      rationale: Zeigt den anspruchsvolleren Weg zur eigenen Android- oder iOS-App inklusive Plattformhuerden, Build-/Deploy-Prozessen, Accounts, Freigabewegen und App-spezifischer Bedienlogik.
+    - id: suggestion.iot_everyday
+      title: IoT im Alltag
+      rationale: Zeigt sichere Wege, um IoT-Geraete aus dem Alltag erreichbar zu machen, entweder ueber bestehende Infrastruktur wie Home Assistant oder spaeter ueber eigene Apps.
+    - id: suggestion.control_and_regulation
+      title: Steuern und Regeln
+      rationale: Fuehrt von Messwerten zu Entscheidungen und Aktoren.
+  progressionPaths:
+    - id: path.existing_infrastructure
+      title: Bestehende Infrastruktur nutzen
+      summary: Home Assistant, lokaler Server, Alexa-/Smart-Home-Anbindungen oder etablierte Marktprodukte nehmen viel Integrationsarbeit ab und machen schnelle Alltagsloesungen moeglich.
+      fit:
+        - Nutzer will schnell ein brauchbares Ergebnis.
+        - Nutzer moechte nicht sofort App Stores, Mobile-Builds oder Plattformfreigaben lernen.
+        - Bestehende Infrastruktur ist akzeptabel oder sogar gewuenscht.
+    - id: path.own_smartphone_app
+      title: Eigene Smartphone-App entwickeln
+      summary: Eigene App fuer Android oder iOS bietet maximale Kontrolle, bringt aber organisatorische und technische Huerden mit sich.
+      fit:
+        - Nutzer moechte eine eigene App statt bestehender Smart-Home-Oberflaechen.
+        - Nutzer ist bereit, Android/iOS-Toolchains, Accounts, Signierung, Deployment und Freigabeprozesse zu lernen.
+        - Das Projekt soll spaeter produktnaeher oder individueller wirken.
+      courseBridge: Wenn dir Home Assistant oder bestehende Infrastruktur nicht zusagt, ist App-Entwicklung fuer Smartphones der naechste Zusatzkurs.
+  salesStrategy:
+    decisionQuestion: Was interessiert dich als naechster Schritt?
+    singleCourseOptions:
+      - id: course.iot_everyday_infrastructure
+        title: IoT im Alltag mit bestehender Infrastruktur
+        fit: Du moechtest Home Assistant, lokalen Server, Alexa-/Smart-Home-Anbindungen oder vorhandene Marktprodukte nutzen.
+      - id: course.smartphone_app_development
+        title: App-Entwicklung fuer Smartphones
+        fit: Du moechtest eine eigene Android- oder iOS-App fuer deine IoT-Anwendungsfaelle entwickeln.
+    bundleOption:
+      id: product_offering.iot_everyday_app_bundle
+      title: IoT im Alltag + Smartphone-App Bundle
+      pricingLogic: Beide Kurse zusammen zu einem Sonderpreis gegenueber Einzelkauf.
+    pricingPlaceholders:
+      infrastructureCourseRegularPrice: TBD
+      smartphoneAppCourseRegularPrice: TBD
+      bundleSpecialPrice: TBD
+    rationale:
+      - Nutzer koennen nur den fuer sie passenden Weg kaufen.
+      - Das Bundle ist attraktiv, wenn beide Wege interessant sind.
+      - Preise bleiben Angebotsdaten und werden nicht hart in der Projektidee festgelegt.
+  salesBridge:
+    freeMessage: Du kannst jetzt messen und Verlaeufe verstehen. Im Kurs IoT im Alltag lernst du, wie daraus nutzbare vernetzte Alltagsloesungen werden.
+openQuestions:
+  - Soll der Einstieg mit digitalem Sensor beginnen und analog spaeter folgen?
+  - Welcher Temperatursensor ist didaktisch, preislich und verfuegbarkeitsseitig am besten?
+  - Wird fuer die Verkaufseinheit bereits ein zentraler Server vorausgesetzt oder optional gehalten?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

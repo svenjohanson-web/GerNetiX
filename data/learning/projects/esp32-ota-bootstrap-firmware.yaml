@@ -1,0 +1,101 @@
+﻿schemaVersion: 1
+id: project.esp32_ota_bootstrap_firmware
+slug: esp32-ota-bootstrap-firmware
+type: learning_project
+status: draft
+projectStatus: idea
+title: ESP32 OTA-Basisfirmware
+ownerDomain: Learning
+summary: Erstes Embedded-Erfolgsprojekt: Ein ESP32 wird einmal per USB geflasht und danach OTA-faehig gemacht.
+
+learningPath: learning_path.embedded_basics
+developsCompetencies:
+  - competency.esp32_project_setup
+  - competency.flashing
+  - competency.wifi_basics
+  - competency.ota_updates
+
+variants:
+  - id: project.esp32_ota_bootstrap_firmware.variant.local_usb_then_ota
+    title: USB-Erstflash mit anschliessendem OTA-Update
+    mode: local_then_ota
+    summary: Einstieg ohne Account. Der ESP32 wird lokal per USB vorbereitet und danach per OTA aktualisiert.
+    technicalConstraints:
+      - capability.processor_esp32
+      - capability.wifi
+      - capability.ota
+      - capability.flash_firmware
+      - capability.network_configuration
+    systemCapabilities:
+      - system_capability.ide_flash_usb
+      - system_capability.ide_flash_ota
+    advantages:
+      - Schnelles sichtbares Erfolgserlebnis.
+      - Spaetere Lernsoftware kann ohne USB-Kabel aktualisiert werden.
+      - Gute technische Grundlage fuer Kunden-IDE und Provisionierung.
+    disadvantages:
+      - WLAN-Konfiguration muss geloest werden.
+      - OTA-Abbruch und falsche Firmware muessen sicher behandelt werden.
+      - Authentifizierung ist fuer spaetere Produktivnutzung notwendig.
+
+stages:
+  - id: stage.esp32_ota_bootstrap_firmware.1
+    title: USB-Erstflash
+    goal: Board erkennen, minimale Firmware bauen und per USB flashen.
+    learningFocus:
+      - competency.esp32_project_setup
+      - competency.flashing
+    completionConditions:
+      - condition.board_detected
+      - condition.build_success
+      - condition.usb_flash_success
+  - id: stage.esp32_ota_bootstrap_firmware.2
+    title: WLAN und OTA aktivieren
+    goal: ESP32 mit WLAN verbinden und OTA-Bereitschaft herstellen.
+    learningFocus:
+      - competency.wifi_basics
+      - competency.ota_updates
+    completionConditions:
+      - condition.wifi_connected
+      - condition.ota_ready
+  - id: stage.esp32_ota_bootstrap_firmware.3
+    title: OTA-Erfolg pruefen
+    goal: Zweite Firmware-Version per OTA einspielen und sichtbares Feedback pruefen.
+    learningFocus:
+      - competency.ota_updates
+    completionConditions:
+      - condition.ota_flash_success
+      - condition.learner_feedback_received
+
+softwareModules:
+  - software_module.board_detection
+  - software_module.firmware_build
+  - software_module.usb_flash
+  - software_module.wifi_configuration
+  - software_module.ota_update
+  - software_module.version_feedback
+
+risks:
+  - risk.board_bricked_by_flash
+  - risk.wifi_configuration_failure
+  - risk.ota_update_interrupted
+
+dependencies:
+  requires:
+    - capability.processor_esp32
+    - capability.wifi
+    - capability.ota
+  optional:
+    - system_capability.cloud_flash
+
+relatedProjects:
+  - project_idea.esp32_provisioning_tool
+  - project_idea.actuator_output_basics
+
+generatedDocuments:
+  markdown: docs/project-esp32-ota-bootstrap-firmware.md
+
+openDecisions:
+  - decision.esp32_ota_bootstrap_firmware.framework
+  - decision.esp32_ota_bootstrap_firmware.ota_authentication
+  - decision.esp32_ota_bootstrap_firmware.wifi_setup

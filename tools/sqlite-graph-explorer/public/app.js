@@ -1,4 +1,4 @@
-const state = {
+﻿const state = {
   mode: "metamodel",
   metamodelTypes: [],
   selectedMetamodelType: null,
@@ -21,6 +21,7 @@ const els = {
   metamodelTitle: document.querySelector("#metamodelTitle"),
   metamodelId: document.querySelector("#metamodelId"),
   metamodelDetails: document.querySelector("#metamodelDetails"),
+  metamodelGuide: document.querySelector("#metamodelGuide"),
   metamodelGraphSvg: document.querySelector("#metamodelGraphSvg"),
   metamodelReferencesList: document.querySelector("#metamodelReferencesList"),
   metamodelReferencedByList: document.querySelector("#metamodelReferencedByList"),
@@ -34,6 +35,7 @@ const els = {
   selectedTitle: document.querySelector("#selectedTitle"),
   selectedId: document.querySelector("#selectedId"),
   artifactDetails: document.querySelector("#artifactDetails"),
+  artifactGuide: document.querySelector("#artifactGuide"),
   incomingList: document.querySelector("#incomingList"),
   outgoingList: document.querySelector("#outgoingList"),
   graphSvg: document.querySelector("#graphSvg")
@@ -106,6 +108,7 @@ function renderMetamodelType(payload) {
   ];
   for (const [label, value] of entries) appendDetail(els.metamodelDetails, label, value);
 
+  renderMetamodelGuide(payload);
   renderMetamodelRules(els.metamodelReferencesList, payload.references, "references");
   renderMetamodelRules(els.metamodelReferencedByList, payload.referencedBy, "referencedBy");
   renderMetamodelRuleSummary(payload);
@@ -339,12 +342,137 @@ function renderDetails(payload) {
   ];
   for (const [label, value] of entries) appendDetail(els.artifactDetails, label, value);
 
+  renderArtifactGuide(payload);
   renderRelationships(els.incomingList, payload.incoming, "incoming");
   renderRelationships(els.outgoingList, payload.outgoing, "outgoing");
   renderArtifacts();
   loadNeighborhood(artifact.id);
 }
 
+function renderMetamodelGuide(payload) {
+  clear(els.metamodelGuide);
+  const type = payload.type;
+  const outbound = payload.references.length;
+  const inbound = payload.referencedBy.length;
+  const instances = type.instance_count || 0;
+  const cards = [
+    {
+      label: "Ausgangspunkt",
+      title: type.name || type.id,
+      text: type.description || "Dieser Entitätstyp ist Teil des Metamodells."
+    },
+    {
+      label: "Darf verweisen auf",
+      title: `${outbound} Regel${outbound === 1 ? "" : "n"}`,
+      text: outbound ? summarizeRuleTargets(payload.references) : "Für diesen Typ ist aktuell keine ausgehende Referenzregel definiert."
+    },
+    {
+      label: "Wird verwendet von",
+      title: `${inbound} Regel${inbound === 1 ? "" : "n"}`,
+      text: inbound ? summarizeRuleTargets(payload.referencedBy) : "Aktuell darf kein anderer Typ diesen Typ explizit referenzieren."
+    },
+    {
+      label: "Konkrete Inhalte",
+      title: `${instances} Instanz${instances === 1 ? "" : "en"}`,
+      text: instances ? "Der Typ besitzt konkrete Artefakte im SQLite-Graphen." : "Der Typ ist modelliert, aber noch nicht durch konkrete Artefakte belegt."
+    }
+  ];
+  renderGuideCards(els.metamodelGuide, cards);
+}
+
+function renderArtifactGuide(payload) {
+  clear(els.artifactGuide);
+  const artifact = payload.artifact;
+  const upstream = payload.incoming.filter((rel) => isUpstreamRelation(rel.type));
+  const downstream = payload.outgoing.filter((rel) => isDownstreamRelation(rel.type));
+  const quality = [...payload.incoming, ...payload.outgoing].filter((rel) => isQualityRelation(rel.type));
+  const otherIncoming = payload.incoming.length - upstream.length - quality.filter((rel) => rel.direction === "incoming").length;
+  const cards = [
+    {
+      label: "Ausgangspunkt",
+      title: artifact.title || artifact.id,
+      text: artifact.summary || "Dieses Artefakt hat noch keine Zusammenfassung."
+    },
+    {
+      label: "Warum existiert es?",
+      title: `${upstream.length} Upstream-Beziehung${upstream.length === 1 ? "" : "en"}`,
+      text: upstream.length ? summarizeRelationships(upstream, "source") : "Keine direkte Begründung im lokalen Umfeld gefunden."
+    },
+    {
+      label: "Was hängt daran?",
+      title: `${downstream.length} Downstream-Beziehung${downstream.length === 1 ? "" : "en"}`,
+      text: downstream.length ? summarizeRelationships(downstream, "target") : "Keine direkte Umsetzung oder Ableitung im lokalen Umfeld gefunden."
+    },
+    {
+      label: "Prüfung und Nachweis",
+      title: `${quality.length} Prüfbezug${quality.length === 1 ? "" : "e"}`,
+      text: quality.length ? summarizeQualityRelationships(quality, artifact.id) : "Keine direkte Test- oder Validierungsbeziehung im lokalen Umfeld."
+    }
+  ];
+
+  if (otherIncoming > 0) {
+    cards.push({
+      label: "Weiterer Kontext",
+      title: `${otherIncoming} weitere Eingänge`,
+      text: "Zusätzliche Beziehungen stehen unten in der Detailansicht, bleiben hier aber bewusst ausgeblendet."
+    });
+  }
+
+  renderGuideCards(els.artifactGuide, cards);
+}
+
+function renderGuideCards(container, cards) {
+  for (const card of cards) {
+    const item = document.createElement("article");
+    item.className = "guide-card";
+    item.innerHTML = `
+      <p class="guide-label">${escapeHtml(card.label)}</p>
+      <h4>${escapeHtml(card.title)}</h4>
+      <p>${escapeHtml(card.text)}</p>
+    `;
+    container.appendChild(item);
+  }
+}
+
+function summarizeRuleTargets(rules) {
+  return rules
+    .slice(0, 4)
+    .map((rule) => `${rule.relationship_type} → ${rule.related_type}`)
+    .join(", ");
+}
+
+function summarizeRelationships(relationships, side) {
+  return relationships
+    .slice(0, 3)
+    .map((rel) => {
+      const title = side === "source" ? rel.source_title : rel.target_title;
+      const type = side === "source" ? rel.source_type : rel.target_type;
+      return `${rel.type}: ${title} (${type})`;
+    })
+    .join("; ");
+}
+
+function summarizeQualityRelationships(relationships, selectedId) {
+  return relationships
+    .slice(0, 3)
+    .map((rel) => {
+      const otherTitle = rel.source_id === selectedId ? rel.target_title : rel.source_title;
+      return `${rel.type}: ${otherTitle}`;
+    })
+    .join("; ");
+}
+
+function isUpstreamRelation(type) {
+  return ["derived_from", "references", "supports", "realizes", "constrains", "belongs_to"].includes(type);
+}
+
+function isDownstreamRelation(type) {
+  return ["derives", "realizes", "affects", "contains", "grants", "provides", "implements"].includes(type);
+}
+
+function isQualityRelation(type) {
+  return ["verified_by", "validated_by", "verifies", "validates", "tests", "mitigates"].includes(type);
+}
 function renderRelationships(container, relationships, direction) {
   clear(container);
   if (!relationships.length) {
@@ -547,3 +675,5 @@ setMode("metamodel");
 load().catch((error) => {
   els.dbInfo.textContent = `Fehler: ${error.message}`;
 });
+
+

@@ -1,4 +1,4 @@
-schemaVersion: 1
+﻿schemaVersion: 1
 kind: business_capability_catalog
 sourceStatus: legacy_import_source
 items:
@@ -295,9 +295,15 @@ items:
     businessStatus: In Analysis
     implementationStatus: Not Started
     ownerDomain: Business
-    summary: Die Plattform kann aus Fortschritt, Hardware und gekauften Courses naechste sinnvolle Lernschritte empfehlen.
+    summary: Die Plattform kann aus Kompetenzprofil, Fortschritt, Hardware, Interessen und gekauften Courses naechste sinnvolle Lernschritte, Vertiefungen, Alternativpfade und Anschlussangebote empfehlen.
     providedByMeasures:
       - measure.continuous_learning_paths
+      - measure.competency_profile_retention
+    derivesRequirements:
+      - requirement.account_competency_profile
+      - requirement.competency_evidence_feedback
+      - requirement.competency_based_learning_recommendations
+      - requirement.non_linear_learning_progression
 
   - id: BC-026
     type: business_capability
@@ -470,3 +476,4 @@ items:
       - requirement.ai_admin_cost_control_actions
       - requirement.ai_cost_margin_reporting
       - requirement.ai_suspicious_usage_detection
+

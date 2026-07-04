@@ -1,4 +1,4 @@
-schemaVersion: 1
+﻿schemaVersion: 1
 kind: metamodel_uml
 sourceStatus: legacy_import_source
 id: metamodel.learning_platform.uml
@@ -304,7 +304,24 @@ relations:
     fromCardinality: "0..*"
     toCardinality: "0..*"
     label: requires or ensures
-  - from: ProjectVariant
+  - from: ProjectStep
+    to: Competency
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..*"
+    label: grants competency
+  - from: AccountCompetencyEvidence
+    to: ProjectStep
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..1"
+    label: achieved by step
+  - from: AccountCompetencyEvidence
+    to: ProjectFlowItem
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..1"
+    label: achieved by flow item  - from: ProjectVariant
     to: TechnicalConstraint
     type: aggregation
     fromCardinality: "1"
@@ -508,3 +525,4 @@ relations:
     fromCardinality: "0..*"
     toCardinality: "1"
     label: prepares
+

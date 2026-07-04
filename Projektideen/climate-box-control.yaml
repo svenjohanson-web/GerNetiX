@@ -1,0 +1,549 @@
+﻿schemaVersion: 1
+kind: learning_project_idea
+id: project_idea.climate_box_control
+slug: climate-box-control
+title: Klimabox: Temperatur steuern und regeln
+projectStatus: idea
+domain: embedded_iot_control
+summary: Lernprojekt fuer eine kleine Klimabox mit mehreren Temperatursensoren, Lueftern, Peltier-Element, Sicherheitsgrenzen und ersten Regelstrategien.
+salesRole: Advanced-/Premium-Projekt fuer Steuerung, Regelung, thermische Systeme und sichere Aktorik.
+accessPolicy:
+  accessTier: premium_subscription_or_paid_course
+  courseAccessTerm:
+    standardDuration: P1Y
+    meaning: Kurskauf gewaehrt ein Jahr Zugriff auf die Lernplattform und die freigeschalteten Kursinhalte.
+    notAOneTimeDocumentDelivery: true
+    downloadableMaterials:
+      mayExist: true
+      role: Ergaenzende Materialien wie PDF koennen bereitgestellt werden, ersetzen aber nicht die Plattformleistung.
+    governedBy:
+      - BR-COURSE-ACCESS-001
+      - architecture.permission_precedence
+    requiredGrant:
+      - system_capability.learning_one_year_course_access
+    accessDecision: Effektiver Zugriff wird aus Kurskauf, Plan, Grants und Account-Overrides berechnet.
+    retentionIntent: Der Zugriffzeitraum dient auch dazu, Nutzer mit neuen passenden Projektinspirationen, Erweiterungen und Folgeangeboten zurueckzuholen.
+    noDeliveryPromise:
+      rule: BR-COURSE-ACCESS-002
+      summary: Neue Projekte oder Erweiterungen koennen im Zugriffzeitraum erscheinen, sind aber nicht als garantierte Liefermenge oder fester Veroeffentlichungsrhythmus versprochen.
+  grantModel:
+    principle: Effektiver Zugriff wird ueber SystemCapabilities berechnet; Account-Override gewinnt vor Plan vor Default.
+    references:
+      - architecture.permission_precedence
+  fullAccess:
+    requiredGrants:
+      - system_capability.learning_premium_project_content
+      - system_capability.learning_project_assets
+    grantSources:
+      - course_purchase_grant
+      - plan.premium
+      - account_system_capability_override
+    grants:
+      - read_course_content
+      - build_project_variants
+      - access_safety_and_regulation_lessons
+  connectedExtensions:
+    requiredGrants:
+      - system_capability.learning_connected_extensions
+    grantSources:
+      - plan.premium
+      - account_system_capability_override
+  previewAccess:
+    requiredGrants:
+      - system_capability.learning_project_preview
+    grantSources:
+      - plan.free
+      - plan.premium
+      - account_system_capability_override
+  monetizationRole: advanced_premium_project
+  upgradePath:
+    - purchase_control_and_regulation_course
+    - subscribe_premium
+  authorizationNotes:
+    - Wegen Leistungsaktoren, Peltier, Temperaturgrenzen und mechanischer Risiken ist die gefuehrte Umsetzung eher Premium/Advanced.
+    - Lokale Regelung kann ohne Connected-Funktionen umgesetzt werden; Weboberflaeche und Logging duerfen separat berechtigt werden.
+targetAudience:
+  - Lernende nach Temperatur-Datenlogger und Pflanzenbewaesserung
+  - Nutzer, die Steuerung und Regelung an einer traegen realen Strecke verstehen wollen
+  - Maker, die kontrollierte Temperaturbedingungen fuer Teig, Pflanzen, Elektroniktests oder Experimente schaffen wollen
+applicationScenarios:
+  - kontrolliertes Gehenlassen von Teig fuer Baecker oder Hobbybaecker
+  - kleine Pflanzen- oder Keimbox mit kontrollierter Temperatur
+  - Elektronik- oder Bauteiltests unter kontrollierten Temperaturbedingungen
+  - Experimentierbox fuer thermische Regelstrecken
+recommendedHardware:
+  - Artefakt fuer climate_control_node
+  - drei Artefakte fuer temperature_sensor
+  - Artefakt fuer peltier_element
+  - Artefakte fuer fan_actuator innen und aussen
+  - Artefakte fuer actuator_power_stage je Leistungsaktor
+  - Artefakt fuer actuator_power_supply_interface
+  - Gehaeuse als 3D-Druck-, Bau- oder Bastelartefakt
+  - Kuehlkoerper, Luftfuehrung und mechanische Befestigung als thermische Umgebung
+technicalRequirements:
+  modelingPrinciple: Die Klimabox fordert Rollen und Faehigkeiten fuer verteilte Temperaturmessung, Luftbewegung, aktive Waermeverschiebung, Leistungsansteuerung, Sicherheit und optional Vernetzung; konkrete Hardware wird spaeter ueber Hardware- und Mechanik-Kataloge ausgewaehlt.
+  requiredCapabilityBundles:
+    - id: bundle.climate_control_node
+      role: climate_control_node
+      cardinality: exactly_one
+      requiredCapabilities:
+        - programmable_microcontroller
+        - decision_logic
+        - multi_sensor_input
+        - gpio_output
+        - timing
+        - safety_limits
+      purpose: Liest mehrere Temperaturwerte, entscheidet ueber Luefter und Peltier-Element und ueberwacht Sicherheitsgrenzen.
+    - id: bundle.temperature_sensors
+      role: temperature_sensor
+      cardinality: exactly_three
+      requiredCapabilities:
+        - temperature_measurement
+      purpose: Erfasst Temperatur an mehreren Stellen, zum Beispiel Innenraum, Aussenseite/Kuehlkoerper und Umgebung.
+    - id: bundle.inner_fan
+      role: inner_air_circulation_fan
+      cardinality: exactly_one
+      requiredCapabilities:
+        - air_movement
+        - speed_or_switch_control
+      purpose: Verteilt kalte oder warme Luft im Innenraum und reduziert lokale Temperaturunterschiede.
+    - id: bundle.outer_fan
+      role: outer_heat_sink_fan
+      cardinality: exactly_one
+      requiredCapabilities:
+        - air_movement
+        - speed_or_switch_control
+      purpose: Fuehrt Waerme am aeusseren Kuehlkoerper ab und schuetzt Peltier-Element und Gehaeuse.
+    - id: bundle.peltier_element
+      role: thermal_transfer_actuator
+      cardinality: exactly_one
+      requiredCapabilities:
+        - active_heat_transfer
+        - heating_or_cooling_by_polarity_or_mounting
+      purpose: Verschiebt Waerme aktiv zwischen Innen- und Aussenseite.
+    - id: bundle.power_stages
+      role: actuator_power_stage
+      cardinality: one_per_power_actuator
+      requiredCapabilities:
+        - load_switching
+        - actuator_power_supply_interface
+      purpose: Trennt Mikrocontroller-Signale von Luefter- und Peltier-Leistung.
+    - id: bundle.thermal_enclosure
+      role: climate_enclosure
+      cardinality: exactly_one
+      requiredCapabilities:
+        - enclosed_air_volume
+        - thermal_boundary
+        - mechanical_mounting
+      purpose: Bildet die thermische Strecke, in der Temperatur erzeugt, verteilt und gemessen wird.
+  optionalCapabilityBundles:
+    - id: bundle.connected_climate_node
+      role: connected_climate_node
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - wireless_network
+        - local_webserver
+        - status_monitoring
+        - parameter_adjustment
+      purpose: Macht Temperaturen, Sollwert und Aktorzustaende per Handy oder PC sichtbar und einstellbar.
+    - id: bundle.temperature_logging
+      role: temperature_logging
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - timestamped_data
+        - trend_visualization
+        - actuator_runtime_logging
+      purpose: Zeigt Temperaturverlaeufe, Schaltzyklen und Regelverhalten.
+    - id: bundle.bidirectional_peltier_driver
+      role: bidirectional_thermal_driver
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - polarity_reversal
+        - high_current_switching
+      purpose: Ermoeglicht echten Heiz-/Kuehl-Umkehrbetrieb mit demselben Peltier-Element.
+  hardwareCatalogMapping: ESP32, ESP8266, Temperatursensoren, Peltier-Element, Luefter, MOSFETs, Relais, H-Bruecken, Netzteile, Kuehlkoerper und 3D-Druck-Gehaeuse werden spaeter als konkrete Artefakte auf diese Rollen gemappt.
+implementationBoundary:
+  localRealization:
+    principle: Mehrere Temperatursensoren, Luefter, Peltier-Taktung, Sicherheitsgrenzen und lokale Regelung koennen ohne WLAN umgesetzt werden, wenn I/O, Sensorinterfaces und Leistungsansteuerung passen.
+    possibleHardwareClass:
+      - Arduino-kompatible Mikrocontrollerklasse fuer lokale Klimabox-Regelung
+      - ESP-Klasse fuer lokale oder vernetzte Klimabox-Regelung
+    requiredCapabilities:
+      - programmable_microcontroller
+      - multi_sensor_input
+      - gpio_output
+      - timing
+      - safety_limits
+  connectedRealization:
+    trigger: Sobald Weboberflaeche, Remote Parameter, Benachrichtigung oder externe Auswertung Teil der Variante werden.
+    requiredCapabilities:
+      - wireless_network
+      - local_webserver_or_event_notification
+    catalogImplication: Dann braucht der Steuerknoten selbst Netzwerkfaehigkeit oder ein Gateway.
+learningIntent:
+  - Eine thermische Strecke mit Sensoren, Aktoren, Leistung und Mechanik als Gesamtsystem verstehen.
+  - Mehrere Temperaturmesspunkte nutzen, um Innenraum, Kuehlkoerper/Aussenseite und Umgebung zu unterscheiden.
+  - Ein/Aus-Steuerung mit Schwellwerten ausprobieren und deren Grenzen erleben.
+  - Luefterregelung als erste kontinuierlichere Stellgroesse verstehen.
+  - Peltier-Element als aktiven Waermetransport einsetzen, wenn reine Luftbewegung nicht ausreicht.
+  - Traege Systeme und lange Schaltzyklen als Unterschied zu schneller PWM verstehen.
+  - Sicherheitsgrenzen fuer Thermoplastik, Peltier-Element, Netzteil und unbeaufsichtigten Betrieb definieren.
+didacticFlow:
+  - Anwendung und Systemgrenze der Klimabox festlegen: Innenraum, Umgebung, Kuehlkoerper, Aktoren und Sensoren.
+  - Gehaeuse bauen oder 3D-drucken und thermische Risiken durch Material und Montage besprechen.
+  - Drei Temperatursensoren positionieren und Messwerte erfassen.
+  - Innen- und Aussenluefter als Aktoren einzeln schalten.
+  - Peltier-Element mit geeigneter Leistungsstufe in Betrieb nehmen.
+  - Einfache Schwellwertsteuerung fuer Luefter ausprobieren.
+  - Beobachten, dass Temperatur traege reagiert und Schaltflattern oder Ueberschwingen entstehen kann.
+  - Regelbereich fuer Luefter einfuehren: untere Grenze 0 Prozent, obere Grenze 100 Prozent.
+  - Pruefen, wann Luefter alleine nicht ausreichen, weil Innen-, Aussen- oder Umgebungstemperatur zu weit auseinander liegen.
+  - Peltier-Element als zusaetzliche Stellgroesse zuschalten.
+  - Lange Ein/Aus-Zyklen fuer Peltier testen, statt schnelle PWM als Standard anzunehmen.
+  - Temperaturverlauf und Aktorlaufzeiten loggen und auswerten.
+  - Abschlusskapitel: Steuerung, Regelung, Strecke, Stellgroesse, Messort, Traegheit, Sicherheit und Materialgrenzen einordnen.
+coreInsights:
+  - Temperaturregelung ist traege und raeumlich verteilt; ein einzelner Messwert beschreibt die Box nur begrenzt.
+  - Luefter bewegen Waerme, erzeugen aber keine aktive Temperaturdifferenz wie ein Peltier-Element.
+  - Ein Peltier-Element verschiebt Waerme und braucht deshalb zwingend thermische Ableitung auf der Gegenseite.
+  - Schwellwertsteuerung ist einfach, kann aber zu Flattern, Ueberschwingen und schlechten Temperaturverlaeufen fuehren.
+  - Bei traegen Systemen sind lange Stellzyklen oft sinnvoller als schnelle PWM.
+  - Mechanik und Material sind Teil der Regelstrecke; ein 3D-gedrucktes Gehaeuse setzt Temperaturgrenzen.
+  - Regelung ist nicht nur Code, sondern eine Entscheidung aus Sensorplatzierung, Aktorleistung, Sicherheit und Zielverhalten.
+controlConcepts:
+  initialControl:
+    title: Schwellwert-Steuerung
+    behavior:
+      - "Temperatur ueber Sollbereich: Kuehlung oder Luefter an."
+      - "Temperatur im Sollbereich: Aktoren aus oder reduziert."
+      - "Temperatur unter Sollbereich: Heizen oder Umkehrbetrieb pruefen."
+    knownProblems:
+      - Schaltflattern um Grenzwerte
+      - Ueberschwingen durch thermische Traegheit
+      - ungleichmaessige Temperatur im Innenraum
+      - Ueberhitzung am Kuehlkoerper oder am Gehaeuse
+  proportionalLikeControl:
+    title: Stellgrad aus Temperaturabweichung
+    behavior:
+      - Bei kleiner Abweichung niedrige Luefterleistung oder kurze Laufzeit.
+      - Bei grosser Abweichung hoehere Luefterleistung oder 100 Prozent.
+      - Peltier erst zuschalten, wenn Luftbewegung alleine nicht ausreicht.
+    purpose: Uebergang von hartem Ein/Aus zu einer regelungsnahen Stellgroesse.
+  slowCycleControl:
+    title: Langsame Taktung fuer traege Aktoren
+    behavior:
+      - Peltier-Element wird in langen Zeitfenstern ein- und ausgeschaltet.
+      - Beispiele: mehrere Minuten an, mehrere Minuten aus, je nach Strecke und Ziel.
+    purpose: Traegheit nutzen und unnötig schnelle Schaltzyklen vermeiden.
+failureCases:
+  sensorFailures:
+    - id: failure.sensor_disconnected
+      title: Temperatursensor nicht verbunden oder unplausibel
+      observation: Messwert fehlt, springt stark oder liegt ausserhalb erwarteter Grenzen.
+      mitigation:
+        - Peltier und Heizen/Kuehlen sperren.
+        - Fehlerzustand anzeigen.
+        - Plausibilitaetsbereich je Sensorrolle definieren.
+    - id: failure.sensor_wrong_position
+      title: Sensor sitzt an falscher Stelle
+      observation: Innenraumtemperatur wirkt stabil, aber reale Nutzung oder andere Sensoren zeigen Abweichungen.
+      mitigation:
+        - Sensorrollen und Einbaupositionen dokumentieren.
+        - mehrere Sensorwerte vergleichen.
+        - Regelung nicht blind auf einen Messpunkt stuetzen.
+  actuatorFailures:
+    - id: failure.outer_fan_failed
+      title: Aussenluefter oder Kuehlkoerperableitung faellt aus
+      observation: Kuehlkoerpertemperatur steigt trotz aktiver Kuehlung stark an.
+      mitigation:
+        - Peltier sofort abschalten.
+        - Alarm- oder Fehlerzustand setzen.
+        - maximale Kuehlkoerpertemperatur definieren.
+    - id: failure.inner_fan_failed
+      title: Innenluefter verteilt Luft nicht
+      observation: grosse Temperaturunterschiede zwischen Messpunkten oder langsame Reaktion im Innenraum.
+      mitigation:
+        - Luefterstatus ueberwachen, falls Rueckmeldung vorhanden.
+        - Peltierleistung begrenzen.
+        - Diagnose ueber Temperaturgradienten einfuehren.
+    - id: failure.peltier_overheating
+      title: Peltier-Element oder Gehaeuse wird zu heiss
+      observation: Aussen- oder Materialtemperatur ueberschreitet sichere Grenze.
+      mitigation:
+        - Peltier abschalten.
+        - Abkuehlzeit erzwingen.
+        - thermische Montage und Kuehlkoerper ueberarbeiten.
+safetyLimits:
+  - id: limit.max_enclosure_temperature
+    title: Maximale Innenraumtemperatur
+    rationale: Schuetzt Anwendung, Pflanzen, Teig, Elektronik oder Testobjekte.
+  - id: limit.max_heat_sink_temperature
+    title: Maximale Kuehlkoerper- oder Aussenseitentemperatur
+    rationale: Schuetzt Peltier-Element, Luefter, Gehaeuse und Umgebung.
+  - id: limit.max_thermoplastic_temperature
+    title: Maximale Materialtemperatur fuer 3D-Druck-Gehaeuse
+    rationale: Thermoplastik darf nicht weich werden oder sich verformen.
+  - id: limit.max_peltier_on_time
+    title: Maximale Peltier-Laufzeit pro Zyklus
+    rationale: Begrenzt thermische Belastung und Energieeintrag.
+  - id: limit.cooldown_after_peltier
+    title: Abkuehl- oder Ausgleichszeit nach Peltier-Betrieb
+    rationale: Gibt der thermischen Strecke Zeit zu reagieren und verhindert Ueberschwingen.
+  - id: limit.fail_safe_actuators_off
+    title: Im Fehlerfall leistungsstarke Aktoren aus
+    rationale: Bei unplausiblen Messwerten ist Abschalten sicherer als unkontrolliertes Heizen oder Kuehlen.
+monitoringAndData:
+  trackedValues:
+    - Innenraumtemperatur
+    - Kuehlkoerper- oder Aussenseitentemperatur
+    - Umgebungstemperatur
+    - Solltemperatur
+    - Luefterzustand oder Luefterstellgrad innen
+    - Luefterzustand oder Luefterstellgrad aussen
+    - Peltier-Zustand und Peltier-Laufzeit
+    - Fehler- und Sicherheitszustaende
+  views:
+    - Aktueller Zustand: heizt, kuehlt, stabil, wartet, Fehlerzustand.
+    - Temperaturverlauf der drei Sensoren.
+    - Aktorverlauf fuer Luefter und Peltier.
+    - Vergleich von Sollwert und Istwert.
+    - Diagnoseansicht fuer thermische Grenzen und Sensorplausibilitaet.
+  didacticPurpose:
+    - Verlauf macht Traegheit, Ueberschwingen und Stellwirkung sichtbar.
+    - Mehrere Sensoren zeigen, dass Messort und Regelort nicht identisch sein muessen.
+    - Aktorzeiten zeigen, wie viel Energie in das System eingebracht oder abgefuehrt wurde.
+variants:
+  - id: variant.threshold_climate_box
+    title: Klimabox mit Schwellwertsteuerung
+    notes: Einfachster Einstieg mit Ein/Aus-Logik fuer Luefter und Peltier.
+    capabilityRequirements:
+      roles:
+        - role: climate_control_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - multi_sensor_input
+            - gpio_output
+            - decision_logic
+            - safety_limits
+        - role: temperature_sensor
+          cardinality: exactly_three
+          requiredCapabilities:
+            - temperature_measurement
+        - role: fan_actuator
+          cardinality: exactly_two
+          requiredCapabilities:
+            - air_movement
+            - digital_switching
+        - role: thermal_transfer_actuator
+          cardinality: exactly_one
+          requiredCapabilities:
+            - active_heat_transfer
+        - role: actuator_power_stage
+          cardinality: one_per_power_actuator
+          requiredCapabilities:
+            - load_switching
+  - id: variant.web_observable_climate_box
+    title: Klimabox mit lokaler Weboberflaeche
+    notes: Temperaturen, Sollwert, Aktorstatus und Sicherheitsgrenzen per Handy oder PC sichtbar machen.
+    capabilityRequirements:
+      roles:
+        - role: connected_climate_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - wireless_network
+            - local_webserver
+            - status_monitoring
+            - parameter_adjustment
+        - role: climate_box_actuator_set
+          cardinality: exactly_one
+          requiredCapabilities:
+            - fan_control
+            - peltier_control
+            - safety_limits
+  - id: variant.logged_regulation_behavior
+    title: Regelverhalten loggen und auswerten
+    notes: Temperaturverlaeufe und Aktorzyklen sichtbar machen, um Regelparameter zu verbessern.
+    capabilityRequirements:
+      roles:
+        - role: temperature_logging
+          cardinality: exactly_one
+          requiredCapabilities:
+            - timestamped_data
+            - trend_visualization
+            - actuator_runtime_logging
+        - role: climate_control_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - multi_sensor_input
+            - decision_logic
+            - safety_limits
+  - id: variant.bidirectional_heating_cooling
+    title: Heiz- und Kuehlbetrieb mit Umkehrung
+    notes: Fortgeschrittene Variante fuer echtes Heizen und Kuehlen ueber Polaritaets- oder Systemumschaltung.
+    capabilityRequirements:
+      roles:
+        - role: bidirectional_thermal_driver
+          cardinality: exactly_one
+          requiredCapabilities:
+            - polarity_reversal
+            - high_current_switching
+            - safe_switching
+        - role: thermal_transfer_actuator
+          cardinality: exactly_one
+          requiredCapabilities:
+            - active_heat_transfer
+safetyAndBoundaries:
+  - Peltier-Elemente duerfen nicht ohne geeignete Waermeableitung betrieben werden.
+  - Leistungsaktoren duerfen nicht direkt aus Mikrocontroller-Pins versorgt werden.
+  - Netzteil, Leiterbahnen, Kabel und Treiber muessen zur Stromaufnahme passen.
+  - 3D-gedrucktes Thermoplastik setzt enge Temperatur- und Montagegrenzen.
+  - Luefterausfall kann Peltier, Gehaeuse oder Anwendung schaedigen.
+  - Kondensation kann bei Kuehlung zum elektrischen und mechanischen Problem werden.
+crossCuttingChapters:
+  - id: reusable_chapter.guided_code_walkthrough
+    title: Gefuehrter Code-Walkthrough mit Zeilenfokus
+    appliesWhen:
+      - Projekt fuehrt neuen Code ein oder verbindet Codezeilen mit beobachtbarer Hardwarewirkung.
+    requiredCapabilities:
+      - capability.guided_code_highlighting
+      - capability.code_step_explanation
+      - capability.parameter_experiment
+      - capability.hardware_effect_observation
+    chapterRole: Wiederkehrendes Unterkapitel fuer schrittweises Codeverstaendnis mit fokussierter Hervorhebung und kleinen Experimenten.
+    keyTradeoff: Geringe kognitive Last gegen langsamere, aber stabilere Einfuehrung in Code und Hardwarewirkung.  - id: reusable_chapter.embedded_webserver_basics
+    title: Embedded Webserver fuer Status und Bedienung
+    preconditions:
+      chapters:
+        - reusable_chapter.connectivity_foundations
+      capabilities:
+        - capability.wifi
+        - capability.network_configuration
+        - capability.local_network_service    appliesWhen:
+      - Projektvariante stellt Status, Messwerte, Parameter oder Bedienung direkt per lokalem Webserver bereit.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.local_network_service
+      - capability.embedded_webserver
+      - capability.web_ui_status_view
+      - capability.web_ui_control
+      - capability.http_endpoint
+    chapterRole: Wiederkehrendes Unterkapitel fuer lokale Weboberflaechen und einfache HTTP-Endpunkte auf dem Geraet.
+    keyTradeoff: Lokale Einfachheit gegen Sicherheit, Remote-Zugriff, parallele Nutzer und Backend-/App-Bedarf.  - id: reusable_chapter.connectivity_foundations
+    title: Connectivity-Grundlagen fuer WLAN, Zeit und Updates
+    appliesWhen:
+      - Projektvariante nutzt WLAN, lokalen Webserver, Uhrzeit aus dem Netzwerk, Backend, Push, Remote Monitoring oder OTA-/Update-Vorbereitung.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.network_configuration
+      - capability.network_time_sync
+      - capability.local_network_service
+      - capability.remote_update_preparation
+    chapterRole: Wiederkehrendes Unterkapitel fuer nutzbare Netzwerkstrukturen, nicht fuer eine tiefe WiFi-Stack-Implementierung.
+    keyTradeoff: Lokale Funktion gegen Netzwerkabhaengigkeit, Komfort, Updatefaehigkeit und Fehlerbehandlung.  - id: reusable_chapter.power_management_battery_operation
+    title: Power-Management bei Akku- oder Batteriebetrieb
+    appliesWhen:
+      - Projekt wird mit Akku, Batterie oder begrenzter Energieversorgung betrieben.
+      - Sensoren, Funkmodule, Anzeigen oder Aktoren muessen nicht dauerhaft aktiv sein.
+    requiredCapabilities:
+      - capability.energy_storage
+      - capability.battery_powered_operation
+      - capability.power_management
+      - capability.low_power_mode
+      - capability.energy_budget_estimation
+    chapterRole: Wiederkehrendes Unterkapitel zur Frage, wie lange das Geraet mit Akku sinnvoll betrieben werden kann.
+    keyTradeoff: Akkulaufzeit gegen Messintervall, Reaktionszeit, Funkhaeufigkeit und Komfort.
+completionInspiration:
+  didacticPurpose: Nach der Klimabox zeigen, dass Regelung, Sicherheit und Messortwahl auf viele technische und handwerkliche Anwendungen uebertragbar sind.
+  learnerReflection:
+    - Du kannst eine traege thermische Strecke beobachten.
+    - Du kannst mehrere Sensoren nutzen, um Systemzustaende besser einzuordnen.
+    - Du kannst Aktoren nicht nur schalten, sondern mit Sicherheitsgrenzen und Stellstrategien betreiben.
+  inspirationProjects:
+    - id: inspiration.dough_proofing_box
+      title: Gaerbox fuer Teig
+      summary: Temperatur wird so gefuehrt, dass Teig reproduzierbar gehen kann.
+      reusedCapabilities:
+        - temperature_measurement
+        - thermal_boundary
+        - fan_control
+        - safety_limits
+    - id: inspiration.seedling_climate_box
+      title: Anzuchtbox fuer Pflanzen
+      summary: Temperatur und Luftbewegung schaffen kontrollierte Bedingungen fuer Keimlinge.
+      reusedCapabilities:
+        - multi_sensor_input
+        - fan_control
+        - trend_visualization
+  nextCourseSuggestions:
+    - id: suggestion.iot_everyday_infrastructure
+      title: IoT im Alltag mit bestehender Infrastruktur
+      rationale: Nutzt etablierte Systeme wie Home Assistant, lokalen Server, Alexa-/Smart-Home-Anbindungen oder vorhandene Marktprodukte, um schnell alltagstaugliche Bedienung und Automatisierung zu erreichen.
+    - id: suggestion.smartphone_app_development
+      title: App-Entwicklung fuer Smartphones
+      rationale: Zeigt den anspruchsvolleren Weg zur eigenen Android- oder iOS-App inklusive Plattformhuerden, Build-/Deploy-Prozessen, Accounts, Freigabewegen und App-spezifischer Bedienlogik.
+    - id: suggestion.advanced_control
+      title: Regelung Advanced
+      rationale: Fuehrt von Schwellwerten und Stellgraden zu systematischer Parametrierung und besseren Regelstrategien.
+    - id: suggestion.iot_everyday
+      title: IoT im Alltag
+      rationale: Zeigt, wie Sollwerte, Verlaeufe und Alarme von unterwegs nutzbar werden.
+  progressionPaths:
+    - id: path.existing_infrastructure
+      title: Bestehende Infrastruktur nutzen
+      summary: Home Assistant, lokaler Server, Alexa-/Smart-Home-Anbindungen oder etablierte Marktprodukte nehmen viel Integrationsarbeit ab und machen schnelle Alltagsloesungen moeglich.
+      fit:
+        - Nutzer will schnell ein brauchbares Ergebnis.
+        - Nutzer moechte nicht sofort App Stores, Mobile-Builds oder Plattformfreigaben lernen.
+        - Bestehende Infrastruktur ist akzeptabel oder sogar gewuenscht.
+    - id: path.own_smartphone_app
+      title: Eigene Smartphone-App entwickeln
+      summary: Eigene App fuer Android oder iOS bietet maximale Kontrolle, bringt aber organisatorische und technische Huerden mit sich.
+      fit:
+        - Nutzer moechte eine eigene App statt bestehender Smart-Home-Oberflaechen.
+        - Nutzer ist bereit, Android/iOS-Toolchains, Accounts, Signierung, Deployment und Freigabeprozesse zu lernen.
+        - Das Projekt soll spaeter produktnaeher oder individueller wirken.
+      courseBridge: Wenn dir Home Assistant oder bestehende Infrastruktur nicht zusagt, ist App-Entwicklung fuer Smartphones der naechste Zusatzkurs.
+  salesStrategy:
+    decisionQuestion: Was interessiert dich als naechster Schritt?
+    singleCourseOptions:
+      - id: course.iot_everyday_infrastructure
+        title: IoT im Alltag mit bestehender Infrastruktur
+        fit: Du moechtest Home Assistant, lokalen Server, Alexa-/Smart-Home-Anbindungen oder vorhandene Marktprodukte nutzen.
+      - id: course.smartphone_app_development
+        title: App-Entwicklung fuer Smartphones
+        fit: Du moechtest eine eigene Android- oder iOS-App fuer deine IoT-Anwendungsfaelle entwickeln.
+    bundleOption:
+      id: product_offering.iot_everyday_app_bundle
+      title: IoT im Alltag + Smartphone-App Bundle
+      pricingLogic: Beide Kurse zusammen zu einem Sonderpreis gegenueber Einzelkauf.
+    pricingPlaceholders:
+      infrastructureCourseRegularPrice: TBD
+      smartphoneAppCourseRegularPrice: TBD
+      bundleSpecialPrice: TBD
+    rationale:
+      - Nutzer koennen nur den fuer sie passenden Weg kaufen.
+      - Das Bundle ist attraktiv, wenn beide Wege interessant sind.
+      - Preise bleiben Angebotsdaten und werden nicht hart in der Projektidee festgelegt.
+  salesBridge:
+    freeMessage: Du kannst jetzt eine reale Strecke beobachten und beeinflussen. Advanced-Regelung und IoT-Anbindung machen daraus ein robusteres Produkt.
+openQuestions:
+  - Welche drei Sensorpositionen sind fuer den Einstieg didaktisch am besten?
+  - Soll der erste Aufbau nur kuehlen oder auch heizen koennen?
+  - Soll der Umkehrbetrieb ueber Peltier-Polaritaet in die erste Verkaufseinheit oder als Fortgeschrittenenvariante?
+  - Welche Gehaeusematerialien und Maximaltemperaturen sollen im Hardware-/Mechanikkatalog hinterlegt werden?
+  - Soll die Peltier-Ansteuerung zuerst nur getaktet oder spaeter auch leistungsmoduliert betrachtet werden?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

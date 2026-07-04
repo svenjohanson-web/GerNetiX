@@ -1,0 +1,301 @@
+﻿schemaVersion: 1
+kind: learning_project_idea
+id: project_idea.actuator_output_basics
+slug: actuator-output-basics
+title: Aktorik-Schnupperkurs: Licht und Ton mit dem ESP steuern
+projectStatus: idea
+domain: embedded_iot
+summary: Niedrigschwelliger Einstieg in Mikrocontroller, GPIO, Systemgrenzen, PWM, Buzzer und erste Webserver-Steuerung.
+salesRole: Kostenloser Schnupperkurs zur Aktivierung und Vertrauensbildung.
+accessPolicy:
+  accessTier: free
+  grantModel:
+    principle: Effektiver Zugriff wird ueber SystemCapabilities berechnet; Account-Override gewinnt vor Plan vor Default.
+    references:
+      - architecture.permission_precedence
+  fullAccess:
+    requiredGrants:
+      - system_capability.learning_free_content
+    grantSources:
+      - plan.free
+      - plan.premium
+      - account_system_capability_override
+    grants:
+      - read_course_content
+      - build_local_project
+    rationale: Der Schnupperkurs soll Neugier erzeugen, Einstiegshuerden senken und Vertrauen in GerNetiX aufbauen.
+  previewAccess:
+    requiredGrants:
+      - system_capability.learning_project_preview
+    grantSources:
+      - plan.free
+      - plan.premium
+      - account_system_capability_override
+  monetizationRole: lead_magnet
+  upgradePath:
+    - paid_course_access
+    - premium_subscription
+  authorizationNotes:
+    - Kostenlos nutzbar, auch wenn spaetere Erweiterungen auf kostenpflichtige Kurse oder IDE-Funktionen verweisen duerfen.
+    - Hardware-Kauf oder Hardware-Kit ist optional und darf den freien Lernzugang nicht blockieren.
+targetAudience:
+  - Einsteiger mit Interesse an Embedded und IoT
+  - Lernende, die ein erstes sichtbares Ergebnis mit minimaler Hardware erreichen wollen
+hardwareLevel: minimal
+recommendedHardware:
+  - Hardware-Artefakt fuer programmable_microcontroller und gpio_output, spaeter aus dem Hardware-Katalog
+  - Artefakt fuer visible_digital_output, zum Beispiel Board-LED oder externe LED
+  - optional Artefakt fuer passive_acoustic_transducer
+  - optional Artefakt fuer active_acoustic_transducer als Vergleichsexperiment
+technicalRequirements:
+  modelingPrinciple: Anforderungen werden als benoetigte Faehigkeiten und Rollen beschrieben; konkrete Boards werden spaeter ueber den Hardware-Katalog zugeordnet.
+  requiredCapabilityBundles:
+    - id: bundle.basic_output_node
+      role: output_node
+      cardinality: exactly_one
+      requiredCapabilities:
+        - programmable_microcontroller
+        - gpio_output
+        - timing
+      purpose: Minimaler Knoten, der sichtbare oder hoerbare Ausgaben erzeugen kann.
+  optionalCapabilityBundles:
+    - id: bundle.pwm_output
+      role: pwm_capable_output_node
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - pwm_output
+      purpose: Ermoeglicht Dimmung, Tonfrequenz und spaeter Motor-Drehzahl.
+    - id: bundle.connected_output_node
+      role: connected_node
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - wireless_network
+        - local_webserver
+      purpose: Ermoeglicht Steuerung per Handy oder PC im lokalen Netzwerk.
+  artifactRoles:
+    - role: visual_output
+      cardinality: one_or_more
+      requiredCapabilities:
+        - visible_digital_output
+      examplesForCatalogMapping:
+        - Board-LED
+        - externe LED mit Vorwiderstand
+    - role: acoustic_output
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - passive_acoustic_transducer
+      examplesForCatalogMapping:
+        - passiver Piezo-Buzzer
+  hardwareCatalogMapping: ESP32, ESP8266, Arduino-kompatible Boards, LEDs und Buzzer sind spaetere Hardware-Artefakte, die diese Rollen und Faehigkeiten erfuellen koennen.
+implementationBoundary:
+  localRealization:
+    principle: Lokale GPIO-, PWM-, Timing- und Sensor/Aktor-Schritte duerfen nicht automatisch ein WLAN-faehiges Board voraussetzen.
+    possibleHardwareClass:
+      - Arduino-kompatible Mikrocontrollerklasse, wenn die benoetigten lokalen Capabilities erfuellt sind
+      - ESP-Klasse, wenn sie lokal verwendet wird
+    requiredCapabilities:
+      - programmable_microcontroller
+      - gpio_output
+      - pwm_output_optional
+  connectedRealization:
+    trigger: Sobald Bedienung per Handy, lokaler Webserver oder Netzwerkkommunikation Teil der Variante wird.
+    requiredCapabilities:
+      - wireless_network
+      - local_webserver
+    catalogImplication: Dann muss der Hardware-Katalog ein Artefakt mit Netzwerkfaehigkeit liefern, zum Beispiel ESP32- oder ESP8266-Klasse.
+learningIntent:
+  - Verstehen, dass ein Mikrocontroller aus Hardware und Software besteht.
+  - GPIO als Systemgrenze zwischen Software und physikalischer Wirkung verstehen.
+  - Ein/Aus, Frequenz und Tastverhaeltnis unterscheiden.
+  - CPU-Toggling gegen Hardware-PWM abgrenzen.
+  - Einen ersten lokalen Webserver als Einstieg in ein kleines IoT-System nutzen.
+didacticFlow:
+  - Mikrocontroller ohne Software macht nichts Zielgerichtetes.
+  - Pin als Grenze zwischen Software und Welt einfuehren.
+  - LED einschalten und blinken lassen.
+  - Blinkfrequenz erhoehen und Wahrnehmungsgrenzen beobachten.
+  - PWM zur LED-Dimmung einfuehren.
+  - Passiven Buzzer anschliessen und Frequenz hoerbar machen.
+  - Experiment aktiver vs passiver Buzzer durchfuehren.
+  - CPU-Last durch Software-Toggling zeigen.
+  - Hardware-PWM konfigurieren und CPU entlasten.
+  - Webserver bereitstellen und LED oder Ton per Handy steuern.
+coreInsights:
+  - Software setzt nur Signale; die angeschlossene Hardware bestimmt die physikalische Bedeutung.
+  - Frequenz und Tastverhaeltnis sind unterschiedliche Eigenschaften eines zeitlichen Signals.
+  - Peripherieeinheiten wie PWM uebernehmen zeitkritische Arbeit von der CPU.
+  - Ein einzelner ESP-Webserver ist ein greifbarer Einstieg in vernetzte Systeme.
+variants:
+  - id: variant.local_webserver_output_node
+    title: Lokaler Webserver steuert Ausgang
+    notes: Hauptvariante fuer den Schnupperkurs; konkrete Realisierung kommt aus dem Hardware-Katalog.
+    capabilityRequirements:
+      roles:
+        - role: connected_output_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - programmable_microcontroller
+            - gpio_output
+            - pwm_output
+            - wireless_network
+            - local_webserver
+        - role: visual_output
+          cardinality: one_or_more
+          requiredCapabilities:
+            - visible_digital_output
+  - id: variant.basic_gpio_pwm_node
+    title: GPIO/PWM ohne Netzwerk
+    notes: Optionale Vorstufe fuer reine Ausgangssteuerung ohne Connected-Anteil.
+    capabilityRequirements:
+      roles:
+        - role: output_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - programmable_microcontroller
+            - gpio_output
+            - pwm_output
+        - role: visual_output
+          cardinality: one_or_more
+          requiredCapabilities:
+            - visible_digital_output
+  - id: variant.buzzer_frequency_experiment
+    title: Frequenz hoerbar machen
+    notes: Buzzer-Variante fuer Frequenz, aktiver/passiver Buzzer und PWM-Verstaendnis.
+    capabilityRequirements:
+      roles:
+        - role: pwm_capable_output_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - programmable_microcontroller
+            - pwm_output
+        - role: acoustic_output
+          cardinality: one_or_more
+          requiredCapabilities:
+            - passive_acoustic_transducer
+futureTechnicalExtensions:
+  - id: extension.dc_motor
+    title: Gleichstrommotor statt LED oder Buzzer
+    requiredArtifactRoles:
+      - Gleichstrommotor
+      - Motorverstaerkerstufe, Motortreiber oder H-Bruecke
+      - externe Motorversorgung passend zum Motor
+    requiredCapabilities:
+      - pwm_output
+      - power_stage_control
+      - direction_control_optional
+    rationale: Ein Mikrocontroller-Pin liefert nur ein Signal; Leistung fuer Motoren muss ueber eine geeignete Treiberstufe bereitgestellt werden.
+  - id: extension.h_bridge_direction_control
+    title: H-Bruecke fuer Drehrichtungswechsel
+    requiredArtifactRoles:
+      - Gleichstrommotor
+      - H-Bruecken-Treiber
+      - externe Motorversorgung
+    requiredCapabilities:
+      - pwm_output
+      - direction_control
+      - safe_switching
+    rationale: Vorwaerts/rueckwaerts ist eine andere technische Eigenschaft als nur ein/aus oder PWM-Drehzahl.
+followUpIdeas:
+  - Motor und H-Bruecke als Advanced-Aktorik.
+  - Servo als Zwischenstufe zwischen LED/Buzzer und DC-Motor.
+  - Hardware-Kit spaeter als geprueftes Starter-Kit anbieten.
+crossCuttingChapters:
+  - id: reusable_chapter.guided_code_walkthrough
+    title: Gefuehrter Code-Walkthrough mit Zeilenfokus
+    appliesWhen:
+      - Projekt fuehrt neuen Code ein oder verbindet Codezeilen mit beobachtbarer Hardwarewirkung.
+    requiredCapabilities:
+      - capability.guided_code_highlighting
+      - capability.code_step_explanation
+      - capability.parameter_experiment
+      - capability.hardware_effect_observation
+    chapterRole: Wiederkehrendes Unterkapitel fuer schrittweises Codeverstaendnis mit fokussierter Hervorhebung und kleinen Experimenten.
+    keyTradeoff: Geringe kognitive Last gegen langsamere, aber stabilere Einfuehrung in Code und Hardwarewirkung.  - id: reusable_chapter.embedded_webserver_basics
+    title: Embedded Webserver fuer Status und Bedienung
+    preconditions:
+      chapters:
+        - reusable_chapter.connectivity_foundations
+      capabilities:
+        - capability.wifi
+        - capability.network_configuration
+        - capability.local_network_service    appliesWhen:
+      - Projektvariante stellt Status, Messwerte, Parameter oder Bedienung direkt per lokalem Webserver bereit.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.local_network_service
+      - capability.embedded_webserver
+      - capability.web_ui_status_view
+      - capability.web_ui_control
+      - capability.http_endpoint
+    chapterRole: Wiederkehrendes Unterkapitel fuer lokale Weboberflaechen und einfache HTTP-Endpunkte auf dem Geraet.
+    keyTradeoff: Lokale Einfachheit gegen Sicherheit, Remote-Zugriff, parallele Nutzer und Backend-/App-Bedarf.  - id: reusable_chapter.connectivity_foundations
+    title: Connectivity-Grundlagen fuer WLAN, Zeit und Updates
+    appliesWhen:
+      - Projektvariante nutzt WLAN, lokalen Webserver, Uhrzeit aus dem Netzwerk, Backend, Push, Remote Monitoring oder OTA-/Update-Vorbereitung.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.network_configuration
+      - capability.network_time_sync
+      - capability.local_network_service
+      - capability.remote_update_preparation
+    chapterRole: Wiederkehrendes Unterkapitel fuer nutzbare Netzwerkstrukturen, nicht fuer eine tiefe WiFi-Stack-Implementierung.
+    keyTradeoff: Lokale Funktion gegen Netzwerkabhaengigkeit, Komfort, Updatefaehigkeit und Fehlerbehandlung.  - id: reusable_chapter.power_management_battery_operation
+    title: Power-Management bei Akku- oder Batteriebetrieb
+    appliesWhen:
+      - Projekt wird mit Akku, Batterie oder begrenzter Energieversorgung betrieben.
+      - Sensoren, Funkmodule, Anzeigen oder Aktoren muessen nicht dauerhaft aktiv sein.
+    requiredCapabilities:
+      - capability.energy_storage
+      - capability.battery_powered_operation
+      - capability.power_management
+      - capability.low_power_mode
+      - capability.energy_budget_estimation
+    chapterRole: Wiederkehrendes Unterkapitel zur Frage, wie lange das Geraet mit Akku sinnvoll betrieben werden kann.
+    keyTradeoff: Akkulaufzeit gegen Messintervall, Reaktionszeit, Funkhaeufigkeit und Komfort.
+completionInspiration:
+  didacticPurpose: Am Ende des Schnupperkurses zeigen, dass LED, Buzzer, PWM und lokaler Webserver keine Spielerei bleiben, sondern die technische Basis fuer reale IoT-Projekte bilden.
+  learnerReflection:
+    - Du kannst jetzt Mikrocontroller-Ausgaenge schalten.
+    - Du verstehst Frequenz, Tastverhaeltnis und PWM als Grundlage fuer viele Aktoren.
+    - Du hast gesehen, wie ein lokaler Webserver ein Geraet per Handy bedienbar macht.
+  inspirationProjects:
+    - id: inspiration.room_status_light
+      title: Statuslicht fuer Zimmer, Werkstatt oder Maschine
+      summary: Ein Geraet zeigt lokal per LED-Farbe oder Blinkmuster einen Zustand an.
+      reusedCapabilities:
+        - gpio_output
+        - pwm_output
+        - local_webserver_optional
+    - id: inspiration.simple_alarm_buzzer
+      title: Einfacher Signalgeber oder Alarm
+      summary: Ein Buzzer meldet Ereignisse, Grenzwerte oder Bedienfeedback.
+      reusedCapabilities:
+        - pwm_output
+        - passive_acoustic_transducer
+  nextCourseSuggestions:
+    - id: suggestion.embedded_advanced
+      title: Embedded Advanced
+      rationale: Fuehrt von einfachen Ausgaengen zu Sensorik, Aktorik, Fehlerfaellen und kleinen Systemen.
+    - id: suggestion.iot_basics
+      title: IoT Basics
+      rationale: Vertieft lokale Webserver, Netzwerkfaehigkeit und Bedienung ueber Handy oder PC.
+  salesBridge:
+    freeMessage: Du hast die Grundlagen gesehen. Wenn du echte Sensoren, Aktoren und kleine Systeme bauen willst, ist der naechste Kurs der logische Schritt.
+openQuestions:
+  - Soll der kostenlose Kurs nur LED und Buzzer enthalten oder bereits einen Servo optional einfuehren?
+  - Welche Board-Empfehlung soll fuer Anfaenger fuehrend sein?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

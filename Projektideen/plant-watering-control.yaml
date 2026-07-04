@@ -1,0 +1,534 @@
+﻿schemaVersion: 1
+kind: learning_project_idea
+id: project_idea.plant_watering_control
+slug: plant-watering-control
+title: Pflanzenbewaesserung: Sensorik trifft Aktorik
+projectStatus: idea
+domain: embedded_iot_control
+summary: Technologisches Integrationsprojekt fuer Bodenfeuchtesensor, Pumpenansteuerung und erste Steuerungs-/Regelungsentscheidungen.
+salesRole: Premium-/Advanced-Projekt, das Sensorik und Aktorik zu einem nutzbaren System verbindet.
+accessPolicy:
+  accessTier: paid_course_or_subscription
+  courseAccessTerm:
+    standardDuration: P1Y
+    meaning: Kurskauf gewaehrt ein Jahr Zugriff auf die Lernplattform und die freigeschalteten Kursinhalte.
+    notAOneTimeDocumentDelivery: true
+    downloadableMaterials:
+      mayExist: true
+      role: Ergaenzende Materialien wie PDF koennen bereitgestellt werden, ersetzen aber nicht die Plattformleistung.
+    governedBy:
+      - BR-COURSE-ACCESS-001
+      - architecture.permission_precedence
+    requiredGrant:
+      - system_capability.learning_one_year_course_access
+    accessDecision: Effektiver Zugriff wird aus Kurskauf, Plan, Grants und Account-Overrides berechnet.
+    retentionIntent: Der Zugriffzeitraum dient auch dazu, Nutzer mit neuen passenden Projektinspirationen, Erweiterungen und Folgeangeboten zurueckzuholen.
+    noDeliveryPromise:
+      rule: BR-COURSE-ACCESS-002
+      summary: Neue Projekte oder Erweiterungen koennen im Zugriffzeitraum erscheinen, sind aber nicht als garantierte Liefermenge oder fester Veroeffentlichungsrhythmus versprochen.
+  grantModel:
+    principle: Effektiver Zugriff wird ueber SystemCapabilities berechnet; Account-Override gewinnt vor Plan vor Default.
+    references:
+      - architecture.permission_precedence
+  fullAccess:
+    requiredGrants:
+      - system_capability.learning_paid_course_content
+      - system_capability.learning_project_assets
+    grantSources:
+      - course_purchase_grant
+      - plan.premium
+      - account_system_capability_override
+    grants:
+      - read_course_content
+      - build_local_project
+      - access_safety_and_failure_lessons
+  connectedExtensions:
+    requiredGrants:
+      - system_capability.learning_connected_extensions
+    grantSources:
+      - plan.premium
+      - account_system_capability_override
+  previewAccess:
+    requiredGrants:
+      - system_capability.learning_project_preview
+    grantSources:
+      - plan.free
+      - plan.premium
+      - account_system_capability_override
+    rationale: Der Nutzen und die Projektidee duerfen sichtbar sein; vollstaendige Sicherheits-, Fehlerfall- und Regelungsinhalte sind Teil des bezahlten Angebots.
+  monetizationRole: premium_learning_project
+  upgradePath:
+    - purchase_control_course
+    - subscribe_premium
+  authorizationNotes:
+    - Wasser/Elektronik-Sicherheitsinhalte sollten nicht kuenstlich versteckt werden, aber die gefuehrte Umsetzung bleibt zugriffsgesteuert.
+targetAudience:
+  - Lernende nach Aktorik-Schnupperkurs und Sensorik-Datenlogger
+  - Nutzer, die einfache Steuerungen mit Sensorwerten und Aktoren verstehen wollen
+recommendedHardware:
+  - Artefakt fuer control_node
+  - Artefakt fuer moisture_sensor
+  - Artefakt fuer water_actuator
+  - Artefakt fuer actuator_power_stage
+  - Artefakt fuer actuator_power_supply_interface
+  - Wasserbehaelter, Schlaeuche und Pflanz-/Testaufbau als mechanische Umgebung
+technicalRequirements:
+  modelingPrinciple: Die Pflanzenbewaesserung fordert Rollen und Faehigkeiten fuer Messung, Aktorik, Leistung, Sicherheit und optional Vernetzung; konkrete Hardware wird erst im Hardware-Katalog ausgewaehlt.
+  requiredCapabilityBundles:
+    - id: bundle.control_node
+      role: control_node
+      cardinality: exactly_one
+      requiredCapabilities:
+        - programmable_microcontroller
+        - decision_logic
+        - gpio_output
+        - sensor_input
+      purpose: Liest Feuchtewerte, entscheidet ueber Bewaesserung und steuert den Aktor an.
+    - id: bundle.moisture_sensor
+      role: moisture_sensor
+      cardinality: one_or_more
+      requiredCapabilities:
+        - soil_moisture_measurement
+      purpose: Liefert den Feuchtewert der Erde als Grundlage der Entscheidung.
+    - id: bundle.water_actuator
+      role: water_actuator
+      cardinality: one_or_more
+      requiredCapabilities:
+        - water_transport
+        - digital_switching
+      purpose: Transportiert Wasser in den Pflanzbereich.
+    - id: bundle.power_stage
+      role: actuator_power_stage
+      cardinality: one_per_water_actuator
+      requiredCapabilities:
+        - load_switching
+        - actuator_power_supply_interface
+      purpose: Trennt Mikrocontroller-Signal von Pumpenleistung.
+  optionalCapabilityBundles:
+    - id: bundle.connected_control_node
+      role: connected_control_node
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - wireless_network
+        - local_webserver
+      purpose: Macht Zustand und manuelle Bedienung lokal per Handy oder PC sichtbar.
+    - id: bundle.monitoring_storage
+      role: monitoring_storage
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - timestamped_data
+        - trend_visualization
+        - runtime_accumulation
+      purpose: Speichert Feuchteverlauf, Pumpenlaufzeit und Bewaesserungsereignisse.
+    - id: bundle.water_level_sensor
+      role: water_level_sensor
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - water_level_measurement
+      purpose: Erlaubt Tankueberwachung und Trockenlaufschutz.
+    - id: bundle.supervision_backend
+      role: supervision_backend
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - remote_monitoring
+        - centralized_rules
+        - multi_node_management
+        - alerting
+      purpose: Ueberwacht mehrere Pflanzenknoten zentral.
+  hardwareCatalogMapping: ESP32, ESP8266, Bodenfeuchtesensor, Pumpe, MOSFET, Relais, Netzteil, Wasserstandssensor und Server werden spaeter als Hardware- oder Infrastruktur-Artefakte auf diese Rollen gemappt.
+implementationBoundary:
+  localRealization:
+    principle: Sensorwert lesen, Pumpe schalten, Hysterese, Schutzzeiten und Sicherheitsgrenzen koennen lokal ohne WLAN realisiert werden.
+    possibleHardwareClass:
+      - Arduino-kompatible Mikrocontrollerklasse fuer lokale Bewaesserungssteuerung
+      - ESP-Klasse fuer lokale oder vernetzte Bewaesserungssteuerung
+    requiredCapabilities:
+      - programmable_microcontroller
+      - sensor_input
+      - gpio_output
+      - decision_logic
+      - safety_limits
+  connectedRealization:
+    trigger: Sobald Webansicht, Remote Monitoring, mehrere Knoten oder Backend-Regeln Teil der Variante werden.
+    requiredCapabilities:
+      - wireless_network
+      - local_webserver_or_remote_monitoring_client
+    catalogImplication: Dann muss mindestens der verbundene Knoten oder ein Gateway Netzwerkfaehigkeit besitzen.
+learningIntent:
+  - Sensorik und Aktorik in einem geschlossenen technischen Ablauf verbinden.
+  - Einen Sensorwert als Entscheidungsgrundlage fuer einen Aktor verwenden.
+  - Harte Kopplung zwischen Messwert und Pumpensteuerung als erste einfache Steuerung verstehen.
+  - Grenzen einfacher Ein/Aus-Steuerung erkennen.
+  - Nachlauf, Schaltflattern und Grenzwertprobleme als Motivation fuer bessere Steuerungslogik erleben.
+  - Fehlerfaelle erkennen und Schutzgrenzen definieren, damit ein technischer Defekt nicht zu Wasserschaden fuehrt.
+  - Betriebsdaten sichtbar machen: Feuchteverlauf, Pumpenlaufzeit, Wasserstand und Nachfuellereignisse.
+didacticFlow:
+  - Bodenfeuchtesensor auslesen und Rohwert interpretieren.
+  - Pumpe als Aktor ueber digitale Ansteuerung ein- und ausschalten.
+  - Sensorwert und Pumpenzustand direkt koppeln.
+  - "Grenzwert definieren: Wenn Feuchte zu niedrig ist, Pumpe einschalten."
+  - Pumpe ausschalten, wenn Feuchte hoch genug ist.
+  - Beobachten, dass Wasser nachlaeuft und Messwerte verzoegert reagieren.
+  - Problem erleben: Pumpe kann bei hartem Grenzwert staendig ein- und ausschalten.
+  - Einfache Schutzmassnahmen sammeln: Mindestlaufzeit, Pause, Hysterese, Maximaldauer.
+  - Fehlerfaelle betrachten: Sensor defekt, Sensor falsch gesteckt, unrealistische Messwerte, leerer Tank, blockierte Pumpe.
+  - Begrenzungen einfuehren: maximale Pumpenlaufzeit, maximales Wasservolumen pro Zyklus und Sperrzeit nach Bewaesserung.
+  - "Waesserungsverlauf bereitstellen: Feuchte ueber Zeit, Pumpenlaufzeit, Wasserstand und Nachfuellmenge."
+  - Auswerten, ob die Bewaesserung plausibel wirkt oder ob ein Fehlerfall wahrscheinlich ist.
+  - Abschlusskapitel: Steuerung, Regelung, Strecke, Sensor, Aktor und Systemgrenzen einordnen.
+coreInsights:
+  - Sensorwerte koennen Aktoren direkt beeinflussen, aber direkte Kopplung ist oft zu sprunghaft.
+  - Eine Pumpe, Erde und Wasser bilden eine traege Strecke mit Nachlauf.
+  - Ein einzelner Grenzwert ist leicht verstaendlich, aber technisch nicht immer robust.
+  - Erste Steuerungslogik entsteht, sobald ein Messwert eine Aktion ausloest.
+  - Bessere Regelungen entstehen aus beobachteten Problemen wie Flattern, Verzoegerung und Ueberwaesserung.
+  - Fehlerfaelle muessen nicht perfekt geloest werden, aber sie muessen erkannt oder begrenzt werden.
+  - Ein technisches System braucht Schadensgrenzen, besonders wenn Wasser, Strom und unbeaufsichtigter Betrieb zusammenkommen.
+  - Laufzeit- und Verlaufsdaten helfen, das Verhalten der Strecke zu verstehen und spaeter bessere Regeln abzuleiten.
+controlConcepts:
+  initialControl:
+    title: Harte Ein/Aus-Steuerung
+    behavior:
+      - "Feuchtigkeit unter Grenzwert: Pumpe an."
+      - "Feuchtigkeit ueber Grenzwert: Pumpe aus."
+    purpose: Einfachster Lernerfolg fuer Kopplung von Sensorik und Aktorik.
+    knownProblems:
+      - Schaltflattern um den Grenzwert
+      - Nachlauf durch Wassertransport und Bodentraegheit
+      - moegliche Ueberwaesserung
+      - Pumpenverschleiss durch haeufiges Schalten
+  possibleImprovements:
+    - Hysterese mit Einschalt- und Ausschaltgrenze
+    - Mindestlaufzeit fuer die Pumpe
+    - Sperrzeit nach Pumpenlauf
+    - Maximaldauer als Trockenlaufschutz oder Sicherheit
+    - Mittelwertbildung oder Filterung des Sensorsignals
+    - spaeter echte Regelungsbetrachtung mit Strecke und Zeitverhalten
+failureCases:
+  sensorFailures:
+    - id: failure.sensor_disconnected
+      title: Sensor nicht verbunden oder Kontaktproblem
+      observation: Messwert bleibt unplausibel konstant, springt stark oder liegt ausserhalb des erwarteten Bereichs.
+      mitigation:
+        - Plausibilitaetsgrenzen fuer Rohwerte definieren.
+        - Bei unplausiblem Wert Pumpe nicht automatisch einschalten.
+        - Fehlerzustand sichtbar machen.
+    - id: failure.sensor_wrong_position
+      title: Sensor steckt nicht richtig in der Erde
+      observation: Sensor misst Luft, trockene Oberflaeche oder falsche Pflanzzone statt relevante Bodenfeuchte.
+      mitigation:
+        - Einbauhinweise und Kalibrierung als Teil des Projekts behandeln.
+        - Messwertverlauf beobachten statt Einzelwert blind vertrauen.
+        - Warnung bei unrealistisch schneller oder ausbleibender Feuchteaenderung.
+    - id: failure.sensor_defective
+      title: Sensor defekt oder verschlissen
+      observation: Werte aendern sich trotz Bewaesserung nicht plausibel oder liegen dauerhaft am Anschlag.
+      mitigation:
+        - Sensorwerte gegen erwartete Reaktion nach Pumpenlauf pruefen.
+        - Automatik deaktivieren, wenn mehrere Zyklen keine plausible Reaktion zeigen.
+        - Diagnosezustand und manuelle Pruefung vorsehen.
+  actuatorFailures:
+    - id: failure.pump_no_water
+      title: Tank leer oder Pumpe laeuft trocken
+      observation: Pumpe laeuft, aber Feuchtigkeit steigt nicht.
+      mitigation:
+        - Maximale Pumpenlaufzeit begrenzen.
+        - Wasserstand erfassen oder Tankleerstand als offene Erweiterung markieren.
+        - Nach mehreren erfolglosen Laeufen Automatik sperren.
+    - id: failure.pump_stuck_on
+      title: Pumpe bleibt an oder Schaltelement haengt
+      observation: Pumpenzustand passt nicht zur Steuerentscheidung oder Wasser laeuft weiter.
+      mitigation:
+        - Hardwareseitige Begrenzung und sichere Treiberstufe diskutieren.
+        - Softwareseitig maximale Laufzeit und Alarmzustand definieren.
+        - Spaeter Rueckmeldung ueber Stromaufnahme oder Durchfluss als Variante betrachten.
+safetyLimits:
+  - id: limit.max_pump_runtime
+    title: Maximale Pumpenlaufzeit pro Zyklus
+    rationale: Begrenzt die Wassermenge, falls Sensorwert oder Bodenreaktion nicht plausibel ist.
+  - id: limit.max_daily_runtime
+    title: Maximale Pumpenlaufzeit pro Tag
+    rationale: Begrenzt Gesamtrisiko bei unbeaufsichtigtem Betrieb.
+  - id: limit.cooldown_after_watering
+    title: Sperrzeit nach Bewaesserung
+    rationale: Gibt Wasser und Erde Zeit zu reagieren und verhindert schnelles Nachschalten.
+  - id: limit.max_volume_per_cycle
+    title: Maximales Wasservolumen pro Zyklus
+    rationale: Macht aus Laufzeit eine abschaetzbare Wassermenge, wenn Pumpenfoerdermenge bekannt oder kalibriert ist.
+  - id: limit.fail_closed
+    title: Im Fehlerfall Pumpe aus
+    rationale: Bei unplausiblen Sensorwerten ist Nicht-Bewaessern meist sicherer als unkontrolliertes Pumpen.
+monitoringAndData:
+  trackedValues:
+    - Bodenfeuchte als Rohwert und interpretierter Feuchtewert
+    - Pumpenzustand
+    - Pumpenlaufzeit pro Zyklus
+    - aufsummierte Pumpenlaufzeit pro Tag
+    - geschaetztes Wasservolumen pro Zyklus
+    - Wasserstand oder Tankstatus, falls Sensor vorhanden
+    - Nachfuellereignisse und Nachfuellmenge, falls manuell erfasst
+  views:
+    - "Aktueller Zustand: trocken, ausreichend feucht, bewaessert gerade, Fehlerzustand."
+    - Feuchteverlauf ueber Zeit.
+    - Pumpenlaufzeiten und Bewaesserungsereignisse.
+    - Wasserverbrauch beziehungsweise geschaetzte Foerdermenge.
+    - Diagnoseansicht fuer unplausible Sensor-/Aktorreaktionen.
+  didacticPurpose:
+    - Aus einem einfachen Schwellwertsystem wird ein beobachtbares technisches System.
+    - Der Verlauf zeigt, ob die Steuerlogik zur realen Strecke passt.
+    - Monitoring liefert die Grundlage fuer spaetere Regelungsverbesserungen.
+variants:
+  - id: variant.single_node_direct_control
+    title: Ein Steuerknoten liest Sensor und schaltet Pumpe direkt
+    notes: Hauptvariante fuer den ersten einfachen Steuerungserfolg.
+    capabilityRequirements:
+      roles:
+        - role: control_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - programmable_microcontroller
+            - sensor_input
+            - decision_logic
+            - gpio_output
+            - safety_limits
+        - role: moisture_sensor
+          cardinality: one_or_more
+          requiredCapabilities:
+            - soil_moisture_measurement
+        - role: water_actuator
+          cardinality: one_or_more
+          requiredCapabilities:
+            - water_transport
+        - role: actuator_power_stage
+          cardinality: one_per_water_actuator
+          requiredCapabilities:
+            - load_switching
+            - actuator_power_supply_interface
+  - id: variant.web_observable_control
+    title: Lokale Webansicht fuer Feuchte und Pumpenzustand
+    notes: Status und manuelle Bedienung per Handy sichtbar machen.
+    capabilityRequirements:
+      roles:
+        - role: connected_control_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - wireless_network
+            - local_webserver
+            - sensor_input
+            - gpio_output
+            - manual_override
+            - status_monitoring
+        - role: moisture_sensor
+          cardinality: one_or_more
+          requiredCapabilities:
+            - soil_moisture_measurement
+        - role: water_actuator_with_power_stage
+          cardinality: one_or_more
+          requiredCapabilities:
+            - water_transport
+            - load_switching
+  - id: variant.logged_control_behavior
+    title: Feuchte- und Pumpenverlauf loggen
+    notes: Verbindung zum Datenlogger; Nachlauf und Schaltverhalten sichtbar machen.
+    capabilityRequirements:
+      roles:
+        - role: control_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - sensor_input
+            - gpio_output
+            - runtime_accumulation
+            - timestamped_data
+        - role: monitoring_storage
+          cardinality: one_or_more
+          requiredCapabilities:
+            - trend_visualization
+        - role: optional_water_level_sensor
+          cardinality: zero_or_one
+          requiredCapabilities:
+            - water_level_measurement
+  - id: variant.backend_supervised_watering
+    title: Backend ueberwacht mehrere Pflanzenknoten
+    notes: Spaetere Connected-Variante mit zentraler Beobachtung und Regeln.
+    capabilityRequirements:
+      roles:
+        - role: connected_control_node
+          cardinality: one_or_more
+          requiredCapabilities:
+            - wireless_network
+            - remote_monitoring_client
+            - sensor_input
+            - gpio_output
+        - role: supervision_backend
+          cardinality: exactly_one
+          requiredCapabilities:
+            - remote_monitoring
+            - centralized_rules
+            - multi_node_management
+            - alerting
+        - role: moisture_sensor
+          cardinality: one_per_connected_control_node
+          requiredCapabilities:
+            - soil_moisture_measurement
+        - role: water_actuator_with_power_stage
+          cardinality: one_or_more
+          requiredCapabilities:
+            - water_transport
+            - load_switching
+safetyAndBoundaries:
+  - Wasser und Elektronik muessen mechanisch und elektrisch getrennt betrachtet werden.
+  - Pumpen duerfen nicht direkt aus einem Mikrocontroller-Pin versorgt werden.
+  - Externe Versorgung, Treiberstufe und Schutzbeschaltung sind Teil der Systemgrenze.
+  - Trockenlauf und Dauerbetrieb der Pumpe muessen spaeter begrenzt werden.
+crossCuttingChapters:
+  - id: reusable_chapter.guided_code_walkthrough
+    title: Gefuehrter Code-Walkthrough mit Zeilenfokus
+    appliesWhen:
+      - Projekt fuehrt neuen Code ein oder verbindet Codezeilen mit beobachtbarer Hardwarewirkung.
+    requiredCapabilities:
+      - capability.guided_code_highlighting
+      - capability.code_step_explanation
+      - capability.parameter_experiment
+      - capability.hardware_effect_observation
+    chapterRole: Wiederkehrendes Unterkapitel fuer schrittweises Codeverstaendnis mit fokussierter Hervorhebung und kleinen Experimenten.
+    keyTradeoff: Geringe kognitive Last gegen langsamere, aber stabilere Einfuehrung in Code und Hardwarewirkung.  - id: reusable_chapter.embedded_webserver_basics
+    title: Embedded Webserver fuer Status und Bedienung
+    preconditions:
+      chapters:
+        - reusable_chapter.connectivity_foundations
+      capabilities:
+        - capability.wifi
+        - capability.network_configuration
+        - capability.local_network_service    appliesWhen:
+      - Projektvariante stellt Status, Messwerte, Parameter oder Bedienung direkt per lokalem Webserver bereit.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.local_network_service
+      - capability.embedded_webserver
+      - capability.web_ui_status_view
+      - capability.web_ui_control
+      - capability.http_endpoint
+    chapterRole: Wiederkehrendes Unterkapitel fuer lokale Weboberflaechen und einfache HTTP-Endpunkte auf dem Geraet.
+    keyTradeoff: Lokale Einfachheit gegen Sicherheit, Remote-Zugriff, parallele Nutzer und Backend-/App-Bedarf.  - id: reusable_chapter.connectivity_foundations
+    title: Connectivity-Grundlagen fuer WLAN, Zeit und Updates
+    appliesWhen:
+      - Projektvariante nutzt WLAN, lokalen Webserver, Uhrzeit aus dem Netzwerk, Backend, Push, Remote Monitoring oder OTA-/Update-Vorbereitung.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.network_configuration
+      - capability.network_time_sync
+      - capability.local_network_service
+      - capability.remote_update_preparation
+    chapterRole: Wiederkehrendes Unterkapitel fuer nutzbare Netzwerkstrukturen, nicht fuer eine tiefe WiFi-Stack-Implementierung.
+    keyTradeoff: Lokale Funktion gegen Netzwerkabhaengigkeit, Komfort, Updatefaehigkeit und Fehlerbehandlung.  - id: reusable_chapter.power_management_battery_operation
+    title: Power-Management bei Akku- oder Batteriebetrieb
+    appliesWhen:
+      - Projekt wird mit Akku, Batterie oder begrenzter Energieversorgung betrieben.
+      - Sensoren, Funkmodule, Anzeigen oder Aktoren muessen nicht dauerhaft aktiv sein.
+    requiredCapabilities:
+      - capability.energy_storage
+      - capability.battery_powered_operation
+      - capability.power_management
+      - capability.low_power_mode
+      - capability.energy_budget_estimation
+    chapterRole: Wiederkehrendes Unterkapitel zur Frage, wie lange das Geraet mit Akku sinnvoll betrieben werden kann.
+    keyTradeoff: Akkulaufzeit gegen Messintervall, Reaktionszeit, Funkhaeufigkeit und Komfort.
+completionInspiration:
+  didacticPurpose: Nach Sensorik plus Aktorik zeigen, dass einfache Steuerungen zu groesseren Automatisierungsprojekten wachsen koennen.
+  learnerReflection:
+    - Du kannst Sensorwerte als Entscheidungsgrundlage verwenden.
+    - Du kannst Aktoren sicherer schalten und Grenzen definieren.
+    - Du verstehst, warum Nachlauf, Hysterese und Schutzzeiten in realen Systemen wichtig sind.
+  inspirationProjects:
+    - id: inspiration.balcony_irrigation
+      title: Balkonbewaesserung mit mehreren Pflanzen
+      summary: Mehrere Pflanzen brauchen unterschiedliche Feuchtegrenzen, Laufzeiten und Fehlerbehandlung.
+      reusedCapabilities:
+        - soil_moisture_measurement
+        - digital_pump_control
+        - safety_limits
+        - multi_node_management_optional
+    - id: inspiration.greenhouse_basic_control
+      title: Kleines Gewaechshaus ueberwachen
+      summary: Feuchtigkeit, Temperatur und Bewaesserung werden gemeinsam betrachtet.
+      reusedCapabilities:
+        - sensor_input
+        - actuator_output
+        - monitoring_storage
+  nextCourseSuggestions:
+    - id: suggestion.iot_everyday_infrastructure
+      title: IoT im Alltag mit bestehender Infrastruktur
+      rationale: Nutzt etablierte Systeme wie Home Assistant, lokalen Server, Alexa-/Smart-Home-Anbindungen oder vorhandene Marktprodukte, um schnell alltagstaugliche Bedienung und Automatisierung zu erreichen.
+    - id: suggestion.smartphone_app_development
+      title: App-Entwicklung fuer Smartphones
+      rationale: Zeigt den anspruchsvolleren Weg zur eigenen Android- oder iOS-App inklusive Plattformhuerden, Build-/Deploy-Prozessen, Accounts, Freigabewegen und App-spezifischer Bedienlogik.
+    - id: suggestion.iot_everyday
+      title: IoT im Alltag
+      rationale: Macht lokale Steuerungen von unterwegs sichtbar und bedienbar, wahlweise ueber bestehende Infrastruktur oder als Bruecke zur eigenen App.
+    - id: suggestion.control_and_regulation
+      title: Steuern und Regeln
+      rationale: Vertieft Regelstrecken, Grenzwerte, Schutzlogik und Beobachtbarkeit.
+  progressionPaths:
+    - id: path.existing_infrastructure
+      title: Bestehende Infrastruktur nutzen
+      summary: Home Assistant, lokaler Server, Alexa-/Smart-Home-Anbindungen oder etablierte Marktprodukte nehmen viel Integrationsarbeit ab und machen schnelle Alltagsloesungen moeglich.
+      fit:
+        - Nutzer will schnell ein brauchbares Ergebnis.
+        - Nutzer moechte nicht sofort App Stores, Mobile-Builds oder Plattformfreigaben lernen.
+        - Bestehende Infrastruktur ist akzeptabel oder sogar gewuenscht.
+    - id: path.own_smartphone_app
+      title: Eigene Smartphone-App entwickeln
+      summary: Eigene App fuer Android oder iOS bietet maximale Kontrolle, bringt aber organisatorische und technische Huerden mit sich.
+      fit:
+        - Nutzer moechte eine eigene App statt bestehender Smart-Home-Oberflaechen.
+        - Nutzer ist bereit, Android/iOS-Toolchains, Accounts, Signierung, Deployment und Freigabeprozesse zu lernen.
+        - Das Projekt soll spaeter produktnaeher oder individueller wirken.
+      courseBridge: Wenn dir Home Assistant oder bestehende Infrastruktur nicht zusagt, ist App-Entwicklung fuer Smartphones der naechste Zusatzkurs.
+  salesStrategy:
+    decisionQuestion: Was interessiert dich als naechster Schritt?
+    singleCourseOptions:
+      - id: course.iot_everyday_infrastructure
+        title: IoT im Alltag mit bestehender Infrastruktur
+        fit: Du moechtest Home Assistant, lokalen Server, Alexa-/Smart-Home-Anbindungen oder vorhandene Marktprodukte nutzen.
+      - id: course.smartphone_app_development
+        title: App-Entwicklung fuer Smartphones
+        fit: Du moechtest eine eigene Android- oder iOS-App fuer deine IoT-Anwendungsfaelle entwickeln.
+    bundleOption:
+      id: product_offering.iot_everyday_app_bundle
+      title: IoT im Alltag + Smartphone-App Bundle
+      pricingLogic: Beide Kurse zusammen zu einem Sonderpreis gegenueber Einzelkauf.
+    pricingPlaceholders:
+      infrastructureCourseRegularPrice: TBD
+      smartphoneAppCourseRegularPrice: TBD
+      bundleSpecialPrice: TBD
+    rationale:
+      - Nutzer koennen nur den fuer sie passenden Weg kaufen.
+      - Das Bundle ist attraktiv, wenn beide Wege interessant sind.
+      - Preise bleiben Angebotsdaten und werden nicht hart in der Projektidee festgelegt.
+  salesBridge:
+    freeMessage: Du hast ein lokales System verstanden. Der naechste Schritt ist, es sicher zu beobachten, zu bedienen und in den Alltag einzubinden.
+openQuestions:
+  - Welcher Bodenfeuchtesensor ist fuer den Einstieg robust genug?
+  - Soll die erste Version bewusst nur harte Ein/Aus-Steuerung zeigen oder sofort Hysterese einfuehren?
+  - Soll dieses Projekt direkt nach Sensorik oder erst nach Aktorik/Motor-Treiber kommen?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

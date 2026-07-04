@@ -1,0 +1,54 @@
+﻿schemaVersion: 1
+kind: learning_project_idea
+id: project_idea.esp32_ota_bootstrap_firmware
+slug: esp32-ota-bootstrap-firmware
+title: ESP32 OTA-Basisfirmware
+projectStatus: idea
+domain: embedded_iot
+summary: Erstes Erfolgsprojekt, bei dem ein ESP32 lokal initial geflasht wird und danach OTA-faehig ist.
+primaryPurpose: ESP32 so vorbereiten, dass spaetere Lernsoftware ohne erneutes USB-Flashen over-the-air aktualisiert werden kann.
+learningRole: embedded_success_experience
+learnerMode: initially_without_account
+coreFlow:
+  - ESP32 per USB verbinden
+  - Board und Port erkennen
+  - minimale Firmware bauen
+  - Firmware per USB flashen
+  - WLAN konfigurieren
+  - OTA-Endpunkt oder OTA-Mechanismus aktivieren
+  - zweite Firmware-Version per OTA einspielen
+  - sichtbares Feedback pruefen, zum Beispiel Versionsnummer oder LED-Muster
+requiredCapabilities:
+  - capability.processor_esp32
+  - capability.wifi
+  - capability.ota
+  - capability.flash_firmware
+  - capability.network_configuration
+completionConditions:
+  - condition.board_detected
+  - condition.build_success
+  - condition.usb_flash_success
+  - condition.wifi_connected
+  - condition.ota_ready
+  - condition.ota_flash_success
+  - condition.learner_feedback_received
+grantsCompetencies:
+  - competency.esp32_project_setup
+  - competency.flashing
+  - competency.wifi_basics
+  - competency.ota_updates
+didacticIntent:
+  - Erstes echtes Embedded-Erfolgserlebnis schaffen.
+  - Unterschied zwischen initialem USB-Flash und spaeterem OTA-Update verstehen.
+  - Grundlage fuer spaetere Kunden-IDE und Lernprojekte schaffen.
+relatedProjects:
+  - project_idea.esp32_provisioning_tool
+  - project_idea.actuator_output_basics
+risks:
+  - risk.board_bricked_by_flash
+  - risk.wifi_configuration_failure
+  - risk.ota_update_interrupted
+openQuestions:
+  - Nutzt der erste Prototyp Arduino OTA, ESP-IDF OTA oder PlatformIO/Arduino?
+  - Braucht OTA schon Authentifizierung oder erst im naechsten Schritt?
+  - Wie wird WLAN ohne Account komfortabel konfiguriert?

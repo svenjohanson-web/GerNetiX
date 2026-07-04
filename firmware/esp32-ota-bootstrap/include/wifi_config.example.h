@@ -1,0 +1,5 @@
+﻿#pragma once
+
+#define GERNETIX_WIFI_SSID "YOUR_WIFI_SSID"
+#define GERNETIX_WIFI_PASSWORD "YOUR_WIFI_PASSWORD"
+#define GERNETIX_OTA_HOSTNAME "gernetix-esp32-ota"

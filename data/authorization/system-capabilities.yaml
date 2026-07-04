@@ -1,4 +1,4 @@
-schemaVersion: 1
+﻿schemaVersion: 1
 kind: system_capability_catalog
 sourceStatus: legacy_import_source
 note: SystemCapabilities beschreiben Produktfunktionen und Berechtigungen. Sie sind nicht identisch mit TechnicalCapabilities.
@@ -184,3 +184,51 @@ items:
     status: draft
     ownerDomain: Authorization
     summary: Benutzer darf kompatible, registrierte und berechtigte Boards ueber Cloud/OTA flashen.
+  - id: system_capability.learning_free_content
+    type: system_capability
+    title: Learning Free Content
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf kostenlose Lerninhalte und frei freigegebene Schnupperprojekte vollstaendig nutzen.
+
+  - id: system_capability.learning_project_preview
+    type: system_capability
+    title: Learning Project Preview
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf Vorschauen, Teaser und oeffentliche Ausschnitte von kostenpflichtigen Lernprojekten ansehen.
+
+  - id: system_capability.learning_paid_course_content
+    type: system_capability
+    title: Learning Paid Course Content
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf Inhalte eines bezahlten Kurses nutzen, wenn Plan, Kauf oder Account-Override diese Freischaltung erteilen.
+
+  - id: system_capability.learning_premium_project_content
+    type: system_capability
+    title: Learning Premium Project Content
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf Premium- oder Advanced-Lernprojekte nutzen, wenn Plan, Kauf oder Account-Override diese Freischaltung erteilen.
+
+  - id: system_capability.learning_project_assets
+    type: system_capability
+    title: Learning Project Assets
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf zu einem freigeschalteten Projekt gehoerende Assets, Vorlagen, Dateien oder Projektmaterialien nutzen.
+
+  - id: system_capability.learning_connected_extensions
+    type: system_capability
+    title: Learning Connected Extensions
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf vernetzte Projekt-Erweiterungen wie Backend-, Remote-, Push-, OTA- oder Cloud-nahe Lernfunktionen nutzen, sofern technische Capabilities und Tarif/Kauf dies erlauben.
+  - id: system_capability.learning_one_year_course_access
+    type: system_capability
+    title: Learning One Year Course Access
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf fuer einen gekauften Kurs ein Jahr lang auf die zugehoerigen Plattforminhalte zugreifen, sofern kein Override den Zugriff entzieht oder verlaengert.
+

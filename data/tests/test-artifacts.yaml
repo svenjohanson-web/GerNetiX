@@ -1,4 +1,4 @@
-schemaVersion: 1
+﻿schemaVersion: 1
 kind: test_artifact_catalog
 sourceStatus: legacy_import_source
 items:
@@ -64,3 +64,58 @@ items:
     verifiesRequirements:
       - requirement.community_ai_assistant_moderation
       - requirement.community_ai_assistant_premium_access
+
+  - id: test_artifact.learning_step_completion_conditions
+    type: test_artifact
+    title: Learning Step Completion Conditions Test
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Quality
+    summary: Testnachweis, dass ein ProjectStep erst dann auf Weiter schaltet und als abgeschlossen gilt, wenn alle geforderten Completion Conditions erfuellt sind.
+    verifiesRequirements:
+      - requirement.learning_step_completion_conditions
+
+  - id: test_artifact.learning_step_build_flash_feedback_completion
+    type: test_artifact
+    title: Build Flash Feedback Completion Test
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Quality
+    summary: Testnachweis, dass ein Experiment-Step erst nach erfolgreicher Codevalidierung, erfolgreichem Build, erfolgreichem Flash und gefordertem Nutzerfeedback abgeschlossen werden kann.
+    verifiesRequirements:
+      - requirement.learning_step_completion_conditions
+      - requirement.board_execution_adapter_for_learning_steps
+      - requirement.competency_evidence_feedback
+
+  - id: test_artifact.board_execution_adapter_contract
+    type: test_artifact
+    title: Board Execution Adapter Contract Test
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Quality
+    summary: Testnachweis, dass echte Boards, simulierte Boards und Testdoubles dieselbe Schnittstelle fuer Build, Flash, Status, Fehler und Rueckmeldungen liefern.
+    verifiesRequirements:
+      - requirement.board_execution_adapter_for_learning_steps
+
+  - id: test_artifact.competency_grant_from_step_completion
+    type: test_artifact
+    title: Competency Grant From Step Completion Test
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Quality
+    summary: Testnachweis, dass nach einem erfolgreich abgeschlossenen ProjectStep die erwarteten AccountCompetencyProgress- und AccountCompetencyEvidence-Eintraege entstehen.
+    verifiesRequirements:
+      - requirement.account_competency_profile
+      - requirement.competency_evidence_feedback
+      - requirement.learning_step_completion_conditions
+
+  - id: test_artifact.competency_based_recommendation_rules
+    type: test_artifact
+    title: Competency Based Recommendation Rules Test
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Quality
+    summary: Testnachweis, dass Empfehlungen nicht nur lineare Folgeprojekte liefern, sondern passende Vertiefungen, Alternativpfade und Zwischenschritte aus Kompetenzprofil, Luecken, Hardware und Zugriff ableiten.
+    verifiesRequirements:
+      - requirement.competency_based_learning_recommendations
+      - requirement.non_linear_learning_progression

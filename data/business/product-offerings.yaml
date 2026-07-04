@@ -1,5 +1,11 @@
-schemaVersion: 1
+﻿schemaVersion: 1
 kind: product_offering_catalog
+standardCourseAccessTerm:
+  duration: P1Y
+  governedBy: BR-COURSE-ACCESS-001
+  summary: Standard-Kurskaeufe gewaehrleisten ein Jahr Plattformzugriff auf freigeschaltete Inhalte; PDF-Downloads sind optionale Begleitmaterialien, nicht das primaere Arbeitsergebnis.
+  retentionIntent: Zugriffzeitraum dient auch als Kundenbindungsfenster fuer neue Inspirationen, Projektideen und Erweiterungen ohne garantierte Liefermenge oder Taktung.
+  noDeliveryPromiseRule: BR-COURSE-ACCESS-002
 sourceStatus: legacy_import_source
 items:
   - id: product_offering.embedded_basics_bundle
@@ -126,3 +132,68 @@ items:
       - Das Projekt verbindet Embedded-Lernen mit einem sichtbaren mechanischen Maker-Ergebnis.
     todos:
       - todo.book_vault.3d_print_lock_model
+  - id: product_offering.iot_everyday_app_bundle
+    type: product_offering
+    title: IoT im Alltag + Smartphone-App Bundle
+    status: idea
+    ownerDomain: Business
+    summary: Kombinationsangebot fuer Nutzer, die nach IoT-Grundlagen sowohl den pragmatischen Infrastrukturweg als auch den anspruchsvolleren Weg zur eigenen Smartphone-App lernen moechten.
+    product:
+      - product.learning_platform
+    offeringType: bundle
+    containsCourses:
+      - course.iot_everyday_infrastructure
+      - course.smartphone_app_development
+    alternativeSingleCourses:
+      - id: course.iot_everyday_infrastructure
+        title: IoT im Alltag mit bestehender Infrastruktur
+        positioning: Fuer Nutzer, die Home Assistant, lokalen Server, Alexa-/Smart-Home-Anbindungen oder Marktprodukte nutzen wollen.
+      - id: course.smartphone_app_development
+        title: App-Entwicklung fuer Smartphones
+        positioning: Fuer Nutzer, die eine eigene Android- oder iOS-App fuer ihre IoT-Anwendungsfaelle bauen wollen.
+    targetQuestion:
+      question: Was interessiert dich als naechster Schritt?
+      options:
+        - id: option.infrastructure_only
+          title: Bestehende Infrastruktur nutzen
+          offer: course.iot_everyday_infrastructure
+          rationale: Sinnvoll, wenn Nutzer schnell eine alltagstaugliche Loesung mit Home Assistant, lokalem Server oder vorhandenen Smart-Home-Produkten wollen.
+        - id: option.own_app_only
+          title: Eigene Smartphone-App entwickeln
+          offer: course.smartphone_app_development
+          rationale: Sinnvoll, wenn Nutzer bewusst Android-/iOS-Entwicklung, Toolchains, Accounts, Signierung und App-Freigabe lernen wollen.
+        - id: option.bundle
+          title: Bundle kaufen
+          offer: product_offering.iot_everyday_app_bundle
+          rationale: Sinnvoll, wenn Nutzer beide Wege verstehen wollen; Bundle bietet Preisvorteil gegenueber Einzelkauf.
+    pricingStrategy:
+      model: bundle_discount
+      rule: Einzelkurse haben jeweils regulaere Preise; das Bundle kombiniert beide Kurse zu einem Sonderpreis.
+      placeholders:
+        regularPriceInfrastructureCourse: TBD
+        regularPriceSmartphoneAppCourse: TBD
+        bundleSpecialPrice: TBD
+      constraints:
+        - Konkrete Preise werden spaeter festgelegt und duerfen nicht in Projektideen hart verdrahtet werden.
+        - Preisvorteil muss transparent gegenueber Einzelkauf dargestellt werden.
+        - Nutzer duerfen weiterhin nur einen Einzelkurs kaufen, wenn sie nur einen Weg brauchen.
+    supports:
+      - BG-001
+      - BG-002
+      - BG-004
+      - BG-008
+    realizesBusinessCapabilities:
+      - BC-001
+    valuePropositions:
+      - value.incremental_extension
+      - value.practical_embedded_project
+      - value.hardware_reuse
+    salesRationale:
+      - Nach IoT-Grundlagen entsteht natuerlich die Frage, wie es weitergeht.
+      - Der Infrastrukturkurs ist der pragmatische Weg mit weniger organisatorischer Reibung.
+      - Der Smartphone-App-Kurs ist der tiefergehende Weg fuer Nutzer, die eigene Apps bauen wollen.
+      - Das Bundle erhoeht den durchschnittlichen Warenkorb, ohne Nutzer zu zwingen, beide Wege zu kaufen.
+      - Die Lernlogik bleibt in den einzelnen Courses; das Bundle ist eine Verkaufs- und Zugriffseinheit.
+
+
+

@@ -1,0 +1,44 @@
+﻿schemaVersion: 1
+kind: learning_project_idea
+id: project_idea.esp32_provisioning_tool
+slug: esp32-provisioning-tool
+title: ESP32 Provisionierungstool
+projectStatus: idea
+domain: embedded_iot
+summary: Internes Tool-Projekt, um ESP32-Boards fuer GerNetiX vorzubereiten, zu registrieren und mit Kopierschutz-/Board-Identitaetsdaten auszustatten.
+primaryPurpose: Herstellung, Provisionierung und Supportfaehigkeit von GerNetiX-kompatibler Hardware.
+learningRole: internal_tooling_foundation
+businessRationale:
+  - Verkauften oder bereitgestellten Boards kann eine eindeutige Identitaet zugeordnet werden.
+  - Support, Garantie und Zugriff koennen spaeter auf registrierte Hardware begrenzt werden.
+  - Provisionierte Hardware reduziert Einstiegshuerden fuer Lernende.
+coreFunctions:
+  - Board erkennen
+  - eindeutige Board-ID erzeugen oder auslesen
+  - Board-Credential schreiben
+  - Firmware-Grundzustand flashen
+  - Registrierung vorbereiten
+  - Provisionierungsergebnis protokollieren
+requiredCapabilities:
+  - capability.processor_esp32
+  - capability.usb_serial
+  - capability.flash_firmware
+  - capability.board_identity
+  - capability.secure_credential_storage_optional
+relatedSystemCapabilities:
+  - system_capability.support_registered_board_check
+  - system_capability.ide_flash_usb
+  - system_capability.cloud_flash
+risks:
+  - risk.board_bricked_by_flash
+  - risk.credential_leakage
+  - risk.unregistered_clone_claims
+completionConditions:
+  - condition.board_detected
+  - condition.firmware_flash_success
+  - condition.board_identity_written
+  - condition.provisioning_log_written
+openQuestions:
+  - Wird die Board-ID rein lokal erzeugt oder spaeter serverseitig registriert?
+  - Welche Credentials braucht OTA mindestens?
+  - Wie wird verhindert, dass Credentials kopiert werden?

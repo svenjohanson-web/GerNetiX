@@ -1,0 +1,35 @@
+﻿<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Geführte Projektidee</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="lesson-shell">
+      <section class="editor-pane" aria-label="Code-Editor">
+        <div class="project-bar">
+          <label for="projectSelector">Projektidee</label>
+          <select id="projectSelector"></select>
+          <button id="editModeButton" type="button">Bearbeiten</button>
+        </div>
+        <div class="editor-header">
+          <div>
+            <h1 id="fileName">blink.ino</h1>
+            <p id="editorMode">Geführte Bearbeitung</p>
+          </div>
+          <span id="lineRuleBadge" class="badge"></span>
+        </div>
+        <div id="editor" class="code-editor" role="textbox" aria-label="Projektinhalt" aria-multiline="true"></div>
+      </section>
+
+      <aside id="sidePanel" class="side-panel" aria-label="Lektionsschritt"></aside>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
+
+
+

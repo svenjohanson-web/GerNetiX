@@ -1,4 +1,4 @@
-schemaVersion: 1
+﻿schemaVersion: 1
 kind: data_model_catalog
 sourceStatus: legacy_import_source
 items:
@@ -263,3 +263,134 @@ items:
     summary: Aggregierte Monitoring-Kennzahlen fuer Community-Assistent-Nutzung, Kosten, Modelle, Antwortzeiten, Cache-Treffer, RAG-Treffer, Fragen, Fehler und Budgetwarnungen.
     derivedFromRequirements:
       - requirement.community_ai_assistant_monitoring
+
+  - id: data_model.account_competency_profile
+    type: data_model
+    title: AccountCompetencyProfile
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Lesemodell fuer das Kompetenzprofil eines Accounts inklusive erreichter, begonnener, vertiefter und empfohlener Kompetenzen.
+    fields:
+      - accountId
+      - competencyIds
+      - progressStates
+      - evidenceIds
+      - lastUpdatedAt
+    derivedFromRequirements:
+      - requirement.account_competency_profile
+      - requirement.competency_based_learning_recommendations
+
+  - id: data_model.account_competency_progress
+    type: data_model
+    title: AccountCompetencyProgress
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Fortschrittszustand einer Kompetenz fuer einen Account, zum Beispiel not_started, introduced, practiced, demonstrated oder deepened.
+    fields:
+      - accountId
+      - competencyId
+      - state
+      - level
+      - achievedAt
+      - lastEvidenceId
+    derivedFromRequirements:
+      - requirement.account_competency_profile
+      - requirement.non_linear_learning_progression
+
+  - id: data_model.account_competency_evidence
+    type: data_model
+    title: AccountCompetencyEvidence
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Nachweis, wodurch eine Kompetenz erreicht oder vertieft wurde, zum Beispiel durch ProjectStep-Abschluss, Build/Flash-Erfolg, Feedback, Quiz oder Projektabschluss.
+    fields:
+      - accountId
+      - competencyId
+      - evidenceType
+      - sourceProjectId
+      - sourceFlowItemId
+      - sourceStepId
+      - observedAt
+      - evidenceSummary
+    derivedFromRequirements:
+      - requirement.account_competency_profile
+      - requirement.competency_evidence_feedback
+
+  - id: data_model.account_learning_feedback_event
+    type: data_model
+    title: AccountLearningFeedbackEvent
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Ereignis, das dem Nutzer nach einem Abschluss erklaert, welche Kompetenz er erworben oder vertieft hat und warum.
+    fields:
+      - accountId
+      - projectId
+      - flowItemId
+      - competencyIds
+      - feedbackText
+      - createdAt
+    derivedFromRequirements:
+      - requirement.competency_evidence_feedback
+
+  - id: data_model.learning_recommendation
+    type: data_model
+    title: LearningRecommendation
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Empfehlung fuer naechste Lernschritte, Vertiefungen, alternative Projektpfade oder Anschlusskurse auf Basis von Kompetenzprofil, Interessen, Hardware, Zugriff und Fortschritt.
+    fields:
+      - accountId
+      - recommendationType
+      - targetType
+      - targetId
+      - rationale
+      - requiredCompetencyIds
+      - missingCompetencyIds
+      - deepensCompetencyIds
+      - createdAt
+    derivedFromRequirements:
+      - requirement.competency_based_learning_recommendations
+      - requirement.non_linear_learning_progression
+
+  - id: data_model.project_step_completion_condition
+    type: data_model
+    title: ProjectStepCompletionCondition
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Datenmodell fuer Abschlussbedingungen eines ProjectStep, zum Beispiel acknowledge, code_validation, build_success, flash_success oder learner_feedback_received.
+    fields:
+      - projectStepId
+      - conditionId
+      - conditionType
+      - required
+      - evaluationRule
+    derivedFromRequirements:
+      - requirement.learning_step_completion_conditions
+
+  - id: data_model.learning_step_execution_result
+    type: data_model
+    title: LearningStepExecutionResult
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Ergebnis eines ausfuehrbaren Lernschritts inklusive Codevalidierung, Build-Ergebnis, Flash-Ergebnis, Board-/Adapter-Rueckmeldung und Nutzerfeedback.
+    fields:
+      - accountId
+      - projectId
+      - projectStepId
+      - adapterType
+      - codeValidationState
+      - buildState
+      - flashState
+      - boardFeedbackState
+      - learnerFeedbackState
+      - completedAt
+    derivedFromRequirements:
+      - requirement.learning_step_completion_conditions
+      - requirement.board_execution_adapter_for_learning_steps

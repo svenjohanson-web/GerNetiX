@@ -1,4 +1,4 @@
-schemaVersion: 1
+﻿schemaVersion: 1
 kind: business_rule_catalog
 sourceStatus: legacy_import_source
 items:
@@ -106,3 +106,46 @@ items:
       - Jeder kostenpflichtige KI-Aufruf muss vor Ausfuehrung serverseitig gegen Budget, Credits, Modellfreigabe und Schutzlimits geprueft werden.
       - Jeder kostenpflichtige KI-Aufruf muss als Usage Event protokolliert werden, auch wenn er abgelehnt oder fehlerhaft beendet wird.
       - Administratoren muessen KI-Nutzung, Kosten, Budgets und auffaellige Nutzungsmuster einsehen und steuern koennen.
+  - id: BR-COURSE-ACCESS-001
+    type: business_rule
+    title: Kurskauf gewaehrt zeitlich begrenzten Plattformzugriff
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Ein Kurskauf begruendet kein unbegrenztes Besitzrecht an allen Kursinhalten, sondern ein zeitlich begrenztes Nutzungsrecht an der Lernplattform und den freigeschalteten Kursinhalten.
+    rule:
+      - Der Standard-Kurskauf gewaehrt ein Jahr Zugriff auf die Lernplattform fuer die gekauften Kursinhalte.
+      - Die Plattform entscheidet anhand von Kurskauf, Plan, Grants und Account-Overrides, welche Inhalte ein Nutzer aufrufen darf.
+      - Downloadbare Materialien wie PDF-Dateien koennen zusaetzlich bereitgestellt werden, sind aber nicht das alleinige Arbeitsergebnis des Angebots.
+      - Das Arbeitsergebnis ist primaer die gefuehrte Plattformleistung mit Kursinhalten, Projektfuehrung, Zugriffskontrolle, Aktualisierungen und optionalen Services.
+      - Eine laengere oder dauerhafte Zugriffsdauer muss explizit als Angebot, Plan oder Sondergrant modelliert werden.
+    rationale:
+      - Die Learning Platform ist ein Servicebereich, keine reine Dokumentenlieferung.
+      - Zeitlich begrenzter Zugriff reduziert unklare Langzeitverpflichtungen.
+      - Grants und Plan-/Account-Overrides bleiben die technische Grundlage fuer effektiven Zugriff.
+  - id: BR-COURSE-ACCESS-002
+    type: business_rule
+    title: Neue Projekte im Zugriffzeitraum ohne Liefergarantie
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Neue Projekte, Inspirationen, Erweiterungen oder Kursverbesserungen koennen waehrend eines aktiven Zugriffzeitraums bereitgestellt werden, duerfen aber nicht als garantierte Liefermenge, Taktung oder konkreter Anspruch kommuniziert werden.
+    appliesToMeasures:
+      - measure.course_access_retention_window
+      - measure.continuous_learning_paths
+      - measure.premium_courses
+    constrainsBusinessCapabilities:
+      - BC-001
+      - BC-025
+      - BC-028
+    rule:
+      - Aktiver Kurszugriff kann neue passende Projekte, Inspirationen, Erweiterungen und Verbesserungen sichtbar machen.
+      - Es wird kein Anspruch auf eine bestimmte Anzahl neuer Projekte im Zugriffzeitraum begruendet.
+      - Es wird kein fester Veroeffentlichungsrhythmus zugesagt, sofern dieser nicht explizit in einem separaten Angebot vereinbart ist.
+      - Marketing darf neue Inhalte als moeglichen Mehrwert und Kundenbindungsnutzen darstellen, aber nicht als garantiertes Lieferprogramm.
+      - Bestehende Kursinhalte bleiben die gekaufte Hauptleistung; neue Inhalte sind kuratierte Erweiterungen, Bonus, Aktualisierung oder Folgeimpuls nach Plattformentscheidung.
+    rationale:
+      - Kundenbindung soll durch lebendige Plattform und neue Inspiration entstehen.
+      - Gleichzeitig muessen unklare Dauerpflichten und falsche Erwartungshaltungen vermieden werden.
+      - Die Plattform entscheidet anhand Kurs, Grants, Produktangebot und redaktioneller Roadmap, welche neuen Inhalte ein Nutzer sieht.
+

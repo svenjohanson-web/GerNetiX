@@ -1,0 +1,162 @@
+﻿schemaVersion: 1
+kind: reusable_learning_chapter_catalog
+id: reusable_chapters.project_ideas
+title: Wiederverwendbare Kapitel fuer Projektideen
+items:
+  - id: reusable_chapter.power_management_battery_operation
+    title: Power-Management bei Akku- oder Batteriebetrieb
+    purpose: Wiederkehrendes Unterkapitel fuer Projekte, die optional oder regulaer mit Akku, Batterie oder begrenzter Energieversorgung betrieben werden.
+    appliesWhen:
+      - Ein Projekt kann mobil, draussen, autark oder ohne permanente Stromversorgung betrieben werden.
+      - Sensoren, Funkmodule oder Aktoren muessen nicht dauerhaft aktiv sein.
+      - Laufzeit ist Teil der technischen oder praktischen Qualitaet des Projekts.
+    requiredCapabilities:
+      - capability.energy_storage
+      - capability.battery_powered_operation
+      - capability.power_management
+      - capability.low_power_mode
+      - capability.energy_budget_estimation
+    didacticQuestions:
+      - Welche Komponenten verbrauchen dauerhaft Energie?
+      - Wie oft muss wirklich gemessen, gefunkt oder geschaltet werden?
+      - Welche Sensoren oder Aktoren duerfen schlafen?
+      - Welche Reaktionszeit ist akzeptabel, wenn das Geraet laenger schlafen soll?
+      - Wie lange soll der Akku mindestens halten?
+      - Welche Reserven braucht das System fuer Fehlerfaelle, Kälte, Alterung oder schlechte Funkverbindung?
+    typicalLearningFlow:
+      - Verbraucher identifizieren: Mikrocontroller, Sensoren, Funk, Aktoren, Anzeige.
+      - Betriebsmodi unterscheiden: aktiv, messen, senden, warten, schlafen.
+      - Messintervall und Funkintervall als Stellgroessen einfuehren.
+      - Akkukapazitaet und mittleren Stromverbrauch grob abschaetzen.
+      - Energiesparstrategie ableiten: Sleep, Deep Sleep, Sensor abschalten, Funk buendeln.
+      - Tradeoff einordnen: Reaktionszeit gegen Akkulaufzeit.
+    coreInsights:
+      - Akkubetrieb ist keine reine Hardwarefrage, sondern beeinflusst Architektur, Messstrategie und Bedienerwartung.
+      - Funk und Aktoren sind oft teurer als reine Rechenzeit.
+      - Weniger haeufig messen oder senden kann wichtiger sein als Codeoptimierung.
+      - Power-Management gehoert in vielen IoT-Projekten als eigenes Kapitel dazu.
+  - id: reusable_chapter.connectivity_foundations
+    title: Connectivity-Grundlagen fuer WLAN, Zeit und Updates
+    purpose: Wiederkehrendes Unterkapitel fuer Projekte, die Netzwerkverbindung, Uhrzeit, lokale Dienste, Benachrichtigung oder OTA-/Remote-Update-Faehigkeit brauchen.
+    namingNote: Bewusst nicht als WiFi-Stack formuliert; es geht didaktisch um nutzbare Connectivity-Strukturen, nicht um Protokollimplementierung im Detail.
+    appliesWhen:
+      - Ein Projekt braucht WLAN oder eine andere Netzwerkverbindung.
+      - Ein Geraet soll Uhrzeit aus dem Netzwerk beziehen.
+      - Ein lokaler Webserver, eine Statusseite oder eine API wird bereitgestellt.
+      - OTA, Remote-Update, Push-Benachrichtigung oder Backend-Anbindung werden vorbereitet.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.network_configuration
+      - capability.network_time_sync
+      - capability.local_network_service
+      - capability.remote_update_preparation
+    didacticQuestions:
+      - Warum braucht das Geraet ueberhaupt Netzwerk?
+      - Was funktioniert lokal weiter, wenn keine Verbindung besteht?
+      - Wann ist Systemzeit notwendig und wann nicht?
+      - Wie erkennt der Nutzer, ob das Geraet verbunden ist?
+      - Wie werden Zugangsdaten, Wiederverbindung und Fehlerzustand behandelt?
+      - Welche Voraussetzungen braucht spaeteres OTA, ohne es sofort vollstaendig umzusetzen?
+    typicalLearningFlow:
+      - Lokale Funktion zuerst ohne Netzwerk abgrenzen.
+      - Netzwerkbedarf begruenden: Zeit, Bedienung, Datenuebertragung, Update oder Benachrichtigung.
+      - Verbindungsstatus und Fehlerfaelle sichtbar machen.
+      - Uhrzeit aus Netzwerk beziehen und gegen fehlende Zeit abgrenzen.
+      - Lokalen Dienst oder einfache Statusschnittstelle bereitstellen.
+      - OTA-/Remote-Update nur als vorbereitetes Architekturthema einordnen, falls es nicht Teil der aktuellen Umsetzung ist.
+    coreInsights:
+      - Connectivity ist eine Capability und keine automatische Board-Voraussetzung.
+      - Netzwerk erweitert ein lokales System, darf aber die lokale Grundfunktion nicht unbegruendet voraussetzen.
+      - Uhrzeit, Remote-Zugriff und OTA sind verschiedene Gruende fuer Netzwerk und sollten getrennt betrachtet werden.
+      - Verbindungsfehler sind normale Betriebszustaende und gehoeren in Bedienung, Fehlerfall und Architektur.
+  - id: reusable_chapter.embedded_webserver_basics
+    title: Embedded Webserver fuer Status und Bedienung
+    purpose: Wiederkehrendes Unterkapitel fuer Projekte, in denen ein Geraet selbst eine lokale Weboberflaeche, Statusseite oder einfache HTTP-API bereitstellt.
+    relationToConnectivity: Baut auf Connectivity-Grundlagen auf, ist aber ein eigener didaktischer Schritt: Das Geraet wird nicht nur verbunden, sondern bietet selbst einen Dienst an.
+    preconditions:
+      chapters:
+        - reusable_chapter.connectivity_foundations
+      capabilities:
+        - capability.wifi
+        - capability.network_configuration
+        - capability.local_network_service
+    appliesWhen:
+      - Ein Projekt soll per Handy oder PC im lokalen Netzwerk bedient werden.
+      - Messwerte, Zustaende, Fehler oder Aktorstatus sollen sichtbar gemacht werden.
+      - Parameter wie Grenzwerte, Sollwerte oder Betriebsmodi sollen lokal veraenderbar sein.
+      - Einfache HTTP-Endpunkte fuer Daten oder Kommandos reichen aus.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.local_network_service
+      - capability.embedded_webserver
+      - capability.web_ui_status_view
+      - capability.web_ui_control
+      - capability.http_endpoint
+    didacticQuestions:
+      - Welche Informationen muss der Nutzer sehen?
+      - Welche Aktionen darf der Nutzer ueber die Weboberflaeche ausloesen?
+      - Was ist Statusanzeige und was ist Steuerbefehl?
+      - Welche Parameter duerfen geaendert werden und welche muessen geschuetzt sein?
+      - Was passiert, wenn zwei Clients gleichzeitig zugreifen?
+      - Wann reicht ein lokaler Webserver und wann braucht man Backend, App oder Home Assistant?
+    typicalLearningFlow:
+      - Lokalen Status als Text oder JSON bereitstellen.
+      - Einfache HTML-Statusseite anzeigen.
+      - Messwerte und Aktorzustaende aktualisieren.
+      - Einen einfachen Steuerbefehl ausloesen.
+      - Parameter wie Grenzwert oder Sollwert veraenderbar machen.
+      - Grenzen des lokalen Webservers einordnen: Sicherheit, parallele Nutzer, Persistenz, Remote-Zugriff.
+    coreInsights:
+      - Ein Webserver auf dem Geraet ist eine lokale Bedien- und Beobachtungsgrenze.
+      - Status lesen und Aktoren steuern sind unterschiedliche Verantwortungen.
+      - Lokale Webserver sind schnell begreifbar, aber nicht automatisch sicher fuer Internetzugriff.
+      - Ein lokaler Webserver kann der Zwischenschritt vor Home Assistant, Backend oder eigener App sein.
+  - id: reusable_chapter.guided_code_walkthrough
+    title: Gefuehrter Code-Walkthrough mit Zeilenfokus
+    purpose: Wiederkehrendes didaktisches Muster, bei dem Lernende Schritt fuer Schritt durch Code gefuehrt werden und immer nur die aktuell relevante Zeile oder ein kleiner Codebereich hervorgehoben wird.
+    appliesWhen:
+      - Ein Projekt fuehrt neuen Code ein.
+      - Ein Codeabschnitt soll mit Hardwarewirkung verbunden werden.
+      - Lernende sollen kleine Parameter aendern und die Wirkung beobachten.
+      - Begriffe wie Deklaration, Konfiguration, Schleife, Delay, Pinzustand oder Callback eingefuehrt werden.
+    requiredCapabilities:
+      - capability.guided_code_highlighting
+      - capability.code_step_explanation
+      - capability.parameter_experiment
+      - capability.hardware_effect_observation
+    didacticQuestions:
+      - Welche Codezeile ist fuer diesen Lernschritt gerade wichtig?
+      - Was bedeutet diese Zeile fachlich?
+      - Welche Hardwarewirkung entsteht dadurch?
+      - Was passiert, wenn ein Parameter veraendert wird?
+      - Welche Begriffe muessen hier eingefuehrt werden, ohne den Lernenden mit dem ganzen Programm zu ueberladen?
+    typicalLearningFlow:
+      - Codeabschnitt anzeigen, aber nur die relevante Zeile hervorheben.
+      - Bedeutung der Zeile erklaeren, zum Beispiel Pin-Definition, Richtung, Zustand oder Wartezeit.
+      - Verbindung zur Hardware herstellen: LED, Buzzer, Sensor, Servo, Pumpe oder Webserver.
+      - Kleines Experiment ausloesen, zum Beispiel Delay von 1000 auf 500 aendern.
+      - Beobachtung beschreiben lassen: Blinkfrequenz, Reaktionszeit, Tonhoehe, Messwert oder UI-Verhalten.
+      - Erkenntnis zusammenfassen und zum naechsten Codebereich wechseln.
+    examplePatterns:
+      - id: pattern.blink_pin_definition
+        title: Pin-Definition verstehen
+        focus: Konstante oder Variable, die den angeschlossenen I/O-Pin festlegt.
+        learnerAction: Pinbelegung nachvollziehen und mit Board/Schaltung abgleichen.
+      - id: pattern.pin_mode_output
+        title: Pin als Ausgang konfigurieren
+        focus: Zeile, in der ein GPIO als Output konfiguriert wird.
+        learnerAction: Verstehen, dass der Mikrocontroller wissen muss, ob ein Pin Eingang oder Ausgang ist.
+      - id: pattern.digital_write_delay
+        title: Pinzustand und Delay beobachten
+        focus: Sequenz aus Pin Low, Delay, Pin High, Delay.
+        learnerAction: Delay-Werte veraendern und Blinkfrequenz beobachten.
+      - id: pattern.parameter_change
+        title: Parameterexperiment
+        focus: Einzelner Zahlenwert oder Parameter, dessen Veraenderung direkt beobachtbar ist.
+        learnerAction: Wert aendern, ausfuehren, Wirkung beschreiben.
+    coreInsights:
+      - Lernende muessen nicht sofort das gesamte Programm verstehen.
+      - Code wird begreifbar, wenn jede Zeile mit einer sichtbaren oder messbaren Wirkung verbunden wird.
+      - Kleine Parameterexperimente erzeugen ein belastbares Ursache-Wirkungs-Verstaendnis.
+      - Zeilenfokus reduziert kognitive Last und passt gut zu Embedded-Anfaengern.
+

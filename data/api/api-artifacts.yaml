@@ -1,4 +1,4 @@
-schemaVersion: 1
+﻿schemaVersion: 1
 kind: api_artifact_catalog
 sourceStatus: legacy_import_source
 items:
@@ -107,3 +107,46 @@ items:
       - requirement.community_ai_assistant_indexing
       - requirement.community_ai_assistant_admin_configuration
       - requirement.community_ai_assistant_monitoring
+
+  - id: api_artifact.account_competency_profile
+    type: api_artifact
+    title: Account Competency Profile API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: API-Artefakt fuer Kompetenzprofil, Kompetenzfortschritt, Kompetenznachweise und sichtbares Nutzerfeedback zu erworbenem Koennen.
+    derivedFromRequirements:
+      - requirement.account_competency_profile
+      - requirement.competency_evidence_feedback
+
+  - id: api_artifact.learning_feedback
+    type: api_artifact
+    title: Learning Feedback API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: API-Artefakt fuer Feedback nach abgeschlossenen Steps, Projekten oder Kompetenznachweisen, inklusive Erklaerung, welche Kompetenz wodurch erworben oder vertieft wurde.
+    derivedFromRequirements:
+      - requirement.competency_evidence_feedback
+
+  - id: api_artifact.learning_recommendations
+    type: api_artifact
+    title: Learning Recommendations API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: API-Artefakt fuer kompetenzbasierte Empfehlungen zu naechsten Lernschritten, Vertiefungen, Alternativpfaden, Zwischenschritten und Anschlussangeboten.
+    derivedFromRequirements:
+      - requirement.competency_based_learning_recommendations
+      - requirement.non_linear_learning_progression
+
+  - id: api_artifact.learning_step_completion
+    type: api_artifact
+    title: Learning Step Completion API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: API-Artefakt fuer Auswertung von Completion Conditions, Build-/Flash-Ergebnissen, Board-Adapter-Rueckmeldungen, Nutzerfeedback und daraus entstehender Kompetenznachweise.
+    derivedFromRequirements:
+      - requirement.learning_step_completion_conditions
+      - requirement.board_execution_adapter_for_learning_steps

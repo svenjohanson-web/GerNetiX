@@ -1,0 +1,531 @@
+﻿schemaVersion: 1
+kind: learning_project_idea
+id: project_idea.smartbox_rfid_access_control
+slug: smartbox-rfid-access-control
+title: Smartbox: Identifikation, Authentifizierung und Autorisierung mit RFID
+projectStatus: idea
+domain: embedded_identity_access_control
+summary: Lernprojekt fuer eine kleine verschliessbare Box mit RFID-Reader, Mikrocontroller, Servo-Verriegelung, Anlernmodus und getrennten Konzepten fuer Identifikation, Authentifizierung und Autorisierung.
+salesRole: Advanced-Projekt fuer Embedded Security, Chip-zu-Chip-Kommunikation, Zustandslogik und persistente Berechtigungen.
+accessPolicy:
+  accessTier: paid_course_or_subscription
+  courseAccessTerm:
+    standardDuration: P1Y
+    meaning: Kurskauf gewaehrt ein Jahr Zugriff auf die Lernplattform und die freigeschalteten Kursinhalte.
+    notAOneTimeDocumentDelivery: true
+    downloadableMaterials:
+      mayExist: true
+      role: Ergaenzende Materialien wie PDF koennen bereitgestellt werden, ersetzen aber nicht die Plattformleistung.
+    governedBy:
+      - BR-COURSE-ACCESS-001
+      - architecture.permission_precedence
+    requiredGrant:
+      - system_capability.learning_one_year_course_access
+    accessDecision: Effektiver Zugriff wird aus Kurskauf, Plan, Grants und Account-Overrides berechnet.
+    retentionIntent: Der Zugriffzeitraum dient auch dazu, Nutzer mit neuen passenden Projektinspirationen, Erweiterungen und Folgeangeboten zurueckzuholen.
+    noDeliveryPromise:
+      rule: BR-COURSE-ACCESS-002
+      summary: Neue Projekte oder Erweiterungen koennen im Zugriffzeitraum erscheinen, sind aber nicht als garantierte Liefermenge oder fester Veroeffentlichungsrhythmus versprochen.
+  grantModel:
+    principle: Effektiver Zugriff wird ueber SystemCapabilities berechnet; Account-Override gewinnt vor Plan vor Default.
+    references:
+      - architecture.permission_precedence
+  fullAccess:
+    requiredGrants:
+      - system_capability.learning_paid_course_content
+      - system_capability.learning_project_assets
+    grantSources:
+      - course_purchase_grant
+      - plan.premium
+      - account_system_capability_override
+    grants:
+      - read_course_content
+      - build_local_project
+      - access_identity_authorization_lessons
+  connectedExtensions:
+    requiredGrants:
+      - system_capability.learning_connected_extensions
+    grantSources:
+      - plan.premium
+      - account_system_capability_override
+    rationale: Push, Remote-Audit oder Verwaltung sind Zusatzfunktionen und nicht Teil der lokalen Arduino-Grundvariante.
+  previewAccess:
+    requiredGrants:
+      - system_capability.learning_project_preview
+    grantSources:
+      - plan.free
+      - plan.premium
+      - account_system_capability_override
+  monetizationRole: premium_learning_project
+  upgradePath:
+    - purchase_identity_access_course
+    - subscribe_premium
+  authorizationNotes:
+    - Lokale Arduino-Variante ist technisch nicht connected, aber der Kurszugriff kann trotzdem bezahlt sein.
+    - Connected-Push, Remote-Audit oder Verwaltung erfordern spaeter zusaetzliche SystemCapabilities und Netzwerkfaehigkeiten.
+targetAudience:
+  - Lernende nach GPIO, Aktorik und Persistenz-Grundlagen
+  - Nutzer, die Identifikation, Authentifizierung und Autorisierung an einem greifbaren Embedded-System verstehen wollen
+  - Maker, die eine kleine RFID-Schlossbox bauen und erweitern wollen
+applicationScenarios:
+  - kleine Smartbox oder Schlossbox fuer Lernzwecke
+  - Zugangskontrolle fuer ein Modell, Fach oder Gehaeuse
+  - Demonstrator fuer Rechteverwaltung ohne Netzwerk
+  - spaetere Benachrichtigung bei Aktivierung oder Zugriff
+recommendedHardware:
+  - Artefakt fuer local_access_control_node, zum Beispiel Arduino-Nano-geeignete Mikrocontrollerklasse
+  - Artefakt fuer rfid_reader
+  - ein oder mehrere RFID-Tags
+  - Artefakt fuer lock_actuator, zum Beispiel Servo
+  - Artefakte fuer user_input zum Anlernen und zur Rechtevergabe
+  - optional Artefakt fuer status_output, zum Beispiel LED oder Buzzer
+  - optional Artefakt fuer persistent_storage, falls nicht intern vorhanden
+  - mechanische Box mit Servo-Verriegelung
+technicalRequirements:
+  modelingPrinciple: Die Smartbox wird zuerst als lokales, nicht vernetztes Embedded-System modelliert; konkrete Boards, Reader, Tags und Servos werden spaeter ueber den Hardware-Katalog auf Rollen und Faehigkeiten gemappt.
+  requiredCapabilityBundles:
+    - id: bundle.local_access_control_node
+      role: local_access_control_node
+      cardinality: exactly_one
+      requiredCapabilities:
+        - programmable_microcontroller
+        - gpio_input
+        - gpio_output
+        - chip_to_chip_communication
+        - decision_logic
+      purpose: Liest RFID-Ereignisse, verwaltet lokale Zustaende und steuert die Verriegelung.
+    - id: bundle.rfid_reader
+      role: rfid_reader
+      cardinality: exactly_one
+      requiredCapabilities:
+        - rfid_tag_reading
+        - chip_to_chip_interface
+      purpose: Liest Tag-Informationen und stellt sie dem Mikrocontroller ueber ein Chip-Interface bereit.
+    - id: bundle.rfid_tag
+      role: identity_token
+      cardinality: one_or_more
+      requiredCapabilities:
+        - physical_identifier
+      purpose: Repraesentiert eine physische Identitaet, die erkannt werden kann.
+    - id: bundle.lock_actuator
+      role: lock_actuator
+      cardinality: exactly_one
+      requiredCapabilities:
+        - mechanical_locking_motion
+        - position_command
+      purpose: Oeffnet oder verschliesst die Box mechanisch.
+    - id: bundle.enrollment_input
+      role: enrollment_input
+      cardinality: one_or_more
+      requiredCapabilities:
+        - local_user_input
+      purpose: Aktiviert Anlernen oder Rechtevergabe ohne Netzwerk.
+  optionalCapabilityBundles:
+    - id: bundle.authorization_storage
+      role: authorization_storage
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - persistent_storage
+      purpose: Speichert bekannte Tags und Berechtigungen ueber Reset oder Stromausfall hinweg.
+    - id: bundle.status_feedback
+      role: status_feedback
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - visible_or_acoustic_feedback
+      purpose: Zeigt erkannt, unbekannt, berechtigt, nicht berechtigt oder Lernmodus an.
+    - id: bundle.connected_notification_node
+      role: connected_notification_node
+      cardinality: zero_or_one
+      requiredCapabilities:
+        - wireless_network
+        - event_notification
+        - remote_message_delivery
+      purpose: Spaetere ESP32- oder Connected-Variante fuer Push-Benachrichtigungen bei Aktivierung der Smartbox.
+  hardwareCatalogMapping: Arduino Nano, Arduino-kompatible Mikrocontroller, RFID-Reader, RFID-Tags, Servo, Taster, LEDs, Buzzer, EEPROM/Flash und spaeter ESP32 werden als konkrete Hardware-Artefakte auf diese Rollen gemappt.
+implementationBoundary:
+  localRealization:
+    principle: RFID lesen, Tag identifizieren, Berechtigungen pruefen, Servo bewegen, Anlernen und Persistenz koennen lokal ohne WLAN umgesetzt werden.
+    possibleHardwareClass:
+      - Arduino-Nano-geeignete Mikrocontrollerklasse fuer die erste lokale Variante
+      - ESP-Klasse, wenn sie lokal ohne Netzwerk genutzt wird
+    requiredCapabilities:
+      - programmable_microcontroller
+      - chip_to_chip_communication
+      - gpio_input
+      - gpio_output
+      - decision_logic
+      - persistent_storage_optional
+  connectedRealization:
+    trigger: Sobald Push-, SMS-artige oder Remote-Benachrichtigungen, Fernverwaltung oder Zugriffshistorie ausserhalb der Box Teil der Variante werden.
+    requiredCapabilities:
+      - wireless_network
+      - event_notification
+      - remote_message_delivery
+    catalogImplication: Ein Arduino Nano erfuellt diese Netzwerk-/Benachrichtigungsfaehigkeiten nicht allein; dafuer braucht es ein netzwerkfaehiges Artefakt wie ESP32-Klasse, Kommunikationsmodul oder Gateway.
+learningIntent:
+  - Chip-zu-Chip-Kommunikation zwischen Mikrocontroller und RFID-Reader verstehen.
+  - Erkennen, dass ein RFID-Reader nicht automatisch Rechte entscheidet, sondern nur Identifikationsdaten liefert.
+  - Identifikation, Authentifizierung und Autorisierung sauber voneinander unterscheiden.
+  - Lokalen Anlernmodus fuer Tags modellieren und implementieren.
+  - Rechte getrennt von Identitaeten speichern und pruefen.
+  - Servo-Verriegelung als mechanischen Aktor in eine Zustandslogik einbinden.
+  - Persistenz als notwendige Eigenschaft fuer gelernte Tags und Berechtigungen erleben.
+  - Grenzen einfacher RFID-UID-Erkennung und Sicherheitsannahmen kritisch einordnen.
+didacticFlow:
+  - Smartbox und mechanische Systemgrenze erklaeren: Box, Verriegelung, Servo, Reader, Tag und Bedienknopf.
+  - RFID-Reader elektrisch anschliessen und Chip-zu-Chip-Kommunikation einfuehren.
+  - Erstes Tag lesen und UID oder Identifier anzeigen.
+  - Identifikation klaeren: Das System erkennt eine Identitaet oder ein Token.
+  - Authentifizierung klaeren: Das System akzeptiert ein Tag als bekannt oder glaubwuerdig.
+  - Autorisierung klaeren: Ein bekanntes Tag darf nicht automatisch jede Aktion ausfuehren.
+  - Servo als Verriegelungsaktor ansteuern: offen, geschlossen, optional blockiert.
+  - Anlernmodus per Taste einfuehren: naechstes Tag wird als bekannte Identitaet gespeichert.
+  - Rechtevergabe einfuehren: Tag darf oeffnen oder Tag darf oeffnen und schliessen.
+  - Reset-Problem erleben: Ohne Persistenz gehen gelernte Tags und Rechte verloren.
+  - Persistente Speicherung der Tag-Rechte einfuehren.
+  - Fehler- und Missbrauchsfaelle betrachten: unbekanntes Tag, verlorenes Tag, versehentlicher Lernmodus, Servo blockiert.
+  - Abschlusskapitel: Identifikation, Authentifizierung, Autorisierung, lokale Sicherheit, Persistenz und spaetere Connected-Erweiterung einordnen.
+coreInsights:
+  - Ein RFID-Tag identifiziert sich, aber Identifikation ist noch keine Berechtigung.
+  - Autorisierung ist eine getrennte Entscheidung: Welche Identitaet darf welche Aktion ausfuehren?
+  - Lokale Zugriffskontrolle kann ohne Netzwerk verstanden und gebaut werden.
+  - Persistenz ist notwendig, sobald das System gelernte Identitaeten behalten soll.
+  - Mechanische Verriegelung, Elektronik und Softwarezustand muessen zusammenpassen.
+  - Einfache RFID-UID-Systeme sind didaktisch gut, aber keine starke Sicherheitsloesung.
+identityConcepts:
+  identification:
+    question: Wer oder was meldet sich?
+    example: RFID-Tag liefert eine UID oder einen Identifier.
+  authentication:
+    question: Akzeptiert das System dieses Tag als bekannt oder vertrauenswuerdig?
+    example: UID steht in der lokalen Liste bekannter Tags.
+  authorization:
+    question: Welche Aktion darf diese Identitaet ausfuehren?
+    example: Tag A darf oeffnen, Tag B darf oeffnen und schliessen, Tag C ist bekannt aber nicht berechtigt.
+accessModel:
+  permissions:
+    - id: permission.open_box
+      title: Box oeffnen
+    - id: permission.close_box
+      title: Box schliessen
+    - id: permission.enroll_tag
+      title: Tag anlernen
+      notes: Sollte nicht beliebig fuer jedes Tag freigegeben werden.
+  localRoles:
+    - id: role.unknown_tag
+      title: Unbekanntes Tag
+      permissions: []
+    - id: role.known_guest
+      title: Bekannt, aber ohne Oeffnungsrecht
+      permissions: []
+    - id: role.opener
+      title: Darf oeffnen
+      permissions:
+        - permission.open_box
+    - id: role.operator
+      title: Darf oeffnen und schliessen
+      permissions:
+        - permission.open_box
+        - permission.close_box
+controlConcepts:
+  stateMachine:
+    states:
+      - locked
+      - unlocked
+      - enrolling
+      - authorization_edit
+      - denied
+      - error
+    events:
+      - tag_detected
+      - enroll_button_pressed
+      - permission_button_pressed
+      - servo_move_completed
+      - timeout
+      - reset
+    purpose: Macht sichtbar, dass Zugriffskontrolle nicht nur eine If-Abfrage ist, sondern ein Zustandssystem.
+  enrollmentFlow:
+    steps:
+      - Lernmodus lokal per Taste aktivieren.
+      - Naechstes gelesenes Tag als Identitaet speichern.
+      - Standardrecht vergeben oder zweiten Modus fuer Rechteauswahl nutzen.
+      - Lernmodus verlassen und Feedback geben.
+  authorizationFlow:
+    steps:
+      - Tag lesen.
+      - Identitaet nachschlagen.
+      - Berechtigungen pruefen.
+      - Aktor nur bei passender Berechtigung bewegen.
+failureCases:
+  identityFailures:
+    - id: failure.unknown_tag
+      title: Unbekanntes Tag
+      observation: Tag wird gelesen, ist aber nicht gespeichert.
+      mitigation:
+        - Zugriff verweigern.
+        - Feedback anzeigen.
+        - Optional Ereignis fuer spaetere Connected-Variante vormerken.
+    - id: failure.lost_tag
+      title: Verlorenes oder weitergegebenes Tag
+      observation: Physisches Tag kann von anderer Person genutzt werden.
+      mitigation:
+        - Loesch- oder Sperrfunktion als spaetere Erweiterung vorsehen.
+        - Sicherheitsgrenzen einfacher RFID-UID-Systeme erklaeren.
+    - id: failure.cloned_or_weak_tag
+      title: UID ist keine starke Authentifizierung
+      observation: Einfache Tags koennen je nach Technologie kopierbar oder schwach sein.
+      mitigation:
+        - Didaktische Abgrenzung zwischen Demo-Zugriff und echter Sicherheit.
+        - Staerkere Authentifizierungsverfahren als spaetere Theorie- oder Advanced-Variante markieren.
+  operationFailures:
+    - id: failure.enrollment_left_active
+      title: Lernmodus bleibt versehentlich aktiv
+      observation: Ungewolltes Tag wird angelernt.
+      mitigation:
+        - Timeout fuer Lernmodus.
+        - Sichtbares oder hoerbares Feedback im Lernmodus.
+        - Anlernen nur nach bewusstem Tastendruck.
+    - id: failure.servo_blocked
+      title: Servo oder Verriegelung blockiert
+      observation: Boxzustand und Sollzustand passen mechanisch nicht zusammen.
+      mitigation:
+        - Laufzeitbegrenzung fuer Servo.
+        - Fehlerzustand anzeigen.
+        - Mechanische Endlagen und Kraftbegrenzung diskutieren.
+    - id: failure.power_loss
+      title: Stromausfall oder Reset
+      observation: RAM-Zustand geht verloren, Verriegelung kann mechanisch in altem Zustand bleiben.
+      mitigation:
+        - Berechtigungen persistent speichern.
+        - Beim Start mechanischen Zustand plausibilisieren oder definierte Startposition anfahren.
+safetyAndBoundaries:
+  - Servo und Mechanik duerfen keine gefaehrlichen Klemmstellen erzeugen.
+  - Die Box ist ein Lernsystem und keine zertifizierte Sicherheitsloesung.
+  - Einfache RFID-UID-Erkennung darf nicht als starke Sicherheit verkauft werden.
+  - Lernmodus und Rechtevergabe brauchen klare lokale Bedienlogik und Feedback.
+  - Mechanischer Zustand, Softwarezustand und Berechtigungszustand muessen konsistent betrachtet werden.
+variants:
+  - id: variant.local_arduino_rfid_box
+    title: Lokale RFID-Smartbox ohne Netzwerk
+    notes: Erste Hauptvariante, geeignet fuer Arduino-Nano- oder vergleichbare Mikrocontrollerklasse.
+    capabilityRequirements:
+      roles:
+        - role: local_access_control_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - programmable_microcontroller
+            - chip_to_chip_communication
+            - gpio_input
+            - gpio_output
+            - decision_logic
+        - role: rfid_reader
+          cardinality: exactly_one
+          requiredCapabilities:
+            - rfid_tag_reading
+            - chip_to_chip_interface
+        - role: identity_token
+          cardinality: one_or_more
+          requiredCapabilities:
+            - physical_identifier
+        - role: lock_actuator
+          cardinality: exactly_one
+          requiredCapabilities:
+            - mechanical_locking_motion
+            - position_command
+        - role: enrollment_input
+          cardinality: one_or_more
+          requiredCapabilities:
+            - local_user_input
+  - id: variant.persistent_local_permissions
+    title: Lokale Berechtigungen persistent speichern
+    notes: Erweiterung, sobald Reset oder Stromausfall die gelernten Tags loescht.
+    capabilityRequirements:
+      roles:
+        - role: authorization_storage
+          cardinality: exactly_one
+          requiredCapabilities:
+            - persistent_storage
+        - role: local_access_control_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - local_authorization_logic
+            - storage_read_write
+  - id: variant.connected_activation_notification
+    title: Connected-Variante mit Aktivierungsbenachrichtigung
+    notes: Spaetere ESP32- oder Netzwerkvariante; Push-Nachricht, wenn die Smartbox aktiviert oder geoeffnet wurde.
+    capabilityRequirements:
+      roles:
+        - role: connected_notification_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - wireless_network
+            - event_notification
+            - remote_message_delivery
+        - role: local_access_control_node
+          cardinality: exactly_one
+          requiredCapabilities:
+            - access_event_generation
+            - decision_logic
+    exampleNotification: Deine Smartbox wurde aktiviert.
+  - id: variant.remote_access_audit
+    title: Zugriffshistorie und Remote-Audit
+    notes: Fortgeschrittene Variante fuer Ereignisprotokoll, unbekannte Tags und spaetere Verwaltung.
+    capabilityRequirements:
+      roles:
+        - role: access_event_log
+          cardinality: exactly_one
+          requiredCapabilities:
+            - timestamped_event_log
+            - identity_event_recording
+        - role: remote_monitoring_backend
+          cardinality: zero_or_one
+          requiredCapabilities:
+            - remote_event_ingestion
+            - notification_policy
+crossCuttingChapters:
+  - id: reusable_chapter.guided_code_walkthrough
+    title: Gefuehrter Code-Walkthrough mit Zeilenfokus
+    appliesWhen:
+      - Projekt fuehrt neuen Code ein oder verbindet Codezeilen mit beobachtbarer Hardwarewirkung.
+    requiredCapabilities:
+      - capability.guided_code_highlighting
+      - capability.code_step_explanation
+      - capability.parameter_experiment
+      - capability.hardware_effect_observation
+    chapterRole: Wiederkehrendes Unterkapitel fuer schrittweises Codeverstaendnis mit fokussierter Hervorhebung und kleinen Experimenten.
+    keyTradeoff: Geringe kognitive Last gegen langsamere, aber stabilere Einfuehrung in Code und Hardwarewirkung.  - id: reusable_chapter.embedded_webserver_basics
+    title: Embedded Webserver fuer Status und Bedienung
+    preconditions:
+      chapters:
+        - reusable_chapter.connectivity_foundations
+      capabilities:
+        - capability.wifi
+        - capability.network_configuration
+        - capability.local_network_service    appliesWhen:
+      - Projektvariante stellt Status, Messwerte, Parameter oder Bedienung direkt per lokalem Webserver bereit.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.local_network_service
+      - capability.embedded_webserver
+      - capability.web_ui_status_view
+      - capability.web_ui_control
+      - capability.http_endpoint
+    chapterRole: Wiederkehrendes Unterkapitel fuer lokale Weboberflaechen und einfache HTTP-Endpunkte auf dem Geraet.
+    keyTradeoff: Lokale Einfachheit gegen Sicherheit, Remote-Zugriff, parallele Nutzer und Backend-/App-Bedarf.  - id: reusable_chapter.connectivity_foundations
+    title: Connectivity-Grundlagen fuer WLAN, Zeit und Updates
+    appliesWhen:
+      - Projektvariante nutzt WLAN, lokalen Webserver, Uhrzeit aus dem Netzwerk, Backend, Push, Remote Monitoring oder OTA-/Update-Vorbereitung.
+    requiredCapabilities:
+      - capability.wifi
+      - capability.network_configuration
+      - capability.network_time_sync
+      - capability.local_network_service
+      - capability.remote_update_preparation
+    chapterRole: Wiederkehrendes Unterkapitel fuer nutzbare Netzwerkstrukturen, nicht fuer eine tiefe WiFi-Stack-Implementierung.
+    keyTradeoff: Lokale Funktion gegen Netzwerkabhaengigkeit, Komfort, Updatefaehigkeit und Fehlerbehandlung.  - id: reusable_chapter.power_management_battery_operation
+    title: Power-Management bei Akku- oder Batteriebetrieb
+    appliesWhen:
+      - Projekt wird mit Akku, Batterie oder begrenzter Energieversorgung betrieben.
+      - Sensoren, Funkmodule, Anzeigen oder Aktoren muessen nicht dauerhaft aktiv sein.
+    requiredCapabilities:
+      - capability.energy_storage
+      - capability.battery_powered_operation
+      - capability.power_management
+      - capability.low_power_mode
+      - capability.energy_budget_estimation
+    chapterRole: Wiederkehrendes Unterkapitel zur Frage, wie lange das Geraet mit Akku sinnvoll betrieben werden kann.
+    keyTradeoff: Akkulaufzeit gegen Messintervall, Reaktionszeit, Funkhaeufigkeit und Komfort.
+completionInspiration:
+  didacticPurpose: Nach der lokalen Smartbox zeigen, dass Identifikation und Autorisierung auch Grundlage fuer vernetzte Benachrichtigung, Audit und Verwaltung sind.
+  learnerReflection:
+    - Du kannst Identifikation, Authentifizierung und Autorisierung unterscheiden.
+    - Du kannst lokale Berechtigungen speichern und pruefen.
+    - Du verstehst, warum lokale Zugriffskontrolle und Remote-Benachrichtigung unterschiedliche Faehigkeiten brauchen.
+  inspirationProjects:
+    - id: inspiration.toolbox_access_log
+      title: Werkzeugkiste mit Zugriffshistorie
+      summary: Lokale Oeffnungen werden protokolliert und spaeter ausgewertet.
+      reusedCapabilities:
+        - rfid_tag_reading
+        - local_authorization_logic
+        - timestamped_event_log_optional
+    - id: inspiration.smartbox_push_notification
+      title: Benachrichtigung bei Oeffnung
+      summary: Beim Aktivieren oder Oeffnen wird eine Push- oder SMS-artige Nachricht versendet.
+      reusedCapabilities:
+        - access_event_generation
+        - wireless_network
+        - remote_message_delivery
+  nextCourseSuggestions:
+    - id: suggestion.iot_everyday_infrastructure
+      title: IoT im Alltag mit bestehender Infrastruktur
+      rationale: Nutzt etablierte Systeme wie Home Assistant, lokalen Server, Alexa-/Smart-Home-Anbindungen oder vorhandene Marktprodukte, um schnell alltagstaugliche Bedienung und Automatisierung zu erreichen.
+    - id: suggestion.smartphone_app_development
+      title: App-Entwicklung fuer Smartphones
+      rationale: Zeigt den anspruchsvolleren Weg zur eigenen Android- oder iOS-App inklusive Plattformhuerden, Build-/Deploy-Prozessen, Accounts, Freigabewegen und App-spezifischer Bedienlogik.
+    - id: suggestion.iot_everyday
+      title: IoT im Alltag
+      rationale: Zeigt sichere Remote-Benachrichtigung, Heimnetz-Zugriff und App-/Cloud-Anbindung, ohne sofort eigene Mobile-App-Entwicklung vorauszusetzen.
+    - id: suggestion.embedded_security_basics
+      title: Embedded Security Basics
+      rationale: Vertieft Grenzen einfacher RFID-Systeme, Rechteverwaltung und sichere Zugriffsmuster.
+  progressionPaths:
+    - id: path.existing_infrastructure
+      title: Bestehende Infrastruktur nutzen
+      summary: Home Assistant, lokaler Server, Alexa-/Smart-Home-Anbindungen oder etablierte Marktprodukte nehmen viel Integrationsarbeit ab und machen schnelle Alltagsloesungen moeglich.
+      fit:
+        - Nutzer will schnell ein brauchbares Ergebnis.
+        - Nutzer moechte nicht sofort App Stores, Mobile-Builds oder Plattformfreigaben lernen.
+        - Bestehende Infrastruktur ist akzeptabel oder sogar gewuenscht.
+    - id: path.own_smartphone_app
+      title: Eigene Smartphone-App entwickeln
+      summary: Eigene App fuer Android oder iOS bietet maximale Kontrolle, bringt aber organisatorische und technische Huerden mit sich.
+      fit:
+        - Nutzer moechte eine eigene App statt bestehender Smart-Home-Oberflaechen.
+        - Nutzer ist bereit, Android/iOS-Toolchains, Accounts, Signierung, Deployment und Freigabeprozesse zu lernen.
+        - Das Projekt soll spaeter produktnaeher oder individueller wirken.
+      courseBridge: Wenn dir Home Assistant oder bestehende Infrastruktur nicht zusagt, ist App-Entwicklung fuer Smartphones der naechste Zusatzkurs.
+  salesStrategy:
+    decisionQuestion: Was interessiert dich als naechster Schritt?
+    singleCourseOptions:
+      - id: course.iot_everyday_infrastructure
+        title: IoT im Alltag mit bestehender Infrastruktur
+        fit: Du moechtest Home Assistant, lokalen Server, Alexa-/Smart-Home-Anbindungen oder vorhandene Marktprodukte nutzen.
+      - id: course.smartphone_app_development
+        title: App-Entwicklung fuer Smartphones
+        fit: Du moechtest eine eigene Android- oder iOS-App fuer deine IoT-Anwendungsfaelle entwickeln.
+    bundleOption:
+      id: product_offering.iot_everyday_app_bundle
+      title: IoT im Alltag + Smartphone-App Bundle
+      pricingLogic: Beide Kurse zusammen zu einem Sonderpreis gegenueber Einzelkauf.
+    pricingPlaceholders:
+      infrastructureCourseRegularPrice: TBD
+      smartphoneAppCourseRegularPrice: TBD
+      bundleSpecialPrice: TBD
+    rationale:
+      - Nutzer koennen nur den fuer sie passenden Weg kaufen.
+      - Das Bundle ist attraktiv, wenn beide Wege interessant sind.
+      - Preise bleiben Angebotsdaten und werden nicht hart in der Projektidee festgelegt.
+  salesBridge:
+    freeMessage: Du hast lokale Zugriffskontrolle verstanden. Der naechste Schritt ist sichere Benachrichtigung und Verwaltung ueber Netzwerk oder App.
+openQuestions:
+  - Soll der erste Aufbau mit Arduino Nano, Arduino-kompatibler Klasse oder allgemein local_access_control_node beschrieben werden?
+  - Wie viele lokale Taster sind fuer Anlernen und Rechtevergabe didaktisch sinnvoll?
+  - Soll Schliessen automatisch nach Timeout passieren oder nur durch berechtigtes Tag?
+  - Welche RFID-Technologie ist fuer den Einstieg didaktisch robust genug?
+  - Soll Connected-Push nur als spaetere Variante oder bereits als Ausblick im Abschlusskapitel erscheinen?
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

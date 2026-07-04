@@ -1,4 +1,4 @@
-schemaVersion: 1
+﻿schemaVersion: 1
 kind: technical_capability_catalog
 sourceStatus: legacy_import_source
 note: TechnicalCapabilities beschreiben Hardware-Faehigkeiten. Sie sind nicht identisch mit SystemCapabilities.
@@ -100,3 +100,119 @@ items:
     status: draft
     ownerDomain: Hardware
     summary: Bauteile oder Behaelter identifizieren, z. B. per QR oder RFID.
+  - id: capability.energy_storage
+    type: technical_capability
+    title: Energiespeicher
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, ein Geraet ueber Batterie, Akku oder vergleichbaren lokalen Energiespeicher zu betreiben.
+
+  - id: capability.battery_powered_operation
+    type: technical_capability
+    title: Akkubetrieb / Batteriebetrieb
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, ein Projekt ohne permanente externe Versorgung zu betreiben und Laufzeit als technische Randbedingung zu betrachten.
+
+  - id: capability.power_management
+    type: technical_capability
+    title: Power Management
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, Energieverbrauch durch Schlafmodi, Messintervalle, Aktorzeiten, Funkzeiten und Versorgungsstrategie zu begrenzen.
+
+  - id: capability.low_power_mode
+    type: technical_capability
+    title: Low-Power-Modus
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, Mikrocontroller, Sensoren oder Funkmodule zeitweise in einen energiesparenden Zustand zu versetzen.
+
+  - id: capability.energy_budget_estimation
+    type: technical_capability
+    title: Energiebedarf abschaetzen
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, Stromaufnahme, Einschaltzeiten, Messzyklen und Akkukapazitaet zu einer erwartbaren Laufzeit abzuschaetzen.
+  - id: capability.network_time_sync
+    type: technical_capability
+    title: Netzwerk-Zeitsynchronisation
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, Systemzeit ueber ein Netzwerk zu beziehen, zum Beispiel fuer Zeitstempel, Alterung, Ablaufzeiten oder Ereignisprotokolle.
+
+  - id: capability.network_configuration
+    type: technical_capability
+    title: Netzwerk-Konfiguration
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, Zugangsdaten, Verbindungsaufbau, Wiederverbindung und Verbindungsstatus fuer ein Netzwerk fachlich zu behandeln.
+
+  - id: capability.local_network_service
+    type: technical_capability
+    title: Lokaler Netzwerkdienst
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, einen lokalen Dienst wie Webserver, Statusseite, API oder Bedienoberflaeche im Heimnetz bereitzustellen.
+
+  - id: capability.remote_update_preparation
+    type: technical_capability
+    title: Remote-/OTA-Update-Vorbereitung
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, Updatefaehigkeit, Versionsstand, sichere Uebertragung und Wiederherstellbarkeit als Grundlage fuer spaetere OTA-Funktionen zu betrachten.
+  - id: capability.embedded_webserver
+    type: technical_capability
+    title: Embedded Webserver
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, direkt auf dem Geraet einen Webserver fuer Status, Bedienung, Parameter oder einfache APIs bereitzustellen.
+
+  - id: capability.web_ui_status_view
+    type: technical_capability
+    title: Web-Statusansicht
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, Geraetezustand, Messwerte, Fehler oder Aktorzustaende in einer lokalen Weboberflaeche sichtbar zu machen.
+
+  - id: capability.web_ui_control
+    type: technical_capability
+    title: Web-Bedienung
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, lokale Aktionen oder Parameter ueber eine Weboberflaeche auszufuehren oder zu veraendern.
+
+  - id: capability.http_endpoint
+    type: technical_capability
+    title: HTTP-Endpunkt
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, einfache HTTP-Endpunkte fuer Status, Kommandos oder Datenabruf bereitzustellen.
+  - id: capability.guided_code_highlighting
+    type: technical_capability
+    title: Gefuehrte Code-Hervorhebung
+    status: draft
+    ownerDomain: Learning
+    summary: Faehigkeit der Lernplattform oder IDE, im Code gezielt die fuer einen Lernschritt relevante Zeile oder Codegruppe hervorzuheben.
+
+  - id: capability.code_step_explanation
+    type: technical_capability
+    title: Code-Schritt-Erklaerung
+    status: draft
+    ownerDomain: Learning
+    summary: Faehigkeit, einen Codeabschnitt schrittweise fachlich zu erklaeren und mit Lernbegriffen zu verknuepfen.
+
+  - id: capability.parameter_experiment
+    type: technical_capability
+    title: Parameterexperiment
+    status: draft
+    ownerDomain: Learning
+    summary: Faehigkeit, einzelne Werte wie Delay, Grenzwert, Frequenz oder Tastverhaeltnis gezielt zu veraendern und die Wirkung beobachten zu lassen.
+
+  - id: capability.hardware_effect_observation
+    type: technical_capability
+    title: Hardwarewirkung beobachten
+    status: draft
+    ownerDomain: Learning
+    summary: Faehigkeit, Codeaenderungen didaktisch mit sichtbarer, hoerbarer, messbarer oder bedienbarer Hardwarewirkung zu verbinden.
+

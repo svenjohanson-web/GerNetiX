@@ -1,4 +1,4 @@
-schemaVersion: 1
+﻿schemaVersion: 1
 kind: measure_catalog
 sourceStatus: legacy_import_source
 items:
@@ -164,11 +164,15 @@ items:
     businessStatus: In Analysis
     implementationStatus: Not Started
     ownerDomain: Business
-    summary: Nutzer werden anhand von Fortschritt, Hardware und Interessen zum naechsten sinnvollen Lernschritt begleitet.
+    summary: Nutzer werden anhand von Kompetenzprofil, Fortschritt, Hardware und Interessen zum naechsten sinnvollen Lernschritt, zu Vertiefungen oder zu alternativen Projektpfaden begleitet.
     supportsStrategies:
       - strategy.retain_existing_customers
     providesBusinessCapabilities:
       - BC-025
+    realizesRequirements:
+      - requirement.account_competency_profile
+      - requirement.competency_based_learning_recommendations
+      - requirement.non_linear_learning_progression
 
   - id: measure.premium_memberships
     type: measure
@@ -421,3 +425,52 @@ items:
     supportsStrategies:
       - strategy.strategic_partnerships
     summary: Cloud-Partnerschaften fuer skalierbare Plattformfunktionen und Integrationen aufbauen.
+  - id: measure.course_access_retention_window
+    type: measure
+    title: Zeitlich grosszuegiger Kurszugriff als Kundenbindungsfenster
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Kurskaeufer erhalten fuer einen laengeren Zeitraum Zugriff auf die Lernplattform, damit sie im Zugriffzeitraum neue, passende Projektideen, Inspirationen und Erweiterungen entdecken koennen, ohne dass daraus ein Anspruch auf bestimmte neue Inhalte entsteht.
+    supportsStrategies:
+      - strategy.retain_existing_customers
+      - strategy.upselling_cross_selling
+    supportsBusinessGoals:
+      - BG-001
+      - BG-008
+    providesBusinessCapabilities:
+      - BC-001
+      - BC-025
+      - BC-028
+    constrainedByBusinessRules:
+      - BR-COURSE-ACCESS-001
+      - BR-COURSE-ACCESS-002
+    rationale:
+      - Ein Jahr Zugriff gibt Nutzern Zeit, Projekte nicht unter Druck abschliessen zu muessen.
+      - Neue Inspirationen und Erweiterungen koennen Bestandskunden zurueckholen und Folgekaeufe wahrscheinlicher machen.
+      - Die Plattform bleibt lebendig, ohne eine rechtliche Zusage fuer eine bestimmte Menge oder Frequenz neuer Projekte einzugehen.
+      - Die Kundenbindung entsteht aus wahrnehmbarem Mehrwert im Zugriffzeitraum, nicht aus einem unbegrenzten Liefer- oder Updateversprechen.
+
+
+  - id: measure.competency_profile_retention
+    type: measure
+    title: Kompetenzprofil als Kundenbindungsmechanik
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Die Plattform bindet Nutzer, indem sie sichtbar macht, was sie bereits koennen, welche Nachweise dafuer vorliegen und welche naechsten Lernschritte zu ihrem persoenlichen Profil passen.
+    supportsStrategies:
+      - strategy.retain_existing_customers
+      - strategy.upselling_cross_selling
+    providesBusinessCapabilities:
+      - BC-025
+    realizesRequirements:
+      - requirement.account_competency_profile
+      - requirement.competency_evidence_feedback
+      - requirement.competency_based_learning_recommendations
+      - requirement.non_linear_learning_progression
+    rationale:
+      - Nutzer erleben die Plattform als lernenden Begleiter, nicht nur als lineare Kursliste.
+      - Sichtbares Koennen erzeugt Motivation und Vertrauen in den eigenen Fortschritt.
+      - Empfehlungen koennen fachlich aus Luecken, Interessen, Hardware und nachgewiesenen Kompetenzen abgeleitet werden.
+      - Vertiefungen und Alternativpfade schaffen neue sinnvolle Kontaktpunkte ohne ein starres Projekt-1-bis-4-Ende.
