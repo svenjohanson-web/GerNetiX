@@ -1,0 +1,64 @@
+schemaVersion: 1
+kind: strategy_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: strategy.acquire_new_customers
+    type: strategy
+    title: Neukunden gewinnen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Neue Nutzer auf die Plattform aufmerksam machen und in erste Lern- oder Kaufhandlungen fuehren.
+    belongsToBusinessStrategies:
+      - business_strategy.increase_revenue
+    containsMeasures:
+      - measure.public_relations
+
+  - id: strategy.retain_existing_customers
+    type: strategy
+    title: Bestandskunden binden
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Bestehende Nutzer durch Community, zentrale Arbeitsweise, Abonnement-Lebenszyklus und kontinuierliche Lernpfade langfristig begleiten.
+    belongsToBusinessStrategies:
+      - business_strategy.increase_revenue
+    containsMeasures:
+      - measure.community_knowledge_platform
+      - measure.platform_centric_work
+      - measure.subscription_lifecycle
+      - measure.continuous_learning_paths
+
+  - id: strategy.upselling_cross_selling
+    type: strategy
+    title: Upselling und Cross-Selling
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Nutzern passende hoeherwertige oder ergaenzende Angebote machen, wenn diese fachlich mehr Nutzen stiften.
+    belongsToBusinessStrategies:
+      - business_strategy.increase_revenue
+    containsMeasures:
+      - measure.premium_memberships
+      - measure.extended_ai_features
+      - measure.premium_courses
+      - measure.hardware_kits
+      - measure.project_templates
+      - measure.extended_cloud_resources
+      - measure.individual_coaching
+
+  - id: strategy.strategic_partnerships
+    type: strategy
+    title: Strategische Partnerschaften aufbauen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Partnerkanaele und Partnerangebote aufbauen, um Reichweite, Vertrieb und technische Faehigkeiten zu erweitern.
+    belongsToBusinessStrategies:
+      - business_strategy.increase_revenue
+    containsMeasures:
+      - measure.partner_schools
+      - measure.partner_educational_institutions
+      - measure.partner_companies
+      - measure.partner_hardware_manufacturers
+      - measure.partner_cloud_providers

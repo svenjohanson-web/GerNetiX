@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GerNetiX SQLite Graph Explorer</title>
+    <link rel="stylesheet" href="/styles.css">
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <h1>SQLite Graph Explorer</h1>
+        <p id="dbInfo">Lade Graphmodell...</p>
+      </div>
+      <div class="topbar-actions">
+        <div class="mode-switch" role="tablist" aria-label="Explorer-Modus">
+          <button id="metamodelModeButton" type="button" class="active">Metamodell</button>
+          <button id="instanceModeButton" type="button">Instanzen</button>
+        </div>
+        <button id="reloadButton" type="button">Aktualisieren</button>
+      </div>
+    </header>
+
+    <main id="metamodelWorkspace" class="workspace metamodel-workspace">
+      <aside class="panel type-panel">
+        <div class="panel-header">
+          <h2>Entitaetstypen</h2>
+          <input id="metamodelTypeSearch" type="search" placeholder="Typ suchen">
+        </div>
+        <div id="metamodelTypeList" class="list"></div>
+      </aside>
+
+      <section class="panel relation-type-panel">
+        <div class="panel-header">
+          <h2>Beziehungsregeln</h2>
+          <p class="panel-note">Erlaubte Referenzen fuer den gewaehlten Entitaetstyp.</p>
+        </div>
+        <div id="metamodelRuleList" class="list"></div>
+      </section>
+
+      <section class="panel detail-panel">
+        <div class="detail-header">
+          <div>
+            <p class="eyebrow">Metamodell</p>
+            <h2 id="metamodelTitle">Entitaetstyp auswaehlen</h2>
+            <p id="metamodelId" class="selected-id"></p>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <section class="detail-section">
+            <h3>Typdetails</h3>
+            <dl id="metamodelDetails" class="details"></dl>
+          </section>
+
+          <section class="detail-section graph-section">
+            <h3>Metamodell-Umfeld</h3>
+            <svg id="metamodelGraphSvg" role="img" aria-label="Metamodell-Umfeld"></svg>
+          </section>
+
+          <section class="detail-section relation-section">
+            <h3>Darf referenzieren</h3>
+            <div id="metamodelReferencesList" class="relation-list"></div>
+          </section>
+
+          <section class="detail-section relation-section">
+            <h3>Darf referenziert werden von</h3>
+            <div id="metamodelReferencedByList" class="relation-list"></div>
+          </section>
+
+          <section class="detail-section relation-section">
+            <h3>Aktuelle Instanzen</h3>
+            <div id="metamodelInstancesList" class="relation-list"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <main id="instanceWorkspace" class="workspace hidden">
+      <aside class="panel type-panel">
+        <div class="panel-header">
+          <h2>Entitaetstypen</h2>
+          <input id="typeSearch" type="search" placeholder="Typ suchen">
+        </div>
+        <div id="typeList" class="list"></div>
+      </aside>
+
+      <section class="panel instance-panel">
+        <div class="panel-header">
+          <h2 id="instanceTitle">Instanzen</h2>
+          <input id="artifactSearch" type="search" placeholder="Instanz suchen">
+        </div>
+        <div id="artifactList" class="list"></div>
+      </section>
+
+      <section class="panel detail-panel">
+        <div class="detail-header">
+          <div>
+            <p class="eyebrow" id="selectedType">Keine Auswahl</p>
+            <h2 id="selectedTitle">Artefakt auswaehlen</h2>
+            <p id="selectedId" class="selected-id"></p>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <section class="detail-section">
+            <h3>Details</h3>
+            <dl id="artifactDetails" class="details"></dl>
+          </section>
+
+          <section class="detail-section graph-section">
+            <h3>Lokaler Graph</h3>
+            <svg id="graphSvg" role="img" aria-label="Lokaler Graph"></svg>
+          </section>
+
+          <section class="detail-section relation-section">
+            <h3>Wird referenziert von</h3>
+            <div id="incomingList" class="relation-list"></div>
+          </section>
+
+          <section class="detail-section relation-section">
+            <h3>Referenziert</h3>
+            <div id="outgoingList" class="relation-list"></div>
+          </section>
+        </div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

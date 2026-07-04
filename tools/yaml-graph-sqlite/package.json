@@ -1,0 +1,20 @@
+{
+  "name": "gernetix-yaml-graph-sqlite",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Canonical SQLite graph importer and validator for the GerNetiX engineering model.",
+  "type": "commonjs",
+  "scripts": {
+    "import": "node import-yaml-graph.js",
+    "summary": "node import-yaml-graph.js summary",
+    "outgoing": "node import-yaml-graph.js outgoing",
+    "incoming": "node import-yaml-graph.js incoming",
+    "trace": "node import-yaml-graph.js trace",
+    "isolated": "node import-yaml-graph.js isolated",
+    "clusters": "node import-yaml-graph.js clusters",
+    "errors": "node import-yaml-graph.js errors"
+  },
+  "engines": {
+    "node": ">=24"
+  }
+}

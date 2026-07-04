@@ -1,0 +1,28 @@
+schemaVersion: 1
+kind: role_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: role.community_member
+    type: role
+    title: Community Member
+    status: draft
+    ownerDomain: Authorization
+    summary: Normales Community-Mitglied mit kostenfreien Community-Funktionen wie Lesen, Schreiben, Kommentieren, Bewerten, Suchen, Hochladen und Diskutieren.
+
+  - id: role.community_moderator
+    type: role
+    title: Community Moderator
+    status: draft
+    ownerDomain: Authorization
+    summary: Moderator fuer Community-Inhalte, Moderationsregeln, Quellenqualitaet und problematische Inhalte.
+
+  - id: role.community_ai_admin
+    type: role
+    title: Community AI Admin
+    status: draft
+    ownerDomain: Authorization
+    summary: Administrativer Benutzer, der den KI-Community-Assistenten konfigurieren und dessen Nutzung ueberwachen darf.
+    grantsSystemCapabilities:
+      - system_capability.admin_community_ai_assistant
+      - system_capability.admin_ai_usage_monitoring
+      - system_capability.admin_ai_cost_controls

@@ -1,14 +1,18 @@
-# YAML-first Repository-Struktur
+# SQLite-Graph-first Repository-Struktur
 
-Dieses Dokument beschreibt eine YAML-first Struktur fuer die Embedded-Lernplattform.
+Dieses Dokument beschreibt eine SQLite-Graph-first Struktur fuer die Embedded-Lernplattform.
 Markdown ist nur Ausgabe- und Lesbarkeitsformat.
+
+Hinweis: Dieses Dokument ist aus der frueheren YAML-first-Planung hervorgegangen.
+Die aktuelle Zielarchitektur fuehrt den validierten SQLite-Graphen als kanonische Pflege-, Pruef- und Abfragestruktur.
+YAML ist nur noch Legacy-Import, Bootstrap oder Export.
 
 ## Grundsatz
 
 Fuehrend ist:
 
 ```text
-YAML -> Datenbank -> generierte Dokumentation
+SQLite Graph Model -> optionaler YAML Export -> generierte Dokumentation
 ```
 
 Nicht fuehrend ist:

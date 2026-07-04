@@ -1,20 +1,28 @@
 schemaVersion: 1
 kind: principle_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 items:
   - id: principle.knowledge_more_expensive_than_code
     type: principle
     title: Wissen ist teurer als Code
     status: approved
     ownerDomain: Business
-    summary: Code implementiert Wissen; das Metamodell und YAML-first Daten bewahren Wissen.
+    summary: Code implementiert Wissen; das Metamodell und der validierte SQLite-Graph bewahren Wissen.
+
+  - id: principle.sqlite_graph_is_canonical_model
+    type: principle
+    title: Validierter SQLite-Graph ist kanonisches Modell
+    status: approved
+    ownerDomain: CrossDomain
+    summary: Sobald der SQLite-Graph die YAML-Artefakte fehlerfrei und vollstaendig abbildet, ist der SQLite-Graph die kanonische Pflege- und Pruefstruktur. YAML bleibt nur Legacy-, Import- oder Exportformat.
 
   - id: principle.yaml_is_source_of_truth
     type: principle
-    title: YAML ist Source of Truth
-    status: approved
+    title: YAML als Source of Truth abgeloest
+    status: superseded
     ownerDomain: CrossDomain
-    summary: Strukturierte YAML-Dateien sind fuehrend. Markdown ist Lesesicht oder generierter Output.
+    summary: Diese fruehere Regel wurde durch `principle.sqlite_graph_is_canonical_model` abgeloest. YAML-Dateien werden nicht mehr als fuehrende Quelle gepflegt, sofern der SQLite-Graph die YAML-Struktur exakt validiert abbildet.
+    replacedBy: principle.sqlite_graph_is_canonical_model
 
   - id: principle.top_down_development
     type: principle
@@ -28,5 +36,40 @@ items:
     title: Kein nicht-root Artefakt ohne Upstream-Beziehung
     status: approved
     ownerDomain: CrossDomain
-    summary: Jedes nicht-root Artefakt braucht eine nachvollziehbare Beziehung zu Vision, Business Goal, Customer Journey oder Requirement.
+    summary: Produkt-, Learning-, Business-, Umsetzungs- und Nachweisartefakte brauchen eine nachvollziehbare Upstream-Beziehung; Requirements, Architekturentscheidungen und Regeln sind davon ausgenommen.
+    exceptions:
+      - requirement
+      - learning_project with projectStatus `idea`
+      - learning_project_idea
+      - architecture_decision
+      - requirement_rule
+      - validation_rule
+      - principle
+      - metamodel
+      - metamodel_view
+      - metamodel_part
 
+  - id: principle.reuse_existing_metamodel_structures
+    type: validation_rule
+    title: Bestehende Metamodell-Strukturen vor neuen Artefakten nutzen
+    status: approved
+    ownerDomain: CrossDomain
+    summary: Neue fachliche Anforderungen muessen zuerst gegen bestehende Metamodell-Artefakte geprueft werden. Neue Artefakttypen duerfen nur entstehen, wenn kein bestehender Typ fachlich passt.
+    examples:
+      - Verkaufbare Learning-Einheiten werden als `Course` modelliert.
+      - Kombinationsangebote aus mehreren Courses werden als `ProductOffering` mit `offeringType: bundle` modelliert.
+      - Fachliche Lernumsetzung bleibt in Learning-Artefakten wie LearningGoal, LearningPath, LearningProject oder LearningUnit.
+      - Deprecated Uebergangsbegriffe wie `sales_learning_offer` duerfen nicht fuehrende Quelle werden.
+
+  - id: principle.requirements_link_upstream
+    type: validation_rule
+    title: Requirements verlinken upstream
+    status: approved
+    ownerDomain: CrossDomain
+    summary: Teilanforderungen werden als normale Requirements modelliert und koennen auf ihr uebergeordnetes Requirement verweisen; Requirements brauchen keinen Pflichtpfad bis zur Vision.
+    rules:
+      - Ein Requirement darf ein uebergeordnetes Requirement referenzieren, muss dies aber nicht.
+      - Es gibt keinen eigenen Artefakttyp fuer SubRequirement oder Teilanforderung.
+      - Ein Requirement darf hoechstens ein fachlich uebergeordnetes Requirement besitzen.
+      - Ein Requirement ohne uebergeordnetes Requirement ist als Top-Level-Requirement zulaessig.
+      - Requirement-Ketten muessen azyklisch sein.

@@ -1,0 +1,166 @@
+schemaVersion: 1
+kind: learning_project_catalog
+sourceStatus: legacy_import_source
+catalogId: project_catalog.cross_platform_tamagotchi
+ownerDomain: Learning
+summary: Plattformvarianten fuer den Learning Path Cross-Platform Development. Das digitale Tamagotchi ist nur die austauschbare Beispieldomaene.
+exampleDomain:
+  id: example_domain.digital_tamagotchi
+  title: Digitales Tamagotchi
+  replaceableForLearningPath: true
+  domainPurpose: Stabile Fachlogik bereitstellen, damit Zielsysteme, Frameworks und Laufzeitumgebungen vergleichbar werden.
+  coreModel:
+    - petState
+    - hunger
+    - energy
+    - mood
+    - age
+    - events
+    - lastInteractionAt
+separationRule:
+  learningPathStable: learning_path.cross_platform_development
+  exampleMayChange: true
+  rule: Die Projekte duerfen die Tamagotchi-Domaene austauschen; die Zuordnung nach oben erfolgt ausschliesslich ueber den Learning Path.
+items:
+  - id: project.cross_platform_tamagotchi.embedded
+    type: learning_project
+    title: Digitales Tamagotchi - Embedded
+    status: draft
+    projectStatus: idea
+    ownerDomain: Learning
+    teachingRole: example_project
+    learningPath: learning_path.cross_platform_development
+    targetSystems:
+      - ESP32
+    summary: Tamagotchi-Fachlogik auf einem ESP32 mit Display, Buttons, Timer, Persistenz und Hardwarezugriffen umsetzen.
+    learningOutcomes:
+      - Zustandsmaschine fuer ein interaktives Geraet modellieren.
+      - Hardwarezugriffe von Fachlogik trennen.
+      - Persistenz und Timer in einer Embedded-Umgebung einordnen.
+    prerequisites:
+      - learning_goal.embedded_basics
+    technicalTopics:
+      - Display
+      - Buttons
+      - Zustandsmaschine
+      - Timer
+      - Persistenz
+      - Hardwarezugriffe
+
+  - id: project.cross_platform_tamagotchi.desktop
+    type: learning_project
+    title: Digitales Tamagotchi - Desktop
+    status: draft
+    projectStatus: idea
+    ownerDomain: Learning
+    teachingRole: example_project
+    learningPath: learning_path.cross_platform_development
+    targetSystems:
+      - Windows
+      - macOS
+      - Linux
+    summary: Dieselbe Tamagotchi-Domaene als Desktop-Anwendung betrachten und Desktop-Technologien vergleichen.
+    learningOutcomes:
+      - Desktop-GUI, Fenster, Menues, Maus, Tastatur und Dateisystem als Plattformmerkmale verstehen.
+      - Native Entwicklung, .NET, Qt, Flutter, Electron und Python nach Einsatzzweck vergleichen.
+      - Lokale Speicherung auf Desktop-Systemen fachlich einordnen.
+    technologyComparison:
+      - native Entwicklung
+      - .NET
+      - Qt
+      - Flutter
+      - Electron
+      - Python
+    implementationRule: Nicht alle Technologien muessen implementiert werden; entscheidend ist der begruendete Technologievergleich.
+
+  - id: project.cross_platform_tamagotchi.mobile
+    type: learning_project
+    title: Digitales Tamagotchi - Mobile
+    status: draft
+    projectStatus: idea
+    ownerDomain: Learning
+    teachingRole: example_project
+    learningPath: learning_path.cross_platform_development
+    targetSystems:
+      - Android
+      - iOS
+    summary: Dieselbe Tamagotchi-Domaene fuer mobile Bedienung mit Touch, Navigation, App-Lifecycle und Benachrichtigungen betrachten.
+    learningOutcomes:
+      - Mobile Navigation und Touch-Interaktion von Desktop- und Embedded-Bedienung unterscheiden.
+      - App-Lifecycle und lokale Daten als zentrale Mobile-Aspekte verstehen.
+      - Benachrichtigungen als plattformspezifischen Adapter einordnen.
+
+  - id: project.cross_platform_tamagotchi.web
+    type: learning_project
+    title: Digitales Tamagotchi - Web
+    status: draft
+    projectStatus: idea
+    ownerDomain: Learning
+    teachingRole: example_project
+    learningPath: learning_path.cross_platform_development
+    targetSystems:
+      - Browser
+    summary: Dieselbe Tamagotchi-Domaene als Browser-Anwendung mit HTML, CSS, JavaScript, Responsive Design und Browser-APIs betrachten.
+    learningOutcomes:
+      - Browser als eigene Laufzeitumgebung verstehen.
+      - Responsive Design als Zielsystemanforderung einordnen.
+      - Web-Frameworks als optionalen Strukturierungsansatz bewerten.
+
+  - id: project.cross_platform_tamagotchi.cloud
+    type: learning_project
+    title: Digitales Tamagotchi - Cloud
+    status: draft
+    projectStatus: idea
+    ownerDomain: Learning
+    teachingRole: example_project
+    learningPath: learning_path.cross_platform_development
+    targetSystems:
+      - Cloud Backend
+    summary: Gemeinsame Backend-Basis fuer Tamagotchi-Clients mit REST-API, Datenbank, Benutzerverwaltung, Authentifizierung und Deployment.
+    learningOutcomes:
+      - REST-API und Datenbank als gemeinsame Infrastruktur fuer mehrere Clients verstehen.
+      - Benutzerverwaltung und Authentifizierung fachlich einordnen.
+      - Deployment als Teil moderner plattformuebergreifender Software betrachten.
+
+  - id: project.cross_platform_tamagotchi.synchronization
+    type: learning_project
+    title: Digitales Tamagotchi - Synchronisation
+    status: draft
+    projectStatus: idea
+    ownerDomain: Learning
+    teachingRole: integration_project
+    learningPath: learning_path.cross_platform_development
+    targetSystems:
+      - ESP32
+      - Desktop
+      - Mobile
+      - Browser
+      - Cloud Backend
+    summary: Die getrennten Tamagotchi-Anwendungen werden zu einem gemeinsamen Zustand verbunden, der auf allen Zielsystemen identisch ist.
+    examples:
+      - Fuetterung auf dem ESP32 erscheint auf Desktop, Smartphone und im Browser.
+      - Statusaenderungen werden ueber ein gemeinsames Datenmodell synchronisiert.
+    learningOutcomes:
+      - Synchronisation, APIs und Datenmodelle zusammenhaengend verstehen.
+      - Offline-/Online-Verhalten und Konflikte fachlich beschreiben.
+      - Echtzeitkommunikation als Option gegen einfachere Abfrageverfahren abwaegen.
+  - id: project.cross_platform_tamagotchi.ai_extension
+    type: learning_project
+    title: Digitales Tamagotchi - KI-Erweiterung
+    status: idea
+    projectStatus: idea
+    ownerDomain: Learning
+    teachingRole: optional_extension_project
+    learningPath: learning_path.cross_platform_development
+    optional: true
+    targetSystems:
+      - Cloud Backend
+      - Web
+      - Mobile
+      - Desktop
+      - optional ESP32 via Backend
+    summary: Das gemeinsame Tamagotchi wird optional um Persoenlichkeit, Gespraeche, Sprachsteuerung, KI-generierte Ereignisse und individuelle Reaktionen erweitert.
+    learningOutcomes:
+      - KI-Integration als optionalen plattformuebergreifenden Dienst einordnen.
+      - Prompt Engineering, Tool Calling und Kontextverwaltung verstehen.
+      - Kosten- und Tokenmanagement als fachliche Randbedingung beruecksichtigen.

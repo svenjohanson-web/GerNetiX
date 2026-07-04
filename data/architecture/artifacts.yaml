@@ -1,0 +1,96 @@
+schemaVersion: 1
+kind: architecture_artifact_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: architecture_artifact.business_traceability_model
+    type: architecture_artifact
+    title: Business-Traceability-Modell
+    businessStatus: Approved
+    implementationStatus: In Design
+    ownerDomain: CrossDomain
+    summary: Modellkette von Vision ueber Business Goals, Strategies, Measures und Business Capabilities bis Requirements, Architektur, Datenmodell, APIs, Implementierung, Tests und Validation.
+    sources:
+      - data/business/business-traceability-metamodel.yaml
+
+  - id: architecture_artifact.community_knowledge_platform
+    type: architecture_artifact
+    title: Community / Wissensplattform Architektur
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Architekturartefakt fuer Community-Fragen, verifizierte Antworten und dauerhafte Wissensbasis.
+    derivedFromRequirements:
+      - requirement.community_question_triage_time
+      - requirement.community_answer_verification
+      - requirement.verified_answer_status_visible
+
+  - id: architecture_artifact.ai_cost_protection
+    type: architecture_artifact
+    title: KI Cost Protection
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Architekturartefakt fuer serverseitige Credit-Pruefung, Budgetlimits, Modellfreigaben, Verbrauchsberechnung und Schutz vor unkontrollierten KI-Kosten.
+    derivedFromRequirements:
+      - requirement.ai_credit_balance
+      - requirement.ai_prepaid_credit_check
+      - requirement.ai_credit_consumption_calculation
+      - requirement.ai_usage_limits
+      - requirement.ai_model_access_control
+      - requirement.ai_global_kill_switch
+
+  - id: architecture_artifact.ai_usage_observability
+    type: architecture_artifact
+    title: KI Usage Observability und Admin Dashboard
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Architekturartefakt fuer Usage Events, Audit Trail, Admin-Dashboard, Kosten-/Margenberichte, auffaellige Nutzungsmuster und administrative Steuerungsfunktionen.
+    derivedFromRequirements:
+      - requirement.ai_usage_event_audit_trail
+      - requirement.ai_admin_usage_dashboard
+      - requirement.ai_cost_margin_reporting
+      - requirement.ai_admin_cost_control_actions
+      - requirement.ai_suspicious_usage_detection
+
+  - id: architecture_artifact.community_ai_assistant
+    type: architecture_artifact
+    title: KI-Community-Assistent Architektur
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain:
+      - business_domain.community
+    summary: Architekturartefakt fuer RAG, Vektordatenbank, Embeddings, LLM, Prompt Templates, Quellenreferenzen, Conversation Memory, Moderation, Premium-Zugriff und Community-Wissensindex.
+    usesArchitectureArtifacts:
+      - architecture_artifact.community_knowledge_platform
+      - architecture_artifact.ai_cost_protection
+      - architecture_artifact.ai_usage_observability
+    derivedFromRequirements:
+      - requirement.community_ai_assistant_query
+      - requirement.community_ai_assistant_sources
+      - requirement.community_ai_assistant_indexing
+      - requirement.community_ai_assistant_premium_access
+      - requirement.community_ai_assistant_admin_configuration
+      - requirement.community_ai_assistant_monitoring
+      - requirement.community_ai_assistant_moderation
+    components:
+      - component.community_rag_pipeline
+      - component.community_vector_database
+      - component.community_embedding_service
+      - component.community_llm_adapter
+      - component.community_prompt_template_registry
+      - component.community_source_reference_resolver
+      - component.community_conversation_memory
+
+  - id: component.ota
+    type: architecture_component
+    title: OTA Update Component
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Architekturkomponente fuer Over-the-Air-Firmwareupdates, die von WiFi, registrierten Boards, aktiven Credentials und robusten Flash-Regeln abhaengt.
+    dependsOn:
+      - architecture.registered_processor_board
+    constrainedBy:
+      - nfr.firmware_flash_must_not_brick_board

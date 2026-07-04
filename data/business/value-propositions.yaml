@@ -1,6 +1,6 @@
 schemaVersion: 1
 kind: value_proposition_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 items:
   - id: value.visible_result
     type: value_proposition
@@ -58,3 +58,37 @@ items:
     ownerDomain: Business
     summary: Aus inventarisierter Hardware werden passende Projekte und Lernangebote abgeleitet.
 
+  - id: value.custom_home_automation
+    type: value_proposition
+    title: Individuelle Hausautomatisierung
+    status: draft
+    ownerDomain: Business
+    summary: Nutzer koennen spezielle Hausautomatisierungswuensche selbst verstehen, planen und umsetzen, wenn Standardloesungen nicht ausreichen.
+
+  - id: value.incremental_extension
+    type: value_proposition
+    title: Immer weiter erweitern
+    status: draft
+    ownerDomain: Business
+    summary: Hausautomatisierung wird als schrittweise erweiterbares System verstanden, nicht als einmalig abgeschlossenes Projekt.
+
+  - id: value.identification_authorization_learning
+    type: value_proposition
+    title: Identifizierung und Autorisierung praktisch verstehen
+    status: draft
+    ownerDomain: Business
+    summary: Nutzer lernen an einem greifbaren Projekt, warum Identifizierung nicht dasselbe wie Autorisierung ist und wie erlaubte Tags von abgelehnten Tags unterschieden werden.
+
+  - id: value.mechanical_maker_project
+    type: value_proposition
+    title: Mechanisches Maker-Projekt
+    status: draft
+    ownerDomain: Business
+    summary: Elektronik, Software und einfache Mechanik werden zu einem sichtbaren, anfassbaren Projekt verbunden.
+
+  - id: value.home_automation_topology_choice
+    type: value_proposition
+    title: Passende Hausautomatisierungs-Topologie waehlen
+    status: draft
+    ownerDomain: Business
+    summary: Nutzer lernen, ob embedded-only, PC-Software, Mobile-App, HomeServer, verteiltes IoT oder intelligentere Edge-Devices fuer ihren Anwendungsfall sinnvoll sind.

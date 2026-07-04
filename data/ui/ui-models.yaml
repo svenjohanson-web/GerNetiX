@@ -1,0 +1,47 @@
+schemaVersion: 1
+kind: ui_model_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: ui_model.community_ai_assistant
+    type: ui_model
+    title: KI-Community-Assistent UI
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Product
+    belongsToBusinessDomain: business_domain.community
+    summary: Community-Oberflaeche fuer Premium-Nutzer, um natuerlichsprachliche Fragen zu stellen, Antworten mit Quellen zu lesen, aehnliche Inhalte zu oeffnen und Zusammenfassungen zu erzeugen.
+    derivedFromRequirements:
+      - requirement.community_ai_assistant_query
+      - requirement.community_ai_assistant_sources
+      - requirement.community_ai_assistant_indexing
+      - requirement.community_ai_assistant_moderation
+    requiredStates:
+      - premium_access_granted
+      - premium_required
+      - credit_limit_reached
+      - no_sources_found
+      - answer_with_sources
+      - answer_blocked_by_moderation
+
+  - id: ui_model.admin_community_ai_assistant_settings
+    type: ui_model
+    title: Admin Community AI Assistant Settings
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Product
+    belongsToBusinessDomain: business_domain.community
+    summary: Admin-Oberflaeche fuer Aktivierung, Modellwahl, Limits, Budgetwarnungen, Modell-Fallback, Temperatur, Kontextgroesse, erlaubte Datenquellen, Moderationsregeln, Quellenpflicht und RAG-Konfiguration.
+    derivedFromRequirements:
+      - requirement.community_ai_assistant_admin_configuration
+
+  - id: ui_model.admin_community_ai_assistant_monitoring
+    type: ui_model
+    title: Admin Community AI Assistant Monitoring
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Product
+    belongsToBusinessDomain: business_domain.community
+    summary: Erweiterung des bestehenden KI-Admin-Dashboards um Community-Assistent-Kennzahlen wie aktive Premium-Nutzer, Antwortzeit, Token-Verbrauch, Kosten, Cache-Trefferquote, RAG-Trefferquote, haeufigste Fragen, Fehlerquote und Budgetwarnungen.
+    derivedFromRequirements:
+      - requirement.community_ai_assistant_monitoring
+      - requirement.ai_admin_usage_dashboard

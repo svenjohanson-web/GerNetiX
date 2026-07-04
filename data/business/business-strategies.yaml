@@ -1,0 +1,66 @@
+schemaVersion: 1
+kind: business_strategy_catalog
+sourceStatus: legacy_import_source
+note: Business Strategies werden ArchiMate-nah als Course of Action verstanden. Sie beschreiben das Wie; Business Capabilities beschreiben das Was-koennen.
+items:
+  - id: business_strategy.increase_revenue
+    type: business_strategy
+    title: Umsatz steigern
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Umsatz durch neue Kunden, Bestandskundenbindung, Upselling, Cross-Selling und Partnerschaften steigern.
+    belongsToBusinessGoals:
+      - BG-008
+    enabledByBusinessCapabilities:
+      - BC-001
+      - BC-026
+      - BC-028
+      - BC-029
+      - BC-039
+      - BC-040
+    containsStrategies:
+      - strategy.acquire_new_customers
+      - strategy.retain_existing_customers
+      - strategy.upselling_cross_selling
+      - strategy.strategic_partnerships
+
+  - id: business_strategy.build_recurring_revenue
+    type: business_strategy
+    title: Wiederkehrende Umsaetze aufbauen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Wiederkehrende Einnahmen ueber Abonnements, Mitgliedschaften und langfristige Lernbegleitung aufbauen.
+    belongsToBusinessGoals:
+      - BG-008
+    enabledByBusinessCapabilities:
+      - BC-023
+      - BC-024
+      - BC-026
+
+  - id: business_strategy.optimize_costs
+    type: business_strategy
+    title: Kosten optimieren
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Kosten durch wiederverwendbares Wissen, strukturierte Prozesse und reduzierte Supportlast optimieren.
+    belongsToBusinessGoals:
+      - BG-008
+    enabledByBusinessCapabilities:
+      - BC-041
+
+  - id: business_strategy.long_term_competitiveness
+    type: business_strategy
+    title: Langfristig wettbewerbsfaehig bleiben
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Langfristige Wettbewerbsfaehigkeit durch Wissensbasis, Lernangebote, Community und technische Differenzierung sichern.
+    belongsToBusinessGoals:
+      - BG-008
+    enabledByBusinessCapabilities:
+      - BC-018
+      - BC-025
+      - BC-040

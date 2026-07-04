@@ -1,0 +1,45 @@
+schemaVersion: 1
+kind: metamodel
+sourceStatus: legacy_import_source
+id: metamodel.learning_platform
+type: metamodel
+title: Learning Platform Metamodell
+status: draft
+ownerDomain: CrossDomain
+summary: Gemeinsame fachliche Single Source of Truth fuer alle Metamodell-Sichten der Learning Platform.
+
+principles:
+  - Es gibt fachlich nur ein Metamodell.
+  - Einzelne YAML-Dateien duerfen Sichten, Teilmodelle oder Validierungsmodelle dieses Metamodells beschreiben.
+  - Metamodell-Sichten duerfen nicht als voneinander unabhaengige Wahrheiten behandelt werden.
+  - Jede Metamodell-Sicht muss explizit auf `metamodel.learning_platform` zurueckverweisen.
+  - Die gespeicherte Traceability verlaeuft upstream zur Metamodell-Wurzel.
+
+views:
+  - id: metamodel.learning_platform.uml
+    type: metamodel_view
+    title: UML-nahe Klassen- und Beziehungsstruktur
+    sourceFile: data/metamodel/learning-platform-uml.yaml
+    relationToRoot: is_view_of
+    summary: Zeigt Klassen, Domaenen, Kardinalitaeten und fachliche Beziehungen des gemeinsamen Metamodells.
+
+  - id: metamodel.business_traceability
+    type: metamodel_view
+    title: Business-Traceability-Metamodell
+    sourceFile: data/business/business-traceability-metamodel.yaml
+    relationToRoot: is_view_of
+    summary: Beschreibt die fachliche Traceability von Vision bis Validation und ist eine Sicht des gemeinsamen Metamodells.
+
+  - id: metamodel.project_status
+    type: metamodel_part
+    title: Projektstatus-Modell
+    sourceFile: data/metamodel/project-status.yaml
+    relationToRoot: refines
+    summary: Definiert den fachlichen Lebenszyklusstatus von Projektideen und LearningProjects als Teil des gemeinsamen Metamodells.
+
+validationRules:
+  - id: validation_rule.metamodel_views_must_link_to_root
+    type: validation_rule
+    title: Metamodell-Sichten muessen zur Metamodell-Wurzel verlinkt sein
+    status: approved
+    summary: Jede Datei mit `kind` metamodel, metamodel_uml, business_traceability_metamodel oder project_status_model muss eine nachvollziehbare Beziehung zu `metamodel.learning_platform` besitzen.

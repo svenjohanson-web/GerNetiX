@@ -1,6 +1,6 @@
 schemaVersion: 1
 kind: business_goal_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 items:
   - id: BG-001
     type: business_goal
@@ -12,10 +12,8 @@ items:
       - vision.gernetix
     usedBy:
       - product.learning_platform
-      - project.ai_pet_esp32
-      - project.smart_plant_watering
-      - project.rfid_safe
-      - project.kanban_gridfinity_inventory
+      - app.user_ide
+      - BC-001
 
   - id: BG-002
     type: business_goal
@@ -27,10 +25,7 @@ items:
       - vision.gernetix
     usedBy:
       - product.learning_platform
-      - project.ai_pet_esp32
-      - project.smart_plant_watering
-      - project.rfid_safe
-      - project.kanban_gridfinity_inventory
+      - BC-001
 
   - id: BG-003
     type: business_goal
@@ -42,7 +37,6 @@ items:
       - vision.gernetix
     usedBy:
       - product.simple_ide
-      - project.ai_pet_esp32
 
   - id: BG-004
     type: business_goal
@@ -54,9 +48,7 @@ items:
       - vision.gernetix
     usedBy:
       - product.learning_platform
-      - project.smart_plant_watering
-      - project.rfid_safe
-      - project.kanban_gridfinity_inventory
+      - BC-001
 
   - id: BG-005
     type: business_goal
@@ -68,8 +60,73 @@ items:
       - vision.gernetix
     usedBy:
       - product.learning_platform
-      - project.ai_pet_esp32
-      - project.smart_plant_watering
-      - project.rfid_safe
-      - project.kanban_gridfinity_inventory
 
+  - id: BG-006
+    type: business_goal
+    title: Hardwarevertrieb und Support absichern
+    status: draft
+    ownerDomain: Business
+    summary: Gewinnbringenden Hardwarevertrieb ermoeglichen, gesetzliche Supportpflichten erfuellen und unberechtigte Support- oder Reklamationsansprueche vermeiden.
+    derivesFrom:
+      - vision.gernetix
+    rationale:
+      - Verkauft GerNetiX Hardware, muss der Support fuer diese Hardware nachvollziehbar und rechtskonform erbracht werden.
+      - Register and Pairing soll nachweisen, ob ein konkretes Board bekannt ist und welchem Account es zugeordnet wurde.
+      - Support-Erschleichung und Reklamationen fuer nicht ueber GerNetiX bezogene Boards sollen reduziert werden.
+    usedBy:
+      - app.provisioning_tool
+      - app.recovery_tool
+      - app.user_ide
+      - app.hardware_shop
+
+  - id: BG-007
+    type: business_goal
+    title: Robustheit und Kundenakzeptanz sichern
+    status: draft
+    ownerDomain: Business
+    summary: Kritische Plattformfunktionen muessen robust sein, damit Nutzer Vertrauen in Hardware, IDE, Flash-Prozesse und Support gewinnen.
+    derivesFrom:
+      - vision.gernetix
+    rationale:
+      - Ein fehlgeschlagener Firmware-Flash darf nicht als Board-Defekt beim Kunden ankommen.
+      - Robuste Flash- und Recovery-Prozesse reduzieren Frust, Reklamationen und Supportkosten.
+      - Kundenakzeptanz entsteht, wenn riskante technische Prozesse sicher und nachvollziehbar gefuehrt werden.
+    usedBy:
+      - nfr.firmware_flash_must_not_brick_board
+      - app.user_ide
+      - app.provisioning_tool
+      - app.recovery_tool
+
+  - id: BG-008
+    type: business_goal
+    title: Nachhaltig profitabel wirtschaften
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    status: draft
+    ownerDomain: Business
+    summary: Das Unternehmen soll nachhaltig Geld verdienen, ohne die langfristige Wissens- und Kundennutzenorientierung zu verlieren.
+    derivesFrom:
+      - vision.gernetix
+    requiresBusinessCapabilities:
+      - BC-001
+      - BC-023
+      - BC-024
+      - BC-026
+      - BC-028
+      - BC-029
+      - BC-039
+      - BC-040
+      - BC-041
+    rationale:
+      - Die Plattform muss wirtschaftlich tragfaehig sein, damit Lernen, Support, Inhalte, Hardware und Wissenspflege langfristig finanziert werden koennen.
+      - Profitabilitaet darf nicht durch kurzfristige Tricks entstehen, sondern durch nachvollziehbaren Kundennutzen, wiederverwendbares Wissen und passende Angebote.
+    usedBy:
+      - BC-001
+      - BC-023
+      - BC-024
+      - BC-026
+      - BC-028
+      - BC-029
+      - BC-039
+      - BC-040
+      - BC-041

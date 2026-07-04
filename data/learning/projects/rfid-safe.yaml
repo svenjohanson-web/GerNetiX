@@ -3,35 +3,12 @@ id: project.rfid_safe
 slug: rfid-safe
 type: learning_project
 status: draft
+projectStatus: idea
 title: RFID-Tresor
 ownerDomain: Learning
 summary: Ein kleiner Tresor wird per RFID-Karte entsperrt und vermittelt SPI, RFID, Servo/Aktorik und Zustandsautomaten.
 
-businessGoals:
-  - BG-001
-  - BG-002
-  - BG-004
-  - BG-005
-customerJourneys:
-  - CJ-002
-  - CJ-003
-  - CJ-006
-audiences:
-  primary:
-    - audience.maker
-    - audience.hobby_developer
-    - audience.embedded_beginner
-  secondary:
-    - audience.student
-    - audience.teacher
-valuePropositions:
-  - value.visible_result
-  - value.security_concept_intro
-  - value.hardware_reuse
-
-learningGoals:
-  - learning_goal.embedded_basics
-  - learning_goal.embedded_advanced
+learningPath: learning_path.embedded_access_control
 developsCompetencies:
   - competency.spi_basics
   - competency.rfid_basics

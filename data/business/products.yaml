@@ -1,6 +1,6 @@
 schemaVersion: 1
 kind: product_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 items:
   - id: product.learning_platform
     type: product
@@ -13,6 +13,7 @@ items:
       - BG-002
       - BG-004
       - BG-005
+      - BG-006
     usesKnowledgeBase:
       - knowledge_base.distributed_engineering_knowledge
 
@@ -24,6 +25,6 @@ items:
     summary: Embedded-Projekte moeglichst einfach entwickeln.
     realizes:
       - BG-003
+      - BG-006
     usesKnowledgeBase:
       - knowledge_base.distributed_engineering_knowledge
-

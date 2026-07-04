@@ -17,7 +17,31 @@ relations:
     relation: drives
     to: architecture.yaml_first_repository
     confidence: high
+  - from: principle.knowledge_more_expensive_than_code
+    relation: drives
+    to: architecture.sqlite_graph_canonical_model
+    confidence: high
+  - from: principle.sqlite_graph_is_canonical_model
+    relation: drives
+    to: architecture.sqlite_graph_canonical_model
+    confidence: high
+  - from: principle.reuse_existing_metamodel_structures
+    relation: constrains
+    to: metamodel.learning_platform
+    confidence: high
+  - from: principle.reuse_existing_metamodel_structures
+    relation: constrains
+    to: course.home_automation_understand_and_extend
+    confidence: high
+  - from: principle.reuse_existing_metamodel_structures
+    relation: constrains
+    to: product_offering.embedded_basics_bundle
+    confidence: high
   - from: architecture.yaml_first_repository
+    relation: realizes
+    to: knowledge_base.distributed_engineering_knowledge
+    confidence: high
+  - from: architecture.sqlite_graph_canonical_model
     relation: realizes
     to: knowledge_base.distributed_engineering_knowledge
     confidence: high
@@ -27,6 +51,18 @@ relations:
     confidence: high
   - from: architecture.domain_ownership
     relation: constrains
+    to: metamodel.learning_platform
+    confidence: high
+  - from: metamodel.learning_platform.uml
+    relation: is_view_of
+    to: metamodel.learning_platform
+    confidence: high
+  - from: metamodel.business_traceability
+    relation: is_view_of
+    to: metamodel.learning_platform
+    confidence: high
+  - from: metamodel.project_status
+    relation: refines
     to: metamodel.learning_platform
     confidence: high
 
@@ -49,6 +85,563 @@ relations:
   - from: BG-005
     relation: derives_from
     to: vision.gernetix
+    confidence: high
+  - from: BG-006
+    relation: derives_from
+    to: vision.gernetix
+    confidence: high
+  - from: BG-007
+    relation: derives_from
+    to: vision.gernetix
+    confidence: high
+  - from: BG-008
+    relation: derives_from
+    to: vision.gernetix
+    confidence: high
+
+  - from: BG-008
+    relation: requires
+    to: BC-001
+    confidence: high
+  - from: BG-008
+    relation: requires
+    to: BC-023
+    confidence: high
+  - from: BG-008
+    relation: requires
+    to: BC-024
+    confidence: high
+  - from: BG-008
+    relation: requires
+    to: BC-026
+    confidence: high
+  - from: BG-008
+    relation: requires
+    to: BC-028
+    confidence: high
+  - from: BG-008
+    relation: requires
+    to: BC-029
+    confidence: high
+  - from: BG-008
+    relation: requires
+    to: BC-039
+    confidence: high
+  - from: BG-008
+    relation: requires
+    to: BC-040
+    confidence: high
+  - from: BG-008
+    relation: requires
+    to: BC-041
+    confidence: high
+
+  - from: business_strategy.increase_revenue
+    relation: has
+    to: strategy.acquire_new_customers
+    confidence: high
+  - from: business_strategy.increase_revenue
+    relation: has
+    to: strategy.retain_existing_customers
+    confidence: high
+  - from: business_strategy.increase_revenue
+    relation: has
+    to: strategy.upselling_cross_selling
+    confidence: high
+  - from: business_strategy.increase_revenue
+    relation: has
+    to: strategy.strategic_partnerships
+    confidence: high
+
+  - from: strategy.acquire_new_customers
+    relation: has
+    to: measure.public_relations
+    confidence: high
+  - from: measure.public_relations
+    relation: has_child
+    to: measure.public_knowledge_platform
+    confidence: high
+  - from: measure.public_relations
+    relation: has_child
+    to: measure.external_community_presence
+    confidence: high
+  - from: strategy.retain_existing_customers
+    relation: has
+    to: measure.community_knowledge_platform
+    confidence: high
+  - from: strategy.retain_existing_customers
+    relation: has
+    to: measure.platform_centric_work
+    confidence: high
+  - from: strategy.retain_existing_customers
+    relation: has
+    to: measure.subscription_lifecycle
+    confidence: high
+  - from: strategy.upselling_cross_selling
+    relation: has
+    to: measure.premium_courses
+    confidence: high
+
+  - from: measure.public_knowledge_platform
+    relation: provides
+    to: BC-002
+    confidence: high
+  - from: measure.public_knowledge_platform
+    relation: provides
+    to: BC-003
+    confidence: high
+  - from: measure.public_knowledge_platform
+    relation: provides
+    to: BC-004
+    confidence: high
+  - from: measure.public_knowledge_platform
+    relation: provides
+    to: BC-005
+    confidence: high
+  - from: measure.external_community_presence
+    relation: provides
+    to: BC-006
+    confidence: high
+  - from: measure.external_community_presence
+    relation: provides
+    to: BC-007
+    confidence: high
+  - from: measure.external_community_presence
+    relation: provides
+    to: BC-008
+    confidence: high
+  - from: measure.external_community_presence
+    relation: constrained_by
+    to: BR-001
+    confidence: high
+  - from: measure.community_knowledge_platform
+    relation: provides
+    to: BC-015
+    confidence: high
+  - from: measure.community_knowledge_platform
+    relation: provides
+    to: BC-016
+    confidence: high
+  - from: measure.community_knowledge_platform
+    relation: provides
+    to: BC-017
+    confidence: high
+  - from: measure.community_knowledge_platform
+    relation: provides
+    to: BC-018
+    confidence: high
+  - from: measure.community_knowledge_platform
+    relation: provides
+    to: BC-019
+    confidence: high
+  - from: measure.platform_centric_work
+    relation: constrained_by
+    to: BR-002
+    confidence: high
+  - from: measure.subscription_lifecycle
+    relation: constrained_by
+    to: BR-003
+    confidence: high
+  - from: measure.subscription_lifecycle
+    relation: constrained_by
+    to: BR-004
+    confidence: high
+  - from: measure.subscription_lifecycle
+    relation: constrained_by
+    to: BR-005
+    confidence: high
+  - from: measure.premium_courses
+    relation: provides
+    to: BC-001
+    confidence: high
+  - from: BC-001
+    relation: supports
+    to: BG-001
+    confidence: high
+  - from: BC-001
+    relation: supports
+    to: BG-002
+    confidence: high
+  - from: BC-001
+    relation: supports
+    to: BG-004
+    confidence: high
+  - from: BC-001
+    relation: realizes
+    to: product_offering.embedded_basics_bundle
+    confidence: high
+  - from: BC-001
+    relation: supports
+    to: BG-008
+    confidence: high
+  - from: BR-006
+    relation: supports
+    to: BG-008
+    confidence: high
+  - from: BR-006
+    relation: supports
+    to: business_strategy.optimize_costs
+    confidence: high
+  - from: BR-006
+    relation: constrains
+    to: BC-041
+    confidence: high
+  - from: BR-006
+    relation: constrains
+    to: system_capability.ai_credit_management
+    confidence: high
+  - from: BR-006
+    relation: constrains
+    to: system_capability.ai_prepaid_credit_check
+    confidence: high
+  - from: BR-006
+    relation: constrains
+    to: system_capability.ai_budget_limits
+    confidence: high
+  - from: BR-006
+    relation: constrains
+    to: system_capability.ai_usage_audit_trail
+    confidence: high
+  - from: BR-006
+    relation: constrains
+    to: system_capability.admin_ai_usage_monitoring
+    confidence: high
+  - from: BR-006
+    relation: constrains
+    to: system_capability.admin_ai_cost_controls
+    confidence: high
+  - from: BR-006
+    relation: constrains
+    to: system_capability.ai_suspicious_usage_detection
+    confidence: high
+  - from: BC-039
+    relation: realizes
+    to: product_offering.ai_credit_addon
+    confidence: high
+  - from: BC-039
+    relation: derives
+    to: requirement.ai_credit_addon_purchase
+    confidence: high
+  - from: BC-039
+    relation: derives
+    to: requirement.ai_credit_addon_ledger_booking
+    confidence: high
+  - from: BC-041
+    relation: supports
+    to: BG-008
+    confidence: high
+  - from: business_strategy.optimize_costs
+    relation: enabled_by
+    to: BC-041
+    confidence: high
+  - from: BC-041
+    relation: enables
+    to: business_strategy.optimize_costs
+    confidence: high
+  - from: measure.ai_credit_management
+    relation: provides
+    to: BC-041
+    confidence: high
+  - from: measure.ai_prepaid_credit_check
+    relation: provides
+    to: BC-041
+    confidence: high
+  - from: measure.ai_budget_limits
+    relation: provides
+    to: BC-041
+    confidence: high
+  - from: measure.ai_usage_audit_trail
+    relation: provides
+    to: BC-041
+    confidence: high
+  - from: measure.ai_usage_monitoring
+    relation: provides
+    to: BC-041
+    confidence: high
+  - from: measure.ai_admin_cost_controls
+    relation: provides
+    to: BC-041
+    confidence: high
+  - from: measure.ai_suspicious_usage_detection
+    relation: provides
+    to: BC-041
+    confidence: high
+  - from: measure.ai_credit_management
+    relation: realizes
+    to: system_capability.ai_credit_management
+    confidence: high
+  - from: measure.ai_prepaid_credit_check
+    relation: realizes
+    to: system_capability.ai_prepaid_credit_check
+    confidence: high
+  - from: measure.ai_budget_limits
+    relation: realizes
+    to: system_capability.ai_budget_limits
+    confidence: high
+  - from: measure.ai_budget_limits
+    relation: realizes
+    to: system_capability.ai_premium_models
+    confidence: high
+  - from: measure.ai_usage_audit_trail
+    relation: realizes
+    to: system_capability.ai_usage_audit_trail
+    confidence: high
+  - from: measure.ai_usage_monitoring
+    relation: realizes
+    to: system_capability.admin_ai_usage_monitoring
+    confidence: high
+  - from: measure.ai_admin_cost_controls
+    relation: realizes
+    to: system_capability.admin_ai_cost_controls
+    confidence: high
+  - from: measure.ai_suspicious_usage_detection
+    relation: realizes
+    to: system_capability.ai_suspicious_usage_detection
+    confidence: high
+  - from: measure.ai_credit_management
+    relation: realizes
+    to: requirement.ai_credit_balance
+    confidence: high
+  - from: measure.ai_credit_management
+    relation: realizes
+    to: requirement.ai_credit_consumption_calculation
+    confidence: high
+  - from: measure.ai_prepaid_credit_check
+    relation: realizes
+    to: requirement.ai_prepaid_credit_check
+    confidence: high
+  - from: measure.ai_budget_limits
+    relation: realizes
+    to: requirement.ai_usage_limits
+    confidence: high
+  - from: measure.ai_budget_limits
+    relation: realizes
+    to: requirement.ai_model_access_control
+    confidence: high
+  - from: measure.ai_budget_limits
+    relation: realizes
+    to: requirement.ai_global_kill_switch
+    confidence: high
+  - from: measure.ai_usage_audit_trail
+    relation: realizes
+    to: requirement.ai_usage_event_audit_trail
+    confidence: high
+  - from: measure.ai_usage_monitoring
+    relation: realizes
+    to: requirement.ai_admin_usage_dashboard
+    confidence: high
+  - from: measure.ai_usage_monitoring
+    relation: realizes
+    to: requirement.ai_cost_margin_reporting
+    confidence: high
+  - from: measure.ai_admin_cost_controls
+    relation: realizes
+    to: requirement.ai_admin_cost_control_actions
+    confidence: high
+  - from: measure.ai_suspicious_usage_detection
+    relation: realizes
+    to: requirement.ai_suspicious_usage_detection
+    confidence: high
+  - from: system_capability.ai_credit_management
+    relation: supports
+    to: BC-041
+    confidence: high
+  - from: system_capability.ai_prepaid_credit_check
+    relation: supports
+    to: BC-041
+    confidence: high
+  - from: system_capability.ai_budget_limits
+    relation: supports
+    to: BC-041
+    confidence: high
+  - from: system_capability.ai_usage_audit_trail
+    relation: supports
+    to: BC-041
+    confidence: high
+  - from: system_capability.admin_ai_usage_monitoring
+    relation: supports
+    to: BC-041
+    confidence: high
+  - from: system_capability.admin_ai_cost_controls
+    relation: supports
+    to: BC-041
+    confidence: high
+  - from: system_capability.ai_suspicious_usage_detection
+    relation: supports
+    to: BC-041
+    confidence: high
+  - from: BC-041
+    relation: affects
+    to: architecture_artifact.ai_cost_protection
+    confidence: high
+  - from: BC-041
+    relation: affects
+    to: architecture_artifact.ai_usage_observability
+    confidence: high
+  - from: BR-006
+    relation: constrains
+    to: product_offering.ai_credit_addon
+    confidence: high
+  - from: product_offering.ai_credit_addon
+    relation: realizes
+    to: BC-039
+    confidence: high
+  - from: product_offering.ai_credit_addon
+    relation: supports
+    to: BG-008
+    confidence: high
+  - from: product_offering.book_vault_hardware_bundle
+    relation: supports
+    to: BG-001
+    confidence: high
+  - from: product_offering.book_vault_hardware_bundle
+    relation: supports
+    to: BG-002
+    confidence: high
+  - from: product_offering.book_vault_hardware_bundle
+    relation: supports
+    to: BG-004
+    confidence: high
+  - from: product_offering.book_vault_hardware_bundle
+    relation: supports
+    to: BG-006
+    confidence: high
+  - from: product_offering.book_vault_hardware_bundle
+    relation: realizes
+    to: BC-029
+    confidence: high
+  - from: requirement.ai_credit_addon_purchase
+    relation: affects
+    to: data_model.ai_credit_account
+    confidence: high
+  - from: requirement.ai_credit_addon_ledger_booking
+    relation: affects
+    to: data_model.ai_credit_ledger_entry
+    confidence: high
+  - from: requirement.ai_prepaid_credit_check
+    relation: affects
+    to: architecture_artifact.ai_cost_protection
+    confidence: high
+  - from: requirement.ai_prepaid_credit_check
+    relation: affects
+    to: data_model.ai_credit_account
+    confidence: high
+  - from: requirement.ai_prepaid_credit_check
+    relation: affects
+    to: data_model.ai_usage_event
+    confidence: high
+  - from: requirement.ai_usage_event_audit_trail
+    relation: affects
+    to: architecture_artifact.ai_usage_observability
+    confidence: high
+  - from: requirement.ai_usage_event_audit_trail
+    relation: affects
+    to: data_model.ai_usage_event
+    confidence: high
+  - from: requirement.ai_admin_usage_dashboard
+    relation: affects
+    to: architecture_artifact.ai_usage_observability
+    confidence: high
+  - from: requirement.ai_admin_usage_dashboard
+    relation: affects
+    to: app.admin_tool
+    confidence: high
+  - from: requirement.ai_admin_usage_dashboard
+    relation: affects
+    to: api_artifact.ai_admin_usage_dashboard
+    confidence: high
+  - from: requirement.ai_admin_cost_control_actions
+    relation: affects
+    to: app.admin_tool
+    confidence: high
+  - from: requirement.ai_admin_cost_control_actions
+    relation: affects
+    to: api_artifact.ai_admin_cost_controls
+    confidence: high
+  - from: nfr.ai_cost_protection_auditability
+    relation: validates
+    to: architecture_artifact.ai_cost_protection
+    confidence: high
+  - from: nfr.ai_cost_protection_auditability
+    relation: validates
+    to: architecture_artifact.ai_usage_observability
+    confidence: high
+  - from: nfr.ai_cost_protection_auditability
+    relation: constrains
+    to: app.admin_tool
+    confidence: high
+  - from: app.admin_tool
+    relation: uses
+    to: system_capability.admin_ai_usage_monitoring
+    confidence: high
+  - from: app.admin_tool
+    relation: uses
+    to: system_capability.admin_ai_cost_controls
+    confidence: high
+  - from: system_capability.ai_premium_models
+    relation: constrained_by
+    to: BR-006
+    confidence: high
+  - from: BC-008
+    relation: constrained_by
+    to: BR-001
+    confidence: high
+  - from: BC-002
+    relation: derives
+    to: requirement.public_content_indexable
+    confidence: high
+  - from: BC-015
+    relation: derives
+    to: requirement.community_question_triage_time
+    confidence: high
+  - from: BC-016
+    relation: derives
+    to: requirement.community_answer_verification
+    confidence: high
+  - from: BC-016
+    relation: derives
+    to: requirement.verified_answer_status_visible
+    confidence: high
+  - from: BC-016
+    relation: derives
+    to: requirement.reverify_changed_verified_answer
+    confidence: high
+  - from: BC-017
+    relation: derives
+    to: requirement.verified_answer_status_visible
+    confidence: high
+  - from: BR-005
+    relation: constrains
+    to: requirement.community_answer_verification
+    confidence: high
+
+  - from: requirement.community_question_triage_time
+    relation: affects
+    to: architecture_artifact.community_knowledge_platform
+    confidence: high
+  - from: requirement.community_question_triage_time
+    relation: affects
+    to: data_model.community_question
+    confidence: high
+  - from: requirement.community_question_triage_time
+    relation: affects
+    to: api_artifact.community_questions
+    confidence: high
+  - from: requirement.community_question_triage_time
+    relation: realized_by
+    to: implementation_artifact.community_question_triage
+    confidence: high
+  - from: requirement.community_question_triage_time
+    relation: verified_by
+    to: test_artifact.community_question_triage_time
+    confidence: high
+  - from: requirement.community_question_triage_time
+    relation: validated_by
+    to: validation_artifact.community_response_sla
+    confidence: high
+  - from: requirement.community_answer_verification
+    relation: affects
+    to: architecture_artifact.community_knowledge_platform
     confidence: high
 
   - from: CJ-001
@@ -75,10 +668,58 @@ relations:
     relation: supports
     to: BG-003
     confidence: medium
+  - from: CJ-006
+    relation: supports
+    to: BG-006
+    confidence: high
+  - from: CJ-006
+    relation: supports
+    to: BG-007
+    confidence: high
   - from: CJ-007
     relation: supports
     to: BG-005
     confidence: medium
+  - from: CJ-008
+    relation: supports
+    to: BG-005
+    confidence: high
+  - from: CJ-008
+    relation: supports
+    to: BG-006
+    confidence: high
+  - from: CJ-009
+    relation: supports
+    to: BG-001
+    confidence: high
+  - from: CJ-009
+    relation: supports
+    to: BG-003
+    confidence: high
+  - from: CJ-009
+    relation: supports
+    to: BG-006
+    confidence: high
+  - from: CJ-010
+    relation: supports
+    to: BG-006
+    confidence: high
+  - from: CJ-010
+    relation: supports
+    to: BG-007
+    confidence: high
+  - from: CJ-011
+    relation: supports
+    to: BG-002
+    confidence: high
+  - from: CJ-011
+    relation: supports
+    to: BG-004
+    confidence: high
+  - from: CJ-011
+    relation: supports
+    to: BG-006
+    confidence: high
 
   - from: product.learning_platform
     relation: realizes
@@ -96,152 +737,298 @@ relations:
     relation: realizes
     to: BG-005
     confidence: high
+  - from: product.learning_platform
+    relation: realizes
+    to: BG-006
+    confidence: medium
   - from: product.simple_ide
     relation: realizes
     to: BG-003
     confidence: high
+  - from: product.simple_ide
+    relation: realizes
+    to: BG-006
+    confidence: medium
 
-  - from: project.ai_pet_esp32
-    relation: belongs_to
-    to: product.learning_platform
+  - from: learning_path.ai_pet_embedded_interaction
+    relation: contains
+    to: project.ai_pet_esp32
     confidence: high
-  - from: project.smart_plant_watering
-    relation: belongs_to
-    to: product.learning_platform
+  - from: learning_path.automation_control_and_regulation
+    relation: contains
+    to: project.smart_plant_watering
     confidence: high
-  - from: project.rfid_safe
-    relation: belongs_to
-    to: product.learning_platform
+  - from: learning_path.embedded_access_control
+    relation: contains
+    to: project.rfid_safe
     confidence: high
-  - from: project.kanban_gridfinity_inventory
-    relation: belongs_to
-    to: product.learning_platform
+  - from: learning_path.maker_access_and_mechanics
+    relation: contains
+    to: project.book_vault
+    confidence: high
+  - from: learning_path.workshop_inventory_and_tooling
+    relation: contains
+    to: project.kanban_gridfinity_inventory
+    confidence: high
+  - from: learning_goal.embedded_basics
+    relation: realized_by
+    to: learning_path.ai_pet_embedded_interaction
+    confidence: high
+  - from: learning_goal.automation_basics
+    relation: realized_by
+    to: learning_path.automation_control_and_regulation
+    confidence: high
+  - from: learning_goal.embedded_advanced
+    relation: realized_by
+    to: learning_path.embedded_access_control
+    confidence: high
+  - from: learning_goal.embedded_basics
+    relation: realized_by
+    to: learning_path.maker_access_and_mechanics
+    confidence: high
+  - from: learning_goal.tooling_and_workflows
+    relation: realized_by
+    to: learning_path.workshop_inventory_and_tooling
     confidence: high
 
-  - from: project.ai_pet_esp32
+  - from: course.home_automation_understand_and_extend
+    relation: belongs_to
+    to: product.learning_platform
+    confidence: high
+  - from: course.home_automation_understand_and_extend
+    relation: realized_by
+    to: learning_unit.home_automation_understand_and_extend
+    confidence: high
+  - from: course.home_automation_understand_and_extend
     relation: supports
     to: BG-001
     confidence: high
-  - from: project.ai_pet_esp32
+  - from: course.home_automation_understand_and_extend
     relation: supports
     to: BG-002
     confidence: high
-  - from: project.ai_pet_esp32
-    relation: supports
-    to: BG-003
-    confidence: high
-  - from: project.ai_pet_esp32
-    relation: supports
-    to: BG-005
-    confidence: high
-  - from: project.smart_plant_watering
-    relation: supports
-    to: BG-001
-    confidence: high
-  - from: project.smart_plant_watering
-    relation: supports
-    to: BG-002
-    confidence: high
-  - from: project.smart_plant_watering
+  - from: course.home_automation_understand_and_extend
     relation: supports
     to: BG-004
     confidence: high
-  - from: project.smart_plant_watering
+  - from: course.home_automation_understand_and_extend
     relation: supports
     to: BG-005
     confidence: high
-  - from: project.rfid_safe
-    relation: supports
-    to: BG-001
+  - from: course.home_automation_understand_and_extend
+    relation: uses
+    to: value.custom_home_automation
     confidence: high
-  - from: project.rfid_safe
-    relation: supports
-    to: BG-002
+  - from: course.home_automation_understand_and_extend
+    relation: uses
+    to: value.incremental_extension
     confidence: high
-  - from: project.rfid_safe
-    relation: supports
-    to: BG-004
+  - from: course.home_automation_understand_and_extend
+    relation: uses
+    to: value.home_automation_topology_choice
     confidence: high
-  - from: project.rfid_safe
-    relation: supports
-    to: BG-005
+  - from: course.home_automation_understand_and_extend
+    relation: contains
+    to: learning_goal.embedded_basics
     confidence: high
-  - from: project.kanban_gridfinity_inventory
-    relation: supports
-    to: BG-001
+  - from: course.home_automation_understand_and_extend
+    relation: contains
+    to: learning_goal.home_automation_basics
     confidence: high
-  - from: project.kanban_gridfinity_inventory
-    relation: supports
-    to: BG-002
+  - from: course.home_automation_understand_and_extend
+    relation: contains
+    to: learning_goal.home_automation_topologies
     confidence: high
-  - from: project.kanban_gridfinity_inventory
-    relation: supports
-    to: BG-004
+  - from: course.home_automation_understand_and_extend
+    relation: contains
+    to: learning_goal.home_automation_app_integration
     confidence: high
-  - from: project.kanban_gridfinity_inventory
-    relation: supports
-    to: BG-005
+  - from: course.home_automation_understand_and_extend
+    relation: contains
+    to: learning_goal.automation_basics
+    confidence: high
+  - from: course.home_automation_understand_and_extend
+    relation: contains
+    to: learning_goal.iot_basics
+    confidence: high
+  - from: course.home_automation_understand_and_extend
+    relation: belongs_to
+    to: product_offering.embedded_basics_bundle
     confidence: high
 
-  - from: project.ai_pet_esp32
+  - from: course.embedded_games_programming
+    relation: belongs_to
+    to: product.learning_platform
+    confidence: high
+  - from: course.embedded_games_programming
+    relation: supports
+    to: BG-001
+    confidence: high
+  - from: course.embedded_games_programming
+    relation: supports
+    to: BG-002
+    confidence: high
+  - from: course.embedded_games_programming
+    relation: contains
+    to: learning_goal.embedded_basics
+    confidence: high
+  - from: course.embedded_games_programming
+    relation: uses
+    to: value.playful_embedded_learning
+    confidence: high
+  - from: course.embedded_games_programming
+    relation: belongs_to
+    to: product_offering.embedded_basics_bundle
+    confidence: high
+
+  - from: product_offering.embedded_basics_bundle
+    relation: belongs_to
+    to: product.learning_platform
+    confidence: high
+  - from: product_offering.embedded_basics_bundle
+    relation: realizes
+    to: BC-001
+    confidence: high
+  - from: product_offering.embedded_basics_bundle
+    relation: supports
+    to: BG-001
+    confidence: high
+  - from: product_offering.embedded_basics_bundle
+    relation: supports
+    to: BG-002
+    confidence: high
+  - from: product_offering.embedded_basics_bundle
+    relation: supports
+    to: BG-004
+    confidence: high
+  - from: product_offering.embedded_basics_bundle
+    relation: contains
+    to: course.home_automation_understand_and_extend
+    confidence: high
+  - from: product_offering.embedded_basics_bundle
+    relation: contains
+    to: course.embedded_games_programming
+    confidence: high
+  - from: product_offering.embedded_basics_bundle
+    relation: targets
+    to: learning_goal.embedded_basics
+    confidence: high
+
+  - from: learning_unit.home_automation_understand_and_extend
+    relation: supports
+    to: CJ-001
+    confidence: high
+  - from: learning_unit.home_automation_understand_and_extend
+    relation: supports
+    to: CJ-002
+    confidence: high
+  - from: learning_unit.home_automation_understand_and_extend
     relation: supports
     to: CJ-003
     confidence: high
-  - from: project.ai_pet_esp32
+  - from: learning_unit.home_automation_understand_and_extend
     relation: supports
     to: CJ-004
     confidence: high
-  - from: project.ai_pet_esp32
-    relation: supports
-    to: CJ-006
-    confidence: high
-  - from: project.smart_plant_watering
-    relation: supports
-    to: CJ-002
-    confidence: high
-  - from: project.smart_plant_watering
-    relation: supports
-    to: CJ-003
-    confidence: high
-  - from: project.smart_plant_watering
-    relation: supports
-    to: CJ-004
-    confidence: high
-  - from: project.smart_plant_watering
+  - from: learning_unit.home_automation_understand_and_extend
     relation: supports
     to: CJ-005
     confidence: high
-  - from: project.smart_plant_watering
+  - from: learning_unit.home_automation_understand_and_extend
     relation: supports
-    to: CJ-006
+    to: CJ-011
     confidence: high
-  - from: project.rfid_safe
-    relation: supports
-    to: CJ-002
+  - from: learning_unit.home_automation_understand_and_extend
+    relation: requires
+    to: learning_goal.embedded_basics
+    confidence: medium
+  - from: learning_unit.home_automation_understand_and_extend
+    relation: requires
+    to: learning_goal.iot_basics
+    confidence: medium
+  - from: learning_unit.home_automation_understand_and_extend
+    relation: requires
+    to: learning_goal.automation_basics
     confidence: high
-  - from: project.rfid_safe
-    relation: supports
-    to: CJ-003
+  - from: learning_unit.home_automation_understand_and_extend
+    relation: requires
+    to: learning_goal.home_automation_basics
     confidence: high
-  - from: project.rfid_safe
-    relation: supports
-    to: CJ-006
+  - from: learning_unit.home_automation_understand_and_extend
+    relation: requires
+    to: learning_goal.home_automation_topologies
     confidence: high
-  - from: project.kanban_gridfinity_inventory
-    relation: supports
-    to: CJ-002
+  - from: learning_unit.home_automation_understand_and_extend
+    relation: requires
+    to: learning_goal.home_automation_app_integration
     confidence: high
-  - from: project.kanban_gridfinity_inventory
-    relation: supports
-    to: CJ-003
+  - from: learning_goal.cross_platform_development
+    relation: realized_by
+    to: learning_path.cross_platform_development
     confidence: high
-  - from: project.kanban_gridfinity_inventory
-    relation: supports
-    to: CJ-005
+  - from: learning_path.cross_platform_development
+    relation: uses
+    to: example_domain.digital_tamagotchi
     confidence: high
-  - from: project.kanban_gridfinity_inventory
-    relation: supports
-    to: CJ-007
+  - from: example_domain.digital_tamagotchi
+    relation: illustrates
+    to: learning_goal.cross_platform_development
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: learning_path_step.cross_platform.01_embedded
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: learning_path_step.cross_platform.02_desktop
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: learning_path_step.cross_platform.03_mobile
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: learning_path_step.cross_platform.04_web
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: learning_path_step.cross_platform.05_cloud
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: learning_path_step.cross_platform.06_synchronization
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: learning_path_step.cross_platform.07_ai_extension
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: project.cross_platform_tamagotchi.embedded
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: project.cross_platform_tamagotchi.desktop
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: project.cross_platform_tamagotchi.mobile
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: project.cross_platform_tamagotchi.web
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: project.cross_platform_tamagotchi.cloud
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: project.cross_platform_tamagotchi.synchronization
+    confidence: high
+  - from: learning_path.cross_platform_development
+    relation: contains
+    to: project.cross_platform_tamagotchi.ai_extension
     confidence: high
 
   - from: project.ai_pet_esp32
@@ -288,6 +1075,22 @@ relations:
     relation: uses
     to: capability.servo_control
     confidence: high
+  - from: project.book_vault
+    relation: uses
+    to: capability.rfid_reading
+    confidence: high
+  - from: project.book_vault
+    relation: uses
+    to: capability.servo_control
+    confidence: high
+  - from: project.book_vault
+    relation: uses
+    to: capability.mechanical_locking
+    confidence: high
+  - from: project.book_vault
+    relation: optionally_uses
+    to: capability.fallback_unlock
+    confidence: high
   - from: project.kanban_gridfinity_inventory
     relation: uses
     to: capability.item_identification
@@ -301,14 +1104,29 @@ relations:
     relation: depends_on
     to: architecture.registered_processor_board
     confidence: high
-  - from: component.openai_adapter
-    relation: enables
-    to: project.ai_pet_esp32
-    confidence: high
-
   - from: app.user_ide
     relation: realizes
     to: BG-003
+    confidence: high
+  - from: app.user_ide
+    relation: supports
+    to: BG-001
+    confidence: high
+  - from: app.user_ide
+    relation: realizes
+    to: BG-002
+    confidence: high
+  - from: app.user_ide
+    relation: supports
+    to: BG-006
+    confidence: high
+  - from: app.user_ide
+    relation: supports
+    to: BG-007
+    confidence: high
+  - from: app.user_ide
+    relation: supports
+    to: CJ-001
     confidence: high
   - from: app.user_ide
     relation: supports
@@ -316,7 +1134,27 @@ relations:
     confidence: high
   - from: app.user_ide
     relation: supports
+    to: CJ-004
+    confidence: high
+  - from: app.user_ide
+    relation: supports
     to: CJ-006
+    confidence: high
+  - from: app.user_ide
+    relation: supports
+    to: CJ-009
+    confidence: high
+  - from: app.user_ide
+    relation: supports
+    to: CJ-011
+    confidence: high
+  - from: app.user_ide
+    relation: uses
+    to: system_capability.account_identification
+    confidence: high
+  - from: app.user_ide
+    relation: uses
+    to: system_capability.hardware_shop_access
     confidence: high
   - from: app.user_ide
     relation: uses
@@ -326,14 +1164,55 @@ relations:
     relation: uses
     to: system_capability.ide_flash_ota
     confidence: high
+  - from: app.user_ide
+    relation: uses
+    to: system_capability.cloud_flash
+    confidence: high
+
+  - from: app.hardware_shop
+    relation: realized_in
+    to: app.user_ide
+    confidence: high
+  - from: app.hardware_shop
+    relation: supports
+    to: BG-002
+    confidence: high
+  - from: app.hardware_shop
+    relation: supports
+    to: BG-004
+    confidence: high
+  - from: app.hardware_shop
+    relation: supports
+    to: BG-006
+    confidence: high
+  - from: app.hardware_shop
+    relation: supports
+    to: CJ-011
+    confidence: high
+  - from: app.hardware_shop
+    relation: uses
+    to: system_capability.hardware_shop_access
+    confidence: high
+  - from: app.hardware_shop
+    relation: depends_on
+    to: capability.processor_esp32
+    confidence: medium
 
   - from: app.admin_tool
     relation: supports
     to: CJ-007
     confidence: high
   - from: app.admin_tool
+    relation: supports
+    to: CJ-008
+    confidence: high
+  - from: app.admin_tool
     relation: realizes
     to: BG-005
+    confidence: high
+  - from: app.admin_tool
+    relation: supports
+    to: BG-006
     confidence: high
   - from: app.admin_tool
     relation: uses
@@ -349,7 +1228,23 @@ relations:
     confidence: high
   - from: app.admin_tool
     relation: uses
+    to: system_capability.admin_product_ideas
+    confidence: high
+  - from: app.admin_tool
+    relation: uses
+    to: system_capability.admin_project_ideas
+    confidence: high
+  - from: app.admin_tool
+    relation: uses
+    to: system_capability.admin_courses
+    confidence: high
+  - from: app.admin_tool
+    relation: uses
     to: system_capability.admin_authorization
+    confidence: high
+  - from: app.admin_tool
+    relation: uses
+    to: system_capability.admin_grants
     confidence: high
 
   - from: app.recovery_tool
@@ -357,8 +1252,24 @@ relations:
     to: CJ-006
     confidence: high
   - from: app.recovery_tool
+    relation: supports
+    to: CJ-010
+    confidence: high
+  - from: app.recovery_tool
+    relation: supports
+    to: BG-006
+    confidence: high
+  - from: app.recovery_tool
+    relation: supports
+    to: BG-007
+    confidence: high
+  - from: app.recovery_tool
     relation: uses
     to: architecture.registered_processor_board
+    confidence: high
+  - from: app.recovery_tool
+    relation: uses
+    to: system_capability.support_registered_board_check
     confidence: high
 
   - from: app.provisioning_tool
@@ -370,8 +1281,65 @@ relations:
     to: CJ-007
     confidence: medium
   - from: app.provisioning_tool
+    relation: supports
+    to: CJ-010
+    confidence: high
+  - from: app.provisioning_tool
+    relation: supports
+    to: BG-006
+    confidence: high
+  - from: app.provisioning_tool
+    relation: supports
+    to: BG-007
+    confidence: high
+  - from: app.provisioning_tool
     relation: uses
     to: architecture.registered_processor_board
+    confidence: high
+  - from: app.provisioning_tool
+    relation: enables
+    to: system_capability.cloud_flash
+    confidence: high
+
+  - from: nfr.firmware_flash_must_not_brick_board
+    relation: supports
+    to: BG-003
+    confidence: high
+  - from: nfr.firmware_flash_must_not_brick_board
+    relation: supports
+    to: BG-006
+    confidence: high
+  - from: nfr.firmware_flash_must_not_brick_board
+    relation: supports
+    to: BG-007
+    confidence: high
+  - from: nfr.firmware_flash_must_not_brick_board
+    relation: validates
+    to: app.user_ide
+    confidence: high
+  - from: nfr.firmware_flash_must_not_brick_board
+    relation: validates
+    to: app.provisioning_tool
+    confidence: high
+  - from: nfr.firmware_flash_must_not_brick_board
+    relation: validates
+    to: app.recovery_tool
+    confidence: high
+  - from: nfr.firmware_flash_must_not_brick_board
+    relation: validates
+    to: component.ota
+    confidence: high
+  - from: nfr.firmware_flash_must_not_brick_board
+    relation: constrains
+    to: system_capability.ide_flash_usb
+    confidence: high
+  - from: nfr.firmware_flash_must_not_brick_board
+    relation: constrains
+    to: system_capability.ide_flash_ota
+    confidence: high
+  - from: nfr.firmware_flash_must_not_brick_board
+    relation: constrains
+    to: system_capability.cloud_flash
     confidence: high
 
   - from: architecture.capability_split
@@ -391,21 +1359,25 @@ relations:
     to: system_capability.ide_flash_ota
     confidence: high
 
-  - from: risk.water_and_electronics
+  - from: risk.board_bricked_by_flash
     relation: affects
-    to: project.smart_plant_watering
+    to: app.user_ide
     confidence: high
-  - from: risk.online_dependency
+  - from: risk.board_bricked_by_flash
     relation: affects
-    to: project.ai_pet_esp32
+    to: app.provisioning_tool
     confidence: high
-  - from: risk.weak_security_expectation
+  - from: risk.board_bricked_by_flash
     relation: affects
-    to: project.rfid_safe
+    to: app.recovery_tool
     confidence: high
-  - from: risk.overmodeling_inventory
+  - from: risk.board_bricked_by_flash
     relation: affects
-    to: project.kanban_gridfinity_inventory
+    to: component.ota
+    confidence: high
+  - from: nfr.firmware_flash_must_not_brick_board
+    relation: mitigates
+    to: risk.board_bricked_by_flash
     confidence: high
 
   - from: gap.concrete_requirements_missing
@@ -428,3 +1400,108 @@ relations:
     relation: affects
     to: architecture.permission_precedence
     confidence: medium
+
+  - from: learning_path.community_knowledge_usage
+    relation: belongs_to
+    to: business_domain.community
+    confidence: high
+  - from: business_domain.community
+    relation: owns
+    to: BC-040
+    confidence: high
+  - from: BC-040
+    relation: realizes
+    to: product_offering.community_ai_assistant_premium
+    confidence: high
+  - from: BC-040
+    relation: derives
+    to: requirement.community_ai_assistant_query
+    confidence: high
+  - from: BC-040
+    relation: derives
+    to: requirement.community_ai_assistant_sources
+    confidence: high
+  - from: BC-040
+    relation: derives
+    to: requirement.community_ai_assistant_indexing
+    confidence: high
+  - from: BC-040
+    relation: derives
+    to: requirement.community_ai_assistant_premium_access
+    confidence: high
+  - from: BC-040
+    relation: derives
+    to: requirement.community_ai_assistant_admin_configuration
+    confidence: high
+  - from: BC-040
+    relation: derives
+    to: requirement.community_ai_assistant_monitoring
+    confidence: high
+  - from: BC-040
+    relation: derives
+    to: requirement.community_ai_assistant_moderation
+    confidence: high
+  - from: product_offering.community_ai_assistant_premium
+    relation: grants
+    to: system_capability.community_ai_assistant
+    confidence: high
+  - from: plan.premium
+    relation: grants
+    to: system_capability.community_ai_assistant
+    confidence: high
+  - from: requirement.community_ai_assistant_query
+    relation: affects
+    to: architecture_artifact.community_ai_assistant
+    confidence: high
+  - from: requirement.community_ai_assistant_query
+    relation: affects
+    to: data_model.community_ai_assistant_query
+    confidence: high
+  - from: requirement.community_ai_assistant_query
+    relation: affects
+    to: api_artifact.community_ai_assistant_query
+    confidence: high
+  - from: requirement.community_ai_assistant_sources
+    relation: affects
+    to: data_model.community_ai_source_reference
+    confidence: high
+  - from: requirement.community_ai_assistant_indexing
+    relation: affects
+    to: data_model.community_ai_index_document
+    confidence: high
+  - from: requirement.community_ai_assistant_indexing
+    relation: affects
+    to: data_model.community_ai_embedding
+    confidence: high
+  - from: requirement.community_ai_assistant_admin_configuration
+    relation: affects
+    to: ui_model.admin_community_ai_assistant_settings
+    confidence: high
+  - from: requirement.community_ai_assistant_monitoring
+    relation: affects
+    to: ui_model.admin_community_ai_assistant_monitoring
+    confidence: high
+  - from: requirement.community_ai_assistant_monitoring
+    relation: extends
+    to: requirement.ai_admin_usage_dashboard
+    confidence: high
+  - from: requirement.community_ai_assistant_moderation
+    relation: affects
+    to: data_model.community_ai_assistant_configuration
+    confidence: high
+  - from: requirement.community_ai_assistant_moderation
+    relation: affects
+    to: test_artifact.community_ai_assistant_moderation
+    confidence: high
+  - from: architecture_artifact.community_ai_assistant
+    relation: uses
+    to: architecture_artifact.community_knowledge_platform
+    confidence: high
+  - from: architecture_artifact.community_ai_assistant
+    relation: uses
+    to: architecture_artifact.ai_cost_protection
+    confidence: high
+  - from: architecture_artifact.community_ai_assistant
+    relation: uses
+    to: architecture_artifact.ai_usage_observability
+    confidence: high

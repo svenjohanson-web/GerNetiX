@@ -15,7 +15,7 @@ Abgedeckt sind:
 - Leitprinzip `Wissen ist teurer als Code`
 - Top-Down-Vorgehen von Vision bis Nachweis
 - Metamodell als fachliche Wahrheit
-- YAML-first als fuehrende Datenstruktur fuer pflegbare Modellinformationen
+- SQLite-Graph-first als fuehrende Datenstruktur fuer pflegbare Modellinformationen
 - Traceability ueber zentrale IDs und Beziehungen
 - Domaenenverantwortung und erlaubte Referenzen
 - keine zentrale Knowledge-Domaene
@@ -35,7 +35,7 @@ Abgedeckt sind:
 - Business Goals BG-001 bis BG-005
 - Customer Journeys CJ-001 bis CJ-007
 - Projektideen KI-Haustier, Pflanzenbewaesserungsstation, RFID-Tresor und Kanban-/Gridfinity-Inventarsystem
-- YAML-first Repository-Struktur
+- SQLite-Graph-first Repository-Struktur
 - Mermaid-Graph und Mindmap-Lesesichten
 
 ## Zentrale Quellen

@@ -1,0 +1,423 @@
+schemaVersion: 1
+kind: measure_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: measure.public_relations
+    type: measure
+    title: Oeffentlichkeitsarbeit
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Uebergeordnete Massnahme zur Neukundengewinnung durch sichtbares Wissen, Community-Praesenz und externe Kanaele.
+    supportsStrategies:
+      - strategy.acquire_new_customers
+    containsMeasures:
+      - measure.public_knowledge_platform
+      - measure.external_community_presence
+      - measure.makerworld_open_source_projects
+      - measure.schools_as_sales_channel
+      - measure.social_media
+      - measure.youtube
+      - measure.blog_articles
+
+  - id: measure.public_knowledge_platform
+    type: measure
+    title: Oeffentliche Wissensplattform
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Oeffentlich auffindbare Wissensinhalte bereitstellen, die Interessenten helfen und zur Learning Platform fuehren.
+    parentMeasures:
+      - measure.public_relations
+    providesBusinessCapabilities:
+      - BC-002
+      - BC-003
+      - BC-004
+      - BC-005
+
+  - id: measure.external_community_presence
+    type: measure
+    title: Praesenz in externen Communities
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: In externen Communities fachlich sichtbar sein, Fragen beantworten und thematisch passende Verweise geben.
+    parentMeasures:
+      - measure.public_relations
+    providesBusinessCapabilities:
+      - BC-006
+      - BC-007
+      - BC-008
+    constrainedByBusinessRules:
+      - BR-001
+
+  - id: measure.makerworld_open_source_projects
+    type: measure
+    title: MakerWorld / Open-Source-Projekte
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Kostenlose Beispielprojekte veroeffentlichen, die Interesse wecken und zur Lernplattform fuehren.
+    parentMeasures:
+      - measure.public_relations
+    providesBusinessCapabilities:
+      - BC-009
+      - BC-010
+      - BC-011
+
+  - id: measure.schools_as_sales_channel
+    type: measure
+    title: Schulen als Vertriebskanal
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Schulen als Zugang zu Lernenden, Lehrern und Klassensaetzen nutzen.
+    parentMeasures:
+      - measure.public_relations
+    providesBusinessCapabilities:
+      - BC-012
+      - BC-013
+      - BC-014
+
+  - id: measure.social_media
+    type: measure
+    title: Social Media
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    parentMeasures:
+      - measure.public_relations
+    summary: Kurze Inhalte, Projektfortschritte und Lernimpulse ueber soziale Kanaele sichtbar machen.
+
+  - id: measure.youtube
+    type: measure
+    title: YouTube
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    parentMeasures:
+      - measure.public_relations
+    summary: Lernvideos, Projektvorstellungen und technische Erklaerungen veroeffentlichen.
+
+  - id: measure.blog_articles
+    type: measure
+    title: Blog / Fachartikel
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    parentMeasures:
+      - measure.public_relations
+    summary: Fachartikel und Loesungsbeitraege fuer Suchmaschinen, KI-Systeme und Nutzer verfuegbar machen.
+
+  - id: measure.community_knowledge_platform
+    type: measure
+    title: Community / Wissensplattform
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Community als Massnahme zur Bestandskundenbindung und dauerhaften Wissensbildung. Community ist bewusst keine Business Capability.
+    supportsStrategies:
+      - strategy.retain_existing_customers
+    providesBusinessCapabilities:
+      - BC-015
+      - BC-016
+      - BC-017
+      - BC-018
+      - BC-019
+
+  - id: measure.platform_centric_work
+    type: measure
+    title: Plattformzentriertes Arbeiten
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Nutzer arbeiten zentral in der Plattform, statt ihr Wissen und ihre Projekte ueber lokale Einzeldateien zu verlieren.
+    supportsStrategies:
+      - strategy.retain_existing_customers
+    providesBusinessCapabilities:
+      - BC-020
+      - BC-021
+      - BC-022
+    constrainedByBusinessRules:
+      - BR-002
+
+  - id: measure.subscription_lifecycle
+    type: measure
+    title: Abonnement-Lebenszyklus
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Abonnements sollen reaktivierbar sein und mit klaren Karenz- und Loeschregeln arbeiten.
+    supportsStrategies:
+      - strategy.retain_existing_customers
+    providesBusinessCapabilities:
+      - BC-023
+      - BC-024
+    constrainedByBusinessRules:
+      - BR-003
+      - BR-004
+      - BR-005
+
+  - id: measure.continuous_learning_paths
+    type: measure
+    title: Kontinuierliche Lernpfade
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Nutzer werden anhand von Fortschritt, Hardware und Interessen zum naechsten sinnvollen Lernschritt begleitet.
+    supportsStrategies:
+      - strategy.retain_existing_customers
+    providesBusinessCapabilities:
+      - BC-025
+
+  - id: measure.premium_memberships
+    type: measure
+    title: Premium-Mitgliedschaften
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - strategy.upselling_cross_selling
+    providesBusinessCapabilities:
+      - BC-026
+    summary: Hoeherwertige Mitgliedschaften mit zusaetzlichen Funktionen und Leistungen anbieten.
+
+  - id: measure.extended_ai_features
+    type: measure
+    title: Erweiterte KI-Funktionen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - strategy.upselling_cross_selling
+    providesBusinessCapabilities:
+      - BC-027
+    summary: Erweiterte KI-Unterstuetzung als hoeherwertige Funktion anbieten.
+
+  - id: measure.premium_courses
+    type: measure
+    title: Premium-Kurse
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - strategy.upselling_cross_selling
+    providesBusinessCapabilities:
+      - BC-001
+      - BC-028
+    summary: Hoeherwertige Courses und Course-Bundles fuer tiefergehende Lernreisen anbieten.
+
+  - id: measure.hardware_kits
+    type: measure
+    title: Hardware-Kits
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - strategy.upselling_cross_selling
+    providesBusinessCapabilities:
+      - BC-029
+    summary: Passende Hardware-Kits als ergaenzendes Angebot zu Courses und Projekten anbieten.
+
+  - id: measure.project_templates
+    type: measure
+    title: Projektvorlagen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - strategy.upselling_cross_selling
+    providesBusinessCapabilities:
+      - BC-030
+    summary: Wiederverwendbare Projektvorlagen als Beschleuniger fuer Lern- und Umsetzungsprojekte bereitstellen.
+
+  - id: measure.extended_cloud_resources
+    type: measure
+    title: Erweiterte Cloud-Ressourcen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - strategy.upselling_cross_selling
+    providesBusinessCapabilities:
+      - BC-031
+    summary: Mehr Cloud-Ressourcen fuer umfangreichere Projekte, OTA, Datenhaltung oder KI-Funktionen anbieten.
+
+  - id: measure.ai_credit_management
+    type: measure
+    title: KI-Credit-Verwaltung
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - business_strategy.optimize_costs
+    providesBusinessCapabilities:
+      - BC-041
+    realizesSystemCapabilities:
+      - system_capability.ai_credit_management
+    summary: KI-Credits, Guthaben, Verbrauch und Ledger-Buchungen werden als Massnahme der Kostenkontrolle gefuehrt.
+    realizesRequirements:
+      - requirement.ai_credit_balance
+      - requirement.ai_credit_consumption_calculation
+
+  - id: measure.ai_prepaid_credit_check
+    type: measure
+    title: KI-Preflight-Credit-Pruefung
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - business_strategy.optimize_costs
+    providesBusinessCapabilities:
+      - BC-041
+    realizesSystemCapabilities:
+      - system_capability.ai_prepaid_credit_check
+    summary: Kostenpflichtige KI-Aufrufe werden vor Ausfuehrung gegen Credits, Budgetfreigabe und Modellberechtigung geprueft.
+    realizesRequirements:
+      - requirement.ai_prepaid_credit_check
+
+  - id: measure.ai_budget_limits
+    type: measure
+    title: KI-Budgetlimits
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - business_strategy.optimize_costs
+    providesBusinessCapabilities:
+      - BC-041
+    realizesSystemCapabilities:
+      - system_capability.ai_budget_limits
+      - system_capability.ai_premium_models
+    summary: Tageslimits, Monatslimits, Budgetobergrenzen, Rate Limits, Modellfreigaben und globale Schutzschalter begrenzen variable KI-Kosten.
+    realizesRequirements:
+      - requirement.ai_usage_limits
+      - requirement.ai_model_access_control
+      - requirement.ai_global_kill_switch
+
+  - id: measure.ai_usage_audit_trail
+    type: measure
+    title: KI Usage Audit Trail
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - business_strategy.optimize_costs
+    providesBusinessCapabilities:
+      - BC-041
+    realizesSystemCapabilities:
+      - system_capability.ai_usage_audit_trail
+    summary: Kostenpflichtige, fehlgeschlagene und abgelehnte KI-Aufrufe werden serverseitig als Usage Events mit Kosten-, Token-, Tarif- und Schutzinformationen protokolliert.
+    realizesRequirements:
+      - requirement.ai_usage_event_audit_trail
+
+  - id: measure.ai_usage_monitoring
+    type: measure
+    title: KI Usage Monitoring
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - business_strategy.optimize_costs
+    providesBusinessCapabilities:
+      - BC-041
+    realizesSystemCapabilities:
+      - system_capability.admin_ai_usage_monitoring
+    summary: KI-Nutzung, Credits, Tokens, Modelle, Kosten, Fehler, Ablehnungen, Budgetnaehe, Systemkosten und Margen werden im Admin Dashboard sichtbar gemacht.
+    realizesRequirements:
+      - requirement.ai_admin_usage_dashboard
+      - requirement.ai_cost_margin_reporting
+
+  - id: measure.ai_admin_cost_controls
+    type: measure
+    title: Administrative KI-Kostensteuerung
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - business_strategy.optimize_costs
+    providesBusinessCapabilities:
+      - BC-041
+    realizesSystemCapabilities:
+      - system_capability.admin_ai_cost_controls
+    summary: Administratoren koennen Credits, Sperren, Limits, Modellfreigaben, Warnschwellen und Kill-Switch als Massnahme der Kostenkontrolle steuern.
+    realizesRequirements:
+      - requirement.ai_admin_cost_control_actions
+
+  - id: measure.ai_suspicious_usage_detection
+    type: measure
+    title: Auffaellige KI-Nutzung erkennen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - business_strategy.optimize_costs
+    providesBusinessCapabilities:
+      - BC-041
+    realizesSystemCapabilities:
+      - system_capability.ai_suspicious_usage_detection
+    summary: Auffaellige Nutzungsmuster, Missbrauchsindikatoren, ungewoehnlich teure Aufrufe und Nutzer nahe am Budgetlimit werden als Kostenkontrollmassnahme sichtbar gemacht.
+    realizesRequirements:
+      - requirement.ai_suspicious_usage_detection
+
+  - id: measure.individual_coaching
+    type: measure
+    title: Individuelle Beratung / Coaching
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - strategy.upselling_cross_selling
+    providesBusinessCapabilities:
+      - BC-032
+    summary: Individuelle Unterstuetzung fuer Nutzer, Schulen oder Unternehmen anbieten.
+
+  - id: measure.partner_schools
+    type: measure
+    title: Schulen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - strategy.strategic_partnerships
+    summary: Partnerschaften mit Schulen als Lern- und Vertriebskanal aufbauen.
+
+  - id: measure.partner_educational_institutions
+    type: measure
+    title: Bildungseinrichtungen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - strategy.strategic_partnerships
+    summary: Kooperationen mit Bildungseinrichtungen aufbauen.
+
+  - id: measure.partner_companies
+    type: measure
+    title: Unternehmen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - strategy.strategic_partnerships
+    summary: Unternehmenspartnerschaften fuer Lernangebote, Hardware oder Pilotprojekte aufbauen.
+
+  - id: measure.partner_hardware_manufacturers
+    type: measure
+    title: Hardware-Hersteller
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - strategy.strategic_partnerships
+    summary: Kooperationen mit Hardware-Herstellern fuer Kits, Boards und technische Unterstuetzung aufbauen.
+
+  - id: measure.partner_cloud_providers
+    type: measure
+    title: Cloud-Partner
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    supportsStrategies:
+      - strategy.strategic_partnerships
+    summary: Cloud-Partnerschaften fuer skalierbare Plattformfunktionen und Integrationen aufbauen.

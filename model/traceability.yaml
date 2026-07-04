@@ -21,12 +21,21 @@ entities:
   - id: principle.knowledge_more_expensive_than_code
     type: principle
     title: Wissen ist teurer als Code
-    summary: Code implementiert Wissen; das Metamodell und YAML-first Daten bewahren Wissen.
+    summary: Code implementiert Wissen; das Metamodell und SQLite-Graph-first Daten bewahren Wissen.
     status: approved
     ownerDomain: Business
     sources:
       - docs/principles.md
       - docs/documentation-strategy.md
+
+  - id: principle.reuse_existing_metamodel_structures
+    type: validation_rule
+    title: Bestehende Metamodell-Strukturen vor neuen Artefakten nutzen
+    summary: Neue fachliche Anforderungen muessen zuerst gegen bestehende Metamodell-Artefakte geprueft werden; verkaufbare Learning-Einheiten werden als Course modelliert, Kombinationsangebote als ProductOffering.
+    status: approved
+    ownerDomain: CrossDomain
+    sources:
+      - data/business/principles.yaml
 
   - id: product.learning_platform
     type: product
@@ -103,6 +112,865 @@ entities:
     sources:
       - docs/vision-business-goals-customer-journeys.md
 
+  - id: BG-006
+    type: business_goal
+    title: Hardwarevertrieb und Support absichern
+    summary: Gewinnbringenden Hardwarevertrieb ermoeglichen, gesetzliche Supportpflichten erfuellen und unberechtigte Support- oder Reklamationsansprueche vermeiden.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/business/business-goals.yaml
+
+  - id: BG-007
+    type: business_goal
+    title: Robustheit und Kundenakzeptanz sichern
+    summary: Kritische Plattformfunktionen muessen robust sein, damit Nutzer Vertrauen in Hardware, IDE, Flash-Prozesse und Support gewinnen.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/business/business-goals.yaml
+
+  - id: BG-008
+    type: business_goal
+    title: Nachhaltig profitabel wirtschaften
+    summary: Das Unternehmen soll nachhaltig Geld verdienen, ohne die langfristige Wissens- und Kundennutzenorientierung zu verlieren.
+    status: draft
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-goals.yaml
+
+  - id: business_strategy.increase_revenue
+    type: business_strategy
+    title: Umsatz steigern
+    summary: Umsatz durch neue Kunden, Bestandskundenbindung, Upselling, Cross-Selling und Partnerschaften steigern.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-strategies.yaml
+
+  - id: business_strategy.build_recurring_revenue
+    type: business_strategy
+    title: Wiederkehrende Umsaetze aufbauen
+    summary: Wiederkehrende Einnahmen ueber Abonnements, Mitgliedschaften und langfristige Lernbegleitung aufbauen.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-strategies.yaml
+
+  - id: business_strategy.optimize_costs
+    type: business_strategy
+    title: Kosten optimieren
+    summary: Kosten durch wiederverwendbares Wissen, strukturierte Prozesse und reduzierte Supportlast optimieren.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-strategies.yaml
+
+  - id: business_strategy.long_term_competitiveness
+    type: business_strategy
+    title: Langfristig wettbewerbsfaehig bleiben
+    summary: Langfristige Wettbewerbsfaehigkeit durch Wissensbasis, Lernangebote, Community und technische Differenzierung sichern.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-strategies.yaml
+
+  - id: strategy.acquire_new_customers
+    type: strategy
+    title: Neukunden gewinnen
+    summary: Neue Nutzer auf die Plattform aufmerksam machen und in erste Lern- oder Kaufhandlungen fuehren.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/strategies.yaml
+
+  - id: strategy.retain_existing_customers
+    type: strategy
+    title: Bestandskunden binden
+    summary: Bestehende Nutzer durch Community, zentrale Arbeitsweise, Abonnement-Lebenszyklus und kontinuierliche Lernpfade langfristig begleiten.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/strategies.yaml
+
+  - id: strategy.upselling_cross_selling
+    type: strategy
+    title: Upselling und Cross-Selling
+    summary: Nutzern passende hoeherwertige oder ergaenzende Angebote machen, wenn diese fachlich mehr Nutzen stiften.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/strategies.yaml
+
+  - id: strategy.strategic_partnerships
+    type: strategy
+    title: Strategische Partnerschaften aufbauen
+    summary: Partnerkanaele und Partnerangebote aufbauen, um Reichweite, Vertrieb und technische Faehigkeiten zu erweitern.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/strategies.yaml
+
+  - id: measure.public_relations
+    type: measure
+    title: Oeffentlichkeitsarbeit
+    summary: Uebergeordnete Massnahme zur Neukundengewinnung durch sichtbares Wissen, Community-Praesenz und externe Kanaele.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: measure.public_knowledge_platform
+    type: measure
+    title: Oeffentliche Wissensplattform
+    summary: Oeffentlich auffindbare Wissensinhalte bereitstellen, die Interessenten helfen und zur Learning Platform fuehren.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: measure.external_community_presence
+    type: measure
+    title: Praesenz in externen Communities
+    summary: In externen Communities fachlich sichtbar sein, Fragen beantworten und thematisch passende Verweise geben.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: measure.community_knowledge_platform
+    type: measure
+    title: Community / Wissensplattform
+    summary: Community als Massnahme zur Bestandskundenbindung und dauerhaften Wissensbildung. Community ist bewusst keine Business Capability.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: measure.platform_centric_work
+    type: measure
+    title: Plattformzentriertes Arbeiten
+    summary: Nutzer arbeiten zentral in der Plattform, statt ihr Wissen und ihre Projekte ueber lokale Einzeldateien zu verlieren.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: measure.subscription_lifecycle
+    type: measure
+    title: Abonnement-Lebenszyklus
+    summary: Abonnements sollen reaktivierbar sein und mit klaren Karenz- und Loeschregeln arbeiten.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: measure.premium_courses
+    type: measure
+    title: Premium-Kurse
+    summary: Hoeherwertige Courses und Course-Bundles fuer tiefergehende Lernreisen anbieten.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: BR-001
+    type: business_rule
+    title: Externe Verweise ohne Spam
+    summary: Verweise in externen Communities erfolgen nur thematisch passend, hilfreich und ohne Spam.
+    businessStatus: Approved
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-rules.yaml
+
+  - id: BR-002
+    type: business_rule
+    title: Kein vollstaendiger Projektexport
+    summary: Vollstaendiger Projektexport ist nicht vorgesehen, solange das Geschaeftsmodell auf plattformzentriertem Arbeiten basiert.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-rules.yaml
+
+  - id: BR-003
+    type: business_rule
+    title: Karenzzeit nach Abonnementablauf
+    summary: Nach Ablauf eines Abonnements beginnt eine Karenzzeit, in der Projekte noch erhalten bleiben.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-rules.yaml
+
+  - id: BR-004
+    type: business_rule
+    title: Personenbezogene Projektdaten nach 30 Tagen loeschen
+    summary: Nach 30 Tagen werden personenbezogene Projektdaten geloescht, sofern keine rechtliche oder fachliche Ausnahme gilt.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-rules.yaml
+
+  - id: BR-005
+    type: business_rule
+    title: Oeffentliche Wissensbeitraege anonymisiert erhalten
+    summary: Oeffentliche Wissensbeitraege koennen anonymisiert erhalten bleiben, um die Wissensbasis nicht zu verlieren.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-rules.yaml
+
+  - id: BR-006
+    type: business_rule
+    title: Schutz vor unkontrollierten KI-Kosten
+    summary: Kostenpflichtige KI-Nutzung muss technisch und wirtschaftlich begrenzt, nachvollziehbar und serverseitig kontrolliert werden.
+    businessStatus: Approved
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-rules.yaml
+
+  - id: BC-001
+    type: business_capability
+    title: Value-based Bundling und Upselling
+    summary: Kunden koennen wertvollere Kombinationsangebote erhalten, bei denen sie mehr ausgeben, aber durch gebuendelte Courses, Preisvorteile und besseren Lernzusammenhang mehr Nutzen bekommen.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-002
+    type: business_capability
+    title: Inhalte oeffentlich ueber Suchmaschinen bereitstellen
+    summary: Oeffentliche Inhalte koennen ueber Suchmaschinen gefunden werden und fuehren Interessenten zur Plattform.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-003
+    type: business_capability
+    title: SEO-optimierte Wissensseiten bereitstellen
+    summary: Wissensseiten werden fuer Suchmaschinen und Nutzer gut auffindbar und verstaendlich strukturiert.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-004
+    type: business_capability
+    title: Verifizierte Loesungen veroeffentlichen
+    summary: Fachlich gepruefte Loesungen koennen oeffentlich sichtbar gemacht werden.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-005
+    type: business_capability
+    title: KI- und suchmaschinenfreundliche Wissensstruktur bereitstellen
+    summary: Wissensinhalte werden fuer Menschen, Suchmaschinen und KI-Systeme nachvollziehbar strukturiert.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-006
+    type: business_capability
+    title: Fachfragen beantworten
+    summary: Fachfragen in externen Communities koennen hilfreich beantwortet werden.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-007
+    type: business_capability
+    title: Kompetenz sichtbar machen
+    summary: Die fachliche Kompetenz von GerNetiX wird durch hilfreiche Beitraege sichtbar.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-008
+    type: business_capability
+    title: Auf eigene Inhalte verweisen
+    summary: Auf eigene Inhalte darf verwiesen werden, wenn der Verweis thematisch passt und hilfreich ist.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-015
+    type: business_capability
+    title: Experten beantworten Fragen zeitnah
+    summary: Experten koennen Community-Fragen innerhalb einer fachlich definierten Zeit beantworten oder triagieren.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-016
+    type: business_capability
+    title: Antworten werden fachlich verifiziert
+    summary: Antworten koennen fachlich geprueft und als verifiziert markiert werden.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-017
+    type: business_capability
+    title: Kurze FAQ-artige Loesungsantworten bereitstellen
+    summary: Haeufige Fragen koennen in kurzen, gut wiederverwendbaren Loesungsantworten beantwortet werden.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-018
+    type: business_capability
+    title: Dauerhafte Wissensbasis aufbauen
+    summary: Aus Community- und Supportwissen entsteht eine dauerhafte, nachvollziehbare Wissensbasis.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-019
+    type: business_capability
+    title: Projektbezogene Diskussionen ermoeglichen
+    summary: Nutzer koennen projektbezogen Fragen stellen und Loesungen diskutieren.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-039
+    type: business_capability
+    title: KI-Zusatzkontingente verkaufen
+    summary: Die Plattform kann bezahlbare KI-Zusatzkontingente anbieten, kaufen lassen und als zusaetzliche Credits nachvollziehbar dem Account gutschreiben.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: BC-041
+    type: business_capability
+    title: Kostenkontrolle
+    summary: Das Unternehmen kann variable Kosten, nutzungsabhaengige Anbieter-Kosten, Budgets, Margen und wirtschaftliche Risiken transparent erfassen, begrenzen und steuern.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: measure.ai_credit_management
+    type: measure
+    title: KI-Credit-Verwaltung
+    summary: KI-Credits, Guthaben, Verbrauch und Ledger-Buchungen werden als Massnahme der Kostenkontrolle gefuehrt.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: measure.ai_prepaid_credit_check
+    type: measure
+    title: KI-Preflight-Credit-Pruefung
+    summary: Kostenpflichtige KI-Aufrufe werden vor Ausfuehrung gegen Credits, Budgetfreigabe und Modellberechtigung geprueft.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: measure.ai_budget_limits
+    type: measure
+    title: KI-Budgetlimits
+    summary: Tageslimits, Monatslimits, Budgetobergrenzen, Rate Limits, Modellfreigaben und globale Schutzschalter begrenzen variable KI-Kosten.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: measure.ai_usage_audit_trail
+    type: measure
+    title: KI Usage Audit Trail
+    summary: Kostenpflichtige, fehlgeschlagene und abgelehnte KI-Aufrufe werden serverseitig als Usage Events mit Kosten-, Token-, Tarif- und Schutzinformationen protokolliert.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: measure.ai_usage_monitoring
+    type: measure
+    title: KI Usage Monitoring
+    summary: KI-Nutzung, Credits, Tokens, Modelle, Kosten, Fehler, Ablehnungen, Budgetnaehe, Systemkosten und Margen werden im Admin Dashboard sichtbar gemacht.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: measure.ai_admin_cost_controls
+    type: measure
+    title: Administrative KI-Kostensteuerung
+    summary: Administratoren koennen Credits, Sperren, Limits, Modellfreigaben, Warnschwellen und Kill-Switch als Massnahme der Kostenkontrolle steuern.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: measure.ai_suspicious_usage_detection
+    type: measure
+    title: Auffaellige KI-Nutzung erkennen
+    summary: Auffaellige Nutzungsmuster, Missbrauchsindikatoren, ungewoehnlich teure Aufrufe und Nutzer nahe am Budgetlimit werden als Kostenkontrollmassnahme sichtbar gemacht.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/measures.yaml
+
+  - id: requirement.public_content_indexable
+    type: requirement
+    title: Oeffentliche Inhalte muessen indexierbar sein
+    summary: Oeffentliche Wissensinhalte muessen so bereitgestellt werden, dass Suchmaschinen sie indexieren und Nutzer sie finden koennen.
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.community_question_triage_time
+    type: requirement
+    title: Neue Fragen innerhalb definierter Zeit triagieren
+    summary: Neue Community-Fragen muessen innerhalb einer fachlich definierten Zeit gesichtet und triagiert werden.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.community_answer_verification
+    type: requirement
+    title: Antworten als verifiziert markieren
+    summary: Berechtigte Experten oder Moderatoren muessen Antworten fachlich als verifiziert markieren koennen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.verified_answer_status_visible
+    type: requirement
+    title: Verifizierungsstatus fuer Nutzer sichtbar machen
+    summary: Der Pruefstatus einer Antwort muss fuer Nutzer sichtbar sein, damit verifizierte Loesungen erkennbar sind.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.reverify_changed_verified_answer
+    type: requirement
+    title: Aenderungen an verifizierten Antworten erneut pruefen
+    summary: Aenderungen an bereits verifizierten Antworten muessen eine erneute fachliche Pruefung ausloesen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.ai_prepaid_credit_check
+    type: requirement
+    title: Kein ungedeckter KI-Aufruf
+    summary: Vor jedem kostenpflichtigen KI-Aufruf muss serverseitig geprueft werden, ob ausreichende Credits, Budgetfreigabe und Modellberechtigung vorhanden sind.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.ai_credit_balance
+    type: requirement
+    title: KI-Credit-Guthaben fuehren
+    summary: Die Plattform muss fuer jeden Account ein KI-Credit-Guthaben fuehren und aktuellen Stand, Verbrauch und verbleibende Credits bereitstellen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.ai_credit_consumption_calculation
+    type: requirement
+    title: Credits verbrauchsabhaengig berechnen
+    summary: Credits muessen anhand des tatsaechlichen Ressourcenverbrauchs wie Tokens, Modell, Bild, Audio oder Tool-Aufrufen berechnet werden.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.ai_usage_limits
+    type: requirement
+    title: KI-Nutzung ueber Limits begrenzen
+    summary: Die Plattform muss Tageslimits, Monatslimits, Budgetobergrenzen, Rate Limits, Prompt-/Antwortgroessen und Laufzeitlimits unterstuetzen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.ai_model_access_control
+    type: requirement
+    title: Teure KI-Modelle tarifabhaengig freigeben
+    summary: Teure KI-Modelle duerfen nur fuer geeignete Tarife, SystemCapabilities oder Account Overrides freigegeben werden.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Authorization
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.ai_global_kill_switch
+    type: requirement
+    title: Globalen KI-Kill-Switch bereitstellen
+    summary: Administratoren muessen kostenpflichtige KI-Dienste global deaktivieren koennen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.ai_usage_event_audit_trail
+    type: requirement
+    title: KI Usage Events serverseitig protokollieren
+    summary: Jeder kostenpflichtige KI-Aufruf muss serverseitig mit Benutzer, Zeitpunkt, Modell, Tokens, Credits, Anbieter-Kosten, Tarif, Kontext, Erfolg oder Fehler und Schutzmassnahme protokolliert werden.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.ai_admin_usage_dashboard
+    type: requirement
+    title: Admin Dashboard fuer KI Usage Monitoring bereitstellen
+    summary: Das Admin Tool muss KI-Nutzung nach Benutzer, Zeitraum, Credits, Tokens, Modell, Kosten, Fehlern, Ablehnungen, Budgetnaehe und Systemkosten anzeigen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.ai_admin_cost_control_actions
+    type: requirement
+    title: Administrative KI-Kostensteuerung bereitstellen
+    summary: Administratoren muessen Credits, Sperren, Limits, Tarifgrenzen, Modellfreigaben, Warnschwellen und globalen KI-Kill-Switch administrieren koennen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.ai_cost_margin_reporting
+    type: requirement
+    title: KI-Kosten und Marge je Tarif oder Nutzergruppe schaetzen
+    summary: Das Admin Dashboard muss Systemkosten und geschaetzte Marge je Tarif oder Nutzergruppe ableiten koennen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.ai_suspicious_usage_detection
+    type: requirement
+    title: Auffaellige KI-Nutzung sichtbar machen
+    summary: Das System muss auffaellige Nutzungsmuster, teure Aufrufe, fehlgeschlagene KI-Aufrufe, abgelehnte Aufrufe und Nutzer nahe am Budgetlimit sichtbar machen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.ai_credit_addon_purchase
+    type: requirement
+    title: KI-Zusatzkontingent kaufen koennen
+    summary: Nutzer muessen ein bezahlbares KI-Zusatzkontingent erwerben koennen, das ihrem Account zusaetzliche KI-Credits bereitstellt.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.ai_credit_addon_ledger_booking
+    type: requirement
+    title: KI-Zusatzcredits nachvollziehbar buchen
+    summary: Der Kauf eines KI-Zusatzkontingents muss als nachvollziehbare Credit-Buchung im Ledger erscheinen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: nfr.ai_cost_protection_auditability
+    type: non_functional_requirement
+    title: KI-Kostenkontrolle muss auditierbar sein
+    summary: KI-Kostenkontrolle, Credit-Pruefungen, abgelehnte Aufrufe und administrative Eingriffe muessen nachvollziehbar, manipulationsresistent und serverseitig pruefbar sein.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/non-functional-requirements.yaml
+
+  - id: architecture_artifact.business_traceability_model
+    type: architecture_artifact
+    title: Business-Traceability-Modell
+    summary: Modellkette von Vision bis Validation Artifact.
+    businessStatus: Approved
+    implementationStatus: In Design
+    ownerDomain: CrossDomain
+    sources:
+      - data/business/business-traceability-metamodel.yaml
+      - data/architecture/artifacts.yaml
+
+  - id: architecture_artifact.community_knowledge_platform
+    type: architecture_artifact
+    title: Community / Wissensplattform Architektur
+    summary: Architekturartefakt fuer Community-Fragen, verifizierte Antworten und dauerhafte Wissensbasis.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/architecture/artifacts.yaml
+
+  - id: architecture_artifact.ai_cost_protection
+    type: architecture_artifact
+    title: KI Cost Protection
+    summary: Architekturartefakt fuer serverseitige Credit-Pruefung, Budgetlimits, Modellfreigaben, Verbrauchsberechnung und Schutz vor unkontrollierten KI-Kosten.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/architecture/artifacts.yaml
+
+  - id: architecture_artifact.ai_usage_observability
+    type: architecture_artifact
+    title: KI Usage Observability und Admin Dashboard
+    summary: Architekturartefakt fuer Usage Events, Audit Trail, Admin-Dashboard, Kosten-/Margenberichte, auffaellige Nutzungsmuster und administrative Steuerungsfunktionen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/architecture/artifacts.yaml
+
+  - id: data_model.community_question
+    type: data_model
+    title: CommunityQuestion
+    summary: Datenmodell fuer eingehende Community-Fragen, Triage-Status und Bearbeitungszeitpunkt.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: data_model.ai_usage_event
+    type: data_model
+    title: AiUsageEvent
+    summary: Zentrales Usage-Event fuer jeden kostenpflichtigen, fehlgeschlagenen oder abgelehnten KI-Aufruf.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: data_model.ai_credit_account
+    type: data_model
+    title: AiCreditAccount
+    summary: Datenmodell fuer aktuelles KI-Credit-Guthaben, gesperrte Credits, verfuegbare Credits und Account-/Tarifbezug.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: data_model.ai_credit_ledger_entry
+    type: data_model
+    title: AiCreditLedgerEntry
+    summary: Datenmodell fuer nachvollziehbare Credit-Buchungen wie Verbrauch, Gutschrift, Sperre, Korrektur, Promotion oder Supportgutschrift.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: data_model.ai_usage_aggregate
+    type: data_model
+    title: AiUsageAggregate
+    summary: Aggregierte KI-Nutzung nach Benutzer, Zeitraum, Modell, Tarif, Nutzergruppe, Kosten, Credits, Tokens, Fehlern und Ablehnungen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: data_model.ai_budget_policy
+    type: data_model
+    title: AiBudgetPolicy
+    summary: Datenmodell fuer Tageslimits, Monatslimits, Budgetobergrenzen, Warnschwellen, Rate Limits und globalen Kill-Switch.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: data_model.ai_model_pricing_policy
+    type: data_model
+    title: AiModelPricingPolicy
+    summary: Datenmodell fuer Modellkosten, Credit-Umrechnung, Tariffreigaben, Premium-Modellzugriff und Anbieter-Kostenschaetzung.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: data_model.ai_admin_action_audit_event
+    type: data_model
+    title: AiAdminActionAuditEvent
+    summary: Audit-Datenmodell fuer administrative Eingriffe an Credits, Limits, Sperren, Modellfreigaben, Warnschwellen und globalem Kill-Switch.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: api_artifact.community_questions
+    type: api_artifact
+    title: Community Questions API
+    summary: Fachliches API-Artefakt fuer Fragen, Triage und Statusabfrage.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/api/api-artifacts.yaml
+
+  - id: api_artifact.ai_admin_usage_dashboard
+    type: api_artifact
+    title: AI Admin Usage Dashboard API
+    summary: API-Artefakt fuer Admin-Dashboard-Kennzahlen zu KI-Nutzung, Credits, Tokens, Kosten, Modellen, Fehlern, Ablehnungen, Budgetnaehe und Margen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/api/api-artifacts.yaml
+
+  - id: api_artifact.ai_credit_balance
+    type: api_artifact
+    title: AI Credit Balance API
+    summary: Fachliches API-Artefakt fuer Credit-Guthaben, Verbrauch, verbleibende Credits und Verbrauchshistorie.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/api/api-artifacts.yaml
+
+  - id: api_artifact.ai_usage_preflight
+    type: api_artifact
+    title: AI Usage Preflight API
+    summary: Serverseitige Vorpruefung fuer kostenpflichtige KI-Aufrufe gegen Credits, Budgets, Modellfreigabe, Rate Limits und Kill-Switch.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/api/api-artifacts.yaml
+
+  - id: api_artifact.ai_usage_events
+    type: api_artifact
+    title: AI Usage Events API
+    summary: Fachliches API-Artefakt fuer serverseitige Erfassung und Auswertung von KI Usage Events.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/api/api-artifacts.yaml
+
+  - id: api_artifact.ai_admin_cost_controls
+    type: api_artifact
+    title: AI Admin Cost Controls API
+    summary: API-Artefakt fuer administrative Steuerung von Credits, Sperren, Limits, Modellfreigaben, Warnschwellen und globalem KI-Kill-Switch.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/api/api-artifacts.yaml
+
+  - id: implementation_artifact.community_question_triage
+    type: implementation_artifact
+    title: Community Question Triage Umsetzung
+    summary: Spaetere technische Umsetzung fuer Triage neuer Community-Fragen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Technical
+    sources:
+      - data/implementation/implementation-artifacts.yaml
+
+  - id: test_artifact.community_question_triage_time
+    type: test_artifact
+    title: Community Question Triage Time Test
+    summary: Testnachweis, dass neue Fragen innerhalb der definierten Zeit triagiert werden.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Quality
+    sources:
+      - data/tests/test-artifacts.yaml
+
+  - id: validation_artifact.community_response_sla
+    type: validation_artifact
+    title: Community Response SLA Validation
+    summary: Fachlicher Nachweis, dass zeitnahe Expertenreaktion fuer Nutzer wahrnehmbar und wirksam ist.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/validation/validation-artifacts.yaml
+
   - id: CJ-001
     type: customer_journey
     title: Neuer Benutzer entdeckt die Plattform
@@ -166,12 +1034,48 @@ entities:
   - id: CJ-007
     type: customer_journey
     title: Administrator erweitert die Plattform
-    summary: Hardware anlegen, Learning Goals erweitern, Projekte ergaenzen, Capabilities pflegen.
+    summary: Produktideen, Projektideen, Courses, Learning Goals, Projekte, Hardware und Capabilities sichten, bearbeiten und erweitern.
     status: draft
     ownerDomain: Business
     sources:
       - docs/vision-business-goals-customer-journeys.md
       - docs/customer-journey.md
+
+  - id: CJ-008
+    type: customer_journey
+    title: Administrator pflegt Grants und Hardwarekatalog
+    summary: Administrator verwaltet Freischaltungen, Plaene, SystemCapabilities und neue Hardwaretypen wie ProcessorBoards im Hardware-Katalog.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/business/customer-journeys.yaml
+
+  - id: CJ-009
+    type: customer_journey
+    title: Benutzer identifiziert sich in der IDE
+    summary: Benutzer meldet sich in der IDE an, damit die Plattform berechtigte Services, Projekte, Flash-Funktionen und Supportkontexte bereitstellen kann.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/business/customer-journeys.yaml
+
+  - id: CJ-010
+    type: customer_journey
+    title: Support prueft registriertes Board
+    summary: Support prueft anhand von RegisteredProcessorBoard, Pairing und Credential-Historie, ob ein Board support- oder reklamationsberechtigt ist.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/business/customer-journeys.yaml
+
+  - id: CJ-011
+    type: customer_journey
+    title: Benutzer kauft passende Hardware in der IDE
+    summary: Benutzer bekommt in der IDE passende Hardware angeboten, kann ein geeignetes ProcessorBoard kaufen und mit vorbespielter Firmware komfortabel starten.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/business/customer-journeys.yaml
 
   - id: audience.maker
     type: audience
@@ -318,6 +1222,33 @@ entities:
     sources:
       - data/learning/projects/kanban-gridfinity-inventory.yaml
 
+  - id: value.custom_home_automation
+    type: value_proposition
+    title: Individuelle Hausautomatisierung
+    summary: Nutzer koennen spezielle Hausautomatisierungswuensche selbst verstehen, planen und umsetzen, wenn Standardloesungen nicht ausreichen.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/business/value-propositions.yaml
+
+  - id: value.incremental_extension
+    type: value_proposition
+    title: Immer weiter erweitern
+    summary: Hausautomatisierung wird als schrittweise erweiterbares System verstanden, nicht als einmalig abgeschlossenes Projekt.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/business/value-propositions.yaml
+
+  - id: value.home_automation_topology_choice
+    type: value_proposition
+    title: Passende Hausautomatisierungs-Topologie waehlen
+    summary: Nutzer lernen, ob ihr Vorhaben besser embedded-only, mit PC-Software, mit Mobile-App, mit kleinem HomeServer, als verteiltes IoT-System oder mit intelligenteren Edge-Devices umgesetzt wird.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/business/value-propositions.yaml
+
   - id: learning_goal.embedded_basics
     type: learning_goal
     title: Embedded Grundlagen
@@ -366,6 +1297,42 @@ entities:
     sources:
       - data/learning/projects/smart-plant-watering.yaml
 
+  - id: learning_goal.home_automation_basics
+    type: learning_goal
+    title: Hausautomatisierung Grundlagen
+    summary: Grundlagen, um Hausautomatisierung zu verstehen, zu strukturieren und eigene Erweiterungen fachlich einzuordnen.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/learning-goals.yaml
+
+  - id: learning_goal.home_automation_topologies
+    type: learning_goal
+    title: Hausautomatisierung Topologien
+    summary: Nutzer vergleichen Embedded-only-Loesungen, PC-/Mobile-App-Anbindungen, kleine HomeServer, verteilte IoT-Systeme und intelligentere Edge-Devices mit ihren Vor- und Nachteilen.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/learning-goals.yaml
+
+  - id: learning_goal.home_automation_app_integration
+    type: learning_goal
+    title: Hausautomatisierung App-Integration
+    summary: Nutzer lernen, Statuswerte von Embedded Devices wie Temperatur, Luftfeuchtigkeit, Bodenfeuchtigkeit, Pflanzen-Hydrierung und Aktorzustand in PC-Software oder Mobile-App sichtbar zu machen.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/learning-goals.yaml
+
+  - id: learning_goal.cross_platform_development
+    type: learning_goal
+    title: Cross-Platform Development
+    summary: Anwendungen fuer Embedded, Desktop, Mobile, Web und Cloud entwickeln, Zielsysteme vergleichen, geeignete Technologien auswaehlen und Fachlogik von Benutzeroberflaechen trennen.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/learning-goals.yaml
+
   - id: learning_goal.tooling_and_workflows
     type: learning_goal
     title: Tooling und Workflows
@@ -378,12 +1345,94 @@ entities:
   - id: project.ai_pet_esp32
     type: learning_project
     title: KI-Haustier / Tamagotchi AI
-    summary: Virtuelles Haustier auf ESP32 mit Display, offline nutzbar und optional KI-erweiterbar.
+    summary: Virtuelles Haustier auf ESP32 mit Display; besitzt eine Offline-Basisvariante ohne laufende KI-Kosten und eine optionale KI-Online-Variante mit OpenAI-Anbindung, Online-Abhaengigkeit und Cost-Protection-Anforderungen.
     status: draft
     ownerDomain: Learning
     sources:
       - data/learning/projects/ai-pet-esp32.yaml
       - docs/project-ai-pet-esp32.md
+
+  - id: learning_path.cross_platform_development
+    type: learning_path
+    title: Cross-Platform Development
+    summary: Learning Path zum stabilen Learning Goal Cross-Platform Development anhand einer austauschbaren digitalen Tamagotchi-Beispieldomaene.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/learning-paths.yaml
+
+  - id: example_domain.digital_tamagotchi
+    type: example_domain
+    title: Digitales Tamagotchi
+    summary: Austauschbare fachliche Beispieldomaene fuer den Cross-Platform-Learning-Path; dient dem Vergleich der Zielsysteme, ist aber nicht selbst das Lernziel.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/learning-paths.yaml
+      - data/learning/projects/cross-platform-tamagotchi.yaml
+
+  - id: project.cross_platform_tamagotchi.embedded
+    type: learning_project
+    title: Digitales Tamagotchi - Embedded
+    summary: Tamagotchi-Fachlogik auf ESP32 mit Display, Buttons, Zustandsmaschine, Timer, Persistenz und Hardwarezugriffen.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/cross-platform-tamagotchi.yaml
+
+  - id: project.cross_platform_tamagotchi.desktop
+    type: learning_project
+    title: Digitales Tamagotchi - Desktop
+    summary: Dieselbe Tamagotchi-Domaene als Desktop-Anwendung fuer Windows, macOS und Linux; inklusive Technologievergleich.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/cross-platform-tamagotchi.yaml
+
+  - id: project.cross_platform_tamagotchi.mobile
+    type: learning_project
+    title: Digitales Tamagotchi - Mobile
+    summary: Dieselbe Tamagotchi-Domaene fuer Android und iOS mit Touch, Navigation, App-Lifecycle, lokalen Daten und Benachrichtigungen.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/cross-platform-tamagotchi.yaml
+
+  - id: project.cross_platform_tamagotchi.web
+    type: learning_project
+    title: Digitales Tamagotchi - Web
+    summary: Dieselbe Tamagotchi-Domaene als Browser-Anwendung mit HTML, CSS, JavaScript, Responsive Design, Browser-APIs und Web-Frameworks.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/cross-platform-tamagotchi.yaml
+
+  - id: project.cross_platform_tamagotchi.cloud
+    type: learning_project
+    title: Digitales Tamagotchi - Cloud
+    summary: Gemeinsame Backend-Basis mit REST-API, Datenbank, Benutzerverwaltung, Authentifizierung und Deployment.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/cross-platform-tamagotchi.yaml
+
+  - id: project.cross_platform_tamagotchi.synchronization
+    type: learning_project
+    title: Digitales Tamagotchi - Synchronisation
+    summary: Getrennte Anwendungen werden zu einem gemeinsamen Tamagotchi-Zustand ueber ESP32, Desktop, Mobile, Browser und Cloud verbunden.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/cross-platform-tamagotchi.yaml
+
+  - id: project.cross_platform_tamagotchi.ai_extension
+    type: learning_project
+    title: Digitales Tamagotchi - KI-Erweiterung
+    summary: Optionale KI-Erweiterung fuer Persoenlichkeit, Gespraeche, Sprachsteuerung, KI-generierte Ereignisse und Kosten-/Tokenmanagement.
+    status: idea
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/cross-platform-tamagotchi.yaml
 
   - id: project.smart_plant_watering
     type: learning_project
@@ -405,6 +1454,15 @@ entities:
     sources:
       - data/learning/projects/rfid-safe.yaml
 
+  - id: project.book_vault
+    type: learning_project
+    title: Buchtresor / Tagebuchschloss
+    summary: Kleines Schloss fuer Tagebuecher oder Buecher; oeffnet nur mit dem richtigen Tag und vermittelt Identifizierung, Autorisierung, Fallback und Mechanik.
+    status: idea
+    ownerDomain: Learning
+    sources:
+      - data/learning/projects/book-vault.yaml
+
   - id: project.kanban_gridfinity_inventory
     type: learning_project
     title: Kanban-/Gridfinity-Inventarsystem
@@ -414,20 +1472,102 @@ entities:
     sources:
       - data/learning/projects/kanban-gridfinity-inventory.yaml
 
+  - id: course.home_automation_understand_and_extend
+    type: course
+    title: Hausautomatisierung verstehen und erweitern
+    summary: Kaufbares Lernangebot fuer Nutzer, die Standardloesungen nicht verwenden wollen oder spezielle Hausautomatisierungswuensche selbst umsetzen moechten.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/business/courses.yaml
+
+  - id: course.embedded_games_programming
+    type: course
+    title: Embedded Spiele programmieren
+    summary: Kaufbarer Course fuer Nutzer, die Embedded-Grundlagen ueber spielerische Projekte und sichtbare Interaktion lernen moechten.
+    status: idea
+    ownerDomain: Business
+    sources:
+      - data/business/courses.yaml
+
+  - id: product_offering.embedded_basics_bundle
+    type: product_offering
+    title: Embedded Grundlagen Gesamtpaket
+    summary: Kombinationsangebot fuer Nutzer, die mehrere Courses zum Thema Embedded Grundlagen gemeinsam kaufen moechten.
+    status: draft
+    ownerDomain: Business
+    sources:
+      - data/business/product-offerings.yaml
+
+  - id: product_offering.ai_credit_addon
+    type: product_offering
+    title: KI-Zusatzkontingent
+    summary: Bezahlbares Zusatzkontingent, mit dem Nutzer mehr KI-Credits erwerben koennen, um eine bessere oder laengere KI-Erfahrung zu nutzen.
+    status: idea
+    ownerDomain: Business
+    sources:
+      - data/business/product-offerings.yaml
+
+  - id: product_offering.book_vault_hardware_bundle
+    type: product_offering
+    title: Buchtresor Hardware-Bundle
+    summary: Hardware-Bundle fuer das Tagebuch-/Buchschloss-Projekt mit Tag-Leser, Tags, Servo, Mechanik-Teilen und optionalem 3D-Druck-Modell.
+    status: idea
+    ownerDomain: Business
+    sources:
+      - data/business/product-offerings.yaml
+
+  - id: learning_unit.home_automation_understand_and_extend
+    type: learning_unit
+    title: Hausautomatisierung verstehen und erweitern
+    summary: Nutzer lernen, Hausautomatisierung fachlich und technisch zu verstehen, eigene Erweiterungen zu planen und spezielle Anforderungen schrittweise selbst umzusetzen.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/learning/learning-units.yaml
+
   - id: metamodel.learning_platform
     type: metamodel
     title: Metamodell Learning Platform
-    summary: Fachliche Single Source of Truth fuer Learning Platform, Hardware, Account, Authorization und Device Management.
+    summary: Gemeinsame fachliche Single Source of Truth fuer alle Metamodell-Sichten der Learning Platform.
     status: draft
     ownerDomain: CrossDomain
     sources:
+      - data/metamodel/learning-platform.yaml
       - docs/metamodel-learning-platform.md
       - docs/metamodel-learning-platform-review.md
 
+  - id: metamodel.learning_platform.uml
+    type: metamodel_view
+    title: Learning Platform Metamodell UML
+    summary: UML-nahe Klassen- und Beziehungsstruktur als Sicht des gemeinsamen Learning-Platform-Metamodells.
+    status: draft
+    ownerDomain: CrossDomain
+    sources:
+      - data/metamodel/learning-platform-uml.yaml
+
+  - id: metamodel.business_traceability
+    type: metamodel_view
+    title: Business-Traceability-Metamodell
+    summary: Traceability-Sicht des gemeinsamen Learning-Platform-Metamodells von Vision bis Validation.
+    status: draft
+    ownerDomain: CrossDomain
+    sources:
+      - data/business/business-traceability-metamodel.yaml
+
+  - id: metamodel.project_status
+    type: metamodel_part
+    title: Projektstatus-Modell
+    summary: Teilmodell fuer den fachlichen Lebenszyklusstatus von Projektideen und LearningProjects.
+    status: draft
+    ownerDomain: Learning
+    sources:
+      - data/metamodel/project-status.yaml
+
   - id: architecture.yaml_first_repository
     type: architecture_decision
-    title: YAML-first Repository-Struktur
-    summary: YAML ist Source of Truth, Markdown ist generiertes Ausgabeformat.
+    title: SQLite-Graph-first Repository-Struktur
+    summary: SQLite-Graph ist kanonische Struktur, Markdown ist generiertes Ausgabeformat.
     status: approved
     ownerDomain: CrossDomain
     sources:
@@ -532,6 +1672,15 @@ entities:
       - docs/open-questions.md
       - data/learning/projects/*.yaml
 
+  - id: nfr.firmware_flash_must_not_brick_board
+    type: non_functional_requirement
+    title: Firmware-Flash darf Boards nicht unbrauchbar machen
+    summary: Firmware-Flashen darf unabhaengig vom Transportweg USB, OTA oder Cloud/OTA nicht dazu fuehren, dass ein ProcessorBoard dauerhaft defekt oder fuer den Nutzer nicht wiederherstellbar wird.
+    status: draft
+    ownerDomain: DeviceManagement
+    sources:
+      - data/requirements/non-functional-requirements.yaml
+
   - id: capability.processor_esp32
     type: technical_capability
     title: ESP32 ProcessorBoard
@@ -631,6 +1780,26 @@ entities:
     sources:
       - data/learning/projects/rfid-safe.yaml
 
+  - id: capability.mechanical_locking
+    type: technical_capability
+    title: Mechanische Verriegelung
+    summary: Faehigkeit, eine kleine mechanische Verriegelung fuer Buch, Klappe, Box oder Gehaeuse zu oeffnen und zu schliessen.
+    status: draft
+    ownerDomain: Hardware
+    sources:
+      - data/hardware/technical-capabilities.yaml
+      - data/learning/projects/book-vault.yaml
+
+  - id: capability.fallback_unlock
+    type: technical_capability
+    title: Fallback-Entriegelung
+    summary: Faehigkeit, einen definierten Ersatz- oder Notoeffnungsweg bereitzustellen, falls Tag, Sensorik oder Elektronik ausfallen.
+    status: draft
+    ownerDomain: Hardware
+    sources:
+      - data/hardware/technical-capabilities.yaml
+      - data/learning/projects/book-vault.yaml
+
   - id: capability.item_identification
     type: technical_capability
     title: Item Identification
@@ -667,6 +1836,150 @@ entities:
     sources:
       - data/learning/projects/ai-pet-esp32.yaml
 
+  - id: system_capability.ai_premium_models
+    type: system_capability
+    title: AI Premium Models
+    summary: Benutzer darf hoeherwertige oder teurere KI-Modelle verwenden, sofern Credits, Budget und Tarif dies erlauben.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.admin_ai_usage_monitoring
+    type: system_capability
+    title: Admin AI Usage Monitoring
+    summary: Administrator darf KI-Nutzung, Credits, Tokens, Kosten, Fehler, Ablehnungen, auffaellige Muster und Budgetnaehe im Admin Dashboard einsehen.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.admin_ai_cost_controls
+    type: system_capability
+    title: Admin AI Cost Controls
+    summary: Administrator darf KI-Credits, Limits, Modellfreigaben, Warnschwellen, Sperren und globalen KI-Kill-Switch administrieren.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.ai_credit_management
+    type: system_capability
+    title: AI Credit Management
+    summary: Das System darf KI-Credits, Guthaben, Verbrauch und Ledger-Buchungen fuer kostenpflichtige KI-Nutzung fuehren.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.ai_prepaid_credit_check
+    type: system_capability
+    title: AI Prepaid Credit Check
+    summary: Das System darf kostenpflichtige KI-Aufrufe vor Ausfuehrung gegen Credits, Budgetfreigabe und Modellberechtigung pruefen.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.ai_budget_limits
+    type: system_capability
+    title: AI Budget Limits
+    summary: Das System darf Tageslimits, Monatslimits, Budgetobergrenzen, Rate Limits, Modellfreigaben und globale Schutzschalter fuer KI-Nutzung anwenden.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.ai_usage_audit_trail
+    type: system_capability
+    title: AI Usage Audit Trail
+    summary: Das System darf kostenpflichtige, fehlgeschlagene und abgelehnte KI-Aufrufe als Usage Events protokollieren.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.ai_suspicious_usage_detection
+    type: system_capability
+    title: AI Suspicious Usage Detection
+    summary: Das System darf auffaellige KI-Nutzung, ungewoehnlich teure Aufrufe und Nutzer nahe am Budgetlimit erkennen und markieren.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.admin_grants
+    type: system_capability
+    title: Admin Grants
+    summary: Account-bezogene Freischaltungen, Overrides und Entzuege administrieren.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.admin_product_ideas
+    type: system_capability
+    title: Admin Product Ideas
+    summary: Produktideen sichten, bewerten und bearbeiten.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.admin_project_ideas
+    type: system_capability
+    title: Admin Project Ideas
+    summary: Projektideen sichten, bewerten und bearbeiten.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.admin_courses
+    type: system_capability
+    title: Admin Courses
+    summary: Kaufbare Learning-Angebote vom Typ Course sichten, bewerten und bearbeiten.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.account_identification
+    type: system_capability
+    title: Account Identification
+    summary: Benutzer darf sich identifizieren, damit berechtigte Services ermittelt und bereitgestellt werden koennen.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.support_registered_board_check
+    type: system_capability
+    title: Support Registered Board Check
+    summary: Support darf registrierte Boards, Pairing-Status und Supportberechtigung pruefen.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.hardware_shop_access
+    type: system_capability
+    title: Hardware Shop Access
+    summary: Benutzer darf Hardware-Angebote sehen und passende Hardware ueber die IDE anfragen oder kaufen.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.cloud_flash
+    type: system_capability
+    title: Cloud Flash
+    summary: Benutzer darf kompatible, registrierte und berechtigte Boards ueber Cloud/OTA flashen.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
   - id: component.backend
     type: architecture_component
     title: Backend
@@ -698,7 +2011,7 @@ entities:
   - id: component.generated_markdown
     type: architecture_component
     title: Generierte Markdown-Dokumentation
-    summary: Leseschicht aus YAML, nicht Source of Truth.
+    summary: Leseschicht aus dem validierten SQLite-Graphmodell; YAML ist nur Legacy-Import oder Export.
     status: draft
     ownerDomain: Documentation
     sources:
@@ -727,16 +2040,25 @@ entities:
   - id: app.user_ide
     type: architecture_structural_element
     title: User IDE
-    summary: Nutzerwerkzeug fuer einfache Embedded-Entwicklung, Projektbearbeitung, Flashen und Pairing-Code-Eingabe.
+    summary: Nutzerwerkzeug fuer Lernen, einfache Embedded-Entwicklung, komfortablen Hardwareeinstieg, Kundenidentifikation, berechtigte Services, Projektbearbeitung, Flashen und Pairing-Code-Eingabe.
     status: draft
     ownerDomain: IDE
+    sources:
+      - data/architecture/structural-elements.yaml
+
+  - id: app.hardware_shop
+    type: architecture_structural_element
+    title: Hardware Shop
+    summary: Vertriebskanal fuer passende Hardware, der in der User IDE sichtbar wird und den komfortablen Einstieg in Embedded-Projekte unterstuetzt.
+    status: draft
+    ownerDomain: Business
     sources:
       - data/architecture/structural-elements.yaml
 
   - id: app.admin_tool
     type: architecture_structural_element
     title: Admin Tool
-    summary: Verwaltungswerkzeug fuer Inhalte, Hardware-Katalog, Capabilities, Accounts und Berechtigungen.
+    summary: Verwaltungswerkzeug fuer Inhalte, Grants, Hardware-Katalog, neue Hardwaretypen, Capabilities, Accounts und Berechtigungen.
     status: draft
     ownerDomain: CrossDomain
     sources:
@@ -745,7 +2067,7 @@ entities:
   - id: app.recovery_tool
     type: architecture_structural_element
     title: Recovery Tool
-    summary: Wiederherstellungswerkzeug fuer Boards, USB-Erkennung, erneute Registrierung und Credential-Recovery.
+    summary: Wiederherstellungswerkzeug fuer Boards, USB-Erkennung, erneute Registrierung, Credential-Recovery und nachvollziehbare Supportpruefung.
     status: draft
     ownerDomain: DeviceManagement
     sources:
@@ -754,7 +2076,7 @@ entities:
   - id: app.provisioning_tool
     type: architecture_structural_element
     title: Provisioning / Inbetriebnahme Tool
-    summary: Inbetriebnahme-Werkzeug fuer Erstinstallation, Firmware, Credentials, Registrierung und Pairing-Vorbereitung.
+    summary: Inbetriebnahme-Werkzeug fuer Erstinstallation, vorbespielte Firmware, Credentials, Registrierung, Pairing-Vorbereitung, Cloud-/OTA-Flash-Vorbereitung und Absicherung von Support- und Reklamationsanspruechen.
     status: draft
     ownerDomain: DeviceManagement
     sources:
@@ -796,6 +2118,15 @@ entities:
     ownerDomain: Learning
     sources:
       - data/learning/projects/kanban-gridfinity-inventory.yaml
+
+  - id: risk.board_bricked_by_flash
+    type: risk
+    title: Board durch Flash-Vorgang unbrauchbar
+    summary: USB-, OTA- oder Cloud-/OTA-Flash kann bei Fehlern dazu fuehren, dass ein Board fuer den Nutzer nicht mehr nutzbar wirkt oder wiederhergestellt werden muss.
+    status: open
+    ownerDomain: DeviceManagement
+    sources:
+      - data/risks/risks.yaml
 
   - id: gap.concrete_requirements_missing
     type: gap
@@ -846,3 +2177,338 @@ entities:
     sources:
       - docs/open-questions.md
       - docs/personas-roles-permissions.md
+
+  - id: business_domain.community
+    type: business_domain
+    title: Community
+    summary: Business-Domain fuer Community-Inhalte, Community-Wissen, projektbezogene Diskussionen, verifizierte Antworten und premiumfaehige Community-Wissensfunktionen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/community-domain.yaml
+
+  - id: learning_path.community_knowledge_usage
+    type: learning_path
+    title: Community-Wissen finden und nutzen
+    summary: Lernpfadnahe Einordnung, wie Nutzer Community-Wissen durchsuchen, Quellen verstehen, aehnliche Projekte finden und passende Lernpfade oder Kurse ableiten.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    sources:
+      - data/business/community-domain.yaml
+
+  - id: BC-040
+    type: business_capability
+    title: KI-Community-Assistent bereitstellen
+    summary: Premium-Nutzer koennen den Community-Wissensbestand per KI durchsuchen, verstehen, zusammenfassen und mit Quellenreferenzen nutzen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/business/business-capabilities.yaml
+
+  - id: product_offering.community_ai_assistant_premium
+    type: product_offering
+    title: KI-Community-Assistent Premium
+    summary: Kostenpflichtige Premium-Funktion fuer RAG-basierte Community-Wissenssuche, Zusammenfassungen, Quellenverweise, Empfehlungen und Uebersetzung.
+    status: idea
+    ownerDomain: Business
+    sources:
+      - data/business/product-offerings.yaml
+
+  - id: system_capability.community_ai_assistant
+    type: system_capability
+    title: KI-Community-Assistent
+    summary: Benutzer darf den kostenpflichtigen KI-Community-Assistenten verwenden, sofern Credits, Limits und Tarif dies erlauben.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: system_capability.admin_community_ai_assistant
+    type: system_capability
+    title: Admin KI-Community-Assistent
+    summary: Administrator darf den KI-Community-Assistenten konfigurieren, Datenquellen und RAG-Parameter pflegen sowie Moderations- und Quellenregeln administrieren.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/system-capabilities.yaml
+
+  - id: architecture_artifact.community_ai_assistant
+    type: architecture_artifact
+    title: KI-Community-Assistent Architektur
+    summary: Architekturartefakt fuer RAG, Vektordatenbank, Embeddings, LLM, Prompt Templates, Quellenreferenzen, Conversation Memory, Moderation, Premium-Zugriff und Community-Wissensindex.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/architecture/artifacts.yaml
+
+  - id: api_artifact.community_ai_assistant_query
+    type: api_artifact
+    title: Community AI Assistant Query API
+    summary: API-Artefakt fuer natuerlichsprachliche Premium-Anfragen, RAG-Antworten, Quellenreferenzen, aehnliche Inhalte, Empfehlungen, Zusammenfassungen und Uebersetzungen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/api/api-artifacts.yaml
+
+  - id: api_artifact.community_ai_assistant_admin
+    type: api_artifact
+    title: Community AI Assistant Admin API
+    summary: API-Artefakt fuer Admin-Konfiguration, erlaubte Quellen, RAG-Konfiguration, Modellparameter, Limits, Monitoring-Kennzahlen und Indexverwaltung.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/api/api-artifacts.yaml
+
+  - id: ui_model.community_ai_assistant
+    type: ui_model
+    title: KI-Community-Assistent UI
+    summary: Community-Oberflaeche fuer Premium-Nutzer, um Fragen zu stellen, Antworten mit Quellen zu lesen, aehnliche Inhalte zu oeffnen und Zusammenfassungen zu erzeugen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Product
+    sources:
+      - data/ui/ui-models.yaml
+
+  - id: ui_model.admin_community_ai_assistant_settings
+    type: ui_model
+    title: Admin Community AI Assistant Settings
+    summary: Admin-Oberflaeche fuer Aktivierung, Modellwahl, Limits, Budgetwarnungen, Modell-Fallback, Temperatur, Kontextgroesse, Quellen, Moderation, Quellenpflicht und RAG.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Product
+    sources:
+      - data/ui/ui-models.yaml
+
+  - id: data_model.community_ai_assistant_query
+    type: data_model
+    title: CommunityAiAssistantQuery
+    summary: Anfrage eines Premium-Nutzers an den KI-Community-Assistenten inklusive Kontext, Community, erlaubten Quellen, Tarif, Modell und Moderationsstatus.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: data_model.community_ai_assistant_answer
+    type: data_model
+    title: CommunityAiAssistantAnswer
+    summary: Antwort des KI-Community-Assistenten inklusive Zusammenfassung, Quellenreferenzen, Modell, Tokens, Cache-/RAG-Treffern und Qualitaetsindikatoren.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: data_model.community_ai_source_reference
+    type: data_model
+    title: CommunityAiSourceReference
+    summary: Quellenverweis auf Community-Beitrag, Kommentar, Projekt, Dokumentation, Tutorial, FAQ, Lernpfad oder Course.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: data_model.community_ai_index_document
+    type: data_model
+    title: CommunityAiIndexDocument
+    summary: Indexierbare Wissenseinheit fuer RAG aus Community- und Lerninhalten.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: data_model.community_ai_embedding
+    type: data_model
+    title: CommunityAiEmbedding
+    summary: Embedding-Referenz fuer ein indexiertes Community-Wissensfragment.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: data_model.community_ai_assistant_configuration
+    type: data_model
+    title: CommunityAiAssistantConfiguration
+    summary: Konfiguration fuer Aktivierung, Modell, Limits, Budgetwarnungen, Fallback, Temperatur, Kontextgroesse, Quellen, Moderation, Quellenpflicht und RAG.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/data-models/data-models.yaml
+
+  - id: requirement.community_ai_assistant_query
+    type: requirement
+    title: KI-Community-Assistent beantwortet natuerliche Fragen
+    summary: Premium-Nutzer koennen natuerlichsprachliche Fragen an den Community-Wissensbestand stellen; Antworten werden per RAG aus vorhandenen Community- und Lerninhalten erzeugt.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.community_ai_assistant_sources
+    type: requirement
+    title: KI-Antworten muessen Quellen enthalten
+    summary: Antworten des KI-Community-Assistenten enthalten Quellen und Verweise auf urspruengliche Beitraege, Projekte, Tutorials, Dokumentationen, Lernpfade oder Kurse.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.community_ai_assistant_indexing
+    type: requirement
+    title: Community-Wissen fuer RAG indexieren
+    summary: Community-Beitraege, Kommentare, Projekte, Dokumentationen, Tutorials, FAQ, Lernpfade und Kurse werden als erlaubte Quellen fuer RAG indexierbar.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.community_ai_assistant_premium_access
+    type: requirement
+    title: KI-Community-Assistent nur fuer Premium freischalten
+    summary: Der KI-Community-Assistent ist nur fuer kostenpflichtige Tarife oder explizite Account Overrides verfuegbar; die normale Community bleibt kostenlos.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Authorization
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.community_ai_assistant_admin_configuration
+    type: requirement
+    title: KI-Community-Assistent administrativ konfigurieren
+    summary: Administratoren konfigurieren Aktivierung, Modell, Limits, Budgetwarnungen, Fallback, Temperatur, Kontextgroesse, Datenquellen, Moderation, Quellenpflicht und RAG.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.community_ai_assistant_monitoring
+    type: requirement
+    title: KI-Community-Assistent im Admin Dashboard ueberwachen
+    summary: Das KI-Admin-Dashboard zeigt Community-Assistent-Kennzahlen wie Anfragen, Premium-Nutzer, Antwortzeit, Tokens, Kosten, Modelle, Cache-/RAG-Treffer, Fragen, Fehler und Budgetwarnungen.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: requirement.community_ai_assistant_moderation
+    type: requirement
+    title: KI-Community-Assistent moderiert und quellengebunden antworten lassen
+    summary: Der Assistent beachtet Moderationsregeln, erlaubte Datenquellen und Quellenpflicht; nicht belegbare Antworten werden abgelehnt oder gekennzeichnet.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/requirements/business-requirements.yaml
+
+  - id: feature.community_ai_assistant.premium_rag_answers
+    type: feature
+    title: KI-Community-Assistent Antworten mit Quellen
+    summary: Premium-Nutzer koennen Fragen in natuerlicher Sprache stellen; der Assistent beantwortet sie per RAG auf Community-Daten mit Quellenangaben.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/features/community-features.yaml
+
+  - id: event.community_ai_assistant_query_requested
+    type: domain_event
+    title: Community AI Assistant Query Requested
+    summary: Ein Premium-Nutzer stellt eine Frage an den KI-Community-Assistenten.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/events/events.yaml
+
+  - id: event.community_ai_assistant_answer_generated
+    type: domain_event
+    title: Community AI Assistant Answer Generated
+    summary: Der Assistent erzeugt eine Antwort mit Quellenreferenzen auf Community- oder Lerninhalte.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/events/events.yaml
+
+  - id: event.community_ai_assistant_request_blocked
+    type: domain_event
+    title: Community AI Assistant Request Blocked
+    summary: Eine Anfrage wird wegen fehlender Premium-Berechtigung, fehlender Credits, Limits, Moderationsregeln oder globaler KI-Sperre abgelehnt.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/events/events.yaml
+
+  - id: event.community_ai_index_updated
+    type: domain_event
+    title: Community AI Index Updated
+    summary: Der RAG-Index wurde fuer Community-Inhalte, Projekte, Dokumentationen, Tutorials, FAQ, Lernpfade oder Kurse aktualisiert.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/events/events.yaml
+
+  - id: role.community_ai_admin
+    type: role
+    title: Community AI Admin
+    summary: Administrativer Benutzer, der den KI-Community-Assistenten konfigurieren und dessen Nutzung ueberwachen darf.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/roles.yaml
+
+  - id: plan.premium
+    type: plan
+    title: Premium
+    summary: Kostenpflichtiger Tarif, der Premium-Funktionen wie den KI-Community-Assistenten freischalten kann.
+    status: draft
+    ownerDomain: Authorization
+    sources:
+      - data/authorization/plans.yaml
+
+  - id: implementation_artifact.community_ai_assistant
+    type: implementation_artifact
+    title: Community AI Assistant Umsetzung
+    summary: Spaetere technische Umsetzung fuer Premium-RAG-Anfragen, Quellenreferenzen, Conversation Memory, Moderation und Usage Event Erzeugung.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Technical
+    sources:
+      - data/implementation/implementation-artifacts.yaml
+
+  - id: test_artifact.community_ai_assistant_sources
+    type: test_artifact
+    title: Community AI Assistant Source References Test
+    summary: Testnachweis, dass KI-Antworten Quellenreferenzen auf erlaubte Community- oder Lerninhalte enthalten und ohne ausreichende Quellen korrekt behandelt werden.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Quality
+    sources:
+      - data/tests/test-artifacts.yaml
+
+  - id: validation_artifact.community_ai_assistant_source_quality
+    type: validation_artifact
+    title: Community AI Assistant Source Quality Validation
+    summary: Fachlicher Nachweis, dass KI-Antworten den Community-Wissensbestand sinnvoll erschliessen, nachvollziehbare Quellen liefern und den Mehrwert der Premium-Funktion begruenden.
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    sources:
+      - data/validation/validation-artifacts.yaml

@@ -1,0 +1,99 @@
+schemaVersion: 1
+id: project.book_vault
+slug: book-vault
+type: learning_project
+status: idea
+projectStatus: idea
+title: Buchtresor / Tagebuchschloss
+ownerDomain: Learning
+summary: Ein kleines Schloss fuer Tagebuecher oder Buecher oeffnet nur mit dem richtigen Tag und vermittelt Identifizierung, Autorisierung, Fallback und einfache mechanische Verriegelung.
+
+learningPath: learning_path.maker_access_and_mechanics
+developsCompetencies:
+  - competency.spi_basics
+  - competency.rfid_basics
+  - competency.identification_basics
+  - competency.authorization_basics
+  - competency.fallback_design
+  - competency.servo_control
+  - competency.mechanical_locking
+  - competency.state_machine
+  - competency.error_handling
+
+variants:
+  - id: project.book_vault.variant.rfid_servo
+    title: RFID-Tag mit Servo-Schloss
+    summary: Das Buchschloss erkennt einen berechtigten Tag und oeffnet eine kleine mechanische Verriegelung per Servo.
+    technicalConstraints:
+      - capability.spi
+      - capability.rfid_reading
+      - capability.servo_control
+      - capability.mechanical_locking
+    optionalCapabilities:
+      - capability.processor_esp32
+      - capability.display_output
+      - capability.digital_input
+      - capability.fallback_unlock
+
+softwareModules:
+  - software_module.rfid_reader
+  - software_module.identification_service
+  - software_module.authorization_policy
+  - software_module.servo_lock
+  - software_module.fallback_unlock
+  - software_module.state_engine
+  - software_module.feedback_layer
+
+stages:
+  - id: stage.book_vault.1
+    title: Tag identifizieren
+    goal: RFID- oder NFC-Tag lesen und die Tag-ID als Identitaet verstehen.
+    learningFocus:
+      - competency.spi_basics
+      - competency.rfid_basics
+      - competency.identification_basics
+  - id: stage.book_vault.2
+    title: Autorisierung pruefen
+    goal: Zwischen bekanntem Tag, erlaubtem Tag und abgelehntem Tag unterscheiden.
+    learningFocus:
+      - competency.authorization_basics
+      - competency.state_machine
+  - id: stage.book_vault.3
+    title: Buchschloss mechanisch oeffnen
+    goal: Eine kleine Verriegelung per Servo oder Aktor oeffnen und schliessen.
+    learningFocus:
+      - competency.servo_control
+      - competency.mechanical_locking
+  - id: stage.book_vault.4
+    title: Fallback planen
+    goal: Einen sicheren Wiederherstellungsweg definieren, falls der Tag verloren geht oder kaputt ist.
+    learningFocus:
+      - competency.fallback_design
+      - competency.error_handling
+
+risks:
+  - risk.weak_security_expectation
+  - risk.tag_lost_or_broken
+  - risk.mechanical_lock_jams
+openDecisions:
+  - decision.book_vault.reference_reader
+  - decision.book_vault.lock_mechanism
+  - decision.book_vault.fallback_method
+  - decision.book_vault.makerlab_3d_model
+roadmap:
+  - roadmap.book_vault
+dependencies:
+  requires:
+    - capability.rfid_reading
+    - capability.servo_control
+    - capability.mechanical_locking
+  optional:
+    - capability.display_output
+    - capability.digital_input
+    - capability.fallback_unlock
+
+makerLabTodos:
+  - todo.book_vault.3d_print_lock_model
+
+generatedDocuments:
+  markdown: docs/generated/projects/book-vault.md

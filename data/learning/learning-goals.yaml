@@ -1,6 +1,6 @@
 schemaVersion: 1
 kind: learning_goal_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 items:
   - id: learning_goal.embedded_basics
     type: learning_goal
@@ -37,10 +37,44 @@ items:
     ownerDomain: Learning
     summary: Grundlagen von Steuerung, Regelung, Sensorik und Aktorik.
 
+  - id: learning_goal.home_automation_basics
+    type: learning_goal
+    title: Hausautomatisierung Grundlagen
+    status: draft
+    ownerDomain: Learning
+    summary: Grundlagen, um Hausautomatisierung zu verstehen, zu strukturieren und eigene Erweiterungen fachlich einzuordnen.
+
+  - id: learning_goal.home_automation_topologies
+    type: learning_goal
+    title: Hausautomatisierung Topologien
+    status: draft
+    ownerDomain: Learning
+    summary: Unterschiedliche Topologien fuer Hausautomatisierung verstehen, z. B. embedded-only, PC-/Mobile-App, kleiner HomeServer, verteilte IoT-Systeme und intelligentere Edge-Devices.
+
+  - id: learning_goal.home_automation_app_integration
+    type: learning_goal
+    title: Hausautomatisierung App-Integration
+    status: draft
+    ownerDomain: Learning
+    summary: Statuswerte von Embedded Devices auf PC- oder Mobile-Apps darstellen und deren Vor- und Nachteile verstehen.
+
+  - id: learning_goal.cross_platform_development
+    type: learning_goal
+    title: Cross-Platform Development
+    status: draft
+    ownerDomain: Learning
+    summary: Anwendungen fuer unterschiedliche Zielsysteme entwickeln, Zielsysteme vergleichen, geeignete Technologien auswaehlen und Fachlogik von Benutzeroberflaechen trennen.
+    learningOutcomes:
+      - Unterschiede von Embedded, Desktop, Mobile, Web und Cloud verstehen.
+      - Geeignete Technologien und Frameworks fuer Zielsysteme auswaehlen.
+      - Native und plattformuebergreifende Entwicklung fachlich vergleichen.
+      - Fachlogik wiederverwendbar und getrennt von Benutzeroberflaechen strukturieren.
+      - Moderne Software ueber mehrere Zielsysteme hinweg planen.
+      - Synchronisation, Offline-/Online-Verhalten und Konfliktbehandlung einordnen.
+
   - id: learning_goal.tooling_and_workflows
     type: learning_goal
     title: Tooling und Workflows
     status: draft
     ownerDomain: Learning
     summary: Arbeitsablaeufe, Inventarisierung und Werkzeugnutzung strukturieren.
-

@@ -1,6 +1,6 @@
 schemaVersion: 1
 kind: customer_journey_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 items:
   - id: CJ-001
     type: customer_journey
@@ -78,6 +78,8 @@ items:
     summary: Board registrieren, Pairing, Provisioning, OTA einrichten und IDE verwenden.
     supports:
       - BG-003
+      - BG-006
+      - BG-007
     steps:
       - Board registrieren
       - Pairing durchfuehren
@@ -90,12 +92,83 @@ items:
     title: Administrator erweitert die Plattform
     status: draft
     ownerDomain: Business
-    summary: Hardware anlegen, Learning Goals erweitern, Projekte ergaenzen, Capabilities pflegen.
+    summary: Produktideen, Projektideen, Courses, Learning Goals, Projekte, Hardware und Capabilities sichten, bearbeiten und erweitern.
     supports:
       - BG-005
     steps:
+      - Produktideen sichten und bewerten
+      - Projektideen sichten und bewerten
+      - Kaufbare Learning-Angebote vom Typ Course bearbeiten
       - Hardware anlegen
       - Learning Goals erweitern
       - Projekte ergaenzen
       - Capabilities pflegen
 
+  - id: CJ-008
+    type: customer_journey
+    title: Administrator pflegt Grants und Hardwarekatalog
+    status: draft
+    ownerDomain: Business
+    summary: Administrator verwaltet Freischaltungen, Plaene, SystemCapabilities und neue Hardwaretypen wie ProcessorBoards im Hardware-Katalog.
+    supports:
+      - BG-005
+      - BG-006
+    steps:
+      - Neuen Hardwaretyp anlegen
+      - ProcessorBoard-Typ beschreiben
+      - TechnicalCapabilities zuordnen
+      - SystemCapabilities oder Grants pflegen
+      - Plan- oder Account-Overrides pruefen
+      - Aenderung nachvollziehbar dokumentieren
+
+  - id: CJ-009
+    type: customer_journey
+    title: Benutzer identifiziert sich in der IDE
+    status: draft
+    ownerDomain: Business
+    summary: Benutzer meldet sich in der IDE an, damit die Plattform berechtigte Services, Projekte, Flash-Funktionen und Supportkontexte bereitstellen kann.
+    supports:
+      - BG-001
+      - BG-003
+      - BG-006
+    steps:
+      - Benutzer meldet sich in der IDE an
+      - Account wird identifiziert
+      - Plan und Account Overrides werden geprueft
+      - Berechtigte Services werden freigeschaltet
+      - Nicht berechtigte Services bleiben gesperrt oder werden als Angebot sichtbar
+
+  - id: CJ-010
+    type: customer_journey
+    title: Support prueft registriertes Board
+    status: draft
+    ownerDomain: Business
+    summary: Support prueft anhand von RegisteredProcessorBoard, Pairing und Credential-Historie, ob ein Board support- oder reklamationsberechtigt ist.
+    supports:
+      - BG-006
+      - BG-007
+    steps:
+      - Board wird vom Benutzer oder Support identifiziert
+      - RegisteredProcessorBoard wird gesucht
+      - OwnerAccount und Kauf-/Pairing-Kontext werden geprueft
+      - Credential- und Firmware-Zustand werden bewertet
+      - Support- oder Reklamationsanspruch wird nachvollziehbar entschieden
+
+  - id: CJ-011
+    type: customer_journey
+    title: Benutzer kauft passende Hardware in der IDE
+    status: draft
+    ownerDomain: Business
+    summary: Benutzer bekommt in der IDE passende Hardware angeboten, kann ein geeignetes ProcessorBoard kaufen und mit vorbespielter Firmware komfortabel starten.
+    supports:
+      - BG-002
+      - BG-004
+      - BG-006
+    steps:
+      - Benutzer waehlt Lernziel oder Projekt in der IDE
+      - Plattform prueft benoetigte TechnicalCapabilities
+      - IDE zeigt passende Hardware-Angebote aus dem Hardware Shop
+      - Benutzer kauft ein geeignetes ProcessorBoard oder Kit
+      - ProcessorBoard wird mit initialer Firmware ausgeliefert
+      - Benutzer registriert und pairt das Board
+      - Falls WiFi und OTA verfuegbar sind, kann spaeter ueber Cloud/OTA geflasht werden

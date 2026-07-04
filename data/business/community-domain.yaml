@@ -1,0 +1,43 @@
+schemaVersion: 1
+kind: business_domain_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: business_domain.community
+    type: business_domain
+    title: Community
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Business-Domain fuer Community-Inhalte, Community-Wissen, projektbezogene Diskussionen, verifizierte Antworten und premiumfaehige Community-Wissensfunktionen.
+    ownsCapabilities:
+      - BC-015
+      - BC-016
+      - BC-017
+      - BC-018
+      - BC-019
+      - BC-040
+    ownsFeatures:
+      - feature.community.free_participation
+      - feature.community_ai_assistant.premium_rag_answers
+      - feature.community_ai_assistant.discussion_summaries
+      - feature.community_ai_assistant.similar_content_finder
+      - feature.community_ai_assistant.learning_references
+      - feature.community_ai_assistant.translation
+      - feature.community_ai_assistant.personal_recommendations
+    traceabilityRule: Upstream-Traceability fuer den KI-Community-Assistenten laeuft ausschliesslich ueber diese Business-Domain und den zugeordneten Learning Path. Es werden keine direkten neuen Beziehungen zu Vision, Business Goals oder Customer Journeys angelegt.
+
+  - id: learning_path.community_knowledge_usage
+    type: learning_path
+    title: Community-Wissen finden und nutzen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Lernpfadnahe Einordnung, wie Nutzer Community-Wissen durchsuchen, Quellen verstehen, aehnliche Projekte finden und passende Lernpfade oder Kurse ableiten.
+    belongsToBusinessDomain:
+      - business_domain.community
+    realizesCapabilities:
+      - BC-040
+    pathPrinciples:
+      - Community-Inhalte bleiben die fachliche Wissensbasis.
+      - KI-Zusammenfassungen muessen Quellen und Originalbeitraege referenzieren.
+      - Premium-KI erweitert die Community, ersetzt aber nicht die kostenlose Community.

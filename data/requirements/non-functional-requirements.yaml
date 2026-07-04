@@ -1,0 +1,88 @@
+schemaVersion: 1
+kind: non_functional_requirement_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: nfr.firmware_flash_must_not_brick_board
+    type: non_functional_requirement
+    category: robustness
+    title: Firmware-Flash darf Boards nicht unbrauchbar machen
+    status: draft
+    ownerDomain: DeviceManagement
+    summary: Firmware-Flashen darf unabhaengig vom Transportweg USB, OTA oder Cloud/OTA nicht dazu fuehren, dass ein ProcessorBoard dauerhaft defekt oder fuer den Nutzer nicht wiederherstellbar wird.
+    rationale:
+      - Flash-Vorgaenge sind ein kritischer Teil der Nutzererfahrung.
+      - Ein fehlgeschlagener Flash darf nicht zu einem dauerhaft unbrauchbaren Board fuehren.
+      - Robustheit reduziert Supportaufwand und erhoeht Kundenakzeptanz.
+      - Nutzer muessen Boards ohne Spezialwissen wieder in einen nutzbaren Zustand bringen koennen.
+    appliesTo:
+      - app.user_ide
+      - app.provisioning_tool
+      - app.recovery_tool
+      - component.ota
+      - system_capability.ide_flash_usb
+      - system_capability.ide_flash_ota
+      - system_capability.cloud_flash
+      - architecture.registered_processor_board
+    supports:
+      - BG-003
+      - BG-006
+      - BG-007
+      - CJ-006
+      - CJ-010
+      - CJ-011
+    constraints:
+      - Flash-Vorgaenge muessen fehlertolerant gestaltet werden.
+      - Ein fehlgeschlagener Flash muss erkennbar und nachvollziehbar sein.
+      - Wenn ein Flash fehlschlaegt, muss ein definierter Recovery-Pfad existieren.
+      - OTA- oder Cloud-Flash darf nur gestartet werden, wenn Board, Firmware, Credential, Pairing, Stromversorgung und Berechtigung ausreichend geprueft wurden.
+      - USB-Flash muss den Nutzer vor riskanten Zustaenden warnen und einen Wiederherstellungspfad bieten.
+      - Vorbespielte Firmware muss so ausgelegt sein, dass spaetere Updates robust und wiederherstellbar bleiben.
+    acceptanceCriteria:
+      - Ein abgebrochener oder fehlgeschlagener Flash erzeugt einen klaren Fehlerstatus.
+      - Das Board bleibt entweder im vorherigen nutzbaren Zustand oder kann ueber Recovery wiederhergestellt werden.
+      - Der Nutzer erhaelt eine nachvollziehbare Handlungsanweisung.
+      - Support kann anhand von RegisteredProcessorBoard, FirmwareState, OTAState und BoardCredential nachvollziehen, was passiert ist.
+      - Verlorene, widerrufene oder nicht berechtigte Boards erhalten keine Flash-Auftraege.
+    affectedStates:
+      - FirmwareState
+      - OTAState
+      - RegisteredProcessorBoard
+      - BoardCredential
+    verification:
+      - Flash-Abbruch simulieren
+      - falsche oder inkompatible Firmware ablehnen
+      - OTA-Verbindungsabbruch behandeln
+      - Wiederherstellung ueber Recovery Tool pruefen
+      - Supportnachweis aus Device-Management-Zustand pruefen
+
+  - id: nfr.ai_cost_protection_auditability
+    type: non_functional_requirement
+    category: auditability
+    title: KI-Kostenkontrolle muss auditierbar sein
+    status: draft
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: KI-Kostenkontrolle, Credit-Pruefungen, abgelehnte Aufrufe und administrative Eingriffe muessen nachvollziehbar, manipulationsresistent und serverseitig pruefbar sein.
+    appliesTo:
+      - architecture_artifact.ai_cost_protection
+      - architecture_artifact.ai_usage_observability
+      - data_model.ai_usage_event
+      - data_model.ai_admin_action_audit_event
+      - api_artifact.ai_usage_preflight
+      - api_artifact.ai_admin_cost_controls
+      - app.admin_tool
+    supports:
+      - BG-008
+      - business_strategy.optimize_costs
+      - BR-006
+    constraints:
+      - Credit-Pruefungen duerfen nicht ausschliesslich im Client stattfinden.
+      - Usage Events muessen auch bei Fehlern und Ablehnungen entstehen.
+      - Administrative Aenderungen an Credits, Limits, Modellfreigaben und Kill-Switch muessen auditierbar sein.
+      - Kostenschaetzungen muessen nachvollziehbar auf Modell, Tokenverbrauch und Preisregel beruhen.
+    verification:
+      - Ungedeckten KI-Aufruf serverseitig ablehnen
+      - Usage Event fuer erfolgreiche, fehlgeschlagene und abgelehnte Aufrufe pruefen
+      - Admin-Aktion im Audit Trail nachvollziehen
+      - Manipulierte Client-Angaben ignorieren oder ablehnen

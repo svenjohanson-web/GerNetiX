@@ -1,0 +1,108 @@
+schemaVersion: 1
+kind: business_rule_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: BR-001
+    type: business_rule
+    title: Externe Verweise ohne Spam
+    businessStatus: Approved
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Verweise in externen Communities erfolgen nur thematisch passend, hilfreich und ohne Spam.
+    appliesToMeasures:
+      - measure.external_community_presence
+    constrainsBusinessCapabilities:
+      - BC-008
+
+  - id: BR-002
+    type: business_rule
+    title: Kein vollstaendiger Projektexport
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Vollstaendiger Projektexport ist nicht vorgesehen, solange das Geschaeftsmodell auf plattformzentriertem Arbeiten basiert.
+    appliesToMeasures:
+      - measure.platform_centric_work
+    constrainsBusinessCapabilities:
+      - BC-020
+      - BC-021
+
+  - id: BR-003
+    type: business_rule
+    title: Karenzzeit nach Abonnementablauf
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Nach Ablauf eines Abonnements beginnt eine Karenzzeit, in der Projekte noch erhalten bleiben.
+    appliesToMeasures:
+      - measure.subscription_lifecycle
+    constrainsBusinessCapabilities:
+      - BC-023
+      - BC-024
+
+  - id: BR-004
+    type: business_rule
+    title: Personenbezogene Projektdaten nach 30 Tagen loeschen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Nach 30 Tagen werden personenbezogene Projektdaten geloescht, sofern keine rechtliche oder fachliche Ausnahme gilt.
+    appliesToMeasures:
+      - measure.subscription_lifecycle
+    constrainsBusinessCapabilities:
+      - BC-024
+
+  - id: BR-005
+    type: business_rule
+    title: Oeffentliche Wissensbeitraege anonymisiert erhalten
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Oeffentliche Wissensbeitraege koennen anonymisiert erhalten bleiben, um die Wissensbasis nicht zu verlieren.
+    appliesToMeasures:
+      - measure.subscription_lifecycle
+      - measure.community_knowledge_platform
+    constrainsBusinessCapabilities:
+      - BC-018
+      - BC-024
+
+  - id: BR-006
+    type: business_rule
+    title: Schutz vor unkontrollierten KI-Kosten
+    businessStatus: Approved
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Kostenpflichtige KI-Nutzung muss technisch und wirtschaftlich begrenzt, nachvollziehbar und serverseitig kontrolliert werden, damit keine unkontrollierten oder unkalkulierbaren Betriebskosten entstehen.
+    appliesToMeasures:
+      - measure.extended_ai_features
+      - measure.extended_cloud_resources
+      - measure.premium_memberships
+      - measure.ai_credit_management
+      - measure.ai_prepaid_credit_check
+      - measure.ai_budget_limits
+      - measure.ai_usage_audit_trail
+      - measure.ai_usage_monitoring
+      - measure.ai_admin_cost_controls
+      - measure.ai_suspicious_usage_detection
+    constrainsBusinessCapabilities:
+      - BC-027
+      - BC-041
+    constrainsSystemCapabilities:
+      - system_capability.ai_credit_management
+      - system_capability.ai_prepaid_credit_check
+      - system_capability.ai_budget_limits
+      - system_capability.ai_usage_audit_trail
+      - system_capability.admin_ai_usage_monitoring
+      - system_capability.admin_ai_cost_controls
+      - system_capability.ai_suspicious_usage_detection
+    rationale:
+      - Schutz des Geschaeftsmodells.
+      - Vermeidung finanzieller Verluste.
+      - Planbare Betriebskosten.
+      - Schutz vor Missbrauch, Endlosschleifen und automatisierten Angriffen.
+      - Nachhaltige Skalierbarkeit kostenpflichtiger KI-Dienste.
+    policies:
+      - Negative Credit-Guthaben duerfen nicht entstehen.
+      - Jeder kostenpflichtige KI-Aufruf muss vor Ausfuehrung serverseitig gegen Budget, Credits, Modellfreigabe und Schutzlimits geprueft werden.
+      - Jeder kostenpflichtige KI-Aufruf muss als Usage Event protokolliert werden, auch wenn er abgelehnt oder fehlerhaft beendet wird.
+      - Administratoren muessen KI-Nutzung, Kosten, Budgets und auffaellige Nutzungsmuster einsehen und steuern koennen.

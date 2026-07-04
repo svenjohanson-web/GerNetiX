@@ -34,15 +34,36 @@ mindmap
       WLAN-Grundlagen
       Offline-/Online-Design
     Varianten
-      ESP32 mit Display und Button
+      Offline-Haustier
         Pflicht
           ESP32
           Display
           Eingabe
-        Optional
+        Vorteile
+          Keine Internetverbindung
+          Keine KI-Kosten
+          Einfacherer Datenschutz
+        Nachteile
+          Keine KI-Dialoge
+          Lokale Logik begrenzt
+      KI-Online-Haustier
+        Pflicht
+          ESP32
+          Display
+          Eingabe
           WiFi
+        Optional
           Audio
           Mikrofon
+        Vorteile
+          Natuerlichere Dialoge
+          Dynamischere Persoenlichkeit
+          Lernziel KI-Kostenkontrolle
+        Nachteile
+          Stetige Online-Verbindung
+          Laufende KI-Kosten
+          Credits und Budgetlimits
+          Datenschutz und Missbrauchsschutz
     Softwaremodule
       Pet Core
       State Engine

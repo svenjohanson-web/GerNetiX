@@ -1,0 +1,235 @@
+schemaVersion: 1
+kind: learning_path_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: learning_path.ai_pet_embedded_interaction
+    type: learning_path
+    title: Embedded-Interaktion mit digitalem Haustier
+    status: draft
+    ownerDomain: Learning
+    summary: Learning Path fuer ein interaktives ESP32-Projekt mit Display, Eingabe, Zustandsmaschine, Persistenz und optionaler KI-Erweiterung.
+    primaryLearningGoal: learning_goal.embedded_basics
+    secondaryLearningGoals:
+      - learning_goal.iot_basics
+      - learning_goal.embedded_advanced
+    cardinalityRules:
+      - LearningPath 1 -> 1..* LearningProjects
+      - LearningProject 1 -> genau 1 LearningPath
+    projects:
+      - project.ai_pet_esp32
+
+  - id: learning_path.automation_control_and_regulation
+    type: learning_path
+    title: Steuerung und Regelung verstehen
+    status: draft
+    ownerDomain: Learning
+    summary: Learning Path fuer Automatisierung, Sensorik, Aktorik, Steuerung, Regelung, Fehlerbehandlung und optionale IoT-Erweiterung.
+    primaryLearningGoal: learning_goal.automation_basics
+    secondaryLearningGoals:
+      - learning_goal.embedded_basics
+      - learning_goal.iot_basics
+    cardinalityRules:
+      - LearningPath 1 -> 1..* LearningProjects
+      - LearningProject 1 -> genau 1 LearningPath
+    projects:
+      - project.smart_plant_watering
+
+  - id: learning_path.embedded_access_control
+    type: learning_path
+    title: Embedded Access Control
+    status: draft
+    ownerDomain: Learning
+    summary: Learning Path fuer Identifikation, einfache Autorisierung, RFID/SPI, Aktorik, Zustandsautomaten und Fehlerszenarien.
+    primaryLearningGoal: learning_goal.embedded_advanced
+    secondaryLearningGoals:
+      - learning_goal.embedded_basics
+    cardinalityRules:
+      - LearningPath 1 -> 1..* LearningProjects
+      - LearningProject 1 -> genau 1 LearningPath
+    projects:
+      - project.rfid_safe
+
+  - id: learning_path.maker_access_and_mechanics
+    type: learning_path
+    title: Maker Access und Mechanik
+    status: idea
+    ownerDomain: Learning
+    summary: Learning Path fuer Identifizierung, Autorisierung, Fallback, Servo-Verriegelung und mechanische Maker-Ergebnisse.
+    primaryLearningGoal: learning_goal.embedded_basics
+    secondaryLearningGoals:
+      - learning_goal.embedded_advanced
+    cardinalityRules:
+      - LearningPath 1 -> 1..* LearningProjects
+      - LearningProject 1 -> genau 1 LearningPath
+    projects:
+      - project.book_vault
+
+  - id: learning_path.workshop_inventory_and_tooling
+    type: learning_path
+    title: Workshop-Inventar und Tooling
+    status: draft
+    ownerDomain: Learning
+    summary: Learning Path fuer Inventarisierung, Bauteilverwaltung, Identifikation, Datenmodellierung, Arbeitsablaeufe und Projektvorschlaege aus Bestand.
+    primaryLearningGoal: learning_goal.tooling_and_workflows
+    secondaryLearningGoals:
+      - learning_goal.embedded_basics
+      - learning_goal.iot_basics
+    cardinalityRules:
+      - LearningPath 1 -> 1..* LearningProjects
+      - LearningProject 1 -> genau 1 LearningPath
+    projects:
+      - project.kanban_gridfinity_inventory
+
+  - id: learning_path.cross_platform_development
+    type: learning_path
+    title: Cross-Platform Development
+    status: draft
+    ownerDomain: Learning
+    summary: Learning Path zum stabilen Lernziel Cross-Platform Development anhand einer austauschbaren Beispieldomaene.
+    primaryLearningGoal: learning_goal.cross_platform_development
+    exampleDomain:
+      id: example_domain.digital_tamagotchi
+      title: Digitales Tamagotchi
+      role: Durchgaengige fachliche Beispieldomaene, nicht Zweck des Learning Goals.
+      replaceable: true
+      replacementRule: Das Beispielprojekt darf durch eine andere fachliche Domaene ersetzt werden, ohne Learning Goal, Lernpfadstruktur oder Plattformvergleich zu veraendern.
+      stableDomainConcepts:
+        - Haustierzustand
+        - Hunger
+        - Energie
+        - Stimmung
+        - Alter
+        - Ereignisse
+        - Benutzerinteraktion
+        - Persistenter Zustand
+    prerequisites:
+      - learning_goal.embedded_basics
+      - learning_goal.iot_basics
+    optionalPrerequisites:
+      - learning_goal.embedded_advanced
+    cardinalityRules:
+      - LearningGoal 1 -> 0..* LearningPaths
+      - LearningPath 1 -> 1..* LearningPathSteps
+      - LearningPathStep 1 -> 1 LearningProject
+      - LearningPath 1 -> 0..1 ExampleDomain
+      - ExampleDomain 1 -> 1..* LearningProjects innerhalb dieses Pfads
+      - ExampleDomain ist austauschbar; LearningGoal und LearningPath bleiben stabil.
+    pathPrinciples:
+      - Das Beispielprojekt bleibt fachlich moeglichst gleich, damit technische Unterschiede sichtbar werden.
+      - Fachlogik wird von Benutzeroberflaechen, Hardwarezugriffen und Plattformadaptern getrennt.
+      - Jede Plattformvariante erzeugt zunaechst eine eigenstaendige Anwendung.
+      - Erst im Synchronisationsprojekt entsteht ein gemeinsamer plattformuebergreifender Zustand.
+      - KI ist eine optionale Erweiterung und darf den Kernpfad nicht blockieren.
+    learningOutcomes:
+      - Zielsysteme und Laufzeitumgebungen begruendet unterscheiden.
+      - Frameworks nach Zielsystem, Team, Wartbarkeit und Nutzererlebnis bewerten.
+      - Gemeinsame Fachlogik identifizieren und von UI- und Infrastrukturcode abgrenzen.
+      - Plattformadapter fuer Hardware, Dateisystem, Benachrichtigungen, Browser und APIs einordnen.
+      - Datenmodelle fuer mehrere Clients und Synchronisation entwerfen.
+      - Offline-/Online-Verhalten und Konflikte fachlich beschreiben.
+      - KI-Funktionen mit Kosten-, Kontext- und Tokenmanagement als Erweiterung bewerten.
+    projects:
+      - project.cross_platform_tamagotchi.embedded
+      - project.cross_platform_tamagotchi.desktop
+      - project.cross_platform_tamagotchi.mobile
+      - project.cross_platform_tamagotchi.web
+      - project.cross_platform_tamagotchi.cloud
+      - project.cross_platform_tamagotchi.synchronization
+      - project.cross_platform_tamagotchi.ai_extension
+    steps:
+      - id: learning_path_step.cross_platform.01_embedded
+        orderIndex: 1
+        title: Embedded
+        mandatory: true
+        learningFocus:
+          - ESP32
+          - Display
+          - Buttons
+          - Zustandsmaschine
+          - Timer
+          - Persistenz
+          - Hardwarezugriffe
+        outcome: Teilnehmer verstehen die fachliche Tamagotchi-Logik in einer ressourcenbegrenzten Embedded-Umgebung.
+
+      - id: learning_path_step.cross_platform.02_desktop
+        orderIndex: 2
+        title: Desktop
+        mandatory: true
+        learningFocus:
+          - Windows
+          - macOS
+          - Linux
+          - Desktop-GUI
+          - Fenster
+          - Menues
+          - Maus und Tastatur
+          - Dateisystem
+          - lokale Speicherung
+          - Technologievergleich
+        outcome: Teilnehmer koennen Desktop-Technologien wie native Entwicklung, .NET, Qt, Flutter, Electron und Python fachlich vergleichen.
+
+      - id: learning_path_step.cross_platform.03_mobile
+        orderIndex: 3
+        title: Mobile
+        mandatory: true
+        learningFocus:
+          - Android
+          - iOS
+          - Touch
+          - Navigation
+          - App-Lifecycle
+          - lokale Daten
+          - Benachrichtigungen
+        outcome: Teilnehmer verstehen mobile Plattformanforderungen und deren Einfluss auf App-Struktur und Benutzererlebnis.
+
+      - id: learning_path_step.cross_platform.04_web
+        orderIndex: 4
+        title: Web
+        mandatory: true
+        learningFocus:
+          - Browser
+          - HTML
+          - CSS
+          - JavaScript
+          - Responsive Design
+          - Browser-APIs
+          - Web-Frameworks
+        outcome: Teilnehmer koennen Browser-Anwendungen als eigenstaendige Zielplattform einordnen.
+
+      - id: learning_path_step.cross_platform.05_cloud
+        orderIndex: 5
+        title: Cloud
+        mandatory: true
+        learningFocus:
+          - REST-API
+          - Datenbank
+          - Benutzerverwaltung
+          - Authentifizierung
+          - Deployment
+        outcome: Teilnehmer verstehen Backend- und Cloud-Bausteine als gemeinsame Basis fuer mehrere Clients.
+
+      - id: learning_path_step.cross_platform.06_synchronization
+        orderIndex: 6
+        title: Synchronisation
+        mandatory: true
+        unlockCondition: Die Embedded-, Desktop-, Mobile-, Web- und Cloud-Anwendungen existieren als getrennte Varianten.
+        learningFocus:
+          - gemeinsames Datenmodell
+          - Synchronisation
+          - APIs
+          - Offline-/Online-Verhalten
+          - Konfliktbehandlung
+          - Echtzeitkommunikation
+        outcome: Teilnehmer verbinden mehrere Anwendungen zu einem gemeinsamen Tamagotchi-Zustand ueber alle Zielsysteme hinweg.
+
+      - id: learning_path_step.cross_platform.07_ai_extension
+        orderIndex: 7
+        title: KI-Erweiterung
+        mandatory: false
+        learningFocus:
+          - KI-Integration
+          - Prompt Engineering
+          - Tool Calling
+          - Kontextverwaltung
+          - Kosten- und Tokenmanagement
+        outcome: Teilnehmer bewerten KI-Funktionen als optionale plattformuebergreifende Erweiterung.

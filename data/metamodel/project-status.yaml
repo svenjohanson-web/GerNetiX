@@ -1,0 +1,69 @@
+schemaVersion: 1
+kind: project_status_model
+sourceStatus: legacy_import_source
+id: metamodel.project_status
+type: metamodel
+title: Projektstatus
+status: draft
+ownerDomain: Learning
+summary: Fachlicher Lebenszyklusstatus fuer Projektideen und LearningProjects.
+metamodelRoot: metamodel.learning_platform
+relationToRoot: refines
+
+appliesTo:
+  - learning_project_idea
+  - learning_project
+
+attribute:
+  name: projectStatus
+  required: true
+  ownerDomain: Learning
+  description: Beschreibt den fachlichen Reifegrad eines Projektes unabhaengig vom allgemeinen YAML-/Dokumentstatus.
+
+values:
+  - value: idea
+    title: Idee
+    completenessRequired: false
+    traceabilityRequired: false
+    summary: Fruehe Projektidee; unvollstaendige Inhalte, offene Entscheidungen, Platzhalter und fehlende Traceability sind erlaubt.
+  - value: in_progress
+    title: In Bearbeitung
+    completenessRequired: false
+    traceabilityRequired: false
+    summary: Projekt wird fachlich ausgearbeitet; noch nicht alle Artefakte muessen vollstaendig sein.
+  - value: in_test
+    title: In Test
+    completenessRequired: true
+    traceabilityRequired: true
+    summary: Ab diesem Status muss das Projekt vollstaendig genug sein, um gegen Metamodell, Traceability und Projektanforderungen validiert zu werden.
+  - value: test_ok
+    title: Test OK
+    completenessRequired: true
+    traceabilityRequired: true
+    summary: Projekt hat fachliche und technische Tests bestanden.
+  - value: public
+    title: Oeffentlich
+    completenessRequired: true
+    traceabilityRequired: true
+    summary: Projekt ist fuer Nutzer sichtbar oder veroeffentlicht.
+  - value: buggy
+    title: Fehlerhaft
+    completenessRequired: true
+    traceabilityRequired: true
+    summary: Projekt ist bekannt fehlerhaft und muss korrigiert oder zurueckgezogen werden.
+  - value: retired
+    title: Retired
+    completenessRequired: true
+    traceabilityRequired: true
+    summary: Projekt wird nicht mehr aktiv angeboten, bleibt aber aus Nachvollziehbarkeitsgruenden dokumentiert.
+
+validationRules:
+  - id: validation_rule.project_completeness_starts_at_in_test
+    type: validation_rule
+    title: Projektvollstaendigkeit erst ab In Test erzwingen
+    summary: Projektideen und Projekte muessen erst ab `projectStatus: in_test` vollstaendig inklusive Traceability validierbar sein.
+    rule:
+      - projectStatus `idea` und `in_progress` duerfen offene Entscheidungen, unvollstaendige Roadmaps, fehlende Detailartefakte und fehlende Traceability enthalten.
+      - Projektideen mit `projectStatus: idea` brauchen keine Upstream-Traceability.
+      - Ab `in_test` muessen Pflichtfelder, Upstream-Traceability, LearningPath-Zuordnung, Varianten, Kompetenzen, Risiken und offene Entscheidungen validierbar sein.
+      - `public` darf nur erreicht werden, wenn vorher `test_ok` erreicht oder fachlich begruendet uebersprungen wurde.

@@ -1,0 +1,22 @@
+schemaVersion: 1
+kind: plan_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: plan.free
+    type: plan
+    title: Free
+    status: draft
+    ownerDomain: Authorization
+    summary: Kostenloser Tarif mit normaler Community-Nutzung ohne KI-Community-Assistent.
+    grantsSystemCapabilities:
+      - system_capability.community_free_participation
+
+  - id: plan.premium
+    type: plan
+    title: Premium
+    status: draft
+    ownerDomain: Authorization
+    summary: Kostenpflichtiger Tarif, der Premium-Funktionen wie den KI-Community-Assistenten freischalten kann.
+    grantsSystemCapabilities:
+      - system_capability.community_free_participation
+      - system_capability.community_ai_assistant

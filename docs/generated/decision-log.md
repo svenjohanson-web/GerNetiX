@@ -1,36 +1,47 @@
 # Decision Log
 
 Diese Datei ist eine generierte Lesesicht auf bereits getroffene Entscheidungen.
-YAML bleibt die Source of Truth.
+Der validierte SQLite-Graph ist die kanonische Struktur.
 
 ## Entscheidungen
 
-### YAML-first Repository-Struktur
+### SQLite-Graph als kanonische Modellstruktur
 
-ID: `architecture.yaml_first_repository`
+ID: `architecture.sqlite_graph_canonical_model`
 
 Entscheidung:
 
-YAML ist Source of Truth. Markdown ist nur generierter Output.
+Der validierte SQLite-Graph ist die kanonische Pflege-, Pruef- und Abfragestruktur.
+YAML ist nur noch Legacy-Import, Bootstrap oder Export, sofern der Graph die YAML-Struktur fehlerfrei abbildet.
 
 Begruendung:
 
-Projektideen und Plattformwissen sollen spaeter durch Web-App, Datenbank und automatische Dokumentation gepflegt werden koennen.
+Artefakte und Beziehungen sollen pruefbar, abfragbar, normalisiert und spaeter durch Werkzeuge oder Web-Oberflaechen gepflegt werden koennen, ohne YAML parallel als zweite Wahrheit zu fuehren.
 
 Alternativen:
 
+- YAML als fuehrende Quelle.
 - Markdown als fuehrende Quelle.
 
 Auswirkung:
 
-- YAML-Dateien muessen stabile IDs und Beziehungen enthalten.
+- Fachliche Pflege erfolgt kuenftig im Graphmodell oder ueber Werkzeuge, die direkt auf das Graphmodell schreiben.
+- YAML wird nur noch exportiert oder fuer Migration/Bootstrap verwendet.
 - Markdown-Dateien unter `docs/generated/` sind Lesesichten.
 
 Betroffene Entitaeten:
 
 - `knowledge_base.distributed_engineering_knowledge`
-- `component.database`
-- `component.generated_markdown`
+- `tools.yaml_graph_sqlite`
+- `docs.generated.sqlite_graph_validation`
+
+### YAML-first Repository-Struktur abgeloest
+
+ID: `architecture.yaml_first_repository`
+
+Entscheidung:
+
+Diese fruehere Entscheidung ist durch `architecture.sqlite_graph_canonical_model` abgeloest.
 
 ### Top-down-Entwicklung
 

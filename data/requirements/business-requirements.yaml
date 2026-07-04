@@ -1,0 +1,494 @@
+schemaVersion: 1
+kind: business_requirement_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: requirement.public_content_indexable
+    type: requirement
+    title: Oeffentliche Inhalte muessen indexierbar sein
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Oeffentliche Wissensinhalte muessen so bereitgestellt werden, dass Suchmaschinen sie indexieren und Nutzer sie finden koennen.
+    derivedFromBusinessCapabilities:
+      - BC-002
+
+  - id: requirement.community_question_triage_time
+    type: requirement
+    title: Neue Fragen innerhalb definierter Zeit triagieren
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Neue Community-Fragen muessen innerhalb einer fachlich definierten Zeit gesichtet und triagiert werden.
+    derivedFromBusinessCapabilities:
+      - BC-015
+    affectsArchitectureArtifacts:
+      - architecture_artifact.community_knowledge_platform
+    affectsDataModels:
+      - data_model.community_question
+    affectsApiArtifacts:
+      - api_artifact.community_questions
+    realizedByImplementationArtifacts:
+      - implementation_artifact.community_question_triage
+    verifiedByTestArtifacts:
+      - test_artifact.community_question_triage_time
+    validatedByValidationArtifacts:
+      - validation_artifact.community_response_sla
+
+  - id: requirement.community_answer_verification
+    type: requirement
+    title: Antworten als verifiziert markieren
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Berechtigte Experten oder Moderatoren muessen Antworten fachlich als verifiziert markieren koennen.
+    derivedFromBusinessCapabilities:
+      - BC-016
+    considersBusinessRules:
+      - BR-005
+    affectsArchitectureArtifacts:
+      - architecture_artifact.community_knowledge_platform
+    affectsDataModels:
+      - data_model.community_answer
+    affectsApiArtifacts:
+      - api_artifact.community_answer_verification
+    realizedByImplementationArtifacts:
+      - implementation_artifact.community_answer_verification
+    verifiedByTestArtifacts:
+      - test_artifact.community_answer_verification
+    validatedByValidationArtifacts:
+      - validation_artifact.verified_answers_visible
+
+  - id: requirement.verified_answer_status_visible
+    type: requirement
+    title: Verifizierungsstatus fuer Nutzer sichtbar machen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Der Pruefstatus einer Antwort muss fuer Nutzer sichtbar sein, damit verifizierte Loesungen erkennbar sind.
+    derivedFromBusinessCapabilities:
+      - BC-016
+      - BC-017
+    affectsArchitectureArtifacts:
+      - architecture_artifact.community_knowledge_platform
+    affectsDataModels:
+      - data_model.community_answer
+    affectsApiArtifacts:
+      - api_artifact.community_answer_verification
+
+  - id: requirement.reverify_changed_verified_answer
+    type: requirement
+    title: Aenderungen an verifizierten Antworten erneut pruefen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Aenderungen an bereits verifizierten Antworten muessen eine erneute fachliche Pruefung ausloesen.
+    derivedFromBusinessCapabilities:
+      - BC-016
+    considersBusinessRules:
+      - BR-005
+    affectsDataModels:
+      - data_model.community_answer
+    affectsApiArtifacts:
+      - api_artifact.community_answer_verification
+
+  - id: requirement.ai_credit_balance
+    type: requirement
+    title: KI-Credit-Guthaben fuehren
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Die Plattform muss fuer jeden Account ein KI-Credit-Guthaben fuehren und aktuellen Stand, bisherigen Verbrauch und verbleibende Credits nachvollziehbar bereitstellen.
+    derivedFromBusinessCapabilities:
+      - BC-041
+    considersBusinessRules:
+      - BR-006
+    affectsArchitectureArtifacts:
+      - architecture_artifact.ai_cost_protection
+    affectsDataModels:
+      - data_model.ai_credit_account
+      - data_model.ai_credit_ledger_entry
+    affectsApiArtifacts:
+      - api_artifact.ai_credit_balance
+
+  - id: requirement.ai_prepaid_credit_check
+    type: requirement
+    title: Kein ungedeckter KI-Aufruf
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Vor jedem kostenpflichtigen KI-Aufruf muss serverseitig geprueft werden, ob ausreichende Credits, Budgetfreigabe und Modellberechtigung vorhanden sind; negative Guthaben sind unzulaessig.
+    derivedFromBusinessCapabilities:
+      - BC-041
+    considersBusinessRules:
+      - BR-006
+    affectsArchitectureArtifacts:
+      - architecture_artifact.ai_cost_protection
+    affectsDataModels:
+      - data_model.ai_credit_account
+      - data_model.ai_usage_event
+    affectsApiArtifacts:
+      - api_artifact.ai_usage_preflight
+    verifiedByTestArtifacts:
+      - test_artifact.ai_prepaid_credit_check
+    validatedByValidationArtifacts:
+      - validation_artifact.ai_cost_protection_effectiveness
+
+  - id: requirement.ai_credit_consumption_calculation
+    type: requirement
+    title: Credits verbrauchsabhaengig berechnen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Credits muessen anhand des tatsaechlichen Ressourcenverbrauchs berechnet werden, z. B. Eingabetokens, Ausgabetokens, Modell, Bildgenerierung, Audio, Tool-Aufrufe oder weitere kostenpflichtige KI-Dienste.
+    derivedFromBusinessCapabilities:
+      - BC-041
+    derivedFromRequirements:
+      - requirement.ai_credit_balance
+    considersBusinessRules:
+      - BR-006
+    affectsDataModels:
+      - data_model.ai_usage_event
+      - data_model.ai_model_pricing_policy
+
+  - id: requirement.ai_usage_limits
+    type: requirement
+    title: KI-Nutzung ueber Limits begrenzen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Die Plattform muss Tageslimits, Monatslimits, Budgetobergrenzen, Rate Limits, maximale Promptgroesse, maximale Antwortgroesse und maximale Laufzeit fuer KI-Aufrufe unterstuetzen.
+    derivedFromBusinessCapabilities:
+      - BC-041
+    considersBusinessRules:
+      - BR-006
+    affectsDataModels:
+      - data_model.ai_budget_policy
+    affectsApiArtifacts:
+      - api_artifact.ai_admin_cost_controls
+
+  - id: requirement.ai_model_access_control
+    type: requirement
+    title: Teure KI-Modelle tarifabhaengig freigeben
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Authorization
+    summary: Teure KI-Modelle duerfen nur fuer geeignete Tarife, SystemCapabilities oder Account Overrides freigegeben werden.
+    derivedFromBusinessCapabilities:
+      - BC-041
+    considersBusinessRules:
+      - BR-006
+    affectsDataModels:
+      - data_model.ai_model_pricing_policy
+    affectsApiArtifacts:
+      - api_artifact.ai_admin_cost_controls
+
+  - id: requirement.ai_global_kill_switch
+    type: requirement
+    title: Globalen KI-Kill-Switch bereitstellen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Administratoren muessen kostenpflichtige KI-Dienste global deaktivieren koennen, wenn Kosten, Missbrauch oder Anbieterprobleme dies erforderlich machen.
+    derivedFromBusinessCapabilities:
+      - BC-041
+    considersBusinessRules:
+      - BR-006
+    affectsDataModels:
+      - data_model.ai_budget_policy
+    affectsApiArtifacts:
+      - api_artifact.ai_admin_cost_controls
+
+  - id: requirement.ai_usage_event_audit_trail
+    type: requirement
+    title: KI Usage Events serverseitig protokollieren
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Jeder kostenpflichtige KI-Aufruf muss serverseitig mit Benutzer, Zeitpunkt, Modell, Tokens, Credits, geschaetzten Anbieter-Kosten, Tarif, Projektkontext, Erfolg oder Fehler, Ablehnungsgrund und Schutzmassnahme protokolliert werden.
+    derivedFromBusinessCapabilities:
+      - BC-041
+    considersBusinessRules:
+      - BR-006
+    affectsArchitectureArtifacts:
+      - architecture_artifact.ai_cost_protection
+      - architecture_artifact.ai_usage_observability
+    affectsDataModels:
+      - data_model.ai_usage_event
+    affectsApiArtifacts:
+      - api_artifact.ai_usage_events
+    verifiedByTestArtifacts:
+      - test_artifact.ai_usage_event_audit_trail
+
+  - id: requirement.ai_admin_usage_dashboard
+    type: requirement
+    title: Admin Dashboard fuer KI Usage Monitoring bereitstellen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Das Admin Tool muss KI-Nutzung nach Benutzer, Zeitraum, Credits, Tokens, Modell, Anzahl Anfragen, durchschnittlichen Kosten, teuersten Benutzern, Fehlern, Ablehnungen, Budgetnaehe und Systemkosten anzeigen.
+    derivedFromBusinessCapabilities:
+      - BC-041
+    considersBusinessRules:
+      - BR-006
+    affectsArchitectureArtifacts:
+      - architecture_artifact.ai_usage_observability
+      - app.admin_tool
+    affectsDataModels:
+      - data_model.ai_usage_event
+      - data_model.ai_usage_aggregate
+    affectsApiArtifacts:
+      - api_artifact.ai_admin_usage_dashboard
+
+  - id: requirement.ai_cost_margin_reporting
+    type: requirement
+    title: KI-Kosten und Marge je Tarif oder Nutzergruppe schaetzen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Das Admin Dashboard muss Systemkosten und geschaetzte Marge je Tarif oder Nutzergruppe aus Usage Events, Credit-Verbrauch und Anbieter-Kostenschaetzung ableiten koennen.
+    derivedFromBusinessCapabilities:
+      - BC-041
+    derivedFromRequirements:
+      - requirement.ai_admin_usage_dashboard
+    considersBusinessRules:
+      - BR-006
+    affectsDataModels:
+      - data_model.ai_usage_aggregate
+      - data_model.ai_model_pricing_policy
+    affectsApiArtifacts:
+      - api_artifact.ai_admin_usage_dashboard
+
+  - id: requirement.ai_admin_cost_control_actions
+    type: requirement
+    title: Administrative KI-Kostensteuerung bereitstellen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Administratoren muessen Credits gutschreiben oder sperren, Nutzer temporaer fuer KI sperren, Tages- und Monatslimits aendern, Tarifgrenzen konfigurieren, Modelle freigeben oder sperren, Warnschwellen pflegen und verdaechtige Nutzung pruefen koennen.
+    derivedFromBusinessCapabilities:
+      - BC-041
+    considersBusinessRules:
+      - BR-006
+    affectsArchitectureArtifacts:
+      - architecture_artifact.ai_usage_observability
+      - app.admin_tool
+    affectsDataModels:
+      - data_model.ai_credit_account
+      - data_model.ai_budget_policy
+      - data_model.ai_admin_action_audit_event
+    affectsApiArtifacts:
+      - api_artifact.ai_admin_cost_controls
+
+  - id: requirement.ai_suspicious_usage_detection
+    type: requirement
+    title: Auffaellige KI-Nutzung sichtbar machen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Das System muss auffaellige Nutzungsmuster, ungewoehnlich teure Aufrufe, fehlgeschlagene KI-Aufrufe, abgelehnte Aufrufe wegen fehlender Credits und Nutzer nahe am Budgetlimit sichtbar machen.
+    derivedFromBusinessCapabilities:
+      - BC-041
+    considersBusinessRules:
+      - BR-006
+    affectsDataModels:
+      - data_model.ai_usage_event
+      - data_model.ai_usage_aggregate
+    affectsApiArtifacts:
+      - api_artifact.ai_admin_usage_dashboard
+
+  - id: requirement.ai_credit_addon_purchase
+    type: requirement
+    title: KI-Zusatzkontingent kaufen koennen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Nutzer muessen ein bezahlbares KI-Zusatzkontingent erwerben koennen, das ihrem Account zusaetzliche KI-Credits bereitstellt.
+    derivedFromBusinessCapabilities:
+      - BC-039
+    considersBusinessRules:
+      - BR-006
+    affectsArchitectureArtifacts:
+      - architecture_artifact.ai_cost_protection
+    affectsDataModels:
+      - data_model.ai_credit_account
+      - data_model.ai_credit_ledger_entry
+    affectsApiArtifacts:
+      - api_artifact.ai_credit_balance
+
+  - id: requirement.ai_credit_addon_ledger_booking
+    type: requirement
+    title: KI-Zusatzcredits nachvollziehbar buchen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Der Kauf eines KI-Zusatzkontingents muss als nachvollziehbare Credit-Buchung im Ledger erscheinen und fuer Usage Monitoring, Admin Dashboard und Audit Trail auswertbar sein.
+    derivedFromBusinessCapabilities:
+      - BC-039
+      - BC-041
+    derivedFromRequirements:
+      - requirement.ai_credit_addon_purchase
+    considersBusinessRules:
+      - BR-006
+    affectsDataModels:
+      - data_model.ai_credit_ledger_entry
+      - data_model.ai_admin_action_audit_event
+    affectsApiArtifacts:
+      - api_artifact.ai_credit_balance
+      - api_artifact.ai_admin_usage_dashboard
+
+  - id: requirement.community_ai_assistant_query
+    type: requirement
+    title: KI-Community-Assistent beantwortet natuerliche Fragen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Premium-Nutzer muessen natuerlichsprachliche Fragen an den Community-Wissensbestand stellen koennen; Antworten werden per RAG aus vorhandenen Community- und Lerninhalten erzeugt.
+    belongsToBusinessDomain:
+      - business_domain.community
+    derivedFromBusinessCapabilities:
+      - BC-040
+    considersBusinessRules:
+      - BR-006
+    affectsArchitectureArtifacts:
+      - architecture_artifact.community_ai_assistant
+      - architecture_artifact.ai_cost_protection
+    affectsDataModels:
+      - data_model.community_ai_assistant_query
+      - data_model.community_ai_assistant_answer
+      - data_model.ai_usage_event
+    affectsApiArtifacts:
+      - api_artifact.community_ai_assistant_query
+      - api_artifact.ai_usage_preflight
+    realizedByImplementationArtifacts:
+      - implementation_artifact.community_ai_assistant
+    verifiedByTestArtifacts:
+      - test_artifact.community_ai_assistant_sources
+
+  - id: requirement.community_ai_assistant_sources
+    type: requirement
+    title: KI-Antworten muessen Quellen enthalten
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Antworten des KI-Community-Assistenten muessen Quellen und Verweise auf urspruengliche Beitraege, Projekte, Tutorials, Dokumentationen, Lernpfade oder Kurse enthalten.
+    belongsToBusinessDomain:
+      - business_domain.community
+    derivedFromBusinessCapabilities:
+      - BC-040
+    affectsArchitectureArtifacts:
+      - architecture_artifact.community_ai_assistant
+    affectsDataModels:
+      - data_model.community_ai_source_reference
+      - data_model.community_ai_assistant_answer
+    affectsApiArtifacts:
+      - api_artifact.community_ai_assistant_query
+    verifiedByTestArtifacts:
+      - test_artifact.community_ai_assistant_sources
+    validatedByValidationArtifacts:
+      - validation_artifact.community_ai_assistant_source_quality
+
+  - id: requirement.community_ai_assistant_indexing
+    type: requirement
+    title: Community-Wissen fuer RAG indexieren
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Community-Beitraege, Kommentare, Projekte, Dokumentationen, Tutorials, FAQ, Lernpfade und Kurse muessen als erlaubte Quellen fuer RAG indexierbar sein.
+    belongsToBusinessDomain:
+      - business_domain.community
+    derivedFromBusinessCapabilities:
+      - BC-040
+    affectsArchitectureArtifacts:
+      - architecture_artifact.community_ai_assistant
+    affectsDataModels:
+      - data_model.community_ai_index_document
+      - data_model.community_ai_embedding
+    affectsApiArtifacts:
+      - api_artifact.community_ai_assistant_admin
+    realizedByImplementationArtifacts:
+      - implementation_artifact.community_ai_indexing
+
+  - id: requirement.community_ai_assistant_premium_access
+    type: requirement
+    title: KI-Community-Assistent nur fuer Premium freischalten
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Authorization
+    summary: Der KI-Community-Assistent darf nur fuer kostenpflichtige Tarife oder explizite Account Overrides freigeschaltet werden; die normale Community bleibt kostenlos nutzbar.
+    belongsToBusinessDomain:
+      - business_domain.community
+    derivedFromBusinessCapabilities:
+      - BC-040
+    affectsDataModels:
+      - data_model.community_ai_access_policy
+    affectsApiArtifacts:
+      - api_artifact.community_ai_assistant_query
+    requiredSystemCapabilities:
+      - system_capability.community_ai_assistant
+
+  - id: requirement.community_ai_assistant_admin_configuration
+    type: requirement
+    title: KI-Community-Assistent administrativ konfigurieren
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Administratoren muessen Aktivierung, KI-Modell, Tageslimit, Monatslimit, maximale Tokens, Antwortgroesse, Budgetwarnungen, Budgetobergrenzen, Modell-Fallback, Temperatur, Kontextgroesse, Datenquellen, Moderationsregeln, Quellenpflicht und RAG-Konfiguration pflegen koennen.
+    belongsToBusinessDomain:
+      - business_domain.community
+    derivedFromBusinessCapabilities:
+      - BC-040
+    considersBusinessRules:
+      - BR-006
+    affectsArchitectureArtifacts:
+      - architecture_artifact.community_ai_assistant
+      - architecture_artifact.ai_usage_observability
+    affectsDataModels:
+      - data_model.community_ai_assistant_configuration
+      - data_model.ai_budget_policy
+    affectsApiArtifacts:
+      - api_artifact.community_ai_assistant_admin
+      - api_artifact.ai_admin_cost_controls
+
+  - id: requirement.community_ai_assistant_monitoring
+    type: requirement
+    title: KI-Community-Assistent im Admin Dashboard ueberwachen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Das KI-Admin-Dashboard muss Anzahl KI-Anfragen, aktive Premium-Nutzer, Antwortzeit, Tokens, Kosten pro Tag, Monat, Benutzer und Community, Modelle, Cache-Trefferquote, RAG-Trefferquote, haeufigste Fragen, Fehlerquote und Budgetwarnungen fuer den Community-Assistenten anzeigen.
+    belongsToBusinessDomain:
+      - business_domain.community
+    derivedFromBusinessCapabilities:
+      - BC-040
+    considersBusinessRules:
+      - BR-006
+    affectsArchitectureArtifacts:
+      - architecture_artifact.ai_usage_observability
+      - architecture_artifact.community_ai_assistant
+    affectsDataModels:
+      - data_model.ai_usage_event
+      - data_model.ai_usage_aggregate
+      - data_model.community_ai_usage_metric
+    affectsApiArtifacts:
+      - api_artifact.ai_admin_usage_dashboard
+      - api_artifact.community_ai_assistant_admin
+
+  - id: requirement.community_ai_assistant_moderation
+    type: requirement
+    title: KI-Community-Assistent moderiert und quellengebunden antworten lassen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Der Assistent muss Moderationsregeln, erlaubte Datenquellen und Quellenpflicht beachten; Antworten ohne ausreichende Quellen muessen ablehnbar oder als unzureichend belegt kennzeichenbar sein.
+    belongsToBusinessDomain:
+      - business_domain.community
+    derivedFromBusinessCapabilities:
+      - BC-040
+    affectsDataModels:
+      - data_model.community_ai_assistant_configuration
+      - data_model.community_ai_source_reference
+    affectsApiArtifacts:
+      - api_artifact.community_ai_assistant_query
+    verifiedByTestArtifacts:
+      - test_artifact.community_ai_assistant_moderation
+

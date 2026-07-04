@@ -1,6 +1,6 @@
 schemaVersion: 1
 kind: architecture_structural_element_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 note: Diese Datei beschreibt grundlegende Architektur-Strukturelemente. Sie sind keine LearningProjects und keine technischen Implementierungsdetails.
 items:
   - id: app.user_ide
@@ -9,16 +9,24 @@ items:
     title: User IDE
     status: draft
     ownerDomain: IDE
-    summary: Nutzerwerkzeug fuer einfache Embedded-Entwicklung, Projektbearbeitung, Flashen, Pairing-Code-Eingabe und spaeteres Arbeiten mit Lernprojekten.
+    summary: Nutzerwerkzeug fuer Lernen, einfache Embedded-Entwicklung, komfortablen Hardwareeinstieg, Projektbearbeitung, Flashen, Pairing-Code-Eingabe und spaeteres Arbeiten mit Lernprojekten.
     primaryUsers:
       - role.learner
       - audience.maker
       - audience.hobby_developer
       - audience.embedded_beginner
     supports:
+      - BG-001
+      - BG-002
       - BG-003
+      - BG-006
+      - BG-007
+      - CJ-001
       - CJ-003
+      - CJ-004
       - CJ-006
+      - CJ-009
+      - CJ-011
     usesDomains:
       - Learning
       - Hardware
@@ -26,19 +34,75 @@ items:
       - Account
       - Authorization
     usesSystemCapabilities:
+      - system_capability.account_identification
+      - system_capability.hardware_shop_access
       - system_capability.ide_flash_usb
       - system_capability.ide_flash_ota
+      - system_capability.cloud_flash
     responsibilities:
+      - Benutzer identifizieren
+      - Berechtigte Services fuer den Account anzeigen und freischalten
+      - Lernen innerhalb eines LearningProject ermoeglichen
+      - Lessons und ProjectSteps als Lernarbeitsplatz anzeigen
+      - ProjectFlowItems in der richtigen Reihenfolge nutzbar machen
+      - Conditions fuer Wiedereinstieg und Fortsetzung sichtbar machen
+      - Lernfortschritt an die Account-Domaene melden
+      - Hardware Shop als komfortablen Einstieg in der IDE anzeigen
+      - Passende Hardware-Angebote aus TechnicalConstraints und TechnicalCapabilities ableiten
       - Projektkontext anzeigen
       - Board-Verbindung herstellen
       - Pairing-Code entgegennehmen
       - USB-Flash ausloesen
       - OTA-Flash ausloesen, wenn erlaubt und technisch moeglich
+      - Cloud-/OTA-Flash fuer kompatible, registrierte und berechtigte Boards ausloesen
+      - Flash-Vorgaenge so fuehren, dass fehlgeschlagene Updates nicht zu dauerhaft unbrauchbaren Boards fuehren
     nonResponsibilities:
       - LearningProject-Fachlogik besitzen
+      - LearningPath, LearningProject, Lesson oder ProjectStep fachlich definieren
+      - AccountProjectProgress fachlich berechnen
       - Hardware-Katalog fachlich verwalten
+      - Kaufabwicklung oder Rechnungsstellung fachlich besitzen
       - Berechtigungen berechnen
       - Board-Credentials verwalten
+    constraints:
+      - USB-, OTA- und Cloud-/OTA-Flash muessen das NFR `nfr.firmware_flash_must_not_brick_board` erfuellen.
+
+  - id: app.hardware_shop
+    type: architecture_structural_element
+    subtype: service
+    title: Hardware Shop
+    status: draft
+    ownerDomain: Business
+    summary: Vertriebskanal fuer passende Hardware, der in der User IDE sichtbar wird und den komfortablen Einstieg in Embedded-Projekte unterstuetzt.
+    primaryUsers:
+      - role.learner
+      - audience.maker
+      - audience.hobby_developer
+      - audience.embedded_beginner
+    realizedIn:
+      - app.user_ide
+    supports:
+      - BG-002
+      - BG-004
+      - BG-006
+      - CJ-011
+    usesDomains:
+      - Business
+      - Hardware
+      - Learning
+      - Account
+      - Authorization
+    usesSystemCapabilities:
+      - system_capability.hardware_shop_access
+    responsibilities:
+      - Passende Hardware-Angebote fuer Lernziele und Projekte bereitstellen
+      - ProcessorBoards oder Kits fuer den komfortablen Einstieg anbieten
+      - Kaufkontext fuer spaetere Support- und Reklamationspruefung nachvollziehbar machen
+    nonResponsibilities:
+      - Hardware-Katalog fachlich definieren
+      - TechnicalCapabilities fachlich bewerten
+      - Board-Credentials erzeugen
+      - LearningProject-Fachlogik besitzen
 
   - id: app.admin_tool
     type: architecture_structural_element
@@ -53,7 +117,10 @@ items:
       - role.support
     supports:
       - CJ-007
+      - CJ-008
       - BG-005
+      - BG-006
+      - BG-008
     usesDomains:
       - Business
       - Learning
@@ -65,13 +132,28 @@ items:
       - system_capability.admin_users
       - system_capability.admin_hardware
       - system_capability.admin_learning
+      - system_capability.admin_product_ideas
+      - system_capability.admin_project_ideas
+      - system_capability.admin_courses
       - system_capability.admin_authorization
+      - system_capability.admin_grants
+      - system_capability.admin_ai_usage_monitoring
+      - system_capability.admin_ai_cost_controls
     responsibilities:
+      - Produktideen sichten, bewerten und bearbeiten
+      - Projektideen sichten, bewerten und bearbeiten
+      - Kaufbare Learning-Angebote vom Typ Course sichten, bewerten und bearbeiten
       - Learning Goals pflegen
       - Projekte und Projektvarianten pflegen
       - TechnicalCapabilities und Hardware-Katalog pflegen
+      - Neue Hardwaretypen wie ProcessorBoards im Hardware-Katalog pflegen
       - Plaene und SystemCapabilities administrieren
+      - Grants, Account Overrides und Entzuege administrieren
       - Accounts und Rollen administrieren
+      - KI-Nutzung nach Benutzer, Zeitraum, Credits, Tokens, Modell, Kosten und Fehlern ueberwachen
+      - Auffaellige KI-Nutzungsmuster, Nutzer nahe am Budgetlimit und abgelehnte KI-Aufrufe sichtbar machen
+      - KI-Credits, Tageslimits, Monatslimits, Modellfreigaben, Budgetwarnschwellen und globalen KI-Kill-Switch administrieren
+      - Administrative KI-Kostensteuerung auditierbar machen
     nonResponsibilities:
       - Projektcode ausfuehren
       - Board-Firmware direkt provisionieren
@@ -88,7 +170,10 @@ items:
       - role.support
       - role.administrator
     supports:
+      - BG-006
+      - BG-007
       - CJ-006
+      - CJ-010
     usesDomains:
       - Hardware
       - DeviceManagement
@@ -98,8 +183,10 @@ items:
       - Board per USB erkennen
       - Wiederherstellungszustand pruefen
       - Board erneut registrieren
+      - Supportberechtigung anhand registrierter Boards pruefbar machen
       - Credentials erneuern oder wiederherstellen
       - Recovery-Firmware aufspielen
+      - Wiederherstellung nach fehlgeschlagenem Flash-Vorgang ermoeglichen
     nonResponsibilities:
       - LearningProject-Inhalte pflegen
       - Plaene und Lizenzen verwalten
@@ -107,6 +194,8 @@ items:
     constraints:
       - Pairing darf den Besitzer aendern, niemals den ProcessorBoard-Typ.
       - HMAC-Schluessel werden niemals im Klartext gespeichert.
+      - Recovery darf keinen Supportanspruch fuer unbekannte oder nicht berechtigte Boards erzeugen.
+      - Recovery muss fehlgeschlagene Flash-Vorgaenge nachvollziehbar behandeln.
 
   - id: app.provisioning_tool
     type: architecture_structural_element
@@ -114,14 +203,17 @@ items:
     title: Provisioning / Inbetriebnahme Tool
     status: draft
     ownerDomain: DeviceManagement
-    summary: Werkzeug fuer Erstinbetriebnahme von ProcessorBoards, initiales Flashen, Credential-Erzeugung, Registrierung und Vorbereitung des Pairings.
+    summary: Werkzeug fuer Erstinbetriebnahme von ProcessorBoards, initiales Flashen, Credential-Erzeugung, Registrierung, Vorbereitung des Pairings und Vorbespielen verkaufter Boards.
     primaryUsers:
       - role.administrator
       - role.support
       - role.teacher
     supports:
+      - BG-006
+      - BG-007
       - CJ-006
       - CJ-007
+      - CJ-010
     usesDomains:
       - Hardware
       - DeviceManagement
@@ -130,10 +222,14 @@ items:
     responsibilities:
       - Erstinstallation durchfuehren
       - Firmware initial aufspielen
+      - Verkaufte ProcessorBoards mit Initial-Firmware vorbespielen
+      - Bei WiFi-/OTA-faehigen Boards Cloud-/OTA-Flash vorbereiten
+      - Initial-Firmware so vorbereiten, dass spaetere Updates robust und wiederherstellbar bleiben
       - Board-Credentials erzeugen oder referenzieren
       - RegisteredProcessorBoard anlegen
       - Pairing vorbereiten
       - OTA-Zustand initialisieren
+      - Nachvollziehbarkeit fuer Support- und Reklamationsfaelle herstellen
     nonResponsibilities:
       - Projektablauf eines LearningProject bestimmen
       - Lernfortschritt eines Accounts verwalten
@@ -141,4 +237,6 @@ items:
     constraints:
       - Pro RegisteredProcessorBoard existiert genau ein aktives Credential.
       - OTA darf nur fuer gepairte Boards mit aktivem Credential verwendet werden.
-
+      - Cloud-/OTA-Flash setzt WiFi, OTA-faehige Firmware, Registrierung, Pairing und Berechtigung voraus.
+      - Vorbespielte Firmware muss das NFR `nfr.firmware_flash_must_not_brick_board` unterstuetzen.
+      - Register and Pairing schuetzt vor unberechtigten Support- oder Reklamationsanspruechen.

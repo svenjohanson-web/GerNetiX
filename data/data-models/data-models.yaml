@@ -1,0 +1,265 @@
+schemaVersion: 1
+kind: data_model_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: data_model.community_question
+    type: data_model
+    title: CommunityQuestion
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Datenmodell fuer eingehende Community-Fragen, Triage-Status und Bearbeitungszeitpunkt.
+    derivedFromRequirements:
+      - requirement.community_question_triage_time
+
+  - id: data_model.community_answer
+    type: data_model
+    title: CommunityAnswer
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Datenmodell fuer Antworten, Verifizierungsstatus, Pruefhistorie und erneute Pruefung nach Aenderungen.
+    derivedFromRequirements:
+      - requirement.community_answer_verification
+      - requirement.verified_answer_status_visible
+      - requirement.reverify_changed_verified_answer
+
+  - id: data_model.ai_credit_account
+    type: data_model
+    title: AiCreditAccount
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Datenmodell fuer aktuelles KI-Credit-Guthaben, gesperrte Credits, verfuegbare Credits und Account-/Tarifbezug.
+    derivedFromRequirements:
+      - requirement.ai_credit_balance
+      - requirement.ai_prepaid_credit_check
+      - requirement.ai_admin_cost_control_actions
+
+  - id: data_model.ai_credit_ledger_entry
+    type: data_model
+    title: AiCreditLedgerEntry
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Datenmodell fuer nachvollziehbare Credit-Buchungen wie Verbrauch, Gutschrift, Sperre, Korrektur, Promotion oder Supportgutschrift.
+    derivedFromRequirements:
+      - requirement.ai_credit_balance
+      - requirement.ai_admin_cost_control_actions
+
+  - id: data_model.ai_usage_event
+    type: data_model
+    title: AiUsageEvent
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Zentrales Usage-Event fuer jeden kostenpflichtigen, fehlgeschlagenen oder abgelehnten KI-Aufruf.
+    fields:
+      - accountId
+      - occurredAt
+      - model
+      - inputTokens
+      - outputTokens
+      - calculatedCredits
+      - estimatedProviderCost
+      - planId
+      - projectContextId
+      - status
+      - errorCode
+      - rejectionReason
+      - protectionMeasure
+      - requestCountKey
+    derivedFromRequirements:
+      - requirement.ai_usage_event_audit_trail
+      - requirement.ai_prepaid_credit_check
+      - requirement.ai_credit_consumption_calculation
+      - requirement.ai_admin_usage_dashboard
+      - requirement.ai_suspicious_usage_detection
+
+  - id: data_model.ai_usage_aggregate
+    type: data_model
+    title: AiUsageAggregate
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Aggregierte KI-Nutzung nach Benutzer, Zeitraum, Modell, Tarif, Nutzergruppe, Kosten, Credits, Tokens, Fehlern und Ablehnungen.
+    derivedFromRequirements:
+      - requirement.ai_admin_usage_dashboard
+      - requirement.ai_cost_margin_reporting
+      - requirement.ai_suspicious_usage_detection
+
+  - id: data_model.ai_budget_policy
+    type: data_model
+    title: AiBudgetPolicy
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Datenmodell fuer Tageslimits, Monatslimits, Budgetobergrenzen, Warnschwellen, Rate Limits, Prompt-/Antwortgroessen, Laufzeitlimits und globalen Kill-Switch.
+    derivedFromRequirements:
+      - requirement.ai_usage_limits
+      - requirement.ai_global_kill_switch
+      - requirement.ai_admin_cost_control_actions
+
+  - id: data_model.ai_model_pricing_policy
+    type: data_model
+    title: AiModelPricingPolicy
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Datenmodell fuer Modellkosten, Credit-Umrechnung, Tariffreigaben, Premium-Modellzugriff und Anbieter-Kostenschaetzung.
+    derivedFromRequirements:
+      - requirement.ai_credit_consumption_calculation
+      - requirement.ai_model_access_control
+      - requirement.ai_cost_margin_reporting
+
+  - id: data_model.ai_admin_action_audit_event
+    type: data_model
+    title: AiAdminActionAuditEvent
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Audit-Datenmodell fuer administrative Eingriffe an Credits, Limits, Sperren, Modellfreigaben, Warnschwellen und globalem Kill-Switch.
+    derivedFromRequirements:
+      - requirement.ai_admin_cost_control_actions
+
+  - id: data_model.community_ai_assistant_query
+    type: data_model
+    title: CommunityAiAssistantQuery
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain:
+      - business_domain.community
+    summary: Anfrage eines Premium-Nutzers an den KI-Community-Assistenten inklusive Kontext, Community, erlaubten Quellen, Tarif, Modell und Moderationsstatus.
+    fields:
+      - accountId
+      - communityId
+      - question
+      - requestedAt
+      - planId
+      - modelId
+      - allowedSourceTypes
+      - conversationId
+      - moderationState
+    derivedFromRequirements:
+      - requirement.community_ai_assistant_query
+
+  - id: data_model.community_ai_assistant_answer
+    type: data_model
+    title: CommunityAiAssistantAnswer
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain:
+      - business_domain.community
+    summary: Antwort des KI-Community-Assistenten inklusive Zusammenfassung, Quellenreferenzen, Modell, Tokens, Cache-/RAG-Treffern und Qualitaetsindikatoren.
+    fields:
+      - queryId
+      - answerText
+      - sourceReferenceIds
+      - modelId
+      - inputTokens
+      - outputTokens
+      - cacheHit
+      - ragHitScore
+      - generatedAt
+    derivedFromRequirements:
+      - requirement.community_ai_assistant_query
+      - requirement.community_ai_assistant_sources
+
+  - id: data_model.community_ai_source_reference
+    type: data_model
+    title: CommunityAiSourceReference
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain:
+      - business_domain.community
+    summary: Quellenverweis auf Community-Beitrag, Kommentar, Projekt, Dokumentation, Tutorial, FAQ, Lernpfad oder Course, der in einer KI-Antwort verwendet wurde.
+    fields:
+      - sourceType
+      - sourceId
+      - title
+      - excerpt
+      - url
+      - relevanceScore
+      - retrievedAt
+    derivedFromRequirements:
+      - requirement.community_ai_assistant_sources
+      - requirement.community_ai_assistant_moderation
+
+  - id: data_model.community_ai_index_document
+    type: data_model
+    title: CommunityAiIndexDocument
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain:
+      - business_domain.community
+    summary: Indexierbare Wissenseinheit fuer RAG aus Community-Beitraegen, Kommentaren, Projekten, Dokumentationen, Tutorials, FAQ, Lernpfaden oder Kursen.
+    fields:
+      - sourceType
+      - sourceId
+      - title
+      - contentHash
+      - language
+      - visibility
+      - indexedAt
+      - embeddingIds
+    derivedFromRequirements:
+      - requirement.community_ai_assistant_indexing
+
+  - id: data_model.community_ai_embedding
+    type: data_model
+    title: CommunityAiEmbedding
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain:
+      - business_domain.community
+    summary: Embedding-Referenz fuer ein indexiertes Community-Wissensfragment; die konkrete Vektordatenbank bleibt austauschbares technisches Detail.
+    fields:
+      - indexDocumentId
+      - chunkId
+      - embeddingModel
+      - vectorReference
+      - createdAt
+    derivedFromRequirements:
+      - requirement.community_ai_assistant_indexing
+
+  - id: data_model.community_ai_assistant_configuration
+    type: data_model
+    title: CommunityAiAssistantConfiguration
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain:
+      - business_domain.community
+    summary: Konfiguration fuer Aktivierung, Modell, Limits, Budgetwarnungen, Fallback, Temperatur, Kontextgroesse, erlaubte Quellen, Moderation, Quellenpflicht und RAG-Parameter.
+    derivedFromRequirements:
+      - requirement.community_ai_assistant_admin_configuration
+      - requirement.community_ai_assistant_moderation
+
+  - id: data_model.community_ai_access_policy
+    type: data_model
+    title: CommunityAiAccessPolicy
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Authorization
+    belongsToBusinessDomain:
+      - business_domain.community
+    summary: Zugriffsregel, dass der KI-Community-Assistent nur ueber kostenpflichtige Tarife, SystemCapabilities oder Overrides nutzbar ist.
+    derivedFromRequirements:
+      - requirement.community_ai_assistant_premium_access
+
+  - id: data_model.community_ai_usage_metric
+    type: data_model
+    title: CommunityAiUsageMetric
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain:
+      - business_domain.community
+    summary: Aggregierte Monitoring-Kennzahlen fuer Community-Assistent-Nutzung, Kosten, Modelle, Antwortzeiten, Cache-Treffer, RAG-Treffer, Fragen, Fehler und Budgetwarnungen.
+    derivedFromRequirements:
+      - requirement.community_ai_assistant_monitoring

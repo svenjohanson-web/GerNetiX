@@ -1,6 +1,6 @@
 schemaVersion: 1
 kind: risk_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 items:
   - id: risk.water_and_electronics
     type: risk
@@ -8,8 +8,8 @@ items:
     status: open
     ownerDomain: Learning
     summary: Wasser kann Elektronik beschaedigen und ist bei Pflanzenbewaesserung fachlich relevant.
-    affects:
-      - project.smart_plant_watering
+    affectsLearningPaths:
+      - learning_path.automation_control_and_regulation
 
   - id: risk.online_dependency
     type: risk
@@ -17,8 +17,8 @@ items:
     status: open
     ownerDomain: Learning
     summary: Online-Funktionen duerfen Offline-Basisprojekt nicht blockieren.
-    affects:
-      - project.ai_pet_esp32
+    affectsLearningPaths:
+      - learning_path.ai_pet_embedded_interaction
 
   - id: risk.weak_security_expectation
     type: risk
@@ -26,8 +26,27 @@ items:
     status: open
     ownerDomain: Learning
     summary: RFID-Tresor darf nicht als echte Sicherheitsloesung missverstanden werden.
-    affects:
-      - project.rfid_safe
+    affectsLearningPaths:
+      - learning_path.embedded_access_control
+      - learning_path.maker_access_and_mechanics
+
+  - id: risk.tag_lost_or_broken
+    type: risk
+    title: Tag verloren oder defekt
+    status: open
+    ownerDomain: Learning
+    summary: Ein verlorener oder defekter Tag kann den Zugriff auf das Buch blockieren, wenn kein sauberer Fallback vorgesehen ist.
+    affectsLearningPaths:
+      - learning_path.maker_access_and_mechanics
+
+  - id: risk.mechanical_lock_jams
+    type: risk
+    title: Mechanische Verriegelung klemmt
+    status: open
+    ownerDomain: Hardware
+    summary: Kleine 3D-gedruckte oder gebastelte Verriegelungen koennen durch Toleranzen, Servo-Kraft oder Montagefehler klemmen.
+    affectsLearningPaths:
+      - learning_path.maker_access_and_mechanics
 
   - id: risk.overmodeling_inventory
     type: risk
@@ -35,6 +54,19 @@ items:
     status: open
     ownerDomain: Learning
     summary: Inventarsystem kann durch zu fruehe Modellkomplexitaet ueberladen werden.
-    affects:
-      - project.kanban_gridfinity_inventory
+    affectsLearningPaths:
+      - learning_path.workshop_inventory_and_tooling
 
+  - id: risk.board_bricked_by_flash
+    type: risk
+    title: Board durch Flash-Vorgang unbrauchbar
+    status: open
+    ownerDomain: DeviceManagement
+    summary: USB-, OTA- oder Cloud-/OTA-Flash kann bei Fehlern dazu fuehren, dass ein Board fuer den Nutzer nicht mehr nutzbar wirkt oder tatsaechlich wiederhergestellt werden muss.
+    affects:
+      - app.user_ide
+      - app.provisioning_tool
+      - app.recovery_tool
+      - component.ota
+    mitigatedBy:
+      - nfr.firmware_flash_must_not_brick_board

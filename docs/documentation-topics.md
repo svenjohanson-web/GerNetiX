@@ -34,7 +34,7 @@ Der Fokus liegt auf dauerhaftem Engineering-Wissen, nicht auf schneller Code-Erz
 ## 4. Metamodell
 
 - Single Source of Truth
-- YAML-first fachliche Datenbasis
+- SQLite-Graph-first fachliche Datenbasis
 - Markdown als generiertes Ausgabeformat
 - Artefakte
 - Beziehungen
@@ -102,7 +102,7 @@ Der Fokus liegt auf dauerhaftem Engineering-Wissen, nicht auf schneller Code-Erz
 - Condition
 - Projektdefinitionen
 - strukturierte Projektideen in YAML/JSON
-- YAML-first Repository-Struktur
+- SQLite-Graph-first Repository-Struktur
 - KI-Haustier fuer ESP32
 - Intelligente Pflanzenbewaesserungsstation
 

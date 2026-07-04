@@ -1,0 +1,197 @@
+schemaVersion: 1
+kind: learning_unit_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: learning_unit.home_automation_understand_and_extend
+    type: learning_unit
+    title: Hausautomatisierung verstehen und erweitern
+    status: draft
+    ownerDomain: Learning
+    summary: Nutzer lernen, Hausautomatisierung fachlich und technisch zu verstehen, eigene Erweiterungen zu planen und spezielle Anforderungen schrittweise selbst umzusetzen.
+    course:
+      - course.home_automation_understand_and_extend
+    supports:
+      - BG-001
+      - BG-002
+      - BG-004
+      - BG-005
+    customerJourneys:
+      - CJ-001
+      - CJ-002
+      - CJ-003
+      - CJ-004
+      - CJ-005
+      - CJ-011
+    learningGoals:
+      - learning_goal.embedded_basics
+      - learning_goal.iot_basics
+      - learning_goal.automation_basics
+      - learning_goal.home_automation_topologies
+      - learning_goal.home_automation_app_integration
+    targetAudiences:
+      - audience.maker
+      - audience.hobby_developer
+      - audience.embedded_beginner
+      - audience.company
+    motivation:
+      - Standardloesungen passen nicht immer zu individuellen Anforderungen.
+      - Spezielle Wuensche lassen sich oft am besten selbst umsetzen.
+      - Das System soll schrittweise immer weiter erweitert werden koennen.
+    scope:
+      includes:
+        - Grundprinzipien von Hausautomatisierung verstehen
+        - Sensoren, Aktoren und Controller einordnen
+        - vorhandene Hardware fuer passende Erweiterungen nutzen
+        - eigene Automatisierungslogik schrittweise aufbauen
+        - lokale Steuerung und spaetere Vernetzung verstehen
+        - embedded-only, PC-Software- und Mobile-App-Varianten vergleichen
+        - Statuswerte wie Temperatur, Luftfeuchtigkeit, Bodenfeuchtigkeit oder Pflanzenhydrierung anzeigen
+        - HomeServer-Topologien und verteilte IoT-Systeme vergleichen
+        - Alternativen mit intelligenteren IoT-Devices fachlich bewerten
+        - Erweiterungen als Lernpfad planen
+      excludes:
+        - Installation an Netzspannung
+        - sicherheitskritische Gebaeudetechnik
+        - verbindliche Elektrofachplanung
+    possibleLearningPaths:
+      - learning_path.automation_control_and_regulation
+    targetArchitectures:
+      - id: home_automation_target.embedded_only
+        title: Embedded only
+        summary: Sensorik, Aktorik, Logik und Bedienung laufen lokal auf dem Embedded Device.
+        typicalUseCases:
+          - einfache lokale Automatisierung
+          - autarke Sensor-/Aktor-Projekte
+          - Projekte ohne PC, Smartphone oder Netzwerkpflicht
+        advantages:
+          - geringe Systemkomplexitaet
+          - funktioniert ohne zusaetzliche App oder Server
+          - robust gegen Netzwerkausfall
+          - gute Einstiegsvariante fuer Embedded-Grundlagen
+        disadvantages:
+          - begrenzte Visualisierung
+          - eingeschraenkte Bedienoberflaeche
+          - weniger geeignet fuer mehrere Raeume, mehrere Pflanzen oder zentrale Auswertung
+
+      - id: home_automation_target.embedded_pc_software
+        title: Embedded und PC-Software
+        summary: Embedded Devices erfassen oder steuern, waehrend PC-Software Statuswerte visualisiert, konfiguriert oder auswertet.
+        displayedStatusValues:
+          - Temperatur
+          - Luftfeuchtigkeit
+          - Bodenfeuchtigkeit
+          - Hydrierung von Pflanzenerde
+          - Pumpen- oder Aktorzustand
+          - Batteriestatus
+        advantages:
+          - groessere und komfortablere Bedienoberflaeche
+          - gute Auswertung, Logging und Debugging moeglich
+          - geeignet fuer Lernschritte von Embedded zu Desktop-Software
+        disadvantages:
+          - PC muss verfuegbar sein, wenn die Software aktiv benoetigt wird
+          - zusaetzliche Softwarepflege
+          - hoehere Integrationskomplexitaet zwischen Device und PC
+
+      - id: home_automation_target.embedded_mobile_app
+        title: Embedded und Mobile App
+        summary: Embedded Devices liefern Statuswerte und Steueroptionen an eine Mobile App fuer alltagsnahe Bedienung.
+        displayedStatusValues:
+          - Temperatur
+          - Luftfeuchtigkeit
+          - Bodenfeuchtigkeit
+          - Hydrierung von Pflanzenerde
+          - Warnungen
+          - Geraetezustand
+        advantages:
+          - alltagsnahe Bedienung auf dem Smartphone
+          - Statuswerte sind schnell sichtbar
+          - gute Nutzererfahrung fuer nichttechnische Bedienung
+        disadvantages:
+          - Mobile-App-Entwicklung erhoeht die Komplexitaet
+          - App-Updates, Plattformunterschiede und Berechtigungen muessen betrachtet werden
+          - Offline-/Online-Verhalten muss sauber geklaert werden
+
+    topologyComparison:
+      summary: Die Learning Unit soll unterschiedliche Hausautomatisierungs-Topologien erklaeren und deren Vor- und Nachteile gegenueberstellen.
+      topologies:
+        - id: topology.home_automation.local_embedded
+          title: Lokales embedded-only System
+          description: Jedes Device entscheidet lokal und zeigt Status nur lokal an.
+          advantages:
+            - einfach
+            - robust
+            - geringe Infrastruktur
+          disadvantages:
+            - wenig zentrale Uebersicht
+            - schwieriger zu erweitern
+            - begrenzte Bedienoberflaeche
+
+        - id: topology.home_automation.small_home_server
+          title: Kleiner HomeServer als Zentrale
+          description: Ein lokaler HomeServer sammelt Statuswerte, stellt Bedienoberflaechen bereit und koordiniert mehrere Devices.
+          advantages:
+            - zentrale Uebersicht ueber viele Sensoren und Aktoren
+            - gute Basis fuer Logging, Regeln und Automatisierung
+            - Mobile- oder PC-Clients koennen leichter angebunden werden
+            - Devices koennen einfacher bleiben
+          disadvantages:
+            - zusaetzliche Hardware oder laufender Rechner erforderlich
+            - Server wird kritischer Systembestandteil
+            - Backup, Updates und Ausfallsicherheit muessen bedacht werden
+
+        - id: topology.home_automation.distributed_iot
+          title: Verteiltes IoT-System
+          description: Mehrere Embedded Devices kommunizieren miteinander oder mit Apps/Servern und bilden gemeinsam das System.
+          advantages:
+            - gut skalierbar auf mehrere Raeume, Pflanzen oder Funktionen
+            - einzelne Knoten koennen spezialisiert sein
+            - erlaubt flexible Erweiterungen
+          disadvantages:
+            - Netzwerk, Pairing, Discovery und Fehlerbehandlung werden wichtiger
+            - Debugging wird schwieriger
+            - Security und Update-Strategie muessen frueh bedacht werden
+
+        - id: topology.home_automation.intelligent_edge_devices
+          title: Intelligentere IoT-Devices
+          description: Mehr Logik laeuft direkt auf den einzelnen Devices; der Server wird weniger zentral oder dient nur als Anzeige/Koordination.
+          advantages:
+            - Devices koennen bei Serverausfall weiterarbeiten
+            - weniger zentrale Abhaengigkeit
+            - gute Grundlage fuer autonome Regeln direkt am Sensor-/Aktor-Knoten
+          disadvantages:
+            - jedes Device wird komplexer
+            - Updates und Regelkonsistenz werden schwieriger
+            - mehr Anforderungen an Speicher, Rechenleistung und lokale Fehlerbehandlung
+
+      comparisonCriteria:
+        - Einstiegskomplexitaet
+        - Hardwarekosten
+        - Erweiterbarkeit
+        - Ausfallsicherheit
+        - Bedienkomfort
+        - Datenschutz und lokale Datenhaltung
+        - Wartung und Updates
+        - Debugging und Nachvollziehbarkeit
+        - Eignung fuer PC- oder Mobile-App-Visualisierung
+
+    futureProjectIdeas:
+      - id: project_idea.home_automation_light_control
+        title: Smarte Lichtsteuerung erweitern
+        summary: Licht oder LED-Streifen lokal und spaeter vernetzt steuern.
+      - id: project_idea.home_automation_sensor_node
+        title: Raumklima-Sensorknoten
+        summary: Temperatur, Luftfeuchtigkeit oder Bewegung erfassen und fuer Automatisierung nutzen.
+      - id: project_idea.home_automation_actuator_module
+        title: Aktor-Modul fuer eigene Automatisierungen
+        summary: Relais, MOSFET oder Servo sicher in eigene Low-Voltage-Automatisierung einbinden.
+      - id: project_idea.home_automation_status_dashboard_pc
+        title: PC-Dashboard fuer Hausautomatisierung
+        summary: Statuswerte wie Temperatur, Luftfeuchtigkeit und Bodenfeuchtigkeit von Embedded Devices auf einem PC anzeigen.
+      - id: project_idea.home_automation_mobile_status_app
+        title: Mobile App fuer Hausautomatisierung
+        summary: Statuswerte und Warnungen von Embedded Devices in einer mobilen App anzeigen.
+      - id: project_idea.home_automation_home_server
+        title: Kleiner HomeServer fuer Hausautomatisierung
+        summary: Statuswerte mehrerer IoT-Knoten lokal sammeln, visualisieren und einfache Automatisierungsregeln koordinieren.
+    expansionPrinciple: Immer weiter erweitern.
+    traceabilityNote: Diese Learning-Einheit realisiert den kaufbaren Course `course.home_automation_understand_and_extend`. Konkrete Projekte und Hardware-Empfehlungen werden daraus abgeleitet.

@@ -3,37 +3,12 @@ id: project.kanban_gridfinity_inventory
 slug: kanban-gridfinity-inventory
 type: learning_project
 status: draft
+projectStatus: idea
 title: Kanban-/Gridfinity-Inventarsystem
 ownerDomain: Learning
 summary: Ein modulares Inventarsystem verbindet Lagerorganisation, Bauteilverwaltung, Etiketten, optional RFID/QR und spaeter Web-App-Anbindung.
 
-businessGoals:
-  - BG-001
-  - BG-002
-  - BG-004
-  - BG-005
-customerJourneys:
-  - CJ-002
-  - CJ-003
-  - CJ-005
-  - CJ-007
-audiences:
-  primary:
-    - audience.maker
-    - audience.hobby_developer
-    - audience.school
-  secondary:
-    - audience.teacher
-    - audience.company
-valuePropositions:
-  - value.hardware_inventory
-  - value.practical_workshop_organization
-  - value.project_recommendations_from_inventory
-
-learningGoals:
-  - learning_goal.embedded_basics
-  - learning_goal.iot_basics
-  - learning_goal.tooling_and_workflows
+learningPath: learning_path.workshop_inventory_and_tooling
 developsCompetencies:
   - competency.inventory_modeling
   - competency.qr_or_rfid_identification

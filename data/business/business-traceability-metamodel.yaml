@@ -1,0 +1,222 @@
+schemaVersion: 1
+kind: business_traceability_metamodel
+sourceStatus: legacy_import_source
+id: metamodel.business_traceability
+type: metamodel_view
+title: Business-Traceability-Metamodell
+status: draft
+ownerDomain: CrossDomain
+summary: Traceability-Sicht des gemeinsamen Learning-Platform-Metamodells von Vision bis Validation.
+metamodelRoot: metamodel.learning_platform
+relationToRoot: is_view_of
+artifactTypes:
+  - id: metamodel_artifact.vision
+    name: Vision
+    summary: Langfristiger Zweck des Unternehmens.
+    cardinality:
+      outgoing:
+        - relation: justifies
+          target: Business Goal
+          range: 0..n
+      incoming:
+        - relation: belongs_to
+          source: Business Goal
+          range: 1..n
+
+  - id: metamodel_artifact.business_goal
+    name: Business Goal
+    summary: Uebergeordnetes wirtschaftliches Ziel.
+    cardinality:
+      outgoing:
+        - relation: has
+          target: Business Capability
+          range: 0..n
+      incoming:
+        - relation: requires
+          source: Business Capability
+          range: 1..n
+
+  - id: metamodel_artifact.business_capability
+    name: Business Capability
+    summary: Fachliche Faehigkeit, die benoetigt wird, um Business Goals zu erreichen. Business Capability ist der Einstiegspunkt ins Requirements Engineering.
+    cardinality:
+      outgoing:
+        - relation: enables
+          target: Strategy
+          range: 0..n
+        - relation: derives
+          target: Requirement
+          range: 0..n
+        - relation: references
+          target: Business Rule
+          range: 0..n
+      incoming:
+        - relation: requires
+          source: Business Goal
+          range: 0..n
+        - relation: provided_by
+          source: Measure
+          range: 0..n
+
+  - id: metamodel_artifact.strategy
+    name: Strategy / Course of Action
+    summary: Konkreter strategischer Weg, wie Business Capabilities aufgebaut, genutzt oder ausgerichtet werden.
+    cardinality:
+      outgoing:
+        - relation: has
+          target: Measure
+          range: 0..n
+        - relation: has_child
+          target: Strategy
+          range: 0..n
+      incoming:
+        - relation: enabled_by
+          source: Business Capability
+          range: 0..n
+        - relation: supported_by
+          source: Measure
+          range: 0..n
+
+  - id: metamodel_artifact.measure
+    name: Measure
+    summary: Konkrete geschaeftliche Massnahme oder Initiative. Measures duerfen rekursiv weitere Measures enthalten.
+    modelingRules:
+      - Community ist eine Measure, keine Business Capability.
+      - Oeffentlichkeitsarbeit ist eine uebergeordnete Measure zur Neukundengewinnung.
+      - Eine Measure darf mehrere Strategies unterstuetzen.
+    cardinality:
+      outgoing:
+        - relation: has_child
+          target: Measure
+          range: 0..n
+        - relation: supports
+          target: Strategy
+          range: 0..n
+        - relation: provides
+          target: Business Capability
+          range: 0..n
+        - relation: realizes
+          target: System Capability
+          range: 0..n
+        - relation: constrained_by
+          target: Business Rule
+          range: 0..n
+      incoming:
+        - relation: belongs_to
+          source: Measure
+          range: 1..n
+
+  - id: metamodel_artifact.business_rule
+    name: Business Rule
+    summary: Verbindliche fachliche Regel, Einschraenkung oder Policy.
+    cardinality:
+      outgoing:
+        - relation: constrains
+          target: Requirement
+          range: 0..n
+      incoming:
+        - relation: referenced_by
+          source: Business Capability
+          range: 0..n
+
+  - id: metamodel_artifact.requirement
+    name: Requirement
+    summary: Pruefbare fachliche Anforderung; sie darf aus Business Capability, Business Rule oder einem uebergeordneten Requirement abgeleitet werden, muss aber keinen Pflichtpfad bis zur Vision besitzen.
+    modelingRules:
+      - Requirement-Dekomposition ist rekursiv erlaubt, wenn dadurch fachlicher Nutzen nachvollziehbarer wird.
+      - Es gibt keine separaten Artefakttypen wie SubRequirement, Teilanforderung oder technische Detailanforderung.
+      - Teilanforderungen bleiben Requirements und koennen per derived_from auf ihr fachlich uebergeordnetes Requirement verweisen.
+      - Die gespeicherte Traceability zeigt von unten nach oben; Lesesichten duerfen diese Richtung fuer Navigation invertieren.
+      - Requirement-Ketten duerfen keine Zyklen bilden.
+      - Top-Level-Requirements ohne uebergeordnetes Requirement oder Business-Quelle sind zulaessig.
+      - Technische Umsetzungsdetails wie API, View, Service, Migration oder Test werden nicht als Requirements modelliert, sondern gehoeren zur Umsetzung eines Work Packages.
+    cardinality:
+      outgoing:
+        - relation: derived_from
+          target: Requirement
+          range: 0..1
+        - relation: affects
+          target: Architecture Artifact
+          range: 0..n
+        - relation: affects
+          target: Data Model
+          range: 0..n
+        - relation: affects
+          target: API Artifact
+          range: 0..n
+        - relation: realized_by
+          target: Implementation Artifact
+          range: 0..n
+        - relation: verified_by
+          target: Test Artifact
+          range: 0..n
+        - relation: validated_by
+          target: Validation Artifact
+          range: 0..n
+      incoming:
+        - relation: derived_from
+          source: Business Capability
+          range: 0..n
+        - relation: constrained_by
+          source: Business Rule
+          range: 0..n
+        - relation: decomposes
+          source: Requirement
+          range: 0..n
+
+  - id: metamodel_artifact.architecture_artifact
+    name: Architecture Artifact
+    summary: Architekturbaustein oder Architekturentscheidung, die durch Requirements betroffen ist.
+
+  - id: metamodel_artifact.data_model
+    name: Data Model
+    summary: Aus Metamodell und Requirements abgeleitetes Datenmodellartefakt.
+
+  - id: metamodel_artifact.api_artifact
+    name: API Artifact
+    summary: Schnittstellenartefakt mit fachlichem Zweck.
+
+  - id: metamodel_artifact.implementation_artifact
+    name: Implementation Artifact
+    summary: Spaetere technische Umsetzung eines Requirements.
+
+  - id: metamodel_artifact.test_artifact
+    name: Test Artifact
+    summary: Testnachweis fuer ein Requirement.
+
+  - id: metamodel_artifact.validation_artifact
+    name: Validation Artifact
+    summary: Fachlicher Nachweis, dass ein Requirement seinen Zweck erfuellt.
+
+statusModel:
+  businessStatus:
+    - Idea
+    - In Analysis
+    - Planned
+    - Approved
+    - Rejected
+    - Deprecated
+  implementationStatus:
+    - Not Started
+    - In Planning
+    - In Design
+    - In Implementation
+    - Implemented
+    - Validated
+    - Operational
+    - Deprecated
+    - Retired
+
+traceabilityChain:
+  - Vision
+  - Business Goal
+  - Business Capability
+  - Strategy
+  - Measure
+  - Requirement
+  - Architecture Artifact
+  - Data Model
+  - API Artifact
+  - Implementation Artifact
+  - Test Artifact
+  - Validation Artifact

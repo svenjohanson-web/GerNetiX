@@ -1,0 +1,510 @@
+schemaVersion: 1
+kind: metamodel_uml
+sourceStatus: legacy_import_source
+id: metamodel.learning_platform.uml
+type: metamodel_uml
+title: Learning Platform Metamodell UML
+status: draft
+ownerDomain: CrossDomain
+summary: UML-nahe Klassen- und Beziehungsstruktur des Learning-Platform-Metamodells.
+metamodelRoot: metamodel.learning_platform
+relationToRoot: is_view_of
+
+classes:
+  - name: Vision
+    domain: Business
+  - name: Product
+    domain: Business
+  - name: BusinessGoal
+    domain: Business
+  - name: Strategy
+    domain: Business
+  - name: Measure
+    domain: Business
+  - name: BusinessCapability
+    domain: Business
+  - name: BusinessRule
+    domain: Business
+  - name: CustomerJourney
+    domain: Business
+  - name: Requirement
+    domain: Business
+  - name: ProductOffering
+    domain: Business
+  - name: Course
+    domain: Business
+  - name: LearningGoal
+    domain: Learning
+  - name: Competency
+    domain: Learning
+  - name: LearningPath
+    domain: Learning
+  - name: LearningPathStep
+    domain: Learning
+  - name: LearningProject
+    domain: Learning
+  - name: ProjectIntroduction
+    domain: Learning
+  - name: ProjectVariant
+    domain: Learning
+  - name: ProjectFlowItem
+    domain: Learning
+  - name: Lesson
+    domain: Learning
+  - name: ProjectStep
+    domain: Learning
+  - name: Condition
+    domain: Learning
+  - name: HardwareCatalog
+    domain: Hardware
+  - name: HardwareItem
+    domain: Hardware
+  - name: ProcessorBoard
+    domain: Hardware
+  - name: Sensor
+    domain: Hardware
+  - name: Actuator
+    domain: Hardware
+    description: Hardware-Entitaet fuer Komponenten mit kinetischen Eigenschaften, die physisch etwas bewegen, betaetigen, oeffnen, schliessen, schalten oder anderweitig auf die reale Umgebung einwirken.
+  - name: Display
+    domain: Hardware
+  - name: CommunicationModule
+    domain: Hardware
+  - name: MeasurementDevice
+    domain: Hardware
+  - name: Tool
+    domain: Hardware
+  - name: Cable
+    domain: Hardware
+  - name: PowerSupply
+    domain: Hardware
+  - name: TechnicalCapability
+    domain: Hardware
+  - name: CapabilityCategory
+    domain: Hardware
+  - name: TechnicalConstraint
+    domain: Hardware
+  - name: Account
+    domain: Account
+  - name: AccountSkillLevel
+    domain: Account
+  - name: AccountCompetencyProgress
+    domain: Account
+  - name: AccountCompetencyEvidence
+    domain: Account
+  - name: AccountProjectProgress
+    domain: Account
+  - name: Role
+    domain: Authorization
+  - name: Plan
+    domain: Authorization
+  - name: SystemCapability
+    domain: Authorization
+  - name: PlanSystemCapability
+    domain: Authorization
+  - name: AccountSystemCapabilityOverride
+    domain: Authorization
+  - name: RegisteredProcessorBoard
+    domain: DeviceManagement
+  - name: BoardCredential
+    domain: DeviceManagement
+  - name: FirmwareState
+    domain: DeviceManagement
+  - name: OTAState
+    domain: DeviceManagement
+  - name: Pairing
+    domain: DeviceManagement
+  - name: Provisioning
+    domain: DeviceManagement
+
+relations:
+  - from: Vision
+    to: BusinessGoal
+    type: aggregation
+    fromCardinality: "1"
+    toCardinality: "1..*"
+    label: justifies
+  - from: BusinessGoal
+    to: Vision
+    type: association
+    fromCardinality: "1..*"
+    toCardinality: "1"
+    label: derives from
+  - from: Product
+    to: BusinessGoal
+    type: association
+    fromCardinality: "1..*"
+    toCardinality: "1..*"
+    label: realizes
+  - from: BusinessGoal
+    to: BusinessCapability
+    type: aggregation
+    fromCardinality: "1"
+    toCardinality: "0..*"
+    label: requires
+  - from: BusinessCapability
+    to: Strategy
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..*"
+    label: enables
+  - from: Strategy
+    to: Measure
+    type: aggregation
+    fromCardinality: "1"
+    toCardinality: "0..*"
+    label: contains
+  - from: Measure
+    to: SystemCapability
+    type: association
+    fromCardinality: "1..*"
+    toCardinality: "0..*"
+    label: realizes
+  - from: BusinessCapability
+    to: Requirement
+    type: association
+    fromCardinality: "1..*"
+    toCardinality: "0..*"
+    label: derives
+  - from: BusinessRule
+    to: Requirement
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..*"
+    label: constrains
+  - from: Requirement
+    to: Requirement
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..1"
+    label: derived from parent
+  - from: BusinessGoal
+    to: CustomerJourney
+    type: aggregation
+    fromCardinality: "1"
+    toCardinality: "1..*"
+    label: guides
+  - from: CustomerJourney
+    to: LearningGoal
+    type: association
+    fromCardinality: "1..*"
+    toCardinality: "0..*"
+    label: requires learning goal
+  - from: ProductOffering
+    to: Course
+    type: aggregation
+    fromCardinality: "1"
+    toCardinality: "1..*"
+    label: bundles
+  - from: Course
+    to: Product
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "1"
+    label: belongs to
+  - from: Course
+    to: LearningGoal
+    type: aggregation
+    fromCardinality: "1"
+    toCardinality: "1..*"
+    label: contains
+  - from: LearningGoal
+    to: Competency
+    type: association
+    fromCardinality: "1"
+    toCardinality: "1..*"
+    label: requires
+  - from: LearningGoal
+    to: LearningPath
+    type: aggregation
+    fromCardinality: "1"
+    toCardinality: "1..*"
+    label: realized by
+  - from: LearningPath
+    to: LearningGoal
+    type: association
+    fromCardinality: "1..*"
+    toCardinality: "1"
+    label: targets
+  - from: LearningPath
+    to: LearningPathStep
+    type: composition
+    fromCardinality: "1"
+    toCardinality: "1..*"
+    label: contains
+  - from: LearningPathStep
+    to: LearningPath
+    type: association
+    fromCardinality: "1..*"
+    toCardinality: "1"
+    label: belongs to
+  - from: LearningPathStep
+    to: LearningProject
+    type: association
+    fromCardinality: "1"
+    toCardinality: "1"
+    label: references
+  - from: LearningPath
+    to: LearningProject
+    type: aggregation
+    fromCardinality: "1"
+    toCardinality: "1..*"
+    label: contains
+  - from: LearningProject
+    to: LearningPath
+    type: association
+    fromCardinality: "1"
+    toCardinality: "1"
+    label: belongs to
+  - from: LearningProject
+    to: Competency
+    type: association
+    fromCardinality: "1..*"
+    toCardinality: "0..*"
+    label: develops
+  - from: LearningProject
+    to: ProjectIntroduction
+    type: composition
+    fromCardinality: "1"
+    toCardinality: "1"
+    label: owns
+  - from: LearningProject
+    to: ProjectVariant
+    type: composition
+    fromCardinality: "1"
+    toCardinality: "1..*"
+    label: has variants
+  - from: LearningProject
+    to: ProjectFlowItem
+    type: composition
+    fromCardinality: "1"
+    toCardinality: "1..*"
+    label: contains flow
+  - from: ProjectFlowItem
+    to: Lesson
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..1"
+    label: references
+  - from: ProjectFlowItem
+    to: ProjectStep
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..1"
+    label: references
+  - from: Lesson
+    to: Condition
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..*"
+    label: requires or ensures
+  - from: ProjectStep
+    to: Condition
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..*"
+    label: requires or ensures
+  - from: ProjectVariant
+    to: TechnicalConstraint
+    type: aggregation
+    fromCardinality: "1"
+    toCardinality: "1..*"
+    label: has constraints
+  - from: TechnicalConstraint
+    to: TechnicalCapability
+    type: association
+    fromCardinality: "1..*"
+    toCardinality: "1..*"
+    label: satisfied by
+  - from: HardwareCatalog
+    to: HardwareItem
+    type: aggregation
+    fromCardinality: "1"
+    toCardinality: "1..*"
+    label: contains
+  - from: HardwareItem
+    to: TechnicalCapability
+    type: association
+    fromCardinality: "1"
+    toCardinality: "1..*"
+    label: realizes
+  - from: TechnicalCapability
+    to: CapabilityCategory
+    type: association
+    fromCardinality: "1..*"
+    toCardinality: "1"
+    label: belongs to
+  - from: ProcessorBoard
+    to: HardwareItem
+    type: inheritance
+    label: extends
+  - from: Sensor
+    to: HardwareItem
+    type: inheritance
+    label: extends
+  - from: Actuator
+    to: HardwareItem
+    type: inheritance
+    label: extends
+  - from: Display
+    to: HardwareItem
+    type: inheritance
+    label: extends
+  - from: CommunicationModule
+    to: HardwareItem
+    type: inheritance
+    label: extends
+  - from: MeasurementDevice
+    to: HardwareItem
+    type: inheritance
+    label: extends
+  - from: Tool
+    to: HardwareItem
+    type: inheritance
+    label: extends
+  - from: Cable
+    to: HardwareItem
+    type: inheritance
+    label: extends
+  - from: PowerSupply
+    to: HardwareItem
+    type: inheritance
+    label: extends
+  - from: Account
+    to: Role
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "1"
+    label: has role
+  - from: Account
+    to: AccountSkillLevel
+    type: composition
+    fromCardinality: "1"
+    toCardinality: "0..*"
+    label: has
+  - from: Account
+    to: AccountCompetencyProgress
+    type: composition
+    fromCardinality: "1"
+    toCardinality: "0..*"
+    label: has
+  - from: AccountCompetencyProgress
+    to: Competency
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "1"
+    label: references
+  - from: AccountCompetencyProgress
+    to: AccountCompetencyEvidence
+    type: composition
+    fromCardinality: "1"
+    toCardinality: "0..*"
+    label: explains
+  - from: AccountCompetencyEvidence
+    to: LearningProject
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "1"
+    label: achieved by
+  - from: Account
+    to: AccountProjectProgress
+    type: composition
+    fromCardinality: "1"
+    toCardinality: "0..*"
+    label: has
+  - from: AccountProjectProgress
+    to: LearningPath
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "1"
+    label: started via
+  - from: AccountProjectProgress
+    to: LearningProject
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "1"
+    label: references
+  - from: AccountProjectProgress
+    to: ProjectVariant
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..1"
+    label: uses variant
+  - from: AccountProjectProgress
+    to: ProjectFlowItem
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..1"
+    label: current item
+  - from: Plan
+    to: PlanSystemCapability
+    type: composition
+    fromCardinality: "1"
+    toCardinality: "0..*"
+    label: grants
+  - from: PlanSystemCapability
+    to: SystemCapability
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "1"
+    label: references
+  - from: Account
+    to: Plan
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..*"
+    label: subscribes
+  - from: Account
+    to: AccountSystemCapabilityOverride
+    type: composition
+    fromCardinality: "1"
+    toCardinality: "0..*"
+    label: has overrides
+  - from: AccountSystemCapabilityOverride
+    to: SystemCapability
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "1"
+    label: overrides
+  - from: RegisteredProcessorBoard
+    to: ProcessorBoard
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "1"
+    label: registered as
+  - from: RegisteredProcessorBoard
+    to: Account
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "0..1"
+    label: paired with
+  - from: RegisteredProcessorBoard
+    to: BoardCredential
+    type: composition
+    fromCardinality: "1"
+    toCardinality: "1"
+    label: active credential
+  - from: RegisteredProcessorBoard
+    to: FirmwareState
+    type: association
+    fromCardinality: "1"
+    toCardinality: "1"
+    label: has firmware state
+  - from: RegisteredProcessorBoard
+    to: OTAState
+    type: association
+    fromCardinality: "1"
+    toCardinality: "1"
+    label: has ota state
+  - from: Pairing
+    to: RegisteredProcessorBoard
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "1"
+    label: assigns
+  - from: Provisioning
+    to: RegisteredProcessorBoard
+    type: association
+    fromCardinality: "0..*"
+    toCardinality: "1"
+    label: prepares

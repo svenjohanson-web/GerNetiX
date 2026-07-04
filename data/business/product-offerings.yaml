@@ -1,0 +1,128 @@
+schemaVersion: 1
+kind: product_offering_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: product_offering.embedded_basics_bundle
+    type: product_offering
+    title: Embedded Grundlagen Gesamtpaket
+    status: draft
+    ownerDomain: Business
+    summary: Kombinationsangebot fuer Nutzer, die mehrere Courses zum Thema Embedded Grundlagen gemeinsam kaufen moechten.
+    product:
+      - product.learning_platform
+    offeringType: bundle
+    primaryLearningGoals:
+      - learning_goal.embedded_basics
+    containsCourses:
+      - course.home_automation_understand_and_extend
+      - course.embedded_games_programming
+    supports:
+      - BG-001
+      - BG-002
+      - BG-004
+    realizesBusinessCapabilities:
+      - BC-001
+    valuePropositions:
+      - value.practical_embedded_project
+      - value.hardware_reuse
+      - value.incremental_extension
+    salesRationale:
+      - Einzelne Courses bleiben die normale kaufbare Learning-Einheit.
+      - Das Bundle buendelt mehrere Courses zu einem Thema.
+      - Nutzer koennen entweder gezielt eine Submenge kaufen oder ein Gesamtpaket mit Preisvorteil waehlen.
+      - Das Bundle darf keine fachliche Lernlogik duplizieren; die Inhalte bleiben in den enthaltenen Courses und deren Learning-Artefakten.
+
+  - id: product_offering.ai_credit_addon
+    type: product_offering
+    title: KI-Zusatzkontingent
+    status: idea
+    ownerDomain: Business
+    summary: Bezahlbares Zusatzkontingent, mit dem Nutzer mehr KI-Credits erwerben koennen, um eine bessere oder laengere KI-Erfahrung zu nutzen.
+    product:
+      - product.learning_platform
+      - product.simple_ide
+    offeringType: addon
+    grants:
+      - credit_type.ai_usage_credits
+    supports:
+      - BG-001
+      - BG-008
+    realizesBusinessCapabilities:
+      - BC-001
+      - BC-041
+      - BC-039
+    constrainedBy:
+      - BR-006
+      - nfr.ai_cost_protection_auditability
+    valuePropositions:
+      - value.optional_ai_extension
+    salesRationale:
+      - Nutzer koennen bei Bedarf mehr KI-Leistung nutzen, ohne direkt den kompletten Tarif wechseln zu muessen.
+      - Das Zusatzkontingent verbessert die KI-Erfahrung, bleibt aber durch Prepaid-Credits und Cost Protection wirtschaftlich begrenzt.
+      - Das Add-on erhoeht Umsatz, ohne ungedeckte Anbieter-Kosten zu erzeugen.
+    constraints:
+      - Zusatzkontingente duerfen keine negativen Credit-Salden erzeugen.
+      - Gekaufte Credits muessen im Credit Ledger nachvollziehbar gebucht werden.
+      - Nutzung bleibt weiterhin durch Tageslimits, Monatslimits, Modellfreigaben und globale Schutzmechanismen begrenzt.
+
+  - id: product_offering.community_ai_assistant_premium
+    type: product_offering
+    title: KI-Community-Assistent Premium
+    status: idea
+    ownerDomain: Business
+    summary: Kostenpflichtige Premium-Funktion, mit der Community-Mitglieder den gesamten Community-Wissensbestand per RAG durchsuchen, verstehen, zusammenfassen und mit Quellen nutzen koennen.
+    product:
+      - product.learning_platform
+    offeringType: premium_feature
+    belongsToBusinessDomain:
+      - business_domain.community
+    grants:
+      - system_capability.community_ai_assistant
+    realizesBusinessCapabilities:
+      - BC-040
+    constrainedBy:
+      - BR-006
+      - nfr.ai_cost_protection_auditability
+    valuePropositions:
+      - value.optional_ai_extension
+    monetizationLogic:
+      - Die normale Community bleibt kostenlos.
+      - Der KI-Community-Assistent ist nur in einem kostenpflichtigen Tarif oder per expliziter Freischaltung nutzbar.
+      - Nutzung muss ueber Credits, Limits, Modellfreigaben und Usage Events kontrolliert werden.
+    traceabilityRule: Keine direkten neuen Links zu Vision, Business Goals oder Customer Journeys; Einordnung erfolgt ueber `business_domain.community` und `learning_path.community_knowledge_usage`.
+
+  - id: product_offering.book_vault_hardware_bundle
+    type: product_offering
+    title: Buchtresor Hardware-Bundle
+    status: idea
+    ownerDomain: Business
+    summary: Hardware-Bundle fuer das Tagebuch-/Buchschloss-Projekt mit Tag-Leser, Tags, Servo, Mechanik-Teilen und optionalem 3D-Druck-Modell.
+    product:
+      - product.learning_platform
+    offeringType: hardware_bundle
+    relatedLearningPaths:
+      - learning_path.maker_access_and_mechanics
+    containsCapabilities:
+      - capability.rfid_reading
+      - capability.servo_control
+      - capability.mechanical_locking
+      - capability.fallback_unlock
+    supports:
+      - BG-001
+      - BG-002
+      - BG-004
+      - BG-006
+      - BG-008
+    realizesBusinessCapabilities:
+      - BC-029
+    valuePropositions:
+      - value.visible_result
+      - value.practical_embedded_project
+      - value.identification_authorization_learning
+      - value.mechanical_maker_project
+    salesRationale:
+      - Das Bundle senkt die Einstiegshuerde, weil Elektronik, Tags und Mechanik passend zum Projekt zusammengestellt sind.
+      - Das Bundle kann Hardwarevertrieb und Supportberechtigung nachvollziehbar machen.
+      - Das Projekt verbindet Embedded-Lernen mit einem sichtbaren mechanischen Maker-Ergebnis.
+    todos:
+      - todo.book_vault.3d_print_lock_model

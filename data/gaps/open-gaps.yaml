@@ -1,13 +1,13 @@
 schemaVersion: 1
 kind: gap_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 items:
   - id: gap.concrete_requirements_missing
     type: gap
-    title: Konkrete Requirements fehlen
+    title: Vollstaendige konkrete Requirement-Abdeckung fehlt
     status: open
     ownerDomain: CrossDomain
-    summary: Es gibt Regeln fuer Requirements, aber noch keine vollstaendige konkrete Requirement-Liste pro Customer Journey und Projekt.
+    summary: Erste Business-Requirements existieren, aber es gibt noch keine vollstaendige konkrete Requirement-Liste pro Customer Journey, Projekt und Business Capability.
     blocks:
       - requirement_model.decomposition_ends_at_work_package
 
@@ -48,3 +48,19 @@ items:
     ownerDomain: Authorization
     summary: Zu klaeren ist, ob Teacher Plan produktiver Standardplan oder Test-/Schulkontext ist.
 
+  - id: open_question.ai_credit_addon_commercial_rules
+    type: open_question
+    title: Wirtschaftliche Regeln fuer KI-Zusatzkontingente klaeren
+    status: open
+    ownerDomain: Business
+    summary: Zu klaeren ist, welche kaufmaennischen Regeln fuer KI-Zusatzkontingente gelten sollen, z. B. Ablaufdatum, Uebertragbarkeit, Erstattung, Tarifbindung, Steuer-/Rechnungslogik und Prioritaet gegenueber monatlichen Tarif-Credits.
+
+  - id: todo.book_vault.3d_print_lock_model
+    type: todo
+    title: 3D-Druck-Modell fuer Buchtresor entwickeln
+    status: open
+    ownerDomain: Hardware
+    summary: Fuer das Buchtresor-Projekt soll im MakerLab ein 3D-Druck-Modell fuer Gehaeuse, Verriegelung, Servoaufnahme und Buchbefestigung entwickelt werden.
+    affectsLearningPaths:
+      - learning_path.maker_access_and_mechanics
+      - product_offering.book_vault_hardware_bundle

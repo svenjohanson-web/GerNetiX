@@ -1,0 +1,49 @@
+schemaVersion: 1
+kind: validation_artifact_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: validation_artifact.community_response_sla
+    type: validation_artifact
+    title: Community Response SLA Validation
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Fachlicher Nachweis, dass zeitnahe Expertenreaktion fuer Nutzer wahrnehmbar und wirksam ist.
+    validatesRequirements:
+      - requirement.community_question_triage_time
+
+  - id: validation_artifact.verified_answers_visible
+    type: validation_artifact
+    title: Verified Answers Visible Validation
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Fachlicher Nachweis, dass Nutzer verifizierte Antworten erkennen und ihnen vertrauen koennen.
+    validatesRequirements:
+      - requirement.community_answer_verification
+      - requirement.verified_answer_status_visible
+
+  - id: validation_artifact.ai_cost_protection_effectiveness
+    type: validation_artifact
+    title: AI Cost Protection Effectiveness Validation
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Fachlicher Nachweis, dass KI-Kosten durch Credits, Limits, Preflight-Pruefung, Kill-Switch und Admin Monitoring kontrollierbar bleiben.
+    validatesRequirements:
+      - requirement.ai_prepaid_credit_check
+      - requirement.ai_usage_limits
+      - requirement.ai_admin_usage_dashboard
+      - requirement.ai_admin_cost_control_actions
+
+  - id: validation_artifact.community_ai_assistant_source_quality
+    type: validation_artifact
+    title: Community AI Assistant Source Quality Validation
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Fachlicher Nachweis, dass KI-Antworten den Community-Wissensbestand sinnvoll erschliessen, nachvollziehbare Quellen liefern und den Mehrwert der Premium-Funktion begruenden.
+    validatesRequirements:
+      - requirement.community_ai_assistant_sources
+      - requirement.community_ai_assistant_query
+      - requirement.community_ai_assistant_monitoring

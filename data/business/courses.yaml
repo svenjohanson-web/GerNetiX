@@ -1,0 +1,81 @@
+schemaVersion: 1
+kind: course_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: course.home_automation_understand_and_extend
+    type: course
+    title: Hausautomatisierung verstehen und erweitern
+    status: draft
+    ownerDomain: Business
+    summary: Kaufbares Lernangebot fuer Nutzer, die Standardloesungen nicht verwenden wollen oder spezielle Hausautomatisierungswuensche selbst umsetzen moechten.
+    product:
+      - product.learning_platform
+    containsLearningGoals:
+      - learning_goal.embedded_basics
+      - learning_goal.home_automation_basics
+      - learning_goal.home_automation_topologies
+      - learning_goal.home_automation_app_integration
+      - learning_goal.automation_basics
+      - learning_goal.iot_basics
+    belongsToOfferings:
+      - product_offering.embedded_basics_bundle
+    realizedBy:
+      - learning_unit.home_automation_understand_and_extend
+    targetAudiences:
+      - audience.maker
+      - audience.hobby_developer
+      - audience.embedded_beginner
+      - audience.company
+    supports:
+      - BG-001
+      - BG-002
+      - BG-004
+      - BG-005
+    valuePropositions:
+      - value.custom_home_automation
+      - value.incremental_extension
+      - value.home_automation_topology_choice
+      - value.hardware_reuse
+      - value.practical_embedded_project
+    positioning:
+      - Fuer Nutzer, denen Standardloesungen nicht flexibel genug sind.
+      - Fuer Nutzer mit speziellen Anforderungen an Hausautomatisierung.
+      - Fuer Nutzer, die verstehen wollen, wie sie ihr System schrittweise selbst erweitern koennen.
+      - Fuer Nutzer, die entscheiden wollen, ob ihre Hausautomatisierung embedded-only, mit PC-Software, mit Mobile-App, mit HomeServer oder als verteiltes IoT-System aufgebaut werden soll.
+    salesRationale:
+      - Der Course ist eine verkaufbare Learning-Einheit.
+      - Der Course kann einzeln gekauft oder als Teil eines Kombinationsangebots gebuendelt werden.
+      - Der Course kann Einstieg in weitere Lernangebote und Hardware-Kits sein.
+      - Der Nutzer kann aus einem konkreten Alltagsproblem in eine laengerfristige Lernreise gefuehrt werden.
+      - Erweiterbare Hausautomatisierung eignet sich fuer wiederkehrende Projekt- und Hardwareempfehlungen.
+
+  - id: course.embedded_games_programming
+    type: course
+    title: Embedded Spiele programmieren
+    status: idea
+    ownerDomain: Business
+    summary: Kaufbarer Course fuer Nutzer, die Embedded-Grundlagen ueber spielerische Projekte und sichtbare Interaktion lernen moechten.
+    product:
+      - product.learning_platform
+    containsLearningGoals:
+      - learning_goal.embedded_basics
+    belongsToOfferings:
+      - product_offering.embedded_basics_bundle
+    targetAudiences:
+      - audience.maker
+      - audience.hobby_developer
+      - audience.embedded_beginner
+    supports:
+      - BG-001
+      - BG-002
+      - BG-005
+    valuePropositions:
+      - value.visible_result
+      - value.playful_embedded_learning
+      - value.practical_embedded_project
+    positioning:
+      - Fuer Nutzer, die Embedded-Grundlagen ueber Spiele und direkte Interaktion lernen moechten.
+      - Fuer Nutzer, die sichtbare Ergebnisse als Motivation brauchen.
+    salesRationale:
+      - Der Course ist eine einzeln kaufbare Submenge zum Thema Embedded Grundlagen.
+      - Der Course kann mit anderen Courses in einem Embedded-Grundlagen-Bundle kombiniert werden.

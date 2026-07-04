@@ -1,7 +1,7 @@
 # Open Gaps
 
 Diese Datei ist eine generierte Lesesicht auf Luecken, Inkonsistenzen und offene Punkte.
-YAML bleibt die Source of Truth.
+Der validierte SQLite-Graph ist die kanonische Struktur.
 
 ## Kritische Modell-Luecken
 
@@ -69,7 +69,7 @@ Bewertung:
 
 ### Markdown-Projektdefinitionen sind nicht mehr fuehrend
 
-`docs/project-ai-pet-esp32.md` und `docs/project-smart-plant-watering.md` enthalten fachliche Informationen, sind aber nach YAML-first nicht mehr Source of Truth.
+`docs/project-ai-pet-esp32.md` und `docs/project-smart-plant-watering.md` enthalten fachliche Informationen, sind aber nach SQLite-Graph-first nicht mehr Source of Truth.
 
 Bewertung:
 
@@ -92,6 +92,7 @@ Bewertung:
 
 ## Konsistenzpruefung
 
+- Projekt-Traceability: bereinigt. Projekte besitzen keine direkten Upstream-Beziehungen mehr zu Business Goals, Customer Journeys, Vision, Business Capabilities, Requirements oder Monetarisierung; siehe `docs/generated/project-traceability-validation.md`.
 - Produkte ohne Business Goal: keine kritische Luecke.
 - Requirements ohne Produkt/Capability: konkrete Requirements fehlen noch.
 - Capabilities ohne Projektbezug: erfasste Capabilities stammen ueberwiegend aus Projekt-YAMLs oder Systemberechtigungen.

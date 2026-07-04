@@ -1,0 +1,13 @@
+schemaVersion: 1
+kind: knowledge_base_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: knowledge_base.distributed_engineering_knowledge
+    type: knowledge_base
+    title: Gemeinsame verteilte Wissensbasis
+    status: approved
+    ownerDomain: CrossDomain
+    summary: Wissen entsteht aus eindeutigen Artefakten, Beziehungen, Traceability und Referenzen zwischen Domaenen; es gibt keine zentrale Knowledge-Domaene.
+    constrainedBy:
+      - architecture.no_central_knowledge_domain
+      - architecture.domain_ownership

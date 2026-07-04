@@ -1,7 +1,7 @@
 # Business Mindmap
 
 Diese Datei visualisiert Business- und Produktlogik.
-YAML bleibt die Source of Truth.
+Der validierte SQLite-Graph ist die kanonische Struktur.
 
 ```mermaid
 mindmap
@@ -9,13 +9,48 @@ mindmap
     Vision
       Engineering Knowledge Platform
       Wissen ist teurer als Code
-      YAML-first Wissensbasis
+      SQLite-Graph-first Wissensbasis
     Business Goals
       BG-001 Kunden begleiten
       BG-002 Embedded Einstieg vereinfachen
       BG-003 Simple IDE
       BG-004 Hardware optimal nutzen
       BG-005 Wissen erhalten
+      BG-008 Nachhaltig profitabel wirtschaften
+        Umsatz steigern
+          Neukunden gewinnen
+            Oeffentlichkeitsarbeit
+              Oeffentliche Wissensplattform
+              Externe Communities
+              MakerWorld Open Source
+              Schulen als Vertriebskanal
+          Bestandskunden binden
+            Community Wissensplattform
+              Experten beantworten Fragen zeitnah
+              Antworten verifizieren
+              Dauerhafte Wissensbasis
+            Plattformzentriertes Arbeiten
+            Abonnement Lebenszyklus
+          Upselling und Cross-Selling
+            Premium-Kurse
+            Hardware-Kits
+          Erweiterte KI-Funktionen
+            KI-Credits
+            Usage Events
+            Admin Dashboard
+            Cost Controls
+            Kill-Switch
+            KI-Community-Assistent
+              Community Domain
+              Premium
+              RAG
+              Quellen
+              Usage Monitoring
+            Cloud-Ressourcen
+          Strategische Partnerschaften
+            Schulen
+            Unternehmen
+            Hardware-Hersteller
     Produkte
       Learning Platform
         Embedded lernen
@@ -26,6 +61,17 @@ mindmap
         Einstiegshuerde senken
         Flash USB
         Flash OTA
+      Learning Paths
+        Cross-Platform Development
+          Learning Goal bleibt stabil
+          Digitales Tamagotchi als austauschbares Beispiel
+          Embedded
+          Desktop
+          Mobile
+          Web
+          Cloud
+          Synchronisation
+          KI-Erweiterung optional
     Zielgruppen
       Maker
       Hobbyentwickler
@@ -55,10 +101,31 @@ mindmap
         RFID
         SPI
         Servo
+      Buchtresor
+        Tag erkennt Buchbesitzer
+        Identifizierung
+        Autorisierung
+        Fallback bei defektem Tag
+        3D-Druck-Mechanik
+        Hardware-Bundle
       Kanban Gridfinity Inventar
         Hardware inventarisieren
         QR/RFID
         Projektvorschlaege
+      Hausautomatisierung
+        Embedded only
+        Embedded und PC-Software
+          Temperatur anzeigen
+          Bodenfeuchtigkeit anzeigen
+          Hydrierung Pflanzenerde anzeigen
+        Embedded und Mobile-App
+          Statuswerte mobil sichtbar machen
+          Warnungen und Geraetestatus
+        Topologien vergleichen
+          Kleiner HomeServer
+          Verteilte IoT-Systeme
+          Intelligentere Edge-Devices
+          Vor- und Nachteile
     Offene Luecken
       konkrete Requirements
       Capability-Katalog

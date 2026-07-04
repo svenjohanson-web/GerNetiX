@@ -1,24 +1,17 @@
 schemaVersion: 1
-id: project.smart_plant_watering
+id: project_idea.smart_plant_watering
 slug: smart-plant-watering
 title: Intelligente Pflanzenbewaesserungsstation
 status: draft
+projectStatus: idea
 type: learning_project_idea
 language: de
+canonicalProject: project.smart_plant_watering
 
+learningPath: learning_path.automation_control_and_regulation
 traceability:
-  businessGoals:
-    - BG-001
-    - BG-002
-    - BG-004
-    - BG-005
-  customerJourneys:
-    - CJ-002
-    - CJ-003
-    - CJ-004
-    - CJ-005
-    - CJ-006
   source: idea
+  rule: Projektideen kennen keine direkten Business Goals oder Customer Journeys; Upstream-Traceability entsteht ueber den zugeordneten Learning Path.
 
 summary:
   short: Automatische Pflanzenbewaesserung von einfacher Zeitsteuerung bis sensorgestuetzter Regelung mit optionaler Vernetzung.
@@ -50,10 +43,7 @@ customerValue:
   - spaeterer Ausbau in Richtung WLAN, Webserver, OTA und Cloud moeglich
 
 learning:
-  learningGoals:
-    - Embedded Grundlagen
-    - IoT Grundlagen
-    - Embedded Fortgeschrittene
+  learningPath: learning_path.automation_control_and_regulation
   competencies:
     core:
       - Unterschied zwischen Steuerung und Regelung verstehen
@@ -391,26 +381,26 @@ risks:
     - kein Fehlerzustand vorgesehen
 
 openDecisions:
-  - id: decision.start_variant
+  - key: start_variant
     question: Soll Variante A mit Arduino oder direkt mit ESP32 starten?
     options:
       - Arduino zuerst
       - ESP32 zuerst
       - beide Varianten parallel
     impact: Bestimmt Einstiegshoehe, Hardwarekosten und spaetere IoT-Erweiterbarkeit.
-  - id: decision.actuator
+  - key: actuator
     question: Wird fuer Version 1 eine Pumpe oder ein Ventil empfohlen?
     options:
       - Pumpe
       - Ventil
     impact: Beeinflusst Hardwareaufbau, Sicherheit und didaktische Einfachheit.
-  - id: decision.sensor_in_v1
+  - key: sensor_in_v1
     question: Soll Version 1 bereits einen Sensor enthalten oder zuerst nur zeitgesteuert arbeiten?
     options:
       - zuerst zeitgesteuert
       - direkt mit Bodenfeuchtigkeitssensor
     impact: Bestimmt, ob Steuerung und Regelung in einem Projekt oder in zwei Stufen eingefuehrt werden.
-  - id: decision.project_variants
+  - key: project_variants
     question: Werden Arduino- und ESP32-Variante als zwei ProjectVariants desselben LearningProject modelliert?
     options:
       - ein LearningProject mit zwei ProjectVariants

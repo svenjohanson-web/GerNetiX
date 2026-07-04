@@ -1,0 +1,51 @@
+schemaVersion: 1
+kind: event_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: event.community_ai_assistant_query_requested
+    type: domain_event
+    title: Community AI Assistant Query Requested
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain: business_domain.community
+    summary: Ein Premium-Nutzer stellt eine Frage an den KI-Community-Assistenten.
+    relatedDataModels:
+      - data_model.community_ai_assistant_query
+      - data_model.ai_usage_event
+
+  - id: event.community_ai_assistant_answer_generated
+    type: domain_event
+    title: Community AI Assistant Answer Generated
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain: business_domain.community
+    summary: Der Assistent erzeugt eine Antwort mit Quellenreferenzen auf Community- oder Lerninhalte.
+    relatedDataModels:
+      - data_model.community_ai_assistant_answer
+      - data_model.community_ai_source_reference
+      - data_model.ai_usage_event
+
+  - id: event.community_ai_assistant_request_blocked
+    type: domain_event
+    title: Community AI Assistant Request Blocked
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain: business_domain.community
+    summary: Eine Anfrage wird wegen fehlender Premium-Berechtigung, fehlender Credits, Limits, Moderationsregeln oder globaler KI-Sperre abgelehnt.
+    relatedDataModels:
+      - data_model.ai_usage_event
+
+  - id: event.community_ai_index_updated
+    type: domain_event
+    title: Community AI Index Updated
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain: business_domain.community
+    summary: Der RAG-Index wurde fuer Community-Inhalte, Projekte, Dokumentationen, Tutorials, FAQ, Lernpfade oder Kurse aktualisiert.
+    relatedDataModels:
+      - data_model.community_ai_index_document
+      - data_model.community_ai_embedding

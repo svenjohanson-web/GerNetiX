@@ -1,0 +1,43 @@
+schemaVersion: 1
+kind: offer_catalog
+sourceStatus: legacy_import_source
+status: deprecated
+replacement:
+  - data/business/courses.yaml
+note: Verkaufbare Learning-Einheiten werden im Metamodell als Course modelliert. Diese Datei bleibt nur als Uebergangsnotiz erhalten und darf nicht als fuehrende Quelle fuer Learning-Verkaufseinheiten verwendet werden.
+items:
+  - id: offer.home_automation_understand_and_extend
+    type: deprecated_sales_learning_offer
+    title: Hausautomatisierung verstehen und erweitern
+    status: deprecated
+    ownerDomain: Business
+    summary: Verkaufsnahe Learning-Einheit fuer Nutzer, die Standardloesungen nicht verwenden wollen oder spezielle Hausautomatisierungswuensche selbst umsetzen moechten.
+    replacedBy:
+      - course.home_automation_understand_and_extend
+    product:
+      - product.learning_platform
+    realizedBy:
+      - learning_unit.home_automation_understand_and_extend
+    targetAudiences:
+      - audience.maker
+      - audience.hobby_developer
+      - audience.embedded_beginner
+      - audience.company
+    supports:
+      - BG-001
+      - BG-002
+      - BG-004
+      - BG-005
+    valuePropositions:
+      - value.custom_home_automation
+      - value.incremental_extension
+      - value.hardware_reuse
+      - value.practical_embedded_project
+    positioning:
+      - Fuer Nutzer, denen Standardloesungen nicht flexibel genug sind.
+      - Fuer Nutzer mit speziellen Anforderungen an Hausautomatisierung.
+      - Fuer Nutzer, die verstehen wollen, wie sie ihr System schrittweise selbst erweitern koennen.
+    salesRationale:
+      - Die Einheit kann Einstieg in weitere Lernangebote und Hardware-Kits sein.
+      - Der Nutzer kann aus einem konkreten Alltagsproblem in eine laengerfristige Lernreise gefuehrt werden.
+      - Erweiterbare Hausautomatisierung eignet sich fuer wiederkehrende Projekt- und Hardwareempfehlungen.

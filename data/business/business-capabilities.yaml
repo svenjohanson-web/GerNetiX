@@ -1,0 +1,472 @@
+schemaVersion: 1
+kind: business_capability_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: BC-001
+    type: business_capability
+    title: Value-based Bundling und Upselling
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    status: draft
+    ownerDomain: Business
+    summary: Kunden koennen wertvollere Kombinationsangebote erhalten, bei denen sie mehr ausgeben, aber durch gebuendelte Courses, Preisvorteile und besseren Lernzusammenhang mehr Nutzen bekommen.
+    businessTerms:
+      - Bundling
+      - Upselling
+      - Value-based Offer
+      - Warenkorbwert erhoehen
+    supports:
+      - BG-001
+      - BG-002
+      - BG-004
+    realizedBy:
+      - product_offering.embedded_basics_bundle
+    providedByMeasures:
+      - measure.premium_courses
+    valueLogic:
+      - Einzelne Courses bleiben gezielt kaufbar.
+      - Bundles bieten eine groessere, fachlich zusammenhaengende Lernreise.
+      - Der Kunde gibt mehr aus, erhaelt aber mehr Inhalte, bessere Orientierung und einen Preisvorteil gegenueber Einzelkaeufen.
+      - Die Plattform kann passende Bundles aus Lernziel, Hardwarebestand und bisherigen Fortschritten ableiten.
+    constraints:
+      - Das Angebot muss fuer den Kunden nachvollziehbar mehr Nutzen liefern.
+      - Bundles duerfen keine fachliche Lernlogik duplizieren.
+      - Die enthaltenen Courses bleiben die fuehrenden Learning-Verkaufseinheiten.
+
+  - id: BC-002
+    type: business_capability
+    title: Inhalte oeffentlich ueber Suchmaschinen bereitstellen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Oeffentliche Inhalte koennen ueber Suchmaschinen gefunden werden und fuehren Interessenten zur Plattform.
+    providedByMeasures:
+      - measure.public_knowledge_platform
+    derivesRequirements:
+      - requirement.public_content_indexable
+
+  - id: BC-003
+    type: business_capability
+    title: SEO-optimierte Wissensseiten bereitstellen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Wissensseiten werden so strukturiert, dass sie fuer Suchmaschinen und Nutzer gut auffindbar und verstaendlich sind.
+    providedByMeasures:
+      - measure.public_knowledge_platform
+
+  - id: BC-004
+    type: business_capability
+    title: Verifizierte Loesungen veroeffentlichen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Fachlich gepruefte Loesungen koennen oeffentlich sichtbar gemacht werden.
+    providedByMeasures:
+      - measure.public_knowledge_platform
+
+  - id: BC-005
+    type: business_capability
+    title: KI- und suchmaschinenfreundliche Wissensstruktur bereitstellen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Wissensinhalte werden so strukturiert, dass Menschen, Suchmaschinen und KI-Systeme sie nachvollziehbar verwenden koennen.
+    providedByMeasures:
+      - measure.public_knowledge_platform
+
+  - id: BC-006
+    type: business_capability
+    title: Fachfragen beantworten
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Fachfragen in externen Communities koennen hilfreich beantwortet werden.
+    providedByMeasures:
+      - measure.external_community_presence
+
+  - id: BC-007
+    type: business_capability
+    title: Kompetenz sichtbar machen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Die fachliche Kompetenz von GerNetiX wird durch hilfreiche Beitraege sichtbar.
+    providedByMeasures:
+      - measure.external_community_presence
+
+  - id: BC-008
+    type: business_capability
+    title: Auf eigene Inhalte verweisen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Auf eigene Inhalte darf verwiesen werden, wenn der Verweis thematisch passt und hilfreich ist.
+    providedByMeasures:
+      - measure.external_community_presence
+    referencesBusinessRules:
+      - BR-001
+
+  - id: BC-009
+    type: business_capability
+    title: Kostenlose Beispielprojekte veroeffentlichen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Kostenlose Beispielprojekte koennen veroeffentlicht werden, um Interesse und Vertrauen aufzubauen.
+    providedByMeasures:
+      - measure.makerworld_open_source_projects
+
+  - id: BC-010
+    type: business_capability
+    title: Auf die Lernplattform verweisen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Kostenlose Projektinhalte koennen nachvollziehbar auf passende Lernangebote verweisen.
+    providedByMeasures:
+      - measure.makerworld_open_source_projects
+
+  - id: BC-011
+    type: business_capability
+    title: Interessenten auf die Plattform fuehren
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Externe Projektinteressenten koennen in passende Plattformangebote ueberfuehrt werden.
+    providedByMeasures:
+      - measure.makerworld_open_source_projects
+
+  - id: BC-012
+    type: business_capability
+    title: Unterrichtsmaterial bereitstellen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Schulen und Lehrkraefte koennen geeignetes Unterrichtsmaterial erhalten.
+    providedByMeasures:
+      - measure.schools_as_sales_channel
+
+  - id: BC-013
+    type: business_capability
+    title: Klassensaetze und Lehrerpakete anbieten
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Schulen koennen passende Hardware- und Lernpakete fuer Klassen und Lehrkraefte erhalten.
+    providedByMeasures:
+      - measure.schools_as_sales_channel
+
+  - id: BC-014
+    type: business_capability
+    title: Schueler fruehzeitig an die Plattform heranfuehren
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Schueler koennen frueh mit GerNetiX-Lernpfaden und Embedded-Projekten in Beruehrung kommen.
+    providedByMeasures:
+      - measure.schools_as_sales_channel
+
+  - id: BC-015
+    type: business_capability
+    title: Experten beantworten Fragen zeitnah
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Experten koennen Community-Fragen innerhalb einer fachlich definierten Zeit beantworten oder triagieren.
+    providedByMeasures:
+      - measure.community_knowledge_platform
+    derivesRequirements:
+      - requirement.community_question_triage_time
+
+  - id: BC-016
+    type: business_capability
+    title: Antworten werden fachlich verifiziert
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Antworten koennen fachlich geprueft und als verifiziert markiert werden.
+    providedByMeasures:
+      - measure.community_knowledge_platform
+    referencesBusinessRules:
+      - BR-005
+    derivesRequirements:
+      - requirement.community_answer_verification
+      - requirement.verified_answer_status_visible
+      - requirement.reverify_changed_verified_answer
+
+  - id: BC-017
+    type: business_capability
+    title: Kurze FAQ-artige Loesungsantworten bereitstellen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Haeufige Fragen koennen in kurzen, gut wiederverwendbaren Loesungsantworten beantwortet werden.
+    providedByMeasures:
+      - measure.community_knowledge_platform
+    derivesRequirements:
+      - requirement.verified_answer_status_visible
+
+  - id: BC-018
+    type: business_capability
+    title: Dauerhafte Wissensbasis aufbauen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Aus Community- und Supportwissen entsteht eine dauerhafte, nachvollziehbare Wissensbasis.
+    providedByMeasures:
+      - measure.community_knowledge_platform
+    referencesBusinessRules:
+      - BR-005
+
+  - id: BC-019
+    type: business_capability
+    title: Projektbezogene Diskussionen ermoeglichen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Nutzer koennen projektbezogen Fragen stellen und Loesungen diskutieren.
+    providedByMeasures:
+      - measure.community_knowledge_platform
+
+  - id: BC-020
+    type: business_capability
+    title: Projekte zentral speichern
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Nutzerprojekte koennen zentral in der Plattform gespeichert werden.
+    providedByMeasures:
+      - measure.platform_centric_work
+    referencesBusinessRules:
+      - BR-002
+
+  - id: BC-021
+    type: business_capability
+    title: Geraeteuebergreifenden Zugriff ermoeglichen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Nutzer koennen ueber mehrere Geraete hinweg auf ihre Projekte zugreifen.
+    providedByMeasures:
+      - measure.platform_centric_work
+    referencesBusinessRules:
+      - BR-002
+
+  - id: BC-022
+    type: business_capability
+    title: Automatische Versionsverwaltung bereitstellen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Projektstaende koennen automatisch versioniert und nachvollziehbar gemacht werden.
+    providedByMeasures:
+      - measure.platform_centric_work
+
+  - id: BC-023
+    type: business_capability
+    title: Abonnement jederzeit reaktivierbar machen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Ein abgelaufenes Abonnement kann so reaktiviert werden, dass der Nutzer nachvollziehbar fortsetzen kann.
+    providedByMeasures:
+      - measure.subscription_lifecycle
+    referencesBusinessRules:
+      - BR-003
+
+  - id: BC-024
+    type: business_capability
+    title: Projekte waehrend einer Karenzzeit erhalten
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Projekte bleiben nach Abonnementablauf fuer eine definierte Karenzzeit erhalten.
+    providedByMeasures:
+      - measure.subscription_lifecycle
+    referencesBusinessRules:
+      - BR-003
+      - BR-004
+      - BR-005
+
+  - id: BC-025
+    type: business_capability
+    title: Kontinuierliche Lernpfade empfehlen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Die Plattform kann aus Fortschritt, Hardware und gekauften Courses naechste sinnvolle Lernschritte empfehlen.
+    providedByMeasures:
+      - measure.continuous_learning_paths
+
+  - id: BC-026
+    type: business_capability
+    title: Premium-Mitgliedschaften anbieten
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Hoeherwertige Mitgliedschaften koennen angeboten und mit zusaetzlichem Nutzen begruendet werden.
+    providedByMeasures:
+      - measure.premium_memberships
+
+  - id: BC-027
+    type: business_capability
+    title: Erweiterte KI-Funktionen bereitstellen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Erweiterte KI-Funktionen koennen als hoeherwertiges Angebot bereitgestellt werden.
+    providedByMeasures:
+      - measure.extended_ai_features
+
+  - id: BC-028
+    type: business_capability
+    title: Premium-Kurse bereitstellen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Premium-Courses koennen als vertiefende Lernangebote bereitgestellt werden.
+    providedByMeasures:
+      - measure.premium_courses
+
+  - id: BC-029
+    type: business_capability
+    title: Hardware-Kits anbieten
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Passende Hardware-Kits koennen zu Courses, Projekten oder Bundles angeboten werden.
+    providedByMeasures:
+      - measure.hardware_kits
+
+  - id: BC-030
+    type: business_capability
+    title: Projektvorlagen bereitstellen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Projektvorlagen koennen Nutzern einen schnelleren Einstieg oder wiederholbare Projektstarts ermoeglichen.
+    providedByMeasures:
+      - measure.project_templates
+
+  - id: BC-031
+    type: business_capability
+    title: Erweiterte Cloud-Ressourcen anbieten
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Erweiterte Cloud-Ressourcen koennen fuer anspruchsvollere Projekte und Services angeboten werden.
+    providedByMeasures:
+      - measure.extended_cloud_resources
+
+  - id: BC-032
+    type: business_capability
+    title: Individuelle Beratung oder Coaching anbieten
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Individuelle Beratung oder Coaching kann als ergaenzendes Premium-Angebot bereitgestellt werden.
+    providedByMeasures:
+      - measure.individual_coaching
+
+  - id: BC-039
+    type: business_capability
+    title: KI-Zusatzkontingente verkaufen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Die Plattform kann bezahlbare KI-Zusatzkontingente anbieten, kaufen lassen und als zusaetzliche Credits nachvollziehbar dem Account gutschreiben.
+    providedByMeasures:
+      - measure.extended_ai_features
+      - measure.premium_memberships
+    referencesBusinessRules:
+      - BR-006
+    realizesProductOfferings:
+      - product_offering.ai_credit_addon
+    derivesRequirements:
+      - requirement.ai_credit_addon_purchase
+      - requirement.ai_credit_addon_ledger_booking
+
+  - id: BC-040
+    type: business_capability
+    title: KI-Community-Assistent bereitstellen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Premium-Nutzer koennen den Community-Wissensbestand per KI durchsuchen, verstehen, zusammenfassen und mit Quellenreferenzen nutzen.
+    belongsToBusinessDomain:
+      - business_domain.community
+    providedByMeasures:
+      - measure.community_knowledge_platform
+      - measure.premium_memberships
+      - measure.extended_ai_features
+    constrainedBy:
+      - BR-006
+      - nfr.ai_cost_protection_auditability
+    realizedByFeatures:
+      - feature.community_ai_assistant.premium_rag_answers
+      - feature.community_ai_assistant.discussion_summaries
+      - feature.community_ai_assistant.similar_content_finder
+      - feature.community_ai_assistant.learning_references
+      - feature.community_ai_assistant.translation
+      - feature.community_ai_assistant.personal_recommendations
+    grantsThrough:
+      - system_capability.community_ai_assistant
+      - plan.premium
+    realizesProductOfferings:
+      - product_offering.community_ai_assistant_premium
+
+  - id: BC-041
+    type: business_capability
+    title: Kostenkontrolle
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    summary: Das Unternehmen kann variable Kosten, nutzungsabhaengige Anbieter-Kosten, Budgets, Margen und wirtschaftliche Risiken transparent erfassen, begrenzen und steuern.
+    supports:
+      - BG-008
+    enablesBusinessStrategies:
+      - business_strategy.optimize_costs
+    businessTerms:
+      - Kostenkontrolle
+      - Cost Control
+      - Cost Protection
+      - Budget Control
+      - Margensteuerung
+    rationale:
+      - Gewinn erwirtschaften setzt voraus, dass variable Kosten sichtbar, begrenzt und steuerbar bleiben.
+      - Kostenpflichtige KI-, Cloud- oder Plattformdienste duerfen nicht unkontrolliert zu Verlusten fuehren.
+      - Betreiber brauchen Transparenz ueber Kosten, Verbrauch, Budgets, Limits und Marge.
+    providedByMeasures:
+      - measure.ai_credit_management
+      - measure.ai_prepaid_credit_check
+      - measure.ai_budget_limits
+      - measure.ai_usage_audit_trail
+      - measure.ai_usage_monitoring
+      - measure.ai_admin_cost_controls
+      - measure.ai_suspicious_usage_detection
+    realizedBySystemCapabilities:
+      - system_capability.ai_credit_management
+      - system_capability.ai_prepaid_credit_check
+      - system_capability.ai_budget_limits
+      - system_capability.ai_usage_audit_trail
+      - system_capability.admin_ai_usage_monitoring
+      - system_capability.admin_ai_cost_controls
+      - system_capability.ai_suspicious_usage_detection
+    referencesBusinessRules:
+      - BR-006
+    affectedArchitectureArtifacts:
+      - architecture_artifact.ai_cost_protection
+      - architecture_artifact.ai_usage_observability
+    derivesRequirements:
+      - requirement.ai_credit_balance
+      - requirement.ai_prepaid_credit_check
+      - requirement.ai_credit_consumption_calculation
+      - requirement.ai_usage_limits
+      - requirement.ai_model_access_control
+      - requirement.ai_global_kill_switch
+      - requirement.ai_usage_event_audit_trail
+      - requirement.ai_admin_usage_dashboard
+      - requirement.ai_admin_cost_control_actions
+      - requirement.ai_cost_margin_reporting
+      - requirement.ai_suspicious_usage_detection

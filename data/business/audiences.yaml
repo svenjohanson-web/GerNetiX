@@ -1,6 +1,6 @@
 schemaVersion: 1
 kind: audience_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 note: Zielgruppen gehoeren zu Business, Customer Journeys und Marketing. Sie steuern keine Berechtigungen.
 items:
   - id: audience.maker

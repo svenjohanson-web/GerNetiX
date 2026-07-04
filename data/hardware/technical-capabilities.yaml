@@ -1,6 +1,6 @@
 schemaVersion: 1
 kind: technical_capability_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 note: TechnicalCapabilities beschreiben Hardware-Faehigkeiten. Sie sind nicht identisch mit SystemCapabilities.
 items:
   - id: capability.processor_esp32
@@ -80,10 +80,23 @@ items:
     ownerDomain: Hardware
     summary: Servo als mechanischen Aktor ansteuern.
 
+  - id: capability.mechanical_locking
+    type: technical_capability
+    title: Mechanische Verriegelung
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, eine kleine mechanische Verriegelung fuer Buch, Klappe, Box oder Gehaeuse zu oeffnen und zu schliessen.
+
+  - id: capability.fallback_unlock
+    type: technical_capability
+    title: Fallback-Entriegelung
+    status: draft
+    ownerDomain: Hardware
+    summary: Faehigkeit, einen definierten Ersatz- oder Notoeffnungsweg bereitzustellen, falls Tag, Sensorik oder Elektronik ausfallen.
+
   - id: capability.item_identification
     type: technical_capability
     title: Item Identification
     status: draft
     ownerDomain: Hardware
     summary: Bauteile oder Behaelter identifizieren, z. B. per QR oder RFID.
-

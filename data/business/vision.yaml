@@ -1,6 +1,6 @@
 schemaVersion: 1
 kind: vision_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 items:
   - id: vision.gernetix
     type: vision
@@ -9,14 +9,23 @@ items:
     ownerDomain: Business
     summary: Plattform zur nachhaltigen Bewahrung und Nutzung von Engineering-Wissen fuer Embedded-Lernen und einfache Entwicklung.
     purpose:
+      - Menschen befaehigen, neue Faehigkeiten zu erlernen, Wissen praktisch anzuwenden und eigene Ideen erfolgreich umzusetzen.
       - Engineering-Wissen dauerhaft erhalten.
       - Embedded-Lernen systematisch begleiten.
       - Einfache Entwicklungswerkzeuge fuer Embedded-Projekte bereitstellen.
+    justifiesBusinessGoals:
+      - BG-001
+      - BG-002
+      - BG-003
+      - BG-004
+      - BG-005
+      - BG-006
+      - BG-007
+      - BG-008
     products:
       - product.learning_platform
       - product.simple_ide
     principles:
       - principle.knowledge_more_expensive_than_code
-      - principle.yaml_is_source_of_truth
+      - principle.sqlite_graph_is_canonical_model
       - principle.top_down_development
-

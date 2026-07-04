@@ -1,12 +1,33 @@
 # Product View
 
 Diese Datei ist eine generierte Lesesicht auf Produkte, Projekte, Capabilities und Requirements.
-YAML bleibt die Source of Truth.
+Der validierte SQLite-Graph ist die kanonische Struktur.
 
 ## Produkte
 
 - `product.learning_platform`
 - `product.simple_ide`
+
+## Premium-Funktionen
+
+### KI-Community-Assistent
+
+ID: `product_offering.community_ai_assistant_premium`
+
+Einordnung:
+
+- Business-Domain: `business_domain.community`
+- Capability: `BC-040`
+- Learning Path: `learning_path.community_knowledge_usage`
+- Berechtigung: `system_capability.community_ai_assistant`
+- Plan: `plan.premium`
+
+Regel:
+
+- Die normale Community bleibt kostenlos.
+- KI-Suche, Zusammenfassungen, Empfehlungen, Uebersetzungen und Quellenantworten sind Premium.
+- Die Funktion nutzt KI Cost Protection, Credits, Limits, Usage Events und Admin Monitoring.
+- Keine direkten neuen Links zu Vision, Business Goals oder Customer Journeys.
 
 ## Projekte
 
@@ -14,15 +35,9 @@ YAML bleibt die Source of Truth.
 
 ID: `project.ai_pet_esp32`
 
-Unterstuetzt:
+Learning Path:
 
-- `BG-001`
-- `BG-002`
-- `BG-003`
-- `BG-005`
-- `CJ-003`
-- `CJ-004`
-- `CJ-006`
+- `learning_path.ai_pet_embedded_interaction`
 
 Nutzt:
 
@@ -31,21 +46,49 @@ Nutzt:
 - optional `capability.wifi`
 - optional `system_capability.ai_assistant`
 
+Varianten:
+
+- `project.ai_pet_esp32.variant.basic_display`: Offline-Haustier ohne Internet und ohne laufende KI-Kosten.
+- `project.ai_pet_esp32.variant.ai_online`: KI-Online-Haustier mit WLAN/OpenAI-Anbindung, natuerlicheren Dialogen, aber laufenden KI-Kosten und Online-Abhaengigkeit.
+
+Regel:
+
+- Version 1 muss offline sinnvoll funktionieren.
+- KI-Online ist eine optionale Erweiterung und muss Cost Protection, Credits, Usage Events und Budgetlimits beruecksichtigen.
+
+### Cross-Platform Development
+
+ID: `learning_goal.cross_platform_development`
+
+Learning Path:
+
+- `learning_path.cross_platform_development`
+
+Beispieldomaene:
+
+- `example_domain.digital_tamagotchi`
+- Die Domaene ist austauschbar. Das Learning Goal bleibt stabil, auch wenn spaeter ein anderes Beispielprojekt verwendet wird.
+
+Schritte:
+
+- `learning_path.cross_platform_development` enthaelt die Projekte Embedded, Desktop, Mobile, Web, Cloud, Synchronisation und optionale KI-Erweiterung.
+- Die einzelnen Projekte referenzieren nur ihren Learning Path.
+
+Lernfokus:
+
+- Zielsysteme und Laufzeitumgebungen vergleichen.
+- Native und plattformuebergreifende Entwicklung bewerten.
+- Fachlogik von Benutzeroberflaeche, Hardwarezugriff und Plattformadaptern trennen.
+- Gemeinsames Datenmodell und Synchronisation ueber mehrere Clients aufbauen.
+- KI-Integration nur als optionale Erweiterung mit Kosten- und Tokenmanagement behandeln.
+
 ### Intelligente Pflanzenbewaesserungsstation
 
 ID: `project.smart_plant_watering`
 
-Unterstuetzt:
+Learning Path:
 
-- `BG-001`
-- `BG-002`
-- `BG-004`
-- `BG-005`
-- `CJ-002`
-- `CJ-003`
-- `CJ-004`
-- `CJ-005`
-- `CJ-006`
+- `learning_path.automation_control_and_regulation`
 
 Nutzt:
 
@@ -55,19 +98,50 @@ Nutzt:
 - optional `capability.wifi`
 - optional `capability.ota`
 
+### Hausautomatisierung verstehen und erweitern
+
+ID: `course.home_automation_understand_and_extend`
+
+Lernziele:
+
+- `learning_goal.home_automation_basics`
+- `learning_goal.home_automation_topologies`
+- `learning_goal.home_automation_app_integration`
+- `learning_goal.automation_basics`
+- `learning_goal.iot_basics`
+
+Zielarchitekturen:
+
+- Embedded only: Sensoren, Aktoren und lokale Logik laufen direkt auf dem Embedded Device.
+- Embedded und PC-Software: Embedded Devices liefern Statuswerte an eine PC-Anwendung fuer Anzeige, Konfiguration, Analyse und Debugging.
+- Embedded und Mobile-App: Embedded Devices liefern Statuswerte an eine App fuer alltagsnahe Bedienung und schnelle Uebersicht.
+
+Anzuzeigende Statuswerte:
+
+- Temperatur
+- Luftfeuchtigkeit
+- Bodenfeuchtigkeit und Hydrierung von Pflanzenerde
+- Pumpen-, Ventil- und Aktorzustand
+- Batteriestand, Warnungen und Geraetestatus
+
+Topologien:
+
+- lokales Embedded-System
+- kleiner HomeServer
+- verteiltes IoT-System
+- intelligentere Edge-Devices
+
+Bewertung:
+
+- Die Learning-Einheit soll Vor- und Nachteile der Topologien erklaeren, insbesondere Einstiegskomplexitaet, Kosten, Erweiterbarkeit, Ausfallsicherheit, Datenschutz, Wartung und Bedienkomfort.
+
 ### RFID-Tresor
 
 ID: `project.rfid_safe`
 
-Unterstuetzt:
+Learning Path:
 
-- `BG-001`
-- `BG-002`
-- `BG-004`
-- `BG-005`
-- `CJ-002`
-- `CJ-003`
-- `CJ-006`
+- `learning_path.embedded_access_control`
 
 Nutzt:
 
@@ -77,20 +151,37 @@ Nutzt:
 - optional `capability.display_output`
 - optional `capability.wifi`
 
+### Buchtresor / Tagebuchschloss
+
+ID: `project.book_vault`
+
+Learning Path:
+
+- `learning_path.maker_access_and_mechanics`
+
+Nutzt:
+
+- `capability.rfid_reading`
+- `capability.servo_control`
+- `capability.mechanical_locking`
+- optional `capability.display_output`
+- optional `capability.digital_input`
+- optional `capability.fallback_unlock`
+
+Lernfokus:
+
+- Identifizierung: welcher Tag wurde erkannt?
+- Autorisierung: darf dieser Tag das Buch oeffnen?
+- Fallback: was passiert, wenn der Tag verloren oder defekt ist?
+- Mechanik: wie wird ein kleines Buchschloss verlaesslich verriegelt und geoeffnet?
+
 ### Kanban-/Gridfinity-Inventarsystem
 
 ID: `project.kanban_gridfinity_inventory`
 
-Unterstuetzt:
+Learning Path:
 
-- `BG-001`
-- `BG-002`
-- `BG-004`
-- `BG-005`
-- `CJ-002`
-- `CJ-003`
-- `CJ-005`
-- `CJ-007`
+- `learning_path.workshop_inventory_and_tooling`
 
 Nutzt:
 

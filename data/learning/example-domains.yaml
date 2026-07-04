@@ -1,0 +1,14 @@
+schemaVersion: 1
+kind: example_domain_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: example_domain.digital_tamagotchi
+    type: example_domain
+    title: Digitales Tamagotchi
+    status: draft
+    ownerDomain: Learning
+    summary: Austauschbare fachliche Beispieldomaene fuer den Learning Path Cross-Platform Development; sie dient dazu, Zielsysteme, Frameworks und Laufzeitumgebungen vergleichbar zu machen.
+    illustrates:
+      - learning_goal.cross_platform_development
+    usedBy:
+      - learning_path.cross_platform_development

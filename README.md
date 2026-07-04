@@ -11,7 +11,12 @@ Leitsatz:
 
 Die Dokumentationsthemen werden in [docs/documentation-topics.md](docs/documentation-topics.md) gesammelt und priorisiert.
 
-Fuehrende YAML-Quellen:
+Kanonisches Modell:
+
+- [SQLite Graph Model](tools/yaml-graph-sqlite/README.md)
+- [SQLite-Graph-Validierung](docs/generated/sqlite-graph-validation.md)
+
+Legacy-Importquellen aus der YAML-Migration:
 
 - [YAML-Quellenindex](docs/generated/yaml-source-index.md)
 - [Business Goals](data/business/business-goals.yaml)
@@ -33,7 +38,7 @@ Startdokumente:
 - [Metamodell](docs/metamodel.md)
 - [Metamodell - Learning Platform](docs/metamodel-learning-platform.md)
 - [Review - Metamodell Learning Platform](docs/metamodel-learning-platform-review.md)
-- [YAML-first Repository-Struktur](docs/yaml-first-repository-structure.md)
+- [SQLite Graph Model](tools/yaml-graph-sqlite/README.md)
 - [Datenmodell fuer Projektideen](docs/project-idea-data-model.md)
 - [Traceability-Modell](model/traceability.yaml)
 - [Beziehungsmodell](model/relations.yaml)
@@ -59,7 +64,8 @@ GerNetiX besteht aktuell aus zwei fachlich getrennten Produkten:
 
 Beide Produkte greifen auf dieselbe Wissensbasis zu.
 Die Dokumentation beginnt bei der Nachvollziehbarkeit.
-Die YAML-Dateien unter `data/` und `model/` sind die Source of Truth fuer das strukturierte Engineering-Wissen.
+Der validierte SQLite-Graph ist die kanonische Pflege-, Pruef- und Abfragestruktur fuer das strukturierte Engineering-Wissen.
+YAML unter `data/` und `model/` bleibt nur Legacy-Import, Bootstrap oder Export, sofern der Graph dieselbe Struktur fehlerfrei abbildet.
 Markdown dient der Lesbarkeit und Dokumentation.
 
 ## Arbeitsweise

@@ -33,7 +33,7 @@ Die aktuelle modellbezogene Lueckenliste steht in `docs/generated/open-gaps.md`.
 ## Bereits geklaerte Leitplanken
 
 - Es wird noch keine Software erstellt.
-- YAML ist die fuehrende Quelle fuer strukturierte Daten.
+- Der validierte SQLite-Graph ist die fuehrende Quelle fuer strukturierte Daten.
 - Markdown ist Lesesicht oder generierter Output.
 - Das Metamodell beschreibt fachliche Wahrheit, nicht Implementierungsstand.
 - Entwicklung erfolgt top-down.

@@ -1,0 +1,66 @@
+schemaVersion: 1
+kind: test_artifact_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: test_artifact.community_question_triage_time
+    type: test_artifact
+    title: Community Question Triage Time Test
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Quality
+    summary: Testnachweis, dass neue Fragen innerhalb der definierten Zeit triagiert werden.
+    verifiesRequirements:
+      - requirement.community_question_triage_time
+
+  - id: test_artifact.community_answer_verification
+    type: test_artifact
+    title: Community Answer Verification Test
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Quality
+    summary: Testnachweis, dass Antworten verifiziert, geaendert und erneut geprueft werden koennen.
+    verifiesRequirements:
+      - requirement.community_answer_verification
+      - requirement.reverify_changed_verified_answer
+
+  - id: test_artifact.ai_prepaid_credit_check
+    type: test_artifact
+    title: AI Prepaid Credit Check Test
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Quality
+    summary: Testnachweis, dass kostenpflichtige KI-Aufrufe ohne ausreichende Credits oder bei gesperrten Limits serverseitig abgelehnt werden.
+    verifiesRequirements:
+      - requirement.ai_prepaid_credit_check
+
+  - id: test_artifact.ai_usage_event_audit_trail
+    type: test_artifact
+    title: AI Usage Event Audit Trail Test
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Quality
+    summary: Testnachweis, dass erfolgreiche, fehlgeschlagene und abgelehnte KI-Aufrufe als Usage Events protokolliert werden.
+    verifiesRequirements:
+      - requirement.ai_usage_event_audit_trail
+
+  - id: test_artifact.community_ai_assistant_sources
+    type: test_artifact
+    title: Community AI Assistant Source References Test
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Quality
+    summary: Testnachweis, dass KI-Antworten Quellenreferenzen auf erlaubte Community- oder Lerninhalte enthalten und ohne ausreichende Quellen korrekt behandelt werden.
+    verifiesRequirements:
+      - requirement.community_ai_assistant_sources
+      - requirement.community_ai_assistant_query
+
+  - id: test_artifact.community_ai_assistant_moderation
+    type: test_artifact
+    title: Community AI Assistant Moderation Test
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Quality
+    summary: Testnachweis, dass Moderationsregeln, Datenquellenbeschraenkungen, Premium-Zugriff, Credits und Limits vor oder waehrend KI-Antworten greifen.
+    verifiesRequirements:
+      - requirement.community_ai_assistant_moderation
+      - requirement.community_ai_assistant_premium_access

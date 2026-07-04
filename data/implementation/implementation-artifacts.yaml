@@ -1,0 +1,71 @@
+schemaVersion: 1
+kind: implementation_artifact_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: implementation_artifact.community_question_triage
+    type: implementation_artifact
+    title: Community Question Triage Umsetzung
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Technical
+    summary: Spaetere technische Umsetzung fuer Triage neuer Community-Fragen.
+    realizesRequirements:
+      - requirement.community_question_triage_time
+
+  - id: implementation_artifact.community_answer_verification
+    type: implementation_artifact
+    title: Community Answer Verification Umsetzung
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Technical
+    summary: Spaetere technische Umsetzung fuer fachlich verifizierte Community-Antworten.
+    realizesRequirements:
+      - requirement.community_answer_verification
+
+  - id: implementation_artifact.ai_usage_preflight
+    type: implementation_artifact
+    title: AI Usage Preflight Umsetzung
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Technical
+    summary: Spaetere technische Umsetzung der serverseitigen Credit-, Budget-, Modell- und Schutzpruefung vor KI-Aufrufen.
+    realizesRequirements:
+      - requirement.ai_prepaid_credit_check
+      - requirement.ai_usage_limits
+      - requirement.ai_model_access_control
+
+  - id: implementation_artifact.ai_admin_usage_dashboard
+    type: implementation_artifact
+    title: AI Admin Usage Dashboard Umsetzung
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Technical
+    summary: Spaetere technische Umsetzung der Admin-Dashboard-Sicht fuer KI Usage Monitoring und Cost Protection Observability.
+    realizesRequirements:
+      - requirement.ai_admin_usage_dashboard
+      - requirement.ai_cost_margin_reporting
+      - requirement.ai_suspicious_usage_detection
+
+  - id: implementation_artifact.community_ai_assistant
+    type: implementation_artifact
+    title: Community AI Assistant Umsetzung
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Technical
+    summary: Spaetere technische Umsetzung fuer Premium-RAG-Anfragen, Quellenreferenzen, Conversation Memory, Moderation und Usage Event Erzeugung.
+    realizesRequirements:
+      - requirement.community_ai_assistant_query
+      - requirement.community_ai_assistant_sources
+      - requirement.community_ai_assistant_premium_access
+      - requirement.community_ai_assistant_moderation
+
+  - id: implementation_artifact.community_ai_indexing
+    type: implementation_artifact
+    title: Community AI Indexing Umsetzung
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Technical
+    summary: Spaetere technische Umsetzung fuer Indexierung, Embeddings, Vektordatenbank-Anbindung und Reindexing der Community-Wissensquellen.
+    realizesRequirements:
+      - requirement.community_ai_assistant_indexing
+      - requirement.community_ai_assistant_admin_configuration

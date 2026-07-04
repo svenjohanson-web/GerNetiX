@@ -1,6 +1,6 @@
 schemaVersion: 1
 kind: system_capability_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 note: SystemCapabilities beschreiben Produktfunktionen und Berechtigungen. Sie sind nicht identisch mit TechnicalCapabilities.
 items:
   - id: system_capability.ide_flash_usb
@@ -24,6 +24,83 @@ items:
     ownerDomain: Authorization
     summary: Optionale KI-Unterstuetzung oder KI-Interaktion.
 
+  - id: system_capability.ai_premium_models
+    type: system_capability
+    title: AI Premium Models
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf hoeherwertige oder teurere KI-Modelle verwenden, sofern Credits, Budget und Tarif dies erlauben.
+
+  - id: system_capability.community_free_participation
+    type: system_capability
+    title: Community Free Participation
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf die kostenlose Community lesen, beschreiben, kommentieren, Projekte veroeffentlichen, bewerten, durchsuchen, Dateien hochladen und diskutieren.
+
+  - id: system_capability.community_ai_assistant
+    type: system_capability
+    title: KI-Community-Assistent
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf den kostenpflichtigen KI-Community-Assistenten fuer RAG-basierte Fragen, Zusammenfassungen, Quellenverweise, Empfehlungen und Uebersetzungen verwenden, sofern Credits, Limits und Tarif dies erlauben.
+
+  - id: system_capability.admin_community_ai_assistant
+    type: system_capability
+    title: Admin KI-Community-Assistent
+    status: draft
+    ownerDomain: Authorization
+    summary: Administrator darf den KI-Community-Assistenten aktivieren, konfigurieren, Datenquellen und RAG-Parameter pflegen sowie Moderations- und Quellenregeln administrieren.
+
+  - id: system_capability.admin_ai_usage_monitoring
+    type: system_capability
+    title: Admin AI Usage Monitoring
+    status: draft
+    ownerDomain: Authorization
+    summary: Administrator darf KI-Nutzung, Credits, Tokens, Kosten, Fehler, Ablehnungen, auffaellige Muster und Budgetnaehe im Admin Dashboard einsehen.
+
+  - id: system_capability.admin_ai_cost_controls
+    type: system_capability
+    title: Admin AI Cost Controls
+    status: draft
+    ownerDomain: Authorization
+    summary: Administrator darf KI-Credits, Limits, Modellfreigaben, Warnschwellen, Sperren und globalen KI-Kill-Switch administrieren.
+
+  - id: system_capability.ai_credit_management
+    type: system_capability
+    title: AI Credit Management
+    status: draft
+    ownerDomain: Authorization
+    summary: Das System darf KI-Credits, Guthaben, Verbrauch und Ledger-Buchungen fuer kostenpflichtige KI-Nutzung fuehren.
+
+  - id: system_capability.ai_prepaid_credit_check
+    type: system_capability
+    title: AI Prepaid Credit Check
+    status: draft
+    ownerDomain: Authorization
+    summary: Das System darf kostenpflichtige KI-Aufrufe vor Ausfuehrung gegen Credits, Budgetfreigabe und Modellberechtigung pruefen.
+
+  - id: system_capability.ai_budget_limits
+    type: system_capability
+    title: AI Budget Limits
+    status: draft
+    ownerDomain: Authorization
+    summary: Das System darf Tageslimits, Monatslimits, Budgetobergrenzen, Rate Limits, Modellfreigaben und globale Schutzschalter fuer KI-Nutzung anwenden.
+
+  - id: system_capability.ai_usage_audit_trail
+    type: system_capability
+    title: AI Usage Audit Trail
+    status: draft
+    ownerDomain: Authorization
+    summary: Das System darf kostenpflichtige, fehlgeschlagene und abgelehnte KI-Aufrufe als Usage Events protokollieren.
+
+  - id: system_capability.ai_suspicious_usage_detection
+    type: system_capability
+    title: AI Suspicious Usage Detection
+    status: draft
+    ownerDomain: Authorization
+    summary: Das System darf auffaellige KI-Nutzung, ungewoehnlich teure Aufrufe und Nutzer nahe am Budgetlimit erkennen und markieren.
+
   - id: system_capability.admin_users
     type: system_capability
     title: Admin Users
@@ -45,6 +122,27 @@ items:
     ownerDomain: Authorization
     summary: Learning Goals, Projekte und Lerninhalte administrieren.
 
+  - id: system_capability.admin_product_ideas
+    type: system_capability
+    title: Admin Product Ideas
+    status: draft
+    ownerDomain: Authorization
+    summary: Produktideen sichten, bewerten und bearbeiten.
+
+  - id: system_capability.admin_project_ideas
+    type: system_capability
+    title: Admin Project Ideas
+    status: draft
+    ownerDomain: Authorization
+    summary: Projektideen sichten, bewerten und bearbeiten.
+
+  - id: system_capability.admin_courses
+    type: system_capability
+    title: Admin Courses
+    status: draft
+    ownerDomain: Authorization
+    summary: Kaufbare Learning-Angebote vom Typ Course sichten, bewerten und bearbeiten.
+
   - id: system_capability.admin_authorization
     type: system_capability
     title: Admin Authorization
@@ -52,3 +150,37 @@ items:
     ownerDomain: Authorization
     summary: Plaene, Rollen und SystemCapabilities administrieren.
 
+  - id: system_capability.admin_grants
+    type: system_capability
+    title: Admin Grants
+    status: draft
+    ownerDomain: Authorization
+    summary: Account-bezogene Freischaltungen, Overrides und Entzuege administrieren.
+
+  - id: system_capability.account_identification
+    type: system_capability
+    title: Account Identification
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf sich identifizieren, damit berechtigte Services ermittelt und bereitgestellt werden koennen.
+
+  - id: system_capability.support_registered_board_check
+    type: system_capability
+    title: Support Registered Board Check
+    status: draft
+    ownerDomain: Authorization
+    summary: Support darf registrierte Boards, Pairing-Status und Supportberechtigung pruefen.
+
+  - id: system_capability.hardware_shop_access
+    type: system_capability
+    title: Hardware Shop Access
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf Hardware-Angebote sehen und passende Hardware ueber die IDE anfragen oder kaufen.
+
+  - id: system_capability.cloud_flash
+    type: system_capability
+    title: Cloud Flash
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf kompatible, registrierte und berechtigte Boards ueber Cloud/OTA flashen.

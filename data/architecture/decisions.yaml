@@ -1,13 +1,26 @@
 schemaVersion: 1
 kind: architecture_decision_catalog
-sourceOfTruth: true
+sourceStatus: legacy_import_source
 items:
   - id: architecture.yaml_first_repository
     type: architecture_decision
-    title: YAML-first Repository-Struktur
+    title: SQLite-Graph-first Repository-Struktur abgeloest
+    status: superseded
+    ownerDomain: CrossDomain
+    summary: Diese fruehere Entscheidung wurde abgeloest. YAML war die initiale strukturierte Quelle, wird aber nach validierter SQLite-Aequivalenz nicht mehr als fuehrende Pflegequelle verwendet.
+    replacedBy: architecture.sqlite_graph_canonical_model
+
+  - id: architecture.sqlite_graph_canonical_model
+    type: architecture_decision
+    title: SQLite-Graph als kanonische Modellstruktur
     status: approved
     ownerDomain: CrossDomain
-    summary: YAML ist Source of Truth, Markdown ist generiertes Ausgabeformat.
+    summary: Der validierte SQLite-Graph ist die kanonische Pflege-, Pruef- und Abfragestruktur fuer Artefakte und Beziehungen. YAML bleibt Legacy-Import, Bootstrap oder Export, solange die Aequivalenz nachweisbar ist.
+    rules:
+      - YAML-Dateien duerfen nicht parallel fachlich weitergepflegt werden, wenn der SQLite-Graph dieselbe Struktur fehlerfrei abbildet.
+      - Aenderungen am fachlichen Modell erfolgen kuenftig im Graphmodell oder ueber Werkzeuge, die direkt auf dem Graphmodell schreiben.
+      - YAML-Exporte muessen aus dem Graphmodell erzeugt werden, nicht umgekehrt.
+      - Eine Migration gilt nur als abgeschlossen, wenn der Graphimport 0 harte Validierungsfehler meldet.
 
   - id: architecture.top_down_development
     type: architecture_decision
@@ -70,5 +83,19 @@ items:
     title: Dekomposition endet bei Work Packages
     status: approved
     ownerDomain: CrossDomain
-    summary: Technische Details wie APIs, Views, Services oder Tests sind keine eigenen Requirements.
+    summary: Fachliche Requirements duerfen rekursiv zerlegt werden; technische Details wie APIs, Views, Services oder Tests sind keine eigenen Requirements.
 
+  - id: requirement_model.recursive_requirement_decomposition
+    type: requirement_rule
+    title: Rekursive Requirement-Dekomposition ohne eigenen SubRequirement-Typ
+    status: approved
+    ownerDomain: CrossDomain
+    summary: Teilanforderungen werden als normale Requirements modelliert und koennen upstream auf ihr uebergeordnetes Requirement verweisen.
+    rules:
+      - Es wird kein Artefakttyp SubRequirement oder Teilanforderung eingefuehrt.
+      - Jede fachliche Teilanforderung bleibt ein Requirement.
+      - Wenn ein Parent existiert, wird die Beziehung von unten nach oben gespeichert: Child Requirement derived_from Parent Requirement.
+      - Requirement-Ketten duerfen beliebig tief sein, solange sie fachlich sinnvoll bleiben.
+      - Requirement-Ketten muessen azyklisch sein.
+      - Top-Level-Requirements ohne Upstream-Pfad zur Vision sind zulaessig.
+      - Die Zerlegung endet vor technischen Umsetzungstasks wie API, View, Service, Migration oder Test.

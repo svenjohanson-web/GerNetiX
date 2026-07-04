@@ -3,36 +3,12 @@ id: project.ai_pet_esp32
 slug: ai-pet-esp32
 type: learning_project
 status: draft
+projectStatus: idea
 title: KI-Haustier / Tamagotchi AI
 ownerDomain: Learning
 summary: Virtuelles Haustier auf einem ESP32 mit Display, offline nutzbar und optional mit KI-Dialogen erweiterbar.
 
-businessGoals:
-  - BG-001
-  - BG-002
-  - BG-003
-  - BG-005
-customerJourneys:
-  - CJ-003
-  - CJ-004
-  - CJ-006
-audiences:
-  primary:
-    - audience.maker
-    - audience.hobby_developer
-    - audience.student
-  secondary:
-    - audience.teacher
-    - audience.school
-valuePropositions:
-  - value.visible_result
-  - value.playful_embedded_learning
-  - value.optional_ai_extension
-
-learningGoals:
-  - learning_goal.embedded_basics
-  - learning_goal.iot_basics
-  - learning_goal.embedded_advanced
+learningPath: learning_path.ai_pet_embedded_interaction
 developsCompetencies:
   - competency.esp32_project_setup
   - competency.display_control
@@ -44,15 +20,73 @@ developsCompetencies:
 
 variants:
   - id: project.ai_pet_esp32.variant.basic_display
-    title: ESP32 mit Display und Button
+    title: Offline-Haustier mit ESP32, Display und Button
+    mode: offline
+    summary: Kostenguenstige Einstiegsvariante, bei der das Haustier vollstaendig lokal auf dem ESP32 laeuft und keine Internetverbindung benoetigt.
     technicalConstraints:
       - capability.processor_esp32
       - capability.display_output
       - capability.digital_input
     optionalCapabilities:
+      - capability.audio_output
+    advantages:
+      - Funktioniert ohne Internetverbindung.
+      - Keine laufenden KI- oder Cloud-Kosten.
+      - Datenschutz und Betrieb sind einfacher nachvollziehbar.
+      - Geringere Einstiegshuerde fuer Anfaenger.
+      - Geeignet fuer Schulen, Workshops und Offline-Umgebungen.
+    disadvantages:
+      - Keine natuerlichsprachlichen KI-Dialoge.
+      - Persoenlichkeit und Antworten sind auf lokal modellierte Logik begrenzt.
+      - Weniger dynamische Inhalte als bei Online-KI.
+    costImpact:
+      upfront: niedrig
+      recurring: keine KI-Kosten
+      costProtectionRequired: false
+
+  - id: project.ai_pet_esp32.variant.ai_online
+    title: KI-Online-Haustier mit OpenAI-Anbindung
+    mode: online_ai
+    summary: Erweiterte Variante mit WLAN und optionaler OpenAI-Anbindung fuer natuerlichsprachliche Dialoge und dynamischere Persoenlichkeit.
+    technicalConstraints:
+      - capability.processor_esp32
+      - capability.display_output
+      - capability.digital_input
       - capability.wifi
+    optionalCapabilities:
       - capability.audio_output
       - capability.microphone_input
+    systemCapabilities:
+      - system_capability.ai_assistant
+      - system_capability.ai_premium_models
+    advantages:
+      - Natuerlichere und abwechslungsreichere Dialoge moeglich.
+      - Haustier kann dynamischer, persoenlicher und lernfaehiger wirken.
+      - Gut geeignet, um Online-/Offline-Architektur, API-Nutzung und KI-Kostenkontrolle zu vermitteln.
+      - Kann als hoeherwertige Projektvariante oder Folgeprojekt dienen.
+    disadvantages:
+      - Stabile Online-Verbindung wird benoetigt.
+      - KI-Aufrufe verursachen laufende Kosten.
+      - Datenschutz, Account-Kontext und Missbrauchsschutz muessen fachlich betrachtet werden.
+      - Fehlende Credits, Budgetlimits oder deaktivierte KI-Dienste koennen Funktionen begrenzen.
+      - Hoehere Komplexitaet fuer Einsteiger.
+    costImpact:
+      upfront: mittel
+      recurring: KI-Kosten pro Nutzung moeglich
+      costProtectionRequired: true
+      constrainedBy:
+        - BR-006
+        - nfr.ai_cost_protection_auditability
+
+variantComparison:
+  summary: Die Offline-Variante bleibt die empfohlene Basis. Die KI-Online-Variante ist eine optionale Erweiterung oder ein spaeteres Folgeprojekt mit hoeherem Nutzen, aber auch hoeherer Komplexitaet und laufenden Kosten.
+  offlineVariant: project.ai_pet_esp32.variant.basic_display
+  onlineAiVariant: project.ai_pet_esp32.variant.ai_online
+  decisionRule:
+    - Version 1 muss ohne Internet und ohne KI-Kosten sinnvoll funktionieren.
+    - KI-Online-Funktionen duerfen die Offline-Basis nicht blockieren.
+    - KI-Online-Funktionen muessen Cost Protection, Credits, Usage Events und Budgetlimits beruecksichtigen.
+    - Die Vor- und Nachteile der Online-Variante muessen im Lernmaterial explizit gegen die Offline-Variante gestellt werden.
 
 softwareModules:
   - software_module.pet_core
@@ -78,10 +112,13 @@ stages:
       - competency.local_persistence
   - id: stage.ai_pet_esp32.3
     title: Optionale Online-Funktionen
-    goal: WLAN und spaeter KI-Dialoge optional einbinden.
+    goal: WLAN und spaeter KI-Dialoge optional einbinden und gegen die Offline-Variante abgrenzen.
     learningFocus:
       - competency.wifi_basics
       - competency.online_offline_design
+    comparesVariants:
+      - project.ai_pet_esp32.variant.basic_display
+      - project.ai_pet_esp32.variant.ai_online
 
 risks:
   - risk.too_many_features_for_beginner

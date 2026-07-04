@@ -1,0 +1,93 @@
+schemaVersion: 1
+kind: feature_catalog
+sourceStatus: legacy_import_source
+items:
+  - id: feature.community.free_participation
+    type: feature
+    title: Kostenlose Community-Teilnahme
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain: business_domain.community
+    summary: Community-Mitglieder koennen kostenfrei lesen, schreiben, kommentieren, Projekte veroeffentlichen, bewerten, suchen, Dateien hochladen und diskutieren.
+    freeCapabilities:
+      - Beitraege lesen
+      - Beitraege schreiben
+      - Kommentare erstellen
+      - Projekte veroeffentlichen
+      - Projekte bewerten
+      - Projekte durchsuchen
+      - Dateien hochladen
+      - Diskussionen fuehren
+
+  - id: feature.community_ai_assistant.premium_rag_answers
+    type: feature
+    title: KI-Community-Assistent Antworten mit Quellen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain: business_domain.community
+    realizesCapability: BC-040
+    requiresSystemCapabilities:
+      - system_capability.community_ai_assistant
+    summary: Premium-Nutzer koennen Fragen in natuerlicher Sprache stellen; der Assistent beantwortet sie per RAG auf Community-Daten mit Quellenangaben.
+
+  - id: feature.community_ai_assistant.discussion_summaries
+    type: feature
+    title: Community-Diskussionen zusammenfassen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain: business_domain.community
+    realizesCapability: BC-040
+    requiresSystemCapabilities:
+      - system_capability.community_ai_assistant
+    summary: Lange Diskussionen, Themenbereiche oder die letzten Beitraege koennen zusammengefasst werden, ohne die Originalquellen zu verlieren.
+
+  - id: feature.community_ai_assistant.similar_content_finder
+    type: feature
+    title: Aehnliche Beitraege und Projekte finden
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain: business_domain.community
+    realizesCapability: BC-040
+    requiresSystemCapabilities:
+      - system_capability.community_ai_assistant
+    summary: Der Assistent findet aehnliche Beitraege, Diskussionen, Tutorials und Projekte zu einer Frage oder einem Projektkontext.
+
+  - id: feature.community_ai_assistant.learning_references
+    type: feature
+    title: Verweise auf Tutorials, Lernpfade, Kurse und Dokumentation
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain: business_domain.community
+    realizesCapability: BC-040
+    requiresSystemCapabilities:
+      - system_capability.community_ai_assistant
+    summary: Antworten koennen automatisch passende Tutorials, Learning Paths, Courses und Dokumentationen referenzieren.
+
+  - id: feature.community_ai_assistant.personal_recommendations
+    type: feature
+    title: Persoenliche Community-Empfehlungen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain: business_domain.community
+    realizesCapability: BC-040
+    requiresSystemCapabilities:
+      - system_capability.community_ai_assistant
+    summary: Premium-Nutzer erhalten Empfehlungen zu Community-Inhalten, Projekten oder Lernpfaden passend zu ihrem Kontext.
+
+  - id: feature.community_ai_assistant.translation
+    type: feature
+    title: Internationale Community-Beitraege uebersetzen
+    businessStatus: Idea
+    implementationStatus: Not Started
+    ownerDomain: Business
+    belongsToBusinessDomain: business_domain.community
+    realizesCapability: BC-040
+    requiresSystemCapabilities:
+      - system_capability.community_ai_assistant
+    summary: Internationale Community-Beitraege koennen uebersetzt und dadurch fuer mehr Nutzer erschlossen werden.

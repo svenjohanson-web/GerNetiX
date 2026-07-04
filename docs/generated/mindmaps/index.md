@@ -5,9 +5,11 @@ Die YAML-Dateien bleiben die fuehrende Quelle.
 
 ## Projekt-Mindmaps
 
+- [Cross-Platform Development](cross-platform-development.md)
 - [KI-Haustier / Tamagotchi AI](ai-pet-esp32.md)
 - [Intelligente Pflanzenbewaesserungsstation](smart-plant-watering.md)
 - [RFID-Tresor](rfid-safe.md)
+- [Buchtresor / Tagebuchschloss](book-vault.md)
 - [Kanban-/Gridfinity-Inventarsystem](kanban-gridfinity-inventory.md)
 
 ## Verwendung in VS Code

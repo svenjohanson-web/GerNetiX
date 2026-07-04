@@ -123,6 +123,53 @@ Online-Betrieb:
 - OpenAI kann spaeter fuer natuerliche Sprache, Persoenlichkeitsdialoge oder erklaerende Antworten verwendet werden.
 - Online-Funktionen duerfen das Basisprojekt nicht blockieren.
 
+## 6.1 Varianten: Offline und KI-Online
+
+### Variante A - Offline-Haustier
+
+Die Offline-Variante ist die empfohlene Basis fuer Version 1.
+Das Haustier laeuft vollstaendig lokal auf dem ESP32.
+
+Vorteile:
+
+- funktioniert ohne Internetverbindung
+- keine laufenden KI- oder Cloud-Kosten
+- geringere Einstiegshuerde
+- einfacher Datenschutz
+- gut geeignet fuer Schulen, Workshops und Einsteiger
+
+Nachteile:
+
+- keine natuerlichsprachlichen KI-Dialoge
+- Verhalten und Antworten sind auf lokal modellierte Logik begrenzt
+- weniger dynamische Persoenlichkeit als bei Online-KI
+
+### Variante B - KI-Online-Haustier
+
+Die KI-Online-Variante ist eine optionale Erweiterung oder ein spaeteres Folgeprojekt.
+Sie nutzt WLAN und optional OpenAI, um natuerlichere Dialoge und eine dynamischere Persoenlichkeit zu ermoeglichen.
+
+Vorteile:
+
+- natuerlichere und abwechslungsreichere Dialoge
+- dynamischere Persoenlichkeit
+- vermittelt Online-/Offline-Architektur, API-Nutzung und KI-Kostenkontrolle
+- eignet sich als hoeherwertige Projektvariante
+
+Nachteile:
+
+- benoetigt eine stabile Online-Verbindung
+- verursacht laufende KI-Kosten pro Nutzung
+- braucht Credits, Budgetlimits und Usage Monitoring
+- Datenschutz, Account-Kontext und Missbrauchsschutz muessen betrachtet werden
+- hoehere Komplexitaet fuer Einsteiger
+
+Regel:
+
+- Version 1 muss offline sinnvoll funktionieren.
+- KI-Online darf die Offline-Basis nicht blockieren.
+- KI-Online muss `BR-006` Schutz vor unkontrollierten KI-Kosten und `nfr.ai_cost_protection_auditability` beruecksichtigen.
+
 ## 7. Benoetigte Hardware
 
 Pflicht-Hardware:
@@ -149,7 +196,7 @@ Technische Constraints fuer eine erste Variante:
 - mandatory: ESP32-kompatibles Board
 - mandatory: Display
 - mandatory: einfache Eingabe
-- optional: WLAN fuer Online-Funktionen
+- mandatory fuer KI-Online: WLAN
 - optional: Buzzer oder LED fuer Feedback
 - optional: Akku fuer mobilen Betrieb
 - optional: Mikrofon und Lautsprecher fuer spaetere Sprachinteraktion
