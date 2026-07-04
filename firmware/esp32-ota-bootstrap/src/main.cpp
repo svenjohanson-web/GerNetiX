@@ -19,6 +19,10 @@
 #define GERNETIX_WIFI_MODE GERNETIX_WIFI_MODE_NODE
 #endif
 
+#ifndef GERNETIX_WIFI_CONNECT_TIMEOUT_MS
+#define GERNETIX_WIFI_CONNECT_TIMEOUT_MS 15000
+#endif
+
 static uint32_t lastBlinkAt = 0;
 static bool ledState = false;
 
@@ -48,19 +52,29 @@ void setupOta() {
   ArduinoOTA.begin();
 }
 
-void setupNodeWifi() {
+bool setupNodeWifi() {
   WiFi.mode(WIFI_STA);
   WiFi.begin(GERNETIX_WIFI_SSID, GERNETIX_WIFI_PASSWORD);
 
   Serial.print("Connecting WiFi");
-  while (WiFi.status() != WL_CONNECTED) {
+  const uint32_t connectStartedAt = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - connectStartedAt < GERNETIX_WIFI_CONNECT_TIMEOUT_MS) {
     delay(300);
     Serial.print(".");
   }
 
   Serial.println();
+
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("Configured WiFi not reachable, starting setup access point");
+    WiFi.disconnect(true);
+    delay(200);
+    return false;
+  }
+
   Serial.print("Node IP: ");
   Serial.println(WiFi.localIP());
+  return true;
 }
 
 void setupAccessPointWifi() {
@@ -92,7 +106,9 @@ void setupWifi() {
 #if GERNETIX_WIFI_MODE == GERNETIX_WIFI_MODE_ACCESS_POINT
   setupAccessPointWifi();
 #else
-  setupNodeWifi();
+  if (!setupNodeWifi()) {
+    setupAccessPointWifi();
+  }
 #endif
 }
 
