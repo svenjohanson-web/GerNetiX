@@ -137,6 +137,7 @@ items:
       - system_capability.admin_courses
       - system_capability.admin_authorization
       - system_capability.admin_grants
+      - system_capability.admin_device_management
       - system_capability.admin_ai_usage_monitoring
       - system_capability.admin_ai_cost_controls
     responsibilities:
@@ -150,6 +151,11 @@ items:
       - Plaene und SystemCapabilities administrieren
       - Grants, Account Overrides und Entzuege administrieren
       - Accounts und Rollen administrieren
+      - Device-Management-Admin-Sichten bereitstellen
+      - Device-Status, Pairing-Status, Connectivity-Status, OTA-Status und Lifecycle pruefen
+      - GerNetiX-verified Hardware und Community-Hardware unterscheiden
+      - Support-Entitlement und Reklamationsgrundlage fuer konkrete Devices pruefen
+      - Provisionierungs-, Credential- und Pairing-Historie einsehen
       - KI-Nutzung nach Benutzer, Zeitraum, Credits, Tokens, Modell, Kosten und Fehlern ueberwachen
       - Auffaellige KI-Nutzungsmuster, Nutzer nahe am Budgetlimit und abgelehnte KI-Aufrufe sichtbar machen
       - KI-Credits, Tageslimits, Monatslimits, Modellfreigaben, Budgetwarnschwellen und globalen KI-Kill-Switch administrieren

@@ -1,4 +1,4 @@
-﻿schemaVersion: 1
+schemaVersion: 1
 kind: system_capability_catalog
 sourceStatus: legacy_import_source
 note: SystemCapabilities beschreiben Produktfunktionen und Berechtigungen. Sie sind nicht identisch mit TechnicalCapabilities.
@@ -157,6 +157,13 @@ items:
     ownerDomain: Authorization
     summary: Account-bezogene Freischaltungen, Overrides und Entzuege administrieren.
 
+
+  - id: system_capability.admin_device_management
+    type: system_capability
+    title: Admin Device Management
+    status: draft
+    ownerDomain: Authorization
+    summary: Administratoren und berechtigte Supportrollen duerfen Device-Status, Pairing-Status, GerNetiX-Verified-Status, Community-Hardware, OTA-Status, Credential-Historie und Supportberechtigung pruefen.
   - id: system_capability.account_identification
     type: system_capability
     title: Account Identification

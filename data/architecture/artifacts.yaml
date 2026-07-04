@@ -94,3 +94,99 @@ items:
       - architecture.registered_processor_board
     constrainedBy:
       - nfr.firmware_flash_must_not_brick_board
+
+  - id: architecture_artifact.device_management_server
+    type: architecture_artifact
+    title: Device Management Server
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Architekturartefakt fuer den extern ansprechbaren Device-Management-Bereich im gemeinsamen Backend. Verwaltet Device Registry, Kunden-Pairing, Hersteller-Register, Echtheitsnachweis, Account-Device-Inventar, OTA-Zielauswahl, Connectivity-Status und Supportberechtigung.
+    deploymentDecision: Im MVP als Modul im gemeinsamen Backend betreiben; API und Modulgrenzen so schneiden, dass spaetere Auslagerung als eigener Service moeglich bleibt.
+    apiPrefix:
+      - /api/device-management
+    usedBy:
+      - app.user_ide
+      - app.recovery_tool
+      - app.provisioning_tool
+      - app.admin_tool
+    derivedFromRequirements:
+      - requirement.device_manufacturer_registration
+      - requirement.device_customer_registration_and_pairing
+      - requirement.device_authenticity_challenge_response
+      - requirement.community_hardware_supported_without_entitlement
+      - requirement.ide_ota_device_selection_from_profile
+      - requirement.device_support_entitlement_traceability
+    components:
+      - component.device_registry
+      - component.device_pairing
+      - component.device_authenticity
+      - component.account_device_inventory
+      - component.ota_target_discovery
+      - component.device_connectivity_setup
+      - component.device_support_entitlement
+      - component.admin_device_management
+
+  - id: component.device_registry
+    type: architecture_component
+    title: Device Registry Component
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Komponente fuer konkrete Devices, Lifecycle, Hersteller-Register und Heartbeats.
+
+  - id: component.device_pairing
+    type: architecture_component
+    title: Device Pairing Component
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Komponente fuer Pairing-Sessions, Pairing-Kanaele und Account-Zuordnung.
+
+  - id: component.device_authenticity
+    type: architecture_component
+    title: Device Authenticity Component
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Komponente fuer Challenge-Response-Pruefung, HMAC-Nachweis und Bewertung als GerNetiX-verified oder Community-Hardware.
+
+  - id: component.account_device_inventory
+    type: architecture_component
+    title: Account Device Inventory Component
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Account
+    summary: Komponente fuer Device-Eintraege im Account-Profil inklusive Capabilities, Anzeigename, Online-Status und OTA-Status.
+
+  - id: component.ota_target_discovery
+    type: architecture_component
+    title: OTA Target Discovery Component
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: IDE
+    summary: Komponente fuer die Auswahl kompatibler OTA-Zielgeraete aus dem Account-Device-Inventar.
+
+  - id: component.device_connectivity_setup
+    type: architecture_component
+    title: Device Connectivity Setup Component
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Komponente fuer Connectivity-Status, AP-/Node-Modus, OTA-Hostname und WLAN-Setup-Kontext. WLAN-Passwoerter bleiben lokal auf dem Device.
+
+  - id: component.device_support_entitlement
+    type: architecture_component
+    title: Device Support Entitlement Component
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Komponente fuer Support-, Garantie- und Reklamationspruefung auf Basis von Provisionierung, Echtheitsnachweis, Kaufkontext und Account-Zuordnung.
+
+  - id: component.admin_device_management
+    type: architecture_component
+    title: Admin Device Management Component
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Admin- und Support-Sicht auf Device Management fuer Statuspruefung, GerNetiX-Verified-vs-Community-Unterscheidung, Pairing, Connectivity, OTA, Credential-Historie und Support-Entitlement.

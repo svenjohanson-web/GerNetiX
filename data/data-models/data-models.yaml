@@ -1,4 +1,4 @@
-﻿schemaVersion: 1
+schemaVersion: 1
 kind: data_model_catalog
 sourceStatus: legacy_import_source
 items:
@@ -31,6 +31,11 @@ items:
     implementationStatus: Not Started
     ownerDomain: Business
     summary: Datenmodell fuer aktuelles KI-Credit-Guthaben, gesperrte Credits, verfuegbare Credits und Account-/Tarifbezug.
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
     derivedFromRequirements:
       - requirement.ai_credit_balance
       - requirement.ai_prepaid_credit_check
@@ -43,6 +48,11 @@ items:
     implementationStatus: Not Started
     ownerDomain: Business
     summary: Datenmodell fuer nachvollziehbare Credit-Buchungen wie Verbrauch, Gutschrift, Sperre, Korrektur, Promotion oder Supportgutschrift.
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
     derivedFromRequirements:
       - requirement.ai_credit_balance
       - requirement.ai_admin_cost_control_actions
@@ -69,6 +79,11 @@ items:
       - rejectionReason
       - protectionMeasure
       - requestCountKey
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
     derivedFromRequirements:
       - requirement.ai_usage_event_audit_trail
       - requirement.ai_prepaid_credit_check
@@ -83,6 +98,11 @@ items:
     implementationStatus: Not Started
     ownerDomain: Business
     summary: Aggregierte KI-Nutzung nach Benutzer, Zeitraum, Modell, Tarif, Nutzergruppe, Kosten, Credits, Tokens, Fehlern und Ablehnungen.
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
     derivedFromRequirements:
       - requirement.ai_admin_usage_dashboard
       - requirement.ai_cost_margin_reporting
@@ -119,6 +139,11 @@ items:
     implementationStatus: Not Started
     ownerDomain: Business
     summary: Audit-Datenmodell fuer administrative Eingriffe an Credits, Limits, Sperren, Modellfreigaben, Warnschwellen und globalem Kill-Switch.
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
     derivedFromRequirements:
       - requirement.ai_admin_cost_control_actions
 
@@ -141,6 +166,11 @@ items:
       - allowedSourceTypes
       - conversationId
       - moderationState
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
     derivedFromRequirements:
       - requirement.community_ai_assistant_query
 
@@ -163,6 +193,11 @@ items:
       - cacheHit
       - ragHitScore
       - generatedAt
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
     derivedFromRequirements:
       - requirement.community_ai_assistant_query
       - requirement.community_ai_assistant_sources
@@ -277,6 +312,11 @@ items:
       - progressStates
       - evidenceIds
       - lastUpdatedAt
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
     derivedFromRequirements:
       - requirement.account_competency_profile
       - requirement.competency_based_learning_recommendations
@@ -295,6 +335,11 @@ items:
       - level
       - achievedAt
       - lastEvidenceId
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
     derivedFromRequirements:
       - requirement.account_competency_profile
       - requirement.non_linear_learning_progression
@@ -315,6 +360,11 @@ items:
       - sourceStepId
       - observedAt
       - evidenceSummary
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
     derivedFromRequirements:
       - requirement.account_competency_profile
       - requirement.competency_evidence_feedback
@@ -333,6 +383,11 @@ items:
       - competencyIds
       - feedbackText
       - createdAt
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
     derivedFromRequirements:
       - requirement.competency_evidence_feedback
 
@@ -353,6 +408,11 @@ items:
       - missingCompetencyIds
       - deepensCompetencyIds
       - createdAt
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
     derivedFromRequirements:
       - requirement.competency_based_learning_recommendations
       - requirement.non_linear_learning_progression
@@ -391,6 +451,273 @@ items:
       - boardFeedbackState
       - learnerFeedbackState
       - completedAt
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
     derivedFromRequirements:
       - requirement.learning_step_completion_conditions
       - requirement.board_execution_adapter_for_learning_steps
+
+  - id: data_model.device
+    type: data_model
+    title: Device
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Konkretes physisches Geraet, unabhaengig davon, ob es von GerNetiX provisioniert oder vom Nutzer selbst gekauft wurde.
+    fields:
+      - deviceId
+      - serialNumber
+      - hardwareProfileId
+      - authenticityStatus
+      - lifecycleState
+      - createdAt
+      - lastSeenAt
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.device_manufacturer_registration
+      - requirement.device_customer_registration_and_pairing
+
+  - id: data_model.device_manufacturer_registration
+    type: data_model
+    title: DeviceManufacturerRegistration
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Internes Register fuer von GerNetiX provisionierte Devices inklusive Charge, Firmwarestand, Hardwareprofil, Pruefstatus und Provisionierungsverantwortung.
+    fields:
+      - deviceId
+      - provisioningBatchId
+      - provisionedAt
+      - provisionedBy
+      - firmwareVersion
+      - qualityCheckState
+      - supportEntitlementId
+    derivedFromRequirements:
+      - requirement.device_manufacturer_registration
+
+  - id: data_model.account_device
+    type: data_model
+    title: AccountDevice
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Account
+    summary: Device-Eintrag im Profil oder Inventar eines Accounts, inklusive Anzeigename, Hardwareprofil, Capabilities, Echtheitsstatus, OTA-Status und letzter Erreichbarkeit.
+    fields:
+      - accountDeviceId
+      - accountId
+      - deviceId
+      - displayName
+      - hardwareProfileId
+      - technicalCapabilityIds
+      - authenticityStatus
+      - connectivityStatus
+      - otaStatus
+      - lastSeenIp
+      - otaHostname
+      - lastFirmwareVersion
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.device_customer_registration_and_pairing
+      - requirement.community_hardware_supported_without_entitlement
+      - requirement.ide_ota_device_selection_from_profile
+
+  - id: data_model.device_pairing_session
+    type: data_model
+    title: DevicePairingSession
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Zeitlich begrenzter Pairing-Vorgang, der ein Device einem Account zuordnet und den Pairing-Status nachvollziehbar macht.
+    fields:
+      - pairingSessionId
+      - accountId
+      - deviceId
+      - pairingCodeHash
+      - status
+      - createdAt
+      - expiresAt
+      - completedAt
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.device_customer_registration_and_pairing
+
+  - id: data_model.device_ownership
+    type: data_model
+    title: DeviceOwnership
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Besitz- oder Nutzungszuordnung zwischen Account und Device; getrennt von Echtheit und Supportanspruch.
+    fields:
+      - deviceId
+      - accountId
+      - ownershipStatus
+      - pairedAt
+      - unpairedAt
+      - pairingSessionId
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.device_customer_registration_and_pairing
+      - requirement.device_support_entitlement_traceability
+
+  - id: data_model.device_credential
+    type: data_model
+    title: DeviceCredential
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Credential-Referenz fuer Echtheitsnachweis und sichere Device-Kommunikation; Secrets werden nicht im Klartext als Modellinhalt gefuehrt.
+    fields:
+      - deviceId
+      - credentialId
+      - credentialType
+      - keyReference
+      - status
+      - createdAt
+      - revokedAt
+    derivedFromRequirements:
+      - requirement.device_manufacturer_registration
+      - requirement.device_authenticity_challenge_response
+
+  - id: data_model.device_authenticity_proof
+    type: data_model
+    title: DeviceAuthenticityProof
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Ergebnis eines Challenge-Response-Nachweises, mit dem ein Device als GerNetiX-provisioniert oder als nicht verifiziert bewertet wird.
+    fields:
+      - proofId
+      - deviceId
+      - challengeId
+      - proofType
+      - verificationState
+      - verifiedAt
+      - failureReason
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.device_authenticity_challenge_response
+      - requirement.device_support_entitlement_traceability
+
+  - id: data_model.device_support_entitlement
+    type: data_model
+    title: DeviceSupportEntitlement
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Nachvollziehbare Support-, Garantie- oder Reklamationsberechtigung fuer ein konkretes Device auf Basis von Provisionierung, Kaufkontext, Pairing und Echtheitsnachweis.
+    fields:
+      - supportEntitlementId
+      - deviceId
+      - accountId
+      - entitlementStatus
+      - source
+      - validFrom
+      - validUntil
+      - decisionReason
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.device_manufacturer_registration
+      - requirement.community_hardware_supported_without_entitlement
+      - requirement.device_support_entitlement_traceability
+
+  - id: data_model.device_ota_endpoint
+    type: data_model
+    title: DeviceOtaEndpoint
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: OTA-Erreichbarkeit eines Account-Devices inklusive Hostname, IP, Port, Status, letztem Kontakt und letztem Flash-Ergebnis.
+    fields:
+      - accountDeviceId
+      - otaHostname
+      - lastSeenIp
+      - port
+      - otaStatus
+      - lastSeenAt
+      - lastFlashResult
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.ide_ota_device_selection_from_profile
+
+  - id: data_model.customer_data_access_consent
+    type: data_model
+    title: CustomerDataAccessConsent
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Authorization
+    summary: Einwilligung eines Kunden, dass Admin oder Support fuer einen konkreten Zweck und Zeitraum kundenrelevante Daten einsehen darf.
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    fields:
+      - consentId
+      - accountId
+      - grantedByAccountId
+      - grantedToRole
+      - purpose
+      - scope
+      - validFrom
+      - validUntil
+      - revokedAt
+    derivedFromRequirements:
+      - requirement.customer_data_consent_for_admin_access
+
+  - id: data_model.customer_data_access_audit_event
+    type: data_model
+    title: CustomerDataAccessAuditEvent
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Authorization
+    summary: Audit-Event fuer jede Einsicht in kundenrelevante Daten durch Admin, Support oder Systemrollen.
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: false
+    supportAccessRequiresConsent: false
+    accessMustBeAudited: true
+    fields:
+      - auditEventId
+      - accountId
+      - accessedByUserId
+      - accessedByRole
+      - accessedDataModelId
+      - purpose
+      - consentId
+      - occurredAt
+      - accessDecision
+      - rejectionReason
+    derivedFromRequirements:
+      - requirement.customer_data_consent_for_admin_access

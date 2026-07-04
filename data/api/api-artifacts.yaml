@@ -150,3 +150,96 @@ items:
     derivedFromRequirements:
       - requirement.learning_step_completion_conditions
       - requirement.board_execution_adapter_for_learning_steps
+
+  - id: api_artifact.device_manufacturer_registration
+    type: api_artifact
+    title: Device Manufacturer Registration API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Fachliches API-Artefakt fuer internes Hersteller-Register, Provisionierungsstatus, Hardwareprofil, Charge, Firmwarestand und Supportgrundlage von GerNetiX Devices.
+    derivedFromRequirements:
+      - requirement.device_manufacturer_registration
+
+  - id: api_artifact.device_customer_registration
+    type: api_artifact
+    title: Device Customer Registration API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: API-Artefakt fuer Registrierung von GerNetiX- und Community-Hardware im Account-Device-Inventar.
+    derivedFromRequirements:
+      - requirement.device_customer_registration_and_pairing
+      - requirement.community_hardware_supported_without_entitlement
+
+  - id: api_artifact.device_pairing
+    type: api_artifact
+    title: Device Pairing API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: API-Artefakt fuer Pairing-Sessions, Pairing-Code-Pruefung, Account-Zuordnung, Unpairing und Pairing-Status.
+    derivedFromRequirements:
+      - requirement.device_customer_registration_and_pairing
+
+  - id: api_artifact.device_authenticity_challenge
+    type: api_artifact
+    title: Device Authenticity Challenge API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: API-Artefakt fuer Challenge-Erzeugung, HMAC- oder Signaturpruefung und Bewertung, ob ein Device als GerNetiX-provisioniert gilt.
+    derivedFromRequirements:
+      - requirement.device_authenticity_challenge_response
+
+  - id: api_artifact.account_device_inventory
+    type: api_artifact
+    title: Account Device Inventory API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Account
+    summary: API-Artefakt fuer das Device-Inventar eines Accounts inklusive Community-Hardware, GerNetiX-Verified-Status, Capabilities, OTA-Status und Projektkompatibilitaet.
+    derivedFromRequirements:
+      - requirement.device_customer_registration_and_pairing
+      - requirement.community_hardware_supported_without_entitlement
+      - requirement.ide_ota_device_selection_from_profile
+
+  - id: api_artifact.ide_ota_device_selection
+    type: api_artifact
+    title: IDE OTA Device Selection API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: IDE
+    summary: API-Artefakt fuer die Auswahl kompatibler OTA-Zielgeraete aus dem Account-Profil anhand von TechnicalCapabilities, Boardprofil, Online-Status und OTA-Faehigkeit.
+    derivedFromRequirements:
+      - requirement.ide_ota_device_selection_from_profile
+
+  - id: api_artifact.device_support_entitlement
+    type: api_artifact
+    title: Device Support Entitlement API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: API-Artefakt fuer Support- und Reklamationspruefung eines konkreten Devices anhand von Provisionierung, Pairing, Echtheitsnachweis, Kaufkontext und Account-Zuordnung.
+    derivedFromRequirements:
+      - requirement.device_support_entitlement_traceability
+
+  - id: api_artifact.admin_device_management
+    type: api_artifact
+    title: Admin Device Management API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: API-Artefakt fuer Admin- und Support-Sichten auf konkrete Devices, Statuspruefung, Pairing, Connectivity, OTA, GerNetiX-Verified-vs-Community-Unterscheidung, Credential-Historie und Support-Entitlement.
+    derivedFromRequirements:
+      - requirement.device_admin_status_inspection
+
+  - id: api_artifact.customer_data_access_consent
+    type: api_artifact
+    title: Customer Data Access Consent API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Authorization
+    summary: API-Artefakt fuer Einwilligung, Widerruf, Zweckbindung und Auditierung von Admin-/Support-Einsicht in kundenrelevante Daten.
+    derivedFromRequirements:
+      - requirement.customer_data_consent_for_admin_access

@@ -149,3 +149,13 @@ items:
       - Gleichzeitig muessen unklare Dauerpflichten und falsche Erwartungshaltungen vermieden werden.
       - Die Plattform entscheidet anhand Kurs, Grants, Produktangebot und redaktioneller Roadmap, welche neuen Inhalte ein Nutzer sieht.
 
+
+  - id: BR-CUSTOMER-DATA-CONSENT
+    type: business_rule
+    title: Kundenrelevante Daten nur zweckgebunden mit Consent einsehen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Authorization
+    summary: Kundenrelevante Daten duerfen durch Admin oder Support nur eingesehen werden, wenn ein gueltiger Consent, eine dokumentierte rechtliche Grundlage oder ein zwingender Sicherheits-/Missbrauchsfall vorliegt. Jede Einsicht muss zweckgebunden, zeitlich begrenzt und auditierbar sein.
+    derivedFromRequirements:
+      - requirement.customer_data_consent_for_admin_access
