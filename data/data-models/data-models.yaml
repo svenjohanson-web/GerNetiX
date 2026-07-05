@@ -24,6 +24,191 @@ items:
       - requirement.verified_answer_status_visible
       - requirement.reverify_changed_verified_answer
 
+  - id: data_model.user_account
+    type: data_model
+    title: UserAccount
+    businessStatus: In Analysis
+    implementationStatus: In Design
+    ownerDomain: Account
+    summary: Interner Nutzeraccount mit stabiler `user_id`, Benutzername, interner E-Mail und Status. Dies ist die fuehrende Identitaet fuer alle Folgemodule.
+    fields:
+      - id
+      - username
+      - email
+      - status
+      - created_at
+      - updated_at
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.identity_registration_login
+
+  - id: data_model.local_credential
+    type: data_model
+    title: LocalCredential
+    businessStatus: In Analysis
+    implementationStatus: In Design
+    ownerDomain: Account
+    summary: Lokale Passwort-Credential fuer klassische Registrierung und Login. Speichert ausschliesslich Passwort-Hashes, niemals Klartextpasswoerter.
+    fields:
+      - id
+      - user_id
+      - password_hash
+      - created_at
+      - updated_at
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: false
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.identity_registration_login
+
+  - id: data_model.external_identity
+    type: data_model
+    title: ExternalIdentity
+    businessStatus: In Analysis
+    implementationStatus: In Design
+    ownerDomain: Account
+    summary: Gekapselte Zuordnung eines externen OAuth2-/OpenID-Connect-Providers zu einem internen UserAccount. Provider-IDs duerfen nicht ausserhalb des Identity-Moduls verwendet werden.
+    fields:
+      - id
+      - user_id
+      - provider
+      - provider_user_id
+      - provider_email
+      - linked_at
+      - last_login_at
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.identity_registration_login
+
+  - id: data_model.verification_token
+    type: data_model
+    title: VerificationToken
+    businessStatus: In Analysis
+    implementationStatus: In Design
+    ownerDomain: Account
+    summary: Token fuer E-Mail-Verifizierung eines UserAccount. Tokens werden nur gehasht gespeichert und koennen ablaufen oder verwendet werden.
+    fields:
+      - id
+      - user_id
+      - token_hash
+      - expires_at
+      - used_at
+      - created_at
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: false
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.identity_registration_login
+
+  - id: data_model.password_reset_token
+    type: data_model
+    title: PasswordResetToken
+    businessStatus: In Analysis
+    implementationStatus: In Design
+    ownerDomain: Account
+    summary: Token fuer Passwort-Reset eines LocalCredential-Accounts. Antworten auf Reset-Anfragen bleiben neutral, damit keine E-Mail-Existenz verraten wird.
+    fields:
+      - id
+      - user_id
+      - token_hash
+      - expires_at
+      - used_at
+      - created_at
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: false
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.identity_registration_login
+
+  - id: data_model.auth_session
+    type: data_model
+    title: Session/AuthToken
+    businessStatus: In Analysis
+    implementationStatus: In Design
+    ownerDomain: Account
+    summary: Session oder AuthToken fuer erfolgreiche Logins. Speichert Token-Hash oder JWT-ID, Ablaufzeit und Widerruf.
+    fields:
+      - id
+      - user_id
+      - token_hash
+      - jwt_id
+      - expires_at
+      - revoked_at
+      - created_at
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.identity_registration_login
+
+  - id: data_model.account_transparency_snapshot
+    type: data_model
+    title: AccountTransparencySnapshot
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Account
+    summary: Zusammengesetztes Lesemodell fuer die Kunden-IDE-Sicht `Was weiss GerNetiX ueber mich?`. Der Snapshot fasst eigene Identity-, Kontakt-, Plan-, Abo-, Kauf-, Payment-, Angebots-, Grant-, Device-, Lern-, Feedback-, KI-, Consent- und Audit-Hinweise zusammen, ist aber nicht Quelle der Wahrheit fuer diese Domaenen.
+    fields:
+      - accountId
+      - userId
+      - username
+      - accountStatus
+      - identitySummary
+      - contactDataSummary
+      - linkedLoginProviders
+      - activePlans
+      - activeSubscriptions
+      - purchases
+      - paymentSummary
+      - relevantProductOfferings
+      - effectiveGrants
+      - revokedGrants
+      - accountOverrides
+      - effectiveSystemCapabilities
+      - deviceSummary
+      - learningSummary
+      - competencySummary
+      - recommendationSummary
+      - feedbackSummary
+      - aiCreditSummary
+      - aiUsageSummary
+      - consentSummary
+      - customerDataAccessSummary
+      - sourceSections
+      - staleBecauseOfEventIds
+      - generatedAt
+      - validUntil
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    snapshotRules:
+      - Das Lesemodell darf keine fuehrende Datenquelle fuer Identity, Payment, Abos, Angebote, Grants, Devices, Learning, KI-Nutzung oder Consents werden.
+      - Jeder Abschnitt nennt Quelle, Zweck, letzte Aktualisierung und fachlichen Verantwortungsbereich.
+      - Provider-IDs, Passwort-Hashes, Token-Hashes, Device-Secrets, interne Abuse-Signale und interne Anbieter-Kosten werden nicht angezeigt.
+      - Grant- und Capability-Entscheidungen muessen fuer den Nutzer nachvollziehbar begruendet werden.
+      - Wenn relevante Domaenenereignisse eintreffen, wird der Snapshot als veraltet markiert.
+      - Beim naechsten Abruf wird der Snapshot automatisch neu berechnet oder aus frischen Quellen aufgebaut.
+    derivedFromRequirements:
+      - requirement.account_self_transparency_view
+
   - id: data_model.ai_credit_account
     type: data_model
     title: AiCreditAccount
@@ -391,6 +576,74 @@ items:
     derivedFromRequirements:
       - requirement.competency_evidence_feedback
 
+  - id: data_model.learning_feedback
+    type: data_model
+    title: LearningFeedback
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Nutzerfeedback zu einem einzelnen ProjectStep oder zum Abschluss eines LearningProject. Der fachliche Feedbackinhalt bleibt im Learning-/Projektkontext gespeichert; identifizierende Absender- und Kontaktdaten werden getrennt und zeitlich begrenzt behandelt.
+    fields:
+      - feedbackId
+      - learningProjectId
+      - projectStepId
+      - projectCompletionId
+      - senderAccountId
+      - feedbackScope
+      - feedbackText
+      - rating
+      - status
+      - feedbackContactMode
+      - createdAt
+      - anonymizeAfter
+      - anonymizedAt
+      - anonymizationReason
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    retentionRules:
+      - Anonymes Feedback enthaelt keine fuer Admins sichtbaren Absender- oder Kontaktdaten.
+      - Identifizierbares Feedback darf nur zweckgebunden und auditiert eingesehen werden.
+      - Spaetestens zwei Monate nach Abgabe wird der Personenbezug anonymisiert, sofern keine zwingende andere Rechtsgrundlage dokumentiert ist.
+      - Nach Anonymisierung bleiben Feedbackinhalt, Projektkontext, Step-Kontext, Status und aggregierbare Qualitaetsdaten erhalten.
+    derivedFromRequirements:
+      - requirement.learning_project_step_feedback
+
+  - id: data_model.feedback_contact_consent
+    type: data_model
+    title: FeedbackContactConsent
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Authorization
+    summary: Zweckgebundene Einwilligung, dass GerNetiX den Nutzer fuer Rueckfragen zu genau einem Feedback kontaktieren darf. Die Einwilligung ist auf maximal zwei Monate begrenzt und kann widerrufen werden.
+    fields:
+      - feedbackContactConsentId
+      - feedbackId
+      - accountId
+      - purpose
+      - contactChannel
+      - grantedAt
+      - validUntil
+      - revokedAt
+      - anonymizedAt
+      - auditEventIds
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    consentRules:
+      - Zweck ist ausschliesslich Rueckfrage oder Klaerung zu genau diesem Feedback.
+      - Gueltigkeit endet spaetestens zwei Monate nach Abgabe des Feedbacks.
+      - Widerruf ist vor Ablauf moeglich.
+      - Nach Ablauf oder Widerruf duerfen Kontaktdaten im Feedbackkontext nicht mehr fuer Kontaktaufnahme genutzt werden.
+      - Zugriff auf Kontaktdaten muss mit Zweck, Rolle, Zeitpunkt und Entscheidung auditiert werden.
+    derivedFromRequirements:
+      - requirement.learning_project_step_feedback
+      - requirement.customer_data_consent_for_admin_access
+
   - id: data_model.learning_recommendation
     type: data_model
     title: LearningRecommendation
@@ -459,6 +712,87 @@ items:
     derivedFromRequirements:
       - requirement.learning_step_completion_conditions
       - requirement.board_execution_adapter_for_learning_steps
+
+  - id: data_model.firmware_build_job
+    type: data_model
+    title: FirmwareBuildJob
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: IDE
+    summary: Build- oder Build-&-Flash-Auftrag, den der Projektserver erzeugt und fachlich verwaltet. Der Job referenziert Projekt, Nutzer, Zielgeraet, BuildPackage, Status, Warteschlangenposition und optionalen Deploy-Kontext.
+    fields:
+      - buildJobId
+      - accountId
+      - projectId
+      - targetDeviceId
+      - jobType
+      - requestedByAccountId
+      - requestedAt
+      - status
+      - buildPackageId
+      - buildResultId
+      - queueState
+      - replacedJobId
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.firmware_build_deploy_server
+
+  - id: data_model.firmware_build_package
+    type: data_model
+    title: FirmwareBuildPackage
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: IDE
+    summary: Vollstaendiger Snapshot eines Firmware-Builds, den der Projektserver per HTTP an den Build-&-Deploy-Server uebertraegt. Der Buildserver darf ausschliesslich aus diesem Paket bauen und nicht direkt auf Projektdaten zugreifen.
+    fields:
+      - buildPackageId
+      - buildJobId
+      - packageHash
+      - platformioIni
+      - srcSnapshot
+      - includeSnapshot
+      - libSnapshot
+      - assetsSnapshot
+      - optionalPrecompiledFiles
+      - createdAt
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.firmware_build_deploy_server
+
+  - id: data_model.firmware_build_result
+    type: data_model
+    title: FirmwareBuildResult
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: IDE
+    summary: Ergebnis eines Firmware-Builds inklusive Firmware-Artefakten, Build-Log, Status, SHA-256 und Dateigroessen. Der Projektserver speichert das Ergebnis und die Historie dauerhaft.
+    fields:
+      - buildResultId
+      - buildJobId
+      - status
+      - firmwareBinReference
+      - firmwareElfReference
+      - firmwareMapReference
+      - buildLogReference
+      - sha256
+      - fileSize
+      - completedAt
+      - errorCode
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.firmware_build_deploy_server
 
   - id: data_model.device
     type: data_model

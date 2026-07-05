@@ -4,138 +4,320 @@ slug: ai-pet-esp32
 type: learning_project
 status: draft
 projectStatus: idea
-title: KI-Haustier / Tamagotchi AI
+title: Software Engineering mit digitalem Tamagotchi
 ownerDomain: Learning
-summary: Virtuelles Haustier auf einem ESP32 mit Display, offline nutzbar und optional mit KI-Dialogen erweiterbar.
+summary: Interaktives Lernmodul, das Software-Engineering-Grundlagen vermittelt. Das Tamagotchi ist nur ein leicht verstaendliches Beispiel; das eigentliche Lernziel ist, warum professionelle Softwareentwicklung Modelle und Dokumentation verwendet und warum Quellcode allein komplexes Verhalten schlecht erklaert.
 
 learningPath: learning_path.ai_pet_embedded_interaction
-developsCompetencies:
-  - competency.esp32_project_setup
-  - competency.display_control
-  - competency.input_handling
-  - competency.state_machine
-  - competency.local_persistence
-  - competency.wifi_basics
-  - competency.online_offline_design
+primaryLearningGoal: learning_goal.software_engineering_basics
+secondaryLearningGoals:
+  - learning_goal.embedded_basics
+  - learning_goal.cross_platform_development
 
-variants:
-  - id: project.ai_pet_esp32.variant.basic_display
-    title: Offline-Haustier mit ESP32, Display und Button
-    mode: offline
-    summary: Kostenguenstige Einstiegsvariante, bei der das Haustier vollstaendig lokal auf dem ESP32 laeuft und keine Internetverbindung benoetigt.
-    technicalConstraints:
-      - capability.processor_esp32
-      - capability.display_output
-      - capability.digital_input
-    optionalCapabilities:
-      - capability.audio_output
-    advantages:
-      - Funktioniert ohne Internetverbindung.
-      - Keine laufenden KI- oder Cloud-Kosten.
-      - Datenschutz und Betrieb sind einfacher nachvollziehbar.
-      - Geringere Einstiegshuerde fuer Anfaenger.
-      - Geeignet fuer Schulen, Workshops und Offline-Umgebungen.
-    disadvantages:
-      - Keine natuerlichsprachlichen KI-Dialoge.
-      - Persoenlichkeit und Antworten sind auf lokal modellierte Logik begrenzt.
-      - Weniger dynamische Inhalte als bei Online-KI.
-    costImpact:
-      upfront: niedrig
-      recurring: keine KI-Kosten
-      costProtectionRequired: false
+teachingRole: concept_first_learning_module
+exampleDomain: example_domain.digital_tamagotchi
+exampleDomainRule: Das digitale Tamagotchi ist austauschbares Beispielmaterial. Es ist nicht Ziel des Moduls, ein vollstaendiges Tamagotchi zu programmieren.
 
-  - id: project.ai_pet_esp32.variant.ai_online
-    title: KI-Online-Haustier mit OpenAI-Anbindung
-    mode: online_ai
-    summary: Erweiterte Variante mit WLAN und optionaler OpenAI-Anbindung fuer natuerlichsprachliche Dialoge und dynamischere Persoenlichkeit.
-    technicalConstraints:
-      - capability.processor_esp32
-      - capability.display_output
-      - capability.digital_input
-      - capability.wifi
-    optionalCapabilities:
-      - capability.audio_output
-      - capability.microphone_input
-    systemCapabilities:
-      - system_capability.ai_assistant
-      - system_capability.ai_premium_models
-    advantages:
-      - Natuerlichere und abwechslungsreichere Dialoge moeglich.
-      - Haustier kann dynamischer, persoenlicher und lernfaehiger wirken.
-      - Gut geeignet, um Online-/Offline-Architektur, API-Nutzung und KI-Kostenkontrolle zu vermitteln.
-      - Kann als hoeherwertige Projektvariante oder Folgeprojekt dienen.
-    disadvantages:
-      - Stabile Online-Verbindung wird benoetigt.
-      - KI-Aufrufe verursachen laufende Kosten.
-      - Datenschutz, Account-Kontext und Missbrauchsschutz muessen fachlich betrachtet werden.
-      - Fehlende Credits, Budgetlimits oder deaktivierte KI-Dienste koennen Funktionen begrenzen.
-      - Hoehere Komplexitaet fuer Einsteiger.
-    costImpact:
-      upfront: mittel
-      recurring: KI-Kosten pro Nutzung moeglich
-      costProtectionRequired: true
-      constrainedBy:
-        - BR-006
-        - nfr.ai_cost_protection_auditability
+startPlatformSelection:
+  title: Zielplattform fuer das Lernmodul auswaehlen
+  requiredBeforeFirstStage: true
+  purpose: Der Nutzer waehlt zu Beginn, auf welcher Zielplattform das Beispiel ausgefuehrt oder simuliert wird. Die Plattform macht Zielsystemunterschiede sichtbar, bleibt aber Mittel zum Zweck; das Lernziel bleibt Software Engineering.
+  prompt: Wo moechtest du das Tamagotchi-Beispiel ausfuehren?
+  options:
+    - key: platform_pc
+      title: PC
+      targetSystem: Windows oder Linux Desktop
+      executionMode: desktop_or_browser_runtime
+      userBenefit: Niedrige Einstiegshuerde, grosser Bildschirm, gute Sicht auf Diagramm, Codeausschnitt und Interaktion.
+      notes:
+        - Geeignet fuer Lernende ohne Embedded-Hardware.
+        - Diagramm und Tamagotchi-Demo koennen nebeneinander dargestellt werden.
+    - key: platform_mac
+      title: Mac
+      targetSystem: macOS Desktop
+      executionMode: desktop_or_browser_runtime
+      userBenefit: Niedrige Einstiegshuerde auf macOS, grosser Bildschirm, gute Sicht auf Diagramm, Codeausschnitt und Interaktion.
+      notes:
+        - Geeignet fuer Lernende ohne Embedded-Hardware.
+        - Plattformunterschiede zu PC duerfen sichtbar sein, aber nicht dominieren.
+    - key: platform_esp32_large_display
+      title: ESP32 mit grossem Display
+      targetSystem: ESP32
+      executionMode: embedded_runtime
+      requiredCapabilities:
+        - capability.processor_esp32
+        - capability.display_output
+        - capability.digital_input
+      userBenefit: Macht spaeter sichtbar, wie ein Modell auf echter Hardware landet.
+      notes:
+        - Fuer dieses Software-Engineering-Modul bleibt Hardware Mittel zur Demonstration.
+        - Hardware-Setup darf die Modell-Lektion nicht ueberlagern.
+    - key: platform_ios
+      title: iPhone / iPad
+      targetSystem: iOS
+      executionMode: mobile_runtime
+      userBenefit: Mobile Bedienung, Touch-Interaktion und kleinerer Bildschirm werden als Randbedingungen sichtbar.
+      notes:
+        - App-Build, Signierung und Store-Themen sind in diesem Modul keine Lernziele.
+    - key: platform_android
+      title: Android Smartphone / Tablet
+      targetSystem: Android
+      executionMode: mobile_runtime
+      userBenefit: Mobile Bedienung, Touch-Interaktion und kleinerer Bildschirm werden als Randbedingungen sichtbar.
+      notes:
+        - App-Build und Deployment sind in diesem Modul keine Lernziele.
+  selectionRules:
+    - Alle Plattformvarianten verwenden dasselbe fachliche Tamagotchi-Modell.
+    - Unterschiede duerfen in Bedienung, Bildschirmgroesse, Build-/Startweg und technischer Huelle sichtbar werden.
+    - Die Reihenfolge und Botschaft des Lernmoduls bleiben auf allen Plattformen gleich.
+    - Die Plattformauswahl soll zeigen, dass das Modell vor der Runtime steht.
+    - Wenn keine Plattform gewaehlt wurde, startet das Projekt nicht.
+    - Wenn Hardwareanforderungen fuer ESP32 nicht erfuellt sind, soll die IDE PC, Mac, iOS oder Android als Alternative anbieten.
 
-variantComparison:
-  summary: Die Offline-Variante bleibt die empfohlene Basis. Die KI-Online-Variante ist eine optionale Erweiterung oder ein spaeteres Folgeprojekt mit hoeherem Nutzen, aber auch hoeherer Komplexitaet und laufenden Kosten.
-  offlineVariant: project.ai_pet_esp32.variant.basic_display
-  onlineAiVariant: project.ai_pet_esp32.variant.ai_online
-  decisionRule:
-    - Version 1 muss ohne Internet und ohne KI-Kosten sinnvoll funktionieren.
-    - KI-Online-Funktionen duerfen die Offline-Basis nicht blockieren.
-    - KI-Online-Funktionen muessen Cost Protection, Credits, Usage Events und Budgetlimits beruecksichtigen.
-    - Die Vor- und Nachteile der Online-Variante muessen im Lernmaterial explizit gegen die Offline-Variante gestellt werden.
+coreMessage:
+  - Nicht der Quellcode beschreibt Software am verstaendlichsten.
+  - Professionelle Softwareentwicklung verwendet Modelle, um Verhalten verstaendlich zu machen.
+  - Das Tamagotchi ist nur das Beispiel; das eigentliche Lernziel ist Software Engineering.
+  - Gute Softwareentwicklung erzeugt zuerst eine Denkweise und Modellbeschreibung, die unabhaengig von PC, Mac, ESP32, iOS, Android oder einer konkreten Runtime verstanden werden kann.
+  - Von einer klaren Modellbeschreibung zur Implementierung ist der Weg einfacher, weil Code dann nur noch eine konkrete Uebersetzung des Modells in eine Zielruntime ist.
 
-softwareModules:
-  - software_module.pet_core
-  - software_module.state_engine
-  - software_module.display_layer
-  - software_module.input_layer
-  - software_module.persistence_layer
-  - software_module.connectivity_layer
-  - software_module.ai_adapter
+learningObjectives:
+  - Quellcode ist fuer Computer optimiert, nicht fuer Menschen.
+  - Komplexe Software wird zuerst modelliert und anschliessend implementiert.
+  - Eine Zustandsmaschine beschreibt das Verhalten eines Systems.
+  - Zustaende, Uebergaenge und Ereignisse lassen sich einfacher verstehen als Quellcode.
+  - Neue Anforderungen fuehren zu neuen Modellierungsproblemen.
+  - Software Engineering bedeutet, Komplexitaet schrittweise beherrschbar zu machen.
+  - Ein fachliches Modell soll moeglichst unabhaengig von Runtime, Programmiersprache, Framework und Zielplattform formuliert werden.
+  - Implementierung bedeutet, ein fachliches Modell in eine konkrete Runtime zu uebertragen, zum Beispiel manuell, mit KI-Unterstuetzung oder mit runtime-unabhaengigen Sprachen und Frameworks.
+
+nonGoals:
+  - Kein vollstaendiges UML-Training.
+  - Keine vollstaendige Tamagotchi-Implementierung.
+  - Keine Guards, Hierarchien, orthogonalen Regionen oder Prioritaetssemantik zu Beginn.
+  - Keine ESP32-, Display-, Persistenz- oder KI-Implementierung als Schwerpunkt dieses Moduls.
+
+didacticPrinciples:
+  - Erst Nutzen und Problem erfahrbar machen, danach Begriffe einfuehren.
+  - State Machine erst benennen, nachdem der Nutzer den Modellnutzen verstanden hat.
+  - Diagramme einfach, editierbar und ohne UML-Sondernotation darstellen.
+  - Neue Anforderungen gezielt als Modellierungsproblem inszenieren.
+  - Loesungen nicht sofort verraten, sondern Erkenntnismomente erzeugen.
+  - Plattformen und Runtimes werden als austauschbare Ausfuehrungsziele betrachtet, nicht als Ursprung der Fachlogik.
+  - KI-generierter Code oder runtime-unabhaengige Frameworks duerfen als Umsetzungswege eingeordnet werden, ohne das Modell als Quelle des Verstaendnisses zu ersetzen.
+
+runtimeIndependence:
+  title: Runtime-unabhaengiges Denken
+  purpose: Der Nutzer soll lernen, Verhalten zuerst fachlich zu modellieren und erst danach in eine konkrete Zielruntime zu uebertragen.
+  principle: Das Modell beschreibt, was das Tamagotchi fachlich tut. Die Runtime beschreibt nur, wo und wie dieses Modell ausgefuehrt wird.
+  implementationPaths:
+    - Manuelle Implementierung in einer konkreten Sprache oder Runtime.
+    - KI-unterstuetzte Ableitung von Code aus Modell, Regeln und Zielplattform.
+    - Nutzung einer runtime-unabhaengigen Sprache oder eines Frameworks, das mehrere Zielplattformen bedienen kann.
+  boundaries:
+    - KI kann Implementierung beschleunigen, ersetzt aber nicht das fachliche Modell.
+    - Runtime-unabhaengige Frameworks reduzieren Plattformunterschiede, beseitigen sie aber nicht vollstaendig.
+    - Das Lernmodul bewertet Implementierungswege erst nach dem Modellverstaendnis.
+
+visualizationRules:
+  - Einfache Zustandsboxen und Pfeile verwenden.
+  - Keine UML-Sondernotation.
+  - Keine eckigen Guards.
+  - Keine komplexen Symbole.
+  - Keine Hierarchien erklaeren, auch wenn Alive intern Satt und Hungrig enthaelt.
+  - Diagramm muss leicht verstaendlich und editierbar sein.
+
+initialDemo:
+  title: Fertiges Tamagotchi als Motivation
+  userActions:
+    - fuettern
+    - warten
+    - beobachten
+  codeQuestion:
+    prompt: Kannst du aus diesem Quellcode erkennen, wann das Tamagotchi stirbt?
+    rule: Der Codeausschnitt wird zunaechst nicht erklaert.
+    intendedInsight: Der Nutzer erkennt, dass Quellcode fuer Menschen bei Verhalten und Randbedingungen schwer lesbar ist.
+
+stateConceptExamples:
+  - subject: Tuer
+    states:
+      - offen
+      - geschlossen
+  - subject: Waschmaschine
+    states:
+      - Aus
+      - Wartet
+      - Waescht
+      - Fertig
+  - subject: Batterie
+    states:
+      - leer
+      - halbvoll
+      - voll
+  - subject: Ampel
+    states:
+      - Rot
+      - Rot-Gelb
+      - Gruen
+      - Gelb
+
+minimalStateMachine:
+  states:
+    - Alive
+    - Dead
+  aliveSubstates:
+    - Satt
+    - Hungrig
+  transitions:
+    - event: Zeit vergeht
+      from: Satt
+      to: Hungrig
+    - event: Fuettern
+      from: Hungrig
+      to: Satt
+    - event: Zu lange hungrig
+      from: Hungrig
+      to: Dead
+  constraints:
+    - Keine Guards.
+    - Keine UML-Spezialnotation.
+    - Keine Hierarchien erklaeren.
+    - Keine orthogonalen Regionen.
+    - Keine Prioritaeten in der ersten Version.
+
+interactiveExtension:
+  title: Nutzer erweitert das Modell
+  addStateButtonLabel: + Zustand hinzufuegen
+  collectedFields:
+    - name
+    - description
+    - threshold
+    - changeRatePerHour
+    - recoveryAction
+  example:
+    name: Durst
+    description: Das Tamagotchi braucht Fluessigkeit.
+    threshold: 50 %
+    changeRatePerHour: 10 % pro Stunde
+    recoveryAction: Trinken
+  result: Nach dem Speichern wird das einfache Zustandsdiagramm automatisch erweitert.
+
+constructedProblem:
+  title: Gleichzeitige Zustaende sichtbar machen
+  setup:
+    - Hunger
+    - Durst
+  learnerQuestion: Was passiert, wenn das Tamagotchi gleichzeitig hungrig und durstig ist?
+  teachingRule: Die Loesung wird nicht sofort verraten.
+  intendedInsight: Beide Zustaende koennen gleichzeitig wahr sein.
+
+prioritization:
+  problem: Das Display besitzt nur ein Gesicht; deshalb muss entschieden werden, welcher Zustand dargestellt wird.
+  concept: Prioritaetenliste
+  exampleOrder:
+    - Dead
+    - Durstig
+    - Hungrig
+    - Zufrieden
+  intendedInsight:
+    - Mehrere Zustaende koennen gleichzeitig existieren.
+    - Fuer die Darstellung muss dennoch priorisiert werden.
 
 stages:
   - id: stage.ai_pet_esp32.1
-    title: Offline-Haustier
-    goal: Figur, Zustand und einfache Interaktion lokal darstellen.
+    title: Motivation ueber unlesbaren Code
+    goal: Nutzer erleben, dass Quellcode Verhalten nicht automatisch gut erklaert.
+    startsAfter:
+      - startPlatformSelection
+    learnerAction:
+      - Zielplattform PC, Mac, ESP32 mit grossem Display, iOS oder Android auswaehlen.
+      - Fertiges Tamagotchi bedienen.
+      - Codeausschnitt ansehen.
+      - Frage beantworten, ob erkennbar ist, wann das Tamagotchi stirbt.
     learningFocus:
-      - competency.display_control
-      - competency.input_handling
-      - competency.state_machine
+      - Quellcode als computernahe Darstellung
+      - Grenzen von Code als Kommunikationsmittel
+
   - id: stage.ai_pet_esp32.2
-    title: Persistenter Zustand
-    goal: Haustierzustand lokal speichern und beim Neustart wiederherstellen.
+    title: Warum Modelle helfen
+    goal: Modelle und Dokumentation als Ingenieurswerkzeuge einfuehren, bevor der Begriff State Machine genannt wird.
+    learnerAction:
+      - Alltagszustaende vergleichen.
+      - Erkennen, dass Verhalten ueber Zustaende und Uebergaenge beschreibbar ist.
     learningFocus:
-      - competency.local_persistence
+      - Modelle als menschliche Denkwerkzeuge
+      - Zustand
+      - Ereignis
+      - Uebergang
+
   - id: stage.ai_pet_esp32.3
-    title: Optionale Online-Funktionen
-    goal: WLAN und spaeter KI-Dialoge optional einbinden und gegen die Offline-Variante abgrenzen.
+    title: Erste einfache State Machine
+    goal: Das Tamagotchi-Verhalten mit Alive, Dead, Satt und Hungrig als einfaches Zustandsdiagramm verstehen.
+    learnerAction:
+      - Einfache State Machine ansehen.
+      - Uebergaenge Zeit vergeht, Fuettern und Zu lange hungrig nachvollziehen.
     learningFocus:
-      - competency.wifi_basics
-      - competency.online_offline_design
-    comparesVariants:
-      - project.ai_pet_esp32.variant.basic_display
-      - project.ai_pet_esp32.variant.ai_online
+      - State Machine
+      - Zustaende
+      - Uebergaenge
+      - Ereignisse
+
+  - id: stage.ai_pet_esp32.4
+    title: Eigene Zustaende hinzufuegen
+    goal: Nutzer erweitern das Modell interaktiv und erleben, dass neue Anforderungen neue Modellfragen erzeugen.
+    learnerAction:
+      - Button + Zustand hinzufuegen nutzen.
+      - Name, Beschreibung, Schwellenwert, Aenderungsrate und Behebungsaktion eingeben.
+      - Automatisch erweitertes Diagramm betrachten.
+    learningFocus:
+      - Anforderungen modellieren
+      - Modell erweitern
+      - Fachbegriffe strukturiert erfassen
+
+  - id: stage.ai_pet_esp32.5
+    title: Gleichzeitige Zustaende als neues Problem
+    goal: Nutzer erkennen, dass Hunger und Durst gleichzeitig wahr sein koennen.
+    learnerAction:
+      - Frage beantworten, was bei gleichzeitig hungrig und durstig passieren soll.
+    learningFocus:
+      - Modellierungsproblem
+      - gleichzeitige Wahrheiten
+      - Grenzen einfacher Zustandsmodelle
+
+  - id: stage.ai_pet_esp32.6
+    title: Priorisierung fuer Darstellung
+    goal: Prioritaeten als einfache Loesung fuer eine konkrete Darstellungsentscheidung einfuehren.
+    learnerAction:
+      - Prioritaetenliste verstehen.
+      - Sichtbaren Displayzustand aus mehreren wahren Zustaenden ableiten.
+    learningFocus:
+      - Priorisierung
+      - Anzeigeentscheidung
+      - Komplexitaet schrittweise beherrschen
+
+completionSummary:
+  - Du hast nicht gelernt, ein vollstaendiges Tamagotchi zu programmieren.
+  - Du hast gelernt, warum Quellcode allein Verhalten schlecht erklaert.
+  - Du hast gelernt, warum Softwareentwickler Modelle verwenden.
+  - Du hast gelernt, ein Modell unabhaengig von Runtime, Sprache und Zielplattform zu denken.
+  - Du hast eine einfache State Machine verstanden.
+  - Du hast erlebt, wie neue Anforderungen neue Modellierungsprobleme erzeugen.
+  - Du hast gesehen, dass Software Engineering Komplexitaet schrittweise beherrschbar macht.
+  - Du hast verstanden, dass Implementierung aus einem klaren Modell einfacher ableitbar ist, egal ob man sie manuell, mit KI oder mit einem plattformuebergreifenden Framework umsetzt.
+
+futureExtensions:
+  - Persistenz kann spaeter zeigen, warum Zustand gespeichert werden muss.
+  - Zeit und RTC koennen spaeter zeigen, warum Systemgrenzen wichtig sind.
+  - ESP32, Display und Buttons koennen spaeter zeigen, wie ein Modell implementiert wird.
+  - Backend-Varianten koennen spaeter zeigen, wo die autoritative Logik lebt.
+  - Cross-Platform-Varianten koennen spaeter zeigen, wie dieselbe Fachlogik auf mehreren Plattformen erscheint.
 
 risks:
   - risk.too_many_features_for_beginner
-  - risk.online_dependency
-  - risk.ai_costs_and_privacy
 openDecisions:
   - decision.ai_pet_esp32.reference_display
-  - decision.ai_pet_esp32.openai_stage
 roadmap:
   - roadmap.ai_pet_esp32
-dependencies:
-  requires:
-    - capability.processor_esp32
-    - capability.display_output
-  optional:
-    - capability.wifi
-    - system_capability.ai_assistant
 
 generatedDocuments:
   markdown: docs/generated/projects/ai-pet-esp32.md

@@ -35,12 +35,15 @@ items:
       - Authorization
     usesSystemCapabilities:
       - system_capability.account_identification
+      - system_capability.account_self_transparency
       - system_capability.hardware_shop_access
       - system_capability.ide_flash_usb
       - system_capability.ide_flash_ota
       - system_capability.cloud_flash
     responsibilities:
       - Benutzer identifizieren
+      - Selbstsicht anzeigen, wer der Nutzer ist und welche Daten, Grants, Angebote, Abos, Zahlungen, Devices, Lernfortschritte, KI-Nutzung und Consents die Plattform ueber ihn fuehrt
+      - Account-Transparenzsicht bei relevanten Aenderungen automatisch aktualisieren oder als veraltet markieren
       - Berechtigte Services fuer den Account anzeigen und freischalten
       - Lernen innerhalb eines LearningProject ermoeglichen
       - Lessons und ProjectSteps als Lernarbeitsplatz anzeigen
@@ -146,6 +149,9 @@ items:
       - Kaufbare Learning-Angebote vom Typ Course sichten, bewerten und bearbeiten
       - Learning Goals pflegen
       - Projekte und Projektvarianten pflegen
+      - Step- und Projektfeedback sichten, sortieren und bearbeiten
+      - Feedback nach Absender, Projekt, Step, Status und Kontaktmodus filtern
+      - Identifizierbares Feedback und Kontaktdaten nur zweckgebunden, berechtigt und auditiert einsehen
       - TechnicalCapabilities und Hardware-Katalog pflegen
       - Neue Hardwaretypen wie ProcessorBoards im Hardware-Katalog pflegen
       - Plaene und SystemCapabilities administrieren
@@ -176,8 +182,11 @@ items:
       - role.support
       - role.administrator
     supports:
+      - BG-002
+      - BG-003
       - BG-006
       - BG-007
+      - CJ-002
       - CJ-006
       - CJ-010
     usesDomains:
@@ -187,6 +196,11 @@ items:
       - Authorization
     responsibilities:
       - Board per USB erkennen
+      - Unbekannte Community-Boards ueber USB mit einer GerNetiX Discovery Firmware flashen
+      - Chip-, Flash-, Runtime- und Basisfaehigkeiten eines unbekannten ESP32-Boards ermitteln
+      - Gefuehrte Fragen stellen, wenn Capabilities nicht automatisch erkennbar sind
+      - Manuelle Capability-Bestaetigung durch den Nutzer erfassen oder unbekannte Capabilities gesperrt lassen
+      - Ein Community Hardware Profile als Grundlage fuer IDE-Matching und Lernprojekte erzeugen
       - Wiederherstellungszustand pruefen
       - Board erneut registrieren
       - Supportberechtigung anhand registrierter Boards pruefbar machen
@@ -198,6 +212,8 @@ items:
       - Plaene und Lizenzen verwalten
       - Hardware-Produkttyp aendern
     constraints:
+      - Community-Board-Discovery senkt die Einstiegshuerde zur Neukundengewinnung, erzeugt aber keinen GerNetiX-Hardware-Supportanspruch.
+      - Unbekannte oder nicht bestaetigte Capabilities duerfen nicht automatisch fuer Lernprojekte verwendet werden.
       - Pairing darf den Besitzer aendern, niemals den ProcessorBoard-Typ.
       - HMAC-Schluessel werden niemals im Klartext gespeichert.
       - Recovery darf keinen Supportanspruch fuer unbekannte oder nicht berechtigte Boards erzeugen.

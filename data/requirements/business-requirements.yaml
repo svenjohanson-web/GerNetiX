@@ -12,6 +12,125 @@ items:
     derivedFromBusinessCapabilities:
       - BC-002
 
+  - id: requirement.identity_registration_login
+    type: requirement
+    title: Identity-Modul fuer Registrierung und Login bereitstellen
+    businessStatus: In Analysis
+    implementationStatus: In Design
+    ownerDomain: Account
+    summary: Die Plattform muss klassische Registrierung, E-Mail-Verifizierung, lokalen Login, Passwort-Reset, Logout sowie externe Registrierung und Social Login ueber gekapselte OAuth2-/OpenID-Connect-Provider bereitstellen. Unabhaengig vom Registrierungsweg entsteht immer genau ein interner UserAccount mit eindeutiger `user_id`; andere Module duerfen ausschliesslich diese interne `user_id` verwenden.
+    derivedFromBusinessCapabilities:
+      - BC-044
+      - BG-001
+      - BG-002
+      - BG-003
+      - BG-007
+    affectsArchitectureArtifacts:
+      - architecture_artifact.identity_server
+      - app.user_ide
+    affectsDataModels:
+      - data_model.user_account
+      - data_model.local_credential
+      - data_model.external_identity
+      - data_model.verification_token
+      - data_model.password_reset_token
+      - data_model.auth_session
+    affectsApiArtifacts:
+      - api_artifact.identity
+    requiredSystemCapabilities:
+      - system_capability.account_identification
+    acceptanceCriteria:
+      - Klassische Registrierung erfasst Benutzername, E-Mail, Passwort, Passwortwiederholung und Zustimmung zu Datenschutz/AGB.
+      - Benutzername und E-Mail muessen eindeutig sein.
+      - Passwoerter werden sicher gehasht; Klartextpasswoerter werden nicht gespeichert.
+      - Neue lokale Accounts starten mit Status `pending_verification`.
+      - Ein VerificationToken wird erzeugt und ueber MockEmailService als Verifizierungslink ausgegeben.
+      - Nach erfolgreicher E-Mail-Verifizierung wird der UserAccount auf `verified` gesetzt.
+      - Social Login unterstuetzt Google, Apple, Microsoft und GitHub ueber gekapselte AuthProvider.
+      - Provider duerfen in der ersten Implementierung gemockt sein.
+      - Wenn eine ExternalIdentity bereits existiert, wird der zugehoerige UserAccount geladen und eingeloggt.
+      - Wenn eine ExternalIdentity noch nicht existiert, wird ein neuer UserAccount angelegt und die ExternalIdentity verknuepft.
+      - Provider-bestaetigte E-Mail-Adressen duerfen den Account direkt auf `verified` setzen; andernfalls bleibt der Account `pending_verification`.
+      - Wenn ein Benutzername fehlt, wird ein eindeutiger Benutzername vorgeschlagen oder abgefragt.
+      - Klassischer Login funktioniert mit Benutzername oder E-Mail plus Passwort.
+      - Nur `verified` Accounts duerfen produktiv genutzt werden.
+      - Erfolgreicher Login erzeugt Session/AuthToken.
+      - Logout widerruft die Session oder das AuthToken.
+      - Passwort-Reset ist nur fuer Accounts mit LocalCredential relevant.
+      - Passwort-Reset-Antworten bleiben neutral, damit keine E-Mail-Existenz verraten wird.
+      - E-Mail ist intern und darf nicht oeffentlich sichtbar sein.
+      - Provider-IDs duerfen niemals ausserhalb des Identity-Moduls verwendet werden.
+
+  - id: requirement.account_self_transparency_view
+    type: requirement
+    title: Kunden-IDE zeigt eigene Account- und Datentransparenz
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Account
+    summary: Die User IDE muss dem angemeldeten Nutzer eine Sicht bereitstellen, die zeigt, wer er ist und welche personenbezogenen, kundenrelevanten und berechtigungsrelevanten Informationen GerNetiX ueber ihn fuehrt. Die Sicht muss erklaeren, welche Daten aus Identity, Payment, Abos, Angeboten, Grants, Devices, Lernfortschritt, Feedback, KI-Nutzung und Consents stammen und wann sie zuletzt aktualisiert wurden.
+    derivedFromBusinessCapabilities:
+      - BC-025
+      - BC-042
+      - BC-043
+      - BC-044
+      - BG-001
+      - BG-003
+      - BG-006
+      - BG-007
+    derivedFromRequirements:
+      - requirement.identity_registration_login
+      - requirement.account_competency_profile
+      - requirement.customer_data_consent_for_admin_access
+      - requirement.device_customer_registration_and_pairing
+      - requirement.ai_credit_balance
+    affectsArchitectureArtifacts:
+      - app.user_ide
+      - architecture_artifact.identity_server
+      - architecture_artifact.project_server
+      - architecture_artifact.device_management_server
+    affectsDataModels:
+      - data_model.account_transparency_snapshot
+      - data_model.user_account
+      - data_model.external_identity
+      - data_model.auth_session
+      - data_model.account_competency_profile
+      - data_model.learning_recommendation
+      - data_model.account_device
+      - data_model.device_support_entitlement
+      - data_model.ai_credit_account
+      - data_model.ai_credit_ledger_entry
+      - data_model.ai_usage_event
+      - data_model.customer_data_access_consent
+      - data_model.customer_data_access_audit_event
+    affectsApiArtifacts:
+      - api_artifact.account_self_transparency
+      - api_artifact.identity
+      - api_artifact.account_competency_profile
+      - api_artifact.account_device_inventory
+      - api_artifact.ai_credit_balance
+      - api_artifact.customer_data_access_consent
+    affectedUiModels:
+      - ui_model.user_ide_account_transparency
+    requiredSystemCapabilities:
+      - system_capability.account_identification
+      - system_capability.account_self_transparency
+    acceptanceCriteria:
+      - Die User IDE bietet eine eigene Sicht `Mein Profil` oder `Was weiss GerNetiX ueber mich?`.
+      - Die Sicht zeigt Identitaet und oeffentliche Identitaet getrennt, insbesondere interne `user_id`, Benutzername, Accountstatus und verknuepfte Login-Wege.
+      - E-Mail wird als interne Kontaktdaten angezeigt, aber nicht als oeffentliche Identitaet dargestellt.
+      - Provider-IDs werden nicht angezeigt; externe Login-Wege werden nur als Anbieter und Verknuepfungsstatus dargestellt.
+      - Die Sicht zeigt aktive Plaene, Abos, Kaeufe, relevante Angebote, Grants, Overrides, Entzuege und daraus entstehende SystemCapabilities.
+      - Die Sicht zeigt nachvollziehbar, warum eine Funktion freigeschaltet oder gesperrt ist, zum Beispiel durch Plan, Kurskauf, Einzelgrant, Override, Ablaufdatum oder Widerruf.
+      - Die Sicht zeigt accountbezogene Lerninformationen wie Kompetenzprofil, Fortschritt, Empfehlungen und Feedbackkontexte.
+      - Die Sicht zeigt registrierte Devices, Pairing-Status, GerNetiX-verified-vs-Community-Status, OTA-Status und Support-/Garantiegrundlage, soweit diese dem Nutzer selbst gehoeren.
+      - Die Sicht zeigt KI-Credits, relevante KI-Nutzung und Limits nur in nutzerverstaendlicher Form und ohne interne Kosten- oder Abuse-Details offenzulegen.
+      - Die Sicht zeigt Consents, Zwecke, Gueltigkeiten, Widerrufsstatus und relevante Audit-Hinweise fuer Zugriffe auf kundenrelevante Daten.
+      - Die Sicht nennt je Datenbereich Quelle, Zweck, letzte Aktualisierung und fachlichen Verantwortungsbereich.
+      - Aenderungen an Payment, Abos, Produktangeboten, Grants, Overrides, Entzuegen, Devices, Kompetenzprofil oder Consents muessen die Sicht invalidieren.
+      - Beim naechsten Abruf oder expliziten Aktualisieren der Sicht wird automatisch ein aktueller AccountTransparencySnapshot erzeugt oder geladen.
+      - Die Sicht darf keine Admin-/Support-Sicht auf fremde Kundendaten ersetzen.
+      - Der Nutzer darf ausschliesslich die eigenen Daten sehen.
+
   - id: requirement.community_question_triage_time
     type: requirement
     title: Neue Fragen innerhalb definierter Zeit triagieren
@@ -527,6 +646,46 @@ items:
       - api_artifact.account_competency_profile
       - api_artifact.learning_feedback
 
+  - id: requirement.learning_project_step_feedback
+    type: requirement
+    title: Feedback pro Lernschritt und Projektabschluss erfassen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Das Step Tool muss Nutzern ermoeglichen, Feedback zu jedem einzelnen ProjectStep sowie nach Abschluss eines LearningProject abzugeben. Beim Absenden kann der Nutzer anonym bleiben oder zweckgebunden erlauben, dass GerNetiX ihn fuer Rueckfragen zu genau diesem Feedback kontaktiert.
+    derivedFromBusinessCapabilities:
+      - BC-025
+      - BC-043
+      - BG-001
+      - BG-007
+    derivedFromRequirements:
+      - requirement.competency_evidence_feedback
+      - requirement.customer_data_consent_for_admin_access
+    affectsArchitectureArtifacts:
+      - app.user_ide
+      - app.admin_tool
+      - architecture_artifact.project_server
+    affectsDataModels:
+      - data_model.learning_feedback
+      - data_model.feedback_contact_consent
+      - data_model.customer_data_access_audit_event
+    affectsApiArtifacts:
+      - api_artifact.learning_feedback
+      - api_artifact.admin_learning_feedback
+    requiredSystemCapabilities:
+      - system_capability.admin_learning
+    acceptanceCriteria:
+      - Nutzer koennen Feedback fuer einen einzelnen ProjectStep absenden.
+      - Nutzer koennen Feedback nach Abschluss eines LearningProject absenden.
+      - Jedes Feedback ist fachlich mit LearningProject und optional ProjectStep oder Projektabschluss verknuepft.
+      - Beim Absenden kann der Nutzer anonymes Feedback waehlen.
+      - Beim Absenden kann der Nutzer zweckgebunden erlauben, fuer Rueckfragen zu genau diesem Feedback kontaktiert zu werden.
+      - Kontakt-Consent gilt maximal zwei Monate ab Abgabe und kann vorher widerrufen werden.
+      - Nach Ablauf oder Widerruf wird das Feedback anonymisiert; fachlicher Inhalt, Projekt- und Step-Kontext duerfen erhalten bleiben.
+      - Personenbezogene Absender- und Kontaktdaten duerfen nach Anonymisierung im Admin Tool nicht mehr sichtbar sein.
+      - Das Admin Tool kann Feedback nach Absender, Projekt, Step, Status und Kontaktmodus sortieren und filtern.
+      - Admin-/Support-Einsicht in identifizierbares Feedback und Kontaktdaten muss zweckgebunden berechtigt und auditiert sein.
+
   - id: requirement.competency_based_learning_recommendations
     type: requirement
     title: Naechste Lernschritte kompetenzbasiert empfehlen
@@ -694,6 +853,43 @@ items:
     affectsApiArtifacts:
       - api_artifact.account_device_inventory
 
+  - id: requirement.community_board_discovery_via_recovery_tool
+    type: requirement
+    title: Unbekannte Community-Boards ueber Recovery Tool identifizieren
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: DeviceManagement
+    summary: Das Recovery Tool muss Nutzern mit unbekannten, selbst gekauften ESP32-Boards einen gefuehrten Einstieg ermoeglichen, indem es per USB eine GerNetiX Discovery Firmware flasht, Basisfaehigkeiten prueft, offene Hardwarefragen stellt und daraus ein Community Hardware Profile erzeugt. Ziel ist Neukundengewinnung durch erleichterten Einstieg, ohne fuer unbekannte Hardware einen GerNetiX-Support- oder Garantieanspruch zu erzeugen.
+    derivedFromBusinessCapabilities:
+      - BC-042
+      - BG-002
+      - BG-003
+      - BG-004
+    derivedFromRequirements:
+      - requirement.community_hardware_supported_without_entitlement
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+      - requirement.firmware_local_feedback_weblog
+    supportsCustomerJourneys:
+      - CJ-002
+      - CJ-006
+    affectsArchitectureArtifacts:
+      - app.recovery_tool
+      - app.user_ide
+      - component.firmware_feedback
+      - architecture_artifact.device_management_server
+    affectsDataModels:
+      - data_model.account_device
+      - data_model.device_ota_endpoint
+    affectsApiArtifacts:
+      - api_artifact.account_device_inventory
+    acceptanceCriteria:
+      - Das Recovery Tool kann ein unbekanntes ESP32-Board per USB erkennen und eine Discovery Firmware flashen.
+      - Die Discovery Firmware stellt Minimalfunktionen wie AP-Modus, lokales Webinterface, Weblog und OTA-Basis bereit.
+      - Automatisch ermittelbare Eigenschaften wie Chip-ID, Flash-Groesse, Runtime-Version und Basis-Connectivity werden protokolliert.
+      - Nicht automatisch erkennbare Eigenschaften werden durch gefuehrte Nutzerfragen geklaert, zum Beispiel Onboard-LED, Display, I2C-Pins, ADC-Pins oder externe Verdrahtung.
+      - Wenn der Nutzer eine Eigenschaft nicht kennt, bleibt die Capability `unknown` und darf fuer pflichtige Lernprojekte nicht automatisch verwendet werden.
+      - Das Ergebnis wird als Community Hardware Profile oder AccountDevice-Inventareintrag gespeichert und bleibt als `community_unverified` ohne GerNetiX-Hardware-Supportanspruch gekennzeichnet.
+
   - id: requirement.ide_ota_device_selection_from_profile
     type: requirement
     title: OTA-Zielgeraete aus IDE-Profil auswaehlen
@@ -720,6 +916,156 @@ items:
     affectsApiArtifacts:
       - api_artifact.account_device_inventory
       - api_artifact.ide_ota_device_selection
+
+  - id: requirement.learning_firmware_base_scaffold_preserves_ota
+    type: requirement
+    title: Lern-Builds erhalten OTA-Faehigkeit durch Basissoftware
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Wenn Nutzer ESP32-Software ueber das Lerntool oder die IDE bauen und per USB oder OTA flashen, muss der Nutzer-Code mit der GerNetiX-Basissoftware gebaut werden, die OTA, Connectivity-Status, Versionierung und Recovery-Anknuepfung erhaelt. Ein Lernprojekt darf OTA-Faehigkeit nicht versehentlich durch einen vollstaendig nackten Sketch oder eine isolierte Firmware ersetzen.
+    derivedFromBusinessCapabilities:
+      - BC-025
+      - BC-042
+      - BG-007
+    derivedFromRequirements:
+      - requirement.board_execution_adapter_for_learning_steps
+      - requirement.ide_ota_device_selection_from_profile
+    supportsCustomerJourneys:
+      - CJ-003
+      - CJ-006
+      - CJ-011
+    affectsArchitectureArtifacts:
+      - app.user_ide
+      - component.ota
+      - architecture_artifact.device_management_server
+    affectsDataModels:
+      - data_model.device_ota_endpoint
+      - data_model.learning_step_execution_result
+    requiredSystemCapabilities:
+      - system_capability.ide_flash_usb
+      - system_capability.ide_flash_ota
+    acceptanceCriteria:
+      - Jeder vom Lerntool erzeugte ESP32-Build enthaelt standardmaessig die GerNetiX-Basissoftware.
+      - Auch ein USB-Flash aus einem Lernprojekt erhaelt OTA-Faehigkeit, sofern das Zielboard die TechnicalCapabilities WiFi und OTA besitzt.
+      - Nutzer-Code wird als Projektlogik oder Modul in einer eigenen Datei eingebunden, zum Beispiel `user_app.cpp`, und darf zentrale Plattformfunktionen wie OTA-Handler, Connectivity-Status und Versionsmeldung nicht ueberschreiben.
+      - Die Runtime ruft definierte User-Hooks wie `setupUserApp()` und `loopUserApp()` auf, bleibt aber Einstiegspunkt und Besitzerin der Plattformfunktionen.
+      - User-veraenderliche Dateien liegen in einem eigenen Ordner.
+      - Jede Hardware-Konfiguration liegt in einer separaten Konfigurationsdatei, zum Beispiel WiFi und PWM getrennt.
+      - Die Basissoftware enthaelt konfigurierbare Service-Endpunkte fuer Device Management und Build-&-Deploy, aber keine fest verdrahtete lokale IP, Homeserver-Adresse oder Cloud-Adresse.
+      - Die Basissoftware kann beim konfigurierten Device Management pruefen, ob das Device bekannt, gepairt und fuer OTA nutzbar ist.
+      - Die Basissoftware kann einen autorisierten Deploy-Auftrag vom Build-&-Deploy-Server empfangen, Firmware per HTTPS laden, Hash und Groesse pruefen, flashen und Status zurueckmelden.
+      - Ein Umzug des Backends von Linux-Homeserver zu Cloud darf keinen USB-Reflash erzwingen, solange die Service-Endpunkte ueber DNS, Konfiguration oder kontrolliertes Konfigurationsupdate erreichbar bleiben.
+      - Das Lerntool warnt oder blockiert, wenn ein Projekt die OTA-Basis bewusst entfernt.
+
+  - id: requirement.firmware_build_deploy_server
+    type: requirement
+    title: Firmware Build & Deploy ueber getrennten Ausfuehrungsserver bereitstellen
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: IDE
+    summary: Die Plattform muss Firmware-Builds und Deployments so ausfuehren, dass der Projektserver Quelle der Wahrheit fuer Benutzer, Projekte, Geraete, Quellcode und Build-Historie bleibt, waehrend ein Build-&-Deploy-Server nur temporaere Build- und Deploy-Jobs aus vollstaendigen Build-Packages ausfuehrt.
+    derivedFromBusinessCapabilities:
+      - BC-020
+      - BC-021
+      - BC-025
+      - BC-042
+      - BG-002
+      - BG-003
+      - BG-007
+    derivedFromRequirements:
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+      - requirement.ide_ota_device_selection_from_profile
+      - requirement.board_execution_adapter_for_learning_steps
+    supportsCustomerJourneys:
+      - CJ-003
+      - CJ-006
+      - CJ-011
+    affectsArchitectureArtifacts:
+      - app.user_ide
+      - architecture_artifact.project_server
+      - architecture_artifact.build_deploy_server
+      - architecture_artifact.device_management_server
+      - component.ota
+    affectsDataModels:
+      - data_model.learning_step_execution_result
+      - data_model.device_ota_endpoint
+      - data_model.account_device
+      - data_model.firmware_build_job
+      - data_model.firmware_build_package
+      - data_model.firmware_build_result
+    affectsApiArtifacts:
+      - api_artifact.learning_step_completion
+      - api_artifact.ide_ota_device_selection
+      - api_artifact.account_device_inventory
+      - api_artifact.firmware_build_deploy
+    requiredSystemCapabilities:
+      - system_capability.ide_flash_usb
+      - system_capability.ide_flash_ota
+      - system_capability.cloud_flash
+    constrainedBy:
+      - nfr.firmware_flash_must_not_brick_board
+    acceptanceCriteria:
+      - Der Projektserver erstellt fuer jeden BuildJob einen vollstaendigen Snapshot des Projekts als BuildPackage.
+      - Das BuildPackage enthaelt mindestens Build-Job-Metadaten, PlatformIO-Konfiguration, Quellcode, Header, Libraries, Assets und optional vorberechnete Dateien.
+      - Der Projektserver uebertraegt das BuildPackage per HTTP an den Build-&-Deploy-Server.
+      - Der Build-&-Deploy-Server darf niemals direkt auf dauerhafte Projektdaten zugreifen.
+      - Der Build-&-Deploy-Server kompiliert ausschliesslich aus dem uebergebenen BuildPackage und benoetigt keine dauerhaften Projektdaten.
+      - Der Build-&-Deploy-Server speichert Firmware und Build-Artefakte nur temporaer.
+      - Nach Abschluss werden BuildResult, Firmware-Artefakte, Build-Log, Deploy-Log und Status an den Projektserver zurueckgegeben.
+      - Das BuildResult enthaelt mindestens `firmware.bin`, `firmware.elf`, `firmware.map`, `build.log`, Build-Status, SHA-256 und Dateigroesse.
+      - Temporaere Projektdaten werden nach Abschluss des Jobs vom Build-&-Deploy-Server geloescht.
+      - Der Build-&-Deploy-Server darf technische Caches fuer PlatformIO, Toolchains, Libraries, Objektdateien und vergleichbare Build-Artefakte behalten.
+      - Der Cache dient ausschliesslich der Beschleunigung und ist niemals Quelle der Wahrheit.
+      - Wenn der Cache verloren geht, bleibt der Build aus dem Build-Paket moeglich und dauert nur laenger.
+      - Beim Erstellen oder Oeffnen eines Lernprojekts darf automatisch ein Prebuild der Projekthuelle gestartet werden, um Caches aufzuwarmen.
+      - Ein Prebuild loest niemals ein OTA-Deployment aus.
+      - OTA wird nur durch einen vom Nutzer ausgeloesten Build-&-Flash-Auftrag gestartet.
+      - Nach erfolgreichem Build uebernimmt der Build-&-Deploy-Server den Deploy.
+      - Der Build-&-Deploy-Server veroeffentlicht Deploy-Auftraege per MQTT, stellt Firmware per HTTPS bereit, empfaengt Statusmeldungen per MQTT und meldet den Abschluss an den Projektserver.
+      - Deploy-Auftraege werden nur fuer konkrete, bekannte und berechtigte `device_id`s erzeugt.
+      - Der Firmware-Download startet erst nach einem autorisierten Deploy-Auftrag.
+      - Die Firmware-Basissoftware verwendet die konfigurierten Device-Management- und Build-&-Deploy-Endpunkte und darf nicht an eine lokale IP, einen bestimmten Homeserver oder einen bestimmten Cloud-Anbieter gekoppelt sein.
+      - MQTT dient ausschliesslich fuer Deploy-Auftraege, Statusmeldungen, Heartbeats und Telemetrie.
+      - HTTPS dient fuer Firmware-Download und Artefaktuebertragung.
+      - Pro Device ist maximal ein aktiver Build-/Deploy-Job erlaubt.
+      - Optional kann genau ein weiterer Build-/Deploy-Job pro Device warten.
+      - Neue wartende Jobs ersetzen aeltere wartende Jobs fuer dasselbe Device.
+
+  - id: requirement.firmware_local_feedback_weblog
+    type: requirement
+    title: Basissoftware stellt lokale Feedback- und Weblog-Funktion bereit
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Die GerNetiX-Basissoftware muss fuer Lernprojekte eine lokale Feedback-Funktion bereitstellen, damit Nutzer ohne Backend und ohne Account sehen koennen, was auf dem Board passiert. Neben UART/Serial soll ein lokaler Weblog oder eine Logansicht im Device-Webinterface bereitstehen; spaetere Server-Telemetrie bleibt davon getrennt und darf nur gezielt, gepairt und mit passender Berechtigung oder Consent erfolgen.
+    derivedFromBusinessCapabilities:
+      - BC-025
+      - BC-042
+      - BG-007
+    derivedFromRequirements:
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+      - requirement.board_execution_adapter_for_learning_steps
+    supportsCustomerJourneys:
+      - CJ-003
+      - CJ-006
+    affectsArchitectureArtifacts:
+      - app.user_ide
+      - component.ota
+      - component.device_connectivity_setup
+      - component.firmware_feedback
+    affectsDataModels:
+      - data_model.learning_step_execution_result
+      - data_model.device_ota_endpoint
+    requiredSystemCapabilities:
+      - system_capability.ide_flash_usb
+      - system_capability.ide_flash_ota
+    acceptanceCriteria:
+      - Die Basissoftware bietet eine einheitliche Logging-/Feedback-API fuer Runtime und User-Code, zum Beispiel fuer Info-, Warn- und Fehlerereignisse.
+      - Feedback wird mindestens ueber UART/Serial ausgegeben.
+      - Feedback ist im lokalen Device-Webinterface abrufbar, zum Beispiel als `/logs` oder Weblog-Ansicht mit Ringpuffer.
+      - Die lokale Feedback-Funktion funktioniert im Access-Point-Modus ohne Backend und ohne Account.
+      - Automatisches Pushen von Detail-Logs an den Server ist fuer den Lernmodus nicht erforderlich und darf spaeter nur mit Pairing, Zweckbindung und Consent/Berechtigung erfolgen.
 
   - id: requirement.device_support_entitlement_traceability
     type: requirement

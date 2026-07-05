@@ -1,0 +1,177 @@
+schemaVersion: 1
+id: project.gernetix_runtime_basissoftware
+slug: gernetix-runtime-basissoftware
+type: learning_project
+status: draft
+projectStatus: idea
+title: GerNetiX Runtime-Basissoftware
+ownerDomain: Learning
+summary: Runtime-unabhaengiges Grundlagenprojekt fuer initiale Projektsoftware, die pro Zielplattform ein stabiles GerNetiX-Basisgeruest bereitstellt und User-Anpassungen strikt auf definierte User-Dateien begrenzt.
+
+learningPath: learning_path.cross_platform_development
+teachingRole: platform_foundation_project
+developsCompetencies:
+  - competency.cross_platform_development
+  - competency.software_architecture
+  - competency.embedded_project_setup
+  - competency.runtime_separation
+  - competency.update_strategy
+
+derivedFromRequirements:
+  - requirement.learning_firmware_base_scaffold_preserves_ota
+  - requirement.firmware_local_feedback_weblog
+  - nfr.firmware_flash_must_not_brick_board
+  - nfr.service_deployment_portability
+
+implementsArchitectureDecisions:
+  - architecture.runtime_basis_user_artifact_separation
+  - architecture.firmware_user_hw_config_separation
+  - architecture.firmware_minimal_update_strategy
+
+corePrinciple:
+  title: Basis bleibt updatefaehig, User-Artefakte bleiben erhaltbar
+  rule: Nutzer duerfen ausschliesslich definierte User-Dateien und projektspezifische Konfigurationsdateien veraendern. Runtime, Basissoftware, Update-Mechanik, Logging, Feedback, Build-Integration und Plattformadapter bleiben GerNetiX-Basis und werden nicht direkt vom Nutzer bearbeitet.
+  appliesTo:
+    - ESP32 Firmware
+    - Desktop-Anwendungen
+    - Web-Anwendungen
+    - Mobile Apps
+    - spaetere weitere Runtimes
+
+runtimePackageModel:
+  components:
+    - key: base_runtime
+      title: GerNetiX Runtime / Basissoftware
+      userEditable: false
+      purpose: Stabiler technischer Rahmen fuer Start, Update, Logging, Feedback, Build-Integration, Plattformadapter und definierte Schnittstellen zum User-Code.
+    - key: project_template
+      title: Projekt-Template
+      userEditable: partially
+      purpose: Projektspezifische Startstruktur mit vorbereiteten Beispielen, Konfigurationen und User-Dateien fuer ein konkretes Lern- oder Kundenprojekt.
+    - key: user_artifacts
+      title: User-Dateien
+      userEditable: true
+      purpose: Einziger Bereich fuer Nutzeranpassungen, Lerncode, Anwendungslogik und projektbezogene Hardware- oder Runtime-Konfiguration.
+
+protectedBaseResponsibilities:
+  - Runtime-Start und Lifecycle
+  - Build- und Update-Faehigkeit erhalten
+  - Logging, Feedback und lokale Diagnose
+  - stabile Schnittstellen zu User-Code bereitstellen
+  - Plattformadapter kapseln
+  - Device-/Projektstatus melden, sofern die Runtime dies unterstuetzt
+  - sicherstellen, dass Projekt-Builds die Basis nicht versehentlich entfernen
+
+userEditableArtifactRules:
+  - User-Dateien liegen in einem klar benannten User-Bereich.
+  - Projektspezifische Konfigurationen liegen in separaten Dateien.
+  - Jede Hardware- oder Runtime-Konfiguration bekommt eine eigene Konfigurationsdatei.
+  - Generated Files und Runtime-Dateien werden nicht direkt bearbeitet.
+  - Updates der Basissoftware duerfen User-Dateien nicht ueberschreiben.
+  - Das Lerntool und die IDE muessen warnen oder blockieren, wenn ein Projekt die Basissoftware entfernt.
+
+variants:
+  - id: project.gernetix_runtime_basissoftware.variant.esp32_firmware
+    title: ESP32 Basissoftware
+    targetRuntime: ESP32
+    mode: esp32_basissoftware_runtime
+    summary: ESP32-Projekte erhalten eine initiale Basissoftware mit WLAN/AP-Fallback, OTA, Versionsausgabe, Weblog/Feedback und stabiler User-Code-Schnittstelle. Kompilierte Firmware-Binaries entstehen daraus als Build-Artefakte im Build-Verzeichnis.
+    baseArtifacts:
+      - basissoftware/esp32/src/main.cpp
+      - basissoftware/esp32/platformio.ini
+    userArtifactExamples:
+      - basissoftware/esp32/src/user/user_app.cpp
+      - basissoftware/esp32/src/user/user_app.h
+      - basissoftware/esp32/src/user/wifi_config.h
+      - basissoftware/esp32/src/user/hw_pwm_config.h
+      - basissoftware/esp32/src/user/hw_adc_config.h
+      - basissoftware/esp32/src/user/hw_i2c_config.h
+    requiredCapabilities:
+      - capability.processor_esp32
+      - capability.wifi
+      - capability.ota
+      - capability.flash_firmware
+
+  - id: project.gernetix_runtime_basissoftware.variant.desktop_runtime
+    title: Desktop Runtime-Basis
+    targetRuntime: Desktop
+    mode: desktop_app_runtime
+    summary: PC-, Mac- und Linux-Projekte erhalten eine initiale App-Shell mit stabiler Runtime-Struktur, Logging, Update- oder Build-Anbindung und getrenntem User-Code.
+    targetSystems:
+      - Windows
+      - macOS
+      - Linux
+    userArtifactExamples:
+      - app/user/
+      - app/user/project_config.*
+      - app/user/user_app.*
+
+  - id: project.gernetix_runtime_basissoftware.variant.web_runtime
+    title: Web Runtime-Basis
+    targetRuntime: Browser
+    mode: web_app_runtime
+    summary: Web-Projekte erhalten eine initiale Web-Shell mit Routing, Layout, Build-Integration, Logging/Feedback und getrennten User-Komponenten.
+    userArtifactExamples:
+      - src/user/
+      - src/user/components/
+      - src/user/project-config.*
+
+  - id: project.gernetix_runtime_basissoftware.variant.mobile_runtime
+    title: Mobile Runtime-Basis
+    targetRuntime: Mobile
+    mode: mobile_app_runtime
+    summary: Android- und iOS-Projekte erhalten eine initiale App-Shell, die App-Lifecycle, Navigation, Logging und User-Views/User-Logic trennt.
+    targetSystems:
+      - Android
+      - iOS
+    userArtifactExamples:
+      - app/user/
+      - app/user/views/
+      - app/user/project_config.*
+
+stages:
+  - id: stage.gernetix_runtime_basissoftware.1
+    title: Runtime-Grenze definieren
+    goal: Basissoftware, Projekt-Template und User-Dateien fachlich und technisch trennen.
+    completionConditions:
+      - condition.runtime_boundary_documented
+      - condition.user_editable_artifacts_declared
+
+  - id: stage.gernetix_runtime_basissoftware.2
+    title: ESP32-Basissoftware als erste Runtime auspraegen
+    goal: Bestehende ESP32 OTA-Basissoftware als erste konkrete GerNetiX-Runtime-Variante einordnen.
+    completionConditions:
+      - condition.esp32_runtime_template_exists
+      - condition.user_code_entrypoints_exist
+      - condition.ota_base_preserved
+
+  - id: stage.gernetix_runtime_basissoftware.3
+    title: Projekt-Template erzeugen
+    goal: Fuer ein Lernprojekt eine initiale Projektsoftware erzeugen, die Basissoftware und User-Dateien sauber kombiniert.
+    completionConditions:
+      - condition.project_template_created
+      - condition.user_files_only_change_policy_validated
+
+  - id: stage.gernetix_runtime_basissoftware.4
+    title: Weitere Runtimes ableiten
+    goal: Dieselbe Trennregel fuer Desktop, Web und Mobile formulieren, ohne sie an ESP32-Firmware zu koppeln.
+    completionConditions:
+      - condition.desktop_runtime_rule_documented
+      - condition.web_runtime_rule_documented
+      - condition.mobile_runtime_rule_documented
+
+risks:
+  - id: risk.user_modifies_base_runtime
+    title: Nutzer veraendert Basissoftware
+    mitigation: IDE und Build-Pipeline markieren Runtime-Dateien als geschuetzt und erlauben Bearbeitung nur in User-Artefakten.
+  - id: risk.runtime_update_overwrites_user_code
+    title: Basisupdate ueberschreibt User-Code
+    mitigation: User-Artefakte liegen getrennt und werden bei Basisupdates erhalten oder kontrolliert migriert.
+  - id: risk.runtime_rule_stays_firmware_specific
+    title: Regel bleibt zu ESP32-spezifisch
+    mitigation: Projekt fuehrt Desktop, Web und Mobile als Varianten derselben Runtime-Trennregel.
+
+openDecisions:
+  - decision.runtime_user_artifact_manifest_format
+  - decision.runtime_template_generation_location
+  - decision.runtime_update_migration_strategy

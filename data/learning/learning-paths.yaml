@@ -4,12 +4,13 @@ sourceStatus: legacy_import_source
 items:
   - id: learning_path.ai_pet_embedded_interaction
     type: learning_path
-    title: Embedded-Interaktion mit digitalem Haustier
+    title: Software Engineering mit digitalem Haustier
     status: draft
     ownerDomain: Learning
-    summary: Learning Path fuer ein interaktives ESP32-Projekt mit Display, Eingabe, Zustandsmaschine, Persistenz und optionaler KI-Erweiterung.
-    primaryLearningGoal: learning_goal.embedded_basics
+    summary: Learning Path fuer Software-Engineering-Grundlagen anhand eines digitalen Tamagotchis. Das Beispiel fuehrt von Quellcode-Unlesbarkeit zu Modellen, einfachen Zustandsdiagrammen, neuen Anforderungen und schrittweiser Beherrschung von Komplexitaet.
+    primaryLearningGoal: learning_goal.software_engineering_basics
     secondaryLearningGoals:
+      - learning_goal.embedded_basics
       - learning_goal.iot_basics
       - learning_goal.embedded_advanced
     cardinalityRules:
@@ -129,6 +130,7 @@ items:
       - Offline-/Online-Verhalten und Konflikte fachlich beschreiben.
       - KI-Funktionen mit Kosten-, Kontext- und Tokenmanagement als Erweiterung bewerten.
     projects:
+      - project.gernetix_runtime_basissoftware
       - project.cross_platform_tamagotchi.embedded
       - project.cross_platform_tamagotchi.desktop
       - project.cross_platform_tamagotchi.mobile

@@ -2,6 +2,48 @@ schemaVersion: 1
 kind: ui_model_catalog
 sourceStatus: legacy_import_source
 items:
+  - id: ui_model.user_ide_account_transparency
+    type: ui_model
+    title: User IDE Mein Profil und Datentransparenz
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: IDE
+    summary: Kunden-IDE-Sicht fuer angemeldete Nutzer, die zeigt, wer sie sind und welche Informationen GerNetiX ueber sie fuehrt. Die Sicht zeigt Identitaet, Kontaktstatus, Login-Wege, Plaene, Abos, Kaeufe, Payment-Zusammenfassung, Angebote, Grants, Devices, Lernprofil, Feedback, KI-Nutzung, Consents und Quellen der Daten.
+    derivedFromRequirements:
+      - requirement.account_self_transparency_view
+    usesApiArtifacts:
+      - api_artifact.account_self_transparency
+    usesDataModels:
+      - data_model.account_transparency_snapshot
+    requiredStates:
+      - loading_current_snapshot
+      - current_snapshot
+      - stale_snapshot_refreshing
+      - refresh_failed_keep_last_snapshot
+      - no_payment_data
+      - no_active_subscription
+      - anonymous_feedback_present
+      - consent_active
+      - consent_expired_or_revoked
+    sections:
+      - Wer bin ich?
+      - Login und Sicherheit
+      - Plaene, Abos und Kaeufe
+      - Angebote und Empfehlungen
+      - Grants, Overrides und freigeschaltete Funktionen
+      - Devices und Supportstatus
+      - Lernen, Kompetenzen und Empfehlungen
+      - Feedback und Kontaktfreigaben
+      - KI-Credits und Nutzung
+      - Consents und Datenzugriffe
+      - Quellen und letzte Aktualisierung
+    refreshRules:
+      - Die Sicht zeigt `zuletzt aktualisiert` und ob Daten wegen relevanter Aenderungen veraltet waren.
+      - Beim Oeffnen fragt die Sicht den aktuellen Snapshot ab.
+      - Wenn der Snapshot veraltet ist, wird automatisch eine Aktualisierung angestossen und danach die neue Sicht angezeigt.
+      - Nutzer koennen manuell aktualisieren.
+      - Falls Aktualisierung fehlschlaegt, bleibt die letzte bekannte Sicht sichtbar und wird als moeglicherweise veraltet markiert.
+
   - id: ui_model.community_ai_assistant
     type: ui_model
     title: KI-Community-Assistent UI

@@ -10,6 +10,7 @@ Der Server verwaltet Registrierung, Pairing, Echtheitsnachweis, Account-Device-I
 - Community-Hardware weiterhin nutzbar machen
 - Devices Accounts zuordnen
 - OTA-faehige Zielgeraete aus dem Account-Profil finden
+- Device-Berechtigung fuer Build-&-Flash und OTA pruefen
 - Support- und Garantiegrenzen nachvollziehbar pruefen
 - Connectivity Setup, Pairing und Echtheit fachlich trennen
 
@@ -35,6 +36,23 @@ Die externe API bleibt unter einem klaren Device-Management-Prefix erreichbar. D
 - Provisioning Tool: Hersteller-Register, Initial-Credential, Supportgrundlage
 - Admin/Support: Support- und Reklamationsberechtigung pruefen
 
+## Firmware-Update-Strategie
+
+Device Management ist der fachliche Ansprechpartner fuer die Frage, ob ein Device bekannt, gepairt, einem Account zugeordnet und fuer OTA berechtigt ist. Der Build-&-Deploy-Server fuehrt danach den Build und den Deploy aus.
+
+Die ESP32-Basissoftware kennt keine feste Homeserver-IP, keine AWS-Adresse und kein separates Instanz-Konzept. Sie verwendet konfigurierbare Service-Endpunkte. Dadurch kann ein erster Betrieb auf einem Linux-Homeserver spaeter zu einer Cloud-Umgebung umziehen, ohne dass Boards nur wegen des Serverumzugs per USB neu geflasht werden muessen.
+
+Minimale Device-Daten fuer diesen Ablauf:
+
+- `device_id`
+- Runtime-Version
+- App-Version
+- konfigurierte Service-Endpunkte
+- Credential-Referenz oder Device-Key
+- letzter Update-Status
+
+Hardware-Plattform, Capability-Profil, Release-Channel oder Mindest-Runtime werden erst modelliert, wenn Kompatibilitaet, Support oder Rollout-Steuerung sie fachlich benoetigen.
+
 ## Module
 
 - `device-registry`: konkrete Devices und Lifecycle
@@ -53,3 +71,10 @@ Die externe API bleibt unter einem klaren Device-Management-Prefix erreichbar. D
 - keine echte HMAC-Implementierung
 - keine Firmware-Webserver-UI
 - keine Produktiv-Auth
+
+## Deployment-Leitplanken
+
+- Device Management bleibt als eigenstaendiger Prozess oder klar getrenntes Backend-Modul schneidbar.
+- ESP-Firmware, User IDE, Recovery Tool und Provisioning Tool sprechen nur ueber explizite API-Vertraege mit Device Management.
+- Ports, Datenbankverbindungen, MQTT-Broker und externe Basis-URLs muessen spaeter konfigurierbar sein.
+- Der erste Zielbetrieb darf ein Linux-Homeserver sein; spaetere Cloud-Auslagerung darf die fachlichen Schnittstellen nicht brechen.

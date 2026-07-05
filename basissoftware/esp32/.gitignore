@@ -1,0 +1,5 @@
+.pio/
+include/wifi_config.h
+src/user/wifi_config.h
+src/user/hw_*_config.h
+!src/user/hw_*_config.example.h

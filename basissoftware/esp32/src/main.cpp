@@ -2,10 +2,7 @@
 #include <ArduinoOTA.h>
 #include <WiFi.h>
 #include "config.h"
-
-#ifndef LED_BUILTIN
-#define LED_BUILTIN 2
-#endif
+#include "user/user_app.h"
 
 #ifndef GERNETIX_WIFI_MODE_NODE
 #define GERNETIX_WIFI_MODE_NODE 1
@@ -22,9 +19,6 @@
 #ifndef GERNETIX_WIFI_CONNECT_TIMEOUT_MS
 #define GERNETIX_WIFI_CONNECT_TIMEOUT_MS 15000
 #endif
-
-static uint32_t lastBlinkAt = 0;
-static bool ledState = false;
 
 const char *wifiModeName() {
 #if GERNETIX_WIFI_MODE == GERNETIX_WIFI_MODE_ACCESS_POINT
@@ -113,7 +107,6 @@ void setupWifi() {
 }
 
 void setup() {
-  pinMode(LED_BUILTIN, OUTPUT);
   Serial.begin(115200);
   delay(200);
   Serial.println();
@@ -121,15 +114,11 @@ void setup() {
 
   setupWifi();
   setupOta();
+  setupUserApp();
   Serial.println("OTA ready");
 }
 
 void loop() {
   ArduinoOTA.handle();
-
-  if (millis() - lastBlinkAt >= 1000) {
-    lastBlinkAt = millis();
-    ledState = !ledState;
-    digitalWrite(LED_BUILTIN, ledState ? HIGH : LOW);
-  }
+  loopUserApp();
 }

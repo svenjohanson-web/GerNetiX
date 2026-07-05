@@ -1,4 +1,5 @@
 ﻿const lessons = [
+  createSoftwareEngineeringTamagotchiLesson(),
   createActuatorOutputBasicsLesson(),
   createIdeaPreviewLesson({
     projectIdeaId: "project_idea.temperature_data_logger",
@@ -139,6 +140,7 @@
 
 let lesson = lessons[0];
 let currentStepIndex = 0;
+let navigationHistory = [];
 let isComplete = false;
 let codeLines = [];
 let isEditMode = false;
@@ -155,6 +157,181 @@ applyStoredLessonEdits();
 initProjectSelector();
 selectInitialLesson();
 render();
+
+function createSoftwareEngineeringTamagotchiLesson() {
+  return {
+    projectIdeaId: "project_idea.cross_platform_tamagotchi",
+    projectVariantId: "variant.runtime_independent_model_first",
+    slug: "software-engineering-tamagotchi",
+    title: "Software Engineering mit Tamagotchi",
+    file: "tamagotchi-model.txt",
+    learnerProfile: {
+      boardKey: "unknown",
+      selectedRuntime: "",
+    },
+    runtimeDefaults: {
+      selectedRuntime: "",
+    },
+    boardProfiles: {
+      unknown: { title: "Runtime wird im Projekt gewählt" },
+    },
+    source:
+      "Tamagotchi Lernmodul\n\nZiel: Nicht das Tamagotchi ist der Kern, sondern Software Engineering.\n\nModell:\n- States: Alive, Dead\n- Alive enthält: Satt, Hungrig\n- Events: Zeit vergeht, Füttern\n- Transition: Zu lange hungrig -> Dead\n\nNeue Anforderung:\n- Durst kommt hinzu\n- Hunger und Durst können gleichzeitig wahr sein\n- Die Anzeige braucht deshalb eine Priorität\n\nKernaussage:\nDas Modell beschreibt das Verhalten unabhängig von PC, Mac, ESP32, iOS oder Android.\nDie Implementierung wird aus dem Modell abgeleitet.\n",
+    steps: [
+      {
+        id: "step.tamagotchi_se.00_runtime_selection",
+        flowItemId: "project_flow_item.tamagotchi_se.00",
+        pattern: "step_pattern.runtime_decision",
+        title: "Runtime auswählen",
+        text:
+          "Wähle zuerst, wo du das Beispiel ausführen möchtest. Die Modellidee bleibt gleich, aber Vorbereitung und Umsetzung unterscheiden sich je nach Runtime.",
+        outcome: "Der weitere Lernpfad verzweigt abhängig von PC, Mac, ESP32 mit großem Display, iOS oder Android.",
+        focusLines: [3, 18],
+        editableLines: [],
+        decision: {
+          type: "singleChoice",
+          profileField: "selectedRuntime",
+          title: "Ausführungsziel",
+          options: [
+            { key: "pc", label: "PC", nextStepId: "step.tamagotchi_se.01_prepare_desktop" },
+            { key: "mac", label: "Mac", nextStepId: "step.tamagotchi_se.01_prepare_desktop" },
+            { key: "esp32_large_display", label: "ESP32 + Display", nextStepId: "step.tamagotchi_se.01_prepare_esp32" },
+            { key: "ios", label: "iOS", nextStepId: "step.tamagotchi_se.01_prepare_mobile" },
+            { key: "android", label: "Android", nextStepId: "step.tamagotchi_se.01_prepare_mobile" },
+          ],
+        },
+        completion: {
+          type: "decisionRequired",
+          label: "Runtime wurde ausgewählt",
+          resultSource: "selectedRuntime",
+        },
+      },
+      {
+        id: "step.tamagotchi_se.01_prepare_desktop",
+        flowItemId: "project_flow_item.tamagotchi_se.01_desktop",
+        pattern: "step_pattern.runtime_preparation",
+        title: "Desktop vorbereiten",
+        text:
+          "Auf PC oder Mac kann das Tamagotchi zuerst als normale Anwendung laufen. Dadurch bleibt der Fokus auf Modell, Verhalten und UI, nicht auf Embedded-Hardware.",
+        outcome: "Desktop ist als einfache Lernruntime eingeordnet.",
+        focusLines: [3, 18],
+        editableLines: [],
+        nextStepId: "step.tamagotchi_se.02_motivation_code",
+        completion: { type: "acknowledge", label: "Desktop-Runtime verstanden" },
+      },
+      {
+        id: "step.tamagotchi_se.01_prepare_esp32",
+        flowItemId: "project_flow_item.tamagotchi_se.01_esp32",
+        pattern: "step_pattern.runtime_preparation",
+        title: "ESP32 vorbereiten",
+        text:
+          "Auf dem ESP32 brauchst du ein Board mit geeignetem Display. Die Modelllogik bleibt dieselbe, aber Display, Speicher, Build und Flashen werden Teil der Randbedingungen.",
+        outcome: "ESP32 wird als eingebettete Zielruntime mit zusätzlichen Hardwaregrenzen verstanden.",
+        focusLines: [3, 18],
+        editableLines: [],
+        nextStepId: "step.tamagotchi_se.02_motivation_code",
+        completion: { type: "acknowledge", label: "ESP32-Runtime verstanden" },
+      },
+      {
+        id: "step.tamagotchi_se.01_prepare_mobile",
+        flowItemId: "project_flow_item.tamagotchi_se.01_mobile",
+        pattern: "step_pattern.runtime_preparation",
+        title: "Smartphone vorbereiten",
+        text:
+          "Auf iOS oder Android steht die App-Runtime im Vordergrund. Die Hürden liegen weniger im Modell, sondern in Toolchain, Signierung, Simulator oder Gerät.",
+        outcome: "Mobile wird als App-Zielruntime mit organisatorischen Randbedingungen verstanden.",
+        focusLines: [3, 18],
+        editableLines: [],
+        nextStepId: "step.tamagotchi_se.02_motivation_code",
+        completion: { type: "acknowledge", label: "Mobile-Runtime verstanden" },
+      },
+      {
+        id: "step.tamagotchi_se.02_motivation_code",
+        flowItemId: "project_flow_item.tamagotchi_se.02",
+        pattern: "step_pattern.motivation_problem",
+        title: "Quellcode ist nicht die beste Erklärung",
+        text:
+          "Zeige ein fertiges Tamagotchi und danach nur einen Codeausschnitt. Die Leitfrage lautet: Kannst du aus dem Code erkennen, wann es stirbt?",
+        outcome: "Der Lernende spürt, warum Code allein für Menschen keine gute Systembeschreibung ist.",
+        focusLines: [5, 6, 7],
+        editableLines: [],
+        completion: { type: "acknowledge", label: "Problem erkannt" },
+      },
+      {
+        id: "step.tamagotchi_se.03_model_before_runtime",
+        flowItemId: "project_flow_item.tamagotchi_se.03",
+        pattern: "step_pattern.model_introduction",
+        title: "Erst Modell, dann Implementierung",
+        text:
+          "Ingenieure beschreiben Verhalten zuerst mit Modellen. Die spätere Implementierung kann dann auf PC, Mac, ESP32, iOS oder Android unterschiedlich aussehen.",
+        outcome: "Modellbeschreibung und technische Runtime werden getrennt.",
+        focusLines: [3, 18],
+        editableLines: [],
+        completion: { type: "acknowledge", label: "Modell/Runtimetrennung verstanden" },
+      },
+      {
+        id: "step.tamagotchi_se.04_first_state_machine",
+        flowItemId: "project_flow_item.tamagotchi_se.04",
+        pattern: "step_pattern.state_machine_intro",
+        title: "Erste State Machine",
+        text:
+          "Beginne bewusst minimal: Alive, Dead sowie Satt und Hungrig innerhalb von Alive. Zeit macht hungrig, Füttern macht satt, zu lange hungrig führt zu Dead.",
+        outcome: "Zustände und Übergänge werden ohne UML-Spezialnotation verstanden.",
+        focusLines: [5, 6, 7, 8],
+        editableLines: [],
+        completion: { type: "acknowledge", label: "Erste State Machine verstanden" },
+      },
+      {
+        id: "step.tamagotchi_se.05_extension_problem",
+        flowItemId: "project_flow_item.tamagotchi_se.05",
+        pattern: "step_pattern.interactive_extension",
+        title: "Neue Zustände erzeugen neue Fragen",
+        text:
+          "Jetzt kommt Durst hinzu. Der Nutzer kann verstehen, dass jede neue Anforderung nicht nur Code ergänzt, sondern auch das Modell verändert.",
+        outcome: "Neue Anforderungen werden als Modellierungsproblem sichtbar.",
+        focusLines: [10, 11],
+        editableLines: [],
+        completion: { type: "acknowledge", label: "Erweiterung eingeordnet" },
+      },
+      {
+        id: "step.tamagotchi_se.06_parallel_states",
+        flowItemId: "project_flow_item.tamagotchi_se.06",
+        pattern: "step_pattern.problem_observation",
+        title: "Gleichzeitig hungrig und durstig",
+        text:
+          "Stelle nur die Frage: Was passiert, wenn Hunger und Durst gleichzeitig wahr sind? Die Antwort soll aus der Beobachtung entstehen.",
+        outcome: "Der Lernende erkennt parallele Wahrheiten im Systemzustand.",
+        focusLines: [11, 12, 13],
+        editableLines: [],
+        completion: { type: "acknowledge", label: "Parallelität erkannt" },
+      },
+      {
+        id: "step.tamagotchi_se.07_priority_display",
+        flowItemId: "project_flow_item.tamagotchi_se.07",
+        pattern: "step_pattern.solution_introduction",
+        title: "Darstellung braucht Priorität",
+        text:
+          "Das Display besitzt nur ein Gesicht. Deshalb braucht die Anzeige eine Priorität, etwa Dead vor Durstig vor Hungrig vor Zufrieden.",
+        outcome: "Mehrere Zustände können gleichzeitig gelten, aber die Darstellung muss priorisieren.",
+        focusLines: [12, 13, 14],
+        editableLines: [],
+        completion: { type: "acknowledge", label: "Priorisierung verstanden" },
+      },
+      {
+        id: "step.tamagotchi_se.08_reflection",
+        flowItemId: "project_flow_item.tamagotchi_se.08",
+        pattern: "step_pattern.reflection",
+        title: "Runtime-unabhängig denken",
+        text:
+          "Das Ziel ist eine Denkweise: Verhalten zuerst modellieren, dann passend implementieren. KI oder runtime-unabhängige Frameworks können die Übersetzung unterstützen.",
+        outcome: "Software Engineering wird als Beherrschung von Komplexität verstanden, nicht als bloßes Schreiben von Code.",
+        focusLines: [16, 17, 18],
+        editableLines: [],
+        completion: { type: "acknowledge", label: "Projekt abgeschlossen" },
+      },
+    ],
+  };
+}
 
 function createActuatorOutputBasicsLesson() {
   return {
@@ -322,7 +499,9 @@ function selectLesson(slug, updateUrl) {
   lesson = lessons.find((item) => item.slug === slug) || lessons[0];
   projectSelector.value = lesson.slug;
   currentStepIndex = 0;
+  navigationHistory = [];
   isComplete = false;
+  resetLessonRuntimeState(lesson);
   codeLines = lesson.source.replace(/\n$/, "").split("\n");
 
   if (updateUrl) {
@@ -332,6 +511,13 @@ function selectLesson(slug, updateUrl) {
   }
 
   render();
+}
+
+function resetLessonRuntimeState(lessonItem) {
+  lessonItem.learnerProfile = {
+    ...(lessonItem.learnerProfile || {}),
+    ...(lessonItem.runtimeDefaults || {}),
+  };
 }
 
 function currentStep() {
@@ -428,6 +614,8 @@ function renderPanel() {
     <p class="step-text">${stepItem.text}</p>
     <div class="outcome-box"><strong>Ergebnis:</strong> ${stepItem.outcome}</div>
     ${renderStepMedia(stepItem)}
+    ${renderDecisionControl(stepItem)}
+    ${renderCompletionCondition(stepItem, validationState)}
     <div class="meta-box">
       <span>${stepItem.id}</span>
       <span>${stepItem.flowItemId}</span>
@@ -455,6 +643,47 @@ function renderStepMedia(stepItem) {
   `;
 }
 
+function renderDecisionControl(stepItem) {
+  if (stepItem.decision?.type !== "singleChoice") return "";
+
+  const field = stepItem.decision.profileField;
+  const selected = lesson.learnerProfile?.[field] || "";
+  const buttons = stepItem.decision.options
+    .map((option) => {
+      const isActive = option.key === selected;
+      return `<button type="button" class="${isActive ? "active" : ""}" data-action="select-decision" data-field="${escapeAttribute(field)}" data-value="${escapeAttribute(option.key)}">${escapeHtml(option.label)}</button>`;
+    })
+    .join("");
+
+  return `
+    <div class="decision-box">
+      <strong>${escapeHtml(stepItem.decision.title || "Entscheidung")}</strong>
+      <div class="decision-options">${buttons}</div>
+    </div>
+  `;
+}
+
+function renderCompletionCondition(stepItem, validationState) {
+  if (!stepItem.completion) return "";
+
+  const result = resolveCompletionResult(stepItem);
+  const resultLabel = stepItem.completion.type === "acknowledge"
+    ? "erfüllt"
+    : result ? renderDecisionResultLabel(stepItem, result) : "offen";
+
+  return `
+    <div class="completion-box ${validationState.canContinue ? "ok" : "blocked"}">
+      <strong>Abschlussbedingung:</strong> ${escapeHtml(stepItem.completion.label)}
+      <span>Ergebnis: ${escapeHtml(resultLabel)}</span>
+    </div>
+  `;
+}
+
+function renderDecisionResultLabel(stepItem, result) {
+  const option = stepItem.decision?.options?.find((item) => item.key === result);
+  return option?.label || result;
+}
+
 function renderAuthoringEditor(stepItem) {
   if (!isEditMode) return "";
   return `
@@ -479,6 +708,16 @@ function renderValidation(validationState) {
 }
 
 function getValidationState(stepItem) {
+  if (stepItem.completion?.type === "decisionRequired") {
+    const result = resolveCompletionResult(stepItem);
+    return {
+      canContinue: Boolean(result),
+      message: result
+        ? `Abschlussbedingung erfüllt: ${stepItem.completion.label}.`
+        : `Weiter geht es, sobald die Abschlussbedingung erfüllt ist: ${stepItem.completion.label}.`,
+    };
+  }
+
   if (stepItem.validation?.type === "knownBoardPinOrIntegerRange") {
     return validateKnownBoardPinOrIntegerRange(stepItem.validation);
   }
@@ -488,7 +727,10 @@ function getValidationState(stepItem) {
   }
 
   if (!stepItem.expectedContains) {
-    return { canContinue: true, message: "" };
+    return {
+      canContinue: true,
+      message: stepItem.completion?.label ? `Abschlussbedingung: ${stepItem.completion.label}.` : "",
+    };
   }
 
   const code = codeLines.join("\n");
@@ -591,9 +833,15 @@ function wirePanelButtons() {
         saveCurrentStepEdits();
       }
 
+      if (action === "select-decision") {
+        selectDecisionOption(button.dataset.field, button.dataset.value);
+      }
+
       if (action === "restart") {
         currentStepIndex = 0;
+        navigationHistory = [];
         isComplete = false;
+        resetLessonRuntimeState(lesson);
         codeLines = lesson.source.replace(/\n$/, "").split("\n");
         render();
       }
@@ -601,15 +849,25 @@ function wirePanelButtons() {
   });
 }
 
+function selectDecisionOption(field, value) {
+  if (!field) return;
+  lesson.learnerProfile = {
+    ...(lesson.learnerProfile || {}),
+    [field]: value,
+  };
+  render();
+}
+
 function goBack() {
   if (isComplete) {
     isComplete = false;
-    currentStepIndex = lesson.steps.length - 1;
     render();
     return;
   }
 
-  currentStepIndex = Math.max(0, currentStepIndex - 1);
+  currentStepIndex = navigationHistory.length > 0
+    ? navigationHistory.pop()
+    : Math.max(0, currentStepIndex - 1);
   render();
 }
 
@@ -618,13 +876,38 @@ function goNext() {
     return;
   }
 
-  if (currentStepIndex === lesson.steps.length - 1) {
+  const nextStepIndex = resolveNextStepIndex(currentStep());
+
+  if (nextStepIndex === null) {
     isComplete = true;
   } else {
-    currentStepIndex += 1;
+    navigationHistory.push(currentStepIndex);
+    currentStepIndex = nextStepIndex;
   }
 
   render();
+}
+
+function resolveNextStepIndex(stepItem) {
+  const result = resolveCompletionResult(stepItem);
+  const decisionNextStepId = stepItem.decision?.options?.find((option) => option.key === result)?.nextStepId;
+  const nextStepId = decisionNextStepId || stepItem.completion?.nextStepId || stepItem.nextStepId;
+
+  if (nextStepId) {
+    const foundIndex = lesson.steps.findIndex((item) => item.id === nextStepId);
+    if (foundIndex >= 0) return foundIndex;
+  }
+
+  if (currentStepIndex === lesson.steps.length - 1) {
+    return null;
+  }
+
+  return currentStepIndex + 1;
+}
+
+function resolveCompletionResult(stepItem) {
+  const source = stepItem.completion?.resultSource;
+  return source ? lesson.learnerProfile?.[source] || "" : "";
 }
 
 function handleLineKeydown(event) {

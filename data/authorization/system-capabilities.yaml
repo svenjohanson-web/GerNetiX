@@ -171,6 +171,13 @@ items:
     ownerDomain: Authorization
     summary: Benutzer darf sich identifizieren, damit berechtigte Services ermittelt und bereitgestellt werden koennen.
 
+  - id: system_capability.account_self_transparency
+    type: system_capability
+    title: Account Self Transparency
+    status: draft
+    ownerDomain: Authorization
+    summary: Benutzer darf in der User IDE eine Selbstsicht abrufen, die zeigt, wer er ist und welche accountbezogenen Daten, Berechtigungen, Angebote, Abos, Zahlungen, Devices, Lernfortschritte und Consents die Plattform ueber ihn fuehrt.
+
   - id: system_capability.support_registered_board_check
     type: system_capability
     title: Support Registered Board Check

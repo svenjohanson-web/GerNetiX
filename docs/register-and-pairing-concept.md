@@ -97,6 +97,36 @@ Darf nicht automatisch:
 - als von GerNetiX verkauft gelten
 - Garantie- oder Reklamationsansprueche erzeugen
 
+## Community-Board-Discovery ueber Recovery Tool
+
+Ein typischer Neukundenfall ist ein guenstig gekauftes ESP32-Board von eBay, Amazon oder einem anderen Anbieter. Der Nutzer weiss oft nicht, welches genaue Boardprofil vorliegt, welche Pins sicher nutzbar sind, ob eine Onboard-LED existiert, ob ein Display vorhanden ist oder welche Beschriftung was bedeutet.
+
+Das Recovery Tool soll diesen Einstieg erleichtern:
+
+```text
+Unbekanntes Board per USB verbinden
+-> Recovery Tool erkennt USB/Chip soweit moeglich
+-> GerNetiX Discovery Firmware flashen
+-> Device startet AP, Webinterface, Weblog und OTA-Basis
+-> Basisdaten erfassen: Chip-ID, Flash-Groesse, Runtime-Version, Connectivity
+-> gefuehrte Fragen stellen, wenn Capabilities nicht automatisch erkennbar sind
+-> Community Hardware Profile oder AccountDevice-Eintrag erzeugen
+```
+
+Beispiele fuer gefuehrte Fragen:
+
+- Hat dein Board WLAN?
+- Kannst du es per USB flashen?
+- Hat es eine Onboard-LED?
+- Weisst du den LED-Pin?
+- Ist ein Display angeschlossen?
+- Weisst du SDA/SCL fuer I2C?
+- Weisst du, an welchem Pin ein Sensor oder Aktor angeschlossen ist?
+
+Wenn der Nutzer eine Eigenschaft nicht kennt, bleibt sie `unknown`. Unbekannt ist weder `false` noch `true`; unbekannte Capabilities duerfen nicht automatisch fuer pflichtige Lernprojekte verwendet werden. Das Tool darf dann Alternativen anbieten, zum Beispiel ein bekanntes Boardprofil auswaehlen, ein GerNetiX-Kit nutzen oder das Projekt auf den Minimalumfang reduzieren.
+
+Die Business-Argumentation ist Neukundengewinnung durch erleichterten Einstieg. Community-Hardware bleibt nutzbar und lernfoerdernd, erzeugt aber keinen GerNetiX-Hardware-Support-, Garantie- oder Reklamationsanspruch.
+
 ## OTA-Auswahl in der IDE
 
 Wenn ein Nutzer ein Setup-Rezept oder Lernprojekt oeffnet, ermittelt die IDE benoetigte TechnicalCapabilities und sucht passende Account-Devices.

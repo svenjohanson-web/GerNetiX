@@ -213,6 +213,58 @@ button {
   background: var(--warning-soft);
 }
 
+.decision-box,
+.completion-box {
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f8fafc;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.decision-options {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.decision-options button {
+  min-height: 36px;
+  border: 1px solid var(--line-strong);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  padding: 0 10px;
+}
+
+.decision-options button.active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-strong);
+  font-weight: 700;
+}
+
+.completion-box {
+  display: grid;
+  gap: 4px;
+}
+
+.completion-box.ok {
+  border-color: #9bd7c7;
+  color: var(--accent-strong);
+  background: var(--accent-soft);
+}
+
+.completion-box.blocked {
+  border-color: #f0c36f;
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
 .panel-spacer {
   flex: 1;
 }

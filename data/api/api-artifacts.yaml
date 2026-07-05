@@ -24,6 +24,56 @@ items:
       - requirement.verified_answer_status_visible
       - requirement.reverify_changed_verified_answer
 
+  - id: api_artifact.identity
+    type: api_artifact
+    title: Identity API
+    businessStatus: In Analysis
+    implementationStatus: In Design
+    ownerDomain: Account
+    summary: API-Artefakt fuer klassische Registrierung, E-Mail-Verifizierung, lokalen Login, Social Login ueber gekapselte Provider, Logout und Passwort-Reset. Public Responses duerfen keine Provider-IDs und keine interne E-Mail als oeffentliche Identitaet exponieren.
+    derivedFromRequirements:
+      - requirement.identity_registration_login
+
+  - id: api_artifact.account_self_transparency
+    type: api_artifact
+    title: Account Self Transparency API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Account
+    summary: API-Artefakt fuer die Kunden-IDE-Sicht `Was weiss GerNetiX ueber mich?`. Liefert einen aktuellen AccountTransparencySnapshot fuer den angemeldeten Nutzer, kann eine explizite Aktualisierung ausloesen und markiert, ob der Snapshot wegen Aenderungen an Payment, Abos, Angeboten, Grants, Devices, Lernfortschritt, KI-Nutzung oder Consents veraltet war.
+    derivedFromRequirements:
+      - requirement.account_self_transparency_view
+    usesApiArtifacts:
+      - api_artifact.identity
+      - api_artifact.account_competency_profile
+      - api_artifact.account_device_inventory
+      - api_artifact.ai_credit_balance
+      - api_artifact.customer_data_access_consent
+    relatedDataModels:
+      - data_model.account_transparency_snapshot
+    endpoints:
+      - GET /account/me/transparency
+      - POST /account/me/transparency/refresh
+    responseSections:
+      - identity
+      - contact_data
+      - login_providers
+      - plans_subscriptions_and_purchases
+      - product_offerings
+      - grants_overrides_and_capabilities
+      - devices_and_support
+      - learning_profile
+      - feedback
+      - ai_credits_and_usage
+      - consents_and_customer_data_access
+      - sources_and_last_updated
+    rules:
+      - Der Endpunkt liefert ausschliesslich Daten des angemeldeten Accounts.
+      - Bei einem veralteten Snapshot darf GET automatisch neu berechnen, solange die Antwortzeit fuer die IDE akzeptabel bleibt.
+      - POST /refresh erzwingt eine Neuberechnung aus den fuehrenden Domaenenquellen.
+      - Provider-IDs, Passwort-Hashes, Token-Hashes, Device-Secrets, interne Abuse-Signale und interne Anbieter-Kosten duerfen nicht in der Antwort erscheinen.
+      - Jede Berechtigung muss mit Quelle und Grund erklaert werden, zum Beispiel Plan, Kurskauf, Einzelgrant, Override, Ablauf oder Widerruf.
+
   - id: api_artifact.ai_credit_balance
     type: api_artifact
     title: AI Credit Balance API
@@ -125,9 +175,21 @@ items:
     businessStatus: In Analysis
     implementationStatus: Not Started
     ownerDomain: Learning
-    summary: API-Artefakt fuer Feedback nach abgeschlossenen Steps, Projekten oder Kompetenznachweisen, inklusive Erklaerung, welche Kompetenz wodurch erworben oder vertieft wurde.
+    summary: API-Artefakt fuer Nutzerfeedback zu einzelnen ProjectSteps, Projektabschluss und Kompetenznachweisen. Beim Absenden kann der Nutzer anonym bleiben oder zweckgebunden Kontakt fuer Rueckfragen zu genau diesem Feedback erlauben.
     derivedFromRequirements:
       - requirement.competency_evidence_feedback
+      - requirement.learning_project_step_feedback
+
+  - id: api_artifact.admin_learning_feedback
+    type: api_artifact
+    title: Admin Learning Feedback API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: API-Artefakt fuer Admin-Sichten auf Step- und Projektfeedback. Feedback kann nach Absender, Projekt, Step, Status und Kontaktmodus sortiert und gefiltert werden; identifizierbare Daten und Kontaktdaten duerfen nur zweckgebunden, berechtigt und auditiert sichtbar werden.
+    derivedFromRequirements:
+      - requirement.learning_project_step_feedback
+      - requirement.customer_data_consent_for_admin_access
 
   - id: api_artifact.learning_recommendations
     type: api_artifact
@@ -150,6 +212,16 @@ items:
     derivedFromRequirements:
       - requirement.learning_step_completion_conditions
       - requirement.board_execution_adapter_for_learning_steps
+
+  - id: api_artifact.firmware_build_deploy
+    type: api_artifact
+    title: Firmware Build & Deploy API
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: IDE
+    summary: API-Artefakt fuer BuildJob-Erzeugung, HTTP-Uebertragung vollstaendiger BuildPackages, BuildResult-Rueckgabe, temporaere Artefaktuebertragung, HTTPS-Firmwarebereitstellung und MQTT-basierte Deploy-Auftraege, Statusmeldungen, Heartbeats und Telemetrie.
+    derivedFromRequirements:
+      - requirement.firmware_build_deploy_server
 
   - id: api_artifact.device_manufacturer_registration
     type: api_artifact

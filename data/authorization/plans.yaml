@@ -12,6 +12,7 @@ items:
       - system_capability.community_free_participation
       - system_capability.learning_free_content
       - system_capability.learning_project_preview
+      - system_capability.account_self_transparency
 
   - id: plan.premium
     type: plan
@@ -28,4 +29,5 @@ items:
       - system_capability.learning_premium_project_content
       - system_capability.learning_project_assets
       - system_capability.learning_connected_extensions
+      - system_capability.account_self_transparency
 

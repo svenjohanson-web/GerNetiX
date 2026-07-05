@@ -236,10 +236,18 @@ items:
     implementationStatus: Not Started
     ownerDomain: Business
     summary: Nutzerprojekte koennen zentral in der Plattform gespeichert werden.
+    supports:
+      - BG-001
+      - BG-002
+      - BG-003
     providedByMeasures:
       - measure.platform_centric_work
     referencesBusinessRules:
       - BR-002
+    affectedArchitectureArtifacts:
+      - architecture_artifact.project_server
+    derivesRequirements:
+      - requirement.firmware_build_deploy_server
 
   - id: BC-021
     type: business_capability
@@ -248,10 +256,19 @@ items:
     implementationStatus: Not Started
     ownerDomain: Business
     summary: Nutzer koennen ueber mehrere Geraete hinweg auf ihre Projekte zugreifen.
+    supports:
+      - BG-001
+      - BG-002
+      - BG-003
     providedByMeasures:
       - measure.platform_centric_work
     referencesBusinessRules:
       - BR-002
+    affectedArchitectureArtifacts:
+      - architecture_artifact.project_server
+      - architecture_artifact.build_deploy_server
+    derivesRequirements:
+      - requirement.firmware_build_deploy_server
 
   - id: BC-022
     type: business_capability
@@ -296,14 +313,22 @@ items:
     implementationStatus: Not Started
     ownerDomain: Business
     summary: Die Plattform kann aus Kompetenzprofil, Fortschritt, Hardware, Interessen und gekauften Courses naechste sinnvolle Lernschritte, Vertiefungen, Alternativpfade und Anschlussangebote empfehlen.
+    supports:
+      - BG-001
+      - BG-002
+      - BG-003
     providedByMeasures:
       - measure.continuous_learning_paths
       - measure.competency_profile_retention
     derivesRequirements:
       - requirement.account_competency_profile
       - requirement.competency_evidence_feedback
+      - requirement.learning_project_step_feedback
       - requirement.competency_based_learning_recommendations
       - requirement.non_linear_learning_progression
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+      - requirement.firmware_build_deploy_server
+      - requirement.firmware_local_feedback_weblog
 
   - id: BC-026
     type: business_capability
@@ -486,6 +511,8 @@ items:
     ownerDomain: DeviceManagement
     summary: Die Plattform kann konkrete Devices registrieren, pairen, als GerNetiX-verified oder Community-Hardware unterscheiden, OTA-Ziele aus dem Account-Profil ableiten und Support-/Garantieansprueche nachvollziehbar pruefen.
     supports:
+      - BG-002
+      - BG-003
       - BG-004
       - BG-006
       - BG-007
@@ -498,12 +525,17 @@ items:
       - system_capability.admin_device_management
     affectedArchitectureArtifacts:
       - architecture_artifact.device_management_server
+      - architecture_artifact.build_deploy_server
     derivesRequirements:
       - requirement.device_manufacturer_registration
       - requirement.device_customer_registration_and_pairing
       - requirement.device_authenticity_challenge_response
       - requirement.community_hardware_supported_without_entitlement
+      - requirement.community_board_discovery_via_recovery_tool
       - requirement.ide_ota_device_selection_from_profile
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+      - requirement.firmware_build_deploy_server
+      - requirement.firmware_local_feedback_weblog
       - requirement.device_support_entitlement_traceability
       - requirement.device_admin_status_inspection
 
@@ -525,3 +557,23 @@ items:
       - architecture_artifact.device_management_server
     derivesRequirements:
       - requirement.customer_data_consent_for_admin_access
+      - requirement.learning_project_step_feedback
+
+  - id: BC-044
+    type: business_capability
+    title: Identity und Account-Zugang bereitstellen
+    businessStatus: In Analysis
+    implementationStatus: In Design
+    ownerDomain: Account
+    summary: Die Plattform kann Nutzer eindeutig registrieren, verifizieren, anmelden, externe Identitaeten kapseln und allen Folgemodulen eine stabile interne `user_id` bereitstellen.
+    supports:
+      - BG-001
+      - BG-002
+      - BG-003
+      - BG-007
+    realizedBySystemCapabilities:
+      - system_capability.account_identification
+    affectedArchitectureArtifacts:
+      - architecture_artifact.identity_server
+    derivesRequirements:
+      - requirement.identity_registration_login

@@ -67,6 +67,162 @@ items:
     ownerDomain: CrossDomain
     summary: Hardware-Faehigkeiten und Produktberechtigungen duerfen nicht vermischt werden.
 
+  - id: architecture.firmware_user_hw_config_separation
+    type: architecture_decision
+    title: User-Code und Hardware-Konfiguration in getrennten Dateien
+    status: approved
+    ownerDomain: DeviceManagement
+    summary: Firmware-Runtime, User-Code und Hardware-Konfigurationen werden physisch getrennt. User-veraenderliche Dateien liegen in einem eigenen User-Ordner; jede Hardware-Funktion wie WiFi oder PWM besitzt eine separate Konfigurationsdatei.
+    derivedFromRequirements:
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+    rules:
+      - Runtime-Dateien enthalten Plattformfunktionen wie OTA, Connectivity, Versionierung und spaetere Statusmeldungen.
+      - User-Code liegt in eigenen Dateien, zum Beispiel `src/user/user_app.cpp`.
+      - Jede Hardware-Konfiguration liegt in einer separaten Datei, zum Beispiel `wifi_config.h` oder `hw_pwm_config.h`.
+      - Lokale Konfigurationsdateien ohne `.example` duerfen nicht versehentlich versioniert werden.
+
+  - id: architecture.runtime_basis_user_artifact_separation
+    type: architecture_decision
+    title: Runtime-Basissoftware und User-Artefakte werden runtime-unabhaengig getrennt
+    status: approved
+    ownerDomain: Learning
+    summary: Jedes Lern- oder Kundenprojekt erhaelt eine initiale Projektsoftware aus GerNetiX Runtime/Basissoftware, Projekt-Template und User-Artefakten. Nutzeranpassungen duerfen nur in definierten User-Dateien und projektspezifischen Konfigurationsdateien stattfinden; Basissoftware und Runtime-Dateien bleiben geschuetzt und updatefaehig. Diese Regel gilt nicht nur fuer ESP32-Firmware, sondern auch fuer Desktop-, Web-, Mobile- und spaetere weitere Runtimes.
+    derivedFromRequirements:
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+      - requirement.firmware_local_feedback_weblog
+      - nfr.service_deployment_portability
+    rules:
+      - Basissoftware enthaelt Runtime, Build-/Update-Anbindung, Logging, Feedback, Plattformadapter und stabile Schnittstellen zum User-Code.
+      - Projekt-Templates liefern projektspezifische Startstrukturen fuer konkrete Lern- oder Kundenprojekte.
+      - User-Artefakte sind der einzige direkt vom Nutzer veraenderliche Bereich.
+      - Basissoftware-Updates duerfen User-Artefakte nicht ueberschreiben.
+      - Jede Runtime muss deklarieren, welche Dateien geschuetzt und welche Dateien user-editierbar sind.
+      - IDE und Build-Pipeline muessen warnen oder blockieren, wenn ein Projekt die geschuetzte Basissoftware entfernt oder direkt veraendert.
+    appliesTo:
+      - ESP32 Firmware
+      - Desktop Runtime
+      - Web Runtime
+      - Mobile Runtime
+      - weitere spaetere Runtimes
+
+  - id: architecture.project_server_build_deploy_server_split
+    type: architecture_decision
+    title: Projektserver und Build-&-Deploy-Server trennen
+    status: approved
+    ownerDomain: IDE
+    summary: Der Projektserver bleibt Quelle der Wahrheit fuer Benutzer, Projekte, Geraete, Quellcode und Build-Historie. Der Build-&-Deploy-Server fuehrt nur temporaere Build- und Deploy-Jobs aus, darf technische Caches behalten, kommuniziert mit Geraeten per MQTT und HTTPS und loescht temporaere Projektdaten nach Abschluss.
+    derivedFromRequirements:
+      - requirement.firmware_build_deploy_server
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+      - requirement.ide_ota_device_selection_from_profile
+    affectsArchitectureArtifacts:
+      - architecture_artifact.project_server
+      - architecture_artifact.build_deploy_server
+      - architecture_artifact.device_management_server
+    rules:
+      - Der Projektserver erstellt fuer jeden Build ein vollstaendiges BuildPackage als Snapshot des Projekts.
+      - Das BuildPackage enthaelt BuildJob-Metadaten, PlatformIO-Konfiguration, `src`, `include`, `lib`, `assets` und optional vorberechnete Dateien.
+      - Das BuildPackage wird per HTTP an den Build-&-Deploy-Server uebertragen.
+      - Der Build-&-Deploy-Server darf niemals direkt auf dauerhafte Projektdaten zugreifen.
+      - Der Build-&-Deploy-Server kompiliert ausschliesslich aus diesem BuildPackage.
+      - Firmware, BuildResult, Build-Log, Deploy-Log und Status werden an den Projektserver zurueckgegeben.
+      - Das BuildResult enthaelt mindestens `firmware.bin`, `firmware.elf`, `firmware.map`, `build.log`, Build-Status, SHA-256 und Dateigroesse.
+      - Temporaere Projektdaten werden nach Abschluss des Jobs vom Build-&-Deploy-Server geloescht.
+      - Technische Caches wie PlatformIO, Toolchains, Libraries und Objektdateien duerfen erhalten bleiben.
+      - Der technische Cache ist niemals Quelle der Wahrheit; bei Cacheverlust muss der Build weiterhin moeglich sein, nur langsamer.
+      - Prebuilds duerfen beim Erstellen oder Oeffnen eines Lernprojekts gestartet werden, um Caches aufzuwarmen.
+      - Ein Prebuild loest niemals ein OTA-Deployment aus.
+      - OTA wird ausschliesslich durch einen vom Nutzer ausgeloesten Build-&-Flash-Auftrag gestartet.
+      - Nach erfolgreichem Build uebernimmt der Build-&-Deploy-Server den Deploy.
+      - MQTT dient ausschliesslich fuer Deploy-Auftraege, Statusmeldungen, Heartbeats und Telemetrie.
+      - HTTPS dient fuer Firmware-Download und Artefaktuebertragung.
+      - Der Build-&-Deploy-Server stellt Firmware per HTTPS bereit und sendet Deploy-Auftraege per MQTT.
+      - Devices melden Deploy-Status per MQTT zurueck.
+      - Pro Device ist maximal ein aktiver Build-/Deploy-Job erlaubt.
+      - Optional darf genau ein wartender Job pro Device existieren; neue wartende Jobs ersetzen aeltere wartende Jobs.
+      - Der Projektserver ist fachlicher Zustand; der Build-&-Deploy-Server ist Build- und Deploy-Ausfuehrung.
+      - Der Buildserver ist fachlich zustandslos und besitzt keine dauerhaften Projektdaten.
+
+  - id: architecture.firmware_minimal_update_strategy
+    type: architecture_decision
+    title: Minimale Firmware-Update-Strategie ueber Device Management und Build-&-Deploy
+    status: approved
+    ownerDomain: DeviceManagement
+    summary: Die ESP32-Basissoftware bleibt minimal und dauerhaft OTA-faehig. Sie kennt keine fest verdrahtete Homeserver-, IP- oder Cloud-Instanz, sondern nur konfigurierbare Service-Endpunkte fuer Device Management und Build-&-Deploy. Firmware-Downloads starten erst nach einem autorisierten Deploy-Auftrag.
+    derivedFromRequirements:
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+      - requirement.firmware_build_deploy_server
+      - requirement.ide_ota_device_selection_from_profile
+    references:
+      - architecture.project_server_build_deploy_server_split
+      - architecture.service_process_portability
+    affectsArchitectureArtifacts:
+      - architecture_artifact.device_management_server
+      - architecture_artifact.build_deploy_server
+      - component.ota
+      - component.device_connectivity_setup
+    rationale:
+      - Kunden halten, weil OTA-Faehigkeit, Backend-Umzug ohne USB-Reflash und robuste Statusmeldungen langfristige Nutzung ohne technische Sackgassen ermoeglichen.
+      - Nutzer gewinnen, weil ein einfacher Einstieg mit Homeserver-Betrieb spaeter ohne Architekturbruch in Cloud-Betrieb wachsen kann.
+      - Kundenakzeptanz sichern, weil Firmware-Downloads nur nach autorisiertem Deploy-Auftrag starten und das Device Firmware-Groesse sowie SHA-256 prueft.
+    rules:
+      - Die Basissoftware besitzt keinen hart codierten Serverstandort, keine feste lokale IP und keine AWS-spezifische Adresse.
+      - Die Basissoftware verwendet konfigurierbare Endpunkte fuer Device Management, Build-&-Deploy, optional MQTT-Broker und HTTPS-Basis-URL.
+      - Device Management bleibt fachlicher Ansprechpartner fuer Registrierung, Pairing, Account-Zuordnung, Device-Status und OTA-Zielauswahl.
+      - Der Build-&-Deploy-Server bleibt fachlicher Ansprechpartner fuer Build-Ausfuehrung, Deploy-Auftrag, Firmware-Bereitstellung und Deploy-Status.
+      - Es wird kein separates Instanz-Konzept fuer diesen Zweck eingefuehrt.
+      - Das Device fragt beim konfigurierten Backend, ob es bekannt, gepairt und fuer einen Deploy-Auftrag berechtigt ist.
+      - Ein Firmware-Download startet erst nach einem autorisierten Deploy-Auftrag fuer die konkrete `device_id`.
+      - Deploy-Auftraege werden per MQTT signalisiert; Firmware-Dateien werden per HTTPS geladen.
+      - Das Device prueft mindestens Groesse und SHA-256 der Firmware, bevor es flasht.
+      - Das Device meldet Status wie `idle`, `downloading`, `flashing`, `rebooting`, `success` oder `failed` zurueck.
+      - Die minimale Device-Konfiguration umfasst `device_id`, Runtime-Version, App-Version, Service-Endpunkte, Credential-Referenz oder Device-Key und letzten Update-Status.
+      - Hardware-Plattform, Capability-Profil, Release-Channel oder Mindest-Runtime werden erst ergaenzt, wenn Kompatibilitaet, Support oder Rollout-Steuerung sie fachlich benoetigen.
+      - Ein Umzug von Linux-Homeserver zu Cloud darf ueber DNS, Konfiguration oder kontrolliertes Konfigurationsupdate erfolgen und darf keinen USB-Reflash erzwingen.
+      - User-Code bleibt Anwendungslogik; OTA, Connectivity, Pairing-Anknuepfung, Statusmeldung und Update-Pruefung bleiben Aufgabe der Basissoftware.
+
+  - id: architecture.identity_internal_user_id
+    type: architecture_decision
+    title: Interne user_id ist fuehrende Identitaet
+    status: approved
+    ownerDomain: Account
+    summary: Klassische Registrierung und externe Provider erzeugen immer einen internen UserAccount mit eindeutiger `user_id`. Andere Module duerfen Provider-IDs oder Provider-E-Mails nicht als fachliche Identitaet verwenden.
+    derivedFromRequirements:
+      - requirement.identity_registration_login
+    affectsArchitectureArtifacts:
+      - architecture_artifact.identity_server
+    rules:
+      - Jede Registrierung erzeugt genau einen internen UserAccount.
+      - LocalCredential und ExternalIdentity verweisen auf einen internen UserAccount.
+      - Folgemodule verwenden ausschliesslich die interne `user_id`.
+      - Provider-IDs bleiben technische Fremdschluessel innerhalb des Identity-Moduls.
+      - E-Mail ist intern und wird nicht als oeffentliche Identitaet verwendet.
+      - Oeffentliche Identitaet ist spaeter der Benutzername.
+
+  - id: architecture.service_process_portability
+    type: architecture_decision
+    title: Services als portable Prozesse schneiden
+    status: approved
+    ownerDomain: CrossDomain
+    summary: GerNetiX-Services werden so geschnitten, dass sie zuerst gemeinsam auf einem Linux-Homeserver oder kleinen Server laufen koennen und spaeter einzeln in Cloud-Umgebungen wie AWS migrierbar bleiben. Unterordner im Repo sind nur Codeorganisation, nicht fachliche In-Process-Kopplung.
+    references:
+      - nfr.service_deployment_portability
+    affectsArchitectureArtifacts:
+      - architecture_artifact.identity_server
+      - architecture_artifact.project_server
+      - architecture_artifact.build_deploy_server
+      - architecture_artifact.device_management_server
+    rules:
+      - Jeder fachliche Service muss als eigenstaendiger Prozess betreibbar sein.
+      - Repo-Unterordner duerfen keine implizite Laufzeitkopplung bedeuten.
+      - Service-zu-Service-Kommunikation erfolgt ueber explizite APIs, Events oder Adapter.
+      - Fachlicher Zustand gehoert in explizite Repositories oder Datenbanken.
+      - Prozessspeicher, lokale Temp-Dateien und Build-Caches duerfen nie fachliche Quelle der Wahrheit sein.
+      - Ports, Hostnames, Datenbankverbindungen, Broker-URLs und externe Basis-URLs muessen konfigurierbar sein.
+      - Ein Linux-Homeserver-Deployment ist der erste pragmatische Zielbetrieb.
+      - Cloud-Deployment muss spaeter ohne Aenderung fachlicher API-Vertraege moeglich sein.
+      - Containerisierung darf vorbereitet werden, ist aber kein fachliches Muss fuer den ersten Stand.
+
   - id: architecture.permission_precedence
     type: architecture_decision
     title: Berechtigungsprioritaet Override vor Plan vor Default

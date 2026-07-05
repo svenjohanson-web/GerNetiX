@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GerNetiX Login</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="login-shell">
+      <section class="login-panel" aria-labelledby="login-title">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">G</div>
+          <div>
+            <p class="eyebrow">GerNetiX</p>
+            <h1 id="login-title">Anmelden</h1>
+          </div>
+        </div>
+
+        <form class="login-form" id="login-form">
+          <label>
+            Benutzername oder E-Mail
+            <input name="identifier" autocomplete="username" required />
+          </label>
+
+          <label>
+            Passwort
+            <input name="password" type="password" autocomplete="current-password" required />
+          </label>
+
+          <button class="primary" type="submit">Einloggen</button>
+        </form>
+
+        <div class="links">
+          <button type="button" class="link-button">Passwort vergessen</button>
+          <button type="button" class="link-button">Konto erstellen</button>
+        </div>
+
+        <div class="separator"><span>oder</span></div>
+
+        <div class="provider-grid" aria-label="Externe Anmeldung">
+          <button type="button" data-provider="google">Google</button>
+          <button type="button" data-provider="apple">Apple</button>
+          <button type="button" data-provider="microsoft">Microsoft</button>
+          <button type="button" data-provider="github">GitHub</button>
+        </div>
+
+        <p class="status" id="status" role="status"></p>
+      </section>
+    </main>
+
+    <script src="./login.js"></script>
+  </body>
+</html>

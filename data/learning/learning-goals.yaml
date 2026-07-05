@@ -9,6 +9,19 @@ items:
     ownerDomain: Learning
     summary: Grundlegende Embedded-Kompetenzen.
 
+  - id: learning_goal.software_engineering_basics
+    type: learning_goal
+    title: Software Engineering Grundlagen
+    status: draft
+    ownerDomain: Learning
+    summary: Grundlagen professioneller Softwareentwicklung verstehen, insbesondere warum Modelle, Dokumentation und Zustandsdiagramme helfen, komplexes Verhalten besser zu beschreiben als Quellcode allein.
+    learningOutcomes:
+      - Verstehen, dass Quellcode fuer Computer optimiert ist und fuer Menschen bei komplexem Verhalten schnell schwer lesbar wird.
+      - Modelle als Hilfsmittel verstehen, um Softwareverhalten vor der Implementierung zu beschreiben.
+      - Zustandsdiagramme als einfache Darstellung von Zustaenden, Ereignissen und Uebergaengen einordnen.
+      - Neue Anforderungen als Ursache neuer Modellierungsfragen erkennen.
+      - Komplexitaet schrittweise beherrschbar machen, statt sofort vollstaendige UML oder vollstaendigen Code zu erwarten.
+
   - id: learning_goal.embedded_advanced
     type: learning_goal
     title: Embedded Fortgeschrittene

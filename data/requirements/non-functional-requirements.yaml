@@ -37,12 +37,14 @@ items:
       - OTA- oder Cloud-Flash darf nur gestartet werden, wenn Board, Firmware, Credential, Pairing, Stromversorgung und Berechtigung ausreichend geprueft wurden.
       - USB-Flash muss den Nutzer vor riskanten Zustaenden warnen und einen Wiederherstellungspfad bieten.
       - Vorbespielte Firmware muss so ausgelegt sein, dass spaetere Updates robust und wiederherstellbar bleiben.
+      - Lern-Builds fuer OTA-faehige Boards muessen die GerNetiX-Basissoftware erhalten, damit USB-Flash die spaetere OTA-Updatefaehigkeit nicht versehentlich entfernt.
     acceptanceCriteria:
       - Ein abgebrochener oder fehlgeschlagener Flash erzeugt einen klaren Fehlerstatus.
       - Das Board bleibt entweder im vorherigen nutzbaren Zustand oder kann ueber Recovery wiederhergestellt werden.
       - Der Nutzer erhaelt eine nachvollziehbare Handlungsanweisung.
       - Support kann anhand von RegisteredProcessorBoard, FirmwareState, OTAState und BoardCredential nachvollziehen, was passiert ist.
       - Verlorene, widerrufene oder nicht berechtigte Boards erhalten keine Flash-Auftraege.
+      - Ein ueber das Lerntool per USB geflashtes OTA-faehiges Board bleibt danach weiterhin OTA-erreichbar oder meldet einen klaren Grund, warum OTA fuer dieses Board nicht verfuegbar ist.
     affectedStates:
       - FirmwareState
       - OTAState
@@ -52,6 +54,7 @@ items:
       - Flash-Abbruch simulieren
       - falsche oder inkompatible Firmware ablehnen
       - OTA-Verbindungsabbruch behandeln
+      - USB-Flash eines Lernprojekts mit anschliessendem OTA-Update pruefen
       - Wiederherstellung ueber Recovery Tool pruefen
       - Supportnachweis aus Device-Management-Zustand pruefen
 
@@ -86,3 +89,49 @@ items:
       - Usage Event fuer erfolgreiche, fehlgeschlagene und abgelehnte Aufrufe pruefen
       - Admin-Aktion im Audit Trail nachvollziehen
       - Manipulierte Client-Angaben ignorieren oder ablehnen
+
+  - id: nfr.service_deployment_portability
+    type: non_functional_requirement
+    category: portability
+    title: Services muessen vom Linux-Homeserver in Cloud-Umgebungen migrierbar sein
+    status: draft
+    businessStatus: In Analysis
+    implementationStatus: In Design
+    ownerDomain: CrossDomain
+    summary: Plattformservices muessen so geschnitten und betrieben werden, dass sie zunaechst auf einem bezahlbaren Linux-Homeserver oder kleinen Server laufen koennen und spaeter ohne fachlichen Schnittstellenbruch in Cloud-Umgebungen wie AWS migrierbar sind.
+    rationale:
+      - Der MVP soll kostenguenstig auf eigener Infrastruktur betreibbar sein.
+      - Services sollen spaeter bei wachsender Nutzung einzeln skaliert oder in Cloud-Dienste verschoben werden koennen.
+      - Fachliche Domaenen duerfen nicht durch lokale Dateipfade, Prozessannahmen oder implizite In-Process-Kopplung an einen konkreten Betriebsort gebunden werden.
+    appliesTo:
+      - architecture_artifact.identity_server
+      - architecture_artifact.project_server
+      - architecture_artifact.build_deploy_server
+      - architecture_artifact.device_management_server
+    supports:
+      - BG-002
+      - BG-003
+      - BG-007
+      - BG-008
+      - BC-031
+      - BC-041
+    constraints:
+      - Jeder Service muss als eigenstaendiger Prozess startbar sein.
+      - Services duerfen andere Services nur ueber explizite APIs, Events oder klar definierte Adapter ansprechen.
+      - Fachlicher Zustand muss in expliziten Repositories oder Datenbanken liegen, nicht in Prozessspeicher, lokalen Temp-Dateien oder Build-Caches.
+      - Konfiguration muss ueber Umgebungsvariablen oder Konfigurationsdateien erfolgen, nicht ueber hart codierte lokale Pfade.
+      - Ports, Hostnames, Datenbank-URLs, MQTT-Broker, OAuth-Provider und externe Basis-URLs muessen konfigurierbar sein.
+      - Temporäre Dateien und Caches duerfen nur Performanceoptimierung sein und muessen verlustfrei neu aufgebaut werden koennen.
+      - Service-Start, Healthcheck und Tests muessen ohne Desktop-IDE moeglich sein.
+      - Ein spaeteres Container- oder Cloud-Deployment darf keine fachlichen API-Vertraege aendern.
+    acceptanceCriteria:
+      - Identity, Projektserver, Device Management und Build-&-Deploy koennen als getrennte Prozesse beschrieben und gestartet werden.
+      - Ein lokales Linux-Homeserver-Deployment kann alle benoetigten Services mit konfigurierbaren Ports betreiben.
+      - Ein Cloud-Deployment kann dieselben Service-APIs verwenden.
+      - Build-Caches, Upload-Verzeichnisse und temporäre Artefakte koennen geloescht werden, ohne fachliche Daten zu verlieren.
+      - Keine fachliche Domaene greift direkt auf interne Datenstrukturen eines anderen Services zu.
+    verification:
+      - Service lokal mit PORT-Umgebungsvariable starten
+      - Healthcheck pro Service pruefen
+      - Konfiguration ohne Codeaenderung zwischen lokalem Host und Cloud-Host wechseln
+      - Cache-Verlust simulieren und Wiederherstellung pruefen

@@ -4,9 +4,9 @@ slug: esp32-ota-bootstrap-firmware
 type: learning_project
 status: draft
 projectStatus: idea
-title: ESP32 OTA-Basisfirmware
+title: ESP32 OTA-Basissoftware
 ownerDomain: Learning
-summary: Erstes Embedded-Erfolgsprojekt: Ein ESP32 wird einmal per USB geflasht und danach OTA-faehig gemacht.
+summary: Erstes Embedded-Erfolgsprojekt mit der ESP32-Basissoftware: Ein ESP32 wird einmal per USB geflasht und danach OTA-faehig gemacht.
 
 learningPath: learning_path.embedded_basics
 developsCompetencies:
@@ -33,6 +33,7 @@ variants:
       - Schnelles sichtbares Erfolgserlebnis.
       - Spaetere Lernsoftware kann ohne USB-Kabel aktualisiert werden.
       - Gute technische Grundlage fuer Kunden-IDE und Provisionierung.
+      - Nutzt `basissoftware/esp32` als normale Quellcode- und Build-Projektstruktur.
     disadvantages:
       - WLAN-Konfiguration muss geloest werden.
       - OTA-Abbruch und falsche Firmware muessen sicher behandelt werden.

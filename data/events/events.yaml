@@ -2,6 +2,37 @@ schemaVersion: 1
 kind: event_catalog
 sourceStatus: legacy_import_source
 items:
+  - id: event.account_transparency_relevant_data_changed
+    type: domain_event
+    title: Account Transparency Relevant Data Changed
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Account
+    summary: Ein fuer die Kunden-IDE-Sicht `Was weiss GerNetiX ueber mich?` relevanter Account-Zustand hat sich geaendert, zum Beispiel Payment, Abo, Produktangebot, Grant, Override, Entzug, Device, Lernfortschritt, KI-Credit, Feedback oder Consent. Das Ereignis invalidiert den AccountTransparencySnapshot, sodass er beim naechsten Abruf oder manuellen Refresh neu berechnet wird.
+    relatedDataModels:
+      - data_model.account_transparency_snapshot
+      - data_model.user_account
+      - data_model.account_competency_profile
+      - data_model.account_device
+      - data_model.ai_credit_account
+      - data_model.ai_credit_ledger_entry
+      - data_model.customer_data_access_consent
+    derivedFromRequirements:
+      - requirement.account_self_transparency_view
+    eventSources:
+      - Identity
+      - Authorization
+      - Payment
+      - Subscription
+      - ProductOffering
+      - DeviceManagement
+      - Learning
+      - AIUsage
+      - Consent
+    invalidationRules:
+      - Das Ereignis markiert den AccountTransparencySnapshot des betroffenen Accounts als veraltet.
+      - Beim naechsten Abruf oder manuellen Refresh wird der Snapshot aus den fuehrenden Domaenenquellen neu berechnet.
+
   - id: event.community_ai_assistant_query_requested
     type: domain_event
     title: Community AI Assistant Query Requested
