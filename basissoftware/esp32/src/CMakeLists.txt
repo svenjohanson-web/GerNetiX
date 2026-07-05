@@ -12,6 +12,7 @@ idf_component_register(
     functions/updateActuators.cpp
     hooks/onProjectInit.cpp
     hooks/onProjectTick.cpp
+    user/user_app.cpp
   INCLUDE_DIRS ../include
   REQUIRES
     esp_driver_gpio

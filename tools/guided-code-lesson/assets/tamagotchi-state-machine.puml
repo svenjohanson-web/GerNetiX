@@ -1,0 +1,30 @@
+@startuml
+title Tamagotchi State-Machine
+
+hide empty description
+
+skinparam shadowing false
+skinparam state {
+  BackgroundColor #fbfdff
+  BorderColor #9db0ca
+  FontColor #08142b
+  FontStyle bold
+}
+
+state "lebendig" as lebendig {
+  state "satt" as satt
+  state "hungrig" as hungrig
+}
+
+state "tot" as tot #fff7f7
+
+note right of lebendig
+  Initialwerte
+  Hunger = 45
+end note
+
+[*] --> lebendig
+satt --> hungrig : Hunger >= 50
+hungrig --> satt : füttern
+hungrig --> tot : Hunger = 100
+@enduml
