@@ -215,23 +215,162 @@ function createSoftwareEngineeringTamagotchiLesson() {
     boardProfiles: {
       unknown: { title: "Modellansicht" },
     },
-    source: `Quellcode-Ausschnitt
+    source: `Statische Quellcode-Datei: assets/tamagotchi-complete-example.c
 
-void tamagotchi_tick(uint64_t now_us) {
-  if (pet.life == TAMAGOTCHI_LIFE_DEAD) {
+typedef enum {
+  TAMA_LIFE_ALIVE,
+  TAMA_LIFE_DEAD
+} TamaLife;
+
+typedef enum {
+  TAMA_HUNGER_SATIATED,
+  TAMA_HUNGER_HUNGRY,
+  TAMA_HUNGER_STARVING
+} TamaHungerState;
+
+typedef enum {
+  TAMA_THIRST_OK,
+  TAMA_THIRST_THIRSTY,
+  TAMA_THIRST_DEHYDRATED
+} TamaThirstState;
+
+typedef enum {
+  TAMA_MOOD_HAPPY,
+  TAMA_MOOD_BORED,
+  TAMA_MOOD_SAD,
+  TAMA_MOOD_ANGRY
+} TamaMood;
+
+typedef struct {
+  uint8_t hunger;
+  uint8_t thirst;
+  uint8_t energy;
+  uint8_t happiness;
+  uint8_t hygiene;
+  uint8_t health;
+  uint8_t affection;
+  uint16_t age_days;
+  uint16_t coins;
+} TamaNeeds;
+
+typedef struct {
+  char person_id[32];
+  uint8_t trust;
+  uint32_t successful_interactions;
+  uint32_t rejected_interactions;
+  bool can_feed;
+  bool can_drink;
+  bool can_play;
+  bool can_admin;
+} TamaKnownPerson;
+
+typedef struct {
+  char name[24];
+  TamaLife life;
+  TamaHungerState hunger_state;
+  TamaThirstState thirst_state;
+  TamaEnergyState energy_state;
+  TamaMood mood;
+  TamaNeeds needs;
+  TamaKnownPerson people[8];
+  TamaMemory memories[16];
+  TamaSyncEvent sync_queue[12];
+  uint32_t last_tick_second;
+  uint32_t last_fed_second;
+  uint32_t last_drink_second;
+  uint32_t last_clean_second;
+  uint32_t last_play_second;
+  bool dirty;
+} Tama;
+
+static void recompute_states(void) {
+  if (tama.needs.hunger >= 100 || tama.needs.thirst >= 100 || tama.needs.health == 0) {
+    tama.life = TAMA_LIFE_DEAD;
     return;
   }
 
-  if (now_us - pet.last_fed_at_us >= ONE_DAY_US) {
-    pet.life = TAMAGOTCHI_LIFE_DEAD;
-    return;
-  }
-
-  if (pet.hunger < 50) {
-    pet.alive_state = TAMAGOTCHI_ALIVE_SATIATED;
+  if (tama.needs.hunger >= 85) {
+    tama.hunger_state = TAMA_HUNGER_STARVING;
+  } else if (tama.needs.hunger >= 50) {
+    tama.hunger_state = TAMA_HUNGER_HUNGRY;
   } else {
-    pet.alive_state = TAMAGOTCHI_ALIVE_HUNGRY;
+    tama.hunger_state = TAMA_HUNGER_SATIATED;
   }
+
+  if (tama.needs.thirst >= 85) {
+    tama.thirst_state = TAMA_THIRST_DEHYDRATED;
+  } else if (tama.needs.thirst >= 50) {
+    tama.thirst_state = TAMA_THIRST_THIRSTY;
+  } else {
+    tama.thirst_state = TAMA_THIRST_OK;
+  }
+
+  if (tama.needs.happiness >= 70 && tama.needs.hygiene >= 40) {
+    tama.mood = TAMA_MOOD_HAPPY;
+  } else if (tama.needs.happiness < 25) {
+    tama.mood = TAMA_MOOD_SAD;
+  } else if (tama.needs.hunger >= 80 || tama.needs.thirst >= 80) {
+    tama.mood = TAMA_MOOD_ANGRY;
+  } else {
+    tama.mood = TAMA_MOOD_BORED;
+  }
+}
+
+static void apply_time(uint32_t now_second) {
+  uint32_t elapsed = now_second - tama.last_tick_second;
+  uint32_t ticks = elapsed / 3;
+
+  for (uint32_t i = 0; i < ticks; i++) {
+    change_need(&tama.needs.hunger, +1);
+    change_need(&tama.needs.thirst, +1);
+    change_need(&tama.needs.hygiene, -1);
+    change_need(&tama.needs.energy, -1);
+
+    if (tama.needs.hunger > 75 || tama.needs.thirst > 75) {
+      change_need(&tama.needs.health, -1);
+      change_need(&tama.needs.happiness, -2);
+    }
+  }
+
+  tama.last_tick_second += ticks * 3;
+  recompute_states();
+  tama.dirty = true;
+}
+
+static bool apply_action(uint32_t now_second, const char *person_id, TamaAction action,
+                         const char *payload) {
+  TamaKnownPerson *person = find_person(person_id);
+  if (!person_may_use_action(person, action) || tama.life == TAMA_LIFE_DEAD) {
+    remember(now_second, person_id, action, "action rejected", -2, -1);
+    return false;
+  }
+
+  switch (action) {
+    case TAMA_ACTION_FEED:
+      tama.needs.hunger = 0;
+      tama.last_fed_second = now_second;
+      remember(now_second, person_id, action, "fed Tama", +4, +1);
+      break;
+    case TAMA_ACTION_DRINK:
+      tama.needs.thirst = 0;
+      tama.last_drink_second = now_second;
+      remember(now_second, person_id, action, "gave water", +3, +1);
+      break;
+    case TAMA_ACTION_PLAY:
+      change_need(&tama.needs.happiness, +12);
+      change_need(&tama.needs.energy, -8);
+      change_need(&tama.needs.hygiene, -4);
+      remember(now_second, person_id, action, payload, +7, +2);
+      break;
+    default:
+      remember(now_second, person_id, action, "other action", 0, 0);
+      break;
+  }
+
+  enqueue_sync(now_second, person_id, action);
+  recompute_states();
+  tama.dirty = true;
+  return true;
 }
 
 Tamagotchi Verhaltensmodell
@@ -297,7 +436,7 @@ next_lesson:
         pattern: "step_pattern.motivation_problem",
         title: "Schau dir den Quellcode an",
         text:
-          "Schau dir diesen Quellcode-Ausschnitt an. Verstehst du sofort, wann das Tamagotchi lebt, wann es hungrig oder satt ist und wann es stirbt?",
+          "Schau dir diese statische Quellcode-Datei an. Sie bildet schon sehr viele Ideen eines vollstaendigen Tamagotchis ab: Zustaende, Hunger, Durst, Aktionen, Gedächtnis, bekannte Personen und Synchronisation. Verstehst du sofort, welche fachliche Idee dahinter steckt?",
         outcome: "Der Lernende erlebt zuerst: Code enthält zwar die Logik, erklärt die fachliche Idee aber nicht gut.",
         focusLines: [1, 3, 4, 8, 9, 13, 14, 16],
         editableLines: [],
@@ -615,7 +754,7 @@ next_lesson:
         pattern: "step_pattern.state_machine_extension",
         title: "Eine eigene Eigenschaft ergänzen",
         text:
-          "Jetzt darfst du selbst entscheiden, welche neue Eigenschaft das Tamagotchi haben soll. Wähle eine Eigenschaft mit mindestens zwei Zuständen, damit du danach eine Aktion oder Bedingung zwischen diesen Zuständen modellieren kannst. Beispiele: Flüssigkeitsbedarf mit state \"nicht durstig\" as nicht_durstig und state \"durstig\" as durstig. Oder Stimmung mit state \"ausgelastet\" as ausgelastet und state \"gelangweilt\" as gelangweilt. Füge rechts im Block state \"lebendig\" mindestens zwei neue States nach PlantUML-Schema ein. Klicke danach auf Übernehmen; geprüft wird nur, ob die PlantUML-Semantik passt.",
+          "Jetzt ergänzen wir eine weitere Eigenschaft des Tamagotchis. Beispiele wären Flüssigkeitsbedarf mit nicht durstig und durstig oder Stimmung mit ausgelastet und gelangweilt. In diesem Schritt befüllst du das Modell über den Button und siehst direkt, wie sich die PlantUML-Quelle und das Diagramm verändern.",
         outcome: "Der Lernende erkennt: Eigenschaften und ihre Zustände sind fachliche Modellierungsentscheidungen und können selbst gewählt werden.",
         focusLines: [],
         editableLines: [],
@@ -624,7 +763,8 @@ next_lesson:
           title: "Tamagotchi-State-Machine",
           sourceField: "tamagotchiPlantUmlSource",
           plantUmlSource: tamagotchiPlantUmlBaseSource(),
-          insertHint: 'Wähle selbst zwei States: z.B. state "nicht durstig" as nicht_durstig und state "durstig" as durstig',
+          readonly: true,
+          insertHint: 'Füge zwei neue States ein: state "nicht durstig" as nicht_durstig und state "durstig" as durstig',
           exampleInsert: {
             label: "Beispiel einfügen: durstig",
             block: 'state "lebendig"',
@@ -641,7 +781,6 @@ next_lesson:
           existingAliases: ["satt", "hungrig"],
           minStates: 2,
           label: "mindestens zwei selbst gewählte zusätzliche States",
-          applyLabel: "Übernehmen",
         },
         completion: { type: "acknowledge", label: "Eigene Eigenschaft ergänzt" },
         nextStepId: "step.tamagotchi_model.09_add_transition",
@@ -661,6 +800,7 @@ next_lesson:
           title: "Tamagotchi-State-Machine",
           sourceField: "tamagotchiPlantUmlSource",
           plantUmlSource: tamagotchiPlantUmlBaseSource(),
+          readonly: true,
           insertHint: "Verbinde zwei deiner neuen States mit einer Transition. Nach dem Einfügen kannst du die markierte Zeile ändern.",
           exampleInsert: {
             type: "transition",
@@ -700,12 +840,14 @@ next_lesson:
           title: "Tamagotchi-State-Machine",
           sourceField: "tamagotchiPlantUmlSource",
           plantUmlSource: tamagotchiPlantUmlBaseSource(),
+          readonly: true,
           insertHint: "Kontrolliere die Transition deiner neuen States: Quelle --> Ziel : Bedingung oder Aktion.",
           exampleInsert: {
-            type: "initialValueLine",
-            label: "Durst-Initialwert einfügen",
+            type: "initialValueLineWithTransition",
+            label: "Durst-Initialwert und Tod-Transition einfügen",
             noteStart: "note right of lebendig",
             line: "  Durst = 45",
+            transitionLine: "durstig --> tot : Hunger >= 100",
           },
         },
         validation: {
@@ -735,6 +877,7 @@ next_lesson:
           title: "Tamagotchi-State-Machine",
           sourceField: "tamagotchiPlantUmlSource",
           plantUmlSource: tamagotchiPlantUmlBaseSource(),
+          readonly: true,
           insertHint: "Das Modell links ist die Grundlage für die Web-App. Starte rechts die Vorschau mit Run.",
         },
         runtimePreview: {
@@ -750,7 +893,7 @@ next_lesson:
         pattern: "step_pattern.runtime_tick_rules",
         title: "Zählgeschwindigkeit ergänzen",
         text:
-          "Wie du siehst, weiß das Modell noch nicht, wie schnell gezählt werden muss. Vielleicht ist euch das vorher schon aufgefallen. Falls nicht, ist das der nächste Aha-Moment. Damit wir einen weiteren Effekt kurz nach dem Wechsel von satt zu hungrig sehen, ergänzen wir jetzt die Zählgeschwindigkeit und die beiden automatischen Zustandswechsel-Regeln explizit.",
+          "Wie du siehst, weiß das Modell noch nicht, wie schnell gezählt werden muss. Vielleicht ist euch das vorher schon aufgefallen. Falls nicht, ist das der nächste Aha-Moment. Damit wir weitere Effekte kurz nach dem Wechsel von satt zu hungrig und nicht durstig zu durstig sehen, ergänzen wir jetzt die Zählgeschwindigkeit für Hunger und Durst sowie die automatischen Zustandswechsel-Regeln explizit.",
         outcome: "Der Lernende erkennt: Neben States, Initialwerten und Transitionen braucht ein ausführbares Modell auch Regeln für zeitliche Veränderung.",
         focusLines: [],
         editableLines: [],
@@ -759,7 +902,8 @@ next_lesson:
           title: "Tamagotchi-State-Machine",
           sourceField: "tamagotchiPlantUmlSource",
           plantUmlSource: tamagotchiPlantUmlBaseSource(),
-          insertHint: "Füge die Tick-Regeln ein: wie schnell Hunger steigt und welche automatischen Wechsel dadurch ausgelöst werden.",
+          readonly: true,
+          insertHint: "Füge die Tick-Regeln ein: wie schnell Hunger und Durst steigen und welche automatischen Wechsel dadurch ausgelöst werden.",
           exampleInsert: {
             type: "initialValues",
             label: "Zählregeln einfügen",
@@ -767,8 +911,11 @@ next_lesson:
               "note bottom of lebendig",
               "  Zählregeln",
               "  alle 3 Sekunden: Hunger = Hunger + 1",
+              "  alle 3 Sekunden: Durst = Durst + 1",
               "  satt -> hungrig: Hunger >= 50",
+              "  nicht_durstig -> durstig: Durst >= 50",
               "  hungrig -> tot: Hunger >= 100",
+              "  durstig -> tot: Hunger >= 100",
               "end note",
             ],
           },
@@ -778,13 +925,70 @@ next_lesson:
           profileField: "tamagotchiPlantUmlSource",
           contains: [
             "alle 3 Sekunden: Hunger = Hunger + 1",
+            "alle 3 Sekunden: Durst = Durst + 1",
             "satt -> hungrig: Hunger >= 50",
+            "nicht_durstig -> durstig: Durst >= 50",
             "hungrig -> tot: Hunger >= 100",
+            "durstig -> tot: Hunger >= 100",
           ],
           label: "Zählgeschwindigkeit und automatische Zustandswechsel sind ergänzt",
         },
+        runtimePreview: {
+          type: "tamagotchiBrowserApp",
+          buttonLabel: "Run",
+        },
         completion: { type: "acknowledge", label: "Zählregeln ergänzt" },
-        nextStepId: "step.tamagotchi_model.09_browser_limits",
+        nextStepId: "step.tamagotchi_model.14_free_exploration",
+      },
+      {
+        id: "step.tamagotchi_model.14_free_exploration",
+        flowItemId: "project_flow_item.tamagotchi_model.14_free_exploration",
+        pattern: "step_pattern.free_exploration",
+        title: "Selber mit der State Machine forschen",
+        text:
+          "Jetzt darfst du die PlantUML-Quelle frei bearbeiten. Wenn das Diagramm danach angezeigt wird, ist die PlantUML-Syntax grundsätzlich gültig. Das heißt aber nicht automatisch, dass das Modell fachlich sinnvoll ist: Ein syntaktisch korrektes Modell kann widersprüchliche Zustände, unklare Übergänge oder wenig hilfreiche Regeln enthalten.",
+        outcome: "Der Lernende erkennt: Syntaxprüfung und fachlich sinnvolle Modellierung sind zwei verschiedene Dinge.",
+        focusLines: [],
+        editableLines: [],
+        visual: {
+          type: "tamagotchiMachine",
+          title: "Tamagotchi-State-Machine",
+          sourceField: "tamagotchiPlantUmlSource",
+          plantUmlSource: tamagotchiExplorationSource(),
+          insertHint: "Bearbeite die PlantUML-Quelle frei. Das Diagramm zeigt dir, ob die Syntax noch verarbeitet werden kann.",
+          resetSource: "exploration",
+          resetLabel: "Zurücksetzen",
+        },
+        runtimePreview: {
+          type: "tamagotchiBrowserApp",
+          buttonLabel: "Run",
+        },
+        completion: { type: "acknowledge", label: "Freies Modell erforscht" },
+        nextStepId: "step.tamagotchi_model.15_free_journey_summary",
+      },
+      {
+        id: "step.tamagotchi_model.15_free_journey_summary",
+        flowItemId: "project_flow_item.tamagotchi_model.15_free_journey_summary",
+        pattern: "step_pattern.learning_summary_and_upgrade",
+        title: "Tamas freie Reise endet hier",
+        text:
+          "Du hast Tama als Modell erforscht: Zustände beschrieben, Übergänge ergänzt, Bedingungen formuliert, Zählregeln eingefügt, eine Browser-App aus dem Modell gestartet und zuletzt frei mit PlantUML experimentiert. Damit ist die freie Reise mit Tama abgeschlossen. Im nächsten Kurs bekommt Tama neue spannende Funktionen:",
+        endHighlights: [
+          "Du kannst Tama füttern und tränken.",
+          "Tama bekommt ein Gedächtnis.",
+          "Tama wird zur echten Mobile App.",
+          "Tama wird später zur Embedded App mit ESP32.",
+          "Viele Geräte können auf ein und denselben Tama zugreifen.",
+          "Tama spricht nur mit bekannten Leuten.",
+          "Dieser nächste Abschnitt gehört in einen Bezahlplan.",
+          "TODO: Bezahlplan definieren.",
+        ],
+        outcome: "Der Lernende erkennt, was im freien Tama-Pfad gelernt wurde und dass der anschließende vertiefende Pfad über einen noch zu definierenden Bezahlplan freigeschaltet werden soll.",
+        focusLines: [],
+        editableLines: [],
+        endScreen: true,
+        endButtonLabel: "Beenden",
+        completion: { type: "acknowledge", label: "Freie Tama-Reise abgeschlossen" },
       },
       {
         id: "step.tamagotchi_model.08_embedded_preview",
@@ -1114,12 +1318,17 @@ function renderWelcomeTopics(topics) {
 function renderEditor() {
   const step = currentStep();
 
+  if (!isComplete && step.endScreen) {
+    renderEndScreenStage(step);
+    return;
+  }
+
   if (!isComplete && step.visual) {
     renderVisualStage(step);
     return;
   }
 
-  editor.classList.remove("visual-mode");
+  editor.classList.remove("visual-mode", "end-screen-mode");
   const focusLines = new Set(isComplete ? [] : step.focusLines);
   const editableLines = new Set(isComplete ? codeLines.map((_, index) => index + 1) : step.editableLines);
 
@@ -1164,8 +1373,35 @@ function renderEditor() {
     : renderEditableLineLabel(currentStep());
 }
 
+function renderEndScreenStage(step) {
+  editor.classList.remove("complete");
+  editor.classList.add("visual-mode", "end-screen-mode");
+  fileName.textContent = step.title;
+  editorMode.textContent = "Kursabschluss";
+  lineRuleBadge.textContent = "Ende";
+  editor.innerHTML = `
+    <section class="course-end-stage" aria-label="${escapeAttribute(step.title)}">
+      <p class="step-kicker">${escapeHtml(step.pattern)}</p>
+      <h2>${escapeHtml(step.title)}</h2>
+      <p>${escapeHtml(step.text)}</p>
+      ${renderEndHighlightList(step.endHighlights)}
+    </section>
+  `;
+}
+
+function renderEndHighlightList(items) {
+  if (!items?.length) return "";
+
+  return `
+    <ul class="course-end-highlights">
+      ${items.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}
+    </ul>
+  `;
+}
+
 function renderVisualStage(step) {
   editor.classList.remove("complete");
+  editor.classList.remove("end-screen-mode");
   editor.classList.add("visual-mode");
   fileName.textContent = step.visual.title || step.title;
   editorMode.textContent = "Bildfolge statt Code";
@@ -1220,6 +1456,54 @@ end note
 satt --> hungrig : Hunger >= 50
 hungrig --> satt : füttern
 hungrig --> tot : Hunger = 100
+@enduml`;
+}
+
+function tamagotchiExplorationSource() {
+  return `@startuml
+title Tamagotchi State-Machine
+
+hide empty description
+
+skinparam shadowing false
+skinparam state {
+  BackgroundColor #fbfdff
+  BorderColor #9db0ca
+  FontColor #08142b
+  FontStyle bold
+}
+
+state "lebendig" as lebendig {
+  state "satt" as satt
+  state "hungrig" as hungrig
+  state "nicht durstig" as nicht_durstig
+  state "durstig" as durstig
+}
+
+state "tot" as tot #fff7f7
+
+note right of lebendig
+  Initialwerte
+  Hunger = 45
+  Durst = 45
+end note
+
+note bottom of lebendig
+  Zählregeln
+  alle 3 Sekunden: Hunger = Hunger + 1
+  alle 3 Sekunden: Durst = Durst + 1
+  satt -> hungrig: Hunger >= 50
+  nicht_durstig -> durstig: Durst >= 50
+  hungrig -> tot: Hunger >= 100
+  durstig -> tot: Hunger >= 100
+end note
+
+[*] --> lebendig
+satt --> hungrig : Hunger >= 50
+hungrig --> satt : füttern
+hungrig --> tot : Hunger >= 100
+nicht_durstig --> durstig : Durst >= 50
+durstig --> tot : Hunger >= 100
 @enduml`;
 }
 
@@ -1293,12 +1577,23 @@ function renderTamagotchiMachine(visual) {
             ${escapeHtml(visual.exampleInsert.label)}
           </button>
         ` : ""}
+        ${visual.resetSource ? `
+          <button type="button" class="plantuml-example-button" data-action="reset-plantuml-source">
+            ${escapeHtml(visual.resetLabel || "Zurücksetzen")}
+          </button>
+        ` : ""}
         ${visual.readonly
-          ? `<pre class="plantuml-readonly"><code>${escapeHtml(source)}</code></pre>`
+          ? `<pre class="plantuml-readonly"><code>${renderPlantUmlReadonlySource(source)}</code></pre>`
           : `<textarea class="plantuml-editor" data-action="edit-plantuml-source" data-field="${escapeAttribute(sourceField)}" spellcheck="false">${escapeHtml(source)}</textarea>`}
       </aside>
     </section>
   `;
+}
+
+function renderPlantUmlReadonlySource(source) {
+  return escapeHtml(source).replace(/\b\d+\b/g, (value) =>
+    `<mark class="plantuml-number-highlight">${value}</mark>`
+  );
 }
 
 function renderVisualRow(row) {
@@ -1428,6 +1723,12 @@ function wireVisualInputs(stepItem) {
     });
   });
 
+  editor.querySelectorAll('[data-action="reset-plantuml-source"]').forEach((button) => {
+    button.addEventListener("click", () => {
+      resetPlantUmlSource(stepItem);
+    });
+  });
+
   editor.querySelectorAll('[data-action="edit-plantuml-source"]').forEach((input) => {
     input.addEventListener("input", () => {
       const field = input.dataset.field;
@@ -1470,18 +1771,25 @@ function wireVisualInputs(stepItem) {
 function insertPlantUmlExample(stepItem) {
   const example = stepItem.visual?.exampleInsert;
   const input = editor.querySelector('[data-action="edit-plantuml-source"]');
-  if (!example || !input) return;
+  if (!example) return;
 
   const sourceField = stepItem.visual.sourceField || "tamagotchiPlantUmlSource";
-  const currentSource = input.value;
+  const currentSource = input?.value ?? lesson.learnerProfile?.[sourceField] ?? stepItem.visual.plantUmlSource ?? "";
   const result = resolvePlantUmlExampleInsert(currentSource, example);
 
-  input.value = result.source;
   lesson.learnerProfile = {
     ...(lesson.learnerProfile || {}),
     [sourceField]: result.source,
   };
   persistRuntimeEdits();
+
+  if (!input) {
+    render();
+    scrollPlantUmlReadonlyToOffset(result.source, result.selectionStart);
+    return;
+  }
+
+  input.value = result.source;
   renderPanel();
 
   const image = editor.querySelector("[data-plantuml-source]");
@@ -1492,6 +1800,37 @@ function insertPlantUmlExample(stepItem) {
 
   input.focus();
   input.setSelectionRange(result.selectionStart, result.selectionEnd);
+}
+
+function scrollPlantUmlReadonlyToOffset(source, offset) {
+  const readonlyBlock = editor.querySelector(".plantuml-readonly");
+  if (!readonlyBlock) return;
+
+  const lineIndex = source.slice(0, offset).split("\n").length - 1;
+  const computedStyle = window.getComputedStyle(readonlyBlock);
+  const parsedLineHeight = Number.parseFloat(computedStyle.lineHeight);
+  const lineHeight = Number.isFinite(parsedLineHeight) ? parsedLineHeight : 20;
+  readonlyBlock.scrollTop = Math.max(0, (lineIndex - 2) * lineHeight);
+}
+
+function resetPlantUmlSource(stepItem) {
+  const sourceField = stepItem.visual?.sourceField || "tamagotchiPlantUmlSource";
+  const source = resolvePlantUmlResetSource(stepItem.visual);
+
+  lesson.learnerProfile = {
+    ...(lesson.learnerProfile || {}),
+    [sourceField]: source,
+  };
+  persistRuntimeEdits();
+  render();
+}
+
+function resolvePlantUmlResetSource(visual) {
+  if (visual?.resetSource === "exploration") {
+    return tamagotchiExplorationSource();
+  }
+
+  return visual?.plantUmlSource || tamagotchiPlantUmlBaseSource();
 }
 
 function resolvePlantUmlExampleInsert(source, example) {
@@ -1505,6 +1844,11 @@ function resolvePlantUmlExampleInsert(source, example) {
 
   if (example.type === "initialValueLine") {
     return insertPlantUmlLineIntoNote(source, example.noteStart, example.line);
+  }
+
+  if (example.type === "initialValueLineWithTransition") {
+    const withInitialValue = insertPlantUmlLineIntoNote(source, example.noteStart, example.line);
+    return insertPlantUmlLineBeforeEnd(withInitialValue.source, example.transitionLine);
   }
 
   return insertLinesIntoPlantUmlBlock(source, example.block, example.lines);
@@ -1789,6 +2133,8 @@ function renderPanel() {
 
   const stepItem = currentStep();
   const validationState = getValidationState(stepItem);
+  const primaryActionLabel = stepItem.endButtonLabel
+    || (currentStepIndex === lesson.steps.length - 1 ? "Abschließen" : "Weiter");
 
   sidePanel.innerHTML = `
     <p class="step-kicker">${stepItem.pattern}</p>
@@ -1801,13 +2147,13 @@ function renderPanel() {
     ${renderCompletionCondition(stepItem, validationState)}
     ${renderValidationApplyAction(stepItem)}
     ${renderValidation(validationState)}
-    ${renderRuntimePreviewAction(stepItem)}
+    ${renderRuntimePreviewAction(stepItem, validationState)}
     ${renderAuthoringEditor(stepItem)}
     <div class="panel-spacer"></div>
     <p class="step-progress">Schritt ${currentStepIndex + 1} von ${lesson.steps.length}</p>
     <div class="actions">
       <button type="button" data-action="back" ${currentStepIndex === 0 ? "disabled" : ""}>Zurück</button>
-      <button type="button" class="primary" data-action="next" ${validationState.canContinue ? "" : "disabled"}>${currentStepIndex === lesson.steps.length - 1 ? "Abschließen" : "Weiter"}</button>
+      <button type="button" class="primary" data-action="next" ${validationState.canContinue ? "" : "disabled"}>${escapeHtml(primaryActionLabel)}</button>
     </div>
     <div class="outcome-box secondary-info"><strong>Ergebnis:</strong> ${stepItem.outcome}</div>
     <div class="meta-box secondary-info">
@@ -1821,6 +2167,10 @@ function renderPanel() {
 }
 
 function renderPanelStepText(stepItem) {
+  if (stepItem.endScreen) {
+    return `<p class="step-text">${escapeHtml(stepItem.panelText || "Der freie Kurs ist abgeschlossen. Beende den Kurs, wenn du bereit bist.")}</p>`;
+  }
+
   if (stepItem.panelTextParts?.length) {
     return `
       <div class="step-text">
@@ -1962,12 +2312,17 @@ function renderValidationApplyAction(stepItem) {
   `;
 }
 
-function renderRuntimePreviewAction(stepItem) {
+function renderRuntimePreviewAction(stepItem, validationState) {
   if (stepItem.runtimePreview?.type !== "tamagotchiBrowserApp") return "";
+
+  const disabled = validationState.canContinue ? "" : "disabled";
+  const title = validationState.canContinue
+    ? "App ausführen"
+    : "Run ist verfügbar, sobald die Abschlussbedingungen erfüllt sind.";
 
   return `
     <div class="runtime-preview-action">
-      <button type="button" class="primary full" data-action="run-tamagotchi-preview">${escapeHtml(stepItem.runtimePreview.buttonLabel || "Run")}</button>
+      <button type="button" class="primary full" data-action="run-tamagotchi-preview" ${disabled} title="${escapeAttribute(title)}">${escapeHtml(stepItem.runtimePreview.buttonLabel || "Run")}</button>
     </div>
   `;
 }
@@ -2266,6 +2621,7 @@ function wirePanelButtons() {
       }
 
       if (action === "run-tamagotchi-preview") {
+        if (!getValidationState(currentStep()).canContinue) return;
         openTamagotchiRunPreview();
       }
 
@@ -2290,8 +2646,9 @@ function openTamagotchiRunPreview() {
   const source = lesson.learnerProfile?.tamagotchiPlantUmlSource || "";
   const customStates = getCustomTamagotchiStatesFromSource(source);
   getCustomTamagotchiTransitionsFromSource(source, customStates);
+  const runtimeModel = parseTamagotchiRuntimeModel(source);
   let hunger = parsePlantUmlInitialValue(source, "Hunger", 45);
-  const thirst = parsePlantUmlInitialValue(source, "Durst", null);
+  let thirst = parsePlantUmlInitialValue(source, "Durst", null);
   let canClose = false;
 
   const overlay = document.createElement("div");
@@ -2335,7 +2692,7 @@ function openTamagotchiRunPreview() {
             ${thirst === null ? "" : `
               <div>
                 <dt>Durst</dt>
-                <dd>${thirst} / 100</dd>
+                <dd data-tamagotchi-thirst>${thirst} / 100</dd>
               </div>
             `}
             <div>
@@ -2367,12 +2724,16 @@ function openTamagotchiRunPreview() {
 
   document.body.append(overlay);
 
-  updateTamagotchiRunPreview(overlay, hunger);
+  updateTamagotchiRunPreview(overlay, hunger, thirst, runtimeModel);
 
   overlay.runtimeTimer = window.setInterval(() => {
-    hunger = Math.min(100, hunger + 1);
-    updateTamagotchiRunPreview(overlay, hunger);
-    canClose = hunger >= 50;
+    hunger = Math.min(100, hunger + runtimeModel.hungerIncrement);
+    if (thirst !== null && runtimeModel.thirstIncrement > 0) {
+      thirst = Math.min(100, thirst + runtimeModel.thirstIncrement);
+    }
+    updateTamagotchiRunPreview(overlay, hunger, thirst, runtimeModel);
+    const state = resolveTamagotchiRuntimeState(hunger, thirst, runtimeModel);
+    canClose = state.isHungry || state.isThirsty || state.isDead;
     updateTamagotchiRunPreviewCloseState(overlay, canClose);
   }, 3000);
 }
@@ -2405,19 +2766,94 @@ function parsePlantUmlInitialValue(source, name, fallback) {
   return match ? Number(match[1]) : fallback;
 }
 
-function updateTamagotchiRunPreview(overlay, hunger) {
-  const isDead = hunger >= 100;
-  const isHungry = hunger >= 50;
+function parseTamagotchiRuntimeModel(source) {
+  return {
+    hungerIncrement: parsePlantUmlTickIncrement(source, "Hunger"),
+    thirstIncrement: parsePlantUmlTickIncrement(source, "Durst"),
+    transitions: parsePlantUmlTransitions(source),
+  };
+}
+
+function parsePlantUmlTickIncrement(source, name) {
+  const match = source.match(new RegExp(`${escapeRegExp(name)}\\s*=\\s*${escapeRegExp(name)}\\s*\\+\\s*(\\d+)`, "i"));
+  return match ? Number(match[1]) : 0;
+}
+
+function parsePlantUmlTransitions(source) {
+  return source
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .map((line) => line.match(/^([A-Za-z_][A-Za-z0-9_]*)\s+-->\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(.+)$/))
+    .filter(Boolean)
+    .map((match) => ({
+      from: match[1],
+      to: match[2],
+      condition: match[3].trim(),
+    }));
+}
+
+function updateTamagotchiRunPreview(overlay, hunger, thirst, runtimeModel) {
+  const state = resolveTamagotchiRuntimeState(hunger, thirst, runtimeModel);
   const hungerDisplay = overlay.querySelector("[data-tamagotchi-hunger]");
+  const thirstDisplay = overlay.querySelector("[data-tamagotchi-thirst]");
   const lifeDisplay = overlay.querySelector("[data-tamagotchi-life]");
   const substateDisplay = overlay.querySelector("[data-tamagotchi-substate]");
   const petDisplay = overlay.querySelector("[data-tamagotchi-pet]");
 
   if (hungerDisplay) hungerDisplay.textContent = `${hunger} / 100`;
-  if (lifeDisplay) lifeDisplay.textContent = isDead ? "tot" : "lebendig";
-  if (substateDisplay) substateDisplay.textContent = isDead ? "-" : isHungry ? "hungrig" : "satt";
-  if (petDisplay) petDisplay.classList.toggle("is-hungry", isHungry);
-  if (petDisplay) petDisplay.classList.toggle("is-dead", isDead);
+  if (thirstDisplay) thirstDisplay.textContent = `${thirst} / 100`;
+  if (lifeDisplay) lifeDisplay.textContent = state.isDead ? "tot" : "lebendig";
+  if (substateDisplay) substateDisplay.textContent = state.isDead ? "-" : renderTamagotchiSubstateLabel(state.isHungry, state.isThirsty);
+  if (petDisplay) petDisplay.classList.toggle("is-hungry", state.isHungry || state.isThirsty);
+  if (petDisplay) petDisplay.classList.toggle("is-dead", state.isDead);
+}
+
+function resolveTamagotchiRuntimeState(hunger, thirst, runtimeModel) {
+  const isHungry = hasTriggeredTransition(runtimeModel, "satt", "hungrig", { Hunger: hunger, Durst: thirst });
+  const isThirsty = thirst !== null
+    && hasTriggeredTransition(runtimeModel, "nicht_durstig", "durstig", { Hunger: hunger, Durst: thirst });
+  const activeAliases = new Set(["satt", "nicht_durstig"]);
+  if (isHungry) activeAliases.add("hungrig");
+  if (isThirsty) activeAliases.add("durstig");
+
+  const isDead = runtimeModel.transitions.some((transition) =>
+    transition.to === "tot"
+    && activeAliases.has(transition.from)
+    && evaluateSimpleCondition(transition.condition, { Hunger: hunger, Durst: thirst })
+  );
+
+  return { isDead, isHungry, isThirsty };
+}
+
+function hasTriggeredTransition(runtimeModel, from, to, values) {
+  return runtimeModel.transitions.some((transition) =>
+    transition.from === from
+    && transition.to === to
+    && evaluateSimpleCondition(transition.condition, values)
+  );
+}
+
+function evaluateSimpleCondition(condition, values) {
+  const match = condition.match(/^(Hunger|Durst)\s*(>=|=|==|>|<=|<)\s*(-?\d+)$/i);
+  if (!match) return false;
+
+  const valueName = match[1][0].toUpperCase() + match[1].slice(1).toLowerCase();
+  const currentValue = values[valueName];
+  const targetValue = Number(match[3]);
+  if (currentValue === null || currentValue === undefined) return false;
+
+  if (match[2] === ">=") return currentValue >= targetValue;
+  if (match[2] === ">" ) return currentValue > targetValue;
+  if (match[2] === "<=") return currentValue <= targetValue;
+  if (match[2] === "<") return currentValue < targetValue;
+  return currentValue === targetValue;
+}
+
+function renderTamagotchiSubstateLabel(isHungry, isThirsty) {
+  if (isHungry && isThirsty) return "hungrig / durstig";
+  if (isHungry) return "hungrig";
+  if (isThirsty) return "durstig";
+  return "satt";
 }
 
 function updateTamagotchiRunPreviewCloseState(overlay, canClose) {

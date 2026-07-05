@@ -42,7 +42,36 @@ npm test
 npm run dev
 ```
 
-Oeffnet eine einfache Login-Ansicht unter `http://localhost:4300`. Die Ansicht stellt nur den Login dar; API-Anbindung folgt spaeter.
+Oeffnet eine einfache Login-Ansicht unter `http://localhost:4300`. Die Ansicht nutzt den lokalen Dev-Login und setzt fuer die Demo ein HttpOnly-Session-Cookie.
+
+### Lokale Tamagotchi-Demo
+
+Der Dev-Server stellt zusaetzlich eine geschuetzte Tamagotchi-Demo bereit:
+
+```text
+http://localhost:4300/demo/tamagotchi/
+```
+
+Ohne Session wird auf den Login umgeleitet. Fuer die lokale Demo wird beim Start automatisch ein Demo-Account erzeugt:
+
+```text
+Benutzer: demo
+Passwort: demo-passwort
+
+Lokaler Login-Alias: test / test
+```
+
+Fuer eine VPN-Demo kann der Server explizit an eine VPN-/LAN-Adresse gebunden werden:
+
+```powershell
+$env:HOST="127.0.0.1"
+$env:PORT="4300"
+$env:DEMO_USER="demo"
+$env:DEMO_PASSWORD="demo-passwort"
+npm run dev
+```
+
+Der Service sollte fuer Kollegen nur ueber VPN oder Tunnel erreichbar sein, nicht ueber eine offene Router-Portfreigabe.
 
 ## Deployment-Leitplanken
 

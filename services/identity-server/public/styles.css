@@ -167,6 +167,16 @@ button:hover {
   font-size: 14px;
 }
 
+.demo-hint {
+  margin: 14px 0 0;
+  padding: 10px 12px;
+  border: 1px solid #d5dbe1;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #475569;
+  font-size: 13px;
+}
+
 @media (max-width: 420px) {
   .login-panel {
     padding: 22px;

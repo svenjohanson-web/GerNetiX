@@ -1295,6 +1295,56 @@ body {
   color: #cbd7e8;
 }
 
+.plantuml-number-highlight {
+  display: inline-block;
+  min-width: 1ch;
+  padding: 0 3px;
+  border-radius: 4px;
+  background: #fde68a;
+  color: #422006;
+  font-weight: 900;
+}
+
+.end-screen-mode {
+  display: grid;
+  place-items: center;
+  padding: 40px;
+}
+
+.course-end-stage {
+  width: min(760px, 100%);
+  text-align: center;
+}
+
+.course-end-stage h2 {
+  margin: 10px 0 18px;
+  font-size: clamp(32px, 5vw, 58px);
+  line-height: 1.05;
+}
+
+.course-end-stage > p:not(.step-kicker) {
+  margin: 0 auto;
+  max-width: 68ch;
+  color: var(--muted);
+  font-size: 18px;
+  line-height: 1.65;
+}
+
+.course-end-highlights {
+  width: min(620px, 100%);
+  margin: 24px auto 0;
+  padding: 0;
+  color: #0f172a;
+  font-size: 17px;
+  line-height: 1.55;
+  list-style-position: inside;
+  text-align: left;
+}
+
+.course-end-highlights li + li {
+  margin-top: 8px;
+}
+
 .machine-arrows {
   position: absolute;
   inset: 0;
