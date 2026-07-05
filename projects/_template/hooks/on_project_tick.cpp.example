@@ -1,0 +1,8 @@
+#include "esp_log.h"
+
+namespace {
+constexpr const char *TAG = "projectTick";
+}
+
+extern "C" void onProjectTick() {
+}

@@ -1,0 +1,6 @@
+#pragma once
+
+#define PROJECT_ID "template-project"
+#define PROJECT_NAME "Template Project"
+#define PROJECT_STATUS_LED_PIN 2
+

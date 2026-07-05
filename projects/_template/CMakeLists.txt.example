@@ -1,0 +1,8 @@
+idf_component_register(
+  SRCS
+    hooks/on_project_init.cpp
+    hooks/on_project_tick.cpp
+  INCLUDE_DIRS config
+  REQUIRES src
+)
+

@@ -75,3 +75,11 @@ Markdown dient der Lesbarkeit und Dokumentation.
 - Dokumentation erfolgt top-down: Vision -> Business Goals -> Customer Journey -> Requirements -> Metamodell -> Datenmodell -> Implementierung -> Nachweis.
 - Neue Metamodell-Klassen entstehen nur, wenn sie durch Customer Journey oder Requirement begruendet sind.
 - Entscheidungen nachvollziehbar in den Dokumenten festhalten.
+
+## Firmware und modellbasierte Entwicklung
+
+- [ESP32 Basissoftware](basissoftware/esp32/README.md)
+- [Kopierschutz und Schutz der Basissoftware](docs/copy-protection-requirement.md)
+- [Struktur fuer Projektanpassungen](docs/firmware-project-structure.md)
+- [Inkrementelle Build-Strategie](docs/incremental-build-strategy.md)
+- [Modellbasierte Entwicklung am Beispiel Tamagotchi](docs/model-based-tamagotchi-vision.md)

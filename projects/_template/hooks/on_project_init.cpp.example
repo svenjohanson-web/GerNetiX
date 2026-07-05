@@ -1,0 +1,9 @@
+#include "esp_log.h"
+
+namespace {
+constexpr const char *TAG = "projectInit";
+}
+
+extern "C" void onProjectInit() {
+  ESP_LOGI(TAG, "Project init placeholder");
+}

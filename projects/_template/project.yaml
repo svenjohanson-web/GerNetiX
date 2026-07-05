@@ -1,0 +1,19 @@
+project:
+  id: template-project
+  name: Template Project
+  board: esp32dev
+  firmware_variant: default
+
+features:
+  wifi: false
+  ota: false
+  sensors: []
+  actuators: []
+
+pins:
+  status_led: 2
+
+release:
+  channel: development
+  signed_firmware_required: true
+

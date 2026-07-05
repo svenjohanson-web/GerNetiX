@@ -1,0 +1,21 @@
+idf_component_register(
+  SRCS
+    main.cpp
+    functions/handleNetwork.cpp
+    functions/initPins.cpp
+    functions/initSerial.cpp
+    functions/initWifi.cpp
+    functions/publishStatus.cpp
+    functions/readSensors.cpp
+    functions/runDiagnostics.cpp
+    functions/startRuntimeTasks.cpp
+    functions/updateActuators.cpp
+    hooks/onProjectInit.cpp
+    hooks/onProjectTick.cpp
+  INCLUDE_DIRS ../include
+  REQUIRES
+    esp_driver_gpio
+    esp_timer
+    freertos
+    log
+)

@@ -1,0 +1,10 @@
+#include "esp_log.h"
+
+namespace {
+constexpr const char *TAG = "generatedModule";
+}
+
+void runGeneratedModule() {
+  ESP_LOGI(TAG, "Generated module placeholder");
+}
+

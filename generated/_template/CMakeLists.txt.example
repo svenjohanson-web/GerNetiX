@@ -1,0 +1,7 @@
+idf_component_register(
+  SRCS
+    generated_module.cpp
+  INCLUDE_DIRS .
+  REQUIRES src
+)
+

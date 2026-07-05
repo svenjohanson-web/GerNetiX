@@ -1,0 +1,150 @@
+model_view:
+  id: tamagotchi_step_by_step_view
+  title: Tamagotchi Verhaltensmodell
+  purpose: In der Step-by-Step-App anstelle von Quellcode angezeigt werden
+  message: Code ist nicht die erste Wahrheit. Das Modell beschreibt das Verhalten.
+
+learning_sequence:
+  - id: code_is_hard_to_read
+    title: Quellcode anschauen und Verstaendnis pruefen
+    visible_model_lines:
+      - problem.code_is_not_explanation
+  - id: state_intro
+    title: Einfuehrung in Zustaende
+    visible_model_lines:
+      - state.simple_examples
+  - id: state_categories
+    title: Direkte und fliessende Zustaende unterscheiden
+    visible_model_lines:
+      - state.discrete
+      - state.continuous
+  - id: discrete_states
+    title: Direkte diskrete Zustaende
+    visible_model_lines:
+      - state.binary
+      - state.presence
+  - id: physical_property_to_state
+    title: Aus Messwerten werden Zustaende
+    visible_model_lines:
+      - physical.temperature
+      - physical.fill_level
+      - physical.voltage
+      - classification.thresholds
+      - rule.physical_to_state
+  - id: model_is_runtime_independent
+    title: Modell ist runtime-unabhaengig
+    visible_model_lines:
+      - model.runtime_independent
+      - runtime.browser_app
+      - runtime.embedded
+  - id: runtime_choice
+    title: Browser App oder Embedded auswaehlen
+    visible_model_lines:
+      - runtime.choice
+      - runtime.browser_app
+      - runtime.embedded
+  - id: browser_app_first
+    title: Browser App zuerst erzeugen
+    visible_model_lines:
+      - runtime.browser_app
+      - lesson.browser_advantages
+      - lesson.browser_disadvantages
+  - id: embedded_preview
+    title: Embedded als spaetere Runtime einordnen
+    visible_model_lines:
+      - runtime.embedded
+      - runtime.same_model_core
+  - id: timed_state_machine_next
+    title: Zeitgesteuerte State-Machine folgt
+    visible_model_lines:
+      - behavior.event_driven_first
+      - behavior.time_driven_next
+      - persistence.browser_storage
+  - id: next_runtime_apps
+    title: Weitere Runtime-Apps aus demselben Modell
+    visible_model_lines:
+      - runtime.same_model_core
+      - runtime.embedded
+
+model_lines:
+  problem.code_is_not_explanation:
+    label: Problem
+    text: Der Lernende schaut zuerst auf Quellcode und prueft, ob er daraus sofort erkennt, wann das Tamagotchi lebt, satt, hungrig oder tot ist.
+  state.simple_examples:
+    label: Einfache Zustaende
+    text: Regentonne und Akku koennen zuerst einfach als leer, halb voll oder voll beschrieben werden.
+  state.discrete:
+    label: Direkte Zustaende
+    text: Manche Zustaende sind direkt definiert, zum Beispiel an oder aus, vorhanden oder nicht vorhanden.
+  state.continuous:
+    label: Fliessende Eigenschaften
+    text: Andere Eigenschaften veraendern sich stufenlos, zum Beispiel Temperatur, Punktzahl oder Fuellstand.
+  state.binary:
+    label: Binaer
+    text: Bei genau zwei Zustaenden spricht man von binaer, zum Beispiel an oder aus.
+  state.presence:
+    label: Vorhandenheit
+    text: Ein Objekt kann vorhanden oder nicht vorhanden sein.
+  classification.thresholds:
+    label: Klassifizierung
+    text: Durch Grenzen werden aus fliessenden Werten benannte Zustaende, zum Beispiel kalt, warm, heiss oder Note 1 bis 6.
+  physical.temperature:
+    label: Temperatur
+    text: Beim Stein ist Temperatur die messbare physikalische Groesse. Sie kann zum Beispiel mit PT1000 oder IR-Sensor erfasst werden.
+  physical.fill_level:
+    label: Fuellstand
+    text: Bei der Regentonne ist der Fuellstand die relevante physikalische Eigenschaft. Er kann zum Beispiel ueber Reedkontakte, Kamera oder Schwimmer erfasst werden.
+  physical.voltage:
+    label: Spannung
+    text: Beim Akku kann der Ladezustand vereinfacht ueber die Spannung erfasst werden. Niedrige Spannung bedeutet leer, hohe Spannung bedeutet voll.
+  rule.physical_to_state:
+    label: Regel
+    text: Aus einem Messwert wird durch einfache Regeln ein Zustand, zum Beispiel unter 10 Grad kalt, ab 10 Grad warm und ab 55 Grad heiss.
+  model.runtime_independent:
+    label: Runtime-unabhaengig
+    text: Das Modell beschreibt das Tamagotchi, nicht Browser, Embedded, Build-System oder Hardwaredetails.
+  state.life:
+    label: Leben
+    text: Das Tamagotchi ist entweder alive oder dead. Nach Programmstart ist es alive.
+  state.alive_substates:
+    label: Unterzustand von alive
+    text: Wenn alive gilt, ist das Tamagotchi entweder hungry oder satt.
+  value.hunger:
+    label: Hunger
+    text: Hunger ist eine Skala von 0 bis 100. Der Startwert ist 55.
+  rule.satt:
+    label: Regel satt
+    text: Wenn Hunger unter 50 ist, wechselt der Unterzustand zu satt.
+  rule.dead:
+    label: Regel tot
+    text: Wenn einen Tag nicht gefuettert wurde, wechselt life von alive zu dead.
+  action.feed:
+    label: Aktion fuettern
+    text: Fuettern setzt Hunger auf 0 und merkt sich den Fuetterzeitpunkt.
+  runtime.choice:
+    label: Runtime-Auswahl
+    text: Der Lernende waehlt zwischen Browser App und Embedded. Das Modell bleibt gleich.
+  runtime.browser_app:
+    label: Browser App
+    text: Die erste erzeugte App laeuft schnell im Browser auf Mac, PC und Mobile.
+  runtime.embedded:
+    label: Embedded
+    text: Spaeter kann dasselbe Modell fuer ein Embedded Board erzeugt werden.
+  runtime.same_model_core:
+    label: Gleicher Modellkern
+    text: Browser App und Embedded unterscheiden sich technisch, aber nutzen denselben fachlichen Modellkern.
+  lesson.browser_advantages:
+    label: Browser Vorteile
+    text: Schnell starten, sofort beobachten, kein Board und kein Flashen noetig.
+  lesson.browser_disadvantages:
+    label: Browser Nachteile
+    text: Wenn nichts gespeichert wird, ist das Tamagotchi nach dem Schliessen des Browsers weg.
+  behavior.event_driven_first:
+    label: Erste Version
+    text: Anfangs veraendert sich das Tamagotchi nur durch Benutzerinteraktionen.
+  behavior.time_driven_next:
+    label: Naechste Version
+    text: Danach aktualisiert ein regelmaessiger Tick die State-Machine.
+  persistence.browser_storage:
+    label: Speichern
+    text: Der Zustand kann im Browser gespeichert und spaeter wieder geladen werden.

@@ -1,0 +1,87 @@
+runtimes:
+  browser_app:
+    label: Browser App
+    audience_label: Browser App fuer Mac, PC und Mobile
+    purpose: Erster sichtbarer Modellpfad, um Modellverhalten schnell zu zeigen und App-Vor- und Nachteile zu besprechen
+    generated_language: typescript
+    generated_target: generated/browser_app/tamagotchi
+    reference_app: runtimes/browser_app/tamagotchi
+    execution:
+      install_required: false
+      runs_on:
+        - desktop_browser
+        - mobile_browser
+      persistence_default: volatile
+  embedded:
+    label: Embedded
+    audience_label: Embedded Board
+    purpose: Spaetere Uebertragung des gleichen Modells auf Hardware, Timing, Speicher und Deployment
+    generated_language: cpp
+    generated_target: generated/embedded/tamagotchi
+    reference_app: runtimes/embedded/tamagotchi
+    execution:
+      install_required: true
+      runs_on:
+        - esp32
+      persistence_default: device_storage
+
+learning_path:
+  - id: why_model_not_code
+    title: Warum nicht direkt Code?
+    runtime: browser_app
+    focus:
+      - Quellcode ist fuer Einsteiger schwer lesbar
+      - fachliches Verhalten soll zuerst verstanden werden
+      - Modell beschreibt Verhalten naeher an der Sprache des Lernenden
+    state_update_mode: conceptual
+    persistence: none
+  - id: model_is_runtime_independent
+    title: Modell ist unabhaengig von der Runtime
+    runtime: browser_app
+    focus:
+      - Modell ist Quelle der Wahrheit
+      - Runtime ist nur eine technische Ausfuehrungsform
+      - aus demselben Modell koennen mehrere Apps entstehen
+    state_update_mode: conceptual
+    persistence: none
+  - id: runtime_choice_browser_or_embedded
+    title: Runtime-Pfad waehlen
+    runtime: browser_app
+    choices:
+      - browser_app
+      - embedded
+    focus:
+      - Browser App fuer schnellen Einstieg
+      - Embedded fuer spaetere Hardware-Umsetzung
+      - Modell bleibt gleich
+    state_update_mode: conceptual
+    persistence: none  - id: browser_app_quick_start
+    title: Erste Browser App erzeugen und beobachten
+    runtime: browser_app
+    focus:
+      - schnelle lauffaehige Anwendung
+      - Verhalten durch Benutzerinteraktionen sichtbar machen
+      - Vorteile einer Browser App erkennen
+      - Nachteile der ersten Browser App erkennen
+    state_update_mode: event_driven
+    persistence: none
+  - id: timed_state_machine
+    title: Zeitgesteuerte State-Machine verstehen
+    runtime: browser_app
+    focus:
+      - Zustandsautomat wird regelmaessig aktualisiert
+      - Zeitveraenderungen laufen auch ohne direkte Benutzeraktion
+      - Unterschied zwischen Event-Logik und Tick-Logik erkennen
+      - Zustand und Modell speichern
+    state_update_mode: time_driven
+    persistence: browser_storage
+  - id: next_runtime_apps
+    title: Weitere Runtime-Apps aus demselben Modell erzeugen
+    runtime: embedded
+    focus:
+      - gleicher fachlicher Kern
+      - andere technische Randbedingungen
+      - Browser App ist nur die erste Ausfuehrungsform
+      - Embedded bringt Build, Flash, OTA und Geraetespeicher hinzu
+    state_update_mode: time_driven
+    persistence: device_storage

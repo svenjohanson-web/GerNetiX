@@ -1,0 +1,101 @@
+model:
+  id: tamagotchi
+  name: Tamagotchi
+  version: 0.1.0
+
+needs:
+  hunger:
+    label: Hunger
+    initial: 20
+    min: 0
+    max: 100
+    decay_per_tick: 3
+    priority: 90
+  happiness:
+    label: Freude
+    initial: 70
+    min: 0
+    max: 100
+    decay_per_tick: 2
+    priority: 60
+  energy:
+    label: Energie
+    initial: 80
+    min: 0
+    max: 100
+    decay_per_tick: 1
+    priority: 50
+
+states:
+  idle:
+    label: Wartet
+    initial: true
+  hungry:
+    label: Hungrig
+  tired:
+    label: Muede
+  happy:
+    label: Froehlich
+
+rules:
+  - id: becomes_hungry
+    when:
+      need: hunger
+      greater_than: 70
+    transition_to: hungry
+    priority: 90
+  - id: becomes_tired
+    when:
+      need: energy
+      less_than: 25
+    transition_to: tired
+    priority: 80
+  - id: becomes_happy
+    when:
+      need: happiness
+      greater_than: 80
+    transition_to: happy
+    priority: 50
+
+actions:
+  feed:
+    label: Fuettern
+    effects:
+      hunger: -40
+      happiness: 5
+  play:
+    label: Spielen
+    effects:
+      happiness: 20
+      energy: -15
+      hunger: 10
+  sleep:
+    label: Schlafen
+    effects:
+      energy: 40
+      hunger: 10
+
+time:
+  tick_ms: 1000
+
+
+runtime_behavior:
+  initial_lesson:
+    update_mode: event_driven
+    persistence: none
+    description: In der ersten Browser-App-Lektion aendert sich das Tamagotchi nur durch sichtbare Benutzeraktionen.
+  timed_state_machine_lesson:
+    update_mode: time_driven
+    persistence: browser_storage
+    description: In der naechsten Lektion aktualisiert ein Timer die State-Machine regelmaessig und der Zustand kann gespeichert werden.
+
+persistence:
+  none:
+    label: Nicht speichern
+    effect: Browser schliessen bedeutet, dass das Tamagotchi verschwindet.
+  browser_storage:
+    label: Browser-Speicher
+    effect: Zustand kann nach dem Schliessen der Browser App wiederhergestellt werden.
+  device_storage:
+    label: Geraetespeicher
+    effect: Zustand kann auf Embedded-Hardware lokal erhalten bleiben.
