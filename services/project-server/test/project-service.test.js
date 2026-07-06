@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { DatabaseSync } = require("node:sqlite");
 const test = require("node:test");
 
 const { createDefaultProjectServer, FileBackedProjectRepository, SqliteBackedProjectRepository } = require("../src");
@@ -141,4 +142,29 @@ test("sqlite repository persists projects, sources and build jobs across reload"
   assert.equal(reloaded.getProject(project.project_id).title, "ESP32 Lernprojekt");
   assert.equal(reloaded.listSources(project.project_id).length, 1);
   assert.equal(reloaded.getBuildJob(job.build_job_id).mode, "prebuild");
+
+  const db = new DatabaseSync(dbPath);
+  assert.equal(collectionCount(db, "project-server", "projects"), 1);
+  assert.equal(collectionCount(db, "project-server", "sources"), 1);
+  assert.equal(collectionCount(db, "project-server", "build_jobs"), 1);
+  assert.equal(tableCount(db, "project_server_projects"), 1);
+  assert.equal(tableCount(db, "project_server_sources"), 1);
+  assert.equal(tableCount(db, "project_server_build_jobs"), 1);
+  assert.equal(
+    db.prepare("SELECT title FROM project_server_projects WHERE project_id = ?").get(project.project_id).title,
+    "ESP32 Lernprojekt",
+  );
+  db.close();
 });
+
+function collectionCount(db, serviceKey, collectionName) {
+  return db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM service_documents
+    WHERE service_key = ? AND collection_name = ?
+  `).get(serviceKey, collectionName).count;
+}
+
+function tableCount(db, tableName) {
+  return db.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get().count;
+}

@@ -6,9 +6,9 @@ items:
     type: implementation_artifact
     title: Community Question Triage Umsetzung
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Technical
-    summary: Spaetere technische Umsetzung fuer Triage neuer Community-Fragen.
+    summary: MVP-Umsetzung im Community Platform Service fuer neue Community-Fragen, Triage-Status und SLA-Metadaten.
     realizesRequirements:
       - requirement.community_question_triage_time
 
@@ -16,9 +16,9 @@ items:
     type: implementation_artifact
     title: Community Answer Verification Umsetzung
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Technical
-    summary: Spaetere technische Umsetzung fuer fachlich verifizierte Community-Antworten.
+    summary: MVP-Umsetzung im Community Platform Service fuer fachlich verifizierte Antworten, sichtbaren Verifizierungsstatus und erneute Pruefung nach Aenderungen.
     realizesRequirements:
       - requirement.community_answer_verification
 
@@ -26,9 +26,9 @@ items:
     type: implementation_artifact
     title: AI Usage Preflight Umsetzung
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Technical
-    summary: Spaetere technische Umsetzung der serverseitigen Credit-, Budget-, Modell- und Schutzpruefung vor KI-Aufrufen.
+    summary: MVP-Umsetzung im AI Usage Server fuer Credit-, Budget-, Modell- und Schutzpruefung vor KI-Aufrufen.
     realizesRequirements:
       - requirement.ai_prepaid_credit_check
       - requirement.ai_usage_limits
@@ -38,9 +38,9 @@ items:
     type: implementation_artifact
     title: AI Admin Usage Dashboard Umsetzung
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Technical
-    summary: Spaetere technische Umsetzung der Admin-Dashboard-Sicht fuer KI Usage Monitoring und Cost Protection Observability.
+    summary: MVP-Umsetzung im AI Usage Server und Admin Tool fuer KI Usage Monitoring, Cost Controls und auffaellige Nutzungsmuster.
     realizesRequirements:
       - requirement.ai_admin_usage_dashboard
       - requirement.ai_cost_margin_reporting
@@ -50,9 +50,9 @@ items:
     type: implementation_artifact
     title: Community AI Assistant Umsetzung
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: In Implementation
     ownerDomain: Technical
-    summary: Spaetere technische Umsetzung fuer Premium-RAG-Anfragen, Quellenreferenzen, Conversation Memory, Moderation und Usage Event Erzeugung.
+    summary: MVP-Umsetzung im Community AI Assistant fuer quellengebundene Antworten, Moderation und AI Usage Events; Premium-Access und Conversation Memory sind noch auszubauen.
     realizesRequirements:
       - requirement.community_ai_assistant_query
       - requirement.community_ai_assistant_sources
@@ -63,9 +63,9 @@ items:
     type: implementation_artifact
     title: Community AI Indexing Umsetzung
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: In Implementation
     ownerDomain: Technical
-    summary: Spaetere technische Umsetzung fuer Indexierung, Embeddings, Vektordatenbank-Anbindung und Reindexing der Community-Wissensquellen.
+    summary: MVP-Umsetzung erzeugt indexierbare Knowledge Documents aus verifizierten Community-Antworten; Embeddings, Vektordatenbank und Reindexing bleiben Folgeausbau.
     realizesRequirements:
       - requirement.community_ai_assistant_indexing
       - requirement.community_ai_assistant_admin_configuration

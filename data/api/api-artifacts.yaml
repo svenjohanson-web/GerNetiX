@@ -6,7 +6,7 @@ items:
     type: api_artifact
     title: Community Questions API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Business
     summary: Fachliches API-Artefakt fuer Fragen, Triage und Statusabfrage.
     derivedFromRequirements:
@@ -16,7 +16,7 @@ items:
     type: api_artifact
     title: Community Answer Verification API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Business
     summary: Fachliches API-Artefakt fuer Verifizierung, Sichtbarkeit und erneute Pruefung von Antworten.
     derivedFromRequirements:
@@ -28,7 +28,7 @@ items:
     type: api_artifact
     title: Identity API
     businessStatus: In Analysis
-    implementationStatus: In Design
+    implementationStatus: Implemented
     ownerDomain: Account
     summary: API-Artefakt fuer klassische Registrierung, E-Mail-Verifizierung, lokalen Login, Social Login ueber gekapselte Provider, Logout und Passwort-Reset. Public Responses duerfen keine Provider-IDs und keine interne E-Mail als oeffentliche Identitaet exponieren.
     derivedFromRequirements:
@@ -38,7 +38,7 @@ items:
     type: api_artifact
     title: Account Self Transparency API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Account
     summary: API-Artefakt fuer die Kunden-IDE-Sicht `Was weiss GerNetiX ueber mich?`. Liefert einen aktuellen AccountTransparencySnapshot fuer den angemeldeten Nutzer, kann eine explizite Aktualisierung ausloesen und markiert, ob der Snapshot wegen Aenderungen an Payment, Abos, Angeboten, Grants, Devices, Lernfortschritt, KI-Nutzung oder Consents veraltet war.
     derivedFromRequirements:
@@ -54,6 +54,8 @@ items:
     endpoints:
       - GET /account/me/transparency
       - POST /account/me/transparency/refresh
+      - GET /api/account/me/transparency
+      - POST /api/account/me/transparency/refresh
     responseSections:
       - identity
       - contact_data
@@ -78,7 +80,7 @@ items:
     type: api_artifact
     title: AI Credit Balance API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Business
     summary: Fachliches API-Artefakt fuer Credit-Guthaben, Verbrauch, verbleibende Credits und Verbrauchshistorie.
     derivedFromRequirements:
@@ -88,7 +90,7 @@ items:
     type: api_artifact
     title: AI Usage Preflight API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Business
     summary: Serverseitige Vorpruefung fuer kostenpflichtige KI-Aufrufe gegen Credits, Budgets, Modellfreigabe, Rate Limits und Kill-Switch.
     derivedFromRequirements:
@@ -98,7 +100,7 @@ items:
     type: api_artifact
     title: AI Usage Events API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Business
     summary: Fachliches API-Artefakt fuer serverseitige Erfassung und Auswertung von KI Usage Events.
     derivedFromRequirements:
@@ -108,7 +110,7 @@ items:
     type: api_artifact
     title: AI Admin Usage Dashboard API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Business
     summary: API-Artefakt fuer Admin-Dashboard-Kennzahlen zu KI-Nutzung, Credits, Tokens, Kosten, Modellen, Fehlern, Ablehnungen, Budgetnaehe und Margen.
     derivedFromRequirements:
@@ -120,7 +122,7 @@ items:
     type: api_artifact
     title: AI Admin Cost Controls API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Business
     summary: API-Artefakt fuer administrative Steuerung von Credits, Sperren, Limits, Modellfreigaben, Warnschwellen und globalem KI-Kill-Switch.
     derivedFromRequirements:
@@ -133,7 +135,7 @@ items:
     type: api_artifact
     title: Community AI Assistant Query API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: In Implementation
     ownerDomain: Business
     belongsToBusinessDomain:
       - business_domain.community
@@ -148,7 +150,7 @@ items:
     type: api_artifact
     title: Community AI Assistant Admin API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Business
     belongsToBusinessDomain:
       - business_domain.community
@@ -173,7 +175,7 @@ items:
     type: api_artifact
     title: Learning Feedback API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: In Implementation
     ownerDomain: Learning
     summary: API-Artefakt fuer Nutzerfeedback zu einzelnen ProjectSteps, Projektabschluss und Kompetenznachweisen. Beim Absenden kann der Nutzer anonym bleiben oder zweckgebunden Kontakt fuer Rueckfragen zu genau diesem Feedback erlauben.
     derivedFromRequirements:
@@ -184,7 +186,7 @@ items:
     type: api_artifact
     title: Admin Learning Feedback API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Learning
     summary: API-Artefakt fuer Admin-Sichten auf Step- und Projektfeedback. Feedback kann nach Absender, Projekt, Step, Status und Kontaktmodus sortiert und gefiltert werden; identifizierbare Daten und Kontaktdaten duerfen nur zweckgebunden, berechtigt und auditiert sichtbar werden.
     derivedFromRequirements:
@@ -217,7 +219,7 @@ items:
     type: api_artifact
     title: Firmware Build & Deploy API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: In Implementation
     ownerDomain: IDE
     summary: API-Artefakt fuer BuildJob-Erzeugung, HTTP-Uebertragung vollstaendiger BuildPackages, BuildResult-Rueckgabe, temporaere Artefaktuebertragung, HTTPS-Firmwarebereitstellung und MQTT-basierte Deploy-Auftraege, Statusmeldungen, Heartbeats und Telemetrie.
     derivedFromRequirements:
@@ -227,7 +229,7 @@ items:
     type: api_artifact
     title: Device Manufacturer Registration API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Fachliches API-Artefakt fuer internes Hersteller-Register, Provisionierungsstatus, Hardwareprofil, Charge, Firmwarestand und Supportgrundlage von GerNetiX Devices.
     derivedFromRequirements:
@@ -237,7 +239,7 @@ items:
     type: api_artifact
     title: Device Customer Registration API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: API-Artefakt fuer Registrierung von GerNetiX- und Community-Hardware im Account-Device-Inventar.
     derivedFromRequirements:
@@ -248,7 +250,7 @@ items:
     type: api_artifact
     title: Device Pairing API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: API-Artefakt fuer Pairing-Sessions, Pairing-Code-Pruefung, Account-Zuordnung, Unpairing und Pairing-Status.
     derivedFromRequirements:
@@ -258,7 +260,7 @@ items:
     type: api_artifact
     title: Device Authenticity Challenge API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: API-Artefakt fuer Challenge-Erzeugung, HMAC- oder Signaturpruefung und Bewertung, ob ein Device als GerNetiX-provisioniert gilt.
     derivedFromRequirements:
@@ -268,7 +270,7 @@ items:
     type: api_artifact
     title: Account Device Inventory API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Account
     summary: API-Artefakt fuer das Device-Inventar eines Accounts inklusive Community-Hardware, GerNetiX-Verified-Status, Capabilities, OTA-Status und Projektkompatibilitaet.
     derivedFromRequirements:
@@ -280,7 +282,7 @@ items:
     type: api_artifact
     title: IDE OTA Device Selection API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: IDE
     summary: API-Artefakt fuer die Auswahl kompatibler OTA-Zielgeraete aus dem Account-Profil anhand von TechnicalCapabilities, Boardprofil, Online-Status und OTA-Faehigkeit.
     derivedFromRequirements:
@@ -290,7 +292,7 @@ items:
     type: api_artifact
     title: Device Support Entitlement API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: API-Artefakt fuer Support- und Reklamationspruefung eines konkreten Devices anhand von Provisionierung, Pairing, Echtheitsnachweis, Kaufkontext und Account-Zuordnung.
     derivedFromRequirements:
@@ -300,7 +302,7 @@ items:
     type: api_artifact
     title: Admin Device Management API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: API-Artefakt fuer Admin- und Support-Sichten auf konkrete Devices, Statuspruefung, Pairing, Connectivity, OTA, GerNetiX-Verified-vs-Community-Unterscheidung, Credential-Historie und Support-Entitlement.
     derivedFromRequirements:
@@ -310,7 +312,7 @@ items:
     type: api_artifact
     title: Customer Data Access Consent API
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Authorization
     summary: API-Artefakt fuer Einwilligung, Widerruf, Zweckbindung und Auditierung von Admin-/Support-Einsicht in kundenrelevante Daten.
     derivedFromRequirements:

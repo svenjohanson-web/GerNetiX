@@ -3,6 +3,7 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { DatabaseSync } = require("node:sqlite");
 const test = require("node:test");
 
 const { createDefaultDeviceManagementServer, FileBackedDeviceManagementRepository, SqliteBackedDeviceManagementRepository } = require("../src");
@@ -188,4 +189,27 @@ test("sqlite repository persists device inventory across reload", () => {
 
   assert.equal(reloaded.getStatus(device.device_id).serial_number, "GNX-SQLITE-001");
   assert.equal(reloaded.listAccountDevices("acct-1").length, 1);
+
+  const db = new DatabaseSync(dbPath);
+  assert.equal(collectionCount(db, "device-management-server", "devices"), 1);
+  assert.equal(collectionCount(db, "device-management-server", "account_devices"), 1);
+  assert.equal(tableCount(db, "device_management_devices"), 1);
+  assert.equal(tableCount(db, "device_management_account_devices"), 1);
+  assert.equal(
+    db.prepare("SELECT serial_number FROM device_management_devices WHERE device_id = ?").get(device.device_id).serial_number,
+    "GNX-SQLITE-001",
+  );
+  db.close();
 });
+
+function collectionCount(db, serviceKey, collectionName) {
+  return db.prepare(`
+    SELECT COUNT(*) AS count
+    FROM service_documents
+    WHERE service_key = ? AND collection_name = ?
+  `).get(serviceKey, collectionName).count;
+}
+
+function tableCount(db, tableName) {
+  return db.prepare(`SELECT COUNT(*) AS count FROM ${tableName}`).get().count;
+}

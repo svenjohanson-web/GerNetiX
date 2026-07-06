@@ -16,7 +16,7 @@ items:
     type: architecture_artifact
     title: Community / Wissensplattform Architektur
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Business
     summary: Architekturartefakt fuer Community-Fragen, verifizierte Antworten und dauerhafte Wissensbasis.
     derivedFromRequirements:
@@ -28,7 +28,7 @@ items:
     type: architecture_artifact
     title: KI Cost Protection
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Business
     summary: Architekturartefakt fuer serverseitige Credit-Pruefung, Budgetlimits, Modellfreigaben, Verbrauchsberechnung und Schutz vor unkontrollierten KI-Kosten.
     derivedFromRequirements:
@@ -43,7 +43,7 @@ items:
     type: architecture_artifact
     title: KI Usage Observability und Admin Dashboard
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Business
     summary: Architekturartefakt fuer Usage Events, Audit Trail, Admin-Dashboard, Kosten-/Margenberichte, auffaellige Nutzungsmuster und administrative Steuerungsfunktionen.
     derivedFromRequirements:
@@ -57,7 +57,7 @@ items:
     type: architecture_artifact
     title: KI-Community-Assistent Architektur
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: In Implementation
     ownerDomain: Business
     belongsToBusinessDomain:
       - business_domain.community
@@ -87,7 +87,7 @@ items:
     type: architecture_component
     title: OTA Update Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Architekturkomponente fuer Over-the-Air-Firmwareupdates, die von WiFi, registrierten Boards, aktiven Credentials, erhaltener GerNetiX-Basissoftware und robusten Flash-Regeln abhaengt.
     derivedFromRequirements:
@@ -134,7 +134,7 @@ items:
     type: architecture_artifact
     title: Identity Server
     businessStatus: In Analysis
-    implementationStatus: In Design
+    implementationStatus: Implemented
     ownerDomain: Account
     summary: Architekturartefakt fuer Registrierung, Login, E-Mail-Verifizierung, Passwort-Reset, Session/AuthToken-Verwaltung und gekapselte externe Identitaeten. Stellt allen Folgemodulen ausschliesslich die interne `user_id` bereit.
     usedBy:
@@ -156,7 +156,7 @@ items:
     type: architecture_component
     title: User Account Registry Component
     businessStatus: In Analysis
-    implementationStatus: In Design
+    implementationStatus: Implemented
     ownerDomain: Account
     summary: Komponente fuer interne UserAccounts mit stabiler `user_id`, eindeutigem Benutzernamen, interner E-Mail und Accountstatus.
 
@@ -164,7 +164,7 @@ items:
     type: architecture_component
     title: Local Credential Authentication Component
     businessStatus: In Analysis
-    implementationStatus: In Design
+    implementationStatus: Implemented
     ownerDomain: Account
     summary: Komponente fuer lokale Passwort-Credentials, Passwort-Hashing und Login per Benutzername oder E-Mail.
 
@@ -172,7 +172,7 @@ items:
     type: architecture_component
     title: External Identity Provider Adapter Component
     businessStatus: In Analysis
-    implementationStatus: In Design
+    implementationStatus: Implemented
     ownerDomain: Account
     summary: Kapselt OAuth2-/OpenID-Connect-Provider wie Google, Apple, Microsoft und GitHub, sodass Provider-IDs nicht ausserhalb des Identity-Moduls verwendet werden.
 
@@ -180,7 +180,7 @@ items:
     type: architecture_component
     title: Email Verification Component
     businessStatus: In Analysis
-    implementationStatus: In Design
+    implementationStatus: Implemented
     ownerDomain: Account
     summary: Komponente fuer VerificationTokens und E-Mail-Verifizierungslinks, in der ersten Implementierung ueber MockEmailService.
 
@@ -188,7 +188,7 @@ items:
     type: architecture_component
     title: Password Reset Component
     businessStatus: In Analysis
-    implementationStatus: In Design
+    implementationStatus: Implemented
     ownerDomain: Account
     summary: Komponente fuer neutrale Passwort-Reset-Anfragen, ResetTokens und sicheres Setzen neuer Passwoerter fuer LocalCredential-Accounts.
 
@@ -196,7 +196,7 @@ items:
     type: architecture_component
     title: Auth Session Management Component
     businessStatus: In Analysis
-    implementationStatus: In Design
+    implementationStatus: Implemented
     ownerDomain: Account
     summary: Komponente fuer Session/AuthToken-Erzeugung, Ablaufzeit und Widerruf bei Logout.
 
@@ -204,7 +204,7 @@ items:
     type: architecture_artifact
     title: Projektserver
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: IDE
     summary: Quelle der Wahrheit fuer Benutzer, Nutzerprojekte, Geraete, Quellcode, Projektkonfiguration, Build-Historie und Build-/Flash-Status. Der Projektserver erstellt BuildJobs und vollstaendige BuildPackages und nimmt Build- und Deploy-Ergebnisse vom Build-&-Deploy-Server zurueck.
     usedBy:
@@ -227,7 +227,7 @@ items:
     type: architecture_artifact
     title: Build-&-Deploy-Server
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: IDE
     summary: Ausfuehrender Server fuer Build- und Deploy-Jobs. Er kompiliert vollstaendige BuildPackages des Projektservers, fuehrt OTA-Deployments aus, kommuniziert mit Geraeten per MQTT und HTTPS, gibt Firmware, Logs und Status zurueck und loescht danach temporaere Projektdaten. Dauerhafte technische Caches sind erlaubt, aber niemals Quelle der Wahrheit.
     usedBy:
@@ -255,7 +255,7 @@ items:
     type: architecture_component
     title: Project Source Repository Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: IDE
     summary: Komponente fuer dauerhafte Nutzerprojektquellen, User-Code, Projektkonfiguration und Build-relevante Metadaten.
 
@@ -263,7 +263,7 @@ items:
     type: architecture_component
     title: Project Build History Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: IDE
     summary: Komponente fuer Build-Historie, Build-Status, Flash-Status, Logs, Firmware-Artefaktreferenzen und Fehlernachvollziehbarkeit.
 
@@ -271,7 +271,7 @@ items:
     type: architecture_component
     title: Build Package Creator Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: IDE
     summary: Erstellt ein vollstaendiges, reproduzierbares BuildPackage als Snapshot aus BuildJob-Metadaten, PlatformIO-Konfiguration, Projektquellen, GerNetiX-Basissoftware, User-Code, Headern, Libraries, Assets, optional vorberechneten Dateien und Zielgeraeteprofil.
 
@@ -279,7 +279,7 @@ items:
     type: architecture_component
     title: Firmware Artifact Repository Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: IDE
     summary: Speichert erzeugte Firmware-Artefakte, BuildResult, Logs, Status, SHA-256, Dateigroessen und Metadaten beim Projektserver; der Build-&-Deploy-Server behaelt diese Daten nicht dauerhaft.
 
@@ -287,7 +287,7 @@ items:
     type: architecture_component
     title: Learning Feedback Repository Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: In Implementation
     ownerDomain: Learning
     summary: Fachlicher Speicherort fuer Step- und Projektfeedback im Projekt-/Learning-Kontext. Das Admin Tool nutzt diese Daten nur ueber berechtigte Sichten; identifizierbares Feedback und Kontaktdaten bleiben consent- und auditpflichtig.
     derivedFromRequirements:
@@ -298,7 +298,7 @@ items:
     type: architecture_component
     title: Firmware Build Job Runner Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: In Implementation
     ownerDomain: IDE
     summary: Fuehrt Build-Jobs aus vollstaendigen BuildPackages aus, kompiliert die Firmware und liefert BuildResult inklusive `firmware.bin`, `firmware.elf`, `firmware.map`, `build.log`, Status, SHA-256 und Dateigroesse an den Projektserver zurueck.
 
@@ -306,7 +306,7 @@ items:
     type: architecture_component
     title: Build Cache Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: IDE
     summary: Technischer Cache fuer Toolchains, PlatformIO, Libraries, Objektdateien und vergleichbare Build-Artefakte. Der Cache beschleunigt Builds, ist aber nicht fachliche Quelle der Wahrheit und darf ohne Datenverlust neu aufgebaut werden.
 
@@ -314,7 +314,7 @@ items:
     type: architecture_component
     title: Prebuild Scheduler Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: IDE
     summary: Kann beim Anlegen eines Lernprojekts automatisch einen Prebuild der Projekthuelle starten, um technische Caches aufzuwarmen und spaetere Builds zu beschleunigen.
 
@@ -322,7 +322,7 @@ items:
     type: architecture_component
     title: Deploy Job Orchestrator Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: IDE
     summary: Startet OTA-Deployments nur aus einem vom Nutzer ausgeloesten Build-&-Flash-Auftrag, veroeffentlicht Deploy-Auftraege per MQTT, stellt Firmware per HTTPS bereit, empfaengt Statusmeldungen per MQTT und meldet den Abschluss an den Projektserver.
 
@@ -330,7 +330,7 @@ items:
     type: architecture_component
     title: Device Job Lock Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Stellt sicher, dass pro Device maximal ein aktiver Build-/Deploy-Job laeuft. Optional darf genau ein weiterer wartender Job existieren; neue wartende Jobs ersetzen aeltere wartende Jobs.
 
@@ -338,7 +338,7 @@ items:
     type: architecture_component
     title: Device Registry Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Komponente fuer konkrete Devices, Lifecycle, Hersteller-Register und Heartbeats.
 
