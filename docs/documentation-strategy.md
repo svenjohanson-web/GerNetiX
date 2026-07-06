@@ -6,6 +6,8 @@ Die Dokumentation beginnt nicht beim Code.
 Sie beginnt nicht beim Metamodell.
 Sie beginnt bei der Nachvollziehbarkeit.
 
+Neue Codex-Sitzungen nutzen zusaetzlich das kurze [Codex-Erinnerungsverfahren](codex-reminder-procedure.md), damit wichtige Projektentscheidungen, Graphen und Architekturartefakte nicht nur im Chat-Kontext verbleiben.
+
 Leitsatz:
 
 > Wissen ist teurer als Code.
