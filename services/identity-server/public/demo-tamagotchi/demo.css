@@ -1,0 +1,372 @@
+:root {
+  color-scheme: light;
+  --bg: #f5f7f2;
+  --ink: #17211b;
+  --muted: #5d6a61;
+  --line: #d8dfd5;
+  --panel: #ffffff;
+  --accent: #0f7b63;
+  --accent-dark: #075845;
+  --warm: #f2b84b;
+  --danger: #b94343;
+  --device: #20272b;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  color: var(--ink);
+  background:
+    linear-gradient(180deg, rgba(15, 123, 99, 0.08), transparent 34rem),
+    var(--bg);
+  font-family:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button {
+  font: inherit;
+}
+
+.app-shell {
+  width: min(1180px, calc(100vw - 32px));
+  margin: 0 auto;
+  padding: 28px 0 34px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  margin-bottom: 22px;
+}
+
+.topbar h1,
+.stage-header h2,
+.status-panel h2,
+.status-panel h3 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.topbar h1 {
+  font-size: clamp(2rem, 6vw, 4.2rem);
+  line-height: 0.95;
+}
+
+.eyebrow {
+  margin: 0 0 6px;
+  color: var(--accent-dark);
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.session-pill,
+.connection-state {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--accent-dark);
+  background: #eef8f3;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.ghost-button,
+.action-button {
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.ghost-button {
+  min-height: 38px;
+  padding: 0 14px;
+  color: var(--ink);
+  background: #e7ece4;
+}
+
+.demo-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(320px, 0.8fr);
+  gap: 20px;
+  align-items: stretch;
+}
+
+.stage-panel,
+.status-panel {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 22px 70px rgba(31, 43, 35, 0.12);
+}
+
+.stage-panel {
+  padding: clamp(18px, 4vw, 30px);
+}
+
+.status-panel {
+  padding: 22px;
+}
+
+.stage-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stage-header h2,
+.status-panel h2 {
+  font-size: clamp(1.4rem, 3vw, 2.1rem);
+}
+
+.device-frame {
+  display: grid;
+  min-height: 430px;
+  place-items: center;
+  border-radius: 8px;
+  background:
+    radial-gradient(circle at 50% 30%, rgba(255, 255, 255, 0.24), transparent 18rem),
+    linear-gradient(135deg, #10201d, #364340);
+  overflow: hidden;
+}
+
+.pet-scene {
+  position: relative;
+  display: grid;
+  width: min(420px, 84vw);
+  min-height: 340px;
+  place-items: center;
+  padding: 28px;
+}
+
+.pet-shadow {
+  position: absolute;
+  bottom: 78px;
+  width: 210px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.24);
+}
+
+.pet-body {
+  position: relative;
+  display: grid;
+  width: 188px;
+  height: 210px;
+  place-items: center;
+  border: 5px solid #12191c;
+  border-radius: 44% 44% 38% 38%;
+  background: linear-gradient(180deg, #ffd36b, #f28f45);
+  box-shadow: inset -16px -18px 0 rgba(0, 0, 0, 0.08);
+  transform-origin: 50% 80%;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.pet-body.is-happy {
+  transform: translateY(-8px) rotate(-2deg);
+}
+
+.pet-body.is-tired {
+  filter: saturate(0.75);
+  transform: translateY(8px);
+}
+
+.pet-body.is-dead {
+  filter: grayscale(1);
+  transform: rotate(7deg) translateY(22px);
+}
+
+.pet-ear {
+  position: absolute;
+  top: -38px;
+  width: 58px;
+  height: 72px;
+  border: 5px solid #12191c;
+  background: #f2b84b;
+}
+
+.pet-ear-left {
+  left: 18px;
+  border-radius: 80% 30% 55% 35%;
+  transform: rotate(-24deg);
+}
+
+.pet-ear-right {
+  right: 18px;
+  border-radius: 30% 80% 35% 55%;
+  transform: rotate(24deg);
+}
+
+.pet-face {
+  display: flex;
+  gap: 42px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.pet-eye {
+  width: 22px;
+  height: 28px;
+  border-radius: 50%;
+  background: #171a1c;
+}
+
+.pet-mouth {
+  position: absolute;
+  top: 124px;
+  width: 54px;
+  height: 26px;
+  border-bottom: 5px solid #171a1c;
+  border-radius: 0 0 999px 999px;
+}
+
+.pet-mouth.is-sad {
+  top: 136px;
+  border-top: 5px solid #171a1c;
+  border-bottom: 0;
+  border-radius: 999px 999px 0 0;
+}
+
+.pet-message {
+  position: absolute;
+  bottom: 22px;
+  width: min(320px, 90%);
+  margin: 0;
+  padding: 12px 14px;
+  border-radius: 8px;
+  color: #f7fff9;
+  background: rgba(0, 0, 0, 0.3);
+  text-align: center;
+  font-weight: 800;
+}
+
+.action-row {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.action-button {
+  min-height: 48px;
+  padding: 0 12px;
+  color: white;
+  background: var(--accent);
+}
+
+.action-button:hover {
+  background: var(--accent-dark);
+}
+
+.panel-section + .panel-section {
+  margin-top: 26px;
+  padding-top: 22px;
+  border-top: 1px solid var(--line);
+}
+
+.state-list {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+}
+
+.state-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.state-list dt {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.state-list dd {
+  margin: 0;
+  font-weight: 900;
+}
+
+.meter-group {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+}
+
+.meter-group label {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-weight: 800;
+}
+
+meter {
+  width: 100%;
+  height: 16px;
+}
+
+.feature-list {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding-left: 20px;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+@media (max-width: 860px) {
+  .topbar,
+  .stage-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .demo-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .action-row {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 520px) {
+  .app-shell {
+    width: min(100vw - 20px, 1180px);
+    padding-top: 18px;
+  }
+
+  .stage-panel,
+  .status-panel {
+    padding: 16px;
+  }
+
+  .device-frame {
+    min-height: 360px;
+  }
+
+  .pet-body {
+    width: 154px;
+    height: 174px;
+  }
+}

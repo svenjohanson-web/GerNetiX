@@ -147,7 +147,7 @@ Projekte besitzen keine direkten Upstream-Beziehungen zu Vision, Business Goals,
 
 Aktuelle Learning-Path-Zuordnung:
 
-- `learning_path.ai_pet_embedded_interaction` -> `project.ai_pet_esp32`
+- `learning_path.ai_pet_embedded_interaction` -> `project.tamagotchi_entry_course`
 - `learning_path.automation_control_and_regulation` -> `project.smart_plant_watering`
 - `learning_path.embedded_access_control` -> `project.rfid_safe`
 - `learning_path.maker_access_and_mechanics` -> `project.book_vault`

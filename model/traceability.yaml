@@ -1154,7 +1154,7 @@ entities:
     status: draft
     ownerDomain: Business
     sources:
-      - data/learning/projects/ai-pet-esp32.yaml
+      - data/learning/projects/tamagotchi-entry-course.yaml
       - data/learning/projects/rfid-safe.yaml
 
   - id: value.practical_embedded_project
@@ -1192,7 +1192,7 @@ entities:
     status: draft
     ownerDomain: Business
     sources:
-      - data/learning/projects/ai-pet-esp32.yaml
+      - data/learning/projects/tamagotchi-entry-course.yaml
 
   - id: value.optional_ai_extension
     type: value_proposition
@@ -1201,8 +1201,8 @@ entities:
     status: draft
     ownerDomain: Business
     sources:
-      - data/learning/projects/ai-pet-esp32.yaml
-      - docs/project-ai-pet-esp32.md
+      - data/learning/projects/tamagotchi-entry-course.yaml
+      - docs/project-tamagotchi-entry-course.md
 
   - id: value.hardware_inventory
     type: value_proposition
@@ -1342,15 +1342,15 @@ entities:
     sources:
       - data/learning/projects/kanban-gridfinity-inventory.yaml
 
-  - id: project.ai_pet_esp32
+  - id: project.tamagotchi_entry_course
     type: learning_project
-    title: KI-Haustier / Tamagotchi AI
+    title: Tamagotchi Entry Course
     summary: Virtuelles Haustier auf ESP32 mit Display; besitzt eine Offline-Basisvariante ohne laufende KI-Kosten und eine optionale KI-Online-Variante mit OpenAI-Anbindung, Online-Abhaengigkeit und Cost-Protection-Anforderungen.
     status: draft
     ownerDomain: Learning
     sources:
-      - data/learning/projects/ai-pet-esp32.yaml
-      - docs/project-ai-pet-esp32.md
+      - data/learning/projects/tamagotchi-entry-course.yaml
+      - docs/project-tamagotchi-entry-course.md
 
   - id: learning_path.cross_platform_development
     type: learning_path
@@ -1706,7 +1706,7 @@ entities:
     status: referenced
     ownerDomain: Hardware
     sources:
-      - data/learning/projects/ai-pet-esp32.yaml
+      - data/learning/projects/tamagotchi-entry-course.yaml
 
   - id: capability.digital_output
     type: technical_capability
@@ -1834,7 +1834,7 @@ entities:
     status: referenced
     ownerDomain: Authorization
     sources:
-      - data/learning/projects/ai-pet-esp32.yaml
+      - data/learning/projects/tamagotchi-entry-course.yaml
 
   - id: system_capability.ai_premium_models
     type: system_capability
@@ -2024,8 +2024,8 @@ entities:
     status: optional
     ownerDomain: Learning
     sources:
-      - docs/project-ai-pet-esp32.md
-      - data/learning/projects/ai-pet-esp32.yaml
+      - docs/project-tamagotchi-entry-course.md
+      - data/learning/projects/tamagotchi-entry-course.yaml
 
   - id: component.ota
     type: architecture_component
@@ -2099,7 +2099,7 @@ entities:
     status: open
     ownerDomain: Learning
     sources:
-      - data/learning/projects/ai-pet-esp32.yaml
+      - data/learning/projects/tamagotchi-entry-course.yaml
 
   - id: risk.weak_security_expectation
     type: risk

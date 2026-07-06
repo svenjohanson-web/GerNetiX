@@ -28,7 +28,7 @@ Der validierte SQLite-Graph ist die kanonische Struktur. Markdown dient nur der 
 - `data/learning/learning-goals.yaml`: Learning Goals
 - `data/learning/learning-paths.yaml`: Learning Paths, z. B. `learning_path.cross_platform_development`
 - `data/learning/learning-units.yaml`: verkaufsnahe und fachliche Learning-Einheiten
-- `data/learning/projects/ai-pet-esp32.yaml`: KI-Haustier / Tamagotchi AI
+- `data/learning/projects/tamagotchi-entry-course.yaml`: Tamagotchi Entry Course
 - `data/learning/projects/cross-platform-tamagotchi.yaml`: Cross-Platform-Development-Projekte mit austauschbarer Tamagotchi-Beispieldomaene
 - `data/learning/projects/smart-plant-watering.yaml`: Intelligente Pflanzenbewaesserungsstation
 - `data/learning/projects/rfid-safe.yaml`: RFID-Tresor

@@ -752,7 +752,7 @@ relations:
 
   - from: learning_path.ai_pet_embedded_interaction
     relation: contains
-    to: project.ai_pet_esp32
+    to: project.tamagotchi_entry_course
     confidence: high
   - from: learning_path.automation_control_and_regulation
     relation: contains
@@ -1031,19 +1031,19 @@ relations:
     to: project.cross_platform_tamagotchi.ai_extension
     confidence: high
 
-  - from: project.ai_pet_esp32
+  - from: project.tamagotchi_entry_course
     relation: uses
     to: capability.processor_esp32
     confidence: high
-  - from: project.ai_pet_esp32
+  - from: project.tamagotchi_entry_course
     relation: uses
     to: capability.display_output
     confidence: high
-  - from: project.ai_pet_esp32
+  - from: project.tamagotchi_entry_course
     relation: optionally_uses
     to: capability.wifi
     confidence: high
-  - from: project.ai_pet_esp32
+  - from: project.tamagotchi_entry_course
     relation: optionally_uses
     to: system_capability.ai_assistant
     confidence: high

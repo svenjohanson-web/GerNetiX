@@ -64,13 +64,47 @@ Hardware-Plattform, Capability-Profil, Release-Channel oder Mindest-Runtime werd
 - `support-entitlement`: Support-, Garantie- und Reklamationspruefung
 - `admin-device-management`: Admin-/Support-Sichten fuer Device-Status, GerNetiX-Verified, Community-Hardware, Pairing, OTA und Entitlement
 
+## MVP-Implementierung
+
+Der aktuelle MVP ist ein eigenstaendiger Node.js-Prozess ohne externe Runtime-Abhaengigkeiten.
+
+Start:
+
+```text
+npm run dev
+```
+
+Standardadresse:
+
+```text
+http://127.0.0.1:4700
+```
+
+API-Prefix:
+
+```text
+/api/device-management
+```
+
+Umgesetzt sind Device-Registrierung, Heartbeat, Status, HMAC-Challenge, Pairing Sessions, Account-Device-Inventar, OTA-Zielauswahl, Connectivity-Status, Purchase Contexts aus dem Hardware Shop, Support-Entitlement, Admin-Sichten, Consent und Audit-Events.
+
+Purchase Contexts speichern gekaufte Hardware-Angebote, HardwareItems, Capabilities, Provisioning-Profile und Supportbasis pro Account. Sie machen Support- und Reklamationsgrundlagen nachvollziehbar, erzeugen aber ohne Echtheitsnachweis keinen Supportanspruch fuer unverifizierte Community-Hardware.
+
+Konfiguration:
+
+- `HOST`: Bind-Adresse, Standard `127.0.0.1`
+- `PORT`: HTTP-Port, Standard `4700`
+- `DEVICE_MANAGEMENT_BASE_URL`: externe Basis-URL fuer spaetere Links
+- `PERSISTENCE_BACKEND` oder `DEVICE_MANAGEMENT_PERSISTENCE_BACKEND`: `memory`, `sqlite` oder `json`, Standard `memory`
+- `PERSISTENCE_SQLITE_PATH` oder `DEVICE_MANAGEMENT_SQLITE_PATH`: SQLite-Datei fuer `sqlite`, Standard `.runtime/gernetix-services.sqlite`
+- `DEVICE_MANAGEMENT_RUNTIME_DIR`: Runtime-Verzeichnis fuer JSON-Persistenz, Standard `.runtime`
+
 ## Nicht-Ziele fuer diesen Stand
 
-- keine Serverimplementierung
 - keine Datenbankmigration
-- keine echte HMAC-Implementierung
 - keine Firmware-Webserver-UI
 - keine Produktiv-Auth
+- keine produktive Secret-/KMS-Integration
 
 ## Deployment-Leitplanken
 

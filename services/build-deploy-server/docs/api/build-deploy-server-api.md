@@ -1,16 +1,74 @@
 # Build-&-Deploy-Server API
 
-Initiale API-Skizze. Noch kein Implementierungskontrakt.
+Initialer MVP-Implementierungskontrakt.
+
+## Healthcheck
+
+```text
+GET /health
+```
+
+Antwort:
+
+```json
+{
+  "status": "ok",
+  "service": "build-deploy-server"
+}
+```
 
 ## Eingehende Auftraege
 
-- Build-Paket annehmen
-- Prebuild der Projekthuelle starten
-- Build & Flash fuer ein Device starten
-- wartenden Job fuer ein Device ersetzen
-- Job-Status abfragen
-- Deploy-Auftrag per MQTT veroeffentlichen
-- Statusmeldungen per MQTT empfangen
+```text
+POST /api/build-jobs
+```
+
+Der MVP akzeptiert ein BuildPackage als JSON-Dateiliste. Dateipfade muessen relativ sein und duerfen nicht aus dem BuildPackage ausbrechen.
+
+Beispiel:
+
+```json
+{
+  "job_id": "demo-job-1",
+  "mode": "build_and_flash",
+  "device_id": "device-1",
+  "deploy": {
+    "requested": true,
+    "device_id": "device-1",
+    "authorized": true
+  },
+  "build_package": {
+    "files": {
+      "build-job.json": "{\"id\":\"demo-job-1\"}",
+      "platformio.ini": "[env:test]\nplatform = espressif32\n",
+      "src/main.cpp": "void setup() {}\nvoid loop() {}\n"
+    }
+  }
+}
+```
+
+Unterstuetzte Modi:
+
+- `build`: Build ohne Deploy
+- `build_and_flash`: Build mit anschliessendem validiertem Deploy-Auftrag
+- `prebuild`: Cache-Aufwaermung ohne Deploy
+
+```text
+GET /api/build-jobs/{job_id}
+```
+
+Liefert Status, Ergebnis, Fehler und Artefaktmetadaten.
+
+```text
+GET /artifacts/{job_id}/{file_name}
+```
+
+Erlaubte Dateinamen:
+
+- `firmware.bin`
+- `firmware.elf`
+- `firmware.map`
+- `build.log`
 
 ## Ausgehende Ergebnisse
 
@@ -27,7 +85,7 @@ Initiale API-Skizze. Noch kein Implementierungskontrakt.
 
 - HTTP: BuildPackage-Uebertragung, BuildResult, Artefaktuebertragung
 - HTTPS: Firmware-Download durch das Device
-- MQTT: Deploy-Auftraege, Statusmeldungen, Heartbeats, Telemetrie
+- MQTT: Deploy-Auftraege, Statusmeldungen, Heartbeats, Telemetrie; im MVP noch als Orchestrator-Abstraktion ohne produktiven Broker-Publish
 
 ## Nicht in dieser API
 

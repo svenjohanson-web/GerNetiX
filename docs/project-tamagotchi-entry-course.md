@@ -1,6 +1,6 @@
-# Projektdefinition - KI-Haustier fuer ESP32
+# Projektdefinition - Tamagotchi Entry Course
 
-Dieses Dokument beschreibt die fachliche Projektdefinition fuer ein KI-gestuetztes Haustier auf Basis eines ESP32 mit Display.
+Dieses Dokument beschreibt die fachliche Projektdefinition fuer den Einstiegskurs rund um ein digitales Tamagotchi als Software-Engineering-Beispiel.
 Es enthaelt noch keine Implementierungsdetails und keinen Quelltext.
 
 ## Einordnung

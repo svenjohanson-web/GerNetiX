@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GerNetiX Tama Demo</title>
+    <link rel="stylesheet" href="./demo.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GerNetiX Kundenansicht</p>
+          <h1>Tama Live Demo</h1>
+        </div>
+        <div class="topbar-actions">
+          <span class="session-pill" id="session-pill">Angemeldet</span>
+          <button class="ghost-button" id="logout-button" type="button">Abmelden</button>
+        </div>
+      </header>
+
+      <section class="demo-grid" aria-label="Tamagotchi Demo">
+        <article class="stage-panel" aria-labelledby="stage-title">
+          <div class="stage-header">
+            <div>
+              <p class="eyebrow">Lokaler Homeserver</p>
+              <h2 id="stage-title">Tama reagiert live</h2>
+            </div>
+            <span class="connection-state" id="connection-state">Verbunden</span>
+          </div>
+
+          <div class="device-frame">
+            <div class="pet-scene" id="pet-scene" aria-label="Tama Visualisierung">
+              <div class="pet-shadow"></div>
+              <div class="pet-body" id="pet-body">
+                <div class="pet-ear pet-ear-left"></div>
+                <div class="pet-ear pet-ear-right"></div>
+                <div class="pet-face">
+                  <span class="pet-eye"></span>
+                  <span class="pet-eye"></span>
+                </div>
+                <div class="pet-mouth" id="pet-mouth"></div>
+              </div>
+              <p class="pet-message" id="pet-message">Ich bin bereit.</p>
+            </div>
+          </div>
+
+          <div class="action-row" aria-label="Tama Aktionen">
+            <button class="action-button" data-action="feed" type="button">Fuettern</button>
+            <button class="action-button" data-action="drink" type="button">Traenken</button>
+            <button class="action-button" data-action="play" type="button">Spielen</button>
+            <button class="action-button" data-action="sleep" type="button">Schlafen</button>
+          </div>
+        </article>
+
+        <aside class="status-panel" aria-labelledby="status-title">
+          <div class="panel-section">
+            <p class="eyebrow">Zustandsmodell</p>
+            <h2 id="status-title">Aktueller Zustand</h2>
+            <dl class="state-list">
+              <div>
+                <dt>Leben</dt>
+                <dd id="life-state">lebendig</dd>
+              </div>
+              <div>
+                <dt>Hunger</dt>
+                <dd id="hunger-state">satt</dd>
+              </div>
+              <div>
+                <dt>Durst</dt>
+                <dd id="thirst-state">nicht durstig</dd>
+              </div>
+              <div>
+                <dt>Laune</dt>
+                <dd id="mood-state">neugierig</dd>
+              </div>
+            </dl>
+          </div>
+
+          <div class="panel-section">
+            <h3>Beduerfnisse</h3>
+            <div class="meter-group">
+              <label>
+                <span>Hunger</span>
+                <meter id="hunger-meter" min="0" max="100" value="35"></meter>
+              </label>
+              <label>
+                <span>Durst</span>
+                <meter id="thirst-meter" min="0" max="100" value="25"></meter>
+              </label>
+              <label>
+                <span>Energie</span>
+                <meter id="energy-meter" min="0" max="100" value="80"></meter>
+              </label>
+              <label>
+                <span>Freude</span>
+                <meter id="joy-meter" min="0" max="100" value="70"></meter>
+              </label>
+            </div>
+          </div>
+
+          <div class="panel-section">
+            <h3>Was der Kunde sieht</h3>
+            <ul class="feature-list">
+              <li>Ein abgesicherter Login schuetzt die Demo.</li>
+              <li>Die Webapp spricht spaeter mit deinem lokalen Server.</li>
+              <li>Das Verhalten bleibt aus der State Machine ableitbar.</li>
+              <li>Dieselbe Logik kann spaeter Mobile und ESP32 bedienen.</li>
+            </ul>
+          </div>
+        </aside>
+      </section>
+    </main>
+
+    <script src="./demo.js"></script>
+  </body>
+</html>

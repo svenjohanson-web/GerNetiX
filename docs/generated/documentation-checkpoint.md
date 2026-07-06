@@ -65,7 +65,7 @@ Abgedeckt sind:
 
 ## YAML-Projektquellen
 
-- `data/learning/projects/ai-pet-esp32.yaml`
+- `data/learning/projects/tamagotchi-entry-course.yaml`
 - `data/learning/projects/smart-plant-watering.yaml`
 - `data/learning/projects/rfid-safe.yaml`
 - `data/learning/projects/kanban-gridfinity-inventory.yaml`

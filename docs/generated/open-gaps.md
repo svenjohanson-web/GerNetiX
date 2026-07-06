@@ -69,7 +69,7 @@ Bewertung:
 
 ### Markdown-Projektdefinitionen sind nicht mehr fuehrend
 
-`docs/project-ai-pet-esp32.md` und `docs/project-smart-plant-watering.md` enthalten fachliche Informationen, sind aber nach SQLite-Graph-first nicht mehr Source of Truth.
+`docs/project-tamagotchi-entry-course.md` und `docs/project-smart-plant-watering.md` enthalten fachliche Informationen, sind aber nach SQLite-Graph-first nicht mehr Source of Truth.
 
 Bewertung:
 

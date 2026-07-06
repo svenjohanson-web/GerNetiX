@@ -45,7 +45,7 @@ Vision
 
 | Learning Path | Projekt |
 |---|---|
-| `learning_path.ai_pet_embedded_interaction` | `project.ai_pet_esp32` |
+| `learning_path.ai_pet_embedded_interaction` | `project.tamagotchi_entry_course` |
 | `learning_path.automation_control_and_regulation` | `project.smart_plant_watering` |
 | `learning_path.embedded_access_control` | `project.rfid_safe` |
 | `learning_path.maker_access_and_mechanics` | `project.book_vault` |
@@ -62,7 +62,7 @@ Vision
 
 Aus Projekt-YAMLs entfernt:
 
-- `project.ai_pet_esp32` -> Business Goals, Customer Journeys, Audiences, Value Propositions, Learning Goals
+- `project.tamagotchi_entry_course` -> Business Goals, Customer Journeys, Audiences, Value Propositions, Learning Goals
 - `project.smart_plant_watering` -> Business Goals, Customer Journeys, Audiences, Value Propositions, Learning Goals
 - `project.rfid_safe` -> Business Goals, Customer Journeys, Audiences, Value Propositions, Learning Goals
 - `project.book_vault` -> Business Goals, Customer Journeys, Audiences, Value Propositions, Learning Goals, direkte Product-Offering-Verweise

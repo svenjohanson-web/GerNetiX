@@ -1,0 +1,14 @@
+{
+  "name": "@gernetix/hardware-shop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "commonjs",
+  "scripts": {
+    "dev": "node src/dev-server.js",
+    "test": "node --test",
+    "check": "node --check src/index.js && node --check src/dev-server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

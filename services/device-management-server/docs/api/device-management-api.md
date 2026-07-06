@@ -1,6 +1,6 @@
-# Device Management API Sketch
+# Device Management API
 
-Alle Routen sind fachliche Entwuerfe. Sie beschreiben die spaetere externe Schnittstelle, noch keine Implementierung.
+Initialer MVP-Implementierungskontrakt.
 
 ## Prefix
 
@@ -21,6 +21,8 @@ Zweck:
 - Device meldet sich beim Server
 - Lifecycle und letzter Kontakt werden aktualisiert
 - Firmware, OTA, Connectivity und Pairing-Status koennen gemeldet werden
+
+`POST /devices/register` akzeptiert GerNetiX-provisionierte und Community-Devices. Secret-Material darf fuer den MVP als `one_time_device_secret` uebergeben werden, wird aber in keiner Antwort angezeigt.
 
 ## Authenticity
 
@@ -63,6 +65,20 @@ Zweck:
 
 - GerNetiX- und Community-Hardware im Profil verwalten
 - Anzeigename, Hardwareprofil, Capabilities, OTA-Status und letzter Kontakt sichtbar machen
+
+## Purchase Contexts
+
+```text
+GET  /accounts/{accountId}/purchase-contexts
+POST /accounts/{accountId}/purchase-contexts
+```
+
+Zweck:
+
+- Kaufkontext aus dem Hardware Shop pro Account speichern
+- gekaufte Offers, HardwareItems, Capabilities und Provisioning-Profile nachvollziehbar machen
+- konkrete AccountDevices beim Pairing oder manuellen Hinzufuegen mit passendem Kaufkontext verknuepfen
+- Supportgrundlage pruefbar machen, ohne Community-Hardware automatisch supportberechtigt zu machen
 
 ## OTA Target Discovery
 
@@ -138,3 +154,11 @@ Zweck:
 - Einsicht in kundenrelevante Daten auditieren
 
 Admin-/Support-Endpunkte muessen vor Anzeige von Kundendetails Consent oder eine dokumentierte Rechtsgrundlage pruefen. Ohne erlaubten Zugriff werden Daten maskiert oder abgelehnt.
+
+## MVP-Hinweise
+
+- Secrets werden nur intern fuer HMAC-Pruefung gehalten und nie ausgegeben.
+- Admin-Detailansichten erzeugen Audit-Events.
+- Ohne Consent, Rechtsgrundlage oder Sicherheitsgrund werden kundenrelevante Details maskiert.
+- OTA-Ziele enthalten `selectable` und `rejection_reasons`.
+- Die Datenhaltung ist im MVP In-Memory und wird spaeter durch Repository-/Datenbankadapter ersetzt.

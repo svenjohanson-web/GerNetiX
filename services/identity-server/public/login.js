@@ -1,6 +1,6 @@
 const form = document.querySelector("#login-form");
 const statusElement = document.querySelector("#status");
-const nextUrl = new URLSearchParams(window.location.search).get("next") || "/demo/tamagotchi/";
+const nextUrl = new URLSearchParams(window.location.search).get("next") || "/projects/";
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -22,7 +22,7 @@ form.addEventListener("submit", async (event) => {
     }
 
     statusElement.textContent = `Willkommen ${payload.account.username}. Demo wird geöffnet...`;
-    window.location.href = payload.next || "/demo/tamagotchi/";
+    window.location.href = payload.next || "/projects/";
   } catch {
     statusElement.textContent = "Login-Service ist gerade nicht erreichbar.";
   }

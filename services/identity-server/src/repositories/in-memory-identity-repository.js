@@ -1,20 +1,34 @@
 const crypto = require("node:crypto");
 
 class InMemoryIdentityRepository {
-  constructor(clock = () => new Date()) {
+  constructor(clock = () => new Date(), seed = {}) {
     this.clock = clock;
-    this.userAccounts = new Map();
-    this.localCredentials = new Map();
-    this.externalIdentities = new Map();
-    this.verificationTokens = new Map();
-    this.passwordResetTokens = new Map();
-    this.sessions = new Map();
+    this.userAccounts = new Map((seed.userAccounts || []).map((item) => [item.id, clone(item)]));
+    this.localCredentials = new Map((seed.localCredentials || []).map((item) => [item.user_id, clone(item)]));
+    this.externalIdentities = new Map((seed.externalIdentities || []).map((item) => [item.id, clone(item)]));
+    this.verificationTokens = new Map((seed.verificationTokens || []).map((item) => [item.id, clone(item)]));
+    this.passwordResetTokens = new Map((seed.passwordResetTokens || []).map((item) => [item.id, clone(item)]));
+    this.sessions = new Map((seed.sessions || []).map((item) => [item.id, clone(item)]));
     this.usernameIndex = new Map();
     this.emailIndex = new Map();
     this.externalIdentityIndex = new Map();
     this.verificationTokenIndex = new Map();
     this.passwordResetTokenIndex = new Map();
     this.sessionTokenIndex = new Map();
+    this.rebuildIndexes();
+  }
+
+  rebuildIndexes() {
+    for (const account of this.userAccounts.values()) {
+      this.usernameIndex.set(normalizeUsername(account.username), account.id);
+      this.emailIndex.set(normalizeEmail(account.email), account.id);
+    }
+    for (const identity of this.externalIdentities.values()) {
+      this.externalIdentityIndex.set(externalKey(identity.provider, identity.provider_user_id), identity.id);
+    }
+    for (const token of this.verificationTokens.values()) this.verificationTokenIndex.set(token.token_hash, token.id);
+    for (const token of this.passwordResetTokens.values()) this.passwordResetTokenIndex.set(token.token_hash, token.id);
+    for (const session of this.sessions.values()) this.sessionTokenIndex.set(session.token_hash, session.id);
   }
 
   nowIso() {

@@ -4,12 +4,19 @@ const path = require("node:path");
 const { createDefaultIdentityModule, MockEmailService } = require("./index");
 
 const publicDir = path.join(__dirname, "..", "public");
-const guidedLessonDir = path.join(__dirname, "..", "..", "..", "tools", "guided-code-lesson");
+const projectExperienceDir = path.join(publicDir, "projects");
+const tamagotchiDemoDir = path.join(publicDir, "demo-tamagotchi");
+const guidedCodeLessonDir = path.join(__dirname, "..", "..", "..", "tools", "guided-code-lesson");
 const port = Number(process.env.PORT || 4300);
 const host = process.env.HOST || "127.0.0.1";
 const demoUsername = process.env.DEMO_USER || "demo";
 const demoEmail = process.env.DEMO_EMAIL || "demo@gernetix.local";
 const demoPassword = process.env.DEMO_PASSWORD || "demo-passwort";
+const projectServerBaseUrl = process.env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800";
+const buildDeployBaseUrl = process.env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400";
+const hardwareShopBaseUrl = process.env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900";
+const deviceManagementBaseUrl = process.env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700";
+const aiUsageBaseUrl = process.env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000";
 const builtInDemoAccounts = [
   { username: demoUsername, email: demoEmail, password: demoPassword },
 ];
@@ -28,6 +35,7 @@ const auth = createDefaultIdentityModule({
   appBaseUrl: `http://${host}:${port}`,
 });
 const sessions = new Map();
+const userIdeState = createUserIdeState();
 
 async function bootstrap() {
   await seedDemoAccount();
@@ -40,9 +48,15 @@ async function bootstrap() {
   });
 
   server.listen(port, host, () => {
-    console.log(`Identity login UI: http://${host}:${port}`);
-    console.log(`Tamagotchi demo: http://${host}:${port}/demo/tamagotchi/`);
-    console.log(`Demo login: ${demoUsername} / ${demoPassword}`);
+  console.log(`Identity login UI: http://${host}:${port}`);
+  console.log(`Project lesson UI: http://${host}:${port}/projects/`);
+  console.log(`Tamagotchi demo: http://${host}:${port}/demo/tamagotchi/`);
+  console.log(`Project Server adapter: ${projectServerBaseUrl}`);
+  console.log(`Build & Deploy adapter: ${buildDeployBaseUrl}`);
+  console.log(`Hardware Shop adapter: ${hardwareShopBaseUrl}`);
+  console.log(`Device Management adapter: ${deviceManagementBaseUrl}`);
+  console.log(`AI Usage adapter: ${aiUsageBaseUrl}`);
+  console.log(`Demo login: ${demoUsername} / ${demoPassword}`);
   });
 }
 
@@ -89,8 +103,123 @@ async function routeRequest(req, res) {
     return;
   }
 
+  if (url.pathname === "/api/user-ide/summary") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleUserIdeSummary(res, session);
+    return;
+  }
+
+  if (url.pathname === "/api/user-ide/projects") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    sendJson(res, 200, { items: await loadUserIdeProjects(session) });
+    return;
+  }
+
+  if (url.pathname === "/api/user-ide/devices") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    sendJson(res, 200, { items: await loadUserIdeDevices(session) });
+    return;
+  }
+
+  if (url.pathname === "/api/user-ide/hardware-shop") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    sendJson(res, 200, await loadHardwareShopSummary(session));
+    return;
+  }
+
+  if (url.pathname === "/api/user-ide/ai-usage") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    sendJson(res, 200, await loadAiUsageSummary(session));
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/user-ide/ai-demo") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleAiDemo(req, res, session);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/user-ide/hardware-shop/orders") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleHardwareShopOrder(req, res, session);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/user-ide/build-jobs") {
+    if (!readSession(req)) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleUserIdeBuildJob(req, res);
+    return;
+  }
+
   if (url.pathname === "/demo" || url.pathname === "/demo/") {
-    redirect(res, "/demo/tamagotchi/");
+    redirect(res, "/projects/");
+    return;
+  }
+
+  if (url.pathname === "/projects" || url.pathname === "/projects/") {
+    if (!readSession(req)) {
+      redirect(res, "/login.html?next=/projects/");
+      return;
+    }
+    serveStatic(res, projectExperienceDir, "/index.html");
+    return;
+  }
+
+  if (url.pathname.startsWith("/projects/")) {
+    if (!readSession(req)) {
+      redirect(res, `/login.html?next=${encodeURIComponent(url.pathname + url.search)}`);
+      return;
+    }
+    serveStatic(res, projectExperienceDir, normalizeProjectsPath(url.pathname));
+    return;
+  }
+
+  if (url.pathname === "/dev/projects" || url.pathname === "/dev/projects/") {
+    if (!readSession(req)) {
+      redirect(res, "/login.html?next=/dev/projects/");
+      return;
+    }
+    serveStatic(res, guidedCodeLessonDir, "/index.html");
+    return;
+  }
+
+  if (url.pathname.startsWith("/dev/projects/")) {
+    if (!readSession(req)) {
+      redirect(res, `/login.html?next=${encodeURIComponent(url.pathname + url.search)}`);
+      return;
+    }
+    serveStatic(res, guidedCodeLessonDir, normalizeDevProjectsPath(url.pathname));
     return;
   }
 
@@ -99,7 +228,7 @@ async function routeRequest(req, res) {
       redirect(res, "/login.html?next=/demo/tamagotchi/");
       return;
     }
-    serveStatic(res, guidedLessonDir, normalizeDemoPath(url.pathname));
+    serveStatic(res, tamagotchiDemoDir, normalizeDemoPath(url.pathname));
     return;
   }
 
@@ -119,7 +248,7 @@ async function handleLogin(req, res) {
     setSessionCookie(res, login.session.token, login.session.expires_at);
     sendJson(res, 200, {
       account: login.account,
-      next: sanitizeNextPath(body.next) || "/demo/tamagotchi/",
+      next: sanitizeNextPath(body.next) || "/projects/",
     });
   } catch (error) {
     sendJson(res, error.status || 401, {
@@ -161,6 +290,586 @@ function handleSession(req, res) {
   });
 }
 
+async function handleUserIdeSummary(res, session) {
+  const projects = await loadUserIdeProjects(session);
+  const devices = await loadUserIdeDevices(session);
+  const builds = await loadProjectBuilds(projects, session);
+  sendJson(res, 200, {
+    account: await createAccountSummary(session),
+    projects,
+    devices,
+    builds,
+    hardware_shop: await loadHardwareShopSummary(session),
+    ai_usage: await loadAiUsageSummary(session),
+  });
+}
+
+async function handleUserIdeBuildJob(req, res) {
+  const body = await readJsonBody(req);
+  const session = readSession(req);
+  const projects = await loadUserIdeProjects(session);
+  const devices = await loadUserIdeDevices(session);
+  const project = projects.find((item) => item.slug === body.project_slug);
+  const device = devices.find((item) => item.device_id === body.device_id);
+
+  if (!project) {
+    sendJson(res, 404, { error: "project_not_found", message: "Projekt wurde nicht gefunden." });
+    return;
+  }
+  if (!device) {
+    sendJson(res, 404, { error: "device_not_found", message: "Device wurde nicht gefunden." });
+    return;
+  }
+  if (body.mode === "build_and_flash" && device.ota_status !== "ready") {
+    sendJson(res, 409, { error: "device_not_ota_ready", message: "Das ausgewaehlte Device ist nicht OTA-ready." });
+    return;
+  }
+
+  const projectServerJob = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/build-jobs`, {
+    method: "POST",
+    body: {
+      mode: body.mode || "build",
+      device_id: device.device_id,
+    },
+  });
+  const buildPackage = await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/build-package`);
+  const buildDeployJob = await buildDeployJson("/api/build-jobs", {
+    method: "POST",
+    body: {
+      job_id: projectServerJob.build_job_id,
+      mode: body.mode || "build",
+      device_id: device.device_id,
+      build_package: toBuildDeployPackage(buildPackage),
+      deploy: body.mode === "build_and_flash" ? {
+        requested: true,
+        authorized: true,
+        device_id: device.device_id,
+      } : null,
+    },
+  });
+  await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/submitted`, {
+    method: "POST",
+    body: {
+      build_deploy_job_id: buildDeployJob.job_id,
+    },
+  });
+  const completedBuildDeployJob = await waitForBuildDeployJob(buildDeployJob.job_id);
+  if (completedBuildDeployJob && ["succeeded", "failed"].includes(completedBuildDeployJob.status)) {
+    await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/result`, {
+      method: "POST",
+      body: toProjectBuildResult(completedBuildDeployJob),
+    });
+  }
+
+  const build = {
+    build_job_id: projectServerJob.build_job_id,
+    project_server_id: project.project_server_id,
+    project_slug: project.slug,
+    project_title: project.title,
+    device_id: device.device_id,
+    device_label: device.display_name,
+    mode: body.mode || "build",
+    status: completedBuildDeployJob ? completedBuildDeployJob.status : "submitted_to_build_deploy",
+    created_at: projectServerJob.created_at,
+    build_package_contract: `${buildPackage.files.length} Dateien: platformio.ini + Projektquellen`,
+    artifact_url: completedBuildDeployJob?.result?.build?.artifacts?.["firmware.bin"]?.download_url || "",
+  };
+  userIdeState.builds.unshift(build);
+  sendJson(res, 202, build);
+}
+
+async function loadUserIdeProjects(session) {
+  await ensureProjectServerDemoProjects(session);
+  const userId = projectServerUserId(session);
+  const response = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}`);
+  const projectsById = new Map(response.items.map((item) => [item.project_id, item]));
+  return userIdeState.projectDefinitions.map((definition) => {
+    const project = projectsById.get(definition.project_server_id);
+    return {
+      ...definition,
+      title: project ? project.title : definition.title,
+      summary: project ? project.description : definition.summary,
+      hardware_profile_id: project ? project.hardware_profile_id : definition.hardware_profile_id,
+      status: project ? project.status : "project_server_missing",
+      last_build_status: latestBuildStatus(project),
+      source_count: project ? project.source_count : 0,
+      build_count: project ? project.build_count : 0,
+    };
+  });
+}
+
+async function ensureProjectServerDemoProjects(session) {
+  if (userIdeState.projectServerSeeded) return;
+  const userId = projectServerUserId(session);
+  for (const definition of userIdeState.projectDefinitions) {
+    await projectServerJson("/api/projects", {
+      method: "POST",
+      body: {
+        project_id: definition.project_server_id,
+        user_id: userId,
+        title: definition.title,
+        description: definition.summary,
+        learning_project_id: definition.learning_project_id,
+        hardware_profile_id: definition.hardware_profile_id,
+        device_id: definition.default_device_id,
+        sources: [{
+          path: "src/main.cpp",
+          content: demoProjectSource(definition),
+        }],
+      },
+    }).catch((error) => {
+      if (error.status !== 400) throw error;
+    });
+  }
+  userIdeState.projectServerSeeded = true;
+}
+
+async function loadProjectBuilds(projects, session) {
+  const devices = await loadUserIdeDevices(session);
+  const result = [];
+  for (const project of projects) {
+    const response = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/build-jobs`);
+    for (const job of response.items) {
+      const device = devices.find((item) => item.device_id === job.device_id);
+      result.push({
+        build_job_id: job.build_job_id,
+        project_server_id: job.project_id,
+        project_slug: project.slug,
+        project_title: project.title,
+        device_id: job.device_id,
+        device_label: device ? device.display_name : job.device_id || "kein Device",
+        mode: job.mode,
+        status: job.status,
+        created_at: job.created_at,
+        build_package_contract: "Project Server BuildPackage",
+      });
+    }
+  }
+  return result.sort((left, right) => right.created_at.localeCompare(left.created_at));
+}
+
+async function loadHardwareShopSummary(session) {
+  const devices = await loadUserIdeDevices(session);
+  const offers = await hardwareShopJson("/api/hardware-shop/offers");
+  const projects = userIdeState.projectDefinitions;
+  const recommendations = [];
+  for (const project of projects) {
+    const match = await hardwareShopJson("/api/hardware-shop/match", {
+      method: "POST",
+      body: {
+        required_capability_ids: project.required_capability_ids,
+        owned_capability_ids: ownedCapabilityIds(devices),
+      },
+    });
+    recommendations.push({
+      project_slug: project.slug,
+      project_title: project.title,
+      required_capability_ids: project.required_capability_ids,
+      matches: match.items.slice(0, 3),
+    });
+  }
+  return {
+    base_url: hardwareShopBaseUrl,
+    account_id: projectServerUserId(session),
+    offers: offers.items,
+    recommendations,
+  };
+}
+
+async function loadUserIdeDevices(session) {
+  await ensureDeviceManagementDemoDevices(session);
+  const accountId = projectServerUserId(session);
+  const response = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`);
+  return (response.items || []).map((device) => ({
+    device_id: device.device_id,
+    account_device_id: device.account_device_id,
+    display_name: device.display_name,
+    hardware_profile_id: device.hardware_profile_id,
+    technical_capability_ids: device.technical_capability_ids || [],
+    authenticity_status: device.authenticity_status,
+    connectivity_status: device.connectivity_status,
+    ota_status: device.ota_status,
+    ownership_status: device.ownership_status,
+    purchase_context_id: device.purchase_context_id || "",
+  }));
+}
+
+async function ensureDeviceManagementDemoDevices(session) {
+  const accountId = projectServerUserId(session);
+  const existing = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`);
+  if ((existing.items || []).length) return;
+
+  await deviceManagementJson("/api/device-management/devices/register", {
+    method: "POST",
+    body: {
+      device_id: "device_verified_1",
+      serial_number: "GNX-ESP32-0001",
+      hardware_profile_id: "hardware.processor_board.esp32_devkit",
+      gernetix_verified: true,
+      connectivity_status: "online",
+      ota_status: "ready",
+      firmware_version: "0.1.0",
+      provisioning_batch_id: "demo-batch",
+      provisioned_by: "user-ide-demo",
+      one_time_device_secret: "demo-device-secret",
+    },
+  });
+  await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
+    method: "POST",
+    body: {
+      device_id: "device_verified_1",
+      display_name: "Sven ESP32 DevKit",
+      technical_capability_ids: ["wifi", "ota", "flash_firmware"],
+    },
+  });
+
+  await deviceManagementJson("/api/device-management/devices/register", {
+    method: "POST",
+    body: {
+      device_id: "device_community_1",
+      serial_number: "COMM-ESP32-123",
+      hardware_profile_id: "hardware.processor_board.esp32_unknown",
+      connectivity_status: "offline",
+      ota_status: "unknown",
+    },
+  });
+  await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
+    method: "POST",
+    body: {
+      device_id: "device_community_1",
+      display_name: "Keller Sensor ESP32",
+      technical_capability_ids: ["wifi"],
+    },
+  });
+}
+
+async function handleHardwareShopOrder(req, res, session) {
+  const body = await readJsonBody(req);
+  const offerId = String(body.offer_id || "").trim();
+  if (!offerId) {
+    sendJson(res, 400, { error: "missing_offer_id", message: "offer_id fehlt." });
+    return;
+  }
+  const cart = await hardwareShopJson("/api/hardware-shop/carts", {
+    method: "POST",
+    body: { account_id: projectServerUserId(session) },
+  });
+  await hardwareShopJson(`/api/hardware-shop/carts/${encodeURIComponent(cart.cart_id)}/items`, {
+    method: "POST",
+    body: { offer_id: offerId, quantity: Number(body.quantity || 1) },
+  });
+  const order = await hardwareShopJson("/api/hardware-shop/orders", {
+    method: "POST",
+    body: { cart_id: cart.cart_id, payment_status: "paid" },
+  });
+  const purchaseContext = await hardwareShopJson(`/api/hardware-shop/orders/${encodeURIComponent(order.order_id)}/purchase-context`);
+  const deviceManagementPurchaseContext = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(projectServerUserId(session))}/purchase-contexts`, {
+    method: "POST",
+    body: {
+      order_id: order.order_id,
+      ...purchaseContext,
+    },
+  });
+  sendJson(res, 201, {
+    order,
+    purchase_context: purchaseContext,
+    device_management_purchase_context: deviceManagementPurchaseContext,
+  });
+}
+
+async function loadAiUsageSummary(session) {
+  const accountId = projectServerUserId(session);
+  const [credits, dashboard] = await Promise.all([
+    aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/credits`),
+    aiUsageJson("/api/ai-usage/admin/dashboard"),
+  ]);
+  return {
+    base_url: aiUsageBaseUrl,
+    credits,
+    usage_events: dashboard.summary,
+    model_summary: dashboard.by_model,
+  };
+}
+
+async function handleAiDemo(req, res, session) {
+  const body = await readJsonBody(req);
+  const accountId = projectServerUserId(session);
+  const model = body.model || "gpt-4.1-mini";
+  const preflight = await aiUsageJson("/api/ai-usage/preflight", {
+    method: "POST",
+    body: {
+      account_id: accountId,
+      user_id: accountId,
+      project_id: body.project_id || "",
+      feature: "user_ide_demo_ai_help",
+      model,
+      estimated_input_tokens: Number(body.estimated_input_tokens || 600),
+      estimated_output_tokens: Number(body.estimated_output_tokens || 300),
+      system_capabilities: ["system_capability.ai_assistant"],
+    },
+    allowPaymentRequired: true,
+  });
+  if (!preflight.allowed) {
+    sendJson(res, 402, preflight);
+    return;
+  }
+  const completed = await aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/complete`, {
+    method: "POST",
+    body: {
+      input_tokens: Number(body.input_tokens || body.estimated_input_tokens || 600),
+      output_tokens: Number(body.output_tokens || body.estimated_output_tokens || 300),
+    },
+  });
+  sendJson(res, 200, {
+    preflight,
+    completed,
+    credits: await aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/credits`),
+  });
+}
+
+function latestBuildStatus(project) {
+  return project && project.build_count > 0 ? `${project.build_count} BuildJob(s)` : "";
+}
+
+async function projectServerJson(pathname, options = {}) {
+  const response = await fetch(`${projectServerBaseUrl}${pathname}`, {
+    method: options.method || "GET",
+    headers: options.body ? { "Content-Type": "application/json" } : {},
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload.message || payload.error || "Project Server request failed.");
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
+  }
+  return payload;
+}
+
+async function hardwareShopJson(pathname, options = {}) {
+  const response = await fetch(`${hardwareShopBaseUrl}${pathname}`, {
+    method: options.method || "GET",
+    headers: options.body ? { "Content-Type": "application/json" } : {},
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload.message || payload.error || "Hardware Shop request failed.");
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
+  }
+  return payload;
+}
+
+async function buildDeployJson(pathname, options = {}) {
+  const response = await fetch(`${buildDeployBaseUrl}${pathname}`, {
+    method: options.method || "GET",
+    headers: options.body ? { "Content-Type": "application/json" } : {},
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload.message || payload.error || "Build & Deploy request failed.");
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
+  }
+  return payload;
+}
+
+async function deviceManagementJson(pathname, options = {}) {
+  const response = await fetch(`${deviceManagementBaseUrl}${pathname}`, {
+    method: options.method || "GET",
+    headers: options.body ? { "Content-Type": "application/json" } : {},
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload.message || payload.error || "Device Management request failed.");
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
+  }
+  return payload;
+}
+
+async function aiUsageJson(pathname, options = {}) {
+  const response = await fetch(`${aiUsageBaseUrl}${pathname}`, {
+    method: options.method || "GET",
+    headers: options.body ? { "Content-Type": "application/json" } : {},
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok && !(options.allowPaymentRequired && response.status === 402)) {
+    const error = new Error(payload.message || payload.error || "AI Usage request failed.");
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
+  }
+  return payload;
+}
+
+async function waitForBuildDeployJob(jobId) {
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const job = await buildDeployJson(`/api/build-jobs/${encodeURIComponent(jobId)}`);
+    if (["succeeded", "failed", "replaced"].includes(job.status)) return job;
+    await delay(150);
+  }
+  return null;
+}
+
+function toBuildDeployPackage(buildPackage) {
+  return {
+    package_id: buildPackage.package_id,
+    files: Object.fromEntries((buildPackage.files || []).map((file) => [file.path, file.content])),
+  };
+}
+
+function toProjectBuildResult(buildDeployJob) {
+  const artifacts = buildDeployJob.result?.build?.artifacts || {};
+  return {
+    status: buildDeployJob.status,
+    build: buildDeployJob.result?.build || null,
+    deploy: buildDeployJob.result?.deploy || null,
+    error: buildDeployJob.error || null,
+    artifacts: Object.values(artifacts).map((artifact) => ({
+      file_name: artifact.file_name,
+      url: artifact.download_url,
+      sha256: artifact.sha256,
+      size_bytes: artifact.size_bytes,
+      artifact_type: artifact.file_name === "build.log" ? "build_log" : "firmware",
+    })),
+  };
+}
+
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function projectServerUserId(session) {
+  return session.account.user_id || session.account.username || demoUsername;
+}
+
+async function createAccountSummary(session) {
+  const aiUsage = await loadAiUsageSummary(session);
+  return {
+    username: session.account.username || demoUsername,
+    user_id: projectServerUserId(session),
+    plan: "Premium Demo",
+    capabilities: ["ide_flash_usb", "ide_flash_ota", "cloud_flash"],
+    ai_credits: aiUsage.credits.available_credits,
+    consent_summary: "1 aktiver Device-Support-Consent",
+    project_server: projectServerBaseUrl,
+    build_deploy_server: buildDeployBaseUrl,
+    hardware_shop: hardwareShopBaseUrl,
+    device_management: deviceManagementBaseUrl,
+    ai_usage: aiUsageBaseUrl,
+  };
+}
+
+function createUserIdeState() {
+  const projects = [
+    project("software-engineering-tamagotchi", "Software Engineering mit Tamagotchi", "Modellbasierte Entwicklung", "Verhalten zuerst verstehen, bevor Code entsteht.", [
+      step("Warum Tamagotchi?", "Ein vertrautes Spiel macht Zustaende, Werte und Regeln sichtbar.", "Du erkennst, dass Software Verhalten beschreibt, nicht nur Befehle ausfuehrt."),
+      step("State sichtbar machen", "Hunger, Durst, Laune und Leben werden als Zustand modelliert.", "Ein Zustand ist eine fachliche Aussage ueber das System."),
+      step("Regeln formulieren", "Ausloeser veraendern Werte und fuehren zu neuen Zustaenden.", "Gute Regeln sind klarer als verstreute if-Abfragen."),
+      step("Runtime waehlen", "Dasselbe Modell kann spaeter Browser-App oder Embedded-App antreiben.", "Das Modell bleibt stabil, die technische Huelle kann wechseln."),
+    ]),
+    project("esp32-ota-bootstrap-firmware", "ESP32 OTA-Basissoftware", "Firmware", "USB-Erstflash vorbereiten und spaetere OTA-Faehigkeit erhalten.", [
+      step("USB-Erstflash", "Das Board wird initial mit der GerNetiX-Basissoftware vorbereitet.", "OTA bleibt Teil der Basis, nicht Teil des User-Codes."),
+      step("Service-Endpunkte", "Device Management und Build-&-Deploy bleiben konfigurierbar.", "Ein Serverumzug darf keinen USB-Reflash erzwingen."),
+      step("OTA pruefen", "Das Board meldet Update-Status und prueft Firmware-Groesse sowie SHA-256.", "Robuste Updates brauchen Rueckmeldung und Verifikation."),
+    ]),
+    project("plant-watering-control", "Pflanzenbewaesserung", "Sensor und Aktor", "Feuchtigkeit messen und eine Pumpe kontrolliert schalten.", [
+      step("Nutzen und Risiko", "Die Pflanze soll Wasser bekommen, ohne Ueberschwemmung.", "Automatisierung braucht Grenzen."),
+      step("Sensor lesen", "Bodenfeuchte wird zur Eingangsseite der Steuerung.", "Ein Sensor liefert Hinweise, keine fertige Entscheidung."),
+      step("Pumpe schalten", "Die Pumpe ist die Ausgangsseite des Systems.", "Aktorik macht Software in der Welt wirksam."),
+      step("Sicherheit", "Laufzeitbegrenzung und Fehlerfaelle gehoeren zur Funktion.", "Sichere Software plant Stoerungen mit ein."),
+    ]),
+  ];
+
+  return {
+    projectDefinitions: projects,
+    projectServerSeeded: false,
+    devices: [
+      {
+        device_id: "device_verified_1",
+        display_name: "Sven ESP32 DevKit",
+        hardware_profile_id: "hardware.processor_board.esp32_devkit",
+        authenticity_status: "gernetix_verified",
+        connectivity_status: "online",
+        ota_status: "ready",
+      },
+      {
+        device_id: "device_community_1",
+        display_name: "Keller Sensor ESP32",
+        hardware_profile_id: "hardware.processor_board.esp32_unknown",
+        authenticity_status: "community_unverified",
+        connectivity_status: "offline",
+        ota_status: "unknown",
+      },
+    ],
+    builds: [],
+  };
+}
+
+function project(slug, title, area, summary, steps) {
+  const requiredCapabilitiesBySlug = {
+    "software-engineering-tamagotchi": ["capability.processor_esp32", "capability.wifi"],
+    "esp32-ota-bootstrap-firmware": ["capability.processor_esp32", "capability.wifi", "capability.ota"],
+    "plant-watering-control": ["capability.processor_esp32", "capability.wifi", "capability.digital_output"],
+  };
+  return {
+    slug,
+    project_server_id: `project_${slug}`,
+    learning_project_id: `learning_project.${slug.replace(/-/g, "_")}`,
+    hardware_profile_id: "hardware.processor_board.esp32_devkit",
+    default_device_id: "device_verified_1",
+    required_capability_ids: requiredCapabilitiesBySlug[slug] || ["capability.processor_esp32"],
+    title,
+    area,
+    summary,
+    status: "bereit",
+    last_build_status: "",
+    steps,
+  };
+}
+
+function ownedCapabilityIds(devices) {
+  const capabilities = new Set();
+  for (const device of devices) {
+    for (const capability of device.technical_capability_ids || []) capabilities.add(`capability.${capability}`);
+    if (device.hardware_profile_id === "hardware.processor_board.esp32_devkit") {
+      capabilities.add("capability.processor_esp32");
+      capabilities.add("capability.wifi");
+      if (device.ota_status === "ready") capabilities.add("capability.ota");
+    }
+  }
+  return Array.from(capabilities);
+}
+
+function step(title, text, insight) {
+  return { title, text, insight };
+}
+
+function demoProjectSource(project) {
+  return [
+    "#include <Arduino.h>",
+    "",
+    "void setup() {",
+    "  Serial.begin(115200);",
+    "}",
+    "",
+    "void loop() {",
+    `  Serial.println("${project.title}");`,
+    "  delay(1000);",
+    "}",
+    "",
+  ].join("\n");
+}
+
 function serveStatic(res, rootDir, requestPath) {
   const normalizedRequestPath = requestPath === "/" ? "/index.html" : requestPath;
   const filePath = path.normalize(path.join(rootDir, normalizedRequestPath));
@@ -188,6 +897,16 @@ function serveStatic(res, rootDir, requestPath) {
 
 function normalizeDemoPath(pathname) {
   const stripped = pathname.replace(/^\/demo\/tamagotchi\/?/, "/");
+  return stripped === "/" || stripped === "" ? "/index.html" : stripped;
+}
+
+function normalizeProjectsPath(pathname) {
+  const stripped = pathname.replace(/^\/projects\/?/, "/");
+  return stripped === "/" || stripped === "" ? "/index.html" : stripped;
+}
+
+function normalizeDevProjectsPath(pathname) {
+  const stripped = pathname.replace(/^\/dev\/projects\/?/, "/");
   return stripped === "/" || stripped === "" ? "/index.html" : stripped;
 }
 

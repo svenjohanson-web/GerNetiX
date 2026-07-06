@@ -17,7 +17,7 @@ items:
       - LearningPath 1 -> 1..* LearningProjects
       - LearningProject 1 -> genau 1 LearningPath
     projects:
-      - project.ai_pet_esp32
+      - project.tamagotchi_entry_course
 
   - id: learning_path.automation_control_and_regulation
     type: learning_path

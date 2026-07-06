@@ -1,6 +1,6 @@
 schemaVersion: 1
-id: project.ai_pet_esp32
-slug: ai-pet-esp32
+id: project.tamagotchi_entry_course
+slug: tamagotchi-entry-course
 type: learning_project
 status: draft
 projectStatus: idea
@@ -224,7 +224,7 @@ prioritization:
     - Fuer die Darstellung muss dennoch priorisiert werden.
 
 stages:
-  - id: stage.ai_pet_esp32.1
+  - id: stage.tamagotchi_entry_course.1
     title: Motivation ueber unlesbaren Code
     goal: Nutzer erleben, dass Quellcode Verhalten nicht automatisch gut erklaert.
     startsAfter:
@@ -238,7 +238,7 @@ stages:
       - Quellcode als computernahe Darstellung
       - Grenzen von Code als Kommunikationsmittel
 
-  - id: stage.ai_pet_esp32.2
+  - id: stage.tamagotchi_entry_course.2
     title: Warum Modelle helfen
     goal: Modelle und Dokumentation als Ingenieurswerkzeuge einfuehren, bevor der Begriff State Machine genannt wird.
     learnerAction:
@@ -250,7 +250,7 @@ stages:
       - Ereignis
       - Uebergang
 
-  - id: stage.ai_pet_esp32.3
+  - id: stage.tamagotchi_entry_course.3
     title: Erste einfache State Machine
     goal: Das Tamagotchi-Verhalten mit Alive, Dead, Satt und Hungrig als einfaches Zustandsdiagramm verstehen.
     learnerAction:
@@ -262,7 +262,7 @@ stages:
       - Uebergaenge
       - Ereignisse
 
-  - id: stage.ai_pet_esp32.4
+  - id: stage.tamagotchi_entry_course.4
     title: Eigene Zustaende hinzufuegen
     goal: Nutzer erweitern das Modell interaktiv und erleben, dass neue Anforderungen neue Modellfragen erzeugen.
     learnerAction:
@@ -274,7 +274,7 @@ stages:
       - Modell erweitern
       - Fachbegriffe strukturiert erfassen
 
-  - id: stage.ai_pet_esp32.5
+  - id: stage.tamagotchi_entry_course.5
     title: Gleichzeitige Zustaende als neues Problem
     goal: Nutzer erkennen, dass Hunger und Durst gleichzeitig wahr sein koennen.
     learnerAction:
@@ -284,7 +284,7 @@ stages:
       - gleichzeitige Wahrheiten
       - Grenzen einfacher Zustandsmodelle
 
-  - id: stage.ai_pet_esp32.6
+  - id: stage.tamagotchi_entry_course.6
     title: Priorisierung fuer Darstellung
     goal: Prioritaeten als einfache Loesung fuer eine konkrete Darstellungsentscheidung einfuehren.
     learnerAction:
@@ -315,9 +315,9 @@ futureExtensions:
 risks:
   - risk.too_many_features_for_beginner
 openDecisions:
-  - decision.ai_pet_esp32.reference_display
+  - decision.tamagotchi_entry_course.reference_display
 roadmap:
-  - roadmap.ai_pet_esp32
+  - roadmap.tamagotchi_entry_course
 
 generatedDocuments:
-  markdown: docs/generated/projects/ai-pet-esp32.md
+  markdown: docs/generated/projects/tamagotchi-entry-course.md

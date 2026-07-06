@@ -1,12 +1,12 @@
-# Mindmap - KI-Haustier / Tamagotchi AI
+# Mindmap - Tamagotchi Entry Course
 
 Quelle:
 
-- `data/learning/projects/ai-pet-esp32.yaml`
+- `data/learning/projects/tamagotchi-entry-course.yaml`
 
 ```mermaid
 mindmap
-  root((KI-Haustier / Tamagotchi AI))
+  root((Tamagotchi Entry Course))
     Einordnung
       BG-001
       BG-002
@@ -82,5 +82,5 @@ mindmap
       KI-Kosten und Datenschutz
     Ausgabe
       Markdown
-      docs/generated/projects/ai-pet-esp32.md
+      docs/generated/projects/tamagotchi-entry-course.md
 ```

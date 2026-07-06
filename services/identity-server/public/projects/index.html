@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GerNetiX User IDE</title>
+    <link rel="stylesheet" href="./projects.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GerNetiX</p>
+          <h1>User IDE</h1>
+        </div>
+        <button id="logoutButton" type="button">Abmelden</button>
+      </header>
+
+      <nav class="tabs" aria-label="Arbeitsbereiche">
+        <button class="tab active" type="button" data-view="projectsView">Projekte</button>
+        <button class="tab" type="button" data-view="devicesView">Devices</button>
+        <button class="tab" type="button" data-view="hardwareView">Hardware</button>
+        <button class="tab" type="button" data-view="aiView">KI</button>
+        <button class="tab" type="button" data-view="buildsView">Builds</button>
+        <button class="tab" type="button" data-view="accountView">Account</button>
+      </nav>
+
+      <section id="projectsView" class="view active-view">
+        <section id="projectList" class="project-list" aria-label="Projektwahl"></section>
+      </section>
+
+      <section id="devicesView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Device Management</p>
+            <h2>OTA-Zielgeraete</h2>
+          </div>
+        </div>
+        <section id="deviceList" class="device-list" aria-label="Devices"></section>
+      </section>
+
+      <section id="hardwareView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Hardware Shop</p>
+            <h2>Passende Angebote</h2>
+          </div>
+        </div>
+        <section id="hardwareRecommendations" class="hardware-list" aria-label="Hardware-Empfehlungen"></section>
+        <section id="hardwareOffers" class="hardware-list" aria-label="Hardware-Angebote"></section>
+      </section>
+
+      <section id="aiView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">AI Usage</p>
+            <h2>Credits und Preflight</h2>
+          </div>
+          <button id="aiDemoButton" type="button">Demo-Preflight</button>
+        </div>
+        <section id="aiUsageSummary" class="summary-grid" aria-label="AI Usage"></section>
+      </section>
+
+      <section id="buildsView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Build & Flash</p>
+            <h2>Build-Verlauf</h2>
+          </div>
+        </div>
+        <section id="buildList" class="build-list" aria-label="Builds"></section>
+      </section>
+
+      <section id="accountView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Account</p>
+            <h2>Selbstsicht</h2>
+          </div>
+        </div>
+        <section id="accountSummary" class="summary-grid" aria-label="Account-Selbstsicht"></section>
+      </section>
+
+      <section id="lessonView" class="lesson-view hidden" aria-label="Projektlektion">
+        <nav class="lesson-nav">
+          <button id="backButton" type="button">Projektwahl</button>
+          <div>
+            <p id="lessonEyebrow" class="eyebrow"></p>
+            <h2 id="lessonTitle"></h2>
+          </div>
+        </nav>
+
+        <div class="lesson-layout">
+          <aside id="stepRail" class="step-rail" aria-label="Schritte"></aside>
+          <article class="step-card">
+            <p id="stepCounter" class="step-counter"></p>
+            <h3 id="stepTitle"></h3>
+            <p id="stepText"></p>
+            <div id="stepInsight" class="insight"></div>
+            <div class="run-panel">
+              <div>
+                <p class="eyebrow">Ausfuehren</p>
+                <strong>Build & Flash</strong>
+                <p id="selectedDeviceLabel"></p>
+              </div>
+              <button id="buildButton" type="button">Build starten</button>
+            </div>
+            <div class="actions">
+              <button id="prevButton" type="button">Zurueck</button>
+              <button id="nextButton" type="button">Weiter</button>
+            </div>
+          </article>
+        </div>
+      </section>
+    </main>
+
+    <script src="./projects.js"></script>
+  </body>
+</html>

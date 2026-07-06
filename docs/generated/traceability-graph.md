@@ -68,7 +68,7 @@ graph TD
   BG3 --> IDE[product.simple_ide]
 
   LG_EMB[learning_goal.embedded_basics] --> LP_PET[learning_path.ai_pet_embedded_interaction]
-  LP_PET --> P1[project.ai_pet_esp32]
+  LP_PET --> P1[project.tamagotchi_entry_course]
   P1 --> P1_OFF[variant offline]
   P1 --> P1_AI[variant KI online]
 

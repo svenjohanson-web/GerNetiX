@@ -44,7 +44,7 @@ Startdokumente:
 - [Beziehungsmodell](model/relations.yaml)
 - [Traceability-Uebersicht](docs/generated/traceability-overview.md)
 - [Dokumentations-Checkpoint](docs/generated/documentation-checkpoint.md)
-- [Projektdefinition - KI-Haustier fuer ESP32](docs/project-ai-pet-esp32.md)
+- [Projektdefinition - Tamagotchi Entry Course](docs/project-tamagotchi-entry-course.md)
 - [Projektdefinition - Intelligente Pflanzenbewaesserungsstation](docs/project-smart-plant-watering.md)
 - [Domaenen](docs/domains.md)
 - [Zielgruppen, Rollen, Berechtigungen und Initialdaten](docs/personas-roles-permissions.md)

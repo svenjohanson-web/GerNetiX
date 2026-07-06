@@ -44,15 +44,15 @@ npm run dev
 
 Oeffnet eine einfache Login-Ansicht unter `http://localhost:4300`. Die Ansicht nutzt den lokalen Dev-Login und setzt fuer die Demo ein HttpOnly-Session-Cookie.
 
-### Lokale Tamagotchi-Demo
+### Lokale Tamagotchi-Kundenansicht
 
-Der Dev-Server stellt zusaetzlich eine geschuetzte Tamagotchi-Demo bereit:
+Der Dev-Server stellt zusaetzlich eine geschuetzte Tamagotchi-Kundenansicht bereit:
 
 ```text
 http://localhost:4300/demo/tamagotchi/
 ```
 
-Ohne Session wird auf den Login umgeleitet. Fuer die lokale Demo wird beim Start automatisch ein Demo-Account erzeugt:
+Diese Route zeigt nicht die interne Schritt-fuer-Schritt-Lernoberflaeche, sondern ein praesentierbares Webfrontend mit Tama-Status, Aktionen und Zustandsanzeige. Ohne Session wird auf den Login umgeleitet. Fuer die lokale Demo wird beim Start automatisch ein Demo-Account erzeugt:
 
 ```text
 Benutzer: demo

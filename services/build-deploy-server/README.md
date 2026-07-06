@@ -28,6 +28,35 @@ Der Buildserver liefert mindestens zurueck:
 - SHA-256
 - Dateigroesse
 
+## MVP-Implementierung
+
+Der aktuelle MVP ist ein eigenstaendiger Node.js-Prozess ohne externe Runtime-Abhaengigkeiten.
+
+Start:
+
+```text
+npm run dev
+```
+
+Standardadresse:
+
+```text
+http://127.0.0.1:4400
+```
+
+Konfiguration erfolgt ueber Umgebungsvariablen:
+
+- `HOST`: Bind-Adresse, Standard `127.0.0.1`
+- `PORT`: HTTP-Port, Standard `4400`
+- `PUBLIC_BASE_URL`: externe Basis-URL fuer Artefakt-Downloads
+- `BUILD_RUNNER`: `mock` oder `platformio`, Standard `mock`
+- `PLATFORMIO_COMMAND`: PlatformIO-Kommando, Standard `platformio`
+- `BUILD_DEPLOY_RUNTIME_DIR`: Runtime-Verzeichnis fuer temporaere Workspaces, Cache und Artefakte
+- `BUILD_CACHE_DIR`: optionales Cache-Verzeichnis
+- `BUILD_ARTIFACT_DIR`: optionales temporaeres Artefakt-Verzeichnis
+
+Der `mock` Runner erzeugt reproduzierbare Test-Artefakte ohne Toolchain. Fuer echte Firmware-Builds wird `BUILD_RUNNER=platformio` verwendet; dann kompiliert der Worker im uebergebenen BuildPackage per `platformio run`.
+
 ## Cache-Regel
 
 Der Cache darf PlatformIO, Toolchains, Libraries, Objektdateien und vergleichbare technische Artefakte enthalten. Geht der Cache verloren, muss der Build aus dem Build-Paket weiterhin moeglich sein und dauert nur laenger.
@@ -88,10 +117,10 @@ HTTPS dient fuer:
 
 ## Nicht-Ziele fuer diesen Stand
 
-- keine Serverimplementierung
-- keine Queue-Implementierung
 - keine MQTT-Implementierung
-- kein produktiver Build-Worker
+- kein produktiver MQTT-Publisher
+- keine produktive Authentifizierung
+- keine Signierung von Firmware-Artefakten
 - keine dauerhafte Projektdatenhaltung
 
 ## Deployment-Leitplanken

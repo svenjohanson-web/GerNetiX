@@ -57,9 +57,41 @@ Der Build-&-Deploy-Server darf niemals direkt auf dauerhafte Projektdaten zugrei
 - `firmware-artifact-repository`: Firmware-Artefakte, Logs und Statusmetadaten
 - `learning-feedback-repository`: Step- und Projektfeedback inklusive Anonymisierung und Kontakt-Consent-Verknuepfung
 
+## MVP-Implementierung
+
+Der aktuelle MVP ist ein eigenstaendiger Node.js-Prozess ohne externe Runtime-Abhaengigkeiten.
+
+Start:
+
+```text
+npm run dev
+```
+
+Standardadresse:
+
+```text
+http://127.0.0.1:4800
+```
+
+API-Prefix:
+
+```text
+/api/projects
+```
+
+Umgesetzt sind Projektanlage, Projektquellen, BuildJob-Erzeugung, reproduzierbare BuildPackages, BuildResult-Rueckmeldung, Firmware-Artefaktreferenzen, Build-Historie und Learning-Feedback inklusive Kontakt-Consent und Anonymisierung.
+
+Konfiguration:
+
+- `HOST`: Bind-Adresse, Standard `127.0.0.1`
+- `PORT`: HTTP-Port, Standard `4800`
+- `PROJECT_SERVER_BASE_URL`: externe Basis-URL fuer spaetere Links
+- `PERSISTENCE_BACKEND` oder `PROJECT_SERVER_PERSISTENCE_BACKEND`: `memory`, `sqlite` oder `json`, Standard `memory`
+- `PERSISTENCE_SQLITE_PATH` oder `PROJECT_SERVER_SQLITE_PATH`: SQLite-Datei fuer `sqlite`, Standard `.runtime/gernetix-services.sqlite`
+- `PROJECT_SERVER_RUNTIME_DIR`: Runtime-Verzeichnis fuer JSON-Persistenz, Standard `.runtime`
+
 ## Nicht-Ziele fuer diesen Stand
 
-- keine Serverimplementierung
 - keine Datenbankmigration
 - kein Build-Prozess im Projektserver
 - keine echte Authentifizierung

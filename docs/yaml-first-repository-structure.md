@@ -392,7 +392,7 @@ reason: Aktorik benoetigt einen schaltbaren Ausgang.
 
 Erste Projektinstanzen:
 
-- [ai-pet-esp32.yaml](../data/learning/projects/ai-pet-esp32.yaml)
+- [tamagotchi-entry-course.yaml](../data/learning/projects/tamagotchi-entry-course.yaml)
 - [smart-plant-watering.yaml](../data/learning/projects/smart-plant-watering.yaml)
 - [rfid-safe.yaml](../data/learning/projects/rfid-safe.yaml)
 - [kanban-gridfinity-inventory.yaml](../data/learning/projects/kanban-gridfinity-inventory.yaml)

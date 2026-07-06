@@ -6,7 +6,7 @@ Die YAML-Dateien bleiben die fuehrende Quelle.
 ## Projekt-Mindmaps
 
 - [Cross-Platform Development](cross-platform-development.md)
-- [KI-Haustier / Tamagotchi AI](ai-pet-esp32.md)
+- [Tamagotchi Entry Course](tamagotchi-entry-course.md)
 - [Intelligente Pflanzenbewaesserungsstation](smart-plant-watering.md)
 - [RFID-Tresor](rfid-safe.md)
 - [Buchtresor / Tagebuchschloss](book-vault.md)

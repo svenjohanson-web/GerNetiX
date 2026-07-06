@@ -31,9 +31,9 @@ Regel:
 
 ## Projekte
 
-### KI-Haustier / Tamagotchi AI
+### Tamagotchi Entry Course
 
-ID: `project.ai_pet_esp32`
+ID: `project.tamagotchi_entry_course`
 
 Learning Path:
 
@@ -48,8 +48,8 @@ Nutzt:
 
 Varianten:
 
-- `project.ai_pet_esp32.variant.basic_display`: Offline-Haustier ohne Internet und ohne laufende KI-Kosten.
-- `project.ai_pet_esp32.variant.ai_online`: KI-Online-Haustier mit WLAN/OpenAI-Anbindung, natuerlicheren Dialogen, aber laufenden KI-Kosten und Online-Abhaengigkeit.
+- `project.tamagotchi_entry_course.variant.basic_display`: Offline-Haustier ohne Internet und ohne laufende KI-Kosten.
+- `project.tamagotchi_entry_course.variant.ai_online`: KI-Online-Haustier mit WLAN/OpenAI-Anbindung, natuerlicheren Dialogen, aber laufenden KI-Kosten und Online-Abhaengigkeit.
 
 Regel:
 
