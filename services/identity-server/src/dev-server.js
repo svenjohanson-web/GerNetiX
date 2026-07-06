@@ -4,9 +4,7 @@ const path = require("node:path");
 const { createDefaultIdentityModule, MockEmailService } = require("./index");
 
 const publicDir = path.join(__dirname, "..", "public");
-const projectExperienceDir = path.join(publicDir, "projects");
-const tamagotchiDemoDir = path.join(publicDir, "demo-tamagotchi");
-const guidedCodeLessonDir = path.join(__dirname, "..", "..", "..", "tools", "guided-code-lesson");
+const appDir = path.join(publicDir, "app");
 const port = Number(process.env.PORT || 4300);
 const host = process.env.HOST || "127.0.0.1";
 const demoUsername = process.env.DEMO_USER || "demo";
@@ -48,15 +46,13 @@ async function bootstrap() {
   });
 
   server.listen(port, host, () => {
-  console.log(`Identity login UI: http://${host}:${port}`);
-  console.log(`Project lesson UI: http://${host}:${port}/projects/`);
-  console.log(`Tamagotchi demo: http://${host}:${port}/demo/tamagotchi/`);
+  console.log(`Identity login UI: http://${host}:${port}/app/auth/`);
+  console.log(`GerNetiX Platform: http://${host}:${port}/app/dashboard/`);
   console.log(`Project Server adapter: ${projectServerBaseUrl}`);
   console.log(`Build & Deploy adapter: ${buildDeployBaseUrl}`);
   console.log(`Hardware Shop adapter: ${hardwareShopBaseUrl}`);
   console.log(`Device Management adapter: ${deviceManagementBaseUrl}`);
   console.log(`AI Usage adapter: ${aiUsageBaseUrl}`);
-  console.log(`Demo login: ${demoUsername} / ${demoPassword}`);
   });
 }
 
@@ -141,6 +137,51 @@ async function routeRequest(req, res) {
     return;
   }
 
+  if (url.pathname === "/api/platform/summary") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handlePlatformSummary(res, session);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/platform/workspace-state") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    sendJson(res, 200, updateWorkspaceState(session, await readJsonBody(req)));
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/platform/learning-progress") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    sendJson(res, 200, updateLearningProgress(session, await readJsonBody(req)));
+    return;
+  }
+
+  const platformSource = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/sources\/(.+)$/);
+  if (platformSource && ["GET", "PUT"].includes(req.method)) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    if (req.method === "GET") {
+      await handlePlatformSourceRead(res, session, decodeURIComponent(platformSource[1]), decodeURIComponent(platformSource[2]));
+      return;
+    }
+    await handlePlatformSourceWrite(req, res, session, decodeURIComponent(platformSource[1]), decodeURIComponent(platformSource[2]));
+    return;
+  }
+
   if (url.pathname === "/api/user-ide/projects") {
     const session = readSession(req);
     if (!session) {
@@ -210,65 +251,78 @@ async function routeRequest(req, res) {
     return;
   }
 
-  if (url.pathname === "/demo" || url.pathname === "/demo/") {
-    redirect(res, "/projects/");
+  if (url.pathname === "/demo" || url.pathname === "/demo/" || url.pathname === "/projects" || url.pathname === "/projects/") {
+    redirect(res, "/app/dashboard/");
     return;
   }
 
-  if (url.pathname === "/projects" || url.pathname === "/projects/") {
+  if (url.pathname === "/app" || url.pathname === "/app/") {
     if (!readSession(req)) {
-      redirect(res, "/login.html?next=/projects/");
+      redirect(res, authRoute("/app/dashboard/"));
       return;
     }
-    serveStatic(res, projectExperienceDir, "/index.html");
+    redirect(res, "/app/dashboard/");
+    return;
+  }
+
+  if (url.pathname === "/login.html" || url.pathname === "/login.js" || url.pathname === "/styles.css") {
+    redirect(res, authRoute(url.searchParams.get("next") || "/app/dashboard/"));
+    return;
+  }
+
+  if (url.pathname === "/app/auth" || url.pathname.startsWith("/app/auth/")) {
+    serveStatic(res, appDir, normalizeAppPath(url.pathname));
+    return;
+  }
+
+  if (url.pathname.startsWith("/app/")) {
+    if (!readSession(req)) {
+      redirect(res, authRoute(url.pathname + url.search));
+      return;
+    }
+    serveStatic(res, appDir, normalizeAppPath(url.pathname));
     return;
   }
 
   if (url.pathname.startsWith("/projects/")) {
     if (!readSession(req)) {
-      redirect(res, `/login.html?next=${encodeURIComponent(url.pathname + url.search)}`);
+      redirect(res, authRoute(url.pathname + url.search));
       return;
     }
-    serveStatic(res, projectExperienceDir, normalizeProjectsPath(url.pathname));
+    redirect(res, "/app/dashboard/");
     return;
   }
 
   if (url.pathname === "/dev/projects" || url.pathname === "/dev/projects/") {
     if (!readSession(req)) {
-      redirect(res, "/login.html?next=/dev/projects/");
+      redirect(res, authRoute("/app/learn/"));
       return;
     }
-    serveStatic(res, guidedCodeLessonDir, "/index.html");
+    redirect(res, "/app/learn/");
     return;
   }
 
   if (url.pathname.startsWith("/dev/projects/")) {
     if (!readSession(req)) {
-      redirect(res, `/login.html?next=${encodeURIComponent(url.pathname + url.search)}`);
+      redirect(res, authRoute("/app/learn/"));
       return;
     }
-    serveStatic(res, guidedCodeLessonDir, normalizeDevProjectsPath(url.pathname));
+    redirect(res, "/app/learn/");
     return;
   }
 
-  if (url.pathname.startsWith("/demo/tamagotchi")) {
-    if (!readSession(req)) {
-      redirect(res, "/login.html?next=/demo/tamagotchi/");
-      return;
-    }
-    serveStatic(res, tamagotchiDemoDir, normalizeDemoPath(url.pathname));
+  if (url.pathname === "/") {
+    redirect(res, "/app/auth/");
     return;
   }
 
-  const requestPath = url.pathname === "/" ? "/login.html" : url.pathname;
-  serveStatic(res, publicDir, requestPath);
+  serveStatic(res, publicDir, url.pathname);
 }
 
 async function handleLogin(req, res) {
   const body = await readJsonBody(req);
   try {
-    const credentials = resolveDemoCredentials(body.identifier, body.password);
-    const login = await auth.login_local(credentials.identifier, credentials.password);
+    const login = await auth.login_local(body.identifier, body.password);
     sessions.set(login.session.token, {
       account: login.account,
       expiresAt: login.session.expires_at,
@@ -276,7 +330,7 @@ async function handleLogin(req, res) {
     setSessionCookie(res, login.session.token, login.session.expires_at);
     sendJson(res, 200, {
       account: login.account,
-      next: sanitizeNextPath(body.next) || "/projects/",
+      next: sanitizeNextPath(body.next) || "/app/dashboard/",
     });
   } catch (error) {
     sendJson(res, error.status || 401, {
@@ -284,14 +338,6 @@ async function handleLogin(req, res) {
       message: "Login fehlgeschlagen.",
     });
   }
-}
-
-function resolveDemoCredentials(identifier, password) {
-  if (identifier === "test" && password === "test") {
-    return { identifier: demoUsername, password: demoPassword };
-  }
-
-  return { identifier, password };
 }
 
 async function handleLogout(req, res) {
@@ -542,6 +588,66 @@ async function handleUserIdeSummary(res, session) {
   });
 }
 
+async function handlePlatformSummary(res, session) {
+  const projects = await loadUserIdeProjects(session);
+  const devices = await loadUserIdeDevices(session);
+  const builds = await loadProjectBuilds(projects, session);
+  const userId = projectServerUserId(session);
+  sendJson(res, 200, {
+    account: await createAccountSummary(session),
+    routes: {
+      auth: "/app/auth/",
+      dashboard: "/app/dashboard/",
+      learn: "/app/learn/",
+      ide: "/app/ide/",
+      projects: "/app/projects/",
+      devices: "/app/devices/",
+      builds: "/app/builds/",
+      billing: "/app/billing/",
+    },
+    workspace_state: getWorkspaceState(userId),
+    projects: projects.map(toPlatformProject),
+    learning_progress: listLearningProgress(userId, projects),
+    devices,
+    builds,
+    billing: await loadBillingSummary(session),
+  });
+}
+
+async function handlePlatformSourceRead(res, session, projectId, sourcePath) {
+  const project = await requireSessionProject(session, projectId);
+  const source = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources/${encodeURIComponent(sourcePath)}`);
+  touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
+  sendJson(res, 200, source);
+}
+
+async function handlePlatformSourceWrite(req, res, session, projectId, sourcePath) {
+  const project = await requireSessionProject(session, projectId);
+  const body = await readJsonBody(req);
+  const source = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
+    method: "PUT",
+    body: {
+      path: sourcePath,
+      content: String(body.content || ""),
+      content_type: body.content_type || "text/x-c++src",
+      role: body.role || "user_code",
+    },
+  });
+  touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
+  sendJson(res, 200, source);
+}
+
+async function requireSessionProject(session, projectId) {
+  const projects = await loadUserIdeProjects(session);
+  const project = projects.find((item) => item.project_server_id === projectId || item.slug === projectId);
+  if (!project) {
+    const error = new Error("Projekt wurde nicht gefunden.");
+    error.status = 404;
+    throw error;
+  }
+  return project;
+}
+
 async function handleUserIdeBuildJob(req, res) {
   const body = await readJsonBody(req);
   const session = readSession(req);
@@ -613,6 +719,7 @@ async function handleUserIdeBuildJob(req, res) {
     artifact_url: completedBuildDeployJob?.result?.build?.artifacts?.["firmware.bin"]?.download_url || "",
   };
   userIdeState.builds.unshift(build);
+  touchWorkspace(session, project.project_server_id, body.mode === "learn" ? "learn" : "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
   sendJson(res, 202, build);
 }
 
@@ -621,17 +728,25 @@ async function loadUserIdeProjects(session) {
   const userId = projectServerUserId(session);
   const response = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}`);
   const projectsById = new Map(response.items.map((item) => [item.project_id, item]));
+  const workspace = getWorkspaceState(userId);
   return userIdeState.projectDefinitions.map((definition) => {
     const project = projectsById.get(definition.project_server_id);
     return {
       ...definition,
+      owner_user_id: project ? project.user_id : userId,
       title: project ? project.title : definition.title,
       summary: project ? project.description : definition.summary,
       hardware_profile_id: project ? project.hardware_profile_id : definition.hardware_profile_id,
+      linked_device_id: project ? project.device_id : definition.default_device_id,
       status: project ? project.status : "project_server_missing",
       last_build_status: latestBuildStatus(project),
       source_count: project ? project.source_count : 0,
       build_count: project ? project.build_count : 0,
+      created_at: project ? project.created_at : "",
+      updated_at: project ? project.updated_at : "",
+      last_opened_mode: workspace.lastProjectId === definition.project_server_id ? workspace.lastMode : "",
+      last_opened_at: workspace.lastProjectId === definition.project_server_id ? workspace.updatedAt : "",
+      source_files: [{ path: "src/main.cpp", role: "user_code" }],
     };
   });
 }
@@ -684,6 +799,125 @@ async function loadProjectBuilds(projects, session) {
     }
   }
   return result.sort((left, right) => right.created_at.localeCompare(left.created_at));
+}
+
+function toPlatformProject(project) {
+  return {
+    id: project.project_server_id,
+    ownerUserId: project.owner_user_id || "",
+    name: project.title,
+    description: project.summary,
+    type: project.area || "guided_project",
+    sourceFiles: project.source_files || [{ path: "src/main.cpp", role: "user_code" }],
+    targetRuntime: project.hardware_profile_id,
+    linkedDeviceId: project.linked_device_id || project.default_device_id || "",
+    lastOpenedMode: project.last_opened_mode || "learn",
+    lastOpenedAt: project.last_opened_at || "",
+    createdAt: project.created_at || "",
+    updatedAt: project.updated_at || "",
+    slug: project.slug,
+    courseId: project.course_id,
+    lessonId: project.lesson_id,
+    requiredCapabilityIds: project.required_capability_ids,
+    status: project.status,
+    sourceCount: project.source_count,
+    buildCount: project.build_count,
+    steps: project.steps,
+  };
+}
+
+function getWorkspaceState(userId) {
+  return userIdeState.workspaceStates.get(userId) || {
+    userId,
+    lastProjectId: "",
+    lastMode: "learn",
+    lastRoute: "/app/dashboard/",
+    updatedAt: "",
+  };
+}
+
+function touchWorkspace(session, projectId, mode, route) {
+  return updateWorkspaceState(session, {
+    lastProjectId: projectId,
+    lastMode: mode,
+    lastRoute: route,
+  });
+}
+
+function updateWorkspaceState(session, input = {}) {
+  const userId = projectServerUserId(session);
+  const current = getWorkspaceState(userId);
+  const updated = {
+    userId,
+    lastProjectId: input.lastProjectId || input.last_project_id || current.lastProjectId || "",
+    lastMode: input.lastMode || input.last_mode || current.lastMode || "learn",
+    lastRoute: input.lastRoute || input.last_route || current.lastRoute || "/app/dashboard/",
+    updatedAt: new Date().toISOString(),
+  };
+  userIdeState.workspaceStates.set(userId, updated);
+  return updated;
+}
+
+function listLearningProgress(userId, projects) {
+  return projects.map((project) => {
+    const key = learningProgressKey(userId, project.course_id, project.lesson_id, project.project_server_id);
+    return userIdeState.learningProgress.get(key) || {
+      id: `learning_progress_${project.slug}`,
+      userId,
+      courseId: project.course_id,
+      lessonId: project.lesson_id,
+      projectId: project.project_server_id,
+      currentStep: 0,
+      completedSteps: [],
+      updatedAt: "",
+    };
+  });
+}
+
+function updateLearningProgress(session, input = {}) {
+  const userId = projectServerUserId(session);
+  const projectId = requiredField(input.projectId || input.project_id, "projectId");
+  const courseId = requiredField(input.courseId || input.course_id, "courseId");
+  const lessonId = requiredField(input.lessonId || input.lesson_id, "lessonId");
+  const currentStep = Number(input.currentStep ?? input.current_step ?? 0);
+  const completedSteps = Array.from(new Set((input.completedSteps || input.completed_steps || []).map(Number))).sort((left, right) => left - right);
+  const progress = {
+    id: input.id || `learning_progress_${courseId}_${lessonId}_${projectId}`.replace(/[^a-zA-Z0-9_.-]+/g, "_"),
+    userId,
+    courseId,
+    lessonId,
+    projectId,
+    currentStep,
+    completedSteps,
+    updatedAt: new Date().toISOString(),
+  };
+  userIdeState.learningProgress.set(learningProgressKey(userId, courseId, lessonId, projectId), progress);
+  touchWorkspace(session, projectId, "learn", `/app/learn/?project=${encodeURIComponent(projectId)}`);
+  return progress;
+}
+
+function learningProgressKey(userId, courseId, lessonId, projectId) {
+  return `${userId}:${courseId}:${lessonId}:${projectId}`;
+}
+
+async function loadBillingSummary(session) {
+  const aiUsage = await loadAiUsageSummary(session);
+  return {
+    account_id: projectServerUserId(session),
+    plan: "Premium Demo",
+    entitlements: ["learn_guided_projects", "ide_edit_code", "build_and_flash", "ai_assistant"],
+    ai_credits: aiUsage.credits,
+  };
+}
+
+function requiredField(value, field) {
+  const normalized = String(value || "").trim();
+  if (!normalized) {
+    const error = new Error(`Pflichtfeld fehlt: ${field}`);
+    error.status = 400;
+    throw error;
+  }
+  return normalized;
 }
 
 async function loadHardwareShopSummary(session) {
@@ -1031,6 +1265,8 @@ function createUserIdeState() {
   return {
     projectDefinitions: projects,
     projectServerSeeded: false,
+    learningProgress: new Map(),
+    workspaceStates: new Map(),
     devices: [
       {
         device_id: "device_verified_1",
@@ -1063,6 +1299,8 @@ function project(slug, title, area, summary, steps) {
     slug,
     project_server_id: `project_${slug}`,
     learning_project_id: `learning_project.${slug.replace(/-/g, "_")}`,
+    course_id: `course.${slug.replace(/-/g, "_")}`,
+    lesson_id: `lesson.${slug.replace(/-/g, "_")}.intro`,
     hardware_profile_id: "hardware.processor_board.esp32_devkit",
     default_device_id: "device_verified_1",
     required_capability_ids: requiredCapabilitiesBySlug[slug] || ["capability.processor_esp32"],
@@ -1133,19 +1371,12 @@ function serveStatic(res, rootDir, requestPath) {
   });
 }
 
-function normalizeDemoPath(pathname) {
-  const stripped = pathname.replace(/^\/demo\/tamagotchi\/?/, "/");
-  return stripped === "/" || stripped === "" ? "/index.html" : stripped;
-}
-
-function normalizeProjectsPath(pathname) {
-  const stripped = pathname.replace(/^\/projects\/?/, "/");
-  return stripped === "/" || stripped === "" ? "/index.html" : stripped;
-}
-
-function normalizeDevProjectsPath(pathname) {
-  const stripped = pathname.replace(/^\/dev\/projects\/?/, "/");
-  return stripped === "/" || stripped === "" ? "/index.html" : stripped;
+function normalizeAppPath(pathname) {
+  const stripped = pathname.replace(/^\/app\/?/, "/");
+  if (stripped === "/" || stripped === "") return "/index.html";
+  if (/^\/auth\/?$/.test(stripped)) return "/auth/index.html";
+  if (/^\/(auth|dashboard|learn|ide|projects|devices|builds|billing)\/?$/.test(stripped)) return "/index.html";
+  return stripped;
 }
 
 function readSession(req) {
@@ -1201,6 +1432,10 @@ function sendJson(res, status, payload) {
 function redirect(res, location) {
   res.writeHead(302, { Location: location });
   res.end();
+}
+
+function authRoute(next = "/app/dashboard/") {
+  return `/app/auth/?next=${encodeURIComponent(next)}`;
 }
 
 function readJsonBody(req) {

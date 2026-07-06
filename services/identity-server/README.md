@@ -42,26 +42,44 @@ npm test
 npm run dev
 ```
 
-Oeffnet eine einfache Login-Ansicht unter `http://localhost:4300`. Die Ansicht nutzt den lokalen Dev-Login und setzt fuer die Demo ein HttpOnly-Session-Cookie.
+Oeffnet die Login-Ansicht unter `http://localhost:4300/app/auth/`. Die Ansicht nutzt den lokalen Dev-Login und setzt fuer die Demo ein HttpOnly-Session-Cookie.
 
-### Lokale Tamagotchi-Kundenansicht
-
-Der Dev-Server stellt zusaetzlich eine geschuetzte Tamagotchi-Kundenansicht bereit:
+Nach dem Login landet der Nutzer auf der gemeinsamen Plattform unter:
 
 ```text
-http://localhost:4300/demo/tamagotchi/
+http://localhost:4300/app/dashboard/
 ```
 
-Diese Route zeigt nicht die interne Schritt-fuer-Schritt-Lernoberflaeche, sondern ein praesentierbares Webfrontend mit Tama-Status, Aktionen und Zustandsanzeige. Ohne Session wird auf den Login umgeleitet. Fuer die lokale Demo wird beim Start automatisch ein Demo-Account erzeugt:
+Dabei gilt fuer die lokale MVP-Plattform:
+
+- ein Login
+- ein Account
+- ein gemeinsames Projektmodell
+- zwei Arbeitsmodi: gefuehrtes Lernen und freie IDE
+- Lernfortschritt wird separat gespeichert und verweist auf dasselbe Projekt
+- der letzte Einstieg wird als Workspace-State gespeichert
+
+Die App-Struktur ist:
 
 ```text
-Benutzer: demo
-Passwort: demo-passwort
-
-Lokaler Login-Alias: test / test
+services/identity-server/public/app
+  /auth
+  /dashboard
+  /learn
+  /ide
+  /projects
+  /devices
+  /builds
+  /billing
 ```
 
-Fuer eine VPN-Demo kann der Server explizit an eine VPN-/LAN-Adresse gebunden werden:
+Ein Lernprojekt kann aus dem Lernmodus direkt in der IDE geoeffnet werden. Beide Modi greifen auf dieselben Project-Server-Projektdateien zu; Codeaenderungen aus der IDE bleiben dadurch am Projekt erhalten.
+
+Wichtig: Die Plattform-UI liegt auch im Projekt als ein gemeinsames Artefakt unter `services/identity-server/public/app`. Alte Einstiege wie `/login.html`, `/projects/` und `/dev/projects/` werden nur noch auf die gemeinsame Plattform umgeleitet.
+
+Die fruehere Tamagotchi-Webdemo unter `/demo/tamagotchi/` wurde entfernt. Fuer das Lernprojekt bleibt nur die unabhaengige, komplexe Quellcodedatei `tools/guided-code-lesson/assets/tamagotchi-complete-example.c` als Analyse- und Diskussionsobjekt erhalten.
+
+Fuer lokale Tests kann der Server explizit an eine VPN-/LAN-Adresse gebunden werden:
 
 ```powershell
 $env:HOST="127.0.0.1"

@@ -1,0 +1,144 @@
+# GerNetiX Serverprozesse und Applikationen
+
+Diese Sicht zeigt die aktuell erkennbaren lokalen Serverprozesse, Benutzer-Applikationen und Service-Abhaengigkeiten. Sie ist als UML-nahes Komponentendiagramm in Mermaid gepflegt.
+
+Bildartefakt: [system-process-application-uml.svg](system-process-application-uml.svg)
+
+## Komponentendiagramm
+
+```mermaid
+flowchart LR
+  user["Entwickler / Nutzer"]
+  admin["Admin / Support"]
+  codex["Codex"]
+
+  subgraph applications["Applikationen / HMI"]
+    platformUi["GerNetiX Plattform UI<br/>/app/auth, /app/dashboard, /app/learn, /app/ide<br/>Identity Server :4300"]
+    contextHmi["Context Manager HMI<br/>/context-manager/<br/>:5050"]
+    sqliteExplorer["SQLite Graph Explorer<br/>Tool UI<br/>:4318"]
+  end
+
+  subgraph edgeServices["User- und Admin-nahe Serverprozesse"]
+    identity["Identity Server<br/>:4300"]
+    adminTool["Admin Tool API<br/>:4600"]
+    contextManager["Context Manager<br/>:5050"]
+  end
+
+  subgraph domainServices["Domaenen-Serverprozesse"]
+    projectServer["Project Server<br/>:4800"]
+    buildDeploy["Build & Deploy Server<br/>:4400"]
+    deviceManagement["Device Management Server<br/>:4700"]
+    provisioning["Provisioning Tool Server<br/>:4500"]
+    recovery["Recovery Tool Server<br/>:5100"]
+    hardwareShop["Hardware Shop<br/>:4900"]
+    aiUsage["AI Usage Server<br/>:5000"]
+    communityPlatform["Community Platform<br/>:5200"]
+    communityAi["Community AI Assistant<br/>:5300"]
+    persistence["Persistence Server<br/>:5400"]
+  end
+
+  subgraph localTools["Lokale Tools / Build-Artefakte"]
+    e2e["E2E Demo Flow<br/>CLI"]
+    yamlGraph["YAML Graph SQLite Importer<br/>CLI"]
+  end
+
+  subgraph storage["Persistenz / Wissensbasis"]
+    runtimeDb[("Runtime SQLite<br/>.runtime/gernetix-services.sqlite")]
+    graphDb[("Kanonischer SQLite Graph<br/>tools/yaml-graph-sqlite/out/model-graph.sqlite")]
+    repoFiles[("Projektdateien<br/>README, data, services, tools, git")]
+  end
+
+  user --> platformUi
+  admin --> adminTool
+  codex --> contextHmi
+  codex --> sqliteExplorer
+
+  platformUi --> identity
+  contextHmi --> contextManager
+  sqliteExplorer --> graphDb
+
+  identity --> projectServer
+  identity --> buildDeploy
+  identity --> hardwareShop
+  identity --> deviceManagement
+  identity --> aiUsage
+
+  adminTool --> deviceManagement
+  adminTool --> projectServer
+  adminTool --> aiUsage
+
+  provisioning --> deviceManagement
+  recovery --> deviceManagement
+  communityAi --> communityPlatform
+  communityAi --> aiUsage
+
+  contextManager --> repoFiles
+  contextManager --> runtimeDb
+  contextManager --> graphDb
+  persistence --> runtimeDb
+
+  projectServer -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  buildDeploy -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  deviceManagement -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  provisioning -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  recovery -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  hardwareShop -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  aiUsage -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  communityPlatform -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  communityAi -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  adminTool -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+
+  e2e --> provisioning
+  e2e --> recovery
+  e2e --> deviceManagement
+  e2e --> aiUsage
+  e2e --> communityPlatform
+  e2e --> communityAi
+
+  yamlGraph --> graphDb
+  repoFiles --> yamlGraph
+```
+
+## Serverprozesse
+
+| Prozess | Port | Rolle |
+| --- | ---: | --- |
+| Identity Server | 4300 | Login, Session, gemeinsame Plattform-UI, Adapter zu Domaenenservices |
+| Build & Deploy Server | 4400 | Build-Jobs, Build-Pakete, Artefakte |
+| Provisioning Tool Server | 4500 | Provisioning-Sessions, Device-Registrierung |
+| Admin Tool API | 4600 | Admin-/Support-Sichten, Consent-/Audit-nahe API |
+| Device Management Server | 4700 | Devices, Ownership, Purchase Contexts, Support-Status |
+| Project Server | 4800 | Projekte, Quellen, Build-Jobs, Learning Feedback |
+| Hardware Shop | 4900 | Angebote, Warenkorb, Bestellung, Purchase Context |
+| AI Usage Server | 5000 | Credits, Preflight, Usage Events, Cost Controls |
+| Context Manager | 5050 | Projektkontext, Vorschlaege, Context Packs |
+| Recovery Tool Server | 5100 | Recovery-Sessions, Credential-Erneuerung |
+| Community Platform | 5200 | Community-Fragen, Antworten, Verifikation |
+| Community AI Assistant | 5300 | KI-gestuetzte Community-Antworten |
+| Persistence Server | 5400 | HTTP-Zugriff auf generische SQLite-State-Dokumente |
+| SQLite Graph Explorer | 4318 | Read-only Weboberflaeche auf den kanonischen Graphen |
+
+## Wichtige Abhaengigkeiten
+
+| Quelle | Ziel | Grund |
+| --- | --- | --- |
+| GerNetiX Plattform UI / Identity Server | Project Server | Projekte, Quellen, Build-Jobs |
+| GerNetiX Plattform UI / Identity Server | Build & Deploy Server | Build-Ausfuehrung und Ergebnisabholung |
+| GerNetiX Plattform UI / Identity Server | Hardware Shop | Angebote, Matching, Bestellungen |
+| GerNetiX Plattform UI / Identity Server | Device Management Server | eigene Devices, Registrierung, Purchase Context |
+| GerNetiX Plattform UI / Identity Server | AI Usage Server | Credit-Anzeige und AI-Preflight |
+| Admin Tool API | Device Management Server | Device-/Support-/Consent-Sichten |
+| Admin Tool API | Project Server | Learning Feedback |
+| Admin Tool API | AI Usage Server | Usage-Monitoring und Cost Controls |
+| Provisioning Tool Server | Device Management Server | registriert verifizierte Devices |
+| Recovery Tool Server | Device Management Server | registriert Recovery-/Community-Devices |
+| Community AI Assistant | Community Platform | liest/schreibt Community-Kontext |
+| Community AI Assistant | AI Usage Server | prueft und verbucht KI-Nutzung |
+| Context Manager | Projektdateien, Git, SQLite Graph | erkennt Kontextvorschlaege und erzeugt Context Packs |
+
+## Hinweise
+
+- Der Persistence Server ist ein HTTP-Service fuer generische State-Dokumente. Mehrere Services nutzen aktuell zusaetzlich direkte SQLite-State-Persistenz ueber gemeinsame Repository-/Store-Bausteine.
+- Login UI, Dashboard, Lernmodus, User IDE und Guided-Code-Lesson-Einstieg sind ein gemeinsames Plattform-Frontend-Artefakt am Identity Server, keine getrennten Anwendungen mit getrennten Logins. Im Projekt liegt dieses Artefakt gebuendelt unter `services/identity-server/public/app`.
+- Der Context Manager ist kein Ersatz fuer die Graph-Dokumentation. Er liest Projektwissen, erstellt Vorschlaege und erzeugt bestaetigte Context Packs fuer Codex-Workflows.
+- Das Diagramm bildet den aktuellen lokalen MVP-Zuschnitt ab. Produktive Infrastruktur wie Reverse Proxy, Auth Gateway, Deployment-Orchestrierung oder externe LLM-/Payment-Provider sind hier noch nicht modelliert.

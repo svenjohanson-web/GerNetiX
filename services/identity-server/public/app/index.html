@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GerNetiX Plattform</title>
+    <link rel="stylesheet" href="/app/app.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GerNetiX</p>
+          <h1>Plattform</h1>
+        </div>
+        <div class="top-actions">
+          <span id="accountBadge" class="account-badge"></span>
+          <button id="logoutButton" type="button">Abmelden</button>
+        </div>
+      </header>
+
+      <nav class="tabs" aria-label="Plattformbereiche">
+        <a href="/app/dashboard/" data-route="dashboard">Dashboard</a>
+        <a href="/app/learn/" data-route="learn">Lernen</a>
+        <a href="/app/ide/" data-route="ide">Entwickeln</a>
+        <a href="/app/projects/" data-route="projects">Projekte</a>
+        <a href="/app/devices/" data-route="devices">Geräte</a>
+        <a href="/app/builds/" data-route="builds">Builds</a>
+        <a href="/app/billing/" data-route="billing">Billing</a>
+      </nav>
+
+      <section id="dashboardView" class="view">
+        <section class="dashboard-grid">
+          <button class="entry-card primary" type="button" data-open-route="/app/learn/">
+            <span>Lernen starten</span>
+            <strong>Kurse, Lektionen, geführte Projekte und Aufgaben</strong>
+          </button>
+          <button class="entry-card" type="button" data-open-route="/app/ide/">
+            <span>Entwicklungsumgebung öffnen</span>
+            <strong>Code ändern, Build starten, Gerät flashen oder OTA ausführen</strong>
+          </button>
+          <button id="continueButton" class="entry-card" type="button">
+            <span>Letztes Projekt fortsetzen</span>
+            <strong id="continueText">Noch kein Projekt geöffnet</strong>
+          </button>
+          <button class="entry-card" type="button" data-open-route="/app/projects/">
+            <span>Meine Projekte</span>
+            <strong>Ein gemeinsames Projektmodell für Lernen und IDE</strong>
+          </button>
+          <button class="entry-card" type="button" data-open-route="/app/devices/">
+            <span>Meine Geräte</span>
+            <strong>Geräte, Flash-/OTA-Status und Ownership</strong>
+          </button>
+        </section>
+
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Ein Account</p>
+              <h2>Arbeitsstand</h2>
+            </div>
+          </div>
+          <div id="dashboardSummary" class="summary-grid"></div>
+        </section>
+      </section>
+
+      <section id="learnView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Geführter Modus</p>
+            <h2>Lernen</h2>
+          </div>
+        </div>
+        <section id="learnProjectList" class="project-list"></section>
+        <section id="lessonPanel" class="lesson-panel hidden">
+          <aside id="lessonSteps" class="step-rail"></aside>
+          <article class="panel">
+            <p id="lessonCounter" class="eyebrow"></p>
+            <h2 id="lessonTitle"></h2>
+            <p id="lessonText"></p>
+            <div id="lessonInsight" class="insight"></div>
+            <div class="button-row">
+              <button id="lessonBackButton" type="button">Zurück</button>
+              <button id="openIdeButton" type="button">In IDE öffnen</button>
+              <button id="lessonNextButton" type="button">Weiter</button>
+            </div>
+          </article>
+        </section>
+      </section>
+
+      <section id="ideView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Freier Modus</p>
+            <h2>Entwickeln</h2>
+          </div>
+          <div class="button-row">
+            <select id="ideProjectSelect" aria-label="Projekt wählen"></select>
+            <button id="saveSourceButton" type="button">Code speichern</button>
+            <button id="buildButton" type="button">Build starten</button>
+          </div>
+        </div>
+        <section class="ide-layout">
+          <article class="panel">
+            <p class="eyebrow">Projektdatei</p>
+            <h3 id="ideProjectTitle"></h3>
+            <textarea id="sourceEditor" spellcheck="false"></textarea>
+          </article>
+          <aside class="panel">
+            <p class="eyebrow">Projektmodell</p>
+            <dl id="ideProjectMeta" class="meta-list"></dl>
+          </aside>
+        </section>
+      </section>
+
+      <section id="projectsView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Gemeinsames Modell</p>
+            <h2>Meine Projekte</h2>
+          </div>
+        </div>
+        <section id="projectList" class="project-list"></section>
+      </section>
+
+      <section id="devicesView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Device Management</p>
+            <h2>Meine Geräte</h2>
+          </div>
+        </div>
+        <section id="deviceList" class="device-list"></section>
+      </section>
+
+      <section id="buildsView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Build & Flash</p>
+            <h2>Builds</h2>
+          </div>
+        </div>
+        <section id="buildList" class="build-list"></section>
+      </section>
+
+      <section id="billingView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Abo & Berechtigungen</p>
+            <h2>Billing</h2>
+          </div>
+        </div>
+        <section id="billingSummary" class="summary-grid"></section>
+      </section>
+    </main>
+
+    <script src="/app/app.js"></script>
+  </body>
+</html>

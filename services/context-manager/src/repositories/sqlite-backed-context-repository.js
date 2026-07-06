@@ -20,6 +20,7 @@ class SqliteBackedContextRepository extends InMemoryContextRepository {
         events: "context_events",
         contextPacks: "context_packs",
         redactionPolicies: "context_redaction_policies",
+        suggestions: "context_suggestions",
       },
     }));
   }
@@ -72,6 +73,12 @@ class SqliteBackedContextRepository extends InMemoryContextRepository {
     return result;
   }
 
+  saveSuggestion(suggestion) {
+    const result = super.saveSuggestion(suggestion);
+    this.persist();
+    return result;
+  }
+
   persist() {
     const state = this.state();
     this.store.save(state);
@@ -83,6 +90,7 @@ class SqliteBackedContextRepository extends InMemoryContextRepository {
     this.store.replaceCollection?.("context_events", state.events, "event_id");
     this.store.replaceCollection?.("context_packs", state.contextPacks, "pack_id");
     this.store.replaceCollection?.("context_redaction_policies", state.redactionPolicies, "policy_id");
+    this.store.replaceCollection?.("context_suggestions", state.suggestions, "id");
     if (typeof this.store.replaceTable === "function") {
       this.store.replaceTable("context_scopes", state.scopes, scopeColumns());
       this.store.replaceTable("context_requirement_slices", state.requirementSlices, sliceColumns());
@@ -92,6 +100,7 @@ class SqliteBackedContextRepository extends InMemoryContextRepository {
       this.store.replaceTable("context_events", state.events, eventColumns());
       this.store.replaceTable("context_packs", state.contextPacks, packColumns());
       this.store.replaceTable("context_redaction_policies", state.redactionPolicies, policyColumns());
+      this.store.replaceTable("context_suggestions", state.suggestions, suggestionColumns());
     }
   }
 }
@@ -106,6 +115,7 @@ function defaultState() {
     events: [],
     contextPacks: [],
     redactionPolicies: [],
+    suggestions: [],
   };
 }
 
@@ -119,6 +129,7 @@ function contextManagerSchema() {
     `CREATE TABLE IF NOT EXISTS context_events (event_id TEXT PRIMARY KEY, scope_id TEXT NOT NULL, event_type TEXT, actor_id TEXT, payload_json TEXT, created_at TEXT, updated_at TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS context_packs (pack_id TEXT PRIMARY KEY, scope_id TEXT NOT NULL, purpose TEXT, sections_json TEXT, payload_json TEXT, created_at TEXT, updated_at TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS context_redaction_policies (policy_id TEXT PRIMARY KEY, scope_id TEXT, title TEXT, sensitive_keys_json TEXT, replacement TEXT, created_at TEXT, updated_at TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS context_suggestions (id TEXT PRIMARY KEY, scope_id TEXT NOT NULL, type TEXT NOT NULL, title TEXT NOT NULL, summary TEXT, confidence REAL, source TEXT, status TEXT, payload_json TEXT, created_at TEXT, updated_at TEXT, raw_json TEXT NOT NULL);`,
   ];
 }
 
@@ -156,6 +167,10 @@ function packColumns() {
 
 function policyColumns() {
   return { ...columns(["policy_id", "scope_id", "title", "replacement", "created_at", "updated_at"]), sensitive_keys_json: jsonColumn("sensitive_keys"), raw_json: jsonColumn((row) => row) };
+}
+
+function suggestionColumns() {
+  return { ...columns(["id", "scope_id", "type", "title", "summary", "confidence", "source", "status", "created_at", "updated_at"]), payload_json: jsonColumn("payload"), raw_json: jsonColumn((row) => row) };
 }
 
 module.exports = { SqliteBackedContextRepository };

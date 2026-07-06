@@ -8,6 +8,7 @@ class InMemoryContextRepository {
     this.events = new Map((seed.events || []).map((item) => [item.event_id, clone(item)]));
     this.contextPacks = new Map((seed.contextPacks || []).map((item) => [item.pack_id, clone(item)]));
     this.redactionPolicies = new Map((seed.redactionPolicies || []).map((item) => [item.policy_id, clone(item)]));
+    this.suggestions = new Map((seed.suggestions || []).map((item) => [item.id, clone(item)]));
   }
 
   saveScope(scope) {
@@ -94,6 +95,23 @@ class InMemoryContextRepository {
       .map(clone);
   }
 
+  saveSuggestion(suggestion) {
+    this.suggestions.set(suggestion.id, clone(suggestion));
+    return clone(suggestion);
+  }
+
+  findSuggestion(id) {
+    return clone(this.suggestions.get(id));
+  }
+
+  listSuggestions(scopeId, status) {
+    return Array.from(this.suggestions.values())
+      .filter((suggestion) => suggestion.scope_id === scopeId)
+      .filter((suggestion) => !status || suggestion.status === status)
+      .sort((left, right) => String(right.updated_at || right.created_at || "").localeCompare(String(left.updated_at || left.created_at || "")))
+      .map(clone);
+  }
+
   state() {
     return {
       scopes: Array.from(this.scopes.values()).map(clone),
@@ -104,6 +122,7 @@ class InMemoryContextRepository {
       events: Array.from(this.events.values()).map(clone),
       contextPacks: Array.from(this.contextPacks.values()).map(clone),
       redactionPolicies: Array.from(this.redactionPolicies.values()).map(clone),
+      suggestions: Array.from(this.suggestions.values()).map(clone),
     };
   }
 }

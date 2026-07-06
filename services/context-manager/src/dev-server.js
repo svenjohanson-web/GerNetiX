@@ -18,5 +18,6 @@ const server = http.createServer((req, res) => {
 
 server.listen(config.port, config.host, () => {
   console.log(`Context Manager: http://${config.host}:${config.port}`);
+  console.log(`HMI: http://${config.host}:${config.port}/context-manager/`);
   console.log("API prefix: /api/context");
 });

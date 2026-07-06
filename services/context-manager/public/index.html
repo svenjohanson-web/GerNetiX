@@ -1,0 +1,233 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>GerNetiX Context Manager</title>
+    <link rel="stylesheet" href="/context-manager/styles.css">
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GerNetiX</p>
+          <h1>Context Manager</h1>
+        </div>
+        <div class="topbar-actions">
+          <button id="refreshButton" type="button" class="icon-button" title="Aktualisieren">R</button>
+          <button id="saveScopeButton" type="button">Scope speichern</button>
+          <button id="analyzeButton" type="button">Projekt analysieren</button>
+          <button id="architectureButton" type="button">Architektur</button>
+          <button id="createPackButton" type="button" class="primary">Context Pack</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="panel scope-panel" aria-labelledby="scopeHeading">
+          <div class="panel-heading">
+            <h2 id="scopeHeading">Scope</h2>
+            <span id="scopeStatus" class="status-pill">bereit</span>
+          </div>
+          <form id="scopeForm" class="form-grid">
+            <label>
+              Account
+              <input id="accountId" name="account_id" autocomplete="off">
+            </label>
+            <label>
+              Projekt
+              <input id="projectId" name="project_id" autocomplete="off">
+            </label>
+            <label class="wide">
+              Titel
+              <input id="scopeTitle" name="title" autocomplete="off">
+            </label>
+            <label class="wide">
+              Beschreibung
+              <textarea id="scopeDescription" name="description" rows="4"></textarea>
+            </label>
+          </form>
+        </section>
+
+        <section class="panel main-panel" aria-labelledby="workHeading">
+          <div class="panel-heading">
+            <h2 id="workHeading">Arbeitskontext</h2>
+            <div class="tabs" role="tablist">
+              <button type="button" class="tab active" data-tab="slice">Slices</button>
+              <button type="button" class="tab" data-tab="suggestion">Vorschlaege</button>
+              <button type="button" class="tab" data-tab="decision">Entscheidungen</button>
+              <button type="button" class="tab" data-tab="runtime">Runtime</button>
+              <button type="button" class="tab" data-tab="event">Events</button>
+              <button type="button" class="tab" data-tab="architecture">Architektur</button>
+            </div>
+          </div>
+
+          <div id="sliceTab" class="tab-panel active">
+            <form id="sliceForm" class="editor-grid">
+              <label>
+                Titel
+                <input name="title" required>
+              </label>
+              <label>
+                Requirement
+                <input name="requirement_id">
+              </label>
+              <label>
+                Slice Key
+                <input name="slice_key">
+              </label>
+              <label>
+                Status
+                <select name="status">
+                  <option value="open">open</option>
+                  <option value="in_progress">in_progress</option>
+                  <option value="implemented">implemented</option>
+                  <option value="verified">verified</option>
+                </select>
+              </label>
+              <label class="wide">
+                Summary
+                <textarea name="summary" rows="3"></textarea>
+              </label>
+              <label>
+                Implementiert durch
+                <input name="implemented_by" placeholder="services/project-server, tools/user-ide">
+              </label>
+              <label>
+                Evidenz
+                <input name="evidence" placeholder="Tests, Dateien, Commits">
+              </label>
+              <button type="submit" class="primary">Slice speichern</button>
+            </form>
+            <div id="sliceList" class="item-list"></div>
+          </div>
+
+          <div id="suggestionTab" class="tab-panel">
+            <div id="analysisSummary" class="analysis-summary">Noch keine Analyse in dieser Sitzung.</div>
+            <div class="review-guidance">
+              Unklar bleibt offen. Nur uebernehmen, wenn Bedeutung, Quelle und dauerhafter Nutzen klar sind.
+            </div>
+            <div class="review-checklist" aria-label="Prueffragen">
+              <span>korrekt?</span>
+              <span>vollstaendig?</span>
+              <span>verstaendlich?</span>
+              <span>dauerhaft relevant?</span>
+              <span>Duplikat?</span>
+            </div>
+            <div id="suggestionList" class="item-list suggestion-list"></div>
+          </div>
+
+          <div id="decisionTab" class="tab-panel">
+            <form id="decisionForm" class="editor-grid">
+              <label>
+                Titel
+                <input name="title" required>
+              </label>
+              <label>
+                Status
+                <select name="status">
+                  <option value="accepted">accepted</option>
+                  <option value="proposed">proposed</option>
+                  <option value="superseded">superseded</option>
+                </select>
+              </label>
+              <label class="wide">
+                Rationale
+                <textarea name="rationale" rows="4"></textarea>
+              </label>
+              <button type="submit" class="primary">Entscheidung speichern</button>
+            </form>
+            <div id="decisionList" class="item-list"></div>
+          </div>
+
+          <div id="runtimeTab" class="tab-panel">
+            <form id="runtimeForm" class="editor-grid">
+              <label>
+                Titel
+                <input name="title" required>
+              </label>
+              <label>
+                Typ
+                <input name="reference_type" value="service">
+              </label>
+              <label>
+                Referenz
+                <input name="reference_id">
+              </label>
+              <label>
+                Quelle
+                <input name="source_service">
+              </label>
+              <label class="wide">
+                Payload JSON
+                <textarea name="payload" rows="6">{}</textarea>
+              </label>
+              <button type="submit" class="primary">Runtime speichern</button>
+            </form>
+            <div id="runtimeList" class="item-list"></div>
+          </div>
+
+          <div id="eventTab" class="tab-panel">
+            <form id="eventForm" class="editor-grid">
+              <label>
+                Event Type
+                <input name="event_type" value="context.updated">
+              </label>
+              <label>
+                Actor
+                <input name="actor_id" value="codex">
+              </label>
+              <label class="wide">
+                Payload JSON
+                <textarea name="payload" rows="5">{}</textarea>
+              </label>
+              <button type="submit" class="primary">Event speichern</button>
+            </form>
+            <div id="eventList" class="item-list"></div>
+          </div>
+
+          <div id="architectureTab" class="tab-panel">
+            <div class="architecture-toolbar">
+              <div>
+                <p class="eyebrow">System View</p>
+                <h3>Serverprozesse, Applikationen und Abhaengigkeiten</h3>
+              </div>
+              <div class="architecture-actions">
+                <a href="/context-manager/architecture/system-process-application-uml.svg" target="_blank" rel="noreferrer">SVG oeffnen</a>
+                <a href="/context-manager/architecture/system-process-application-uml.md" target="_blank" rel="noreferrer">Quelle</a>
+              </div>
+            </div>
+            <div class="architecture-canvas">
+              <img src="/context-manager/architecture/system-process-application-uml.svg" alt="GerNetiX Architekturdiagramm mit Serverprozessen, Applikationen und Abhaengigkeiten">
+            </div>
+          </div>
+        </section>
+
+        <aside class="panel pack-panel" aria-labelledby="packHeading">
+          <div class="panel-heading">
+            <h2 id="packHeading">Context Pack</h2>
+            <span id="packId" class="muted">kein Pack</span>
+          </div>
+          <form id="packForm" class="pack-form">
+            <label>
+              Zweck
+              <input name="purpose" value="codex_context">
+            </label>
+            <fieldset>
+              <legend>Sektionen</legend>
+              <label><input type="checkbox" name="sections" value="scope" checked> Scope</label>
+              <label><input type="checkbox" name="sections" value="requirement_slices" checked> Slices</label>
+              <label><input type="checkbox" name="sections" value="artifact_references" checked> Artefakte</label>
+              <label><input type="checkbox" name="sections" value="runtime_references" checked> Runtime</label>
+              <label><input type="checkbox" name="sections" value="decisions" checked> Entscheidungen</label>
+              <label><input type="checkbox" name="sections" value="recent_events" checked> Events</label>
+            </fieldset>
+          </form>
+          <pre id="contextPreview" class="json-preview">{}</pre>
+        </aside>
+      </main>
+    </div>
+
+    <div id="toast" class="toast" hidden></div>
+    <script src="/context-manager/app.js"></script>
+  </body>
+</html>

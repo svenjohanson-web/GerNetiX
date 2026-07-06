@@ -16,6 +16,7 @@ const DEFAULT_SENSITIVE_KEYS = [
 class ContextService {
   constructor(options) {
     this.repository = options.repository;
+    this.analyzer = options.analyzer || null;
   }
 
   currentContext(query = {}) {
@@ -28,6 +29,7 @@ class ContextService {
       runtime_references: this.repository.listRuntimeReferences(scope.scope_id),
       decisions: this.repository.listDecisions(scope.scope_id),
       recent_events: this.repository.listEvents(scope.scope_id, Number(query.limit || 25)),
+      pending_suggestions: this.repository.listSuggestions(scope.scope_id, "pending"),
       latest_context_pack: latestPack ? packSummary(latestPack) : null,
     };
   }
@@ -138,6 +140,82 @@ class ContextService {
     return this.repository.saveEvent(event);
   }
 
+  analyzeScope(input = {}) {
+    const scope = this.requireOrCreateScope(input);
+    const context = this.currentContext({ scope_id: scope.scope_id });
+    const candidates = this.analyzer ? this.analyzer.analyze(context) : [];
+    const created = [];
+    for (const candidate of candidates) {
+      if (this.isDuplicateSuggestion(scope.scope_id, candidate)) continue;
+      created.push(this.repository.saveSuggestion(createSuggestion(scope.scope_id, candidate)));
+    }
+    return {
+      scope_id: scope.scope_id,
+      created_count: created.length,
+      summary: suggestionSummary(created),
+      suggestions: created,
+    };
+  }
+
+  listSuggestions(input = {}) {
+    const scope = this.requireOrCreateScope(input);
+    return this.repository.listSuggestions(scope.scope_id, input.status);
+  }
+
+  updateSuggestion(id, input = {}) {
+    const current = this.requireSuggestion(id);
+    const now = new Date().toISOString();
+    return this.repository.saveSuggestion({
+      ...current,
+      title: input.title ?? current.title,
+      summary: input.summary ?? current.summary,
+      confidence: input.confidence ?? current.confidence,
+      source: input.source ?? current.source,
+      payload: input.payload ?? current.payload,
+      updated_at: now,
+    });
+  }
+
+  acceptSuggestion(id, input = {}) {
+    const suggestion = input.title || input.summary || input.payload
+      ? this.updateSuggestion(id, input)
+      : this.requireSuggestion(id);
+    const payload = suggestion.payload || {};
+    let acceptedEntry;
+
+    if (suggestion.type === "requirement") {
+      acceptedEntry = this.upsertRequirementSlice({ scope_id: suggestion.scope_id, title: suggestion.title, summary: suggestion.summary, ...payload });
+    } else if (suggestion.type === "decision") {
+      acceptedEntry = this.recordDecision({ scope_id: suggestion.scope_id, title: suggestion.title, rationale: suggestion.summary, ...payload });
+    } else if (suggestion.type === "artifact") {
+      acceptedEntry = this.upsertArtifactReference({ scope_id: suggestion.scope_id, title: suggestion.title, ...payload });
+    } else if (suggestion.type === "runtime") {
+      acceptedEntry = this.upsertRuntimeReference({ scope_id: suggestion.scope_id, title: suggestion.title, ...payload });
+    } else if (suggestion.type === "event") {
+      acceptedEntry = this.recordEvent({ scope_id: suggestion.scope_id, payload: { title: suggestion.title, summary: suggestion.summary }, ...payload });
+    } else {
+      throw new ContextManagerError("unsupported_suggestion_type", "Suggestion-Typ wird nicht unterstuetzt.", 400, { type: suggestion.type });
+    }
+
+    const now = new Date().toISOString();
+    const acceptedSuggestion = this.repository.saveSuggestion({
+      ...suggestion,
+      status: "accepted",
+      updated_at: now,
+      payload: { ...payload, accepted_entry: acceptedEntry },
+    });
+    return { suggestion: acceptedSuggestion, entry: acceptedEntry };
+  }
+
+  rejectSuggestion(id) {
+    const suggestion = this.requireSuggestion(id);
+    return this.repository.saveSuggestion({
+      ...suggestion,
+      status: "rejected",
+      updated_at: new Date().toISOString(),
+    });
+  }
+
   createContextPack(input = {}) {
     const scope = this.requireOrCreateScope(input);
     const now = new Date().toISOString();
@@ -181,6 +259,40 @@ class ContextService {
     if (scope) return scope;
     return this.upsertScope(input);
   }
+
+  requireSuggestion(id) {
+    const suggestion = this.repository.findSuggestion(id);
+    if (!suggestion) throw new ContextManagerError("suggestion_not_found", "Suggestion wurde nicht gefunden.", 404);
+    return suggestion;
+  }
+
+  isDuplicateSuggestion(scopeId, candidate) {
+    const title = normalizeText(candidate.title);
+    const payload = candidate.payload || {};
+    const suggestions = this.repository.listSuggestions(scopeId);
+    if (suggestions.some((suggestion) => suggestion.type === candidate.type && normalizeText(suggestion.title) === title)) return true;
+
+    if (candidate.type === "requirement") {
+      const sliceKey = normalizeText(payload.slice_key);
+      return this.repository.listRequirementSlices(scopeId).some((slice) => normalizeText(slice.title) === title || (sliceKey && normalizeText(slice.slice_key) === sliceKey));
+    }
+    if (candidate.type === "decision") {
+      return this.repository.listDecisions(scopeId).some((decision) => normalizeText(decision.title) === title);
+    }
+    if (candidate.type === "artifact") {
+      const artifactPath = normalizePath(payload.path);
+      return this.repository.listArtifactReferences(scopeId).some((artifact) => normalizeText(artifact.title) === title || (artifactPath && normalizePath(artifact.path) === artifactPath));
+    }
+    if (candidate.type === "runtime") {
+      const referenceId = normalizeText(payload.reference_id || payload.reference_id_value);
+      return this.repository.listRuntimeReferences(scopeId).some((runtime) => normalizeText(runtime.title) === title || (referenceId && normalizeText(runtime.reference_id_value) === referenceId));
+    }
+    if (candidate.type === "event") {
+      const eventType = normalizeText(payload.event_type);
+      return this.repository.listEvents(scopeId, 100).some((event) => normalizeText(event.event_type) === eventType && normalizeText(event.payload?.message || event.payload?.title) === title);
+    }
+    return false;
+  }
 }
 
 function selectSections(context, sections) {
@@ -211,6 +323,37 @@ function packSummary(pack) {
 
 function createId(prefix) {
   return `${prefix}.${crypto.randomUUID()}`;
+}
+
+function createSuggestion(scopeId, candidate) {
+  const now = new Date().toISOString();
+  return {
+    id: candidate.id || createId("context_suggestion"),
+    scope_id: scopeId,
+    type: candidate.type,
+    title: required(candidate.title, "title"),
+    summary: candidate.summary || "",
+    confidence: Number(candidate.confidence ?? 0.5),
+    source: candidate.source || "heuristic",
+    status: "pending",
+    payload: candidate.payload || {},
+    created_at: now,
+    updated_at: now,
+  };
+}
+
+function suggestionSummary(suggestions) {
+  const counts = { requirement: 0, decision: 0, artifact: 0, runtime: 0, event: 0 };
+  for (const suggestion of suggestions) counts[suggestion.type] = (counts[suggestion.type] || 0) + 1;
+  return counts;
+}
+
+function normalizeText(value) {
+  return String(value || "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+function normalizePath(value) {
+  return String(value || "").trim().toLowerCase().replace(/\\/g, "/");
 }
 
 function required(value, field) {

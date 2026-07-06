@@ -1,13 +1,13 @@
 const form = document.querySelector("#login-form");
 const statusElement = document.querySelector("#status");
-const nextUrl = new URLSearchParams(window.location.search).get("next") || "/projects/";
+const nextUrl = new URLSearchParams(window.location.search).get("next") || "/app/dashboard/";
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(form);
   const identifier = data.get("identifier");
   const password = data.get("password");
-  statusElement.textContent = "Login wird geprüft...";
+  statusElement.textContent = "Login wird geprueft...";
 
   try {
     const response = await fetch("/api/login", {
@@ -21,8 +21,8 @@ form.addEventListener("submit", async (event) => {
       return;
     }
 
-    statusElement.textContent = `Willkommen ${payload.account.username}. Demo wird geöffnet...`;
-    window.location.href = payload.next || "/projects/";
+    statusElement.textContent = `Willkommen ${payload.account.username}. Plattform wird geoeffnet...`;
+    window.location.href = payload.next || "/app/dashboard/";
   } catch {
     statusElement.textContent = "Login-Service ist gerade nicht erreichbar.";
   }
