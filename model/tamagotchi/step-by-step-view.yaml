@@ -1,29 +1,35 @@
 model_view:
   id: tamagotchi_step_by_step_view
+  type: ui_model
   title: Tamagotchi Verhaltensmodell
   purpose: In der Step-by-Step-App anstelle von Quellcode angezeigt werden
   message: Code ist nicht die erste Wahrheit. Das Modell beschreibt das Verhalten.
 
 learning_sequence:
   - id: code_is_hard_to_read
+    type: learning_path_step
     title: Quellcode anschauen und Verstaendnis pruefen
     visible_model_lines:
       - problem.code_is_not_explanation
   - id: state_intro
+    type: learning_path_step
     title: Einfuehrung in Zustaende
     visible_model_lines:
       - state.simple_examples
   - id: state_categories
+    type: learning_path_step
     title: Direkte und fliessende Zustaende unterscheiden
     visible_model_lines:
       - state.discrete
       - state.continuous
   - id: discrete_states
+    type: learning_path_step
     title: Direkte diskrete Zustaende
     visible_model_lines:
       - state.binary
       - state.presence
   - id: physical_property_to_state
+    type: learning_path_step
     title: Aus Messwerten werden Zustaende
     visible_model_lines:
       - physical.temperature
@@ -31,36 +37,42 @@ learning_sequence:
       - physical.voltage
       - classification.thresholds
       - rule.physical_to_state
-  - id: model_is_runtime_independent
+  - id: step_view_model_is_runtime_independent
+    type: learning_path_step
     title: Modell ist runtime-unabhaengig
     visible_model_lines:
       - model.runtime_independent
       - runtime.browser_app
       - runtime.embedded
   - id: runtime_choice
+    type: learning_path_step
     title: Browser App oder Embedded auswaehlen
     visible_model_lines:
       - runtime.choice
       - runtime.browser_app
       - runtime.embedded
   - id: browser_app_first
+    type: learning_path_step
     title: Browser App zuerst erzeugen
     visible_model_lines:
       - runtime.browser_app
       - lesson.browser_advantages
       - lesson.browser_disadvantages
   - id: embedded_preview
+    type: learning_path_step
     title: Embedded als spaetere Runtime einordnen
     visible_model_lines:
       - runtime.embedded
       - runtime.same_model_core
   - id: timed_state_machine_next
+    type: learning_path_step
     title: Zeitgesteuerte State-Machine folgt
     visible_model_lines:
       - behavior.event_driven_first
       - behavior.time_driven_next
       - persistence.browser_storage
-  - id: next_runtime_apps
+  - id: step_view_next_runtime_apps
+    type: learning_path_step
     title: Weitere Runtime-Apps aus demselben Modell
     visible_model_lines:
       - runtime.same_model_core

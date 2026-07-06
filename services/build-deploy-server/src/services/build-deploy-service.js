@@ -9,8 +9,9 @@ class BuildDeployService {
     this.artifactStore = options.artifactStore;
     this.deployOrchestrator = options.deployOrchestrator;
     this.deviceJobLock = options.deviceJobLock;
-    this.snapshotStore = options.snapshotStore || null;
-    this.jobs = new Map(((this.snapshotStore && this.snapshotStore.load().jobs) || []).map((job) => [job.job_id, job]));
+    this.stateStore = options.stateStore || null;
+    this.stateStore?.ensureSchema?.(buildDeploySchema());
+    this.jobs = new Map(((this.stateStore && this.stateStore.load().jobs) || []).map((job) => [job.job_id, job]));
   }
 
   async submitJob(input) {
@@ -96,14 +97,58 @@ class BuildDeployService {
   }
 
   persistJobs() {
-    if (!this.snapshotStore) return;
-    this.snapshotStore.save({
-      jobs: Array.from(this.jobs.values()).map((job) => {
-        const { promise, ...rest } = job;
-        return rest;
-      }),
+    if (!this.stateStore) return;
+    const jobs = Array.from(this.jobs.values()).map((job) => {
+      const { promise, ...rest } = job;
+      return rest;
     });
+    this.stateStore.save({ jobs });
+    this.stateStore.replaceCollection?.("jobs", jobs, "job_id");
+    this.stateStore.replaceTable?.("build_deploy_jobs", jobs, buildJobColumns());
   }
+}
+
+function buildDeploySchema() {
+  return [
+    `CREATE TABLE IF NOT EXISTS build_deploy_jobs (
+      job_id TEXT PRIMARY KEY,
+      mode TEXT,
+      device_id TEXT,
+      status TEXT,
+      created_at TEXT,
+      started_at TEXT,
+      finished_at TEXT,
+      build_package_json TEXT,
+      deploy_json TEXT,
+      result_json TEXT,
+      error_json TEXT,
+      raw_json TEXT NOT NULL
+    );`,
+  ];
+}
+
+function buildJobColumns() {
+  return {
+    job_id: "job_id",
+    mode: "mode",
+    device_id: "device_id",
+    status: "status",
+    created_at: "created_at",
+    started_at: "started_at",
+    finished_at: "finished_at",
+    build_package_json: jsonValue("build_package"),
+    deploy_json: jsonValue("deploy"),
+    result_json: jsonValue("result"),
+    error_json: jsonValue("error"),
+    raw_json: jsonValue((row) => row),
+  };
+}
+
+function jsonValue(selector) {
+  return (row) => {
+    const value = typeof selector === "function" ? selector(row) : row[selector];
+    return JSON.stringify(value ?? null);
+  };
 }
 
 function normalizeJob(input = {}) {

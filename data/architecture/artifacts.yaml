@@ -2,6 +2,64 @@ schemaVersion: 1
 kind: architecture_artifact_catalog
 sourceStatus: legacy_import_source
 items:
+  - id: architecture_artifact.context_manager
+    type: architecture_artifact
+    title: Codex Context Manager
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: CrossDomain
+    summary: Architekturartefakt fuer den Codex-Kontext ueber Requirements, Requirement Slices, Architekturartefakte, Implementierungsreferenzen, Runtime-Zustand, Entscheidungen, Events und redigierte Context Packs.
+    derivedFromRequirements:
+      - requirement.codex_context_uses_graph_as_source_of_truth
+    usedBy:
+      - app.user_ide
+      - app.admin_tool
+      - architecture_artifact.project_server
+      - architecture_artifact.community_ai_assistant
+    affectsDataModels:
+      - data_model.context_scope
+      - data_model.context_requirement_slice
+      - data_model.context_pack
+    affectsApiArtifacts:
+      - api_artifact.context_manager
+    containsArchitectureComponents:
+      - component.context_scope_registry
+      - component.requirement_slice_mapper
+      - component.context_pack_builder
+      - component.context_redaction
+
+  - id: component.context_scope_registry
+    type: architecture_component
+    title: Context Scope Registry Component
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: CrossDomain
+    summary: Fuehrt Account-/Projekt-Kontexte als Scope und bildet den Einstiegspunkt fuer aktuelle Codex-Arbeitskontexte.
+
+  - id: component.requirement_slice_mapper
+    type: architecture_component
+    title: Requirement Slice Mapper Component
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: CrossDomain
+    summary: Erfasst fachliche Umsetzungsschnitte, die mehrere Requirements, Artefakte und Implementierungsstellen verbinden.
+
+  - id: component.context_pack_builder
+    type: architecture_component
+    title: Context Pack Builder Component
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: CrossDomain
+    summary: Erzeugt transportierbare Context Packs aus Scope, Requirement Slices, Runtime-Referenzen, Entscheidungen und Events.
+
+  - id: component.context_redaction
+    type: architecture_component
+    title: Context Redaction Component
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: Authorization
+    summary: Maskiert Secrets, Tokens, Passwoerter, Pairing-Codes und vergleichbare sensible Werte vor der Weitergabe an KI- oder Tool-Kontexte.
+
   - id: architecture_artifact.business_traceability_model
     type: architecture_artifact
     title: Business-Traceability-Modell
@@ -101,7 +159,7 @@ items:
     type: architecture_artifact
     title: Device Management Server
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Architekturartefakt fuer den extern ansprechbaren Device-Management-Bereich im gemeinsamen Backend. Verwaltet Device Registry, Kunden-Pairing, Hersteller-Register, Echtheitsnachweis, Account-Device-Inventar, OTA-Zielauswahl, Connectivity-Status und Supportberechtigung.
     deploymentDecision: Im MVP als Modul im gemeinsamen Backend betreiben; API und Modulgrenzen so schneiden, dass spaetere Auslagerung als eigener Service moeglich bleibt.
@@ -346,7 +404,7 @@ items:
     type: architecture_component
     title: Device Pairing Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Komponente fuer Pairing-Sessions, Pairing-Kanaele und Account-Zuordnung.
 
@@ -354,7 +412,7 @@ items:
     type: architecture_component
     title: Device Authenticity Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Komponente fuer Challenge-Response-Pruefung, HMAC-Nachweis und Bewertung als GerNetiX-verified oder Community-Hardware.
 
@@ -362,7 +420,7 @@ items:
     type: architecture_component
     title: Account Device Inventory Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Account
     summary: Komponente fuer Device-Eintraege im Account-Profil inklusive Capabilities, Anzeigename, Online-Status und OTA-Status.
 
@@ -370,7 +428,7 @@ items:
     type: architecture_component
     title: OTA Target Discovery Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: IDE
     summary: Komponente fuer die Auswahl kompatibler OTA-Zielgeraete aus dem Account-Device-Inventar.
 
@@ -378,7 +436,7 @@ items:
     type: architecture_component
     title: Device Connectivity Setup Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Komponente fuer Connectivity-Status, AP-/Node-Modus, OTA-Hostname und WLAN-Setup-Kontext. WLAN-Passwoerter bleiben lokal auf dem Device.
 
@@ -398,7 +456,7 @@ items:
     type: architecture_component
     title: Device Support Entitlement Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Komponente fuer Support-, Garantie- und Reklamationspruefung auf Basis von Provisionierung, Echtheitsnachweis, Kaufkontext und Account-Zuordnung.
 
@@ -406,6 +464,6 @@ items:
     type: architecture_component
     title: Admin Device Management Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Admin- und Support-Sicht auf Device Management fuer Statuspruefung, GerNetiX-Verified-vs-Community-Unterscheidung, Pairing, Connectivity, OTA, Credential-Historie und Support-Entitlement.

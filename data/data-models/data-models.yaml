@@ -2,6 +2,61 @@ schemaVersion: 1
 kind: data_model_catalog
 sourceStatus: legacy_import_source
 items:
+  - id: data_model.context_scope
+    type: data_model
+    title: ContextScope
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: CrossDomain
+    summary: Account-/Projekt-Scope fuer einen aktuellen Codex-Kontext.
+    fields:
+      - scopeId
+      - accountId
+      - projectId
+      - title
+      - description
+      - status
+      - createdAt
+      - updatedAt
+
+  - id: data_model.context_requirement_slice
+    type: data_model
+    title: ContextRequirementSlice
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: CrossDomain
+    summary: Fachlicher Umsetzungsschnitt zwischen Anforderungen, Architektur, Implementierungsartefakten, offenen Punkten und Evidenz.
+    fields:
+      - sliceId
+      - scopeId
+      - requirementId
+      - sliceKey
+      - title
+      - status
+      - implementedBy
+      - relatedArtifacts
+      - openPoints
+      - evidence
+
+  - id: data_model.context_pack
+    type: data_model
+    title: ContextPack
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: CrossDomain
+    summary: Redigiertes Kontextpaket fuer Codex, User IDE, KI-Assistent oder Admin-/Debug-Sichten.
+    fields:
+      - packId
+      - scopeId
+      - purpose
+      - sections
+      - payload
+      - createdAt
+    privacyClassification: internal
+    accessMustBeAudited: true
+    redactionRules:
+      - Secrets, Token, Passwoerter, Private Keys, Pairing-Codes und Credentials werden maskiert.
+
   - id: data_model.community_question
     type: data_model
     title: CommunityQuestion
@@ -798,7 +853,7 @@ items:
     type: data_model
     title: Device
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Konkretes physisches Geraet, unabhaengig davon, ob es von GerNetiX provisioniert oder vom Nutzer selbst gekauft wurde.
     fields:
@@ -822,7 +877,7 @@ items:
     type: data_model
     title: DeviceManufacturerRegistration
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Internes Register fuer von GerNetiX provisionierte Devices inklusive Charge, Firmwarestand, Hardwareprofil, Pruefstatus und Provisionierungsverantwortung.
     fields:
@@ -840,7 +895,7 @@ items:
     type: data_model
     title: AccountDevice
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Account
     summary: Device-Eintrag im Profil oder Inventar eines Accounts, inklusive Anzeigename, Hardwareprofil, Capabilities, Echtheitsstatus, OTA-Status und letzter Erreichbarkeit.
     fields:
@@ -870,7 +925,7 @@ items:
     type: data_model
     title: DevicePairingSession
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Zeitlich begrenzter Pairing-Vorgang, der ein Device einem Account zuordnet und den Pairing-Status nachvollziehbar macht.
     fields:
@@ -894,7 +949,7 @@ items:
     type: data_model
     title: DeviceOwnership
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Besitz- oder Nutzungszuordnung zwischen Account und Device; getrennt von Echtheit und Supportanspruch.
     fields:
@@ -917,7 +972,7 @@ items:
     type: data_model
     title: DeviceCredential
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Credential-Referenz fuer Echtheitsnachweis und sichere Device-Kommunikation; Secrets werden nicht im Klartext als Modellinhalt gefuehrt.
     fields:
@@ -936,7 +991,7 @@ items:
     type: data_model
     title: DeviceAuthenticityProof
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Ergebnis eines Challenge-Response-Nachweises, mit dem ein Device als GerNetiX-provisioniert oder als nicht verifiziert bewertet wird.
     fields:
@@ -960,7 +1015,7 @@ items:
     type: data_model
     title: DeviceSupportEntitlement
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Nachvollziehbare Support-, Garantie- oder Reklamationsberechtigung fuer ein konkretes Device auf Basis von Provisionierung, Kaufkontext, Pairing und Echtheitsnachweis.
     fields:
@@ -986,7 +1041,7 @@ items:
     type: data_model
     title: DeviceOtaEndpoint
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: OTA-Erreichbarkeit eines Account-Devices inklusive Hostname, IP, Port, Status, letztem Kontakt und letztem Flash-Ergebnis.
     fields:

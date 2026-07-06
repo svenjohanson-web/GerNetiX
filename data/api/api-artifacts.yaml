@@ -2,6 +2,125 @@
 kind: api_artifact_catalog
 sourceStatus: legacy_import_source
 items:
+  - id: api_artifact.context_manager
+    type: api_artifact
+    title: Codex Context Manager API
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: CrossDomain
+    summary: API-Artefakt fuer aktuelle Projektkontexte, Requirement Slices, Artefakt- und Runtime-Referenzen, Entscheidungen, Events, redigierte Context Packs und Redaction.
+    derivedFromRequirements:
+      - requirement.codex_context_uses_graph_as_source_of_truth
+    relatedDataModels:
+      - data_model.context_scope
+      - data_model.context_requirement_slice
+      - data_model.context_pack
+    endpoints:
+      - GET /api/context/current
+      - PUT /api/context/current
+      - POST /api/context/requirement-slices
+      - POST /api/context/artifact-references
+      - POST /api/context/runtime-references
+      - POST /api/context/decisions
+      - POST /api/context/events
+      - POST /api/context/packs
+      - GET /api/context/packs/{pack_id}
+      - POST /api/context/redact
+    rules:
+      - Context Packs duerfen sensible Werte nur redigiert ausgeben.
+      - Requirement Slices duerfen mehrere Anforderungen, Artefakte und Implementierungsstellen gemeinsam abbilden.
+
+  - id: api_artifact.hardware_shop
+    type: api_artifact
+    title: Hardware Shop API
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: Business
+    summary: API-Artefakt fuer Hardware-Katalog, Capabilities, Angebote, Matching, Warenkoerbe, Bestellungen und Kaufkontexte fuer spaetere Support- und Device-Management-Pruefungen.
+    endpoints:
+      - GET /api/hardware-shop/capabilities
+      - GET /api/hardware-shop/hardware-items
+      - GET /api/hardware-shop/processor-boards
+      - GET /api/hardware-shop/offers
+      - POST /api/hardware-shop/match
+      - POST /api/hardware-shop/carts
+      - POST /api/hardware-shop/orders
+      - GET /api/hardware-shop/orders/{order_id}/purchase-context
+      - POST /api/hardware-shop/admin/capabilities
+      - POST /api/hardware-shop/admin/hardware-items
+      - POST /api/hardware-shop/admin/offers
+
+  - id: api_artifact.admin_tool
+    type: api_artifact
+    title: Admin Tool API
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: CrossDomain
+    summary: API-Artefakt fuer Admin-Uebersicht, Device-Status, Customer-Data-Access-Consents, Audit Events, Learning Feedback und KI-Kostensteuerung.
+    derivedFromRequirements:
+      - requirement.device_admin_status_inspection
+      - requirement.customer_data_consent_for_admin_access
+      - requirement.ai_admin_usage_dashboard
+      - requirement.ai_admin_cost_control_actions
+    endpoints:
+      - GET /api/admin/overview
+      - GET /api/admin/devices
+      - GET /api/admin/devices/{device_id}
+      - POST /api/admin/customer-data-access/consents
+      - POST /api/admin/customer-data-access/consents/{consent_id}/revoke
+      - GET /api/admin/customer-data-access/audit-events
+      - GET /api/admin/learning-feedback
+      - GET /api/admin/ai-usage/summary
+      - POST /api/admin/ai-cost-controls/actions
+
+  - id: api_artifact.provisioning_tool
+    type: api_artifact
+    title: Provisioning Tool API
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: DeviceManagement
+    summary: API-Artefakt fuer Provisioning-Sessions, initiale Board-Registrierung, Manifest-Erzeugung und Vorbereitung von Device-Management-Endpunkten.
+    derivedFromRequirements:
+      - requirement.device_manufacturer_registration
+      - requirement.device_authenticity_challenge_response
+    endpoints:
+      - POST /api/provisioning-sessions
+      - GET /api/provisioning-sessions/{session_id}
+      - POST /api/provisioning-sessions/{session_id}/register
+      - GET /api/provisioning-sessions/{session_id}/manifest
+
+  - id: api_artifact.recovery_tool
+    type: api_artifact
+    title: Recovery Tool API
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: DeviceManagement
+    summary: API-Artefakt fuer Recovery-Sessions, Community-Board-Discovery, Capability-Erfassung, Community-Device-Registrierung, Credential-Erneuerung und Connectivity-Reset.
+    derivedFromRequirements:
+      - requirement.community_board_discovery_via_recovery_tool
+      - requirement.device_support_entitlement_traceability
+    endpoints:
+      - GET /api/recovery/sessions
+      - POST /api/recovery/sessions
+      - GET /api/recovery/sessions/{session_id}
+      - POST /api/recovery/sessions/{session_id}/capabilities
+      - POST /api/recovery/sessions/{session_id}/register-community-device
+      - POST /api/recovery/sessions/{session_id}/renew-credentials
+      - POST /api/recovery/sessions/{session_id}/connectivity-reset
+
+  - id: api_artifact.persistence_server
+    type: api_artifact
+    title: Persistence Server API
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: CrossDomain
+    summary: API-Artefakt fuer gemeinsame SQLite-State-Persistenz, State-Abruf, State-Aktualisierung, JSON-Export und Backup-Erzeugung. Der Persistence Server ist technische Infrastruktur und nicht fachliche Quelle der Wahrheit.
+    endpoints:
+      - GET /api/persistence/state/{service_key}
+      - PUT /api/persistence/state/{service_key}
+      - GET /api/persistence/export
+      - POST /api/persistence/backup
+
   - id: api_artifact.community_questions
     type: api_artifact
     title: Community Questions API

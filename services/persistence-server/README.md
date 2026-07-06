@@ -2,9 +2,9 @@
 
 SQLite-basierter MVP-Persistenzserver fuer GerNetiX-Services.
 
-Der Server speichert servicebezogene Snapshots in einer SQLite-Datei. Die Services koennen denselben SQLite-Pfad direkt mit `PERSISTENCE_BACKEND=sqlite` verwenden. Der HTTP-Server bietet zusaetzlich eine zentrale API fuer Werkzeuge, Migrationen und spaetere Service-Auslagerung.
+Der Server speichert servicebezogenen State als SQLite-Collections und normalisierte Tabellen. Die Services koennen denselben SQLite-Pfad direkt mit `PERSISTENCE_BACKEND=sqlite` verwenden. Der HTTP-Server bietet zusaetzlich eine zentrale API fuer Werkzeuge, Migrationen, Export, Backup und spaetere Service-Auslagerung.
 
-Direkte SQLite-Snapshot-Persistenz ist vorbereitet fuer:
+Direkte SQLite-State-Persistenz ist vorbereitet fuer:
 
 - Identity Server
 - Build-&-Deploy Server
@@ -34,8 +34,10 @@ http://127.0.0.1:5400
 
 ```text
 GET /health
-GET /api/persistence/snapshots/{serviceKey}
-PUT /api/persistence/snapshots/{serviceKey}
+GET /api/persistence/state/{serviceKey}
+PUT /api/persistence/state/{serviceKey}
+GET /api/persistence/export
+POST /api/persistence/backup
 ```
 
 `PUT` erwartet:

@@ -1,5 +1,6 @@
 model:
   id: tamagotchi
+  type: learning_project
   name: Tamagotchi
   version: 0.1.0
 
@@ -39,18 +40,21 @@ states:
 
 rules:
   - id: becomes_hungry
+    type: requirement_rule
     when:
       need: hunger
       greater_than: 70
     transition_to: hungry
     priority: 90
   - id: becomes_tired
+    type: requirement_rule
     when:
       need: energy
       less_than: 25
     transition_to: tired
     priority: 80
   - id: becomes_happy
+    type: requirement_rule
     when:
       need: happiness
       greater_than: 80

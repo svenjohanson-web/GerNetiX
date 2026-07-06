@@ -14,13 +14,24 @@ function createHttpApp(options) {
       return;
     }
 
-    const snapshotMatch = path.match(new RegExp(`^${prefix}/snapshots/([^/]+)$`));
-    if (req.method === "GET" && snapshotMatch) {
-      sendJson(res, 200, service.getSnapshot(decodeURIComponent(snapshotMatch[1])));
+    const stateMatch = path.match(new RegExp(`^${prefix}/state/([^/]+)$`));
+    if (req.method === "GET" && stateMatch) {
+      sendJson(res, 200, service.getState(decodeURIComponent(stateMatch[1])));
       return;
     }
-    if (req.method === "PUT" && snapshotMatch) {
-      sendJson(res, 200, service.putSnapshot(decodeURIComponent(snapshotMatch[1]), await readJsonBody(req)));
+    if (req.method === "PUT" && stateMatch) {
+      sendJson(res, 200, service.putState(decodeURIComponent(stateMatch[1]), await readJsonBody(req)));
+      return;
+    }
+
+    if (req.method === "GET" && path === `${prefix}/export`) {
+      sendJson(res, 200, service.exportDatabase());
+      return;
+    }
+
+    if (req.method === "POST" && path === `${prefix}/backup`) {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, service.backupDatabase(body.target_path || body.targetPath));
       return;
     }
 

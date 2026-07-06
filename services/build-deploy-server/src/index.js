@@ -7,7 +7,7 @@ const { DeviceJobLock } = require("./modules/device-job-lock");
 const { BuildDeployService } = require("./services/build-deploy-service");
 const { createConfig } = require("./config");
 const { createHttpApp } = require("./http-app");
-const { SqliteSnapshotStore } = require("../../shared");
+const { SqliteStateStore } = require("../../shared");
 
 function createDefaultBuildDeployService(config = createConfig()) {
   return new BuildDeployService({
@@ -24,8 +24,11 @@ function createDefaultBuildDeployService(config = createConfig()) {
     }),
     deployOrchestrator: new DeployJobOrchestrator(),
     deviceJobLock: new DeviceJobLock(),
-    snapshotStore: config.persistenceBackend === "sqlite"
-      ? new SqliteSnapshotStore(config.sqlitePath, "build-deploy-server", { defaultState: { jobs: [] } })
+    stateStore: config.persistenceBackend === "sqlite"
+      ? new SqliteStateStore(config.sqlitePath, "build-deploy-server", {
+        defaultState: { jobs: [] },
+        collectionMap: { jobs: "jobs" },
+      })
       : null,
   });
 }

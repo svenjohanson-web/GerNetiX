@@ -12,6 +12,30 @@ items:
     derivedFromBusinessCapabilities:
       - BC-002
 
+  - id: requirement.codex_context_uses_graph_as_source_of_truth
+    type: requirement
+    title: Codex-Kontext aus dem fachlichen Graphen ableiten
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: CrossDomain
+    summary: Codex muss wichtige Projektentscheidungen, Requirements, Architekturartefakte, Datenmodelle, APIs und erkannte Umsetzungsschnitte regelmaessig aus dem validierten Graphen als fachlichem Single Source of Truth laden koennen. Der Context Manager darf diese Wahrheit nicht ersetzen, sondern erstellt daraus redigierte, arbeitspaketbezogene Context Packs.
+    derivedFromBusinessCapabilities:
+      - BG-007
+    affectsArchitectureArtifacts:
+      - architecture_artifact.context_manager
+      - architecture_artifact.business_traceability_model
+    affectsDataModels:
+      - data_model.context_scope
+      - data_model.context_requirement_slice
+      - data_model.context_pack
+    affectsApiArtifacts:
+      - api_artifact.context_manager
+    acceptanceCriteria:
+      - Aktive Architekturentscheidungen werden zentral im Graphen abgelegt.
+      - Context Packs enthalten relevante aktive Entscheidungen fuer das aktuelle Arbeitspaket.
+      - Context Packs markieren Widersprueche zwischen Graph-Status und Implementierung als Review-Befund.
+      - Sensitive Werte werden vor Weitergabe an Codex oder KI-Kontexte redigiert.
+
   - id: requirement.identity_registration_login
     type: requirement
     title: Identity-Modul fuer Registrierung und Login bereitstellen
@@ -765,7 +789,7 @@ items:
     type: requirement
     title: Hersteller-Register fuer GerNetiX Boards fuehren
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: GerNetiX muss intern provisionierte Boards als konkrete Devices registrieren koennen, inklusive Seriennummer, Hardwareprofil, Provisionierungscharge, Firmwarestand, Credential-Referenz und Support-/Garantiegrundlage.
     derivedFromBusinessCapabilities:
@@ -790,7 +814,7 @@ items:
     type: requirement
     title: Kunden-Register und Pairing fuer Account-Devices unterstuetzen
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Nutzer muessen eigene oder GerNetiX-provisionierte Hardware in ihrem Profil registrieren und einem Account zuordnen koennen, ohne dass Besitz, Echtheit und Supportanspruch fachlich vermischt werden.
     derivedFromBusinessCapabilities:
@@ -814,7 +838,7 @@ items:
     type: requirement
     title: Echtheit von GerNetiX Boards per Challenge Response pruefen
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Ein GerNetiX Board muss seine Echtheit ueber einen Challenge-Response-Mechanismus wie HMAC nachweisen koennen, damit kopierte Seriennummern keinen Support-, Garantie- oder Fernwartungsanspruch erzeugen.
     derivedFromBusinessCapabilities:
@@ -836,7 +860,7 @@ items:
     type: requirement
     title: Community-Hardware nutzbar machen ohne GerNetiX Supportanspruch
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Selbst gekaufte oder selbst gebaute Hardware muss inventarisiert, gematcht und bei technischer Eignung genutzt werden koennen, bleibt aber als community_unverified gekennzeichnet und erzeugt keinen GerNetiX-Hardware-Support- oder Garantieanspruch.
     derivedFromBusinessCapabilities:
@@ -894,7 +918,7 @@ items:
     type: requirement
     title: OTA-Zielgeraete aus IDE-Profil auswaehlen
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: IDE
     summary: Wenn ein Setup-Rezept oder Lernprojekt OTA-Flash erlaubt, muss die IDE aus dem Account-Device-Inventar alle kompatiblen Devices anhand TechnicalCapabilities, Boardprofil, Online-Status und OTA-Status anzeigen und den Nutzer ein Zielgeraet auswaehlen lassen.
     derivedFromBusinessCapabilities:
@@ -1071,7 +1095,7 @@ items:
     type: requirement
     title: Supportanspruch fuer konkrete Devices nachvollziehbar pruefen
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Support und Reklamation muessen nachvollziehbar pruefen koennen, ob ein konkretes Device von GerNetiX provisioniert oder verkauft wurde, welchem Account es zugeordnet ist, ob ein gueltiger Echtheitsnachweis vorliegt und welcher Supportanspruch daraus entsteht.
     derivedFromBusinessCapabilities:
@@ -1097,7 +1121,7 @@ items:
     type: requirement
     title: Device-Management-Status im Admin Tool pruefen
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Administratoren und berechtigte Supportrollen muessen im Admin Tool konkrete Devices suchen und deren Device-Status, Pairing-Status, Connectivity-Status, OTA-Status, Lifecycle, GerNetiX-Verified-vs-Community-Einstufung, Credential-Historie und Support-Entitlement pruefen koennen.
     derivedFromBusinessCapabilities:

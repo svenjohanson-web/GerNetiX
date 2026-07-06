@@ -1,4 +1,4 @@
-const { SqliteSnapshotStore } = require("../../shared");
+const { SqliteStateStore } = require("../../shared");
 const { PersistenceServerError } = require("./errors");
 
 class PersistenceService {
@@ -6,7 +6,7 @@ class PersistenceService {
     this.dbPath = options.dbPath;
   }
 
-  getSnapshot(serviceKey) {
+  getState(serviceKey) {
     const store = this.openStore(serviceKey);
     try {
       return {
@@ -18,9 +18,9 @@ class PersistenceService {
     }
   }
 
-  putSnapshot(serviceKey, input = {}) {
+  putState(serviceKey, input = {}) {
     if (!input || typeof input.state !== "object" || Array.isArray(input.state)) {
-      throw new PersistenceServerError("invalid_snapshot_state", "Snapshot muss ein JSON-Objekt unter state enthalten.");
+      throw new PersistenceServerError("invalid_service_state", "State muss ein JSON-Objekt unter state enthalten.");
     }
     const store = this.openStore(serviceKey);
     try {
@@ -34,12 +34,34 @@ class PersistenceService {
     }
   }
 
+  exportDatabase() {
+    const store = this.openStore("persistence-server");
+    try {
+      return store.exportJson();
+    } finally {
+      store.close();
+    }
+  }
+
+  backupDatabase(targetPath) {
+    const normalized = String(targetPath || "").trim();
+    if (!normalized) {
+      throw new PersistenceServerError("invalid_backup_path", "Backup-Pfad fehlt.");
+    }
+    const store = this.openStore("persistence-server");
+    try {
+      return store.backupTo(normalized);
+    } finally {
+      store.close();
+    }
+  }
+
   openStore(serviceKey) {
     const normalized = String(serviceKey || "").trim();
     if (!/^[a-z0-9._-]+$/i.test(normalized)) {
       throw new PersistenceServerError("invalid_service_key", "Service-Key ist ungueltig.");
     }
-    return new SqliteSnapshotStore(this.dbPath, normalized, { defaultState: {} });
+    return new SqliteStateStore(this.dbPath, normalized, { defaultState: {} });
   }
 }
 

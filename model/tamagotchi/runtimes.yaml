@@ -27,6 +27,7 @@ runtimes:
 
 learning_path:
   - id: why_model_not_code
+    type: learning_path_step
     title: Warum nicht direkt Code?
     runtime: browser_app
     focus:
@@ -36,6 +37,7 @@ learning_path:
     state_update_mode: conceptual
     persistence: none
   - id: model_is_runtime_independent
+    type: learning_path_step
     title: Modell ist unabhaengig von der Runtime
     runtime: browser_app
     focus:
@@ -45,6 +47,7 @@ learning_path:
     state_update_mode: conceptual
     persistence: none
   - id: runtime_choice_browser_or_embedded
+    type: learning_path_step
     title: Runtime-Pfad waehlen
     runtime: browser_app
     choices:
@@ -55,7 +58,9 @@ learning_path:
       - Embedded fuer spaetere Hardware-Umsetzung
       - Modell bleibt gleich
     state_update_mode: conceptual
-    persistence: none  - id: browser_app_quick_start
+    persistence: none
+  - id: browser_app_quick_start
+    type: learning_path_step
     title: Erste Browser App erzeugen und beobachten
     runtime: browser_app
     focus:
@@ -66,6 +71,7 @@ learning_path:
     state_update_mode: event_driven
     persistence: none
   - id: timed_state_machine
+    type: learning_path_step
     title: Zeitgesteuerte State-Machine verstehen
     runtime: browser_app
     focus:
@@ -76,6 +82,7 @@ learning_path:
     state_update_mode: time_driven
     persistence: browser_storage
   - id: next_runtime_apps
+    type: learning_path_step
     title: Weitere Runtime-Apps aus demselben Modell erzeugen
     runtime: embedded
     focus:
