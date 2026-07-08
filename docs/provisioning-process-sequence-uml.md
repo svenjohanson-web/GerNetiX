@@ -18,14 +18,14 @@ control "Hardware-Katalog\nProcessorBoard" as Catalog
 database "Provisioning Repository\nSQLite oder Memory" as Repo
 database "SQLite / Artifact Store\nBasissoftware Firmware" as FirmwareStore
 participant "Temporaeres Staging\nFactory Header" as Staging
-control "USB Flash Runner\nmock oder PlatformIO" as FlashRunner
+control "Browser Web Serial Flasher\nesptool-js" as BrowserFlasher
 participant "ProcessorBoard\nESP32 per USB" as Board
 database "Board NVS\nlokaler Speicher" as NVS
 control "Device Management Server\n:4700" as DeviceManagement
 
 == Session vorbereiten ==
 
-User -> HMI: Boarddaten eingeben\nSeriennummer, Hardwareprofil, Charge,\nFirmwareversion, USB-Port
+User -> HMI: Boarddaten eingeben\nSeriennummer, Hardwareprofil, Charge,\nFirmwareversion
 HMI -> Server: POST /api/provisioning-sessions\nprocessor_board_id\nflash.requested=true\nflash.write_factory_header=true
 Server -> Service: createSession(input)
 Service -> Catalog: ProcessorBoard laden
@@ -52,28 +52,36 @@ end
 == USB Factory Flash ==
 
 User -> HMI: Firmware per USB flashen
-HMI -> Server: POST /api/provisioning-sessions/{id}/usb-flash\nport=COMx
-Server -> Service: executeUsbFlash(sessionId, input)
-Service -> Staging: Factory Header vorhanden?
+User -> HMI: USB-Geraet im Browser auswaehlen
+HMI -> HMI: lokaler Abbruchzustand starten\nCancel-Button sofort aktiv
+HMI -> Server: GET /api/provisioning-firmware-artifacts/{id}/content
+Server -> FirmwareStore: Firmware-Binary laden
+FirmwareStore --> Server: merged firmware bytes
+Server --> HMI: application/octet-stream
+HMI -> BrowserFlasher: esptool-js starten\nWeb Serial Port + Firmware bytes
+BrowserFlasher -> Board: ESP32 Bootloader verbinden\nFirmware schreiben
 
-alt Header fehlt
-  Staging --> Service: nicht vorhanden
-  Service --> Server: Fehler missing_factory_header
-  Server --> HMI: 409 Konflikt
-  HMI --> User: Session mit Header-Erzeugung neu vorbereiten
-else Header vorhanden
-  Service -> FlashRunner: run({ firmwareArtifact, stagingPath, port })
-  FlashRunner -> Board: Build/Upload ueber USB\nPlatformIO oder Mock
-  Board --> FlashRunner: Flash erfolgreich oder Fehler
+alt Browser unterstuetzt Web Serial nicht
+  HMI --> User: Chrome oder Edge erforderlich
+else Web Serial verfuegbar
+  Board --> BrowserFlasher: Flash erfolgreich oder Fehler
+
+  opt Nutzer bricht ab
+    User -> HMI: USB-Flash abbrechen
+    HMI -> HMI: Web-Serial-Transport trennen\nUI sofort freigeben
+  end
 
   alt Flash fehlgeschlagen
-    FlashRunner --> Service: Fehler / Exitcode
+    BrowserFlasher --> HMI: Fehler / Browser-Log
+    HMI -> Server: POST /api/provisioning-sessions/{id}/browser-usb-flash-result\nstatus=failed
+    Server -> Service: recordBrowserUsbFlashResult(sessionId, input)
     Service -> Repo: flash_plan.status=usb_flash_failed
-    Service --> Server: Fehler usb_flash_failed
-    Server --> HMI: Fehler anzeigen
+    Service --> Server: aktualisierte Session
     HMI --> User: Recovery Tool verwenden,\nBoard nicht als provisioniert abschliessen
   else Flash erfolgreich
-    FlashRunner --> Service: usb_flash_result
+    BrowserFlasher --> HMI: Flash erfolgreich
+    HMI -> Server: POST /api/provisioning-sessions/{id}/browser-usb-flash-result\nstatus=flashed
+    Server -> Service: recordBrowserUsbFlashResult(sessionId, input)
     Service -> Repo: flash_plan.status=usb_flashed
     Service --> Server: aktualisierte Session
     Server --> HMI: Flash erfolgreich

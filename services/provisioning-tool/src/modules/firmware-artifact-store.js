@@ -32,6 +32,34 @@ class FirmwareArtifactStore {
     return artifact ? redactArtifact(artifact) : null;
   }
 
+  readArtifactContent(artifactId) {
+    const artifact = this.artifacts.get(required(artifactId, "artifact_id"));
+    if (!artifact) {
+      throw new ProvisioningError(
+        "firmware_artifact_not_found",
+        "Factory-Firmware-Artefakt wurde nicht im Provisioning Artifact Store gefunden.",
+        404,
+        { artifact_id: artifactId },
+      );
+    }
+    const bytes = artifact.content_base64
+      ? Buffer.from(artifact.content_base64, "base64")
+      : fs.readFileSync(path.resolve(artifact.local_file_path));
+    const actualHash = sha256(bytes);
+    if (artifact.sha256 && artifact.sha256 !== actualHash) {
+      throw new ProvisioningError("firmware_artifact_hash_mismatch", "Firmware-Artefakt SHA-256 passt nicht.", 409, {
+        artifact_id: artifactId,
+        expected_sha256: artifact.sha256,
+        actual_sha256: actualHash,
+      });
+    }
+    return {
+      artifact: redactArtifact(artifact),
+      bytes,
+      sha256: actualHash,
+    };
+  }
+
   upsertArtifact(input = {}) {
     const artifactId = required(input.artifact_id || input.id, "artifact_id");
     const artifact = normalizeArtifact({

@@ -57,26 +57,18 @@ Die staged Basissoftware importiert diesen Payload beim ersten Boot aus dem per 
 
 Die Factory-HMI darf keine Firmware-Dateien vom Bedienrechner hochladen. Sie zeigt nur die vom ProcessorBoard referenzierte Firmware an und flasht diese, wenn sie serverseitig im SQLite-/Artifact-Store materialisierbar ist. Firmware-Artefakte werden durch Build-/Admin-Prozesse oder beim Serverstart ueber einen konfigurierten Serverpfad bereitgestellt.
 
-Der echte USB-Flash laeuft in der HMI als serverseitiger Flash-Job. Die Oberflaeche zeigt eine Progress Bar, aktuelle Phase und die letzten `esptool`-Logzeilen, damit der Bediener waehrend `Connecting`, `Writing`, `Verifying` und Reset Rueckmeldung bekommt.
+Der physische USB-Flash laeuft direkt im Browser per Web Serial und `esptool-js`. Der Server startet dafuer keinen lokalen Flash-Prozess. Er liefert nur das Firmware-Binary aus dem Artifact Store und speichert danach das Ergebnis, das die HMI meldet. Die Oberflaeche zeigt Progress Bar, aktuelle Phase und Logzeilen des Browser-Flashs.
 
 ## Einheitlicher Runtime-Vertrag
 
-Das Provisioning Tool unterscheidet nicht zwischen Entwicklungs- und Deploybetrieb. Fuer echten USB-Flash muessen auf jedem Zielsystem dieselben Runtime-Voraussetzungen erfuellt sein:
+Das Provisioning Tool unterscheidet nicht zwischen Entwicklungs- und Deploybetrieb. Fuer den produktiven USB-Flash gelten auf jedem Zielsystem dieselben Voraussetzungen:
 
 - Firmware-Artefakt liegt serverseitig im SQLite-/Artifact-Store oder wird beim Start aus einem Serverpfad registriert.
-- USB-Flash-Toolchain ist als Runtime-Artefakt im Manifest `.runtime/toolchains/provisioning/toolchain.json` beschrieben.
-- Die HMI bietet echten Flash nur an, wenn `ALLOW_REAL_USB_FLASH=true`, das Firmware-Artefakt materialisierbar und die Toolchain-Dateien vorhanden sind.
+- Die HMI wird in einem Browser mit Web-Serial-Unterstuetzung geoeffnet.
+- Der Bediener waehlt das angeschlossene USB-Serial-Geraet direkt im Browser aus.
+- Der Browser schreibt die Firmware per `esptool-js` ueber USB auf das Board.
 
-Das Toolchain-Manifest wird nicht vom Server erraten. Es wird beim Einrichten der Installation erzeugt:
-
-```powershell
-$env:ESPTOOL_EXE="C:\pfad\zur\tool-esptoolpy\esptool.py"
-$env:ESPTOOL_PYTHON_EXE="C:\pfad\zur\python.exe"
-$env:PLATFORMIO_EXE="C:\pfad\zur\platformio.exe"
-npm run prepare:toolchain
-```
-
-Wenn das Manifest fehlt oder auf nicht vorhandene Dateien zeigt, bleibt echter USB-Flash gesperrt und die API liefert den konkreten Readiness-Fehler.
+Es gibt keinen produktiven Umschalter zwischen Mock, serverseitigem Flash, Python, PlatformIO oder lokaler Projektumgebung.
 
 ## Firmware-Artefakt in SQLite bereitstellen
 
@@ -99,12 +91,11 @@ firmware_artifact.esp32_basissoftware_factory.latest
 sqlite://provisioning_firmware_artifacts/firmware_artifact.esp32_basissoftware_factory.latest
 ```
 
-Der Server muss fuer echten USB-Flash mit SQLite-Persistenz und Real-Flash-Freigabe laufen, zum Beispiel:
+Der Server muss fuer den Browser-USB-Flash mit SQLite-Persistenz und serverseitigem Firmware-Artefakt laufen, zum Beispiel:
 
 ```powershell
 $env:PERSISTENCE_BACKEND="sqlite"
 $env:PROVISIONING_SQLITE_PATH="C:\Users\sven_\Desktop\GerNetiX\.runtime\gernetix-services.sqlite"
-$env:ALLOW_REAL_USB_FLASH="true"
 npm run dev
 ```
 
@@ -114,21 +105,11 @@ Konfiguration erfolgt ueber Umgebungsvariablen:
 - `PORT`: HTTP-Port, Standard `4500`
 - `PROVISIONING_RUNTIME_DIR`: Runtime-Verzeichnis fuer temporaere Artefakte
 - `DEVICE_MANAGEMENT_BASE_URL`: Zielbasis fuer den spaeteren Device-Management-Register-Auftrag
-- `FLASH_RUNNER`: `mock`, `esptool` oder `platformio`, Standard `mock`
-- `ALLOW_REAL_USB_FLASH`: echter USB-Flash per UI/API ist nur mit `true` erlaubt, Standard deaktiviert
 - `HARDWARE_CATALOG_BASE_URL` oder `HARDWARE_SHOP_BASE_URL`: Hardware-Katalog-API, Standard `http://127.0.0.1:4900/api/hardware-shop`
 - `PROVISIONING_FIRMWARE_ARTIFACT_ID`: Fallback-Artefakt-ID der Basissoftware, Standard `firmware_artifact.esp32_basissoftware_factory.latest`
 - `PROVISIONING_FIRMWARE_ARTIFACT_SOURCE`: Artefaktquelle, Standard `sqlite`
 - `PROVISIONING_FIRMWARE_ARTIFACT_URI`: URI des serverseitigen Artefakts, Standard `sqlite://provisioning_firmware_artifacts/{artifact_id}`
 - `PROVISIONING_FIRMWARE_FILE_PATH`: optionaler Serverpfad zu einem vorbereiteten Firmware-Binary; wird beim Start als Artefakt in SQLite referenziert
-- `PROVISIONING_FIRMWARE_STAGING_PATH`: temporaerer Staging-Pfad fuer PlatformIO-USB-Flash
-- `PROVISIONING_FIRMWARE_ROOT`: temporaerer Firmware-Staging-Root fuer PlatformIO-USB-Flash
-- `PROVISIONING_TOOLCHAIN_ROOT`: Runtime-Verzeichnis fuer den USB-Flash-Toolchain-Vertrag, Standard `.runtime/toolchains/provisioning`
-- `PROVISIONING_TOOLCHAIN_MANIFEST`: Pfad zum Toolchain-Manifest, Standard `{PROVISIONING_TOOLCHAIN_ROOT}/toolchain.json`
-- `PLATFORMIO_EXE`: PlatformIO-Executable fuer das Toolchain-Manifest oder explizite Betriebsueberschreibung
-- `ESPTOOL_EXE`: esptool-Executable fuer das Toolchain-Manifest oder explizite Betriebsueberschreibung
-- `ESPTOOL_PYTHON_EXE`: Python-Executable, wenn `ESPTOOL_EXE` auf eine `.py`-Datei zeigt
-- `PROVISIONING_FLASH_TIMEOUT_MS`: hartes Timeout fuer PlatformIO-USB-Flash, Standard `180000`
 - `PROVISIONING_GENERATED_HEADER_PATH`: Zielpfad fuer den generierten Factory-Provisioning-Header
 
 ## Sicherheitsregeln
@@ -140,13 +121,11 @@ Konfiguration erfolgt ueber Umgebungsvariablen:
 - Die Secret-Header-Datei wird nur geschrieben, wenn `flash.write_factory_header` ausdruecklich gesetzt ist, und standardmaessig nur unter `.runtime`.
 - Ein Device kann im MVP nicht mehrfach mit aktivem Credential provisioniert werden.
 - Ein aktives Credential kann in der Factory-HMI explizit zurueckgesetzt werden; der alte Vorgang bleibt mit Audit-Event nachvollziehbar.
-- Flash-Ausfuehrung ist standardmaessig ein sicherer Mock. Echter USB-Flash wird nur mit `ALLOW_REAL_USB_FLASH=true`, einem registrierten serverseitigen Firmware-Artefakt und einem gueltigen Toolchain-Manifest gestartet.
-- Die UI zeigt beide Flash-Modi. "Echter USB-Flash" ist nur auswaehlbar, wenn Freigabe, Firmware-Artefakt und Toolchain-Readiness zusammenpassen.
+- Flash-Ausfuehrung in der Factory-HMI laeuft ausschliesslich per Browser Web Serial. Der Server fuehrt keinen USB-Flash-Prozess aus.
+- Die UI zeigt keinen Mock- oder Server-Flash-Modus.
 - Kein Hersteller-Provisioning ueber WLAN, Setup-AP oder lokales Device-Webinterface.
 
 ## Nicht-Ziele fuer diesen Stand
 
-- keine echte USB-Erkennung
-- keine automatische USB-Erkennung vor dem Flash; der Port muss angegeben werden
 - keine produktive Authentifizierung
 - keine produktive Rollen-/Rechteverwaltung fuer das Factory Tool

@@ -91,6 +91,40 @@ test("manifest contains endpoint and credential reference but no raw secret", as
   assert.equal(manifest.credential.one_time_device_secret, undefined);
 });
 
+test("exposes firmware artifact content for browser USB flash", async () => {
+  const service = createService();
+  const created = await service.createSession(validInput());
+  const content = service.getFirmwareArtifactContent(created.usb_flash_package.firmware_artifact.artifact_id);
+
+  assert.equal(content.artifact.artifact_id, "firmware_artifact.esp32_basissoftware_factory.latest");
+  assert.ok(content.bytes.length > 0);
+  assert.equal(content.sha256, content.artifact.sha256);
+});
+
+test("records browser Web Serial flash result without server runner", async () => {
+  const service = createService();
+  const created = await service.createSession(validInput({
+    flash: {
+      requested: true,
+      write_factory_header: true,
+    },
+  }));
+
+  const flashed = service.recordBrowserUsbFlashResult(created.session_id, {
+    status: "flashed",
+    actor: "factory@sven.local",
+    port: "WebSerial 1A86:7523",
+    chip_name: "ESP32",
+    stdout: "browser flash ok",
+  });
+
+  assert.equal(flashed.flash_plan.status, "usb_flashed");
+  assert.equal(flashed.usb_flash_result.runner, "web_serial");
+  assert.equal(flashed.usb_flash_result.transport, "web_serial");
+  assert.equal(flashed.usb_flash_result.port, "WebSerial 1A86:7523");
+  assert.equal(flashed.audit_events.at(-1).runner, "web_serial");
+});
+
 test("writes factory provisioning header only for explicit USB flash package request", async () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-provisioning-"));
   const headerPath = path.join(tempRoot, "include", "basissoftware", "generated_provisioning_payload.h");
@@ -271,11 +305,14 @@ test("registers firmware artifact and exposes real flash readiness when allowed"
 });
 
 test("keeps real flash disabled when the runtime toolchain contract is missing", () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-provisioning-no-toolchain-"));
   const service = createDefaultProvisioningTool(createConfig({
     DEVICE_MANAGEMENT_BASE_URL: "https://devices.gernetix.test/api/device-management",
     FLASH_RUNNER: "mock",
     ALLOW_REAL_USB_FLASH: "true",
     REGISTER_DEVICE_ON_COMPLETE: "false",
+    PROVISIONING_TOOLCHAIN_ROOT: tempRoot,
+    PROVISIONING_TOOLCHAIN_MANIFEST: path.join(tempRoot, "toolchain.json"),
   }));
   service.upsertFirmwareArtifact({
     artifact_id: "firmware_artifact.esp32_basissoftware_factory.latest",

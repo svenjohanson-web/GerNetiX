@@ -79,18 +79,21 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: DeviceManagement
-    summary: API-Artefakt fuer Provisioning-Sessions, initiale Board-Registrierung, Manifest-Erzeugung, USB-Factory-Flash mit pollbarem Fortschrittsjob und Vorbereitung von Device-Management-Endpunkten.
+    summary: API-Artefakt fuer Provisioning-Sessions, initiale Board-Registrierung, Manifest-Erzeugung, Firmware-Artefakt-Download fuer Browser-Web-Serial-Flash und Vorbereitung von Device-Management-Endpunkten.
     derivedFromRequirements:
       - requirement.device_manufacturer_registration
       - requirement.device_authenticity_challenge_response
     endpoints:
       - POST /api/provisioning-sessions
       - GET /api/provisioning-sessions/{session_id}
-      - POST /api/provisioning-sessions/{session_id}/register
+      - POST /api/provisioning-sessions/{session_id}/complete
       - GET /api/provisioning-sessions/{session_id}/manifest
-      - POST /api/provisioning-sessions/{session_id}/usb-flash
-      - POST /api/provisioning-sessions/{session_id}/usb-flash-jobs
-      - GET /api/provisioning-flash-jobs/{job_id}
+      - POST /api/provisioning-sessions/{session_id}/browser-usb-flash-result
+      - GET /api/provisioning-firmware-artifact
+      - GET /api/provisioning-firmware-artifacts
+      - GET /api/provisioning-firmware-artifacts/{artifact_id}/content
+      - GET /api/provisioning-processor-boards
+      - POST /api/provisioning-credentials/reset
 
   - id: api_artifact.recovery_tool
     type: api_artifact

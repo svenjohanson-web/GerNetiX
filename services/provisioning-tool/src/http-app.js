@@ -3,6 +3,7 @@ const path = require("node:path");
 const { ProvisioningError } = require("./errors");
 
 const publicDir = path.join(__dirname, "..", "public");
+const esptoolJsDir = path.join(__dirname, "..", "node_modules", "esptool-js");
 const maxJsonBodyBytes = 32 * 1024 * 1024;
 const contentTypes = {
   ".html": "text/html; charset=utf-8",
@@ -33,6 +34,18 @@ function createHttpApp(options) {
 
     if (req.method === "GET" && url.pathname === "/api/provisioning-firmware-artifacts") {
       sendJson(res, 200, service.listFirmwareArtifacts());
+      return;
+    }
+
+    const firmwareContentMatch = url.pathname.match(/^\/api\/provisioning-firmware-artifacts\/([^/]+)\/content$/);
+    if (req.method === "GET" && firmwareContentMatch) {
+      const content = service.getFirmwareArtifactContent(decodeURIComponent(firmwareContentMatch[1]));
+      sendBinary(res, 200, content.bytes, {
+        "Content-Type": "application/octet-stream",
+        "Content-Disposition": `attachment; filename="${safeHeaderValue(content.artifact.file_name || "firmware.bin")}"`,
+        "X-Firmware-Artifact-Id": safeHeaderValue(content.artifact.artifact_id),
+        "X-Firmware-Sha256": content.sha256,
+      });
       return;
     }
 
@@ -70,12 +83,6 @@ function createHttpApp(options) {
       return;
     }
 
-    if (req.method === "POST" && sessionMatch) {
-      const body = await readJsonBody(req);
-      sendJson(res, 200, await service.completeSession(decodeURIComponent(sessionMatch[1]), body));
-      return;
-    }
-
     const completeMatch = url.pathname.match(/^\/api\/provisioning-sessions\/([^/]+)\/complete$/);
     if (req.method === "POST" && completeMatch) {
       const body = await readJsonBody(req);
@@ -89,23 +96,14 @@ function createHttpApp(options) {
       return;
     }
 
-    const usbFlashMatch = url.pathname.match(/^\/api\/provisioning-sessions\/([^/]+)\/usb-flash$/);
-    if (req.method === "POST" && usbFlashMatch) {
-      const body = await readJsonBody(req);
-      sendJson(res, 200, await service.executeUsbFlash(decodeURIComponent(usbFlashMatch[1]), body));
+    const browserUsbFlashResultMatch = url.pathname.match(/^\/api\/provisioning-sessions\/([^/]+)\/browser-usb-flash-result$/);
+    if (req.method === "POST" && browserUsbFlashResultMatch) {
+      sendJson(res, 200, service.recordBrowserUsbFlashResult(decodeURIComponent(browserUsbFlashResultMatch[1]), await readJsonBody(req)));
       return;
     }
 
-    const usbFlashJobMatch = url.pathname.match(/^\/api\/provisioning-sessions\/([^/]+)\/usb-flash-jobs$/);
-    if (req.method === "POST" && usbFlashJobMatch) {
-      const body = await readJsonBody(req);
-      sendJson(res, 202, service.startUsbFlashJob(decodeURIComponent(usbFlashJobMatch[1]), body));
-      return;
-    }
-
-    const flashJobMatch = url.pathname.match(/^\/api\/provisioning-flash-jobs\/([^/]+)$/);
-    if (req.method === "GET" && flashJobMatch) {
-      sendJson(res, 200, service.getUsbFlashJob(decodeURIComponent(flashJobMatch[1])));
+    if (req.method === "GET" && url.pathname.startsWith("/vendor/esptool-js/")) {
+      serveVendorEsptool(res, url.pathname);
       return;
     }
 
@@ -142,6 +140,42 @@ function readJsonBody(req) {
 function sendJson(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(payload));
+}
+
+function sendBinary(res, status, bytes, headers = {}) {
+  res.writeHead(status, {
+    "Content-Length": bytes.length,
+    "Cache-Control": "no-store",
+    ...headers,
+  });
+  res.end(bytes);
+}
+
+function serveVendorEsptool(res, requestPath) {
+  const relativePath = requestPath.replace(/^\/vendor\/esptool-js\//, "");
+  const root = relativePath === "bundle.js" ? esptoolJsDir : path.join(esptoolJsDir, "lib");
+  const filePath = path.normalize(path.join(root, relativePath === "bundle.js" ? "bundle.js" : relativePath));
+  if (!filePath.startsWith(root)) {
+    res.writeHead(403);
+    res.end("Forbidden");
+    return;
+  }
+  fs.readFile(filePath, (error, content) => {
+    if (error) {
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Not found");
+      return;
+    }
+    res.writeHead(200, {
+      "Content-Type": contentTypes[path.extname(filePath)] || "text/javascript; charset=utf-8",
+      "Cache-Control": "no-store",
+    });
+    res.end(content);
+  });
+}
+
+function safeHeaderValue(value) {
+  return String(value || "").replace(/[\r\n"]/g, "_");
 }
 
 function serveStatic(res, requestPath) {

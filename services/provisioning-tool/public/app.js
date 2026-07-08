@@ -4,16 +4,20 @@ const state = {
   processorBoards: [],
   firmwareArtifact: null,
   flashMode: null,
-  operationTimer: null,
-  flashJobPoller: null,
+  serialPort: null,
+  serialPortInfo: null,
+  flashOperation: null,
+  activeTransport: null,
+  esptoolModule: null,
 };
 
 document.querySelector("#sessionForm").addEventListener("submit", createSession);
 document.querySelector("#processorBoard").addEventListener("change", selectProcessorBoard);
 document.querySelector("#credentialResetButton").addEventListener("click", resetActiveCredential);
+document.querySelector("#selectUsbDeviceButton").addEventListener("click", selectUsbDevice);
 document.querySelector("#usbFlashButton").addEventListener("click", executeUsbFlash);
+document.querySelector("#cancelFlashButton").addEventListener("click", cancelUsbFlash);
 document.querySelector("#completeButton").addEventListener("click", completeSession);
-document.querySelectorAll("input[name='flashMode']").forEach((input) => input.addEventListener("change", render));
 bootstrap();
 
 async function bootstrap() {
@@ -22,6 +26,7 @@ async function bootstrap() {
   const boards = await getJson("/api/provisioning-processor-boards").catch(() => ({ items: [] }));
   state.processorBoards = boards.items || [];
   state.flashMode = await getJson("/api/provisioning-flash-mode").catch(() => null);
+  await restoreSessionFromBrowserState();
   renderProcessorBoards();
   renderFlashMode();
   await selectProcessorBoard();
@@ -42,15 +47,16 @@ async function createSession(event) {
       capabilities: ["wifi", "ota", "flash_firmware"],
       flash: {
         requested: true,
-        port: value("#usbPort"),
         write_factory_header: true,
       },
     });
     const manifest = await getJson(`/api/provisioning-sessions/${encodeURIComponent(session.session_id)}/manifest`);
     state.session = { ...session, manifest };
     state.secret = session.one_time_device_secret || "";
+    saveBrowserSessionState(state.session);
     state.flashMode = await getJson("/api/provisioning-flash-mode").catch(() => state.flashMode);
     render();
+    setStatus("flashStatus", "ok", "Session und USB-Factory-Header wurden vorbereitet. USB-Flash kann gestartet werden, sobald Firmware-Artefakt und USB-Geraet bereit sind.");
   } catch (error) {
     setStatus("flashStatus", "error", error.message);
   }
@@ -73,6 +79,7 @@ async function resetActiveCredential() {
     });
     state.session = null;
     state.secret = "";
+    clearBrowserSessionState();
     setStatus("flashStatus", "ok", `Credential zurueckgesetzt: ${result.credential_id}`);
     render();
   } catch (error) {
@@ -92,39 +99,74 @@ async function selectProcessorBoard() {
 
 async function executeUsbFlash() {
   if (!state.session) return;
+  if (needsUsbTargetSelection()) {
+    setStatus("flashStatus", "error", "Bitte waehle zuerst das angeschlossene USB-Geraet im Browser aus.");
+    return;
+  }
+  const operation = startFlashOperation();
   document.querySelector("#usbFlashButton").disabled = true;
-  const runner = selectedFlashMode();
-  const port = value("#usbPort");
   resetFlashProgress();
   renderFlashJob({
     status: "running",
-    runner,
-    port,
-    percent: runner === "esptool" ? 0 : 10,
+    runner: "web_serial",
+    port: selectedUsbPort(),
+    percent: 0,
     phase: "starting",
-    message: runner === "esptool" ? "Echter USB-Flash wird gestartet..." : "Mock-Flash wird gestartet...",
+    message: "Browser-USB-Flash wird gestartet...",
     logs: [],
   });
   try {
-    const job = await postJson(`/api/provisioning-sessions/${encodeURIComponent(state.session.session_id)}/usb-flash-jobs`, {
-      port,
+    const result = await flashEsp32InBrowser(operation);
+    if (operation.canceled || state.flashOperation?.id !== operation.id) return;
+    const updated = await postJson(`/api/provisioning-sessions/${encodeURIComponent(state.session.session_id)}/browser-usb-flash-result`, {
+      status: "flashed",
       actor: value("#actor"),
-      flash_runner: runner,
+      port: selectedUsbPort(),
+      chip_name: result.chipName || "",
+      stdout: result.log || "",
     });
-    await pollFlashJob(job.job_id);
+    state.session = updated;
+    saveBrowserSessionState(state.session);
+    finishFlashOperation();
+    renderFlashJob({
+      status: "completed",
+      runner: "web_serial",
+      port: selectedUsbPort(),
+      percent: 100,
+      phase: "completed",
+      message: "Firmware wurde per Browser-USB geflasht.",
+      logs: [],
+    });
+    setStatus("flashStatus", "ok", "Firmware wurde per Browser-USB geflasht.");
   } catch (error) {
-    stopFlashJobPolling();
-    if (!error.flashJobRendered) {
-      setStatus("flashStatus", "error", error.message);
+    if (operation.canceled || error.name === "AbortError") {
+      finishCanceledFlashOperation();
+      return;
     }
+    await recordBrowserFlashFailure(error);
+    setStatus("flashStatus", "error", error.message);
     document.querySelector("#usbFlashButton").disabled = false;
+    finishFlashOperation();
   }
+}
+
+async function cancelUsbFlash() {
+  if (!state.flashOperation) return;
+  if (state.flashOperation) {
+    state.flashOperation.canceled = true;
+    state.flashOperation.abortController.abort();
+  }
+  if (state.activeTransport) {
+    state.activeTransport.disconnect().catch(() => {});
+    state.activeTransport = null;
+  }
+  finishCanceledFlashOperation();
 }
 
 async function completeSession() {
   if (!state.session) return;
   setStatus("flashStatus", "running", "Device Management Registrierung wird abgeschlossen...");
-  const completed = await postJson(`/api/provisioning-sessions/${encodeURIComponent(state.session.session_id)}`, {
+  const completed = await postJson(`/api/provisioning-sessions/${encodeURIComponent(state.session.session_id)}/complete`, {
     completed_by: value("#actor"),
     quality_check_state: "passed",
     connectivity_status: "unknown",
@@ -134,15 +176,20 @@ async function completeSession() {
   const manifest = await getJson(`/api/provisioning-sessions/${encodeURIComponent(completed.session_id)}/manifest`);
   state.session = { ...completed, manifest };
   state.secret = "";
+  saveBrowserSessionState(state.session);
   render();
 }
 
 function render() {
   const session = state.session;
-  const realFlashNeedsArtifact = selectedFlashMode() === "esptool" && !state.flashMode?.artifact_ready;
-  document.querySelector("#usbFlashButton").disabled = !session || realFlashNeedsArtifact || session.status === "completed" || hasRealFlashSucceeded(session);
+  const flashNeedsArtifact = !state.flashMode?.artifact_ready;
+  const flashRunning = Boolean(state.flashOperation);
+  document.querySelector("#usbFlashButton").disabled = flashRunning || !session || flashNeedsArtifact || needsUsbTargetSelection() || session.status === "completed" || hasUsbFlashSucceeded(session);
+  document.querySelector("#cancelFlashButton").disabled = !flashRunning;
   document.querySelector("#completeButton").disabled = !session || session.status === "completed";
+  renderUsbBrowserStatus();
   renderFirmwareArtifact();
+  renderFlashReadinessStatus();
   document.querySelector("#sessionMeta").innerHTML = session ? [
     ["session_id", session.session_id],
     ["status", session.status],
@@ -166,7 +213,7 @@ function render() {
 
   const result = session?.usb_flash_result || session?.flash_plan?.last_flash_result;
   if (result) {
-    const ok = ["mock_flash_completed", "flashed"].includes(result.status);
+    const ok = result.status === "flashed";
     setStatus("flashStatus", ok ? "ok" : "error", `USB-Flash: ${result.status}${result.port ? ` auf ${result.port}` : ""}`);
     if (ok) {
       renderFlashJob({
@@ -191,9 +238,249 @@ function render() {
     : "";
 }
 
-function hasRealFlashSucceeded(session) {
+function renderFlashReadinessStatus() {
+  if (state.flashOperation) return;
+  if (!state.session) {
+    setStatus("flashStatus", "running", "Bitte zuerst die Session vorbereiten.");
+    return;
+  }
+  if (!state.flashMode?.artifact_ready) {
+    setStatus("flashStatus", "running", "USB-Flash wartet auf das Firmware-Artefakt.");
+    return;
+  }
+  if (needsUsbTargetSelection()) {
+    setStatus("flashStatus", "running", "Bitte USB-Geraet im Browser auswaehlen.");
+    return;
+  }
+  if (state.session.status === "completed" || hasUsbFlashSucceeded(state.session)) {
+    return;
+  }
+  setStatus("flashStatus", "ok", "Browser-USB-Flash kann gestartet werden.");
+}
+
+async function selectUsbDevice() {
+  if (!("serial" in navigator)) {
+    setStatus("usbBrowserStatus", "error", "Dieser Browser unterstuetzt Web Serial nicht. Bitte Chrome oder Edge verwenden.");
+    return;
+  }
+  try {
+    state.serialPort = await navigator.serial.requestPort();
+    state.serialPortInfo = state.serialPort.getInfo ? state.serialPort.getInfo() : {};
+    render();
+  } catch (error) {
+    if (error.name === "NotFoundError") {
+      setStatus("usbBrowserStatus", "running", "Keine USB-Auswahl getroffen.");
+      return;
+    }
+    setStatus("usbBrowserStatus", "error", error.message);
+  }
+}
+
+function renderUsbBrowserStatus() {
+  if (!("serial" in navigator)) {
+    setStatus("usbBrowserStatus", "error", "Web Serial ist nicht verfuegbar. Bitte Chrome oder Edge verwenden.");
+    document.querySelector("#selectUsbDeviceButton").disabled = true;
+    return;
+  }
+  document.querySelector("#selectUsbDeviceButton").disabled = Boolean(state.flashOperation);
+  if (state.serialPort) {
+    setStatus("usbBrowserStatus", "ok", `${selectedUsbPort()} ist im Browser ausgewaehlt.`);
+    return;
+  }
+  setStatus("usbBrowserStatus", "running", "USB-Geraet im Browser auswaehlen. Danach kann die Firmware direkt per USB geflasht werden.");
+}
+
+function selectedUsbPort() {
+  if (!state.serialPort) return "";
+  const info = state.serialPortInfo || {};
+  const vendorId = info.usbVendorId === undefined ? "" : info.usbVendorId.toString(16).padStart(4, "0").toUpperCase();
+  const productId = info.usbProductId === undefined ? "" : info.usbProductId.toString(16).padStart(4, "0").toUpperCase();
+  return vendorId && productId ? `WebSerial ${vendorId}:${productId}` : "WebSerial USB-Geraet";
+}
+
+function needsUsbTargetSelection() {
+  return !state.serialPort;
+}
+
+async function flashEsp32InBrowser(operation) {
+  const artifact = state.session?.manifest?.firmware?.artifact || state.firmwareArtifact;
+  if (!artifact?.artifact_id) {
+    throw new Error("Kein Firmware-Artefakt fuer den Browser-Flash vorhanden.");
+  }
+  const logLines = [];
+  const log = (line) => {
+    const text = String(line || "").trimEnd();
+    if (!text) return;
+    logLines.push(text);
+    renderFlashJob({
+      status: "running",
+      runner: "web_serial",
+      port: selectedUsbPort(),
+      percent: Number(document.querySelector("#flashProgressPercent").textContent.replace("%", "")) || 0,
+      phase: "writing",
+      message: text,
+      logs: logLines.slice(-30).map((entry) => ({ line: entry })),
+    });
+  };
+
+  operation.abortController.signal.throwIfAborted?.();
+  renderFlashJob({
+    status: "running",
+    runner: "web_serial",
+    port: selectedUsbPort(),
+    percent: 5,
+    phase: "starting",
+    message: "Firmware-Artefakt wird geladen...",
+    logs: [],
+  });
+  const firmware = await fetchFirmwareBytes(artifact.artifact_id, operation.abortController.signal);
+  operation.abortController.signal.throwIfAborted?.();
+  const { ESPLoader, Transport } = await loadEsptoolModule();
+  const transport = new Transport(state.serialPort, false);
+  state.activeTransport = transport;
+  const terminal = {
+    clean() {},
+    writeLine(data) {
+      log(data);
+    },
+    write(data) {
+      log(data);
+    },
+  };
+  try {
+    renderFlashJob({
+      status: "running",
+      runner: "web_serial",
+      port: selectedUsbPort(),
+      percent: 10,
+      phase: "connecting",
+      message: "ESP32 Bootloader wird verbunden...",
+      logs: logLines.map((entry) => ({ line: entry })),
+    });
+    const loader = new ESPLoader({
+      transport,
+      baudrate: 115200,
+      terminal,
+      debugLogging: false,
+    });
+    const chipName = await loader.main();
+    operation.abortController.signal.throwIfAborted?.();
+    renderFlashJob({
+      status: "running",
+      runner: "web_serial",
+      port: selectedUsbPort(),
+      percent: 20,
+      phase: "writing",
+      message: `${chipName} verbunden. Firmware wird geschrieben...`,
+      logs: logLines.map((entry) => ({ line: entry })),
+    });
+    await loader.writeFlash({
+      fileArray: [{ data: firmware, address: parseFlashOffset(artifact.flash_offset || "0x0") }],
+      flashMode: "dio",
+      flashFreq: "40m",
+      flashSize: "keep",
+      eraseAll: false,
+      compress: true,
+      reportProgress: (_fileIndex, written, total) => {
+        const percent = 20 + Math.round((written / Math.max(total, 1)) * 75);
+        renderFlashJob({
+          status: "running",
+          runner: "web_serial",
+          port: selectedUsbPort(),
+          percent,
+          phase: "writing",
+          message: `Firmware schreiben: ${Math.min(100, Math.round((written / Math.max(total, 1)) * 100))}%`,
+          logs: logLines.slice(-30).map((entry) => ({ line: entry })),
+        });
+      },
+    });
+    operation.abortController.signal.throwIfAborted?.();
+    renderFlashJob({
+      status: "running",
+      runner: "web_serial",
+      port: selectedUsbPort(),
+      percent: 98,
+      phase: "resetting",
+      message: "Board wird neu gestartet...",
+      logs: logLines.map((entry) => ({ line: entry })),
+    });
+    await loader.after("hard_reset");
+    await transport.disconnect();
+    state.activeTransport = null;
+    return {
+      chipName,
+      log: logLines.join("\n"),
+    };
+  } catch (error) {
+    try {
+      await transport.disconnect();
+    } catch {}
+    state.activeTransport = null;
+    throw error;
+  }
+}
+
+async function fetchFirmwareBytes(artifactId, signal) {
+  const response = await fetch(`/api/provisioning-firmware-artifacts/${encodeURIComponent(artifactId)}/content`, { signal });
+  if (!response.ok) {
+    const text = await response.text().catch(() => "");
+    throw new Error(text || `Firmware-Artefakt konnte nicht geladen werden: ${response.status}`);
+  }
+  return new Uint8Array(await response.arrayBuffer());
+}
+
+async function loadEsptoolModule() {
+  if (!state.esptoolModule) {
+    state.esptoolModule = await import("/vendor/esptool-js/bundle.js");
+  }
+  return state.esptoolModule;
+}
+
+function parseFlashOffset(value) {
+  const text = String(value || "0x0").trim();
+  const parsed = text.toLowerCase().startsWith("0x") ? Number.parseInt(text, 16) : Number.parseInt(text, 10);
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+async function recordBrowserFlashFailure(error) {
+  if (!state.session?.session_id) return;
+  try {
+    const updated = await postJson(`/api/provisioning-sessions/${encodeURIComponent(state.session.session_id)}/browser-usb-flash-result`, {
+      status: "failed",
+      actor: value("#actor"),
+      port: selectedUsbPort(),
+      error: error.message || String(error),
+      stderr: error.stack || "",
+    });
+    state.session = updated;
+    saveBrowserSessionState(state.session);
+  } catch {}
+}
+
+async function restoreSessionFromBrowserState() {
+  const sessionId = window.localStorage.getItem("gernetix.provisioning.sessionId") || "";
+  if (!sessionId) return;
+  try {
+    const session = await getJson(`/api/provisioning-sessions/${encodeURIComponent(sessionId)}`);
+    const manifest = await getJson(`/api/provisioning-sessions/${encodeURIComponent(sessionId)}/manifest`);
+    state.session = { ...session, manifest };
+  } catch {
+    clearBrowserSessionState();
+  }
+}
+
+function saveBrowserSessionState(session) {
+  if (!session?.session_id) return;
+  window.localStorage.setItem("gernetix.provisioning.sessionId", session.session_id);
+}
+
+function clearBrowserSessionState() {
+  window.localStorage.removeItem("gernetix.provisioning.sessionId");
+}
+
+function hasUsbFlashSucceeded(session) {
   const result = session?.usb_flash_result || session?.flash_plan?.last_flash_result;
-  return session?.flash_plan?.status === "usb_flashed" && result?.status === "flashed" && result?.runner !== "mock";
+  return session?.flash_plan?.status === "usb_flashed" && result?.status === "flashed";
 }
 
 function renderProcessorBoards() {
@@ -205,22 +492,10 @@ function renderProcessorBoards() {
 
 function renderFlashMode() {
   if (!state.flashMode) return;
-  const real = document.querySelector("#realFlashMode");
-  const mock = document.querySelector("input[name='flashMode'][value='mock']");
-  const realMode = (state.flashMode.modes || []).find((item) => item.id === "esptool");
-  real.disabled = !state.flashMode.allow_real_usb_flash;
-  if (real.disabled && real.checked) {
-    mock.checked = true;
-  }
-  if (state.flashMode.default_runner === "esptool" && state.flashMode.allow_real_usb_flash) {
-    real.checked = true;
-  }
-  const text = !state.flashMode.allow_real_usb_flash
-    ? "Echter USB-Flash ist deaktiviert. Server mit ALLOW_REAL_USB_FLASH=true starten."
-    : realMode?.enabled
-      ? "Echter USB-Flash ist bereit."
-      : "Echter USB-Flash ist auswaehlbar. Vor dem Flashen muss das serverseitige Firmware-Artefakt vorhanden sein.";
-  setStatus("flashStatus", realMode?.enabled ? "ok" : "running", text);
+  const text = state.flashMode.artifact_ready
+    ? "Browser-USB-Flash ist bereit, sobald ein USB-Geraet ausgewaehlt ist."
+    : "Browser-USB-Flash wartet auf das Firmware-Artefakt.";
+  setStatus("flashStatus", state.flashMode.artifact_ready ? "ok" : "running", text);
 }
 
 function renderFirmwareArtifact() {
@@ -248,72 +523,35 @@ function renderFirmwareArtifact() {
   );
 }
 
-function startOperationStatus(message, details = {}) {
-  stopOperationStatus();
-  const startedAt = new Date();
-  const renderOperation = () => {
-    const elapsedSeconds = Math.max(0, Math.round((Date.now() - startedAt.getTime()) / 1000));
-    setStatus("flashStatus", "running", `${message} seit ${elapsedSeconds}s. Bitte Board nicht trennen.`);
-    document.querySelector("#detailsBox").textContent = JSON.stringify({
-      operation: {
-        status: "running",
-        message,
-        started_at: startedAt.toISOString(),
-        elapsed_seconds: elapsedSeconds,
-        note: "Der Server wartet auf den Flash-Prozess. Ergebnis und esptool-Log erscheinen nach Abschluss.",
-        ...details,
-      },
-    }, null, 2);
+function startFlashOperation() {
+  const operation = {
+    id: `flash-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    canceled: false,
+    abortController: new AbortController(),
   };
-  renderOperation();
-  state.operationTimer = window.setInterval(renderOperation, 1000);
+  state.flashOperation = operation;
+  render();
+  return operation;
 }
 
-function stopOperationStatus() {
-  if (!state.operationTimer) return;
-  window.clearInterval(state.operationTimer);
-  state.operationTimer = null;
+function finishFlashOperation() {
+  state.flashOperation = null;
+  render();
 }
 
-async function pollFlashJob(jobId) {
-  stopFlashJobPolling();
-  return new Promise((resolve, reject) => {
-    const tick = async () => {
-      try {
-        const job = await getJson(`/api/provisioning-flash-jobs/${encodeURIComponent(jobId)}`);
-        renderFlashJob(job);
-        if (job.status === "completed") {
-          stopFlashJobPolling();
-          const flashed = job.result;
-          const manifest = await getJson(`/api/provisioning-sessions/${encodeURIComponent(flashed.session_id)}/manifest`);
-          state.session = { ...flashed, manifest };
-          render();
-          resolve(job);
-          return;
-        }
-        if (job.status === "failed") {
-          stopFlashJobPolling();
-          const message = formatFlashJobFailure(job);
-          setStatus("flashStatus", "error", message);
-          document.querySelector("#usbFlashButton").disabled = false;
-          const error = new Error(message);
-          error.flashJobRendered = true;
-          reject(error);
-        }
-      } catch (error) {
-        stopFlashJobPolling();
-        reject(error);
-      }
-    };
-    state.flashJobPoller = window.setInterval(tick, 700);
-    tick();
+function finishCanceledFlashOperation() {
+  state.flashOperation = null;
+  renderFlashJob({
+    status: "canceled",
+    runner: "web_serial",
+    port: selectedUsbPort(),
+    percent: 0,
+    phase: "failed",
+    message: "USB-Flash wurde lokal abgebrochen.",
+    logs: [],
   });
-}
-
-function stopFlashJobPolling() {
-  if (!state.flashJobPoller) return;
-  window.clearInterval(state.flashJobPoller);
-  state.flashJobPoller = null;
+  setStatus("flashStatus", "error", "USB-Flash wurde lokal abgebrochen.");
+  render();
 }
 
 function resetFlashProgress() {
@@ -401,11 +639,7 @@ function flashPhaseLabel(phase, runner) {
     completed: "USB-Flash abgeschlossen",
     failed: "USB-Flash fehlgeschlagen",
   };
-  return labels[phase] || (runner === "mock" ? "Mock-Flash" : "USB-Flash");
-}
-
-function selectedFlashMode() {
-  return document.querySelector("input[name='flashMode']:checked")?.value || "mock";
+  return labels[phase] || "USB-Flash";
 }
 
 function setStatus(id, kind, text) {
@@ -428,18 +662,19 @@ function value(selector) {
   return document.querySelector(selector).value.trim();
 }
 
-async function getJson(url) {
-  const response = await fetch(url);
+async function getJson(url, options = {}) {
+  const response = await fetch(url, options);
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.message || payload.error || `Request failed: ${url}`);
   return payload;
 }
 
-async function postJson(url, body) {
+async function postJson(url, body, options = {}) {
   const response = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: options.signal,
   });
   const payload = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(payload.message || payload.error || `Request failed: ${url}`);

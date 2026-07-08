@@ -28,7 +28,8 @@
           <label>Charge<input id="batchId" type="text" value="batch-2026-07" /></label>
           <label>Firmwareversion<input id="firmwareVersion" type="text" value="0.1.0" /></label>
           <label>Provisioniert von<input id="actor" type="text" value="factory-user" /></label>
-          <label>USB-Port<input id="usbPort" type="text" value="COM9" /></label>
+          <button id="selectUsbDeviceButton" type="button">USB-Geraet auswaehlen</button>
+          <div id="usbBrowserStatus" class="status hidden"></div>
           <div class="button-row">
             <button class="primary" type="submit">Session vorbereiten</button>
             <button id="credentialResetButton" type="button">Aktives Credential zuruecksetzen</button>
@@ -41,11 +42,6 @@
             <h2>USB-Flash</h2>
           </div>
           <dl id="sessionMeta" class="meta-list"></dl>
-          <fieldset class="mode-field">
-            <legend>Flash-Modus</legend>
-            <label><input type="radio" name="flashMode" value="mock" checked /> Mock-Test</label>
-            <label><input id="realFlashMode" type="radio" name="flashMode" value="esptool" /> Echter USB-Flash</label>
-          </fieldset>
           <fieldset class="mode-field">
             <legend>Firmware-Artefakt</legend>
             <dl id="firmwareArtifactMeta" class="meta-list"></dl>
@@ -65,6 +61,7 @@
           </div>
           <div class="button-row">
             <button id="usbFlashButton" class="primary" type="button" disabled>Firmware per USB flashen</button>
+            <button id="cancelFlashButton" type="button" disabled>USB-Flash abbrechen</button>
             <button id="completeButton" type="button" disabled>Provisionierung abschliessen</button>
           </div>
           <pre id="detailsBox" class="details"></pre>

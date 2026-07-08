@@ -13,9 +13,19 @@ function createConfig(env = process.env) {
   const firmwareArtifactSource = env.PROVISIONING_FIRMWARE_ARTIFACT_SOURCE || "sqlite";
   const firmwareArtifactUri = env.PROVISIONING_FIRMWARE_ARTIFACT_URI
     || `sqlite://provisioning_firmware_artifacts/${firmwareArtifactId}`;
+  const defaultServerFirmwareArtifactPath = path.join(
+    repoRoot,
+    ".runtime",
+    "server-firmware",
+    "esp32-basissoftware",
+    "latest",
+    "merged-firmware.bin",
+  );
   const serverFirmwareArtifactPath = env.PROVISIONING_FIRMWARE_FILE_PATH
     ? path.resolve(env.PROVISIONING_FIRMWARE_FILE_PATH)
-    : "";
+    : fs.existsSync(defaultServerFirmwareArtifactPath)
+      ? defaultServerFirmwareArtifactPath
+      : "";
   const toolchainRoot = env.PROVISIONING_TOOLCHAIN_ROOT
     ? path.resolve(env.PROVISIONING_TOOLCHAIN_ROOT)
     : path.join(repoRoot, ".runtime", "toolchains", "provisioning");
@@ -23,6 +33,7 @@ function createConfig(env = process.env) {
     ? path.resolve(env.PROVISIONING_TOOLCHAIN_MANIFEST)
     : path.join(toolchainRoot, "toolchain.json");
   const toolchainManifest = readToolchainManifest(toolchainManifestPath);
+  const flashRunner = env.FLASH_RUNNER || "esptool";
 
   return {
     host: env.HOST || "127.0.0.1",
@@ -32,8 +43,8 @@ function createConfig(env = process.env) {
     deviceManagementBaseUrl: env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700/api/device-management",
     hardwareCatalogBaseUrl: env.HARDWARE_CATALOG_BASE_URL || env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900/api/hardware-shop",
     registerDeviceOnComplete: env.REGISTER_DEVICE_ON_COMPLETE !== "false",
-    flashRunner: env.FLASH_RUNNER || "mock",
-    allowRealUsbFlash: env.ALLOW_REAL_USB_FLASH === "true",
+    flashRunner,
+    allowRealUsbFlash: env.ALLOW_REAL_USB_FLASH === undefined ? flashRunner !== "mock" : env.ALLOW_REAL_USB_FLASH !== "false",
     allowFirmwareArtifactAdminWrite: env.ALLOW_FIRMWARE_ARTIFACT_ADMIN_WRITE === "true",
     serverFirmwareArtifactPath,
     firmwareRoot,

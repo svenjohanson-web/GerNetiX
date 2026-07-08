@@ -189,6 +189,47 @@ class ProvisioningService {
     return this.usbFlashRunner.mode({ artifact_ready: this.hasMaterializableArtifact() });
   }
 
+  getFirmwareArtifactContent(artifactId) {
+    return this.firmwareArtifactStore.readArtifactContent(artifactId);
+  }
+
+  recordBrowserUsbFlashResult(sessionId, input = {}) {
+    const session = this.repository.findSession(sessionId);
+    if (!session) throw new ProvisioningError("session_not_found", "Provisioning Session wurde nicht gefunden.", 404);
+    const artifact = session.manifest?.firmware?.artifact || {};
+    const result = {
+      status: input.status === "flashed" ? "flashed" : "failed",
+      runner: "web_serial",
+      transport: "web_serial",
+      port: input.port || "browser_selected_serial",
+      chip_name: input.chip_name || "",
+      firmware_artifact: artifact,
+      stdout: input.stdout || "",
+      stderr: input.stderr || "",
+      error: input.error || "",
+      flashed_at: new Date().toISOString(),
+    };
+    const now = new Date().toISOString();
+    session.flash_plan = {
+      ...session.flash_plan,
+      status: flashPlanStatus(result),
+      last_flash_result: result,
+    };
+    session.audit_events.push({
+      type: "usb_flash_executed",
+      occurred_at: now,
+      actor: input.actor || session.manufacturer_registration.provisioned_by,
+      result_status: result.status,
+      port: result.port,
+      runner: result.runner,
+    });
+    const updated = this.repository.updateSession(sessionId, session);
+    return {
+      ...summarizeSession(updated),
+      usb_flash_result: result,
+    };
+  }
+
   async executeUsbFlash(sessionId, input = {}) {
     const session = this.repository.findSession(sessionId);
     if (!session) throw new ProvisioningError("session_not_found", "Provisioning Session wurde nicht gefunden.", 404);
@@ -224,6 +265,7 @@ class ProvisioningService {
       runner,
       session,
       firmwareArtifact,
+      cancelToken: input.cancelToken,
       onProgress: input.onProgress,
     });
     const now = new Date().toISOString();
@@ -267,15 +309,23 @@ class ProvisioningService {
       logs: [],
       result: null,
       error: null,
+      cancel: null,
     };
     this.flashJobs.set(job.job_id, job);
 
     Promise.resolve()
       .then(() => this.executeUsbFlash(sessionId, {
         ...input,
+        cancelToken: {
+          setCancel: (cancel) => {
+            job.cancel = cancel;
+          },
+          isCanceled: () => job.status === "canceled",
+        },
         onProgress: (event) => updateFlashJob(job, event),
       }))
       .then((result) => {
+        if (job.status === "canceled") return;
         job.status = isSuccessfulFlashResult(result.usb_flash_result) ? "completed" : "failed";
         job.percent = job.status === "completed" ? 100 : job.percent;
         job.phase = job.status === "completed" ? "completed" : "failed";
@@ -294,6 +344,7 @@ class ProvisioningService {
         appendUsbFlashResultLogs(job, result.usb_flash_result);
       })
       .catch((error) => {
+        if (job.status === "canceled") return;
         job.status = "failed";
         job.phase = "failed";
         job.message = error.message || "USB-Flash ist fehlgeschlagen.";
@@ -310,6 +361,28 @@ class ProvisioningService {
         });
       });
 
+    return summarizeFlashJob(job);
+  }
+
+  cancelUsbFlashJob(jobId) {
+    const job = this.flashJobs.get(jobId);
+    if (!job) throw new ProvisioningError("flash_job_not_found", "USB-Flash-Job wurde nicht gefunden.", 404);
+    if (["completed", "failed", "canceled"].includes(job.status)) return summarizeFlashJob(job);
+    job.status = "canceled";
+    job.phase = "failed";
+    job.message = "USB-Flash wurde abgebrochen.";
+    job.error = {
+      code: "usb_flash_canceled",
+      message: job.message,
+      details: null,
+    };
+    job.completed_at = new Date().toISOString();
+    job.updated_at = job.completed_at;
+    if (typeof job.cancel === "function") job.cancel();
+    appendFlashJobLog(job, {
+      type: "error",
+      line: job.message,
+    });
     return summarizeFlashJob(job);
   }
 

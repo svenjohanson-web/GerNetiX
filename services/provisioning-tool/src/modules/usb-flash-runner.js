@@ -55,7 +55,7 @@ class UsbFlashRunner {
 
     if (runner === "esptool") {
       this.assertToolchainReady("esptool");
-      return this.runEsptool({ port, firmwareArtifact, onProgress: input.onProgress });
+      return this.runEsptool({ port, firmwareArtifact, cancelToken: input.cancelToken, onProgress: input.onProgress });
     }
 
     this.assertToolchainReady("platformio");
@@ -117,7 +117,7 @@ class UsbFlashRunner {
     };
   }
 
-  async runEsptool({ port, firmwareArtifact, onProgress }) {
+  async runEsptool({ port, firmwareArtifact, cancelToken, onProgress }) {
     if (!firmwareArtifact?.materialized_file_path) {
       throw new ProvisioningError(
         "missing_materialized_firmware_file",
@@ -138,6 +138,7 @@ class UsbFlashRunner {
       timeout: this.timeoutMs,
       maxBuffer: 1024 * 1024,
       windowsHide: true,
+      cancelToken,
     }, onProgress).catch((error) => ({
       error,
       stdout: error.stdout || "",
@@ -356,7 +357,7 @@ function execFileAsync(command, args, options) {
 
 function execFileStreaming(command, args, options = {}, onProgress) {
   return new Promise((resolve, reject) => {
-    const { timeout, maxBuffer, ...spawnOptions } = options;
+    const { timeout, maxBuffer, cancelToken, ...spawnOptions } = options;
     const child = spawn(command, args, spawnOptions);
     let stdout = "";
     let stderr = "";
@@ -367,6 +368,9 @@ function execFileStreaming(command, args, options = {}, onProgress) {
           child.kill();
         }, timeout)
       : null;
+    cancelToken?.setCancel?.(() => {
+      if (!settled) child.kill();
+    });
 
     const emitLine = (stream, line) => {
       if (!line) return;

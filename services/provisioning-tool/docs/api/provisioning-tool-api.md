@@ -39,7 +39,6 @@ Beispiel:
   "capabilities": ["wifi", "ota", "flash_firmware"],
   "flash": {
     "requested": true,
-    "port": "COM3",
     "write_factory_header": true
   }
 }
@@ -77,7 +76,7 @@ POST /api/provisioning-firmware-artifacts
 
 Registriert ein serverseitiges Firmware-Artefakt im Provisioning Artifact Store. Dieser Schreibpfad ist kein Bedienerflow der Factory-HMI und ist standardmaessig gesperrt. Er darf nur fuer einen explizit freigeschalteten Build-/Admin-Prozess mit `ALLOW_FIRMWARE_ARTIFACT_ADMIN_WRITE=true` genutzt werden. Alternativ kann der Server beim Start ueber `PROVISIONING_FIRMWARE_FILE_PATH` ein vorbereitetes Firmware-Binary aus einem Server-Firmwareordner referenzieren.
 
-Die Factory-HMI selbst laedt keine Firmware-Dateien vom Bedienrechner hoch. Sie zeigt nur das fuer das ProcessorBoard bekannte Artefakt und dessen Bereitstellungsstatus an. Fuer ESP32 wird zunaechst ein zusammengefuehrtes Flash-Image erwartet, das mit `esptool write_flash 0x0` geschrieben werden kann.
+Die Factory-HMI selbst laedt keine Firmware-Dateien vom Bedienrechner hoch. Sie zeigt nur das fuer das ProcessorBoard bekannte Artefakt und dessen Bereitstellungsstatus an. Fuer ESP32 wird zunaechst ein zusammengefuehrtes Flash-Image erwartet, das im Browser per `esptool-js` und Web Serial ab Offset `0x0` geschrieben werden kann.
 
 Beispiel:
 
@@ -91,13 +90,21 @@ Beispiel:
 }
 ```
 
-## Flash-Modus Anzeigen
+## Browser-Flash-Bereitschaft Anzeigen
 
 ```text
 GET /api/provisioning-flash-mode
 ```
 
-Liefert die serverseitig erlaubten Flash-Modi fuer die UI. `mock` ist immer erlaubt. `esptool` ist erst ausfuehrbar, wenn der Server mit `ALLOW_REAL_USB_FLASH=true` gestartet wurde, das passende Firmware-Artefakt registriert ist und das Toolchain-Manifest `.runtime/toolchains/provisioning/toolchain.json` auf vorhandene Runtime-Dateien zeigt.
+Liefert den Bereitstellungsstatus des Firmware-Artefakts fuer den Browser-Web-Serial-Flash. Dieser Endpoint startet keinen Flash-Vorgang und beschreibt keinen alternativen Flash-Modus.
+
+## Firmware-Artefakt Laden
+
+```text
+GET /api/provisioning-firmware-artifacts/{artifact_id}/content
+```
+
+Liefert das vorbereitete Firmware-Binary als `application/octet-stream` fuer den Browser-Web-Serial-Flash. Die HMI laedt dieses Artefakt, uebergibt die Bytes an `esptool-js` und schreibt die Firmware direkt ueber das vom Nutzer im Browser ausgewaehlte USB-Serial-Geraet.
 
 ## Aktives Credential Zuruecksetzen
 
@@ -133,67 +140,34 @@ GET /api/provisioning-sessions/{session_id}/manifest
 
 Liefert die Device-Konfiguration fuer Initial-Firmware ohne Klartext-Secret. Dieser Endpoint ist fuer Nachvollziehbarkeit und Pruefung gedacht, nicht fuer physisches Device-Provisioning.
 
-## USB Flash
+## Browser USB Flash Ergebnis
 
 ```text
-POST /api/provisioning-sessions/{session_id}/usb-flash
+POST /api/provisioning-sessions/{session_id}/browser-usb-flash-result
 ```
 
-Fuehrt den USB-Flash-Schritt fuer eine vorbereitete Session aus. Voraussetzung:
+Speichert das Ergebnis eines Browser-Web-Serial-Flashs an der Provisioning Session. Der physische Flash wurde vorher in der HMI ausgefuehrt; dieser Endpoint startet keinen lokalen Toolchain-Prozess.
 
-- Session wurde mit `flash.requested: true` angelegt.
-- Factory-Header wurde mit `flash.write_factory_header: true` erzeugt.
-- `FLASH_RUNNER` ist passend konfiguriert.
-
-Beispiel:
+Beispiel erfolgreich:
 
 ```json
 {
-  "port": "COM9",
+  "status": "flashed",
   "actor": "factory@sven.local",
-  "flash_runner": "mock"
+  "port": "WebSerial 1A86:7523",
+  "chip_name": "ESP32",
+  "stdout": "Browser flash ok"
 }
 ```
 
-Bei `flash_runner=mock` wird der Ablauf ohne Board-Zugriff simuliert. Bei `flash_runner=esptool` startet das Tool nur dann echten USB-Flash, wenn `ALLOW_REAL_USB_FLASH=true` gesetzt ist, das serverseitige Firmware-Artefakt materialisiert werden kann und die USB-Flash-Toolchain im Runtime-Manifest bereitsteht. Dann wird ausgefuehrt:
-
-```text
-esptool.py --chip esp32 --port {port} write_flash 0x0 {materialized_file}
-```
-
-`platformio` ist ein alternativer serverseitiger USB-Flash-Runner fuer ein materialisiertes Staging-Projekt. Auch dafuer muss die PlatformIO-Toolchain im Runtime-Manifest bereitstehen. Ein direkter Zugriff auf `basissoftware/esp32` ist kein Provisioning-Betriebsweg.
-
-## USB Flash Job
-
-```text
-POST /api/provisioning-sessions/{session_id}/usb-flash-jobs
-GET /api/provisioning-flash-jobs/{job_id}
-```
-
-Startet denselben USB-Flash-Schritt als serverseitigen Job und liefert sofort eine `job_id` zurueck. Die HMI pollt anschliessend den Jobstatus und zeigt Phase, Prozentwert und die letzten Logzeilen an. Bei `esptool` werden Fortschrittszeilen wie `Writing at ... (42 %)` in eine Progress Bar uebersetzt.
-
-Beispiel Start:
+Beispiel fehlgeschlagen:
 
 ```json
 {
-  "port": "COM9",
+  "status": "failed",
   "actor": "factory@sven.local",
-  "flash_runner": "esptool"
-}
-```
-
-Beispiel Status:
-
-```json
-{
-  "job_id": "flash_...",
-  "status": "running",
-  "runner": "esptool",
-  "port": "COM9",
-  "percent": 42,
-  "phase": "writing",
-  "message": "Writing at 0x000a0000... (42 %)",
-  "logs": []
+  "port": "WebSerial 1A86:7523",
+  "error": "Failed to connect"
 }
 ```
 
@@ -203,4 +177,4 @@ Beispiel Status:
 POST /api/provisioning-sessions/{session_id}/complete
 ```
 
-Markiert eine erfolgreich physisch abgeschlossene Provisionierung. Im MVP wird dadurch kein externer Device-Management-Server beschrieben.
+Markiert eine erfolgreich physisch abgeschlossene Provisionierung. Die HMI nutzt ausschliesslich diesen Abschluss-Endpunkt; `POST /api/provisioning-sessions/{session_id}` ist kein Abschlussalias.
