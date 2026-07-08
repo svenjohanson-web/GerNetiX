@@ -27,8 +27,8 @@ Beispiel:
 ```json
 {
   "serial_number": "GNX-ESP32-0001",
-  "processor_board_id": "hardware.processor_board.esp32_devkit",
-  "hardware_profile_id": "hardware.processor_board.esp32_devkit",
+  "processor_board_id": "hardware.processor_board.generic_esp_wroom32",
+  "hardware_profile_id": "hardware.processor_board.generic_esp_wroom32",
   "provisioning_batch_id": "batch-2026-07",
   "firmware_version": "0.1.0",
   "provisioned_by": "support@sven.local",

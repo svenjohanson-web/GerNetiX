@@ -216,7 +216,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: Hardware
-    summary: Architekturartefakt fuer die SQLite-persistente Quelle bekannter HardwareItems, ProcessorBoards und TechnicalCapabilities. Hardware Shop und Identity Server nutzen diesen Service als Katalog-Client, statt eigene Board-/Capability-Wahrheiten zu fuehren.
+    summary: Architekturartefakt fuer die SQLite-persistente Quelle bekannter HardwareItems, ProcessorBoards und TechnicalCapabilities. Der Katalog ordnet technische ProcessorFamilies, MCU-Varianten, Module/Realisierungen und offizielle oder neutral-generische Boardeintraege; Spezialhardware und Verdrahtung gehoeren als Instanz-Konfiguration an das Account-Device. Hardware Shop und Identity Server nutzen diesen Service als Katalog-Client, statt eigene Board-/Capability-Wahrheiten zu fuehren.
     affectsApiArtifacts:
       - api_artifact.hardware_catalog
     usedBy:
@@ -349,7 +349,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: In Implementation
     ownerDomain: IDE
-    summary: Speichert projektgebundene IDE-/Lernansichten wie Quellcodeanalyse, Erklaerungskarten, PlantUML-Diagramme und Umsetzungsschritte, damit Viewer diese generisch rendern koennen und keine projektspezifische Didaktik hart kodieren.
+    summary: Speichert projektgebundene IDE-/Lernansichten wie Quellcodeanalyse, Erklaerungskarten, PlantUML-Diagramme und Umsetzungsschritte. Das Manifest enthaelt Projekttexte, Payload, Validierung, Completion, benoetigte Funktionen und Control-Actions; Viewer stellen wiederverwendbare UI-Faehigkeiten bereit und duerfen keine projektspezifische Didaktik hart kodieren.
     derivedFromRequirements:
       - requirement.project_bound_guided_ide_views
     affectsDataModels:
@@ -460,7 +460,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: Account
-    summary: Komponente fuer Device-Eintraege im Account-Profil inklusive Capabilities, Anzeigename, Online-Status und OTA-Status.
+    summary: Komponente fuer Device-Eintraege im Account-Profil inklusive Capabilities, Nutzer-Kurzname, daraus abgeleitetem `gernetix-*` Node-/SSID-/Hostnamen, automatisch erzeugter System-Seriennummer, Instanz-Konfiguration fuer Spezialhardware/Verdrahtung, Online-Status und OTA-Status.
 
   - id: component.ota_target_discovery
     type: architecture_component

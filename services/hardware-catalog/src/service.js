@@ -41,7 +41,8 @@ class HardwareCatalogService {
   }
 
   listProcessorBoards() {
-    return this.listHardwareItems({ item_type: "processor_board", status: "active" });
+    return this.listHardwareItems({ item_type: "processor_board", status: "active" })
+      .filter((item) => !deprecatedProcessorBoardIds().has(item.hardware_item_id));
   }
 
   upsertHardwareItem(input = {}) {
@@ -53,15 +54,32 @@ class HardwareCatalogService {
       item_type: input.item_type || "module",
       title: required(input.title, "title"),
       summary: input.summary || "",
+      processor_family: input.processor_family || "",
+      mcu_variant: input.mcu_variant || "",
+      module_name: input.module_name || "",
+      vendor: input.vendor || "",
+      form_factor: input.form_factor || "",
       capability_ids: capabilityIds,
+      identification_methods: normalizeList(input.identification_methods || input.identificationMethods),
       support_policy: input.support_policy || "community_usable_no_gernetix_hardware_entitlement",
       provisioning_profile_id: input.provisioning_profile_id || "",
       basissoftware_profile_id: input.basissoftware_profile_id || "",
       factory_firmware_artifact: input.factory_firmware_artifact || null,
+      min_basissoftware_version: input.min_basissoftware_version || "",
+      default_instance_configuration: input.default_instance_configuration || {},
       status: input.status || "active",
     };
     return this.repository.saveHardwareItem(item);
   }
+}
+
+function deprecatedProcessorBoardIds() {
+  return new Set([
+    "hardware.processor_board.esp32_devkit",
+    "hardware.processor_board.esp_wroom32",
+    "hardware.processor_board.esp_wroom32_display",
+    "hardware.processor_board.arduino_nano_atmega328p",
+  ]);
 }
 
 function normalizeList(value) {

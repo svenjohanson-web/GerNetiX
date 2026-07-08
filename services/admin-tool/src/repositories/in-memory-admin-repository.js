@@ -109,7 +109,7 @@ function defaultSeed() {
         serial_number: "GNX-ESP32-0001",
         account_id: "acct_1",
         display_name: "Sven ESP32 DevKit",
-        hardware_profile_id: "hardware.processor_board.esp32_devkit",
+        hardware_profile_id: "hardware.processor_board.generic_esp_wroom32",
         authenticity_status: "gernetix_verified",
         lifecycle_state: "active",
         pairing_status: "paired_to_account",

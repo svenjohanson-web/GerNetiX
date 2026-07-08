@@ -14,7 +14,7 @@ class ProjectService {
       title: required(input.title, "title"),
       description: input.description || "",
       learning_project_id: input.learning_project_id || "",
-      hardware_profile_id: input.hardware_profile_id || "hardware.processor_board.esp32_devkit",
+      hardware_profile_id: input.hardware_profile_id || "hardware.processor_board.generic_esp_wroom32",
       device_id: input.device_id || null,
       build_config: normalizeBuildConfig(input.build_config),
       view_manifest: normalizeViewManifest(input.view_manifest || input.project_view_manifest || {}),
@@ -340,6 +340,10 @@ function normalizeProjectView(input = {}) {
       : [],
     completion: input.completion && typeof input.completion === "object" ? input.completion : {},
     validation: input.validation && typeof input.validation === "object" ? input.validation : {},
+    controls: input.controls && typeof input.controls === "object" ? input.controls : {},
+    required_functions: Array.isArray(input.required_functions || input.requiredFunctions)
+      ? (input.required_functions || input.requiredFunctions).map(String).filter(Boolean)
+      : [],
     media: input.media && typeof input.media === "object" ? input.media : {},
     runtime_preview: input.runtime_preview || input.runtimePreview || null,
     payload: input.payload && typeof input.payload === "object" ? input.payload : {},

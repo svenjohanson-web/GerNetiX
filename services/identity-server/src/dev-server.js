@@ -2,9 +2,11 @@ const http = require("node:http");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const { createDefaultIdentityModule, MockEmailService } = require("./index");
+const { defaultCatalogSeed } = require("../../hardware-catalog/src/seed");
 
 const publicDir = path.join(__dirname, "..", "public");
 const appDir = path.join(publicDir, "app");
@@ -596,6 +598,9 @@ function sanitizeDevice(device) {
     display_name: device.display_name,
     hardware_profile_id: device.hardware_profile_id,
     technical_capability_ids: device.technical_capability_ids || [],
+    board_short_name: device.board_short_name || "",
+    node_name: device.node_name || "",
+    instance_configuration: device.instance_configuration || {},
     authenticity_status: device.authenticity_status,
     connectivity_status: device.connectivity_status,
     ota_status: device.ota_status,
@@ -723,8 +728,9 @@ async function handlePlatformDeviceCreate(req, res, session) {
     const body = await readJsonBody(req);
     const accountId = projectServerUserId(session);
     const hardwareProfileId = requiredField(body.hardware_profile_id, "hardware_profile_id");
-    const serialNumber = requiredField(body.serial_number, "serial_number");
+    const serialNumber = String(body.serial_number || "").trim() || createGerNetixSerialNumber(hardwareProfileId);
     const displayName = requiredField(body.display_name || serialNumber, "display_name");
+    const nodeName = normalizeGerNetixNodeName(body.node_name || body.board_short_name || displayName);
     const processorBoard = await findProcessorBoard(hardwareProfileId);
     const capabilities = normalizeCapabilityIds(
       body.technical_capability_ids || body.capability_ids || processorBoard?.capability_ids || [],
@@ -740,6 +746,9 @@ async function handlePlatformDeviceCreate(req, res, session) {
         ota_status: body.ota_status || (capabilities.includes("ota") ? "unknown" : "unsupported"),
         app_version: body.app_version || "",
         runtime_version: body.runtime_version || "",
+        board_short_name: body.board_short_name || "",
+        node_name: nodeName,
+        instance_configuration: body.instance_configuration || {},
       },
     });
     const accountDevice = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
@@ -749,6 +758,9 @@ async function handlePlatformDeviceCreate(req, res, session) {
         display_name: displayName,
         technical_capability_ids: capabilities,
         purchase_context_id: body.purchase_context_id || "",
+        board_short_name: body.board_short_name || "",
+        node_name: nodeName,
+        instance_configuration: body.instance_configuration || {},
       },
     });
     sendJson(res, 201, decorateUserIdeDevice(accountDevice));
@@ -766,9 +778,10 @@ async function handlePlatformDiscoveredDeviceClaim(req, res, session) {
     const body = await readJsonBody(req);
     const accountId = projectServerUserId(session);
     const discoveredDeviceId = body.device_id || body.deviceId || "";
-    const serialNumber = requiredField(body.serial_number || body.serialNumber || discoveredDeviceId, "serial_number");
     const hardwareProfileId = requiredField(body.hardware_profile_id || body.hardwareProfileId, "hardware_profile_id");
+    const serialNumber = String(body.serial_number || body.serialNumber || "").trim() || createGerNetixSerialNumber(hardwareProfileId);
     const displayName = requiredField(body.display_name || body.displayName || serialNumber, "display_name");
+    const nodeName = normalizeGerNetixNodeName(body.node_name || body.board_short_name || body.hostname || displayName);
     const capabilities = normalizeCapabilityIds(body.technical_capability_ids || body.capability_ids || body.capabilities || []);
     const registered = await deviceManagementJson("/api/device-management/devices/register", {
       method: "POST",
@@ -782,6 +795,9 @@ async function handlePlatformDiscoveredDeviceClaim(req, res, session) {
         ota_status: body.ota_status || body.otaStatus || (capabilities.includes("ota") ? "ready" : "unknown"),
         app_version: body.app_version || body.firmwareVersion || "",
         runtime_version: body.runtime_version || body.runtimeVersion || "",
+        board_short_name: body.board_short_name || "",
+        node_name: nodeName,
+        instance_configuration: body.instance_configuration || {},
       },
     });
     const accountDevice = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
@@ -791,6 +807,9 @@ async function handlePlatformDiscoveredDeviceClaim(req, res, session) {
         display_name: displayName,
         technical_capability_ids: capabilities,
         purchase_context_id: body.purchase_context_id || "",
+        board_short_name: body.board_short_name || "",
+        node_name: nodeName,
+        instance_configuration: body.instance_configuration || {},
       },
     });
     sendJson(res, 201, decorateUserIdeDevice(accountDevice));
@@ -939,7 +958,7 @@ function normalizeDiscoveredDevice(sourceUrl, status = {}) {
     serial_number: serialNumber,
     display_name: displayName || serialNumber || deviceId || hostname || `GerNetiX Device ${sourceUrl}`,
     hostname,
-    hardware_profile_id: status.hardwareProfileId || status.hardware_profile_id || "hardware.processor_board.esp32_devkit",
+    hardware_profile_id: status.hardwareProfileId || status.hardware_profile_id || "hardware.processor_board.generic_esp_wroom32",
     technical_capability_ids: capabilities,
     runtime_version: status.runtimeVersion || status.runtime_version || "",
     firmware_version: status.firmwareVersion || status.firmware_version || "",
@@ -1293,6 +1312,34 @@ function requiredField(value, field) {
   return normalized;
 }
 
+function createGerNetixSerialNumber(hardwareProfileId) {
+  const family = hardwareProfileFamily(hardwareProfileId).toUpperCase().replace(/[^A-Z0-9]/g, "") || "BOARD";
+  const suffix = crypto.randomBytes(5).toString("hex").toUpperCase();
+  return `GNX-${family}-${suffix}`;
+}
+
+function normalizeGerNetixNodeName(value) {
+  const slug = String(value || "")
+    .trim()
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 42);
+  return slug.startsWith(gernetixNodeHostnamePrefix)
+    ? slug
+    : `${gernetixNodeHostnamePrefix}${slug || "node"}`;
+}
+
+function hardwareProfileFamily(value) {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized.includes("esp8266") || normalized.includes("esp-12")) return "esp8266";
+  if (normalized.includes("esp32") || normalized.includes("wroom")) return "esp32";
+  if (normalized.includes("avr") || normalized.includes("atmega")) return "avr";
+  return "board";
+}
+
 async function loadHardwareShopSummary(session) {
   const devices = await loadUserIdeDevices(session);
   const offers = await hardwareShopJson("/api/hardware-shop/offers");
@@ -1322,8 +1369,39 @@ async function loadHardwareShopSummary(session) {
 }
 
 async function loadProcessorBoards() {
-  const response = await hardwareCatalogJson("/api/hardware-catalog/processor-boards");
-  return response.items || [];
+  const fallback = embeddedProcessorBoards();
+  try {
+    const response = await hardwareCatalogJson("/api/hardware-catalog/processor-boards");
+    return mergeProcessorBoards(response.items || [], fallback);
+  } catch {
+    return fallback;
+  }
+}
+
+function embeddedProcessorBoards() {
+  return (defaultCatalogSeed().hardwareItems || [])
+    .filter((item) => item.item_type === "processor_board")
+    .filter((item) => !deprecatedProcessorBoardIds().has(item.hardware_item_id));
+}
+
+function mergeProcessorBoards(primary = [], fallback = []) {
+  const items = new Map();
+  for (const item of fallback) items.set(item.hardware_item_id || item.hardware_profile_id, item);
+  for (const item of primary) {
+    const id = item.hardware_item_id || item.hardware_profile_id;
+    if (!id || deprecatedProcessorBoardIds().has(id)) continue;
+    items.set(id, item);
+  }
+  return Array.from(items.values());
+}
+
+function deprecatedProcessorBoardIds() {
+  return new Set([
+    "hardware.processor_board.esp32_devkit",
+    "hardware.processor_board.esp_wroom32",
+    "hardware.processor_board.esp_wroom32_display",
+    "hardware.processor_board.arduino_nano_atmega328p",
+  ]);
 }
 
 async function findProcessorBoard(hardwareProfileId) {
@@ -1623,7 +1701,7 @@ function createUserIdeState() {
       step("Build starten", "Die IDE baut das Projekt mit PlatformIO fuer atmelavr/nanoatmega328.", "Das Ergebnis ist fuer AVR typischerweise eine firmware.hex."),
       step("USB-Flash starten", "Der Flash-Button nutzt den ausgewaehlten Arduino Nano und den COM-Port.", "Build und Upload laufen ueber denselben Build-&-Deploy-Pfad wie andere Firmware-Projekte."),
     ], {
-      hardware_profile_id: "hardware.processor_board.arduino_nano_atmega328p",
+      hardware_profile_id: "hardware.processor_board.arduino_nano_r3_atmega328p",
       default_device_id: "device_arduino_nano_1",
       build_config: {
         environment: "uno",
@@ -1667,7 +1745,7 @@ function createUserIdeState() {
       {
         device_id: "device_verified_1",
         display_name: "Sven ESP32 DevKit",
-        hardware_profile_id: "hardware.processor_board.esp32_devkit",
+        hardware_profile_id: "hardware.processor_board.generic_esp_wroom32",
         authenticity_status: "gernetix_verified",
         connectivity_status: "online",
         ota_status: "ready",
@@ -1699,7 +1777,7 @@ function project(slug, title, area, summary, steps, options = {}) {
     learning_project_id: `learning_project.${slug.replace(/-/g, "_")}`,
     course_id: `course.${slug.replace(/-/g, "_")}`,
     lesson_id: `lesson.${slug.replace(/-/g, "_")}.intro`,
-    hardware_profile_id: Object.hasOwn(options, "hardware_profile_id") ? options.hardware_profile_id : "hardware.processor_board.esp32_devkit",
+    hardware_profile_id: Object.hasOwn(options, "hardware_profile_id") ? options.hardware_profile_id : "hardware.processor_board.generic_esp_wroom32",
     default_device_id: Object.hasOwn(options, "default_device_id") ? options.default_device_id : "device_verified_1",
     build_config: options.build_config || undefined,
     source_files: options.source_files || [{ path: "src/main.cpp", role: "user_code" }],
@@ -1717,7 +1795,7 @@ function ownedCapabilityIds(devices) {
   const capabilities = new Set();
   for (const device of devices) {
     for (const capability of device.technical_capability_ids || []) capabilities.add(`capability.${capability}`);
-    if (device.hardware_profile_id === "hardware.processor_board.esp32_devkit") {
+    if (device.hardware_profile_id === "hardware.processor_board.generic_esp_wroom32") {
       capabilities.add("capability.processor_esp32");
       capabilities.add("capability.wifi");
       if (device.ota_status === "ready") capabilities.add("capability.ota");

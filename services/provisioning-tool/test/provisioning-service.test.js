@@ -30,7 +30,7 @@ function createServiceWithGeneratedHeader(headerPath) {
 function validInput(overrides = {}) {
   return {
     serial_number: "GNX-ESP32-0001",
-    hardware_profile_id: "hardware.processor_board.esp32_devkit",
+    hardware_profile_id: "hardware.processor_board.generic_esp_wroom32",
     provisioning_batch_id: "batch-2026-07",
     firmware_version: "0.1.0",
     provisioned_by: "support@sven.local",
@@ -53,7 +53,7 @@ test("creates provisioning session with one-time secret and redacted later statu
 
   assert.equal(created.status, "prepared");
   assert.ok(created.device.device_id.startsWith("device_"));
-  assert.equal(created.device.processor_board_id, "hardware.processor_board.esp32_devkit");
+  assert.equal(created.device.processor_board_id, "hardware.processor_board.generic_esp_wroom32");
   assert.ok(created.credential.credential_id.startsWith("cred_"));
   assert.ok(created.one_time_device_secret);
   assert.equal(created.flash_plan.status, "planned");
@@ -81,7 +81,7 @@ test("manifest contains endpoint and credential reference but no raw secret", as
   const manifest = service.getManifest(created.session_id);
 
   assert.equal(manifest.device_id, created.device.device_id);
-  assert.equal(manifest.processor_board.hardware_item_id, "hardware.processor_board.esp32_devkit");
+  assert.equal(manifest.processor_board.hardware_item_id, "hardware.processor_board.generic_esp_wroom32");
   assert.equal(manifest.processor_board.basissoftware_profile_id, "basissoftware.profile.esp32_factory");
   assert.equal(manifest.firmware.ota_preserved, true);
   assert.equal(manifest.firmware.artifact.source, "sqlite");

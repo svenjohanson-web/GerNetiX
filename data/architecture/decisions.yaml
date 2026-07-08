@@ -172,7 +172,7 @@ items:
     title: IDE- und Lernansichten sind projektgebundene Manifeste
     status: approved
     ownerDomain: IDE
-    summary: Gefuehrte IDE-Ansichten werden nicht im Viewer hart kodiert. Der Project Server speichert pro Projekt ein ProjectViewManifest mit Analyse-, Erklaerungs-, Diagramm- und Umsetzungssichten; die User IDE rendert diese Views generisch.
+    summary: Gefuehrte IDE-Ansichten werden nicht im Viewer hart kodiert. Der Project Server speichert pro Projekt ein ProjectViewManifest mit Analyse-, Erklaerungs-, Diagramm- und Umsetzungssichten sowie Steuerwissen zu benoetigten View-Faehigkeiten und Control-Actions; die User IDE rendert diese Views generisch.
     derivedFromRequirements:
       - requirement.project_bound_guided_ide_views
     affectsArchitectureArtifacts:
@@ -180,6 +180,7 @@ items:
       - architecture_artifact.project_server
     rules:
       - Projektspezifische Didaktik, Diagrammquellen und View-Reihenfolgen gehoeren in das Projektmanifest.
+      - Projektschritte duerfen benoetigte Funktionen ueber `required_functions` und `controls.actions` beschreiben; die IDE stellt dafuer wiederverwendbare View-Faehigkeiten bereit.
       - Der Viewer darf View-Typen generisch kennen, aber keine Tamagotchi-, RFID- oder andere Projektdomaene fest einbauen.
       - Das ProjectViewManifest ist Teil des Project-Server-Projekts und wird mit BuildPackages als Snapshot ausgeliefert.
       - Lernmodus und IDE nutzen dasselbe Projektmodell und duerfen keine getrennte Projektverwaltung erzeugen.

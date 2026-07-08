@@ -774,7 +774,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: In Implementation
     ownerDomain: IDE
-    summary: Projektgebundenes Manifest, das beschreibt, welche IDE-/Lernansichten fuer ein Projekt verfuegbar sind, z. B. Quellcodeanalyse, Story-Slides, Erklaerungskarten, Artefakte, PlantUML-Diagramme, Runtime-Preview-Hinweise und naechste Umsetzungsschritte. Der Viewer rendert diese Informationen generisch und darf sie nicht projektspezifisch hart kodieren.
+    summary: Projektgebundenes Manifest, das beschreibt, welche IDE-/Lernansichten fuer ein Projekt verfuegbar sind, z. B. Quellcodeanalyse, Story-Slides, Erklaerungskarten, Artefakte, PlantUML-Diagramme, Runtime-Preview-Hinweise und naechste Umsetzungsschritte. Das Manifest trennt Projektinhalt von View-Faehigkeiten: Texte, Payload, Validierung, Completion, benoetigte Funktionen und Control-Actions kommen aus dem Projekt; der Viewer rendert diese Informationen generisch und darf sie nicht projektspezifisch hart kodieren.
     fields:
       - schemaVersion
       - title
@@ -785,6 +785,8 @@ items:
       - views
       - completion
       - validation
+      - controls
+      - requiredFunctions
       - editableLines
       - runtimePreview
       - artifact

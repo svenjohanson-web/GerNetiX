@@ -23,7 +23,7 @@ test("creates recovery session from USB detection", () => {
   });
 
   assert.equal(session.status, "detected");
-  assert.equal(session.hardware_profile_id, "hardware.processor_board.esp32_devkit");
+  assert.equal(session.hardware_profile_id, "hardware.processor_board.generic_esp_wroom32");
   assert.equal(session.capabilities.includes("capability.wifi"), true);
   assert.equal(session.guided_questions.length, 3);
 });

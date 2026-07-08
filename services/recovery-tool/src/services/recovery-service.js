@@ -201,7 +201,7 @@ function normalizeDetection(input = {}) {
 function inferHardwareProfile(explicitProfile, detection) {
   if (explicitProfile) return { hardware_profile_id: explicitProfile, source: "user_or_scan" };
   if (detection.chip_family === "esp32") {
-    return { hardware_profile_id: "hardware.processor_board.esp32_devkit", source: "usb_detection" };
+    return { hardware_profile_id: "hardware.processor_board.generic_esp_wroom32", source: "usb_detection" };
   }
   return { hardware_profile_id: "hardware.community.unknown_board", source: "community_discovery" };
 }

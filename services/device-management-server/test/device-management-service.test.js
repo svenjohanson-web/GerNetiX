@@ -12,7 +12,7 @@ const { DeviceManagementService } = require("../src/services/device-management-s
 function registerVerified(service, overrides = {}) {
   return service.registerDevice({
     serial_number: "GNX-ESP32-0001",
-    hardware_profile_id: "hardware.processor_board.esp32_devkit",
+    hardware_profile_id: "hardware.processor_board.generic_esp_wroom32",
     gernetix_verified: true,
     firmware_version: "0.1.0",
     provisioning_batch_id: "batch-1",
@@ -91,7 +91,7 @@ test("purchase context links sold hardware to support entitlement after authenti
   const service = createDefaultDeviceManagementServer();
   service.registerPurchaseContext("acct-1", {
     order_id: "order-1",
-    hardware_item_ids: ["hardware.processor_board.esp32_devkit"],
+    hardware_item_ids: ["hardware.processor_board.generic_esp_wroom32"],
     capability_ids: ["capability.processor_esp32", "capability.wifi", "capability.ota"],
     support_basis: "gernetix_purchase_context",
     provisioning_profile_ids: ["provisioning_profile.esp32_ota_bootstrap"],
@@ -112,12 +112,12 @@ test("purchase context alone does not make community hardware support eligible",
   const service = createDefaultDeviceManagementServer();
   service.registerPurchaseContext("acct-1", {
     order_id: "order-1",
-    hardware_item_ids: ["hardware.processor_board.esp32_devkit"],
+    hardware_item_ids: ["hardware.processor_board.generic_esp_wroom32"],
     support_basis: "gernetix_purchase_context",
   });
   const device = service.registerDevice({
     serial_number: "COMM-2",
-    hardware_profile_id: "hardware.processor_board.esp32_devkit",
+    hardware_profile_id: "hardware.processor_board.generic_esp_wroom32",
   });
   service.addAccountDevice("acct-1", { device_id: device.device_id });
 

@@ -117,7 +117,8 @@ button.danger:hover {
 .ide-layout.model-only .project-view-manifest { max-width: 980px; }
 .form-grid { display: grid; gap: 12px; align-content: start; }
 .form-grid label { display: grid; gap: 6px; color: var(--muted); font-weight: 700; }
-.form-grid input {
+.form-grid input,
+.inventory-type-label input {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 7px;
@@ -662,6 +663,12 @@ textarea:read-only {
 .inventory-layout { display: grid; grid-template-columns: minmax(340px, 460px) minmax(0, 1fr); gap: 12px; align-items: start; }
 .inventory-tools, .device-list, .build-list, .discovery-list { display: grid; gap: 10px; }
 .inventory-type-label { display: grid; gap: 6px; margin-top: 12px; color: var(--muted); font-weight: 700; }
+.onboarding-preview {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fafc;
+}
 .inventory-methods { margin-top: 12px; }
 .discovery-list { margin-top: 12px; }
 .device-row, .build-row, .discovery-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px; }

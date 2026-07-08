@@ -1,8 +1,8 @@
 const DEFAULT_PROCESSOR_BOARDS = [
   {
-    hardware_item_id: "hardware.processor_board.esp32_devkit",
-    title: "GerNetiX ESP32 DevKit",
-    hardware_profile_id: "hardware.processor_board.esp32_devkit",
+    hardware_item_id: "hardware.processor_board.generic_esp_wroom32",
+    title: "Generisches ESP32-Board mit ESP-WROOM-32 Modul",
+    hardware_profile_id: "hardware.processor_board.generic_esp_wroom32",
     basissoftware_profile_id: "basissoftware.profile.esp32_factory",
     factory_firmware_artifact: {
       artifact_id: "firmware_artifact.esp32_basissoftware_factory.latest",
@@ -24,7 +24,7 @@ class HardwareCatalogClient {
     if (!this.baseUrl) return this.fallbackBoards.map(clone);
     try {
       const payload = await getJson(`${this.baseUrl.replace(/\/$/, "")}/processor-boards`);
-      return (payload.items || []).map(normalizeBoard);
+      return mergeBoards((payload.items || []).map(normalizeBoard), this.fallbackBoards);
     } catch {
       return this.fallbackBoards.map(clone);
     }
@@ -50,6 +50,13 @@ function normalizeBoard(item = {}) {
     basissoftware_profile_id: item.basissoftware_profile_id || "",
     factory_firmware_artifact: item.factory_firmware_artifact || item.firmware_artifact || null,
   };
+}
+
+function mergeBoards(primary = [], fallback = []) {
+  const items = new Map();
+  for (const item of fallback) items.set(item.hardware_item_id || item.hardware_profile_id, normalizeBoard(clone(item)));
+  for (const item of primary) items.set(item.hardware_item_id || item.hardware_profile_id, normalizeBoard(clone(item)));
+  return Array.from(items.values());
 }
 
 function clone(value) {

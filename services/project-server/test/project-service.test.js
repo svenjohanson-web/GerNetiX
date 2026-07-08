@@ -14,7 +14,7 @@ function createDemoProject(service) {
     title: "ESP32 Lernprojekt",
     description: "Blinken und OTA lernen",
     learning_project_id: "learning_project.esp32_ota_bootstrap",
-    hardware_profile_id: "hardware.processor_board.esp32_devkit",
+    hardware_profile_id: "hardware.processor_board.generic_esp_wroom32",
     device_id: "device-1",
     build_config: {
       platform: "espressif32",
@@ -82,6 +82,12 @@ test("stores project view manifest and includes it in build package", () => {
           editable_lines: [2],
           completion: { type: "acknowledge", label: "Analyse verstanden" },
           validation: { type: "source_contains_all", must_contain: ["void setup"] },
+          required_functions: ["source_focus", "guided_next"],
+          controls: {
+            actions: [
+              { id: "next", function: "next_step", label: "Analyse verstanden" },
+            ],
+          },
         },
         {
           id: "uml",
@@ -103,6 +109,8 @@ test("stores project view manifest and includes it in build package", () => {
   assert.equal(stored.view_manifest.views[0].editable_lines[0], 2);
   assert.equal(stored.view_manifest.views[0].completion.label, "Analyse verstanden");
   assert.equal(stored.view_manifest.views[0].validation.type, "source_contains_all");
+  assert.equal(stored.view_manifest.views[0].required_functions[0], "source_focus");
+  assert.equal(stored.view_manifest.views[0].controls.actions[0].function, "next_step");
   assert.ok(manifestFile);
   assert.equal(JSON.parse(manifestFile.content).views[1].type, "plantuml");
 });

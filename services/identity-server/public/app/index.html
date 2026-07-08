@@ -157,17 +157,24 @@
                   <h3>Hardware auswahlen</h3>
                 </div>
               </div>
-              <label class="inventory-type-label">Hardware aus Katalog<select id="inventoryHardwareType"></select></label>
+              <label class="inventory-type-label">Prozessorfamilie<select id="inventoryProcessorFamily"></select></label>
+              <label class="inventory-type-label">ProcessorBoard aus Hardware-Katalog<select id="inventoryHardwareType"></select></label>
+              <label class="inventory-type-label">Kurzer Board-Name<input id="inventoryBoardShortName" type="text" value="mein-board" maxlength="42" /></label>
+              <dl class="meta-list compact onboarding-preview">
+                <div><dt>Node-/SSID-Name</dt><dd id="inventoryNodeNamePreview">gernetix-mein-board</dd></div>
+                <div><dt>Seriennummer</dt><dd>wird automatisch von GerNetiX erstellt</dd></div>
+              </dl>
+              <p class="helper-text">Die Seriennummer wird vom System erzeugt und dauerhaft im Board gespeichert. Du musst damit nichts anfangen.</p>
               <div class="inventory-methods">
                 <div id="esp32DiscoveryActions" class="button-row">
-                  <button id="networkDiscoveryButton" class="primary" type="button">ESP32 per WLAN suchen</button>
-                  <button id="esp32BootloaderIdentifyButton" type="button">ESP32 per USB pruefen</button>
+                  <button id="networkDiscoveryButton" class="primary" type="button">Per WLAN suchen</button>
+                  <button id="esp32BootloaderIdentifyButton" type="button">Per USB pruefen</button>
                 </div>
                 <div id="avrDiscoveryActions" class="button-row hidden">
-                  <button id="avrBootloaderIdentifyButton" class="primary" type="button">Nano-Bootloader experimentell testen</button>
+                  <button id="avrBootloaderIdentifyButton" class="primary" type="button">Bootloader experimentell testen</button>
                 </div>
               </div>
-              <label id="esp32UsbPortLabel" class="inventory-type-label">ESP32 USB-Port<select id="esp32UsbPort"></select></label>
+              <label id="esp32UsbPortLabel" class="inventory-type-label">USB-Port<select id="esp32UsbPort"></select></label>
               <p id="inventoryTypeHint" class="helper-text"></p>
               <div id="networkDiscoveryStatus" class="flash-status hidden"></div>
               <section id="networkDiscoveryList" class="discovery-list"></section>
@@ -177,8 +184,8 @@
             </section>
             <form id="deviceInventoryForm" class="panel form-grid">
             <p class="eyebrow">Manuell</p>
-            <label>Name<input id="inventoryDisplayName" type="text" value="Mein ESP32" /></label>
-            <label>Seriennummer<input id="inventorySerialNumber" type="text" value="" placeholder="z. B. COMM-ESP32-001" /></label>
+            <label>Name<input id="inventoryDisplayName" type="text" value="Mein Board" /></label>
+            <label>Seriennummer<input id="inventorySerialNumber" type="text" value="" placeholder="automatisch, falls leer" /></label>
             <label>Board<select id="inventoryHardwareProfile"></select></label>
             <label id="inventoryUsbPortLabel">USB-Port<select id="inventoryUsbPort"></select></label>
             <label>Capabilities<input id="inventoryCapabilities" type="text" value="" /></label>
@@ -219,6 +226,11 @@
       </section>
     </main>
 
+    <script src="/app/api-client.js"></script>
+    <script src="/app/dom-utils.js"></script>
+    <script src="/app/device-onboarding-model.js"></script>
+    <script src="/app/device-onboarding-controller.js"></script>
+    <script src="/app/guided-project-view.js"></script>
     <script src="/app/app.js"></script>
   </body>
 </html>

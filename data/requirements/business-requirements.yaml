@@ -947,7 +947,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: In Implementation
     ownerDomain: IDE
-    summary: Gefuehrte IDE-Ansichten wie Quellcodeanalyse, erklaerende Karten, Bilder, PlantUML-Diagramme, Runtime-Preview-Hinweise und naechste Umsetzungsschritte muessen als Teil des Projekts im Project Server gespeichert werden. Der Viewer darf nur generisch rendern und keine projektspezifische Didaktik hart kodieren.
+    summary: Gefuehrte IDE-Ansichten wie Quellcodeanalyse, erklaerende Karten, Bilder, PlantUML-Diagramme, Runtime-Preview-Hinweise und naechste Umsetzungsschritte muessen als Teil des Projekts im Project Server gespeichert werden. Das Projekt liefert Texte, Payload, Validierungsregeln und Steuerwissen wie benoetigte View-Faehigkeiten und Control-Actions; der Viewer stellt generische UI-Faehigkeiten bereit und darf keine projektspezifische Didaktik hart kodieren.
     derivedFromRequirements:
       - requirement.identity_registration_login
     supportsCustomerJourneys:
@@ -963,6 +963,7 @@ items:
     acceptanceCriteria:
       - Ein Projekt kann ein `ProjectViewManifest` speichern.
       - Die IDE kann Manifest-Views wie `source_analysis`, `explanation`, `plantuml` und `implementation_plan` generisch anzeigen.
+      - Ein Manifest-Step kann `required_functions` und `controls.actions` beschreiben, ohne dass fuer jeden Projektschritt eine neue View implementiert werden muss.
       - Das Manifest wird mit dem Project-Server-Projekt persistiert.
       - BuildPackages enthalten das Manifest als Projektsnapshot.
       - Bestehende Lernprojekte koennen weiterhin in der IDE geoeffnet werden.

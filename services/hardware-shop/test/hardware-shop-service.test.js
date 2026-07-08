@@ -7,8 +7,8 @@ test("lists catalog capabilities, boards and shop offers", async () => {
   const service = createDefaultHardwareShop();
 
   assert.equal((await service.listCapabilities()).some((item) => item.capability_id === "capability.wifi"), true);
-  assert.equal((await service.listProcessorBoards()).some((item) => item.hardware_item_id === "hardware.processor_board.esp_wroom32"), true);
-  assert.equal((await service.listProcessorBoards()).find((item) => item.hardware_item_id === "hardware.processor_board.esp32_devkit").factory_firmware_artifact.source, "sqlite");
+  assert.equal((await service.listProcessorBoards()).some((item) => item.hardware_item_id === "hardware.processor_board.generic_esp_wroom32"), true);
+  assert.equal((await service.listProcessorBoards()).find((item) => item.hardware_item_id === "hardware.processor_board.generic_esp_wroom32").factory_firmware_artifact.source, "sqlite");
   assert.equal((await service.listOffers()).length >= 2, true);
 });
 
@@ -54,8 +54,8 @@ test("admin can add offer for known catalog item", async () => {
   const service = createDefaultHardwareShop();
   const offer = await service.upsertOffer({
     offer_id: "offer.esp_wroom32_board",
-    title: "ESP-WROOM-32 Board",
-    hardware_item_ids: ["hardware.processor_board.esp_wroom32"],
+    title: "Generisches ESP-WROOM-32 Board",
+    hardware_item_ids: ["hardware.processor_board.generic_esp_wroom32"],
     price: { amount_cents: 390 },
   });
 
