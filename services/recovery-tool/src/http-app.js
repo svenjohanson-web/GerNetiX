@@ -1,6 +1,14 @@
+const fs = require("node:fs");
+const path = require("node:path");
 const { RecoveryToolError } = require("./errors");
 
 const prefix = "/api/recovery";
+const publicDir = path.join(__dirname, "..", "public");
+const contentTypes = {
+  ".html": "text/html; charset=utf-8",
+  ".css": "text/css; charset=utf-8",
+  ".js": "text/javascript; charset=utf-8",
+};
 
 function createHttpApp(options) {
   const service = options.service;
@@ -54,6 +62,11 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET") {
+      serveStatic(res, path);
+      return;
+    }
+
     sendJson(res, 404, { error: "not_found" });
   };
 }
@@ -82,6 +95,28 @@ function readJsonBody(req) {
 function sendJson(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(payload));
+}
+
+function serveStatic(res, requestPath) {
+  const normalizedRequestPath = requestPath === "/" ? "/index.html" : requestPath;
+  const filePath = path.normalize(path.join(publicDir, normalizedRequestPath));
+  if (!filePath.startsWith(publicDir)) {
+    res.writeHead(403);
+    res.end("Forbidden");
+    return;
+  }
+  fs.readFile(filePath, (error, content) => {
+    if (error) {
+      res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
+      res.end("Not found");
+      return;
+    }
+    res.writeHead(200, {
+      "Content-Type": contentTypes[path.extname(filePath)] || "application/octet-stream",
+      "Cache-Control": "no-store",
+    });
+    res.end(content);
+  });
 }
 
 module.exports = { createHttpApp, sendJson };

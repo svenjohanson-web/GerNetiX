@@ -1,5 +1,6 @@
 const http = require("node:http");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const { createDefaultIdentityModule, MockEmailService } = require("./index");
 
@@ -15,6 +16,7 @@ const buildDeployBaseUrl = process.env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.
 const hardwareShopBaseUrl = process.env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900";
 const deviceManagementBaseUrl = process.env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700";
 const aiUsageBaseUrl = process.env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000";
+const deviceDiscoveryUrls = process.env.GERNETIX_DEVICE_DISCOVERY_URLS || process.env.DEVICE_DISCOVERY_URLS || "";
 const builtInDemoAccounts = [
   { username: demoUsername, email: demoEmail, password: demoPassword },
 ];
@@ -167,6 +169,57 @@ async function routeRequest(req, res) {
     return;
   }
 
+  if (req.method === "GET" && url.pathname === "/api/platform/hardware/processor-boards") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    sendJson(res, 200, { items: await loadProcessorBoards() });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/platform/devices/discover") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    sendJson(res, 200, await discoverNetworkDevices(session));
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/platform/devices/from-discovery") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handlePlatformDiscoveredDeviceClaim(req, res, session);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/platform/devices") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handlePlatformDeviceCreate(req, res, session);
+    return;
+  }
+
+  const platformDevice = url.pathname.match(/^\/api\/platform\/devices\/([^/]+)$/);
+  if (req.method === "DELETE" && platformDevice) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handlePlatformDeviceRemove(res, session, decodeURIComponent(platformDevice[1]));
+    return;
+  }
+
   const platformSource = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/sources\/(.+)$/);
   if (platformSource && ["GET", "PUT"].includes(req.method)) {
     const session = readSession(req);
@@ -250,6 +303,7 @@ async function routeRequest(req, res) {
     await handleUserIdeBuildJob(req, res);
     return;
   }
+
 
   if (url.pathname === "/demo" || url.pathname === "/demo/" || url.pathname === "/projects" || url.pathname === "/projects/") {
     redirect(res, "/app/dashboard/");
@@ -637,6 +691,237 @@ async function handlePlatformSourceWrite(req, res, session, projectId, sourcePat
   sendJson(res, 200, source);
 }
 
+async function handlePlatformDeviceCreate(req, res, session) {
+  try {
+    const body = await readJsonBody(req);
+    const accountId = projectServerUserId(session);
+    const hardwareProfileId = requiredField(body.hardware_profile_id, "hardware_profile_id");
+    const serialNumber = requiredField(body.serial_number, "serial_number");
+    const displayName = requiredField(body.display_name || serialNumber, "display_name");
+    const processorBoard = await findProcessorBoard(hardwareProfileId);
+    const capabilities = normalizeCapabilityIds(
+      body.technical_capability_ids || body.capability_ids || processorBoard?.capability_ids || [],
+    );
+    const registered = await deviceManagementJson("/api/device-management/devices/register", {
+      method: "POST",
+      body: {
+        serial_number: serialNumber,
+        hardware_profile_id: hardwareProfileId,
+        authenticity_status: "community_unverified",
+        lifecycle_state: "registered_by_customer",
+        connectivity_status: body.connectivity_status || "unknown",
+        ota_status: body.ota_status || (capabilities.includes("ota") ? "unknown" : "unsupported"),
+        app_version: body.app_version || "",
+        runtime_version: body.runtime_version || "",
+      },
+    });
+    const accountDevice = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
+      method: "POST",
+      body: {
+        device_id: registered.device_id,
+        display_name: displayName,
+        technical_capability_ids: capabilities,
+        purchase_context_id: body.purchase_context_id || "",
+      },
+    });
+    sendJson(res, 201, decorateUserIdeDevice(accountDevice));
+  } catch (error) {
+    sendJson(res, error.status || 400, {
+      error: error.code || "device_inventory_create_failed",
+      message: error.message || "Device konnte nicht inventarisiert werden.",
+      details: error.payload || {},
+    });
+  }
+}
+
+async function handlePlatformDiscoveredDeviceClaim(req, res, session) {
+  try {
+    const body = await readJsonBody(req);
+    const accountId = projectServerUserId(session);
+    const discoveredDeviceId = body.device_id || body.deviceId || "";
+    const serialNumber = requiredField(body.serial_number || body.serialNumber || discoveredDeviceId, "serial_number");
+    const hardwareProfileId = requiredField(body.hardware_profile_id || body.hardwareProfileId, "hardware_profile_id");
+    const displayName = requiredField(body.display_name || body.displayName || serialNumber, "display_name");
+    const capabilities = normalizeCapabilityIds(body.technical_capability_ids || body.capability_ids || body.capabilities || []);
+    const registered = await deviceManagementJson("/api/device-management/devices/register", {
+      method: "POST",
+      body: {
+        device_id: discoveredDeviceId || undefined,
+        serial_number: serialNumber,
+        hardware_profile_id: hardwareProfileId,
+        authenticity_status: body.authenticity_status || body.authenticityStatus || "gernetix_verified_pending_proof",
+        lifecycle_state: "discovered_by_user_ide",
+        connectivity_status: "online",
+        ota_status: body.ota_status || body.otaStatus || (capabilities.includes("ota") ? "ready" : "unknown"),
+        app_version: body.app_version || body.firmwareVersion || "",
+        runtime_version: body.runtime_version || body.runtimeVersion || "",
+      },
+    });
+    const accountDevice = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
+      method: "POST",
+      body: {
+        device_id: registered.device_id,
+        display_name: displayName,
+        technical_capability_ids: capabilities,
+        purchase_context_id: body.purchase_context_id || "",
+      },
+    });
+    sendJson(res, 201, decorateUserIdeDevice(accountDevice));
+  } catch (error) {
+    sendJson(res, error.status || 400, {
+      error: error.code || "discovered_device_claim_failed",
+      message: error.message || "Gefundenes Device konnte nicht ins Inventar uebernommen werden.",
+      details: error.payload || {},
+    });
+  }
+}
+
+async function handlePlatformDeviceRemove(res, session, accountDeviceId) {
+  try {
+    const accountId = projectServerUserId(session);
+    const result = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices/${encodeURIComponent(accountDeviceId)}`, {
+      method: "DELETE",
+    });
+    sendJson(res, 200, result);
+  } catch (error) {
+    sendJson(res, error.status || 400, {
+      error: error.code || "device_inventory_remove_failed",
+      message: error.message || "Device konnte nicht aus dem Inventar entfernt werden.",
+      details: error.payload || {},
+    });
+  }
+}
+
+async function discoverNetworkDevices(session) {
+  const accountDevices = await loadUserIdeDevices(session).catch(() => []);
+  const knownDeviceIds = new Set(accountDevices.map((device) => device.device_id));
+  const candidates = discoveryCandidateUrls();
+  const found = [];
+  const errors = [];
+  await runLimited(candidates, 32, async (url) => {
+    const result = await probeDeviceStatus(url);
+    if (result.device) {
+      found.push({
+        ...result.device,
+        already_in_inventory: knownDeviceIds.has(result.device.device_id),
+      });
+    } else if (result.error) {
+      errors.push(result.error);
+    }
+  });
+  const unique = [];
+  const seen = new Set();
+  for (const item of found) {
+    const key = item.device_id || item.serial_number || item.source_url;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    unique.push(item);
+  }
+  return {
+    searched_at: new Date().toISOString(),
+    strategy: "http_status_scan",
+    candidate_count: candidates.length,
+    items: unique,
+    errors: errors.slice(0, 10),
+  };
+}
+
+function discoveryCandidateUrls() {
+  const explicit = deviceDiscoveryUrls
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean)
+    .map((item) => item.startsWith("http") ? item : `http://${item}`);
+  const candidates = new Set(explicit.map(statusUrl));
+  for (const baseAddress of localIpv4NetworkBases()) {
+    for (let host = 1; host <= 254; host += 1) {
+      candidates.add(`http://${baseAddress}.${host}/status`);
+    }
+  }
+  candidates.add("http://192.168.4.1/status");
+  return Array.from(candidates);
+}
+
+function statusUrl(value) {
+  const trimmed = value.replace(/\/$/, "");
+  return trimmed.endsWith("/status") ? trimmed : `${trimmed}/status`;
+}
+
+function localIpv4NetworkBases() {
+  const bases = new Set();
+  const interfaces = os.networkInterfaces();
+  for (const entries of Object.values(interfaces)) {
+    for (const entry of entries || []) {
+      if (entry.family !== "IPv4" || entry.internal) continue;
+      if (!/^(10\.|172\.(1[6-9]|2\d|3[0-1])\.|192\.168\.)/.test(entry.address)) continue;
+      const parts = entry.address.split(".");
+      if (parts.length === 4) bases.add(parts.slice(0, 3).join("."));
+    }
+  }
+  return Array.from(bases);
+}
+
+async function probeDeviceStatus(url) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 450);
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) return {};
+    const status = await response.json();
+    const device = normalizeDiscoveredDevice(url, status);
+    return device ? { device } : {};
+  } catch (error) {
+    return {};
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function normalizeDiscoveredDevice(sourceUrl, status = {}) {
+  const isGerNetix = status.device === "gernetix-esp32"
+    || String(status.runtime || "").toLowerCase().includes("gernetix")
+    || Boolean(status.deviceId || status.serialNumber);
+  if (!isGerNetix) return null;
+  const capabilities = normalizeCapabilityIds(status.capabilities || inferDiscoveredCapabilities(status));
+  const deviceId = status.deviceId || status.device_id || "";
+  const serialNumber = status.serialNumber || status.serial_number || "";
+  return {
+    discovery_id: Buffer.from(sourceUrl).toString("base64url"),
+    source_url: sourceUrl,
+    device_id: deviceId,
+    serial_number: serialNumber,
+    display_name: serialNumber || deviceId || `GerNetiX Device ${sourceUrl}`,
+    hardware_profile_id: status.hardwareProfileId || status.hardware_profile_id || "hardware.processor_board.esp32_devkit",
+    technical_capability_ids: capabilities,
+    runtime_version: status.runtimeVersion || status.runtime_version || "",
+    firmware_version: status.firmwareVersion || status.firmware_version || "",
+    provisioning_state: status.provisioningState || status.provisioning_state || "",
+    connectivity_status: status.wifiMode === "setup_ap" ? "setup_ap" : "online",
+    ota_status: capabilities.includes("ota") ? "ready" : "unknown",
+    authenticity_status: status.hasDeviceSecret ? "gernetix_verified_pending_proof" : "community_unverified",
+  };
+}
+
+function inferDiscoveredCapabilities(status = {}) {
+  const capabilities = ["wifi", "flash_firmware"];
+  if (String(status.runtime || "").toLowerCase().includes("ota") || String(status.firmwareBasis || "").toLowerCase().includes("ota")) {
+    capabilities.push("ota");
+  }
+  return capabilities;
+}
+
+async function runLimited(items, limit, worker) {
+  let index = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (index < items.length) {
+      const current = items[index];
+      index += 1;
+      await worker(current);
+    }
+  });
+  await Promise.all(runners);
+}
+
 async function requireSessionProject(session, projectId) {
   const projects = await loadUserIdeProjects(session);
   const project = projects.find((item) => item.project_server_id === projectId || item.slug === projectId);
@@ -668,12 +953,17 @@ async function handleUserIdeBuildJob(req, res) {
     sendJson(res, 409, { error: "device_not_ota_ready", message: "Das ausgewaehlte Device ist nicht OTA-ready." });
     return;
   }
+  if (body.mode === "build_and_usb_flash" && !device.usb_flash_supported) {
+    sendJson(res, 409, { error: "device_not_usb_flash_ready", message: "Das ausgewaehlte Device ist nicht fuer USB-Flash konfiguriert." });
+    return;
+  }
 
   const projectServerJob = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/build-jobs`, {
     method: "POST",
     body: {
       mode: body.mode || "build",
       device_id: device.device_id,
+      build_config: resolveBuildConfig(project, device),
     },
   });
   const buildPackage = await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/build-package`);
@@ -683,7 +973,10 @@ async function handleUserIdeBuildJob(req, res) {
       job_id: projectServerJob.build_job_id,
       mode: body.mode || "build",
       device_id: device.device_id,
-      build_package: toBuildDeployPackage(buildPackage),
+      build_package: toBuildDeployPackage(buildPackage, device, project),
+      usb_flash: body.mode === "build_and_usb_flash" ? {
+        upload_port: String(body.upload_port || device.upload_port || "").trim(),
+      } : null,
       deploy: body.mode === "build_and_flash" ? {
         requested: true,
         authorized: true,
@@ -716,7 +1009,13 @@ async function handleUserIdeBuildJob(req, res) {
     status: completedBuildDeployJob ? completedBuildDeployJob.status : "submitted_to_build_deploy",
     created_at: projectServerJob.created_at,
     build_package_contract: `${buildPackage.files.length} Dateien: platformio.ini + Projektquellen`,
-    artifact_url: completedBuildDeployJob?.result?.build?.artifacts?.["firmware.bin"]?.download_url || "",
+    artifact_url: completedBuildDeployJob?.result?.build?.primary_firmware?.download_url
+      || completedBuildDeployJob?.result?.build?.artifacts?.["firmware.bin"]?.download_url
+      || completedBuildDeployJob?.result?.build?.artifacts?.["firmware.hex"]?.download_url
+      || "",
+    flash_status: completedBuildDeployJob?.result?.build?.usb_flash?.status
+      || completedBuildDeployJob?.result?.deploy?.status
+      || "nicht angefordert",
   };
   userIdeState.builds.unshift(build);
   touchWorkspace(session, project.project_server_id, body.mode === "learn" ? "learn" : "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
@@ -737,16 +1036,18 @@ async function loadUserIdeProjects(session) {
       title: project ? project.title : definition.title,
       summary: project ? project.description : definition.summary,
       hardware_profile_id: project ? project.hardware_profile_id : definition.hardware_profile_id,
+      build_config: project ? project.build_config : definition.build_config,
       linked_device_id: project ? project.device_id : definition.default_device_id,
       status: project ? project.status : "project_server_missing",
       last_build_status: latestBuildStatus(project),
       source_count: project ? project.source_count : 0,
       build_count: project ? project.build_count : 0,
+      view_manifest: project ? project.view_manifest : projectViewManifest(definition),
       created_at: project ? project.created_at : "",
       updated_at: project ? project.updated_at : "",
       last_opened_mode: workspace.lastProjectId === definition.project_server_id ? workspace.lastMode : "",
       last_opened_at: workspace.lastProjectId === definition.project_server_id ? workspace.updatedAt : "",
-      source_files: [{ path: "src/main.cpp", role: "user_code" }],
+      source_files: definition.source_files || [{ path: "src/main.cpp", role: "user_code" }],
     };
   });
 }
@@ -765,13 +1066,20 @@ async function ensureProjectServerDemoProjects(session) {
         learning_project_id: definition.learning_project_id,
         hardware_profile_id: definition.hardware_profile_id,
         device_id: definition.default_device_id,
-        sources: [{
-          path: "src/main.cpp",
-          content: demoProjectSource(definition),
-        }],
+        build_config: definition.build_config,
+        view_manifest: projectViewManifest(definition),
+        sources: demoProjectSources(definition),
       },
     }).catch((error) => {
       if (error.status !== 400) throw error;
+    });
+    await projectServerJson(`/api/projects/${encodeURIComponent(definition.project_server_id)}`, {
+      method: "PATCH",
+      body: {
+        view_manifest: projectViewManifest(definition),
+      },
+    }).catch((error) => {
+      if (error.status !== 404) throw error;
     });
   }
   userIdeState.projectServerSeeded = true;
@@ -822,6 +1130,7 @@ function toPlatformProject(project) {
     status: project.status,
     sourceCount: project.source_count,
     buildCount: project.build_count,
+    viewManifest: project.view_manifest,
     steps: project.steps,
   };
 }
@@ -948,11 +1257,29 @@ async function loadHardwareShopSummary(session) {
   };
 }
 
+async function loadProcessorBoards() {
+  const response = await hardwareShopJson("/api/hardware-shop/processor-boards");
+  return response.items || [];
+}
+
+async function findProcessorBoard(hardwareProfileId) {
+  const boards = await loadProcessorBoards().catch(() => []);
+  return boards.find((board) => (
+    board.hardware_item_id === hardwareProfileId
+    || board.hardware_profile_id === hardwareProfileId
+    || board.provisioning_profile_id === hardwareProfileId
+  )) || null;
+}
+
 async function loadUserIdeDevices(session) {
   await ensureDeviceManagementDemoDevices(session);
   const accountId = projectServerUserId(session);
   const response = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`);
-  return (response.items || []).map((device) => ({
+  return (response.items || []).map(decorateUserIdeDevice);
+}
+
+function decorateUserIdeDevice(device) {
+  return {
     device_id: device.device_id,
     account_device_id: device.account_device_id,
     display_name: device.display_name,
@@ -961,58 +1288,87 @@ async function loadUserIdeDevices(session) {
     authenticity_status: device.authenticity_status,
     connectivity_status: device.connectivity_status,
     ota_status: device.ota_status,
+    usb_flash_supported: isUsbFlashDevice(device),
+    upload_port: defaultUploadPort(device),
+    build_config: deviceBuildConfig(device),
+    build_target_label: buildTargetLabel(device),
     ownership_status: device.ownership_status,
     purchase_context_id: device.purchase_context_id || "",
-  }));
+  };
 }
 
 async function ensureDeviceManagementDemoDevices(session) {
   const accountId = projectServerUserId(session);
   const existing = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`);
-  if ((existing.items || []).length) return;
+  const existingDeviceIds = new Set((existing.items || []).map((device) => device.device_id));
 
-  await deviceManagementJson("/api/device-management/devices/register", {
-    method: "POST",
-    body: {
-      device_id: "device_verified_1",
-      serial_number: "GNX-ESP32-0001",
-      hardware_profile_id: "hardware.processor_board.esp32_devkit",
-      gernetix_verified: true,
-      connectivity_status: "online",
-      ota_status: "ready",
-      firmware_version: "0.1.0",
-      provisioning_batch_id: "demo-batch",
-      provisioned_by: "user-ide-demo",
-      one_time_device_secret: "demo-device-secret",
-    },
-  });
-  await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
-    method: "POST",
-    body: {
-      device_id: "device_verified_1",
-      display_name: "Sven ESP32 DevKit",
-      technical_capability_ids: ["wifi", "ota", "flash_firmware"],
-    },
-  });
+  if (!existingDeviceIds.has("device_verified_1")) {
+    await deviceManagementJson("/api/device-management/devices/register", {
+      method: "POST",
+      body: {
+        device_id: "device_verified_1",
+        serial_number: "GNX-ESP32-0001",
+        hardware_profile_id: "hardware.processor_board.esp32_devkit",
+        gernetix_verified: true,
+        connectivity_status: "online",
+        ota_status: "ready",
+        firmware_version: "0.1.0",
+        provisioning_batch_id: "demo-batch",
+        provisioned_by: "user-ide-demo",
+        one_time_device_secret: "demo-device-secret",
+      },
+    });
+    await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
+      method: "POST",
+      body: {
+        device_id: "device_verified_1",
+        display_name: "Sven ESP32 DevKit",
+        technical_capability_ids: ["wifi", "ota", "flash_firmware", "arduino_framework_runtime"],
+      },
+    });
+  }
 
-  await deviceManagementJson("/api/device-management/devices/register", {
-    method: "POST",
-    body: {
-      device_id: "device_community_1",
-      serial_number: "COMM-ESP32-123",
-      hardware_profile_id: "hardware.processor_board.esp32_unknown",
-      connectivity_status: "offline",
-      ota_status: "unknown",
-    },
-  });
-  await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
-    method: "POST",
-    body: {
-      device_id: "device_community_1",
-      display_name: "Keller Sensor ESP32",
-      technical_capability_ids: ["wifi"],
-    },
-  });
+  if (!existingDeviceIds.has("device_arduino_nano_1")) {
+    await deviceManagementJson("/api/device-management/devices/register", {
+      method: "POST",
+      body: {
+        device_id: "device_arduino_nano_1",
+        serial_number: "ARD-NANO-0001",
+        hardware_profile_id: "hardware.processor_board.arduino_nano_atmega328p",
+        connectivity_status: "usb_connected",
+        ota_status: "unsupported",
+      },
+    });
+    await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
+      method: "POST",
+      body: {
+        device_id: "device_arduino_nano_1",
+        display_name: "Arduino Nano",
+        technical_capability_ids: ["processor_arduino_avr", "arduino_framework_runtime", "atmel_avr_bare_metal_runtime", "flash_firmware"],
+      },
+    });
+  }
+
+  if (!existingDeviceIds.has("device_community_1")) {
+    await deviceManagementJson("/api/device-management/devices/register", {
+      method: "POST",
+      body: {
+        device_id: "device_community_1",
+        serial_number: "COMM-ESP32-123",
+        hardware_profile_id: "hardware.processor_board.esp32_unknown",
+        connectivity_status: "offline",
+        ota_status: "unknown",
+      },
+    });
+    await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
+      method: "POST",
+      body: {
+        device_id: "device_community_1",
+        display_name: "Keller Sensor ESP32",
+        technical_capability_ids: ["wifi"],
+      },
+    });
+  }
 }
 
 async function handleHardwareShopOrder(req, res, session) {
@@ -1051,16 +1407,32 @@ async function handleHardwareShopOrder(req, res, session) {
 
 async function loadAiUsageSummary(session) {
   const accountId = projectServerUserId(session);
-  const [credits, dashboard] = await Promise.all([
-    aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/credits`),
-    aiUsageJson("/api/ai-usage/admin/dashboard"),
-  ]);
-  return {
-    base_url: aiUsageBaseUrl,
-    credits,
-    usage_events: dashboard.summary,
-    model_summary: dashboard.by_model,
-  };
+  try {
+    const [credits, dashboard] = await Promise.all([
+      aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/credits`),
+      aiUsageJson("/api/ai-usage/admin/dashboard"),
+    ]);
+    return {
+      base_url: aiUsageBaseUrl,
+      available: true,
+      credits,
+      usage_events: dashboard.summary,
+      model_summary: dashboard.by_model,
+    };
+  } catch (error) {
+    return {
+      base_url: aiUsageBaseUrl,
+      available: false,
+      credits: {
+        account_id: accountId,
+        available_credits: 0,
+        consumed_credits: 0,
+      },
+      usage_events: {},
+      model_summary: [],
+      error: error.message || "AI Usage Service ist nicht erreichbar.",
+    };
+  }
 }
 
 async function handleAiDemo(req, res, session) {
@@ -1184,19 +1556,27 @@ async function aiUsageJson(pathname, options = {}) {
 }
 
 async function waitForBuildDeployJob(jobId) {
-  for (let attempt = 0; attempt < 20; attempt += 1) {
+  for (let attempt = 0; attempt < 180; attempt += 1) {
     const job = await buildDeployJson(`/api/build-jobs/${encodeURIComponent(jobId)}`);
     if (["succeeded", "failed", "replaced"].includes(job.status)) return job;
-    await delay(150);
+    await delay(1000);
   }
   return null;
 }
 
-function toBuildDeployPackage(buildPackage) {
+function toBuildDeployPackage(buildPackage, device = {}, project = {}) {
+  const files = Object.fromEntries((buildPackage.files || []).map((file) => [file.path, file.content]));
+  const buildConfig = resolveBuildConfig(project, device);
+  if (buildConfig) files["platformio.ini"] = renderPlatformioIni(buildConfig);
   return {
     package_id: buildPackage.package_id,
-    files: Object.fromEntries((buildPackage.files || []).map((file) => [file.path, file.content])),
+    files,
   };
+}
+
+function resolveBuildConfig(project = {}, device = {}) {
+  if (project.slug === "arduino-atmel-bare-metal" && project.build_config) return project.build_config;
+  return device.build_config || project.build_config || null;
 }
 
 function toProjectBuildResult(buildDeployJob) {
@@ -1243,6 +1623,28 @@ async function createAccountSummary(session) {
 
 function createUserIdeState() {
   const projects = [
+    project("arduino-blink", "Arduino Blink", "Firmware", "Kleines Blink-Projekt fuer den ersten USB-Flash auf ein Arduino-kompatibles Board.", [
+      step("Projekt waehlen", "Arduino Blink ist das kleinste sinnvolle Firmware-Projekt fuer Arduino-kompatible Boards.", "Der Sketch bleibt gleich, das Boardprofil bestimmt die Zielplattform."),
+      step("Board anschliessen", "Ein ESP32 DevKit, Arduino Nano oder ein anderes Arduino-kompatibles Board haengt per USB am Rechner.", "USB-Flash ist der schnellste lokale MVP-Nachweis."),
+      step("Flash starten", "Die IDE startet Build und Upload ueber den Build-&-Deploy-Server.", "Der Button prueft die Plattformkette Ende zu Ende."),
+    ]),
+    project("arduino-atmel-bare-metal", "Arduino Atmel/AVR ohne Arduino", "Firmware", "Bare-Metal-Basissoftware fuer Arduino-kompatible AVR-Boards mit avr-libc, Build und USB-Flash.", [
+      step("Runtime waehlen", "Dieses Projekt nutzt ein Arduino-kompatibles AVR-Board ohne Arduino-Framework.", "Die Board-Hardware bleibt Arduino-kompatibel, die Software spricht aber direkt AVR-Register an."),
+      step("User-Datei bearbeiten", "Deine Logik liegt in src/user/user_app.c; main.c bleibt geschuetzte Basissoftware.", "Basis und User-Code bleiben getrennt."),
+      step("Build starten", "Die IDE baut das Projekt mit PlatformIO fuer atmelavr/nanoatmega328.", "Das Ergebnis ist fuer AVR typischerweise eine firmware.hex."),
+      step("USB-Flash starten", "Der Flash-Button nutzt den ausgewaehlten Arduino Nano und den COM-Port.", "Build und Upload laufen ueber denselben Build-&-Deploy-Pfad wie andere Firmware-Projekte."),
+    ], {
+      hardware_profile_id: "hardware.processor_board.arduino_nano_atmega328p",
+      default_device_id: "device_arduino_nano_1",
+      build_config: {
+        environment: "uno",
+        platform: "atmelavr",
+        board: "uno",
+        framework: "",
+        monitorSpeed: "9600",
+      },
+      source_files: [{ path: "src/user/user_app.c", role: "user_code" }],
+    }),
     project("software-engineering-tamagotchi", "Software Engineering mit Tamagotchi", "Modellbasierte Entwicklung", "Verhalten zuerst verstehen, bevor Code entsteht.", [
       step("Warum Tamagotchi?", "Ein vertrautes Spiel macht Zustaende, Werte und Regeln sichtbar.", "Du erkennst, dass Software Verhalten beschreibt, nicht nur Befehle ausfuehrt."),
       step("State sichtbar machen", "Hunger, Durst, Laune und Leben werden als Zustand modelliert.", "Ein Zustand ist eine fachliche Aussage ueber das System."),
@@ -1289,9 +1691,11 @@ function createUserIdeState() {
   };
 }
 
-function project(slug, title, area, summary, steps) {
+function project(slug, title, area, summary, steps, options = {}) {
   const requiredCapabilitiesBySlug = {
     "software-engineering-tamagotchi": ["capability.processor_esp32", "capability.wifi"],
+    "arduino-blink": ["capability.arduino_framework_runtime", "capability.flash_firmware"],
+    "arduino-atmel-bare-metal": ["capability.atmel_avr_bare_metal_runtime", "capability.flash_firmware"],
     "esp32-ota-bootstrap-firmware": ["capability.processor_esp32", "capability.wifi", "capability.ota"],
     "plant-watering-control": ["capability.processor_esp32", "capability.wifi", "capability.digital_output"],
   };
@@ -1301,8 +1705,10 @@ function project(slug, title, area, summary, steps) {
     learning_project_id: `learning_project.${slug.replace(/-/g, "_")}`,
     course_id: `course.${slug.replace(/-/g, "_")}`,
     lesson_id: `lesson.${slug.replace(/-/g, "_")}.intro`,
-    hardware_profile_id: "hardware.processor_board.esp32_devkit",
-    default_device_id: "device_verified_1",
+    hardware_profile_id: options.hardware_profile_id || "hardware.processor_board.esp32_devkit",
+    default_device_id: options.default_device_id || "device_verified_1",
+    build_config: options.build_config || undefined,
+    source_files: options.source_files || [{ path: "src/main.cpp", role: "user_code" }],
     required_capability_ids: requiredCapabilitiesBySlug[slug] || ["capability.processor_esp32"],
     title,
     area,
@@ -1326,11 +1732,207 @@ function ownedCapabilityIds(devices) {
   return Array.from(capabilities);
 }
 
+function normalizeCapabilityIds(value) {
+  const list = Array.isArray(value)
+    ? value
+    : String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+  return Array.from(new Set(list.map((item) => String(item).replace(/^capability\./, "")).filter(Boolean)));
+}
+
 function step(title, text, insight) {
   return { title, text, insight };
 }
 
+function primarySourcePath(project) {
+  return project.source_files?.[0]?.path || "src/main.cpp";
+}
+
+function projectViewManifest(project) {
+  if (project.slug === "software-engineering-tamagotchi") {
+    return {
+      schema_version: 1,
+      title: "Guided IDE: Quellcode zu Modell",
+      summary: "Die IDE zeigt Projektwissen aus dem Projektmanifest: Quellcode-Analyse, Erklaerung, Diagramm und naechste Umsetzungsschritte.",
+      primary_source_path: primarySourcePath(project),
+      mode: "guided_ide",
+      views: [
+        {
+          id: "source-analysis",
+          type: "source_analysis",
+          title: "Quellcode analysieren",
+          summary: "Der Einstieg ist die konkrete Projektdatei. Die IDE markiert, welche Codebereiche fachlich wichtig sind.",
+          source_path: primarySourcePath(project),
+          source_lines: [1, 3, 5, 8, 10],
+          payload: {
+            questions: [
+              "Welche Werte beschreiben den Zustand?",
+              "Welche Regeln veraendern den Zustand?",
+              "Welche Aktion ist fuer den Nutzer sichtbar?",
+            ],
+          },
+        },
+        {
+          id: "guided-explanation",
+          type: "explanation",
+          title: "Erklaerungsschritte",
+          summary: "Aus dem Code werden fachliche Begriffe gebildet, bevor neue Implementierungsschritte entstehen.",
+          payload: {
+            cards: [
+              { title: "Zustand", text: "Hunger, Durst und Leben sind keine UI-Details, sondern Modellzustand." },
+              { title: "Regeln", text: "Schwellwerte wie Hunger >= 50 werden explizit gemacht und nicht im Code versteckt." },
+              { title: "Runtime", text: "Dasselbe Modell kann spaeter Browser-App, Embedded-Firmware oder Backend-Logik antreiben." },
+            ],
+          },
+        },
+        {
+          id: "plantuml-model",
+          type: "plantuml",
+          title: "PlantUML Zustandsmodell",
+          summary: "Das Diagramm ist Projektinhalt. Der Viewer rendert nur die hinterlegte Quelle.",
+          payload: {
+            source: [
+              "@startuml",
+              "title Tamagotchi Zustandsmodell",
+              "[*] --> lebendig",
+              "state lebendig {",
+              "  [*] --> satt",
+              "  satt --> hungrig : Hunger >= 50",
+              "  hungrig --> satt : fuettern",
+              "  hungrig --> tot : Hunger = 100",
+              "}",
+              "tot --> [*]",
+              "@enduml",
+            ].join("\n"),
+          },
+        },
+        {
+          id: "next-work",
+          type: "implementation_plan",
+          title: "Naechster Umsetzungsschritt",
+          summary: "Aus Analyse und Diagramm wird ein konkreter IDE-Arbeitsschritt.",
+          payload: {
+            tasks: [
+              "Modellzustand in eine eigene Datei auslagern.",
+              "Regeln als testbare Funktionen formulieren.",
+              "Runtime-Preview erst aus dem Projektmanifest erzeugen.",
+            ],
+          },
+        },
+      ],
+    };
+  }
+
+  return {
+    schema_version: 1,
+    title: `${project.title} Projektansicht`,
+    summary: project.summary,
+    primary_source_path: primarySourcePath(project),
+    mode: "guided_ide",
+    views: [
+      {
+        id: "source-analysis",
+        type: "source_analysis",
+        title: "Quellcode analysieren",
+        summary: "Primaere Projektdatei lesen, verstehen und bearbeiten.",
+        source_path: primarySourcePath(project),
+      },
+      {
+        id: "implementation-plan",
+        type: "implementation_plan",
+        title: "Naechste Schritte",
+        summary: "Projektmanifest kann spaeter weitere Erklaerungen, Diagramme und Pruefungen enthalten.",
+        payload: {
+          tasks: project.steps.map((item) => item.title),
+        },
+      },
+    ],
+  };
+}
+
+function demoProjectSources(project) {
+  if (project.slug === "arduino-atmel-bare-metal") {
+    return [
+      {
+        path: "src/main.c",
+        role: "base_runtime",
+        content: [
+          "#include <avr/io.h>",
+          "#include \"user/user_app.h\"",
+          "",
+          "int main(void) {",
+          "  user_setup();",
+          "",
+          "  while (1) {",
+          "    user_loop();",
+          "  }",
+          "}",
+          "",
+        ].join("\n"),
+      },
+      {
+        path: "include/user/user_app.h",
+        role: "header",
+        content: [
+          "#pragma once",
+          "",
+          "void user_setup(void);",
+          "void user_loop(void);",
+          "",
+        ].join("\n"),
+      },
+      {
+        path: primarySourcePath(project),
+        role: "user_code",
+        content: demoProjectSource(project),
+      },
+    ];
+  }
+
+  return [{
+    path: primarySourcePath(project),
+    role: "user_code",
+    content: demoProjectSource(project),
+  }];
+}
+
 function demoProjectSource(project) {
+  if (project.slug === "arduino-blink") {
+    return [
+      "#include <Arduino.h>",
+      "",
+      "const int blinkPin = LED_BUILTIN;",
+      "",
+      "void setup() {",
+      "  pinMode(blinkPin, OUTPUT);",
+      "}",
+      "",
+      "void loop() {",
+      "  digitalWrite(blinkPin, HIGH);",
+      "  delay(500);",
+      "  digitalWrite(blinkPin, LOW);",
+      "  delay(500);",
+      "}",
+      "",
+    ].join("\n");
+  }
+
+  if (project.slug === "arduino-atmel-bare-metal") {
+    return [
+      "#include <avr/io.h>",
+      "#include <util/delay.h>",
+      "",
+      "void user_setup(void) {",
+      "  DDRB |= _BV(DDB5);",
+      "}",
+      "",
+      "void user_loop(void) {",
+      "  PORTB ^= _BV(PORTB5);",
+      "  _delay_ms(250);",
+      "}",
+      "",
+    ].join("\n");
+  }
+
   return [
     "#include <Arduino.h>",
     "",
@@ -1344,6 +1946,58 @@ function demoProjectSource(project) {
     "}",
     "",
   ].join("\n");
+}
+
+function isUsbFlashDevice(device) {
+  if (device.connectivity_status === "offline") return false;
+  return device.device_id === "device_verified_1"
+    || device.device_id === "device_arduino_nano_1"
+    || (device.hardware_profile_id || "").includes("arduino_nano")
+    || (device.hardware_profile_id || "").includes("esp32");
+}
+
+function defaultUploadPort(device) {
+  if (!isUsbFlashDevice(device)) return "";
+  if (device.device_id === "device_arduino_nano_1") {
+    return process.env.GERNETIX_NANO_UPLOAD_PORT || process.env.GERNETIX_USB_UPLOAD_PORT || process.env.UPLOAD_PORT || "COM4";
+  }
+  return process.env.GERNETIX_USB_UPLOAD_PORT || process.env.UPLOAD_PORT || "COM3";
+}
+
+function deviceBuildConfig(device) {
+  if (device.device_id === "device_arduino_nano_1" || (device.hardware_profile_id || "").includes("arduino_nano")) {
+    return {
+      environment: "uno",
+      platform: "atmelavr",
+      board: "uno",
+      framework: "arduino",
+      monitorSpeed: "9600",
+    };
+  }
+  return {
+    environment: "esp32dev",
+    platform: "espressif32",
+    board: "esp32dev",
+    framework: "arduino",
+  };
+}
+
+function buildTargetLabel(device) {
+  const config = deviceBuildConfig(device);
+  return [config.platform, config.board, config.framework || "ohne Framework"].join("/");
+}
+
+function renderPlatformioIni(config) {
+  const lines = [
+    `[env:${config.environment}]`,
+    `platform = ${config.platform}`,
+    `board = ${config.board}`,
+    `monitor_speed = ${config.monitorSpeed || "115200"}`,
+  ];
+  if (config.framework) lines.splice(3, 0, `framework = ${config.framework}`);
+  if (config.uploadSpeed) lines.push(`upload_speed = ${config.uploadSpeed}`);
+  lines.push("");
+  return lines.join("\n");
 }
 
 function serveStatic(res, rootDir, requestPath) {

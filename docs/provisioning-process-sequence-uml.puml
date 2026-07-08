@@ -1,0 +1,123 @@
+@startuml
+title GerNetiX Provisioning Prozess - USB Factory Flow
+
+actor "Factory / Support Nutzer" as User
+boundary "Provisioning Tool HMI\n:4500" as HMI
+control "Provisioning Tool Server\n/api/provisioning-sessions" as Server
+control "Provisioning Service" as Service
+control "Hardware-Katalog\nProcessorBoard" as Catalog
+database "Provisioning Repository\nSQLite oder Memory" as Repo
+database "SQLite / Artifact Store\nBasissoftware Firmware" as FirmwareStore
+participant "Temporaeres Staging\nFactory Header" as Staging
+control "USB Flash Runner\nmock oder PlatformIO" as FlashRunner
+participant "ProcessorBoard\nESP32 per USB" as Board
+database "Board NVS\nlokaler Speicher" as NVS
+control "Device Management Server\n:4700" as DeviceManagement
+
+== Session vorbereiten ==
+
+User -> HMI: Boarddaten eingeben\nSeriennummer, Hardwareprofil, Charge,\nFirmwareversion, USB-Port
+HMI -> Server: POST /api/provisioning-sessions\nprocessor_board_id\nflash.requested=true\nflash.write_factory_header=true
+Server -> Service: createSession(input)
+Service -> Catalog: ProcessorBoard laden
+Catalog --> Service: Hardwareprofil,\nBasissoftware-Profil,\nFactory-Firmware-Artefakt
+Service -> Repo: aktive Credentials fuer Seriennummer pruefen
+
+alt aktives Credential existiert bereits
+  Repo --> Service: vorhandenes Credential
+  Service --> Server: Fehler duplicate_active_credential
+  Server --> HMI: 409 Konflikt
+  HMI --> User: Provisioning abbrechen oder Board pruefen
+else kein aktives Credential
+  Service -> Service: device_id, credential_id,\none_time_device_secret erzeugen
+  Service -> Service: Manifest mit Board- und Firmware-Artefakt erzeugen
+  Service -> FirmwareStore: Basissoftware-Artefakt referenzieren
+  Service -> Staging: generated_provisioning_payload.h schreiben
+  Service -> Repo: Session speichern\nStatus provisioning
+  Repo --> Service: gespeicherte Session
+  Service --> Server: Session + Secret einmalig
+  Server --> HMI: 201 Created\nSession, Flash-Plan, Secret
+  HMI --> User: Secret nur fuer laufenden Vorgang anzeigen
+end
+
+== USB Factory Flash ==
+
+User -> HMI: Firmware per USB flashen
+HMI -> Server: POST /api/provisioning-sessions/{id}/usb-flash\nport=COMx
+Server -> Service: executeUsbFlash(sessionId, input)
+Service -> Staging: Factory Header vorhanden?
+
+alt Header fehlt
+  Staging --> Service: nicht vorhanden
+  Service --> Server: Fehler missing_factory_header
+  Server --> HMI: 409 Konflikt
+  HMI --> User: Session mit Header-Erzeugung neu vorbereiten
+else Header vorhanden
+  Service -> FlashRunner: run({ firmwareArtifact, stagingPath, port })
+  FlashRunner -> Board: Build/Upload ueber USB\nPlatformIO oder Mock
+  Board --> FlashRunner: Flash erfolgreich oder Fehler
+
+  alt Flash fehlgeschlagen
+    FlashRunner --> Service: Fehler / Exitcode
+    Service -> Repo: flash_plan.status=usb_flash_failed
+    Service --> Server: Fehler usb_flash_failed
+    Server --> HMI: Fehler anzeigen
+    HMI --> User: Recovery Tool verwenden,\nBoard nicht als provisioniert abschliessen
+  else Flash erfolgreich
+    FlashRunner --> Service: usb_flash_result
+    Service -> Repo: flash_plan.status=usb_flashed
+    Service --> Server: aktualisierte Session
+    Server --> HMI: Flash erfolgreich
+  end
+end
+
+== Erstboot der Basissoftware ==
+
+Board -> Board: Neustart nach USB-Flash
+Board -> Staging: generated_provisioning_payload.h im Image lesen
+Board -> NVS: pruefen, ob bereits provisioniert
+
+alt Board bereits provisioniert
+  NVS --> Board: Provisioning vorhanden
+  Board -> Board: Factory Payload ignorieren
+else noch nicht provisioniert
+  Board -> NVS: Device-ID, Seriennummer,\nHardwareprofil, Credential-Referenz,\nService-Endpunkte, Secret speichern
+  Board -> Board: Authenticity Proof per HMAC vorbereiten
+  Board -> NVS: Provisioning-Status setzen
+end
+
+== Abschluss und Registrierung ==
+
+User -> HMI: Provisionierung abschliessen
+HMI -> Server: POST /api/provisioning-sessions/{id}/complete\nquality_check_state=passed\none_time_device_secret
+Server -> Service: completeSession(sessionId, input)
+Service -> DeviceManagement: POST /api/device-management/devices/register\nDevice, Lifecycle, Credential-Referenz,\nSecret fuer Registrierung
+
+alt Device Management nicht erreichbar oder lehnt ab
+  DeviceManagement --> Service: Fehler
+  Service --> Server: device_management_registration_failed
+  Server --> HMI: Fehler anzeigen
+  HMI --> User: Abschluss nicht bestaetigt,\nSession bleibt pruefbar
+else Registrierung erfolgreich
+  DeviceManagement --> Service: registriertes Device
+  Service -> Repo: Session completed\nSecret redigieren\nAudit Event schreiben
+  Service --> Server: abgeschlossene Session
+  Server --> HMI: Provisionierung abgeschlossen
+  HMI --> User: Board ist registriert und bereit
+end
+
+== Sicherheitsregeln ==
+
+note over HMI,Service
+Das One-Time Device Secret wird nur im Session-Start
+und beim Abschluss fuer die Registrierung verwendet.
+Status- und Manifest-Abfragen geben kein Klartext-Secret aus.
+end note
+
+note over Board,NVS
+Das Hersteller-Provisioning laeuft normal ausschliesslich
+ueber USB-Flash mit Factory Header. Setup-AP und lokales
+Device-Webinterface sind Recovery-/Diagnosewege.
+end note
+
+@enduml

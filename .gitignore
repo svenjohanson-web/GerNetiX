@@ -1,5 +1,6 @@
 .agents/
 .runtime/
 node_modules/
+.pio/
 *.log
 services/*/.runtime/

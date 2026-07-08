@@ -50,6 +50,8 @@ class HardwareShopService {
       capability_ids: capabilityIds,
       support_policy: input.support_policy || "community_usable_no_gernetix_hardware_entitlement",
       provisioning_profile_id: input.provisioning_profile_id || "",
+      basissoftware_profile_id: input.basissoftware_profile_id || "",
+      factory_firmware_artifact: input.factory_firmware_artifact || null,
       status: input.status || "active",
     };
     return this.repository.saveHardwareItem(item);

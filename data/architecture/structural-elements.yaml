@@ -50,6 +50,9 @@ items:
       - ProjectFlowItems in der richtigen Reihenfolge nutzbar machen
       - Conditions fuer Wiedereinstieg und Fortsetzung sichtbar machen
       - Lernfortschritt an die Account-Domaene melden
+      - Accountgebundenes Hardware- und Device-Inventar anzeigen
+      - WLAN-faehige Boards im lokalen Netzwerk suchen und nach Nutzerbestaetigung ins Inventar uebernehmen
+      - Community-Hardware nur als manuellen Fallback erfassen, wenn sie nicht automatisch auffindbar ist
       - Hardware Shop als komfortablen Einstieg in der IDE anzeigen
       - Passende Hardware-Angebote aus TechnicalConstraints und TechnicalCapabilities ableiten
       - Projektkontext anzeigen
@@ -177,8 +180,12 @@ items:
     title: Recovery Tool
     status: draft
     ownerDomain: DeviceManagement
-    summary: Technisches Wiederherstellungswerkzeug fuer Boards, die per USB erkannt, repariert, neu registriert oder mit Credentials versorgt werden muessen.
+    summary: Eigenstaendiges Nutzer- und Support-Wiederherstellungswerkzeug fuer ProcessorBoards, die per USB erkannt, repariert, neu registriert oder mit Credentials versorgt werden muessen.
     primaryUsers:
+      - role.learner
+      - audience.maker
+      - audience.hobby_developer
+      - audience.embedded_beginner
       - role.support
       - role.administrator
     supports:
@@ -208,6 +215,9 @@ items:
       - Recovery-Firmware aufspielen
       - Wiederherstellung nach fehlgeschlagenem Flash-Vorgang ermoeglichen
     nonResponsibilities:
+      - Factory-Provisioning verkaufter oder vorbespielter Boards durchfuehren
+      - Projektcode bearbeiten
+      - Build-Jobs der User IDE ersetzen
       - LearningProject-Inhalte pflegen
       - Plaene und Lizenzen verwalten
       - Hardware-Produkttyp aendern
@@ -225,7 +235,7 @@ items:
     title: Provisioning / Inbetriebnahme Tool
     status: draft
     ownerDomain: DeviceManagement
-    summary: Werkzeug fuer Erstinbetriebnahme von ProcessorBoards, initiales Flashen, Credential-Erzeugung, Registrierung, Vorbereitung des Pairings und Vorbespielen verkaufter Boards.
+    summary: Werkzeug fuer Erstinbetriebnahme von ProcessorBoards ueber USB, initiales Flashen, Credential-Erzeugung, Registrierung, Vorbereitung des Pairings und Vorbespielen verkaufter Boards.
     primaryUsers:
       - role.administrator
       - role.support
@@ -242,22 +252,32 @@ items:
       - Account
       - Authorization
     responsibilities:
-      - Erstinstallation durchfuehren
-      - Firmware initial aufspielen
+      - Erstinstallation ueber USB durchfuehren
+      - Firmware initial per USB aufspielen
       - Verkaufte ProcessorBoards mit Initial-Firmware vorbespielen
+      - ProcessorBoard aus dem Hardware-Katalog auswaehlen
+      - Versioniertes Basissoftware-Firmware-Artefakt ueber den ProcessorBoard-Katalogeintrag aus SQLite/Artifact Store fuer Factory-Flash referenzieren
+      - USB-Flash-Paket mit Factory-Provisioning-Payload in temporaerem Staging erzeugen
       - Bei WiFi-/OTA-faehigen Boards Cloud-/OTA-Flash vorbereiten
       - Initial-Firmware so vorbereiten, dass spaetere Updates robust und wiederherstellbar bleiben
       - Board-Credentials erzeugen oder referenzieren
+      - Aktives Factory-Credential fuer abgebrochene oder fehlerhafte Provisioning-Vorgaenge kontrolliert zuruecksetzen
       - RegisteredProcessorBoard anlegen
       - Pairing vorbereiten
       - OTA-Zustand initialisieren
       - Nachvollziehbarkeit fuer Support- und Reklamationsfaelle herstellen
     nonResponsibilities:
+      - Nutzerseitige Board-Rettung oder Community-Board-Discovery als Self-Service bereitstellen
       - Projektablauf eines LearningProject bestimmen
       - Lernfortschritt eines Accounts verwalten
       - Produktberechtigungen fachlich berechnen
     constraints:
       - Pro RegisteredProcessorBoard existiert genau ein aktives Credential.
+      - Hersteller-Provisioning laeuft ausschliesslich ueber USB, nicht ueber WLAN, Setup-AP oder lokales Device-Webinterface.
+      - Das Provisioning Tool darf im Serverbetrieb nicht direkt aus der Projektumgebung `basissoftware/esp32` bauen oder lesen; Basissoftware muss als serverseitiges Firmware-Artefakt vorliegen.
+      - Die Zuordnung ProcessorBoard zu Basissoftware-/Factory-Firmware-Artefakt liegt im Hardware-Katalog.
+      - Die Factory-HMI darf keine Firmware-Dateien vom Bedienrechner hochladen oder manuell als Artefakt registrieren; Firmware-Artefakte kommen aus SQLite/Artifact Store oder einem konfigurierten Server-Firmwarepfad.
+      - Factory-Provisioning-Header mit Secret duerfen nur in temporaere Staging-Verzeichnisse geschrieben werden und nicht in kanonische Projektquellen.
       - OTA darf nur fuer gepairte Boards mit aktivem Credential verwendet werden.
       - Cloud-/OTA-Flash setzt WiFi, OTA-faehige Firmware, Registrierung, Pairing und Berechtigung voraus.
       - Vorbespielte Firmware muss das NFR `nfr.firmware_flash_must_not_brick_board` unterstuetzen.

@@ -35,9 +35,21 @@ variants:
       - Gute technische Grundlage fuer Kunden-IDE und Provisionierung.
       - Nutzt `basissoftware/esp32` als normale Quellcode- und Build-Projektstruktur.
     disadvantages:
-      - WLAN-Konfiguration muss geloest werden.
+      - WLAN-Konfiguration ist teilweise geloest: Setup-AP, lokales Device-Webinterface, Status und Logs sind vorhanden; WLAN-Scan, NVS-Speicherung und Node-Modus sind noch offen.
       - OTA-Abbruch und falsche Firmware muessen sicher behandelt werden.
       - Authentifizierung ist fuer spaetere Produktivnutzung notwendig.
+    currentImplementation:
+      - `basissoftware/esp32` startet den offenen Setup-AP `GerNetiX-Setup`.
+      - Das lokale Device-Webinterface ist im AP-Modus unter `http://192.168.4.1/` erreichbar.
+      - `/status` liefert Runtime-, WLAN- und Uptime-Status.
+      - `/logs` liefert lokale Feedback-Ereignisse aus einem RAM-Ringpuffer.
+      - Der Build wurde mit `platformio run -j 1` erfolgreich verifiziert.
+    openImplementationGaps:
+      - Ziel-WLANs scannen und im Device-Webinterface anzeigen.
+      - SSID und Passwort lokal in NVS/Flash speichern.
+      - AP-/STA-/Node-Modus-Policy festlegen und implementieren.
+      - OTA-Partitionierung, Authentifizierung, Firmware-Pruefung und Recovery-Pfad festlegen.
+      - Service-Endpunkte fuer Device Management und Build-&-Deploy konfigurierbar machen.
 
 stages:
   - id: stage.esp32_ota_bootstrap_firmware.1
@@ -100,3 +112,6 @@ openDecisions:
   - decision.esp32_ota_bootstrap_firmware.framework
   - decision.esp32_ota_bootstrap_firmware.ota_authentication
   - decision.esp32_ota_bootstrap_firmware.wifi_setup
+  - decision.esp32_ota_bootstrap_firmware.node_mode_policy
+  - decision.esp32_ota_bootstrap_firmware.flash_layout
+  - decision.esp32_ota_bootstrap_firmware.service_endpoints

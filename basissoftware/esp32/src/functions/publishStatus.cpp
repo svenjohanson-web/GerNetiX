@@ -1,7 +1,7 @@
-#include "esp_log.h"
 #include "esp_timer.h"
 
 #include "basissoftware/config.h"
+#include "basissoftware/feedback.h"
 #include "basissoftware/functions/publishStatus.h"
 
 namespace {
@@ -17,5 +17,5 @@ void publishStatus() {
   }
 
   lastStatusAt = now;
-  ESP_LOGI(TAG, "Status: running");
+  feedbackInfo(TAG, "Status: running");
 }

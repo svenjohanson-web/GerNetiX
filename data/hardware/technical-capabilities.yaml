@@ -10,6 +10,27 @@ items:
     ownerDomain: Hardware
     summary: ESP32-kompatibles Board fuer Projektvarianten.
 
+  - id: capability.processor_arduino_avr
+    type: technical_capability
+    title: Arduino-kompatibles AVR-Board
+    status: draft
+    ownerDomain: Hardware
+    summary: Arduino-kompatibles Board auf AVR-/Atmel-Basis, zum Beispiel Arduino Uno oder vergleichbare ATmega328P-Boards.
+
+  - id: capability.arduino_framework_runtime
+    type: technical_capability
+    title: Arduino-Framework Runtime
+    status: draft
+    ownerDomain: Learning
+    summary: Faehigkeit, ein Lernprojekt ueber das Arduino-Framework mit `setup()`, `loop()` und Arduino-Bibliotheken zu entwickeln.
+
+  - id: capability.atmel_avr_bare_metal_runtime
+    type: technical_capability
+    title: Atmel/AVR-nahe Runtime ohne Arduino
+    status: draft
+    ownerDomain: Learning
+    summary: Faehigkeit, ein Arduino-kompatibles AVR-Board ohne Arduino-Framework direkt mit AVR-/Atmel-nahen APIs und avr-libc zu programmieren.
+
   - id: capability.display_output
     type: technical_capability
     title: Display-Ausgabe

@@ -8,6 +8,7 @@ test("lists seeded capabilities, boards and offers", () => {
 
   assert.equal(service.listCapabilities().some((item) => item.capability_id === "capability.wifi"), true);
   assert.equal(service.listProcessorBoards()[0].hardware_item_id, "hardware.processor_board.esp32_devkit");
+  assert.equal(service.listProcessorBoards()[0].factory_firmware_artifact.source, "sqlite");
   assert.equal(service.listOffers().length >= 2, true);
 });
 

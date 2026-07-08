@@ -14,8 +14,39 @@ Ziel: Ein ESP32 wird mit der GerNetiX-Basissoftware initial per USB geflasht und
 6. Zweite Firmware-Version per OTA einspielen.
 7. Feedback pruefen, z. B. Versionsnummer oder LED-Muster.
 
+## Aktueller Implementierungsstand
+
+Die ESP32-Basissoftware unter `basissoftware/esp32` setzt den ersten lokalen Connectivity- und Feedback-Schnitt um:
+
+- sichtbarer Setup-AP `GerNetiX-Setup`
+- lokales Device-Webinterface unter `http://192.168.4.1/`
+- `/status` fuer Runtime-, WLAN- und Uptime-Status
+- `/logs` fuer lokale Feedback-Ereignisse aus einem RAM-Ringpuffer
+- USB-Factory-Provisioning ueber `generated_provisioning_payload.h`
+- lokaler `POST /provisioning` nur fuer Recovery-/Entwicklungsfaelle, nicht als normaler Provisioning-Tool-Kanal
+- lokale NVS-Speicherung von Device-ID, Seriennummer, Hardwareprofil, Firmware-Version, Credential-Referenz, Secret-Hash, Service-Endpunkten, Provisioning-Batch und Capabilities
+- optionale lokale NVS-Speicherung des einmaligen Device-Secrets beim physischen Provisionieren
+- `POST /auth/challenge` fuer den Device-seitigen `HMAC_SHA256`-Echtheitsnachweis
+- Serial/UART-Ausgabe bleibt parallel aktiv
+
+Nachweis:
+
+```powershell
+node tools\firmware-contract-check\check-provisioning-contract.js
+npm test --prefix services\provisioning-tool
+```
+
+Der volle ESP-IDF-/PlatformIO-Build bleibt ein bewusster Integrationsnachweis, nicht der Standardnachweis fuer jede kleine Firmware-Aenderung.
+
+Das initiale Hersteller-Provisioning laeuft ueber USB: Provisioning Tool erzeugt ein USB-Flash-Paket, Basissoftware wird mit diesem Payload gebaut und per USB geflasht, die Firmware importiert den Payload beim ersten Boot in NVS.
+
+Das Provisioning Tool stellt dafuer `POST /api/provisioning-sessions/{session_id}/usb-flash` bereit. Im sicheren Default ist dieser Schritt ein Mock; mit `FLASH_RUNNER=platformio` fuehrt das Tool den PlatformIO-USB-Upload aus.
+
 ## Offene Entscheidungen
 
-- Arduino OTA, ESP-IDF OTA oder PlatformIO/Arduino?
-- OTA sofort mit Authentifizierung oder erst im naechsten Schritt?
-- Wie wird WLAN ohne Account komfortabel konfiguriert?
+- `decision.esp32_ota_bootstrap_firmware.framework`: Arduino OTA, ESP-IDF OTA oder PlatformIO/Arduino?
+- `decision.esp32_ota_bootstrap_firmware.ota_authentication`: OTA sofort mit Authentifizierung, erst Hash/Groesse lokal oder direkt signierte Firmware?
+- `decision.esp32_ota_bootstrap_firmware.wifi_setup`: Wie werden WLAN-Scan, SSID-Auswahl, Passwort-Eingabe und lokale Speicherung umgesetzt?
+- `decision.esp32_ota_bootstrap_firmware.node_mode_policy`: Wird nach WLAN-Verbindung AP abgeschaltet, AP+STA betrieben oder ein zeitlich begrenzter Fallback-AP genutzt?
+- `decision.esp32_ota_bootstrap_firmware.flash_layout`: Wird das aktuell erkannte 2-MB-Flash-Board OTA-faehig unterstuetzt oder wird fuer OTA ein 4-MB-Boardprofil vorausgesetzt?
+- `decision.esp32_ota_bootstrap_firmware.service_endpoints`: Wie werden Device-Management-, Build-&-Deploy-, MQTT- und HTTPS-Endpunkte ohne harte lokale IP konfiguriert?

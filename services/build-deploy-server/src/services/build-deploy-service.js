@@ -79,7 +79,9 @@ class BuildDeployService {
       const buildResult = {
         status: buildOutput.status,
         artifacts,
+        primary_firmware: selectPrimaryFirmware(artifacts),
         build_log: artifacts["build.log"],
+        usb_flash: buildOutput.usb_flash || { requested: false, status: "not_requested" },
       };
       const deployResult = await this.deployOrchestrator.maybeCreateDeploy(job, buildResult);
       job.status = "succeeded";
@@ -153,8 +155,8 @@ function jsonValue(selector) {
 
 function normalizeJob(input = {}) {
   const mode = input.mode || "build";
-  if (!["build", "build_and_flash", "prebuild"].includes(mode)) {
-    throw new BuildDeployError("invalid_job_mode", "BuildJob mode muss build, build_and_flash oder prebuild sein.");
+  if (!["build", "build_and_flash", "build_and_usb_flash", "prebuild"].includes(mode)) {
+    throw new BuildDeployError("invalid_job_mode", "BuildJob mode muss build, build_and_flash, build_and_usb_flash oder prebuild sein.");
   }
 
   return {
@@ -163,6 +165,7 @@ function normalizeJob(input = {}) {
     device_id: input.device_id || (input.deploy && input.deploy.device_id) || null,
     build_package: input.build_package,
     deploy: input.deploy || null,
+    usb_flash: input.usb_flash || null,
     status: "accepted",
     created_at: new Date().toISOString(),
   };
@@ -188,6 +191,10 @@ function serializeError(error) {
     message: error.message || "Interner Fehler.",
     details: error.details || {},
   };
+}
+
+function selectPrimaryFirmware(artifacts) {
+  return artifacts["firmware.bin"] || artifacts["firmware.hex"] || null;
 }
 
 module.exports = { BuildDeployService };

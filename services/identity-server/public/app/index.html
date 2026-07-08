@@ -96,8 +96,11 @@
           </div>
           <div class="button-row">
             <select id="ideProjectSelect" aria-label="Projekt wählen"></select>
+            <select id="ideDeviceSelect" aria-label="Geraet waehlen"></select>
+            <input id="usbPortInput" class="port-input" type="text" aria-label="USB-Port" placeholder="COM-Port" />
             <button id="saveSourceButton" type="button">Code speichern</button>
             <button id="buildButton" type="button">Build starten</button>
+            <button id="usbFlashButton" type="button">Ueber USB flashen</button>
           </div>
         </div>
         <section class="ide-layout">
@@ -109,6 +112,8 @@
           <aside class="panel">
             <p class="eyebrow">Projektmodell</p>
             <dl id="ideProjectMeta" class="meta-list"></dl>
+            <section id="ideProjectViewManifest" class="project-view-manifest"></section>
+            <div id="flashStatus" class="flash-status hidden"></div>
           </aside>
         </section>
       </section>
@@ -130,7 +135,40 @@
             <h2>Meine Geräte</h2>
           </div>
         </div>
-        <section id="deviceList" class="device-list"></section>
+        <section class="inventory-layout">
+          <section class="inventory-tools">
+            <section class="panel discovery-panel">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">WLAN-faehige Boards</p>
+                  <h3>Netzwerk absuchen</h3>
+                </div>
+                <button id="networkDiscoveryButton" class="primary" type="button">Netzwerk durchsuchen</button>
+              </div>
+              <p class="helper-text">Gefundene Boards koennen direkt in dein Inventar uebernommen werden.</p>
+              <div id="networkDiscoveryStatus" class="flash-status hidden"></div>
+              <section id="networkDiscoveryList" class="discovery-list"></section>
+            </section>
+            <form id="deviceInventoryForm" class="panel form-grid">
+            <p class="eyebrow">Fallback manuell</p>
+            <label>Name<input id="inventoryDisplayName" type="text" value="Mein ESP32" /></label>
+            <label>Seriennummer<input id="inventorySerialNumber" type="text" value="" placeholder="z. B. COMM-ESP32-001" /></label>
+            <label>Board<select id="inventoryHardwareProfile"></select></label>
+            <label>Capabilities<input id="inventoryCapabilities" type="text" value="" /></label>
+            <label>Status
+              <select id="inventoryConnectivityStatus">
+                <option value="unknown">unbekannt</option>
+                <option value="usb_connected">USB verbunden</option>
+                <option value="online">online</option>
+                <option value="offline">offline</option>
+              </select>
+            </label>
+            <button type="submit">Manuell hinzufuegen</button>
+            <div id="inventoryStatus" class="flash-status hidden"></div>
+          </form>
+          </section>
+          <section id="deviceList" class="device-list"></section>
+        </section>
       </section>
 
       <section id="buildsView" class="view hidden">

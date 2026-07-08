@@ -1,0 +1,55 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Arduino Atmel/AVR: Build",
+      "type": "shell",
+      "command": "${env:USERPROFILE}\\.platformio\\penv\\Scripts\\platformio.exe",
+      "args": [
+        "run"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/basissoftware/arduino-atmel"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "Arduino Atmel/AVR: Flash",
+      "type": "shell",
+      "command": "${env:USERPROFILE}\\.platformio\\penv\\Scripts\\platformio.exe",
+      "args": [
+        "run",
+        "-t",
+        "upload"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/basissoftware/arduino-atmel"
+      },
+      "group": "build",
+      "problemMatcher": [
+        "$gcc"
+      ]
+    },
+    {
+      "label": "Arduino Atmel/AVR: Clean",
+      "type": "shell",
+      "command": "${env:USERPROFILE}\\.platformio\\penv\\Scripts\\platformio.exe",
+      "args": [
+        "run",
+        "-t",
+        "clean"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}/basissoftware/arduino-atmel"
+      },
+      "group": "build",
+      "problemMatcher": []
+    }
+  ]
+}

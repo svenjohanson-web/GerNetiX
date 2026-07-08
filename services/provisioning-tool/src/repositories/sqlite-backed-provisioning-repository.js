@@ -29,6 +29,12 @@ class SqliteBackedProvisioningRepository extends InMemoryProvisioningRepository 
     return result;
   }
 
+  clearActiveCredential(deviceId) {
+    const result = super.clearActiveCredential(deviceId);
+    this.persist();
+    return result;
+  }
+
   persist() {
     const state = {
       sessions: Array.from(this.sessions.values()),

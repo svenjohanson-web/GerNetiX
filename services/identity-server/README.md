@@ -75,6 +75,8 @@ services/identity-server/public/app
 
 Ein Lernprojekt kann aus dem Lernmodus direkt in der IDE geoeffnet werden. Beide Modi greifen auf dieselben Project-Server-Projektdateien zu; Codeaenderungen aus der IDE bleiben dadurch am Projekt erhalten.
 
+Unter `/app/devices/` besitzt der Nutzer eine accountgebundene Hardware-Inventar-Seite. Fuer WLAN-faehige Boards ist die Netzwerksuche der Standardweg: Die IDE sucht erreichbare GerNetiX-Runtime-Boards im lokalen Netzwerk und uebernimmt sie erst nach Nutzerbestaetigung in das Account-Device-Inventar des Device Management Servers. Die manuelle Erfassung bleibt nur ein Fallback fuer nicht automatisch auffindbare Community-Hardware. Die UI setzt keine fremde Account-ID und macht Community-Erfassung nicht automatisch zu GerNetiX-verifizierter Hardware.
+
 Wichtig: Die Plattform-UI liegt auch im Projekt als ein gemeinsames Artefakt unter `services/identity-server/public/app`. Alte Einstiege wie `/login.html`, `/projects/` und `/dev/projects/` werden nur noch auf die gemeinsame Plattform umgeleitet.
 
 Die fruehere Tamagotchi-Webdemo unter `/demo/tamagotchi/` wurde entfernt. Fuer das Lernprojekt bleibt nur die unabhaengige, komplexe Quellcodedatei `tools/guided-code-lesson/assets/tamagotchi-complete-example.c` als Analyse- und Diskussionsobjekt erhalten.

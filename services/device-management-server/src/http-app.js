@@ -76,6 +76,12 @@ function createHttpApp(options) {
       return;
     }
 
+    const accountDevice = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/devices/([^/]+)$`));
+    if (req.method === "DELETE" && accountDevice) {
+      sendJson(res, 200, service.removeAccountDevice(decodeURIComponent(accountDevice[1]), decodeURIComponent(accountDevice[2])));
+      return;
+    }
+
     const otaTargets = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/ota-targets$`));
     if (req.method === "GET" && otaTargets) {
       sendJson(res, 200, {

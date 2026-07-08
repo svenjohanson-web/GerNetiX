@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GerNetiX Provisioning Tool</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GerNetiX Factory Tool</p>
+          <h1>Provisioning</h1>
+        </div>
+        <span id="runnerBadge" class="badge">USB</span>
+      </header>
+
+      <section class="workflow">
+        <form id="sessionForm" class="panel form-grid">
+          <div class="section-title">
+            <p class="eyebrow">1</p>
+            <h2>Boarddaten</h2>
+          </div>
+          <label>Seriennummer<input id="serialNumber" type="text" value="GNX-ESP32-0002" /></label>
+          <label>ProcessorBoard<select id="processorBoard"></select></label>
+          <label>Hardwareprofil<input id="hardwareProfile" type="text" value="hardware.processor_board.esp32_devkit" readonly /></label>
+          <label>Charge<input id="batchId" type="text" value="batch-2026-07" /></label>
+          <label>Firmwareversion<input id="firmwareVersion" type="text" value="0.1.0" /></label>
+          <label>Provisioniert von<input id="actor" type="text" value="factory-user" /></label>
+          <label>USB-Port<input id="usbPort" type="text" value="COM9" /></label>
+          <div class="button-row">
+            <button class="primary" type="submit">Session vorbereiten</button>
+            <button id="credentialResetButton" type="button">Aktives Credential zuruecksetzen</button>
+          </div>
+        </form>
+
+        <section class="panel">
+          <div class="section-title">
+            <p class="eyebrow">2</p>
+            <h2>USB-Flash</h2>
+          </div>
+          <dl id="sessionMeta" class="meta-list"></dl>
+          <fieldset class="mode-field">
+            <legend>Flash-Modus</legend>
+            <label><input type="radio" name="flashMode" value="mock" checked /> Mock-Test</label>
+            <label><input id="realFlashMode" type="radio" name="flashMode" value="esptool" /> Echter USB-Flash</label>
+          </fieldset>
+          <fieldset class="mode-field">
+            <legend>Firmware-Artefakt</legend>
+            <dl id="firmwareArtifactMeta" class="meta-list"></dl>
+            <div id="firmwareArtifactStatus" class="status hidden"></div>
+          </fieldset>
+          <div id="secretStatus" class="status hidden"></div>
+          <div id="flashStatus" class="status hidden"></div>
+          <div id="flashProgress" class="progress hidden" aria-live="polite">
+            <div class="progress-header">
+              <span id="flashProgressLabel">USB-Flash</span>
+              <strong id="flashProgressPercent">0%</strong>
+            </div>
+            <div class="progress-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <span id="flashProgressBar" class="progress-fill"></span>
+            </div>
+            <div id="flashProgressText" class="progress-text"></div>
+          </div>
+          <div class="button-row">
+            <button id="usbFlashButton" class="primary" type="button" disabled>Firmware per USB flashen</button>
+            <button id="completeButton" type="button" disabled>Provisionierung abschliessen</button>
+          </div>
+          <pre id="detailsBox" class="details"></pre>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

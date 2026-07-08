@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GerNetiX Recovery Tool</title>
+    <link rel="stylesheet" href="/app.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GerNetiX Nutzerwerkzeug</p>
+          <h1>Recovery Tool</h1>
+        </div>
+        <span id="healthBadge" class="badge">USB Recovery</span>
+      </header>
+
+      <section class="workflow">
+        <form id="detectForm" class="panel form-grid">
+          <div class="section-title">
+            <p class="eyebrow">1</p>
+            <h2>Board erkennen</h2>
+          </div>
+          <label>Account-ID<input id="accountId" type="text" value="demo" /></label>
+          <label>USB-Port<input id="usbPath" type="text" value="COM9" /></label>
+          <label>Seriennummer<input id="serialNumber" type="text" placeholder="optional" /></label>
+          <label>Vendor-ID<input id="vendorId" type="text" value="10c4" /></label>
+          <label>Product-ID<input id="productId" type="text" value="ea60" /></label>
+          <label>Chipfamilie<input id="chipFamily" type="text" value="esp32" /></label>
+          <button class="primary" type="submit">Recovery Session starten</button>
+        </form>
+
+        <section class="panel">
+          <div class="section-title">
+            <p class="eyebrow">2</p>
+            <h2>Rettung durchfuehren</h2>
+          </div>
+          <dl id="sessionMeta" class="meta-list"></dl>
+          <div id="statusBox" class="status hidden"></div>
+          <div id="questionList" class="question-list"></div>
+          <div class="button-row">
+            <button id="confirmButton" type="button" disabled>Angaben bestaetigen</button>
+            <button id="credentialButton" type="button" disabled>Credentials erneuern</button>
+            <button id="connectivityButton" type="button" disabled>Connectivity retten</button>
+            <button id="registerButton" type="button" disabled>Device registrieren</button>
+          </div>
+          <pre id="detailsBox" class="details"></pre>
+        </section>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -14,7 +14,7 @@
 
 * { box-sizing: border-box; }
 body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); }
-button, select, textarea { font: inherit; }
+button, input, select, textarea { font: inherit; }
 button, a { cursor: pointer; }
 .app-shell { max-width: 1260px; margin: 0 auto; padding: 22px; }
 .topbar, .section-head, .top-actions, .button-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -30,11 +30,24 @@ button, select {
   color: var(--text);
   padding: 10px 12px;
 }
-button.primary, .entry-card.primary, #saveSourceButton, #buildButton, #openIdeButton, #lessonNextButton {
+button:disabled {
+  cursor: default;
+  color: var(--muted);
+  background: #f8fafc;
+}
+button.primary, .entry-card.primary, #saveSourceButton, #buildButton, #usbFlashButton, #openIdeButton, #lessonNextButton {
   background: var(--accent);
   border-color: var(--accent);
   color: #fff;
 }
+button.danger {
+  border-color: #fecaca;
+  color: #991b1b;
+}
+button.danger:hover {
+  background: #fef2f2;
+}
+.port-input { width: 116px; }
 .account-badge { color: var(--muted); font-size: 14px; }
 .tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 18px; }
 .tabs a { border: 1px solid var(--line); border-radius: 7px; background: #fff; padding: 10px 12px; }
@@ -52,7 +65,7 @@ button.primary, .entry-card.primary, #saveSourceButton, #buildButton, #openIdeBu
 }
 .entry-card span { color: var(--muted); font-weight: 700; }
 .entry-card strong { font-size: 19px; line-height: 1.3; }
-.panel, .project-card, .device-row, .build-row {
+.panel, .project-card, .device-row, .build-row, .discovery-row {
   background: var(--panel);
   border: 1px solid var(--line);
   border-radius: 8px;
@@ -65,13 +78,37 @@ button.primary, .entry-card.primary, #saveSourceButton, #buildButton, #openIdeBu
 .project-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
 .project-card { padding: 16px; }
 .project-card p, .device-row p, .build-row p, #lessonText { color: var(--muted); line-height: 1.5; }
+.helper-text { margin: 8px 0 0; color: var(--muted); line-height: 1.45; }
 .card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .lesson-panel { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 12px; margin-top: 14px; }
 .step-rail { display: grid; gap: 8px; }
 .step-rail button { text-align: left; }
 .step-rail button.active { background: var(--soft); color: var(--accent); border-color: var(--accent); font-weight: 700; }
 .insight { margin: 16px 0; padding: 14px; border-left: 4px solid var(--accent); background: var(--soft); line-height: 1.5; }
-.ide-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; }
+.ide-layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 12px; }
+.form-grid { display: grid; gap: 12px; align-content: start; }
+.form-grid label { display: grid; gap: 6px; color: var(--muted); font-weight: 700; }
+.form-grid input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 10px 12px;
+  color: var(--text);
+}
+.manifest-box {
+  min-height: 220px;
+  max-height: 420px;
+  overflow: auto;
+  margin: 14px 0 0;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font: 13px Consolas, "Cascadia Mono", monospace;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
 textarea {
   width: 100%;
   min-height: 520px;
@@ -86,15 +123,93 @@ textarea {
   line-height: 1.45;
 }
 .meta-list { display: grid; gap: 10px; margin: 12px 0 0; }
+.meta-list.compact { gap: 6px; }
 .meta-list div { min-width: 0; }
 .meta-list dt { color: var(--muted); font-size: 12px; }
 .meta-list dd { margin: 2px 0 0; font-weight: 700; overflow-wrap: anywhere; }
-.device-list, .build-list { display: grid; gap: 10px; }
-.device-row, .build-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px; }
+.flash-status {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  line-height: 1.4;
+}
+.flash-status.running { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
+.flash-status.ok { background: #ecfdf5; border-color: #86efac; color: #166534; }
+.flash-status.error { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
+.project-view-manifest {
+  display: grid;
+  gap: 12px;
+  margin-top: 18px;
+}
+.manifest-head {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.manifest-head p:last-child,
+.manifest-view-card p {
+  color: var(--muted);
+  line-height: 1.45;
+}
+.manifest-view-list {
+  display: grid;
+  gap: 10px;
+}
+.manifest-view-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+}
+.manifest-view-title {
+  display: grid;
+  gap: 4px;
+}
+.manifest-view-title span {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+.manifest-list {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  color: var(--text);
+  line-height: 1.45;
+}
+.explanation-grid {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+.explanation-grid div {
+  border-left: 3px solid var(--accent);
+  padding-left: 10px;
+}
+.explanation-grid p {
+  margin: 4px 0 0;
+}
+.plantuml-box {
+  max-height: 260px;
+  overflow: auto;
+  margin: 10px 0 0;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font: 12px Consolas, "Cascadia Mono", monospace;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+.inventory-layout { display: grid; grid-template-columns: minmax(340px, 460px) minmax(0, 1fr); gap: 12px; align-items: start; }
+.inventory-tools, .device-list, .build-list, .discovery-list { display: grid; gap: 10px; }
+.discovery-list { margin-top: 12px; }
+.device-row, .build-row, .discovery-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 14px; }
 .hidden { display: none; }
 .empty { color: var(--muted); }
 
 @media (max-width: 900px) {
-  .dashboard-grid, .lesson-panel, .ide-layout, .device-row, .build-row { grid-template-columns: 1fr; }
+  .dashboard-grid, .lesson-panel, .ide-layout, .inventory-layout, .device-row, .build-row, .discovery-row { grid-template-columns: 1fr; }
   .topbar, .section-head { align-items: flex-start; flex-direction: column; }
 }

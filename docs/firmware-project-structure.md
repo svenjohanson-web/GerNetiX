@@ -7,6 +7,8 @@ Die Basissoftware bleibt ein geschuetzter, wiederverwendbarer Firmware-Kern. Pro
 Damit entsteht eine klare Trennung:
 
 - `basissoftware/esp32/`: stabile Basis-Firmware, Schutzmechanismen, Update-Logik, Runtime und gemeinsame Hardwareabstraktion.
+- `basissoftware/arduino-framework/`: Basissoftware fuer Arduino-kompatible AVR-Boards mit Arduino-Framework.
+- `basissoftware/arduino-atmel/`: Basissoftware fuer Arduino-kompatible AVR-Boards ohne Arduino-Framework, direkt mit AVR-/Atmel-nahen APIs.
 - `projects/`: projektspezifische Parameter, Pinbelegung, erlaubte Features, Branding, Sensor-/Aktor-Profile und optionale Hooks.
 - `model/`: runtime-neutrale fachliche Modelle, zum Beispiel das Tamagotchi-Modell.
 - `runtimes/`: technische Zielplattformen und Referenzanwendungen.
@@ -31,6 +33,24 @@ GerNetiX/
         ...
       hooks/
         ...
+  basissoftware/arduino-framework/
+    platformio.ini
+    include/
+      user/
+        user_app.h
+    src/
+      main.cpp
+      user/
+        user_app.cpp
+  basissoftware/arduino-atmel/
+    platformio.ini
+    include/
+      user/
+        user_app.h
+    src/
+      main.c
+      user/
+        user_app.c
   projects/
     _template/
       project.yaml
@@ -105,11 +125,45 @@ Erlaubte Hook-Arten:
 
 Die Basissoftware entscheidet, wann diese Hooks aufgerufen werden. Projektcode darf keine internen Basissoftware-Dateien einbinden.
 
+## ESP32-Basisfunktionen
+
+Der aktuelle ESP32-Basisstand stellt lokale Setup- und Diagnosefunktionen bereit, ohne Backend, Account oder Pairing vorauszusetzen:
+
+- Setup-AP `GerNetiX-Setup`
+- Device-Webinterface unter `http://192.168.4.1/`
+- `/status` fuer Runtime-, WLAN- und Uptime-Status
+- `/logs` fuer lokalen Feedback-Ringpuffer
+- Serial/UART-Ausgabe fuer dieselben Feedback-Ereignisse
+
+Diese Funktionen gehoeren zur geschuetzten Basissoftware. Projekt- und User-Code duerfen sie nutzen, aber nicht ersetzen. WLAN-Scan, Ziel-WLAN-Speicherung, Node-Modus, OTA-Partitionierung, OTA-Authentifizierung und Service-Endpunkt-Konfiguration sind bewusst als offene Entscheidungen im Graphen dokumentiert.
+
 ## Inkrementelle Build-Strategie
 
 Die Firmware ist auf kleine, getrennt cachebare Build-Einheiten ausgelegt.
 
+## Schneller Firmware-Feedbackweg
+
+Fuer die normale Arbeit an Embedded-Firmware ist ein vollstaendiger PlatformIO-/ESP-IDF-Build nicht der Standardnachweis. Diese Builds koennen auf einem Laptop lange laufen, viele Compilerprozesse starten und die Maschine spuerbar belasten. Deshalb gilt:
+
+1. Kleine Aenderungen zuerst mit schnellen Checks pruefen.
+2. Vollbuild nur starten, wenn ein echtes Firmware-Artefakt oder ein echter Flash benoetigt wird.
+3. Vollbuilds nur ueber den Build-&-Deploy-Server oder bewusst auf einem vorbereiteten Build-Host mit Cache ausfuehren.
+4. Jeder Vollbuild braucht ein hartes Timeout und muss beim Abbruch alle PlatformIO-, Python-, Compiler- und Flash-Prozesse beenden.
+5. USB-Flash und OTA-Flash sind Integrationsschritte, keine Standardpruefung fuer jede Codeaenderung.
+
+Der schnelle Standardnachweis besteht aus:
+
+- Contract-Check zwischen Provisioning-Manifest und Firmware-Konfigurationsschnittstelle
+- Syntax-/Header-Check fuer die geaenderten Firmware-Dateien
+- Host-Test fuer parsebare Logik, soweit sie ohne ESP-IDF lauffaehig ist
+- API-Test fuer Provisioning Tool, Device Management und Build-&-Deploy-Adapter
+- optionaler BuildPackage-Check ohne PlatformIO-Ausfuehrung
+
+Ein ESP32-Vollbuild wird erst danach gestartet, wenn die schnellen Checks erfolgreich waren und ein physisches Board oder ein OTA-Artefakt wirklich gebraucht wird.
+
 - `basissoftware/esp32/` ist die stabile Basis-Firmware und wird als eigene ESP-IDF-Komponente gebaut.
+- `basissoftware/arduino-framework/` ist die Arduino-Framework-Basis fuer Arduino-kompatible AVR-Boards.
+- `basissoftware/arduino-atmel/` ist die direkte AVR-/Atmel-nahe Basis fuer dieselben Boardklassen ohne Arduino-Framework.
 - `projects/<projekt-id>/` enthaelt nur projektspezifische Konfiguration und freigegebene Hooks.
 - `generated/<projekt-id>/` enthaelt KI-generierte oder lernprojektbezogene Dateien.
 - Basissoftware-Code darf keine Header aus `projects/` oder `generated/` inkludieren.
@@ -134,6 +188,15 @@ Typischer Ablauf:
 6. OTA-Artefakt bereitstellen.
 
 Ziel: Eine typische Aenderung in einem Lernprojekt kompiliert nur wenige Dateien aus `projects/` oder `generated/` neu. `basissoftware/esp32/` bleibt unveraendert und wird nicht neu uebersetzt.
+
+## Arduino-Board-Varianten
+
+Arduino-Board bedeutet in GerNetiX nicht automatisch Arduino-Framework. Fuer Arduino-kompatible AVR-Boards gibt es zwei fachlich getrennte Basissoftware-Varianten:
+
+- Arduino-Framework: `basissoftware/arduino-framework/`
+- Atmel/AVR ohne Arduino-Framework: `basissoftware/arduino-atmel/`
+
+Die Variante wird explizit im Projektmodell oder BuildPackage gewaehlt. Sie darf nicht nur aus dem Boardnamen abgeleitet werden, weil dasselbe Board sowohl mit Arduino-Framework als auch direkt AVR-/Atmel-nah programmiert werden kann.
 
 ## Build-Regel
 
@@ -164,6 +227,8 @@ Ausgeliefert wird nur:
 Nicht ausgeliefert werden:
 
 - `basissoftware/esp32/`
+- `basissoftware/arduino-framework/`
+- `basissoftware/arduino-atmel/`
 - `projects/`
 - `generated/`
 - Build-Skripte

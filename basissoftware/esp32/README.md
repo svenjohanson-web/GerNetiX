@@ -25,6 +25,7 @@ extern "C" void app_main() {
   initSerial();
   initPins();
   initWifi();
+  startDeviceWebServer();
   runDiagnostics();
   onProjectInit();
   startRuntimeTasks();
@@ -58,3 +59,106 @@ Jede Basissoftware-Funktion liegt in einer eigenen Datei. Projektlogik wird nich
 ```powershell
 platformio run
 ```
+
+## WLAN-Setup-AP
+
+Beim Start initialisiert die Basissoftware WiFi im SoftAP-Modus. Nach dem Flashen sollte im WLAN-Scan ein offenes Netzwerk sichtbar sein:
+
+```text
+GerNetiX-Setup
+```
+
+Nach dem Verbinden mit diesem Netzwerk ist das lokale Device-Webinterface unter der Standard-AP-Adresse erreichbar:
+
+```text
+http://192.168.4.1/
+```
+
+Zusaetzlich startet die Basissoftware einen Captive-DNS-Dienst auf UDP-Port 53. DNS-Anfragen im Setup-WLAN werden auf `192.168.4.1` beantwortet, und unbekannte HTTP-GET-Pfade zeigen die lokale Setup-Seite. Dadurch oeffnen Handy, Tablet oder Laptop nach dem Verbinden mit `GerNetiX-Setup` typischerweise automatisch den Captive-Portal-Dialog, ohne dass der Nutzer die IP-Adresse raten muss.
+
+Aktuelle lokale Endpunkte:
+
+- `/` zeigt die einfache Device-Startseite.
+- `/status` liefert Runtime-, WLAN- und Uptime-Status als JSON.
+- `/logs` liefert den lokalen Feedback-Ringpuffer als Text.
+- Unbekannte GET-Pfade wie `/generate_204`, `/hotspot-detect.html` oder `/connecttest.txt` werden als Captive-Portal-Einstieg auf die lokale Setup-Seite beantwortet.
+- `POST /provisioning` ist ein lokaler Recovery-/Entwicklungsendpunkt und nicht der normale Provisioning-Tool-Weg.
+- `POST /auth/challenge` nimmt eine Device-Management-Challenge an und erzeugt einen lokalen `HMAC_SHA256`-Nachweis mit dem provisionierten Device-Secret.
+
+Nach erfolgreichem Provisioning enthaelt `/status` zusaetzlich:
+
+- `provisioningState`
+- `deviceId`
+- `serialNumber`
+- `hardwareProfileId`
+- `firmwareVersion`
+- `firmwareBasis`
+- `credentialId`
+- `credentialType`
+- `keyReference`
+- `deviceManagementUrl`
+- `buildDeployUrl`
+- `provisioningBatchId`
+- `provisionedBy`
+- `capabilities`
+- `hasDeviceSecret`
+- `authenticityProof`
+
+## USB-Factory-Provisioning
+
+Das initiale Hersteller-Provisioning laeuft ausschliesslich ueber USB. Das Provisioning Tool erzeugt fuer genau einen physischen Flash-Vorgang eine generierte Header-Datei:
+
+```text
+include/basissoftware/generated_provisioning_payload.h
+```
+
+Wenn diese Datei beim Build vorhanden ist, importiert die Basissoftware den enthaltenen Factory-Payload beim ersten Boot in NVS. Ist das Device bereits provisioniert, wird der Factory-Payload ignoriert. Das Provisioning Tool schreibt diese Datei nur bei einem expliziten USB-Flash-Paket, zum Beispiel mit `flash.write_factory_header`.
+
+Das Provisioning Tool liefert im abrufbaren Manifest nur Credential-Referenz und Secret-Hash. Das einmalig erzeugte `one_time_device_secret` darf nur im USB-Flash-Paket enthalten sein. Dieses Secret wird lokal im Device-NVS gespeichert, aber niemals ueber `/status`, `/logs` oder den Challenge-Endpunkt ausgegeben.
+
+Minimaler Echtheitsnachweis gegen Device Management:
+
+```http
+POST /auth/challenge
+Content-Type: application/json
+
+{
+  "challenge_id": "challenge_123",
+  "challenge": "random-server-challenge"
+}
+```
+
+Antwort:
+
+```json
+{
+  "device_id": "device_...",
+  "serial_number": "GNX-ESP32-...",
+  "credential_id": "cred_...",
+  "challenge_id": "challenge_123",
+  "algorithm": "HMAC_SHA256",
+  "hmac": "..."
+}
+```
+
+## Schneller Contract-Nachweis
+
+Fuer die schnelle Pruefung ohne ESP-IDF-/PlatformIO-Vollbuild gibt es einen Contract-Check:
+
+```powershell
+node tools\firmware-contract-check\check-provisioning-contract.js
+```
+
+Der Check erzeugt ein reales Provisioning-Manifest aus `services/provisioning-tool` und prueft, ob die ESP32-Basissoftware die erwarteten Manifestfelder kennt. Der schwere Firmware-Build bleibt ein expliziter Integrationsschritt.
+
+Dieser AP ist der erste Schritt fuer das im Register-und-Pairing-Konzept beschriebene Connectivity Setup. WLAN-Scan, Speichern der Ziel-WLAN-Daten, Wechsel in den Node-Modus und OTA sind noch Folgearbeiten.
+
+## Offene Entscheidungen
+
+Die folgenden Punkte sind im fachlichen Graphen als offene Entscheidungen dokumentiert:
+
+- `decision.esp32_ota_bootstrap_firmware.wifi_setup`: WLAN-Scan, SSID-Auswahl, Passwort-Eingabe und lokale NVS-Speicherung.
+- `decision.esp32_ota_bootstrap_firmware.node_mode_policy`: Verhalten nach erfolgreicher WLAN-Verbindung, z. B. STA-only, AP+STA oder Fallback-AP.
+- `decision.esp32_ota_bootstrap_firmware.flash_layout`: 2-MB-Flash-Unterstuetzung vs. 4-MB-OTA-Zielprofil und Partitionierung.
+- `decision.esp32_ota_bootstrap_firmware.ota_authentication`: lokaler Prototyp, HMAC/Token oder signierte Firmware.
+- `decision.esp32_ota_bootstrap_firmware.service_endpoints`: konfigurierbare Device-Management-, Build-&-Deploy-, MQTT- und HTTPS-Endpunkte.

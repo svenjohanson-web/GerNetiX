@@ -9,6 +9,7 @@ Der Projektserver ist die Quelle der Wahrheit fuer Benutzer, Nutzerprojekte, Ger
 - Nutzerprojekte dauerhaft speichern
 - Benutzer- und Geraetebezug fuer Projektarbeit verwalten
 - Quellcode und Projektkonfiguration versionierbar verwalten
+- projektgebundene IDE-/Lernansichten als View Manifest speichern
 - Build-relevante Zielgeraete und Hardware-Konfigurationen referenzieren
 - BuildJobs erzeugen
 - vollstaendige BuildPackages als Projektsnapshot erzeugen
@@ -49,9 +50,16 @@ build-package/
 
 Der Build-&-Deploy-Server darf niemals direkt auf dauerhafte Projektdaten zugreifen.
 
+## ProjectViewManifest
+
+Das Projekt kann ein `view_manifest` enthalten. Darin steht, welche IDE-/Lernansichten fuer dieses Projekt angezeigt werden, z. B. Quellcodeanalyse, Erklaerungskarten, PlantUML-Quelle oder naechste Umsetzungsschritte. Die User IDE rendert diese Bloecke generisch; projektspezifisches Wissen gehoert in das Projektmanifest, nicht in den Viewer.
+
+Das BuildPackage enthaelt das Manifest als `project-view-manifest.json`, damit nachgelagerte Prozesse denselben Projektsnapshot sehen.
+
 ## Module
 
 - `project-source-repository`: Projektquellen, User-Code und Projektkonfiguration
+- `project-view-manifest-repository`: projektgebundene IDE-/Lernansichten
 - `build-package-creator`: vollstaendige Build-Pakete aus Projekt, Basissoftware und Zielgeraet
 - `project-build-history`: Build-, Flash- und Deploy-Historie
 - `firmware-artifact-repository`: Firmware-Artefakte, Logs und Statusmetadaten
@@ -79,7 +87,7 @@ API-Prefix:
 /api/projects
 ```
 
-Umgesetzt sind Projektanlage, Projektquellen, BuildJob-Erzeugung, reproduzierbare BuildPackages, BuildResult-Rueckmeldung, Firmware-Artefaktreferenzen, Build-Historie und Learning-Feedback inklusive Kontakt-Consent und Anonymisierung.
+Umgesetzt sind Projektanlage, Projektquellen, ProjectViewManifest, BuildJob-Erzeugung, reproduzierbare BuildPackages, BuildResult-Rueckmeldung, Firmware-Artefaktreferenzen, Build-Historie und Learning-Feedback inklusive Kontakt-Consent und Anonymisierung.
 
 Konfiguration:
 

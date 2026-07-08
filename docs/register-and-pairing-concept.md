@@ -20,7 +20,7 @@ Ziel:
 
 - konkretes physisches Board als GerNetiX-Board anlegen
 - Seriennummer, Hardwareprofil und Charge dokumentieren
-- initiale Firmware und OTA-Faehigkeit vorbereiten
+- initiale Firmware per USB flashen und OTA-Faehigkeit vorbereiten
 - Credential oder Secret erzeugen bzw. referenzieren
 - Support- und Garantiegrundlage schaffen
 
@@ -30,6 +30,10 @@ Ergebnis:
 - `DeviceAuthenticity` ist `gernetix_verified`
 - `DeviceCredential` erlaubt spaeter einen Challenge-Response-Nachweis
 - `DeviceSupportEntitlement` kann fuer Support/Reklamation geprueft werden
+
+Das Provisioning Tool arbeitet im Hersteller-Register fuer das physische Board ausschliesslich ueber USB. Es waehlt ein ProcessorBoard aus dem Hardware-Katalog und leitet daraus Hardwareprofil, Basissoftware-Profil und Factory-Firmware-Artefakt ab. Es erzeugt ein USB-Flash-Paket mit Factory-Provisioning-Payload; die ESP32-Basissoftware importiert diesen Payload beim ersten Boot in den lokalen NVS-Speicher. Die Basissoftware kommt im Serverbetrieb aus einem versionierten Firmware-Artefakt im SQLite-/Artifact-Store oder aus einem explizit konfigurierten Server-Firmwarepfad, nicht direkt aus der Projektumgebung `basissoftware/esp32` und nicht aus einem Browser-Dateiupload der Factory-HMI. Der geheime Factory-Header wird nur in temporaeres Staging geschrieben. WLAN, Setup-AP und Device-Webserver sind Diagnose-, Recovery- oder Connectivity-Funktionen, aber nicht der normale Hersteller-Provisioning-Kanal.
+
+Der vollstaendige Ablauf ist als UML-Sequenzdiagramm dokumentiert: [provisioning-process-sequence-uml.md](provisioning-process-sequence-uml.md).
 
 ### Kunden-Register und Pairing
 

@@ -15,6 +15,15 @@ MVP-Implementierungskontrakt fuer den lokalen Project Server.
 - `GET /api/projects/{projectId}`
 - `PATCH /api/projects/{projectId}`
 
+Ein Projekt kann optional `view_manifest` enthalten. Dieses Manifest beschreibt die projektgebundenen IDE-/Lernansichten, z. B.:
+
+- `source_analysis`
+- `explanation`
+- `plantuml`
+- `implementation_plan`
+
+Die User IDE rendert diese View-Typen generisch. Projektspezifische Inhalte wie Diagrammquelle, erklaerende Karten oder naechste Arbeitsschritte gehoeren in das Manifest.
+
 ## Quellen
 
 - `GET /api/projects/{projectId}/sources`
@@ -34,7 +43,7 @@ Quellpfade muessen relativ sein und duerfen keine `..`-Segmente enthalten.
 - `POST /api/build-jobs/{buildJobId}/result`
 - `GET /api/firmware-artifacts?project_id=...`
 
-Der Project Server kompiliert nicht selbst. `build-package` liefert einen reproduzierbaren Snapshot fuer den Build-&-Deploy-Server.
+Der Project Server kompiliert nicht selbst. `build-package` liefert einen reproduzierbaren Snapshot fuer den Build-&-Deploy-Server. Das Paket enthaelt neben `build-job.json`, `platformio.ini` und Projektquellen auch `project-view-manifest.json`.
 
 ## Learning Feedback
 
@@ -49,6 +58,7 @@ Kontaktinformationen werden ohne Feedback-spezifischen Consent nicht ausgegeben.
 
 - Projekt anlegen, lesen und aktualisieren
 - Projektquellen und User-Code verwalten
+- ProjectViewManifest verwalten
 - Hardware-Konfigurationen verwalten
 - Build-Paket erstellen
 - Build- und Deploy-Status empfangen

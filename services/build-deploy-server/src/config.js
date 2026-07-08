@@ -13,7 +13,11 @@ function createConfig(env = process.env) {
     platformioCommand: env.PLATFORMIO_COMMAND || "platformio",
     runtimeRoot,
     tempDir: path.join(runtimeRoot, "tmp"),
-    cacheDir: env.BUILD_CACHE_DIR ? path.resolve(env.BUILD_CACHE_DIR) : path.join(runtimeRoot, "cache"),
+    cacheDir: env.BUILD_CACHE_DIR === "platformio-default"
+      ? null
+      : env.BUILD_CACHE_DIR
+        ? path.resolve(env.BUILD_CACHE_DIR)
+        : path.join(runtimeRoot, "cache"),
     artifactDir: env.BUILD_ARTIFACT_DIR
       ? path.resolve(env.BUILD_ARTIFACT_DIR)
       : path.join(runtimeRoot, "artifacts"),

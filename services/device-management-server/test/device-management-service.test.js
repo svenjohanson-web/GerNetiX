@@ -126,6 +126,31 @@ test("purchase context alone does not make community hardware support eligible",
   assert.equal(entitlement.source, "purchase_context_requires_authenticity");
 });
 
+test("removes account device without deleting registered device", () => {
+  const service = createDefaultDeviceManagementServer();
+  const device = registerVerified(service);
+  const accountDevice = service.addAccountDevice("acct-1", {
+    device_id: device.device_id,
+    display_name: "Sven ESP32",
+  });
+
+  const removed = service.removeAccountDevice("acct-1", accountDevice.account_device_id);
+
+  assert.equal(removed.removed, true);
+  assert.equal(removed.device_id, device.device_id);
+  assert.equal(service.listAccountDevices("acct-1").length, 0);
+  assert.equal(service.getStatus(device.device_id).device_id, device.device_id);
+});
+
+test("removing unknown account device returns not found", () => {
+  const service = createDefaultDeviceManagementServer();
+
+  assert.throws(
+    () => service.removeAccountDevice("acct-1", "account_device_missing"),
+    /AccountDevice wurde nicht gefunden/,
+  );
+});
+
 test("admin device detail is masked without consent and full with consent", () => {
   const service = createDefaultDeviceManagementServer();
   const device = registerVerified(service);

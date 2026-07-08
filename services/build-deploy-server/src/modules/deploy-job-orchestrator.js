@@ -3,6 +3,14 @@ const { BuildDeployError } = require("../errors");
 class DeployJobOrchestrator {
   async maybeCreateDeploy(job, buildResult) {
     const deploy = job.deploy || {};
+    if (job.mode === "build_and_usb_flash") {
+      return {
+        requested: false,
+        status: "not_requested",
+        transport: "usb",
+        log: "USB-Flash wurde lokal ueber PlatformIO ausgefuehrt; kein OTA-/MQTT-Deploy angefordert.",
+      };
+    }
     if (!deploy.requested) {
       return { requested: false, status: "not_requested", log: "No deploy requested." };
     }
@@ -17,13 +25,18 @@ class DeployJobOrchestrator {
       throw new BuildDeployError("deploy_not_authorized", "Deploy-Auftrag wurde nicht als berechtigt markiert.", 403);
     }
 
+    const firmware = buildResult.primary_firmware || buildResult.artifacts["firmware.bin"] || buildResult.artifacts["firmware.hex"];
+    if (!firmware) {
+      throw new BuildDeployError("missing_primary_firmware_artifact", "Deploy-Auftrag braucht ein Firmware-Artefakt.", 422);
+    }
+
     return {
       requested: true,
       status: "queued_for_mqtt",
       topic: `devices/${deploy.device_id}/deploy`,
-      firmware_url: buildResult.artifacts["firmware.bin"].download_url,
-      firmware_sha256: buildResult.artifacts["firmware.bin"].sha256,
-      firmware_size_bytes: buildResult.artifacts["firmware.bin"].size_bytes,
+      firmware_url: firmware.download_url,
+      firmware_sha256: firmware.sha256,
+      firmware_size_bytes: firmware.size_bytes,
       log: "MVP-Deploy wurde validiert; MQTT-Publish ist abstrahiert und noch nicht produktiv angebunden.",
     };
   }

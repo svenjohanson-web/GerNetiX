@@ -941,11 +941,38 @@ items:
       - api_artifact.account_device_inventory
       - api_artifact.ide_ota_device_selection
 
+  - id: requirement.project_bound_guided_ide_views
+    type: requirement
+    title: Gefuehrte IDE-Ansichten muessen Projektinhalt sein
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: IDE
+    summary: Gefuehrte IDE-Ansichten wie Quellcodeanalyse, erklaerende Karten, Bilder, PlantUML-Diagramme, Runtime-Preview-Hinweise und naechste Umsetzungsschritte muessen als Teil des Projekts im Project Server gespeichert werden. Der Viewer darf nur generisch rendern und keine projektspezifische Didaktik hart kodieren.
+    derivedFromRequirements:
+      - requirement.identity_registration_login
+    supportsCustomerJourneys:
+      - CJ-003
+      - CJ-011
+    affectsArchitectureArtifacts:
+      - app.user_ide
+      - architecture_artifact.project_server
+    affectsDataModels:
+      - data_model.project_view_manifest
+    affectsApiArtifacts:
+      - api_artifact.firmware_build_deploy
+    acceptanceCriteria:
+      - Ein Projekt kann ein `ProjectViewManifest` speichern.
+      - Die IDE kann Manifest-Views wie `source_analysis`, `explanation`, `plantuml` und `implementation_plan` generisch anzeigen.
+      - Das Manifest wird mit dem Project-Server-Projekt persistiert.
+      - BuildPackages enthalten das Manifest als Projektsnapshot.
+      - Bestehende Lernprojekte koennen weiterhin in der IDE geoeffnet werden.
+      - Projektspezifische Tamagotchi-, RFID- oder andere Beispielinformationen duerfen nicht im Viewer hart kodiert werden.
+
   - id: requirement.learning_firmware_base_scaffold_preserves_ota
     type: requirement
     title: Lern-Builds erhalten OTA-Faehigkeit durch Basissoftware
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: In Implementation
     ownerDomain: Learning
     summary: Wenn Nutzer ESP32-Software ueber das Lerntool oder die IDE bauen und per USB oder OTA flashen, muss der Nutzer-Code mit der GerNetiX-Basissoftware gebaut werden, die OTA, Connectivity-Status, Versionierung und Recovery-Anknuepfung erhaelt. Ein Lernprojekt darf OTA-Faehigkeit nicht versehentlich durch einen vollstaendig nackten Sketch oder eine isolierte Firmware ersetzen.
     derivedFromBusinessCapabilities:
@@ -981,6 +1008,11 @@ items:
       - Die Basissoftware kann einen autorisierten Deploy-Auftrag vom Build-&-Deploy-Server empfangen, Firmware per HTTPS laden, Hash und Groesse pruefen, flashen und Status zurueckmelden.
       - Ein Umzug des Backends von Linux-Homeserver zu Cloud darf keinen USB-Reflash erzwingen, solange die Service-Endpunkte ueber DNS, Konfiguration oder kontrolliertes Konfigurationsupdate erreichbar bleiben.
       - Das Lerntool warnt oder blockiert, wenn ein Projekt die OTA-Basis bewusst entfernt.
+      - Im Setup-AP bietet die Basissoftware ein Captive Portal, damit Nutzer nach dem Verbinden mit dem Device-WLAN automatisch zur lokalen Setup-Seite gelangen und keine IP-Adresse raten muessen.
+    implementationNotes:
+      - `basissoftware/esp32` enthaelt aktuell Runtime-Start, User-Hooks, Setup-AP, Captive-DNS, lokales Webinterface und lokalen Feedback-Ringpuffer.
+      - OTA selbst, autorisierte Deploy-Auftraege, Firmware-Download, Hash-/Groessenpruefung und Statusrueckmeldung sind noch offen.
+      - Die offenen Punkte sind ueber `decision.esp32_ota_bootstrap_firmware.flash_layout`, `decision.esp32_ota_bootstrap_firmware.ota_authentication` und `decision.esp32_ota_bootstrap_firmware.service_endpoints` dokumentiert.
 
   - id: requirement.firmware_build_deploy_server
     type: requirement
@@ -1037,13 +1069,14 @@ items:
       - Der Build-&-Deploy-Server kompiliert ausschliesslich aus dem uebergebenen BuildPackage und benoetigt keine dauerhaften Projektdaten.
       - Der Build-&-Deploy-Server speichert Firmware und Build-Artefakte nur temporaer.
       - Nach Abschluss werden BuildResult, Firmware-Artefakte, Build-Log, Deploy-Log und Status an den Projektserver zurueckgegeben.
-      - Das BuildResult enthaelt mindestens `firmware.bin`, `firmware.elf`, `firmware.map`, `build.log`, Build-Status, SHA-256 und Dateigroesse.
+      - Das BuildResult enthaelt mindestens ein primaeres Firmware-Artefakt (`firmware.bin` oder `firmware.hex`), `firmware.elf`, `build.log`, Build-Status, SHA-256 und Dateigroesse. `firmware.map` wird uebernommen, wenn die Zielplattform es erzeugt.
       - Temporaere Projektdaten werden nach Abschluss des Jobs vom Build-&-Deploy-Server geloescht.
       - Der Build-&-Deploy-Server darf technische Caches fuer PlatformIO, Toolchains, Libraries, Objektdateien und vergleichbare Build-Artefakte behalten.
       - Der Cache dient ausschliesslich der Beschleunigung und ist niemals Quelle der Wahrheit.
       - Wenn der Cache verloren geht, bleibt der Build aus dem Build-Paket moeglich und dauert nur laenger.
       - Beim Erstellen oder Oeffnen eines Lernprojekts darf automatisch ein Prebuild der Projekthuelle gestartet werden, um Caches aufzuwarmen.
       - Ein Prebuild loest niemals ein OTA-Deployment aus.
+      - Fuer lokale MVP- und Lernpfade darf der Nutzer einen USB-Flash-Job starten; der Build-&-Deploy-Server fuehrt dann nach erfolgreichem Build einen PlatformIO-Upload auf den ausgewaehlten Port aus.
       - OTA wird nur durch einen vom Nutzer ausgeloesten Build-&-Flash-Auftrag gestartet.
       - Nach erfolgreichem Build uebernimmt der Build-&-Deploy-Server den Deploy.
       - Der Build-&-Deploy-Server veroeffentlicht Deploy-Auftraege per MQTT, stellt Firmware per HTTPS bereit, empfaengt Statusmeldungen per MQTT und meldet den Abschluss an den Projektserver.
@@ -1060,7 +1093,7 @@ items:
     type: requirement
     title: Basissoftware stellt lokale Feedback- und Weblog-Funktion bereit
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: Implemented
     ownerDomain: Learning
     summary: Die GerNetiX-Basissoftware muss fuer Lernprojekte eine lokale Feedback-Funktion bereitstellen, damit Nutzer ohne Backend und ohne Account sehen koennen, was auf dem Board passiert. Neben UART/Serial soll ein lokaler Weblog oder eine Logansicht im Device-Webinterface bereitstehen; spaetere Server-Telemetrie bleibt davon getrennt und darf nur gezielt, gepairt und mit passender Berechtigung oder Consent erfolgen.
     derivedFromBusinessCapabilities:
@@ -1090,6 +1123,11 @@ items:
       - Feedback ist im lokalen Device-Webinterface abrufbar, zum Beispiel als `/logs` oder Weblog-Ansicht mit Ringpuffer.
       - Die lokale Feedback-Funktion funktioniert im Access-Point-Modus ohne Backend und ohne Account.
       - Automatisches Pushen von Detail-Logs an den Server ist fuer den Lernmodus nicht erforderlich und darf spaeter nur mit Pairing, Zweckbindung und Consent/Berechtigung erfolgen.
+    implementationNotes:
+      - `basissoftware/esp32/include/basissoftware/feedback.h` stellt die Feedback-API bereit.
+      - `basissoftware/esp32/src/functions/feedback.cpp` schreibt Feedback auf Serial/UART und in einen RAM-Ringpuffer.
+      - `basissoftware/esp32/src/functions/startDeviceWebServer.cpp` stellt `/logs` im lokalen Device-Webinterface bereit.
+      - Der Nachweis erfolgte per erfolgreichem Build mit `platformio run -j 1`.
 
   - id: requirement.device_support_entitlement_traceability
     type: requirement

@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1800" height="1380" viewBox="0 0 1800 1380">
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .bg { fill: #f8fafc; }
+      .title { font: 700 34px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 18px Arial, sans-serif; fill: #475569; }
+      .box { fill: #ffffff; stroke: #94a3b8; stroke-width: 2; rx: 10; }
+      .actor { fill: #ecfdf5; stroke: #14b8a6; }
+      .server { fill: #eff6ff; stroke: #60a5fa; }
+      .store { fill: #f5f3ff; stroke: #8b5cf6; }
+      .device { fill: #fff7ed; stroke: #fb923c; }
+      .head { font: 700 15px Arial, sans-serif; fill: #0f172a; }
+      .small { font: 400 12px Arial, sans-serif; fill: #475569; }
+      .line { stroke: #cbd5e1; stroke-width: 2; stroke-dasharray: 5 6; }
+      .msg { stroke: #334155; stroke-width: 2; marker-end: url(#arrow); }
+      .return { stroke: #64748b; stroke-width: 2; stroke-dasharray: 7 6; marker-end: url(#arrow); }
+      .label { font: 400 13px Arial, sans-serif; fill: #1f2937; }
+      .phase { fill: #e2e8f0; stroke: #94a3b8; stroke-width: 1.5; rx: 8; }
+      .phaseText { font: 700 16px Arial, sans-serif; fill: #0f172a; }
+      .alt { fill: #fefce8; stroke: #eab308; stroke-width: 1.5; rx: 8; }
+      .note { fill: #f1f5f9; stroke: #94a3b8; stroke-width: 1.5; rx: 8; }
+      .noteText { font: 400 14px Arial, sans-serif; fill: #334155; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="1800" height="1380"/>
+  <text class="title" x="50" y="54">GerNetiX Provisioning Prozess</text>
+  <text class="subtitle" x="50" y="84">USB Factory Flow: Hardware-Katalog, Server-Artefakt, Staging Header, Flash, Erstboot und Registrierung</text>
+
+  <rect class="box actor" x="40" y="120" width="150" height="62"/>
+  <text class="head" x="58" y="148">Factory / Support</text>
+  <text class="small" x="58" y="168">Nutzer</text>
+
+  <rect class="box actor" x="230" y="120" width="150" height="62"/>
+  <text class="head" x="252" y="148">Provisioning</text>
+  <text class="small" x="252" y="168">Tool HMI :4500</text>
+
+  <rect class="box server" x="420" y="120" width="150" height="62"/>
+  <text class="head" x="442" y="148">Provisioning</text>
+  <text class="small" x="442" y="168">Server API</text>
+
+  <rect class="box server" x="610" y="120" width="150" height="62"/>
+  <text class="head" x="632" y="148">Provisioning</text>
+  <text class="small" x="632" y="168">Service</text>
+
+  <rect class="box store" x="800" y="120" width="150" height="62"/>
+  <text class="head" x="822" y="148">Hardware</text>
+  <text class="small" x="822" y="168">Katalog Board</text>
+
+  <rect class="box store" x="990" y="120" width="150" height="62"/>
+  <text class="head" x="1012" y="148">Firmware</text>
+  <text class="small" x="1012" y="168">SQLite Artifact</text>
+
+  <rect class="box server" x="1180" y="120" width="150" height="62"/>
+  <text class="head" x="1202" y="148">USB Flash</text>
+  <text class="small" x="1202" y="168">Runner</text>
+
+  <rect class="box device" x="1370" y="120" width="150" height="62"/>
+  <text class="head" x="1392" y="148">ProcessorBoard</text>
+  <text class="small" x="1392" y="168">ESP32 per USB</text>
+
+  <rect class="box store" x="1560" y="120" width="150" height="62"/>
+  <text class="head" x="1582" y="148">Device Mgmt</text>
+  <text class="small" x="1582" y="168">Server :4700</text>
+
+  <line class="line" x1="115" y1="182" x2="115" y2="1305"/>
+  <line class="line" x1="305" y1="182" x2="305" y2="1305"/>
+  <line class="line" x1="495" y1="182" x2="495" y2="1305"/>
+  <line class="line" x1="685" y1="182" x2="685" y2="1305"/>
+  <line class="line" x1="875" y1="182" x2="875" y2="1305"/>
+  <line class="line" x1="1065" y1="182" x2="1065" y2="1305"/>
+  <line class="line" x1="1255" y1="182" x2="1255" y2="1305"/>
+  <line class="line" x1="1445" y1="182" x2="1445" y2="1305"/>
+  <line class="line" x1="1635" y1="182" x2="1635" y2="1305"/>
+
+  <rect class="phase" x="50" y="220" width="1660" height="34"/>
+  <text class="phaseText" x="70" y="243">1. Session vorbereiten</text>
+
+  <line class="msg" x1="115" y1="290" x2="305" y2="290"/>
+  <text class="label" x="130" y="280">Boarddaten eingeben</text>
+  <line class="msg" x1="305" y1="335" x2="495" y2="335"/>
+  <text class="label" x="318" y="325">POST /api/provisioning-sessions mit processor_board_id</text>
+  <line class="msg" x1="495" y1="380" x2="685" y2="380"/>
+  <text class="label" x="510" y="370">createSession(input)</text>
+  <line class="msg" x1="685" y1="425" x2="875" y2="425"/>
+  <text class="label" x="700" y="415">ProcessorBoard und Firmware-Artefakt laden</text>
+
+  <rect class="alt" x="620" y="455" width="390" height="76"/>
+  <text class="label" x="640" y="480">alt: aktives Credential existiert</text>
+  <text class="label" x="640" y="504">409 duplicate_active_credential</text>
+
+  <line class="msg" x1="685" y1="565" x2="685" y2="565"/>
+  <text class="label" x="705" y="570">device_id, credential_id, one_time_secret erzeugen</text>
+  <line class="msg" x1="685" y1="610" x2="1065" y2="610"/>
+  <text class="label" x="705" y="600">Board-Artefakt referenzieren, Header ins Staging schreiben</text>
+  <line class="msg" x1="685" y1="655" x2="875" y2="655"/>
+  <text class="label" x="705" y="645">Session speichern: provisioning</text>
+  <line class="return" x1="685" y1="700" x2="305" y2="700"/>
+  <text class="label" x="350" y="690">201 Session + Secret einmalig</text>
+
+  <rect class="phase" x="50" y="750" width="1660" height="34"/>
+  <text class="phaseText" x="70" y="773">2. USB Factory Flash</text>
+
+  <line class="msg" x1="115" y1="820" x2="305" y2="820"/>
+  <text class="label" x="130" y="810">Firmware per USB flashen</text>
+  <line class="msg" x1="305" y1="865" x2="495" y2="865"/>
+  <text class="label" x="318" y="855">POST /sessions/{id}/usb-flash</text>
+  <line class="msg" x1="495" y1="910" x2="685" y2="910"/>
+  <text class="label" x="510" y="900">executeUsbFlash(sessionId)</text>
+  <line class="msg" x1="685" y1="955" x2="1065" y2="955"/>
+  <text class="label" x="705" y="945">Factory Header pruefen</text>
+  <line class="msg" x1="685" y1="1000" x2="1255" y2="1000"/>
+  <text class="label" x="705" y="990">run({ firmwareArtifact, stagingPath, port })</text>
+  <line class="msg" x1="1255" y1="1045" x2="1445" y2="1045"/>
+  <text class="label" x="1268" y="1035">USB Build / Upload</text>
+
+  <rect class="alt" x="1180" y="1070" width="330" height="80"/>
+  <text class="label" x="1200" y="1095">alt: Flash fehlgeschlagen</text>
+  <text class="label" x="1200" y="1119">status=usb_flash_failed</text>
+  <text class="label" x="1200" y="1143">Recovery Tool verwenden</text>
+
+  <line class="return" x1="1255" y1="1175" x2="305" y2="1175"/>
+  <text class="label" x="735" y="1165">Flash erfolgreich: status=usb_flashed</text>
+
+  <rect class="phase" x="50" y="1215" width="1660" height="34"/>
+  <text class="phaseText" x="70" y="1238">3. Erstboot und Abschluss</text>
+
+  <line class="msg" x1="1445" y1="1275" x2="1065" y2="1275"/>
+  <text class="label" x="1135" y="1265">Factory Payload aus Image lesen</text>
+  <line class="msg" x1="1445" y1="1320" x2="1445" y2="1320"/>
+  <text class="label" x="1465" y="1325">NVS Import: Device-ID, Credential, Endpunkte, Secret</text>
+
+  <line class="msg" x1="305" y1="1115" x2="495" y2="1115"/>
+  <text class="label" x="318" y="1105">POST /sessions/{id}/complete</text>
+  <line class="msg" x1="685" y1="1160" x2="1635" y2="1160"/>
+  <text class="label" x="910" y="1150">Device registrieren mit Credential-Referenz</text>
+
+  <rect class="note" x="50" y="1310" width="760" height="50"/>
+  <text class="noteText" x="70" y="1332">Secret-Regel: Klartext-Secret nur beim Start/Abschluss des Vorgangs, Status und Manifest bleiben redigiert.</text>
+  <text class="noteText" x="70" y="1352">Basissoftware kommt aus SQLite/Artifact Store; Projektquellen sind kein Server-Input.</text>
+</svg>

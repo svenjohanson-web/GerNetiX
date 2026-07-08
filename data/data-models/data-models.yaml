@@ -768,6 +768,23 @@ items:
       - requirement.learning_step_completion_conditions
       - requirement.board_execution_adapter_for_learning_steps
 
+  - id: data_model.project_view_manifest
+    type: data_model
+    title: ProjectViewManifest
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: IDE
+    summary: Projektgebundenes Manifest, das beschreibt, welche IDE-/Lernansichten fuer ein Projekt verfuegbar sind, z. B. Quellcodeanalyse, Erklaerungskarten, PlantUML-Diagramme, Runtime-Preview-Hinweise und naechste Umsetzungsschritte. Der Viewer rendert diese Informationen generisch und darf sie nicht projektspezifisch hart kodieren.
+    fields:
+      - schemaVersion
+      - title
+      - summary
+      - primarySourcePath
+      - mode
+      - views
+    derivedFromRequirements:
+      - requirement.project_bound_guided_ide_views
+
   - id: data_model.firmware_build_job
     type: data_model
     title: FirmwareBuildJob

@@ -100,10 +100,32 @@ items:
       - IDE und Build-Pipeline muessen warnen oder blockieren, wenn ein Projekt die geschuetzte Basissoftware entfernt oder direkt veraendert.
     appliesTo:
       - ESP32 Firmware
+      - Arduino-Framework Firmware
+      - Arduino-Board Atmel/AVR Firmware ohne Arduino-Framework
       - Desktop Runtime
       - Web Runtime
       - Mobile Runtime
       - weitere spaetere Runtimes
+
+  - id: architecture.arduino_board_two_basissoftware_variants
+    type: architecture_decision
+    title: Arduino-Boards erhalten zwei Basissoftware-Varianten
+    status: approved
+    ownerDomain: Learning
+    summary: Arduino-kompatible AVR-Boards werden fachlich als Hardware-Plattform betrachtet. Darauf duerfen zwei getrennte GerNetiX-Basissoftware-Varianten existieren: eine mit Arduino-Framework fuer den einfachen Lern- und Bibliothekseinstieg und eine ohne Arduino-Framework fuer direkte Atmel-/AVR-nahe Programmierung.
+    derivedFromRequirements:
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+    references:
+      - architecture.runtime_basis_user_artifact_separation
+    affectsArchitectureArtifacts:
+      - component.build_package_creator
+      - component.firmware_build_job_runner
+    rules:
+      - Arduino-Framework-Projekte verwenden `basissoftware/arduino-framework`.
+      - Atmel-/AVR-nahe Projekte ohne Arduino-Framework verwenden `basissoftware/arduino-atmel`.
+      - Beide Varianten trennen geschuetzte Basisdateien und User-Artefakte.
+      - Die Auswahl der Variante ist Teil des Projektmodells beziehungsweise BuildPackages und darf nicht implizit aus dem Boardnamen abgeleitet werden.
+      - Der Build-&-Deploy-Server baut beide Varianten ueber PlatformIO, sofern das BuildPackage eine passende `platformio.ini` und Quellen enthaelt.
 
   - id: architecture.project_server_build_deploy_server_split
     type: architecture_decision
@@ -126,12 +148,14 @@ items:
       - Der Build-&-Deploy-Server darf niemals direkt auf dauerhafte Projektdaten zugreifen.
       - Der Build-&-Deploy-Server kompiliert ausschliesslich aus diesem BuildPackage.
       - Firmware, BuildResult, Build-Log, Deploy-Log und Status werden an den Projektserver zurueckgegeben.
-      - Das BuildResult enthaelt mindestens `firmware.bin`, `firmware.elf`, `firmware.map`, `build.log`, Build-Status, SHA-256 und Dateigroesse.
+      - Das BuildResult enthaelt mindestens ein primaeres Firmware-Artefakt (`firmware.bin` oder `firmware.hex`), `firmware.elf`, `build.log`, Build-Status, SHA-256 und Dateigroesse.
+      - `firmware.map` wird uebernommen, wenn die Zielplattform es erzeugt.
       - Temporaere Projektdaten werden nach Abschluss des Jobs vom Build-&-Deploy-Server geloescht.
       - Technische Caches wie PlatformIO, Toolchains, Libraries und Objektdateien duerfen erhalten bleiben.
       - Der technische Cache ist niemals Quelle der Wahrheit; bei Cacheverlust muss der Build weiterhin moeglich sein, nur langsamer.
       - Prebuilds duerfen beim Erstellen oder Oeffnen eines Lernprojekts gestartet werden, um Caches aufzuwarmen.
       - Ein Prebuild loest niemals ein OTA-Deployment aus.
+      - Fuer den lokalen MVP darf ein vom Nutzer ausgeloester `build_and_usb_flash`-Job nach erfolgreichem Build `platformio run -t upload` mit optionalem Upload-Port ausfuehren.
       - OTA wird ausschliesslich durch einen vom Nutzer ausgeloesten Build-&-Flash-Auftrag gestartet.
       - Nach erfolgreichem Build uebernimmt der Build-&-Deploy-Server den Deploy.
       - MQTT dient ausschliesslich fuer Deploy-Auftraege, Statusmeldungen, Heartbeats und Telemetrie.
@@ -142,6 +166,73 @@ items:
       - Optional darf genau ein wartender Job pro Device existieren; neue wartende Jobs ersetzen aeltere wartende Jobs.
       - Der Projektserver ist fachlicher Zustand; der Build-&-Deploy-Server ist Build- und Deploy-Ausfuehrung.
       - Der Buildserver ist fachlich zustandslos und besitzt keine dauerhaften Projektdaten.
+
+  - id: architecture.project_bound_ide_view_manifest
+    type: architecture_decision
+    title: IDE- und Lernansichten sind projektgebundene Manifeste
+    status: approved
+    ownerDomain: IDE
+    summary: Gefuehrte IDE-Ansichten werden nicht im Viewer hart kodiert. Der Project Server speichert pro Projekt ein ProjectViewManifest mit Analyse-, Erklaerungs-, Diagramm- und Umsetzungssichten; die User IDE rendert diese Views generisch.
+    derivedFromRequirements:
+      - requirement.project_bound_guided_ide_views
+    affectsArchitectureArtifacts:
+      - app.user_ide
+      - architecture_artifact.project_server
+    rules:
+      - Projektspezifische Didaktik, Diagrammquellen und View-Reihenfolgen gehoeren in das Projektmanifest.
+      - Der Viewer darf View-Typen generisch kennen, aber keine Tamagotchi-, RFID- oder andere Projektdomaene fest einbauen.
+      - Das ProjectViewManifest ist Teil des Project-Server-Projekts und wird mit BuildPackages als Snapshot ausgeliefert.
+      - Lernmodus und IDE nutzen dasselbe Projektmodell und duerfen keine getrennte Projektverwaltung erzeugen.
+
+  - id: architecture.fast_embedded_firmware_feedback_loop
+    type: architecture_decision
+    title: Schneller Embedded-Firmware-Feedbackweg vor Vollbuild
+    status: approved
+    ownerDomain: DeviceManagement
+    summary: Embedded-Firmware-Entwicklung nutzt standardmaessig einen schnellen Feedbackweg aus Contract-, Syntax- und Modulchecks. Vollstaendige PlatformIO-/ESP-IDF-Builds und USB-/OTA-Flashs sind bewusste Integrationsschritte und duerfen nicht als normale Kurzpruefung jeden Laptop belasten.
+    derivedFromRequirements:
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+      - requirement.firmware_build_deploy_server
+      - nfr.firmware_flash_must_not_brick_board
+    references:
+      - architecture.project_server_build_deploy_server_split
+      - architecture.runtime_basis_user_artifact_separation
+    affectsArchitectureArtifacts:
+      - architecture_artifact.build_deploy_server
+      - component.firmware_build_job_runner
+      - component.build_cache
+      - component.prebuild_scheduler
+    rules:
+      - Der Standardnachweis fuer kleine Firmware-Aenderungen ist kein vollstaendiger ESP-IDF-/PlatformIO-Build.
+      - Kleine Aenderungen werden zuerst per Syntax-/Contract-Check, Header-Pruefung, API-/Manifest-Kompatibilitaet und gezielten Host-Tests validiert.
+      - Basissoftware und User-Code muessen so geschnitten sein, dass Basissoftware nicht fuer jede User-Code-Aenderung neu kompiliert werden muss.
+      - Vollbuilds laufen nur auf ausdrueckliche Nutzeraktion, im Build-&-Deploy-Server oder auf einem vorbereiteten Build-Host mit Cache.
+      - Vollbuilds muessen ein hartes Timeout haben und duerfen nach Abbruch keine PlatformIO-, Python-, Compiler- oder Flash-Prozesse zuruecklassen.
+      - USB-Flash und OTA-Flash sind Integrationsschritte nach erfolgreichem Build und werden nicht fuer reine Code- oder Contract-Pruefungen gestartet.
+      - Der Build-&-Deploy-Server muss langfristig vorgewaermte Toolchain-, Framework-, CMake-/Ninja- und Objekt-Caches verwenden.
+      - Fuer lokale Laptop-Arbeit gilt: kurze Checks bevorzugen, Vollbuild nur wenn ein echtes Firmware-Artefakt oder ein echter Flash benoetigt wird.
+
+  - id: architecture.provisioning_runtime_contract_no_dev_prod_split
+    type: architecture_decision
+    title: Provisioning nutzt einen einheitlichen Runtime-Vertrag ohne Dev-/Prod-Split
+    status: approved
+    ownerDomain: DeviceManagement
+    summary: Provisioning, echter USB-Flash und Firmware-Artefaktauswahl muessen auf Entwicklungsrechner und Zieldeployment ueber denselben Runtime-Vertrag funktionieren. Der Server darf keine benutzerspezifischen lokalen Toolchain-Pfade erraten und keinen fachlichen Dev-/Prod-Schalter einfuehren.
+    derivedFromRequirements:
+      - requirement.device_manufacturer_registration
+      - nfr.service_deployment_portability
+      - nfr.firmware_flash_must_not_brick_board
+    affectsArchitectureArtifacts:
+      - app.provisioning_tool
+      - component.device_connectivity_setup
+      - architecture_artifact.device_management_server
+    rules:
+      - Es gibt keinen fachlichen Schalter zwischen Entwicklung und Deployment fuer Provisioning.
+      - Firmware-Artefakte werden serverseitig ueber den Hardware-Katalog und den SQLite-/Artifact-Store referenziert.
+      - Die USB-Flash-Toolchain ist ein Runtime-Artefakt mit Manifest `.runtime/toolchains/provisioning/toolchain.json`.
+      - Echter USB-Flash wird nur angeboten, wenn Freigabe, Firmware-Artefakt und Toolchain-Readiness gemeinsam erfuellt sind.
+      - Fehlende Runtime-Voraussetzungen sind als konkrete Readiness-Fehler sichtbar zu machen und duerfen nicht erst als `spawn ENOENT` beim Flashen auftreten.
+      - Lokale Benutzerpfade duerfen nicht im Servercode hart kodiert oder automatisch erraten werden.
 
   - id: architecture.firmware_minimal_update_strategy
     type: architecture_decision
@@ -180,6 +271,102 @@ items:
       - Hardware-Plattform, Capability-Profil, Release-Channel oder Mindest-Runtime werden erst ergaenzt, wenn Kompatibilitaet, Support oder Rollout-Steuerung sie fachlich benoetigen.
       - Ein Umzug von Linux-Homeserver zu Cloud darf ueber DNS, Konfiguration oder kontrolliertes Konfigurationsupdate erfolgen und darf keinen USB-Reflash erzwingen.
       - User-Code bleibt Anwendungslogik; OTA, Connectivity, Pairing-Anknuepfung, Statusmeldung und Update-Pruefung bleiben Aufgabe der Basissoftware.
+
+  - id: decision.esp32_ota_bootstrap_firmware.wifi_setup
+    type: open_decision
+    title: WLAN-Setup-Flow fuer ESP32-Basissoftware festlegen
+    status: open
+    ownerDomain: DeviceManagement
+    summary: Die ESP32-Basissoftware startet aktuell einen offenen Setup-AP mit lokalem Device-Webinterface. Offen ist, wie der Nutzer Ziel-WLANs auswaehlt, Zugangsdaten sicher lokal speichert und wie der Setup-Zugang abgesichert wird.
+    context:
+      - Implementiert ist der sichtbare AP `GerNetiX-Setup`.
+      - Implementiert sind lokale Endpunkte `/`, `/status` und `/logs` unter `http://192.168.4.1/`.
+      - Noch nicht implementiert sind WLAN-Scan, Formular fuer SSID/Passwort, NVS-Persistenz der Ziel-WLAN-Daten und Fallback-Verhalten bei Verbindungsfehlern.
+    options:
+      - Offener AP fuer lokalen Lernmodus beibehalten.
+      - Setup-AP mit Geraete-PIN oder zeitlich begrenztem Passwort absichern.
+      - Erst Webformular und NVS lokal bauen, Pairing/Auth spaeter ergaenzen.
+    affectsArchitectureArtifacts:
+      - component.device_connectivity_setup
+      - component.firmware_feedback
+    derivedFromRequirements:
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+      - requirement.firmware_local_feedback_weblog
+
+  - id: decision.esp32_ota_bootstrap_firmware.node_mode_policy
+    type: open_decision
+    title: AP-/STA-/Node-Modus-Policy festlegen
+    status: open
+    ownerDomain: DeviceManagement
+    summary: Nach gespeicherten WLAN-Daten muss entschieden werden, ob die Firmware den Setup-AP abschaltet, parallel AP+STA betreibt oder bei Fehlern automatisch in den Setup-AP zurueckfaellt.
+    options:
+      - Nach erfolgreicher WLAN-Verbindung nur STA/Node-Modus betreiben.
+      - AP+STA parallel betreiben, solange das Device nicht gepairt ist.
+      - Setup-AP nur als zeitlich begrenzten Fallback bei fehlgeschlagener WLAN-Verbindung starten.
+    affectsArchitectureArtifacts:
+      - component.device_connectivity_setup
+      - component.ota
+    derivedFromRequirements:
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+
+  - id: decision.esp32_ota_bootstrap_firmware.flash_layout
+    type: open_decision
+    title: Flash-Layout und Boardprofil fuer OTA festlegen
+    status: open
+    ownerDomain: DeviceManagement
+    summary: Das aktuelle lokale Board meldet 2 MB Flash, waehrend das PlatformIO-Boardprofil `esp32dev` 4 MB erwartet. Fuer robuste OTA-Faehigkeit muss entschieden werden, ob 2-MB-Boards unterstuetzt werden und welches Partition-Layout verwendet wird.
+    context:
+      - Der aktuelle Build passt in die Single-App-Partition.
+      - PlatformIO warnt vor Flash-Groessen-Mismatch.
+      - OTA benoetigt ein geeignetes Partition-Layout und darf das Board laut NFR nicht unbrauchbar machen.
+    options:
+      - 2-MB-Boardprofil mit passender Partitionierung unterstuetzen.
+      - Fuer OTA-faehige Lernpfade 4-MB-ESP32-Boards voraussetzen.
+      - 2-MB-Boards nur fuer USB-/Recovery-/Minimalmodus ohne OTA zulassen.
+    affectsArchitectureArtifacts:
+      - component.ota
+      - component.device_connectivity_setup
+    derivedFromRequirements:
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+      - nfr.firmware_flash_must_not_brick_board
+
+  - id: decision.esp32_ota_bootstrap_firmware.ota_authentication
+    type: open_decision
+    title: OTA-Authentifizierung fuer ESP32-Basissoftware festlegen
+    status: open
+    ownerDomain: DeviceManagement
+    summary: Es ist offen, ob der erste OTA-Prototyp lokal/offen, mit Token/HMAC oder direkt mit signierten Firmware-Artefakten und Device-Credentials startet.
+    options:
+      - Lokaler Lern-Prototyp ohne Cloud-Auth, aber mit Hash- und Groessenpruefung.
+      - HMAC-/Token-basierter Deploy-Auftrag ueber Device Management und Build-&-Deploy.
+      - Signierte Firmware und Device-Credential-Pruefung schon im ersten OTA-Flow.
+    affectsArchitectureArtifacts:
+      - component.ota
+      - architecture_artifact.device_management_server
+      - architecture_artifact.build_deploy_server
+    derivedFromRequirements:
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+      - requirement.firmware_build_deploy_server
+      - nfr.firmware_flash_must_not_brick_board
+
+  - id: decision.esp32_ota_bootstrap_firmware.service_endpoints
+    type: open_decision
+    title: Service-Endpunkt-Konfiguration fuer Device Management und Build-&-Deploy festlegen
+    status: open
+    ownerDomain: DeviceManagement
+    summary: Die Basissoftware darf keine feste lokale IP, Homeserver-Adresse oder Cloud-Adresse enthalten. Offen ist, wie Device-Management-, Build-&-Deploy-, MQTT- und HTTPS-Endpunkte initial gesetzt und spaeter kontrolliert aktualisiert werden.
+    options:
+      - Endpunkte initial nur lokal im Device-Webinterface setzen.
+      - Endpunkte ueber Provisioning/Recovery Tool schreiben.
+      - Endpunkte per DNS-basiertem Default plus kontrolliertem Konfigurationsupdate verwalten.
+    affectsArchitectureArtifacts:
+      - component.device_connectivity_setup
+      - component.ota
+      - architecture_artifact.device_management_server
+      - architecture_artifact.build_deploy_server
+    derivedFromRequirements:
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+      - requirement.firmware_build_deploy_server
 
   - id: architecture.identity_internal_user_id
     type: architecture_decision

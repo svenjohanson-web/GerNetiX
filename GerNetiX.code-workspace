@@ -1,0 +1,28 @@
+{
+  "folders": [
+    {
+      "name": "GerNetiX",
+      "path": "."
+    },
+    {
+      "name": "Arduino Atmel AVR",
+      "path": "basissoftware/arduino-atmel"
+    },
+    {
+      "name": "Arduino Framework",
+      "path": "basissoftware/arduino-framework"
+    },
+    {
+      "name": "ESP32 Basissoftware",
+      "path": "basissoftware/esp32"
+    }
+  ],
+  "settings": {
+    "platformio-ide.activateOnlyOnPlatformIOProject": false
+  },
+  "extensions": {
+    "recommendations": [
+      "platformio.platformio-ide"
+    ]
+  }
+}

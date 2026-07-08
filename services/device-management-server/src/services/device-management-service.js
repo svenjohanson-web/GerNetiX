@@ -189,6 +189,18 @@ class DeviceManagementService {
     return this.repository.saveAccountDevice(accountDevice);
   }
 
+  removeAccountDevice(accountId, accountDeviceId) {
+    const removed = this.repository.deleteAccountDevice(accountId, accountDeviceId);
+    if (!removed) throw new DeviceManagementError("account_device_not_found", "AccountDevice wurde nicht gefunden.", 404);
+    return {
+      removed: true,
+      account_id: accountId,
+      account_device_id: accountDeviceId,
+      device_id: removed.device_id,
+      removed_at: new Date().toISOString(),
+    };
+  }
+
   otaTargets(accountId, query = {}) {
     const requiredCapabilities = parseCapabilities(query.requiredCapabilities || query.required_capabilities || "");
     return this.repository.listAccountDevices(accountId).map((device) => {

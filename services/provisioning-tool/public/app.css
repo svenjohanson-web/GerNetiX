@@ -1,0 +1,140 @@
+:root {
+  color-scheme: light;
+  --bg: #f6f7fb;
+  --panel: #ffffff;
+  --text: #172033;
+  --muted: #64748b;
+  --line: #d6deea;
+  --accent: #0f766e;
+  --accent-dark: #115e59;
+  --ok: #166534;
+  --warn: #1d4ed8;
+  --error: #991b1b;
+  font-family: Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); }
+button, input { font: inherit; }
+.shell { max-width: 1180px; margin: 0 auto; padding: 24px; }
+.topbar, .workflow, .button-row { display: flex; gap: 14px; }
+.topbar { align-items: center; justify-content: space-between; margin-bottom: 18px; }
+.workflow { align-items: flex-start; }
+.panel {
+  flex: 1;
+  min-width: 0;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.08);
+}
+.form-grid { display: grid; gap: 12px; max-width: 430px; }
+.section-title { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; }
+.eyebrow { margin: 0; color: var(--accent); font-size: 12px; font-weight: 700; text-transform: uppercase; }
+h1, h2 { margin: 0; line-height: 1.15; }
+label { display: grid; gap: 6px; color: var(--muted); font-weight: 700; }
+input, select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 10px 12px;
+  color: var(--text);
+}
+button {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text);
+  padding: 10px 12px;
+  cursor: pointer;
+}
+button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+button.primary:hover { background: var(--accent-dark); }
+button:disabled { opacity: .55; cursor: not-allowed; }
+.badge { border: 1px solid var(--line); border-radius: 999px; padding: 8px 12px; background: #fff; color: var(--muted); font-weight: 700; }
+.meta-list { display: grid; gap: 8px; margin: 8px 0 0; }
+.meta-list div { min-width: 0; }
+.meta-list dt { color: var(--muted); font-size: 12px; }
+.meta-list dd { margin: 2px 0 0; font-weight: 700; overflow-wrap: anywhere; }
+.status {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  line-height: 1.4;
+}
+.status.ok { background: #ecfdf5; border-color: #86efac; color: var(--ok); }
+.status.running { background: #eff6ff; border-color: #93c5fd; color: var(--warn); }
+.status.error { background: #fef2f2; border-color: #fca5a5; color: var(--error); }
+.hidden { display: none; }
+.progress {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+}
+.progress-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+  font-weight: 700;
+}
+.progress-track {
+  width: 100%;
+  height: 14px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+.progress-fill {
+  display: block;
+  width: 0%;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--accent), #1d4ed8);
+  transition: width 180ms ease;
+}
+.progress-text {
+  margin-top: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+.button-row { flex-wrap: wrap; margin-top: 14px; }
+.mode-field {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  margin: 14px 0 0;
+}
+.mode-field legend { color: var(--muted); font-weight: 700; }
+.mode-field label {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: 16px;
+  color: var(--text);
+}
+.mode-field input { width: auto; }
+.details {
+  min-height: 260px;
+  max-height: 460px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #0f172a;
+  color: #e2e8f0;
+  font: 13px Consolas, "Cascadia Mono", monospace;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 900px) {
+  .workflow, .topbar { flex-direction: column; }
+  .form-grid { max-width: none; }
+}

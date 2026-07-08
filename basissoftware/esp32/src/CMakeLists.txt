@@ -1,13 +1,18 @@
 idf_component_register(
   SRCS
     main.cpp
+    functions/factory_provisioning.cpp
+    functions/feedback.cpp
     functions/handleNetwork.cpp
     functions/initPins.cpp
     functions/initSerial.cpp
     functions/initWifi.cpp
+    functions/startCaptiveDnsServer.cpp
     functions/publishStatus.cpp
+    functions/provisioning_config.cpp
     functions/readSensors.cpp
     functions/runDiagnostics.cpp
+    functions/startDeviceWebServer.cpp
     functions/startRuntimeTasks.cpp
     functions/updateActuators.cpp
     hooks/onProjectInit.cpp
@@ -16,7 +21,14 @@ idf_component_register(
   INCLUDE_DIRS ../include
   REQUIRES
     esp_driver_gpio
+    esp_event
+    esp_http_server
+    esp_netif
     esp_timer
+    esp_wifi
     freertos
     log
+    lwip
+    mbedtls
+    nvs_flash
 )

@@ -14,8 +14,9 @@ class ArtifactStore {
     await fs.mkdir(targetDir, { recursive: true });
 
     const artifacts = {};
-    for (const artifactName of ["firmware.bin", "firmware.elf", "firmware.map", "build.log"]) {
+    for (const artifactName of Object.keys(buildOutput.artifacts).sort()) {
       const sourcePath = buildOutput.artifacts[artifactName];
+      if (!sourcePath) continue;
       const targetPath = path.join(targetDir, artifactName);
       await fs.copyFile(sourcePath, targetPath);
       const metadata = await describeFile(targetPath);

@@ -13,6 +13,18 @@ class InMemoryProvisioningRepository {
     return this.activeCredentialByDevice.has(deviceId);
   }
 
+  clearActiveCredential(deviceId) {
+    const credentialId = this.activeCredentialByDevice.get(deviceId) || null;
+    this.activeCredentialByDevice.delete(deviceId);
+    return credentialId;
+  }
+
+  findSessionsByDevice(deviceId) {
+    return Array.from(this.sessions.values())
+      .filter((session) => session.device?.device_id === deviceId)
+      .map(clone);
+  }
+
   saveSession(session) {
     this.sessions.set(session.session_id, clone(session));
     this.activeCredentialByDevice.set(session.device.device_id, session.credential.credential_id);

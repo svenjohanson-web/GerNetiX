@@ -6,6 +6,7 @@ class BuildCache {
   }
 
   async ensureReady() {
+    if (!this.cacheDir) return { cache_dir: "platformio-default" };
     await fs.mkdir(this.cacheDir, { recursive: true });
     return { cache_dir: this.cacheDir };
   }

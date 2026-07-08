@@ -51,6 +51,7 @@ Unterstuetzte Modi:
 
 - `build`: Build ohne Deploy
 - `build_and_flash`: Build mit anschliessendem validiertem Deploy-Auftrag
+- `build_and_usb_flash`: Build mit lokalem USB-Flash ueber PlatformIO `upload`
 - `prebuild`: Cache-Aufwaermung ohne Deploy
 
 ```text
@@ -67,6 +68,7 @@ Erlaubte Dateinamen:
 
 - `firmware.bin`
 - `firmware.elf`
+- `firmware.hex`
 - `firmware.map`
 - `build.log`
 

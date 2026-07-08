@@ -10,12 +10,13 @@ GerNetiX soll Firmware fuer Lernprojekte und Embedded-Projekte reproduzierbar ba
 - Er kompiliert ausschliesslich aus vollstaendigen BuildPackages des Projektservers.
 - Der Projektserver uebertraegt BuildPackages per HTTP.
 - Firmware, Build-Log, Deploy-Log und Status werden an den Projektserver zurueckgegeben.
-- BuildResults enthalten mindestens `firmware.bin`, `firmware.elf`, `firmware.map`, `build.log`, Build-Status, SHA-256 und Dateigroesse.
+- BuildResults enthalten mindestens ein primaeres Firmware-Artefakt (`firmware.bin` oder `firmware.hex`), `firmware.elf`, `build.log`, Build-Status, SHA-256 und Dateigroesse. `firmware.map` wird uebernommen, wenn die Zielplattform es erzeugt.
 - Temporaere Projektdaten werden nach Abschluss geloescht.
 - Technische Caches duerfen erhalten bleiben.
 - Der Cache ist niemals Quelle der Wahrheit.
 - Bei Cacheverlust funktioniert der Build weiterhin, nur langsamer.
 - Beim Anlegen eines Lernprojekts darf ein Prebuild der Projekthuelle gestartet werden.
+- USB-Flash wird nur durch einen Nutzerauftrag `Build & USB Flash` gestartet und nutzt im lokalen MVP PlatformIO Upload.
 - OTA wird nur durch einen Nutzerauftrag `Build & Flash` gestartet.
 - MQTT dient nur fuer Deploy-Auftraege, Statusmeldungen, Heartbeats und Telemetrie.
 - HTTPS dient fuer Firmware-Download und Artefaktuebertragung.

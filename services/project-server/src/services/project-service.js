@@ -17,6 +17,7 @@ class ProjectService {
       hardware_profile_id: input.hardware_profile_id || "hardware.processor_board.esp32_devkit",
       device_id: input.device_id || null,
       build_config: normalizeBuildConfig(input.build_config),
+      view_manifest: normalizeViewManifest(input.view_manifest || input.project_view_manifest || {}),
       status: input.status || "active",
       created_at: now,
       updated_at: now,
@@ -46,6 +47,9 @@ class ProjectService {
       hardware_profile_id: input.hardware_profile_id || project.hardware_profile_id,
       device_id: input.device_id === undefined ? project.device_id : input.device_id,
       build_config: input.build_config ? normalizeBuildConfig({ ...project.build_config, ...input.build_config }) : project.build_config,
+      view_manifest: input.view_manifest || input.project_view_manifest
+        ? normalizeViewManifest(input.view_manifest || input.project_view_manifest)
+        : project.view_manifest,
       status: input.status || project.status,
       updated_at: new Date().toISOString(),
     };
@@ -87,8 +91,8 @@ class ProjectService {
     const project = this.requireProject(projectId);
     const now = new Date().toISOString();
     const mode = input.mode || "build";
-    if (!["build", "build_and_flash", "prebuild"].includes(mode)) {
-      throw new ProjectServerError("invalid_build_mode", "Build-Modus muss build, build_and_flash oder prebuild sein.");
+    if (!["build", "build_and_flash", "build_and_usb_flash", "prebuild"].includes(mode)) {
+      throw new ProjectServerError("invalid_build_mode", "Build-Modus muss build, build_and_flash, build_and_usb_flash oder prebuild sein.");
     }
     const job = {
       build_job_id: input.build_job_id || createId("build_job"),
@@ -141,6 +145,7 @@ class ProjectService {
       platformio_ini: renderPlatformioIni(project),
       files: [
         { path: "build-job.json", content: JSON.stringify(buildJob, null, 2), content_type: "application/json" },
+        { path: "project-view-manifest.json", content: JSON.stringify(effectiveViewManifest(project), null, 2), content_type: "application/json" },
         { path: "platformio.ini", content: renderPlatformioIni(project), content_type: "text/plain" },
         ...sources.map((source) => ({
           path: source.path,
@@ -290,11 +295,63 @@ class ProjectService {
 function normalizeBuildConfig(input = {}) {
   return {
     platform: input.platform || "espressif32",
-    framework: input.framework || "arduino",
+    framework: input.framework === undefined ? "arduino" : input.framework,
     board: input.board || "esp32dev",
     environment: input.environment || "esp32dev",
     libraries: input.libraries || [],
   };
+}
+
+function normalizeViewManifest(input = {}) {
+  const manifest = input && typeof input === "object" ? input : {};
+  return {
+    schema_version: Number(manifest.schema_version || manifest.schemaVersion || 1),
+    title: manifest.title || "",
+    summary: manifest.summary || "",
+    primary_source_path: normalizeOptionalSourcePath(manifest.primary_source_path || manifest.primarySourcePath || ""),
+    mode: manifest.mode || "guided_ide",
+    views: Array.isArray(manifest.views) ? manifest.views.map(normalizeProjectView).filter(Boolean) : [],
+  };
+}
+
+function normalizeProjectView(input = {}) {
+  if (!input || typeof input !== "object") return null;
+  const id = String(input.id || "").trim();
+  const type = String(input.type || "").trim();
+  if (!id || !type) return null;
+  return {
+    id,
+    type,
+    title: input.title || id,
+    summary: input.summary || input.text || "",
+    source_path: normalizeOptionalSourcePath(input.source_path || input.sourcePath || ""),
+    source_lines: Array.isArray(input.source_lines || input.sourceLines)
+      ? (input.source_lines || input.sourceLines).map(Number).filter(Number.isFinite)
+      : [],
+    payload: input.payload && typeof input.payload === "object" ? input.payload : {},
+  };
+}
+
+function defaultViewManifest(project) {
+  return normalizeViewManifest({
+    title: project.title,
+    summary: project.description,
+    primary_source_path: "src/main.cpp",
+    views: [
+      {
+        id: "source",
+        type: "source_analysis",
+        title: "Quellcode",
+        summary: "Primaere Projektdatei analysieren und bearbeiten.",
+        source_path: "src/main.cpp",
+      },
+    ],
+  });
+}
+
+function effectiveViewManifest(project) {
+  const manifest = project.view_manifest || {};
+  return Array.isArray(manifest.views) && manifest.views.length ? manifest : defaultViewManifest(project);
 }
 
 function defaultSources(project, sources) {
@@ -325,8 +382,8 @@ function renderPlatformioIni(project) {
     `[env:${config.environment}]`,
     `platform = ${config.platform}`,
     `board = ${config.board}`,
-    `framework = ${config.framework}`,
   ];
+  if (config.framework) lines.push(`framework = ${config.framework}`);
   if (config.libraries.length) lines.push(`lib_deps = ${config.libraries.join(", ")}`);
   return `${lines.join("\n")}\n`;
 }
@@ -341,6 +398,7 @@ function sanitizeProject(project) {
     hardware_profile_id: project.hardware_profile_id,
     device_id: project.device_id,
     build_config: project.build_config,
+    view_manifest: effectiveViewManifest(project),
     status: project.status,
     created_at: project.created_at,
     updated_at: project.updated_at,
@@ -372,6 +430,11 @@ function normalizeSourcePath(value) {
     throw new ProjectServerError("invalid_source_path", "Source-Pfad muss relativ und innerhalb des Projekts liegen.");
   }
   return normalized;
+}
+
+function normalizeOptionalSourcePath(value) {
+  const raw = String(value || "").trim();
+  return raw ? normalizeSourcePath(raw) : "";
 }
 
 function contentType(sourcePath) {

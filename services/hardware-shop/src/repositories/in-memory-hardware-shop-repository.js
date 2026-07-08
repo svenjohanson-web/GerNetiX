@@ -95,6 +95,14 @@ function defaultSeed() {
         capability_ids: ["capability.processor_esp32", "capability.wifi", "capability.ota", "capability.digital_input", "capability.digital_output"],
         support_policy: "gernetix_verified_after_provisioning",
         provisioning_profile_id: "provisioning_profile.esp32_ota_bootstrap",
+        basissoftware_profile_id: "basissoftware.profile.esp32_factory",
+        factory_firmware_artifact: {
+          artifact_id: "firmware_artifact.esp32_basissoftware_factory.latest",
+          source: "sqlite",
+          uri: "sqlite://provisioning_firmware_artifacts/firmware_artifact.esp32_basissoftware_factory.latest",
+          version: "latest",
+          sha256: "",
+        },
         status: "active",
       },
       {

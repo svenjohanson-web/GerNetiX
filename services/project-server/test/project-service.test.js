@@ -62,6 +62,64 @@ test("creates reproducible build package for build deploy server", () => {
   assert.equal(buildPackage.files.some((file) => file.path === "src/app.cpp"), true);
 });
 
+test("stores project view manifest and includes it in build package", () => {
+  const service = createDefaultProjectServer();
+  const project = service.createProject({
+    user_id: "user-1",
+    title: "Gefuehrte IDE",
+    view_manifest: {
+      title: "Quellcode verstehen",
+      primary_source_path: "src/main.cpp",
+      views: [
+        {
+          id: "analyse",
+          type: "source_analysis",
+          title: "Quellcode analysieren",
+          summary: "Startpunkt fuer die IDE-Erklaerung.",
+          source_path: "src/main.cpp",
+          source_lines: [1, 2, 3],
+        },
+        {
+          id: "uml",
+          type: "plantuml",
+          title: "Zustandsmodell",
+          payload: { source: "@startuml\n[*] --> Alive\n@enduml" },
+        },
+      ],
+    },
+  });
+  const stored = service.getProject(project.project_id);
+  const job = service.createBuildJob(project.project_id);
+  const buildPackage = service.createBuildPackage(job.build_job_id);
+  const manifestFile = buildPackage.files.find((file) => file.path === "project-view-manifest.json");
+
+  assert.equal(stored.view_manifest.views.length, 2);
+  assert.equal(stored.view_manifest.primary_source_path, "src/main.cpp");
+  assert.ok(manifestFile);
+  assert.equal(JSON.parse(manifestFile.content).views[1].type, "plantuml");
+});
+
+test("creates atmel avr build package without arduino framework", () => {
+  const service = createDefaultProjectServer();
+  const project = service.createProject({
+    user_id: "user-1",
+    title: "Arduino Atmel Bare Metal",
+    build_config: {
+      platform: "atmelavr",
+      board: "nanoatmega328",
+      framework: "",
+      environment: "nanoatmega328",
+    },
+    sources: [{ path: "src/main.c", content: "int main(void) { return 0; }\n" }],
+  });
+  const job = service.createBuildJob(project.project_id, { mode: "build_and_usb_flash" });
+  const buildPackage = service.createBuildPackage(job.build_job_id);
+  const platformioIni = buildPackage.files.find((file) => file.path === "platformio.ini").content;
+
+  assert.match(platformioIni, /platform = atmelavr/);
+  assert.doesNotMatch(platformioIni, /framework = arduino/);
+});
+
 test("records build result and firmware artifacts in project history", () => {
   const service = createDefaultProjectServer();
   const project = createDemoProject(service);

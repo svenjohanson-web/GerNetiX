@@ -95,7 +95,7 @@ function sanitizeName(value) {
 }
 
 function sanitizeArtifactName(value) {
-  return ["firmware.bin", "firmware.elf", "firmware.map", "build.log"].includes(value) ? value : "";
+  return ["firmware.bin", "firmware.elf", "firmware.hex", "firmware.map", "build.log"].includes(value) ? value : "";
 }
 
 module.exports = { createHttpApp, sendJson };

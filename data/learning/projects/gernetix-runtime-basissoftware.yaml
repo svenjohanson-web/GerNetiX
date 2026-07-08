@@ -33,6 +33,8 @@ corePrinciple:
   rule: Nutzer duerfen ausschliesslich definierte User-Dateien und projektspezifische Konfigurationsdateien veraendern. Runtime, Basissoftware, Update-Mechanik, Logging, Feedback, Build-Integration und Plattformadapter bleiben GerNetiX-Basis und werden nicht direkt vom Nutzer bearbeitet.
   appliesTo:
     - ESP32 Firmware
+    - Arduino-Framework Firmware
+    - Arduino-Board Atmel/AVR Firmware ohne Arduino-Framework
     - Desktop-Anwendungen
     - Web-Anwendungen
     - Mobile Apps
@@ -76,6 +78,17 @@ variants:
     targetRuntime: ESP32
     mode: esp32_basissoftware_runtime
     summary: ESP32-Projekte erhalten eine initiale Basissoftware mit WLAN/AP-Fallback, OTA, Versionsausgabe, Weblog/Feedback und stabiler User-Code-Schnittstelle. Kompilierte Firmware-Binaries entstehen daraus als Build-Artefakte im Build-Verzeichnis.
+    implementationStatus: In Implementation
+    currentImplementation:
+      - `basissoftware/esp32` enthaelt einen ESP-IDF-Startpfad mit `app_main()`, Runtime-Task und User-Hooks.
+      - Der Setup-AP `GerNetiX-Setup` wird beim Boot gestartet.
+      - Ein lokales Device-Webinterface bietet `/`, `/status` und `/logs` im AP-Modus.
+      - Eine Feedback-API schreibt auf Serial/UART und in einen lokalen RAM-Ringpuffer.
+    openImplementationGaps:
+      - OTA-Update-Komponente mit Partitionierung, Firmware-Pruefung und Statusrueckmeldung.
+      - WLAN-Scan, Ziel-WLAN-Speicherung und Node-Modus.
+      - Konfigurierbare Service-Endpunkte fuer Device Management und Build-&-Deploy.
+      - Separate user-editierbare WiFi-/Hardware-Konfigurationsdateien gemaess Projektmodell.
     baseArtifacts:
       - basissoftware/esp32/src/main.cpp
       - basissoftware/esp32/platformio.ini
@@ -90,6 +103,38 @@ variants:
       - capability.processor_esp32
       - capability.wifi
       - capability.ota
+      - capability.flash_firmware
+
+  - id: project.gernetix_runtime_basissoftware.variant.arduino_framework_firmware
+    title: Arduino-Framework Basissoftware
+    targetRuntime: Arduino AVR
+    mode: arduino_framework_basissoftware_runtime
+    summary: Arduino-kompatible Boards erhalten eine Basissoftware mit Arduino-Framework, die den vertrauten Einstieg ueber `setup()` und `loop()` kapselt und User-Code in definierte User-Dateien trennt.
+    baseArtifacts:
+      - basissoftware/arduino-framework/src/main.cpp
+      - basissoftware/arduino-framework/platformio.ini
+    userArtifactExamples:
+      - basissoftware/arduino-framework/src/user/user_app.cpp
+      - basissoftware/arduino-framework/include/user/user_app.h
+    requiredCapabilities:
+      - capability.processor_arduino_avr
+      - capability.arduino_framework_runtime
+      - capability.flash_firmware
+
+  - id: project.gernetix_runtime_basissoftware.variant.arduino_atmel_firmware
+    title: Arduino-Board Atmel/AVR Basissoftware ohne Arduino
+    targetRuntime: Atmel AVR
+    mode: atmel_avr_basissoftware_runtime
+    summary: Arduino-kompatible AVR-Boards erhalten eine zweite Basissoftware ohne Arduino-Framework. Sie nutzt direkte AVR-/Atmel-nahe APIs, bleibt aber weiterhin in geschuetzte Basis und User-Artefakte getrennt.
+    baseArtifacts:
+      - basissoftware/arduino-atmel/src/main.c
+      - basissoftware/arduino-atmel/platformio.ini
+    userArtifactExamples:
+      - basissoftware/arduino-atmel/src/user/user_app.c
+      - basissoftware/arduino-atmel/include/user/user_app.h
+    requiredCapabilities:
+      - capability.processor_arduino_avr
+      - capability.atmel_avr_bare_metal_runtime
       - capability.flash_firmware
 
   - id: project.gernetix_runtime_basissoftware.variant.desktop_runtime
@@ -146,13 +191,21 @@ stages:
       - condition.ota_base_preserved
 
   - id: stage.gernetix_runtime_basissoftware.3
+    title: Arduino-Board-Basissoftware zweifach auspraegen
+    goal: Fuer Arduino-kompatible AVR-Boards sowohl eine Arduino-Framework-Basis als auch eine Atmel/AVR-nahe Basis ohne Arduino-Framework bereitstellen.
+    completionConditions:
+      - condition.arduino_framework_runtime_template_exists
+      - condition.atmel_avr_runtime_template_exists
+      - condition.user_code_entrypoints_exist
+
+  - id: stage.gernetix_runtime_basissoftware.4
     title: Projekt-Template erzeugen
     goal: Fuer ein Lernprojekt eine initiale Projektsoftware erzeugen, die Basissoftware und User-Dateien sauber kombiniert.
     completionConditions:
       - condition.project_template_created
       - condition.user_files_only_change_policy_validated
 
-  - id: stage.gernetix_runtime_basissoftware.4
+  - id: stage.gernetix_runtime_basissoftware.5
     title: Weitere Runtimes ableiten
     goal: Dieselbe Trennregel fuer Desktop, Web und Mobile formulieren, ohne sie an ESP32-Firmware zu koppeln.
     completionConditions:
@@ -175,3 +228,8 @@ openDecisions:
   - decision.runtime_user_artifact_manifest_format
   - decision.runtime_template_generation_location
   - decision.runtime_update_migration_strategy
+  - decision.esp32_ota_bootstrap_firmware.wifi_setup
+  - decision.esp32_ota_bootstrap_firmware.node_mode_policy
+  - decision.esp32_ota_bootstrap_firmware.flash_layout
+  - decision.esp32_ota_bootstrap_firmware.ota_authentication
+  - decision.esp32_ota_bootstrap_firmware.service_endpoints

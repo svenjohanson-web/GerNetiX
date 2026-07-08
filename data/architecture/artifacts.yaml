@@ -276,6 +276,7 @@ items:
       - requirement.learning_project_step_feedback
     containsArchitectureComponents:
       - component.project_source_repository
+      - component.project_view_manifest_repository
       - component.project_build_history
       - component.build_package_creator
       - component.firmware_artifact_repository
@@ -287,7 +288,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: IDE
-    summary: Ausfuehrender Server fuer Build- und Deploy-Jobs. Er kompiliert vollstaendige BuildPackages des Projektservers, fuehrt OTA-Deployments aus, kommuniziert mit Geraeten per MQTT und HTTPS, gibt Firmware, Logs und Status zurueck und loescht danach temporaere Projektdaten. Dauerhafte technische Caches sind erlaubt, aber niemals Quelle der Wahrheit.
+    summary: Ausfuehrender Server fuer Build- und Deploy-Jobs. Er kompiliert vollstaendige BuildPackages des Projektservers, kann lokale USB-Flash-Jobs per PlatformIO ausfuehren, fuehrt OTA-Deployments aus, kommuniziert fuer OTA mit Geraeten per MQTT und HTTPS, gibt Firmware, Logs und Status zurueck und loescht danach temporaere Projektdaten. Dauerhafte technische Caches sind erlaubt, aber niemals Quelle der Wahrheit.
     usedBy:
       - app.user_ide
       - architecture_artifact.project_server
@@ -316,6 +317,18 @@ items:
     implementationStatus: Implemented
     ownerDomain: IDE
     summary: Komponente fuer dauerhafte Nutzerprojektquellen, User-Code, Projektkonfiguration und Build-relevante Metadaten.
+
+  - id: component.project_view_manifest_repository
+    type: architecture_component
+    title: Project View Manifest Repository Component
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: IDE
+    summary: Speichert projektgebundene IDE-/Lernansichten wie Quellcodeanalyse, Erklaerungskarten, PlantUML-Diagramme und Umsetzungsschritte, damit Viewer diese generisch rendern koennen und keine projektspezifische Didaktik hart kodieren.
+    derivedFromRequirements:
+      - requirement.project_bound_guided_ide_views
+    affectsDataModels:
+      - data_model.project_view_manifest
 
   - id: component.project_build_history
     type: architecture_component
@@ -358,7 +371,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: In Implementation
     ownerDomain: IDE
-    summary: Fuehrt Build-Jobs aus vollstaendigen BuildPackages aus, kompiliert die Firmware und liefert BuildResult inklusive `firmware.bin`, `firmware.elf`, `firmware.map`, `build.log`, Status, SHA-256 und Dateigroesse an den Projektserver zurueck.
+    summary: Fuehrt Build-Jobs aus vollstaendigen BuildPackages aus, kompiliert die Firmware, kann im lokalen MVP per USB flashen und liefert BuildResult inklusive primaerem Firmware-Artefakt (`firmware.bin` oder `firmware.hex`), `firmware.elf`, optionalem `firmware.map`, `build.log`, Flash-Status, SHA-256 und Dateigroesse an den Projektserver zurueck.
 
   - id: component.build_cache
     type: architecture_component
@@ -436,21 +449,46 @@ items:
     type: architecture_component
     title: Device Connectivity Setup Component
     businessStatus: In Analysis
-    implementationStatus: Implemented
+    implementationStatus: In Implementation
     ownerDomain: DeviceManagement
     summary: Komponente fuer Connectivity-Status, AP-/Node-Modus, OTA-Hostname und WLAN-Setup-Kontext. WLAN-Passwoerter bleiben lokal auf dem Device.
+    implementationNotes:
+      - `basissoftware/esp32` startet aktuell einen offenen Setup-AP `GerNetiX-Setup`.
+      - Das lokale Device-Webinterface ist im AP-Modus unter `http://192.168.4.1/` erreichbar.
+      - Die Basissoftware startet im Setup-AP einen Captive-DNS-Dienst und beantwortet unbekannte HTTP-GET-Pfade mit der lokalen Setup-Seite, damit mobile Betriebssysteme den Captive-Portal-Dialog automatisch oeffnen koennen.
+      - `/status` liefert Runtime-, WLAN-, Uptime- und Provisioning-Status als JSON.
+      - Das Hersteller-Provisioning laeuft ueber USB-Flash-Pakete mit generiertem `generated_provisioning_payload.h`.
+      - Das Provisioning Tool waehlt dafuer ein ProcessorBoard aus dem Hardware-Katalog und referenziert ueber dessen Katalogeintrag ein versioniertes Basissoftware-Firmware-Artefakt aus SQLite/Artifact Store.
+      - Das Provisioning Tool darf im Serverbetrieb nicht direkt auf `basissoftware/esp32` als Projektordner zugreifen.
+      - Die USB-Flash-Toolchain ist ein deploytes Runtime-Artefakt mit Manifest `.runtime/toolchains/provisioning/toolchain.json`; der Server darf keine benutzerspezifischen lokalen Toolchain-Pfade erraten.
+      - Echter USB-Flash wird nur angeboten, wenn Freigabe, serverseitiges Firmware-Artefakt und Toolchain-Readiness gemeinsam erfuellt sind.
+      - Die Factory-HMI darf kein lokales Firmware-File vom Bedienrechner hochladen; Artefakte werden durch Server-/Build-/Admin-Prozesse bereitgestellt.
+      - Der Factory-Provisioning-Header wird nur in temporaeres Staging geschrieben, nicht in die kanonischen Projektquellen.
+      - Die Basissoftware importiert den Factory-Provisioning-Payload beim ersten Boot aus dem per USB geflashten Image in NVS.
+      - `POST /provisioning` bleibt ein lokaler Recovery-/Entwicklungsendpunkt und ist nicht der normale Provisioning-Tool-Kanal.
+      - `POST /auth/challenge` erzeugt lokal einen HMAC-SHA256-Echtheitsnachweis aus Challenge und provisioniertem Device-Secret.
+      - Der leichte Contract-Check `tools/firmware-contract-check/check-provisioning-contract.js` prueft Provisioning Tool und ESP32-Basissoftware ohne ESP-IDF-/PlatformIO-Vollbuild gegeneinander.
+      - WLAN-Scan, Speichern von Ziel-WLAN-Zugangsdaten, Wechsel in den Node-Modus und OTA-Hostname sind noch offen.
+    openDecisions:
+      - decision.esp32_ota_bootstrap_firmware.wifi_setup
+      - decision.esp32_ota_bootstrap_firmware.node_mode_policy
 
   - id: component.firmware_feedback
     type: architecture_component
     title: Firmware Feedback / Weblog Component
     businessStatus: In Analysis
-    implementationStatus: Not Started
+    implementationStatus: In Implementation
     ownerDomain: Learning
     summary: Basissoftware-Komponente fuer lokale Lern- und Diagnose-Rueckmeldungen ueber UART, Ringpuffer und Device-Webinterface. Server-Telemetrie bleibt getrennt und wird erst bei Pairing, Zweckbindung und Berechtigung oder Consent relevant.
     derivedFromRequirements:
       - requirement.firmware_local_feedback_weblog
     dependsOn:
       - component.device_connectivity_setup
+    implementationNotes:
+      - `basissoftware/esp32` enthaelt eine lokale Feedback-API fuer Info-, Warn- und Fehlerereignisse.
+      - Feedback wird weiter ueber Serial/UART ausgegeben.
+      - Ein RAM-Ringpuffer ist im lokalen Device-Webinterface unter `/logs` abrufbar.
+      - Automatische Server-Telemetrie ist bewusst nicht implementiert.
 
   - id: component.device_support_entitlement
     type: architecture_component

@@ -76,6 +76,14 @@ class InMemoryDeviceManagementRepository {
     return clone((this.accountDevices.get(accountId) || []).find((item) => item.account_device_id === accountDeviceId));
   }
 
+  deleteAccountDevice(accountId, accountDeviceId) {
+    const items = this.accountDevices.get(accountId) || [];
+    const existing = items.find((item) => item.account_device_id === accountDeviceId);
+    if (!existing) return null;
+    this.accountDevices.set(accountId, items.filter((item) => item.account_device_id !== accountDeviceId));
+    return clone(existing);
+  }
+
   savePurchaseContext(accountId, purchaseContext) {
     const items = this.purchaseContexts.get(accountId) || [];
     const next = items.filter((item) => item.purchase_context_id !== purchaseContext.purchase_context_id);

@@ -26,6 +26,7 @@ API-Prefix:
 
 - TechnicalCapabilities lesen
 - HardwareItems und ProcessorBoards verwalten
+- ProcessorBoards mit Basissoftware-Profil und Factory-Firmware-Artefaktreferenz bereitstellen
 - Shop-Angebote fuer Boards und Kits lesen
 - passende Angebote nach benoetigten Capabilities finden
 - einfache Warenkoerbe und Bestellungen erzeugen

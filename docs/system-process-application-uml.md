@@ -14,6 +14,8 @@ flowchart LR
 
   subgraph applications["Applikationen / HMI"]
     platformUi["GerNetiX Plattform UI<br/>/app/auth, /app/dashboard, /app/learn, /app/ide<br/>Identity Server :4300"]
+    recoveryHmi["Recovery Tool HMI<br/>Board retten / USB Recovery<br/>:5100"]
+    provisioningHmi["Provisioning Tool HMI<br/>Factory USB Provisioning<br/>:4500"]
     contextHmi["Context Manager HMI<br/>/context-manager/<br/>:5050"]
     sqliteExplorer["SQLite Graph Explorer<br/>Tool UI<br/>:4318"]
   end
@@ -26,7 +28,7 @@ flowchart LR
 
   subgraph domainServices["Domaenen-Serverprozesse"]
     projectServer["Project Server<br/>:4800"]
-    buildDeploy["Build & Deploy Server<br/>:4400"]
+    buildDeploy["Build & Deploy Server<br/>USB Flash + OTA<br/>:4400"]
     deviceManagement["Device Management Server<br/>:4700"]
     provisioning["Provisioning Tool Server<br/>:4500"]
     recovery["Recovery Tool Server<br/>:5100"]
@@ -49,11 +51,15 @@ flowchart LR
   end
 
   user --> platformUi
+  user --> recoveryHmi
+  admin --> provisioningHmi
   admin --> adminTool
   codex --> contextHmi
   codex --> sqliteExplorer
 
   platformUi --> identity
+  recoveryHmi --> recovery
+  provisioningHmi --> provisioning
   contextHmi --> contextManager
   sqliteExplorer --> graphDb
 
@@ -104,15 +110,15 @@ flowchart LR
 | Prozess | Port | Rolle |
 | --- | ---: | --- |
 | Identity Server | 4300 | Login, Session, gemeinsame Plattform-UI, Adapter zu Domaenenservices |
-| Build & Deploy Server | 4400 | Build-Jobs, Build-Pakete, Artefakte |
-| Provisioning Tool Server | 4500 | Provisioning-Sessions, Device-Registrierung |
+| Build & Deploy Server | 4400 | Build-Jobs, Build-Pakete, Artefakte, lokaler USB-Flash-MVP |
+| Provisioning Tool Server | 4500 | eigenstaendige Factory-HMI, Provisioning-Sessions, USB-Factory-Flash, Device-Registrierung |
 | Admin Tool API | 4600 | Admin-/Support-Sichten, Consent-/Audit-nahe API |
 | Device Management Server | 4700 | Devices, Ownership, Purchase Contexts, Support-Status |
 | Project Server | 4800 | Projekte, Quellen, Build-Jobs, Learning Feedback |
 | Hardware Shop | 4900 | Angebote, Warenkorb, Bestellung, Purchase Context |
 | AI Usage Server | 5000 | Credits, Preflight, Usage Events, Cost Controls |
 | Context Manager | 5050 | Projektkontext, Vorschlaege, Context Packs |
-| Recovery Tool Server | 5100 | Recovery-Sessions, Credential-Erneuerung |
+| Recovery Tool Server | 5100 | eigenstaendige Nutzer-/Support-HMI, Recovery-Sessions, Credential-Erneuerung, Connectivity-Recovery |
 | Community Platform | 5200 | Community-Fragen, Antworten, Verifikation |
 | Community AI Assistant | 5300 | KI-gestuetzte Community-Antworten |
 | Persistence Server | 5400 | HTTP-Zugriff auf generische SQLite-State-Dokumente |
@@ -127,10 +133,13 @@ flowchart LR
 | GerNetiX Plattform UI / Identity Server | Hardware Shop | Angebote, Matching, Bestellungen |
 | GerNetiX Plattform UI / Identity Server | Device Management Server | eigene Devices, Registrierung, Purchase Context |
 | GerNetiX Plattform UI / Identity Server | AI Usage Server | Credit-Anzeige und AI-Preflight |
+| Recovery Tool HMI | Recovery Tool Server | Nutzer-/Support-Flow zum Retten von ProcessorBoards |
+| Provisioning Tool HMI | Provisioning Tool Server | Factory-Provisioning per USB ohne IDE-/Plattform-Umweg |
 | Admin Tool API | Device Management Server | Device-/Support-/Consent-Sichten |
 | Admin Tool API | Project Server | Learning Feedback |
 | Admin Tool API | AI Usage Server | Usage-Monitoring und Cost Controls |
 | Provisioning Tool Server | Device Management Server | registriert verifizierte Devices |
+| Provisioning Tool Server | Runtime SQLite / Firmware Artifact Repository | liest versionierte Basissoftware-Artefaktreferenz fuer Factory-Flash und speichert Provisioning-State |
 | Recovery Tool Server | Device Management Server | registriert Recovery-/Community-Devices |
 | Community AI Assistant | Community Platform | liest/schreibt Community-Kontext |
 | Community AI Assistant | AI Usage Server | prueft und verbucht KI-Nutzung |
@@ -140,5 +149,9 @@ flowchart LR
 
 - Der Persistence Server ist ein HTTP-Service fuer generische State-Dokumente. Mehrere Services nutzen aktuell zusaetzlich direkte SQLite-State-Persistenz ueber gemeinsame Repository-/Store-Bausteine.
 - Login UI, Dashboard, Lernmodus, User IDE und Guided-Code-Lesson-Einstieg sind ein gemeinsames Plattform-Frontend-Artefakt am Identity Server, keine getrennten Anwendungen mit getrennten Logins. Im Projekt liegt dieses Artefakt gebuendelt unter `services/identity-server/public/app`.
+- Das Recovery Tool ist ein eigenstaendiges Nutzer-/Support-Tool am Port 5100, mit dem ProcessorBoards per USB erkannt, repariert, neu registriert oder mit neuen Credentials versorgt werden koennen.
+- Das Provisioning Tool ist bewusst ein eigenstaendiges Factory-/Support-Tool mit eigener HMI am Port 4500. Es gehoert nicht zur User IDE und wird nicht im Plattform-Frontend eingebettet.
+- Das Provisioning Tool darf im Serverbetrieb nicht auf die Projektumgebung zugreifen. Die Basissoftware fuer Factory-Flash muss als versioniertes Firmware-Artefakt in SQLite/Artifact Store vorliegen; lokale Quellen sind nur ein expliziter Entwicklungs-Fallback.
+- Die Provisioning-HMI darf keine Firmware-Dateien vom Bedienrechner hochladen. Firmware-Artefakte werden serverseitig aus SQLite/Artifact Store oder einem konfigurierten Server-Firmwarepfad bereitgestellt.
 - Der Context Manager ist kein Ersatz fuer die Graph-Dokumentation. Er liest Projektwissen, erstellt Vorschlaege und erzeugt bestaetigte Context Packs fuer Codex-Workflows.
 - Das Diagramm bildet den aktuellen lokalen MVP-Zuschnitt ab. Produktive Infrastruktur wie Reverse Proxy, Auth Gateway, Deployment-Orchestrierung oder externe LLM-/Payment-Provider sind hier noch nicht modelliert.

@@ -52,6 +52,12 @@ class FileBackedDeviceManagementRepository extends InMemoryDeviceManagementRepos
     return result;
   }
 
+  deleteAccountDevice(accountId, accountDeviceId) {
+    const result = super.deleteAccountDevice(accountId, accountDeviceId);
+    this.persist();
+    return result;
+  }
+
   savePurchaseContext(accountId, purchaseContext) {
     const result = super.savePurchaseContext(accountId, purchaseContext);
     this.persist();

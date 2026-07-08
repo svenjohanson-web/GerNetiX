@@ -79,7 +79,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: DeviceManagement
-    summary: API-Artefakt fuer Provisioning-Sessions, initiale Board-Registrierung, Manifest-Erzeugung und Vorbereitung von Device-Management-Endpunkten.
+    summary: API-Artefakt fuer Provisioning-Sessions, initiale Board-Registrierung, Manifest-Erzeugung, USB-Factory-Flash mit pollbarem Fortschrittsjob und Vorbereitung von Device-Management-Endpunkten.
     derivedFromRequirements:
       - requirement.device_manufacturer_registration
       - requirement.device_authenticity_challenge_response
@@ -88,6 +88,9 @@ items:
       - GET /api/provisioning-sessions/{session_id}
       - POST /api/provisioning-sessions/{session_id}/register
       - GET /api/provisioning-sessions/{session_id}/manifest
+      - POST /api/provisioning-sessions/{session_id}/usb-flash
+      - POST /api/provisioning-sessions/{session_id}/usb-flash-jobs
+      - GET /api/provisioning-flash-jobs/{job_id}
 
   - id: api_artifact.recovery_tool
     type: api_artifact
@@ -396,6 +399,15 @@ items:
       - requirement.device_customer_registration_and_pairing
       - requirement.community_hardware_supported_without_entitlement
       - requirement.ide_ota_device_selection_from_profile
+    endpoints:
+      - GET /api/device-management/accounts/{account_id}/devices
+      - POST /api/device-management/accounts/{account_id}/devices
+      - DELETE /api/device-management/accounts/{account_id}/devices/{account_device_id}
+      - GET /api/platform/devices/discover
+      - POST /api/platform/devices/from-discovery
+      - POST /api/platform/devices
+      - DELETE /api/platform/devices/{account_device_id}
+      - GET /api/platform/hardware/processor-boards
 
   - id: api_artifact.ide_ota_device_selection
     type: api_artifact
