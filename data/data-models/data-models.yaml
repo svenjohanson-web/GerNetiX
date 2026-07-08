@@ -774,14 +774,22 @@ items:
     businessStatus: In Analysis
     implementationStatus: In Implementation
     ownerDomain: IDE
-    summary: Projektgebundenes Manifest, das beschreibt, welche IDE-/Lernansichten fuer ein Projekt verfuegbar sind, z. B. Quellcodeanalyse, Erklaerungskarten, PlantUML-Diagramme, Runtime-Preview-Hinweise und naechste Umsetzungsschritte. Der Viewer rendert diese Informationen generisch und darf sie nicht projektspezifisch hart kodieren.
+    summary: Projektgebundenes Manifest, das beschreibt, welche IDE-/Lernansichten fuer ein Projekt verfuegbar sind, z. B. Quellcodeanalyse, Story-Slides, Erklaerungskarten, Artefakte, PlantUML-Diagramme, Runtime-Preview-Hinweise und naechste Umsetzungsschritte. Der Viewer rendert diese Informationen generisch und darf sie nicht projektspezifisch hart kodieren.
     fields:
       - schemaVersion
       - title
       - summary
       - primarySourcePath
+      - hideSourceEditor
       - mode
       - views
+      - completion
+      - validation
+      - editableLines
+      - runtimePreview
+      - artifact
+      - artifactType
+      - modelLines
     derivedFromRequirements:
       - requirement.project_bound_guided_ide_views
 

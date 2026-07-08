@@ -59,8 +59,14 @@
             </div>
             <div id="flashProgressText" class="progress-text"></div>
           </div>
+          <fieldset class="mode-field">
+            <legend>Kennung speichern</legend>
+            <label>Board-Adresse<input id="deviceProvisioningUrl" type="url" value="http://192.168.4.1/provisioning" /></label>
+            <div id="deviceProvisioningStatus" class="status hidden"></div>
+          </fieldset>
           <div class="button-row">
             <button id="usbFlashButton" class="primary" type="button" disabled>Firmware per USB flashen</button>
+            <button id="persistDeviceProvisioningButton" type="button" disabled>Kennung speichern</button>
             <button id="cancelFlashButton" type="button" disabled>USB-Flash abbrechen</button>
             <button id="completeButton" type="button" disabled>Provisionierung abschliessen</button>
           </div>

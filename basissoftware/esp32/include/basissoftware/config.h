@@ -12,6 +12,7 @@ constexpr char GERNETIX_FIRMWARE_BASIS[] = "gernetix-runtime-basissoftware";
 
 constexpr char WIFI_SETUP_AP_SSID[] = "GerNetiX-Setup";
 constexpr char WIFI_SETUP_AP_PASSWORD[] = "";
+constexpr char WIFI_STATION_HOSTNAME[] = "gernetix-esp32";
 constexpr uint8_t WIFI_SETUP_AP_CHANNEL = 6;
 constexpr uint8_t WIFI_SETUP_AP_MAX_CONNECTIONS = 4;
 constexpr char CAPTIVE_PORTAL_AP_IP[] = "192.168.4.1";

@@ -52,7 +52,7 @@ Das `usb_flash_package` enthaelt fuer die physische Erstinbetriebnahme eine gene
 sqlite://provisioning_firmware_artifacts/firmware_artifact.esp32_basissoftware_factory.latest
 ```
 
-Der Secret-Header wird nur in ein temporaeres Staging-Verzeichnis geschrieben und ausschliesslich per USB geflasht. Das Provisioning Tool schreibt keine Provisioning-Daten ueber WLAN oder Setup-AP.
+Der Secret-Header wird nur in ein temporaeres Staging-Verzeichnis geschrieben und kann in ein Factory-Image eingebettet werden. Im normalen HMI-Ablauf bleibt das Firmware-Artefakt generisch; die konkrete Board-Kennung wird nach dem USB-Flash ueber den lokalen Device-Endpunkt `/provisioning` dauerhaft in NVS gespeichert.
 
 Wenn `flash.write_factory_header` gesetzt ist, schreibt das Tool die Datei direkt an den konfigurierten Pfad `PROVISIONING_GENERATED_HEADER_PATH` beziehungsweise standardmaessig nach:
 
@@ -105,6 +105,20 @@ GET /api/provisioning-firmware-artifacts/{artifact_id}/content
 ```
 
 Liefert das vorbereitete Firmware-Binary als `application/octet-stream` fuer den Browser-Web-Serial-Flash. Die HMI laedt dieses Artefakt, uebergibt die Bytes an `esptool-js` und schreibt die Firmware direkt ueber das vom Nutzer im Browser ausgewaehlte USB-Serial-Geraet.
+
+## Device-Provisioning-Ziele Suchen
+
+```text
+GET /api/provisioning-device-targets
+```
+
+Sucht lokale GerNetiX-Basissoftware-Instanzen ueber bekannte Hostnamen wie `gernetix-esp32`, `gernetix-esp32.local`, die Setup-IP `192.168.4.1` und private lokale IPv4-Subnetze. Geprueft wird jeweils `/status`; Treffer liefern den passenden `/provisioning`-Endpunkt fuer den Board-Speicher-Schritt. Wenn der Bedienrechner mit einer Setup-AP-SSID verbunden ist, die mit `gernetix-` beginnt, gilt direkt `http://192.168.4.1/provisioning`; der SSID-Suffix ist kein DNS-Name.
+
+Optional koennen Kandidaten explizit mitgegeben werden:
+
+```text
+GET /api/provisioning-device-targets?candidate=http://gernetix-esp32/status
+```
 
 ## Aktives Credential Zuruecksetzen
 
@@ -170,6 +184,26 @@ Beispiel fehlgeschlagen:
   "error": "Failed to connect"
 }
 ```
+
+## Device-Provisioning Im Board Speichern
+
+```text
+POST /api/provisioning-sessions/{session_id}/device-provisioning
+```
+
+Sendet den kompletten Session-Payload an den lokalen Device-Webserver der geflashten Basissoftware. Das Board speichert `device_id`, `serial_number`, Hardwareprofil, Credential-Referenz, Service-Endpunkte und `one_time_device_secret` dauerhaft im NVS-Namespace `prov`. Der Endpoint ist fuer den HMI-Schritt nach dem USB-Flash gedacht; er startet keinen Flash und baut kein Firmware-Binary.
+
+Beispiel:
+
+```json
+{
+  "device_url": "http://192.168.4.1/provisioning",
+  "actor": "factory-user",
+  "one_time_device_secret": "nur-aus-aktueller-browser-session"
+}
+```
+
+Das `one_time_device_secret` wird nicht aus dem Session-Status zurueckgegeben und muss aus der aktuellen Browser-Session stammen. Ist es nicht mehr vorhanden, muss die Provisioning-Session neu vorbereitet werden.
 
 ## Complete
 

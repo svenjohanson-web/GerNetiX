@@ -82,11 +82,13 @@ Aktuelle lokale Endpunkte:
 - `/status` liefert Runtime-, WLAN- und Uptime-Status als JSON.
 - `/logs` liefert den lokalen Feedback-Ringpuffer als Text.
 - Unbekannte GET-Pfade wie `/generate_204`, `/hotspot-detect.html` oder `/connecttest.txt` werden als Captive-Portal-Einstieg auf die lokale Setup-Seite beantwortet.
-- `POST /provisioning` ist ein lokaler Recovery-/Entwicklungsendpunkt und nicht der normale Provisioning-Tool-Weg.
+- `POST /provisioning` speichert einen Factory-Provisioning-Payload dauerhaft in NVS. Das Provisioning Tool nutzt diesen Endpunkt nach dem USB-Flash, damit Seriennummer und Device-ID ohne Board-spezifischen Firmware-Neubuild auf dem Board landen.
 - `POST /auth/challenge` nimmt eine Device-Management-Challenge an und erzeugt einen lokalen `HMAC_SHA256`-Nachweis mit dem provisionierten Device-Secret.
 
 Nach erfolgreichem Provisioning enthaelt `/status` zusaetzlich:
 
+- `displayName`
+- `hostname`
 - `provisioningState`
 - `deviceId`
 - `serialNumber`
@@ -104,6 +106,8 @@ Nach erfolgreichem Provisioning enthaelt `/status` zusaetzlich:
 - `hasDeviceSecret`
 - `authenticityProof`
 
+Der lokale Stations-Hostname wird nach dem Provisioning dynamisch aus der Seriennummer gebildet. Aus `GNX-ESP32-0001` wird zum Beispiel `gernetix-gnx-esp32-0001`. Ohne gespeicherte Seriennummer bleibt der Fallback `gernetix-esp32`. Der IDE-Device-Manager nutzt `/status`, um diese Namen beim WiFi-Scan im Nutzerinventar sichtbar zu machen.
+
 ## USB-Factory-Provisioning
 
 Das initiale Hersteller-Provisioning laeuft ausschliesslich ueber USB. Das Provisioning Tool erzeugt fuer genau einen physischen Flash-Vorgang eine generierte Header-Datei:
@@ -113,6 +117,8 @@ include/basissoftware/generated_provisioning_payload.h
 ```
 
 Wenn diese Datei beim Build vorhanden ist, importiert die Basissoftware den enthaltenen Factory-Payload beim ersten Boot in NVS. Ist das Device bereits provisioniert, wird der Factory-Payload ignoriert. Das Provisioning Tool schreibt diese Datei nur bei einem expliziten USB-Flash-Paket, zum Beispiel mit `flash.write_factory_header`.
+
+Im normalen HMI-Ablauf kann ein generisches Factory-Firmware-Artefakt geflasht werden. Nach dem Boot sendet das Provisioning Tool den konkreten Session-Payload an `POST /provisioning`; die Basissoftware speichert daraus `device_id`, `serial_number`, Hardwareprofil, Firmwarestand, Credential-Referenz, Service-Endpunkte, Provisioning-Charge und das einmalige Device-Secret dauerhaft im NVS-Namespace `prov`.
 
 Das Provisioning Tool liefert im abrufbaren Manifest nur Credential-Referenz und Secret-Hash. Das einmalig erzeugte `one_time_device_secret` darf nur im USB-Flash-Paket enthalten sein. Dieses Secret wird lokal im Device-NVS gespeichert, aber niemals ueber `/status`, `/logs` oder den Challenge-Endpunkt ausgegeben.
 

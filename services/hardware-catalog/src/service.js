@@ -1,0 +1,82 @@
+const crypto = require("node:crypto");
+const { HardwareCatalogError } = require("./errors");
+
+class HardwareCatalogService {
+  constructor(options) {
+    this.repository = options.repository;
+  }
+
+  listCapabilities() {
+    return this.repository.listCapabilities();
+  }
+
+  getCapability(capabilityId) {
+    const capability = this.repository.findCapability(capabilityId);
+    if (!capability) throw new HardwareCatalogError("capability_not_found", "TechnicalCapability wurde nicht gefunden.", 404);
+    return capability;
+  }
+
+  upsertCapability(input = {}) {
+    const capability = {
+      capability_id: input.capability_id || input.id || required(input.capabilityId, "capability_id"),
+      title: required(input.title, "title"),
+      owner_domain: input.owner_domain || "Hardware",
+      status: input.status || "active",
+      summary: input.summary || "",
+    };
+    return this.repository.saveCapability(capability);
+  }
+
+  listHardwareItems(query = {}) {
+    return this.repository.listHardwareItems({
+      item_type: query.item_type || query.itemType || "",
+      status: query.status || "active",
+    });
+  }
+
+  getHardwareItem(itemId) {
+    const item = this.repository.findHardwareItem(itemId);
+    if (!item) throw new HardwareCatalogError("hardware_item_not_found", "HardwareItem wurde nicht gefunden.", 404);
+    return item;
+  }
+
+  listProcessorBoards() {
+    return this.listHardwareItems({ item_type: "processor_board", status: "active" });
+  }
+
+  upsertHardwareItem(input = {}) {
+    const capabilityIds = normalizeList(input.capability_ids || input.capabilities);
+    for (const capabilityId of capabilityIds) this.getCapability(capabilityId);
+    const item = {
+      hardware_item_id: input.hardware_item_id || input.id || createId("hardware"),
+      sku: required(input.sku, "sku"),
+      item_type: input.item_type || "module",
+      title: required(input.title, "title"),
+      summary: input.summary || "",
+      capability_ids: capabilityIds,
+      support_policy: input.support_policy || "community_usable_no_gernetix_hardware_entitlement",
+      provisioning_profile_id: input.provisioning_profile_id || "",
+      basissoftware_profile_id: input.basissoftware_profile_id || "",
+      factory_firmware_artifact: input.factory_firmware_artifact || null,
+      status: input.status || "active",
+    };
+    return this.repository.saveHardwareItem(item);
+  }
+}
+
+function normalizeList(value) {
+  if (Array.isArray(value)) return value.filter(Boolean);
+  return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function required(value, field) {
+  const normalized = String(value || "").trim();
+  if (!normalized) throw new HardwareCatalogError("missing_required_field", `Pflichtfeld fehlt: ${field}`);
+  return normalized;
+}
+
+function createId(prefix) {
+  return `${prefix}_${crypto.randomUUID()}`;
+}
+
+module.exports = { HardwareCatalogService };

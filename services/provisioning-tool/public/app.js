@@ -16,6 +16,7 @@ document.querySelector("#processorBoard").addEventListener("change", selectProce
 document.querySelector("#credentialResetButton").addEventListener("click", resetActiveCredential);
 document.querySelector("#selectUsbDeviceButton").addEventListener("click", selectUsbDevice);
 document.querySelector("#usbFlashButton").addEventListener("click", executeUsbFlash);
+document.querySelector("#persistDeviceProvisioningButton").addEventListener("click", persistDeviceProvisioning);
 document.querySelector("#cancelFlashButton").addEventListener("click", cancelUsbFlash);
 document.querySelector("#completeButton").addEventListener("click", completeSession);
 bootstrap();
@@ -180,13 +181,37 @@ async function completeSession() {
   render();
 }
 
+async function persistDeviceProvisioning() {
+  if (!state.session) return;
+  if (!state.secret) {
+    setStatus("deviceProvisioningStatus", "error", "Das einmalige Device-Secret ist nicht mehr im Browser vorhanden. Bitte Session neu vorbereiten.");
+    return;
+  }
+  setStatus("deviceProvisioningStatus", "running", "Kennung wird im Board-NVS gespeichert...");
+  try {
+    const updated = await postJson(`/api/provisioning-sessions/${encodeURIComponent(state.session.session_id)}/device-provisioning`, {
+      actor: value("#actor"),
+      device_url: value("#deviceProvisioningUrl"),
+      one_time_device_secret: state.secret,
+    });
+    const manifest = await getJson(`/api/provisioning-sessions/${encodeURIComponent(updated.session_id)}/manifest`);
+    state.session = { ...updated, manifest };
+    saveBrowserSessionState(state.session);
+    render();
+    setStatus("deviceProvisioningStatus", "ok", "Kennung wurde dauerhaft im Board gespeichert.");
+  } catch (error) {
+    setStatus("deviceProvisioningStatus", "error", error.message);
+  }
+}
+
 function render() {
   const session = state.session;
   const flashNeedsArtifact = !state.flashMode?.artifact_ready;
   const flashRunning = Boolean(state.flashOperation);
   document.querySelector("#usbFlashButton").disabled = flashRunning || !session || flashNeedsArtifact || needsUsbTargetSelection() || session.status === "completed" || hasUsbFlashSucceeded(session);
+  document.querySelector("#persistDeviceProvisioningButton").disabled = flashRunning || !session || !state.secret || session.status === "completed" || hasDeviceProvisioningStored(session);
   document.querySelector("#cancelFlashButton").disabled = !flashRunning;
-  document.querySelector("#completeButton").disabled = !session || session.status === "completed";
+  document.querySelector("#completeButton").disabled = !session || session.status === "completed" || !hasDeviceProvisioningStored(session);
   renderUsbBrowserStatus();
   renderFirmwareArtifact();
   renderFlashReadinessStatus();
@@ -196,6 +221,7 @@ function render() {
     ["device_id", session.device.device_id],
     ["serial_number", session.device.serial_number],
     ["credential_id", session.credential.credential_id],
+    ["board_storage", session.device.local_provisioning_state || ""],
     ["firmware_artifact", session.manifest?.firmware?.artifact?.artifact_id || state.firmwareArtifact?.artifact_id || ""],
     ["artifact_source", session.manifest?.firmware?.artifact?.source || state.firmwareArtifact?.source || ""],
     ["flash_status", session.flash_plan?.status || ""],
@@ -209,6 +235,16 @@ function render() {
     setStatus("secretStatus", "ok", "Einmaliges Device-Secret liegt nur für diesen Vorgang im Tool vor.");
   } else {
     hideStatus("secretStatus");
+  }
+
+  if (session?.device?.local_provisioning_state === "stored_on_board") {
+    setStatus("deviceProvisioningStatus", "ok", "Kennung wurde dauerhaft im Board gespeichert.");
+  } else if (session && !state.secret) {
+    setStatus("deviceProvisioningStatus", "running", "Board-Speicherung braucht das einmalige Device-Secret der aktuellen Browser-Session.");
+  } else if (session) {
+    setStatus("deviceProvisioningStatus", "running", "Nach dem Flash Board booten lassen und Kennung im Board speichern.");
+  } else {
+    hideStatus("deviceProvisioningStatus");
   }
 
   const result = session?.usb_flash_result || session?.flash_plan?.last_flash_result;
@@ -481,6 +517,10 @@ function clearBrowserSessionState() {
 function hasUsbFlashSucceeded(session) {
   const result = session?.usb_flash_result || session?.flash_plan?.last_flash_result;
   return session?.flash_plan?.status === "usb_flashed" && result?.status === "flashed";
+}
+
+function hasDeviceProvisioningStored(session) {
+  return session?.device?.local_provisioning_state === "stored_on_board";
 }
 
 function renderProcessorBoards() {

@@ -12,25 +12,11 @@ class SqliteBackedHardwareShopRepository extends InMemoryHardwareShopRepository 
     return new SqliteBackedHardwareShopRepository(new SqliteStateStore(sqlitePath, "hardware-shop", {
       defaultState: { carts: [], orders: [] },
       collectionMap: {
-        capabilities: "capabilities",
-        hardwareItems: "hardware_items",
         offers: "offers",
         carts: "carts",
         orders: "orders",
       },
     }));
-  }
-
-  saveCapability(capability) {
-    const result = super.saveCapability(capability);
-    this.persist();
-    return result;
-  }
-
-  saveHardwareItem(item) {
-    const result = super.saveHardwareItem(item);
-    this.persist();
-    return result;
   }
 
   saveOffer(offer) {
@@ -53,21 +39,15 @@ class SqliteBackedHardwareShopRepository extends InMemoryHardwareShopRepository 
 
   persist() {
     const state = {
-      capabilities: Array.from(this.capabilities.values()),
-      hardwareItems: Array.from(this.hardwareItems.values()),
       offers: Array.from(this.offers.values()),
       carts: Array.from(this.carts.values()),
       orders: Array.from(this.orders.values()),
     };
     this.store.save(state);
-    this.store.replaceCollection?.("capabilities", state.capabilities, "capability_id");
-    this.store.replaceCollection?.("hardware_items", state.hardwareItems, "hardware_item_id");
     this.store.replaceCollection?.("offers", state.offers, "offer_id");
     this.store.replaceCollection?.("carts", state.carts, "cart_id");
     this.store.replaceCollection?.("orders", state.orders, "order_id");
     if (typeof this.store.replaceTable === "function") {
-      this.store.replaceTable("hardware_shop_capabilities", state.capabilities, columns(["capability_id", "title", "owner_domain", "status"]));
-      this.store.replaceTable("hardware_shop_items", state.hardwareItems, itemColumns());
       this.store.replaceTable("hardware_shop_offers", state.offers, offerColumns());
       this.store.replaceTable("hardware_shop_carts", state.carts, cartColumns());
       this.store.replaceTable("hardware_shop_orders", state.orders, orderColumns());
@@ -77,8 +57,6 @@ class SqliteBackedHardwareShopRepository extends InMemoryHardwareShopRepository 
 
 function hardwareShopSchema() {
   return [
-    `CREATE TABLE IF NOT EXISTS hardware_shop_capabilities (capability_id TEXT PRIMARY KEY, title TEXT, owner_domain TEXT, status TEXT);`,
-    `CREATE TABLE IF NOT EXISTS hardware_shop_items (hardware_item_id TEXT PRIMARY KEY, sku TEXT, item_type TEXT, title TEXT, summary TEXT, capability_ids_json TEXT, support_policy TEXT, provisioning_profile_id TEXT, status TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS hardware_shop_offers (offer_id TEXT PRIMARY KEY, offer_type TEXT, title TEXT, summary TEXT, hardware_item_ids_json TEXT, related_learning_project_ids_json TEXT, price_json TEXT, stock_state TEXT, status TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS hardware_shop_carts (cart_id TEXT PRIMARY KEY, account_id TEXT, status TEXT, items_json TEXT, created_at TEXT, updated_at TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS hardware_shop_orders (order_id TEXT PRIMARY KEY, cart_id TEXT, account_id TEXT, status TEXT, payment_status TEXT, fulfillment_status TEXT, totals_json TEXT, items_json TEXT, created_at TEXT, raw_json TEXT NOT NULL);`,
@@ -87,10 +65,6 @@ function hardwareShopSchema() {
 
 function columns(names) {
   return Object.fromEntries(names.map((name) => [name, name]));
-}
-
-function itemColumns() {
-  return { ...columns(["hardware_item_id", "sku", "item_type", "title", "summary", "support_policy", "provisioning_profile_id", "status"]), capability_ids_json: jsonColumn("capability_ids"), raw_json: jsonColumn((row) => row) };
 }
 
 function offerColumns() {

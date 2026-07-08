@@ -14,62 +14,41 @@ function createHttpApp(options) {
       return;
     }
 
-    if (req.method === "GET" && path === `${prefix}/capabilities`) {
-      sendJson(res, 200, { items: service.listCapabilities() });
-      return;
-    }
-
-    if (req.method === "GET" && path === `${prefix}/hardware-items`) {
-      sendJson(res, 200, { items: service.listHardwareItems(Object.fromEntries(url.searchParams.entries())) });
-      return;
-    }
-
-    const hardwareItem = path.match(new RegExp(`^${prefix}/hardware-items/([^/]+)$`));
-    if (req.method === "GET" && hardwareItem) {
-      sendJson(res, 200, service.getHardwareItem(decodeURIComponent(hardwareItem[1])));
-      return;
-    }
-
-    if (req.method === "GET" && path === `${prefix}/processor-boards`) {
-      sendJson(res, 200, { items: service.listProcessorBoards() });
-      return;
-    }
-
     if (req.method === "GET" && path === `${prefix}/offers`) {
-      sendJson(res, 200, { items: service.listOffers(Object.fromEntries(url.searchParams.entries())) });
+      sendJson(res, 200, { items: await service.listOffers(Object.fromEntries(url.searchParams.entries())) });
       return;
     }
 
     const offer = path.match(new RegExp(`^${prefix}/offers/([^/]+)$`));
     if (req.method === "GET" && offer) {
-      sendJson(res, 200, service.getOffer(decodeURIComponent(offer[1])));
+      sendJson(res, 200, await service.getOffer(decodeURIComponent(offer[1])));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/match`) {
-      sendJson(res, 200, { items: service.matchOffers(await readJsonBody(req)) });
+      sendJson(res, 200, { items: await service.matchOffers(await readJsonBody(req)) });
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/carts`) {
-      sendJson(res, 201, service.createCart(await readJsonBody(req)));
+      sendJson(res, 201, await service.createCart(await readJsonBody(req)));
       return;
     }
 
     const cart = path.match(new RegExp(`^${prefix}/carts/([^/]+)$`));
     if (req.method === "GET" && cart) {
-      sendJson(res, 200, service.getCart(decodeURIComponent(cart[1])));
+      sendJson(res, 200, await service.getCart(decodeURIComponent(cart[1])));
       return;
     }
 
     const cartItems = path.match(new RegExp(`^${prefix}/carts/([^/]+)/items$`));
     if (req.method === "POST" && cartItems) {
-      sendJson(res, 200, service.addCartItem(decodeURIComponent(cartItems[1]), await readJsonBody(req)));
+      sendJson(res, 200, await service.addCartItem(decodeURIComponent(cartItems[1]), await readJsonBody(req)));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/orders`) {
-      sendJson(res, 201, service.createOrder(await readJsonBody(req)));
+      sendJson(res, 201, await service.createOrder(await readJsonBody(req)));
       return;
     }
 
@@ -85,18 +64,8 @@ function createHttpApp(options) {
       return;
     }
 
-    if (req.method === "POST" && path === `${prefix}/admin/capabilities`) {
-      sendJson(res, 201, service.upsertCapability(await readJsonBody(req)));
-      return;
-    }
-
-    if (req.method === "POST" && path === `${prefix}/admin/hardware-items`) {
-      sendJson(res, 201, service.upsertHardwareItem(await readJsonBody(req)));
-      return;
-    }
-
     if (req.method === "POST" && path === `${prefix}/admin/offers`) {
-      sendJson(res, 201, service.upsertOffer(await readJsonBody(req)));
+      sendJson(res, 201, await service.upsertOffer(await readJsonBody(req)));
       return;
     }
 

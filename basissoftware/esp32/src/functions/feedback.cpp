@@ -10,20 +10,15 @@
 #include "freertos/portmacro.h"
 
 namespace {
-constexpr size_t FEEDBACK_ENTRY_COUNT = 32;
+constexpr size_t FEEDBACK_LOG_SIZE = 2048;
+constexpr size_t FEEDBACK_LINE_SIZE = 192;
 constexpr size_t FEEDBACK_MESSAGE_SIZE = 128;
 constexpr const char *DEFAULT_TAG = "feedback";
 
-struct FeedbackEntry {
-  int64_t timestampMs;
-  FeedbackLevel level;
-  char tag[24];
-  char message[FEEDBACK_MESSAGE_SIZE];
-};
-
-FeedbackEntry entries[FEEDBACK_ENTRY_COUNT] = {};
-size_t nextEntry = 0;
-size_t entryCount = 0;
+char feedbackLog[FEEDBACK_LOG_SIZE] = {};
+size_t logStart = 0;
+size_t logUsed = 0;
+size_t droppedBytes = 0;
 portMUX_TYPE feedbackMux = portMUX_INITIALIZER_UNLOCKED;
 
 const char *levelName(FeedbackLevel level) {
@@ -62,6 +57,18 @@ void feedbackVprintf(
   std::vsnprintf(message, sizeof(message), format, args);
   recordFeedback(level, tag, message);
 }
+
+void appendLogChar(char value) {
+  if (logUsed >= FEEDBACK_LOG_SIZE - 1) {
+    logStart = (logStart + 1) % FEEDBACK_LOG_SIZE;
+    logUsed--;
+    droppedBytes++;
+  }
+
+  const size_t writeIndex = (logStart + logUsed) % FEEDBACK_LOG_SIZE;
+  feedbackLog[writeIndex] = value;
+  logUsed++;
+}
 }
 
 void recordFeedback(FeedbackLevel level, const char *tag, const char *message) {
@@ -70,15 +77,22 @@ void recordFeedback(FeedbackLevel level, const char *tag, const char *message) {
 
   logToSerial(level, safeTag, safeMessage);
 
+  char line[FEEDBACK_LINE_SIZE] = {};
+  const int lineLength = std::snprintf(
+      line,
+      sizeof(line),
+      "[%lld ms] %s %s: %s\n",
+      static_cast<long long>(esp_timer_get_time() / 1000),
+      levelName(level),
+      safeTag,
+      safeMessage);
+  if (lineLength < 0) {
+    return;
+  }
+
   portENTER_CRITICAL(&feedbackMux);
-  FeedbackEntry &entry = entries[nextEntry];
-  entry.timestampMs = esp_timer_get_time() / 1000;
-  entry.level = level;
-  std::snprintf(entry.tag, sizeof(entry.tag), "%s", safeTag);
-  std::snprintf(entry.message, sizeof(entry.message), "%s", safeMessage);
-  nextEntry = (nextEntry + 1) % FEEDBACK_ENTRY_COUNT;
-  if (entryCount < FEEDBACK_ENTRY_COUNT) {
-    entryCount++;
+  for (size_t i = 0; line[i] != '\0'; i++) {
+    appendLogChar(line[i]);
   }
   portEXIT_CRITICAL(&feedbackMux);
 }
@@ -113,36 +127,24 @@ size_t copyFeedbackLog(char *target, size_t targetSize) {
   size_t written = 0;
 
   portENTER_CRITICAL(&feedbackMux);
-  const size_t start =
-      entryCount == FEEDBACK_ENTRY_COUNT ? nextEntry : 0;
+  const size_t headerLength = static_cast<size_t>(std::snprintf(
+      target,
+      targetSize,
+      "GerNetiX event log: capacity=%u bytes used=%u droppedBytes=%u\n",
+      static_cast<unsigned>(FEEDBACK_LOG_SIZE - 1),
+      static_cast<unsigned>(logUsed),
+      static_cast<unsigned>(droppedBytes)));
+  written = headerLength < targetSize ? headerLength : targetSize - 1;
 
-  for (size_t i = 0; i < entryCount && written < targetSize; i++) {
-    const FeedbackEntry &entry =
-        entries[(start + i) % FEEDBACK_ENTRY_COUNT];
-
-    const int result = std::snprintf(
-        target + written,
-        targetSize - written,
-        "[%lld ms] %s %s: %s\n",
-        static_cast<long long>(entry.timestampMs),
-        levelName(entry.level),
-        entry.tag,
-        entry.message);
-
-    if (result < 0) {
-      break;
-    }
-
-    const size_t appended = static_cast<size_t>(result);
-    if (appended >= targetSize - written) {
-      written = targetSize - 1;
-      break;
-    }
-
-    written += appended;
+  for (size_t i = 0; i < logUsed && written + 1 < targetSize; i++) {
+    target[written++] = feedbackLog[(logStart + i) % FEEDBACK_LOG_SIZE];
   }
   portEXIT_CRITICAL(&feedbackMux);
 
   target[written] = '\0';
   return written;
+}
+
+size_t feedbackLogCapacity() {
+  return FEEDBACK_LOG_SIZE - 1;
 }

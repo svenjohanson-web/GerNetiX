@@ -18,16 +18,18 @@ learning_sequence:
       - state.simple_examples
   - id: state_categories
     type: learning_path_step
-    title: Direkte und fliessende Zustaende unterscheiden
+    title: Einteilung von Zustaenden
     visible_model_lines:
       - state.discrete
       - state.continuous
+      - classification.thresholds
   - id: discrete_states
     type: learning_path_step
     title: Direkte diskrete Zustaende
     visible_model_lines:
       - state.binary
       - state.presence
+      - state.substates
   - id: physical_property_to_state
     type: learning_path_step
     title: Aus Messwerten werden Zustaende
@@ -37,6 +39,20 @@ learning_sequence:
       - physical.voltage
       - classification.thresholds
       - rule.physical_to_state
+  - id: state_machine_concept
+    type: learning_path_step
+    title: Aus Zustaenden wird eine State Machine
+    visible_model_lines:
+      - state_machine.states
+      - state_machine.transitions
+      - state_machine.conditions
+  - id: plantuml_state_machine
+    type: learning_path_step
+    title: Eine State Machine mit PlantUML beschreiben
+    visible_model_lines:
+      - state_machine.plantuml
+      - state_machine.tamagotchi_machine
+      - state_machine.machine_readable
   - id: step_view_model_is_runtime_independent
     type: learning_path_step
     title: Modell ist runtime-unabhaengig
@@ -97,6 +113,9 @@ model_lines:
   state.presence:
     label: Vorhandenheit
     text: Ein Objekt kann vorhanden oder nicht vorhanden sein.
+  state.substates:
+    label: Unterzustaende
+    text: Ein Oberzustand kann Unterzustaende enthalten, zum Beispiel an mit aufheizend und bereit.
   classification.thresholds:
     label: Klassifizierung
     text: Durch Grenzen werden aus fliessenden Werten benannte Zustaende, zum Beispiel kalt, warm, heiss oder Note 1 bis 6.
@@ -112,6 +131,24 @@ model_lines:
   rule.physical_to_state:
     label: Regel
     text: Aus einem Messwert wird durch einfache Regeln ein Zustand, zum Beispiel unter 10 Grad kalt, ab 10 Grad warm und ab 55 Grad heiss.
+  state_machine.states:
+    label: States
+    text: Eine State Machine besteht aus benannten Zustaenden, zum Beispiel Tonne leer und Tonne voll.
+  state_machine.transitions:
+    label: Transitionen
+    text: Transitionen beschreiben, wie ein System von einem State in den naechsten State wechselt, zum Beispiel durch Regen oder Giessen.
+  state_machine.conditions:
+    label: Bedingungen
+    text: Eine Transition hat oft eine Bedingung, zum Beispiel Hunger >= 50 macht satt zu hungrig.
+  state_machine.plantuml:
+    label: PlantUML
+    text: PlantUML beschreibt das Diagramm mit Text. Dadurch koennen KI und andere Werkzeuge das Modell gezielt lesen.
+  state_machine.tamagotchi_machine:
+    label: Tamagotchi-State-Machine
+    text: Das Tamagotchi hat den Oberzustand lebendig mit den Unterzustaenden satt und hungrig sowie den Zustand tot.
+  state_machine.machine_readable:
+    label: Maschinenlesbar
+    text: Aus einer praezisen PlantUML-Beschreibung kann spaeter gezielter Code fuer Browser App oder Embedded Runtime erzeugt werden.
   model.runtime_independent:
     label: Runtime-unabhaengig
     text: Das Modell beschreibt das Tamagotchi, nicht Browser, Embedded, Build-System oder Hardwaredetails.
@@ -133,6 +170,15 @@ model_lines:
   action.feed:
     label: Aktion fuettern
     text: Fuettern setzt Hunger auf 0 und merkt sich den Fuetterzeitpunkt.
+  display.multiple_states:
+    label: Gleichzeitige Zustaende
+    text: Hungry, tired oder dirty koennen gleichzeitig wahr sein. Das Modell darf diese Wahrheiten nicht kuenstlich zu genau einem Zustand zusammenpressen.
+  display.priority:
+    label: Prioritaet
+    text: Eine Prioritaet ist eine Anzeigeentscheidung. Dead ist wichtiger als hungry, hungry wichtiger als tired.
+  display.visible_state:
+    label: Sichtbarer Zustand
+    text: Der sichtbare Zustand ist nicht das ganze Modell, sondern die gerade wichtigste Information fuer den Nutzer.
   runtime.choice:
     label: Runtime-Auswahl
     text: Der Lernende waehlt zwischen Browser App und Embedded. Das Modell bleibt gleich.

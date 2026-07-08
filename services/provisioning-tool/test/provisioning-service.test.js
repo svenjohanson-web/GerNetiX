@@ -125,6 +125,80 @@ test("records browser Web Serial flash result without server runner", async () =
   assert.equal(flashed.audit_events.at(-1).runner, "web_serial");
 });
 
+test("persists provisioning identifier on board through local device endpoint", async () => {
+  const service = createService();
+  const created = await service.createSession(validInput());
+  let capturedUrl = "";
+  let capturedPayload = null;
+  service.fetchImpl = async (url, options = {}) => {
+    capturedUrl = url;
+    capturedPayload = JSON.parse(options.body);
+    return {
+      ok: true,
+      status: 200,
+      async text() {
+        return "{\"status\":\"provisioned\"}\n";
+      },
+    };
+  };
+
+  const stored = await service.persistDeviceProvisioning(created.session_id, {
+    actor: "factory@sven.local",
+    device_url: "http://192.168.4.1/provisioning",
+    one_time_device_secret: created.one_time_device_secret,
+  });
+
+  assert.equal(capturedUrl, "http://192.168.4.1/provisioning");
+  assert.equal(capturedPayload.serial_number, "GNX-ESP32-0001");
+  assert.equal(capturedPayload.device_id, created.device.device_id);
+  assert.equal(capturedPayload.one_time_device_secret, created.one_time_device_secret);
+  assert.equal(stored.device.local_provisioning_state, "stored_on_board");
+  assert.equal(stored.device_provisioning.status, "stored_on_board");
+  assert.equal(stored.audit_events.at(-1).type, "device_provisioning_stored_on_board");
+});
+
+test("discovers device provisioning target from GerNetiX status endpoint", async () => {
+  const service = createService();
+  service.fetchImpl = async (url) => {
+    if (url !== "http://gernetix-esp32/status") {
+      return { ok: false, status: 404, async json() { return {}; } };
+    }
+    return {
+      ok: true,
+      status: 200,
+      async json() {
+        return {
+          device: "gernetix-esp32",
+          runtime: "gernetix-runtime-basissoftware",
+          serialNumber: "GNX-ESP32-0001",
+          deviceId: "device_test",
+        };
+      },
+    };
+  };
+
+  const result = await service.discoverDeviceProvisioningTargets({
+    candidates: ["gernetix-esp32"],
+  });
+
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].status_url, "http://gernetix-esp32/status");
+  assert.equal(result.items[0].provisioning_url, "http://gernetix-esp32/provisioning");
+  assert.equal(result.items[0].serial_number, "GNX-ESP32-0001");
+});
+
+test("suggests setup AP provisioning URL when connected SSID starts with gernetix prefix", async () => {
+  const service = createService();
+  service.wifiSsidProvider = async () => "gernetix-factory-7";
+  service.fetchImpl = async () => ({ ok: false, status: 404, async json() { return {}; } });
+
+  const result = await service.discoverDeviceProvisioningTargets();
+
+  assert.equal(result.setup_ap_detected, true);
+  assert.equal(result.current_wifi_ssid, "gernetix-factory-7");
+  assert.equal(result.suggested_provisioning_url, "http://192.168.4.1/provisioning");
+});
+
 test("writes factory provisioning header only for explicit USB flash package request", async () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-provisioning-"));
   const headerPath = path.join(tempRoot, "include", "basissoftware", "generated_provisioning_payload.h");

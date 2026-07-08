@@ -70,6 +70,7 @@ test("stores project view manifest and includes it in build package", () => {
     view_manifest: {
       title: "Quellcode verstehen",
       primary_source_path: "src/main.cpp",
+      hide_source_editor: true,
       views: [
         {
           id: "analyse",
@@ -78,6 +79,9 @@ test("stores project view manifest and includes it in build package", () => {
           summary: "Startpunkt fuer die IDE-Erklaerung.",
           source_path: "src/main.cpp",
           source_lines: [1, 2, 3],
+          editable_lines: [2],
+          completion: { type: "acknowledge", label: "Analyse verstanden" },
+          validation: { type: "source_contains_all", must_contain: ["void setup"] },
         },
         {
           id: "uml",
@@ -95,8 +99,31 @@ test("stores project view manifest and includes it in build package", () => {
 
   assert.equal(stored.view_manifest.views.length, 2);
   assert.equal(stored.view_manifest.primary_source_path, "src/main.cpp");
+  assert.equal(stored.view_manifest.hide_source_editor, true);
+  assert.equal(stored.view_manifest.views[0].editable_lines[0], 2);
+  assert.equal(stored.view_manifest.views[0].completion.label, "Analyse verstanden");
+  assert.equal(stored.view_manifest.views[0].validation.type, "source_contains_all");
   assert.ok(manifestFile);
   assert.equal(JSON.parse(manifestFile.content).views[1].type, "plantuml");
+});
+
+test("rejects build jobs for model-only projects without build config", () => {
+  const service = createDefaultProjectServer();
+  const project = service.createProject({
+    user_id: "user-1",
+    title: "Tamagotchi Verhaltensmodell",
+    build_config: null,
+    view_manifest: {
+      title: "Tamagotchi Verhaltensmodell",
+      hide_source_editor: true,
+      views: [{ id: "state-intro", type: "story_slide", title: "Einfuehrung in Zustaende" }],
+    },
+  });
+
+  assert.throws(
+    () => service.createBuildJob(project.project_id),
+    /keine Build-Konfiguration/
+  );
 });
 
 test("creates atmel avr build package without arduino framework", () => {

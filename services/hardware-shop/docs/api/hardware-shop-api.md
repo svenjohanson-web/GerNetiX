@@ -1,18 +1,15 @@
 # Hardware Shop API
 
-MVP-API fuer Hardware-Katalog und Shop.
+MVP-API fuer kaufbare Hardware-Angebote, Warenkorb und Bestellung.
+
+Der Hardware Shop ist fachlich ein Client des Hardware Catalog Service. Bekannte Boards,
+Module und TechnicalCapabilities werden nicht im Shop gepflegt, sondern ueber den
+Hardware Catalog gelesen.
 
 ## Basis
 
 - `GET /health`
 - Prefix: `/api/hardware-shop`
-
-## Katalog
-
-- `GET /api/hardware-shop/capabilities`
-- `GET /api/hardware-shop/hardware-items`
-- `GET /api/hardware-shop/hardware-items/{hardwareItemId}`
-- `GET /api/hardware-shop/processor-boards`
 
 ## Angebote und Matching
 
@@ -35,6 +32,4 @@ Der Kaufkontext ist die fachliche Bruecke zu Provisioning, Device Management, Su
 
 ## Admin
 
-- `POST /api/hardware-shop/admin/capabilities`
-- `POST /api/hardware-shop/admin/hardware-items`
 - `POST /api/hardware-shop/admin/offers`

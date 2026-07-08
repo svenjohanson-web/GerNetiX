@@ -4,73 +4,43 @@ const { HardwareShopError } = require("../errors");
 class HardwareShopService {
   constructor(options) {
     this.repository = options.repository;
+    this.catalogClient = options.catalogClient;
   }
 
   listCapabilities() {
-    return this.repository.listCapabilities();
-  }
-
-  upsertCapability(input = {}) {
-    const capability = {
-      capability_id: input.capability_id || required(input.id, "capability_id"),
-      title: required(input.title, "title"),
-      owner_domain: input.owner_domain || "Hardware",
-      status: input.status || "active",
-      summary: input.summary || "",
-    };
-    return this.repository.saveCapability(capability);
+    return this.catalogClient.listCapabilities();
   }
 
   listHardwareItems(query = {}) {
-    return this.repository.listHardwareItems({
+    return this.catalogClient.listHardwareItems({
       item_type: query.item_type || query.itemType || "",
       status: query.status || "active",
     });
   }
 
   getHardwareItem(itemId) {
-    const item = this.repository.findHardwareItem(itemId);
-    if (!item) throw new HardwareShopError("hardware_item_not_found", "HardwareItem wurde nicht gefunden.", 404);
-    return item;
+    return this.catalogClient.getHardwareItem(itemId);
   }
 
   listProcessorBoards() {
-    return this.repository.listHardwareItems({ item_type: "processor_board", status: "active" });
+    return this.catalogClient.listProcessorBoards();
   }
 
-  upsertHardwareItem(input = {}) {
-    const capabilityIds = normalizeList(input.capability_ids || input.capabilities);
-    for (const capabilityId of capabilityIds) this.requireCapability(capabilityId);
-    const item = {
-      hardware_item_id: input.hardware_item_id || input.id || createId("hardware"),
-      sku: required(input.sku, "sku"),
-      item_type: input.item_type || "module",
-      title: required(input.title, "title"),
-      summary: input.summary || "",
-      capability_ids: capabilityIds,
-      support_policy: input.support_policy || "community_usable_no_gernetix_hardware_entitlement",
-      provisioning_profile_id: input.provisioning_profile_id || "",
-      basissoftware_profile_id: input.basissoftware_profile_id || "",
-      factory_firmware_artifact: input.factory_firmware_artifact || null,
-      status: input.status || "active",
-    };
-    return this.repository.saveHardwareItem(item);
-  }
-
-  listOffers(query = {}) {
-    return this.repository.listOffers({
+  async listOffers(query = {}) {
+    const offers = this.repository.listOffers({
       status: query.status || "active",
       offer_type: query.offer_type || query.offerType || "",
-    }).map((offer) => this.decorateOffer(offer));
+    });
+    return Promise.all(offers.map((offer) => this.decorateOffer(offer)));
   }
 
-  getOffer(offerId) {
+  async getOffer(offerId) {
     return this.decorateOffer(this.requireOffer(offerId));
   }
 
-  upsertOffer(input = {}) {
+  async upsertOffer(input = {}) {
     const hardwareItemIds = normalizeList(input.hardware_item_ids || input.hardwareItems);
-    for (const itemId of hardwareItemIds) this.getHardwareItem(itemId);
+    for (const itemId of hardwareItemIds) await this.getHardwareItem(itemId);
     const offer = {
       offer_id: input.offer_id || input.id || createId("offer"),
       offer_type: input.offer_type || "hardware_item",
@@ -85,16 +55,16 @@ class HardwareShopService {
     return this.decorateOffer(this.repository.saveOffer(offer));
   }
 
-  matchOffers(input = {}) {
+  async matchOffers(input = {}) {
     const requiredCapabilities = normalizeList(input.required_capability_ids || input.requiredCapabilities);
     const ownedCapabilities = new Set(normalizeList(input.owned_capability_ids || input.ownedCapabilities));
     const effectiveRequired = requiredCapabilities.filter((capabilityId) => !ownedCapabilities.has(capabilityId));
-    return this.listOffers({ status: "active" })
+    return (await this.listOffers({ status: "active" }))
       .map((offer) => scoreOffer(offer, effectiveRequired))
       .sort((left, right) => Number(right.selectable) - Number(left.selectable) || right.match_score - left.match_score);
   }
 
-  createCart(input = {}) {
+  async createCart(input = {}) {
     const now = new Date().toISOString();
     const cart = {
       cart_id: createId("cart"),
@@ -107,13 +77,13 @@ class HardwareShopService {
     return this.enrichCart(this.repository.saveCart(cart));
   }
 
-  getCart(cartId) {
+  async getCart(cartId) {
     const cart = this.repository.findCart(cartId);
     if (!cart) throw new HardwareShopError("cart_not_found", "Warenkorb wurde nicht gefunden.", 404);
     return this.enrichCart(cart);
   }
 
-  addCartItem(cartId, input = {}) {
+  async addCartItem(cartId, input = {}) {
     const cart = this.repository.findCart(cartId);
     if (!cart) throw new HardwareShopError("cart_not_found", "Warenkorb wurde nicht gefunden.", 404);
     if (cart.status !== "open") throw new HardwareShopError("cart_closed", "Warenkorb ist nicht mehr offen.", 409);
@@ -128,11 +98,11 @@ class HardwareShopService {
     return this.enrichCart(this.repository.saveCart(next));
   }
 
-  createOrder(input = {}) {
+  async createOrder(input = {}) {
     const cart = this.repository.findCart(required(input.cart_id, "cart_id"));
     if (!cart) throw new HardwareShopError("cart_not_found", "Warenkorb wurde nicht gefunden.", 404);
     if (!cart.items.length) throw new HardwareShopError("empty_cart", "Warenkorb ist leer.");
-    const enriched = this.enrichCart(cart);
+    const enriched = await this.enrichCart(cart);
     const now = new Date().toISOString();
     const order = {
       order_id: createId("order"),
@@ -161,8 +131,8 @@ class HardwareShopService {
     return this.getOrder(orderId).purchase_context;
   }
 
-  decorateOffer(offer) {
-    const items = offer.hardware_item_ids.map((itemId) => this.getHardwareItem(itemId));
+  async decorateOffer(offer) {
+    const items = await Promise.all(offer.hardware_item_ids.map((itemId) => this.getHardwareItem(itemId)));
     const capabilityIds = unique(items.flatMap((item) => item.capability_ids));
     return {
       ...offer,
@@ -175,15 +145,15 @@ class HardwareShopService {
     };
   }
 
-  enrichCart(cart) {
-    const items = cart.items.map((item) => {
-      const offer = this.getOffer(item.offer_id);
+  async enrichCart(cart) {
+    const items = await Promise.all(cart.items.map(async (item) => {
+      const offer = await this.getOffer(item.offer_id);
       return {
         ...item,
         offer,
         line_total_cents: offer.price.amount_cents * item.quantity,
       };
-    });
+    }));
     return {
       ...cart,
       items,
@@ -200,11 +170,6 @@ class HardwareShopService {
     return offer;
   }
 
-  requireCapability(capabilityId) {
-    const capability = this.repository.findCapability(capabilityId);
-    if (!capability) throw new HardwareShopError("capability_not_found", "TechnicalCapability wurde nicht gefunden.", 404);
-    return capability;
-  }
 }
 
 function scoreOffer(offer, requiredCapabilities) {

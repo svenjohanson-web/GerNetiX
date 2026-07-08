@@ -39,9 +39,9 @@ Eigenstaendige Oberflaeche:
 http://127.0.0.1:4500/
 ```
 
-Das Provisioning Tool ist ein eigenstaendiges Factory-/Support-Werkzeug. Es ist nicht Teil der User IDE und wird nicht ueber die GerNetiX Plattform bedient. Der Nutzer kann in dieser separaten HMI eine Provisioning-Session vorbereiten, das einmalige Device-Secret fuer den laufenden Vorgang halten, Manifest, USB-Flash-Paket und Flash-Plan pruefen, die Firmware per USB flashen und die Provisionierung abschliessen. Beim Abschluss registriert das Tool das Device im Device Management Server.
+Das Provisioning Tool ist ein eigenstaendiges Factory-/Support-Werkzeug. Es ist nicht Teil der User IDE und wird nicht ueber die GerNetiX Plattform bedient. Der Nutzer kann in dieser separaten HMI eine Provisioning-Session vorbereiten, das einmalige Device-Secret fuer den laufenden Vorgang halten, Manifest, USB-Flash-Paket und Flash-Plan pruefen, die Firmware per USB flashen, die Provisioning-Kennung im Board speichern und die Provisionierung abschliessen. Beim Abschluss registriert das Tool das Device im Device Management Server.
 
-Das Provisioning Tool arbeitet fuer die physische Erstinbetriebnahme ausschliesslich ueber USB. Es schreibt keine Provisioning-Daten ueber den Setup-AP oder das lokale Device-Webinterface. Die Basissoftware darf im Serverbetrieb nicht aus der lokalen Projektumgebung gelesen werden. Stattdessen referenziert das Tool ein versioniertes Firmware-Artefakt aus SQLite/Artifact Store, z. B.:
+Das Provisioning Tool flasht die Basissoftware fuer die physische Erstinbetriebnahme ausschliesslich ueber USB. Die Board-spezifische Kennung wird danach ueber den lokalen Device-Endpunkt `/provisioning` in den NVS-Speicher der Basissoftware geschrieben. Dadurch kann ein generisches, serverseitiges Firmware-Artefakt fuer mehrere Boards verwendet werden, ohne fuer jede Seriennummer neu zu bauen. Die Basissoftware darf im Serverbetrieb nicht aus der lokalen Projektumgebung gelesen werden. Stattdessen referenziert das Tool ein versioniertes Firmware-Artefakt aus SQLite/Artifact Store, z. B.:
 
 ```text
 sqlite://provisioning_firmware_artifacts/firmware_artifact.esp32_basissoftware_factory.latest
@@ -53,11 +53,13 @@ Der Factory-Provisioning-Header mit dem einmaligen Secret wird nur in ein tempor
 services/provisioning-tool/.runtime/factory-payload/generated_provisioning_payload.h
 ```
 
-Die staged Basissoftware importiert diesen Payload beim ersten Boot aus dem per USB geflashten Image in NVS. Direkter Zugriff auf `basissoftware/esp32` ist kein Provisioning-Betriebsweg.
+Die staged Basissoftware kann diesen Payload beim ersten Boot aus dem per USB geflashten Image in NVS importieren. Im normalen Factory-HMI-Ablauf wird die generische Firmware geflasht und die konkrete Session-Kennung anschliessend ueber `POST /provisioning` dauerhaft im Board gespeichert. Direkter Zugriff auf `basissoftware/esp32` ist kein Provisioning-Betriebsweg.
 
 Die Factory-HMI darf keine Firmware-Dateien vom Bedienrechner hochladen. Sie zeigt nur die vom ProcessorBoard referenzierte Firmware an und flasht diese, wenn sie serverseitig im SQLite-/Artifact-Store materialisierbar ist. Firmware-Artefakte werden durch Build-/Admin-Prozesse oder beim Serverstart ueber einen konfigurierten Serverpfad bereitgestellt.
 
 Der physische USB-Flash laeuft direkt im Browser per Web Serial und `esptool-js`. Der Server startet dafuer keinen lokalen Flash-Prozess. Er liefert nur das Firmware-Binary aus dem Artifact Store und speichert danach das Ergebnis, das die HMI meldet. Die Oberflaeche zeigt Progress Bar, aktuelle Phase und Logzeilen des Browser-Flashs.
+
+Nach dem Flash startet das Board die Basissoftware und stellt den lokalen Device-Webserver bereit. Wenn der Bedienrechner mit einer Setup-AP-SSID verbunden ist, die mit `gernetix-` beginnt, ist der Endpunkt `http://192.168.4.1/provisioning`; der beliebige SSID-Suffix ist kein Hostname. Im normalen WLAN kann das Board z. B. ueber einen Hostnamen oder eine lokale IP erreichbar sein. Die HMI kann nach dem Board suchen oder per "Setup-AP verwenden" direkt die Setup-IP setzen. Danach sendet sie den Session-Payload inklusive `device_id`, `serial_number`, Credential-Referenz und einmaligem Device-Secret. Die Basissoftware speichert diese Daten im NVS-Namespace `prov`; `/status` zeigt danach `provisioningState=provisioned` und `serialNumber`.
 
 ## Einheitlicher Runtime-Vertrag
 
@@ -67,6 +69,7 @@ Das Provisioning Tool unterscheidet nicht zwischen Entwicklungs- und Deploybetri
 - Die HMI wird in einem Browser mit Web-Serial-Unterstuetzung geoeffnet.
 - Der Bediener waehlt das angeschlossene USB-Serial-Geraet direkt im Browser aus.
 - Der Browser schreibt die Firmware per `esptool-js` ueber USB auf das Board.
+- Der Bediener laesst das Board booten, sucht oder setzt den lokalen Device-Endpunkt und schreibt die konkrete Provisioning-Kennung dauerhaft in NVS.
 
 Es gibt keinen produktiven Umschalter zwischen Mock, serverseitigem Flash, Python, PlatformIO oder lokaler Projektumgebung.
 
@@ -123,7 +126,7 @@ Konfiguration erfolgt ueber Umgebungsvariablen:
 - Ein aktives Credential kann in der Factory-HMI explizit zurueckgesetzt werden; der alte Vorgang bleibt mit Audit-Event nachvollziehbar.
 - Flash-Ausfuehrung in der Factory-HMI laeuft ausschliesslich per Browser Web Serial. Der Server fuehrt keinen USB-Flash-Prozess aus.
 - Die UI zeigt keinen Mock- oder Server-Flash-Modus.
-- Kein Hersteller-Provisioning ueber WLAN, Setup-AP oder lokales Device-Webinterface.
+- Der lokale Device-Webserver nimmt den Factory-Provisioning-Payload nur als expliziten HMI-Schritt an; das einmalige Device-Secret bleibt danach nur im Board-NVS und wird nicht ueber Status- oder Log-Endpunkte ausgegeben.
 
 ## Nicht-Ziele fuer diesen Stand
 

@@ -1,39 +1,8 @@
 class InMemoryHardwareShopRepository {
   constructor(seed = defaultSeed()) {
-    this.capabilities = new Map((seed.capabilities || []).map((item) => [item.capability_id, clone(item)]));
-    this.hardwareItems = new Map((seed.hardwareItems || []).map((item) => [item.hardware_item_id, clone(item)]));
     this.offers = new Map((seed.offers || []).map((item) => [item.offer_id, clone(item)]));
     this.carts = new Map((seed.carts || []).map((item) => [item.cart_id, clone(item)]));
     this.orders = new Map((seed.orders || []).map((item) => [item.order_id, clone(item)]));
-  }
-
-  saveCapability(capability) {
-    this.capabilities.set(capability.capability_id, clone(capability));
-    return clone(capability);
-  }
-
-  listCapabilities() {
-    return Array.from(this.capabilities.values()).map(clone);
-  }
-
-  findCapability(capabilityId) {
-    return clone(this.capabilities.get(capabilityId));
-  }
-
-  saveHardwareItem(item) {
-    this.hardwareItems.set(item.hardware_item_id, clone(item));
-    return clone(item);
-  }
-
-  listHardwareItems(filter = {}) {
-    return Array.from(this.hardwareItems.values())
-      .filter((item) => !filter.item_type || item.item_type === filter.item_type)
-      .filter((item) => !filter.status || item.status === filter.status)
-      .map(clone);
-  }
-
-  findHardwareItem(itemId) {
-    return clone(this.hardwareItems.get(itemId));
   }
 
   saveOffer(offer) {
@@ -73,61 +42,6 @@ class InMemoryHardwareShopRepository {
 
 function defaultSeed() {
   return {
-    capabilities: [
-      capability("capability.processor_esp32", "ESP32 ProcessorBoard"),
-      capability("capability.wifi", "WiFi"),
-      capability("capability.ota", "OTA"),
-      capability("capability.spi", "SPI"),
-      capability("capability.rfid_reading", "RFID lesen"),
-      capability("capability.servo_control", "Servo-Steuerung"),
-      capability("capability.mechanical_locking", "Mechanische Verriegelung"),
-      capability("capability.fallback_unlock", "Fallback-Entriegelung"),
-      capability("capability.digital_input", "Digitaler Eingang"),
-      capability("capability.digital_output", "Digitaler Ausgang"),
-    ],
-    hardwareItems: [
-      {
-        hardware_item_id: "hardware.processor_board.esp32_devkit",
-        sku: "GNX-ESP32-DEVKIT",
-        item_type: "processor_board",
-        title: "GerNetiX ESP32 DevKit",
-        summary: "ESP32-Board mit WiFi, OTA-vorbereiteter Basissoftware und Provisioning-Unterstuetzung.",
-        capability_ids: ["capability.processor_esp32", "capability.wifi", "capability.ota", "capability.digital_input", "capability.digital_output"],
-        support_policy: "gernetix_verified_after_provisioning",
-        provisioning_profile_id: "provisioning_profile.esp32_ota_bootstrap",
-        basissoftware_profile_id: "basissoftware.profile.esp32_factory",
-        factory_firmware_artifact: {
-          artifact_id: "firmware_artifact.esp32_basissoftware_factory.latest",
-          source: "sqlite",
-          uri: "sqlite://provisioning_firmware_artifacts/firmware_artifact.esp32_basissoftware_factory.latest",
-          version: "latest",
-          sha256: "",
-        },
-        status: "active",
-      },
-      {
-        hardware_item_id: "hardware.module.rfid_rc522",
-        sku: "GNX-RFID-RC522",
-        item_type: "module",
-        title: "RFID RC522 Modul",
-        summary: "RFID-Leser fuer Tags und Karten im SPI-Bus.",
-        capability_ids: ["capability.spi", "capability.rfid_reading", "capability.item_identification"],
-        support_policy: "component_support",
-        provisioning_profile_id: "",
-        status: "active",
-      },
-      {
-        hardware_item_id: "hardware.actuator.micro_servo",
-        sku: "GNX-SERVO-MICRO",
-        item_type: "actuator",
-        title: "Micro Servo",
-        summary: "Kleiner Servo fuer Sperren, Klappen und mechanische Lernprojekte.",
-        capability_ids: ["capability.servo_control", "capability.mechanical_locking", "capability.fallback_unlock"],
-        support_policy: "component_support",
-        provisioning_profile_id: "",
-        status: "active",
-      },
-    ],
     offers: [
       {
         offer_id: "offer.esp32_starter_board",
@@ -152,15 +66,6 @@ function defaultSeed() {
         status: "active",
       },
     ],
-  };
-}
-
-function capability(capabilityId, title) {
-  return {
-    capability_id: capabilityId,
-    title,
-    owner_domain: "Hardware",
-    status: "active",
   };
 }
 

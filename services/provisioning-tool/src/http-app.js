@@ -32,6 +32,13 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/provisioning-device-targets") {
+      sendJson(res, 200, await service.discoverDeviceProvisioningTargets({
+        candidates: url.searchParams.getAll("candidate"),
+      }));
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/provisioning-firmware-artifacts") {
       sendJson(res, 200, service.listFirmwareArtifacts());
       return;
@@ -99,6 +106,12 @@ function createHttpApp(options) {
     const browserUsbFlashResultMatch = url.pathname.match(/^\/api\/provisioning-sessions\/([^/]+)\/browser-usb-flash-result$/);
     if (req.method === "POST" && browserUsbFlashResultMatch) {
       sendJson(res, 200, service.recordBrowserUsbFlashResult(decodeURIComponent(browserUsbFlashResultMatch[1]), await readJsonBody(req)));
+      return;
+    }
+
+    const deviceProvisioningMatch = url.pathname.match(/^\/api\/provisioning-sessions\/([^/]+)\/device-provisioning$/);
+    if (req.method === "POST" && deviceProvisioningMatch) {
+      sendJson(res, 200, await service.persistDeviceProvisioning(decodeURIComponent(deviceProvisioningMatch[1]), await readJsonBody(req)));
       return;
     }
 

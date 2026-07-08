@@ -46,7 +46,9 @@ class ProjectService {
       description: input.description === undefined ? project.description : input.description,
       hardware_profile_id: input.hardware_profile_id || project.hardware_profile_id,
       device_id: input.device_id === undefined ? project.device_id : input.device_id,
-      build_config: input.build_config ? normalizeBuildConfig({ ...project.build_config, ...input.build_config }) : project.build_config,
+      build_config: Object.hasOwn(input, "build_config")
+        ? normalizeBuildConfig(input.build_config ? { ...(project.build_config || {}), ...input.build_config } : null)
+        : project.build_config,
       view_manifest: input.view_manifest || input.project_view_manifest
         ? normalizeViewManifest(input.view_manifest || input.project_view_manifest)
         : project.view_manifest,
@@ -93,6 +95,9 @@ class ProjectService {
     const mode = input.mode || "build";
     if (!["build", "build_and_flash", "build_and_usb_flash", "prebuild"].includes(mode)) {
       throw new ProjectServerError("invalid_build_mode", "Build-Modus muss build, build_and_flash, build_and_usb_flash oder prebuild sein.");
+    }
+    if (!project.build_config) {
+      throw new ProjectServerError("project_not_buildable", "Projekt besitzt keine Build-Konfiguration und kann nicht gebaut werden.", 400);
     }
     const job = {
       build_job_id: input.build_job_id || createId("build_job"),
@@ -293,6 +298,7 @@ class ProjectService {
 }
 
 function normalizeBuildConfig(input = {}) {
+  if (!input || typeof input !== "object") return null;
   return {
     platform: input.platform || "espressif32",
     framework: input.framework === undefined ? "arduino" : input.framework,
@@ -309,6 +315,7 @@ function normalizeViewManifest(input = {}) {
     title: manifest.title || "",
     summary: manifest.summary || "",
     primary_source_path: normalizeOptionalSourcePath(manifest.primary_source_path || manifest.primarySourcePath || ""),
+    hide_source_editor: Boolean(manifest.hide_source_editor || manifest.hideSourceEditor),
     mode: manifest.mode || "guided_ide",
     views: Array.isArray(manifest.views) ? manifest.views.map(normalizeProjectView).filter(Boolean) : [],
   };
@@ -328,6 +335,13 @@ function normalizeProjectView(input = {}) {
     source_lines: Array.isArray(input.source_lines || input.sourceLines)
       ? (input.source_lines || input.sourceLines).map(Number).filter(Number.isFinite)
       : [],
+    editable_lines: Array.isArray(input.editable_lines || input.editableLines)
+      ? (input.editable_lines || input.editableLines).map(Number).filter(Number.isFinite)
+      : [],
+    completion: input.completion && typeof input.completion === "object" ? input.completion : {},
+    validation: input.validation && typeof input.validation === "object" ? input.validation : {},
+    media: input.media && typeof input.media === "object" ? input.media : {},
+    runtime_preview: input.runtime_preview || input.runtimePreview || null,
     payload: input.payload && typeof input.payload === "object" ? input.payload : {},
   };
 }

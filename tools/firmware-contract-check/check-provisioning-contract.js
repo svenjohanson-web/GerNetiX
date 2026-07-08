@@ -90,10 +90,11 @@ async function run() {
   }
 
   assert.match(header, /writeChallengeProofJson/, "Firmware contract does not expose challenge proof writer");
-  assert.match(source, /mbedtls_md_hmac/, "Firmware does not create an HMAC challenge proof");
+  assert.match(source, /psa_mac_compute/, "Firmware does not create an HMAC challenge proof");
   assert.match(source, /dev_secret/, "Firmware does not persist the local device secret");
   assert.match(factorySource, /generated_provisioning_payload/, "Firmware does not import generated USB factory provisioning payload");
   assert.match(factorySource, /saveProvisioningPayload/, "Factory provisioning does not store payload through normal provisioning parser");
+  assert.match(webServerSource, /\/provisioning/, "Device web server does not expose local provisioning persistence endpoint");
   assert.match(webServerSource, /\/auth\/challenge/, "Device web server does not expose local auth challenge endpoint");
 
   console.log("OK provisioning manifest matches ESP32 basissoftware contract");

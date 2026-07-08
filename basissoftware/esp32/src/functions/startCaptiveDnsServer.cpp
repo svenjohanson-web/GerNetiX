@@ -3,12 +3,12 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <unistd.h>
 
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "lwip/inet.h"
 #include "lwip/sockets.h"
-#include "lwip/unistd.h"
 
 #include "basissoftware/config.h"
 #include "basissoftware/feedback.h"

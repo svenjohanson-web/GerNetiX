@@ -1,7 +1,12 @@
 const crypto = require("node:crypto");
+const { execFile } = require("node:child_process");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
+const { promisify } = require("node:util");
 const { ProvisioningError } = require("../errors");
+
+const execFileAsync = promisify(execFile);
 
 class ProvisioningService {
   constructor(options) {
@@ -18,6 +23,8 @@ class ProvisioningService {
     this.firmwareArtifact = options.firmwareArtifact || null;
     this.usbFlashRunner = options.usbFlashRunner;
     this.flashJobs = new Map();
+    this.fetchImpl = options.fetchImpl || fetch;
+    this.wifiSsidProvider = options.wifiSsidProvider || currentWifiSsid;
   }
 
   async createSession(input = {}) {
@@ -191,6 +198,48 @@ class ProvisioningService {
 
   getFirmwareArtifactContent(artifactId) {
     return this.firmwareArtifactStore.readArtifactContent(artifactId);
+  }
+
+  async discoverDeviceProvisioningTargets(input = {}) {
+    const currentSsid = await this.wifiSsidProvider().catch(() => "");
+    const candidates = deviceStatusCandidateUrls(input.candidates || input.urls || []);
+    const found = [];
+    await runLimited(candidates, 32, async (url) => {
+      const device = await this.probeDeviceStatus(url);
+      if (device) found.push(device);
+    });
+    const unique = [];
+    const seen = new Set();
+    for (const item of found) {
+      const key = item.device_id || item.serial_number || item.status_url;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      unique.push(item);
+    }
+    return {
+      searched_at: new Date().toISOString(),
+      strategy: "http_status_scan",
+      current_wifi_ssid: currentSsid,
+      setup_ap_detected: isGerNetixSetupSsid(currentSsid),
+      suggested_provisioning_url: isGerNetixSetupSsid(currentSsid) ? "http://192.168.4.1/provisioning" : "",
+      candidate_count: candidates.length,
+      items: unique,
+    };
+  }
+
+  async probeDeviceStatus(statusUrl) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 700);
+    try {
+      const response = await this.fetchImpl(statusUrl, { signal: controller.signal });
+      if (!response.ok) return null;
+      const status = await response.json();
+      return normalizeDiscoveredProvisioningDevice(statusUrl, status);
+    } catch {
+      return null;
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   recordBrowserUsbFlashResult(sessionId, input = {}) {
@@ -417,6 +466,59 @@ class ProvisioningService {
       });
     }
     return summarizeSession(this.repository.updateSession(sessionId, session));
+  }
+
+  async persistDeviceProvisioning(sessionId, input = {}) {
+    const session = this.repository.findSession(sessionId);
+    if (!session) throw new ProvisioningError("session_not_found", "Provisioning Session wurde nicht gefunden.", 404);
+    const oneTimeDeviceSecret = normalizeRequired(input.one_time_device_secret);
+    if (!oneTimeDeviceSecret) {
+      throw new ProvisioningError(
+        "missing_one_time_device_secret",
+        "Das einmalige Device-Secret liegt nur in der aktuellen Browser-Session vor. Bereite die Provisioning-Session neu vor, um die Kennung im Board zu speichern.",
+        409,
+      );
+    }
+
+    const deviceUrl = normalizeDeviceProvisioningUrl(input.device_url || input.url || "http://192.168.4.1/provisioning");
+    const payload = {
+      ...session.manifest,
+      one_time_device_secret: oneTimeDeviceSecret,
+    };
+    const response = await this.fetchImpl(deviceUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const responseText = await response.text().catch(() => "");
+    if (!response.ok) {
+      throw new ProvisioningError(
+        "device_provisioning_write_failed",
+        "Board hat das dauerhafte Speichern der Provisioning-Kennung abgelehnt.",
+        response.status,
+        { device_url: deviceUrl, response: responseText },
+      );
+    }
+
+    const now = new Date().toISOString();
+    session.device.local_provisioning_state = "stored_on_board";
+    session.device.local_provisioning_url = deviceUrl;
+    session.device.local_provisioning_stored_at = now;
+    session.audit_events.push({
+      type: "device_provisioning_stored_on_board",
+      occurred_at: now,
+      actor: input.actor || session.manufacturer_registration.provisioned_by,
+      device_url: deviceUrl,
+    });
+    const updated = this.repository.updateSession(sessionId, session);
+    return {
+      ...summarizeSession(updated),
+      device_provisioning: {
+        status: "stored_on_board",
+        device_url: deviceUrl,
+        stored_at: now,
+      },
+    };
   }
 
   async registerDeviceManagementDevice(session, input = {}) {
@@ -776,6 +878,117 @@ function validateInput(input) {
 
 function normalizeRequired(value) {
   return String(value || "").trim();
+}
+
+function deviceStatusCandidateUrls(explicit = []) {
+  const candidates = new Set();
+  for (const item of explicit) {
+    if (normalizeRequired(item)) candidates.add(statusUrl(item));
+  }
+  for (const host of ["gernetix-esp32", "gernetix-esp32.local", "192.168.4.1"]) {
+    candidates.add(statusUrl(host));
+  }
+  for (const baseAddress of localIpv4NetworkBases()) {
+    for (let host = 1; host <= 254; host += 1) {
+      candidates.add(`http://${baseAddress}.${host}/status`);
+    }
+  }
+  return Array.from(candidates);
+}
+
+async function currentWifiSsid() {
+  if (process.platform !== "win32") return "";
+  const { stdout } = await execFileAsync("cmd.exe", ["/c", "netsh wlan show interfaces"], {
+    windowsHide: true,
+    timeout: 5000,
+    maxBuffer: 128 * 1024,
+  });
+  for (const line of stdout.split(/\r?\n/)) {
+    const match = line.match(/^\s*SSID\s*:\s*(.+?)\s*$/i);
+    if (match && !/^\d+\s*$/i.test(match[1])) return match[1].trim();
+  }
+  return "";
+}
+
+function isGerNetixSetupSsid(value) {
+  return normalizeRequired(value).toLowerCase().startsWith("gernetix-");
+}
+
+function statusUrl(value) {
+  const trimmed = normalizeRequired(value).replace(/\/$/, "");
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+  return withScheme.endsWith("/status") ? withScheme : `${withScheme}/status`;
+}
+
+function provisioningUrlFromStatusUrl(value) {
+  const parsed = new URL(value);
+  parsed.pathname = "/provisioning";
+  parsed.search = "";
+  parsed.hash = "";
+  return parsed.toString();
+}
+
+function localIpv4NetworkBases() {
+  const bases = new Set();
+  for (const entries of Object.values(os.networkInterfaces())) {
+    for (const entry of entries || []) {
+      if (entry.family !== "IPv4" || entry.internal) continue;
+      if (!/^(10\.|172\.(1[6-9]|2\d|3[0-1])\.|192\.168\.)/.test(entry.address)) continue;
+      const parts = entry.address.split(".");
+      if (parts.length === 4) bases.add(parts.slice(0, 3).join("."));
+    }
+  }
+  return Array.from(bases);
+}
+
+function normalizeDiscoveredProvisioningDevice(statusUrlValue, status = {}) {
+  const deviceName = normalizeRequired(status.device || status.hostname);
+  const displayName = normalizeRequired(status.displayName || status.display_name);
+  const isGerNetix = deviceName.toLowerCase().startsWith("gernetix")
+    || displayName.toLowerCase().startsWith("gernetix")
+    || normalizeRequired(status.runtime).toLowerCase().includes("gernetix")
+    || Boolean(status.deviceId || status.serialNumber || status.device_id || status.serial_number);
+  if (!isGerNetix) return null;
+  return {
+    status_url: statusUrlValue,
+    provisioning_url: provisioningUrlFromStatusUrl(statusUrlValue),
+    device_id: status.deviceId || status.device_id || "",
+    serial_number: status.serialNumber || status.serial_number || "",
+    display_name: displayName || status.serialNumber || status.deviceId || deviceName || statusUrlValue,
+    hostname: status.hostname || deviceName || "",
+    provisioning_state: status.provisioningState || status.provisioning_state || "",
+    runtime: status.runtime || "",
+    runtime_version: status.runtimeVersion || status.runtime_version || "",
+    wifi_mode: status.wifiMode || status.wifi_mode || "",
+  };
+}
+
+async function runLimited(items, limit, worker) {
+  let index = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (index < items.length) {
+      const current = items[index];
+      index += 1;
+      await worker(current);
+    }
+  });
+  await Promise.all(runners);
+}
+
+function normalizeDeviceProvisioningUrl(value) {
+  let parsed;
+  try {
+    parsed = new URL(normalizeRequired(value));
+  } catch {
+    throw new ProvisioningError("invalid_device_provisioning_url", "Device-Provisioning-URL ist ungueltig.", 400);
+  }
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new ProvisioningError("invalid_device_provisioning_url", "Device-Provisioning-URL muss http oder https verwenden.", 400);
+  }
+  if (parsed.pathname === "/" || parsed.pathname === "") {
+    parsed.pathname = "/provisioning";
+  }
+  return parsed.toString();
 }
 
 function hashJson(value) {

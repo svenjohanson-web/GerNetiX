@@ -32,6 +32,7 @@ flowchart LR
     deviceManagement["Device Management Server<br/>:4700"]
     provisioning["Provisioning Tool Server<br/>:4500"]
     recovery["Recovery Tool Server<br/>:5100"]
+    hardwareCatalog["Hardware Catalog<br/>:4910"]
     hardwareShop["Hardware Shop<br/>:4900"]
     aiUsage["AI Usage Server<br/>:5000"]
     communityPlatform["Community Platform<br/>:5200"]
@@ -65,7 +66,9 @@ flowchart LR
 
   identity --> projectServer
   identity --> buildDeploy
-  identity --> hardwareShop
+    identity --> hardwareCatalog
+    identity --> hardwareShop
+    hardwareShop --> hardwareCatalog
   identity --> deviceManagement
   identity --> aiUsage
 
@@ -115,7 +118,8 @@ flowchart LR
 | Admin Tool API | 4600 | Admin-/Support-Sichten, Consent-/Audit-nahe API |
 | Device Management Server | 4700 | Devices, Ownership, Purchase Contexts, Support-Status |
 | Project Server | 4800 | Projekte, Quellen, Build-Jobs, Learning Feedback |
-| Hardware Shop | 4900 | Angebote, Warenkorb, Bestellung, Purchase Context |
+| Hardware Catalog | 4910 | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als SQLite-persistente Quelle |
+| Hardware Shop | 4900 | Angebote, Warenkorb, Bestellung, Purchase Context; liest Hardwaredaten als Client des Hardware Catalog |
 | AI Usage Server | 5000 | Credits, Preflight, Usage Events, Cost Controls |
 | Context Manager | 5050 | Projektkontext, Vorschlaege, Context Packs |
 | Recovery Tool Server | 5100 | eigenstaendige Nutzer-/Support-HMI, Recovery-Sessions, Credential-Erneuerung, Connectivity-Recovery |
@@ -130,7 +134,9 @@ flowchart LR
 | --- | --- | --- |
 | GerNetiX Plattform UI / Identity Server | Project Server | Projekte, Quellen, Build-Jobs |
 | GerNetiX Plattform UI / Identity Server | Build & Deploy Server | Build-Ausfuehrung und Ergebnisabholung |
+| GerNetiX Plattform UI / Identity Server | Hardware Catalog | ProcessorBoard-Auswahl fuer Inventarisierung |
 | GerNetiX Plattform UI / Identity Server | Hardware Shop | Angebote, Matching, Bestellungen |
+| Hardware Shop | Hardware Catalog | Aufloesung von HardwareItem-IDs und Capabilities fuer Angebote |
 | GerNetiX Plattform UI / Identity Server | Device Management Server | eigene Devices, Registrierung, Purchase Context |
 | GerNetiX Plattform UI / Identity Server | AI Usage Server | Credit-Anzeige und AI-Preflight |
 | Recovery Tool HMI | Recovery Tool Server | Nutzer-/Support-Flow zum Retten von ProcessorBoards |

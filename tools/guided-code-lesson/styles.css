@@ -58,6 +58,16 @@ button {
   overflow: hidden;
 }
 
+.project-bar button.is-syncing {
+  opacity: 0.65;
+  pointer-events: none;
+}
+
+.project-bar .publish-status {
+  color: var(--muted);
+  font-size: 12px;
+}
+
 .editor-header {
   min-height: 72px;
   display: flex;

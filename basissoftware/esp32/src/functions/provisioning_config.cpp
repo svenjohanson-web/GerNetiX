@@ -4,8 +4,8 @@
 #include <cstring>
 #include <string>
 
-#include "mbedtls/md.h"
 #include "nvs.h"
+#include "psa/crypto.h"
 
 #include "basissoftware/config.h"
 #include "basissoftware/feedback.h"
@@ -20,6 +20,38 @@ void copyString(char *target, size_t targetSize, const char *source) {
     return;
   }
   std::snprintf(target, targetSize, "%s", source == nullptr ? "" : source);
+}
+
+bool isHostnameChar(char value) {
+  return (value >= 'a' && value <= 'z') ||
+         (value >= '0' && value <= '9') ||
+         value == '-';
+}
+
+char toLowerAscii(char value) {
+  return value >= 'A' && value <= 'Z' ? static_cast<char>(value - 'A' + 'a') : value;
+}
+
+void appendHostnamePart(char *target, size_t targetSize, size_t &written, const char *value) {
+  if (target == nullptr || targetSize == 0 || value == nullptr) {
+    return;
+  }
+  bool previousDash = written == 0 || target[written - 1] == '-';
+  for (const char *cursor = value; *cursor != '\0' && written + 1 < targetSize; cursor++) {
+    char next = toLowerAscii(*cursor);
+    if (!isHostnameChar(next)) {
+      next = '-';
+    }
+    if (next == '-' && previousDash) {
+      continue;
+    }
+    target[written++] = next;
+    previousDash = next == '-';
+  }
+  while (written > 0 && target[written - 1] == '-') {
+    written--;
+  }
+  target[written] = '\0';
 }
 
 std::string findStringValue(const std::string &payload, const char *key) {
@@ -194,6 +226,42 @@ void appendJsonBool(char *target, size_t targetSize, size_t &written, const char
   }
 }
 
+void writeProvisioningNameValue(char *target, size_t targetSize, const ProvisioningConfig &config) {
+  if (target == nullptr || targetSize == 0) {
+    return;
+  }
+  if (config.serialNumber[0] != '\0') {
+    std::snprintf(target, targetSize, "GerNetiX %s", config.serialNumber);
+    return;
+  }
+  if (config.deviceId[0] != '\0') {
+    std::snprintf(target, targetSize, "GerNetiX %s", config.deviceId);
+    return;
+  }
+  copyString(target, targetSize, WIFI_STATION_HOSTNAME);
+}
+
+void writeProvisioningHostnameValue(char *target, size_t targetSize, const ProvisioningConfig &config) {
+  if (target == nullptr || targetSize == 0) {
+    return;
+  }
+  target[0] = '\0';
+  if (config.serialNumber[0] == '\0' && config.deviceId[0] == '\0') {
+    copyString(target, targetSize, WIFI_STATION_HOSTNAME);
+    return;
+  }
+  size_t written = 0;
+  appendHostnamePart(target, targetSize, written, "gernetix");
+  if (written + 1 < targetSize) {
+    target[written++] = '-';
+    target[written] = '\0';
+  }
+  appendHostnamePart(target, targetSize, written, config.serialNumber[0] != '\0' ? config.serialNumber : config.deviceId);
+  if (written == 0) {
+    copyString(target, targetSize, WIFI_STATION_HOSTNAME);
+  }
+}
+
 bool readDeviceSecret(char *target, size_t targetSize) {
   if (target == nullptr || targetSize == 0) {
     return false;
@@ -313,12 +381,34 @@ esp_err_t saveProvisioningPayload(const char *payload, size_t payloadLength) {
   return status;
 }
 
+size_t writeProvisioningDeviceName(char *target, size_t targetSize) {
+  if (target == nullptr || targetSize == 0) {
+    return 0;
+  }
+  const ProvisioningConfig config = loadProvisioningConfig();
+  writeProvisioningNameValue(target, targetSize, config);
+  return std::strlen(target);
+}
+
+size_t writeProvisioningHostname(char *target, size_t targetSize) {
+  if (target == nullptr || targetSize == 0) {
+    return 0;
+  }
+  const ProvisioningConfig config = loadProvisioningConfig();
+  writeProvisioningHostnameValue(target, targetSize, config);
+  return std::strlen(target);
+}
+
 size_t writeProvisioningStatusJson(char *target, size_t targetSize) {
   if (target == nullptr || targetSize == 0) {
     return 0;
   }
 
   const ProvisioningConfig config = loadProvisioningConfig();
+  char deviceName[96] = {};
+  char hostname[32] = {};
+  writeProvisioningNameValue(deviceName, sizeof(deviceName), config);
+  writeProvisioningHostnameValue(hostname, sizeof(hostname), config);
   size_t written = 0;
   written += std::snprintf(
       target,
@@ -330,6 +420,8 @@ size_t writeProvisioningStatusJson(char *target, size_t targetSize) {
     return targetSize - 1;
   }
 
+  appendJsonString(target, targetSize, written, "displayName", deviceName);
+  appendJsonString(target, targetSize, written, "hostname", hostname);
   appendJsonString(target, targetSize, written, "deviceId", config.deviceId);
   appendJsonString(target, targetSize, written, "serialNumber", config.serialNumber);
   appendJsonString(target, targetSize, written, "hardwareProfileId", config.hardwareProfileId);
@@ -370,18 +462,36 @@ esp_err_t writeChallengeProofJson(const char *payload, size_t payloadLength, cha
   }
 
   unsigned char hmac[32] = {};
-  const mbedtls_md_info_t *mdInfo = mbedtls_md_info_from_type(MBEDTLS_MD_SHA256);
-  if (mdInfo == nullptr) {
+  size_t hmacLength = 0;
+  psa_key_attributes_t keyAttributes = PSA_KEY_ATTRIBUTES_INIT;
+  mbedtls_svc_key_id_t key = 0;
+  const psa_algorithm_t algorithm = PSA_ALG_HMAC(PSA_ALG_SHA_256);
+
+  if (psa_crypto_init() != PSA_SUCCESS) {
     return ESP_FAIL;
   }
-  const int hmacStatus = mbedtls_md_hmac(
-      mdInfo,
-      reinterpret_cast<const unsigned char *>(deviceSecret),
+  psa_set_key_type(&keyAttributes, PSA_KEY_TYPE_HMAC);
+  psa_set_key_bits(&keyAttributes, std::strlen(deviceSecret) * 8);
+  psa_set_key_usage_flags(&keyAttributes, PSA_KEY_USAGE_SIGN_MESSAGE);
+  psa_set_key_algorithm(&keyAttributes, algorithm);
+
+  psa_status_t status = psa_import_key(
+      &keyAttributes,
+      reinterpret_cast<const uint8_t *>(deviceSecret),
       std::strlen(deviceSecret),
-      reinterpret_cast<const unsigned char *>(challenge.c_str()),
-      challenge.size(),
-      hmac);
-  if (hmacStatus != 0) {
+      &key);
+  if (status == PSA_SUCCESS) {
+    status = psa_mac_compute(
+        key,
+        algorithm,
+        reinterpret_cast<const uint8_t *>(challenge.c_str()),
+        challenge.size(),
+        hmac,
+        sizeof(hmac),
+        &hmacLength);
+    psa_destroy_key(key);
+  }
+  if (status != PSA_SUCCESS || hmacLength != sizeof(hmac)) {
     return ESP_FAIL;
   }
 

@@ -1,4 +1,5 @@
 #pragma once
 
-void initWifi();
+#include "basissoftware/wifi_manager.h"
 
+void initWifi();

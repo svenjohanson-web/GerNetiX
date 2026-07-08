@@ -25,5 +25,7 @@ struct ProvisioningConfig {
 
 ProvisioningConfig loadProvisioningConfig();
 esp_err_t saveProvisioningPayload(const char *payload, size_t payloadLength);
+size_t writeProvisioningDeviceName(char *target, size_t targetSize);
+size_t writeProvisioningHostname(char *target, size_t targetSize);
 size_t writeProvisioningStatusJson(char *target, size_t targetSize);
 esp_err_t writeChallengeProofJson(const char *payload, size_t payloadLength, char *target, size_t targetSize);

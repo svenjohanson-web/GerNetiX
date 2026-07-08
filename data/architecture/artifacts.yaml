@@ -210,6 +210,31 @@ items:
       - component.password_reset
       - component.auth_session_management
 
+  - id: architecture_artifact.hardware_catalog
+    type: architecture_artifact
+    title: Hardware Catalog Service
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: Hardware
+    summary: Architekturartefakt fuer die SQLite-persistente Quelle bekannter HardwareItems, ProcessorBoards und TechnicalCapabilities. Hardware Shop und Identity Server nutzen diesen Service als Katalog-Client, statt eigene Board-/Capability-Wahrheiten zu fuehren.
+    affectsApiArtifacts:
+      - api_artifact.hardware_catalog
+    usedBy:
+      - architecture_artifact.identity_server
+      - architecture_artifact.hardware_shop
+
+  - id: architecture_artifact.hardware_shop
+    type: architecture_artifact
+    title: Hardware Shop Service
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: Business
+    summary: Architekturartefakt fuer kaufbare Angebote, Matching, Warenkorb, Bestellung und Purchase Context. Der Shop persistiert Shop-Daten in SQLite und liest HardwareItems und Capabilities als Client des Hardware Catalog Service.
+    affectsApiArtifacts:
+      - api_artifact.hardware_shop
+    usesArchitectureArtifacts:
+      - architecture_artifact.hardware_catalog
+
   - id: component.user_account_registry
     type: architecture_component
     title: User Account Registry Component

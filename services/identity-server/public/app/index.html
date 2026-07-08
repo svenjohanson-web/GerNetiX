@@ -23,10 +23,10 @@
         <a href="/app/dashboard/" data-route="dashboard">Dashboard</a>
         <a href="/app/learn/" data-route="learn">Lernen</a>
         <a href="/app/ide/" data-route="ide">Entwickeln</a>
-        <a href="/app/projects/" data-route="projects">Projekte</a>
-        <a href="/app/devices/" data-route="devices">Geräte</a>
-        <a href="/app/builds/" data-route="builds">Builds</a>
-        <a href="/app/billing/" data-route="billing">Billing</a>
+        <a class="utility" href="/app/projects/" data-route="projects">Lernprojekte</a>
+        <a class="utility" href="/app/devices/" data-route="devices">Geräte</a>
+        <a class="utility" href="/app/builds/" data-route="builds">Builds</a>
+        <a class="utility" href="/app/billing/" data-route="billing">Billing</a>
       </nav>
 
       <section id="dashboardView" class="view">
@@ -36,16 +36,16 @@
             <strong>Kurse, Lektionen, geführte Projekte und Aufgaben</strong>
           </button>
           <button class="entry-card" type="button" data-open-route="/app/ide/">
-            <span>Entwicklungsumgebung öffnen</span>
-            <strong>Code ändern, Build starten, Gerät flashen oder OTA ausführen</strong>
+            <span>Freie Entwicklungsumgebung öffnen</span>
+            <strong>Eigene Projekte, Code, Builds und Flashen ohne geführte Lektion</strong>
           </button>
           <button id="continueButton" class="entry-card" type="button">
             <span>Letztes Projekt fortsetzen</span>
             <strong id="continueText">Noch kein Projekt geöffnet</strong>
           </button>
           <button class="entry-card" type="button" data-open-route="/app/projects/">
-            <span>Meine Projekte</span>
-            <strong>Ein gemeinsames Projektmodell für Lernen und IDE</strong>
+            <span>Meine Lernprojekte</span>
+            <strong>Geführte Projekte aus Kursen und Lektionen</strong>
           </button>
           <button class="entry-card" type="button" data-open-route="/app/devices/">
             <span>Meine Geräte</span>
@@ -91,20 +91,33 @@
       <section id="ideView" class="view hidden">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Freier Modus</p>
+            <p class="eyebrow">Freier Entwicklungsmodus</p>
             <h2>Entwickeln</h2>
           </div>
-          <div class="button-row">
+          <div id="ideToolbar" class="button-row">
+            <span id="ideCurrentProjectLabel" class="project-context-label"></span>
             <select id="ideProjectSelect" aria-label="Projekt wählen"></select>
-            <select id="ideDeviceSelect" aria-label="Geraet waehlen"></select>
-            <input id="usbPortInput" class="port-input" type="text" aria-label="USB-Port" placeholder="COM-Port" />
+            <span id="ideDeviceTools" class="button-row">
+              <select id="ideDeviceSelect" aria-label="Geraet waehlen"></select>
+              <select id="usbPortSelect" class="port-input" aria-label="USB-Port"></select>
+              <button id="refreshUsbPortsButton" type="button">USB suchen</button>
+              <button id="buildButton" type="button">Build starten</button>
+              <button id="usbFlashButton" type="button">Ueber USB flashen</button>
+            </span>
             <button id="saveSourceButton" type="button">Code speichern</button>
-            <button id="buildButton" type="button">Build starten</button>
-            <button id="usbFlashButton" type="button">Ueber USB flashen</button>
           </div>
         </div>
-        <section class="ide-layout">
-          <article class="panel">
+        <section id="ideEmptyState" class="panel ide-empty-state hidden">
+          <p class="eyebrow">Freier Modus</p>
+          <h3>Keine Lektion geöffnet</h3>
+          <p>Hier entsteht die freie Entwicklungsumgebung für eigene Entwicklungsprojekte. Geführte Lernprojekte startest du im Bereich Lernen und kannst sie von dort gezielt in der IDE öffnen.</p>
+          <div class="button-row">
+            <button class="primary" type="button" data-open-route="/app/learn/">Zu Lernen</button>
+            <button type="button" data-open-route="/app/projects/">Lernprojekte ansehen</button>
+          </div>
+        </section>
+        <section id="ideLayout" class="ide-layout">
+          <article id="sourcePanel" class="panel">
             <p class="eyebrow">Projektdatei</p>
             <h3 id="ideProjectTitle"></h3>
             <textarea id="sourceEditor" spellcheck="false"></textarea>
@@ -121,8 +134,8 @@
       <section id="projectsView" class="view hidden">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Gemeinsames Modell</p>
-            <h2>Meine Projekte</h2>
+            <p class="eyebrow">Lernen</p>
+            <h2>Meine Lernprojekte</h2>
           </div>
         </div>
         <section id="projectList" class="project-list"></section>
@@ -140,20 +153,34 @@
             <section class="panel discovery-panel">
               <div class="section-head">
                 <div>
-                  <p class="eyebrow">WLAN-faehige Boards</p>
-                  <h3>Netzwerk absuchen</h3>
+                  <p class="eyebrow">Inventarisierung</p>
+                  <h3>Hardware auswahlen</h3>
                 </div>
-                <button id="networkDiscoveryButton" class="primary" type="button">Netzwerk durchsuchen</button>
               </div>
-              <p class="helper-text">Gefundene Boards koennen direkt in dein Inventar uebernommen werden.</p>
+              <label class="inventory-type-label">Hardware aus Katalog<select id="inventoryHardwareType"></select></label>
+              <div class="inventory-methods">
+                <div id="esp32DiscoveryActions" class="button-row">
+                  <button id="networkDiscoveryButton" class="primary" type="button">ESP32 per WLAN suchen</button>
+                  <button id="esp32BootloaderIdentifyButton" type="button">ESP32 per USB pruefen</button>
+                </div>
+                <div id="avrDiscoveryActions" class="button-row hidden">
+                  <button id="avrBootloaderIdentifyButton" class="primary" type="button">Nano-Bootloader experimentell testen</button>
+                </div>
+              </div>
+              <label id="esp32UsbPortLabel" class="inventory-type-label">ESP32 USB-Port<select id="esp32UsbPort"></select></label>
+              <p id="inventoryTypeHint" class="helper-text"></p>
               <div id="networkDiscoveryStatus" class="flash-status hidden"></div>
               <section id="networkDiscoveryList" class="discovery-list"></section>
+              <div class="card-actions">
+                <button id="claimSelectedDiscoveredDevicesButton" class="primary" type="button" disabled>Ausgewaehlte ins Inventar uebernehmen</button>
+              </div>
             </section>
             <form id="deviceInventoryForm" class="panel form-grid">
-            <p class="eyebrow">Fallback manuell</p>
+            <p class="eyebrow">Manuell</p>
             <label>Name<input id="inventoryDisplayName" type="text" value="Mein ESP32" /></label>
             <label>Seriennummer<input id="inventorySerialNumber" type="text" value="" placeholder="z. B. COMM-ESP32-001" /></label>
             <label>Board<select id="inventoryHardwareProfile"></select></label>
+            <label id="inventoryUsbPortLabel">USB-Port<select id="inventoryUsbPort"></select></label>
             <label>Capabilities<input id="inventoryCapabilities" type="text" value="" /></label>
             <label>Status
               <select id="inventoryConnectivityStatus">

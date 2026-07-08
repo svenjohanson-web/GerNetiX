@@ -2,10 +2,13 @@ const http = require("node:http");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
+const { execFile } = require("node:child_process");
+const { promisify } = require("node:util");
 const { createDefaultIdentityModule, MockEmailService } = require("./index");
 
 const publicDir = path.join(__dirname, "..", "public");
 const appDir = path.join(publicDir, "app");
+const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
 const port = Number(process.env.PORT || 4300);
 const host = process.env.HOST || "127.0.0.1";
 const demoUsername = process.env.DEMO_USER || "demo";
@@ -14,9 +17,12 @@ const demoPassword = process.env.DEMO_PASSWORD || "demo-passwort";
 const projectServerBaseUrl = process.env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800";
 const buildDeployBaseUrl = process.env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400";
 const hardwareShopBaseUrl = process.env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900";
+const hardwareCatalogBaseUrl = process.env.HARDWARE_CATALOG_BASE_URL || "http://127.0.0.1:4910";
 const deviceManagementBaseUrl = process.env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700";
 const aiUsageBaseUrl = process.env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000";
 const deviceDiscoveryUrls = process.env.GERNETIX_DEVICE_DISCOVERY_URLS || process.env.DEVICE_DISCOVERY_URLS || "";
+const gernetixNodeHostnamePrefix = "gernetix-";
+const execFileAsync = promisify(execFile);
 const builtInDemoAccounts = [
   { username: demoUsername, email: demoEmail, password: demoPassword },
 ];
@@ -53,6 +59,7 @@ async function bootstrap() {
   console.log(`Project Server adapter: ${projectServerBaseUrl}`);
   console.log(`Build & Deploy adapter: ${buildDeployBaseUrl}`);
   console.log(`Hardware Shop adapter: ${hardwareShopBaseUrl}`);
+  console.log(`Hardware Catalog adapter: ${hardwareCatalogBaseUrl}`);
   console.log(`Device Management adapter: ${deviceManagementBaseUrl}`);
   console.log(`AI Usage adapter: ${aiUsageBaseUrl}`);
   });
@@ -80,6 +87,16 @@ async function seedDemoAccount() {
 
 async function routeRequest(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
+
+  if (url.pathname === "/api/dev/lesson-preview-migration" && req.method === "OPTIONS") {
+    sendDevJson(res, 204, {});
+    return;
+  }
+
+  if (url.pathname === "/api/dev/lesson-preview-migration" && req.method === "POST") {
+    await handleDevLessonPreviewMigration(req, res);
+    return;
+  }
 
   if (url.pathname === "/health") {
     sendJson(res, 200, { status: "ok", service: "identity-server" });
@@ -185,7 +202,17 @@ async function routeRequest(req, res) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
-    sendJson(res, 200, await discoverNetworkDevices(session));
+    sendJson(res, 200, await discoverNetworkDevices(session, Object.fromEntries(url.searchParams.entries())));
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/platform/usb-serial/ports") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    sendJson(res, 200, { items: await listUsbSerialPorts() });
     return;
   }
 
@@ -792,18 +819,26 @@ async function handlePlatformDeviceRemove(res, session, accountDeviceId) {
   }
 }
 
-async function discoverNetworkDevices(session) {
+async function discoverNetworkDevices(session, options = {}) {
   const accountDevices = await loadUserIdeDevices(session).catch(() => []);
+  const adminDevices = await loadAdminDeviceSummaries().catch(() => []);
   const knownDeviceIds = new Set(accountDevices.map((device) => device.device_id));
-  const candidates = discoveryCandidateUrls();
+  const adminByDeviceId = new Map(adminDevices.map((device) => [device.device_id, device]));
+  const scope = String(options.scope || "node").trim();
+  const candidates = discoveryCandidateUrls({ includeSetupAp: scope === "setup_ap", onlySetupAp: scope === "setup_ap" });
   const found = [];
   const errors = [];
   await runLimited(candidates, 32, async (url) => {
     const result = await probeDeviceStatus(url);
     if (result.device) {
+      const adminDevice = adminByDeviceId.get(result.device.device_id);
+      const alreadyInInventory = knownDeviceIds.has(result.device.device_id);
       found.push({
         ...result.device,
-        already_in_inventory: knownDeviceIds.has(result.device.device_id),
+        already_in_inventory: alreadyInInventory,
+        ownership_status: alreadyInInventory
+          ? "current_account"
+          : (adminDevice?.pairing_status === "paired_to_account" ? "other_account" : "unregistered"),
       });
     } else if (result.error) {
       errors.push(result.error);
@@ -819,14 +854,21 @@ async function discoverNetworkDevices(session) {
   }
   return {
     searched_at: new Date().toISOString(),
-    strategy: "http_status_scan",
+    strategy: scope === "setup_ap" ? "http_status_setup_ap" : "http_status_scan_gernetix_prefix",
+    hostname_pattern: `${gernetixNodeHostnamePrefix}*`,
     candidate_count: candidates.length,
     items: unique,
     errors: errors.slice(0, 10),
   };
 }
 
-function discoveryCandidateUrls() {
+async function loadAdminDeviceSummaries() {
+  const response = await deviceManagementJson("/api/device-management/admin/devices");
+  return response.items || [];
+}
+
+function discoveryCandidateUrls(options = {}) {
+  if (options.onlySetupAp) return ["http://192.168.4.1/status"];
   const explicit = deviceDiscoveryUrls
     .split(",")
     .map((item) => item.trim())
@@ -838,7 +880,7 @@ function discoveryCandidateUrls() {
       candidates.add(`http://${baseAddress}.${host}/status`);
     }
   }
-  candidates.add("http://192.168.4.1/status");
+  if (options.includeSetupAp) candidates.add("http://192.168.4.1/status");
   return Array.from(candidates);
 }
 
@@ -878,25 +920,35 @@ async function probeDeviceStatus(url) {
 }
 
 function normalizeDiscoveredDevice(sourceUrl, status = {}) {
-  const isGerNetix = status.device === "gernetix-esp32"
-    || String(status.runtime || "").toLowerCase().includes("gernetix")
-    || Boolean(status.deviceId || status.serialNumber);
+  const deviceName = String(status.device || status.hostname || "").trim();
+  const displayName = String(status.displayName || status.display_name || "").trim();
+  const runtimeName = String(status.runtime || "").trim();
+  const isGerNetixRuntime = runtimeName === "basissoftware/esp32" || runtimeName.toLowerCase().includes("gernetix");
+  const isGerNetix = deviceName.toLowerCase().startsWith(gernetixNodeHostnamePrefix)
+    || displayName.toLowerCase().startsWith(gernetixNodeHostnamePrefix)
+    || isGerNetixRuntime;
   if (!isGerNetix) return null;
   const capabilities = normalizeCapabilityIds(status.capabilities || inferDiscoveredCapabilities(status));
   const deviceId = status.deviceId || status.device_id || "";
   const serialNumber = status.serialNumber || status.serial_number || "";
+  const hostname = status.hostname || deviceName;
   return {
     discovery_id: Buffer.from(sourceUrl).toString("base64url"),
     source_url: sourceUrl,
     device_id: deviceId,
     serial_number: serialNumber,
-    display_name: serialNumber || deviceId || `GerNetiX Device ${sourceUrl}`,
+    display_name: displayName || serialNumber || deviceId || hostname || `GerNetiX Device ${sourceUrl}`,
+    hostname,
     hardware_profile_id: status.hardwareProfileId || status.hardware_profile_id || "hardware.processor_board.esp32_devkit",
     technical_capability_ids: capabilities,
     runtime_version: status.runtimeVersion || status.runtime_version || "",
     firmware_version: status.firmwareVersion || status.firmware_version || "",
     provisioning_state: status.provisioningState || status.provisioning_state || "",
     connectivity_status: status.wifiMode === "setup_ap" ? "setup_ap" : "online",
+    esp32_inventory_state: status.wifiMode === "setup_ap" ? "basissoftware_setup_ap" : "node_online",
+    treatment: status.wifiMode === "setup_ap"
+      ? "Basissoftware ist vorhanden, aber noch nicht im Kunden-WLAN. Im Setup-AP WLAN-Daten speichern und danach Node-Suche erneut ausfuehren."
+      : "Basissoftware ist als Node im WLAN erreichbar. Nach Kontopruefung kann das Board ins Inventar uebernommen werden.",
     ota_status: capabilities.includes("ota") ? "ready" : "unknown",
     authenticity_status: status.hasDeviceSecret ? "gernetix_verified_pending_proof" : "community_unverified",
   };
@@ -1035,14 +1087,14 @@ async function loadUserIdeProjects(session) {
       owner_user_id: project ? project.user_id : userId,
       title: project ? project.title : definition.title,
       summary: project ? project.description : definition.summary,
-      hardware_profile_id: project ? project.hardware_profile_id : definition.hardware_profile_id,
-      build_config: project ? project.build_config : definition.build_config,
-      linked_device_id: project ? project.device_id : definition.default_device_id,
+      hardware_profile_id: definition.hardware_profile_id,
+      build_config: Object.hasOwn(definition, "build_config") ? definition.build_config : project?.build_config,
+      linked_device_id: definition.default_device_id || null,
       status: project ? project.status : "project_server_missing",
       last_build_status: latestBuildStatus(project),
       source_count: project ? project.source_count : 0,
       build_count: project ? project.build_count : 0,
-      view_manifest: project ? project.view_manifest : projectViewManifest(definition),
+      view_manifest: projectViewManifest(definition),
       created_at: project ? project.created_at : "",
       updated_at: project ? project.updated_at : "",
       last_opened_mode: workspace.lastProjectId === definition.project_server_id ? workspace.lastMode : "",
@@ -1076,11 +1128,22 @@ async function ensureProjectServerDemoProjects(session) {
     await projectServerJson(`/api/projects/${encodeURIComponent(definition.project_server_id)}`, {
       method: "PATCH",
       body: {
+        hardware_profile_id: definition.hardware_profile_id,
+        device_id: definition.default_device_id || null,
+        build_config: definition.build_config || null,
         view_manifest: projectViewManifest(definition),
       },
     }).catch((error) => {
       if (error.status !== 404) throw error;
     });
+    for (const source of demoProjectSources(definition)) {
+      await projectServerJson(`/api/projects/${encodeURIComponent(definition.project_server_id)}/sources`, {
+        method: "POST",
+        body: source,
+      }).catch((error) => {
+        if (error.status !== 404) throw error;
+      });
+    }
   }
   userIdeState.projectServerSeeded = true;
 }
@@ -1127,6 +1190,7 @@ function toPlatformProject(project) {
     courseId: project.course_id,
     lessonId: project.lesson_id,
     requiredCapabilityIds: project.required_capability_ids,
+    buildConfig: project.build_config,
     status: project.status,
     sourceCount: project.source_count,
     buildCount: project.build_count,
@@ -1258,7 +1322,7 @@ async function loadHardwareShopSummary(session) {
 }
 
 async function loadProcessorBoards() {
-  const response = await hardwareShopJson("/api/hardware-shop/processor-boards");
+  const response = await hardwareCatalogJson("/api/hardware-catalog/processor-boards");
   return response.items || [];
 }
 
@@ -1272,7 +1336,6 @@ async function findProcessorBoard(hardwareProfileId) {
 }
 
 async function loadUserIdeDevices(session) {
-  await ensureDeviceManagementDemoDevices(session);
   const accountId = projectServerUserId(session);
   const response = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`);
   return (response.items || []).map(decorateUserIdeDevice);
@@ -1295,80 +1358,6 @@ function decorateUserIdeDevice(device) {
     ownership_status: device.ownership_status,
     purchase_context_id: device.purchase_context_id || "",
   };
-}
-
-async function ensureDeviceManagementDemoDevices(session) {
-  const accountId = projectServerUserId(session);
-  const existing = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`);
-  const existingDeviceIds = new Set((existing.items || []).map((device) => device.device_id));
-
-  if (!existingDeviceIds.has("device_verified_1")) {
-    await deviceManagementJson("/api/device-management/devices/register", {
-      method: "POST",
-      body: {
-        device_id: "device_verified_1",
-        serial_number: "GNX-ESP32-0001",
-        hardware_profile_id: "hardware.processor_board.esp32_devkit",
-        gernetix_verified: true,
-        connectivity_status: "online",
-        ota_status: "ready",
-        firmware_version: "0.1.0",
-        provisioning_batch_id: "demo-batch",
-        provisioned_by: "user-ide-demo",
-        one_time_device_secret: "demo-device-secret",
-      },
-    });
-    await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
-      method: "POST",
-      body: {
-        device_id: "device_verified_1",
-        display_name: "Sven ESP32 DevKit",
-        technical_capability_ids: ["wifi", "ota", "flash_firmware", "arduino_framework_runtime"],
-      },
-    });
-  }
-
-  if (!existingDeviceIds.has("device_arduino_nano_1")) {
-    await deviceManagementJson("/api/device-management/devices/register", {
-      method: "POST",
-      body: {
-        device_id: "device_arduino_nano_1",
-        serial_number: "ARD-NANO-0001",
-        hardware_profile_id: "hardware.processor_board.arduino_nano_atmega328p",
-        connectivity_status: "usb_connected",
-        ota_status: "unsupported",
-      },
-    });
-    await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
-      method: "POST",
-      body: {
-        device_id: "device_arduino_nano_1",
-        display_name: "Arduino Nano",
-        technical_capability_ids: ["processor_arduino_avr", "arduino_framework_runtime", "atmel_avr_bare_metal_runtime", "flash_firmware"],
-      },
-    });
-  }
-
-  if (!existingDeviceIds.has("device_community_1")) {
-    await deviceManagementJson("/api/device-management/devices/register", {
-      method: "POST",
-      body: {
-        device_id: "device_community_1",
-        serial_number: "COMM-ESP32-123",
-        hardware_profile_id: "hardware.processor_board.esp32_unknown",
-        connectivity_status: "offline",
-        ota_status: "unknown",
-      },
-    });
-    await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/devices`, {
-      method: "POST",
-      body: {
-        device_id: "device_community_1",
-        display_name: "Keller Sensor ESP32",
-        technical_capability_ids: ["wifi"],
-      },
-    });
-  }
 }
 
 async function handleHardwareShopOrder(req, res, session) {
@@ -1650,7 +1639,11 @@ function createUserIdeState() {
       step("State sichtbar machen", "Hunger, Durst, Laune und Leben werden als Zustand modelliert.", "Ein Zustand ist eine fachliche Aussage ueber das System."),
       step("Regeln formulieren", "Ausloeser veraendern Werte und fuehren zu neuen Zustaenden.", "Gute Regeln sind klarer als verstreute if-Abfragen."),
       step("Runtime waehlen", "Dasselbe Modell kann spaeter Browser-App oder Embedded-App antreiben.", "Das Modell bleibt stabil, die technische Huelle kann wechseln."),
-    ]),
+    ], {
+      hardware_profile_id: "runtime.software_model",
+      default_device_id: "",
+      source_files: [{ path: "model/tamagotchi/model.yaml", role: "domain_model" }],
+    }),
     project("esp32-ota-bootstrap-firmware", "ESP32 OTA-Basissoftware", "Firmware", "USB-Erstflash vorbereiten und spaetere OTA-Faehigkeit erhalten.", [
       step("USB-Erstflash", "Das Board wird initial mit der GerNetiX-Basissoftware vorbereitet.", "OTA bleibt Teil der Basis, nicht Teil des User-Codes."),
       step("Service-Endpunkte", "Device Management und Build-&-Deploy bleiben konfigurierbar.", "Ein Serverumzug darf keinen USB-Reflash erzwingen."),
@@ -1667,6 +1660,7 @@ function createUserIdeState() {
   return {
     projectDefinitions: projects,
     projectServerSeeded: false,
+    lessonManifestOverrides: new Map(),
     learningProgress: new Map(),
     workspaceStates: new Map(),
     devices: [
@@ -1693,7 +1687,7 @@ function createUserIdeState() {
 
 function project(slug, title, area, summary, steps, options = {}) {
   const requiredCapabilitiesBySlug = {
-    "software-engineering-tamagotchi": ["capability.processor_esp32", "capability.wifi"],
+    "software-engineering-tamagotchi": [],
     "arduino-blink": ["capability.arduino_framework_runtime", "capability.flash_firmware"],
     "arduino-atmel-bare-metal": ["capability.atmel_avr_bare_metal_runtime", "capability.flash_firmware"],
     "esp32-ota-bootstrap-firmware": ["capability.processor_esp32", "capability.wifi", "capability.ota"],
@@ -1705,8 +1699,8 @@ function project(slug, title, area, summary, steps, options = {}) {
     learning_project_id: `learning_project.${slug.replace(/-/g, "_")}`,
     course_id: `course.${slug.replace(/-/g, "_")}`,
     lesson_id: `lesson.${slug.replace(/-/g, "_")}.intro`,
-    hardware_profile_id: options.hardware_profile_id || "hardware.processor_board.esp32_devkit",
-    default_device_id: options.default_device_id || "device_verified_1",
+    hardware_profile_id: Object.hasOwn(options, "hardware_profile_id") ? options.hardware_profile_id : "hardware.processor_board.esp32_devkit",
+    default_device_id: Object.hasOwn(options, "default_device_id") ? options.default_device_id : "device_verified_1",
     build_config: options.build_config || undefined,
     source_files: options.source_files || [{ path: "src/main.cpp", role: "user_code" }],
     required_capability_ids: requiredCapabilitiesBySlug[slug] || ["capability.processor_esp32"],
@@ -1748,76 +1742,175 @@ function primarySourcePath(project) {
 }
 
 function projectViewManifest(project) {
+  const override = userIdeState.lessonManifestOverrides.get(project.slug);
+  if (override) return override;
+
   if (project.slug === "software-engineering-tamagotchi") {
     return {
       schema_version: 1,
-      title: "Guided IDE: Quellcode zu Modell",
-      summary: "Die IDE zeigt Projektwissen aus dem Projektmanifest: Quellcode-Analyse, Erklaerung, Diagramm und naechste Umsetzungsschritte.",
+      title: "Tamagotchi Verhaltensmodell",
+      summary: "Code ist nicht die erste Wahrheit. Das Projekt fuehrt ueber Zustaende, Regeln und PlantUML zum fachlichen Modell.",
       primary_source_path: primarySourcePath(project),
+      hide_source_editor: true,
       mode: "guided_ide",
       views: [
-        {
-          id: "source-analysis",
-          type: "source_analysis",
-          title: "Quellcode analysieren",
-          summary: "Der Einstieg ist die konkrete Projektdatei. Die IDE markiert, welche Codebereiche fachlich wichtig sind.",
-          source_path: primarySourcePath(project),
-          source_lines: [1, 3, 5, 8, 10],
-          payload: {
-            questions: [
-              "Welche Werte beschreiben den Zustand?",
-              "Welche Regeln veraendern den Zustand?",
-              "Welche Aktion ist fuer den Nutzer sichtbar?",
-            ],
-          },
-        },
-        {
-          id: "guided-explanation",
-          type: "explanation",
-          title: "Erklaerungsschritte",
-          summary: "Aus dem Code werden fachliche Begriffe gebildet, bevor neue Implementierungsschritte entstehen.",
-          payload: {
-            cards: [
-              { title: "Zustand", text: "Hunger, Durst und Leben sind keine UI-Details, sondern Modellzustand." },
-              { title: "Regeln", text: "Schwellwerte wie Hunger >= 50 werden explizit gemacht und nicht im Code versteckt." },
-              { title: "Runtime", text: "Dasselbe Modell kann spaeter Browser-App, Embedded-Firmware oder Backend-Logik antreiben." },
-            ],
-          },
-        },
+        tamagotchiStorySlide("code-problem", "Schau dir den Quellcode an", "Die statische Quellcode-Datei zeigt sehr viele Details auf einmal. Die Frage ist: erkennst du sofort die fachliche Idee dahinter?", ["problem.code_is_not_explanation"], {
+          type: "code",
+          title: "assets/tamagotchi-complete-example.c",
+          content: tamagotchiCodeExcerpt(),
+        }),
+        tamagotchiStorySlide("state-intro", "Einfuehrung in Zustaende", "Menschen verstehen Verhalten leichter, wenn sie es zuerst als benannte Zustaende betrachten.", ["state.simple_examples"], {
+          type: "state_rows",
+          title: "Objekte in Zustaenden",
+          rows: [
+            {
+              label: "Regentonne",
+              description: "Der Fuellstand ist als Zustand leichter lesbar als als technische Messung.",
+              states: [
+                { label: "leer", kind: "barrel", level: 0 },
+                { label: "halb voll", kind: "barrel", level: 50 },
+                { label: "voll", kind: "barrel", level: 100 },
+              ],
+            },
+            {
+              label: "Akku",
+              description: "Auch beim Akku helfen einfache Namen, bevor ueber Spannung gesprochen wird.",
+              states: [
+                { label: "leer", kind: "battery", level: 8 },
+                { label: "halb voll", kind: "battery", level: 50 },
+                { label: "voll", kind: "battery", level: 100 },
+              ],
+            },
+          ],
+        }),
+        tamagotchiStorySlide("state-categories", "Einteilung von Zustaenden", "Manche Zustaende sind direkt definiert. Andere Eigenschaften sind fliessend und haben von sich aus keine klaren Stufen.", ["state.discrete", "state.continuous", "classification.thresholds"], {
+          type: "state_rows",
+          title: "Direkt definiert oder eingeteilt",
+          rows: [
+            {
+              label: "Direkt definiert",
+              description: "Der Zustand ist bereits klar getrennt, zum Beispiel bei Kaffeemaschine oder Fernseher.",
+              states: [
+                { label: "aus", kind: "power", value: "off", showValue: false },
+                { label: "an", kind: "power", value: "on", showValue: false },
+              ],
+            },
+            {
+              label: "Fliessend",
+              description: "Der Wert veraendert sich kontinuierlich und wird erst spaeter klassifiziert.",
+              states: [
+                { label: "Temperatur", kind: "thermometer", level: 58, value: "0..100 Grad" },
+                { label: "Punktzahl", kind: "label", value: "0..100" },
+                { label: "Fuellstand", kind: "barrel", level: 50, value: "0..100 %" },
+              ],
+            },
+          ],
+        }),
+        tamagotchiStorySlide("discrete-states", "Direkte diskrete Zustaende", "Wenn ein Objekt klar getrennte Zustaende besitzt, kann man den Zustand direkt benennen.", ["state.binary", "state.presence", "state.substates"], {
+          type: "state_rows",
+          title: "Diskrete Zustaende",
+          rows: [
+            {
+              label: "Fernseher",
+              description: "Zwei klare Zustaende: an oder aus. Bei genau zwei Zustaenden spricht man von binaer.",
+              states: [
+                { label: "aus", kind: "power", value: "off", showValue: false },
+                { label: "an", kind: "power", value: "on", showValue: false },
+              ],
+            },
+            {
+              label: "Wetter",
+              description: "Diskrete Zustaende muessen nicht nur zwei sein.",
+              states: [
+                { label: "sonnig", kind: "weather", value: "sunny", showValue: false },
+                { label: "bewoelkt", kind: "weather", value: "cloudy", showValue: false },
+                { label: "regnerisch", kind: "weather", value: "rainy", showValue: false },
+                { label: "windig", kind: "weather", value: "windy", showValue: false },
+              ],
+            },
+            {
+              label: "Siebtraegermaschine",
+              description: "Ein Oberzustand kann Unterzustaende enthalten.",
+              states: [
+                { label: "aus", kind: "power", value: "off", showValue: false },
+                { label: "an", kind: "power", value: "on", showValue: false, substates: ["aufheizend", "bereit"] },
+              ],
+            },
+          ],
+        }),
+        tamagotchiStorySlide("physical-property-rule", "Aus Messwerten werden Zustaende", "Wenn eine Eigenschaft fliessend ist, brauchen wir eine Messgroesse und Grenzen.", ["physical.temperature", "physical.fill_level", "physical.voltage", "classification.thresholds", "rule.physical_to_state"], {
+          type: "state_rows",
+          title: "Messwert, Schwelle und Zustand",
+          rows: [
+            {
+              label: "Stein: Temperatur",
+              description: "Messbar mit PT1000 oder IR-Sensor. Schwellen: unter 10 Grad kalt, ab 10 Grad warm, ab 55 Grad heiss.",
+              states: [
+                { label: "unter 10 Grad", kind: "stone", tone: "cold", value: "Zustand = kalt" },
+                { label: "10 bis unter 55 Grad", kind: "stone", tone: "warm", value: "Zustand = warm" },
+                { label: "ab 55 Grad", kind: "stone", tone: "hot", value: "Zustand = heiss" },
+              ],
+            },
+            {
+              label: "Regentonne: Fuellstand",
+              description: "Erfassbar mit Reedkontakten, Kamera oder Schwimmer mit Seillaenge.",
+              states: [
+                { label: "niedrig", kind: "barrel", level: 10, value: "Zustand = leer" },
+                { label: "mittel", kind: "barrel", level: 50, value: "Zustand = halb voll" },
+                { label: "hoch", kind: "barrel", level: 100, value: "Zustand = voll" },
+              ],
+            },
+            {
+              label: "Akku: Spannung",
+              description: "Der Ladezustand kann vereinfacht ueber die Spannung erfasst werden.",
+              states: [
+                { label: "niedrige Spannung", kind: "battery", level: 8, value: "Zustand = leer" },
+                { label: "mittlere Spannung", kind: "battery", level: 50, value: "Zustand = halb voll" },
+                { label: "hohe Spannung", kind: "battery", level: 100, value: "Zustand = voll" },
+              ],
+            },
+            {
+              label: "Notensystem: Punktzahl",
+              description: "Eine Punktzahl wird durch Grenzen in eine Note von 1 bis 6 uebersetzt.",
+              states: [
+                { label: "wenige Punkte", kind: "label", value: "Note 6" },
+                { label: "mittlere Punkte", kind: "label", value: "Note 3" },
+                { label: "viele Punkte", kind: "label", value: "Note 1" },
+              ],
+            },
+          ],
+        }),
+        tamagotchiStorySlide("state-machine-concept", "Aus Zustaenden wird eine State Machine", "Jetzt haben wir die Grundlagen zusammen: Zustaende, Transitionen und Bedingungen bilden eine Zustandsmaschine.", ["state_machine.states", "state_machine.transitions", "state_machine.conditions"], {
+          type: "cycle",
+          title: "Regentonnen-Zustandskreislauf",
+          states: [
+            { label: "Tonne leer", kind: "barrel", level: 0 },
+            { label: "Tonne voll", kind: "barrel", level: 100 },
+          ],
+          transitions: [
+            { label: "Regen" },
+            { label: "Giessen" },
+          ],
+        }),
         {
           id: "plantuml-model",
           type: "plantuml",
-          title: "PlantUML Zustandsmodell",
-          summary: "Das Diagramm ist Projektinhalt. Der Viewer rendert nur die hinterlegte Quelle.",
+          title: "Eine State Machine mit PlantUML beschreiben",
+          summary: "Jetzt schreiben wir die Tamagotchi-Zustandsmaschine als PlantUML. Zustaende stehen als Text, Transitionen werden mit Pfeilen und Bedingungen beschrieben.",
+          completion: { type: "acknowledge", label: "Diagramm verstanden" },
+          validation: { type: "plantuml_contains", must_contain: ["satt --> hungrig", "hungrig --> satt", "hungrig --> tot"] },
           payload: {
-            source: [
-              "@startuml",
-              "title Tamagotchi Zustandsmodell",
-              "[*] --> lebendig",
-              "state lebendig {",
-              "  [*] --> satt",
-              "  satt --> hungrig : Hunger >= 50",
-              "  hungrig --> satt : fuettern",
-              "  hungrig --> tot : Hunger = 100",
-              "}",
-              "tot --> [*]",
-              "@enduml",
-            ].join("\n"),
+            source: tamagotchiPlantUmlBaseSource(),
+            highlight_lines: [13, 14, 17, 18, 22, 23, 24, 25],
+            model_lines: ["state_machine.plantuml", "state_machine.tamagotchi_machine", "state_machine.machine_readable"]
+              .map((lineId) => tamagotchiModelLines()[lineId])
+              .filter(Boolean),
           },
         },
-        {
-          id: "next-work",
-          type: "implementation_plan",
-          title: "Naechster Umsetzungsschritt",
-          summary: "Aus Analyse und Diagramm wird ein konkreter IDE-Arbeitsschritt.",
-          payload: {
-            tasks: [
-              "Modellzustand in eine eigene Datei auslagern.",
-              "Regeln als testbare Funktionen formulieren.",
-              "Runtime-Preview erst aus dem Projektmanifest erzeugen.",
-            ],
-          },
-        },
+        tamagotchiStorySlide("runtime-independent", "Modell ist runtime-unabhaengig", "Das gleiche Modell kann spaeter Browser-App oder Embedded-App antreiben.", ["runtime.choice", "runtime.browser_app", "runtime.embedded", "runtime.same_model_core"]),
+        tamagotchiStorySlide("browser-first", "Browser App zuerst", "Der erste sichtbare Lauf soll schnell im Browser funktionieren, ohne Board und ohne Flashen.", ["lesson.browser_advantages", "lesson.browser_disadvantages", "behavior.event_driven_first"]),
+        tamagotchiStorySlide("state-machine-next", "Zeitgesteuerte State-Machine folgt", "Im naechsten Schritt kommen Tick, Speicherung und Wiederherstellung dazu.", ["behavior.time_driven_next", "persistence.browser_storage"]),
+        tamagotchiStorySlide("next-runtime-apps", "Weitere Runtime-Apps", "Embedded bleibt ein spaeterer Runtime-Pfad, nicht der Startpunkt dieses Projekts.", ["runtime.same_model_core", "runtime.embedded"]),
       ],
     };
   }
@@ -1846,6 +1939,266 @@ function projectViewManifest(project) {
         },
       },
     ],
+  };
+}
+
+function tamagotchiStorySlide(id, title, summary, modelLineIds, artifact = null) {
+  return {
+    id,
+    type: "story_slide",
+    title,
+    summary,
+    completion: { type: "acknowledge", label: "Verstanden" },
+    payload: {
+      artifact,
+      model_lines: modelLineIds.map((lineId) => tamagotchiModelLines()[lineId]).filter(Boolean),
+    },
+  };
+}
+
+function tamagotchiCodeExcerpt() {
+  return [
+    "typedef enum {",
+    "  TAMA_LIFE_ALIVE,",
+    "  TAMA_LIFE_DEAD",
+    "} TamaLife;",
+    "",
+    "typedef enum {",
+    "  TAMA_HUNGER_SATIATED,",
+    "  TAMA_HUNGER_HUNGRY,",
+    "  TAMA_HUNGER_STARVING",
+    "} TamaHungerState;",
+    "",
+    "typedef struct {",
+    "  uint8_t hunger;",
+    "  uint8_t thirst;",
+    "  uint8_t energy;",
+    "  uint8_t happiness;",
+    "  uint8_t hygiene;",
+    "  uint8_t health;",
+    "} TamaNeeds;",
+    "",
+    "typedef struct {",
+    "  TamaLife life;",
+    "  TamaHungerState hunger_state;",
+    "  TamaNeeds needs;",
+    "  uint32_t last_tick_second;",
+    "  uint32_t last_fed_second;",
+    "  bool dirty;",
+    "} Tama;",
+    "",
+    "static void recompute_states(void) {",
+    "  if (tama.needs.hunger >= 100 || tama.needs.health == 0) {",
+    "    tama.life = TAMA_LIFE_DEAD;",
+    "    return;",
+    "  }",
+    "",
+    "  if (tama.needs.hunger >= 50) {",
+    "    tama.hunger_state = TAMA_HUNGER_HUNGRY;",
+    "  } else {",
+    "    tama.hunger_state = TAMA_HUNGER_SATIATED;",
+    "  }",
+    "}",
+  ].join("\n");
+}
+
+async function hardwareCatalogJson(pathname, options = {}) {
+  const response = await fetch(`${hardwareCatalogBaseUrl}${pathname}`, {
+    method: options.method || "GET",
+    headers: options.body ? { "Content-Type": "application/json" } : {},
+    body: options.body ? JSON.stringify(options.body) : undefined,
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const error = new Error(payload.message || payload.error || "Hardware Catalog request failed.");
+    error.status = response.status;
+    error.payload = payload;
+    throw error;
+  }
+  return payload;
+}
+
+function tamagotchiPlantUmlBaseSource() {
+  return [
+    "@startuml",
+    "title Tamagotchi State-Machine",
+    "",
+    "hide empty description",
+    "",
+    "skinparam shadowing false",
+    "skinparam state {",
+    "  BackgroundColor #fbfdff",
+    "  BorderColor #9db0ca",
+    "  FontColor #08142b",
+    "  FontStyle bold",
+    "}",
+    "",
+    "state \"lebendig\" as lebendig {",
+    "  state \"satt\" as satt",
+    "  state \"hungrig\" as hungrig",
+    "}",
+    "",
+    "state \"tot\" as tot #fff7f7",
+    "",
+    "note right of lebendig",
+    "  Initialwerte",
+    "  Hunger = 45",
+    "end note",
+    "",
+    "[*] --> lebendig",
+    "satt --> hungrig : Hunger >= 50",
+    "hungrig --> satt : fuettern",
+    "hungrig --> tot : Hunger = 100",
+    "@enduml",
+  ].join("\n");
+}
+
+function tamagotchiModelLines() {
+  return {
+    "problem.code_is_not_explanation": {
+      label: "Problem",
+      text: "Quellcode zeigt viele Details auf einmal. Daraus erkennt man nicht sofort, wann das Tamagotchi lebt, satt, hungrig oder tot ist.",
+    },
+    "state.simple_examples": {
+      label: "Einfache Zustaende",
+      text: "Regentonne und Akku koennen zuerst einfach als leer, halb voll oder voll beschrieben werden.",
+    },
+    "state.discrete": {
+      label: "Direkte Zustaende",
+      text: "Manche Zustaende sind direkt definiert, zum Beispiel an oder aus, vorhanden oder nicht vorhanden.",
+    },
+    "state.continuous": {
+      label: "Fliessende Eigenschaften",
+      text: "Andere Eigenschaften veraendern sich stufenlos, zum Beispiel Temperatur, Punktzahl oder Fuellstand.",
+    },
+    "state.binary": {
+      label: "Binaer",
+      text: "Bei genau zwei Zustaenden spricht man von binaer, zum Beispiel an oder aus.",
+    },
+    "state.presence": {
+      label: "Vorhandenheit",
+      text: "Ein Objekt kann vorhanden oder nicht vorhanden sein.",
+    },
+    "state.substates": {
+      label: "Unterzustaende",
+      text: "Ein Oberzustand kann Unterzustaende enthalten, zum Beispiel an mit aufheizend und bereit.",
+    },
+    "classification.thresholds": {
+      label: "Klassifizierung",
+      text: "Durch Grenzen werden aus fliessenden Werten benannte Zustaende, zum Beispiel kalt, warm, heiss oder Note 1 bis 6.",
+    },
+    "physical.temperature": {
+      label: "Temperatur",
+      text: "Beim Stein ist Temperatur die messbare physikalische Groesse. Sie kann zum Beispiel mit PT1000 oder IR-Sensor erfasst werden.",
+    },
+    "physical.fill_level": {
+      label: "Fuellstand",
+      text: "Bei der Regentonne ist der Fuellstand die relevante physikalische Eigenschaft.",
+    },
+    "physical.voltage": {
+      label: "Spannung",
+      text: "Beim Akku kann der Ladezustand vereinfacht ueber die Spannung erfasst werden.",
+    },
+    "rule.physical_to_state": {
+      label: "Regel",
+      text: "Aus einem Messwert wird durch einfache Regeln ein Zustand, zum Beispiel unter 10 Grad kalt, ab 10 Grad warm und ab 55 Grad heiss.",
+    },
+    "state_machine.states": {
+      label: "States",
+      text: "Eine State Machine besteht aus benannten Zustaenden, zum Beispiel Tonne leer und Tonne voll.",
+    },
+    "state_machine.transitions": {
+      label: "Transitionen",
+      text: "Transitionen beschreiben, wie ein System von einem State in den naechsten State wechselt, zum Beispiel durch Regen oder Giessen.",
+    },
+    "state_machine.conditions": {
+      label: "Bedingungen",
+      text: "Eine Transition hat oft eine Bedingung, zum Beispiel Hunger >= 50 macht satt zu hungrig.",
+    },
+    "state_machine.plantuml": {
+      label: "PlantUML",
+      text: "PlantUML beschreibt das Diagramm mit Text. Dadurch koennen KI und andere Werkzeuge das Modell gezielt lesen.",
+    },
+    "state_machine.tamagotchi_machine": {
+      label: "Tamagotchi-State-Machine",
+      text: "Das Tamagotchi hat den Oberzustand lebendig mit den Unterzustaenden satt und hungrig sowie den Zustand tot.",
+    },
+    "state_machine.machine_readable": {
+      label: "Maschinenlesbar",
+      text: "Aus einer praezisen PlantUML-Beschreibung kann spaeter gezielter Code fuer Browser App oder Embedded Runtime erzeugt werden.",
+    },
+    "model.runtime_independent": {
+      label: "Runtime-unabhaengig",
+      text: "Das Modell beschreibt das Tamagotchi, nicht Browser, Embedded, Build-System oder Hardwaredetails.",
+    },
+    "state.life": {
+      label: "Leben",
+      text: "Das Tamagotchi ist entweder alive oder dead. Nach Programmstart ist es alive.",
+    },
+    "state.alive_substates": {
+      label: "Unterzustand von alive",
+      text: "Wenn alive gilt, ist das Tamagotchi entweder hungry oder satt.",
+    },
+    "value.hunger": {
+      label: "Hunger",
+      text: "Hunger ist eine Skala von 0 bis 100. Der Startwert ist 55.",
+    },
+    "rule.satt": {
+      label: "Regel satt",
+      text: "Wenn Hunger unter 50 ist, wechselt der Unterzustand zu satt.",
+    },
+    "action.feed": {
+      label: "Aktion fuettern",
+      text: "Fuettern setzt Hunger auf 0 und merkt sich den Fuetterzeitpunkt.",
+    },
+    "display.multiple_states": {
+      label: "Gleichzeitige Zustaende",
+      text: "Hungry, tired oder dirty koennen gleichzeitig wahr sein. Das Modell darf diese Wahrheiten nicht kuenstlich zu genau einem Zustand zusammenpressen.",
+    },
+    "display.priority": {
+      label: "Prioritaet",
+      text: "Eine Prioritaet ist eine Anzeigeentscheidung: dead ist wichtiger als hungry, hungry wichtiger als tired.",
+    },
+    "display.visible_state": {
+      label: "Sichtbarer Zustand",
+      text: "Der sichtbare Zustand ist nicht das ganze Modell, sondern die gerade wichtigste Information fuer den Nutzer.",
+    },
+    "runtime.choice": {
+      label: "Runtime-Auswahl",
+      text: "Der Lernende waehlt zwischen Browser App und Embedded. Das Modell bleibt gleich.",
+    },
+    "runtime.browser_app": {
+      label: "Browser App",
+      text: "Die erste erzeugte App laeuft schnell im Browser auf Mac, PC und Mobile.",
+    },
+    "runtime.embedded": {
+      label: "Embedded",
+      text: "Spaeter kann dasselbe Modell fuer ein Embedded Board erzeugt werden.",
+    },
+    "runtime.same_model_core": {
+      label: "Gleicher Modellkern",
+      text: "Browser App und Embedded unterscheiden sich technisch, aber nutzen denselben fachlichen Modellkern.",
+    },
+    "lesson.browser_advantages": {
+      label: "Browser Vorteile",
+      text: "Schnell starten, sofort beobachten, kein Board und kein Flashen noetig.",
+    },
+    "lesson.browser_disadvantages": {
+      label: "Browser Nachteile",
+      text: "Wenn nichts gespeichert wird, ist das Tamagotchi nach dem Schliessen des Browsers weg.",
+    },
+    "behavior.event_driven_first": {
+      label: "Erste Version",
+      text: "Anfangs veraendert sich das Tamagotchi nur durch Benutzerinteraktionen.",
+    },
+    "behavior.time_driven_next": {
+      label: "Naechste Version",
+      text: "Danach aktualisiert ein regelmaessiger Tick die State-Machine.",
+    },
+    "persistence.browser_storage": {
+      label: "Speichern",
+      text: "Der Zustand kann im Browser gespeichert und spaeter wieder geladen werden.",
+    },
   };
 }
 
@@ -1896,6 +2249,10 @@ function demoProjectSources(project) {
 }
 
 function demoProjectSource(project) {
+  if (project.slug === "software-engineering-tamagotchi") {
+    return readWorkspaceText("model/tamagotchi/model.yaml");
+  }
+
   if (project.slug === "arduino-blink") {
     return [
       "#include <Arduino.h>",
@@ -1948,6 +2305,10 @@ function demoProjectSource(project) {
   ].join("\n");
 }
 
+function readWorkspaceText(relativePath) {
+  return fs.readFileSync(path.join(workspaceRoot, relativePath), "utf8");
+}
+
 function isUsbFlashDevice(device) {
   if (device.connectivity_status === "offline") return false;
   return device.device_id === "device_verified_1"
@@ -1959,9 +2320,72 @@ function isUsbFlashDevice(device) {
 function defaultUploadPort(device) {
   if (!isUsbFlashDevice(device)) return "";
   if (device.device_id === "device_arduino_nano_1") {
-    return process.env.GERNETIX_NANO_UPLOAD_PORT || process.env.GERNETIX_USB_UPLOAD_PORT || process.env.UPLOAD_PORT || "COM4";
+    return process.env.GERNETIX_NANO_UPLOAD_PORT || process.env.GERNETIX_USB_UPLOAD_PORT || process.env.UPLOAD_PORT || "";
   }
-  return process.env.GERNETIX_USB_UPLOAD_PORT || process.env.UPLOAD_PORT || "COM3";
+  return process.env.GERNETIX_USB_UPLOAD_PORT || process.env.UPLOAD_PORT || "";
+}
+
+async function listUsbSerialPorts() {
+  if (process.platform !== "win32") return [];
+  const script = [
+    "$items = Get-CimInstance Win32_PnPEntity | Where-Object { $_.Name -match '\\(COM\\d+\\)' } | ForEach-Object {",
+    "  $port = if ($_.Name -match '(COM\\d+)') { $Matches[1] } else { '' }",
+    "  [pscustomobject]@{",
+    "    port = $port;",
+    "    name = $_.Name;",
+    "    device_id = $_.DeviceID;",
+    "    manufacturer = $_.Manufacturer;",
+    "    pnp_class = $_.PNPClass;",
+    "    status = $_.Status",
+    "  }",
+    "}",
+    "$items | ConvertTo-Json -Compress",
+  ].join("\n");
+
+  try {
+    const { stdout } = await execFileAsync("powershell.exe", ["-NoProfile", "-Command", script], {
+      windowsHide: true,
+      timeout: 5000,
+      maxBuffer: 1024 * 1024,
+    });
+    const trimmed = stdout.trim();
+    if (!trimmed) return [];
+    const parsed = JSON.parse(trimmed);
+    const items = Array.isArray(parsed) ? parsed : [parsed];
+    return items
+      .map((item) => ({
+        port: String(item.port || "").trim(),
+        name: String(item.name || "").trim(),
+        device_id: String(item.device_id || "").trim(),
+        manufacturer: String(item.manufacturer || "").trim(),
+        pnp_class: String(item.pnp_class || "").trim(),
+        status: String(item.status || "").trim(),
+      }))
+      .filter((item) => item.port);
+  } catch {
+    return listUsbSerialPortsFromMode();
+  }
+}
+
+async function listUsbSerialPortsFromMode() {
+  try {
+    const { stdout } = await execFileAsync("cmd.exe", ["/c", "mode"], {
+      windowsHide: true,
+      timeout: 5000,
+      maxBuffer: 1024 * 1024,
+    });
+    return Array.from(new Set(Array.from(stdout.matchAll(/\bCOM\d+\b/gi)).map((match) => match[0].toUpperCase())))
+      .map((port) => ({
+        port,
+        name: `${port} serieller Port`,
+        device_id: "",
+        manufacturer: "",
+        pnp_class: "Ports",
+        status: "OK",
+      }));
+  } catch {
+    return [];
+  }
 }
 
 function deviceBuildConfig(device) {
@@ -2066,6 +2490,58 @@ function parseCookies(cookieHeader) {
   );
 }
 
+async function handleDevLessonPreviewMigration(req, res) {
+  const body = await readJsonBody(req);
+  const slug = String(body.slug || "").trim();
+  const projectId = String(body.project_id || body.projectId || `project_${slug}`).trim();
+  const manifest = body.view_manifest || body.viewManifest;
+
+  if (!slug || !projectId || !manifest || typeof manifest !== "object") {
+    sendDevJson(res, 400, {
+      error: "invalid_lesson_preview_payload",
+      message: "slug, project_id und view_manifest werden benoetigt.",
+    });
+    return;
+  }
+
+  const normalizedManifest = {
+    schema_version: manifest.schema_version || 1,
+    title: String(manifest.title || ""),
+    summary: String(manifest.summary || ""),
+    primary_source_path: String(manifest.primary_source_path || manifest.primarySourcePath || "model/lesson.json"),
+    hide_source_editor: manifest.hide_source_editor !== false,
+    mode: manifest.mode || "guided_ide",
+    views: Array.isArray(manifest.views) ? manifest.views : [],
+  };
+
+  userIdeState.lessonManifestOverrides.set(slug, normalizedManifest);
+
+  let projectServerUpdated = false;
+  let projectServerError = "";
+  try {
+    await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}`, {
+      method: "PATCH",
+      body: {
+        view_manifest: normalizedManifest,
+        build_config: null,
+      },
+    });
+    projectServerUpdated = true;
+  } catch (error) {
+    projectServerError = error.message || String(error);
+  }
+
+  sendDevJson(res, 200, {
+    ok: true,
+    slug,
+    project_id: projectId,
+    view_count: normalizedManifest.views.length,
+    project_server_updated: projectServerUpdated,
+    project_server_error: projectServerError,
+    preview_url: `/app/ide/?project=${encodeURIComponent(projectId)}`,
+  });
+}
+
 function setSessionCookie(res, token, expiresAt) {
   res.setHeader("Set-Cookie", [
     `gernetix_demo_session=${encodeURIComponent(token)}; Path=/; HttpOnly; SameSite=Lax; Expires=${new Date(expiresAt).toUTCString()}`,
@@ -2081,6 +2557,16 @@ function clearSessionCookie(res) {
 function sendJson(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(payload));
+}
+
+function sendDevJson(res, status, payload) {
+  res.writeHead(status, {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+    "Content-Type": "application/json; charset=utf-8",
+  });
+  res.end(status === 204 ? "" : JSON.stringify(payload));
 }
 
 function redirect(res, location) {

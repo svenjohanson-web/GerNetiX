@@ -36,19 +36,32 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: Business
-    summary: API-Artefakt fuer Hardware-Katalog, Capabilities, Angebote, Matching, Warenkoerbe, Bestellungen und Kaufkontexte fuer spaetere Support- und Device-Management-Pruefungen.
+    summary: API-Artefakt fuer kaufbare Angebote, Matching, Warenkoerbe, Bestellungen und Kaufkontexte. Der Hardware Shop ist fachlich Client des Hardware Catalog API und fuehrt keine eigene Board-/Capability-Wahrheit.
+    usesApiArtifacts:
+      - api_artifact.hardware_catalog
     endpoints:
-      - GET /api/hardware-shop/capabilities
-      - GET /api/hardware-shop/hardware-items
-      - GET /api/hardware-shop/processor-boards
       - GET /api/hardware-shop/offers
       - POST /api/hardware-shop/match
       - POST /api/hardware-shop/carts
       - POST /api/hardware-shop/orders
       - GET /api/hardware-shop/orders/{order_id}/purchase-context
-      - POST /api/hardware-shop/admin/capabilities
-      - POST /api/hardware-shop/admin/hardware-items
       - POST /api/hardware-shop/admin/offers
+
+  - id: api_artifact.hardware_catalog
+    type: api_artifact
+    title: Hardware Catalog API
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: Hardware
+    summary: API-Artefakt fuer bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities. Der Katalog ist die fachliche Quelle fuer Board-Typen wie ESP-WROOM-32, ESP-WROOM-32 mit Display und Arduino Nano ATmega328P und persistiert in SQLite.
+    endpoints:
+      - GET /api/hardware-catalog/capabilities
+      - GET /api/hardware-catalog/capabilities/{capability_id}
+      - GET /api/hardware-catalog/hardware-items
+      - GET /api/hardware-catalog/hardware-items/{hardware_item_id}
+      - GET /api/hardware-catalog/processor-boards
+      - POST /api/hardware-catalog/admin/capabilities
+      - POST /api/hardware-catalog/admin/hardware-items
 
   - id: api_artifact.admin_tool
     type: api_artifact
@@ -397,7 +410,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: Account
-    summary: API-Artefakt fuer das Device-Inventar eines Accounts inklusive Community-Hardware, GerNetiX-Verified-Status, Capabilities, OTA-Status und Projektkompatibilitaet.
+    summary: API-Artefakt fuer das Device-Inventar eines Accounts inklusive Community-Hardware, GerNetiX-Verified-Status, Capabilities, OTA-Status, Projektkompatibilitaet und Discovery-Ergebnissen mit Kontozuordnungsstatus. Die Inventarisierung fragt zuerst einen konkreten Processor-Board-Eintrag aus dem Hardware Catalog API ab, zum Beispiel ESP-WROOM-32 oder ESP-WROOM-32 mit Display. ESP32-Methoden werden daraus abgeleitet und danach ueber WLAN-Suche im Kunden-Netz oder USB/Web-Serial vorbereitet; Setup-AP bleibt Provisioning-/Recovery-Kontext, weil er die Backend-Verbindung der Webapp trennt. Arduino Nano AVR wird experimentell ohne lokale Installation per Browser-Web-Serial-Bootloader-Handshake vorbereitet und danach manuell inventarisiert.
     derivedFromRequirements:
       - requirement.device_customer_registration_and_pairing
       - requirement.community_hardware_supported_without_entitlement
