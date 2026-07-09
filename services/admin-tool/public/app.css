@@ -47,6 +47,9 @@ h1 { font-size: 32px; }
   gap: 12px;
   align-items: start;
 }
+.admin-layout.wide-main {
+  grid-template-columns: minmax(0, 1.3fr) 320px;
+}
 .panel {
   background: var(--panel);
   border: 1px solid var(--line);

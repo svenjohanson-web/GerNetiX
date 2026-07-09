@@ -70,6 +70,11 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/admin/ai-context/summary") {
+      sendJson(res, 200, await service.aiContextAccessSummary(readContext(url)));
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/admin/ai-cost-controls/actions") {
       const body = await readJsonBody(req);
       sendJson(res, 201, await service.recordAiCostControlAction(body, readContext(url, body)));

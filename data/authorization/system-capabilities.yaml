@@ -94,6 +94,20 @@ items:
     ownerDomain: Authorization
     summary: Das System darf kostenpflichtige, fehlgeschlagene und abgelehnte KI-Aufrufe als Usage Events protokollieren.
 
+  - id: system_capability.ai_context_access_control
+    type: system_capability
+    title: AI Context Access Control
+    status: draft
+    ownerDomain: Authorization
+    summary: Das System darf vor KI-Aufrufen pruefen, ob Projektdateien, Graphdaten, Device-Daten, Admin-Statistiken oder Kundendaten als Kontext genutzt werden duerfen, und jede Entscheidung auditieren.
+
+  - id: system_capability.ai_context_grant_management
+    type: system_capability
+    title: AI Context Grant Management
+    status: draft
+    ownerDomain: Authorization
+    summary: Berechtigte Nutzer oder Admins duerfen zweckgebundene, zeitlich begrenzte KI-Kontext-Grants erteilen, widerrufen und einsehen.
+
   - id: system_capability.ai_suspicious_usage_detection
     type: system_capability
     title: AI Suspicious Usage Detection

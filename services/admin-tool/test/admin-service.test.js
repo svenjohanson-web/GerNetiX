@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { createDefaultAdminTool } = require("../src");
+const { AdminService, InMemoryAdminRepository, AdminAccessPolicy } = require("../src");
 
 function adminContext(overrides = {}) {
   return {
@@ -95,3 +96,89 @@ test("support without admin ai capability cannot read ai monitoring", async () =
     /KI Usage Monitoring ist nicht erlaubt/,
   );
 });
+
+test("ai context summary shows grants policy and recent decisions", async () => {
+  const service = createAdminServiceWithHttpJson({
+    "/api/ai-context/policy": {
+      policy: {
+        deny_without_grant: true,
+        require_explicit_source_scope: true,
+        allow_external_provider_customer_data: false,
+        default_max_context_items: 12,
+        protected_source_types: ["customer_data", "project_files"],
+      },
+    },
+    "/api/ai-context/grants": {
+      items: [{
+        grant_id: "grant-1",
+        account_id: "acct_1",
+        project_id: "project-1",
+        source_type: "project_files",
+        source_scope: "projects/project-1",
+        purpose: "architecture_assistance",
+        allowed_provider_scope: "external_redacted_only",
+        redaction_level: "masked",
+        max_context_items: 8,
+        valid_from: "2026-01-01T00:00:00.000Z",
+        valid_until: "2099-01-01T00:00:00.000Z",
+      }],
+    },
+    "/api/ai-context/audit-events": {
+      items: [{
+        audit_event_id: "audit-1",
+        source_type: "project_files",
+        access_decision: "allowed",
+        purpose: "architecture_assistance",
+      }, {
+        audit_event_id: "audit-2",
+        source_type: "customer_data",
+        access_decision: "denied",
+        rejection_reason: "external_provider_customer_data_blocked_by_policy",
+      }],
+    },
+  });
+
+  const result = await service.aiContextAccessSummary(adminContext({ purpose: "ai_context_access_review" }));
+
+  assert.equal(result.summary.service_available, true);
+  assert.equal(result.summary.active_grants, 1);
+  assert.equal(result.summary.external_grants, 1);
+  assert.equal(result.summary.customer_data_external_blocked, true);
+  assert.equal(result.summary.source_breakdown[0].source_type, "project_files");
+  assert.equal(result.summary.audit_summary.allowed, 1);
+  assert.equal(result.summary.audit_summary.denied, 1);
+});
+
+test("ai context summary falls back when context service is unavailable", async () => {
+  const service = createAdminServiceWithHttpJson({}, new Error("connect ECONNREFUSED"));
+
+  const result = await service.aiContextAccessSummary(adminContext({ purpose: "ai_context_access_review" }));
+
+  assert.equal(result.summary.service_available, false);
+  assert.equal(result.summary.active_grants, 0);
+  assert.match(result.summary.error, /ECONNREFUSED/);
+});
+
+function createAdminServiceWithHttpJson(routes, error = null) {
+  const repository = new InMemoryAdminRepository();
+  const service = new AdminService({
+    repository,
+    accessPolicy: new AdminAccessPolicy({ repository }),
+    llmConfigStore: {
+      publicConfig: () => ({}),
+      getConfig: () => ({}),
+      updateConfig: () => ({}),
+    },
+    serviceClients: {
+      deviceManagementBaseUrl: "http://device.test",
+      projectServerBaseUrl: "http://project.test",
+      aiUsageBaseUrl: "http://usage.test",
+      aiContextBaseUrl: "http://context.test",
+    },
+  });
+  service.httpJson = async (_baseUrl, pathname) => {
+    if (error) throw error;
+    return routes[pathname] || {};
+  };
+  return service;
+}

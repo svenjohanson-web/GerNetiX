@@ -18,9 +18,9 @@ tools/yaml-graph-sqlite/out/model-graph.sqlite
 
 ```text
 artifact_types:      96
-artifacts:           676
+artifacts:           688
 relationship_types:  58
-relationships:       2198
+relationships:       2236
 errors:              0
 warnings:            0
 ```

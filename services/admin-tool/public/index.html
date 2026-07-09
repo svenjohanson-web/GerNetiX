@@ -16,6 +16,7 @@
         <nav class="admin-nav" aria-label="Admin Navigation">
           <button type="button" data-admin-view="statistics">Statistik</button>
           <button type="button" data-admin-view="ai-usage">KI Usage</button>
+          <button type="button" data-admin-view="ai-context">LLM-Daten</button>
           <button type="button" data-admin-view="llm-config">LLM-Routing</button>
         </nav>
       </header>
@@ -126,6 +127,73 @@
           <dl id="adminLlmStatus" class="meta-list"></dl>
           <p class="helper-text">Diese Einstellung gilt fuer KI-Chat und Entwicklungsplattform in der Kunden-App. Lokale Ollama-Modelle bleiben auf diesem Rechner; API-Aufrufe gehen an den konfigurierten kompatiblen Endpoint.</p>
         </aside>
+      </section>
+
+      <section id="aiContextView" class="admin-view hidden">
+        <section class="metrics-grid" id="aiContextMetrics"></section>
+        <section class="admin-layout wide-main">
+          <article class="panel">
+            <p class="eyebrow">Kontextquellen</p>
+            <h2>LLM-Datenfreigaben</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Datenquelle</th>
+                    <th>Aktive Grants</th>
+                    <th>Extern</th>
+                    <th>Redaktion</th>
+                    <th>Zwecke</th>
+                  </tr>
+                </thead>
+                <tbody id="aiContextSourceRows"></tbody>
+              </table>
+            </div>
+          </article>
+          <aside class="panel">
+            <p class="eyebrow">Policy</p>
+            <h2>Schutzregeln</h2>
+            <dl id="aiContextPolicy" class="meta-list"></dl>
+            <div id="aiContextStatus" class="flash-status hidden"></div>
+          </aside>
+        </section>
+        <section class="admin-layout">
+          <article class="panel">
+            <p class="eyebrow">Grants</p>
+            <h2>Freigaben</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Status</th>
+                    <th>Scope</th>
+                    <th>Zweck</th>
+                    <th>Provider</th>
+                    <th>Gueltig bis</th>
+                  </tr>
+                </thead>
+                <tbody id="aiContextGrantRows"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="panel">
+            <p class="eyebrow">Audit</p>
+            <h2>Letzte Entscheidungen</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Entscheid</th>
+                    <th>Quelle</th>
+                    <th>Zweck</th>
+                    <th>Grund</th>
+                  </tr>
+                </thead>
+                <tbody id="aiContextAuditRows"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
       </section>
     </main>
     <script src="/admin/admin-config.js"></script>

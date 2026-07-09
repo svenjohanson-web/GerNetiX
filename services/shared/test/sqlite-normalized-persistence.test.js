@@ -8,6 +8,7 @@ const test = require("node:test");
 const { SqliteStateStore } = require("../index");
 const { SqliteBackedIdentityRepository } = require("../../identity-server/src/repositories/sqlite-backed-identity-repository");
 const { SqliteBackedAiUsageRepository } = require("../../ai-usage-server/src/repositories/sqlite-backed-ai-usage-repository");
+const { SqliteBackedAiContextRepository } = require("../../ai-context-server/src/repositories/sqlite-backed-ai-context-repository");
 const { SqliteBackedHardwareShopRepository } = require("../../hardware-shop/src/repositories/sqlite-backed-hardware-shop-repository");
 const { SqliteBackedAdminRepository } = require("../../admin-tool/src/repositories/sqlite-backed-admin-repository");
 const { SqliteBackedProvisioningRepository } = require("../../provisioning-tool/src/repositories/sqlite-backed-provisioning-repository");
@@ -40,6 +41,24 @@ test("remaining services write normalized sqlite tables", () => {
     model: "gpt-4.1-mini",
     status: "success",
     calculated_credits: 1,
+    created_at: "2026-01-01T00:00:00.000Z",
+  });
+
+  const aiContext = SqliteBackedAiContextRepository.create(dbPath);
+  aiContext.saveGrant({
+    grant_id: "ai-context-grant-1",
+    account_id: "acct-1",
+    project_id: "project-1",
+    granted_by_account_id: "acct-1",
+    source_type: "project_files",
+    source_scope: "projects/project-1",
+    purpose: "architecture_assistance",
+    allowed_provider_scope: "local_only",
+    redaction_level: "summary_only",
+    max_context_items: 8,
+    valid_from: "2026-01-01T00:00:00.000Z",
+    valid_until: "2026-02-01T00:00:00.000Z",
+    revoked_at: null,
     created_at: "2026-01-01T00:00:00.000Z",
   });
 
@@ -127,6 +146,7 @@ test("remaining services write normalized sqlite tables", () => {
   const db = new DatabaseSync(dbPath);
   assert.equal(tableCount(db, "identity_user_accounts"), 1);
   assert.equal(tableCount(db, "ai_usage_events"), 1);
+  assert.equal(tableCount(db, "ai_context_grants"), 1);
   assert.equal(tableCount(db, "hardware_shop_carts"), 1);
   assert.equal(tableCount(db, "admin_tool_consents"), 1);
   assert.equal(tableCount(db, "provisioning_sessions"), 1);

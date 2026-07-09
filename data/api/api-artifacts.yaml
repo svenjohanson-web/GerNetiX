@@ -69,12 +69,13 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: CrossDomain
-    summary: API-Artefakt fuer Admin-Uebersicht, Statistikseite, Device-Status, Customer-Data-Access-Consents, Audit Events, Learning Feedback, KI-Usage-Metriken, KI-Kostensteuerung und LLM-Routing-Konfiguration.
+    summary: API-Artefakt fuer Admin-Uebersicht, Statistikseite, Device-Status, Customer-Data-Access-Consents, Audit Events, Learning Feedback, KI-Usage-Metriken, KI-Kostensteuerung, LLM-Routing-Konfiguration und LLM-Datenfreigaben.
     derivedFromRequirements:
       - requirement.device_admin_status_inspection
       - requirement.customer_data_consent_for_admin_access
       - requirement.ai_admin_usage_dashboard
       - requirement.ai_admin_cost_control_actions
+      - requirement.ai_context_access_control
     endpoints:
       - GET /api/admin/overview
       - GET /api/admin/devices
@@ -84,6 +85,7 @@ items:
       - GET /api/admin/customer-data-access/audit-events
       - GET /api/admin/learning-feedback
       - GET /api/admin/ai-usage/summary
+      - GET /api/admin/ai-context/summary
       - POST /api/admin/ai-cost-controls/actions
       - GET /api/admin/llm-config
       - PUT /api/admin/llm-config
@@ -93,12 +95,14 @@ items:
       - statistics_overview
       - ai_usage_local_llm
       - ai_usage_public_llm_costs
+      - ai_context_access_summary
       - llm_routing_config
     rules:
       - Oeffentliche LLM-Nutzung muss geschaetzte Providerkosten ausweisen.
       - Lokale LLM-Nutzung fuehrt keine externen Providerkosten.
       - LLM-Routing-Konfiguration muss von Identity Server und Admin Tool aus derselben Runtime-Konfiguration gelesen werden.
       - API-basiertes LLM-Routing unterscheidet `apiProvider` fuer OpenAI-kompatible Chat-Completions und Claude/Anthropic Messages API.
+      - Die LLM-Datenuebersicht liest Grants, Policy und Audit-Events aus dem AI Context Access API und zeigt bei nicht erreichbarem Service einen sicheren Offline-Status.
 
   - id: api_artifact.provisioning_tool
     type: api_artifact
@@ -257,6 +261,33 @@ items:
     summary: Fachliches API-Artefakt fuer serverseitige Erfassung und Auswertung von KI Usage Events.
     derivedFromRequirements:
       - requirement.ai_usage_event_audit_trail
+
+  - id: api_artifact.ai_context_access
+    type: api_artifact
+    title: AI Context Access API
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Authorization
+    summary: API-Artefakt fuer KI-Kontext-Grants, globale Kontext-Access-Policy, Preflight-Entscheidungen und Audit-Events. Die API ist deny-by-default und nutzt eine eigene AI-Context-SQLite.
+    derivedFromRequirements:
+      - requirement.ai_context_access_control
+    relatedDataModels:
+      - data_model.ai_context_grant
+      - data_model.ai_context_policy
+      - data_model.ai_context_access_audit_event
+    endpoints:
+      - GET /api/ai-context/policy
+      - PUT /api/ai-context/policy
+      - GET /api/ai-context/grants
+      - POST /api/ai-context/grants
+      - POST /api/ai-context/grants/{grant_id}/revoke
+      - POST /api/ai-context/preflight
+      - GET /api/ai-context/audit-events
+    rules:
+      - Ohne aktiven passenden Grant wird Kontextzugriff abgelehnt.
+      - Jeder erlaubte oder abgelehnte Preflight erzeugt ein Audit-Event.
+      - Externe Provider duerfen kundenrelevante Daten standardmaessig nicht erhalten.
+      - Grants muessen Scope, Zweck, Provider-Scope, Redaktionsstufe und Gueltigkeit enthalten.
 
   - id: api_artifact.ai_admin_usage_dashboard
     type: api_artifact

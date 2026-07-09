@@ -111,6 +111,58 @@ items:
       - requirement.ai_admin_cost_control_actions
       - requirement.ai_suspicious_usage_detection
 
+  - id: architecture_artifact.ai_context_access_control
+    type: architecture_artifact
+    title: KI Context Access Control
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Authorization
+    summary: Eigenstaendige Zugriffsschicht fuer KI-Kontextdaten. Sie fuehrt Grants, globale Policy und Audit-Events in einer eigenen AI-Context-SQLite und entscheidet vor jedem Kontextabruf deny-by-default, ob eine Quelle fuer Zweck, Scope, Provider und Redaktionsstufe genutzt werden darf.
+    derivedFromRequirements:
+      - requirement.ai_context_access_control
+    affectsDataModels:
+      - data_model.ai_context_grant
+      - data_model.ai_context_policy
+      - data_model.ai_context_access_audit_event
+    affectsApiArtifacts:
+      - api_artifact.ai_context_access
+    usesArchitectureArtifacts:
+      - architecture_artifact.ai_usage_observability
+    containsArchitectureComponents:
+      - component.ai_context_grant_registry
+      - component.ai_context_access_policy
+      - component.ai_context_audit_log
+    implementationNotes:
+      - Erster Service liegt unter `services/ai-context-server`.
+      - Default-Port ist `5500`.
+      - Default-SQLite ist `.runtime/gernetix-ai-context.sqlite`, bewusst getrennt vom allgemeinen Runtime-State.
+      - Ohne passenden aktiven Grant wird Kontextzugriff abgelehnt und auditiert.
+      - Externe Provider sind fuer Kundendaten global blockiert, solange die Policy dies nicht explizit erlaubt.
+
+  - id: component.ai_context_grant_registry
+    type: architecture_component
+    title: AI Context Grant Registry Component
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Authorization
+    summary: Speichert account-, projekt-, quelle-, scope-, zweck- und providergebundene Kontext-Grants mit Gueltigkeit, Widerruf und Redaktionsstufe.
+
+  - id: component.ai_context_access_policy
+    type: architecture_component
+    title: AI Context Access Policy Component
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Authorization
+    summary: Bewertet KI-Kontext-Preflights gegen Grant, Provider, Datenquelle, Scope, Zweck, globale Policy und Redaktionsanforderungen.
+
+  - id: component.ai_context_audit_log
+    type: architecture_component
+    title: AI Context Audit Log Component
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Authorization
+    summary: Protokolliert jede erlaubte und abgelehnte Kontextzugriffsentscheidung mit Account, Projekt, Quelle, Zweck, Provider, Modell, Grant und Ablehnungsgrund.
+
   - id: architecture_artifact.local_ai_chat
     type: architecture_artifact
     title: Lokaler KI-Chat in der Kunden-IDE
@@ -123,6 +175,7 @@ items:
     usesArchitectureArtifacts:
       - architecture_artifact.ai_cost_protection
       - architecture_artifact.ai_usage_observability
+      - architecture_artifact.ai_context_access_control
     containsArchitectureComponents:
       - component.local_ai_chat_adapter
     implementationNotes:
@@ -199,6 +252,7 @@ items:
     usesArchitectureArtifacts:
       - architecture_artifact.ai_cost_protection
       - architecture_artifact.ai_usage_observability
+      - architecture_artifact.ai_context_access_control
     derivedFromRequirements:
       - requirement.architecture_discovery_guided_by_llm
     affectsDataModels:

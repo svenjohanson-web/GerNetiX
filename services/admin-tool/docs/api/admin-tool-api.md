@@ -61,6 +61,21 @@ Bei oeffentlichen LLMs werden geschaetzte Providerkosten ausgewiesen. Lokale LLM
 
 Kostensteuerungsaktionen werden als Admin-Audit-Event protokolliert.
 
+## LLM-Datenfreigaben
+
+```text
+GET /api/admin/ai-context/summary
+```
+
+Liefert eine Admin-Zusammenfassung, welche Daten dem LLM als Kontext bereitgestellt werden duerfen:
+
+- globale AI-Context-Policy
+- aktive, abgelaufene und widerrufene Grants
+- Datenquellen nach Typ, Provider-Scope und Redaktionsstufe
+- letzte Kontext-Preflight-Entscheidungen mit erlaubten und abgelehnten Zugriffen
+
+Die Antwort enthaelt Metadaten zu Quellen und Grants, aber keine eigentlichen Kontextinhalte und keine Secrets. Ist der AI Context Server nicht erreichbar, liefert der Endpunkt einen sicheren Offline-Status mit leeren Listen.
+
 ## LLM-Konfiguration
 
 ```text

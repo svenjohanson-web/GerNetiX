@@ -4,6 +4,7 @@ const state = {
   modelError: "",
   overview: null,
   aiUsage: null,
+  aiContext: null,
   currentView: "statistics",
 };
 
@@ -34,6 +35,7 @@ bootstrap();
 async function bootstrap() {
   await loadOverview();
   await loadAiUsage();
+  await loadAiContext();
   await loadConfig();
   await loadLocalModels();
   render();
@@ -46,6 +48,11 @@ async function loadOverview() {
 async function loadAiUsage() {
   const result = await getJson("/api/admin/ai-usage/summary");
   state.aiUsage = result.summary || null;
+}
+
+async function loadAiContext() {
+  const result = await getJson("/api/admin/ai-context/summary");
+  state.aiContext = result.summary || null;
 }
 
 async function loadConfig() {
@@ -64,6 +71,7 @@ function render() {
   renderNavigation();
   renderStatistics();
   renderAiUsage();
+  renderAiContext();
   renderForm();
   renderStatus();
   renderProviderFields();
@@ -87,6 +95,7 @@ function viewId(view) {
   return {
     statistics: "statisticsView",
     "ai-usage": "aiUsageView",
+    "ai-context": "aiContextView",
     "llm-config": "llmConfigView",
   }[view] || "statisticsView";
 }
@@ -128,6 +137,43 @@ function renderAiUsage() {
   ].join("");
   document.querySelector("#aiProviderRows").innerHTML = renderProviderRows(summary.provider_breakdown || []);
   document.querySelector("#aiModelRows").innerHTML = renderModelRows(summary.model_breakdown || []);
+}
+
+function renderAiContext() {
+  const summary = state.aiContext || {};
+  const audit = summary.audit_summary || {};
+  document.querySelector("#aiContextMetrics").innerHTML = [
+    metricCard("Aktive Grants", formatNumber(summary.active_grants), `${formatNumber(summary.total_grants)} gesamt`),
+    metricCard("Externe Freigaben", formatNumber(summary.external_grants), summary.customer_data_external_blocked ? "Kundendaten blockiert" : "Kundendaten extern erlaubt"),
+    metricCard("Audit Entscheide", formatNumber(audit.total_events), `${formatNumber(audit.denied)} abgelehnt`),
+    metricCard("Service", summary.service_available ? "aktiv" : "offline", "AI Context Server"),
+  ].join("");
+  renderAiContextStatus(summary);
+  renderAiContextPolicy(summary.policy || {});
+  document.querySelector("#aiContextSourceRows").innerHTML = renderAiContextSourceRows(summary.source_breakdown || []);
+  document.querySelector("#aiContextGrantRows").innerHTML = renderAiContextGrantRows(summary.grants || []);
+  document.querySelector("#aiContextAuditRows").innerHTML = renderAiContextAuditRows(summary.recent_audit_events || []);
+}
+
+function renderAiContextStatus(summary) {
+  const target = document.querySelector("#aiContextStatus");
+  if (!summary.service_available) {
+    target.className = "flash-status error";
+    target.textContent = `AI Context Server nicht erreichbar: ${summary.error || "keine Verbindung"}`;
+    return;
+  }
+  target.className = "flash-status ok";
+  target.textContent = "Kontext-Policy und Grants werden aus dem AI Context Server gelesen.";
+}
+
+function renderAiContextPolicy(policy) {
+  document.querySelector("#aiContextPolicy").innerHTML = [
+    ["Deny-by-default", policy.deny_without_grant ? "aktiv" : "aus"],
+    ["Expliziter Scope", policy.require_explicit_source_scope ? "erforderlich" : "optional"],
+    ["Kundendaten extern", policy.allow_external_provider_customer_data ? "erlaubt" : "blockiert"],
+    ["Default-Kontext", formatNumber(policy.default_max_context_items)],
+    ["Geschuetzte Quellen", (policy.protected_source_types || []).join(", ") || "-"],
+  ].map(meta).join("");
 }
 
 function renderForm() {
@@ -273,6 +319,44 @@ function renderModelRows(items) {
   `).join("");
 }
 
+function renderAiContextSourceRows(items) {
+  if (!items.length) return `<tr><td colspan="5" class="empty-cell">Keine aktiven LLM-Datenfreigaben vorhanden.</td></tr>`;
+  return items.map((item) => `
+    <tr>
+      <td><strong>${escapeHtml(sourceTypeLabel(item.source_type))}</strong><span>${escapeHtml(item.source_type || "-")}</span></td>
+      <td>${formatNumber(item.active_grants)}</td>
+      <td>${formatNumber(item.external_grants)}</td>
+      <td>${escapeHtml((item.redaction_levels || []).map(redactionLabel).join(", ") || "-")}</td>
+      <td>${escapeHtml((item.purposes || []).map(purposeLabel).join(", ") || "-")}</td>
+    </tr>
+  `).join("");
+}
+
+function renderAiContextGrantRows(items) {
+  if (!items.length) return `<tr><td colspan="5" class="empty-cell">Keine Grants vorhanden.</td></tr>`;
+  return items.map((item) => `
+    <tr>
+      <td><strong>${escapeHtml(grantStateLabel(item.state))}</strong><span>${escapeHtml(item.account_id || "-")}</span></td>
+      <td><strong>${escapeHtml(sourceTypeLabel(item.source_type))}</strong><span>${escapeHtml(item.source_scope || "-")}</span></td>
+      <td>${escapeHtml(purposeLabel(item.purpose))}</td>
+      <td><strong>${escapeHtml(providerScopeLabel(item.allowed_provider_scope))}</strong><span>${escapeHtml(redactionLabel(item.redaction_level))}</span></td>
+      <td>${escapeHtml(formatDateTime(item.valid_until))}</td>
+    </tr>
+  `).join("");
+}
+
+function renderAiContextAuditRows(items) {
+  if (!items.length) return `<tr><td colspan="4" class="empty-cell">Keine Audit-Entscheidungen vorhanden.</td></tr>`;
+  return items.map((item) => `
+    <tr>
+      <td><strong>${escapeHtml(accessDecisionLabel(item.access_decision))}</strong><span>${escapeHtml(formatDateTime(item.occurred_at))}</span></td>
+      <td>${escapeHtml(sourceTypeLabel(item.source_type))}</td>
+      <td>${escapeHtml(purposeLabel(item.purpose))}</td>
+      <td>${escapeHtml(item.rejection_reason || item.grant_id || "-")}</td>
+    </tr>
+  `).join("");
+}
+
 function metricCard(label, value, detail) {
   return `
     <article class="metric-card">
@@ -289,6 +373,57 @@ function summaryItem(label, value) {
 
 function providerLabel(type) {
   return type === "external" ? "Oeffentlich" : "Lokal";
+}
+
+function sourceTypeLabel(type) {
+  return {
+    current_chat: "Aktueller Chat",
+    project_files: "Projektdateien",
+    graph_database: "Graphdatenbank",
+    device_data: "Device-Daten",
+    customer_data: "Kundendaten",
+    admin_statistics: "Admin-Statistiken",
+  }[type] || type || "-";
+}
+
+function purposeLabel(purpose) {
+  return {
+    architecture_assistance: "Architekturhilfe",
+    debugging: "Debugging",
+    support_case: "Supportfall",
+    usage_analysis: "Nutzungsanalyse",
+    general_chat: "Allgemeiner Chat",
+  }[purpose] || purpose || "-";
+}
+
+function providerScopeLabel(scope) {
+  return {
+    local_only: "Nur lokal",
+    external_allowed: "Extern erlaubt",
+    external_redacted_only: "Extern nur redigiert",
+  }[scope] || scope || "-";
+}
+
+function redactionLabel(level) {
+  return {
+    none: "voll",
+    metadata_only: "nur Metadaten",
+    summary_only: "nur Zusammenfassung",
+    masked: "maskiert",
+  }[level] || level || "-";
+}
+
+function grantStateLabel(state) {
+  return {
+    active: "aktiv",
+    scheduled: "geplant",
+    expired: "abgelaufen",
+    revoked: "widerrufen",
+  }[state] || state || "-";
+}
+
+function accessDecisionLabel(decision) {
+  return decision === "allowed" ? "erlaubt" : "abgelehnt";
 }
 
 function activeProviderLabel(config) {
@@ -318,6 +453,13 @@ function formatCurrency(value) {
 function formatDuration(value) {
   if (!Number.isFinite(value)) return "-";
   return value < 1000 ? `${value} ms` : `${(value / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} s`;
+}
+
+function formatDateTime(value) {
+  if (!value) return "-";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
 }
 
 function meta([label, value]) {

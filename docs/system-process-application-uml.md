@@ -37,6 +37,7 @@ flowchart LR
     hardwareCatalog["Hardware Catalog<br/>:4910"]
     hardwareShop["Hardware Shop<br/>:4900"]
     aiUsage["AI Usage Server<br/>:5000"]
+    aiContext["AI Context Server<br/>Grants + Policy<br/>:5500"]
     communityPlatform["Community Platform<br/>:5200"]
     communityAi["Community AI Assistant<br/>:5300"]
     persistence["Persistence Server<br/>:5400"]
@@ -59,6 +60,7 @@ flowchart LR
 
   subgraph storage["Persistenz / Wissensbasis"]
     runtimeDb[("Runtime SQLite<br/>.runtime/gernetix-services.sqlite")]
+    aiContextDb[("AI Context SQLite<br/>.runtime/gernetix-ai-context.sqlite")]
     graphDb[("Kanonischer SQLite Graph<br/>tools/yaml-graph-sqlite/out/model-graph.sqlite")]
     repoFiles[("Projektdateien<br/>README, data, services, tools, git")]
   end
@@ -83,6 +85,7 @@ flowchart LR
     hardwareShop --> hardwareCatalog
   identity --> deviceManagement
   identity --> aiUsage
+  identity --> aiContext
   identity --> localOllama
   identity --> externalLlm
 
@@ -94,6 +97,7 @@ flowchart LR
   adminTool --> deviceManagement
   adminTool --> projectServer
   adminTool --> aiUsage
+  adminTool --> aiContext
 
   provisioning --> deviceManagement
   recovery --> deviceManagement
@@ -112,6 +116,7 @@ flowchart LR
   recovery -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   hardwareShop -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   aiUsage -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  aiContext -. "eigene SQLite-Persistenz" .-> aiContextDb
   communityPlatform -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   communityAi -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   adminTool -. "direkte SQLite-State-Persistenz" .-> runtimeDb
@@ -140,6 +145,7 @@ flowchart LR
 | Hardware Catalog | 4910 | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als SQLite-persistente Quelle |
 | Hardware Shop | 4900 | Angebote, Warenkorb, Bestellung, Purchase Context; liest Hardwaredaten als Client des Hardware Catalog |
 | AI Usage Server | 5000 | Credits, Preflight, Usage Events, Cost Controls |
+| AI Context Server | 5500 | Kontext-Grants, Access Policy, Preflight und Audit fuer KI-Datenzugriff |
 | Context Manager | 5050 | Projektkontext, Vorschlaege, Context Packs |
 | Recovery Tool Server | 5100 | eigenstaendige Nutzer-/Support-HMI, Recovery-Sessions, Credential-Erneuerung, Connectivity-Recovery |
 | Community Platform | 5200 | Community-Fragen, Antworten, Verifikation |
@@ -159,6 +165,7 @@ flowchart LR
 | Hardware Shop | Hardware Catalog | Aufloesung von HardwareItem-IDs und Capabilities fuer Angebote |
 | GerNetiX Plattform UI / Identity Server | Device Management Server | eigene Devices, Registrierung, Purchase Context |
 | GerNetiX Plattform UI / Identity Server | AI Usage Server | Credit-Anzeige und AI-Preflight |
+| GerNetiX Plattform UI / Identity Server | AI Context Server | KI-Kontext-Preflight vor Zugriff auf Projekt-, Graph-, Device- oder Kundendaten |
 | GerNetiX Plattform UI / Identity Server | Lokaler Ollama LLM | Dev-PoC fuer Architektur-Discovery und allgemeinen KI-Chat, wenn Admin-Routing auf lokalen Provider zeigt |
 | GerNetiX Plattform UI / Identity Server | Externe LLM API | Optionales OpenAI-kompatibles API-Routing fuer KI-Chat und Entwicklungsplattform |
 | Build & Deploy Server | MQTT Broker | Deploy-Auftraege fuer konkrete Devices veroeffentlichen und Statusmeldungen empfangen |
@@ -169,6 +176,7 @@ flowchart LR
 | Admin Tool API | Device Management Server | Device-/Support-/Consent-Sichten |
 | Admin Tool API | Project Server | Learning Feedback |
 | Admin Tool API | AI Usage Server | Usage-Monitoring und Cost Controls |
+| Admin Tool API | AI Context Server | Kontext-Grants, Policy und Audit fuer KI-Datenzugriffe administrieren |
 | Provisioning Tool Server | Device Management Server | registriert verifizierte Devices |
 | Provisioning Tool Server | Runtime SQLite / Firmware Artifact Repository | liest versionierte Basissoftware-Artefaktreferenz fuer Factory-Flash und speichert Provisioning-State |
 | Recovery Tool Server | Device Management Server | registriert Recovery-/Community-Devices |
@@ -179,6 +187,7 @@ flowchart LR
 ## Hinweise
 
 - Der Persistence Server ist ein HTTP-Service fuer generische State-Dokumente. Mehrere Services nutzen aktuell zusaetzlich direkte SQLite-State-Persistenz ueber gemeinsame Repository-/Store-Bausteine.
+- Der AI Context Server nutzt bewusst eine eigene SQLite-Datei `.runtime/gernetix-ai-context.sqlite`. Kontext-Grants, globale Kontext-Policy und Audit-Events werden damit getrennt vom allgemeinen Runtime-State verwaltet.
 - Login UI, Dashboard, Entwicklungsplattform, KI-Chat, User IDE und Guided-Code-Lesson-Einstieg sind ein gemeinsames Plattform-Frontend-Artefakt am Identity Server, keine getrennten Anwendungen mit getrennten Logins. Im Projekt liegt dieses Artefakt gebuendelt unter `services/identity-server/public/app`.
 - Die Entwicklungsplattform ist im PoC unter `/app/development-platform/` erreichbar und nutzt serverseitig `/api/platform/development-assistant/chat` als Proxy zum im Admin Tool konfigurierten LLM-Provider. Lokal ist Ollama vorgesehen; optional kann ein OpenAI-kompatibler API-Endpunkt oder Claude/Anthropic konfiguriert werden. Aktuell sind nur aktueller Chat und fester Architektur-Prompt als Datenquellen freigegeben.
 - Der allgemeine KI-Chat ist im PoC unter `/app/ki-chat/` erreichbar und nutzt serverseitig `/api/platform/ai-chat/chat` als separaten Proxy zum im Admin Tool konfigurierten LLM-Provider. Er ist vom Architektur-Discovery-Dialog getrennt und darf aktuell nur den aktuellen Chat als Datenquelle verwenden.

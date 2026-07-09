@@ -387,6 +387,94 @@ items:
     derivedFromRequirements:
       - requirement.ai_admin_cost_control_actions
 
+  - id: data_model.ai_context_grant
+    type: data_model
+    title: AiContextGrant
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Authorization
+    summary: Expliziter, zeitlich begrenzter Grant, der einer KI fuer einen Account, optional ein Projekt, eine Datenquelle, einen Scope und einen Zweck Kontextzugriff erlaubt.
+    fields:
+      - grantId
+      - accountId
+      - projectId
+      - grantedByAccountId
+      - sourceType
+      - sourceScope
+      - purpose
+      - allowedProviderScope
+      - redactionLevel
+      - maxContextItems
+      - validFrom
+      - validUntil
+      - revokedAt
+      - createdAt
+      - rationale
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    grantRules:
+      - Default ist deny-by-default; ohne aktiven Grant darf keine Kontextquelle in einen KI-Aufruf aufgenommen werden.
+      - Provider-Scope unterscheidet mindestens local_only, external_allowed und external_redacted_only.
+      - Redaktionsstufe unterscheidet mindestens none, metadata_only, summary_only und masked.
+      - Grants muessen zeitlich begrenzt sein und koennen widerrufen werden.
+    derivedFromRequirements:
+      - requirement.ai_context_access_control
+
+  - id: data_model.ai_context_policy
+    type: data_model
+    title: AiContextPolicy
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Authorization
+    summary: Globale Policy fuer KI-Kontextzugriff, insbesondere Deny-by-default, explizite Source-Scopes, externe Provider bei Kundendaten und Default-Grenzen fuer Kontextumfang.
+    fields:
+      - policyId
+      - denyWithoutGrant
+      - requireExplicitSourceScope
+      - allowExternalProviderCustomerData
+      - defaultMaxContextItems
+      - protectedSourceTypes
+      - updatedAt
+    privacyClassification: internal
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.ai_context_access_control
+
+  - id: data_model.ai_context_access_audit_event
+    type: data_model
+    title: AiContextAccessAuditEvent
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Authorization
+    summary: Audit-Event fuer jede erlaubte oder abgelehnte Entscheidung, ob Kontextdaten in einen KI-Aufruf aufgenommen werden duerfen.
+    fields:
+      - auditEventId
+      - occurredAt
+      - accountId
+      - projectId
+      - actorId
+      - actorRole
+      - sourceType
+      - sourceScope
+      - purpose
+      - provider
+      - model
+      - grantId
+      - accessDecision
+      - rejectionReason
+      - redactionLevel
+      - allowedContextItems
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.ai_context_access_control
+
   - id: data_model.community_ai_assistant_query
     type: data_model
     title: CommunityAiAssistantQuery

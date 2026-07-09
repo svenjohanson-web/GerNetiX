@@ -21,6 +21,7 @@ function createDefaultAdminTool(config = {}) {
       deviceManagementBaseUrl: config.deviceManagementBaseUrl,
       projectServerBaseUrl: config.projectServerBaseUrl,
       aiUsageBaseUrl: config.aiUsageBaseUrl,
+      aiContextBaseUrl: config.aiContextBaseUrl,
     } : null,
   });
 }

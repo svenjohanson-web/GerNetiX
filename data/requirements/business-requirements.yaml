@@ -362,6 +362,41 @@ items:
     verifiedByTestArtifacts:
       - test_artifact.ai_usage_event_audit_trail
 
+  - id: requirement.ai_context_access_control
+    type: requirement
+    title: KI-Kontextzugriff nur mit Grant und Audit erlauben
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Authorization
+    summary: KI-Assistenten duerfen Projektdateien, Graphdaten, Device-Daten, Admin-Statistiken oder kundenrelevante Daten nur nutzen, wenn ein expliziter, zeitlich begrenzter Grant fuer Quelle, Scope, Zweck, Provider-Scope und Redaktionsstufe vorliegt. Jeder erlaubte und abgelehnte Kontextzugriff muss auditiert werden. Externe Provider duerfen kundenrelevante Daten nur nutzen, wenn Policy und Grant dies ausdruecklich erlauben; Standard ist deny-by-default.
+    derivedFromBusinessCapabilities:
+      - BC-041
+      - BC-043
+    derivedFromRequirements:
+      - requirement.ai_usage_event_audit_trail
+      - requirement.customer_data_consent_for_admin_access
+    affectsArchitectureArtifacts:
+      - architecture_artifact.ai_context_access_control
+      - architecture_artifact.local_ai_chat
+      - architecture_artifact.project_architecture_discovery_assistant
+    affectsDataModels:
+      - data_model.ai_context_grant
+      - data_model.ai_context_policy
+      - data_model.ai_context_access_audit_event
+    affectsApiArtifacts:
+      - api_artifact.ai_context_access
+    requiredSystemCapabilities:
+      - system_capability.ai_context_access_control
+      - system_capability.ai_context_grant_management
+    acceptanceCriteria:
+      - Ohne passenden aktiven Grant wird jeder Kontextzugriff abgelehnt und auditiert.
+      - Grants sind account-, projekt-, quelle-, scope- und zweckgebunden.
+      - Grants enthalten Provider-Scope wie `local_only`, `external_allowed` oder `external_redacted_only`.
+      - Grants enthalten eine Redaktionsstufe wie `none`, `metadata_only`, `summary_only` oder `masked`.
+      - Externe Provider duerfen kundenrelevante Daten standardmaessig nicht erhalten.
+      - Jeder Preflight erzeugt ein Audit-Event mit Entscheidung und Ablehnungsgrund.
+      - Kontext-Grants und Audit-Events werden in einer eigenen AI-Context-SQLite gespeichert.
+
   - id: requirement.ai_admin_usage_dashboard
     type: requirement
     title: Admin Dashboard fuer KI Usage Monitoring bereitstellen

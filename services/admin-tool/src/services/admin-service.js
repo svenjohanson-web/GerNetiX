@@ -178,6 +178,39 @@ class AdminService {
     return { access, summary: summarizeAiUsage(this.repository.listAiUsageEvents()) };
   }
 
+  async aiContextAccessSummary(context) {
+    const access = this.accessPolicy.decideAdminCapability({
+      actor: context.actor,
+      capability: "admin_ai_usage_monitoring",
+      purpose: "ai_context_access_review",
+      dataModelId: "data_model.ai_context_access_audit_event",
+    });
+    if (access.decision === "denied") {
+      throw new AdminToolError("access_denied", "KI Kontextzugriff-Monitoring ist nicht erlaubt.", 403, access);
+    }
+    if (!this.serviceClients?.aiContextBaseUrl) {
+      return { access, summary: emptyAiContextSummary("ai_context_service_not_configured") };
+    }
+    try {
+      const [policy, grants, auditEvents] = await Promise.all([
+        this.remoteAiContextPolicy(),
+        this.remoteAiContextGrants(),
+        this.remoteAiContextAuditEvents(),
+      ]);
+      return {
+        access,
+        summary: summarizeAiContextAccess({
+          policy: policy.policy || policy,
+          grants: grants.items || [],
+          auditEvents: auditEvents.items || [],
+          serviceAvailable: true,
+        }),
+      };
+    } catch (error) {
+      return { access, summary: emptyAiContextSummary(error.message || String(error)) };
+    }
+  }
+
   async recordAiCostControlAction(input, context) {
     const access = this.accessPolicy.decideAdminCapability({
       actor: context.actor,
@@ -389,6 +422,18 @@ class AdminService {
     return this.httpJson(this.serviceClients.aiUsageBaseUrl, "/api/ai-usage/admin/dashboard");
   }
 
+  async remoteAiContextPolicy() {
+    return this.httpJson(this.serviceClients.aiContextBaseUrl, "/api/ai-context/policy");
+  }
+
+  async remoteAiContextGrants() {
+    return this.httpJson(this.serviceClients.aiContextBaseUrl, "/api/ai-context/grants");
+  }
+
+  async remoteAiContextAuditEvents() {
+    return this.httpJson(this.serviceClients.aiContextBaseUrl, "/api/ai-context/audit-events");
+  }
+
   async httpJson(baseUrl, pathname, options = {}) {
     const response = await fetch(`${baseUrl}${pathname}`, {
       method: options.method || "GET",
@@ -445,6 +490,143 @@ function summarizeAiUsage(events) {
     provider_breakdown,
     model_breakdown,
   };
+}
+
+function summarizeAiContextAccess({ policy = {}, grants = [], auditEvents = [], serviceAvailable = false }) {
+  const now = new Date();
+  const grantsWithState = grants.map((grant) => ({
+    ...grant,
+    state: grantState(grant, now),
+    external_allowed: grant.allowed_provider_scope === "external_allowed" || grant.allowed_provider_scope === "external_redacted_only",
+  }));
+  const activeGrants = grantsWithState.filter((grant) => grant.state === "active");
+  const source_breakdown = summarizeContextSources(activeGrants);
+  const audit_summary = summarizeContextAudit(auditEvents);
+  return {
+    service_available: serviceAvailable,
+    policy: {
+      deny_without_grant: policy.deny_without_grant !== false,
+      require_explicit_source_scope: policy.require_explicit_source_scope !== false,
+      allow_external_provider_customer_data: policy.allow_external_provider_customer_data === true,
+      default_max_context_items: policy.default_max_context_items || 0,
+      protected_source_types: policy.protected_source_types || [],
+    },
+    total_grants: grants.length,
+    active_grants: activeGrants.length,
+    revoked_grants: grantsWithState.filter((grant) => grant.state === "revoked").length,
+    expired_grants: grantsWithState.filter((grant) => grant.state === "expired").length,
+    external_grants: activeGrants.filter((grant) => grant.external_allowed).length,
+    customer_data_external_blocked: policy.allow_external_provider_customer_data !== true,
+    source_breakdown,
+    grants: grantsWithState.sort(sortGrantsForReview),
+    audit_summary,
+    recent_audit_events: auditEvents.slice(-12).reverse(),
+  };
+}
+
+function emptyAiContextSummary(error = "") {
+  return {
+    service_available: false,
+    error,
+    policy: {
+      deny_without_grant: true,
+      require_explicit_source_scope: true,
+      allow_external_provider_customer_data: false,
+      default_max_context_items: 0,
+      protected_source_types: [],
+    },
+    total_grants: 0,
+    active_grants: 0,
+    revoked_grants: 0,
+    expired_grants: 0,
+    external_grants: 0,
+    customer_data_external_blocked: true,
+    source_breakdown: [],
+    grants: [],
+    audit_summary: {
+      total_events: 0,
+      allowed: 0,
+      denied: 0,
+      by_source: [],
+      by_reason: [],
+    },
+    recent_audit_events: [],
+  };
+}
+
+function summarizeContextSources(grants) {
+  const groups = new Map();
+  for (const grant of grants) {
+    const key = grant.source_type || "unknown";
+    if (!groups.has(key)) {
+      groups.set(key, {
+        source_type: key,
+        active_grants: 0,
+        external_grants: 0,
+        local_only_grants: 0,
+        redaction_levels: new Set(),
+        purposes: new Set(),
+      });
+    }
+    const group = groups.get(key);
+    group.active_grants += 1;
+    group.external_grants += grant.external_allowed ? 1 : 0;
+    group.local_only_grants += grant.allowed_provider_scope === "local_only" ? 1 : 0;
+    group.redaction_levels.add(grant.redaction_level || "unknown");
+    group.purposes.add(grant.purpose || "unknown");
+  }
+  return Array.from(groups.values()).map((group) => ({
+    source_type: group.source_type,
+    active_grants: group.active_grants,
+    external_grants: group.external_grants,
+    local_only_grants: group.local_only_grants,
+    redaction_levels: Array.from(group.redaction_levels).sort(),
+    purposes: Array.from(group.purposes).sort(),
+  })).sort((left, right) => left.source_type.localeCompare(right.source_type));
+}
+
+function summarizeContextAudit(events) {
+  const bySource = new Map();
+  const byReason = new Map();
+  let allowed = 0;
+  let denied = 0;
+  for (const event of events) {
+    if (event.access_decision === "allowed") allowed += 1;
+    if (event.access_decision === "denied") denied += 1;
+    increment(bySource, event.source_type || "unknown");
+    if (event.rejection_reason) increment(byReason, event.rejection_reason);
+  }
+  return {
+    total_events: events.length,
+    allowed,
+    denied,
+    by_source: mapCounts(bySource),
+    by_reason: mapCounts(byReason),
+  };
+}
+
+function grantState(grant, now) {
+  if (grant.revoked_at) return "revoked";
+  if (grant.valid_from && new Date(grant.valid_from).getTime() > now.getTime()) return "scheduled";
+  if (grant.valid_until && new Date(grant.valid_until).getTime() <= now.getTime()) return "expired";
+  return "active";
+}
+
+function sortGrantsForReview(left, right) {
+  const stateOrder = { active: 0, scheduled: 1, expired: 2, revoked: 3 };
+  const stateCompare = (stateOrder[left.state] ?? 9) - (stateOrder[right.state] ?? 9);
+  if (stateCompare) return stateCompare;
+  return String(left.source_type || "").localeCompare(String(right.source_type || ""));
+}
+
+function increment(map, key) {
+  map.set(key, (map.get(key) || 0) + 1);
+}
+
+function mapCounts(map) {
+  return Array.from(map.entries())
+    .map(([key, count]) => ({ key, count }))
+    .sort((left, right) => right.count - left.count || left.key.localeCompare(right.key));
 }
 
 function addAiUsageStats(groups, key, base, event) {

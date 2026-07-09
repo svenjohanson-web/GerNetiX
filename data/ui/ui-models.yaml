@@ -128,3 +128,30 @@ items:
       - ai_usage_available
       - no_ai_usage_events
       - ai_usage_backend_unavailable
+
+  - id: ui_model.admin_ai_context_access_dashboard
+    type: ui_model
+    title: Admin LLM-Datenfreigaben
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: Authorization
+    summary: Admin-Unterseite, die zeigt, welche Datenquellen dem LLM als Kontext bereitstehen, welche Grants aktiv, abgelaufen oder widerrufen sind, welche Provider-Scope- und Redaktionsstufe gilt und welche Kontext-Preflight-Entscheidungen auditiert wurden.
+    derivedFromRequirements:
+      - requirement.ai_context_access_control
+    usesApiArtifacts:
+      - api_artifact.admin_tool
+      - api_artifact.ai_context_access
+    usesDataModels:
+      - data_model.ai_context_grant
+      - data_model.ai_context_policy
+      - data_model.ai_context_access_audit_event
+    requiredStates:
+      - loading_ai_context_access
+      - ai_context_access_available
+      - no_ai_context_grants
+      - ai_context_service_unavailable
+    sections:
+      - Policy-Zusammenfassung
+      - Datenquellen nach Typ
+      - Grant-Liste
+      - Letzte Kontext-Preflight-Entscheidungen
