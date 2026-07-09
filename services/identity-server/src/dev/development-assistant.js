@@ -87,7 +87,9 @@ function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmCon
       "Du bist der GerNetiX Architektur-Discovery-Assistent in der Kunden-IDE.",
       "Dein Ziel ist nicht sofort Technologie zu empfehlen, sondern zuerst die Zielarchitektur des Nutzerprojekts herzuleiten.",
       "Fuehre den Nutzer mit kurzen, konkreten Fragen. Frage immer nur wenige Punkte auf einmal.",
+      "Wenn der Nutzer bewusst einen Minimalumfang vorgibt, z. B. nur eine Struktur, nur ein ESP32, nur ein Port oder ohne Backend/Persistenz, akzeptiere das als ausreichende Vorgabe und liefere direkt eine minimale Struktur statt weitere Klaerungsfragen zu stellen.",
       "Klaere insbesondere: Projektziel, Nutzer, lokale Messung, lokale Regelstrecke, mehrere Geraete, Datenspeicherung, Bedienoberflaeche, lokaler oder weltweiter Zugriff, Computer, Handy, Browser, Backend, Datenschutz, Offline-Verhalten und Betriebsmodell.",
+      "Stelle Rueckfragen nur, wenn eine Entscheidung fuer die naechste Struktur zwingend fehlt oder wenn der Nutzer explizit Rueckfragen wuenscht.",
       "Leite erst danach Technologien wie ESP32, WLAN, MQTT, REST, WebSocket, lokale Datenbank, Backend, Webseite, Mobile App oder Desktop App ab.",
       "Markiere Annahmen und offene Fragen sichtbar. Bestaetigte Architekturentscheidungen muessen vom Nutzer bestaetigt werden.",
       "Wenn genug Kontext vorhanden ist, gib eine kurze Struktur mit Zielarchitektur, offenen Fragen, Technologie-Kandidaten und naechstem sinnvollen GerNetiX-Schritt aus.",
@@ -356,6 +358,19 @@ function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmCon
     const providerName = activeConfig.provider === "api" && activeConfig.apiProvider === "anthropic"
       ? "Claude-/Anthropic-Provider"
       : activeConfig.provider === "api" && activeConfig.apiProvider === "openai-responses" ? "OpenAI-Responses-Provider" : activeConfig.provider === "api" ? "OpenAI-kompatiblen LLM-Provider" : "lokalen Ollama-Dienst";
+    if (isMinimalEsp32StructureRequest(lastUserMessage)) {
+      return [
+        `Ich kann den konfigurierten ${providerName} gerade nicht erreichen, aber der Minimalauftrag ist ausreichend konkret.`,
+        "",
+        `Ausgangspunkt: ${lastUserMessage}`,
+        "",
+        "Minimale Struktur:",
+        "- Nutzer: moechte eine einfache ESP32-Struktur sehen.",
+        "- ESP32-Port: ein einzelner lokaler Anschluss oder logischer Einstiegspunkt.",
+        "- Keine Annahme fuer Backend, Cloud, Datenbank oder mehrere Geraete.",
+        "- Naechster GerNetiX-Schritt: PlantUML-Skizze erzeugen und erst danach erweitern, falls du mehr willst.",
+      ].join("\n");
+    }
     return [
       `Ich kann den konfigurierten ${providerName} gerade nicht erreichen, aber wir koennen den Architektur-Dialog strukturiert fortsetzen.`,
       "",
@@ -471,6 +486,7 @@ function architectureSignals(fullText, assistantText) {
   const text = `${assistantText}\n${fullText}`.toLowerCase();
   const has = (patterns) => patterns.some((pattern) => pattern.test(text));
   const signals = {
+    minimalScope: isMinimalEsp32StructureRequest(text),
     device: has([/esp32/, /iot/, /sensor/, /aktor/, /geraet/, /gerät/, /device/, /board/, /mess/]),
     localUi: has([/lokal/, /setup/, /access point/, /captive/, /statusseite/, /device-webinterface/]),
     browser: has([/browser/, /webseite/, /web app/, /webapp/, /dashboard/, /hmi/]),
@@ -508,8 +524,18 @@ function diagramNotes(assistantText, signals, options) {
     .find((line) => /offene frage|offen|unklar|klaeren|klären|\?/.test(line.toLowerCase()));
   if (openQuestionLine) notes.push(`Offen: ${openQuestionLine.replace(/^[-*\d.\s]+/, "").slice(0, 120)}`);
   if (options.contextSources?.length) notes.push("Kontext: freigegebener Hardware-Catalog wurde beruecksichtigt.");
-  if (!signals.backend && !signals.database && signals.device) notes.push("Noch klaeren: nur lokales Device oder Backend/Persistenz?");
+  if (!signals.backend && !signals.database && signals.device && !signals.minimalScope) notes.push("Noch klaeren: nur lokales Device oder Backend/Persistenz?");
   return notes.slice(0, 4);
+}
+
+function isMinimalEsp32StructureRequest(value) {
+  const text = String(value || "").toLowerCase();
+  if (!/esp32/.test(text)) return false;
+  const wantsStructure = /struktur|architektur|diagramm|skizze|plantuml/.test(text);
+  const minimal = /\bnur\b|minimal|einfach|klein|ohne backend|ohne cloud|ohne datenbank/.test(text);
+  const onePort = /\b(ein|einen|einem|1)\s+(esp32[-\s]*)?port\b|\b(esp32[-\s]*)?port\b/.test(text);
+  const oneDevice = /\b(ein|einen|einem|1)\s+(esp32|geraet|gerät|device|board)\b/.test(text);
+  return wantsStructure && minimal && (onePort || oneDevice);
 }
 
 function plantUmlText(value) {

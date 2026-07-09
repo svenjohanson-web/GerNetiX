@@ -47,6 +47,51 @@ test("sanitizes PlantUML control tokens from AI text", () => {
   assert.equal((diagram.source.match(/@enduml/g) || []).length, 1);
 });
 
+test("keeps minimal ESP32 structure requests free of extra clarification questions", async () => {
+  const previousFetch = global.fetch;
+  let payload = null;
+  global.fetch = async () => {
+    throw new Error("offline");
+  };
+  const assistant = createDevelopmentAssistant({
+    llmConfigStore: {
+      publicConfig: () => ({ provider: "ollama", ollamaModel: "local" }),
+      getConfig: () => ({ provider: "ollama", ollamaBaseUrl: "http://127.0.0.1:1", ollamaModel: "local" }),
+    },
+    projectServerUserId: () => "usr_demo",
+    readJsonBody: async () => ({
+      projectId: "dev_project_minimal",
+      messages: [{ role: "user", content: "Ich moechte nur eine Struktur mit nur einem ESP32-Port." }],
+    }),
+    requireProjectAccess: async () => ({ area: "development_project" }),
+    sendJson: (res, status, body) => {
+      payload = { status, body };
+    },
+  });
+
+  try {
+    await assistant.handleChat({}, {}, { account: { user_id: "usr_demo" } });
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  assert.equal(payload.status, 200);
+  assert.equal(payload.body.usedFallback, true);
+  assert.match(payload.body.message.content, /Minimalauftrag ist ausreichend konkret/);
+  assert.doesNotMatch(payload.body.message.content, /Bitte beantworte als Naechstes/);
+  assert.doesNotMatch(payload.body.message.content, /Soll das System/);
+});
+
+test("does not add backend clarification note for explicit minimal ESP32 diagrams", () => {
+  const diagram = buildArchitectureDiagram([
+    { role: "user", content: "Ich moechte nur eine Struktur mit nur einem ESP32-Port." },
+    { role: "assistant", content: "Minimale Struktur: Nutzer -> ESP32-Port." },
+  ]);
+
+  assert.match(diagram.source, /node "IoT Device \/ ESP32" as device/);
+  assert.doesNotMatch(diagram.source, /Noch klaeren: nur lokales Device oder Backend\/Persistenz/);
+});
+
 test("architecture chat requires an account-bound development project", async () => {
   let payload = null;
   const assistant = createDevelopmentAssistant({

@@ -94,9 +94,11 @@ Konfiguration:
 - `HOST`: Bind-Adresse, Standard `127.0.0.1`
 - `PORT`: HTTP-Port, Standard `4800`
 - `PROJECT_SERVER_BASE_URL`: externe Basis-URL fuer spaetere Links
-- `PERSISTENCE_BACKEND` oder `PROJECT_SERVER_PERSISTENCE_BACKEND`: `memory`, `sqlite` oder `json`, Standard `memory`
-- `PERSISTENCE_SQLITE_PATH` oder `PROJECT_SERVER_SQLITE_PATH`: SQLite-Datei fuer `sqlite`, Standard `.runtime/gernetix-services.sqlite`
-- `PROJECT_SERVER_RUNTIME_DIR`: Runtime-Verzeichnis fuer JSON-Persistenz, Standard `.runtime`
+- `PERSISTENCE_BACKEND` oder `PROJECT_SERVER_PERSISTENCE_BACKEND`: `memory`, `sqlite` oder `json`, Standard `sqlite`
+- `PERSISTENCE_SQLITE_PATH` oder `PROJECT_SERVER_SQLITE_PATH`: SQLite-Datei fuer `sqlite`, Standard `<Workspace>/.runtime/gernetix-services.sqlite`
+- `PROJECT_SERVER_RUNTIME_DIR`: Runtime-Verzeichnis fuer JSON-Persistenz, Standard `<Workspace>/.runtime`
+
+Accountgebundene Entwicklungsprojekte werden standardmaessig in SQLite gespeichert. `memory` ist nur fuer isolierte Tests oder bewusst fluechtige Entwicklungslaeufe gedacht. Der Browser darf sich lokal das zuletzt geoeffnete Projekt merken; die Projektdaten selbst bleiben auf dem Project Server.
 
 ## Nicht-Ziele fuer diesen Stand
 

@@ -1,4 +1,6 @@
 const DevelopmentPlatform = (() => {
+  const activeProjectStorageKey = "gernetix.developmentPlatform.activeProjectId";
+
   function create({ state, postJson, escapeHtml, escapeAttribute, meta }) {
     if (!state.developmentPlatform) {
       state.developmentPlatform = {
@@ -111,8 +113,13 @@ const DevelopmentPlatform = (() => {
       const select = document.querySelector("#developmentProjectSelect");
       if (!select) return;
       const projects = developmentProjects();
-      const current = activeProjectId() || projects[0]?.id || "";
-      if (!state.developmentPlatform.activeProjectId && current) state.developmentPlatform.activeProjectId = current;
+      const storedProjectId = readStoredActiveProjectId();
+      const storedProjectExists = projects.some((project) => project.id === storedProjectId);
+      const current = activeProjectId() || (storedProjectExists ? storedProjectId : "") || projects[0]?.id || "";
+      if (state.developmentPlatform.activeProjectId !== current) {
+        state.developmentPlatform.activeProjectId = current;
+        storeActiveProjectId(current);
+      }
       const activeProject = currentProject();
       document.querySelector("#developmentProjectName").textContent = activeProject?.name || "Kein Projekt geoeffnet";
       document.querySelector("#developmentProjectOpenPanel").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "open");
@@ -147,6 +154,7 @@ const DevelopmentPlatform = (() => {
 
     function selectDevelopmentProject() {
       state.developmentPlatform.activeProjectId = document.querySelector("#developmentProjectSelect").value;
+      storeActiveProjectId(state.developmentPlatform.activeProjectId);
       state.developmentPlatform.projectPanelMode = "closed";
       state.developmentPlatform.chat = [];
       state.developmentPlatform.architectureDiagram = null;
@@ -172,6 +180,7 @@ const DevelopmentPlatform = (() => {
         if (response.project) {
           state.projects = state.projects.filter((project) => project.id !== response.project.id).concat(response.project);
           state.developmentPlatform.activeProjectId = response.project.id;
+          storeActiveProjectId(response.project.id);
           state.developmentPlatform.projectPanelMode = "closed";
           titleInput.value = "";
           descriptionInput.value = "";
@@ -259,6 +268,7 @@ const DevelopmentPlatform = (() => {
         if (response.project) {
           state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
           state.developmentPlatform.activeProjectId = response.project.id;
+          storeActiveProjectId(response.project.id);
         }
         renderProjectPicker();
         setProjectStatus(`Gespeichert${response.saved_at ? `: ${new Date(response.saved_at).toLocaleString("de-DE")}` : "."}`);
@@ -269,6 +279,26 @@ const DevelopmentPlatform = (() => {
 
     function currentProject() {
       return (state.projects || []).find((project) => project.id === activeProjectId()) || null;
+    }
+
+    function readStoredActiveProjectId() {
+      try {
+        return window.localStorage.getItem(activeProjectStorageKey) || "";
+      } catch {
+        return "";
+      }
+    }
+
+    function storeActiveProjectId(projectId) {
+      try {
+        if (projectId) {
+          window.localStorage.setItem(activeProjectStorageKey, projectId);
+        } else {
+          window.localStorage.removeItem(activeProjectStorageKey);
+        }
+      } catch {
+        // Browser storage is optional; the Project Server remains the source of truth.
+      }
     }
 
     function renderArchitectureDiagram() {

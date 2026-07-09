@@ -5,8 +5,12 @@ const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 const test = require("node:test");
 
-const { createDefaultProjectServer, FileBackedProjectRepository, SqliteBackedProjectRepository } = require("../src");
+const { createConfig, createDefaultProjectServer, FileBackedProjectRepository, SqliteBackedProjectRepository } = require("../src");
 const { ProjectService } = require("../src/services/project-service");
+
+function createMemoryProjectServer() {
+  return createDefaultProjectServer({ persistenceBackend: "memory" });
+}
 
 function createDemoProject(service) {
   return service.createProject({
@@ -25,8 +29,17 @@ function createDemoProject(service) {
   });
 }
 
+test("defaults project persistence to shared sqlite runtime storage", () => {
+  const config = createConfig({});
+
+  assert.equal(config.persistenceBackend, "sqlite");
+  assert.equal(path.isAbsolute(config.runtimeRoot), true);
+  assert.equal(path.isAbsolute(config.sqlitePath), true);
+  assert.equal(path.basename(config.sqlitePath), "gernetix-services.sqlite");
+});
+
 test("creates project with default source and lists it by user", () => {
-  const service = createDefaultProjectServer();
+  const service = createMemoryProjectServer();
   const project = createDemoProject(service);
 
   assert.equal(project.user_id, "user-1");
@@ -35,7 +48,7 @@ test("creates project with default source and lists it by user", () => {
 });
 
 test("stores project sources with hashes and rejects path traversal", () => {
-  const service = createDefaultProjectServer();
+  const service = createMemoryProjectServer();
   const project = createDemoProject(service);
   const source = service.upsertSource(project.project_id, {
     path: "include/settings.h",
@@ -48,7 +61,7 @@ test("stores project sources with hashes and rejects path traversal", () => {
 });
 
 test("creates reproducible build package for build deploy server", () => {
-  const service = createDefaultProjectServer();
+  const service = createMemoryProjectServer();
   const project = createDemoProject(service);
   service.upsertSource(project.project_id, {
     path: "src/app.cpp",
@@ -63,7 +76,7 @@ test("creates reproducible build package for build deploy server", () => {
 });
 
 test("stores project view manifest and includes it in build package", () => {
-  const service = createDefaultProjectServer();
+  const service = createMemoryProjectServer();
   const project = service.createProject({
     user_id: "user-1",
     title: "Gefuehrte IDE",
@@ -116,7 +129,7 @@ test("stores project view manifest and includes it in build package", () => {
 });
 
 test("rejects build jobs for model-only projects without build config", () => {
-  const service = createDefaultProjectServer();
+  const service = createMemoryProjectServer();
   const project = service.createProject({
     user_id: "user-1",
     title: "Tamagotchi Verhaltensmodell",
@@ -135,7 +148,7 @@ test("rejects build jobs for model-only projects without build config", () => {
 });
 
 test("creates atmel avr build package without arduino framework", () => {
-  const service = createDefaultProjectServer();
+  const service = createMemoryProjectServer();
   const project = service.createProject({
     user_id: "user-1",
     title: "Arduino Atmel Bare Metal",
@@ -156,7 +169,7 @@ test("creates atmel avr build package without arduino framework", () => {
 });
 
 test("records build result and firmware artifacts in project history", () => {
-  const service = createDefaultProjectServer();
+  const service = createMemoryProjectServer();
   const project = createDemoProject(service);
   const job = service.createBuildJob(project.project_id);
   service.markBuildSubmitted(job.build_job_id, { build_deploy_job_id: "bd-1" });
@@ -172,7 +185,7 @@ test("records build result and firmware artifacts in project history", () => {
 });
 
 test("feedback hides contact data until explicit feedback consent exists", () => {
-  const service = createDefaultProjectServer();
+  const service = createMemoryProjectServer();
   const project = createDemoProject(service);
   const feedback = service.createFeedback({
     project_id: project.project_id,
@@ -188,7 +201,7 @@ test("feedback hides contact data until explicit feedback consent exists", () =>
 });
 
 test("anonymizes expired feedback after maximum retention window", () => {
-  const service = createDefaultProjectServer();
+  const service = createMemoryProjectServer();
   const project = createDemoProject(service);
   service.createFeedback({
     project_id: project.project_id,
