@@ -34,6 +34,17 @@ Nach einer Umsetzung soll Codex kurz pruefen:
 - Muessen Context-Manager-Vorschlaege oder bestaetigte Context-Eintraege aktualisiert werden?
 - Gibt es einen Test oder zumindest einen nachvollziehbaren manuellen Nachweis?
 
+## Lokale Dev-Prozesse ohne Timing-Schleifen
+
+Codex soll lokale Serverprozesse sparsam behandeln:
+
+- Kein vorsorgliches Neustarten von Identity Server, Admin Tool oder anderen Devservern.
+- Erst klaeren, ob Browser-Reload, Config-Reload oder ein API-/Healthcheck genuegt.
+- Config-Dateien und Runtime-State muessen nach Moeglichkeit live nachgeladen oder ueber gezielte Endpoints geprueft werden.
+- Bei notwendigen Neustarts direkt ueber den Port arbeiten: `netstat -ano | findstr :PORT`, genau den Listener stoppen, genau den betroffenen Service einmal starten.
+- Keine langen Trial-and-Error-Ketten mit `Start-Process`, `Start-Job`, `cmd start` oder Log-Redirects. Wenn der erste Start nicht sauber klappt, Ursache pruefen und dem Nutzer knapp melden.
+- Prozessneustarts sind Eingriffe in den laufenden Arbeitskontext und sollen vorher angekuendigt werden.
+
 ## Kein grosses Prozesswerk
 
 Dieses Verfahren ist bewusst klein. Es soll Codex erinnern, nicht den Entwickler mit Formularen beschaeftigen. Wenn unklar ist, ob eine Aenderung dokumentationsrelevant ist, gilt:

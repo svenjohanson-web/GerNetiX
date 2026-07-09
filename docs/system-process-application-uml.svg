@@ -159,7 +159,7 @@
     <rect class="node tool" x="1445" y="852" width="170" height="34" rx="10"/>
     <text class="titleText" x="1530" y="875" text-anchor="middle">Ollama :11434</text>
     <rect class="node tool" x="1445" y="900" width="170" height="28" rx="10"/>
-    <text class="smallText" x="1530" y="918" text-anchor="middle">Externe LLM API</text>
+    <text class="smallText" x="1530" y="918" text-anchor="middle">OpenAI / Claude API</text>
   </g>
 
   <g id="storage">

@@ -19,7 +19,7 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
         config: config(),
         message: {
           role: "assistant",
-          content: response.message?.content || fallbackAnswer(userMessages),
+          content: response.message?.content || fallbackAnswer(userMessages, activeConfig),
         },
         usage: usageFromOllama(response),
         usedFallback: false,
@@ -29,7 +29,7 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
         config: config({ lastError: error.message || String(error) }),
         message: {
           role: "assistant",
-          content: fallbackAnswer(userMessages),
+          content: fallbackAnswer(userMessages, llmConfigStore.getConfig()),
         },
         usage: null,
         usedFallback: true,
@@ -59,7 +59,7 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
 
   function systemPrompt(session) {
     return [
-      "Du bist der lokale GerNetiX KI-Chat in der Kunden-IDE.",
+      "Du bist der GerNetiX KI-Chat in der Kunden-IDE.",
       "Antworte hilfreich, konkret und knapp. Frage nach, wenn das Ziel unklar ist.",
       "Du darfst nur den aktuellen Chatverlauf verwenden.",
       "Du hast keinen Zugriff auf Projektdateien, Kundendaten, Graphdatenbanken oder externe Webseiten.",
@@ -70,8 +70,13 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
   }
 
   async function callChatProvider(messages, activeConfig) {
-    if (activeConfig.provider === "api") return callOpenAiCompatibleChat(messages, activeConfig);
+    if (activeConfig.provider === "api") return callApiChat(messages, activeConfig);
     return callOllamaChat(messages, activeConfig);
+  }
+
+  async function callApiChat(messages, activeConfig) {
+    if (activeConfig.apiProvider === "anthropic") return callAnthropicChat(messages, activeConfig);
+    return callOpenAiCompatibleChat(messages, activeConfig);
   }
 
   async function callOllamaChat(messages, activeConfig) {
@@ -134,6 +139,49 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
     }
   }
 
+  async function callAnthropicChat(messages, activeConfig) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    const system = messages.find((message) => message.role === "system")?.content || "";
+    const conversation = messages
+      .filter((message) => message.role !== "system")
+      .map((message) => ({
+        role: message.role === "assistant" ? "assistant" : "user",
+        content: message.content,
+      }));
+    try {
+      const response = await fetch(`${activeConfig.apiBaseUrl.replace(/\/$/, "")}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "anthropic-version": "2023-06-01",
+          ...(activeConfig.apiKey ? { "x-api-key": activeConfig.apiKey } : {}),
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: activeConfig.apiModel,
+          max_tokens: 1024,
+          messages: conversation,
+          system,
+          temperature: 0.3,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error?.message || payload.error || `Anthropic antwortet mit HTTP ${response.status}.`);
+      }
+      return {
+        message: {
+          content: (payload.content || []).map((part) => part.text || "").join("").trim(),
+        },
+        prompt_eval_count: payload.usage?.input_tokens,
+        eval_count: payload.usage?.output_tokens,
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   function usageFromOllama(response) {
     const promptTokens = numberOrNull(response.prompt_eval_count);
     const completionTokens = numberOrNull(response.eval_count);
@@ -158,19 +206,22 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
     return Number.isFinite(value) ? Math.round(value / 1000000) : null;
   }
 
-  function fallbackAnswer(messages) {
+  function fallbackAnswer(messages, activeConfig = llmConfigStore.publicConfig()) {
     const lastUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content || "deine Frage";
+    const providerName = activeConfig.provider === "api" && activeConfig.apiProvider === "anthropic"
+      ? "Claude-/Anthropic-Provider"
+      : activeConfig.provider === "api" ? "OpenAI-kompatiblen LLM-Provider" : "lokalen Ollama-Dienst";
     return [
-      "Ich kann den lokalen Ollama-Dienst gerade nicht erreichen.",
+      `Ich kann den konfigurierten ${providerName} gerade nicht erreichen.`,
       "",
       `Deine letzte Nachricht war: ${lastUserMessage}`,
       "",
-      "Pruefe bitte lokal:",
-      "1. Laeuft Ollama unter dem konfigurierten Endpoint?",
-      "2. Ist das konfigurierte Modell installiert?",
-      "3. Stimmen OLLAMA_BASE_URL und OLLAMA_MODEL?",
+      "Pruefe bitte im Admin Tool:",
+      "1. Ist der richtige Provider aktiv?",
+      "2. Stimmen Endpoint, Modell und Zugangsdaten?",
+      "3. Ist der ausgewaehlte Dienst erreichbar?",
       "",
-      "Sobald Ollama erreichbar ist, kann ich hier direkt antworten.",
+      "Sobald der Provider erreichbar ist, kann ich hier direkt antworten.",
     ].join("\n");
   }
 

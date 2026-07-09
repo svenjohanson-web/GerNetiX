@@ -28,11 +28,18 @@ const DevelopmentPlatform = (() => {
       const config = state.developmentPlatform.assistant || {};
       document.querySelector("#developmentAssistantConfig").innerHTML = [
         ["Status", config.enabled ? "aktiv" : "nicht konfiguriert"],
-        ["Provider", config.provider || "ollama"],
+        ["Provider", providerLabel(config)],
         ["Endpoint", config.baseUrl || "http://127.0.0.1:11434"],
         ["Modell", config.model || "nicht gesetzt"],
         ["Datenquellen", (config.allowedSources || []).join(", ") || "nur Chat"],
       ].map(meta).join("");
+    }
+
+    function providerLabel(config = state.developmentPlatform.assistant || {}) {
+      if (config.provider === "api" && config.apiProvider === "anthropic") return "Claude / Anthropic";
+      if (config.provider === "api") return "OpenAI-kompatibel";
+      if (config.provider === "ollama" || !config.provider) return "Lokales Ollama";
+      return config.provider;
     }
 
     function renderChatMessages() {
@@ -95,7 +102,7 @@ const DevelopmentPlatform = (() => {
       state.developmentPlatform.chat.push({ role: "user", content });
       input.value = "";
       submit.disabled = true;
-      setChatStatus("Lokales LLM denkt...");
+      setChatStatus(`${providerLabel()} denkt...`);
       renderChatMessages();
       try {
         const response = await postJson("/api/platform/development-assistant/chat", {
@@ -107,13 +114,15 @@ const DevelopmentPlatform = (() => {
           content: response.message?.content || "Keine Antwort erhalten.",
           usage: response.usage || null,
         });
-        setChatStatus(response.usedFallback ? "Fallback-Antwort: Ollama nicht erreichbar oder nicht konfiguriert." : "Antwort vom lokalen LLM erhalten.");
+        setChatStatus(response.usedFallback
+          ? `Fallback-Antwort: ${providerLabel(response.config)} nicht erreichbar oder nicht konfiguriert.`
+          : `Antwort von ${providerLabel(response.config)} erhalten.`);
       } catch (error) {
         state.developmentPlatform.chat.push({
           role: "assistant",
-          content: `Ich konnte den lokalen Architektur-Assistenten nicht erreichen: ${error.message}`,
+          content: `Ich konnte den Architektur-Assistenten nicht erreichen: ${error.message}`,
         });
-        setChatStatus("Fehler beim lokalen LLM-Aufruf.");
+        setChatStatus("Fehler beim LLM-Aufruf.");
       } finally {
         submit.disabled = false;
         render();

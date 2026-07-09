@@ -69,8 +69,12 @@ test("learning feedback is masked without consent", async () => {
 test("ai usage summary requires monitoring capability and cost control action is audited", async () => {
   const service = createDefaultAdminTool();
   const summary = await service.aiUsageSummary(adminContext({ purpose: "ai_usage_monitoring" }));
-  assert.equal(summary.summary.total_events, 2);
+  assert.equal(summary.summary.total_events, 3);
   assert.equal(summary.summary.rejected, 1);
+  assert.equal(summary.summary.local.total_events, 1);
+  assert.equal(summary.summary.external.total_events, 2);
+  assert.equal(summary.summary.external.estimated_provider_cost, 0.05);
+  assert.ok(summary.summary.provider_breakdown.some((item) => item.provider_type === "local" && item.provider_name === "Lokales Ollama"));
 
   const action = await service.recordAiCostControlAction({
     action_type: "temporary_ai_block",

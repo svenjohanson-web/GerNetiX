@@ -45,7 +45,7 @@ flowchart LR
   subgraph platformInfrastructure["Technische Infrastruktur"]
     mqttBroker["MQTT Broker<br/>Mosquitto<br/>:1883 / WS :9001"]
     localOllama["Lokaler Ollama LLM<br/>:11434"]
-    externalLlm["Externe LLM API<br/>OpenAI-kompatibel"]
+    externalLlm["Externe LLM API<br/>OpenAI-kompatibel / Claude"]
   end
 
   subgraph deviceRuntime["Device Runtime"]
@@ -159,7 +159,7 @@ flowchart LR
 | Hardware Shop | Hardware Catalog | Aufloesung von HardwareItem-IDs und Capabilities fuer Angebote |
 | GerNetiX Plattform UI / Identity Server | Device Management Server | eigene Devices, Registrierung, Purchase Context |
 | GerNetiX Plattform UI / Identity Server | AI Usage Server | Credit-Anzeige und AI-Preflight |
-| GerNetiX Plattform UI / Identity Server | Lokaler Ollama LLM | Dev-PoC fuer Architektur-Discovery und allgemeinen lokalen KI-Chat, wenn Admin-Routing auf lokalen Provider zeigt |
+| GerNetiX Plattform UI / Identity Server | Lokaler Ollama LLM | Dev-PoC fuer Architektur-Discovery und allgemeinen KI-Chat, wenn Admin-Routing auf lokalen Provider zeigt |
 | GerNetiX Plattform UI / Identity Server | Externe LLM API | Optionales OpenAI-kompatibles API-Routing fuer KI-Chat und Entwicklungsplattform |
 | Build & Deploy Server | MQTT Broker | Deploy-Auftraege fuer konkrete Devices veroeffentlichen und Statusmeldungen empfangen |
 | ESP32 Basissoftware | MQTT Broker | Deploy-Auftraege, Heartbeats und Statusmeldungen austauschen |
@@ -180,8 +180,8 @@ flowchart LR
 
 - Der Persistence Server ist ein HTTP-Service fuer generische State-Dokumente. Mehrere Services nutzen aktuell zusaetzlich direkte SQLite-State-Persistenz ueber gemeinsame Repository-/Store-Bausteine.
 - Login UI, Dashboard, Entwicklungsplattform, KI-Chat, User IDE und Guided-Code-Lesson-Einstieg sind ein gemeinsames Plattform-Frontend-Artefakt am Identity Server, keine getrennten Anwendungen mit getrennten Logins. Im Projekt liegt dieses Artefakt gebuendelt unter `services/identity-server/public/app`.
-- Die Entwicklungsplattform ist im PoC unter `/app/development-platform/` erreichbar und nutzt serverseitig `/api/platform/development-assistant/chat` als Proxy zum im Admin Tool konfigurierten LLM-Provider. Lokal ist Ollama vorgesehen; optional kann ein OpenAI-kompatibler API-Endpunkt konfiguriert werden. Aktuell sind nur aktueller Chat und fester Architektur-Prompt als Datenquellen freigegeben.
-- Der allgemeine KI-Chat ist im PoC unter `/app/ki-chat/` erreichbar und nutzt serverseitig `/api/platform/ai-chat/chat` als separaten lokalen Ollama-Proxy. Er ist vom Architektur-Discovery-Dialog getrennt und darf aktuell nur den aktuellen Chat als Datenquelle verwenden.
+- Die Entwicklungsplattform ist im PoC unter `/app/development-platform/` erreichbar und nutzt serverseitig `/api/platform/development-assistant/chat` als Proxy zum im Admin Tool konfigurierten LLM-Provider. Lokal ist Ollama vorgesehen; optional kann ein OpenAI-kompatibler API-Endpunkt oder Claude/Anthropic konfiguriert werden. Aktuell sind nur aktueller Chat und fester Architektur-Prompt als Datenquellen freigegeben.
+- Der allgemeine KI-Chat ist im PoC unter `/app/ki-chat/` erreichbar und nutzt serverseitig `/api/platform/ai-chat/chat` als separaten Proxy zum im Admin Tool konfigurierten LLM-Provider. Er ist vom Architektur-Discovery-Dialog getrennt und darf aktuell nur den aktuellen Chat als Datenquelle verwenden.
 - Das eigenstaendige Admin Tool unter `http://127.0.0.1:4600/admin/` enthaelt im PoC die LLM-Konfiguration fuer Provider, Endpoint, lokales Modell, API-Modell und Verbindungstest. Die lokale Dev-Konfiguration wird unter `.runtime/identity-llm-config.json` gespeichert und vom Identity Server fuer KI-Chat und Entwicklungsplattform gelesen.
 - Das Device-Onboarding laeuft als IDE-/Plattform-Flow im Identity-Server-Frontend. Es ist kein eigener Backend-Service: Die View zeigt Auswahl und Status, ein IDE-Onboarding-Model leitet aus Hardware-Catalog-Capabilities die erlaubten Wege ab, und die Controller sprechen Hardware Catalog, Device Management, Provisioning/Firmware-Artefakte sowie lokale Browser-Schnittstellen wie Web Serial an.
 - Der Nutzer vergibt beim Onboarding einen kurzen Board-Namen. Daraus entsteht der `gernetix-*` Node-/SSID-/Hostname. Die Seriennummer wird vom System erzeugt und dauerhaft am Device/Inventory gespeichert; Spezialhardware und Verdrahtung werden als Instanz-Konfiguration am Account-Device gefuehrt.

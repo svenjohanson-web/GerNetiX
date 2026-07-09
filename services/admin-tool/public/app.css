@@ -36,9 +36,11 @@ button.active-method {
 .admin-shell { max-width: 1120px; margin: 0 auto; padding: 22px; }
 .topbar, .button-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .topbar { margin-bottom: 18px; }
+.admin-nav { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }
 .eyebrow { margin: 0 0 5px; color: var(--accent); font-size: 12px; font-weight: 700; text-transform: uppercase; }
 h1, h2 { margin: 0; line-height: 1.16; }
 h1 { font-size: 32px; }
+.admin-view { display: grid; gap: 12px; }
 .admin-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
@@ -52,6 +54,45 @@ h1 { font-size: 32px; }
   box-shadow: var(--shadow);
   padding: 18px;
 }
+.metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+.metric-card {
+  min-height: 86px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+  padding: 13px 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 6px 12px;
+}
+.metric-card p { margin: 0; color: var(--muted); font-size: 13px; font-weight: 700; }
+.metric-card strong { display: block; font-size: 20px; line-height: 1.1; overflow-wrap: anywhere; text-align: right; }
+.metric-card span { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
+.summary-list { display: grid; gap: 10px; margin-top: 14px; }
+.summary-list div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 10px;
+}
+.summary-list div:last-child { border-bottom: 0; padding-bottom: 0; }
+.summary-list span { color: var(--muted); }
+.summary-list strong { text-align: right; overflow-wrap: anywhere; }
+.table-wrap { overflow-x: auto; margin-top: 14px; }
+table { width: 100%; border-collapse: collapse; min-width: 620px; }
+th, td { border-bottom: 1px solid var(--line); padding: 11px 8px; text-align: left; vertical-align: top; }
+th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+td strong { display: block; }
+td span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+.empty-cell { color: var(--muted); text-align: center; }
 .form-grid { display: grid; gap: 12px; align-content: start; }
 .form-grid label { display: grid; gap: 6px; color: var(--muted); font-weight: 700; }
 .form-grid input,
@@ -95,5 +136,12 @@ h1 { font-size: 32px; }
 
 @media (max-width: 900px) {
   .admin-layout { grid-template-columns: 1fr; }
+  .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .topbar { align-items: flex-start; flex-direction: column; }
+  .admin-nav { justify-content: flex-start; }
+}
+
+@media (max-width: 560px) {
+  .metrics-grid { grid-template-columns: 1fr; }
+  .summary-list div { align-items: flex-start; flex-direction: column; }
 }

@@ -69,7 +69,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: CrossDomain
-    summary: API-Artefakt fuer Admin-Uebersicht, Device-Status, Customer-Data-Access-Consents, Audit Events, Learning Feedback und KI-Kostensteuerung.
+    summary: API-Artefakt fuer Admin-Uebersicht, Statistikseite, Device-Status, Customer-Data-Access-Consents, Audit Events, Learning Feedback, KI-Usage-Metriken, KI-Kostensteuerung und LLM-Routing-Konfiguration.
     derivedFromRequirements:
       - requirement.device_admin_status_inspection
       - requirement.customer_data_consent_for_admin_access
@@ -89,6 +89,16 @@ items:
       - PUT /api/admin/llm-config
       - GET /api/admin/llm-models
       - POST /api/admin/llm-config/test
+    responseSections:
+      - statistics_overview
+      - ai_usage_local_llm
+      - ai_usage_public_llm_costs
+      - llm_routing_config
+    rules:
+      - Oeffentliche LLM-Nutzung muss geschaetzte Providerkosten ausweisen.
+      - Lokale LLM-Nutzung fuehrt keine externen Providerkosten.
+      - LLM-Routing-Konfiguration muss von Identity Server und Admin Tool aus derselben Runtime-Konfiguration gelesen werden.
+      - API-basiertes LLM-Routing unterscheidet `apiProvider` fuer OpenAI-kompatible Chat-Completions und Claude/Anthropic Messages API.
 
   - id: api_artifact.provisioning_tool
     type: api_artifact

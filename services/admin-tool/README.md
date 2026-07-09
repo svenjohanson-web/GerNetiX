@@ -7,14 +7,17 @@ Das Admin Tool bietet erste berechtigte Sichten auf Device-Status, Support-Entit
 ## Zweck
 
 - Admin-/Support-Uebersicht bereitstellen
+- Statistikseite fuer operative Admin-Kennzahlen bereitstellen
 - Device-Management-Status pruefbar machen
 - Support-Entitlement und GerNetiX-vs-Community einsehen
 - kundenrelevante Details nur mit Consent, Rechtsgrundlage oder Sicherheitsgrund anzeigen
 - Zugriffe auf kundenrelevante Daten auditieren
 - Learning-Feedback maskiert oder berechtigt anzeigen
 - KI-Usage-Kennzahlen fuer Kostenkontrolle zusammenfassen
+- lokale und oeffentliche LLM-Nutzung getrennt anzeigen
+- bei oeffentlichen LLMs geschaetzte Providerkosten anzeigen
 - administrative KI-Kostensteuerung auditierbar vorbereiten
-- LLM-Provider fuer Kunden-KI-Chat und Entwicklungsplattform konfigurieren
+- LLM-Provider fuer Kunden-KI-Chat und Entwicklungsplattform konfigurieren, inklusive lokalem Ollama, OpenAI-kompatiblen APIs und Claude/Anthropic
 
 ## MVP-Implementierung
 
@@ -44,6 +47,13 @@ Konfiguration:
 - `LLM_CONFIG_PATH`: Pfad zur gemeinsamen lokalen LLM-Konfiguration, Standard `.runtime/identity-llm-config.json`
 - `OLLAMA_BASE_URL`: lokaler Ollama-Endpoint, Standard `http://127.0.0.1:11434`
 - `OLLAMA_MODEL`: lokales Default-Modell, Standard `llama3.2:3b`
+
+LLM-Routing:
+
+- Lokales Ollama nutzt `/api/chat` am konfigurierten Ollama-Endpoint.
+- OpenAI-kompatible APIs nutzen `/chat/completions` am konfigurierten API-Endpoint.
+- Claude/Anthropic nutzt `/v1/messages` mit Anthropic API-Key.
+- Modell-IDs koennen frei eingetragen werden; Preset-Buttons sind nur Schnellwahlhilfen.
 
 ## Sicherheitsregeln
 

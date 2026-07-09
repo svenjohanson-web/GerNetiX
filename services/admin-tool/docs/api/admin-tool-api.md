@@ -14,7 +14,7 @@ GET /health
 GET /api/admin/overview
 ```
 
-Liefert aggregierte Admin-Kennzahlen zu Devices, Feedback, Consents und KI-Usage.
+Liefert aggregierte Admin-Kennzahlen zu Devices, Feedback, Consents, Audit Events und KI-Usage fuer die Statistikseite.
 
 ## Device Management
 
@@ -50,6 +50,15 @@ GET  /api/admin/ai-usage/summary
 POST /api/admin/ai-cost-controls/actions
 ```
 
+`GET /api/admin/ai-usage/summary` liefert Metriken fuer lokale und oeffentliche LLM-Nutzung:
+
+- Gesamtanfragen, erfolgreiche und abgelehnte Anfragen
+- Tokens, Credits und geschaetzte Providerkosten
+- Gruppierung nach lokaler LLM-Quelle und externer API
+- Modellaufschluesselung mit Latenz, Dauer und lokalen Tokens pro Sekunde, soweit vorhanden
+
+Bei oeffentlichen LLMs werden geschaetzte Providerkosten ausgewiesen. Lokale LLMs fuehren keine externen Providerkosten.
+
 Kostensteuerungsaktionen werden als Admin-Audit-Event protokolliert.
 
 ## LLM-Konfiguration
@@ -61,4 +70,11 @@ GET  /api/admin/llm-models
 POST /api/admin/llm-config/test
 ```
 
-Konfiguriert den Provider fuer Kunden-KI-Chat und Entwicklungsplattform: lokales Ollama oder eine OpenAI-kompatible API.
+Konfiguriert den Provider fuer Kunden-KI-Chat und Entwicklungsplattform: lokales Ollama, eine OpenAI-kompatible API oder Claude/Anthropic.
+
+`PUT /api/admin/llm-config` akzeptiert neben `provider`, Endpoint, Modell und API-Key auch `apiProvider`:
+
+- `openai-compatible`: ruft `/chat/completions` auf.
+- `anthropic`: ruft `/messages` am Anthropic-Endpoint auf.
+
+Modell-IDs werden bewusst frei gespeichert, damit neue Provider-Modelle ohne Codeaenderung eingetragen werden koennen.

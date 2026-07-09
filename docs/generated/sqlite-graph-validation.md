@@ -6,7 +6,7 @@ YAML ist nur noch Legacy-Import, Bootstrap oder Export, sofern der Graph die YAM
 
 ## Stand
 
-Letzte Synchronisation: 2026-06-30
+Letzte Synchronisation: 2026-07-09
 
 SQLite-Datenbank:
 
@@ -17,12 +17,12 @@ tools/yaml-graph-sqlite/out/model-graph.sqlite
 ## Importumfang
 
 ```text
-artifact_types:      95
-artifacts:           423
-relationship_types:  56
-relationships:       1427
+artifact_types:      96
+artifacts:           676
+relationship_types:  58
+relationships:       2198
 errors:              0
-warnings:            494
+warnings:            0
 ```
 
 ## Ergebnis
@@ -40,25 +40,7 @@ Bestanden:
 
 Verbleibend:
 
-- 494 Warnungen vom Typ `invalid_source_target_type`.
-
-Diese Warnungen bedeuten nicht, dass referenzierte Artefakte fehlen.
-Sie bedeuten, dass vorhandene Beziehungen zwar importierbar sind, aber noch nicht vollstaendig als erlaubte Source-/Target-Typ-Kombinationen im Metamodell formalisiert wurden.
-
-## Haeufigste Warnungsgruppen
-
-| Beziehung | Source-Typ | Target-Typ | Anzahl |
-|---|---|---|---:|
-| supports | customer_journey | business_goal | 38 |
-| derived_from | data_model | requirement | 35 |
-| supports | architecture_structural_element | customer_journey | 28 |
-| supports | architecture_structural_element | business_goal | 26 |
-| realizes | measure | requirement | 22 |
-| derived_from | api_artifact | requirement | 21 |
-| derived_from | architecture_artifact | requirement | 21 |
-| references | requirement | business_rule | 18 |
-| supports | product_offering | business_goal | 18 |
-| constrains | business_rule | system_capability | 14 |
+- Keine aktuellen Warnungen.
 
 ## Synchronisierte Korrekturen
 
@@ -71,8 +53,7 @@ Sie bedeuten, dass vorhandene Beziehungen zwar importierbar sind, aber noch nich
 
 ## Naechster fachlicher Schritt
 
-Die verbleibenden Warnungen sollten nicht blind unterdrueckt werden.
-Sie zeigen, welche Beziehungstypen im Metamodell noch formalisiert werden sollten, wenn sie dauerhaft erlaubt sein sollen.
+Der aktuelle Import ist fehler- und warnungsfrei. Naechster fachlicher Schritt ist, neue UI-, API- oder Runtime-Aenderungen weiterhin zuerst im Graphen nachzuziehen und danach die Lesesichten zu aktualisieren.
 
 ## Source-of-Truth-Regel
 

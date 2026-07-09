@@ -10,38 +10,36 @@ class AdminService {
 
   async overview() {
     if (this.serviceClients) {
-      const [devices, feedback, aiUsage] = await Promise.all([
-        this.remoteDevices(),
-        this.remoteFeedback(),
-        this.remoteAiDashboard(),
-      ]);
-      return {
-        devices: {
-          total: devices.length,
-          gernetix_verified: devices.filter((device) => device.authenticity_status === "gernetix_verified").length,
-          community_unverified: devices.filter((device) => device.authenticity_status === "community_unverified").length,
-          online: devices.filter((device) => device.connectivity_status === "online").length,
-        },
-        feedback: {
-          total: feedback.length,
-          new: feedback.length,
-        },
-        ai_usage: aiUsage.summary,
-        audit_events: {
-          total: this.repository.listAuditEvents().length,
-        },
-      };
+      try {
+        const [devices, feedback, aiUsage] = await Promise.all([
+          this.remoteDevices(),
+          this.remoteFeedback(),
+          this.remoteAiDashboard(),
+        ]);
+        return {
+          devices: summarizeDevices(devices),
+          feedback: {
+            total: feedback.length,
+            new: feedback.length,
+          },
+          ai_usage: aiUsage.summary,
+          audit_events: {
+            total: this.repository.listAuditEvents().length,
+          },
+        };
+      } catch {
+        return this.localOverview();
+      }
     }
+    return this.localOverview();
+  }
+
+  localOverview() {
     const devices = this.repository.listDevices();
     const feedback = this.repository.listFeedback();
     const aiUsage = this.repository.listAiUsageEvents();
     return {
-      devices: {
-        total: devices.length,
-        gernetix_verified: devices.filter((device) => device.authenticity_status === "gernetix_verified").length,
-        community_unverified: devices.filter((device) => device.authenticity_status === "community_unverified").length,
-        online: devices.filter((device) => device.connectivity_status === "online").length,
-      },
+      devices: summarizeDevices(devices),
       feedback: {
         total: feedback.length,
         new: feedback.filter((item) => item.status === "new").length,
@@ -170,8 +168,12 @@ class AdminService {
       throw new AdminToolError("access_denied", "KI Usage Monitoring ist nicht erlaubt.", 403, access);
     }
     if (this.serviceClients) {
-      const dashboard = await this.remoteAiDashboard();
-      return { access, summary: dashboard.summary };
+      try {
+        const dashboard = await this.remoteAiDashboard();
+        return { access, summary: dashboard.summary };
+      } catch {
+        return { access, summary: summarizeAiUsage(this.repository.listAiUsageEvents()) };
+      }
     }
     return { access, summary: summarizeAiUsage(this.repository.listAiUsageEvents()) };
   }
@@ -256,7 +258,7 @@ class AdminService {
     const start = Date.now();
     try {
       const result = config.provider === "api"
-        ? await this.callOpenAiCompatibleConfigTest(config, messages)
+        ? await this.callApiConfigTest(config, messages)
         : await this.callOllamaConfigTest(config, messages);
       return {
         ok: true,
@@ -302,6 +304,11 @@ class AdminService {
     };
   }
 
+  async callApiConfigTest(config, messages) {
+    if (config.apiProvider === "anthropic") return this.callAnthropicConfigTest(config, messages);
+    return this.callOpenAiCompatibleConfigTest(config, messages);
+  }
+
   async callOpenAiCompatibleConfigTest(config, messages) {
     const response = await fetch(`${config.apiBaseUrl.replace(/\/$/, "")}/chat/completions`, {
       method: "POST",
@@ -325,6 +332,45 @@ class AdminService {
         promptTokens: payload.usage?.prompt_tokens ?? null,
         completionTokens: payload.usage?.completion_tokens ?? null,
         totalTokens: payload.usage?.total_tokens ?? null,
+      },
+    };
+  }
+
+  async callAnthropicConfigTest(config, messages) {
+    const system = messages.find((message) => message.role === "system")?.content || "";
+    const conversation = messages
+      .filter((message) => message.role !== "system")
+      .map((message) => ({
+        role: message.role === "assistant" ? "assistant" : "user",
+        content: message.content,
+      }));
+    const response = await fetch(`${config.apiBaseUrl.replace(/\/$/, "")}/messages`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "anthropic-version": "2023-06-01",
+        ...(config.apiKey ? { "x-api-key": config.apiKey } : {}),
+      },
+      body: JSON.stringify({
+        model: config.apiModel,
+        max_tokens: 32,
+        temperature: 0,
+        system,
+        messages: conversation,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error?.message || payload.error || `Anthropic antwortet mit HTTP ${response.status}.`);
+    }
+    return {
+      content: (payload.content || []).map((part) => part.text || "").join("").trim(),
+      usage: {
+        promptTokens: payload.usage?.input_tokens ?? null,
+        completionTokens: payload.usage?.output_tokens ?? null,
+        totalTokens: Number.isFinite(payload.usage?.input_tokens) || Number.isFinite(payload.usage?.output_tokens)
+          ? (payload.usage?.input_tokens || 0) + (payload.usage?.output_tokens || 0)
+          : null,
       },
     };
   }
@@ -357,7 +403,36 @@ class AdminService {
   }
 }
 
+function summarizeDevices(devices) {
+  return {
+    total: devices.length,
+    gernetix_verified: devices.filter((device) => device.authenticity_status === "gernetix_verified").length,
+    community_unverified: devices.filter((device) => device.authenticity_status === "community_unverified").length,
+    online: devices.filter((device) => device.connectivity_status === "online").length,
+  };
+}
+
 function summarizeAiUsage(events) {
+  const providerGroups = new Map();
+  const modelGroups = new Map();
+  for (const event of events) {
+    const providerType = event.provider_type || inferProviderType(event);
+    const providerName = event.provider_name || (providerType === "local" ? "Lokales LLM" : "Externe API");
+    const providerKey = `${providerType}:${providerName}`;
+    const modelKey = `${providerKey}:${event.model || "unknown"}`;
+    addAiUsageStats(providerGroups, providerKey, {
+      provider_type: providerType,
+      provider_name: providerName,
+    }, event);
+    addAiUsageStats(modelGroups, modelKey, {
+      provider_type: providerType,
+      provider_name: providerName,
+      model: event.model || "unknown",
+    }, event);
+  }
+  const providerStats = Array.from(providerGroups.values());
+  const provider_breakdown = providerStats.map(finalizeAiUsageStats);
+  const model_breakdown = Array.from(modelGroups.values()).map(finalizeAiUsageStats);
   return {
     total_events: events.length,
     successful: events.filter((event) => event.status === "success").length,
@@ -365,7 +440,97 @@ function summarizeAiUsage(events) {
     credits: events.reduce((sum, event) => sum + Number(event.calculated_credits || 0), 0),
     tokens: events.reduce((sum, event) => sum + Number(event.input_tokens || 0) + Number(event.output_tokens || 0), 0),
     estimated_provider_cost: Number(events.reduce((sum, event) => sum + Number(event.estimated_provider_cost || 0), 0).toFixed(4)),
+    local: finalizeAiUsageStats(providerStats.filter((item) => item.provider_type === "local").reduce(mergeAiUsageStats, emptyAiUsageStats({ provider_type: "local", provider_name: "Lokale LLMs" }))),
+    external: finalizeAiUsageStats(providerStats.filter((item) => item.provider_type === "external").reduce(mergeAiUsageStats, emptyAiUsageStats({ provider_type: "external", provider_name: "Oeffentliche LLMs" }))),
+    provider_breakdown,
+    model_breakdown,
   };
+}
+
+function addAiUsageStats(groups, key, base, event) {
+  if (!groups.has(key)) groups.set(key, emptyAiUsageStats(base));
+  const stats = groups.get(key);
+  const inputTokens = Number(event.input_tokens || 0);
+  const outputTokens = Number(event.output_tokens || 0);
+  stats.total_events += 1;
+  stats.successful += event.status === "success" ? 1 : 0;
+  stats.rejected += event.status === "rejected" ? 1 : 0;
+  stats.input_tokens += inputTokens;
+  stats.output_tokens += outputTokens;
+  stats.tokens += inputTokens + outputTokens;
+  stats.credits += Number(event.calculated_credits || 0);
+  stats.estimated_provider_cost += Number(event.estimated_provider_cost || 0);
+  stats.total_duration_ms += Number(event.duration_ms || 0);
+  stats.total_latency_ms += Number(event.latency_ms || event.duration_ms || 0);
+  stats.total_calls_with_duration += Number(event.duration_ms || event.latency_ms || 0) > 0 ? 1 : 0;
+  stats.local_eval_tokens_per_second += Number(event.eval_tokens_per_second || 0);
+  stats.local_eval_samples += Number(event.eval_tokens_per_second || 0) > 0 ? 1 : 0;
+  return stats;
+}
+
+function emptyAiUsageStats(base = {}) {
+  return {
+    ...base,
+    total_events: 0,
+    successful: 0,
+    rejected: 0,
+    input_tokens: 0,
+    output_tokens: 0,
+    tokens: 0,
+    credits: 0,
+    estimated_provider_cost: 0,
+    total_duration_ms: 0,
+    total_latency_ms: 0,
+    total_calls_with_duration: 0,
+    local_eval_tokens_per_second: 0,
+    local_eval_samples: 0,
+  };
+}
+
+function mergeAiUsageStats(left, right) {
+  left.total_events += right.total_events || 0;
+  left.successful += right.successful || 0;
+  left.rejected += right.rejected || 0;
+  left.input_tokens += right.input_tokens || 0;
+  left.output_tokens += right.output_tokens || 0;
+  left.tokens += right.tokens || 0;
+  left.credits += right.credits || 0;
+  left.estimated_provider_cost += right.estimated_provider_cost || 0;
+  left.total_duration_ms += right.total_duration_ms || 0;
+  left.total_latency_ms += right.total_latency_ms || 0;
+  left.total_calls_with_duration += right.total_calls_with_duration || 0;
+  left.local_eval_tokens_per_second += right.local_eval_tokens_per_second || 0;
+  left.local_eval_samples += right.local_eval_samples || 0;
+  return left;
+}
+
+function finalizeAiUsageStats(stats) {
+  const callsWithDuration = stats.total_calls_with_duration || 0;
+  const evalSamples = stats.local_eval_samples || 0;
+  return {
+    provider_type: stats.provider_type,
+    provider_name: stats.provider_name,
+    model: stats.model,
+    total_events: stats.total_events,
+    successful: stats.successful,
+    rejected: stats.rejected,
+    input_tokens: stats.input_tokens,
+    output_tokens: stats.output_tokens,
+    tokens: stats.tokens,
+    credits: Number(stats.credits.toFixed(4)),
+    estimated_provider_cost: Number(stats.estimated_provider_cost.toFixed(4)),
+    average_latency_ms: callsWithDuration ? Math.round(stats.total_latency_ms / callsWithDuration) : null,
+    average_duration_ms: callsWithDuration ? Math.round(stats.total_duration_ms / callsWithDuration) : null,
+    average_eval_tokens_per_second: evalSamples ? Number((stats.local_eval_tokens_per_second / evalSamples).toFixed(2)) : null,
+  };
+}
+
+function inferProviderType(event) {
+  const baseUrl = String(event.provider_base_url || "");
+  const providerName = String(event.provider_name || "");
+  if (baseUrl.includes("127.0.0.1") || baseUrl.includes("localhost") || providerName.toLowerCase().includes("ollama")) return "local";
+  if (Number(event.estimated_provider_cost || 0) > 0) return "external";
+  return "local";
 }
 
 function maskDevice(device) {

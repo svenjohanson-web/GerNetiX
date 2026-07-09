@@ -13,9 +13,74 @@
           <p class="eyebrow">GerNetiX</p>
           <h1>Admin Tool</h1>
         </div>
+        <nav class="admin-nav" aria-label="Admin Navigation">
+          <button type="button" data-admin-view="statistics">Statistik</button>
+          <button type="button" data-admin-view="ai-usage">KI Usage</button>
+          <button type="button" data-admin-view="llm-config">LLM-Routing</button>
+        </nav>
       </header>
 
-      <section class="admin-layout">
+      <section id="statisticsView" class="admin-view">
+        <section class="metrics-grid" id="statisticsMetrics"></section>
+        <section class="admin-layout">
+          <article class="panel">
+            <p class="eyebrow">Betrieb</p>
+            <h2>Service-Statistik</h2>
+            <div id="serviceStatistics" class="summary-list"></div>
+          </article>
+          <article class="panel">
+            <p class="eyebrow">Kostenkontrolle</p>
+            <h2>KI-Verbrauch</h2>
+            <div id="statisticsAiUsage" class="summary-list"></div>
+          </article>
+        </section>
+      </section>
+
+      <section id="aiUsageView" class="admin-view hidden">
+        <section class="metrics-grid" id="aiUsageMetrics"></section>
+        <section class="admin-layout">
+          <article class="panel">
+            <p class="eyebrow">Provider</p>
+            <h2>LLM-Nutzung</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Quelle</th>
+                    <th>Anfragen</th>
+                    <th>Tokens</th>
+                    <th>Credits</th>
+                    <th>Kosten</th>
+                    <th>Latenz</th>
+                    <th>Tok/s</th>
+                  </tr>
+                </thead>
+                <tbody id="aiProviderRows"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="panel">
+            <p class="eyebrow">Modelle</p>
+            <h2>Modell-Metriken</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Modell</th>
+                    <th>Quelle</th>
+                    <th>Status</th>
+                    <th>Tokens</th>
+                    <th>Kosten</th>
+                  </tr>
+                </thead>
+                <tbody id="aiModelRows"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+      </section>
+
+      <section id="llmConfigView" class="admin-layout admin-view hidden">
         <form id="adminLlmForm" class="panel form-grid">
           <p class="eyebrow">KI-Konfiguration</p>
           <h2>LLM-Routing</h2>
@@ -36,8 +101,15 @@
           </section>
 
           <section id="adminApiFields" class="admin-provider-fields hidden">
+            <label>API Anbieter
+              <select id="adminApiProvider">
+                <option value="openai-compatible">OpenAI-kompatibel</option>
+                <option value="anthropic">Claude / Anthropic</option>
+              </select>
+            </label>
             <label>API Base URL<input id="adminApiBaseUrl" type="text" value="https://api.openai.com/v1" /></label>
             <label>API Modell<input id="adminApiModel" type="text" value="gpt-4.1-mini" /></label>
+            <div id="adminApiModelOptions" class="model-option-list"></div>
             <label>API Key<input id="adminApiKey" type="password" placeholder="leer lassen, um bestehenden Key zu behalten" autocomplete="off" /></label>
           </section>
 

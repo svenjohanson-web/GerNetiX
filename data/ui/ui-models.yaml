@@ -87,3 +87,44 @@ items:
     derivedFromRequirements:
       - requirement.community_ai_assistant_monitoring
       - requirement.ai_admin_usage_dashboard
+
+  - id: ui_model.admin_statistics_dashboard
+    type: ui_model
+    title: Admin Statistik Dashboard
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: CrossDomain
+    summary: Admin-Startseite fuer operative Kennzahlen zu Devices, Learning Feedback, Customer-Data-Access-Audit-Events und KI-Verbrauch. Die Sicht dient als kompakter Einstieg in Admin- und Support-Monitoring.
+    derivedFromRequirements:
+      - requirement.device_admin_status_inspection
+      - requirement.customer_data_consent_for_admin_access
+      - requirement.ai_admin_usage_dashboard
+    usesApiArtifacts:
+      - api_artifact.admin_tool
+    requiredStates:
+      - loading_statistics
+      - statistics_available
+      - backend_unavailable
+
+  - id: ui_model.admin_ai_usage_dashboard
+    type: ui_model
+    title: Admin KI Usage Dashboard
+    businessStatus: In Analysis
+    implementationStatus: Implemented
+    ownerDomain: Business
+    summary: Admin-Unterseite fuer KI-Nutzungsmetriken nach lokaler LLM-Quelle und oeffentlicher OpenAI-kompatibler API. Oeffentliche LLM-Nutzung zeigt geschaetzte Providerkosten; lokale LLM-Nutzung zeigt lokale Laufzeitmetriken wie Latenz, Dauer und Tokens pro Sekunde, soweit vorhanden.
+    derivedFromRequirements:
+      - requirement.ai_admin_usage_dashboard
+      - requirement.ai_cost_margin_reporting
+      - requirement.ai_suspicious_usage_detection
+    usesApiArtifacts:
+      - api_artifact.admin_tool
+      - api_artifact.ai_admin_usage_dashboard
+    usesDataModels:
+      - data_model.ai_usage_event
+      - data_model.ai_usage_aggregate
+    requiredStates:
+      - loading_ai_usage
+      - ai_usage_available
+      - no_ai_usage_events
+      - ai_usage_backend_unavailable

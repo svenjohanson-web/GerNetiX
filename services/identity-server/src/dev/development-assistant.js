@@ -17,7 +17,7 @@ function createDevelopmentAssistant({ llmConfigStore, projectServerUserId, readJ
         config: config(),
         message: {
           role: "assistant",
-          content: response.message?.content || fallbackAnswer(userMessages),
+          content: response.message?.content || fallbackAnswer(userMessages, activeConfig),
         },
         usage: usageFromProvider(response),
         usedFallback: false,
@@ -27,7 +27,7 @@ function createDevelopmentAssistant({ llmConfigStore, projectServerUserId, readJ
         config: config({ lastError: error.message || String(error) }),
         message: {
           role: "assistant",
-          content: fallbackAnswer(userMessages),
+          content: fallbackAnswer(userMessages, llmConfigStore.getConfig()),
         },
         usage: null,
         usedFallback: true,
@@ -69,8 +69,13 @@ function createDevelopmentAssistant({ llmConfigStore, projectServerUserId, readJ
   }
 
   async function callChatProvider(messages, activeConfig) {
-    if (activeConfig.provider === "api") return callOpenAiCompatibleChat(messages, activeConfig);
+    if (activeConfig.provider === "api") return callApiChat(messages, activeConfig);
     return callOllamaChat(messages, activeConfig);
+  }
+
+  async function callApiChat(messages, activeConfig) {
+    if (activeConfig.apiProvider === "anthropic") return callAnthropicChat(messages, activeConfig);
+    return callOpenAiCompatibleChat(messages, activeConfig);
   }
 
   async function callOllamaChat(messages, activeConfig) {
@@ -136,6 +141,52 @@ function createDevelopmentAssistant({ llmConfigStore, projectServerUserId, readJ
     }
   }
 
+  async function callAnthropicChat(messages, activeConfig) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    const system = messages.find((message) => message.role === "system")?.content || "";
+    const conversation = messages
+      .filter((message) => message.role !== "system")
+      .map((message) => ({
+        role: message.role === "assistant" ? "assistant" : "user",
+        content: message.content,
+      }));
+    try {
+      const response = await fetch(`${activeConfig.apiBaseUrl.replace(/\/$/, "")}/messages`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "anthropic-version": "2023-06-01",
+          ...(activeConfig.apiKey ? { "x-api-key": activeConfig.apiKey } : {}),
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: activeConfig.apiModel,
+          max_tokens: 1400,
+          messages: conversation,
+          system,
+          temperature: 0.2,
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error?.message || payload.error || `Anthropic antwortet mit HTTP ${response.status}.`);
+      }
+      return {
+        message: {
+          content: (payload.content || []).map((part) => part.text || "").join("").trim(),
+        },
+        prompt_eval_count: payload.usage?.input_tokens,
+        eval_count: payload.usage?.output_tokens,
+        total_duration: null,
+        prompt_eval_duration: null,
+        eval_duration: null,
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
   function usageFromProvider(response) {
     const promptTokens = numberOrNull(response.prompt_eval_count);
     const completionTokens = numberOrNull(response.eval_count);
@@ -160,12 +211,17 @@ function createDevelopmentAssistant({ llmConfigStore, projectServerUserId, readJ
     return Number.isFinite(value) ? Math.round(value / 1000000) : null;
   }
 
-  function fallbackAnswer(messages) {
+  function fallbackAnswer(messages, activeConfig = llmConfigStore.publicConfig()) {
     const lastUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content || "dein Projekt";
+    const providerName = activeConfig.provider === "api" && activeConfig.apiProvider === "anthropic"
+      ? "Claude-/Anthropic-Provider"
+      : activeConfig.provider === "api" ? "OpenAI-kompatiblen LLM-Provider" : "lokalen Ollama-Dienst";
     return [
-      "Ich kann den lokalen Ollama-Dienst gerade nicht erreichen, aber wir koennen den Architektur-Dialog strukturiert fortsetzen.",
+      `Ich kann den konfigurierten ${providerName} gerade nicht erreichen, aber wir koennen den Architektur-Dialog strukturiert fortsetzen.`,
       "",
       `Ausgangspunkt: ${lastUserMessage}`,
+      "",
+      "Pruefe bitte im Admin Tool Provider, Endpoint, Modell und Zugangsdaten.",
       "",
       "Bitte beantworte als Naechstes kurz:",
       "1. Soll das System nur lokal messen, lokal regeln oder auch aus der Ferne bedient werden?",

@@ -117,7 +117,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: In Implementation
     ownerDomain: IDE
-    summary: Architekturartefakt fuer einen allgemeinen lokalen KI-Chat in der Kunden-IDE. Der Chat ist vom Architektur-Discovery-Dialog der Entwicklungsplattform getrennt und nutzt im PoC einen lokalen Ollama-Proxy mit bewusst begrenzten Datenquellen.
+    summary: Architekturartefakt fuer einen allgemeinen KI-Chat in der Kunden-IDE. Der Chat ist vom Architektur-Discovery-Dialog der Entwicklungsplattform getrennt und nutzt im PoC das ueber das Admin Tool konfigurierte LLM-Routing mit bewusst begrenzten Datenquellen.
     usedBy:
       - app.user_ide
     usesArchitectureArtifacts:
@@ -130,6 +130,7 @@ items:
       - Frontend-Logik liegt getrennt in `services/identity-server/public/app/ai-chat.js`.
       - Backend-Proxy liegt getrennt in `services/identity-server/src/dev/ai-chat-assistant.js` und wird ueber `/api/platform/ai-chat/chat` angesprochen.
       - Provider, Endpoint und Modell werden im PoC ueber das eigenstaendige Admin Tool `http://127.0.0.1:4600/admin/` und die Endpunkte `/api/admin/llm-config` konfiguriert.
+      - Die gemeinsame Runtime-Konfiguration `.runtime/identity-llm-config.json` wird vom Identity Server bei Chat-Anfragen nachgeladen, damit Wechsel zwischen lokalem Ollama, OpenAI-kompatibler API und Claude/Anthropic ohne Serverneustart greifen.
       - Datenquellen sind im PoC auf den aktuellen Chat begrenzt; Projektdateien, Graphdaten, Kundendaten und externe Quellen sind blockiert.
 
   - id: component.local_ai_chat_adapter
@@ -138,7 +139,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: In Implementation
     ownerDomain: IDE
-    summary: Kapselt den allgemeinen KI-Chat der Kunden-IDE gegenueber einem lokalen Ollama-Dienst und haelt ihn fachlich von der Architektur-Discovery der Entwicklungsplattform getrennt.
+    summary: Kapselt den allgemeinen KI-Chat der Kunden-IDE gegenueber dem konfigurierten LLM-Provider und haelt ihn fachlich von der Architektur-Discovery der Entwicklungsplattform getrennt.
 
   - id: architecture_artifact.community_ai_assistant
     type: architecture_artifact
@@ -211,7 +212,8 @@ items:
     implementationNotes:
       - Erster PoC ist als neuer Kunden-IDE-Menuepunkt `Entwicklungsplattform` unter `/app/development-platform/` umgesetzt.
       - Die Chatbox nutzt serverseitig `/api/platform/development-assistant/chat`.
-      - Der LLM-Provider ist im PoC ueber das eigenstaendige Admin Tool `http://127.0.0.1:4600/admin/` konfigurierbar; lokal ist Ollama mit Default `http://127.0.0.1:11434` vorgesehen.
+      - Der LLM-Provider ist im PoC ueber das eigenstaendige Admin Tool `http://127.0.0.1:4600/admin/` konfigurierbar; lokal ist Ollama mit Default `http://127.0.0.1:11434` vorgesehen, alternativ eine OpenAI-kompatible API oder Claude/Anthropic.
+      - Die gemeinsame Runtime-Konfiguration `.runtime/identity-llm-config.json` wird bei Chat-Anfragen nachgeladen, damit Providerwechsel ohne Identity-Server-Neustart greifen.
       - Datenquellen sind im PoC bewusst auf aktuellen Chat und festen Architektur-Prompt begrenzt; Graph-, Projekt- und Kundendaten muessen spaeter explizit freigegeben werden.
       - Frontend-Logik des Entwicklungsasts liegt getrennt in `services/identity-server/public/app/development-platform.js`.
       - Backend-Logik des lokalen Architektur-Assistenten liegt getrennt in `services/identity-server/src/dev/development-assistant.js`.
