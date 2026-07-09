@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="980" viewBox="0 0 1680 980" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Aktuelle lokale MVP-Architektur mit Plattform UI, Identity Server, Hardware Catalog, Hardware Shop, Device Management, Provisioning, Recovery, Build, MQTT Broker und weiteren Services.</desc>
+  <desc id="desc">Aktuelle lokale MVP-Architektur mit Plattform UI, Identity Server, AI Context Prompt-Grundlagen, SQL-only Persistenz, Hardware Catalog, Hardware Shop, Device Management, Provisioning, Recovery, Build, MQTT Broker und weiteren Services.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -26,7 +26,7 @@
 
   <rect class="bg" width="1680" height="980"/>
   <text x="40" y="42" class="titleText" style="font-size:24px">GerNetiX Serverprozesse und Applikationen</text>
-  <text x="40" y="67" class="smallText">Lokaler MVP-Zuschnitt: UIs, Adapter-Server, Domaenenservices, Tools und Persistenz</text>
+  <text x="40" y="67" class="smallText">Lokaler MVP-Zuschnitt: UIs, Adapter-Server, Domaenenservices, Tools und SQL-only Persistenz</text>
 
   <g id="actors">
     <rect class="node actor" x="40" y="110" width="150" height="62" rx="10"/>
@@ -132,7 +132,7 @@
 
     <rect class="node domain" x="1385" y="405" width="190" height="54" rx="10"/>
     <text class="titleText" x="1480" y="429" text-anchor="middle">AI Context</text>
-    <text class="smallText" x="1480" y="448" text-anchor="middle">Grants + Policy :5500</text>
+    <text class="smallText" x="1480" y="448" text-anchor="middle">Grants + Policy + Prompts :5500</text>
   </g>
 
   <g id="tools">
@@ -168,7 +168,7 @@
 
   <g id="storage">
     <rect class="cluster" x="610" y="735" width="790" height="205" rx="14"/>
-    <text class="clusterTitle" x="630" y="764">Persistenz / Wissensbasis</text>
+    <text class="clusterTitle" x="630" y="764">SQL-Persistenz / Wissensbasis</text>
 
     <rect class="node store" x="635" y="795" width="220" height="62" rx="10"/>
     <text class="titleText" x="745" y="820" text-anchor="middle">Runtime SQLite</text>
@@ -180,7 +180,7 @@
 
     <rect class="node store" x="1155" y="795" width="220" height="62" rx="10"/>
     <text class="titleText" x="1265" y="820" text-anchor="middle">Projektdateien</text>
-    <text class="smallText" x="1265" y="840" text-anchor="middle">README, data, services, tools, git</text>
+    <text class="smallText" x="1265" y="840" text-anchor="middle">keine Runtime-Persistenz</text>
 
     <rect class="node store" x="895" y="870" width="220" height="46" rx="10"/>
     <text class="titleText" x="1005" y="890" text-anchor="middle">AI Context SQLite</text>

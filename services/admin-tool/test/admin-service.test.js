@@ -151,6 +151,19 @@ test("ai context summary shows grants policy and recent decisions", async () => 
         status: "active",
       }],
     },
+    "/api/ai-context/prompt-foundations": {
+      items: [{
+        foundation_id: "ai_prompt.architecture_discovery.system",
+        title: "Architektur-Discovery Systemprompt",
+        route_task: "architecture_discovery",
+        source_scope: "prompt_foundations/architecture_discovery/system",
+        content_kind: "system_prompt",
+        allowed_sources: ["current_chat", "architecture_prompt"],
+        blocked_sources: ["project_files", "customer_data"],
+        content: "Minimalumfang akzeptieren.",
+        status: "active",
+      }],
+    },
     "/api/ai-context/sqlite/summary": {
       summary: {
         available: true,
@@ -213,6 +226,8 @@ test("ai context summary shows grants policy and recent decisions", async () => 
   assert.equal(result.summary.content_sources.available, true);
   assert.equal(result.summary.content_sources.esp32_boards[0].title, "Espressif ESP32-DevKitC");
   assert.equal(result.summary.content_sources.esp32_boards[0].capabilities[1].title, "OTA");
+  assert.ok(result.summary.prompt_foundations.some((item) => item.route_task === "architecture_discovery"));
+  assert.ok(result.summary.prompt_foundations.find((item) => item.route_task === "architecture_discovery").content.includes("Minimalumfang"));
 });
 
 test("ai context summary falls back when context service is unavailable", async () => {

@@ -1052,10 +1052,11 @@ items:
     implementationNotes:
       - Erster PoC in der Kunden-IDE unter `/app/development-platform/`.
       - Der Identity Server stellt `/api/platform/development-assistant/chat` als Proxy fuer das im Admin Tool konfigurierte LLM-Routing bereit.
-      - Konfiguration erfolgt ueber das Admin Tool unter `http://127.0.0.1:4600/admin/` und wird in `.runtime/identity-llm-config.json` gespeichert.
+      - Konfiguration erfolgt ueber das Admin Tool unter `http://127.0.0.1:4600/admin/` und muss gemaess SQL-only-Persistenz in SQLite gespeichert werden; alte JSON-Dev-Konfigurationen sind nur Migrationsaltlasten.
       - Wechsel zwischen lokalem Ollama und OpenAI-kompatibler API sollen ohne Identity-Server-Neustart greifen.
       - Task-Routen `general_chat`, `architecture_discovery`, `artifact_generation` und `code_generation` sind Teil der gemeinsamen Runtime-Konfiguration; Artefakt- und Codegenerierung bevorzugen lokal, um Anbieter-Kosten zu vermeiden.
-      - Im PoC sind nur aktueller Chat und fester Architektur-Prompt als Datenquellen freigegeben.
+      - Prompt-Grundlagen muessen zentral in der AI-Context-SQLite liegen und duerfen nicht fuehrend im Identity Server gepflegt werden.
+      - Im PoC sind nur aktueller Chat, zentrale Prompt-Grundlagen und per Grant freigegebener Hardware-Catalog-Kontext als Datenquellen vorgesehen.
 
   - id: requirement.learning_firmware_base_scaffold_preserves_ota
     type: requirement

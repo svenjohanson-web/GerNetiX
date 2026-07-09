@@ -166,7 +166,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: Authorization
-    summary: Admin-Unterseite, die zeigt, welche Datenquellen dem LLM als Kontext bereitstehen, welche Grants aktiv, abgelaufen oder widerrufen sind, welche Provider-Scope- und Redaktionsstufe gilt und welche Kontext-Preflight-Entscheidungen auditiert wurden.
+    summary: Admin-Unterseite, die zeigt, welche Datenquellen dem LLM als Kontext bereitstehen, welche Grants aktiv, abgelaufen oder widerrufen sind, welche Provider-Scope- und Redaktionsstufe gilt, welche Prompt-Grundlagen zentral in der AI-Context-SQLite liegen und welche Kontext-Preflight-Entscheidungen auditiert wurden.
     derivedFromRequirements:
       - requirement.ai_context_access_control
     usesApiArtifacts:
@@ -177,6 +177,7 @@ items:
       - data_model.ai_context_grant
       - data_model.ai_context_policy
       - data_model.ai_context_source
+      - data_model.ai_prompt_foundation
       - data_model.ai_context_access_audit_event
     requiredStates:
       - loading_ai_context_access
@@ -188,6 +189,7 @@ items:
       - Datenquellen nach Typ
       - Grant-Liste
       - Source-Registry fuer KI-Kontextquellen
+      - Prompt-Grundlagen aus AI Context SQLite
       - Letzte Kontext-Preflight-Entscheidungen
       - AI-Context-SQLite-Tabellenuebersicht
       - Hardware-Catalog-Inhaltsvorschau fuer Boards und Capabilities

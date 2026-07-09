@@ -146,7 +146,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: In Implementation
     ownerDomain: Authorization
-    summary: Speichert account-, projekt-, quelle-, scope-, zweck- und providergebundene Kontext-Grants mit Gueltigkeit, Widerruf und Redaktionsstufe. Fuehrt zusaetzlich eine Source Registry fuer fachliche KI-Kontextquellen wie Hardware Catalog und AI-Context-SQLite.
+    summary: Speichert account-, projekt-, quelle-, scope-, zweck- und providergebundene Kontext-Grants mit Gueltigkeit, Widerruf und Redaktionsstufe. Fuehrt zusaetzlich eine Source Registry fuer fachliche KI-Kontextquellen wie Hardware Catalog, Prompt-Grundlagen und AI-Context-SQLite.
 
   - id: component.ai_context_access_policy
     type: architecture_component
@@ -184,7 +184,8 @@ items:
       - Frontend-Logik liegt getrennt in `services/identity-server/public/app/ai-chat.js`.
       - Backend-Proxy liegt getrennt in `services/identity-server/src/dev/ai-chat-assistant.js` und wird ueber `/api/platform/ai-chat/chat` angesprochen.
       - Provider, Endpoint und Modell werden im PoC ueber das eigenstaendige Admin Tool `http://127.0.0.1:4600/admin/` und die Endpunkte `/api/admin/llm-config` konfiguriert.
-      - Die gemeinsame Runtime-Konfiguration `.runtime/identity-llm-config.json` wird vom Identity Server bei Chat-Anfragen nachgeladen, damit Wechsel zwischen lokalem Ollama, OpenAI-kompatibler API und Claude/Anthropic ohne Serverneustart greifen.
+      - Die gemeinsame LLM-Routing-Konfiguration ist fachlicher Runtime-State und muss gemaess SQL-only-Persistenz in SQLite liegen; alte `.runtime/identity-llm-config.json`-Dev-Konfigurationen sind nur Migrationsaltlasten.
+      - Die Systemprompt-Grundlage wird aus der AI-Context-SQLite ueber den AI Context Server geladen; der Identity Server ist nicht fuehrend fuer KI-Grundlagen.
       - Datenquellen sind im PoC auf den aktuellen Chat begrenzt; Projektdateien, Graphdaten, Kundendaten und externe Quellen sind blockiert.
 
   - id: component.local_ai_chat_adapter
@@ -271,8 +272,9 @@ items:
       - Neue Entwicklungsprojekte werden ueber `/api/platform/development-projects` im Project Server angelegt und ueber `user_id` an den Account gebunden.
       - Die aktuell abgeleitete Architektur kann jederzeit als `docs/architecture.puml` plus ProjectViewManifest-PlantUML-View gespeichert werden.
       - Der LLM-Provider ist im PoC ueber das eigenstaendige Admin Tool `http://127.0.0.1:4600/admin/` konfigurierbar; lokal ist Ollama mit Default `http://127.0.0.1:11434` vorgesehen, alternativ eine OpenAI-kompatible API oder Claude/Anthropic.
-      - Die gemeinsame Runtime-Konfiguration `.runtime/identity-llm-config.json` wird bei Chat-Anfragen nachgeladen, damit Providerwechsel ohne Identity-Server-Neustart greifen.
-      - Datenquellen sind im PoC bewusst auf aktuellen Chat und festen Architektur-Prompt begrenzt; Graph-, Projekt- und Kundendaten muessen spaeter explizit freigegeben werden.
+      - Die gemeinsame LLM-Routing-Konfiguration ist fachlicher Runtime-State und muss gemaess SQL-only-Persistenz in SQLite liegen; alte `.runtime/identity-llm-config.json`-Dev-Konfigurationen sind nur Migrationsaltlasten.
+      - Systemprompt-Grundlagen fuer Architektur-Discovery werden fuehrend in der AI-Context-SQLite gespeichert und vom Identity Server ueber den AI Context Server geladen.
+      - Datenquellen sind im PoC bewusst auf aktuellen Chat, zentrale Prompt-Grundlagen und optional per Grant freigegebenen Hardware-Catalog-Kontext begrenzt; Graph-, Projekt- und Kundendaten muessen explizit freigegeben werden.
       - Aus der letzten KI-Antwort wird eine PlantUML-Architekturskizze abgeleitet und in der Entwicklungsplattform angezeigt; sie bleibt als Skizze markiert und ersetzt keine Nutzerbestaetigung.
       - Frontend-Logik des Entwicklungsasts liegt getrennt in `services/identity-server/public/app/development-platform.js`.
       - Backend-Logik des lokalen Architektur-Assistenten liegt getrennt in `services/identity-server/src/dev/development-assistant.js`.

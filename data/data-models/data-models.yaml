@@ -485,6 +485,31 @@ items:
     derivedFromRequirements:
       - requirement.ai_context_access_control
 
+  - id: data_model.ai_prompt_foundation
+    type: data_model
+    title: AiPromptFoundation
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Authorization
+    summary: Zentrale Prompt-Grundlage fuer KI-Routen wie allgemeinen Chat und Architektur-Discovery. Das Modell liegt fuehrend in der AI-Context-SQLite, damit nutzende Apps wie der Identity Server keine eigene Prompt-Wahrheit pflegen.
+    fields:
+      - foundationId
+      - title
+      - routeTask
+      - sourceScope
+      - contentKind
+      - allowedSources
+      - blockedSources
+      - content
+      - status
+      - createdAt
+      - updatedAt
+    privacyClassification: internal
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.ai_context_access_control
+      - requirement.architecture_discovery_guided_by_llm
+
   - id: data_model.ai_context_access_audit_event
     type: data_model
     title: AiContextAccessAuditEvent

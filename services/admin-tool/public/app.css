@@ -94,6 +94,7 @@ table { width: 100%; border-collapse: collapse; min-width: 620px; }
 th, td { border-bottom: 1px solid var(--line); padding: 11px 8px; text-align: left; vertical-align: top; }
 th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
 td strong { display: block; }
+td strong.subline { margin-top: 9px; }
 td span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
 .empty-cell { color: var(--muted); text-align: center; }
 .form-grid { display: grid; gap: 12px; align-content: start; }
@@ -170,6 +171,20 @@ td span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px;
 .inline-data-list div { display: contents; }
 .inline-data-list dt { color: var(--muted); font-size: 12px; }
 .inline-data-list dd { margin: 0; overflow-wrap: anywhere; }
+.prompt-foundation-table { min-width: 900px; }
+.prompt-foundation-content {
+  max-height: 240px;
+  min-width: 360px;
+  margin: 0;
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #f8fafc;
+  padding: 10px;
+  font: 12px/1.45 Consolas, "Courier New", monospace;
+}
 .helper-text { margin: 12px 0 0; color: var(--muted); line-height: 1.45; }
 .flash-status {
   border: 1px solid var(--line);

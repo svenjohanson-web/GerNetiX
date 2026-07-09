@@ -2,7 +2,7 @@ const crypto = require("node:crypto");
 const { AiContextError } = require("../errors");
 const { isGrantActive } = require("../repositories/in-memory-ai-context-repository");
 
-const SOURCE_TYPES = new Set(["current_chat", "project_files", "graph_database", "device_data", "customer_data", "admin_statistics", "hardware_catalog"]);
+const SOURCE_TYPES = new Set(["current_chat", "project_files", "graph_database", "device_data", "customer_data", "admin_statistics", "hardware_catalog", "ai_prompt"]);
 const PURPOSES = new Set(["architecture_assistance", "debugging", "support_case", "usage_analysis", "general_chat"]);
 const PROVIDER_SCOPES = new Set(["local_only", "external_allowed", "external_redacted_only"]);
 const REDACTION_LEVELS = new Set(["none", "metadata_only", "summary_only", "masked"]);
@@ -49,6 +49,10 @@ class AiContextService {
 
   listSources(filter = {}) {
     return this.repository.listSources(filter);
+  }
+
+  listPromptFoundations(filter = {}) {
+    return this.repository.listPromptFoundations(filter);
   }
 
   upsertSource(input = {}) {

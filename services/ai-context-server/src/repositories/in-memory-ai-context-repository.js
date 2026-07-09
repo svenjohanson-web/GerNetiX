@@ -5,7 +5,7 @@ function defaultPolicy() {
     require_explicit_source_scope: true,
     allow_external_provider_customer_data: false,
     default_max_context_items: 12,
-    protected_source_types: ["customer_data", "project_files", "graph_database", "device_data", "hardware_catalog"],
+    protected_source_types: ["customer_data", "project_files", "graph_database", "device_data", "hardware_catalog", "ai_prompt"],
     updated_at: nowIso(),
   };
 }
@@ -44,7 +44,68 @@ function defaultSources() {
       created_at: nowIso(),
       updated_at: nowIso(),
     },
+    {
+      source_id: "ai_source.prompt_foundations",
+      source_type: "ai_prompt",
+      source_scope: "prompt_foundations",
+      title: "KI Prompt-Grundlagen",
+      summary: "Fuehrende Quelle fuer Systemprompt-Grundlagen, die KI-Chat und Architektur-Discovery anleiten.",
+      backing_service: "ai-context-server",
+      endpoint: "/api/ai-context/prompt-foundations",
+      contains: ["system_prompts", "allowed_sources", "blocked_sources", "route_tasks"],
+      default_redaction_level: "none",
+      default_provider_scope: "local_only",
+      allowed_purposes: ["general_chat", "architecture_assistance"],
+      status: "active",
+      created_at: nowIso(),
+      updated_at: nowIso(),
+    },
   ];
+}
+
+function defaultPromptFoundations() {
+  return [{
+    foundation_id: "ai_prompt.customer_ide_chat.system",
+    title: "Kunden-IDE KI-Chat Systemprompt",
+    route_task: "general_chat",
+    source_scope: "prompt_foundations/general_chat/system",
+    content_kind: "system_prompt",
+    allowed_sources: ["current_chat"],
+    blocked_sources: ["project_files", "customer_data", "graph_database", "external_web"],
+    content: [
+      "Du bist der GerNetiX KI-Chat in der Kunden-IDE.",
+      "Antworte hilfreich, konkret und knapp. Frage nach, wenn das Ziel unklar ist.",
+      "Du darfst nur den aktuellen Chatverlauf verwenden.",
+      "Du hast keinen Zugriff auf Projektdateien, Kundendaten, Graphdatenbanken oder externe Webseiten.",
+      "Wenn der Nutzer Architekturentscheidungen, Produktideen oder technische Planung bespricht, hilf strukturiert und markiere Annahmen sichtbar.",
+      "Wenn etwas sicherheits-, rechts-, medizin- oder finanzrelevant ist, gib keine Scheingenauigkeit vor und empfehle fachliche Pruefung.",
+    ].join("\n"),
+    status: "active",
+    created_at: nowIso(),
+    updated_at: nowIso(),
+  }, {
+    foundation_id: "ai_prompt.architecture_discovery.system",
+    title: "Architektur-Discovery Systemprompt",
+    route_task: "architecture_discovery",
+    source_scope: "prompt_foundations/architecture_discovery/system",
+    content_kind: "system_prompt",
+    allowed_sources: ["current_chat", "architecture_prompt", "hardware_catalog_if_granted"],
+    blocked_sources: ["project_files", "customer_data", "graph_database", "external_web"],
+    content: [
+      "Du bist der GerNetiX Architektur-Discovery-Assistent in der Kunden-IDE.",
+      "Dein Ziel ist nicht sofort Technologie zu empfehlen, sondern zuerst die Zielarchitektur des Nutzerprojekts herzuleiten.",
+      "Fuehre den Nutzer mit kurzen, konkreten Fragen. Frage immer nur wenige Punkte auf einmal.",
+      "Wenn der Nutzer bewusst einen Minimalumfang vorgibt, z. B. nur eine Struktur, nur ein ESP32, nur ein Port oder ohne Backend/Persistenz, akzeptiere das als ausreichende Vorgabe und liefere direkt eine minimale Struktur statt weitere Klaerungsfragen zu stellen.",
+      "Klaere insbesondere: Projektziel, Nutzer, lokale Messung, lokale Regelstrecke, mehrere Geraete, Datenspeicherung, Bedienoberflaeche, lokaler oder weltweiter Zugriff, Computer, Handy, Browser, Backend, Datenschutz, Offline-Verhalten und Betriebsmodell.",
+      "Stelle Rueckfragen nur, wenn eine Entscheidung fuer die naechste Struktur zwingend fehlt oder wenn der Nutzer explizit Rueckfragen wuenscht.",
+      "Leite erst danach Technologien wie ESP32, WLAN, MQTT, REST, WebSocket, lokale Datenbank, Backend, Webseite, Mobile App oder Desktop App ab.",
+      "Markiere Annahmen und offene Fragen sichtbar. Bestaetigte Architekturentscheidungen muessen vom Nutzer bestaetigt werden.",
+      "Wenn genug Kontext vorhanden ist, gib eine kurze Struktur mit Zielarchitektur, offenen Fragen, Technologie-Kandidaten und naechstem sinnvollen GerNetiX-Schritt aus.",
+    ].join("\n"),
+    status: "active",
+    created_at: nowIso(),
+    updated_at: nowIso(),
+  }];
 }
 
 class InMemoryAiContextRepository {
@@ -52,6 +113,7 @@ class InMemoryAiContextRepository {
     this.grants = new Map((seed.grants || []).map((item) => [item.grant_id, clone(item)]));
     this.auditEvents = [...(seed.auditEvents || [])].map(clone);
     this.sources = new Map(mergeSources(defaultSources(), seed.sources || []).map((item) => [item.source_id, clone(item)]));
+    this.promptFoundations = new Map(mergePromptFoundations(defaultPromptFoundations(), seed.promptFoundations || []).map((item) => [item.foundation_id, clone(item)]));
     this.policy = clone(mergePolicy(defaultPolicy(), seed.policy));
   }
 
@@ -108,11 +170,28 @@ class InMemoryAiContextRepository {
       .filter((source) => matchesSourceFilter(source, filter))
       .map(clone);
   }
+
+  savePromptFoundation(promptFoundation) {
+    this.promptFoundations.set(promptFoundation.foundation_id, clone(promptFoundation));
+    return clone(promptFoundation);
+  }
+
+  listPromptFoundations(filter = {}) {
+    return Array.from(this.promptFoundations.values())
+      .filter((item) => matchesPromptFoundationFilter(item, filter))
+      .map(clone);
+  }
 }
 
 function mergeSources(defaultItems, seedItems) {
   const byId = new Map(defaultItems.map((item) => [item.source_id, item]));
   for (const item of seedItems || []) byId.set(item.source_id, item);
+  return Array.from(byId.values());
+}
+
+function mergePromptFoundations(defaultItems, seedItems) {
+  const byId = new Map(defaultItems.map((item) => [item.foundation_id, item]));
+  for (const item of seedItems || []) byId.set(item.foundation_id, item);
   return Array.from(byId.values());
 }
 
@@ -149,6 +228,13 @@ function matchesSourceFilter(source, filter) {
   return true;
 }
 
+function matchesPromptFoundationFilter(item, filter) {
+  if (filter.route_task && item.route_task !== filter.route_task) return false;
+  if (filter.content_kind && item.content_kind !== filter.content_kind) return false;
+  if (filter.status && item.status !== filter.status) return false;
+  return true;
+}
+
 function isGrantActive(grant, at) {
   if (grant.revoked_at) return false;
   if (grant.valid_from && new Date(grant.valid_from).getTime() > at.getTime()) return false;
@@ -164,4 +250,4 @@ function clone(value) {
   return value ? JSON.parse(JSON.stringify(value)) : null;
 }
 
-module.exports = { InMemoryAiContextRepository, defaultPolicy, defaultSources, isGrantActive };
+module.exports = { InMemoryAiContextRepository, defaultPolicy, defaultSources, defaultPromptFoundations, isGrantActive };

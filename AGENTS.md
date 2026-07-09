@@ -28,6 +28,7 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 - Live-LLM-Aufrufe vermeiden, wenn ein Unit-Test oder API-Contract-Test denselben Nachweis liefert.
 - Project Server ist die SQLite-Wahrheit fuer accountgebundene Projekte.
 - AI Context Server ist die SQLite-Wahrheit fuer KI-Kontextquellen, Grants, Policy und Audit.
+- Dauerhaftes Persistieren ist nur in SQL/SQLite erlaubt. JSON-Dateien, Prozessspeicher, localStorage, Browser-State, Temp-Dateien und Caches sind nur Logic/Control/View- oder Test-/Runtime-Hilfen und duerfen nie fachliche Quelle der Wahrheit sein.
 - Abschlussnachweis kurz halten: geaenderte Bereiche, Tests, Graph-Status, offene Punkte.
 
 ## Abschlussregel

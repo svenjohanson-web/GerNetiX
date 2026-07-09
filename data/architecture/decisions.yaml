@@ -418,6 +418,32 @@ items:
     ownerDomain: Authorization
     summary: Effektive Berechtigungen werden aus AccountSystemCapabilityOverride, PlanSystemCapability und System Default berechnet; DENY gewinnt.
 
+  - id: architecture.sql_only_persistence
+    type: architecture_decision
+    title: Persistenz nur in SQL
+    status: approved
+    priority: high
+    ownerDomain: CrossDomain
+    summary: Dauerhaftes Persistieren fachlicher oder administrativer Plattformdaten ist nur in SQL/SQLite erlaubt. Alles andere ist Logic, Control oder View und darf nicht als Quelle der Wahrheit behandelt werden.
+    references:
+      - architecture.sqlite_graph_canonical_model
+      - architecture.project_server_build_deploy_server_split
+      - architecture.service_process_portability
+    affectsArchitectureArtifacts:
+      - architecture_artifact.project_server
+      - architecture_artifact.ai_context_server
+      - architecture_artifact.identity_server
+      - architecture_artifact.admin_tool
+      - architecture_artifact.persistence_server
+    rules:
+      - Fachlicher Zustand, Konfiguration mit Produktwirkung, Account-/Projektbezug, KI-Kontext, Grants, Policy, Audit, Usage, Build-Historie und Admin-Konfiguration muessen in einer expliziten SQL-/SQLite-Datenbank liegen.
+      - JSON-Dateien, YAML-Dateien, Prozessspeicher, localStorage, sessionStorage, Browser-State, Temp-Dateien, Build-Caches und generierte Lesesichten sind keine Persistenzquelle.
+      - Solche Nicht-SQL-Artefakte duerfen nur als Logic/Control/View, Import-/Exportformat, Test-Fixture, Cache, Snapshot oder temporaerer Runtime-Helfer verwendet werden.
+      - Wenn ein Nicht-SQL-Artefakt aus technischen Gruenden existiert, muss es aus SQL rekonstruierbar sein oder als explizit nicht-fachlicher Runtime-/Test-State markiert werden.
+      - Services duerfen keine zweite fachliche Wahrheit neben ihrer SQL-Datenbank fuehren.
+      - Browserseitige Speicherung darf hoechstens UI-Komfort, aktuelle Auswahl oder transienten Kontrollzustand halten; erneutes Laden muss die fachliche Wahrheit aus Server-APIs und SQL beziehen.
+      - Migrationen, neue Features und Admin-Tools muessen diese Regel pruefen, bevor neue Dateien, Stores oder Config-Formate eingefuehrt werden.
+
   - id: architecture.registered_processor_board
     type: architecture_decision
     title: RegisteredProcessorBoard trennt konkretes Board vom Produkttyp

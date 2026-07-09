@@ -54,6 +54,7 @@ test("external provider requires explicit grant scope and redaction", () => {
 test("hardware catalog source is registered and can be authorized locally", () => {
   const service = createService();
   assert.ok(service.listSources().some((source) => source.source_type === "hardware_catalog" && source.source_scope === "processor_boards/esp32"));
+  assert.ok(service.listSources().some((source) => source.source_type === "ai_prompt" && source.source_scope === "prompt_foundations"));
   service.createGrant(grantInput({
     account_id: "*",
     source_type: "hardware_catalog",
@@ -69,6 +70,15 @@ test("hardware catalog source is registered and can be authorized locally", () =
 
   assert.equal(result.allowed, true);
   assert.equal(result.redaction_level, "summary_only");
+});
+
+test("prompt foundations are centrally available from ai context", () => {
+  const service = createService();
+  const prompts = service.listPromptFoundations();
+
+  assert.equal(prompts.length, 2);
+  assert.ok(prompts.some((prompt) => prompt.route_task === "general_chat"));
+  assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Minimalumfang"));
 });
 
 test("customer data stays blocked for external provider by global policy", () => {
@@ -119,7 +129,8 @@ test("sqlite repository persists grants policy and audit events in own database"
   const summary = reloaded.sqliteSummary();
   assert.equal(summary.available, true);
   assert.equal(summary.db_path, dbPath);
-  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_sources").row_count, 2);
+  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_sources").row_count, 3);
+  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_prompt_foundations").row_count, 2);
   assert.equal(summary.tables.find((table) => table.table_name === "ai_context_grants").row_count, 1);
   assert.equal(summary.tables.find((table) => table.table_name === "ai_context_audit_events").row_count, 1);
   assert.equal(summary.tables.find((table) => table.table_name === "ai_context_policy").preview_rows[0].raw_json, undefined);
@@ -129,7 +140,8 @@ test("sqlite repository persists grants policy and audit events in own database"
     assert.equal(tableCount(db, "ai_context_grants"), 1);
     assert.equal(tableCount(db, "ai_context_audit_events"), 1);
     assert.equal(tableCount(db, "ai_context_policy"), 1);
-    assert.equal(tableCount(db, "ai_context_sources"), 2);
+    assert.equal(tableCount(db, "ai_context_sources"), 3);
+    assert.equal(tableCount(db, "ai_context_prompt_foundations"), 2);
   } finally {
     db.close();
   }

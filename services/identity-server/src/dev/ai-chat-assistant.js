@@ -1,4 +1,4 @@
-function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBody, sendJson }) {
+function createAiChatAssistant({ aiContextJson, llmConfigStore, projectServerUserId, readJsonBody, sendJson }) {
   async function handleChat(req, res, session) {
     const body = await readJsonBody(req);
     const userMessages = normalizeMessages(body.messages);
@@ -8,7 +8,7 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
     }
 
     const messages = [
-      { role: "system", content: systemPrompt(session) },
+      { role: "system", content: await systemPrompt(session) },
       ...userMessages,
     ];
 
@@ -63,16 +63,22 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
       .slice(-16);
   }
 
-  function systemPrompt(session) {
+  async function systemPrompt(session) {
     return [
-      "Du bist der GerNetiX KI-Chat in der Kunden-IDE.",
-      "Antworte hilfreich, konkret und knapp. Frage nach, wenn das Ziel unklar ist.",
-      "Du darfst nur den aktuellen Chatverlauf verwenden.",
-      "Du hast keinen Zugriff auf Projektdateien, Kundendaten, Graphdatenbanken oder externe Webseiten.",
-      "Wenn der Nutzer Architekturentscheidungen, Produktideen oder technische Planung bespricht, hilf strukturiert und markiere Annahmen sichtbar.",
-      "Wenn etwas sicherheits-, rechts-, medizin- oder finanzrelevant ist, gib keine Scheingenauigkeit vor und empfehle fachliche Pruefung.",
+      await promptFoundation("general_chat"),
       `Aktueller Nutzer: ${projectServerUserId(session)}.`,
     ].join("\n");
+  }
+
+  async function promptFoundation(routeTask) {
+    if (!aiContextJson) return missingPromptFoundation(routeTask);
+    try {
+      const response = await aiContextJson(`/api/ai-context/prompt-foundations?route_task=${encodeURIComponent(routeTask)}&status=active`);
+      const prompt = (response.items || []).find((item) => item.route_task === routeTask && item.content_kind === "system_prompt");
+      return prompt?.content || missingPromptFoundation(routeTask);
+    } catch {
+      return missingPromptFoundation(routeTask);
+    }
   }
 
   async function callChatProvider(messages, activeConfig) {
@@ -285,6 +291,10 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
     config,
     handleChat,
   };
+}
+
+function missingPromptFoundation(routeTask) {
+  return `AI Context Prompt-Grundlage fuer ${routeTask} ist nicht verfuegbar. Antworte kurz und verweise auf das Admin Tool LLM-Daten.`;
 }
 
 module.exports = { createAiChatAssistant };

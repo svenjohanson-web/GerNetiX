@@ -48,7 +48,22 @@ Die Source Registry beschreibt, welche fachlichen Datenquellen fuer KI-Kontext e
 Startquellen:
 
 - `hardware_catalog` / `processor_boards/esp32`: ESP32-ProcessorBoards, Basissoftwareprofile, Provisioningprofile und TechnicalCapabilities aus dem Hardware Catalog.
+- `ai_prompt` / `prompt_foundations`: zentrale Prompt-Grundlagen fuer KI-Routen.
 - `graph_database` / `.runtime/gernetix-ai-context.sqlite`: AI-Context-SQLite-Metadaten.
+
+## Prompt Foundations
+
+```text
+GET /api/ai-context/prompt-foundations
+```
+
+Liefert die fuehrenden Prompt-Grundlagen aus der AI-Context-SQLite, zum Beispiel Systemprompts fuer `general_chat` und `architecture_discovery`.
+
+Filter:
+
+- `route_task`
+- `content_kind`
+- `status`
 
 ## Preflight
 
@@ -76,7 +91,7 @@ Liefert eine sichere Betriebsuebersicht der eigenen AI-Context-SQLite:
 
 - Datenbankpfad, Service-Key und Schema-Version
 - AI-Context-Tabellen mit Zeilenanzahl und Spaltenliste
-- begrenzte Vorschauzeilen fuer Policy, Grants und Audit-Events
+- begrenzte Vorschauzeilen fuer Policy, Sources, Prompt-Grundlagen, Grants und Audit-Events
 - Service-Document-Collections mit Zeilenanzahl
 
 Die Summary ist kein Rohdump. `raw_json` und unkontrollierte Inhalte werden nicht ausgegeben.

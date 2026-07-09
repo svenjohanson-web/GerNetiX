@@ -20,7 +20,7 @@ function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmCon
       const activeConfig = routeConfig("architecture_discovery");
       const context = await architectureContext(session, activeConfig, projectId);
       const messages = [
-        { role: "system", content: systemPrompt(session) },
+        { role: "system", content: await systemPrompt(session) },
         ...context.messages,
         ...userMessages,
       ];
@@ -82,19 +82,22 @@ function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmCon
       .slice(-12);
   }
 
-  function systemPrompt(session) {
+  async function systemPrompt(session) {
     return [
-      "Du bist der GerNetiX Architektur-Discovery-Assistent in der Kunden-IDE.",
-      "Dein Ziel ist nicht sofort Technologie zu empfehlen, sondern zuerst die Zielarchitektur des Nutzerprojekts herzuleiten.",
-      "Fuehre den Nutzer mit kurzen, konkreten Fragen. Frage immer nur wenige Punkte auf einmal.",
-      "Wenn der Nutzer bewusst einen Minimalumfang vorgibt, z. B. nur eine Struktur, nur ein ESP32, nur ein Port oder ohne Backend/Persistenz, akzeptiere das als ausreichende Vorgabe und liefere direkt eine minimale Struktur statt weitere Klaerungsfragen zu stellen.",
-      "Klaere insbesondere: Projektziel, Nutzer, lokale Messung, lokale Regelstrecke, mehrere Geraete, Datenspeicherung, Bedienoberflaeche, lokaler oder weltweiter Zugriff, Computer, Handy, Browser, Backend, Datenschutz, Offline-Verhalten und Betriebsmodell.",
-      "Stelle Rueckfragen nur, wenn eine Entscheidung fuer die naechste Struktur zwingend fehlt oder wenn der Nutzer explizit Rueckfragen wuenscht.",
-      "Leite erst danach Technologien wie ESP32, WLAN, MQTT, REST, WebSocket, lokale Datenbank, Backend, Webseite, Mobile App oder Desktop App ab.",
-      "Markiere Annahmen und offene Fragen sichtbar. Bestaetigte Architekturentscheidungen muessen vom Nutzer bestaetigt werden.",
-      "Wenn genug Kontext vorhanden ist, gib eine kurze Struktur mit Zielarchitektur, offenen Fragen, Technologie-Kandidaten und naechstem sinnvollen GerNetiX-Schritt aus.",
+      await promptFoundation("architecture_discovery"),
       `Aktueller Nutzer: ${projectServerUserId(session)}.`,
     ].join("\n");
+  }
+
+  async function promptFoundation(routeTask) {
+    if (!aiContextJson) return missingPromptFoundation(routeTask);
+    try {
+      const response = await aiContextJson(`/api/ai-context/prompt-foundations?route_task=${encodeURIComponent(routeTask)}&status=active`);
+      const prompt = (response.items || []).find((item) => item.route_task === routeTask && item.content_kind === "system_prompt");
+      return prompt?.content || missingPromptFoundation(routeTask);
+    } catch {
+      return missingPromptFoundation(routeTask);
+    }
   }
 
   async function architectureContext(session, activeConfig, projectId) {
@@ -470,6 +473,10 @@ function buildArchitectureDiagram(messages, options = {}) {
     confidence: signals.confidence,
     detected_blocks: signals.detectedBlocks,
   };
+}
+
+function missingPromptFoundation(routeTask) {
+  return `AI Context Prompt-Grundlage fuer ${routeTask} ist nicht verfuegbar. Antworte kurz und verweise auf das Admin Tool LLM-Daten.`;
 }
 
 function normalizeDiagramMessages(messages) {

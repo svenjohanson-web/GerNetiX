@@ -192,11 +192,12 @@ class AdminService {
       return { access, summary: emptyAiContextSummary("ai_context_service_not_configured") };
     }
     try {
-      const [policy, grants, auditEvents, sources, sqlite, contentSources] = await Promise.all([
+      const [policy, grants, auditEvents, sources, promptFoundations, sqlite, contentSources] = await Promise.all([
         this.remoteAiContextPolicy(),
         this.remoteAiContextGrants(),
         this.remoteAiContextAuditEvents(),
         this.remoteAiContextSources(),
+        this.remoteAiContextPromptFoundations(),
         this.remoteAiContextSqliteSummary(),
         this.remoteAiContextContentSources(),
       ]);
@@ -207,6 +208,7 @@ class AdminService {
           grants: grants.items || [],
           auditEvents: auditEvents.items || [],
           sources: sources.items || [],
+          promptFoundations: promptFoundations.items || [],
           sqlite: sqlite.summary || sqlite,
           contentSources,
           serviceAvailable: true,
@@ -471,6 +473,10 @@ class AdminService {
     return this.httpJson(this.serviceClients.aiContextBaseUrl, "/api/ai-context/sources");
   }
 
+  async remoteAiContextPromptFoundations() {
+    return this.httpJson(this.serviceClients.aiContextBaseUrl, "/api/ai-context/prompt-foundations");
+  }
+
   async remoteAiContextSqliteSummary() {
     return this.httpJson(this.serviceClients.aiContextBaseUrl, "/api/ai-context/sqlite/summary");
   }
@@ -546,7 +552,7 @@ function summarizeAiUsage(events) {
   };
 }
 
-function summarizeAiContextAccess({ policy = {}, grants = [], auditEvents = [], sources = [], sqlite = null, contentSources = null, serviceAvailable = false }) {
+function summarizeAiContextAccess({ policy = {}, grants = [], auditEvents = [], sources = [], promptFoundations = [], sqlite = null, contentSources = null, serviceAvailable = false }) {
   const now = new Date();
   const grantsWithState = grants.map((grant) => ({
     ...grant,
@@ -576,6 +582,7 @@ function summarizeAiContextAccess({ policy = {}, grants = [], auditEvents = [], 
     audit_summary,
     recent_audit_events: auditEvents.slice(-12).reverse(),
     source_registry: summarizeAiContextSourcesRegistry(sources),
+    prompt_foundations: summarizePromptFoundations(promptFoundations),
     sqlite: summarizeAiContextSqlite(sqlite),
     content_sources: contentSources || emptyAiContextContentSources(),
   };
@@ -609,6 +616,7 @@ function emptyAiContextSummary(error = "") {
     },
     recent_audit_events: [],
     source_registry: [],
+    prompt_foundations: [],
     sqlite: {
       available: false,
       tables: [],
@@ -616,6 +624,21 @@ function emptyAiContextSummary(error = "") {
     },
     content_sources: emptyAiContextContentSources(),
   };
+}
+
+function summarizePromptFoundations(items) {
+  return (items || []).map((item) => ({
+    foundation_id: item.foundation_id,
+    title: item.title,
+    route_task: item.route_task,
+    source_scope: item.source_scope,
+    content_kind: item.content_kind,
+    allowed_sources: item.allowed_sources || [],
+    blocked_sources: item.blocked_sources || [],
+    content: item.content || "",
+    status: item.status || "active",
+    updated_at: item.updated_at || "",
+  })).sort((left, right) => String(left.route_task).localeCompare(String(right.route_task)) || String(left.foundation_id).localeCompare(String(right.foundation_id)));
 }
 
 function summarizeAiContextSourcesRegistry(sources) {

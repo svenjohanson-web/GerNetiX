@@ -113,6 +113,7 @@ const developmentAssistant = createDevelopmentAssistant({
   sendJson,
 });
 const aiChatAssistant = createAiChatAssistant({
+  aiContextJson,
   llmConfigStore,
   projectServerUserId,
   readJsonBody,

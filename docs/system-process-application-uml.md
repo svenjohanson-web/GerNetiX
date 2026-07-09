@@ -37,7 +37,7 @@ flowchart LR
     hardwareCatalog["Hardware Catalog<br/>:4910"]
     hardwareShop["Hardware Shop<br/>:4900"]
     aiUsage["AI Usage Server<br/>:5000"]
-    aiContext["AI Context Server<br/>Grants + Policy<br/>:5500"]
+    aiContext["AI Context Server<br/>Grants + Policy + Prompts<br/>:5500"]
     communityPlatform["Community Platform<br/>:5200"]
     communityAi["Community AI Assistant<br/>:5300"]
     persistence["Persistence Server<br/>:5400"]
@@ -62,7 +62,7 @@ flowchart LR
     runtimeDb[("Runtime SQLite<br/>.runtime/gernetix-services.sqlite")]
     aiContextDb[("AI Context SQLite<br/>.runtime/gernetix-ai-context.sqlite")]
     graphDb[("Kanonischer SQLite Graph<br/>tools/yaml-graph-sqlite/out/model-graph.sqlite")]
-    repoFiles[("Projektdateien<br/>README, data, services, tools, git")]
+    repoFiles[("Projektdateien<br/>README, data, services, tools, git<br/>keine Runtime-Persistenz")]
   end
 
   user --> platformUi
@@ -145,7 +145,7 @@ flowchart LR
 | Hardware Catalog | 4910 | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als SQLite-persistente Quelle |
 | Hardware Shop | 4900 | Angebote, Warenkorb, Bestellung, Purchase Context; liest Hardwaredaten als Client des Hardware Catalog |
 | AI Usage Server | 5000 | Credits, Preflight, Usage Events, Cost Controls |
-| AI Context Server | 5500 | Kontext-Grants, Access Policy, Preflight und Audit fuer KI-Datenzugriff |
+| AI Context Server | 5500 | Kontext-Grants, Prompt-Grundlagen, Access Policy, Preflight und Audit fuer KI-Datenzugriff |
 | Context Manager | 5050 | Projektkontext, Vorschlaege, Context Packs |
 | Recovery Tool Server | 5100 | eigenstaendige Nutzer-/Support-HMI, Recovery-Sessions, Credential-Erneuerung, Connectivity-Recovery |
 | Community Platform | 5200 | Community-Fragen, Antworten, Verifikation |
@@ -165,7 +165,7 @@ flowchart LR
 | Hardware Shop | Hardware Catalog | Aufloesung von HardwareItem-IDs und Capabilities fuer Angebote |
 | GerNetiX Plattform UI / Identity Server | Device Management Server | eigene Devices, Registrierung, Purchase Context |
 | GerNetiX Plattform UI / Identity Server | AI Usage Server | Credit-Anzeige und AI-Preflight |
-| GerNetiX Plattform UI / Identity Server | AI Context Server | KI-Kontext-Preflight vor Zugriff auf Projekt-, Graph-, Device- oder Kundendaten |
+| GerNetiX Plattform UI / Identity Server | AI Context Server | Laedt zentrale KI-Prompt-Grundlagen und prueft KI-Kontext-Preflights vor Zugriff auf Projekt-, Graph-, Device- oder Kundendaten |
 | GerNetiX Plattform UI / Identity Server | Lokaler Ollama LLM | Dev-PoC fuer Architektur-Discovery und allgemeinen KI-Chat, wenn Admin-Routing auf lokalen Provider zeigt |
 | GerNetiX Plattform UI / Identity Server | Externe LLM API | Optionales OpenAI-kompatibles API-Routing fuer KI-Chat und Entwicklungsplattform |
 | Build & Deploy Server | MQTT Broker | Deploy-Auftraege fuer konkrete Devices veroeffentlichen und Statusmeldungen empfangen |
@@ -176,7 +176,7 @@ flowchart LR
 | Admin Tool API | Device Management Server | Device-/Support-/Consent-Sichten |
 | Admin Tool API | Project Server | Learning Feedback |
 | Admin Tool API | AI Usage Server | Usage-Monitoring und Cost Controls |
-| Admin Tool API | AI Context Server | Kontext-Grants, Policy und Audit fuer KI-Datenzugriffe administrieren |
+| Admin Tool API | AI Context Server | Kontext-Grants, Prompt-Grundlagen, Policy und Audit fuer KI-Datenzugriffe administrieren |
 | Provisioning Tool Server | Device Management Server | registriert verifizierte Devices |
 | Provisioning Tool Server | Runtime SQLite / Firmware Artifact Repository | liest versionierte Basissoftware-Artefaktreferenz fuer Factory-Flash und speichert Provisioning-State |
 | Recovery Tool Server | Device Management Server | registriert Recovery-/Community-Devices |
@@ -187,11 +187,12 @@ flowchart LR
 ## Hinweise
 
 - Der Persistence Server ist ein HTTP-Service fuer generische State-Dokumente. Mehrere Services nutzen aktuell zusaetzlich direkte SQLite-State-Persistenz ueber gemeinsame Repository-/Store-Bausteine.
-- Der AI Context Server nutzt bewusst eine eigene SQLite-Datei `.runtime/gernetix-ai-context.sqlite`. Kontext-Grants, globale Kontext-Policy und Audit-Events werden damit getrennt vom allgemeinen Runtime-State verwaltet.
+- Der AI Context Server nutzt bewusst eine eigene SQLite-Datei `.runtime/gernetix-ai-context.sqlite`. Kontext-Grants, Prompt-Grundlagen, globale Kontext-Policy und Audit-Events werden damit getrennt vom allgemeinen Runtime-State verwaltet.
+- Dauerhafte Persistenz ist in GerNetiX ausschliesslich SQL/SQLite. JSON-Dateien, YAML-Dateien, Prozessspeicher, Browser-State, Temp-Dateien, Caches und generierte Sichten sind nur Logic/Control/View, Import-/Export, Test-Hilfe oder Cache und duerfen keine fachliche Quelle der Wahrheit sein.
 - Login UI, Dashboard, Entwicklungsplattform, KI-Chat, User IDE und Guided-Code-Lesson-Einstieg sind ein gemeinsames Plattform-Frontend-Artefakt am Identity Server, keine getrennten Anwendungen mit getrennten Logins. Im Projekt liegt dieses Artefakt gebuendelt unter `services/identity-server/public/app`.
-- Die Entwicklungsplattform ist im PoC unter `/app/development-platform/` erreichbar und nutzt serverseitig `/api/platform/development-assistant/chat` als Proxy zum im Admin Tool konfigurierten LLM-Provider. Lokal ist Ollama vorgesehen; optional kann ein OpenAI-kompatibler API-Endpunkt oder Claude/Anthropic konfiguriert werden. Aktuell sind nur aktueller Chat und fester Architektur-Prompt als Datenquellen freigegeben.
-- Der allgemeine KI-Chat ist im PoC unter `/app/ki-chat/` erreichbar und nutzt serverseitig `/api/platform/ai-chat/chat` als separaten Proxy zum im Admin Tool konfigurierten LLM-Provider. Er ist vom Architektur-Discovery-Dialog getrennt und darf aktuell nur den aktuellen Chat als Datenquelle verwenden.
-- Das eigenstaendige Admin Tool unter `http://127.0.0.1:4600/admin/` enthaelt im PoC die LLM-Konfiguration fuer Provider, Endpoint, lokales Modell, API-Modell und Verbindungstest. Die lokale Dev-Konfiguration wird unter `.runtime/identity-llm-config.json` gespeichert und vom Identity Server fuer KI-Chat und Entwicklungsplattform gelesen.
+- Die Entwicklungsplattform ist im PoC unter `/app/development-platform/` erreichbar und nutzt serverseitig `/api/platform/development-assistant/chat` als Proxy zum im Admin Tool konfigurierten LLM-Provider. Lokal ist Ollama vorgesehen; optional kann ein OpenAI-kompatibler API-Endpunkt oder Claude/Anthropic konfiguriert werden. Prompt-Grundlagen kommen fuehrend aus der AI-Context-SQLite; fachliche Kontextdaten muessen per AI-Context-Grant freigegeben werden.
+- Der allgemeine KI-Chat ist im PoC unter `/app/ki-chat/` erreichbar und nutzt serverseitig `/api/platform/ai-chat/chat` als separaten Proxy zum im Admin Tool konfigurierten LLM-Provider. Er ist vom Architektur-Discovery-Dialog getrennt, laedt seine Prompt-Grundlage aus dem AI Context Server und darf aktuell nur den aktuellen Chat als Datenquelle verwenden.
+- Das eigenstaendige Admin Tool unter `http://127.0.0.1:4600/admin/` enthaelt im PoC die LLM-Konfiguration fuer Provider, Endpoint, lokales Modell, API-Modell und Verbindungstest. LLM-Routing-Konfiguration ist fachlicher Runtime-State und muss gemaess SQL-only-Persistenz in SQLite liegen; alte JSON-Dev-Konfigurationen sind nur Migrationsaltlasten.
 - Das Device-Onboarding laeuft als IDE-/Plattform-Flow im Identity-Server-Frontend. Es ist kein eigener Backend-Service: Die View zeigt Auswahl und Status, ein IDE-Onboarding-Model leitet aus Hardware-Catalog-Capabilities die erlaubten Wege ab, und die Controller sprechen Hardware Catalog, Device Management, Provisioning/Firmware-Artefakte sowie lokale Browser-Schnittstellen wie Web Serial an.
 - Der Nutzer vergibt beim Onboarding einen kurzen Board-Namen. Daraus entsteht der `gernetix-*` Node-/SSID-/Hostname. Die Seriennummer wird vom System erzeugt und dauerhaft am Device/Inventory gespeichert; Spezialhardware und Verdrahtung werden als Instanz-Konfiguration am Account-Device gefuehrt.
 - Das Recovery Tool ist ein eigenstaendiges Nutzer-/Support-Tool am Port 5100, mit dem ProcessorBoards per USB erkannt, repariert, neu registriert oder mit neuen Credentials versorgt werden koennen.

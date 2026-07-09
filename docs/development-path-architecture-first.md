@@ -50,7 +50,7 @@ Der Chat darf je nach Admin-Einstellung ueber eine externe API laufen. Artefakt-
 Freigegebene Datenquellen im PoC:
 
 - aktueller Chat
-- fester Architektur-Prompt
+- zentrale Architektur-Prompt-Grundlage aus der AI-Context-SQLite
 
 Noch nicht freigegeben:
 
@@ -67,7 +67,7 @@ Der Entwicklungsast fuer Architektur-Discovery ist als eigener Controller und ei
 - Frontend-Controller: `services/identity-server/public/app/development-platform.js`
 - Backend-Adapter: `services/identity-server/src/dev/development-assistant.js`
 - App-Orchestrierung: `services/identity-server/public/app/app.js` bindet den Entwicklungsast nur als Controller ein.
-- Dev-Server: `services/identity-server/src/dev-server.js` routet nur auf den Development-Assistant und enthaelt nicht mehr die Prompt-/Ollama-Logik selbst.
+- Dev-Server: `services/identity-server/src/dev-server.js` routet nur auf den Development-Assistant. Prompt-Grundlagen liegen fuehrend im AI Context Server und werden nicht im Identity Server gepflegt.
 
 ## Leitregel
 

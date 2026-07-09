@@ -1,5 +1,5 @@
 const { SqliteStateStore, jsonColumn } = require("../../../shared");
-const { InMemoryAiContextRepository, defaultPolicy, defaultSources } = require("./in-memory-ai-context-repository");
+const { InMemoryAiContextRepository, defaultPolicy, defaultSources, defaultPromptFoundations } = require("./in-memory-ai-context-repository");
 
 class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
   constructor(store) {
@@ -15,12 +15,14 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
         grants: [],
         auditEvents: [],
         sources: defaultSources(),
+        promptFoundations: defaultPromptFoundations(),
         policy: defaultPolicy(),
       },
       collectionMap: {
         grants: "grants",
         auditEvents: "audit_events",
         sources: "sources",
+        promptFoundations: "prompt_foundations",
       },
     }));
   }
@@ -55,6 +57,12 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
     return result;
   }
 
+  savePromptFoundation(promptFoundation) {
+    const result = super.savePromptFoundation(promptFoundation);
+    this.persist();
+    return result;
+  }
+
   sqliteSummary() {
     return {
       available: true,
@@ -83,6 +91,15 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
           "status",
           "updated_at",
         ], "source_type, source_scope"),
+        sqliteTableSummary(this.store, "ai_context_prompt_foundations", [
+          "foundation_id",
+          "title",
+          "route_task",
+          "source_scope",
+          "content_kind",
+          "status",
+          "updated_at",
+        ], "route_task, foundation_id"),
         sqliteTableSummary(this.store, "ai_context_grants", [
           "grant_id",
           "account_id",
@@ -128,16 +145,19 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
       grants: Array.from(this.grants.values()),
       auditEvents: this.auditEvents,
       sources: Array.from(this.sources.values()),
+      promptFoundations: Array.from(this.promptFoundations.values()),
       policy: this.policy,
     };
     this.store.save(state);
     this.store.replaceCollection?.("grants", state.grants, "grant_id");
     this.store.replaceCollection?.("audit_events", state.auditEvents, "audit_event_id");
     this.store.replaceCollection?.("sources", state.sources, "source_id");
+    this.store.replaceCollection?.("prompt_foundations", state.promptFoundations, "foundation_id");
     if (typeof this.store.replaceTable === "function") {
       this.store.replaceTable("ai_context_grants", state.grants, grantColumns());
       this.store.replaceTable("ai_context_audit_events", state.auditEvents, auditColumns());
       this.store.replaceTable("ai_context_sources", state.sources, sourceColumns());
+      this.store.replaceTable("ai_context_prompt_foundations", state.promptFoundations, promptFoundationColumns());
       this.store.replaceTable("ai_context_policy", [state.policy], policyColumns());
     }
   }
@@ -160,6 +180,7 @@ function aiContextSchema() {
     `CREATE TABLE IF NOT EXISTS ai_context_grants (grant_id TEXT PRIMARY KEY, account_id TEXT NOT NULL, project_id TEXT, granted_by_account_id TEXT, source_type TEXT NOT NULL, source_scope TEXT NOT NULL, purpose TEXT NOT NULL, allowed_provider_scope TEXT NOT NULL, redaction_level TEXT NOT NULL, max_context_items INTEGER, valid_from TEXT NOT NULL, valid_until TEXT NOT NULL, revoked_at TEXT, created_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS ai_context_audit_events (audit_event_id TEXT PRIMARY KEY, occurred_at TEXT NOT NULL, account_id TEXT, project_id TEXT, actor_id TEXT, actor_role TEXT, source_type TEXT, source_scope TEXT, purpose TEXT, provider TEXT, model TEXT, grant_id TEXT, access_decision TEXT NOT NULL, rejection_reason TEXT, redaction_level TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS ai_context_sources (source_id TEXT PRIMARY KEY, source_type TEXT NOT NULL, source_scope TEXT NOT NULL, title TEXT NOT NULL, summary TEXT, backing_service TEXT NOT NULL, endpoint TEXT NOT NULL, contains_json TEXT NOT NULL, default_redaction_level TEXT NOT NULL, default_provider_scope TEXT NOT NULL, allowed_purposes_json TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS ai_context_prompt_foundations (foundation_id TEXT PRIMARY KEY, title TEXT NOT NULL, route_task TEXT NOT NULL, source_scope TEXT NOT NULL, content_kind TEXT NOT NULL, allowed_sources_json TEXT NOT NULL, blocked_sources_json TEXT NOT NULL, content TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS ai_context_policy (policy_id TEXT PRIMARY KEY, deny_without_grant INTEGER NOT NULL, require_explicit_source_scope INTEGER NOT NULL, allow_external_provider_customer_data INTEGER NOT NULL, default_max_context_items INTEGER NOT NULL, protected_source_types_json TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
   ];
 }
@@ -172,6 +193,17 @@ function sourceColumns() {
     ]),
     contains_json: jsonColumn("contains"),
     allowed_purposes_json: jsonColumn("allowed_purposes"),
+    raw_json: jsonColumn((row) => row),
+  };
+}
+
+function promptFoundationColumns() {
+  return {
+    ...columns([
+      "foundation_id", "title", "route_task", "source_scope", "content_kind", "content", "status", "created_at", "updated_at",
+    ]),
+    allowed_sources_json: jsonColumn("allowed_sources"),
+    blocked_sources_json: jsonColumn("blocked_sources"),
     raw_json: jsonColumn((row) => row),
   };
 }

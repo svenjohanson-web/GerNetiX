@@ -6,7 +6,7 @@ boundary "Provisioning Tool HMI\n:4500" as HMI
 control "Provisioning Tool Server\n/api/provisioning-sessions" as Server
 control "Provisioning Service" as Service
 control "Hardware-Katalog\nProcessorBoard" as Catalog
-database "Provisioning Repository\nSQLite oder Memory" as Repo
+database "Provisioning Repository\nSQLite" as Repo
 database "SQLite / Artifact Store\nBasissoftware Firmware" as FirmwareStore
 participant "Temporaeres Staging\nFactory Header" as Staging
 control "Browser Web Serial Flasher\nesptool-js" as BrowserFlasher

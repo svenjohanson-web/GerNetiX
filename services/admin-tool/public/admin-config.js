@@ -171,6 +171,7 @@ function renderAiContext() {
   document.querySelector("#aiContextGrantRows").innerHTML = renderAiContextGrantRows(summary.grants || []);
   document.querySelector("#aiContextAuditRows").innerHTML = renderAiContextAuditRows(summary.recent_audit_events || []);
   document.querySelector("#aiContextRegistryRows").innerHTML = renderAiContextRegistryRows(summary.source_registry || []);
+  document.querySelector("#aiPromptFoundationRows").innerHTML = renderAiPromptFoundationRows(summary.prompt_foundations || []);
   renderAiContextSqlite(summary.sqlite || {});
   renderAiContextContentSources(summary.content_sources || {});
 }
@@ -439,6 +440,21 @@ function renderAiContextRegistryRows(items) {
   `).join("");
 }
 
+function renderAiPromptFoundationRows(items) {
+  if (!items.length) return `<tr><td colspan="4" class="empty-cell">Keine Prompt-Grundlagen verfuegbar.</td></tr>`;
+  return items.map((item) => `
+    <tr>
+      <td><strong>${escapeHtml(item.title || item.foundation_id || "-")}</strong><span>${escapeHtml(item.source_scope || item.foundation_id || "-")}</span></td>
+      <td><strong>${escapeHtml(routeTaskLabel(item.route_task))}</strong><span>${escapeHtml(item.content_kind || "-")}</span></td>
+      <td>
+        <strong>Erlaubt</strong><span>${escapeHtml((item.allowed_sources || []).map(sourceTypeLabel).join(", ") || "-")}</span>
+        <strong class="subline">Blockiert</strong><span>${escapeHtml((item.blocked_sources || []).map(sourceTypeLabel).join(", ") || "-")}</span>
+      </td>
+      <td><pre class="prompt-foundation-content">${escapeHtml(item.content || "")}</pre></td>
+    </tr>
+  `).join("");
+}
+
 function renderAiContextSqliteRows(items) {
   if (!items.length) return `<tr><td colspan="4" class="empty-cell">Keine AI-SQLite-Tabellen verfuegbar.</td></tr>`;
   return items.map((item) => `
@@ -501,12 +517,15 @@ function providerLabel(type) {
 function sourceTypeLabel(type) {
   return {
     current_chat: "Aktueller Chat",
+    architecture_prompt: "Architektur-Prompt",
     project_files: "Projektdateien",
     graph_database: "Graphdatenbank",
     device_data: "Device-Daten",
     customer_data: "Kundendaten",
     admin_statistics: "Admin-Statistiken",
     hardware_catalog: "Hardware-Katalog",
+    ai_prompt: "KI-Prompt",
+    external_web: "Externes Web",
   }[type] || type || "-";
 }
 
@@ -648,6 +667,15 @@ function routeLabel(provider) {
     ollama: "Lokal",
     api: "API",
   }[provider] || provider || "-";
+}
+
+function routeTaskLabel(task) {
+  return {
+    general_chat: "Chat",
+    architecture_discovery: "Architektur-Discovery",
+    artifact_generation: "Artefakte",
+    code_generation: "Codegenerierung",
+  }[task] || task || "-";
 }
 
 function formatNumber(value) {

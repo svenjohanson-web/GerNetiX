@@ -76,8 +76,9 @@ Liefert eine Admin-Zusammenfassung, welche Daten dem LLM als Kontext bereitgeste
 - letzte Kontext-Preflight-Entscheidungen mit erlaubten und abgelehnten Zugriffen
 - AI-Context-SQLite-Tabellen mit Zeilenanzahl, Spalten und sicherer Vorschau
 - fachliche Inhaltsvorschau aus dem Hardware Catalog, zum Beispiel ESP32-Boards und Capabilities
+- feste Prompt-Grundlagen aus der AI-Context-SQLite fuer KI-Chat und Architektur-Discovery
 
-Die Antwort enthaelt Metadaten zu Quellen und Grants, aber keine eigentlichen Kontextinhalte und keine Secrets. Ist der AI Context Server nicht erreichbar, liefert der Endpunkt einen sicheren Offline-Status mit leeren Listen.
+Die Antwort enthaelt Metadaten zu Quellen und Grants, fachliche Vorschauen wie Hardware-Catalog-Auszug und die festen Prompt-Grundlagen aus dem AI Context Server. Secrets werden nicht ausgegeben. Ist der AI Context Server nicht erreichbar, liefert der Endpunkt einen sicheren Offline-Status mit leeren Listen.
 
 ## LLM-Konfiguration
 

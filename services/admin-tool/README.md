@@ -46,7 +46,7 @@ Konfiguration:
 - `HOST`: Bind-Adresse, Standard `127.0.0.1`
 - `PORT`: HTTP-Port, Standard `4600`
 - `ADMIN_TOOL_RUNTIME_DIR`: Runtime-Verzeichnis fuer spaetere temporaere Artefakte
-- `LLM_CONFIG_PATH`: Pfad zur gemeinsamen lokalen LLM-Konfiguration, Standard `.runtime/identity-llm-config.json`
+- `LLM_CONFIG_PATH`: Legacy-Pfad zur alten lokalen LLM-JSON-Konfiguration; fachliche LLM-Routing-Persistenz muss gemaess Architekturentscheidung in SQLite liegen.
 - `AI_CONTEXT_BASE_URL`: AI-Context-Server fuer LLM-Datenfreigaben, Standard `http://127.0.0.1:5500`
 - `HARDWARE_CATALOG_BASE_URL`: Hardware Catalog fuer fachliche KI-Kontextinhalte wie Boards und Capabilities, Standard `http://127.0.0.1:4910`
 - `OLLAMA_BASE_URL`: lokaler Ollama-Endpoint, Standard `http://127.0.0.1:11434`
@@ -69,6 +69,7 @@ LLM-Datenfreigaben:
 - Angezeigt werden aktive, abgelaufene und widerrufene Grants, Datenquellen, Provider-Scope, Redaktionsstufe und letzte Kontext-Preflight-Entscheidungen.
 - Die AI-Context-SQLite wird als sichere Tabellenuebersicht mit Counts und Vorschau-Metadaten angezeigt.
 - Fachliche Inhalte wie ESP32-Boards und Capabilities werden aus dem Hardware Catalog als Inhaltsvorschau angezeigt.
+- Feste Prompt-Grundlagen fuer KI-Chat und Architektur-Discovery werden aus der AI-Context-SQLite gelesen und mit Quelle, Route, erlaubten und blockierten Kontextquellen angezeigt.
 - Ist der AI Context Server nicht erreichbar, bleibt die Sicht verfuegbar und markiert den Kontext-Service als offline.
 
 ## Sicherheitsregeln
@@ -78,7 +79,7 @@ LLM-Datenfreigaben:
 - Jede Admin-/Support-Einsicht in kundenrelevante Daten erzeugt ein Audit-Event.
 - Support-Rollen brauchen `support_registered_board_check` oder `admin_device_management`.
 - Admin-Rollen brauchen die passende Admin-Capability fuer die jeweilige Sicht.
-- LLM-Datenfreigaben werden nur als Metadaten gezeigt; eigentliche Kontextinhalte oder Secrets werden nicht im Admin Tool ausgegeben.
+- LLM-Datenfreigaben werden als Metadaten gezeigt; freigegebene fachliche Vorschauen und Prompt-Grundlagen aus dem AI Context Server sind sichtbar, Secrets werden nicht im Admin Tool ausgegeben.
 
 ## Nicht-Ziele fuer diesen Stand
 

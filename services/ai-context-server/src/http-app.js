@@ -35,6 +35,11 @@ function createHttpApp(options) {
         return;
       }
 
+      if (req.method === "GET" && path === `${prefix}/prompt-foundations`) {
+        sendJson(res, 200, { items: service.listPromptFoundations(Object.fromEntries(url.searchParams.entries())) });
+        return;
+      }
+
       if (req.method === "POST" && path === `${prefix}/sources`) {
         sendJson(res, 201, { source: service.upsertSource(await readJsonBody(req)) });
         return;
