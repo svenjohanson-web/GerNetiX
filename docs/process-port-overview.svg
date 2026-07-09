@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="1080" viewBox="0 0 1440 1080" role="img" aria-labelledby="title desc">
+  <title id="title">GerNetiX Prozess- und Port-Uebersicht</title>
+  <desc id="desc">Uebersicht der lokalen GerNetiX Serverprozesse, Tools, Infrastruktur- und Device-Ports.</desc>
+  <defs>
+    <style>
+      .bg { fill: #f7f8f5; }
+      .title { fill: #182026; font: 700 34px Arial, sans-serif; }
+      .subtitle { fill: #50606b; font: 15px Arial, sans-serif; }
+      .section-title { fill: #182026; font: 700 19px Arial, sans-serif; }
+      .section-note { fill: #64737d; font: 13px Arial, sans-serif; }
+      .card { fill: #ffffff; stroke: #cfd8d7; stroke-width: 1.4; rx: 8; }
+      .card-edge { fill: #eef7f4; stroke: #8bb8aa; }
+      .card-domain { fill: #f8f1e9; stroke: #d8a76f; }
+      .card-infra { fill: #eef2f9; stroke: #8fa7d2; }
+      .card-device { fill: #f2eef8; stroke: #ad92c8; }
+      .name { fill: #182026; font: 700 15px Arial, sans-serif; }
+      .role { fill: #52616b; font: 12px Arial, sans-serif; }
+      .port { fill: #ffffff; font: 700 15px Arial, sans-serif; }
+      .port-pill { fill: #2f5d62; rx: 13; }
+      .port-pill-domain { fill: #9b5f20; }
+      .port-pill-infra { fill: #486aa6; }
+      .port-pill-device { fill: #76549a; }
+      .line { stroke: #9ba8ad; stroke-width: 1.5; fill: none; marker-end: url(#arrow); }
+      .line-soft { stroke: #b7c0c3; stroke-width: 1.2; stroke-dasharray: 5 5; fill: none; marker-end: url(#arrow-soft); }
+      .legend { fill: #52616b; font: 12px Arial, sans-serif; }
+      .footer { fill: #64737d; font: 12px Arial, sans-serif; }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#9ba8ad"/>
+    </marker>
+    <marker id="arrow-soft" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#b7c0c3"/>
+    </marker>
+  </defs>
+
+  <rect class="bg" width="1440" height="1080"/>
+
+  <text class="title" x="54" y="62">GerNetiX Prozesse und Ports</text>
+  <text class="subtitle" x="56" y="89">Lokaler MVP-Zuschnitt aus docs/system-process-application-uml.md, Service-Konfigurationen und ESP32-Basissoftware.</text>
+
+  <rect x="54" y="120" width="305" height="786" rx="8" fill="#ffffff" stroke="#d8dfdc"/>
+  <text class="section-title" x="78" y="154">User- und Admin-nahe Prozesse</text>
+  <text class="section-note" x="78" y="176">HTTP-Services mit Benutzeroberflaechen</text>
+
+  <rect class="card card-edge" x="78" y="206" width="257" height="78"/>
+  <text class="name" x="94" y="233">Identity Server</text>
+  <text class="role" x="94" y="255">Login, Session, Plattform UI</text>
+  <rect class="port-pill" x="260" y="223" width="58" height="26"/>
+  <text class="port" x="273" y="242">4300</text>
+
+  <rect class="card card-edge" x="78" y="300" width="257" height="78"/>
+  <text class="name" x="94" y="327">Admin Tool API</text>
+  <text class="role" x="94" y="349">Admin, Support, LLM-Konfig</text>
+  <rect class="port-pill" x="260" y="317" width="58" height="26"/>
+  <text class="port" x="273" y="336">4600</text>
+
+  <rect class="card card-edge" x="78" y="394" width="257" height="78"/>
+  <text class="name" x="94" y="421">Context Manager</text>
+  <text class="role" x="94" y="443">Kontext, Vorschlaege, Packs</text>
+  <rect class="port-pill" x="260" y="411" width="58" height="26"/>
+  <text class="port" x="273" y="430">5050</text>
+
+  <rect class="card card-edge" x="78" y="488" width="257" height="78"/>
+  <text class="name" x="94" y="515">Provisioning Tool</text>
+  <text class="role" x="94" y="537">Factory-HMI und Server</text>
+  <rect class="port-pill" x="260" y="505" width="58" height="26"/>
+  <text class="port" x="273" y="524">4500</text>
+
+  <rect class="card card-edge" x="78" y="582" width="257" height="78"/>
+  <text class="name" x="94" y="609">Recovery Tool</text>
+  <text class="role" x="94" y="631">Board-Rettung, USB Recovery</text>
+  <rect class="port-pill" x="260" y="599" width="58" height="26"/>
+  <text class="port" x="273" y="618">5100</text>
+
+  <rect class="card card-edge" x="78" y="676" width="257" height="78"/>
+  <text class="name" x="94" y="703">SQLite Graph Explorer</text>
+  <text class="role" x="94" y="725">Read-only Graph UI</text>
+  <rect class="port-pill" x="260" y="693" width="58" height="26"/>
+  <text class="port" x="273" y="712">4318</text>
+
+  <rect x="390" y="120" width="660" height="786" rx="8" fill="#ffffff" stroke="#d8dfdc"/>
+  <text class="section-title" x="414" y="154">Domaenen-Serverprozesse</text>
+  <text class="section-note" x="414" y="176">Eigenstaendig startbare Node.js-Services mit konfigurierbarem HOST/PORT</text>
+
+  <rect class="card card-domain" x="414" y="206" width="285" height="78"/>
+  <text class="name" x="430" y="233">Build &amp; Deploy Server</text>
+  <text class="role" x="430" y="255">Build-Jobs, USB Flash, OTA</text>
+  <rect class="port-pill port-pill-domain" x="624" y="223" width="58" height="26"/>
+  <text class="port" x="637" y="242">4400</text>
+
+  <rect class="card card-domain" x="737" y="206" width="285" height="78"/>
+  <text class="name" x="753" y="233">Device Management Server</text>
+  <text class="role" x="753" y="255">Devices, Pairing, Support</text>
+  <rect class="port-pill port-pill-domain" x="947" y="223" width="58" height="26"/>
+  <text class="port" x="960" y="242">4700</text>
+
+  <rect class="card card-domain" x="414" y="300" width="285" height="78"/>
+  <text class="name" x="430" y="327">Project Server</text>
+  <text class="role" x="430" y="349">Projekte, Quellen, Feedback</text>
+  <rect class="port-pill port-pill-domain" x="624" y="317" width="58" height="26"/>
+  <text class="port" x="637" y="336">4800</text>
+
+  <rect class="card card-domain" x="737" y="300" width="285" height="78"/>
+  <text class="name" x="753" y="327">Hardware Shop</text>
+  <text class="role" x="753" y="349">Angebote, Warenkorb, Bestellung</text>
+  <rect class="port-pill port-pill-domain" x="947" y="317" width="58" height="26"/>
+  <text class="port" x="960" y="336">4900</text>
+
+  <rect class="card card-domain" x="414" y="394" width="285" height="78"/>
+  <text class="name" x="430" y="421">Hardware Catalog</text>
+  <text class="role" x="430" y="443">HardwareItems, Boards, Capabilities</text>
+  <rect class="port-pill port-pill-domain" x="624" y="411" width="58" height="26"/>
+  <text class="port" x="637" y="430">4910</text>
+
+  <rect class="card card-domain" x="737" y="394" width="285" height="78"/>
+  <text class="name" x="753" y="421">AI Usage Server</text>
+  <text class="role" x="753" y="443">Credits, Preflight, Usage Events</text>
+  <rect class="port-pill port-pill-domain" x="947" y="411" width="58" height="26"/>
+  <text class="port" x="960" y="430">5000</text>
+
+  <rect class="card card-domain" x="414" y="488" width="285" height="78"/>
+  <text class="name" x="430" y="515">Community Platform</text>
+  <text class="role" x="430" y="537">Fragen, Antworten, Verifikation</text>
+  <rect class="port-pill port-pill-domain" x="624" y="505" width="58" height="26"/>
+  <text class="port" x="637" y="524">5200</text>
+
+  <rect class="card card-domain" x="737" y="488" width="285" height="78"/>
+  <text class="name" x="753" y="515">Community AI Assistant</text>
+  <text class="role" x="753" y="537">KI-gestuetzte Community-Antworten</text>
+  <rect class="port-pill port-pill-domain" x="947" y="505" width="58" height="26"/>
+  <text class="port" x="960" y="524">5300</text>
+
+  <rect class="card card-domain" x="414" y="582" width="285" height="78"/>
+  <text class="name" x="430" y="609">Persistence Server</text>
+  <text class="role" x="430" y="631">HTTP-Zugriff auf SQLite-State</text>
+  <rect class="port-pill port-pill-domain" x="624" y="599" width="58" height="26"/>
+  <text class="port" x="637" y="618">5400</text>
+
+  <rect class="card card-domain" x="737" y="582" width="285" height="78"/>
+  <text class="name" x="753" y="609">Provisioning Tool Server</text>
+  <text class="role" x="753" y="631">Provisioning-Sessions, USB Flash</text>
+  <rect class="port-pill port-pill-domain" x="947" y="599" width="58" height="26"/>
+  <text class="port" x="960" y="618">4500</text>
+
+  <rect class="card card-domain" x="414" y="676" width="285" height="78"/>
+  <text class="name" x="430" y="703">Recovery Tool Server</text>
+  <text class="role" x="430" y="725">Recovery-Sessions, Credentials</text>
+  <rect class="port-pill port-pill-domain" x="624" y="693" width="58" height="26"/>
+  <text class="port" x="637" y="712">5100</text>
+
+  <rect x="1080" y="120" width="306" height="786" rx="8" fill="#ffffff" stroke="#d8dfdc"/>
+  <text class="section-title" x="1104" y="154">Infrastruktur und Device</text>
+  <text class="section-note" x="1104" y="176">Lokale Infrastruktur, LLM und Board-Runtime</text>
+
+  <rect class="card card-infra" x="1104" y="206" width="258" height="82"/>
+  <text class="name" x="1120" y="233">MQTT Broker</text>
+  <text class="role" x="1120" y="255">Mosquitto, Device Transport</text>
+  <rect class="port-pill port-pill-infra" x="1270" y="217" width="74" height="26"/>
+  <text class="port" x="1283" y="236">1883</text>
+  <rect class="port-pill port-pill-infra" x="1270" y="250" width="74" height="26"/>
+  <text class="port" x="1283" y="269">9001</text>
+
+  <rect class="card card-infra" x="1104" y="306" width="258" height="78"/>
+  <text class="name" x="1120" y="333">Lokaler Ollama LLM</text>
+  <text class="role" x="1120" y="355">lokaler OpenAI-kompatibler Proxy</text>
+  <rect class="port-pill port-pill-infra" x="1270" y="323" width="74" height="26"/>
+  <text class="port" x="1279" y="342">11434</text>
+
+  <rect class="card card-device" x="1104" y="404" width="258" height="94"/>
+  <text class="name" x="1120" y="431">ESP32 Device Webserver</text>
+  <text class="role" x="1120" y="453">Setup-AP: http://192.168.4.1/</text>
+  <text class="role" x="1120" y="471">Control-Port fuer HTTPD intern</text>
+  <rect class="port-pill port-pill-device" x="1270" y="415" width="74" height="26"/>
+  <text class="port" x="1293" y="434">80</text>
+  <rect class="port-pill port-pill-device" x="1270" y="448" width="74" height="26"/>
+  <text class="port" x="1275" y="467">32768</text>
+
+  <rect class="card card-device" x="1104" y="518" width="258" height="78"/>
+  <text class="name" x="1120" y="545">ESP32 Captive DNS</text>
+  <text class="role" x="1120" y="567">Setup-AP Namensaufloesung</text>
+  <rect class="port-pill port-pill-device" x="1270" y="535" width="74" height="26"/>
+  <text class="port" x="1293" y="554">53</text>
+
+  <rect class="card card-infra" x="1104" y="616" width="258" height="78"/>
+  <text class="name" x="1120" y="643">Externe LLM API</text>
+  <text class="role" x="1120" y="665">Providerabhaengig, kein lokaler Port</text>
+  <rect class="port-pill port-pill-infra" x="1270" y="633" width="74" height="26"/>
+  <text class="port" x="1280" y="652">n/a</text>
+
+  <path class="line" d="M 335 245 C 370 245 378 245 414 245"/>
+  <path class="line" d="M 335 339 C 370 339 378 339 414 339"/>
+  <path class="line" d="M 335 621 C 370 621 378 621 414 621"/>
+  <path class="line" d="M 699 245 C 718 245 718 245 737 245"/>
+  <path class="line" d="M 699 339 C 718 339 718 339 737 339"/>
+  <path class="line" d="M 1022 245 C 1052 245 1072 245 1104 245"/>
+  <path class="line-soft" d="M 699 245 C 840 725 1010 250 1104 247"/>
+  <path class="line-soft" d="M 1022 431 C 1060 431 1078 344 1104 344"/>
+  <path class="line-soft" d="M 1022 525 C 1070 525 1060 344 1104 344"/>
+
+  <rect x="54" y="932" width="1332" height="94" rx="8" fill="#ffffff" stroke="#d8dfdc"/>
+  <circle cx="83" cy="963" r="7" fill="#2f5d62"/>
+  <text class="legend" x="99" y="967">User-/Admin-nahe HTTP-Prozesse</text>
+  <circle cx="315" cy="963" r="7" fill="#9b5f20"/>
+  <text class="legend" x="331" y="967">Domaenenservices</text>
+  <circle cx="477" cy="963" r="7" fill="#486aa6"/>
+  <text class="legend" x="493" y="967">Infrastruktur / lokaler LLM</text>
+  <circle cx="684" cy="963" r="7" fill="#76549a"/>
+  <text class="legend" x="700" y="967">Device Runtime</text>
+  <text class="footer" x="78" y="998">Ports sind lokale Defaults und ueber HOST/PORT bzw. service-spezifische Umgebungsvariablen konfigurierbar. Quelle: docs/system-process-application-uml.md, services/*/src/config.js, infra/dev/docker-compose.yml, basissoftware/esp32/include/basissoftware/config.h.</text>
+</svg>

@@ -4,6 +4,7 @@ const { InMemoryAdminRepository } = require("./repositories/in-memory-admin-repo
 const { SqliteBackedAdminRepository } = require("./repositories/sqlite-backed-admin-repository");
 const { AdminAccessPolicy } = require("./services/admin-access-policy");
 const { AdminService } = require("./services/admin-service");
+const { createLlmConfigStore } = require("../../shared/llm-config");
 
 function createDefaultAdminTool(config = {}) {
   const repository = createRepository(config);
@@ -11,6 +12,11 @@ function createDefaultAdminTool(config = {}) {
   return new AdminService({
     repository,
     accessPolicy,
+    llmConfigStore: createLlmConfigStore({
+      configPath: config.llmConfigPath,
+      defaultOllamaBaseUrl: config.defaultOllamaBaseUrl,
+      defaultOllamaModel: config.defaultOllamaModel,
+    }),
     serviceClients: config.deviceManagementBaseUrl ? {
       deviceManagementBaseUrl: config.deviceManagementBaseUrl,
       projectServerBaseUrl: config.projectServerBaseUrl,

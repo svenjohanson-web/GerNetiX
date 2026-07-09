@@ -85,6 +85,10 @@ items:
       - GET /api/admin/learning-feedback
       - GET /api/admin/ai-usage/summary
       - POST /api/admin/ai-cost-controls/actions
+      - GET /api/admin/llm-config
+      - PUT /api/admin/llm-config
+      - GET /api/admin/llm-models
+      - POST /api/admin/llm-config/test
 
   - id: api_artifact.provisioning_tool
     type: api_artifact

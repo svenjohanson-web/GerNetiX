@@ -1,279 +1,19 @@
 const fs = require("fs");
 const path = require("path");
-const { DatabaseSync } = require("node:sqlite");
+const { createSchema, insertValidationError, openDatabase } = require("./src/database");
+const {
+  COMMON_ALLOWED_ARTIFACT_TYPES,
+  COMMON_ALLOWED_RELATION_TYPES,
+  COMMON_ARTIFACT_TYPE_DESCRIPTIONS,
+  FIELD_RELATION_OVERRIDES,
+  HIERARCHICAL_RELATION_TYPES,
+  IGNORED_REFERENCE_FIELDS
+} = require("./src/metamodel-defaults");
 
 const TOOL_DIR = __dirname;
 const REPO_ROOT = path.resolve(TOOL_DIR, "..", "..");
 const MODEL_ROOTS = ["data", "model"];
 const DEFAULT_DB_PATH = path.join(TOOL_DIR, "out", "model-graph.sqlite");
-
-const COMMON_ALLOWED_ARTIFACT_TYPES = new Map([
-  ["vision", "Vision"],
-  ["business_goal", "Business Goal"],
-  ["business_capability", "Business Capability"],
-  ["business_strategy", "Business Strategy / Course of Action"],
-  ["strategy", "Strategy / Course of Action"],
-  ["measure", "Measure"],
-  ["business_rule", "Business Rule"],
-  ["customer_journey", "Customer Journey"],
-  ["requirement", "Requirement"],
-  ["non_functional_requirement", "Non-Functional Requirement"],
-  ["nfr", "Non-Functional Requirement"],
-  ["product", "Product"],
-  ["product_offering", "Product Offering"],
-  ["course", "Course"],
-  ["audience", "Audience"],
-  ["value_proposition", "Value Proposition"],
-  ["learning_goal", "Learning Goal"],
-  ["competency", "Competency"],
-  ["learning_path", "Learning Path"],
-  ["learning_path_step", "Learning Path Step"],
-  ["learning_project", "Learning Project"],
-  ["project", "Learning Project"],
-  ["learning_project_idea", "Learning Project Idea"],
-  ["project_idea", "Project Idea"],
-  ["learning_unit", "Learning Unit"],
-  ["example_domain", "Example Domain"],
-  ["technical_capability", "Technical Capability"],
-  ["capability", "Technical Capability"],
-  ["system_capability", "System Capability"],
-  ["plan", "Plan"],
-  ["role", "Role"],
-  ["business_domain", "Business Domain"],
-  ["architecture_artifact", "Architecture Artifact"],
-  ["architecture_structural_element", "Architecture Structural Element"],
-  ["architecture_decision", "Architecture Decision"],
-  ["architecture_rule", "Architecture Rule"],
-  ["data_model", "Data Model"],
-  ["api_artifact", "API Artifact"],
-  ["ui_model", "UI Model"],
-  ["implementation_artifact", "Implementation Artifact"],
-  ["test_artifact", "Test Artifact"],
-  ["validation_artifact", "Validation Artifact"],
-  ["domain_event", "Domain Event"],
-  ["feature", "Feature"],
-  ["risk", "Risk"],
-  ["gap", "Gap"],
-  ["open_question", "Open Question"],
-  ["principle", "Principle"],
-  ["validation_rule", "Validation Rule"],
-  ["metamodel", "Metamodel"],
-  ["metamodel_view", "Metamodel View"],
-  ["metamodel_uml", "Metamodel UML"],
-  ["metamodel_artifact", "Metamodel Artifact"],
-  ["metamodel_part", "Metamodel Part"],
-  ["knowledge_base", "Knowledge Base"],
-  ["requirement_rule", "Requirement Rule"],
-  ["todo", "Todo"],
-  ["deprecated_sales_learning_offer", "Deprecated Sales Learning Offer"],
-  ["technical_constraint", "Technical Constraint"],
-  ["project_stage", "Project Stage"],
-  ["software_module", "Software Module"],
-  ["learning_target", "Learning Target"],
-  ["architecture_topology", "Architecture Topology"],
-  ["project_variant", "Project Variant"],
-  ["architecture_component", "Architecture Component"]
-]);
-
-const COMMON_ARTIFACT_TYPE_DESCRIPTIONS = new Map([
-  [
-    "actuator",
-    "Hardware-Entitaet fuer Komponenten mit kinetischen Eigenschaften, die physisch etwas bewegen, betaetigen, oeffnen, schliessen, schalten oder anderweitig auf die reale Umgebung einwirken."
-  ]
-]);
-
-const COMMON_ALLOWED_RELATION_TYPES = [
-  "supports",
-  "realizes",
-  "drives",
-  "constrains",
-  "is_view_of",
-  "refines",
-  "derives_from",
-  "requires",
-  "has",
-  "has_child",
-  "contains",
-  "provides",
-  "provided_by",
-  "constrained_by",
-  "derives",
-  "affects",
-  "realized_by",
-  "verified_by",
-  "validated_by",
-  "belongs_to",
-  "uses",
-  "enables",
-  "enabled_by",
-  "grants",
-  "depends_on",
-  "optionally_uses",
-  "blocks",
-  "mitigates",
-  "owns",
-  "extends",
-  "illustrates",
-  "targets",
-  "realized_in",
-  "validates",
-  "references",
-  "decomposes",
-  "used_by",
-  "applies_to",
-  "verifies",
-  "justifies",
-  "compares",
-  "primary_users",
-  "cost_impact",
-  "optional_prerequisites",
-  "learning_path_stable",
-  "mitigated_by",
-  "offline_variant",
-  "online_ai_variant",
-  "possible_learning_paths",
-  "relates_to",
-  "replaced_by",
-  "todos"
-];
-
-const HIERARCHICAL_RELATION_TYPES = new Set([
-  "contains",
-  "has",
-  "has_child",
-  "derived_from",
-  "decomposes"
-]);
-
-const FIELD_RELATION_OVERRIDES = new Map([
-  ["supportsBusinessGoals", "supports"],
-  ["supportsGoals", "supports"],
-  ["supportsStrategies", "supports"],
-  ["enabledByBusinessCapabilities", "enabled_by"],
-  ["requiresBusinessCapabilities", "requires"],
-  ["providesBusinessCapabilities", "provides"],
-  ["realizesBusinessCapabilities", "realizes"],
-  ["derivedFromBusinessCapabilities", "derives_from"],
-  ["constrainedByBusinessRules", "constrained_by"],
-  ["realizesSystemCapabilities", "realizes"],
-  ["grantsSystemCapabilities", "grants"],
-  ["realizesRequirements", "realizes"],
-  ["derivedFromRequirements", "derives_from"],
-  ["containsMeasures", "contains"],
-  ["parentMeasures", "belongs_to"],
-  ["containsCourses", "contains"],
-  ["containsLearningGoals", "contains"],
-  ["containsLearningPaths", "contains"],
-  ["containsProjects", "contains"],
-  ["targetLearningGoals", "targets"],
-  ["primaryLearningGoal", "targets"],
-  ["learningPath", "belongs_to"],
-  ["belongsTo", "belongs_to"],
-  ["metamodelRoot", "is_view_of"],
-  ["relationToRoot", "references"],
-  ["usesCapabilities", "uses"],
-  ["requiredCapabilities", "requires"],
-  ["optionalCapabilities", "optionally_uses"],
-  ["affectedArtifacts", "affects"],
-  ["affectedArchitectureArtifacts", "affects"],
-  ["affectedDataModels", "affects"],
-  ["affectedApis", "affects"],
-  ["affectedUiModels", "affects"],
-  ["verifiedBy", "verified_by"],
-  ["validatedBy", "validated_by"],
-  ["realizedBy", "realized_by"],
-  ["dependsOn", "depends_on"],
-  ["technicalConstraints", "requires"],
-  ["dependencies", "depends_on"],
-  ["providedByMeasures", "provided_by"],
-  ["variants", "contains"],
-  ["belongsToBusinessDomain", "belongs_to"],
-  ["usedBy", "used_by"],
-  ["optional", "optionally_uses"],
-  ["valuePropositions", "uses"],
-  ["derivesRequirements", "derives"],
-  ["projects", "contains"],
-  ["considersBusinessRules", "references"],
-  ["appliesToMeasures", "applies_to"],
-  ["targetAudiences", "targets"],
-  ["appliesTo", "applies_to"],
-  ["risks", "affects"],
-  ["validatesRequirements", "validates"],
-  ["verifiesRequirements", "verifies"],
-  ["justifiesBusinessGoals", "justifies"],
-  ["product", "belongs_to"],
-  ["relatedDataModels", "affects"],
-  ["secondaryLearningGoals", "targets"],
-  ["constrainsBusinessCapabilities", "constrains"],
-  ["constrainsSystemCapabilities", "constrains"],
-  ["ownsFeatures", "owns"],
-  ["realizedBySystemCapabilities", "realized_by"],
-  ["verifiedByTestArtifacts", "verified_by"],
-  ["customerJourneys", "supports"],
-  ["ownsCapabilities", "owns"],
-  ["realizedByFeatures", "realized_by"],
-  ["learningGoals", "contains"],
-  ["prerequisites", "requires"],
-  ["belongsToBusinessGoals", "belongs_to"],
-  ["belongsToBusinessStrategies", "belongs_to"],
-  ["comparesVariants", "compares"],
-  ["systemCapabilities", "uses"],
-  ["principles", "references"],
-  ["primaryUsers", "primary_users"],
-  ["realizedByImplementationArtifacts", "realized_by"],
-  ["validatedByValidationArtifacts", "validated_by"],
-  ["belongsToOfferings", "belongs_to"],
-  ["costImpact", "cost_impact"],
-  ["optionalPrerequisites", "optional_prerequisites"],
-  ["products", "contains"],
-  ["course", "belongs_to"],
-  ["learningPathStable", "learning_path_stable"],
-  ["mitigatedBy", "mitigated_by"],
-  ["offlineVariant", "offline_variant"],
-  ["onlineAiVariant", "online_ai_variant"],
-  ["possibleLearningPaths", "possible_learning_paths"],
-  ["primaryLearningGoals", "targets"],
-  ["relatedLearningPaths", "references"],
-  ["relatesTo", "relates_to"],
-  ["replacedBy", "replaced_by"],
-  ["requiredSystemCapabilities", "requires"],
-  ["todos", "todos"],
-  ["makerLabTodos", "todos"]
-]);
-
-const IGNORED_REFERENCE_FIELDS = new Set([
-  "id",
-  "type",
-  "title",
-  "name",
-  "summary",
-  "description",
-  "status",
-  "businessStatus",
-  "implementationStatus",
-  "ownerDomain",
-  "schemaVersion",
-  "kind",
-  "sourceOfTruth",
-  "sourceStatus",
-  "sourceFile",
-  "sources",
-  "source",
-  "path",
-  "file",
-  "files",
-  "line",
-  "confidence",
-  "category",
-  "projectStatus",
-  "relation",
-  "from",
-  "to",
-  "target",
-  "source",
-  "range",
-  "label"
-]);
 
 function toPosix(value) {
   return value.split(path.sep).join("/");
@@ -676,9 +416,13 @@ function supplementalTypeRules() {
     rule("architecture_artifact", "affects", "api_artifact"),
     rule("architecture_artifact", "affects", "data_model"),
     rule("architecture_artifact", "constrained_by", "non_functional_requirement"),
+    rule("architecture_artifact", "open_decisions", "open_decision"),
+    rule("architecture_component", "affects", "data_model"),
     rule("architecture_component", "constrained_by", "non_functional_requirement"),
+    rule("architecture_component", "open_decisions", "open_decision"),
     rule("architecture_decision", "affects", "architecture_artifact"),
     rule("architecture_decision", "affects", "architecture_component"),
+    rule("architecture_decision", "affects", "architecture_structural_element"),
     rule("architecture_decision", "affects", "system_capability"),
     rule("architecture_decision", "affects", "technical_capability"),
     rule("architecture_decision", "constrains", "knowledge_base"),
@@ -719,6 +463,7 @@ function supplementalTypeRules() {
     rule("learning_goal", "realizes", "learning_path"),
     rule("learning_goal", "realized_by", "learning_path"),
     rule("learning_path", "realizes", "business_capability"),
+    rule("learning_project", "open_decisions", "open_decision"),
     rule("learning_unit", "supports", "business_goal"),
     rule("learning_unit", "supports", "customer_journey"),
     rule("measure", "realizes", "requirement"),
@@ -735,6 +480,8 @@ function supplementalTypeRules() {
     rule("deprecated_sales_learning_offer", "supports", "business_goal"),
     rule("open_question", "affects", "architecture_decision"),
     rule("open_question", "affects", "metamodel"),
+    rule("open_decision", "affects", "architecture_artifact"),
+    rule("open_decision", "affects", "architecture_component"),
     rule("gap", "affects", "architecture_decision"),
     rule("principle", "guides", "architecture_decision"),
     rule("product_offering", "constrained_by", "business_rule"),
@@ -744,6 +491,7 @@ function supplementalTypeRules() {
     rule("product_offering", "supports", "business_goal"),
     rule("product", "realizes", "business_goal"),
     rule("project_stage", "affects", "risk"),
+    rule("project_stage", "open_decisions", "open_decision"),
     rule("requirement", "affects", "architecture_component"),
     rule("requirement", "affects", "architecture_structural_element"),
     rule("requirement", "constrained_by", "non_functional_requirement"),
@@ -754,6 +502,7 @@ function supplementalTypeRules() {
     rule("risk", "affects", "architecture_component"),
     rule("risk", "affects", "architecture_structural_element"),
     rule("risk", "affects", "learning_path"),
+    rule("risk", "open_decisions", "open_decision"),
     rule("system_capability", "constrained_by", "business_rule"),
     rule("system_capability", "supports", "business_capability"),
     rule("technical_capability", "enables", "architecture_component"),
@@ -781,111 +530,6 @@ function uniqueRelations(relations) {
     result.push(relation);
   }
   return result;
-}
-
-function openDatabase(dbPath) {
-  fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-  if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
-  const db = new DatabaseSync(dbPath);
-  db.exec("PRAGMA foreign_keys = ON;");
-  return db;
-}
-
-function createSchema(db) {
-  db.exec(`
-    CREATE TABLE artifact_types (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      description TEXT,
-      source TEXT NOT NULL,
-      is_allowed INTEGER NOT NULL DEFAULT 1
-    );
-
-    CREATE TABLE artifacts (
-      id TEXT PRIMARY KEY,
-      artifact_type_id TEXT NOT NULL,
-      title TEXT,
-      status TEXT,
-      owner_domain TEXT,
-      summary TEXT,
-      source_file TEXT NOT NULL,
-      source_line INTEGER NOT NULL,
-      is_duplicate INTEGER NOT NULL DEFAULT 0,
-      is_valid INTEGER NOT NULL DEFAULT 1,
-      FOREIGN KEY (artifact_type_id) REFERENCES artifact_types(id)
-    );
-
-    CREATE TABLE artifact_occurrences (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      artifact_id TEXT NOT NULL,
-      source_file TEXT NOT NULL,
-      source_line INTEGER NOT NULL
-    );
-
-    CREATE TABLE relationship_types (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      is_hierarchical INTEGER NOT NULL DEFAULT 0,
-      allows_cycles INTEGER NOT NULL DEFAULT 0,
-      source TEXT NOT NULL,
-      is_allowed INTEGER NOT NULL DEFAULT 1
-    );
-
-    CREATE TABLE relationship_type_rules (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      relationship_type_id TEXT NOT NULL,
-      source_artifact_type_id TEXT NOT NULL,
-      target_artifact_type_id TEXT NOT NULL,
-      source TEXT NOT NULL,
-      FOREIGN KEY (relationship_type_id) REFERENCES relationship_types(id)
-    );
-
-    CREATE TABLE relationships (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      source_artifact_id TEXT NOT NULL,
-      relationship_type_id TEXT NOT NULL,
-      target_artifact_id TEXT NOT NULL,
-      confidence TEXT,
-      source_file TEXT NOT NULL,
-      source_line INTEGER NOT NULL,
-      source_field TEXT,
-      origin TEXT NOT NULL,
-      is_valid INTEGER NOT NULL DEFAULT 1,
-      FOREIGN KEY (relationship_type_id) REFERENCES relationship_types(id)
-    );
-
-    CREATE TABLE validation_errors (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      severity TEXT NOT NULL,
-      code TEXT NOT NULL,
-      message TEXT NOT NULL,
-      source_file TEXT,
-      source_line INTEGER,
-      artifact_id TEXT,
-      relationship_id INTEGER
-    );
-
-    CREATE INDEX idx_relationships_source ON relationships(source_artifact_id);
-    CREATE INDEX idx_relationships_target ON relationships(target_artifact_id);
-    CREATE INDEX idx_relationships_type ON relationships(relationship_type_id);
-    CREATE INDEX idx_validation_errors_code ON validation_errors(code);
-  `);
-}
-
-function insertValidationError(db, error) {
-  db.prepare(`
-    INSERT INTO validation_errors
-      (severity, code, message, source_file, source_line, artifact_id, relationship_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?)
-  `).run(
-    error.severity || "error",
-    error.code,
-    error.message,
-    error.sourceFile || null,
-    error.sourceLine || null,
-    error.artifactId || null,
-    error.relationshipId || null
-  );
 }
 
 function importGraph(dbPath = DEFAULT_DB_PATH) {
@@ -1143,191 +787,17 @@ function validateHierarchyCycles(db) {
   for (const source of bySource.keys()) visit(source, [source], new Set([source]));
 }
 
-function openExistingDatabase(dbPath = DEFAULT_DB_PATH) {
-  if (!fs.existsSync(dbPath)) {
-    const summary = importGraph(dbPath);
-    console.error(`SQLite graph was missing and has been imported: ${summary.dbPath}`);
-  }
-  return new DatabaseSync(dbPath);
+module.exports = {
+  DEFAULT_DB_PATH,
+  importGraph
+};
+
+if (require.main === module) {
+  const { runCli } = require("./src/cli-commands");
+  runCli({
+    args: process.argv.slice(2),
+    defaultDbPath: DEFAULT_DB_PATH,
+    repoRoot: REPO_ROOT,
+    importGraph
+  });
 }
-
-function printRows(rows) {
-  console.log(JSON.stringify(rows, null, 2));
-}
-
-function commandSummary(dbPath) {
-  const db = openExistingDatabase(dbPath);
-  printRows(db.prepare(`
-    SELECT
-      (SELECT COUNT(*) FROM artifact_types) AS artifact_types,
-      (SELECT COUNT(*) FROM artifacts) AS artifacts,
-      (SELECT COUNT(*) FROM relationship_types) AS relationship_types,
-      (SELECT COUNT(*) FROM relationships) AS relationships,
-      (SELECT COUNT(*) FROM validation_errors WHERE severity = 'error') AS errors,
-      (SELECT COUNT(*) FROM validation_errors WHERE severity = 'warning') AS warnings
-  `).all());
-  db.close();
-}
-
-function commandRelations(dbPath, direction, id) {
-  const db = openExistingDatabase(dbPath);
-  const sql = direction === "outgoing"
-    ? `SELECT r.source_artifact_id AS source, r.relationship_type_id AS relation, r.target_artifact_id AS target, t.artifact_type_id AS target_type, t.title AS target_title, r.source_file, r.source_line, r.origin, r.confidence
-       FROM relationships r LEFT JOIN artifacts t ON t.id = r.target_artifact_id
-       WHERE r.source_artifact_id = ? ORDER BY r.relationship_type_id, r.target_artifact_id`
-    : `SELECT r.source_artifact_id AS source, r.relationship_type_id AS relation, r.target_artifact_id AS target, s.artifact_type_id AS source_type, s.title AS source_title, r.source_file, r.source_line, r.origin, r.confidence
-       FROM relationships r LEFT JOIN artifacts s ON s.id = r.source_artifact_id
-       WHERE r.target_artifact_id = ? ORDER BY r.relationship_type_id, r.source_artifact_id`;
-  printRows(db.prepare(sql).all(id));
-  db.close();
-}
-
-function commandTrace(dbPath, id) {
-  const db = openExistingDatabase(dbPath);
-  const allowed = new Set([
-    "belongs_to",
-    "contains",
-    "targets",
-    "realized_by",
-    "supports",
-    "realizes",
-    "requires",
-    "derives_from",
-    "uses",
-    "provides",
-    "enabled_by",
-    "enables",
-    "is_view_of",
-    "refines"
-  ]);
-  const visions = new Set(db.prepare("SELECT id FROM artifacts WHERE artifact_type_id = 'vision'").all().map((row) => row.id));
-  const rows = db.prepare(`
-    SELECT source_artifact_id AS source, relationship_type_id AS relation, target_artifact_id AS target
-    FROM relationships
-    WHERE relationship_type_id IN (${Array.from(allowed).map(() => "?").join(",")})
-  `).all(...allowed);
-  const byNode = new Map();
-  const edgeKeys = new Set();
-  function add(node, edge) {
-    const key = `${node}|${edge.next}|${edge.text}`;
-    if (edgeKeys.has(key)) return;
-    edgeKeys.add(key);
-    if (!byNode.has(node)) byNode.set(node, []);
-    byNode.get(node).push(edge);
-  }
-  for (const row of rows) {
-    add(row.source, { next: row.target, text: `-[${row.relation}]-> ${row.target}` });
-    add(row.target, { next: row.source, text: `<-[${row.relation}]- ${row.source}` });
-  }
-  const queue = [{ node: id, path: id, depth: 0, seen: new Set([id]) }];
-  const found = [];
-  const foundPaths = new Set();
-  const bestDepth = new Map([[id, 0]]);
-  while (queue.length > 0 && found.length < 50) {
-    const current = queue.shift();
-    if (current.depth > 0 && visions.has(current.node)) {
-      if (!foundPaths.has(current.path)) {
-        foundPaths.add(current.path);
-        found.push({ path: current.path, depth: current.depth });
-      }
-      continue;
-    }
-    if (current.depth >= 8) continue;
-    const nextEdges = byNode.get(current.node) || [];
-    for (const edge of nextEdges.slice(0, 120)) {
-      if (current.seen.has(edge.next)) continue;
-      const nextDepth = current.depth + 1;
-      if ((bestDepth.get(edge.next) ?? Infinity) < nextDepth - 1) continue;
-      bestDepth.set(edge.next, Math.min(bestDepth.get(edge.next) ?? Infinity, nextDepth));
-      const nextSeen = new Set(current.seen);
-      nextSeen.add(edge.next);
-      queue.push({
-        node: edge.next,
-        path: `${current.path} ${edge.text}`,
-        depth: nextDepth,
-        seen: nextSeen
-      });
-    }
-  }
-  printRows(found.sort((a, b) => a.depth - b.depth));
-  db.close();
-}
-
-function commandIsolated(dbPath) {
-  const db = openExistingDatabase(dbPath);
-  printRows(db.prepare(`
-    SELECT a.id, a.artifact_type_id AS type, a.title, a.source_file, a.source_line
-    FROM artifacts a
-    WHERE NOT EXISTS (SELECT 1 FROM relationships r WHERE r.source_artifact_id = a.id)
-      AND NOT EXISTS (SELECT 1 FROM relationships r WHERE r.target_artifact_id = a.id)
-    ORDER BY a.artifact_type_id, a.id
-  `).all());
-  db.close();
-}
-
-function commandClusters(dbPath) {
-  const db = openExistingDatabase(dbPath);
-  const roots = db.prepare(`
-    SELECT id, artifact_type_id AS type, title
-    FROM artifacts
-    WHERE artifact_type_id IN ('business_goal', 'business_strategy', 'business_capability', 'system_capability')
-    ORDER BY artifact_type_id, id
-  `).all();
-  const stmt = db.prepare(`
-    WITH RECURSIVE cluster(root_id, artifact_id, depth) AS (
-      SELECT ?, ?, 0
-      UNION
-      SELECT cluster.root_id, r.source_artifact_id, cluster.depth + 1
-      FROM cluster
-      JOIN relationships r ON r.target_artifact_id = cluster.artifact_id
-      WHERE cluster.depth < 6
-      UNION
-      SELECT cluster.root_id, r.target_artifact_id, cluster.depth + 1
-      FROM cluster
-      JOIN relationships r ON r.source_artifact_id = cluster.artifact_id
-      WHERE cluster.depth < 6
-    )
-    SELECT COUNT(DISTINCT artifact_id) AS size FROM cluster
-  `);
-  printRows(roots.map((root) => ({ ...root, cluster_size: stmt.get(root.id, root.id).size })));
-  db.close();
-}
-
-function commandErrors(dbPath) {
-  const db = openExistingDatabase(dbPath);
-  printRows(db.prepare(`
-    SELECT severity, code, message, source_file, source_line, artifact_id, relationship_id
-    FROM validation_errors
-    ORDER BY CASE severity WHEN 'error' THEN 0 ELSE 1 END, code, source_file, source_line
-  `).all());
-  db.close();
-}
-
-function parseDbPath(args) {
-  const index = args.indexOf("--db");
-  if (index === -1) return DEFAULT_DB_PATH;
-  return path.resolve(REPO_ROOT, args[index + 1]);
-}
-
-function main() {
-  const args = process.argv.slice(2);
-  const command = args[0] || "import";
-  const dbPath = parseDbPath(args);
-
-  if (command === "import") {
-    console.log(JSON.stringify(importGraph(dbPath), null, 2));
-    return;
-  }
-  if (command === "summary") return commandSummary(dbPath);
-  if (command === "outgoing") return commandRelations(dbPath, "outgoing", args[1]);
-  if (command === "incoming") return commandRelations(dbPath, "incoming", args[1]);
-  if (command === "trace") return commandTrace(dbPath, args[1]);
-  if (command === "isolated") return commandIsolated(dbPath);
-  if (command === "clusters") return commandClusters(dbPath);
-  if (command === "errors") return commandErrors(dbPath);
-
-  console.error(`Unknown command: ${command}`);
-  process.exitCode = 1;
-}
-
-main();

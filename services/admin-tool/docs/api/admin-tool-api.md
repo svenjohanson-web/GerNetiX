@@ -51,3 +51,14 @@ POST /api/admin/ai-cost-controls/actions
 ```
 
 Kostensteuerungsaktionen werden als Admin-Audit-Event protokolliert.
+
+## LLM-Konfiguration
+
+```text
+GET  /api/admin/llm-config
+PUT  /api/admin/llm-config
+GET  /api/admin/llm-models
+POST /api/admin/llm-config/test
+```
+
+Konfiguriert den Provider fuer Kunden-KI-Chat und Entwicklungsplattform: lokales Ollama oder eine OpenAI-kompatible API.

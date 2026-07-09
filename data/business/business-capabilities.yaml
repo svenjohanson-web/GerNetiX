@@ -329,6 +329,7 @@ items:
       - requirement.learning_firmware_base_scaffold_preserves_ota
       - requirement.firmware_build_deploy_server
       - requirement.firmware_local_feedback_weblog
+      - requirement.architecture_discovery_guided_by_llm
 
   - id: BC-026
     type: business_capability

@@ -4,6 +4,8 @@ Diese Sicht zeigt die aktuell erkennbaren lokalen Serverprozesse, Benutzer-Appli
 
 Bildartefakt: [system-process-application-uml.svg](system-process-application-uml.svg)
 
+Port-Uebersicht: [process-port-overview.svg](process-port-overview.svg)
+
 ## Komponentendiagramm
 
 ```mermaid
@@ -13,7 +15,7 @@ flowchart LR
   codex["Codex"]
 
   subgraph applications["Applikationen / HMI"]
-    platformUi["GerNetiX Plattform UI<br/>/app/auth, /app/dashboard, /app/learn, /app/ide<br/>Identity Server :4300"]
+    platformUi["GerNetiX Plattform UI<br/>/app/auth, /app/dashboard,<br/>/app/development-platform, /app/ki-chat, /app/ide<br/>Identity Server :4300"]
     recoveryHmi["Recovery Tool HMI<br/>Board retten / USB Recovery<br/>:5100"]
     provisioningHmi["Provisioning Tool HMI<br/>Factory USB Provisioning<br/>:4500"]
     contextHmi["Context Manager HMI<br/>/context-manager/<br/>:5050"]
@@ -38,6 +40,16 @@ flowchart LR
     communityPlatform["Community Platform<br/>:5200"]
     communityAi["Community AI Assistant<br/>:5300"]
     persistence["Persistence Server<br/>:5400"]
+  end
+
+  subgraph platformInfrastructure["Technische Infrastruktur"]
+    mqttBroker["MQTT Broker<br/>Mosquitto<br/>:1883 / WS :9001"]
+    localOllama["Lokaler Ollama LLM<br/>:11434"]
+    externalLlm["Externe LLM API<br/>OpenAI-kompatibel"]
+  end
+
+  subgraph deviceRuntime["Device Runtime"]
+    esp32Basis["ESP32 Basissoftware<br/>MQTT Client + HTTPS OTA"]
   end
 
   subgraph localTools["Lokale Tools / Build-Artefakte"]
@@ -71,6 +83,13 @@ flowchart LR
     hardwareShop --> hardwareCatalog
   identity --> deviceManagement
   identity --> aiUsage
+  identity --> localOllama
+  identity --> externalLlm
+
+  buildDeploy --> mqttBroker
+  mqttBroker --> esp32Basis
+  esp32Basis --> mqttBroker
+  esp32Basis -. "Firmware per HTTPS laden" .-> buildDeploy
 
   adminTool --> deviceManagement
   adminTool --> projectServer
@@ -127,6 +146,7 @@ flowchart LR
 | Community AI Assistant | 5300 | KI-gestuetzte Community-Antworten |
 | Persistence Server | 5400 | HTTP-Zugriff auf generische SQLite-State-Dokumente |
 | SQLite Graph Explorer | 4318 | Read-only Weboberflaeche auf den kanonischen Graphen |
+| MQTT Broker | 1883 / 9001 | Mosquitto-Transportkanal fuer Device-Commands, Deployment-Status, Heartbeats und Telemetrie |
 
 ## Wichtige Abhaengigkeiten
 
@@ -139,6 +159,11 @@ flowchart LR
 | Hardware Shop | Hardware Catalog | Aufloesung von HardwareItem-IDs und Capabilities fuer Angebote |
 | GerNetiX Plattform UI / Identity Server | Device Management Server | eigene Devices, Registrierung, Purchase Context |
 | GerNetiX Plattform UI / Identity Server | AI Usage Server | Credit-Anzeige und AI-Preflight |
+| GerNetiX Plattform UI / Identity Server | Lokaler Ollama LLM | Dev-PoC fuer Architektur-Discovery und allgemeinen lokalen KI-Chat, wenn Admin-Routing auf lokalen Provider zeigt |
+| GerNetiX Plattform UI / Identity Server | Externe LLM API | Optionales OpenAI-kompatibles API-Routing fuer KI-Chat und Entwicklungsplattform |
+| Build & Deploy Server | MQTT Broker | Deploy-Auftraege fuer konkrete Devices veroeffentlichen und Statusmeldungen empfangen |
+| ESP32 Basissoftware | MQTT Broker | Deploy-Auftraege, Heartbeats und Statusmeldungen austauschen |
+| ESP32 Basissoftware | Build & Deploy Server | Firmware-Artefakte per HTTP/HTTPS laden |
 | Recovery Tool HMI | Recovery Tool Server | Nutzer-/Support-Flow zum Retten von ProcessorBoards |
 | Provisioning Tool HMI | Provisioning Tool Server | Factory-Provisioning per USB ohne IDE-/Plattform-Umweg |
 | Admin Tool API | Device Management Server | Device-/Support-/Consent-Sichten |
@@ -154,12 +179,16 @@ flowchart LR
 ## Hinweise
 
 - Der Persistence Server ist ein HTTP-Service fuer generische State-Dokumente. Mehrere Services nutzen aktuell zusaetzlich direkte SQLite-State-Persistenz ueber gemeinsame Repository-/Store-Bausteine.
-- Login UI, Dashboard, Lernmodus, User IDE und Guided-Code-Lesson-Einstieg sind ein gemeinsames Plattform-Frontend-Artefakt am Identity Server, keine getrennten Anwendungen mit getrennten Logins. Im Projekt liegt dieses Artefakt gebuendelt unter `services/identity-server/public/app`.
+- Login UI, Dashboard, Entwicklungsplattform, KI-Chat, User IDE und Guided-Code-Lesson-Einstieg sind ein gemeinsames Plattform-Frontend-Artefakt am Identity Server, keine getrennten Anwendungen mit getrennten Logins. Im Projekt liegt dieses Artefakt gebuendelt unter `services/identity-server/public/app`.
+- Die Entwicklungsplattform ist im PoC unter `/app/development-platform/` erreichbar und nutzt serverseitig `/api/platform/development-assistant/chat` als Proxy zum im Admin Tool konfigurierten LLM-Provider. Lokal ist Ollama vorgesehen; optional kann ein OpenAI-kompatibler API-Endpunkt konfiguriert werden. Aktuell sind nur aktueller Chat und fester Architektur-Prompt als Datenquellen freigegeben.
+- Der allgemeine KI-Chat ist im PoC unter `/app/ki-chat/` erreichbar und nutzt serverseitig `/api/platform/ai-chat/chat` als separaten lokalen Ollama-Proxy. Er ist vom Architektur-Discovery-Dialog getrennt und darf aktuell nur den aktuellen Chat als Datenquelle verwenden.
+- Das eigenstaendige Admin Tool unter `http://127.0.0.1:4600/admin/` enthaelt im PoC die LLM-Konfiguration fuer Provider, Endpoint, lokales Modell, API-Modell und Verbindungstest. Die lokale Dev-Konfiguration wird unter `.runtime/identity-llm-config.json` gespeichert und vom Identity Server fuer KI-Chat und Entwicklungsplattform gelesen.
 - Das Device-Onboarding laeuft als IDE-/Plattform-Flow im Identity-Server-Frontend. Es ist kein eigener Backend-Service: Die View zeigt Auswahl und Status, ein IDE-Onboarding-Model leitet aus Hardware-Catalog-Capabilities die erlaubten Wege ab, und die Controller sprechen Hardware Catalog, Device Management, Provisioning/Firmware-Artefakte sowie lokale Browser-Schnittstellen wie Web Serial an.
 - Der Nutzer vergibt beim Onboarding einen kurzen Board-Namen. Daraus entsteht der `gernetix-*` Node-/SSID-/Hostname. Die Seriennummer wird vom System erzeugt und dauerhaft am Device/Inventory gespeichert; Spezialhardware und Verdrahtung werden als Instanz-Konfiguration am Account-Device gefuehrt.
 - Das Recovery Tool ist ein eigenstaendiges Nutzer-/Support-Tool am Port 5100, mit dem ProcessorBoards per USB erkannt, repariert, neu registriert oder mit neuen Credentials versorgt werden koennen.
 - Das Provisioning Tool ist bewusst ein eigenstaendiges Factory-/Support-Tool mit eigener HMI am Port 4500. Es gehoert nicht zur User IDE und wird nicht im Plattform-Frontend eingebettet.
 - Das Provisioning Tool darf im Serverbetrieb nicht auf die Projektumgebung zugreifen. Die Basissoftware fuer Factory-Flash muss als versioniertes Firmware-Artefakt in SQLite/Artifact Store vorliegen; lokale Quellen sind nur ein expliziter Entwicklungs-Fallback.
 - Die Provisioning-HMI darf keine Firmware-Dateien vom Bedienrechner hochladen. Firmware-Artefakte werden serverseitig aus SQLite/Artifact Store oder einem konfigurierten Server-Firmwarepfad bereitgestellt.
+- Die lokale Dev-Infrastruktur fuer den MQTT Broker liegt unter `infra/dev/docker-compose.yml`. Sie nutzt Mosquitto auf `127.0.0.1:1883` und WebSocket auf `127.0.0.1:9001`; produktiv muessen TLS, Credentials oder Client-Zertifikate und Topic-ACLs aktiviert werden.
 - Der Context Manager ist kein Ersatz fuer die Graph-Dokumentation. Er liest Projektwissen, erstellt Vorschlaege und erzeugt bestaetigte Context Packs fuer Codex-Workflows.
 - Das Diagramm bildet den aktuellen lokalen MVP-Zuschnitt ab. Produktive Infrastruktur wie Reverse Proxy, Auth Gateway, Deployment-Orchestrierung oder externe LLM-/Payment-Provider sind hier noch nicht modelliert.

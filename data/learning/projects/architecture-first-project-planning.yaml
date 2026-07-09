@@ -1,0 +1,81 @@
+schemaVersion: 1
+kind: learning_project_catalog
+sourceStatus: legacy_import_source
+catalogId: project_catalog.architecture_first_project_planning
+ownerDomain: Learning
+summary: Abschluss- und Transferprojekte fuer den Lernpfad Architektur zuerst, Technologie danach. Die Projekte pruefen nicht nur Begriffswissen, sondern den praktischen Umgang mit KI-gestuetzter Architektur-Ermittlung und der GerNetiX-Entwicklungsplattform.
+items:
+  - id: project.architecture_first.discovery_capstone
+    type: learning_project
+    title: Abschlussprojekt Architektur-Discovery
+    status: draft
+    projectStatus: idea
+    ownerDomain: Learning
+    teachingRole: capstone_project
+    learningPath: learning_path.architecture_first_project_planning
+    primaryLearningGoal: learning_goal.architecture_first_project_planning
+    secondaryLearningGoals:
+      - learning_goal.software_engineering_basics
+      - learning_goal.iot_basics
+      - learning_goal.cross_platform_development
+    derivedFromRequirements:
+      - requirement.architecture_discovery_guided_by_llm
+    customerRetentionRole: Nutzer erleben GerNetiX als Entwicklungsplattform, die aus einer Projektidee eine nachvollziehbare Architektur, passende Technologieentscheidungen und naechste Lern- oder Projektangebote ableitet.
+    summary: Nutzer starten mit einer eigenen oder vorgegebenen Projektidee und nutzen den KI-gestuetzten Architektur-Dialog der GerNetiX-Entwicklungsplattform, um Zielarchitektur, Technologieentscheidungen, offene Fragen und Anschlussoptionen zu dokumentieren.
+    projectBrief:
+      - Waehle eine Projektidee, zum Beispiel Pflanzenwaechter, Raumklima-Dashboard, RFID-Zugang, Werkstatt-Inventar oder eigenes IoT-/App-Projekt.
+      - Beschreibe Nutzer, Umgebung, Geraete, Bedienoberflaechen, Daten und Betriebsmodell.
+      - Nutze den KI-Dialog, um eine Zielarchitektur vorzuschlagen.
+      - Pruefe die vorgeschlagene Architektur kritisch und bestaetige oder korrigiere sie.
+      - Leite Technologieentscheidungen erst danach ab.
+      - Speichere Projektkontext, offene Fragen und sinnvolle Folgeprojekte.
+    requiredPlatformCapabilities:
+      - LLM-gestuetzter Architektur-Dialog
+      - Projektkontext speichern
+      - Zielarchitektur anzeigen
+      - Technologieentscheidungen dokumentieren
+      - Offene Architekturfragen verwalten
+      - Naechste Lernpfade oder Anschlussprojekte empfehlen
+    expectedArtifacts:
+      - ProjectArchitectureDialog mit Fragen, Antworten, Annahmen und offenen Punkten.
+      - ProjectTargetArchitecture mit Zielsystemen, Datenfluesse, Kommunikationsbedarf und Betriebsmodell.
+      - ProjectTechnologyDecision-Eintraege fuer relevante Entscheidungen wie MQTT, ESP32/WLAN, Backend, App-Typ, Persistenz oder Hosting.
+      - Kurze Begruendung, warum diese Architektur zum Projektziel passt.
+      - Liste sinnvoller Anschlussprojekte oder Vertiefungen.
+    completionCriteria:
+      - Die Zielarchitektur wurde vor der Technologieauswahl beschrieben.
+      - Mindestens drei Architekturbausteine wurden bewertet, zum Beispiel IoT Device, Backend, Mobile App, Desktop App, Browser App, HomeServer oder Cloud.
+      - Mindestens zwei Technologieentscheidungen wurden aus Architekturgruenden begruendet.
+      - Mindestens eine offene Frage wurde bewusst dokumentiert oder entschieden.
+      - Der Nutzer kann erklaeren, welche naechsten GerNetiX-Projekte oder Lernpfade aus seinem Zielbild folgen.
+      - Der Nutzer hat die KI-Antworten nicht nur uebernommen, sondern mindestens eine Annahme bestaetigt, korrigiert oder verworfen.
+    learningOutcomes:
+      - Architektur aus Projektzielen, Nutzern, Daten und Betriebsbedingungen ableiten.
+      - KI-gestuetzte Architekturfragen als Denkwerkzeug verwenden.
+      - Die GerNetiX-Entwicklungsplattform fuer Projektstart, Kontextspeicherung und Anschlussplanung nutzen.
+      - Technologieentscheidungen nachvollziehbar begruenden.
+      - Folgeprojekte und Vertiefungen als Kundenbindungslogik verstehen.
+    variants:
+      - id: project.architecture_first.discovery_capstone.variant.guided_example
+        title: Gefuehrtes Beispielprojekt
+        focus:
+          - Der Nutzer arbeitet mit einer vorbereiteten Projektidee.
+          - Die Plattform fuehrt enger durch Fragen und Entscheidungspunkte.
+        recommendedFor:
+          - Einsteiger
+          - neue Kunden
+      - id: project.architecture_first.discovery_capstone.variant.own_project
+        title: Eigenes Projektziel
+        focus:
+          - Der Nutzer bringt eine eigene Idee mit.
+          - Die Plattform hilft, daraus Architektur, Technologieentscheidungen und naechste Schritte abzuleiten.
+        recommendedFor:
+          - Bestandskunden
+          - fortgeschrittene Nutzer
+          - Kunden mit konkretem Projektwunsch
+    followUpLogic:
+      - Embedded-only Zielarchitekturen fuehren zu Embedded-Grundlagen, GerNetiX-Runtime oder konkreten Sensor-/Aktor-Projekten.
+      - IoT-Architekturen mit WLAN oder OTA fuehren zu IoT-Grundlagen, Device Management, ESP32-Basissoftware oder MQTT-/Backend-Projekten.
+      - Multi-Client-Architekturen fuehren zu Cross-Platform Development.
+      - Backend- oder Cloud-Architekturen fuehren zu API-, Persistenz-, Authentifizierungs- und Deployment-Lernpfaden.
+      - Unklare oder ambitionierte Zielbilder fuehren zu Beratung, Coaching oder Premium-Angeboten.

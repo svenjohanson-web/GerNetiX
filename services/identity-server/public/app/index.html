@@ -21,9 +21,9 @@
 
       <nav class="tabs" aria-label="Plattformbereiche">
         <a href="/app/dashboard/" data-route="dashboard">Dashboard</a>
-        <a href="/app/learn/" data-route="learn">Lernen</a>
+        <a href="/app/development-platform/" data-route="development-platform">Entwicklungsplattform</a>
+        <a href="/app/ki-chat/" data-route="ki-chat">KI-Chat</a>
         <a href="/app/ide/" data-route="ide">Entwickeln</a>
-        <a class="utility" href="/app/projects/" data-route="projects">Lernprojekte</a>
         <a class="utility" href="/app/devices/" data-route="devices">Geräte</a>
         <a class="utility" href="/app/builds/" data-route="builds">Builds</a>
         <a class="utility" href="/app/billing/" data-route="billing">Billing</a>
@@ -31,21 +31,21 @@
 
       <section id="dashboardView" class="view">
         <section class="dashboard-grid">
-          <button class="entry-card primary" type="button" data-open-route="/app/learn/">
-            <span>Lernen starten</span>
-            <strong>Kurse, Lektionen, geführte Projekte und Aufgaben</strong>
+          <button class="entry-card primary" type="button" data-open-route="/app/development-platform/">
+            <span>Entwicklungsplattform öffnen</span>
+            <strong>Projektziele klären und Zielarchitektur herleiten</strong>
           </button>
           <button class="entry-card" type="button" data-open-route="/app/ide/">
             <span>Freie Entwicklungsumgebung öffnen</span>
             <strong>Eigene Projekte, Code, Builds und Flashen ohne geführte Lektion</strong>
           </button>
+          <button class="entry-card" type="button" data-open-route="/app/ki-chat/">
+            <span>KI-Chat oeffnen</span>
+            <strong>Lokalen Assistenten direkt fragen</strong>
+          </button>
           <button id="continueButton" class="entry-card" type="button">
             <span>Letztes Projekt fortsetzen</span>
             <strong id="continueText">Noch kein Projekt geöffnet</strong>
-          </button>
-          <button class="entry-card" type="button" data-open-route="/app/projects/">
-            <span>Meine Lernprojekte</span>
-            <strong>Geführte Projekte aus Kursen und Lektionen</strong>
           </button>
           <button class="entry-card" type="button" data-open-route="/app/devices/">
             <span>Meine Geräte</span>
@@ -61,30 +61,6 @@
             </div>
           </div>
           <div id="dashboardSummary" class="summary-grid"></div>
-        </section>
-      </section>
-
-      <section id="learnView" class="view hidden">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Geführter Modus</p>
-            <h2>Lernen</h2>
-          </div>
-        </div>
-        <section id="learnProjectList" class="project-list"></section>
-        <section id="lessonPanel" class="lesson-panel hidden">
-          <aside id="lessonSteps" class="step-rail"></aside>
-          <article class="panel">
-            <p id="lessonCounter" class="eyebrow"></p>
-            <h2 id="lessonTitle"></h2>
-            <p id="lessonText"></p>
-            <div id="lessonInsight" class="insight"></div>
-            <div class="button-row">
-              <button id="lessonBackButton" type="button">Zurück</button>
-              <button id="openIdeButton" type="button">In IDE öffnen</button>
-              <button id="lessonNextButton" type="button">Weiter</button>
-            </div>
-          </article>
         </section>
       </section>
 
@@ -109,12 +85,8 @@
         </div>
         <section id="ideEmptyState" class="panel ide-empty-state hidden">
           <p class="eyebrow">Freier Modus</p>
-          <h3>Keine Lektion geöffnet</h3>
-          <p>Hier entsteht die freie Entwicklungsumgebung für eigene Entwicklungsprojekte. Geführte Lernprojekte startest du im Bereich Lernen und kannst sie von dort gezielt in der IDE öffnen.</p>
-          <div class="button-row">
-            <button class="primary" type="button" data-open-route="/app/learn/">Zu Lernen</button>
-            <button type="button" data-open-route="/app/projects/">Lernprojekte ansehen</button>
-          </div>
+          <h3>Kein Entwicklungsprojekt geöffnet</h3>
+          <p>Hier entsteht die freie Entwicklungsumgebung für eigene Entwicklungsprojekte. Die Architekturklaerung startet in der Entwicklungsplattform.</p>
         </section>
         <section id="ideLayout" class="ide-layout">
           <article id="sourcePanel" class="panel">
@@ -131,14 +103,85 @@
         </section>
       </section>
 
-      <section id="projectsView" class="view hidden">
+      <section id="aiChatView" class="view hidden">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Lernen</p>
-            <h2>Meine Lernprojekte</h2>
+            <p class="eyebrow">Lokaler Assistent</p>
+            <h2>KI-Chat</h2>
+          </div>
+          <div class="button-row">
+            <button id="clearAiChatButton" type="button">Dialog leeren</button>
           </div>
         </div>
-        <section id="projectList" class="project-list"></section>
+        <section class="ai-chat-layout">
+          <article class="panel development-chat-panel">
+            <div id="aiChatMessages" class="development-chat-messages" aria-live="polite"></div>
+            <form id="aiChatForm" class="development-chat-form">
+              <label for="aiChatInput">Nachricht</label>
+              <textarea id="aiChatInput" rows="4" placeholder="Stelle eine Frage an den lokalen KI-Chat."></textarea>
+              <div class="button-row">
+                <span id="aiChatStatus" class="chat-status">Bereit.</span>
+                <button id="aiChatSubmit" class="primary" type="submit">Senden</button>
+              </div>
+            </form>
+          </article>
+          <aside class="panel development-assistant-context">
+            <p class="eyebrow">PoC-Konfiguration</p>
+            <h3>Lokales LLM</h3>
+            <dl id="aiChatConfig" class="meta-list"></dl>
+            <div class="architecture-question-list">
+              <h3>Schnellfragen</h3>
+              <button type="button" data-ai-prompt="Fasse bitte kurz zusammen, was du in diesem Chat fuer mich tun kannst.">Was kannst du?</button>
+              <button type="button" data-ai-prompt="Hilf mir, eine technische Idee in konkrete naechste Schritte zu zerlegen.">Naechste Schritte planen</button>
+              <button type="button" data-ai-prompt="Stelle mir Rueckfragen, damit mein Ziel klarer wird.">Ziel klaeren</button>
+            </div>
+            <div class="development-source-note">
+              <h3>Datenquellen</h3>
+              <p>Dieser Chat nutzt nur den aktuellen Dialog. Projektdateien, Graphdaten, Kundendaten oder externe Quellen sind noch nicht freigegeben.</p>
+            </div>
+          </aside>
+        </section>
+      </section>
+
+      <section id="developmentPlatformView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Architektur-Discovery</p>
+            <h2>Entwicklungsplattform</h2>
+          </div>
+          <div class="button-row">
+            <button id="clearDevelopmentChatButton" type="button">Dialog leeren</button>
+          </div>
+        </div>
+        <section class="development-platform-layout">
+          <article class="panel development-chat-panel">
+            <div id="developmentChatMessages" class="development-chat-messages" aria-live="polite"></div>
+            <form id="developmentChatForm" class="development-chat-form">
+              <label for="developmentChatInput">Nachricht</label>
+              <textarea id="developmentChatInput" rows="4" placeholder="Beschreibe kurz deine Projektidee oder antworte auf die Frage der KI."></textarea>
+              <div class="button-row">
+                <span id="developmentChatStatus" class="chat-status">Bereit fuer Architekturfragen.</span>
+                <button id="developmentChatSubmit" class="primary" type="submit">Senden</button>
+              </div>
+            </form>
+          </article>
+          <aside class="panel development-assistant-context">
+            <p class="eyebrow">PoC-Konfiguration</p>
+            <h3>Lokales LLM</h3>
+            <dl id="developmentAssistantConfig" class="meta-list"></dl>
+            <div class="architecture-question-list">
+              <h3>Fragerichtung</h3>
+              <button type="button" data-dev-prompt="Ich moechte ein neues Projekt starten. Bitte finde mit mir zuerst die Zielarchitektur heraus.">Projektziel klaeren</button>
+              <button type="button" data-dev-prompt="Hilf mir zu entscheiden, ob mein Projekt nur lokal laufen soll oder ob ich Backend, Webseite, Handy-App oder weltweiten Zugriff brauche.">Zielsysteme einordnen</button>
+              <button type="button" data-dev-prompt="Frag mich, ob ich Daten speichern, mehrere Geraete anbinden, Messwerte anzeigen oder Regeln automatisieren moechte.">Daten und Geraete klaeren</button>
+              <button type="button" data-dev-prompt="Leite aus meinen Antworten bitte eine erste Architektur ab und markiere offene Fragen.">Erste Architektur ableiten</button>
+            </div>
+            <div class="development-source-note">
+              <h3>Datenquellen</h3>
+              <p>Dieser PoC nutzt nur den aktuellen Chat und den festen Architektur-Prompt. Projektdateien, Graphdaten, Kundendaten oder externe Quellen sind noch nicht freigegeben.</p>
+            </div>
+          </aside>
+        </section>
       </section>
 
       <section id="devicesView" class="view hidden">
@@ -231,6 +274,8 @@
     <script src="/app/device-onboarding-model.js"></script>
     <script src="/app/device-onboarding-controller.js"></script>
     <script src="/app/guided-project-view.js"></script>
+    <script src="/app/development-platform.js"></script>
+    <script src="/app/ai-chat.js"></script>
     <script src="/app/app.js"></script>
   </body>
 </html>

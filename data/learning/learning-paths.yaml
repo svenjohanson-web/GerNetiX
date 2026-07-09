@@ -104,6 +104,7 @@ items:
         - Benutzerinteraktion
         - Persistenter Zustand
     prerequisites:
+      - learning_goal.architecture_first_project_planning
       - learning_goal.embedded_basics
       - learning_goal.iot_basics
     optionalPrerequisites:
@@ -235,3 +236,91 @@ items:
           - Kontextverwaltung
           - Kosten- und Tokenmanagement
         outcome: Teilnehmer bewerten KI-Funktionen als optionale plattformuebergreifende Erweiterung.
+
+  - id: learning_path.architecture_first_project_planning
+    type: learning_path
+    title: Architektur zuerst, Technologie danach
+    status: draft
+    ownerDomain: Learning
+    summary: Entwicklungspfad fuer den Projektbeginn in GerNetiX. Nutzer werden durch einen LLM-gestuetzten Dialog zuerst zur Zielarchitektur gefuehrt und entscheiden erst danach ueber Technologien wie MQTT, ESP32 mit WLAN, Backend, Mobile App, PC-App oder Browser-App. Der Pfad dient explizit der Kundenbindung, weil erkannte Projektziele als Grundlage fuer passende Anschlussprojekte, Vertiefungen und Angebote genutzt werden koennen.
+    primaryLearningGoal: learning_goal.architecture_first_project_planning
+    secondaryLearningGoals:
+      - learning_goal.software_engineering_basics
+      - learning_goal.iot_basics
+      - learning_goal.cross_platform_development
+    derivedFromRequirements:
+      - requirement.architecture_discovery_guided_by_llm
+    pathPrinciples:
+      - Architekturfragen kommen vor Technologiefragen.
+      - Der Nutzer muss nicht alle Fachbegriffe kennen; der Assistent uebersetzt Antworten in Architekturbausteine.
+      - Jede Technologieentscheidung braucht eine nachvollziehbare Architekturbegruendung.
+      - Offene Fragen bleiben sichtbar und blockieren nur Entscheidungen, die wirklich davon abhaengen.
+      - Der Pfad erzeugt Projektwissen, das spaeter von IDE, Projektserver, Context Manager und Lernansichten wiederverwendet wird.
+      - Der Pfad soll Nutzer nicht nach einem Einzelprojekt verlieren, sondern aus ihrem Zielbild nachvollziehbare naechste Schritte ableiten.
+    architectureQuestionAreas:
+      - Projektziel und Nutzerrollen
+      - Physische Geraete, Sensoren, Aktoren und vorhandene Hardware
+      - Bedienoberflaechen wie lokal am Geraet, Mobile App, Desktop App oder Browser App
+      - Daten, Zustaende, Historie, Synchronisation und Persistenz
+      - Kommunikation zwischen Geraeten, Apps und Servern
+      - Offline-/Online-Verhalten, lokales Netzwerk, HomeServer, Cloud und Datenschutz
+      - Update-, Recovery-, Support- und Betriebsanforderungen
+    technologyDecisionAreas:
+      - Mikrocontroller oder ProcessorBoard, zum Beispiel ESP32
+      - Connectivity wie WLAN, Bluetooth, USB, MQTT, REST, WebSocket oder lokale HTTP-Schnittstelle
+      - Backend-Zuschnitt wie kein Backend, lokaler HomeServer, Cloud-Backend oder hybrides Modell
+      - App-Zuschnitt wie Mobile App, Desktop App, Browser App oder IDE-integrierte HMI
+      - Persistenz wie Device-Speicher, lokale App-Datenbank, Serverdatenbank oder Ereignisprotokoll
+      - Deployment und Betrieb wie USB-Flash, OTA, lokaler Server, VPS oder Cloud
+    projects:
+      - project.architecture_first.discovery_capstone
+    learningOutcomes:
+      - Eine Projektidee in eine bestaetigte Zielarchitektur ueberfuehren.
+      - Erkennen, welche Software- und Hardwarebausteine fuer ein Projekt wirklich benoetigt werden.
+      - Technologieauswahl aus Architekturbedarf ableiten und dokumentieren.
+      - Alternativen und offene Fragen bewusst sichtbar halten.
+      - Einen Projektstart so strukturieren, dass spaetere Umsetzung, Dokumentation und Tests anschlussfaehig bleiben.
+      - Passende Folgeprojekte und Vertiefungen aus der Architekturperspektive erkennen.
+    steps:
+      - id: learning_path_step.architecture_first.01_project_intent
+        orderIndex: 1
+        title: Projektziel verstehen
+        mandatory: true
+        outcome: Nutzer beschreiben Zweck, Nutzerrollen, physische Umgebung und erwarteten Nutzen des Projekts.
+
+      - id: learning_path_step.architecture_first.02_target_systems
+        orderIndex: 2
+        title: Zielsysteme erkennen
+        mandatory: true
+        outcome: IoT-Geraete, Backend, Mobile App, Desktop App, Browser App, lokales Device-Interface oder reine Embedded-Loesung werden als moegliche Bausteine eingeordnet.
+
+      - id: learning_path_step.architecture_first.03_data_and_communication
+        orderIndex: 3
+        title: Daten und Kommunikation klaeren
+        mandatory: true
+        outcome: Datenfluesse, Zustandsquellen, Steuerbefehle, Telemetrie, Synchronisation und Offline-/Online-Anforderungen sind fachlich beschrieben.
+
+      - id: learning_path_step.architecture_first.04_target_architecture
+        orderIndex: 4
+        title: Zielarchitektur bestaetigen
+        mandatory: true
+        outcome: Der Nutzer bestaetigt eine erste Zielarchitektur oder markiert offene Architekturfragen.
+
+      - id: learning_path_step.architecture_first.05_technology_mapping
+        orderIndex: 5
+        title: Technologien ableiten
+        mandatory: true
+        outcome: Technologien wie MQTT, ESP32/WLAN, REST, WebSocket, Datenbank, App-Framework oder Hosting werden aus der Zielarchitektur abgeleitet.
+
+      - id: learning_path_step.architecture_first.06_project_context
+        orderIndex: 6
+        title: Projektkontext speichern
+        mandatory: true
+        outcome: Zielarchitektur, Technologieentscheidungen, Alternativen und offene Fragen werden als Projektkontext fuer IDE, Projektserver und Context Manager gespeichert.
+
+      - id: learning_path_step.architecture_first.07_capstone_project
+        orderIndex: 7
+        title: Abschlussprojekt
+        mandatory: true
+        unlockCondition: Zielarchitektur, Technologieentscheidungen und offene Fragen wurden fuer mindestens eine Projektidee dokumentiert.
+        outcome: Nutzer zeigen an einem eigenen oder vorgegebenen Projekt, dass sie Architektur herleiten, KI-Fragen kritisch bestaetigen und die GerNetiX-Entwicklungsplattform als Projektbegleiter nutzen koennen.

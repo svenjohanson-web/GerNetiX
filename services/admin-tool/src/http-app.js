@@ -1,4 +1,8 @@
+const fs = require("node:fs");
+const path = require("node:path");
 const { AdminToolError } = require("./errors");
+
+const publicDir = path.join(__dirname, "..", "public");
 
 function createHttpApp(options) {
   const service = options.service;
@@ -8,6 +12,16 @@ function createHttpApp(options) {
 
     if (req.method === "GET" && url.pathname === "/health") {
       sendJson(res, 200, { status: "ok", service: "admin-tool" });
+      return;
+    }
+
+    if (req.method === "GET" && ["/", "/admin", "/admin/"].includes(url.pathname)) {
+      serveStatic(res, publicDir, "/index.html");
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname.startsWith("/admin/")) {
+      serveStatic(res, publicDir, url.pathname.replace(/^\/admin/, "") || "/index.html");
       return;
     }
 
@@ -62,8 +76,61 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/admin/llm-config") {
+      sendJson(res, 200, { config: service.llmConfig() });
+      return;
+    }
+
+    if (req.method === "PUT" && url.pathname === "/api/admin/llm-config") {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, { config: service.updateLlmConfig(body) });
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/admin/llm-models") {
+      sendJson(res, 200, await service.listLlmModels());
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/admin/llm-config/test") {
+      sendJson(res, 200, await service.testLlmConfig());
+      return;
+    }
+
     sendJson(res, 404, { error: "not_found" });
   };
+}
+
+function serveStatic(res, rootDir, requestPath) {
+  const normalizedRequestPath = requestPath === "/" ? "/index.html" : requestPath;
+  const filePath = path.normalize(path.join(rootDir, normalizedRequestPath));
+
+  if (!filePath.startsWith(rootDir)) {
+    res.writeHead(403);
+    res.end("Forbidden");
+    return;
+  }
+
+  fs.readFile(filePath, (error, content) => {
+    if (error) {
+      res.writeHead(404);
+      res.end("Not found");
+      return;
+    }
+    res.writeHead(200, {
+      "Content-Type": contentType(filePath),
+      "Cache-Control": "no-store",
+    });
+    res.end(content);
+  });
+}
+
+function contentType(filePath) {
+  const extension = path.extname(filePath);
+  if (extension === ".html") return "text/html; charset=utf-8";
+  if (extension === ".css") return "text/css; charset=utf-8";
+  if (extension === ".js") return "text/javascript; charset=utf-8";
+  return "application/octet-stream";
 }
 
 function readContext(url, body = {}) {

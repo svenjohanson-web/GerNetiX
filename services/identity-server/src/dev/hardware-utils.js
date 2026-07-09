@@ -1,0 +1,220 @@
+const crypto = require("node:crypto");
+
+function createDevHardwareUtils({ defaultCatalogSeed, execFileAsync, hardwareCatalogJson }) {
+  function requiredField(value, field) {
+    const normalized = String(value || "").trim();
+    if (!normalized) {
+      const error = new Error(`Pflichtfeld fehlt: ${field}`);
+      error.status = 400;
+      throw error;
+    }
+    return normalized;
+  }
+
+  function createGerNetixSerialNumber(hardwareProfileId) {
+    const family = hardwareProfileFamily(hardwareProfileId).toUpperCase().replace(/[^A-Z0-9]/g, "") || "BOARD";
+    const suffix = crypto.randomBytes(5).toString("hex").toUpperCase();
+    return `GNX-${family}-${suffix}`;
+  }
+
+  function normalizeGerNetixNodeName(value) {
+    const slug = String(value || "")
+      .trim()
+      .toLowerCase()
+      .normalize("NFKD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 42);
+    return slug.startsWith("gernetix-")
+      ? slug
+      : `gernetix-${slug || "node"}`;
+  }
+
+  function hardwareProfileFamily(value) {
+    const normalized = String(value || "").toLowerCase();
+    if (normalized.includes("esp8266") || normalized.includes("esp-12")) return "esp8266";
+    if (normalized.includes("esp32") || normalized.includes("wroom")) return "esp32";
+    if (normalized.includes("avr") || normalized.includes("atmega")) return "avr";
+    return "board";
+  }
+
+  async function loadProcessorBoards() {
+    const fallback = embeddedProcessorBoards();
+    try {
+      const response = await hardwareCatalogJson("/api/hardware-catalog/processor-boards");
+      return mergeProcessorBoards(response.items || [], fallback);
+    } catch {
+      return fallback;
+    }
+  }
+
+  function embeddedProcessorBoards() {
+    return (defaultCatalogSeed().hardwareItems || [])
+      .filter((item) => item.item_type === "processor_board")
+      .filter((item) => !deprecatedProcessorBoardIds().has(item.hardware_item_id));
+  }
+
+  function mergeProcessorBoards(primary = [], fallback = []) {
+    const items = new Map();
+    for (const item of fallback) items.set(item.hardware_item_id || item.hardware_profile_id, item);
+    for (const item of primary) {
+      const id = item.hardware_item_id || item.hardware_profile_id;
+      if (!id || deprecatedProcessorBoardIds().has(id)) continue;
+      items.set(id, item);
+    }
+    return Array.from(items.values());
+  }
+
+  function deprecatedProcessorBoardIds() {
+    return new Set([
+      "hardware.processor_board.esp32_devkit",
+      "hardware.processor_board.esp_wroom32",
+      "hardware.processor_board.esp_wroom32_display",
+      "hardware.processor_board.arduino_nano_atmega328p",
+    ]);
+  }
+
+  async function findProcessorBoard(hardwareProfileId) {
+    const boards = await loadProcessorBoards().catch(() => []);
+    return boards.find((board) => (
+      board.hardware_item_id === hardwareProfileId
+      || board.hardware_profile_id === hardwareProfileId
+      || board.provisioning_profile_id === hardwareProfileId
+    )) || null;
+  }
+
+  function isUsbFlashDevice(device) {
+    if (device.connectivity_status === "offline") return false;
+    return device.device_id === "device_verified_1"
+      || device.device_id === "device_arduino_nano_1"
+      || (device.hardware_profile_id || "").includes("arduino_nano")
+      || (device.hardware_profile_id || "").includes("esp32");
+  }
+
+  function defaultUploadPort(device) {
+    if (!isUsbFlashDevice(device)) return "";
+    if (device.device_id === "device_arduino_nano_1") {
+      return process.env.GERNETIX_NANO_UPLOAD_PORT || process.env.GERNETIX_USB_UPLOAD_PORT || process.env.UPLOAD_PORT || "";
+    }
+    return process.env.GERNETIX_USB_UPLOAD_PORT || process.env.UPLOAD_PORT || "";
+  }
+
+  async function listUsbSerialPorts() {
+    if (process.platform !== "win32") return [];
+    const script = [
+      "$items = Get-CimInstance Win32_PnPEntity | Where-Object { $_.Name -match '\\(COM\\d+\\)' } | ForEach-Object {",
+      "  $port = if ($_.Name -match '(COM\\d+)') { $Matches[1] } else { '' }",
+      "  [pscustomobject]@{",
+      "    port = $port;",
+      "    name = $_.Name;",
+      "    device_id = $_.DeviceID;",
+      "    manufacturer = $_.Manufacturer;",
+      "    pnp_class = $_.PNPClass;",
+      "    status = $_.Status",
+      "  }",
+      "}",
+      "$items | ConvertTo-Json -Compress",
+    ].join("\n");
+
+    try {
+      const { stdout } = await execFileAsync("powershell.exe", ["-NoProfile", "-Command", script], {
+        windowsHide: true,
+        timeout: 5000,
+        maxBuffer: 1024 * 1024,
+      });
+      const trimmed = stdout.trim();
+      if (!trimmed) return [];
+      const parsed = JSON.parse(trimmed);
+      const items = Array.isArray(parsed) ? parsed : [parsed];
+      return items
+        .map((item) => ({
+          port: String(item.port || "").trim(),
+          name: String(item.name || "").trim(),
+          device_id: String(item.device_id || "").trim(),
+          manufacturer: String(item.manufacturer || "").trim(),
+          pnp_class: String(item.pnp_class || "").trim(),
+          status: String(item.status || "").trim(),
+        }))
+        .filter((item) => item.port);
+    } catch {
+      return listUsbSerialPortsFromMode();
+    }
+  }
+
+  async function listUsbSerialPortsFromMode() {
+    try {
+      const { stdout } = await execFileAsync("cmd.exe", ["/c", "mode"], {
+        windowsHide: true,
+        timeout: 5000,
+        maxBuffer: 1024 * 1024,
+      });
+      return Array.from(new Set(Array.from(stdout.matchAll(/\bCOM\d+\b/gi)).map((match) => match[0].toUpperCase())))
+        .map((port) => ({
+          port,
+          name: `${port} serieller Port`,
+          device_id: "",
+          manufacturer: "",
+          pnp_class: "Ports",
+          status: "OK",
+        }));
+    } catch {
+      return [];
+    }
+  }
+
+  function deviceBuildConfig(device) {
+    if (device.device_id === "device_arduino_nano_1" || (device.hardware_profile_id || "").includes("arduino_nano")) {
+      return {
+        environment: "uno",
+        platform: "atmelavr",
+        board: "uno",
+        framework: "arduino",
+        monitorSpeed: "9600",
+      };
+    }
+    return {
+      environment: "esp32dev",
+      platform: "espressif32",
+      board: "esp32dev",
+      framework: "arduino",
+    };
+  }
+
+  function buildTargetLabel(device) {
+    const config = deviceBuildConfig(device);
+    return [config.platform, config.board, config.framework || "ohne Framework"].join("/");
+  }
+
+  function renderPlatformioIni(config) {
+    const lines = [
+      `[env:${config.environment}]`,
+      `platform = ${config.platform}`,
+      `board = ${config.board}`,
+      `monitor_speed = ${config.monitorSpeed || "115200"}`,
+    ];
+    if (config.framework) lines.splice(3, 0, `framework = ${config.framework}`);
+    if (config.uploadSpeed) lines.push(`upload_speed = ${config.uploadSpeed}`);
+    lines.push("");
+    return lines.join("\n");
+  }
+
+  return {
+    buildTargetLabel,
+    createGerNetixSerialNumber,
+    defaultUploadPort,
+    deviceBuildConfig,
+    findProcessorBoard,
+    hardwareProfileFamily,
+    isUsbFlashDevice,
+    listUsbSerialPorts,
+    loadProcessorBoards,
+    normalizeGerNetixNodeName,
+    renderPlatformioIni,
+    requiredField,
+  };
+}
+
+module.exports = {
+  createDevHardwareUtils,
+};

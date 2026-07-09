@@ -969,6 +969,48 @@ items:
       - Bestehende Lernprojekte koennen weiterhin in der IDE geoeffnet werden.
       - Projektspezifische Tamagotchi-, RFID- oder andere Beispielinformationen duerfen nicht im Viewer hart kodiert werden.
 
+  - id: requirement.architecture_discovery_guided_by_llm
+    type: requirement
+    title: Projektbeginn durch gefuehrte Architektur-Erkennung unterstuetzen
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Learning
+    summary: Zu Beginn eines Projekts muss ein KI-gestuetzter Dialog den Nutzer durch fachliche Architekturfragen fuehren, damit zuerst die Zielarchitektur erkannt wird, bevor konkrete Technologien ausgewaehlt werden. Ziel ist Kundenbindung: Der Nutzer soll sich verstanden fuehlen, schneller zu passenden Anschlussprojekten finden und GerNetiX als langfristigen Begleiter fuer immer anspruchsvollere Projekte erleben. Der Dialog klaert unter anderem, ob IoT-Geraete, Backends, mobile Apps, PC-Apps oder Browser-Apps benoetigt werden, welche Daten fliessen, welche Nutzer interagieren und welche Betriebsumgebung erwartet wird.
+    derivedFromBusinessCapabilities:
+      - BC-025
+      - BG-002
+      - BG-003
+      - BG-005
+      - BG-007
+    supportsCustomerJourneys:
+      - CJ-003
+      - CJ-004
+      - CJ-005
+      - CJ-011
+    affectsArchitectureArtifacts:
+      - architecture_artifact.project_architecture_discovery_assistant
+      - app.user_ide
+      - architecture_artifact.project_server
+    affectsDataModels:
+      - data_model.project_target_architecture
+      - data_model.project_technology_decision
+      - data_model.project_architecture_dialog
+    acceptanceCriteria:
+      - Der Nutzer wird zuerst zu Zielsystemen, Benutzern, Geraeten, Daten, Kommunikation, Bedienoberflaechen, Offline-/Online-Verhalten und Betriebsumgebung befragt.
+      - Der Dialog erzeugt eine nachvollziehbare Zielarchitektur mit Bausteinen wie IoT Device, Backend, Mobile App, Desktop App, Browser App, lokales Netzwerk, Cloud oder HomeServer.
+      - Technologiefragen wie MQTT, ESP32, WLAN, Bluetooth, REST, WebSocket, Datenbank, Framework oder Hosting werden erst nach der Zielarchitektur gestellt.
+      - Jede Technologieempfehlung muss auf eine erkannte Architekturentscheidung oder ein fachliches Projektziel zurueckfuehrbar sein.
+      - Unklare Antworten werden als offene Architekturfragen gespeichert, statt vorschnell Technologien festzulegen.
+      - Die erkannte Zielarchitektur kann als Projektkontext wieder aufgenommen und spaeter ueberarbeitet werden.
+      - Der Dialog erklaert Alternativen in nutzerverstaendlicher Sprache, ohne den Nutzer mit Implementierungsdetails zu ueberfordern.
+      - Aus der erkannten Architektur koennen passende Anschlussprojekte, Vertiefungen, Hardware-Angebote oder naechste Lernpfade empfohlen werden.
+      - Der Assistant darf keine endgueltige Architekturentscheidung ohne ausdrueckliche Nutzerbestaetigung als beschlossen markieren.
+    implementationNotes:
+      - Erster PoC in der Kunden-IDE unter `/app/development-platform/`.
+      - Der Identity Server stellt `/api/platform/development-assistant/chat` als lokalen Proxy fuer Ollama bereit.
+      - Konfiguration erfolgt ueber `OLLAMA_BASE_URL` und `OLLAMA_MODEL`.
+      - Im PoC sind nur aktueller Chat und fester Architektur-Prompt als Datenquellen freigegeben.
+
   - id: requirement.learning_firmware_base_scaffold_preserves_ota
     type: requirement
     title: Lern-Builds erhalten OTA-Faehigkeit durch Basissoftware

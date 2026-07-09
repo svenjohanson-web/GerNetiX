@@ -4,6 +4,7 @@ class AdminService {
   constructor(options) {
     this.repository = options.repository;
     this.accessPolicy = options.accessPolicy;
+    this.llmConfigStore = options.llmConfigStore;
     this.serviceClients = options.serviceClients || null;
   }
 
@@ -208,6 +209,124 @@ class AdminService {
       reason: input.reason,
       payload: input.payload || {},
     });
+  }
+
+  llmConfig() {
+    return this.llmConfigStore.publicConfig();
+  }
+
+  updateLlmConfig(input) {
+    return this.llmConfigStore.updateConfig(input);
+  }
+
+  async listLlmModels() {
+    const config = this.llmConfigStore.getConfig();
+    try {
+      const response = await fetch(`${config.ollamaBaseUrl.replace(/\/$/, "")}/api/tags`);
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error || `Ollama antwortet mit HTTP ${response.status}.`);
+      }
+      return {
+        provider: "ollama",
+        baseUrl: config.ollamaBaseUrl,
+        items: (payload.models || []).map((model) => ({
+          name: model.name || model.model,
+          model: model.model || model.name,
+          size: model.size || 0,
+          modifiedAt: model.modified_at || "",
+        })),
+      };
+    } catch (error) {
+      return {
+        provider: "ollama",
+        baseUrl: config.ollamaBaseUrl,
+        items: [],
+        error: error.message || String(error),
+      };
+    }
+  }
+
+  async testLlmConfig() {
+    const config = this.llmConfigStore.getConfig();
+    const messages = [
+      { role: "system", content: "Du bist ein kurzer Verbindungstest fuer GerNetiX." },
+      { role: "user", content: "Antworte nur mit OK." },
+    ];
+    const start = Date.now();
+    try {
+      const result = config.provider === "api"
+        ? await this.callOpenAiCompatibleConfigTest(config, messages)
+        : await this.callOllamaConfigTest(config, messages);
+      return {
+        ok: true,
+        config: this.llmConfigStore.publicConfig(),
+        durationMs: Date.now() - start,
+        content: result.content,
+        usage: result.usage,
+      };
+    } catch (error) {
+      return {
+        ok: false,
+        config: this.llmConfigStore.publicConfig({ lastError: error.message || String(error) }),
+        durationMs: Date.now() - start,
+        error: error.message || String(error),
+      };
+    }
+  }
+
+  async callOllamaConfigTest(config, messages) {
+    const response = await fetch(`${config.ollamaBaseUrl.replace(/\/$/, "")}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: config.ollamaModel,
+        stream: false,
+        messages,
+        options: { temperature: 0 },
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error || `Ollama antwortet mit HTTP ${response.status}.`);
+    }
+    return {
+      content: payload.message?.content || "",
+      usage: {
+        promptTokens: Number.isFinite(payload.prompt_eval_count) ? payload.prompt_eval_count : null,
+        completionTokens: Number.isFinite(payload.eval_count) ? payload.eval_count : null,
+        totalTokens: Number.isFinite(payload.prompt_eval_count) || Number.isFinite(payload.eval_count)
+          ? (payload.prompt_eval_count || 0) + (payload.eval_count || 0)
+          : null,
+      },
+    };
+  }
+
+  async callOpenAiCompatibleConfigTest(config, messages) {
+    const response = await fetch(`${config.apiBaseUrl.replace(/\/$/, "")}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
+      },
+      body: JSON.stringify({
+        model: config.apiModel,
+        messages,
+        temperature: 0,
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error?.message || payload.error || `API antwortet mit HTTP ${response.status}.`);
+    }
+    return {
+      content: payload.choices?.[0]?.message?.content || "",
+      usage: {
+        promptTokens: payload.usage?.prompt_tokens ?? null,
+        completionTokens: payload.usage?.completion_tokens ?? null,
+        totalTokens: payload.usage?.total_tokens ?? null,
+      },
+    };
   }
 
   async remoteDevices() {

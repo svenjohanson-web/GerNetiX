@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GerNetiX Admin Tool</title>
+    <link rel="stylesheet" href="/admin/app.css" />
+  </head>
+  <body>
+    <main class="admin-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">GerNetiX</p>
+          <h1>Admin Tool</h1>
+        </div>
+      </header>
+
+      <section class="admin-layout">
+        <form id="adminLlmForm" class="panel form-grid">
+          <p class="eyebrow">KI-Konfiguration</p>
+          <h2>LLM-Routing</h2>
+          <label>Antwortquelle
+            <select id="adminLlmProvider">
+              <option value="ollama">Lokales Ollama</option>
+              <option value="api">API / OpenAI-kompatibel</option>
+            </select>
+          </label>
+
+          <section id="adminOllamaFields" class="admin-provider-fields">
+            <label>Ollama Endpoint<input id="adminOllamaBaseUrl" type="text" value="http://127.0.0.1:11434" /></label>
+            <label>Lokales Modell<input id="adminOllamaModel" type="text" value="llama3.2:3b" /></label>
+            <div class="button-row">
+              <button id="refreshLocalLlmModelsButton" type="button">Lokale Modelle neu laden</button>
+            </div>
+            <div id="adminLocalModelOptions" class="model-option-list"></div>
+          </section>
+
+          <section id="adminApiFields" class="admin-provider-fields hidden">
+            <label>API Base URL<input id="adminApiBaseUrl" type="text" value="https://api.openai.com/v1" /></label>
+            <label>API Modell<input id="adminApiModel" type="text" value="gpt-4.1-mini" /></label>
+            <label>API Key<input id="adminApiKey" type="password" placeholder="leer lassen, um bestehenden Key zu behalten" autocomplete="off" /></label>
+          </section>
+
+          <div class="button-row">
+            <button id="adminLlmTestButton" type="button">Verbindung testen</button>
+            <button class="primary" type="submit">Speichern</button>
+          </div>
+          <div id="adminLlmSaveStatus" class="flash-status hidden"></div>
+        </form>
+
+        <aside class="panel">
+          <p class="eyebrow">Aktiv</p>
+          <h2>Konfiguration</h2>
+          <dl id="adminLlmStatus" class="meta-list"></dl>
+          <p class="helper-text">Diese Einstellung gilt fuer KI-Chat und Entwicklungsplattform in der Kunden-App. Lokale Ollama-Modelle bleiben auf diesem Rechner; API-Aufrufe gehen an den konfigurierten kompatiblen Endpoint.</p>
+        </aside>
+      </section>
+    </main>
+    <script src="/admin/admin-config.js"></script>
+  </body>
+</html>

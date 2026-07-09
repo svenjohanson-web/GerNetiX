@@ -85,6 +85,21 @@ items:
       - Moderne Software ueber mehrere Zielsysteme hinweg planen.
       - Synchronisation, Offline-/Online-Verhalten und Konfliktbehandlung einordnen.
 
+  - id: learning_goal.architecture_first_project_planning
+    type: learning_goal
+    title: Architektur vor Technologie planen
+    status: draft
+    ownerDomain: Learning
+    summary: Projekte zuerst ueber Zielarchitektur, Zielsysteme, Nutzer, Datenfluesse und Betriebsmodell verstehen, bevor konkrete Technologien wie MQTT, ESP32/WLAN, Backend, Mobile App, Desktop App oder Browser App ausgewaehlt werden. Dieses Lernziel stuetzt Kundenbindung, weil aus dem Zielbild des Nutzers sinnvolle naechste Lernangebote und Anschlussprojekte ableitbar werden.
+    learningOutcomes:
+      - Projektziele in Zielsysteme und Verantwortlichkeiten uebersetzen.
+      - IoT-Geraete, Backends, Mobile Apps, Desktop Apps und Browser Apps als Architekturbausteine unterscheiden.
+      - Kommunikationsbedarf aus Datenfluesse, Bedienung und Betriebsmodell ableiten.
+      - Technologieentscheidungen wie MQTT, REST, WebSocket, WLAN, Bluetooth, Datenbank oder Hosting begruendet aus der Architektur ableiten.
+      - Unklare Anforderungen als offene Architekturfragen dokumentieren, statt vorschnell Implementierungsdetails festzulegen.
+      - KI-gestuetzte Architekturvorschlaege kritisch bestaetigen oder korrigieren.
+      - Eigene Projektziele als Ausgangspunkt fuer passende Folgeprojekte und Vertiefungen nutzen.
+
   - id: learning_goal.tooling_and_workflows
     type: learning_goal
     title: Tooling und Workflows

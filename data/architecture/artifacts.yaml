@@ -111,6 +111,35 @@ items:
       - requirement.ai_admin_cost_control_actions
       - requirement.ai_suspicious_usage_detection
 
+  - id: architecture_artifact.local_ai_chat
+    type: architecture_artifact
+    title: Lokaler KI-Chat in der Kunden-IDE
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: IDE
+    summary: Architekturartefakt fuer einen allgemeinen lokalen KI-Chat in der Kunden-IDE. Der Chat ist vom Architektur-Discovery-Dialog der Entwicklungsplattform getrennt und nutzt im PoC einen lokalen Ollama-Proxy mit bewusst begrenzten Datenquellen.
+    usedBy:
+      - app.user_ide
+    usesArchitectureArtifacts:
+      - architecture_artifact.ai_cost_protection
+      - architecture_artifact.ai_usage_observability
+    containsArchitectureComponents:
+      - component.local_ai_chat_adapter
+    implementationNotes:
+      - Kunden-IDE-Route ist `/app/ki-chat/`.
+      - Frontend-Logik liegt getrennt in `services/identity-server/public/app/ai-chat.js`.
+      - Backend-Proxy liegt getrennt in `services/identity-server/src/dev/ai-chat-assistant.js` und wird ueber `/api/platform/ai-chat/chat` angesprochen.
+      - Provider, Endpoint und Modell werden im PoC ueber das eigenstaendige Admin Tool `http://127.0.0.1:4600/admin/` und die Endpunkte `/api/admin/llm-config` konfiguriert.
+      - Datenquellen sind im PoC auf den aktuellen Chat begrenzt; Projektdateien, Graphdaten, Kundendaten und externe Quellen sind blockiert.
+
+  - id: component.local_ai_chat_adapter
+    type: architecture_component
+    title: Local AI Chat Adapter Component
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: IDE
+    summary: Kapselt den allgemeinen KI-Chat der Kunden-IDE gegenueber einem lokalen Ollama-Dienst und haelt ihn fachlich von der Architektur-Discovery der Entwicklungsplattform getrennt.
+
   - id: architecture_artifact.community_ai_assistant
     type: architecture_artifact
     title: KI-Community-Assistent Architektur
@@ -154,6 +183,62 @@ items:
       - architecture.registered_processor_board
     constrainedBy:
       - nfr.firmware_flash_must_not_brick_board
+
+  - id: architecture_artifact.project_architecture_discovery_assistant
+    type: architecture_artifact
+    title: Projekt-Architektur-Discovery-Assistent
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Learning
+    summary: Architekturartefakt fuer einen LLM-gefuehrten Projektstart. Der Assistent klaert zuerst Zielarchitektur, Zielsysteme, Nutzer, Geraete, Datenfluesse, Kommunikationsbedarf und Betriebsmodell und leitet erst danach Technologieentscheidungen wie MQTT, ESP32/WLAN, Backend, Mobile App, Desktop App oder Browser App ab.
+    usedBy:
+      - app.user_ide
+      - architecture_artifact.project_server
+      - architecture_artifact.context_manager
+    usesArchitectureArtifacts:
+      - architecture_artifact.ai_cost_protection
+      - architecture_artifact.ai_usage_observability
+    derivedFromRequirements:
+      - requirement.architecture_discovery_guided_by_llm
+    affectsDataModels:
+      - data_model.project_architecture_dialog
+      - data_model.project_target_architecture
+      - data_model.project_technology_decision
+    containsArchitectureComponents:
+      - component.architecture_question_flow
+      - component.target_architecture_mapper
+      - component.technology_decision_advisor
+    implementationNotes:
+      - Erster PoC ist als neuer Kunden-IDE-Menuepunkt `Entwicklungsplattform` unter `/app/development-platform/` umgesetzt.
+      - Die Chatbox nutzt serverseitig `/api/platform/development-assistant/chat`.
+      - Der LLM-Provider ist im PoC ueber das eigenstaendige Admin Tool `http://127.0.0.1:4600/admin/` konfigurierbar; lokal ist Ollama mit Default `http://127.0.0.1:11434` vorgesehen.
+      - Datenquellen sind im PoC bewusst auf aktuellen Chat und festen Architektur-Prompt begrenzt; Graph-, Projekt- und Kundendaten muessen spaeter explizit freigegeben werden.
+      - Frontend-Logik des Entwicklungsasts liegt getrennt in `services/identity-server/public/app/development-platform.js`.
+      - Backend-Logik des lokalen Architektur-Assistenten liegt getrennt in `services/identity-server/src/dev/development-assistant.js`.
+
+  - id: component.architecture_question_flow
+    type: architecture_component
+    title: Architecture Question Flow Component
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Fuehrt den Nutzer mit adaptiven Fragen von Projektziel und Nutzungsszenario zu Zielsystemen, Datenfluesse, Bedienoberflaechen, Offline-/Online-Anforderungen und offenen Architekturfragen.
+
+  - id: component.target_architecture_mapper
+    type: architecture_component
+    title: Target Architecture Mapper Component
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Uebersetzt Dialogantworten in eine bestaetigbare Zielarchitektur mit Bausteinen wie IoT Device, Backend, Mobile App, Desktop App, Browser App, HomeServer, Cloud, lokales Netzwerk und Kommunikationsbeziehungen.
+
+  - id: component.technology_decision_advisor
+    type: architecture_component
+    title: Technology Decision Advisor Component
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Leitet Technologiefragen und Empfehlungen aus der bestaetigten Zielarchitektur ab, dokumentiert Alternativen und verhindert, dass Technologien vor dem Architekturverstaendnis festgelegt werden.
 
   - id: architecture_artifact.device_management_server
     type: architecture_artifact
@@ -325,6 +410,7 @@ items:
     dependsOn:
       - architecture_artifact.project_server
       - architecture_artifact.device_management_server
+      - architecture_artifact.mqtt_broker
       - component.ota
     constrainedBy:
       - nfr.firmware_flash_must_not_brick_board
@@ -429,6 +515,27 @@ items:
     implementationStatus: Implemented
     ownerDomain: DeviceManagement
     summary: Stellt sicher, dass pro Device maximal ein aktiver Build-/Deploy-Job laeuft. Optional darf genau ein weiterer wartender Job existieren; neue wartende Jobs ersetzen aeltere wartende Jobs.
+
+  - id: architecture_artifact.mqtt_broker
+    type: architecture_artifact
+    title: MQTT Broker
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: IDE
+    summary: Technische Infrastrukturkomponente fuer Device-Commands, Deployment-Status, Heartbeats und Telemetrie. Der Broker ist keine fachliche Quelle der Wahrheit; Build-&-Deploy, Device Management und Devices nutzen ihn als Transportkanal. Firmware-Binaries werden nicht ueber MQTT verteilt, sondern per HTTP/HTTPS aus Artefakt-URLs geladen.
+    derivedFromRequirements:
+      - requirement.firmware_build_deploy_server
+      - requirement.learning_firmware_base_scaffold_preserves_ota
+    usedBy:
+      - architecture_artifact.build_deploy_server
+      - architecture_artifact.device_management_server
+      - component.device_connectivity_setup
+    implementationNotes:
+      - Lokale Dev-Infrastruktur liegt unter `infra/dev/docker-compose.yml`.
+      - Der Dev-Broker verwendet Eclipse Mosquitto und bindet MQTT auf `127.0.0.1:1883`.
+      - MQTT over WebSocket ist lokal auf `127.0.0.1:9001` vorgesehen.
+      - Lokale Dev-Konfiguration erlaubt anonyme Clients und deaktiviert TLS; VPS-Betrieb muss TLS, Credentials oder Client-Zertifikate und Topic-ACLs aktivieren.
+      - Topic-Konvention: `gernetix/devices/{deviceId}/commands/deploy`, `gernetix/devices/{deviceId}/status/deployment`, `gernetix/devices/{deviceId}/status/heartbeat`.
 
   - id: component.device_registry
     type: architecture_component

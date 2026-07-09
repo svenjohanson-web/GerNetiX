@@ -1,0 +1,24 @@
+name: gernetix-dev
+
+services:
+  mqtt-broker:
+    image: eclipse-mosquitto:2.0
+    container_name: gernetix-mqtt-broker
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:1883:1883"
+      - "127.0.0.1:9001:9001"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt_data:/mosquitto/data
+      - mqtt_log:/mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h 127.0.0.1 -p 1883 -t '$$SYS/broker/version' -C 1 -W 5 >/dev/null 2>&1"]
+      interval: 10s
+      timeout: 6s
+      retries: 6
+      start_period: 5s
+
+volumes:
+  mqtt_data:
+  mqtt_log:

@@ -10,21 +10,26 @@ const state = {
   billing: null,
   progress: [],
   workspace: null,
+  serviceStatus: {},
   activeProjectId: "",
   activeDeviceId: "",
+  activeLearnTab: "catalog",
+  projectFilter: "all",
   inventoryProcessorFamily: "",
   inventoryHardwareType: "",
   inventoryEsp32Method: "",
   activeStep: 0,
   activeIdeStep: 0,
   sourcePath: "src/main.cpp",
+  developmentPlatform: null,
+  aiChat: null,
 };
 
 const routeMap = {
   dashboard: "dashboardView",
-  learn: "learnView",
+  "development-platform": "developmentPlatformView",
+  "ki-chat": "aiChatView",
   ide: "ideView",
-  projects: "projectsView",
   devices: "devicesView",
   builds: "buildsView",
   billing: "billingView",
@@ -33,6 +38,8 @@ const routeMap = {
 
 let deviceOnboardingController = null;
 let guidedProjectViewController = null;
+let developmentPlatformController = null;
+let aiChatController = null;
 
 function deviceOnboarding() {
   if (!deviceOnboardingController) {
@@ -69,6 +76,30 @@ function guidedProjectView() {
   return guidedProjectViewController;
 }
 
+function developmentPlatform() {
+  if (!developmentPlatformController) {
+    developmentPlatformController = DevelopmentPlatform.create({
+      state,
+      postJson,
+      escapeHtml,
+      meta,
+    });
+  }
+  return developmentPlatformController;
+}
+
+function aiChat() {
+  if (!aiChatController) {
+    aiChatController = AiChat.create({
+      state,
+      postJson,
+      escapeHtml,
+      meta,
+    });
+  }
+  return aiChatController;
+}
+
 bootstrap();
 
 document.querySelector("#logoutButton").addEventListener("click", async () => {
@@ -79,10 +110,13 @@ document.querySelector("#logoutButton").addEventListener("click", async () => {
 document.querySelectorAll("[data-open-route]").forEach((button) => {
   button.addEventListener("click", () => navigate(button.dataset.openRoute));
 });
+document.querySelectorAll(".tabs a[data-route]").forEach((link) => {
+  link.addEventListener("click", (event) => {
+    event.preventDefault();
+    navigate(link.getAttribute("href"));
+  });
+});
 document.querySelector("#continueButton").addEventListener("click", continueLastProject);
-document.querySelector("#lessonBackButton").addEventListener("click", () => navigate("/app/learn/"));
-document.querySelector("#lessonNextButton").addEventListener("click", nextLessonStep);
-document.querySelector("#openIdeButton").addEventListener("click", () => openProjectInIde(state.activeProjectId));
 document.querySelector("#ideProjectSelect").addEventListener("change", () => openProjectInIde(document.querySelector("#ideProjectSelect").value));
 document.querySelector("#ideDeviceSelect").addEventListener("change", () => {
   state.activeDeviceId = document.querySelector("#ideDeviceSelect").value;
@@ -111,6 +145,8 @@ document.querySelector("#esp32UsbPort").addEventListener("change", () => {
 window.addEventListener("popstate", renderRoute);
 
 async function bootstrap() {
+  developmentPlatform().init();
+  aiChat().init();
   await refresh();
   renderAll();
   renderRoute();
@@ -125,9 +161,9 @@ async function refresh() {
   state.billing = summary.billing;
   state.progress = summary.learning_progress;
   state.workspace = summary.workspace_state;
-  const boards = await getJson("/api/platform/hardware/processor-boards").catch(() => ({ items: [] }));
-  state.processorBoards = boards.items || [];
-  await refreshUsbPorts(false);
+  state.serviceStatus = summary.service_status || {};
+  developmentPlatform().setAssistantConfig(summary.development_assistant || null);
+  aiChat().setAssistantConfig(summary.ai_chat || null);
   state.activeProjectId = new URLSearchParams(window.location.search).get("project") || state.workspace.lastProjectId || state.projects[0]?.id || "";
   state.activeDeviceId = state.devices.find((device) => device.usb_flash_supported)?.device_id || state.devices[0]?.device_id || "";
 }
@@ -137,6 +173,8 @@ function renderAll() {
   renderDashboard();
   renderProjects();
   renderLearn();
+  developmentPlatform().render();
+  aiChat().render();
   renderIdeShell();
   renderDeviceInventoryForm();
   renderNetworkDiscovery();
@@ -149,20 +187,17 @@ function renderRoute() {
   const route = routeName();
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("hidden", view.id !== routeMap[route]));
   document.querySelectorAll(".tabs a").forEach((link) => link.classList.toggle("active", link.dataset.route === route));
-  const projectId = new URLSearchParams(window.location.search).get("project");
-  if (route === "learn" && projectId) {
-    state.activeProjectId = projectId;
-    renderLesson(projectById(projectId));
-  }
-  if (route === "learn" && !projectId) {
-    document.querySelector("#lessonPanel").classList.add("hidden");
-  }
+  if (route === "development-platform") developmentPlatform().render();
+  if (route === "ki-chat") aiChat().render();
   if (route === "ide") loadIdeProject();
+  if (route === "devices") loadDevicePageTools();
 }
 
 function routeName() {
   const match = window.location.pathname.match(/^\/app\/([^/]+)/);
-  return match ? match[1] : "dashboard";
+  const route = match ? match[1] : "dashboard";
+  if (route === "learn" || route === "projects") return "dashboard";
+  return route;
 }
 
 function navigate(route) {
@@ -170,123 +205,130 @@ function navigate(route) {
   renderRoute();
 }
 
+async function loadDevicePageTools() {
+  if (!state.processorBoards.length) {
+    getJson("/api/platform/hardware/processor-boards")
+      .then((boards) => {
+        state.processorBoards = boards.items || [];
+        renderDeviceInventoryForm();
+      })
+      .catch((error) => setInventoryStatus("error", error.message));
+  }
+  await refreshUsbPorts(false);
+}
+
 function renderDashboard() {
+  const personalProjects = personalLearningProjects();
+  const catalogProjects = learningCatalogProjects();
   const last = state.projects.find((project) => project.id === state.workspace.lastProjectId);
   document.querySelector("#continueText").textContent = last
-    ? `${last.name} im ${state.workspace.lastMode === "ide" ? "IDE-Modus" : "Lernmodus"}`
+    ? `${last.name} im ${state.workspace.lastMode === "ide" ? "IDE-Modus" : "Projektmodus"}`
     : "Noch kein Projekt geöffnet";
   document.querySelector("#dashboardSummary").innerHTML = [
     ["Account", state.account.username],
-    ["Lernprojekte", state.projects.length],
+    ["Projektstände", personalProjects.length],
+    ["Projektkatalog", catalogProjects.length],
     ["Geräte", state.devices.length],
     ["Builds", state.builds.length],
+    ["Service-Kette", serviceChainStatus()],
     ["Letzter Modus", state.workspace.lastMode || "kein Eintrag"],
   ].map(summaryItem).join("");
 }
 
+function serviceChainStatus() {
+  const entries = Object.entries(state.serviceStatus || {});
+  if (!entries.length) return "nicht geprueft";
+  const failed = entries
+    .filter(([, status]) => !status.ok)
+    .map(([name, status]) => `${name}: ${status.error || "Fehler"}`);
+  return failed.length ? failed.join(" | ") : "ok";
+}
+
 function renderProjects() {
-  document.querySelector("#projectList").innerHTML = state.projects.map((project) => `
+  const projectList = document.querySelector("#projectList");
+  if (!projectList) return;
+  const catalogProjects = learningCatalogProjects();
+  projectList.innerHTML = catalogProjects.length ? catalogProjects.map((project) => `
     <article class="project-card">
       <p class="eyebrow">${escapeHtml(project.type)}</p>
       <h2>${escapeHtml(project.name)}</h2>
       <p>${escapeHtml(project.description)}</p>
       <dl class="meta-list">
-        ${meta("Project.id", project.id)}
-        ${meta("ownerUserId", project.ownerUserId)}
-        ${meta("targetRuntime", project.targetRuntime)}
-        ${meta("linkedDeviceId", project.linkedDeviceId || "kein Device")}
+        ${meta("Kurs", project.courseId)}
+        ${meta("Lektion", project.lessonId)}
+        ${meta("Zielruntime", project.targetRuntime)}
+        ${meta("Projektdateien", project.sourceFiles.map((file) => file.path).join(", "))}
       </dl>
       <div class="card-actions">
-        <button type="button" data-open-project="${escapeHtml(project.id)}">Lernprojekt öffnen</button>
+        <button type="button" data-open-project="${escapeHtml(project.id)}">Projekt starten</button>
       </div>
     </article>
-  `).join("");
+  `).join("") : `<p class="empty">Noch keine Projekte im Katalog.</p>`;
   document.querySelectorAll("#projectList [data-open-project]").forEach((button) => {
-    button.addEventListener("click", () => openProjectInLearn(button.dataset.openProject));
+    button.addEventListener("click", () => openProjectInIde(button.dataset.openProject));
   });
 }
 
 function renderLearn() {
-  document.querySelector("#learnProjectList").innerHTML = state.projects.map((project) => {
+  const learnProjectList = document.querySelector("#learnProjectList");
+  if (!learnProjectList) return;
+  const personalProjects = personalLearningProjects();
+  const filteredProjects = personalProjects.filter((project) => learningProjectFilter(project, progressFor(project.id)) === state.projectFilter || state.projectFilter === "all");
+  learnProjectList.innerHTML = filteredProjects.length ? `
+    <table class="learning-project-table">
+      <thead>
+        <tr>
+          <th>Projekt</th>
+          <th>Status</th>
+          <th>Fortschritt</th>
+          <th>Device</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        ${filteredProjects.map((project) => {
     const progress = progressFor(project.id);
+    const hasProgress = progress.currentStep > 0 || progress.completedSteps.length > 0;
+    const progressText = `${progress.completedSteps.length}/${project.steps.length}`;
     return `
-      <article class="project-card">
-        <p class="eyebrow">${escapeHtml(project.courseId)}</p>
-        <h2>${escapeHtml(project.name)}</h2>
-        <p>${escapeHtml(project.description)}</p>
-        <dl class="meta-list">
-          ${meta("Lektion", project.lessonId)}
-          ${meta("Fortschritt", `${progress.completedSteps.length}/${project.steps.length}`)}
-          ${meta("Projektdateien", project.sourceFiles.map((file) => file.path).join(", "))}
-        </dl>
-        <div class="card-actions">
-          <button type="button" data-open-project="${escapeHtml(project.id)}">Lernprojekt starten</button>
-        </div>
-      </article>
+          <tr>
+            <td>
+              <strong>${escapeHtml(project.name)}</strong>
+              <span>${escapeHtml(project.courseId)} · ${escapeHtml(project.lessonId)}</span>
+            </td>
+            <td><span class="project-status ${learningProjectFilter(project, progress)}">${learningProjectStatus(project, progress)}</span></td>
+            <td>${escapeHtml(progressText)}</td>
+            <td>${escapeHtml(project.linkedDeviceId || "kein Device")}</td>
+            <td><button type="button" data-open-project="${escapeHtml(project.id)}">${hasProgress ? "Fortsetzen" : "Starten"}</button></td>
+          </tr>
     `;
-  }).join("");
+  }).join("")}
+      </tbody>
+    </table>
+  ` : `<p class="empty">Keine Projekte für diesen Filter.</p>`;
   document.querySelectorAll("#learnProjectList [data-open-project]").forEach((button) => {
-    button.addEventListener("click", () => openProjectInLearn(button.dataset.openProject));
+    button.addEventListener("click", () => openProjectInIde(button.dataset.openProject));
   });
 }
 
-function renderLesson(project) {
-  const progress = progressFor(project.id);
-  state.activeStep = Math.min(progress.currentStep || 0, project.steps.length - 1);
-  document.querySelector("#lessonPanel").classList.remove("hidden");
-  document.querySelector("#lessonSteps").innerHTML = project.steps.map((step, index) => `
-    <button class="${index === state.activeStep ? "active" : ""}" type="button" data-step="${index}">
-      ${index + 1}. ${escapeHtml(step.title)}
-    </button>
-  `).join("");
-  document.querySelectorAll("[data-step]").forEach((button) => {
-    button.addEventListener("click", () => setLessonStep(Number(button.dataset.step)));
-  });
-  renderCurrentStep();
+function personalLearningProjects() {
+  return state.projects;
 }
 
-function renderCurrentStep() {
-  const project = projectById(state.activeProjectId);
-  if (!project) return;
-  const step = project.steps[state.activeStep];
-  document.querySelector("#lessonCounter").textContent = `Schritt ${state.activeStep + 1} von ${project.steps.length}`;
-  document.querySelector("#lessonTitle").textContent = step.title;
-  document.querySelector("#lessonText").textContent = step.text;
-  document.querySelector("#lessonInsight").textContent = step.insight;
+function learningCatalogProjects() {
+  return state.projects;
 }
 
-async function setLessonStep(index) {
-  const project = projectById(state.activeProjectId);
-  state.activeStep = index;
-  const completed = new Set(progressFor(project.id).completedSteps);
-  for (let step = 0; step < index; step += 1) completed.add(step);
-  await saveLearningProgress(project, index, Array.from(completed));
-  renderLesson(project);
+function learningProjectStatus(project, progress) {
+  if (progress.completedSteps.length >= project.steps.length) return "abgeschlossen";
+  if (progress.currentStep > 0 || progress.completedSteps.length > 0) return "laufend";
+  return "bereit";
 }
 
-async function nextLessonStep() {
-  const project = projectById(state.activeProjectId);
-  const completed = new Set(progressFor(project.id).completedSteps);
-  completed.add(state.activeStep);
-  const next = Math.min(state.activeStep + 1, project.steps.length - 1);
-  await saveLearningProgress(project, next, Array.from(completed));
-  renderLesson(project);
-}
-
-async function saveLearningProgress(project, currentStep, completedSteps) {
-  const progress = await postJson("/api/platform/learning-progress", {
-    courseId: project.courseId,
-    lessonId: project.lessonId,
-    projectId: project.id,
-    currentStep,
-    completedSteps,
-  });
-  state.progress = state.progress.filter((item) => item.id !== progress.id).concat(progress);
-  state.workspace = await postJson("/api/platform/workspace-state", {
-    lastProjectId: project.id,
-    lastMode: "learn",
-    lastRoute: `/app/learn/?project=${encodeURIComponent(project.id)}`,
-  });
+function learningProjectFilter(project, progress) {
+  if (progress.completedSteps.length >= project.steps.length) return "finished";
+  if (progress.currentStep > 0 || progress.completedSteps.length > 0) return "in_progress";
+  return "not_started";
 }
 
 function renderIdeShell() {
@@ -440,18 +482,6 @@ async function startUsbFlash() {
   }
 }
 
-async function openProjectInLearn(projectId) {
-  state.activeProjectId = projectId;
-  const project = projectById(projectId);
-  await postJson("/api/platform/workspace-state", {
-    lastProjectId: project.id,
-    lastMode: "learn",
-    lastRoute: `/app/learn/?project=${encodeURIComponent(project.id)}`,
-  });
-  navigate(`/app/learn/?project=${encodeURIComponent(project.id)}`);
-  renderLesson(project);
-}
-
 async function openProjectInIde(projectId) {
   state.activeProjectId = projectId;
   await postJson("/api/platform/workspace-state", {
@@ -465,10 +495,15 @@ async function openProjectInIde(projectId) {
 
 function continueLastProject() {
   if (!state.workspace.lastProjectId) {
-    navigate("/app/learn/");
+    navigate("/app/development-platform/");
     return;
   }
-  navigate(state.workspace.lastRoute || `/app/${state.workspace.lastMode}/?project=${encodeURIComponent(state.workspace.lastProjectId)}`);
+  const lastRoute = state.workspace.lastRoute || `/app/${state.workspace.lastMode}/?project=${encodeURIComponent(state.workspace.lastProjectId)}`;
+  if (/^\/app\/(?:learn|projects)\//.test(lastRoute)) {
+    navigate(`/app/ide/?project=${encodeURIComponent(state.workspace.lastProjectId)}`);
+    return;
+  }
+  navigate(lastRoute);
 }
 
 async function discoverNetworkDevices() {

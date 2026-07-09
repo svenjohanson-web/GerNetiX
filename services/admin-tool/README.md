@@ -14,6 +14,7 @@ Das Admin Tool bietet erste berechtigte Sichten auf Device-Status, Support-Entit
 - Learning-Feedback maskiert oder berechtigt anzeigen
 - KI-Usage-Kennzahlen fuer Kostenkontrolle zusammenfassen
 - administrative KI-Kostensteuerung auditierbar vorbereiten
+- LLM-Provider fuer Kunden-KI-Chat und Entwicklungsplattform konfigurieren
 
 ## MVP-Implementierung
 
@@ -29,11 +30,20 @@ Standardadresse:
 http://127.0.0.1:4600
 ```
 
+Admin-HMI:
+
+```text
+http://127.0.0.1:4600/admin/
+```
+
 Konfiguration:
 
 - `HOST`: Bind-Adresse, Standard `127.0.0.1`
 - `PORT`: HTTP-Port, Standard `4600`
 - `ADMIN_TOOL_RUNTIME_DIR`: Runtime-Verzeichnis fuer spaetere temporaere Artefakte
+- `LLM_CONFIG_PATH`: Pfad zur gemeinsamen lokalen LLM-Konfiguration, Standard `.runtime/identity-llm-config.json`
+- `OLLAMA_BASE_URL`: lokaler Ollama-Endpoint, Standard `http://127.0.0.1:11434`
+- `OLLAMA_MODEL`: lokales Default-Modell, Standard `llama3.2:3b`
 
 ## Sicherheitsregeln
 
@@ -46,7 +56,7 @@ Konfiguration:
 ## Nicht-Ziele fuer diesen Stand
 
 - keine produktive Authentifizierung
-- keine echte UI
+- keine produktive Admin-Authentifizierung
 - keine Datenbankmigration
 - keine direkte Integration mit Device Management, Learning oder AI Usage Services
 - keine produktive Rollen-/Grant-Verwaltung

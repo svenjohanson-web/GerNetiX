@@ -56,6 +56,7 @@ Konfiguration erfolgt ueber Umgebungsvariablen:
 - `BUILD_DEPLOY_RUNTIME_DIR`: Runtime-Verzeichnis fuer temporaere Workspaces, Cache und Artefakte
 - `BUILD_CACHE_DIR`: optionales Cache-Verzeichnis; `platformio-default` nutzt den PlatformIO-Standardcache
 - `BUILD_ARTIFACT_DIR`: optionales temporaeres Artefakt-Verzeichnis
+- `MQTT_BROKER_URL`: MQTT-Broker-URL fuer OTA-Deploy-Commands und Status, lokal z. B. `mqtt://127.0.0.1:1883`
 
 Der `mock` Runner erzeugt reproduzierbare Test-Artefakte ohne Toolchain. Fuer echte Firmware-Builds wird `BUILD_RUNNER=platformio` verwendet; dann kompiliert der Worker im uebergebenen BuildPackage per `platformio run`. Je nach Target kann das primaere Firmware-Artefakt `firmware.bin` (z. B. ESP32) oder `firmware.hex` (z. B. AVR/Arduino Uno) sein.
 
@@ -97,6 +98,20 @@ devices/{device_id}/status
 devices/{device_id}/heartbeat
 ```
 
+Die lokale Broker-Infrastruktur liegt unter:
+
+```text
+infra/dev/docker-compose.yml
+```
+
+Start lokal:
+
+```text
+docker compose -f infra/dev/docker-compose.yml up -d mqtt-broker
+```
+
+Der lokale Dev-Broker nutzt Mosquitto auf `127.0.0.1:1883` und MQTT over WebSocket auf `127.0.0.1:9001`. Produktiv auf dem VPS muessen TLS, Credentials oder Client-Zertifikate und Topic-ACLs konfiguriert werden.
+
 ## HTTPS
 
 HTTPS dient fuer:
@@ -121,8 +136,7 @@ HTTPS dient fuer:
 
 ## Nicht-Ziele fuer diesen Stand
 
-- keine MQTT-Implementierung
-- kein produktiver MQTT-Publisher
+- kein produktiv angebundener MQTT-Publisher im Build-&-Deploy-Server
 - keine produktive Authentifizierung
 - keine Signierung von Firmware-Artefakten
 - keine dauerhafte Projektdatenhaltung

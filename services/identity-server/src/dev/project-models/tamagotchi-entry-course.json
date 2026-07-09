@@ -1,0 +1,652 @@
+{
+  "slug": "software-engineering-tamagotchi",
+  "project": {
+    "slug": "software-engineering-tamagotchi",
+    "title": "Software Engineering mit Tamagotchi",
+    "area": "Modellbasierte Entwicklung",
+    "summary": "Verhalten zuerst verstehen, bevor Code entsteht.",
+    "steps": [
+      {
+        "title": "Warum Tamagotchi?",
+        "text": "Ein vertrautes Spiel macht Zustaende, Werte und Regeln sichtbar.",
+        "insight": "Du erkennst, dass Software Verhalten beschreibt, nicht nur Befehle ausfuehrt."
+      },
+      {
+        "title": "State sichtbar machen",
+        "text": "Hunger, Durst, Laune und Leben werden als Zustand modelliert.",
+        "insight": "Ein Zustand ist eine fachliche Aussage ueber das System."
+      },
+      {
+        "title": "Regeln formulieren",
+        "text": "Ausloeser veraendern Werte und fuehren zu neuen Zustaenden.",
+        "insight": "Gute Regeln sind klarer als verstreute if-Abfragen."
+      },
+      {
+        "title": "Runtime waehlen",
+        "text": "Dasselbe Modell kann spaeter Browser-App oder Embedded-App antreiben.",
+        "insight": "Das Modell bleibt stabil, die technische Huelle kann wechseln."
+      }
+    ],
+    "hardware_profile_id": "runtime.software_model",
+    "default_device_id": "",
+    "source_files": [
+      {
+        "path": "model/tamagotchi/model.yaml",
+        "role": "domain_model"
+      }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Tamagotchi Verhaltensmodell",
+    "summary": "Code ist nicht die erste Wahrheit. Das Projekt fuehrt ueber Zustaende, Regeln und PlantUML zum fachlichen Modell.",
+    "primary_source_path": "model/tamagotchi/model.yaml",
+    "hide_source_editor": true,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "code-problem",
+        "type": "story_slide",
+        "title": "Schau dir den Quellcode an",
+        "summary": "Die statische Quellcode-Datei zeigt sehr viele Details auf einmal. Die Frage ist: erkennst du sofort die fachliche Idee dahinter?",
+        "completion": {
+          "type": "acknowledge",
+          "label": "Verstanden"
+        },
+        "payload": {
+          "artifact": {
+            "type": "code",
+            "title": "assets/tamagotchi-complete-example.c",
+            "content": "typedef enum {\n  TAMA_LIFE_ALIVE,\n  TAMA_LIFE_DEAD\n} TamaLife;\n\ntypedef enum {\n  TAMA_HUNGER_SATIATED,\n  TAMA_HUNGER_HUNGRY,\n  TAMA_HUNGER_STARVING\n} TamaHungerState;\n\ntypedef struct {\n  uint8_t hunger;\n  uint8_t thirst;\n  uint8_t energy;\n  uint8_t happiness;\n  uint8_t hygiene;\n  uint8_t health;\n} TamaNeeds;\n\ntypedef struct {\n  TamaLife life;\n  TamaHungerState hunger_state;\n  TamaNeeds needs;\n  uint32_t last_tick_second;\n  uint32_t last_fed_second;\n  bool dirty;\n} Tama;\n\nstatic void recompute_states(void) {\n  if (tama.needs.hunger >= 100 || tama.needs.health == 0) {\n    tama.life = TAMA_LIFE_DEAD;\n    return;\n  }\n\n  if (tama.needs.hunger >= 50) {\n    tama.hunger_state = TAMA_HUNGER_HUNGRY;\n  } else {\n    tama.hunger_state = TAMA_HUNGER_SATIATED;\n  }\n}"
+          },
+          "model_lines": [
+            {
+              "label": "Problem",
+              "text": "Quellcode zeigt viele Details auf einmal. Daraus erkennt man nicht sofort, wann das Tamagotchi lebt, satt, hungrig oder tot ist."
+            }
+          ]
+        }
+      },
+      {
+        "id": "state-intro",
+        "type": "story_slide",
+        "title": "Einfuehrung in Zustaende",
+        "summary": "Menschen verstehen Verhalten leichter, wenn sie es zuerst als benannte Zustaende betrachten.",
+        "completion": {
+          "type": "acknowledge",
+          "label": "Verstanden"
+        },
+        "payload": {
+          "artifact": {
+            "type": "state_rows",
+            "title": "Objekte in Zustaenden",
+            "rows": [
+              {
+                "label": "Regentonne",
+                "description": "Der Fuellstand ist als Zustand leichter lesbar als als technische Messung.",
+                "states": [
+                  {
+                    "label": "leer",
+                    "kind": "barrel",
+                    "level": 0
+                  },
+                  {
+                    "label": "halb voll",
+                    "kind": "barrel",
+                    "level": 50
+                  },
+                  {
+                    "label": "voll",
+                    "kind": "barrel",
+                    "level": 100
+                  }
+                ]
+              },
+              {
+                "label": "Akku",
+                "description": "Auch beim Akku helfen einfache Namen, bevor ueber Spannung gesprochen wird.",
+                "states": [
+                  {
+                    "label": "leer",
+                    "kind": "battery",
+                    "level": 8
+                  },
+                  {
+                    "label": "halb voll",
+                    "kind": "battery",
+                    "level": 50
+                  },
+                  {
+                    "label": "voll",
+                    "kind": "battery",
+                    "level": 100
+                  }
+                ]
+              }
+            ]
+          },
+          "model_lines": [
+            {
+              "label": "Einfache Zustaende",
+              "text": "Regentonne und Akku koennen zuerst einfach als leer, halb voll oder voll beschrieben werden."
+            }
+          ]
+        }
+      },
+      {
+        "id": "state-categories",
+        "type": "story_slide",
+        "title": "Einteilung von Zustaenden",
+        "summary": "Manche Zustaende sind direkt definiert. Andere Eigenschaften sind fliessend und haben von sich aus keine klaren Stufen.",
+        "completion": {
+          "type": "acknowledge",
+          "label": "Verstanden"
+        },
+        "payload": {
+          "artifact": {
+            "type": "state_rows",
+            "title": "Direkt definiert oder eingeteilt",
+            "rows": [
+              {
+                "label": "Direkt definiert",
+                "description": "Der Zustand ist bereits klar getrennt, zum Beispiel bei Kaffeemaschine oder Fernseher.",
+                "states": [
+                  {
+                    "label": "aus",
+                    "kind": "power",
+                    "value": "off",
+                    "showValue": false
+                  },
+                  {
+                    "label": "an",
+                    "kind": "power",
+                    "value": "on",
+                    "showValue": false
+                  }
+                ]
+              },
+              {
+                "label": "Fliessend",
+                "description": "Der Wert veraendert sich kontinuierlich und wird erst spaeter klassifiziert.",
+                "states": [
+                  {
+                    "label": "Temperatur",
+                    "kind": "thermometer",
+                    "level": 58,
+                    "value": "0..100 Grad"
+                  },
+                  {
+                    "label": "Punktzahl",
+                    "kind": "label",
+                    "value": "0..100"
+                  },
+                  {
+                    "label": "Fuellstand",
+                    "kind": "barrel",
+                    "level": 50,
+                    "value": "0..100 %"
+                  }
+                ]
+              }
+            ]
+          },
+          "model_lines": [
+            {
+              "label": "Direkte Zustaende",
+              "text": "Manche Zustaende sind direkt definiert, zum Beispiel an oder aus, vorhanden oder nicht vorhanden."
+            },
+            {
+              "label": "Fliessende Eigenschaften",
+              "text": "Andere Eigenschaften veraendern sich stufenlos, zum Beispiel Temperatur, Punktzahl oder Fuellstand."
+            },
+            {
+              "label": "Klassifizierung",
+              "text": "Durch Grenzen werden aus fliessenden Werten benannte Zustaende, zum Beispiel kalt, warm, heiss oder Note 1 bis 6."
+            }
+          ]
+        }
+      },
+      {
+        "id": "discrete-states",
+        "type": "story_slide",
+        "title": "Direkte diskrete Zustaende",
+        "summary": "Wenn ein Objekt klar getrennte Zustaende besitzt, kann man den Zustand direkt benennen.",
+        "completion": {
+          "type": "acknowledge",
+          "label": "Verstanden"
+        },
+        "payload": {
+          "artifact": {
+            "type": "state_rows",
+            "title": "Diskrete Zustaende",
+            "rows": [
+              {
+                "label": "Fernseher",
+                "description": "Zwei klare Zustaende: an oder aus. Bei genau zwei Zustaenden spricht man von binaer.",
+                "states": [
+                  {
+                    "label": "aus",
+                    "kind": "power",
+                    "value": "off",
+                    "showValue": false
+                  },
+                  {
+                    "label": "an",
+                    "kind": "power",
+                    "value": "on",
+                    "showValue": false
+                  }
+                ]
+              },
+              {
+                "label": "Wetter",
+                "description": "Diskrete Zustaende muessen nicht nur zwei sein.",
+                "states": [
+                  {
+                    "label": "sonnig",
+                    "kind": "weather",
+                    "value": "sunny",
+                    "showValue": false
+                  },
+                  {
+                    "label": "bewoelkt",
+                    "kind": "weather",
+                    "value": "cloudy",
+                    "showValue": false
+                  },
+                  {
+                    "label": "regnerisch",
+                    "kind": "weather",
+                    "value": "rainy",
+                    "showValue": false
+                  },
+                  {
+                    "label": "windig",
+                    "kind": "weather",
+                    "value": "windy",
+                    "showValue": false
+                  }
+                ]
+              },
+              {
+                "label": "Siebtraegermaschine",
+                "description": "Ein Oberzustand kann Unterzustaende enthalten.",
+                "states": [
+                  {
+                    "label": "aus",
+                    "kind": "power",
+                    "value": "off",
+                    "showValue": false
+                  },
+                  {
+                    "label": "an",
+                    "kind": "power",
+                    "value": "on",
+                    "showValue": false,
+                    "substates": [
+                      "aufheizend",
+                      "bereit"
+                    ]
+                  }
+                ]
+              }
+            ]
+          },
+          "model_lines": [
+            {
+              "label": "Binaer",
+              "text": "Bei genau zwei Zustaenden spricht man von binaer, zum Beispiel an oder aus."
+            },
+            {
+              "label": "Vorhandenheit",
+              "text": "Ein Objekt kann vorhanden oder nicht vorhanden sein."
+            },
+            {
+              "label": "Unterzustaende",
+              "text": "Ein Oberzustand kann Unterzustaende enthalten, zum Beispiel an mit aufheizend und bereit."
+            }
+          ]
+        }
+      },
+      {
+        "id": "physical-property-rule",
+        "type": "story_slide",
+        "title": "Aus Messwerten werden Zustaende",
+        "summary": "Wenn eine Eigenschaft fliessend ist, brauchen wir eine Messgroesse und Grenzen.",
+        "completion": {
+          "type": "acknowledge",
+          "label": "Verstanden"
+        },
+        "payload": {
+          "artifact": {
+            "type": "state_rows",
+            "title": "Messwert, Schwelle und Zustand",
+            "rows": [
+              {
+                "label": "Stein: Temperatur",
+                "description": "Messbar mit PT1000 oder IR-Sensor. Schwellen: unter 10 Grad kalt, ab 10 Grad warm, ab 55 Grad heiss.",
+                "states": [
+                  {
+                    "label": "unter 10 Grad",
+                    "kind": "stone",
+                    "tone": "cold",
+                    "value": "Zustand = kalt"
+                  },
+                  {
+                    "label": "10 bis unter 55 Grad",
+                    "kind": "stone",
+                    "tone": "warm",
+                    "value": "Zustand = warm"
+                  },
+                  {
+                    "label": "ab 55 Grad",
+                    "kind": "stone",
+                    "tone": "hot",
+                    "value": "Zustand = heiss"
+                  }
+                ]
+              },
+              {
+                "label": "Regentonne: Fuellstand",
+                "description": "Erfassbar mit Reedkontakten, Kamera oder Schwimmer mit Seillaenge.",
+                "states": [
+                  {
+                    "label": "niedrig",
+                    "kind": "barrel",
+                    "level": 10,
+                    "value": "Zustand = leer"
+                  },
+                  {
+                    "label": "mittel",
+                    "kind": "barrel",
+                    "level": 50,
+                    "value": "Zustand = halb voll"
+                  },
+                  {
+                    "label": "hoch",
+                    "kind": "barrel",
+                    "level": 100,
+                    "value": "Zustand = voll"
+                  }
+                ]
+              },
+              {
+                "label": "Akku: Spannung",
+                "description": "Der Ladezustand kann vereinfacht ueber die Spannung erfasst werden.",
+                "states": [
+                  {
+                    "label": "niedrige Spannung",
+                    "kind": "battery",
+                    "level": 8,
+                    "value": "Zustand = leer"
+                  },
+                  {
+                    "label": "mittlere Spannung",
+                    "kind": "battery",
+                    "level": 50,
+                    "value": "Zustand = halb voll"
+                  },
+                  {
+                    "label": "hohe Spannung",
+                    "kind": "battery",
+                    "level": 100,
+                    "value": "Zustand = voll"
+                  }
+                ]
+              },
+              {
+                "label": "Notensystem: Punktzahl",
+                "description": "Eine Punktzahl wird durch Grenzen in eine Note von 1 bis 6 uebersetzt.",
+                "states": [
+                  {
+                    "label": "wenige Punkte",
+                    "kind": "label",
+                    "value": "Note 6"
+                  },
+                  {
+                    "label": "mittlere Punkte",
+                    "kind": "label",
+                    "value": "Note 3"
+                  },
+                  {
+                    "label": "viele Punkte",
+                    "kind": "label",
+                    "value": "Note 1"
+                  }
+                ]
+              }
+            ]
+          },
+          "model_lines": [
+            {
+              "label": "Temperatur",
+              "text": "Beim Stein ist Temperatur die messbare physikalische Groesse. Sie kann zum Beispiel mit PT1000 oder IR-Sensor erfasst werden."
+            },
+            {
+              "label": "Fuellstand",
+              "text": "Bei der Regentonne ist der Fuellstand die relevante physikalische Eigenschaft."
+            },
+            {
+              "label": "Spannung",
+              "text": "Beim Akku kann der Ladezustand vereinfacht ueber die Spannung erfasst werden."
+            },
+            {
+              "label": "Klassifizierung",
+              "text": "Durch Grenzen werden aus fliessenden Werten benannte Zustaende, zum Beispiel kalt, warm, heiss oder Note 1 bis 6."
+            },
+            {
+              "label": "Regel",
+              "text": "Aus einem Messwert wird durch einfache Regeln ein Zustand, zum Beispiel unter 10 Grad kalt, ab 10 Grad warm und ab 55 Grad heiss."
+            }
+          ]
+        }
+      },
+      {
+        "id": "state-machine-concept",
+        "type": "story_slide",
+        "title": "Aus Zustaenden wird eine State Machine",
+        "summary": "Jetzt haben wir die Grundlagen zusammen: Zustaende, Transitionen und Bedingungen bilden eine Zustandsmaschine.",
+        "completion": {
+          "type": "acknowledge",
+          "label": "Verstanden"
+        },
+        "payload": {
+          "artifact": {
+            "type": "cycle",
+            "title": "Regentonnen-Zustandskreislauf",
+            "states": [
+              {
+                "label": "Tonne leer",
+                "kind": "barrel",
+                "level": 0
+              },
+              {
+                "label": "Tonne voll",
+                "kind": "barrel",
+                "level": 100
+              }
+            ],
+            "transitions": [
+              {
+                "label": "Regen"
+              },
+              {
+                "label": "Giessen"
+              }
+            ]
+          },
+          "model_lines": [
+            {
+              "label": "States",
+              "text": "Eine State Machine besteht aus benannten Zustaenden, zum Beispiel Tonne leer und Tonne voll."
+            },
+            {
+              "label": "Transitionen",
+              "text": "Transitionen beschreiben, wie ein System von einem State in den naechsten State wechselt, zum Beispiel durch Regen oder Giessen."
+            },
+            {
+              "label": "Bedingungen",
+              "text": "Eine Transition hat oft eine Bedingung, zum Beispiel Hunger >= 50 macht satt zu hungrig."
+            }
+          ]
+        }
+      },
+      {
+        "id": "plantuml-model",
+        "type": "plantuml",
+        "title": "Eine State Machine mit PlantUML beschreiben",
+        "summary": "Jetzt schreiben wir die Tamagotchi-Zustandsmaschine als PlantUML. Zustaende stehen als Text, Transitionen werden mit Pfeilen und Bedingungen beschrieben.",
+        "completion": {
+          "type": "acknowledge",
+          "label": "Diagramm verstanden"
+        },
+        "validation": {
+          "type": "plantuml_contains",
+          "must_contain": [
+            "satt --> hungrig",
+            "hungrig --> satt",
+            "hungrig --> tot"
+          ]
+        },
+        "payload": {
+          "source": "@startuml\ntitle Tamagotchi State-Machine\n\nhide empty description\n\nskinparam shadowing false\nskinparam state {\n  BackgroundColor #fbfdff\n  BorderColor #9db0ca\n  FontColor #08142b\n  FontStyle bold\n}\n\nstate \"lebendig\" as lebendig {\n  state \"satt\" as satt\n  state \"hungrig\" as hungrig\n}\n\nstate \"tot\" as tot #fff7f7\n\nnote right of lebendig\n  Initialwerte\n  Hunger = 45\nend note\n\n[*] --> lebendig\nsatt --> hungrig : Hunger >= 50\nhungrig --> satt : fuettern\nhungrig --> tot : Hunger = 100\n@enduml",
+          "highlight_lines": [
+            13,
+            14,
+            17,
+            18,
+            22,
+            23,
+            24,
+            25
+          ],
+          "model_lines": [
+            {
+              "label": "PlantUML",
+              "text": "PlantUML beschreibt das Diagramm mit Text. Dadurch koennen KI und andere Werkzeuge das Modell gezielt lesen."
+            },
+            {
+              "label": "Tamagotchi-State-Machine",
+              "text": "Das Tamagotchi hat den Oberzustand lebendig mit den Unterzustaenden satt und hungrig sowie den Zustand tot."
+            },
+            {
+              "label": "Maschinenlesbar",
+              "text": "Aus einer praezisen PlantUML-Beschreibung kann spaeter gezielter Code fuer Browser App oder Embedded Runtime erzeugt werden."
+            }
+          ]
+        }
+      },
+      {
+        "id": "runtime-independent",
+        "type": "story_slide",
+        "title": "Modell ist runtime-unabhaengig",
+        "summary": "Das gleiche Modell kann spaeter Browser-App oder Embedded-App antreiben.",
+        "completion": {
+          "type": "acknowledge",
+          "label": "Verstanden"
+        },
+        "payload": {
+          "artifact": null,
+          "model_lines": [
+            {
+              "label": "Runtime-Auswahl",
+              "text": "Der Lernende waehlt zwischen Browser App und Embedded. Das Modell bleibt gleich."
+            },
+            {
+              "label": "Browser App",
+              "text": "Die erste erzeugte App laeuft schnell im Browser auf Mac, PC und Mobile."
+            },
+            {
+              "label": "Embedded",
+              "text": "Spaeter kann dasselbe Modell fuer ein Embedded Board erzeugt werden."
+            },
+            {
+              "label": "Gleicher Modellkern",
+              "text": "Browser App und Embedded unterscheiden sich technisch, aber nutzen denselben fachlichen Modellkern."
+            }
+          ]
+        }
+      },
+      {
+        "id": "browser-first",
+        "type": "story_slide",
+        "title": "Browser App zuerst",
+        "summary": "Der erste sichtbare Lauf soll schnell im Browser funktionieren, ohne Board und ohne Flashen.",
+        "completion": {
+          "type": "acknowledge",
+          "label": "Verstanden"
+        },
+        "payload": {
+          "artifact": null,
+          "model_lines": [
+            {
+              "label": "Browser Vorteile",
+              "text": "Schnell starten, sofort beobachten, kein Board und kein Flashen noetig."
+            },
+            {
+              "label": "Browser Nachteile",
+              "text": "Wenn nichts gespeichert wird, ist das Tamagotchi nach dem Schliessen des Browsers weg."
+            },
+            {
+              "label": "Erste Version",
+              "text": "Anfangs veraendert sich das Tamagotchi nur durch Benutzerinteraktionen."
+            }
+          ]
+        }
+      },
+      {
+        "id": "state-machine-next",
+        "type": "story_slide",
+        "title": "Zeitgesteuerte State-Machine folgt",
+        "summary": "Im naechsten Schritt kommen Tick, Speicherung und Wiederherstellung dazu.",
+        "completion": {
+          "type": "acknowledge",
+          "label": "Verstanden"
+        },
+        "payload": {
+          "artifact": null,
+          "model_lines": [
+            {
+              "label": "Naechste Version",
+              "text": "Danach aktualisiert ein regelmaessiger Tick die State-Machine."
+            },
+            {
+              "label": "Speichern",
+              "text": "Der Zustand kann im Browser gespeichert und spaeter wieder geladen werden."
+            }
+          ]
+        }
+      },
+      {
+        "id": "next-runtime-apps",
+        "type": "story_slide",
+        "title": "Weitere Runtime-Apps",
+        "summary": "Embedded bleibt ein spaeterer Runtime-Pfad, nicht der Startpunkt dieses Projekts.",
+        "completion": {
+          "type": "acknowledge",
+          "label": "Verstanden"
+        },
+        "payload": {
+          "artifact": null,
+          "model_lines": [
+            {
+              "label": "Gleicher Modellkern",
+              "text": "Browser App und Embedded unterscheiden sich technisch, aber nutzen denselben fachlichen Modellkern."
+            },
+            {
+              "label": "Embedded",
+              "text": "Spaeter kann dasselbe Modell fuer ein Embedded Board erzeugt werden."
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "model/tamagotchi/model.yaml",
+      "role": "user_code",
+      "content_ref": "model/tamagotchi/model.yaml"
+    }
+  ]
+}

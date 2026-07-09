@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="980" viewBox="0 0 1680 980" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Aktuelle lokale MVP-Architektur mit Plattform UI, Identity Server, Hardware Catalog, Hardware Shop, Device Management, Provisioning, Recovery, Build und weiteren Services.</desc>
+  <desc id="desc">Aktuelle lokale MVP-Architektur mit Plattform UI, Identity Server, Hardware Catalog, Hardware Shop, Device Management, Provisioning, Recovery, Build, MQTT Broker und weiteren Services.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -47,8 +47,8 @@
 
     <rect class="node app" x="265" y="150" width="260" height="74" rx="10"/>
     <text class="titleText" x="395" y="178" text-anchor="middle">GerNetiX Plattform UI</text>
-    <text class="smallText" x="395" y="198" text-anchor="middle">/app/auth, dashboard, learn, ide</text>
-    <text class="smallText" x="395" y="216" text-anchor="middle">Identity Server :4300</text>
+    <text class="smallText" x="395" y="198" text-anchor="middle">/app/dashboard, dev-platform, ki-chat</text>
+    <text class="smallText" x="395" y="216" text-anchor="middle">/app/ide :4300</text>
 
     <rect class="node app" x="265" y="245" width="260" height="64" rx="10"/>
     <text class="titleText" x="395" y="273" text-anchor="middle">Recovery Tool HMI</text>
@@ -142,6 +142,26 @@
     <text class="smallText" x="464" y="627" text-anchor="middle">Importer</text>
   </g>
 
+  <g id="deviceRuntime">
+    <rect class="cluster" x="1420" y="530" width="220" height="145" rx="14"/>
+    <text class="clusterTitle" x="1440" y="559">Device Runtime</text>
+    <rect class="node edge" x="1445" y="585" width="170" height="58" rx="10"/>
+    <text class="titleText" x="1530" y="609" text-anchor="middle">ESP32 Basissoftware</text>
+    <text class="smallText" x="1530" y="629" text-anchor="middle">MQTT Client + HTTPS OTA</text>
+  </g>
+
+  <g id="platformInfrastructure">
+    <rect class="cluster" x="1420" y="735" width="220" height="205" rx="14"/>
+    <text class="clusterTitle" x="1440" y="764">Infrastruktur</text>
+    <rect class="node tool" x="1445" y="790" width="170" height="48" rx="10"/>
+    <text class="titleText" x="1530" y="812" text-anchor="middle">MQTT Broker</text>
+    <text class="smallText" x="1530" y="830" text-anchor="middle">:1883 / WS :9001</text>
+    <rect class="node tool" x="1445" y="852" width="170" height="34" rx="10"/>
+    <text class="titleText" x="1530" y="875" text-anchor="middle">Ollama :11434</text>
+    <rect class="node tool" x="1445" y="900" width="170" height="28" rx="10"/>
+    <text class="smallText" x="1530" y="918" text-anchor="middle">Externe LLM API</text>
+  </g>
+
   <g id="storage">
     <rect class="cluster" x="610" y="735" width="790" height="170" rx="14"/>
     <text class="clusterTitle" x="630" y="764">Persistenz / Wissensbasis</text>
@@ -177,6 +197,8 @@
   <path class="line" d="M 855 179 L 1385 262"/>
   <path class="line" d="M 855 179 L 965 347"/>
   <path class="line" d="M 855 179 L 1170 347"/>
+  <path class="line" d="M 855 179 L 1445 869"/>
+  <path class="line" d="M 855 179 L 1445 914"/>
   <path class="line" d="M 855 259 L 1385 177"/>
   <path class="line" d="M 855 259 L 965 177"/>
   <path class="line" d="M 855 330 L 1155 826"/>
@@ -188,6 +210,14 @@
   <path class="line" d="M 1360 262 L 1385 177"/>
   <path class="line" d="M 1360 432 L 1170 347"/>
   <path class="line" d="M 1170 432 L 1145 432"/>
+  <path class="line" d="M 1265 204 L 1530 795"/>
+  <text class="label" x="1378" y="483">Deploy-Command</text>
+  <path class="line" d="M 1530 795 L 1530 643"/>
+  <text class="label" x="1540" y="718">MQTT</text>
+  <path class="line" d="M 1530 585 L 1530 795"/>
+  <text class="label" x="1540" y="694">Status</text>
+  <path class="line dashed" d="M 1445 614 L 1360 177"/>
+  <text class="label" x="1368" y="380">Firmware HTTPS</text>
 
   <path class="line dashed" d="M 1055 204 L 745 795"/>
   <path class="line dashed" d="M 1265 204 L 745 795"/>

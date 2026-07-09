@@ -72,6 +72,20 @@ button.danger:hover {
 .tabs a.utility { background: #f8fafc; color: var(--muted); }
 .tabs a.utility:first-of-type { margin-left: auto; }
 .tabs a.active { background: var(--text); color: #fff; border-color: var(--text); }
+.subtabs, .filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 14px 0;
+}
+.subtabs button.active {
+  background: var(--text);
+  border-color: var(--text);
+  color: #fff;
+}
+.filter-row {
+  justify-content: flex-end;
+}
 .dashboard-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 12px; margin-bottom: 16px; }
 .entry-card {
   min-height: 150px;
@@ -98,6 +112,62 @@ button.danger:hover {
 .project-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
 .project-card { padding: 16px; }
 .project-card p, .device-row p, .build-row p, #lessonText { color: var(--muted); line-height: 1.5; }
+.table-shell {
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: var(--shadow);
+}
+.learning-project-table {
+  width: 100%;
+  min-width: 760px;
+  border-collapse: collapse;
+}
+.learning-project-table th,
+.learning-project-table td {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+  vertical-align: middle;
+}
+.learning-project-table th {
+  color: var(--muted);
+  font-size: 12px;
+  text-transform: uppercase;
+}
+.learning-project-table tr:last-child td {
+  border-bottom: 0;
+}
+.learning-project-table td:first-child span {
+  display: block;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.learning-project-table td:last-child {
+  text-align: right;
+}
+.project-status {
+  display: inline-flex;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  background: #f8fafc;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.project-status.in_progress {
+  border-color: #93c5fd;
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+.project-status.finished {
+  border-color: #86efac;
+  background: #ecfdf5;
+  color: #166534;
+}
 .helper-text { margin: 8px 0 0; color: var(--muted); line-height: 1.45; }
 .card-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 .lesson-panel { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 12px; margin-top: 14px; }
@@ -115,6 +185,121 @@ button.danger:hover {
 .ide-layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 12px; }
 .ide-layout.model-only { grid-template-columns: minmax(0, 1fr); }
 .ide-layout.model-only .project-view-manifest { max-width: 980px; }
+.development-platform-layout,
+.ai-chat-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 12px;
+  align-items: start;
+}
+.development-chat-panel {
+  display: grid;
+  grid-template-rows: minmax(360px, 56vh) auto;
+  gap: 12px;
+}
+.development-chat-messages {
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  overflow: auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #f8fafc;
+}
+.chat-message {
+  max-width: min(760px, 92%);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+}
+.chat-message.user {
+  justify-self: end;
+  border-color: #93c5fd;
+  background: #eff6ff;
+}
+.chat-message.assistant {
+  justify-self: start;
+  border-color: #b7d7d2;
+  background: var(--soft);
+}
+.chat-message span {
+  display: block;
+  margin-bottom: 5px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.chat-message p {
+  margin: 0;
+  color: var(--text);
+  line-height: 1.5;
+  white-space: pre-wrap;
+}
+.chat-usage {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+  margin: 10px 0 0;
+  padding-top: 10px;
+  border-top: 1px solid rgba(100, 116, 139, 0.22);
+}
+.chat-usage div {
+  min-width: 0;
+}
+.chat-usage dt {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.chat-usage dd {
+  margin: 2px 0 0;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 700;
+}
+.development-chat-form {
+  display: grid;
+  gap: 8px;
+}
+.development-chat-form label {
+  color: var(--muted);
+  font-weight: 700;
+}
+.development-chat-form textarea {
+  min-height: 110px;
+  margin-top: 0;
+  background: #fff;
+  color: var(--text);
+  font-family: inherit;
+}
+.chat-status {
+  color: var(--muted);
+  line-height: 1.35;
+}
+.development-assistant-context {
+  display: grid;
+  gap: 16px;
+}
+.architecture-question-list {
+  display: grid;
+  gap: 8px;
+}
+.architecture-question-list button {
+  text-align: left;
+  white-space: normal;
+}
+.development-source-note {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.development-source-note p {
+  color: var(--muted);
+  line-height: 1.45;
+}
 .form-grid { display: grid; gap: 12px; align-content: start; }
 .form-grid label { display: grid; gap: 6px; color: var(--muted); font-weight: 700; }
 .form-grid input,
@@ -734,7 +919,7 @@ textarea:read-only {
 }
 
 @media (max-width: 900px) {
-  .dashboard-grid, .lesson-panel, .ide-layout, .inventory-layout, .device-row, .build-row, .discovery-row { grid-template-columns: 1fr; }
+  .dashboard-grid, .lesson-panel, .ide-layout, .development-platform-layout, .ai-chat-layout, .inventory-layout, .device-row, .build-row, .discovery-row { grid-template-columns: 1fr; }
   .discovery-row { grid-template-columns: 26px minmax(0, 1fr); }
   .discovery-row .meta-list { grid-column: 2; }
   .guided-artifact-layout, .guided-state-row { grid-template-columns: 1fr; }

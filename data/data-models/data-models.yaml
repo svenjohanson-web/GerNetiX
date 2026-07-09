@@ -795,6 +795,83 @@ items:
     derivedFromRequirements:
       - requirement.project_bound_guided_ide_views
 
+  - id: data_model.project_architecture_dialog
+    type: data_model
+    title: ProjectArchitectureDialog
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Gefuehrter KI-Dialog am Projektbeginn, der Nutzerantworten, offene Rueckfragen, bestaetigte Annahmen und abgeleitete Architekturhinweise speichert.
+    fields:
+      - dialogId
+      - accountId
+      - projectId
+      - currentPhase
+      - questions
+      - answers
+      - assumptions
+      - openQuestions
+      - confirmedDecisions
+      - createdAt
+      - updatedAt
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.architecture_discovery_guided_by_llm
+
+  - id: data_model.project_target_architecture
+    type: data_model
+    title: ProjectTargetArchitecture
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Bestaetigte Zielarchitektur eines Nutzerprojekts vor der Technologieauswahl, inklusive benoetigter Zielsysteme, Kommunikationswege, Datenfluesse, Betriebsmodell und offener Architekturfragen.
+    fields:
+      - targetArchitectureId
+      - projectId
+      - architectureStyle
+      - actors
+      - targetSystems
+      - deviceNodes
+      - backendNodes
+      - clientApps
+      - dataFlows
+      - communicationNeeds
+      - runtimeEnvironment
+      - offlineRequirements
+      - securityNotes
+      - openArchitectureQuestions
+      - confirmationState
+      - confirmedAt
+    derivedFromRequirements:
+      - requirement.architecture_discovery_guided_by_llm
+
+  - id: data_model.project_technology_decision
+    type: data_model
+    title: ProjectTechnologyDecision
+    businessStatus: In Analysis
+    implementationStatus: Not Started
+    ownerDomain: Learning
+    summary: Nachvollziehbare Technologieentscheidung fuer ein Projekt, die aus einer bestaetigten Zielarchitektur abgeleitet wird und Alternativen, Gruende, Risiken sowie offene Voraussetzungen dokumentiert.
+    fields:
+      - technologyDecisionId
+      - projectId
+      - targetArchitectureId
+      - decisionTopic
+      - selectedTechnology
+      - alternatives
+      - rationale
+      - requiredCapabilities
+      - risks
+      - prerequisites
+      - decisionState
+      - confirmedAt
+    derivedFromRequirements:
+      - requirement.architecture_discovery_guided_by_llm
+
   - id: data_model.firmware_build_job
     type: data_model
     title: FirmwareBuildJob
