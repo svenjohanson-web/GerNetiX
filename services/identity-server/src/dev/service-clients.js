@@ -18,6 +18,7 @@ function createJsonClient(baseUrl, fallbackMessage, clientOptions = {}) {
 }
 
 function createDevServiceClients({
+  aiContextBaseUrl,
   aiUsageBaseUrl,
   buildDeployBaseUrl,
   deviceManagementBaseUrl,
@@ -26,6 +27,7 @@ function createDevServiceClients({
   projectServerBaseUrl,
 }) {
   return {
+    aiContextJson: createJsonClient(aiContextBaseUrl, "AI Context request failed."),
     aiUsageJson: createJsonClient(aiUsageBaseUrl, "AI Usage request failed.", { allowPaymentRequired: true }),
     buildDeployJson: createJsonClient(buildDeployBaseUrl, "Build & Deploy request failed."),
     deviceManagementJson: createJsonClient(deviceManagementBaseUrl, "Device Management request failed."),

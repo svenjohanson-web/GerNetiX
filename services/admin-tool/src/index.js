@@ -20,6 +20,7 @@ function createDefaultAdminTool(config = {}) {
     serviceClients: config.deviceManagementBaseUrl ? {
       deviceManagementBaseUrl: config.deviceManagementBaseUrl,
       projectServerBaseUrl: config.projectServerBaseUrl,
+      hardwareCatalogBaseUrl: config.hardwareCatalogBaseUrl,
       aiUsageBaseUrl: config.aiUsageBaseUrl,
       aiContextBaseUrl: config.aiContextBaseUrl,
     } : null,

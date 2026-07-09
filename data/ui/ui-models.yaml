@@ -2,6 +2,37 @@ schemaVersion: 1
 kind: ui_model_catalog
 sourceStatus: legacy_import_source
 items:
+  - id: ui_model.user_ide_architecture_discovery
+    type: ui_model
+    title: User IDE Architektur-Discovery
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Learning
+    summary: Kunden-IDE-Sicht fuer den LLM-gefuehrten Projektstart. Die Sicht fuehrt einen Architektur-Dialog, zeigt LLM-Routing und erlaubte Kontextquellen und rendert aus der letzten KI-Antwort eine PlantUML-Architekturskizze mit sichtbarer Quelle.
+    derivedFromRequirements:
+      - requirement.architecture_discovery_guided_by_llm
+    usesApiArtifacts:
+      - api_artifact.identity
+      - api_artifact.ai_context_access
+    usesDataModels:
+      - data_model.project_architecture_dialog
+      - data_model.project_target_architecture
+    requiredStates:
+      - no_development_project_selected
+      - development_project_loaded
+      - assistant_ready
+      - llm_call_running
+      - answer_received
+      - plantuml_diagram_available
+      - architecture_saved
+      - llm_fallback_without_diagram
+    sections:
+      - Entwicklungsprojekt anlegen oder laden
+      - Architektur-Dialog
+      - LLM-Routing und Datenquellen
+      - Schnellfragen
+      - PlantUML-Architekturskizze
+
   - id: ui_model.user_ide_account_transparency
     type: ui_model
     title: User IDE Mein Profil und Datentransparenz
@@ -141,9 +172,11 @@ items:
     usesApiArtifacts:
       - api_artifact.admin_tool
       - api_artifact.ai_context_access
+      - api_artifact.hardware_catalog
     usesDataModels:
       - data_model.ai_context_grant
       - data_model.ai_context_policy
+      - data_model.ai_context_source
       - data_model.ai_context_access_audit_event
     requiredStates:
       - loading_ai_context_access
@@ -154,4 +187,7 @@ items:
       - Policy-Zusammenfassung
       - Datenquellen nach Typ
       - Grant-Liste
+      - Source-Registry fuer KI-Kontextquellen
       - Letzte Kontext-Preflight-Entscheidungen
+      - AI-Context-SQLite-Tabellenuebersicht
+      - Hardware-Catalog-Inhaltsvorschau fuer Boards und Capabilities

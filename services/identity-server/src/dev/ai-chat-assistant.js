@@ -13,7 +13,7 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
     ];
 
     try {
-      const activeConfig = llmConfigStore.getConfig();
+      const activeConfig = routeConfig("general_chat");
       const response = await callChatProvider(messages, activeConfig);
       sendJson(res, 200, {
         config: config(),
@@ -29,7 +29,7 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
         config: config({ lastError: error.message || String(error) }),
         message: {
           role: "assistant",
-          content: fallbackAnswer(userMessages, llmConfigStore.getConfig()),
+          content: fallbackAnswer(userMessages, routeConfig("general_chat")),
         },
         usage: null,
         usedFallback: true,
@@ -45,6 +45,12 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
       blockedSources: ["project_files", "customer_data", "graph_database", "external_web"],
       ...extra,
     };
+  }
+
+  function routeConfig(task) {
+    return typeof llmConfigStore.resolveRoute === "function"
+      ? llmConfigStore.resolveRoute(task)
+      : llmConfigStore.getConfig();
   }
 
   function normalizeMessages(messages) {
@@ -76,7 +82,40 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
 
   async function callApiChat(messages, activeConfig) {
     if (activeConfig.apiProvider === "anthropic") return callAnthropicChat(messages, activeConfig);
+    if (activeConfig.apiProvider === "openai-responses") return callOpenAiResponsesChat(messages, activeConfig);
     return callOpenAiCompatibleChat(messages, activeConfig);
+  }
+
+  async function callOpenAiResponsesChat(messages, activeConfig) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+    try {
+      const response = await fetch(`${activeConfig.apiBaseUrl.replace(/\/$/, "")}/responses`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...(activeConfig.apiKey ? { Authorization: `Bearer ${activeConfig.apiKey}` } : {}),
+        },
+        signal: controller.signal,
+        body: JSON.stringify({
+          model: activeConfig.apiModel,
+          input: responseInput(messages),
+        }),
+      });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        throw new Error(payload.error?.message || payload.error || `OpenAI Responses API antwortet mit HTTP ${response.status}.`);
+      }
+      return {
+        message: {
+          content: responseOutputText(payload),
+        },
+        prompt_eval_count: payload.usage?.input_tokens,
+        eval_count: payload.usage?.output_tokens,
+      };
+    } finally {
+      clearTimeout(timeout);
+    }
   }
 
   async function callOllamaChat(messages, activeConfig) {
@@ -198,6 +237,22 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
     };
   }
 
+  function responseInput(messages) {
+    return messages.map((message) => ({
+      role: message.role === "assistant" ? "assistant" : message.role === "system" ? "developer" : "user",
+      content: [{ type: "input_text", text: message.content }],
+    }));
+  }
+
+  function responseOutputText(payload) {
+    if (payload.output_text) return payload.output_text;
+    return (payload.output || [])
+      .flatMap((item) => item.content || [])
+      .map((part) => part.text || "")
+      .join("")
+      .trim();
+  }
+
   function numberOrNull(value) {
     return Number.isFinite(value) ? value : null;
   }
@@ -210,7 +265,8 @@ function createAiChatAssistant({ llmConfigStore, projectServerUserId, readJsonBo
     const lastUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content || "deine Frage";
     const providerName = activeConfig.provider === "api" && activeConfig.apiProvider === "anthropic"
       ? "Claude-/Anthropic-Provider"
-      : activeConfig.provider === "api" ? "OpenAI-kompatiblen LLM-Provider" : "lokalen Ollama-Dienst";
+      : activeConfig.provider === "api" && activeConfig.apiProvider === "openai-responses" ? "OpenAI-Responses-Provider"
+        : activeConfig.provider === "api" ? "OpenAI-kompatiblen LLM-Provider" : "lokalen Ollama-Dienst";
     return [
       `Ich kann den konfigurierten ${providerName} gerade nicht erreichen.`,
       "",

@@ -38,6 +38,15 @@ Konfiguration:
 - `POST /api/admin/llm-config/test`
 - lokaler Default: Ollama unter `http://127.0.0.1:11434`
 
+Die LLM-Konfiguration ist als Task-Router gedacht:
+
+- `general_chat`: allgemeiner KI-Chat
+- `architecture_discovery`: gefuehrter Architektur-Dialog
+- `artifact_generation`: PlantUML, Pseudocode und andere ableitbare Artefakte
+- `code_generation`: Quellcode- und Pseudocode-zu-Code-Aufgaben
+
+Der Chat darf je nach Admin-Einstellung ueber eine externe API laufen. Artefakt- und Codegenerierung bevorzugen standardmaessig ein lokales LLM, um externe Providerkosten zu vermeiden und die Kundenmarge zu schuetzen.
+
 Freigegebene Datenquellen im PoC:
 
 - aktueller Chat

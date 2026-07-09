@@ -10,6 +10,7 @@ Der Service entscheidet vor einem KI-Aufruf, ob eine Datenquelle als Kontext gen
 - explizite Grants fuer Quelle, Scope, Zweck, Provider-Scope und Redaktionsstufe
 - globale Policy fuer externe Provider und Kundendaten
 - Audit fuer erlaubte und abgelehnte Kontextentscheidungen
+- Source Registry fuer fachliche KI-Kontextquellen wie Hardware Catalog oder AI-Context-SQLite
 - Grundlage dafuer, dass KI spaeter gezielt mit Projekt-, Graph-, Device- oder Kundendaten antworten kann
 
 ## Start
@@ -36,5 +37,6 @@ http://127.0.0.1:5500
 - Ohne aktiven passenden Grant wird Kontextzugriff abgelehnt.
 - Jede Preflight-Entscheidung erzeugt ein Audit-Event.
 - Grants muessen Quelle, Scope, Zweck, Provider-Scope, Redaktionsstufe und Ablaufzeit enthalten.
+- Registrierte Sources beschreiben Datenquellen; erst ein Grant erlaubt ihre Nutzung.
 - Externe Provider duerfen Kundendaten standardmaessig nicht erhalten.
 - Redaktionsstufen sind `none`, `metadata_only`, `summary_only` und `masked`.

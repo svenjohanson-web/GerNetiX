@@ -51,6 +51,26 @@ test("external provider requires explicit grant scope and redaction", () => {
   assert.equal(result.redaction_level, "masked");
 });
 
+test("hardware catalog source is registered and can be authorized locally", () => {
+  const service = createService();
+  assert.ok(service.listSources().some((source) => source.source_type === "hardware_catalog" && source.source_scope === "processor_boards/esp32"));
+  service.createGrant(grantInput({
+    account_id: "*",
+    source_type: "hardware_catalog",
+    source_scope: "processor_boards/esp32",
+    redaction_level: "summary_only",
+  }));
+
+  const result = service.preflight(preflightRequest({
+    source_type: "hardware_catalog",
+    source_scope: "processor_boards/esp32",
+    provider: "ollama",
+  }));
+
+  assert.equal(result.allowed, true);
+  assert.equal(result.redaction_level, "summary_only");
+});
+
 test("customer data stays blocked for external provider by global policy", () => {
   const service = createService();
   service.createGrant(grantInput({
@@ -96,12 +116,20 @@ test("sqlite repository persists grants policy and audit events in own database"
   });
   assert.equal(reloaded.listGrants().length, 1);
   assert.equal(reloaded.listAuditEvents().length, 1);
+  const summary = reloaded.sqliteSummary();
+  assert.equal(summary.available, true);
+  assert.equal(summary.db_path, dbPath);
+  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_sources").row_count, 2);
+  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_grants").row_count, 1);
+  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_audit_events").row_count, 1);
+  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_policy").preview_rows[0].raw_json, undefined);
 
   const db = new DatabaseSync(dbPath);
   try {
     assert.equal(tableCount(db, "ai_context_grants"), 1);
     assert.equal(tableCount(db, "ai_context_audit_events"), 1);
     assert.equal(tableCount(db, "ai_context_policy"), 1);
+    assert.equal(tableCount(db, "ai_context_sources"), 2);
   } finally {
     db.close();
   }

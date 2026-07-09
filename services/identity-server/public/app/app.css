@@ -194,7 +194,7 @@ button.danger:hover {
 }
 .development-chat-panel {
   display: grid;
-  grid-template-rows: minmax(360px, 56vh) auto;
+  grid-template-rows: minmax(360px, 48vh) auto auto;
   gap: 12px;
 }
 .development-chat-messages {
@@ -284,6 +284,56 @@ button.danger:hover {
   display: grid;
   gap: 16px;
 }
+.development-project-field,
+.development-project-form,
+.development-project-panel {
+  display: grid;
+  gap: 8px;
+}
+.development-project-summary {
+  display: grid;
+  gap: 4px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: #fff;
+}
+.development-project-summary span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+}
+.development-project-summary strong {
+  overflow-wrap: anywhere;
+}
+.development-project-actions {
+  justify-content: stretch;
+}
+.development-project-actions button {
+  flex: 1 1 140px;
+}
+.development-project-form label,
+.development-project-field {
+  color: var(--muted);
+  font-weight: 700;
+}
+.development-project-form input,
+.development-project-form textarea {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 10px 12px;
+  background: #fff;
+  color: var(--text);
+  font-family: inherit;
+}
+.development-project-form textarea {
+  min-height: 92px;
+  max-height: 180px;
+  margin-top: 0;
+  resize: vertical;
+  line-height: 1.4;
+}
 .architecture-question-list {
   display: grid;
   gap: 8px;
@@ -299,6 +349,49 @@ button.danger:hover {
 .development-source-note p {
   color: var(--muted);
   line-height: 1.45;
+}
+.architecture-diagram-panel {
+  display: grid;
+  gap: 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+}
+.architecture-diagram-panel > .helper-text {
+  margin-top: 0;
+}
+.diagram-card-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.diagram-card-head p:not(.eyebrow) {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+.diagram-card-head span {
+  flex: 0 0 auto;
+  border: 1px solid #b7d7d2;
+  border-radius: 999px;
+  padding: 5px 8px;
+  background: var(--soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+}
+.architecture-diagram-panel .plantuml-viewer {
+  margin-top: 0;
+}
+.architecture-diagram-panel .plantuml-diagram {
+  min-height: 220px;
+  max-height: 420px;
+}
+.architecture-source {
+  max-height: 220px;
+  margin-top: 0;
 }
 .form-grid { display: grid; gap: 12px; align-content: start; }
 .form-grid label { display: grid; gap: 6px; color: var(--muted); font-weight: 700; }

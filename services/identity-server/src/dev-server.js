@@ -41,12 +41,14 @@ const hardwareShopBaseUrl = process.env.HARDWARE_SHOP_BASE_URL || "http://127.0.
 const hardwareCatalogBaseUrl = process.env.HARDWARE_CATALOG_BASE_URL || "http://127.0.0.1:4910";
 const deviceManagementBaseUrl = process.env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700";
 const aiUsageBaseUrl = process.env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000";
+const aiContextBaseUrl = process.env.AI_CONTEXT_BASE_URL || "http://127.0.0.1:5500";
 const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
 const ollamaModel = process.env.OLLAMA_MODEL || "llama3.1";
 const deviceDiscoveryUrls = process.env.GERNETIX_DEVICE_DISCOVERY_URLS || process.env.DEVICE_DISCOVERY_URLS || "";
 const gernetixNodeHostnamePrefix = "gernetix-";
 const execFileAsync = promisify(execFile);
 const {
+  aiContextJson,
   aiUsageJson,
   buildDeployJson,
   deviceManagementJson,
@@ -54,6 +56,7 @@ const {
   hardwareShopJson,
   projectServerJson,
 } = createDevServiceClients({
+  aiContextBaseUrl,
   aiUsageBaseUrl,
   buildDeployBaseUrl,
   deviceManagementBaseUrl,
@@ -101,9 +104,12 @@ const { discoverNetworkDevices } = createDeviceDiscoveryService({
   nodeHostnamePrefix: gernetixNodeHostnamePrefix,
 });
 const developmentAssistant = createDevelopmentAssistant({
+  aiContextJson,
+  hardwareCatalogJson,
   llmConfigStore,
   projectServerUserId,
   readJsonBody,
+  requireProjectAccess: requireSessionProject,
   sendJson,
 });
 const aiChatAssistant = createAiChatAssistant({
@@ -143,6 +149,7 @@ async function bootstrap() {
   console.log(`Hardware Catalog adapter: ${hardwareCatalogBaseUrl}`);
   console.log(`Device Management adapter: ${deviceManagementBaseUrl}`);
   console.log(`AI Usage adapter: ${aiUsageBaseUrl}`);
+  console.log(`AI Context adapter: ${aiContextBaseUrl}`);
   const llmConfig = llmConfigStore.publicConfig();
   console.log(`Development Platform LLM: ${llmConfig.baseUrl} (${llmConfig.model})`);
   });
@@ -266,6 +273,27 @@ async function routeRequest(req, res) {
       return;
     }
     sendJson(res, 200, updateLearningProgress(session, await readJsonBody(req)));
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/platform/development-projects") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleDevelopmentProjectCreate(req, res, session);
+    return;
+  }
+
+  const developmentProjectArchitecture = url.pathname.match(/^\/api\/platform\/development-projects\/([^/]+)\/architecture$/);
+  if (req.method === "POST" && developmentProjectArchitecture) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleDevelopmentProjectArchitectureSave(req, res, session, decodeURIComponent(developmentProjectArchitecture[1]));
     return;
   }
 
@@ -635,6 +663,75 @@ async function handlePlatformSourceWrite(req, res, session, projectId, sourcePat
   sendJson(res, 200, source);
 }
 
+async function handleDevelopmentProjectCreate(req, res, session) {
+  const body = await readJsonBody(req);
+  const userId = projectServerUserId(session);
+  const title = requiredField(body.title || "Neues Entwicklungsprojekt", "title").slice(0, 120);
+  const description = String(body.description || "Architektur-Discovery-Projekt").trim().slice(0, 1000);
+  const projectId = `dev_project_${slugifyProjectId(title)}_${Date.now().toString(36)}`;
+  const initialSource = initialArchitecturePlantUml(title);
+  const project = await projectServerJson("/api/projects", {
+    method: "POST",
+    body: {
+      project_id: projectId,
+      user_id: userId,
+      title,
+      description,
+      learning_project_id: "development_project",
+      hardware_profile_id: "architecture.discovery",
+      device_id: null,
+      build_config: null,
+      view_manifest: developmentProjectViewManifest({ title, description, source: initialSource }),
+      sources: [{
+        path: "docs/architecture.puml",
+        role: "architecture_model",
+        content_type: "text/plain",
+        content: initialSource,
+      }],
+    },
+  });
+  touchWorkspace(session, project.project_id, "development-platform", "/app/development-platform/");
+  sendJson(res, 201, { project: toPlatformProject(mapProjectServerProject(session, project)) });
+}
+
+async function handleDevelopmentProjectArchitectureSave(req, res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  if (!["development_project", "custom_project"].includes(project.area)) {
+    sendJson(res, 400, { error: "not_development_project", message: "Architektur-Discovery kann nur in eigenen Entwicklungsprojekten gespeichert werden." });
+    return;
+  }
+  const body = await readJsonBody(req);
+  const diagram = normalizeArchitectureDiagram(body.architectureDiagram || body.architecture_diagram || body.diagram);
+  if (!diagram.source) {
+    sendJson(res, 400, { error: "missing_diagram", message: "Keine PlantUML-Quelle zum Speichern vorhanden." });
+    return;
+  }
+  const title = String(body.title || project.title || diagram.title || "Architektur").trim().slice(0, 120);
+  const description = String(body.description || project.summary || diagram.summary || "").trim().slice(0, 1000);
+  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
+    method: "PUT",
+    body: {
+      path: "docs/architecture.puml",
+      role: "architecture_model",
+      content_type: "text/plain",
+      content: diagram.source,
+    },
+  });
+  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+    method: "PATCH",
+    body: {
+      title,
+      description,
+      view_manifest: developmentProjectViewManifest({ title, description, source: diagram.source, diagram }),
+      build_config: null,
+    },
+  });
+  touchWorkspace(session, project.project_server_id, "development-platform", "/app/development-platform/");
+  const projects = await loadUserIdeProjects(session);
+  const updated = projects.find((item) => item.project_server_id === project.project_server_id);
+  sendJson(res, 200, { project: toPlatformProject(updated), saved_at: new Date().toISOString() });
+}
+
 async function handlePlatformDeviceCreate(req, res, session) {
   try {
     const body = await readJsonBody(req);
@@ -860,7 +957,8 @@ async function loadUserIdeProjects(session) {
 function mapUserIdeProjects(session, projectsById) {
   const userId = projectServerUserId(session);
   const workspace = getWorkspaceState(userId);
-  return userIdeState.projectDefinitions.map((definition) => {
+  const definitionIds = new Set(userIdeState.projectDefinitions.map((definition) => definition.project_server_id));
+  const seededProjects = userIdeState.projectDefinitions.map((definition) => {
     const project = projectsById.get(definition.project_server_id);
     return {
       ...definition,
@@ -882,6 +980,48 @@ function mapUserIdeProjects(session, projectsById) {
       source_files: definition.source_files || [{ path: "src/main.cpp", role: "user_code" }],
     };
   });
+  const customProjects = Array.from(projectsById.values())
+    .filter((project) => !definitionIds.has(project.project_id))
+    .map((project) => mapProjectServerProject(session, project));
+  return seededProjects.concat(customProjects)
+    .sort((left, right) => String(right.updated_at || "").localeCompare(String(left.updated_at || "")));
+}
+
+function mapProjectServerProject(session, project) {
+  const userId = projectServerUserId(session);
+  const workspace = getWorkspaceState(userId);
+  const manifest = project.view_manifest || developmentProjectViewManifest({
+    title: project.title,
+    description: project.description,
+    source: initialArchitecturePlantUml(project.title),
+  });
+  const primarySourcePath = manifest.primary_source_path || "docs/architecture.puml";
+  return {
+    project_server_id: project.project_id,
+    slug: project.project_id,
+    title: project.title,
+    summary: project.description || "",
+    area: project.learning_project_id === "development_project" ? "development_project" : "custom_project",
+    course_id: "development",
+    lesson_id: `architecture_${project.project_id}`,
+    learning_project_id: project.learning_project_id || "",
+    owner_user_id: project.user_id || userId,
+    hardware_profile_id: project.hardware_profile_id || "architecture.discovery",
+    build_config: project.build_config || null,
+    linked_device_id: project.device_id || "",
+    status: project.status || "active",
+    last_build_status: latestBuildStatus(project),
+    source_count: project.source_count || 0,
+    build_count: project.build_count || 0,
+    view_manifest: manifest,
+    created_at: project.created_at || "",
+    updated_at: project.updated_at || "",
+    last_opened_mode: workspace.lastProjectId === project.project_id ? workspace.lastMode : "",
+    last_opened_at: workspace.lastProjectId === project.project_id ? workspace.updatedAt : "",
+    source_files: [{ path: primarySourcePath, role: "architecture_model" }],
+    steps: [],
+    required_capability_ids: [],
+  };
 }
 
 async function ensureProjectServerDemoProjects(session) {
@@ -1443,6 +1583,89 @@ function projectViewManifest(project) {
       },
     ],
   };
+}
+
+function developmentProjectViewManifest({ title, description = "", source = "", diagram = null }) {
+  const plantUmlSource = source || diagram?.source || initialArchitecturePlantUml(title);
+  return {
+    schema_version: 1,
+    title: `${title || "Entwicklungsprojekt"} Architektur`,
+    summary: description || "Projektgebundene Architektur-Discovery mit PlantUML-Skizze.",
+    primary_source_path: "docs/architecture.puml",
+    hide_source_editor: true,
+    mode: "architecture_discovery",
+    views: [
+      {
+        id: "architecture-diagram",
+        type: "plantuml",
+        title: diagram?.title || "Architektur-Skizze",
+        summary: diagram?.summary || "Aus Architektur-Discovery gespeicherte PlantUML-Skizze.",
+        source_path: "docs/architecture.puml",
+        validation: { type: "plantuml_contains", must_contain: ["@startuml", "@enduml"] },
+        payload: {
+          source: plantUmlSource,
+          model_lines: [
+            { label: "Status", text: "KI-abgeleitete Skizze; Architekturentscheidungen muessen vom Nutzer bestaetigt werden." },
+            { label: "Quelle", text: "Gespeichert im Project Server und an den aktuellen Account gebunden." },
+          ],
+        },
+      },
+      {
+        id: "implementation-plan",
+        type: "implementation_plan",
+        title: "Naechste Schritte",
+        summary: "Aus der Zielarchitektur werden spaeter konkrete Umsetzungsschritte abgeleitet.",
+        payload: {
+          tasks: [
+            "Offene Architekturfragen klaeren",
+            "Zielsysteme und Datenfluesse bestaetigen",
+            "Technologieentscheidungen erst nach Bestaetigung festlegen",
+          ],
+        },
+      },
+    ],
+  };
+}
+
+function initialArchitecturePlantUml(title) {
+  return [
+    "@startuml",
+    `title Architektur-Skizze: ${String(title || "Neues Entwicklungsprojekt").replace(/"/g, "'")}`,
+    "",
+    "actor \"Nutzer\" as user",
+    "rectangle \"Projektidee / Anforderungen\" as requirements",
+    "user --> requirements : beschreibt Ziel und Rahmen",
+    "",
+    "note right of requirements",
+    "  Noch keine KI-abgeleitete Architektur gespeichert.",
+    "end note",
+    "@enduml",
+  ].join("\n");
+}
+
+function normalizeArchitectureDiagram(input = {}) {
+  const source = String(input.source || "").trim();
+  return {
+    type: "plantuml",
+    title: String(input.title || "Architektur-Skizze").trim(),
+    summary: String(input.summary || "Gespeicherte Architektur-Skizze.").trim(),
+    source,
+    derived_from: String(input.derived_from || input.derivedFrom || "architecture_discovery_ai_response").trim(),
+    generated_at: String(input.generated_at || input.generatedAt || new Date().toISOString()).trim(),
+    confidence: Number(input.confidence || 0),
+    detected_blocks: Array.isArray(input.detected_blocks || input.detectedBlocks)
+      ? (input.detected_blocks || input.detectedBlocks).map(String)
+      : [],
+  };
+}
+
+function slugifyProjectId(value) {
+  return String(value || "projekt")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 48) || "projekt";
 }
 
 function demoProjectSources(project) {

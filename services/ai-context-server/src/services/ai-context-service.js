@@ -2,7 +2,7 @@ const crypto = require("node:crypto");
 const { AiContextError } = require("../errors");
 const { isGrantActive } = require("../repositories/in-memory-ai-context-repository");
 
-const SOURCE_TYPES = new Set(["current_chat", "project_files", "graph_database", "device_data", "customer_data", "admin_statistics"]);
+const SOURCE_TYPES = new Set(["current_chat", "project_files", "graph_database", "device_data", "customer_data", "admin_statistics", "hardware_catalog"]);
 const PURPOSES = new Set(["architecture_assistance", "debugging", "support_case", "usage_analysis", "general_chat"]);
 const PROVIDER_SCOPES = new Set(["local_only", "external_allowed", "external_redacted_only"]);
 const REDACTION_LEVELS = new Set(["none", "metadata_only", "summary_only", "masked"]);
@@ -47,6 +47,32 @@ class AiContextService {
     return this.repository.listGrants(filter);
   }
 
+  listSources(filter = {}) {
+    return this.repository.listSources(filter);
+  }
+
+  upsertSource(input = {}) {
+    validateSourceInput(input);
+    const now = this.now().toISOString();
+    const existing = this.repository.listSources().find((source) => source.source_id === clean(input.source_id));
+    return this.repository.saveSource({
+      source_id: clean(input.source_id),
+      source_type: clean(input.source_type),
+      source_scope: normalizeScope(input.source_scope),
+      title: clean(input.title),
+      summary: clean(input.summary),
+      backing_service: clean(input.backing_service),
+      endpoint: clean(input.endpoint),
+      contains: Array.isArray(input.contains) ? input.contains.map(clean).filter(Boolean) : [],
+      default_redaction_level: clean(input.default_redaction_level || "summary_only"),
+      default_provider_scope: clean(input.default_provider_scope || "local_only"),
+      allowed_purposes: Array.isArray(input.allowed_purposes) ? input.allowed_purposes.map(clean).filter((purpose) => PURPOSES.has(purpose)) : [],
+      status: clean(input.status || "active"),
+      created_at: existing?.created_at || now,
+      updated_at: now,
+    });
+  }
+
   getPolicy() {
     return this.repository.getPolicy();
   }
@@ -67,7 +93,7 @@ class AiContextService {
   preflight(input = {}) {
     const request = normalizePreflightInput(input);
     const policy = this.repository.getPolicy();
-    const decision = decideAccess({ request, policy, grants: this.repository.listGrants({ account_id: request.account_id }) }, this.now());
+    const decision = decideAccess({ request, policy, grants: this.repository.listGrants() }, this.now());
     const auditEvent = this.repository.addAuditEvent({
       audit_event_id: createId("ai_ctx_audit"),
       occurred_at: this.now().toISOString(),
@@ -98,6 +124,18 @@ class AiContextService {
 
   listAuditEvents(filter = {}) {
     return this.repository.listAuditEvents(filter);
+  }
+
+  sqliteSummary() {
+    if (typeof this.repository.sqliteSummary === "function") {
+      return this.repository.sqliteSummary();
+    }
+    return {
+      available: false,
+      reason: "sqlite_repository_not_enabled",
+      tables: [],
+      service_documents: [],
+    };
   }
 }
 
@@ -130,7 +168,7 @@ function decideAccess({ request, policy, grants }, now) {
 
 function grantMatchesRequest(grant, request, now) {
   if (!isGrantActive(grant, now)) return false;
-  if (grant.account_id !== request.account_id) return false;
+  if (grant.account_id !== "*" && grant.account_id !== request.account_id) return false;
   if (grant.project_id && request.project_id && grant.project_id !== request.project_id) return false;
   if (grant.source_type !== request.source_type) return false;
   if (grant.purpose !== request.purpose) return false;
@@ -152,6 +190,15 @@ function validateGrantInput(input) {
   if (!PURPOSES.has(clean(input.purpose))) throw new AiContextError("invalid_purpose", "Unbekannter KI-Kontextzweck.");
   if (!PROVIDER_SCOPES.has(clean(input.allowed_provider_scope || "local_only"))) throw new AiContextError("invalid_provider_scope", "Unbekannter Provider-Scope.");
   if (!REDACTION_LEVELS.has(clean(input.redaction_level || "summary_only"))) throw new AiContextError("invalid_redaction_level", "Unbekannte Redaktionsstufe.");
+}
+
+function validateSourceInput(input) {
+  for (const field of ["source_id", "source_type", "source_scope", "title", "backing_service", "endpoint"]) {
+    if (!clean(input[field])) throw new AiContextError("missing_required_field", `Pflichtfeld fehlt: ${field}`);
+  }
+  if (!SOURCE_TYPES.has(clean(input.source_type))) throw new AiContextError("invalid_source_type", "Unbekannte Kontextquelle.");
+  if (!REDACTION_LEVELS.has(clean(input.default_redaction_level || "summary_only"))) throw new AiContextError("invalid_redaction_level", "Unbekannte Redaktionsstufe.");
+  if (!PROVIDER_SCOPES.has(clean(input.default_provider_scope || "local_only"))) throw new AiContextError("invalid_provider_scope", "Unbekannter Provider-Scope.");
 }
 
 function normalizePreflightInput(input) {

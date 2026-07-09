@@ -18,6 +18,18 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 - Vermeide wiederholte Startversuche mit verschiedenen Windows-Hintergrundmechanismen. Wenn ein Start fehlschlaegt, erst Fehlerursache/Log klaeren statt weitere Varianten zu probieren.
 - Halte den Nutzer kurz informiert, bevor ein laufender Prozess beendet oder neu gestartet wird.
 
+## Performance-Regel fuer Codex
+
+- Vor Aenderungen zuerst bestimmen, ob Code, UI, Graph/YAML, Doku oder Runtime betroffen ist.
+- Services nur gezielt neu starten, wenn geaenderter Runtime-Code live verifiziert werden muss.
+- Keine vorsorglichen Neustarts.
+- Graph-Import nur ausfuehren, wenn `data/` oder graphrelevante Architektur-/Requirement-Dateien geaendert wurden.
+- Bei Querschnittsaenderungen erst alle Code-/UI-Tests ausfuehren, danach genau einmal Graph-Import.
+- Live-LLM-Aufrufe vermeiden, wenn ein Unit-Test oder API-Contract-Test denselben Nachweis liefert.
+- Project Server ist die SQLite-Wahrheit fuer accountgebundene Projekte.
+- AI Context Server ist die SQLite-Wahrheit fuer KI-Kontextquellen, Grants, Policy und Audit.
+- Abschlussnachweis kurz halten: geaenderte Bereiche, Tests, Graph-Status, offene Punkte.
+
 ## Abschlussregel
 
 Eine Umsetzung gilt erst als fertig, wenn Code, Tests und relevante Dokumentation zusammenpassen. Wenn sich Architektur, Abhaengigkeiten, Persistenz, Login-/App-Struktur oder Projektmodell aendern, muss die entsprechende Graph-/Diagramm-Sicht mitgezogen werden.

@@ -192,10 +192,13 @@ class AdminService {
       return { access, summary: emptyAiContextSummary("ai_context_service_not_configured") };
     }
     try {
-      const [policy, grants, auditEvents] = await Promise.all([
+      const [policy, grants, auditEvents, sources, sqlite, contentSources] = await Promise.all([
         this.remoteAiContextPolicy(),
         this.remoteAiContextGrants(),
         this.remoteAiContextAuditEvents(),
+        this.remoteAiContextSources(),
+        this.remoteAiContextSqliteSummary(),
+        this.remoteAiContextContentSources(),
       ]);
       return {
         access,
@@ -203,6 +206,9 @@ class AdminService {
           policy: policy.policy || policy,
           grants: grants.items || [],
           auditEvents: auditEvents.items || [],
+          sources: sources.items || [],
+          sqlite: sqlite.summary || sqlite,
+          contentSources,
           serviceAvailable: true,
         }),
       };
@@ -339,7 +345,34 @@ class AdminService {
 
   async callApiConfigTest(config, messages) {
     if (config.apiProvider === "anthropic") return this.callAnthropicConfigTest(config, messages);
+    if (config.apiProvider === "openai-responses") return this.callOpenAiResponsesConfigTest(config, messages);
     return this.callOpenAiCompatibleConfigTest(config, messages);
+  }
+
+  async callOpenAiResponsesConfigTest(config, messages) {
+    const response = await fetch(`${config.apiBaseUrl.replace(/\/$/, "")}/responses`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
+      },
+      body: JSON.stringify({
+        model: config.apiModel,
+        input: responseInput(messages),
+      }),
+    });
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(payload.error?.message || payload.error || `OpenAI Responses API antwortet mit HTTP ${response.status}.`);
+    }
+    return {
+      content: responseOutputText(payload),
+      usage: {
+        promptTokens: payload.usage?.input_tokens ?? null,
+        completionTokens: payload.usage?.output_tokens ?? null,
+        totalTokens: payload.usage?.total_tokens ?? null,
+      },
+    };
   }
 
   async callOpenAiCompatibleConfigTest(config, messages) {
@@ -434,6 +467,27 @@ class AdminService {
     return this.httpJson(this.serviceClients.aiContextBaseUrl, "/api/ai-context/audit-events");
   }
 
+  async remoteAiContextSources() {
+    return this.httpJson(this.serviceClients.aiContextBaseUrl, "/api/ai-context/sources");
+  }
+
+  async remoteAiContextSqliteSummary() {
+    return this.httpJson(this.serviceClients.aiContextBaseUrl, "/api/ai-context/sqlite/summary");
+  }
+
+  async remoteAiContextContentSources() {
+    if (!this.serviceClients?.hardwareCatalogBaseUrl) return emptyAiContextContentSources("hardware_catalog_not_configured");
+    try {
+      const [capabilities, boards] = await Promise.all([
+        this.httpJson(this.serviceClients.hardwareCatalogBaseUrl, "/api/hardware-catalog/capabilities"),
+        this.httpJson(this.serviceClients.hardwareCatalogBaseUrl, "/api/hardware-catalog/processor-boards"),
+      ]);
+      return summarizeHardwareCatalogContent(capabilities.items || [], boards.items || []);
+    } catch (error) {
+      return emptyAiContextContentSources(error.message || String(error));
+    }
+  }
+
   async httpJson(baseUrl, pathname, options = {}) {
     const response = await fetch(`${baseUrl}${pathname}`, {
       method: options.method || "GET",
@@ -492,7 +546,7 @@ function summarizeAiUsage(events) {
   };
 }
 
-function summarizeAiContextAccess({ policy = {}, grants = [], auditEvents = [], serviceAvailable = false }) {
+function summarizeAiContextAccess({ policy = {}, grants = [], auditEvents = [], sources = [], sqlite = null, contentSources = null, serviceAvailable = false }) {
   const now = new Date();
   const grantsWithState = grants.map((grant) => ({
     ...grant,
@@ -521,6 +575,9 @@ function summarizeAiContextAccess({ policy = {}, grants = [], auditEvents = [], 
     grants: grantsWithState.sort(sortGrantsForReview),
     audit_summary,
     recent_audit_events: auditEvents.slice(-12).reverse(),
+    source_registry: summarizeAiContextSourcesRegistry(sources),
+    sqlite: summarizeAiContextSqlite(sqlite),
+    content_sources: contentSources || emptyAiContextContentSources(),
   };
 }
 
@@ -551,6 +608,110 @@ function emptyAiContextSummary(error = "") {
       by_reason: [],
     },
     recent_audit_events: [],
+    source_registry: [],
+    sqlite: {
+      available: false,
+      tables: [],
+      service_documents: [],
+    },
+    content_sources: emptyAiContextContentSources(),
+  };
+}
+
+function summarizeAiContextSourcesRegistry(sources) {
+  return (sources || []).map((source) => ({
+    source_id: source.source_id,
+    source_type: source.source_type,
+    source_scope: source.source_scope,
+    title: source.title,
+    summary: source.summary,
+    backing_service: source.backing_service,
+    endpoint: source.endpoint,
+    contains: source.contains || [],
+    default_redaction_level: source.default_redaction_level,
+    default_provider_scope: source.default_provider_scope,
+    allowed_purposes: source.allowed_purposes || [],
+    status: source.status || "active",
+  })).sort((left, right) => String(left.source_type).localeCompare(String(right.source_type)) || String(left.source_scope).localeCompare(String(right.source_scope)));
+}
+
+function summarizeHardwareCatalogContent(capabilities, boards) {
+  const capabilityById = new Map(capabilities.map((capability) => [capability.capability_id, capability]));
+  const processorBoards = boards.map((board) => ({
+    hardware_item_id: board.hardware_item_id,
+    title: board.title,
+    summary: board.summary,
+    processor_family: board.processor_family,
+    mcu_variant: board.mcu_variant,
+    module_name: board.module_name,
+    vendor: board.vendor,
+    support_policy: board.support_policy,
+    provisioning_profile_id: board.provisioning_profile_id,
+    basissoftware_profile_id: board.basissoftware_profile_id,
+    min_basissoftware_version: board.min_basissoftware_version,
+    capability_ids: board.capability_ids || [],
+    capabilities: (board.capability_ids || []).map((capabilityId) => ({
+      capability_id: capabilityId,
+      title: capabilityById.get(capabilityId)?.title || capabilityId,
+    })),
+  }));
+  const esp32Boards = processorBoards.filter((board) => board.processor_family === "esp32");
+  const capabilityIdsInUse = new Set(processorBoards.flatMap((board) => board.capability_ids));
+  return {
+    available: true,
+    sources: [{
+      source_type: "hardware_catalog",
+      title: "Hardware Catalog",
+      total_processor_boards: processorBoards.length,
+      esp32_processor_boards: esp32Boards.length,
+      total_capabilities: capabilities.length,
+      capabilities_in_use: capabilityIdsInUse.size,
+    }],
+    processor_boards: processorBoards,
+    esp32_boards: esp32Boards,
+    capabilities: capabilities.map((capability) => ({
+      capability_id: capability.capability_id,
+      title: capability.title,
+      owner_domain: capability.owner_domain,
+      status: capability.status,
+      used_by_processor_boards: processorBoards
+        .filter((board) => board.capability_ids.includes(capability.capability_id))
+        .map((board) => board.hardware_item_id),
+    })),
+  };
+}
+
+function emptyAiContextContentSources(error = "") {
+  return {
+    available: false,
+    error,
+    sources: [],
+    processor_boards: [],
+    esp32_boards: [],
+    capabilities: [],
+  };
+}
+
+function summarizeAiContextSqlite(sqlite) {
+  if (!sqlite) {
+    return {
+      available: false,
+      tables: [],
+      service_documents: [],
+    };
+  }
+  return {
+    available: sqlite.available === true,
+    db_path: sqlite.db_path || "",
+    service_key: sqlite.service_key || "",
+    schema_version: sqlite.schema_version || 0,
+    tables: (sqlite.tables || []).map((table) => ({
+      table_name: table.table_name,
+      row_count: table.row_count || 0,
+      columns: table.columns || [],
+      preview_rows: (table.preview_rows || []).slice(0, 10),
+    })),
+    service_documents: sqlite.service_documents || [],
   };
 }
 
@@ -783,6 +944,22 @@ function validateRequired(input, fields) {
       throw new AdminToolError("missing_required_field", `Pflichtfeld fehlt: ${field}`);
     }
   }
+}
+
+function responseInput(messages) {
+  return messages.map((message) => ({
+    role: message.role === "assistant" ? "assistant" : message.role === "system" ? "developer" : "user",
+    content: [{ type: "input_text", text: message.content }],
+  }));
+}
+
+function responseOutputText(payload) {
+  if (payload.output_text) return payload.output_text;
+  return (payload.output || [])
+    .flatMap((item) => item.content || [])
+    .map((part) => part.text || "")
+    .join("")
+    .trim();
 }
 
 module.exports = { AdminService };

@@ -70,9 +70,12 @@ GET /api/admin/ai-context/summary
 Liefert eine Admin-Zusammenfassung, welche Daten dem LLM als Kontext bereitgestellt werden duerfen:
 
 - globale AI-Context-Policy
+- registrierte KI-Kontextquellen aus der AI-Context-Source-Registry
 - aktive, abgelaufene und widerrufene Grants
 - Datenquellen nach Typ, Provider-Scope und Redaktionsstufe
 - letzte Kontext-Preflight-Entscheidungen mit erlaubten und abgelehnten Zugriffen
+- AI-Context-SQLite-Tabellen mit Zeilenanzahl, Spalten und sicherer Vorschau
+- fachliche Inhaltsvorschau aus dem Hardware Catalog, zum Beispiel ESP32-Boards und Capabilities
 
 Die Antwort enthaelt Metadaten zu Quellen und Grants, aber keine eigentlichen Kontextinhalte und keine Secrets. Ist der AI Context Server nicht erreichbar, liefert der Endpunkt einen sicheren Offline-Status mit leeren Listen.
 
@@ -89,7 +92,17 @@ Konfiguriert den Provider fuer Kunden-KI-Chat und Entwicklungsplattform: lokales
 
 `PUT /api/admin/llm-config` akzeptiert neben `provider`, Endpoint, Modell und API-Key auch `apiProvider`:
 
+- `openai-responses`: ruft `/responses` am OpenAI-Endpoint auf.
 - `openai-compatible`: ruft `/chat/completions` auf.
 - `anthropic`: ruft `/messages` am Anthropic-Endpoint auf.
+
+Zusaetzlich kann `routes` gesetzt werden. Unterstuetzte Task-Routen:
+
+- `general_chat`
+- `architecture_discovery`
+- `artifact_generation`
+- `code_generation`
+
+Jede Route akzeptiert `provider` mit `default`, `ollama` oder `api`. Artefakt- und Codegenerierung sind standardmaessig auf `ollama`, damit PlantUML-, Pseudocode- und Codeableitungen lokal und ohne externe Providerkosten laufen koennen.
 
 Modell-IDs werden bewusst frei gespeichert, damit neue Provider-Modelle ohne Codeaenderung eingetragen werden koennen.

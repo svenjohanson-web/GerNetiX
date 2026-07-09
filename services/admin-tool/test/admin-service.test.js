@@ -136,6 +136,64 @@ test("ai context summary shows grants policy and recent decisions", async () => 
         rejection_reason: "external_provider_customer_data_blocked_by_policy",
       }],
     },
+    "/api/ai-context/sources": {
+      items: [{
+        source_id: "ai_source.hardware_catalog.esp32_processor_boards",
+        source_type: "hardware_catalog",
+        source_scope: "processor_boards/esp32",
+        title: "ESP32 ProcessorBoards und Capabilities",
+        backing_service: "hardware-catalog",
+        endpoint: "/api/hardware-catalog/processor-boards?processor_family=esp32",
+        contains: ["processor_boards", "technical_capabilities"],
+        default_provider_scope: "local_only",
+        default_redaction_level: "summary_only",
+        allowed_purposes: ["architecture_assistance"],
+        status: "active",
+      }],
+    },
+    "/api/ai-context/sqlite/summary": {
+      summary: {
+        available: true,
+        db_path: ".runtime/gernetix-ai-context.sqlite",
+        service_key: "ai-context-server",
+        schema_version: 3,
+        tables: [{
+          table_name: "ai_context_grants",
+          row_count: 1,
+          columns: ["grant_id", "source_scope"],
+          preview_rows: [{ grant_id: "grant-1", source_scope: "projects/project-1" }],
+        }],
+        service_documents: [{ collection_name: "grants", row_count: 1 }],
+      },
+    },
+    "/api/hardware-catalog/capabilities": {
+      items: [{
+        capability_id: "capability.processor_esp32",
+        title: "ESP32 ProcessorBoard",
+        owner_domain: "Hardware",
+        status: "active",
+      }, {
+        capability_id: "capability.ota",
+        title: "OTA",
+        owner_domain: "Hardware",
+        status: "active",
+      }],
+    },
+    "/api/hardware-catalog/processor-boards": {
+      items: [{
+        hardware_item_id: "hardware.processor_board.espressif_esp32_devkitc",
+        title: "Espressif ESP32-DevKitC",
+        summary: "Offizielles Espressif-Development-Board.",
+        processor_family: "esp32",
+        mcu_variant: "ESP32",
+        module_name: "ESP-WROOM-32",
+        vendor: "Espressif",
+        capability_ids: ["capability.processor_esp32", "capability.ota"],
+        basissoftware_profile_id: "basissoftware.profile.esp32_factory",
+        provisioning_profile_id: "provisioning_profile.esp32_ota_bootstrap",
+        min_basissoftware_version: "0.1.0",
+      }],
+    },
   });
 
   const result = await service.aiContextAccessSummary(adminContext({ purpose: "ai_context_access_review" }));
@@ -147,6 +205,14 @@ test("ai context summary shows grants policy and recent decisions", async () => 
   assert.equal(result.summary.source_breakdown[0].source_type, "project_files");
   assert.equal(result.summary.audit_summary.allowed, 1);
   assert.equal(result.summary.audit_summary.denied, 1);
+  assert.equal(result.summary.sqlite.available, true);
+  assert.equal(result.summary.sqlite.tables[0].table_name, "ai_context_grants");
+  assert.equal(result.summary.sqlite.tables[0].preview_rows[0].grant_id, "grant-1");
+  assert.equal(result.summary.source_registry[0].source_type, "hardware_catalog");
+  assert.equal(result.summary.source_registry[0].source_scope, "processor_boards/esp32");
+  assert.equal(result.summary.content_sources.available, true);
+  assert.equal(result.summary.content_sources.esp32_boards[0].title, "Espressif ESP32-DevKitC");
+  assert.equal(result.summary.content_sources.esp32_boards[0].capabilities[1].title, "OTA");
 });
 
 test("ai context summary falls back when context service is unavailable", async () => {
@@ -157,6 +223,47 @@ test("ai context summary falls back when context service is unavailable", async 
   assert.equal(result.summary.service_available, false);
   assert.equal(result.summary.active_grants, 0);
   assert.match(result.summary.error, /ECONNREFUSED/);
+});
+
+test("llm config test uses OpenAI Responses API when configured", async () => {
+  const service = createAdminServiceWithHttpJson({});
+  let requestedUrl = "";
+  const previousFetch = global.fetch;
+  global.fetch = async (url, options) => {
+    requestedUrl = url;
+    const body = JSON.parse(options.body);
+    assert.equal(body.model, "gpt-5.5");
+    assert.equal(body.input[0].role, "developer");
+    assert.equal(Object.hasOwn(body, "temperature"), false);
+    return {
+      ok: true,
+      json: async () => ({
+        output_text: "OK",
+        usage: { input_tokens: 4, output_tokens: 1, total_tokens: 5 },
+      }),
+    };
+  };
+  service.llmConfigStore = {
+    publicConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-5.5" }),
+    getConfig: () => ({
+      provider: "api",
+      apiProvider: "openai-responses",
+      apiBaseUrl: "https://api.openai.com/v1",
+      apiModel: "gpt-5.5",
+      apiKey: "secret",
+    }),
+    updateConfig: () => ({}),
+  };
+
+  try {
+    const result = await service.testLlmConfig();
+    assert.equal(requestedUrl, "https://api.openai.com/v1/responses");
+    assert.equal(result.ok, true);
+    assert.equal(result.content, "OK");
+    assert.equal(result.usage.totalTokens, 5);
+  } finally {
+    global.fetch = previousFetch;
+  }
 });
 
 function createAdminServiceWithHttpJson(routes, error = null) {
@@ -172,6 +279,7 @@ function createAdminServiceWithHttpJson(routes, error = null) {
     serviceClients: {
       deviceManagementBaseUrl: "http://device.test",
       projectServerBaseUrl: "http://project.test",
+      hardwareCatalogBaseUrl: "http://hardware.test",
       aiUsageBaseUrl: "http://usage.test",
       aiContextBaseUrl: "http://context.test",
     },

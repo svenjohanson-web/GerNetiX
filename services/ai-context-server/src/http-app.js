@@ -30,6 +30,16 @@ function createHttpApp(options) {
         return;
       }
 
+      if (req.method === "GET" && path === `${prefix}/sources`) {
+        sendJson(res, 200, { items: service.listSources(Object.fromEntries(url.searchParams.entries())) });
+        return;
+      }
+
+      if (req.method === "POST" && path === `${prefix}/sources`) {
+        sendJson(res, 201, { source: service.upsertSource(await readJsonBody(req)) });
+        return;
+      }
+
       if (req.method === "POST" && path === `${prefix}/grants`) {
         sendJson(res, 201, { grant: service.createGrant(await readJsonBody(req)) });
         return;
@@ -49,6 +59,11 @@ function createHttpApp(options) {
 
       if (req.method === "GET" && path === `${prefix}/audit-events`) {
         sendJson(res, 200, { items: service.listAuditEvents(Object.fromEntries(url.searchParams.entries())) });
+        return;
+      }
+
+      if (req.method === "GET" && path === `${prefix}/sqlite/summary`) {
+        sendJson(res, 200, { summary: service.sqliteSummary() });
         return;
       }
 

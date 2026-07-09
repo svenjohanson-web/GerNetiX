@@ -104,6 +104,7 @@
           <section id="adminApiFields" class="admin-provider-fields hidden">
             <label>API Anbieter
               <select id="adminApiProvider">
+                <option value="openai-responses">OpenAI Responses API</option>
                 <option value="openai-compatible">OpenAI-kompatibel</option>
                 <option value="anthropic">Claude / Anthropic</option>
               </select>
@@ -112,6 +113,41 @@
             <label>API Modell<input id="adminApiModel" type="text" value="gpt-4.1-mini" /></label>
             <div id="adminApiModelOptions" class="model-option-list"></div>
             <label>API Key<input id="adminApiKey" type="password" placeholder="leer lassen, um bestehenden Key zu behalten" autocomplete="off" /></label>
+          </section>
+
+          <section class="llm-route-grid">
+            <div>
+              <span>Chat</span>
+              <select id="adminRouteGeneralChat">
+                <option value="default">Standard</option>
+                <option value="ollama">Lokal</option>
+                <option value="api">API</option>
+              </select>
+            </div>
+            <div>
+              <span>Architektur-Discovery</span>
+              <select id="adminRouteArchitectureDiscovery">
+                <option value="default">Standard</option>
+                <option value="ollama">Lokal</option>
+                <option value="api">API</option>
+              </select>
+            </div>
+            <div>
+              <span>Artefakte</span>
+              <select id="adminRouteArtifactGeneration">
+                <option value="ollama">Lokal</option>
+                <option value="default">Standard</option>
+                <option value="api">API</option>
+              </select>
+            </div>
+            <div>
+              <span>Codegenerierung</span>
+              <select id="adminRouteCodeGeneration">
+                <option value="ollama">Lokal</option>
+                <option value="default">Standard</option>
+                <option value="api">API</option>
+              </select>
+            </div>
           </section>
 
           <div class="button-row">
@@ -125,7 +161,7 @@
           <p class="eyebrow">Aktiv</p>
           <h2>Konfiguration</h2>
           <dl id="adminLlmStatus" class="meta-list"></dl>
-          <p class="helper-text">Diese Einstellung gilt fuer KI-Chat und Entwicklungsplattform in der Kunden-App. Lokale Ollama-Modelle bleiben auf diesem Rechner; API-Aufrufe gehen an den konfigurierten kompatiblen Endpoint.</p>
+          <p class="helper-text">Die Standardroute kann OpenAI, Claude oder lokal sein. Kostenkritische Artefakt- und Codegenerierung kann separat lokal geroutet werden, damit externe Providerkosten nur dort entstehen, wo sie fachlich gewollt sind.</p>
         </aside>
       </section>
 
@@ -193,6 +229,88 @@
               </table>
             </div>
           </article>
+        </section>
+        <section class="panel">
+          <p class="eyebrow">Source Registry</p>
+          <h2>Registrierte KI-Kontextquellen</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Quelle</th>
+                  <th>Scope</th>
+                  <th>Backend</th>
+                  <th>Inhalt</th>
+                  <th>Default</th>
+                </tr>
+              </thead>
+              <tbody id="aiContextRegistryRows"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="admin-layout wide-main">
+          <article class="panel">
+            <p class="eyebrow">SQLite</p>
+            <h2>AI Context Tabellen</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Tabelle</th>
+                    <th>Zeilen</th>
+                    <th>Spalten</th>
+                    <th>Vorschau</th>
+                  </tr>
+                </thead>
+                <tbody id="aiContextSqliteRows"></tbody>
+              </table>
+            </div>
+          </article>
+          <aside class="panel">
+            <p class="eyebrow">SQLite Datei</p>
+            <h2>Speicher</h2>
+            <dl id="aiContextSqliteMeta" class="meta-list"></dl>
+          </aside>
+        </section>
+        <section class="panel">
+          <p class="eyebrow">SQLite Inhalt</p>
+          <h2>Gespeicherte AI-Context-Datensaetze</h2>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Tabelle</th>
+                  <th>Datensatz</th>
+                  <th>Inhalt</th>
+                </tr>
+              </thead>
+              <tbody id="aiContextSqliteContentRows"></tbody>
+            </table>
+          </div>
+        </section>
+        <section class="admin-layout wide-main">
+          <article class="panel">
+            <p class="eyebrow">Fachliche Inhalte</p>
+            <h2>ESP32 Boards und Capabilities</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Board</th>
+                    <th>MCU / Modul</th>
+                    <th>Capabilities</th>
+                    <th>Basissoftware</th>
+                  </tr>
+                </thead>
+                <tbody id="aiContextBoardRows"></tbody>
+              </table>
+            </div>
+          </article>
+          <aside class="panel">
+            <p class="eyebrow">Quelle</p>
+            <h2>Hardware Catalog</h2>
+            <dl id="aiContextContentMeta" class="meta-list"></dl>
+          </aside>
         </section>
       </section>
     </main>

@@ -164,8 +164,29 @@
                 <button id="developmentChatSubmit" class="primary" type="submit">Senden</button>
               </div>
             </form>
+            <section id="developmentArchitectureDiagram" class="architecture-diagram-panel"></section>
           </article>
           <aside class="panel development-assistant-context">
+            <p class="eyebrow">Projekt</p>
+            <h3>Entwicklungsprojekt</h3>
+            <div class="development-project-summary">
+              <span>Aktuelles Projekt</span>
+              <strong id="developmentProjectName">Kein Projekt geoeffnet</strong>
+            </div>
+            <div class="button-row development-project-actions">
+              <button id="openDevelopmentProjectButton" type="button">Projekt oeffnen</button>
+              <button id="newDevelopmentProjectButton" type="button">Projekt neu</button>
+            </div>
+            <div id="developmentProjectOpenPanel" class="development-project-panel hidden">
+              <label class="development-project-field">Projekt oeffnen<select id="developmentProjectSelect"></select></label>
+            </div>
+            <form id="developmentProjectForm" class="development-project-form hidden">
+              <label>Name<input id="developmentProjectTitle" type="text" maxlength="120" placeholder="z. B. Pflanzenwaechter" /></label>
+              <label>Beschreibung<textarea id="developmentProjectDescription" rows="3" placeholder="Kurz beschreiben, was entstehen soll."></textarea></label>
+              <button type="submit">Projekt anlegen</button>
+            </form>
+            <button id="saveDevelopmentArchitectureButton" type="button" disabled>Architektur speichern</button>
+            <p id="developmentProjectStatus" class="helper-text">Bitte Projekt oeffnen oder neu anlegen, bevor der Chat startet.</p>
             <p class="eyebrow">PoC-Konfiguration</p>
             <h3>LLM-Routing</h3>
             <dl id="developmentAssistantConfig" class="meta-list"></dl>

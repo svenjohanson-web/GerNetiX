@@ -70,6 +70,8 @@ items:
     implementationStatus: Implemented
     ownerDomain: CrossDomain
     summary: API-Artefakt fuer Admin-Uebersicht, Statistikseite, Device-Status, Customer-Data-Access-Consents, Audit Events, Learning Feedback, KI-Usage-Metriken, KI-Kostensteuerung, LLM-Routing-Konfiguration und LLM-Datenfreigaben.
+    usesApiArtifacts:
+      - api_artifact.hardware_catalog
     derivedFromRequirements:
       - requirement.device_admin_status_inspection
       - requirement.customer_data_consent_for_admin_access
@@ -101,8 +103,12 @@ items:
       - Oeffentliche LLM-Nutzung muss geschaetzte Providerkosten ausweisen.
       - Lokale LLM-Nutzung fuehrt keine externen Providerkosten.
       - LLM-Routing-Konfiguration muss von Identity Server und Admin Tool aus derselben Runtime-Konfiguration gelesen werden.
-      - API-basiertes LLM-Routing unterscheidet `apiProvider` fuer OpenAI-kompatible Chat-Completions und Claude/Anthropic Messages API.
+      - API-basiertes LLM-Routing unterscheidet `apiProvider` fuer OpenAI Responses API, OpenAI-kompatible Chat-Completions und Claude/Anthropic Messages API.
+      - LLM-Routing-Konfiguration enthaelt Task-Routen fuer `general_chat`, `architecture_discovery`, `artifact_generation` und `code_generation`.
+      - Artefakt- und Codegenerierung sollen standardmaessig lokal geroutet werden, auch wenn die Standardroute fuer Chat auf eine externe API zeigt.
       - Die LLM-Datenuebersicht liest Grants, Policy und Audit-Events aus dem AI Context Access API und zeigt bei nicht erreichbarem Service einen sicheren Offline-Status.
+      - Die LLM-Datenuebersicht zeigt AI-Context-SQLite-Tabellen nur als sichere Metadaten- und Vorschauansicht ohne `raw_json`-Dump.
+      - Fachliche KI-Kontextinhalte wie ESP32-Boards und Capabilities werden aus dem Hardware Catalog gelesen und als Inhaltsvorschau angezeigt.
 
   - id: api_artifact.provisioning_tool
     type: api_artifact
@@ -186,9 +192,24 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: Account
-    summary: API-Artefakt fuer klassische Registrierung, E-Mail-Verifizierung, lokalen Login, Social Login ueber gekapselte Provider, Logout und Passwort-Reset. Public Responses duerfen keine Provider-IDs und keine interne E-Mail als oeffentliche Identitaet exponieren.
+    summary: API-Artefakt fuer klassische Registrierung, E-Mail-Verifizierung, lokalen Login, Social Login ueber gekapselte Provider, Logout, Passwort-Reset und lokale Plattform-Adapter wie den Architektur-Discovery-Assistenten. Public Responses duerfen keine Provider-IDs und keine interne E-Mail als oeffentliche Identitaet exponieren.
     derivedFromRequirements:
       - requirement.identity_registration_login
+      - requirement.architecture_discovery_guided_by_llm
+    endpoints:
+      - POST /api/platform/development-projects
+      - POST /api/platform/development-projects/{project_id}/architecture
+      - POST /api/platform/development-assistant/chat
+    responseSections:
+      - message
+      - usage
+      - config
+      - architectureDiagram
+    rules:
+      - Der Architektur-Discovery-Chat akzeptiert nur accountgebundene Entwicklungsprojekte.
+      - Entwicklungsprojekte werden ueber den Project Server mit `user_id` persistiert.
+      - Gespeicherte Architekturdiagramme werden als `docs/architecture.puml` und ProjectViewManifest-PlantUML-View abgelegt.
+      - `architectureDiagram` enthaelt eine KI-abgeleitete PlantUML-Skizze und ist keine bestaetigte Architekturentscheidung.
 
   - id: api_artifact.account_self_transparency
     type: api_artifact
@@ -274,20 +295,26 @@ items:
     relatedDataModels:
       - data_model.ai_context_grant
       - data_model.ai_context_policy
+      - data_model.ai_context_source
       - data_model.ai_context_access_audit_event
     endpoints:
       - GET /api/ai-context/policy
       - PUT /api/ai-context/policy
       - GET /api/ai-context/grants
       - POST /api/ai-context/grants
+      - GET /api/ai-context/sources
+      - POST /api/ai-context/sources
       - POST /api/ai-context/grants/{grant_id}/revoke
       - POST /api/ai-context/preflight
       - GET /api/ai-context/audit-events
+      - GET /api/ai-context/sqlite/summary
     rules:
       - Ohne aktiven passenden Grant wird Kontextzugriff abgelehnt.
       - Jeder erlaubte oder abgelehnte Preflight erzeugt ein Audit-Event.
       - Externe Provider duerfen kundenrelevante Daten standardmaessig nicht erhalten.
       - Grants muessen Scope, Zweck, Provider-Scope, Redaktionsstufe und Gueltigkeit enthalten.
+      - Die Source Registry beschreibt Kontextquellen wie Hardware Catalog, AI-Context-SQLite oder Graphdatenbank; erst Grants erlauben die Nutzung.
+      - Die SQLite-Summary darf Tabellen, Zeilenanzahlen, Spalten und redigierte Vorschauzeilen liefern, aber keine unkontrollierten Rohdaten-Dumps.
 
   - id: api_artifact.ai_admin_usage_dashboard
     type: api_artifact

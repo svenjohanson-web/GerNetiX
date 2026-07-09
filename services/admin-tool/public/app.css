@@ -112,18 +112,64 @@ td span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px;
   border-top: 1px solid var(--line);
   padding-top: 12px;
 }
+.llm-route-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  border-top: 1px solid var(--line);
+  padding-top: 12px;
+}
+.llm-route-grid div {
+  display: grid;
+  gap: 6px;
+}
+.llm-route-grid span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
 .model-option-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
+  display: grid;
+  gap: 10px;
 }
 .model-option-list button {
   max-width: 100%;
   white-space: normal;
 }
+.model-tier {
+  display: grid;
+  gap: 6px;
+}
+.model-tier-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+.model-tier-head strong {
+  font-size: 13px;
+}
+.model-tier-head span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.model-tier-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
 .meta-list { display: grid; gap: 10px; margin: 12px 0 0; }
 .meta-list dt { color: var(--muted); font-size: 12px; }
 .meta-list dd { margin: 2px 0 0; font-weight: 700; overflow-wrap: anywhere; }
+.inline-data-list {
+  display: grid;
+  grid-template-columns: 150px minmax(220px, 1fr);
+  gap: 6px 10px;
+  margin: 0;
+}
+.inline-data-list div { display: contents; }
+.inline-data-list dt { color: var(--muted); font-size: 12px; }
+.inline-data-list dd { margin: 0; overflow-wrap: anywhere; }
 .helper-text { margin: 12px 0 0; color: var(--muted); line-height: 1.45; }
 .flash-status {
   border: 1px solid var(--line);

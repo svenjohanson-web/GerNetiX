@@ -372,6 +372,21 @@ items:
       - requirement.ai_model_access_control
       - requirement.ai_cost_margin_reporting
 
+  - id: data_model.llm_task_route
+    type: data_model
+    title: LlmTaskRoute
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Business
+    summary: Konfiguriert je KI-Aufgabentyp, ob die Standardroute, ein lokales LLM oder eine externe API genutzt wird. Dient dazu, interaktive Premium-Qualitaet und kostenoptimierte lokale Artefakt-/Codegenerierung getrennt zu steuern.
+    fields:
+      - taskId
+      - providerRoute
+      - reason
+      - costPolicy
+    derivedFromRequirements:
+      - requirement.architecture_discovery_guided_by_llm
+
   - id: data_model.ai_admin_action_audit_event
     type: data_model
     title: AiAdminActionAuditEvent
@@ -437,6 +452,33 @@ items:
       - allowExternalProviderCustomerData
       - defaultMaxContextItems
       - protectedSourceTypes
+      - updatedAt
+    privacyClassification: internal
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.ai_context_access_control
+
+  - id: data_model.ai_context_source
+    type: data_model
+    title: AiContextSource
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Authorization
+    summary: Registrierte KI-Kontextquelle mit Source-Type, Scope, fachlichem Backend, Endpoint, Inhaltsbeschreibung, Default-Provider-Scope, Default-Redaktionsstufe und erlaubten Zwecken. Die Source Registry beschreibt, welche fachlichen Datenquellen existieren; Grants entscheiden separat, ob eine KI sie nutzen darf.
+    fields:
+      - sourceId
+      - sourceType
+      - sourceScope
+      - title
+      - summary
+      - backingService
+      - endpoint
+      - contains
+      - defaultProviderScope
+      - defaultRedactionLevel
+      - allowedPurposes
+      - status
+      - createdAt
       - updatedAt
     privacyClassification: internal
     accessMustBeAudited: true
@@ -894,12 +936,14 @@ items:
       - dialogId
       - accountId
       - projectId
+      - projectServerProjectId
       - currentPhase
       - questions
       - answers
       - assumptions
       - openQuestions
       - confirmedDecisions
+      - savedArchitectureArtifactPath
       - createdAt
       - updatedAt
     privacyClassification: customer_relevant
@@ -920,6 +964,7 @@ items:
     fields:
       - targetArchitectureId
       - projectId
+      - projectServerProjectId
       - architectureStyle
       - actors
       - targetSystems
@@ -932,6 +977,9 @@ items:
       - offlineRequirements
       - securityNotes
       - openArchitectureQuestions
+      - plantUmlSource
+      - plantUmlArtifactPath
+      - diagramDerivedFrom
       - confirmationState
       - confirmedAt
     derivedFromRequirements:

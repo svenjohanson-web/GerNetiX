@@ -123,6 +123,7 @@ items:
     affectsDataModels:
       - data_model.ai_context_grant
       - data_model.ai_context_policy
+      - data_model.ai_context_source
       - data_model.ai_context_access_audit_event
     affectsApiArtifacts:
       - api_artifact.ai_context_access
@@ -145,7 +146,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: In Implementation
     ownerDomain: Authorization
-    summary: Speichert account-, projekt-, quelle-, scope-, zweck- und providergebundene Kontext-Grants mit Gueltigkeit, Widerruf und Redaktionsstufe.
+    summary: Speichert account-, projekt-, quelle-, scope-, zweck- und providergebundene Kontext-Grants mit Gueltigkeit, Widerruf und Redaktionsstufe. Fuehrt zusaetzlich eine Source Registry fuer fachliche KI-Kontextquellen wie Hardware Catalog und AI-Context-SQLite.
 
   - id: component.ai_context_access_policy
     type: architecture_component
@@ -266,9 +267,13 @@ items:
     implementationNotes:
       - Erster PoC ist als neuer Kunden-IDE-Menuepunkt `Entwicklungsplattform` unter `/app/development-platform/` umgesetzt.
       - Die Chatbox nutzt serverseitig `/api/platform/development-assistant/chat`.
+      - Der Chat erfordert ein accountgebundenes Entwicklungsprojekt aus dem Project Server; ohne Projekt-ID wird der LLM-Aufruf abgelehnt.
+      - Neue Entwicklungsprojekte werden ueber `/api/platform/development-projects` im Project Server angelegt und ueber `user_id` an den Account gebunden.
+      - Die aktuell abgeleitete Architektur kann jederzeit als `docs/architecture.puml` plus ProjectViewManifest-PlantUML-View gespeichert werden.
       - Der LLM-Provider ist im PoC ueber das eigenstaendige Admin Tool `http://127.0.0.1:4600/admin/` konfigurierbar; lokal ist Ollama mit Default `http://127.0.0.1:11434` vorgesehen, alternativ eine OpenAI-kompatible API oder Claude/Anthropic.
       - Die gemeinsame Runtime-Konfiguration `.runtime/identity-llm-config.json` wird bei Chat-Anfragen nachgeladen, damit Providerwechsel ohne Identity-Server-Neustart greifen.
       - Datenquellen sind im PoC bewusst auf aktuellen Chat und festen Architektur-Prompt begrenzt; Graph-, Projekt- und Kundendaten muessen spaeter explizit freigegeben werden.
+      - Aus der letzten KI-Antwort wird eine PlantUML-Architekturskizze abgeleitet und in der Entwicklungsplattform angezeigt; sie bleibt als Skizze markiert und ersetzt keine Nutzerbestaetigung.
       - Frontend-Logik des Entwicklungsasts liegt getrennt in `services/identity-server/public/app/development-platform.js`.
       - Backend-Logik des lokalen Architektur-Assistenten liegt getrennt in `services/identity-server/src/dev/development-assistant.js`.
 

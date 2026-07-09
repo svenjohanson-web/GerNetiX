@@ -82,6 +82,7 @@ function developmentPlatform() {
       state,
       postJson,
       escapeHtml,
+      escapeAttribute,
       meta,
     });
   }

@@ -382,6 +382,7 @@ items:
     affectsDataModels:
       - data_model.ai_context_grant
       - data_model.ai_context_policy
+      - data_model.ai_context_source
       - data_model.ai_context_access_audit_event
     affectsApiArtifacts:
       - api_artifact.ai_context_access
@@ -396,6 +397,7 @@ items:
       - Externe Provider duerfen kundenrelevante Daten standardmaessig nicht erhalten.
       - Jeder Preflight erzeugt ein Audit-Event mit Entscheidung und Ablehnungsgrund.
       - Kontext-Grants und Audit-Events werden in einer eigenen AI-Context-SQLite gespeichert.
+      - Fachliche Kontextquellen wie `hardware_catalog/processor_boards/esp32` muessen in einer Source Registry sichtbar sein; die Registrierung ersetzt keinen Grant.
 
   - id: requirement.ai_admin_usage_dashboard
     type: requirement
@@ -1032,7 +1034,14 @@ items:
       - data_model.project_architecture_dialog
     acceptanceCriteria:
       - Der Nutzer wird zuerst zu Zielsystemen, Benutzern, Geraeten, Daten, Kommunikation, Bedienoberflaechen, Offline-/Online-Verhalten und Betriebsumgebung befragt.
+      - Der Architektur-Chat startet erst, wenn der Nutzer ein eigenes Entwicklungsprojekt geladen oder neu angelegt hat.
+      - Eigene Entwicklungsprojekte werden im Project Server persistiert und ueber `user_id` an den Account gebunden.
+      - Der Nutzer kann die aktuell abgeleitete Architektur jederzeit als PlantUML-Projektartefakt speichern.
       - Der Dialog erzeugt eine nachvollziehbare Zielarchitektur mit Bausteinen wie IoT Device, Backend, Mobile App, Desktop App, Browser App, lokales Netzwerk, Cloud oder HomeServer.
+      - Aus der jeweils letzten KI-Antwort wird eine PlantUML-Architekturskizze erzeugt und in der Entwicklungsplattform angezeigt.
+      - Die PlantUML-Skizze muss als KI-abgeleitete Skizze markiert bleiben und darf keine bestaetigte Architekturentscheidung ersetzen.
+      - LLM-Aufgaben werden ueber Task-Routen gesteuert, damit interaktiver Chat optional ueber eine externe API laufen kann, waehrend kostenkritische Artefakt-, PlantUML-, Pseudocode- und Codegenerierung standardmaessig lokal ausgefuehrt wird.
+      - Der Admin muss fuer Chat, Architektur-Discovery, Artefaktgenerierung und Codegenerierung getrennt waehlen koennen, ob die Standardroute, ein lokales LLM oder eine externe API genutzt wird.
       - Technologiefragen wie MQTT, ESP32, WLAN, Bluetooth, REST, WebSocket, Datenbank, Framework oder Hosting werden erst nach der Zielarchitektur gestellt.
       - Jede Technologieempfehlung muss auf eine erkannte Architekturentscheidung oder ein fachliches Projektziel zurueckfuehrbar sein.
       - Unklare Antworten werden als offene Architekturfragen gespeichert, statt vorschnell Technologien festzulegen.
@@ -1045,6 +1054,7 @@ items:
       - Der Identity Server stellt `/api/platform/development-assistant/chat` als Proxy fuer das im Admin Tool konfigurierte LLM-Routing bereit.
       - Konfiguration erfolgt ueber das Admin Tool unter `http://127.0.0.1:4600/admin/` und wird in `.runtime/identity-llm-config.json` gespeichert.
       - Wechsel zwischen lokalem Ollama und OpenAI-kompatibler API sollen ohne Identity-Server-Neustart greifen.
+      - Task-Routen `general_chat`, `architecture_discovery`, `artifact_generation` und `code_generation` sind Teil der gemeinsamen Runtime-Konfiguration; Artefakt- und Codegenerierung bevorzugen lokal, um Anbieter-Kosten zu vermeiden.
       - Im PoC sind nur aktueller Chat und fester Architektur-Prompt als Datenquellen freigegeben.
 
   - id: requirement.learning_firmware_base_scaffold_preserves_ota

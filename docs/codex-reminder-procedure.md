@@ -45,6 +45,18 @@ Codex soll lokale Serverprozesse sparsam behandeln:
 - Keine langen Trial-and-Error-Ketten mit `Start-Process`, `Start-Job`, `cmd start` oder Log-Redirects. Wenn der erste Start nicht sauber klappt, Ursache pruefen und dem Nutzer knapp melden.
 - Prozessneustarts sind Eingriffe in den laufenden Arbeitskontext und sollen vorher angekuendigt werden.
 
+## Performance-Regel fuer Codex
+
+- Vor Aenderungen zuerst bestimmen, ob Code, UI, Graph/YAML, Doku oder Runtime betroffen ist.
+- Services nur gezielt neu starten, wenn geaenderter Runtime-Code live verifiziert werden muss.
+- Keine vorsorglichen Neustarts.
+- Graph-Import nur ausfuehren, wenn `data/` oder graphrelevante Architektur-/Requirement-Dateien geaendert wurden.
+- Bei Querschnittsaenderungen erst alle Code-/UI-Tests ausfuehren, danach genau einmal Graph-Import.
+- Live-LLM-Aufrufe vermeiden, wenn ein Unit-Test oder API-Contract-Test denselben Nachweis liefert.
+- Project Server ist die SQLite-Wahrheit fuer accountgebundene Projekte.
+- AI Context Server ist die SQLite-Wahrheit fuer KI-Kontextquellen, Grants, Policy und Audit.
+- Abschlussnachweis kurz halten: geaenderte Bereiche, Tests, Graph-Status, offene Punkte.
+
 ## Kein grosses Prozesswerk
 
 Dieses Verfahren ist bewusst klein. Es soll Codex erinnern, nicht den Entwickler mit Formularen beschaeftigen. Wenn unklar ist, ob eine Aenderung dokumentationsrelevant ist, gilt:
