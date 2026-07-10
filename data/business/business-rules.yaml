@@ -103,6 +103,7 @@ items:
       - Nachhaltige Skalierbarkeit kostenpflichtiger KI-Dienste.
     policies:
       - Negative Credit-Guthaben duerfen nicht entstehen.
+      - Fuer den aktuellen Stand gilt `1 Credit = 1 Token`; Credit-Limits und Token-Limits duerfen nicht auseinanderlaufen.
       - Jeder kostenpflichtige KI-Aufruf muss vor Ausfuehrung serverseitig gegen Budget, Credits, Modellfreigabe und Schutzlimits geprueft werden.
       - Jeder kostenpflichtige KI-Aufruf muss als Usage Event protokolliert werden, auch wenn er abgelehnt oder fehlerhaft beendet wird.
       - Administratoren muessen KI-Nutzung, Kosten, Budgets und auffaellige Nutzungsmuster einsehen und steuern koennen.

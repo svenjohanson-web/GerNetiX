@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="980" viewBox="0 0 1680 980" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Aktuelle lokale MVP-Architektur mit Plattform UI, Identity Server, AI Context Prompt-Grundlagen, SQL-only Persistenz, Hardware Catalog, Hardware Shop, Device Management, Provisioning, Recovery, Build, MQTT Broker und weiteren Services.</desc>
+  <desc id="desc">Aktuelle lokale MVP-Architektur mit Plattform UI, Identity Server, AI Context Prompt-Grundlagen und Architektur-Bausteinen, SQL-only Persistenz, Hardware Catalog, Hardware Shop, Device Management, Provisioning, Recovery, Build, MQTT Broker und weiteren Services.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -47,7 +47,7 @@
 
     <rect class="node app" x="265" y="150" width="260" height="74" rx="10"/>
     <text class="titleText" x="395" y="178" text-anchor="middle">GerNetiX Plattform UI</text>
-    <text class="smallText" x="395" y="198" text-anchor="middle">/app/dashboard, dev-platform, ki-chat</text>
+    <text class="smallText" x="395" y="198" text-anchor="middle">/app/dashboard, learn, dev-platform</text>
     <text class="smallText" x="395" y="216" text-anchor="middle">/app/ide :4300</text>
 
     <rect class="node app" x="265" y="245" width="260" height="64" rx="10"/>
@@ -132,7 +132,7 @@
 
     <rect class="node domain" x="1385" y="405" width="190" height="54" rx="10"/>
     <text class="titleText" x="1480" y="429" text-anchor="middle">AI Context</text>
-    <text class="smallText" x="1480" y="448" text-anchor="middle">Grants + Policy + Prompts :5500</text>
+    <text class="smallText" x="1480" y="448" text-anchor="middle">Grants + Policy + Prompts + Bausteine :5500</text>
   </g>
 
   <g id="tools">

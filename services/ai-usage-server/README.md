@@ -6,7 +6,7 @@ Der Service ist der serverseitige Schutz vor ungedeckten oder unkontrollierten K
 
 Runtime-State wird standardmaessig in `.runtime/gernetix-services.sqlite` persistiert. Unit-Tests koennen weiterhin explizit das In-Memory-Repository verwenden, aber lokale Dev-Server verlieren Usage Events nicht mehr bei jedem Neustart.
 
-Neue Identity-Accounts starten mit 120 Credits. Dieser Rahmen soll normale Architektur-Discovery-Aufrufe mit einem kostenpflichtigen OpenAI-Modell erlauben, ohne die Cost-Control-Pruefung zu umgehen.
+Neue Identity-Accounts starten mit dem aktuellen Monatslimit als Credit-Guthaben. Fuer diesen Stand gilt strikt: `1 Credit = 1 Token`. Tageslimit, Monatslimit und Quellenlimit muessen deshalb denselben Token/Credit-Rahmen abbilden; Anbieterpreise dienen nur der Kostenschaetzung.
 
 ## Start
 
@@ -32,7 +32,7 @@ API-Prefix:
 - Credit-Gutschrift und Credit-Sperre
 - KI-Preflight gegen Credits, Limits, Modellfreigabe und Kill-Switch
 - Usage Event Audit Trail
-- Verbrauchsabrechnung nach Tokens und Modellpreis
+- Verbrauchsabrechnung mit `1 Credit = 1 Token` und separater Anbieter-Kostenschaetzung
 - Admin Usage Dashboard
 - Admin Cost Control Actions inklusive Audit Events
 - Suspicious Usage / Budgetnaehe

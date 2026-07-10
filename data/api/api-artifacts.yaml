@@ -267,7 +267,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: Business
-    summary: Fachliches API-Artefakt fuer Credit-Guthaben, Verbrauch, verbleibende Credits, Quellenrating und Verbrauchshistorie.
+    summary: Fachliches API-Artefakt fuer Credit-Guthaben, Verbrauch, verbleibende Credits, Quellenrating und Verbrauchshistorie. Credit- und Token-Sicht muessen fuer den aktuellen Stand identisch sein.
     endpoints:
       - GET /api/ai-usage/accounts/{account_id}/credits
       - GET /api/ai-usage/accounts/{account_id}/rating
@@ -280,7 +280,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: Business
-    summary: Serverseitige Vorpruefung fuer kostenpflichtige KI-Aufrufe gegen Credits, Budgets, Quellenratings, Modellfreigabe, Rate Limits und Kill-Switch.
+    summary: Serverseitige Vorpruefung fuer kostenpflichtige KI-Aufrufe gegen Credits, Budgets, Quellenratings, Modellfreigabe, Rate Limits und Kill-Switch. Fuer textbasierte LLM-Aufrufe gilt `1 Credit = 1 Token`.
     derivedFromRequirements:
       - requirement.ai_prepaid_credit_check
 
@@ -308,6 +308,7 @@ items:
       - data_model.ai_context_policy
       - data_model.ai_context_source
       - data_model.ai_prompt_foundation
+      - data_model.ai_architecture_component
       - data_model.ai_context_access_audit_event
     endpoints:
       - GET /api/ai-context/policy
@@ -317,6 +318,9 @@ items:
       - GET /api/ai-context/sources
       - POST /api/ai-context/sources
       - GET /api/ai-context/prompt-foundations
+      - POST /api/ai-context/prompt-foundations
+      - GET /api/ai-context/architecture-components
+      - POST /api/ai-context/architecture-components
       - POST /api/ai-context/grants/{grant_id}/revoke
       - POST /api/ai-context/preflight
       - GET /api/ai-context/audit-events
@@ -326,8 +330,9 @@ items:
       - Jeder erlaubte oder abgelehnte Preflight erzeugt ein Audit-Event.
       - Externe Provider duerfen kundenrelevante Daten standardmaessig nicht erhalten.
       - Grants muessen Scope, Zweck, Provider-Scope, Redaktionsstufe und Gueltigkeit enthalten.
-      - Die Source Registry beschreibt Kontextquellen wie Hardware Catalog, Prompt-Grundlagen, AI-Context-SQLite oder Graphdatenbank; erst Grants erlauben die Nutzung geschuetzter Kontextdaten.
+      - Die Source Registry beschreibt Kontextquellen wie Hardware Catalog, Prompt-Grundlagen, Architektur-Bausteine, AI-Context-SQLite oder Graphdatenbank; erst Grants erlauben die Nutzung geschuetzter Kontextdaten.
       - Systemprompt-Grundlagen liegen fuehrend in der AI-Context-SQLite und werden ueber `/api/ai-context/prompt-foundations` gelesen.
+      - Architektur-Bausteine liegen fuehrend in der AI-Context-SQLite und werden ueber `/api/ai-context/architecture-components` gelesen.
       - Die SQLite-Summary darf Tabellen, Zeilenanzahlen, Spalten und redigierte Vorschauzeilen liefern, aber keine unkontrollierten Rohdaten-Dumps.
 
   - id: api_artifact.ai_admin_usage_dashboard
@@ -336,7 +341,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: Business
-    summary: API-Artefakt fuer Admin-Dashboard-Kennzahlen und Account-Blatt zu KI-Nutzung, Credits, Tokens, Quellenratings, Kosten, Modellen, Fehlern, Ablehnungen, Budgetnaehe und Margen.
+    summary: API-Artefakt fuer Admin-Dashboard-Kennzahlen und Account-Blatt zu KI-Nutzung, Credits, Tokens, Quellenratings, Kosten, Modellen, Fehlern, Ablehnungen, Budgetnaehe und Margen. Die Anzeige muss kenntlich machen, dass Credits und Tokens aktuell dieselbe Nutzungseinheit sind.
     derivedFromRequirements:
       - requirement.ai_admin_usage_dashboard
       - requirement.ai_cost_margin_reporting
@@ -351,7 +356,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: Business
-    summary: API-Artefakt fuer administrative Steuerung von Credits, Sperren, Limits, Modellfreigaben, Warnschwellen und globalem KI-Kill-Switch.
+    summary: API-Artefakt fuer administrative Steuerung von Credits, Sperren, Limits, Modellfreigaben, Warnschwellen und globalem KI-Kill-Switch. Admin-Aenderungen an Tages- oder Monatslimits muessen Credit- und Token-Limit gemeinsam setzen.
     derivedFromRequirements:
       - requirement.ai_usage_limits
       - requirement.ai_model_access_control

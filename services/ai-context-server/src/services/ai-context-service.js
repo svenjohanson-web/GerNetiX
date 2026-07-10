@@ -2,7 +2,7 @@ const crypto = require("node:crypto");
 const { AiContextError } = require("../errors");
 const { isGrantActive } = require("../repositories/in-memory-ai-context-repository");
 
-const SOURCE_TYPES = new Set(["current_chat", "project_files", "graph_database", "device_data", "customer_data", "admin_statistics", "hardware_catalog", "ai_prompt"]);
+const SOURCE_TYPES = new Set(["current_chat", "project_files", "graph_database", "device_data", "customer_data", "admin_statistics", "hardware_catalog", "ai_prompt", "architecture_context"]);
 const PURPOSES = new Set(["architecture_assistance", "debugging", "support_case", "usage_analysis", "general_chat"]);
 const PROVIDER_SCOPES = new Set(["local_only", "external_allowed", "external_redacted_only"]);
 const REDACTION_LEVELS = new Set(["none", "metadata_only", "summary_only", "masked"]);
@@ -55,6 +55,10 @@ class AiContextService {
     return this.repository.listPromptFoundations(filter);
   }
 
+  listArchitectureComponents(filter = {}) {
+    return this.repository.listArchitectureComponents(filter);
+  }
+
   upsertPromptFoundation(input = {}) {
     validatePromptFoundationInput(input);
     const now = this.now().toISOString();
@@ -91,6 +95,27 @@ class AiContextService {
       default_redaction_level: clean(input.default_redaction_level || "summary_only"),
       default_provider_scope: clean(input.default_provider_scope || "local_only"),
       allowed_purposes: Array.isArray(input.allowed_purposes) ? input.allowed_purposes.map(clean).filter((purpose) => PURPOSES.has(purpose)) : [],
+      status: clean(input.status || "active"),
+      created_at: existing?.created_at || now,
+      updated_at: now,
+    });
+  }
+
+  upsertArchitectureComponent(input = {}) {
+    validateArchitectureComponentInput(input);
+    const now = this.now().toISOString();
+    const componentId = clean(input.component_id);
+    const existing = this.repository.listArchitectureComponents().find((item) => item.component_id === componentId);
+    return this.repository.saveArchitectureComponent({
+      component_id: componentId,
+      name: clean(input.name),
+      aliases: arrayOfClean(input.aliases),
+      summary: clean(input.summary),
+      properties: arrayOfClean(input.properties),
+      provided_interfaces: arrayOfClean(input.provided_interfaces),
+      required_interfaces: arrayOfClean(input.required_interfaces),
+      decision_hints: arrayOfClean(input.decision_hints),
+      source_scope: normalizeScope(input.source_scope || `start_architecture/components/${componentId.replace(/^arch_component\./, "")}`),
       status: clean(input.status || "active"),
       created_at: existing?.created_at || now,
       updated_at: now,
@@ -237,6 +262,15 @@ function validatePromptFoundationInput(input) {
   }
 }
 
+function validateArchitectureComponentInput(input) {
+  for (const field of ["component_id", "name", "summary"]) {
+    if (!clean(input[field])) throw new AiContextError("missing_required_field", `Pflichtfeld fehlt: ${field}`);
+  }
+  if (!["active", "draft", "archived"].includes(clean(input.status || "active"))) {
+    throw new AiContextError("invalid_status", "Unbekannter Komponenten-Status.");
+  }
+}
+
 function normalizePreflightInput(input) {
   for (const field of ["account_id", "source_type", "purpose", "provider"]) {
     if (!clean(input[field])) throw new AiContextError("missing_required_field", `Pflichtfeld fehlt: ${field}`);
@@ -280,6 +314,10 @@ function positiveInt(value, fallback) {
 
 function bool(value, fallback) {
   return typeof value === "boolean" ? value : fallback;
+}
+
+function arrayOfClean(value) {
+  return Array.isArray(value) ? value.map(clean).filter(Boolean) : [];
 }
 
 function removeUndefined(input) {

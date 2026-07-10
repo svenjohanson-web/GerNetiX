@@ -176,6 +176,21 @@ class AuthService {
     return { logged_out: true };
   }
 
+  resolve_session_token(rawToken) {
+    const session = this.repository.findSessionByTokenHash(this.tokenService.hashToken(rawToken));
+    if (!session || session.revoked_at || isExpired(session.expires_at)) return null;
+    const account = this.repository.findUserById(session.user_id);
+    if (!account) return null;
+    return {
+      account: toPublicAccount(account),
+      session: {
+        id: session.id,
+        user_id: session.user_id,
+        expires_at: session.expires_at,
+      },
+    };
+  }
+
   async request_password_reset(email) {
     const account = this.repository.findUserByEmail(email);
     if (!account) {

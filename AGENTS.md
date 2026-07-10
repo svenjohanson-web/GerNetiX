@@ -22,15 +22,20 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 ## Performance-Regel fuer Codex
 
 - Vor Aenderungen zuerst bestimmen, ob Code, UI, SQLite-Graph, Doku oder Runtime betroffen ist.
+- Bei Code-/UI-Aenderungen zuerst lokal implementieren und gezielte Unit-/Contract-Tests ausfuehren.
 - Services nur gezielt neu starten, wenn geaenderter Runtime-Code live verifiziert werden muss.
 - Keine vorsorglichen Neustarts.
+- Live-Runtime nur anfassen, wenn der Nutzer explizit eine sofortige Live-Pruefung verlangt oder ein Fehler nur live reproduzierbar ist.
+- Persistierte Dev-Daten nur nach expliziter Ankuendigung aendern.
+- Bei Devserver-Starts Ports immer explizit setzen; nie globale `PORT`-Umgebungswerte erben.
 - Graph-Import nur fuer Legacy-/Bootstrap-YAML oder nach bewusstem YAML-Export nutzen. Neue Graph-Regeln per `tools/yaml-graph-sqlite/import-yaml-graph.js upsert-artifact` und `upsert-relationship` schreiben.
-- Bei Querschnittsaenderungen erst alle Code-/UI-Tests ausfuehren, danach genau einmal Graph-Validierung oder Legacy-Import, falls noetig.
+- Bei Querschnittsaenderungen erst alle Code-/UI-Tests ausfuehren, danach genau einmal Graph-Validierung oder Legacy-Import, falls noetig. Graph-Schritte nicht bei reinen Arbeitsanweisungs-, Kommentar- oder UI-Textaenderungen ausfuehren.
 - Live-LLM-Aufrufe vermeiden, wenn ein Unit-Test oder API-Contract-Test denselben Nachweis liefert.
 - Project Server ist die SQLite-Wahrheit fuer accountgebundene Projekte.
 - AI Context Server ist die SQLite-Wahrheit fuer KI-Kontextquellen, Grants, Policy und Audit.
 - Dauerhaftes Persistieren ist nur in SQL/SQLite erlaubt. JSON-Dateien, Prozessspeicher, localStorage, Browser-State, Temp-Dateien und Caches sind nur Logic/Control/View- oder Test-/Runtime-Hilfen und duerfen nie fachliche Quelle der Wahrheit sein.
 - Abschlussnachweis kurz halten: geaenderte Bereiche, Tests, Graph-Status, offene Punkte.
+- Abschlussnachweis nicht kuenstlich verlaengern: keine Runtime-, Graph- oder Live-Daten-Schritte ergaenzen, wenn sie fuer die konkrete Aenderung nicht erforderlich sind.
 
 ## Abschlussregel
 

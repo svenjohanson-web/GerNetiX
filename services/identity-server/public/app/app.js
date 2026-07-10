@@ -14,6 +14,8 @@ const state = {
   serviceStatus: {},
   activeProjectId: "",
   activeDeviceId: "",
+  activeRecoveryDeviceId: "",
+  recoveryCheckResult: null,
   activeLearnTab: "catalog",
   projectFilter: "all",
   inventoryProcessorFamily: "",
@@ -24,16 +26,15 @@ const state = {
   sourcePath: "src/main.cpp",
   projectSourcesByProjectId: {},
   ideViewMode: "model",
-  ideChat: [],
   developmentPlatform: null,
-  aiChat: null,
 };
 
 const routeMap = {
   dashboard: "dashboardView",
   "development-platform": "developmentPlatformView",
-  "ki-chat": "aiChatView",
+  learn: "learnView",
   ide: "ideView",
+  "device-recovery": "deviceRecoveryView",
   devices: "devicesView",
   builds: "buildsView",
   billing: "billingView",
@@ -43,7 +44,6 @@ const routeMap = {
 let deviceOnboardingController = null;
 let guidedProjectViewController = null;
 let developmentPlatformController = null;
-let aiChatController = null;
 
 function deviceOnboarding() {
   if (!deviceOnboardingController) {
@@ -94,18 +94,6 @@ function developmentPlatform() {
   return developmentPlatformController;
 }
 
-function aiChat() {
-  if (!aiChatController) {
-    aiChatController = AiChat.create({
-      state,
-      postJson,
-      escapeHtml,
-      meta,
-    });
-  }
-  return aiChatController;
-}
-
 bootstrap();
 
 document.querySelector("#logoutButton").addEventListener("click", async () => {
@@ -131,7 +119,6 @@ document.querySelector("#ideProjectBrowser").addEventListener("click", (event) =
 document.querySelectorAll("[data-ide-view-mode]").forEach((button) => {
   button.addEventListener("click", () => setIdeViewMode(button.dataset.ideViewMode));
 });
-document.querySelector("#ideChatForm").addEventListener("submit", sendIdeChatMessage);
 document.querySelector("#ideDeviceSelect").addEventListener("change", () => {
   state.activeDeviceId = document.querySelector("#ideDeviceSelect").value;
   syncSelectedDevicePort();
@@ -141,8 +128,16 @@ document.querySelector("#refreshUsbPortsButton").addEventListener("click", refre
 document.querySelector("#saveSourceButton").addEventListener("click", saveSource);
 document.querySelector("#buildButton").addEventListener("click", startBuild);
 document.querySelector("#usbFlashButton").addEventListener("click", startUsbFlash);
-document.querySelector("#networkDiscoveryButton").addEventListener("click", discoverNetworkDevices);
-document.querySelector("#esp32BootloaderIdentifyButton").addEventListener("click", identifyEsp32Bootloader);
+document.querySelector("#recoveryDeviceSelect").addEventListener("change", () => {
+  state.activeRecoveryDeviceId = document.querySelector("#recoveryDeviceSelect").value;
+  state.recoveryCheckResult = null;
+  renderDeviceRecovery();
+});
+document.querySelector("#refreshRecoveryDevicesButton").addEventListener("click", refreshRecoveryDevices);
+document.querySelector("#recoveryCheckUsbButton").addEventListener("click", () => checkRecoveryFirmware("usb"));
+document.querySelector("#recoveryCheckOtaButton").addEventListener("click", () => checkRecoveryFirmware("ota"));
+document.querySelector("#deviceDiscoveryMethod").addEventListener("change", selectDeviceDiscoveryMethod);
+document.querySelector("#deviceDiscoverySearchButton").addEventListener("click", searchDevicesForInventory);
 document.querySelector("#avrBootloaderIdentifyButton").addEventListener("click", identifyAvrBootloaderExperimental);
 document.querySelector("#claimSelectedDiscoveredDevicesButton").addEventListener("click", claimSelectedDiscoveredDevices);
 document.querySelector("#deviceInventoryForm").addEventListener("submit", createInventoryDevice);
@@ -160,7 +155,6 @@ window.addEventListener("popstate", renderRoute);
 
 async function bootstrap() {
   developmentPlatform().init();
-  aiChat().init();
   await refresh();
   renderAll();
   renderRoute();
@@ -178,9 +172,9 @@ async function refresh() {
   state.workspace = summary.workspace_state;
   state.serviceStatus = summary.service_status || {};
   developmentPlatform().setAssistantConfig(summary.development_assistant || null);
-  aiChat().setAssistantConfig(summary.ai_chat || null);
   state.activeProjectId = new URLSearchParams(window.location.search).get("project") || state.workspace.lastProjectId || state.projects[0]?.id || "";
   state.activeDeviceId = state.devices.find((device) => device.usb_flash_supported)?.device_id || state.devices[0]?.device_id || "";
+  state.activeRecoveryDeviceId = state.activeRecoveryDeviceId || state.activeDeviceId;
 }
 
 function renderAll() {
@@ -189,8 +183,8 @@ function renderAll() {
   renderProjects();
   renderLearn();
   developmentPlatform().render();
-  aiChat().render();
   renderIdeShell();
+  renderDeviceRecovery();
   renderDeviceInventoryForm();
   renderNetworkDiscovery();
   renderDevices();
@@ -203,15 +197,18 @@ function renderRoute() {
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("hidden", view.id !== routeMap[route]));
   document.querySelectorAll(".tabs a").forEach((link) => link.classList.toggle("active", link.dataset.route === route));
   if (route === "development-platform") developmentPlatform().render();
-  if (route === "ki-chat") aiChat().render();
   if (route === "ide") loadIdeProject();
+  if (route === "device-recovery") {
+    renderDeviceRecovery();
+    refreshUsbPorts(false);
+  }
   if (route === "devices") loadDevicePageTools();
 }
 
 function routeName() {
   const match = window.location.pathname.match(/^\/app\/([^/]+)/);
   const route = match ? match[1] : "dashboard";
-  if (route === "learn" || route === "projects") return "dashboard";
+  if (route === "projects") return "learn";
   return route;
 }
 
@@ -404,7 +401,6 @@ async function loadIdeProject() {
   renderProjectViewManifest(project);
   focusIdeStepSource(project);
   renderIdeViewMode(project);
-  renderIdeChat();
   state.workspace = await postJson("/api/platform/workspace-state", {
     lastProjectId: project.id,
     lastMode: "ide",
@@ -424,7 +420,6 @@ function renderIdeEmptyState() {
   document.querySelector("#sourceEditor").value = "";
   document.querySelector("#ideImageView").innerHTML = "";
   document.querySelector("#ideModelView").innerHTML = "";
-  document.querySelector("#ideChatMessages").innerHTML = "";
   document.querySelector("#ideProjectViewManifest").innerHTML = "";
 }
 
@@ -610,52 +605,6 @@ async function renderIdePlantUmlImage(image) {
   }
 }
 
-async function sendIdeChatMessage(event) {
-  event.preventDefault();
-  const input = document.querySelector("#ideChatInput");
-  const content = input.value.trim();
-  if (!content) return;
-  const project = projectById(state.activeProjectId);
-  state.ideChat.push({ role: "user", content });
-  input.value = "";
-  renderIdeChat();
-  setIdeChatStatus("KI denkt...");
-  try {
-    const context = project ? `\n\nProjekt: ${project.name}\nDatei: ${state.sourcePath}` : "";
-    const response = await postJson("/api/platform/ai-chat/chat", {
-      messages: state.ideChat.slice(0, -1).concat({ role: "user", content: `${content}${context}` }).slice(-8),
-    });
-    state.ideChat.push({
-      role: "assistant",
-      content: response.message?.content || "Keine Antwort erhalten.",
-      usage: response.usage || null,
-    });
-    setIdeChatStatus("Antwort erhalten.");
-  } catch (error) {
-    state.ideChat.push({ role: "assistant", content: `KI-Chat nicht erreichbar: ${error.message}` });
-    setIdeChatStatus("Fehler beim KI-Chat.");
-  }
-  renderIdeChat();
-}
-
-function renderIdeChat() {
-  const target = document.querySelector("#ideChatMessages");
-  if (!target) return;
-  const messages = state.ideChat.length ? state.ideChat : [{ role: "assistant", content: "Bereit fuer Fragen zum aktuellen Projekt." }];
-  target.innerHTML = messages.map((message) => `
-    <article class="chat-message ${escapeHtml(message.role)}">
-      <span>${message.role === "user" ? "Du" : "KI"}</span>
-      <p>${escapeHtml(message.content)}</p>
-    </article>
-  `).join("");
-  target.scrollTop = target.scrollHeight;
-}
-
-function setIdeChatStatus(text) {
-  const target = document.querySelector("#ideChatStatus");
-  if (target) target.textContent = text;
-}
-
 async function saveSource() {
   const project = projectById(state.activeProjectId);
   await putJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(state.sourcePath)}`, {
@@ -705,9 +654,125 @@ async function startUsbFlash() {
   }
 }
 
+async function refreshRecoveryDevices() {
+  setRecoveryStatus("running", "Devices werden aktualisiert...");
+  try {
+    const response = await getJson("/api/user-ide/devices");
+    state.devices = response.items || [];
+    if (!state.devices.some((device) => device.device_id === state.activeRecoveryDeviceId)) {
+      state.activeRecoveryDeviceId = state.devices.find((device) => device.usb_flash_supported)?.device_id || state.devices[0]?.device_id || "";
+    }
+    state.recoveryCheckResult = null;
+    renderIdeShell();
+    renderDeviceRecovery();
+    setRecoveryStatus("ok", state.devices.length ? `${state.devices.length} Device(s) geladen.` : "Keine Devices fuer diesen Account gefunden.");
+  } catch (error) {
+    setRecoveryStatus("error", error.message);
+  }
+}
+
+async function checkRecoveryFirmware(mode) {
+  const device = selectedRecoveryDevice();
+  if (!device) {
+    setRecoveryStatus("error", "Bitte zuerst ein Device waehlen.");
+    return;
+  }
+  setRecoveryStatus("running", `Firmwarecheck ueber ${mode.toUpperCase()} laeuft...`);
+  try {
+    const result = await postJson("/api/user-ide/device-recovery/check-firmware", {
+      device_id: device.device_id,
+      mode,
+      upload_port: mode === "usb" ? selectedRecoveryUsbPort(device) : "",
+    });
+    state.recoveryCheckResult = result;
+    renderDeviceRecovery();
+    setRecoveryStatus(result.status === "ready" ? "ok" : "error", result.summary);
+  } catch (error) {
+    setRecoveryStatus("error", error.message);
+  }
+}
+
+function renderDeviceRecovery() {
+  const select = document.querySelector("#recoveryDeviceSelect");
+  if (!select) return;
+  if (!state.activeRecoveryDeviceId && state.devices.length) {
+    state.activeRecoveryDeviceId = state.devices.find((device) => device.usb_flash_supported)?.device_id || state.devices[0].device_id;
+  }
+  select.innerHTML = state.devices.length
+    ? state.devices.map((device) => `<option value="${escapeHtml(device.device_id)}">${escapeHtml(device.display_name)} - ${escapeHtml(device.build_target_label || device.hardware_profile_id || "Device")}</option>`).join("")
+    : `<option value="">Keine Devices</option>`;
+  select.value = state.activeRecoveryDeviceId || "";
+  const device = selectedRecoveryDevice();
+  document.querySelector("#recoveryDeviceTitle").textContent = device ? device.display_name : "Kein Device gewaehlt";
+  document.querySelector("#recoveryDeviceMeta").innerHTML = device ? [
+    ["Device ID", device.device_id],
+    ["Hardware", device.hardware_profile_id],
+    ["Boardprofil", device.build_target_label || "kein Boardprofil"],
+    ["Connectivity", device.connectivity_status || "unknown"],
+    ["OTA", device.ota_status || "unknown"],
+    ["USB", device.usb_flash_supported ? usbFlashLabel(device) : "nicht konfiguriert"],
+  ].map(([key, value]) => meta(key, value)).join("") : "";
+  document.querySelector("#recoveryDeviceList").innerHTML = state.devices.length ? state.devices.map((item) => `
+    <button class="recovery-device-card ${item.device_id === state.activeRecoveryDeviceId ? "active-method" : ""}" type="button" data-recovery-device="${escapeHtml(item.device_id)}">
+      <strong>${escapeHtml(item.display_name)}</strong>
+      <span>${escapeHtml(item.build_target_label || item.hardware_profile_id || "Device")}</span>
+      <small>${escapeHtml(item.connectivity_status || "unknown")} · OTA ${escapeHtml(item.ota_status || "unknown")}</small>
+    </button>
+  `).join("") : `<p class="empty">Keine Devices fuer diesen Account gefunden.</p>`;
+  document.querySelectorAll("[data-recovery-device]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activeRecoveryDeviceId = button.dataset.recoveryDevice;
+      state.recoveryCheckResult = null;
+      renderDeviceRecovery();
+    });
+  });
+  const usbButton = document.querySelector("#recoveryCheckUsbButton");
+  const otaButton = document.querySelector("#recoveryCheckOtaButton");
+  usbButton.disabled = !device;
+  otaButton.disabled = !device;
+  renderRecoveryCheckResult();
+}
+
+function renderRecoveryCheckResult() {
+  const target = document.querySelector("#recoveryCheckResult");
+  if (!target) return;
+  const result = state.recoveryCheckResult;
+  if (!result) {
+    target.innerHTML = `<p class="empty">Noch kein Firmwarecheck ausgefuehrt.</p>`;
+    return;
+  }
+  target.innerHTML = `
+    <article class="recovery-result ${result.status === "ready" ? "ok" : "blocked"}">
+      <div>
+        <p class="eyebrow">${escapeHtml(result.mode.toUpperCase())}</p>
+        <h3>${escapeHtml(result.summary)}</h3>
+        <p>${escapeHtml(result.next_action || "")}</p>
+      </div>
+      <dl class="meta-list compact">
+        ${result.checks.map((check) => meta(check.check_id, `${check.status}: ${check.message}`)).join("")}
+      </dl>
+    </article>
+  `;
+}
+
+function selectedRecoveryDevice() {
+  return state.devices.find((device) => device.device_id === state.activeRecoveryDeviceId) || state.devices[0] || null;
+}
+
+function selectedRecoveryUsbPort(device) {
+  return selectedUsbPort() || bestUsbPortForDevice(device)?.port || device?.upload_port || "";
+}
+
+function setRecoveryStatus(kind, text) {
+  const status = document.querySelector("#recoveryStatus");
+  if (!status) return;
+  status.className = `flash-status ${kind}`;
+  status.textContent = text;
+  status.classList.toggle("hidden", !text);
+}
+
 async function openProjectInIde(projectId) {
   state.activeProjectId = projectId;
-  state.ideChat = [];
   await postJson("/api/platform/workspace-state", {
     lastProjectId: projectId,
     lastMode: "ide",
@@ -736,6 +801,14 @@ async function discoverNetworkDevices() {
 
 async function identifyEsp32Bootloader() {
   return deviceOnboarding().identifyEsp32Bootloader();
+}
+
+function selectDeviceDiscoveryMethod() {
+  return deviceOnboarding().selectDeviceDiscoveryMethod();
+}
+
+async function searchDevicesForInventory() {
+  return deviceOnboarding().searchDevicesForInventory();
 }
 
 async function identifyAvrBootloaderExperimental() {

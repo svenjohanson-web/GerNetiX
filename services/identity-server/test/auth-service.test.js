@@ -1,4 +1,7 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const test = require("node:test");
 
 const {
@@ -74,6 +77,41 @@ test("local registration can use a stable account id for dev integrations", asyn
   );
 
   assert.equal(registered.account.user_id, "acct-demo");
+});
+
+test("sqlite identity persistence keeps local accounts across repository reloads", async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-identity-"));
+  const sqlitePath = path.join(tempDir, "identity.sqlite");
+  const firstEmailService = new MockEmailService({ log() {} });
+  const first = createDefaultIdentityModule({
+    emailService: firstEmailService,
+    persistenceBackend: "sqlite",
+    sqlitePath,
+    appBaseUrl: "https://app.gernetix.test",
+  });
+
+  const registered = await first.register_local(
+    "persisted",
+    "persisted@example.com",
+    "correct horse battery",
+    true,
+    "correct horse battery",
+    { user_id: "acct-persisted" },
+  );
+  await first.verify_email(extractToken(firstEmailService.sentMessages[0].link));
+
+  const second = createDefaultIdentityModule({
+    emailService: new MockEmailService({ log() {} }),
+    persistenceBackend: "sqlite",
+    sqlitePath,
+    appBaseUrl: "https://app.gernetix.test",
+  });
+  const login = await second.login_local("persisted@example.com", "correct horse battery");
+  const resolved = second.resolve_session_token(login.session.token);
+
+  assert.equal(registered.account.user_id, "acct-persisted");
+  assert.equal(login.account.user_id, "acct-persisted");
+  assert.equal(resolved.account.user_id, "acct-persisted");
 });
 
 test("social login creates exactly one internal account and reuses it on next login", async () => {

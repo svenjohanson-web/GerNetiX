@@ -12,6 +12,7 @@ Der Service entscheidet vor einem KI-Aufruf, ob eine Datenquelle als Kontext gen
 - Audit fuer erlaubte und abgelehnte Kontextentscheidungen
 - Source Registry fuer fachliche KI-Kontextquellen wie Hardware Catalog, Prompt-Grundlagen oder AI-Context-SQLite
 - zentrale Prompt-Grundlagen fuer KI-Chat, Architektur-Discovery und weitere KI-Routen
+- zentrale Architektur-Bausteine mit Eigenschaften, provided/required Schnittstellen und Entscheidungshinweisen fuer erklaerbare Startarchitekturen
 - Pflege von Prompt-Regeln ueber die AI-Context-SQLite, damit nutzende Dienste ohne Codeaenderung und ohne Neustart neue Prompt-Regeln verwenden koennen
 - Grundlage dafuer, dass KI spaeter gezielt mit Projekt-, Graph-, Device- oder Kundendaten antworten kann
 
@@ -41,6 +42,7 @@ http://127.0.0.1:5500
 - Grants muessen Quelle, Scope, Zweck, Provider-Scope, Redaktionsstufe und Ablaufzeit enthalten.
 - Registrierte Sources beschreiben Datenquellen; erst ein Grant erlaubt ihre Nutzung.
 - Systemprompts und andere KI-Grundlagen liegen fuehrend in der AI-Context-SQLite, nicht in den nutzenden Apps.
+- Architektur-Bausteinwissen liegt fuehrend in der AI-Context-SQLite; nutzende Dienste duerfen daraus generisch suchen, aber keine fachlichen Bausteinantworten im Code pflegen.
 - Nutzende Dienste duerfen Prompt-Regeln nur laden und dynamischen Laufzeitkontext ergaenzen; fachliche Prompt-Regeln gehoeren nicht in Identity-, IDE- oder Admin-Code.
 - Externe Provider duerfen Kundendaten standardmaessig nicht erhalten.
 - Redaktionsstufen sind `none`, `metadata_only`, `summary_only` und `masked`.

@@ -271,7 +271,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Not Started
     ownerDomain: Business
-    summary: Accountgebundenes KI-Credit-Budget fuer aktuelles Guthaben, gesperrte Credits, verfuegbare Credits und Tarifbezug. `accountId` ist ausschliesslich eine Referenz auf `identity.user_id` und darf keine zweite Account-Wahrheit bilden.
+    summary: Accountgebundenes KI-Credit-Budget fuer aktuelles Guthaben, gesperrte Credits, verfuegbare Credits und Tarifbezug. `accountId` ist ausschliesslich eine Referenz auf `identity.user_id` und darf keine zweite Account-Wahrheit bilden. Fuer den aktuellen Stand entspricht ein Credit genau einem Token.
     fields:
       - accountId
       - planId
@@ -317,7 +317,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Not Started
     ownerDomain: Business
-    summary: Zentrales Usage-Event fuer jeden kostenpflichtigen, fehlgeschlagenen oder abgelehnten KI-Aufruf.
+    summary: Zentrales Usage-Event fuer jeden kostenpflichtigen, fehlgeschlagenen oder abgelehnten KI-Aufruf. `calculatedCredits` muss bei textbasierten LLM-Aufrufen der Summe aus Eingabe- und Ausgabetokens entsprechen.
     fields:
       - accountId
       - occurredAt
@@ -543,6 +543,32 @@ items:
       - allowedSources
       - blockedSources
       - content
+      - status
+      - createdAt
+      - updatedAt
+    privacyClassification: internal
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.ai_context_access_control
+      - requirement.architecture_discovery_guided_by_llm
+
+  - id: data_model.ai_architecture_component
+    type: data_model
+    title: AiArchitectureComponent
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Authorization
+    summary: Zentral gepflegter Architektur-Baustein fuer KI-gestuetzte Architektur-Discovery. Das Modell beschreibt Name, Aliasbegriffe, Eigenschaften, provided/required Schnittstellen und Entscheidungshinweise und liegt fuehrend in der AI-Context-SQLite, damit nutzende Apps keine fachlichen Bausteinantworten im Code pflegen.
+    fields:
+      - componentId
+      - name
+      - aliases
+      - summary
+      - properties
+      - providedInterfaces
+      - requiredInterfaces
+      - decisionHints
+      - sourceScope
       - status
       - createdAt
       - updatedAt

@@ -1,5 +1,5 @@
 const { SqliteStateStore, jsonColumn } = require("../../../shared");
-const { InMemoryAiContextRepository, defaultPolicy, defaultSources, defaultPromptFoundations } = require("./in-memory-ai-context-repository");
+const { InMemoryAiContextRepository, defaultPolicy, defaultSources, defaultPromptFoundations, defaultArchitectureComponents } = require("./in-memory-ai-context-repository");
 
 class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
   constructor(store) {
@@ -16,6 +16,7 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
         auditEvents: [],
         sources: defaultSources(),
         promptFoundations: defaultPromptFoundations(),
+        architectureComponents: defaultArchitectureComponents(),
         policy: defaultPolicy(),
       },
       collectionMap: {
@@ -23,6 +24,7 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
         auditEvents: "audit_events",
         sources: "sources",
         promptFoundations: "prompt_foundations",
+        architectureComponents: "architecture_components",
       },
     }));
   }
@@ -59,6 +61,12 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
 
   savePromptFoundation(promptFoundation) {
     const result = super.savePromptFoundation(promptFoundation);
+    this.persist();
+    return result;
+  }
+
+  saveArchitectureComponent(component) {
+    const result = super.saveArchitectureComponent(component);
     this.persist();
     return result;
   }
@@ -100,6 +108,13 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
           "status",
           "updated_at",
         ], "route_task, foundation_id"),
+        sqliteTableSummary(this.store, "ai_context_architecture_components", [
+          "component_id",
+          "name",
+          "source_scope",
+          "status",
+          "updated_at",
+        ], "name"),
         sqliteTableSummary(this.store, "ai_context_grants", [
           "grant_id",
           "account_id",
@@ -146,6 +161,7 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
       auditEvents: this.auditEvents,
       sources: Array.from(this.sources.values()),
       promptFoundations: Array.from(this.promptFoundations.values()),
+      architectureComponents: Array.from(this.architectureComponents.values()),
       policy: this.policy,
     };
     this.store.save(state);
@@ -153,11 +169,13 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
     this.store.replaceCollection?.("audit_events", state.auditEvents, "audit_event_id");
     this.store.replaceCollection?.("sources", state.sources, "source_id");
     this.store.replaceCollection?.("prompt_foundations", state.promptFoundations, "foundation_id");
+    this.store.replaceCollection?.("architecture_components", state.architectureComponents, "component_id");
     if (typeof this.store.replaceTable === "function") {
       this.store.replaceTable("ai_context_grants", state.grants, grantColumns());
       this.store.replaceTable("ai_context_audit_events", state.auditEvents, auditColumns());
       this.store.replaceTable("ai_context_sources", state.sources, sourceColumns());
       this.store.replaceTable("ai_context_prompt_foundations", state.promptFoundations, promptFoundationColumns());
+      this.store.replaceTable("ai_context_architecture_components", state.architectureComponents, architectureComponentColumns());
       this.store.replaceTable("ai_context_policy", [state.policy], policyColumns());
     }
   }
@@ -181,6 +199,7 @@ function aiContextSchema() {
     `CREATE TABLE IF NOT EXISTS ai_context_audit_events (audit_event_id TEXT PRIMARY KEY, occurred_at TEXT NOT NULL, account_id TEXT, project_id TEXT, actor_id TEXT, actor_role TEXT, source_type TEXT, source_scope TEXT, purpose TEXT, provider TEXT, model TEXT, grant_id TEXT, access_decision TEXT NOT NULL, rejection_reason TEXT, redaction_level TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS ai_context_sources (source_id TEXT PRIMARY KEY, source_type TEXT NOT NULL, source_scope TEXT NOT NULL, title TEXT NOT NULL, summary TEXT, backing_service TEXT NOT NULL, endpoint TEXT NOT NULL, contains_json TEXT NOT NULL, default_redaction_level TEXT NOT NULL, default_provider_scope TEXT NOT NULL, allowed_purposes_json TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS ai_context_prompt_foundations (foundation_id TEXT PRIMARY KEY, title TEXT NOT NULL, route_task TEXT NOT NULL, source_scope TEXT NOT NULL, content_kind TEXT NOT NULL, allowed_sources_json TEXT NOT NULL, blocked_sources_json TEXT NOT NULL, content TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS ai_context_architecture_components (component_id TEXT PRIMARY KEY, name TEXT NOT NULL, source_scope TEXT NOT NULL, aliases_json TEXT NOT NULL, summary TEXT NOT NULL, properties_json TEXT NOT NULL, provided_interfaces_json TEXT NOT NULL, required_interfaces_json TEXT NOT NULL, decision_hints_json TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS ai_context_policy (policy_id TEXT PRIMARY KEY, deny_without_grant INTEGER NOT NULL, require_explicit_source_scope INTEGER NOT NULL, allow_external_provider_customer_data INTEGER NOT NULL, default_max_context_items INTEGER NOT NULL, protected_source_types_json TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
   ];
 }
@@ -204,6 +223,20 @@ function promptFoundationColumns() {
     ]),
     allowed_sources_json: jsonColumn("allowed_sources"),
     blocked_sources_json: jsonColumn("blocked_sources"),
+    raw_json: jsonColumn((row) => row),
+  };
+}
+
+function architectureComponentColumns() {
+  return {
+    ...columns([
+      "component_id", "name", "source_scope", "summary", "status", "created_at", "updated_at",
+    ]),
+    aliases_json: jsonColumn("aliases"),
+    properties_json: jsonColumn("properties"),
+    provided_interfaces_json: jsonColumn("provided_interfaces"),
+    required_interfaces_json: jsonColumn("required_interfaces"),
+    decision_hints_json: jsonColumn("decision_hints"),
     raw_json: jsonColumn((row) => row),
   };
 }

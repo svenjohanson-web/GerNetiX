@@ -16,11 +16,14 @@
         <nav class="admin-nav" aria-label="Admin Navigation">
           <button type="button" data-admin-view="statistics">Statistik</button>
           <button type="button" data-admin-view="accounts">Accounts</button>
-          <button type="button" data-admin-view="ai-usage">KI Usage</button>
-          <button type="button" data-admin-view="ai-context">LLM-Daten</button>
-          <button type="button" data-admin-view="llm-config">LLM-Routing</button>
+          <button type="button" data-admin-view="ai-usage" data-admin-group="ai">KI</button>
         </nav>
       </header>
+      <nav id="aiSubNav" class="admin-subnav hidden" aria-label="KI Navigation">
+        <button type="button" data-admin-sub-view="ai-usage">Usage</button>
+        <button type="button" data-admin-sub-view="ai-context">Daten</button>
+        <button type="button" data-admin-sub-view="llm-config">Routing</button>
+      </nav>
 
       <section id="statisticsView" class="admin-view">
         <section class="metrics-grid" id="statisticsMetrics"></section>
@@ -89,6 +92,16 @@
             <p class="eyebrow">Policy</p>
             <h2>Schwellenwerte</h2>
             <dl id="aiCostControlPolicy" class="meta-list"></dl>
+            <form id="aiCostLimitForm" class="policy-edit-form">
+              <label>Tageslimit Tokens/Credits
+                <input id="aiDailyTokenCreditLimit" type="number" min="0" step="1" />
+              </label>
+              <label>Monatslimit Tokens/Credits
+                <input id="aiMonthlyTokenCreditLimit" type="number" min="0" step="1" />
+              </label>
+              <button class="primary" type="submit">Limits speichern</button>
+              <div id="aiCostLimitStatus" class="flash-status hidden"></div>
+            </form>
           </aside>
         </section>
         <section class="admin-layout">

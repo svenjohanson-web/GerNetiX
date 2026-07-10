@@ -1,7 +1,9 @@
 const crypto = require("node:crypto");
 const { AiUsageError } = require("../errors");
 
-const DEFAULT_INITIAL_CREDITS = 120;
+const DEFAULT_DAILY_TOKEN_CREDIT_LIMIT = 20000;
+const DEFAULT_MONTHLY_TOKEN_CREDIT_LIMIT = 100000;
+const DEFAULT_INITIAL_CREDITS = DEFAULT_MONTHLY_TOKEN_CREDIT_LIMIT;
 
 class AiUsageService {
   constructor(options) {
@@ -15,7 +17,7 @@ class AiUsageService {
 
   getAccountRating(accountId) {
     const account = this.ensureCreditAccount(accountId);
-    return accountRating(account, this.repository.listUsageEvents({ account_id: account.account_id }), this.repository.getPolicy());
+    return accountRating(account, this.repository.listUsageEvents({ account_id: account.account_id }), normalizePolicy(this.repository.getPolicy()));
   }
 
   grantCredits(accountId, input = {}) {
@@ -71,7 +73,7 @@ class AiUsageService {
     }
     const model = required(input.model, "model");
     const account = this.ensureCreditAccount(accountId);
-    const policy = this.repository.getPolicy();
+    const policy = normalizePolicy(this.repository.getPolicy());
     const estimate = estimateCredits(policy, {
       model,
       input_tokens: Number(input.estimated_input_tokens || input.input_tokens || 0),
@@ -105,7 +107,7 @@ class AiUsageService {
     if (event.status !== "preflight_approved") {
       throw new AiUsageError("event_not_billable", "Nur genehmigte Preflight-Events koennen abgeschlossen werden.", 409);
     }
-    const policy = this.repository.getPolicy();
+    const policy = normalizePolicy(this.repository.getPolicy());
     const actual = estimateCredits(policy, {
       model: event.model,
       input_tokens: Number(input.input_tokens || event.input_tokens || 0),
@@ -156,10 +158,10 @@ class AiUsageService {
     const summary = summarizeUsage(events);
     return {
       summary,
-      by_account: accounts.map((account) => accountDashboard(account, events, this.repository.getPolicy())),
+      by_account: accounts.map((account) => accountDashboard(account, events, normalizePolicy(this.repository.getPolicy()))),
       by_model: groupByModel(events),
-      suspicious_usage: detectSuspiciousUsage(accounts, events, this.repository.getPolicy()),
-      policy: this.repository.getPolicy(),
+      suspicious_usage: detectSuspiciousUsage(accounts, events, normalizePolicy(this.repository.getPolicy())),
+      policy: normalizePolicy(this.repository.getPolicy()),
     };
   }
 
@@ -209,10 +211,10 @@ class AiUsageService {
   }
 
   updatePolicy(input = {}) {
-    const policy = this.repository.getPolicy();
+    const policy = normalizePolicy(this.repository.getPolicy());
+    const limitPatch = unifiedLimitPatch(input);
     return this.repository.savePolicy({
-      ...policy,
-      ...input,
+      ...normalizePolicy({ ...policy, ...input, ...limitPatch }),
       allowed_models: input.allowed_models || policy.allowed_models,
       premium_models: input.premium_models || policy.premium_models,
       model_pricing: input.model_pricing || policy.model_pricing,
@@ -220,12 +222,12 @@ class AiUsageService {
   }
 
   allowModel(model) {
-    const policy = this.repository.getPolicy();
+    const policy = normalizePolicy(this.repository.getPolicy());
     return this.repository.savePolicy({ ...policy, allowed_models: unique([...policy.allowed_models, model]) });
   }
 
   blockModel(model) {
-    const policy = this.repository.getPolicy();
+    const policy = normalizePolicy(this.repository.getPolicy());
     return this.repository.savePolicy({ ...policy, allowed_models: policy.allowed_models.filter((item) => item !== model) });
   }
 
@@ -285,7 +287,7 @@ class AiUsageService {
     return this.repository.saveCreditAccount({
       account_id: identityUserId,
       plan_id: "plan.free",
-      total_granted_credits: DEFAULT_INITIAL_CREDITS,
+      total_granted_credits: normalizePolicy(this.repository.getPolicy()).monthly_credit_limit || DEFAULT_INITIAL_CREDITS,
       consumed_credits: 0,
       held_credits: 0,
       blocked_until: null,
@@ -315,8 +317,8 @@ function createUsageEvent({ input, account, model, estimate, policy, status, rej
     status,
     input_tokens: estimate.input_tokens,
     output_tokens: estimate.output_tokens,
-    calculated_credits: status === "rejected" ? 0 : estimate.credits,
-    estimated_provider_cost: status === "rejected" ? 0 : estimate.provider_cost,
+    calculated_credits: 0,
+    estimated_provider_cost: 0,
     rejection_reason,
     protection_action,
     error_code: "",
@@ -331,9 +333,68 @@ function estimateCredits(policy, usage) {
   if (!pricing) throw new AiUsageError("model_pricing_missing", "Fuer dieses Modell ist keine Preispolicy hinterlegt.");
   const inputTokens = Number(usage.input_tokens || 0);
   const outputTokens = Number(usage.output_tokens || 0);
-  const credits = Number(((inputTokens / 1000) * pricing.credits_per_1k_input_tokens + (outputTokens / 1000) * pricing.credits_per_1k_output_tokens).toFixed(4));
+  const credits = inputTokens + outputTokens;
   const providerCost = Number((((inputTokens + outputTokens) / 1000) * pricing.provider_cost_per_1k_tokens).toFixed(6));
   return { input_tokens: inputTokens, output_tokens: outputTokens, credits, provider_cost: providerCost };
+}
+
+function normalizePolicy(policy = {}) {
+  const dailyLimit = finiteNumber(policy.daily_token_limit ?? policy.daily_credit_limit, DEFAULT_DAILY_TOKEN_CREDIT_LIMIT);
+  const monthlyLimit = finiteNumber(policy.monthly_token_limit ?? policy.monthly_credit_limit, DEFAULT_MONTHLY_TOKEN_CREDIT_LIMIT);
+  return {
+    ...policy,
+    daily_credit_limit: dailyLimit,
+    daily_token_limit: dailyLimit,
+    monthly_credit_limit: monthlyLimit,
+    monthly_token_limit: monthlyLimit,
+    source_ratings: normalizeSourceRatings(policy.source_ratings, monthlyLimit),
+  };
+}
+
+function unifiedLimitPatch(input = {}) {
+  const patch = {};
+  if (Object.hasOwn(input, "daily_token_limit") || Object.hasOwn(input, "daily_credit_limit")) {
+    const dailyLimit = finiteNumber(input.daily_token_limit ?? input.daily_credit_limit, DEFAULT_DAILY_TOKEN_CREDIT_LIMIT);
+    patch.daily_credit_limit = dailyLimit;
+    patch.daily_token_limit = dailyLimit;
+  }
+  if (Object.hasOwn(input, "monthly_token_limit") || Object.hasOwn(input, "monthly_credit_limit")) {
+    const monthlyLimit = finiteNumber(input.monthly_token_limit ?? input.monthly_credit_limit, DEFAULT_MONTHLY_TOKEN_CREDIT_LIMIT);
+    patch.monthly_credit_limit = monthlyLimit;
+    patch.monthly_token_limit = monthlyLimit;
+  }
+  return patch;
+}
+
+function normalizeSourceRatings(sourceRatings = {}, monthlyTokenCreditLimit = DEFAULT_MONTHLY_TOKEN_CREDIT_LIMIT) {
+  const ratings = {
+    local_llm: {
+      source_id: "local_llm",
+      title: "Lokale LLM",
+      token_limit: null,
+      billing_scope: "unlimited",
+      provider_type: "local",
+    },
+    openai_gpt: {
+      source_id: "openai_gpt",
+      title: "GPT / OpenAI",
+      token_limit: monthlyTokenCreditLimit,
+      billing_scope: "monthly",
+      provider_type: "external",
+    },
+    ...sourceRatings,
+  };
+  return Object.fromEntries(Object.entries(ratings).map(([key, rating]) => [
+    key,
+    rating.provider_type === "local"
+      ? { ...rating, token_limit: null, billing_scope: rating.billing_scope || "unlimited" }
+      : { ...rating, token_limit: monthlyTokenCreditLimit, billing_scope: "monthly" },
+  ]));
+}
+
+function finiteNumber(value, fallback) {
+  const number = Number(value);
+  return Number.isFinite(number) && number >= 0 ? number : fallback;
 }
 
 function summarizeCreditAccount(account, ledgerEntries) {
@@ -356,9 +417,9 @@ function summarizeUsage(events) {
     successful: events.filter((event) => event.status === "success").length,
     rejected: events.filter((event) => event.status === "rejected").length,
     failed: events.filter((event) => event.status === "failed").length,
-    credits: Number(events.reduce((sum, event) => sum + Number(event.calculated_credits || 0), 0).toFixed(4)),
+    credits: Number(events.reduce((sum, event) => sum + billableCredits(event), 0).toFixed(4)),
     tokens: events.reduce((sum, event) => sum + Number(event.input_tokens || 0) + Number(event.output_tokens || 0), 0),
-    estimated_provider_cost: Number(events.reduce((sum, event) => sum + Number(event.estimated_provider_cost || 0), 0).toFixed(6)),
+    estimated_provider_cost: Number(events.reduce((sum, event) => sum + billableProviderCost(event), 0).toFixed(6)),
     cost_by_day: costByDay(events),
     rejection_breakdown: rejectionBreakdown(events),
     recent_rejections: recentRejections(events),
@@ -422,8 +483,8 @@ function costByDay(events) {
     };
     current.total_events += 1;
     current.tokens += Number(event.input_tokens || 0) + Number(event.output_tokens || 0);
-    current.credits += Number(event.calculated_credits || 0);
-    current.estimated_provider_cost += Number(event.estimated_provider_cost || 0);
+    current.credits += billableCredits(event);
+    current.estimated_provider_cost += billableProviderCost(event);
     groups.set(day, current);
   }
   return Array.from(groups.values())
@@ -456,9 +517,9 @@ function groupByModel(events) {
   for (const event of events) {
     const current = grouped.get(event.model) || { model: event.model, events: 0, credits: 0, tokens: 0, estimated_provider_cost: 0 };
     current.events += 1;
-    current.credits += Number(event.calculated_credits || 0);
+    current.credits += billableCredits(event);
     current.tokens += Number(event.input_tokens || 0) + Number(event.output_tokens || 0);
-    current.estimated_provider_cost += Number(event.estimated_provider_cost || 0);
+    current.estimated_provider_cost += billableProviderCost(event);
     grouped.set(event.model, current);
   }
   return Array.from(grouped.values()).map((item) => ({
@@ -483,7 +544,7 @@ function detectSuspiciousUsage(accounts, events, policy) {
     }
   }
   for (const event of events) {
-    if (Number(event.estimated_provider_cost || 0) >= 0.05) {
+    if (billableProviderCost(event) >= 0.05) {
       findings.push({ account_id: event.account_id, finding_type: "unusually_expensive_call", severity: "warning", event_id: event.event_id });
     }
   }
@@ -495,8 +556,8 @@ function usageForAccount(events) {
   const day = now.toISOString().slice(0, 10);
   const month = now.toISOString().slice(0, 7);
   return {
-    today_credits: Number(events.filter((event) => event.created_at.slice(0, 10) === day).reduce((sum, event) => sum + Number(event.calculated_credits || 0), 0).toFixed(4)),
-    month_credits: Number(events.filter((event) => event.created_at.slice(0, 7) === month).reduce((sum, event) => sum + Number(event.calculated_credits || 0), 0).toFixed(4)),
+    today_credits: Number(events.filter((event) => event.created_at.slice(0, 10) === day).reduce((sum, event) => sum + billableCredits(event), 0).toFixed(4)),
+    month_credits: Number(events.filter((event) => event.created_at.slice(0, 7) === month).reduce((sum, event) => sum + billableCredits(event), 0).toFixed(4)),
   };
 }
 
@@ -532,7 +593,7 @@ function accountRating(account, events, policy) {
 function sourceUsageForAccount(events, policy, sourceId) {
   const now = new Date();
   const month = now.toISOString().slice(0, 7);
-  const matching = events.filter((event) => eventSourceId(event, policy) === sourceId);
+  const matching = events.filter((event) => event.status === "success" && eventSourceId(event, policy) === sourceId);
   return {
     month_tokens: matching
       .filter((event) => String(event.created_at || event.occurred_at || "").slice(0, 7) === month)
@@ -552,33 +613,25 @@ function sourceRatingForModel(policy = {}, model = "", event = {}) {
     return ratings.local_llm || { source_id: "local_llm", title: "Lokale LLM", token_limit: null, provider_type: "local" };
   }
   if (/^gpt-|^o\d|openai/i.test(model) || event.provider_type === "external") {
-    return ratings.openai_gpt || { source_id: "openai_gpt", title: "GPT / OpenAI", token_limit: 100000, provider_type: "external" };
+    return ratings.openai_gpt || { source_id: "openai_gpt", title: "GPT / OpenAI", token_limit: policy.monthly_credit_limit || DEFAULT_MONTHLY_TOKEN_CREDIT_LIMIT, provider_type: "external" };
   }
-  return ratings.openai_gpt || Object.values(ratings)[0] || { source_id: "openai_gpt", title: "GPT / OpenAI", token_limit: 100000, provider_type: "external" };
+  return ratings.openai_gpt || Object.values(ratings)[0] || { source_id: "openai_gpt", title: "GPT / OpenAI", token_limit: policy.monthly_credit_limit || DEFAULT_MONTHLY_TOKEN_CREDIT_LIMIT, provider_type: "external" };
 }
 
 function effectiveSourceRatings(policy = {}) {
-  return {
-    local_llm: {
-      source_id: "local_llm",
-      title: "Lokale LLM",
-      token_limit: null,
-      billing_scope: "unlimited",
-      provider_type: "local",
-    },
-    openai_gpt: {
-      source_id: "openai_gpt",
-      title: "GPT / OpenAI",
-      token_limit: 100000,
-      billing_scope: "monthly",
-      provider_type: "external",
-    },
-    ...(policy.source_ratings || {}),
-  };
+  return normalizeSourceRatings(policy.source_ratings, policy.monthly_credit_limit || DEFAULT_MONTHLY_TOKEN_CREDIT_LIMIT);
 }
 
 function availableCredits(account) {
   return Number((account.total_granted_credits - account.consumed_credits - account.held_credits).toFixed(4));
+}
+
+function billableCredits(event) {
+  return event.status === "success" ? Number(event.calculated_credits || 0) : 0;
+}
+
+function billableProviderCost(event) {
+  return event.status === "success" ? Number(event.estimated_provider_cost || 0) : 0;
 }
 
 function normalizeAccount(account) {

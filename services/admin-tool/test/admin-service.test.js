@@ -126,7 +126,7 @@ test("remote ai usage summary exposes cost-control policy and rejection causes",
 
   assert.equal(result.summary.cost_control.daily_credit_limit, 80);
   assert.equal(result.summary.cost_control.model_pricing[0].model, "gpt-5.5");
-  assert.match(result.summary.cost_control.rules.find((rule) => rule.rule_id === "source_token_limit_exceeded").value, /GPT \/ OpenAI: 100000 Tokens/);
+  assert.match(result.summary.cost_control.rules.find((rule) => rule.rule_id === "source_token_limit_exceeded").value, /GPT \/ OpenAI: 500 Tokens/);
   assert.equal(result.summary.rejection_breakdown[0].reason, "insufficient_credits");
   assert.equal(result.summary.accounts[0].account_id, "acct-demo");
   assert.equal(result.summary.suspicious_usage[0].finding_type, "repeated_rejections");

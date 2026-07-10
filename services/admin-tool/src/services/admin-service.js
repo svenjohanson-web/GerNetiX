@@ -582,9 +582,9 @@ function summarizeAiUsage(events) {
     total_events: events.length,
     successful: events.filter((event) => event.status === "success").length,
     rejected: events.filter((event) => event.status === "rejected").length,
-    credits: events.reduce((sum, event) => sum + Number(event.calculated_credits || 0), 0),
+    credits: events.reduce((sum, event) => sum + billableCredits(event), 0),
     tokens: events.reduce((sum, event) => sum + Number(event.input_tokens || 0) + Number(event.output_tokens || 0), 0),
-    estimated_provider_cost: Number(events.reduce((sum, event) => sum + Number(event.estimated_provider_cost || 0), 0).toFixed(4)),
+    estimated_provider_cost: Number(events.reduce((sum, event) => sum + billableProviderCost(event), 0).toFixed(4)),
     cost_by_day: costByDay(events),
     rejection_breakdown: rejectionBreakdown(events),
     recent_rejections: recentRejections(events),
@@ -611,14 +611,18 @@ function summarizeAiUsageDashboard(dashboard = {}) {
 }
 
 function summarizeCostControlPolicy(policy = {}) {
-  const sourceRatings = effectivePolicySourceRatings(policy);
+  const dailyTokenCreditLimit = numericOrDefault(policy.daily_token_limit ?? policy.daily_credit_limit, 20000);
+  const monthlyTokenCreditLimit = numericOrDefault(policy.monthly_token_limit ?? policy.monthly_credit_limit, 100000);
+  const sourceRatings = effectivePolicySourceRatings(policy, monthlyTokenCreditLimit);
   const allowedModels = policy.allowed_models || [];
   const premiumModels = policy.premium_models || [];
   const pricing = policy.model_pricing || {};
   return {
     global_kill_switch: Boolean(policy.global_kill_switch),
-    daily_credit_limit: numericOrNull(policy.daily_credit_limit),
-    monthly_credit_limit: numericOrNull(policy.monthly_credit_limit),
+    daily_credit_limit: dailyTokenCreditLimit,
+    daily_token_limit: dailyTokenCreditLimit,
+    monthly_credit_limit: monthlyTokenCreditLimit,
+    monthly_token_limit: monthlyTokenCreditLimit,
     max_prompt_tokens: numericOrNull(policy.max_prompt_tokens),
     max_response_tokens: numericOrNull(policy.max_response_tokens),
     budget_warning_threshold_percent: numericOrNull(policy.budget_warning_threshold_percent),
@@ -629,8 +633,8 @@ function summarizeCostControlPolicy(policy = {}) {
       model,
       premium: premiumModels.includes(model),
       allowed: allowedModels.includes(model),
-      credits_per_1k_input_tokens: Number(item.credits_per_1k_input_tokens || 0),
-      credits_per_1k_output_tokens: Number(item.credits_per_1k_output_tokens || 0),
+      credits_per_1k_input_tokens: 1000,
+      credits_per_1k_output_tokens: 1000,
       provider_cost_per_1k_tokens: Number(item.provider_cost_per_1k_tokens || 0),
     })).sort((left, right) => left.model.localeCompare(right.model)),
     rules: [
@@ -640,15 +644,15 @@ function summarizeCostControlPolicy(policy = {}) {
       { rule_id: "premium_model_not_allowed", title: "Premium-Freigabe", status: "Capability erforderlich", value: premiumModels.join(", ") || "-" },
       { rule_id: "prompt_too_large", title: "Prompt-Limit", status: "Preflight blockt", value: formatPolicyNumber(policy.max_prompt_tokens, "Tokens") },
       { rule_id: "response_too_large", title: "Antwort-Limit", status: "Preflight blockt", value: formatPolicyNumber(policy.max_response_tokens, "Tokens") },
-      { rule_id: "insufficient_credits", title: "Credit-Budget", status: "kein negatives Guthaben", value: "Account-Credits" },
+      { rule_id: "insufficient_credits", title: "Token/Credit-Budget", status: "1 Credit = 1 Token", value: "Account-Credits entsprechen Tokens" },
       { rule_id: "source_token_limit_exceeded", title: "Quellenlimit", status: "Provider-Monatslimit", value: sourceRatings.map((source) => `${source.title}: ${source.token_limit === null ? "unbegrenzt" : `${source.token_limit} Tokens`}`).join(", ") || "-" },
-      { rule_id: "daily_limit_exceeded", title: "Tageslimit", status: "Preflight blockt", value: formatPolicyNumber(policy.daily_credit_limit, "Credits") },
-      { rule_id: "monthly_limit_exceeded", title: "Monatslimit", status: "Preflight blockt", value: formatPolicyNumber(policy.monthly_credit_limit, "Credits") },
+      { rule_id: "daily_limit_exceeded", title: "Tageslimit", status: "Preflight blockt", value: formatPolicyNumber(dailyTokenCreditLimit, "Tokens/Credits") },
+      { rule_id: "monthly_limit_exceeded", title: "Monatslimit", status: "Preflight blockt", value: formatPolicyNumber(monthlyTokenCreditLimit, "Tokens/Credits") },
     ],
   };
 }
 
-function effectivePolicySourceRatings(policy = {}) {
+function effectivePolicySourceRatings(policy = {}, monthlyTokenCreditLimit = 100000) {
   const ratings = {
     local_llm: {
       source_id: "local_llm",
@@ -662,7 +666,7 @@ function effectivePolicySourceRatings(policy = {}) {
       title: "GPT / OpenAI",
       provider_type: "external",
       billing_scope: "monthly",
-      token_limit: 100000,
+      token_limit: monthlyTokenCreditLimit,
     },
     ...(policy.source_ratings || {}),
   };
@@ -671,7 +675,7 @@ function effectivePolicySourceRatings(policy = {}) {
     title: source.title || source.source_id,
     provider_type: source.provider_type || "external",
     billing_scope: source.billing_scope || "monthly",
-    token_limit: source.token_limit === null || source.token_limit === undefined ? null : Number(source.token_limit),
+    token_limit: source.provider_type === "local" || source.token_limit === null || source.token_limit === undefined ? null : monthlyTokenCreditLimit,
   }));
 }
 
@@ -721,6 +725,11 @@ function numericOrNull(value) {
   return value === null || value === undefined || value === "" ? null : Number(value);
 }
 
+function numericOrDefault(value, fallback) {
+  const number = numericOrNull(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
 function formatPolicyNumber(value, unit) {
   return value === null || value === undefined || value === "" ? "-" : `${value} ${unit}`;
 }
@@ -738,8 +747,8 @@ function costByDay(events) {
     };
     current.total_events += 1;
     current.tokens += Number(event.input_tokens || 0) + Number(event.output_tokens || 0);
-    current.credits += Number(event.calculated_credits || 0);
-    current.estimated_provider_cost += Number(event.estimated_provider_cost || 0);
+    current.credits += billableCredits(event);
+    current.estimated_provider_cost += billableProviderCost(event);
     groups.set(day, current);
   }
   return Array.from(groups.values())
@@ -779,13 +788,15 @@ function summarizeAccountSheets(events) {
     }
     const group = groups.get(accountId);
     const tokens = Number(event.input_tokens || 0) + Number(event.output_tokens || 0);
-    const credits = Number(event.calculated_credits || 0);
+    const credits = billableCredits(event);
     group.month_credits += credits;
     if (event.status === "rejected") group.rejected_events += 1;
     const sourceId = inferSourceId(event);
     const source = group.ai_rating.sources.find((item) => item.source_id === sourceId) || group.ai_rating.sources[1];
-    source.month_tokens += tokens;
-    source.total_tokens += tokens;
+    if (event.status === "success") {
+      source.month_tokens += tokens;
+      source.total_tokens += tokens;
+    }
   }
   return Array.from(groups.values()).map((account) => {
     for (const source of account.ai_rating.sources) {
@@ -1110,8 +1121,8 @@ function addAiUsageStats(groups, key, base, event) {
   stats.input_tokens += inputTokens;
   stats.output_tokens += outputTokens;
   stats.tokens += inputTokens + outputTokens;
-  stats.credits += Number(event.calculated_credits || 0);
-  stats.estimated_provider_cost += Number(event.estimated_provider_cost || 0);
+  stats.credits += billableCredits(event);
+  stats.estimated_provider_cost += billableProviderCost(event);
   stats.total_duration_ms += Number(event.duration_ms || 0);
   stats.total_latency_ms += Number(event.latency_ms || event.duration_ms || 0);
   stats.total_calls_with_duration += Number(event.duration_ms || event.latency_ms || 0) > 0 ? 1 : 0;
@@ -1182,8 +1193,16 @@ function inferProviderType(event) {
   const baseUrl = String(event.provider_base_url || "");
   const providerName = String(event.provider_name || "");
   if (baseUrl.includes("127.0.0.1") || baseUrl.includes("localhost") || providerName.toLowerCase().includes("ollama")) return "local";
-  if (Number(event.estimated_provider_cost || 0) > 0) return "external";
+  if (/^gpt-|^o\d|openai/i.test(String(event.model || "")) || billableProviderCost(event) > 0) return "external";
   return "local";
+}
+
+function billableCredits(event) {
+  return event.status === "success" ? Number(event.calculated_credits || 0) : 0;
+}
+
+function billableProviderCost(event) {
+  return event.status === "success" ? Number(event.estimated_provider_cost || 0) : 0;
 }
 
 function providerStatusUrl(event = {}, providerType = "", providerName = "") {
@@ -1269,7 +1288,7 @@ function validateRequired(input, fields) {
 function responseInput(messages) {
   return messages.map((message) => ({
     role: message.role === "assistant" ? "assistant" : message.role === "system" ? "developer" : "user",
-    content: [{ type: "input_text", text: message.content }],
+    content: [{ type: message.role === "assistant" ? "output_text" : "input_text", text: message.content }],
   }));
 }
 

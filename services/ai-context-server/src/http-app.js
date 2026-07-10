@@ -40,8 +40,18 @@ function createHttpApp(options) {
         return;
       }
 
+      if (req.method === "GET" && path === `${prefix}/architecture-components`) {
+        sendJson(res, 200, { items: service.listArchitectureComponents(Object.fromEntries(url.searchParams.entries())) });
+        return;
+      }
+
       if (req.method === "POST" && path === `${prefix}/prompt-foundations`) {
         sendJson(res, 201, { promptFoundation: service.upsertPromptFoundation(await readJsonBody(req)) });
+        return;
+      }
+
+      if (req.method === "POST" && path === `${prefix}/architecture-components`) {
+        sendJson(res, 201, { architectureComponent: service.upsertArchitectureComponent(await readJsonBody(req)) });
         return;
       }
 

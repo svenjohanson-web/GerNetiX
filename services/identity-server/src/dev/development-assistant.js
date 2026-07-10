@@ -20,6 +20,62 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       const requestProfile = architectureRequestProfile(userMessages);
       const configuredRoute = routeConfig("architecture_discovery");
       const activeConfig = configuredRoute;
+      const localEdit = architectureLocalEdit(userMessages, body.architectureDiagram);
+      if (localEdit) {
+        sendJson(res, 200, {
+          config: config({ requestProfile, localOperation: localEdit.operation }),
+          routing: modelOperationRouting(localEdit),
+          message: {
+            role: "assistant",
+            content: localEdit.content,
+          },
+          architectureDiagram: localEdit.diagram,
+          usage: zeroUsage(),
+          usageEvent: null,
+          usedFallback: false,
+          usedLocalRoute: false,
+          usedDialogControl: false,
+          usedModelOperation: true,
+        });
+        return;
+      }
+      if (requestProfile.workModeChoice) {
+        const assistantContent = workModeChoiceAnswer(requestProfile.workModeChoice);
+        const architectureDiagram = workModeChoiceDiagram(requestProfile.workModeChoice);
+        sendJson(res, 200, {
+          config: config({ requestProfile }),
+          routing: dialogControlRouting(requestProfile),
+          message: {
+            role: "assistant",
+            content: assistantContent,
+          },
+          architectureDiagram,
+          usage: zeroUsage(),
+          usageEvent: null,
+          usedFallback: false,
+          usedLocalRoute: false,
+          usedDialogControl: true,
+        });
+        return;
+      }
+      const contextAnswer = await architectureContextLookup(userMessages, aiContextJson);
+      if (contextAnswer) {
+        sendJson(res, 200, {
+          config: config({ requestProfile, contextSources: [contextAnswer.source] }),
+          routing: contextLookupRouting(contextAnswer),
+          message: {
+            role: "assistant",
+            content: contextAnswer.content,
+          },
+          usage: zeroUsage(),
+          usageEvent: null,
+          usedFallback: false,
+          usedLocalRoute: false,
+          usedDialogControl: false,
+          usedContextAnswer: true,
+        });
+        return;
+      }
       const context = await architectureContext(session, activeConfig, projectId);
       const messages = [
         { role: "system", content: await systemPrompt(session, requestProfile) },
@@ -103,6 +159,67 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       costPolicy: activeConfig.costPolicy || (isApi ? "external_costs" : "prefer_local"),
       requestComplexity: requestProfile.complexity || "unknown",
     };
+  }
+
+  function dialogControlRouting(requestProfile = {}) {
+    return {
+      local: true,
+      provider: "dialog_control",
+      label: "System / Dialogsteuerung",
+      model: "kein LLM",
+      routeTask: "architecture_discovery",
+      routeReason: "Exakte Arbeitsweisen-Auswahl wird ohne LLM beantwortet.",
+      costPolicy: "no_llm_call",
+      requestComplexity: requestProfile.complexity || "dialog_control",
+    };
+  }
+
+  function contextLookupRouting(contextAnswer = {}) {
+    return {
+      local: true,
+      provider: "context_lookup",
+      label: "System / Kontextantwort",
+      model: "kein LLM",
+      routeTask: "architecture_discovery",
+      routeReason: contextAnswer.reason || "Erklaerfrage zu einem bekannten Architekturbaustein wird ohne LLM beantwortet.",
+      costPolicy: "no_llm_call",
+      requestComplexity: "context_lookup",
+    };
+  }
+
+  function modelOperationRouting(operation = {}) {
+    return {
+      local: true,
+      provider: "model_operation",
+      label: "System / Modelloperation",
+      model: "kein LLM",
+      routeTask: "architecture_discovery",
+      routeReason: operation.reason || "Eindeutige Architektur-Modelloperation wird lokal ausgefuehrt.",
+      costPolicy: "no_llm_call",
+      requestComplexity: "model_operation",
+    };
+  }
+
+  function zeroUsage() {
+    return {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      totalDurationMs: 0,
+      promptDurationMs: 0,
+      completionDurationMs: 0,
+    };
+  }
+
+  function workModeChoiceAnswer(choice) {
+    if (choice === "max") {
+      return "Okay. Ich habe eine maximale Startarchitektur angelegt. Entferne danach alles, was du nicht benoetigst.";
+    }
+    return "Okay. Ich habe eine leere Startarchitektur angelegt. Wir fuegen nur hinzu, was du nennst oder bestaetigst.";
+  }
+
+  function workModeChoiceDiagram(choice) {
+    return choice === "max" ? maximalStartArchitectureDiagram() : emptyStartArchitectureDiagram();
   }
 
   function apiProviderLabel(provider) {
@@ -436,7 +553,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
   function responseInput(messages) {
     return messages.map((message) => ({
       role: message.role === "assistant" ? "assistant" : message.role === "system" ? "developer" : "user",
-      content: [{ type: "input_text", text: message.content }],
+      content: [{ type: message.role === "assistant" ? "output_text" : "input_text", text: message.content }],
     }));
   }
 
@@ -612,6 +729,349 @@ function architectureWorkModeChoice(value) {
   return "";
 }
 
+function architectureLocalEdit(messages, currentDiagram) {
+  const latestUserText = [...(Array.isArray(messages) ? messages : [])].reverse().find((message) => message.role !== "assistant")?.content || "";
+  const edit = architectureEditIntent(latestUserText);
+  if (!edit) return null;
+  if (!currentDiagram?.source) {
+    return {
+      operation: edit.operation,
+      reason: "Eindeutiger Modellbefehl ohne aktuelle Skizze.",
+      content: `Ich habe verstanden: ${edit.label}. Es gibt aber noch keine aktuelle Architektur-Skizze, die ich lokal aendern kann.`,
+      diagram: null,
+    };
+  }
+  const diagram = applyArchitectureEdit(currentDiagram, edit);
+  return {
+    operation: edit.operation,
+    reason: `Eindeutiger Modellbefehl: ${edit.label}.`,
+    content: architectureEditContent(edit, diagram),
+    diagram,
+  };
+}
+
+function architectureEditIntent(value) {
+  const text = normalizeLookupText(value);
+  const wantsRemove = /\b(entferne|entfernen|entfern|loesche|losche|loesch|losch|nimm|weg|raus|streiche|entfaellt|entfallt)\b/.test(text);
+  if (!wantsRemove) return null;
+  if (/\b(alles|alle|rest|uebrige|ubrige)\b/.test(text)
+    && /\b(bis auf|ausser|außer|except|nur)\b/.test(text)
+    && /\besp32\b/.test(text)) {
+    return {
+      operation: "keep_only_component",
+      component: "esp32",
+      label: "nur ESP32 behalten",
+      detectedBlock: "device",
+    };
+  }
+  const component = removableArchitectureComponents().find((item) => item.match.test(text));
+  if (component) {
+    return {
+      operation: "remove_component",
+      ...component,
+    };
+  }
+  return null;
+}
+
+function removableArchitectureComponents() {
+  return [
+    {
+      component: "local_ui",
+      aliases: ["local_ui"],
+      label: "Lokale Bedienung",
+      detectedBlock: "localUi",
+      match: /\blokale bedienung\b|\blokal bedienen\b|\blocal ui\b|\blocal_ui\b/,
+    },
+    {
+      component: "browser",
+      aliases: ["browser"],
+      label: "Browser",
+      detectedBlock: "browser",
+      match: /\bbrowser\b|\bbrowser ui\b|\bweb ui\b|\bwebseite\b|\bweb app\b|\bwebapp\b/,
+    },
+    {
+      component: "mobile",
+      aliases: ["mobile"],
+      label: "Mobile App",
+      detectedBlock: "mobile",
+      match: /\bmobile\b|\bmobile app\b|\bhandy app\b|\bsmartphone app\b/,
+    },
+    {
+      component: "desktop",
+      aliases: ["desktop"],
+      label: "Desktop App",
+      detectedBlock: "desktop",
+      match: /\bdesktop\b|\bdesktop app\b|\bpc app\b/,
+    },
+    {
+      component: "backend",
+      aliases: ["backend"],
+      label: "Backend / API",
+      detectedBlock: "backend",
+      match: /\bbackend\b|\bapi\b|\bserver\b/,
+    },
+    {
+      component: "mqtt",
+      aliases: ["mqtt"],
+      label: "MQTT Broker",
+      detectedBlock: "mqtt",
+      match: /\bmqtt\b|\bmqtt broker\b|\bbroker\b/,
+    },
+    {
+      component: "database",
+      aliases: ["database"],
+      label: "Persistenz",
+      detectedBlock: "database",
+      match: /\bdatabase\b|\bdatenbank\b|\bsqlite\b|\bpersistenz\b|\bspeicher\b/,
+    },
+    {
+      component: "cloud",
+      aliases: ["cloud"],
+      label: "Cloud / Internet",
+      detectedBlock: "cloud",
+      match: /\bcloud\b|\binternet\b|\bextern\b|\bremote\b/,
+    },
+    {
+      component: "homeserver",
+      aliases: ["homeserver"],
+      label: "HomeServer / lokaler Server",
+      detectedBlock: "homeServer",
+      match: /\bhomeserver\b|\bhome server\b|\blokaler server\b/,
+    },
+  ];
+}
+
+function applyArchitectureEdit(currentDiagram, edit) {
+  if (edit.operation === "keep_only_component" && edit.component === "esp32") {
+    return {
+      ...minimalEsp32ArchitectureDiagram("Architektur-Skizze: ESP32", { confidence: 1, detectedBlocks: ["device"] }),
+      derived_from: "local_architecture_model_operation",
+      summary: "Lokal aktualisiert: nur ESP32 behalten.",
+      changed: true,
+    };
+  }
+  if (edit.operation !== "remove_component") return { ...currentDiagram, changed: false };
+  const source = String(currentDiagram.source || "");
+  const aliasPattern = new RegExp(`\\b(${edit.aliases.map(escapeRegExp).join("|")})\\b`, "i");
+  const nextLines = source
+    .split(/\r?\n/)
+    .filter((line) => !aliasPattern.test(line));
+  const nextSource = nextLines.join("\n");
+  const changed = nextSource !== source;
+  return {
+    ...currentDiagram,
+    source: nextSource,
+    summary: changed
+      ? `Lokal aktualisiert: ${edit.label} entfernt.`
+      : currentDiagram.summary,
+    derived_from: "local_architecture_model_operation",
+    generated_at: new Date().toISOString(),
+    detected_blocks: (currentDiagram.detected_blocks || currentDiagram.detectedBlocks || [])
+      .filter((block) => block !== edit.detectedBlock),
+    changed,
+  };
+}
+
+function architectureEditContent(edit, diagram) {
+  if (edit.operation === "keep_only_component") {
+    return diagram.changed
+      ? "Ich habe die aktuelle Architektur-Skizze auf ESP32 reduziert."
+      : "Die aktuelle Architektur-Skizze war bereits auf ESP32 reduziert.";
+  }
+  return diagram.changed
+    ? `${edit.label} wurde aus der aktuellen Architektur-Skizze entfernt.`
+    : `${edit.label} war in der aktuellen Architektur-Skizze nicht enthalten.`;
+}
+
+async function architectureContextLookup(messages, aiContextJson) {
+  const latestUserText = [...(Array.isArray(messages) ? messages : [])].reverse().find((message) => message.role !== "assistant")?.content || "";
+  if (!isArchitectureComponentQuestion(latestUserText)) return null;
+  const components = await loadArchitectureComponents(aiContextJson);
+  const match = bestArchitectureComponentMatch(latestUserText, components);
+  if (!match || match.score < 2) return null;
+  const item = match.component;
+  return {
+    content: architectureComponentAnswer(item),
+    reason: `Erklaerfrage zu ${item.name}.`,
+    source: {
+      source_type: "architecture_context",
+      source_scope: item.source_scope,
+      redaction_level: "none",
+    },
+  };
+}
+
+function isArchitectureComponentQuestion(value) {
+  const text = normalizeLookupText(value);
+  return /\b(wozu|was ist|was macht|warum|erklaer|erklaere|erklar|bedeutung|dient|aufgabe|rolle|brauch|brauche|benoetig|benotig)\b/.test(text);
+}
+
+function normalizeLookupText(value) {
+  return String(value || "")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/ß/g, "ss")
+    .replace(/[^a-z0-9/ -]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+async function loadArchitectureComponents(aiContextJson) {
+  if (!aiContextJson) return [];
+  try {
+    const response = await aiContextJson("/api/ai-context/architecture-components?status=active");
+    return Array.isArray(response.items) ? response.items : [];
+  } catch {
+    return [];
+  }
+}
+
+function bestArchitectureComponentMatch(question, components) {
+  const query = normalizeLookupText(question);
+  const queryTokens = lookupTokens(query);
+  if (!queryTokens.length) return null;
+  return components
+    .map((component) => ({ component, score: architectureComponentScore(query, queryTokens, component) }))
+    .filter((match) => match.score > 0)
+    .sort((left, right) => right.score - left.score)[0] || null;
+}
+
+function architectureComponentScore(query, queryTokens, component) {
+  const names = [component.name, ...(component.aliases || [])].map(normalizeLookupText).filter(Boolean);
+  const corpus = normalizeLookupText([
+    component.name,
+    ...(component.aliases || []),
+    component.summary,
+    ...(component.properties || []),
+    ...(component.provided_interfaces || []),
+    ...(component.required_interfaces || []),
+    ...(component.decision_hints || []),
+  ].join(" "));
+  let score = 0;
+  for (const name of names) {
+    if (name && query.includes(name)) score += 8;
+  }
+  const corpusTokens = new Set(lookupTokens(corpus));
+  for (const token of queryTokens) {
+    if (corpusTokens.has(token)) score += token.length > 3 ? 2 : 1;
+  }
+  return score;
+}
+
+function lookupTokens(value) {
+  const stopwords = new Set(["ich", "du", "der", "die", "das", "den", "dem", "ein", "eine", "einen", "einem", "und", "oder", "mit", "ohne", "fuer", "fur", "zu", "wozu", "was", "ist", "macht", "warum", "dient", "brauche", "brauch", "benoetige", "benotige"]);
+  return normalizeLookupText(value)
+    .split(" ")
+    .map((token) => token.trim())
+    .filter((token) => token.length >= 2 && !stopwords.has(token));
+}
+
+function architectureComponentAnswer(component) {
+  const sections = [
+    `${component.name}: ${component.summary}`,
+  ];
+  if ((component.properties || []).length) {
+    sections.push(`Eigenschaften: ${component.properties.slice(0, 3).join(", ")}.`);
+  }
+  if ((component.decision_hints || []).length) {
+    sections.push(`Wann sinnvoll: ${component.decision_hints.slice(0, 2).join(" ")}`);
+  }
+  if ((component.provided_interfaces || []).length || (component.required_interfaces || []).length) {
+    const provided = (component.provided_interfaces || []).slice(0, 2).join(", ");
+    const required = (component.required_interfaces || []).slice(0, 2).join(", ");
+    sections.push([
+      provided ? `Stellt bereit: ${provided}.` : "",
+      required ? `Braucht: ${required}.` : "",
+    ].filter(Boolean).join(" "));
+  }
+  return sections.join("\n\n");
+}
+
+function maximalStartArchitectureDiagram() {
+  const lines = [
+    "@startuml",
+    "title Maximale Startarchitektur",
+    "",
+    "skinparam shadowing false",
+    "skinparam componentStyle rectangle",
+    "skinparam rectangle {",
+    "  BackgroundColor #fbfdff",
+    "  BorderColor #8aa0bd",
+    "}",
+    "skinparam database {",
+    "  BackgroundColor #f7fbff",
+    "  BorderColor #8aa0bd",
+    "}",
+    "",
+    "node \"ESP32 / IoT Device\" as esp32",
+    "rectangle \"Lokale Bedienung\" as local_ui",
+    "rectangle \"Browser UI\" as browser",
+    "rectangle \"Mobile App\" as mobile",
+    "rectangle \"Desktop App\" as desktop",
+    "rectangle \"Backend / API\" as backend",
+    "queue \"MQTT Broker\" as mqtt",
+    "database \"Persistenz\" as database",
+    "cloud \"Cloud / Internet\" as cloud",
+    "node \"HomeServer / lokaler Server\" as homeserver",
+    "",
+    "local_ui --> esp32 : Setup / Status",
+    "browser --> backend : HTTP / WebSocket",
+    "mobile --> backend : API",
+    "desktop --> backend : API",
+    "esp32 --> mqtt : Telemetrie / Befehle",
+    "mqtt --> backend : Events",
+    "esp32 --> backend : REST / direkte API optional",
+    "backend --> database : speichern / lesen",
+    "backend --> cloud : externer Zugriff",
+    "backend --> homeserver : lokaler Betrieb",
+    "@enduml",
+  ];
+  return {
+    type: "plantuml",
+    title: "Maximale Startarchitektur",
+    summary: "Technischer maximaler Startpunkt zum Reduzieren.",
+    source: lines.join("\n"),
+    derived_from: "dialog_control_work_mode_max",
+    generated_at: new Date().toISOString(),
+    confidence: 1,
+    detected_blocks: ["device", "localUi", "browser", "mobile", "desktop", "backend", "mqtt", "database", "cloud", "homeServer"],
+  };
+}
+
+function emptyStartArchitectureDiagram() {
+  const lines = [
+    "@startuml",
+    "title Leere Startarchitektur",
+    "",
+    "skinparam shadowing false",
+    "skinparam componentStyle rectangle",
+    "skinparam rectangle {",
+    "  BackgroundColor #fbfdff",
+    "  BorderColor #8aa0bd",
+    "}",
+    "",
+    "rectangle \"Projektstruktur\" as project",
+    "note right of project",
+    "  Noch keine Komponenten.",
+    "  Elemente werden erst hinzugefuegt,",
+    "  wenn du sie nennst oder bestaetigst.",
+    "end note",
+    "@enduml",
+  ];
+  return {
+    type: "plantuml",
+    title: "Leere Startarchitektur",
+    summary: "Leerer Startpunkt zum gezielten Hinzufuegen.",
+    source: lines.join("\n"),
+    derived_from: "dialog_control_work_mode_empty",
+    generated_at: new Date().toISOString(),
+    confidence: 1,
+    detected_blocks: [],
+  };
+}
+
 function minimalEsp32ArchitectureDiagram(title, signals) {
   const lines = [
     "@startuml",
@@ -737,6 +1197,11 @@ function diagramNotes(assistantText, signals, options) {
 function isMinimalEsp32StructureRequest(value) {
   const text = String(value || "").toLowerCase();
   if (!/esp32/.test(text)) return false;
+  if (/\b(entferne|entfernen|entfern|loesche|losche|loesch|losch|nimm|weg|raus|streiche)\b/.test(text)
+    && /\b(alles|alle|rest|uebrige|ubrige)\b/.test(text)
+    && /\b(bis auf|ausser|außer|except|nur)\b/.test(text)) {
+    return true;
+  }
   const explicitEsp32Only = /esp32\s*[- ]?\s*only|\bonly\s+(mit\s+)?esp32\b|\barchitektur\s+only\s+(mit\s+)?esp32\b|\b(ausschliesslich|ausschließlich)\s+(mit\s+)?esp32\b|\bnur\s+(ein(en|em)?\s+)?esp32\b|esp32\s+(allein|solo)\b/.test(text);
   if (explicitEsp32Only) return true;
   if (/(struktur|architektur|diagramm|skizze|plantuml)/.test(text)
@@ -757,6 +1222,10 @@ function plantUmlText(value) {
     .replace(/@enduml/gi, "")
     .replace(/@startuml/gi, "")
     .trim();
+}
+
+function escapeRegExp(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 function cleanProjectId(value) {

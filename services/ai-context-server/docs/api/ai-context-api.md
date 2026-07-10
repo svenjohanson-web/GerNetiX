@@ -49,7 +49,30 @@ Startquellen:
 
 - `hardware_catalog` / `processor_boards/esp32`: ESP32-ProcessorBoards, Basissoftwareprofile, Provisioningprofile und TechnicalCapabilities aus dem Hardware Catalog.
 - `ai_prompt` / `prompt_foundations`: zentrale Prompt-Grundlagen fuer KI-Routen.
+- `architecture_context` / `start_architecture/components`: zentrale Architektur-Bausteine, Eigenschaften, Schnittstellen und Entscheidungshinweise.
 - `graph_database` / `.runtime/gernetix-ai-context.sqlite`: AI-Context-SQLite-Metadaten.
+
+## Architecture Components
+
+```text
+GET  /api/ai-context/architecture-components
+POST /api/ai-context/architecture-components
+```
+
+Liefert die fuehrenden Architektur-Bausteine aus der AI-Context-SQLite. Nutzende Dienste verwenden diese Daten fuer kurze Erklaerfragen zu sichtbaren Strukturelementen, ohne dafuer Provider-spezifische Sonderregeln oder hart codierte Antworttexte zu pflegen.
+
+Wichtige Felder:
+
+- `component_id`
+- `name`
+- `aliases`
+- `summary`
+- `properties`
+- `provided_interfaces`
+- `required_interfaces`
+- `decision_hints`
+- `source_scope`
+- `status`: `active`, `draft` oder `archived`
 
 ## Prompt Foundations
 

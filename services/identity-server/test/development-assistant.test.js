@@ -9,7 +9,32 @@ const ARCHITECTURE_PROMPT = [
   "Liste nicht auf, was nicht benoetigt wird.",
 ].join("\n");
 
-async function promptFoundationJson() {
+const TEST_ARCHITECTURE_COMPONENTS = [{
+  component_id: "arch_component.mqtt_broker",
+  name: "MQTT Broker",
+  aliases: ["mqtt", "mqtt broker", "broker"],
+  summary: "Technischer Nachrichtenvermittler fuer lose gekoppelte Device-Kommunikation ueber Topics.",
+  properties: ["Transportkanal statt fachliche Wahrheit"],
+  provided_interfaces: ["MQTT Topics fuer Telemetrie, Heartbeats, Status und Befehle"],
+  required_interfaces: ["MQTT Clients", "Topic-Konventionen"],
+  decision_hints: ["Nutzen, wenn Devices Status, Telemetrie oder Befehle entkoppelt austauschen sollen."],
+  source_scope: "start_architecture/components/mqtt_broker",
+}, {
+  component_id: "arch_component.mobile_app",
+  name: "Mobile App",
+  aliases: ["mobile app", "handy app", "smartphone app", "app"],
+  summary: "Native oder plattformnahe App fuer Smartphone-Bedienung, Benachrichtigungen oder mobile Nutzung.",
+  properties: ["mobile Bedienung", "Push-/Geraetefunktionen moeglich"],
+  provided_interfaces: ["Mobile UI"],
+  required_interfaces: ["Backend/API oder lokales Device-Interface"],
+  decision_hints: ["Nutzen, wenn Smartphone-Funktionen, Push, Kamera, Standort oder dauerhaft mobile Bedienung wichtig sind. Weglassen, wenn Browser UI reicht."],
+  source_scope: "start_architecture/components/mobile_app",
+}];
+
+async function promptFoundationJson(pathname = "") {
+  if (String(pathname).startsWith("/api/ai-context/architecture-components")) {
+    return { items: TEST_ARCHITECTURE_COMPONENTS };
+  }
   return {
     items: [{
       route_task: "architecture_discovery",
@@ -299,6 +324,20 @@ test("keeps ESP32-only diagrams minimal even when assistant text mentions exclud
   assert.doesNotMatch(diagram.source, /Cloud \/ Internet/);
   assert.doesNotMatch(diagram.source, /HomeServer/);
   assert.doesNotMatch(diagram.source, /Persistenz/);
+});
+
+test("reduces diagram from AI answer when latest request keeps only ESP32", () => {
+  const diagram = buildArchitectureDiagram([
+    { role: "user", content: "max" },
+    { role: "assistant", content: "Maximale Architektur mit ESP32, Browser UI, Mobile App, Backend, MQTT, Persistenz und Cloud." },
+    { role: "user", content: "entferne alles, bis auf esp32" },
+    { role: "assistant", content: "ESP32" },
+  ]);
+
+  assert.match(diagram.source, /node "ESP32" as esp32/);
+  assert.doesNotMatch(diagram.source, /IoT Device \/ ESP32/);
+  assert.doesNotMatch(diagram.source, /Browser UI|Mobile App|Backend \/ API|MQTT Broker|Persistenz|Cloud \/ Internet|-->/);
+  assert.deepEqual(diagram.detected_blocks, ["minimalScope", "device"]);
 });
 
 test("keeps architecture-only-with-ESP32 wording on the configured route path", async () => {
@@ -599,24 +638,21 @@ test("does not call provider when ai usage preflight rejects architecture chat",
   assert.equal(payload.body.usagePreflight.rejection_reason, "daily_limit_exceeded");
 });
 
-test("routes architecture work mode choices through the configured architecture route", async () => {
+test("answers architecture work mode choices without an LLM call", async () => {
   const previousFetch = global.fetch;
-  let fetchUrl = "";
-  let requestBody = null;
+  let providerCalled = false;
   let payload = null;
   global.fetch = async (url, options = {}) => {
-    fetchUrl = String(url);
-    requestBody = JSON.parse(options.body || "{}");
-    return {
-      ok: true,
-      json: async () => ({
-        choices: [{ message: { content: "Okay, wir starten mit der maximalen Architektur und reduzieren danach." } }],
-        usage: { prompt_tokens: 16, completion_tokens: 9 },
-      }),
-    };
+    providerCalled = true;
+    throw new Error(`Provider should not be called: ${url} ${options.method || "GET"}`);
   };
+  const usageCalls = [];
   const assistant = createDevelopmentAssistant({
     aiContextJson: promptFoundationJson,
+    aiUsageJson: async (pathname, options = {}) => {
+      usageCalls.push({ pathname, body: options.body });
+      return { allowed: true, event_id: "unexpected" };
+    },
     llmConfigStore: {
       publicConfig: () => ({ provider: "api", apiProvider: "openai-compatible", apiModel: "gpt-5.5" }),
       resolveRoute: () => ({
@@ -655,32 +691,31 @@ test("routes architecture work mode choices through the configured architecture 
     global.fetch = previousFetch;
   }
 
-  assert.match(fetchUrl, /api\.openai\.example\/v1\/chat\/completions/);
+  assert.equal(providerCalled, false);
+  assert.equal(usageCalls.length, 0);
   assert.equal(payload.status, 200);
   assert.equal(payload.body.usedLocalRoute, false);
+  assert.equal(payload.body.usedDialogControl, true);
   assert.equal(payload.body.config.requestProfile.explicitWorkModeChoice, undefined);
   assert.equal(payload.body.config.requestProfile.workModeChoice, "max");
-  assert.equal(payload.body.routing.local, false);
-  assert.equal(payload.body.routing.provider, "openai-compatible");
-  assert.equal(payload.body.routing.costPolicy, "external_costs");
+  assert.equal(payload.body.routing.local, true);
+  assert.equal(payload.body.routing.provider, "dialog_control");
+  assert.equal(payload.body.routing.costPolicy, "no_llm_call");
   assert.equal(payload.body.routing.requestComplexity, "dialog_control");
-  assert.equal(payload.body.usage.totalTokens, 25);
-  assert.equal(requestBody.model, "gpt-5.5");
+  assert.equal(payload.body.usage.totalTokens, 0);
+  assert.equal(payload.body.architectureDiagram.derived_from, "dialog_control_work_mode_max");
+  assert.match(payload.body.architectureDiagram.source, /ESP32 \/ IoT Device/);
+  assert.match(payload.body.architectureDiagram.source, /Backend \/ API/);
+  assert.match(payload.body.architectureDiagram.source, /MQTT Broker/);
 });
 
-test("routes bare max architecture work mode answer through configured architecture route", async () => {
+test("answers bare max architecture work mode without an LLM call", async () => {
   const previousFetch = global.fetch;
-  let fetchUrl = "";
+  let providerCalled = false;
   let payload = null;
   global.fetch = async (url) => {
-    fetchUrl = String(url);
-    return {
-      ok: true,
-      json: async () => ({
-        choices: [{ message: { content: "Okay, wir starten mit der maximalen Architektur und reduzieren danach." } }],
-        usage: { prompt_tokens: 14, completion_tokens: 8 },
-      }),
-    };
+    providerCalled = true;
+    throw new Error(`Provider should not be called: ${url}`);
   };
   const assistant = createDevelopmentAssistant({
     aiContextJson: promptFoundationJson,
@@ -712,12 +747,418 @@ test("routes bare max architecture work mode answer through configured architect
     global.fetch = previousFetch;
   }
 
-  assert.match(fetchUrl, /api\.openai\.example\/v1\/chat\/completions/);
+  assert.equal(providerCalled, false);
   assert.equal(payload.status, 200);
   assert.equal(payload.body.usedLocalRoute, false);
+  assert.equal(payload.body.usedDialogControl, true);
   assert.equal(payload.body.config.requestProfile.workModeChoice, "max");
-  assert.equal(payload.body.routing.local, false);
+  assert.equal(payload.body.routing.local, true);
   assert.equal(payload.body.routing.requestComplexity, "dialog_control");
+  assert.equal(payload.body.usage.totalTokens, 0);
+  assert.equal(payload.body.architectureDiagram.derived_from, "dialog_control_work_mode_max");
+  assert.match(payload.body.architectureDiagram.source, /Maximale Startarchitektur/);
+});
+
+test("answers bare leer architecture work mode with an empty start diagram", async () => {
+  const previousFetch = global.fetch;
+  let providerCalled = false;
+  let payload = null;
+  global.fetch = async (url) => {
+    providerCalled = true;
+    throw new Error(`Provider should not be called: ${url}`);
+  };
+  const assistant = createDevelopmentAssistant({
+    aiContextJson: promptFoundationJson,
+    llmConfigStore: {
+      publicConfig: () => ({ provider: "api", apiProvider: "openai-compatible", apiModel: "gpt-5.5" }),
+      resolveRoute: () => ({
+        provider: "api",
+        apiProvider: "openai-compatible",
+        apiBaseUrl: "https://api.openai.example/v1",
+        apiModel: "gpt-5.5",
+        ollamaBaseUrl: "http://127.0.0.1:11434",
+        ollamaModel: "local",
+      }),
+    },
+    projectServerUserId: () => "usr_demo",
+    readJsonBody: async () => ({
+      projectId: "dev_project_work_mode_empty",
+      messages: [{ role: "user", content: "leer" }],
+    }),
+    requireProjectAccess: async () => ({ area: "development_project" }),
+    sendJson: (res, status, body) => {
+      payload = { status, body };
+    },
+  });
+
+  try {
+    await assistant.handleChat({}, {}, { account: { user_id: "usr_demo" } });
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  assert.equal(providerCalled, false);
+  assert.equal(payload.status, 200);
+  assert.equal(payload.body.usedDialogControl, true);
+  assert.equal(payload.body.config.requestProfile.workModeChoice, "leer");
+  assert.equal(payload.body.usage.totalTokens, 0);
+  assert.equal(payload.body.architectureDiagram.derived_from, "dialog_control_work_mode_empty");
+  assert.match(payload.body.architectureDiagram.source, /Leere Startarchitektur/);
+  assert.match(payload.body.architectureDiagram.source, /Noch keine Komponenten/);
+});
+
+test("answers known architecture component questions from ai context without an LLM call", async () => {
+  const previousFetch = global.fetch;
+  let providerCalled = false;
+  const usageCalls = [];
+  let payload = null;
+  global.fetch = async (url) => {
+    providerCalled = true;
+    throw new Error(`Provider should not be called: ${url}`);
+  };
+  const assistant = createDevelopmentAssistant({
+    aiContextJson: promptFoundationJson,
+    aiUsageJson: async (pathname, options = {}) => {
+      usageCalls.push({ pathname, body: options.body });
+      return { allowed: true, event_id: "unexpected" };
+    },
+    llmConfigStore: {
+      publicConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-5.5" }),
+      resolveRoute: () => ({
+        provider: "api",
+        apiProvider: "openai-responses",
+        apiBaseUrl: "https://api.openai.example/v1",
+        apiModel: "gpt-5.5",
+        ollamaBaseUrl: "http://127.0.0.1:11434",
+        ollamaModel: "local",
+      }),
+    },
+    projectServerUserId: () => "usr_demo",
+    readJsonBody: async () => ({
+      projectId: "dev_project_component_question",
+      messages: [
+        { role: "user", content: "max" },
+        { role: "assistant", content: "Okay. Ich habe eine maximale Startarchitektur angelegt." },
+        { role: "user", content: "wozu dient mqtt" },
+      ],
+    }),
+    requireProjectAccess: async () => ({ area: "development_project" }),
+    sendJson: (res, status, body) => {
+      payload = { status, body };
+    },
+  });
+
+  try {
+    await assistant.handleChat({}, {}, { account: { user_id: "usr_demo" } });
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  assert.equal(providerCalled, false);
+  assert.equal(usageCalls.length, 0);
+  assert.equal(payload.status, 200);
+  assert.equal(payload.body.usedContextAnswer, true);
+  assert.equal(payload.body.routing.provider, "context_lookup");
+  assert.equal(payload.body.routing.costPolicy, "no_llm_call");
+  assert.equal(payload.body.usage.totalTokens, 0);
+  assert.match(payload.body.message.content, /MQTT Broker/);
+  assert.match(payload.body.message.content, /Nachrichtenvermittler/);
+  assert.match(payload.body.message.content, /Transportkanal statt fachliche Wahrheit/);
+  assert.equal(Object.hasOwn(payload.body, "architectureDiagram"), false);
+});
+
+test("removes mqtt broker from current architecture locally without provider call", async () => {
+  const previousFetch = global.fetch;
+  let providerCalled = false;
+  let payload = null;
+  global.fetch = async () => {
+    providerCalled = true;
+    throw new Error("provider must not be called");
+  };
+  const assistant = createDevelopmentAssistant({
+    aiContextJson: promptFoundationJson,
+    llmConfigStore: {
+      publicConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-test" }),
+      resolveRoute: () => ({
+        provider: "api",
+        apiProvider: "openai-responses",
+        apiBaseUrl: "https://api.openai.example/v1",
+        apiModel: "gpt-test",
+      }),
+    },
+    projectServerUserId: () => "usr_demo",
+    readJsonBody: async () => ({
+      projectId: "dev_project_max",
+      messages: [{ role: "user", content: "entferne mqtt broker" }],
+      architectureDiagram: {
+        type: "plantuml",
+        title: "Maximale Startarchitektur",
+        source: [
+          "@startuml",
+          "node \"ESP32 / IoT Device\" as esp32",
+          "rectangle \"Backend / API\" as backend",
+          "queue \"MQTT Broker\" as mqtt",
+          "esp32 --> mqtt : Telemetrie / Befehle",
+          "mqtt --> backend : Events",
+          "@enduml",
+        ].join("\n"),
+        detected_blocks: ["device", "backend", "mqtt"],
+      },
+    }),
+    requireProjectAccess: async () => ({ area: "development_project" }),
+    sendJson: (res, status, body) => {
+      payload = { status, body };
+    },
+  });
+
+  try {
+    await assistant.handleChat({}, {}, { account: { user_id: "usr_demo" } });
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  assert.equal(providerCalled, false);
+  assert.equal(payload.status, 200);
+  assert.equal(payload.body.routing.label, "System / Modelloperation");
+  assert.equal(payload.body.routing.costPolicy, "no_llm_call");
+  assert.equal(payload.body.usage.totalTokens, 0);
+  assert.match(payload.body.message.content, /MQTT Broker wurde/);
+  assert.doesNotMatch(payload.body.architectureDiagram.source, /MQTT Broker|mqtt/);
+  assert.deepEqual(payload.body.architectureDiagram.detected_blocks, ["device", "backend"]);
+});
+
+test("removes browser from current architecture locally without provider call", async () => {
+  const previousFetch = global.fetch;
+  let providerCalled = false;
+  let payload = null;
+  global.fetch = async () => {
+    providerCalled = true;
+    throw new Error("provider must not be called");
+  };
+  const assistant = createDevelopmentAssistant({
+    aiContextJson: promptFoundationJson,
+    llmConfigStore: {
+      publicConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-test" }),
+      resolveRoute: () => ({
+        provider: "api",
+        apiProvider: "openai-responses",
+        apiBaseUrl: "https://api.openai.example/v1",
+        apiModel: "gpt-test",
+      }),
+    },
+    projectServerUserId: () => "usr_demo",
+    readJsonBody: async () => ({
+      projectId: "dev_project_max",
+      messages: [{ role: "user", content: "browser entfernen" }],
+      architectureDiagram: {
+        type: "plantuml",
+        title: "Maximale Startarchitektur",
+        source: [
+          "@startuml",
+          "node \"ESP32 / IoT Device\" as esp32",
+          "rectangle \"Browser UI\" as browser",
+          "rectangle \"Backend / API\" as backend",
+          "browser --> backend : HTTP / WebSocket",
+          "esp32 --> backend : REST / direkte API optional",
+          "@enduml",
+        ].join("\n"),
+        detected_blocks: ["device", "browser", "backend"],
+      },
+    }),
+    requireProjectAccess: async () => ({ area: "development_project" }),
+    sendJson: (res, status, body) => {
+      payload = { status, body };
+    },
+  });
+
+  try {
+    await assistant.handleChat({}, {}, { account: { user_id: "usr_demo" } });
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  assert.equal(providerCalled, false);
+  assert.equal(payload.status, 200);
+  assert.equal(payload.body.routing.label, "System / Modelloperation");
+  assert.equal(payload.body.usage.totalTokens, 0);
+  assert.match(payload.body.message.content, /Browser wurde/);
+  assert.doesNotMatch(payload.body.architectureDiagram.source, /Browser UI|browser/);
+  assert.deepEqual(payload.body.architectureDiagram.detected_blocks, ["device", "backend"]);
+});
+
+test("reduces max architecture to only ESP32 locally without provider call", async () => {
+  const previousFetch = global.fetch;
+  let providerCalled = false;
+  let payload = null;
+  global.fetch = async () => {
+    providerCalled = true;
+    throw new Error("provider must not be called");
+  };
+  const assistant = createDevelopmentAssistant({
+    aiContextJson: promptFoundationJson,
+    llmConfigStore: {
+      publicConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-test" }),
+      resolveRoute: () => ({
+        provider: "api",
+        apiProvider: "openai-responses",
+        apiBaseUrl: "https://api.openai.example/v1",
+        apiModel: "gpt-test",
+      }),
+    },
+    projectServerUserId: () => "usr_demo",
+    readJsonBody: async () => ({
+      projectId: "dev_project_max",
+      messages: [{ role: "user", content: "entferne alles, bis auf esp32" }],
+      architectureDiagram: {
+        type: "plantuml",
+        title: "Maximale Startarchitektur",
+        source: [
+          "@startuml",
+          "title Maximale Startarchitektur",
+          "node \"ESP32 / IoT Device\" as esp32",
+          "rectangle \"Browser UI\" as browser",
+          "rectangle \"Mobile App\" as mobile",
+          "rectangle \"Backend / API\" as backend",
+          "queue \"MQTT Broker\" as mqtt",
+          "database \"Persistenz\" as database",
+          "cloud \"Cloud / Internet\" as cloud",
+          "browser --> backend : HTTP / WebSocket",
+          "esp32 --> mqtt : Telemetrie / Befehle",
+          "mqtt --> backend : Events",
+          "backend --> database : speichern / lesen",
+          "@enduml",
+        ].join("\n"),
+        detected_blocks: ["device", "browser", "mobile", "backend", "mqtt", "database", "cloud"],
+      },
+    }),
+    requireProjectAccess: async () => ({ area: "development_project" }),
+    sendJson: (res, status, body) => {
+      payload = { status, body };
+    },
+  });
+
+  try {
+    await assistant.handleChat({}, {}, { account: { user_id: "usr_demo" } });
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  assert.equal(providerCalled, false);
+  assert.equal(payload.status, 200);
+  assert.equal(payload.body.routing.label, "System / Modelloperation");
+  assert.equal(payload.body.routing.costPolicy, "no_llm_call");
+  assert.equal(payload.body.usage.totalTokens, 0);
+  assert.match(payload.body.message.content, /auf ESP32 reduziert/);
+  assert.match(payload.body.architectureDiagram.source, /node "ESP32" as esp32/);
+  assert.doesNotMatch(payload.body.architectureDiagram.source, /Browser UI|Mobile App|Backend \/ API|MQTT Broker|Persistenz|Cloud \/ Internet|-->/);
+  assert.deepEqual(payload.body.architectureDiagram.detected_blocks, ["device"]);
+});
+
+test("answers mobile app component questions from ai context without adding word exceptions", async () => {
+  const previousFetch = global.fetch;
+  let providerCalled = false;
+  let payload = null;
+  global.fetch = async (url) => {
+    providerCalled = true;
+    throw new Error(`Provider should not be called: ${url}`);
+  };
+  const assistant = createDevelopmentAssistant({
+    aiContextJson: promptFoundationJson,
+    llmConfigStore: {
+      publicConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-5.5" }),
+      resolveRoute: () => ({
+        provider: "api",
+        apiProvider: "openai-responses",
+        apiBaseUrl: "https://api.openai.example/v1",
+        apiModel: "gpt-5.5",
+        ollamaBaseUrl: "http://127.0.0.1:11434",
+        ollamaModel: "local",
+      }),
+    },
+    projectServerUserId: () => "usr_demo",
+    readJsonBody: async () => ({
+      projectId: "dev_project_component_question",
+      messages: [
+        { role: "user", content: "max" },
+        { role: "assistant", content: "Okay. Ich habe eine maximale Startarchitektur angelegt." },
+        { role: "user", content: "wozu brauche ich mobile app" },
+      ],
+    }),
+    requireProjectAccess: async () => ({ area: "development_project" }),
+    sendJson: (res, status, body) => {
+      payload = { status, body };
+    },
+  });
+
+  try {
+    await assistant.handleChat({}, {}, { account: { user_id: "usr_demo" } });
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  assert.equal(providerCalled, false);
+  assert.equal(payload.status, 200);
+  assert.equal(payload.body.usedContextAnswer, true);
+  assert.equal(payload.body.routing.provider, "context_lookup");
+  assert.equal(payload.body.usage.totalTokens, 0);
+  assert.match(payload.body.message.content, /Mobile App/);
+  assert.match(payload.body.message.content, /Smartphone-Bedienung/);
+  assert.match(payload.body.message.content, /Weglassen, wenn Browser UI reicht/);
+});
+
+test("sends assistant history as output_text to OpenAI Responses", async () => {
+  const previousFetch = global.fetch;
+  let requestBody = null;
+  let payload = null;
+  global.fetch = async (_url, options = {}) => {
+    requestBody = JSON.parse(options.body || "{}");
+    return {
+      ok: true,
+      json: async () => ({
+        output_text: "Architektur aktualisiert.",
+        usage: { input_tokens: 30, output_tokens: 4 },
+      }),
+    };
+  };
+  const assistant = createDevelopmentAssistant({
+    aiContextJson: promptFoundationJson,
+    llmConfigStore: {
+      publicConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-5.5" }),
+      resolveRoute: () => ({
+        provider: "api",
+        apiProvider: "openai-responses",
+        apiBaseUrl: "https://api.openai.example/v1",
+        apiModel: "gpt-5.5",
+      }),
+    },
+    projectServerUserId: () => "usr_new",
+    readJsonBody: async () => ({
+      projectId: "dev_project_new_account",
+      messages: [
+        { role: "user", content: "Plane eine Architektur mit ESP32 und Browser UI." },
+        { role: "assistant", content: "ESP32 und Browser UI sind im Modell." },
+        { role: "user", content: "Ergaenze einen Backend-Service." },
+      ],
+    }),
+    requireProjectAccess: async () => ({ area: "development_project" }),
+    sendJson: (res, status, body) => {
+      payload = { status, body };
+    },
+  });
+
+  try {
+    await assistant.handleChat({}, {}, { account: { user_id: "usr_new" } });
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  const assistantInput = requestBody.input.find((item) => item.role === "assistant");
+  const userInputs = requestBody.input.filter((item) => item.role === "user");
+  assert.equal(payload.status, 200);
+  assert.equal(requestBody.model, "gpt-5.5");
+  assert.equal(assistantInput.content[0].type, "output_text");
+  assert.equal(userInputs.every((item) => item.content[0].type === "input_text"), true);
+  assert.equal(payload.body.usage.totalTokens, 34);
 });
 
 test("architecture chat requires an account-bound development project", async () => {

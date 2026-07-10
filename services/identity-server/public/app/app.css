@@ -255,8 +255,7 @@ button.danger:hover {
 }
 .ide-project-browser-panel,
 .ide-inspector-panel,
-.ide-viewer-panel,
-.ide-assistant-panel {
+.ide-viewer-panel {
   min-width: 0;
 }
 .ide-project-browser {
@@ -343,25 +342,7 @@ button.danger:hover {
   color: var(--muted);
   overflow-wrap: anywhere;
 }
-.ide-assistant-panel {
-  display: grid;
-  grid-template-rows: minmax(120px, 22vh) auto;
-  gap: 10px;
-}
-.development-chat-messages.compact {
-  min-height: 120px;
-}
-.development-chat-form.compact textarea {
-  min-height: 54px;
-}
-.ide-chat-input-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 8px;
-  align-items: start;
-}
-.development-platform-layout,
-.ai-chat-layout {
+.development-platform-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 12px;
@@ -1144,6 +1125,49 @@ textarea:read-only {
 }
 .inventory-layout { display: grid; grid-template-columns: minmax(340px, 460px) minmax(0, 1fr); gap: 12px; align-items: start; }
 .inventory-tools, .device-list, .build-list, .discovery-list { display: grid; gap: 10px; }
+.recovery-layout {
+  display: grid;
+  grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: start;
+}
+.recovery-device-panel,
+.recovery-check-panel,
+.recovery-device-list,
+.recovery-check-result {
+  display: grid;
+  gap: 12px;
+}
+.recovery-device-card {
+  display: grid;
+  gap: 4px;
+  width: 100%;
+  text-align: left;
+}
+.recovery-device-card span,
+.recovery-device-card small,
+.recovery-result p {
+  color: var(--muted);
+}
+.recovery-actions {
+  justify-content: flex-start;
+}
+.recovery-result {
+  display: grid;
+  gap: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: #fff;
+}
+.recovery-result.ok {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+.recovery-result.blocked {
+  border-color: #fca5a5;
+  background: #fff7f7;
+}
 .inventory-type-label { display: grid; gap: 6px; margin-top: 12px; color: var(--muted); font-weight: 700; }
 .onboarding-preview {
   border: 1px solid var(--line);
@@ -1216,7 +1240,7 @@ textarea:read-only {
 }
 
 @media (max-width: 900px) {
-  .dashboard-grid, .lesson-panel, .ide-layout, .development-platform-layout, .ai-chat-layout, .inventory-layout, .device-row, .build-row, .discovery-row { grid-template-columns: 1fr; }
+  .dashboard-grid, .lesson-panel, .ide-layout, .development-platform-layout, .inventory-layout, .recovery-layout, .device-row, .build-row, .discovery-row { grid-template-columns: 1fr; }
   .discovery-row { grid-template-columns: 26px minmax(0, 1fr); }
   .discovery-row .meta-list { grid-column: 2; }
   .guided-artifact-layout, .guided-state-row { grid-template-columns: 1fr; }

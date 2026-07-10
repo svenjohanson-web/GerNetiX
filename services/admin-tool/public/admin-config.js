@@ -40,12 +40,16 @@ const API_PRESETS = {
 };
 
 document.querySelector("#adminLlmForm").addEventListener("submit", saveLlmConfig);
+document.querySelector("#aiCostLimitForm").addEventListener("submit", saveAiCostLimits);
 document.querySelector("#adminLlmProvider").addEventListener("change", renderProviderFields);
 document.querySelector("#adminApiProvider").addEventListener("change", applyApiProviderPreset);
 document.querySelector("#adminLlmTestButton").addEventListener("click", testLlmConfig);
 document.querySelector("#refreshLocalLlmModelsButton").addEventListener("click", loadLocalModels);
 document.querySelectorAll("[data-admin-view]").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.adminView));
+});
+document.querySelectorAll("[data-admin-sub-view]").forEach((button) => {
+  button.addEventListener("click", () => setView(button.dataset.adminSubView));
 });
 
 bootstrap();
@@ -108,12 +112,23 @@ function setView(view) {
 }
 
 function renderNavigation() {
+  const aiView = isAiView(state.currentView);
+  document.querySelector("#aiSubNav")?.classList.toggle("hidden", !aiView);
   document.querySelectorAll(".admin-view").forEach((view) => {
     view.classList.toggle("hidden", view.id !== viewId(state.currentView));
   });
   document.querySelectorAll("[data-admin-view]").forEach((button) => {
-    button.classList.toggle("active-method", button.dataset.adminView === state.currentView);
+    const group = button.dataset.adminGroup || "";
+    const active = group === "ai" ? aiView : button.dataset.adminView === state.currentView;
+    button.classList.toggle("active-method", active);
   });
+  document.querySelectorAll("[data-admin-sub-view]").forEach((button) => {
+    button.classList.toggle("active-method", button.dataset.adminSubView === state.currentView);
+  });
+}
+
+function isAiView(view) {
+  return ["ai-usage", "ai-context", "llm-config"].includes(view);
 }
 
 function viewId(view) {
@@ -188,10 +203,13 @@ function renderAiUsage() {
 }
 
 function renderAiCostControlPolicy(policy) {
+  setValue("#aiDailyTokenCreditLimit", policy.daily_token_limit ?? policy.daily_credit_limit ?? "");
+  setValue("#aiMonthlyTokenCreditLimit", policy.monthly_token_limit ?? policy.monthly_credit_limit ?? "");
   document.querySelector("#aiCostControlPolicy").innerHTML = [
     ["Kill-Switch", policy.global_kill_switch ? "an" : "aus"],
-    ["Tageslimit", formatLimit(policy.daily_credit_limit, "Credits")],
-    ["Monatslimit", formatLimit(policy.monthly_credit_limit, "Credits")],
+    ["Bewertung", "1 Credit = 1 Token"],
+    ["Tageslimit", formatLimit(policy.daily_token_limit ?? policy.daily_credit_limit, "Tokens/Credits")],
+    ["Monatslimit", formatLimit(policy.monthly_token_limit ?? policy.monthly_credit_limit, "Tokens/Credits")],
     ["Prompt-Limit", formatLimit(policy.max_prompt_tokens, "Tokens")],
     ["Antwort-Limit", formatLimit(policy.max_response_tokens, "Tokens")],
     ["Warnschwelle", formatLimit(policy.budget_warning_threshold_percent, "%")],
@@ -413,6 +431,34 @@ async function saveLlmConfig(event) {
   }
 }
 
+async function saveAiCostLimits(event) {
+  event.preventDefault();
+  setAiCostLimitStatus("running", "KI-Limits werden gespeichert...");
+  const dailyLimit = Number(value("#aiDailyTokenCreditLimit"));
+  const monthlyLimit = Number(value("#aiMonthlyTokenCreditLimit"));
+  if (!Number.isFinite(dailyLimit) || dailyLimit < 0 || !Number.isFinite(monthlyLimit) || monthlyLimit < 0) {
+    setAiCostLimitStatus("error", "Limits muessen Zahlen ab 0 sein.");
+    return;
+  }
+  try {
+    await postJson("/api/admin/ai-cost-controls/actions", {
+      action_type: "update_policy",
+      reason: "admin_updated_unified_token_credit_limits",
+      payload: {
+        daily_token_limit: dailyLimit,
+        daily_credit_limit: dailyLimit,
+        monthly_token_limit: monthlyLimit,
+        monthly_credit_limit: monthlyLimit,
+      },
+    });
+    await loadAiUsage();
+    renderAiUsage();
+    setAiCostLimitStatus("ok", "Limits gespeichert: Credits und Tokens sind gekoppelt.");
+  } catch (error) {
+    setAiCostLimitStatus("error", error.message);
+  }
+}
+
 async function testLlmConfig() {
   setStatus("running", "LLM-Konfiguration wird getestet...");
   try {
@@ -432,6 +478,12 @@ async function testLlmConfig() {
 
 function setStatus(kind, text) {
   const status = document.querySelector("#adminLlmSaveStatus");
+  status.className = `flash-status ${kind}`;
+  status.textContent = text;
+}
+
+function setAiCostLimitStatus(kind, text) {
+  const status = document.querySelector("#aiCostLimitStatus");
   status.className = `flash-status ${kind}`;
   status.textContent = text;
 }
@@ -529,7 +581,7 @@ function renderAiModelPolicyRows(items) {
     <tr>
       <td><strong>${escapeHtml(item.model || "-")}</strong></td>
       <td><strong>${item.allowed ? "erlaubt" : "blockiert"}</strong><span>${item.premium ? "Premium-Capability erforderlich" : "Standard"}</span></td>
-      <td><strong>${formatNumber(item.credits_per_1k_input_tokens)} in</strong><span>${formatNumber(item.credits_per_1k_output_tokens)} out je 1k Tokens</span></td>
+      <td><strong>1:1</strong><span>${formatNumber(item.credits_per_1k_input_tokens)} Credits je 1k Tokens</span></td>
       <td>${formatCurrency(item.provider_cost_per_1k_tokens)} / 1k Tokens</td>
     </tr>
   `).join("");
@@ -960,7 +1012,7 @@ function meta([label, value]) {
 
 function setValue(selector, value) {
   const input = document.querySelector(selector);
-  if (input) input.value = value || "";
+  if (input) input.value = value === null || value === undefined ? "" : value;
 }
 
 function value(selector) {

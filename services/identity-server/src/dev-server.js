@@ -5,7 +5,6 @@ const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const { createDefaultIdentityModule, MockEmailService } = require("./index");
 const { createAccountTransparencyFactory } = require("./dev/account-transparency");
-const { createAiChatAssistant } = require("./dev/ai-chat-assistant");
 const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
 const { developmentProjectSources } = require("./dev/development-project-structure");
@@ -31,6 +30,8 @@ const { defaultCatalogSeed } = require("../../hardware-catalog/src/seed");
 const publicDir = path.join(__dirname, "..", "public");
 const appDir = path.join(publicDir, "app");
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
+const identityPersistenceBackend = process.env.IDENTITY_PERSISTENCE_BACKEND || "sqlite";
+const identitySqlitePath = process.env.IDENTITY_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-identity.sqlite");
 const port = Number(process.env.PORT || 4300);
 const host = process.env.HOST || "127.0.0.1";
 const demoUsername = process.env.DEMO_USER || "demo";
@@ -114,14 +115,6 @@ const developmentAssistant = createDevelopmentAssistant({
   requireProjectAccess: requireSessionProject,
   sendJson,
 });
-const aiChatAssistant = createAiChatAssistant({
-  aiContextJson,
-  aiUsageJson,
-  llmConfigStore,
-  projectServerUserId,
-  readJsonBody,
-  sendJson,
-});
 const builtInDemoAccounts = [
   { user_id: "acct-demo", username: demoUsername, email: demoEmail, password: demoPassword },
 ];
@@ -129,6 +122,8 @@ const builtInDemoAccounts = [
 const emailService = new MockEmailService({ log() {} });
 const auth = createDefaultIdentityModule({
   emailService,
+  persistenceBackend: identityPersistenceBackend,
+  sqlitePath: identitySqlitePath,
   appBaseUrl: `http://${host}:${port}`,
 });
 const sessions = new Map();
@@ -154,6 +149,7 @@ async function bootstrap() {
   console.log(`Device Management adapter: ${deviceManagementBaseUrl}`);
   console.log(`AI Usage adapter: ${aiUsageBaseUrl}`);
   console.log(`AI Context adapter: ${aiContextBaseUrl}`);
+  console.log(`Identity persistence: ${identityPersistenceBackend}${identityPersistenceBackend === "sqlite" ? ` (${identitySqlitePath})` : ""}`);
   const llmConfig = llmConfigStore.publicConfig();
   console.log(`Development Platform LLM: ${llmConfig.baseUrl} (${llmConfig.model})`);
   });
@@ -201,6 +197,16 @@ async function routeRequest(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/login") {
     await handleLogin(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/register") {
+    await handleRegister(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/login/external") {
+    await handleExternalLogin(req, res);
     return;
   }
 
@@ -313,16 +319,6 @@ async function routeRequest(req, res) {
     return;
   }
 
-  if (req.method === "POST" && url.pathname === "/api/platform/ai-chat/chat") {
-    const session = readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await aiChatAssistant.handleChat(req, res, session);
-    return;
-  }
-
   if (req.method === "GET" && url.pathname === "/api/platform/hardware/processor-boards") {
     const session = readSession(req);
     if (!session) {
@@ -430,6 +426,16 @@ async function routeRequest(req, res) {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/user-ide/device-recovery/check-firmware") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleDeviceRecoveryFirmwareCheck(req, res, session);
+    return;
+  }
+
   if (url.pathname === "/api/user-ide/hardware-shop") {
     const session = readSession(req);
     if (!session) {
@@ -447,16 +453,6 @@ async function routeRequest(req, res) {
       return;
     }
     sendJson(res, 200, await loadAiUsageSummary(session));
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/user-ide/ai-demo") {
-    const session = readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleAiDemo(req, res, session);
     return;
   }
 
@@ -569,6 +565,81 @@ async function handleLogin(req, res) {
   }
 }
 
+async function handleRegister(req, res) {
+  const body = await readJsonBody(req);
+  try {
+    const beforeCount = emailService.sentMessages.length;
+    const registered = await auth.register_local(
+      body.username,
+      body.email,
+      body.password,
+      body.accepted_terms === true,
+      body.password_repeat,
+    );
+    const verification = emailService.sentMessages
+      .slice(beforeCount)
+      .find((message) => message.type === "verification");
+    const token = verification ? new URL(verification.link).searchParams.get("token") : "";
+    if (token) await auth.verify_email(token);
+    const login = await auth.login_local(body.email, body.password);
+    sessions.set(login.session.token, {
+      account: login.account,
+      expiresAt: login.session.expires_at,
+    });
+    setSessionCookie(res, login.session.token, login.session.expires_at);
+    sendJson(res, 201, {
+      account: login.account,
+      next: sanitizeNextPath(body.next) || "/app/dashboard/",
+    });
+  } catch (error) {
+    sendJson(res, error.status || 400, {
+      error: error.code || "registration_failed",
+      message: registrationMessage(error),
+    });
+  }
+}
+
+async function handleExternalLogin(req, res) {
+  const body = await readJsonBody(req);
+  const provider = String(body.provider || "").trim().toLowerCase();
+  const email = String(body.email || "").trim().toLowerCase();
+  const username = String(body.username || "").trim();
+  try {
+    if (!provider) throw new Error("provider_required");
+    if (!email) throw new Error("email_required");
+    const login = await auth.login_external(provider, {
+      provider,
+      provider_user_id: body.provider_user_id || `${provider}:${email}`,
+      email,
+      email_verified: body.email_verified !== false,
+      username: username || email.split("@")[0],
+    });
+    if (!login.session) {
+      sendJson(res, 202, {
+        account: login.account,
+        requires_email_verification: true,
+        message: "Account erstellt, E-Mail-Verifizierung erforderlich.",
+      });
+      return;
+    }
+    sessions.set(login.session.token, {
+      account: login.account,
+      expiresAt: login.session.expires_at,
+    });
+    setSessionCookie(res, login.session.token, login.session.expires_at);
+    sendJson(res, 200, {
+      account: login.account,
+      provider,
+      next: sanitizeNextPath(body.next) || "/app/dashboard/",
+    });
+  } catch (error) {
+    sendJson(res, error.status || 400, {
+      error: error.code || "external_login_failed",
+      message: externalLoginMessage(error),
+    });
+  }
+}
+
 async function handleLogout(req, res) {
   const token = readSessionToken(req);
   if (token) {
@@ -647,14 +718,12 @@ async function handlePlatformSummary(res, session) {
       ide: "/app/ide/",
       projects: "/app/projects/",
       development_platform: "/app/development-platform/",
-      ai_chat: "/app/ki-chat/",
       devices: "/app/devices/",
       builds: "/app/builds/",
       billing: "/app/billing/",
     },
     workspace_state: getWorkspaceState(userId),
     development_assistant: developmentAssistant.config(),
-    ai_chat: aiChatAssistant.config(),
     projects: projects.map(toPlatformProject),
     learning_progress: listLearningProgress(userId, projects),
     devices,
@@ -663,6 +732,25 @@ async function handlePlatformSummary(res, session) {
     ai_usage: aiUsage,
     service_status: serviceStatus,
   });
+}
+
+function externalLoginMessage(error) {
+  if (error.code === "email_already_exists_link_required") {
+    return "Fuer diese E-Mail existiert bereits ein Konto. Automatisches Verknuepfen ist gesperrt.";
+  }
+  if (error.message === "provider_required") return "Provider fehlt.";
+  if (error.message === "email_required") return "E-Mail fehlt.";
+  return "Externe Anmeldung fehlgeschlagen.";
+}
+
+function registrationMessage(error) {
+  if (error.code === "username_already_exists") return "Dieser Benutzername ist bereits vergeben.";
+  if (error.code === "email_already_exists") return "Diese E-Mail wird bereits verwendet.";
+  if (error.code === "password_repeat_mismatch") return "Die Passwoerter stimmen nicht ueberein.";
+  if (error.code === "terms_not_accepted") return "Bitte akzeptiere die Nutzungsbedingungen.";
+  if (error.code === "invalid_username") return "Der Benutzername muss mindestens 3 Zeichen enthalten.";
+  if (error.code === "invalid_email") return "Bitte gib eine gueltige E-Mail-Adresse ein.";
+  return "Konto konnte nicht erstellt werden.";
 }
 
 async function handlePlatformSourceRead(res, session, projectId, sourcePath) {
@@ -825,7 +913,7 @@ async function handlePlatformDiscoveredDeviceClaim(req, res, session) {
         hardware_profile_id: hardwareProfileId,
         authenticity_status: body.authenticity_status || body.authenticityStatus || "gernetix_verified_pending_proof",
         lifecycle_state: "discovered_by_user_ide",
-        connectivity_status: "online",
+        connectivity_status: body.connectivity_status || body.connectivityStatus || "online",
         ota_status: body.ota_status || body.otaStatus || (capabilities.includes("ota") ? "ready" : "unknown"),
         app_version: body.app_version || body.firmwareVersion || "",
         runtime_version: body.runtime_version || body.runtimeVersion || "",
@@ -970,6 +1058,77 @@ async function handleUserIdeBuildJob(req, res) {
   userIdeState.builds.unshift(build);
   touchWorkspace(session, project.project_server_id, body.mode === "learn" ? "learn" : "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
   sendJson(res, 202, build);
+}
+
+async function handleDeviceRecoveryFirmwareCheck(req, res, session) {
+  const body = await readJsonBody(req);
+  const devices = await loadUserIdeDevices(session);
+  const device = devices.find((item) => item.device_id === body.device_id);
+  if (!device) {
+    sendJson(res, 404, { error: "device_not_found", message: "Device wurde nicht gefunden." });
+    return;
+  }
+  const mode = String(body.mode || "").trim().toLowerCase();
+  if (!["usb", "ota"].includes(mode)) {
+    sendJson(res, 400, { error: "invalid_recovery_mode", message: "Recovery Check muss usb oder ota verwenden." });
+    return;
+  }
+  sendJson(res, 200, createFirmwareRecoveryCheck(device, mode, {
+    upload_port: body.upload_port || "",
+  }));
+}
+
+function createFirmwareRecoveryCheck(device, mode, input = {}) {
+  const checks = [
+    recoveryCheckItem("device_known", true, "Device ist dem Account zugeordnet."),
+    recoveryCheckItem("board_profile", Boolean(device.build_config), device.build_config
+      ? `Boardprofil erkannt: ${device.build_target_label || device.hardware_profile_id || "konfiguriert"}.`
+      : "Kein Boardprofil fuer Firmware-Checks hinterlegt."),
+  ];
+  if (mode === "usb") {
+    const port = String(input.upload_port || device.upload_port || "").trim();
+    checks.push(
+      recoveryCheckItem("usb_supported", Boolean(device.usb_flash_supported), device.usb_flash_supported
+        ? "USB-Firmwarepfad wird fuer dieses Device unterstuetzt."
+        : "Dieses Device ist nicht fuer USB-Firmwarechecks konfiguriert."),
+      recoveryCheckItem("usb_port", Boolean(port), port
+        ? `USB-Port: ${port}.`
+        : "Kein USB-Port ausgewaehlt oder erkannt."),
+    );
+  } else {
+    checks.push(
+      recoveryCheckItem("ota_ready", device.ota_status === "ready", device.ota_status === "ready"
+        ? "OTA ist fuer dieses Device bereit."
+        : `OTA ist nicht bereit: ${device.ota_status || "unknown"}.`),
+      recoveryCheckItem("network_reachable", device.connectivity_status === "online", device.connectivity_status === "online"
+        ? `Verbindungsstatus: ${device.connectivity_status}.`
+        : `Device ist nicht erreichbar: ${device.connectivity_status || "unknown"}.`),
+    );
+  }
+  const ok = checks.every((item) => item.ok);
+  return {
+    check_id: `firmware_${mode}_${Date.now()}`,
+    device_id: device.device_id,
+    device_label: device.display_name,
+    mode,
+    status: ok ? "ready" : "blocked",
+    summary: ok
+      ? `Firmware-Check ueber ${mode.toUpperCase()} ist bereit.`
+      : `Firmware-Check ueber ${mode.toUpperCase()} ist noch blockiert.`,
+    checks,
+    next_action: ok
+      ? (mode === "usb" ? "USB-Firmwarecheck kann als Recovery-Schritt angeschlossen werden." : "OTA-Firmwarecheck kann als Recovery-Schritt angeschlossen werden.")
+      : "Fehlende Voraussetzungen beheben, dann erneut pruefen.",
+  };
+}
+
+function recoveryCheckItem(checkId, ok, message) {
+  return {
+    check_id: checkId,
+    ok: Boolean(ok),
+    status: ok ? "ok" : "blocked",
+    message,
+  };
 }
 
 async function loadUserIdeProjects(session) {
@@ -1352,42 +1511,6 @@ async function loadAiUsageSummary(session) {
       error: error.message || "AI Usage Service ist nicht erreichbar.",
     };
   }
-}
-
-async function handleAiDemo(req, res, session) {
-  const body = await readJsonBody(req);
-  const accountId = projectServerUserId(session);
-  const model = body.model || "gpt-4.1-mini";
-  const preflight = await aiUsageJson("/api/ai-usage/preflight", {
-    method: "POST",
-    body: {
-      account_id: accountId,
-      user_id: accountId,
-      project_id: body.project_id || "",
-      feature: "user_ide_demo_ai_help",
-      model,
-      estimated_input_tokens: Number(body.estimated_input_tokens || 600),
-      estimated_output_tokens: Number(body.estimated_output_tokens || 300),
-      system_capabilities: ["system_capability.ai_assistant"],
-    },
-    allowPaymentRequired: true,
-  });
-  if (!preflight.allowed) {
-    sendJson(res, 402, preflight);
-    return;
-  }
-  const completed = await aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/complete`, {
-    method: "POST",
-    body: {
-      input_tokens: Number(body.input_tokens || body.estimated_input_tokens || 600),
-      output_tokens: Number(body.output_tokens || body.estimated_output_tokens || 300),
-    },
-  });
-  sendJson(res, 200, {
-    preflight,
-    completed,
-    credits: await aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/credits`),
-  });
 }
 
 function latestBuildStatus(project) {
@@ -1820,11 +1943,20 @@ function readSession(req) {
   const token = readSessionToken(req);
   if (!token) return null;
   const session = sessions.get(token);
-  if (!session || new Date(session.expiresAt).getTime() <= Date.now()) {
-    sessions.delete(token);
-    return null;
+  if (session && new Date(session.expiresAt).getTime() > Date.now()) {
+    return session;
   }
-  return session;
+  if (session) {
+    sessions.delete(token);
+  }
+  const resolved = auth.resolve_session_token(token);
+  if (!resolved) return null;
+  const restoredSession = {
+    account: resolved.account,
+    expiresAt: resolved.session.expires_at,
+  };
+  sessions.set(token, restoredSession);
+  return restoredSession;
 }
 
 function readSessionToken(req) {

@@ -55,6 +55,7 @@ test("hardware catalog source is registered and can be authorized locally", () =
   const service = createService();
   assert.ok(service.listSources().some((source) => source.source_type === "hardware_catalog" && source.source_scope === "processor_boards/esp32"));
   assert.ok(service.listSources().some((source) => source.source_type === "ai_prompt" && source.source_scope === "prompt_foundations"));
+  assert.ok(service.listSources().some((source) => source.source_type === "architecture_context" && source.source_scope === "start_architecture/components"));
   service.createGrant(grantInput({
     account_id: "*",
     source_type: "hardware_catalog",
@@ -70,6 +71,35 @@ test("hardware catalog source is registered and can be authorized locally", () =
 
   assert.equal(result.allowed, true);
   assert.equal(result.redaction_level, "summary_only");
+});
+
+test("architecture components are centrally available from ai context", () => {
+  const service = createService();
+  const components = service.listArchitectureComponents();
+
+  assert.ok(components.length >= 8);
+  assert.ok(components.find((component) => component.name === "MQTT Broker").aliases.includes("mqtt"));
+  assert.ok(components.find((component) => component.name === "Mobile App").decision_hints.join(" ").includes("Browser UI reicht"));
+  assert.ok(components.find((component) => component.name === "Backend / API").provided_interfaces.includes("REST API"));
+});
+
+test("architecture components can be updated centrally without identity code changes", () => {
+  const service = createService();
+
+  const component = service.upsertArchitectureComponent({
+    component_id: "arch_component.example_component",
+    name: "Example Component",
+    aliases: ["example"],
+    summary: "Zentral gepflegter Beispielbaustein.",
+    properties: ["testbar"],
+    provided_interfaces: ["Example API"],
+    required_interfaces: ["Example Input"],
+    decision_hints: ["Nur fuer Tests."],
+    status: "active",
+  });
+
+  assert.equal(component.summary, "Zentral gepflegter Beispielbaustein.");
+  assert.equal(service.listArchitectureComponents({ component_id: "arch_component.example_component" })[0].name, "Example Component");
 });
 
 test("prompt foundations are centrally available from ai context", () => {
@@ -154,8 +184,9 @@ test("sqlite repository persists grants policy and audit events in own database"
   const summary = reloaded.sqliteSummary();
   assert.equal(summary.available, true);
   assert.equal(summary.db_path, dbPath);
-  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_sources").row_count, 3);
+  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_sources").row_count, 4);
   assert.equal(summary.tables.find((table) => table.table_name === "ai_context_prompt_foundations").row_count, 2);
+  assert.ok(summary.tables.find((table) => table.table_name === "ai_context_architecture_components").row_count >= 8);
   assert.equal(summary.tables.find((table) => table.table_name === "ai_context_grants").row_count, 1);
   assert.equal(summary.tables.find((table) => table.table_name === "ai_context_audit_events").row_count, 1);
   assert.equal(summary.tables.find((table) => table.table_name === "ai_context_policy").preview_rows[0].raw_json, undefined);
@@ -165,8 +196,9 @@ test("sqlite repository persists grants policy and audit events in own database"
     assert.equal(tableCount(db, "ai_context_grants"), 1);
     assert.equal(tableCount(db, "ai_context_audit_events"), 1);
     assert.equal(tableCount(db, "ai_context_policy"), 1);
-    assert.equal(tableCount(db, "ai_context_sources"), 3);
+    assert.equal(tableCount(db, "ai_context_sources"), 4);
     assert.equal(tableCount(db, "ai_context_prompt_foundations"), 2);
+    assert.ok(tableCount(db, "ai_context_architecture_components") >= 8);
   } finally {
     db.close();
   }

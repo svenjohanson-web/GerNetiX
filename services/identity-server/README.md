@@ -44,6 +44,9 @@ npm run dev
 
 Oeffnet die Login-Ansicht unter `http://localhost:4300/app/auth/`. Die Ansicht nutzt den lokalen Dev-Login und setzt fuer die Demo ein HttpOnly-Session-Cookie.
 Der eingebaute Dev-Account `demo` nutzt lokal stabil die interne Account-ID `acct-demo`, damit Identity Server, Project Server, AI Usage und Admin Tool im MVP dieselbe Demo-Account-Referenz sehen.
+Der Dev-Server speichert Identity-Accounts standardmaessig in `.runtime/gernetix-identity.sqlite`. Damit bleiben lokal angelegte Accounts und Identity-Sessions ueber Identity-Neustarts erhalten; der Prozessspeicher ist nur noch ein schneller Session-Cache.
+Ueber `Konto erstellen` kann lokal ein neuer Account mit Benutzername, E-Mail, Passwort und Zustimmung angelegt werden. Im Dev-Modus wird die Mock-E-Mail-Verifizierung direkt abgeschlossen und der Nutzer wird angemeldet.
+Die Provider-Buttons fuer Google, Apple, Microsoft und GitHub nutzen lokal Mock-Provider. Damit kann ein Dev-Account mit Apple-Providerreferenz angelegt werden, ohne echte Apple-OAuth-Schluessel oder einen produktiven Apple-ID-Redirect vorzutaeuschen.
 
 Nach dem Login landet der Nutzer auf der gemeinsamen Plattform unter:
 
@@ -88,6 +91,10 @@ Der Nutzer muss vor dem Architektur-Chat ein eigenes Entwicklungsprojekt laden o
 
 Die Architektur-Discovery fragt im Dialog, ob der Nutzer mit einer maximalen Architektur starten und Unbenoetigtes entfernen moechte oder mit einer leeren Architektur beginnt. Der Nutzer antwortet einfach mit `max` oder `leer`. Diese Einstiegsfrage und ihre Bedeutung werden in der AI-Context-Prompt-Foundation gepflegt; die Antwort laeuft ueber die konfigurierte `architecture_discovery`-Route, damit das Routing reproduzierbar im Admin Tool nachvollziehbar bleibt.
 
+Exakte Dialogsteuerbefehle `max`, `maximal`, `maximale architektur`, `leer`, `leere architektur` und `empty` werden ohne LLM beantwortet. Sie erzeugen keinen AI-Usage-Preflight und werden in der UI als `System / Dialogsteuerung` mit `0` Tokens angezeigt. `max` erzeugt deterministisch eine maximale technische Startarchitektur zum Reduzieren; `leer` erzeugt deterministisch ein leeres Startgeruest zum gezielten Hinzufuegen. Erst die danach folgende fachliche Architekturfrage nutzt wieder die konfigurierte `architecture_discovery`-Route.
+
+Kurze Erklaerfragen zu Bausteinen der Startarchitektur, z. B. `wozu dient MQTT` oder `wozu brauche ich eine Mobile App`, werden als `System / Kontextantwort` ohne LLM und ohne AI-Usage-Preflight beantwortet. Identity haelt dafuer keine fachlichen Antworttexte, sondern sucht generisch in den Architektur-Bausteinen aus dem AI Context Server. Diese Antworten veraendern die vorhandene PlantUML-Skizze nicht und dienen nur dazu, sichtbare Strukturelemente zu verstehen.
+
 Nach einer erfolgreichen Architektur-KI-Antwort leitet der Identity Server zusaetzlich eine PlantUML-Architekturskizze aus Dialog und KI-Ergebnis ab. Die Entwicklungsplattform rendert diese Skizze direkt unter dem Chat und zeigt die PlantUML-Quelle an. Die Skizze ist bewusst als KI-abgeleitet markiert und ersetzt keine vom Nutzer bestaetigte Architekturentscheidung.
 
 Architektur-Discovery nutzt immer die konfigurierte `architecture_discovery`-Route; Identity entscheidet nicht mehr anhand von Wortzahl, Komplexitaet oder `ESP32 only`, ob lokal oder extern geroutet wird. Antwortdisziplin und fachliche Prompt-Regeln kommen aus der AI-Context-SQLite. Die PlantUML-Skizze fuer `ESP32 only` bleibt rein technisch minimal und enthaelt genau `ESP32`, keine Nutzer-/Anforderungsknoten und keine Uebergabepunkte.
@@ -96,7 +103,7 @@ Die aktuell sichtbare Architekturskizze kann jederzeit gespeichert werden. Dabei
 
 Systemverhalten ist eine Architektursicht auf Projektebene. Es beschreibt komponentenuebergreifende Ablaeufe, Zustaende, Regeln, Ereignisse, Fehlerfaelle und Reaktionen. Die KI kann bestaetigtes Systemverhalten spaeter in komponentenspezifisches Verhalten, Schnittstellenanforderungen, Datenfluesse, Code und Konfiguration dekomponieren.
 
-Wenn der Nutzer mit der Architektur zufrieden ist, kann er `Uebernehmen und weiter` waehlen. Die Plattform speichert dieselben Project-Server-Quellen und oeffnet danach `/app/ide/` fuer das Projekt. Die IDE zeigt links einen Projektbrowser ab Projektname mit Architektur- und Komponentenordnern, in der Mitte Modell-, Code- und Image-Ansichten fuer Anzeige und Bearbeitung und unten einen KI-Chat fuer Rueckfragen zum aktuellen Projekt.
+Wenn der Nutzer mit der Architektur zufrieden ist, kann er `Uebernehmen und weiter` waehlen. Die Plattform speichert dieselben Project-Server-Quellen und oeffnet danach `/app/ide/` fuer das Projekt. Die IDE zeigt links einen Projektbrowser ab Projektname mit Architektur- und Komponentenordnern und in der Mitte Modell-, Code- und Image-Ansichten fuer Anzeige und Bearbeitung.
 
 Wichtig: Die Plattform-UI liegt auch im Projekt als ein gemeinsames Artefakt unter `services/identity-server/public/app`. Alte Einstiege wie `/login.html`, `/projects/` und `/dev/projects/` werden nur noch auf die gemeinsame Plattform umgeleitet.
 

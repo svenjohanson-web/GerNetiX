@@ -240,7 +240,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Not Started
     ownerDomain: Business
-    summary: Die Plattform muss fuer jeden Account ein KI-Credit-Guthaben fuehren und aktuellen Stand, bisherigen Verbrauch und verbleibende Credits nachvollziehbar bereitstellen.
+    summary: Die Plattform muss fuer jeden Account ein KI-Credit-Guthaben fuehren und aktuellen Stand, bisherigen Verbrauch und verbleibende Credits nachvollziehbar bereitstellen. Fuer den aktuellen Stand gilt fachlich `1 Credit = 1 Token`; Credit- und Token-Limits muessen identisch sein.
     derivedFromBusinessCapabilities:
       - BC-041
     considersBusinessRules:
@@ -282,7 +282,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Not Started
     ownerDomain: Business
-    summary: Credits muessen anhand des tatsaechlichen Ressourcenverbrauchs berechnet werden, z. B. Eingabetokens, Ausgabetokens, Modell, Bildgenerierung, Audio, Tool-Aufrufe oder weitere kostenpflichtige KI-Dienste.
+    summary: Credits muessen anhand des tatsaechlichen Ressourcenverbrauchs berechnet werden. Fuer textbasierte LLM-Aufrufe gilt bis zu einer bewussten spaeteren Architekturentscheidung strikt `1 Credit = 1 Token`; Modellpreise duerfen nur Anbieter-Kosten schaetzen, aber keine abweichende Nutzungsbewertung erzeugen.
     derivedFromBusinessCapabilities:
       - BC-041
     derivedFromRequirements:

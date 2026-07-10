@@ -79,6 +79,23 @@ const DeviceOnboardingController = (() => {
       setDiscoveryStatus("running", "Fuer diesen Zustand wird keine lokale Installation verwendet. Der naechste Schritt ist Browser-Web-Serial-Flash, danach im Kunden-WLAN erneut suchen.");
     }
 
+    function selectDeviceDiscoveryMethod() {
+      const select = document.querySelector("#deviceDiscoveryMethod");
+      state.inventoryEsp32Method = select?.value || "";
+      if (state.inventoryEsp32Method) state.discoveredDevices = [];
+      renderNetworkDiscovery();
+      setDiscoveryStatus("running", state.inventoryEsp32Method === "usb"
+        ? "USB ausgewaehlt. Waehle bei Bedarf den USB-Port und klicke auf Suchen."
+        : "WLAN ausgewaehlt. Klicke auf Suchen, um gernetix-* Nodes im Netzwerk zu finden.");
+    }
+
+    async function searchDevicesForInventory() {
+      const method = document.querySelector("#deviceDiscoveryMethod")?.value || state.inventoryEsp32Method || "wlan";
+      state.inventoryEsp32Method = method;
+      if (method === "usb") return identifyEsp32Bootloader();
+      return discoverNetworkDevices();
+    }
+
     async function identifyAvrBootloaderExperimental() {
       if (!("serial" in navigator)) {
         setDiscoveryStatus("error", "Dieser Browser unterstuetzt Web Serial nicht. Bitte Chrome oder Edge auf Desktop verwenden.");
@@ -200,14 +217,11 @@ const DeviceOnboardingController = (() => {
       const isAvr = family === "avr_8bit";
       const usesWirelessOrUsb = actions.wifiDiscovery || actions.usbIdentification;
       const showGenericMethods = usesWirelessOrUsb && !isAvr;
-      const isUsbSelected = actions.usbIdentification && state.inventoryEsp32Method === "usb";
       document.querySelector("#esp32DiscoveryActions").classList.toggle("hidden", !showGenericMethods);
-      document.querySelector("#networkDiscoveryButton").classList.toggle("hidden", !actions.wifiDiscovery);
-      document.querySelector("#esp32BootloaderIdentifyButton").classList.toggle("hidden", !actions.usbIdentification);
+      renderDiscoveryMethodOptions(actions);
+      const isUsbSelected = actions.usbIdentification && state.inventoryEsp32Method === "usb";
       document.querySelector("#avrDiscoveryActions").classList.toggle("hidden", !isAvr);
       document.querySelector("#esp32UsbPortLabel").classList.toggle("hidden", !isUsbSelected);
-      document.querySelector("#networkDiscoveryButton").classList.toggle("active-method", state.inventoryEsp32Method === "wlan");
-      document.querySelector("#esp32BootloaderIdentifyButton").classList.toggle("active-method", state.inventoryEsp32Method === "usb");
       document.querySelector("#claimSelectedDiscoveredDevicesButton").classList.toggle("hidden", !actions.wifiDiscovery && !actions.usbIdentification);
       document.querySelector("#deviceInventoryForm").classList.toggle("hidden", actions.wifiDiscovery);
       document.querySelector("#inventoryTypeHint").textContent = inventoryTypeHintText();
@@ -266,6 +280,22 @@ const DeviceOnboardingController = (() => {
         checkbox.addEventListener("change", updateClaimSelectedButton);
       });
       updateClaimSelectedButton();
+    }
+
+    function renderDiscoveryMethodOptions(actions) {
+      const select = document.querySelector("#deviceDiscoveryMethod");
+      const searchButton = document.querySelector("#deviceDiscoverySearchButton");
+      if (!select || !searchButton) return;
+      const methods = [
+        actions.wifiDiscovery ? { value: "wlan", label: "WLAN" } : null,
+        actions.usbIdentification ? { value: "usb", label: "USB" } : null,
+      ].filter(Boolean);
+      select.innerHTML = methods.map((method) => `<option value="${method.value}">${method.label}</option>`).join("");
+      if (!methods.some((method) => method.value === state.inventoryEsp32Method)) {
+        state.inventoryEsp32Method = methods[0]?.value || "";
+      }
+      select.value = state.inventoryEsp32Method;
+      searchButton.disabled = !methods.length;
     }
 
     function renderAvrBootloaderResult() {
@@ -370,11 +400,13 @@ const DeviceOnboardingController = (() => {
     function withOnboardingIdentity(device) {
       const shortName = model.normalizeShortName(document.querySelector("#inventoryBoardShortName")?.value || device.display_name || device.hostname);
       const nodeName = model.nodeName(shortName || device.hostname || device.serial_number);
+      const board = selectedInventoryBoard();
       return {
         ...device,
         board_short_name: shortName,
         node_name: nodeName,
         display_name: device.display_name || shortName || nodeName,
+        technical_capability_ids: device.technical_capability_ids || device.capability_ids || board?.capability_ids || [],
       };
     }
 
@@ -389,10 +421,11 @@ const DeviceOnboardingController = (() => {
     }
 
     function canClaimDiscoveredDevice(device) {
+      const claimableStates = new Set(["node_online", "bootloader_only"]);
       return device
         && !device.already_in_inventory
         && device.ownership_status !== "other_account"
-        && device.esp32_inventory_state === "node_online";
+        && claimableStates.has(device.esp32_inventory_state);
     }
 
     function ownershipStatusText(device) {
@@ -405,7 +438,7 @@ const DeviceOnboardingController = (() => {
     function esp32TreatmentText(device) {
       if (device.esp32_inventory_state === "node_online") return "Kann nach Kontopruefung ins Inventar uebernommen werden.";
       if (device.esp32_inventory_state === "basissoftware_setup_ap") return "Nicht im normalen Inventarisierungsfluss verwenden, weil der Setup-AP die Backend-Verbindung trennt. Per USB oder Provisioning ins Kunden-WLAN bringen.";
-      if (device.esp32_inventory_state === "bootloader_only") return "Basissoftware per Browser-Web-Serial/USB flashen; danach im Kunden-WLAN erneut suchen.";
+      if (device.esp32_inventory_state === "bootloader_only") return "Kann ins Inventar uebernommen werden; Basissoftware danach per Browser-Web-Serial/USB flashen.";
       return "Zustand pruefen, bevor das Board inventarisiert wird.";
     }
 
@@ -598,6 +631,8 @@ const DeviceOnboardingController = (() => {
       identifyEsp32Bootloader,
       renderDeviceInventoryForm,
       renderNetworkDiscovery,
+      searchDevicesForInventory,
+      selectDeviceDiscoveryMethod,
       selectInventoryHardwareType,
       selectInventoryProcessorFamily,
       selectedInventoryHardwareFamily,

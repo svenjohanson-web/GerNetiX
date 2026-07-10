@@ -70,6 +70,10 @@ h1 {
   gap: 16px;
 }
 
+.hidden {
+  display: none !important;
+}
+
 label {
   display: grid;
   gap: 7px;
@@ -87,6 +91,20 @@ input {
   font: inherit;
   color: #111827;
   background: #fbfcfd;
+}
+
+.check-line {
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: start;
+  gap: 10px;
+  color: #475569;
+  font-weight: 600;
+}
+
+.check-line input {
+  width: 18px;
+  min-height: 18px;
+  margin-top: 2px;
 }
 
 input:focus {

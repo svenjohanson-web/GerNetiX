@@ -214,15 +214,18 @@ const DevelopmentPlatform = (() => {
       state.developmentPlatform.chat.push({ role: "user", content });
       input.value = "";
       submit.disabled = true;
-      setChatStatus(`${providerLabel()} denkt...`);
+      setChatStatus("Anfrage wird verarbeitet...");
       renderChatMessages();
       try {
         const response = await postJson("/api/platform/development-assistant/chat", {
           projectId: activeProjectId(),
           messages: state.developmentPlatform.chat,
+          architectureDiagram: state.developmentPlatform.architectureDiagram,
         });
         setAssistantConfig(response.config || state.developmentPlatform.assistant);
-        state.developmentPlatform.architectureDiagram = response.architectureDiagram || null;
+        if (Object.hasOwn(response, "architectureDiagram")) {
+          state.developmentPlatform.architectureDiagram = response.architectureDiagram || null;
+        }
         state.developmentPlatform.lastRouting = response.routing || null;
         state.developmentPlatform.chat.push({
           role: "assistant",
@@ -267,6 +270,7 @@ const DevelopmentPlatform = (() => {
     function costPolicyLabel(value) {
       if (value === "prefer_local") return "kostenarm";
       if (value === "external_costs") return "externe Kosten";
+      if (value === "no_llm_call") return "kein LLM-Aufruf";
       return value;
     }
 

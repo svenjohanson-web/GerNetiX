@@ -22,8 +22,9 @@
       <nav class="tabs" aria-label="Plattformbereiche">
         <a href="/app/dashboard/" data-route="dashboard">Dashboard</a>
         <a href="/app/development-platform/" data-route="development-platform">Entwicklungsplattform</a>
-        <a href="/app/ki-chat/" data-route="ki-chat">KI-Chat</a>
+        <a href="/app/learn/" data-route="learn">Lernplattform</a>
         <a href="/app/ide/" data-route="ide">Entwickeln</a>
+        <a href="/app/device-recovery/" data-route="device-recovery">Device Recovery</a>
         <a class="utility" href="/app/devices/" data-route="devices">Geräte</a>
         <a class="utility" href="/app/builds/" data-route="builds">Builds</a>
         <a class="utility" href="/app/billing/" data-route="billing">Billing</a>
@@ -39,9 +40,9 @@
             <span>Freie Entwicklungsumgebung öffnen</span>
             <strong>Eigene Projekte, Code, Builds und Flashen ohne geführte Lektion</strong>
           </button>
-          <button class="entry-card" type="button" data-open-route="/app/ki-chat/">
-            <span>KI-Chat oeffnen</span>
-            <strong>Lokalen Assistenten direkt fragen</strong>
+          <button class="entry-card" type="button" data-open-route="/app/learn/">
+            <span>Lernplattform oeffnen</span>
+            <strong>Gefuehrte Lernprojekte, Fortschritt und Projektkatalog</strong>
           </button>
           <button id="continueButton" class="entry-card" type="button">
             <span>Letztes Projekt fortsetzen</span>
@@ -70,6 +71,33 @@
             </div>
           </div>
           <div id="dashboardAiUsage" class="ai-rating-grid"></div>
+        </section>
+      </section>
+
+      <section id="learnView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Gefuehrte Projekte</p>
+            <h2>Lernplattform</h2>
+          </div>
+        </div>
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Meine Lernprojekte</p>
+              <h3>Fortschritt</h3>
+            </div>
+          </div>
+          <div id="learnProjectList"></div>
+        </section>
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Katalog</p>
+              <h3>Projekt starten</h3>
+            </div>
+          </div>
+          <section id="projectList" class="project-grid"></section>
         </section>
       </section>
 
@@ -123,17 +151,6 @@
               <section id="ideImageView" class="ide-image-view hidden"></section>
               <section id="ideModelView" class="ide-model-view"></section>
             </article>
-            <article id="ideAssistantPanel" class="panel ide-assistant-panel">
-              <div id="ideChatMessages" class="development-chat-messages compact" aria-live="polite"></div>
-              <form id="ideChatForm" class="development-chat-form compact">
-                <label for="ideChatInput">KI-Chat</label>
-                <div class="ide-chat-input-row">
-                  <textarea id="ideChatInput" rows="2" placeholder="Frage zur aktuellen Projektdatei oder Architektur."></textarea>
-                  <button id="ideChatSubmit" class="primary" type="submit">Senden</button>
-                </div>
-                <span id="ideChatStatus" class="chat-status">Bereit.</span>
-              </form>
-            </article>
           </section>
           <aside id="ideInspectorPanel" class="panel ide-inspector-panel">
             <p class="eyebrow">Projektmodell</p>
@@ -145,45 +162,42 @@
         </section>
       </section>
 
-      <section id="aiChatView" class="view hidden">
+
+      <section id="deviceRecoveryView" class="view hidden">
         <div class="section-head">
           <div>
-            <p class="eyebrow">KI-Assistent</p>
-            <h2>KI-Chat</h2>
+            <p class="eyebrow">Recovery Vorbereitung</p>
+            <h2>Device Recovery</h2>
           </div>
           <div class="button-row">
-            <button id="clearAiChatButton" type="button">Dialog leeren</button>
+            <button id="refreshRecoveryDevicesButton" type="button">Devices aktualisieren</button>
           </div>
         </div>
-        <section class="ai-chat-layout">
-          <article class="panel development-chat-panel">
-            <div id="aiChatMessages" class="development-chat-messages" aria-live="polite"></div>
-            <form id="aiChatForm" class="development-chat-form">
-              <label for="aiChatInput">Nachricht</label>
-              <textarea id="aiChatInput" rows="4" placeholder="Stelle eine Frage an den KI-Chat."></textarea>
-              <div class="button-row">
-                <span id="aiChatStatus" class="chat-status">Bereit.</span>
-                <button id="aiChatSubmit" class="primary" type="submit">Senden</button>
-              </div>
-            </form>
-          </article>
-          <aside class="panel development-assistant-context">
-            <p class="eyebrow">PoC-Konfiguration</p>
-            <h3>LLM-Routing</h3>
-            <dl id="aiChatConfig" class="meta-list"></dl>
-            <div class="architecture-question-list">
-              <h3>Schnellfragen</h3>
-              <button type="button" data-ai-prompt="Fasse bitte kurz zusammen, was du in diesem Chat fuer mich tun kannst.">Was kannst du?</button>
-              <button type="button" data-ai-prompt="Hilf mir, eine technische Idee in konkrete naechste Schritte zu zerlegen.">Naechste Schritte planen</button>
-              <button type="button" data-ai-prompt="Stelle mir Rueckfragen, damit mein Ziel klarer wird.">Ziel klaeren</button>
-            </div>
-            <div class="development-source-note">
-              <h3>Datenquellen</h3>
-              <p>Dieser Chat nutzt nur den aktuellen Dialog. Projektdateien, Graphdaten, Kundendaten oder externe Quellen sind noch nicht freigegeben.</p>
-            </div>
+        <section class="recovery-layout">
+          <aside class="panel recovery-device-panel">
+            <p class="eyebrow">Account Devices</p>
+            <h3>Device waehlen</h3>
+            <select id="recoveryDeviceSelect" aria-label="Recovery Device waehlen"></select>
+            <section id="recoveryDeviceList" class="recovery-device-list"></section>
           </aside>
+          <article class="panel recovery-check-panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Firmwarecheck</p>
+                <h3 id="recoveryDeviceTitle">Kein Device gewaehlt</h3>
+              </div>
+            </div>
+            <dl id="recoveryDeviceMeta" class="meta-list"></dl>
+            <div class="button-row recovery-actions">
+              <button id="recoveryCheckUsbButton" class="primary" type="button">Check Firmware ueber USB</button>
+              <button id="recoveryCheckOtaButton" type="button">Check Firmware ueber OTA</button>
+            </div>
+            <div id="recoveryStatus" class="flash-status hidden"></div>
+            <section id="recoveryCheckResult" class="recovery-check-result"></section>
+          </article>
         </section>
       </section>
+
 
       <section id="developmentPlatformView" class="view hidden">
         <div class="section-head">
@@ -276,8 +290,11 @@
               <p class="helper-text">Die Seriennummer wird vom System erzeugt und dauerhaft im Board gespeichert. Du musst damit nichts anfangen.</p>
               <div class="inventory-methods">
                 <div id="esp32DiscoveryActions" class="button-row">
-                  <button id="networkDiscoveryButton" class="primary" type="button">Per WLAN suchen</button>
-                  <button id="esp32BootloaderIdentifyButton" type="button">Per USB pruefen</button>
+                  <select id="deviceDiscoveryMethod" aria-label="Erkennungsweg waehlen">
+                    <option value="wlan">WLAN</option>
+                    <option value="usb">USB</option>
+                  </select>
+                  <button id="deviceDiscoverySearchButton" class="primary" type="button">Suchen</button>
                 </div>
                 <div id="avrDiscoveryActions" class="button-row hidden">
                   <button id="avrBootloaderIdentifyButton" class="primary" type="button">Bootloader experimentell testen</button>
@@ -341,7 +358,6 @@
     <script src="/app/device-onboarding-controller.js"></script>
     <script src="/app/guided-project-view.js"></script>
     <script src="/app/development-platform.js"></script>
-    <script src="/app/ai-chat.js"></script>
     <script src="/app/app.js"></script>
   </body>
 </html>

@@ -17,23 +17,52 @@
           </div>
         </div>
 
-        <form class="login-form" id="login-form">
-          <label>
+        <form class="login-form" id="login-form" autocomplete="on">
+          <label for="login-identifier">
             Benutzername oder E-Mail
-            <input name="identifier" autocomplete="username" required />
+            <input id="login-identifier" name="identifier" autocomplete="username" required />
           </label>
 
-          <label>
+          <label for="login-password">
             Passwort
-            <input name="password" type="password" autocomplete="current-password" required />
+            <input id="login-password" name="password" type="password" autocomplete="current-password" required />
           </label>
 
           <button class="primary" type="submit">Einloggen</button>
         </form>
 
+        <form class="login-form hidden" id="register-form" autocomplete="on">
+          <label for="register-username">
+            Benutzername
+            <input id="register-username" name="username" autocomplete="username" minlength="3" required />
+          </label>
+
+          <label for="register-email">
+            E-Mail
+            <input id="register-email" name="email" type="email" autocomplete="email" required />
+          </label>
+
+          <label for="register-password">
+            Passwort
+            <input id="register-password" name="password" type="password" autocomplete="new-password" required />
+          </label>
+
+          <label for="register-password-repeat">
+            Passwort wiederholen
+            <input id="register-password-repeat" name="password_repeat" type="password" autocomplete="new-password" required />
+          </label>
+
+          <label class="check-line" for="register-accepted-terms">
+            <input id="register-accepted-terms" name="accepted_terms" type="checkbox" required />
+            <span>Ich akzeptiere Datenschutz und Nutzungsbedingungen.</span>
+          </label>
+
+          <button class="primary" type="submit">Konto erstellen</button>
+        </form>
+
         <div class="links">
           <button type="button" class="link-button">Passwort vergessen</button>
-          <button type="button" class="link-button">Konto erstellen</button>
+          <button type="button" class="link-button" id="auth-mode-toggle">Konto erstellen</button>
         </div>
 
         <div class="separator"><span>oder</span></div>

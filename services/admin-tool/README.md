@@ -78,6 +78,7 @@ KI Usage:
 
 - Die Admin-Unterseite `KI Usage` liest Summary, Policy, Account-Rating, Quellenlimits, Modellpreise, Suspicious-Usage-Hinweise und Ablehnungsgruende vom AI Usage Server.
 - Aktive Cost-Control-Regeln werden als Pruefkette angezeigt, inklusive aktueller Schwellenwerte und der Anzahl ausgeloester Blockaden je Regel.
+- Tages- und Monatslimit koennen im Admin Tool bearbeitet werden. Fuer den aktuellen Stand setzt jede Aenderung Credits und Tokens gemeinsam, weil `1 Credit = 1 Token` gilt.
 - Blockierte Aufrufe bleiben als Audit-Sicht sichtbar, damit Ursachen wie `insufficient_credits`, `model_not_allowed` oder `source_token_limit_exceeded` nicht nur im Chat erscheinen.
 
 ## Sicherheitsregeln
