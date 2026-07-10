@@ -246,7 +246,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: In Implementation
     ownerDomain: Learning
-    summary: Architekturartefakt fuer einen LLM-gefuehrten Projektstart. Der Assistent klaert zuerst Zielarchitektur, Zielsysteme, Nutzer, Geraete, Datenfluesse, Kommunikationsbedarf und Betriebsmodell und leitet erst danach Technologieentscheidungen wie MQTT, ESP32/WLAN, Backend, Mobile App, Desktop App oder Browser App ab.
+    summary: Architekturartefakt fuer einen LLM-gefuehrten Projektstart. Der Assistent klaert zuerst Ziel, Funktion, Funktionsklasse, Akteure, Randbedingungen und Wirkketten des Nutzerprojekts und leitet erst danach statische Zielarchitektur und Technologieentscheidungen wie MQTT, ESP32/WLAN, Backend, Mobile App, Desktop App oder Browser App ab. Als fruehe Funktionsklassen werden lokale Regel-/Steuerstrecke, Datenlogger, Remote-Steuerung, Observer/Benachrichtigung, synchronisiertes Zustandsmodell oder Kombinationen unterschieden; danach wird lokaler oder weltweiter Zugriff geklaert.
     usedBy:
       - app.user_ide
       - architecture_artifact.project_server
@@ -271,9 +271,10 @@ items:
       - Der Chat erfordert ein accountgebundenes Entwicklungsprojekt aus dem Project Server; ohne Projekt-ID wird der LLM-Aufruf abgelehnt.
       - Neue Entwicklungsprojekte werden ueber `/api/platform/development-projects` im Project Server angelegt und ueber `user_id` an den Account gebunden.
       - Die aktuell abgeleitete Architektur kann jederzeit als `docs/architecture.puml` plus ProjectViewManifest-PlantUML-View gespeichert werden.
-      - Aus der KI-abgeleiteten Architektur entsteht eine Project-Server-Quellenstruktur mit `Architektur/statische-architektur`, `Architektur/informationsfluss` und Komponentenordnern unter `Komponenten/`.
+      - Aus der KI-abgeleiteten Architektur entsteht eine Project-Server-Quellenstruktur mit `Architektur/statische-architektur`, `Architektur/informationsfluss`, `Architektur/systemverhalten`, Wirkketten und Komponentenordnern unter `Komponenten/`.
       - Jeder Komponentenordner enthaelt `Schnittstellen/provided.md` und `Schnittstellen/required.md`, weil GerNetiX benoetigte Schnittstellen je Komponente ausdruecklich sichtbar machen will.
-      - Jeder Komponentenordner enthaelt `Behavior/Modell`, `Behavior/Code` und `Behavior/Config`, damit Verhaltensmodell, Codeableitung und Konfiguration getrennt gepflegt werden koennen.
+      - Jeder Komponentenordner enthaelt `Verhalten/Modell`, `Verhalten/Code` und `Verhalten/Config`, damit Verhaltensmodell, Codeableitung und Konfiguration getrennt gepflegt werden koennen.
+      - Device-Komponenten koennen zusaetzlich `Konfiguration/Board`, `Konfiguration/Sensoren/in.md` und `Konfiguration/Aktoren/out.md` besitzen, damit Board-, Eingangs- und Ausgangskonfigurationen getrennt aus Wirkketten ableitbar sind.
       - Wenn der Nutzer eine Architektur uebernimmt, speichert die Entwicklungsplattform die Project-Server-Quellen und oeffnet direkt den freien IDE-Arbeitsbereich.
       - Der freie IDE-Arbeitsbereich zeigt einen Projektbrowser aus der Project-Server-Quellenliste, Modell-/Code-/Image-Ansichten und einen unteren KI-Chat.
       - Der LLM-Provider ist im PoC ueber das eigenstaendige Admin Tool `http://127.0.0.1:4600/admin/` konfigurierbar; lokal ist Ollama mit Default `http://127.0.0.1:11434` vorgesehen, alternativ eine OpenAI-kompatible API oder Claude/Anthropic.
@@ -281,7 +282,8 @@ items:
       - Systemprompt-Grundlagen fuer Architektur-Discovery werden fuehrend in der AI-Context-SQLite gespeichert und vom Identity Server ueber den AI Context Server geladen.
       - Datenquellen sind im PoC bewusst auf aktuellen Chat, zentrale Prompt-Grundlagen und optional per Grant freigegebenen Hardware-Catalog-Kontext begrenzt; Graph-, Projekt- und Kundendaten muessen explizit freigegeben werden.
       - Aus der letzten KI-Antwort wird eine PlantUML-Architekturskizze abgeleitet und in der Entwicklungsplattform angezeigt; sie bleibt als Skizze markiert und ersetzt keine Nutzerbestaetigung.
-      - Kurze und eindeutige Architekturwuensche wie `ESP32 only` werden zuerst lokal ueber Ollama geroutet; externe Provider werden erst fuer komplexere Architektur-Dialoge genutzt.
+      - Architektur-Discovery nutzt die im Admin Tool konfigurierte Route; Identity fuehrt kein wortlaengen- oder begriffsbasiertes LLM-Umschalten aus.
+      - Wenn Internet-Erreichbarkeit benoetigt wird, ist ein aus dem Internet erreichbarer Server die sichere Standardlinie. Direkte Erreichbarkeit eines Nutzer-Heimnetzes ist fuer normale Nutzer kein empfohlener Pfad.
       - Architekturantworten sollen knapp bleiben und nicht auflisten, was alles nicht benoetigt wird.
       - `ESP32 only` erzeugt eine rein technische PlantUML-Minimalskizze mit genau `ESP32`, ohne Nutzer-, Anforderungs-, Notiz- oder Uebergabeknoten.
       - Frontend-Logik des Entwicklungsasts liegt getrennt in `services/identity-server/public/app/development-platform.js`.
@@ -293,7 +295,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Not Started
     ownerDomain: Learning
-    summary: Fuehrt den Nutzer mit adaptiven Fragen von Projektziel und Nutzungsszenario zu Zielsystemen, Datenfluesse, Bedienoberflaechen, Offline-/Online-Anforderungen und offenen Architekturfragen.
+    summary: Fuehrt den Nutzer mit adaptiven Fragen von Projektziel, Funktion, Funktionsklasse, Akteuren und Randbedingungen zu Wirkketten, Zielsystemen, Datenfluesse, Bedienoberflaechen, Offline-/Online-Anforderungen und offenen Architekturfragen. Die fruehe Frage unterscheidet lokale Regel-/Steuerstrecke, Datenlogger, Remote-Steuerung, Observer/Benachrichtigung, synchronisiertes Zustandsmodell oder Kombinationen und danach lokalen oder weltweiten Zugriff.
 
   - id: component.target_architecture_mapper
     type: architecture_component
@@ -301,7 +303,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Not Started
     ownerDomain: Learning
-    summary: Uebersetzt Dialogantworten in eine bestaetigbare Zielarchitektur mit Bausteinen wie IoT Device, Backend, Mobile App, Desktop App, Browser App, HomeServer, Cloud, lokales Netzwerk und Kommunikationsbeziehungen.
+    summary: Uebersetzt geklaerte Funktionen, Randbedingungen und Wirkketten in eine bestaetigbare Zielarchitektur mit Bausteinen wie IoT Device, Backend, Mobile App, Desktop App, Browser App, HomeServer, Cloud, lokales Netzwerk und Kommunikationsbeziehungen.
 
   - id: component.technology_decision_advisor
     type: architecture_component

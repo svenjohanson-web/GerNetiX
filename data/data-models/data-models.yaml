@@ -1024,7 +1024,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: In Implementation
     ownerDomain: IDE
-    summary: Projektgebundene Quellenstruktur, die aus der KI-abgeleiteten Zielarchitektur Komponentenordner, provided/required Schnittstellen, Behavior-Artefakte und Architektur-Sichten erzeugt. Komponenten wie ESP32, MQTT Client, Server, Browser App oder SQLite Datenbank werden als Ordner unter `Komponenten/` gespeichert. Jede Komponente besitzt `Schnittstellen/provided.md`, `Schnittstellen/required.md`, `Behavior/Modell`, `Behavior/Code` und `Behavior/Config`; Architektur-Sichten liegen unter `Architektur/statische-architektur/` und `Architektur/informationsfluss/`.
+    summary: Projektgebundene Quellenstruktur, die aus Ziel, Funktion, Wirkketten und KI-abgeleiteter Zielarchitektur Komponentenordner, provided/required Schnittstellen, Verhaltens-Artefakte, Device-Konfigurationen und Architektur-Sichten erzeugt. Komponenten wie ESP32, MQTT Client, Server, Browser App oder SQLite Datenbank werden als Ordner unter `Komponenten/` gespeichert. Jede Komponente besitzt `Schnittstellen/provided.md`, `Schnittstellen/required.md`, `Verhalten/Modell`, `Verhalten/Code` und `Verhalten/Config`; Device-Komponenten koennen zusaetzlich `Konfiguration/Board`, `Konfiguration/Sensoren/in.md` und `Konfiguration/Aktoren/out.md` besitzen. Architektur-Sichten liegen unter `Architektur/statische-architektur/`, `Architektur/informationsfluss/` und `Architektur/systemverhalten/`.
     fields:
       - components
       - componentFolder
@@ -1033,8 +1033,13 @@ items:
       - behaviorModel
       - behaviorCode
       - behaviorConfig
+      - boardConfig
+      - sensorInputConfig
+      - actuatorOutputConfig
       - staticArchitecture
       - informationFlow
+      - systemBehavior
+      - effectChains
       - projectSources
     derivedFromRequirements:
       - requirement.architecture_discovery_guided_by_llm
@@ -1045,7 +1050,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Not Started
     ownerDomain: Learning
-    summary: Gefuehrter KI-Dialog am Projektbeginn, der Nutzerantworten, offene Rueckfragen, bestaetigte Annahmen und abgeleitete Architekturhinweise speichert.
+    summary: Gefuehrter KI-Dialog am Projektbeginn, der Nutzerantworten, Ziel/Funktion, Funktionsklasse, lokalen Funktionskern, verteilte Erweiterungen, Device-Anzahl und Device-Rollen, Zugriffsumfang, Randbedingungen, offene Rueckfragen, bestaetigte Annahmen, Wirkketten und abgeleitete Architekturhinweise speichert.
     fields:
       - dialogId
       - accountId
@@ -1054,6 +1059,16 @@ items:
       - currentPhase
       - questions
       - answers
+      - projectGoal
+      - projectFunction
+      - functionClass
+      - localFunctionCore
+      - distributedExtensions
+      - deviceCount
+      - deviceRoles
+      - accessScope
+      - constraints
+      - effectChains
       - assumptions
       - openQuestions
       - confirmedDecisions

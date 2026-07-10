@@ -66,6 +66,26 @@ function developmentProjectSources({ title, description = "", diagram = null, ar
       content_type: "text/markdown",
       content: verhaltenReadme(component, "Config"),
     });
+    if (isDeviceComponent(component)) {
+      sources.push({
+        path: `${folder}/Konfiguration/Board/board.md`,
+        role: "device_board_config",
+        content_type: "text/markdown",
+        content: deviceBoardConfigReadme(component),
+      });
+      sources.push({
+        path: `${folder}/Konfiguration/Sensoren/in.md`,
+        role: "device_sensor_input_config",
+        content_type: "text/markdown",
+        content: deviceSensorInputConfigReadme(component),
+      });
+      sources.push({
+        path: `${folder}/Konfiguration/Aktoren/out.md`,
+        role: "device_actuator_output_config",
+        content_type: "text/markdown",
+        content: deviceActuatorOutputConfigReadme(component),
+      });
+    }
     sources.push({
       path: `${folder}/Daten/daten.md`,
       role: "component_data",
@@ -250,7 +270,7 @@ function verhaltenReadme(component, kind) {
   const descriptions = {
     Modell: "Modelle, Zustandsautomaten, Regeln, Ablaufbeschreibungen oder Pseudocode, die das Verhalten der Komponente beschreiben.",
     Code: "Code-nahe Ableitungen, Implementierungsskizzen oder konkrete Quellcodedateien fuer das Verhalten der Komponente.",
-    Config: "Konfiguration, Parameter, Topics, Pins, Endpunkte oder Runtime-Einstellungen fuer das Verhalten der Komponente.",
+    Config: "Runtime-Parameter, Topics, Endpunkte oder Einstellungen fuer das Verhalten der Komponente. Hardware-nahe Board-, Sensor- und Aktor-Konfigurationen liegen separat unter `Konfiguration/`.",
   };
   return [
     `# Verhalten ${kind}: ${component.name}`,
@@ -260,6 +280,65 @@ function verhaltenReadme(component, kind) {
     "Komponentenverhalten kann aus dem uebergreifenden Systemverhalten unter `Architektur/systemverhalten/` dekomponiert werden.",
     "",
     "Diese Inhalte werden aus der Architektur abgeleitet und muessen vor produktiver Nutzung vom Nutzer bestaetigt werden.",
+    "",
+  ].join("\n");
+}
+
+function isDeviceComponent(component) {
+  return component?.id === "esp32";
+}
+
+function deviceBoardConfigReadme(component) {
+  return [
+    `# Board-Konfiguration: ${component.name}`,
+    "",
+    "Diese Sicht beschreibt die Board-nahe Grundlage des Devices.",
+    "",
+    "## Board",
+    "- Board-Profil: noch zu bestaetigen, z. B. esp32dev, esp32-s3-devkitc oder kundenspezifisches Board.",
+    "- Framework: noch zu bestaetigen, z. B. Arduino/PlatformIO oder ESP-IDF.",
+    "- Laufzeitbasis: Takt, Partitionierung, Flash, OTA-Faehigkeit und serielle Diagnose.",
+    "- Stromversorgung: Spannung, Strombudget und Betriebsmodus.",
+    "",
+    "Sensor- und Aktor-Anschluesse werden bewusst nicht hier vermischt, sondern in `Konfiguration/Sensoren/in.md` und `Konfiguration/Aktoren/out.md` geklaert.",
+    "",
+  ].join("\n");
+}
+
+function deviceSensorInputConfigReadme(component) {
+  return [
+    `# Sensor/in-Konfiguration: ${component.name}`,
+    "",
+    "Diese Sicht sammelt alle eingehenden Mess- und Eingangssignale des Devices.",
+    "",
+    "## Sensoren und Eingaenge",
+    "- Sensor oder Eingang: noch zu bestaetigen, z. B. Temperatursensor, Taster, ADC-Signal oder Zaehlereingang.",
+    "- Messgroesse: noch zu bestaetigen, z. B. Temperatur, Feuchte, Spannung, Zustand oder Impuls.",
+    "- Zugriff: lesen, messen, pollen, interruptbasiert oder ereignisbasiert.",
+    "- Protokoll/Verdrahtung: noch herzuleiten, z. B. GPIO, ADC, I2C, SPI, UART oder 1-Wire.",
+    "- Pins: noch zu bestaetigen.",
+    "- Timing: Abtastrate, Timer, Entprellung, Filterung und Fehlerverhalten.",
+    "",
+    "Die konkrete Verdrahtung wird spaeter aus dieser fachlichen Einordnung abgeleitet.",
+    "",
+  ].join("\n");
+}
+
+function deviceActuatorOutputConfigReadme(component) {
+  return [
+    `# Aktor/out-Konfiguration: ${component.name}`,
+    "",
+    "Diese Sicht sammelt alle ausgehenden Steuer- und Ausgangssignale des Devices.",
+    "",
+    "## Aktoren und Ausgaenge",
+    "- Aktor oder Ausgang: noch zu bestaetigen, z. B. Relais, LED, Motor, Summer, Ventil oder PWM-Ausgang.",
+    "- Wirkung: noch zu bestaetigen, z. B. schalten, dimmen, regeln, alarmieren oder antreiben.",
+    "- Ansteuerung: GPIO, PWM, I2C, SPI, UART oder Treiberbaustein.",
+    "- Pins: noch zu bestaetigen.",
+    "- Elektrische Randbedingungen: Spannung, Strom, Schutzbeschaltung, Treiber und Last.",
+    "- Sicherheitsverhalten: Default-Zustand, Fehlerzustand und Verhalten nach Reset.",
+    "",
+    "Akteure wie Nutzer oder externe Rollen bleiben eigene Strukturelemente; Aktoren sind physische oder logische Ausgaenge des Devices.",
     "",
   ].join("\n");
 }

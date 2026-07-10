@@ -1024,7 +1024,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: In Implementation
     ownerDomain: Learning
-    summary: Zu Beginn eines Projekts muss ein KI-gestuetzter Dialog den Nutzer durch fachliche Architekturfragen fuehren, damit zuerst die Zielarchitektur erkannt wird, bevor konkrete Technologien ausgewaehlt werden. Ziel ist Kundenbindung: Der Nutzer soll sich verstanden fuehlen, schneller zu passenden Anschlussprojekten finden und GerNetiX als langfristigen Begleiter fuer immer anspruchsvollere Projekte erleben. Der Dialog klaert unter anderem, ob IoT-Geraete, Backends, mobile Apps, PC-Apps oder Browser-Apps benoetigt werden, welche Daten fliessen, welche Nutzer interagieren und welche Betriebsumgebung erwartet wird.
+    summary: Zu Beginn eines Projekts muss ein KI-gestuetzter Dialog zuerst Ziel, Funktion, Funktionsklasse, Akteure, Randbedingungen und Wirkketten klaeren, bevor daraus eine statische Zielarchitektur und konkrete Technologien abgeleitet werden. Ziel ist Kundenbindung: Der Nutzer soll sich verstanden fuehlen, schneller zu passenden Anschlussprojekten finden und GerNetiX als langfristigen Begleiter fuer immer anspruchsvollere Projekte erleben. Der Dialog fragt alltagsnah nach dem gewuenschten Geschehen und ordnet freie Nutzerantworten im Hintergrund auf technische Muster ab, statt Fachbegriffe vorauszusetzen. Geklaert wird unter anderem, ob Messdaten ermittelt oder historisiert werden, ob ein Device von Handy oder Browser gesteuert werden soll, ob lokale Steuerungs-/Regelungsaufgaben ohne WLAN/Backend ausreichen, ob Ereignisse Benachrichtigungen ausloesen sollen, ob mehrere Geraete Zustaende synchron anzeigen, ob der Zugriff lokal oder weltweit erfolgen soll und welche Betriebsumgebung erwartet wird.
     derivedFromBusinessCapabilities:
       - BC-025
       - BG-002
@@ -1045,25 +1045,37 @@ items:
       - data_model.project_technology_decision
       - data_model.project_architecture_dialog
     acceptanceCriteria:
-      - Der Nutzer wird zuerst zu Zielsystemen, Benutzern, Geraeten, Daten, Kommunikation, Bedienoberflaechen, Offline-/Online-Verhalten und Betriebsumgebung befragt.
+      - Der Nutzer wird zuerst zu Ziel, Funktion, Funktionsklasse, Akteuren, Ausloesern, Wirkungen und Randbedingungen befragt; Zielsysteme, Geraete und Technologien werden daraus abgeleitet.
+      - Der Einstieg erklaert, dass einige Fragen den technischen Loesungsraum definieren und dass Nutzer frei antworten koennen.
+      - Die KI verlangt keine Fachbegriffe wie MQTT, REST, Backend, Pub/Sub oder Observer vom Nutzer, sondern leitet passende Muster aus alltagsnahen Beispielen ab.
+      - Erfahrene Nutzer duerfen Funktionsklassen direkt als Shortcut nennen, z. B. Observer, Datenlogger, Remote-Steuerung oder synchronisiertes Zustandsmodell.
+      - Der Projekteinstieg bietet erfahrenen Nutzern Chat-Schnellfragen wie `Ich moechte einen Observer`, `Ich moechte einen Datenlogger` und `Nenne mir deine Pattern`; ein Klick sendet die Frage direkt an die KI.
+      - Wenn eine Funktionsklasse direkt genannt wird, fragt die KI nur noch lokal/weltweit, Device-Anzahl, Device-Rollen und die mindestens beteiligten Sensoren, Ereignisse oder Aktionen ab, bevor sie eine Architektur ableitet.
+      - Der Dialog klaert, ob ein einzelnes Device, mehrere Datenlogger, mehrere Aktoransteuerungen, Anzeige-Devices oder gemischte Device-Rollen im Projekt enthalten sind.
+      - Der Dialog fragt frueh, ob es sich um eine lokale Regel-/Steuerstrecke, Datenlogger, Remote-Steuerung, Observer/Benachrichtigung, synchronisiertes Zustandsmodell oder eine Kombination handelt.
+      - Eine einzelne lokale Regel-/Steuerstrecke darf ohne Backend, MQTT, App oder Server vorgeschlagen werden, wenn keine verteilten Zusatzfunktionen benoetigt werden.
+      - Verteilte Zusatzfunktionen wie Datenhistorie, Remote-Steuerung, Push-Benachrichtigung oder zentrale Zustandsmodellierung koennen mit einer lokalen Regelstrecke kombiniert werden.
+      - Der Dialog fragt danach, ob der Zugriff nur im lokalen Netzwerk oder weltweit erfolgen soll.
       - Der Architektur-Chat startet erst, wenn der Nutzer ein eigenes Entwicklungsprojekt geladen oder neu angelegt hat.
       - Eigene Entwicklungsprojekte werden im Project Server persistiert und ueber `user_id` an den Account gebunden.
       - Der Nutzer kann die aktuell abgeleitete Architektur jederzeit als PlantUML-Projektartefakt speichern.
       - Beim Speichern einer KI-abgeleiteten Architektur entsteht im Project Server eine Projektstruktur aus Komponentenordnern, z. B. `Komponenten/ESP32`, `Komponenten/MQTT-Client` oder `Komponenten/Server`.
       - Jeder Komponentenordner enthaelt `Schnittstellen/provided.md` und `Schnittstellen/required.md`, damit bereitgestellte und benoetigte Schnittstellen gleichwertig sichtbar sind.
-      - Jeder Komponentenordner enthaelt zusaetzlich `Behavior/Modell`, `Behavior/Code` und `Behavior/Config`, damit Modell, Implementierungsableitung und Konfiguration getrennt weiterbearbeitet werden koennen.
+      - Jeder Komponentenordner enthaelt zusaetzlich `Verhalten/Modell`, `Verhalten/Code` und `Verhalten/Config`, damit Modell, Implementierungsableitung und Konfiguration getrennt weiterbearbeitet werden koennen.
+      - Device-Komponenten koennen zusaetzlich `Konfiguration/Board`, `Konfiguration/Sensoren/in.md` und `Konfiguration/Aktoren/out.md` enthalten, damit Board-, Eingangs- und Ausgangskonfigurationen getrennt ableitbar sind.
       - Das Projekt enthaelt einen Ordner `Architektur` mit den Unterordnern `statische-architektur` und `informationsfluss`.
       - Wenn der Nutzer mit der Architektur zufrieden ist, kann er `Uebernehmen und weiter` ausloesen; die Architektur wird gespeichert und das Projekt wird im freien IDE-Arbeitsbereich geoeffnet.
       - Der freie IDE-Arbeitsbereich zeigt links einen Projektbrowser ab Projektname mit Architektur- und Komponentenordnern, in der Mitte Modell-, Code- und Image-Ansichten und unten einen KI-Chat fuer projektnahe Rueckfragen.
-      - Der Dialog erzeugt eine nachvollziehbare Zielarchitektur mit Bausteinen wie IoT Device, Backend, Mobile App, Desktop App, Browser App, lokales Netzwerk, Cloud oder HomeServer.
+      - Der Dialog erzeugt zuerst nachvollziehbare Wirkketten und daraus eine Zielarchitektur mit Bausteinen wie IoT Device, Backend, Mobile App, Desktop App, Browser App, lokales Netzwerk, Cloud oder HomeServer.
       - Aus der jeweils letzten KI-Antwort wird eine PlantUML-Architekturskizze erzeugt und in der Entwicklungsplattform angezeigt.
       - Die PlantUML-Skizze muss als KI-abgeleitete Skizze markiert bleiben und darf keine bestaetigte Architekturentscheidung ersetzen.
       - LLM-Aufgaben werden ueber Task-Routen gesteuert, damit interaktiver Chat optional ueber eine externe API laufen kann, waehrend kostenkritische Artefakt-, PlantUML-, Pseudocode- und Codegenerierung standardmaessig lokal ausgefuehrt wird.
       - Der Admin muss fuer Chat, Architektur-Discovery, Artefaktgenerierung und Codegenerierung getrennt waehlen koennen, ob die Standardroute, ein lokales LLM oder eine externe API genutzt wird.
-      - Kurze und eindeutige Architekturwuensche wie `ESP32 only` muessen zuerst ueber ein lokales LLM geroutet werden; externe Provider werden erst fuer komplexere Architektur-Dialoge genutzt.
+      - Architektur-Discovery nutzt die im Admin Tool konfigurierte Route; Identity darf nicht anhand einzelner Woerter oder Laenge zwischen lokalem und externem LLM wechseln.
       - Architekturantworten duerfen nicht ausfuehrlich erklaeren, was alles nicht benoetigt wird; sie sollen nur das beantworten, was der Nutzer angefragt hat.
       - Bei `ESP32 only` muss das PlantUML eine rein technische Minimalarchitektur mit genau der Komponente `ESP32` zeigen; Nutzer, Projektidee/Anforderungen, Notizen, Uebergabepunkte und fachliche Anforderungsknoten duerfen nicht im technischen Diagramm erscheinen.
-      - Technologiefragen wie MQTT, ESP32, WLAN, Bluetooth, REST, WebSocket, Datenbank, Framework oder Hosting werden erst nach der Zielarchitektur gestellt.
+      - Technologiefragen wie MQTT, ESP32, WLAN, Bluetooth, REST, WebSocket, Datenbank, Framework oder Hosting werden erst nach Ziel, Funktion, Randbedingungen und Wirkketten gestellt.
+      - Wenn Internet-Erreichbarkeit benoetigt wird, ist ein aus dem Internet erreichbarer Server die sichere Standardlinie; direkte Erreichbarkeit eines Nutzer-Heimnetzes wird normalen Nutzern nicht vorgeschlagen.
       - Jede Technologieempfehlung muss auf eine erkannte Architekturentscheidung oder ein fachliches Projektziel zurueckfuehrbar sein.
       - Unklare Antworten werden als offene Architekturfragen gespeichert, statt vorschnell Technologien festzulegen.
       - Die erkannte Zielarchitektur kann als Projektkontext wieder aufgenommen und spaeter ueberarbeitet werden.

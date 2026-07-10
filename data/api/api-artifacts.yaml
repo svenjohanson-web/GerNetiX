@@ -215,7 +215,7 @@ items:
       - Der Architektur-Discovery-Chat akzeptiert nur accountgebundene Entwicklungsprojekte.
       - Entwicklungsprojekte werden ueber den Project Server mit `user_id` persistiert.
       - Gespeicherte Architekturdiagramme werden als `docs/architecture.puml` und ProjectViewManifest-PlantUML-View abgelegt.
-      - Beim Speichern der Architektur werden zusaetzlich Project-Server-Quellen fuer `Architektur/statische-architektur`, `Architektur/informationsfluss` und Komponentenordner mit `Schnittstellen/provided.md`, `Schnittstellen/required.md`, `Behavior/Modell`, `Behavior/Code` sowie `Behavior/Config` erzeugt.
+      - Beim Speichern der Architektur werden zusaetzlich Project-Server-Quellen fuer `Architektur/statische-architektur`, `Architektur/informationsfluss`, `Architektur/systemverhalten` und Komponentenordner mit `Schnittstellen/provided.md`, `Schnittstellen/required.md`, `Verhalten/Modell`, `Verhalten/Code` sowie `Verhalten/Config` erzeugt. Device-Komponenten koennen zusaetzlich `Konfiguration/Board`, `Konfiguration/Sensoren/in.md` und `Konfiguration/Aktoren/out.md` enthalten.
       - Nach Nutzerbestaetigung kann die Entwicklungsplattform die Architektur speichern und direkt in die IDE wechseln; die IDE liest die Projektquellenliste aus dem Project Server und zeigt daraus den Projektbrowser.
       - `architectureDiagram` enthaelt eine KI-abgeleitete PlantUML-Skizze und ist keine bestaetigte Architekturentscheidung.
 

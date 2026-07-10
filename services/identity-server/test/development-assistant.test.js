@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { buildArchitectureDiagram, createDevelopmentAssistant } = require("../src/dev/development-assistant");
+const { buildArchitectureDiagram, createDevelopmentAssistant, plantUmlFunctionCoverage } = require("../src/dev/development-assistant");
 
 const ARCHITECTURE_PROMPT = [
   "AI Context Architektur-Prompt.",
@@ -118,6 +118,121 @@ test("shows browser, ESP32 and backend as structure without arrows in one PlantU
   assert.match(diagram.source, /rectangle "Browser" as browser/);
   assert.match(diagram.source, /rectangle "Backend \/ API" as backend/);
   assert.doesNotMatch(diagram.source, /-->|\.\.>/);
+});
+
+test("adds function arrows only in function clarification mode", () => {
+  const diagram = buildArchitectureDiagram([
+    { role: "user", content: "Temperatur wird vom ESP32 gemessen. Browser zeigt Messwerte vom Backend und direkt lokal vom ESP32." },
+    { role: "assistant", content: "Funktion: Temperatur wird gemessen, Messwerte werden im Browser angezeigt." },
+  ], {
+    includeFunctions: true,
+    currentDiagram: {
+      detected_blocks: ["device", "browser", "backend", "temperature"],
+      source: [
+        "@startuml",
+        "node \"ESP32 / IoT Device\" as esp32",
+        "rectangle \"Browser UI\" as browser",
+        "rectangle \"Backend / API\" as backend",
+        "rectangle \"Temperatur\" as temperature",
+        "@enduml",
+      ].join("\n"),
+    },
+  });
+
+  assert.match(diagram.source, /rectangle "Browser" as browser/);
+  assert.match(diagram.source, /rectangle "Backend \/ API" as backend/);
+  assert.match(diagram.source, /rectangle "Temperatur" as temperature/);
+  assert.match(diagram.source, /temperature --> device : wird gemessen/);
+  assert.match(diagram.source, /browser --> backend : fragt Messwerte ab/);
+  assert.match(diagram.source, /browser --> device : zeigt \/ bedient lokal/);
+  assert.equal(diagram.derived_from, "architecture_function_clarification");
+});
+
+test("does not infer function arrows from existing structure alone", () => {
+  const diagram = buildArchitectureDiagram([
+    { role: "user", content: "Browser greift direkt lokal auf ESP32 zu." },
+    { role: "assistant", content: "Browser nutzt lokal das ESP32-Device." },
+  ], {
+    includeFunctions: true,
+    currentDiagram: {
+      detected_blocks: ["device", "browser", "backend"],
+      source: [
+        "@startuml",
+        "node \"ESP32 / IoT Device\" as esp32",
+        "rectangle \"Browser UI\" as browser",
+        "rectangle \"Backend / API\" as backend",
+        "@enduml",
+      ].join("\n"),
+    },
+  });
+
+  assert.match(diagram.source, /browser --> device : zeigt \/ bedient lokal/);
+  assert.doesNotMatch(diagram.source, /browser --> backend/);
+});
+
+test("requires every architecture element to participate in a function arrow before handoff", () => {
+  const incomplete = plantUmlFunctionCoverage([
+    "@startuml",
+    "rectangle \"Browser\" as browser",
+    "rectangle \"Backend / API\" as backend",
+    "node \"ESP32\" as device",
+    "browser --> backend : fragt Messwerte ab",
+    "@enduml",
+  ].join("\n"));
+  const single = plantUmlFunctionCoverage([
+    "@startuml",
+    "node \"ESP32\" as device",
+    "@enduml",
+  ].join("\n"));
+
+  assert.equal(incomplete.complete, false);
+  assert.deepEqual(incomplete.missing, ["device"]);
+  assert.equal(single.complete, true);
+  assert.deepEqual(single.missing, []);
+});
+
+test("derives effect chains after functions are clarified", () => {
+  const diagram = buildArchitectureDiagram([
+    {
+      role: "user",
+      content: [
+        "Timer im ESP32 misst zyklisch Temperatur.",
+        "ESP32 publisht Messwerte via MQTT auf einen Server.",
+        "Der Server speichert die Messwerte.",
+        "Ein Mensch nutzt einen Browser, um die Daten anzuschauen.",
+      ].join(" "),
+    },
+    {
+      role: "assistant",
+      content: "Wirkketten: Timer startet Messung, ESP32 misst Temperatur, publisht per MQTT, Server speichert, Mensch sieht Daten im Browser.",
+    },
+  ], {
+    includeEffectChains: true,
+    currentDiagram: {
+      detected_blocks: ["device", "mqtt", "backend", "browser", "temperature", "timer"],
+      source: [
+        "@startuml",
+        "node \"ESP32 / IoT Device\" as device",
+        "queue \"MQTT Broker\" as mqtt",
+        "rectangle \"Backend / API\" as backend",
+        "rectangle \"Browser UI\" as browser",
+        "rectangle \"Temperatur\" as temperature",
+        "rectangle \"Timer\" as timer",
+        "@enduml",
+      ].join("\n"),
+    },
+  });
+
+  assert.match(diagram.source, /rectangle "Timer" as timer/);
+  assert.match(diagram.source, /timer --> device : startet Messung/);
+  assert.match(diagram.source, /temperature --> device : wird gemessen/);
+  assert.match(diagram.source, /device --> mqtt : publisht Messwert/);
+  assert.match(diagram.source, /mqtt --> backend : liefert Messwert/);
+  assert.match(diagram.source, /database "Persistenz" as database/);
+  assert.match(diagram.source, /backend --> database : speichert Messwert/);
+  assert.match(diagram.source, /actor "Nutzer" as actor/);
+  assert.match(diagram.source, /actor --> browser : moechte Daten ansehen/);
+  assert.equal(diagram.derived_from, "architecture_effect_chain_derivation");
 });
 
 test("sanitizes PlantUML control tokens from AI text", () => {
@@ -646,20 +761,38 @@ test("does not call provider when ai usage preflight rejects architecture chat",
   assert.equal(payload.body.usagePreflight.rejection_reason, "daily_limit_exceeded");
 });
 
-test("answers architecture work mode choices without an LLM call", async () => {
+test("does not treat max as local architecture work mode anymore", async () => {
   const previousFetch = global.fetch;
   let providerCalled = false;
   let payload = null;
   global.fetch = async (url, options = {}) => {
     providerCalled = true;
-    throw new Error(`Provider should not be called: ${url} ${options.method || "GET"}`);
+    assert.equal(options.method, "POST");
+    assert.match(String(url), /chat\/completions/);
+    return {
+      ok: true,
+      json: async () => ({
+        choices: [{
+          message: {
+            content: "Bevor ich eine Architektur ableite: Was soll dein Projekt fuer wen bewirken?",
+          },
+        }],
+        usage: { prompt_tokens: 28, completion_tokens: 12 },
+      }),
+    };
   };
   const usageCalls = [];
   const assistant = createDevelopmentAssistant({
     aiContextJson: promptFoundationJson,
     aiUsageJson: async (pathname, options = {}) => {
       usageCalls.push({ pathname, body: options.body });
-      return { allowed: true, event_id: "unexpected" };
+      if (pathname === "/api/ai-usage/preflight") {
+        return { allowed: true, event_id: "usage_max" };
+      }
+      if (pathname === "/api/ai-usage/events/usage_max/complete") {
+        return { event_id: "usage_max", status: "success" };
+      }
+      throw new Error(`Unexpected AI usage path ${pathname}`);
     },
     llmConfigStore: {
       publicConfig: () => ({ provider: "api", apiProvider: "openai-compatible", apiModel: "gpt-5.5" }),
@@ -675,72 +808,6 @@ test("answers architecture work mode choices without an LLM call", async () => {
     projectServerUserId: () => "usr_demo",
     readJsonBody: async () => ({
       projectId: "dev_project_work_mode",
-      messages: [
-        {
-          role: "user",
-          content: "Vorheriger Kontext mit ESP32, Backend, Mobile App, Browser UI, MQTT, REST API, SQLite Persistenz, Cloud Zugriff und lokaler Bedienung.",
-        },
-        {
-          role: "assistant",
-          content: "Du hast zunaechst die Wahl, ob du mit einer maximalen Architektur startest und Komponenten entfernst, die du nicht benoetigst, oder mit einer leeren Architektur. Wie moechtest du vorgehen? Antworte einfach mit max oder leer.",
-        },
-        { role: "user", content: "max" },
-      ],
-    }),
-    requireProjectAccess: async () => ({ area: "development_project" }),
-    sendJson: (res, status, body) => {
-      payload = { status, body };
-    },
-  });
-
-  try {
-    await assistant.handleChat({}, {}, { account: { user_id: "usr_demo" } });
-  } finally {
-    global.fetch = previousFetch;
-  }
-
-  assert.equal(providerCalled, false);
-  assert.equal(usageCalls.length, 0);
-  assert.equal(payload.status, 200);
-  assert.equal(payload.body.usedLocalRoute, false);
-  assert.equal(payload.body.usedDialogControl, true);
-  assert.equal(payload.body.config.requestProfile.explicitWorkModeChoice, undefined);
-  assert.equal(payload.body.config.requestProfile.workModeChoice, "max");
-  assert.equal(payload.body.routing.local, true);
-  assert.equal(payload.body.routing.provider, "dialog_control");
-  assert.equal(payload.body.routing.costPolicy, "no_llm_call");
-  assert.equal(payload.body.routing.requestComplexity, "dialog_control");
-  assert.equal(payload.body.usage.totalTokens, 0);
-  assert.equal(payload.body.architectureDiagram.derived_from, "dialog_control_work_mode_max");
-  assert.match(payload.body.architectureDiagram.source, /ESP32 \/ IoT Device/);
-  assert.match(payload.body.architectureDiagram.source, /Backend \/ API/);
-  assert.match(payload.body.architectureDiagram.source, /MQTT Broker/);
-});
-
-test("answers bare max architecture work mode without an LLM call", async () => {
-  const previousFetch = global.fetch;
-  let providerCalled = false;
-  let payload = null;
-  global.fetch = async (url) => {
-    providerCalled = true;
-    throw new Error(`Provider should not be called: ${url}`);
-  };
-  const assistant = createDevelopmentAssistant({
-    aiContextJson: promptFoundationJson,
-    llmConfigStore: {
-      publicConfig: () => ({ provider: "api", apiProvider: "openai-compatible", apiModel: "gpt-5.5" }),
-      resolveRoute: () => ({
-        provider: "api",
-        apiProvider: "openai-compatible",
-        apiBaseUrl: "https://api.openai.example/v1",
-        apiModel: "gpt-5.5",
-        ollamaBaseUrl: "http://127.0.0.1:11434",
-        ollamaModel: "local",
-      }),
-    },
-    projectServerUserId: () => "usr_demo",
-    readJsonBody: async () => ({
-      projectId: "dev_project_work_mode_bare",
       messages: [{ role: "user", content: "max" }],
     }),
     requireProjectAccess: async () => ({ area: "development_project" }),
@@ -755,21 +822,19 @@ test("answers bare max architecture work mode without an LLM call", async () => 
     global.fetch = previousFetch;
   }
 
-  assert.equal(providerCalled, false);
+  assert.equal(providerCalled, true);
+  assert.equal(usageCalls.length, 2);
   assert.equal(payload.status, 200);
-  assert.equal(payload.body.usedLocalRoute, false);
-  assert.equal(payload.body.usedDialogControl, true);
-  assert.equal(payload.body.config.requestProfile.workModeChoice, "max");
-  assert.equal(payload.body.routing.local, true);
-  assert.equal(payload.body.routing.requestComplexity, "dialog_control");
-  assert.equal(payload.body.usage.totalTokens, 0);
-  assert.equal(payload.body.architectureDiagram.derived_from, "dialog_control_work_mode_max");
-  assert.match(payload.body.architectureDiagram.source, /Maximale Startarchitektur/);
-  assert.doesNotMatch(payload.body.architectureDiagram.source, /Lokale Bedienung|local_ui|Persistenz|database|-->/);
-  assert.deepEqual(payload.body.architectureDiagram.detected_blocks, ["device", "browser", "mobile", "desktop", "backend", "mqtt", "cloud", "homeServer"]);
+  assert.equal(payload.body.usedDialogControl, undefined);
+  assert.equal(payload.body.config.requestProfile.workModeChoice, undefined);
+  assert.equal(payload.body.routing.provider, "openai-compatible");
+  assert.equal(payload.body.routing.requestComplexity, "configured_route");
+  assert.equal(payload.body.usage.totalTokens, 40);
+  assert.equal(payload.body.architectureDiagram.derived_from, "architecture_discovery_ai_response");
+  assert.doesNotMatch(payload.body.architectureDiagram.source, /Maximale Startarchitektur|Leere Startarchitektur|Noch keine Komponenten/);
 });
 
-test("answers bare leer architecture work mode with an empty start diagram", async () => {
+test("answers architecture pattern quick prompts locally without provider call", async () => {
   const previousFetch = global.fetch;
   let providerCalled = false;
   let payload = null;
@@ -779,21 +844,74 @@ test("answers bare leer architecture work mode with an empty start diagram", asy
   };
   const assistant = createDevelopmentAssistant({
     aiContextJson: promptFoundationJson,
+    aiUsageJson: async () => {
+      throw new Error("AI usage should not be called");
+    },
     llmConfigStore: {
-      publicConfig: () => ({ provider: "api", apiProvider: "openai-compatible", apiModel: "gpt-5.5" }),
+      publicConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-5.5" }),
       resolveRoute: () => ({
         provider: "api",
-        apiProvider: "openai-compatible",
+        apiProvider: "openai-responses",
         apiBaseUrl: "https://api.openai.example/v1",
         apiModel: "gpt-5.5",
-        ollamaBaseUrl: "http://127.0.0.1:11434",
-        ollamaModel: "local",
       }),
     },
     projectServerUserId: () => "usr_demo",
     readJsonBody: async () => ({
-      projectId: "dev_project_work_mode_empty",
-      messages: [{ role: "user", content: "leer" }],
+      projectId: "dev_project_quick_prompt",
+      messages: [{ role: "user", content: "Ich moechte einen Observer" }],
+    }),
+    requireProjectAccess: async () => ({ area: "development_project" }),
+    sendJson: (res, status, body) => {
+      payload = { status, body };
+    },
+  });
+
+  try {
+    await assistant.handleChat({}, {}, { account: { user_id: "usr_demo" } });
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  assert.equal(providerCalled, false);
+  assert.equal(payload.status, 200);
+  assert.equal(payload.body.usedFallback, false);
+  assert.equal(payload.body.usedDialogControl, true);
+  assert.equal(payload.body.routing.provider, "dialog_control");
+  assert.equal(payload.body.routing.costPolicy, "no_llm_call");
+  assert.equal(payload.body.usage.totalTokens, 0);
+  assert.match(payload.body.message.content, /Observer passt/);
+  assert.match(payload.body.message.content, /Welches Ereignis/);
+  assert.doesNotMatch(payload.body.message.content, /Provider|Admin Tool|Zugangsdaten/);
+  assert.equal(Object.hasOwn(payload.body, "architectureDiagram"), false);
+});
+
+test("lists architecture patterns locally without provider call", async () => {
+  const previousFetch = global.fetch;
+  let providerCalled = false;
+  let payload = null;
+  global.fetch = async (url) => {
+    providerCalled = true;
+    throw new Error(`Provider should not be called: ${url}`);
+  };
+  const assistant = createDevelopmentAssistant({
+    aiContextJson: promptFoundationJson,
+    aiUsageJson: async () => {
+      throw new Error("AI usage should not be called");
+    },
+    llmConfigStore: {
+      publicConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-5.5" }),
+      resolveRoute: () => ({
+        provider: "api",
+        apiProvider: "openai-responses",
+        apiBaseUrl: "https://api.openai.example/v1",
+        apiModel: "gpt-5.5",
+      }),
+    },
+    projectServerUserId: () => "usr_demo",
+    readJsonBody: async () => ({
+      projectId: "dev_project_patterns",
+      messages: [{ role: "user", content: "Nenne mir deine Pattern" }],
     }),
     requireProjectAccess: async () => ({ area: "development_project" }),
     sendJson: (res, status, body) => {
@@ -810,11 +928,11 @@ test("answers bare leer architecture work mode with an empty start diagram", asy
   assert.equal(providerCalled, false);
   assert.equal(payload.status, 200);
   assert.equal(payload.body.usedDialogControl, true);
-  assert.equal(payload.body.config.requestProfile.workModeChoice, "leer");
+  assert.equal(payload.body.routing.provider, "dialog_control");
   assert.equal(payload.body.usage.totalTokens, 0);
-  assert.equal(payload.body.architectureDiagram.derived_from, "dialog_control_work_mode_empty");
-  assert.match(payload.body.architectureDiagram.source, /Leere Startarchitektur/);
-  assert.match(payload.body.architectureDiagram.source, /Noch keine Komponenten/);
+  assert.match(payload.body.message.content, /Datenlogger/);
+  assert.match(payload.body.message.content, /Observer\/Benachrichtigung/);
+  assert.match(payload.body.message.content, /Synchronisiertes Zustandsmodell/);
 });
 
 test("answers known architecture component questions from ai context without an LLM call", async () => {

@@ -470,6 +470,17 @@ button.danger:hover {
   padding: 12px;
   background: #f8fafc;
 }
+.development-quick-prompts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+.development-quick-prompts button {
+  min-width: 0;
+  min-height: 42px;
+  padding: 8px 10px;
+  white-space: normal;
+}
 .chat-message {
   max-width: min(760px, 92%);
   border: 1px solid var(--line);
@@ -593,6 +604,10 @@ button.danger:hover {
 }
 .development-project-summary strong {
   overflow-wrap: anywhere;
+}
+.development-project-summary small {
+  color: var(--muted);
+  font-weight: 700;
 }
 .development-project-actions {
   justify-content: stretch;
@@ -1326,6 +1341,7 @@ textarea:read-only {
 
 @media (max-width: 900px) {
   .dashboard-grid, .lesson-panel, .ide-layout, .development-platform-layout, .inventory-layout, .recovery-layout, .device-row, .build-row, .discovery-row { grid-template-columns: 1fr; }
+  .development-quick-prompts { grid-template-columns: 1fr; }
   .discovery-row { grid-template-columns: 26px minmax(0, 1fr); }
   .discovery-row .meta-list { grid-column: 2; }
   .guided-artifact-layout, .guided-state-row { grid-template-columns: 1fr; }

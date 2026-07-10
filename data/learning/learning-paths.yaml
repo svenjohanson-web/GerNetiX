@@ -259,6 +259,8 @@ items:
       - Der Pfad soll Nutzer nicht nach einem Einzelprojekt verlieren, sondern aus ihrem Zielbild nachvollziehbare naechste Schritte ableiten.
     architectureQuestionAreas:
       - Projektziel und Nutzerrollen
+      - Funktionsklasse wie lokale Regelstrecke, Datenlogger, Remote-Steuerung, Observer/Benachrichtigung, synchronisiertes Zustandsmodell oder Kombination
+      - Observer-Beispiele wie Zugangskontrollsystem mit Benachrichtigung und Logging, Solarzellen-Spannungs-/Stromereignis oder Hell/Dunkel-Erkennung
       - Physische Geraete, Sensoren, Aktoren und vorhandene Hardware
       - Bedienoberflaechen wie lokal am Geraet, Mobile App, Desktop App oder Browser App
       - Daten, Zustaende, Historie, Synchronisation und Persistenz
@@ -276,6 +278,7 @@ items:
       - project.architecture_first.discovery_capstone
     learningOutcomes:
       - Eine Projektidee in eine bestaetigte Zielarchitektur ueberfuehren.
+      - Funktionsklassen und typische Observer-Beispiele erkennen, bevor Technologien festgelegt werden.
       - Erkennen, welche Software- und Hardwarebausteine fuer ein Projekt wirklich benoetigt werden.
       - Technologieauswahl aus Architekturbedarf ableiten und dokumentieren.
       - Alternativen und offene Fragen bewusst sichtbar halten.
@@ -286,7 +289,7 @@ items:
         orderIndex: 1
         title: Projektziel verstehen
         mandatory: true
-        outcome: Nutzer beschreiben Zweck, Nutzerrollen, physische Umgebung und erwarteten Nutzen des Projekts.
+        outcome: Nutzer beschreiben Zweck, Nutzerrollen, physische Umgebung, erwarteten Nutzen und erste Funktionsklasse des Projekts.
 
       - id: learning_path_step.architecture_first.02_target_systems
         orderIndex: 2

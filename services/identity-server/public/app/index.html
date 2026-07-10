@@ -264,6 +264,7 @@
               <div class="development-project-summary">
                 <span>Aktuelles Projekt</span>
                 <strong id="developmentProjectName">Kein Projekt geoeffnet</strong>
+                <small id="developmentAssistantMode">Struktur klaeren</small>
               </div>
               <div class="button-row development-project-actions">
                 <button id="openDevelopmentProjectButton" type="button">Projekt oeffnen</button>
@@ -280,6 +281,7 @@
               <p id="developmentProjectStatus" class="helper-text">Bitte Projekt oeffnen oder neu anlegen, bevor der Chat startet.</p>
             </section>
             <div id="developmentChatMessages" class="development-chat-messages" aria-live="polite"></div>
+            <section id="developmentQuickPrompts" class="development-quick-prompts" aria-label="Schnellfragen"></section>
             <form id="developmentChatForm" class="development-chat-form">
               <label for="developmentChatInput">Nachricht</label>
               <textarea id="developmentChatInput" rows="4" placeholder="Beschreibe kurz deine Projektidee oder antworte auf die Frage der KI."></textarea>
@@ -291,6 +293,8 @@
             <section id="developmentArchitectureDiagram" class="architecture-diagram-panel"></section>
             <div class="button-row development-project-actions development-page-actions">
               <button id="saveDevelopmentArchitectureButton" type="button" disabled>Architektur speichern</button>
+              <button id="startFunctionClarificationButton" type="button" disabled>Funktion klaeren</button>
+              <button id="startEffectChainButton" type="button" disabled>Wirkketten ableiten</button>
               <button id="acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Uebernehmen und weiter</button>
             </div>
             <p id="developmentActionStatus" class="helper-text development-action-status" aria-live="polite"></p>

@@ -3,6 +3,9 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     const body = await readJsonBody(req);
     const userMessages = normalizeMessages(body.messages);
     const projectId = cleanProjectId(body.projectId || body.project_id);
+    const assistantMode = cleanAssistantMode(body.assistantMode || body.assistant_mode);
+    const functionMode = assistantMode === "function_clarification";
+    const effectChainMode = assistantMode === "effect_chain_derivation";
     if (!userMessages.length) {
       sendJson(res, 400, { error: "missing_messages", message: "Mindestens eine Nachricht wird benoetigt." });
       return;
@@ -17,9 +20,26 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         sendJson(res, 400, { error: "not_development_project", message: "Bitte ein eigenes Entwicklungsprojekt fuer den Architektur-Chat auswaehlen." });
         return;
       }
-      const requestProfile = architectureRequestProfile(userMessages);
+      const requestProfile = architectureRequestProfile(userMessages, { assistantMode });
       const configuredRoute = routeConfig("architecture_discovery");
       const activeConfig = configuredRoute;
+      const patternShortcut = architecturePatternShortcut(userMessages, { assistantMode });
+      if (patternShortcut) {
+        sendJson(res, 200, {
+          config: config({ requestProfile, dialogControl: patternShortcut.intent }),
+          routing: dialogControlRouting(patternShortcut),
+          message: {
+            role: "assistant",
+            content: patternShortcut.content,
+          },
+          usage: zeroUsage(),
+          usageEvent: null,
+          usedFallback: false,
+          usedLocalRoute: false,
+          usedDialogControl: true,
+        });
+        return;
+      }
       const localEdit = architectureLocalEdit(userMessages, body.architectureDiagram);
       if (localEdit) {
         sendJson(res, 200, {
@@ -36,25 +56,6 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
           usedLocalRoute: false,
           usedDialogControl: false,
           usedModelOperation: true,
-        });
-        return;
-      }
-      if (requestProfile.workModeChoice) {
-        const assistantContent = workModeChoiceAnswer(requestProfile.workModeChoice);
-        const architectureDiagram = workModeChoiceDiagram(requestProfile.workModeChoice);
-        sendJson(res, 200, {
-          config: config({ requestProfile }),
-          routing: dialogControlRouting(requestProfile),
-          message: {
-            role: "assistant",
-            content: assistantContent,
-          },
-          architectureDiagram,
-          usage: zeroUsage(),
-          usageEvent: null,
-          usedFallback: false,
-          usedLocalRoute: false,
-          usedDialogControl: true,
         });
         return;
       }
@@ -79,10 +80,12 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       const context = await architectureContext(session, activeConfig, projectId);
       const messages = [
         { role: "system", content: await systemPrompt(session, requestProfile) },
+        ...(functionMode ? [{ role: "system", content: functionClarificationPrompt(body.architectureDiagram) }] : []),
+        ...(effectChainMode ? [{ role: "system", content: effectChainPrompt(body.architectureDiagram) }] : []),
         ...context.messages,
         ...userMessages,
       ];
-      const usagePreflight = await preflightUsage(session, activeConfig, projectId, messages, "architecture_discovery");
+      const usagePreflight = await preflightUsage(session, activeConfig, projectId, messages, effectChainMode ? "architecture_effect_chain_derivation" : functionMode ? "architecture_function_clarification" : "architecture_discovery");
       if (usagePreflight && !usagePreflight.allowed) {
         sendJson(res, 402, {
           error: "ai_usage_rejected",
@@ -114,6 +117,9 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
           model: activeConfig.provider === "api" ? activeConfig.apiModel : activeConfig.ollamaModel,
           provider: activeConfig.provider,
           routeTask: activeConfig.routeTask,
+          includeFunctions: functionMode,
+          includeEffectChains: effectChainMode,
+          currentDiagram: body.architectureDiagram,
         }),
         usage,
         usageEvent,
@@ -161,19 +167,6 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     };
   }
 
-  function dialogControlRouting(requestProfile = {}) {
-    return {
-      local: true,
-      provider: "dialog_control",
-      label: "System / Dialogsteuerung",
-      model: "kein LLM",
-      routeTask: "architecture_discovery",
-      routeReason: "Exakte Arbeitsweisen-Auswahl wird ohne LLM beantwortet.",
-      costPolicy: "no_llm_call",
-      requestComplexity: requestProfile.complexity || "dialog_control",
-    };
-  }
-
   function contextLookupRouting(contextAnswer = {}) {
     return {
       local: true,
@@ -184,6 +177,19 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       routeReason: contextAnswer.reason || "Erklaerfrage zu einem bekannten Architekturbaustein wird ohne LLM beantwortet.",
       costPolicy: "no_llm_call",
       requestComplexity: "context_lookup",
+    };
+  }
+
+  function dialogControlRouting(dialogControl = {}) {
+    return {
+      local: true,
+      provider: "dialog_control",
+      label: "System / Dialogsteuerung",
+      model: "kein LLM",
+      routeTask: "architecture_discovery",
+      routeReason: dialogControl.reason || "Eindeutige Einstiegsfrage wird ohne LLM beantwortet.",
+      costPolicy: "no_llm_call",
+      requestComplexity: "dialog_control",
     };
   }
 
@@ -209,17 +215,6 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       promptDurationMs: 0,
       completionDurationMs: 0,
     };
-  }
-
-  function workModeChoiceAnswer(choice) {
-    if (choice === "max") {
-      return "Okay. Ich habe eine maximale Startarchitektur angelegt. Entferne danach alles, was du nicht benoetigst.";
-    }
-    return "Okay. Ich habe eine leere Startarchitektur angelegt. Wir fuegen nur hinzu, was du nennst oder bestaetigst.";
-  }
-
-  function workModeChoiceDiagram(choice) {
-    return choice === "max" ? maximalStartArchitectureDiagram() : emptyStartArchitectureDiagram();
   }
 
   function apiProviderLabel(provider) {
@@ -251,6 +246,33 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       await promptFoundation("architecture_discovery"),
       `Aktueller Nutzer: ${projectServerUserId(session)}.`,
     ].join("\n");
+  }
+
+  function functionClarificationPrompt(currentDiagram) {
+    const knownBlocks = (currentDiagram?.detected_blocks || currentDiagram?.detectedBlocks || [])
+      .filter(Boolean)
+      .join(", ");
+    return [
+      "Aktuelle Phase: Funktion zwischen vorhandenen Strukturelementen klaeren.",
+      "Fokus: fachliche Funktionen, Quellen, Senken, Nutzerinteraktionen und Systemgrenzen.",
+      "Erklaere kurz, was fachlich passiert. Erzwinge keine Client/Server-, REST- oder UML-Dependency-Sprache.",
+      "Pfeile in der PlantUML-Ableitung bedeuten funktionale Interaktion oder Informationsfluss, nicht technische Dependency.",
+      knownBlocks ? `Bekannte Strukturkomponenten: ${knownBlocks}.` : "",
+    ].filter(Boolean).join("\n");
+  }
+
+  function effectChainPrompt(currentDiagram) {
+    const knownBlocks = (currentDiagram?.detected_blocks || currentDiagram?.detectedBlocks || [])
+      .filter(Boolean)
+      .join(", ");
+    return [
+      "Aktuelle Phase: Wirkketten aus Struktur und Funktion ableiten.",
+      "Fokus: Ausloeser, fachlicher Ablauf, Verarbeitung, Speicherung, Anzeige und Ende der Wirkung.",
+      "Leite keine technischen UML-Dependencies ab. Client/Server, REST, MQTT oder Pub/Sub sind spaetere Pattern-Ableitungen.",
+      "Beschreibe Ketten knapp, z. B. Timer -> ESP32 misst Temperatur -> ESP32 speichert oder publisht -> Server speichert.",
+      "Zweite typische Kette: Mensch -> Browser -> Webserver/API -> Daten werden angezeigt.",
+      knownBlocks ? `Bekannte Strukturelemente: ${knownBlocks}.` : "",
+    ].filter(Boolean).join("\n");
   }
 
   async function promptFoundation(routeTask) {
@@ -606,14 +628,14 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       "",
       "Pruefe bitte im Admin Tool Provider, Endpoint, Modell und Zugangsdaten.",
       "",
-      "Bitte beantworte als Naechstes kurz:",
-      "1. Soll das System nur lokal messen, lokal regeln oder auch aus der Ferne bedient werden?",
-      "2. Gibt es ein oder mehrere Geraete?",
-      "3. Muessen Messwerte oder Ereignisse gespeichert werden?",
-      "4. Soll die Bedienung am Computer, am Handy, im Browser oder direkt am Geraet stattfinden?",
-      "5. Muss der Zugriff nur im lokalen Netzwerk oder weltweit funktionieren?",
+      "Bitte beschreibe als Naechstes kurz:",
+      "1. Was soll das Projekt fuer wen bewirken?",
+      "2. Welche Ausloeser, Eingaben oder Messwerte gibt es?",
+      "3. Wer oder was soll am Ende eine Wirkung sehen, hoeren, speichern oder ausfuehren?",
+      "4. Muss etwas aus dem Internet erreichbar sein oder reicht lokale Nutzung?",
+      "5. Reicht ein Browser oder brauchst du Geraetefunktionen einer App?",
       "",
-      "Danach leite ich daraus Zielarchitektur, offene Fragen und Technologie-Kandidaten ab.",
+      "Danach leite ich daraus Randbedingungen, Wirkketten und erst danach eine Zielarchitektur ab.",
     ].join("\n");
   }
 
@@ -626,9 +648,14 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
 function buildArchitectureDiagram(messages, options = {}) {
   const normalized = normalizeDiagramMessages(messages);
   const assistantText = normalized.filter((message) => message.role === "assistant").map((message) => message.content).join("\n");
-  const fullText = normalized.map((message) => message.content).join("\n");
+  const currentSource = String(options.currentDiagram?.source || "").trim();
+  const conversationText = normalized.map((message) => message.content).join("\n");
+  const fullText = [currentSource, conversationText].filter(Boolean).join("\n");
   const latestUserText = [...normalized].reverse().find((message) => message.role !== "assistant")?.content || fullText;
-  const signals = architectureSignals(fullText, assistantText, latestUserText);
+  const signals = mergeCurrentDiagramSignals(
+    architectureSignals(fullText, assistantText, latestUserText),
+    options.currentDiagram,
+  );
   const title = diagramTitle(fullText);
   if (signals.minimalScope) {
     return minimalEsp32ArchitectureDiagram(title, signals);
@@ -659,26 +686,47 @@ function buildArchitectureDiagram(messages, options = {}) {
   if (signals.mobile) lines.push("rectangle \"Mobile App\" as mobile");
   if (signals.desktop) lines.push("rectangle \"Desktop App\" as desktop");
   if (signals.backend) lines.push("rectangle \"Backend / API\" as backend");
+  if (signals.mqtt) lines.push("queue \"MQTT Broker\" as mqtt");
   if (signals.database) lines.push("database \"Persistenz\" as database");
   if (signals.cloud) lines.push("cloud \"Cloud / Internet\" as cloud");
   if (signals.homeServer) lines.push("node \"HomeServer / lokaler Server\" as homeserver");
   if (signals.hardwareCatalog) lines.push("rectangle \"Hardware Catalog\" as hardware_catalog");
+  if (signals.temperature) lines.push("rectangle \"Temperatur\" as temperature");
+  if (signals.timer) lines.push("rectangle \"Timer\" as timer");
   if (actorInterface.actor) lines.push(`actor "${plantUmlText(actorInterface.label)}" as actor`);
+  if (options.includeEffectChains) {
+    const effectChains = architectureEffectChainLines({ fullText: conversationText, signals, actorInterface, showBrowser });
+    if (effectChains.length) {
+      lines.push("", ...effectChains);
+    }
+  } else if (options.includeFunctions) {
+    const functionLines = architectureFunctionLines({ fullText: conversationText, signals, actorInterface, showBrowser });
+    if (functionLines.length) {
+      lines.push("", ...functionLines);
+    }
+  }
 
   lines.push("@enduml");
+  const source = lines.join("\n");
   return {
     type: "plantuml",
     title,
-    summary: "Technische Struktur aus der letzten Architektur-KI-Antwort.",
-    source: lines.join("\n"),
-    derived_from: "architecture_discovery_ai_response",
+    summary: options.includeEffectChains
+      ? "Architektur-Wirkkettensicht als PlantUML: Ausloeser, Verarbeitung, Speicherung und Anzeige."
+      : options.includeFunctions
+      ? "Architektur-Funktionssicht als PlantUML: fachliche Funktionen und Interaktionen."
+      : "Technische Struktur aus der letzten Architektur-KI-Antwort.",
+    source,
+    derived_from: options.includeEffectChains ? "architecture_effect_chain_derivation" : options.includeFunctions ? "architecture_function_clarification" : "architecture_discovery_ai_response",
     generated_at: new Date().toISOString(),
     confidence: signals.confidence,
     detected_blocks: signals.detectedBlocks,
+    function_coverage: plantUmlFunctionCoverage(source),
+    effect_chain_coverage: options.includeEffectChains ? plantUmlFunctionCoverage(source) : null,
   };
 }
 
-function architectureRequestProfile(messages) {
+function architectureRequestProfile(messages, options = {}) {
   const normalizedMessages = Array.isArray(messages) ? messages : [];
   const text = normalizedMessages
     .map((message) => String(message.content || ""))
@@ -686,23 +734,71 @@ function architectureRequestProfile(messages) {
     .trim();
   const latestUserText = [...normalizedMessages].reverse().find((message) => message.role !== "assistant")?.content || text;
   const explicitMinimal = isMinimalEsp32StructureRequest(latestUserText);
-  const workModeChoice = architectureWorkModeChoice(latestUserText);
   return {
     explicitMinimal,
-    workModeChoice,
-    complexity: workModeChoice ? "dialog_control" : "configured_route",
-    reason: "Architektur-Discovery nutzt immer die konfigurierte Architektur-Route.",
-  };
+    assistantMode: options.assistantMode || "architecture_structure",
+    complexity: "configured_route",
+    reason: options.assistantMode === "effect_chain_derivation"
+      ? "Wirkkettenableitung nutzt die konfigurierte Architektur-Route."
+      : options.assistantMode === "function_clarification"
+      ? "Funktionsklaerung nutzt die konfigurierte Architektur-Route."
+      : "Architektur-Discovery nutzt immer die konfigurierte Architektur-Route.",
+    };
 }
 
-function architectureWorkModeChoice(value) {
-  const text = String(value || "")
-    .trim()
-    .toLowerCase()
-    .replace(/[.!?]+$/g, "");
-  if (text === "max" || text === "maximal" || text === "maximale architektur") return "max";
-  if (text === "leer" || text === "leere architektur" || text === "empty") return "leer";
-  return "";
+function architecturePatternShortcut(messages, options = {}) {
+  if ((options.assistantMode || "architecture_structure") !== "architecture_structure") return null;
+  const latestUserText = [...(Array.isArray(messages) ? messages : [])].reverse().find((message) => message.role !== "assistant")?.content || "";
+  const text = normalizeLookupText(latestUserText);
+  if (!text) return null;
+  if (/\b(nenne|zeig|zeige|liste|welche)\b.*\b(pattern|patterns|muster)\b|\bpattern\b.*\b(nennen|zeigen|liste)\b/.test(text)) {
+    return {
+      intent: "list_patterns",
+      reason: "Pattern-Uebersicht wurde als Chat-Schnellfrage angefordert.",
+      content: [
+        "Diese Pattern kann ich als Einstieg nutzen:",
+        "",
+        "- Lokale Regel-/Steuerstrecke: Ein Device misst lokal und schaltet lokal etwas.",
+        "- Datenlogger: Messwerte werden erfasst, gespeichert und spaeter angezeigt.",
+        "- Remote-Steuerung: Ein Nutzer steuert ein Device ueber Browser oder App.",
+        "- Observer/Benachrichtigung: Ein Ereignis wird erkannt und jemand wird informiert.",
+        "- Synchronisiertes Zustandsmodell: Ein zentraler Zustand wird berechnet und an mehrere Devices verteilt.",
+        "",
+        "Welches Pattern passt am ehesten? Antworte z. B. mit `Observer`, `Datenlogger` oder einer Kombination.",
+      ].join("\n"),
+    };
+  }
+  if (/\b(observer|benachrichtigung|benachrichtigen|ereignis)\b/.test(text) && /\b(moechte|mochte|will|brauche|pattern|observer)\b/.test(text)) {
+    return {
+      intent: "observer",
+      reason: "Observer-Pattern wurde als Chat-Schnellfrage erkannt.",
+      content: [
+        "Observer passt: Ein Ereignis wird erkannt und ein Nutzer oder ein anderes System wird informiert.",
+        "",
+        "Bitte kurz klaeren:",
+        "1. Welches Ereignis soll erkannt werden?",
+        "2. Wer oder was soll benachrichtigt werden?",
+        "3. Soll das nur lokal funktionieren oder weltweit erreichbar sein?",
+        "4. Wie viele Devices gehoeren dazu?",
+      ].join("\n"),
+    };
+  }
+  if (/\b(datenlogger|data logger|logger|messdaten|messwerte)\b/.test(text) && /\b(moechte|mochte|will|brauche|pattern|datenlogger|logger)\b/.test(text)) {
+    return {
+      intent: "data_logger",
+      reason: "Datenlogger-Pattern wurde als Chat-Schnellfrage erkannt.",
+      content: [
+        "Datenlogger passt: Messwerte werden erfasst, gespeichert und spaeter angezeigt oder ausgewertet.",
+        "",
+        "Bitte kurz klaeren:",
+        "1. Welche Messwerte sollen erfasst werden?",
+        "2. Wie oft oder wodurch wird gemessen?",
+        "3. Sollen die Daten nur lokal oder weltweit abrufbar sein?",
+        "4. Wie viele Logger-Devices gehoeren zum Projekt?",
+      ].join("\n"),
+    };
+  }
+  return null;
 }
 
 function architectureLocalEdit(messages, currentDiagram) {
@@ -965,71 +1061,6 @@ function architectureComponentAnswer(component) {
   return sections.join("\n\n");
 }
 
-function maximalStartArchitectureDiagram() {
-  const lines = [
-    "@startuml",
-    "title Maximale Startarchitektur",
-    "",
-    "skinparam shadowing false",
-    "skinparam componentStyle rectangle",
-    "skinparam rectangle {",
-    "  BackgroundColor #fbfdff",
-    "  BorderColor #8aa0bd",
-    "}",
-    "node \"ESP32 / IoT Device\" as esp32",
-    "rectangle \"Browser UI\" as browser",
-    "rectangle \"Mobile App\" as mobile",
-    "rectangle \"Desktop App\" as desktop",
-    "rectangle \"Backend / API\" as backend",
-    "queue \"MQTT Broker\" as mqtt",
-    "cloud \"Cloud / Internet\" as cloud",
-    "node \"HomeServer / lokaler Server\" as homeserver",
-    "@enduml",
-  ];
-  return {
-    type: "plantuml",
-    title: "Maximale Startarchitektur",
-    summary: "Technischer maximaler Startpunkt zum Reduzieren.",
-    source: lines.join("\n"),
-    derived_from: "dialog_control_work_mode_max",
-    generated_at: new Date().toISOString(),
-    confidence: 1,
-    detected_blocks: ["device", "browser", "mobile", "desktop", "backend", "mqtt", "cloud", "homeServer"],
-  };
-}
-
-function emptyStartArchitectureDiagram() {
-  const lines = [
-    "@startuml",
-    "title Leere Startarchitektur",
-    "",
-    "skinparam shadowing false",
-    "skinparam componentStyle rectangle",
-    "skinparam rectangle {",
-    "  BackgroundColor #fbfdff",
-    "  BorderColor #8aa0bd",
-    "}",
-    "",
-    "rectangle \"Projektstruktur\" as project",
-    "note right of project",
-    "  Noch keine Komponenten.",
-    "  Elemente werden erst hinzugefuegt,",
-    "  wenn du sie nennst oder bestaetigst.",
-    "end note",
-    "@enduml",
-  ];
-  return {
-    type: "plantuml",
-    title: "Leere Startarchitektur",
-    summary: "Leerer Startpunkt zum gezielten Hinzufuegen.",
-    source: lines.join("\n"),
-    derived_from: "dialog_control_work_mode_empty",
-    generated_at: new Date().toISOString(),
-    confidence: 1,
-    detected_blocks: [],
-  };
-}
-
 function minimalEsp32ArchitectureDiagram(title, signals) {
   const lines = [
     "@startuml",
@@ -1086,10 +1117,13 @@ function architectureSignals(fullText, assistantText, latestUserText = fullText)
       mobile: false,
       desktop: false,
       backend: false,
+      mqtt: false,
       database: false,
       cloud: false,
       homeServer: false,
       hardwareCatalog: false,
+      temperature: false,
+      timer: false,
     };
     const detectedBlocks = Object.entries(signals).filter(([, value]) => value).map(([key]) => key);
     return {
@@ -1105,11 +1139,14 @@ function architectureSignals(fullText, assistantText, latestUserText = fullText)
     browser: has([/browser/, /webseite/, /web app/, /webapp/, /dashboard/, /hmi/]),
     mobile: has([/handy/, /mobile/, /app/, /smartphone/]),
     desktop: has([/desktop/, /pc/, /computer/]),
-    backend: has([/backend/, /server/, /api/, /rest/, /websocket/, /mqtt/, /account/]),
+    backend: has([/backend/, /server/, /api/, /rest/, /websocket/, /account/]),
+    mqtt: has([/mqtt/, /broker/, /publish/, /subscribe/, /topic/]),
     database: has([/datenbank/, /sqlite/, /persistenz/, /speicher/, /messwerte speichern/, /history/, /historie/]),
     cloud: has([/cloud/, /internet/, /weltweit/, /remote/, /extern/]),
     homeServer: has([/homeserver/, /home server/, /raspberry/, /lokaler server/, /lan/]),
     hardwareCatalog: has([/hardware catalog/, /hardware-catalog/, /capabilit/, /processorboard/, /board/]),
+    temperature: has([/temperatur/, /temperature/, /waerme/, /wärme/]),
+    timer: has([/timer/, /zeitgeber/, /intervall/, /zyklisch/, /periodisch/]),
   };
   const detectedBlocks = Object.entries(signals).filter(([, value]) => value).map(([key]) => key);
   return {
@@ -1119,10 +1156,92 @@ function architectureSignals(fullText, assistantText, latestUserText = fullText)
   };
 }
 
+function mergeCurrentDiagramSignals(signals, currentDiagram) {
+  const detected = new Set([
+    ...(signals.detectedBlocks || []),
+    ...((currentDiagram?.detected_blocks || currentDiagram?.detectedBlocks || []).filter(Boolean)),
+  ]);
+  const aliases = {
+    device: "device",
+    browser: "browser",
+    mobile: "mobile",
+    desktop: "desktop",
+    backend: "backend",
+    mqtt: "mqtt",
+    database: "database",
+    cloud: "cloud",
+    homeServer: "homeServer",
+    hardwareCatalog: "hardwareCatalog",
+    temperature: "temperature",
+    timer: "timer",
+  };
+  const merged = { ...signals };
+  for (const [key, block] of Object.entries(aliases)) {
+    if (detected.has(block)) merged[key] = true;
+  }
+  merged.detectedBlocks = Object.entries(merged)
+    .filter(([key, value]) => key !== "detectedBlocks" && key !== "confidence" && value === true)
+    .map(([key]) => key);
+  return merged;
+}
+
+function architectureFunctionLines({ fullText, signals, actorInterface, showBrowser }) {
+  const text = String(fullText || "").toLowerCase();
+  const lines = [];
+  const add = (from, to, label) => {
+    const line = `${from} --> ${to}${label ? ` : ${label}` : ""}`;
+    if (!lines.includes(line)) lines.push(line);
+  };
+  const mentions = (left, right) => new RegExp(`\\b${left}\\b[\\s\\S]{0,120}\\b${right}\\b|\\b${right}\\b[\\s\\S]{0,120}\\b${left}\\b`, "i").test(text);
+  if (signals.temperature && signals.device) add("temperature", "device", "wird gemessen");
+  if (actorInterface.actor && showBrowser) add("actor", "browser", "bedient / sieht");
+  if (showBrowser && actorInterface.webserver) add("browser", "webserver", "zeigt Messwerte an");
+  if (showBrowser && signals.backend && (mentions("browser", "backend") || mentions("browser", "api"))) add("browser", "backend", "fragt Messwerte ab");
+  if (showBrowser && signals.device && (mentions("browser", "esp32") || mentions("browser", "device") || /lokal.{0,80}browser|browser.{0,80}lokal/.test(text))) add("browser", "device", "zeigt / bedient lokal");
+  if (actorInterface.webserver && signals.device) add("device", "webserver", "stellt Messdaten bereit");
+  if (signals.mobile && signals.backend && (mentions("mobile", "backend") || mentions("app", "api"))) add("mobile", "backend", "zeigt / bedient");
+  if (signals.mobile && signals.device && mentions("mobile", "esp32")) add("mobile", "device", "zeigt / bedient lokal");
+  if (signals.desktop && signals.backend && (mentions("desktop", "backend") || mentions("desktop", "api"))) add("desktop", "backend", "zeigt / bedient");
+  if (signals.device && signals.mqtt) add("device", "mqtt", "meldet Ereignisse");
+  if (signals.backend && signals.mqtt && /backend|server|api/.test(text)) add("mqtt", "backend", "liefert Nachrichten");
+  if (signals.backend && signals.database) add("backend", "database", "speichert Daten");
+  if (signals.backend && signals.cloud && /cloud|internet|weltweit|extern/.test(text)) add("cloud", "backend", "betreibt Funktion");
+  if (signals.backend && signals.homeServer && /homeserver|lokaler server|lan/.test(text)) add("homeserver", "backend", "betreibt Funktion");
+  return lines;
+}
+
+function architectureEffectChainLines({ fullText, signals, actorInterface, showBrowser }) {
+  const text = String(fullText || "").toLowerCase();
+  const lines = [];
+  const add = (from, to, label) => {
+    const line = `${from} --> ${to}${label ? ` : ${label}` : ""}`;
+    if (!lines.includes(line)) lines.push(line);
+  };
+  const has = (patterns) => patterns.some((pattern) => pattern.test(text));
+  const wantsMqtt = signals.mqtt || has([/mqtt/, /publish/, /publisht/, /pubbed/, /topic/, /broker/]);
+  const wantsStorage = signals.database || has([/speicher/, /speichert/, /datenlogger/, /logger/, /historie/]);
+  const wantsViewing = showBrowser || actorInterface.actor || has([/browser/, /anschaut/, /anschauen/, /sieht/, /anzeigen/, /messwert ansehen/]);
+
+  if (signals.timer && signals.device) add("timer", "device", "startet Messung");
+  if (signals.temperature && signals.device) add("temperature", "device", "wird gemessen");
+  if (signals.device && wantsStorage && !signals.backend && !wantsMqtt) add("device", "device", "speichert Messwert lokal");
+  if (signals.device && wantsMqtt) add("device", "mqtt", "publisht Messwert");
+  if (signals.mqtt && signals.backend) add("mqtt", "backend", "liefert Messwert");
+  if (signals.backend && signals.database && wantsStorage) add("backend", "database", "speichert Messwert");
+  if (signals.backend && !signals.database && wantsStorage) add("backend", "backend", "speichert Messwert");
+  if (actorInterface.actor && showBrowser && wantsViewing) add("actor", "browser", "moechte Daten ansehen");
+  if (showBrowser && actorInterface.webserver) add("browser", "webserver", "fragt Messdaten ab");
+  if (showBrowser && signals.backend && /server|backend|api|webserver|messdaten|daten/.test(text)) add("browser", "backend", "fragt Messdaten ab");
+  if (showBrowser && signals.device && /esp32|device|lokal|webserver/.test(text)) add("browser", "device", "fragt Messdaten ab");
+  if (signals.backend && showBrowser && /anzeigen|anschaut|anschauen|sieht|browser|daten/.test(text)) add("backend", "browser", "liefert Messdaten");
+  if (signals.device && showBrowser && /anzeigen|anschaut|anschauen|sieht|browser|lokal|webserver/.test(text)) add("device", "browser", "liefert Messdaten");
+  return lines.length ? lines : architectureFunctionLines({ fullText, signals, actorInterface, showBrowser });
+}
+
 function actorInterfaceSignals(textValue) {
   const text = String(textValue || "").toLowerCase();
-  const hasActor = /\b(nutzer|kunde|user|anwender|bediener|operator)\b/.test(text);
-  const hasInterface = /\b(interface|schnittstelle|webserver|web server|browser|webseite|web app|webapp|mobile app|app|bedienung|greift|zugriff)\b/.test(text);
+  const hasActor = /\b(nutzer|kunde|user|anwender|bediener|operator|mensch)\b/.test(text);
+  const hasInterface = /\b(interface|schnittstelle|webserver|web server|browser|webseite|web app|webapp|mobile app|app|bedienung|greift|zugriff|sieht|ansehen|anzeigen|steuert|bedient)\b/.test(text);
   return {
     actor: hasActor && hasInterface,
     label: /\bkunde\b/.test(text) ? "Kunde" : "Nutzer",
@@ -1182,6 +1301,30 @@ function plantUmlText(value) {
     .trim();
 }
 
+function plantUmlFunctionCoverage(source) {
+  const aliases = new Set();
+  const connected = new Set();
+  const lines = String(source || "").split(/\r?\n/);
+  for (const line of lines) {
+    const element = line.match(/^\s*(actor|node|rectangle|queue|database|cloud)\s+"[^"]+"\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\b/i);
+    if (element) aliases.add(element[2]);
+  }
+  for (const line of lines) {
+    const arrow = line.match(/\b([A-Za-z_][A-Za-z0-9_]*)\s+[-.]+>\s+([A-Za-z_][A-Za-z0-9_]*)\b/);
+    if (!arrow) continue;
+    if (aliases.has(arrow[1])) connected.add(arrow[1]);
+    if (aliases.has(arrow[2])) connected.add(arrow[2]);
+  }
+  const elements = [...aliases];
+  const missing = elements.length <= 1 ? [] : elements.filter((alias) => !connected.has(alias));
+  return {
+    element_count: elements.length,
+    arrow_count: lines.filter((line) => /\b[A-Za-z_][A-Za-z0-9_]*\s+[-.]+>\s+[A-Za-z_][A-Za-z0-9_]*\b/.test(line)).length,
+    complete: elements.length <= 1 || missing.length === 0,
+    missing,
+  };
+}
+
 function escapeRegExp(value) {
   return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
@@ -1190,4 +1333,9 @@ function cleanProjectId(value) {
   return String(value || "").trim().slice(0, 160);
 }
 
-module.exports = { createDevelopmentAssistant, buildArchitectureDiagram };
+function cleanAssistantMode(value) {
+  const mode = String(value || "").trim();
+  return ["function_clarification", "effect_chain_derivation"].includes(mode) ? mode : "architecture_structure";
+}
+
+module.exports = { createDevelopmentAssistant, buildArchitectureDiagram, plantUmlFunctionCoverage };

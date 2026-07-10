@@ -90,9 +90,11 @@ items:
     title: Architektur vor Technologie planen
     status: draft
     ownerDomain: Learning
-    summary: Projekte zuerst ueber Zielarchitektur, Zielsysteme, Nutzer, Datenfluesse und Betriebsmodell verstehen, bevor konkrete Technologien wie MQTT, ESP32/WLAN, Backend, Mobile App, Desktop App oder Browser App ausgewaehlt werden. Dieses Lernziel stuetzt Kundenbindung, weil aus dem Zielbild des Nutzers sinnvolle naechste Lernangebote und Anschlussprojekte ableitbar werden.
+    summary: Projekte zuerst ueber Ziel, Funktion, Funktionsklassen, Zielsysteme, Nutzer, Datenfluesse und Betriebsmodell verstehen, bevor konkrete Technologien wie MQTT, ESP32/WLAN, Backend, Mobile App, Desktop App oder Browser App ausgewaehlt werden. Funktionsklassen wie lokale Regelstrecke, Datenlogger, Remote-Steuerung, Observer/Benachrichtigung und synchronisiertes Zustandsmodell helfen Nutzern, Projektideen einzuordnen. Dieses Lernziel stuetzt Kundenbindung, weil aus dem Zielbild des Nutzers sinnvolle naechste Lernangebote und Anschlussprojekte ableitbar werden.
     learningOutcomes:
       - Projektziele in Zielsysteme und Verantwortlichkeiten uebersetzen.
+      - Funktionsklassen wie lokale Regelstrecke, Datenlogger, Remote-Steuerung, Observer/Benachrichtigung und synchronisiertes Zustandsmodell an Beispielen unterscheiden.
+      - Observer-Beispiele wie Zugangskontrolle mit Logging, Solarspannungsueberwachung oder Hell/Dunkel-Erkennung als Ereignis- und Benachrichtigungsprojekte einordnen.
       - IoT-Geraete, Backends, Mobile Apps, Desktop Apps und Browser Apps als Architekturbausteine unterscheiden.
       - Kommunikationsbedarf aus Datenfluesse, Bedienung und Betriebsmodell ableiten.
       - Technologieentscheidungen wie MQTT, REST, WebSocket, WLAN, Bluetooth, Datenbank oder Hosting begruendet aus der Architektur ableiten.

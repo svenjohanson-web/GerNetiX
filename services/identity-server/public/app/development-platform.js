@@ -10,9 +10,11 @@ const DevelopmentPlatform = (() => {
         lastRouting: null,
         activeProjectId: "",
         projectPanelMode: "closed",
+        assistantMode: "architecture_structure",
       };
     }
     if (!state.developmentPlatform.projectPanelMode) state.developmentPlatform.projectPanelMode = "closed";
+    if (!state.developmentPlatform.assistantMode) state.developmentPlatform.assistantMode = "architecture_structure";
 
     function init() {
       document.querySelector("#developmentChatForm").addEventListener("submit", sendChatMessage);
@@ -22,6 +24,8 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#developmentProjectForm").addEventListener("submit", createDevelopmentProject);
       document.querySelector("#developmentProjectSelect").addEventListener("change", selectDevelopmentProject);
       document.querySelector("#saveDevelopmentArchitectureButton").addEventListener("click", saveArchitectureDiagram);
+      document.querySelector("#startFunctionClarificationButton").addEventListener("click", startFunctionClarification);
+      document.querySelector("#startEffectChainButton").addEventListener("click", startEffectChainDerivation);
       document.querySelector("#acceptDevelopmentArchitectureButton").addEventListener("click", acceptArchitectureAndContinue);
     }
 
@@ -32,6 +36,7 @@ const DevelopmentPlatform = (() => {
     function render() {
       renderProjectPicker();
       renderChatMessages();
+      renderQuickPrompts();
       renderArchitectureDiagram();
       syncChatAvailability();
     }
@@ -46,7 +51,7 @@ const DevelopmentPlatform = (() => {
     function renderChatMessages() {
       const messages = state.developmentPlatform.chat.length ? state.developmentPlatform.chat : [{
         role: "assistant",
-        content: "Du hast zunaechst die Wahl, ob du mit einer maximalen Architektur startest und Komponenten entfernst, die du nicht benoetigst, oder mit einer leeren Architektur. Wie moechtest du vorgehen? Antworte einfach mit `max` oder `leer`.",
+        content: defaultAssistantMessage(),
       }];
       document.querySelector("#developmentChatMessages").innerHTML = messages.map((message) => `
         <article class="chat-message ${escapeHtml(message.role)}">
@@ -68,6 +73,28 @@ const DevelopmentPlatform = (() => {
       messageList.scrollTop = messageList.scrollHeight;
     }
 
+    function renderQuickPrompts() {
+      const target = document.querySelector("#developmentQuickPrompts");
+      if (!target) return;
+      const prompts = quickPrompts();
+      target.innerHTML = prompts.map((prompt) => `
+        <button type="button" data-development-quick-prompt="${escapeAttribute(prompt)}">${escapeHtml(prompt)}</button>
+      `).join("");
+      target.querySelectorAll("[data-development-quick-prompt]").forEach((button) => {
+        button.addEventListener("click", () => sendChatContent(button.dataset.developmentQuickPrompt));
+      });
+    }
+
+    function quickPrompts() {
+      if (state.developmentPlatform.assistantMode !== "architecture_structure") return [];
+      if (state.developmentPlatform.chat.length) return [];
+      return [
+        "Ich moechte einen Observer",
+        "Ich moechte einen Datenlogger",
+        "Nenne mir deine Pattern",
+      ];
+    }
+
     function usageRows(usage) {
       return [
         ["Prompt", formatCount(usage.promptTokens, "Tokens")],
@@ -87,13 +114,33 @@ const DevelopmentPlatform = (() => {
       return `${(value / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} s`;
     }
 
+    function defaultAssistantMessage() {
+      if (state.developmentPlatform.assistantMode === "function_clarification") {
+        return "Jetzt klaeren wir die Funktion. Beschreibe fachlich, was passiert, z. B. `Temperatur wird gemessen`, `Messwert wird angezeigt` oder `Nutzer sieht den Messwert`.";
+      }
+      if (state.developmentPlatform.assistantMode === "effect_chain_derivation") {
+        return "Jetzt leiten wir Wirkketten ab. Beschreibe Ausloeser und Ablauf, z. B. `Timer startet Messung, ESP32 misst Temperatur, publisht per MQTT, Server speichert`.";
+      }
+      return "Lass uns ein paar Fragen durchgehen, damit wir den technischen Loesungsraum definieren koennen. Du kannst frei beschreiben, was passieren soll; ich ordne es danach technischen Mustern zu.";
+    }
+
+    function assistantModeLabel() {
+      return state.developmentPlatform.assistantMode === "function_clarification"
+        ? "Funktion klaeren"
+        : state.developmentPlatform.assistantMode === "effect_chain_derivation"
+          ? "Wirkketten ableiten"
+        : "Ziel/Funktion klaeren";
+    }
+
     function clearChat() {
       state.developmentPlatform.chat = [];
       state.developmentPlatform.architectureDiagram = null;
       state.developmentPlatform.lastRouting = null;
+      state.developmentPlatform.assistantMode = "architecture_structure";
       setChatStatus("Bereit fuer Architekturfragen.");
       setActionStatus("");
       renderChatMessages();
+      renderQuickPrompts();
       renderArchitectureDiagram();
     }
 
@@ -110,6 +157,7 @@ const DevelopmentPlatform = (() => {
       }
       const activeProject = currentProject();
       document.querySelector("#developmentProjectName").textContent = activeProject?.name || "Kein Projekt geoeffnet";
+      document.querySelector("#developmentAssistantMode").textContent = assistantModeLabel();
       document.querySelector("#developmentProjectOpenPanel").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "open");
       document.querySelector("#developmentProjectForm").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "new");
       select.innerHTML = [
@@ -147,6 +195,7 @@ const DevelopmentPlatform = (() => {
       state.developmentPlatform.chat = [];
       state.developmentPlatform.architectureDiagram = null;
       state.developmentPlatform.lastRouting = null;
+      state.developmentPlatform.assistantMode = "architecture_structure";
       render();
     }
 
@@ -184,24 +233,33 @@ const DevelopmentPlatform = (() => {
     async function sendChatMessage(event) {
       event.preventDefault();
       const input = document.querySelector("#developmentChatInput");
-      const submit = document.querySelector("#developmentChatSubmit");
       const content = input.value.trim();
       if (!content) return;
+      input.value = "";
+      await sendChatContent(content);
+    }
+
+    async function sendChatContent(content) {
+      const input = document.querySelector("#developmentChatInput");
+      const submit = document.querySelector("#developmentChatSubmit");
+      const normalizedContent = String(content || "").trim();
+      if (!normalizedContent) return;
       if (!activeProjectId()) {
         setProjectStatus("Bitte zuerst ein Entwicklungsprojekt oeffnen oder neu anlegen.");
         syncChatAvailability();
         return;
       }
-      state.developmentPlatform.chat.push({ role: "user", content });
-      input.value = "";
+      state.developmentPlatform.chat.push({ role: "user", content: normalizedContent });
       submit.disabled = true;
       setChatStatus("Anfrage wird verarbeitet...");
       renderChatMessages();
+      renderQuickPrompts();
       try {
         const response = await postJson("/api/platform/development-assistant/chat", {
           projectId: activeProjectId(),
           messages: state.developmentPlatform.chat,
           architectureDiagram: state.developmentPlatform.architectureDiagram,
+          assistantMode: state.developmentPlatform.assistantMode,
         });
         setAssistantConfig(response.config || state.developmentPlatform.assistant);
         if (Object.hasOwn(response, "architectureDiagram")) {
@@ -226,6 +284,7 @@ const DevelopmentPlatform = (() => {
         setChatStatus("Fehler beim LLM-Aufruf.");
       } finally {
         submit.disabled = false;
+        if (input) input.value = "";
         render();
       }
     }
@@ -267,13 +326,63 @@ const DevelopmentPlatform = (() => {
 
     function syncChatAvailability() {
       const hasProject = Boolean(activeProjectId());
+      const functionCoverage = plantUmlFunctionCoverage(state.developmentPlatform.architectureDiagram?.source || "");
+      const hasEffectChains = state.developmentPlatform.architectureDiagram?.derived_from === "architecture_effect_chain_derivation";
+      const canContinue = hasProject
+        && Boolean(state.developmentPlatform.architectureDiagram?.source)
+        && functionCoverage.complete
+        && (functionCoverage.element_count <= 1 || hasEffectChains);
       document.querySelector("#developmentChatInput").disabled = !hasProject;
       document.querySelector("#developmentChatSubmit").disabled = !hasProject;
+      document.querySelectorAll("[data-development-quick-prompt]").forEach((button) => {
+        button.disabled = !hasProject;
+      });
       document.querySelector("#saveDevelopmentArchitectureButton").disabled = !hasProject || !state.developmentPlatform.architectureDiagram?.source;
-      document.querySelector("#acceptDevelopmentArchitectureButton").disabled = !hasProject || !state.developmentPlatform.architectureDiagram?.source;
+      document.querySelector("#startFunctionClarificationButton").disabled = !hasProject || !state.developmentPlatform.architectureDiagram?.source || state.developmentPlatform.assistantMode !== "architecture_structure";
+      document.querySelector("#startEffectChainButton").disabled = !hasProject || !state.developmentPlatform.architectureDiagram?.source || !functionCoverage.complete || functionCoverage.element_count <= 1 || state.developmentPlatform.assistantMode === "effect_chain_derivation";
+      document.querySelector("#acceptDevelopmentArchitectureButton").disabled = !canContinue;
       document.querySelector("#developmentChatInput").placeholder = hasProject
-        ? "Beschreibe kurz deine Projektidee oder antworte auf die Frage der KI."
+        ? state.developmentPlatform.assistantMode === "function_clarification"
+          ? "Beschreibe eine Funktion, z. B. Temperatur wird gemessen."
+          : state.developmentPlatform.assistantMode === "effect_chain_derivation"
+            ? "Beschreibe eine Wirkkette, z. B. Timer misst Temperatur und Server speichert."
+          : "Beschreibe Ziel und Funktion deines Projekts."
         : "Bitte zuerst ein Entwicklungsprojekt oeffnen oder neu anlegen.";
+    }
+
+    function startFunctionClarification() {
+      if (!state.developmentPlatform.architectureDiagram?.source) {
+        setActionStatus("Bitte zuerst die Strukturarchitektur erstellen.");
+        syncChatAvailability();
+        return;
+      }
+      state.developmentPlatform.assistantMode = "function_clarification";
+      state.developmentPlatform.chat.push({
+        role: "assistant",
+        content: "Die Struktur steht. Jetzt klaeren wir die Funktion: Was passiert fachlich zwischen diesen Elementen? Beispiele: Temperatur wird gemessen, Nutzer sieht Messwerte, ESP32 steuert einen Ausgang.",
+      });
+      setChatStatus("Phase: Funktion klaeren.");
+      setActionStatus("");
+      render();
+      document.querySelector("#developmentChatInput").focus();
+    }
+
+    function startEffectChainDerivation() {
+      const coverage = plantUmlFunctionCoverage(state.developmentPlatform.architectureDiagram?.source || "");
+      if (!coverage.complete || coverage.element_count <= 1) {
+        setActionStatus("Bitte zuerst die Funktion zwischen den Elementen klaeren.");
+        syncChatAvailability();
+        return;
+      }
+      state.developmentPlatform.assistantMode = "effect_chain_derivation";
+      state.developmentPlatform.chat.push({
+        role: "assistant",
+        content: "Die Funktion ist geklaert. Jetzt leiten wir Wirkketten ab: Welche Ausloeser starten welche Ablaeufe, welche Komponente verarbeitet etwas, und wo endet die Wirkung?",
+      });
+      setChatStatus("Phase: Wirkketten ableiten.");
+      setActionStatus("");
+      render();
+      document.querySelector("#developmentChatInput").focus();
     }
 
     async function saveArchitectureDiagram() {
@@ -295,6 +404,18 @@ const DevelopmentPlatform = (() => {
       }
       if (!state.developmentPlatform.architectureDiagram?.source) {
         setActionStatus("Es gibt noch keine Architektur, die uebernommen werden kann.");
+        syncChatAvailability();
+        return;
+      }
+      const functionCoverage = plantUmlFunctionCoverage(state.developmentPlatform.architectureDiagram.source);
+      if (continueToIde && !functionCoverage.complete) {
+        const missing = functionCoverage.missing.length ? ` Offen: ${functionCoverage.missing.join(", ")}.` : "";
+        setActionStatus(`Bitte zuerst die Funktion klaeren: jedes Element braucht mindestens eine funktionale Beziehung.${missing}`);
+        syncChatAvailability();
+        return;
+      }
+      if (continueToIde && functionCoverage.element_count > 1 && state.developmentPlatform.architectureDiagram.derived_from !== "architecture_effect_chain_derivation") {
+        setActionStatus("Bitte zuerst die Wirkketten ableiten.");
         syncChatAvailability();
         return;
       }
@@ -372,6 +493,7 @@ const DevelopmentPlatform = (() => {
             <p class="eyebrow">PlantUML</p>
             <h3>${escapeHtml(diagram.title || "Architekturdiagramm")}</h3>
             <p>${escapeHtml(diagram.summary || "")}</p>
+            ${functionCoverageHint(diagram)}
           </div>
         </div>
         <figure class="plantuml-viewer">
@@ -380,6 +502,39 @@ const DevelopmentPlatform = (() => {
         </figure>
       `;
       target.querySelectorAll("[data-plantuml-source]").forEach((image) => renderPlantUmlImage(image, image.dataset.plantumlSource || ""));
+    }
+
+    function functionCoverageHint(diagram) {
+      const coverage = diagram?.function_coverage || plantUmlFunctionCoverage(diagram?.source || "");
+      if (!diagram?.source || coverage.element_count <= 1) return "";
+      if (diagram.derived_from === "architecture_effect_chain_derivation" && coverage.complete) return `<p class="helper-text">Wirkketten abgeleitet.</p>`;
+      if (coverage.complete) return `<p class="helper-text">Funktion vollstaendig geklaert.</p>`;
+      const missing = coverage.missing.length ? ` Offen: ${coverage.missing.join(", ")}.` : "";
+      return `<p class="helper-text">Weiter erst moeglich, wenn jedes Element mindestens eine funktionale Beziehung hat.${escapeHtml(missing)}</p>`;
+    }
+
+    function plantUmlFunctionCoverage(source) {
+      const aliases = new Set();
+      const connected = new Set();
+      const lines = String(source || "").split(/\r?\n/);
+      lines.forEach((line) => {
+        const element = line.match(/^\s*(actor|node|rectangle|queue|database|cloud)\s+"[^"]+"\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\b/i);
+        if (element) aliases.add(element[2]);
+      });
+      lines.forEach((line) => {
+        const arrow = line.match(/\b([A-Za-z_][A-Za-z0-9_]*)\s+[-.]+>\s+([A-Za-z_][A-Za-z0-9_]*)\b/);
+        if (!arrow) return;
+        if (aliases.has(arrow[1])) connected.add(arrow[1]);
+        if (aliases.has(arrow[2])) connected.add(arrow[2]);
+      });
+      const elements = [...aliases];
+      const missing = elements.length <= 1 ? [] : elements.filter((alias) => !connected.has(alias));
+      return {
+        element_count: elements.length,
+        arrow_count: lines.filter((line) => /\b[A-Za-z_][A-Za-z0-9_]*\s+[-.]+>\s+[A-Za-z_][A-Za-z0-9_]*\b/.test(line)).length,
+        complete: elements.length <= 1 || missing.length === 0,
+        missing,
+      };
     }
 
     async function renderPlantUmlImage(image, source) {

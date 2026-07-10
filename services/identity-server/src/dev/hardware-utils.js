@@ -85,11 +85,12 @@ function createDevHardwareUtils({ defaultCatalogSeed, execFileAsync, hardwareCat
   }
 
   function isUsbFlashDevice(device) {
-    if (device.connectivity_status === "offline") return false;
+    const family = hardwareProfileFamily(device.hardware_profile_id);
     return device.device_id === "device_verified_1"
       || device.device_id === "device_arduino_nano_1"
-      || (device.hardware_profile_id || "").includes("arduino_nano")
-      || (device.hardware_profile_id || "").includes("esp32");
+      || family === "avr"
+      || family === "esp32"
+      || (device.hardware_profile_id || "").includes("arduino_nano");
   }
 
   function defaultUploadPort(device) {
