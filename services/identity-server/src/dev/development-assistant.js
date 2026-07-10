@@ -976,19 +976,12 @@ function maximalStartArchitectureDiagram() {
     "  BackgroundColor #fbfdff",
     "  BorderColor #8aa0bd",
     "}",
-    "skinparam database {",
-    "  BackgroundColor #f7fbff",
-    "  BorderColor #8aa0bd",
-    "}",
-    "",
     "node \"ESP32 / IoT Device\" as esp32",
-    "rectangle \"Lokale Bedienung\" as local_ui",
     "rectangle \"Browser UI\" as browser",
     "rectangle \"Mobile App\" as mobile",
     "rectangle \"Desktop App\" as desktop",
     "rectangle \"Backend / API\" as backend",
     "queue \"MQTT Broker\" as mqtt",
-    "database \"Persistenz\" as database",
     "cloud \"Cloud / Internet\" as cloud",
     "node \"HomeServer / lokaler Server\" as homeserver",
     "@enduml",
@@ -1001,7 +994,7 @@ function maximalStartArchitectureDiagram() {
     derived_from: "dialog_control_work_mode_max",
     generated_at: new Date().toISOString(),
     confidence: 1,
-    detected_blocks: ["device", "localUi", "browser", "mobile", "desktop", "backend", "mqtt", "database", "cloud", "homeServer"],
+    detected_blocks: ["device", "browser", "mobile", "desktop", "backend", "mqtt", "cloud", "homeServer"],
   };
 }
 

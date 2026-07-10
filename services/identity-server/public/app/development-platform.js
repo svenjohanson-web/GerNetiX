@@ -279,11 +279,25 @@ const DevelopmentPlatform = (() => {
     }
 
     async function persistArchitectureDiagram(continueToIde) {
-      if (!activeProjectId() || !state.developmentPlatform.architectureDiagram?.source) return;
+      const projectId = activeProjectId();
+      const saveButton = document.querySelector("#saveDevelopmentArchitectureButton");
+      const acceptButton = document.querySelector("#acceptDevelopmentArchitectureButton");
+      if (!projectId) {
+        setProjectStatus("Bitte zuerst ein Entwicklungsprojekt oeffnen oder neu anlegen.");
+        syncChatAvailability();
+        return;
+      }
+      if (!state.developmentPlatform.architectureDiagram?.source) {
+        setProjectStatus("Es gibt noch keine Architektur, die uebernommen werden kann.");
+        syncChatAvailability();
+        return;
+      }
+      saveButton.disabled = true;
+      acceptButton.disabled = true;
       setProjectStatus(continueToIde ? "Architektur wird uebernommen..." : "Architektur wird gespeichert...");
       const project = currentProject();
       try {
-        const response = await postJson(`/api/platform/development-projects/${encodeURIComponent(activeProjectId())}/architecture`, {
+        const response = await postJson(`/api/platform/development-projects/${encodeURIComponent(projectId)}/architecture`, {
           title: project?.name || state.developmentPlatform.architectureDiagram.title || "Entwicklungsprojekt",
           description: project?.description || "",
           architectureDiagram: state.developmentPlatform.architectureDiagram,
@@ -294,12 +308,19 @@ const DevelopmentPlatform = (() => {
           storeActiveProjectId(response.project.id);
         }
         renderProjectPicker();
-        setProjectStatus(`Gespeichert${response.saved_at ? `: ${new Date(response.saved_at).toLocaleString("de-DE")}` : "."}`);
-        if (continueToIde && response.project?.id && openProjectInIde) {
+        if (continueToIde && openProjectInIde) {
+          if (!response.project?.id) {
+            throw new Error("Interner Fehler: gespeichertes Projekt ohne ID.");
+          }
+          setProjectStatus("Architektur gespeichert. IDE wird geoeffnet...");
           await openProjectInIde(response.project.id);
+        } else {
+          setProjectStatus(`Gespeichert${response.saved_at ? `: ${new Date(response.saved_at).toLocaleString("de-DE")}` : "."}`);
+          syncChatAvailability();
         }
       } catch (error) {
         setProjectStatus(`Architektur konnte nicht gespeichert werden: ${error.message}`);
+        syncChatAvailability();
       }
     }
 
@@ -346,7 +367,6 @@ const DevelopmentPlatform = (() => {
             <h3>${escapeHtml(diagram.title || "Architekturdiagramm")}</h3>
             <p>${escapeHtml(diagram.summary || "")}</p>
           </div>
-          <span>${escapeHtml(confidenceLabel(diagram.confidence))}</span>
         </div>
         <figure class="plantuml-viewer">
           <img class="plantuml-diagram" data-plantuml-source="${escapeAttribute(diagram.source)}" alt="${escapeAttribute(diagram.title || "Architekturdiagramm")}">
@@ -354,12 +374,6 @@ const DevelopmentPlatform = (() => {
         </figure>
       `;
       target.querySelectorAll("[data-plantuml-source]").forEach((image) => renderPlantUmlImage(image, image.dataset.plantumlSource || ""));
-    }
-
-    function confidenceLabel(value) {
-      const number = Number(value);
-      if (!Number.isFinite(number)) return "Skizze";
-      return `${Math.round(number * 100)}% Signal`;
     }
 
     async function renderPlantUmlImage(image, source) {

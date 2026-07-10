@@ -765,6 +765,8 @@ test("answers bare max architecture work mode without an LLM call", async () => 
   assert.equal(payload.body.usage.totalTokens, 0);
   assert.equal(payload.body.architectureDiagram.derived_from, "dialog_control_work_mode_max");
   assert.match(payload.body.architectureDiagram.source, /Maximale Startarchitektur/);
+  assert.doesNotMatch(payload.body.architectureDiagram.source, /Lokale Bedienung|local_ui|Persistenz|database|-->/);
+  assert.deepEqual(payload.body.architectureDiagram.detected_blocks, ["device", "browser", "mobile", "desktop", "backend", "mqtt", "cloud", "homeServer"]);
 });
 
 test("answers bare leer architecture work mode with an empty start diagram", async () => {

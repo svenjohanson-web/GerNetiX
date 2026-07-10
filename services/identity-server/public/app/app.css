@@ -652,16 +652,6 @@ button.danger:hover {
   color: var(--muted);
   line-height: 1.4;
 }
-.diagram-card-head span {
-  flex: 0 0 auto;
-  border: 1px solid #b7d7d2;
-  border-radius: 999px;
-  padding: 5px 8px;
-  background: var(--soft);
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 800;
-}
 .architecture-diagram-panel .plantuml-viewer {
   margin-top: 0;
 }
