@@ -14,6 +14,21 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && ["/", prefix].includes(path)) {
+      sendJson(res, 200, {
+        service: "device-management-server",
+        status: "ok",
+        api_prefix: prefix,
+        health: "/health",
+        endpoints: {
+          register_device: `${prefix}/devices/register`,
+          account_devices: `${prefix}/accounts/{accountId}/devices`,
+          admin_devices: `${prefix}/admin/devices`,
+        },
+      });
+      return;
+    }
+
     if (req.method === "POST" && path === `${prefix}/devices/register`) {
       sendJson(res, 201, service.registerDevice(await readJsonBody(req)));
       return;

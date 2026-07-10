@@ -3,9 +3,12 @@ const os = require("node:os");
 function createDeviceDiscoveryService({
   deviceDiscoveryUrls,
   deviceManagementJson,
+  fetchImpl = fetch,
   loadUserIdeDevices,
+  networkBases = localIpv4NetworkBases,
   normalizeCapabilityIds,
   nodeHostnamePrefix = "gernetix-",
+  probeTimeoutMs = 1200,
 }) {
   async function discoverNetworkDevices(session, options = {}) {
     const accountDevices = await loadUserIdeDevices(session).catch(() => []);
@@ -61,9 +64,12 @@ function createDeviceDiscoveryService({
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean)
-      .map((item) => item.startsWith("http") ? item : `http://${item}`);
-    const candidates = new Set(explicit.map(statusUrl));
-    for (const baseAddress of localIpv4NetworkBases()) {
+      .flatMap(candidateStatusUrls);
+    const candidates = new Set(explicit);
+    for (const host of defaultHostnameCandidates(nodeHostnamePrefix)) {
+      candidates.add(statusUrl(host));
+    }
+    for (const baseAddress of networkBases()) {
       for (let host = 1; host <= 254; host += 1) {
         candidates.add(`http://${baseAddress}.${host}/status`);
       }
@@ -109,9 +115,9 @@ function createDeviceDiscoveryService({
 
   async function probeDeviceStatus(url) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 450);
+    const timeout = setTimeout(() => controller.abort(), probeTimeoutMs);
     try {
-      const response = await fetch(url, { signal: controller.signal });
+      const response = await fetchImpl(url, { signal: controller.signal });
       if (!response.ok) return {};
       const status = await response.json();
       const device = normalizeDiscoveredDevice(url, status);
@@ -128,9 +134,35 @@ function createDeviceDiscoveryService({
   };
 }
 
+function candidateStatusUrls(value) {
+  const trimmed = String(value || "").trim().replace(/\/$/, "");
+  if (!trimmed) return [];
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+  let parsed;
+  try {
+    parsed = new URL(withScheme);
+  } catch {
+    return [];
+  }
+  if (parsed.pathname && parsed.pathname !== "/") return [parsed.toString()];
+  parsed.pathname = "/status";
+  parsed.search = "";
+  parsed.hash = "";
+  return [parsed.toString()];
+}
+
+function defaultHostnameCandidates(nodeHostnamePrefix) {
+  const prefix = String(nodeHostnamePrefix || "gernetix-").replace(/-$/, "");
+  return [
+    `${prefix}-esp32`,
+    `${prefix}-esp32.local`,
+  ];
+}
+
 function statusUrl(value) {
-  const trimmed = value.replace(/\/$/, "");
-  return trimmed.endsWith("/status") ? trimmed : `${trimmed}/status`;
+  const trimmed = String(value || "").trim().replace(/\/$/, "");
+  const withScheme = /^https?:\/\//i.test(trimmed) ? trimmed : `http://${trimmed}`;
+  return withScheme.endsWith("/status") ? withScheme : `${withScheme}/status`;
 }
 
 function localIpv4NetworkBases() {

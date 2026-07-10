@@ -665,30 +665,6 @@ function buildArchitectureDiagram(messages, options = {}) {
   if (signals.hardwareCatalog) lines.push("rectangle \"Hardware Catalog\" as hardware_catalog");
   if (actorInterface.actor) lines.push(`actor "${plantUmlText(actorInterface.label)}" as actor`);
 
-  lines.push("");
-  if (actorInterface.actor && actorInterface.webserver) lines.push("actor --> webserver : Zugriff");
-  if (actorInterface.actor && actorInterface.webserver && showBrowser) {
-    lines[lines.length - 1] = "actor --> browser : nutzt";
-    lines.push("browser --> webserver : HTTP");
-  }
-  if (actorInterface.actor && signals.localUi) lines.push("actor --> local_ui : Bedienung");
-  if (actorInterface.actor && signals.browser && !actorInterface.webserver) lines.push("actor --> browser : Bedienung");
-  if (actorInterface.actor && signals.mobile) lines.push("actor --> mobile : Bedienung");
-  if (actorInterface.actor && signals.desktop) lines.push("actor --> desktop : Bedienung");
-  if (actorInterface.webserver && signals.device) lines.push("webserver --> device : lokales Interface");
-  if (signals.localUi && signals.device) lines.push("local_ui --> device : Setup / Status");
-  if (signals.backend) {
-    if (signals.browser) lines.push("browser --> backend : REST / WebSocket");
-    if (signals.mobile) lines.push("mobile --> backend : API");
-    if (signals.desktop) lines.push("desktop --> backend : API");
-    if (signals.device) lines.push("device --> backend : Telemetrie / Befehle");
-  }
-  if (signals.database && signals.backend) lines.push("backend --> database : speichern / lesen");
-  if (signals.database && !signals.backend && signals.device) lines.push("device --> database : Daten speichern");
-  if (signals.cloud && signals.backend) lines.push("backend --> cloud : externer Zugriff / Hosting");
-  if (signals.homeServer && signals.backend) lines.push("backend --> homeserver : lokaler Betrieb");
-  if (signals.hardwareCatalog && signals.device) lines.push("hardware_catalog ..> device : Board- und Capability-Kontext");
-
   lines.push("@enduml");
   return {
     type: "plantuml",
@@ -1015,17 +991,6 @@ function maximalStartArchitectureDiagram() {
     "database \"Persistenz\" as database",
     "cloud \"Cloud / Internet\" as cloud",
     "node \"HomeServer / lokaler Server\" as homeserver",
-    "",
-    "local_ui --> esp32 : Setup / Status",
-    "browser --> backend : HTTP / WebSocket",
-    "mobile --> backend : API",
-    "desktop --> backend : API",
-    "esp32 --> mqtt : Telemetrie / Befehle",
-    "mqtt --> backend : Events",
-    "esp32 --> backend : REST / direkte API optional",
-    "backend --> database : speichern / lesen",
-    "backend --> cloud : externer Zugriff",
-    "backend --> homeserver : lokaler Betrieb",
     "@enduml",
   ];
   return {

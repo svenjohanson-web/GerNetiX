@@ -18,11 +18,19 @@ function createDefaultAdminTool(config = {}) {
       defaultOllamaModel: config.defaultOllamaModel,
     }),
     serviceClients: config.deviceManagementBaseUrl ? {
+      adminToolBaseUrl: config.adminToolBaseUrl,
       deviceManagementBaseUrl: config.deviceManagementBaseUrl,
+      identityBaseUrl: config.identityBaseUrl,
+      buildDeployBaseUrl: config.buildDeployBaseUrl,
       projectServerBaseUrl: config.projectServerBaseUrl,
+      hardwareShopBaseUrl: config.hardwareShopBaseUrl,
       hardwareCatalogBaseUrl: config.hardwareCatalogBaseUrl,
       aiUsageBaseUrl: config.aiUsageBaseUrl,
       aiContextBaseUrl: config.aiContextBaseUrl,
+      provisioningBaseUrl: config.provisioningBaseUrl,
+      recoveryBaseUrl: config.recoveryBaseUrl,
+      communityPlatformBaseUrl: config.communityPlatformBaseUrl,
+      communityAiBaseUrl: config.communityAiBaseUrl,
     } : null,
   });
 }

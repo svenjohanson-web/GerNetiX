@@ -1,7 +1,7 @@
 const DevelopmentPlatform = (() => {
   const activeProjectStorageKey = "gernetix.developmentPlatform.activeProjectId";
 
-  function create({ state, postJson, openProjectInIde, escapeHtml, escapeAttribute, meta }) {
+  function create({ state, postJson, openProjectInIde, escapeHtml, escapeAttribute }) {
     if (!state.developmentPlatform) {
       state.developmentPlatform = {
         assistant: null,
@@ -23,9 +23,6 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#developmentProjectSelect").addEventListener("change", selectDevelopmentProject);
       document.querySelector("#saveDevelopmentArchitectureButton").addEventListener("click", saveArchitectureDiagram);
       document.querySelector("#acceptDevelopmentArchitectureButton").addEventListener("click", acceptArchitectureAndContinue);
-      document.querySelectorAll("[data-dev-prompt]").forEach((button) => {
-        button.addEventListener("click", () => usePrompt(button.dataset.devPrompt));
-      });
     }
 
     function setAssistantConfig(config) {
@@ -34,21 +31,9 @@ const DevelopmentPlatform = (() => {
 
     function render() {
       renderProjectPicker();
-      renderAssistantConfig();
       renderChatMessages();
       renderArchitectureDiagram();
       syncChatAvailability();
-    }
-
-    function renderAssistantConfig() {
-      const config = state.developmentPlatform.assistant || {};
-      document.querySelector("#developmentAssistantConfig").innerHTML = [
-        ["Status", config.enabled ? "aktiv" : "nicht konfiguriert"],
-        ["Provider", providerLabel(config)],
-        ["Endpoint", config.baseUrl || "http://127.0.0.1:11434"],
-        ["Modell", config.model || "nicht gesetzt"],
-        ["Datenquellen", (config.allowedSources || []).join(", ") || "nur Chat"],
-      ].map(meta).join("");
     }
 
     function providerLabel(config = state.developmentPlatform.assistant || {}) {
@@ -100,11 +85,6 @@ const DevelopmentPlatform = (() => {
       if (!Number.isFinite(value)) return "-";
       if (value < 1000) return `${value.toLocaleString("de-DE")} ms`;
       return `${(value / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} s`;
-    }
-
-    function usePrompt(prompt) {
-      document.querySelector("#developmentChatInput").value = prompt || "";
-      document.querySelector("#developmentChatInput").focus();
     }
 
     function clearChat() {
@@ -372,7 +352,6 @@ const DevelopmentPlatform = (() => {
           <img class="plantuml-diagram" data-plantuml-source="${escapeAttribute(diagram.source)}" alt="${escapeAttribute(diagram.title || "Architekturdiagramm")}">
           <figcaption class="plantuml-status">PlantUML-Diagramm wird geladen...</figcaption>
         </figure>
-        <pre class="plantuml-box architecture-source">${escapeHtml(diagram.source)}</pre>
       `;
       target.querySelectorAll("[data-plantuml-source]").forEach((image) => renderPlantUmlImage(image, image.dataset.plantumlSource || ""));
     }

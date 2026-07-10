@@ -44,6 +44,7 @@ const hardwareCatalogBaseUrl = process.env.HARDWARE_CATALOG_BASE_URL || "http://
 const deviceManagementBaseUrl = process.env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700";
 const aiUsageBaseUrl = process.env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000";
 const aiContextBaseUrl = process.env.AI_CONTEXT_BASE_URL || "http://127.0.0.1:5500";
+const adminToolBaseUrl = process.env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600";
 const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
 const ollamaModel = process.env.OLLAMA_MODEL || "llama3.1";
 const deviceDiscoveryUrls = process.env.GERNETIX_DEVICE_DISCOVERY_URLS || process.env.DEVICE_DISCOVERY_URLS || "";
@@ -141,7 +142,7 @@ async function bootstrap() {
 
   server.listen(port, host, () => {
   console.log(`Identity login UI: http://${host}:${port}/app/auth/`);
-  console.log(`GerNetiX Platform: http://${host}:${port}/app/dashboard/`);
+  console.log(`GerNetiX Dashboard+: http://${host}:${port}/app/dashboard/`);
   console.log(`Project Server adapter: ${projectServerBaseUrl}`);
   console.log(`Build & Deploy adapter: ${buildDeployBaseUrl}`);
   console.log(`Hardware Shop adapter: ${hardwareShopBaseUrl}`);
@@ -692,6 +693,22 @@ async function handlePlatformSummary(res, session) {
     return items;
   }).catch((error) => {
     serviceStatus.device_management = { ok: false, error: error.message || String(error) };
+    recordSystemEvent({
+      severity: "error",
+      source_service: "identity_server",
+      target_service: "device_management",
+      category: "dependency",
+      event_type: "dependency_unreachable",
+      message: "Device Management Server ist fuer Identity nicht erreichbar.",
+      impact: "Device-Inventarisierung und Recovery koennen keine Account-Devices laden oder speichern.",
+      account_id: projectServerUserId(session),
+      route: "/app/device-management/inventory/",
+      details: {
+        dependency_base_url: deviceManagementBaseUrl,
+        operation: "loadUserIdeDevices",
+        error: error.message || String(error),
+      },
+    });
     return [];
   });
   const builds = await loadProjectBuilds(projects, session).then((items) => {
@@ -718,7 +735,7 @@ async function handlePlatformSummary(res, session) {
       ide: "/app/ide/",
       projects: "/app/projects/",
       development_platform: "/app/development-platform/",
-      devices: "/app/devices/",
+      devices: "/app/device-management/inventory/",
       builds: "/app/builds/",
       billing: "/app/billing/",
     },
@@ -751,6 +768,43 @@ function registrationMessage(error) {
   if (error.code === "invalid_username") return "Der Benutzername muss mindestens 3 Zeichen enthalten.";
   if (error.code === "invalid_email") return "Bitte gib eine gueltige E-Mail-Adresse ein.";
   return "Konto konnte nicht erstellt werden.";
+}
+
+function recordSystemEvent(event) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 700);
+  fetch(`${adminToolBaseUrl.replace(/\/$/, "")}/api/admin/system-events`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(event),
+    signal: controller.signal,
+  })
+    .catch((error) => {
+      console.warn(`System event logging failed: ${error.message || error}`);
+    })
+    .finally(() => clearTimeout(timeout));
+}
+
+function recordDeviceInventoryFailure(session, eventType, error, context = {}) {
+  recordSystemEvent({
+    severity: "error",
+    source_service: "identity_server",
+    target_service: "device_management",
+    category: "dependency",
+    event_type: eventType,
+    message: "Device-Inventarisierung konnte Device Management nicht erfolgreich nutzen.",
+    impact: "Device konnte nicht ins Account-Inventar uebernommen, geladen oder entfernt werden.",
+    account_id: projectServerUserId(session),
+    route: context.route || "/app/device-management/inventory/",
+    details: {
+      dependency_base_url: deviceManagementBaseUrl,
+      operation: context.operation || eventType,
+      error: error.message || String(error),
+      error_code: error.code || "",
+      status: error.status || "",
+      payload: error.payload || {},
+    },
+  });
 }
 
 async function handlePlatformSourceRead(res, session, projectId, sourcePath) {
@@ -887,6 +941,10 @@ async function handlePlatformDeviceCreate(req, res, session) {
     });
     sendJson(res, 201, decorateUserIdeDevice(accountDevice));
   } catch (error) {
+    recordDeviceInventoryFailure(session, "device_inventory_create_failed", error, {
+      operation: "handlePlatformDeviceCreate",
+      route: "/app/device-management/inventory/",
+    });
     sendJson(res, error.status || 400, {
       error: error.code || "device_inventory_create_failed",
       message: error.message || "Device konnte nicht inventarisiert werden.",
@@ -936,6 +994,10 @@ async function handlePlatformDiscoveredDeviceClaim(req, res, session) {
     });
     sendJson(res, 201, decorateUserIdeDevice(accountDevice));
   } catch (error) {
+    recordDeviceInventoryFailure(session, "discovered_device_claim_failed", error, {
+      operation: "handlePlatformDiscoveredDeviceClaim",
+      route: "/app/device-management/inventory/",
+    });
     sendJson(res, error.status || 400, {
       error: error.code || "discovered_device_claim_failed",
       message: error.message || "Gefundenes Device konnte nicht ins Inventar uebernommen werden.",
@@ -952,6 +1014,10 @@ async function handlePlatformDeviceRemove(res, session, accountDeviceId) {
     });
     sendJson(res, 200, result);
   } catch (error) {
+    recordDeviceInventoryFailure(session, "device_inventory_remove_failed", error, {
+      operation: "handlePlatformDeviceRemove",
+      route: "/app/device-management/inventory/",
+    });
     sendJson(res, error.status || 400, {
       error: error.code || "device_inventory_remove_failed",
       message: error.message || "Device konnte nicht aus dem Inventar entfernt werden.",
@@ -1152,6 +1218,7 @@ function mapUserIdeProjects(session, projectsById) {
       hardware_profile_id: definition.hardware_profile_id,
       build_config: Object.hasOwn(definition, "build_config") ? definition.build_config : project?.build_config,
       linked_device_id: definition.default_device_id || null,
+      project_origin: "catalog",
       status: project ? project.status : "project_server_missing",
       last_build_status: latestBuildStatus(project),
       source_count: project ? project.source_count : 0,
@@ -1186,6 +1253,7 @@ function mapProjectServerProject(session, project) {
     title: project.title,
     summary: project.description || "",
     area: project.learning_project_id === "development_project" ? "development_project" : "custom_project",
+    project_origin: "account_project",
     course_id: "development",
     lesson_id: `architecture_${project.project_id}`,
     learning_project_id: project.learning_project_id || "",
@@ -1283,6 +1351,7 @@ function toPlatformProject(project) {
     name: project.title,
     description: project.summary,
     type: project.area || "guided_project",
+    projectOrigin: project.project_origin || "account_project",
     sourceFiles: project.source_files || [{ path: "src/main.cpp", role: "user_code" }],
     targetRuntime: project.hardware_profile_id,
     linkedDeviceId: project.linked_device_id || project.default_device_id || "",

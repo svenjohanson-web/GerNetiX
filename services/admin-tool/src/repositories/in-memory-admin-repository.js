@@ -8,6 +8,7 @@ class InMemoryAdminRepository {
     this.consents = new Map(seed.consents.map((consent) => [consent.consent_id, clone(consent)]));
     this.auditEvents = seed.auditEvents.map(clone);
     this.adminActions = (seed.adminActions || []).map(clone);
+    this.systemEvents = (seed.systemEvents || []).map(clone);
   }
 
   listDevices() {
@@ -98,6 +99,35 @@ class InMemoryAdminRepository {
       reason: action.action_type,
     });
     return clone(event);
+  }
+
+  addSystemEvent(input) {
+    const event = {
+      event_id: createId("system_event"),
+      occurred_at: input.occurred_at || new Date().toISOString(),
+      severity: input.severity || "info",
+      source_service: input.source_service || "unknown",
+      target_service: input.target_service || "",
+      category: input.category || "runtime",
+      event_type: input.event_type || "notice",
+      message: input.message || "",
+      impact: input.impact || "",
+      account_id: input.account_id || null,
+      route: input.route || "",
+      correlation_id: input.correlation_id || "",
+      details: input.details || {},
+    };
+    this.systemEvents.push(clone(event));
+    return clone(event);
+  }
+
+  listSystemEvents(filter = {}) {
+    return this.systemEvents
+      .filter((event) => !filter.severity || event.severity === filter.severity)
+      .filter((event) => !filter.source_service || event.source_service === filter.source_service)
+      .filter((event) => !filter.target_service || event.target_service === filter.target_service)
+      .sort((left, right) => String(right.occurred_at).localeCompare(String(left.occurred_at)))
+      .map(clone);
   }
 }
 
@@ -219,6 +249,7 @@ function defaultSeed() {
     ],
     consents: [],
     auditEvents: [],
+    systemEvents: [],
   };
 }
 

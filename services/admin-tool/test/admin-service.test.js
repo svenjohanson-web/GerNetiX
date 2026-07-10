@@ -183,6 +183,39 @@ test("remote account sheet marks local snapshot fallback as degraded", async () 
   assert.match(result.remote_error, /ECONNREFUSED/);
 });
 
+test("system events can be recorded and summarized centrally", () => {
+  const service = createDefaultAdminTool();
+
+  const event = service.recordSystemEvent({
+    severity: "error",
+    source_service: "identity_server",
+    target_service: "device_management",
+    category: "dependency",
+    event_type: "dependency_unreachable",
+    message: "Device Management nicht erreichbar.",
+    impact: "Device-Inventarisierung blockiert.",
+    account_id: "acct-demo",
+  });
+  const result = service.systemEvents();
+
+  assert.equal(event.severity, "error");
+  assert.equal(result.summary.total, 1);
+  assert.equal(result.summary.errors, 1);
+  assert.equal(result.items[0].target_service, "device_management");
+});
+
+test("system event severity is normalized", () => {
+  const service = createDefaultAdminTool();
+  const event = service.recordSystemEvent({
+    severity: "surprise",
+    source_service: "identity_server",
+    event_type: "notice",
+    message: "Unbekannter Severity-Wert.",
+  });
+
+  assert.equal(event.severity, "info");
+});
+
 test("support without admin ai capability cannot read ai monitoring", async () => {
   const service = createDefaultAdminTool();
   await assert.rejects(

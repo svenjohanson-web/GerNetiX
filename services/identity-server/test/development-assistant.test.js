@@ -71,7 +71,7 @@ test("builds a PlantUML architecture sketch from the AI architecture result", ()
   assert.match(diagram.source, /rectangle "Mobile App" as mobile/);
   assert.match(diagram.source, /database "Persistenz" as database/);
   assert.match(diagram.source, /cloud "Cloud \/ Internet" as cloud/);
-  assert.match(diagram.source, /mobile --> backend : API/);
+  assert.doesNotMatch(diagram.source, /-->|\.\.>/);
   assert.doesNotMatch(diagram.source, /actor "Nutzer"|Projektidee \/ Anforderungen|requirements|note right/);
   assert.equal(diagram.derived_from, "architecture_discovery_ai_response");
   assert.ok(diagram.detected_blocks.includes("device"));
@@ -88,9 +88,7 @@ test("adds an actor only when an explicit interface is part of the structure", (
   assert.match(diagram.source, /rectangle "Webserver" as webserver/);
   assert.match(diagram.source, /rectangle "Browser" as browser/);
   assert.match(diagram.source, /actor "Kunde" as actor/);
-  assert.match(diagram.source, /actor --> browser : nutzt/);
-  assert.match(diagram.source, /browser --> webserver : HTTP/);
-  assert.match(diagram.source, /webserver --> device : lokales Interface/);
+  assert.doesNotMatch(diagram.source, /-->|\.\.>/);
   assert.doesNotMatch(diagram.source, /Projektidee \/ Anforderungen|requirements|note right/);
 });
 
@@ -106,10 +104,20 @@ test("extends an ESP32 structure with user browser access when a webserver provi
   assert.match(diagram.source, /rectangle "Webserver" as webserver/);
   assert.match(diagram.source, /rectangle "Browser" as browser/);
   assert.match(diagram.source, /actor "Nutzer" as actor/);
-  assert.match(diagram.source, /actor --> browser : nutzt/);
-  assert.match(diagram.source, /browser --> webserver : HTTP/);
-  assert.match(diagram.source, /webserver --> device : lokales Interface/);
+  assert.doesNotMatch(diagram.source, /-->|\.\.>/);
   assert.doesNotMatch(diagram.source, /Projektidee \/ Anforderungen|requirements|note right/);
+});
+
+test("shows browser, ESP32 and backend as structure without arrows in one PlantUML architecture", () => {
+  const diagram = buildArchitectureDiagram([
+    { role: "user", content: "Browser soll lokal auf den ESP32 zugreifen und zusaetzlich ein Backend nutzen." },
+    { role: "assistant", content: "Struktur: ESP32 Device, Browser UI und Backend/API. Browser nutzt lokale ESP32 Device UI und Backend API." },
+  ]);
+
+  assert.match(diagram.source, /node "IoT Device \/ ESP32" as device/);
+  assert.match(diagram.source, /rectangle "Browser" as browser/);
+  assert.match(diagram.source, /rectangle "Backend \/ API" as backend/);
+  assert.doesNotMatch(diagram.source, /-->|\.\.>/);
 });
 
 test("sanitizes PlantUML control tokens from AI text", () => {

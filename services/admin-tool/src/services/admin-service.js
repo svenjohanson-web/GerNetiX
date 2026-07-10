@@ -56,6 +56,45 @@ class AdminService {
     };
   }
 
+  async monitoring() {
+    const services = await Promise.all(monitoringTargets(this.serviceClients).map(checkMonitoringTarget));
+    const online = services.filter((service) => service.ok).length;
+    return {
+      checked_at: new Date().toISOString(),
+      summary: {
+        total: services.length,
+        online,
+        offline: services.length - online,
+      },
+      services,
+    };
+  }
+
+  recordSystemEvent(input) {
+    validateRequired(input, ["source_service", "event_type", "message"]);
+    return this.repository.addSystemEvent({
+      severity: normalizeSystemEventSeverity(input.severity),
+      source_service: String(input.source_service),
+      target_service: input.target_service ? String(input.target_service) : "",
+      category: input.category ? String(input.category) : "runtime",
+      event_type: String(input.event_type),
+      message: String(input.message),
+      impact: input.impact ? String(input.impact) : "",
+      account_id: input.account_id || null,
+      route: input.route ? String(input.route) : "",
+      correlation_id: input.correlation_id ? String(input.correlation_id) : "",
+      details: input.details && typeof input.details === "object" ? input.details : {},
+    });
+  }
+
+  systemEvents(filter = {}) {
+    const items = this.repository.listSystemEvents(filter);
+    return {
+      summary: summarizeSystemEvents(items),
+      items: items.slice(0, Number(filter.limit || 100)),
+    };
+  }
+
   async listDevices() {
     if (this.serviceClients) {
       return (await this.remoteDevices()).map((device) => ({
@@ -552,6 +591,94 @@ function summarizeDevices(devices) {
     gernetix_verified: devices.filter((device) => device.authenticity_status === "gernetix_verified").length,
     community_unverified: devices.filter((device) => device.authenticity_status === "community_unverified").length,
     online: devices.filter((device) => device.connectivity_status === "online").length,
+  };
+}
+
+function monitoringTargets(serviceClients = {}) {
+  const clients = serviceClients || {};
+  return [
+    monitoringTarget("admin_tool", "Admin Tool", clients.adminToolBaseUrl),
+    monitoringTarget("identity_server", "Identity Server", clients.identityBaseUrl),
+    monitoringTarget("project_server", "Project Server", clients.projectServerBaseUrl),
+    monitoringTarget("build_deploy", "Build & Deploy", clients.buildDeployBaseUrl),
+    monitoringTarget("device_management", "Device Management", clients.deviceManagementBaseUrl),
+    monitoringTarget("hardware_catalog", "Hardware Catalog", clients.hardwareCatalogBaseUrl),
+    monitoringTarget("hardware_shop", "Hardware Shop", clients.hardwareShopBaseUrl),
+    monitoringTarget("ai_usage", "AI Usage", clients.aiUsageBaseUrl),
+    monitoringTarget("ai_context", "AI Context", clients.aiContextBaseUrl),
+    monitoringTarget("provisioning", "Provisioning Tool", clients.provisioningBaseUrl),
+    monitoringTarget("recovery", "Recovery Tool", clients.recoveryBaseUrl),
+    monitoringTarget("community_platform", "Community Platform", clients.communityPlatformBaseUrl),
+    monitoringTarget("community_ai", "Community AI", clients.communityAiBaseUrl),
+  ].filter((target) => target.base_url);
+}
+
+function monitoringTarget(serviceId, title, baseUrl) {
+  const normalizedBaseUrl = String(baseUrl || "").replace(/\/$/, "");
+  return {
+    service_id: serviceId,
+    title,
+    base_url: normalizedBaseUrl,
+    health_url: `${normalizedBaseUrl}/health`,
+  };
+}
+
+async function checkMonitoringTarget(target) {
+  const startedAt = Date.now();
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 900);
+  try {
+    const response = await fetch(target.health_url, { signal: controller.signal });
+    const details = await response.json().catch(() => ({}));
+    return {
+      ...target,
+      ok: response.ok,
+      status: response.ok ? "online" : "error",
+      http_status: response.status,
+      response_ms: Date.now() - startedAt,
+      message: response.ok ? "erreichbar" : `HTTP ${response.status}`,
+      details,
+      checked_at: new Date().toISOString(),
+    };
+  } catch (error) {
+    return {
+      ...target,
+      ok: false,
+      status: "offline",
+      response_ms: Date.now() - startedAt,
+      message: monitoringErrorMessage(error),
+      checked_at: new Date().toISOString(),
+    };
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function monitoringErrorMessage(error) {
+  if (error.name === "AbortError") return "Timeout";
+  if (error.message === "fetch failed") return "nicht erreichbar";
+  return error.message || "nicht erreichbar";
+}
+
+function normalizeSystemEventSeverity(value) {
+  const severity = String(value || "").toLowerCase();
+  return ["debug", "info", "warning", "error", "critical"].includes(severity) ? severity : "info";
+}
+
+function summarizeSystemEvents(items) {
+  const bySeverity = new Map();
+  const bySource = new Map();
+  for (const item of items) {
+    increment(bySeverity, item.severity || "info");
+    increment(bySource, item.source_service || "unknown");
+  }
+  return {
+    total: items.length,
+    critical: bySeverity.get("critical") || 0,
+    errors: bySeverity.get("error") || 0,
+    warnings: bySeverity.get("warning") || 0,
+    by_severity: mapCounts(bySeverity),
+    by_source: mapCounts(bySource),
   };
 }
 

@@ -24,7 +24,7 @@ flowchart LR
 
   subgraph edgeServices["User- und Admin-nahe Serverprozesse"]
     identity["Identity Server<br/>:4300"]
-    adminTool["Admin Tool API<br/>:4600"]
+    adminTool["Admin Tool API<br/>Account-Blatt + LLM-Konfig<br/>:4600"]
     contextManager["Context Manager<br/>:5050"]
   end
 
@@ -36,7 +36,7 @@ flowchart LR
     recovery["Recovery Tool Server<br/>:5100"]
     hardwareCatalog["Hardware Catalog<br/>:4910"]
     hardwareShop["Hardware Shop<br/>:4900"]
-    aiUsage["AI Usage Server<br/>:5000"]
+    aiUsage["AI Usage Server<br/>Credits + Quellenrating<br/>:5000"]
     aiContext["AI Context Server<br/>Grants + Policy + Prompts<br/>Architektur-Bausteine<br/>:5500"]
     communityPlatform["Community Platform<br/>:5200"]
     communityAi["Community AI Assistant<br/>:5300"]
@@ -134,25 +134,26 @@ flowchart LR
 
 ## Serverprozesse
 
-| Prozess | Port | Rolle |
-| --- | ---: | --- |
-| Identity Server | 4300 | Login, Session, gemeinsame Plattform-UI, Adapter zu Domaenenservices |
-| Build & Deploy Server | 4400 | Build-Jobs, Build-Pakete, Artefakte, lokaler USB-Flash-MVP |
-| Provisioning Tool Server | 4500 | eigenstaendige Factory-HMI, Provisioning-Sessions, USB-Factory-Flash, Device-Registrierung |
-| Admin Tool API | 4600 | Admin-/Support-Sichten, Consent-/Audit-nahe API |
-| Device Management Server | 4700 | Devices, Ownership, Purchase Contexts, Support-Status |
-| Project Server | 4800 | Projekte, Quellen, Build-Jobs, Learning Feedback |
-| Hardware Catalog | 4910 | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als SQLite-persistente Quelle |
-| Hardware Shop | 4900 | Angebote, Warenkorb, Bestellung, Purchase Context; liest Hardwaredaten als Client des Hardware Catalog |
-| AI Usage Server | 5000 | Credits, Preflight, Usage Events, Cost Controls |
-| AI Context Server | 5500 | Kontext-Grants, Prompt-Grundlagen, Architektur-Bausteine, Access Policy, Preflight und Audit fuer KI-Datenzugriff |
-| Context Manager | 5050 | Projektkontext, Vorschlaege, Context Packs |
-| Recovery Tool Server | 5100 | eigenstaendige Nutzer-/Support-HMI, Recovery-Sessions, Credential-Erneuerung, Connectivity-Recovery |
-| Community Platform | 5200 | Community-Fragen, Antworten, Verifikation |
-| Community AI Assistant | 5300 | KI-gestuetzte Community-Antworten |
-| Persistence Server | 5400 | HTTP-Zugriff auf generische SQLite-State-Dokumente |
-| SQLite Graph Explorer | 4318 | Read-only Weboberflaeche auf den kanonischen Graphen |
-| MQTT Broker | 1883 / 9001 | Mosquitto-Transportkanal fuer Device-Commands, Deployment-Status, Heartbeats und Telemetrie |
+| Prozess | Port | Lokale URL / Zugriff | Rolle |
+| --- | ---: | --- | --- |
+| Identity Server | 4300 | `http://127.0.0.1:4300/app/dashboard/` | Login, Session, gemeinsame Plattform-UI, Adapter zu Domaenenservices |
+| SQLite Graph Explorer | 4318 | `http://127.0.0.1:4318/` | Read-only Weboberflaeche auf den kanonischen Graphen |
+| Build & Deploy Server | 4400 | `http://127.0.0.1:4400/` | Build-Jobs, Build-Pakete, Artefakte, lokaler USB-Flash-MVP |
+| Provisioning Tool Server | 4500 | `http://127.0.0.1:4500/` | eigenstaendige Factory-HMI, Provisioning-Sessions, USB-Factory-Flash, Device-Registrierung |
+| Admin Tool API | 4600 | `http://127.0.0.1:4600/admin/` | Admin-/Support-Sichten, Account-Blatt, KI Usage, Consent-/Audit-nahe API und LLM-Routing |
+| Device Management Server | 4700 | `http://127.0.0.1:4700/` | Devices, Ownership, Purchase Contexts, Support-Status |
+| Project Server | 4800 | `http://127.0.0.1:4800/` | Projekte, Quellen, Build-Jobs, Learning Feedback |
+| Hardware Shop | 4900 | `http://127.0.0.1:4900/` | Angebote, Warenkorb, Bestellung, Purchase Context; liest Hardwaredaten als Client des Hardware Catalog |
+| Hardware Catalog | 4910 | `http://127.0.0.1:4910/` | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als SQLite-persistente Quelle |
+| AI Usage Server | 5000 | `http://127.0.0.1:5000/` | Credits, Quellenrating je Account, Preflight, Usage Events, Cost Controls |
+| Context Manager | 5050 | `http://127.0.0.1:5050/context-manager/` | Projektkontext, Vorschlaege, Context Packs |
+| Recovery Tool Server | 5100 | `http://127.0.0.1:5100/` | eigenstaendige Nutzer-/Support-HMI, Recovery-Sessions, Credential-Erneuerung, Connectivity-Recovery |
+| Community Platform | 5200 | `http://127.0.0.1:5200/` | Community-Fragen, Antworten, Verifikation |
+| Community AI Assistant | 5300 | `http://127.0.0.1:5300/` | KI-gestuetzte Community-Antworten |
+| Persistence Server | 5400 | `http://127.0.0.1:5400/` | HTTP-Zugriff auf generische SQLite-State-Dokumente |
+| AI Context Server | 5500 | `http://127.0.0.1:5500/` | Kontext-Grants, Prompt-Grundlagen, Architektur-Bausteine, Access Policy, Preflight und Audit fuer KI-Datenzugriff |
+| MQTT Broker | 1883 / 9001 | `mqtt://127.0.0.1:1883`, `ws://127.0.0.1:9001` | Mosquitto-Transportkanal fuer Device-Commands, Deployment-Status, Heartbeats und Telemetrie |
+| Lokaler Ollama LLM | 11434 | `http://127.0.0.1:11434/` | lokaler LLM-Provider fuer Routen, die auf Ollama zeigen |
 
 ## Wichtige Abhaengigkeiten
 

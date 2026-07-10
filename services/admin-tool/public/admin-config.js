@@ -6,6 +6,10 @@ const state = {
   accounts: [],
   aiUsage: null,
   aiContext: null,
+  monitoring: null,
+  monitoringLoading: false,
+  systemEvents: null,
+  systemEventsLoading: false,
   currentView: "statistics",
 };
 
@@ -45,6 +49,8 @@ document.querySelector("#adminLlmProvider").addEventListener("change", renderPro
 document.querySelector("#adminApiProvider").addEventListener("change", applyApiProviderPreset);
 document.querySelector("#adminLlmTestButton").addEventListener("click", testLlmConfig);
 document.querySelector("#refreshLocalLlmModelsButton").addEventListener("click", loadLocalModels);
+document.querySelector("#refreshMonitoringButton").addEventListener("click", () => loadMonitoring(true));
+document.querySelector("#refreshSystemEventsButton").addEventListener("click", () => loadSystemEvents(true));
 document.querySelectorAll("[data-admin-view]").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.adminView));
 });
@@ -98,6 +104,8 @@ async function loadLocalModels() {
 function render() {
   renderNavigation();
   renderStatistics();
+  renderMonitoring();
+  renderSystemEvents();
   renderAccounts();
   renderAiUsage();
   renderAiContext();
@@ -109,6 +117,8 @@ function render() {
 function setView(view) {
   state.currentView = view || "statistics";
   renderNavigation();
+  if (state.currentView === "monitoring") loadMonitoring(false);
+  if (state.currentView === "system-events") loadSystemEvents(false);
 }
 
 function renderNavigation() {
@@ -134,11 +144,193 @@ function isAiView(view) {
 function viewId(view) {
   return {
     statistics: "statisticsView",
+    monitoring: "monitoringView",
+    "system-events": "systemEventsView",
     accounts: "accountsView",
     "ai-usage": "aiUsageView",
     "ai-context": "aiContextView",
     "llm-config": "llmConfigView",
   }[view] || "statisticsView";
+}
+
+async function loadSystemEvents(force) {
+  if (state.systemEventsLoading) return;
+  if (state.systemEvents && !force) {
+    renderSystemEvents();
+    return;
+  }
+  state.systemEventsLoading = true;
+  renderSystemEvents();
+  try {
+    state.systemEvents = await getJson("/api/admin/system-events?limit=100");
+  } catch (error) {
+    state.systemEvents = {
+      summary: { total: 0, critical: 0, errors: 0, warnings: 0 },
+      items: [],
+      error: error.message,
+    };
+  } finally {
+    state.systemEventsLoading = false;
+    renderSystemEvents();
+  }
+}
+
+function renderSystemEvents() {
+  const metrics = document.querySelector("#systemEventMetrics");
+  const rows = document.querySelector("#systemEventRows");
+  if (!metrics || !rows) return;
+  if (state.systemEventsLoading) {
+    metrics.innerHTML = [
+      metricCard("Status", "lade", "Ereignisse werden geladen"),
+      metricCard("Fehler", "-", "noch offen"),
+      metricCard("Warnungen", "-", "noch offen"),
+      metricCard("Gesamt", "-", "noch offen"),
+    ].join("");
+    rows.innerHTML = `<tr><td colspan="5" class="empty-cell">Ereignisse werden geladen.</td></tr>`;
+    return;
+  }
+  if (!state.systemEvents) {
+    metrics.innerHTML = [
+      metricCard("Status", "offen", "noch nicht geladen"),
+      metricCard("Fehler", "-", "keine Daten"),
+      metricCard("Warnungen", "-", "keine Daten"),
+      metricCard("Gesamt", "-", "keine Daten"),
+    ].join("");
+    rows.innerHTML = `<tr><td colspan="5" class="empty-cell">Noch keine Ereignisse geladen.</td></tr>`;
+    return;
+  }
+  if (state.systemEvents.error) {
+    metrics.innerHTML = [
+      metricCard("Status", "Fehler", state.systemEvents.error),
+      metricCard("Fehler", "0", "keine Daten"),
+      metricCard("Warnungen", "0", "keine Daten"),
+      metricCard("Gesamt", "0", "keine Daten"),
+    ].join("");
+    rows.innerHTML = `<tr><td colspan="5" class="empty-cell">${escapeHtml(state.systemEvents.error)}</td></tr>`;
+    return;
+  }
+  const summary = state.systemEvents.summary || {};
+  metrics.innerHTML = [
+    metricCard("Critical", formatNumber(summary.critical), "sofort pruefen"),
+    metricCard("Fehler", formatNumber(summary.errors), "blockierend moeglich"),
+    metricCard("Warnungen", formatNumber(summary.warnings), "auffaellig"),
+    metricCard("Gesamt", formatNumber(summary.total), "letzte 100 geladen"),
+  ].join("");
+  rows.innerHTML = renderSystemEventRows(state.systemEvents.items || []);
+}
+
+function renderSystemEventRows(items) {
+  if (!items.length) return `<tr><td colspan="5" class="empty-cell">Keine Auffaelligkeiten geloggt.</td></tr>`;
+  return items.map((item) => `
+    <tr>
+      <td>${escapeHtml(formatDateTime(item.occurred_at))}</td>
+      <td><strong class="severity ${escapeHtml(item.severity || "info")}">${escapeHtml(severityLabel(item.severity))}</strong></td>
+      <td><strong>${escapeHtml(item.source_service || "-")}</strong><span>${escapeHtml(item.target_service ? `-> ${item.target_service}` : item.category || "-")}</span></td>
+      <td><strong>${escapeHtml(item.message || "-")}</strong><span>${escapeHtml(item.event_type || "-")}</span></td>
+      <td>${escapeHtml(item.impact || "-")}</td>
+    </tr>
+  `).join("");
+}
+
+function severityLabel(value) {
+  return {
+    critical: "Critical",
+    error: "Fehler",
+    warning: "Warnung",
+    info: "Info",
+    debug: "Debug",
+  }[value] || value || "Info";
+}
+
+async function loadMonitoring(force) {
+  if (state.monitoringLoading) return;
+  if (state.monitoring && !force) {
+    renderMonitoring();
+    return;
+  }
+  state.monitoringLoading = true;
+  renderMonitoring();
+  try {
+    const result = await getJson("/api/admin/monitoring");
+    state.monitoring = result || null;
+  } catch (error) {
+    state.monitoring = {
+      summary: { total: 0, online: 0, offline: 0 },
+      services: [],
+      error: error.message,
+    };
+  } finally {
+    state.monitoringLoading = false;
+    renderMonitoring();
+  }
+}
+
+function renderMonitoring() {
+  const metrics = document.querySelector("#monitoringMetrics");
+  const list = document.querySelector("#monitoringServiceList");
+  if (!metrics || !list) return;
+  if (state.monitoringLoading) {
+    metrics.innerHTML = [
+      metricCard("Status", "pruefe", "Healthchecks laufen"),
+      metricCard("Online", "-", "noch offen"),
+      metricCard("Offline", "-", "noch offen"),
+      metricCard("Dienste", "-", "konfiguriert"),
+    ].join("");
+    list.innerHTML = `<p class="empty">Status wird abgefragt.</p>`;
+    return;
+  }
+  if (!state.monitoring) {
+    metrics.innerHTML = [
+      metricCard("Status", "offen", "noch nicht geprueft"),
+      metricCard("Online", "-", "keine Daten"),
+      metricCard("Offline", "-", "keine Daten"),
+      metricCard("Dienste", "-", "keine Daten"),
+    ].join("");
+    list.innerHTML = `<p class="empty">Oeffne Monitoring oder klicke auf Status aktualisieren.</p>`;
+    return;
+  }
+  if (state.monitoring.error) {
+    metrics.innerHTML = [
+      metricCard("Status", "Fehler", state.monitoring.error),
+      metricCard("Online", "0", "keine Daten"),
+      metricCard("Offline", "0", "keine Daten"),
+      metricCard("Dienste", "0", "keine Daten"),
+    ].join("");
+    list.innerHTML = `<p class="empty">${escapeHtml(state.monitoring.error)}</p>`;
+    return;
+  }
+  const summary = state.monitoring.summary || {};
+  metrics.innerHTML = [
+    metricCard("Status", `${formatNumber(summary.online)}/${formatNumber(summary.total)}`, "Dienste online"),
+    metricCard("Online", formatNumber(summary.online), "erreichbar"),
+    metricCard("Offline", formatNumber(summary.offline), "nicht erreichbar"),
+    metricCard("Letzte Pruefung", formatDateTime(state.monitoring.checked_at), "Healthcheck"),
+  ].join("");
+  const services = state.monitoring.services || [];
+  list.innerHTML = services.length ? services.map(monitoringCard).join("") : `<p class="empty">Keine Dienste konfiguriert.</p>`;
+}
+
+function monitoringCard(service) {
+  const statusClass = service.ok ? "ok" : "error";
+  const statusText = service.ok ? "online" : "offline";
+  const responseTime = Number.isFinite(service.response_ms) ? `${service.response_ms} ms` : "-";
+  return `
+    <article class="monitoring-card ${statusClass}">
+      <div class="monitoring-card-head">
+        <div>
+          <p class="eyebrow">${escapeHtml(service.service_id)}</p>
+          <h2>${escapeHtml(service.title || service.service_id)}</h2>
+        </div>
+        <span class="status-pill ${statusClass}">${statusText}</span>
+      </div>
+      <dl class="meta-list">
+        ${meta(["Basis-URL", service.base_url || "-"])}
+        ${meta(["Health", service.health_url || "-"])}
+        ${meta(["Antwortzeit", responseTime])}
+        ${meta(["Status", service.message || statusText])}
+      </dl>
+    </article>
+  `;
 }
 
 function renderAccounts() {

@@ -17,6 +17,7 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
         consents: [],
         auditEvents: [],
         adminActions: [],
+        systemEvents: [],
       },
       collectionMap: {
         devices: "devices",
@@ -25,6 +26,7 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
         consents: "consents",
         auditEvents: "audit_events",
         adminActions: "admin_actions",
+        systemEvents: "system_events",
       },
     }));
   }
@@ -53,6 +55,12 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
     return result;
   }
 
+  addSystemEvent(input) {
+    const result = super.addSystemEvent(input);
+    this.persist();
+    return result;
+  }
+
   persist() {
     const state = {
       devices: Array.from(this.devices.values()),
@@ -61,6 +69,7 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
       consents: Array.from(this.consents.values()),
       auditEvents: this.auditEvents,
       adminActions: this.adminActions,
+      systemEvents: this.systemEvents,
     };
     this.store.save(state);
     this.store.replaceCollection?.("devices", state.devices, "device_id");
@@ -69,6 +78,7 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
     this.store.replaceCollection?.("consents", state.consents, "consent_id");
     this.store.replaceCollection?.("audit_events", state.auditEvents, "audit_event_id");
     this.store.replaceCollection?.("admin_actions", state.adminActions, "action_id");
+    this.store.replaceCollection?.("system_events", state.systemEvents, "event_id");
     if (typeof this.store.replaceTable === "function") {
       this.store.replaceTable("admin_tool_devices", state.devices, deviceColumns());
       this.store.replaceTable("admin_tool_feedback", state.feedback, feedbackColumns());
@@ -76,6 +86,7 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
       this.store.replaceTable("admin_tool_consents", state.consents, columns(["consent_id", "account_id", "granted_by_account_id", "granted_to_role", "purpose", "scope", "valid_from", "valid_until", "revoked_at", "created_at"]));
       this.store.replaceTable("admin_tool_audit_events", state.auditEvents, auditColumns());
       this.store.replaceTable("admin_tool_admin_actions", state.adminActions, actionColumns());
+      this.store.replaceTable("admin_tool_system_events", state.systemEvents, systemEventColumns());
     }
   }
 }
@@ -88,6 +99,7 @@ function adminSchema() {
     `CREATE TABLE IF NOT EXISTS admin_tool_consents (consent_id TEXT PRIMARY KEY, account_id TEXT, granted_by_account_id TEXT, granted_to_role TEXT, purpose TEXT, scope TEXT, valid_from TEXT, valid_until TEXT, revoked_at TEXT, created_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_audit_events (audit_event_id TEXT PRIMARY KEY, occurred_at TEXT, account_id TEXT, actor_id TEXT, actor_role TEXT, accessed_data_model_id TEXT, purpose TEXT, access_decision TEXT, reason TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_admin_actions (action_id TEXT PRIMARY KEY, occurred_at TEXT, actor_id TEXT, actor_role TEXT, action_type TEXT, account_id TEXT, reason TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS admin_tool_system_events (event_id TEXT PRIMARY KEY, occurred_at TEXT, severity TEXT, source_service TEXT, target_service TEXT, category TEXT, event_type TEXT, message TEXT, impact TEXT, account_id TEXT, route TEXT, correlation_id TEXT, details_json TEXT, raw_json TEXT NOT NULL);`,
   ];
 }
 
@@ -113,6 +125,10 @@ function auditColumns() {
 
 function actionColumns() {
   return { ...columns(["action_id", "occurred_at", "actor_id", "actor_role", "action_type", "account_id", "reason"]), raw_json: jsonColumn((row) => row) };
+}
+
+function systemEventColumns() {
+  return { ...columns(["event_id", "occurred_at", "severity", "source_service", "target_service", "category", "event_type", "message", "impact", "account_id", "route", "correlation_id"]), details_json: jsonColumn("details"), raw_json: jsonColumn((row) => row) };
 }
 
 module.exports = { SqliteBackedAdminRepository };

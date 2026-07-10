@@ -18,7 +18,7 @@ const DeviceOnboardingController = (() => {
 
     async function discoverNetworkDevices() {
       const board = selectedInventoryBoard();
-      if (!model.allowedActions(board).wifiDiscovery) {
+      if (board && !model.allowedActions(board).wifiDiscovery) {
         setDiscoveryStatus("running", "Dieser Hardware-Typ bietet laut Katalog keine WLAN-Suche.");
         return;
       }
@@ -27,9 +27,11 @@ const DeviceOnboardingController = (() => {
       renderNetworkDiscovery();
       setDiscoveryStatus("running", "Lokales Netzwerk wird nach gernetix-* Nodes durchsucht...");
       try {
-        const family = selectedInventoryHardwareFamily();
-        const result = await getJson(`/api/platform/devices/discover?processor_family=${encodeURIComponent(family)}`);
+        const family = board ? selectedInventoryHardwareFamily() : "";
+        const query = family ? `?processor_family=${encodeURIComponent(family)}` : "";
+        const result = await getJson(`/api/platform/devices/discover${query}`);
         state.discoveredDevices = (result.items || []).filter((device) => {
+          if (!family) return true;
           const detected = hardwareTypeForProfile(device.hardware_profile_id);
           return detected === family || detected === "unknown" || family === "other";
         });
@@ -45,7 +47,7 @@ const DeviceOnboardingController = (() => {
 
     async function identifyEsp32Bootloader() {
       const board = selectedInventoryBoard();
-      if (!model.allowedActions(board).usbIdentification) {
+      if (board && !model.allowedActions(board).usbIdentification) {
         setDiscoveryStatus("running", "USB-Pruefung ist fuer diesen Hardware-Typ im Katalog nicht vorgesehen.");
         return;
       }
@@ -57,26 +59,29 @@ const DeviceOnboardingController = (() => {
         return;
       }
       const port = document.querySelector("#esp32UsbPort").value;
-      if (!port) {
-        setDiscoveryStatus("error", "Bitte zuerst den ESP32-USB-Port auswaehlen.");
+      const ports = port
+        ? state.usbPorts.filter((item) => item.port === port || item.path === port).concat({ port, name: "Manuell ausgewaehlter USB-Port" }).slice(0, 1)
+        : usbDiscoveryPorts();
+      if (!ports.length) {
+        setDiscoveryStatus("error", "Keine passende USB-Serial-Schnittstelle gefunden. Bitte Board per USB anschliessen und erneut suchen.");
         return;
       }
-      state.discoveredDevices = [{
-        discovery_id: `bootloader-browser-${port}`,
-        source_url: port,
-        display_name: `${board?.title || "Board"} per Browser-Web-Serial`,
-        hardware_profile_id: selectedInventoryBoard()?.hardware_item_id || document.querySelector("#inventoryHardwareProfile").value || "hardware.processor_board.generic_esp_wroom32",
+      state.discoveredDevices = ports.map((usbPort) => ({
+        discovery_id: `bootloader-browser-${usbPort.port}`,
+        source_url: usbPort.port,
+        display_name: `${usbDiscoveryLabel(usbPort, board)} per Browser-Web-Serial`,
+        hardware_profile_id: board?.hardware_item_id || board?.hardware_profile_id || usbHardwareProfileForPort(usbPort),
         runtime_version: "",
         firmware_version: "",
         provisioning_state: "bootloader_check_required",
         connectivity_status: "usb_browser_required",
         ownership_status: "unregistered",
         esp32_inventory_state: "bootloader_only",
-        treatment: "Keine lokale Toolchain verwenden. Per Browser-Web-Serial pruefen oder Basissoftware flashen; danach im Kunden-WLAN erneut suchen.",
+        treatment: "USB-Serial-Port anhand bekannter Adapter-/Board-Strings gefunden. Per Browser-Web-Serial pruefen oder Basissoftware flashen; danach im Kunden-WLAN erneut suchen.",
         already_in_inventory: false,
-      }];
+      }));
       renderNetworkDiscovery();
-      setDiscoveryStatus("running", "Fuer diesen Zustand wird keine lokale Installation verwendet. Der naechste Schritt ist Browser-Web-Serial-Flash, danach im Kunden-WLAN erneut suchen.");
+      setDiscoveryStatus("ok", `${state.discoveredDevices.length} USB-Kandidat${state.discoveredDevices.length === 1 ? "" : "en"} gefunden. Markiere die Boards, die auf dein Konto laufen sollen.`);
     }
 
     function selectDeviceDiscoveryMethod() {
@@ -212,8 +217,8 @@ const DeviceOnboardingController = (() => {
       renderEsp32UsbPortOptions();
       syncInventoryNodeNamePreview();
       const board = selectedInventoryBoard();
-      const actions = model.allowedActions(board);
-      const family = selectedInventoryHardwareFamily();
+      const actions = discoveryActionsForBoard(board);
+      const family = board ? selectedInventoryHardwareFamily() : "";
       const isAvr = family === "avr_8bit";
       const usesWirelessOrUsb = actions.wifiDiscovery || actions.usbIdentification;
       const showGenericMethods = usesWirelessOrUsb && !isAvr;
@@ -223,18 +228,8 @@ const DeviceOnboardingController = (() => {
       document.querySelector("#avrDiscoveryActions").classList.toggle("hidden", !isAvr);
       document.querySelector("#esp32UsbPortLabel").classList.toggle("hidden", !isUsbSelected);
       document.querySelector("#claimSelectedDiscoveredDevicesButton").classList.toggle("hidden", !actions.wifiDiscovery && !actions.usbIdentification);
-      document.querySelector("#deviceInventoryForm").classList.toggle("hidden", actions.wifiDiscovery);
+      document.querySelector("#deviceInventoryForm").classList.toggle("hidden", actions.wifiDiscovery && Boolean(board));
       document.querySelector("#inventoryTypeHint").textContent = inventoryTypeHintText();
-      if (!board) {
-        document.querySelector("#esp32DiscoveryActions").classList.add("hidden");
-        document.querySelector("#avrDiscoveryActions").classList.add("hidden");
-        document.querySelector("#esp32UsbPortLabel").classList.add("hidden");
-        document.querySelector("#claimSelectedDiscoveredDevicesButton").classList.add("hidden");
-        document.querySelector("#deviceInventoryForm").classList.add("hidden");
-        list.innerHTML = `<p class="empty">Waehle zuerst ein konkretes ProcessorBoard aus dem Hardware-Katalog.</p>`;
-        updateClaimSelectedButton();
-        return;
-      }
       if (isAvr) {
         list.innerHTML = renderAvrBootloaderResult();
         updateClaimSelectedButton();
@@ -246,7 +241,7 @@ const DeviceOnboardingController = (() => {
         return;
       }
       if (!state.discoveredDevices.length) {
-        list.innerHTML = `<p class="empty">Waehle fuer dieses Board zuerst einen passenden Erkennungsweg.</p>`;
+        list.innerHTML = `<p class="empty">Waehle WLAN oder USB und klicke auf Suchen. Die Board-Auswahl ist fuer die Suche optional.</p>`;
         updateClaimSelectedButton();
         return;
       }
@@ -331,7 +326,7 @@ const DeviceOnboardingController = (() => {
 
     function inventoryTypeHintText() {
       const board = selectedInventoryBoard();
-      if (!board) return "Nach der Prozessorfamilie wird noch kein Board automatisch ausgewaehlt. Bitte waehle das konkrete ProcessorBoard aus dem Hardware-Katalog.";
+      if (!board) return "WLAN sucht nach erreichbaren gernetix-* Nodes. USB sucht nach bekannten USB-Serial-/Board-Strings. Die Board-Auswahl ist nur fuer manuelle Inventarisierung oder als Fallback noetig.";
       const family = selectedInventoryHardwareFamily();
       const modelHint = model.inventoryHint(board);
       if (family === "esp32" || family === "esp8266") {
@@ -344,6 +339,18 @@ const DeviceOnboardingController = (() => {
         return `${modelHint} Der Bootloader-Handshake ist experimentell. Keine avrdude-Installation, kein lokaler Helper.`;
       }
       return modelHint;
+    }
+
+    function discoveryActionsForBoard(board) {
+      if (board) return model.allowedActions(board);
+      return {
+        wifiDiscovery: true,
+        usbIdentification: true,
+        usbFlash: false,
+        ota: false,
+        basissoftware: false,
+        captiveSetup: false,
+      };
     }
 
     async function claimDiscoveredDevice(discoveryId) {
@@ -371,9 +378,11 @@ const DeviceOnboardingController = (() => {
       const selected = selectedIds
         .map((id) => state.discoveredDevices.find((item) => item.discovery_id === id))
         .filter(canClaimDiscoveredDevice);
-      if (!selected.length) return;
-      const confirmed = window.confirm(`${selected.length} Board${selected.length === 1 ? "" : "s"} in dein Inventar uebernehmen?`);
-      if (!confirmed) return;
+      if (!selected.length) {
+        setDiscoveryStatus("error", "Bitte zuerst ein uebernehmbares Board aus der Trefferliste auswaehlen.");
+        updateClaimSelectedButton();
+        return;
+      }
       setDiscoveryStatus("running", `${selected.length} Board${selected.length === 1 ? " wird" : "s werden"} ins Inventar uebernommen...`);
       const claimed = [];
       try {
@@ -413,7 +422,12 @@ const DeviceOnboardingController = (() => {
     function updateClaimSelectedButton() {
       const button = document.querySelector("#claimSelectedDiscoveredDevicesButton");
       if (!button) return;
-      const count = document.querySelectorAll("[data-select-discovered-device]:checked").length;
+      const selectedIds = Array.from(document.querySelectorAll("[data-select-discovered-device]:checked"))
+        .map((checkbox) => checkbox.dataset.selectDiscoveredDevice);
+      const count = selectedIds
+        .map((id) => state.discoveredDevices.find((item) => item.discovery_id === id))
+        .filter(canClaimDiscoveredDevice)
+        .length;
       button.disabled = count === 0;
       button.textContent = count
         ? `${count} ausgewaehlte${count === 1 ? "s" : ""} Board${count === 1 ? "" : "s"} uebernehmen`
@@ -579,6 +593,43 @@ const DeviceOnboardingController = (() => {
       return "unknown";
     }
 
+    function usbDiscoveryPorts() {
+      return state.usbPorts.filter(isLikelySupportedUsbSerialPort);
+    }
+
+    function isLikelySupportedUsbSerialPort(port) {
+      const text = usbPortText(port);
+      return /cp210|ch340|ch341|usb-serial|usb serial|silicon labs|wch|uart|esp32|espressif|arduino/.test(text);
+    }
+
+    function usbHardwareProfileForPort(port) {
+      const text = usbPortText(port);
+      if (/arduino|atmega|nano/.test(text)) return "hardware.processor_board.arduino_nano_r3_atmega328p";
+      if (/esp8266|esp-12|d1 mini|wemos/.test(text)) return "hardware.processor_board.wemos_d1_mini_esp12f";
+      return "hardware.processor_board.generic_esp_wroom32";
+    }
+
+    function usbDiscoveryLabel(port, board) {
+      if (board?.title) return board.title;
+      const text = usbPortText(port);
+      if (/arduino|atmega|nano/.test(text)) return "Arduino/AVR Board";
+      if (/esp8266|esp-12|d1 mini|wemos/.test(text)) return "ESP8266 Board";
+      if (/esp32|espressif|cp210|ch340|ch341|silicon labs|wch/.test(text)) return "ESP32 Board";
+      return "USB-Serial Board";
+    }
+
+    function usbPortText(port) {
+      return [
+        port?.port,
+        port?.path,
+        port?.name,
+        port?.manufacturer,
+        port?.device_id,
+        port?.vendor_id,
+        port?.product_id,
+      ].join(" ").toLowerCase();
+    }
+
     async function createInventoryDevice(event) {
       event.preventDefault();
       if (!selectedInventoryBoard()) {
@@ -625,6 +676,7 @@ const DeviceOnboardingController = (() => {
 
     return {
       claimDiscoveredDevice,
+      claimSelectedDiscoveredDevices,
       createInventoryDevice,
       discoverNetworkDevices,
       identifyAvrBootloaderExperimental,

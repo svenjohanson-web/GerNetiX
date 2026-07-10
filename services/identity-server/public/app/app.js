@@ -34,8 +34,10 @@ const routeMap = {
   "development-platform": "developmentPlatformView",
   learn: "learnView",
   ide: "ideView",
+  "device-management": "deviceManagementView",
+  "device-provisioning": "deviceProvisioningView",
   "device-recovery": "deviceRecoveryView",
-  devices: "devicesView",
+  "device-inventory": "devicesView",
   builds: "buildsView",
   billing: "billingView",
   auth: "dashboardView",
@@ -74,7 +76,6 @@ function guidedProjectView() {
       progressFor,
       escapeHtml,
       escapeAttribute,
-      meta,
     });
   }
   return guidedProjectViewController;
@@ -96,6 +97,10 @@ function developmentPlatform() {
 
 bootstrap();
 
+document.querySelector("#mainMenuButton").addEventListener("click", (event) => {
+  event.stopPropagation();
+  toggleMainMenu();
+});
 document.querySelector("#logoutButton").addEventListener("click", async () => {
   await fetch("/api/logout", { method: "POST" });
   window.location.href = "/app/auth/";
@@ -107,10 +112,22 @@ document.querySelectorAll("[data-open-route]").forEach((button) => {
 document.querySelectorAll(".tabs a[data-route]").forEach((link) => {
   link.addEventListener("click", (event) => {
     event.preventDefault();
+    closeMainMenu();
     navigate(link.getAttribute("href"));
   });
 });
-document.querySelector("#continueButton").addEventListener("click", continueLastProject);
+document.querySelector("#mainMenu").addEventListener("click", (event) => {
+  event.stopPropagation();
+});
+document.querySelector("#platformBreadcrumb").addEventListener("click", (event) => {
+  const link = event.target.closest("[data-breadcrumb-route]");
+  if (!link) return;
+  event.preventDefault();
+  navigate(link.dataset.breadcrumbRoute);
+});
+document.querySelectorAll("[data-device-management-route]").forEach((button) => {
+  button.addEventListener("click", () => navigate(button.dataset.deviceManagementRoute));
+});
 document.querySelector("#ideProjectSelect").addEventListener("change", () => openProjectInIde(document.querySelector("#ideProjectSelect").value));
 document.querySelector("#ideProjectBrowser").addEventListener("click", (event) => {
   const button = event.target.closest("[data-source-path]");
@@ -152,6 +169,7 @@ document.querySelector("#esp32UsbPort").addEventListener("change", () => {
   setDiscoveryStatus("running", "ESP32 USB-Port fuer Browser-Web-Serial ausgewaehlt.");
 });
 window.addEventListener("popstate", renderRoute);
+document.addEventListener("click", closeMainMenu);
 
 async function bootstrap() {
   developmentPlatform().init();
@@ -194,27 +212,136 @@ function renderAll() {
 
 function renderRoute() {
   const route = routeName();
+  renderBreadcrumb(route);
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("hidden", view.id !== routeMap[route]));
-  document.querySelectorAll(".tabs a").forEach((link) => link.classList.toggle("active", link.dataset.route === route));
+  document.querySelectorAll(".tabs a").forEach((link) => link.classList.toggle("active", link.dataset.route === topLevelRouteName(route)));
+  document.querySelectorAll("[data-device-management-route]").forEach((button) => {
+    button.classList.toggle("active", deviceManagementRouteFor(route) === button.dataset.deviceManagementRoute);
+  });
   if (route === "development-platform") developmentPlatform().render();
   if (route === "ide") loadIdeProject();
   if (route === "device-recovery") {
     renderDeviceRecovery();
     refreshUsbPorts(false);
   }
-  if (route === "devices") loadDevicePageTools();
+  if (route === "device-inventory") loadDevicePageTools();
+}
+
+function renderBreadcrumb(route) {
+  const target = document.querySelector("#platformBreadcrumb");
+  const location = currentLocationTrail(route);
+  target.innerHTML = `
+    <div class="breadcrumb-line">
+      ${location.map((item, index) => breadcrumbNode(item, index === location.length - 1, index > 0)).join("")}
+    </div>
+  `;
+}
+
+function breadcrumbNode(item, current, withSeparator) {
+  const label = escapeHtml(item.label);
+  const separator = withSeparator ? `<i aria-hidden="true">/</i>` : "";
+  if (current || !item.route) return `${separator}<span aria-current="${current ? "page" : "false"}">${label}</span>`;
+  return `${separator}<a href="${escapeAttribute(item.route)}" data-breadcrumb-route="${escapeAttribute(item.route)}">${label}</a>`;
+}
+
+function currentLocationTrail(route) {
+  const project = projectById(state.activeProjectId);
+  const locations = {
+    dashboard: [{ label: "Plattform", route: "/app/dashboard/" }],
+    "development-platform": [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Entwicklungsplattform", route: "/app/development-platform/" },
+    ],
+    learn: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Lernplattform", route: "/app/learn/" },
+    ],
+    ide: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Entwicklungsplattform", route: "/app/development-platform/" },
+      { label: project?.name || "Projekt", route: "" },
+    ],
+    "device-management": [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Device Management", route: "/app/device-management/" },
+    ],
+    "device-provisioning": [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Device Management", route: "/app/device-management/" },
+      { label: "Provisioning", route: "/app/device-management/provisioning/" },
+    ],
+    "device-inventory": [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Device Management", route: "/app/device-management/" },
+      { label: "Inventar", route: "/app/device-management/inventory/" },
+    ],
+    "device-recovery": [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Device Management", route: "/app/device-management/" },
+      { label: "Recovery", route: "/app/device-management/recovery/" },
+    ],
+    builds: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Builds", route: "/app/builds/" },
+    ],
+    billing: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Billing", route: "/app/billing/" },
+    ],
+  };
+  return locations[route] || locations.dashboard;
 }
 
 function routeName() {
+  if (/^\/app\/device-management\/?$/.test(window.location.pathname)) return "device-management";
+  const deviceManagementMatch = window.location.pathname.match(/^\/app\/device-management\/([^/]+)/);
+  if (deviceManagementMatch) {
+    return {
+      provisioning: "device-provisioning",
+      inventory: "device-inventory",
+      recovery: "device-recovery",
+    }[deviceManagementMatch[1]] || "device-provisioning";
+  }
   const match = window.location.pathname.match(/^\/app\/([^/]+)/);
   const route = match ? match[1] : "dashboard";
   if (route === "projects") return "learn";
+  if (route === "devices") return "device-inventory";
+  if (route === "device-recovery") return "device-recovery";
   return route;
+}
+
+function topLevelRouteName(route) {
+  if (["device-management", "device-provisioning", "device-inventory", "device-recovery"].includes(route)) return "device-management";
+  if (route === "ide") return "development-platform";
+  return route;
+}
+
+function deviceManagementRouteFor(route) {
+  return {
+    "device-provisioning": "/app/device-management/provisioning/",
+    "device-inventory": "/app/device-management/inventory/",
+    "device-recovery": "/app/device-management/recovery/",
+  }[route] || "";
 }
 
 function navigate(route) {
   history.pushState({}, "", route);
   renderRoute();
+}
+
+function toggleMainMenu() {
+  const menu = document.querySelector("#mainMenu");
+  const button = document.querySelector("#mainMenuButton");
+  const open = menu.classList.toggle("hidden") === false;
+  button.setAttribute("aria-expanded", open ? "true" : "false");
+}
+
+function closeMainMenu() {
+  const menu = document.querySelector("#mainMenu");
+  const button = document.querySelector("#mainMenuButton");
+  if (!menu || menu.classList.contains("hidden")) return;
+  menu.classList.add("hidden");
+  button?.setAttribute("aria-expanded", "false");
 }
 
 async function loadDevicePageTools() {
@@ -230,31 +357,15 @@ async function loadDevicePageTools() {
 }
 
 function renderDashboard() {
-  const personalProjects = personalLearningProjects();
-  const catalogProjects = learningCatalogProjects();
-  const last = state.projects.find((project) => project.id === state.workspace.lastProjectId);
-  document.querySelector("#continueText").textContent = last
-    ? `${last.name} im ${state.workspace.lastMode === "ide" ? "IDE-Modus" : "Projektmodus"}`
-    : "Noch kein Projekt geöffnet";
+  const developmentProjects = accountDevelopmentProjects();
   document.querySelector("#dashboardSummary").innerHTML = [
     ["Account", state.account.username],
-    ["Projektstände", personalProjects.length],
-    ["Projektkatalog", catalogProjects.length],
+    ["Entwicklungsprojekte", developmentProjects.length],
     ["Geräte", state.devices.length],
     ["Builds", state.builds.length],
-    ["Service-Kette", serviceChainStatus()],
     ["Letzter Modus", state.workspace.lastMode || "kein Eintrag"],
   ].map(summaryItem).join("");
   renderAiRating("#dashboardAiUsage");
-}
-
-function serviceChainStatus() {
-  const entries = Object.entries(state.serviceStatus || {});
-  if (!entries.length) return "nicht geprueft";
-  const failed = entries
-    .filter(([, status]) => !status.ok)
-    .map(([name, status]) => `${name}: ${status.error || "Fehler"}`);
-  return failed.length ? failed.join(" | ") : "ok";
 }
 
 function renderProjects() {
@@ -325,11 +436,21 @@ function renderLearn() {
 }
 
 function personalLearningProjects() {
-  return state.projects;
+  return state.projects.filter((project) => project.projectOrigin === "account_project" || hasStartedLearningProject(project.id));
 }
 
 function learningCatalogProjects() {
-  return state.projects;
+  return state.projects.filter((project) => project.projectOrigin !== "account_project");
+}
+
+function accountDevelopmentProjects() {
+  return state.projects.filter((project) => project.projectOrigin === "account_project"
+    && ["development_project", "custom_project"].includes(project.type));
+}
+
+function hasStartedLearningProject(projectId) {
+  const progress = state.progress.find((item) => item.projectId === projectId);
+  return Boolean(progress && (progress.updatedAt || progress.currentStep > 0 || progress.completedSteps?.length));
 }
 
 function learningProjectStatus(project, progress) {

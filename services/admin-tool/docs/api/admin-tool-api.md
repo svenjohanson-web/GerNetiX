@@ -16,6 +16,41 @@ GET /api/admin/overview
 
 Liefert aggregierte Admin-Kennzahlen zu Devices, Feedback, Consents, Audit Events und KI-Usage fuer die Statistikseite.
 
+## Service Monitoring
+
+```text
+GET /api/admin/monitoring
+```
+
+Liefert den Betriebsstatus der konfigurierten lokalen Dienste fuer das Admin Tool:
+
+- erreichbare und nicht erreichbare Services
+- Basis-URL, Health-URL, Antwortzeit und Statusmeldung je Service
+- zusammengefasste Online-/Offline-Zaehler
+
+Der Endpunkt ist rein lesend und persistiert keine Monitoring-Daten.
+
+## Auffaelligkeiten / System Events
+
+```text
+GET  /api/admin/system-events
+POST /api/admin/system-events
+```
+
+Zentrales leichtgewichtiges Betriebslog fuer auffaellige Runtime-Ereignisse, ohne Kibana/ELK-Stack.
+
+`POST /api/admin/system-events` nimmt Ereignisse von Diensten entgegen, zum Beispiel:
+
+- `source_service`: meldender Dienst, z. B. `identity_server`
+- `target_service`: betroffene Abhaengigkeit, z. B. `device_management`
+- `severity`: `info`, `warning`, `error` oder `critical`
+- `event_type`: maschinenlesbarer Ereignistyp
+- `message`: lesbarer Hinweis
+- `impact`: betroffener Workflow
+- `details`: technische Zusatzdaten ohne Secrets
+
+Die Ereignisse werden im Admin Tool persistiert. Bei SQLite-Persistenz liegen sie in `admin_tool_system_events`.
+
 ## Device Management
 
 ```text

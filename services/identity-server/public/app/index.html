@@ -9,48 +9,39 @@
   <body>
     <main class="app-shell">
       <header class="topbar">
-        <div>
+        <div class="top-navigation-context">
           <p class="eyebrow">GerNetiX</p>
-          <h1>Plattform</h1>
+          <nav id="platformBreadcrumb" class="breadcrumb-tree" aria-label="Aktueller Bereich"></nav>
         </div>
         <div class="top-actions">
           <span id="accountBadge" class="account-badge"></span>
-          <button id="logoutButton" type="button">Abmelden</button>
+          <button id="mainMenuButton" class="menu-button" type="button" aria-label="Menue oeffnen" aria-expanded="false" aria-controls="mainMenu">
+            <span></span>
+            <span></span>
+            <span></span>
+          </button>
         </div>
       </header>
 
-      <nav class="tabs" aria-label="Plattformbereiche">
+      <nav id="mainMenu" class="tabs app-menu hidden" aria-label="Plattformbereiche">
         <a href="/app/dashboard/" data-route="dashboard">Dashboard</a>
         <a href="/app/development-platform/" data-route="development-platform">Entwicklungsplattform</a>
         <a href="/app/learn/" data-route="learn">Lernplattform</a>
-        <a href="/app/ide/" data-route="ide">Entwickeln</a>
-        <a href="/app/device-recovery/" data-route="device-recovery">Device Recovery</a>
-        <a class="utility" href="/app/devices/" data-route="devices">Geräte</a>
+        <a href="/app/device-management/" data-route="device-management">Device Management</a>
         <a class="utility" href="/app/builds/" data-route="builds">Builds</a>
         <a class="utility" href="/app/billing/" data-route="billing">Billing</a>
+        <button id="logoutButton" class="menu-logout" type="button">Abmelden</button>
       </nav>
 
       <section id="dashboardView" class="view">
         <section class="dashboard-grid">
           <button class="entry-card primary" type="button" data-open-route="/app/development-platform/">
-            <span>Entwicklungsplattform öffnen</span>
-            <strong>Projektziele klären und Zielarchitektur herleiten</strong>
-          </button>
-          <button class="entry-card" type="button" data-open-route="/app/ide/">
-            <span>Freie Entwicklungsumgebung öffnen</span>
-            <strong>Eigene Projekte, Code, Builds und Flashen ohne geführte Lektion</strong>
+            <span>Entwicklungsbereich</span>
+            <strong>Entwicklungsbereich beitreten</strong>
           </button>
           <button class="entry-card" type="button" data-open-route="/app/learn/">
-            <span>Lernplattform oeffnen</span>
-            <strong>Gefuehrte Lernprojekte, Fortschritt und Projektkatalog</strong>
-          </button>
-          <button id="continueButton" class="entry-card" type="button">
-            <span>Letztes Projekt fortsetzen</span>
-            <strong id="continueText">Noch kein Projekt geöffnet</strong>
-          </button>
-          <button class="entry-card" type="button" data-open-route="/app/devices/">
-            <span>Meine Geräte</span>
-            <strong>Geräte, Flash-/OTA-Status und Ownership</strong>
+            <span>Lernbereich</span>
+            <strong>Lernbereich beitreten</strong>
           </button>
         </section>
 
@@ -163,16 +154,71 @@
       </section>
 
 
+      <section id="deviceManagementView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Account Devices</p>
+            <h2>Device Management</h2>
+          </div>
+        </div>
+        <section class="dashboard-grid">
+          <button class="entry-card primary" type="button" data-open-route="/app/device-management/provisioning/">
+            <span>Provisioning</span>
+            <strong>Neue Boards vorbereiten und mit dem Account verbinden</strong>
+          </button>
+          <button class="entry-card" type="button" data-open-route="/app/device-management/inventory/">
+            <span>Inventar</span>
+            <strong>Bekannte Devices suchen, aufnehmen und verwalten</strong>
+          </button>
+          <button class="entry-card" type="button" data-open-route="/app/device-management/recovery/">
+            <span>Recovery</span>
+            <strong>Firmwarezustand per USB oder OTA pruefen</strong>
+          </button>
+        </section>
+      </section>
+
+      <section id="deviceProvisioningView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Device Management</p>
+            <h2>Provisioning</h2>
+          </div>
+        </div>
+        <nav class="subtabs device-management-tabs" aria-label="Device Management Bereiche">
+          <button type="button" data-device-management-route="/app/device-management/provisioning/">Provisioning</button>
+          <button type="button" data-device-management-route="/app/device-management/inventory/">Inventar</button>
+          <button type="button" data-device-management-route="/app/device-management/recovery/">Recovery</button>
+        </nav>
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Noch nicht angeschlossen</p>
+              <h3>Board vorbereiten und an Account anbinden</h3>
+            </div>
+          </div>
+          <p class="helper-text">Provisioning ist der Schritt vor dem Inventar: Basissoftware, Device-Kennung, Credentials und WLAN-/Setup-Daten werden auf ein Board gebracht. Die konkrete IDE-Seite wird hier angeschlossen.</p>
+          <div class="button-row">
+            <button type="button" data-open-route="/app/device-management/inventory/">Zum Inventar</button>
+            <button type="button" data-open-route="/app/device-management/recovery/">Zur Recovery</button>
+          </div>
+        </section>
+      </section>
+
       <section id="deviceRecoveryView" class="view hidden">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Recovery Vorbereitung</p>
-            <h2>Device Recovery</h2>
+            <p class="eyebrow">Device Management</p>
+            <h2>Recovery</h2>
           </div>
           <div class="button-row">
             <button id="refreshRecoveryDevicesButton" type="button">Devices aktualisieren</button>
           </div>
         </div>
+        <nav class="subtabs device-management-tabs" aria-label="Device Management Bereiche">
+          <button type="button" data-device-management-route="/app/device-management/provisioning/">Provisioning</button>
+          <button type="button" data-device-management-route="/app/device-management/inventory/">Inventar</button>
+          <button type="button" data-device-management-route="/app/device-management/recovery/">Recovery</button>
+        </nav>
         <section class="recovery-layout">
           <aside class="panel recovery-device-panel">
             <p class="eyebrow">Account Devices</p>
@@ -203,7 +249,6 @@
         <div class="section-head">
           <div>
             <p class="eyebrow">Architektur-Discovery</p>
-            <h2>Entwicklungsplattform</h2>
           </div>
           <div class="button-row">
             <button id="clearDevelopmentChatButton" type="button">Dialog leeren</button>
@@ -211,6 +256,29 @@
         </div>
         <section class="development-platform-layout">
           <article class="panel development-chat-panel">
+            <section class="development-project-header">
+              <div>
+                <p class="eyebrow">Projekt</p>
+                <h3>Entwicklungsprojekt</h3>
+              </div>
+              <div class="development-project-summary">
+                <span>Aktuelles Projekt</span>
+                <strong id="developmentProjectName">Kein Projekt geoeffnet</strong>
+              </div>
+              <div class="button-row development-project-actions">
+                <button id="openDevelopmentProjectButton" type="button">Projekt oeffnen</button>
+                <button id="newDevelopmentProjectButton" type="button">Projekt neu</button>
+              </div>
+              <div id="developmentProjectOpenPanel" class="development-project-panel hidden">
+                <label class="development-project-field">Projekt oeffnen<select id="developmentProjectSelect"></select></label>
+              </div>
+              <form id="developmentProjectForm" class="development-project-form hidden">
+                <label>Name<input id="developmentProjectTitle" type="text" maxlength="120" placeholder="z. B. Pflanzenwaechter" /></label>
+                <label>Beschreibung<textarea id="developmentProjectDescription" rows="3" placeholder="Kurz beschreiben, was entstehen soll."></textarea></label>
+                <button type="submit">Projekt anlegen</button>
+              </form>
+              <p id="developmentProjectStatus" class="helper-text">Bitte Projekt oeffnen oder neu anlegen, bevor der Chat startet.</p>
+            </section>
             <div id="developmentChatMessages" class="development-chat-messages" aria-live="polite"></div>
             <form id="developmentChatForm" class="development-chat-form">
               <label for="developmentChatInput">Nachricht</label>
@@ -221,46 +289,11 @@
               </div>
             </form>
             <section id="developmentArchitectureDiagram" class="architecture-diagram-panel"></section>
-          </article>
-          <aside class="panel development-assistant-context">
-            <p class="eyebrow">Projekt</p>
-            <h3>Entwicklungsprojekt</h3>
-            <div class="development-project-summary">
-              <span>Aktuelles Projekt</span>
-              <strong id="developmentProjectName">Kein Projekt geoeffnet</strong>
-            </div>
-            <div class="button-row development-project-actions">
-              <button id="openDevelopmentProjectButton" type="button">Projekt oeffnen</button>
-              <button id="newDevelopmentProjectButton" type="button">Projekt neu</button>
-            </div>
-            <div id="developmentProjectOpenPanel" class="development-project-panel hidden">
-              <label class="development-project-field">Projekt oeffnen<select id="developmentProjectSelect"></select></label>
-            </div>
-            <form id="developmentProjectForm" class="development-project-form hidden">
-              <label>Name<input id="developmentProjectTitle" type="text" maxlength="120" placeholder="z. B. Pflanzenwaechter" /></label>
-              <label>Beschreibung<textarea id="developmentProjectDescription" rows="3" placeholder="Kurz beschreiben, was entstehen soll."></textarea></label>
-              <button type="submit">Projekt anlegen</button>
-            </form>
-            <div class="button-row development-project-actions">
+            <div class="button-row development-project-actions development-page-actions">
               <button id="saveDevelopmentArchitectureButton" type="button" disabled>Architektur speichern</button>
               <button id="acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Uebernehmen und weiter</button>
             </div>
-            <p id="developmentProjectStatus" class="helper-text">Bitte Projekt oeffnen oder neu anlegen, bevor der Chat startet.</p>
-            <p class="eyebrow">PoC-Konfiguration</p>
-            <h3>LLM-Routing</h3>
-            <dl id="developmentAssistantConfig" class="meta-list"></dl>
-            <div class="architecture-question-list">
-              <h3>Fragerichtung</h3>
-              <button type="button" data-dev-prompt="Ich moechte ein neues Projekt starten. Bitte finde mit mir zuerst die Zielarchitektur heraus.">Projektziel klaeren</button>
-              <button type="button" data-dev-prompt="Hilf mir zu entscheiden, ob mein Projekt nur lokal laufen soll oder ob ich Backend, Webseite, Handy-App oder weltweiten Zugriff brauche.">Zielsysteme einordnen</button>
-              <button type="button" data-dev-prompt="Frag mich, ob ich Daten speichern, mehrere Geraete anbinden, Messwerte anzeigen oder Regeln automatisieren moechte.">Daten und Geraete klaeren</button>
-              <button type="button" data-dev-prompt="Leite aus meinen Antworten bitte eine erste Architektur ab und markiere offene Fragen.">Erste Architektur ableiten</button>
-            </div>
-            <div class="development-source-note">
-              <h3>Datenquellen</h3>
-              <p>Dieser PoC nutzt den aktuellen Chat und die zentrale Prompt-Foundation aus dem AI Context. Projektdateien, Graphdaten, Kundendaten oder externe Quellen sind noch nicht freigegeben.</p>
-            </div>
-          </aside>
+          </article>
         </section>
       </section>
 
@@ -268,20 +301,25 @@
         <div class="section-head">
           <div>
             <p class="eyebrow">Device Management</p>
-            <h2>Meine Geräte</h2>
+            <h2>Inventar</h2>
           </div>
         </div>
+        <nav class="subtabs device-management-tabs" aria-label="Device Management Bereiche">
+          <button type="button" data-device-management-route="/app/device-management/provisioning/">Provisioning</button>
+          <button type="button" data-device-management-route="/app/device-management/inventory/">Inventar</button>
+          <button type="button" data-device-management-route="/app/device-management/recovery/">Recovery</button>
+        </nav>
         <section class="inventory-layout">
           <section class="inventory-tools">
             <section class="panel discovery-panel">
               <div class="section-head">
                 <div>
                   <p class="eyebrow">Inventarisierung</p>
-                  <h3>Hardware auswahlen</h3>
+                  <h3>Geraete suchen</h3>
                 </div>
               </div>
-              <label class="inventory-type-label">Prozessorfamilie<select id="inventoryProcessorFamily"></select></label>
-              <label class="inventory-type-label">ProcessorBoard aus Hardware-Katalog<select id="inventoryHardwareType"></select></label>
+              <label class="inventory-type-label">Prozessorfamilie optional<select id="inventoryProcessorFamily"></select></label>
+              <label class="inventory-type-label">ProcessorBoard optional<select id="inventoryHardwareType"></select></label>
               <label class="inventory-type-label">Kurzer Board-Name<input id="inventoryBoardShortName" type="text" value="mein-board" maxlength="42" /></label>
               <dl class="meta-list compact onboarding-preview">
                 <div><dt>Node-/SSID-Name</dt><dd id="inventoryNodeNamePreview">gernetix-mein-board</dd></div>

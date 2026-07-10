@@ -30,6 +30,26 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/admin/monitoring") {
+      sendJson(res, 200, await service.monitoring());
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/admin/system-events") {
+      sendJson(res, 200, service.systemEvents({
+        severity: url.searchParams.get("severity") || "",
+        source_service: url.searchParams.get("source_service") || "",
+        target_service: url.searchParams.get("target_service") || "",
+        limit: url.searchParams.get("limit") || "",
+      }));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/admin/system-events") {
+      sendJson(res, 201, { event: service.recordSystemEvent(await readJsonBody(req)) });
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/admin/devices") {
       sendJson(res, 200, { items: await service.listDevices() });
       return;
