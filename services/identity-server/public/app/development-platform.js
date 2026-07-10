@@ -92,6 +92,7 @@ const DevelopmentPlatform = (() => {
       state.developmentPlatform.architectureDiagram = null;
       state.developmentPlatform.lastRouting = null;
       setChatStatus("Bereit fuer Architekturfragen.");
+      setActionStatus("");
       renderChatMessages();
       renderArchitectureDiagram();
     }
@@ -259,6 +260,11 @@ const DevelopmentPlatform = (() => {
       if (target) target.textContent = text;
     }
 
+    function setActionStatus(text) {
+      const target = document.querySelector("#developmentActionStatus");
+      if (target) target.textContent = text;
+    }
+
     function syncChatAvailability() {
       const hasProject = Boolean(activeProjectId());
       document.querySelector("#developmentChatInput").disabled = !hasProject;
@@ -283,18 +289,18 @@ const DevelopmentPlatform = (() => {
       const saveButton = document.querySelector("#saveDevelopmentArchitectureButton");
       const acceptButton = document.querySelector("#acceptDevelopmentArchitectureButton");
       if (!projectId) {
-        setProjectStatus("Bitte zuerst ein Entwicklungsprojekt oeffnen oder neu anlegen.");
+        setActionStatus("Bitte zuerst ein Entwicklungsprojekt oeffnen oder neu anlegen.");
         syncChatAvailability();
         return;
       }
       if (!state.developmentPlatform.architectureDiagram?.source) {
-        setProjectStatus("Es gibt noch keine Architektur, die uebernommen werden kann.");
+        setActionStatus("Es gibt noch keine Architektur, die uebernommen werden kann.");
         syncChatAvailability();
         return;
       }
       saveButton.disabled = true;
       acceptButton.disabled = true;
-      setProjectStatus(continueToIde ? "Architektur wird uebernommen..." : "Architektur wird gespeichert...");
+      setActionStatus(continueToIde ? "Architektur wird uebernommen..." : "Architektur wird gespeichert...");
       const project = currentProject();
       try {
         const response = await postJson(`/api/platform/development-projects/${encodeURIComponent(projectId)}/architecture`, {
@@ -312,14 +318,14 @@ const DevelopmentPlatform = (() => {
           if (!response.project?.id) {
             throw new Error("Interner Fehler: gespeichertes Projekt ohne ID.");
           }
-          setProjectStatus("Architektur gespeichert. IDE wird geoeffnet...");
+          setActionStatus("Architektur gespeichert. IDE wird geoeffnet...");
           await openProjectInIde(response.project.id);
         } else {
-          setProjectStatus(`Gespeichert${response.saved_at ? `: ${new Date(response.saved_at).toLocaleString("de-DE")}` : "."}`);
+          setActionStatus(`Gespeichert${response.saved_at ? `: ${new Date(response.saved_at).toLocaleString("de-DE")}` : "."}`);
           syncChatAvailability();
         }
       } catch (error) {
-        setProjectStatus(`Architektur konnte nicht gespeichert werden: ${error.message}`);
+        setActionStatus(`Architektur konnte nicht gespeichert werden: ${error.message}`);
         syncChatAvailability();
       }
     }

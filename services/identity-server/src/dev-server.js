@@ -878,12 +878,11 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
   }
   const title = String(body.title || project.title || diagram.title || "Architektur").trim().slice(0, 120);
   const description = String(body.description || project.summary || diagram.summary || "").trim().slice(0, 1000);
-  for (const source of developmentProjectSources({ title, description, diagram, architectureSource: diagram.source })) {
-    await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
+  const sources = developmentProjectSources({ title, description, diagram, architectureSource: diagram.source });
+  await Promise.all(sources.map((source) => projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
       method: "PUT",
       body: source,
-    });
-  }
+    })));
   await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {

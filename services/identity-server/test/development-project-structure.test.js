@@ -21,37 +21,37 @@ test("creates architecture folders and component interface folders from AI archi
 
   assert.ok(paths.includes("docs/architecture.puml"));
   assert.ok(paths.includes("Architektur/statische-architektur/architecture.puml"));
-  assert.ok(paths.includes("Architektur/statische-architektur/README.md"));
-  assert.ok(paths.includes("Architektur/informationsfluss/README.md"));
-  assert.ok(paths.includes("Architektur/systemverhalten/README.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Eigenschaften/README.md"));
+  assert.equal(paths.some((path) => path.endsWith("/README.md") || path === "README.md"), false);
+  assert.ok(paths.includes("Architektur/informationsfluss/informationsfluss.md"));
+  assert.ok(paths.includes("Architektur/systemverhalten/systemverhalten.md"));
+  assert.ok(paths.includes("Komponenten/ESP32/Eigenschaften/eigenschaften.md"));
   assert.ok(paths.includes("Komponenten/ESP32/Schnittstellen/provided.md"));
   assert.ok(paths.includes("Komponenten/ESP32/Schnittstellen/required.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Behavior/Modell/README.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Behavior/Code/README.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Behavior/Config/README.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Daten/README.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Beziehungen/README.md"));
-  assert.ok(paths.includes("Komponenten/MQTT-Client/Eigenschaften/README.md"));
+  assert.ok(paths.includes("Komponenten/ESP32/Verhalten/Modell/modell.md"));
+  assert.ok(paths.includes("Komponenten/ESP32/Verhalten/Code/code.md"));
+  assert.ok(paths.includes("Komponenten/ESP32/Verhalten/Config/config.md"));
+  assert.ok(paths.includes("Komponenten/ESP32/Daten/daten.md"));
+  assert.ok(paths.includes("Komponenten/ESP32/Beziehungen/beziehungen.md"));
+  assert.ok(paths.includes("Komponenten/MQTT-Client/Eigenschaften/eigenschaften.md"));
   assert.ok(paths.includes("Komponenten/MQTT-Client/Schnittstellen/provided.md"));
   assert.ok(paths.includes("Komponenten/MQTT-Client/Schnittstellen/required.md"));
-  assert.ok(paths.includes("Komponenten/MQTT-Client/Behavior/Modell/README.md"));
-  assert.ok(paths.includes("Komponenten/MQTT-Client/Behavior/Code/README.md"));
-  assert.ok(paths.includes("Komponenten/MQTT-Client/Behavior/Config/README.md"));
-  assert.ok(paths.includes("Komponenten/MQTT-Client/Daten/README.md"));
-  assert.ok(paths.includes("Komponenten/MQTT-Client/Beziehungen/README.md"));
-  assert.ok(paths.includes("Komponenten/Server/Eigenschaften/README.md"));
+  assert.ok(paths.includes("Komponenten/MQTT-Client/Verhalten/Modell/modell.md"));
+  assert.ok(paths.includes("Komponenten/MQTT-Client/Verhalten/Code/code.md"));
+  assert.ok(paths.includes("Komponenten/MQTT-Client/Verhalten/Config/config.md"));
+  assert.ok(paths.includes("Komponenten/MQTT-Client/Daten/daten.md"));
+  assert.ok(paths.includes("Komponenten/MQTT-Client/Beziehungen/beziehungen.md"));
+  assert.ok(paths.includes("Komponenten/Server/Eigenschaften/eigenschaften.md"));
   assert.ok(paths.includes("Komponenten/Server/Schnittstellen/provided.md"));
   assert.ok(paths.includes("Komponenten/Server/Schnittstellen/required.md"));
-  assert.ok(paths.includes("Komponenten/Server/Behavior/Modell/README.md"));
-  assert.ok(paths.includes("Komponenten/Server/Behavior/Code/README.md"));
-  assert.ok(paths.includes("Komponenten/Server/Behavior/Config/README.md"));
-  assert.ok(paths.includes("Komponenten/Server/Daten/README.md"));
-  assert.ok(paths.includes("Komponenten/Server/Beziehungen/README.md"));
+  assert.ok(paths.includes("Komponenten/Server/Verhalten/Modell/modell.md"));
+  assert.ok(paths.includes("Komponenten/Server/Verhalten/Code/code.md"));
+  assert.ok(paths.includes("Komponenten/Server/Verhalten/Config/config.md"));
+  assert.ok(paths.includes("Komponenten/Server/Daten/daten.md"));
+  assert.ok(paths.includes("Komponenten/Server/Beziehungen/beziehungen.md"));
 
-  const systemBehavior = sources.find((source) => source.path === "Architektur/systemverhalten/README.md");
-  assert.match(systemBehavior.content, /komponentenuebergreifende Ablaeufe/);
-  assert.match(systemBehavior.content, /dekomponieren/);
+  const systemVerhalten = sources.find((source) => source.path === "Architektur/systemverhalten/systemverhalten.md");
+  assert.match(systemVerhalten.content, /komponentenuebergreifende Ablaeufe/);
+  assert.match(systemVerhalten.content, /dekomponieren/);
 });
 
 test("keeps required interfaces visible for minimal ESP32 projects", () => {
@@ -68,8 +68,8 @@ test("keeps required interfaces visible for minimal ESP32 projects", () => {
   });
 
   const required = sources.find((source) => source.path === "Komponenten/ESP32/Schnittstellen/required.md");
-  const properties = sources.find((source) => source.path === "Komponenten/ESP32/Eigenschaften/README.md");
-  const data = sources.find((source) => source.path === "Komponenten/ESP32/Daten/README.md");
+  const properties = sources.find((source) => source.path === "Komponenten/ESP32/Eigenschaften/eigenschaften.md");
+  const data = sources.find((source) => source.path === "Komponenten/ESP32/Daten/daten.md");
   assert.ok(required);
   assert.ok(properties);
   assert.ok(data);

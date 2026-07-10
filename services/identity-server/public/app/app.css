@@ -608,6 +608,10 @@ button.danger:hover {
 .development-page-actions button {
   flex: 0 1 220px;
 }
+.development-action-status {
+  margin: -4px 0 0;
+  text-align: right;
+}
 .development-project-form label,
 .development-project-field {
   color: var(--muted);

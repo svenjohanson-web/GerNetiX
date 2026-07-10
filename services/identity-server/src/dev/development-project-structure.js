@@ -15,35 +15,23 @@ function developmentProjectSources({ title, description = "", diagram = null, ar
       content: source,
     },
     {
-      path: "Architektur/statische-architektur/README.md",
-      role: "architecture_static_view",
-      content_type: "text/markdown",
-      content: staticArchitectureReadme({ title, description, components }),
-    },
-    {
-      path: "Architektur/informationsfluss/README.md",
+      path: "Architektur/informationsfluss/informationsfluss.md",
       role: "architecture_information_flow",
       content_type: "text/markdown",
       content: informationFlowReadme({ title, components }),
     },
     {
-      path: "Architektur/systemverhalten/README.md",
-      role: "architecture_system_behavior",
+      path: "Architektur/systemverhalten/systemverhalten.md",
+      role: "architecture_system_verhalten",
       content_type: "text/markdown",
-      content: systemBehaviorReadme({ title, components }),
+      content: systemVerhaltenReadme({ title, components }),
     },
   ];
 
   for (const component of components) {
     const folder = `Komponenten/${component.folder}`;
     sources.push({
-      path: `${folder}/README.md`,
-      role: "architecture_component",
-      content_type: "text/markdown",
-      content: componentReadme(component),
-    });
-    sources.push({
-      path: `${folder}/Eigenschaften/README.md`,
+      path: `${folder}/Eigenschaften/eigenschaften.md`,
       role: "component_properties",
       content_type: "text/markdown",
       content: componentPropertiesReadme(component),
@@ -61,31 +49,31 @@ function developmentProjectSources({ title, description = "", diagram = null, ar
       content: interfaceReadme(component, "required"),
     });
     sources.push({
-      path: `${folder}/Behavior/Modell/README.md`,
-      role: "component_behavior_model",
+      path: `${folder}/Verhalten/Modell/modell.md`,
+      role: "component_verhalten_modell",
       content_type: "text/markdown",
-      content: behaviorReadme(component, "Modell"),
+      content: verhaltenReadme(component, "Modell"),
     });
     sources.push({
-      path: `${folder}/Behavior/Code/README.md`,
-      role: "component_behavior_code",
+      path: `${folder}/Verhalten/Code/code.md`,
+      role: "component_verhalten_code",
       content_type: "text/markdown",
-      content: behaviorReadme(component, "Code"),
+      content: verhaltenReadme(component, "Code"),
     });
     sources.push({
-      path: `${folder}/Behavior/Config/README.md`,
-      role: "component_behavior_config",
+      path: `${folder}/Verhalten/Config/config.md`,
+      role: "component_verhalten_config",
       content_type: "text/markdown",
-      content: behaviorReadme(component, "Config"),
+      content: verhaltenReadme(component, "Config"),
     });
     sources.push({
-      path: `${folder}/Daten/README.md`,
+      path: `${folder}/Daten/daten.md`,
       role: "component_data",
       content_type: "text/markdown",
       content: componentDataReadme(component),
     });
     sources.push({
-      path: `${folder}/Beziehungen/README.md`,
+      path: `${folder}/Beziehungen/beziehungen.md`,
       role: "component_relations",
       content_type: "text/markdown",
       content: componentRelationsReadme(component),
@@ -207,21 +195,6 @@ function detectProjectComponents({ title = "", description = "", diagram = null,
   return components;
 }
 
-function staticArchitectureReadme({ title, description, components }) {
-  return [
-    `# Statische Architektur: ${title || "Entwicklungsprojekt"}`,
-    "",
-    description || "Aus dem Architektur-Dialog abgeleitete statische Projektsicht.",
-    "",
-    "## Komponenten",
-    ...components.map((component) => `- ${component.name}: ${component.summary}`),
-    "",
-    "Diese Sicht beschreibt Struktur. Informationsfluesse werden getrennt unter `Architektur/informationsfluss/` gepflegt.",
-    "Komponentenuebergreifendes Verhalten wird getrennt unter `Architektur/systemverhalten/` gepflegt.",
-    "",
-  ].join("\n");
-}
-
 function informationFlowReadme({ title, components }) {
   return [
     `# Informationsfluss: ${title || "Entwicklungsprojekt"}`,
@@ -236,7 +209,7 @@ function informationFlowReadme({ title, components }) {
   ].join("\n");
 }
 
-function systemBehaviorReadme({ title, components }) {
+function systemVerhaltenReadme({ title, components }) {
   return [
     `# Systemverhalten: ${title || "Entwicklungsprojekt"}`,
     "",
@@ -245,27 +218,7 @@ function systemBehaviorReadme({ title, components }) {
     "Die KI kann bestaetigtes Systemverhalten spaeter auf Komponentenverhalten, required/provided Schnittstellen, Datenfluesse, Code und Konfiguration dekomponieren.",
     "",
     "## Dekompositionsziele",
-    ...components.map((component) => `- ${component.name}: relevante Anteile des Systemverhaltens unter \`Komponenten/${component.folder}/Behavior/\` ausarbeiten.`),
-    "",
-  ].join("\n");
-}
-
-function componentReadme(component) {
-  return [
-    `# ${component.name}`,
-    "",
-    component.summary,
-    "",
-    "## Struktur",
-    "",
-    "- `Eigenschaften/`: Zweck, Kontext und wichtige Eigenschaften dieser Komponente.",
-    "- `Schnittstellen/provided.md`: Was diese Komponente anbietet.",
-    "- `Schnittstellen/required.md`: Was diese Komponente von anderen Komponenten benoetigt.",
-    "- `Behavior/Modell/`: Fachliches oder technisches Verhaltensmodell.",
-    "- `Behavior/Code/`: Code- oder Pseudocode-Ableitungen zum Verhalten.",
-    "- `Behavior/Config/`: Konfiguration, Parameter und Runtime-Einstellungen zum Verhalten.",
-    "- `Daten/`: Daten, Zustaende, Ereignisse oder Konfigurationen, die diese Komponente besitzt oder verarbeitet.",
-    "- `Beziehungen/`: Fachliche und technische Beziehungen zu anderen Komponenten.",
+    ...components.map((component) => `- ${component.name}: relevante Anteile des Systemverhaltens unter \`Komponenten/${component.folder}/Verhalten/\` ausarbeiten.`),
     "",
   ].join("\n");
 }
@@ -293,14 +246,14 @@ function interfaceReadme(component, kind) {
   ].join("\n");
 }
 
-function behaviorReadme(component, kind) {
+function verhaltenReadme(component, kind) {
   const descriptions = {
     Modell: "Modelle, Zustandsautomaten, Regeln, Ablaufbeschreibungen oder Pseudocode, die das Verhalten der Komponente beschreiben.",
     Code: "Code-nahe Ableitungen, Implementierungsskizzen oder konkrete Quellcodedateien fuer das Verhalten der Komponente.",
     Config: "Konfiguration, Parameter, Topics, Pins, Endpunkte oder Runtime-Einstellungen fuer das Verhalten der Komponente.",
   };
   return [
-    `# Behavior ${kind}: ${component.name}`,
+    `# Verhalten ${kind}: ${component.name}`,
     "",
     descriptions[kind] || "Verhaltensartefakte dieser Komponente.",
     "",
