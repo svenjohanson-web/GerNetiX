@@ -12,7 +12,8 @@
     "trace": "node import-yaml-graph.js trace",
     "isolated": "node import-yaml-graph.js isolated",
     "clusters": "node import-yaml-graph.js clusters",
-    "errors": "node import-yaml-graph.js errors"
+    "errors": "node import-yaml-graph.js errors",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=24"

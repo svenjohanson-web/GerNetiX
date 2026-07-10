@@ -75,7 +75,13 @@ test("ai usage summary requires monitoring capability and cost control action is
   assert.equal(summary.summary.local.total_events, 1);
   assert.equal(summary.summary.external.total_events, 2);
   assert.equal(summary.summary.external.estimated_provider_cost, 0.05);
+  assert.equal(summary.summary.cost_by_day.length, 1);
+  assert.equal(summary.summary.cost_by_day[0].estimated_provider_cost, 0.05);
+  assert.equal(summary.summary.rejection_breakdown[0].reason, "insufficient_credits");
+  assert.equal(summary.summary.recent_rejections[0].rejection_reason, "insufficient_credits");
+  assert.ok(summary.summary.cost_control.rules.some((rule) => rule.rule_id === "insufficient_credits"));
   assert.ok(summary.summary.provider_breakdown.some((item) => item.provider_type === "local" && item.provider_name === "Lokales Ollama"));
+  assert.ok(summary.summary.provider_breakdown.some((item) => item.provider_name === "OpenAI-kompatible API" && item.provider_status_url === "https://status.openai.com/"));
 
   const action = await service.recordAiCostControlAction({
     action_type: "temporary_ai_block",
@@ -84,6 +90,97 @@ test("ai usage summary requires monitoring capability and cost control action is
   }, adminContext({ purpose: "ai_cost_control" }));
   assert.equal(action.action_type, "temporary_ai_block");
   assert.ok(service.listAuditEvents().some((event) => event.accessed_data_model_id === "data_model.ai_admin_action_audit_event"));
+});
+
+test("remote ai usage summary exposes cost-control policy and rejection causes", async () => {
+  const service = createAdminServiceWithHttpJson({
+    "/api/ai-usage/admin/dashboard": {
+      summary: {
+        total_events: 2,
+        successful: 1,
+        rejected: 1,
+        rejection_breakdown: [{ reason: "insufficient_credits", count: 1, tokens: 1768, models: ["gpt-5.5"], accounts: ["acct-demo"] }],
+        recent_rejections: [{ account_id: "acct-demo", model: "gpt-5.5", rejection_reason: "insufficient_credits", protection_action: "block_call" }],
+      },
+      policy: {
+        global_kill_switch: false,
+        daily_credit_limit: 80,
+        monthly_credit_limit: 500,
+        max_prompt_tokens: 8000,
+        max_response_tokens: 4000,
+        allowed_models: ["gpt-5.5", "llama3.2:3b"],
+        premium_models: ["gpt-5.5"],
+        model_pricing: {
+          "gpt-5.5": { credits_per_1k_input_tokens: 5, credits_per_1k_output_tokens: 18, provider_cost_per_1k_tokens: 0.005 },
+        },
+        source_ratings: {
+          openai_gpt: { source_id: "openai_gpt", title: "GPT / OpenAI", provider_type: "external", billing_scope: "monthly", token_limit: 100000 },
+        },
+      },
+      by_account: [{ account_id: "acct-demo", available_credits: 114.451 }],
+      suspicious_usage: [{ finding_type: "repeated_rejections", severity: "warning" }],
+    },
+  });
+
+  const result = await service.aiUsageSummary(adminContext({ purpose: "ai_usage_monitoring" }));
+
+  assert.equal(result.summary.cost_control.daily_credit_limit, 80);
+  assert.equal(result.summary.cost_control.model_pricing[0].model, "gpt-5.5");
+  assert.match(result.summary.cost_control.rules.find((rule) => rule.rule_id === "source_token_limit_exceeded").value, /GPT \/ OpenAI: 100000 Tokens/);
+  assert.equal(result.summary.rejection_breakdown[0].reason, "insufficient_credits");
+  assert.equal(result.summary.accounts[0].account_id, "acct-demo");
+  assert.equal(result.summary.suspicious_usage[0].finding_type, "repeated_rejections");
+});
+
+test("account sheet exposes source based ai rating per account", async () => {
+  const service = createDefaultAdminTool();
+  const result = await service.accountSheet(adminContext({ purpose: "account_review" }));
+  const account = result.accounts.find((item) => item.account_id === "acct_1");
+  assert.ok(account);
+  const gpt = account.ai_rating.sources.find((source) => source.source_id === "openai_gpt");
+  const local = account.ai_rating.sources.find((source) => source.source_id === "local_llm");
+
+  assert.equal(gpt.token_limit, 100000);
+  assert.equal(gpt.month_tokens, 1300);
+  assert.equal(local.unlimited, true);
+  assert.equal(local.month_tokens, 800);
+});
+
+test("remote account sheet uses ai usage dashboard account ratings", async () => {
+  const service = createAdminServiceWithHttpJson({
+    "/api/ai-usage/admin/dashboard": {
+      by_account: [{
+        account_id: "acct-remote",
+        available_credits: 42,
+        ai_rating: {
+          used_percent: 12.5,
+          sources: [{
+            source_id: "openai_gpt",
+            title: "GPT / OpenAI",
+            provider_type: "external",
+            token_limit: 100000,
+            month_tokens: 12500,
+            used_percent: 12.5,
+          }],
+        },
+      }],
+    },
+  });
+
+  const result = await service.accountSheet(adminContext({ purpose: "account_review" }));
+
+  assert.equal(result.accounts[0].account_id, "acct-remote");
+  assert.equal(result.accounts[0].ai_rating.sources[0].used_percent, 12.5);
+});
+
+test("remote account sheet marks local snapshot fallback as degraded", async () => {
+  const service = createAdminServiceWithHttpJson({}, new Error("connect ECONNREFUSED"));
+
+  const result = await service.accountSheet(adminContext({ purpose: "account_review" }));
+
+  assert.equal(result.degraded, true);
+  assert.equal(result.source, "local_snapshot_after_remote_error");
+  assert.match(result.remote_error, /ECONNREFUSED/);
 });
 
 test("support without admin ai capability cannot read ai monitoring", async () => {

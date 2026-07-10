@@ -87,6 +87,7 @@ items:
       - GET /api/admin/customer-data-access/audit-events
       - GET /api/admin/learning-feedback
       - GET /api/admin/ai-usage/summary
+      - GET /api/admin/accounts
       - GET /api/admin/ai-context/summary
       - POST /api/admin/ai-cost-controls/actions
       - GET /api/admin/llm-config
@@ -97,6 +98,7 @@ items:
       - statistics_overview
       - ai_usage_local_llm
       - ai_usage_public_llm_costs
+      - ai_source_rating_by_account
       - ai_context_access_summary
       - llm_routing_config
     rules:
@@ -201,6 +203,9 @@ items:
       - POST /api/platform/development-projects
       - POST /api/platform/development-projects/{project_id}/architecture
       - POST /api/platform/development-assistant/chat
+      - GET /api/platform/projects/{project_id}/sources
+      - GET /api/platform/projects/{project_id}/sources/{relative_path}
+      - PUT /api/platform/projects/{project_id}/sources/{relative_path}
     responseSections:
       - message
       - usage
@@ -210,6 +215,8 @@ items:
       - Der Architektur-Discovery-Chat akzeptiert nur accountgebundene Entwicklungsprojekte.
       - Entwicklungsprojekte werden ueber den Project Server mit `user_id` persistiert.
       - Gespeicherte Architekturdiagramme werden als `docs/architecture.puml` und ProjectViewManifest-PlantUML-View abgelegt.
+      - Beim Speichern der Architektur werden zusaetzlich Project-Server-Quellen fuer `Architektur/statische-architektur`, `Architektur/informationsfluss` und Komponentenordner mit `Schnittstellen/provided.md`, `Schnittstellen/required.md`, `Behavior/Modell`, `Behavior/Code` sowie `Behavior/Config` erzeugt.
+      - Nach Nutzerbestaetigung kann die Entwicklungsplattform die Architektur speichern und direkt in die IDE wechseln; die IDE liest die Projektquellenliste aus dem Project Server und zeigt daraus den Projektbrowser.
       - `architectureDiagram` enthaelt eine KI-abgeleitete PlantUML-Skizze und ist keine bestaetigte Architekturentscheidung.
 
   - id: api_artifact.account_self_transparency
@@ -260,7 +267,10 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: Business
-    summary: Fachliches API-Artefakt fuer Credit-Guthaben, Verbrauch, verbleibende Credits und Verbrauchshistorie.
+    summary: Fachliches API-Artefakt fuer Credit-Guthaben, Verbrauch, verbleibende Credits, Quellenrating und Verbrauchshistorie.
+    endpoints:
+      - GET /api/ai-usage/accounts/{account_id}/credits
+      - GET /api/ai-usage/accounts/{account_id}/rating
     derivedFromRequirements:
       - requirement.ai_credit_balance
 
@@ -270,7 +280,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: Business
-    summary: Serverseitige Vorpruefung fuer kostenpflichtige KI-Aufrufe gegen Credits, Budgets, Modellfreigabe, Rate Limits und Kill-Switch.
+    summary: Serverseitige Vorpruefung fuer kostenpflichtige KI-Aufrufe gegen Credits, Budgets, Quellenratings, Modellfreigabe, Rate Limits und Kill-Switch.
     derivedFromRequirements:
       - requirement.ai_prepaid_credit_check
 
@@ -326,11 +336,14 @@ items:
     businessStatus: In Analysis
     implementationStatus: Implemented
     ownerDomain: Business
-    summary: API-Artefakt fuer Admin-Dashboard-Kennzahlen zu KI-Nutzung, Credits, Tokens, Kosten, Modellen, Fehlern, Ablehnungen, Budgetnaehe und Margen.
+    summary: API-Artefakt fuer Admin-Dashboard-Kennzahlen und Account-Blatt zu KI-Nutzung, Credits, Tokens, Quellenratings, Kosten, Modellen, Fehlern, Ablehnungen, Budgetnaehe und Margen.
     derivedFromRequirements:
       - requirement.ai_admin_usage_dashboard
       - requirement.ai_cost_margin_reporting
       - requirement.ai_suspicious_usage_detection
+    endpoints:
+      - GET /api/admin/ai-usage/summary
+      - GET /api/admin/accounts
 
   - id: api_artifact.ai_admin_cost_controls
     type: api_artifact

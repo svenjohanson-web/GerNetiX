@@ -5,7 +5,8 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 ## Vor jeder groesseren Aenderung
 
 - Lies zuerst `docs/codex-reminder-procedure.md`.
-- Behandle die Graphen und kanonischen YAML-Daten unter `data/` als fachliche Quelle.
+- Lies den SQLite-Graphen `tools/yaml-graph-sqlite/out/model-graph.sqlite` als zentrale fachliche Quelle, insbesondere die aktiven Architekturentscheidungen, bevor Persistenz, Identity, Accounts, KI-Kontext, Projektmodell, Services oder Admin Tool geaendert werden.
+- Behandle YAML-Dateien unter `data/` und `model/` nur als Legacy-Import, Bootstrap oder Export. Neue fachliche Regeln, Entscheidungen und Requirements werden direkt im SQLite-Graphen gepflegt, nicht parallel in YAML.
 - Pruefe bei Architektur- oder Prozess-Aenderungen `docs/system-process-application-uml.md` und `docs/system-process-application-uml.svg`.
 - Pruefe bei neuen Anforderungen, Artefakten, Entscheidungen oder Runtime-Komponenten, ob Context-Manager-Vorschlaege oder Context-Eintraege aktualisiert werden muessen.
 
@@ -20,11 +21,11 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 
 ## Performance-Regel fuer Codex
 
-- Vor Aenderungen zuerst bestimmen, ob Code, UI, Graph/YAML, Doku oder Runtime betroffen ist.
+- Vor Aenderungen zuerst bestimmen, ob Code, UI, SQLite-Graph, Doku oder Runtime betroffen ist.
 - Services nur gezielt neu starten, wenn geaenderter Runtime-Code live verifiziert werden muss.
 - Keine vorsorglichen Neustarts.
-- Graph-Import nur ausfuehren, wenn `data/` oder graphrelevante Architektur-/Requirement-Dateien geaendert wurden.
-- Bei Querschnittsaenderungen erst alle Code-/UI-Tests ausfuehren, danach genau einmal Graph-Import.
+- Graph-Import nur fuer Legacy-/Bootstrap-YAML oder nach bewusstem YAML-Export nutzen. Neue Graph-Regeln per `tools/yaml-graph-sqlite/import-yaml-graph.js upsert-artifact` und `upsert-relationship` schreiben.
+- Bei Querschnittsaenderungen erst alle Code-/UI-Tests ausfuehren, danach genau einmal Graph-Validierung oder Legacy-Import, falls noetig.
 - Live-LLM-Aufrufe vermeiden, wenn ein Unit-Test oder API-Contract-Test denselben Nachweis liefert.
 - Project Server ist die SQLite-Wahrheit fuer accountgebundene Projekte.
 - AI Context Server ist die SQLite-Wahrheit fuer KI-Kontextquellen, Grants, Policy und Audit.

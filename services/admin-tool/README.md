@@ -16,6 +16,8 @@ Das Admin Tool bietet erste berechtigte Sichten auf Device-Status, Support-Entit
 - KI-Usage-Kennzahlen fuer Kostenkontrolle zusammenfassen
 - lokale und oeffentliche LLM-Nutzung getrennt anzeigen
 - bei oeffentlichen LLMs geschaetzte Providerkosten anzeigen
+- AI-Usage-Cost-Control-Regeln anzeigen: Kill-Switch, Account-Sperre, Modellfreigaben, Premium-Capability, Prompt-/Antwortlimits, Credit-Budget, Quellenlimits sowie Tages- und Monatslimits
+- blockierte KI-Aufrufe mit Ablehnungsgrund, Schutzaktion, Account, Feature, Modell und Tokenumfang sichtbar machen
 - administrative KI-Kostensteuerung auditierbar vorbereiten
 - LLM-Provider fuer Kunden-KI-Chat und Entwicklungsplattform konfigurieren, inklusive lokalem Ollama, OpenAI-kompatiblen APIs und Claude/Anthropic
 - LLM-Task-Routen konfigurieren, damit Chat/Architektur und Artefakt-/Codegenerierung unterschiedliche Provider nutzen koennen
@@ -72,6 +74,12 @@ LLM-Datenfreigaben:
 - Feste Prompt-Grundlagen fuer KI-Chat und Architektur-Discovery werden aus der AI-Context-SQLite gelesen und mit Quelle, Route, erlaubten und blockierten Kontextquellen angezeigt.
 - Ist der AI Context Server nicht erreichbar, bleibt die Sicht verfuegbar und markiert den Kontext-Service als offline.
 
+KI Usage:
+
+- Die Admin-Unterseite `KI Usage` liest Summary, Policy, Account-Rating, Quellenlimits, Modellpreise, Suspicious-Usage-Hinweise und Ablehnungsgruende vom AI Usage Server.
+- Aktive Cost-Control-Regeln werden als Pruefkette angezeigt, inklusive aktueller Schwellenwerte und der Anzahl ausgeloester Blockaden je Regel.
+- Blockierte Aufrufe bleiben als Audit-Sicht sichtbar, damit Ursachen wie `insufficient_credits`, `model_not_allowed` oder `source_token_limit_exceeded` nicht nur im Chat erscheinen.
+
 ## Sicherheitsregeln
 
 - Secret-Material, Credential-Secrets und HMAC-Schluessel werden nie angezeigt.
@@ -86,5 +94,5 @@ LLM-Datenfreigaben:
 - keine produktive Authentifizierung
 - keine produktive Admin-Authentifizierung
 - keine Datenbankmigration
-- keine direkte Integration mit Device Management, Learning oder AI Usage Services
+- keine direkte produktive Schreibverwaltung von Device Management, Learning oder AI Usage Services
 - keine produktive Rollen-/Grant-Verwaltung

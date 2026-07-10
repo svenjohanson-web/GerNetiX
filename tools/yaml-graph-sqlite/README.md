@@ -20,9 +20,45 @@ Standardausgabe:
 tools/yaml-graph-sqlite/out/model-graph.sqlite
 ```
 
-Beim Import wird die SQLite-Datei neu aufgebaut.
-Das ist aktuell der Migrationspfad von YAML nach SQLite.
-Spaetere Pflegewerkzeuge sollen direkt auf dem SQLite-Graphmodell schreiben und YAML nur noch bei Bedarf exportieren.
+Beim Import werden die generierten Graph-Tabellen aus Legacy-YAML neu aufgebaut. Die Authoring-Tabellen `graph_authored_artifacts` und `graph_authored_relationships` bleiben erhalten und werden wieder in den kanonischen Graphen gemischt.
+Das ist der Bootstrap- und Vergleichspfad von YAML nach SQLite, nicht der normale Pflegeweg.
+
+## Graph-first Pflege
+
+Neue fachliche Regeln, Entscheidungen und Requirements werden direkt in den SQLite-Graphen geschrieben:
+
+```powershell
+node tools\yaml-graph-sqlite\import-yaml-graph.js upsert-artifact `
+  --id architecture.example_decision `
+  --type architecture_decision `
+  --title "Beispielentscheidung" `
+  --status approved `
+  --owner-domain CrossDomain `
+  --summary "Kurzbeschreibung" `
+  --property rules='["Regel 1","Regel 2"]'
+```
+
+Beziehungen werden ebenfalls direkt geschrieben:
+
+```powershell
+node tools\yaml-graph-sqlite\import-yaml-graph.js upsert-relationship `
+  --from architecture.example_decision `
+  --relation references `
+  --to requirement.example_requirement `
+  --source-field derivedFromRequirements
+```
+
+Falsch gesetzte authored Beziehungen koennen wieder entfernt werden:
+
+```powershell
+node tools\yaml-graph-sqlite\import-yaml-graph.js delete-relationship `
+  --from architecture.example_decision `
+  --relation references `
+  --to requirement.example_requirement `
+  --source-field derivedFromRequirements
+```
+
+Danach kann ein Legacy-Import oder eine Graph-Validierung laufen; authored SQLite-Eintraege bleiben erhalten.
 
 ## Schema
 
@@ -35,6 +71,8 @@ Das Tool erzeugt mindestens diese Tabellen:
 - `relationships`
 - `validation_errors`
 - `artifact_occurrences`
+- `graph_authored_artifacts`
+- `graph_authored_relationships`
 
 ## Abfragen
 

@@ -79,6 +79,31 @@ test("prompt foundations are centrally available from ai context", () => {
   assert.equal(prompts.length, 2);
   assert.ok(prompts.some((prompt) => prompt.route_task === "general_chat"));
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Minimalumfang"));
+  assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("ESP32-only"));
+  assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("PlantUML-Strukturdiagramme"));
+  assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("maximalen Architektur"));
+  assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("max oder leer"));
+  assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Systemverhalten"));
+  assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Komponenten besitzen Eigenschaften"));
+});
+
+test("prompt foundations can be updated centrally without identity code changes", () => {
+  const service = createService();
+
+  const prompt = service.upsertPromptFoundation({
+    foundation_id: "ai_prompt.architecture_discovery.system",
+    title: "Architektur-Discovery Systemprompt",
+    route_task: "architecture_discovery",
+    source_scope: "prompt_foundations/architecture_discovery/system",
+    content_kind: "system_prompt",
+    allowed_sources: ["current_chat"],
+    blocked_sources: ["project_files"],
+    content: "Nur aus AI Context gepflegte Prompt-Regel.",
+    status: "active",
+  });
+
+  assert.equal(prompt.content, "Nur aus AI Context gepflegte Prompt-Regel.");
+  assert.equal(service.listPromptFoundations({ route_task: "architecture_discovery" })[0].content, "Nur aus AI Context gepflegte Prompt-Regel.");
 });
 
 test("customer data stays blocked for external provider by global policy", () => {
@@ -142,6 +167,40 @@ test("sqlite repository persists grants policy and audit events in own database"
     assert.equal(tableCount(db, "ai_context_policy"), 1);
     assert.equal(tableCount(db, "ai_context_sources"), 3);
     assert.equal(tableCount(db, "ai_context_prompt_foundations"), 2);
+  } finally {
+    db.close();
+  }
+});
+
+test("sqlite repository persists prompt foundation updates", () => {
+  const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-ai-context-")), "ai-context.sqlite");
+  const service = new AiContextService({
+    repository: SqliteBackedAiContextRepository.create(dbPath),
+    now: () => fixedNow,
+  });
+
+  service.upsertPromptFoundation({
+    foundation_id: "ai_prompt.architecture_discovery.system",
+    title: "Architektur-Discovery Systemprompt",
+    route_task: "architecture_discovery",
+    source_scope: "prompt_foundations/architecture_discovery/system",
+    content_kind: "system_prompt",
+    allowed_sources: ["current_chat"],
+    blocked_sources: ["project_files"],
+    content: "Persistierte AI-Context-Prompt-Regel.",
+    status: "active",
+  });
+
+  const reloaded = new AiContextService({
+    repository: SqliteBackedAiContextRepository.create(dbPath),
+    now: () => fixedNow,
+  });
+  assert.equal(reloaded.listPromptFoundations({ route_task: "architecture_discovery" })[0].content, "Persistierte AI-Context-Prompt-Regel.");
+
+  const db = new DatabaseSync(dbPath);
+  try {
+    const row = db.prepare("SELECT content FROM ai_context_prompt_foundations WHERE foundation_id = ?").get("ai_prompt.architecture_discovery.system");
+    assert.equal(row.content, "Persistierte AI-Context-Prompt-Regel.");
   } finally {
     db.close();
   }

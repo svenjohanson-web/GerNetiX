@@ -3,6 +3,7 @@ const state = {
   localModels: [],
   modelError: "",
   overview: null,
+  accounts: [],
   aiUsage: null,
   aiContext: null,
   currentView: "statistics",
@@ -51,6 +52,7 @@ bootstrap();
 
 async function bootstrap() {
   await loadOverview();
+  await loadAccounts();
   await loadAiUsage();
   await loadAiContext();
   await loadConfig();
@@ -65,6 +67,11 @@ async function loadOverview() {
 async function loadAiUsage() {
   const result = await getJson("/api/admin/ai-usage/summary");
   state.aiUsage = result.summary || null;
+}
+
+async function loadAccounts() {
+  const result = await getJson("/api/admin/accounts");
+  state.accounts = result.accounts || [];
 }
 
 async function loadAiContext() {
@@ -87,6 +94,7 @@ async function loadLocalModels() {
 function render() {
   renderNavigation();
   renderStatistics();
+  renderAccounts();
   renderAiUsage();
   renderAiContext();
   renderForm();
@@ -111,10 +119,25 @@ function renderNavigation() {
 function viewId(view) {
   return {
     statistics: "statisticsView",
+    accounts: "accountsView",
     "ai-usage": "aiUsageView",
     "ai-context": "aiContextView",
     "llm-config": "llmConfigView",
   }[view] || "statisticsView";
+}
+
+function renderAccounts() {
+  const accounts = state.accounts || [];
+  const limited = accounts.flatMap((account) => account.ai_rating?.sources || []).filter((source) => !source.unlimited);
+  const maxUsage = limited.length ? Math.max(...limited.map((source) => Number(source.used_percent || 0))) : 0;
+  const blocked = accounts.filter((account) => account.blocked).length;
+  document.querySelector("#accountMetrics").innerHTML = [
+    metricCard("Accounts", formatNumber(accounts.length), `${formatNumber(blocked)} blockiert`),
+    metricCard("Max. KI Nutzung", `${formatMetric(maxUsage)} %`, "hoechstes Quellenlimit"),
+    metricCard("GPT Limit", "100.000", "Tokens pro Monat"),
+    metricCard("Lokale LLM", "unbegrenzt", "keine externen Providerkosten"),
+  ].join("");
+  document.querySelector("#accountRows").innerHTML = renderAccountRows(accounts);
 }
 
 function renderStatistics() {
@@ -146,14 +169,66 @@ function renderAiUsage() {
   const summary = state.aiUsage || {};
   const local = summary.local || {};
   const external = summary.external || {};
+  const policy = summary.cost_control || {};
   document.querySelector("#aiUsageMetrics").innerHTML = [
     metricCard("LLM-Anfragen", formatNumber(summary.total_events), `${formatNumber(summary.successful)} erfolgreich`),
     metricCard("Lokale LLM", formatNumber(local.total_events), `${formatNumber(local.tokens)} Tokens`),
     metricCard("Oeffentliche LLM", formatNumber(external.total_events), `${formatCurrency(external.estimated_provider_cost)} Kosten`),
     metricCard("Abgelehnt", formatNumber(summary.rejected), "Credits, Limits oder Policy"),
   ].join("");
+  renderAiCostByDayChart(summary.cost_by_day || []);
+  renderAiCostControlPolicy(policy);
+  document.querySelector("#aiCostControlRuleRows").innerHTML = renderAiCostControlRuleRows(policy.rules || [], summary.rejection_breakdown || []);
+  document.querySelector("#aiRejectionReasonRows").innerHTML = renderAiRejectionReasonRows(summary.rejection_breakdown || []);
+  document.querySelector("#aiRecentRejectionRows").innerHTML = renderAiRecentRejectionRows(summary.recent_rejections || []);
+  document.querySelector("#aiSourceLimitRows").innerHTML = renderAiSourceLimitRows(policy.source_ratings || []);
+  document.querySelector("#aiModelPolicyRows").innerHTML = renderAiModelPolicyRows(policy.model_pricing || []);
   document.querySelector("#aiProviderRows").innerHTML = renderProviderRows(summary.provider_breakdown || []);
   document.querySelector("#aiModelRows").innerHTML = renderModelRows(summary.model_breakdown || []);
+}
+
+function renderAiCostControlPolicy(policy) {
+  document.querySelector("#aiCostControlPolicy").innerHTML = [
+    ["Kill-Switch", policy.global_kill_switch ? "an" : "aus"],
+    ["Tageslimit", formatLimit(policy.daily_credit_limit, "Credits")],
+    ["Monatslimit", formatLimit(policy.monthly_credit_limit, "Credits")],
+    ["Prompt-Limit", formatLimit(policy.max_prompt_tokens, "Tokens")],
+    ["Antwort-Limit", formatLimit(policy.max_response_tokens, "Tokens")],
+    ["Warnschwelle", formatLimit(policy.budget_warning_threshold_percent, "%")],
+    ["Erlaubte Modelle", formatNumber((policy.allowed_models || []).length)],
+    ["Premium-Modelle", formatNumber((policy.premium_models || []).length)],
+  ].map(meta).join("");
+}
+
+function renderAiCostByDayChart(items) {
+  const target = document.querySelector("#aiCostByDayChart");
+  if (!target) return;
+  const days = normalizeCostDays(items).slice(-14);
+  const maxCost = Math.max(...days.map((item) => Number(item.estimated_provider_cost || 0)), 0);
+  const totalCost = days.reduce((sum, item) => sum + Number(item.estimated_provider_cost || 0), 0);
+  if (!days.length || maxCost <= 0) {
+    target.innerHTML = `<div class="chart-empty">Keine externen KI-Kosten im Zeitraum.</div>`;
+    return;
+  }
+  target.innerHTML = `
+    <div class="bar-chart-plot">
+      ${days.map((item) => {
+        const cost = Number(item.estimated_provider_cost || 0);
+        const height = Math.max(4, Math.round((cost / maxCost) * 100));
+        return `
+          <div class="bar-chart-item" title="${escapeHtml(`${formatChartDay(item.day)}: ${formatCurrency(cost)} bei ${formatNumber(item.total_events)} Aufrufen`)}">
+            <span class="bar-value">${escapeHtml(formatCurrency(cost))}</span>
+            <i style="height:${height}%"></i>
+            <span class="bar-label">${escapeHtml(formatShortDay(item.day))}</span>
+          </div>
+        `;
+      }).join("")}
+    </div>
+    <div class="chart-summary">
+      <strong>${escapeHtml(formatCurrency(totalCost))}</strong>
+      <span>${escapeHtml(`${formatNumber(days.reduce((sum, item) => sum + Number(item.total_events || 0), 0))} Aufrufe im angezeigten Zeitraum`)}</span>
+    </div>
+  `;
 }
 
 function renderAiContext() {
@@ -365,7 +440,7 @@ function renderProviderRows(items) {
   if (!items.length) return `<tr><td colspan="7" class="empty-cell">Keine KI-Nutzung vorhanden.</td></tr>`;
   return items.map((item) => `
     <tr>
-      <td><strong>${escapeHtml(item.provider_name || "-")}</strong><span>${providerLabel(item.provider_type)}</span></td>
+      <td><strong>${escapeHtml(item.provider_name || "-")}</strong><span>${providerLabel(item.provider_type)}</span>${providerStatusLink(item)}</td>
       <td>${formatNumber(item.total_events)}</td>
       <td>${formatNumber(item.tokens)}</td>
       <td>${formatNumber(item.credits)}</td>
@@ -374,6 +449,13 @@ function renderProviderRows(items) {
       <td>${item.provider_type === "local" ? formatMetric(item.average_eval_tokens_per_second) : "-"}</td>
     </tr>
   `).join("");
+}
+
+function providerStatusLink(item) {
+  const url = String(item.provider_status_url || "").trim();
+  if (!url) return "";
+  const label = item.provider_type === "local" ? "Lokalen Endpoint oeffnen" : "Provider-Status oeffnen";
+  return `<a class="provider-status-link" href="${escapeHtml(url)}" target="_blank" rel="noreferrer">${escapeHtml(label)}</a>`;
 }
 
 function renderModelRows(items) {
@@ -387,6 +469,104 @@ function renderModelRows(items) {
       <td>${item.provider_type === "external" ? formatCurrency(item.estimated_provider_cost) : "-"}</td>
     </tr>
   `).join("");
+}
+
+function renderAiCostControlRuleRows(rules, rejections) {
+  if (!rules.length) return `<tr><td colspan="4" class="empty-cell">Keine Cost-Control-Policy verfuegbar.</td></tr>`;
+  const rejectionByReason = new Map((rejections || []).map((item) => [item.reason, item]));
+  return rules.map((rule) => {
+    const rejection = rejectionByReason.get(rule.rule_id);
+    return `
+      <tr>
+        <td><strong>${escapeHtml(rule.title || costControlReasonLabel(rule.rule_id))}</strong><span>${escapeHtml(rule.rule_id || "-")}</span></td>
+        <td>${escapeHtml(rule.status || "-")}</td>
+        <td>${escapeHtml(rule.value || "-")}</td>
+        <td><strong>${formatNumber(rejection?.count || 0)}</strong><span>${escapeHtml(rejection ? `zuletzt ${formatDateTime(rejection.latest_at)}` : "nicht ausgeloest")}</span></td>
+      </tr>
+    `;
+  }).join("");
+}
+
+function renderAiRejectionReasonRows(items) {
+  if (!items.length) return `<tr><td colspan="4" class="empty-cell">Keine blockierten KI-Aufrufe vorhanden.</td></tr>`;
+  return items.map((item) => `
+    <tr>
+      <td><strong>${escapeHtml(costControlReasonLabel(item.reason))}</strong><span>${escapeHtml(item.reason || "-")}</span></td>
+      <td>${formatNumber(item.count)}</td>
+      <td>${formatNumber(item.tokens)}</td>
+      <td><strong>${escapeHtml((item.models || []).join(", ") || "-")}</strong><span>${escapeHtml((item.accounts || []).join(", ") || "-")}</span></td>
+    </tr>
+  `).join("");
+}
+
+function renderAiRecentRejectionRows(items) {
+  if (!items.length) return `<tr><td colspan="4" class="empty-cell">Keine letzten Blockaden vorhanden.</td></tr>`;
+  return items.map((item) => `
+    <tr>
+      <td><strong>${escapeHtml(formatDateTime(item.created_at))}</strong><span>${escapeHtml(item.model || "-")}</span></td>
+      <td>${escapeHtml(item.account_id || "-")}</td>
+      <td><strong>${escapeHtml(featureLabel(item.feature))}</strong><span>${formatNumber(Number(item.input_tokens || 0) + Number(item.output_tokens || 0))} Tokens</span></td>
+      <td><strong>${escapeHtml(costControlReasonLabel(item.rejection_reason))}</strong><span>${escapeHtml(item.protection_action || "-")}</span></td>
+    </tr>
+  `).join("");
+}
+
+function renderAiSourceLimitRows(items) {
+  if (!items.length) return `<tr><td colspan="4" class="empty-cell">Keine Quellenlimits verfuegbar.</td></tr>`;
+  return items.map((item) => `
+    <tr>
+      <td><strong>${escapeHtml(item.title || item.source_id || "-")}</strong><span>${escapeHtml(item.source_id || "-")}</span></td>
+      <td>${providerLabel(item.provider_type)}</td>
+      <td>${escapeHtml(billingScopeLabel(item.billing_scope))}</td>
+      <td>${item.token_limit === null || item.token_limit === undefined ? "unbegrenzt" : `${formatNumber(item.token_limit)} Tokens`}</td>
+    </tr>
+  `).join("");
+}
+
+function renderAiModelPolicyRows(items) {
+  if (!items.length) return `<tr><td colspan="4" class="empty-cell">Keine Modellpreise verfuegbar.</td></tr>`;
+  return items.map((item) => `
+    <tr>
+      <td><strong>${escapeHtml(item.model || "-")}</strong></td>
+      <td><strong>${item.allowed ? "erlaubt" : "blockiert"}</strong><span>${item.premium ? "Premium-Capability erforderlich" : "Standard"}</span></td>
+      <td><strong>${formatNumber(item.credits_per_1k_input_tokens)} in</strong><span>${formatNumber(item.credits_per_1k_output_tokens)} out je 1k Tokens</span></td>
+      <td>${formatCurrency(item.provider_cost_per_1k_tokens)} / 1k Tokens</td>
+    </tr>
+  `).join("");
+}
+
+function renderAccountRows(items) {
+  if (!items.length) return `<tr><td colspan="5" class="empty-cell">Keine Accountdaten vorhanden.</td></tr>`;
+  return items.map((account) => `
+    <tr>
+      <td><strong>${escapeHtml(account.account_id || "-")}</strong><span>Account Blatt</span></td>
+      <td><strong>${account.blocked ? "blockiert" : "aktiv"}</strong><span>${formatNumber(account.rejected_events)} abgelehnte Aufrufe</span></td>
+      <td><strong>${account.available_credits === null || account.available_credits === undefined ? "-" : formatNumber(account.available_credits)}</strong><span>${formatNumber(account.month_credits)} Credits im Monat</span></td>
+      <td>
+        <strong>${formatMetric(account.ai_rating?.used_percent || 0)} %</strong>
+        ${usageBar(account.ai_rating?.used_percent || 0)}
+      </td>
+      <td>${renderSourceRatingList(account.ai_rating?.sources || [])}</td>
+    </tr>
+  `).join("");
+}
+
+function renderSourceRatingList(sources) {
+  if (!sources.length) return `<span>-</span>`;
+  return `<div class="source-rating-list">${sources.map((source) => `
+    <div>
+      <strong>${escapeHtml(source.title || source.source_id)}</strong>
+      <span>${source.unlimited
+        ? `${formatNumber(source.month_tokens)} Tokens, unbegrenzt`
+        : `${formatNumber(source.month_tokens)} / ${formatNumber(source.token_limit)} Tokens (${formatMetric(source.used_percent)} %)`}</span>
+      ${source.unlimited ? "" : usageBar(source.used_percent)}
+    </div>
+  `).join("")}</div>`;
+}
+
+function usageBar(value) {
+  const percent = Math.max(0, Math.min(100, Number(value || 0)));
+  return `<span class="usage-bar" aria-label="${formatMetric(percent)} Prozent verbraucht"><i style="width:${percent}%"></i></span>`;
 }
 
 function renderAiContextSourceRows(items) {
@@ -512,6 +692,42 @@ function summaryItem(label, value) {
 
 function providerLabel(type) {
   return type === "external" ? "Oeffentlich" : "Lokal";
+}
+
+function billingScopeLabel(scope) {
+  return {
+    unlimited: "unbegrenzt",
+    monthly: "monatlich",
+    daily: "taeglich",
+    per_call: "pro Aufruf",
+  }[scope] || scope || "-";
+}
+
+function featureLabel(feature) {
+  return {
+    architecture_discovery: "Architektur-Discovery",
+    general_chat: "Chat",
+    artifact_generation: "Artefakte",
+    code_generation: "Codegenerierung",
+    ai_assistant: "KI-Assistent",
+  }[feature] || feature || "-";
+}
+
+function costControlReasonLabel(reason) {
+  return {
+    global_kill_switch: "Globaler Kill-Switch",
+    account_blocked: "Account gesperrt",
+    model_not_allowed: "Modell nicht freigegeben",
+    premium_model_not_allowed: "Premium-Modell ohne Capability",
+    prompt_too_large: "Prompt zu gross",
+    response_too_large: "Antwortlimit ueberschritten",
+    insufficient_credits: "Nicht genug Credits",
+    source_token_limit_exceeded: "Quellenlimit erreicht",
+    daily_limit_exceeded: "Tageslimit erreicht",
+    monthly_limit_exceeded: "Monatslimit erreicht",
+    insufficient_credits_at_completion: "Credits beim Abschluss nicht ausreichend",
+    unknown: "Unbekannter Grund",
+  }[reason] || reason || "-";
 }
 
 function sourceTypeLabel(type) {
@@ -696,6 +912,11 @@ function formatCurrency(value) {
   });
 }
 
+function formatLimit(value, unit) {
+  if (value === null || value === undefined || value === "") return "-";
+  return `${formatNumber(value)} ${unit}`;
+}
+
 function formatDuration(value) {
   if (!Number.isFinite(value)) return "-";
   return value < 1000 ? `${value} ms` : `${(value / 1000).toLocaleString("de-DE", { maximumFractionDigits: 1 })} s`;
@@ -706,6 +927,31 @@ function formatDateTime(value) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return date.toLocaleString("de-DE", { dateStyle: "short", timeStyle: "short" });
+}
+
+function normalizeCostDays(items) {
+  return (items || [])
+    .filter((item) => item && item.day)
+    .map((item) => ({
+      day: String(item.day),
+      total_events: Number(item.total_events || 0),
+      tokens: Number(item.tokens || 0),
+      credits: Number(item.credits || 0),
+      estimated_provider_cost: Number(item.estimated_provider_cost || 0),
+    }))
+    .sort((left, right) => left.day.localeCompare(right.day));
+}
+
+function formatShortDay(value) {
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("de-DE", { day: "2-digit", month: "2-digit" });
+}
+
+function formatChartDay(value) {
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString("de-DE", { dateStyle: "medium" });
 }
 
 function meta([label, value]) {

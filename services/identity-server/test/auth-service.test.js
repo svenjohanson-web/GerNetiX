@@ -62,6 +62,20 @@ test("local registration enforces unique username and email", async () => {
   );
 });
 
+test("local registration can use a stable account id for dev integrations", async () => {
+  const { auth } = createModule();
+  const registered = await auth.register_local(
+    "demo",
+    "demo@example.com",
+    "correct horse battery",
+    true,
+    "correct horse battery",
+    { user_id: "acct-demo" },
+  );
+
+  assert.equal(registered.account.user_id, "acct-demo");
+});
+
 test("social login creates exactly one internal account and reuses it on next login", async () => {
   const { auth } = createModule();
 

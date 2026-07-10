@@ -373,16 +373,27 @@ items:
     type: architecture_decision
     title: Interne user_id ist fuehrende Identitaet
     status: approved
+    priority: high
     ownerDomain: Account
-    summary: Klassische Registrierung und externe Provider erzeugen immer einen internen UserAccount mit eindeutiger `user_id`. Andere Module duerfen Provider-IDs oder Provider-E-Mails nicht als fachliche Identitaet verwenden.
+    summary: Account Identity ist fuehrend. Klassische Registrierung und externe Provider erzeugen immer einen internen UserAccount mit eindeutiger `identity.user_id`. Andere Dienste speichern nur Referenzen auf `identity.user_id`; sie duerfen Account-Metadaten hoechstens als Snapshot/Cache anzeigen, aber nicht als Wahrheit fuehren.
+    references:
+      - architecture.sql_only_persistence
     derivedFromRequirements:
       - requirement.identity_registration_login
     affectsArchitectureArtifacts:
       - architecture_artifact.identity_server
+      - architecture_artifact.project_server
+      - architecture_artifact.ai_context_server
+      - architecture_artifact.ai_usage_observability
+      - architecture_artifact.admin_tool
     rules:
       - Jede Registrierung erzeugt genau einen internen UserAccount.
       - LocalCredential und ExternalIdentity verweisen auf einen internen UserAccount.
-      - Folgemodule verwenden ausschliesslich die interne `user_id`.
+      - Folgemodule und andere Dienste verwenden ausschliesslich die interne `identity.user_id` als Account-Referenz.
+      - Projekt-, AI-Context-, AI-Usage-, Admin- und weitere Fachdienste duerfen keinen zweiten fachlichen Account-Stammdatensatz fuehren.
+      - Account-Metadaten ausserhalb des Identity Service sind nur Snapshot, Cache oder Anzeigehilfe und muessen bei Widerspruch gegen Identity verlieren.
+      - Account-Fallbacks auf Username, E-Mail, `demo`, `unknown`, Anzeigenamen oder andere Ersatzwerte sind verboten; fehlt `identity.user_id`, muss der Vorgang sichtbar fehlschlagen.
+      - Demo- und Testdaten muessen ebenfalls stabile Identity-IDs verwenden, zum Beispiel `acct-demo`, und duerfen keine Sonderlogik erzeugen, die im Betrieb Fehler verdeckt.
       - Provider-IDs bleiben technische Fremdschluessel innerhalb des Identity-Moduls.
       - E-Mail ist intern und wird nicht als oeffentliche Identitaet verwendet.
       - Oeffentliche Identitaet ist spaeter der Benutzername.

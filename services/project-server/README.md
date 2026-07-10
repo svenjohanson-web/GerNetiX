@@ -9,6 +9,7 @@ Der Projektserver ist die Quelle der Wahrheit fuer Benutzer, Nutzerprojekte, Ger
 - Nutzerprojekte dauerhaft speichern
 - Benutzer- und Geraetebezug fuer Projektarbeit verwalten
 - Quellcode und Projektkonfiguration versionierbar verwalten
+- KI-abgeleitete Architekturstrukturen als Projektquellen speichern
 - projektgebundene IDE-/Lernansichten als View Manifest speichern
 - Build-relevante Zielgeraete und Hardware-Konfigurationen referenzieren
 - BuildJobs erzeugen
@@ -55,6 +56,35 @@ Der Build-&-Deploy-Server darf niemals direkt auf dauerhafte Projektdaten zugrei
 Das Projekt kann ein `view_manifest` enthalten. Darin steht, welche IDE-/Lernansichten fuer dieses Projekt angezeigt werden, z. B. Quellcodeanalyse, Story-Slides, Artefakte, PlantUML-Quelle oder naechste Umsetzungsschritte. Die User IDE rendert diese Bloecke generisch; projektspezifisches Wissen gehoert in das Projektmanifest, nicht in den Viewer.
 
 Das BuildPackage enthaelt das Manifest als `project-view-manifest.json`, damit nachgelagerte Prozesse denselben Projektsnapshot sehen.
+
+## KI-abgeleitete Architekturstruktur
+
+Eigene Entwicklungsprojekte koennen aus dem Architektur-Dialog eine Quellenstruktur erhalten:
+
+```text
+Architektur/
+  statische-architektur/
+  informationsfluss/
+  systemverhalten/
+Komponenten/
+  ESP32/
+    Eigenschaften/
+    Schnittstellen/
+      provided.md
+      required.md
+    Behavior/
+      Modell/
+      Code/
+      Config/
+    Daten/
+    Beziehungen/
+```
+
+Jede erkannte Komponente bekommt einen eigenen Ordner. Komponenten tragen ihre Eigenschaften, provided/required Schnittstellen, Behavior, Daten und Beziehungen selbst. Provided und required Schnittstellen werden bewusst getrennt gespeichert, weil benoetigte Schnittstellen genauso wichtig sind wie angebotene Schnittstellen. Behavior trennt Modell, Code und Config, damit KI-Ableitungen spaeter gezielt geprueft und umgesetzt werden koennen.
+
+Architektur besteht generisch aus statischer Architektur, Informationsfluss und Systemverhalten. Systemverhalten beschreibt komponentenuebergreifende Ablaeufe, Zustaende, Regeln, Ereignisse, Fehlerfaelle und Reaktionen des Gesamtsystems. Die KI kann bestaetigtes Systemverhalten spaeter in komponentenspezifisches Verhalten, Schnittstellenanforderungen, Datenfluesse, Code und Konfiguration dekomponieren.
+
+Diese Struktur liegt als Project-Server-Quelle in SQLite und ist keine lokale Dateisystemwahrheit.
 
 ## Module
 

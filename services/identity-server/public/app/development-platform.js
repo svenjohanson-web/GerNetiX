@@ -1,12 +1,13 @@
 const DevelopmentPlatform = (() => {
   const activeProjectStorageKey = "gernetix.developmentPlatform.activeProjectId";
 
-  function create({ state, postJson, escapeHtml, escapeAttribute, meta }) {
+  function create({ state, postJson, openProjectInIde, escapeHtml, escapeAttribute, meta }) {
     if (!state.developmentPlatform) {
       state.developmentPlatform = {
         assistant: null,
         chat: [],
         architectureDiagram: null,
+        lastRouting: null,
         activeProjectId: "",
         projectPanelMode: "closed",
       };
@@ -21,6 +22,7 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#developmentProjectForm").addEventListener("submit", createDevelopmentProject);
       document.querySelector("#developmentProjectSelect").addEventListener("change", selectDevelopmentProject);
       document.querySelector("#saveDevelopmentArchitectureButton").addEventListener("click", saveArchitectureDiagram);
+      document.querySelector("#acceptDevelopmentArchitectureButton").addEventListener("click", acceptArchitectureAndContinue);
       document.querySelectorAll("[data-dev-prompt]").forEach((button) => {
         button.addEventListener("click", () => usePrompt(button.dataset.devPrompt));
       });
@@ -59,12 +61,16 @@ const DevelopmentPlatform = (() => {
     function renderChatMessages() {
       const messages = state.developmentPlatform.chat.length ? state.developmentPlatform.chat : [{
         role: "assistant",
-        content: "Beschreibe kurz deine Projektidee. Ich frage dann gezielt nach Ziel, Zielsystemen, Geraeten, Daten, Bedienung, Speicherung und Zugriff, bevor wir Technologien festlegen.",
+        content: "Du hast zunaechst die Wahl, ob du mit einer maximalen Architektur startest und Komponenten entfernst, die du nicht benoetigst, oder mit einer leeren Architektur. Wie moechtest du vorgehen? Antworte einfach mit `max` oder `leer`.",
       }];
       document.querySelector("#developmentChatMessages").innerHTML = messages.map((message) => `
         <article class="chat-message ${escapeHtml(message.role)}">
           <span>${message.role === "user" ? "Du" : "Architektur-KI"}</span>
           <p>${escapeHtml(message.content)}</p>
+          ${message.routing ? `<div class="chat-routing ${message.routing.local ? "local" : "api"}">
+            <strong>${escapeHtml(routingLabel(message.routing))}</strong>
+            <small>${escapeHtml(routingDetail(message.routing))}</small>
+          </div>` : ""}
           ${message.usage ? `<dl class="chat-usage">${usageRows(message.usage).map(([label, value]) => `
             <div>
               <dt>${escapeHtml(label)}</dt>
@@ -104,6 +110,7 @@ const DevelopmentPlatform = (() => {
     function clearChat() {
       state.developmentPlatform.chat = [];
       state.developmentPlatform.architectureDiagram = null;
+      state.developmentPlatform.lastRouting = null;
       setChatStatus("Bereit fuer Architekturfragen.");
       renderChatMessages();
       renderArchitectureDiagram();
@@ -158,6 +165,7 @@ const DevelopmentPlatform = (() => {
       state.developmentPlatform.projectPanelMode = "closed";
       state.developmentPlatform.chat = [];
       state.developmentPlatform.architectureDiagram = null;
+      state.developmentPlatform.lastRouting = null;
       render();
     }
 
@@ -215,14 +223,16 @@ const DevelopmentPlatform = (() => {
         });
         setAssistantConfig(response.config || state.developmentPlatform.assistant);
         state.developmentPlatform.architectureDiagram = response.architectureDiagram || null;
+        state.developmentPlatform.lastRouting = response.routing || null;
         state.developmentPlatform.chat.push({
           role: "assistant",
           content: response.message?.content || "Keine Antwort erhalten.",
           usage: response.usage || null,
+          routing: response.routing || null,
         });
         setChatStatus(response.usedFallback
-          ? `Fallback-Antwort: ${providerLabel(response.config)} nicht erreichbar oder nicht konfiguriert.`
-          : `Antwort von ${providerLabel(response.config)} erhalten.`);
+          ? `Fallback-Antwort. Geplante Route: ${routingLabel(response.routing) || providerLabel(response.config)}.`
+          : `Geroutet: ${routingLabel(response.routing) || providerLabel(response.config)}.`);
       } catch (error) {
         state.developmentPlatform.chat.push({
           role: "assistant",
@@ -240,6 +250,26 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#developmentChatStatus").textContent = text;
     }
 
+    function routingLabel(routing) {
+      if (!routing) return "";
+      return routing.label || (routing.local ? "Lokal / Ollama" : "OpenAI / API");
+    }
+
+    function routingDetail(routing) {
+      if (!routing) return "";
+      return [
+        routing.model || "Modell unbekannt",
+        routing.requestComplexity ? `Anfrage: ${routing.requestComplexity}` : "",
+        routing.costPolicy ? costPolicyLabel(routing.costPolicy) : "",
+      ].filter(Boolean).join(" · ");
+    }
+
+    function costPolicyLabel(value) {
+      if (value === "prefer_local") return "kostenarm";
+      if (value === "external_costs") return "externe Kosten";
+      return value;
+    }
+
     function setProjectStatus(text) {
       const target = document.querySelector("#developmentProjectStatus");
       if (target) target.textContent = text;
@@ -250,14 +280,23 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#developmentChatInput").disabled = !hasProject;
       document.querySelector("#developmentChatSubmit").disabled = !hasProject;
       document.querySelector("#saveDevelopmentArchitectureButton").disabled = !hasProject || !state.developmentPlatform.architectureDiagram?.source;
+      document.querySelector("#acceptDevelopmentArchitectureButton").disabled = !hasProject || !state.developmentPlatform.architectureDiagram?.source;
       document.querySelector("#developmentChatInput").placeholder = hasProject
         ? "Beschreibe kurz deine Projektidee oder antworte auf die Frage der KI."
         : "Bitte zuerst ein Entwicklungsprojekt oeffnen oder neu anlegen.";
     }
 
     async function saveArchitectureDiagram() {
+      return persistArchitectureDiagram(false);
+    }
+
+    async function acceptArchitectureAndContinue() {
+      return persistArchitectureDiagram(true);
+    }
+
+    async function persistArchitectureDiagram(continueToIde) {
       if (!activeProjectId() || !state.developmentPlatform.architectureDiagram?.source) return;
-      setProjectStatus("Architektur wird gespeichert...");
+      setProjectStatus(continueToIde ? "Architektur wird uebernommen..." : "Architektur wird gespeichert...");
       const project = currentProject();
       try {
         const response = await postJson(`/api/platform/development-projects/${encodeURIComponent(activeProjectId())}/architecture`, {
@@ -272,6 +311,9 @@ const DevelopmentPlatform = (() => {
         }
         renderProjectPicker();
         setProjectStatus(`Gespeichert${response.saved_at ? `: ${new Date(response.saved_at).toLocaleString("de-DE")}` : "."}`);
+        if (continueToIde && response.project?.id && openProjectInIde) {
+          await openProjectInIde(response.project.id);
+        }
       } catch (error) {
         setProjectStatus(`Architektur konnte nicht gespeichert werden: ${error.message}`);
       }

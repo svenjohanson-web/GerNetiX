@@ -35,6 +35,10 @@ Manifest-Views koennen zusaetzlich `source_lines`, `editable_lines`, `completion
 
 Quellpfade muessen relativ sein und duerfen keine `..`-Segmente enthalten.
 
+KI-abgeleitete Entwicklungsprojekte koennen Architekturquellen unter `Architektur/statische-architektur/`, `Architektur/informationsfluss/` und `Architektur/systemverhalten/` speichern. `Systemverhalten` beschreibt komponentenuebergreifende Ablaeufe, Zustaende, Regeln, Ereignisse, Fehlerfaelle und Reaktionen, die spaeter in Komponentenverhalten dekomponiert werden koennen.
+
+Jede Komponente kann `Eigenschaften/`, `Schnittstellen/`, `Behavior/`, `Daten/` und `Beziehungen/` besitzen. Jede Komponente soll `Schnittstellen/provided.md` und `Schnittstellen/required.md` besitzen, damit bereitgestellte und benoetigte Schnittstellen gleichwertig im Projektmodell sichtbar sind. Zusaetzlich kann jede Komponente `Behavior/Modell`, `Behavior/Code` und `Behavior/Config` als getrennte Quellenbereiche besitzen.
+
 ## Build-Historie und BuildPackages
 
 - `POST /api/projects/{projectId}/build-jobs`

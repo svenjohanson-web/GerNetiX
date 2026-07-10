@@ -428,6 +428,7 @@ function supplementalTypeRules() {
     rule("architecture_decision", "constrains", "knowledge_base"),
     rule("architecture_decision", "constrains", "metamodel"),
     rule("architecture_decision", "references", "architecture_decision"),
+    rule("architecture_decision", "references", "requirement"),
     rule("architecture_decision", "references", "non_functional_requirement"),
     rule("architecture_decision", "references", "principle"),
     rule("architecture_decision", "realizes", "knowledge_base"),
@@ -534,7 +535,18 @@ function uniqueRelations(relations) {
 
 function importGraph(dbPath = DEFAULT_DB_PATH) {
   const files = readModelFiles();
-  const { artifacts, occurrences } = extractArtifacts(files);
+  const extracted = extractArtifacts(files);
+  const db = openDatabase(dbPath);
+  const authoredArtifacts = readAuthoredArtifacts(db);
+  const artifacts = [...extracted.artifacts, ...authoredArtifacts];
+  const occurrences = [
+    ...extracted.occurrences,
+    ...authoredArtifacts.map((artifact) => ({
+      id: artifact.id,
+      sourceFile: artifact.sourceFile,
+      sourceLine: artifact.sourceLine
+    }))
+  ];
   const artifactIds = new Set(artifacts.map((artifact) => artifact.id));
   const allowedTypes = parseAllowedTypesFromMetamodel(files);
   const allowedRelations = parseAllowedRelationTypes(files);
@@ -542,8 +554,8 @@ function importGraph(dbPath = DEFAULT_DB_PATH) {
   for (const rule of typeRules) allowedRelations.add(rule.relation);
   const explicitRelations = extractExplicitRelations(files);
   const embeddedRelations = extractEmbeddedRelations(artifacts, artifactIds);
-  const relations = uniqueRelations([...explicitRelations, ...embeddedRelations]);
-  const db = openDatabase(dbPath);
+  const authoredRelations = readAuthoredRelationships(db);
+  const relations = uniqueRelations([...explicitRelations, ...embeddedRelations, ...authoredRelations]);
 
   createSchema(db);
   const observedTypes = new Set(artifacts.map((artifact) => artifact.type));
@@ -703,6 +715,72 @@ function importGraph(dbPath = DEFAULT_DB_PATH) {
   `).get();
   db.close();
   return { dbPath, ...summary };
+}
+
+function readAuthoredArtifacts(db) {
+  if (!tableExists(db, "graph_authored_artifacts")) return [];
+  return db.prepare(`
+    SELECT id, artifact_type_id, title, status, owner_domain, summary, properties_json
+    FROM graph_authored_artifacts
+    ORDER BY id
+  `).all().map((row) => {
+    const fields = safeJson(row.properties_json);
+    return {
+      id: row.id,
+      type: row.artifact_type_id,
+      title: row.title || row.id,
+      status: row.status || "",
+      ownerDomain: row.owner_domain || "",
+      summary: row.summary || "",
+      sourceFile: "sqlite://graph_authored_artifacts",
+      sourceLine: 0,
+      fields,
+      block: authoredBlock(row.id, fields)
+    };
+  });
+}
+
+function readAuthoredRelationships(db) {
+  if (!tableExists(db, "graph_authored_relationships")) return [];
+  return db.prepare(`
+    SELECT source_artifact_id, relationship_type_id, target_artifact_id, confidence, source_field
+    FROM graph_authored_relationships
+    ORDER BY source_artifact_id, relationship_type_id, target_artifact_id
+  `).all().map((row) => ({
+    from: row.source_artifact_id,
+    relation: row.relationship_type_id,
+    to: row.target_artifact_id,
+    confidence: row.confidence || "high",
+    sourceFile: "sqlite://graph_authored_relationships",
+    sourceLine: 0,
+    sourceField: row.source_field || "graph_authoring",
+    origin: "graph_authoring"
+  }));
+}
+
+function tableExists(db, tableName) {
+  return Boolean(db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(tableName));
+}
+
+function safeJson(value) {
+  try {
+    return value ? JSON.parse(value) : {};
+  } catch {
+    return {};
+  }
+}
+
+function authoredBlock(id, fields) {
+  const block = [{ lineNumber: 0, text: `id: ${id}` }];
+  for (const [key, value] of Object.entries(fields || {})) {
+    if (Array.isArray(value)) {
+      block.push({ lineNumber: 0, text: `${key}:` });
+      for (const item of value) block.push({ lineNumber: 0, text: `  - ${item}` });
+    } else if (value !== null && value !== undefined && typeof value !== "object") {
+      block.push({ lineNumber: 0, text: `${key}: ${value}` });
+    }
+  }
+  return block;
 }
 
 function validateRelationshipTypeRules(db) {

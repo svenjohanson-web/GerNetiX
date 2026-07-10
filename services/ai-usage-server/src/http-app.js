@@ -32,6 +32,12 @@ function createHttpApp(options) {
       return;
     }
 
+    const rating = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/rating$`));
+    if (req.method === "GET" && rating) {
+      sendJson(res, 200, service.getAccountRating(decodeURIComponent(rating[1])));
+      return;
+    }
+
     if (req.method === "POST" && path === `${prefix}/preflight`) {
       const result = service.preflight(await readJsonBody(req));
       sendJson(res, result.allowed ? 200 : 402, result);

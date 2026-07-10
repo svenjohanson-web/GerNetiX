@@ -54,6 +54,7 @@ Das Admin Tool muss anzeigen koennen:
 
 - aktuelle KI-Nutzung pro Benutzer
 - verbrauchte Credits und Tokens pro Benutzer
+- Quellenrating pro Account, z. B. lokale LLMs unbegrenzt und GPT/OpenAI mit monatlichem Tokenlimit
 - Verbrauch nach heute, Woche und Monat
 - Verbrauch nach KI-Modell
 - Anzahl KI-Anfragen
@@ -84,7 +85,11 @@ Der KI-Community-Assistent erweitert das bestehende Dashboard um:
 
 `data_model.ai_usage_event`
 
-Jeder kostenpflichtige, fehlgeschlagene oder abgelehnte KI-Aufruf wird serverseitig protokolliert mit Benutzer-ID, Zeitpunkt, Modell, Tokens, Credits, Anbieter-Kostenschaetzung, Tarif, Projektkontext, Status, Fehler, Ablehnungsgrund und verwendeter Schutzmassnahme.
+Jeder kostenpflichtige, fehlgeschlagene oder abgelehnte KI-Aufruf wird serverseitig protokolliert mit Benutzer-ID, Zeitpunkt, Modell, Quelle, Tokens, Credits, Anbieter-Kostenschaetzung, Tarif, Projektkontext, Status, Fehler, Ablehnungsgrund und verwendeter Schutzmassnahme.
+
+`data_model.ai_source_rating`
+
+Pro Account wird das KI-Rating je Quelle ausgewertet. Lokale LLM-Quellen koennen unbegrenzt sein, waehrend GPT/OpenAI-Quellen z. B. auf 100.000 Tokens pro Monat begrenzt werden. Nutzer sehen den Prozentverbrauch im Dashboard und in der IDE; Admins sehen dieselben Werte im Account-Blatt.
 
 ## Admin-Steuerung
 

@@ -40,6 +40,11 @@ function createHttpApp(options) {
         return;
       }
 
+      if (req.method === "POST" && path === `${prefix}/prompt-foundations`) {
+        sendJson(res, 201, { promptFoundation: service.upsertPromptFoundation(await readJsonBody(req)) });
+        return;
+      }
+
       if (req.method === "POST" && path === `${prefix}/sources`) {
         sendJson(res, 201, { source: service.upsertSource(await readJsonBody(req)) });
         return;

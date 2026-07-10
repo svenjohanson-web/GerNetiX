@@ -102,12 +102,34 @@ function defaultPolicy() {
     max_prompt_tokens: 8000,
     max_response_tokens: 4000,
     budget_warning_threshold_percent: 80,
-    allowed_models: ["gpt-4.1-mini", "gpt-4.1", "community-assistant-basic"],
-    premium_models: ["gpt-4.1"],
+    allowed_models: ["gpt-4.1-mini", "gpt-4.1", "gpt-5", "gpt-5-mini", "gpt-5.5", "gpt-5.5-mini", "community-assistant-basic", "llama3.1", "llama3.2:3b"],
+    premium_models: ["gpt-4.1", "gpt-5", "gpt-5.5"],
     model_pricing: {
       "gpt-4.1-mini": { credits_per_1k_input_tokens: 1, credits_per_1k_output_tokens: 4, provider_cost_per_1k_tokens: 0.0006 },
       "gpt-4.1": { credits_per_1k_input_tokens: 4, credits_per_1k_output_tokens: 12, provider_cost_per_1k_tokens: 0.003 },
+      "gpt-5": { credits_per_1k_input_tokens: 4, credits_per_1k_output_tokens: 16, provider_cost_per_1k_tokens: 0.004 },
+      "gpt-5-mini": { credits_per_1k_input_tokens: 1, credits_per_1k_output_tokens: 4, provider_cost_per_1k_tokens: 0.0008 },
+      "gpt-5.5": { credits_per_1k_input_tokens: 5, credits_per_1k_output_tokens: 18, provider_cost_per_1k_tokens: 0.005 },
+      "gpt-5.5-mini": { credits_per_1k_input_tokens: 1, credits_per_1k_output_tokens: 5, provider_cost_per_1k_tokens: 0.001 },
       "community-assistant-basic": { credits_per_1k_input_tokens: 1, credits_per_1k_output_tokens: 3, provider_cost_per_1k_tokens: 0.0004 },
+      "llama3.1": { credits_per_1k_input_tokens: 0, credits_per_1k_output_tokens: 0, provider_cost_per_1k_tokens: 0 },
+      "llama3.2:3b": { credits_per_1k_input_tokens: 0, credits_per_1k_output_tokens: 0, provider_cost_per_1k_tokens: 0 },
+    },
+    source_ratings: {
+      local_llm: {
+        source_id: "local_llm",
+        title: "Lokale LLM",
+        token_limit: null,
+        billing_scope: "unlimited",
+        provider_type: "local",
+      },
+      openai_gpt: {
+        source_id: "openai_gpt",
+        title: "GPT / OpenAI",
+        token_limit: 100000,
+        billing_scope: "monthly",
+        provider_type: "external",
+      },
     },
   };
 }

@@ -4,10 +4,52 @@ const { DatabaseSync } = require("node:sqlite");
 
 function openDatabase(dbPath) {
   fs.mkdirSync(path.dirname(dbPath), { recursive: true });
-  if (fs.existsSync(dbPath)) fs.unlinkSync(dbPath);
   const db = new DatabaseSync(dbPath);
   db.exec("PRAGMA foreign_keys = ON;");
+  createAuthoringSchema(db);
+  resetGeneratedSchema(db);
   return db;
+}
+
+function resetGeneratedSchema(db) {
+  db.exec(`
+    DROP TABLE IF EXISTS validation_errors;
+    DROP TABLE IF EXISTS relationships;
+    DROP TABLE IF EXISTS relationship_type_rules;
+    DROP TABLE IF EXISTS relationship_types;
+    DROP TABLE IF EXISTS artifact_occurrences;
+    DROP TABLE IF EXISTS artifacts;
+    DROP TABLE IF EXISTS artifact_types;
+  `);
+}
+
+function createAuthoringSchema(db) {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS graph_authored_artifacts (
+      id TEXT PRIMARY KEY,
+      artifact_type_id TEXT NOT NULL,
+      title TEXT,
+      status TEXT,
+      owner_domain TEXT,
+      summary TEXT,
+      source TEXT NOT NULL DEFAULT 'graph_authoring',
+      properties_json TEXT NOT NULL DEFAULT '{}',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS graph_authored_relationships (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      source_artifact_id TEXT NOT NULL,
+      relationship_type_id TEXT NOT NULL,
+      target_artifact_id TEXT NOT NULL,
+      confidence TEXT,
+      source_field TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE(source_artifact_id, relationship_type_id, target_artifact_id, source_field)
+    );
+  `);
 }
 
 function createSchema(db) {
@@ -108,6 +150,7 @@ function insertValidationError(db, error) {
 }
 
 module.exports = {
+  createAuthoringSchema,
   createSchema,
   insertValidationError,
   openDatabase

@@ -1,4 +1,4 @@
-function createAiChatAssistant({ aiContextJson, llmConfigStore, projectServerUserId, readJsonBody, sendJson }) {
+function createAiChatAssistant({ aiContextJson, aiUsageJson, llmConfigStore, projectServerUserId, readJsonBody, sendJson }) {
   async function handleChat(req, res, session) {
     const body = await readJsonBody(req);
     const userMessages = normalizeMessages(body.messages);
@@ -7,21 +7,38 @@ function createAiChatAssistant({ aiContextJson, llmConfigStore, projectServerUse
       return;
     }
 
-    const messages = [
-      { role: "system", content: await systemPrompt(session) },
-      ...userMessages,
-    ];
-
     try {
+      const messages = [
+        { role: "system", content: await systemPrompt(session) },
+        ...userMessages,
+      ];
       const activeConfig = routeConfig("general_chat");
-      const response = await callChatProvider(messages, activeConfig);
+      const usagePreflight = await preflightUsage(session, activeConfig, "", messages, "general_chat");
+      if (usagePreflight && !usagePreflight.allowed) {
+        sendJson(res, 402, {
+          error: "ai_usage_rejected",
+          message: "Der KI-Aufruf wurde durch AI Usage Cost Control blockiert.",
+          usagePreflight,
+        });
+        return;
+      }
+      let response;
+      try {
+        response = await callChatProvider(messages, activeConfig);
+      } catch (error) {
+        await failUsage(usagePreflight, error);
+        throw error;
+      }
+      const usage = usageFromOllama(response);
+      const usageEvent = await completeUsage(usagePreflight, usage);
       sendJson(res, 200, {
         config: config(),
         message: {
           role: "assistant",
           content: response.message?.content || fallbackAnswer(userMessages, activeConfig),
         },
-        usage: usageFromOllama(response),
+        usage,
+        usageEvent,
         usedFallback: false,
       });
     } catch (error) {
@@ -64,6 +81,8 @@ function createAiChatAssistant({ aiContextJson, llmConfigStore, projectServerUse
   }
 
   async function systemPrompt(session) {
+    // Prompt-Regeln gehoeren in die AI-Context-SQLite, nicht in Identity-Code.
+    // Identity fuegt hier nur dynamischen Laufzeitkontext an.
     return [
       await promptFoundation("general_chat"),
       `Aktueller Nutzer: ${projectServerUserId(session)}.`,
@@ -71,13 +90,14 @@ function createAiChatAssistant({ aiContextJson, llmConfigStore, projectServerUse
   }
 
   async function promptFoundation(routeTask) {
-    if (!aiContextJson) return missingPromptFoundation(routeTask);
+    if (!aiContextJson) throw new Error(missingPromptFoundation(routeTask));
     try {
       const response = await aiContextJson(`/api/ai-context/prompt-foundations?route_task=${encodeURIComponent(routeTask)}&status=active`);
       const prompt = (response.items || []).find((item) => item.route_task === routeTask && item.content_kind === "system_prompt");
-      return prompt?.content || missingPromptFoundation(routeTask);
-    } catch {
-      return missingPromptFoundation(routeTask);
+      if (!prompt?.content) throw new Error(missingPromptFoundation(routeTask));
+      return prompt.content;
+    } catch (error) {
+      throw new Error(error.message || missingPromptFoundation(routeTask));
     }
   }
 
@@ -243,6 +263,58 @@ function createAiChatAssistant({ aiContextJson, llmConfigStore, projectServerUse
     };
   }
 
+  async function preflightUsage(session, activeConfig, projectId, messages, feature) {
+    if (!aiUsageJson) return null;
+    const accountId = projectServerUserId(session);
+    const model = activeConfig.provider === "api" ? activeConfig.apiModel : activeConfig.ollamaModel;
+    const estimate = estimateMessageTokens(messages);
+    return aiUsageJson("/api/ai-usage/preflight", {
+      method: "POST",
+      allowPaymentRequired: true,
+      body: {
+        account_id: accountId,
+        user_id: accountId,
+        project_id: projectId || "",
+        feature,
+        model,
+        source_id: activeConfig.provider === "api" ? "openai_gpt" : "local_llm",
+        estimated_input_tokens: estimate.inputTokens,
+        estimated_output_tokens: Number(activeConfig.maxOutputTokens || 800),
+        system_capabilities: activeConfig.provider === "api" ? ["system_capability.ai_premium_models"] : [],
+      },
+    });
+  }
+
+  async function completeUsage(preflight, usage) {
+    if (!aiUsageJson || !preflight?.event_id) return null;
+    try {
+      return await aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/complete`, {
+        method: "POST",
+        body: {
+          input_tokens: usage.promptTokens ?? 0,
+          output_tokens: usage.completionTokens ?? 0,
+        },
+      });
+    } catch (error) {
+      return { event_id: preflight.event_id, status: "tracking_failed", error: error.message || String(error) };
+    }
+  }
+
+  async function failUsage(preflight, error) {
+    if (!aiUsageJson || !preflight?.event_id) return null;
+    try {
+      return await aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/fail`, {
+        method: "POST",
+        body: {
+          error_code: "provider_error",
+          error_message: error.message || String(error),
+        },
+      });
+    } catch {
+      return null;
+    }
+  }
+
   function responseInput(messages) {
     return messages.map((message) => ({
       role: message.role === "assistant" ? "assistant" : message.role === "system" ? "developer" : "user",
@@ -261,6 +333,16 @@ function createAiChatAssistant({ aiContextJson, llmConfigStore, projectServerUse
 
   function numberOrNull(value) {
     return Number.isFinite(value) ? value : null;
+  }
+
+  function estimateMessageTokens(messages) {
+    const chars = (Array.isArray(messages) ? messages : [])
+      .map((message) => String(message.content || ""))
+      .join("\n")
+      .length;
+    return {
+      inputTokens: Math.max(1, Math.ceil(chars / 4)),
+    };
   }
 
   function nanosToMs(value) {
@@ -294,7 +376,7 @@ function createAiChatAssistant({ aiContextJson, llmConfigStore, projectServerUse
 }
 
 function missingPromptFoundation(routeTask) {
-  return `AI Context Prompt-Grundlage fuer ${routeTask} ist nicht verfuegbar. Antworte kurz und verweise auf das Admin Tool LLM-Daten.`;
+  return `AI Context Prompt-Grundlage fuer ${routeTask} ist nicht verfuegbar.`;
 }
 
 module.exports = { createAiChatAssistant };

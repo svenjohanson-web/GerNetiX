@@ -271,11 +271,19 @@ items:
       - Der Chat erfordert ein accountgebundenes Entwicklungsprojekt aus dem Project Server; ohne Projekt-ID wird der LLM-Aufruf abgelehnt.
       - Neue Entwicklungsprojekte werden ueber `/api/platform/development-projects` im Project Server angelegt und ueber `user_id` an den Account gebunden.
       - Die aktuell abgeleitete Architektur kann jederzeit als `docs/architecture.puml` plus ProjectViewManifest-PlantUML-View gespeichert werden.
+      - Aus der KI-abgeleiteten Architektur entsteht eine Project-Server-Quellenstruktur mit `Architektur/statische-architektur`, `Architektur/informationsfluss` und Komponentenordnern unter `Komponenten/`.
+      - Jeder Komponentenordner enthaelt `Schnittstellen/provided.md` und `Schnittstellen/required.md`, weil GerNetiX benoetigte Schnittstellen je Komponente ausdruecklich sichtbar machen will.
+      - Jeder Komponentenordner enthaelt `Behavior/Modell`, `Behavior/Code` und `Behavior/Config`, damit Verhaltensmodell, Codeableitung und Konfiguration getrennt gepflegt werden koennen.
+      - Wenn der Nutzer eine Architektur uebernimmt, speichert die Entwicklungsplattform die Project-Server-Quellen und oeffnet direkt den freien IDE-Arbeitsbereich.
+      - Der freie IDE-Arbeitsbereich zeigt einen Projektbrowser aus der Project-Server-Quellenliste, Modell-/Code-/Image-Ansichten und einen unteren KI-Chat.
       - Der LLM-Provider ist im PoC ueber das eigenstaendige Admin Tool `http://127.0.0.1:4600/admin/` konfigurierbar; lokal ist Ollama mit Default `http://127.0.0.1:11434` vorgesehen, alternativ eine OpenAI-kompatible API oder Claude/Anthropic.
       - Die gemeinsame LLM-Routing-Konfiguration ist fachlicher Runtime-State und muss gemaess SQL-only-Persistenz in SQLite liegen; alte `.runtime/identity-llm-config.json`-Dev-Konfigurationen sind nur Migrationsaltlasten.
       - Systemprompt-Grundlagen fuer Architektur-Discovery werden fuehrend in der AI-Context-SQLite gespeichert und vom Identity Server ueber den AI Context Server geladen.
       - Datenquellen sind im PoC bewusst auf aktuellen Chat, zentrale Prompt-Grundlagen und optional per Grant freigegebenen Hardware-Catalog-Kontext begrenzt; Graph-, Projekt- und Kundendaten muessen explizit freigegeben werden.
       - Aus der letzten KI-Antwort wird eine PlantUML-Architekturskizze abgeleitet und in der Entwicklungsplattform angezeigt; sie bleibt als Skizze markiert und ersetzt keine Nutzerbestaetigung.
+      - Kurze und eindeutige Architekturwuensche wie `ESP32 only` werden zuerst lokal ueber Ollama geroutet; externe Provider werden erst fuer komplexere Architektur-Dialoge genutzt.
+      - Architekturantworten sollen knapp bleiben und nicht auflisten, was alles nicht benoetigt wird.
+      - `ESP32 only` erzeugt eine rein technische PlantUML-Minimalskizze mit genau `ESP32`, ohne Nutzer-, Anforderungs-, Notiz- oder Uebergabeknoten.
       - Frontend-Logik des Entwicklungsasts liegt getrennt in `services/identity-server/public/app/development-platform.js`.
       - Backend-Logik des lokalen Architektur-Assistenten liegt getrennt in `services/identity-server/src/dev/development-assistant.js`.
 

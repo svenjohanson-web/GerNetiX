@@ -9,20 +9,23 @@ Neue Codex-Chats sollen nicht wieder bei null beginnen. Das Projektwissen soll i
 Codex soll zu Beginn groesserer Arbeiten kurz diese Quellen pruefen:
 
 1. `AGENTS.md` fuer die Projekt-Erinnerung.
-2. `docs/documentation-strategy.md` fuer die Reihenfolge von Fachlichkeit, Graph, Datenmodell, Implementierung und Nachweis.
-3. `docs/system-process-application-uml.md` fuer Serverprozesse, Applikationen und Abhaengigkeiten.
-4. `docs/system-process-application-uml.svg` als Bildartefakt der aktuellen Architekturansicht.
-5. `data/` fuer die kanonischen Graph-/YAML-Quellen.
-6. Den Context Manager fuer bestaetigte Projektkontexte und offene Vorschlaege.
+2. `tools/yaml-graph-sqlite/out/model-graph.sqlite` als zentrale Liste der bestaetigten Architekturentscheidungen und Requirements.
+3. `docs/documentation-strategy.md` fuer die Reihenfolge von Fachlichkeit, Graph, Datenmodell, Implementierung und Nachweis.
+4. `docs/system-process-application-uml.md` fuer Serverprozesse, Applikationen und Abhaengigkeiten.
+5. `docs/system-process-application-uml.svg` als Bildartefakt der aktuellen Architekturansicht.
+6. `data/` und `model/` nur als Legacy-Import-, Bootstrap- oder Exportquellen pruefen, nicht als parallele fachliche Wahrheit.
+7. Den Context Manager fuer bestaetigte Projektkontexte und offene Vorschlaege.
 
 ## Immer aktuell halten
 
-- Graphen und kanonische YAML-Dateien sind die fachliche Quelle der Wahrheit.
+- Der SQLite-Graph ist die fachliche Quelle der Wahrheit.
+- YAML-Dateien duerfen nicht parallel fachlich weitergepflegt werden, wenn der SQLite-Graph dieselbe Struktur validiert abbildet.
 - Architektur-Aenderungen muessen in der Markdown-Sicht und im SVG-Bildartefakt sichtbar sein.
 - Neue oder geaenderte Serverprozesse muessen in der Architekturansicht auftauchen.
 - Neue oder geaenderte Applikationen/HMIs muessen in der Architekturansicht auftauchen.
 - Neue Abhaengigkeiten zwischen Servern, Tools, Persistenz und UIs muessen dokumentiert werden.
 - Wichtige Projektentscheidungen muessen zentral dokumentiert werden, nicht nur im Code.
+- Bestaetigte Architekturentscheidungen werden im SQLite-Graphen gepflegt und bei neuen Kontexten frueh gelesen.
 
 ## Kleine Abschlusspruefung nach Umsetzung
 
@@ -30,7 +33,7 @@ Nach einer Umsetzung soll Codex kurz pruefen:
 
 - Wurde Code geaendert?
 - Aendert sich dadurch eine Anforderung, Architektur, Abhaengigkeit oder Persistenz?
-- Muss ein Graph, eine YAML-Quelle, die UML-Markdown-Datei oder das SVG aktualisiert werden?
+- Muss der SQLite-Graph, eine Lesesicht, die UML-Markdown-Datei oder das SVG aktualisiert werden?
 - Muessen Context-Manager-Vorschlaege oder bestaetigte Context-Eintraege aktualisiert werden?
 - Gibt es einen Test oder zumindest einen nachvollziehbaren manuellen Nachweis?
 
@@ -47,11 +50,11 @@ Codex soll lokale Serverprozesse sparsam behandeln:
 
 ## Performance-Regel fuer Codex
 
-- Vor Aenderungen zuerst bestimmen, ob Code, UI, Graph/YAML, Doku oder Runtime betroffen ist.
+- Vor Aenderungen zuerst bestimmen, ob Code, UI, SQLite-Graph, Doku oder Runtime betroffen ist.
 - Services nur gezielt neu starten, wenn geaenderter Runtime-Code live verifiziert werden muss.
 - Keine vorsorglichen Neustarts.
-- Graph-Import nur ausfuehren, wenn `data/` oder graphrelevante Architektur-/Requirement-Dateien geaendert wurden.
-- Bei Querschnittsaenderungen erst alle Code-/UI-Tests ausfuehren, danach genau einmal Graph-Import.
+- Neue fachliche Regeln, Entscheidungen und Requirements direkt im SQLite-Graphen pflegen.
+- Graph-Import nur fuer Legacy-/Bootstrap-YAML oder nach bewusstem YAML-Export ausfuehren.
 - Live-LLM-Aufrufe vermeiden, wenn ein Unit-Test oder API-Contract-Test denselben Nachweis liefert.
 - Project Server ist die SQLite-Wahrheit fuer accountgebundene Projekte.
 - AI Context Server ist die SQLite-Wahrheit fuer KI-Kontextquellen, Grants, Policy und Audit.

@@ -15,6 +15,7 @@
         </div>
         <nav class="admin-nav" aria-label="Admin Navigation">
           <button type="button" data-admin-view="statistics">Statistik</button>
+          <button type="button" data-admin-view="accounts">Accounts</button>
           <button type="button" data-admin-view="ai-usage">KI Usage</button>
           <button type="button" data-admin-view="ai-context">LLM-Daten</button>
           <button type="button" data-admin-view="llm-config">LLM-Routing</button>
@@ -37,8 +38,95 @@
         </section>
       </section>
 
+      <section id="accountsView" class="admin-view hidden">
+        <section class="metrics-grid" id="accountMetrics"></section>
+        <section class="panel">
+          <p class="eyebrow">Account Blatt</p>
+          <h2>Accountdaten und KI-Rating</h2>
+          <div class="table-wrap">
+            <table class="account-rating-table">
+              <thead>
+                <tr>
+                  <th>Account</th>
+                  <th>Status</th>
+                  <th>Credits</th>
+                  <th>KI Nutzung</th>
+                  <th>Quellenrating</th>
+                </tr>
+              </thead>
+              <tbody id="accountRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
+
       <section id="aiUsageView" class="admin-view hidden">
         <section class="metrics-grid" id="aiUsageMetrics"></section>
+        <section class="panel">
+          <p class="eyebrow">Kostenverlauf</p>
+          <h2>KI-Kosten pro Tag</h2>
+          <div id="aiCostByDayChart" class="bar-chart" aria-label="KI-Kosten pro Tag"></div>
+        </section>
+        <section class="admin-layout wide-main">
+          <article class="panel">
+            <p class="eyebrow">Cost Control</p>
+            <h2>Aktive KI-Regeln</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Regel</th>
+                    <th>Status</th>
+                    <th>Wert</th>
+                    <th>Ablehnungen</th>
+                  </tr>
+                </thead>
+                <tbody id="aiCostControlRuleRows"></tbody>
+              </table>
+            </div>
+          </article>
+          <aside class="panel">
+            <p class="eyebrow">Policy</p>
+            <h2>Schwellenwerte</h2>
+            <dl id="aiCostControlPolicy" class="meta-list"></dl>
+          </aside>
+        </section>
+        <section class="admin-layout">
+          <article class="panel">
+            <p class="eyebrow">Blockaden</p>
+            <h2>Ablehnungsgruende</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Grund</th>
+                    <th>Anzahl</th>
+                    <th>Tokens</th>
+                    <th>Modelle / Accounts</th>
+                  </tr>
+                </thead>
+                <tbody id="aiRejectionReasonRows"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="panel">
+            <p class="eyebrow">Audit</p>
+            <h2>Letzte blockierte Aufrufe</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Zeit</th>
+                    <th>Account</th>
+                    <th>Feature</th>
+                    <th>Grund</th>
+                  </tr>
+                </thead>
+                <tbody id="aiRecentRejectionRows"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
         <section class="admin-layout">
           <article class="panel">
             <p class="eyebrow">Provider</p>
@@ -75,6 +163,42 @@
                   </tr>
                 </thead>
                 <tbody id="aiModelRows"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+        <section class="admin-layout">
+          <article class="panel">
+            <p class="eyebrow">Quellenlimits</p>
+            <h2>Provider-Rating</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Quelle</th>
+                    <th>Typ</th>
+                    <th>Abrechnung</th>
+                    <th>Monatslimit</th>
+                  </tr>
+                </thead>
+                <tbody id="aiSourceLimitRows"></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="panel">
+            <p class="eyebrow">Modellpolicy</p>
+            <h2>Freigaben und Preise</h2>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Modell</th>
+                    <th>Freigabe</th>
+                    <th>Credits</th>
+                    <th>Kosten</th>
+                  </tr>
+                </thead>
+                <tbody id="aiModelPolicyRows"></tbody>
               </table>
             </div>
           </article>

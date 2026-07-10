@@ -55,6 +55,26 @@ class AiContextService {
     return this.repository.listPromptFoundations(filter);
   }
 
+  upsertPromptFoundation(input = {}) {
+    validatePromptFoundationInput(input);
+    const now = this.now().toISOString();
+    const foundationId = clean(input.foundation_id);
+    const existing = this.repository.listPromptFoundations().find((item) => item.foundation_id === foundationId);
+    return this.repository.savePromptFoundation({
+      foundation_id: foundationId,
+      title: clean(input.title),
+      route_task: clean(input.route_task),
+      source_scope: normalizeScope(input.source_scope),
+      content_kind: clean(input.content_kind || "system_prompt"),
+      allowed_sources: Array.isArray(input.allowed_sources) ? input.allowed_sources.map(clean).filter(Boolean) : [],
+      blocked_sources: Array.isArray(input.blocked_sources) ? input.blocked_sources.map(clean).filter(Boolean) : [],
+      content: clean(input.content),
+      status: clean(input.status || "active"),
+      created_at: existing?.created_at || now,
+      updated_at: now,
+    });
+  }
+
   upsertSource(input = {}) {
     validateSourceInput(input);
     const now = this.now().toISOString();
@@ -203,6 +223,18 @@ function validateSourceInput(input) {
   if (!SOURCE_TYPES.has(clean(input.source_type))) throw new AiContextError("invalid_source_type", "Unbekannte Kontextquelle.");
   if (!REDACTION_LEVELS.has(clean(input.default_redaction_level || "summary_only"))) throw new AiContextError("invalid_redaction_level", "Unbekannte Redaktionsstufe.");
   if (!PROVIDER_SCOPES.has(clean(input.default_provider_scope || "local_only"))) throw new AiContextError("invalid_provider_scope", "Unbekannter Provider-Scope.");
+}
+
+function validatePromptFoundationInput(input) {
+  for (const field of ["foundation_id", "title", "route_task", "source_scope", "content"]) {
+    if (!clean(input[field])) throw new AiContextError("missing_required_field", `Pflichtfeld fehlt: ${field}`);
+  }
+  if (clean(input.content_kind || "system_prompt") !== "system_prompt") {
+    throw new AiContextError("invalid_content_kind", "Unbekannte Prompt-Grundlagen-Art.");
+  }
+  if (!["active", "draft", "archived"].includes(clean(input.status || "active"))) {
+    throw new AiContextError("invalid_status", "Unbekannter Prompt-Grundlagen-Status.");
+  }
 }
 
 function normalizePreflightInput(input) {

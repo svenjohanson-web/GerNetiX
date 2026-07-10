@@ -62,6 +62,15 @@
           </div>
           <div id="dashboardSummary" class="summary-grid"></div>
         </section>
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">KI Nutzung</p>
+              <h2>Quellenrating</h2>
+            </div>
+          </div>
+          <div id="dashboardAiUsage" class="ai-rating-grid"></div>
+        </section>
       </section>
 
       <section id="ideView" class="view hidden">
@@ -73,6 +82,11 @@
           <div id="ideToolbar" class="button-row">
             <span id="ideCurrentProjectLabel" class="project-context-label"></span>
             <select id="ideProjectSelect" aria-label="Projekt wählen"></select>
+            <span id="ideViewModeButtons" class="button-row ide-view-mode-buttons">
+              <button type="button" data-ide-view-mode="model">Modell</button>
+              <button type="button" data-ide-view-mode="code">Code</button>
+              <button type="button" data-ide-view-mode="image">Image</button>
+            </span>
             <span id="ideDeviceTools" class="button-row">
               <select id="ideDeviceSelect" aria-label="Geraet waehlen"></select>
               <select id="usbPortSelect" class="port-input" aria-label="USB-Port"></select>
@@ -89,14 +103,42 @@
           <p>Hier entsteht die freie Entwicklungsumgebung für eigene Entwicklungsprojekte. Die Architekturklaerung startet in der Entwicklungsplattform.</p>
         </section>
         <section id="ideLayout" class="ide-layout">
-          <article id="sourcePanel" class="panel">
-            <p class="eyebrow">Projektdatei</p>
-            <h3 id="ideProjectTitle"></h3>
-            <textarea id="sourceEditor" spellcheck="false"></textarea>
-          </article>
-          <aside class="panel">
+          <aside id="ideProjectBrowserPanel" class="panel ide-project-browser-panel">
+            <p class="eyebrow">Projektbrowser</p>
+            <h3 id="ideProjectBrowserTitle">Projekt</h3>
+            <nav id="ideProjectBrowser" class="ide-project-browser" aria-label="Projektdateien"></nav>
+          </aside>
+          <section class="ide-workbench">
+            <article id="ideViewerPanel" class="panel ide-viewer-panel">
+              <div class="ide-viewer-head">
+                <div>
+                  <p class="eyebrow" id="ideViewerModeLabel">Modell</p>
+                  <h3 id="ideProjectTitle"></h3>
+                </div>
+                <span id="ideActiveSourceLabel" class="project-context-label"></span>
+              </div>
+              <section id="sourcePanel" class="ide-source-workspace">
+                <textarea id="sourceEditor" spellcheck="false"></textarea>
+              </section>
+              <section id="ideImageView" class="ide-image-view hidden"></section>
+              <section id="ideModelView" class="ide-model-view"></section>
+            </article>
+            <article id="ideAssistantPanel" class="panel ide-assistant-panel">
+              <div id="ideChatMessages" class="development-chat-messages compact" aria-live="polite"></div>
+              <form id="ideChatForm" class="development-chat-form compact">
+                <label for="ideChatInput">KI-Chat</label>
+                <div class="ide-chat-input-row">
+                  <textarea id="ideChatInput" rows="2" placeholder="Frage zur aktuellen Projektdatei oder Architektur."></textarea>
+                  <button id="ideChatSubmit" class="primary" type="submit">Senden</button>
+                </div>
+                <span id="ideChatStatus" class="chat-status">Bereit.</span>
+              </form>
+            </article>
+          </section>
+          <aside id="ideInspectorPanel" class="panel ide-inspector-panel">
             <p class="eyebrow">Projektmodell</p>
             <dl id="ideProjectMeta" class="meta-list"></dl>
+            <section id="ideAiUsage" class="ide-ai-rating"></section>
             <section id="ideProjectViewManifest" class="project-view-manifest"></section>
             <div id="flashStatus" class="flash-status hidden"></div>
           </aside>
@@ -185,7 +227,10 @@
               <label>Beschreibung<textarea id="developmentProjectDescription" rows="3" placeholder="Kurz beschreiben, was entstehen soll."></textarea></label>
               <button type="submit">Projekt anlegen</button>
             </form>
-            <button id="saveDevelopmentArchitectureButton" type="button" disabled>Architektur speichern</button>
+            <div class="button-row development-project-actions">
+              <button id="saveDevelopmentArchitectureButton" type="button" disabled>Architektur speichern</button>
+              <button id="acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Uebernehmen und weiter</button>
+            </div>
             <p id="developmentProjectStatus" class="helper-text">Bitte Projekt oeffnen oder neu anlegen, bevor der Chat startet.</p>
             <p class="eyebrow">PoC-Konfiguration</p>
             <h3>LLM-Routing</h3>
@@ -199,7 +244,7 @@
             </div>
             <div class="development-source-note">
               <h3>Datenquellen</h3>
-              <p>Dieser PoC nutzt nur den aktuellen Chat und den festen Architektur-Prompt. Projektdateien, Graphdaten, Kundendaten oder externe Quellen sind noch nicht freigegeben.</p>
+              <p>Dieser PoC nutzt den aktuellen Chat und die zentrale Prompt-Foundation aus dem AI Context. Projektdateien, Graphdaten, Kundendaten oder externe Quellen sind noch nicht freigegeben.</p>
             </div>
           </aside>
         </section>

@@ -96,6 +96,16 @@ th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
 td strong { display: block; }
 td strong.subline { margin-top: 9px; }
 td span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+.provider-status-link {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 8px;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: none;
+}
+.provider-status-link:hover { text-decoration: underline; }
 .empty-cell { color: var(--muted); text-align: center; }
 .form-grid { display: grid; gap: 12px; align-content: start; }
 .form-grid label { display: grid; gap: 6px; color: var(--muted); font-weight: 700; }
@@ -172,6 +182,81 @@ td span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px;
 .inline-data-list dt { color: var(--muted); font-size: 12px; }
 .inline-data-list dd { margin: 0; overflow-wrap: anywhere; }
 .prompt-foundation-table { min-width: 900px; }
+.account-rating-table { min-width: 860px; }
+.source-rating-list {
+  display: grid;
+  gap: 10px;
+}
+.source-rating-list div {
+  min-width: 220px;
+}
+.usage-bar {
+  display: block;
+  width: 100%;
+  height: 8px;
+  margin-top: 7px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+.usage-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
+.bar-chart {
+  display: grid;
+  gap: 12px;
+  margin-top: 16px;
+}
+.bar-chart-plot {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(54px, 1fr));
+  gap: 10px;
+  min-height: 210px;
+  align-items: end;
+  border-bottom: 1px solid var(--line);
+  padding: 8px 0 0;
+}
+.bar-chart-item {
+  display: grid;
+  grid-template-rows: auto minmax(120px, 1fr) auto;
+  gap: 7px;
+  min-width: 0;
+  height: 100%;
+  text-align: center;
+}
+.bar-chart-item i {
+  display: block;
+  align-self: end;
+  width: 100%;
+  min-height: 4px;
+  border-radius: 6px 6px 0 0;
+  background: #0f766e;
+}
+.bar-value,
+.bar-label {
+  color: var(--muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.chart-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.chart-summary span,
+.chart-empty {
+  color: var(--muted);
+}
+.chart-empty {
+  border: 1px dashed var(--line);
+  border-radius: 8px;
+  padding: 18px;
+  text-align: center;
+}
 .prompt-foundation-content {
   max-height: 240px;
   min-width: 360px;

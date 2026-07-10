@@ -243,6 +243,7 @@ items:
       - feedbackSummary
       - aiCreditSummary
       - aiUsageSummary
+      - aiRatingSummary
       - consentSummary
       - customerDataAccessSummary
       - sourceSections
@@ -270,7 +271,20 @@ items:
     businessStatus: In Analysis
     implementationStatus: Not Started
     ownerDomain: Business
-    summary: Datenmodell fuer aktuelles KI-Credit-Guthaben, gesperrte Credits, verfuegbare Credits und Account-/Tarifbezug.
+    summary: Accountgebundenes KI-Credit-Budget fuer aktuelles Guthaben, gesperrte Credits, verfuegbare Credits und Tarifbezug. `accountId` ist ausschliesslich eine Referenz auf `identity.user_id` und darf keine zweite Account-Wahrheit bilden.
+    fields:
+      - accountId
+      - planId
+      - totalGrantedCredits
+      - consumedCredits
+      - heldCredits
+      - blockedUntil
+      - createdAt
+      - updatedAt
+    modelRules:
+      - `accountId` muss einer fuehrenden `identity.user_id` entsprechen.
+      - Das Modell darf keine Account-Stammdaten wie Username, E-Mail oder Account-Status speichern.
+      - Fehlende oder fallbackbasierte Account-IDs wie `demo`, `unknown` oder Anzeigenamen muessen abgelehnt werden.
     privacyClassification: customer_relevant
     customerData: true
     adminAccessRequiresConsent: true
@@ -308,6 +322,7 @@ items:
       - accountId
       - occurredAt
       - model
+      - sourceId
       - inputTokens
       - outputTokens
       - calculatedCredits
@@ -330,6 +345,33 @@ items:
       - requirement.ai_credit_consumption_calculation
       - requirement.ai_admin_usage_dashboard
       - requirement.ai_suspicious_usage_detection
+
+  - id: data_model.ai_source_rating
+    type: data_model
+    title: AiSourceRating
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: Business
+    summary: Accountbezogenes KI-Rating je Quelle, z. B. unbegrenzte lokale LLM-Nutzung und begrenzte GPT-/OpenAI-Tokens pro Monat. Das Rating zeigt Limit, Verbrauch, Prozentwert und ob die Quelle unbegrenzt ist.
+    fields:
+      - accountId
+      - sourceId
+      - title
+      - providerType
+      - billingScope
+      - tokenLimit
+      - monthTokens
+      - totalTokens
+      - usedPercent
+      - unlimited
+    privacyClassification: customer_relevant
+    customerData: true
+    adminAccessRequiresConsent: true
+    supportAccessRequiresConsent: true
+    accessMustBeAudited: true
+    derivedFromRequirements:
+      - requirement.ai_usage_limits
+      - requirement.ai_admin_usage_dashboard
 
   - id: data_model.ai_usage_aggregate
     type: data_model
@@ -949,6 +991,27 @@ items:
       - modelLines
     derivedFromRequirements:
       - requirement.project_bound_guided_ide_views
+
+  - id: data_model.project_architecture_structure
+    type: data_model
+    title: ProjectArchitectureStructure
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: IDE
+    summary: Projektgebundene Quellenstruktur, die aus der KI-abgeleiteten Zielarchitektur Komponentenordner, provided/required Schnittstellen, Behavior-Artefakte und Architektur-Sichten erzeugt. Komponenten wie ESP32, MQTT Client, Server, Browser App oder SQLite Datenbank werden als Ordner unter `Komponenten/` gespeichert. Jede Komponente besitzt `Schnittstellen/provided.md`, `Schnittstellen/required.md`, `Behavior/Modell`, `Behavior/Code` und `Behavior/Config`; Architektur-Sichten liegen unter `Architektur/statische-architektur/` und `Architektur/informationsfluss/`.
+    fields:
+      - components
+      - componentFolder
+      - providedInterfaces
+      - requiredInterfaces
+      - behaviorModel
+      - behaviorCode
+      - behaviorConfig
+      - staticArchitecture
+      - informationFlow
+      - projectSources
+    derivedFromRequirements:
+      - requirement.architecture_discovery_guided_by_llm
 
   - id: data_model.project_architecture_dialog
     type: data_model

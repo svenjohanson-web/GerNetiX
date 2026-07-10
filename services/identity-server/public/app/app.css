@@ -109,6 +109,65 @@ button.danger:hover {
 .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; }
 .summary-item { border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: #fff; }
 .summary-item strong { display: block; overflow-wrap: anywhere; }
+.ai-rating-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 12px;
+  margin-top: 12px;
+}
+.ai-rating-grid.compact {
+  grid-template-columns: 1fr;
+  margin-top: 10px;
+}
+.ai-rating-card {
+  display: grid;
+  gap: 5px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+}
+.ai-rating-card span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+.ai-rating-card strong {
+  font-size: 20px;
+}
+.ai-rating-card small {
+  color: var(--muted);
+  line-height: 1.35;
+}
+.ide-ai-rating {
+  margin-top: 14px;
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+}
+.ide-ai-rating-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+}
+.ide-ai-rating-head strong {
+  color: var(--text);
+}
+.usage-bar {
+  display: block;
+  width: 100%;
+  height: 8px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: #e2e8f0;
+}
+.usage-bar i {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--accent);
+}
 .project-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
 .project-card { padding: 16px; }
 .project-card p, .device-row p, .build-row p, #lessonText { color: var(--muted); line-height: 1.5; }
@@ -182,9 +241,125 @@ button.danger:hover {
 .step-rail button { text-align: left; }
 .step-rail button.active { background: var(--soft); color: var(--accent); border-color: var(--accent); font-weight: 700; }
 .insight { margin: 16px 0; padding: 14px; border-left: 4px solid var(--accent); background: var(--soft); line-height: 1.5; }
-.ide-layout { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 12px; }
-.ide-layout.model-only { grid-template-columns: minmax(0, 1fr); }
-.ide-layout.model-only .project-view-manifest { max-width: 980px; }
+.ide-layout {
+  display: grid;
+  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr) minmax(300px, 380px);
+  gap: 12px;
+  align-items: stretch;
+}
+.ide-workbench {
+  display: grid;
+  grid-template-rows: minmax(420px, 1fr) auto;
+  gap: 12px;
+  min-width: 0;
+}
+.ide-project-browser-panel,
+.ide-inspector-panel,
+.ide-viewer-panel,
+.ide-assistant-panel {
+  min-width: 0;
+}
+.ide-project-browser {
+  display: grid;
+  gap: 4px;
+  margin-top: 12px;
+  overflow: auto;
+  max-height: 72vh;
+}
+.ide-tree-root {
+  display: grid;
+  gap: 4px;
+}
+.ide-tree-root > strong {
+  padding: 7px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #f8fafc;
+  overflow-wrap: anywhere;
+}
+.ide-tree-folder {
+  display: grid;
+  gap: 4px;
+}
+.ide-tree-folder summary {
+  cursor: pointer;
+  padding: 6px 8px 6px calc(8px + var(--depth, 0) * 12px);
+  color: var(--muted);
+  font-weight: 800;
+}
+.ide-project-browser button {
+  display: grid;
+  gap: 2px;
+  width: 100%;
+  padding: 7px 8px 7px calc(8px + var(--depth, 0) * 12px);
+  text-align: left;
+  white-space: normal;
+}
+.ide-project-browser button.active {
+  border-color: var(--accent);
+  background: var(--soft);
+  color: var(--accent);
+  font-weight: 800;
+}
+.ide-project-browser small {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.ide-viewer-panel {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  gap: 10px;
+}
+.ide-viewer-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.ide-source-workspace {
+  min-height: 0;
+}
+.ide-source-workspace textarea {
+  min-height: 420px;
+  height: 100%;
+  margin-top: 0;
+}
+.ide-image-view,
+.ide-model-view {
+  min-height: 420px;
+}
+.ide-model-context {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px;
+  background: #f8fafc;
+}
+.ide-model-context span {
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.ide-assistant-panel {
+  display: grid;
+  grid-template-rows: minmax(120px, 22vh) auto;
+  gap: 10px;
+}
+.development-chat-messages.compact {
+  min-height: 120px;
+}
+.development-chat-form.compact textarea {
+  min-height: 54px;
+}
+.ide-chat-input-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: start;
+}
 .development-platform-layout,
 .ai-chat-layout {
   display: grid;
@@ -237,6 +412,35 @@ button.danger:hover {
   color: var(--text);
   line-height: 1.5;
   white-space: pre-wrap;
+}
+.chat-routing {
+  display: inline-grid;
+  gap: 2px;
+  width: fit-content;
+  max-width: 100%;
+  margin-top: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 8px;
+  background: #fff;
+}
+.chat-routing strong {
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.2;
+}
+.chat-routing small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.25;
+}
+.chat-routing.local {
+  border-color: #86efac;
+  background: #f0fdf4;
+}
+.chat-routing.api {
+  border-color: #bfdbfe;
+  background: #eff6ff;
 }
 .chat-usage {
   display: grid;

@@ -1,7 +1,5 @@
 function createAccountTransparencyFactory({
   aiUsageJson,
-  demoEmail,
-  demoUsername,
   deviceManagementJson,
   hardwareShopJson,
   projectServerJson,
@@ -36,13 +34,13 @@ function createAccountTransparencyFactory({
       refresh_requested: Boolean(options.refresh),
       identity: {
         user_id: accountId,
-        username: session.account.username || demoUsername,
+        username: session.account.username || "",
         account_status: "active",
         sources: [sourceRef("identity-server.session", "authenticated_session")],
       },
       contact_data: {
-        email: session.account.email || demoEmail,
-        email_verified: Boolean(session.account.email_verified ?? true),
+        email: session.account.email || null,
+        email_verified: session.account.email_verified === true,
         sources: [sourceRef("identity-server.session", "own_account_contact_data")],
       },
       login_providers: [{

@@ -147,7 +147,7 @@ items:
       - Die Sicht zeigt nachvollziehbar, warum eine Funktion freigeschaltet oder gesperrt ist, zum Beispiel durch Plan, Kurskauf, Einzelgrant, Override, Ablaufdatum oder Widerruf.
       - Die Sicht zeigt accountbezogene Lerninformationen wie Kompetenzprofil, Fortschritt, Empfehlungen und Feedbackkontexte.
       - Die Sicht zeigt registrierte Devices, Pairing-Status, GerNetiX-verified-vs-Community-Status, OTA-Status und Support-/Garantiegrundlage, soweit diese dem Nutzer selbst gehoeren.
-      - Die Sicht zeigt KI-Credits, relevante KI-Nutzung und Limits nur in nutzerverstaendlicher Form und ohne interne Kosten- oder Abuse-Details offenzulegen.
+      - Die Sicht zeigt KI-Credits, relevante KI-Nutzung, Quellenrating und Limits nur in nutzerverstaendlicher Form und ohne interne Kosten- oder Abuse-Details offenzulegen.
       - Die Sicht zeigt Consents, Zwecke, Gueltigkeiten, Widerrufsstatus und relevante Audit-Hinweise fuer Zugriffe auf kundenrelevante Daten.
       - Die Sicht nennt je Datenbereich Quelle, Zweck, letzte Aktualisierung und fachlichen Verantwortungsbereich.
       - Aenderungen an Payment, Abos, Produktangeboten, Grants, Overrides, Entzuegen, Devices, Kompetenzprofil oder Consents muessen die Sicht invalidieren.
@@ -299,15 +299,22 @@ items:
     businessStatus: In Analysis
     implementationStatus: Not Started
     ownerDomain: Business
-    summary: Die Plattform muss Tageslimits, Monatslimits, Budgetobergrenzen, Rate Limits, maximale Promptgroesse, maximale Antwortgroesse und maximale Laufzeit fuer KI-Aufrufe unterstuetzen.
+    summary: Die Plattform muss Tageslimits, Monatslimits, Budgetobergrenzen, Quellenratings je KI-Quelle, Rate Limits, maximale Promptgroesse, maximale Antwortgroesse und maximale Laufzeit fuer KI-Aufrufe unterstuetzen.
     derivedFromBusinessCapabilities:
       - BC-041
     considersBusinessRules:
       - BR-006
     affectsDataModels:
       - data_model.ai_budget_policy
+      - data_model.ai_source_rating
     affectsApiArtifacts:
       - api_artifact.ai_admin_cost_controls
+    acceptanceCriteria:
+      - KI-Nutzung kann je Quelle begrenzt oder als unbegrenzt markiert werden.
+      - Lokale LLM-Quellen duerfen ein unbegrenztes Quellenrating besitzen, ohne externe Providerkosten zu erzeugen.
+      - GPT-/OpenAI-Quellen koennen z. B. auf 100.000 Tokens pro Monat und Account begrenzt werden.
+      - Die Preflight-Pruefung blockiert externe KI-Aufrufe, wenn das Quellenrating fuer den Account ausgeschoepft ist.
+      - Nutzer sehen im Dashboard und in der IDE den Prozentverbrauch ihrer begrenzten KI-Quellen.
 
   - id: requirement.ai_model_access_control
     type: requirement
@@ -405,7 +412,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: Not Started
     ownerDomain: Business
-    summary: Das Admin Tool muss KI-Nutzung nach Benutzer, Zeitraum, Credits, Tokens, Modell, Anzahl Anfragen, durchschnittlichen Kosten, teuersten Benutzern, Fehlern, Ablehnungen, Budgetnaehe und Systemkosten anzeigen.
+    summary: Das Admin Tool muss KI-Nutzung nach Benutzer, Zeitraum, Credits, Tokens, Quelle, Quellenrating, Modell, Anzahl Anfragen, durchschnittlichen Kosten, teuersten Benutzern, Fehlern, Ablehnungen, Budgetnaehe und Systemkosten anzeigen.
     derivedFromBusinessCapabilities:
       - BC-041
     considersBusinessRules:
@@ -416,8 +423,13 @@ items:
     affectsDataModels:
       - data_model.ai_usage_event
       - data_model.ai_usage_aggregate
+      - data_model.ai_source_rating
     affectsApiArtifacts:
       - api_artifact.ai_admin_usage_dashboard
+    acceptanceCriteria:
+      - Das Admin Tool zeigt ein Account-Blatt mit Account-ID, Creditstand, Blockstatus, abgelehnten Aufrufen und KI-Rating je Quelle.
+      - Das Account-Blatt unterscheidet lokale unbegrenzte LLM-Quellen von begrenzten GPT-/OpenAI-Quellen.
+      - Je begrenzter Quelle werden Tokenlimit, Monatstokens und Prozentverbrauch angezeigt.
 
   - id: requirement.ai_cost_margin_reporting
     type: requirement
@@ -1037,11 +1049,20 @@ items:
       - Der Architektur-Chat startet erst, wenn der Nutzer ein eigenes Entwicklungsprojekt geladen oder neu angelegt hat.
       - Eigene Entwicklungsprojekte werden im Project Server persistiert und ueber `user_id` an den Account gebunden.
       - Der Nutzer kann die aktuell abgeleitete Architektur jederzeit als PlantUML-Projektartefakt speichern.
+      - Beim Speichern einer KI-abgeleiteten Architektur entsteht im Project Server eine Projektstruktur aus Komponentenordnern, z. B. `Komponenten/ESP32`, `Komponenten/MQTT-Client` oder `Komponenten/Server`.
+      - Jeder Komponentenordner enthaelt `Schnittstellen/provided.md` und `Schnittstellen/required.md`, damit bereitgestellte und benoetigte Schnittstellen gleichwertig sichtbar sind.
+      - Jeder Komponentenordner enthaelt zusaetzlich `Behavior/Modell`, `Behavior/Code` und `Behavior/Config`, damit Modell, Implementierungsableitung und Konfiguration getrennt weiterbearbeitet werden koennen.
+      - Das Projekt enthaelt einen Ordner `Architektur` mit den Unterordnern `statische-architektur` und `informationsfluss`.
+      - Wenn der Nutzer mit der Architektur zufrieden ist, kann er `Uebernehmen und weiter` ausloesen; die Architektur wird gespeichert und das Projekt wird im freien IDE-Arbeitsbereich geoeffnet.
+      - Der freie IDE-Arbeitsbereich zeigt links einen Projektbrowser ab Projektname mit Architektur- und Komponentenordnern, in der Mitte Modell-, Code- und Image-Ansichten und unten einen KI-Chat fuer projektnahe Rueckfragen.
       - Der Dialog erzeugt eine nachvollziehbare Zielarchitektur mit Bausteinen wie IoT Device, Backend, Mobile App, Desktop App, Browser App, lokales Netzwerk, Cloud oder HomeServer.
       - Aus der jeweils letzten KI-Antwort wird eine PlantUML-Architekturskizze erzeugt und in der Entwicklungsplattform angezeigt.
       - Die PlantUML-Skizze muss als KI-abgeleitete Skizze markiert bleiben und darf keine bestaetigte Architekturentscheidung ersetzen.
       - LLM-Aufgaben werden ueber Task-Routen gesteuert, damit interaktiver Chat optional ueber eine externe API laufen kann, waehrend kostenkritische Artefakt-, PlantUML-, Pseudocode- und Codegenerierung standardmaessig lokal ausgefuehrt wird.
       - Der Admin muss fuer Chat, Architektur-Discovery, Artefaktgenerierung und Codegenerierung getrennt waehlen koennen, ob die Standardroute, ein lokales LLM oder eine externe API genutzt wird.
+      - Kurze und eindeutige Architekturwuensche wie `ESP32 only` muessen zuerst ueber ein lokales LLM geroutet werden; externe Provider werden erst fuer komplexere Architektur-Dialoge genutzt.
+      - Architekturantworten duerfen nicht ausfuehrlich erklaeren, was alles nicht benoetigt wird; sie sollen nur das beantworten, was der Nutzer angefragt hat.
+      - Bei `ESP32 only` muss das PlantUML eine rein technische Minimalarchitektur mit genau der Komponente `ESP32` zeigen; Nutzer, Projektidee/Anforderungen, Notizen, Uebergabepunkte und fachliche Anforderungsknoten duerfen nicht im technischen Diagramm erscheinen.
       - Technologiefragen wie MQTT, ESP32, WLAN, Bluetooth, REST, WebSocket, Datenbank, Framework oder Hosting werden erst nach der Zielarchitektur gestellt.
       - Jede Technologieempfehlung muss auf eine erkannte Architekturentscheidung oder ein fachliches Projektziel zurueckfuehrbar sein.
       - Unklare Antworten werden als offene Architekturfragen gespeichert, statt vorschnell Technologien festzulegen.
@@ -1052,6 +1073,8 @@ items:
     implementationNotes:
       - Erster PoC in der Kunden-IDE unter `/app/development-platform/`.
       - Der Identity Server stellt `/api/platform/development-assistant/chat` als Proxy fuer das im Admin Tool konfigurierte LLM-Routing bereit.
+      - Der Identity Server stellt fuer die IDE eine accountgebundene Quellenliste unter `/api/platform/projects/{project_id}/sources` bereit und proxyt Lese-/Schreibzugriffe an den Project Server.
+      - Architekturartefakte, Komponentenordner und Schnittstellenbeschreibungen werden als Project-Server-Quellen gespeichert und gehoeren damit zur SQL-persistierten Projektwahrheit.
       - Konfiguration erfolgt ueber das Admin Tool unter `http://127.0.0.1:4600/admin/` und muss gemaess SQL-only-Persistenz in SQLite gespeichert werden; alte JSON-Dev-Konfigurationen sind nur Migrationsaltlasten.
       - Wechsel zwischen lokalem Ollama und OpenAI-kompatibler API sollen ohne Identity-Server-Neustart greifen.
       - Task-Routen `general_chat`, `architecture_discovery`, `artifact_generation` und `code_generation` sind Teil der gemeinsamen Runtime-Konfiguration; Artefakt- und Codegenerierung bevorzugen lokal, um Anbieter-Kosten zu vermeiden.

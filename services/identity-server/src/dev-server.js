@@ -8,6 +8,7 @@ const { createAccountTransparencyFactory } = require("./dev/account-transparency
 const { createAiChatAssistant } = require("./dev/ai-chat-assistant");
 const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
+const { developmentProjectSources } = require("./dev/development-project-structure");
 const { createDevHardwareUtils } = require("./dev/hardware-utils");
 const { createLlmConfigStore } = require("../../shared/llm-config");
 const {
@@ -105,6 +106,7 @@ const { discoverNetworkDevices } = createDeviceDiscoveryService({
 });
 const developmentAssistant = createDevelopmentAssistant({
   aiContextJson,
+  aiUsageJson,
   hardwareCatalogJson,
   llmConfigStore,
   projectServerUserId,
@@ -114,13 +116,14 @@ const developmentAssistant = createDevelopmentAssistant({
 });
 const aiChatAssistant = createAiChatAssistant({
   aiContextJson,
+  aiUsageJson,
   llmConfigStore,
   projectServerUserId,
   readJsonBody,
   sendJson,
 });
 const builtInDemoAccounts = [
-  { username: demoUsername, email: demoEmail, password: demoPassword },
+  { user_id: "acct-demo", username: demoUsername, email: demoEmail, password: demoPassword },
 ];
 
 const emailService = new MockEmailService({ log() {} });
@@ -160,7 +163,9 @@ async function seedDemoAccount() {
   for (const account of builtInDemoAccounts) {
     try {
       const beforeCount = emailService.sentMessages.length;
-      await auth.register_local(account.username, account.email, account.password, true);
+      await auth.register_local(account.username, account.email, account.password, true, account.password, {
+        user_id: account.user_id,
+      });
       const verification = emailService.sentMessages
         .slice(beforeCount)
         .find((message) => message.type === "verification");
@@ -380,6 +385,17 @@ async function routeRequest(req, res) {
   }
 
   const platformSource = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/sources\/(.+)$/);
+  const platformSources = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/sources$/);
+  if (platformSources && req.method === "GET") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handlePlatformSourceList(res, session, decodeURIComponent(platformSources[1]));
+    return;
+  }
+
   if (platformSource && ["GET", "PUT"].includes(req.method)) {
     const session = readSession(req);
     if (!session) {
@@ -614,6 +630,13 @@ async function handlePlatformSummary(res, session) {
     serviceStatus.builds = { ok: false, error: error.message || String(error) };
     return [];
   });
+  const aiUsage = await loadAiUsageSummary(session).then((summary) => {
+    serviceStatus.ai_usage = { ok: summary.available !== false };
+    return summary;
+  }).catch((error) => {
+    serviceStatus.ai_usage = { ok: false, error: error.message || String(error) };
+    return null;
+  });
   const userId = projectServerUserId(session);
   sendJson(res, 200, {
     account: await createAccountSummary(session),
@@ -636,7 +659,8 @@ async function handlePlatformSummary(res, session) {
     learning_progress: listLearningProgress(userId, projects),
     devices,
     builds,
-    billing: await loadBillingSummary(session),
+    billing: await loadBillingSummary(session, aiUsage),
+    ai_usage: aiUsage,
     service_status: serviceStatus,
   });
 }
@@ -646,6 +670,13 @@ async function handlePlatformSourceRead(res, session, projectId, sourcePath) {
   const source = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources/${encodeURIComponent(sourcePath)}`);
   touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
   sendJson(res, 200, source);
+}
+
+async function handlePlatformSourceList(res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  const sources = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`);
+  touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
+  sendJson(res, 200, sources);
 }
 
 async function handlePlatformSourceWrite(req, res, session, projectId, sourcePath) {
@@ -671,6 +702,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
   const description = String(body.description || "Architektur-Discovery-Projekt").trim().slice(0, 1000);
   const projectId = `dev_project_${slugifyProjectId(title)}_${Date.now().toString(36)}`;
   const initialSource = initialArchitecturePlantUml(title);
+  const sources = developmentProjectSources({ title, description, architectureSource: initialSource });
   const project = await projectServerJson("/api/projects", {
     method: "POST",
     body: {
@@ -683,12 +715,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
       device_id: null,
       build_config: null,
       view_manifest: developmentProjectViewManifest({ title, description, source: initialSource }),
-      sources: [{
-        path: "docs/architecture.puml",
-        role: "architecture_model",
-        content_type: "text/plain",
-        content: initialSource,
-      }],
+      sources,
     },
   });
   touchWorkspace(session, project.project_id, "development-platform", "/app/development-platform/");
@@ -709,15 +736,12 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
   }
   const title = String(body.title || project.title || diagram.title || "Architektur").trim().slice(0, 120);
   const description = String(body.description || project.summary || diagram.summary || "").trim().slice(0, 1000);
-  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
-    method: "PUT",
-    body: {
-      path: "docs/architecture.puml",
-      role: "architecture_model",
-      content_type: "text/plain",
-      content: diagram.source,
-    },
-  });
+  for (const source of developmentProjectSources({ title, description, diagram, architectureSource: diagram.source })) {
+    await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
+      method: "PUT",
+      body: source,
+    });
+  }
   await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
@@ -1194,8 +1218,8 @@ function learningProgressKey(userId, courseId, lessonId, projectId) {
   return `${userId}:${courseId}:${lessonId}:${projectId}`;
 }
 
-async function loadBillingSummary(session) {
-  const aiUsage = await loadAiUsageSummary(session);
+async function loadBillingSummary(session, existingAiUsage = null) {
+  const aiUsage = existingAiUsage || await loadAiUsageSummary(session);
   return {
     account_id: projectServerUserId(session),
     plan: "Premium Demo",
@@ -1294,15 +1318,18 @@ async function handleHardwareShopOrder(req, res, session) {
 async function loadAiUsageSummary(session) {
   const accountId = projectServerUserId(session);
   try {
-    const [credits, dashboard] = await Promise.all([
+    const [credits, rating, dashboard] = await Promise.all([
       aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/credits`),
+      aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/rating`),
       aiUsageJson("/api/ai-usage/admin/dashboard"),
     ]);
     return {
       base_url: aiUsageBaseUrl,
       available: true,
       credits,
+      rating,
       usage_events: dashboard.summary,
+      account_usage: (dashboard.by_account || []).find((item) => item.account_id === accountId) || null,
       model_summary: dashboard.by_model,
     };
   } catch (error) {
@@ -1314,7 +1341,13 @@ async function loadAiUsageSummary(session) {
         available_credits: 0,
         consumed_credits: 0,
       },
+      rating: {
+        account_id: accountId,
+        used_percent: 0,
+        sources: [],
+      },
       usage_events: {},
+      account_usage: null,
       model_summary: [],
       error: error.message || "AI Usage Service ist nicht erreichbar.",
     };
@@ -1407,13 +1440,20 @@ function delay(ms) {
 }
 
 function projectServerUserId(session) {
-  return session.account.user_id || session.account.username || demoUsername;
+  const userId = String(session?.account?.user_id || "").trim();
+  if (!userId) {
+    const error = new Error("Authenticated session is missing identity.user_id.");
+    error.code = "missing_identity_user_id";
+    error.status = 500;
+    throw error;
+  }
+  return userId;
 }
 
 async function createAccountSummary(session) {
   const aiUsage = await loadAiUsageSummary(session);
   return {
-    username: session.account.username || demoUsername,
+    username: session.account.username || "",
     user_id: projectServerUserId(session),
     plan: "Premium Demo",
     capabilities: ["ide_flash_usb", "ide_flash_ota", "cloud_flash"],

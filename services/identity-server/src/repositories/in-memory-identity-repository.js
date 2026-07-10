@@ -35,7 +35,7 @@ class InMemoryIdentityRepository {
     return this.clock().toISOString();
   }
 
-  createUserAccount({ username, email, status }) {
+  createUserAccount({ id, username, email, status }) {
     const normalizedUsername = normalizeUsername(username);
     const normalizedEmail = normalizeEmail(email);
 
@@ -47,8 +47,12 @@ class InMemoryIdentityRepository {
     }
 
     const now = this.nowIso();
+    const accountId = String(id || "").trim() || createId("usr");
+    if (this.userAccounts.has(accountId)) {
+      throw new Error("USER_ID_ALREADY_EXISTS");
+    }
     const account = {
-      id: createId("usr"),
+      id: accountId,
       username,
       email: normalizedEmail,
       status,

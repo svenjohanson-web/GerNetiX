@@ -1,4 +1,4 @@
-function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmConfigStore, projectServerUserId, readJsonBody, requireProjectAccess, sendJson }) {
+function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalogJson, llmConfigStore, projectServerUserId, readJsonBody, requireProjectAccess, sendJson }) {
   async function handleChat(req, res, session) {
     const body = await readJsonBody(req);
     const userMessages = normalizeMessages(body.messages);
@@ -17,17 +17,38 @@ function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmCon
         sendJson(res, 400, { error: "not_development_project", message: "Bitte ein eigenes Entwicklungsprojekt fuer den Architektur-Chat auswaehlen." });
         return;
       }
-      const activeConfig = routeConfig("architecture_discovery");
+      const requestProfile = architectureRequestProfile(userMessages);
+      const configuredRoute = routeConfig("architecture_discovery");
+      const activeConfig = configuredRoute;
       const context = await architectureContext(session, activeConfig, projectId);
       const messages = [
-        { role: "system", content: await systemPrompt(session) },
+        { role: "system", content: await systemPrompt(session, requestProfile) },
         ...context.messages,
         ...userMessages,
       ];
-      const response = await callChatProvider(messages, activeConfig);
+      const usagePreflight = await preflightUsage(session, activeConfig, projectId, messages, "architecture_discovery");
+      if (usagePreflight && !usagePreflight.allowed) {
+        sendJson(res, 402, {
+          error: "ai_usage_rejected",
+          message: "Der KI-Aufruf wurde durch AI Usage Cost Control blockiert.",
+          usagePreflight,
+          routing: routingSummary(activeConfig, requestProfile),
+        });
+        return;
+      }
+      let response;
+      try {
+        response = await callChatProvider(messages, activeConfig);
+      } catch (error) {
+        await failUsage(usagePreflight, error);
+        throw error;
+      }
+      const usage = usageFromProvider(response);
+      const usageEvent = await completeUsage(usagePreflight, usage);
       const assistantContent = response.message?.content || fallbackAnswer(userMessages, activeConfig);
       sendJson(res, 200, {
-        config: config({ contextSources: context.sources }),
+        config: config({ contextSources: context.sources, requestProfile }),
+        routing: routingSummary(activeConfig, requestProfile),
         message: {
           role: "assistant",
           content: assistantContent,
@@ -38,13 +59,16 @@ function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmCon
           provider: activeConfig.provider,
           routeTask: activeConfig.routeTask,
         }),
-        usage: usageFromProvider(response),
+        usage,
+        usageEvent,
         usedFallback: false,
+        usedLocalRoute: false,
       });
     } catch (error) {
       const assistantContent = fallbackAnswer(userMessages, routeConfig("architecture_discovery"));
       sendJson(res, 200, {
         config: config({ lastError: error.message || String(error) }),
+        routing: routingSummary(routeConfig("architecture_discovery"), { complexity: "unknown" }),
         message: {
           role: "assistant",
           content: assistantContent,
@@ -66,6 +90,27 @@ function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmCon
     };
   }
 
+  function routingSummary(activeConfig, requestProfile = {}) {
+    const isApi = activeConfig.provider === "api";
+    const provider = isApi ? (activeConfig.apiProvider || "openai-compatible") : "ollama";
+    return {
+      local: !isApi,
+      provider,
+      label: isApi ? apiProviderLabel(provider) : "Lokal / Ollama",
+      model: isApi ? activeConfig.apiModel : activeConfig.ollamaModel,
+      routeTask: activeConfig.routeTask || "architecture_discovery",
+      routeReason: activeConfig.routeReason || requestProfile.reason || "",
+      costPolicy: activeConfig.costPolicy || (isApi ? "external_costs" : "prefer_local"),
+      requestComplexity: requestProfile.complexity || "unknown",
+    };
+  }
+
+  function apiProviderLabel(provider) {
+    if (provider === "anthropic") return "Claude / Anthropic";
+    if (provider === "openai-responses") return "OpenAI";
+    return "OpenAI / API";
+  }
+
   function routeConfig(task) {
     return typeof llmConfigStore.resolveRoute === "function"
       ? llmConfigStore.resolveRoute(task)
@@ -82,7 +127,9 @@ function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmCon
       .slice(-12);
   }
 
-  async function systemPrompt(session) {
+  async function systemPrompt(session, requestProfile = {}) {
+    // Prompt-Regeln gehoeren in die AI-Context-SQLite, nicht in Identity-Code.
+    // Identity fuegt hier nur dynamischen Laufzeitkontext an.
     return [
       await promptFoundation("architecture_discovery"),
       `Aktueller Nutzer: ${projectServerUserId(session)}.`,
@@ -90,13 +137,14 @@ function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmCon
   }
 
   async function promptFoundation(routeTask) {
-    if (!aiContextJson) return missingPromptFoundation(routeTask);
+    if (!aiContextJson) throw new Error(missingPromptFoundation(routeTask));
     try {
       const response = await aiContextJson(`/api/ai-context/prompt-foundations?route_task=${encodeURIComponent(routeTask)}&status=active`);
       const prompt = (response.items || []).find((item) => item.route_task === routeTask && item.content_kind === "system_prompt");
-      return prompt?.content || missingPromptFoundation(routeTask);
-    } catch {
-      return missingPromptFoundation(routeTask);
+      if (!prompt?.content) throw new Error(missingPromptFoundation(routeTask));
+      return prompt.content;
+    } catch (error) {
+      throw new Error(error.message || missingPromptFoundation(routeTask));
     }
   }
 
@@ -221,6 +269,7 @@ function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmCon
           messages,
           options: {
             temperature: 0.2,
+            ...(Number.isFinite(activeConfig.maxOutputTokens) ? { num_predict: activeConfig.maxOutputTokens } : {}),
           },
         }),
       });
@@ -332,6 +381,58 @@ function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmCon
     };
   }
 
+  async function preflightUsage(session, activeConfig, projectId, messages, feature) {
+    if (!aiUsageJson) return null;
+    const accountId = projectServerUserId(session);
+    const model = activeConfig.provider === "api" ? activeConfig.apiModel : activeConfig.ollamaModel;
+    const estimate = estimateMessageTokens(messages);
+    return aiUsageJson("/api/ai-usage/preflight", {
+      method: "POST",
+      allowPaymentRequired: true,
+      body: {
+        account_id: accountId,
+        user_id: accountId,
+        project_id: projectId || "",
+        feature,
+        model,
+        source_id: activeConfig.provider === "api" ? "openai_gpt" : "local_llm",
+        estimated_input_tokens: estimate.inputTokens,
+        estimated_output_tokens: Number(activeConfig.maxOutputTokens || 800),
+        system_capabilities: activeConfig.provider === "api" ? ["system_capability.ai_premium_models"] : [],
+      },
+    });
+  }
+
+  async function completeUsage(preflight, usage) {
+    if (!aiUsageJson || !preflight?.event_id) return null;
+    try {
+      return await aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/complete`, {
+        method: "POST",
+        body: {
+          input_tokens: usage.promptTokens ?? 0,
+          output_tokens: usage.completionTokens ?? 0,
+        },
+      });
+    } catch (error) {
+      return { event_id: preflight.event_id, status: "tracking_failed", error: error.message || String(error) };
+    }
+  }
+
+  async function failUsage(preflight, error) {
+    if (!aiUsageJson || !preflight?.event_id) return null;
+    try {
+      return await aiUsageJson(`/api/ai-usage/events/${encodeURIComponent(preflight.event_id)}/fail`, {
+        method: "POST",
+        body: {
+          error_code: "provider_error",
+          error_message: error.message || String(error),
+        },
+      });
+    } catch {
+      return null;
+    }
+  }
+
   function responseInput(messages) {
     return messages.map((message) => ({
       role: message.role === "assistant" ? "assistant" : message.role === "system" ? "developer" : "user",
@@ -352,6 +453,16 @@ function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmCon
     return Number.isFinite(value) ? value : null;
   }
 
+  function estimateMessageTokens(messages) {
+    const chars = (Array.isArray(messages) ? messages : [])
+      .map((message) => String(message.content || ""))
+      .join("\n")
+      .length;
+    return {
+      inputTokens: Math.max(1, Math.ceil(chars / 4)),
+    };
+  }
+
   function nanosToMs(value) {
     return Number.isFinite(value) ? Math.round(value / 1000000) : null;
   }
@@ -368,10 +479,7 @@ function createDevelopmentAssistant({ aiContextJson, hardwareCatalogJson, llmCon
         `Ausgangspunkt: ${lastUserMessage}`,
         "",
         "Minimale Struktur:",
-        "- Nutzer: moechte eine einfache ESP32-Struktur sehen.",
-        "- ESP32-Port: ein einzelner lokaler Anschluss oder logischer Einstiegspunkt.",
-        "- Keine Annahme fuer Backend, Cloud, Datenbank oder mehrere Geraete.",
-        "- Naechster GerNetiX-Schritt: PlantUML-Skizze erzeugen und erst danach erweitern, falls du mehr willst.",
+        "- ESP32",
       ].join("\n");
     }
     return [
@@ -402,8 +510,14 @@ function buildArchitectureDiagram(messages, options = {}) {
   const normalized = normalizeDiagramMessages(messages);
   const assistantText = normalized.filter((message) => message.role === "assistant").map((message) => message.content).join("\n");
   const fullText = normalized.map((message) => message.content).join("\n");
-  const signals = architectureSignals(fullText, assistantText);
+  const latestUserText = [...normalized].reverse().find((message) => message.role !== "assistant")?.content || fullText;
+  const signals = architectureSignals(fullText, assistantText, latestUserText);
   const title = diagramTitle(fullText);
+  if (signals.minimalScope) {
+    return minimalEsp32ArchitectureDiagram(title, signals);
+  }
+  const actorInterface = actorInterfaceSignals(fullText);
+  const showBrowser = signals.browser || (actorInterface.actor && actorInterface.webserver);
   const lines = [
     "@startuml",
     `title ${plantUmlText(title)}`,
@@ -419,13 +533,12 @@ function buildArchitectureDiagram(messages, options = {}) {
     "  BorderColor #8aa0bd",
     "}",
     "",
-    "actor \"Nutzer\" as user",
-    "rectangle \"Projektidee / Anforderungen\" as requirements",
   ];
 
   if (signals.device) lines.push("node \"IoT Device / ESP32\" as device");
+  if (actorInterface.webserver) lines.push("rectangle \"Webserver\" as webserver");
   if (signals.localUi) lines.push("rectangle \"Lokale Bedienung\" as local_ui");
-  if (signals.browser) lines.push("rectangle \"Browser App\" as browser");
+  if (showBrowser) lines.push("rectangle \"Browser\" as browser");
   if (signals.mobile) lines.push("rectangle \"Mobile App\" as mobile");
   if (signals.desktop) lines.push("rectangle \"Desktop App\" as desktop");
   if (signals.backend) lines.push("rectangle \"Backend / API\" as backend");
@@ -433,15 +546,20 @@ function buildArchitectureDiagram(messages, options = {}) {
   if (signals.cloud) lines.push("cloud \"Cloud / Internet\" as cloud");
   if (signals.homeServer) lines.push("node \"HomeServer / lokaler Server\" as homeserver");
   if (signals.hardwareCatalog) lines.push("rectangle \"Hardware Catalog\" as hardware_catalog");
+  if (actorInterface.actor) lines.push(`actor "${plantUmlText(actorInterface.label)}" as actor`);
 
   lines.push("");
-  lines.push("user --> requirements : beschreibt Ziel und Rahmen");
-  if (signals.device) lines.push("requirements --> device : Messung / Steuerung");
-  if (signals.localUi && signals.device) lines.push("user --> local_ui : lokale Bedienung");
+  if (actorInterface.actor && actorInterface.webserver) lines.push("actor --> webserver : Zugriff");
+  if (actorInterface.actor && actorInterface.webserver && showBrowser) {
+    lines[lines.length - 1] = "actor --> browser : nutzt";
+    lines.push("browser --> webserver : HTTP");
+  }
+  if (actorInterface.actor && signals.localUi) lines.push("actor --> local_ui : Bedienung");
+  if (actorInterface.actor && signals.browser && !actorInterface.webserver) lines.push("actor --> browser : Bedienung");
+  if (actorInterface.actor && signals.mobile) lines.push("actor --> mobile : Bedienung");
+  if (actorInterface.actor && signals.desktop) lines.push("actor --> desktop : Bedienung");
+  if (actorInterface.webserver && signals.device) lines.push("webserver --> device : lokales Interface");
   if (signals.localUi && signals.device) lines.push("local_ui --> device : Setup / Status");
-  if (signals.browser) lines.push("user --> browser : Bedienung im Browser");
-  if (signals.mobile) lines.push("user --> mobile : Bedienung am Handy");
-  if (signals.desktop) lines.push("user --> desktop : Bedienung am Computer");
   if (signals.backend) {
     if (signals.browser) lines.push("browser --> backend : REST / WebSocket");
     if (signals.mobile) lines.push("mobile --> backend : API");
@@ -449,24 +567,70 @@ function buildArchitectureDiagram(messages, options = {}) {
     if (signals.device) lines.push("device --> backend : Telemetrie / Befehle");
   }
   if (signals.database && signals.backend) lines.push("backend --> database : speichern / lesen");
-  if (signals.database && !signals.backend) lines.push("requirements --> database : Daten speichern");
+  if (signals.database && !signals.backend && signals.device) lines.push("device --> database : Daten speichern");
   if (signals.cloud && signals.backend) lines.push("backend --> cloud : externer Zugriff / Hosting");
   if (signals.homeServer && signals.backend) lines.push("backend --> homeserver : lokaler Betrieb");
   if (signals.hardwareCatalog && signals.device) lines.push("hardware_catalog ..> device : Board- und Capability-Kontext");
-
-  const note = diagramNotes(assistantText, signals, options);
-  if (note.length) {
-    lines.push("");
-    lines.push("note right of requirements");
-    for (const item of note) lines.push(`  ${plantUmlText(item)}`);
-    lines.push("end note");
-  }
 
   lines.push("@enduml");
   return {
     type: "plantuml",
     title,
-    summary: "Aus der letzten Architektur-KI-Antwort abgeleitete PlantUML-Skizze.",
+    summary: "Technische Struktur aus der letzten Architektur-KI-Antwort.",
+    source: lines.join("\n"),
+    derived_from: "architecture_discovery_ai_response",
+    generated_at: new Date().toISOString(),
+    confidence: signals.confidence,
+    detected_blocks: signals.detectedBlocks,
+  };
+}
+
+function architectureRequestProfile(messages) {
+  const normalizedMessages = Array.isArray(messages) ? messages : [];
+  const text = normalizedMessages
+    .map((message) => String(message.content || ""))
+    .join("\n")
+    .trim();
+  const latestUserText = [...normalizedMessages].reverse().find((message) => message.role !== "assistant")?.content || text;
+  const explicitMinimal = isMinimalEsp32StructureRequest(latestUserText);
+  const workModeChoice = architectureWorkModeChoice(latestUserText);
+  return {
+    explicitMinimal,
+    workModeChoice,
+    complexity: workModeChoice ? "dialog_control" : "configured_route",
+    reason: "Architektur-Discovery nutzt immer die konfigurierte Architektur-Route.",
+  };
+}
+
+function architectureWorkModeChoice(value) {
+  const text = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[.!?]+$/g, "");
+  if (text === "max" || text === "maximal" || text === "maximale architektur") return "max";
+  if (text === "leer" || text === "leere architektur" || text === "empty") return "leer";
+  return "";
+}
+
+function minimalEsp32ArchitectureDiagram(title, signals) {
+  const lines = [
+    "@startuml",
+    `title ${plantUmlText(title)}`,
+    "",
+    "skinparam shadowing false",
+    "skinparam componentStyle rectangle",
+    "skinparam node {",
+    "  BackgroundColor #fbfdff",
+    "  BorderColor #8aa0bd",
+    "}",
+    "",
+    "node \"ESP32\" as esp32",
+    "@enduml",
+  ];
+  return {
+    type: "plantuml",
+    title,
+    summary: "Technische Minimalarchitektur fuer ESP32-only.",
     source: lines.join("\n"),
     derived_from: "architecture_discovery_ai_response",
     generated_at: new Date().toISOString(),
@@ -476,7 +640,7 @@ function buildArchitectureDiagram(messages, options = {}) {
 }
 
 function missingPromptFoundation(routeTask) {
-  return `AI Context Prompt-Grundlage fuer ${routeTask} ist nicht verfuegbar. Antworte kurz und verweise auf das Admin Tool LLM-Daten.`;
+  return `AI Context Prompt-Grundlage fuer ${routeTask} ist nicht verfuegbar.`;
 }
 
 function normalizeDiagramMessages(messages) {
@@ -489,11 +653,35 @@ function normalizeDiagramMessages(messages) {
     .slice(-12);
 }
 
-function architectureSignals(fullText, assistantText) {
+function architectureSignals(fullText, assistantText, latestUserText = fullText) {
   const text = `${assistantText}\n${fullText}`.toLowerCase();
+  const latest = String(latestUserText || "").toLowerCase();
   const has = (patterns) => patterns.some((pattern) => pattern.test(text));
+  const latestMinimalRequest = isMinimalEsp32StructureRequest(latest);
+  const latestStructureExpansion = /\b(webserver|web server|browser|webseite|web app|webapp|mobile app|backend|api|datenbank|sqlite|cloud|mqtt|rest|websocket|messdaten|bereitstellen|bereit\s+stellen|zugriff|greift)\b/.test(latest);
+  if (latestMinimalRequest && !latestStructureExpansion) {
+    const signals = {
+      minimalScope: true,
+      device: /esp32/.test(text),
+      localUi: false,
+      browser: false,
+      mobile: false,
+      desktop: false,
+      backend: false,
+      database: false,
+      cloud: false,
+      homeServer: false,
+      hardwareCatalog: false,
+    };
+    const detectedBlocks = Object.entries(signals).filter(([, value]) => value).map(([key]) => key);
+    return {
+      ...signals,
+      detectedBlocks,
+      confidence: Math.min(0.95, Math.max(0.35, detectedBlocks.length / 10)),
+    };
+  }
   const signals = {
-    minimalScope: isMinimalEsp32StructureRequest(text),
+    minimalScope: latestMinimalRequest && !latestStructureExpansion,
     device: has([/esp32/, /iot/, /sensor/, /aktor/, /geraet/, /gerät/, /device/, /board/, /mess/]),
     localUi: has([/lokal/, /setup/, /access point/, /captive/, /statusseite/, /device-webinterface/]),
     browser: has([/browser/, /webseite/, /web app/, /webapp/, /dashboard/, /hmi/]),
@@ -510,6 +698,17 @@ function architectureSignals(fullText, assistantText) {
     ...signals,
     detectedBlocks,
     confidence: Math.min(0.95, Math.max(0.35, detectedBlocks.length / 10)),
+  };
+}
+
+function actorInterfaceSignals(textValue) {
+  const text = String(textValue || "").toLowerCase();
+  const hasActor = /\b(nutzer|kunde|user|anwender|bediener|operator)\b/.test(text);
+  const hasInterface = /\b(interface|schnittstelle|webserver|web server|browser|webseite|web app|webapp|mobile app|app|bedienung|greift|zugriff)\b/.test(text);
+  return {
+    actor: hasActor && hasInterface,
+    label: /\bkunde\b/.test(text) ? "Kunde" : "Nutzer",
+    webserver: /\b(webserver|web server)\b/.test(text),
   };
 }
 
@@ -538,6 +737,12 @@ function diagramNotes(assistantText, signals, options) {
 function isMinimalEsp32StructureRequest(value) {
   const text = String(value || "").toLowerCase();
   if (!/esp32/.test(text)) return false;
+  const explicitEsp32Only = /esp32\s*[- ]?\s*only|\bonly\s+(mit\s+)?esp32\b|\barchitektur\s+only\s+(mit\s+)?esp32\b|\b(ausschliesslich|ausschließlich)\s+(mit\s+)?esp32\b|\bnur\s+(ein(en|em)?\s+)?esp32\b|esp32\s+(allein|solo)\b/.test(text);
+  if (explicitEsp32Only) return true;
+  if (/(struktur|architektur|diagramm|skizze|plantuml)/.test(text)
+    && /esp32\s*[- ]?\s*only|\bonly\s+esp32\b|\b(ausschliesslich|ausschließlich)\s+(mit\s+)?esp32\b|\bnur\s+(ein(en|em)?\s+)?esp32\b|esp32\s+(allein|solo)\b/.test(text)) {
+    return true;
+  }
   const wantsStructure = /struktur|architektur|diagramm|skizze|plantuml/.test(text);
   const minimal = /\bnur\b|minimal|einfach|klein|ohne backend|ohne cloud|ohne datenbank/.test(text);
   const onePort = /\b(ein|einen|einem|1)\s+(esp32[-\s]*)?port\b|\b(esp32[-\s]*)?port\b/.test(text);

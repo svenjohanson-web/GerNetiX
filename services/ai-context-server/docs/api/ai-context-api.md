@@ -54,16 +54,30 @@ Startquellen:
 ## Prompt Foundations
 
 ```text
-GET /api/ai-context/prompt-foundations
+GET  /api/ai-context/prompt-foundations
+POST /api/ai-context/prompt-foundations
 ```
 
 Liefert die fuehrenden Prompt-Grundlagen aus der AI-Context-SQLite, zum Beispiel Systemprompts fuer `general_chat` und `architecture_discovery`.
+`POST` legt eine Prompt-Foundation an oder aktualisiert sie. Nutzende Dienste wie Identity lesen diese Regeln nur und duerfen keine fachlichen Ersatz-Prompts im Code halten.
 
 Filter:
 
 - `route_task`
 - `content_kind`
 - `status`
+
+Wichtige Felder fuer `POST`:
+
+- `foundation_id`
+- `title`
+- `route_task`
+- `source_scope`
+- `content_kind`: aktuell `system_prompt`
+- `allowed_sources`
+- `blocked_sources`
+- `content`
+- `status`: `active`, `draft` oder `archived`
 
 ## Preflight
 

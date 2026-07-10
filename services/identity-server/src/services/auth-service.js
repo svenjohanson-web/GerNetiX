@@ -25,12 +25,13 @@ class AuthService {
     this.providers = new Map(providers.map((provider) => [provider.providerName, provider]));
   }
 
-  async register_local(username, email, password, accepted_terms, password_repeat = password) {
+  async register_local(username, email, password, accepted_terms, password_repeat = password, options = {}) {
     assertTermsAccepted(accepted_terms);
     assertRegistrationInput(username, email, password, password_repeat);
 
     try {
       const account = this.repository.createUserAccount({
+        id: options.user_id || options.userId || "",
         username: username.trim(),
         email,
         status: USER_STATUS.PENDING_VERIFICATION,
@@ -55,6 +56,9 @@ class AuthService {
       }
       if (error.message === "EMAIL_ALREADY_EXISTS") {
         throw new AuthError("email_already_exists", "Email is already in use.", 409);
+      }
+      if (error.message === "USER_ID_ALREADY_EXISTS") {
+        throw new AuthError("user_id_already_exists", "User ID is already in use.", 409);
       }
       throw error;
     }

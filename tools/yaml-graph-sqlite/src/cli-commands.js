@@ -1,6 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { DatabaseSync } = require("node:sqlite");
+const { runAuthoringCli } = require("./graph-authoring");
 
 function openExistingDatabase(dbPath, importGraph) {
   if (!fs.existsSync(dbPath)) {
@@ -175,6 +176,9 @@ function runCli({ args, defaultDbPath, repoRoot, importGraph }) {
   if (command === "import") {
     console.log(JSON.stringify(importGraph(dbPath), null, 2));
     return;
+  }
+  if (command === "upsert-artifact" || command === "upsert-relationship" || command === "delete-relationship") {
+    return runAuthoringCli({ args, defaultDbPath: dbPath });
   }
   if (command === "summary") return commandSummary(dbPath, importGraph);
   if (command === "outgoing") return commandRelations(dbPath, importGraph, "outgoing", args[1]);

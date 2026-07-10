@@ -1,6 +1,8 @@
 const crypto = require("node:crypto");
 const { AiUsageError } = require("../errors");
 
+const DEFAULT_INITIAL_CREDITS = 120;
+
 class AiUsageService {
   constructor(options) {
     this.repository = options.repository;
@@ -8,7 +10,12 @@ class AiUsageService {
 
   getCreditBalance(accountId) {
     const account = this.ensureCreditAccount(accountId);
-    return summarizeCreditAccount(account, this.repository.listLedgerEntries({ account_id: accountId }));
+    return summarizeCreditAccount(account, this.repository.listLedgerEntries({ account_id: account.account_id }));
+  }
+
+  getAccountRating(accountId) {
+    const account = this.ensureCreditAccount(accountId);
+    return accountRating(account, this.repository.listUsageEvents({ account_id: account.account_id }), this.repository.getPolicy());
   }
 
   grantCredits(accountId, input = {}) {
@@ -23,7 +30,7 @@ class AiUsageService {
     this.repository.saveCreditAccount(next);
     this.repository.addLedgerEntry({
       ledger_entry_id: createId("ledger"),
-      account_id: accountId,
+      account_id: account.account_id,
       entry_type: "credit_grant",
       amount_credits: amount,
       reason: input.reason || "manual_credit_grant",
@@ -47,7 +54,7 @@ class AiUsageService {
     });
     this.repository.addLedgerEntry({
       ledger_entry_id: createId("ledger"),
-      account_id: accountId,
+      account_id: account.account_id,
       entry_type: "credit_hold",
       amount_credits: -amount,
       reason: input.reason || "manual_credit_hold",
@@ -58,7 +65,10 @@ class AiUsageService {
   }
 
   preflight(input = {}) {
-    const accountId = required(input.account_id, "account_id");
+    const accountId = identityAccountId(input.account_id);
+    if (input.user_id && String(input.user_id).trim() !== accountId) {
+      throw new AiUsageError("identity_user_id_mismatch", "user_id muss der fuehrenden identity.user_id entsprechen.", 400);
+    }
     const model = required(input.model, "model");
     const account = this.ensureCreditAccount(accountId);
     const policy = this.repository.getPolicy();
@@ -73,6 +83,7 @@ class AiUsageService {
       account,
       model,
       estimate,
+      policy,
       status: decision.allowed ? "preflight_approved" : "rejected",
       rejection_reason: decision.allowed ? "" : decision.reason,
       protection_action: decision.protection_action,
@@ -132,8 +143,9 @@ class AiUsageService {
   }
 
   listUsageEvents(query = {}) {
+    const accountId = query.account_id || query.accountId || "";
     return this.repository.listUsageEvents({
-      account_id: query.account_id || query.accountId || "",
+      account_id: accountId ? identityAccountId(accountId) : "",
       status: query.status || "",
     });
   }
@@ -155,7 +167,7 @@ class AiUsageService {
     const actionType = required(input.action_type, "action_type");
     const actorId = input.actor_id || "admin";
     const reason = required(input.reason, "reason");
-    const accountId = input.account_id || "";
+    const accountId = input.account_id ? identityAccountId(input.account_id) : "";
     const payload = input.payload || {};
     let result = null;
 
@@ -227,6 +239,15 @@ class AiUsageService {
     if (Number(input.estimated_input_tokens || input.input_tokens || 0) > policy.max_prompt_tokens) return reject("prompt_too_large", "limit_prompt");
     if (Number(input.estimated_output_tokens || input.output_tokens || 0) > policy.max_response_tokens) return reject("response_too_large", "limit_response");
     if (availableCredits(account) < estimate.credits) return reject("insufficient_credits", "block_call");
+    const rating = sourceRatingForModel(policy, model);
+    const sourceUsage = sourceUsageForAccount(
+      this.repository.listUsageEvents({ account_id: account.account_id }),
+      policy,
+      rating.source_id,
+    );
+    if (rating.token_limit !== null && sourceUsage.month_tokens + estimate.input_tokens + estimate.output_tokens > rating.token_limit) {
+      return reject("source_token_limit_exceeded", "budget_limit");
+    }
     const usage = usageForAccount(this.repository.listUsageEvents({ account_id: account.account_id }));
     if (usage.today_credits + estimate.credits > policy.daily_credit_limit) return reject("daily_limit_exceeded", "rate_limit");
     if (usage.month_credits + estimate.credits > policy.monthly_credit_limit) return reject("monthly_limit_exceeded", "budget_limit");
@@ -247,7 +268,7 @@ class AiUsageService {
     this.repository.saveCreditAccount(next);
     this.repository.addLedgerEntry({
       ledger_entry_id: createId("ledger"),
-      account_id: accountId,
+      account_id: account.account_id,
       entry_type: "credit_consumption",
       amount_credits: -amount,
       reason: "ai_usage_event_completed",
@@ -257,13 +278,14 @@ class AiUsageService {
   }
 
   ensureCreditAccount(accountId) {
-    const existing = this.repository.findCreditAccount(accountId);
+    const identityUserId = identityAccountId(accountId);
+    const existing = this.repository.findCreditAccount(identityUserId);
     if (existing) return normalizeAccount(existing);
     const now = new Date().toISOString();
     return this.repository.saveCreditAccount({
-      account_id: accountId,
+      account_id: identityUserId,
       plan_id: "plan.free",
-      total_granted_credits: 20,
+      total_granted_credits: DEFAULT_INITIAL_CREDITS,
       consumed_credits: 0,
       held_credits: 0,
       blocked_until: null,
@@ -279,15 +301,16 @@ class AiUsageService {
   }
 }
 
-function createUsageEvent({ input, account, model, estimate, status, rejection_reason, protection_action }) {
+function createUsageEvent({ input, account, model, estimate, policy, status, rejection_reason, protection_action }) {
   const now = new Date().toISOString();
   return {
     event_id: createId("ai_usage"),
     account_id: account.account_id,
-    user_id: input.user_id || account.account_id,
+    user_id: account.account_id,
     project_id: input.project_id || "",
     feature: input.feature || "ai_assistant",
     model,
+    source_id: input.source_id || sourceRatingForModel(policy, model).source_id,
     plan_id: account.plan_id,
     status,
     input_tokens: estimate.input_tokens,
@@ -336,7 +359,80 @@ function summarizeUsage(events) {
     credits: Number(events.reduce((sum, event) => sum + Number(event.calculated_credits || 0), 0).toFixed(4)),
     tokens: events.reduce((sum, event) => sum + Number(event.input_tokens || 0) + Number(event.output_tokens || 0), 0),
     estimated_provider_cost: Number(events.reduce((sum, event) => sum + Number(event.estimated_provider_cost || 0), 0).toFixed(6)),
+    cost_by_day: costByDay(events),
+    rejection_breakdown: rejectionBreakdown(events),
+    recent_rejections: recentRejections(events),
   };
+}
+
+function rejectionBreakdown(events) {
+  const groups = new Map();
+  for (const event of events.filter((item) => item.status === "rejected" || item.rejection_reason)) {
+    const reason = event.rejection_reason || "unknown";
+    const current = groups.get(reason) || { reason, count: 0, tokens: 0, models: new Set(), accounts: new Set(), latest_at: "" };
+    current.count += 1;
+    current.tokens += Number(event.input_tokens || 0) + Number(event.output_tokens || 0);
+    if (event.model) current.models.add(event.model);
+    if (event.account_id) current.accounts.add(event.account_id);
+    if (String(event.created_at || "") > current.latest_at) current.latest_at = event.created_at;
+    groups.set(reason, current);
+  }
+  return Array.from(groups.values())
+    .map((item) => ({
+      reason: item.reason,
+      count: item.count,
+      tokens: item.tokens,
+      models: Array.from(item.models).sort(),
+      accounts: Array.from(item.accounts).sort(),
+      latest_at: item.latest_at,
+    }))
+    .sort((left, right) => right.count - left.count || left.reason.localeCompare(right.reason));
+}
+
+function recentRejections(events) {
+  return events
+    .filter((event) => event.status === "rejected" || event.rejection_reason)
+    .slice()
+    .sort((left, right) => String(right.created_at || "").localeCompare(String(left.created_at || "")))
+    .slice(0, 10)
+    .map((event) => ({
+      event_id: event.event_id,
+      account_id: event.account_id,
+      project_id: event.project_id || "",
+      feature: event.feature || "",
+      model: event.model || "",
+      rejection_reason: event.rejection_reason || "unknown",
+      protection_action: event.protection_action || "",
+      input_tokens: Number(event.input_tokens || 0),
+      output_tokens: Number(event.output_tokens || 0),
+      created_at: event.created_at || "",
+    }));
+}
+
+function costByDay(events) {
+  const groups = new Map();
+  for (const event of events) {
+    const day = String(event.created_at || event.occurred_at || "").slice(0, 10) || "unknown";
+    const current = groups.get(day) || {
+      day,
+      total_events: 0,
+      tokens: 0,
+      credits: 0,
+      estimated_provider_cost: 0,
+    };
+    current.total_events += 1;
+    current.tokens += Number(event.input_tokens || 0) + Number(event.output_tokens || 0);
+    current.credits += Number(event.calculated_credits || 0);
+    current.estimated_provider_cost += Number(event.estimated_provider_cost || 0);
+    groups.set(day, current);
+  }
+  return Array.from(groups.values())
+    .sort((left, right) => String(left.day).localeCompare(String(right.day)))
+    .map((item) => ({
+      ...item,
+      credits: Number(item.credits.toFixed(4)),
+      estimated_provider_cost: Number(item.estimated_provider_cost.toFixed(6)),
+    }));
 }
 
 function accountDashboard(account, events, policy) {
@@ -351,6 +447,7 @@ function accountDashboard(account, events, policy) {
     budget_used_percent: Number(usedPercent.toFixed(2)),
     rejected_events: accountEvents.filter((event) => event.status === "rejected").length,
     blocked: isBlocked(account),
+    ai_rating: accountRating(account, accountEvents, policy),
   };
 }
 
@@ -403,6 +500,83 @@ function usageForAccount(events) {
   };
 }
 
+function accountRating(account, events, policy) {
+  const ratings = effectiveSourceRatings(policy);
+  const sources = Object.values(ratings).map((rating) => {
+    const usage = sourceUsageForAccount(events, policy, rating.source_id);
+    const limit = rating.token_limit === null || rating.token_limit === undefined ? null : Number(rating.token_limit);
+    const usedPercent = limit ? Math.min(100, (usage.month_tokens / limit) * 100) : 0;
+    return {
+      source_id: rating.source_id,
+      title: rating.title || rating.source_id,
+      provider_type: rating.provider_type || "external",
+      billing_scope: rating.billing_scope || "monthly",
+      token_limit: limit,
+      month_tokens: usage.month_tokens,
+      total_tokens: usage.total_tokens,
+      used_percent: limit ? Number(usedPercent.toFixed(2)) : 0,
+      unlimited: limit === null,
+    };
+  });
+  const limited = sources.filter((source) => !source.unlimited);
+  const usedPercent = limited.length
+    ? Math.max(...limited.map((source) => source.used_percent))
+    : 0;
+  return {
+    account_id: account.account_id,
+    used_percent: Number(usedPercent.toFixed(2)),
+    sources,
+  };
+}
+
+function sourceUsageForAccount(events, policy, sourceId) {
+  const now = new Date();
+  const month = now.toISOString().slice(0, 7);
+  const matching = events.filter((event) => eventSourceId(event, policy) === sourceId);
+  return {
+    month_tokens: matching
+      .filter((event) => String(event.created_at || event.occurred_at || "").slice(0, 7) === month)
+      .reduce((sum, event) => sum + Number(event.input_tokens || 0) + Number(event.output_tokens || 0), 0),
+    total_tokens: matching.reduce((sum, event) => sum + Number(event.input_tokens || 0) + Number(event.output_tokens || 0), 0),
+  };
+}
+
+function eventSourceId(event, policy) {
+  if (event.source_id) return event.source_id;
+  return sourceRatingForModel(policy, event.model, event).source_id;
+}
+
+function sourceRatingForModel(policy = {}, model = "", event = {}) {
+  const ratings = effectiveSourceRatings(policy);
+  if (event.provider_type === "local" || /^llama|ollama|mistral|qwen|gemma/i.test(model)) {
+    return ratings.local_llm || { source_id: "local_llm", title: "Lokale LLM", token_limit: null, provider_type: "local" };
+  }
+  if (/^gpt-|^o\d|openai/i.test(model) || event.provider_type === "external") {
+    return ratings.openai_gpt || { source_id: "openai_gpt", title: "GPT / OpenAI", token_limit: 100000, provider_type: "external" };
+  }
+  return ratings.openai_gpt || Object.values(ratings)[0] || { source_id: "openai_gpt", title: "GPT / OpenAI", token_limit: 100000, provider_type: "external" };
+}
+
+function effectiveSourceRatings(policy = {}) {
+  return {
+    local_llm: {
+      source_id: "local_llm",
+      title: "Lokale LLM",
+      token_limit: null,
+      billing_scope: "unlimited",
+      provider_type: "local",
+    },
+    openai_gpt: {
+      source_id: "openai_gpt",
+      title: "GPT / OpenAI",
+      token_limit: 100000,
+      billing_scope: "monthly",
+      provider_type: "external",
+    },
+    ...(policy.source_ratings || {}),
+  };
+}
+
 function availableCredits(account) {
   return Number((account.total_granted_credits - account.consumed_credits - account.held_credits).toFixed(4));
 }
@@ -434,6 +608,14 @@ function required(value, field) {
   const normalized = String(value || "").trim();
   if (!normalized) throw new AiUsageError("missing_required_field", `Pflichtfeld fehlt: ${field}`);
   return normalized;
+}
+
+function identityAccountId(value) {
+  const accountId = required(value, "identity.user_id");
+  if (["demo", "unknown", "anonymous"].includes(accountId.toLowerCase())) {
+    throw new AiUsageError("fallback_account_id_forbidden", "Account-ID-Fallbacks sind verboten; erforderlich ist identity.user_id.", 400);
+  }
+  return accountId;
 }
 
 function normalizeList(value) {

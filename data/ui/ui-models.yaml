@@ -8,7 +8,7 @@ items:
     businessStatus: In Analysis
     implementationStatus: In Implementation
     ownerDomain: Learning
-    summary: Kunden-IDE-Sicht fuer den LLM-gefuehrten Projektstart. Die Sicht fuehrt einen Architektur-Dialog, zeigt LLM-Routing und erlaubte Kontextquellen und rendert aus der letzten KI-Antwort eine PlantUML-Architekturskizze mit sichtbarer Quelle.
+    summary: Kunden-IDE-Sicht fuer den LLM-gefuehrten Projektstart. Die Sicht fuehrt einen Architektur-Dialog, zeigt LLM-Routing und erlaubte Kontextquellen, rendert aus der letzten KI-Antwort eine PlantUML-Architekturskizze mit sichtbarer Quelle und uebergibt eine bestaetigte Architektur in den freien IDE-Arbeitsbereich.
     derivedFromRequirements:
       - requirement.architecture_discovery_guided_by_llm
     usesApiArtifacts:
@@ -25,6 +25,7 @@ items:
       - answer_received
       - plantuml_diagram_available
       - architecture_saved
+      - architecture_accepted_continue_to_ide
       - llm_fallback_without_diagram
     sections:
       - Entwicklungsprojekt anlegen oder laden
@@ -32,6 +33,36 @@ items:
       - LLM-Routing und Datenquellen
       - Schnellfragen
       - PlantUML-Architekturskizze
+      - Uebernehmen und weiter
+
+  - id: ui_model.user_ide_development_workspace
+    type: ui_model
+    title: User IDE Entwicklungsarbeitsbereich
+    businessStatus: In Analysis
+    implementationStatus: In Implementation
+    ownerDomain: IDE
+    summary: Freier Projektarbeitsbereich nach der Architekturuebernahme. Links steht ein Projektbrowser mit Projektname, Architekturordnern und Komponentenordnern; die Mitte bietet Modell-, Code- und Image-Ansichten zum Anzeigen und Bearbeiten; unten ist ein KI-Chat fuer projektnahe Rueckfragen sichtbar.
+    derivedFromRequirements:
+      - requirement.architecture_discovery_guided_by_llm
+      - requirement.project_bound_guided_ide_views
+    usesApiArtifacts:
+      - api_artifact.identity
+    requiredStates:
+      - no_project_open
+      - project_sources_loading
+      - project_browser_available
+      - source_file_selected
+      - model_view_active
+      - code_view_active
+      - image_view_active
+      - ide_chat_available
+    sections:
+      - Projektbrowser
+      - Modellansicht
+      - Codeansicht
+      - Imageansicht
+      - Projektmodell und KI-Nutzung
+      - KI-Chat
 
   - id: ui_model.user_ide_account_transparency
     type: ui_model
