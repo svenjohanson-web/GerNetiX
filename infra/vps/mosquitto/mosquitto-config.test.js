@@ -16,6 +16,7 @@ test("external MQTT listener requires TLS and credentials", () => {
   assert.match(config, /certfile \/etc\/letsencrypt\/live\/gernetix-services\.com\/fullchain\.pem/);
   assert.match(config, /keyfile \/etc\/letsencrypt\/live\/gernetix-services\.com\/privkey\.pem/);
   assert.match(compose, /MQTT_TLS_PORT:-8883/);
+  assert.match(compose, /mqtt-broker:[\s\S]*?networks:\s*- edge\s*- backend/);
 });
 
 test("broker starts internal listeners while the MQTT certificate is pending", () => {

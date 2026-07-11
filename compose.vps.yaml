@@ -185,6 +185,7 @@ services:
     security_opt:
       - no-new-privileges:true
     networks:
+      - edge
       - backend
     ports:
       - "${MQTT_TLS_BIND_ADDRESS:-0.0.0.0}:${MQTT_TLS_PORT:-8883}:8883"
