@@ -633,6 +633,7 @@ button.danger:hover {
   font-weight: 700;
 }
 .development-project-form input,
+.development-project-form select,
 .development-project-form textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -641,6 +642,12 @@ button.danger:hover {
   background: #fff;
   color: var(--text);
   font-family: inherit;
+}
+.development-template-hint {
+  margin: -4px 0 2px;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
 }
 .development-project-form textarea {
   min-height: 92px;

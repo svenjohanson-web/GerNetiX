@@ -1,5 +1,11 @@
 const DevelopmentPlatform = (() => {
   const activeProjectStorageKey = "gernetix.developmentPlatform.activeProjectId";
+  const projectTemplates = {
+    empty: { title: "", description: "", hint: "Architektur und Anforderungen gemeinsam von Grund auf klaeren." },
+    esp32_device_only: { title: "ESP32 Device only", description: "Eigenstaendiges ESP32-Device mit lokaler Sensorik oder Aktorik, ohne Webserver und ohne Internet-Abhaengigkeit.", hint: "ESP32, Sensoren/Aktoren und lokale Bedienung." },
+    esp32_datalogger_local_web: { title: "Datenlogger mit lokalem Webserver", description: "ESP32-Datenlogger mit Sensoren, lokaler Speicherung und einem nur im lokalen Netzwerk erreichbaren Webserver.", hint: "ESP32, Messwerthistorie und Browserzugriff im lokalen WLAN." },
+    esp32_datalogger_internet_web: { title: "ESP32 Datenlogger mit Internet-Webserver", description: "ESP32-Datenlogger uebertraegt Messwerte sicher an einen internet-erreichbaren Server mit Datenbank und Browser-Dashboard.", hint: "ESP32, Internetanbindung, Server, Datenbank und Browser-Dashboard." },
+  };
 
   function create({ state, postJson, openProjectInIde, escapeHtml, escapeAttribute }) {
     if (!state.developmentPlatform) {
@@ -22,6 +28,7 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#openDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("open"));
       document.querySelector("#newDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("new"));
       document.querySelector("#developmentProjectForm").addEventListener("submit", createDevelopmentProject);
+      document.querySelector("#developmentProjectTemplate").addEventListener("change", applyProjectTemplate);
       document.querySelector("#developmentProjectSelect").addEventListener("change", selectDevelopmentProject);
       document.querySelector("#saveDevelopmentArchitectureButton").addEventListener("click", saveArchitectureDiagram);
       document.querySelector("#startFunctionClarificationButton").addEventListener("click", startFunctionClarification);
@@ -203,6 +210,7 @@ const DevelopmentPlatform = (() => {
       event.preventDefault();
       const titleInput = document.querySelector("#developmentProjectTitle");
       const descriptionInput = document.querySelector("#developmentProjectDescription");
+      const templateInput = document.querySelector("#developmentProjectTemplate");
       const title = titleInput.value.trim();
       if (!title) {
         setProjectStatus("Bitte gib einen Projektnamen ein.");
@@ -214,6 +222,7 @@ const DevelopmentPlatform = (() => {
         const response = await postJson("/api/platform/development-projects", {
           title,
           description: descriptionInput.value.trim(),
+          template_id: templateInput.value,
         });
         if (response.project) {
           state.projects = state.projects.filter((project) => project.id !== response.project.id).concat(response.project);
@@ -222,11 +231,25 @@ const DevelopmentPlatform = (() => {
           state.developmentPlatform.projectPanelMode = "closed";
           titleInput.value = "";
           descriptionInput.value = "";
+          templateInput.value = "empty";
+          applyProjectTemplate({ preserveValues: true });
           setProjectStatus(`Projekt angelegt: ${response.project.name}`);
         }
         render();
       } catch (error) {
         setProjectStatus(`Projekt konnte nicht angelegt werden: ${error.message}`);
+      }
+    }
+
+    function applyProjectTemplate(event = {}) {
+      const templateInput = document.querySelector("#developmentProjectTemplate");
+      const template = projectTemplates[templateInput.value] || projectTemplates.empty;
+      const titleInput = document.querySelector("#developmentProjectTitle");
+      const descriptionInput = document.querySelector("#developmentProjectDescription");
+      document.querySelector("#developmentProjectTemplateHint").textContent = template.hint;
+      if (!event.preserveValues) {
+        titleInput.value = template.title;
+        descriptionInput.value = template.description;
       }
     }
 

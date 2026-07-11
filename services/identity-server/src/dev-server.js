@@ -8,6 +8,7 @@ const { createAccountTransparencyFactory } = require("./dev/account-transparency
 const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
 const { developmentProjectSources } = require("./dev/development-project-structure");
+const { developmentProjectTemplate, templateArchitecturePlantUml } = require("./dev/development-project-templates");
 const { createDevHardwareUtils } = require("./dev/hardware-utils");
 const { createLlmConfigStore } = require("../../shared/llm-config");
 const {
@@ -840,10 +841,11 @@ async function handlePlatformSourceWrite(req, res, session, projectId, sourcePat
 async function handleDevelopmentProjectCreate(req, res, session) {
   const body = await readJsonBody(req);
   const userId = projectServerUserId(session);
-  const title = requiredField(body.title || "Neues Entwicklungsprojekt", "title").slice(0, 120);
-  const description = String(body.description || "Architektur-Discovery-Projekt").trim().slice(0, 1000);
+  const template = developmentProjectTemplate(body.template_id);
+  const title = requiredField(body.title || template.title || "Neues Entwicklungsprojekt", "title").slice(0, 120);
+  const description = String(body.description || template.description || "Architektur-Discovery-Projekt").trim().slice(0, 1000);
   const projectId = `dev_project_${slugifyProjectId(title)}_${Date.now().toString(36)}`;
-  const initialSource = initialArchitecturePlantUml(title);
+  const initialSource = templateArchitecturePlantUml(template, title) || initialArchitecturePlantUml(title);
   const sources = developmentProjectSources({ title, description, architectureSource: initialSource });
   const project = await projectServerJson("/api/projects", {
     method: "POST",

@@ -274,6 +274,15 @@
                 <label class="development-project-field">Projekt oeffnen<select id="developmentProjectSelect"></select></label>
               </div>
               <form id="developmentProjectForm" class="development-project-form hidden">
+                <label>Projekttemplate
+                  <select id="developmentProjectTemplate">
+                    <option value="empty">Leeres Projekt</option>
+                    <option value="esp32_device_only">ESP32 Device only</option>
+                    <option value="esp32_datalogger_local_web">Datenlogger mit lokalem Webserver</option>
+                    <option value="esp32_datalogger_internet_web">ESP32 Datenlogger mit Internet-Webserver</option>
+                  </select>
+                </label>
+                <p id="developmentProjectTemplateHint" class="development-template-hint">Architektur und Anforderungen gemeinsam von Grund auf klaeren.</p>
                 <label>Name<input id="developmentProjectTitle" type="text" maxlength="120" placeholder="z. B. Pflanzenwaechter" /></label>
                 <label>Beschreibung<textarea id="developmentProjectDescription" rows="3" placeholder="Kurz beschreiben, was entstehen soll."></textarea></label>
                 <button type="submit">Projekt anlegen</button>
