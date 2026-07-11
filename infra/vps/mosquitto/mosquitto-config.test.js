@@ -13,8 +13,8 @@ test("external MQTT listener requires TLS and credentials", () => {
   assert.match(config, /listener 8883 0\.0\.0\.0/);
   assert.match(config, /allow_anonymous false/);
   assert.match(config, /password_file \/mosquitto\/data\/passwords/);
-  assert.match(config, /certfile \/etc\/letsencrypt\/live\/mqtt\.gernetix\.nl\/fullchain\.pem/);
-  assert.match(config, /keyfile \/etc\/letsencrypt\/live\/mqtt\.gernetix\.nl\/privkey\.pem/);
+  assert.match(config, /certfile \/etc\/letsencrypt\/live\/gernetix-services\.com\/fullchain\.pem/);
+  assert.match(config, /keyfile \/etc\/letsencrypt\/live\/gernetix-services\.com\/privkey\.pem/);
   assert.match(compose, /MQTT_TLS_PORT:-8883/);
 });
 

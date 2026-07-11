@@ -109,7 +109,7 @@ Das Device akzeptiert nur HTTPS-URLs vom Origin des provisionierten `buildDeploy
 
 ## MQTT-Benachrichtigung fuer neue Firmware
 
-Beim Provisioning kann als MQTT-Ziel entweder der VPS oder ein Broker im lokalen Netzwerk gewaehlt werden. Der VPS wird per `mqtts://` angesprochen (Standard: `mqtts://mqtt.gernetix.nl:8883`). Fuer Entwicklung und Inbetriebnahme im LAN ist `mqtt://<private-ip>:<port>` erlaubt; Klartext-MQTT zu Hostnamen oder oeffentlichen IP-Adressen wird von Basissoftware und Provisioning Tool abgewiesen.
+Beim Provisioning kann als MQTT-Ziel entweder der VPS oder ein Broker im lokalen Netzwerk gewaehlt werden. Der VPS wird per `mqtts://` angesprochen (Standard: `mqtts://mqtt.gernetix.com:8883`). Fuer Entwicklung und Inbetriebnahme im LAN ist `mqtt://<private-ip>:<port>` erlaubt; Klartext-MQTT zu Hostnamen oder oeffentlichen IP-Adressen wird von Basissoftware und Provisioning Tool abgewiesen.
 
 Das Device verbindet sich mit seiner Device-ID als Client-ID und Benutzername. Das Broker-Passwort wird lokal per HMAC mit dem festen Kontext `gernetix:mqtt-broker-auth:v1` aus dem Device-Secret abgeleitet; das eigentliche Device-Secret wird nicht an den Broker uebertragen. Auch der lokale Broker muss dieses Credential kennen. Die serverseitige Broker-Registrierung muss beim Factory-Provisioning dieselbe Ableitung verwenden. Das Device abonniert mit QoS 1:
 

@@ -31,14 +31,14 @@
           <fieldset class="mode-field">
             <legend>Service-Endpunkte</legend>
             <label>Device Management<input id="deviceManagementUrl" type="url" value="https://gernetix.nl/api/device-management" /></label>
-            <label>Build &amp; Deploy<input id="buildDeployUrl" type="url" value="https://build.gernetix.nl" /></label>
+            <label>Build &amp; Deploy<input id="buildDeployUrl" type="url" value="https://build.gernetix.com" /></label>
             <label>MQTT-Ziel
               <select id="mqttMode">
                 <option value="vps">GerNetiX VPS</option>
                 <option value="local">Lokaler Broker im Netzwerk</option>
               </select>
             </label>
-            <label id="mqttVpsField">MQTT-Adresse des VPS<input id="mqttVpsUrl" type="url" value="mqtts://mqtt.gernetix.nl:8883" /></label>
+            <label id="mqttVpsField">MQTT-Adresse des VPS<input id="mqttVpsUrl" type="url" value="mqtts://mqtt.gernetix.com:8883" /></label>
             <label id="mqttLocalHostField" class="hidden">Lokale Broker-IP<input id="mqttLocalHost" type="text" inputmode="decimal" placeholder="192.168.1.20" /></label>
             <label id="mqttLocalPortField" class="hidden">Lokaler MQTT-Port<input id="mqttLocalPort" type="number" min="1" max="65535" value="1883" /></label>
           </fieldset>

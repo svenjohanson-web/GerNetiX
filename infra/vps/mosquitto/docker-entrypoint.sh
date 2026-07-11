@@ -5,8 +5,8 @@ touch /mosquitto/data/passwords
 chmod 0600 /mosquitto/data/passwords
 
 config=/mosquitto/config/mosquitto.conf
-certificate=/etc/letsencrypt/live/mqtt.gernetix.nl/fullchain.pem
-private_key=/etc/letsencrypt/live/mqtt.gernetix.nl/privkey.pem
+certificate=/etc/letsencrypt/live/gernetix-services.com/fullchain.pem
+private_key=/etc/letsencrypt/live/gernetix-services.com/privkey.pem
 
 if [ ! -r "$certificate" ] || [ ! -r "$private_key" ]; then
   echo "MQTT TLS certificate is not available; starting internal listeners only"

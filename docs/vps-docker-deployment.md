@@ -31,7 +31,7 @@ MQTT_TLS_PORT=8883
 MQTT_LETSENCRYPT_DIR=/etc/letsencrypt
 ```
 
-Vor dem Start muss `mqtt.gernetix.nl` per DNS auf den VPS zeigen und ein gueltiges Zertifikat unter `/etc/letsencrypt/live/mqtt.gernetix.nl/` vorhanden sein. Mosquitto bindet das gesamte Let's-Encrypt-Verzeichnis read-only ein, damit Zertifikatserneuerungen sichtbar bleiben. Nach einer Erneuerung wird nur der Broker neu geladen:
+Vor dem Start muessen `build.gernetix.com` und `mqtt.gernetix.com` per DNS auf den VPS zeigen. Das Deployment fordert dafuer das gemeinsame Zertifikat `/etc/letsencrypt/live/gernetix-services.com/` an. Mosquitto bindet das gesamte Let's-Encrypt-Verzeichnis read-only ein, damit Zertifikatserneuerungen sichtbar bleiben. Nach einer Erneuerung wird nur der Broker neu geladen:
 
 ```bash
 docker compose --env-file .env.vps -f compose.vps.yaml kill -s HUP mqtt-broker
@@ -115,6 +115,6 @@ docker compose --env-file .env.vps -f compose.vps.yaml ps
 4. Firewall auf SSH, HTTP und HTTPS begrenzen.
 5. Admin Tool nicht oeffentlich weiterleiten.
 6. SQLite-Volumes regelmaessig und konsistent sichern.
-7. Firewall-Port `8883/tcp` erst freigeben, wenn `mqtt.gernetix.nl`, Let's Encrypt und mindestens ein Device-Credential eingerichtet sind.
+7. Firewall-Port `8883/tcp` erst freigeben, wenn `mqtt.gernetix.com`, Let's Encrypt und mindestens ein Device-Credential eingerichtet sind.
 
 Deployment-Topologie: [vps-docker-topology.svg](vps-docker-topology.svg)

@@ -32,6 +32,12 @@ docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls run --rm
   -d gernetix.de -d www.gernetix.de \
   -d gernetix.com -d www.gernetix.com
 
+docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls run --rm --entrypoint certbot certbot \
+  certonly --webroot --webroot-path /var/www/certbot \
+  --non-interactive --agree-tos --register-unsafely-without-email \
+  --keep-until-expiring --cert-name gernetix-services.com \
+  -d build.gernetix.com -d mqtt.gernetix.com
+
 echo "==> HTTPS-Nginx und automatische Zertifikatserneuerung starten"
 docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls up -d --wait --wait-timeout "$wait_timeout" nginx-tls certbot
 

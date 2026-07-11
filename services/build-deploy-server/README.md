@@ -110,7 +110,7 @@ Start lokal:
 docker compose -f infra/dev/docker-compose.yml up -d mqtt-broker
 ```
 
-Der lokale Dev-Broker nutzt Mosquitto auf `127.0.0.1:1883` und MQTT over WebSocket auf `127.0.0.1:9001`. Der VPS-Broker stellt fuer ESP32-Devices `mqtts://mqtt.gernetix.nl:8883` mit Credentials und gerätespezifischen ACLs bereit. Der Build-&-Deploy-Server publiziert intern ueber `1883`; die produktive Publisher-Anbindung und HMAC-Auftragsbildung sind noch umzusetzen.
+Der lokale Dev-Broker nutzt Mosquitto auf `127.0.0.1:1883` und MQTT over WebSocket auf `127.0.0.1:9001`. Der VPS-Broker stellt fuer ESP32-Devices `mqtts://mqtt.gernetix.com:8883` mit Credentials und gerätespezifischen ACLs bereit. Der Build-&-Deploy-Server publiziert intern ueber `1883`; die produktive Publisher-Anbindung und HMAC-Auftragsbildung sind noch umzusetzen.
 
 ## HTTPS
 

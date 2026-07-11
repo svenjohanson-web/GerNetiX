@@ -27,6 +27,14 @@ test("TLS serves Dutch, German and English pages with one SAN certificate", () =
   assert.match(english, /Understand\. Develop\. Create\./);
 });
 
+test("device services use dedicated .com hostnames", () => {
+  assert.match(http, /server_name build\.gernetix\.com mqtt\.gernetix\.com/);
+  assert.match(tls, /server_name build\.gernetix\.com/);
+  assert.match(tls, /proxy_pass http:\/\/build-deploy-server:4400/);
+  assert.match(tls, /live\/gernetix-services\.com\/fullchain\.pem/);
+  assert.match(deploy, /-d build\.gernetix\.com -d mqtt\.gernetix\.com/);
+});
+
 test("compose and staging deploy manage HTTPS certificate lifecycle", () => {
   assert.match(compose, /nginx-tls:/);
   assert.match(compose, /certbot:/);
