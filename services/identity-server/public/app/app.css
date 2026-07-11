@@ -1730,3 +1730,86 @@ textarea:read-only {
   }
   .tabs a.utility:first-of-type { margin-left: 0; }
 }
+
+/* Einheitliches GerNetiX Dark Theme fuer die gesamte Identity-Plattform. */
+:root {
+  color-scheme: dark;
+  --bg: #070b12;
+  --panel: #111827;
+  --text: #e5e7eb;
+  --muted: #94a3b8;
+  --line: #2b3748;
+  --accent: #22d3ee;
+  --accent-2: #38bdf8;
+  --soft: #164e63;
+  --shadow: 0 16px 42px rgba(0, 0, 0, .26);
+}
+body {
+  background: radial-gradient(circle at 12% 0%, rgba(14, 116, 144, .16), transparent 28rem), radial-gradient(circle at 88% 18%, rgba(37, 99, 235, .1), transparent 32rem), var(--bg);
+}
+.topbar { padding: 8px 10px; border: 1px solid #263241; border-radius: 10px; background: rgba(17, 24, 39, .86); box-shadow: var(--shadow); }
+.breadcrumb-tree a,
+.breadcrumb-tree span,
+button,
+select,
+input { border-color: #3c4a5d; background: #1b2430; color: #e5e7eb; }
+.breadcrumb-tree a:hover,
+button:hover:not(:disabled) { border-color: #22d3ee; background: #273244; color: #cffafe; }
+.breadcrumb-tree span[aria-current="page"] { border-color: #0891b2; background: #164e63; color: #cffafe; }
+.panel,
+.project-card,
+.device-row,
+.build-row,
+.discovery-row,
+.summary-item,
+.ai-rating-card,
+.entry-card,
+.architecture-diagram-panel,
+.runtime-frame,
+.recovery-result,
+.development-chat-messages,
+.development-project-choice-panel,
+.development-project-panel,
+.development-project-form,
+.manifest-view-card { border-color: #2b3748; background: #111827; color: #e5e7eb; box-shadow: none; }
+.section-head { margin-bottom: 10px; }
+.section-head h2 { font-size: 20px; }
+.eyebrow { color: #67e8f9; letter-spacing: .07em; }
+.account-badge,
+.helper-text,
+.entry-card span,
+.project-card p,
+.device-row p,
+.build-row p,
+.discovery-row p,
+.summary-item span,
+.meta-list dt,
+.ai-rating-card span,
+.ai-rating-card small { color: #94a3b8; }
+button.primary,
+.entry-card.primary,
+#saveSourceButton,
+#buildButton,
+#usbFlashButton,
+#openIdeButton,
+#lessonNextButton { border-color: #0891b2; background: #0e7490; color: #ecfeff; }
+button.active-method { border-color: #22d3ee; background: #164e63; color: #cffafe; }
+button:disabled { border-color: #263241; background: #111827; color: #64748b; }
+textarea,
+.development-project-form input,
+.development-project-form select,
+.development-project-form textarea,
+.form-grid input,
+.inventory-type-label input,
+.ide-device-allocation select { border-color: #334155; background: #0b1018; color: #e2e8f0; }
+.development-chat-messages { background: #0b1018; }
+.chat-message,
+.development-quick-prompts button { border-color: #334155; background: #1b2430; color: #e5e7eb; }
+.usage-bar { background: #334155; }
+.usage-bar i { background: #22d3ee; }
+.ide-ai-rating,
+.development-project-header,
+.manifest-head { border-color: #334155; }
+.main-menu-panel { border-color: #334155; background: #111827; box-shadow: var(--shadow); }
+.plantuml-viewer,
+.plantuml-diagram { background: #fff; }
