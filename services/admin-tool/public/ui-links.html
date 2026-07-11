@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>GerNetiX UI-Links</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f4f7f8;
+        --panel: #ffffff;
+        --text: #172033;
+        --muted: #64748b;
+        --line: #d7dee9;
+        --accent: #0f766e;
+        --accent-soft: #e8f3f1;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); }
+      main { width: min(980px, calc(100% - 32px)); margin: 0 auto; padding: 64px 0; }
+      header { margin-bottom: 36px; }
+      .eyebrow { margin: 0 0 8px; color: var(--accent); font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+      h1 { margin: 0; font-size: clamp(32px, 6vw, 56px); line-height: 1; letter-spacing: -.04em; }
+      .intro { max-width: 620px; margin: 16px 0 0; color: var(--muted); font-size: 17px; line-height: 1.6; }
+      section + section { margin-top: 32px; }
+      h2 { margin: 0 0 12px; color: var(--muted); font-size: 13px; letter-spacing: .07em; text-transform: uppercase; }
+      .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 12px; }
+      a {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 16px;
+        min-height: 94px;
+        padding: 18px;
+        border: 1px solid var(--line);
+        border-radius: 14px;
+        background: var(--panel);
+        color: inherit;
+        text-decoration: none;
+        box-shadow: 0 8px 22px rgb(15 23 42 / 6%);
+        transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+      }
+      a:hover, a:focus-visible { border-color: var(--accent); box-shadow: 0 12px 30px rgb(15 118 110 / 12%); transform: translateY(-2px); outline: none; }
+      a.primary { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+      a.primary small { color: rgb(255 255 255 / 72%); }
+      strong, small { display: block; }
+      strong { font-size: 17px; }
+      small { margin-top: 6px; color: var(--muted); }
+      .arrow { color: currentColor; font-size: 22px; }
+      footer { margin-top: 42px; color: var(--muted); font-size: 13px; }
+
+      @media (prefers-color-scheme: dark) {
+        :root { --bg: #0d141c; --panel: #151f2b; --text: #edf2f7; --muted: #9aa9bc; --line: #2b394a; --accent: #4dc4b5; --accent-soft: #173d3a; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">Lokale Entwicklungsumgebung</p>
+        <h1>GerNetiX UIs</h1>
+        <p class="intro">Direkte Einstiege in die lokalen Benutzeroberflächen. Diese lokale Admin-Seite kann als Lesezeichen gespeichert werden.</p>
+      </header>
+
+      <section>
+        <h2>Plattform</h2>
+        <div class="grid">
+          <a class="primary" href="http://127.0.0.1:4300/app/dashboard/">
+            <span><strong>Dashboard</strong><small>Plattform · Port 4300</small></span><span class="arrow">→</span>
+          </a>
+          <a href="http://127.0.0.1:4300/app/development-platform/">
+            <span><strong>Entwicklungsplattform</strong><small>Architektur und Projekte</small></span><span class="arrow">→</span>
+          </a>
+          <a href="http://127.0.0.1:4300/app/learn/">
+            <span><strong>Lernplattform</strong><small>Lernpfade und Projekte</small></span><span class="arrow">→</span>
+          </a>
+          <a href="http://127.0.0.1:4300/app/device-management/">
+            <span><strong>Device Management</strong><small>Geräte und Onboarding</small></span><span class="arrow">→</span>
+          </a>
+          <a href="http://127.0.0.1:4300/app/builds/">
+            <span><strong>Builds</strong><small>Build- und Deploy-Aufträge</small></span><span class="arrow">→</span>
+          </a>
+          <a href="http://127.0.0.1:4300/app/billing/">
+            <span><strong>Billing</strong><small>Credits und KI-Nutzung</small></span><span class="arrow">→</span>
+          </a>
+        </div>
+      </section>
+
+      <section>
+        <h2>Administration und Geräte</h2>
+        <div class="grid">
+          <a href="http://127.0.0.1:4600/admin/">
+            <span><strong>Admin Tool</strong><small>Administration · Port 4600</small></span><span class="arrow">→</span>
+          </a>
+          <a href="http://127.0.0.1:4500/">
+            <span><strong>Provisioning Tool</strong><small>Factory Provisioning · Port 4500</small></span><span class="arrow">→</span>
+          </a>
+          <a href="http://127.0.0.1:5100/">
+            <span><strong>Recovery Tool</strong><small>Board Recovery · Port 5100</small></span><span class="arrow">→</span>
+          </a>
+        </div>
+      </section>
+
+      <section>
+        <h2>Wissen und Diagnose</h2>
+        <div class="grid">
+          <a href="http://127.0.0.1:5050/context-manager/">
+            <span><strong>Context Manager</strong><small>Projektkontext · Port 5050</small></span><span class="arrow">→</span>
+          </a>
+          <a href="http://127.0.0.1:4318/">
+            <span><strong>SQLite Graph Explorer</strong><small>Modellgraph · Port 4318</small></span><span class="arrow">→</span>
+          </a>
+        </div>
+      </section>
+
+      <footer>Links öffnen sich im selben Tab. Mit Zurück gelangst du wieder zu dieser Übersicht.</footer>
+    </main>
+  </body>
+</html>

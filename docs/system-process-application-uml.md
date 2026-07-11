@@ -6,6 +6,8 @@ Bildartefakt: [system-process-application-uml.svg](system-process-application-um
 
 Port-Uebersicht: [process-port-overview.svg](process-port-overview.svg)
 
+VPS-Docker-Topologie: [vps-docker-topology.svg](vps-docker-topology.svg)
+
 ## Komponentendiagramm
 
 ```mermaid
@@ -202,4 +204,6 @@ flowchart LR
 - Die Provisioning-HMI darf keine Firmware-Dateien vom Bedienrechner hochladen. Firmware-Artefakte werden serverseitig aus SQLite/Artifact Store oder einem konfigurierten Server-Firmwarepfad bereitgestellt.
 - Die lokale Dev-Infrastruktur fuer den MQTT Broker liegt unter `infra/dev/docker-compose.yml`. Sie nutzt Mosquitto auf `127.0.0.1:1883` und WebSocket auf `127.0.0.1:9001`; produktiv muessen TLS, Credentials oder Client-Zertifikate und Topic-ACLs aktiviert werden.
 - Der Context Manager ist kein Ersatz fuer die Graph-Dokumentation. Er liest Projektwissen, erstellt Vorschlaege und erzeugt bestaetigte Context Packs fuer Codex-Workflows.
-- Das Diagramm bildet den aktuellen lokalen MVP-Zuschnitt ab. Produktive Infrastruktur wie Reverse Proxy, Auth Gateway, Deployment-Orchestrierung oder externe LLM-/Payment-Provider sind hier noch nicht modelliert.
+- Das Hauptdiagramm bildet den aktuellen lokalen MVP-Zuschnitt ab. Der separate VPS-Bootstrap ergaenzt einen Reverse Proxy und Container-Netze; weitergehende produktive Infrastruktur wie Auth Gateway, Deployment-Orchestrierung oder externe LLM-/Payment-Provider ist noch nicht modelliert.
+- Fuer den ersten VPS-Bootstrap kapselt `compose.vps.yaml` die vorhandenen Node-Services, Mosquitto und Nginx in einem Compose-Projekt. Nginx ist der einzige vorgesehene Edge-Container; Identity und Domaenenservices bleiben im internen Docker-Netz. Das Admin Tool bindet ausschliesslich an den VPS-Loopback. Die konkrete Deployment-Sicht ist in [vps-docker-topology.svg](vps-docker-topology.svg) dokumentiert.
+- Der VPS-Bootstrap bleibt standardmaessig an `127.0.0.1:8080` gebunden. Oeffentlicher Betrieb ist erst nach Domain- und HTTPS-Konfiguration vorgesehen. Mosquitto bleibt bis zur Einrichtung von TLS, Credentials und Topic-ACLs intern.

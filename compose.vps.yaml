@@ -1,0 +1,230 @@
+name: gernetix
+
+x-node-service: &node-service
+  build:
+    context: .
+    dockerfile: docker/node-service.Dockerfile
+  image: gernetix/node-services:${GERNETIX_IMAGE_TAG:-local}
+  init: true
+  restart: unless-stopped
+  security_opt:
+    - no-new-privileges:true
+  networks:
+    - backend
+  healthcheck:
+    test: ["CMD", "node", "/app/docker/healthcheck.js"]
+    interval: 15s
+    timeout: 4s
+    retries: 5
+    start_period: 10s
+
+services:
+  project-server:
+    <<: *node-service
+    environment:
+      GERNETIX_SERVICE: project-server
+      HOST: 0.0.0.0
+      PORT: 4800
+      PERSISTENCE_BACKEND: sqlite
+      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      PROJECT_SERVER_RUNTIME_DIR: /var/lib/gernetix/services
+    expose: ["4800"]
+    volumes:
+      - service_state:/var/lib/gernetix/services
+
+  build-deploy-server:
+    <<: *node-service
+    environment:
+      GERNETIX_SERVICE: build-deploy-server
+      HOST: 0.0.0.0
+      PORT: 4400
+      PERSISTENCE_BACKEND: sqlite
+      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      BUILD_DEPLOY_RUNTIME_DIR: /var/lib/gernetix/build
+      BUILD_RUNNER: mock
+      MQTT_BROKER_URL: mqtt://mqtt-broker:1883
+    expose: ["4400"]
+    volumes:
+      - service_state:/var/lib/gernetix/services
+      - build_state:/var/lib/gernetix/build
+    depends_on:
+      mqtt-broker:
+        condition: service_healthy
+
+  device-management-server:
+    <<: *node-service
+    environment:
+      GERNETIX_SERVICE: device-management-server
+      HOST: 0.0.0.0
+      PORT: 4700
+      PERSISTENCE_BACKEND: sqlite
+      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      DEVICE_MANAGEMENT_RUNTIME_DIR: /var/lib/gernetix/services
+    expose: ["4700"]
+    volumes:
+      - service_state:/var/lib/gernetix/services
+
+  hardware-catalog:
+    <<: *node-service
+    environment:
+      GERNETIX_SERVICE: hardware-catalog
+      HOST: 0.0.0.0
+      PORT: 4910
+      PERSISTENCE_BACKEND: sqlite
+      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+    expose: ["4910"]
+    volumes:
+      - service_state:/var/lib/gernetix/services
+
+  hardware-shop:
+    <<: *node-service
+    environment:
+      GERNETIX_SERVICE: hardware-shop
+      HOST: 0.0.0.0
+      PORT: 4900
+      PERSISTENCE_BACKEND: sqlite
+      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      HARDWARE_CATALOG_BASE_URL: http://hardware-catalog:4910
+    expose: ["4900"]
+    volumes:
+      - service_state:/var/lib/gernetix/services
+    depends_on:
+      hardware-catalog:
+        condition: service_healthy
+
+  ai-usage-server:
+    <<: *node-service
+    environment:
+      GERNETIX_SERVICE: ai-usage-server
+      HOST: 0.0.0.0
+      PORT: 5000
+      PERSISTENCE_BACKEND: sqlite
+      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+    expose: ["5000"]
+    volumes:
+      - service_state:/var/lib/gernetix/services
+
+  ai-context-server:
+    <<: *node-service
+    environment:
+      GERNETIX_SERVICE: ai-context-server
+      HOST: 0.0.0.0
+      PORT: 5500
+      AI_CONTEXT_PERSISTENCE_BACKEND: sqlite
+      AI_CONTEXT_SQLITE_PATH: /var/lib/gernetix/ai-context/gernetix-ai-context.sqlite
+    expose: ["5500"]
+    volumes:
+      - ai_context_state:/var/lib/gernetix/ai-context
+
+  admin-tool:
+    <<: *node-service
+    environment:
+      GERNETIX_SERVICE: admin-tool
+      HOST: 0.0.0.0
+      PORT: 4600
+      PERSISTENCE_BACKEND: sqlite
+      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      IDENTITY_BASE_URL: http://identity-server:4300
+      PROJECT_SERVER_BASE_URL: http://project-server:4800
+      BUILD_DEPLOY_BASE_URL: http://build-deploy-server:4400
+      DEVICE_MANAGEMENT_BASE_URL: http://device-management-server:4700
+      HARDWARE_CATALOG_BASE_URL: http://hardware-catalog:4910
+      HARDWARE_SHOP_BASE_URL: http://hardware-shop:4900
+      AI_USAGE_BASE_URL: http://ai-usage-server:5000
+      AI_CONTEXT_BASE_URL: http://ai-context-server:5500
+    ports:
+      - "127.0.0.1:${ADMIN_PORT:-4600}:4600"
+    volumes:
+      - service_state:/var/lib/gernetix/services
+    depends_on:
+      project-server: { condition: service_healthy }
+      build-deploy-server: { condition: service_healthy }
+      device-management-server: { condition: service_healthy }
+      hardware-catalog: { condition: service_healthy }
+      hardware-shop: { condition: service_healthy }
+      ai-usage-server: { condition: service_healthy }
+      ai-context-server: { condition: service_healthy }
+
+  identity-server:
+    <<: *node-service
+    environment:
+      GERNETIX_SERVICE: identity-server
+      HOST: 0.0.0.0
+      PORT: 4300
+      IDENTITY_PERSISTENCE_BACKEND: sqlite
+      IDENTITY_SQLITE_PATH: /var/lib/gernetix/identity/gernetix-identity.sqlite
+      PROJECT_SERVER_BASE_URL: http://project-server:4800
+      BUILD_DEPLOY_BASE_URL: http://build-deploy-server:4400
+      DEVICE_MANAGEMENT_BASE_URL: http://device-management-server:4700
+      HARDWARE_CATALOG_BASE_URL: http://hardware-catalog:4910
+      HARDWARE_SHOP_BASE_URL: http://hardware-shop:4900
+      AI_USAGE_BASE_URL: http://ai-usage-server:5000
+      AI_CONTEXT_BASE_URL: http://ai-context-server:5500
+      ADMIN_TOOL_BASE_URL: http://admin-tool:4600
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+    expose: ["4300"]
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    volumes:
+      - identity_state:/var/lib/gernetix/identity
+    depends_on:
+      project-server: { condition: service_healthy }
+      build-deploy-server: { condition: service_healthy }
+      device-management-server: { condition: service_healthy }
+      hardware-catalog: { condition: service_healthy }
+      hardware-shop: { condition: service_healthy }
+      ai-usage-server: { condition: service_healthy }
+      ai-context-server: { condition: service_healthy }
+
+  mqtt-broker:
+    image: eclipse-mosquitto:2.0
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    networks:
+      - backend
+    expose: ["1883", "9001"]
+    volumes:
+      - ./infra/vps/mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+      - mqtt_data:/mosquitto/data
+      - mqtt_log:/mosquitto/log
+    healthcheck:
+      test: ["CMD-SHELL", "mosquitto_sub -h 127.0.0.1 -p 1883 -t '$$SYS/broker/version' -C 1 -W 5 >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 6s
+      retries: 5
+      start_period: 5s
+
+  nginx:
+    image: nginx:1.28-alpine
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    ports:
+      - "${HTTP_BIND_ADDRESS:-127.0.0.1}:${HTTP_PORT:-8080}:8080"
+    networks:
+      - edge
+      - backend
+    volumes:
+      - ./infra/vps/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - nginx_cache:/var/cache/nginx
+      - nginx_run:/var/run
+    depends_on:
+      identity-server:
+        condition: service_healthy
+
+networks:
+  edge:
+  backend:
+    internal: true
+
+volumes:
+  identity_state:
+  service_state:
+  ai_context_state:
+  build_state:
+  mqtt_data:
+  mqtt_log:
+  nginx_cache:
+  nginx_run:

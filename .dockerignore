@@ -1,0 +1,11 @@
+.git
+.runtime
+**/.runtime
+**/node_modules
+tools/yaml-graph-sqlite/out
+generated
+projects
+basissoftware
+*.log
+.DS_Store
+
