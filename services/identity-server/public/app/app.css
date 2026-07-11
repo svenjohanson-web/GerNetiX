@@ -414,6 +414,247 @@ button.danger:hover {
   height: 100%;
   margin-top: 0;
 }
+.ide-build-console {
+  display: grid;
+  gap: 0;
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #263241;
+  border-radius: 8px;
+  background: #111827;
+}
+.ide-build-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  align-items: flex-start;
+  padding: 6px 8px;
+  border-bottom: 1px solid #263241;
+  background: #1b2430;
+}
+.ide-build-actions-label {
+  align-self: center;
+  margin-right: 4px;
+  color: #9ca3af;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+.ide-build-actions button,
+.ide-build-actions select {
+  min-height: 26px;
+  padding: 4px 7px;
+  border-color: #3c4a5d;
+  border-radius: 4px;
+  background: #273244;
+  color: #e5e7eb;
+  font-size: 11px;
+  line-height: 1.15;
+}
+.ide-build-actions button:hover:not(:disabled) {
+  border-color: #59c8d8;
+  background: #334155;
+}
+.ide-build-actions button:disabled {
+  color: #64748b;
+  background: #1f2937;
+}
+.ide-build-actions .port-input {
+  width: 128px;
+}
+.ide-usb-port-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #94a3b8;
+  font-size: 10px;
+  font-weight: 700;
+}
+.ide-build-actions .ide-usb-port-field .port-input {
+  width: 210px;
+}
+.ide-build-actions .ide-action-reason {
+  flex: 1 0 100%;
+  color: #94a3b8;
+  font-size: 10px;
+}
+.ide-terminal {
+  min-width: 0;
+  color: #d1d5db;
+  background: #0b1018;
+}
+.ide-terminal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 28px;
+  padding: 3px 9px;
+  border-bottom: 1px solid #263241;
+  color: #cbd5e1;
+  font-size: 10px;
+  letter-spacing: .08em;
+}
+.ide-terminal-head button {
+  min-height: 22px;
+  padding: 2px 7px;
+  border-color: transparent;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 10px;
+}
+#ideTerminalOutput {
+  min-height: 118px;
+  max-height: 220px;
+  margin: 0;
+  padding: 10px 12px;
+  overflow: auto;
+  color: #d1d5db;
+  font: 12px/1.55 ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.terminal-line { display: inline; }
+.terminal-muted { color: #64748b; }
+.terminal-running { color: #67e8f9; }
+.terminal-ok { color: #86efac; }
+.terminal-error { color: #fca5a5; }
+
+/* Die freie IDE verwendet durchgaengig dieselbe visuelle Sprache wie Build & Flash. */
+#ideView {
+  margin: 0 -10px;
+  padding: 12px;
+  border: 1px solid #263241;
+  border-radius: 12px;
+  background: #0b1018;
+  color: #e5e7eb;
+  box-shadow: 0 18px 50px rgba(2, 6, 23, .22);
+}
+#ideView > .section-head {
+  margin: -12px -12px 10px;
+  padding: 10px 12px;
+  border-bottom: 1px solid #263241;
+  border-radius: 12px 12px 0 0;
+  background: #111827;
+}
+#ideView > .section-head h2 { font-size: 18px; }
+#ideView .eyebrow { color: #67e8f9; font-size: 10px; letter-spacing: .08em; }
+#ideView .project-context-label { color: #94a3b8; font-size: 11px; }
+#ideView #ideToolbar { justify-content: flex-end; }
+#ideView #ideToolbar button,
+#ideView #ideToolbar select,
+#ideView .ide-inspector-panel button,
+#ideView .ide-inspector-panel select {
+  min-height: 28px;
+  padding: 5px 8px;
+  border-color: #3c4a5d;
+  border-radius: 4px;
+  background: #273244;
+  color: #e5e7eb;
+  font-size: 11px;
+}
+#ideView #ideToolbar button:hover,
+#ideView .ide-inspector-panel button:hover {
+  border-color: #59c8d8;
+  background: #334155;
+}
+#ideView #ideToolbar button.active-method {
+  border-color: #22d3ee;
+  background: #164e63;
+  color: #cffafe;
+}
+#ideView #saveSourceButton {
+  border-color: #0891b2;
+  background: #0e7490;
+}
+#ideView .ide-layout { gap: 8px; }
+#ideView .ide-workbench { gap: 8px; }
+#ideView .ide-project-browser-panel,
+#ideView .ide-inspector-panel,
+#ideView .ide-viewer-panel,
+#ideView .ide-empty-state {
+  padding: 12px;
+  border-color: #263241;
+  border-radius: 8px;
+  background: #111827;
+  color: #e5e7eb;
+  box-shadow: none;
+}
+#ideView .ide-project-browser-panel h3,
+#ideView .ide-inspector-panel h3,
+#ideView .ide-viewer-panel h3 { font-size: 14px; }
+#ideView .ide-tree-root > strong {
+  border-color: #334155;
+  background: #1b2430;
+  color: #cbd5e1;
+}
+#ideView .ide-tree-folder summary { color: #94a3b8; }
+#ideView .ide-project-browser button {
+  min-height: 28px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+  border-color: transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+#ideView .ide-project-browser button:hover { background: #1f2937; }
+#ideView .ide-project-browser button.active {
+  border-color: #155e75;
+  background: #164e63;
+  color: #cffafe;
+}
+#ideView .ide-project-browser small { color: #64748b; font-size: 9px; }
+#ideView .ide-viewer-head {
+  margin: -12px -12px 0;
+  padding: 9px 12px;
+  border-bottom: 1px solid #263241;
+  background: #1b2430;
+}
+#ideView .ide-source-workspace textarea {
+  border-color: #263241;
+  border-radius: 4px;
+  background: #0b1018;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .015);
+}
+#ideView .ide-model-context {
+  border-color: #334155;
+  background: #1b2430;
+  color: #e5e7eb;
+}
+#ideView .ide-model-context span,
+#ideView .meta-list dt,
+#ideView .manifest-head p:last-child,
+#ideView .manifest-view-card p { color: #94a3b8; }
+#ideView .meta-list dd { color: #e2e8f0; font-size: 12px; }
+#ideView .meta-list div {
+  padding-bottom: 7px;
+  border-bottom: 1px solid #263241;
+}
+#ideView .ide-device-allocation {
+  border-color: #334155;
+  background: #1b2430;
+}
+#ideView .ide-device-allocation label,
+#ideView .ide-device-allocation small { color: #94a3b8; }
+#ideView .manifest-head { border-color: #334155; }
+#ideView .manifest-view-card {
+  border-color: #334155;
+  background: #1b2430;
+}
+#ideView .ide-ai-rating { border-color: #334155; }
+#ideView .ide-ai-rating-head strong { color: #cbd5e1; }
+#ideView .ai-rating-card {
+  border-color: #334155;
+  background: #1b2430;
+  color: #e2e8f0;
+}
+#ideView .ai-rating-card span,
+#ideView .ai-rating-card small { color: #94a3b8; }
+#ideView .usage-bar { background: #334155; }
+#ideView .usage-bar i { background: #22d3ee; }
+#ideView .flash-status { border-color: #3c4a5d; background: #1b2430; color: #cbd5e1; }
 .ide-image-view,
 .ide-model-view {
   min-height: 420px;
@@ -705,6 +946,16 @@ button.danger:hover {
 .ide-device-allocation small {
   color: var(--muted);
   line-height: 1.4;
+}
+.ide-action-with-reason {
+  display: inline-grid;
+  gap: 4px;
+  max-width: 280px;
+}
+.ide-action-reason {
+  color: var(--muted);
+  font-size: 11px;
+  line-height: 1.3;
 }
 .development-template-hint {
   margin: -4px 0 2px;

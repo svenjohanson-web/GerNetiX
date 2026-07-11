@@ -18,7 +18,7 @@ function loadEsp32BasissoftwareFiles(root = process.env.GERNETIX_ESP32_BASISSOFT
 }
 
 function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildConfig }) {
-  const userSourcePath = buildConfig.user_source_path || "src/user_main.cpp";
+  const userSourcePath = buildConfig.user_source_path || "Komponenten/ESP32/src/user_main.cpp";
   const userTargetPath = buildConfig.user_target_path || "src/user/user_app.cpp";
   const userSource = projectSources.find((source) => source.path === userSourcePath);
   if (!userSource) {

@@ -27,7 +27,7 @@ test("ESP32-only template provides a buildable firmware scaffold", () => {
   assert.equal(template.buildConfig.board, "esp32dev");
   assert.equal(template.buildConfig.framework, "espidf");
   assert.equal(template.buildConfig.firmware_basis_id, "gernetix-runtime-basissoftware");
-  assert.equal(sources[0].path, "src/user_main.cpp");
+  assert.equal(sources[0].path, "Komponenten/ESP32/src/user_main.cpp");
   assert.match(sources[0].content, /void userMain/);
   assert.deepEqual(templateFirmwareSources(developmentProjectTemplate("empty"), "Leer"), []);
 });

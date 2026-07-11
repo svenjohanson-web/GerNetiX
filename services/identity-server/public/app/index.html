@@ -106,14 +106,6 @@
               <button type="button" data-ide-view-mode="code">Code</button>
               <button type="button" data-ide-view-mode="image">Image</button>
             </span>
-            <span id="ideDeviceTools" class="button-row">
-              <select id="ideDeviceSelect" class="hidden" aria-label="Zugeordnetes Geraet"></select>
-              <select id="usbPortSelect" class="port-input" aria-label="USB-Port"></select>
-              <button id="refreshUsbPortsButton" type="button">USB suchen</button>
-              <button id="buildButton" type="button">Build starten</button>
-              <button id="usbFlashButton" type="button">Ueber USB flashen</button>
-              <button id="otaFlashButton" type="button">Ueber OTA flashen</button>
-            </span>
             <button id="saveSourceButton" type="button">Code speichern</button>
           </div>
         </div>
@@ -143,6 +135,28 @@
               <section id="ideImageView" class="ide-image-view hidden"></section>
               <section id="ideModelView" class="ide-model-view"></section>
             </article>
+            <section id="ideBuildConsole" class="ide-build-console">
+              <div id="ideDeviceTools" class="ide-build-actions">
+                <span class="ide-build-actions-label">Build &amp; Flash</span>
+                <select id="ideDeviceSelect" class="hidden" aria-label="Zugeordnetes Geraet"></select>
+                <label class="ide-usb-port-field">
+                  <span>USB-Port</span>
+                  <select id="usbPortSelect" class="port-input" aria-label="USB-Port fuer USB-Flash"></select>
+                </label>
+                <button id="refreshUsbPortsButton" type="button">USB suchen</button>
+                <button id="buildButton" type="button" aria-describedby="ideActionReason">Build</button>
+                <button id="usbFlashButton" type="button" aria-describedby="ideActionReason">USB Flash</button>
+                <button id="otaFlashButton" type="button" aria-describedby="ideActionReason">OTA Flash</button>
+                <small id="ideActionReason" class="ide-action-reason hidden"></small>
+              </div>
+              <section class="ide-terminal" aria-label="Build Terminal">
+                <header class="ide-terminal-head">
+                  <strong>TERMINAL</strong>
+                  <button id="clearIdeTerminalButton" type="button">Leeren</button>
+                </header>
+                <pre id="ideTerminalOutput" aria-live="polite"><span class="terminal-muted">GerNetiX Build-Terminal bereit.</span></pre>
+              </section>
+            </section>
           </section>
           <aside id="ideInspectorPanel" class="panel ide-inspector-panel">
             <p class="eyebrow">Projektmodell</p>

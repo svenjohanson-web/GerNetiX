@@ -204,7 +204,7 @@ Ein Build darf immer nur fuer ein Projektprofil laufen. Der Build-Prozess kopier
 
 Fuer accountgebundene ESP32-Entwicklungsprojekte gilt im ersten IDE-Durchstich:
 
-- Der Project Server speichert als sichtbare und editierbare Projektquelle nur `src/user_main.cpp`.
+- Jede Architekturkomponente besitzt ihren eigenen Source-Bereich. Fuer den ESP32 speichert der Project Server als sichtbare und editierbare Projektquelle nur `Komponenten/ESP32/src/user_main.cpp`; ein projektweiter `src/`-Ordner ist nicht zulaessig.
 - Diese User-Main gehoert fachlich zum Account-Projekt und wird nicht in `basissoftware/esp32` persistiert.
 - Beim Erzeugen des vollstaendigen BuildPackage legt der Project Server die User-Main auf `src/user/user_app.cpp` der versionierten ESP32-Basissoftware.
 - `src/main.cpp`, Runtime, Connectivity, Schutzmechanismen und spaetere OTA-Implementierung kommen ausschliesslich aus der Basissoftware-Version des BuildPackage.
@@ -243,5 +243,4 @@ Nicht ausgeliefert werden:
 - Build-Skripte
 - Debug-Symbole
 - private Schluessel
-
 

@@ -146,6 +146,7 @@ document.querySelector("#saveSourceButton").addEventListener("click", saveSource
 document.querySelector("#buildButton").addEventListener("click", startBuild);
 document.querySelector("#usbFlashButton").addEventListener("click", startUsbFlash);
 document.querySelector("#otaFlashButton").addEventListener("click", startOtaFlash);
+document.querySelector("#clearIdeTerminalButton").addEventListener("click", clearIdeTerminal);
 document.querySelector("#allocateIdeDeviceButton").addEventListener("click", allocateIdeDevice);
 document.querySelector("#recoveryDeviceSelect").addEventListener("change", () => {
   state.activeRecoveryDeviceId = document.querySelector("#recoveryDeviceSelect").value;
@@ -521,7 +522,7 @@ async function loadIdeProject() {
       ["linkedDeviceId", project.linkedDeviceId || "kein Device"],
       ["ESP32 Allocation", allocatedIdeDevice(project)?.display_name || "nicht zugeordnet"],
       ["Boardprofil", allocatedIdeDevice(project)?.build_target_label || "kein Boardprofil"],
-      ["USB Port", selectedUsbPort() || "auto"],
+      ["USB-Port", selectedUsbPort() || (state.usbPorts.length ? "automatisch ermitteln" : "kein Port erkannt")],
     );
   }
   document.querySelector("#ideProjectMeta").innerHTML = metaItems.map(([key, value]) => meta(key, value)).join("");
@@ -559,14 +560,35 @@ function updateIdeProjectTools(project) {
   document.querySelector("#ideProjectSelect").classList.add("hidden");
   document.querySelector("#ideDeviceTools").classList.toggle("hidden", !hardwareTools);
   const allocated = allocatedIdeDevice(project);
-  document.querySelector("#buildButton").disabled = !allocated;
-  document.querySelector("#usbFlashButton").disabled = !allocated || !allocated.usb_flash_supported;
-  document.querySelector("#otaFlashButton").disabled = !allocated || allocated.ota_status !== "ready";
+  const actionReason = ideActionUnavailableReason(project, allocated);
+  const buildButton = document.querySelector("#buildButton");
+  const usbButton = document.querySelector("#usbFlashButton");
+  const otaButton = document.querySelector("#otaFlashButton");
+  const actionReasonNode = document.querySelector("#ideActionReason");
+  buildButton.disabled = false;
+  usbButton.disabled = false;
+  otaButton.disabled = false;
+  buildButton.title = actionReason;
+  usbButton.title = actionReason || (!allocated?.usb_flash_supported ? "Das zugeordnete Device unterstuetzt keinen USB-Flash." : "");
+  otaButton.title = actionReason || (allocated?.ota_status !== "ready" ? `Das zugeordnete Device meldet den OTA-Status ${allocated?.ota_status || "unknown"}.` : "");
+  actionReasonNode.textContent = actionReason;
+  actionReasonNode.classList.toggle("hidden", !actionReason);
   document.querySelector("#saveSourceButton").classList.toggle("hidden", !sourceEditing);
   document.querySelector("#sourceEditor").readOnly = !sourceEditing;
   document.querySelectorAll("[data-ide-view-mode]").forEach((button) => {
     button.classList.toggle("active-method", button.dataset.ideViewMode === state.ideViewMode);
   });
+}
+
+function ideActionUnavailableReason(project, allocated) {
+  if (!projectNeedsHardwareTools(project)) return "";
+  if (!allocated) {
+    const compatible = state.devices.filter((device) => deviceCompatibleWithProject(project, device));
+    return compatible.length
+      ? "Vor Build oder Flash: Ordne dem ESP32-Projektordner zuerst ein Inventar-Device zu."
+      : "Vor Build oder Flash: Kein kompatibler ESP32 im Inventar. Fuege das Board zum Inventar hinzu und ordne es dem Projekt zu.";
+  }
+  return "";
 }
 
 function renderIdeDeviceAllocation(project) {
@@ -825,6 +847,7 @@ async function startUsbFlash() {
   const project = projectById(state.activeProjectId);
   const device = allocatedIdeDevice(project);
   if (!project || !device) return setFlashStatus("error", "Bitte zuerst den ESP32-Projektordner einem Inventar-Device zuordnen.");
+  if (!device.usb_flash_supported) return setFlashStatus("error", "Das zugeordnete Device unterstuetzt keinen USB-Flash.");
   if (!selectedUsbPort() && state.usbPorts.length > 1) {
     setFlashStatus("error", "Mehrere USB-Serial-Ports gefunden. Bitte waehle den aktuellen Port, z. B. COM10.");
     return;
@@ -1212,7 +1235,13 @@ function renderUsbPortOptions() {
   const detected = state.usbPorts.map((port) => `
     <option value="${escapeHtml(port.port)}">${escapeHtml(port.port)} - ${escapeHtml(port.name || port.manufacturer || "USB Serial")}</option>
   `).join("");
-  select.innerHTML = `<option value="">auto</option>${detected}`;
+  const automaticLabel = state.usbPorts.length
+    ? "Automatisch ermitteln"
+    : "Automatisch (kein USB-Port erkannt)";
+  select.innerHTML = `<option value="">${automaticLabel}</option>${detected}`;
+  select.title = state.usbPorts.length
+    ? "Nur fuer USB-Flash: Port automatisch ermitteln oder einen erkannten Port auswaehlen."
+    : "Nur fuer USB-Flash: Momentan wurde kein USB-Serial-Port erkannt.";
   if (current && Array.from(select.options).some((option) => option.value === current)) select.value = current;
   renderInventoryUsbPortOptions();
 }
@@ -1300,6 +1329,23 @@ function setFlashStatus(kind, text) {
   const status = document.querySelector("#flashStatus");
   status.className = `flash-status ${kind}`;
   status.textContent = text;
+  appendIdeTerminal(kind, text);
+}
+
+function appendIdeTerminal(kind, text) {
+  const terminal = document.querySelector("#ideTerminalOutput");
+  if (!terminal || !text) return;
+  const line = document.createElement("span");
+  line.className = `terminal-line terminal-${kind}`;
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+  terminal.append(document.createTextNode("\n"), line);
+  terminal.scrollTop = terminal.scrollHeight;
+}
+
+function clearIdeTerminal() {
+  const terminal = document.querySelector("#ideTerminalOutput");
+  if (!terminal) return;
+  terminal.innerHTML = '<span class="terminal-muted">GerNetiX Build-Terminal bereit.</span>';
 }
 
 function renderBilling() {

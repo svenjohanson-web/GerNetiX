@@ -17,7 +17,7 @@ const TEMPLATES = {
       libraries: [],
       firmware_basis_id: "gernetix-runtime-basissoftware",
       firmware_basis_version: "workspace",
-      user_source_path: "src/user_main.cpp",
+      user_source_path: "Komponenten/ESP32/src/user_main.cpp",
       user_target_path: "src/user/user_app.cpp",
     },
     nodes: [
@@ -88,7 +88,7 @@ function templateArchitecturePlantUml(template, title) {
 function templateFirmwareSources(template, title) {
   if (!template.buildConfig) return [];
   return [{
-    path: "src/user_main.cpp",
+    path: "Komponenten/ESP32/src/user_main.cpp",
     role: "user_code",
     content_type: "text/x-c++src",
     content: [

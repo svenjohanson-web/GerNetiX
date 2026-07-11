@@ -93,10 +93,10 @@ test("composes ESP32 basissoftware with only the project-owned user main", () =>
       framework: "espidf",
       firmware_basis_id: "gernetix-runtime-basissoftware",
       firmware_basis_version: "test",
-      user_source_path: "src/user_main.cpp",
+      user_source_path: "Komponenten/ESP32/src/user_main.cpp",
       user_target_path: "src/user/user_app.cpp",
     },
-    sources: [{ path: "src/user_main.cpp", content: "extern \"C\" void userMain() {}\n" }],
+    sources: [{ path: "Komponenten/ESP32/src/user_main.cpp", content: "extern \"C\" void userMain() {}\n" }],
   });
   const job = service.createBuildJob(project.project_id);
   const buildPackage = service.createBuildPackage(job.build_job_id);
@@ -104,7 +104,7 @@ test("composes ESP32 basissoftware with only the project-owned user main", () =>
   assert.equal(buildPackage.platformio_ini, "framework = espidf\n");
   assert.equal(buildPackage.files.some((file) => file.path === "src/main.cpp"), true);
   assert.equal(buildPackage.files.find((file) => file.path === "src/user/user_app.cpp").content, "extern \"C\" void userMain() {}\n");
-  assert.equal(buildPackage.files.some((file) => file.path === "src/user_main.cpp"), false);
+  assert.equal(buildPackage.files.some((file) => file.path === "Komponenten/ESP32/src/user_main.cpp"), false);
 });
 
 test("stores project view manifest and includes it in build package", () => {

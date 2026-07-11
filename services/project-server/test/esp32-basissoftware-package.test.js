@@ -8,12 +8,12 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
   const files = composeEsp32BasissoftwarePackage({
     basisFiles,
     projectSources: [{
-      path: "src/user_main.cpp",
+      path: "Komponenten/ESP32/src/user_main.cpp",
       content: 'extern "C" void userMain() {}\nextern "C" void userTick() {}\n',
       content_type: "text/x-c++src",
     }],
     buildConfig: {
-      user_source_path: "src/user_main.cpp",
+      user_source_path: "Komponenten/ESP32/src/user_main.cpp",
       user_target_path: "src/user/user_app.cpp",
     },
   });
@@ -24,6 +24,6 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
   assert.equal(files.some((file) => file.path === "dependencies.lock"), true);
   assert.equal(files.some((file) => file.path === "src/idf_component.yml"), true);
   assert.match(files.find((file) => file.path === "src/user/user_app.cpp").content, /void userMain/);
-  assert.equal(files.some((file) => file.path === "src/user_main.cpp"), false);
+  assert.equal(files.some((file) => file.path === "Komponenten/ESP32/src/user_main.cpp"), false);
   assert.equal(files.some((file) => file.path.startsWith(".vscode/")), false);
 });

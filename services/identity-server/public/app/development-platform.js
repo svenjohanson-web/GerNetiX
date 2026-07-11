@@ -228,10 +228,23 @@ const DevelopmentPlatform = (() => {
       storeActiveProjectId(projectId);
       state.developmentPlatform.projectPanelMode = "closed";
       state.developmentPlatform.chat = [];
-      state.developmentPlatform.architectureDiagram = null;
+      state.developmentPlatform.architectureDiagram = architectureDiagramForProject(currentProject());
       state.developmentPlatform.lastRouting = null;
       state.developmentPlatform.assistantMode = "architecture_structure";
       render();
+    }
+
+    function architectureDiagramForProject(project) {
+      const view = (project?.viewManifest?.views || []).find((item) => item.id === "architecture-diagram" || item.type === "plantuml");
+      const source = String(view?.payload?.source || "").trim();
+      if (!source) return null;
+      return {
+        source,
+        title: view.title || "Architektur-Skizze",
+        summary: view.summary || "Gespeicherte Projektarchitektur.",
+        derived_from: view.payload?.derived_from || (project?.buildConfig ? "project_template" : "persisted_project"),
+        ...(view.payload?.function_coverage ? { function_coverage: view.payload.function_coverage } : {}),
+      };
     }
 
     async function createDevelopmentProject(event) {
@@ -265,7 +278,7 @@ const DevelopmentPlatform = (() => {
                 source,
                 title: architectureView.title || "Architektur-Skizze",
                 summary: architectureView.summary || "Startarchitektur aus Projekttemplate.",
-                derived_from: "project_template",
+                derived_from: architectureView.payload?.derived_from || "project_template",
               };
             }
           }
