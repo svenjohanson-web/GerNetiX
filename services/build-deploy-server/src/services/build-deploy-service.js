@@ -75,6 +75,7 @@ class BuildDeployService {
     const workspace = await this.packageStore.materialize(job);
     try {
       const buildOutput = await this.runner.run(job, workspace.packageDir);
+      await this.packageStore.preserveIncrementalCache(job, workspace.packageDir);
       const artifacts = await this.artifactStore.saveBuildArtifacts(job.job_id, buildOutput);
       const buildResult = {
         status: buildOutput.status,
@@ -94,7 +95,7 @@ class BuildDeployService {
       };
       this.persistJobs();
     } finally {
-      await this.packageStore.cleanup(workspace.jobDir);
+      await this.packageStore.cleanup(workspace);
     }
   }
 
@@ -163,6 +164,7 @@ function normalizeJob(input = {}) {
     job_id: input.job_id || randomUUID(),
     mode,
     device_id: input.device_id || (input.deploy && input.deploy.device_id) || null,
+    project_id: input.project_id || null,
     build_package: input.build_package,
     deploy: input.deploy || null,
     usb_flash: input.usb_flash || null,

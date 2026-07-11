@@ -4,6 +4,8 @@
 
 Typische Aenderungen an Lernprojekten oder KI-generierten Modulen sollen nur die betroffenen Dateien neu kompilieren. Die Basissoftware bleibt eine stabile, gecachte Build-Basis.
 
+Ein reiner Build aus der Entwicklungsplattform benoetigt kein Inventar-Device. Eine Device-Zuordnung wird erst fuer USB- oder OTA-Flash vorausgesetzt.
+
 ## Build-Bereiche
 
 - `basissoftware/esp32/`: stabile Basis-Firmware, gemeinsam fuer alle Projekte.
@@ -13,6 +15,10 @@ Typische Aenderungen an Lernprojekten oder KI-generierten Modulen sollen nur die
 ## Cache-Regeln
 
 - Der Build-Server haelt die kompilierte Core-Komponente dauerhaft vor.
+- Jeder von der Entwicklungsplattform ausgeloeste Build verwendet den technischen `.pio`-Cache desselben Projekts und Zielgeraets. Der Build-Button fordert keinen Clean- oder Vollbuild an.
+- Der Build-Server verwendet pro Projekt und Zielgeraet einen stabilen technischen Build-Workspace. Dadurch bleiben absolute Buildpfade und Zeitstempel unveraenderter Basissoftwaredateien stabil.
+- Bei einem neuen BuildPackage werden nur inhaltlich geaenderte Dateien neu geschrieben und nicht mehr enthaltene Dateien entfernt. `.pio` bleibt als jederzeit neu erzeugbarer technischer Cache bestehen.
+- Der persistente Build-Workspace ist keine fachliche Quelle der Wahrheit. Sein Inhalt wird bei jedem Auftrag mit dem vollstaendigen BuildPackage abgeglichen und darf jederzeit geloescht werden.
 - Der Compiler-Cache bleibt zwischen Builds erhalten.
 - PlatformIO-, ESP-IDF-, CMake- und Ninja-Caches werden nicht nach jedem Build geloescht.
 - Basissoftware-Artefakte werden ueber Basissoftware-Version, Toolchain-Version, Board und Build-Konfiguration adressiert.
@@ -39,5 +45,3 @@ Danach werden alle Objektdateien gelinkt, signiert und als OTA-Image bereitgeste
 ## Skalierung
 
 Mehrere gleichzeitige Nutzer verwenden dieselbe gecachte Core-Basis. Nur ihre jeweiligen Projekt- und Generated-Komponenten werden neu gebaut. Dadurch sinken CPU-Last, Speicherbedarf und Buildzeit pro Nutzer.
-
-

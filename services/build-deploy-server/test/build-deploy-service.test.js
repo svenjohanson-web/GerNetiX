@@ -14,6 +14,7 @@ test("build job produces required artifacts and removes temporary project worksp
   const config = createConfig({
     BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
     BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
   });
   const service = createDefaultBuildDeployService(config);
 
@@ -51,6 +52,7 @@ test("build job can return avr hex firmware as primary artifact", async () => {
   const service = createDefaultBuildDeployService(createConfig({
     BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
     BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
   }));
   const sourceDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-avr-artifacts-"));
   const hexPath = path.join(sourceDir, "firmware.hex");
@@ -82,11 +84,65 @@ test("build job can return avr hex firmware as primary artifact", async () => {
   assert.equal(job.result.deploy.status, "not_requested");
 });
 
+test("successive project builds restore and update the PlatformIO incremental cache", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-incremental-build-"));
+  const config = createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  });
+  const service = createDefaultBuildDeployService(config);
+  const observedCacheStates = [];
+  const observedWorkspaces = [];
+  const sourceModifiedTimes = [];
+  service.runner.run = async (job, packageDir) => {
+    observedWorkspaces.push(packageDir);
+    sourceModifiedTimes.push((await fs.stat(path.join(packageDir, "src", "main.cpp"))).mtimeMs);
+    const marker = path.join(packageDir, ".pio", "build", "cache-marker.txt");
+    observedCacheStates.push(await fs.readFile(marker, "utf8").catch(() => "missing"));
+    await fs.mkdir(path.dirname(marker), { recursive: true });
+    await fs.writeFile(marker, job.job_id);
+    const outputDir = path.join(packageDir, ".test-artifacts");
+    await fs.mkdir(outputDir, { recursive: true });
+    const artifacts = {
+      "firmware.bin": path.join(outputDir, "firmware.bin"),
+      "firmware.elf": path.join(outputDir, "firmware.elf"),
+      "build.log": path.join(outputDir, "build.log"),
+    };
+    await Promise.all(Object.values(artifacts).map((file) => fs.writeFile(file, "artifact")));
+    return { status: "succeeded", artifacts };
+  };
+
+  for (const jobId of ["incremental-1", "incremental-2"]) {
+    await service.submitJob({
+      job_id: jobId,
+      project_id: "project-1",
+      device_id: "device-1",
+      mode: "build",
+      build_package: { files: {
+        "platformio.ini": "[env:test]\n",
+        "src/main.cpp": "void setup() {}\nvoid loop() {}\n",
+      } },
+    });
+    await service.jobs.get(jobId).promise;
+  }
+
+  assert.deepEqual(observedCacheStates, ["missing", "incremental-1"]);
+  assert.equal(observedWorkspaces[0], observedWorkspaces[1]);
+  assert.equal(sourceModifiedTimes[0], sourceModifiedTimes[1]);
+  assert.equal(
+    await fs.readFile(path.join(config.incrementalCacheDir, "project-1--device-1", "workspace", ".pio", "build", "cache-marker.txt"), "utf8"),
+    "incremental-2",
+  );
+  assert.equal(await fs.readFile(path.join(observedWorkspaces[1], "src", "main.cpp"), "utf8"), "void setup() {}\nvoid loop() {}\n");
+});
+
 test("prebuild cannot trigger deploy", async () => {
   const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-build-deploy-"));
   const service = createDefaultBuildDeployService(createConfig({
     BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
     BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
   }));
 
   await service.submitJob({
@@ -108,6 +164,7 @@ test("usb flash mode records usb flash result without ota deploy", async () => {
   const service = createDefaultBuildDeployService(createConfig({
     BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
     BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
   }));
 
   await service.submitJob({
@@ -131,6 +188,7 @@ test("unsafe build package paths fail and leave no temporary workspace", async (
   const config = createConfig({
     BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
     BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
   });
   const service = createDefaultBuildDeployService(config);
 
@@ -159,6 +217,7 @@ test("waiting device job is replaced by newer waiting job", async () => {
   const service = createDefaultBuildDeployService(createConfig({
     BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
     BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
   }));
 
   service.runner.run = async () => new Promise(() => {});

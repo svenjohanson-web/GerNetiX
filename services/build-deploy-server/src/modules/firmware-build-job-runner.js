@@ -8,6 +8,7 @@ class FirmwareBuildJobRunner {
     this.runner = options.runner;
     this.platformioCommand = options.platformioCommand;
     this.cacheDir = options.cacheDir;
+    this.allowMockRunner = options.allowMockRunner === true;
   }
 
   async run(job, packageDir) {
@@ -16,11 +17,13 @@ class FirmwareBuildJobRunner {
         command: this.platformioCommand,
         packageDir,
         cacheDir: this.cacheDir,
-        uploadPort: job.usb_flash && job.usb_flash.upload_port,
-        uploadRequested: job.mode === "build_and_usb_flash",
+        browserFlashRequested: job.mode === "build_and_usb_flash",
       });
     }
 
+    if (this.runner !== "mock" || !this.allowMockRunner) {
+      throw new BuildDeployError("invalid_build_runner", "Nur der echte PlatformIO-Build-Runner ist ausserhalb von Tests erlaubt.", 500);
+    }
     return runMockBuild(job, packageDir);
   }
 }
@@ -79,30 +82,9 @@ async function runPlatformioBuild(options) {
     });
   }
 
-  let usbFlash = { requested: false, status: "not_requested" };
-  if (options.uploadRequested) {
-    const uploadArgs = ["run", "-t", "upload"];
-    if (options.uploadPort) uploadArgs.push("--upload-port", options.uploadPort);
-    const uploadResult = await spawnAndCapture(options.command, uploadArgs, {
-      cwd: options.packageDir,
-      env,
-    });
-    output += `\n\n--- USB flash ---\n${uploadResult.output}`;
-    usbFlash = {
-      requested: true,
-      status: uploadResult.exitCode === 0 ? "succeeded" : "failed",
-      upload_port: options.uploadPort || "auto",
-      exit_code: uploadResult.exitCode,
-    };
-    if (uploadResult.exitCode !== 0) {
-      await fs.writeFile(logPath, output);
-      throw new BuildDeployError("usb_flash_failed", "USB-Flash fehlgeschlagen.", 422, {
-        exit_code: uploadResult.exitCode,
-        upload_port: options.uploadPort || "auto",
-        build_log: output,
-      });
-    }
-  }
+  const usbFlash = options.browserFlashRequested
+    ? { requested: true, status: "browser_required", runner: "web_serial", transport: "web_serial" }
+    : { requested: false, status: "not_requested" };
 
   await fs.writeFile(logPath, output);
   const buildDir = path.join(options.packageDir, ".pio", "build");
@@ -134,6 +116,9 @@ async function findPlatformioArtifacts(buildDir) {
     const root = path.join(buildDir, envDir.name);
     const artifacts = {
       "firmware.bin": path.join(root, "firmware.bin"),
+      "bootloader.bin": path.join(root, "bootloader.bin"),
+      "partitions.bin": path.join(root, "partitions.bin"),
+      "boot_app0.bin": path.join(root, "boot_app0.bin"),
       "firmware.elf": path.join(root, "firmware.elf"),
       "firmware.map": path.join(root, "firmware.map"),
       "firmware.hex": path.join(root, "firmware.hex"),

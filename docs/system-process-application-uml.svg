@@ -48,7 +48,7 @@
     <rect class="node app" x="265" y="150" width="260" height="74" rx="10"/>
     <text class="titleText" x="395" y="178" text-anchor="middle">GerNetiX Plattform UI</text>
     <text class="smallText" x="395" y="198" text-anchor="middle">/app/dashboard, learn, dev-platform</text>
-    <text class="smallText" x="395" y="216" text-anchor="middle">IDE Allocation → Build → USB/OTA :4300</text>
+    <text class="smallText" x="395" y="216" text-anchor="middle">Build → Browser Web Serial / OTA :4300</text>
 
     <rect class="node app" x="265" y="245" width="260" height="64" rx="10"/>
     <text class="titleText" x="395" y="273" text-anchor="middle">Recovery Tool HMI</text>
@@ -92,7 +92,7 @@
 
     <rect class="node domain" x="1170" y="150" width="190" height="54" rx="10"/>
     <text class="titleText" x="1265" y="174" text-anchor="middle">Build &amp; Deploy</text>
-    <text class="smallText" x="1265" y="193" text-anchor="middle">USB + authenticated HTTPS OTA :4400</text>
+    <text class="smallText" x="1265" y="193" text-anchor="middle">PlatformIO Build + Artefakte :4400</text>
 
     <rect class="node domain" x="1385" y="150" width="190" height="54" rx="10"/>
     <text class="titleText" x="1480" y="174" text-anchor="middle">Device Management</text>

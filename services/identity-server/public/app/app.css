@@ -1813,3 +1813,40 @@ textarea,
 .main-menu-panel { border-color: #334155; background: #111827; box-shadow: var(--shadow); }
 .plantuml-viewer,
 .plantuml-diagram { background: #fff; }
+.development-project-summary {
+  border-color: #334155;
+  background: #1b2430;
+}
+.development-project-choice {
+  border-color: #334155;
+  background: #1b2430;
+  color: #e5e7eb;
+}
+.development-project-choice:hover {
+  border-color: #22d3ee;
+  background: #273244;
+}
+.development-project-choice strong { color: #e2e8f0; }
+.development-project-choice small,
+.development-project-summary span,
+.development-project-summary small { color: #94a3b8; }
+.development-chat-form textarea {
+  border-color: #3c4a5d;
+  background: #0b1018;
+  color: #e5e7eb;
+  caret-color: #67e8f9;
+}
+.development-chat-form textarea::placeholder { color: #64748b; }
+.development-chat-form textarea:focus {
+  outline: 2px solid rgba(34, 211, 238, .18);
+  border-color: #22d3ee;
+}
+.chat-message.user,
+.chat-message.assistant,
+.chat-routing,
+.chat-routing.local,
+.chat-routing.api {
+  border-color: #334155;
+  background: #1b2430;
+  color: #e5e7eb;
+}

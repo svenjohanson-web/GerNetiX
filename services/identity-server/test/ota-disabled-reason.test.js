@@ -13,7 +13,7 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(html, /id="ideBuildConsole"/);
   assert.match(html, /id="ideTerminalOutput"/);
   assert.match(html, /id="clearIdeTerminalButton"/);
-  assert.match(html, /USB-Port fuer USB-Flash/);
+  assert.match(html, /Flash via Web Serial/);
   assert.match(app, /function ideActionUnavailableReason/);
   assert.match(app, /Kein kompatibler ESP32 im Inventar/);
   assert.match(app, /Ordne dem ESP32-Projektordner zuerst ein Inventar-Device zu/);
@@ -22,6 +22,9 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /usbButton\.disabled = false/);
   assert.match(app, /otaButton\.disabled = false/);
   assert.match(app, /unterstuetzt keinen USB-Flash/);
+  assert.match(app, /navigator\.serial\.requestPort/);
+  assert.match(app, /loadIdeEsptoolModule/);
+  assert.match(app, /browser-usb-flash-result/);
   assert.match(app, /Automatisch \(kein USB-Port erkannt\)/);
   assert.doesNotMatch(app, /<details class="ide-tree-folder"[^>]* open>/);
   assert.match(app, /function projectRealizationsTreeEntry/);
@@ -30,4 +33,13 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /Komponenten und Realisierungen/);
   assert.match(app, /component_device_allocations/);
   assert.match(app, /function appendIdeTerminal/);
+});
+
+test("plain project build does not require an inventory device", () => {
+  const app = fs.readFileSync(path.join(__dirname, "..", "public", "app", "app.js"), "utf8");
+  const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
+
+  assert.match(app, /device_id: device\?\.device_id \|\| ""/);
+  assert.match(server, /if \(!device && mode !== "build"\)/);
+  assert.match(server, /build_config: resolveBuildConfig\(project, device \|\| \{\}\)/);
 });

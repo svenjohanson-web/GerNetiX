@@ -30,6 +30,7 @@ const { defaultCatalogSeed } = require("../../hardware-catalog/src/seed");
 
 const publicDir = path.join(__dirname, "..", "public");
 const appDir = path.join(publicDir, "app");
+const esptoolJsDir = path.join(__dirname, "..", "node_modules", "esptool-js");
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
 const identityPersistenceBackend = process.env.IDENTITY_PERSISTENCE_BACKEND || "sqlite";
 const identitySqlitePath = process.env.IDENTITY_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-identity.sqlite");
@@ -485,6 +486,74 @@ async function routeRequest(req, res) {
       return;
     }
     await handleUserIdeBuildJob(req, res);
+    return;
+  }
+
+  const browserFlashResult = url.pathname.match(/^\/api\/user-ide\/build-jobs\/([^/]+)\/browser-usb-flash-result$/);
+  if (req.method === "POST" && browserFlashResult) {
+    if (!readSession(req)) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    const jobId = decodeURIComponent(browserFlashResult[1]);
+    const body = await readJsonBody(req);
+    const existing = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`);
+    const updated = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}/result`, {
+      method: "POST",
+      body: {
+        status: body.status === "succeeded" ? "succeeded" : "failed",
+        build: {
+          ...(existing.result?.build || {}),
+          usb_flash: {
+            requested: true,
+            status: body.status === "succeeded" ? "succeeded" : "failed",
+            runner: "web_serial",
+            transport: "web_serial",
+            chip_name: body.chip_name || "",
+            error: body.error || "",
+          },
+        },
+        deploy: existing.result?.deploy || null,
+        logs: body.logs || [],
+        error: body.status === "succeeded" ? null : { message: body.error || "Browser Web-Serial-Flash fehlgeschlagen." },
+      },
+    });
+    sendJson(res, 200, updated);
+    return;
+  }
+
+  const buildJobStatus = url.pathname.match(/^\/api\/user-ide\/build-jobs\/([^/]+)\/status$/);
+  if (req.method === "GET" && buildJobStatus) {
+    if (!readSession(req)) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    const jobId = decodeURIComponent(buildJobStatus[1]);
+    const job = await buildDeployJson(`/api/build-jobs/${encodeURIComponent(jobId)}`);
+    if (["succeeded", "failed"].includes(job.status)) await recordCompletedBuildJob(jobId, job);
+    sendJson(res, 200, {
+      build_job_id: jobId,
+      build_deploy_job_id: jobId,
+      status: job.status,
+      flash_status: job.result?.build?.usb_flash?.status || "nicht angefordert",
+      flash_manifest: browserFlashManifest(jobId, job),
+      error: job.error?.message || "",
+    });
+    return;
+  }
+
+  const buildArtifact = url.pathname.match(/^\/api\/user-ide\/build-artifacts\/([^/]+)\/([^/]+)$/);
+  if (req.method === "GET" && buildArtifact) {
+    if (!readSession(req)) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await proxyBuildArtifact(res, decodeURIComponent(buildArtifact[1]), decodeURIComponent(buildArtifact[2]));
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname.startsWith("/vendor/esptool-js/")) {
+    serveVendorEsptool(res, url.pathname);
     return;
   }
 
@@ -1102,21 +1171,22 @@ async function handleUserIdeBuildJob(req, res) {
   const projects = await loadUserIdeProjects(session);
   const devices = await loadUserIdeDevices(session);
   const project = projects.find((item) => item.slug === body.project_slug);
-  const device = devices.find((item) => item.device_id === body.device_id);
+  const device = devices.find((item) => item.device_id === body.device_id || item.account_device_id === body.device_id) || null;
+  const mode = body.mode || "build";
 
   if (!project) {
     sendJson(res, 404, { error: "project_not_found", message: "Projekt wurde nicht gefunden." });
     return;
   }
-  if (!device) {
+  if (!device && mode !== "build") {
     sendJson(res, 404, { error: "device_not_found", message: "Device wurde nicht gefunden." });
     return;
   }
-  if (body.mode === "build_and_flash" && device.ota_status !== "ready") {
+  if (mode === "build_and_flash" && device.ota_status !== "ready") {
     sendJson(res, 409, { error: "device_not_ota_ready", message: "Das ausgewaehlte Device ist nicht OTA-ready." });
     return;
   }
-  if (body.mode === "build_and_usb_flash" && !device.usb_flash_supported) {
+  if (mode === "build_and_usb_flash" && !device.usb_flash_supported) {
     sendJson(res, 409, { error: "device_not_usb_flash_ready", message: "Das ausgewaehlte Device ist nicht fuer USB-Flash konfiguriert." });
     return;
   }
@@ -1124,9 +1194,9 @@ async function handleUserIdeBuildJob(req, res) {
   const projectServerJob = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/build-jobs`, {
     method: "POST",
     body: {
-      mode: body.mode || "build",
-      device_id: device.device_id,
-      build_config: resolveBuildConfig(project, device),
+      mode,
+      device_id: device?.device_id || null,
+      build_config: resolveBuildConfig(project, device || {}),
     },
   });
   const buildPackage = await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/build-package`);
@@ -1134,13 +1204,14 @@ async function handleUserIdeBuildJob(req, res) {
     method: "POST",
     body: {
       job_id: projectServerJob.build_job_id,
-      mode: body.mode || "build",
-      device_id: device.device_id,
-      build_package: toBuildDeployPackage(buildPackage, device, project),
-      usb_flash: body.mode === "build_and_usb_flash" ? {
+      mode,
+      project_id: project.project_server_id,
+      device_id: device?.device_id || null,
+      build_package: toBuildDeployPackage(buildPackage, device || {}, project),
+      usb_flash: mode === "build_and_usb_flash" ? {
         upload_port: String(body.upload_port || device.upload_port || "").trim(),
       } : null,
-      deploy: body.mode === "build_and_flash" ? {
+      deploy: mode === "build_and_flash" ? {
         requested: true,
         authorized: true,
         device_id: device.device_id,
@@ -1155,20 +1226,18 @@ async function handleUserIdeBuildJob(req, res) {
   });
   const completedBuildDeployJob = await waitForBuildDeployJob(buildDeployJob.job_id);
   if (completedBuildDeployJob && ["succeeded", "failed"].includes(completedBuildDeployJob.status)) {
-    await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/result`, {
-      method: "POST",
-      body: toProjectBuildResult(completedBuildDeployJob),
-    });
+    await recordCompletedBuildJob(projectServerJob.build_job_id, completedBuildDeployJob);
   }
 
   const build = {
     build_job_id: projectServerJob.build_job_id,
+    build_deploy_job_id: buildDeployJob.job_id,
     project_server_id: project.project_server_id,
     project_slug: project.slug,
     project_title: project.title,
-    device_id: device.device_id,
-    device_label: device.display_name,
-    mode: body.mode || "build",
+    device_id: device?.device_id || null,
+    device_label: device?.display_name || "kein Device erforderlich",
+    mode,
     status: completedBuildDeployJob ? completedBuildDeployJob.status : "submitted_to_build_deploy",
     created_at: projectServerJob.created_at,
     build_package_contract: `${buildPackage.files.length} Dateien: platformio.ini + Projektquellen`,
@@ -1179,10 +1248,52 @@ async function handleUserIdeBuildJob(req, res) {
     flash_status: completedBuildDeployJob?.result?.build?.usb_flash?.status
       || completedBuildDeployJob?.result?.deploy?.status
       || "nicht angefordert",
+    flash_manifest: browserFlashManifest(projectServerJob.build_job_id, completedBuildDeployJob),
   };
   userIdeState.builds.unshift(build);
   touchWorkspace(session, project.project_server_id, body.mode === "learn" ? "learn" : "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
   sendJson(res, 202, build);
+}
+
+async function recordCompletedBuildJob(jobId, completedJob) {
+  return projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}/result`, {
+    method: "POST",
+    body: toProjectBuildResult(completedJob),
+  });
+}
+
+function browserFlashManifest(jobId, completedJob) {
+  const artifacts = completedJob?.result?.build?.artifacts || {};
+  const definitions = [
+    ["bootloader.bin", 0x1000],
+    ["partitions.bin", 0x8000],
+    ["boot_app0.bin", 0xe000],
+    ["firmware.bin", 0x10000],
+  ];
+  return definitions.filter(([name]) => artifacts[name]).map(([name, address]) => ({
+    name,
+    address,
+    url: `/api/user-ide/build-artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(name)}`,
+    size_bytes: artifacts[name].size_bytes,
+    sha256: artifacts[name].sha256,
+  }));
+}
+
+async function proxyBuildArtifact(res, jobId, fileName) {
+  const upstream = await fetch(`${buildDeployBaseUrl.replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`);
+  const content = Buffer.from(await upstream.arrayBuffer());
+  res.writeHead(upstream.status, {
+    "Content-Type": upstream.headers.get("content-type") || "application/octet-stream",
+    "Content-Length": content.length,
+    "Cache-Control": "no-store",
+  });
+  res.end(content);
+}
+
+function serveVendorEsptool(res, requestPath) {
+  const relativePath = requestPath.replace(/^\/vendor\/esptool-js\//, "");
+  const root = relativePath === "bundle.js" ? esptoolJsDir : path.join(esptoolJsDir, "lib");
+  serveStatic(res, root, `/${relativePath}`);
 }
 
 async function handleDeviceRecoveryFirmwareCheck(req, res, session) {
@@ -1646,7 +1757,7 @@ function latestBuildStatus(project) {
 }
 
 async function waitForBuildDeployJob(jobId) {
-  for (let attempt = 0; attempt < 180; attempt += 1) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
     const job = await buildDeployJson(`/api/build-jobs/${encodeURIComponent(jobId)}`);
     if (["succeeded", "failed", "replaced"].includes(job.status)) return job;
     await delay(1000);

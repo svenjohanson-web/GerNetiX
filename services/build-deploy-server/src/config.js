@@ -9,10 +9,14 @@ function createConfig(env = process.env) {
     host: env.HOST || "127.0.0.1",
     port: Number(env.PORT || 4400),
     publicBaseUrl: env.PUBLIC_BASE_URL || "",
-    runner: env.BUILD_RUNNER || "mock",
-    platformioCommand: env.PLATFORMIO_COMMAND || "platformio",
+    runner: env.BUILD_RUNNER || "platformio",
+    allowMockRunner: env.NODE_ENV === "test",
+    platformioCommand: env.PLATFORMIO_COMMAND || (env.HOME
+      ? path.join(env.HOME, ".platformio", "penv", "bin", "platformio")
+      : "platformio"),
     runtimeRoot,
     tempDir: path.join(runtimeRoot, "tmp"),
+    incrementalCacheDir: path.join(runtimeRoot, "incremental-build-cache"),
     cacheDir: env.BUILD_CACHE_DIR === "platformio-default"
       ? null
       : env.BUILD_CACHE_DIR

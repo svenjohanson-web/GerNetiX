@@ -27,6 +27,8 @@ const state = {
   projectSourcesByProjectId: {},
   ideViewMode: "model",
   developmentPlatform: null,
+  esptoolModule: null,
+  activeSerialTransport: null,
 };
 
 const routeMap = {
@@ -889,16 +891,17 @@ async function saveSource() {
 async function startBuild() {
   const project = projectById(state.activeProjectId);
   const device = allocatedIdeDevice(project);
-  if (!project || !device) return setFlashStatus("error", "Bitte zuerst den ESP32-Projektordner einem Inventar-Device zuordnen.");
+  if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
   setFlashStatus("running", "Build laeuft...");
   try {
     const build = await postJson("/api/user-ide/build-jobs", {
       project_slug: project.slug,
-      device_id: device.device_id,
+      device_id: device?.device_id || "",
       mode: "build",
     });
-    state.builds.unshift(build);
-    setFlashStatus(build.status === "succeeded" ? "ok" : "error", `${build.status}: Build abgeschlossen.`);
+    const completed = await waitForCompletedBuild(build);
+    state.builds.unshift(completed);
+    setFlashStatus(completed.status === "succeeded" ? "ok" : "error", `${completed.status}: Build abgeschlossen.`);
     renderBuilds();
   } catch (error) {
     setFlashStatus("error", error.message);
@@ -910,24 +913,106 @@ async function startUsbFlash() {
   const device = allocatedIdeDevice(project);
   if (!project || !device) return setFlashStatus("error", "Bitte zuerst den ESP32-Projektordner einem Inventar-Device zuordnen.");
   if (!device.usb_flash_supported) return setFlashStatus("error", "Das zugeordnete Device unterstuetzt keinen USB-Flash.");
-  if (!selectedUsbPort() && state.usbPorts.length > 1) {
-    setFlashStatus("error", "Mehrere USB-Serial-Ports gefunden. Bitte waehle den aktuellen Port, z. B. COM10.");
-    return;
-  }
-  setFlashStatus("running", "Build und USB-Flash laufen...");
+  if (!navigator.serial) return setFlashStatus("error", "Web Serial ist nicht verfügbar. Bitte Chrome oder Edge auf Desktop verwenden.");
+  setFlashStatus("running", "Echter PlatformIO-Build wird gestartet...");
+  let activeBuild = null;
   try {
     const build = await postJson("/api/user-ide/build-jobs", {
       project_slug: project.slug,
       device_id: device.device_id,
       mode: "build_and_usb_flash",
-      upload_port: selectedUsbPort(),
     });
-    state.builds.unshift(build);
-    setFlashStatus(build.status === "succeeded" ? "ok" : "error", `${build.status}: ${build.flash_status || "USB-Flash beendet"}`);
+    activeBuild = await waitForCompletedBuild(build);
+    state.builds.unshift(activeBuild);
+    if (activeBuild.status !== "succeeded") throw new Error(activeBuild.error || "PlatformIO-Build ist fehlgeschlagen.");
+    setFlashStatus("running", "Build erfolgreich. USB-Gerät im Browser auswählen...");
+    const flashResult = await flashBuildViaWebSerial(activeBuild);
+    await postJson(`/api/user-ide/build-jobs/${encodeURIComponent(activeBuild.build_job_id)}/browser-usb-flash-result`, {
+      status: "succeeded",
+      chip_name: flashResult.chipName,
+      logs: flashResult.logs,
+    });
+    activeBuild.flash_status = "succeeded";
+    setFlashStatus("ok", `Web-Serial-Flash erfolgreich: ${flashResult.chipName}`);
     renderBuilds();
   } catch (error) {
+    if (activeBuild?.build_job_id) {
+      await postJson(`/api/user-ide/build-jobs/${encodeURIComponent(activeBuild.build_job_id)}/browser-usb-flash-result`, {
+        status: "failed",
+        error: error.message,
+      }).catch(() => {});
+    }
     setFlashStatus("error", error.message);
   }
+}
+
+async function waitForCompletedBuild(build) {
+  let current = build;
+  for (let attempt = 0; attempt < 600; attempt += 1) {
+    if (["succeeded", "failed", "replaced"].includes(current.status)) return { ...build, ...current };
+    if (attempt % 5 === 0) setFlashStatus("running", `PlatformIO-Build läuft... ${attempt}s`);
+    await delay(1000);
+    current = await getJson(`/api/user-ide/build-jobs/${encodeURIComponent(build.build_deploy_job_id || build.build_job_id)}/status`);
+  }
+  throw new Error("PlatformIO-Build hat das Zeitlimit überschritten.");
+}
+
+async function flashBuildViaWebSerial(build) {
+  const manifest = Array.isArray(build.flash_manifest) ? build.flash_manifest : [];
+  const required = ["bootloader.bin", "partitions.bin", "firmware.bin"];
+  if (!required.every((name) => manifest.some((item) => item.name === name))) {
+    throw new Error("Build enthält kein vollständiges ESP32-Web-Serial-Flashpaket.");
+  }
+  const fileArray = await Promise.all(manifest.map(async (item) => {
+    const response = await fetch(item.url);
+    if (!response.ok) throw new Error(`${item.name} konnte nicht geladen werden.`);
+    return { data: new Uint8Array(await response.arrayBuffer()), address: Number(item.address) };
+  }));
+  const port = await navigator.serial.requestPort();
+  const { ESPLoader, Transport } = await loadIdeEsptoolModule();
+  const transport = new Transport(port, false);
+  state.activeSerialTransport = transport;
+  const logs = [];
+  const log = (value) => {
+    const line = String(value || "").trim();
+    if (!line) return;
+    logs.push(line);
+    appendIdeTerminal("running", line);
+  };
+  try {
+    const loader = new ESPLoader({
+      transport,
+      baudrate: 115200,
+      terminal: { clean() {}, writeLine: log, write: log },
+      debugLogging: false,
+    });
+    const chipName = await loader.main();
+    await loader.writeFlash({
+      fileArray,
+      flashMode: "dio",
+      flashFreq: "40m",
+      flashSize: "keep",
+      eraseAll: false,
+      compress: true,
+      reportProgress: (_index, written, total) => {
+        const percent = Math.round((written / Math.max(total, 1)) * 100);
+        if (percent % 10 === 0) log(`Firmware schreiben: ${percent}%`);
+      },
+    });
+    await loader.after("hard_reset");
+    await transport.disconnect();
+    state.activeSerialTransport = null;
+    return { chipName, logs };
+  } catch (error) {
+    try { await transport.disconnect(); } catch {}
+    state.activeSerialTransport = null;
+    throw error;
+  }
+}
+
+async function loadIdeEsptoolModule() {
+  if (!state.esptoolModule) state.esptoolModule = await import("/vendor/esptool-js/bundle.js");
+  return state.esptoolModule;
 }
 
 async function startOtaFlash() {

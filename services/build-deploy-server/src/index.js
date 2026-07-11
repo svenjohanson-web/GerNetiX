@@ -12,11 +12,15 @@ const { SqliteStateStore } = require("../../shared");
 function createDefaultBuildDeployService(config = createConfig()) {
   return new BuildDeployService({
     cache: new BuildCache({ cacheDir: config.cacheDir }),
-    packageStore: new BuildPackageStore({ tempDir: config.tempDir }),
+    packageStore: new BuildPackageStore({
+      tempDir: config.tempDir,
+      incrementalCacheDir: config.incrementalCacheDir,
+    }),
     runner: new FirmwareBuildJobRunner({
       runner: config.runner,
       platformioCommand: config.platformioCommand,
       cacheDir: config.cacheDir,
+      allowMockRunner: config.allowMockRunner,
     }),
     artifactStore: new ArtifactStore({
       artifactDir: config.artifactDir,

@@ -140,13 +140,10 @@
               <div id="ideDeviceTools" class="ide-build-actions">
                 <span class="ide-build-actions-label">Build &amp; Flash</span>
                 <select id="ideDeviceSelect" class="hidden" aria-label="Zugeordnetes Geraet"></select>
-                <label class="ide-usb-port-field">
-                  <span>USB-Port</span>
-                  <select id="usbPortSelect" class="port-input" aria-label="USB-Port fuer USB-Flash"></select>
-                </label>
-                <button id="refreshUsbPortsButton" type="button">USB suchen</button>
+                <select id="usbPortSelect" class="hidden" aria-label="USB-Port"></select>
+                <button id="refreshUsbPortsButton" class="hidden" type="button">USB suchen</button>
                 <button id="buildButton" type="button" aria-describedby="ideActionReason">Build</button>
-                <button id="usbFlashButton" type="button" aria-describedby="ideActionReason">USB Flash</button>
+                <button id="usbFlashButton" type="button" aria-describedby="ideActionReason">Flash via Web Serial</button>
                 <button id="otaFlashButton" type="button" aria-describedby="ideActionReason">OTA Flash</button>
                 <small id="ideActionReason" class="ide-action-reason hidden"></small>
               </div>
