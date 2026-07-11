@@ -118,6 +118,9 @@ services:
 
   admin-tool:
     <<: *node-service
+    networks:
+      - edge
+      - backend
     environment:
       GERNETIX_SERVICE: admin-tool
       HOST: 0.0.0.0
