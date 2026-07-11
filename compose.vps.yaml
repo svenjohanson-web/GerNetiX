@@ -211,6 +211,7 @@ services:
       - backend
     volumes:
       - ./infra/vps/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./infra/vps/nginx/welcome.html:/usr/share/nginx/html/welcome.html:ro
       - nginx_cache:/var/cache/nginx
       - nginx_run:/var/run
     depends_on:
