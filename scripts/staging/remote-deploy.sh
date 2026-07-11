@@ -20,6 +20,9 @@ docker compose --env-file "$env_file" -f compose.vps.yaml build
 echo "==> Staging aktualisieren und auf Healthchecks warten"
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --wait --wait-timeout "$wait_timeout"
 
+echo "==> Nginx an aktuelle Upstreams und Bind-Mounts binden"
+docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --force-recreate nginx
+
 echo "==> Edge- und Admin-Healthchecks"
 edge_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port nginx 8080 | sed 's/.*://')
 admin_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port admin-tool 4600 | sed 's/.*://')
