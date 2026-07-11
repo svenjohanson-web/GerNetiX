@@ -23,5 +23,11 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /otaButton\.disabled = false/);
   assert.match(app, /unterstuetzt keinen USB-Flash/);
   assert.match(app, /Automatisch \(kein USB-Port erkannt\)/);
+  assert.doesNotMatch(app, /<details class="ide-tree-folder"[^>]* open>/);
+  assert.match(app, /function projectRealizationsTreeEntry/);
+  assert.match(app, /Architektur\/Realisierungen/);
+  assert.match(app, /data-project-realizations/);
+  assert.match(app, /Komponenten und Realisierungen/);
+  assert.match(app, /component_device_allocations/);
   assert.match(app, /function appendIdeTerminal/);
 });

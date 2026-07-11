@@ -923,16 +923,21 @@ async function handleProjectDeviceAllocation(req, res, session, projectId) {
   }
   const projectConfig = project.build_config || {};
   const deviceConfig = device.build_config || {};
+  const componentPath = requiredField(body.component_path || primaryProjectComponentPath(project), "component_path");
   if (projectConfig.platform && deviceConfig.platform && projectConfig.platform !== deviceConfig.platform) {
     sendJson(res, 409, { error: "device_not_compatible", message: "Das Device ist nicht mit dem Build-Ziel des Projektordners kompatibel." });
     return;
   }
+  const allocatedAt = new Date().toISOString();
+  const allocations = (Array.isArray(projectConfig.component_device_allocations) ? projectConfig.component_device_allocations : [])
+    .filter((item) => item.component_path !== componentPath)
+    .concat({ component_path: componentPath, device_id: device.device_id, allocated_at: allocatedAt });
   await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
       device_id: device.device_id,
       hardware_profile_id: device.hardware_profile_id || project.hardware_profile_id,
-      build_config: resolveBuildConfig(project, device),
+      build_config: { ...resolveBuildConfig(project, device), component_device_allocations: allocations },
     },
   });
   const projects = await loadUserIdeProjects(session);
@@ -942,11 +947,15 @@ async function handleProjectDeviceAllocation(req, res, session, projectId) {
     project: toPlatformProject(updated),
     device,
     allocation: {
-      component_path: "Komponenten/ESP32",
+      component_path: componentPath,
       device_id: device.device_id,
-      allocated_at: new Date().toISOString(),
+      allocated_at: allocatedAt,
     },
   });
+}
+
+function primaryProjectComponentPath(project) {
+  return String(project?.build_config?.user_source_path || "").match(/^(Komponenten\/[^/]+)\//)?.[1] || "Komponenten/ESP32";
 }
 
 async function handlePlatformDeviceCreate(req, res, session) {

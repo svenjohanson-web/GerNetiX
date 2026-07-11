@@ -130,6 +130,11 @@ document.querySelectorAll("[data-device-management-route]").forEach((button) => 
 });
 document.querySelector("#ideProjectSelect").addEventListener("change", () => openProjectInIde(document.querySelector("#ideProjectSelect").value));
 document.querySelector("#ideProjectBrowser").addEventListener("click", (event) => {
+  const realizationsButton = event.target.closest("[data-project-realizations]");
+  if (realizationsButton) {
+    openProjectRealizations();
+    return;
+  }
   const button = event.target.closest("[data-source-path]");
   if (button) openIdeSource(button.dataset.sourcePath);
 });
@@ -147,7 +152,10 @@ document.querySelector("#buildButton").addEventListener("click", startBuild);
 document.querySelector("#usbFlashButton").addEventListener("click", startUsbFlash);
 document.querySelector("#otaFlashButton").addEventListener("click", startOtaFlash);
 document.querySelector("#clearIdeTerminalButton").addEventListener("click", clearIdeTerminal);
-document.querySelector("#allocateIdeDeviceButton").addEventListener("click", allocateIdeDevice);
+document.querySelector("#ideRealizationView").addEventListener("click", (event) => {
+  const button = event.target.closest("[data-allocate-component]");
+  if (button) allocateIdeDevice(button.dataset.allocateComponent);
+});
 document.querySelector("#recoveryDeviceSelect").addEventListener("change", () => {
   state.activeRecoveryDeviceId = document.querySelector("#recoveryDeviceSelect").value;
   state.recoveryCheckResult = null;
@@ -507,6 +515,7 @@ async function loadIdeProject() {
   updateIdeProjectTools(project);
   renderIdeDeviceAllocation(project);
   renderIdeProjectBrowser(project, sources);
+  renderProjectRealizations(project, sources);
   document.querySelector("#ideProjectTitle").textContent = project.name;
   document.querySelector("#ideProjectBrowserTitle").textContent = project.name;
   document.querySelector("#ideActiveSourceLabel").textContent = state.sourcePath;
@@ -592,24 +601,7 @@ function ideActionUnavailableReason(project, allocated) {
 }
 
 function renderIdeDeviceAllocation(project) {
-  const target = document.querySelector("#ideDeviceAllocation");
-  const select = document.querySelector("#ideAllocationDeviceSelect");
-  const status = document.querySelector("#ideDeviceAllocationStatus");
-  const visible = projectNeedsHardwareTools(project);
-  target.classList.toggle("hidden", !visible);
-  if (!visible) return;
-  const compatible = state.devices.filter((device) => deviceCompatibleWithProject(project, device));
-  select.innerHTML = [
-    `<option value="">ESP32 waehlen</option>`,
-    ...compatible.map((device) => `<option value="${escapeAttribute(device.device_id)}">${escapeHtml(device.display_name)} · ${escapeHtml(device.build_target_label || device.hardware_profile_id)}</option>`),
-  ].join("");
-  select.value = compatible.some((device) => device.device_id === project.linkedDeviceId) ? project.linkedDeviceId : "";
-  status.textContent = project.linkedDeviceId
-    ? `Zugeordnet: ${allocatedIdeDevice(project)?.display_name || project.linkedDeviceId}`
-    : compatible.length
-      ? "Bitte den ESP32-Projektordner einem Inventar-Device zuordnen."
-      : "Kein kompatibler ESP32 im Inventar gefunden.";
-  document.querySelector("#allocateIdeDeviceButton").disabled = !compatible.length;
+  document.querySelector("#ideDeviceAllocation").dataset.visible = String(projectNeedsHardwareTools(project));
 }
 
 function deviceCompatibleWithProject(project, device) {
@@ -620,28 +612,47 @@ function deviceCompatibleWithProject(project, device) {
     && String(device?.hardware_profile_id || "").toLowerCase().includes("esp");
 }
 
-function allocatedIdeDevice(project = projectById(state.activeProjectId)) {
-  if (!project?.linkedDeviceId) return null;
-  return state.devices.find((device) => device.device_id === project.linkedDeviceId) || null;
+function componentDeviceAllocations(project) {
+  const configured = Array.isArray(project?.buildConfig?.component_device_allocations)
+    ? project.buildConfig.component_device_allocations
+    : [];
+  if (configured.length) return configured;
+  const primary = primaryComponentPath(project);
+  return project?.linkedDeviceId && primary ? [{ component_path: primary, device_id: project.linkedDeviceId }] : [];
 }
 
-async function allocateIdeDevice() {
+function allocatedIdeDevice(project = projectById(state.activeProjectId), componentPath = primaryComponentPath(project)) {
+  const allocation = componentDeviceAllocations(project).find((item) => item.component_path === componentPath);
+  if (!allocation?.device_id) return null;
+  return state.devices.find((device) => device.device_id === allocation.device_id) || null;
+}
+
+async function allocateIdeDevice(componentPath) {
   const project = projectById(state.activeProjectId);
-  const deviceId = document.querySelector("#ideAllocationDeviceSelect").value;
+  const row = document.querySelector(`[data-realization-row="${CSS.escape(componentPath)}"]`);
+  const select = row?.querySelector("[data-realization-device]");
+  const status = row?.querySelector("[data-realization-status]");
+  const deviceId = select?.value || "";
   if (!project || !deviceId) {
-    document.querySelector("#ideDeviceAllocationStatus").textContent = "Bitte zuerst einen kompatiblen ESP32 waehlen.";
+    if (status) status.textContent = "Device wählen.";
     return;
   }
-  document.querySelector("#allocateIdeDeviceButton").disabled = true;
-  document.querySelector("#ideDeviceAllocationStatus").textContent = "Allocation wird gespeichert...";
+  const button = row.querySelector("[data-allocate-component]");
+  button.disabled = true;
+  status.textContent = "Wird gespeichert...";
   try {
-    const response = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/device-allocation`, { device_id: deviceId });
+    const response = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/device-allocation`, {
+      component_path: componentPath,
+      device_id: deviceId,
+    });
     state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
     state.activeDeviceId = response.device.device_id;
     await loadIdeProject();
+    state.ideViewMode = "realizations";
+    renderIdeViewMode(projectById(state.activeProjectId));
   } catch (error) {
-    document.querySelector("#ideDeviceAllocationStatus").textContent = error.message;
-    document.querySelector("#allocateIdeDeviceButton").disabled = false;
+    status.textContent = error.message;
+    button.disabled = false;
   }
 }
 
@@ -687,9 +698,15 @@ function selectedIdeSourcePath(project, sources) {
 function renderIdeProjectBrowser(project, sources) {
   const target = document.querySelector("#ideProjectBrowser");
   if (!target) return;
-  target.innerHTML = sources.length
-    ? renderSourceTree(sourceTree(project.name, sources))
+  const treeSources = sources.concat(projectRealizationsTreeEntry(project));
+  target.innerHTML = treeSources.length
+    ? renderSourceTree(sourceTree(project.name, treeSources))
     : `<p class="empty">Keine Projektdateien.</p>`;
+}
+
+function projectRealizationsTreeEntry(project) {
+  if (!projectNeedsHardwareTools(project)) return [];
+  return [{ path: "Architektur/Realisierungen", role: "Gerätezuordnung", virtualAction: "realizations" }];
 }
 
 function sourceTree(projectName, sources) {
@@ -712,7 +729,9 @@ function renderSourceTree(node, depth = 0) {
   const children = [
     ...folders.map((folder) => renderSourceTree(folder, depth + 1)),
     ...files.map((file) => `
-      <button class="${file.path === state.sourcePath ? "active" : ""}" type="button" data-source-path="${escapeAttribute(file.path)}" style="--depth:${depth + 1}">
+      <button class="${file.path === state.sourcePath ? "active" : ""}" type="button" ${file.virtualAction === "realizations"
+        ? "data-project-realizations"
+        : `data-source-path="${escapeAttribute(file.path)}"`} style="--depth:${depth + 1}">
         <span>${escapeHtml(file.name)}</span>
         <small>${escapeHtml(file.role || file.content_type || "")}</small>
       </button>
@@ -727,11 +746,18 @@ function renderSourceTree(node, depth = 0) {
     `;
   }
   return `
-    <details class="ide-tree-folder" style="--depth:${depth}" open>
+    <details class="ide-tree-folder" style="--depth:${depth}">
       <summary>${escapeHtml(node.name)}</summary>
       ${children}
     </details>
   `;
+}
+
+function openProjectRealizations() {
+  state.ideViewMode = "realizations";
+  const project = projectById(state.activeProjectId);
+  document.querySelector("#ideActiveSourceLabel").textContent = "Architektur/Realisierungen";
+  renderIdeViewMode(project);
 }
 
 async function openIdeSource(sourcePath) {
@@ -759,10 +785,11 @@ function setIdeViewMode(mode) {
 function renderIdeViewMode(project) {
   const mode = state.ideViewMode || "model";
   const sourcePath = state.sourcePath || "";
-  document.querySelector("#ideViewerModeLabel").textContent = mode === "image" ? "Image" : mode === "code" ? "Code" : "Modell";
-  document.querySelector("#sourcePanel").classList.toggle("hidden", mode === "image");
+  document.querySelector("#ideViewerModeLabel").textContent = mode === "realizations" ? "Realisierungen" : mode === "image" ? "Image" : mode === "code" ? "Code" : "Modell";
+  document.querySelector("#sourcePanel").classList.toggle("hidden", mode === "image" || mode === "realizations");
   document.querySelector("#ideImageView").classList.toggle("hidden", mode !== "image");
   document.querySelector("#ideModelView").classList.toggle("hidden", mode !== "model");
+  document.querySelector("#ideRealizationView").classList.toggle("hidden", mode !== "realizations");
   document.querySelectorAll("[data-ide-view-mode]").forEach((button) => {
     button.classList.toggle("active-method", button.dataset.ideViewMode === mode);
   });
@@ -772,6 +799,41 @@ function renderIdeViewMode(project) {
   if (mode === "image") {
     renderIdeImageView(sourcePath, document.querySelector("#sourceEditor").value);
   }
+}
+
+function primaryComponentPath(project) {
+  return String(project?.buildConfig?.user_source_path || "").match(/^(Komponenten\/[^/]+)\//)?.[1] || "";
+}
+
+function projectComponentPaths(project, sources = state.projectSourcesByProjectId[project?.id] || []) {
+  const paths = new Set(sources.map((source) => String(source.path || "").match(/^(Komponenten\/[^/]+)\//)?.[1]).filter(Boolean));
+  const primary = primaryComponentPath(project);
+  if (primary) paths.add(primary);
+  return Array.from(paths).sort((left, right) => left.localeCompare(right));
+}
+
+function renderProjectRealizations(project, sources) {
+  const target = document.querySelector("#ideRealizationView");
+  const components = projectComponentPaths(project, sources);
+  const compatible = state.devices.filter((device) => deviceCompatibleWithProject(project, device));
+  target.innerHTML = `
+    <div class="ide-realization-head"><h3>Komponenten und Realisierungen</h3><p>ProcessorBoards werden zentral einem Inventar-Device zugeordnet.</p></div>
+    <div class="ide-realization-table-wrap"><table class="ide-realization-table">
+      <thead><tr><th>Komponente</th><th>Typ</th><th>Realisierung</th><th>Status</th><th></th></tr></thead>
+      <tbody>${components.map((componentPath) => realizationRow(project, componentPath, compatible)).join("")}</tbody>
+    </table></div>`;
+}
+
+function realizationRow(project, componentPath, compatible) {
+  const isProcessorBoard = componentPath === primaryComponentPath(project) || /esp|processor|board/i.test(componentPath);
+  const allocated = allocatedIdeDevice(project, componentPath);
+  return `<tr data-realization-row="${escapeAttribute(componentPath)}">
+    <td><strong>${escapeHtml(componentPath.replace(/^Komponenten\//, ""))}</strong><small>${escapeHtml(componentPath)}</small></td>
+    <td>${isProcessorBoard ? "ProcessorBoard" : "Komponente"}</td>
+    <td>${isProcessorBoard ? `<select data-realization-device><option value="">Device wählen</option>${compatible.map((device) => `<option value="${escapeAttribute(device.device_id)}" ${device.device_id === allocated?.device_id ? "selected" : ""}>${escapeHtml(device.display_name)}</option>`).join("")}</select>` : "–"}</td>
+    <td data-realization-status>${allocated ? `Zugeordnet: ${escapeHtml(allocated.display_name)}` : isProcessorBoard ? "Offen" : "Keine Gerätezuordnung"}</td>
+    <td>${isProcessorBoard ? `<button type="button" data-allocate-component="${escapeAttribute(componentPath)}" ${compatible.length ? "" : "disabled"}>Zuordnen</button>` : ""}</td>
+  </tr>`;
 }
 
 function renderModelContext(project, sourcePath) {

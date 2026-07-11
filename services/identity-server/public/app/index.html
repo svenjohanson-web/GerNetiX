@@ -134,6 +134,7 @@
               </section>
               <section id="ideImageView" class="ide-image-view hidden"></section>
               <section id="ideModelView" class="ide-model-view"></section>
+              <section id="ideRealizationView" class="ide-realization-view hidden"></section>
             </article>
             <section id="ideBuildConsole" class="ide-build-console">
               <div id="ideDeviceTools" class="ide-build-actions">
@@ -156,24 +157,15 @@
                 </header>
                 <pre id="ideTerminalOutput" aria-live="polite"><span class="terminal-muted">GerNetiX Build-Terminal bereit.</span></pre>
               </section>
+              <div id="flashStatus" class="flash-status hidden"></div>
             </section>
           </section>
-          <aside id="ideInspectorPanel" class="panel ide-inspector-panel">
-            <p class="eyebrow">Projektmodell</p>
-            <dl id="ideProjectMeta" class="meta-list"></dl>
-            <section id="ideDeviceAllocation" class="ide-device-allocation hidden">
-              <p class="eyebrow">Hardware-Allocation</p>
-              <strong>Komponenten/ESP32</strong>
-              <label>ESP32 aus Inventar
-                <select id="ideAllocationDeviceSelect"></select>
-              </label>
-              <button id="allocateIdeDeviceButton" type="button">Projektordner zuordnen</button>
-              <small id="ideDeviceAllocationStatus"></small>
-            </section>
-            <section id="ideAiUsage" class="ide-ai-rating"></section>
-            <section id="ideProjectViewManifest" class="project-view-manifest"></section>
-            <div id="flashStatus" class="flash-status hidden"></div>
-          </aside>
+          <div class="hidden" aria-hidden="true">
+            <dl id="ideProjectMeta"></dl>
+            <section id="ideAiUsage"></section>
+            <section id="ideProjectViewManifest"></section>
+            <section id="ideDeviceAllocation"></section>
+          </div>
         </section>
       </section>
 
