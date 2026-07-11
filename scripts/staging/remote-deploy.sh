@@ -21,9 +21,11 @@ echo "==> Staging aktualisieren und auf Healthchecks warten"
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --wait --wait-timeout "$wait_timeout"
 
 echo "==> Edge- und Admin-Healthchecks"
-curl --fail --silent --show-error http://127.0.0.1:8080/health
+edge_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port nginx 8080 | sed 's/.*://')
+admin_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port admin-tool 4600 | sed 's/.*://')
+curl --fail --silent --show-error "http://127.0.0.1:${edge_port}/health"
 printf '\n'
-curl --fail --silent --show-error http://127.0.0.1:4600/health
+curl --fail --silent --show-error "http://127.0.0.1:${admin_port}/health"
 printf '\n'
 
 echo "==> Containerstatus"
