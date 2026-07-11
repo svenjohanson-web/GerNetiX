@@ -23,6 +23,7 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 
 - Lies bei einem ausdruecklichen Staging-, VPS- oder Server-Testauftrag zuerst `docs/codex-staging-deployment.md`.
 - Verwende fuer Staging ausschliesslich `node tools/staging-deploy.js`; der Ablauf ist auf macOS, Windows und Linux identisch.
+- Verwende fuer den SSH-Tunnel zum internen Staging-Admin ausschliesslich `node tools/connect-staging.js`.
 - Deploye nie aufgrund einer normalen lokalen Codeaenderung, sondern nur nach ausdruecklichem Auftrag.
 - Das Tool darf nur einen sauberen und bereits gepushten Commit deployen. Lokale Dateien oder SQLite-Daten werden nicht auf den VPS kopiert.
 - Staging-Volumes, `.env.vps` und Serverdaten bleiben erhalten. Keine `down -v`-, Volume-Loesch- oder Reset-Befehle verwenden.

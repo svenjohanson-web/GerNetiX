@@ -36,6 +36,28 @@ Copy-Item .env.staging.example .env.staging.local
 
 `.env.staging.local` ist absichtlich nicht versioniert. Dort werden SSH-Ziel und VPS-Verzeichnis je Rechner konfiguriert.
 
+## Mit dem internen Staging-Admin verbinden
+
+Auf macOS, Windows und Linux identisch:
+
+```text
+node tools/connect-staging.js
+```
+
+Danach im lokalen Browser oeffnen:
+
+```text
+http://127.0.0.1:14600/admin/
+```
+
+Das Terminal bleibt fuer die Dauer des SSH-Tunnels geoeffnet. `Strg+C` beendet die Verbindung. Der VPS benoetigt keinen Browser, und der Admin-Port wird nicht oeffentlich freigegeben.
+
+Nur die Konfiguration pruefen, ohne eine Verbindung aufzubauen:
+
+```text
+node tools/connect-staging.js --dry-run
+```
+
 ## Normaler Ablauf
 
 1. Lokal entwickeln und testen.
@@ -81,7 +103,7 @@ Persistente Docker-Volumes und `.env.vps` werden nicht geloescht oder ueberschri
 - Nur deployen, wenn der Nutzer Staging, Server-Test oder VPS-Deployment ausdruecklich verlangt.
 - Vorher relevante lokale Tests ausfuehren und den Nutzer ueber den bevorstehenden Staging-Eingriff informieren.
 - Ausschliesslich `node tools/staging-deploy.js` verwenden; keine parallelen manuellen `git pull`-/Compose-Varianten erfinden.
+- Fuer einen angeforderten Admin-Zugriff ausschliesslich `node tools/connect-staging.js` verwenden.
 - Niemals `docker compose down -v`, Volume-Loeschungen oder SQLite-Kopien ausfuehren.
 - Ein fehlgeschlagenes Deployment anhand der ersten konkreten Fehlerausgabe diagnostizieren; keine wiederholten Startvarianten ausprobieren.
 - Production ist nicht Staging. Dieses Tool darf nicht fuer Production-Ziele verwendet werden.
-
