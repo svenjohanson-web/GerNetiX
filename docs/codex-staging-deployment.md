@@ -47,7 +47,8 @@ node tools/connect-staging.js
 Danach im lokalen Browser oeffnen:
 
 ```text
-http://127.0.0.1:14600/admin/
+Plattform: http://127.0.0.1:14300/app/dashboard/
+Admin:     http://127.0.0.1:14600/admin/
 ```
 
 Das Terminal bleibt fuer die Dauer des SSH-Tunnels geoeffnet. `Strg+C` beendet die Verbindung. Der VPS benoetigt keinen Browser, und der Admin-Port wird nicht oeffentlich freigegeben.

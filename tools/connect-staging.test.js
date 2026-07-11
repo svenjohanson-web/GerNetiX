@@ -19,8 +19,14 @@ test("validates TCP ports", () => {
 });
 
 test("builds a loopback-only SSH tunnel", () => {
-  const args = sshTunnelArgs({ host: "root@example.test", localPort: 14600, remotePort: 4600 });
+  const args = sshTunnelArgs({
+    host: "root@example.test",
+    localPort: 14600,
+    remotePort: 4600,
+    platformPort: 14300,
+    remotePlatformPort: 8080,
+  });
   assert.deepEqual(args.slice(-3), ["-L", "14600:127.0.0.1:4600", "root@example.test"]);
+  assert.ok(args.includes("14300:127.0.0.1:8080"));
   assert.ok(args.includes("ExitOnForwardFailure=yes"));
 });
-

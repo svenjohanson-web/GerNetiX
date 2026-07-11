@@ -13,7 +13,7 @@ function parseArgs(argv) {
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--dry-run") result.dryRun = true;
-    else if (["--host", "--local-port", "--remote-port"].includes(argument)) {
+    else if (["--host", "--local-port", "--remote-port", "--platform-port", "--remote-platform-port"].includes(argument)) {
       const value = argv[index + 1];
       if (!value) throw new Error(`${argument} benoetigt einen Wert.`);
       result[argument.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = value;
@@ -37,13 +37,14 @@ function loadConfig() {
   return { ...fileValues, ...process.env };
 }
 
-function sshTunnelArgs({ host, localPort, remotePort }) {
+function sshTunnelArgs({ host, localPort, remotePort, platformPort, remotePlatformPort }) {
   return [
     "-N",
     "-o", "BatchMode=yes",
     "-o", "ExitOnForwardFailure=yes",
     "-o", "ServerAliveInterval=30",
     "-o", "ServerAliveCountMax=3",
+    "-L", `${platformPort}:127.0.0.1:${remotePlatformPort}`,
     "-L", `${localPort}:127.0.0.1:${remotePort}`,
     host,
   ];
@@ -55,10 +56,14 @@ function main() {
   const host = assertSafeSshTarget(args.host || config.GERNETIX_STAGING_SSH || "");
   const localPort = parsePort(args.localPort || config.GERNETIX_STAGING_LOCAL_ADMIN_PORT || 14600, "Lokaler Port");
   const remotePort = parsePort(args.remotePort || config.GERNETIX_STAGING_REMOTE_ADMIN_PORT || 4600, "Remote-Port");
-  const sshArgs = sshTunnelArgs({ host, localPort, remotePort });
-  const url = `http://127.0.0.1:${localPort}/admin/`;
+  const platformPort = parsePort(args.platformPort || config.GERNETIX_STAGING_LOCAL_PLATFORM_PORT || 14300, "Lokaler Plattform-Port");
+  const remotePlatformPort = parsePort(args.remotePlatformPort || config.GERNETIX_STAGING_REMOTE_PLATFORM_PORT || 8080, "Remote-Plattform-Port");
+  const sshArgs = sshTunnelArgs({ host, localPort, remotePort, platformPort, remotePlatformPort });
+  const adminUrl = `http://127.0.0.1:${localPort}/admin/`;
+  const platformUrl = `http://127.0.0.1:${platformPort}/app/dashboard/`;
 
-  process.stdout.write(`Staging-Tunnel: ${url}\n`);
+  process.stdout.write(`Staging-Plattform: ${platformUrl}\n`);
+  process.stdout.write(`Staging-Admin: ${adminUrl}\n`);
   process.stdout.write("Dieses Terminal offen lassen. Verbindung mit Strg+C beenden.\n");
   if (args.dryRun) {
     process.stdout.write(`[dry-run] ssh ${sshArgs.join(" ")}\n`);
@@ -82,4 +87,3 @@ if (require.main === module) {
 }
 
 module.exports = { parseArgs, parsePort, sshTunnelArgs };
-
