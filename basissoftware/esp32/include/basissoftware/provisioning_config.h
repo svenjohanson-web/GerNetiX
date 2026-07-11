@@ -18,6 +18,7 @@ struct ProvisioningConfig {
   char secretSha256[80];
   char deviceManagementUrl[160];
   char buildDeployUrl[160];
+  char mqttBrokerUrl[160];
   char provisioningBatchId[96];
   char provisionedBy[96];
   char capabilities[160];
@@ -29,3 +30,4 @@ size_t writeProvisioningDeviceName(char *target, size_t targetSize);
 size_t writeProvisioningHostname(char *target, size_t targetSize);
 size_t writeProvisioningStatusJson(char *target, size_t targetSize);
 esp_err_t writeChallengeProofJson(const char *payload, size_t payloadLength, char *target, size_t targetSize);
+esp_err_t computeDeviceHmacSha256Hex(const char *message, size_t messageLength, char *target, size_t targetSize);

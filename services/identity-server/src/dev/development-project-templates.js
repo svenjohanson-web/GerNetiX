@@ -8,6 +8,18 @@ const TEMPLATES = {
     id: "esp32_device_only",
     title: "ESP32 Device only",
     description: "Eigenstaendiges ESP32-Device mit lokaler Sensorik oder Aktorik, ohne Webserver und ohne Internet-Abhaengigkeit.",
+    hardwareProfileId: "hardware.processor_board.generic_esp_wroom32",
+    buildConfig: {
+      environment: "esp32dev",
+      platform: "espressif32",
+      board: "esp32dev",
+      framework: "espidf",
+      libraries: [],
+      firmware_basis_id: "gernetix-runtime-basissoftware",
+      firmware_basis_version: "workspace",
+      user_source_path: "src/user_main.cpp",
+      user_target_path: "src/user/user_app.cpp",
+    },
     nodes: [
       'actor "Nutzer" as user',
       'node "ESP32 Device" as device',
@@ -73,4 +85,25 @@ function templateArchitecturePlantUml(template, title) {
   ].join("\n");
 }
 
-module.exports = { developmentProjectTemplate, templateArchitecturePlantUml };
+function templateFirmwareSources(template, title) {
+  if (!template.buildConfig) return [];
+  return [{
+    path: "src/user_main.cpp",
+    role: "user_code",
+    content_type: "text/x-c++src",
+    content: [
+      '#include "user/user_app.h"',
+      "",
+      'extern "C" void userMain() {',
+      `  // Projektstart: ${String(title || template.title).replace(/["\\]/g, "")}`,
+      "}",
+      "",
+      'extern "C" void userTick() {',
+      "  // Wiederkehrende Nutzerlogik wird von der Basissoftware aufgerufen.",
+      "}",
+      "",
+    ].join("\n"),
+  }];
+}
+
+module.exports = { developmentProjectTemplate, templateArchitecturePlantUml, templateFirmwareSources };

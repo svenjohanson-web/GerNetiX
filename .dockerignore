@@ -5,7 +5,9 @@
 tools/yaml-graph-sqlite/out
 generated
 projects
-basissoftware
+basissoftware/*
+!basissoftware/esp32
+!basissoftware/esp32/**
+basissoftware/esp32/managed_components
 *.log
 .DS_Store
-

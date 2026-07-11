@@ -32,17 +32,21 @@ Beispiel:
   "provisioning_batch_id": "batch-2026-07",
   "firmware_version": "0.1.0",
   "provisioned_by": "support@sven.local",
+  "mqtt_mode": "vps",
   "service_endpoints": {
     "device_management": "https://devices.gernetix.example/api/device-management",
-    "build_deploy": "https://build.gernetix.example"
+    "build_deploy": "https://build.gernetix.example",
+    "mqtt_broker": "mqtts://mqtt.gernetix.example:8883"
   },
-  "capabilities": ["wifi", "ota", "flash_firmware"],
+  "capabilities": ["wifi", "ota", "mqtt", "flash_firmware"],
   "flash": {
     "requested": true,
     "write_factory_header": true
   }
 }
 ```
+
+`mqtt_mode` ist `vps` oder `local`. Im VPS-Modus muss `mqtt_broker` eine `mqtts://`-Adresse sein. Im lokalen Modus wird beispielsweise `mqtt://192.168.50.20:1883` verwendet; aus Sicherheitsgruenden akzeptiert das Provisioning Tool dabei nur private IPv4-Adressen aus `10/8`, `172.16/12` oder `192.168/16`.
 
 Die Erstellungsantwort enthaelt einmalig `one_time_device_secret` und `usb_flash_package`. Dieses Secret wird nicht gespeichert und ist spaeter nicht erneut abrufbar. Das `processor_board_id` bestimmt den Hardware-Katalogeintrag; daraus werden Hardwareprofil, Basissoftware-Profil und Factory-Firmware-Artefakt abgeleitet.
 

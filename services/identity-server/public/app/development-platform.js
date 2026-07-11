@@ -15,18 +15,21 @@ const DevelopmentPlatform = (() => {
         architectureDiagram: null,
         lastRouting: null,
         activeProjectId: "",
-        projectPanelMode: "closed",
+        projectPanelMode: "choice",
         assistantMode: "architecture_structure",
       };
     }
-    if (!state.developmentPlatform.projectPanelMode) state.developmentPlatform.projectPanelMode = "closed";
+    if (!state.developmentPlatform.projectPanelMode) state.developmentPlatform.projectPanelMode = "choice";
     if (!state.developmentPlatform.assistantMode) state.developmentPlatform.assistantMode = "architecture_structure";
 
     function init() {
       document.querySelector("#developmentChatForm").addEventListener("submit", sendChatMessage);
       document.querySelector("#clearDevelopmentChatButton").addEventListener("click", clearChat);
+      document.querySelector("#chooseDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("choice"));
+      document.querySelector("#continueDevelopmentProjectButton").addEventListener("click", continueLastProject);
       document.querySelector("#openDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("open"));
-      document.querySelector("#newDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("new"));
+      document.querySelector("#newEmptyDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("new-empty"));
+      document.querySelector("#newTemplateDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("new-template"));
       document.querySelector("#developmentProjectForm").addEventListener("submit", createDevelopmentProject);
       document.querySelector("#developmentProjectTemplate").addEventListener("change", applyProjectTemplate);
       document.querySelector("#developmentProjectSelect").addEventListener("change", selectDevelopmentProject);
@@ -157,24 +160,27 @@ const DevelopmentPlatform = (() => {
       const projects = developmentProjects();
       const storedProjectId = readStoredActiveProjectId();
       const storedProjectExists = projects.some((project) => project.id === storedProjectId);
-      const current = activeProjectId() || (storedProjectExists ? storedProjectId : "") || projects[0]?.id || "";
-      if (state.developmentPlatform.activeProjectId !== current) {
-        state.developmentPlatform.activeProjectId = current;
-        storeActiveProjectId(current);
-      }
       const activeProject = currentProject();
+      const lastProject = storedProjectExists ? projects.find((project) => project.id === storedProjectId) : null;
       document.querySelector("#developmentProjectName").textContent = activeProject?.name || "Kein Projekt geoeffnet";
       document.querySelector("#developmentAssistantMode").textContent = assistantModeLabel();
+      document.querySelector("#developmentProjectChoicePanel").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "choice");
+      document.querySelector("#chooseDevelopmentProjectButton").classList.toggle("hidden", !activeProject || state.developmentPlatform.projectPanelMode === "choice");
+      document.querySelector("#continueDevelopmentProjectButton").classList.toggle("hidden", !lastProject);
+      document.querySelector("#continueDevelopmentProjectName").textContent = lastProject?.name || "";
       document.querySelector("#developmentProjectOpenPanel").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "open");
-      document.querySelector("#developmentProjectForm").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "new");
+      const isNewProject = state.developmentPlatform.projectPanelMode === "new-empty" || state.developmentPlatform.projectPanelMode === "new-template";
+      document.querySelector("#developmentProjectForm").classList.toggle("hidden", !isNewProject);
+      document.querySelector("#developmentProjectTemplateField").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "new-template");
+      document.querySelector("#developmentProjectTemplateHint").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "new-template");
       select.innerHTML = [
         `<option value="">Projekt waehlen</option>`,
         ...projects.map((project) => `<option value="${escapeAttribute(project.id)}">${escapeHtml(project.name)}</option>`),
       ].join("");
       select.value = state.developmentPlatform.activeProjectId || "";
-      setProjectStatus(select.value
-        ? `Aktiv: ${projects.find((project) => project.id === select.value)?.name || select.value}`
-        : "Bitte Projekt oeffnen oder neu anlegen, bevor der Chat startet.");
+      setProjectStatus(activeProject
+        ? `Aktiv: ${activeProject.name}`
+        : "Bitte waehle, wie du im Entwicklungsbereich starten moechtest.");
     }
 
     function developmentProjects() {
@@ -186,18 +192,40 @@ const DevelopmentPlatform = (() => {
     }
 
     function showProjectPanel(mode) {
-      state.developmentPlatform.projectPanelMode = state.developmentPlatform.projectPanelMode === mode ? "closed" : mode;
+      state.developmentPlatform.projectPanelMode = mode;
+      if (mode === "new-empty") {
+        document.querySelector("#developmentProjectTemplate").value = "empty";
+        applyProjectTemplate();
+      } else if (mode === "new-template") {
+        document.querySelector("#developmentProjectTemplate").value = "esp32_device_only";
+        applyProjectTemplate();
+      }
       renderProjectPicker();
-      if (state.developmentPlatform.projectPanelMode === "new") {
+      if (mode === "new-empty" || mode === "new-template") {
         document.querySelector("#developmentProjectTitle").focus();
-      } else if (state.developmentPlatform.projectPanelMode === "open") {
+      } else if (mode === "open") {
         document.querySelector("#developmentProjectSelect").focus();
       }
     }
 
+    function continueLastProject() {
+      const storedProjectId = readStoredActiveProjectId();
+      if (!developmentProjects().some((project) => project.id === storedProjectId)) return;
+      activateProject(storedProjectId);
+    }
+
     function selectDevelopmentProject() {
-      state.developmentPlatform.activeProjectId = document.querySelector("#developmentProjectSelect").value;
-      storeActiveProjectId(state.developmentPlatform.activeProjectId);
+      const projectId = document.querySelector("#developmentProjectSelect").value;
+      if (!projectId) {
+        setProjectStatus("Bitte waehle ein vorhandenes Projekt aus.");
+        return;
+      }
+      activateProject(projectId);
+    }
+
+    function activateProject(projectId) {
+      state.developmentPlatform.activeProjectId = projectId;
+      storeActiveProjectId(projectId);
       state.developmentPlatform.projectPanelMode = "closed";
       state.developmentPlatform.chat = [];
       state.developmentPlatform.architectureDiagram = null;
@@ -211,6 +239,7 @@ const DevelopmentPlatform = (() => {
       const titleInput = document.querySelector("#developmentProjectTitle");
       const descriptionInput = document.querySelector("#developmentProjectDescription");
       const templateInput = document.querySelector("#developmentProjectTemplate");
+      const selectedTemplateId = templateInput.value;
       const title = titleInput.value.trim();
       if (!title) {
         setProjectStatus("Bitte gib einen Projektnamen ein.");
@@ -228,6 +257,18 @@ const DevelopmentPlatform = (() => {
           state.projects = state.projects.filter((project) => project.id !== response.project.id).concat(response.project);
           state.developmentPlatform.activeProjectId = response.project.id;
           storeActiveProjectId(response.project.id);
+          if (selectedTemplateId !== "empty") {
+            const architectureView = (response.project.viewManifest?.views || []).find((view) => view.id === "architecture-diagram");
+            const source = architectureView?.payload?.source || "";
+            if (source) {
+              state.developmentPlatform.architectureDiagram = {
+                source,
+                title: architectureView.title || "Architektur-Skizze",
+                summary: architectureView.summary || "Startarchitektur aus Projekttemplate.",
+                derived_from: "project_template",
+              };
+            }
+          }
           state.developmentPlatform.projectPanelMode = "closed";
           titleInput.value = "";
           descriptionInput.value = "";
@@ -351,10 +392,10 @@ const DevelopmentPlatform = (() => {
       const hasProject = Boolean(activeProjectId());
       const functionCoverage = plantUmlFunctionCoverage(state.developmentPlatform.architectureDiagram?.source || "");
       const hasEffectChains = state.developmentPlatform.architectureDiagram?.derived_from === "architecture_effect_chain_derivation";
+      const usesProjectTemplate = state.developmentPlatform.architectureDiagram?.derived_from === "project_template";
       const canContinue = hasProject
         && Boolean(state.developmentPlatform.architectureDiagram?.source)
-        && functionCoverage.complete
-        && (functionCoverage.element_count <= 1 || hasEffectChains);
+        && (usesProjectTemplate || (functionCoverage.complete && (functionCoverage.element_count <= 1 || hasEffectChains)));
       document.querySelector("#developmentChatInput").disabled = !hasProject;
       document.querySelector("#developmentChatSubmit").disabled = !hasProject;
       document.querySelectorAll("[data-development-quick-prompt]").forEach((button) => {
@@ -431,13 +472,14 @@ const DevelopmentPlatform = (() => {
         return;
       }
       const functionCoverage = plantUmlFunctionCoverage(state.developmentPlatform.architectureDiagram.source);
-      if (continueToIde && !functionCoverage.complete) {
+      const usesProjectTemplate = state.developmentPlatform.architectureDiagram.derived_from === "project_template";
+      if (continueToIde && !usesProjectTemplate && !functionCoverage.complete) {
         const missing = functionCoverage.missing.length ? ` Offen: ${functionCoverage.missing.join(", ")}.` : "";
         setActionStatus(`Bitte zuerst die Funktion klaeren: jedes Element braucht mindestens eine funktionale Beziehung.${missing}`);
         syncChatAvailability();
         return;
       }
-      if (continueToIde && functionCoverage.element_count > 1 && state.developmentPlatform.architectureDiagram.derived_from !== "architecture_effect_chain_derivation") {
+      if (continueToIde && !usesProjectTemplate && functionCoverage.element_count > 1 && state.developmentPlatform.architectureDiagram.derived_from !== "architecture_effect_chain_derivation") {
         setActionStatus("Bitte zuerst die Wirkketten ableiten.");
         syncChatAvailability();
         return;

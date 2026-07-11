@@ -29,6 +29,7 @@ constexpr const char *WIFI_NVS_SSID_KEY = "ssid";
 constexpr const char *WIFI_NVS_PASSWORD_KEY = "password";
 constexpr EventBits_t WIFI_CONNECTED_BIT = BIT0;
 constexpr size_t WIFI_SCAN_LIMIT = 16;
+constexpr unsigned WIFI_CONNECT_RETRY_LIMIT = 5;
 
 enum class StationState {
   Idle,
@@ -44,6 +45,7 @@ TaskHandle_t wifiConnectTaskHandle = nullptr;
 StationState stationState = StationState::Idle;
 int lastDisconnectReason = 0;
 int lastConnectStatus = ESP_OK;
+unsigned wifiConnectRetryCount = 0;
 esp_netif_t *stationNetif = nullptr;
 
 struct WifiCredentials {
@@ -98,9 +100,15 @@ void wifiEventHandler(void *, esp_event_base_t eventBase, int32_t eventId, void 
         static_cast<wifi_event_sta_disconnected_t *>(eventData);
     lastDisconnectReason = event == nullptr ? 0 : event->reason;
     xEventGroupClearBits(wifiEvents, WIFI_CONNECTED_BIT);
-    if (stationState == StationState::Connected) {
-      stationState = StationState::Failed;
+    if ((stationState == StationState::Connecting || stationState == StationState::Connected) &&
+        wifiConnectRetryCount < WIFI_CONNECT_RETRY_LIMIT) {
+      wifiConnectRetryCount++;
+      stationState = StationState::Connecting;
+      feedbackWarning(TAG, "WiFi station disconnected: reason=%d; retry=%u/%u", lastDisconnectReason, wifiConnectRetryCount, WIFI_CONNECT_RETRY_LIMIT);
+      esp_wifi_connect();
+      return;
     }
+    stationState = StationState::Failed;
     feedbackWarning(TAG, "WiFi station disconnected: reason=%d", lastDisconnectReason);
     return;
   }
@@ -111,6 +119,7 @@ void wifiEventHandler(void *, esp_event_base_t eventBase, int32_t eventId, void 
     stationState = StationState::Connected;
     lastConnectStatus = ESP_OK;
     lastDisconnectReason = 0;
+    wifiConnectRetryCount = 0;
     feedbackInfo(TAG, "WiFi station connected: " IPSTR, IP2STR(&event->ip_info.ip));
   }
 }
@@ -270,6 +279,7 @@ esp_err_t connectWifiStationFromSavedCredentials(uint32_t timeoutMs) {
 
   xEventGroupClearBits(wifiEvents, WIFI_CONNECTED_BIT);
   stationState = StationState::Connecting;
+  wifiConnectRetryCount = 0;
   lastDisconnectReason = 0;
   lastConnectStatus = ESP_OK;
   const wifi_mode_t connectMode = setupPortalActive ? WIFI_MODE_APSTA : WIFI_MODE_STA;

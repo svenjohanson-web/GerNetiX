@@ -4,6 +4,7 @@ ENV NODE_ENV=production
 WORKDIR /app
 
 COPY --chown=node:node services ./services
+COPY --chown=node:node basissoftware ./basissoftware
 COPY --chown=node:node docker/healthcheck.js ./docker/healthcheck.js
 
 RUN mkdir -p /var/lib/gernetix/services /var/lib/gernetix/identity /var/lib/gernetix/ai-context /var/lib/gernetix/build \
@@ -12,4 +13,3 @@ RUN mkdir -p /var/lib/gernetix/services /var/lib/gernetix/identity /var/lib/gern
 USER node
 
 CMD ["sh", "-c", "exec node services/${GERNETIX_SERVICE}/src/dev-server.js"]
-

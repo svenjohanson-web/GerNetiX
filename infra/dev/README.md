@@ -34,13 +34,13 @@ docker compose -f infra/dev/docker-compose.yml down
 PowerShell-Fenster 1:
 
 ```powershell
-docker exec -it gernetix-mqtt-broker mosquitto_sub -h 127.0.0.1 -p 1883 -t "gernetix/devices/+/commands/#" -v
+docker exec -it gernetix-mqtt-broker mosquitto_sub -h 127.0.0.1 -p 1883 -t "gernetix/devices/+/ota" -v
 ```
 
 PowerShell-Fenster 2:
 
 ```powershell
-docker exec -it gernetix-mqtt-broker mosquitto_pub -h 127.0.0.1 -p 1883 -t "gernetix/devices/demo-device-1/commands/deploy" -m "{""deploymentId"":""dep-local-1"",""firmwareVersion"":""0.1.0"",""artifactUrl"":""http://host.docker.internal:4400/artifacts/demo-device-1/firmware.bin"",""sha256"":""demo""}"
+docker exec -it gernetix-mqtt-broker mosquitto_pub -h 127.0.0.1 -p 1883 -t "gernetix/devices/demo-device-1/ota" -m "{""deploy_id"":""dep-local-1"",""sequence"":1,""firmware_url"":""https://build.example/firmware.bin"",""sha256"":""<sha256>"",""authorization"":""<hmac>""}"
 ```
 
 ## Dev-Konfiguration
@@ -60,7 +60,7 @@ Produktiv auf dem VPS muessen TLS, Credentials oder Client-Zertifikate und Topic
 Deployment-Command:
 
 ```text
-gernetix/devices/{deviceId}/commands/deploy
+gernetix/devices/{deviceId}/ota
 ```
 
 Deployment-Status:

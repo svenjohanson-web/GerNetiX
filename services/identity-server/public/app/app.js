@@ -145,6 +145,8 @@ document.querySelector("#refreshUsbPortsButton").addEventListener("click", refre
 document.querySelector("#saveSourceButton").addEventListener("click", saveSource);
 document.querySelector("#buildButton").addEventListener("click", startBuild);
 document.querySelector("#usbFlashButton").addEventListener("click", startUsbFlash);
+document.querySelector("#otaFlashButton").addEventListener("click", startOtaFlash);
+document.querySelector("#allocateIdeDeviceButton").addEventListener("click", allocateIdeDevice);
 document.querySelector("#recoveryDeviceSelect").addEventListener("change", () => {
   state.activeRecoveryDeviceId = document.querySelector("#recoveryDeviceSelect").value;
   state.recoveryCheckResult = null;
@@ -489,6 +491,11 @@ async function loadIdeProject() {
     renderIdeEmptyState();
     return;
   }
+  state.activeDeviceId = state.devices.some((device) => device.device_id === project.linkedDeviceId)
+    ? project.linkedDeviceId
+    : "";
+  document.querySelector("#ideDeviceSelect").value = state.activeDeviceId;
+  if (projectNeedsHardwareTools(project)) await refreshUsbPorts(false);
   document.querySelector("#ideEmptyState").classList.add("hidden");
   document.querySelector("#ideLayout").classList.remove("hidden");
   document.querySelector("#ideToolbar").classList.remove("hidden");
@@ -497,6 +504,7 @@ async function loadIdeProject() {
   state.activeIdeStep = Math.min(progressFor(project.id).currentStep || 0, Math.max(0, guidedViews(project).length - 1));
   document.querySelector("#ideProjectSelect").value = projectId;
   updateIdeProjectTools(project);
+  renderIdeDeviceAllocation(project);
   renderIdeProjectBrowser(project, sources);
   document.querySelector("#ideProjectTitle").textContent = project.name;
   document.querySelector("#ideProjectBrowserTitle").textContent = project.name;
@@ -511,8 +519,8 @@ async function loadIdeProject() {
   if (projectNeedsHardwareTools(project)) {
     metaItems.push(
       ["linkedDeviceId", project.linkedDeviceId || "kein Device"],
-      ["USB Device", selectedDevice()?.display_name || "kein Device"],
-      ["Boardprofil", selectedDevice()?.build_target_label || "kein Boardprofil"],
+      ["ESP32 Allocation", allocatedIdeDevice(project)?.display_name || "nicht zugeordnet"],
+      ["Boardprofil", allocatedIdeDevice(project)?.build_target_label || "kein Boardprofil"],
       ["USB Port", selectedUsbPort() || "auto"],
     );
   }
@@ -550,11 +558,69 @@ function updateIdeProjectTools(project) {
   document.querySelector("#ideCurrentProjectLabel").textContent = project ? `Projekt: ${project.name}` : "";
   document.querySelector("#ideProjectSelect").classList.add("hidden");
   document.querySelector("#ideDeviceTools").classList.toggle("hidden", !hardwareTools);
+  const allocated = allocatedIdeDevice(project);
+  document.querySelector("#buildButton").disabled = !allocated;
+  document.querySelector("#usbFlashButton").disabled = !allocated || !allocated.usb_flash_supported;
+  document.querySelector("#otaFlashButton").disabled = !allocated || allocated.ota_status !== "ready";
   document.querySelector("#saveSourceButton").classList.toggle("hidden", !sourceEditing);
   document.querySelector("#sourceEditor").readOnly = !sourceEditing;
   document.querySelectorAll("[data-ide-view-mode]").forEach((button) => {
     button.classList.toggle("active-method", button.dataset.ideViewMode === state.ideViewMode);
   });
+}
+
+function renderIdeDeviceAllocation(project) {
+  const target = document.querySelector("#ideDeviceAllocation");
+  const select = document.querySelector("#ideAllocationDeviceSelect");
+  const status = document.querySelector("#ideDeviceAllocationStatus");
+  const visible = projectNeedsHardwareTools(project);
+  target.classList.toggle("hidden", !visible);
+  if (!visible) return;
+  const compatible = state.devices.filter((device) => deviceCompatibleWithProject(project, device));
+  select.innerHTML = [
+    `<option value="">ESP32 waehlen</option>`,
+    ...compatible.map((device) => `<option value="${escapeAttribute(device.device_id)}">${escapeHtml(device.display_name)} · ${escapeHtml(device.build_target_label || device.hardware_profile_id)}</option>`),
+  ].join("");
+  select.value = compatible.some((device) => device.device_id === project.linkedDeviceId) ? project.linkedDeviceId : "";
+  status.textContent = project.linkedDeviceId
+    ? `Zugeordnet: ${allocatedIdeDevice(project)?.display_name || project.linkedDeviceId}`
+    : compatible.length
+      ? "Bitte den ESP32-Projektordner einem Inventar-Device zuordnen."
+      : "Kein kompatibler ESP32 im Inventar gefunden.";
+  document.querySelector("#allocateIdeDeviceButton").disabled = !compatible.length;
+}
+
+function deviceCompatibleWithProject(project, device) {
+  const projectPlatform = String(project?.buildConfig?.platform || "").toLowerCase();
+  const devicePlatform = String(device?.build_config?.platform || "").toLowerCase();
+  if (projectPlatform && devicePlatform) return projectPlatform === devicePlatform;
+  return String(project?.targetRuntime || "").toLowerCase().includes("esp")
+    && String(device?.hardware_profile_id || "").toLowerCase().includes("esp");
+}
+
+function allocatedIdeDevice(project = projectById(state.activeProjectId)) {
+  if (!project?.linkedDeviceId) return null;
+  return state.devices.find((device) => device.device_id === project.linkedDeviceId) || null;
+}
+
+async function allocateIdeDevice() {
+  const project = projectById(state.activeProjectId);
+  const deviceId = document.querySelector("#ideAllocationDeviceSelect").value;
+  if (!project || !deviceId) {
+    document.querySelector("#ideDeviceAllocationStatus").textContent = "Bitte zuerst einen kompatiblen ESP32 waehlen.";
+    return;
+  }
+  document.querySelector("#allocateIdeDeviceButton").disabled = true;
+  document.querySelector("#ideDeviceAllocationStatus").textContent = "Allocation wird gespeichert...";
+  try {
+    const response = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/device-allocation`, { device_id: deviceId });
+    state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    state.activeDeviceId = response.device.device_id;
+    await loadIdeProject();
+  } catch (error) {
+    document.querySelector("#ideDeviceAllocationStatus").textContent = error.message;
+    document.querySelector("#allocateIdeDeviceButton").disabled = false;
+  }
 }
 
 function projectNeedsHardwareTools(project) {
@@ -738,22 +804,27 @@ async function saveSource() {
 
 async function startBuild() {
   const project = projectById(state.activeProjectId);
-  const device = selectedDevice() || state.devices[0];
-  if (!device) return;
-  const build = await postJson("/api/user-ide/build-jobs", {
-    project_slug: project.slug,
-    device_id: device.device_id,
-    mode: "build",
-  });
-  state.builds.unshift(build);
-  navigate("/app/builds/");
-  renderBuilds();
+  const device = allocatedIdeDevice(project);
+  if (!project || !device) return setFlashStatus("error", "Bitte zuerst den ESP32-Projektordner einem Inventar-Device zuordnen.");
+  setFlashStatus("running", "Build laeuft...");
+  try {
+    const build = await postJson("/api/user-ide/build-jobs", {
+      project_slug: project.slug,
+      device_id: device.device_id,
+      mode: "build",
+    });
+    state.builds.unshift(build);
+    setFlashStatus(build.status === "succeeded" ? "ok" : "error", `${build.status}: Build abgeschlossen.`);
+    renderBuilds();
+  } catch (error) {
+    setFlashStatus("error", error.message);
+  }
 }
 
 async function startUsbFlash() {
   const project = projectById(state.activeProjectId);
-  const device = selectedDevice();
-  if (!project || !device) return;
+  const device = allocatedIdeDevice(project);
+  if (!project || !device) return setFlashStatus("error", "Bitte zuerst den ESP32-Projektordner einem Inventar-Device zuordnen.");
   if (!selectedUsbPort() && state.usbPorts.length > 1) {
     setFlashStatus("error", "Mehrere USB-Serial-Ports gefunden. Bitte waehle den aktuellen Port, z. B. COM10.");
     return;
@@ -768,7 +839,26 @@ async function startUsbFlash() {
     });
     state.builds.unshift(build);
     setFlashStatus(build.status === "succeeded" ? "ok" : "error", `${build.status}: ${build.flash_status || "USB-Flash beendet"}`);
-    navigate("/app/builds/");
+    renderBuilds();
+  } catch (error) {
+    setFlashStatus("error", error.message);
+  }
+}
+
+async function startOtaFlash() {
+  const project = projectById(state.activeProjectId);
+  const device = allocatedIdeDevice(project);
+  if (!project || !device) return setFlashStatus("error", "Bitte zuerst den ESP32-Projektordner einem Inventar-Device zuordnen.");
+  if (device.ota_status !== "ready") return setFlashStatus("error", "Das zugeordnete Device ist nicht OTA-ready.");
+  setFlashStatus("running", "Build und OTA-Flash laufen...");
+  try {
+    const build = await postJson("/api/user-ide/build-jobs", {
+      project_slug: project.slug,
+      device_id: device.device_id,
+      mode: "build_and_flash",
+    });
+    state.builds.unshift(build);
+    setFlashStatus(build.status === "succeeded" ? "ok" : "error", `${build.status}: ${build.flash_status || "OTA-Flash beendet"}`);
     renderBuilds();
   } catch (error) {
     setFlashStatus("error", error.message);

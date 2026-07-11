@@ -314,6 +314,7 @@ ProvisioningConfig loadProvisioningConfig() {
   readNvsString(handle, "secret_sha", config.secretSha256, sizeof(config.secretSha256));
   readNvsString(handle, "dm_url", config.deviceManagementUrl, sizeof(config.deviceManagementUrl));
   readNvsString(handle, "bd_url", config.buildDeployUrl, sizeof(config.buildDeployUrl));
+  readNvsString(handle, "mqtt_url", config.mqttBrokerUrl, sizeof(config.mqttBrokerUrl));
   readNvsString(handle, "prov_batch", config.provisioningBatchId, sizeof(config.provisioningBatchId));
   readNvsString(handle, "prov_by", config.provisionedBy, sizeof(config.provisionedBy));
   readNvsString(handle, "capabilities", config.capabilities, sizeof(config.capabilities));
@@ -340,6 +341,7 @@ esp_err_t saveProvisioningPayload(const char *payload, size_t payloadLength) {
   const std::string deviceSecret = unescapeJsonString(findStringValue(body, "device_secret"));
   const std::string deviceManagementUrl = unescapeJsonString(findStringValue(body, "device_management"));
   const std::string buildDeployUrl = unescapeJsonString(findStringValue(body, "build_deploy"));
+  const std::string mqttBrokerUrl = unescapeJsonString(findStringValue(body, "mqtt_broker"));
   const std::string provisioningBatchId = unescapeJsonString(findStringValue(body, "batch_id"));
   const std::string provisionedBy = unescapeJsonString(findStringValue(body, "provisioned_by"));
   const std::string capabilities = findJsonArrayAsList(body, "capabilities");
@@ -369,6 +371,7 @@ esp_err_t saveProvisioningPayload(const char *payload, size_t payloadLength) {
   if (status == ESP_OK && !deviceSecret.empty()) status = setNvsString(handle, "dev_secret", deviceSecret);
   if (status == ESP_OK) status = setNvsString(handle, "dm_url", deviceManagementUrl);
   if (status == ESP_OK) status = setNvsString(handle, "bd_url", buildDeployUrl);
+  if (status == ESP_OK) status = setNvsString(handle, "mqtt_url", mqttBrokerUrl);
   if (status == ESP_OK) status = setNvsString(handle, "prov_batch", provisioningBatchId);
   if (status == ESP_OK) status = setNvsString(handle, "prov_by", provisionedBy);
   if (status == ESP_OK) status = setNvsString(handle, "capabilities", capabilities);
@@ -432,6 +435,7 @@ size_t writeProvisioningStatusJson(char *target, size_t targetSize) {
   appendJsonString(target, targetSize, written, "keyReference", config.keyReference);
   appendJsonString(target, targetSize, written, "deviceManagementUrl", config.deviceManagementUrl);
   appendJsonString(target, targetSize, written, "buildDeployUrl", config.buildDeployUrl);
+  appendJsonString(target, targetSize, written, "mqttBrokerUrl", config.mqttBrokerUrl);
   appendJsonString(target, targetSize, written, "provisioningBatchId", config.provisioningBatchId);
   appendJsonString(target, targetSize, written, "provisionedBy", config.provisionedBy);
   appendJsonString(target, targetSize, written, "capabilities", config.capabilities);
@@ -455,9 +459,43 @@ esp_err_t writeChallengeProofJson(const char *payload, size_t payloadLength, cha
   }
 
   const ProvisioningConfig config = loadProvisioningConfig();
-  char deviceSecret[DEVICE_SECRET_SIZE] = {};
-  if (!config.provisioned || !readDeviceSecret(deviceSecret, sizeof(deviceSecret))) {
+  if (!config.provisioned || !config.hasDeviceSecret) {
     feedbackError(TAG, "Challenge proof requested before device secret was provisioned");
+    return ESP_ERR_INVALID_STATE;
+  }
+
+  char hmacHex[65] = {};
+  const esp_err_t hmacStatus = computeDeviceHmacSha256Hex(
+      challenge.c_str(), challenge.size(), hmacHex, sizeof(hmacHex));
+  if (hmacStatus != ESP_OK) {
+    return hmacStatus;
+  }
+
+  size_t written = 0;
+  target[0] = '\0';
+  appendJsonString(target, targetSize, written, "device_id", config.deviceId);
+  appendJsonString(target, targetSize, written, "serial_number", config.serialNumber);
+  appendJsonString(target, targetSize, written, "credential_id", config.credentialId);
+  appendJsonString(target, targetSize, written, "challenge_id", challengeId.c_str());
+  appendJsonString(target, targetSize, written, "algorithm", "HMAC_SHA256");
+  appendJsonString(target, targetSize, written, "hmac", hmacHex);
+  target[written] = '\0';
+
+  feedbackInfo(TAG, "Challenge proof created for %s", config.deviceId);
+  return ESP_OK;
+}
+
+esp_err_t computeDeviceHmacSha256Hex(
+    const char *message,
+    size_t messageLength,
+    char *target,
+    size_t targetSize) {
+  if (message == nullptr || messageLength == 0 || target == nullptr || targetSize < 65) {
+    return ESP_ERR_INVALID_ARG;
+  }
+
+  char deviceSecret[DEVICE_SECRET_SIZE] = {};
+  if (!readDeviceSecret(deviceSecret, sizeof(deviceSecret))) {
     return ESP_ERR_INVALID_STATE;
   }
 
@@ -484,8 +522,8 @@ esp_err_t writeChallengeProofJson(const char *payload, size_t payloadLength, cha
     status = psa_mac_compute(
         key,
         algorithm,
-        reinterpret_cast<const uint8_t *>(challenge.c_str()),
-        challenge.size(),
+        reinterpret_cast<const uint8_t *>(message),
+        messageLength,
         hmac,
         sizeof(hmac),
         &hmacLength);
@@ -495,19 +533,6 @@ esp_err_t writeChallengeProofJson(const char *payload, size_t payloadLength, cha
     return ESP_FAIL;
   }
 
-  char hmacHex[65] = {};
-  bytesToHex(hmac, sizeof(hmac), hmacHex, sizeof(hmacHex));
-
-  size_t written = 0;
-  target[0] = '\0';
-  appendJsonString(target, targetSize, written, "device_id", config.deviceId);
-  appendJsonString(target, targetSize, written, "serial_number", config.serialNumber);
-  appendJsonString(target, targetSize, written, "credential_id", config.credentialId);
-  appendJsonString(target, targetSize, written, "challenge_id", challengeId.c_str());
-  appendJsonString(target, targetSize, written, "algorithm", "HMAC_SHA256");
-  appendJsonString(target, targetSize, written, "hmac", hmacHex);
-  target[written] = '\0';
-
-  feedbackInfo(TAG, "Challenge proof created for %s", config.deviceId);
+  bytesToHex(hmac, sizeof(hmac), target, targetSize);
   return ESP_OK;
 }

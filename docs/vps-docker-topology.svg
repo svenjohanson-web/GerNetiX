@@ -27,7 +27,7 @@
   <rect class="service" x="640" y="230" width="210" height="60" rx="10"/><text class="label" x="745" y="258" text-anchor="middle">Hardware Shop/Catalog</text><text class="small" x="745" y="276" text-anchor="middle">:4900 / :4910</text>
   <rect class="service" x="890" y="230" width="210" height="60" rx="10"/><text class="label" x="995" y="258" text-anchor="middle">AI Usage / Context</text><text class="small" x="995" y="276" text-anchor="middle">:5000 / :5500</text>
   <rect class="service" x="640" y="310" width="210" height="60" rx="10"/><text class="label" x="745" y="338" text-anchor="middle">Build &amp; Deploy</text><text class="small" x="745" y="356" text-anchor="middle">:4400</text>
-  <rect class="infra" x="890" y="310" width="210" height="60" rx="10"/><text class="label" x="995" y="338" text-anchor="middle">Mosquitto</text><text class="small" x="995" y="356" text-anchor="middle">intern :1883 / :9001</text>
+  <rect class="infra" x="890" y="310" width="210" height="60" rx="10"/><text class="label" x="995" y="338" text-anchor="middle">Mosquitto</text><text class="small" x="995" y="356" text-anchor="middle">intern :1883/:9001 · TLS :8883</text>
   <rect class="edge" x="340" y="340" width="210" height="70" rx="10"/><text class="label" x="445" y="368" text-anchor="middle">Admin Tool</text><text class="small" x="445" y="389" text-anchor="middle">nur VPS-Loopback :4600</text>
 
   <path class="line" d="M260 218H340"/><path class="line" d="M550 218C590 218 600 180 640 180"/><path class="line" d="M550 218C620 218 820 180 890 180"/><path class="line" d="M550 218C610 218 610 260 640 260"/><path class="line" d="M550 218C650 218 820 260 890 260"/><path class="line" d="M550 218C610 218 610 340 640 340"/><path class="line" d="M850 340H890"/><path class="line dash" d="M445 340V256"/>
@@ -40,4 +40,3 @@
 
   <text class="small" x="45" y="705">HTTPS, oeffentliches MQTT und externe Provider werden erst nach Domain-, Zertifikats-, Secret- und ACL-Konfiguration freigeschaltet.</text>
 </svg>
-

@@ -33,11 +33,11 @@ class DeployJobOrchestrator {
     return {
       requested: true,
       status: "queued_for_mqtt",
-      topic: `devices/${deploy.device_id}/deploy`,
+      topic: `gernetix/devices/${deploy.device_id}/ota`,
       firmware_url: firmware.download_url,
       firmware_sha256: firmware.sha256,
       firmware_size_bytes: firmware.size_bytes,
-      log: "MVP-Deploy wurde validiert; MQTT-Publish ist abstrahiert und noch nicht produktiv angebunden.",
+      log: "MVP-Deploy wurde fuer das gerätespezifische OTA-Topic validiert; MQTT-Publish und HMAC-Auftragsbildung sind noch nicht produktiv angebunden.",
     };
   }
 }

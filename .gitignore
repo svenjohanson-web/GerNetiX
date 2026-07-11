@@ -2,6 +2,7 @@
 .runtime/
 node_modules/
 .pio/
+managed_components/
 *.log
 services/*/.runtime/
 .env.vps

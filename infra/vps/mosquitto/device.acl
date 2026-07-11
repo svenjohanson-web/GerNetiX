@@ -1,0 +1,6 @@
+# The username of an ESP32 is its exact GerNetiX device_id. A registered
+# device can receive only its own OTA notification and publish only its own
+# operational status. The internal Build-&-Deploy connection uses the isolated
+# non-TLS listener and is not evaluated against this external-device ACL.
+pattern read gernetix/devices/%u/ota
+pattern write gernetix/devices/%u/status/#

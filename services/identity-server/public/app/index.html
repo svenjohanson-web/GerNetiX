@@ -107,11 +107,12 @@
               <button type="button" data-ide-view-mode="image">Image</button>
             </span>
             <span id="ideDeviceTools" class="button-row">
-              <select id="ideDeviceSelect" aria-label="Geraet waehlen"></select>
+              <select id="ideDeviceSelect" class="hidden" aria-label="Zugeordnetes Geraet"></select>
               <select id="usbPortSelect" class="port-input" aria-label="USB-Port"></select>
               <button id="refreshUsbPortsButton" type="button">USB suchen</button>
               <button id="buildButton" type="button">Build starten</button>
               <button id="usbFlashButton" type="button">Ueber USB flashen</button>
+              <button id="otaFlashButton" type="button">Ueber OTA flashen</button>
             </span>
             <button id="saveSourceButton" type="button">Code speichern</button>
           </div>
@@ -146,6 +147,15 @@
           <aside id="ideInspectorPanel" class="panel ide-inspector-panel">
             <p class="eyebrow">Projektmodell</p>
             <dl id="ideProjectMeta" class="meta-list"></dl>
+            <section id="ideDeviceAllocation" class="ide-device-allocation hidden">
+              <p class="eyebrow">Hardware-Allocation</p>
+              <strong>Komponenten/ESP32</strong>
+              <label>ESP32 aus Inventar
+                <select id="ideAllocationDeviceSelect"></select>
+              </label>
+              <button id="allocateIdeDeviceButton" type="button">Projektordner zuordnen</button>
+              <small id="ideDeviceAllocationStatus"></small>
+            </section>
             <section id="ideAiUsage" class="ide-ai-rating"></section>
             <section id="ideProjectViewManifest" class="project-view-manifest"></section>
             <div id="flashStatus" class="flash-status hidden"></div>
@@ -267,16 +277,37 @@
                 <small id="developmentAssistantMode">Struktur klaeren</small>
               </div>
               <div class="button-row development-project-actions">
-                <button id="openDevelopmentProjectButton" type="button">Projekt oeffnen</button>
-                <button id="newDevelopmentProjectButton" type="button">Projekt neu</button>
+                <button id="chooseDevelopmentProjectButton" class="hidden" type="button">Projekt wechseln</button>
+              </div>
+              <div id="developmentProjectChoicePanel" class="development-project-choice-panel">
+                <button id="continueDevelopmentProjectButton" class="development-project-choice hidden" type="button">
+                  <span>Letztes Projekt fortsetzen</span>
+                  <strong id="continueDevelopmentProjectName"></strong>
+                  <small>Dort weitermachen, wo du aufgehoert hast.</small>
+                </button>
+                <button id="newEmptyDevelopmentProjectButton" class="development-project-choice" type="button">
+                  <span>Neues Projekt</span>
+                  <strong>Leer beginnen</strong>
+                  <small>Architektur und Anforderungen von Grund auf klaeren.</small>
+                </button>
+                <button id="newTemplateDevelopmentProjectButton" class="development-project-choice" type="button">
+                  <span>Neues Projekt</span>
+                  <strong>Aus Template</strong>
+                  <small>Mit einer vorbereiteten Startarchitektur beginnen.</small>
+                </button>
+                <button id="openDevelopmentProjectButton" class="development-project-choice" type="button">
+                  <span>Vorhandenes Projekt</span>
+                  <strong>Projekt oeffnen</strong>
+                  <small>Ein bereits angelegtes Entwicklungsprojekt auswaehlen.</small>
+                </button>
               </div>
               <div id="developmentProjectOpenPanel" class="development-project-panel hidden">
                 <label class="development-project-field">Projekt oeffnen<select id="developmentProjectSelect"></select></label>
               </div>
               <form id="developmentProjectForm" class="development-project-form hidden">
-                <label>Projekttemplate
+                <label id="developmentProjectTemplateField">Projekttemplate
                   <select id="developmentProjectTemplate">
-                    <option value="empty">Leeres Projekt</option>
+                    <option value="empty" hidden>Leeres Projekt</option>
                     <option value="esp32_device_only">ESP32 Device only</option>
                     <option value="esp32_datalogger_local_web">Datenlogger mit lokalem Webserver</option>
                     <option value="esp32_datalogger_internet_web">ESP32 Datenlogger mit Internet-Webserver</option>

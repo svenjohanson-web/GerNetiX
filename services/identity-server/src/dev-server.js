@@ -8,7 +8,7 @@ const { createAccountTransparencyFactory } = require("./dev/account-transparency
 const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
 const { developmentProjectSources } = require("./dev/development-project-structure");
-const { developmentProjectTemplate, templateArchitecturePlantUml } = require("./dev/development-project-templates");
+const { developmentProjectTemplate, templateArchitecturePlantUml, templateFirmwareSources } = require("./dev/development-project-templates");
 const { createDevHardwareUtils } = require("./dev/hardware-utils");
 const { createLlmConfigStore } = require("../../shared/llm-config");
 const {
@@ -308,6 +308,17 @@ async function routeRequest(req, res) {
       return;
     }
     await handleDevelopmentProjectArchitectureSave(req, res, session, decodeURIComponent(developmentProjectArchitecture[1]));
+    return;
+  }
+
+  const projectDeviceAllocation = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/device-allocation$/);
+  if (req.method === "POST" && projectDeviceAllocation) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleProjectDeviceAllocation(req, res, session, decodeURIComponent(projectDeviceAllocation[1]));
     return;
   }
 
@@ -846,7 +857,8 @@ async function handleDevelopmentProjectCreate(req, res, session) {
   const description = String(body.description || template.description || "Architektur-Discovery-Projekt").trim().slice(0, 1000);
   const projectId = `dev_project_${slugifyProjectId(title)}_${Date.now().toString(36)}`;
   const initialSource = templateArchitecturePlantUml(template, title) || initialArchitecturePlantUml(title);
-  const sources = developmentProjectSources({ title, description, architectureSource: initialSource });
+  const sources = developmentProjectSources({ title, description, architectureSource: initialSource })
+    .concat(templateFirmwareSources(template, title));
   const project = await projectServerJson("/api/projects", {
     method: "POST",
     body: {
@@ -855,10 +867,10 @@ async function handleDevelopmentProjectCreate(req, res, session) {
       title,
       description,
       learning_project_id: "development_project",
-      hardware_profile_id: "architecture.discovery",
+      hardware_profile_id: template.hardwareProfileId || "architecture.discovery",
       device_id: null,
-      build_config: null,
-      view_manifest: developmentProjectViewManifest({ title, description, source: initialSource }),
+      build_config: template.buildConfig || null,
+      view_manifest: developmentProjectViewManifest({ title, description, source: initialSource, buildConfig: template.buildConfig }),
       sources,
     },
   });
@@ -890,14 +902,51 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
     body: {
       title,
       description,
-      view_manifest: developmentProjectViewManifest({ title, description, source: diagram.source, diagram }),
-      build_config: null,
+      view_manifest: developmentProjectViewManifest({ title, description, source: diagram.source, diagram, buildConfig: project.build_config }),
+      build_config: project.build_config || null,
     },
   });
   touchWorkspace(session, project.project_server_id, "development-platform", "/app/development-platform/");
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   sendJson(res, 200, { project: toPlatformProject(updated), saved_at: new Date().toISOString() });
+}
+
+async function handleProjectDeviceAllocation(req, res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  const body = await readJsonBody(req);
+  const devices = await loadUserIdeDevices(session);
+  const device = devices.find((item) => item.device_id === body.device_id);
+  if (!device) {
+    sendJson(res, 404, { error: "device_not_found", message: "Das Inventar-Device wurde nicht gefunden." });
+    return;
+  }
+  const projectConfig = project.build_config || {};
+  const deviceConfig = device.build_config || {};
+  if (projectConfig.platform && deviceConfig.platform && projectConfig.platform !== deviceConfig.platform) {
+    sendJson(res, 409, { error: "device_not_compatible", message: "Das Device ist nicht mit dem Build-Ziel des Projektordners kompatibel." });
+    return;
+  }
+  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+    method: "PATCH",
+    body: {
+      device_id: device.device_id,
+      hardware_profile_id: device.hardware_profile_id || project.hardware_profile_id,
+      build_config: resolveBuildConfig(project, device),
+    },
+  });
+  const projects = await loadUserIdeProjects(session);
+  const updated = projects.find((item) => item.project_server_id === project.project_server_id);
+  touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
+  sendJson(res, 200, {
+    project: toPlatformProject(updated),
+    device,
+    allocation: {
+      component_path: "Komponenten/ESP32",
+      device_id: device.device_id,
+      allocated_at: new Date().toISOString(),
+    },
+  });
 }
 
 async function handlePlatformDeviceCreate(req, res, session) {
@@ -1599,7 +1648,7 @@ async function waitForBuildDeployJob(jobId) {
 function toBuildDeployPackage(buildPackage, device = {}, project = {}) {
   const files = Object.fromEntries((buildPackage.files || []).map((file) => [file.path, file.content]));
   const buildConfig = resolveBuildConfig(project, device);
-  if (buildConfig) files["platformio.ini"] = renderPlatformioIni(buildConfig);
+  if (buildConfig && !buildConfig.firmware_basis_id) files["platformio.ini"] = renderPlatformioIni(buildConfig);
   return {
     package_id: buildPackage.package_id,
     files,
@@ -1608,6 +1657,13 @@ function toBuildDeployPackage(buildPackage, device = {}, project = {}) {
 
 function resolveBuildConfig(project = {}, device = {}) {
   if (project.slug === "arduino-atmel-bare-metal" && project.build_config) return project.build_config;
+  if (project.build_config?.firmware_basis_id) {
+    return {
+      ...project.build_config,
+      board: device.build_config?.board || project.build_config.board,
+      environment: device.build_config?.environment || project.build_config.environment,
+    };
+  }
   return device.build_config || project.build_config || null;
 }
 
@@ -1819,16 +1875,24 @@ function projectViewManifest(project) {
   };
 }
 
-function developmentProjectViewManifest({ title, description = "", source = "", diagram = null }) {
+function developmentProjectViewManifest({ title, description = "", source = "", diagram = null, buildConfig = null }) {
   const plantUmlSource = source || diagram?.source || initialArchitecturePlantUml(title);
+  const buildable = Boolean(buildConfig);
   return {
     schema_version: 1,
     title: `${title || "Entwicklungsprojekt"} Architektur`,
     summary: description || "Projektgebundene Architektur-Discovery mit PlantUML-Skizze.",
-    primary_source_path: "docs/architecture.puml",
-    hide_source_editor: true,
+    primary_source_path: buildable ? (buildConfig.user_source_path || "src/user_main.cpp") : "docs/architecture.puml",
+    hide_source_editor: !buildable,
     mode: "architecture_discovery",
     views: [
+      ...(buildable ? [{
+        id: "firmware-source",
+        type: "source_analysis",
+        title: "ESP32 User Main",
+        summary: "Account- und projektgebundene User-Main; die geschuetzte GerNetiX-Basissoftware wird erst im BuildPackage ergaenzt.",
+        source_path: buildConfig.user_source_path || "src/user_main.cpp",
+      }] : []),
       {
         id: "architecture-diagram",
         type: "plantuml",

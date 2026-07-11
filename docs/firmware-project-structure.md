@@ -202,6 +202,15 @@ Die Variante wird explizit im Projektmodell oder BuildPackage gewaehlt. Sie darf
 
 Ein Build darf immer nur fuer ein Projektprofil laufen. Der Build-Prozess kopiert oder generiert daraus die freigegebenen Konfigurationsdateien in den temporaeren Build-Kontext.
 
+Fuer accountgebundene ESP32-Entwicklungsprojekte gilt im ersten IDE-Durchstich:
+
+- Der Project Server speichert als sichtbare und editierbare Projektquelle nur `src/user_main.cpp`.
+- Diese User-Main gehoert fachlich zum Account-Projekt und wird nicht in `basissoftware/esp32` persistiert.
+- Beim Erzeugen des vollstaendigen BuildPackage legt der Project Server die User-Main auf `src/user/user_app.cpp` der versionierten ESP32-Basissoftware.
+- `src/main.cpp`, Runtime, Connectivity, Schutzmechanismen und spaetere OTA-Implementierung kommen ausschliesslich aus der Basissoftware-Version des BuildPackage.
+- Die IDE zeigt die Basissoftware nicht als editierbaren Projektinhalt an.
+- Der aktuelle Basisstand enthaelt den authentifizierten HTTPS-/MQTT-OTA-Pfad und ein aktiviertes A/B-Partitionslayout. Bei der USB-Migration vom bisherigen Single-App-Layout bleibt dessen NVS-Bereich `0x9000` bis `0xEFFF` vollstaendig erhalten; die OTA-App-Slots beginnen deshalb bei `0x20000`.
+
 Die Root-`CMakeLists.txt` bindet standardmaessig nur `basissoftware/esp32/` ein. Projekt- und Generated-Komponenten werden ueber Build-Umgebungsvariablen ausgewaehlt:
 
 ```text
@@ -234,7 +243,5 @@ Nicht ausgeliefert werden:
 - Build-Skripte
 - Debug-Symbole
 - private Schluessel
-
-
 
 

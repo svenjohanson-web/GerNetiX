@@ -5,7 +5,7 @@ const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 const test = require("node:test");
 
-const { createConfig, createDefaultProjectServer, FileBackedProjectRepository, SqliteBackedProjectRepository } = require("../src");
+const { createConfig, createDefaultProjectServer, FileBackedProjectRepository, InMemoryProjectRepository, SqliteBackedProjectRepository } = require("../src");
 const { ProjectService } = require("../src/services/project-service");
 
 function createMemoryProjectServer() {
@@ -73,6 +73,38 @@ test("creates reproducible build package for build deploy server", () => {
   assert.equal(buildPackage.build_job.mode, "build_and_flash");
   assert.equal(buildPackage.files.some((file) => file.path === "platformio.ini"), true);
   assert.equal(buildPackage.files.some((file) => file.path === "src/app.cpp"), true);
+});
+
+test("composes ESP32 basissoftware with only the project-owned user main", () => {
+  const service = new ProjectService({
+    repository: new InMemoryProjectRepository(),
+    loadEsp32BasissoftwareFiles: () => [
+      { path: "platformio.ini", content: "framework = espidf\n", content_type: "text/plain" },
+      { path: "src/main.cpp", content: "extern \"C\" void app_main() {}\n", content_type: "text/x-c++src" },
+      { path: "src/user/user_app.cpp", content: "void oldUserMain() {}\n", content_type: "text/x-c++src" },
+    ],
+  });
+  const project = service.createProject({
+    user_id: "user-1",
+    title: "ESP32 Durchstich",
+    build_config: {
+      platform: "espressif32",
+      board: "esp32dev",
+      framework: "espidf",
+      firmware_basis_id: "gernetix-runtime-basissoftware",
+      firmware_basis_version: "test",
+      user_source_path: "src/user_main.cpp",
+      user_target_path: "src/user/user_app.cpp",
+    },
+    sources: [{ path: "src/user_main.cpp", content: "extern \"C\" void userMain() {}\n" }],
+  });
+  const job = service.createBuildJob(project.project_id);
+  const buildPackage = service.createBuildPackage(job.build_job_id);
+
+  assert.equal(buildPackage.platformio_ini, "framework = espidf\n");
+  assert.equal(buildPackage.files.some((file) => file.path === "src/main.cpp"), true);
+  assert.equal(buildPackage.files.find((file) => file.path === "src/user/user_app.cpp").content, "extern \"C\" void userMain() {}\n");
+  assert.equal(buildPackage.files.some((file) => file.path === "src/user_main.cpp"), false);
 });
 
 test("stores project view manifest and includes it in build package", () => {

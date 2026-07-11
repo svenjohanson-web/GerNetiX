@@ -7,8 +7,8 @@ Diese Struktur startet den vorhandenen GerNetiX-Kern auf einem Linux-VPS. Sie fu
 - Oeffentlich wird nur Nginx vorgesehen.
 - Identity und alle Domaenenservices bleiben im internen Docker-Netz.
 - Das Admin Tool bindet nur an `127.0.0.1` des VPS und ist per SSH-Tunnel erreichbar.
-- Mosquitto bleibt intern. Externer Device-Zugriff darf erst nach TLS-, Credential- und ACL-Konfiguration freigeschaltet werden.
-- Die mitgelieferte Nginx-Konfiguration ist ein HTTP-Bootstrap. Vor einer oeffentlichen Anmeldung muessen Domain und HTTPS eingerichtet werden.
+- Mosquitto behaelt die internen Listener `1883` und `9001`. Der externe Device-Listener `8883` verlangt TLS, registrierte Credentials und gerätespezifische Topic-ACLs.
+- Nginx bedient HTTP fuer ACME-Challenges und leitet die oeffentlichen Domains auf HTTPS um. Ein separater TLS-Listener liefert die niederlaendische `.nl`-, deutsche `.de`- und englische `.com`-Startseite aus.
 
 ## Erster Start auf dem VPS
 
@@ -23,7 +23,27 @@ Fuer den ersten internen Test in `.env.vps` setzen:
 ```dotenv
 HTTP_BIND_ADDRESS=127.0.0.1
 HTTP_PORT=8080
+HTTPS_BIND_ADDRESS=0.0.0.0
+HTTPS_PORT=443
+LETSENCRYPT_DIR=/etc/letsencrypt
+MQTT_TLS_BIND_ADDRESS=0.0.0.0
+MQTT_TLS_PORT=8883
+MQTT_LETSENCRYPT_DIR=/etc/letsencrypt
 ```
+
+Vor dem Start muss `mqtt.gernetix.nl` per DNS auf den VPS zeigen und ein gueltiges Zertifikat unter `/etc/letsencrypt/live/mqtt.gernetix.nl/` vorhanden sein. Mosquitto bindet das gesamte Let's-Encrypt-Verzeichnis read-only ein, damit Zertifikatserneuerungen sichtbar bleiben. Nach einer Erneuerung wird nur der Broker neu geladen:
+
+```bash
+docker compose --env-file .env.vps -f compose.vps.yaml kill -s HUP mqtt-broker
+```
+
+Ein Device-Zugang wird aus dem einmaligen Device-Secret abgeleitet und direkt in das persistente Mosquitto-Passwortfile geschrieben. Das Secret wird ueber stdin uebergeben und nicht als Argument in der Shell-Historie gespeichert:
+
+```bash
+printf '%s' "$ONE_TIME_DEVICE_SECRET" | node tools/mqtt-device-credential.js install --device-id device_123 --secret-stdin --compose-file compose.vps.yaml --env-file .env.vps
+```
+
+Die ACL erlaubt diesem Benutzer nur `gernetix/devices/device_123/ota` zu lesen und unter `gernetix/devices/device_123/status/#` zu schreiben.
 
 Danach:
 
@@ -33,6 +53,8 @@ docker compose --env-file .env.vps -f compose.vps.yaml build
 docker compose --env-file .env.vps -f compose.vps.yaml up -d
 docker compose --env-file .env.vps -f compose.vps.yaml ps
 ```
+
+Der normale Staging-Deploy fordert per HTTP-01 automatisch ein gemeinsames Let's-Encrypt-Zertifikat fuer `gernetix.nl`, `www.gernetix.nl`, `gernetix.de`, `www.gernetix.de`, `gernetix.com` und `www.gernetix.com` an. Der Certbot-Container prueft die Erneuerung zweimal taeglich; der TLS-Nginx laedt erneuerte Zertifikate regelmaessig neu. Port 80 und 443 muessen am VPS erreichbar sein und alle sechs DNS-Namen auf den VPS zeigen.
 
 Healthcheck auf dem VPS:
 
@@ -93,6 +115,6 @@ docker compose --env-file .env.vps -f compose.vps.yaml ps
 4. Firewall auf SSH, HTTP und HTTPS begrenzen.
 5. Admin Tool nicht oeffentlich weiterleiten.
 6. SQLite-Volumes regelmaessig und konsistent sichern.
-7. Mosquitto erst mit TLS, Credentials und Topic-ACLs extern veroeffentlichen.
+7. Firewall-Port `8883/tcp` erst freigeben, wenn `mqtt.gernetix.nl`, Let's Encrypt und mindestens ein Device-Credential eingerichtet sind.
 
 Deployment-Topologie: [vps-docker-topology.svg](vps-docker-topology.svg)

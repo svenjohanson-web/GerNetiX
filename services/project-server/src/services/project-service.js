@@ -1,9 +1,11 @@
 const crypto = require("node:crypto");
 const { ProjectServerError } = require("../errors");
+const { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles } = require("../modules/esp32-basissoftware-package");
 
 class ProjectService {
   constructor(options) {
     this.repository = options.repository;
+    this.loadEsp32BasissoftwareFiles = options.loadEsp32BasissoftwareFiles || loadEsp32BasissoftwareFiles;
   }
 
   createProject(input = {}) {
@@ -134,6 +136,14 @@ class ProjectService {
     const job = this.getBuildJob(jobId);
     const project = this.requireProject(job.project_id);
     const sources = this.repository.listSources(project.project_id);
+    const firmwareSources = project.build_config?.firmware_basis_id === "gernetix-runtime-basissoftware"
+      ? composeEsp32BasissoftwarePackage({
+          basisFiles: this.loadEsp32BasissoftwareFiles(),
+          projectSources: sources,
+          buildConfig: project.build_config,
+        })
+      : sources;
+    const platformioIni = firmwareSources.find((source) => source.path === "platformio.ini")?.content || renderPlatformioIni(project);
     const buildJob = {
       job_id: job.build_job_id,
       project_id: project.project_id,
@@ -147,12 +157,12 @@ class ProjectService {
       package_id: `pkg_${job.build_job_id}`,
       project: sanitizeProject(project),
       build_job: buildJob,
-      platformio_ini: renderPlatformioIni(project),
+      platformio_ini: platformioIni,
       files: [
         { path: "build-job.json", content: JSON.stringify(buildJob, null, 2), content_type: "application/json" },
         { path: "project-view-manifest.json", content: JSON.stringify(effectiveViewManifest(project), null, 2), content_type: "application/json" },
-        { path: "platformio.ini", content: renderPlatformioIni(project), content_type: "text/plain" },
-        ...sources.map((source) => ({
+        ...(project.build_config?.firmware_basis_id ? [] : [{ path: "platformio.ini", content: renderPlatformioIni(project), content_type: "text/plain" }]),
+        ...firmwareSources.map((source) => ({
           path: source.path,
           content: source.content,
           content_type: source.content_type,
@@ -305,6 +315,10 @@ function normalizeBuildConfig(input = {}) {
     board: input.board || "esp32dev",
     environment: input.environment || "esp32dev",
     libraries: input.libraries || [],
+    firmware_basis_id: input.firmware_basis_id || "",
+    firmware_basis_version: input.firmware_basis_version || "",
+    user_source_path: input.user_source_path || "",
+    user_target_path: input.user_target_path || "",
   };
 }
 
