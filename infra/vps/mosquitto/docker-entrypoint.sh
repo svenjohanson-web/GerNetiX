@@ -3,6 +3,7 @@ set -eu
 
 touch /mosquitto/data/passwords
 chmod 0600 /mosquitto/data/passwords
+chown mosquitto:mosquitto /mosquitto/data/passwords
 
 config=/mosquitto/config/mosquitto.conf
 certificate=/etc/letsencrypt/live/gernetix-services.com/fullchain.pem

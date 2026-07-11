@@ -21,6 +21,7 @@ test("external MQTT listener requires TLS and credentials", () => {
 test("broker starts internal listeners while the MQTT certificate is pending", () => {
   assert.match(entrypoint, /MQTT TLS certificate is not available/);
   assert.match(entrypoint, /awk '\/\^listener 8883/);
+  assert.match(entrypoint, /chown mosquitto:mosquitto \/mosquitto\/data\/passwords/);
 });
 
 test("device ACL is restricted by MQTT username", () => {
