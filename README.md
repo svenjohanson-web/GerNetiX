@@ -49,6 +49,7 @@ Startdokumente:
 - [Domaenen](docs/domains.md)
 - [Zielgruppen, Rollen, Berechtigungen und Initialdaten](docs/personas-roles-permissions.md)
 - [Entwicklungsprozess](docs/development-process.md)
+- [Prozess-Startuebersicht](docs/process-start-overview.md)
 - [Requirements Engineering](docs/requirements.md)
 - [Customer Journey](docs/customer-journey.md)
 - [Nachweis und Traceability](docs/traceability.md)
