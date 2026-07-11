@@ -39,7 +39,7 @@ docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls run --rm
   -d build.gernetix.com -d mqtt.gernetix.com
 
 echo "==> HTTPS-Nginx und automatische Zertifikatserneuerung starten"
-docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls up -d --wait --wait-timeout "$wait_timeout" nginx-tls certbot
+docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls up -d --wait --wait-timeout "$wait_timeout" --force-recreate nginx-tls mqtt-broker certbot
 
 echo "==> Edge- und Admin-Healthchecks"
 edge_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port nginx 8080 | sed 's/.*://')
