@@ -4,3 +4,5 @@ node_modules/
 .pio/
 *.log
 services/*/.runtime/
+.env.vps
+.env.staging.local

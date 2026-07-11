@@ -68,6 +68,16 @@ Compose legt benannte Volumes an:
 
 ## Update
 
+Bevorzugt von jedem eingerichteten Entwicklungsrechner:
+
+```text
+node tools/staging-deploy.js
+```
+
+Der plattformunabhaengige und fuer Codex vorgesehene Ablauf ist in [codex-staging-deployment.md](codex-staging-deployment.md) beschrieben.
+
+Manueller Fallback direkt auf dem VPS:
+
 ```bash
 git pull
 docker compose --env-file .env.vps -f compose.vps.yaml build
@@ -86,4 +96,3 @@ docker compose --env-file .env.vps -f compose.vps.yaml ps
 7. Mosquitto erst mit TLS, Credentials und Topic-ACLs extern veroeffentlichen.
 
 Deployment-Topologie: [vps-docker-topology.svg](vps-docker-topology.svg)
-

@@ -19,6 +19,15 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 - Vermeide wiederholte Startversuche mit verschiedenen Windows-Hintergrundmechanismen. Wenn ein Start fehlschlaegt, erst Fehlerursache/Log klaeren statt weitere Varianten zu probieren.
 - Halte den Nutzer kurz informiert, bevor ein laufender Prozess beendet oder neu gestartet wird.
 
+## Staging-Deployment von Mac, Windows und Linux
+
+- Lies bei einem ausdruecklichen Staging-, VPS- oder Server-Testauftrag zuerst `docs/codex-staging-deployment.md`.
+- Verwende fuer Staging ausschliesslich `node tools/staging-deploy.js`; der Ablauf ist auf macOS, Windows und Linux identisch.
+- Deploye nie aufgrund einer normalen lokalen Codeaenderung, sondern nur nach ausdruecklichem Auftrag.
+- Das Tool darf nur einen sauberen und bereits gepushten Commit deployen. Lokale Dateien oder SQLite-Daten werden nicht auf den VPS kopiert.
+- Staging-Volumes, `.env.vps` und Serverdaten bleiben erhalten. Keine `down -v`-, Volume-Loesch- oder Reset-Befehle verwenden.
+- Production-Deployments sind durch diese Arbeitsanweisung nicht autorisiert.
+
 ## Performance-Regel fuer Codex
 
 - Vor Aenderungen zuerst bestimmen, ob Code, UI, SQLite-Graph, Doku oder Runtime betroffen ist.
