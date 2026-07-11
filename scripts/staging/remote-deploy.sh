@@ -18,6 +18,7 @@ echo "==> Images bauen"
 docker compose --env-file "$env_file" -f compose.vps.yaml build
 
 echo "==> Staging aktualisieren und auf Healthchecks warten"
+docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --force-recreate mqtt-broker
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --wait --wait-timeout "$wait_timeout"
 
 echo "==> Nginx an aktuelle Upstreams und Bind-Mounts binden"

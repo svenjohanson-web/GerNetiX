@@ -42,4 +42,5 @@ test("compose and staging deploy manage HTTPS certificate lifecycle", () => {
   assert.match(deploy, /certonly --webroot/);
   assert.match(deploy, /--profile tls up -d/);
   assert.match(deploy, /--force-recreate nginx-tls mqtt-broker certbot/);
+  assert.match(deploy, /--no-deps --force-recreate mqtt-broker/);
 });
