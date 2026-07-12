@@ -6,6 +6,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     const assistantMode = cleanAssistantMode(body.assistantMode || body.assistant_mode);
     const functionMode = assistantMode === "function_clarification";
     const effectChainMode = assistantMode === "effect_chain_derivation";
+    const codeExplorerMode = assistantMode === "code_explorer";
     if (!userMessages.length) {
       sendJson(res, 400, { error: "missing_messages", message: "Mindestens eine Nachricht wird benoetigt." });
       return;
@@ -16,14 +17,14 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     }
     try {
       const project = requireProjectAccess ? await requireProjectAccess(session, projectId) : null;
-      if (project && !["development_project", "custom_project"].includes(project.area || project.type)) {
+      if (!codeExplorerMode && project && !["development_project", "custom_project"].includes(project.area || project.type)) {
         sendJson(res, 400, { error: "not_development_project", message: "Bitte ein eigenes Entwicklungsprojekt fuer den Architektur-Chat auswaehlen." });
         return;
       }
       const requestProfile = architectureRequestProfile(userMessages, { assistantMode });
-      const configuredRoute = routeConfig("architecture_discovery");
+      const configuredRoute = routeConfig(codeExplorerMode ? "code_generation" : "architecture_discovery");
       const activeConfig = configuredRoute;
-      const patternShortcut = architecturePatternShortcut(userMessages, { assistantMode });
+      const patternShortcut = codeExplorerMode ? null : architecturePatternShortcut(userMessages, { assistantMode });
       if (patternShortcut) {
         sendJson(res, 200, {
           config: config({ requestProfile, dialogControl: patternShortcut.intent }),
@@ -40,7 +41,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         });
         return;
       }
-      const localEdit = architectureLocalEdit(userMessages, body.architectureDiagram);
+      const localEdit = codeExplorerMode ? null : architectureLocalEdit(userMessages, body.architectureDiagram);
       if (localEdit) {
         sendJson(res, 200, {
           config: config({ requestProfile, localOperation: localEdit.operation }),
@@ -59,7 +60,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         });
         return;
       }
-      const contextAnswer = await architectureContextLookup(userMessages, aiContextJson);
+      const contextAnswer = codeExplorerMode ? null : await architectureContextLookup(userMessages, aiContextJson);
       if (contextAnswer) {
         sendJson(res, 200, {
           config: config({ requestProfile, contextSources: [contextAnswer.source] }),
@@ -77,15 +78,15 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         });
         return;
       }
-      const context = await architectureContext(session, activeConfig, projectId);
+      const context = codeExplorerMode ? { messages: [], sources: [] } : await architectureContext(session, activeConfig, projectId);
       const messages = [
-        { role: "system", content: await systemPrompt(session, requestProfile) },
+        { role: "system", content: codeExplorerMode ? await codeExplorerSystemPrompt(session, body.codeContext) : await systemPrompt(session, requestProfile) },
         ...(functionMode ? [{ role: "system", content: functionClarificationPrompt(body.architectureDiagram) }] : []),
         ...(effectChainMode ? [{ role: "system", content: effectChainPrompt(body.architectureDiagram) }] : []),
         ...context.messages,
         ...userMessages,
       ];
-      const usagePreflight = await preflightUsage(session, activeConfig, projectId, messages, effectChainMode ? "architecture_effect_chain_derivation" : functionMode ? "architecture_function_clarification" : "architecture_discovery");
+      const usagePreflight = await preflightUsage(session, activeConfig, projectId, messages, codeExplorerMode ? "code_explorer_assistance" : effectChainMode ? "architecture_effect_chain_derivation" : functionMode ? "architecture_function_clarification" : "architecture_discovery");
       if (usagePreflight && !usagePreflight.allowed) {
         sendJson(res, 402, {
           error: "ai_usage_rejected",
@@ -112,7 +113,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
           role: "assistant",
           content: assistantContent,
         },
-        architectureDiagram: buildArchitectureDiagram([...userMessages, { role: "assistant", content: assistantContent }], {
+        architectureDiagram: codeExplorerMode ? undefined : buildArchitectureDiagram([...userMessages, { role: "assistant", content: assistantContent }], {
           contextSources: context.sources,
           model: activeConfig.provider === "api" ? activeConfig.apiModel : activeConfig.ollamaModel,
           provider: activeConfig.provider,
@@ -246,6 +247,28 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       await promptFoundation("architecture_discovery"),
       `Aktueller Nutzer: ${projectServerUserId(session)}.`,
     ].join("\n");
+  }
+
+  async function codeExplorerSystemPrompt(session, rawContext = {}) {
+    const context = normalizeCodeContext(rawContext);
+    return [
+      await promptFoundation("general_chat"),
+      `Aktueller Nutzer: ${projectServerUserId(session)}.`,
+      "Rolle: Code-Explorer. Erklaere den vorhandenen Code verstaendlich und konkret. Veraendere oder erfinde keinen Code, wenn der Nutzer nicht ausdruecklich darum bittet.",
+      `Datei: ${context.path}`,
+      context.focusLines.length ? `Fokuszeilen: ${context.focusLines.join(", ")}` : "",
+      context.questions.length ? `Leitfragen des Schritts: ${context.questions.join(" | ")}` : "",
+      "Sichtbarer Code:\n```\n" + context.content + "\n```",
+    ].filter(Boolean).join("\n");
+  }
+
+  function normalizeCodeContext(value = {}) {
+    return {
+      path: String(value.path || "Projektquelle").trim().slice(0, 240),
+      content: String(value.content || "").slice(0, 24000),
+      focusLines: (Array.isArray(value.focusLines) ? value.focusLines : []).map(Number).filter((line) => line > 0).slice(0, 80),
+      questions: (Array.isArray(value.questions) ? value.questions : []).map((item) => String(item).trim().slice(0, 400)).filter(Boolean).slice(0, 12),
+    };
   }
 
   function functionClarificationPrompt(currentDiagram) {
@@ -1335,7 +1358,7 @@ function cleanProjectId(value) {
 
 function cleanAssistantMode(value) {
   const mode = String(value || "").trim();
-  return ["function_clarification", "effect_chain_derivation"].includes(mode) ? mode : "architecture_structure";
+  return ["function_clarification", "effect_chain_derivation", "code_explorer"].includes(mode) ? mode : "architecture_structure";
 }
 
 module.exports = { createDevelopmentAssistant, buildArchitectureDiagram, plantUmlFunctionCoverage };

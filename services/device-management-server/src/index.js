@@ -5,7 +5,7 @@ const { InMemoryDeviceManagementRepository } = require("./repositories/in-memory
 const { SqliteBackedDeviceManagementRepository } = require("./repositories/sqlite-backed-device-management-repository");
 const { DeviceManagementService } = require("./services/device-management-service");
 
-function createDefaultDeviceManagementServer(config = createConfig()) {
+function createDefaultDeviceManagementServer(config = createConfig({ DEVICE_MANAGEMENT_PERSISTENCE_BACKEND: "memory" })) {
   return new DeviceManagementService({
     repository: createRepository(config),
   });

@@ -728,6 +728,19 @@ button.danger:hover {
   gap: 12px;
   align-items: start;
 }
+.development-discovery-step {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-top: 4px;
+}
+.development-discovery-step span {
+  color: var(--muted);
+  font-size: 12px;
+}
+.development-discovery-step strong {
+  font-size: 14px;
+}
 .development-chat-panel {
   display: grid;
   grid-template-rows: auto minmax(320px, 42vh) auto auto;
@@ -735,13 +748,12 @@ button.danger:hover {
 }
 .development-project-header {
   display: grid;
-  grid-template-columns: minmax(160px, 0.65fr) minmax(220px, 1fr);
+  grid-template-columns: auto minmax(220px, 1fr) auto;
   gap: 10px;
-  align-items: start;
+  align-items: center;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--line);
 }
-.development-project-header > .development-project-summary,
 .development-project-header > .development-project-choice-panel,
 .development-project-header > .development-project-panel,
 .development-project-header > .development-project-form,
@@ -749,7 +761,7 @@ button.danger:hover {
   grid-column: 1 / -1;
 }
 .development-project-header > .development-project-actions {
-  grid-column: 1 / -1;
+  grid-column: auto;
 }
 .development-chat-messages {
   display: grid;
@@ -881,11 +893,13 @@ button.danger:hover {
   gap: 8px;
 }
 .development-project-summary {
-  display: grid;
-  gap: 4px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
   border: 1px solid var(--line);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 7px 10px;
   background: #fff;
 }
 .development-project-summary span {
@@ -894,6 +908,7 @@ button.danger:hover {
   font-weight: 700;
 }
 .development-project-summary strong {
+  min-width: 0;
   overflow-wrap: anywhere;
 }
 .development-project-summary small {
@@ -901,21 +916,21 @@ button.danger:hover {
   font-weight: 700;
 }
 .development-project-actions {
-  justify-content: stretch;
+  justify-content: flex-end;
 }
 .development-project-actions button {
-  flex: 1 1 140px;
+  flex: 0 0 auto;
 }
 .development-project-choice-panel {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
 }
 .development-project-choice {
   display: grid;
-  gap: 5px;
-  min-height: 116px;
-  padding: 14px;
+  gap: 3px;
+  min-height: 76px;
+  padding: 9px 10px;
   border: 1px solid var(--line);
   border-radius: 9px;
   background: #fff;
@@ -935,11 +950,12 @@ button.danger:hover {
   letter-spacing: .04em;
 }
 .development-project-choice strong {
-  font-size: 16px;
+  font-size: 14px;
 }
 .development-project-choice small {
   color: var(--muted);
-  line-height: 1.4;
+  font-size: 11px;
+  line-height: 1.3;
 }
 .development-page-actions {
   justify-content: flex-end;
@@ -1174,6 +1190,46 @@ textarea:read-only {
 .guided-artifact-pane,
 .guided-summary-pane {
   min-width: 0;
+}
+.code-explorer-chat {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+}
+.code-explorer-chat-head {
+  display: grid;
+  gap: 2px;
+}
+.code-explorer-chat-messages {
+  display: grid;
+  gap: 8px;
+  max-height: 260px;
+  overflow: auto;
+}
+.code-explorer-chat-message {
+  padding: 8px 10px;
+  border-radius: 7px;
+  background: var(--soft);
+}
+.code-explorer-chat-message.user {
+  background: #eff6ff;
+}
+.code-explorer-chat-message span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 700;
+}
+.code-explorer-chat-message p {
+  margin: 3px 0 0;
+  white-space: pre-wrap;
+}
+.code-explorer-chat form,
+.code-explorer-chat label {
+  display: grid;
+  gap: 6px;
 }
 .guided-summary-pane {
   display: grid;
@@ -1598,8 +1654,54 @@ textarea:read-only {
   color: var(--accent);
   font-weight: 700;
 }
-.inventory-layout { display: grid; grid-template-columns: minmax(340px, 460px) minmax(0, 1fr); gap: 12px; align-items: start; }
-.inventory-tools, .device-list, .build-list, .discovery-list { display: grid; gap: 10px; }
+.inventory-layout { display: grid; gap: 14px; align-items: start; }
+.inventory-tools { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.device-list, .build-list, .discovery-list { display: grid; gap: 10px; }
+.inventory-overview { padding: 16px; }
+.inventory-overview-head { margin-bottom: 14px; }
+.inventory-count {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 5px 10px;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 800;
+}
+.provisioning-intro { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(420px, 1.2fr); gap: 18px; align-items: center; margin-bottom: 12px; }
+.provisioning-intro .helper-text { margin-bottom: 0; }
+.provisioning-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin: 0; padding: 0; list-style: none; }
+.provisioning-steps li { display: grid; justify-items: center; gap: 6px; border: 1px solid var(--line); border-radius: 8px; padding: 10px 6px; color: var(--muted); font-size: 12px; font-weight: 700; text-align: center; }
+.provisioning-steps span { display: inline-grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; background: var(--soft); color: var(--accent); font-weight: 800; }
+.provisioning-tools { margin-bottom: 14px; }
+.recovery-intro { margin-bottom: 12px; }
+.recovery-intro .helper-text { margin-bottom: 0; }
+.device-list { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.device-list .device-row { display: block; min-width: 0; padding: 16px; }
+.device-card-main { display: grid; gap: 14px; }
+.device-card-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; }
+.device-card-title p { margin: 4px 0 0; font-size: 13px; }
+.device-status-pill {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+}
+.device-status-pill.is-online { border-color: #10b981; background: #064e3b; color: #a7f3d0; }
+.device-status-pill.is-offline { border-color: #ef4444; background: #450a0a; color: #fecaca; }
+.device-status-pill.is-unknown { border-color: #64748b; background: #1e293b; color: #cbd5e1; }
+.device-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.device-facts div { min-width: 0; border: 1px solid var(--line); border-radius: 7px; padding: 9px; }
+.device-facts dt { color: var(--muted); font-size: 11px; }
+.device-facts dd { margin: 3px 0 0; font-size: 13px; font-weight: 750; overflow-wrap: anywhere; }
+.device-technical { border-top: 1px solid var(--line); padding-top: 10px; }
+.device-technical summary { width: fit-content; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 700; }
+.device-card-actions { display: flex; justify-content: flex-end; }
+.subtle-danger { padding: 7px 10px; font-size: 12px; }
+.inventory-empty { display: grid; gap: 5px; border: 1px dashed var(--line); border-radius: 8px; padding: 18px; color: var(--muted); }
+.inventory-empty strong { color: var(--text); }
 .recovery-layout {
   display: grid;
   grid-template-columns: minmax(300px, 380px) minmax(0, 1fr);
@@ -1712,10 +1814,16 @@ textarea:read-only {
 @media (max-width: 1100px) {
   .discovery-row { grid-template-columns: 26px minmax(0, 1fr); }
   .discovery-row .meta-list { grid-column: 2; }
+  .development-project-choice-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 @media (max-width: 900px) {
   .dashboard-grid, .lesson-panel, .ide-layout, .development-platform-layout, .inventory-layout, .recovery-layout, .device-row, .build-row, .discovery-row { grid-template-columns: 1fr; }
+  .inventory-tools, .device-facts, .provisioning-intro { grid-template-columns: 1fr; }
+  .provisioning-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .development-project-header, .development-project-choice-panel { grid-template-columns: 1fr; }
+  .development-project-header > .development-project-actions { grid-column: 1; justify-content: flex-start; }
+  .development-project-summary { align-items: flex-start; flex-direction: column; }
   .development-quick-prompts { grid-template-columns: 1fr; }
   .discovery-row { grid-template-columns: 26px minmax(0, 1fr); }
   .discovery-row .meta-list { grid-column: 2; }

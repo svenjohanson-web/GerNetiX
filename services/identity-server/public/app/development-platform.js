@@ -160,8 +160,16 @@ const DevelopmentPlatform = (() => {
       const projects = developmentProjects();
       const storedProjectId = readStoredActiveProjectId();
       const storedProjectExists = projects.some((project) => project.id === storedProjectId);
-      const activeProject = currentProject();
+      let activeProject = currentProject();
       const lastProject = storedProjectExists ? projects.find((project) => project.id === storedProjectId) : null;
+      if (!activeProject && lastProject) {
+        state.developmentPlatform.activeProjectId = lastProject.id;
+        state.developmentPlatform.projectPanelMode = "closed";
+        activeProject = lastProject;
+        if (!state.developmentPlatform.architectureDiagram) {
+          state.developmentPlatform.architectureDiagram = architectureDiagramForProject(lastProject);
+        }
+      }
       document.querySelector("#developmentProjectName").textContent = activeProject?.name || "Kein Projekt geoeffnet";
       document.querySelector("#developmentAssistantMode").textContent = assistantModeLabel();
       document.querySelector("#developmentProjectChoicePanel").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "choice");

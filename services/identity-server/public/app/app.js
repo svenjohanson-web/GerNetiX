@@ -23,6 +23,7 @@ const state = {
   inventoryEsp32Method: "",
   activeStep: 0,
   activeIdeStep: 0,
+  guidedCodeChats: {},
   sourcePath: "src/main.cpp",
   projectSourcesByProjectId: {},
   ideViewMode: "model",
@@ -237,7 +238,7 @@ function renderRoute() {
     renderDeviceRecovery();
     refreshUsbPorts(false);
   }
-  if (route === "device-inventory") loadDevicePageTools();
+  if (route === "device-provisioning") loadDevicePageTools();
 }
 
 function renderBreadcrumb(route) {
@@ -1213,28 +1214,60 @@ function setDiscoveryStatus(kind, text) {
 }
 
 function renderDevices() {
-  document.querySelector("#deviceList").innerHTML = state.devices.map((device) => `
+  const count = document.querySelector("#inventoryDeviceCount");
+  count.textContent = `${state.devices.length} ${state.devices.length === 1 ? "Board" : "Boards"}`;
+  document.querySelector("#deviceList").innerHTML = state.devices.length ? state.devices.map((device) => `
     <article class="device-row">
-      <div>
-        <h3>${escapeHtml(device.display_name)}</h3>
-        <p>${escapeHtml(device.hardware_profile_id)}</p>
-        <div class="card-actions">
-          <button class="danger" type="button" data-remove-device="${escapeHtml(device.account_device_id)}">Aus Inventar entfernen</button>
+      <div class="device-card-main">
+        <div class="device-card-title">
+          <div>
+            <h3>${escapeHtml(device.display_name)}</h3>
+            <p>${escapeHtml(device.build_target_label || "ESP32-Board")}</p>
+          </div>
+          <span class="device-status-pill ${deviceStatusClass(device.connectivity_status)}">${escapeHtml(deviceConnectivityLabel(device.connectivity_status))}</span>
+        </div>
+        <dl class="device-facts">
+          <div><dt>Gerätestatus</dt><dd>${escapeHtml(deviceAuthenticityLabel(device.authenticity_status))}</dd></div>
+          <div><dt>Firmware-Update</dt><dd>${escapeHtml(deviceOtaLabel(device.ota_status))}</dd></div>
+          <div><dt>USB</dt><dd>${escapeHtml(device.usb_flash_supported ? usbFlashLabel(device) : "Nicht eingerichtet")}</dd></div>
+        </dl>
+        <details class="device-technical">
+          <summary>Technische Details</summary>
+          <dl class="meta-list compact">
+            ${meta("Device-ID", device.device_id)}
+            ${meta("Hardwareprofil", device.hardware_profile_id)}
+            ${meta("Node-Name", device.node_name || "nicht gesetzt")}
+          </dl>
+        </details>
+        <div class="device-card-actions">
+          <button class="danger subtle-danger" type="button" data-unpair-device="${escapeHtml(device.account_device_id)}">Zuordnung aufheben</button>
         </div>
       </div>
-      <dl class="meta-list">
-        ${meta("authenticity_status", device.authenticity_status)}
-        ${meta("connectivity_status", device.connectivity_status)}
-        ${meta("ota_status", device.ota_status)}
-        ${meta("node_name", device.node_name || "nicht gesetzt")}
-        ${meta("usb_flash", device.usb_flash_supported ? usbFlashLabel(device) : "nicht konfiguriert")}
-        ${meta("board_profile", device.build_target_label || "kein Boardprofil")}
-      </dl>
     </article>
-  `).join("");
-  document.querySelectorAll("[data-remove-device]").forEach((button) => {
-    button.addEventListener("click", () => removeInventoryDevice(button.dataset.removeDevice));
+  `).join("") : `<div class="inventory-empty"><strong>Noch keine Boards registriert</strong><span>Öffne „Neues Board hinzufügen“, um ein Gerät zu suchen oder manuell zu erfassen.</span></div>`;
+  document.querySelectorAll("[data-unpair-device]").forEach((button) => {
+    button.addEventListener("click", () => unpairInventoryDevice(button.dataset.unpairDevice));
   });
+}
+
+function deviceConnectivityLabel(status) {
+  return ({ online: "Online", offline: "Offline", usb_connected: "USB verbunden", unknown: "Status unbekannt" })[status] || "Status unbekannt";
+}
+
+function deviceStatusClass(status) {
+  return status === "online" || status === "usb_connected" ? "is-online" : status === "offline" ? "is-offline" : "is-unknown";
+}
+
+function deviceAuthenticityLabel(status) {
+  return ({
+    gernetix_verified: "Von GerNetiX bestätigt",
+    gernetix_verified_pending_proof: "Bestätigung ausstehend",
+    community_unverified: "Nicht bestätigt",
+  })[status] || "Unbekannt";
+}
+
+function deviceOtaLabel(status) {
+  return ({ ready: "Bereit", updating: "Update läuft", blocked: "Nicht verfügbar", unknown: "Noch nicht geprüft" })[status] || "Noch nicht geprüft";
 }
 
 function renderDeviceInventoryForm() {
@@ -1265,12 +1298,12 @@ async function createInventoryDevice(event) {
   return deviceOnboarding().createInventoryDevice(event);
 }
 
-async function removeInventoryDevice(accountDeviceId) {
+async function unpairInventoryDevice(accountDeviceId) {
   const device = state.devices.find((item) => item.account_device_id === accountDeviceId);
   if (!device) return;
-  const confirmed = window.confirm(`${device.display_name} aus deinem Inventar entfernen? Das physische Device wird nicht geloescht.`);
+  const confirmed = window.confirm(`Zuordnung von ${device.display_name} zu diesem Account aufheben? Das registrierte physische Device und seine Provisionierung bleiben erhalten.`);
   if (!confirmed) return;
-  setInventoryStatus("running", `${device.display_name} wird aus dem Inventar entfernt...`);
+  setInventoryStatus("running", `Account-Zuordnung von ${device.display_name} wird aufgehoben...`);
   try {
     await deleteJson(`/api/platform/devices/${encodeURIComponent(accountDeviceId)}`);
     state.devices = state.devices.filter((item) => item.account_device_id !== accountDeviceId);
@@ -1280,7 +1313,7 @@ async function removeInventoryDevice(accountDeviceId) {
     renderIdeShell();
     renderDevices();
     renderDashboard();
-    setInventoryStatus("ok", `${device.display_name} wurde aus deinem Inventar entfernt.`);
+    setInventoryStatus("ok", `${device.display_name} ist nicht mehr mit diesem Account gekoppelt.`);
   } catch (error) {
     setInventoryStatus("error", error.message);
   }

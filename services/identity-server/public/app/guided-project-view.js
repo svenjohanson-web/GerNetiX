@@ -46,6 +46,7 @@ const GuidedProjectView = (() => {
               <aside class="guided-summary-pane">
                 ${renderManifestView(activeView, validation)}
                 ${renderGuidedValidation(activeView, validation)}
+                ${renderCodeExplorerChat(project, activeView)}
                 ${renderGuidedActions(project, activeView, validation)}
               </aside>
             </div>
@@ -61,7 +62,83 @@ const GuidedProjectView = (() => {
       target.querySelectorAll("[data-guided-control]").forEach((button) => {
         button.addEventListener("click", () => handleGuidedControl(project, activeView, button.dataset.guidedControl));
       });
+      target.querySelector("[data-code-explorer-chat]")?.addEventListener("submit", (event) => submitCodeExplorerChat(event, project, activeView));
       renderGuidedPlantUml(target);
+    }
+
+    function codeChatKey(project, view) {
+      return `${project.id}:${view.id || state.activeIdeStep}`;
+    }
+
+    function codeChatMessages(project, view) {
+      const key = codeChatKey(project, view);
+      if (!Array.isArray(state.guidedCodeChats[key])) state.guidedCodeChats[key] = [];
+      return state.guidedCodeChats[key];
+    }
+
+    function isCodeExplorerView(view) {
+      return view?.type === "source_analysis" || view?.payload?.artifact?.type === "code";
+    }
+
+    function renderCodeExplorerChat(project, view) {
+      if (!isCodeExplorerView(view)) return "";
+      const messages = codeChatMessages(project, view);
+      return `
+        <section class="code-explorer-chat">
+          <div class="code-explorer-chat-head">
+            <p class="eyebrow">KI-Chat</p>
+            <strong>Code gemeinsam verstehen</strong>
+          </div>
+          <div class="code-explorer-chat-messages" aria-live="polite">
+            ${messages.length ? messages.map((message) => `
+              <article class="code-explorer-chat-message ${message.role}">
+                <span>${message.role === "assistant" ? "KI" : "Du"}</span>
+                <p>${escapeHtml(message.content)}</p>
+              </article>
+            `).join("") : `<p class="helper-text">Frage die KI zum sichtbaren Code, zu einzelnen Zeilen oder zum Verhalten.</p>`}
+          </div>
+          <form data-code-explorer-chat>
+            <label>Frage zum Code
+              <textarea rows="3" name="message" placeholder="Was passiert in dieser Funktion?"></textarea>
+            </label>
+            <div class="button-row">
+              <span class="chat-status" data-code-chat-status>Bereit.</span>
+              <button class="primary" type="submit">Fragen</button>
+            </div>
+          </form>
+        </section>
+      `;
+    }
+
+    async function submitCodeExplorerChat(event, project, view) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const input = form.elements.message;
+      const content = String(input.value || "").trim();
+      if (!content) return;
+      const messages = codeChatMessages(project, view);
+      messages.push({ role: "user", content });
+      input.value = "";
+      form.querySelector("button").disabled = true;
+      form.querySelector("[data-code-chat-status]").textContent = "KI analysiert den Code...";
+      try {
+        const artifact = view.payload?.artifact || {};
+        const response = await postJson("/api/platform/development-assistant/chat", {
+          projectId: project.id,
+          assistantMode: "code_explorer",
+          messages,
+          codeContext: {
+            path: view.source_path || state.sourcePath || "Projektquelle",
+            content: artifact.content || document.querySelector("#sourceEditor")?.value || "",
+            focusLines: view.source_lines || view.editable_lines || [],
+            questions: view.payload?.questions || [],
+          },
+        });
+        messages.push({ role: "assistant", content: response.message?.content || "Keine Antwort erhalten." });
+      } catch (error) {
+        messages.push({ role: "assistant", content: `Der Code-Assistent ist gerade nicht erreichbar: ${error.message}` });
+      }
+      renderProjectViewManifest(project);
     }
 
     function renderGuidedArtifact(view) {

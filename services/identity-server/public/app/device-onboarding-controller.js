@@ -116,7 +116,7 @@ const DeviceOnboardingController = (() => {
         if (result.detected) {
           document.querySelector("#inventoryDisplayName").value = "Mein Arduino Nano";
           document.querySelector("#inventoryConnectivityStatus").value = "usb_connected";
-          setInventoryStatus("ok", "Nano-Bootloader experimentell erkannt. Seriennummer bitte eintragen, dann manuell inventarisieren.");
+          setInventoryStatus("ok", "Nano-Bootloader experimentell erkannt. Seriennummer bitte eintragen, dann manuell registrieren und pairen.");
           setDiscoveryStatus("ok", `STK500v1-Bootloader hat bei ${result.baudRate} Baud geantwortet. Das Board wurde nicht geflasht.`);
         } else {
           setDiscoveryStatus("error", "Kein STK500v1-Bootloader erkannt. Das kann an falschem Board, Reset-Timing, Treiber oder anderer Bootloader-Variante liegen.");
@@ -310,7 +310,7 @@ const DeviceOnboardingController = (() => {
               ${result.detected ? "Experimentell erkannt" : "Experimentell nicht erkannt"}
             </strong>
             <p class="helper-text">${result.detected
-              ? "Der Browser konnte den STK500v1-Handshake lesen. Bitte Seriennummer eintragen und das Board manuell inventarisieren."
+              ? "Der Browser konnte den STK500v1-Handshake lesen. Bitte Seriennummer eintragen und das Board manuell registrieren und pairen."
               : "Nicht jedes Nano-kompatible Board antwortet mit dieser Variante. Treiber, Reset-Timing und Bootloader koennen abweichen."}</p>
           </div>
           <dl class="meta-list">
@@ -326,7 +326,7 @@ const DeviceOnboardingController = (() => {
 
     function inventoryTypeHintText() {
       const board = selectedInventoryBoard();
-      if (!board) return "WLAN sucht nach erreichbaren gernetix-* Nodes. USB sucht nach bekannten USB-Serial-/Board-Strings. Die Board-Auswahl ist nur fuer manuelle Inventarisierung oder als Fallback noetig.";
+      if (!board) return "WLAN sucht nach erreichbaren gernetix-* Nodes. USB sucht nach bekannten USB-Serial-/Board-Strings. Die Board-Auswahl ist nur fuer manuelles Provisioning oder als Fallback noetig.";
       const family = selectedInventoryHardwareFamily();
       const modelHint = model.inventoryHint(board);
       if (family === "esp32" || family === "esp8266") {
@@ -356,7 +356,7 @@ const DeviceOnboardingController = (() => {
     async function claimDiscoveredDevice(discoveryId) {
       const discovered = state.discoveredDevices.find((item) => item.discovery_id === discoveryId);
       if (!discovered) return;
-      setDiscoveryStatus("running", `${discovered.display_name || discovered.serial_number} wird ins Inventar uebernommen...`);
+      setDiscoveryStatus("running", `${discovered.display_name || discovered.serial_number} wird registriert und mit deinem Account verbunden...`);
       try {
         const device = await postJson("/api/platform/devices/from-discovery", withOnboardingIdentity(discovered));
         state.devices = state.devices.filter((item) => item.account_device_id !== device.account_device_id).concat(device);
@@ -366,7 +366,7 @@ const DeviceOnboardingController = (() => {
         renderNetworkDiscovery();
         renderDevices();
         renderDashboard();
-        setDiscoveryStatus("ok", `${device.display_name} wurde deinem Inventar hinzugefuegt.`);
+        setDiscoveryStatus("ok", `${device.display_name} wurde provisioniert und mit deinem Account verbunden.`);
       } catch (error) {
         setDiscoveryStatus("error", error.message);
       }
@@ -383,7 +383,7 @@ const DeviceOnboardingController = (() => {
         updateClaimSelectedButton();
         return;
       }
-      setDiscoveryStatus("running", `${selected.length} Board${selected.length === 1 ? " wird" : "s werden"} ins Inventar uebernommen...`);
+      setDiscoveryStatus("running", `${selected.length} Board${selected.length === 1 ? " wird" : "s werden"} registriert und gepairt...`);
       const claimed = [];
       try {
         for (const discovered of selected) {
@@ -399,7 +399,7 @@ const DeviceOnboardingController = (() => {
         renderNetworkDiscovery();
         renderDevices();
         renderDashboard();
-        setDiscoveryStatus("ok", `${claimed.length} Board${claimed.length === 1 ? "" : "s"} wurde${claimed.length === 1 ? "" : "n"} deinem Inventar hinzugefuegt.`);
+        setDiscoveryStatus("ok", `${claimed.length} Board${claimed.length === 1 ? "" : "s"} wurde${claimed.length === 1 ? "" : "n"} provisioniert und mit deinem Account verbunden.`);
       } catch (error) {
         renderNetworkDiscovery();
         setDiscoveryStatus("error", error.message);
@@ -431,7 +431,7 @@ const DeviceOnboardingController = (() => {
       button.disabled = count === 0;
       button.textContent = count
         ? `${count} ausgewaehlte${count === 1 ? "s" : ""} Board${count === 1 ? "" : "s"} uebernehmen`
-        : "Ausgewaehlte ins Inventar uebernehmen";
+        : "Provisionieren und mit Account verbinden";
     }
 
     function canClaimDiscoveredDevice(device) {
@@ -450,10 +450,10 @@ const DeviceOnboardingController = (() => {
     }
 
     function esp32TreatmentText(device) {
-      if (device.esp32_inventory_state === "node_online") return "Kann nach Kontopruefung ins Inventar uebernommen werden.";
-      if (device.esp32_inventory_state === "basissoftware_setup_ap") return "Nicht im normalen Inventarisierungsfluss verwenden, weil der Setup-AP die Backend-Verbindung trennt. Per USB oder Provisioning ins Kunden-WLAN bringen.";
-      if (device.esp32_inventory_state === "bootloader_only") return "Kann ins Inventar uebernommen werden; Basissoftware danach per Browser-Web-Serial/USB flashen.";
-      return "Zustand pruefen, bevor das Board inventarisiert wird.";
+      if (device.esp32_inventory_state === "node_online") return "Kann nach Kontopruefung registriert und gepairt werden.";
+      if (device.esp32_inventory_state === "basissoftware_setup_ap") return "Per USB provisionieren, weil der Setup-AP die Backend-Verbindung trennt.";
+      if (device.esp32_inventory_state === "bootloader_only") return "Basissoftware per Browser-Web-Serial/USB flashen und danach registrieren.";
+      return "Zustand pruefen, bevor das Board provisioniert wird.";
     }
 
     function renderDeviceInventoryForm() {
@@ -517,7 +517,7 @@ const DeviceOnboardingController = (() => {
       const actions = model.allowedActions(board);
       setDiscoveryStatus("running", actions.wifiDiscovery || actions.usbIdentification
         ? `${board?.title || "ProcessorBoard"} gewaehlt. Waehle jetzt einen passenden Erkennungsweg.`
-        : "Bereit fuer manuelle Board-Inventarisierung.");
+        : "Bereit fuer manuelle Registrierung und Pairing.");
     }
 
     function syncInventoryCapabilities() {
@@ -636,7 +636,7 @@ const DeviceOnboardingController = (() => {
         setInventoryStatus("error", "Bitte zuerst ein ProcessorBoard aus dem Hardware-Katalog waehlen.");
         return;
       }
-      setInventoryStatus("running", "Geraet wird dem Account-Inventar hinzugefuegt...");
+      setInventoryStatus("running", "Gerät wird registriert und mit dem Account gepairt...");
       const shortName = model.normalizeShortName(document.querySelector("#inventoryBoardShortName").value);
       const nodeName = model.nodeName(shortName || document.querySelector("#inventoryDisplayName").value);
       try {
@@ -653,7 +653,7 @@ const DeviceOnboardingController = (() => {
         state.activeDeviceId = device.device_id;
         renderIdeShell();
         renderDevices();
-        setInventoryStatus("ok", `${device.display_name} wurde inventarisiert.`);
+        setInventoryStatus("ok", `${device.display_name} wurde registriert und mit deinem Account verbunden.`);
         document.querySelector("#inventorySerialNumber").value = "";
       } catch (error) {
         setInventoryStatus("error", error.message);

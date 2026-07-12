@@ -85,6 +85,8 @@ Beim Start initialisiert die Basissoftware WiFi im SoftAP-Modus. Nach dem Flashe
 GerNetiX-Setup
 ```
 
+Nach einem Abbruch der Station-Verbindung verbindet sich die Basissoftware dauerhaft erneut. Die Pausen steigen von 1, 2, 5, 10 und 30 Sekunden bis maximal 60 Sekunden; nach erfolgreicher IP-Zuweisung beginnt ein spaeterer Reconnect wieder bei 1 Sekunde. Ein kurzzeitiger Router-, Funk- oder DHCP-Ausfall erfordert dadurch keinen Board-Reset.
+
 Nach dem Verbinden mit diesem Netzwerk ist das lokale Device-Webinterface unter der Standard-AP-Adresse erreichbar:
 
 ```text
