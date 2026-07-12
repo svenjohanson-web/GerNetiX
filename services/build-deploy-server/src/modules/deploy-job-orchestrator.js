@@ -61,14 +61,15 @@ class DeployJobOrchestrator {
     const firmwareUrl = /^https:\/\//.test(firmware.download_url)
       ? firmware.download_url
       : `${this.publicBaseUrl}${firmware.download_url.startsWith("/") ? "" : "/"}${firmware.download_url}`;
-    const canonical = `${deployId}\n${sequence}\n${deploy.device_id}\n${firmwareUrl}\n${firmware.sha256}`;
+    const deviceFirmwareSha256 = firmware.esp_image_sha256 || firmware.sha256;
+    const canonical = `${deployId}\n${sequence}\n${deploy.device_id}\n${firmwareUrl}\n${deviceFirmwareSha256}`;
     const authorization = await this.authorizationSigner.sign({ deviceId: deploy.device_id, canonical });
     const topic = `gernetix/devices/${deploy.device_id}/ota`;
     const command = {
       deploy_id: deployId,
       sequence,
       firmware_url: firmwareUrl,
-      sha256: firmware.sha256,
+      sha256: deviceFirmwareSha256,
       authorization,
     };
     await this.acknowledgementStore.record({
@@ -95,7 +96,8 @@ class DeployJobOrchestrator {
       sequence,
       topic,
       firmware_url: firmwareUrl,
-      firmware_sha256: firmware.sha256,
+      firmware_sha256: deviceFirmwareSha256,
+      artifact_sha256: firmware.sha256,
       firmware_size_bytes: firmware.size_bytes,
       log: "Signierter OTA-Auftrag wurde über MQTT veröffentlicht; Gerätebestätigung steht aus.",
     };

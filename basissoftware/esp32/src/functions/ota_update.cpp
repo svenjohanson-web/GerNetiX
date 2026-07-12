@@ -227,7 +227,12 @@ void otaTask(void *argument) {
   }
   char digestHex[65] = {};
   bytesToHex(digest, sizeof(digest), digestHex, sizeof(digestHex));
-  if (!constantTimeEqual(digestHex, command.expectedSha256)) {
+  unsigned char espImageDigest[32] = {};
+  char espImageDigestHex[65] = {};
+  if (!constantTimeEqual(digestHex, command.expectedSha256) &&
+      (esp_partition_get_sha256(targetPartition, espImageDigest) != ESP_OK ||
+       (bytesToHex(espImageDigest, sizeof(espImageDigest), espImageDigestHex, sizeof(espImageDigestHex)),
+        !constantTimeEqual(espImageDigestHex, command.expectedSha256)))) {
     failUpdate(handle, command, "sha256_mismatch");
     vTaskDelete(nullptr);
     return;

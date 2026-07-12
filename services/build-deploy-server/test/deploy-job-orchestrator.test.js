@@ -42,3 +42,20 @@ test("signs, publishes and records an authorized OTA deploy", async () => {
   assert.equal(JSON.parse(published[0][1]).deploy_id, "deploy_job-123");
   assert.deepEqual(acknowledgements.map((item) => item.status), ["publishing", "published"]);
 });
+
+test("uses the embedded ESP image digest for compatibility while retaining the artifact hash", async () => {
+  const published = [];
+  const orchestrator = new DeployJobOrchestrator({
+    publicBaseUrl: "https://build.gernetix.com",
+    mqttPublisher: { publish: async (topic, payload) => published.push({ topic, command: JSON.parse(payload) }) },
+    authorizationSigner: { sign: async () => "a".repeat(64) },
+    acknowledgementStore: { record: async () => {}, get: () => null },
+  });
+  const result = await orchestrator.maybeCreateDeploy(
+    { job_id: "job-compat", mode: "build_and_flash", device_id: "device-1", deploy: { requested: true, authorized: true, device_id: "device-1" } },
+    { primary_firmware: { download_url: "https://build.gernetix.com/artifacts/job-compat/firmware.bin", sha256: "b".repeat(64), esp_image_sha256: "c".repeat(64), size_bytes: 123 } },
+  );
+  assert.equal(published[0].command.sha256, "c".repeat(64));
+  assert.equal(result.firmware_sha256, "c".repeat(64));
+  assert.equal(result.artifact_sha256, "b".repeat(64));
+});
