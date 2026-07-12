@@ -34,6 +34,9 @@ services:
 
   build-deploy-server:
     <<: *node-service
+    networks:
+      - edge
+      - backend
     environment:
       GERNETIX_SERVICE: build-deploy-server
       HOST: 0.0.0.0
