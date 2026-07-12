@@ -26,7 +26,7 @@ const state = {
   guidedCodeChats: {},
   sourcePath: "src/main.cpp",
   projectSourcesByProjectId: {},
-  ideViewMode: "model",
+  ideViewMode: "file",
   developmentPlatform: null,
   esptoolModule: null,
   activeSerialTransport: null,
@@ -75,7 +75,9 @@ function guidedProjectView() {
   if (!guidedProjectViewController) {
     guidedProjectViewController = GuidedProjectView.create({
       state,
+      getJson,
       postJson,
+      putJson,
       progressFor,
       escapeHtml,
       escapeAttribute,
@@ -131,7 +133,6 @@ document.querySelector("#platformBreadcrumb").addEventListener("click", (event) 
 document.querySelectorAll("[data-device-management-route]").forEach((button) => {
   button.addEventListener("click", () => navigate(button.dataset.deviceManagementRoute));
 });
-document.querySelector("#ideProjectSelect").addEventListener("change", () => openProjectInIde(document.querySelector("#ideProjectSelect").value));
 document.querySelector("#ideProjectBrowser").addEventListener("click", (event) => {
   const realizationsButton = event.target.closest("[data-project-realizations]");
   if (realizationsButton) {
@@ -141,20 +142,22 @@ document.querySelector("#ideProjectBrowser").addEventListener("click", (event) =
   const button = event.target.closest("[data-source-path]");
   if (button) openIdeSource(button.dataset.sourcePath);
 });
-document.querySelectorAll("[data-ide-view-mode]").forEach((button) => {
-  button.addEventListener("click", () => setIdeViewMode(button.dataset.ideViewMode));
-});
 document.querySelector("#ideDeviceSelect").addEventListener("change", () => {
   state.activeDeviceId = document.querySelector("#ideDeviceSelect").value;
   syncSelectedDevicePort();
   loadIdeProject();
 });
 document.querySelector("#refreshUsbPortsButton").addEventListener("click", refreshUsbPorts);
-document.querySelector("#saveSourceButton").addEventListener("click", saveSource);
 document.querySelector("#buildButton").addEventListener("click", startBuild);
 document.querySelector("#usbFlashButton").addEventListener("click", startUsbFlash);
 document.querySelector("#otaFlashButton").addEventListener("click", startOtaFlash);
 document.querySelector("#clearIdeTerminalButton").addEventListener("click", clearIdeTerminal);
+document.addEventListener("keydown", (event) => {
+  if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s") return;
+  if (document.querySelector("#ideView")?.classList.contains("hidden") || !state.activeProjectId) return;
+  event.preventDefault();
+  saveSource();
+});
 document.querySelector("#ideRealizationView").addEventListener("click", (event) => {
   const button = event.target.closest("[data-allocate-component]");
   if (button) allocateIdeDevice(button.dataset.allocateComponent);
@@ -480,9 +483,6 @@ function learningProjectFilter(project, progress) {
 }
 
 function renderIdeShell() {
-  document.querySelector("#ideProjectSelect").innerHTML = state.projects.map((project) => `
-    <option value="${escapeHtml(project.id)}">${escapeHtml(project.name)}</option>
-  `).join("");
   document.querySelector("#ideDeviceSelect").innerHTML = state.devices.map((device) => `
     <option value="${escapeHtml(device.device_id)}">${escapeHtml(device.display_name)}${device.usb_flash_supported ? ` - ${device.build_target_label || "USB"}` : ""}</option>
   `).join("");
@@ -510,11 +510,9 @@ async function loadIdeProject() {
   if (projectNeedsHardwareTools(project)) await refreshUsbPorts(false);
   document.querySelector("#ideEmptyState").classList.add("hidden");
   document.querySelector("#ideLayout").classList.remove("hidden");
-  document.querySelector("#ideToolbar").classList.remove("hidden");
   const sources = await loadProjectSources(project);
   state.sourcePath = selectedIdeSourcePath(project, sources);
   state.activeIdeStep = Math.min(progressFor(project.id).currentStep || 0, Math.max(0, guidedViews(project).length - 1));
-  document.querySelector("#ideProjectSelect").value = projectId;
   updateIdeProjectTools(project);
   renderIdeDeviceAllocation(project);
   renderIdeProjectBrowser(project, sources);
@@ -553,7 +551,6 @@ async function loadIdeProject() {
 function renderIdeEmptyState() {
   document.querySelector("#ideEmptyState").classList.remove("hidden");
   document.querySelector("#ideLayout").classList.add("hidden");
-  document.querySelector("#ideToolbar").classList.add("hidden");
   document.querySelector("#ideProjectTitle").textContent = "";
   document.querySelector("#ideProjectBrowserTitle").textContent = "Projekt";
   document.querySelector("#ideProjectBrowser").innerHTML = "";
@@ -568,8 +565,6 @@ function renderIdeEmptyState() {
 function updateIdeProjectTools(project) {
   const hardwareTools = projectNeedsHardwareTools(project);
   const sourceEditing = projectNeedsSourceEditing(project);
-  document.querySelector("#ideCurrentProjectLabel").textContent = project ? `Projekt: ${project.name}` : "";
-  document.querySelector("#ideProjectSelect").classList.add("hidden");
   document.querySelector("#ideDeviceTools").classList.toggle("hidden", !hardwareTools);
   const allocated = allocatedIdeDevice(project);
   const actionReason = ideActionUnavailableReason(project, allocated);
@@ -585,11 +580,7 @@ function updateIdeProjectTools(project) {
   otaButton.title = actionReason || (allocated?.ota_status !== "ready" ? `Das zugeordnete Device meldet den OTA-Status ${allocated?.ota_status || "unknown"}.` : "");
   actionReasonNode.textContent = actionReason;
   actionReasonNode.classList.toggle("hidden", !actionReason);
-  document.querySelector("#saveSourceButton").classList.toggle("hidden", !sourceEditing);
   document.querySelector("#sourceEditor").readOnly = !sourceEditing;
-  document.querySelectorAll("[data-ide-view-mode]").forEach((button) => {
-    button.classList.toggle("active-method", button.dataset.ideViewMode === state.ideViewMode);
-  });
 }
 
 function ideActionUnavailableReason(project, allocated) {
@@ -778,30 +769,18 @@ async function loadIdeSourceContent(project, sourcePath) {
   document.querySelector("#sourceEditor").value = source.content || "";
 }
 
-function setIdeViewMode(mode) {
-  state.ideViewMode = ["model", "code", "image"].includes(mode) ? mode : "model";
-  const project = projectById(state.activeProjectId);
-  updateIdeProjectTools(project);
-  renderIdeViewMode(project);
-}
-
 function renderIdeViewMode(project) {
-  const mode = state.ideViewMode || "model";
   const sourcePath = state.sourcePath || "";
-  document.querySelector("#ideViewerModeLabel").textContent = mode === "realizations" ? "Realisierungen" : mode === "image" ? "Image" : mode === "code" ? "Code" : "Modell";
-  document.querySelector("#sourcePanel").classList.toggle("hidden", mode === "image" || mode === "realizations");
-  document.querySelector("#ideImageView").classList.toggle("hidden", mode !== "image");
-  document.querySelector("#ideModelView").classList.toggle("hidden", mode !== "model");
-  document.querySelector("#ideRealizationView").classList.toggle("hidden", mode !== "realizations");
-  document.querySelectorAll("[data-ide-view-mode]").forEach((button) => {
-    button.classList.toggle("active-method", button.dataset.ideViewMode === mode);
-  });
-  if (mode === "model") {
-    document.querySelector("#ideModelView").innerHTML = renderModelContext(project, sourcePath);
-  }
-  if (mode === "image") {
-    renderIdeImageView(sourcePath, document.querySelector("#sourceEditor").value);
-  }
+  const source = document.querySelector("#sourceEditor").value;
+  const realizations = state.ideViewMode === "realizations";
+  const plantUml = /\.(puml|plantuml)$/i.test(sourcePath) && /@startuml/i.test(source);
+  const image = /\.(svg|png|jpe?g|gif|webp)$/i.test(sourcePath);
+  document.querySelector("#ideViewerModeLabel").textContent = realizations ? "Realisierungen" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
+  document.querySelector("#sourcePanel").classList.toggle("hidden", realizations || image);
+  document.querySelector("#ideImageView").classList.toggle("hidden", realizations || (!plantUml && !image));
+  document.querySelector("#ideModelView").classList.add("hidden");
+  document.querySelector("#ideRealizationView").classList.toggle("hidden", !realizations);
+  if (!realizations && (plantUml || image)) renderIdeImageView(sourcePath, source);
 }
 
 function primaryComponentPath(project) {
@@ -851,7 +830,7 @@ function renderModelContext(project, sourcePath) {
 async function renderIdeImageView(sourcePath, source) {
   const target = document.querySelector("#ideImageView");
   if (!target) return;
-  if (/\.puml$/i.test(sourcePath) && /@startuml/i.test(source)) {
+  if (/\.(puml|plantuml)$/i.test(sourcePath) && /@startuml/i.test(source)) {
     target.innerHTML = `
       <figure class="plantuml-viewer">
         <img class="plantuml-diagram" data-plantuml-source="${escapeAttribute(source)}" alt="${escapeAttribute(sourcePath)}">
@@ -859,6 +838,17 @@ async function renderIdeImageView(sourcePath, source) {
       </figure>
     `;
     await renderIdePlantUmlImage(target.querySelector("[data-plantuml-source]"));
+    return;
+  }
+  if (/\.svg$/i.test(sourcePath)) {
+    target.innerHTML = `<figure class="ide-file-image"><img src="${escapeAttribute(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(source)}`)}" alt="${escapeAttribute(sourcePath)}"></figure>`;
+    return;
+  }
+  const rasterType = sourcePath.match(/\.(png|jpe?g|gif|webp)$/i)?.[1]?.toLowerCase();
+  if (rasterType) {
+    const mimeType = rasterType === "jpg" ? "jpeg" : rasterType;
+    const imageSource = /^data:image\//i.test(source) ? source : `data:image/${mimeType};base64,${String(source).replace(/\s/g, "")}`;
+    target.innerHTML = `<figure class="ide-file-image"><img src="${escapeAttribute(imageSource)}" alt="${escapeAttribute(sourcePath)}"></figure>`;
     return;
   }
   target.innerHTML = `<p class="empty">Fuer diese Datei gibt es noch keine Image-Ansicht.</p>`;
@@ -881,12 +871,21 @@ async function renderIdePlantUmlImage(image) {
 
 async function saveSource() {
   const project = projectById(state.activeProjectId);
+  if (!project || !state.sourcePath || !projectNeedsSourceEditing(project)) return;
+  try {
+    await persistCurrentSource(project);
+    setFlashStatus("ok", `${state.sourcePath} gespeichert.`);
+  } catch (error) {
+    setFlashStatus("error", `Speichern fehlgeschlagen: ${error.message}`);
+  }
+}
+
+async function persistCurrentSource(project = projectById(state.activeProjectId)) {
+  if (!project || !state.sourcePath || !projectNeedsSourceEditing(project)) return;
   await putJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(state.sourcePath)}`, {
     content: document.querySelector("#sourceEditor").value,
   });
   delete state.projectSourcesByProjectId[project.id];
-  await refresh();
-  await loadIdeProject();
 }
 
 async function startBuild() {
@@ -895,6 +894,7 @@ async function startBuild() {
   if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
   setFlashStatus("running", "Build laeuft...");
   try {
+    await persistCurrentSource(project);
     const build = await postJson("/api/user-ide/build-jobs", {
       project_slug: project.slug,
       device_id: device?.device_id || "",
@@ -918,6 +918,7 @@ async function startUsbFlash() {
   setFlashStatus("running", "Echter PlatformIO-Build wird gestartet...");
   let activeBuild = null;
   try {
+    await persistCurrentSource(project);
     const build = await postJson("/api/user-ide/build-jobs", {
       project_slug: project.slug,
       device_id: device.device_id,
@@ -1023,6 +1024,7 @@ async function startOtaFlash() {
   if (device.ota_status !== "ready") return setFlashStatus("error", "Das zugeordnete Device ist nicht OTA-ready.");
   setFlashStatus("running", "Build und OTA-Flash laufen...");
   try {
+    await persistCurrentSource(project);
     const build = await postJson("/api/user-ide/build-jobs", {
       project_slug: project.slug,
       device_id: device.device_id,

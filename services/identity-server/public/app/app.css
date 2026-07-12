@@ -688,6 +688,21 @@ button.danger:hover {
 .ide-model-view {
   min-height: 420px;
 }
+.ide-file-image {
+  display: grid;
+  place-items: center;
+  min-height: 320px;
+  margin: 0;
+  padding: 16px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #fff;
+}
+.ide-file-image img {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+}
 .ide-realization-view { min-height: 420px; }
 .ide-realization-head p { margin: 6px 0 14px; color: #94a3b8; }
 .ide-realization-table-wrap { overflow-x: auto; }
@@ -1225,6 +1240,16 @@ textarea:read-only {
 .code-explorer-chat-message p {
   margin: 3px 0 0;
   white-space: pre-wrap;
+}
+.code-explorer-edits {
+  display: grid;
+  gap: 6px;
+  margin-top: 8px;
+}
+.code-explorer-edits button {
+  width: 100%;
+  white-space: normal;
+  text-align: left;
 }
 .code-explorer-chat form,
 .code-explorer-chat label {

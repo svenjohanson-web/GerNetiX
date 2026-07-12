@@ -2,7 +2,9 @@ const GuidedProjectView = (() => {
   function create(deps) {
     const {
       state,
+      getJson,
       postJson,
+      putJson,
       progressFor,
       escapeHtml,
       escapeAttribute,
@@ -63,6 +65,9 @@ const GuidedProjectView = (() => {
         button.addEventListener("click", () => handleGuidedControl(project, activeView, button.dataset.guidedControl));
       });
       target.querySelector("[data-code-explorer-chat]")?.addEventListener("submit", (event) => submitCodeExplorerChat(event, project, activeView));
+      target.querySelectorAll("[data-apply-code-edit]").forEach((button) => {
+        button.addEventListener("click", () => applyCodeExplorerEdit(project, activeView, button.dataset.editMessage, Number(button.dataset.applyCodeEdit)));
+      });
       renderGuidedPlantUml(target);
     }
 
@@ -94,6 +99,9 @@ const GuidedProjectView = (() => {
               <article class="code-explorer-chat-message ${message.role}">
                 <span>${message.role === "assistant" ? "KI" : "Du"}</span>
                 <p>${escapeHtml(message.content)}</p>
+                ${message.fileEdits?.length ? `<div class="code-explorer-edits">
+                  ${message.fileEdits.map((edit, editIndex) => `<button type="button" data-edit-message="${messages.indexOf(message)}" data-apply-code-edit="${editIndex}" ${edit.applied ? "disabled" : ""}>${edit.applied ? "Uebernommen" : `Aenderung in ${escapeHtml(edit.path)} uebernehmen`}</button>`).join("")}
+                </div>` : ""}
               </article>
             `).join("") : `<p class="helper-text">Frage die KI zum sichtbaren Code, zu einzelnen Zeilen oder zum Verhalten.</p>`}
           </div>
@@ -123,6 +131,7 @@ const GuidedProjectView = (() => {
       form.querySelector("[data-code-chat-status]").textContent = "KI analysiert den Code...";
       try {
         const artifact = view.payload?.artifact || {};
+        const files = await loadCodeExplorerProjectFiles(project);
         const response = await postJson("/api/platform/development-assistant/chat", {
           projectId: project.id,
           assistantMode: "code_explorer",
@@ -132,12 +141,42 @@ const GuidedProjectView = (() => {
             content: artifact.content || document.querySelector("#sourceEditor")?.value || "",
             focusLines: view.source_lines || view.editable_lines || [],
             questions: view.payload?.questions || [],
+            files,
+            artifacts: guidedViews(project).map((item) => ({
+              id: item.id,
+              type: item.type,
+              title: item.title,
+              summary: item.summary,
+              sourcePath: item.source_path,
+              payload: item.payload,
+            })),
           },
         });
-        messages.push({ role: "assistant", content: response.message?.content || "Keine Antwort erhalten." });
+        messages.push({ role: "assistant", content: response.message?.content || "Keine Antwort erhalten.", fileEdits: response.fileEdits || [] });
       } catch (error) {
         messages.push({ role: "assistant", content: `Der Code-Assistent ist gerade nicht erreichbar: ${error.message}` });
       }
+      renderProjectViewManifest(project);
+    }
+
+    async function loadCodeExplorerProjectFiles(project) {
+      const sources = state.projectSourcesByProjectId[project.id] || [];
+      const loaded = await Promise.all(sources.slice(0, 40).map(async (source) => {
+        const path = source.path || source.source_path;
+        if (!path) return null;
+        const result = await getJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(path)}`);
+        return { path, content: result.content || "" };
+      }));
+      return loaded.filter(Boolean);
+    }
+
+    async function applyCodeExplorerEdit(project, view, messageIndex, editIndex) {
+      const message = codeChatMessages(project, view)[Number(messageIndex)];
+      const edit = message?.fileEdits?.[editIndex];
+      if (!edit || edit.applied) return;
+      await putJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(edit.path)}`, { content: edit.content });
+      edit.applied = true;
+      if (state.sourcePath === edit.path) document.querySelector("#sourceEditor").value = edit.content;
       renderProjectViewManifest(project);
     }
 

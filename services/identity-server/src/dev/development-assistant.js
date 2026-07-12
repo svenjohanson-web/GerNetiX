@@ -79,8 +79,9 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         return;
       }
       const context = codeExplorerMode ? { messages: [], sources: [] } : await architectureContext(session, activeConfig, projectId);
+      const codeContext = codeExplorerMode ? normalizeCodeContext(body.codeContext) : null;
       const messages = [
-        { role: "system", content: codeExplorerMode ? await codeExplorerSystemPrompt(session, body.codeContext) : await systemPrompt(session, requestProfile) },
+        { role: "system", content: codeExplorerMode ? await codeExplorerSystemPrompt(session, codeContext) : await systemPrompt(session, requestProfile) },
         ...(functionMode ? [{ role: "system", content: functionClarificationPrompt(body.architectureDiagram) }] : []),
         ...(effectChainMode ? [{ role: "system", content: effectChainPrompt(body.architectureDiagram) }] : []),
         ...context.messages,
@@ -105,7 +106,9 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       }
       const usage = usageFromProvider(response);
       const usageEvent = await completeUsage(usagePreflight, usage);
-      const assistantContent = response.message?.content || fallbackAnswer(userMessages, activeConfig);
+      const rawAssistantContent = response.message?.content || fallbackAnswer(userMessages, activeConfig);
+      const codeResult = codeExplorerMode ? parseCodeExplorerResult(rawAssistantContent, codeContext) : { content: rawAssistantContent, fileEdits: [] };
+      const assistantContent = codeResult.content;
       sendJson(res, 200, {
         config: config({ contextSources: context.sources, requestProfile }),
         routing: routingSummary(activeConfig, requestProfile),
@@ -113,6 +116,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
           role: "assistant",
           content: assistantContent,
         },
+        fileEdits: codeResult.fileEdits,
         architectureDiagram: codeExplorerMode ? undefined : buildArchitectureDiagram([...userMessages, { role: "assistant", content: assistantContent }], {
           contextSources: context.sources,
           model: activeConfig.provider === "api" ? activeConfig.apiModel : activeConfig.ollamaModel,
@@ -250,7 +254,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
   }
 
   async function codeExplorerSystemPrompt(session, rawContext = {}) {
-    const context = normalizeCodeContext(rawContext);
+    const context = rawContext.files ? rawContext : normalizeCodeContext(rawContext);
     return [
       await promptFoundation("general_chat"),
       `Aktueller Nutzer: ${projectServerUserId(session)}.`,
@@ -258,17 +262,54 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       `Datei: ${context.path}`,
       context.focusLines.length ? `Fokuszeilen: ${context.focusLines.join(", ")}` : "",
       context.questions.length ? `Leitfragen des Schritts: ${context.questions.join(" | ")}` : "",
+      context.artifacts.length ? `Projektartefakte:\n${JSON.stringify(context.artifacts)}` : "",
+      context.files.length ? `Dateien des ausgewaehlten Projekts:\n${context.files.map((file) => `--- ${file.path} ---\n${file.content}`).join("\n")}` : "",
       "Sichtbarer Code:\n```\n" + context.content + "\n```",
+      "Wenn der Nutzer eine Datei aendern will, erklaere die Aenderung und fuege am Ende exakt einen Block im Format <gernetix-file-edits>[{\"path\":\"vorhandener/pfad\",\"content\":\"vollstaendiger neuer Dateiinhalt\"}]</gernetix-file-edits> an.",
+      "Bearbeite nur vorhandene Pfade aus der Dateiliste. Gib immer den vollstaendigen neuen Dateiinhalt aus. Ohne ausdruecklichen Aenderungswunsch darf kein Edit-Block entstehen.",
     ].filter(Boolean).join("\n");
   }
 
   function normalizeCodeContext(value = {}) {
+    let remainingFileChars = 60000;
+    const files = (Array.isArray(value.files) ? value.files : []).slice(0, 40).map((file) => {
+      const content = String(file.content || "").slice(0, remainingFileChars);
+      remainingFileChars -= content.length;
+      return { path: String(file.path || "").trim().slice(0, 240), content };
+    }).filter((file) => file.path && remainingFileChars >= 0);
     return {
       path: String(value.path || "Projektquelle").trim().slice(0, 240),
       content: String(value.content || "").slice(0, 24000),
       focusLines: (Array.isArray(value.focusLines) ? value.focusLines : []).map(Number).filter((line) => line > 0).slice(0, 80),
       questions: (Array.isArray(value.questions) ? value.questions : []).map((item) => String(item).trim().slice(0, 400)).filter(Boolean).slice(0, 12),
+      files,
+      artifacts: (Array.isArray(value.artifacts) ? value.artifacts : []).slice(0, 40).map((artifact) => ({
+        id: String(artifact.id || "").slice(0, 160),
+        type: String(artifact.type || "").slice(0, 80),
+        title: String(artifact.title || "").slice(0, 240),
+        summary: String(artifact.summary || "").slice(0, 1200),
+        sourcePath: String(artifact.sourcePath || "").slice(0, 240),
+        payload: JSON.stringify(artifact.payload || {}).slice(0, 4000),
+      })),
     };
+  }
+
+  function parseCodeExplorerResult(content, context) {
+    const marker = /<gernetix-file-edits>([\s\S]*?)<\/gernetix-file-edits>/i;
+    const match = String(content || "").match(marker);
+    if (!match) return { content: String(content || ""), fileEdits: [] };
+    const allowedPaths = new Set((context.files || []).map((file) => file.path));
+    let parsed = [];
+    try {
+      parsed = JSON.parse(match[1]);
+    } catch {
+      parsed = [];
+    }
+    const fileEdits = (Array.isArray(parsed) ? parsed : []).map((edit) => ({
+      path: String(edit.path || "").trim(),
+      content: String(edit.content || "").slice(0, 120000),
+    })).filter((edit) => allowedPaths.has(edit.path) && edit.content);
+    return { content: String(content || "").replace(marker, "").trim(), fileEdits };
   }
 
   function functionClarificationPrompt(currentDiagram) {
