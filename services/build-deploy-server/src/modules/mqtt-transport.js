@@ -27,9 +27,10 @@ class MqttTransport {
   async publish(topic, payload, options = {}) {
     await this.ensureConnected();
     const qos = options.qos === 1 ? 1 : 0;
+    const retain = options.retain === true ? 1 : 0;
     const packetId = qos ? this.nextPacketId() : 0;
     const variable = Buffer.concat([mqttString(topic), ...(qos ? [uint16(packetId)] : [])]);
-    const packet = packetBuffer(0x30 | (qos << 1), Buffer.concat([variable, Buffer.from(payload)]));
+    const packet = packetBuffer(0x30 | (qos << 1) | retain, Buffer.concat([variable, Buffer.from(payload)]));
     if (!qos) {
       this.socket.write(packet);
       return;

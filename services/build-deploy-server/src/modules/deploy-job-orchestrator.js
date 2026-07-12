@@ -78,7 +78,7 @@ class DeployJobOrchestrator {
       status: "publishing",
       published_at: new Date().toISOString(),
     });
-    await this.mqttPublisher.publish(topic, JSON.stringify(command), { qos: 1 });
+    await this.mqttPublisher.publish(topic, JSON.stringify(command), { qos: 1, retain: true });
     const currentAcknowledgement = this.acknowledgementStore.get?.(deployId);
     if (!currentAcknowledgement || currentAcknowledgement.status === "publishing") {
       await this.acknowledgementStore.record({

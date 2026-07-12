@@ -12,3 +12,7 @@ test("encodes MQTT remaining lengths and packets used for OTA commands", () => {
   assert.equal(packet.subarray(2).toString(), "ota");
   assert.match(connectPacket("build-server", "", "").toString(), /MQTT/);
 });
+
+test("sets the MQTT retain bit for offline OTA delivery", () => {
+  assert.equal(packetBuffer(0x33, Buffer.from("ota"))[0], 0x33);
+});

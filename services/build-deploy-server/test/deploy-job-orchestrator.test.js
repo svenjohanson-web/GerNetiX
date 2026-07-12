@@ -39,6 +39,7 @@ test("signs, publishes and records an authorized OTA deploy", async () => {
   assert.equal(result.firmware_url, "https://build.example/firmware.bin");
   assert.equal(published.length, 1);
   assert.equal(published[0][2].qos, 1);
+  assert.equal(published[0][2].retain, true);
   assert.equal(JSON.parse(published[0][1]).deploy_id, "deploy_job-123");
   assert.deepEqual(acknowledgements.map((item) => item.status), ["publishing", "published"]);
 });
