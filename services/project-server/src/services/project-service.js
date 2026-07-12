@@ -321,6 +321,29 @@ function normalizeBuildConfig(input = {}) {
     firmware_basis_variant: input.firmware_basis_variant || (firmwareBasisId ? "comfort" : ""),
     user_source_path: input.user_source_path || "",
     user_target_path: input.user_target_path || "",
+    component_device_allocations: Array.isArray(input.component_device_allocations)
+      ? input.component_device_allocations.map((item) => ({ ...item })).filter((item) => item.component_path && item.device_id)
+      : [],
+    component_features: normalizeComponentFeatures(input.component_features, input.firmware_basis_variant || (firmwareBasisId ? "comfort" : "")),
+  };
+}
+
+function normalizeComponentFeatures(input, basisVariant) {
+  const configured = input && typeof input === "object" ? input : {};
+  const immutable = basisVariant === "comfort"
+    ? ["wifi", "mqtt", "ota", "http", "webserver"]
+    : [];
+  const enabled = new Set(Array.isArray(configured.enabled) ? configured.enabled.map(String) : []);
+  immutable.forEach((feature) => enabled.add(feature));
+  return {
+    enabled: Array.from(enabled),
+    immutable,
+    webserver: {
+      title: String(configured.webserver?.title || "GerNetiX Device").slice(0, 80),
+      measurement_chart: Boolean(configured.webserver?.measurement_chart),
+      measurement_label: String(configured.webserver?.measurement_label || "Messwert").slice(0, 60),
+      measurement_unit: String(configured.webserver?.measurement_unit || "").slice(0, 16),
+    },
   };
 }
 

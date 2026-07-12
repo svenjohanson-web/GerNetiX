@@ -30,3 +30,8 @@ test("MQTT notifications use a device topic and the authenticated OTA path", () 
   assert.match(source, /scheduleOtaUpdate/);
   assert.match(source, /total_data_len > static_cast<int>\(MAX_OTA_MESSAGE\)/);
 });
+
+test("MQTT task has enough stack for TLS and authenticated OTA processing", () => {
+  assert.match(source, /MQTT_TASK_STACK_SIZE = 12 \* 1024/);
+  assert.match(source, /mqttConfig\.task\.stack_size = MQTT_TASK_STACK_SIZE/);
+});

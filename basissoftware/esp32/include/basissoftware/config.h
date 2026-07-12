@@ -8,7 +8,7 @@ constexpr uint32_t STATUS_INTERVAL_MS = 1000;
 
 constexpr char GERNETIX_RUNTIME_NAME[] = "basissoftware/esp32";
 constexpr char GERNETIX_FIRMWARE_BASIS[] = "gernetix-runtime-basissoftware";
-constexpr char GERNETIX_BASISSOFTWARE_VERSION[] = "0.1.0";
+constexpr char GERNETIX_BASISSOFTWARE_VERSION[] = "0.2.0";
 constexpr char GERNETIX_BASISSOFTWARE_VARIANT[] = "comfort";
 constexpr const char *GERNETIX_RUNTIME_VERSION = GERNETIX_BASISSOFTWARE_VERSION;
 

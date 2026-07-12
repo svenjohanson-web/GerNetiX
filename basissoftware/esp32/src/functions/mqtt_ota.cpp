@@ -14,6 +14,10 @@
 namespace {
 constexpr const char *TAG = "mqttOta";
 constexpr size_t MAX_OTA_MESSAGE = 2048;
+// TLS, JSON/HMAC validation and the OTA callback share the MQTT task stack.
+// ESP-MQTT's 6 KiB default is too small for this authenticated deploy path and
+// caused a reboot loop as soon as a retained OTA command was delivered.
+constexpr int MQTT_TASK_STACK_SIZE = 12 * 1024;
 constexpr char MQTT_CREDENTIAL_CONTEXT[] = "gernetix:mqtt-broker-auth:v1";
 
 esp_mqtt_client_handle_t client = nullptr;
@@ -146,6 +150,7 @@ esp_err_t startMqttOtaSubscriber() {
   mqttConfig.credentials.authentication.password = mqttPassword;
   mqttConfig.session.keepalive = 60;
   mqttConfig.network.reconnect_timeout_ms = 5000;
+  mqttConfig.task.stack_size = MQTT_TASK_STACK_SIZE;
 
   client = esp_mqtt_client_init(&mqttConfig);
   if (client == nullptr) {

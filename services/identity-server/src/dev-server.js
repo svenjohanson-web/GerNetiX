@@ -358,6 +358,17 @@ async function routeRequest(req, res) {
     return;
   }
 
+  const projectComponentFeatures = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/component-features$/);
+  if (req.method === "POST" && projectComponentFeatures) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleProjectComponentFeatures(req, res, session, decodeURIComponent(projectComponentFeatures[1]));
+    return;
+  }
+
   if (req.method === "POST" && url.pathname === "/api/platform/development-assistant/chat") {
     const session = readSession(req);
     if (!session) {
@@ -1072,6 +1083,42 @@ async function handleProjectDeviceAllocation(req, res, session, projectId) {
   });
 }
 
+async function handleProjectComponentFeatures(req, res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  if (!project.build_config) {
+    sendJson(res, 409, { error: "missing_build_config", message: "Das Projekt besitzt keine konfigurierbare Firmware-Komponente." });
+    return;
+  }
+  const body = await readJsonBody(req);
+  const allowed = new Set(["wifi", "mqtt", "ota", "http", "webserver", "measurement_chart"]);
+  const enabled = Array.isArray(body.enabled) ? body.enabled.map(String).filter((item) => allowed.has(item)) : [];
+  const current = project.build_config.component_features || {};
+  const webserver = body.webserver && typeof body.webserver === "object" ? body.webserver : {};
+  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+    method: "PATCH",
+    body: {
+      build_config: {
+        ...project.build_config,
+        component_features: {
+          ...current,
+          enabled,
+          webserver: {
+            ...(current.webserver || {}),
+            title: String(webserver.title || "GerNetiX Device").trim().slice(0, 80),
+            measurement_chart: Boolean(webserver.measurement_chart),
+            measurement_label: String(webserver.measurement_label || "Messwert").trim().slice(0, 60),
+            measurement_unit: String(webserver.measurement_unit || "").trim().slice(0, 16),
+          },
+        },
+      },
+    },
+  });
+  const projects = await loadUserIdeProjects(session);
+  const updated = projects.find((item) => item.project_server_id === project.project_server_id);
+  touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
+  sendJson(res, 200, { project: toPlatformProject(updated) });
+}
+
 function primaryProjectComponentPath(project) {
   return String(project?.build_config?.user_source_path || "").match(/^(Komponenten\/[^/]+)\//)?.[1] || "Komponenten/ESP32";
 }
@@ -1780,6 +1827,8 @@ function decorateUserIdeDevice(device) {
     device_id: device.device_id,
     account_device_id: device.account_device_id,
     display_name: device.display_name,
+    node_name: device.node_name || "",
+    hostname: device.hostname || device.node_name || "",
     hardware_profile_id: device.hardware_profile_id,
     technical_capability_ids: device.technical_capability_ids || [],
     authenticity_status: device.authenticity_status,

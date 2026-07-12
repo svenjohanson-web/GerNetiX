@@ -209,6 +209,8 @@ Fuer accountgebundene ESP32-Entwicklungsprojekte gilt im ersten IDE-Durchstich:
 - Beim Erzeugen des vollstaendigen BuildPackage legt der Project Server die User-Main auf `src/user/user_app.cpp` der versionierten ESP32-Basissoftware.
 - `src/main.cpp`, Runtime, Connectivity, Schutzmechanismen und spaetere OTA-Implementierung kommen ausschliesslich aus der Basissoftware-Version des BuildPackage.
 - Die IDE zeigt die Basissoftware nicht als editierbaren Projektinhalt an.
+- Die IDE zeigt pro Firmware-Komponente eine Eigenschaftensicht. Sie trennt unveraenderliche, durch die Basissoftware-Variante gelieferte Funktionen von zuschaltbaren Projekterweiterungen. In der ESP32-Variante `comfort` sind WLAN, MQTT, OTA, HTTP und der lokale Webserver sichtbar, aber nicht abwaehlbar.
+- Der lokale Device-Webserver kann direkt im Entwicklungsprojekt als Live-Ansicht geoeffnet werden. Projektspezifische Web-Erweiterungen wie ein Diagramm der letzten Messwerte werden in der Komponentenkonfiguration gespeichert; die zuletzt verwendete lokale Board-Adresse bleibt reine Browser-Ansichtseinstellung.
 - Der aktuelle Basisstand enthaelt den authentifizierten HTTPS-/MQTT-OTA-Pfad und ein aktiviertes A/B-Partitionslayout. Bei der USB-Migration vom bisherigen Single-App-Layout bleibt dessen NVS-Bereich `0x9000` bis `0xEFFF` vollstaendig erhalten; die OTA-App-Slots beginnen deshalb bei `0x20000`.
 
 Die Root-`CMakeLists.txt` bindet standardmaessig nur `basissoftware/esp32/` ein. Projekt- und Generated-Komponenten werden ueber Build-Umgebungsvariablen ausgewaehlt:
@@ -243,4 +245,3 @@ Nicht ausgeliefert werden:
 - Build-Skripte
 - Debug-Symbole
 - private Schluessel
-

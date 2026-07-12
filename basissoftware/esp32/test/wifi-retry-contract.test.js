@@ -27,3 +27,7 @@ test("provisioned boards stay in station mode when the first connection times ou
   assert.match(source, /Saved WiFi exists; remaining in station mode and reconnecting/);
   assert.doesNotMatch(source, /if \(connectStatus != ESP_OK\) \{\s*startWifiSetupPortal\(\)/);
 });
+
+test("comfort runtime disables WiFi power save for stable HTTP and MQTT reachability", () => {
+  assert.match(source, /esp_wifi_set_ps\(WIFI_PS_NONE\)/);
+});

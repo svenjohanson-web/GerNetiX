@@ -14,4 +14,6 @@ test("basissoftware exposes mandatory version and variant metadata", () => {
   assert.match(webServer, /\\"basissoftwareVariant\\"/);
   assert.match(webServer, /GERNETIX_BASISSOFTWARE_VERSION/);
   assert.match(webServer, /GERNETIX_BASISSOFTWARE_VARIANT/);
+  assert.match(webServer, /id=\\"basis-meta\\"/);
+  assert.match(webServer, /Basissoftware-Metadaten nicht erreichbar/);
 });

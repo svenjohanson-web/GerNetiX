@@ -142,6 +142,16 @@ document.querySelector("#ideProjectBrowser").addEventListener("click", (event) =
     openProjectRealizations();
     return;
   }
+  const componentFeaturesButton = event.target.closest("[data-component-features]");
+  if (componentFeaturesButton) {
+    openComponentFeatures();
+    return;
+  }
+  const deviceWebButton = event.target.closest("[data-device-web]");
+  if (deviceWebButton) {
+    openDeviceWebView();
+    return;
+  }
   const button = event.target.closest("[data-source-path]");
   if (button) openIdeSource(button.dataset.sourcePath);
 });
@@ -166,6 +176,8 @@ document.querySelector("#ideRealizationView").addEventListener("click", (event) 
   const button = event.target.closest("[data-allocate-component]");
   if (button) allocateIdeDevice(button.dataset.allocateComponent);
 });
+document.querySelector("#ideComponentFeaturesView").addEventListener("submit", saveComponentFeatures);
+document.querySelector("#ideDeviceWebView").addEventListener("submit", loadDeviceWebPreview);
 document.querySelector("#recoveryDeviceSelect").addEventListener("change", () => {
   state.activeRecoveryDeviceId = document.querySelector("#recoveryDeviceSelect").value;
   state.recoveryCheckResult = null;
@@ -566,6 +578,8 @@ async function loadIdeProject() {
   renderIdeDeviceAllocation(project);
   renderIdeProjectBrowser(project, sources);
   renderProjectRealizations(project, sources);
+  renderComponentFeatures(project);
+  renderDeviceWebView(project);
   document.querySelector("#ideProjectTitle").textContent = project.name;
   document.querySelector("#ideProjectBrowserTitle").textContent = project.name;
   document.querySelector("#ideActiveSourceLabel").textContent = state.sourcePath;
@@ -810,7 +824,12 @@ function renderIdeProjectBrowser(project, sources) {
 
 function projectRealizationsTreeEntry(project) {
   if (!projectNeedsHardwareTools(project)) return [];
-  return [{ path: "Architektur/Realisierungen", role: "Gerätezuordnung", virtualAction: "realizations" }];
+  const component = primaryComponentPath(project) || "Komponenten/ESP32";
+  return [
+    { path: "Architektur/Realisierungen", role: "Gerätezuordnung", virtualAction: "realizations" },
+    { path: `${component}/Eigenschaften`, role: "Komponentenkonfiguration", virtualAction: "component-features" },
+    { path: `${component}/Webserver`, role: "Live-Ansicht", virtualAction: "device-web" },
+  ];
 }
 
 function sourceTree(projectName, sources) {
@@ -835,7 +854,11 @@ function renderSourceTree(node, depth = 0) {
     ...files.map((file) => `
       <button class="${file.path === state.sourcePath ? "active" : ""}" type="button" ${file.virtualAction === "realizations"
         ? "data-project-realizations"
-        : `data-source-path="${escapeAttribute(file.path)}"`} style="--depth:${depth + 1}">
+        : file.virtualAction === "component-features"
+          ? "data-component-features"
+          : file.virtualAction === "device-web"
+            ? "data-device-web"
+            : `data-source-path="${escapeAttribute(file.path)}"`} style="--depth:${depth + 1}">
         <span>${escapeHtml(file.name)}</span>
         <small>${escapeHtml(file.role || file.content_type || "")}</small>
       </button>
@@ -864,6 +887,22 @@ function openProjectRealizations() {
   renderIdeViewMode(project);
 }
 
+function openComponentFeatures() {
+  state.ideViewMode = "component-features";
+  const project = projectById(state.activeProjectId);
+  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Eigenschaften`;
+  renderComponentFeatures(project);
+  renderIdeViewMode(project);
+}
+
+function openDeviceWebView() {
+  state.ideViewMode = "device-web";
+  const project = projectById(state.activeProjectId);
+  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Webserver`;
+  renderDeviceWebView(project);
+  renderIdeViewMode(project);
+}
+
 async function openIdeSource(sourcePath) {
   const project = projectById(state.activeProjectId);
   if (!project || !sourcePath) return;
@@ -888,14 +927,19 @@ function renderIdeViewMode(project) {
   const sourcePath = state.sourcePath || "";
   const source = document.querySelector("#sourceEditor").value;
   const realizations = state.ideViewMode === "realizations";
+  const componentFeatures = state.ideViewMode === "component-features";
+  const deviceWeb = state.ideViewMode === "device-web";
+  const virtualView = realizations || componentFeatures || deviceWeb;
   const plantUml = /\.(puml|plantuml)$/i.test(sourcePath) && /@startuml/i.test(source);
   const image = /\.(svg|png|jpe?g|gif|webp)$/i.test(sourcePath);
-  document.querySelector("#ideViewerModeLabel").textContent = realizations ? "Realisierungen" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
-  document.querySelector("#sourcePanel").classList.toggle("hidden", realizations || image);
-  document.querySelector("#ideImageView").classList.toggle("hidden", realizations || (!plantUml && !image));
+  document.querySelector("#ideViewerModeLabel").textContent = realizations ? "Realisierungen" : componentFeatures ? "Komponenteneigenschaften" : deviceWeb ? "Device-Webserver" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
+  document.querySelector("#sourcePanel").classList.toggle("hidden", virtualView || image);
+  document.querySelector("#ideImageView").classList.toggle("hidden", virtualView || (!plantUml && !image));
   document.querySelector("#ideModelView").classList.add("hidden");
   document.querySelector("#ideRealizationView").classList.toggle("hidden", !realizations);
-  if (!realizations && (plantUml || image)) renderIdeImageView(sourcePath, source);
+  document.querySelector("#ideComponentFeaturesView").classList.toggle("hidden", !componentFeatures);
+  document.querySelector("#ideDeviceWebView").classList.toggle("hidden", !deviceWeb);
+  if (!virtualView && (plantUml || image)) renderIdeImageView(sourcePath, source);
 }
 
 function primaryComponentPath(project) {
@@ -931,6 +975,116 @@ function realizationRow(project, componentPath, compatible) {
     <td data-realization-status>${allocated ? `Zugeordnet: ${escapeHtml(allocated.display_name)}` : isProcessorBoard ? "Offen" : "Keine Gerätezuordnung"}</td>
     <td>${isProcessorBoard ? `<button type="button" data-allocate-component="${escapeAttribute(componentPath)}" ${compatible.length ? "" : "disabled"}>Zuordnen</button>` : ""}</td>
   </tr>`;
+}
+
+const componentFeatureDefinitions = [
+  ["wifi", "WLAN", "Netzwerkverbindung der Basissoftware"],
+  ["mqtt", "MQTT", "Nachrichten, Status und OTA-Auftraege"],
+  ["ota", "OTA", "Signierte Firmware-Aktualisierung"],
+  ["http", "HTTP", "Lokale Status- und Konfigurations-API"],
+  ["webserver", "Webserver", "Lokale Bedien- und Statusoberflaeche"],
+  ["measurement_chart", "Messwertdiagramm", "Erweiterbare Darstellung der letzten Messwerte"],
+];
+
+function effectiveComponentFeatures(project) {
+  const configured = project?.buildConfig?.component_features || {};
+  const comfort = project?.buildConfig?.firmware_basis_variant === "comfort";
+  const immutable = new Set(configured.immutable || (comfort ? ["wifi", "mqtt", "ota", "http", "webserver"] : []));
+  const enabled = new Set(configured.enabled || []);
+  immutable.forEach((feature) => enabled.add(feature));
+  if (configured.webserver?.measurement_chart) enabled.add("measurement_chart");
+  return { enabled, immutable, webserver: configured.webserver || {} };
+}
+
+function renderComponentFeatures(project) {
+  const target = document.querySelector("#ideComponentFeaturesView");
+  if (!target || !project?.buildConfig) {
+    if (target) target.innerHTML = `<p class="empty">Keine Firmware-Komponente konfigurierbar.</p>`;
+    return;
+  }
+  const config = effectiveComponentFeatures(project);
+  target.innerHTML = `<form class="component-features-form">
+    <header><div><p class="eyebrow">${escapeHtml(primaryComponentPath(project) || "Komponente")}</p><h3>Eigenschaften</h3></div>
+      <span class="basis-variant-badge">Basis: ${escapeHtml(project.buildConfig.firmware_basis_variant || "ohne Variante")}</span></header>
+    <p class="helper-text">Funktionen der Basissoftware sind geschützt und bleiben beim Build erhalten. Projekterweiterungen kannst du hier zuschalten.</p>
+    <div class="component-feature-grid">${componentFeatureDefinitions.map(([id, title, description]) => {
+      const locked = config.immutable.has(id);
+      return `<label class="component-feature-card ${locked ? "locked" : ""}">
+        <input type="checkbox" name="feature" value="${id}" ${config.enabled.has(id) ? "checked" : ""} ${locked ? "disabled" : ""}>
+        <span><strong>${title}</strong><small>${description}</small></span>
+        <em>${locked ? "Basissoftware · unveränderlich" : "Projekt"}</em>
+      </label>`;
+    }).join("")}</div>
+    <fieldset class="webserver-settings"><legend>Webserver erweitern</legend>
+      <label>Titel<input name="webserver_title" value="${escapeAttribute(config.webserver.title || "GerNetiX Device")}"></label>
+      <label>Messwert<input name="measurement_label" value="${escapeAttribute(config.webserver.measurement_label || "Messwert")}"></label>
+      <label>Einheit<input name="measurement_unit" value="${escapeAttribute(config.webserver.measurement_unit || "")}" placeholder="z. B. °C"></label>
+    </fieldset>
+    <footer><button type="submit">Eigenschaften speichern</button><span data-component-feature-status></span></footer>
+  </form>`;
+}
+
+async function saveComponentFeatures(event) {
+  if (!event.target.matches(".component-features-form")) return;
+  event.preventDefault();
+  const project = projectById(state.activeProjectId);
+  const status = event.target.querySelector("[data-component-feature-status]");
+  const data = new FormData(event.target);
+  status.textContent = "Wird gespeichert...";
+  try {
+    const enabled = data.getAll("feature").map(String);
+    const immutable = effectiveComponentFeatures(project).immutable;
+    immutable.forEach((feature) => enabled.push(feature));
+    const measurementChart = enabled.includes("measurement_chart");
+    const response = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/component-features`, {
+      enabled: Array.from(new Set(enabled)),
+      webserver: {
+        title: data.get("webserver_title"),
+        measurement_chart: measurementChart,
+        measurement_label: data.get("measurement_label"),
+        measurement_unit: data.get("measurement_unit"),
+      },
+    });
+    state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    renderComponentFeatures(response.project);
+    document.querySelector("[data-component-feature-status]").textContent = "Gespeichert.";
+  } catch (error) {
+    status.textContent = error.message;
+  }
+}
+
+function deviceWebStorageKey(project) {
+  return `gernetix.ide.device-web.v1:${state.account?.user_id || "local"}:${project?.id || "project"}`;
+}
+
+function suggestedDeviceWebUrl(project) {
+  const device = allocatedIdeDevice(project);
+  const hostname = String(device?.hostname || device?.node_name || "").replace(/\.local$/i, "");
+  return hostname ? `http://${hostname}.local/` : "";
+}
+
+function renderDeviceWebView(project) {
+  const target = document.querySelector("#ideDeviceWebView");
+  if (!target) return;
+  const stored = localStorage.getItem(deviceWebStorageKey(project)) || "";
+  const url = stored || suggestedDeviceWebUrl(project);
+  const features = effectiveComponentFeatures(project);
+  target.innerHTML = `<div class="device-web-workspace">
+    <form class="device-web-toolbar"><label>Board-Adresse<input name="device_web_url" value="${escapeAttribute(url)}" placeholder="http://gernetix-board.local/"></label><button type="submit">Anzeigen</button>${url ? `<a href="${escapeAttribute(url)}" target="_blank" rel="noreferrer">Im Browser öffnen</a>` : ""}</form>
+    <div class="device-web-info"><strong>Webserver des Entwicklungsprojekts</strong><span>${features.webserver.measurement_chart ? "Messwertdiagramm konfiguriert" : "Statusseite der Basissoftware"}</span></div>
+    ${url ? `<iframe title="Device-Webserver" src="${escapeAttribute(url)}"></iframe>` : `<div class="device-web-empty"><strong>Noch keine Board-Adresse bekannt</strong><p>Ordne ein Device zu oder trage seine lokale Adresse ein.</p></div>`}
+  </div>`;
+}
+
+function loadDeviceWebPreview(event) {
+  if (!event.target.matches(".device-web-toolbar")) return;
+  event.preventDefault();
+  const project = projectById(state.activeProjectId);
+  const data = new FormData(event.target);
+  let url = String(data.get("device_web_url") || "").trim();
+  if (url && !/^https?:\/\//i.test(url)) url = `http://${url}`;
+  localStorage.setItem(deviceWebStorageKey(project), url);
+  renderDeviceWebView(project);
 }
 
 function renderModelContext(project, sourcePath) {

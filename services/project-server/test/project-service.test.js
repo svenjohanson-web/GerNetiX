@@ -47,6 +47,27 @@ test("creates project with default source and lists it by user", () => {
   assert.equal(service.listProjects({ user_id: "user-1" }).length, 1);
 });
 
+test("comfort basis locks its runtime features while preserving project web extensions", () => {
+  const service = createMemoryProjectServer();
+  const project = service.createProject({
+    user_id: "user-1",
+    title: "Web Device",
+    build_config: {
+      firmware_basis_id: "gernetix-runtime-basissoftware",
+      firmware_basis_variant: "comfort",
+      component_features: {
+        enabled: ["measurement_chart"],
+        webserver: { measurement_chart: true, measurement_label: "Temperatur", measurement_unit: "°C" },
+      },
+    },
+  });
+
+  assert.deepEqual(project.build_config.component_features.immutable, ["wifi", "mqtt", "ota", "http", "webserver"]);
+  assert.equal(project.build_config.component_features.enabled.includes("mqtt"), true);
+  assert.equal(project.build_config.component_features.enabled.includes("measurement_chart"), true);
+  assert.equal(project.build_config.component_features.webserver.measurement_label, "Temperatur");
+});
+
 test("stores project sources with hashes and rejects path traversal", () => {
   const service = createMemoryProjectServer();
   const project = createDemoProject(service);

@@ -538,6 +538,51 @@ button.danger:hover {
 .ide-viewer-panel {
   min-width: 0;
 }
+.ide-component-features-view,
+.ide-device-web-view {
+  min-height: 0;
+  height: 100%;
+  overflow: auto;
+  padding: 14px;
+}
+.component-features-form { display: grid; gap: 14px; }
+.component-features-form > header,
+.component-features-form > footer,
+.device-web-toolbar,
+.device-web-info { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.basis-variant-badge {
+  padding: 5px 9px;
+  border: 1px solid #155e75;
+  border-radius: 999px;
+  color: #a5f3fc;
+  background: #164e63;
+  font-size: 11px;
+}
+.component-feature-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
+.component-feature-card {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 9px;
+  min-height: 84px;
+  padding: 10px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: #0b1018;
+}
+.component-feature-card.locked { border-color: #155e75; background: #0f2530; }
+.component-feature-card span { display: grid; align-content: start; gap: 3px; }
+.component-feature-card small { color: #94a3b8; }
+.component-feature-card em { grid-column: 2; color: #67e8f9; font-size: 10px; font-style: normal; }
+.webserver-settings { display: grid; grid-template-columns: 2fr 1.5fr .7fr; gap: 10px; border-color: #334155; }
+.webserver-settings label { display: grid; gap: 4px; color: #94a3b8; font-size: 11px; }
+.device-web-workspace { display: grid; grid-template-rows: auto auto minmax(320px, 1fr); gap: 8px; height: 100%; min-height: 0; }
+.device-web-toolbar { justify-content: flex-start; }
+.device-web-toolbar label { display: flex; flex: 1; align-items: center; gap: 8px; color: #94a3b8; }
+.device-web-toolbar input { flex: 1; }
+.device-web-toolbar a { color: #67e8f9; }
+.device-web-info { justify-content: flex-start; color: #94a3b8; font-size: 11px; }
+.device-web-workspace iframe { width: 100%; height: 100%; min-height: 320px; border: 1px solid #334155; border-radius: 6px; background: #fff; }
+.device-web-empty { display: grid; place-content: center; text-align: center; border: 1px dashed #334155; border-radius: 6px; color: #94a3b8; }
 .ide-project-browser {
   display: grid;
   align-content: start;
