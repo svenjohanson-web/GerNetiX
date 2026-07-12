@@ -15,6 +15,18 @@ test("shows a contextual AI chat only for code explorer views", () => {
   assert.match(guidedView, /content: artifact\.content \|\| document\.querySelector\("#sourceEditor"\)/);
 });
 
+test("renders the project assistant in the visible IDE workbench", () => {
+  assert.match(publicApp, /renderIdeCodeAssistant\(project\)/);
+  assert.match(publicApp, /GuidedProjectView\.create\(\{[\s\S]*escapeAttribute,[\s\S]*meta,/);
+  assert.match(guidedView, /document\.querySelector\("#ideCodeAssistant"\)/);
+  assert.match(guidedView, /renderProjectAssistant/);
+});
+
+test("separates chat history from input before the first message", () => {
+  assert.match(guidedView, />Verlauf<\/p>[\s\S]*code-explorer-chat-messages/);
+  assert.match(guidedView, /<form data-code-explorer-chat>[\s\S]*>Eingabe<\/p>/);
+});
+
 test("routes code explorer questions with bounded source context", () => {
   assert.match(assistant, /codeExplorerMode \? "code_generation" : "architecture_discovery"/);
   assert.match(assistant, /Rolle: Code-Explorer/);

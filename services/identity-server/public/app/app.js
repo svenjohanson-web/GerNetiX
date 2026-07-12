@@ -30,6 +30,7 @@ const state = {
   developmentPlatform: null,
   esptoolModule: null,
   activeSerialTransport: null,
+  ideLayoutPersistenceReady: false,
 };
 
 const routeMap = {
@@ -81,6 +82,7 @@ function guidedProjectView() {
       progressFor,
       escapeHtml,
       escapeAttribute,
+      meta,
     });
   }
   return guidedProjectViewController;
@@ -229,6 +231,7 @@ function renderAll() {
 
 function renderRoute() {
   const route = routeName();
+  document.body.classList.toggle("ide-workspace-active", route === "ide");
   renderBreadcrumb(route);
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("hidden", view.id !== routeMap[route]));
   document.querySelectorAll(".tabs a").forEach((link) => link.classList.toggle("active", link.dataset.route === topLevelRouteName(route)));
@@ -520,6 +523,7 @@ async function loadIdeProject() {
   document.querySelector("#ideProjectTitle").textContent = project.name;
   document.querySelector("#ideProjectBrowserTitle").textContent = project.name;
   document.querySelector("#ideActiveSourceLabel").textContent = state.sourcePath;
+  setupIdeLayoutPersistence();
   const metaItems = [
     ["id", project.id],
     ["ownerUserId", project.ownerUserId],
@@ -539,6 +543,7 @@ async function loadIdeProject() {
   renderAiRating("#ideAiUsage", true);
   await loadIdeSourceContent(project, state.sourcePath);
   renderProjectViewManifest(project);
+  renderIdeCodeAssistant(project);
   focusIdeStepSource(project);
   renderIdeViewMode(project);
   state.workspace = await postJson("/api/platform/workspace-state", {
@@ -546,6 +551,56 @@ async function loadIdeProject() {
     lastMode: "ide",
     lastRoute: `/app/ide/?project=${encodeURIComponent(project.id)}`,
   });
+}
+
+function ideLayoutStorageKey() {
+  const accountId = state.account?.user_id || state.account?.username || "local";
+  return `gernetix.ide.layout.v1:${accountId}`;
+}
+
+function setupIdeLayoutPersistence() {
+  if (state.ideLayoutPersistenceReady || typeof ResizeObserver === "undefined") return;
+  const elements = {
+    projectBrowserWidth: document.querySelector("#ideProjectBrowserPanel"),
+    assistantWidth: document.querySelector("#ideCodeAssistant"),
+    buildHeight: document.querySelector("#ideBuildConsole"),
+  };
+  if (Object.values(elements).some((element) => !element)) return;
+  let stored = {};
+  try { stored = JSON.parse(localStorage.getItem(ideLayoutStorageKey()) || "{}"); } catch {}
+  if (Number(stored.projectBrowserWidth) > 0) elements.projectBrowserWidth.style.width = `${stored.projectBrowserWidth}px`;
+  if (Number(stored.assistantWidth) > 0) elements.assistantWidth.style.width = `${stored.assistantWidth}px`;
+  if (Number(stored.buildHeight) > 0) elements.buildHeight.style.height = `${stored.buildHeight}px`;
+  const observer = new ResizeObserver(() => {
+    const chatInput = document.querySelector("[data-code-explorer-chat] textarea");
+    const layout = {
+      projectBrowserWidth: Math.round(elements.projectBrowserWidth.getBoundingClientRect().width),
+      assistantWidth: Math.round(elements.assistantWidth.getBoundingClientRect().width),
+      buildHeight: Math.round(elements.buildHeight.getBoundingClientRect().height),
+      chatInputHeight: Math.round(chatInput?.getBoundingClientRect().height || stored.chatInputHeight || 120),
+    };
+    localStorage.setItem(ideLayoutStorageKey(), JSON.stringify(layout));
+  });
+  Object.values(elements).forEach((element) => observer.observe(element));
+  document.addEventListener("pointerup", () => {
+    const chatInput = document.querySelector("[data-code-explorer-chat] textarea");
+    if (!chatInput) return;
+    try {
+      const current = JSON.parse(localStorage.getItem(ideLayoutStorageKey()) || "{}");
+      current.chatInputHeight = Math.round(chatInput.getBoundingClientRect().height);
+      localStorage.setItem(ideLayoutStorageKey(), JSON.stringify(current));
+    } catch {}
+  });
+  state.ideLayoutPersistenceReady = true;
+}
+
+function restoreIdeChatInputHeight() {
+  const chatInput = document.querySelector("[data-code-explorer-chat] textarea");
+  if (!chatInput) return;
+  try {
+    const stored = JSON.parse(localStorage.getItem(ideLayoutStorageKey()) || "{}");
+    if (Number(stored.chatInputHeight) > 0) chatInput.style.height = `${stored.chatInputHeight}px`;
+  } catch {}
 }
 
 function renderIdeEmptyState() {
@@ -560,6 +615,7 @@ function renderIdeEmptyState() {
   document.querySelector("#ideImageView").innerHTML = "";
   document.querySelector("#ideModelView").innerHTML = "";
   document.querySelector("#ideProjectViewManifest").innerHTML = "";
+  document.querySelector("#ideCodeAssistant").innerHTML = "";
 }
 
 function updateIdeProjectTools(project) {
@@ -762,6 +818,11 @@ async function openIdeSource(sourcePath) {
   await loadIdeSourceContent(project, sourcePath);
   renderIdeProjectBrowser(project, state.projectSourcesByProjectId[project.id] || []);
   renderIdeViewMode(project);
+  renderIdeCodeAssistant(project);
+}
+
+function renderIdeCodeAssistant(project) {
+  return guidedProjectView().renderProjectAssistant(project);
 }
 
 async function loadIdeSourceContent(project, sourcePath) {
@@ -902,7 +963,10 @@ async function startBuild() {
     });
     const completed = await waitForCompletedBuild(build);
     state.builds.unshift(completed);
-    setFlashStatus(completed.status === "succeeded" ? "ok" : "error", `${completed.status}: Build abgeschlossen.`);
+    if (completed.status !== "succeeded") appendBuildFailureLog(completed.build_log);
+    setFlashStatus(completed.status === "succeeded" ? "ok" : "error", completed.status === "succeeded"
+      ? "Build erfolgreich abgeschlossen."
+      : `Build fehlgeschlagen: ${completed.error || "Unbekannter Buildfehler."}`);
     renderBuilds();
   } catch (error) {
     setFlashStatus("error", error.message);
@@ -926,7 +990,10 @@ async function startUsbFlash() {
     });
     activeBuild = await waitForCompletedBuild(build);
     state.builds.unshift(activeBuild);
-    if (activeBuild.status !== "succeeded") throw new Error(activeBuild.error || "PlatformIO-Build ist fehlgeschlagen.");
+    if (activeBuild.status !== "succeeded") {
+      appendBuildFailureLog(activeBuild.build_log);
+      throw new Error(activeBuild.error || "PlatformIO-Build ist fehlgeschlagen.");
+    }
     setFlashStatus("running", "Build erfolgreich. USB-Gerät im Browser auswählen...");
     const flashResult = await flashBuildViaWebSerial(activeBuild);
     await postJson(`/api/user-ide/build-jobs/${encodeURIComponent(activeBuild.build_job_id)}/browser-usb-flash-result`, {
@@ -957,6 +1024,12 @@ async function waitForCompletedBuild(build) {
     current = await getJson(`/api/user-ide/build-jobs/${encodeURIComponent(build.build_deploy_job_id || build.build_job_id)}/status`);
   }
   throw new Error("PlatformIO-Build hat das Zeitlimit überschritten.");
+}
+
+function appendBuildFailureLog(buildLog) {
+  const lines = String(buildLog || "").split(/\r?\n/).filter(Boolean);
+  const relevant = lines.filter((line) => /fatal error:|error:|\*\*\*|\[FAILED\]/i.test(line));
+  (relevant.length ? relevant : lines.slice(-6)).slice(-8).forEach((line) => appendIdeTerminal("error", line));
 }
 
 async function flashBuildViaWebSerial(build) {
@@ -1517,9 +1590,19 @@ function setFlashStatus(kind, text) {
 function appendIdeTerminal(kind, text) {
   const terminal = document.querySelector("#ideTerminalOutput");
   if (!terminal || !text) return;
+  const normalizedText = String(text).replace(/\x1b\[[0-9;]*m/g, "").trim();
+  const previous = terminal.querySelector(".terminal-line:last-of-type");
+  if (previous?.dataset.message === `${kind}:${normalizedText}`) return;
+  if (kind === "running" && previous?.classList.contains("terminal-running")) {
+    previous.textContent = `[${new Date().toLocaleTimeString()}] ${normalizedText}`;
+    previous.dataset.message = `${kind}:${normalizedText}`;
+    terminal.scrollTop = terminal.scrollHeight;
+    return;
+  }
   const line = document.createElement("span");
   line.className = `terminal-line terminal-${kind}`;
-  line.textContent = `[${new Date().toLocaleTimeString()}] ${text}`;
+  line.dataset.message = `${kind}:${normalizedText}`;
+  line.textContent = `[${new Date().toLocaleTimeString()}] ${normalizedText}`;
   terminal.append(document.createTextNode("\n"), line);
   terminal.scrollTop = terminal.scrollHeight;
 }

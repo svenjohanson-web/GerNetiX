@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Plattform</title>
-    <link rel="stylesheet" href="/app/app.css" />
+    <link rel="stylesheet" href="/app/app.css?v=20260712-8" />
   </head>
   <body>
     <main class="app-shell">
@@ -93,12 +93,6 @@
       </section>
 
       <section id="ideView" class="view hidden">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Freier Entwicklungsmodus</p>
-            <h2>Entwickeln</h2>
-          </div>
-        </div>
         <section id="ideEmptyState" class="panel ide-empty-state hidden">
           <p class="eyebrow">Freier Modus</p>
           <h3>Kein Entwicklungsprojekt geöffnet</h3>
@@ -126,6 +120,7 @@
               <section id="ideModelView" class="ide-model-view"></section>
               <section id="ideRealizationView" class="ide-realization-view hidden"></section>
             </article>
+            <aside id="ideCodeAssistant" class="panel ide-code-assistant"></aside>
             <section id="ideBuildConsole" class="ide-build-console">
               <div id="ideDeviceTools" class="ide-build-actions">
                 <span class="ide-build-actions-label">Build &amp; Flash</span>
@@ -451,8 +446,8 @@
     <script src="/app/dom-utils.js"></script>
     <script src="/app/device-onboarding-model.js"></script>
     <script src="/app/device-onboarding-controller.js"></script>
-    <script src="/app/guided-project-view.js"></script>
+    <script src="/app/guided-project-view.js?v=20260712-9"></script>
     <script src="/app/development-platform.js"></script>
-    <script src="/app/app.js"></script>
+    <script src="/app/app.js?v=20260712-9"></script>
   </body>
 </html>

@@ -16,7 +16,7 @@
 body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); }
 button, input, select, textarea { font: inherit; }
 button, a { cursor: pointer; }
-.app-shell { position: relative; max-width: 1260px; margin: 0 auto; padding: 22px; }
+.app-shell { position: relative; width: 100%; max-width: none; margin: 0 auto; padding: 22px; }
 .topbar, .section-head, .top-actions, .button-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .topbar { position: relative; margin-bottom: 18px; }
 .top-navigation-context {
@@ -333,15 +333,114 @@ button.danger:hover {
 .insight { margin: 16px 0; padding: 14px; border-left: 4px solid var(--accent); background: var(--soft); line-height: 1.5; }
 .ide-layout {
   display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
+  grid-template-columns: auto minmax(0, 1fr);
   gap: 12px;
   align-items: stretch;
 }
 .ide-workbench {
   display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   grid-template-rows: minmax(420px, 1fr) auto;
   gap: 12px;
   min-width: 0;
+}
+#ideView {
+  container-type: inline-size;
+}
+.ide-workspace-active {
+  height: 100dvh;
+  overflow: hidden;
+}
+.ide-workspace-active .app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  overflow: hidden;
+}
+.ide-workspace-active .topbar {
+  flex: 0 0 auto;
+}
+.ide-workspace-active #ideView {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+.ide-workspace-active .ide-layout,
+.ide-workspace-active .ide-workbench {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.ide-workspace-active .ide-workbench {
+  grid-template-rows: minmax(0, 1fr) auto;
+}
+.ide-workspace-active .ide-project-browser-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+  width: clamp(150px, 16vw, 210px);
+  min-width: 135px;
+  max-width: min(38vw, 420px);
+  resize: horizontal;
+}
+.ide-workspace-active .ide-project-browser {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+.ide-workspace-active .ide-viewer-panel,
+.ide-workspace-active .ide-code-assistant,
+.ide-workspace-active .code-explorer-chat {
+  min-height: 0;
+  overflow: hidden;
+}
+.ide-workspace-active .code-explorer-chat {
+  height: 100%;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+.ide-workspace-active .code-explorer-chat-messages {
+  min-height: 0;
+  max-height: none;
+}
+.ide-workspace-active .ide-source-workspace textarea {
+  min-height: 0;
+}
+.ide-workspace-active #ideTerminalOutput {
+  min-height: 0;
+  max-height: none;
+  height: 100%;
+  overflow: auto;
+}
+.ide-workspace-active .ide-build-console,
+.ide-workspace-active .ide-terminal {
+  min-height: 0;
+}
+.ide-workspace-active .ide-build-console {
+  grid-template-rows: auto minmax(0, 1fr) auto;
+}
+.ide-workspace-active .ide-terminal {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+}
+.ide-code-assistant {
+  min-width: 0;
+  padding: 10px;
+}
+.ide-workspace-active .ide-code-assistant {
+  width: clamp(250px, 24vw, 320px);
+  min-width: 220px;
+  max-width: min(55vw, 620px);
+  resize: horizontal;
+}
+.ide-build-console {
+  grid-column: 1 / -1;
+}
+.ide-workspace-active .ide-build-console {
+  height: clamp(96px, 14vh, 145px);
+  min-height: 78px;
+  max-height: 45vh;
+  resize: vertical;
 }
 .ide-project-browser-panel,
 .ide-inspector-panel,
@@ -350,6 +449,8 @@ button.danger:hover {
 }
 .ide-project-browser {
   display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
   gap: 4px;
   margin-top: 12px;
   overflow: auto;
@@ -357,6 +458,8 @@ button.danger:hover {
 }
 .ide-tree-root {
   display: grid;
+  align-content: start;
+  grid-auto-rows: max-content;
   gap: 4px;
 }
 .ide-tree-root > strong {
@@ -440,9 +543,10 @@ button.danger:hover {
 .ide-device-allocation-compact small { font-size: 10px; }
 .ide-build-actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 5px;
-  align-items: flex-start;
+  align-items: center;
+  overflow-x: auto;
   padding: 6px 8px;
   border-bottom: 1px solid #263241;
   background: #1b2430;
@@ -586,6 +690,7 @@ button.danger:hover {
 #ideView .ide-workbench { gap: 8px; }
 #ideView .ide-project-browser-panel,
 #ideView .ide-inspector-panel,
+#ideView .ide-code-assistant,
 #ideView .ide-viewer-panel,
 #ideView .ide-empty-state {
   padding: 12px;
@@ -594,6 +699,16 @@ button.danger:hover {
   background: #111827;
   color: #e5e7eb;
   box-shadow: none;
+}
+#ideView .ide-code-assistant .code-explorer-chat {
+  border-color: #334155;
+  background: #111827;
+}
+#ideView .ide-code-assistant .code-explorer-chat-message {
+  background: #1b2430;
+}
+#ideView .ide-code-assistant .code-explorer-chat-message.user {
+  background: #164e63;
 }
 #ideView .ide-project-browser-panel h3,
 #ideView .ide-inspector-panel h3,
@@ -1221,8 +1336,20 @@ textarea:read-only {
 .code-explorer-chat-messages {
   display: grid;
   gap: 8px;
+  min-height: 150px;
   max-height: 260px;
   overflow: auto;
+  padding: 9px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+.code-explorer-chat-section-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
 }
 .code-explorer-chat-message {
   padding: 8px 10px;
@@ -1255,6 +1382,17 @@ textarea:read-only {
 .code-explorer-chat label {
   display: grid;
   gap: 6px;
+}
+.code-explorer-chat form {
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.code-explorer-chat textarea {
+  height: 120px;
+  min-height: 72px;
+  max-height: 42vh;
+  margin-top: 0;
+  resize: vertical;
 }
 .guided-summary-pane {
   display: grid;
@@ -1842,8 +1980,18 @@ textarea:read-only {
   .development-project-choice-panel { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
+@container (max-width: 700px) {
+  .ide-workbench { grid-template-columns: 1fr; }
+  .ide-code-assistant, .ide-build-console { grid-column: 1; }
+}
+
+@container (max-width: 560px) {
+  .ide-layout { grid-template-columns: 1fr; }
+  .ide-project-browser { max-height: 260px; }
+}
+
 @media (max-width: 900px) {
-  .dashboard-grid, .lesson-panel, .ide-layout, .development-platform-layout, .inventory-layout, .recovery-layout, .device-row, .build-row, .discovery-row { grid-template-columns: 1fr; }
+  .dashboard-grid, .lesson-panel, .development-platform-layout, .inventory-layout, .recovery-layout, .device-row, .build-row, .discovery-row { grid-template-columns: 1fr; }
   .inventory-tools, .device-facts, .provisioning-intro { grid-template-columns: 1fr; }
   .provisioning-steps { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .development-project-header, .development-project-choice-panel { grid-template-columns: 1fr; }

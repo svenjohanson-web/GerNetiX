@@ -538,6 +538,7 @@ async function routeRequest(req, res) {
       flash_status: job.result?.build?.usb_flash?.status || "nicht angefordert",
       flash_manifest: browserFlashManifest(jobId, job),
       error: job.error?.message || "",
+      build_log: job.error?.details?.build_log || job.result?.build?.log || "",
     });
     return;
   }

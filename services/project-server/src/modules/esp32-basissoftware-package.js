@@ -44,6 +44,12 @@ function walk(root) {
 function includeFile(root, filePath) {
   const relative = relativePath(root, filePath);
   if (relative.startsWith(".pio/") || relative.startsWith(".vscode/") || relative.startsWith("build/")) return false;
+  if (relative.startsWith("managed_components/espressif__mqtt/")) {
+    return !relative.includes("/examples/")
+      && !relative.includes("/test/")
+      && !relative.includes("/.git")
+      && !/\.(html|xml|toml|yml)$/i.test(relative.replace(/idf_component\.yml$/i, ""));
+  }
   return INCLUDED_ROOT_FILES.has(relative) || relative.startsWith("src/") || relative.startsWith("include/");
 }
 

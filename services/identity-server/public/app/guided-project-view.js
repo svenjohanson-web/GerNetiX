@@ -64,11 +64,32 @@ const GuidedProjectView = (() => {
       target.querySelectorAll("[data-guided-control]").forEach((button) => {
         button.addEventListener("click", () => handleGuidedControl(project, activeView, button.dataset.guidedControl));
       });
-      target.querySelector("[data-code-explorer-chat]")?.addEventListener("submit", (event) => submitCodeExplorerChat(event, project, activeView));
-      target.querySelectorAll("[data-apply-code-edit]").forEach((button) => {
-        button.addEventListener("click", () => applyCodeExplorerEdit(project, activeView, button.dataset.editMessage, Number(button.dataset.applyCodeEdit)));
-      });
+      bindCodeExplorerChat(target, project, activeView);
       renderGuidedPlantUml(target);
+    }
+
+    function renderProjectAssistant(project) {
+      const target = document.querySelector("#ideCodeAssistant");
+      if (!target || !project) return;
+      const configuredView = guidedViews(project)[state.activeIdeStep];
+      const view = isCodeExplorerView(configuredView) ? configuredView : {
+        id: `source:${state.sourcePath || "project"}`,
+        type: "source_analysis",
+        title: state.sourcePath || "Projektdatei",
+        summary: "KI-Unterstuetzung fuer die aktuell geoeffnete Datei und die Artefakte dieses Projekts.",
+        source_path: state.sourcePath,
+        payload: { artifact: { type: "code", content: document.querySelector("#sourceEditor")?.value || "" } },
+      };
+      target.innerHTML = renderCodeExplorerChat(project, view);
+      bindCodeExplorerChat(target, project, view);
+      if (typeof restoreIdeChatInputHeight === "function") restoreIdeChatInputHeight();
+    }
+
+    function bindCodeExplorerChat(target, project, view) {
+      target.querySelector("[data-code-explorer-chat]")?.addEventListener("submit", (event) => submitCodeExplorerChat(event, project, view));
+      target.querySelectorAll("[data-apply-code-edit]").forEach((button) => {
+        button.addEventListener("click", () => applyCodeExplorerEdit(project, view, button.dataset.editMessage, Number(button.dataset.applyCodeEdit)));
+      });
     }
 
     function codeChatKey(project, view) {
@@ -94,6 +115,7 @@ const GuidedProjectView = (() => {
             <p class="eyebrow">KI-Chat</p>
             <strong>Code gemeinsam verstehen</strong>
           </div>
+          <p class="code-explorer-chat-section-label">Verlauf</p>
           <div class="code-explorer-chat-messages" aria-live="polite">
             ${messages.length ? messages.map((message) => `
               <article class="code-explorer-chat-message ${message.role}">
@@ -106,6 +128,7 @@ const GuidedProjectView = (() => {
             `).join("") : `<p class="helper-text">Frage die KI zum sichtbaren Code, zu einzelnen Zeilen oder zum Verhalten.</p>`}
           </div>
           <form data-code-explorer-chat>
+            <p class="code-explorer-chat-section-label">Eingabe</p>
             <label>Frage zum Code
               <textarea rows="3" name="message" placeholder="Was passiert in dieser Funktion?"></textarea>
             </label>
@@ -157,6 +180,7 @@ const GuidedProjectView = (() => {
         messages.push({ role: "assistant", content: `Der Code-Assistent ist gerade nicht erreichbar: ${error.message}` });
       }
       renderProjectViewManifest(project);
+      renderProjectAssistant(project);
     }
 
     async function loadCodeExplorerProjectFiles(project) {
@@ -178,6 +202,7 @@ const GuidedProjectView = (() => {
       edit.applied = true;
       if (state.sourcePath === edit.path) document.querySelector("#sourceEditor").value = edit.content;
       renderProjectViewManifest(project);
+      renderProjectAssistant(project);
     }
 
     function renderGuidedArtifact(view) {
@@ -666,6 +691,7 @@ const GuidedProjectView = (() => {
     return {
       focusIdeStepSource,
       guidedViews,
+      renderProjectAssistant,
       renderProjectViewManifest,
     };
   }
