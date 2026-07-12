@@ -3,6 +3,8 @@ const { BuildPackageStore } = require("./modules/build-package-store");
 const { ArtifactStore } = require("./modules/artifact-store");
 const { FirmwareBuildJobRunner } = require("./modules/firmware-build-job-runner");
 const { DeployJobOrchestrator } = require("./modules/deploy-job-orchestrator");
+const { MqttTransport } = require("./modules/mqtt-transport");
+const { SqliteDeviceOtaSigner, SqliteOtaAcknowledgementStore } = require("./modules/ota-security");
 const { DeviceJobLock } = require("./modules/device-job-lock");
 const { BuildDeployService } = require("./services/build-deploy-service");
 const { createConfig } = require("./config");
@@ -10,6 +12,14 @@ const { createHttpApp } = require("./http-app");
 const { SqliteStateStore } = require("../../shared");
 
 function createDefaultBuildDeployService(config = createConfig()) {
+  const acknowledgementStore = new SqliteOtaAcknowledgementStore(config.sqlitePath);
+  const authorizationSigner = new SqliteDeviceOtaSigner(config.deviceCredentialsSqlitePath);
+  const mqttTransport = config.mqttBrokerUrl ? new MqttTransport({
+    url: config.mqttBrokerUrl,
+    topicFilter: "gernetix/devices/+/status/#",
+    onMessage: (topic, payload) => acknowledgementStore.receive(topic, payload),
+  }) : null;
+  mqttTransport?.start().catch((error) => console.error(`MQTT-Verbindung fehlgeschlagen: ${error.message}`));
   return new BuildDeployService({
     cache: new BuildCache({ cacheDir: config.cacheDir }),
     packageStore: new BuildPackageStore({
@@ -26,7 +36,12 @@ function createDefaultBuildDeployService(config = createConfig()) {
       artifactDir: config.artifactDir,
       publicBaseUrl: config.publicBaseUrl,
     }),
-    deployOrchestrator: new DeployJobOrchestrator(),
+    deployOrchestrator: new DeployJobOrchestrator({
+      publicBaseUrl: config.publicBaseUrl,
+      mqttPublisher: mqttTransport,
+      authorizationSigner,
+      acknowledgementStore,
+    }),
     deviceJobLock: new DeviceJobLock(),
     stateStore: config.persistenceBackend === "sqlite"
       ? new SqliteStateStore(config.sqlitePath, "build-deploy-server", {
@@ -43,6 +58,9 @@ module.exports = {
   ArtifactStore,
   FirmwareBuildJobRunner,
   DeployJobOrchestrator,
+  MqttTransport,
+  SqliteDeviceOtaSigner,
+  SqliteOtaAcknowledgementStore,
   DeviceJobLock,
   BuildDeployService,
   createConfig,

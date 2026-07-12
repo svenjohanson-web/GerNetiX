@@ -6,6 +6,36 @@ Grundregel: Prozesse nur starten oder neu starten, wenn sie fuer die aktuelle Pr
 
 ## Vor dem Start pruefen
 
+Fuer die minimale Plattform kann der Check und Start plattformuebergreifend vom Repo-Root ausgefuehrt werden:
+
+```text
+node tools/check-and-wake-processes.js
+node tools/check-and-wake-processes.js check
+node tools/check-and-wake-processes.js wake
+```
+
+Ohne Parameter wird `wake` ausgefuehrt: Alle neun Dienste der minimalen Plattform werden geprueft und fehlende Dienste automatisch in der definierten Reihenfolge gestartet. `check` veraendert nichts. Laufende Prozesse werden weder beendet noch neu gestartet. Einzelne Dienste lassen sich gezielt auswaehlen:
+
+```text
+node tools/check-and-wake-processes.js wake --service=identity-server,admin-tool
+```
+
+Hintergrundprozess-Logs liegen unter `.runtime/process-logs/`.
+
+Auf macOS kann alternativ `tools/GerNetiX-Check-und-Start.command` per Doppelklick gestartet werden. Eine Desktop-Verknuepfung kann auf diese Datei zeigen; dadurch bleibt nur eine gepflegte Skriptquelle im Repository.
+
+## Grafischer Prozess-Monitor
+
+Die eigenstaendige Desktop-App zeigt alle neun Plattformdienste mit Port, HTTP-Status, PID und Lebensstatus. Jeder Dienst kann einzeln gestartet oder gestoppt werden. Die Ansicht aktualisiert sich alle fuenf Sekunden und benoetigt weder Admin Tool noch Monitor-Webserver.
+
+- macOS: `tools/process-monitor/GerNetiX-Prozess-Monitor.command`
+- Windows: `tools/process-monitor/GerNetiX-Prozess-Monitor.cmd`
+- Entwicklung: im Ordner `tools/process-monitor` mit `pnpm start`
+- macOS-Build: `pnpm run dist:mac`
+- Windows-Build auf Windows: `pnpm run dist:win`
+
+Die App oeffnet keinen eigenen HTTP-Port. Stop-Aktionen ermitteln ausschliesslich den Listener auf dem fest definierten Port des ausgewaehlten GerNetiX-Dienstes.
+
 ```powershell
 netstat -ano | findstr :4300
 netstat -ano | findstr :4800

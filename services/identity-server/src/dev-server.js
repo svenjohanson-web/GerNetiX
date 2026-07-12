@@ -26,12 +26,14 @@ const {
 } = require("./dev/http-utils");
 const { createDevServiceClients } = require("./dev/service-clients");
 const { createTamagotchiEntryCourseModel } = require("./dev/project-models/tamagotchi-entry-course");
+const { createSmartAssistantCourseModel } = require("./dev/project-models/smart-assistant-course");
 const { defaultCatalogSeed } = require("../../hardware-catalog/src/seed");
 
 const publicDir = path.join(__dirname, "..", "public");
 const appDir = path.join(publicDir, "app");
 const esptoolJsDir = path.join(__dirname, "..", "node_modules", "esptool-js");
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
+const usbSerialHelperDistDir = path.join(workspaceRoot, "tools", "usb-serial-helper", "dist");
 const identityPersistenceBackend = process.env.IDENTITY_PERSISTENCE_BACKEND || "sqlite";
 const identitySqlitePath = process.env.IDENTITY_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-identity.sqlite");
 const port = Number(process.env.PORT || 4300);
@@ -48,7 +50,7 @@ const aiUsageBaseUrl = process.env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000";
 const aiContextBaseUrl = process.env.AI_CONTEXT_BASE_URL || "http://127.0.0.1:5500";
 const adminToolBaseUrl = process.env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600";
 const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
-const ollamaModel = process.env.OLLAMA_MODEL || "llama3.1";
+const ollamaModel = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const deviceDiscoveryUrls = process.env.GERNETIX_DEVICE_DISCOVERY_URLS || process.env.DEVICE_DISCOVERY_URLS || "";
 const gernetixNodeHostnamePrefix = "gernetix-";
 const execFileAsync = promisify(execFile);
@@ -96,6 +98,7 @@ const createAccountTransparency = createAccountTransparencyFactory({
   projectServerUserId,
 });
 const tamagotchiEntryCourseModel = createTamagotchiEntryCourseModel({ readWorkspaceText });
+const smartAssistantCourseModel = createSmartAssistantCourseModel();
 const llmConfigStore = createLlmConfigStore({
   configPath: path.join(workspaceRoot, ".runtime", "identity-llm-config.json"),
   defaultOllamaBaseUrl: ollamaBaseUrl,
@@ -138,7 +141,10 @@ async function bootstrap() {
   const server = http.createServer((req, res) => {
     routeRequest(req, res).catch((error) => {
       console.error(error);
-      sendJson(res, 500, { error: "internal_server_error" });
+      sendJson(res, error.status || 500, {
+        error: error.code || "internal_server_error",
+        message: error.message || "Interner Serverfehler.",
+      });
     });
   });
 
@@ -220,6 +226,24 @@ async function routeRequest(req, res) {
 
   if (url.pathname === "/api/session") {
     handleSession(req, res);
+    return;
+  }
+
+  if (url.pathname === "/api/platform/downloads" && req.method === "GET") {
+    if (!readSession(req)) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    sendJson(res, 200, { downloads: usbSerialHelperDownloads() });
+    return;
+  }
+
+  if (url.pathname.startsWith("/downloads/usb-serial-helper/") && req.method === "GET") {
+    if (!readSession(req)) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    serveUsbSerialHelperDownload(res, path.basename(url.pathname));
     return;
   }
 
@@ -350,6 +374,17 @@ async function routeRequest(req, res) {
       return;
     }
     sendJson(res, 200, await discoverNetworkDevices(session, Object.fromEntries(url.searchParams.entries())));
+    return;
+  }
+
+  const connectivityCheck = url.pathname.match(/^\/api\/user-ide\/devices\/([^/]+)\/connectivity-check$/);
+  if (req.method === "POST" && connectivityCheck) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleDeviceConnectivityCheck(res, session, decodeURIComponent(connectivityCheck[1]));
     return;
   }
 
@@ -535,7 +570,9 @@ async function routeRequest(req, res) {
       build_job_id: jobId,
       build_deploy_job_id: jobId,
       status: job.status,
-      flash_status: job.result?.build?.usb_flash?.status || "nicht angefordert",
+      flash_status: job.mode === "build_and_flash"
+        ? (job.result?.deploy?.status || "nicht angefordert")
+        : (job.result?.build?.usb_flash?.status || "nicht angefordert"),
       flash_manifest: browserFlashManifest(jobId, job),
       error: job.error?.message || "",
       build_log: job.error?.details?.build_log || job.result?.build?.log || "",
@@ -1166,6 +1203,46 @@ async function requireSessionProject(session, projectId) {
   return project;
 }
 
+async function handleDeviceConnectivityCheck(res, session, deviceId) {
+  const devices = await loadUserIdeDevices(session);
+  const accountDevice = devices.find((device) => device.device_id === deviceId);
+  if (!accountDevice) {
+    sendJson(res, 404, { error: "device_not_in_account", message: "Das Device gehört nicht zum aktuellen Account." });
+    return;
+  }
+  const discovery = await discoverNetworkDevices(session, { scope: "node" });
+  const discovered = (discovery.items || []).find((device) => device.device_id === deviceId);
+  if (!discovered) {
+    sendJson(res, 200, {
+      reachable: false,
+      device_id: deviceId,
+      checked_at: discovery.searched_at,
+      message: `Das Board wurde über ${discovery.candidate_count || 0} lokale Adressen nicht erreicht.`,
+    });
+    return;
+  }
+  const status = await deviceManagementJson(`/api/device-management/devices/${encodeURIComponent(deviceId)}/connectivity/status`, {
+    method: "POST",
+    body: {
+      connectivity_status: "online",
+      ota_status: discovered.ota_status || accountDevice.ota_status,
+      ota_hostname: discovered.hostname || "",
+      last_seen_ip: new URL(discovered.source_url).hostname,
+    },
+  });
+  sendJson(res, 200, {
+    reachable: true,
+    checked_at: discovery.searched_at,
+    hostname: discovered.hostname,
+    source_url: discovered.source_url,
+    device: {
+      ...accountDevice,
+      connectivity_status: status.connectivity_status || "online",
+      ota_status: status.ota_status || discovered.ota_status || accountDevice.ota_status,
+    },
+  });
+}
+
 async function handleUserIdeBuildJob(req, res) {
   const body = await readJsonBody(req);
   const session = readSession(req);
@@ -1186,6 +1263,25 @@ async function handleUserIdeBuildJob(req, res) {
   if (mode === "build_and_flash" && device.ota_status !== "ready") {
     sendJson(res, 409, { error: "device_not_ota_ready", message: "Das ausgewaehlte Device ist nicht OTA-ready." });
     return;
+  }
+  if (mode === "build_and_flash" && device.connectivity_status !== "online") {
+    sendJson(res, 409, {
+      error: "device_not_online",
+      message: `Das ausgewaehlte Device ist nicht online (${device.connectivity_status || "unknown"}). OTA wurde nicht gestartet.`,
+    });
+    return;
+  }
+  if (mode === "build_and_flash") {
+    const otaPreflight = await buildDeployJson("/api/ota/preflight");
+    if (!otaPreflight.ready) {
+      const blockers = (otaPreflight.blockers || []).map((item) => item.message).filter(Boolean);
+      sendJson(res, 409, {
+        error: "ota_pipeline_not_ready",
+        message: `OTA kann noch nicht gestartet werden: ${blockers.join(" ")}`,
+        blockers: otaPreflight.blockers || [],
+      });
+      return;
+    }
   }
   if (mode === "build_and_usb_flash" && !device.usb_flash_supported) {
     sendJson(res, 409, { error: "device_not_usb_flash_ready", message: "Das ausgewaehlte Device ist nicht fuer USB-Flash konfiguriert." });
@@ -1394,6 +1490,7 @@ function mapUserIdeProjects(session, projectsById) {
       last_build_status: latestBuildStatus(project),
       source_count: project ? project.source_count : 0,
       build_count: project ? project.build_count : 0,
+      access_model: definition.access_model || "subscription",
       view_manifest: projectViewManifest(definition),
       created_at: project ? project.created_at : "",
       updated_at: project ? project.updated_at : "",
@@ -1444,6 +1541,7 @@ function mapProjectServerProject(session, project) {
     source_files: [{ path: primarySourcePath, role: "architecture_model" }],
     steps: [],
     required_capability_ids: [],
+    access_model: "owned",
   };
 }
 
@@ -1534,6 +1632,7 @@ function toPlatformProject(project) {
     courseId: project.course_id,
     lessonId: project.lesson_id,
     requiredCapabilityIds: project.required_capability_ids,
+    accessModel: project.access_model || "subscription",
     buildConfig: project.build_config,
     status: project.status,
     sourceCount: project.source_count,
@@ -1862,6 +1961,7 @@ function createUserIdeState() {
       source_files: [{ path: "src/user/user_app.c", role: "user_code" }],
     }),
     tamagotchiEntryCourseModel.createProject(project, step),
+    smartAssistantCourseModel.createProject(project, step),
     project("esp32-ota-bootstrap-firmware", "ESP32 OTA-Basissoftware", "Firmware", "USB-Erstflash vorbereiten und spaetere OTA-Faehigkeit erhalten.", [
       step("USB-Erstflash", "Das Board wird initial mit der GerNetiX-Basissoftware vorbereitet.", "OTA bleibt Teil der Basis, nicht Teil des User-Codes."),
       step("Service-Endpunkte", "Device Management und Build-&-Deploy bleiben konfigurierbar.", "Ein Serverumzug darf keinen USB-Reflash erzwingen."),
@@ -1911,6 +2011,14 @@ function project(slug, title, area, summary, steps, options = {}) {
     "esp32-ota-bootstrap-firmware": ["capability.processor_esp32", "capability.wifi", "capability.ota"],
     "plant-watering-control": ["capability.processor_esp32", "capability.wifi", "capability.digital_output"],
   };
+  const accessModelsBySlug = {
+    "arduino-blink": "free",
+    "software-engineering-tamagotchi": "free",
+    "arduino-atmel-bare-metal": "subscription",
+    "smart-assistant-ai-automation": "subscription",
+    "esp32-ota-bootstrap-firmware": "subscription",
+    "plant-watering-control": "purchased",
+  };
   return {
     slug,
     project_server_id: `project_${slug}`,
@@ -1922,6 +2030,7 @@ function project(slug, title, area, summary, steps, options = {}) {
     build_config: options.build_config || undefined,
     source_files: options.source_files || [{ path: "src/main.cpp", role: "user_code" }],
     required_capability_ids: requiredCapabilitiesBySlug[slug] || ["capability.processor_esp32"],
+    access_model: options.access_model || accessModelsBySlug[slug] || "subscription",
     title,
     area,
     summary,
@@ -1964,6 +2073,12 @@ function projectViewManifest(project) {
 
   if (project.slug === tamagotchiEntryCourseModel.slug) {
     return tamagotchiEntryCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === smartAssistantCourseModel.slug) {
+    return smartAssistantCourseModel.createViewManifest(project, {
       override,
       primarySourcePath,
     });
@@ -2092,6 +2207,9 @@ function slugifyProjectId(value) {
 function demoProjectSources(project) {
   if (project.slug === tamagotchiEntryCourseModel.slug) {
     return tamagotchiEntryCourseModel.createSources(project, primarySourcePath);
+  }
+  if (project.slug === smartAssistantCourseModel.slug) {
+    return smartAssistantCourseModel.createSources();
   }
 
   if (project.slug === "arduino-atmel-bare-metal") {
@@ -2271,6 +2389,39 @@ async function handleDevLessonPreviewMigration(req, res) {
     project_server_error: projectServerError,
     preview_url: `/app/ide/?project=${encodeURIComponent(projectId)}`,
   });
+}
+
+function usbSerialHelperDownloads() {
+  const files = fs.existsSync(usbSerialHelperDistDir) ? fs.readdirSync(usbSerialHelperDistDir) : [];
+  const definitions = [
+    { platform: "macos", label: "Für macOS", pattern: /^GerNetiX-USB-Serial-Helper-mac-arm64\.zip$/i, detail: "ZIP · Apple Silicon" },
+    { platform: "windows", label: "Für Windows", pattern: /^GerNetiX-USB-Serial-Helper-win-x64\.exe$/i, detail: "Portable EXE · Windows 10/11 x64" },
+  ];
+  return definitions.map((definition) => {
+    const filename = files.find((file) => definition.pattern.test(file)) || "";
+    return {
+      platform: definition.platform,
+      label: definition.label,
+      detail: definition.detail,
+      available: Boolean(filename),
+      url: filename ? `/downloads/usb-serial-helper/${encodeURIComponent(filename)}` : "",
+    };
+  });
+}
+
+function serveUsbSerialHelperDownload(res, filename) {
+  const download = usbSerialHelperDownloads().find((item) => item.available && decodeURIComponent(item.url).endsWith(`/${filename}`));
+  if (!download) {
+    sendJson(res, 404, { error: "download_not_found" });
+    return;
+  }
+  const filePath = path.join(usbSerialHelperDistDir, filename);
+  res.writeHead(200, {
+    "Content-Type": filename.endsWith(".zip") ? "application/zip" : "application/vnd.microsoft.portable-executable",
+    "Content-Disposition": `attachment; filename="${filename.replace(/[\"\\]/g, "")}"`,
+    "Cache-Control": "no-store",
+  });
+  fs.createReadStream(filePath).pipe(res);
 }
 
 bootstrap().catch((error) => {

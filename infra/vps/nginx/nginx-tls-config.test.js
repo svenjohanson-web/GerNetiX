@@ -7,6 +7,12 @@ const repoRoot = path.resolve(__dirname, "../../..");
 const http = fs.readFileSync(path.join(__dirname, "default.conf"), "utf8");
 const tls = fs.readFileSync(path.join(__dirname, "tls.conf"), "utf8");
 const compose = fs.readFileSync(path.join(repoRoot, "compose.vps.yaml"), "utf8");
+
+test("build deploy advertises the canonical public firmware origin", () => {
+  assert.match(compose, /PUBLIC_BASE_URL: https:\/\/build\.gernetix\.com/);
+  assert.match(compose, /BUILD_RUNNER: platformio/);
+  assert.match(compose, /PLATFORMIO_COMMAND: \/opt\/platformio\/bin\/platformio/);
+});
 const deploy = fs.readFileSync(path.join(repoRoot, "scripts/staging/remote-deploy.sh"), "utf8");
 const english = fs.readFileSync(path.join(__dirname, "welcome.en.html"), "utf8");
 

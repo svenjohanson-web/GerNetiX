@@ -1,6 +1,7 @@
 .agents/
 .runtime/
 node_modules/
+.pnpm-store/
 .pio/
 managed_components/
 *.log

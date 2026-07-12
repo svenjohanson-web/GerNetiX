@@ -9,7 +9,7 @@ const app = fs.readFileSync(path.join(publicRoot, "app.js"), "utf8");
 
 test("build and flash actions expose their concrete prerequisite without becoming inert", () => {
   assert.match(html, /id="ideActionReason"/);
-  assert.equal((html.match(/aria-describedby="ideActionReason"/g) || []).length, 3);
+  assert.equal((html.match(/aria-describedby="ideActionReason"/g) || []).length, 4);
   assert.match(html, /id="ideBuildConsole"/);
   assert.match(html, /id="ideTerminalOutput"/);
   assert.match(html, /id="clearIdeTerminalButton"/);
@@ -20,7 +20,8 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /meldet den OTA-Status/);
   assert.match(app, /buildButton\.disabled = false/);
   assert.match(app, /usbButton\.disabled = false/);
-  assert.match(app, /otaButton\.disabled = false/);
+  assert.match(app, /otaButton\.disabled = !allocated/);
+  assert.match(html, /id="checkOtaConnectivityButton"/);
   assert.match(app, /unterstuetzt keinen USB-Flash/);
   assert.match(app, /navigator\.serial\.requestPort/);
   assert.match(app, /loadIdeEsptoolModule/);

@@ -43,6 +43,7 @@ const routeMap = {
   "device-recovery": "deviceRecoveryView",
   "device-inventory": "devicesView",
   builds: "buildsView",
+  downloads: "downloadsView",
   billing: "billingView",
   auth: "dashboardView",
 };
@@ -153,6 +154,7 @@ document.querySelector("#refreshUsbPortsButton").addEventListener("click", refre
 document.querySelector("#buildButton").addEventListener("click", startBuild);
 document.querySelector("#usbFlashButton").addEventListener("click", startUsbFlash);
 document.querySelector("#otaFlashButton").addEventListener("click", startOtaFlash);
+document.querySelector("#checkOtaConnectivityButton").addEventListener("click", checkAllocatedDeviceConnectivity);
 document.querySelector("#clearIdeTerminalButton").addEventListener("click", clearIdeTerminal);
 document.addEventListener("keydown", (event) => {
   if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s") return;
@@ -245,6 +247,7 @@ function renderRoute() {
     refreshUsbPorts(false);
   }
   if (route === "device-provisioning") loadDevicePageTools();
+  if (route === "downloads") renderDownloads();
 }
 
 function renderBreadcrumb(route) {
@@ -304,6 +307,10 @@ function currentLocationTrail(route) {
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Builds", route: "/app/builds/" },
     ],
+    downloads: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Downloads", route: "/app/downloads/" },
+    ],
     billing: [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Billing", route: "/app/billing/" },
@@ -347,6 +354,33 @@ function deviceManagementRouteFor(route) {
 function navigate(route) {
   history.pushState({}, "", route);
   renderRoute();
+}
+
+async function renderDownloads() {
+  const target = document.querySelector("#usbHelperDownloads");
+  const status = document.querySelector("#usbHelperStatus");
+  if (!target || !status) return;
+
+  const platform = /Mac/i.test(navigator.platform) ? "macos" : /Win/i.test(navigator.platform) ? "windows" : "";
+  document.querySelector("#usbHelperRecommendation")?.classList.toggle("hidden", !platform);
+  try {
+    const payload = await getJson("/api/platform/downloads");
+    const downloads = payload.downloads || [];
+    target.innerHTML = downloads.map((item) => `
+      <a class="button-link ${item.platform === platform ? "primary" : ""} ${item.available ? "" : "disabled"}"
+        ${item.available ? `href="${escapeAttribute(item.url)}" download` : 'aria-disabled="true"'}>
+        ${escapeHtml(item.label)}
+        <small>${escapeHtml(item.available ? item.detail : "Noch nicht bereit")}</small>
+      </a>
+    `).join("");
+    const available = downloads.filter((item) => item.available).length;
+    status.textContent = available
+      ? `${available} Installationspaket${available === 1 ? "" : "e"} verfügbar.`
+      : "Die Installationspakete werden gerade vorbereitet.";
+  } catch (error) {
+    target.innerHTML = "";
+    status.textContent = "Die Download-Verfügbarkeit konnte nicht geladen werden.";
+  }
 }
 
 function toggleMainMenu() {
@@ -393,24 +427,36 @@ function renderProjects() {
   if (!projectList) return;
   const catalogProjects = learningCatalogProjects();
   projectList.innerHTML = catalogProjects.length ? catalogProjects.map((project) => `
-    <article class="project-card">
-      <p class="eyebrow">${escapeHtml(project.type)}</p>
-      <h2>${escapeHtml(project.name)}</h2>
-      <p>${escapeHtml(project.description)}</p>
-      <dl class="meta-list">
-        ${meta("Kurs", project.courseId)}
-        ${meta("Lektion", project.lessonId)}
-        ${meta("Zielruntime", project.targetRuntime)}
-        ${meta("Projektdateien", project.sourceFiles.map((file) => file.path).join(", "))}
+    <article class="project-card learning-catalog-card">
+      <div>
+        <div class="learning-catalog-card-head">
+          <p class="eyebrow">${escapeHtml(project.type || "Lernprojekt")}</p>
+          <span class="learning-access-badge ${escapeAttribute(project.accessModel || "subscription")}">${escapeHtml(learningAccessLabel(project.accessModel))}</span>
+        </div>
+        <h2>${escapeHtml(project.name)}</h2>
+        <p>${escapeHtml(project.description)}</p>
+      </div>
+      <dl class="learning-catalog-facts">
+        ${meta("Lernschritte", `${project.steps.length}`)}
+        ${meta("Umgebung", project.targetRuntime || "Modell und Planung")}
+        ${meta("Hardware", project.hardwareProfileId || "optional")}
       </dl>
       <div class="card-actions">
-        <button type="button" data-open-project="${escapeHtml(project.id)}">Projekt starten</button>
+        <button class="primary" type="button" data-open-project="${escapeHtml(project.id)}">Lernprojekt starten</button>
       </div>
     </article>
-  `).join("") : `<p class="empty">Noch keine Projekte im Katalog.</p>`;
+  `).join("") : `<p class="empty">Im Lernprojekt-Katalog sind noch keine Projekte verfuegbar.</p>`;
   document.querySelectorAll("#projectList [data-open-project]").forEach((button) => {
     button.addEventListener("click", () => openProjectInIde(button.dataset.openProject));
   });
+}
+
+function learningAccessLabel(accessModel) {
+  return {
+    free: "Frei verfuegbar",
+    purchased: "Kurs gekauft",
+    subscription: "Im Abo enthalten",
+  }[accessModel] || "Im Abo enthalten";
 }
 
 function renderLearn() {
@@ -628,14 +674,22 @@ function updateIdeProjectTools(project) {
   const usbButton = document.querySelector("#usbFlashButton");
   const otaButton = document.querySelector("#otaFlashButton");
   const actionReasonNode = document.querySelector("#ideActionReason");
+  const otaReason = !allocated
+    ? "OTA nicht verfügbar: Kein Device zugeordnet."
+    : allocated.connectivity_status !== "online"
+      ? `OTA nicht verfügbar: Das Device ist nicht online (${allocated.connectivity_status || "unknown"}).`
+      : allocated.ota_status !== "ready"
+        ? `OTA nicht verfügbar: Das Device meldet den OTA-Status ${allocated.ota_status || "unknown"}.`
+        : "";
   buildButton.disabled = false;
   usbButton.disabled = false;
-  otaButton.disabled = false;
+  otaButton.disabled = !allocated || allocated.ota_status !== "ready" || allocated.connectivity_status !== "online";
   buildButton.title = actionReason;
   usbButton.title = actionReason || (!allocated?.usb_flash_supported ? "Das zugeordnete Device unterstuetzt keinen USB-Flash." : "");
-  otaButton.title = actionReason || (allocated?.ota_status !== "ready" ? `Das zugeordnete Device meldet den OTA-Status ${allocated?.ota_status || "unknown"}.` : "");
-  actionReasonNode.textContent = actionReason;
-  actionReasonNode.classList.toggle("hidden", !actionReason);
+  otaButton.title = actionReason || otaReason;
+  const visibleReason = actionReason || otaReason;
+  actionReasonNode.textContent = visibleReason;
+  actionReasonNode.classList.toggle("hidden", !visibleReason);
   document.querySelector("#sourceEditor").readOnly = !sourceEditing;
 }
 
@@ -1018,7 +1072,9 @@ async function startUsbFlash() {
 async function waitForCompletedBuild(build) {
   let current = build;
   for (let attempt = 0; attempt < 600; attempt += 1) {
-    if (["succeeded", "failed", "replaced"].includes(current.status)) return { ...build, ...current };
+    const otaComplete = build.mode !== "build_and_flash"
+      || ["rebooting", "confirmed", "delivered", "succeeded", "failed"].includes(current.flash_status);
+    if (["failed", "replaced"].includes(current.status) || (current.status === "succeeded" && otaComplete)) return { ...build, ...current };
     if (attempt % 5 === 0) setFlashStatus("running", `PlatformIO-Build läuft... ${attempt}s`);
     await delay(1000);
     current = await getJson(`/api/user-ide/build-jobs/${encodeURIComponent(build.build_deploy_job_id || build.build_job_id)}/status`);
@@ -1094,6 +1150,7 @@ async function startOtaFlash() {
   const project = projectById(state.activeProjectId);
   const device = allocatedIdeDevice(project);
   if (!project || !device) return setFlashStatus("error", "Bitte zuerst den ESP32-Projektordner einem Inventar-Device zuordnen.");
+  if (device.connectivity_status !== "online") return setFlashStatus("error", `Das zugeordnete Device ist nicht online (${device.connectivity_status || "unknown"}).`);
   if (device.ota_status !== "ready") return setFlashStatus("error", "Das zugeordnete Device ist nicht OTA-ready.");
   setFlashStatus("running", "Build und OTA-Flash laufen...");
   try {
@@ -1103,11 +1160,44 @@ async function startOtaFlash() {
       device_id: device.device_id,
       mode: "build_and_flash",
     });
-    state.builds.unshift(build);
-    setFlashStatus(build.status === "succeeded" ? "ok" : "error", `${build.status}: ${build.flash_status || "OTA-Flash beendet"}`);
+    const completed = await waitForCompletedBuild(build);
+    state.builds.unshift(completed);
+    if (completed.status !== "succeeded") {
+      appendBuildFailureLog(completed.build_log);
+      throw new Error(completed.error || "Build für das OTA-Update ist fehlgeschlagen.");
+    }
+    if (["rebooting", "confirmed", "delivered", "succeeded"].includes(completed.flash_status)) {
+      setFlashStatus("ok", `OTA-Auftrag erfolgreich übergeben: ${completed.flash_status}`);
+    } else {
+      setFlashStatus("error", `Firmware gebaut, OTA-Übertragung nicht bestätigt: ${completed.flash_status || "unbekannter Status"}`);
+    }
     renderBuilds();
   } catch (error) {
     setFlashStatus("error", error.message);
+  }
+}
+
+async function checkAllocatedDeviceConnectivity() {
+  const project = projectById(state.activeProjectId);
+  const device = allocatedIdeDevice(project);
+  if (!project || !device) return setFlashStatus("error", "Bitte zuerst dem ESP32-Projektordner ein Inventar-Device zuordnen.");
+  const button = document.querySelector("#checkOtaConnectivityButton");
+  button.disabled = true;
+  setFlashStatus("running", `Erreichbarkeit von ${device.display_name || device.device_id} wird geprüft...`);
+  try {
+    const result = await postJson(`/api/user-ide/devices/${encodeURIComponent(device.device_id)}/connectivity-check`, {});
+    if (!result.reachable) {
+      setFlashStatus("error", result.message || "Das Board wurde im lokalen Netzwerk nicht gefunden.");
+      return;
+    }
+    Object.assign(device, result.device || {}, { connectivity_status: "online" });
+    updateIdeProjectTools(project);
+    renderIdeDeviceAllocation(project);
+    setFlashStatus("ok", `Board online: ${result.hostname || device.display_name || device.device_id}`);
+  } catch (error) {
+    setFlashStatus("error", `Online-Prüfung fehlgeschlagen: ${error.message}`);
+  } finally {
+    button.disabled = false;
   }
 }
 

@@ -113,7 +113,15 @@ test("rejects a public plaintext MQTT broker", async () => {
 });
 
 test("exposes firmware artifact content for browser USB flash", async () => {
-  const service = createService();
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-provisioning-artifact-"));
+  const firmwarePath = path.join(tempRoot, "merged-firmware.bin");
+  fs.writeFileSync(firmwarePath, "test firmware");
+  const service = createDefaultProvisioningTool(createConfig({
+    DEVICE_MANAGEMENT_BASE_URL: "https://devices.gernetix.test/api/device-management",
+    FLASH_RUNNER: "mock",
+    REGISTER_DEVICE_ON_COMPLETE: "false",
+    PROVISIONING_FIRMWARE_FILE_PATH: firmwarePath,
+  }));
   const created = await service.createSession(validInput());
   const content = service.getFirmwareArtifactContent(created.usb_flash_package.firmware_artifact.artifact_id);
 

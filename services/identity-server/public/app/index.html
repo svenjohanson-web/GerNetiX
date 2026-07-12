@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Plattform</title>
-    <link rel="stylesheet" href="/app/app.css?v=20260712-8" />
+    <link rel="stylesheet" href="/app/app.css?v=20260712-17" />
   </head>
   <body>
     <main class="app-shell">
@@ -29,6 +29,7 @@
         <a href="/app/learn/" data-route="learn">Lernplattform</a>
         <a href="/app/device-management/" data-route="device-management">Device Management</a>
         <a class="utility" href="/app/builds/" data-route="builds">Builds</a>
+        <a class="utility" href="/app/downloads/" data-route="downloads">Downloads</a>
         <a class="utility" href="/app/billing/" data-route="billing">Billing</a>
         <button id="logoutButton" class="menu-logout" type="button">Abmelden</button>
       </nav>
@@ -65,6 +66,35 @@
         </section>
       </section>
 
+      <section id="downloadsView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Werkzeuge für deinen Rechner</p>
+            <h2>Downloads</h2>
+            <p class="helper-text">Hilfsprogramme für Funktionen, die der Browser nicht direkt bereitstellt.</p>
+          </div>
+        </div>
+        <section class="download-grid" aria-label="Verfügbare Downloads">
+          <article class="panel download-card">
+            <div class="download-card-head">
+              <div>
+                <p class="eyebrow">USB &amp; Recovery</p>
+                <h3>USB Serial Helper</h3>
+              </div>
+              <span id="usbHelperRecommendation" class="access-badge hidden">Für dieses Gerät</span>
+            </div>
+            <p>Verbindet die GerNetiX IDE mit einem per USB angeschlossenen Board, wenn dein Browser Web Serial nicht unterstützt.</p>
+            <ul class="download-feature-list">
+              <li>ESP32 per USB erkennen und flashen</li>
+              <li>Alternative für Safari und Browser ohne Web Serial</li>
+              <li>Keine Zugangsdaten oder Projektdaten dauerhaft lokal speichern</li>
+            </ul>
+            <div id="usbHelperDownloads" class="download-actions" aria-live="polite"></div>
+            <p id="usbHelperStatus" class="helper-text">Download-Verfügbarkeit wird geprüft …</p>
+          </article>
+        </section>
+      </section>
+
       <section id="learnView" class="view hidden">
         <div class="section-head">
           <div>
@@ -72,23 +102,24 @@
             <h2>Lernplattform</h2>
           </div>
         </div>
-        <section class="panel">
+        <section class="panel learning-catalog-panel">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Meine Lernprojekte</p>
-              <h3>Fortschritt</h3>
+              <p class="eyebrow">Entdecken und starten</p>
+              <h3>Lernprojekt-Katalog</h3>
+              <p class="helper-text">Waehle ein Projekt nach Thema, Lernziel und gewuenschter Hardware.</p>
             </div>
           </div>
-          <div id="learnProjectList"></div>
+          <section id="projectList" class="project-grid learning-catalog-grid"></section>
         </section>
         <section class="panel">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Katalog</p>
-              <h3>Projekt starten</h3>
+              <p class="eyebrow">Persoenlicher Bereich</p>
+              <h3>Meine Lernprojekte</h3>
             </div>
           </div>
-          <section id="projectList" class="project-grid"></section>
+          <div id="learnProjectList"></div>
         </section>
       </section>
 
@@ -130,6 +161,7 @@
                 <button id="buildButton" type="button" aria-describedby="ideActionReason">Build</button>
                 <button id="usbFlashButton" type="button" aria-describedby="ideActionReason">Flash via Web Serial</button>
                 <button id="otaFlashButton" type="button" aria-describedby="ideActionReason">OTA Flash</button>
+                <button id="checkOtaConnectivityButton" type="button" aria-describedby="ideActionReason">Online prüfen</button>
                 <small id="ideActionReason" class="ide-action-reason hidden"></small>
               </div>
               <section class="ide-terminal" aria-label="Build Terminal">
@@ -446,8 +478,8 @@
     <script src="/app/dom-utils.js"></script>
     <script src="/app/device-onboarding-model.js"></script>
     <script src="/app/device-onboarding-controller.js"></script>
-    <script src="/app/guided-project-view.js?v=20260712-9"></script>
+    <script src="/app/guided-project-view.js?v=20260712-10"></script>
     <script src="/app/development-platform.js"></script>
-    <script src="/app/app.js?v=20260712-9"></script>
+    <script src="/app/app.js?v=20260712-20"></script>
   </body>
 </html>

@@ -259,6 +259,67 @@ button.danger:hover {
   background: var(--accent);
 }
 .project-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 12px; }
+.learning-catalog-panel { margin-bottom: 14px; }
+.learning-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+.learning-catalog-card {
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto auto;
+  gap: 12px;
+}
+.learning-catalog-card h2 { font-size: 20px; }
+.learning-catalog-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+}
+.learning-access-badge {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 800;
+}
+.learning-access-badge.free { border-color: #22c55e; color: #86efac; }
+.learning-access-badge.purchased { border-color: #a78bfa; color: #c4b5fd; }
+.learning-access-badge.subscription { border-color: #22d3ee; color: #67e8f9; }
+
+.download-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 32rem), 1fr));
+  gap: 1rem;
+}
+
+.download-card { display: grid; gap: 1rem; align-content: start; }
+.download-card-head { display: flex; justify-content: space-between; gap: 1rem; align-items: start; }
+.download-card-head h3 { margin: 0.2rem 0 0; }
+.download-feature-list { margin: 0; padding-left: 1.2rem; color: var(--muted); line-height: 1.6; }
+.download-actions { display: flex; flex-wrap: wrap; gap: 0.75rem; }
+.download-actions .button-link { display: grid; gap: 0.15rem; min-width: 12rem; padding: 0.7rem 0.9rem; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); text-decoration: none; font-weight: 700; }
+.download-actions .button-link.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+.download-actions .button-link small { font-weight: 500; opacity: 0.75; }
+.download-actions .button-link.disabled { cursor: not-allowed; opacity: 0.48; }
+.access-badge { border: 1px solid var(--accent); border-radius: 999px; padding: 0.35rem 0.65rem; color: var(--accent); white-space: nowrap; }
+.learning-catalog-card p { margin-bottom: 0; }
+.learning-catalog-facts {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  margin: 0;
+}
+.learning-catalog-facts div {
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+}
+.learning-catalog-facts dt { color: var(--muted); font-size: 10px; }
+.learning-catalog-facts dd { margin: 3px 0 0; overflow-wrap: anywhere; font-size: 12px; font-weight: 700; }
 .project-card { padding: 16px; }
 .project-card p, .device-row p, .build-row p, #lessonText { color: var(--muted); line-height: 1.5; }
 .table-shell {
@@ -355,10 +416,40 @@ button.danger:hover {
   display: flex;
   flex-direction: column;
   height: 100dvh;
+  padding: 4px 8px 8px;
   overflow: hidden;
 }
 .ide-workspace-active .topbar {
   flex: 0 0 auto;
+  min-height: 44px;
+  margin-bottom: 6px;
+  padding: 5px 8px;
+  border-radius: 7px;
+}
+.ide-workspace-active .top-navigation-context {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+}
+.ide-workspace-active .top-navigation-context > .eyebrow {
+  display: none;
+}
+.ide-workspace-active .breadcrumb-tree {
+  max-width: min(900px, calc(100vw - 300px));
+  gap: 0;
+}
+.ide-workspace-active .breadcrumb-tree a,
+.ide-workspace-active .breadcrumb-tree span {
+  min-height: 26px;
+  padding: 3px 7px;
+  font-size: 12px;
+}
+.ide-workspace-active .account-badge {
+  font-size: 12px;
+}
+.ide-workspace-active .menu-button {
+  width: 34px;
+  height: 34px;
 }
 .ide-workspace-active #ideView {
   flex: 1 1 auto;
@@ -437,9 +528,9 @@ button.danger:hover {
   grid-column: 1 / -1;
 }
 .ide-workspace-active .ide-build-console {
-  height: clamp(96px, 14vh, 145px);
-  min-height: 78px;
-  max-height: 45vh;
+  height: clamp(260px, 32vh, 360px);
+  min-height: 230px;
+  max-height: 60vh;
   resize: vertical;
 }
 .ide-project-browser-panel,
@@ -641,10 +732,10 @@ button.danger:hover {
 
 /* Die freie IDE verwendet durchgaengig dieselbe visuelle Sprache wie Build & Flash. */
 #ideView {
-  margin: 0 -10px;
-  padding: 12px;
+  margin: 0;
+  padding: 5px;
   border: 1px solid #263241;
-  border-radius: 12px;
+  border-radius: 8px;
   background: #0b1018;
   color: #e5e7eb;
   box-shadow: 0 18px 50px rgba(2, 6, 23, .22);
@@ -686,23 +777,36 @@ button.danger:hover {
   border-color: #0891b2;
   background: #0e7490;
 }
-#ideView .ide-layout { gap: 8px; }
-#ideView .ide-workbench { gap: 8px; }
+#ideView .ide-layout { gap: 5px; }
+#ideView .ide-workbench { gap: 5px; }
 #ideView .ide-project-browser-panel,
 #ideView .ide-inspector-panel,
 #ideView .ide-code-assistant,
 #ideView .ide-viewer-panel,
 #ideView .ide-empty-state {
-  padding: 12px;
+  padding: 7px;
   border-color: #263241;
-  border-radius: 8px;
+  border-radius: 6px;
   background: #111827;
   color: #e5e7eb;
   box-shadow: none;
 }
 #ideView .ide-code-assistant .code-explorer-chat {
+  gap: 6px;
+  padding: 7px;
   border-color: #334155;
   background: #111827;
+}
+#ideView .ide-code-assistant .code-explorer-chat-messages {
+  gap: 5px;
+  padding: 6px;
+}
+#ideView .ide-code-assistant .code-explorer-chat-message {
+  padding: 6px 8px;
+}
+#ideView .ide-code-assistant .code-explorer-chat form {
+  gap: 4px;
+  padding-top: 6px;
 }
 #ideView .ide-code-assistant .code-explorer-chat-message {
   background: #1b2430;
@@ -712,7 +816,12 @@ button.danger:hover {
 }
 #ideView .ide-project-browser-panel h3,
 #ideView .ide-inspector-panel h3,
-#ideView .ide-viewer-panel h3 { font-size: 14px; }
+#ideView .ide-viewer-panel h3 { font-size: 13px; }
+#ideView .ide-project-browser { margin-top: 6px; gap: 2px; }
+#ideView .ide-tree-root,
+#ideView .ide-tree-folder { gap: 2px; }
+#ideView .ide-tree-root > strong { padding: 5px 6px; }
+#ideView .ide-tree-folder summary { padding-top: 4px; padding-bottom: 4px; }
 #ideView .ide-tree-root > strong {
   border-color: #334155;
   background: #1b2430;
@@ -737,8 +846,8 @@ button.danger:hover {
 }
 #ideView .ide-project-browser small { color: #64748b; font-size: 9px; }
 #ideView .ide-viewer-head {
-  margin: -12px -12px 0;
-  padding: 9px 12px;
+  margin: -7px -7px 0;
+  padding: 6px 8px;
   border-bottom: 1px solid #263241;
   background: #1b2430;
 }
@@ -2092,6 +2201,54 @@ textarea,
 .development-project-header,
 .manifest-head { border-color: #334155; }
 .main-menu-panel { border-color: #334155; background: #111827; box-shadow: var(--shadow); }
+.app-menu {
+  border-color: #334155;
+  background: #111827;
+  box-shadow: var(--shadow);
+}
+.app-menu a,
+.app-menu .menu-logout {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  padding: 10px 12px;
+  border: 1px solid #334155;
+  border-radius: 7px;
+  background: #1b2430;
+  color: #cbd5e1;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 650;
+  line-height: 1.25;
+  text-align: left;
+}
+.app-menu a.utility { background: #182230; color: #a8b6ca; }
+.app-menu a:hover,
+.app-menu .menu-logout:hover {
+  border-color: #22d3ee;
+  background: #273244;
+  color: #ecfeff;
+}
+.app-menu a.active {
+  border-color: #0891b2;
+  background: #164e63;
+  color: #cffafe;
+}
+.app-menu .menu-logout {
+  border-color: #7f1d1d;
+  background: #26171b;
+  color: #fca5a5;
+}
+.app-menu .menu-logout:hover {
+  border-color: #ef4444;
+  background: #3f1d24;
+  color: #fecaca;
+}
+.app-menu a:focus-visible,
+.app-menu .menu-logout:focus-visible {
+  outline: 2px solid #22d3ee;
+  outline-offset: 2px;
+}
 .plantuml-viewer,
 .plantuml-diagram { background: #fff; }
 .development-project-summary {

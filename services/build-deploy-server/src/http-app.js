@@ -14,6 +14,11 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/ota/preflight") {
+      sendJson(res, 200, service.otaPreflight());
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/build-jobs") {
       const body = await readJsonBody(req);
       const job = await service.submitJob(body);

@@ -132,10 +132,13 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         usedLocalRoute: false,
       });
     } catch (error) {
-      const assistantContent = fallbackAnswer(userMessages, routeConfig("architecture_discovery"));
+      const fallbackConfig = routeConfig(codeExplorerMode ? "code_generation" : "architecture_discovery");
+      const assistantContent = codeExplorerMode
+        ? codeExplorerFallback(body.codeContext, fallbackConfig)
+        : fallbackAnswer(userMessages, fallbackConfig);
       sendJson(res, 200, {
         config: config({ lastError: error.message || String(error) }),
-        routing: routingSummary(routeConfig("architecture_discovery"), { complexity: "unknown" }),
+        routing: routingSummary(fallbackConfig, { complexity: "unknown" }),
         message: {
           role: "assistant",
           content: assistantContent,
@@ -701,6 +704,21 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       "",
       "Danach leite ich daraus Randbedingungen, Wirkketten und erst danach eine Zielarchitektur ab.",
     ].join("\n");
+  }
+
+  function codeExplorerFallback(rawContext, activeConfig = llmConfigStore.publicConfig()) {
+    const context = normalizeCodeContext(rawContext);
+    const providerName = activeConfig.provider === "api"
+      ? "konfigurierte API"
+      : "lokale Ollama-Instanz";
+    return [
+      `Der Code-Assistent kann die ${providerName} gerade nicht erreichen.`,
+      "",
+      `Aktuelle Datei: ${context.path}`,
+      context.files.length ? `Projektkontext: ${context.files.length} Datei(en) und ${context.artifacts.length} Artefakt(e) wurden vorbereitet.` : "",
+      "",
+      "Pruefe im Admin Tool die KI-Route oder starte den lokalen Ollama-Dienst. Es wurden keine Dateien veraendert.",
+    ].filter(Boolean).join("\n");
   }
 
   return {

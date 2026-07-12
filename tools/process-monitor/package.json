@@ -1,0 +1,36 @@
+{
+  "name": "gernetix-process-monitor",
+  "productName": "GerNetiX Prozess-Monitor",
+  "version": "0.1.0",
+  "private": true,
+  "main": "desktop-main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:mac": "electron-builder --mac dir",
+    "dist:win": "electron-builder --win portable"
+  },
+  "devDependencies": {
+    "electron": "^37.2.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "de.gernetix.processmonitor",
+    "productName": "GerNetiX Prozess-Monitor",
+    "asar": true,
+    "files": [
+      "desktop-main.js",
+      "desktop-preload.js",
+      "desktop-process-control.js",
+      "public/desktop.html",
+      "public/desktop-app.js",
+      "public/styles.css"
+    ],
+    "mac": {
+      "target": ["dir"],
+      "category": "public.app-category.developer-tools"
+    },
+    "win": {
+      "target": ["portable"]
+    }
+  }
+}

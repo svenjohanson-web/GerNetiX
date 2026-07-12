@@ -6,6 +6,7 @@ const test = require("node:test");
 const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
 const publicApp = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
 const assistant = fs.readFileSync(path.resolve(__dirname, "../src/dev/development-assistant.js"), "utf8");
+const devServer = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
 
 test("shows a contextual AI chat only for code explorer views", () => {
   assert.match(guidedView, /view\?\.type === "source_analysis"/);
@@ -32,6 +33,16 @@ test("routes code explorer questions with bounded source context", () => {
   assert.match(assistant, /Rolle: Code-Explorer/);
   assert.match(assistant, /slice\(0, 24000\)/);
   assert.match(assistant, /"code_explorer_assistance"/);
+});
+
+test("uses a code-specific fallback when the configured provider is unavailable", () => {
+  assert.match(assistant, /codeExplorerMode[\s\S]*codeExplorerFallback\(body\.codeContext/);
+  assert.match(assistant, /Der Code-Assistent kann die/);
+  assert.match(assistant, /Es wurden keine Dateien veraendert/);
+});
+
+test("identity uses the same installed default Ollama model as the admin tool", () => {
+  assert.match(devServer, /process\.env\.OLLAMA_MODEL \|\| "llama3\.2:3b"/);
 });
 
 test("knows project artifacts and applies confirmed edits through project source persistence", () => {

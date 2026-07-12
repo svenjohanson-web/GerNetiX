@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GerNetiX USB Serial Helper</title>
+    <style>
+      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #08111d; color: #e8edf5; font: 16px system-ui; }
+      main { max-width: 560px; padding: 40px; border: 1px solid #2d4058; border-radius: 18px; background: #101b2b; }
+      button { padding: 12px 18px; border: 0; border-radius: 8px; background: #0b91aa; color: white; font: inherit; font-weight: 700; cursor: pointer; }
+      p { color: #a8b6ca; line-height: 1.55; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>USB Serial Helper</h1>
+      <p>Öffnet die GerNetiX Entwicklungsplattform in einer sicheren Desktop-Ansicht mit USB-Serial-Unterstützung.</p>
+      <button id="openButton" type="button">Entwicklungsplattform öffnen</button>
+    </main>
+    <script>
+      const target = new URLSearchParams(location.search).get("target") || "http://127.0.0.1:4300/app/development-platform/";
+      document.querySelector("#openButton").addEventListener("click", () => window.gernetixHelper.openPlatform(target));
+    </script>
+  </body>
+</html>

@@ -1,10 +1,19 @@
 function createJsonClient(baseUrl, fallbackMessage, clientOptions = {}) {
   return async function requestJson(pathname, options = {}) {
-    const response = await fetch(`${baseUrl}${pathname}`, {
-      method: options.method || "GET",
-      headers: options.body ? { "Content-Type": "application/json" } : {},
-      body: options.body ? JSON.stringify(options.body) : undefined,
-    });
+    let response;
+    try {
+      response = await fetch(`${baseUrl}${pathname}`, {
+        method: options.method || "GET",
+        headers: options.body ? { "Content-Type": "application/json" } : {},
+        body: options.body ? JSON.stringify(options.body) : undefined,
+      });
+    } catch (cause) {
+      const error = new Error(`${fallbackMessage} Der lokale Dienst hat die Verbindung beendet.`);
+      error.code = "upstream_connection_failed";
+      error.status = 502;
+      error.cause = cause;
+      throw error;
+    }
     const payload = await response.json().catch(() => ({}));
     const allowedStatus = clientOptions.allowPaymentRequired && options.allowPaymentRequired && response.status === 402;
     if (!response.ok && !allowedStatus) {

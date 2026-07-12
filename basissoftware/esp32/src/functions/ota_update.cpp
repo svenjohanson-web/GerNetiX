@@ -15,6 +15,7 @@
 #include "nvs.h"
 
 #include "basissoftware/feedback.h"
+#include "basissoftware/mqtt_ota.h"
 #include "basissoftware/provisioning_config.h"
 
 namespace {
@@ -136,6 +137,7 @@ void setStatus(const char *state, const char *deployId, const char *error, bool 
   std::snprintf(otaError, sizeof(otaError), "%s", error == nullptr ? "" : error);
   otaBusy = busy;
   portEXIT_CRITICAL(&statusMux);
+  publishMqttOtaStatus(state, deployId, error);
 }
 
 void bytesToHex(const unsigned char *bytes, size_t count, char *target, size_t targetSize) {

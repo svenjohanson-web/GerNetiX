@@ -13,6 +13,8 @@ test("MQTT OTA subscriber uses TLS, device credentials and QoS 1", () => {
   assert.match(source, /computeDeviceHmacSha256Hex/);
   assert.match(source, /authentication\.password = mqttPassword/);
   assert.match(source, /esp_mqtt_client_subscribe\(client, subscriptionTopic, 1\)/);
+  assert.match(source, /status\/deployment/);
+  assert.match(source, /esp_mqtt_client_publish\(client, topic, payload, payloadLength, 1, 0\)/);
 });
 
 test("MQTT permits plaintext only for a private IPv4 broker", () => {

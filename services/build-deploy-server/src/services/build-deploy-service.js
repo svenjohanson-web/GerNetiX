@@ -41,7 +41,14 @@ class BuildDeployService {
   getJob(jobId) {
     const job = this.jobs.get(jobId);
     if (!job) throw new BuildDeployError("job_not_found", "BuildJob wurde nicht gefunden.", 404);
+    const deployId = job.result?.deploy?.deploy_id;
+    const acknowledgement = deployId ? this.deployOrchestrator.deployStatus(deployId) : null;
+    if (acknowledgement) job.result.deploy = { ...job.result.deploy, status: acknowledgement.status, acknowledgement };
     return summarizeJob(job);
+  }
+
+  otaPreflight() {
+    return this.deployOrchestrator.preflight();
   }
 
   startJob(job) {

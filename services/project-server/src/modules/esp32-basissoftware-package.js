@@ -47,6 +47,7 @@ function includeFile(root, filePath) {
   if (relative.startsWith("managed_components/espressif__mqtt/")) {
     return !relative.includes("/examples/")
       && !relative.includes("/test/")
+      && !relative.includes("/docs/")
       && !relative.includes("/.git")
       && !/\.(html|xml|toml|yml)$/i.test(relative.replace(/idf_component\.yml$/i, ""));
   }

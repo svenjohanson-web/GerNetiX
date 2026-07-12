@@ -49,9 +49,9 @@ test("IDE fits into viewport height and scrolls only inside its panes", () => {
   assert.match(css, /\.ide-workspace-active #ideTerminalOutput \{[\s\S]*overflow: auto/);
 });
 
-test("project tree stays top-aligned and build console remains compact", () => {
+test("project tree stays top-aligned and build console keeps useful history visible", () => {
   assert.match(css, /\.ide-project-browser \{[\s\S]*align-content: start;[\s\S]*grid-auto-rows: max-content/);
-  assert.match(css, /height: clamp\(96px, 14vh, 145px\)/);
+  assert.match(css, /height: clamp\(260px, 32vh, 360px\)/);
   assert.match(css, /\.ide-build-actions \{[\s\S]*flex-wrap: nowrap/);
 });
 

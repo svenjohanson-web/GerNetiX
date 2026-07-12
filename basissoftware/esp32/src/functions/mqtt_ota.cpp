@@ -176,3 +176,20 @@ size_t writeMqttOtaStatusJson(char *target, size_t targetSize) {
   if (written < 0) return 0;
   return static_cast<size_t>(written) < targetSize ? static_cast<size_t>(written) : targetSize - 1;
 }
+
+void publishMqttOtaStatus(const char *state, const char *deployId, const char *error) {
+  if (client == nullptr || subscriptionTopic[0] == '\0') return;
+  char topic[192] = {};
+  const ProvisioningConfig config = loadProvisioningConfig();
+  if (config.deviceId[0] == '\0') return;
+  const int topicLength = std::snprintf(topic, sizeof(topic), "gernetix/devices/%s/status/deployment", config.deviceId);
+  if (topicLength <= 0 || static_cast<size_t>(topicLength) >= sizeof(topic)) return;
+  char payload[384] = {};
+  const int payloadLength = std::snprintf(
+      payload, sizeof(payload),
+      "{\"device_id\":\"%s\",\"deploy_id\":\"%s\",\"status\":\"%s\",\"error\":\"%s\"}",
+      config.deviceId, deployId == nullptr ? "" : deployId, state == nullptr ? "unknown" : state,
+      error == nullptr ? "" : error);
+  if (payloadLength <= 0 || static_cast<size_t>(payloadLength) >= sizeof(payload)) return;
+  esp_mqtt_client_publish(client, topic, payload, payloadLength, 1, 0);
+}

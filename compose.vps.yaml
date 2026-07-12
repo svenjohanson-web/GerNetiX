@@ -40,8 +40,11 @@ services:
       PORT: 4400
       PERSISTENCE_BACKEND: sqlite
       PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      DEVICE_CREDENTIALS_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
       BUILD_DEPLOY_RUNTIME_DIR: /var/lib/gernetix/build
-      BUILD_RUNNER: mock
+      BUILD_RUNNER: platformio
+      PLATFORMIO_COMMAND: /opt/platformio/bin/platformio
+      PUBLIC_BASE_URL: https://build.gernetix.com
       MQTT_BROKER_URL: mqtt://mqtt-broker:1883
     expose: ["4400"]
     volumes:

@@ -26,6 +26,8 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
   assert.equal(files.some((file) => file.path === "managed_components/espressif__mqtt/mqtt_client.c"), true);
   assert.equal(files.some((file) => file.path === "managed_components/espressif__mqtt/include/mqtt_client.h"), true);
   assert.equal(files.some((file) => file.path.startsWith("managed_components/espressif__mqtt/examples/")), false);
+  assert.equal(files.some((file) => file.path.startsWith("managed_components/espressif__mqtt/docs/")), false);
+  assert.ok(Buffer.byteLength(JSON.stringify(files)) < 10 * 1024 * 1024, "ESP32 build package must stay below the Build Server request limit");
   assert.match(files.find((file) => file.path === "src/user/user_app.cpp").content, /void userMain/);
   assert.equal(files.some((file) => file.path === "Komponenten/ESP32/src/user_main.cpp"), false);
   assert.equal(files.some((file) => file.path.startsWith(".vscode/")), false);
