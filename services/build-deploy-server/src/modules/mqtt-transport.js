@@ -15,6 +15,7 @@ class MqttTransport {
     this.pending = new Map();
     this.connectPromise = null;
     this.started = false;
+    this.keepaliveTimer = null;
   }
 
   async start() {
@@ -60,6 +61,7 @@ class MqttTransport {
       socket.once("error", onError);
       socket.on("data", (chunk) => this.consume(chunk, resolve, reject));
       socket.on("close", () => {
+        this.stopKeepalive();
         this.socket = null;
         this.connectPromise = null;
         if (this.started) setTimeout(() => this.start().catch(() => {}), 2000).unref?.();
@@ -79,7 +81,11 @@ class MqttTransport {
       this.buffer = this.buffer.subarray(remaining.offset + remaining.value);
       const type = header >> 4;
       if (type === 2) {
-        if (payload[1] !== 0) connectReject(new Error(`MQTT CONNACK ${payload[1]}`)); else connectResolve();
+        if (payload[1] !== 0) connectReject(new Error(`MQTT CONNACK ${payload[1]}`));
+        else {
+          this.startKeepalive();
+          connectResolve();
+        }
       } else if (type === 4) resolvePending(this.pending, `puback:${payload.readUInt16BE(0)}`);
       else if (type === 9) resolvePending(this.pending, `suback:${payload.readUInt16BE(0)}`);
       else if (type === 3) this.receivePublish(header, payload);
@@ -98,6 +104,19 @@ class MqttTransport {
   }
 
   nextPacketId() { this.packetId = this.packetId >= 65535 ? 1 : this.packetId + 1; return this.packetId; }
+
+  startKeepalive() {
+    this.stopKeepalive();
+    this.keepaliveTimer = setInterval(() => {
+      if (this.socket && !this.socket.destroyed) this.socket.write(Buffer.from([0xc0, 0x00]));
+    }, 30000);
+    this.keepaliveTimer.unref?.();
+  }
+
+  stopKeepalive() {
+    if (this.keepaliveTimer) clearInterval(this.keepaliveTimer);
+    this.keepaliveTimer = null;
+  }
 }
 
 function connectPacket(clientId, username, password) {

@@ -12,7 +12,9 @@ test("OTA path downloads, verifies and activates through ESP-IDF", () => {
   assert.match(otaSource, /esp_https_ota_begin/);
   assert.match(otaSource, /esp_https_ota_perform/);
   assert.match(otaSource, /esp_https_ota_is_complete_data_received/);
-  assert.match(otaSource, /esp_partition_get_sha256/);
+  assert.match(otaSource, /esp_https_ota_get_image_len_read/);
+  assert.match(otaSource, /calculateDownloadedImageSha256/);
+  assert.match(otaSource, /esp_partition_read/);
   assert.match(otaSource, /esp_https_ota_finish/);
   assert.match(webSource, /registerUri\("\/ota", HTTP_POST, otaHandler\)/);
   assert.match(webSource, /config\.max_uri_handlers = 12/);

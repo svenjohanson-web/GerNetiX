@@ -13,6 +13,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "nvs.h"
+#include "psa/crypto.h"
 
 #include "basissoftware/feedback.h"
 #include "basissoftware/mqtt_ota.h"
@@ -150,6 +151,34 @@ void bytesToHex(const unsigned char *bytes, size_t count, char *target, size_t t
   target[count * 2] = '\0';
 }
 
+esp_err_t calculateDownloadedImageSha256(
+    const esp_partition_t *partition, size_t imageLength, unsigned char digest[32]) {
+  if (partition == nullptr || imageLength == 0 || imageLength > partition->size || digest == nullptr) {
+    return ESP_ERR_INVALID_ARG;
+  }
+  if (psa_crypto_init() != PSA_SUCCESS) return ESP_FAIL;
+  psa_hash_operation_t operation = PSA_HASH_OPERATION_INIT;
+  if (psa_hash_setup(&operation, PSA_ALG_SHA_256) != PSA_SUCCESS) {
+    psa_hash_abort(&operation);
+    return ESP_FAIL;
+  }
+  unsigned char buffer[4096] = {};
+  size_t offset = 0;
+  while (offset < imageLength) {
+    const size_t chunkLength = imageLength - offset < sizeof(buffer) ? imageLength - offset : sizeof(buffer);
+    if (esp_partition_read(partition, offset, buffer, chunkLength) != ESP_OK ||
+        psa_hash_update(&operation, buffer, chunkLength) != PSA_SUCCESS) {
+      psa_hash_abort(&operation);
+      return ESP_FAIL;
+    }
+    offset += chunkLength;
+  }
+  size_t digestLength = 0;
+  const psa_status_t status = psa_hash_finish(&operation, digest, 32, &digestLength);
+  psa_hash_abort(&operation);
+  return status == PSA_SUCCESS && digestLength == 32 ? ESP_OK : ESP_FAIL;
+}
+
 void failUpdate(esp_https_ota_handle_t handle, const OtaCommand &command, const char *error) {
   if (handle != nullptr) esp_https_ota_abort(handle);
   feedbackError(TAG, "OTA deploy %s failed: %s", command.deployId, error);
@@ -188,8 +217,10 @@ void otaTask(void *argument) {
   }
 
   const esp_partition_t *targetPartition = esp_ota_get_next_update_partition(nullptr);
+  const int downloadedImageLength = esp_https_ota_get_image_len_read(handle);
   unsigned char digest[32] = {};
-  if (targetPartition == nullptr || esp_partition_get_sha256(targetPartition, digest) != ESP_OK) {
+  if (downloadedImageLength <= 0 ||
+      calculateDownloadedImageSha256(targetPartition, static_cast<size_t>(downloadedImageLength), digest) != ESP_OK) {
     failUpdate(handle, command, "sha256_read_failed");
     vTaskDelete(nullptr);
     return;
