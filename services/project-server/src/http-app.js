@@ -48,6 +48,7 @@ function createHttpApp(options) {
       sendJson(res, 200, { items: service.searchSources(decodeURIComponent(sourceSearch[1]), {
         query: url.searchParams.get("q") || "",
         current_path: url.searchParams.get("current_path") || "",
+        source_kind: url.searchParams.get("source_kind") || "",
         limit: url.searchParams.get("limit") || 6,
       }) });
       return;

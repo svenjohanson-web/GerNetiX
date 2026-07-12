@@ -57,9 +57,12 @@ test("shows and updates the account token allowance next to the development AI c
 
 test("routes code explorer questions through agentic project tools", () => {
   assert.match(assistant, /codeExplorerMode \? "code_generation" : "architecture_discovery"/);
-  assert.match(assistant, /Rolle: Projektgebundener Coding Agent/);
-  assert.match(assistant, /search_project_sources/);
-  assert.match(assistant, /read_project_source/);
+  assert.match(assistant, /Rolle: Projekt-Coding-Agent/);
+  assert.match(assistant, /find_and_read_project_sources/);
+  assert.match(assistant, /source_kind=architecture fuer Komponenten, Boards, Module, Beziehungen oder Diagramme/);
+  assert.match(assistant, /projectSourceMatchesKind\(item\.path, sourceKind\)/);
+  assert.match(assistant, /Architektur\\\/\|\\\.\(\?:puml\|plantuml\)/);
+  assert.doesNotMatch(assistant, /name: "read_project_source"/);
   assert.match(assistant, /"code_explorer_assistance"/);
 });
 
@@ -67,6 +70,9 @@ test("returns a real endpoint error instead of a fallback answer", () => {
   assert.doesNotMatch(assistant, /codeExplorerFallback|fallbackAnswer/);
   assert.match(assistant, /development_assistant_unavailable/);
   assert.match(assistant, /sendJson\(res, Number\(error\.status\) >= 400 \? Number\(error\.status\) : 503/);
+  assert.match(assistant, /KI-Tageslimit erreicht/);
+  assert.match(assistant, /Kurze Folgenachrichten verfeinern die offene Aufgabe/);
+  assert.match(assistant, /fehlende GPIO-\/Schaltungsdetails bleiben offen/);
 });
 
 test("allows long reasoning requests and reports provider timeouts clearly", () => {
@@ -92,7 +98,15 @@ test("discovers project sources server-side and applies confirmed edits through 
   assert.match(assistant, /callOpenAiCodeAgent/);
   assert.match(assistant, /function_call_output/);
   assert.match(assistant, /projectServerJson\(`\/api\/projects/);
+  assert.match(guidedView, /previousResponseId: messages\.providerResponseId/);
+  assert.match(guidedView, /messages\.providerResponseId = response\.providerResponseId/);
+  assert.match(assistant, /previousResponseId && codeExplorerMode \? \[userMessages\.at\(-1\)\] : userMessages/);
+  assert.match(guidedView, /Werkzeugschritte/);
   assert.match(guidedView, /data-apply-code-edit/);
+  assert.match(guidedView, /data-show-code-edit/);
+  assert.match(guidedView, /Änderung anzeigen/);
+  assert.match(guidedView, /function buildCodeExplorerDiff/);
+  assert.match(guidedView, /code-diff-line/);
   assert.match(guidedView, /await putJson\(`\/api\/platform\/projects\/\$\{encodeURIComponent\(project\.id\)\}\/sources/);
   assert.match(assistant, /<gernetix-file-edits>/);
   assert.match(assistant, /allowedPaths\.has\(edit\.path\)/);
@@ -110,20 +124,22 @@ test("adds a deterministic file and line summary to proposed AI edits", () => {
 });
 
 test("turns explicit file changes into concise confirmable edits even when a local model ignores the marker", () => {
-  assert.match(assistant, /niemals zusaetzlich in Markdown-Codebloecken/);
+  assert.match(assistant, /Kein doppelter Markdown-Code/);
   assert.match(assistant, /parseCodeExplorerResult\(rawAssistantContent, effectiveCodeContext, latestUserRequest\)/);
   assert.match(assistant, /recoverCodeExplorerEdit/);
   assert.match(assistant, /@startuml\[\\s\\S\]\*@enduml/);
   assert.match(assistant, /resolveCodeExplorerFile\(context, currentPath\)/);
   assert.match(assistant, /allowedPaths\.has\(currentFile\.path\)/);
-  assert.match(assistant, /Es wurde keine inhaltliche Dateiänderung erkannt/);
+  assert.match(assistant, /keine übernehmbare Dateiänderung geliefert/);
 });
 
 test("lets the coding agent discover structural targets instead of hard-coded component routing", () => {
   assert.doesNotMatch(guidedView, /function codeExplorerTargetPath/);
   assert.doesNotMatch(guidedView, /genericElementMutation/);
-  assert.match(assistant, /Rate keinen Dateipfad und bearbeite keine ungelesene Datei/);
-  assert.match(assistant, /toolFiles\.set\(file\.path, file\)/);
-  assert.match(assistant, /discoveredPaths\.has\(path\)/);
+  assert.match(assistant, /bearbeite nur einen dadurch gelesenen Pfad/);
+  assert.match(assistant, /toolFiles\.set\(item\.path/);
   assert.match(assistant, /allowedPaths\.has\(edit\.path\)/);
+  assert.match(assistant, /loadResponseFileContext\(responseFileContext, options\.previousResponseId\)/);
+  assert.match(assistant, /rememberResponseFileContext\(responseFileContext, payload\.id, toolFiles\)/);
+  assert.match(assistant, /Die KI hat keine übernehmbare Dateiänderung geliefert; es wurde nichts verändert/);
 });

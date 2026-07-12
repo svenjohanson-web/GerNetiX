@@ -69,10 +69,12 @@ class ProjectService {
     this.requireProject(projectId);
     const query = String(input.query || "").toLocaleLowerCase("de-DE");
     const currentPath = String(input.current_path || "");
+    const sourceKind = normalizeSourceKind(input.source_kind);
     const limit = Math.max(1, Math.min(8, Number(input.limit) || 6));
     const terms = [...new Set(query.match(/[\p{L}\p{N}_-]{3,}/gu) || [])]
       .filter((term) => !SOURCE_SEARCH_STOP_WORDS.has(term));
     return this.repository.listSources(projectId)
+      .filter((source) => !sourceKind || sourceMatchesKind(source.path, sourceKind))
       .map((source) => ({ source, score: sourceSearchScore(source, terms, currentPath) }))
       .filter((item) => item.score > 0)
       .sort((left, right) => right.score - left.score || left.source.path.localeCompare(right.source.path))
@@ -489,6 +491,18 @@ function maskSourceContent(source) {
 }
 
 const SOURCE_SEARCH_STOP_WORDS = new Set(["aber", "bitte", "datei", "diese", "dieser", "einen", "einer", "etwas", "fuege", "füge", "hinzu", "machen", "mein", "meine", "mich", "projekt", "soll", "und", "werden"]);
+
+function normalizeSourceKind(value) {
+  return ["architecture", "code", "configuration", "documentation"].includes(value) ? value : "";
+}
+
+function sourceMatchesKind(pathValue, sourceKind) {
+  const path = String(pathValue || "").replaceAll("\\", "/");
+  if (sourceKind === "architecture") return /(^|\/)Architektur\/|\.(?:puml|plantuml)$/i.test(path);
+  if (sourceKind === "code") return /\.(?:c|cc|cpp|cxx|h|hh|hpp|hxx|ino|py|js|ts|java|rs)$/i.test(path);
+  if (sourceKind === "configuration") return /(^|\/)(?:Konfiguration|config)(?:\/|$)|\.(?:json|ya?ml|toml|ini)$/i.test(path);
+  return /\.(?:md|txt|adoc)$/i.test(path);
+}
 
 function sourceSearchScore(source, terms, currentPath) {
   if (source.path === currentPath) return 100000;

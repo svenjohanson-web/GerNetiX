@@ -289,11 +289,11 @@
                 <option value="anthropic">Claude / Anthropic</option>
               </select>
             </label>
-            <label>API Base URL<input id="adminApiBaseUrl" type="text" value="https://api.openai.com/v1" /></label>
+            <label>API Base URL<input id="adminApiBaseUrl" type="url" value="https://api.openai.com/v1" readonly /></label>
             <label>API Modell<select id="adminApiModel"></select></label>
             <div class="button-row"><button id="refreshApiLlmModelsButton" type="button">API-Modelle laden</button><span id="adminApiModelStatus" class="helper-text"></span></div>
             <label>API Key<input id="adminApiKey" type="password" placeholder="leer lassen, um bestehenden Key zu behalten" autocomplete="off" /></label>
-            <p class="helper-text">Die Modellliste kann erst geladen werden, nachdem ein API-Key gespeichert wurde.</p>
+            <p class="helper-text">OpenAI und Anthropic verwenden fest ihr jeweiliges API-Protokoll und den offiziellen Endpoint. Eine freie Base-URL ist nur beim benutzerdefinierten kompatiblen Anbieter möglich. Die Modellliste kann erst nach dem Speichern eines API-Keys geladen werden.</p>
           </section>
 
           <section class="llm-route-grid">

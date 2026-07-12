@@ -2,9 +2,11 @@ const PROVIDER_TIMEOUT_MS = 180000;
 const CODE_EXPLORER_FILE_CONTEXT_CHARS = 24000;
 
 function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalogJson, interfaceTelemetry, llmConfigStore, projectServerJson, projectServerUserId, readJsonBody, requireProjectAccess, sendJson }) {
+  const responseFileContext = new Map();
   async function handleChat(req, res, session) {
     const body = await readJsonBody(req);
     const userMessages = normalizeMessages(body.messages);
+    const previousResponseId = cleanResponseId(body.previousResponseId || body.previous_response_id);
     const projectId = cleanProjectId(body.projectId || body.project_id);
     const assistantMode = cleanAssistantMode(body.assistantMode || body.assistant_mode);
     const functionMode = assistantMode === "function_clarification";
@@ -84,17 +86,17 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       const context = codeExplorerMode ? { messages: [], sources: [] } : await architectureContext(session, activeConfig, projectId);
       const codeContext = codeExplorerMode ? normalizeCodeContext(body.codeContext) : null;
       const messages = [
-        { role: "system", content: codeExplorerMode ? await codeExplorerSystemPrompt(session, codeContext) : await systemPrompt(session, requestProfile) },
+        ...(!previousResponseId || !codeExplorerMode ? [{ role: "system", content: codeExplorerMode ? await codeExplorerSystemPrompt(session, codeContext) : await systemPrompt(session, requestProfile) }] : []),
         ...(functionMode ? [{ role: "system", content: functionClarificationPrompt(body.architectureDiagram) }] : []),
         ...(effectChainMode ? [{ role: "system", content: effectChainPrompt(body.architectureDiagram) }] : []),
         ...context.messages,
-        ...userMessages,
+        ...(previousResponseId && codeExplorerMode ? [userMessages.at(-1)] : userMessages),
       ];
       const usagePreflight = await preflightUsage(session, activeConfig, projectId, messages, codeExplorerMode ? "code_explorer_assistance" : effectChainMode ? "architecture_effect_chain_derivation" : functionMode ? "architecture_function_clarification" : "architecture_discovery");
       if (usagePreflight && !usagePreflight.allowed) {
         sendJson(res, 402, {
           error: "ai_usage_rejected",
-          message: "Der KI-Aufruf wurde durch AI Usage Cost Control blockiert.",
+          message: usageRejectionMessage(usagePreflight),
           usagePreflight,
           routing: routingSummary(activeConfig, requestProfile),
         });
@@ -103,7 +105,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       let response;
       try {
         response = codeExplorerMode && activeConfig.apiProvider === "openai-responses"
-          ? await callOpenAiCodeAgent(messages, activeConfig, project)
+          ? await callOpenAiCodeAgent(messages, activeConfig, project, { previousResponseId, latestUserMessage: userMessages.at(-1) })
           : await callChatProvider(messages, activeConfig);
       } catch (error) {
         await failUsage(usagePreflight, error);
@@ -135,7 +137,9 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
           currentDiagram: body.architectureDiagram,
         }),
         usage,
+        usageBreakdown: response.usage_breakdown || null,
         usageEvent,
+        providerResponseId: response.provider_response_id || "",
         usedLocalRoute: false,
       });
     } catch (error) {
@@ -260,15 +264,15 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     return [
       await promptFoundation("general_chat"),
       `Aktueller Nutzer: ${projectServerUserId(session)}.`,
-      "Rolle: Projektgebundener Coding Agent. Ermittle benoetigte Dateien erst nach der konkreten Aufgabe mit den angebotenen Such- und Lesewerkzeugen.",
+      "Rolle: Projekt-Coding-Agent. Suche und lies nur Dateien, die fuer die konkrete Aufgabe erforderlich sind.",
       `Aktuell geoeffneter Pfad: ${context.path}`,
       context.editTargetPath ? `Verbindliches Aenderungsziel: ${context.editTargetPath}. Andere Dateien duerfen fuer diese Aufgabe nur gelesen, nicht bearbeitet werden.` : "",
       context.focusLines.length ? `Fokuszeilen: ${context.focusLines.join(", ")}` : "",
       context.questions.length ? `Leitfragen des Schritts: ${context.questions.join(" | ")}` : "",
-      "Bei einer Aenderung musst du zuerst search_project_sources und danach read_project_source fuer das konkrete Ziel verwenden. Rate keinen Dateipfad und bearbeite keine ungelesene Datei.",
-      "Wenn der Nutzer eine Datei aendern will, antworte mit genau einem kurzen Satz und fuege danach exakt einen Block im Format <gernetix-file-edits>[{\"path\":\"vorhandener/pfad\",\"content\":\"vollstaendiger neuer Dateiinhalt\"}]</gernetix-file-edits> an.",
-      "Bearbeite nur vorhandene Pfade aus der Dateiliste. Gib den vollstaendigen neuen Dateiinhalt ausschliesslich im Edit-Block aus, niemals zusaetzlich in Markdown-Codebloecken oder als wiederholte Textausgabe.",
-      "Ohne ausdruecklichen Aenderungswunsch darf kein Edit-Block entstehen. Behaupte keine Aenderung, wenn der neue Inhalt mit der vorhandenen Datei identisch ist.",
+      "Bei Aenderungen: nutze find_and_read_project_sources; bearbeite nur einen dadurch gelesenen Pfad.",
+      "Waehle source_kind=architecture fuer Komponenten, Boards, Module, Beziehungen oder Diagramme; source_kind=code nur fuer ausdrueckliche Implementierungs-, Funktions-, Klassen- oder Quellcodeauftraege.",
+      "Kurze Folgenachrichten verfeinern die offene Aufgabe. Fuer Architektur genuegen Typ, Name und bekannte Eigenschaften; fehlende GPIO-/Schaltungsdetails bleiben offen.",
+      "Aenderungsantwort: ein kurzer Satz plus exakt <gernetix-file-edits>[{\"path\":\"pfad\",\"content\":\"vollstaendiger Inhalt\"}]</gernetix-file-edits>. Kein doppelter Markdown-Code. Ohne Aenderungswunsch kein Edit-Block.",
     ].filter(Boolean).join("\n");
   }
 
@@ -316,6 +320,9 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     })).filter((edit) => allowedPaths.has(edit.path) && edit.content)
       .map((edit) => describeCodeExplorerEdit(edit, context));
     const responseText = removeRepeatedEditCode(rawContent.replace(marker, "").trim(), fileEdits);
+    if (isExplicitCodeEditRequest(latestUserRequest) && !fileEdits.length) {
+      return { content: "Die vorgeschlagene Änderung hat die serverseitige Dateiprüfung nicht bestanden; es wurde nichts verändert.", fileEdits: [] };
+    }
     return {
       content: responseText || (fileEdits.length ? `Aenderung fuer ${fileEdits[0].path} vorbereitet.` : "Es wurde keine gueltige Dateiänderung erzeugt."),
       fileEdits,
@@ -323,19 +330,24 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
   }
 
   function recoverCodeExplorerEdit(content, context, latestUserRequest, allowedPaths) {
-    const editRequest = /\b(f(?:ue|ü)ge|erg(?:ae|ä)nze|(?:ae|ä)ndere|entferne|l(?:oe|ö)sche|implementiere|erstelle|schreibe|ersetze|passe)\b/i.test(latestUserRequest);
+    const editRequest = isExplicitCodeEditRequest(latestUserRequest);
     const currentPath = String(context.path || "").trim();
     const currentFile = resolveCodeExplorerFile(context, currentPath);
-    if (!editRequest || !currentFile || !allowedPaths.has(currentFile.path)) return { content, fileEdits: [] };
+    if (!editRequest) return { content, fileEdits: [] };
+    if (!currentFile || !allowedPaths.has(currentFile.path)) return { content: "Die KI hat keine serverseitig verifizierte Dateiänderung geliefert; es wurde nichts verändert.", fileEdits: [] };
     const blocks = [...content.matchAll(/```(?:[\w+-]+)?\s*\n([\s\S]*?)```/g)].map((match) => match[1].trim());
     const candidate = blocks.findLast((block) => /@startuml[\s\S]*@enduml/i.test(block)) || blocks.at(-1) || "";
     if (!candidate || candidate === String(currentFile?.content || "").trim()) {
-      return { content: "Es wurde keine inhaltliche Dateiänderung erkannt.", fileEdits: [] };
+      return { content: "Die KI hat keine übernehmbare Dateiänderung geliefert; es wurde nichts verändert.", fileEdits: [] };
     }
     return {
       content: `Aenderung fuer ${currentFile.path} vorbereitet.`,
       fileEdits: [describeCodeExplorerEdit({ path: currentFile.path, content: candidate.slice(0, 120000) }, context)],
     };
+  }
+
+  function isExplicitCodeEditRequest(value) {
+    return /\b(f(?:ue|ü)ge|ein(?:fue|fü)ge|erg(?:ae|ä)nze|(?:ae|ä)ndere|entferne|l(?:oe|ö)sche|implementiere|erstelle|schreibe|ersetze|passe|übernehme)\b/i.test(String(value || ""));
   }
 
   function describeCodeExplorerEdit(edit, context) {
@@ -529,18 +541,18 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     }
   }
 
-  async function callOpenAiCodeAgent(messages, activeConfig, project) {
+  async function callOpenAiCodeAgent(messages, activeConfig, project, options = {}) {
     if (!projectServerJson || !project?.project_server_id) throw new Error("Die agentischen Projektwerkzeuge sind nicht konfiguriert.");
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
-    const toolFiles = new Map();
-    const discoveredPaths = new Set();
-    let input = responseInput(messages);
-    let previousResponseId = "";
+    const toolFiles = new Map(loadResponseFileContext(responseFileContext, options.previousResponseId).map((file) => [file.path, file]));
+    let input = responseInput(options.previousResponseId && options.latestUserMessage ? [options.latestUserMessage] : messages);
+    let previousResponseId = options.previousResponseId || "";
     let totalInputTokens = 0;
     let totalOutputTokens = 0;
+    const usageSteps = [];
     try {
-      for (let step = 0; step < 6; step += 1) {
+      for (let step = 0; step < 3; step += 1) {
         const response = await trackedFetch("openai-api", `${activeConfig.apiBaseUrl.replace(/\/$/, "")}/responses`, {
           method: "POST",
           headers: {
@@ -554,30 +566,39 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
             ...(previousResponseId ? { previous_response_id: previousResponseId } : {}),
             tools: projectSourceTools(),
             tool_choice: "auto",
-            max_output_tokens: Number.isFinite(activeConfig.maxOutputTokens) ? activeConfig.maxOutputTokens : 1400,
+            max_output_tokens: Number.isFinite(activeConfig.maxOutputTokens) ? Math.min(activeConfig.maxOutputTokens, 700) : 700,
           }),
         });
         const payload = await response.json().catch(() => ({}));
         if (!response.ok) throw new Error(payload.error?.message || payload.error || `OpenAI Responses API antwortet mit HTTP ${response.status}.`);
         totalInputTokens += Number(payload.usage?.input_tokens || 0);
         totalOutputTokens += Number(payload.usage?.output_tokens || 0);
+        usageSteps.push({
+          step: step === 0 ? "request" : "tool_result",
+          inputTokens: Number(payload.usage?.input_tokens || 0),
+          outputTokens: Number(payload.usage?.output_tokens || 0),
+          cachedTokens: Number(payload.usage?.input_tokens_details?.cached_tokens || 0),
+        });
         const calls = (payload.output || []).filter((item) => item.type === "function_call");
         if (!calls.length) {
+          rememberResponseFileContext(responseFileContext, payload.id, toolFiles);
           return {
             message: { content: responseOutputText(payload) },
             prompt_eval_count: totalInputTokens,
             eval_count: totalOutputTokens,
             toolFiles: [...toolFiles.values()],
+            provider_response_id: payload.id || previousResponseId,
+            usage_breakdown: { steps: usageSteps },
           };
         }
         previousResponseId = payload.id;
         input = [];
         for (const call of calls) {
-          const output = await executeProjectSourceTool(call, project.project_server_id, discoveredPaths, toolFiles);
+          const output = await executeProjectSourceTool(call, project.project_server_id, toolFiles);
           input.push({ type: "function_call_output", call_id: call.call_id, output: JSON.stringify(output) });
         }
       }
-      throw new Error("Der Coding Agent hat nach sechs Werkzeugschritten noch kein Ergebnis geliefert.");
+      throw new Error("Der Coding Agent hat nach drei Werkzeugschritten noch kein Ergebnis geliefert.");
     } finally {
       clearTimeout(timeout);
     }
@@ -586,53 +607,69 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
   function projectSourceTools() {
     return [{
       type: "function",
-      name: "search_project_sources",
-      description: "Durchsucht die Quellen des aktuell ausgewaehlten Projekts nach relevanten Pfaden und Inhalten.",
+      name: "find_and_read_project_sources",
+      description: "Findet aufgabenrelevante Projektdateien und liefert bis zu drei Treffer direkt mit Inhalt.",
       strict: true,
       parameters: {
         type: "object",
-        properties: { query: { type: "string" }, current_path: { type: "string" } },
-        required: ["query", "current_path"],
-        additionalProperties: false,
-      },
-    }, {
-      type: "function",
-      name: "read_project_source",
-      description: "Liest den vollstaendigen Inhalt genau einer zuvor gefundenen Projektdatei.",
-      strict: true,
-      parameters: {
-        type: "object",
-        properties: { path: { type: "string" } },
-        required: ["path"],
+        properties: {
+          query: { type: "string" },
+          current_path: { type: "string" },
+          source_kind: { type: "string", enum: ["architecture", "code", "configuration", "documentation"] },
+        },
+        required: ["query", "current_path", "source_kind"],
         additionalProperties: false,
       },
     }];
   }
 
-  async function executeProjectSourceTool(call, projectServerId, discoveredPaths, toolFiles) {
+  function loadResponseFileContext(cache, responseId) {
+    const entry = cache.get(responseId);
+    if (!entry) return [];
+    if (entry.expiresAt < Date.now()) {
+      cache.delete(responseId);
+      return [];
+    }
+    return entry.files;
+  }
+
+  function rememberResponseFileContext(cache, responseId, toolFiles) {
+    if (!responseId || !toolFiles.size) return;
+    cache.set(responseId, { files: [...toolFiles.values()], expiresAt: Date.now() + (30 * 60 * 1000) });
+    while (cache.size > 100) cache.delete(cache.keys().next().value);
+  }
+
+  async function executeProjectSourceTool(call, projectServerId, toolFiles) {
     let args = {};
     try { args = JSON.parse(call.arguments || "{}"); } catch { args = {}; }
-    if (call.name === "search_project_sources") {
+    if (call.name === "find_and_read_project_sources") {
+      const sourceKind = normalizeProjectSourceKind(args.source_kind);
+      const currentPath = String(args.current_path || "").slice(0, 300);
       const query = new URLSearchParams({
-        q: String(args.query || "").slice(0, 1000),
-        current_path: String(args.current_path || "").slice(0, 300),
-        limit: "8",
+        q: sourceKind === "architecture" ? `${String(args.query || "")} Architektur PlantUML`.slice(0, 1000) : String(args.query || "").slice(0, 1000),
+        current_path: projectSourceMatchesKind(currentPath, sourceKind) ? currentPath : "",
+        source_kind: sourceKind,
+        limit: "20",
       });
       const result = await projectServerJson(`/api/projects/${encodeURIComponent(projectServerId)}/sources/search?${query}`);
-      const items = (result.items || []).map((item) => ({ path: item.path, score: item.score }));
-      items.forEach((item) => discoveredPaths.add(item.path));
-      return { items };
-    }
-    if (call.name === "read_project_source") {
-      const path = String(args.path || "").trim().slice(0, 300);
-      if (!path) return { error: "missing_path" };
-      if (!discoveredPaths.has(path)) return { error: "path_not_discovered", message: "Die Datei muss zuerst ueber search_project_sources gefunden werden." };
-      const source = await projectServerJson(`/api/projects/${encodeURIComponent(projectServerId)}/sources/${encodeURIComponent(path)}`);
-      const file = { path: source.path || path, content: String(source.content || "").slice(0, 120000) };
-      toolFiles.set(file.path, file);
-      return file;
+      const items = (result.items || []).filter((item) => projectSourceMatchesKind(item.path, sourceKind)).slice(0, 3)
+        .map((item) => ({ path: item.path, score: item.score, content: String(item.content || "").slice(0, 24000) }));
+      items.forEach((item) => toolFiles.set(item.path, { path: item.path, content: item.content }));
+      return { source_kind: sourceKind, items };
     }
     return { error: "unknown_tool" };
+  }
+
+  function normalizeProjectSourceKind(value) {
+    return ["architecture", "code", "configuration", "documentation"].includes(value) ? value : "documentation";
+  }
+
+  function projectSourceMatchesKind(pathValue, sourceKind) {
+    const path = String(pathValue || "").replaceAll("\\", "/");
+    if (sourceKind === "architecture") return /(^|\/)Architektur\/|\.(?:puml|plantuml)$/i.test(path);
+    if (sourceKind === "code") return /\.(?:c|cc|cpp|cxx|h|hh|hpp|hxx|ino|py|js|ts|java|rs)$/i.test(path);
+    if (sourceKind === "configuration") return /(^|\/)(?:Konfiguration|config)(?:\/|$)|\.(?:json|ya?ml|toml|ini)$/i.test(path);
+    return /\.(?:md|txt|adoc)$/i.test(path);
   }
 
   async function callOllamaChat(messages, activeConfig) {
@@ -788,7 +825,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         model,
         source_id: activeConfig.provider === "api" ? "openai_gpt" : "local_llm",
         estimated_input_tokens: estimate.inputTokens,
-        estimated_output_tokens: Number(activeConfig.maxOutputTokens || 800),
+        estimated_output_tokens: feature === "code_explorer_assistance" ? Math.min(Number(activeConfig.maxOutputTokens || 700), 700) : Number(activeConfig.maxOutputTokens || 800),
         system_capabilities: activeConfig.provider === "api" ? ["system_capability.ai_premium_models"] : [],
       },
     });
@@ -859,6 +896,22 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       return "Der KI-Provider hat nicht innerhalb von 180 Sekunden geantwortet. Der Aufruf wurde beendet; es wurde keine Datei verändert.";
     }
     return error?.message || "Der konfigurierte KI-Dienst ist nicht erreichbar.";
+  }
+
+  function cleanResponseId(value) {
+    const responseId = String(value || "").trim();
+    return /^resp_[A-Za-z0-9_-]+$/.test(responseId) ? responseId : "";
+  }
+
+  function usageRejectionMessage(preflight = {}) {
+    const reason = preflight.rejection_reason || "unknown";
+    if (reason === "daily_limit_exceeded") return `KI-Tageslimit erreicht: ${preflight.daily_usage_tokens || 0} von ${preflight.daily_limit_tokens || 0} Tokens wurden heute verwendet.`;
+    if (reason === "monthly_limit_exceeded") return `KI-Monatslimit erreicht: ${preflight.monthly_usage_tokens || 0} von ${preflight.monthly_limit_tokens || 0} Tokens wurden verwendet.`;
+    if (reason === "source_token_limit_exceeded") return "Das Tokenlimit des gewählten KI-Anbieters ist für diesen Monat erreicht.";
+    if (reason === "insufficient_credits") return "Für diese KI-Anfrage sind nicht genügend Credits verfügbar.";
+    if (reason === "premium_model_not_allowed") return "Das gewählte Premium-Modell ist für diesen Account nicht freigegeben.";
+    if (reason === "model_not_allowed") return "Das gewählte KI-Modell ist in der aktuellen Modellpolicy nicht freigegeben.";
+    return `Der KI-Aufruf wurde durch die Kostenkontrolle blockiert (${reason}).`;
   }
 
   function nanosToMs(value) {

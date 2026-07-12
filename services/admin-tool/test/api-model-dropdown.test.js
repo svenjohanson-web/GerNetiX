@@ -13,7 +13,9 @@ test("renders provider-discovered API models in a select without preset fallback
   assert.match(html, />Lokal<\/option>/);
   assert.match(html, />Internet<\/option>/);
   assert.match(html, />OpenAI<\/option>/);
-  assert.match(html, /Modellliste kann erst geladen werden, nachdem ein API-Key gespeichert wurde/);
+  assert.match(html, /Modellliste kann erst nach dem Speichern eines API-Keys geladen werden/);
+  assert.match(html, /OpenAI und Anthropic verwenden fest ihr jeweiliges API-Protokoll/);
+  assert.match(html, /id="adminApiBaseUrl"[^>]*readonly/);
   assert.match(client, /state\.apiModels\.map/);
   assert.match(client, /provider=api&api_provider=/);
   assert.match(client, /API-Modelle werden geladen/);

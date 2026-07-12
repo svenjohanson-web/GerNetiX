@@ -22,7 +22,7 @@ const API_PRESETS = {
   },
   "openai-compatible": {
     label: "OpenAI-kompatibel",
-    baseUrl: "https://api.openai.com/v1",
+    baseUrl: "",
   },
   anthropic: {
     label: "Claude / Anthropic",
@@ -581,12 +581,17 @@ function renderProviderFields() {
   const provider = document.querySelector("#adminLlmProvider").value || "ollama";
   document.querySelector("#adminOllamaFields").classList.toggle("hidden", provider !== "ollama");
   document.querySelector("#adminApiFields").classList.toggle("hidden", provider !== "api");
+  const apiProvider = value("#adminApiProvider") || "openai-responses";
+  const baseUrlInput = document.querySelector("#adminApiBaseUrl");
+  baseUrlInput.readOnly = apiProvider !== "openai-compatible";
+  baseUrlInput.placeholder = apiProvider === "openai-compatible" ? "https://dein-provider.example/v1" : "";
 }
 
 async function applyApiProviderPreset() {
   const apiProvider = value("#adminApiProvider") || "openai-compatible";
   const preset = API_PRESETS[apiProvider] || API_PRESETS["openai-compatible"];
   setValue("#adminApiBaseUrl", preset.baseUrl);
+  renderProviderFields();
   state.apiModels = [];
   state.apiModelError = "";
   await loadApiModels();
@@ -595,12 +600,14 @@ async function applyApiProviderPreset() {
 async function saveLlmConfig(event) {
   event.preventDefault();
   setStatus("running", "LLM-Konfiguration wird gespeichert...");
+  const selectedApiProvider = value("#adminApiProvider") || "openai-responses";
+  const selectedPreset = API_PRESETS[selectedApiProvider] || API_PRESETS["openai-compatible"];
   const payload = {
     provider: value("#adminLlmProvider"),
-    apiProvider: value("#adminApiProvider"),
+    apiProvider: selectedApiProvider,
     ollamaBaseUrl: value("#adminOllamaBaseUrl"),
     ollamaModel: value("#adminOllamaModel"),
-    apiBaseUrl: value("#adminApiBaseUrl"),
+    apiBaseUrl: selectedApiProvider === "openai-compatible" ? value("#adminApiBaseUrl") : selectedPreset.baseUrl,
     apiModel: value("#adminApiModel"),
     routes: {
       general_chat: { provider: value("#adminRouteGeneralChat"), reason: "Interaktiver Chat." },
@@ -772,7 +779,7 @@ function renderAiModelPolicyRows(items) {
       <td><strong>${escapeHtml(item.model || "-")}</strong></td>
       <td><strong>${item.allowed ? "erlaubt" : "blockiert"}</strong><span>${item.premium ? "Premium-Capability erforderlich" : "Standard"}</span></td>
       <td><strong>1:1</strong><span>${formatNumber(item.credits_per_1k_input_tokens)} Credits je 1k Tokens</span></td>
-      <td>${formatCurrency(item.provider_cost_per_1k_tokens)} / 1k Tokens</td>
+      <td><strong>${formatCurrency(item.provider_input_cost_per_1k_tokens)} Input</strong><span>${formatCurrency(item.provider_output_cost_per_1k_tokens)} Output / 1k Tokens</span></td>
     </tr>
   `).join("");
 }

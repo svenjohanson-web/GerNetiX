@@ -108,6 +108,14 @@ test("searches project sources for a known task instead of returning the whole p
     "Komponenten/ESP32/Sensoren/temperature.cpp",
   ]);
   assert.equal(matches[0].content.includes("@startuml"), true);
+
+  const architectureOnly = service.searchSources(project.project_id, {
+    query: "neues Prozessorboard ESP32",
+    current_path: "Komponenten/ESP32/Sensoren/temperature.cpp",
+    source_kind: "architecture",
+    limit: 3,
+  });
+  assert.deepEqual(architectureOnly.map((source) => source.path), ["Architektur/system.puml"]);
 });
 
 test("creates reproducible build package for build deploy server", () => {

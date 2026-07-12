@@ -10,9 +10,9 @@ Diese Entscheidung orientiert sich am Arbeitsprinzip moderner Coding Agents wie 
 
 1. Der Nutzer formuliert seine konkrete Aufgabe im projektgebundenen KI-Chat.
 2. Die IDE uebergibt nur Aufgabe und Pfad der aktuell geoeffneten Datei an die accountgeschuetzte Plattform-API.
-3. Der Development Assistant bietet dem Modell `search_project_sources` und `read_project_source` als Function Tools an.
-4. Das Modell entscheidet anhand der Aufgabe, welche Suche erforderlich ist, und liest anschliessend konkrete Treffer.
-5. Suchergebnisse enthalten nur Pfade und Bewertungen. Dateiinhalt gelangt erst durch einen expliziten Leseaufruf in den Modellkontext.
+3. Der Development Assistant bietet dem Modell `find_and_read_project_sources` als kombiniertes Function Tool an.
+4. Das Modell entscheidet anhand der Aufgabe, welche Suche erforderlich ist; das Werkzeug liefert hoechstens drei relevante Treffer direkt mit Inhalt und vermeidet eine zweite Modellrunde nur zum Lesen.
+5. Folgefragen setzen die bestehende OpenAI-Responses-Konversation ueber `previous_response_id` fort. Die IDE sendet nicht erneut den vollstaendigen Chatverlauf.
 6. Der Agent darf nur zuvor gelesene Projektpfade als Aenderung vorschlagen; serverseitige Validierung verwirft andere Pfade.
 7. Der Nutzer bestaetigt eine vorgeschlagene Dateiänderung, bevor sie im Project Server gespeichert wird.
 
@@ -23,13 +23,12 @@ Diese Entscheidung orientiert sich am Arbeitsprinzip moderner Coding Agents wie 
 - Auch bei fehlender Prompt-Foundation, abgelehntem AI-Usage-Preflight, leerer Providerantwort oder nicht erreichbarem LLM wird keine inhaltliche Ersatzantwort erzeugt. Der Chat-Endpunkt liefert einen eindeutigen HTTP-Fehler und die UI kennzeichnet ihn als Systemfehler.
 - Die normale Architektur-Discovery erhaelt weiterhin keine Projektdateien. Der Zugriff gilt nur fuer den projektgebundenen Code-Explorer und dessen explizite Aufgabe.
 - Die Project-Server-Suche ist lexikalisch. Der Agent kann Suchbegriffe variieren und mehrere Such-/Leseschritte ausfuehren.
-- Der Tool-Loop ist auf sechs Schritte begrenzt. Account- und Projektgrenze werden serverseitig erzwungen; Schreibzugriffe bleiben bestaetigungspflichtig.
+- Der Tool-Loop ist auf drei Schritte begrenzt. Account- und Projektgrenze werden serverseitig erzwungen; Schreibzugriffe bleiben bestaetigungspflichtig.
 
 ## Schnittstellen
 
-- Development Assistant: OpenAI Responses Function Tools `search_project_sources` und `read_project_source`
-- Project Server: `GET /api/projects/{projectId}/sources/search?q={task}&current_path={path}&limit=8`
-- Project Server: `GET /api/projects/{projectId}/sources/{path}`
+- Development Assistant: OpenAI Responses Function Tool `find_and_read_project_sources`
+- Project Server: `GET /api/projects/{projectId}/sources/search?q={task}&current_path={path}&limit=3`
 
 Die Project-Server-Suche liefert dem Agenten nur Treffer-Metadaten. Inhalte werden einzeln ueber das Lesewerkzeug geladen. Die allgemeine Quellenliste bleibt inhaltsmaskiert.
 

@@ -91,6 +91,9 @@ const GuidedProjectView = (() => {
       target.querySelectorAll("[data-apply-code-edit]").forEach((button) => {
         button.addEventListener("click", () => applyCodeExplorerEdit(project, view, button.dataset.editMessage, Number(button.dataset.applyCodeEdit)));
       });
+      target.querySelectorAll("[data-show-code-edit]").forEach((button) => {
+        button.addEventListener("click", () => showCodeExplorerEdit(project, view, button.dataset.editMessage, Number(button.dataset.showCodeEdit)));
+      });
     }
 
     function scrollCodeExplorerChatToEnd(target) {
@@ -133,7 +136,7 @@ const GuidedProjectView = (() => {
                   : `<p>${escapeHtml(message.content)}</p>`}
                 ${message.role === "assistant" && !message.pending ? renderCodeExplorerResponseMeta(message.responseMeta) : ""}
                 ${message.fileEdits?.length ? `<div class="code-explorer-edits">
-                  ${message.fileEdits.map((edit, editIndex) => `<button type="button" data-edit-message="${messages.indexOf(message)}" data-apply-code-edit="${editIndex}" ${edit.applied ? "disabled" : ""}>${edit.applied ? "Uebernommen" : `Aenderung in ${escapeHtml(edit.path)} uebernehmen`}</button>`).join("")}
+                  ${message.fileEdits.map((edit, editIndex) => `<div class="code-explorer-edit-actions"><button type="button" data-edit-message="${messages.indexOf(message)}" data-show-code-edit="${editIndex}">Änderung anzeigen</button><button type="button" data-edit-message="${messages.indexOf(message)}" data-apply-code-edit="${editIndex}" ${edit.applied ? "disabled" : ""}>${edit.applied ? "Übernommen" : "Übernehmen"}</button><span>${escapeHtml(edit.path)}</span></div>`).join("")}
                   <section class="code-explorer-change-summary" aria-label="Zusammenfassung der Dateiänderungen">
                     <strong>Zusammenfassung</strong>
                     <ul>${message.fileEdits.map((edit) => `<li><code>${escapeHtml(edit.path)}</code><span>Zeile ${edit.lineStart || 1}${edit.lineEnd && edit.lineEnd !== edit.lineStart ? `–${edit.lineEnd}` : ""}: ${escapeHtml(edit.changeSummary || "Inhalt geaendert")}${edit.applied ? " · übernommen" : " · geplant"}</span></li>`).join("")}</ul>
@@ -181,6 +184,7 @@ const GuidedProjectView = (() => {
         const response = await postJson("/api/platform/development-assistant/chat", {
           projectId: project.id,
           assistantMode: "code_explorer",
+          previousResponseId: messages.providerResponseId || "",
           messages: messages.filter((message) => !message.pending).map(({ role, content: messageContent }) => ({ role, content: messageContent })),
           codeContext: {
             path: targetPath,
@@ -193,6 +197,7 @@ const GuidedProjectView = (() => {
           },
         });
         recordCodeExplorerUsage(response);
+        if (response.providerResponseId) messages.providerResponseId = response.providerResponseId;
         Object.assign(pendingMessage, {
           content: response.message?.content || "Keine Antwort erhalten.",
           fileEdits: response.fileEdits || [],
@@ -250,6 +255,9 @@ const GuidedProjectView = (() => {
     function codeExplorerResponseMeta(response = {}) {
       const routing = response.routing || {};
       const usage = response.usage || {};
+      const usageSteps = Array.isArray(response.usageBreakdown?.steps) ? response.usageBreakdown.steps : [];
+      const firstStep = usageSteps[0] || {};
+      const toolSteps = usageSteps.slice(1);
       return {
         responder: routing.label || routing.provider || "KI",
         model: routing.model || "",
@@ -257,6 +265,9 @@ const GuidedProjectView = (() => {
         completionTokens: Number.isFinite(usage.completionTokens) ? usage.completionTokens : null,
         totalTokens: Number.isFinite(usage.totalTokens) ? usage.totalTokens : null,
         durationMs: Number.isFinite(usage.totalDurationMs) ? usage.totalDurationMs : null,
+        baseInputTokens: Number.isFinite(firstStep.inputTokens) ? firstStep.inputTokens : null,
+        toolInputTokens: toolSteps.length ? toolSteps.reduce((sum, step) => sum + Number(step.inputTokens || 0), 0) : 0,
+        cachedInputTokens: usageSteps.reduce((sum, step) => sum + Number(step.cachedTokens || 0), 0),
       };
     }
 
@@ -267,6 +278,9 @@ const GuidedProjectView = (() => {
         meta.promptTokens !== null && meta.promptTokens !== undefined ? `Eingabe ${meta.promptTokens} Token` : "",
         meta.completionTokens !== null && meta.completionTokens !== undefined ? `Antwort ${meta.completionTokens} Token` : "",
         meta.totalTokens !== null && meta.totalTokens !== undefined ? `Gesamt ${meta.totalTokens} Token` : "",
+        meta.baseInputTokens !== null && meta.baseInputTokens !== undefined ? `Grundkontext ${meta.baseInputTokens}` : "",
+        meta.toolInputTokens ? `Werkzeugschritte ${meta.toolInputTokens}` : "",
+        meta.cachedInputTokens ? `davon gecacht ${meta.cachedInputTokens}` : "",
         meta.durationMs !== null && meta.durationMs !== undefined ? `${meta.durationMs >= 1000 ? `${(meta.durationMs / 1000).toFixed(1)} s` : `${Math.round(meta.durationMs)} ms`}` : "",
       ].filter(Boolean);
       return `<div class="code-explorer-response-meta" aria-label="Details zur KI-Antwort">${items.map((item) => `<span>${escapeHtml(String(item))}</span>`).join("")}</div>`;
@@ -281,6 +295,44 @@ const GuidedProjectView = (() => {
       if (state.sourcePath === edit.path) document.querySelector("#sourceEditor").value = edit.content;
       renderProjectViewManifest(project);
       renderProjectAssistant(project);
+    }
+
+    async function showCodeExplorerEdit(project, view, messageIndex, editIndex) {
+      const message = codeChatMessages(project, view)[Number(messageIndex)];
+      const edit = message?.fileEdits?.[editIndex];
+      if (!edit) return;
+      const source = await getJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(edit.path)}`);
+      const diff = buildCodeExplorerDiff(source.content || "", edit.content || "");
+      const overlay = document.createElement("div");
+      overlay.className = "runtime-modal code-diff-modal";
+      overlay.innerHTML = `
+        <section class="runtime-dialog code-diff-dialog" role="dialog" aria-modal="true" aria-label="Änderung in ${escapeAttribute(edit.path)}">
+          <div class="runtime-dialog-header">
+            <div><p class="eyebrow">Vorgeschlagene Änderung</p><strong>${escapeHtml(edit.path)}</strong></div>
+            <button type="button" data-close-code-diff aria-label="Änderungsansicht schließen">Schließen</button>
+          </div>
+          <div class="code-diff-legend"><span class="removed">Entfernt</span><span class="added">Hinzugefügt</span></div>
+          <div class="code-diff-content">${diff.map((line) => `<div class="code-diff-line ${line.kind}"><span>${line.oldNumber || ""}</span><span>${line.newNumber || ""}</span><code>${escapeHtml(line.text || " ")}</code></div>`).join("")}</div>
+        </section>`;
+      const close = () => overlay.remove();
+      overlay.querySelector("[data-close-code-diff]").addEventListener("click", close);
+      overlay.addEventListener("click", (event) => { if (event.target === overlay) close(); });
+      document.body.append(overlay);
+    }
+
+    function buildCodeExplorerDiff(previousContent, nextContent) {
+      const before = String(previousContent).replace(/\r\n/g, "\n").split("\n");
+      const after = String(nextContent).replace(/\r\n/g, "\n").split("\n");
+      let prefix = 0;
+      while (prefix < before.length && prefix < after.length && before[prefix] === after[prefix]) prefix += 1;
+      let suffix = 0;
+      while (suffix < before.length - prefix && suffix < after.length - prefix && before[before.length - 1 - suffix] === after[after.length - 1 - suffix]) suffix += 1;
+      const lines = [];
+      before.slice(0, prefix).forEach((text, index) => lines.push({ kind: "context", text, oldNumber: index + 1, newNumber: index + 1 }));
+      before.slice(prefix, before.length - suffix).forEach((text, index) => lines.push({ kind: "removed", text, oldNumber: prefix + index + 1, newNumber: "" }));
+      after.slice(prefix, after.length - suffix).forEach((text, index) => lines.push({ kind: "added", text, oldNumber: "", newNumber: prefix + index + 1 }));
+      before.slice(before.length - suffix).forEach((text, index) => lines.push({ kind: "context", text, oldNumber: before.length - suffix + index + 1, newNumber: after.length - suffix + index + 1 }));
+      return lines;
     }
 
     function renderGuidedArtifact(view) {
