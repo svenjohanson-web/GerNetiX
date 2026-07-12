@@ -118,7 +118,11 @@ function createHttpApp(options) {
     }
 
     if (req.method === "GET" && url.pathname === "/api/admin/llm-models") {
-      sendJson(res, 200, await service.listLlmModels());
+      sendJson(res, 200, await service.listLlmModels({
+        provider: url.searchParams.get("provider") || "",
+        apiProvider: url.searchParams.get("api_provider") || "",
+        apiBaseUrl: url.searchParams.get("base_url") || "",
+      }));
       return;
     }
 

@@ -30,6 +30,7 @@ Manifest-Views koennen zusaetzlich `source_lines`, `editable_lines`, `completion
 ## Quellen
 
 - `GET /api/projects/{projectId}/sources`
+- `GET /api/projects/{projectId}/sources/search?q={task}&current_path={path}&limit=6` (bedarfsgesteuerte Quellensuche; liefert Inhalte nur fuer die relevantesten Treffer)
 - `PUT /api/projects/{projectId}/sources`
 - `GET /api/projects/{projectId}/sources/{relativePath}`
 
@@ -37,7 +38,9 @@ Quellpfade muessen relativ sein und duerfen keine `..`-Segmente enthalten.
 
 KI-abgeleitete Entwicklungsprojekte koennen Architekturquellen unter `Architektur/statische-architektur/`, `Architektur/informationsfluss/` und `Architektur/systemverhalten/` speichern. `Systemverhalten` beschreibt komponentenuebergreifende Ablaeufe, Zustaende, Regeln, Ereignisse, Fehlerfaelle und Reaktionen, die spaeter in Komponentenverhalten dekomponiert werden koennen.
 
-Jede Komponente kann `Eigenschaften/`, `Schnittstellen/`, `Behavior/`, `Daten/` und `Beziehungen/` besitzen. Jede Komponente soll `Schnittstellen/provided.md` und `Schnittstellen/required.md` besitzen, damit bereitgestellte und benoetigte Schnittstellen gleichwertig im Projektmodell sichtbar sind. Zusaetzlich kann jede Komponente `Behavior/Modell`, `Behavior/Code` und `Behavior/Config` als getrennte Quellenbereiche besitzen.
+Jede Komponente kann `Schnittstellen/`, `Verhalten/`, `Konfiguration/`, `Daten/` und `Beziehungen/` besitzen. Jede Komponente soll `Schnittstellen/provided.md` und `Schnittstellen/required.md` besitzen, damit bereitgestellte und benoetigte Schnittstellen gleichwertig im Projektmodell sichtbar sind. `Verhalten/Modell` und `Verhalten/Code` beschreiben Wirkung und Umsetzung. `Konfiguration/Software` nimmt Runtime- und Dienstekonfiguration auf; Device-Komponenten trennen darunter `Konfiguration/Hardware/Board`, `Konfiguration/Hardware/Sensoren` und `Konfiguration/Hardware/Aktoren`. Einen separaten Ordner `Eigenschaften` gibt es nicht.
+
+SQL/SQLite wird nicht als eigener Komponentenordner modelliert. Es ist eine Softwareeigenschaft der fachlich verantwortlichen Server-Komponente und wird in deren `Konfiguration/Software` dokumentiert. Ohne Server-Komponente kann im Projektmodell keine SQL-/SQLite-Persistenz entstehen.
 
 ## Build-Historie und BuildPackages
 

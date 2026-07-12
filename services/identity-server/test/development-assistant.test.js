@@ -67,9 +67,9 @@ test("builds a PlantUML architecture sketch from the AI architecture result", ()
   assert.equal(diagram.type, "plantuml");
   assert.match(diagram.source, /^@startuml/);
   assert.match(diagram.source, /node "IoT Device \/ ESP32" as device/);
-  assert.match(diagram.source, /rectangle "Backend \/ API" as backend/);
+  assert.match(diagram.source, /rectangle "Backend \/ API\\n--\\nSoftware: SQL\/SQLite" as backend/);
   assert.match(diagram.source, /rectangle "Mobile App" as mobile/);
-  assert.match(diagram.source, /database "Persistenz" as database/);
+  assert.doesNotMatch(diagram.source, /database "Persistenz" as database/);
   assert.match(diagram.source, /cloud "Cloud \/ Internet" as cloud/);
   assert.doesNotMatch(diagram.source, /-->|\.\.>/);
   assert.doesNotMatch(diagram.source, /actor "Nutzer"|Projektidee \/ Anforderungen|requirements|note right/);
@@ -90,6 +90,17 @@ test("adds an actor only when an explicit interface is part of the structure", (
   assert.match(diagram.source, /actor "Kunde" as actor/);
   assert.doesNotMatch(diagram.source, /-->|\.\.>/);
   assert.doesNotMatch(diagram.source, /Projektidee \/ Anforderungen|requirements|note right/);
+});
+
+test("models ESP32 local storage without inventing a server database", () => {
+  const diagram = buildArchitectureDiagram([
+    { role: "user", content: "Der ESP32 soll Messwerte lokal speichern und eine Historie anzeigen." },
+    { role: "assistant", content: "Die Messwerte bleiben lokal auf dem ESP32 gespeichert." },
+  ]);
+
+  assert.match(diagram.source, /node "IoT Device \/ ESP32" as device/);
+  assert.doesNotMatch(diagram.source, /database "Persistenz"|SQLite|Backend \/ API/);
+  assert.equal(diagram.detected_blocks.includes("database"), false);
 });
 
 test("extends an ESP32 structure with user browser access when a webserver provides measurements", () => {
@@ -228,8 +239,8 @@ test("derives effect chains after functions are clarified", () => {
   assert.match(diagram.source, /temperature --> device : wird gemessen/);
   assert.match(diagram.source, /device --> mqtt : publisht Messwert/);
   assert.match(diagram.source, /mqtt --> backend : liefert Messwert/);
-  assert.match(diagram.source, /database "Persistenz" as database/);
-  assert.match(diagram.source, /backend --> database : speichert Messwert/);
+  assert.match(diagram.source, /Backend \/ API\\n--\\nSoftware: SQL\/SQLite/);
+  assert.match(diagram.source, /backend --> backend : persistiert Messwert in SQL\/SQLite/);
   assert.match(diagram.source, /actor "Nutzer" as actor/);
   assert.match(diagram.source, /actor --> browser : moechte Daten ansehen/);
   assert.equal(diagram.derived_from, "architecture_effect_chain_derivation");
@@ -289,7 +300,7 @@ test("keeps minimal ESP32 structure requests free of extra clarification questio
 
   assert.equal(payload.status, 200);
   assert.match(fetchUrl, /127\.0\.0\.1:11434\/api\/chat/);
-  assert.equal(payload.body.usedFallback, false);
+  assert.equal(Object.hasOwn(payload.body, "usedFallback"), false);
   assert.equal(payload.body.usedLocalRoute, false);
   assert.equal(payload.body.routing.local, true);
   assert.equal(payload.body.routing.label, "Lokal / Ollama");
@@ -359,6 +370,7 @@ test("uses configured route for ESP32-only architecture requests", async () => {
   }
 
   assert.match(fetchUrl, /api\.openai\.example\/v1\/chat\/completions/);
+  assert.equal(Object.hasOwn(requestBody, "temperature"), false);
   assert.match(requestBody.messages[0].content, /Liste nicht auf/);
   assert.match(requestBody.messages[0].content, /nur das, was der Nutzer angefragt hat/);
   assert.doesNotMatch(requestBody.messages[0].content, /Architektur-Arbeitsweise:/);
@@ -875,7 +887,7 @@ test("answers architecture pattern quick prompts locally without provider call",
 
   assert.equal(providerCalled, false);
   assert.equal(payload.status, 200);
-  assert.equal(payload.body.usedFallback, false);
+  assert.equal(Object.hasOwn(payload.body, "usedFallback"), false);
   assert.equal(payload.body.usedDialogControl, true);
   assert.equal(payload.body.routing.provider, "dialog_control");
   assert.equal(payload.body.routing.costPolicy, "no_llm_call");
@@ -1347,7 +1359,7 @@ test("does not synthesize architecture prompt rules when ai context prompt is mi
   }
 
   assert.equal(providerCalled, false);
-  assert.equal(payload.status, 200);
-  assert.equal(payload.body.usedFallback, true);
-  assert.match(payload.body.error, /AI Context Prompt-Grundlage/);
+  assert.equal(payload.status, 503);
+  assert.equal(payload.body.error, "development_assistant_unavailable");
+  assert.match(payload.body.message, /AI Context Prompt-Grundlage/);
 });

@@ -31,6 +31,8 @@ Die eigenstaendige Desktop-App zeigt alle neun Plattformdienste mit Port, HTTP-S
 - macOS: `tools/process-monitor/GerNetiX-Prozess-Monitor.command`
 - Windows: `tools/process-monitor/GerNetiX-Prozess-Monitor.cmd`
 - Entwicklung: im Ordner `tools/process-monitor` mit `pnpm start`
+
+Der Desktop-Prozessmonitor besitzt neben der Prozesssicht eine persistierte `Schnittstellen-Statistik`. Der Identity Server protokolliert seine ausgehenden GerNetiX-Serviceaufrufe sowie OpenAI-/Claude-/Ollama-Aufrufe in `gernetix_external_interface_calls` innerhalb der gemeinsamen Runtime-SQLite. Der Build-&-Deploy-Server erfasst dort zusaetzlich MQTT `PUBLISH`, `SUBSCRIBE` und empfangene Nachrichten; Device-Kennungen werden im Topic vor dem Speichern durch `{device}` ersetzt. Die Ansicht aggregiert fuer die letzten 24 Stunden Aufrufe, Fehler, mittlere/maximale Dauer und den letzten Aufruf je Quelle-Ziel-Verbindung. Monitor-Healthchecks werden nicht mitgezaehlt. Das Schema ist dienstuebergreifend, sodass weitere Services dieselbe Telemetrie spaeter ebenfalls schreiben koennen.
 - macOS-Build: `pnpm run dist:mac`
 - Windows-Build auf Windows: `pnpm run dist:win`
 

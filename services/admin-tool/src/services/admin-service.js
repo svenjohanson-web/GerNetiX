@@ -339,17 +339,19 @@ class AdminService {
     return this.llmConfigStore.updateConfig(input);
   }
 
-  async listLlmModels() {
+  async listLlmModels(input = {}) {
     const config = this.llmConfigStore.getConfig();
+    const provider = input.provider || config.provider;
     try {
+      if (provider === "api") return await listApiModels({ ...config, apiBaseUrl: input.apiBaseUrl || config.apiBaseUrl }, input.apiProvider || config.apiProvider);
       const response = await fetch(`${config.ollamaBaseUrl.replace(/\/$/, "")}/api/tags`);
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(payload.error || `Ollama antwortet mit HTTP ${response.status}.`);
       }
       return {
-        provider: "ollama",
-        baseUrl: config.ollamaBaseUrl,
+        provider,
+        baseUrl: provider === "api" ? (input.apiBaseUrl || config.apiBaseUrl) : config.ollamaBaseUrl,
         items: (payload.models || []).map((model) => ({
           name: model.name || model.model,
           model: model.model || model.name,
@@ -464,7 +466,6 @@ class AdminService {
       body: JSON.stringify({
         model: config.apiModel,
         messages,
-        temperature: 0,
       }),
     });
     const payload = await response.json().catch(() => ({}));
@@ -583,6 +584,23 @@ class AdminService {
     }
     return payload;
   }
+}
+
+async function listApiModels(config, apiProvider) {
+  const anthropic = apiProvider === "anthropic";
+  const baseUrl = config.apiBaseUrl.replace(/\/$/, "");
+  const response = await fetch(`${baseUrl}/models`, {
+    headers: anthropic
+      ? { "anthropic-version": "2023-06-01", ...(config.apiKey ? { "x-api-key": config.apiKey } : {}) }
+      : (config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error?.message || payload.error || `Modellliste antwortet mit HTTP ${response.status}.`);
+  const items = (payload.data || payload.models || [])
+    .map((model) => ({ name: model.display_name || model.id || model.name, model: model.id || model.name }))
+    .filter((model) => model.model && (anthropic ? /^claude-/i.test(model.model) : /^(gpt-|o\d|codex|chatgpt)/i.test(model.model)))
+    .sort((left, right) => right.model.localeCompare(left.model, "en", { numeric: true }));
+  return { provider: apiProvider, baseUrl, items };
 }
 
 function summarizeDevices(devices) {

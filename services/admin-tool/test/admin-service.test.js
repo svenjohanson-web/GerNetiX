@@ -411,6 +411,29 @@ test("llm config test uses OpenAI Responses API when configured", async () => {
   }
 });
 
+test("loads selectable API models from the configured OpenAI provider", async () => {
+  const service = createAdminServiceWithHttpJson({});
+  const previousFetch = global.fetch;
+  let requestedUrl = "";
+  global.fetch = async (url, options) => {
+    requestedUrl = url;
+    assert.equal(options.headers.Authorization, "Bearer secret");
+    return { ok: true, status: 200, json: async () => ({ data: [{ id: "gpt-5.6-terra" }, { id: "text-embedding-3-small" }, { id: "gpt-5.6-sol" }] }) };
+  };
+  service.llmConfigStore = {
+    getConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiBaseUrl: "https://api.openai.com/v1", apiKey: "secret" }),
+    publicConfig: () => ({}),
+    updateConfig: () => ({}),
+  };
+  try {
+    const result = await service.listLlmModels({ provider: "api", apiProvider: "openai-responses" });
+    assert.equal(requestedUrl, "https://api.openai.com/v1/models");
+    assert.deepEqual(result.items.map((item) => item.model), ["gpt-5.6-terra", "gpt-5.6-sol"]);
+  } finally {
+    global.fetch = previousFetch;
+  }
+});
+
 function createAdminServiceWithHttpJson(routes, error = null) {
   const repository = new InMemoryAdminRepository();
   const service = new AdminService({

@@ -49,3 +49,15 @@ test("monitor reads VPS compose state through the established staging SSH config
   assert.match(html, /Container und OTA-Infrastruktur/);
   assert.match(client, /renderVps/);
 });
+
+test("monitor displays persisted external interface call statistics", () => {
+  assert.match(html, /Schnittstellen-Statistik/);
+  assert.match(html, /Ausgehende Schnittstellenaufrufe/);
+  assert.match(client, /interfaceStatistics\(24\)/);
+  assert.match(client, /renderStatistics/);
+  assert.match(desktopPreload, /interfaceStatistics/);
+  assert.match(desktopMain, /interfaces:statistics/);
+  const statistics = control.interfaceStatistics(24);
+  assert.equal(Array.isArray(statistics.items), true);
+  assert.equal(typeof statistics.summary.calls, "number");
+});

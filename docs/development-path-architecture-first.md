@@ -54,10 +54,12 @@ Freigegebene Datenquellen im PoC:
 
 Noch nicht freigegeben:
 
-- Projektdateien
+- Projektdateien in der allgemeinen Architektur-Discovery
 - Graphdaten
 - Kundendaten
 - externe Webquellen
+
+Der projektgebundene Code-Explorer ist davon bewusst getrennt. Er nutzt den aufgabenbezogenen Retrieval-Ansatz aus [`ai-project-source-retrieval.md`](ai-project-source-retrieval.md): Aufgabe zuerst, dann gezielte Project-Server-Suche, aktuelle Datei plus hoechstens sechs relevante Treffer. Eine pauschale Uebergabe der ersten 40 oder aller Dateien ist untersagt.
 
 ## Quellcode-Trennung
 

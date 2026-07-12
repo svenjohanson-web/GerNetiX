@@ -25,6 +25,7 @@ const {
   setSessionCookie,
 } = require("./dev/http-utils");
 const { createDevServiceClients } = require("./dev/service-clients");
+const { createInterfaceCallTelemetry } = require("../../shared/persistence/interface-call-telemetry");
 const { createTamagotchiEntryCourseModel } = require("./dev/project-models/tamagotchi-entry-course");
 const { createSmartAssistantCourseModel } = require("./dev/project-models/smart-assistant-course");
 const { defaultCatalogSeed } = require("../../hardware-catalog/src/seed");
@@ -55,6 +56,7 @@ const ollamaModel = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const deviceDiscoveryUrls = process.env.GERNETIX_DEVICE_DISCOVERY_URLS || process.env.DEVICE_DISCOVERY_URLS || "";
 const gernetixNodeHostnamePrefix = "gernetix-";
 const execFileAsync = promisify(execFile);
+const interfaceTelemetry = createInterfaceCallTelemetry({ sourceService: "identity-server" });
 const {
   aiContextJson,
   aiUsageJson,
@@ -71,6 +73,7 @@ const {
   hardwareCatalogBaseUrl,
   hardwareShopBaseUrl,
   projectServerBaseUrl,
+  interfaceTelemetry,
 });
 const { buildDeployJson: otaBuildDeployJson } = createDevServiceClients({
   aiContextBaseUrl,
@@ -80,6 +83,7 @@ const { buildDeployJson: otaBuildDeployJson } = createDevServiceClients({
   hardwareCatalogBaseUrl,
   hardwareShopBaseUrl,
   projectServerBaseUrl,
+  interfaceTelemetry,
 });
 const {
   buildTargetLabel,
@@ -97,6 +101,7 @@ const {
   defaultCatalogSeed,
   execFileAsync,
   hardwareCatalogJson,
+  interfaceTelemetry,
 });
 const createAccountTransparency = createAccountTransparencyFactory({
   aiUsageJson,
@@ -126,6 +131,7 @@ const developmentAssistant = createDevelopmentAssistant({
   aiUsageJson,
   hardwareCatalogJson,
   llmConfigStore,
+  projectServerJson,
   projectServerUserId,
   readJsonBody,
   requireProjectAccess: requireSessionProject,
@@ -453,6 +459,16 @@ async function routeRequest(req, res) {
 
   const platformSource = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/sources\/(.+)$/);
   const platformSources = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/sources$/);
+  const platformSourceSearch = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/source-search$/);
+  if (platformSourceSearch && req.method === "GET") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handlePlatformSourceSearch(res, session, decodeURIComponent(platformSourceSearch[1]), url.searchParams);
+    return;
+  }
   if (platformSources && req.method === "GET") {
     const session = readSession(req);
     if (!session) {
@@ -822,14 +838,14 @@ async function handleUserIdeSummary(res, session) {
 
 async function handlePlatformSummary(res, session) {
   const serviceStatus = {};
-  const projects = await loadUserIdeProjects(session).then((items) => {
+  const projectsPromise = loadUserIdeProjects(session).then((items) => {
     serviceStatus.project_server = { ok: true };
     return items;
   }).catch((error) => {
     serviceStatus.project_server = { ok: false, error: error.message || String(error) };
     return [];
   });
-  const devices = await loadUserIdeDevices(session).then((items) => {
+  const devicesPromise = loadUserIdeDevices(session).then((items) => {
     serviceStatus.device_management = { ok: true };
     return items;
   }).catch((error) => {
@@ -852,23 +868,31 @@ async function handlePlatformSummary(res, session) {
     });
     return [];
   });
-  const builds = await loadProjectBuilds(projects, session).then((items) => {
-    serviceStatus.builds = { ok: true };
-    return items;
-  }).catch((error) => {
-    serviceStatus.builds = { ok: false, error: error.message || String(error) };
-    return [];
-  });
-  const aiUsage = await loadAiUsageSummary(session).then((summary) => {
+  const aiUsagePromise = loadAiUsageSummary(session).then((summary) => {
     serviceStatus.ai_usage = { ok: summary.available !== false };
     return summary;
   }).catch((error) => {
     serviceStatus.ai_usage = { ok: false, error: error.message || String(error) };
     return null;
   });
+  const accountPromise = createAccountSummary(session);
+  const projects = await projectsPromise;
+  const buildsPromise = loadProjectBuilds(projects, session).then((items) => {
+    serviceStatus.builds = { ok: true };
+    return items;
+  }).catch((error) => {
+    serviceStatus.builds = { ok: false, error: error.message || String(error) };
+    return [];
+  });
+  const [devices, builds, aiUsage, account] = await Promise.all([
+    devicesPromise,
+    buildsPromise,
+    aiUsagePromise,
+    accountPromise,
+  ]);
   const userId = projectServerUserId(session);
   sendJson(res, 200, {
-    account: await createAccountSummary(session),
+    account,
     routes: {
       auth: "/app/auth/",
       dashboard: "/app/dashboard/",
@@ -960,6 +984,17 @@ async function handlePlatformSourceList(res, session, projectId) {
   const sources = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`);
   touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
   sendJson(res, 200, sources);
+}
+
+async function handlePlatformSourceSearch(res, session, projectId, searchParams) {
+  const project = await requireSessionProject(session, projectId);
+  const query = new URLSearchParams({
+    q: String(searchParams.get("q") || "").slice(0, 1000),
+    current_path: String(searchParams.get("current_path") || "").slice(0, 300),
+    limit: "6",
+  });
+  const result = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources/search?${query}`);
+  sendJson(res, 200, result);
 }
 
 async function handlePlatformSourceWrite(req, res, session, projectId, sourcePath) {

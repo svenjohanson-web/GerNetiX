@@ -81,6 +81,35 @@ test("stores project sources with hashes and rejects path traversal", () => {
   assert.throws(() => service.upsertSource(project.project_id, { path: "../secret.txt", content: "x" }), /Source-Pfad/);
 });
 
+test("searches project sources for a known task instead of returning the whole project", () => {
+  const service = createMemoryProjectServer();
+  const project = createDemoProject(service);
+  service.upsertSource(project.project_id, {
+    path: "Architektur/system.puml",
+    content: "@startuml\nnode ESP32\n@enduml\n",
+  });
+  service.upsertSource(project.project_id, {
+    path: "Komponenten/ESP32/Sensoren/temperature.cpp",
+    content: "void readTemperatureSensor() {}\n",
+  });
+  service.upsertSource(project.project_id, {
+    path: "docs/unrelated.md",
+    content: "Abrechnung und Vertrag\n",
+  });
+
+  const matches = service.searchSources(project.project_id, {
+    query: "Temperature Sensor in die Architektur aufnehmen",
+    current_path: "Architektur/system.puml",
+    limit: 2,
+  });
+
+  assert.deepEqual(matches.map((source) => source.path), [
+    "Architektur/system.puml",
+    "Komponenten/ESP32/Sensoren/temperature.cpp",
+  ]);
+  assert.equal(matches[0].content.includes("@startuml"), true);
+});
+
 test("creates reproducible build package for build deploy server", () => {
   const service = createMemoryProjectServer();
   const project = createDemoProject(service);

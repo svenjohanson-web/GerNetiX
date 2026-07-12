@@ -1,5 +1,7 @@
 # Admin Tool
 
+Die LLM-Konfiguration laedt API-Modelle dynamisch vom konfigurierten Provider und zeigt sie als Dropdown. OpenAI-/OpenAI-kompatible Provider werden ueber `GET {baseUrl}/models`, Anthropic ueber dessen Models-Endpunkt mit den bereits sicher gespeicherten Zugangsdaten abgefragt. GerNetiX pflegt keine statische API-Modell-Fallbackliste; ist die Providerabfrage nicht moeglich, bleibt nur der bereits gespeicherte Modellwert sichtbar und die UI zeigt den Fehler.
+
 MVP fuer das GerNetiX Admin Tool als eigenstaendiger Admin-Backend/API-Service.
 
 Das Admin Tool bietet erste berechtigte Sichten auf Device-Status, Support-Entitlement, Learning-Feedback, Customer-Data-Consent, Audit-Events, KI-Usage-Monitoring und LLM-Datenfreigaben. Es besitzt im MVP keine fuehrenden Domaenendaten, sondern nutzt Seed-/In-Memory-Daten als Adapter-Stellvertreter fuer die spaeteren Domaenen-APIs.

@@ -43,6 +43,16 @@ function createHttpApp(options) {
       return;
     }
 
+    const sourceSearch = path.match(new RegExp(`^${prefix}/([^/]+)/sources/search$`));
+    if (req.method === "GET" && sourceSearch) {
+      sendJson(res, 200, { items: service.searchSources(decodeURIComponent(sourceSearch[1]), {
+        query: url.searchParams.get("q") || "",
+        current_path: url.searchParams.get("current_path") || "",
+        limit: url.searchParams.get("limit") || 6,
+      }) });
+      return;
+    }
+
     const source = path.match(new RegExp(`^${prefix}/([^/]+)/sources/(.+)$`));
     if (req.method === "GET" && source) {
       sendJson(res, 200, service.getSource(decodeURIComponent(source[1]), decodeURIComponent(source[2])));

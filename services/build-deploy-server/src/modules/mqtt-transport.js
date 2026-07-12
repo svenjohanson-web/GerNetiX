@@ -9,6 +9,7 @@ class MqttTransport {
     this.password = options.password || "";
     this.topicFilter = options.topicFilter || "gernetix/devices/+/status/#";
     this.onMessage = options.onMessage || (() => {});
+    this.telemetry = options.telemetry || null;
     this.socket = null;
     this.buffer = Buffer.alloc(0);
     this.packetId = 1;
@@ -25,7 +26,9 @@ class MqttTransport {
   }
 
   async publish(topic, payload, options = {}) {
-    await this.ensureConnected();
+    const startedAt = Date.now();
+    try {
+      await this.ensureConnected();
     const qos = options.qos === 1 ? 1 : 0;
     const retain = options.retain === true ? 1 : 0;
     const packetId = qos ? this.nextPacketId() : 0;
@@ -33,19 +36,32 @@ class MqttTransport {
     const packet = packetBuffer(0x30 | (qos << 1) | retain, Buffer.concat([variable, Buffer.from(payload)]));
     if (!qos) {
       this.socket.write(packet);
+      this.recordTelemetry("PUBLISH", topic, true, Date.now() - startedAt);
       return;
     }
     const acknowledged = waitForPacket(this.pending, `puback:${packetId}`, 5000);
     this.socket.write(packet);
     await acknowledged;
+      this.recordTelemetry("PUBLISH", topic, true, Date.now() - startedAt);
+    } catch (error) {
+      this.recordTelemetry("PUBLISH", topic, false, Date.now() - startedAt);
+      throw error;
+    }
   }
 
   async subscribe(topic) {
+    const startedAt = Date.now();
+    try {
     const packetId = this.nextPacketId();
     const packet = packetBuffer(0x82, Buffer.concat([uint16(packetId), mqttString(topic), Buffer.from([1])]));
     const acknowledged = waitForPacket(this.pending, `suback:${packetId}`, 5000);
     this.socket.write(packet);
     await acknowledged;
+      this.recordTelemetry("SUBSCRIBE", topic, true, Date.now() - startedAt);
+    } catch (error) {
+      this.recordTelemetry("SUBSCRIBE", topic, false, Date.now() - startedAt);
+      throw error;
+    }
   }
 
   async ensureConnected() {
@@ -101,6 +117,7 @@ class MqttTransport {
     let packetId = 0;
     if (qos) { packetId = payload.readUInt16BE(offset); offset += 2; }
     Promise.resolve(this.onMessage(topic, payload.subarray(offset).toString())).catch(() => {});
+    this.recordTelemetry("RECEIVE", topic, true, 0);
     if (qos === 1) this.socket.write(packetBuffer(0x40, uint16(packetId)));
   }
 
@@ -118,6 +135,21 @@ class MqttTransport {
     if (this.keepaliveTimer) clearInterval(this.keepaliveTimer);
     this.keepaliveTimer = null;
   }
+
+  recordTelemetry(method, topic, succeeded, durationMs) {
+    this.telemetry?.record({
+      targetService: "mqtt-broker",
+      method,
+      route: normalizeMqttTopic(topic),
+      statusCode: succeeded ? 200 : 0,
+      durationMs,
+      succeeded,
+    });
+  }
+}
+
+function normalizeMqttTopic(topic) {
+  return String(topic || "").replace(/^(gernetix\/devices\/)[^/]+/, "$1{device}").slice(0, 300);
 }
 
 function connectPacket(clientId, username, password) {
@@ -135,4 +167,4 @@ function decodeRemainingLength(buffer, start) { let multiplier=1,value=0,index=s
 function waitForPacket(pending, key, timeoutMs) { return new Promise((resolve,reject)=>{const timeout=setTimeout(()=>{pending.delete(key);reject(new Error(`MQTT timeout: ${key}`));},timeoutMs);pending.set(key,()=>{clearTimeout(timeout);resolve();});}); }
 function resolvePending(pending,key){const resolve=pending.get(key);if(resolve){pending.delete(key);resolve();}}
 
-module.exports = { MqttTransport, connectPacket, decodeRemainingLength, encodeRemainingLength, packetBuffer };
+module.exports = { MqttTransport, connectPacket, decodeRemainingLength, encodeRemainingLength, normalizeMqttTopic, packetBuffer };

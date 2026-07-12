@@ -65,6 +65,21 @@ class ProjectService {
     return this.repository.listSources(projectId).map(maskSourceContent);
   }
 
+  searchSources(projectId, input = {}) {
+    this.requireProject(projectId);
+    const query = String(input.query || "").toLocaleLowerCase("de-DE");
+    const currentPath = String(input.current_path || "");
+    const limit = Math.max(1, Math.min(8, Number(input.limit) || 6));
+    const terms = [...new Set(query.match(/[\p{L}\p{N}_-]{3,}/gu) || [])]
+      .filter((term) => !SOURCE_SEARCH_STOP_WORDS.has(term));
+    return this.repository.listSources(projectId)
+      .map((source) => ({ source, score: sourceSearchScore(source, terms, currentPath) }))
+      .filter((item) => item.score > 0)
+      .sort((left, right) => right.score - left.score || left.source.path.localeCompare(right.source.path))
+      .slice(0, limit)
+      .map((item) => item.source);
+  }
+
   getSource(projectId, sourcePath) {
     this.requireProject(projectId);
     const source = this.repository.findSource(projectId, sourcePath);
@@ -471,6 +486,20 @@ function maskSourceContent(source) {
     role: source.role,
     updated_at: source.updated_at,
   };
+}
+
+const SOURCE_SEARCH_STOP_WORDS = new Set(["aber", "bitte", "datei", "diese", "dieser", "einen", "einer", "etwas", "fuege", "füge", "hinzu", "machen", "mein", "meine", "mich", "projekt", "soll", "und", "werden"]);
+
+function sourceSearchScore(source, terms, currentPath) {
+  if (source.path === currentPath) return 100000;
+  if (!terms.length) return 0;
+  const path = String(source.path || "").toLocaleLowerCase("de-DE");
+  const content = String(source.content || "").toLocaleLowerCase("de-DE");
+  return terms.reduce((score, term) => {
+    const pathMatches = path.split(term).length - 1;
+    const contentMatches = Math.min(8, content.split(term).length - 1);
+    return score + (pathMatches * 20) + contentMatches;
+  }, 0);
 }
 
 function redactFeedback(feedback, consent = null) {

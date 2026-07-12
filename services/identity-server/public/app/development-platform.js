@@ -357,9 +357,7 @@ const DevelopmentPlatform = (() => {
           usage: response.usage || null,
           routing: response.routing || null,
         });
-        setChatStatus(response.usedFallback
-          ? `Fallback-Antwort. Geplante Route: ${routingLabel(response.routing) || providerLabel(response.config)}.`
-          : `Geroutet: ${routingLabel(response.routing) || providerLabel(response.config)}.`);
+        setChatStatus(`Geroutet: ${routingLabel(response.routing) || providerLabel(response.config)}.`);
       } catch (error) {
         state.developmentPlatform.chat.push({
           role: "assistant",

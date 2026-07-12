@@ -15,6 +15,26 @@ test("IDE view is selected automatically from the opened file", () => {
   assert.match(app, /const image = \/\\\.\(svg\|png\|jpe\?g\|gif\|webp\)\$\/i/);
 });
 
+test("PlantUML source and rendered diagram share equal width and height", () => {
+  assert.match(app, /classList\.toggle\("plantuml-split", plantUml && !virtualView\)/);
+  assert.match(css, /\.ide-viewer-panel\.plantuml-split \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) minmax\(0, 1fr\)/);
+  assert.match(css, /\.ide-viewer-panel\.plantuml-split \.ide-source-workspace,[\s\S]*height: 100%/);
+  assert.match(css, /\.ide-viewer-panel\.plantuml-split \.plantuml-viewer \{[\s\S]*height: 100%/);
+});
+
+test("opening a source returns to file mode and preserves expanded project folders", () => {
+  assert.match(app, /async function openIdeSource\(sourcePath\)[\s\S]*state\.ideViewMode = "file"/);
+  assert.match(app, /details\[data-tree-path\]\[open\]/);
+  assert.match(app, /openFolders\.has\(node\.path\) \|\| containsActiveSource/);
+  assert.match(app, /treeContainsSource\(node, state\.sourcePath\)/);
+  assert.match(app, /data-tree-path=/);
+});
+
+test("project tree shows file names without role or content-type subtitles", () => {
+  assert.doesNotMatch(app, /<small>\$\{escapeHtml\(file\.role \|\| file\.content_type/);
+  assert.match(app, /<span>\$\{escapeHtml\(file\.name\)\}<\/span>/);
+});
+
 test("Ctrl or Command S saves and build or flash persists first", () => {
   assert.match(app, /event\.ctrlKey \|\| event\.metaKey/);
   assert.match(app, /event\.key\.toLowerCase\(\) !== "s"/);
@@ -58,6 +78,8 @@ test("project tree stays top-aligned and build console keeps useful history visi
 test("workspace panes and chat input can be resized by the user", () => {
   assert.match(css, /\.ide-workspace-active \.ide-project-browser-panel \{[\s\S]*resize: horizontal/);
   assert.match(css, /\.ide-workspace-active \.ide-code-assistant \{[\s\S]*resize: horizontal/);
+  assert.match(css, /\.ide-workspace-active \.ide-code-assistant \{[\s\S]*max-width: 50vw;[\s\S]*direction: rtl;[\s\S]*grid-row: 1 \/ -1;/);
+  assert.match(css, /\.ide-workspace-active \.ide-build-console \{[\s\S]*grid-column: 1;[\s\S]*grid-row: 2;/);
   assert.match(css, /\.ide-workspace-active \.ide-build-console \{[\s\S]*resize: vertical/);
   assert.match(css, /\.code-explorer-chat textarea \{[\s\S]*min-height: 72px;[\s\S]*resize: vertical/);
 });

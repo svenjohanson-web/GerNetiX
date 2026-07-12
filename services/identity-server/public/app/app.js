@@ -816,10 +816,24 @@ function selectedIdeSourcePath(project, sources) {
 function renderIdeProjectBrowser(project, sources) {
   const target = document.querySelector("#ideProjectBrowser");
   if (!target) return;
-  const treeSources = sources.concat(projectRealizationsTreeEntry(project));
+  const openFolders = new Set(Array.from(target.querySelectorAll("details[data-tree-path][open]"))
+    .map((folder) => folder.dataset.treePath));
+  const treeSources = projectBrowserSources(project, sources).concat(projectRealizationsTreeEntry(project));
   target.innerHTML = treeSources.length
-    ? renderSourceTree(sourceTree(project.name, treeSources))
+    ? renderSourceTree(sourceTree(project.name, treeSources), 0, openFolders)
     : `<p class="empty">Keine Projektdateien.</p>`;
+}
+
+function projectBrowserSources(project, sources) {
+  const component = primaryComponentPath(project);
+  if (!component) return sources;
+  const configurationPrefix = `${component}/Konfiguration/`;
+  return sources.map((source) => {
+    if (!source.path.startsWith(configurationPrefix)) return source;
+    const relativePath = source.path.slice(configurationPrefix.length);
+    if (/^(Hardware|Software)\//.test(relativePath)) return source;
+    return { ...source, treePath: `${configurationPrefix}Hardware/${relativePath}` };
+  });
 }
 
 function projectRealizationsTreeEntry(project) {
@@ -827,18 +841,24 @@ function projectRealizationsTreeEntry(project) {
   const component = primaryComponentPath(project) || "Komponenten/ESP32";
   return [
     { path: "Architektur/Realisierungen", role: "Gerätezuordnung", virtualAction: "realizations" },
-    { path: `${component}/Eigenschaften`, role: "Komponentenkonfiguration", virtualAction: "component-features" },
-    { path: `${component}/Webserver`, role: "Live-Ansicht", virtualAction: "device-web" },
+    { path: `${component}/Konfiguration/Software/Webserver`, role: "", virtualAction: "device-web" },
   ];
 }
 
 function sourceTree(projectName, sources) {
-  const root = { name: projectName || "Projekt", folders: new Map(), files: [] };
+  const root = { name: projectName || "Projekt", path: "", folders: new Map(), files: [] };
   for (const source of sources) {
-    const parts = String(source.path || "").split("/").filter(Boolean);
+    const parts = String(source.treePath || source.path || "").split("/").filter(Boolean);
     let cursor = root;
     for (const part of parts.slice(0, -1)) {
-      if (!cursor.folders.has(part)) cursor.folders.set(part, { name: part, folders: new Map(), files: [] });
+      if (!cursor.folders.has(part)) {
+        cursor.folders.set(part, {
+          name: part,
+          path: [cursor.path, part].filter(Boolean).join("/"),
+          folders: new Map(),
+          files: [],
+        });
+      }
       cursor = cursor.folders.get(part);
     }
     cursor.files.push({ ...source, name: parts.at(-1) || source.path });
@@ -846,11 +866,11 @@ function sourceTree(projectName, sources) {
   return root;
 }
 
-function renderSourceTree(node, depth = 0) {
+function renderSourceTree(node, depth = 0, openFolders = new Set()) {
   const folders = Array.from(node.folders.values()).sort((left, right) => left.name.localeCompare(right.name));
   const files = node.files.sort((left, right) => left.name.localeCompare(right.name));
   const children = [
-    ...folders.map((folder) => renderSourceTree(folder, depth + 1)),
+    ...folders.map((folder) => renderSourceTree(folder, depth + 1, openFolders)),
     ...files.map((file) => `
       <button class="${file.path === state.sourcePath ? "active" : ""}" type="button" ${file.virtualAction === "realizations"
         ? "data-project-realizations"
@@ -860,7 +880,6 @@ function renderSourceTree(node, depth = 0) {
             ? "data-device-web"
             : `data-source-path="${escapeAttribute(file.path)}"`} style="--depth:${depth + 1}">
         <span>${escapeHtml(file.name)}</span>
-        <small>${escapeHtml(file.role || file.content_type || "")}</small>
       </button>
     `),
   ].join("");
@@ -872,12 +891,18 @@ function renderSourceTree(node, depth = 0) {
       </div>
     `;
   }
+  const containsActiveSource = treeContainsSource(node, state.sourcePath);
   return `
-    <details class="ide-tree-folder" style="--depth:${depth}">
+    <details class="ide-tree-folder" data-tree-path="${escapeAttribute(node.path)}" style="--depth:${depth}" ${openFolders.has(node.path) || containsActiveSource ? "open" : ""}>
       <summary>${escapeHtml(node.name)}</summary>
       ${children}
     </details>
   `;
+}
+
+function treeContainsSource(node, sourcePath) {
+  if (node.files.some((file) => file.path === sourcePath)) return true;
+  return Array.from(node.folders.values()).some((folder) => treeContainsSource(folder, sourcePath));
 }
 
 function openProjectRealizations() {
@@ -890,7 +915,7 @@ function openProjectRealizations() {
 function openComponentFeatures() {
   state.ideViewMode = "component-features";
   const project = projectById(state.activeProjectId);
-  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Eigenschaften`;
+  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Software/Eigenschaften`;
   renderComponentFeatures(project);
   renderIdeViewMode(project);
 }
@@ -898,7 +923,7 @@ function openComponentFeatures() {
 function openDeviceWebView() {
   state.ideViewMode = "device-web";
   const project = projectById(state.activeProjectId);
-  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Webserver`;
+  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Software/Webserver`;
   renderDeviceWebView(project);
   renderIdeViewMode(project);
 }
@@ -906,6 +931,7 @@ function openDeviceWebView() {
 async function openIdeSource(sourcePath) {
   const project = projectById(state.activeProjectId);
   if (!project || !sourcePath) return;
+  state.ideViewMode = "file";
   state.sourcePath = sourcePath;
   document.querySelector("#ideActiveSourceLabel").textContent = state.sourcePath;
   await loadIdeSourceContent(project, sourcePath);
@@ -932,6 +958,7 @@ function renderIdeViewMode(project) {
   const virtualView = realizations || componentFeatures || deviceWeb;
   const plantUml = /\.(puml|plantuml)$/i.test(sourcePath) && /@startuml/i.test(source);
   const image = /\.(svg|png|jpe?g|gif|webp)$/i.test(sourcePath);
+  document.querySelector("#ideViewerPanel").classList.toggle("plantuml-split", plantUml && !virtualView);
   document.querySelector("#ideViewerModeLabel").textContent = realizations ? "Realisierungen" : componentFeatures ? "Komponenteneigenschaften" : deviceWeb ? "Device-Webserver" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
   document.querySelector("#sourcePanel").classList.toggle("hidden", virtualView || image);
   document.querySelector("#ideImageView").classList.toggle("hidden", virtualView || (!plantUml && !image));
@@ -988,12 +1015,16 @@ const componentFeatureDefinitions = [
 
 function effectiveComponentFeatures(project) {
   const configured = project?.buildConfig?.component_features || {};
-  const comfort = project?.buildConfig?.firmware_basis_variant === "comfort";
-  const immutable = new Set(configured.immutable || (comfort ? ["wifi", "mqtt", "ota", "http", "webserver"] : []));
+  const basisId = project?.buildConfig?.firmware_basis_id || "";
+  const basisVariant = project?.buildConfig?.firmware_basis_variant || (basisId === "gernetix-runtime-basissoftware" ? "comfort" : "");
+  const basisLocks = basisId === "gernetix-runtime-basissoftware" && basisVariant === "comfort"
+    ? ["wifi", "mqtt", "ota", "http", "webserver"]
+    : [];
+  const immutable = new Set([...basisLocks, ...(configured.immutable || [])]);
   const enabled = new Set(configured.enabled || []);
   immutable.forEach((feature) => enabled.add(feature));
   if (configured.webserver?.measurement_chart) enabled.add("measurement_chart");
-  return { enabled, immutable, webserver: configured.webserver || {} };
+  return { enabled, immutable, webserver: configured.webserver || {}, basisVariant };
 }
 
 function renderComponentFeatures(project) {
@@ -1005,7 +1036,7 @@ function renderComponentFeatures(project) {
   const config = effectiveComponentFeatures(project);
   target.innerHTML = `<form class="component-features-form">
     <header><div><p class="eyebrow">${escapeHtml(primaryComponentPath(project) || "Komponente")}</p><h3>Eigenschaften</h3></div>
-      <span class="basis-variant-badge">Basis: ${escapeHtml(project.buildConfig.firmware_basis_variant || "ohne Variante")}</span></header>
+      <span class="basis-variant-badge">Basis: ${escapeHtml(config.basisVariant || "ohne Variante")}</span></header>
     <p class="helper-text">Funktionen der Basissoftware sind geschützt und bleiben beim Build erhalten. Projekterweiterungen kannst du hier zuschalten.</p>
     <div class="component-feature-grid">${componentFeatureDefinitions.map(([id, title, description]) => {
       const locked = config.immutable.has(id);

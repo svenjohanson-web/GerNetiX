@@ -3,6 +3,7 @@ const path = require("node:path");
 const { execFile, spawn } = require("node:child_process");
 const { promisify } = require("node:util");
 const fs = require("node:fs");
+const { DatabaseSync } = require("node:sqlite");
 
 const execFileAsync = promisify(execFile);
 let workspaceRoot = process.env.GERNETIX_WORKSPACE || path.resolve(__dirname, "../..");
@@ -23,6 +24,24 @@ async function check(item) {
   catch(error){ return {...item,healthy:false,statusCode:0,pid:await pidForPort(item.port),error:error.message}; }
 }
 async function processStates(){ return Promise.all(services.map(check)); }
+function interfaceStatistics(hours=24){
+  const dbPath=path.join(workspaceRoot,".runtime","gernetix-services.sqlite");
+  if(!fs.existsSync(dbPath))return {hours,items:[],summary:{calls:0,failed:0,targets:0}};
+  let db;
+  try{
+    db=new DatabaseSync(dbPath,{readOnly:true});
+    const table=db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='gernetix_external_interface_calls'").get();
+    if(!table)return {hours,items:[],summary:{calls:0,failed:0,targets:0}};
+    const since=new Date(Date.now()-Math.max(1,Number(hours)||24)*3600000).toISOString();
+    const items=db.prepare(`SELECT source_service, target_service, COUNT(*) AS calls,
+      SUM(CASE WHEN succeeded = 0 THEN 1 ELSE 0 END) AS failed,
+      ROUND(AVG(duration_ms)) AS average_ms, MAX(duration_ms) AS maximum_ms, MAX(occurred_at) AS last_call
+      FROM gernetix_external_interface_calls WHERE occurred_at >= ?
+      GROUP BY source_service, target_service ORDER BY calls DESC, target_service`).all(since);
+    return {hours,items,summary:{calls:items.reduce((sum,item)=>sum+Number(item.calls),0),failed:items.reduce((sum,item)=>sum+Number(item.failed),0),targets:items.length}};
+  }catch(error){return {hours,items:[],summary:{calls:0,failed:0,targets:0},error:error.message};}
+  finally{try{db?.close();}catch{}}
+}
 async function remoteProcessStates(options={}) {
   const config=loadStagingConfig();
   if(!config.GERNETIX_STAGING_SSH)return {configured:false,items:[],error:"VPS nicht konfiguriert: .env.staging.local fehlt oder enthält kein GERNETIX_STAGING_SSH."};
@@ -61,4 +80,4 @@ function parseComposePs(output){
 }
 function remoteError(error){const detail=String(error.stderr||error.message||error).trim().split(/\r?\n/).slice(-1)[0];return `VPS nicht erreichbar: ${detail}`;}
 
-module.exports={configureWorkspace,parseComposePs,processStates,remoteProcessStates,services,startService,stopService};
+module.exports={configureWorkspace,interfaceStatistics,parseComposePs,processStates,remoteProcessStates,services,startService,stopService};

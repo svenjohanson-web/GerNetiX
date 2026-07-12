@@ -13,7 +13,7 @@ test("shows a contextual AI chat only for code explorer views", () => {
   assert.match(guidedView, /artifact\?\.type === "code"/);
   assert.match(guidedView, /Code gemeinsam verstehen/);
   assert.match(guidedView, /assistantMode: "code_explorer"/);
-  assert.match(guidedView, /content: artifact\.content \|\| document\.querySelector\("#sourceEditor"\)/);
+  assert.match(guidedView, /content: ""/);
 });
 
 test("renders the project assistant in the visible IDE workbench", () => {
@@ -28,29 +28,102 @@ test("separates chat history from input before the first message", () => {
   assert.match(guidedView, /<form data-code-explorer-chat>[\s\S]*>Eingabe<\/p>/);
 });
 
-test("routes code explorer questions with bounded source context", () => {
+test("shows the submitted question immediately and an animated waiting answer", () => {
+  assert.match(guidedView, /messages\.push\(\{ role: "user", content \}\);[\s\S]*pending: true[\s\S]*renderProjectAssistant\(project\);/);
+  assert.match(guidedView, /code-explorer-chat-waiting[\s\S]*<i><\/i><i><\/i><i><\/i>/);
+  assert.match(guidedView, /messages: messages\.filter\(\(message\) => !message\.pending\)/);
+  assert.match(guidedView, /Object\.assign\(pendingMessage,[\s\S]*pending: false/);
+  assert.match(guidedView, /scrollCodeExplorerChatToEnd/);
+});
+
+test("shows responder model token usage and duration below every AI answer", () => {
+  assert.match(guidedView, /responseMeta: codeExplorerResponseMeta\(response\)/);
+  assert.match(guidedView, /routing\.label \|\| routing\.provider/);
+  assert.match(guidedView, /promptTokens: Number\.isFinite\(usage\.promptTokens\)/);
+  assert.match(guidedView, /completionTokens: Number\.isFinite\(usage\.completionTokens\)/);
+  assert.match(guidedView, /totalTokens: Number\.isFinite\(usage\.totalTokens\)/);
+  assert.match(guidedView, /code-explorer-response-meta/);
+  assert.match(guidedView, /System \/ Fehler/);
+});
+
+test("shows and updates the account token allowance next to the development AI chat", () => {
+  assert.match(guidedView, /renderCodeExplorerUsage\(\)/);
+  assert.match(guidedView, /state\.aiUsage\?\.rating/);
+  assert.match(guidedView, /code-explorer-usage-bar/);
+  assert.match(guidedView, /Tokens diesen Monat/);
+  assert.match(guidedView, /recordCodeExplorerUsage\(response\)/);
+  assert.match(guidedView, /source\.month_tokens = Number\(source\.month_tokens \|\| 0\) \+ totalTokens/);
+});
+
+test("routes code explorer questions through agentic project tools", () => {
   assert.match(assistant, /codeExplorerMode \? "code_generation" : "architecture_discovery"/);
-  assert.match(assistant, /Rolle: Code-Explorer/);
-  assert.match(assistant, /slice\(0, 24000\)/);
+  assert.match(assistant, /Rolle: Projektgebundener Coding Agent/);
+  assert.match(assistant, /search_project_sources/);
+  assert.match(assistant, /read_project_source/);
   assert.match(assistant, /"code_explorer_assistance"/);
 });
 
-test("uses a code-specific fallback when the configured provider is unavailable", () => {
-  assert.match(assistant, /codeExplorerMode[\s\S]*codeExplorerFallback\(body\.codeContext/);
-  assert.match(assistant, /Der Code-Assistent kann die/);
-  assert.match(assistant, /Es wurden keine Dateien veraendert/);
+test("returns a real endpoint error instead of a fallback answer", () => {
+  assert.doesNotMatch(assistant, /codeExplorerFallback|fallbackAnswer/);
+  assert.match(assistant, /development_assistant_unavailable/);
+  assert.match(assistant, /sendJson\(res, Number\(error\.status\) >= 400 \? Number\(error\.status\) : 503/);
+});
+
+test("allows long reasoning requests and reports provider timeouts clearly", () => {
+  assert.match(assistant, /const PROVIDER_TIMEOUT_MS = 180000/);
+  assert.match(assistant, /setTimeout\(\(\) => controller\.abort\(\), PROVIDER_TIMEOUT_MS\)/);
+  assert.match(assistant, /const CODE_EXPLORER_FILE_CONTEXT_CHARS = 24000/);
+  assert.match(assistant, /\.slice\(0, 8\)/);
+  assert.doesNotMatch(assistant, /payload: JSON\.stringify\(artifact\.payload/);
+  assert.match(guidedView, /Die KI arbeitet noch – die Antwort dauert ungewöhnlich lange/);
+  assert.match(guidedView, /}, 8000\)/);
+  assert.match(assistant, /nicht innerhalb von 180 Sekunden geantwortet/);
+  assert.match(assistant, /es wurde keine Datei verändert/);
 });
 
 test("identity uses the same installed default Ollama model as the admin tool", () => {
   assert.match(devServer, /process\.env\.OLLAMA_MODEL \|\| "llama3\.2:3b"/);
 });
 
-test("knows project artifacts and applies confirmed edits through project source persistence", () => {
+test("discovers project sources server-side and applies confirmed edits through project source persistence", () => {
   assert.match(publicApp, /GuidedProjectView\.create\(\{[\s\S]*getJson,[\s\S]*putJson,/);
-  assert.match(guidedView, /loadCodeExplorerProjectFiles/);
-  assert.match(guidedView, /artifacts: guidedViews\(project\)/);
+  assert.doesNotMatch(guidedView, /loadCodeExplorerProjectFiles/);
+  assert.match(guidedView, /files: \[\]/);
+  assert.match(assistant, /callOpenAiCodeAgent/);
+  assert.match(assistant, /function_call_output/);
+  assert.match(assistant, /projectServerJson\(`\/api\/projects/);
   assert.match(guidedView, /data-apply-code-edit/);
   assert.match(guidedView, /await putJson\(`\/api\/platform\/projects\/\$\{encodeURIComponent\(project\.id\)\}\/sources/);
   assert.match(assistant, /<gernetix-file-edits>/);
+  assert.match(assistant, /allowedPaths\.has\(edit\.path\)/);
+});
+
+test("adds a deterministic file and line summary to proposed AI edits", () => {
+  assert.match(assistant, /describeCodeExplorerEdit\(edit, context\)/);
+  assert.match(assistant, /lineStart/);
+  assert.match(assistant, /lineEnd/);
+  assert.match(assistant, /addedLines/);
+  assert.match(assistant, /removedLines/);
+  assert.match(guidedView, /code-explorer-change-summary/);
+  assert.match(guidedView, />Zusammenfassung</);
+  assert.match(guidedView, /Zeile \$\{edit\.lineStart/);
+});
+
+test("turns explicit file changes into concise confirmable edits even when a local model ignores the marker", () => {
+  assert.match(assistant, /niemals zusaetzlich in Markdown-Codebloecken/);
+  assert.match(assistant, /parseCodeExplorerResult\(rawAssistantContent, effectiveCodeContext, latestUserRequest\)/);
+  assert.match(assistant, /recoverCodeExplorerEdit/);
+  assert.match(assistant, /@startuml\[\\s\\S\]\*@enduml/);
+  assert.match(assistant, /resolveCodeExplorerFile\(context, currentPath\)/);
+  assert.match(assistant, /allowedPaths\.has\(currentFile\.path\)/);
+  assert.match(assistant, /Es wurde keine inhaltliche Dateiänderung erkannt/);
+});
+
+test("lets the coding agent discover structural targets instead of hard-coded component routing", () => {
+  assert.doesNotMatch(guidedView, /function codeExplorerTargetPath/);
+  assert.doesNotMatch(guidedView, /genericElementMutation/);
+  assert.match(assistant, /Rate keinen Dateipfad und bearbeite keine ungelesene Datei/);
+  assert.match(assistant, /toolFiles\.set\(file\.path, file\)/);
+  assert.match(assistant, /discoveredPaths\.has\(path\)/);
   assert.match(assistant, /allowedPaths\.has\(edit\.path\)/);
 });

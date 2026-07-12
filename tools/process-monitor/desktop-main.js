@@ -26,6 +26,7 @@ function createWindow() {
 
 ipcMain.handle("processes:list", () => control.processStates());
 ipcMain.handle("processes:list-vps", () => control.remoteProcessStates());
+ipcMain.handle("interfaces:statistics", (_event, hours) => control.interfaceStatistics(hours));
 ipcMain.handle("processes:start", (_event, id) => control.startService(id));
 ipcMain.handle("processes:stop", (_event, id) => control.stopService(id));
 

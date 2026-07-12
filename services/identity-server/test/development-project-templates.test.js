@@ -9,9 +9,12 @@ test("provides ESP32 project templates with distinct start architectures", () =>
 
   assert.match(templateArchitecturePlantUml(device, device.title), /ESP32 Device/);
   assert.doesNotMatch(templateArchitecturePlantUml(device, device.title), /Internet/);
+  assert.doesNotMatch(templateArchitecturePlantUml(device, device.title), /database|SQLite/i);
   assert.match(templateArchitecturePlantUml(localLogger, localLogger.title), /Lokaler Webserver/);
   assert.match(templateArchitecturePlantUml(internetLogger, internetLogger.title), /Webserver \/ API/);
-  assert.match(templateArchitecturePlantUml(internetLogger, internetLogger.title), /Messwertdatenbank/);
+  assert.match(templateArchitecturePlantUml(internetLogger, internetLogger.title), /Webserver \/ API\\nSoftware: SQL-Datenbank/);
+  assert.doesNotMatch(templateArchitecturePlantUml(internetLogger, internetLogger.title), /database "/);
+  assert.match(templateArchitecturePlantUml(localLogger, localLogger.title), /NVS \/ LittleFS/);
 });
 
 test("falls back to the empty project template for unknown ids", () => {

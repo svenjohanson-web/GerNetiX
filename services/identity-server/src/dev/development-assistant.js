@@ -1,4 +1,7 @@
-function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalogJson, llmConfigStore, projectServerUserId, readJsonBody, requireProjectAccess, sendJson }) {
+const PROVIDER_TIMEOUT_MS = 180000;
+const CODE_EXPLORER_FILE_CONTEXT_CHARS = 24000;
+
+function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalogJson, interfaceTelemetry, llmConfigStore, projectServerJson, projectServerUserId, readJsonBody, requireProjectAccess, sendJson }) {
   async function handleChat(req, res, session) {
     const body = await readJsonBody(req);
     const userMessages = normalizeMessages(body.messages);
@@ -24,6 +27,9 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       const requestProfile = architectureRequestProfile(userMessages, { assistantMode });
       const configuredRoute = routeConfig(codeExplorerMode ? "code_generation" : "architecture_discovery");
       const activeConfig = configuredRoute;
+      if (codeExplorerMode && activeConfig.apiProvider !== "openai-responses") {
+        throw new Error("Der agentische Projektchat benoetigt derzeit OpenAI Responses mit Function Calling. Es wird kein alter Kontext-Fallback verwendet.");
+      }
       const patternShortcut = codeExplorerMode ? null : architecturePatternShortcut(userMessages, { assistantMode });
       if (patternShortcut) {
         sendJson(res, 200, {
@@ -35,7 +41,6 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
           },
           usage: zeroUsage(),
           usageEvent: null,
-          usedFallback: false,
           usedLocalRoute: false,
           usedDialogControl: true,
         });
@@ -53,7 +58,6 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
           architectureDiagram: localEdit.diagram,
           usage: zeroUsage(),
           usageEvent: null,
-          usedFallback: false,
           usedLocalRoute: false,
           usedDialogControl: false,
           usedModelOperation: true,
@@ -71,7 +75,6 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
           },
           usage: zeroUsage(),
           usageEvent: null,
-          usedFallback: false,
           usedLocalRoute: false,
           usedDialogControl: false,
           usedContextAnswer: true,
@@ -99,15 +102,20 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       }
       let response;
       try {
-        response = await callChatProvider(messages, activeConfig);
+        response = codeExplorerMode && activeConfig.apiProvider === "openai-responses"
+          ? await callOpenAiCodeAgent(messages, activeConfig, project)
+          : await callChatProvider(messages, activeConfig);
       } catch (error) {
         await failUsage(usagePreflight, error);
         throw error;
       }
       const usage = usageFromProvider(response);
       const usageEvent = await completeUsage(usagePreflight, usage);
-      const rawAssistantContent = response.message?.content || fallbackAnswer(userMessages, activeConfig);
-      const codeResult = codeExplorerMode ? parseCodeExplorerResult(rawAssistantContent, codeContext) : { content: rawAssistantContent, fileEdits: [] };
+      const rawAssistantContent = String(response.message?.content || "").trim();
+      if (!rawAssistantContent) throw new Error("Der konfigurierte KI-Provider hat keine Antwort geliefert.");
+      const latestUserRequest = [...userMessages].reverse().find((message) => message.role === "user")?.content || "";
+      const effectiveCodeContext = response.toolFiles?.length ? { ...codeContext, files: response.toolFiles } : codeContext;
+      const codeResult = codeExplorerMode ? parseCodeExplorerResult(rawAssistantContent, effectiveCodeContext, latestUserRequest) : { content: rawAssistantContent, fileEdits: [] };
       const assistantContent = codeResult.content;
       sendJson(res, 200, {
         config: config({ contextSources: context.sources, requestProfile }),
@@ -128,25 +136,16 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         }),
         usage,
         usageEvent,
-        usedFallback: false,
         usedLocalRoute: false,
       });
     } catch (error) {
-      const fallbackConfig = routeConfig(codeExplorerMode ? "code_generation" : "architecture_discovery");
-      const assistantContent = codeExplorerMode
-        ? codeExplorerFallback(body.codeContext, fallbackConfig)
-        : fallbackAnswer(userMessages, fallbackConfig);
-      sendJson(res, 200, {
-        config: config({ lastError: error.message || String(error) }),
-        routing: routingSummary(fallbackConfig, { complexity: "unknown" }),
-        message: {
-          role: "assistant",
-          content: assistantContent,
-        },
-        architectureDiagram: null,
-        usage: null,
-        usedFallback: true,
-        error: error.message || String(error),
+      const failedConfig = routeConfig(codeExplorerMode ? "code_generation" : "architecture_discovery");
+      const errorMessage = developmentAssistantErrorMessage(error);
+      sendJson(res, Number(error.status) >= 400 ? Number(error.status) : 503, {
+        error: "development_assistant_unavailable",
+        message: errorMessage,
+        config: config({ lastError: errorMessage }),
+        routing: routingSummary(failedConfig, { complexity: "unknown" }),
       });
     }
   }
@@ -261,47 +260,50 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     return [
       await promptFoundation("general_chat"),
       `Aktueller Nutzer: ${projectServerUserId(session)}.`,
-      "Rolle: Code-Explorer. Erklaere den vorhandenen Code verstaendlich und konkret. Veraendere oder erfinde keinen Code, wenn der Nutzer nicht ausdruecklich darum bittet.",
-      `Datei: ${context.path}`,
+      "Rolle: Projektgebundener Coding Agent. Ermittle benoetigte Dateien erst nach der konkreten Aufgabe mit den angebotenen Such- und Lesewerkzeugen.",
+      `Aktuell geoeffneter Pfad: ${context.path}`,
+      context.editTargetPath ? `Verbindliches Aenderungsziel: ${context.editTargetPath}. Andere Dateien duerfen fuer diese Aufgabe nur gelesen, nicht bearbeitet werden.` : "",
       context.focusLines.length ? `Fokuszeilen: ${context.focusLines.join(", ")}` : "",
       context.questions.length ? `Leitfragen des Schritts: ${context.questions.join(" | ")}` : "",
-      context.artifacts.length ? `Projektartefakte:\n${JSON.stringify(context.artifacts)}` : "",
-      context.files.length ? `Dateien des ausgewaehlten Projekts:\n${context.files.map((file) => `--- ${file.path} ---\n${file.content}`).join("\n")}` : "",
-      "Sichtbarer Code:\n```\n" + context.content + "\n```",
-      "Wenn der Nutzer eine Datei aendern will, erklaere die Aenderung und fuege am Ende exakt einen Block im Format <gernetix-file-edits>[{\"path\":\"vorhandener/pfad\",\"content\":\"vollstaendiger neuer Dateiinhalt\"}]</gernetix-file-edits> an.",
-      "Bearbeite nur vorhandene Pfade aus der Dateiliste. Gib immer den vollstaendigen neuen Dateiinhalt aus. Ohne ausdruecklichen Aenderungswunsch darf kein Edit-Block entstehen.",
+      "Bei einer Aenderung musst du zuerst search_project_sources und danach read_project_source fuer das konkrete Ziel verwenden. Rate keinen Dateipfad und bearbeite keine ungelesene Datei.",
+      "Wenn der Nutzer eine Datei aendern will, antworte mit genau einem kurzen Satz und fuege danach exakt einen Block im Format <gernetix-file-edits>[{\"path\":\"vorhandener/pfad\",\"content\":\"vollstaendiger neuer Dateiinhalt\"}]</gernetix-file-edits> an.",
+      "Bearbeite nur vorhandene Pfade aus der Dateiliste. Gib den vollstaendigen neuen Dateiinhalt ausschliesslich im Edit-Block aus, niemals zusaetzlich in Markdown-Codebloecken oder als wiederholte Textausgabe.",
+      "Ohne ausdruecklichen Aenderungswunsch darf kein Edit-Block entstehen. Behaupte keine Aenderung, wenn der neue Inhalt mit der vorhandenen Datei identisch ist.",
     ].filter(Boolean).join("\n");
   }
 
   function normalizeCodeContext(value = {}) {
-    let remainingFileChars = 60000;
-    const files = (Array.isArray(value.files) ? value.files : []).slice(0, 40).map((file) => {
+    let remainingFileChars = CODE_EXPLORER_FILE_CONTEXT_CHARS;
+    const files = (Array.isArray(value.files) ? value.files : []).slice(0, 8).map((file) => {
       const content = String(file.content || "").slice(0, remainingFileChars);
       remainingFileChars -= content.length;
       return { path: String(file.path || "").trim().slice(0, 240), content };
     }).filter((file) => file.path && remainingFileChars >= 0);
     return {
       path: String(value.path || "Projektquelle").trim().slice(0, 240),
+      editTargetPath: String(value.editTargetPath || "").trim().slice(0, 240),
       content: String(value.content || "").slice(0, 24000),
       focusLines: (Array.isArray(value.focusLines) ? value.focusLines : []).map(Number).filter((line) => line > 0).slice(0, 80),
       questions: (Array.isArray(value.questions) ? value.questions : []).map((item) => String(item).trim().slice(0, 400)).filter(Boolean).slice(0, 12),
       files,
-      artifacts: (Array.isArray(value.artifacts) ? value.artifacts : []).slice(0, 40).map((artifact) => ({
+      artifacts: (Array.isArray(value.artifacts) ? value.artifacts : []).slice(0, 12).map((artifact) => ({
         id: String(artifact.id || "").slice(0, 160),
         type: String(artifact.type || "").slice(0, 80),
         title: String(artifact.title || "").slice(0, 240),
         summary: String(artifact.summary || "").slice(0, 1200),
         sourcePath: String(artifact.sourcePath || "").slice(0, 240),
-        payload: JSON.stringify(artifact.payload || {}).slice(0, 4000),
       })),
     };
   }
 
-  function parseCodeExplorerResult(content, context) {
+  function parseCodeExplorerResult(content, context, latestUserRequest = "") {
     const marker = /<gernetix-file-edits>([\s\S]*?)<\/gernetix-file-edits>/i;
-    const match = String(content || "").match(marker);
-    if (!match) return { content: String(content || ""), fileEdits: [] };
-    const allowedPaths = new Set((context.files || []).map((file) => file.path));
+    const rawContent = String(content || "");
+    const match = rawContent.match(marker);
+    const allowedPaths = context.editTargetPath
+      ? new Set([context.editTargetPath])
+      : new Set((context.files || []).map((file) => file.path));
+    if (!match) return recoverCodeExplorerEdit(rawContent, context, latestUserRequest, allowedPaths);
     let parsed = [];
     try {
       parsed = JSON.parse(match[1]);
@@ -311,8 +313,73 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     const fileEdits = (Array.isArray(parsed) ? parsed : []).map((edit) => ({
       path: String(edit.path || "").trim(),
       content: String(edit.content || "").slice(0, 120000),
-    })).filter((edit) => allowedPaths.has(edit.path) && edit.content);
-    return { content: String(content || "").replace(marker, "").trim(), fileEdits };
+    })).filter((edit) => allowedPaths.has(edit.path) && edit.content)
+      .map((edit) => describeCodeExplorerEdit(edit, context));
+    const responseText = removeRepeatedEditCode(rawContent.replace(marker, "").trim(), fileEdits);
+    return {
+      content: responseText || (fileEdits.length ? `Aenderung fuer ${fileEdits[0].path} vorbereitet.` : "Es wurde keine gueltige Dateiänderung erzeugt."),
+      fileEdits,
+    };
+  }
+
+  function recoverCodeExplorerEdit(content, context, latestUserRequest, allowedPaths) {
+    const editRequest = /\b(f(?:ue|ü)ge|erg(?:ae|ä)nze|(?:ae|ä)ndere|entferne|l(?:oe|ö)sche|implementiere|erstelle|schreibe|ersetze|passe)\b/i.test(latestUserRequest);
+    const currentPath = String(context.path || "").trim();
+    const currentFile = resolveCodeExplorerFile(context, currentPath);
+    if (!editRequest || !currentFile || !allowedPaths.has(currentFile.path)) return { content, fileEdits: [] };
+    const blocks = [...content.matchAll(/```(?:[\w+-]+)?\s*\n([\s\S]*?)```/g)].map((match) => match[1].trim());
+    const candidate = blocks.findLast((block) => /@startuml[\s\S]*@enduml/i.test(block)) || blocks.at(-1) || "";
+    if (!candidate || candidate === String(currentFile?.content || "").trim()) {
+      return { content: "Es wurde keine inhaltliche Dateiänderung erkannt.", fileEdits: [] };
+    }
+    return {
+      content: `Aenderung fuer ${currentFile.path} vorbereitet.`,
+      fileEdits: [describeCodeExplorerEdit({ path: currentFile.path, content: candidate.slice(0, 120000) }, context)],
+    };
+  }
+
+  function describeCodeExplorerEdit(edit, context) {
+    const previous = (context.files || []).find((file) => file.path === edit.path)?.content || "";
+    const before = String(previous).replace(/\r\n/g, "\n").split("\n");
+    const after = String(edit.content).replace(/\r\n/g, "\n").split("\n");
+    let prefix = 0;
+    while (prefix < before.length && prefix < after.length && before[prefix] === after[prefix]) prefix += 1;
+    let suffix = 0;
+    while (suffix < before.length - prefix && suffix < after.length - prefix
+      && before[before.length - 1 - suffix] === after[after.length - 1 - suffix]) suffix += 1;
+    const removedLines = Math.max(0, before.length - prefix - suffix);
+    const addedLines = Math.max(0, after.length - prefix - suffix);
+    const lineStart = prefix + 1;
+    const lineEnd = Math.max(lineStart, prefix + addedLines);
+    return {
+      ...edit,
+      lineStart,
+      lineEnd,
+      addedLines,
+      removedLines,
+      changeSummary: `${addedLines} Zeile(n) hinzugefuegt, ${removedLines} Zeile(n) entfernt`,
+    };
+  }
+
+  function resolveCodeExplorerFile(context, currentPath) {
+    const files = context.files || [];
+    const exact = files.find((file) => file.path === currentPath);
+    if (exact) return exact;
+    const visibleContent = String(context.content || "").trim();
+    const contentMatches = files.filter((file) => visibleContent && String(file.content || "").trim() === visibleContent);
+    if (contentMatches.length === 1) return contentMatches[0];
+    const normalizedPath = currentPath.replaceAll("\\", "/");
+    const suffixMatches = files.filter((file) => {
+      const filePath = String(file.path || "").replaceAll("\\", "/");
+      return filePath.endsWith(`/${normalizedPath}`) || normalizedPath.endsWith(`/${filePath}`);
+    });
+    return suffixMatches.length === 1 ? suffixMatches[0] : null;
+  }
+
+  function removeRepeatedEditCode(content, fileEdits) {
+    if (!fileEdits.length) return content;
+    const editContents = new Set(fileEdits.map((edit) => edit.content.trim()));
+    return content.replace(/```(?:[\w+-]+)?\s*\n([\s\S]*?)```/g, (block, body) => editContents.has(body.trim()) ? "" : block).trim();
   }
 
   function functionClarificationPrompt(currentDiagram) {
@@ -428,9 +495,9 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
 
   async function callOpenAiResponsesChat(messages, activeConfig) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
     try {
-      const response = await fetch(`${activeConfig.apiBaseUrl.replace(/\/$/, "")}/responses`, {
+      const response = await trackedFetch("openai-api", `${activeConfig.apiBaseUrl.replace(/\/$/, "")}/responses`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -440,6 +507,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         body: JSON.stringify({
           model: activeConfig.apiModel,
           input: responseInput(messages),
+          max_output_tokens: Number.isFinite(activeConfig.maxOutputTokens) ? activeConfig.maxOutputTokens : 1400,
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -461,11 +529,117 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     }
   }
 
+  async function callOpenAiCodeAgent(messages, activeConfig, project) {
+    if (!projectServerJson || !project?.project_server_id) throw new Error("Die agentischen Projektwerkzeuge sind nicht konfiguriert.");
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
+    const toolFiles = new Map();
+    const discoveredPaths = new Set();
+    let input = responseInput(messages);
+    let previousResponseId = "";
+    let totalInputTokens = 0;
+    let totalOutputTokens = 0;
+    try {
+      for (let step = 0; step < 6; step += 1) {
+        const response = await trackedFetch("openai-api", `${activeConfig.apiBaseUrl.replace(/\/$/, "")}/responses`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(activeConfig.apiKey ? { Authorization: `Bearer ${activeConfig.apiKey}` } : {}),
+          },
+          signal: controller.signal,
+          body: JSON.stringify({
+            model: activeConfig.apiModel,
+            input,
+            ...(previousResponseId ? { previous_response_id: previousResponseId } : {}),
+            tools: projectSourceTools(),
+            tool_choice: "auto",
+            max_output_tokens: Number.isFinite(activeConfig.maxOutputTokens) ? activeConfig.maxOutputTokens : 1400,
+          }),
+        });
+        const payload = await response.json().catch(() => ({}));
+        if (!response.ok) throw new Error(payload.error?.message || payload.error || `OpenAI Responses API antwortet mit HTTP ${response.status}.`);
+        totalInputTokens += Number(payload.usage?.input_tokens || 0);
+        totalOutputTokens += Number(payload.usage?.output_tokens || 0);
+        const calls = (payload.output || []).filter((item) => item.type === "function_call");
+        if (!calls.length) {
+          return {
+            message: { content: responseOutputText(payload) },
+            prompt_eval_count: totalInputTokens,
+            eval_count: totalOutputTokens,
+            toolFiles: [...toolFiles.values()],
+          };
+        }
+        previousResponseId = payload.id;
+        input = [];
+        for (const call of calls) {
+          const output = await executeProjectSourceTool(call, project.project_server_id, discoveredPaths, toolFiles);
+          input.push({ type: "function_call_output", call_id: call.call_id, output: JSON.stringify(output) });
+        }
+      }
+      throw new Error("Der Coding Agent hat nach sechs Werkzeugschritten noch kein Ergebnis geliefert.");
+    } finally {
+      clearTimeout(timeout);
+    }
+  }
+
+  function projectSourceTools() {
+    return [{
+      type: "function",
+      name: "search_project_sources",
+      description: "Durchsucht die Quellen des aktuell ausgewaehlten Projekts nach relevanten Pfaden und Inhalten.",
+      strict: true,
+      parameters: {
+        type: "object",
+        properties: { query: { type: "string" }, current_path: { type: "string" } },
+        required: ["query", "current_path"],
+        additionalProperties: false,
+      },
+    }, {
+      type: "function",
+      name: "read_project_source",
+      description: "Liest den vollstaendigen Inhalt genau einer zuvor gefundenen Projektdatei.",
+      strict: true,
+      parameters: {
+        type: "object",
+        properties: { path: { type: "string" } },
+        required: ["path"],
+        additionalProperties: false,
+      },
+    }];
+  }
+
+  async function executeProjectSourceTool(call, projectServerId, discoveredPaths, toolFiles) {
+    let args = {};
+    try { args = JSON.parse(call.arguments || "{}"); } catch { args = {}; }
+    if (call.name === "search_project_sources") {
+      const query = new URLSearchParams({
+        q: String(args.query || "").slice(0, 1000),
+        current_path: String(args.current_path || "").slice(0, 300),
+        limit: "8",
+      });
+      const result = await projectServerJson(`/api/projects/${encodeURIComponent(projectServerId)}/sources/search?${query}`);
+      const items = (result.items || []).map((item) => ({ path: item.path, score: item.score }));
+      items.forEach((item) => discoveredPaths.add(item.path));
+      return { items };
+    }
+    if (call.name === "read_project_source") {
+      const path = String(args.path || "").trim().slice(0, 300);
+      if (!path) return { error: "missing_path" };
+      if (!discoveredPaths.has(path)) return { error: "path_not_discovered", message: "Die Datei muss zuerst ueber search_project_sources gefunden werden." };
+      const source = await projectServerJson(`/api/projects/${encodeURIComponent(projectServerId)}/sources/${encodeURIComponent(path)}`);
+      const file = { path: source.path || path, content: String(source.content || "").slice(0, 120000) };
+      toolFiles.set(file.path, file);
+      return file;
+    }
+    return { error: "unknown_tool" };
+  }
+
   async function callOllamaChat(messages, activeConfig) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
     try {
-      const response = await fetch(`${activeConfig.ollamaBaseUrl.replace(/\/$/, "")}/api/chat`, {
+      const response = await trackedFetch("ollama", `${activeConfig.ollamaBaseUrl.replace(/\/$/, "")}/api/chat`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         signal: controller.signal,
@@ -491,9 +665,9 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
 
   async function callOpenAiCompatibleChat(messages, activeConfig) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
     try {
-      const response = await fetch(`${activeConfig.apiBaseUrl.replace(/\/$/, "")}/chat/completions`, {
+      const response = await trackedFetch("openai-compatible-api", `${activeConfig.apiBaseUrl.replace(/\/$/, "")}/chat/completions`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -503,7 +677,6 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         body: JSON.stringify({
           model: activeConfig.apiModel,
           messages,
-          temperature: 0.2,
         }),
       });
       const payload = await response.json().catch(() => ({}));
@@ -527,7 +700,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
 
   async function callAnthropicChat(messages, activeConfig) {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    const timeout = setTimeout(() => controller.abort(), PROVIDER_TIMEOUT_MS);
     const system = messages.find((message) => message.role === "system")?.content || "";
     const conversation = messages
       .filter((message) => message.role !== "system")
@@ -536,7 +709,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         content: message.content,
       }));
     try {
-      const response = await fetch(`${activeConfig.apiBaseUrl.replace(/\/$/, "")}/messages`, {
+      const response = await trackedFetch("anthropic-api", `${activeConfig.apiBaseUrl.replace(/\/$/, "")}/messages`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -568,6 +741,18 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       };
     } finally {
       clearTimeout(timeout);
+    }
+  }
+
+  async function trackedFetch(targetService, url, options = {}) {
+    const startedAt = Date.now();
+    try {
+      const response = await fetch(url, options);
+      interfaceTelemetry?.record({ targetService, method: options.method || "GET", route: new URL(url).pathname, statusCode: response.status, durationMs: Date.now() - startedAt, succeeded: response.ok });
+      return response;
+    } catch (error) {
+      interfaceTelemetry?.record({ targetService, method: options.method || "GET", route: new URL(url).pathname, statusCode: 0, durationMs: Date.now() - startedAt, succeeded: false });
+      throw error;
     }
   }
 
@@ -669,56 +854,15 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     };
   }
 
+  function developmentAssistantErrorMessage(error) {
+    if (error?.name === "AbortError" || /operation was aborted|aborted due to timeout/i.test(String(error?.message || ""))) {
+      return "Der KI-Provider hat nicht innerhalb von 180 Sekunden geantwortet. Der Aufruf wurde beendet; es wurde keine Datei verändert.";
+    }
+    return error?.message || "Der konfigurierte KI-Dienst ist nicht erreichbar.";
+  }
+
   function nanosToMs(value) {
     return Number.isFinite(value) ? Math.round(value / 1000000) : null;
-  }
-
-  function fallbackAnswer(messages, activeConfig = llmConfigStore.publicConfig()) {
-    const lastUserMessage = [...messages].reverse().find((message) => message.role === "user")?.content || "dein Projekt";
-    const providerName = activeConfig.provider === "api" && activeConfig.apiProvider === "anthropic"
-      ? "Claude-/Anthropic-Provider"
-      : activeConfig.provider === "api" && activeConfig.apiProvider === "openai-responses" ? "OpenAI-Responses-Provider" : activeConfig.provider === "api" ? "OpenAI-kompatiblen LLM-Provider" : "lokalen Ollama-Dienst";
-    if (isMinimalEsp32StructureRequest(lastUserMessage)) {
-      return [
-        `Ich kann den konfigurierten ${providerName} gerade nicht erreichen, aber der Minimalauftrag ist ausreichend konkret.`,
-        "",
-        `Ausgangspunkt: ${lastUserMessage}`,
-        "",
-        "Minimale Struktur:",
-        "- ESP32",
-      ].join("\n");
-    }
-    return [
-      `Ich kann den konfigurierten ${providerName} gerade nicht erreichen, aber wir koennen den Architektur-Dialog strukturiert fortsetzen.`,
-      "",
-      `Ausgangspunkt: ${lastUserMessage}`,
-      "",
-      "Pruefe bitte im Admin Tool Provider, Endpoint, Modell und Zugangsdaten.",
-      "",
-      "Bitte beschreibe als Naechstes kurz:",
-      "1. Was soll das Projekt fuer wen bewirken?",
-      "2. Welche Ausloeser, Eingaben oder Messwerte gibt es?",
-      "3. Wer oder was soll am Ende eine Wirkung sehen, hoeren, speichern oder ausfuehren?",
-      "4. Muss etwas aus dem Internet erreichbar sein oder reicht lokale Nutzung?",
-      "5. Reicht ein Browser oder brauchst du Geraetefunktionen einer App?",
-      "",
-      "Danach leite ich daraus Randbedingungen, Wirkketten und erst danach eine Zielarchitektur ab.",
-    ].join("\n");
-  }
-
-  function codeExplorerFallback(rawContext, activeConfig = llmConfigStore.publicConfig()) {
-    const context = normalizeCodeContext(rawContext);
-    const providerName = activeConfig.provider === "api"
-      ? "konfigurierte API"
-      : "lokale Ollama-Instanz";
-    return [
-      `Der Code-Assistent kann die ${providerName} gerade nicht erreichen.`,
-      "",
-      `Aktuelle Datei: ${context.path}`,
-      context.files.length ? `Projektkontext: ${context.files.length} Datei(en) und ${context.artifacts.length} Artefakt(e) wurden vorbereitet.` : "",
-      "",
-      "Pruefe im Admin Tool die KI-Route oder starte den lokalen Ollama-Dienst. Es wurden keine Dateien veraendert.",
-    ].filter(Boolean).join("\n");
   }
 
   return {
@@ -767,9 +911,10 @@ function buildArchitectureDiagram(messages, options = {}) {
   if (showBrowser) lines.push("rectangle \"Browser\" as browser");
   if (signals.mobile) lines.push("rectangle \"Mobile App\" as mobile");
   if (signals.desktop) lines.push("rectangle \"Desktop App\" as desktop");
-  if (signals.backend) lines.push("rectangle \"Backend / API\" as backend");
+  if (signals.backend) lines.push(signals.database
+    ? "rectangle \"Backend / API\\n--\\nSoftware: SQL/SQLite\" as backend"
+    : "rectangle \"Backend / API\" as backend");
   if (signals.mqtt) lines.push("queue \"MQTT Broker\" as mqtt");
-  if (signals.database) lines.push("database \"Persistenz\" as database");
   if (signals.cloud) lines.push("cloud \"Cloud / Internet\" as cloud");
   if (signals.homeServer) lines.push("node \"HomeServer / lokaler Server\" as homeserver");
   if (signals.hardwareCatalog) lines.push("rectangle \"Hardware Catalog\" as hardware_catalog");
@@ -971,13 +1116,6 @@ function removableArchitectureComponents() {
       label: "MQTT Broker",
       detectedBlock: "mqtt",
       match: /\bmqtt\b|\bmqtt broker\b|\bbroker\b/,
-    },
-    {
-      component: "database",
-      aliases: ["database"],
-      label: "Persistenz",
-      detectedBlock: "database",
-      match: /\bdatabase\b|\bdatenbank\b|\bsqlite\b|\bpersistenz\b|\bspeicher\b/,
     },
     {
       component: "cloud",
@@ -1188,6 +1326,9 @@ function architectureSignals(fullText, assistantText, latestUserText = fullText)
   const text = `${assistantText}\n${fullText}`.toLowerCase();
   const latest = String(latestUserText || "").toLowerCase();
   const has = (patterns) => patterns.some((pattern) => pattern.test(text));
+  const hasBackend = has([/backend/, /server/, /api/, /rest/, /websocket/, /account/]);
+  const hasSqlPersistence = has([/datenbank/, /sqlite/, /\bsql\b/])
+    || (hasBackend && has([/persistenz/, /speicher/, /messwerte speichern/, /history/, /historie/, /\bdatabase\b/]));
   const latestMinimalRequest = isMinimalEsp32StructureRequest(latest);
   const latestStructureExpansion = /\b(webserver|web server|browser|webseite|web app|webapp|mobile app|backend|api|datenbank|sqlite|cloud|mqtt|rest|websocket|messdaten|bereitstellen|bereit\s+stellen|zugriff|greift)\b/.test(latest);
   if (latestMinimalRequest && !latestStructureExpansion) {
@@ -1221,9 +1362,9 @@ function architectureSignals(fullText, assistantText, latestUserText = fullText)
     browser: has([/browser/, /webseite/, /web app/, /webapp/, /dashboard/, /hmi/]),
     mobile: has([/handy/, /mobile/, /app/, /smartphone/]),
     desktop: has([/desktop/, /pc/, /computer/]),
-    backend: has([/backend/, /server/, /api/, /rest/, /websocket/, /account/]),
+    backend: hasBackend || hasSqlPersistence,
     mqtt: has([/mqtt/, /broker/, /publish/, /subscribe/, /topic/]),
-    database: has([/datenbank/, /sqlite/, /persistenz/, /speicher/, /messwerte speichern/, /history/, /historie/]),
+    database: hasSqlPersistence,
     cloud: has([/cloud/, /internet/, /weltweit/, /remote/, /extern/]),
     homeServer: has([/homeserver/, /home server/, /raspberry/, /lokaler server/, /lan/]),
     hardwareCatalog: has([/hardware catalog/, /hardware-catalog/, /capabilit/, /processorboard/, /board/]),
@@ -1261,6 +1402,7 @@ function mergeCurrentDiagramSignals(signals, currentDiagram) {
   for (const [key, block] of Object.entries(aliases)) {
     if (detected.has(block)) merged[key] = true;
   }
+  if (merged.database) merged.backend = true;
   merged.detectedBlocks = Object.entries(merged)
     .filter(([key, value]) => key !== "detectedBlocks" && key !== "confidence" && value === true)
     .map(([key]) => key);
@@ -1286,7 +1428,6 @@ function architectureFunctionLines({ fullText, signals, actorInterface, showBrow
   if (signals.desktop && signals.backend && (mentions("desktop", "backend") || mentions("desktop", "api"))) add("desktop", "backend", "zeigt / bedient");
   if (signals.device && signals.mqtt) add("device", "mqtt", "meldet Ereignisse");
   if (signals.backend && signals.mqtt && /backend|server|api/.test(text)) add("mqtt", "backend", "liefert Nachrichten");
-  if (signals.backend && signals.database) add("backend", "database", "speichert Daten");
   if (signals.backend && signals.cloud && /cloud|internet|weltweit|extern/.test(text)) add("cloud", "backend", "betreibt Funktion");
   if (signals.backend && signals.homeServer && /homeserver|lokaler server|lan/.test(text)) add("homeserver", "backend", "betreibt Funktion");
   return lines;
@@ -1309,8 +1450,7 @@ function architectureEffectChainLines({ fullText, signals, actorInterface, showB
   if (signals.device && wantsStorage && !signals.backend && !wantsMqtt) add("device", "device", "speichert Messwert lokal");
   if (signals.device && wantsMqtt) add("device", "mqtt", "publisht Messwert");
   if (signals.mqtt && signals.backend) add("mqtt", "backend", "liefert Messwert");
-  if (signals.backend && signals.database && wantsStorage) add("backend", "database", "speichert Messwert");
-  if (signals.backend && !signals.database && wantsStorage) add("backend", "backend", "speichert Messwert");
+  if (signals.backend && wantsStorage) add("backend", "backend", signals.database ? "persistiert Messwert in SQL/SQLite" : "speichert Messwert");
   if (actorInterface.actor && showBrowser && wantsViewing) add("actor", "browser", "moechte Daten ansehen");
   if (showBrowser && actorInterface.webserver) add("browser", "webserver", "fragt Messdaten ab");
   if (showBrowser && signals.backend && /server|backend|api|webserver|messdaten|daten/.test(text)) add("browser", "backend", "fragt Messdaten ab");

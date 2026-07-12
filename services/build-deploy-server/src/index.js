@@ -10,14 +10,17 @@ const { BuildDeployService } = require("./services/build-deploy-service");
 const { createConfig } = require("./config");
 const { createHttpApp } = require("./http-app");
 const { SqliteStateStore } = require("../../shared");
+const { createInterfaceCallTelemetry } = require("../../shared/persistence/interface-call-telemetry");
 
 function createDefaultBuildDeployService(config = createConfig()) {
   const acknowledgementStore = new SqliteOtaAcknowledgementStore(config.sqlitePath);
   const authorizationSigner = new SqliteDeviceOtaSigner(config.deviceCredentialsSqlitePath);
+  const interfaceTelemetry = createInterfaceCallTelemetry({ dbPath: config.interfaceTelemetrySqlitePath, sourceService: "build-deploy-server" });
   const mqttTransport = config.mqttBrokerUrl ? new MqttTransport({
     url: config.mqttBrokerUrl,
     topicFilter: "gernetix/devices/+/status/#",
     onMessage: (topic, payload) => acknowledgementStore.receive(topic, payload),
+    telemetry: interfaceTelemetry,
   }) : null;
   mqttTransport?.start().catch((error) => console.error(`MQTT-Verbindung fehlgeschlagen: ${error.message}`));
   return new BuildDeployService({

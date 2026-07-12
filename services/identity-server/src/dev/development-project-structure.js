@@ -31,12 +31,6 @@ function developmentProjectSources({ title, description = "", diagram = null, ar
   for (const component of components) {
     const folder = `Komponenten/${component.folder}`;
     sources.push({
-      path: `${folder}/Eigenschaften/eigenschaften.md`,
-      role: "component_properties",
-      content_type: "text/markdown",
-      content: componentPropertiesReadme(component),
-    });
-    sources.push({
       path: `${folder}/Schnittstellen/provided.md`,
       role: "provided_interface",
       content_type: "text/markdown",
@@ -61,26 +55,26 @@ function developmentProjectSources({ title, description = "", diagram = null, ar
       content: verhaltenReadme(component, "Code"),
     });
     sources.push({
-      path: `${folder}/Verhalten/Config/config.md`,
-      role: "component_verhalten_config",
+      path: `${folder}/Konfiguration/Software/software.md`,
+      role: "component_software_config",
       content_type: "text/markdown",
-      content: verhaltenReadme(component, "Config"),
+      content: softwareConfigReadme(component),
     });
     if (isDeviceComponent(component)) {
       sources.push({
-        path: `${folder}/Konfiguration/Board/board.md`,
+        path: `${folder}/Konfiguration/Hardware/Board/board.md`,
         role: "device_board_config",
         content_type: "text/markdown",
         content: deviceBoardConfigReadme(component),
       });
       sources.push({
-        path: `${folder}/Konfiguration/Sensoren/in.md`,
+        path: `${folder}/Konfiguration/Hardware/Sensoren/in.md`,
         role: "device_sensor_input_config",
         content_type: "text/markdown",
         content: deviceSensorInputConfigReadme(component),
       });
       sources.push({
-        path: `${folder}/Konfiguration/Aktoren/out.md`,
+        path: `${folder}/Konfiguration/Hardware/Aktoren/out.md`,
         role: "device_actuator_output_config",
         content_type: "text/markdown",
         content: deviceActuatorOutputConfigReadme(component),
@@ -112,6 +106,9 @@ function detectProjectComponents({ title = "", description = "", diagram = null,
     ...(diagram?.detected_blocks || []),
   ].join("\n").toLowerCase();
   const has = (patterns) => patterns.some((pattern) => pattern.test(text));
+  const hasServer = has([/backend/, /\bserver\b/, /\bapi\b/, /rest/, /websocket/]);
+  const hasSqlPersistence = has([/datenbank/, /sqlite/, /\bsql\b/])
+    || (hasServer && has([/persistenz/, /speicher/, /historie/, /history/, /\bdatabase\b/]));
   const components = [];
   const add = (id, name, summary, provided, required, properties = [], data = [], relations = []) => {
     if (components.some((component) => component.id === id)) return;
@@ -152,15 +149,19 @@ function detectProjectComponents({ title = "", description = "", diagram = null,
       ["verbindet Device-, Broker- und Backend-Komponenten ueber Nachrichten"],
     );
   }
-  if (has([/backend/, /\bserver\b/, /\bapi\b/, /rest/, /websocket/])) {
+  if (hasServer || hasSqlPersistence) {
     add(
       "server",
       "Server",
       "Backend- oder API-Komponente fuer fachliche Verarbeitung, Koordination und externe Schnittstellen.",
       ["HTTP-/API-Endpunkte", "fachliche Services", "optional WebSocket- oder MQTT-Anbindung"],
       ["Persistenz falls fachlicher Zustand entsteht", "Auth-/Account-Kontext falls Nutzerbezug entsteht", "eingehende Device- oder UI-Nachrichten"],
-      ["Betriebsort: lokaler Server, Homeserver oder Cloud", "Verantwortung: fachliche Koordination und Schnittstellenbuendelung"],
-      ["Requests", "Responses", "Ereignisse", "fachlicher Zustand"],
+      [
+        "Betriebsort: lokaler Server, Homeserver oder Cloud",
+        "Verantwortung: fachliche Koordination und Schnittstellenbuendelung",
+        ...(hasSqlPersistence ? ["Softwareeigenschaft: SQL/SQLite-Persistenz"] : []),
+      ],
+      ["Requests", "Responses", "Ereignisse", "fachlicher Zustand", ...(hasSqlPersistence ? ["SQL-Datensaetze"] : [])],
       ["vermittelt zwischen UI, Device, Persistenz und externen Integrationen"],
     );
   }
@@ -186,18 +187,6 @@ function detectProjectComponents({ title = "", description = "", diagram = null,
       ["Betriebsort: mobiles Endgeraet", "Zweck: mobile Bedienung, Anzeige und Benachrichtigung"],
       ["mobiler UI-Zustand", "Benachrichtigungen", "Nutzeraktionen"],
       ["nutzt Server- oder lokale Device-Schnittstellen"],
-    );
-  }
-  if (has([/datenbank/, /sqlite/, /persistenz/, /speicher/, /historie/, /history/])) {
-    add(
-      "sqlite-database",
-      "SQLite Datenbank",
-      "SQL-Persistenz fuer fachlichen Zustand gemaess GerNetiX SQL-only-Architekturentscheidung.",
-      ["gespeicherte fachliche Daten", "Abfrage- und Update-Operationen ueber Repository/API"],
-      ["Schema/Migration", "Owner-Service", "Backup-/Audit-Regeln falls fachlich relevant"],
-      ["Persistenzart: SQL/SQLite", "Owner: genau ein fachlich verantwortlicher Service"],
-      ["Tabellen", "Datensaetze", "Audit- oder Historieninformationen"],
-      ["wird von einem Owner-Service ueber Repository/API genutzt"],
     );
   }
   if (!components.length) {
@@ -243,18 +232,6 @@ function systemVerhaltenReadme({ title, components }) {
   ].join("\n");
 }
 
-function componentPropertiesReadme(component) {
-  return [
-    `# Eigenschaften: ${component.name}`,
-    "",
-    component.summary,
-    "",
-    "## Eigenschaften",
-    ...listOrPlaceholder(component.properties, "Noch keine bestaetigten Eigenschaften."),
-    "",
-  ].join("\n");
-}
-
 function interfaceReadme(component, kind) {
   const title = kind === "provided" ? "Provided Interfaces" : "Required Interfaces";
   const items = kind === "provided" ? component.provided : component.required;
@@ -262,6 +239,20 @@ function interfaceReadme(component, kind) {
     `# ${title}: ${component.name}`,
     "",
     ...items.map((item) => `- ${item}`),
+    "",
+  ].join("\n");
+}
+
+function softwareConfigReadme(component) {
+  return [
+    `# Software-Konfiguration: ${component.name}`,
+    "",
+    component.summary,
+    "",
+    "## Softwareeigenschaften",
+    ...listOrPlaceholder(component.properties, "Noch keine bestaetigten Softwareeigenschaften."),
+    "",
+    "Diese Konfiguration gehoert zur Komponente und stellt keine eigenstaendige Architekturkomponente dar.",
     "",
   ].join("\n");
 }
@@ -300,7 +291,7 @@ function deviceBoardConfigReadme(component) {
     "- Laufzeitbasis: Takt, Partitionierung, Flash, OTA-Faehigkeit und serielle Diagnose.",
     "- Stromversorgung: Spannung, Strombudget und Betriebsmodus.",
     "",
-    "Sensor- und Aktor-Anschluesse werden bewusst nicht hier vermischt, sondern in `Konfiguration/Sensoren/in.md` und `Konfiguration/Aktoren/out.md` geklaert.",
+    "Sensor- und Aktor-Anschluesse werden bewusst nicht hier vermischt, sondern in `Konfiguration/Hardware/Sensoren/in.md` und `Konfiguration/Hardware/Aktoren/out.md` geklaert.",
     "",
   ].join("\n");
 }
