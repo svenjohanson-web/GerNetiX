@@ -101,6 +101,7 @@ test("composes ESP32 basissoftware with only the project-owned user main", () =>
   const job = service.createBuildJob(project.project_id);
   const buildPackage = service.createBuildPackage(job.build_job_id);
 
+  assert.equal(project.build_config.firmware_basis_variant, "comfort");
   assert.equal(buildPackage.platformio_ini, "framework = espidf\n");
   assert.equal(buildPackage.files.some((file) => file.path === "src/main.cpp"), true);
   assert.equal(buildPackage.files.find((file) => file.path === "src/user/user_app.cpp").content, "extern \"C\" void userMain() {}\n");

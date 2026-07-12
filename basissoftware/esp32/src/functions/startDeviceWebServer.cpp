@@ -114,6 +114,8 @@ esp_err_t statusHandler(httpd_req_t *request) {
       "\"device\":\"%s\","
       "\"runtime\":\"%s\","
       "\"runtimeVersion\":\"%s\","
+      "\"basissoftwareVersion\":\"%s\","
+      "\"basissoftwareVariant\":\"%s\","
       "\"wifiMode\":\"%s\","
       "\"setupApSsid\":\"%s\","
       "\"setupApChannel\":%u,"
@@ -128,6 +130,8 @@ esp_err_t statusHandler(httpd_req_t *request) {
       hostname,
       GERNETIX_RUNTIME_NAME,
       GERNETIX_RUNTIME_VERSION,
+      GERNETIX_BASISSOFTWARE_VERSION,
+      GERNETIX_BASISSOFTWARE_VARIANT,
       wifiRuntimeModeName(),
       WIFI_SETUP_AP_SSID,
       WIFI_SETUP_AP_CHANNEL,

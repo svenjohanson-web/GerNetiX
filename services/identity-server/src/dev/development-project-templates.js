@@ -17,6 +17,7 @@ const TEMPLATES = {
       libraries: [],
       firmware_basis_id: "gernetix-runtime-basissoftware",
       firmware_basis_version: "workspace",
+      firmware_basis_variant: "comfort",
       user_source_path: "Komponenten/ESP32/src/user_main.cpp",
       user_target_path: "src/user/user_app.cpp",
     },

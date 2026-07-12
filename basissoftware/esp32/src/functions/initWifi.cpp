@@ -163,6 +163,15 @@ void wifiEventHandler(void *, esp_event_base_t eventBase, int32_t eventId, void 
     lastConnectStatus = ESP_OK;
     lastDisconnectReason = 0;
     wifiConnectRetryCount = 0;
+    if (setupPortalActive) {
+      const esp_err_t modeStatus = esp_wifi_set_mode(WIFI_MODE_STA);
+      if (modeStatus == ESP_OK) {
+        setupPortalActive = false;
+        feedbackInfo(TAG, "WiFi station recovered; setup AP disabled");
+      } else {
+        feedbackWarning(TAG, "Setup AP could not be disabled after station recovery: %d", modeStatus);
+      }
+    }
     feedbackInfo(TAG, "WiFi station connected: " IPSTR, IP2STR(&event->ip_info.ip));
   }
 }
@@ -507,7 +516,10 @@ void initWifi() {
   ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifiEventHandler, nullptr, nullptr));
 
   const esp_err_t connectStatus = connectWifiStationFromSavedCredentials(WIFI_CONNECT_TIMEOUT_MS);
-  if (connectStatus != ESP_OK) {
+  if (connectStatus == ESP_ERR_NOT_FOUND) {
     startWifiSetupPortal();
+  } else if (connectStatus != ESP_OK) {
+    feedbackWarning(TAG, "Saved WiFi exists; remaining in station mode and reconnecting: %d", connectStatus);
+    scheduleWifiReconnect();
   }
 }

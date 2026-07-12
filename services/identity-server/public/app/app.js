@@ -1075,7 +1075,13 @@ async function waitForCompletedBuild(build) {
     const otaComplete = build.mode !== "build_and_flash"
       || ["rebooting", "confirmed", "delivered", "succeeded", "failed"].includes(current.flash_status);
     if (["failed", "replaced"].includes(current.status) || (current.status === "succeeded" && otaComplete)) return { ...build, ...current };
-    if (attempt % 5 === 0) setFlashStatus("running", `PlatformIO-Build läuft... ${attempt}s`);
+    if (attempt % 5 === 0) {
+      const waitingForBoard = build.mode === "build_and_flash" && current.status === "succeeded";
+      const message = waitingForBoard
+        ? `Build fertig. OTA-Auftrag ist ${current.flash_status || "veröffentlicht"}; warte auf das Board... ${attempt}s`
+        : `PlatformIO-Build läuft... ${attempt}s`;
+      setFlashStatus("running", message);
+    }
     await delay(1000);
     current = await getJson(`/api/user-ide/build-jobs/${encodeURIComponent(build.build_deploy_job_id || build.build_job_id)}/status`);
   }

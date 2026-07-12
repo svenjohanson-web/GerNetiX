@@ -164,6 +164,7 @@ services:
       IDENTITY_SQLITE_PATH: /var/lib/gernetix/identity/gernetix-identity.sqlite
       PROJECT_SERVER_BASE_URL: http://project-server:4800
       BUILD_DEPLOY_BASE_URL: http://build-deploy-server:4400
+      OTA_BUILD_DEPLOY_BASE_URL: http://build-deploy-server:4400
       DEVICE_MANAGEMENT_BASE_URL: http://device-management-server:4700
       HARDWARE_CATALOG_BASE_URL: http://hardware-catalog:4910
       HARDWARE_SHOP_BASE_URL: http://hardware-shop:4900

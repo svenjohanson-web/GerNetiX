@@ -37,7 +37,12 @@ test("OTA button requires an online and ready device", () => {
 });
 
 test("OTA checks the complete server pipeline and reports deploy status instead of USB status", () => {
-  assert.match(server, /const otaPreflight = await buildDeployJson\("\/api\/ota\/preflight"\)/);
+  assert.match(server, /const otaPreflight = await otaBuildDeployJson\("\/api\/ota\/preflight"\)/);
   assert.match(server, /error: "ota_pipeline_not_ready"/);
   assert.match(server, /job\.mode === "build_and_flash"[\s\S]*?job\.result\?\.deploy\?\.status/);
+  assert.match(server, /OTA_BUILD_DEPLOY_BASE_URL \|\| "https:\/\/build\.gernetix\.com"/);
+  assert.match(server, /mode === "build_and_flash" \? otaBuildDeployJson : buildDeployJson/);
+  assert.match(server, /projectJob\?\.mode === "build_and_flash" \? otaBuildDeployJson : buildDeployJson/);
+  assert.match(app, /Build fertig\. OTA-Auftrag ist/);
+  assert.match(app, /warte auf das Board/);
 });

@@ -2,6 +2,15 @@
 
 GerNetiX Basissoftware fuer ESP32-Projekte auf Basis von ESP-IDF.
 
+## Identität der Basissoftware
+
+Jede Basissoftware muss zwei voneinander getrennte, nicht leere Identitätsangaben besitzen:
+
+- `basissoftwareVersion`: technische, veröffentlichte Version der konkreten Basissoftware
+- `basissoftwareVariant`: Funktionsprofil, aktuell `comfort`; weitere vorgesehene Profile sind beispielsweise `min-connect` oder `min-ota`
+
+Beide Angaben sind Compile-Time-Metadaten der Firmware und werden über `/status` ausgegeben. Die frei provisionierbare `firmwareVersion` bezeichnet dagegen die ausgelieferte Anwendungsfirmware und darf die Identität der Basissoftware nicht ersetzen.
+
 Dieses Verzeichnis ist das aktive ESP32-Firmwareprojekt:
 
 ```text

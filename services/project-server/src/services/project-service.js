@@ -309,14 +309,16 @@ class ProjectService {
 
 function normalizeBuildConfig(input = {}) {
   if (!input || typeof input !== "object") return null;
+  const firmwareBasisId = input.firmware_basis_id || "";
   return {
     platform: input.platform || "espressif32",
     framework: input.framework === undefined ? "arduino" : input.framework,
     board: input.board || "esp32dev",
     environment: input.environment || "esp32dev",
     libraries: input.libraries || [],
-    firmware_basis_id: input.firmware_basis_id || "",
+    firmware_basis_id: firmwareBasisId,
     firmware_basis_version: input.firmware_basis_version || "",
+    firmware_basis_variant: input.firmware_basis_variant || (firmwareBasisId ? "comfort" : ""),
     user_source_path: input.user_source_path || "",
     user_target_path: input.user_target_path || "",
   };

@@ -10,12 +10,25 @@ function createDeviceDiscoveryService({
   nodeHostnamePrefix = "gernetix-",
   probeTimeoutMs = 1200,
 }) {
+  const inFlightDiscoveries = new Map();
+
   async function discoverNetworkDevices(session, options = {}) {
+    const scope = String(options.scope || "node").trim();
+    if (inFlightDiscoveries.has(scope)) return inFlightDiscoveries.get(scope);
+    const discovery = runDiscovery(session, options, scope);
+    inFlightDiscoveries.set(scope, discovery);
+    try {
+      return await discovery;
+    } finally {
+      if (inFlightDiscoveries.get(scope) === discovery) inFlightDiscoveries.delete(scope);
+    }
+  }
+
+  async function runDiscovery(session, options, scope) {
     const accountDevices = await loadUserIdeDevices(session).catch(() => []);
     const adminDevices = await loadAdminDeviceSummaries().catch(() => []);
     const knownDeviceIds = new Set(accountDevices.map((device) => device.device_id));
     const adminByDeviceId = new Map(adminDevices.map((device) => [device.device_id, device]));
-    const scope = String(options.scope || "node").trim();
     const candidates = discoveryCandidateUrls({ includeSetupAp: scope === "setup_ap", onlySetupAp: scope === "setup_ap" });
     const found = [];
     const errors = [];
@@ -101,6 +114,8 @@ function createDeviceDiscoveryService({
       hardware_profile_id: status.hardwareProfileId || status.hardware_profile_id || "hardware.processor_board.generic_esp_wroom32",
       technical_capability_ids: capabilities,
       runtime_version: status.runtimeVersion || status.runtime_version || "",
+      basissoftware_version: status.basissoftwareVersion || status.basissoftware_version || status.runtimeVersion || "",
+      basissoftware_variant: status.basissoftwareVariant || status.basissoftware_variant || "unknown",
       firmware_version: status.firmwareVersion || status.firmware_version || "",
       provisioning_state: status.provisioningState || status.provisioning_state || "",
       connectivity_status: status.wifiMode === "setup_ap" ? "setup_ap" : "online",

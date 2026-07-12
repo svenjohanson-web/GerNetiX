@@ -6,6 +6,7 @@ class SqliteDeviceOtaSigner {
   constructor(sqlitePath) { this.sqlitePath = sqlitePath; }
   async sign({ deviceId, canonical }) {
     const db = new DatabaseSync(this.sqlitePath, { readOnly: true });
+    db.exec("PRAGMA busy_timeout = 5000;");
     try {
       const credential = db.prepare("SELECT secret FROM device_management_credentials WHERE device_id = ? AND status = 'active'").get(deviceId);
       if (!credential?.secret) throw new BuildDeployError("device_credential_missing", "Aktives Device-Secret für OTA-Signierung fehlt.", 409);
@@ -17,6 +18,7 @@ class SqliteDeviceOtaSigner {
 class SqliteOtaAcknowledgementStore {
   constructor(sqlitePath) {
     this.db = new DatabaseSync(sqlitePath);
+    this.db.exec("PRAGMA busy_timeout = 5000; PRAGMA journal_mode = WAL;");
     this.db.exec(`CREATE TABLE IF NOT EXISTS build_deploy_ota_acknowledgements (
       deploy_id TEXT PRIMARY KEY, device_id TEXT NOT NULL, status TEXT NOT NULL,
       published_at TEXT, acknowledged_at TEXT, detail_json TEXT NOT NULL

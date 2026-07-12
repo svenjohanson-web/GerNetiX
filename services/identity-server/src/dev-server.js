@@ -43,6 +43,7 @@ const demoEmail = process.env.DEMO_EMAIL || "demo@gernetix.local";
 const demoPassword = process.env.DEMO_PASSWORD || "demo-passwort";
 const projectServerBaseUrl = process.env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800";
 const buildDeployBaseUrl = process.env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400";
+const otaBuildDeployBaseUrl = process.env.OTA_BUILD_DEPLOY_BASE_URL || "https://build.gernetix.com";
 const hardwareShopBaseUrl = process.env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900";
 const hardwareCatalogBaseUrl = process.env.HARDWARE_CATALOG_BASE_URL || "http://127.0.0.1:4910";
 const deviceManagementBaseUrl = process.env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700";
@@ -66,6 +67,15 @@ const {
   aiContextBaseUrl,
   aiUsageBaseUrl,
   buildDeployBaseUrl,
+  deviceManagementBaseUrl,
+  hardwareCatalogBaseUrl,
+  hardwareShopBaseUrl,
+  projectServerBaseUrl,
+});
+const { buildDeployJson: otaBuildDeployJson } = createDevServiceClients({
+  aiContextBaseUrl,
+  aiUsageBaseUrl,
+  buildDeployBaseUrl: otaBuildDeployBaseUrl,
   deviceManagementBaseUrl,
   hardwareCatalogBaseUrl,
   hardwareShopBaseUrl,
@@ -153,6 +163,7 @@ async function bootstrap() {
   console.log(`GerNetiX Dashboard+: http://${host}:${port}/app/dashboard/`);
   console.log(`Project Server adapter: ${projectServerBaseUrl}`);
   console.log(`Build & Deploy adapter: ${buildDeployBaseUrl}`);
+  console.log(`OTA Build & Deploy adapter: ${otaBuildDeployBaseUrl}`);
   console.log(`Hardware Shop adapter: ${hardwareShopBaseUrl}`);
   console.log(`Hardware Catalog adapter: ${hardwareCatalogBaseUrl}`);
   console.log(`Device Management adapter: ${deviceManagementBaseUrl}`);
@@ -564,7 +575,7 @@ async function routeRequest(req, res) {
       return;
     }
     const jobId = decodeURIComponent(buildJobStatus[1]);
-    const job = await buildDeployJson(`/api/build-jobs/${encodeURIComponent(jobId)}`);
+    const job = await loadBuildDeployJob(jobId);
     if (["succeeded", "failed"].includes(job.status)) await recordCompletedBuildJob(jobId, job);
     sendJson(res, 200, {
       build_job_id: jobId,
@@ -1272,7 +1283,7 @@ async function handleUserIdeBuildJob(req, res) {
     return;
   }
   if (mode === "build_and_flash") {
-    const otaPreflight = await buildDeployJson("/api/ota/preflight");
+    const otaPreflight = await otaBuildDeployJson("/api/ota/preflight");
     if (!otaPreflight.ready) {
       const blockers = (otaPreflight.blockers || []).map((item) => item.message).filter(Boolean);
       sendJson(res, 409, {
@@ -1297,7 +1308,8 @@ async function handleUserIdeBuildJob(req, res) {
     },
   });
   const buildPackage = await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/build-package`);
-  const buildDeployJob = await buildDeployJson("/api/build-jobs", {
+  const buildDeployClient = mode === "build_and_flash" ? otaBuildDeployJson : buildDeployJson;
+  const buildDeployJob = await buildDeployClient("/api/build-jobs", {
     method: "POST",
     body: {
       job_id: projectServerJob.build_job_id,
@@ -1321,7 +1333,7 @@ async function handleUserIdeBuildJob(req, res) {
       build_deploy_job_id: buildDeployJob.job_id,
     },
   });
-  const completedBuildDeployJob = await waitForBuildDeployJob(buildDeployJob.job_id);
+  const completedBuildDeployJob = await waitForBuildDeployJob(buildDeployJob.job_id, buildDeployClient);
   if (completedBuildDeployJob && ["succeeded", "failed"].includes(completedBuildDeployJob.status)) {
     await recordCompletedBuildJob(projectServerJob.build_job_id, completedBuildDeployJob);
   }
@@ -1377,7 +1389,10 @@ function browserFlashManifest(jobId, completedJob) {
 }
 
 async function proxyBuildArtifact(res, jobId, fileName) {
-  const upstream = await fetch(`${buildDeployBaseUrl.replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`);
+  let upstream = await fetch(`${buildDeployBaseUrl.replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`);
+  if (upstream.status === 404 && otaBuildDeployBaseUrl !== buildDeployBaseUrl) {
+    upstream = await fetch(`${otaBuildDeployBaseUrl.replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`);
+  }
   const content = Buffer.from(await upstream.arrayBuffer());
   res.writeHead(upstream.status, {
     "Content-Type": upstream.headers.get("content-type") || "application/octet-stream",
@@ -1856,13 +1871,19 @@ function latestBuildStatus(project) {
   return project && project.build_count > 0 ? `${project.build_count} BuildJob(s)` : "";
 }
 
-async function waitForBuildDeployJob(jobId) {
+async function waitForBuildDeployJob(jobId, client = buildDeployJson) {
   for (let attempt = 0; attempt < 2; attempt += 1) {
-    const job = await buildDeployJson(`/api/build-jobs/${encodeURIComponent(jobId)}`);
+    const job = await client(`/api/build-jobs/${encodeURIComponent(jobId)}`);
     if (["succeeded", "failed", "replaced"].includes(job.status)) return job;
     await delay(1000);
   }
   return null;
+}
+
+async function loadBuildDeployJob(jobId) {
+  const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
+  const client = projectJob?.mode === "build_and_flash" ? otaBuildDeployJson : buildDeployJson;
+  return client(`/api/build-jobs/${encodeURIComponent(jobId)}`);
 }
 
 function toBuildDeployPackage(buildPackage, device = {}, project = {}) {
@@ -1882,6 +1903,7 @@ function resolveBuildConfig(project = {}, device = {}) {
       ...project.build_config,
       board: device.build_config?.board || project.build_config.board,
       environment: device.build_config?.environment || project.build_config.environment,
+      firmware_basis_variant: project.build_config.firmware_basis_variant || "comfort",
     };
   }
   return device.build_config || project.build_config || null;

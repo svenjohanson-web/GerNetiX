@@ -10,6 +10,7 @@ class SqliteStateStore {
     this.collectionMap = options.collectionMap || {};
     fs.mkdirSync(path.dirname(dbPath), { recursive: true });
     this.db = new DatabaseSync(dbPath);
+    this.db.exec("PRAGMA busy_timeout = 5000;");
     this.db.exec("PRAGMA foreign_keys = ON;");
     this.db.exec("PRAGMA journal_mode = WAL;");
     this.db.exec(`
@@ -71,13 +72,20 @@ class SqliteStateStore {
       VALUES (?, ?, ?, ?, ?)
     `);
 
-    deleteStatement.run(this.serviceKey, collectionName);
-    for (const [index, document] of (documents || []).entries()) {
-      const documentId = String(selectId(document, index) || "").trim();
-      if (!documentId) {
-        throw new Error(`Missing document id for ${this.serviceKey}/${collectionName}.`);
+    this.db.exec("BEGIN IMMEDIATE");
+    try {
+      deleteStatement.run(this.serviceKey, collectionName);
+      for (const [index, document] of (documents || []).entries()) {
+        const documentId = String(selectId(document, index) || "").trim();
+        if (!documentId) {
+          throw new Error(`Missing document id for ${this.serviceKey}/${collectionName}.`);
+        }
+        insertStatement.run(this.serviceKey, collectionName, documentId, JSON.stringify(document), updatedAt);
       }
-      insertStatement.run(this.serviceKey, collectionName, documentId, JSON.stringify(document), updatedAt);
+      this.db.exec("COMMIT");
+    } catch (error) {
+      this.db.exec("ROLLBACK");
+      throw error;
     }
     return documents;
   }
@@ -113,7 +121,7 @@ class SqliteStateStore {
       INSERT INTO ${tableName} (${columnNames.join(", ")})
       VALUES (${placeholders})
     `);
-    this.db.exec("BEGIN");
+    this.db.exec("BEGIN IMMEDIATE");
     try {
       this.db.prepare(`DELETE FROM ${tableName}`).run();
       for (const row of rows || []) {

@@ -18,4 +18,12 @@ test("WiFi station reconnects indefinitely with bounded backoff", () => {
 test("WiFi reconnect backoff resets after receiving an IP address", () => {
   assert.match(source, /IP_EVENT_STA_GOT_IP/);
   assert.match(source, /wifiConnectRetryCount = 0/);
+  assert.match(source, /setupPortalActive = false/);
+  assert.match(source, /WiFi station recovered; setup AP disabled/);
+});
+
+test("provisioned boards stay in station mode when the first connection times out", () => {
+  assert.match(source, /if \(connectStatus == ESP_ERR_NOT_FOUND\) \{\s*startWifiSetupPortal\(\)/);
+  assert.match(source, /Saved WiFi exists; remaining in station mode and reconnecting/);
+  assert.doesNotMatch(source, /if \(connectStatus != ESP_OK\) \{\s*startWifiSetupPortal\(\)/);
 });
