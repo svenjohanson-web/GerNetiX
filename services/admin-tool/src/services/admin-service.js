@@ -339,17 +339,19 @@ class AdminService {
     return this.llmConfigStore.updateConfig(input);
   }
 
-  async listLlmModels() {
+  async listLlmModels(input = {}) {
     const config = this.llmConfigStore.getConfig();
+    const provider = input.provider || config.provider;
     try {
+      if (provider === "api") return await listApiModels({ ...config, apiBaseUrl: input.apiBaseUrl || config.apiBaseUrl }, input.apiProvider || config.apiProvider);
       const response = await fetch(`${config.ollamaBaseUrl.replace(/\/$/, "")}/api/tags`);
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) {
         throw new Error(payload.error || `Ollama antwortet mit HTTP ${response.status}.`);
       }
       return {
-        provider: "ollama",
-        baseUrl: config.ollamaBaseUrl,
+        provider,
+        baseUrl: provider === "api" ? (input.apiBaseUrl || config.apiBaseUrl) : config.ollamaBaseUrl,
         items: (payload.models || []).map((model) => ({
           name: model.name || model.model,
           model: model.model || model.name,
@@ -464,7 +466,6 @@ class AdminService {
       body: JSON.stringify({
         model: config.apiModel,
         messages,
-        temperature: 0,
       }),
     });
     const payload = await response.json().catch(() => ({}));
@@ -583,6 +584,23 @@ class AdminService {
     }
     return payload;
   }
+}
+
+async function listApiModels(config, apiProvider) {
+  const anthropic = apiProvider === "anthropic";
+  const baseUrl = config.apiBaseUrl.replace(/\/$/, "");
+  const response = await fetch(`${baseUrl}/models`, {
+    headers: anthropic
+      ? { "anthropic-version": "2023-06-01", ...(config.apiKey ? { "x-api-key": config.apiKey } : {}) }
+      : (config.apiKey ? { Authorization: `Bearer ${config.apiKey}` } : {}),
+  });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error?.message || payload.error || `Modellliste antwortet mit HTTP ${response.status}.`);
+  const items = (payload.data || payload.models || [])
+    .map((model) => ({ name: model.display_name || model.id || model.name, model: model.id || model.name }))
+    .filter((model) => model.model && (anthropic ? /^claude-/i.test(model.model) : /^(gpt-|o\d|codex|chatgpt)/i.test(model.model)))
+    .sort((left, right) => right.model.localeCompare(left.model, "en", { numeric: true }));
+  return { provider: apiProvider, baseUrl, items };
 }
 
 function summarizeDevices(devices) {
@@ -727,6 +745,8 @@ function summarizeAiUsage(events) {
 
 function summarizeAiUsageDashboard(dashboard = {}) {
   const summary = dashboard.summary || {};
+  const modelBreakdown = (dashboard.by_model || []).map(normalizeRemoteModelUsage);
+  const providerBreakdown = aggregateRemoteProviderUsage(modelBreakdown);
   return {
     ...summary,
     cost_control: summarizeCostControlPolicy(dashboard.policy || {}),
@@ -734,6 +754,60 @@ function summarizeAiUsageDashboard(dashboard = {}) {
     suspicious_usage: dashboard.suspicious_usage || [],
     rejection_breakdown: summary.rejection_breakdown || [],
     recent_rejections: summary.recent_rejections || [],
+    local: aggregateRemoteUsage(modelBreakdown.filter((item) => item.provider_type === "local"), { provider_type: "local", provider_name: "Lokale LLMs" }),
+    external: aggregateRemoteUsage(modelBreakdown.filter((item) => item.provider_type === "external"), { provider_type: "external", provider_name: "Oeffentliche LLMs" }),
+    provider_breakdown: providerBreakdown,
+    model_breakdown: modelBreakdown,
+  };
+}
+
+function normalizeRemoteModelUsage(item = {}) {
+  const providerType = /^gpt-|^o\d|openai/i.test(String(item.model || "")) || Number(item.estimated_provider_cost || 0) > 0 ? "external" : "local";
+  return {
+    provider_type: providerType,
+    provider_name: providerType === "external" ? "OpenAI" : "Lokales Ollama",
+    provider_status_url: providerType === "external" ? "https://status.openai.com/" : "http://127.0.0.1:11434",
+    model: item.model || "unknown",
+    total_events: Number(item.events || 0),
+    successful: Number(item.successful || 0),
+    rejected: Number(item.rejected || 0),
+    input_tokens: Number(item.input_tokens || 0),
+    output_tokens: Number(item.output_tokens || 0),
+    tokens: Number(item.tokens || 0),
+    credits: Number(item.credits || 0),
+    estimated_provider_cost: Number(item.estimated_provider_cost || 0),
+    average_latency_ms: null,
+    average_duration_ms: null,
+    average_eval_tokens_per_second: null,
+  };
+}
+
+function aggregateRemoteProviderUsage(items) {
+  const groups = new Map();
+  items.forEach((item) => {
+    const key = `${item.provider_type}:${item.provider_name}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(item);
+  });
+  return [...groups.values()].map((group) => aggregateRemoteUsage(group, group[0]));
+}
+
+function aggregateRemoteUsage(items, base) {
+  return {
+    provider_type: base.provider_type,
+    provider_name: base.provider_name,
+    provider_status_url: base.provider_status_url || "",
+    total_events: items.reduce((sum, item) => sum + item.total_events, 0),
+    successful: items.reduce((sum, item) => sum + item.successful, 0),
+    rejected: items.reduce((sum, item) => sum + item.rejected, 0),
+    input_tokens: items.reduce((sum, item) => sum + item.input_tokens, 0),
+    output_tokens: items.reduce((sum, item) => sum + item.output_tokens, 0),
+    tokens: items.reduce((sum, item) => sum + item.tokens, 0),
+    credits: Number(items.reduce((sum, item) => sum + item.credits, 0).toFixed(4)),
+    estimated_provider_cost: Number(items.reduce((sum, item) => sum + item.estimated_provider_cost, 0).toFixed(6)),
+    average_latency_ms: null,
+    average_duration_ms: null,
+    average_eval_tokens_per_second: null,
   };
 }
 
@@ -763,6 +837,8 @@ function summarizeCostControlPolicy(policy = {}) {
       credits_per_1k_input_tokens: 1000,
       credits_per_1k_output_tokens: 1000,
       provider_cost_per_1k_tokens: Number(item.provider_cost_per_1k_tokens || 0),
+      provider_input_cost_per_1k_tokens: Number(item.provider_input_cost_per_1k_tokens ?? item.provider_cost_per_1k_tokens ?? 0),
+      provider_output_cost_per_1k_tokens: Number(item.provider_output_cost_per_1k_tokens ?? item.provider_cost_per_1k_tokens ?? 0),
     })).sort((left, right) => left.model.localeCompare(right.model)),
     rules: [
       { rule_id: "global_kill_switch", title: "Globaler Kill-Switch", status: policy.global_kill_switch ? "blockiert alle Aufrufe" : "aktiviert, nicht ausgeloest", value: policy.global_kill_switch ? "an" : "aus" },

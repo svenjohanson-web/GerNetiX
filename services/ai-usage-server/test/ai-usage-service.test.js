@@ -35,6 +35,19 @@ test("approves preflight and consumes credits on completion", () => {
   assert.equal(balance.consumed_credits, 2000);
 });
 
+test("prices GPT 5.6 Terra with separate input and output rates", () => {
+  const service = createTestAiUsageServer();
+  const preflight = service.preflight({
+    account_id: "acct-terra",
+    model: "gpt-5.6-terra",
+    estimated_input_tokens: 1000,
+    estimated_output_tokens: 1000,
+    system_capabilities: ["system_capability.ai_premium_models"],
+  });
+  assert.equal(preflight.allowed, true);
+  assert.equal(preflight.estimated_provider_cost, 0.0175);
+});
+
 test("does not count approved preflight estimates as spent usage until completion", () => {
   const service = createTestAiUsageServer();
   const preflight = service.preflight({

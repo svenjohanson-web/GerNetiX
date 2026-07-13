@@ -13,6 +13,7 @@ const state = {
 
 document.querySelector("#sessionForm").addEventListener("submit", createSession);
 document.querySelector("#processorBoard").addEventListener("change", selectProcessorBoard);
+document.querySelector("#mqttMode").addEventListener("change", renderMqttMode);
 document.querySelector("#credentialResetButton").addEventListener("click", resetActiveCredential);
 document.querySelector("#selectUsbDeviceButton").addEventListener("click", selectUsbDevice);
 document.querySelector("#usbFlashButton").addEventListener("click", executeUsbFlash);
@@ -29,6 +30,7 @@ async function bootstrap() {
   state.flashMode = await getJson("/api/provisioning-flash-mode").catch(() => null);
   await restoreSessionFromBrowserState();
   renderProcessorBoards();
+  renderMqttMode();
   renderFlashMode();
   await selectProcessorBoard();
   render();
@@ -45,7 +47,13 @@ async function createSession(event) {
       firmware_version: value("#firmwareVersion"),
       provisioned_by: value("#actor"),
       processor_board_id: value("#processorBoard"),
-      capabilities: ["wifi", "ota", "flash_firmware"],
+      capabilities: ["wifi", "ota", "mqtt", "flash_firmware"],
+      mqtt_mode: value("#mqttMode"),
+      service_endpoints: {
+        device_management: value("#deviceManagementUrl"),
+        build_deploy: value("#buildDeployUrl"),
+        mqtt_broker: selectedMqttBrokerUrl(),
+      },
       flash: {
         requested: true,
         write_factory_header: true,
@@ -61,6 +69,34 @@ async function createSession(event) {
   } catch (error) {
     setStatus("flashStatus", "error", error.message);
   }
+}
+
+function renderMqttMode() {
+  const local = value("#mqttMode") === "local";
+  document.querySelector("#mqttVpsField").classList.toggle("hidden", local);
+  document.querySelector("#mqttLocalHostField").classList.toggle("hidden", !local);
+  document.querySelector("#mqttLocalPortField").classList.toggle("hidden", !local);
+}
+
+function selectedMqttBrokerUrl() {
+  if (value("#mqttMode") === "vps") {
+    const brokerUrl = value("#mqttVpsUrl");
+    if (!brokerUrl.startsWith("mqtts://")) throw new Error("Der VPS-Broker muss eine mqtts://-Adresse verwenden.");
+    return brokerUrl;
+  }
+  const host = value("#mqttLocalHost");
+  const port = Number(value("#mqttLocalPort"));
+  if (!isPrivateIpv4(host)) throw new Error("Bitte eine private IPv4-Adresse des lokalen Brokers eingeben.");
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Der lokale MQTT-Port muss zwischen 1 und 65535 liegen.");
+  return `mqtt://${host}:${port}`;
+}
+
+function isPrivateIpv4(value) {
+  const octets = String(value).split(".").map(Number);
+  if (octets.length !== 4 || octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
+  return octets[0] === 10 ||
+    (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+    (octets[0] === 192 && octets[1] === 168);
 }
 
 async function resetActiveCredential() {

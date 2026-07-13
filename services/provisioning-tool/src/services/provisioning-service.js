@@ -784,6 +784,10 @@ function escapeCString(value) {
 }
 
 function createManifest({ input, deviceId, credential, deviceManagementBaseUrl, firmwareArtifact, processorBoard }) {
+  const mqttBroker = normalizeMqttBrokerEndpoint(
+    input.service_endpoints && input.service_endpoints.mqtt_broker,
+    input.mqtt_mode,
+  );
   return {
     schema_version: 1,
     device_id: deviceId,
@@ -807,6 +811,7 @@ function createManifest({ input, deviceId, credential, deviceManagementBaseUrl, 
       build_deploy: input.service_endpoints && input.service_endpoints.build_deploy
         ? input.service_endpoints.build_deploy
         : "",
+      mqtt_broker: mqttBroker,
     },
     credential: {
       credential_id: credential.credential_id,
@@ -820,6 +825,38 @@ function createManifest({ input, deviceId, credential, deviceManagementBaseUrl, 
       provisioned_by: normalizeRequired(input.provisioned_by),
     },
   };
+}
+
+function normalizeMqttBrokerEndpoint(value, mode) {
+  const endpoint = String(value || "").trim();
+  if (!endpoint) return "";
+  if (mode === "local" || endpoint.startsWith("mqtt://")) {
+    const match = endpoint.match(/^mqtt:\/\/([^/:]+)(?::(\d+))?$/);
+    const port = Number(match && (match[2] || 1883));
+    if (!match || !isPrivateIpv4(match[1]) || !Number.isInteger(port) || port < 1 || port > 65535) {
+      throw new ProvisioningError("invalid_mqtt_broker", "Ein lokaler MQTT-Broker muss eine private IPv4-Adresse und einen gueltigen Port verwenden.", 400);
+    }
+    return `mqtt://${match[1]}:${port}`;
+  }
+  if (mode && mode !== "vps") {
+    throw new ProvisioningError("invalid_mqtt_mode", "MQTT-Modus muss vps oder local sein.", 400);
+  }
+  try {
+    const parsed = new URL(endpoint);
+    if (parsed.protocol !== "mqtts:" || !parsed.hostname || parsed.username || parsed.password || parsed.pathname !== "") throw new Error("invalid");
+    if (parsed.port && (Number(parsed.port) < 1 || Number(parsed.port) > 65535)) throw new Error("invalid");
+  } catch {
+    throw new ProvisioningError("invalid_mqtt_broker", "Der VPS-Broker muss eine gueltige mqtts://-Adresse verwenden.", 400);
+  }
+  return endpoint;
+}
+
+function isPrivateIpv4(value) {
+  const octets = String(value).split(".").map(Number);
+  if (octets.length !== 4 || octets.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return false;
+  return octets[0] === 10 ||
+    (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+    (octets[0] === 192 && octets[1] === 168);
 }
 
 function summarizeFirmwareArtifact(artifact) {

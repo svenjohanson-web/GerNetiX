@@ -1,0 +1,55 @@
+:root { color-scheme: dark; font-family: system-ui, -apple-system, Segoe UI, sans-serif; background:#070b12; color:#e5e7eb; }
+* { box-sizing:border-box; }
+body { margin:0; min-height:100vh; background:radial-gradient(circle at 10% 0%,#0e749033,transparent 34rem),#070b12; }
+main { width:min(1180px,100%); margin:auto; padding:24px; }
+header,.toolbar,.actions,.process-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+header { margin-bottom:18px; }
+.view-tabs { display:flex; gap:8px; margin-bottom:12px; }
+.view-tabs button.active { border-color:#22d3ee; background:#164e63; color:#cffafe; }
+.hidden { display:none!important; }
+header p { margin:0 0 4px; color:#67e8f9; font-size:12px; font-weight:800; letter-spacing:.12em; }
+h1,h2,h3 { margin:0; }
+h1 { font-size:30px; }
+.toolbar span { color:#94a3b8; }
+.process-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:12px; }
+.process-card { border:1px solid #2b3748; border-radius:12px; padding:16px; background:#111827; box-shadow:0 14px 34px #0005; }
+.process-head { align-items:flex-start; }
+.monitor-group { margin-top:18px; padding:16px; border:1px solid #263241; border-radius:14px; background:#0b1018aa; }
+.group-head { display:flex; align-items:end; justify-content:space-between; gap:12px; margin-bottom:12px; }
+.group-head p { margin:0 0 3px; color:#67e8f9; font-size:10px; font-weight:800; letter-spacing:.1em; }
+.group-head h2 { font-size:19px; }
+.group-head > span { color:#94a3b8; font-size:13px; }
+.process-head h3 { font-size:18px; }
+.process-head small,.facts { color:#94a3b8; }
+.status { display:inline-flex; align-items:center; gap:7px; border:1px solid; border-radius:999px; padding:5px 9px; font-size:12px; font-weight:800; }
+.status::before { content:""; width:9px; height:9px; border-radius:50%; background:currentColor; box-shadow:0 0 12px currentColor; }
+.status.online { color:#4ade80; }
+.status.offline { color:#f87171; }
+.facts { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin:16px 0; }
+.remote-facts { grid-template-columns:2fr 1fr; margin-bottom:0; }
+.process-card.remote { box-shadow:none; }
+.group-error { margin:10px 0 0; color:#fca5a5; font-size:12px; }
+.facts div { border:1px solid #2b3748; border-radius:8px; padding:8px; }
+.facts span { display:block; font-size:10px; text-transform:uppercase; }
+.facts strong { display:block; margin-top:3px; color:#e5e7eb; font-size:13px; overflow-wrap:anywhere; }
+button { min-height:36px; border:1px solid #3c4a5d; border-radius:8px; padding:7px 12px; background:#1b2430; color:#e5e7eb; font-weight:750; cursor:pointer; }
+button:hover:not(:disabled) { border-color:#22d3ee; background:#164e63; }
+button.primary { border-color:#0891b2; background:#0e7490; }
+button.danger { border-color:#7f1d1d; color:#fca5a5; }
+button:disabled { cursor:default; opacity:.45; }
+.message { min-height:18px; margin:10px 0 0; color:#fca5a5; font-size:12px; }
+footer { margin-top:18px; color:#64748b; font-size:12px; }
+.statistics-metrics { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:10px; margin-bottom:12px; }
+.statistics-metrics article { padding:11px; border:1px solid #2b3748; border-radius:9px; background:#111827; }
+.statistics-metrics span { display:block; color:#94a3b8; font-size:10px; text-transform:uppercase; }
+.statistics-metrics strong { display:block; margin-top:4px; font-size:20px; }
+.statistics-table-wrap { overflow:auto; border:1px solid #2b3748; border-radius:10px; }
+table { width:100%; border-collapse:collapse; background:#111827; font-size:13px; }
+th,td { padding:10px 12px; border-bottom:1px solid #263241; text-align:left; white-space:nowrap; }
+th { color:#94a3b8; font-size:10px; text-transform:uppercase; }
+td:first-child { white-space:normal; }
+td:first-child strong,td:first-child span { display:block; }
+td:first-child span { margin-top:2px; color:#94a3b8; }
+.stat-error { color:#fca5a5; font-weight:800; }
+.empty-cell { padding:28px; color:#64748b; text-align:center; }
+@media(max-width:680px){ main{padding:14px} header{align-items:flex-start;flex-direction:column}.toolbar{width:100%}.process-grid{grid-template-columns:1fr} }

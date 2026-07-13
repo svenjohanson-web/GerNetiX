@@ -25,6 +25,9 @@ class ArtifactStore {
         path: targetPath,
         size_bytes: metadata.size_bytes,
         sha256: metadata.sha256,
+        ...(artifactName === "firmware.bin" && metadata.esp_image_sha256
+          ? { esp_image_sha256: metadata.esp_image_sha256 }
+          : {}),
         download_url: this.publicBaseUrl
           ? `${this.publicBaseUrl.replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(artifactName)}`
           : `/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(artifactName)}`,
@@ -40,6 +43,9 @@ async function describeFile(filePath) {
   return {
     size_bytes: content.length,
     sha256: crypto.createHash("sha256").update(content).digest("hex"),
+    esp_image_sha256: content.length > 32 && content[0] === 0xe9
+      ? content.subarray(content.length - 32).toString("hex")
+      : null,
   };
 }
 

@@ -1,6 +1,10 @@
 .agents/
 .runtime/
 node_modules/
+.pnpm-store/
 .pio/
+managed_components/
 *.log
 services/*/.runtime/
+.env.vps
+.env.staging.local

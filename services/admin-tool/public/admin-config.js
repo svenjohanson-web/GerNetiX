@@ -1,7 +1,9 @@
 const state = {
   llm: null,
   localModels: [],
+  apiModels: [],
   modelError: "",
+  apiModelError: "",
   overview: null,
   accounts: [],
   aiUsage: null,
@@ -17,29 +19,14 @@ const API_PRESETS = {
   "openai-responses": {
     label: "OpenAI Responses API",
     baseUrl: "https://api.openai.com/v1",
-    modelGroups: [
-      { label: "Low", detail: "guenstig / schnell", models: ["gpt-5.4-nano", "gpt-5-nano", "gpt-4.1-nano", "gpt-4o-mini"] },
-      { label: "Medium", detail: "Standard fuer Chat", models: ["gpt-5.5", "gpt-5.4-mini", "gpt-5-mini", "gpt-4.1-mini", "gpt-4o"] },
-      { label: "High", detail: "maximale Qualitaet", models: ["gpt-5.5-pro", "gpt-5.4-pro", "gpt-5-pro", "gpt-4.1"] },
-    ],
   },
   "openai-compatible": {
     label: "OpenAI-kompatibel",
-    baseUrl: "https://api.openai.com/v1",
-    modelGroups: [
-      { label: "Low", detail: "guenstig / schnell", models: ["gpt-4.1-nano", "gpt-4o-mini"] },
-      { label: "Medium", detail: "Standard", models: ["gpt-4.1-mini", "gpt-4o"] },
-      { label: "High", detail: "staerker", models: ["gpt-4.1", "gpt-4-turbo"] },
-    ],
+    baseUrl: "",
   },
   anthropic: {
     label: "Claude / Anthropic",
     baseUrl: "https://api.anthropic.com/v1",
-    modelGroups: [
-      { label: "Low", detail: "guenstiger", models: ["claude-3-5-haiku-latest"] },
-      { label: "Medium", detail: "Standard", models: ["claude-sonnet-4.5", "claude-sonnet-4"] },
-      { label: "High", detail: "staerker", models: ["claude-opus-4.1", "claude-3-7-sonnet-latest"] },
-    ],
   },
 };
 
@@ -49,6 +36,7 @@ document.querySelector("#adminLlmProvider").addEventListener("change", renderPro
 document.querySelector("#adminApiProvider").addEventListener("change", applyApiProviderPreset);
 document.querySelector("#adminLlmTestButton").addEventListener("click", testLlmConfig);
 document.querySelector("#refreshLocalLlmModelsButton").addEventListener("click", loadLocalModels);
+document.querySelector("#refreshApiLlmModelsButton").addEventListener("click", loadApiModels);
 document.querySelector("#refreshMonitoringButton").addEventListener("click", () => loadMonitoring(true));
 document.querySelector("#refreshSystemEventsButton").addEventListener("click", () => loadSystemEvents(true));
 document.querySelectorAll("[data-admin-view]").forEach((button) => {
@@ -67,6 +55,7 @@ async function bootstrap() {
   await loadAiContext();
   await loadConfig();
   await loadLocalModels();
+  await loadApiModels();
   render();
 }
 
@@ -95,10 +84,36 @@ async function loadConfig() {
 }
 
 async function loadLocalModels() {
-  const result = await getJson("/api/admin/llm-models");
+  const result = await getJson("/api/admin/llm-models?provider=ollama");
   state.localModels = result.items || [];
   state.modelError = result.error || "";
   render();
+}
+
+async function loadApiModels() {
+  const apiProvider = value("#adminApiProvider") || state.llm?.apiProvider || "openai-responses";
+  const apiBaseUrl = value("#adminApiBaseUrl") || state.llm?.apiBaseUrl || "";
+  const currentModel = value("#adminApiModel") || state.llm?.apiModel || "";
+  if (!state.llm?.hasApiKey) {
+    state.apiModels = [];
+    state.apiModelError = "Kein API-Key gespeichert. Bitte zuerst den API-Key eingeben und die LLM-Konfiguration speichern.";
+    renderApiModelOptions(currentModel);
+    return;
+  }
+  document.querySelector("#adminApiModelStatus").textContent = "API-Modelle werden geladen...";
+  document.querySelector("#refreshApiLlmModelsButton").disabled = true;
+  try {
+    const result = await getJson(`/api/admin/llm-models?provider=api&api_provider=${encodeURIComponent(apiProvider)}&base_url=${encodeURIComponent(apiBaseUrl)}`);
+    if (result.provider === "ollama") throw new Error("Der Admin-Backendprozess ist noch nicht auf dem neuen Stand. Bitte Admin Tool neu starten.");
+    state.apiModels = result.items || [];
+    state.apiModelError = result.error || "";
+  } catch (error) {
+    state.apiModels = [];
+    state.apiModelError = error.message || String(error);
+  } finally {
+    renderApiModelOptions(currentModel);
+    document.querySelector("#refreshApiLlmModelsButton").disabled = false;
+  }
 }
 
 function render() {
@@ -538,29 +553,14 @@ function renderLocalModelOptions(currentModel) {
 }
 
 function renderApiModelOptions(currentModel) {
-  const target = document.querySelector("#adminApiModelOptions");
-  const apiProvider = value("#adminApiProvider") || "openai-compatible";
-  const preset = API_PRESETS[apiProvider] || API_PRESETS["openai-compatible"];
-  target.innerHTML = modelGroups(preset).map((group) => `
-    <section class="model-tier">
-      <div class="model-tier-head">
-        <strong>${escapeHtml(group.label)}</strong>
-        <span>${escapeHtml(group.detail || "")}</span>
-      </div>
-      <div class="model-tier-options">
-        ${group.models.map((model) => `
-          <button type="button" data-api-llm-model="${escapeHtml(model)}">${escapeHtml(model)}</button>
-        `).join("")}
-      </div>
-    </section>
-  `).join("");
-  target.querySelectorAll("[data-api-llm-model]").forEach((button) => {
-    button.classList.toggle("active-method", button.dataset.apiLlmModel === currentModel);
-    button.addEventListener("click", () => {
-      setValue("#adminApiModel", button.dataset.apiLlmModel);
-      renderApiModelOptions(button.dataset.apiLlmModel);
-    });
-  });
+  const select = document.querySelector("#adminApiModel");
+  const discovered = state.apiModels.map((item) => item.model || item.name).filter(Boolean);
+  const models = [...new Set([currentModel, ...discovered].filter(Boolean))];
+  select.innerHTML = models.length
+    ? models.map((model) => `<option value="${escapeHtml(model)}">${escapeHtml(model)}</option>`).join("")
+    : `<option value="">Keine API-Modelle verfügbar</option>`;
+  select.value = models.includes(currentModel) ? currentModel : (models[0] || "");
+  document.querySelector("#adminApiModelStatus").textContent = state.apiModelError || (discovered.length ? `${discovered.length} Modelle vom Provider geladen.` : "Keine Modelle geladen. API-Konfiguration zuerst speichern.");
 }
 
 function renderStatus() {
@@ -581,28 +581,33 @@ function renderProviderFields() {
   const provider = document.querySelector("#adminLlmProvider").value || "ollama";
   document.querySelector("#adminOllamaFields").classList.toggle("hidden", provider !== "ollama");
   document.querySelector("#adminApiFields").classList.toggle("hidden", provider !== "api");
+  const apiProvider = value("#adminApiProvider") || "openai-responses";
+  const baseUrlInput = document.querySelector("#adminApiBaseUrl");
+  baseUrlInput.readOnly = apiProvider !== "openai-compatible";
+  baseUrlInput.placeholder = apiProvider === "openai-compatible" ? "https://dein-provider.example/v1" : "";
 }
 
-function applyApiProviderPreset() {
+async function applyApiProviderPreset() {
   const apiProvider = value("#adminApiProvider") || "openai-compatible";
   const preset = API_PRESETS[apiProvider] || API_PRESETS["openai-compatible"];
   setValue("#adminApiBaseUrl", preset.baseUrl);
-  const models = flatPresetModels(preset);
-  if (!value("#adminApiModel") || !models.includes(value("#adminApiModel"))) {
-    setValue("#adminApiModel", models[0]);
-  }
-  renderApiModelOptions(value("#adminApiModel"));
+  renderProviderFields();
+  state.apiModels = [];
+  state.apiModelError = "";
+  await loadApiModels();
 }
 
 async function saveLlmConfig(event) {
   event.preventDefault();
   setStatus("running", "LLM-Konfiguration wird gespeichert...");
+  const selectedApiProvider = value("#adminApiProvider") || "openai-responses";
+  const selectedPreset = API_PRESETS[selectedApiProvider] || API_PRESETS["openai-compatible"];
   const payload = {
     provider: value("#adminLlmProvider"),
-    apiProvider: value("#adminApiProvider"),
+    apiProvider: selectedApiProvider,
     ollamaBaseUrl: value("#adminOllamaBaseUrl"),
     ollamaModel: value("#adminOllamaModel"),
-    apiBaseUrl: value("#adminApiBaseUrl"),
+    apiBaseUrl: selectedApiProvider === "openai-compatible" ? value("#adminApiBaseUrl") : selectedPreset.baseUrl,
     apiModel: value("#adminApiModel"),
     routes: {
       general_chat: { provider: value("#adminRouteGeneralChat"), reason: "Interaktiver Chat." },
@@ -774,7 +779,7 @@ function renderAiModelPolicyRows(items) {
       <td><strong>${escapeHtml(item.model || "-")}</strong></td>
       <td><strong>${item.allowed ? "erlaubt" : "blockiert"}</strong><span>${item.premium ? "Premium-Capability erforderlich" : "Standard"}</span></td>
       <td><strong>1:1</strong><span>${formatNumber(item.credits_per_1k_input_tokens)} Credits je 1k Tokens</span></td>
-      <td>${formatCurrency(item.provider_cost_per_1k_tokens)} / 1k Tokens</td>
+      <td><strong>${formatCurrency(item.provider_input_cost_per_1k_tokens)} Input</strong><span>${formatCurrency(item.provider_output_cost_per_1k_tokens)} Output / 1k Tokens</span></td>
     </tr>
   `).join("");
 }
@@ -1106,15 +1111,6 @@ function activeProviderLabel(config) {
   if (config.provider !== "api") return "Lokales Ollama";
   const preset = API_PRESETS[config.apiProvider || "openai-compatible"];
   return preset?.label || "API";
-}
-
-function modelGroups(preset) {
-  if (Array.isArray(preset.modelGroups)) return preset.modelGroups;
-  return [{ label: "Modelle", detail: "", models: preset.models || [] }];
-}
-
-function flatPresetModels(preset) {
-  return modelGroups(preset).flatMap((group) => group.models || []);
 }
 
 function routeProvider(config, task, fallback) {

@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>GerNetiX Umgebungen</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f3f6f7;
+        --panel: #fff;
+        --text: #172033;
+        --muted: #64748b;
+        --line: #d7dee9;
+        --local: #2563eb;
+        --private: #0f766e;
+        --public: #b45309;
+        --off: #94a3b8;
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; min-height: 100vh; background: var(--bg); color: var(--text); }
+      main { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 56px 0; }
+      header { display: grid; gap: 14px; margin-bottom: 34px; }
+      .eyebrow, .column-label { margin: 0; font-size: 12px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+      .eyebrow { color: var(--private); }
+      h1 { margin: 0; font-size: clamp(34px, 6vw, 58px); line-height: 1; letter-spacing: -.045em; }
+      .intro { max-width: 760px; margin: 0; color: var(--muted); font-size: 17px; line-height: 1.6; }
+      .legend { display: flex; flex-wrap: wrap; gap: 8px; }
+      .badge { display: inline-flex; align-items: center; gap: 7px; border: 1px solid var(--line); border-radius: 999px; padding: 7px 10px; background: var(--panel); color: var(--muted); font-size: 12px; font-weight: 750; }
+      .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; }
+      .local-color { color: var(--local); }
+      .private-color { color: var(--private); }
+      .public-color { color: var(--public); }
+      .matrix { display: grid; gap: 14px; }
+      .matrix-head, .component {
+        display: grid;
+        grid-template-columns: minmax(170px, .8fr) repeat(3, minmax(200px, 1fr));
+        gap: 10px;
+      }
+      .matrix-head { padding: 0 14px; color: var(--muted); }
+      .component { padding: 14px; border: 1px solid var(--line); border-radius: 16px; background: var(--panel); box-shadow: 0 8px 24px rgb(15 23 42 / 5%); }
+      .component-name { align-self: center; padding: 8px; }
+      .component-name strong { display: block; font-size: 17px; }
+      .component-name small { display: block; margin-top: 5px; color: var(--muted); line-height: 1.4; }
+      .target {
+        min-height: 88px;
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        align-items: center;
+        gap: 12px;
+        padding: 14px;
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        background: #fff;
+        color: inherit;
+        text-decoration: none;
+      }
+      .target strong, .target small { display: block; }
+      .target strong { font-size: 15px; }
+      .target small { margin-top: 5px; color: var(--muted); line-height: 1.35; }
+      a.target { transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease; }
+      a.target:hover, a.target:focus-visible { transform: translateY(-2px); box-shadow: 0 10px 24px rgb(15 23 42 / 10%); outline: none; }
+      a.local:hover, a.local:focus-visible { border-color: var(--local); }
+      a.private:hover, a.private:focus-visible { border-color: var(--private); }
+      .target.unavailable { color: var(--off); background: #f8fafc; }
+      .arrow { font-size: 20px; }
+      .note { margin: 26px 0 0; border-left: 4px solid var(--private); padding: 12px 16px; color: var(--muted); line-height: 1.55; }
+      code { color: var(--text); font-weight: 700; }
+      @media (max-width: 900px) {
+        .matrix-head { display: none; }
+        .component { grid-template-columns: 1fr; }
+        .target::before { content: attr(data-environment); display: block; grid-column: 1 / -1; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+      }
+      @media (prefers-color-scheme: dark) {
+        :root { --bg: #0d141c; --panel: #151f2b; --text: #edf2f7; --muted: #9aa9bc; --line: #2b394a; --local: #60a5fa; --private: #5eead4; --public: #fbbf24; --off: #64748b; }
+        .target { background: #111a24; }
+        .target.unavailable { background: #101720; }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <p class="eyebrow">GerNetiX Infrastruktur</p>
+        <h1>Umgebungen &amp; Links</h1>
+        <p class="intro">Eine Lesezeichen-Seite für lokale Entwicklung, private VPS-Staging-Zugänge und spätere öffentliche Anwendungen.</p>
+        <div class="legend" aria-label="Legende">
+          <span class="badge local-color"><span class="dot"></span>Lokal auf diesem Rechner</span>
+          <span class="badge private-color"><span class="dot"></span>Privat über SSH-Tunnel</span>
+          <span class="badge public-color"><span class="dot"></span>Öffentlich über Domain und HTTPS</span>
+        </div>
+      </header>
+
+      <div class="matrix-head" aria-hidden="true">
+        <span class="column-label">Komponente</span>
+        <span class="column-label local-color">Lokal</span>
+        <span class="column-label private-color">VPS / Staging privat</span>
+        <span class="column-label public-color">Public</span>
+      </div>
+
+      <section class="matrix" aria-label="GerNetiX Komponenten nach Umgebung">
+        <article class="component">
+          <div class="component-name"><strong>Plattform</strong><small>Login, Dashboard, Entwicklung, Lernen und Device Management</small></div>
+          <a class="target local" data-environment="Lokal" href="http://127.0.0.1:4300/app/dashboard/"><span><strong>Lokales Dashboard</strong><small>Identity Server · Port 4300</small></span><span class="arrow">→</span></a>
+          <a class="target private" data-environment="VPS / Staging privat" href="http://127.0.0.1:14300/app/dashboard/"><span><strong>Staging-Plattform</strong><small>SSH-Tunnel muss laufen · Port 14300</small></span><span class="arrow">→</span></a>
+          <div class="target unavailable" data-environment="Public"><span><strong>Noch nicht öffentlich</strong><small>Domain und HTTPS fehlen noch</small></span></div>
+        </article>
+
+        <article class="component">
+          <div class="component-name"><strong>Admin Tool</strong><small>Administration, Support, LLM-Routing und interne UI-Links</small></div>
+          <a class="target local" data-environment="Lokal" href="http://127.0.0.1:4600/admin/"><span><strong>Lokales Admin Tool</strong><small>Port 4600</small></span><span class="arrow">→</span></a>
+          <a class="target private" data-environment="VPS / Staging privat" href="http://127.0.0.1:14600/admin/"><span><strong>Staging Admin Tool</strong><small>SSH-Tunnel muss laufen · Port 14600</small></span><span class="arrow">→</span></a>
+          <div class="target unavailable" data-environment="Public"><span><strong>Bleibt privat</strong><small>Kein öffentlicher Admin-Zugang vorgesehen</small></span></div>
+        </article>
+
+        <article class="component">
+          <div class="component-name"><strong>Build &amp; Deploy</strong><small>Build-Jobs, Artefakte und später OTA</small></div>
+          <a class="target local" data-environment="Lokal" href="http://127.0.0.1:4400/health"><span><strong>Lokaler Healthcheck</strong><small>Port 4400 · API-Dienst</small></span><span class="arrow">→</span></a>
+          <div class="target unavailable" data-environment="VPS / Staging privat"><span><strong>Nur internes Docker-Netz</strong><small>Über die Plattform erreichbar, kein Direktlink</small></span></div>
+          <div class="target unavailable" data-environment="Public"><span><strong>Nicht öffentlich</strong><small>Interner Domainservice</small></span></div>
+        </article>
+
+        <article class="component">
+          <div class="component-name"><strong>Project Server</strong><small>Accountgebundene Projekte, Quellen und Build-Historie</small></div>
+          <a class="target local" data-environment="Lokal" href="http://127.0.0.1:4800/health"><span><strong>Lokaler Healthcheck</strong><small>Port 4800 · API-Dienst</small></span><span class="arrow">→</span></a>
+          <div class="target unavailable" data-environment="VPS / Staging privat"><span><strong>Nur internes Docker-Netz</strong><small>Von der Staging-Plattform genutzt</small></span></div>
+          <div class="target unavailable" data-environment="Public"><span><strong>Nicht öffentlich</strong><small>Interner Domainservice</small></span></div>
+        </article>
+
+        <article class="component">
+          <div class="component-name"><strong>Device Management</strong><small>Devices, Ownership und Supportstatus</small></div>
+          <a class="target local" data-environment="Lokal" href="http://127.0.0.1:4700/health"><span><strong>Lokaler Healthcheck</strong><small>Port 4700 · API-Dienst</small></span><span class="arrow">→</span></a>
+          <div class="target unavailable" data-environment="VPS / Staging privat"><span><strong>Nur internes Docker-Netz</strong><small>Über die Staging-Plattform bedienbar</small></span></div>
+          <div class="target unavailable" data-environment="Public"><span><strong>Nicht öffentlich</strong><small>Interner Domainservice</small></span></div>
+        </article>
+
+        <article class="component">
+          <div class="component-name"><strong>Hardware</strong><small>Hardware Catalog und Hardware Shop</small></div>
+          <a class="target local" data-environment="Lokal" href="http://127.0.0.1:4900/health"><span><strong>Lokaler Shop-Healthcheck</strong><small>Shop 4900 · Catalog 4910</small></span><span class="arrow">→</span></a>
+          <div class="target unavailable" data-environment="VPS / Staging privat"><span><strong>Nur internes Docker-Netz</strong><small>Über die Staging-Plattform genutzt</small></span></div>
+          <div class="target unavailable" data-environment="Public"><span><strong>Nicht direkt öffentlich</strong><small>Später ausschließlich über Plattformrouten</small></span></div>
+        </article>
+
+        <article class="component">
+          <div class="component-name"><strong>KI Services</strong><small>AI Usage und AI Context</small></div>
+          <a class="target local" data-environment="Lokal" href="http://127.0.0.1:5500/health"><span><strong>Lokaler AI-Context-Check</strong><small>Context 5500 · Usage 5001 auf diesem Mac</small></span><span class="arrow">→</span></a>
+          <div class="target unavailable" data-environment="VPS / Staging privat"><span><strong>Nur internes Docker-Netz</strong><small>Administration über Staging Admin Tool</small></span></div>
+          <div class="target unavailable" data-environment="Public"><span><strong>Nicht öffentlich</strong><small>Interne Policy- und Usage-Dienste</small></span></div>
+        </article>
+
+        <article class="component">
+          <div class="component-name"><strong>Device Tools</strong><small>Provisioning und Recovery für physische Boards</small></div>
+          <a class="target local" data-environment="Lokal" href="http://127.0.0.1:4500/"><span><strong>Provisioning Tool</strong><small>Port 4500 · Recovery 5100</small></span><span class="arrow">→</span></a>
+          <div class="target unavailable" data-environment="VPS / Staging privat"><span><strong>Nicht auf Staging deployt</strong><small>USB-nahe Tools bleiben lokal</small></span></div>
+          <div class="target unavailable" data-environment="Public"><span><strong>Nicht öffentlich</strong><small>Factory-/Support-Werkzeuge</small></span></div>
+        </article>
+
+        <article class="component">
+          <div class="component-name"><strong>Wissen &amp; Diagnose</strong><small>Context Manager und SQLite Graph Explorer</small></div>
+          <a class="target local" data-environment="Lokal" href="http://127.0.0.1:5050/context-manager/"><span><strong>Context Manager</strong><small>Port 5050 · Graph Explorer 4318</small></span><span class="arrow">→</span></a>
+          <div class="target unavailable" data-environment="VPS / Staging privat"><span><strong>Nicht auf Staging deployt</strong><small>Lokale Engineering-Werkzeuge</small></span></div>
+          <div class="target unavailable" data-environment="Public"><span><strong>Nicht öffentlich</strong><small>Interne Engineering-Sicht</small></span></div>
+        </article>
+      </section>
+
+      <p class="note"><strong>VPS-Links funktionieren nur mit laufendem Tunnel:</strong> <code>node tools/connect-staging.js</code>. Ohne Tunnel zeigen die Ports 14300 und 14600 auf keinen Dienst. Öffentliche Links werden erst ergänzt, wenn Domain und HTTPS eingerichtet sind.</p>
+    </main>
+  </body>
+</html>

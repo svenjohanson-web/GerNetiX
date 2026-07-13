@@ -92,17 +92,34 @@ function createLlmConfigStore({ configPath, defaultOllamaBaseUrl, defaultOllamaM
 
   function normalizeConfig(input = {}) {
     const provider = input.provider === "api" ? "api" : "ollama";
-    const apiProvider = ["openai-responses", "openai-compatible", "anthropic"].includes(input.apiProvider) ? input.apiProvider : "openai-compatible";
+    const requestedBaseUrl = clean(input.apiBaseUrl);
+    const configuredApiProvider = ["openai-responses", "openai-compatible", "anthropic"].includes(input.apiProvider) ? input.apiProvider : "openai-responses";
+    const apiProvider = isOfficialOpenAiEndpoint(requestedBaseUrl) ? "openai-responses" : configuredApiProvider;
+    const apiBaseUrl = canonicalApiBaseUrl(apiProvider, requestedBaseUrl);
     return {
       provider,
       apiProvider,
       ollamaBaseUrl: clean(input.ollamaBaseUrl) || defaultOllamaBaseUrl,
       ollamaModel: clean(input.ollamaModel) || defaultOllamaModel,
-      apiBaseUrl: clean(input.apiBaseUrl) || "https://api.openai.com/v1",
+      apiBaseUrl,
       apiModel: clean(input.apiModel) || (apiProvider === "openai-responses" ? "gpt-5.5" : "gpt-4.1-mini"),
       apiKey: clean(input.apiKey),
       routes: normalizeRoutes(input.routes),
     };
+  }
+
+  function canonicalApiBaseUrl(apiProvider, requestedBaseUrl) {
+    if (apiProvider === "openai-responses") return "https://api.openai.com/v1";
+    if (apiProvider === "anthropic") return "https://api.anthropic.com/v1";
+    return requestedBaseUrl;
+  }
+
+  function isOfficialOpenAiEndpoint(value) {
+    try {
+      return new URL(value).hostname.toLowerCase() === "api.openai.com";
+    } catch {
+      return false;
+    }
   }
 
   function normalizeRoutes(input = {}) {

@@ -5,7 +5,7 @@ const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 const test = require("node:test");
 
-const { createConfig, createDefaultProjectServer, FileBackedProjectRepository, SqliteBackedProjectRepository } = require("../src");
+const { createConfig, createDefaultProjectServer, FileBackedProjectRepository, InMemoryProjectRepository, SqliteBackedProjectRepository } = require("../src");
 const { ProjectService } = require("../src/services/project-service");
 
 function createMemoryProjectServer() {
@@ -47,6 +47,27 @@ test("creates project with default source and lists it by user", () => {
   assert.equal(service.listProjects({ user_id: "user-1" }).length, 1);
 });
 
+test("comfort basis locks its runtime features while preserving project web extensions", () => {
+  const service = createMemoryProjectServer();
+  const project = service.createProject({
+    user_id: "user-1",
+    title: "Web Device",
+    build_config: {
+      firmware_basis_id: "gernetix-runtime-basissoftware",
+      firmware_basis_variant: "comfort",
+      component_features: {
+        enabled: ["measurement_chart"],
+        webserver: { measurement_chart: true, measurement_label: "Temperatur", measurement_unit: "°C" },
+      },
+    },
+  });
+
+  assert.deepEqual(project.build_config.component_features.immutable, ["wifi", "mqtt", "ota", "http", "webserver"]);
+  assert.equal(project.build_config.component_features.enabled.includes("mqtt"), true);
+  assert.equal(project.build_config.component_features.enabled.includes("measurement_chart"), true);
+  assert.equal(project.build_config.component_features.webserver.measurement_label, "Temperatur");
+});
+
 test("stores project sources with hashes and rejects path traversal", () => {
   const service = createMemoryProjectServer();
   const project = createDemoProject(service);
@@ -58,6 +79,43 @@ test("stores project sources with hashes and rejects path traversal", () => {
   assert.equal(source.role, "header");
   assert.equal(source.content_sha256.length, 64);
   assert.throws(() => service.upsertSource(project.project_id, { path: "../secret.txt", content: "x" }), /Source-Pfad/);
+});
+
+test("searches project sources for a known task instead of returning the whole project", () => {
+  const service = createMemoryProjectServer();
+  const project = createDemoProject(service);
+  service.upsertSource(project.project_id, {
+    path: "Architektur/system.puml",
+    content: "@startuml\nnode ESP32\n@enduml\n",
+  });
+  service.upsertSource(project.project_id, {
+    path: "Komponenten/ESP32/Sensoren/temperature.cpp",
+    content: "void readTemperatureSensor() {}\n",
+  });
+  service.upsertSource(project.project_id, {
+    path: "docs/unrelated.md",
+    content: "Abrechnung und Vertrag\n",
+  });
+
+  const matches = service.searchSources(project.project_id, {
+    query: "Temperature Sensor in die Architektur aufnehmen",
+    current_path: "Architektur/system.puml",
+    limit: 2,
+  });
+
+  assert.deepEqual(matches.map((source) => source.path), [
+    "Architektur/system.puml",
+    "Komponenten/ESP32/Sensoren/temperature.cpp",
+  ]);
+  assert.equal(matches[0].content.includes("@startuml"), true);
+
+  const architectureOnly = service.searchSources(project.project_id, {
+    query: "neues Prozessorboard ESP32",
+    current_path: "Komponenten/ESP32/Sensoren/temperature.cpp",
+    source_kind: "architecture",
+    limit: 3,
+  });
+  assert.deepEqual(architectureOnly.map((source) => source.path), ["Architektur/system.puml"]);
 });
 
 test("creates reproducible build package for build deploy server", () => {
@@ -73,6 +131,39 @@ test("creates reproducible build package for build deploy server", () => {
   assert.equal(buildPackage.build_job.mode, "build_and_flash");
   assert.equal(buildPackage.files.some((file) => file.path === "platformio.ini"), true);
   assert.equal(buildPackage.files.some((file) => file.path === "src/app.cpp"), true);
+});
+
+test("composes ESP32 basissoftware with only the project-owned user main", () => {
+  const service = new ProjectService({
+    repository: new InMemoryProjectRepository(),
+    loadEsp32BasissoftwareFiles: () => [
+      { path: "platformio.ini", content: "framework = espidf\n", content_type: "text/plain" },
+      { path: "src/main.cpp", content: "extern \"C\" void app_main() {}\n", content_type: "text/x-c++src" },
+      { path: "src/user/user_app.cpp", content: "void oldUserMain() {}\n", content_type: "text/x-c++src" },
+    ],
+  });
+  const project = service.createProject({
+    user_id: "user-1",
+    title: "ESP32 Durchstich",
+    build_config: {
+      platform: "espressif32",
+      board: "esp32dev",
+      framework: "espidf",
+      firmware_basis_id: "gernetix-runtime-basissoftware",
+      firmware_basis_version: "test",
+      user_source_path: "Komponenten/ESP32/src/user_main.cpp",
+      user_target_path: "src/user/user_app.cpp",
+    },
+    sources: [{ path: "Komponenten/ESP32/src/user_main.cpp", content: "extern \"C\" void userMain() {}\n" }],
+  });
+  const job = service.createBuildJob(project.project_id);
+  const buildPackage = service.createBuildPackage(job.build_job_id);
+
+  assert.equal(project.build_config.firmware_basis_variant, "comfort");
+  assert.equal(buildPackage.platformio_ini, "framework = espidf\n");
+  assert.equal(buildPackage.files.some((file) => file.path === "src/main.cpp"), true);
+  assert.equal(buildPackage.files.find((file) => file.path === "src/user/user_app.cpp").content, "extern \"C\" void userMain() {}\n");
+  assert.equal(buildPackage.files.some((file) => file.path === "Komponenten/ESP32/src/user_main.cpp"), false);
 });
 
 test("stores project view manifest and includes it in build package", () => {

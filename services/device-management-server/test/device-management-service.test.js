@@ -73,6 +73,23 @@ test("pairing creates account device and OTA target discovery marks selectable d
   assert.equal(targets[0].selectable, true);
 });
 
+test("connectivity checks refresh the account inventory projection", () => {
+  const service = createDefaultDeviceManagementServer();
+  const device = registerVerified(service, { connectivity_status: "unknown" });
+  service.addAccountDevice("acct-1", {
+    device_id: device.device_id,
+    display_name: "Sven ESP32",
+    technical_capability_ids: ["wifi", "ota"],
+  });
+
+  service.updateConnectivity(device.device_id, { connectivity_status: "online", ota_status: "ready" });
+
+  const inventoryDevice = service.listAccountDevices("acct-1")[0];
+  assert.equal(inventoryDevice.connectivity_status, "online");
+  assert.equal(inventoryDevice.ota_status, "ready");
+  assert.equal(service.otaTargets("acct-1", { requiredCapabilities: "wifi,ota" })[0].selectable, true);
+});
+
 test("community hardware remains usable but not support eligible", () => {
   const service = createDefaultDeviceManagementServer();
   const device = service.registerDevice({

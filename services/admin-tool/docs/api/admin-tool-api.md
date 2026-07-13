@@ -20,6 +20,8 @@ Liefert aggregierte Admin-Kennzahlen zu Devices, Feedback, Consents, Audit Event
 
 ```text
 GET /api/admin/monitoring
+GET /api/admin/llm-models?provider=ollama
+GET /api/admin/llm-models?provider=api&api_provider=openai-responses&base_url=https%3A%2F%2Fapi.openai.com%2Fv1
 ```
 
 Liefert den Betriebsstatus der konfigurierten lokalen Dienste fuer das Admin Tool:

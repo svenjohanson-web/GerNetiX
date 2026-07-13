@@ -58,3 +58,26 @@ test("keeps explicit discovery URL path unchanged", async () => {
   assert.ok(requestedUrls.includes("http://192.168.178.44/custom-status"));
   assert.ok(!requestedUrls.includes("http://192.168.178.44/custom-status/status"));
 });
+
+test("coalesces concurrent node scans into one network search", async () => {
+  let fetchCount = 0;
+  let releaseScan;
+  const scanGate = new Promise((resolve) => { releaseScan = resolve; });
+  const service = createDeviceDiscoveryService({
+    deviceDiscoveryUrls: "",
+    deviceManagementJson: async () => ({ items: [] }),
+    fetchImpl: async () => {
+      fetchCount += 1;
+      await scanGate;
+      return { ok: false, async json() { return {}; } };
+    },
+    loadUserIdeDevices: async () => [],
+    networkBases: () => [],
+    normalizeCapabilityIds: (items) => items,
+  });
+  const first = service.discoverNetworkDevices({ account_id: "one" });
+  const second = service.discoverNetworkDevices({ account_id: "one" });
+  releaseScan();
+  await Promise.all([first, second]);
+  assert.equal(fetchCount, 2);
+});

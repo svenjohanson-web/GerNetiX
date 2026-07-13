@@ -29,6 +29,7 @@ constexpr const char *WIFI_NVS_SSID_KEY = "ssid";
 constexpr const char *WIFI_NVS_PASSWORD_KEY = "password";
 constexpr EventBits_t WIFI_CONNECTED_BIT = BIT0;
 constexpr size_t WIFI_SCAN_LIMIT = 16;
+constexpr uint32_t WIFI_RECONNECT_DELAYS_MS[] = {1000, 2000, 5000, 10000, 30000, 60000};
 
 enum class StationState {
   Idle,
@@ -41,15 +42,66 @@ EventGroupHandle_t wifiEvents = nullptr;
 bool wifiStarted = false;
 bool setupPortalActive = false;
 TaskHandle_t wifiConnectTaskHandle = nullptr;
+TaskHandle_t wifiReconnectTaskHandle = nullptr;
 StationState stationState = StationState::Idle;
 int lastDisconnectReason = 0;
 int lastConnectStatus = ESP_OK;
+unsigned wifiConnectRetryCount = 0;
 esp_netif_t *stationNetif = nullptr;
 
 struct WifiCredentials {
   char ssid[33];
   char password[65];
 };
+
+void scheduleWifiReconnect();
+
+uint32_t wifiReconnectDelayMs() {
+  const size_t delayCount = sizeof(WIFI_RECONNECT_DELAYS_MS) / sizeof(WIFI_RECONNECT_DELAYS_MS[0]);
+  const size_t delayIndex = wifiConnectRetryCount < delayCount ? wifiConnectRetryCount : delayCount - 1;
+  return WIFI_RECONNECT_DELAYS_MS[delayIndex];
+}
+
+void wifiReconnectTask(void *) {
+  const uint32_t delayMs = wifiReconnectDelayMs();
+  wifiConnectRetryCount++;
+  feedbackWarning(TAG, "WiFi reconnect scheduled: attempt=%u delay_ms=%u reason=%d", wifiConnectRetryCount, delayMs, lastDisconnectReason);
+  vTaskDelay(pdMS_TO_TICKS(delayMs));
+
+  if ((xEventGroupGetBits(wifiEvents) & WIFI_CONNECTED_BIT) != 0) {
+    wifiReconnectTaskHandle = nullptr;
+    vTaskDelete(nullptr);
+    return;
+  }
+
+  wifiReconnectTaskHandle = nullptr;
+  stationState = StationState::Connecting;
+  const esp_err_t status = esp_wifi_connect();
+  if (status != ESP_OK) {
+    lastConnectStatus = status;
+    feedbackWarning(TAG, "WiFi reconnect start failed: attempt=%u status=%d", wifiConnectRetryCount, status);
+    scheduleWifiReconnect();
+  }
+  vTaskDelete(nullptr);
+}
+
+void scheduleWifiReconnect() {
+  if (!wifiStarted || wifiReconnectTaskHandle != nullptr || setupPortalActive) {
+    return;
+  }
+  const BaseType_t created = xTaskCreate(
+      wifiReconnectTask,
+      "wifi-reconnect",
+      3072,
+      nullptr,
+      5,
+      &wifiReconnectTaskHandle);
+  if (created != pdPASS) {
+    wifiReconnectTaskHandle = nullptr;
+    lastConnectStatus = ESP_ERR_NO_MEM;
+    feedbackError(TAG, "WiFi reconnect task could not be started");
+  }
+}
 
 void initNvs() {
   esp_err_t status = nvs_flash_init();
@@ -98,10 +150,9 @@ void wifiEventHandler(void *, esp_event_base_t eventBase, int32_t eventId, void 
         static_cast<wifi_event_sta_disconnected_t *>(eventData);
     lastDisconnectReason = event == nullptr ? 0 : event->reason;
     xEventGroupClearBits(wifiEvents, WIFI_CONNECTED_BIT);
-    if (stationState == StationState::Connected) {
-      stationState = StationState::Failed;
-    }
+    stationState = StationState::Connecting;
     feedbackWarning(TAG, "WiFi station disconnected: reason=%d", lastDisconnectReason);
+    scheduleWifiReconnect();
     return;
   }
 
@@ -111,6 +162,16 @@ void wifiEventHandler(void *, esp_event_base_t eventBase, int32_t eventId, void 
     stationState = StationState::Connected;
     lastConnectStatus = ESP_OK;
     lastDisconnectReason = 0;
+    wifiConnectRetryCount = 0;
+    if (setupPortalActive) {
+      const esp_err_t modeStatus = esp_wifi_set_mode(WIFI_MODE_STA);
+      if (modeStatus == ESP_OK) {
+        setupPortalActive = false;
+        feedbackInfo(TAG, "WiFi station recovered; setup AP disabled");
+      } else {
+        feedbackWarning(TAG, "Setup AP could not be disabled after station recovery: %d", modeStatus);
+      }
+    }
     feedbackInfo(TAG, "WiFi station connected: " IPSTR, IP2STR(&event->ip_info.ip));
   }
 }
@@ -270,6 +331,7 @@ esp_err_t connectWifiStationFromSavedCredentials(uint32_t timeoutMs) {
 
   xEventGroupClearBits(wifiEvents, WIFI_CONNECTED_BIT);
   stationState = StationState::Connecting;
+  wifiConnectRetryCount = 0;
   lastDisconnectReason = 0;
   lastConnectStatus = ESP_OK;
   const wifi_mode_t connectMode = setupPortalActive ? WIFI_MODE_APSTA : WIFI_MODE_STA;
@@ -317,9 +379,9 @@ esp_err_t connectWifiStationFromSavedCredentials(uint32_t timeoutMs) {
 
   if ((bits & WIFI_CONNECTED_BIT) == 0) {
     feedbackWarning(TAG, "WiFi station did not connect within %u ms", timeoutMs);
-    esp_wifi_disconnect();
-    stationState = StationState::Failed;
+    stationState = StationState::Connecting;
     lastConnectStatus = ESP_ERR_TIMEOUT;
+    scheduleWifiReconnect();
     return ESP_ERR_TIMEOUT;
   }
 
@@ -450,11 +512,16 @@ void initWifi() {
 
   wifi_init_config_t initConfig = WIFI_INIT_CONFIG_DEFAULT();
   ESP_ERROR_CHECK(esp_wifi_init(&initConfig));
+  ESP_ERROR_CHECK(esp_wifi_set_ps(WIFI_PS_NONE));
+  feedbackInfo(TAG, "WiFi power save disabled for responsive comfort runtime");
   ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, wifiEventHandler, nullptr, nullptr));
   ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifiEventHandler, nullptr, nullptr));
 
   const esp_err_t connectStatus = connectWifiStationFromSavedCredentials(WIFI_CONNECT_TIMEOUT_MS);
-  if (connectStatus != ESP_OK) {
+  if (connectStatus == ESP_ERR_NOT_FOUND) {
     startWifiSetupPortal();
+  } else if (connectStatus != ESP_OK) {
+    feedbackWarning(TAG, "Saved WiFi exists; remaining in station mode and reconnecting: %d", connectStatus);
+    scheduleWifiReconnect();
   }
 }

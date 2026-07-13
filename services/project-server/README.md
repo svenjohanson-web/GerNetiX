@@ -4,6 +4,8 @@ Vorhaben fuer den GerNetiX Projektserver.
 
 Der Projektserver ist die Quelle der Wahrheit fuer Benutzer, Nutzerprojekte, Geraete, Quellcode, Projektkonfiguration, Device-Zuordnung und Build-Historie. Er erstellt BuildJobs und vollstaendige BuildPackages fuer den Build-&-Deploy-Server und nimmt Firmware, Logs, BuildResults und Deploy-Ergebnisse wieder entgegen.
 
+Fuer den projektgebundenen Entwicklungs-KI-Chat stellt er eine bedarfsgesteuerte Quellensuche bereit. Sie wird erst nach Bekanntwerden der konkreten Aufgabe ausgefuehrt, priorisiert die aktuell geoeffnete Datei und liefert standardmaessig hoechstens sechs relevante Pfad-/Inhaltstreffer. Dadurch muss die KI weder das gesamte Projekt noch eine starre Anzahl willkuerlicher Dateien erhalten. Die Architekturentscheidung ist in [`docs/ai-project-source-retrieval.md`](../../docs/ai-project-source-retrieval.md) beschrieben.
+
 ## Zweck
 
 - Nutzerprojekte dauerhaft speichern
@@ -68,19 +70,23 @@ Architektur/
   systemverhalten/
 Komponenten/
   ESP32/
-    Eigenschaften/
     Schnittstellen/
       provided.md
       required.md
-    Behavior/
+    Verhalten/
       Modell/
       Code/
-      Config/
+    Konfiguration/
+      Hardware/
+        Board/
+        Sensoren/
+        Aktoren/
+      Software/
     Daten/
     Beziehungen/
 ```
 
-Jede erkannte Komponente bekommt einen eigenen Ordner. Komponenten tragen ihre Eigenschaften, provided/required Schnittstellen, Behavior, Daten und Beziehungen selbst. Provided und required Schnittstellen werden bewusst getrennt gespeichert, weil benoetigte Schnittstellen genauso wichtig sind wie angebotene Schnittstellen. Behavior trennt Modell, Code und Config, damit KI-Ableitungen spaeter gezielt geprueft und umgesetzt werden koennen.
+Jede erkannte Komponente bekommt einen eigenen Ordner. Komponenten tragen ihre Hardware- und Softwarekonfiguration, provided/required Schnittstellen, Verhalten, Daten und Beziehungen selbst. Hardwarekonfiguration umfasst Board, Sensoren und Aktoren; Softwarekonfiguration umfasst Runtime-Funktionen und Dienste wie MQTT, HTTP und Webserver. Provided und required Schnittstellen werden bewusst getrennt gespeichert, weil benoetigte Schnittstellen genauso wichtig sind wie angebotene Schnittstellen. Verhalten trennt Modell und Code, damit KI-Ableitungen spaeter gezielt geprueft und umgesetzt werden koennen.
 
 Architektur besteht generisch aus statischer Architektur, Informationsfluss und Systemverhalten. Systemverhalten beschreibt komponentenuebergreifende Ablaeufe, Zustaende, Regeln, Ereignisse, Fehlerfaelle und Reaktionen des Gesamtsystems. Die KI kann bestaetigtes Systemverhalten spaeter in komponentenspezifisches Verhalten, Schnittstellenanforderungen, Datenfluesse, Code und Konfiguration dekomponieren.
 

@@ -22,7 +22,7 @@ async function createManifest() {
   }));
   const session = await service.createSession({
     serial_number: "GNX-ESP32-CONTRACT",
-    hardware_profile_id: "hardware.processor_board.esp32_devkit",
+    hardware_profile_id: "hardware.processor_board.generic_esp_wroom32",
     provisioning_batch_id: "batch-contract",
     firmware_version: "0.1.0",
     provisioned_by: "contract-check@gernetix.local",
@@ -30,6 +30,7 @@ async function createManifest() {
     service_endpoints: {
       device_management: "https://devices.gernetix.test/api/device-management",
       build_deploy: "https://build.gernetix.test",
+      mqtt_broker: "mqtts://mqtt.gernetix.test:8883",
     },
   });
   const manifest = service.getManifest(session.session_id);
@@ -82,6 +83,7 @@ async function run() {
     "one_time_device_secret",
     "device_management",
     "build_deploy",
+    "mqtt_broker",
     "batch_id",
     "provisioned_by",
     "capabilities",

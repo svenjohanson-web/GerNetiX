@@ -1,9 +1,11 @@
 const crypto = require("node:crypto");
 const { ProjectServerError } = require("../errors");
+const { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles } = require("../modules/esp32-basissoftware-package");
 
 class ProjectService {
   constructor(options) {
     this.repository = options.repository;
+    this.loadEsp32BasissoftwareFiles = options.loadEsp32BasissoftwareFiles || loadEsp32BasissoftwareFiles;
   }
 
   createProject(input = {}) {
@@ -61,6 +63,23 @@ class ProjectService {
   listSources(projectId) {
     this.requireProject(projectId);
     return this.repository.listSources(projectId).map(maskSourceContent);
+  }
+
+  searchSources(projectId, input = {}) {
+    this.requireProject(projectId);
+    const query = String(input.query || "").toLocaleLowerCase("de-DE");
+    const currentPath = String(input.current_path || "");
+    const sourceKind = normalizeSourceKind(input.source_kind);
+    const limit = Math.max(1, Math.min(8, Number(input.limit) || 6));
+    const terms = [...new Set(query.match(/[\p{L}\p{N}_-]{3,}/gu) || [])]
+      .filter((term) => !SOURCE_SEARCH_STOP_WORDS.has(term));
+    return this.repository.listSources(projectId)
+      .filter((source) => !sourceKind || sourceMatchesKind(source.path, sourceKind))
+      .map((source) => ({ source, score: sourceSearchScore(source, terms, currentPath) }))
+      .filter((item) => item.score > 0)
+      .sort((left, right) => right.score - left.score || left.source.path.localeCompare(right.source.path))
+      .slice(0, limit)
+      .map((item) => item.source);
   }
 
   getSource(projectId, sourcePath) {
@@ -134,6 +153,14 @@ class ProjectService {
     const job = this.getBuildJob(jobId);
     const project = this.requireProject(job.project_id);
     const sources = this.repository.listSources(project.project_id);
+    const firmwareSources = project.build_config?.firmware_basis_id === "gernetix-runtime-basissoftware"
+      ? composeEsp32BasissoftwarePackage({
+          basisFiles: this.loadEsp32BasissoftwareFiles(),
+          projectSources: sources,
+          buildConfig: project.build_config,
+        })
+      : sources;
+    const platformioIni = firmwareSources.find((source) => source.path === "platformio.ini")?.content || renderPlatformioIni(project);
     const buildJob = {
       job_id: job.build_job_id,
       project_id: project.project_id,
@@ -147,12 +174,12 @@ class ProjectService {
       package_id: `pkg_${job.build_job_id}`,
       project: sanitizeProject(project),
       build_job: buildJob,
-      platformio_ini: renderPlatformioIni(project),
+      platformio_ini: platformioIni,
       files: [
         { path: "build-job.json", content: JSON.stringify(buildJob, null, 2), content_type: "application/json" },
         { path: "project-view-manifest.json", content: JSON.stringify(effectiveViewManifest(project), null, 2), content_type: "application/json" },
-        { path: "platformio.ini", content: renderPlatformioIni(project), content_type: "text/plain" },
-        ...sources.map((source) => ({
+        ...(project.build_config?.firmware_basis_id ? [] : [{ path: "platformio.ini", content: renderPlatformioIni(project), content_type: "text/plain" }]),
+        ...firmwareSources.map((source) => ({
           path: source.path,
           content: source.content,
           content_type: source.content_type,
@@ -299,12 +326,41 @@ class ProjectService {
 
 function normalizeBuildConfig(input = {}) {
   if (!input || typeof input !== "object") return null;
+  const firmwareBasisId = input.firmware_basis_id || "";
   return {
     platform: input.platform || "espressif32",
     framework: input.framework === undefined ? "arduino" : input.framework,
     board: input.board || "esp32dev",
     environment: input.environment || "esp32dev",
     libraries: input.libraries || [],
+    firmware_basis_id: firmwareBasisId,
+    firmware_basis_version: input.firmware_basis_version || "",
+    firmware_basis_variant: input.firmware_basis_variant || (firmwareBasisId ? "comfort" : ""),
+    user_source_path: input.user_source_path || "",
+    user_target_path: input.user_target_path || "",
+    component_device_allocations: Array.isArray(input.component_device_allocations)
+      ? input.component_device_allocations.map((item) => ({ ...item })).filter((item) => item.component_path && item.device_id)
+      : [],
+    component_features: normalizeComponentFeatures(input.component_features, input.firmware_basis_variant || (firmwareBasisId ? "comfort" : "")),
+  };
+}
+
+function normalizeComponentFeatures(input, basisVariant) {
+  const configured = input && typeof input === "object" ? input : {};
+  const immutable = basisVariant === "comfort"
+    ? ["wifi", "mqtt", "ota", "http", "webserver"]
+    : [];
+  const enabled = new Set(Array.isArray(configured.enabled) ? configured.enabled.map(String) : []);
+  immutable.forEach((feature) => enabled.add(feature));
+  return {
+    enabled: Array.from(enabled),
+    immutable,
+    webserver: {
+      title: String(configured.webserver?.title || "GerNetiX Device").slice(0, 80),
+      measurement_chart: Boolean(configured.webserver?.measurement_chart),
+      measurement_label: String(configured.webserver?.measurement_label || "Messwert").slice(0, 60),
+      measurement_unit: String(configured.webserver?.measurement_unit || "").slice(0, 16),
+    },
   };
 }
 
@@ -432,6 +488,32 @@ function maskSourceContent(source) {
     role: source.role,
     updated_at: source.updated_at,
   };
+}
+
+const SOURCE_SEARCH_STOP_WORDS = new Set(["aber", "bitte", "datei", "diese", "dieser", "einen", "einer", "etwas", "fuege", "füge", "hinzu", "machen", "mein", "meine", "mich", "projekt", "soll", "und", "werden"]);
+
+function normalizeSourceKind(value) {
+  return ["architecture", "code", "configuration", "documentation"].includes(value) ? value : "";
+}
+
+function sourceMatchesKind(pathValue, sourceKind) {
+  const path = String(pathValue || "").replaceAll("\\", "/");
+  if (sourceKind === "architecture") return /(^|\/)Architektur\/|\.(?:puml|plantuml)$/i.test(path);
+  if (sourceKind === "code") return /\.(?:c|cc|cpp|cxx|h|hh|hpp|hxx|ino|py|js|ts|java|rs)$/i.test(path);
+  if (sourceKind === "configuration") return /(^|\/)(?:Konfiguration|config)(?:\/|$)|\.(?:json|ya?ml|toml|ini)$/i.test(path);
+  return /\.(?:md|txt|adoc)$/i.test(path);
+}
+
+function sourceSearchScore(source, terms, currentPath) {
+  if (source.path === currentPath) return 100000;
+  if (!terms.length) return 0;
+  const path = String(source.path || "").toLocaleLowerCase("de-DE");
+  const content = String(source.content || "").toLocaleLowerCase("de-DE");
+  return terms.reduce((score, term) => {
+    const pathMatches = path.split(term).length - 1;
+    const contentMatches = Math.min(8, content.split(term).length - 1);
+    return score + (pathMatches * 20) + contentMatches;
+  }, 0);
 }
 
 function redactFeedback(feedback, consent = null) {

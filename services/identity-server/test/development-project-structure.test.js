@@ -24,31 +24,29 @@ test("creates architecture folders and component interface folders from AI archi
   assert.equal(paths.some((path) => path.endsWith("/README.md") || path === "README.md"), false);
   assert.ok(paths.includes("Architektur/informationsfluss/informationsfluss.md"));
   assert.ok(paths.includes("Architektur/systemverhalten/systemverhalten.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Eigenschaften/eigenschaften.md"));
+  assert.equal(paths.some((path) => path.includes("/Eigenschaften/")), false);
   assert.ok(paths.includes("Komponenten/ESP32/Schnittstellen/provided.md"));
   assert.ok(paths.includes("Komponenten/ESP32/Schnittstellen/required.md"));
   assert.ok(paths.includes("Komponenten/ESP32/Verhalten/Modell/modell.md"));
   assert.ok(paths.includes("Komponenten/ESP32/Verhalten/Code/code.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Verhalten/Config/config.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Konfiguration/Board/board.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Konfiguration/Sensoren/in.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Konfiguration/Aktoren/out.md"));
+  assert.ok(paths.includes("Komponenten/ESP32/Konfiguration/Software/software.md"));
+  assert.ok(paths.includes("Komponenten/ESP32/Konfiguration/Hardware/Board/board.md"));
+  assert.ok(paths.includes("Komponenten/ESP32/Konfiguration/Hardware/Sensoren/in.md"));
+  assert.ok(paths.includes("Komponenten/ESP32/Konfiguration/Hardware/Aktoren/out.md"));
   assert.ok(paths.includes("Komponenten/ESP32/Daten/daten.md"));
   assert.ok(paths.includes("Komponenten/ESP32/Beziehungen/beziehungen.md"));
-  assert.ok(paths.includes("Komponenten/MQTT-Client/Eigenschaften/eigenschaften.md"));
   assert.ok(paths.includes("Komponenten/MQTT-Client/Schnittstellen/provided.md"));
   assert.ok(paths.includes("Komponenten/MQTT-Client/Schnittstellen/required.md"));
   assert.ok(paths.includes("Komponenten/MQTT-Client/Verhalten/Modell/modell.md"));
   assert.ok(paths.includes("Komponenten/MQTT-Client/Verhalten/Code/code.md"));
-  assert.ok(paths.includes("Komponenten/MQTT-Client/Verhalten/Config/config.md"));
+  assert.ok(paths.includes("Komponenten/MQTT-Client/Konfiguration/Software/software.md"));
   assert.ok(paths.includes("Komponenten/MQTT-Client/Daten/daten.md"));
   assert.ok(paths.includes("Komponenten/MQTT-Client/Beziehungen/beziehungen.md"));
-  assert.ok(paths.includes("Komponenten/Server/Eigenschaften/eigenschaften.md"));
   assert.ok(paths.includes("Komponenten/Server/Schnittstellen/provided.md"));
   assert.ok(paths.includes("Komponenten/Server/Schnittstellen/required.md"));
   assert.ok(paths.includes("Komponenten/Server/Verhalten/Modell/modell.md"));
   assert.ok(paths.includes("Komponenten/Server/Verhalten/Code/code.md"));
-  assert.ok(paths.includes("Komponenten/Server/Verhalten/Config/config.md"));
+  assert.ok(paths.includes("Komponenten/Server/Konfiguration/Software/software.md"));
   assert.ok(paths.includes("Komponenten/Server/Daten/daten.md"));
   assert.ok(paths.includes("Komponenten/Server/Beziehungen/beziehungen.md"));
 
@@ -71,24 +69,49 @@ test("keeps required interfaces visible for minimal ESP32 projects", () => {
   });
 
   const required = sources.find((source) => source.path === "Komponenten/ESP32/Schnittstellen/required.md");
-  const properties = sources.find((source) => source.path === "Komponenten/ESP32/Eigenschaften/eigenschaften.md");
   const data = sources.find((source) => source.path === "Komponenten/ESP32/Daten/daten.md");
-  const board = sources.find((source) => source.path === "Komponenten/ESP32/Konfiguration/Board/board.md");
-  const sensorIn = sources.find((source) => source.path === "Komponenten/ESP32/Konfiguration/Sensoren/in.md");
-  const actuatorOut = sources.find((source) => source.path === "Komponenten/ESP32/Konfiguration/Aktoren/out.md");
+  const software = sources.find((source) => source.path === "Komponenten/ESP32/Konfiguration/Software/software.md");
+  const board = sources.find((source) => source.path === "Komponenten/ESP32/Konfiguration/Hardware/Board/board.md");
+  const sensorIn = sources.find((source) => source.path === "Komponenten/ESP32/Konfiguration/Hardware/Sensoren/in.md");
+  const actuatorOut = sources.find((source) => source.path === "Komponenten/ESP32/Konfiguration/Hardware/Aktoren/out.md");
   assert.ok(required);
-  assert.ok(properties);
   assert.ok(data);
+  assert.ok(software);
   assert.ok(board);
   assert.ok(sensorIn);
   assert.ok(actuatorOut);
   assert.match(required.content, /Required Interfaces/);
   assert.match(required.content, /Stromversorgung/);
-  assert.match(properties.content, /Betriebsort: Device/);
   assert.match(data.content, /Messwerte/);
+  assert.match(software.content, /Software-Konfiguration/);
   assert.match(board.content, /Board-Profil/);
   assert.match(sensorIn.content, /I2C/);
   assert.match(sensorIn.content, /ADC/);
   assert.match(actuatorOut.content, /Relais/);
   assert.match(actuatorOut.content, /GPIO/);
+});
+
+test("does not invent a SQLite component for storage on an ESP32 without a server", () => {
+  const sources = developmentProjectSources({
+    title: "ESP32 Device only",
+    description: "Messwerte lokal speichern und als Historie anzeigen.",
+    diagram: {
+      source: '@startuml\nnode "ESP32 Device" as device\ndatabase "Lokaler Messwertspeicher" as storage\n@enduml',
+      detected_blocks: ["device", "database"],
+    },
+  });
+  assert.equal(sources.some((source) => source.path.includes("SQLite-Datenbank")), false);
+  assert.equal(sources.some((source) => source.path.startsWith("Komponenten/ESP32/")), true);
+});
+
+test("models central SQL storage as a software property of a server", () => {
+  const sources = developmentProjectSources({
+    title: "Zentrale Messwerte",
+    description: "Daten zentral in SQLite speichern und weltweit ueber eine API abrufen.",
+  });
+  const paths = sources.map((source) => source.path);
+  assert.equal(paths.some((path) => path.includes("SQLite-Datenbank")), false);
+  assert.ok(paths.includes("Komponenten/Server/Konfiguration/Software/software.md"));
+  const software = sources.find((source) => source.path === "Komponenten/Server/Konfiguration/Software/software.md");
+  assert.match(software.content, /SQL\/SQLite-Persistenz/);
 });

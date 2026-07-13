@@ -118,6 +118,10 @@ test("remote ai usage summary exposes cost-control policy and rejection causes",
         },
       },
       by_account: [{ account_id: "acct-demo", available_credits: 114.451 }],
+      by_model: [
+        { model: "gpt-5.6-terra", events: 2, successful: 1, rejected: 1, input_tokens: 900, output_tokens: 100, tokens: 1000, credits: 800, estimated_provider_cost: 0.01 },
+        { model: "llama3.2:3b", events: 1, successful: 1, rejected: 0, input_tokens: 400, output_tokens: 100, tokens: 500, credits: 500, estimated_provider_cost: 0 },
+      ],
       suspicious_usage: [{ finding_type: "repeated_rejections", severity: "warning" }],
     },
   });
@@ -130,6 +134,10 @@ test("remote ai usage summary exposes cost-control policy and rejection causes",
   assert.equal(result.summary.rejection_breakdown[0].reason, "insufficient_credits");
   assert.equal(result.summary.accounts[0].account_id, "acct-demo");
   assert.equal(result.summary.suspicious_usage[0].finding_type, "repeated_rejections");
+  assert.equal(result.summary.external.tokens, 1000);
+  assert.equal(result.summary.local.tokens, 500);
+  assert.equal(result.summary.provider_breakdown.length, 2);
+  assert.deepEqual(result.summary.model_breakdown.map((item) => item.model), ["gpt-5.6-terra", "llama3.2:3b"]);
 });
 
 test("account sheet exposes source based ai rating per account", async () => {
@@ -406,6 +414,29 @@ test("llm config test uses OpenAI Responses API when configured", async () => {
     assert.equal(result.ok, true);
     assert.equal(result.content, "OK");
     assert.equal(result.usage.totalTokens, 5);
+  } finally {
+    global.fetch = previousFetch;
+  }
+});
+
+test("loads selectable API models from the configured OpenAI provider", async () => {
+  const service = createAdminServiceWithHttpJson({});
+  const previousFetch = global.fetch;
+  let requestedUrl = "";
+  global.fetch = async (url, options) => {
+    requestedUrl = url;
+    assert.equal(options.headers.Authorization, "Bearer secret");
+    return { ok: true, status: 200, json: async () => ({ data: [{ id: "gpt-5.6-terra" }, { id: "text-embedding-3-small" }, { id: "gpt-5.6-sol" }] }) };
+  };
+  service.llmConfigStore = {
+    getConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiBaseUrl: "https://api.openai.com/v1", apiKey: "secret" }),
+    publicConfig: () => ({}),
+    updateConfig: () => ({}),
+  };
+  try {
+    const result = await service.listLlmModels({ provider: "api", apiProvider: "openai-responses" });
+    assert.equal(requestedUrl, "https://api.openai.com/v1/models");
+    assert.deepEqual(result.items.map((item) => item.model), ["gpt-5.6-terra", "gpt-5.6-sol"]);
   } finally {
     global.fetch = previousFetch;
   }

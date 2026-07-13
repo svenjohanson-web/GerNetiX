@@ -1,6 +1,13 @@
 const crypto = require("node:crypto");
+const fs = require("node:fs");
 
-function createDevHardwareUtils({ defaultCatalogSeed, execFileAsync, hardwareCatalogJson }) {
+function createDevHardwareUtils({
+  defaultCatalogSeed,
+  execFileAsync,
+  hardwareCatalogJson,
+  platform = process.platform,
+  readDeviceDirectory = () => fs.readdirSync("/dev"),
+}) {
   function requiredField(value, field) {
     const normalized = String(value || "").trim();
     if (!normalized) {
@@ -102,7 +109,7 @@ function createDevHardwareUtils({ defaultCatalogSeed, execFileAsync, hardwareCat
   }
 
   async function listUsbSerialPorts() {
-    if (process.platform !== "win32") return [];
+    if (platform !== "win32") return listPosixUsbSerialPorts();
     const script = [
       "$items = Get-CimInstance Win32_PnPEntity | Where-Object { $_.Name -match '\\(COM\\d+\\)' } | ForEach-Object {",
       "  $port = if ($_.Name -match '(COM\\d+)') { $Matches[1] } else { '' }",
@@ -141,6 +148,41 @@ function createDevHardwareUtils({ defaultCatalogSeed, execFileAsync, hardwareCat
     } catch {
       return listUsbSerialPortsFromMode();
     }
+  }
+
+  function listPosixUsbSerialPorts() {
+    try {
+      const names = readDeviceDirectory();
+      const matcher = platform === "darwin"
+        ? /^cu\.(?:usbserial|usbmodem|SLAB_USBtoUART|wchusbserial)/i
+        : /^(?:ttyUSB|ttyACM)\d+$/i;
+      return names
+        .filter((name) => matcher.test(name))
+        .sort((left, right) => left.localeCompare(right))
+        .map((name) => ({
+          port: `/dev/${name}`,
+          name: posixUsbPortName(name),
+          device_id: name,
+          manufacturer: posixUsbPortManufacturer(name),
+          pnp_class: "Ports",
+          status: "OK",
+        }));
+    } catch {
+      return [];
+    }
+  }
+
+  function posixUsbPortName(name) {
+    if (/SLAB_USBtoUART|usbserial/i.test(name)) return `${name} (USB Serial)`;
+    if (/wchusbserial/i.test(name)) return `${name} (WCH USB Serial)`;
+    if (/usbmodem|ttyACM/i.test(name)) return `${name} (USB CDC)`;
+    return `${name} (USB Serial)`;
+  }
+
+  function posixUsbPortManufacturer(name) {
+    if (/SLAB_USBtoUART/i.test(name)) return "Silicon Labs";
+    if (/wchusbserial/i.test(name)) return "WCH";
+    return "";
   }
 
   async function listUsbSerialPortsFromMode() {

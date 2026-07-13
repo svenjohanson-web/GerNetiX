@@ -38,6 +38,7 @@ function validInput(overrides = {}) {
     service_endpoints: {
       device_management: "https://devices.gernetix.test/api/device-management",
       build_deploy: "https://build.gernetix.test",
+      mqtt_broker: "mqtts://mqtt.gernetix.test:8883",
     },
     flash: {
       requested: true,
@@ -87,12 +88,40 @@ test("manifest contains endpoint and credential reference but no raw secret", as
   assert.equal(manifest.firmware.artifact.source, "sqlite");
   assert.equal(manifest.firmware.artifact.artifact_id, "firmware_artifact.esp32_basissoftware_factory.latest");
   assert.equal(manifest.service_endpoints.build_deploy, "https://build.gernetix.test");
+  assert.equal(manifest.service_endpoints.mqtt_broker, "mqtts://mqtt.gernetix.test:8883");
   assert.equal(manifest.credential.key_reference, created.credential.key_reference);
   assert.equal(manifest.credential.one_time_device_secret, undefined);
 });
 
-test("exposes firmware artifact content for browser USB flash", async () => {
+test("accepts a local private IPv4 MQTT broker", async () => {
   const service = createService();
+  const input = validInput({ mqtt_mode: "local" });
+  input.serial_number = "GNX-ESP32-LOCAL";
+  input.service_endpoints.mqtt_broker = "mqtt://192.168.50.20:1883";
+  const created = await service.createSession(input);
+
+  assert.equal(service.getManifest(created.session_id).service_endpoints.mqtt_broker, "mqtt://192.168.50.20:1883");
+});
+
+test("rejects a public plaintext MQTT broker", async () => {
+  const service = createService();
+  const input = validInput({ mqtt_mode: "local" });
+  input.serial_number = "GNX-ESP32-PUBLIC";
+  input.service_endpoints.mqtt_broker = "mqtt://8.8.8.8:1883";
+
+  await assert.rejects(() => service.createSession(input), (error) => error.code === "invalid_mqtt_broker");
+});
+
+test("exposes firmware artifact content for browser USB flash", async () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-provisioning-artifact-"));
+  const firmwarePath = path.join(tempRoot, "merged-firmware.bin");
+  fs.writeFileSync(firmwarePath, "test firmware");
+  const service = createDefaultProvisioningTool(createConfig({
+    DEVICE_MANAGEMENT_BASE_URL: "https://devices.gernetix.test/api/device-management",
+    FLASH_RUNNER: "mock",
+    REGISTER_DEVICE_ON_COMPLETE: "false",
+    PROVISIONING_FIRMWARE_FILE_PATH: firmwarePath,
+  }));
   const created = await service.createSession(validInput());
   const content = service.getFirmwareArtifactContent(created.usb_flash_package.firmware_artifact.artifact_id);
 

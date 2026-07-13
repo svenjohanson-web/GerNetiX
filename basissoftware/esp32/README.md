@@ -2,6 +2,15 @@
 
 GerNetiX Basissoftware fuer ESP32-Projekte auf Basis von ESP-IDF.
 
+## Identität der Basissoftware
+
+Jede Basissoftware muss zwei voneinander getrennte, nicht leere Identitätsangaben besitzen:
+
+- `basissoftwareVersion`: technische, veröffentlichte Version der konkreten Basissoftware
+- `basissoftwareVariant`: Funktionsprofil, aktuell `comfort`; weitere vorgesehene Profile sind beispielsweise `min-connect` oder `min-ota`
+
+Beide Angaben sind Compile-Time-Metadaten der Firmware und werden über `/status` ausgegeben. Die frei provisionierbare `firmwareVersion` bezeichnet dagegen die ausgelieferte Anwendungsfirmware und darf die Identität der Basissoftware nicht ersetzen.
+
 Dieses Verzeichnis ist das aktive ESP32-Firmwareprojekt:
 
 ```text
@@ -25,9 +34,11 @@ extern "C" void app_main() {
   initSerial();
   initPins();
   initWifi();
-  startDeviceWebServer();
+  applyFactoryProvisioningIfAvailable();
   runDiagnostics();
   onProjectInit();
+  confirmRunningOtaImage();
+  startMqttOtaSubscriber();
   startRuntimeTasks();
 }
 ```
@@ -60,6 +71,21 @@ Jede Basissoftware-Funktion liegt in einer eigenen Datei. Projektlogik wird nich
 platformio run
 ```
 
+### 4-MB-OTA-Partitionslayout
+
+Das Standardprofil `esp32dev` verwendet `partitions_ota_4mb.csv` fuer Boards mit 4 MB Flash:
+
+- `nvs`: 24 KiB fuer Runtime- und Provisioning-Konfiguration; Offset und Groesse bleiben kompatibel zum bisherigen Single-App-Layout
+- `otadata`: 8 KiB fuer ausfallsichere OTA-Auswahlmetadaten
+- `ota_0`: 1,4375 MiB fuer das aktive Firmware-Image
+- `ota_1`: 1,4375 MiB fuer das alternative Firmware-Image
+- `storage`: 960 KiB SPIFFS-Datenbereich
+- `coredump`: 64 KiB fuer Diagnoseabbilder
+
+Die Tabelle endet exakt an der 4-MB-Grenze `0x400000`. App-Slots beginnen auf 64-KiB-Grenzen; Datenpartitionen auf 4-KiB-Grenzen. `ota_0` beginnt bewusst erst bei `0x20000`: Dadurch bleiben die sechs bisherigen NVS-Sektoren von `0x9000` bis `0xEFFF` bei einer USB-Migration vom alten Single-App-Layout unangetastet. Fuer erkannte 2-MB-Boards darf dieses Profil nicht verwendet werden. Sie benoetigen ein eigenes Board-/Partitionsprofil.
+
+Die Basissoftware nutzt dieses A/B-Layout fuer authentifizierte HTTPS-Updates. Bootloader-Rollback ist aktiv: Ein neu gestartetes Image wird erst nach abgeschlossener Runtime-Initialisierung und den Diagnosen bestaetigt. Bricht der Start vorher ab, kann der Bootloader auf das vorherige Image zurueckfallen.
+
 ## WLAN-Setup-AP
 
 Beim Start initialisiert die Basissoftware WiFi im SoftAP-Modus. Nach dem Flashen sollte im WLAN-Scan ein offenes Netzwerk sichtbar sein:
@@ -67,6 +93,8 @@ Beim Start initialisiert die Basissoftware WiFi im SoftAP-Modus. Nach dem Flashe
 ```text
 GerNetiX-Setup
 ```
+
+Nach einem Abbruch der Station-Verbindung verbindet sich die Basissoftware dauerhaft erneut. Die Pausen steigen von 1, 2, 5, 10 und 30 Sekunden bis maximal 60 Sekunden; nach erfolgreicher IP-Zuweisung beginnt ein spaeterer Reconnect wieder bei 1 Sekunde. Ein kurzzeitiger Router-, Funk- oder DHCP-Ausfall erfordert dadurch keinen Board-Reset.
 
 Nach dem Verbinden mit diesem Netzwerk ist das lokale Device-Webinterface unter der Standard-AP-Adresse erreichbar:
 
@@ -84,6 +112,23 @@ Aktuelle lokale Endpunkte:
 - Unbekannte GET-Pfade wie `/generate_204`, `/hotspot-detect.html` oder `/connecttest.txt` werden als Captive-Portal-Einstieg auf die lokale Setup-Seite beantwortet.
 - `POST /provisioning` speichert einen Factory-Provisioning-Payload dauerhaft in NVS. Das Provisioning Tool nutzt diesen Endpunkt nach dem USB-Flash, damit Seriennummer und Device-ID ohne Board-spezifischen Firmware-Neubuild auf dem Board landen.
 - `POST /auth/challenge` nimmt eine Device-Management-Challenge an und erzeugt einen lokalen `HMAC_SHA256`-Nachweis mit dem provisionierten Device-Secret.
+- `POST /ota` nimmt einen authentifizierten OTA-Auftrag an und startet den Download in einem separaten Runtime-Task.
+
+Ein OTA-Auftrag enthaelt `deploy_id`, eine strikt steigende `sequence`, `firmware_url`, den erwarteten Image-`sha256` und `authorization`. Die Autorisierung ist `HMAC_SHA256` mit dem provisionierten Device-Secret ueber `deploy_id`, `sequence`, `device_id`, `firmware_url` und `sha256`, jeweils durch einen Zeilenumbruch getrennt und ohne abschliessenden Zeilenumbruch.
+
+Das Device akzeptiert nur HTTPS-URLs vom Origin des provisionierten `buildDeployUrl` und nur einen laufenden Auftrag. Nach dem Download wird der SHA-256 des geschriebenen App-Images geprueft. Erst danach wird der neue Slot aktiviert und die Sequenznummer in NVS gespeichert. `/status` liefert den aktuellen Zustand unter `ota`.
+
+## MQTT-Benachrichtigung fuer neue Firmware
+
+Beim Provisioning kann als MQTT-Ziel entweder der VPS oder ein Broker im lokalen Netzwerk gewaehlt werden. Der VPS wird per `mqtts://` angesprochen (Standard: `mqtts://mqtt.gernetix.com:8883`). Fuer Entwicklung und Inbetriebnahme im LAN ist `mqtt://<private-ip>:<port>` erlaubt; Klartext-MQTT zu Hostnamen oder oeffentlichen IP-Adressen wird von Basissoftware und Provisioning Tool abgewiesen.
+
+Das Device verbindet sich mit seiner Device-ID als Client-ID und Benutzername. Das Broker-Passwort wird lokal per HMAC mit dem festen Kontext `gernetix:mqtt-broker-auth:v1` aus dem Device-Secret abgeleitet; das eigentliche Device-Secret wird nicht an den Broker uebertragen. Auch der lokale Broker muss dieses Credential kennen. Die serverseitige Broker-Registrierung muss beim Factory-Provisioning dieselbe Ableitung verwenden. Das Device abonniert mit QoS 1:
+
+```text
+gernetix/devices/<device_id>/ota
+```
+
+Der MQTT-Payload entspricht exakt dem JSON-Vertrag von `POST /ota`. MQTT ist nur der Pub/Sub-Transport: HMAC, Sequenznummer, HTTPS-Origin und Image-SHA-256 werden unveraendert im OTA-Modul geprueft. Der ESP-MQTT-Client verbindet sich nach Abbruechen automatisch neu. `/status` zeigt unter `mqtt` Verbindungszustand und Topic; Credentials werden dort nicht ausgegeben.
 
 Nach erfolgreichem Provisioning enthaelt `/status` zusaetzlich:
 
@@ -100,6 +145,7 @@ Nach erfolgreichem Provisioning enthaelt `/status` zusaetzlich:
 - `keyReference`
 - `deviceManagementUrl`
 - `buildDeployUrl`
+- `mqttBrokerUrl`
 - `provisioningBatchId`
 - `provisionedBy`
 - `capabilities`
@@ -157,7 +203,7 @@ node tools\firmware-contract-check\check-provisioning-contract.js
 
 Der Check erzeugt ein reales Provisioning-Manifest aus `services/provisioning-tool` und prueft, ob die ESP32-Basissoftware die erwarteten Manifestfelder kennt. Der schwere Firmware-Build bleibt ein expliziter Integrationsschritt.
 
-Dieser AP ist der erste Schritt fuer das im Register-und-Pairing-Konzept beschriebene Connectivity Setup. WLAN-Scan, Speichern der Ziel-WLAN-Daten, Wechsel in den Node-Modus und OTA sind noch Folgearbeiten.
+Dieser AP ist der erste Schritt fuer das im Register-und-Pairing-Konzept beschriebene Connectivity Setup. WLAN-Scan, Speichern der Ziel-WLAN-Daten und der authentifizierte OTA-Firmwarepfad sind vorhanden. Die serverseitige Zustellung eines Deploy-Auftrags an ein entferntes Device bleibt eine getrennte Integrationsaufgabe.
 
 ## Offene Entscheidungen
 
@@ -166,5 +212,5 @@ Die folgenden Punkte sind im fachlichen Graphen als offene Entscheidungen dokume
 - `decision.esp32_ota_bootstrap_firmware.wifi_setup`: WLAN-Scan, SSID-Auswahl, Passwort-Eingabe und lokale NVS-Speicherung.
 - `decision.esp32_ota_bootstrap_firmware.node_mode_policy`: Verhalten nach erfolgreicher WLAN-Verbindung, z. B. STA-only, AP+STA oder Fallback-AP.
 - `decision.esp32_ota_bootstrap_firmware.flash_layout`: 2-MB-Flash-Unterstuetzung vs. 4-MB-OTA-Zielprofil und Partitionierung.
-- `decision.esp32_ota_bootstrap_firmware.ota_authentication`: lokaler Prototyp, HMAC/Token oder signierte Firmware.
+- `decision.esp32_ota_bootstrap_firmware.ota_authentication`: Der Device-Auftrag ist jetzt per HMAC authentifiziert und das Image per SHA-256 gebunden; eine zusaetzliche asymmetrische Artefaktsignatur und Secure-Boot-Policy bleiben als Produktionsentscheidung offen.
 - `decision.esp32_ota_bootstrap_firmware.service_endpoints`: konfigurierbare Device-Management-, Build-&-Deploy-, MQTT- und HTTPS-Endpunkte.

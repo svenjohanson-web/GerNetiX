@@ -2,7 +2,9 @@ const GuidedProjectView = (() => {
   function create(deps) {
     const {
       state,
+      getJson,
       postJson,
+      putJson,
       progressFor,
       escapeHtml,
       escapeAttribute,
@@ -46,6 +48,7 @@ const GuidedProjectView = (() => {
               <aside class="guided-summary-pane">
                 ${renderManifestView(activeView, validation)}
                 ${renderGuidedValidation(activeView, validation)}
+                ${renderCodeExplorerChat(project, activeView)}
                 ${renderGuidedActions(project, activeView, validation)}
               </aside>
             </div>
@@ -61,7 +64,291 @@ const GuidedProjectView = (() => {
       target.querySelectorAll("[data-guided-control]").forEach((button) => {
         button.addEventListener("click", () => handleGuidedControl(project, activeView, button.dataset.guidedControl));
       });
+      bindCodeExplorerChat(target, project, activeView);
       renderGuidedPlantUml(target);
+    }
+
+    function renderProjectAssistant(project) {
+      const target = document.querySelector("#ideCodeAssistant");
+      if (!target || !project) return;
+      const configuredView = guidedViews(project)[state.activeIdeStep];
+      const view = isCodeExplorerView(configuredView) ? configuredView : {
+        id: `source:${state.sourcePath || "project"}`,
+        type: "source_analysis",
+        title: state.sourcePath || "Projektdatei",
+        summary: "KI-Unterstuetzung fuer die aktuell geoeffnete Datei und die Artefakte dieses Projekts.",
+        source_path: state.sourcePath,
+        payload: { artifact: { type: "code", content: document.querySelector("#sourceEditor")?.value || "" } },
+      };
+      target.innerHTML = renderCodeExplorerChat(project, view);
+      bindCodeExplorerChat(target, project, view);
+      scrollCodeExplorerChatToEnd(target);
+      if (typeof restoreIdeChatInputHeight === "function") restoreIdeChatInputHeight();
+    }
+
+    function bindCodeExplorerChat(target, project, view) {
+      target.querySelector("[data-code-explorer-chat]")?.addEventListener("submit", (event) => submitCodeExplorerChat(event, project, view));
+      target.querySelectorAll("[data-apply-code-edit]").forEach((button) => {
+        button.addEventListener("click", () => applyCodeExplorerEdit(project, view, button.dataset.editMessage, Number(button.dataset.applyCodeEdit)));
+      });
+      target.querySelectorAll("[data-show-code-edit]").forEach((button) => {
+        button.addEventListener("click", () => showCodeExplorerEdit(project, view, button.dataset.editMessage, Number(button.dataset.showCodeEdit)));
+      });
+    }
+
+    function scrollCodeExplorerChatToEnd(target) {
+      const history = target.querySelector(".code-explorer-chat-messages");
+      if (history) history.scrollTop = history.scrollHeight;
+    }
+
+    function codeChatKey(project, view) {
+      return `${project.id}:${view.id || state.activeIdeStep}`;
+    }
+
+    function codeChatMessages(project, view) {
+      const key = codeChatKey(project, view);
+      if (!Array.isArray(state.guidedCodeChats[key])) state.guidedCodeChats[key] = [];
+      return state.guidedCodeChats[key];
+    }
+
+    function isCodeExplorerView(view) {
+      return view?.type === "source_analysis" || view?.payload?.artifact?.type === "code";
+    }
+
+    function renderCodeExplorerChat(project, view) {
+      if (!isCodeExplorerView(view)) return "";
+      const messages = codeChatMessages(project, view);
+      const waiting = messages.some((message) => message.pending);
+      return `
+        <section class="code-explorer-chat">
+          <div class="code-explorer-chat-head">
+            <p class="eyebrow">KI-Chat</p>
+            <strong>Code gemeinsam verstehen</strong>
+            ${renderCodeExplorerUsage()}
+          </div>
+          <p class="code-explorer-chat-section-label">Verlauf</p>
+          <div class="code-explorer-chat-messages" aria-live="polite">
+            ${messages.length ? messages.map((message) => `
+              <article class="code-explorer-chat-message ${message.role}">
+                <span>${message.role === "assistant" ? "KI" : "Du"}</span>
+                ${message.pending
+                  ? `<p class="code-explorer-chat-waiting" aria-label="${escapeHtml(message.status || "KI antwortet")}"><span>${escapeHtml(message.status || "KI verarbeitet die Anfrage")}</span><i></i><i></i><i></i></p>`
+                  : `<p>${escapeHtml(message.content)}</p>`}
+                ${message.role === "assistant" && !message.pending ? renderCodeExplorerResponseMeta(message.responseMeta) : ""}
+                ${message.fileEdits?.length ? `<div class="code-explorer-edits">
+                  ${message.fileEdits.map((edit, editIndex) => `<div class="code-explorer-edit-actions"><button type="button" data-edit-message="${messages.indexOf(message)}" data-show-code-edit="${editIndex}">Änderung anzeigen</button><button type="button" data-edit-message="${messages.indexOf(message)}" data-apply-code-edit="${editIndex}" ${edit.applied ? "disabled" : ""}>${edit.applied ? "Übernommen" : "Übernehmen"}</button><span>${escapeHtml(edit.path)}</span></div>`).join("")}
+                  <section class="code-explorer-change-summary" aria-label="Zusammenfassung der Dateiänderungen">
+                    <strong>Zusammenfassung</strong>
+                    <ul>${message.fileEdits.map((edit) => `<li><code>${escapeHtml(edit.path)}</code><span>Zeile ${edit.lineStart || 1}${edit.lineEnd && edit.lineEnd !== edit.lineStart ? `–${edit.lineEnd}` : ""}: ${escapeHtml(edit.changeSummary || "Inhalt geaendert")}${edit.applied ? " · übernommen" : " · geplant"}</span></li>`).join("")}</ul>
+                  </section>
+                </div>` : ""}
+              </article>
+            `).join("") : `<p class="helper-text">Frage die KI zum sichtbaren Code, zu einzelnen Zeilen oder zum Verhalten.</p>`}
+          </div>
+          <form data-code-explorer-chat>
+            <p class="code-explorer-chat-section-label">Eingabe</p>
+            <label>Frage zum Code
+              <textarea rows="3" name="message" placeholder="Was passiert in dieser Funktion?"></textarea>
+            </label>
+            <div class="button-row">
+              <span class="chat-status" data-code-chat-status>Bereit.</span>
+              <button class="primary" type="submit" ${waiting ? "disabled" : ""}>Fragen</button>
+            </div>
+          </form>
+        </section>
+      `;
+    }
+
+    async function submitCodeExplorerChat(event, project, view) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const input = form.elements.message;
+      const content = String(input.value || "").trim();
+      if (!content) return;
+      const messages = codeChatMessages(project, view);
+      if (messages.some((message) => message.pending)) return;
+      messages.push({ role: "user", content });
+      const pendingMessage = { role: "assistant", content: "", pending: true, status: "Projektkontext wird vorbereitet" };
+      messages.push(pendingMessage);
+      input.value = "";
+      renderProjectAssistant(project);
+      const delayedStatus = setTimeout(() => {
+        if (!pendingMessage.pending) return;
+        pendingMessage.status = "Die KI arbeitet noch – die Antwort dauert ungewöhnlich lange";
+        renderProjectAssistant(project);
+      }, 8000);
+      try {
+        const targetPath = view.source_path || state.sourcePath || "Projektquelle";
+        pendingMessage.status = "KI durchsucht das Projekt nach relevanten Dateien";
+        renderProjectAssistant(project);
+        const response = await postJson("/api/platform/development-assistant/chat", {
+          projectId: project.id,
+          assistantMode: "code_explorer",
+          previousResponseId: messages.providerResponseId || "",
+          messages: messages.filter((message) => !message.pending).map(({ role, content: messageContent }) => ({ role, content: messageContent })),
+          codeContext: {
+            path: targetPath,
+            content: "",
+            editTargetPath: "",
+            focusLines: view.source_lines || view.editable_lines || [],
+            questions: view.payload?.questions || [],
+            files: [],
+            artifacts: [],
+          },
+        });
+        recordCodeExplorerUsage(response);
+        if (response.providerResponseId) messages.providerResponseId = response.providerResponseId;
+        Object.assign(pendingMessage, {
+          content: response.message?.content || "Keine Antwort erhalten.",
+          fileEdits: response.fileEdits || [],
+          responseMeta: codeExplorerResponseMeta(response),
+          pending: false,
+        });
+      } catch (error) {
+        Object.assign(pendingMessage, {
+          content: `Der Code-Assistent ist gerade nicht erreichbar: ${error.message}`,
+          responseMeta: { responder: "System / Fehler" },
+          pending: false,
+        });
+      } finally {
+        clearTimeout(delayedStatus);
+      }
+      renderProjectViewManifest(project);
+      renderProjectAssistant(project);
+    }
+
+    function renderCodeExplorerUsage() {
+      const rating = state.aiUsage?.rating || {};
+      const sources = Array.isArray(rating.sources) ? rating.sources : [];
+      if (!sources.length) return `<div class="code-explorer-usage unavailable">Tokenverbrauch nicht verfügbar</div>`;
+      const limited = sources.filter((source) => !source.unlimited && Number(source.token_limit) > 0)
+        .sort((left, right) => Number(right.used_percent || 0) - Number(left.used_percent || 0));
+      const source = limited[0] || sources[0];
+      const usedPercent = Math.max(0, Math.min(100, Number(source.used_percent || 0)));
+      const title = source.title || source.source_id || "KI";
+      const value = source.unlimited ? "unbegrenzt" : `${usedPercent.toLocaleString("de-DE", { maximumFractionDigits: 1 })} % verbraucht`;
+      const detail = source.unlimited
+        ? `${Number(source.month_tokens || 0).toLocaleString("de-DE")} Tokens diesen Monat`
+        : `${Number(source.month_tokens || 0).toLocaleString("de-DE")} / ${Number(source.token_limit || 0).toLocaleString("de-DE")} Tokens`;
+      return `<div class="code-explorer-usage" title="${escapeAttribute(`${title}: ${detail}`)}">
+        <span>${escapeHtml(title)}</span><strong>${escapeHtml(value)}</strong>
+        <small>${escapeHtml(detail)}</small>
+        ${source.unlimited ? "" : `<i class="code-explorer-usage-bar"><b style="width:${usedPercent}%"></b></i>`}
+      </div>`;
+    }
+
+    function recordCodeExplorerUsage(response = {}) {
+      const totalTokens = Number(response.usage?.totalTokens);
+      const sources = state.aiUsage?.rating?.sources;
+      if (!Number.isFinite(totalTokens) || totalTokens <= 0 || !Array.isArray(sources)) return;
+      const sourceId = response.routing?.local === false ? "openai_gpt" : "local_llm";
+      const source = sources.find((item) => item.source_id === sourceId);
+      if (!source) return;
+      source.month_tokens = Number(source.month_tokens || 0) + totalTokens;
+      source.used_percent = Number(source.token_limit) > 0
+        ? Number(Math.min(100, (source.month_tokens / Number(source.token_limit)) * 100).toFixed(2))
+        : 0;
+      const limited = sources.filter((item) => !item.unlimited && Number(item.token_limit) > 0);
+      state.aiUsage.rating.used_percent = limited.length ? Math.max(...limited.map((item) => Number(item.used_percent || 0))) : 0;
+    }
+
+    function codeExplorerResponseMeta(response = {}) {
+      const routing = response.routing || {};
+      const usage = response.usage || {};
+      const usageSteps = Array.isArray(response.usageBreakdown?.steps) ? response.usageBreakdown.steps : [];
+      const firstStep = usageSteps[0] || {};
+      const toolSteps = usageSteps.slice(1);
+      return {
+        responder: routing.label || routing.provider || "KI",
+        model: routing.model || "",
+        promptTokens: Number.isFinite(usage.promptTokens) ? usage.promptTokens : null,
+        completionTokens: Number.isFinite(usage.completionTokens) ? usage.completionTokens : null,
+        totalTokens: Number.isFinite(usage.totalTokens) ? usage.totalTokens : null,
+        durationMs: Number.isFinite(usage.totalDurationMs) ? usage.totalDurationMs : null,
+        baseInputTokens: Number.isFinite(firstStep.inputTokens) ? firstStep.inputTokens : null,
+        toolInputTokens: toolSteps.length ? toolSteps.reduce((sum, step) => sum + Number(step.inputTokens || 0), 0) : 0,
+        cachedInputTokens: usageSteps.reduce((sum, step) => sum + Number(step.cachedTokens || 0), 0),
+      };
+    }
+
+    function renderCodeExplorerResponseMeta(meta = {}) {
+      const items = [
+        meta.responder || "KI",
+        meta.model,
+        meta.promptTokens !== null && meta.promptTokens !== undefined ? `Eingabe ${meta.promptTokens} Token` : "",
+        meta.completionTokens !== null && meta.completionTokens !== undefined ? `Antwort ${meta.completionTokens} Token` : "",
+        meta.totalTokens !== null && meta.totalTokens !== undefined ? `Gesamt ${meta.totalTokens} Token` : "",
+        meta.baseInputTokens !== null && meta.baseInputTokens !== undefined ? `Grundkontext ${meta.baseInputTokens}` : "",
+        meta.toolInputTokens ? `Werkzeugschritte ${meta.toolInputTokens}` : "",
+        meta.cachedInputTokens ? `davon gecacht ${meta.cachedInputTokens}` : "",
+        meta.durationMs !== null && meta.durationMs !== undefined ? `${meta.durationMs >= 1000 ? `${(meta.durationMs / 1000).toFixed(1)} s` : `${Math.round(meta.durationMs)} ms`}` : "",
+      ].filter(Boolean);
+      return `<div class="code-explorer-response-meta" aria-label="Details zur KI-Antwort">${items.map((item) => `<span>${escapeHtml(String(item))}</span>`).join("")}</div>`;
+    }
+
+    async function applyCodeExplorerEdit(project, view, messageIndex, editIndex) {
+      const message = codeChatMessages(project, view)[Number(messageIndex)];
+      const edit = message?.fileEdits?.[editIndex];
+      if (!edit || edit.applied) return;
+      await putJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(edit.path)}`, { content: edit.content });
+      edit.applied = true;
+      updateGuidedSourceContent(project, edit.path, edit.content);
+      if (state.sourcePath === edit.path) {
+        document.querySelector("#sourceEditor").value = edit.content;
+        if (typeof renderIdeViewMode === "function") renderIdeViewMode(project);
+      }
+      renderProjectViewManifest(project);
+      renderProjectAssistant(project);
+    }
+
+    function updateGuidedSourceContent(project, sourcePath, content) {
+      guidedViews(project).forEach((guidedView) => {
+        if (guidedView.source_path !== sourcePath) return;
+        guidedView.payload ||= {};
+        if (guidedView.type === "plantuml" || /\.(?:puml|plantuml)$/i.test(sourcePath)) guidedView.payload.source = content;
+        if (guidedView.payload.artifact) {
+          guidedView.payload.artifact.content = content;
+          if (guidedView.payload.artifact.type === "plantuml") guidedView.payload.artifact.source = content;
+        }
+      });
+    }
+
+    async function showCodeExplorerEdit(project, view, messageIndex, editIndex) {
+      const message = codeChatMessages(project, view)[Number(messageIndex)];
+      const edit = message?.fileEdits?.[editIndex];
+      if (!edit) return;
+      const source = await getJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(edit.path)}`);
+      const diff = buildCodeExplorerDiff(source.content || "", edit.content || "");
+      const overlay = document.createElement("div");
+      overlay.className = "runtime-modal code-diff-modal";
+      overlay.innerHTML = `
+        <section class="runtime-dialog code-diff-dialog" role="dialog" aria-modal="true" aria-label="Änderung in ${escapeAttribute(edit.path)}">
+          <div class="runtime-dialog-header">
+            <div><p class="eyebrow">Vorgeschlagene Änderung</p><strong>${escapeHtml(edit.path)}</strong></div>
+            <button type="button" data-close-code-diff aria-label="Änderungsansicht schließen">Schließen</button>
+          </div>
+          <div class="code-diff-legend"><span class="removed">Entfernt</span><span class="added">Hinzugefügt</span></div>
+          <div class="code-diff-content">${diff.map((line) => `<div class="code-diff-line ${line.kind}"><span>${line.oldNumber || ""}</span><span>${line.newNumber || ""}</span><code>${escapeHtml(line.text || " ")}</code></div>`).join("")}</div>
+        </section>`;
+      const close = () => overlay.remove();
+      overlay.querySelector("[data-close-code-diff]").addEventListener("click", close);
+      overlay.addEventListener("click", (event) => { if (event.target === overlay) close(); });
+      document.body.append(overlay);
+    }
+
+    function buildCodeExplorerDiff(previousContent, nextContent) {
+      const before = String(previousContent).replace(/\r\n/g, "\n").split("\n");
+      const after = String(nextContent).replace(/\r\n/g, "\n").split("\n");
+      let prefix = 0;
+      while (prefix < before.length && prefix < after.length && before[prefix] === after[prefix]) prefix += 1;
+      let suffix = 0;
+      while (suffix < before.length - prefix && suffix < after.length - prefix && before[before.length - 1 - suffix] === after[after.length - 1 - suffix]) suffix += 1;
+      const lines = [];
+      before.slice(0, prefix).forEach((text, index) => lines.push({ kind: "context", text, oldNumber: index + 1, newNumber: index + 1 }));
+      before.slice(prefix, before.length - suffix).forEach((text, index) => lines.push({ kind: "removed", text, oldNumber: prefix + index + 1, newNumber: "" }));
+      after.slice(prefix, after.length - suffix).forEach((text, index) => lines.push({ kind: "added", text, oldNumber: "", newNumber: prefix + index + 1 }));
+      before.slice(before.length - suffix).forEach((text, index) => lines.push({ kind: "context", text, oldNumber: before.length - suffix + index + 1, newNumber: after.length - suffix + index + 1 }));
+      return lines;
     }
 
     function renderGuidedArtifact(view) {
@@ -550,6 +837,7 @@ const GuidedProjectView = (() => {
     return {
       focusIdeStepSource,
       guidedViews,
+      renderProjectAssistant,
       renderProjectViewManifest,
     };
   }

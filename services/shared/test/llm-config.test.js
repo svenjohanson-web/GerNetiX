@@ -6,6 +6,39 @@ const test = require("node:test");
 
 const { createLlmConfigStore } = require("../llm-config");
 
+test("normalizes the official OpenAI endpoint to the Responses provider", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-llm-config-"));
+  const configPath = path.join(tmp, "identity-llm-config.json");
+  fs.writeFileSync(configPath, JSON.stringify({
+    provider: "api",
+    apiProvider: "openai-compatible",
+    apiBaseUrl: "https://api.openai.com/v1",
+    apiModel: "gpt-5.6-terra",
+  }));
+  const store = createLlmConfigStore({ configPath, defaultOllamaBaseUrl: "http://127.0.0.1:11434", defaultOllamaModel: "llama3.2:3b" });
+  assert.equal(store.getConfig().apiProvider, "openai-responses");
+});
+
+test("keeps official provider protocols and endpoints inseparable", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-llm-config-"));
+  const configPath = path.join(tmp, "identity-llm-config.json");
+  const store = createLlmConfigStore({ configPath, defaultOllamaBaseUrl: "http://127.0.0.1:11434", defaultOllamaModel: "llama3.2:3b" });
+  store.updateConfig({ provider: "api", apiProvider: "openai-responses", apiBaseUrl: "https://wrong.example/v1", apiModel: "gpt-5.6-terra" });
+  assert.equal(store.getConfig().apiBaseUrl, "https://api.openai.com/v1");
+  store.updateConfig({ provider: "api", apiProvider: "anthropic", apiBaseUrl: "https://wrong.example/v1", apiModel: "claude" });
+  assert.equal(store.getConfig().apiBaseUrl, "https://api.anthropic.com/v1");
+});
+
+test("does not silently point custom compatible providers at OpenAI", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-llm-config-"));
+  const configPath = path.join(tmp, "identity-llm-config.json");
+  const store = createLlmConfigStore({ configPath, defaultOllamaBaseUrl: "http://127.0.0.1:11434", defaultOllamaModel: "llama3.2:3b" });
+  store.updateConfig({ provider: "api", apiProvider: "openai-compatible", apiBaseUrl: "", apiModel: "custom" });
+  assert.equal(store.getConfig().apiProvider, "openai-compatible");
+  assert.equal(store.getConfig().apiBaseUrl, "");
+  assert.equal(store.publicConfig().enabled, false);
+});
+
 test("llm config store reloads external file changes", async () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-llm-config-"));
   const configPath = path.join(tmp, "identity-llm-config.json");
@@ -35,7 +68,7 @@ test("llm config store reloads external file changes", async () => {
   const config = store.getConfig();
   assert.equal(config.provider, "api");
   assert.equal(config.apiProvider, "anthropic");
-  assert.equal(config.apiBaseUrl, "https://api.example.test/v1");
+  assert.equal(config.apiBaseUrl, "https://api.anthropic.com/v1");
   assert.equal(config.apiModel, "external-model");
 });
 

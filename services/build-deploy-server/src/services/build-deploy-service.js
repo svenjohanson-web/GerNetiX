@@ -41,7 +41,14 @@ class BuildDeployService {
   getJob(jobId) {
     const job = this.jobs.get(jobId);
     if (!job) throw new BuildDeployError("job_not_found", "BuildJob wurde nicht gefunden.", 404);
+    const deployId = job.result?.deploy?.deploy_id;
+    const acknowledgement = deployId ? this.deployOrchestrator.deployStatus(deployId) : null;
+    if (acknowledgement) job.result.deploy = { ...job.result.deploy, status: acknowledgement.status, acknowledgement };
     return summarizeJob(job);
+  }
+
+  otaPreflight() {
+    return this.deployOrchestrator.preflight();
   }
 
   startJob(job) {
@@ -75,6 +82,7 @@ class BuildDeployService {
     const workspace = await this.packageStore.materialize(job);
     try {
       const buildOutput = await this.runner.run(job, workspace.packageDir);
+      await this.packageStore.preserveIncrementalCache(job, workspace.packageDir);
       const artifacts = await this.artifactStore.saveBuildArtifacts(job.job_id, buildOutput);
       const buildResult = {
         status: buildOutput.status,
@@ -94,7 +102,7 @@ class BuildDeployService {
       };
       this.persistJobs();
     } finally {
-      await this.packageStore.cleanup(workspace.jobDir);
+      await this.packageStore.cleanup(workspace);
     }
   }
 
@@ -163,6 +171,7 @@ function normalizeJob(input = {}) {
     job_id: input.job_id || randomUUID(),
     mode,
     device_id: input.device_id || (input.deploy && input.deploy.device_id) || null,
+    project_id: input.project_id || null,
     build_package: input.build_package,
     deploy: input.deploy || null,
     usb_flash: input.usb_flash || null,

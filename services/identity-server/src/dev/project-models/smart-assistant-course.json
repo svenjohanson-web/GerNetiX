@@ -1,0 +1,137 @@
+{
+  "slug": "smart-assistant-ai-automation",
+  "project": {
+    "slug": "smart-assistant-ai-automation",
+    "title": "Erschaffe dir deinen smart Assistenten",
+    "area": "KI und Automatisierung",
+    "summary": "Verbinde Sprach- und Automatisierungsdienste mit GPT, Gemini oder Claude und entwirf eine eigene Hardware-Realisierung.",
+    "steps": [
+      { "title": "Warum ueberhaupt einen eigenen Assistenten?", "text": "Alexa-Geraete koennen ausserhalb von Rabattaktionen vergleichsweise teuer sein. GPT, Gemini oder Claude nutzt man dagegen typischerweise am PC oder Smartphone. Der grosse Vorteil entsteht, wenn die flexible Sprach- und Kontextfaehigkeit moderner KI mit den verlaesslichen Aktionen eines Automatisierungsassistenten verbunden wird.", "insight": "Die KI versteht, was der Mensch meint; der Automatisierungsassistent setzt erlaubte Aktionen in der realen Welt um." },
+      { "title": "Assistenten-Ziel festlegen", "text": "Lege fest, welche Aufgaben dein Assistent verstehen und ausloesen soll.", "insight": "Ein guter Assistent beginnt mit klaren Funktionen statt mit einem bestimmten KI-Anbieter." },
+      { "title": "Sprach- und Datenfluss verstehen", "text": "Mikrofon, Spracherkennung, LLM, Werkzeugaufruf und Rueckmeldung bilden eine kontrollierte Kette.", "insight": "Das Sprachmodell entscheidet nicht direkt ueber Hardware, sondern erzeugt einen geprueften Auftrag." },
+      { "title": "KI-Anbieter anbinden", "text": "Vergleiche GPT, Gemini und Claude nach API, Kosten, Datenschutz und Tool-Unterstuetzung.", "insight": "Eine Adaptergrenze verhindert, dass das Projekt dauerhaft an einen Anbieter gebunden ist." },
+      { "title": "Hardware auswaehlen", "text": "Vergleiche ESP32 mit Mikrofon und Display gegen Raspberry Pi Zero 2 W.", "insight": "ESP32 eignet sich fuer schlanke Ein-/Ausgabe; ein Pi traegt komplexere lokale Audio- und Integrationsdienste." },
+      { "title": "Automatisierungen absichern", "text": "Alexa, Smart-Home-Dienste oder eigene Aktoren werden nur ueber erlaubte Werkzeuge angesprochen.", "insight": "Bestaetigung, Berechtigungen und Audit sind wichtiger als eine moeglichst autonome KI." },
+      { "title": "Prototyp planen", "text": "Entwirf einen kleinen, messbaren MVP mit einem Sprachbefehl und einer sicheren Aktion.", "insight": "Ein enger Ende-zu-Ende-Prototyp prueft die Architektur besser als viele halbfertige Funktionen." }
+    ],
+    "hardware_profile_id": "runtime.smart_assistant",
+    "access_model": "subscription",
+    "default_device_id": "",
+    "source_files": [
+      { "path": "docs/smart-assistant-architecture.puml", "role": "architecture_model" },
+      { "path": "docs/entscheidungen.md", "role": "decision_record" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Dein smarter KI-Assistent",
+    "summary": "Von der Idee ueber Sprach- und Werkzeugketten bis zur sicheren Hardware-Realisierung.",
+    "primary_source_path": "docs/smart-assistant-architecture.puml",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "why-own-assistant",
+        "type": "story_slide",
+        "title": "Warum ueberhaupt?",
+        "summary": "Moderne KI ist leistungsfaehig, aber im Alltag nicht immer als eigenes Raumgeraet verfuegbar.",
+        "completion": { "type": "acknowledge", "label": "Motivation verstanden" },
+        "payload": { "model_lines": [
+          { "label": "Smart Speaker", "text": "Alexa-Geraete koennen ausserhalb von Aktionen vergleichsweise teuer sein und bleiben an ein vorgegebenes Oekosystem gebunden." },
+          { "label": "Moderne LLMs", "text": "GPT, Gemini oder Claude werden typischerweise ueber PC oder Smartphone bedient." },
+          { "label": "Eigene Loesung", "text": "Ein ESP32- oder Pi-basiertes Raumgeraet macht die gewaehlte KI direkt per Sprache und Display erreichbar." },
+          { "label": "Der grosse Vorteil", "text": "Die KI versteht freie Formulierungen, Rueckfragen und Zusammenhaenge. Der Automatisierungsassistent kann danach Lampen, Geraete, Termine oder eigene Dienste kontrolliert bedienen." },
+          { "label": "Verstehen plus Handeln", "text": "Die Verbindung kombiniert die Staerke moderner KI mit den verlaesslichen Schnittstellen bestehender Automatisierung." },
+          { "label": "Warum ein LLM keinen Timer stellt", "text": "Ein LLM beantwortet normalerweise nur einzelne Anfragen. Es laeuft nicht dauerhaft im Hintergrund, wartet nicht verlaesslich zehn Minuten und garantiert keine zeitgenaue Ausfuehrung." },
+          { "label": "Warum ein LLM kein Haus steuert", "text": "Ein LLM besitzt von sich aus weder den aktuellen Geraetezustand noch direkten Zugriff auf Lampen, Steckdosen, Sensoren oder Heizungen." },
+          { "label": "Aufgabenteilung", "text": "Das LLM versteht den Wunsch und erzeugt einen strukturierten Werkzeugauftrag. Alexa, Home Assistant oder ein eigener Automatisierungsdienst verwaltet Timer, Zustaende, Regeln und Geraetezugriffe." },
+          { "label": "Lernziel", "text": "Du verstehst, wie Sprache, KI, sichere Automatisierung und eigene Hardware zu einem Assistenten zusammenspielen." }
+        ] }
+      },
+      {
+        "id": "assistant-goal",
+        "type": "story_slide",
+        "title": "Was soll dein Assistent koennen?",
+        "summary": "Formuliere zuerst wenige konkrete Aufgaben und Grenzen.",
+        "completion": { "type": "acknowledge", "label": "Ziel verstanden" },
+        "payload": { "model_lines": [
+          { "label": "Verstehen", "text": "Sprache oder Text wird in eine eindeutige Absicht uebersetzt." },
+          { "label": "Antworten", "text": "GPT, Gemini oder Claude formuliert eine Antwort oder schlaegt ein Werkzeug vor." },
+          { "label": "Handeln", "text": "Nur freigegebene Automatisierungen duerfen ausgefuehrt werden." }
+        ] }
+      },
+      {
+        "id": "assistant-pipeline",
+        "type": "plantuml",
+        "title": "Sprach- und Automatisierungskette",
+        "summary": "Die KI ist ein Baustein zwischen Eingabe, Sicherheitsgrenze und Werkzeugen.",
+        "source_path": "docs/smart-assistant-architecture.puml",
+        "validation": { "type": "plantuml_contains", "must_contain": ["@startuml", "@enduml"] },
+        "payload": { "source": "@startuml\ntitle Smarter Assistent\nactor Nutzer\ncomponent \"Mikrofon / Text\" as input\ncomponent \"Speech-to-Text\" as stt\ncomponent \"LLM Adapter\nGPT | Gemini | Claude\" as llm\ncomponent \"Policy und Bestaetigung\" as policy\ncomponent \"Werkzeug Adapter\nAlexa | Smart Home | eigene API\" as tools\ncomponent \"Display / Sprache\" as output\nNutzer --> input\ninput --> stt\nstt --> llm\nllm --> policy\npolicy --> tools\nllm --> output\noutput --> Nutzer\n@enduml" }
+      },
+      {
+        "id": "provider-choice",
+        "type": "explanation",
+        "title": "GPT, Gemini oder Claude austauschbar halten",
+        "summary": "Ein gemeinsamer Adapter trennt Projektlogik von Anbieter-APIs.",
+        "completion": { "type": "acknowledge", "label": "Adapter verstanden" },
+        "payload": { "cards": [
+          { "title": "GPT", "text": "Breites Modell- und Tool-Angebot; Kosten und Datenweg bewusst konfigurieren." },
+          { "title": "Gemini", "text": "Multimodale Funktionen und Google-Oekosystem; Berechtigungen sauber begrenzen." },
+          { "title": "Claude", "text": "Starke Text- und Tool-Nutzung; Providergrenzen und Datenfreigaben dokumentieren." }
+        ] }
+      },
+      {
+        "id": "hardware-choice",
+        "type": "explanation",
+        "title": "ESP32 oder Raspberry Pi Zero 2 W?",
+        "summary": "Waehle die Hardware passend zur Aufgabe, nicht nach maximaler Leistung.",
+        "completion": { "type": "acknowledge", "label": "Hardware verglichen" },
+        "payload": { "cards": [
+          { "title": "ESP32 + Mikrofon + Display", "text": "Geringe Kosten und schneller Start. Gut als Ein-/Ausgabegeraet; Audio und LLM-Verarbeitung meist ueber einen Server." },
+          { "title": "Raspberry Pi Zero 2 W", "text": "Linux, mehr Speicher und lokale Dienste. Geeignet fuer Audio-Pipeline, Adapter und komplexere Integrationen." },
+          { "title": "Hybrid", "text": "ESP32 als Raumgeraet, Pi oder Server als lokales Gateway und LLM-Adapter." }
+        ] }
+      },
+      {
+        "id": "safety-boundary",
+        "type": "story_slide",
+        "title": "Automatisierung braucht eine Sicherheitsgrenze",
+        "summary": "Ein LLM darf keine beliebigen Aktionen direkt ausfuehren.",
+        "completion": { "type": "acknowledge", "label": "Sicherheitsgrenze verstanden" },
+        "payload": { "model_lines": [
+          { "label": "Allowlist", "text": "Nur bekannte Werkzeuge und Parameter sind erlaubt." },
+          { "label": "Bestaetigung", "text": "Kritische Aktionen brauchen eine sichtbare Zustimmung." },
+          { "label": "Audit", "text": "Anfrage, Entscheidung und Aktion werden nachvollziehbar protokolliert." },
+          { "label": "Datenschutz", "text": "Audio wird nur so lange und so weit wie erforderlich verarbeitet." }
+        ] }
+      },
+      {
+        "id": "assistant-mvp",
+        "type": "implementation_plan",
+        "title": "Dein erster Prototyp",
+        "summary": "Baue eine kleine Ende-zu-Ende-Funktion und erweitere danach.",
+        "payload": { "tasks": [
+          "Einen Sprach- oder Texteingang festlegen",
+          "Einen LLM-Anbieter ueber einen Adapter anbinden",
+          "Genau ein erlaubtes Werkzeug definieren",
+          "Bestaetigung vor der Aktion einbauen",
+          "Antwort auf Display oder per Sprache ausgeben",
+          "ESP32, Pi Zero 2 W oder Hybrid anhand der Messwerte entscheiden"
+        ] }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "docs/smart-assistant-architecture.puml",
+      "role": "architecture_model",
+      "content": "@startuml\ntitle Smarter Assistent\nactor Nutzer\ncomponent \"Mikrofon / Text\" as input\ncomponent \"Speech-to-Text\" as stt\ncomponent \"LLM Adapter\nGPT | Gemini | Claude\" as llm\ncomponent \"Policy und Bestaetigung\" as policy\ncomponent \"Werkzeug Adapter\nAlexa | Smart Home | eigene API\" as tools\ncomponent \"Display / Sprache\" as output\nNutzer --> input\ninput --> stt\nstt --> llm\nllm --> policy\npolicy --> tools\nllm --> output\noutput --> Nutzer\n@enduml"
+    },
+    {
+      "path": "docs/entscheidungen.md",
+      "role": "decision_record",
+      "content": "# Entscheidungen fuer meinen smarten Assistenten\n\n- Ziel und erlaubte Aufgaben:\n- Eingabe: Mikrofon oder Text:\n- Ausgabe: Display oder Sprache:\n- LLM-Anbieter und Begruendung:\n- Automatisierungsdienst oder Werkzeug:\n- Hardware: ESP32, Raspberry Pi Zero 2 W oder Hybrid:\n- Datenschutz und Bestaetigung:\n"
+    }
+  ]
+}

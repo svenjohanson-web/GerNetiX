@@ -1,0 +1,24 @@
+{
+  "name": "gernetix-usb-serial-helper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Native GerNetiX shell with Web Serial support for Safari users",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist:mac": "electron-builder --mac zip",
+    "dist:win": "electron-builder --win portable --x64"
+  },
+  "devDependencies": {
+    "electron": "37.10.3",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.gernetix.usbserialhelper",
+    "productName": "GerNetiX USB Serial Helper",
+    "files": ["main.js", "preload.js", "helper.html"],
+    "mac": { "target": "zip", "category": "public.app-category.developer-tools" },
+    "win": { "target": "portable" },
+    "artifactName": "GerNetiX-USB-Serial-Helper-${os}-${arch}.${ext}"
+  }
+}

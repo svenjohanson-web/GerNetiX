@@ -7,6 +7,8 @@ idf_component_register(
     functions/initPins.cpp
     functions/initSerial.cpp
     functions/initWifi.cpp
+    functions/mqtt_ota.cpp
+    functions/ota_update.cpp
     functions/startCaptiveDnsServer.cpp
     functions/publishStatus.cpp
     functions/provisioning_config.cpp
@@ -20,9 +22,11 @@ idf_component_register(
     user/user_app.cpp
   INCLUDE_DIRS ../include
   REQUIRES
+    app_update
     esp_driver_gpio
     esp_event
     esp_http_server
+    esp_https_ota
     esp_netif
     esp_timer
     esp_wifi
@@ -30,5 +34,6 @@ idf_component_register(
     log
     lwip
     mbedtls
+    mqtt
     nvs_flash
 )

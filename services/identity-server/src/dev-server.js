@@ -8,6 +8,7 @@ const { createAccountTransparencyFactory } = require("./dev/account-transparency
 const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
 const { developmentProjectSources } = require("./dev/development-project-structure");
+const { developmentProjectTemplate, templateArchitecturePlantUml, templateFirmwareSources } = require("./dev/development-project-templates");
 const { createDevHardwareUtils } = require("./dev/hardware-utils");
 const { createLlmConfigStore } = require("../../shared/llm-config");
 const {
@@ -24,12 +25,16 @@ const {
   setSessionCookie,
 } = require("./dev/http-utils");
 const { createDevServiceClients } = require("./dev/service-clients");
+const { createInterfaceCallTelemetry } = require("../../shared/persistence/interface-call-telemetry");
 const { createTamagotchiEntryCourseModel } = require("./dev/project-models/tamagotchi-entry-course");
+const { createSmartAssistantCourseModel } = require("./dev/project-models/smart-assistant-course");
 const { defaultCatalogSeed } = require("../../hardware-catalog/src/seed");
 
 const publicDir = path.join(__dirname, "..", "public");
 const appDir = path.join(publicDir, "app");
+const esptoolJsDir = path.join(__dirname, "..", "node_modules", "esptool-js");
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
+const usbSerialHelperDistDir = path.join(workspaceRoot, "tools", "usb-serial-helper", "dist");
 const identityPersistenceBackend = process.env.IDENTITY_PERSISTENCE_BACKEND || "sqlite";
 const identitySqlitePath = process.env.IDENTITY_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-identity.sqlite");
 const port = Number(process.env.PORT || 4300);
@@ -39,6 +44,7 @@ const demoEmail = process.env.DEMO_EMAIL || "demo@gernetix.local";
 const demoPassword = process.env.DEMO_PASSWORD || "demo-passwort";
 const projectServerBaseUrl = process.env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800";
 const buildDeployBaseUrl = process.env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400";
+const otaBuildDeployBaseUrl = process.env.OTA_BUILD_DEPLOY_BASE_URL || "https://build.gernetix.com";
 const hardwareShopBaseUrl = process.env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900";
 const hardwareCatalogBaseUrl = process.env.HARDWARE_CATALOG_BASE_URL || "http://127.0.0.1:4910";
 const deviceManagementBaseUrl = process.env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700";
@@ -46,10 +52,11 @@ const aiUsageBaseUrl = process.env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000";
 const aiContextBaseUrl = process.env.AI_CONTEXT_BASE_URL || "http://127.0.0.1:5500";
 const adminToolBaseUrl = process.env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600";
 const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
-const ollamaModel = process.env.OLLAMA_MODEL || "llama3.1";
+const ollamaModel = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const deviceDiscoveryUrls = process.env.GERNETIX_DEVICE_DISCOVERY_URLS || process.env.DEVICE_DISCOVERY_URLS || "";
 const gernetixNodeHostnamePrefix = "gernetix-";
 const execFileAsync = promisify(execFile);
+const interfaceTelemetry = createInterfaceCallTelemetry({ sourceService: "identity-server" });
 const {
   aiContextJson,
   aiUsageJson,
@@ -66,6 +73,17 @@ const {
   hardwareCatalogBaseUrl,
   hardwareShopBaseUrl,
   projectServerBaseUrl,
+  interfaceTelemetry,
+});
+const { buildDeployJson: otaBuildDeployJson } = createDevServiceClients({
+  aiContextBaseUrl,
+  aiUsageBaseUrl,
+  buildDeployBaseUrl: otaBuildDeployBaseUrl,
+  deviceManagementBaseUrl,
+  hardwareCatalogBaseUrl,
+  hardwareShopBaseUrl,
+  projectServerBaseUrl,
+  interfaceTelemetry,
 });
 const {
   buildTargetLabel,
@@ -83,6 +101,7 @@ const {
   defaultCatalogSeed,
   execFileAsync,
   hardwareCatalogJson,
+  interfaceTelemetry,
 });
 const createAccountTransparency = createAccountTransparencyFactory({
   aiUsageJson,
@@ -94,6 +113,7 @@ const createAccountTransparency = createAccountTransparencyFactory({
   projectServerUserId,
 });
 const tamagotchiEntryCourseModel = createTamagotchiEntryCourseModel({ readWorkspaceText });
+const smartAssistantCourseModel = createSmartAssistantCourseModel();
 const llmConfigStore = createLlmConfigStore({
   configPath: path.join(workspaceRoot, ".runtime", "identity-llm-config.json"),
   defaultOllamaBaseUrl: ollamaBaseUrl,
@@ -111,6 +131,7 @@ const developmentAssistant = createDevelopmentAssistant({
   aiUsageJson,
   hardwareCatalogJson,
   llmConfigStore,
+  projectServerJson,
   projectServerUserId,
   readJsonBody,
   requireProjectAccess: requireSessionProject,
@@ -136,7 +157,10 @@ async function bootstrap() {
   const server = http.createServer((req, res) => {
     routeRequest(req, res).catch((error) => {
       console.error(error);
-      sendJson(res, 500, { error: "internal_server_error" });
+      sendJson(res, error.status || 500, {
+        error: error.code || "internal_server_error",
+        message: error.message || "Interner Serverfehler.",
+      });
     });
   });
 
@@ -145,6 +169,7 @@ async function bootstrap() {
   console.log(`GerNetiX Dashboard+: http://${host}:${port}/app/dashboard/`);
   console.log(`Project Server adapter: ${projectServerBaseUrl}`);
   console.log(`Build & Deploy adapter: ${buildDeployBaseUrl}`);
+  console.log(`OTA Build & Deploy adapter: ${otaBuildDeployBaseUrl}`);
   console.log(`Hardware Shop adapter: ${hardwareShopBaseUrl}`);
   console.log(`Hardware Catalog adapter: ${hardwareCatalogBaseUrl}`);
   console.log(`Device Management adapter: ${deviceManagementBaseUrl}`);
@@ -218,6 +243,24 @@ async function routeRequest(req, res) {
 
   if (url.pathname === "/api/session") {
     handleSession(req, res);
+    return;
+  }
+
+  if (url.pathname === "/api/platform/downloads" && req.method === "GET") {
+    if (!readSession(req)) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    sendJson(res, 200, { downloads: usbSerialHelperDownloads() });
+    return;
+  }
+
+  if (url.pathname.startsWith("/downloads/usb-serial-helper/") && req.method === "GET") {
+    if (!readSession(req)) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    serveUsbSerialHelperDownload(res, path.basename(url.pathname));
     return;
   }
 
@@ -310,6 +353,28 @@ async function routeRequest(req, res) {
     return;
   }
 
+  const projectDeviceAllocation = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/device-allocation$/);
+  if (req.method === "POST" && projectDeviceAllocation) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleProjectDeviceAllocation(req, res, session, decodeURIComponent(projectDeviceAllocation[1]));
+    return;
+  }
+
+  const projectComponentFeatures = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/component-features$/);
+  if (req.method === "POST" && projectComponentFeatures) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleProjectComponentFeatures(req, res, session, decodeURIComponent(projectComponentFeatures[1]));
+    return;
+  }
+
   if (req.method === "POST" && url.pathname === "/api/platform/development-assistant/chat") {
     const session = readSession(req);
     if (!session) {
@@ -337,6 +402,17 @@ async function routeRequest(req, res) {
       return;
     }
     sendJson(res, 200, await discoverNetworkDevices(session, Object.fromEntries(url.searchParams.entries())));
+    return;
+  }
+
+  const connectivityCheck = url.pathname.match(/^\/api\/user-ide\/devices\/([^/]+)\/connectivity-check$/);
+  if (req.method === "POST" && connectivityCheck) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleDeviceConnectivityCheck(res, session, decodeURIComponent(connectivityCheck[1]));
     return;
   }
 
@@ -383,6 +459,16 @@ async function routeRequest(req, res) {
 
   const platformSource = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/sources\/(.+)$/);
   const platformSources = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/sources$/);
+  const platformSourceSearch = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/source-search$/);
+  if (platformSourceSearch && req.method === "GET") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handlePlatformSourceSearch(res, session, decodeURIComponent(platformSourceSearch[1]), url.searchParams);
+    return;
+  }
   if (platformSources && req.method === "GET") {
     const session = readSession(req);
     if (!session) {
@@ -473,6 +559,77 @@ async function routeRequest(req, res) {
       return;
     }
     await handleUserIdeBuildJob(req, res);
+    return;
+  }
+
+  const browserFlashResult = url.pathname.match(/^\/api\/user-ide\/build-jobs\/([^/]+)\/browser-usb-flash-result$/);
+  if (req.method === "POST" && browserFlashResult) {
+    if (!readSession(req)) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    const jobId = decodeURIComponent(browserFlashResult[1]);
+    const body = await readJsonBody(req);
+    const existing = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`);
+    const updated = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}/result`, {
+      method: "POST",
+      body: {
+        status: body.status === "succeeded" ? "succeeded" : "failed",
+        build: {
+          ...(existing.result?.build || {}),
+          usb_flash: {
+            requested: true,
+            status: body.status === "succeeded" ? "succeeded" : "failed",
+            runner: "web_serial",
+            transport: "web_serial",
+            chip_name: body.chip_name || "",
+            error: body.error || "",
+          },
+        },
+        deploy: existing.result?.deploy || null,
+        logs: body.logs || [],
+        error: body.status === "succeeded" ? null : { message: body.error || "Browser Web-Serial-Flash fehlgeschlagen." },
+      },
+    });
+    sendJson(res, 200, updated);
+    return;
+  }
+
+  const buildJobStatus = url.pathname.match(/^\/api\/user-ide\/build-jobs\/([^/]+)\/status$/);
+  if (req.method === "GET" && buildJobStatus) {
+    if (!readSession(req)) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    const jobId = decodeURIComponent(buildJobStatus[1]);
+    const job = await loadBuildDeployJob(jobId);
+    if (["succeeded", "failed"].includes(job.status)) await recordCompletedBuildJob(jobId, job);
+    sendJson(res, 200, {
+      build_job_id: jobId,
+      build_deploy_job_id: jobId,
+      status: job.status,
+      flash_status: job.mode === "build_and_flash"
+        ? (job.result?.deploy?.status || "nicht angefordert")
+        : (job.result?.build?.usb_flash?.status || "nicht angefordert"),
+      flash_manifest: browserFlashManifest(jobId, job),
+      error: job.error?.message || "",
+      build_log: job.error?.details?.build_log || job.result?.build?.log || "",
+    });
+    return;
+  }
+
+  const buildArtifact = url.pathname.match(/^\/api\/user-ide\/build-artifacts\/([^/]+)\/([^/]+)$/);
+  if (req.method === "GET" && buildArtifact) {
+    if (!readSession(req)) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await proxyBuildArtifact(res, decodeURIComponent(buildArtifact[1]), decodeURIComponent(buildArtifact[2]));
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname.startsWith("/vendor/esptool-js/")) {
+    serveVendorEsptool(res, url.pathname);
     return;
   }
 
@@ -681,14 +838,14 @@ async function handleUserIdeSummary(res, session) {
 
 async function handlePlatformSummary(res, session) {
   const serviceStatus = {};
-  const projects = await loadUserIdeProjects(session).then((items) => {
+  const projectsPromise = loadUserIdeProjects(session).then((items) => {
     serviceStatus.project_server = { ok: true };
     return items;
   }).catch((error) => {
     serviceStatus.project_server = { ok: false, error: error.message || String(error) };
     return [];
   });
-  const devices = await loadUserIdeDevices(session).then((items) => {
+  const devicesPromise = loadUserIdeDevices(session).then((items) => {
     serviceStatus.device_management = { ok: true };
     return items;
   }).catch((error) => {
@@ -711,23 +868,31 @@ async function handlePlatformSummary(res, session) {
     });
     return [];
   });
-  const builds = await loadProjectBuilds(projects, session).then((items) => {
-    serviceStatus.builds = { ok: true };
-    return items;
-  }).catch((error) => {
-    serviceStatus.builds = { ok: false, error: error.message || String(error) };
-    return [];
-  });
-  const aiUsage = await loadAiUsageSummary(session).then((summary) => {
+  const aiUsagePromise = loadAiUsageSummary(session).then((summary) => {
     serviceStatus.ai_usage = { ok: summary.available !== false };
     return summary;
   }).catch((error) => {
     serviceStatus.ai_usage = { ok: false, error: error.message || String(error) };
     return null;
   });
+  const accountPromise = createAccountSummary(session);
+  const projects = await projectsPromise;
+  const buildsPromise = loadProjectBuilds(projects, session).then((items) => {
+    serviceStatus.builds = { ok: true };
+    return items;
+  }).catch((error) => {
+    serviceStatus.builds = { ok: false, error: error.message || String(error) };
+    return [];
+  });
+  const [devices, builds, aiUsage, account] = await Promise.all([
+    devicesPromise,
+    buildsPromise,
+    aiUsagePromise,
+    accountPromise,
+  ]);
   const userId = projectServerUserId(session);
   sendJson(res, 200, {
-    account: await createAccountSummary(session),
+    account,
     routes: {
       auth: "/app/auth/",
       dashboard: "/app/dashboard/",
@@ -821,6 +986,17 @@ async function handlePlatformSourceList(res, session, projectId) {
   sendJson(res, 200, sources);
 }
 
+async function handlePlatformSourceSearch(res, session, projectId, searchParams) {
+  const project = await requireSessionProject(session, projectId);
+  const query = new URLSearchParams({
+    q: String(searchParams.get("q") || "").slice(0, 1000),
+    current_path: String(searchParams.get("current_path") || "").slice(0, 300),
+    limit: "6",
+  });
+  const result = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources/search?${query}`);
+  sendJson(res, 200, result);
+}
+
 async function handlePlatformSourceWrite(req, res, session, projectId, sourcePath) {
   const project = await requireSessionProject(session, projectId);
   const body = await readJsonBody(req);
@@ -840,11 +1016,13 @@ async function handlePlatformSourceWrite(req, res, session, projectId, sourcePat
 async function handleDevelopmentProjectCreate(req, res, session) {
   const body = await readJsonBody(req);
   const userId = projectServerUserId(session);
-  const title = requiredField(body.title || "Neues Entwicklungsprojekt", "title").slice(0, 120);
-  const description = String(body.description || "Architektur-Discovery-Projekt").trim().slice(0, 1000);
+  const template = developmentProjectTemplate(body.template_id);
+  const title = requiredField(body.title || template.title || "Neues Entwicklungsprojekt", "title").slice(0, 120);
+  const description = String(body.description || template.description || "Architektur-Discovery-Projekt").trim().slice(0, 1000);
   const projectId = `dev_project_${slugifyProjectId(title)}_${Date.now().toString(36)}`;
-  const initialSource = initialArchitecturePlantUml(title);
-  const sources = developmentProjectSources({ title, description, architectureSource: initialSource });
+  const initialSource = templateArchitecturePlantUml(template, title) || initialArchitecturePlantUml(title);
+  const sources = developmentProjectSources({ title, description, architectureSource: initialSource })
+    .concat(templateFirmwareSources(template, title));
   const project = await projectServerJson("/api/projects", {
     method: "POST",
     body: {
@@ -853,10 +1031,10 @@ async function handleDevelopmentProjectCreate(req, res, session) {
       title,
       description,
       learning_project_id: "development_project",
-      hardware_profile_id: "architecture.discovery",
+      hardware_profile_id: template.hardwareProfileId || "architecture.discovery",
       device_id: null,
-      build_config: null,
-      view_manifest: developmentProjectViewManifest({ title, description, source: initialSource }),
+      build_config: template.buildConfig || null,
+      view_manifest: developmentProjectViewManifest({ title, description, source: initialSource, buildConfig: template.buildConfig }),
       sources,
     },
   });
@@ -888,14 +1066,96 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
     body: {
       title,
       description,
-      view_manifest: developmentProjectViewManifest({ title, description, source: diagram.source, diagram }),
-      build_config: null,
+      view_manifest: developmentProjectViewManifest({ title, description, source: diagram.source, diagram, buildConfig: project.build_config }),
+      build_config: project.build_config || null,
     },
   });
   touchWorkspace(session, project.project_server_id, "development-platform", "/app/development-platform/");
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   sendJson(res, 200, { project: toPlatformProject(updated), saved_at: new Date().toISOString() });
+}
+
+async function handleProjectDeviceAllocation(req, res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  const body = await readJsonBody(req);
+  const devices = await loadUserIdeDevices(session);
+  const device = devices.find((item) => item.device_id === body.device_id);
+  if (!device) {
+    sendJson(res, 404, { error: "device_not_found", message: "Das Inventar-Device wurde nicht gefunden." });
+    return;
+  }
+  const projectConfig = project.build_config || {};
+  const deviceConfig = device.build_config || {};
+  const componentPath = requiredField(body.component_path || primaryProjectComponentPath(project), "component_path");
+  if (projectConfig.platform && deviceConfig.platform && projectConfig.platform !== deviceConfig.platform) {
+    sendJson(res, 409, { error: "device_not_compatible", message: "Das Device ist nicht mit dem Build-Ziel des Projektordners kompatibel." });
+    return;
+  }
+  const allocatedAt = new Date().toISOString();
+  const allocations = (Array.isArray(projectConfig.component_device_allocations) ? projectConfig.component_device_allocations : [])
+    .filter((item) => item.component_path !== componentPath)
+    .concat({ component_path: componentPath, device_id: device.device_id, allocated_at: allocatedAt });
+  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+    method: "PATCH",
+    body: {
+      device_id: device.device_id,
+      hardware_profile_id: device.hardware_profile_id || project.hardware_profile_id,
+      build_config: { ...resolveBuildConfig(project, device), component_device_allocations: allocations },
+    },
+  });
+  const projects = await loadUserIdeProjects(session);
+  const updated = projects.find((item) => item.project_server_id === project.project_server_id);
+  touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
+  sendJson(res, 200, {
+    project: toPlatformProject(updated),
+    device,
+    allocation: {
+      component_path: componentPath,
+      device_id: device.device_id,
+      allocated_at: allocatedAt,
+    },
+  });
+}
+
+async function handleProjectComponentFeatures(req, res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  if (!project.build_config) {
+    sendJson(res, 409, { error: "missing_build_config", message: "Das Projekt besitzt keine konfigurierbare Firmware-Komponente." });
+    return;
+  }
+  const body = await readJsonBody(req);
+  const allowed = new Set(["wifi", "mqtt", "ota", "http", "webserver", "measurement_chart"]);
+  const enabled = Array.isArray(body.enabled) ? body.enabled.map(String).filter((item) => allowed.has(item)) : [];
+  const current = project.build_config.component_features || {};
+  const webserver = body.webserver && typeof body.webserver === "object" ? body.webserver : {};
+  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+    method: "PATCH",
+    body: {
+      build_config: {
+        ...project.build_config,
+        component_features: {
+          ...current,
+          enabled,
+          webserver: {
+            ...(current.webserver || {}),
+            title: String(webserver.title || "GerNetiX Device").trim().slice(0, 80),
+            measurement_chart: Boolean(webserver.measurement_chart),
+            measurement_label: String(webserver.measurement_label || "Messwert").trim().slice(0, 60),
+            measurement_unit: String(webserver.measurement_unit || "").trim().slice(0, 16),
+          },
+        },
+      },
+    },
+  });
+  const projects = await loadUserIdeProjects(session);
+  const updated = projects.find((item) => item.project_server_id === project.project_server_id);
+  touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
+  sendJson(res, 200, { project: toPlatformProject(updated) });
+}
+
+function primaryProjectComponentPath(project) {
+  return String(project?.build_config?.user_source_path || "").match(/^(Komponenten\/[^/]+)\//)?.[1] || "Komponenten/ESP32";
 }
 
 async function handlePlatformDeviceCreate(req, res, session) {
@@ -1036,27 +1296,87 @@ async function requireSessionProject(session, projectId) {
   return project;
 }
 
+async function handleDeviceConnectivityCheck(res, session, deviceId) {
+  const devices = await loadUserIdeDevices(session);
+  const accountDevice = devices.find((device) => device.device_id === deviceId);
+  if (!accountDevice) {
+    sendJson(res, 404, { error: "device_not_in_account", message: "Das Device gehört nicht zum aktuellen Account." });
+    return;
+  }
+  const discovery = await discoverNetworkDevices(session, { scope: "node" });
+  const discovered = (discovery.items || []).find((device) => device.device_id === deviceId);
+  if (!discovered) {
+    sendJson(res, 200, {
+      reachable: false,
+      device_id: deviceId,
+      checked_at: discovery.searched_at,
+      message: `Das Board wurde über ${discovery.candidate_count || 0} lokale Adressen nicht erreicht.`,
+    });
+    return;
+  }
+  const status = await deviceManagementJson(`/api/device-management/devices/${encodeURIComponent(deviceId)}/connectivity/status`, {
+    method: "POST",
+    body: {
+      connectivity_status: "online",
+      ota_status: discovered.ota_status || accountDevice.ota_status,
+      ota_hostname: discovered.hostname || "",
+      last_seen_ip: new URL(discovered.source_url).hostname,
+    },
+  });
+  sendJson(res, 200, {
+    reachable: true,
+    checked_at: discovery.searched_at,
+    hostname: discovered.hostname,
+    source_url: discovered.source_url,
+    device: {
+      ...accountDevice,
+      connectivity_status: status.connectivity_status || "online",
+      ota_status: status.ota_status || discovered.ota_status || accountDevice.ota_status,
+    },
+  });
+}
+
 async function handleUserIdeBuildJob(req, res) {
   const body = await readJsonBody(req);
   const session = readSession(req);
   const projects = await loadUserIdeProjects(session);
   const devices = await loadUserIdeDevices(session);
   const project = projects.find((item) => item.slug === body.project_slug);
-  const device = devices.find((item) => item.device_id === body.device_id);
+  const device = devices.find((item) => item.device_id === body.device_id || item.account_device_id === body.device_id) || null;
+  const mode = body.mode || "build";
 
   if (!project) {
     sendJson(res, 404, { error: "project_not_found", message: "Projekt wurde nicht gefunden." });
     return;
   }
-  if (!device) {
+  if (!device && mode !== "build") {
     sendJson(res, 404, { error: "device_not_found", message: "Device wurde nicht gefunden." });
     return;
   }
-  if (body.mode === "build_and_flash" && device.ota_status !== "ready") {
+  if (mode === "build_and_flash" && device.ota_status !== "ready") {
     sendJson(res, 409, { error: "device_not_ota_ready", message: "Das ausgewaehlte Device ist nicht OTA-ready." });
     return;
   }
-  if (body.mode === "build_and_usb_flash" && !device.usb_flash_supported) {
+  if (mode === "build_and_flash" && device.connectivity_status !== "online") {
+    sendJson(res, 409, {
+      error: "device_not_online",
+      message: `Das ausgewaehlte Device ist nicht online (${device.connectivity_status || "unknown"}). OTA wurde nicht gestartet.`,
+    });
+    return;
+  }
+  if (mode === "build_and_flash") {
+    const otaPreflight = await otaBuildDeployJson("/api/ota/preflight");
+    if (!otaPreflight.ready) {
+      const blockers = (otaPreflight.blockers || []).map((item) => item.message).filter(Boolean);
+      sendJson(res, 409, {
+        error: "ota_pipeline_not_ready",
+        message: `OTA kann noch nicht gestartet werden: ${blockers.join(" ")}`,
+        blockers: otaPreflight.blockers || [],
+      });
+      return;
+    }
+  }
+  if (mode === "build_and_usb_flash" && !device.usb_flash_supported) {
     sendJson(res, 409, { error: "device_not_usb_flash_ready", message: "Das ausgewaehlte Device ist nicht fuer USB-Flash konfiguriert." });
     return;
   }
@@ -1064,23 +1384,25 @@ async function handleUserIdeBuildJob(req, res) {
   const projectServerJob = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/build-jobs`, {
     method: "POST",
     body: {
-      mode: body.mode || "build",
-      device_id: device.device_id,
-      build_config: resolveBuildConfig(project, device),
+      mode,
+      device_id: device?.device_id || null,
+      build_config: resolveBuildConfig(project, device || {}),
     },
   });
   const buildPackage = await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/build-package`);
-  const buildDeployJob = await buildDeployJson("/api/build-jobs", {
+  const buildDeployClient = mode === "build_and_flash" ? otaBuildDeployJson : buildDeployJson;
+  const buildDeployJob = await buildDeployClient("/api/build-jobs", {
     method: "POST",
     body: {
       job_id: projectServerJob.build_job_id,
-      mode: body.mode || "build",
-      device_id: device.device_id,
-      build_package: toBuildDeployPackage(buildPackage, device, project),
-      usb_flash: body.mode === "build_and_usb_flash" ? {
+      mode,
+      project_id: project.project_server_id,
+      device_id: device?.device_id || null,
+      build_package: toBuildDeployPackage(buildPackage, device || {}, project),
+      usb_flash: mode === "build_and_usb_flash" ? {
         upload_port: String(body.upload_port || device.upload_port || "").trim(),
       } : null,
-      deploy: body.mode === "build_and_flash" ? {
+      deploy: mode === "build_and_flash" ? {
         requested: true,
         authorized: true,
         device_id: device.device_id,
@@ -1093,22 +1415,20 @@ async function handleUserIdeBuildJob(req, res) {
       build_deploy_job_id: buildDeployJob.job_id,
     },
   });
-  const completedBuildDeployJob = await waitForBuildDeployJob(buildDeployJob.job_id);
+  const completedBuildDeployJob = await waitForBuildDeployJob(buildDeployJob.job_id, buildDeployClient);
   if (completedBuildDeployJob && ["succeeded", "failed"].includes(completedBuildDeployJob.status)) {
-    await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/result`, {
-      method: "POST",
-      body: toProjectBuildResult(completedBuildDeployJob),
-    });
+    await recordCompletedBuildJob(projectServerJob.build_job_id, completedBuildDeployJob);
   }
 
   const build = {
     build_job_id: projectServerJob.build_job_id,
+    build_deploy_job_id: buildDeployJob.job_id,
     project_server_id: project.project_server_id,
     project_slug: project.slug,
     project_title: project.title,
-    device_id: device.device_id,
-    device_label: device.display_name,
-    mode: body.mode || "build",
+    device_id: device?.device_id || null,
+    device_label: device?.display_name || "kein Device erforderlich",
+    mode,
     status: completedBuildDeployJob ? completedBuildDeployJob.status : "submitted_to_build_deploy",
     created_at: projectServerJob.created_at,
     build_package_contract: `${buildPackage.files.length} Dateien: platformio.ini + Projektquellen`,
@@ -1119,10 +1439,55 @@ async function handleUserIdeBuildJob(req, res) {
     flash_status: completedBuildDeployJob?.result?.build?.usb_flash?.status
       || completedBuildDeployJob?.result?.deploy?.status
       || "nicht angefordert",
+    flash_manifest: browserFlashManifest(projectServerJob.build_job_id, completedBuildDeployJob),
   };
   userIdeState.builds.unshift(build);
   touchWorkspace(session, project.project_server_id, body.mode === "learn" ? "learn" : "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
   sendJson(res, 202, build);
+}
+
+async function recordCompletedBuildJob(jobId, completedJob) {
+  return projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}/result`, {
+    method: "POST",
+    body: toProjectBuildResult(completedJob),
+  });
+}
+
+function browserFlashManifest(jobId, completedJob) {
+  const artifacts = completedJob?.result?.build?.artifacts || {};
+  const definitions = [
+    ["bootloader.bin", 0x1000],
+    ["partitions.bin", 0x8000],
+    ["boot_app0.bin", 0xe000],
+    ["firmware.bin", 0x10000],
+  ];
+  return definitions.filter(([name]) => artifacts[name]).map(([name, address]) => ({
+    name,
+    address,
+    url: `/api/user-ide/build-artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(name)}`,
+    size_bytes: artifacts[name].size_bytes,
+    sha256: artifacts[name].sha256,
+  }));
+}
+
+async function proxyBuildArtifact(res, jobId, fileName) {
+  let upstream = await fetch(`${buildDeployBaseUrl.replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`);
+  if (upstream.status === 404 && otaBuildDeployBaseUrl !== buildDeployBaseUrl) {
+    upstream = await fetch(`${otaBuildDeployBaseUrl.replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`);
+  }
+  const content = Buffer.from(await upstream.arrayBuffer());
+  res.writeHead(upstream.status, {
+    "Content-Type": upstream.headers.get("content-type") || "application/octet-stream",
+    "Content-Length": content.length,
+    "Cache-Control": "no-store",
+  });
+  res.end(content);
+}
+
+function serveVendorEsptool(res, requestPath) {
+  const relativePath = requestPath.replace(/^\/vendor\/esptool-js\//, "");
+  const root = relativePath === "bundle.js" ? esptoolJsDir : path.join(esptoolJsDir, "lib");
+  serveStatic(res, root, `/${relativePath}`);
 }
 
 async function handleDeviceRecoveryFirmwareCheck(req, res, session) {
@@ -1222,6 +1587,7 @@ function mapUserIdeProjects(session, projectsById) {
       last_build_status: latestBuildStatus(project),
       source_count: project ? project.source_count : 0,
       build_count: project ? project.build_count : 0,
+      access_model: definition.access_model || "subscription",
       view_manifest: projectViewManifest(definition),
       created_at: project ? project.created_at : "",
       updated_at: project ? project.updated_at : "",
@@ -1272,6 +1638,7 @@ function mapProjectServerProject(session, project) {
     source_files: [{ path: primarySourcePath, role: "architecture_model" }],
     steps: [],
     required_capability_ids: [],
+    access_model: "owned",
   };
 }
 
@@ -1362,6 +1729,7 @@ function toPlatformProject(project) {
     courseId: project.course_id,
     lessonId: project.lesson_id,
     requiredCapabilityIds: project.required_capability_ids,
+    accessModel: project.access_model || "subscription",
     buildConfig: project.build_config,
     status: project.status,
     sourceCount: project.source_count,
@@ -1494,6 +1862,8 @@ function decorateUserIdeDevice(device) {
     device_id: device.device_id,
     account_device_id: device.account_device_id,
     display_name: device.display_name,
+    node_name: device.node_name || "",
+    hostname: device.hostname || device.node_name || "",
     hardware_profile_id: device.hardware_profile_id,
     technical_capability_ids: device.technical_capability_ids || [],
     authenticity_status: device.authenticity_status,
@@ -1585,19 +1955,25 @@ function latestBuildStatus(project) {
   return project && project.build_count > 0 ? `${project.build_count} BuildJob(s)` : "";
 }
 
-async function waitForBuildDeployJob(jobId) {
-  for (let attempt = 0; attempt < 180; attempt += 1) {
-    const job = await buildDeployJson(`/api/build-jobs/${encodeURIComponent(jobId)}`);
+async function waitForBuildDeployJob(jobId, client = buildDeployJson) {
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    const job = await client(`/api/build-jobs/${encodeURIComponent(jobId)}`);
     if (["succeeded", "failed", "replaced"].includes(job.status)) return job;
     await delay(1000);
   }
   return null;
 }
 
+async function loadBuildDeployJob(jobId) {
+  const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
+  const client = projectJob?.mode === "build_and_flash" ? otaBuildDeployJson : buildDeployJson;
+  return client(`/api/build-jobs/${encodeURIComponent(jobId)}`);
+}
+
 function toBuildDeployPackage(buildPackage, device = {}, project = {}) {
   const files = Object.fromEntries((buildPackage.files || []).map((file) => [file.path, file.content]));
   const buildConfig = resolveBuildConfig(project, device);
-  if (buildConfig) files["platformio.ini"] = renderPlatformioIni(buildConfig);
+  if (buildConfig && !buildConfig.firmware_basis_id) files["platformio.ini"] = renderPlatformioIni(buildConfig);
   return {
     package_id: buildPackage.package_id,
     files,
@@ -1606,6 +1982,14 @@ function toBuildDeployPackage(buildPackage, device = {}, project = {}) {
 
 function resolveBuildConfig(project = {}, device = {}) {
   if (project.slug === "arduino-atmel-bare-metal" && project.build_config) return project.build_config;
+  if (project.build_config?.firmware_basis_id) {
+    return {
+      ...project.build_config,
+      board: device.build_config?.board || project.build_config.board,
+      environment: device.build_config?.environment || project.build_config.environment,
+      firmware_basis_variant: project.build_config.firmware_basis_variant || "comfort",
+    };
+  }
   return device.build_config || project.build_config || null;
 }
 
@@ -1683,6 +2067,7 @@ function createUserIdeState() {
       source_files: [{ path: "src/user/user_app.c", role: "user_code" }],
     }),
     tamagotchiEntryCourseModel.createProject(project, step),
+    smartAssistantCourseModel.createProject(project, step),
     project("esp32-ota-bootstrap-firmware", "ESP32 OTA-Basissoftware", "Firmware", "USB-Erstflash vorbereiten und spaetere OTA-Faehigkeit erhalten.", [
       step("USB-Erstflash", "Das Board wird initial mit der GerNetiX-Basissoftware vorbereitet.", "OTA bleibt Teil der Basis, nicht Teil des User-Codes."),
       step("Service-Endpunkte", "Device Management und Build-&-Deploy bleiben konfigurierbar.", "Ein Serverumzug darf keinen USB-Reflash erzwingen."),
@@ -1732,6 +2117,14 @@ function project(slug, title, area, summary, steps, options = {}) {
     "esp32-ota-bootstrap-firmware": ["capability.processor_esp32", "capability.wifi", "capability.ota"],
     "plant-watering-control": ["capability.processor_esp32", "capability.wifi", "capability.digital_output"],
   };
+  const accessModelsBySlug = {
+    "arduino-blink": "free",
+    "software-engineering-tamagotchi": "free",
+    "arduino-atmel-bare-metal": "subscription",
+    "smart-assistant-ai-automation": "subscription",
+    "esp32-ota-bootstrap-firmware": "subscription",
+    "plant-watering-control": "purchased",
+  };
   return {
     slug,
     project_server_id: `project_${slug}`,
@@ -1743,6 +2136,7 @@ function project(slug, title, area, summary, steps, options = {}) {
     build_config: options.build_config || undefined,
     source_files: options.source_files || [{ path: "src/main.cpp", role: "user_code" }],
     required_capability_ids: requiredCapabilitiesBySlug[slug] || ["capability.processor_esp32"],
+    access_model: options.access_model || accessModelsBySlug[slug] || "subscription",
     title,
     area,
     summary,
@@ -1789,6 +2183,12 @@ function projectViewManifest(project) {
       primarySourcePath,
     });
   }
+  if (project.slug === smartAssistantCourseModel.slug) {
+    return smartAssistantCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
 
   return {
     schema_version: 1,
@@ -1817,16 +2217,24 @@ function projectViewManifest(project) {
   };
 }
 
-function developmentProjectViewManifest({ title, description = "", source = "", diagram = null }) {
+function developmentProjectViewManifest({ title, description = "", source = "", diagram = null, buildConfig = null }) {
   const plantUmlSource = source || diagram?.source || initialArchitecturePlantUml(title);
+  const buildable = Boolean(buildConfig);
   return {
     schema_version: 1,
     title: `${title || "Entwicklungsprojekt"} Architektur`,
     summary: description || "Projektgebundene Architektur-Discovery mit PlantUML-Skizze.",
-    primary_source_path: "docs/architecture.puml",
-    hide_source_editor: true,
+    primary_source_path: buildable ? (buildConfig.user_source_path || "Komponenten/ESP32/src/user_main.cpp") : "docs/architecture.puml",
+    hide_source_editor: !buildable,
     mode: "architecture_discovery",
     views: [
+      ...(buildable ? [{
+        id: "firmware-source",
+        type: "source_analysis",
+        title: "ESP32 User Main",
+        summary: "Account- und projektgebundene User-Main; die geschuetzte GerNetiX-Basissoftware wird erst im BuildPackage ergaenzt.",
+        source_path: buildConfig.user_source_path || "Komponenten/ESP32/src/user_main.cpp",
+      }] : []),
       {
         id: "architecture-diagram",
         type: "plantuml",
@@ -1836,6 +2244,8 @@ function developmentProjectViewManifest({ title, description = "", source = "", 
         validation: { type: "plantuml_contains", must_contain: ["@startuml", "@enduml"] },
         payload: {
           source: plantUmlSource,
+          derived_from: diagram?.derived_from || (buildable ? "project_template" : "persisted_project"),
+          ...(diagram?.function_coverage ? { function_coverage: diagram.function_coverage } : {}),
           model_lines: [
             { label: "Status", text: "KI-abgeleitete Skizze; Architekturentscheidungen muessen vom Nutzer bestaetigt werden." },
             { label: "Quelle", text: "Gespeichert im Project Server und an den aktuellen Account gebunden." },
@@ -1903,6 +2313,9 @@ function slugifyProjectId(value) {
 function demoProjectSources(project) {
   if (project.slug === tamagotchiEntryCourseModel.slug) {
     return tamagotchiEntryCourseModel.createSources(project, primarySourcePath);
+  }
+  if (project.slug === smartAssistantCourseModel.slug) {
+    return smartAssistantCourseModel.createSources();
   }
 
   if (project.slug === "arduino-atmel-bare-metal") {
@@ -2082,6 +2495,39 @@ async function handleDevLessonPreviewMigration(req, res) {
     project_server_error: projectServerError,
     preview_url: `/app/ide/?project=${encodeURIComponent(projectId)}`,
   });
+}
+
+function usbSerialHelperDownloads() {
+  const files = fs.existsSync(usbSerialHelperDistDir) ? fs.readdirSync(usbSerialHelperDistDir) : [];
+  const definitions = [
+    { platform: "macos", label: "Für macOS", pattern: /^GerNetiX-USB-Serial-Helper-mac-arm64\.zip$/i, detail: "ZIP · Apple Silicon" },
+    { platform: "windows", label: "Für Windows", pattern: /^GerNetiX-USB-Serial-Helper-win-x64\.exe$/i, detail: "Portable EXE · Windows 10/11 x64" },
+  ];
+  return definitions.map((definition) => {
+    const filename = files.find((file) => definition.pattern.test(file)) || "";
+    return {
+      platform: definition.platform,
+      label: definition.label,
+      detail: definition.detail,
+      available: Boolean(filename),
+      url: filename ? `/downloads/usb-serial-helper/${encodeURIComponent(filename)}` : "",
+    };
+  });
+}
+
+function serveUsbSerialHelperDownload(res, filename) {
+  const download = usbSerialHelperDownloads().find((item) => item.available && decodeURIComponent(item.url).endsWith(`/${filename}`));
+  if (!download) {
+    sendJson(res, 404, { error: "download_not_found" });
+    return;
+  }
+  const filePath = path.join(usbSerialHelperDistDir, filename);
+  res.writeHead(200, {
+    "Content-Type": filename.endsWith(".zip") ? "application/zip" : "application/vnd.microsoft.portable-executable",
+    "Content-Disposition": `attachment; filename="${filename.replace(/[\"\\]/g, "")}"`,
+    "Cache-Control": "no-store",
+  });
+  fs.createReadStream(filePath).pipe(res);
 }
 
 bootstrap().catch((error) => {

@@ -55,6 +55,7 @@ class DeviceManagementService {
       last_seen_at: new Date().toISOString(),
     };
     this.repository.saveDevice(next);
+    this.syncAccountDeviceStatus(next);
     return this.summarizeDevice(next);
   }
 
@@ -239,7 +240,20 @@ class DeviceManagementService {
       last_seen_at: new Date().toISOString(),
     };
     this.repository.saveDevice(next);
+    this.syncAccountDeviceStatus(next);
     return this.summarizeDevice(next);
+  }
+
+  syncAccountDeviceStatus(device) {
+    for (const accountId of this.repository.accountDevices.keys()) {
+      const accountDevice = this.repository.listAccountDevices(accountId).find((item) => item.device_id === device.device_id);
+      if (!accountDevice) continue;
+      this.repository.saveAccountDevice({
+        ...accountDevice,
+        connectivity_status: device.connectivity_status,
+        ota_status: device.ota_status,
+      });
+    }
   }
 
   supportEntitlement(deviceId) {

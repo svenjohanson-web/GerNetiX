@@ -4,6 +4,8 @@
 #include "basissoftware/functions/runDiagnostics.h"
 #include "basissoftware/functions/startRuntimeTasks.h"
 #include "basissoftware/factory_provisioning.h"
+#include "basissoftware/mqtt_ota.h"
+#include "basissoftware/ota_update.h"
 #include "basissoftware/project_hooks.h"
 
 extern "C" void app_main() {
@@ -13,5 +15,7 @@ extern "C" void app_main() {
   applyFactoryProvisioningIfAvailable();
   runDiagnostics();
   onProjectInit();
+  confirmRunningOtaImage();
+  startMqttOtaSubscriber();
   startRuntimeTasks();
 }

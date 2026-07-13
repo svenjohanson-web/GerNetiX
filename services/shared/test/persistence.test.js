@@ -30,6 +30,7 @@ test("FileBackedMapRepository stores map collections", () => {
 test("SqliteStateStore persists service state as collections", () => {
   const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-sqlite-store-")), "state.sqlite");
   const store = new SqliteStateStore(dbPath, "device-management", { defaultState: { devices: [] } });
+  assert.equal(store.db.prepare("PRAGMA busy_timeout").get().timeout, 5000);
   store.save({ devices: [{ device_id: "device-1" }] });
   store.close();
 

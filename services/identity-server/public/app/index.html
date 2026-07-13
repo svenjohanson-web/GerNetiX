@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Plattform</title>
-    <link rel="stylesheet" href="/app/app.css" />
+    <link rel="stylesheet" href="/app/app.css?v=20260712-17" />
   </head>
   <body>
     <main class="app-shell">
@@ -29,6 +29,7 @@
         <a href="/app/learn/" data-route="learn">Lernplattform</a>
         <a href="/app/device-management/" data-route="device-management">Device Management</a>
         <a class="utility" href="/app/builds/" data-route="builds">Builds</a>
+        <a class="utility" href="/app/downloads/" data-route="downloads">Downloads</a>
         <a class="utility" href="/app/billing/" data-route="billing">Billing</a>
         <button id="logoutButton" class="menu-logout" type="button">Abmelden</button>
       </nav>
@@ -65,6 +66,35 @@
         </section>
       </section>
 
+      <section id="downloadsView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Werkzeuge für deinen Rechner</p>
+            <h2>Downloads</h2>
+            <p class="helper-text">Hilfsprogramme für Funktionen, die der Browser nicht direkt bereitstellt.</p>
+          </div>
+        </div>
+        <section class="download-grid" aria-label="Verfügbare Downloads">
+          <article class="panel download-card">
+            <div class="download-card-head">
+              <div>
+                <p class="eyebrow">USB &amp; Recovery</p>
+                <h3>USB Serial Helper</h3>
+              </div>
+              <span id="usbHelperRecommendation" class="access-badge hidden">Für dieses Gerät</span>
+            </div>
+            <p>Verbindet die GerNetiX IDE mit einem per USB angeschlossenen Board, wenn dein Browser Web Serial nicht unterstützt.</p>
+            <ul class="download-feature-list">
+              <li>ESP32 per USB erkennen und flashen</li>
+              <li>Alternative für Safari und Browser ohne Web Serial</li>
+              <li>Keine Zugangsdaten oder Projektdaten dauerhaft lokal speichern</li>
+            </ul>
+            <div id="usbHelperDownloads" class="download-actions" aria-live="polite"></div>
+            <p id="usbHelperStatus" class="helper-text">Download-Verfügbarkeit wird geprüft …</p>
+          </article>
+        </section>
+      </section>
+
       <section id="learnView" class="view hidden">
         <div class="section-head">
           <div>
@@ -72,50 +102,28 @@
             <h2>Lernplattform</h2>
           </div>
         </div>
+        <section class="panel learning-catalog-panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Entdecken und starten</p>
+              <h3>Lernprojekt-Katalog</h3>
+              <p class="helper-text">Waehle ein Projekt nach Thema, Lernziel und gewuenschter Hardware.</p>
+            </div>
+          </div>
+          <section id="projectList" class="project-grid learning-catalog-grid"></section>
+        </section>
         <section class="panel">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Meine Lernprojekte</p>
-              <h3>Fortschritt</h3>
+              <p class="eyebrow">Persoenlicher Bereich</p>
+              <h3>Meine Lernprojekte</h3>
             </div>
           </div>
           <div id="learnProjectList"></div>
         </section>
-        <section class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Katalog</p>
-              <h3>Projekt starten</h3>
-            </div>
-          </div>
-          <section id="projectList" class="project-grid"></section>
-        </section>
       </section>
 
       <section id="ideView" class="view hidden">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Freier Entwicklungsmodus</p>
-            <h2>Entwickeln</h2>
-          </div>
-          <div id="ideToolbar" class="button-row">
-            <span id="ideCurrentProjectLabel" class="project-context-label"></span>
-            <select id="ideProjectSelect" aria-label="Projekt wählen"></select>
-            <span id="ideViewModeButtons" class="button-row ide-view-mode-buttons">
-              <button type="button" data-ide-view-mode="model">Modell</button>
-              <button type="button" data-ide-view-mode="code">Code</button>
-              <button type="button" data-ide-view-mode="image">Image</button>
-            </span>
-            <span id="ideDeviceTools" class="button-row">
-              <select id="ideDeviceSelect" aria-label="Geraet waehlen"></select>
-              <select id="usbPortSelect" class="port-input" aria-label="USB-Port"></select>
-              <button id="refreshUsbPortsButton" type="button">USB suchen</button>
-              <button id="buildButton" type="button">Build starten</button>
-              <button id="usbFlashButton" type="button">Ueber USB flashen</button>
-            </span>
-            <button id="saveSourceButton" type="button">Code speichern</button>
-          </div>
-        </div>
         <section id="ideEmptyState" class="panel ide-empty-state hidden">
           <p class="eyebrow">Freier Modus</p>
           <h3>Kein Entwicklungsprojekt geöffnet</h3>
@@ -131,7 +139,7 @@
             <article id="ideViewerPanel" class="panel ide-viewer-panel">
               <div class="ide-viewer-head">
                 <div>
-                  <p class="eyebrow" id="ideViewerModeLabel">Modell</p>
+                  <p class="eyebrow" id="ideViewerModeLabel">Datei</p>
                   <h3 id="ideProjectTitle"></h3>
                 </div>
                 <span id="ideActiveSourceLabel" class="project-context-label"></span>
@@ -141,15 +149,39 @@
               </section>
               <section id="ideImageView" class="ide-image-view hidden"></section>
               <section id="ideModelView" class="ide-model-view"></section>
+              <section id="ideRealizationView" class="ide-realization-view hidden"></section>
+              <section id="ideComponentFeaturesView" class="ide-component-features-view hidden"></section>
+              <section id="ideDeviceWebView" class="ide-device-web-view hidden"></section>
             </article>
+            <aside id="ideCodeAssistant" class="panel ide-code-assistant"></aside>
+            <section id="ideBuildConsole" class="ide-build-console">
+              <div id="ideDeviceTools" class="ide-build-actions">
+                <span class="ide-build-actions-label">Build &amp; Flash</span>
+                <select id="ideDeviceSelect" class="hidden" aria-label="Zugeordnetes Geraet"></select>
+                <select id="usbPortSelect" class="hidden" aria-label="USB-Port"></select>
+                <button id="refreshUsbPortsButton" class="hidden" type="button">USB suchen</button>
+                <button id="buildButton" type="button" aria-describedby="ideActionReason">Build</button>
+                <button id="usbFlashButton" type="button" aria-describedby="ideActionReason">Flash via Web Serial</button>
+                <button id="otaFlashButton" type="button" aria-describedby="ideActionReason">OTA Flash</button>
+                <button id="checkOtaConnectivityButton" type="button" aria-describedby="ideActionReason">Online prüfen</button>
+                <small id="ideActionReason" class="ide-action-reason hidden"></small>
+              </div>
+              <section class="ide-terminal" aria-label="Build Terminal">
+                <header class="ide-terminal-head">
+                  <strong>TERMINAL</strong>
+                  <button id="clearIdeTerminalButton" type="button">Leeren</button>
+                </header>
+                <pre id="ideTerminalOutput" aria-live="polite"><span class="terminal-muted">GerNetiX Build-Terminal bereit.</span></pre>
+              </section>
+              <div id="flashStatus" class="flash-status hidden"></div>
+            </section>
           </section>
-          <aside id="ideInspectorPanel" class="panel ide-inspector-panel">
-            <p class="eyebrow">Projektmodell</p>
-            <dl id="ideProjectMeta" class="meta-list"></dl>
-            <section id="ideAiUsage" class="ide-ai-rating"></section>
-            <section id="ideProjectViewManifest" class="project-view-manifest"></section>
-            <div id="flashStatus" class="flash-status hidden"></div>
-          </aside>
+          <div class="hidden" aria-hidden="true">
+            <dl id="ideProjectMeta"></dl>
+            <section id="ideAiUsage"></section>
+            <section id="ideProjectViewManifest"></section>
+            <section id="ideDeviceAllocation"></section>
+          </div>
         </section>
       </section>
 
@@ -164,15 +196,15 @@
         <section class="dashboard-grid">
           <button class="entry-card primary" type="button" data-open-route="/app/device-management/provisioning/">
             <span>Provisioning</span>
-            <strong>Neue Boards vorbereiten und mit dem Account verbinden</strong>
+            <strong>Unbekannte Boards flashen, registrieren und pairen</strong>
           </button>
           <button class="entry-card" type="button" data-open-route="/app/device-management/inventory/">
             <span>Inventar</span>
-            <strong>Bekannte Devices suchen, aufnehmen und verwalten</strong>
+            <strong>Mit diesem Account verbundene Geräte ansehen</strong>
           </button>
           <button class="entry-card" type="button" data-open-route="/app/device-management/recovery/">
             <span>Recovery</span>
-            <strong>Firmwarezustand per USB oder OTA pruefen</strong>
+            <strong>Bekannte Geräte reparieren und wiederherstellen</strong>
           </button>
         </section>
       </section>
@@ -189,18 +221,75 @@
           <button type="button" data-device-management-route="/app/device-management/inventory/">Inventar</button>
           <button type="button" data-device-management-route="/app/device-management/recovery/">Recovery</button>
         </nav>
-        <section class="panel">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Noch nicht angeschlossen</p>
-              <h3>Board vorbereiten und an Account anbinden</h3>
+        <section class="provisioning-intro panel">
+          <div>
+            <p class="eyebrow">Unbekanntes Gerät</p>
+            <h3>Board erstmalig in Betrieb nehmen</h3>
+            <p class="helper-text">Provisioning erkennt ein neues Board, installiert bei Bedarf die GerNetiX-Basissoftware, registriert seine Identität und verbindet es mit deinem Account.</p>
+          </div>
+          <ol class="provisioning-steps" aria-label="Provisioning-Ablauf">
+            <li><span>1</span>Erkennen</li>
+            <li><span>2</span>Flashen</li>
+            <li><span>3</span>Registrieren</li>
+            <li><span>4</span>Pairen</li>
+          </ol>
+        </section>
+        <section class="inventory-tools provisioning-tools">
+          <section class="panel discovery-panel">
+            <div class="section-head">
+              <div>
+                <p class="eyebrow">Geführtes Provisioning</p>
+                <h3>Unbekanntes Board suchen</h3>
+              </div>
             </div>
-          </div>
-          <p class="helper-text">Provisioning ist der Schritt vor dem Inventar: Basissoftware, Device-Kennung, Credentials und WLAN-/Setup-Daten werden auf ein Board gebracht. Die konkrete IDE-Seite wird hier angeschlossen.</p>
-          <div class="button-row">
-            <button type="button" data-open-route="/app/device-management/inventory/">Zum Inventar</button>
-            <button type="button" data-open-route="/app/device-management/recovery/">Zur Recovery</button>
-          </div>
+            <label class="inventory-type-label">Prozessorfamilie optional<select id="inventoryProcessorFamily"></select></label>
+            <label class="inventory-type-label">ProcessorBoard optional<select id="inventoryHardwareType"></select></label>
+            <label class="inventory-type-label">Kurzer Board-Name<input id="inventoryBoardShortName" type="text" value="mein-board" maxlength="42" /></label>
+            <dl class="meta-list compact onboarding-preview">
+              <div><dt>Node-/SSID-Name</dt><dd id="inventoryNodeNamePreview">gernetix-mein-board</dd></div>
+              <div><dt>Seriennummer</dt><dd>wird automatisch von GerNetiX erstellt</dd></div>
+            </dl>
+            <p class="helper-text">Die Seriennummer und Device-Identität werden beim Provisioning erzeugt und dauerhaft gespeichert.</p>
+            <div class="inventory-methods">
+              <div id="esp32DiscoveryActions" class="button-row">
+                <select id="deviceDiscoveryMethod" aria-label="Erkennungsweg wählen">
+                  <option value="wlan">WLAN</option>
+                  <option value="usb">USB</option>
+                </select>
+                <button id="deviceDiscoverySearchButton" class="primary" type="button">Board suchen</button>
+              </div>
+              <div id="avrDiscoveryActions" class="button-row hidden">
+                <button id="avrBootloaderIdentifyButton" class="primary" type="button">Bootloader experimentell testen</button>
+              </div>
+            </div>
+            <label id="esp32UsbPortLabel" class="inventory-type-label">USB-Port<select id="esp32UsbPort"></select></label>
+            <p id="inventoryTypeHint" class="helper-text"></p>
+            <div id="networkDiscoveryStatus" class="flash-status hidden"></div>
+            <section id="networkDiscoveryList" class="discovery-list"></section>
+            <div class="card-actions">
+              <button id="claimSelectedDiscoveredDevicesButton" class="primary" type="button" disabled>Provisionieren und mit Account verbinden</button>
+            </div>
+          </section>
+          <form id="deviceInventoryForm" class="panel form-grid">
+            <p class="eyebrow">Manueller Fallback</p>
+            <h3>Board registrieren und pairen</h3>
+            <p class="helper-text">Nur verwenden, wenn die automatische Erkennung nicht möglich ist.</p>
+            <label>Name<input id="inventoryDisplayName" type="text" value="Mein Board" /></label>
+            <label>Seriennummer<input id="inventorySerialNumber" type="text" value="" placeholder="automatisch, falls leer" /></label>
+            <label>Board<select id="inventoryHardwareProfile"></select></label>
+            <label id="inventoryUsbPortLabel">USB-Port<select id="inventoryUsbPort"></select></label>
+            <label>Capabilities<input id="inventoryCapabilities" type="text" value="" /></label>
+            <label>Status
+              <select id="inventoryConnectivityStatus">
+                <option value="unknown">unbekannt</option>
+                <option value="usb_connected">USB verbunden</option>
+                <option value="online">online</option>
+                <option value="offline">offline</option>
+              </select>
+            </label>
+            <button type="submit">Registrieren und pairen</button>
+            <div id="inventoryStatus" class="flash-status hidden"></div>
+          </form>
         </section>
       </section>
 
@@ -219,24 +308,29 @@
           <button type="button" data-device-management-route="/app/device-management/inventory/">Inventar</button>
           <button type="button" data-device-management-route="/app/device-management/recovery/">Recovery</button>
         </nav>
+        <section class="recovery-intro panel">
+          <p class="eyebrow">Bekanntes Gerät</p>
+          <h3>Vorhandene Identität erhalten, Funktion wiederherstellen</h3>
+          <p class="helper-text">Recovery ist für bereits registrierte Geräte mit vorhandener Device-ID oder Secret gedacht – etwa bei defekter Firmware, verlorener Verbindung oder fehlgeschlagenem Update.</p>
+        </section>
         <section class="recovery-layout">
           <aside class="panel recovery-device-panel">
-            <p class="eyebrow">Account Devices</p>
-            <h3>Device waehlen</h3>
-            <select id="recoveryDeviceSelect" aria-label="Recovery Device waehlen"></select>
+            <p class="eyebrow">Inventar</p>
+            <h3>Bekanntes Gerät wählen</h3>
+            <select id="recoveryDeviceSelect" aria-label="Recovery-Gerät wählen"></select>
             <section id="recoveryDeviceList" class="recovery-device-list"></section>
           </aside>
           <article class="panel recovery-check-panel">
             <div class="section-head">
               <div>
-                <p class="eyebrow">Firmwarecheck</p>
-                <h3 id="recoveryDeviceTitle">Kein Device gewaehlt</h3>
+                <p class="eyebrow">Diagnose und Rettung</p>
+                <h3 id="recoveryDeviceTitle">Kein Gerät gewählt</h3>
               </div>
             </div>
             <dl id="recoveryDeviceMeta" class="meta-list"></dl>
             <div class="button-row recovery-actions">
-              <button id="recoveryCheckUsbButton" class="primary" type="button">Check Firmware ueber USB</button>
-              <button id="recoveryCheckOtaButton" type="button">Check Firmware ueber OTA</button>
+              <button id="recoveryCheckUsbButton" class="primary" type="button">Über USB diagnostizieren</button>
+              <button id="recoveryCheckOtaButton" type="button">Über OTA diagnostizieren</button>
             </div>
             <div id="recoveryStatus" class="flash-status hidden"></div>
             <section id="recoveryCheckResult" class="recovery-check-result"></section>
@@ -249,6 +343,10 @@
         <div class="section-head">
           <div>
             <p class="eyebrow">Architektur-Discovery</p>
+            <div class="development-discovery-step">
+              <span>Aktueller Schritt</span>
+              <strong id="developmentAssistantMode">Ziel/Funktion klaeren</strong>
+            </div>
           </div>
           <div class="button-row">
             <button id="clearDevelopmentChatButton" type="button">Dialog leeren</button>
@@ -264,16 +362,45 @@
               <div class="development-project-summary">
                 <span>Aktuelles Projekt</span>
                 <strong id="developmentProjectName">Kein Projekt geoeffnet</strong>
-                <small id="developmentAssistantMode">Struktur klaeren</small>
               </div>
               <div class="button-row development-project-actions">
-                <button id="openDevelopmentProjectButton" type="button">Projekt oeffnen</button>
-                <button id="newDevelopmentProjectButton" type="button">Projekt neu</button>
+                <button id="chooseDevelopmentProjectButton" class="hidden" type="button">Projekt wechseln</button>
+              </div>
+              <div id="developmentProjectChoicePanel" class="development-project-choice-panel">
+                <button id="continueDevelopmentProjectButton" class="development-project-choice hidden" type="button">
+                  <span>Letztes Projekt fortsetzen</span>
+                  <strong id="continueDevelopmentProjectName"></strong>
+                  <small>Dort weitermachen, wo du aufgehoert hast.</small>
+                </button>
+                <button id="newEmptyDevelopmentProjectButton" class="development-project-choice" type="button">
+                  <span>Neues Projekt</span>
+                  <strong>Leer beginnen</strong>
+                  <small>Architektur und Anforderungen von Grund auf klaeren.</small>
+                </button>
+                <button id="newTemplateDevelopmentProjectButton" class="development-project-choice" type="button">
+                  <span>Neues Projekt</span>
+                  <strong>Aus Template</strong>
+                  <small>Mit einer vorbereiteten Startarchitektur beginnen.</small>
+                </button>
+                <button id="openDevelopmentProjectButton" class="development-project-choice" type="button">
+                  <span>Vorhandenes Projekt</span>
+                  <strong>Projekt oeffnen</strong>
+                  <small>Ein bereits angelegtes Entwicklungsprojekt auswaehlen.</small>
+                </button>
               </div>
               <div id="developmentProjectOpenPanel" class="development-project-panel hidden">
                 <label class="development-project-field">Projekt oeffnen<select id="developmentProjectSelect"></select></label>
               </div>
               <form id="developmentProjectForm" class="development-project-form hidden">
+                <label id="developmentProjectTemplateField">Projekttemplate
+                  <select id="developmentProjectTemplate">
+                    <option value="empty" hidden>Leeres Projekt</option>
+                    <option value="esp32_device_only">ESP32 Device only</option>
+                    <option value="esp32_datalogger_local_web">Datenlogger mit lokalem Webserver</option>
+                    <option value="esp32_datalogger_internet_web">ESP32 Datenlogger mit Internet-Webserver</option>
+                  </select>
+                </label>
+                <p id="developmentProjectTemplateHint" class="development-template-hint">Architektur und Anforderungen gemeinsam von Grund auf klaeren.</p>
                 <label>Name<input id="developmentProjectTitle" type="text" maxlength="120" placeholder="z. B. Pflanzenwaechter" /></label>
                 <label>Beschreibung<textarea id="developmentProjectDescription" rows="3" placeholder="Kurz beschreiben, was entstehen soll."></textarea></label>
                 <button type="submit">Projekt anlegen</button>
@@ -315,62 +442,16 @@
           <button type="button" data-device-management-route="/app/device-management/recovery/">Recovery</button>
         </nav>
         <section class="inventory-layout">
-          <section class="inventory-tools">
-            <section class="panel discovery-panel">
-              <div class="section-head">
-                <div>
-                  <p class="eyebrow">Inventarisierung</p>
-                  <h3>Geraete suchen</h3>
-                </div>
+          <section class="inventory-overview panel">
+            <div class="section-head inventory-overview-head">
+              <div>
+                <p class="eyebrow">Deine Geräte</p>
+                <h3>Registrierte Boards</h3>
               </div>
-              <label class="inventory-type-label">Prozessorfamilie optional<select id="inventoryProcessorFamily"></select></label>
-              <label class="inventory-type-label">ProcessorBoard optional<select id="inventoryHardwareType"></select></label>
-              <label class="inventory-type-label">Kurzer Board-Name<input id="inventoryBoardShortName" type="text" value="mein-board" maxlength="42" /></label>
-              <dl class="meta-list compact onboarding-preview">
-                <div><dt>Node-/SSID-Name</dt><dd id="inventoryNodeNamePreview">gernetix-mein-board</dd></div>
-                <div><dt>Seriennummer</dt><dd>wird automatisch von GerNetiX erstellt</dd></div>
-              </dl>
-              <p class="helper-text">Die Seriennummer wird vom System erzeugt und dauerhaft im Board gespeichert. Du musst damit nichts anfangen.</p>
-              <div class="inventory-methods">
-                <div id="esp32DiscoveryActions" class="button-row">
-                  <select id="deviceDiscoveryMethod" aria-label="Erkennungsweg waehlen">
-                    <option value="wlan">WLAN</option>
-                    <option value="usb">USB</option>
-                  </select>
-                  <button id="deviceDiscoverySearchButton" class="primary" type="button">Suchen</button>
-                </div>
-                <div id="avrDiscoveryActions" class="button-row hidden">
-                  <button id="avrBootloaderIdentifyButton" class="primary" type="button">Bootloader experimentell testen</button>
-                </div>
-              </div>
-              <label id="esp32UsbPortLabel" class="inventory-type-label">USB-Port<select id="esp32UsbPort"></select></label>
-              <p id="inventoryTypeHint" class="helper-text"></p>
-              <div id="networkDiscoveryStatus" class="flash-status hidden"></div>
-              <section id="networkDiscoveryList" class="discovery-list"></section>
-              <div class="card-actions">
-                <button id="claimSelectedDiscoveredDevicesButton" class="primary" type="button" disabled>Ausgewaehlte ins Inventar uebernehmen</button>
-              </div>
-            </section>
-            <form id="deviceInventoryForm" class="panel form-grid">
-            <p class="eyebrow">Manuell</p>
-            <label>Name<input id="inventoryDisplayName" type="text" value="Mein Board" /></label>
-            <label>Seriennummer<input id="inventorySerialNumber" type="text" value="" placeholder="automatisch, falls leer" /></label>
-            <label>Board<select id="inventoryHardwareProfile"></select></label>
-            <label id="inventoryUsbPortLabel">USB-Port<select id="inventoryUsbPort"></select></label>
-            <label>Capabilities<input id="inventoryCapabilities" type="text" value="" /></label>
-            <label>Status
-              <select id="inventoryConnectivityStatus">
-                <option value="unknown">unbekannt</option>
-                <option value="usb_connected">USB verbunden</option>
-                <option value="online">online</option>
-                <option value="offline">offline</option>
-              </select>
-            </label>
-            <button type="submit">Manuell hinzufuegen</button>
-            <div id="inventoryStatus" class="flash-status hidden"></div>
-          </form>
+              <span id="inventoryDeviceCount" class="inventory-count">0 Boards</span>
+            </div>
+            <section id="deviceList" class="device-list"></section>
           </section>
-          <section id="deviceList" class="device-list"></section>
         </section>
       </section>
 
@@ -399,8 +480,8 @@
     <script src="/app/dom-utils.js"></script>
     <script src="/app/device-onboarding-model.js"></script>
     <script src="/app/device-onboarding-controller.js"></script>
-    <script src="/app/guided-project-view.js"></script>
+    <script src="/app/guided-project-view.js?v=20260712-10"></script>
     <script src="/app/development-platform.js"></script>
-    <script src="/app/app.js"></script>
+    <script src="/app/app.js?v=20260712-20"></script>
   </body>
 </html>

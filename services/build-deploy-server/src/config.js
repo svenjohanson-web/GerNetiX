@@ -1,4 +1,5 @@
 const path = require("node:path");
+const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
 
 function createConfig(env = process.env) {
   const runtimeRoot = env.BUILD_DEPLOY_RUNTIME_DIR
@@ -9,10 +10,15 @@ function createConfig(env = process.env) {
     host: env.HOST || "127.0.0.1",
     port: Number(env.PORT || 4400),
     publicBaseUrl: env.PUBLIC_BASE_URL || "",
-    runner: env.BUILD_RUNNER || "mock",
-    platformioCommand: env.PLATFORMIO_COMMAND || "platformio",
+    mqttBrokerUrl: env.MQTT_BROKER_URL || "",
+    runner: env.BUILD_RUNNER || "platformio",
+    allowMockRunner: env.NODE_ENV === "test",
+    platformioCommand: env.PLATFORMIO_COMMAND || (env.HOME
+      ? path.join(env.HOME, ".platformio", "penv", "bin", "platformio")
+      : "platformio"),
     runtimeRoot,
     tempDir: path.join(runtimeRoot, "tmp"),
+    incrementalCacheDir: path.join(runtimeRoot, "incremental-build-cache"),
     cacheDir: env.BUILD_CACHE_DIR === "platformio-default"
       ? null
       : env.BUILD_CACHE_DIR
@@ -23,6 +29,12 @@ function createConfig(env = process.env) {
       : path.join(runtimeRoot, "artifacts"),
     persistenceBackend: env.PERSISTENCE_BACKEND || env.BUILD_DEPLOY_PERSISTENCE_BACKEND || "memory",
     sqlitePath: env.PERSISTENCE_SQLITE_PATH || env.BUILD_DEPLOY_SQLITE_PATH || path.join(runtimeRoot, "gernetix-services.sqlite"),
+    interfaceTelemetrySqlitePath: env.INTERFACE_TELEMETRY_SQLITE_PATH
+      ? path.resolve(env.INTERFACE_TELEMETRY_SQLITE_PATH)
+      : (env.PERSISTENCE_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-services.sqlite")),
+    deviceCredentialsSqlitePath: env.DEVICE_CREDENTIALS_SQLITE_PATH
+      ? path.resolve(env.DEVICE_CREDENTIALS_SQLITE_PATH)
+      : (env.PERSISTENCE_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-services.sqlite")),
   };
 }
 

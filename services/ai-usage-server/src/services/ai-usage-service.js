@@ -4,6 +4,12 @@ const { AiUsageError } = require("../errors");
 const DEFAULT_DAILY_TOKEN_CREDIT_LIMIT = 20000;
 const DEFAULT_MONTHLY_TOKEN_CREDIT_LIMIT = 100000;
 const DEFAULT_INITIAL_CREDITS = DEFAULT_MONTHLY_TOKEN_CREDIT_LIMIT;
+const BUILTIN_MODEL_PRICING = {
+  "gpt-5.6-sol": { credits_per_1k_input_tokens: 1000, credits_per_1k_output_tokens: 1000, provider_input_cost_per_1k_tokens: 0.005, provider_output_cost_per_1k_tokens: 0.03 },
+  "gpt-5.6": { credits_per_1k_input_tokens: 1000, credits_per_1k_output_tokens: 1000, provider_input_cost_per_1k_tokens: 0.005, provider_output_cost_per_1k_tokens: 0.03 },
+  "gpt-5.6-terra": { credits_per_1k_input_tokens: 1000, credits_per_1k_output_tokens: 1000, provider_input_cost_per_1k_tokens: 0.0025, provider_output_cost_per_1k_tokens: 0.015 },
+  "gpt-5.6-luna": { credits_per_1k_input_tokens: 1000, credits_per_1k_output_tokens: 1000, provider_input_cost_per_1k_tokens: 0.001, provider_output_cost_per_1k_tokens: 0.006 },
+};
 
 class AiUsageService {
   constructor(options) {
@@ -80,6 +86,7 @@ class AiUsageService {
       output_tokens: Number(input.estimated_output_tokens || input.output_tokens || 0),
     });
     const decision = this.decidePreflight({ account, policy, input, model, estimate });
+    const currentUsage = usageForAccount(this.repository.listUsageEvents({ account_id: account.account_id }));
     const event = this.repository.addUsageEvent(createUsageEvent({
       input,
       account,
@@ -99,6 +106,10 @@ class AiUsageService {
       estimated_credits: estimate.credits,
       estimated_provider_cost: estimate.provider_cost,
       remaining_credits_after_estimate: Number((availableCredits(account) - estimate.credits).toFixed(4)),
+      daily_usage_tokens: currentUsage.today_credits,
+      daily_limit_tokens: policy.daily_credit_limit,
+      monthly_usage_tokens: currentUsage.month_credits,
+      monthly_limit_tokens: policy.monthly_credit_limit,
     };
   }
 
@@ -334,7 +345,10 @@ function estimateCredits(policy, usage) {
   const inputTokens = Number(usage.input_tokens || 0);
   const outputTokens = Number(usage.output_tokens || 0);
   const credits = inputTokens + outputTokens;
-  const providerCost = Number((((inputTokens + outputTokens) / 1000) * pricing.provider_cost_per_1k_tokens).toFixed(6));
+  const legacyCost = Number(pricing.provider_cost_per_1k_tokens || 0);
+  const inputCost = Number(pricing.provider_input_cost_per_1k_tokens ?? legacyCost);
+  const outputCost = Number(pricing.provider_output_cost_per_1k_tokens ?? legacyCost);
+  const providerCost = Number((((inputTokens / 1000) * inputCost) + ((outputTokens / 1000) * outputCost)).toFixed(6));
   return { input_tokens: inputTokens, output_tokens: outputTokens, credits, provider_cost: providerCost };
 }
 
@@ -343,6 +357,9 @@ function normalizePolicy(policy = {}) {
   const monthlyLimit = finiteNumber(policy.monthly_token_limit ?? policy.monthly_credit_limit, DEFAULT_MONTHLY_TOKEN_CREDIT_LIMIT);
   return {
     ...policy,
+    allowed_models: unique([...(policy.allowed_models || []), ...Object.keys(BUILTIN_MODEL_PRICING)]),
+    premium_models: unique([...(policy.premium_models || []), "gpt-5.6-sol", "gpt-5.6", "gpt-5.6-terra"]),
+    model_pricing: { ...BUILTIN_MODEL_PRICING, ...(policy.model_pricing || {}) },
     daily_credit_limit: dailyLimit,
     daily_token_limit: dailyLimit,
     monthly_credit_limit: monthlyLimit,
@@ -515,8 +532,12 @@ function accountDashboard(account, events, policy) {
 function groupByModel(events) {
   const grouped = new Map();
   for (const event of events) {
-    const current = grouped.get(event.model) || { model: event.model, events: 0, credits: 0, tokens: 0, estimated_provider_cost: 0 };
+    const current = grouped.get(event.model) || { model: event.model, events: 0, successful: 0, rejected: 0, input_tokens: 0, output_tokens: 0, credits: 0, tokens: 0, estimated_provider_cost: 0 };
     current.events += 1;
+    current.successful += event.status === "success" ? 1 : 0;
+    current.rejected += event.status === "rejected" ? 1 : 0;
+    current.input_tokens += Number(event.input_tokens || 0);
+    current.output_tokens += Number(event.output_tokens || 0);
     current.credits += billableCredits(event);
     current.tokens += Number(event.input_tokens || 0) + Number(event.output_tokens || 0);
     current.estimated_provider_cost += billableProviderCost(event);

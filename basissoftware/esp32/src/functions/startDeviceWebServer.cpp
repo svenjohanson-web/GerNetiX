@@ -9,6 +9,8 @@
 
 #include "basissoftware/config.h"
 #include "basissoftware/feedback.h"
+#include "basissoftware/mqtt_ota.h"
+#include "basissoftware/ota_update.h"
 #include "basissoftware/provisioning_config.h"
 #include "basissoftware/wifi_manager.h"
 
@@ -40,6 +42,7 @@ esp_err_t sendPortalPage(httpd_req_t *request) {
       "<body>"
       "<main>"
       "<h1>GerNetiX Device</h1>"
+      "<p id=\"basis-meta\"><strong>Basissoftware:</strong> wird geladen...</p>"
       "<p>Setup-AP <code>GerNetiX-Setup</code> ist aktiv. Waehle dein WLAN und speichere die Zugangsdaten.</p>"
       "<form method=\"post\" action=\"/wifi\">"
       "<label for=\"ssid\">WLAN</label>"
@@ -56,13 +59,16 @@ esp_err_t sendPortalPage(httpd_req_t *request) {
       "</main>"
       "<script>"
       "const statusBox=document.getElementById('wifi-status');"
+      "const basisMeta=document.getElementById('basis-meta');"
+      "function showStatus(s){basisMeta.innerHTML='<strong>Basissoftware:</strong> '+(s.basissoftwareVersion||s.runtimeVersion||'unbekannt')+' · Variante: '+(s.basissoftwareVariant||'unbekannt');return s;}"
+      "fetch('/status').then(r=>r.json()).then(showStatus).catch(()=>{basisMeta.textContent='Basissoftware-Metadaten nicht erreichbar.';});"
       "fetch('/wifi/scan').then(r=>r.json()).then(d=>{"
       "const s=document.getElementById('ssid');s.innerHTML='';"
       "(d.networks||[]).forEach(n=>{const o=document.createElement('option');"
       "o.value=n.ssid;o.textContent=n.ssid+' ('+n.rssi+' dBm)'+(n.secure?'':' offen');s.appendChild(o);});"
       "if(!s.children.length){const o=document.createElement('option');o.value='';o.textContent='Keine Netzwerke gefunden';s.appendChild(o);}"
       "}).catch(()=>{document.getElementById('ssid').innerHTML='<option value=\"\">Scan fehlgeschlagen</option>';});"
-      "function poll(){fetch('/status').then(r=>r.json()).then(s=>{"
+      "function poll(){fetch('/status').then(r=>r.json()).then(showStatus).then(s=>{"
       "statusBox.textContent='Modus: '+s.wifiMode+'\\nStation: '+s.wifiStationState+'\\nLetzter Fehler: status='+s.wifiLastConnectStatus+', reason='+s.wifiLastDisconnectReason;"
       "if(s.wifiStationState==='connecting')setTimeout(poll,1000);"
       "if(s.wifiStationState==='connected')statusBox.textContent+='\\nVerbunden. Der Setup-AP wird gleich abgeschaltet.';"
@@ -92,12 +98,16 @@ esp_err_t captivePortalHandler(httpd_req_t *request) {
 }
 
 esp_err_t statusHandler(httpd_req_t *request) {
-  char provisioningJson[1024] = {};
+  char provisioningJson[1200] = {};
   writeProvisioningStatusJson(provisioningJson, sizeof(provisioningJson));
   char hostname[32] = {};
   writeProvisioningHostname(hostname, sizeof(hostname));
+  char otaJson[256] = {};
+  writeOtaStatusJson(otaJson, sizeof(otaJson));
+  char mqttJson[256] = {};
+  writeMqttOtaStatusJson(mqttJson, sizeof(mqttJson));
 
-  char body[1536] = {};
+  char body[2304] = {};
   const long long uptimeMs =
       static_cast<long long>(esp_timer_get_time() / 1000);
 
@@ -108,6 +118,8 @@ esp_err_t statusHandler(httpd_req_t *request) {
       "\"device\":\"%s\","
       "\"runtime\":\"%s\","
       "\"runtimeVersion\":\"%s\","
+      "\"basissoftwareVersion\":\"%s\","
+      "\"basissoftwareVariant\":\"%s\","
       "\"wifiMode\":\"%s\","
       "\"setupApSsid\":\"%s\","
       "\"setupApChannel\":%u,"
@@ -115,11 +127,15 @@ esp_err_t statusHandler(httpd_req_t *request) {
       "\"wifiLastConnectStatus\":%d,"
       "\"wifiLastDisconnectReason\":%d,"
       "\"uptimeMs\":%lld,"
+      "%s,"
+      "%s,"
       "%s"
       "}\n",
       hostname,
       GERNETIX_RUNTIME_NAME,
       GERNETIX_RUNTIME_VERSION,
+      GERNETIX_BASISSOFTWARE_VERSION,
+      GERNETIX_BASISSOFTWARE_VARIANT,
       wifiRuntimeModeName(),
       WIFI_SETUP_AP_SSID,
       WIFI_SETUP_AP_CHANNEL,
@@ -127,7 +143,9 @@ esp_err_t statusHandler(httpd_req_t *request) {
       wifiLastConnectStatus(),
       wifiLastDisconnectReason(),
       uptimeMs,
-      provisioningJson);
+      provisioningJson,
+      otaJson,
+      mqttJson);
 
   httpd_resp_set_type(request, "application/json");
   return httpd_resp_send(request, body, HTTPD_RESP_USE_STRLEN);
@@ -222,6 +240,11 @@ esp_err_t provisioningHandler(httpd_req_t *request) {
     return httpd_resp_sendstr(request, "{\"error\":\"invalid_provisioning_payload\"}\n");
   }
 
+  const esp_err_t mqttStatus = startMqttOtaSubscriber();
+  if (mqttStatus != ESP_OK && mqttStatus != ESP_ERR_NOT_FOUND) {
+    feedbackWarning(TAG, "MQTT OTA client could not start after provisioning: %d", mqttStatus);
+  }
+
   httpd_resp_set_type(request, "application/json");
   return httpd_resp_sendstr(request, "{\"status\":\"provisioned\"}\n");
 }
@@ -248,6 +271,29 @@ esp_err_t challengeHandler(httpd_req_t *request) {
   std::snprintf(response, sizeof(response), "{%s}\n", proof);
   httpd_resp_set_type(request, "application/json");
   return httpd_resp_send(request, response, HTTPD_RESP_USE_STRLEN);
+}
+
+esp_err_t otaHandler(httpd_req_t *request) {
+  char body[2049] = {};
+  const esp_err_t readStatus = readRequestBody(request, body, sizeof(body), 2048);
+  if (readStatus != ESP_OK) return readStatus;
+
+  const esp_err_t status = scheduleOtaUpdate(body, std::strlen(body));
+  httpd_resp_set_type(request, "application/json");
+  if (status == ESP_ERR_INVALID_RESPONSE) {
+    httpd_resp_set_status(request, "401 Unauthorized");
+    return httpd_resp_sendstr(request, "{\"error\":\"invalid_ota_authorization\"}\n");
+  }
+  if (status == ESP_ERR_INVALID_STATE) {
+    httpd_resp_set_status(request, "409 Conflict");
+    return httpd_resp_sendstr(request, "{\"error\":\"ota_busy_or_replayed\"}\n");
+  }
+  if (status != ESP_OK) {
+    httpd_resp_set_status(request, "422 Unprocessable Entity");
+    return httpd_resp_sendstr(request, "{\"error\":\"invalid_ota_command\"}\n");
+  }
+  httpd_resp_set_status(request, "202 Accepted");
+  return httpd_resp_sendstr(request, "{\"status\":\"ota_queued\"}\n");
 }
 
 esp_err_t wifiScanHandler(httpd_req_t *request) {
@@ -332,6 +378,7 @@ void startDeviceWebServer() {
   config.server_port = DEVICE_WEB_SERVER_PORT;
   config.ctrl_port = DEVICE_WEB_SERVER_CONTROL_PORT;
   config.stack_size = 8192;
+  config.max_uri_handlers = 12;
   config.lru_purge_enable = true;
   config.uri_match_fn = httpd_uri_match_wildcard;
 
@@ -343,6 +390,7 @@ void startDeviceWebServer() {
   registerUri("/wifi", HTTP_POST, wifiConnectHandler);
   registerUri("/provisioning", HTTP_POST, provisioningHandler);
   registerUri("/auth/challenge", HTTP_POST, challengeHandler);
+  registerUri("/ota", HTTP_POST, otaHandler);
   registerUri("/*", HTTP_GET, captivePortalHandler);
 
   feedbackInfo(TAG, "Device web server started on port %u", DEVICE_WEB_SERVER_PORT);

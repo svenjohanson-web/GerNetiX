@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="980" viewBox="0 0 1680 980" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Aktuelle lokale MVP-Architektur mit Plattform UI, Identity Server, AI Context Prompt-Grundlagen und Architektur-Bausteinen, SQL-only Persistenz, Hardware Catalog, Hardware Shop, Device Management, Provisioning, Recovery, Build, MQTT Broker und weiteren Services.</desc>
+  <desc id="desc">Aktuelle lokale MVP-Architektur mit Plattform UI inklusive geschuetzten Komponenteneigenschaften und eingebetteter Device-Webansicht, nativem USB Serial Helper, Identity Server, Project Server, SQL-only Persistenz, Hardware Catalog, Hardware Shop, Device Management, Provisioning, Recovery, Build, MQTT Broker und weiteren Services.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -42,13 +42,13 @@
   </g>
 
   <g id="applications">
-    <rect class="cluster" x="240" y="95" width="310" height="390" rx="14"/>
+    <rect class="cluster" x="240" y="95" width="310" height="455" rx="14"/>
     <text class="clusterTitle" x="260" y="124">Applikationen / HMI</text>
 
     <rect class="node app" x="265" y="150" width="260" height="74" rx="10"/>
     <text class="titleText" x="395" y="178" text-anchor="middle">GerNetiX Plattform UI</text>
-    <text class="smallText" x="395" y="198" text-anchor="middle">/app/dashboard, learn, dev-platform</text>
-    <text class="smallText" x="395" y="216" text-anchor="middle">/app/ide :4300</text>
+    <text class="smallText" x="395" y="198" text-anchor="middle">IDE · Komponenten · Device-Webansicht</text>
+    <text class="smallText" x="395" y="216" text-anchor="middle">Build → Browser Web Serial / OTA :4300</text>
 
     <rect class="node app" x="265" y="245" width="260" height="64" rx="10"/>
     <text class="titleText" x="395" y="273" text-anchor="middle">Recovery Tool HMI</text>
@@ -64,6 +64,10 @@
     <rect class="node app" x="403" y="415" width="122" height="44" rx="10"/>
     <text class="titleText" x="464" y="435" text-anchor="middle">SQLite Graph</text>
     <text class="smallText" x="464" y="452" text-anchor="middle">Explorer</text>
+
+    <rect class="node app" x="265" y="480" width="260" height="50" rx="10"/>
+    <text class="titleText" x="395" y="502" text-anchor="middle">USB Serial Helper</text>
+    <text class="smallText" x="395" y="520" text-anchor="middle">native App · kein eigener Port</text>
   </g>
 
   <g id="edgeServices">
@@ -88,11 +92,11 @@
 
     <rect class="node domain" x="965" y="150" width="180" height="54" rx="10"/>
     <text class="titleText" x="1055" y="174" text-anchor="middle">Project Server</text>
-    <text class="smallText" x="1055" y="193" text-anchor="middle">:4800</text>
+    <text class="smallText" x="1055" y="193" text-anchor="middle">Projekt + Komponenteneigenschaften :4800</text>
 
     <rect class="node domain" x="1170" y="150" width="190" height="54" rx="10"/>
     <text class="titleText" x="1265" y="174" text-anchor="middle">Build &amp; Deploy</text>
-    <text class="smallText" x="1265" y="193" text-anchor="middle">USB Flash + OTA :4400</text>
+    <text class="smallText" x="1265" y="193" text-anchor="middle">PlatformIO Build + Artefakte :4400</text>
 
     <rect class="node domain" x="1385" y="150" width="190" height="54" rx="10"/>
     <text class="titleText" x="1480" y="174" text-anchor="middle">Device Management</text>
@@ -151,7 +155,7 @@
     <text class="clusterTitle" x="1440" y="559">Device Runtime</text>
     <rect class="node edge" x="1445" y="585" width="170" height="58" rx="10"/>
     <text class="titleText" x="1530" y="609" text-anchor="middle">ESP32 Basissoftware</text>
-    <text class="smallText" x="1530" y="629" text-anchor="middle">MQTT Client + HTTPS OTA</text>
+    <text class="smallText" x="1530" y="629" text-anchor="middle">VPS/LAN MQTT + HTTPS OTA</text>
   </g>
 
   <g id="platformInfrastructure">
@@ -159,7 +163,7 @@
     <text class="clusterTitle" x="1440" y="764">Infrastruktur</text>
     <rect class="node tool" x="1445" y="790" width="170" height="48" rx="10"/>
     <text class="titleText" x="1530" y="812" text-anchor="middle">MQTT Broker</text>
-    <text class="smallText" x="1530" y="830" text-anchor="middle">:1883 / WS :9001</text>
+    <text class="smallText" x="1530" y="830" text-anchor="middle">TLS :8883 / WS :9001</text>
     <rect class="node tool" x="1445" y="852" width="170" height="34" rx="10"/>
     <text class="titleText" x="1530" y="875" text-anchor="middle">Ollama :11434</text>
     <rect class="node tool" x="1445" y="900" width="170" height="28" rx="10"/>
@@ -194,6 +198,7 @@
   <path class="line" d="M 190 311 L 403 437"/>
 
   <path class="line" d="M 525 187 L 635 179"/>
+  <path class="line dashed" d="M 395 480 L 395 224"/>
   <path class="line" d="M 525 277 L 1170 262"/>
   <path class="line" d="M 525 362 L 965 262"/>
   <path class="line" d="M 387 437 L 635 330"/>

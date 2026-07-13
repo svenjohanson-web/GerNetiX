@@ -4,6 +4,10 @@ Quelle: `data/learning/projects/esp32-ota-bootstrap-firmware.yaml`
 
 Ziel: Ein ESP32 wird mit der GerNetiX-Basissoftware initial per USB geflasht und danach OTA-faehig gemacht. Das ist ein fruehes Embedded-Erfolgserlebnis und technische Grundlage fuer spaetere Lernprojekte.
 
+## Implementierter OTA-Pfad
+
+Die ESP-IDF-Basissoftware besitzt einen lokalen `POST /ota`-Endpunkt. Ein Deploy-Auftrag bindet Deploy-ID, strikt steigende Sequenznummer, Device-ID, HTTPS-Artefakt-URL und erwarteten Image-SHA-256 durch einen HMAC-SHA-256 mit dem beim Factory-Provisioning hinterlegten Device-Secret. Das Device akzeptiert Artefakte nur vom Origin des provisionierten Build-&-Deploy-Endpunkts. Es schreibt in den inaktiven A/B-Slot, verifiziert den SHA-256 vor der Aktivierung und bestaetigt das neue Image erst nach erfolgreicher Initialisierung und Runtime-Diagnose. Als zusaetzlichen Transport abonniert die Basissoftware per TLS und QoS 1 das gerätespezifische Topic `gernetix/devices/<device_id>/ota`; der MQTT-Payload durchlaeuft denselben authentifizierten OTA-Pfad.
+
 ## Ablauf
 
 1. Board per USB erkennen.
@@ -45,7 +49,7 @@ Das Provisioning Tool stellt dafuer `POST /api/provisioning-sessions/{session_id
 ## Offene Entscheidungen
 
 - `decision.esp32_ota_bootstrap_firmware.framework`: Arduino OTA, ESP-IDF OTA oder PlatformIO/Arduino?
-- `decision.esp32_ota_bootstrap_firmware.ota_authentication`: OTA sofort mit Authentifizierung, erst Hash/Groesse lokal oder direkt signierte Firmware?
+- `decision.esp32_ota_bootstrap_firmware.ota_authentication`: HMAC-authentifizierter Auftrag und Image-SHA-256 sind umgesetzt; asymmetrische Artefaktsignatur, Secure Boot und Anti-Rollback-Fuses bleiben eine Produktionsentscheidung.
 - `decision.esp32_ota_bootstrap_firmware.wifi_setup`: Wie werden WLAN-Scan, SSID-Auswahl, Passwort-Eingabe und lokale Speicherung umgesetzt?
 - `decision.esp32_ota_bootstrap_firmware.node_mode_policy`: Wird nach WLAN-Verbindung AP abgeschaltet, AP+STA betrieben oder ein zeitlich begrenzter Fallback-AP genutzt?
 - `decision.esp32_ota_bootstrap_firmware.flash_layout`: Wird das aktuell erkannte 2-MB-Flash-Board OTA-faehig unterstuetzt oder wird fuer OTA ein 4-MB-Boardprofil vorausgesetzt?
