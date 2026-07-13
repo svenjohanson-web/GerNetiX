@@ -108,6 +108,10 @@ test("discovers project sources server-side and applies confirmed edits through 
   assert.match(guidedView, /function buildCodeExplorerDiff/);
   assert.match(guidedView, /code-diff-line/);
   assert.match(guidedView, /await putJson\(`\/api\/platform\/projects\/\$\{encodeURIComponent\(project\.id\)\}\/sources/);
+  assert.match(guidedView, /updateGuidedSourceContent\(project, edit\.path, edit\.content\)/);
+  assert.doesNotMatch(guidedView, /delete state\.projectSourcesByProjectId\[project\.id\][\s\S]{0,300}updateGuidedSourceContent/);
+  assert.match(guidedView, /renderIdeViewMode\(project\)/);
+  assert.match(guidedView, /guidedView\.payload\.source = content/);
   assert.match(assistant, /<gernetix-file-edits>/);
   assert.match(assistant, /allowedPaths\.has\(edit\.path\)/);
 });

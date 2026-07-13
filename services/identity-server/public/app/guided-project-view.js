@@ -292,9 +292,25 @@ const GuidedProjectView = (() => {
       if (!edit || edit.applied) return;
       await putJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(edit.path)}`, { content: edit.content });
       edit.applied = true;
-      if (state.sourcePath === edit.path) document.querySelector("#sourceEditor").value = edit.content;
+      updateGuidedSourceContent(project, edit.path, edit.content);
+      if (state.sourcePath === edit.path) {
+        document.querySelector("#sourceEditor").value = edit.content;
+        if (typeof renderIdeViewMode === "function") renderIdeViewMode(project);
+      }
       renderProjectViewManifest(project);
       renderProjectAssistant(project);
+    }
+
+    function updateGuidedSourceContent(project, sourcePath, content) {
+      guidedViews(project).forEach((guidedView) => {
+        if (guidedView.source_path !== sourcePath) return;
+        guidedView.payload ||= {};
+        if (guidedView.type === "plantuml" || /\.(?:puml|plantuml)$/i.test(sourcePath)) guidedView.payload.source = content;
+        if (guidedView.payload.artifact) {
+          guidedView.payload.artifact.content = content;
+          if (guidedView.payload.artifact.type === "plantuml") guidedView.payload.artifact.source = content;
+        }
+      });
     }
 
     async function showCodeExplorerEdit(project, view, messageIndex, editIndex) {
