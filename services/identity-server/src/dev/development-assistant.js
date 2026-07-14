@@ -36,7 +36,10 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       if (codeExplorerMode && activeConfig.apiProvider !== "openai-responses") {
         throw new Error("Der agentische Projektchat benoetigt derzeit OpenAI Responses mit Function Calling. Es wird kein alter Kontext-Fallback verwendet.");
       }
-      const patternShortcut = codeExplorerMode ? null : architecturePatternShortcut(userMessages, { assistantMode });
+      const patternShortcut = codeExplorerMode ? null : architecturePatternShortcut(userMessages, {
+        assistantMode,
+        homeAutomationConfiguration: body.homeAutomationConfiguration || body.home_automation_configuration,
+      });
       if (patternShortcut) {
         sendJson(res, 200, {
           config: config({ requestProfile, dialogControl: patternShortcut.intent }),
@@ -93,6 +96,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         ...(!previousResponseId || !codeExplorerMode ? [{ role: "system", content: codeExplorerMode ? await codeExplorerSystemPrompt(session, codeContext) : await systemPrompt(session, requestProfile) }] : []),
         ...(functionMode ? [{ role: "system", content: functionClarificationPrompt(body.architectureDiagram) }] : []),
         ...(effectChainMode ? [{ role: "system", content: effectChainPrompt(body.architectureDiagram) }] : []),
+        ...(body.homeAutomationConfiguration || body.home_automation_configuration ? [{ role: "system", content: homeAutomationConfigurationPrompt(body.homeAutomationConfiguration || body.home_automation_configuration) }] : []),
         ...(learnedIntentContext?.prompt ? [{ role: "system", content: learnedIntentContext.prompt }] : []),
         ...context.messages,
         ...(previousResponseId && codeExplorerMode ? [userMessages.at(-1)] : userMessages),
@@ -1036,6 +1040,13 @@ function architecturePatternShortcut(messages, options = {}) {
   const latestUserText = [...(Array.isArray(messages) ? messages : [])].reverse().find((message) => message.role !== "assistant")?.content || "";
   const text = normalizeLookupText(latestUserText);
   if (!text) return null;
+  if (/\bkonfiguration\b.*\b(pruefen|prufen|bewerten|empfehlen|review)\b|\b(pruefe|prufe|bewerte)\b.*\bkonfiguration\b/.test(text) && options.homeAutomationConfiguration) {
+    return {
+      intent: "review_home_automation_configuration",
+      reason: "Hausautomationskonfiguration wurde deterministisch auf offene und riskante Entscheidungen geprueft.",
+      content: homeAutomationConfigurationReview(options.homeAutomationConfiguration),
+    };
+  }
   if (/\b(nenne|zeig|zeige|liste|welche)\b.*\b(pattern|patterns|muster)\b|\bpattern\b.*\b(nennen|zeigen|liste)\b/.test(text)) {
     return {
       intent: "list_patterns",
@@ -1047,9 +1058,10 @@ function architecturePatternShortcut(messages, options = {}) {
         "- Datenlogger: Messwerte werden erfasst, gespeichert und spaeter angezeigt.",
         "- Remote-Steuerung: Ein Nutzer steuert ein Device ueber Browser oder App.",
         "- Observer/Benachrichtigung: Ein Ereignis wird erkannt und jemand wird informiert.",
+        "- Touchscreen Game Loop: Touch-Eingaben aktualisieren Spielzustand und Szenenlogik; danach wird das Display neu gerendert.",
         "- Synchronisiertes Zustandsmodell: Ein zentraler Zustand wird berechnet und an mehrere Devices verteilt.",
         "",
-        "Welches Pattern passt am ehesten? Antworte z. B. mit `Observer`, `Datenlogger` oder einer Kombination.",
+        "Welches Pattern passt am ehesten? Antworte z. B. mit `Observer`, `Datenlogger`, `Touchscreen Game Loop` oder einer Kombination.",
       ].join("\n"),
     };
   }
@@ -1083,7 +1095,73 @@ function architecturePatternShortcut(messages, options = {}) {
       ].join("\n"),
     };
   }
+  if (/\b(touchscreen game loop|touch[- ]?display|touchscreen.*spiel|spiel.*touchscreen|game loop)\b/.test(text) && /\b(moechte|mochte|will|brauche|pattern|spiel|game loop)\b/.test(text)) {
+    return {
+      intent: "touchscreen_game_loop",
+      reason: "Touchscreen-Game-Loop-Pattern wurde als Chat-Schnellfrage erkannt.",
+      content: [
+        "Touchscreen Game Loop passt: Touch-Eingaben werden erfasst, der Spielzustand und die Szenenlogik werden aktualisiert und danach wird das Display neu gerendert.",
+        "",
+        "Bitte kurz klaeren:",
+        "1. Welche Touch-Gesten werden benoetigt, z. B. Tippen, Halten, Wischen oder mehrere Beruehrungen?",
+        "2. Welche Display- und Touch-Hardware soll verwendet werden oder soll ich passende Komponenten vorschlagen?",
+        "3. Welche Spielszenen und Zustaende gibt es, z. B. Menue, Spiel, Pause und Ergebnis?",
+        "4. Soll die Aktualisierung mit einer festen Bildrate oder nur bei Ereignissen erfolgen?",
+        "5. Werden Sound oder haptisches Feedback benoetigt?",
+      ].join("\n"),
+    };
+  }
   return null;
+}
+
+function homeAutomationConfigurationReview(value = {}) {
+  const nodes = Array.isArray(value.nodes) ? value.nodes : [];
+  const recommendations = [];
+  if (!nodes.length) recommendations.push("Lege mindestens ein IoT-Device mit Rolle und Aufgabe an.");
+  if (!value.coordinator || value.coordinator === "undecided") {
+    recommendations.push("Entscheide, ob ein GerNetiX Home Server, Home Assistant oder bewusst keine zentrale Instanz den Zustand koordiniert.");
+  }
+  if (!value.failure_policy || value.failure_policy === "undecided") {
+    recommendations.push("Lege fest, was bei Verbindungsverlust passiert; fuer Licht, Klima und andere Grundfunktionen ist lokales Weiterarbeiten meist die robuste Voreinstellung.");
+  }
+  const undecidedNodes = nodes.filter((node) => !node.transport || node.transport === "undecided");
+  if (undecidedNodes.length) {
+    recommendations.push(`Waehle die Kommunikation fuer ${undecidedNodes.map((node) => node.name || "unbenanntes Device").join(", ")}.`);
+  }
+  const frequentRestNodes = nodes.filter((node) => node.transport === "wifi_rest" && (Number(node.sensor_count) > 0 || Number(node.actuator_count) > 0));
+  if (frequentRestNodes.length) {
+    recommendations.push(`Vergleiche fuer ${frequentRestNodes.map((node) => node.name || "Device").join(", ")} Zigbee oder MQTT mit wiederholten REST-Aufrufen. Zigbee belastet das WLAN nicht; MQTT reduziert die direkte Kopplung.`);
+  }
+  const zigbeeControls = nodes.filter((node) => node.transport === "zigbee" && node.board_features?.integrated_touchscreen === true);
+  if (zigbeeControls.length) {
+    recommendations.push(`Pruefe fuer ${zigbeeControls.map((node) => node.name || "Bediengeraet").join(", ")} WLAN/MQTT oder WLAN/REST, wenn das Touch-UI umfangreiche Daten oder Vorschauen benoetigt.`);
+  }
+  const touchscreenNodes = nodes.filter((node) => node.board_features?.integrated_touchscreen === true);
+  if (touchscreenNodes.length) {
+    recommendations.push(`Waehle fuer ${touchscreenNodes.map((node) => node.name || "Bedien-Node").join(", ")} ein IoT-Board mit integriertem Touch-Display, vorzugsweise auf ESP32-S3-Basis. Der Touchscreen bleibt eine Boardeigenschaft und wird nicht als separates Device angelegt.`);
+  }
+  const hasFeedback = value.state_model?.actual_state !== false;
+  if (!hasFeedback && nodes.some((node) => Number(node.actuator_count) > 0)) {
+    recommendations.push("Aktiviere den Istzustand fuer Aktoren, damit Bediengeraet und Zentrale nicht nur den gesendeten Befehl, sondern den tatsaechlichen Zustand anzeigen.");
+  }
+  if (!recommendations.length) {
+    recommendations.push("Die Grundentscheidungen sind konsistent. Klaere als Naechstes konkrete Sensoren, Aktoren, Pins und die Topic- oder API-Struktur.");
+  }
+  return [
+    "Pruefung der Hausautomationskonfiguration:",
+    "",
+    ...recommendations.map((recommendation) => `- Empfohlene Massnahme: ${recommendation}`),
+    "",
+    "Ich habe nichts automatisch geaendert.",
+  ].join("\n");
+}
+
+function homeAutomationConfigurationPrompt(value = {}) {
+  return [
+    "Aktuelle strukturierte Hausautomationskonfiguration (Projektwahrheit bleibt die persistierte Konfiguration):",
+    JSON.stringify(value),
+    "Nutze sie als Kontext. Begruende Empfehlungen und aendere keine Auswahl ungefragt.",
+  ].join("\n");
 }
 
 function architectureLocalEdit(messages, currentDiagram) {

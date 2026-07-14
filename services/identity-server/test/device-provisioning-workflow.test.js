@@ -36,3 +36,13 @@ test("guided provisioning asks for a board name only after discovery", () => {
   assert.match(view, /id="provisioningFoundBoardDetails" class="provisioning-found-board hidden"/);
   assert.match(onboarding, /#provisioningFoundBoardDetails[\s\S]*state\.discoveredDevices\.some\(canClaimDiscoveredDevice\)/);
 });
+
+test("USB provisioning offers a compatible known board and applies its catalog defaults", () => {
+  assert.match(html, /id="provisioningKnownBoard"/);
+  assert.match(html, /Bekanntes Board/);
+  assert.match(onboarding, /detected_hardware_profile_id: bootloader\.hardwareProfileId/);
+  assert.match(onboarding, /normalizeProcessorVariant\(board\.mcu_variant\) === variant/);
+  assert.match(onboarding, /default_instance_configuration \|\| \{\}/);
+  assert.match(onboarding, /board_profile_source: state\.provisioningKnownBoardId \? "hardware_catalog"/);
+  assert.doesNotMatch(onboarding, /provisioningKnownBoardId = "hardware\.processor_board\.esp32_s3_es3c28p"/);
+});

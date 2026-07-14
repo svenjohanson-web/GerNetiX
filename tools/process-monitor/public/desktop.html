@@ -15,8 +15,23 @@
     <nav class="view-tabs">
       <button class="active" data-view="processView">Prozesse</button>
       <button data-view="statisticsView">Schnittstellen-Statistik</button>
+      <button data-view="securityView">VPS-Schutzregeln</button>
     </nav>
     <div id="processView">
+      <section class="monitor-group vpn-group">
+        <div class="group-head vpn-head">
+          <div><p>SICHERER VPS-ZUGANG</p><h2>GerNetiX VPN</h2></div>
+          <div class="vpn-controls">
+            <span id="vpnStatus" class="status offline">Pruefe VPN ...</span>
+            <label class="vpn-switch" title="GerNetiX VPN verbinden oder trennen">
+              <input id="vpnToggle" type="checkbox" role="switch" aria-label="GerNetiX VPN verbinden">
+              <span class="vpn-switch-track" aria-hidden="true"><span></span></span>
+            </label>
+          </div>
+        </div>
+        <p class="vpn-description">Schuetzt SSH, Staging und das Admin Tool. Ohne VPN bleiben administrative VPS-Zugaenge gesperrt.</p>
+        <p id="vpnMessage" class="group-error"></p>
+      </section>
       <section class="monitor-group">
         <div class="group-head">
           <div><p>LOKAL</p><h2>Entwicklungsprozesse</h2></div>
@@ -58,6 +73,23 @@
           </table>
         </div>
         <p id="statisticsError" class="group-error"></p>
+      </section>
+    </div>
+    <div id="securityView" class="hidden">
+      <section class="monitor-group security-rules-group">
+        <div class="group-head">
+          <div><p>READ-ONLY VPS-NACHWEIS</p><h2>VPS-Schutzregeln</h2></div>
+          <span id="securitySummary">Noch nicht geprueft</span>
+        </div>
+        <p class="security-description">Zeigt versionierte Vorgaben und ihren aktuellen VPS-Nachweis. Der Monitor kann hier keine Regeln veraendern.</p>
+        <div class="security-table-wrap">
+          <table class="security-table">
+            <thead><tr><th>Regel</th><th>Ort</th><th>Vorgabe</th><th>Status</th><th>Empfohlene Massnahme</th></tr></thead>
+            <tbody id="securityRows"></tbody>
+          </table>
+        </div>
+        <p id="securityCheckedAt" class="security-checked"></p>
+        <p id="securityError" class="group-error"></p>
       </section>
     </div>
     <footer>Eigenständige Desktop-App · lokale Prozesse direkt steuern · VPS-Status sicher über den konfigurierten SSH-Zugang lesen</footer>

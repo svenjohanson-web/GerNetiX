@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Plattform</title>
-    <link rel="stylesheet" href="/app/app.css?v=20260714-11" />
+    <link rel="stylesheet" href="/app/app.css?v=20260714-14" />
   </head>
   <body>
     <main class="app-shell">
@@ -151,6 +151,9 @@
               <section id="ideModelView" class="ide-model-view"></section>
               <section id="ideComponentFeaturesView" class="ide-component-features-view hidden"></section>
               <section id="ideBoardPropertiesView" class="ide-board-properties-view hidden"></section>
+              <section id="ideSensorPropertiesView" class="ide-sensor-properties-view hidden"></section>
+              <section id="ideDeviceConnectionsView" class="ide-device-connections-view hidden"></section>
+              <section id="ideDriverManagementView" class="ide-driver-management-view hidden"></section>
               <section id="ideDeviceWebView" class="ide-device-web-view hidden"></section>
             </article>
             <aside id="ideCodeAssistant" class="panel ide-code-assistant"></aside>
@@ -282,7 +285,14 @@
             </aside>
             <aside id="provisioningUsbNotice" class="provisioning-method-notice hidden" role="note">
               <strong>USB-Provisioning</strong>
-              <span>Verbinde das Board direkt mit diesem Rechner und wähle bei Bedarf den erkannten USB-Port.</span>
+              <span>Verbinde das Board direkt mit diesem Rechner und wähle den Port über Web Serial aus.</span>
+              <div id="provisioningWebSerialActions" class="button-row">
+                <button id="selectProvisioningSerialPortButton" class="primary" type="button">Seriellen Port auswählen</button>
+              </div>
+              <p id="provisioningUsbHelperHint" class="helper-text hidden">
+                Dieser Browser unterstützt Web Serial nicht. Verwende stattdessen das
+                <a href="/app/downloads/">GerNetiX USB Helper Tool</a>.
+              </p>
             </aside>
             <div class="inventory-methods">
               <div id="esp32DiscoveryActions" class="button-row">
@@ -292,10 +302,29 @@
                 <button id="avrBootloaderIdentifyButton" class="primary" type="button">Bootloader experimentell testen</button>
               </div>
             </div>
-            <label id="esp32UsbPortLabel" class="inventory-type-label">USB-Port<select id="esp32UsbPort"></select></label>
             <p id="inventoryTypeHint" class="helper-text"></p>
             <div id="networkDiscoveryStatus" class="flash-status hidden"></div>
             <section id="networkDiscoveryList" class="discovery-list"></section>
+            <section id="provisioningBoardFeatures" class="provisioning-board-features hidden" aria-labelledby="provisioningBoardFeaturesTitle">
+              <div class="section-head compact">
+                <div>
+                  <p class="eyebrow">Konkretes Board</p>
+                  <h3 id="provisioningBoardFeaturesTitle">Boardausstattung prüfen</h3>
+                </div>
+              </div>
+              <p class="helper-text">Der Bootloader erkennt den Prozessor, aber nicht zuverlässig die zusätzlich verbaute Hardware. Bestätige die vorhandenen Eigenschaften anhand des Board-Datenblatts.</p>
+              <div id="provisioningKnownBoardSelection" class="provisioning-known-board">
+                <label>Bekanntes Board
+                  <select id="provisioningKnownBoard"></select>
+                </label>
+                <p id="provisioningKnownBoardHint" class="helper-text"></p>
+              </div>
+              <div id="provisioningBoardFeatureStatus" class="flash-status hidden"></div>
+              <div id="provisioningBoardFeatureList" class="board-feature-checklist"></div>
+              <label class="inventory-type-label">Datenblatt oder Produktseite
+                <input id="provisioningDatasheetUrl" type="url" placeholder="https://..." />
+              </label>
+            </section>
             <section id="provisioningFoundBoardDetails" class="provisioning-found-board hidden">
               <p class="eyebrow">Board gefunden</p>
               <label class="inventory-type-label">Kurzer Board-Name<input id="inventoryBoardShortName" type="text" value="mein-board" maxlength="42" /></label>
@@ -387,9 +416,6 @@
               <strong id="developmentProjectName">Kein Projekt geoeffnet</strong>
             </div>
           </div>
-          <div class="button-row">
-            <button id="chooseDevelopmentProjectButton" type="button">Projekt</button>
-          </div>
         </div>
         <section class="development-platform-layout">
           <article class="panel development-workspace-panel">
@@ -424,24 +450,111 @@
                   <select id="developmentProjectTemplate"></select>
                 </label>
                 <p id="developmentProjectTemplateHint" class="development-template-hint">Architektur und Anforderungen gemeinsam von Grund auf klaeren.</p>
-                <label>Name<input id="developmentProjectTitle" type="text" maxlength="120" placeholder="z. B. Pflanzenwaechter" /></label>
-                <label>Beschreibung<textarea id="developmentProjectDescription" rows="3" placeholder="Kurz beschreiben, was entstehen soll."></textarea></label>
-                <button type="submit">Projekt anlegen</button>
+                <div id="developmentProjectDetails">
+                  <label>Name<input id="developmentProjectTitle" type="text" maxlength="120" placeholder="z. B. Pflanzenwaechter" /></label>
+                  <label>Beschreibung<textarea id="developmentProjectDescription" rows="3" placeholder="Kurz beschreiben, was entstehen soll."></textarea></label>
+                  <div class="button-row">
+                    <button type="submit">Projekt anlegen</button>
+                    <button type="submit" class="primary" data-create-and-continue>Projekt anlegen und weiter</button>
+                  </div>
+                </div>
               </form>
-              <p id="developmentProjectStatus" class="helper-text">Bitte Projekt oeffnen oder neu anlegen, bevor der Chat startet.</p>
+              <p id="developmentProjectStatus" class="helper-text">Bitte Projekt oeffnen, leer anlegen oder aus einem Template starten.</p>
             </section>
             <main class="development-main-workspace">
-              <section class="development-requirements-panel">
+              <section class="development-requirements-panel development-configuration-only">
                 <div id="developmentRequirementsText" class="development-requirements-text"></div>
               </section>
+              <section id="homeAutomationAssistant" class="home-automation-assistant development-configuration-only hidden" aria-labelledby="homeAutomationAssistantTitle">
+                <header>
+                  <div>
+                    <p class="eyebrow">Konfigurationsassistent</p>
+                    <h3 id="homeAutomationAssistantTitle">Verteilte Hausautomatisierung</h3>
+                  </div>
+                  <small>Der feste Ablauf erzeugt die Architektur. Die KI kann die Auswahl pruefen und begruenden.</small>
+                </header>
+                <form id="homeAutomationForm">
+                  <div class="home-automation-basics">
+                    <label>Zentrale Koordination
+                      <select data-home-automation-field="coordinator">
+                        <option value="undecided">Noch offen</option>
+                        <option value="none">Ohne zentrale Instanz</option>
+                        <option value="gernetix_home_server">GerNetiX Home Server</option>
+                        <option value="home_assistant">Home Assistant</option>
+                        <option value="gernetix_with_home_assistant">GerNetiX mit Home Assistant</option>
+                      </select>
+                    </label>
+                    <label>Verhalten bei Verbindungsausfall
+                      <select data-home-automation-field="failure_policy">
+                        <option value="local_fallback">Lokal weiterarbeiten</option>
+                        <option value="safe_state">Sicheren Zustand einnehmen</option>
+                        <option value="central_required">Zentrale Instanz erforderlich</option>
+                        <option value="undecided">Noch offen</option>
+                      </select>
+                    </label>
+                  </div>
+                  <fieldset class="home-automation-state-model">
+                    <legend>Ausgetauschte Informationen</legend>
+                    <label><input type="checkbox" data-home-automation-state="commands"> Befehle</label>
+                    <label><input type="checkbox" data-home-automation-state="desired_state"> Sollzustand</label>
+                    <label><input type="checkbox" data-home-automation-state="actual_state"> Istzustand</label>
+                    <label><input type="checkbox" data-home-automation-state="events"> Ereignisse / Messwerte</label>
+                  </fieldset>
+                  <div class="home-automation-node-head">
+                    <strong>IoT-Devices</strong>
+                    <button type="button" class="secondary" data-home-automation-add-node>Device hinzufuegen</button>
+                  </div>
+                  <div id="homeAutomationNodes" class="home-automation-nodes"></div>
+                  <div class="button-row home-automation-actions">
+                    <button type="button" data-home-automation-save>Konfiguration speichern</button>
+                    <button type="button" class="secondary" data-home-automation-ai>KI-Empfehlung anfordern</button>
+                  </div>
+                  <p id="homeAutomationStatus" class="helper-text" aria-live="polite"></p>
+                </form>
+              </section>
+              <section id="touchscreenGameAssistant" class="home-automation-assistant touchscreen-game-assistant development-configuration-only hidden" aria-labelledby="touchscreenGameAssistantTitle">
+                <header>
+                  <div>
+                    <p class="eyebrow">Konfigurationsassistent</p>
+                    <h3 id="touchscreenGameAssistantTitle">Touchscreen-Spielesammlung</h3>
+                  </div>
+                  <small>Pattern und Spiele waehlen, danach Board und Inventar direkt abgleichen.</small>
+                </header>
+                <form id="touchscreenGameForm">
+                  <div class="home-automation-basics">
+                    <label>Spiel-Pattern
+                      <select data-game-field="pattern_id">
+                        <option value="">Pattern waehlen</option>
+                        <option value="touchscreen_game_loop">Touchscreen Game Loop</option>
+                        <option value="event_driven_scene_loop">Ereignisgesteuerter Scene Loop</option>
+                        <option value="turn_based_state_machine">Rundenbasierte State Machine</option>
+                      </select>
+                    </label>
+                    <label>Touch-Display-Board<select data-game-field="board_profile_id"></select></label>
+                    <label>Passendes Board im Inventar<select data-game-field="inventory_device_id"></select></label>
+                  </div>
+                  <fieldset id="touchscreenGameChoices" class="home-automation-state-model touchscreen-game-choices">
+                    <legend>Beispielspiele im Startbildschirm</legend>
+                  </fieldset>
+                  <div id="touchscreenGameInventoryMatch" class="touchscreen-game-inventory-match"></div>
+                  <div class="button-row home-automation-actions">
+                    <button type="button" data-game-save>Spielprojekt speichern</button>
+                  </div>
+                  <p id="touchscreenGameStatus" class="helper-text" aria-live="polite"></p>
+                </form>
+              </section>
               <section id="developmentArchitectureDiagram" class="architecture-diagram-panel"></section>
-              <div class="button-row development-project-actions development-page-actions">
-                <button id="saveDevelopmentArchitectureButton" type="button" disabled>Uebernehmen</button>
-                <button id="acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Uebernehmen und weiter</button>
+              <div id="developmentProjectStartActions" class="button-row development-project-actions development-page-actions">
+                <button id="continueDevelopmentConfigurationButton" class="primary" type="button" disabled>Weiter zur Konfiguration</button>
+              </div>
+              <div class="button-row development-project-actions development-page-actions development-configuration-only">
+                <button id="backToDevelopmentProjectStartButton" type="button">Projekt wechseln</button>
+                <button id="saveDevelopmentArchitectureButton" type="button" disabled>Konfiguration speichern</button>
+                <button id="acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Weiter zur Hardware</button>
               </div>
               <p id="developmentActionStatus" class="helper-text development-action-status" aria-live="polite"></p>
             </main>
-            <aside class="development-chat-sidebar" aria-label="KI-Chat">
+            <aside class="development-chat-sidebar development-configuration-only" aria-label="KI-Chat">
               <div id="developmentChatMessages" class="development-chat-messages" aria-live="polite"></div>
               <form id="developmentChatForm" class="development-chat-form">
                 <label for="developmentChatInput">Nachricht</label>
@@ -544,10 +657,10 @@
     <script src="/app/api-client.js"></script>
     <script src="/app/dom-utils.js"></script>
     <script src="/app/device-onboarding-model.js"></script>
-    <script src="/app/device-onboarding-controller.js?v=20260714-03"></script>
-    <script src="/app/guided-project-view.js?v=20260712-10"></script>
+    <script src="/app/device-onboarding-controller.js?v=20260714-04"></script>
+    <script src="/app/guided-project-view.js?v=20260714-01"></script>
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
-    <script src="/app/development-platform.js?v=20260714-09"></script>
-    <script src="/app/app.js?v=20260714-09"></script>
+  <script src="/app/development-platform.js?v=20260714-22"></script>
+    <script src="/app/app.js?v=20260714-20"></script>
   </body>
 </html>

@@ -1,0 +1,14 @@
+#!/bin/sh
+set -eu
+
+config=/etc/gernetix/firewall.nft
+
+# Validate before replacing the active table. A syntax error must never remove
+# the currently working firewall.
+nft -c -f "$config"
+
+if nft list table inet gernetix_host >/dev/null 2>&1; then
+  nft delete table inet gernetix_host
+fi
+
+exec nft -f "$config"

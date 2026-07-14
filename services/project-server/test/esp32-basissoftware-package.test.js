@@ -32,3 +32,18 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
   assert.equal(files.some((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp"), false);
   assert.equal(files.some((file) => file.path.startsWith(".vscode/")), false);
 });
+
+test("copies separated project user headers into the protected build package", () => {
+  const files = composeEsp32BasissoftwarePackage({
+    basisFiles: [],
+    projectSources: [
+      { path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: '#include "user_project/view/start_screen.h"', content_type: "text/x-c++src" },
+      { path: "Komponenten/IoT-Device 1/src/view/start_screen.h", content: "class StartScreen {};", content_type: "text/x-c++hdr" },
+      { path: "Komponenten/IoT-Device 1/src/games/snake.h", content: "namespace snake {}", content_type: "text/x-c++hdr" },
+    ],
+    buildConfig: { user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: "src/user/user_app.cpp" },
+  });
+
+  assert.equal(files.find((file) => file.path === "include/user_project/view/start_screen.h").source_project_path, "Komponenten/IoT-Device 1/src/view/start_screen.h");
+  assert.equal(files.some((file) => file.path === "include/user_project/games/snake.h"), true);
+});

@@ -32,3 +32,12 @@ test("device ACL is restricted by MQTT username", () => {
   assert.match(acl, /pattern write gernetix\/devices\/%u\/status\/#/);
   assert.doesNotMatch(acl, /pattern (read|write) #/);
 });
+
+test("broker resource limits contain unauthenticated scanner load", () => {
+  assert.match(config, /connection_messages true/);
+  assert.match(config, /max_inflight_messages 20/);
+  assert.match(config, /max_queued_messages 1000/);
+  assert.match(config, /max_packet_size 131072/);
+  assert.match(config, /max_keepalive 300/);
+  assert.match(config, /listener 8883 0\.0\.0\.0[\s\S]*?max_connections 2048[\s\S]*?allow_anonymous false/);
+});

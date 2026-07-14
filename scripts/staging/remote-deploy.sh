@@ -11,11 +11,27 @@ if [ ! -f "$env_file" ]; then
   exit 1
 fi
 
+echo "==> Host-Firewall und MQTT-Verbindungsrate pruefen"
+nft -c -f infra/vps/security/firewall.nft
+
 echo "==> Compose-Konfiguration pruefen"
 docker compose --env-file "$env_file" -f compose.vps.yaml config --quiet
 
 echo "==> Images bauen"
 docker compose --env-file "$env_file" -f compose.vps.yaml build
+
+echo "==> Validierte Host-Firewall installieren"
+install -d -m 0755 /etc/gernetix
+install -m 0644 infra/vps/security/firewall.nft /etc/gernetix/firewall.nft
+install -m 0755 infra/vps/security/gernetix-firewall-apply /usr/local/sbin/gernetix-firewall-apply
+install -m 0644 infra/vps/security/gernetix-firewall.service /etc/systemd/system/gernetix-firewall.service
+systemctl daemon-reload
+systemctl enable gernetix-firewall.service >/dev/null
+if systemctl is-active --quiet gernetix-firewall.service; then
+  systemctl reload gernetix-firewall.service
+else
+  systemctl start gernetix-firewall.service
+fi
 
 echo "==> Staging aktualisieren und auf Healthchecks warten"
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --force-recreate mqtt-broker

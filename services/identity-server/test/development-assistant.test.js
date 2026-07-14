@@ -967,6 +967,56 @@ test("answers data logger quick prompt with measured quantity and sensor clarifi
   assert.doesNotMatch(payload.body.message.content, /Wie viele IoT-Logger/);
 });
 
+test("answers touchscreen game loop quick prompt locally", async () => {
+  const previousFetch = global.fetch;
+  let providerCalled = false;
+  let payload = null;
+  global.fetch = async (url) => {
+    providerCalled = true;
+    throw new Error(`Provider should not be called: ${url}`);
+  };
+  const assistant = createDevelopmentAssistant({
+    aiContextJson: promptFoundationJson,
+    aiUsageJson: async () => {
+      throw new Error("AI usage should not be called");
+    },
+    llmConfigStore: {
+      publicConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-5.5" }),
+      resolveRoute: () => ({
+        provider: "api",
+        apiProvider: "openai-responses",
+        apiBaseUrl: "https://api.openai.example/v1",
+        apiModel: "gpt-5.5",
+      }),
+    },
+    projectServerUserId: () => "usr_demo",
+    readJsonBody: async () => ({
+      projectId: "dev_project_touchscreen_game",
+      messages: [{ role: "user", content: "Ich moechte einen Touchscreen Game Loop" }],
+    }),
+    requireProjectAccess: async () => ({ area: "development_project" }),
+    sendJson: (res, status, body) => {
+      payload = { status, body };
+    },
+  });
+
+  try {
+    await assistant.handleChat({}, {}, { account: { user_id: "usr_demo" } });
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  assert.equal(providerCalled, false);
+  assert.equal(payload.status, 200);
+  assert.equal(payload.body.usedDialogControl, true);
+  assert.equal(payload.body.routing.provider, "dialog_control");
+  assert.equal(payload.body.usage.totalTokens, 0);
+  assert.match(payload.body.message.content, /Touchscreen Game Loop passt/);
+  assert.match(payload.body.message.content, /Spielzustand und die Szenenlogik/);
+  assert.match(payload.body.message.content, /Display neu gerendert/);
+  assert.match(payload.body.message.content, /Touch-Gesten/);
+});
+
 test("lists architecture patterns locally without provider call", async () => {
   const previousFetch = global.fetch;
   let providerCalled = false;
@@ -1013,7 +1063,59 @@ test("lists architecture patterns locally without provider call", async () => {
   assert.equal(payload.body.usage.totalTokens, 0);
   assert.match(payload.body.message.content, /Datenlogger/);
   assert.match(payload.body.message.content, /Observer\/Benachrichtigung/);
+  assert.match(payload.body.message.content, /Touchscreen Game Loop/);
   assert.match(payload.body.message.content, /Synchronisiertes Zustandsmodell/);
+});
+
+test("reviews a distributed home automation configuration locally without changing it", async () => {
+  const previousFetch = global.fetch;
+  let providerCalled = false;
+  let payload = null;
+  global.fetch = async () => {
+    providerCalled = true;
+    throw new Error("provider must not be called");
+  };
+  const assistant = createDevelopmentAssistant({
+    aiContextJson: promptFoundationJson,
+    aiUsageJson: async () => { throw new Error("AI usage should not be called"); },
+    llmConfigStore: {
+      publicConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-5.5" }),
+      resolveRoute: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-5.5" }),
+    },
+    projectServerUserId: () => "usr_demo",
+    readJsonBody: async () => ({
+      projectId: "dev_project_home",
+      messages: [{ role: "user", content: "Konfiguration pruefen" }],
+      homeAutomationConfiguration: {
+        coordinator: "undecided",
+        failure_policy: "local_fallback",
+        state_model: { commands: true, desired_state: true, actual_state: true, events: true },
+        nodes: [
+          { name: "Raumklima", role: "sensor_node", transport: "wifi_rest", sensor_count: 2 },
+          { name: "Touchpanel", role: "control_node", transport: "wifi_mqtt", board_features: { integrated_display: true, integrated_touchscreen: true } },
+        ],
+      },
+    }),
+    requireProjectAccess: async () => ({ area: "development_project" }),
+    sendJson: (res, status, body) => { payload = { status, body }; },
+  });
+
+  try {
+    await assistant.handleChat({}, {}, { account: { user_id: "usr_demo" } });
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  assert.equal(providerCalled, false);
+  assert.equal(payload.status, 200);
+  assert.equal(payload.body.usedDialogControl, true);
+  assert.equal(payload.body.routing.provider, "dialog_control");
+  assert.match(payload.body.message.content, /Empfohlene Massnahme/);
+  assert.match(payload.body.message.content, /Zigbee oder MQTT/);
+  assert.match(payload.body.message.content, /ESP32-S3-Basis/);
+  assert.match(payload.body.message.content, /Boardeigenschaft/);
+  assert.match(payload.body.message.content, /nichts automatisch geaendert/);
+  assert.equal(Object.hasOwn(payload.body, "architectureDiagram"), false);
 });
 
 test("answers known architecture component questions from ai context without an LLM call", async () => {

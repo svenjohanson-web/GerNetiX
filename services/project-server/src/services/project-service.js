@@ -366,10 +366,29 @@ function normalizeComponentFeatures(input, basisVariant) {
 
 function normalizeViewManifest(input = {}) {
   const manifest = input && typeof input === "object" ? input : {};
+  const templateId = String(manifest.template_id || manifest.templateId || "").trim();
+  const templateRef = manifest.template_ref || manifest.templateRef || {};
+  const architectureDialog = manifest.architecture_dialog || manifest.architectureDialog;
+  const homeAutomationConfiguration = manifest.home_automation_configuration || manifest.homeAutomationConfiguration;
+  const gameConfiguration = manifest.game_configuration || manifest.gameConfiguration;
   return {
     schema_version: Number(manifest.schema_version || manifest.schemaVersion || 1),
     title: manifest.title || "",
     summary: manifest.summary || "",
+    ...(templateId ? {
+      template_id: templateId,
+      template_ref: {
+        template_id: String(templateRef.template_id || templateRef.templateId || templateId),
+        model_schema_version: Number(templateRef.model_schema_version || templateRef.modelSchemaVersion || 1),
+      },
+    } : {}),
+    ...(architectureDialog && typeof architectureDialog === "object" ? { architecture_dialog: architectureDialog } : {}),
+    ...(homeAutomationConfiguration && typeof homeAutomationConfiguration === "object"
+      ? { home_automation_configuration: homeAutomationConfiguration }
+      : {}),
+    ...(gameConfiguration && typeof gameConfiguration === "object"
+      ? { game_configuration: gameConfiguration }
+      : {}),
     primary_source_path: normalizeOptionalSourcePath(manifest.primary_source_path || manifest.primarySourcePath || ""),
     hide_source_editor: Boolean(manifest.hide_source_editor || manifest.hideSourceEditor),
     mode: manifest.mode || "guided_ide",

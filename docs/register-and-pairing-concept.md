@@ -192,7 +192,7 @@ Der Provisioning-Bereich im Plattform-Frontend beginnt immer mit einer explizite
 
 - `WLAN` sucht ausschliesslich bereits provisionierte Boards, auf denen die GerNetiX-Basissoftware laeuft und die im gleichen lokalen Netzwerk erreichbar sind. Dieser Hinweis muss vor Beginn der WLAN-Suche sichtbar sein.
 - `USB` ist der Weg fuer neue, blanke, fremd geflashte oder ueber WLAN nicht erreichbare Boards. Nur in diesem Ablauf werden USB-Port, Browser-Web-Serial und USB-nahe Fallbacks angeboten.
-- Vor der Suche werden weder Prozessorfamilie noch IoT-Device abgefragt, weil der aktive Transport den Erkennungsweg bestimmt und der Treffer sein Hardwareprofil liefert. Ein kurzer Board-Name wird erst angeboten, nachdem ein uebernehmbares Board gefunden wurde.
+- Vor der Suche werden weder Prozessorfamilie noch IoT-Device abgefragt, weil der aktive Transport den Erkennungsweg bestimmt. Der USB-Bootloader liefert zunaechst nur das Prozessorprofil. Danach kann der Nutzer ein dazu kompatibles, bekanntes konkretes Board aus dem Hardware Catalog waehlen. Dessen gepruefte Standardausstattung wird zur Bestaetigung vorbelegt; ohne Auswahl bleibt das generische Prozessorprofil erhalten. Ein kurzer Board-Name wird erst angeboten, nachdem ein uebernehmbares Board gefunden wurde.
 
 Die Transportwahl aendert nicht die fachliche Trennung zwischen Provisionierung, Registrierung und Pairing. Sie bestimmt lediglich, wie das Board fuer den gefuehrten Ablauf erreicht wird.
 

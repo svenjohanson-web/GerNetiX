@@ -49,6 +49,10 @@ class HardwareCatalogService {
     return this.listHardwareItems({ item_type: "sensor", status: "active" });
   }
 
+  listBoardFeatureOptions() {
+    return this.listHardwareItems({ item_type: "board_feature_option", status: "active" });
+  }
+
   upsertHardwareItem(input = {}) {
     const capabilityIds = normalizeList(input.capability_ids || input.capabilities);
     for (const capabilityId of capabilityIds) this.getCapability(capabilityId);
@@ -74,7 +78,16 @@ class HardwareCatalogService {
       factory_firmware_artifact: input.factory_firmware_artifact || null,
       min_basissoftware_version: input.min_basissoftware_version || "",
       pin_profile: input.pin_profile && typeof input.pin_profile === "object" ? input.pin_profile : {},
+      peripheral_profile: input.peripheral_profile && typeof input.peripheral_profile === "object" ? input.peripheral_profile : {},
       default_instance_configuration: input.default_instance_configuration || {},
+      feature_id: input.feature_id || "",
+      hardware_options: normalizeOptions(input.hardware_options),
+      driver_options: normalizeOptions(input.driver_options),
+      connection_options: normalizeOptions(input.connection_options),
+      value_options: normalizeOptions(input.value_options),
+      datasheet_hint: input.datasheet_hint || "",
+      verification_status: input.verification_status || "unverified",
+      evidence: input.evidence && typeof input.evidence === "object" ? input.evidence : {},
       status: input.status || "active",
     };
     return this.repository.saveHardwareItem(item);
@@ -93,6 +106,12 @@ function deprecatedProcessorBoardIds() {
 function normalizeList(value) {
   if (Array.isArray(value)) return value.filter(Boolean);
   return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function normalizeOptions(value) {
+  return Array.isArray(value)
+    ? value.filter((item) => item && item.id && item.title).map((item) => ({ id: String(item.id), title: String(item.title) }))
+    : [];
 }
 
 function required(value, field) {

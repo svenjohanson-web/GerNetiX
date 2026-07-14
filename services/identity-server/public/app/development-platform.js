@@ -1,6 +1,7 @@
 const DevelopmentPlatform = (() => {
   const activeProjectStorageKey = "gernetix.developmentPlatform.activeProjectId";
   let projectTemplates = {};
+  let projectTemplatePreviews = {};
 
   function create({ state, postJson, openProjectInIde, navigate, escapeHtml, escapeAttribute }) {
     if (!state.developmentPlatform) {
@@ -13,17 +14,17 @@ const DevelopmentPlatform = (() => {
         projectPanelMode: "choice",
         assistantMode: "architecture_structure",
         hardwareConfiguration: null,
+        homeAutomationConfiguration: null,
+        gameConfiguration: null,
+        workflowStep: "project_start",
       };
     }
     if (!state.developmentPlatform.projectPanelMode) state.developmentPlatform.projectPanelMode = "choice";
     if (!state.developmentPlatform.assistantMode) state.developmentPlatform.assistantMode = "architecture_structure";
+    if (!state.developmentPlatform.workflowStep) state.developmentPlatform.workflowStep = "project_start";
 
     function init() {
       document.querySelector("#developmentChatForm").addEventListener("submit", sendChatMessage);
-      document.querySelector("#chooseDevelopmentProjectButton").addEventListener("click", () => {
-        const nextMode = state.developmentPlatform.projectPanelMode === "closed" ? "choice" : "closed";
-        showProjectPanel(nextMode);
-      });
       document.querySelector("#continueDevelopmentProjectButton").addEventListener("click", continueLastProject);
       document.querySelector("#openDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("open"));
       document.querySelector("#newEmptyDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("new-empty"));
@@ -31,20 +32,27 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#developmentProjectForm").addEventListener("submit", createDevelopmentProject);
       document.querySelector("#developmentProjectTemplate").addEventListener("change", applyProjectTemplate);
       document.querySelector("#developmentProjectSelect").addEventListener("change", selectDevelopmentProject);
+      document.querySelector("#continueDevelopmentConfigurationButton").addEventListener("click", continueToDevelopmentConfiguration);
+      document.querySelector("#backToDevelopmentProjectStartButton").addEventListener("click", enterProjectStart);
       document.querySelector("#saveDevelopmentArchitectureButton").addEventListener("click", saveArchitectureDiagram);
       document.querySelector("#acceptDevelopmentArchitectureButton").addEventListener("click", acceptArchitectureAndContinue);
       document.querySelector("#developmentHardwareForm").addEventListener("change", handleHardwareConfigurationChange);
       document.querySelector("#backToDevelopmentArchitectureButton").addEventListener("click", () => navigate("/app/development-platform/"));
       document.querySelector("#saveDevelopmentHardwareButton").addEventListener("click", () => saveHardwareConfiguration(false));
       document.querySelector("#continueDevelopmentHardwareButton").addEventListener("click", () => saveHardwareConfiguration(true));
+      document.querySelector("#homeAutomationForm").addEventListener("change", handleHomeAutomationChange);
+      document.querySelector("#homeAutomationForm").addEventListener("click", handleHomeAutomationClick);
+      document.querySelector("#touchscreenGameForm").addEventListener("change", handleTouchscreenGameChange);
+      document.querySelector("#touchscreenGameForm").addEventListener("click", handleTouchscreenGameClick);
     }
 
     function setAssistantConfig(config) {
       state.developmentPlatform.assistant = config || null;
     }
 
-    function setProjectTemplates(templates) {
+    function setProjectTemplates(templates, previews = []) {
       const catalog = Array.isArray(templates) ? templates : [];
+      projectTemplatePreviews = Object.fromEntries((Array.isArray(previews) ? previews : []).map((preview) => [preview.template_id, preview]));
       projectTemplates = Object.fromEntries(catalog.map((template) => [template.id, {
         title: template.default_title ?? template.title ?? "",
         description: template.description || "",
@@ -52,18 +60,37 @@ const DevelopmentPlatform = (() => {
       }]));
       const select = document.querySelector("#developmentProjectTemplate");
       if (!select) return;
-      select.innerHTML = catalog
-        .map((template) => `<option value="${escapeAttribute(template.id)}" ${template.id === "empty" ? "hidden" : ""}>${escapeHtml(template.title)}</option>`)
-        .join("");
+      select.innerHTML = [
+        `<option value="">Template waehlen</option>`,
+        ...catalog.map((template) => `<option value="${escapeAttribute(template.id)}" ${template.id === "empty" ? "hidden" : ""}>${escapeHtml(template.title)}</option>`),
+      ].join("");
     }
 
     function render() {
       renderProjectPicker();
+      renderWorkflowStep();
       renderRequirementsText();
+      renderHomeAutomationAssistant();
+      renderTouchscreenGameAssistant();
       renderChatMessages();
       renderQuickPrompts();
       renderArchitectureDiagram();
       syncChatAvailability();
+    }
+
+    function renderWorkflowStep() {
+      const configurationStep = state.developmentPlatform.workflowStep === "configuration";
+      const workspace = document.querySelector(".development-workspace-panel");
+      const mainWorkspace = document.querySelector(".development-main-workspace");
+      workspace?.classList.toggle("development-project-start-step", !configurationStep);
+      mainWorkspace?.classList.toggle("development-project-start-no-preview", !configurationStep && !state.developmentPlatform.architectureDiagram?.source);
+      document.querySelectorAll(".development-configuration-only").forEach((element) => {
+        element.classList.toggle("hidden", !configurationStep);
+      });
+      const startActions = document.querySelector("#developmentProjectStartActions");
+      const continueButton = document.querySelector("#continueDevelopmentConfigurationButton");
+      if (continueButton) continueButton.disabled = !activeProjectId();
+      startActions?.classList.toggle("hidden", configurationStep || !activeProjectId());
     }
 
     function providerLabel(config = state.developmentPlatform.assistant || {}) {
@@ -113,19 +140,25 @@ const DevelopmentPlatform = (() => {
     function quickPrompts() {
       if (state.developmentPlatform.assistantMode !== "architecture_structure") return [];
       if (state.developmentPlatform.chat.length) return [];
+      if (currentProjectTemplateId() === "distributed_home_automation") return ["Konfiguration pruefen"];
       if (currentProjectUsesTemplate()) return [];
       return [
         "Ich moechte einen Observer",
         "Ich moechte einen Datenlogger",
+        "Ich moechte einen Touchscreen Game Loop",
         "Nenne mir deine Pattern",
       ];
     }
 
     function currentProjectUsesTemplate() {
-      const project = currentProject();
-      const templateId = project?.viewManifest?.template_id || project?.viewManifest?.templateId || "";
+      const templateId = currentProjectTemplateId();
       return Boolean(templateId && templateId !== "empty")
         || state.developmentPlatform.architectureDiagram?.derived_from === "project_template";
+    }
+
+    function currentProjectTemplateId() {
+      const project = currentProject();
+      return project?.viewManifest?.template_id || project?.viewManifest?.templateId || "";
     }
 
     function usageRows(usage) {
@@ -165,15 +198,8 @@ const DevelopmentPlatform = (() => {
       const storedProjectExists = projects.some((project) => project.id === storedProjectId);
       let activeProject = currentProject();
       const lastProject = storedProjectExists ? projects.find((project) => project.id === storedProjectId) : null;
-      if (!activeProject && lastProject) {
-        state.developmentPlatform.activeProjectId = lastProject.id;
-        state.developmentPlatform.projectPanelMode = "closed";
-        activeProject = lastProject;
-        restoreDevelopmentDialog(lastProject);
-      }
       document.querySelector("#developmentProjectName").textContent = activeProject?.name || "Kein Projekt geoeffnet";
       document.querySelector("#developmentProjectChoicePanel").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "choice");
-      document.querySelector("#chooseDevelopmentProjectButton").classList.toggle("active", state.developmentPlatform.projectPanelMode !== "closed");
       document.querySelector("#continueDevelopmentProjectButton").classList.toggle("hidden", !lastProject);
       document.querySelector("#continueDevelopmentProjectName").textContent = lastProject?.name || "";
       document.querySelector("#developmentProjectOpenPanel").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "open");
@@ -191,6 +217,19 @@ const DevelopmentPlatform = (() => {
         : "Bitte waehle, wie du im Entwicklungsbereich starten moechtest.");
     }
 
+    function enterProjectStart() {
+      state.developmentPlatform.workflowStep = "project_start";
+      state.developmentPlatform.projectPanelMode = "choice";
+      state.developmentPlatform.activeProjectId = "";
+      state.developmentPlatform.architectureDiagram = null;
+      state.developmentPlatform.homeAutomationConfiguration = null;
+      state.developmentPlatform.gameConfiguration = null;
+      state.developmentPlatform.chat = [];
+      state.developmentPlatform.lastRouting = null;
+      setActionStatus("");
+      render();
+    }
+
     function renderRequirementsText() {
       const target = document.querySelector("#developmentRequirementsText");
       if (!target) return;
@@ -205,6 +244,444 @@ const DevelopmentPlatform = (() => {
           <p>${escapeHtml(text)}</p>
         </article>
       `).join("");
+    }
+
+    function renderHomeAutomationAssistant() {
+      const section = document.querySelector("#homeAutomationAssistant");
+      const form = document.querySelector("#homeAutomationForm");
+      if (!section || !form) return;
+      const visible = state.developmentPlatform.workflowStep === "configuration"
+        && currentProjectTemplateId() === "distributed_home_automation";
+      section.classList.toggle("hidden", !visible);
+      if (!visible) return;
+      const configuration = normalizeHomeAutomationConfiguration(state.developmentPlatform.homeAutomationConfiguration);
+      state.developmentPlatform.homeAutomationConfiguration = configuration;
+      synchronizeConfigurationArchitecture();
+      form.querySelector('[data-home-automation-field="coordinator"]').value = configuration.coordinator;
+      form.querySelector('[data-home-automation-field="failure_policy"]').value = configuration.failure_policy;
+      form.querySelectorAll("[data-home-automation-state]").forEach((input) => {
+        input.checked = Boolean(configuration.state_model[input.dataset.homeAutomationState]);
+      });
+      document.querySelector("#homeAutomationNodes").innerHTML = configuration.nodes.map((node, index) => `
+        <article class="home-automation-node" data-home-automation-node="${index}">
+          <label>Name<input data-home-node-field="name" maxlength="80" value="${escapeAttribute(node.name)}"></label>
+          <label>Rolle<select data-home-node-field="role">
+            ${homeAutomationOptions(homeAutomationRoleOptions(), node.role)}
+          </select></label>
+          <label>Kommunikation<select data-home-node-field="transport">
+            ${homeAutomationOptions(homeAutomationTransportOptions(), node.transport)}
+          </select></label>
+          <label>Sensoren<input data-home-node-field="sensor_count" type="number" min="0" max="20" step="1" value="${node.sensor_count}"></label>
+          <label>Aktoren<input data-home-node-field="actuator_count" type="number" min="0" max="20" step="1" value="${node.actuator_count}"></label>
+          <fieldset class="home-automation-board-features">
+            <legend>Boardeigenschaften</legend>
+            ${homeAutomationBoardFeatureOptions().map((feature) => `
+              <label><input type="checkbox" data-home-node-feature="${escapeAttribute(feature.id)}" ${node.board_features[feature.id] ? "checked" : ""}> ${escapeHtml(feature.label)}</label>
+            `).join("")}
+          </fieldset>
+          <div class="home-automation-board-recommendation">
+            <span>Boardvorschlag</span>
+            <strong>${escapeHtml(recommendedBoardForNode(node))}</strong>
+          </div>
+          <button type="button" class="icon-button" data-home-automation-remove-node="${index}" aria-label="Device entfernen" title="Device entfernen">&times;</button>
+        </article>
+      `).join("");
+    }
+
+    function homeAutomationOptions(options, value) {
+      return options.map((option) => `<option value="${escapeAttribute(option.id)}" ${String(option.id) === String(value) ? "selected" : ""}>${escapeHtml(option.label)}</option>`).join("");
+    }
+
+    function homeAutomationRoleOptions() {
+      return [
+        { id: "sensor_node", label: "Sensor-Node" },
+        { id: "actuator_node", label: "Aktor-Node" },
+        { id: "combined_node", label: "Sensor- und Aktor-Node" },
+        { id: "control_node", label: "Bedien-Node" },
+        { id: "gateway", label: "Gateway" },
+      ];
+    }
+
+    function homeAutomationTransportOptions() {
+      return [
+        { id: "undecided", label: "Noch offen" },
+        { id: "local", label: "Nur lokal am Device" },
+        { id: "wifi_rest", label: "WLAN / REST" },
+        { id: "wifi_mqtt", label: "WLAN / MQTT" },
+        { id: "zigbee", label: "Zigbee" },
+      ];
+    }
+
+    function homeAutomationBoardFeatureOptions() {
+      return [
+        { id: "integrated_display", label: "Display" },
+        { id: "integrated_touchscreen", label: "Touchscreen" },
+        { id: "battery_operation", label: "Akkubetrieb" },
+        { id: "sd_card", label: "SD-Karte" },
+        { id: "audio", label: "Audio" },
+        { id: "many_gpio", label: "Viele GPIOs" },
+      ];
+    }
+
+    function recommendedBoardForNode(node) {
+      const features = node.board_features || {};
+      if (features.integrated_touchscreen && node.transport === "zigbee") return "ESP32-S3 Touch-Display-Board mit Zigbee-Erweiterung";
+      if (features.integrated_touchscreen) return "ESP32-S3 Touch-Display-Board";
+      if (node.transport === "zigbee") return features.battery_operation ? "ESP32-C6 Low-Power-Board" : "ESP32-C6 DevKitC-1";
+      if (features.integrated_display) return "ESP32-S3 Display-Board";
+      if (features.many_gpio || features.audio || features.sd_card) return "ESP32-S3 DevKitC-1";
+      if (features.battery_operation) return "ESP32-C6 Low-Power-Board";
+      return "ESP32 DevKitC";
+    }
+
+    function handleHomeAutomationChange(event) {
+      if (event?.target?.dataset.homeNodeFeature === "integrated_touchscreen" && event.target.checked) {
+        const row = event.target.closest("[data-home-automation-node]");
+        const display = row?.querySelector('[data-home-node-feature="integrated_display"]');
+        if (display) display.checked = true;
+      }
+      state.developmentPlatform.homeAutomationConfiguration = collectHomeAutomationConfiguration();
+      const changedRow = event?.target?.closest?.("[data-home-automation-node]");
+      const changedIndex = Number(changedRow?.dataset.homeAutomationNode);
+      if (changedRow && Number.isInteger(changedIndex)) {
+        const recommendation = changedRow.querySelector(".home-automation-board-recommendation strong");
+        const node = state.developmentPlatform.homeAutomationConfiguration.nodes[changedIndex];
+        if (recommendation && node) recommendation.textContent = recommendedBoardForNode(node);
+      }
+      synchronizeConfigurationArchitecture();
+      renderArchitectureDiagram();
+      syncChatAvailability();
+      setHomeAutomationStatus("Vorschau aktualisiert. Bitte Konfiguration speichern.");
+    }
+
+    function handleHomeAutomationClick(event) {
+      const addButton = event.target.closest("[data-home-automation-add-node]");
+      const removeButton = event.target.closest("[data-home-automation-remove-node]");
+      const saveButton = event.target.closest("[data-home-automation-save]");
+      const aiButton = event.target.closest("[data-home-automation-ai]");
+      if (addButton) {
+        const configuration = collectHomeAutomationConfiguration();
+        configuration.nodes.push({ name: `IoT-Device ${configuration.nodes.length + 1}`, role: "combined_node", transport: "undecided", sensor_count: 0, actuator_count: 0, board_features: {} });
+        state.developmentPlatform.homeAutomationConfiguration = configuration;
+        renderHomeAutomationAssistant();
+        handleHomeAutomationChange();
+      } else if (removeButton) {
+        const configuration = collectHomeAutomationConfiguration();
+        configuration.nodes.splice(Number(removeButton.dataset.homeAutomationRemoveNode), 1);
+        state.developmentPlatform.homeAutomationConfiguration = normalizeHomeAutomationConfiguration(configuration);
+        renderHomeAutomationAssistant();
+        handleHomeAutomationChange();
+      } else if (saveButton) {
+        saveHomeAutomationConfiguration();
+      } else if (aiButton) {
+        state.developmentPlatform.homeAutomationConfiguration = collectHomeAutomationConfiguration();
+        sendChatContent("Konfiguration pruefen");
+      }
+    }
+
+    function collectHomeAutomationConfiguration() {
+      const form = document.querySelector("#homeAutomationForm");
+      if (!form) return normalizeHomeAutomationConfiguration(state.developmentPlatform.homeAutomationConfiguration);
+      return normalizeHomeAutomationConfiguration({
+        coordinator: form.querySelector('[data-home-automation-field="coordinator"]').value,
+        failure_policy: form.querySelector('[data-home-automation-field="failure_policy"]').value,
+        state_model: Object.fromEntries(Array.from(form.querySelectorAll("[data-home-automation-state]"), (input) => [input.dataset.homeAutomationState, input.checked])),
+        nodes: Array.from(form.querySelectorAll("[data-home-automation-node]"), (row) => ({
+          ...Object.fromEntries(Array.from(row.querySelectorAll("[data-home-node-field]"), (input) => [input.dataset.homeNodeField, input.value])),
+          board_features: Object.fromEntries(Array.from(row.querySelectorAll("[data-home-node-feature]"), (input) => [input.dataset.homeNodeFeature, input.checked])),
+        })),
+      });
+    }
+
+    async function saveHomeAutomationConfiguration() {
+      state.developmentPlatform.homeAutomationConfiguration = collectHomeAutomationConfiguration();
+      synchronizeConfigurationArchitecture();
+      setHomeAutomationStatus("Konfiguration und Architektur werden gespeichert...");
+      const saved = await persistDevelopmentDialog();
+      setHomeAutomationStatus(saved ? "Konfiguration und Architektur sind im Projekt gespeichert." : "Konfiguration konnte nicht gespeichert werden.");
+      renderArchitectureDiagram();
+      syncChatAvailability();
+    }
+
+    function synchronizeConfigurationArchitecture() {
+      if (state.developmentPlatform.workflowStep !== "configuration") return false;
+      if (currentProjectTemplateId() === "touchscreen_game_collection") {
+        const gameConfiguration = normalizeTouchscreenGameConfiguration(state.developmentPlatform.gameConfiguration);
+        state.developmentPlatform.gameConfiguration = gameConfiguration;
+        state.developmentPlatform.architectureDiagram = touchscreenGameArchitectureDiagram(gameConfiguration, currentProject()?.name);
+        return true;
+      }
+      if (currentProjectTemplateId() !== "distributed_home_automation") return false;
+      const configuration = normalizeHomeAutomationConfiguration(state.developmentPlatform.homeAutomationConfiguration);
+      state.developmentPlatform.homeAutomationConfiguration = configuration;
+      state.developmentPlatform.architectureDiagram = homeAutomationArchitectureDiagram(configuration, currentProject()?.name);
+      return true;
+    }
+
+    function setHomeAutomationStatus(text) {
+      const target = document.querySelector("#homeAutomationStatus");
+      if (target) target.textContent = text;
+    }
+
+    function renderTouchscreenGameAssistant() {
+      const section = document.querySelector("#touchscreenGameAssistant");
+      const form = document.querySelector("#touchscreenGameForm");
+      if (!section || !form) return;
+      const visible = state.developmentPlatform.workflowStep === "configuration"
+        && currentProjectTemplateId() === "touchscreen_game_collection";
+      section.classList.toggle("hidden", !visible);
+      if (!visible) return;
+      const configuration = normalizeTouchscreenGameConfiguration(state.developmentPlatform.gameConfiguration);
+      state.developmentPlatform.gameConfiguration = configuration;
+      const boardSelect = form.querySelector('[data-game-field="board_profile_id"]');
+      const boards = touchscreenGameBoards();
+      boardSelect.innerHTML = [
+        '<option value="">Touch-Display-Board waehlen</option>',
+        ...boards.map((board) => `<option value="${escapeAttribute(board.hardware_item_id)}">${escapeHtml(processorBoardLabel(board))}</option>`),
+      ].join("");
+      boardSelect.value = configuration.board_profile_id;
+      const inventorySelect = form.querySelector('[data-game-field="inventory_device_id"]');
+      const inventory = touchscreenGameInventory(configuration.board_profile_id);
+      inventorySelect.innerHTML = [
+        '<option value="">Noch keinem Inventar-Board zuordnen</option>',
+        ...inventory.map((device) => `<option value="${escapeAttribute(device.device_id)}">${escapeHtml(device.display_name || device.device_id)}</option>`),
+      ].join("");
+      inventorySelect.value = inventory.some((device) => device.device_id === configuration.inventory_device_id)
+        ? configuration.inventory_device_id
+        : "";
+      form.querySelector('[data-game-field="pattern_id"]').value = configuration.pattern_id;
+      document.querySelector("#touchscreenGameChoices").innerHTML = [
+        "<legend>Beispielspiele im Startbildschirm</legend>",
+        ...touchscreenGameOptions().map((game) => `<label><input type="checkbox" data-game-id="${escapeAttribute(game.id)}" ${configuration.selected_game_ids.includes(game.id) ? "checked" : ""}> ${escapeHtml(game.label)}</label>`),
+      ].join("");
+      const match = document.querySelector("#touchscreenGameInventoryMatch");
+      if (!configuration.board_profile_id) {
+        match.innerHTML = "<strong>Noch kein Board gewaehlt</strong><span>Empfohlen wird ein ESP32-S3-Board mit integriertem Display und Touchcontroller.</span>";
+      } else if (configuration.inventory_device_id) {
+        const device = inventory.find((item) => item.device_id === configuration.inventory_device_id);
+        match.innerHTML = `<strong>Inventar passt</strong><span>${escapeHtml(device?.display_name || configuration.inventory_device_id)} kann direkt verwendet werden.</span>`;
+      } else if (inventory.length) {
+        match.innerHTML = `<strong>${inventory.length} passendes ${inventory.length === 1 ? "Board" : "Boards"} im Inventar</strong><span>Waehle eines aus oder lasse die Zuordnung vorerst offen.</span>`;
+      } else {
+        match.innerHTML = "<strong>Kein passendes Inventar-Board</strong><span>Das benoetigte Board kann spaeter inventarisiert werden.</span>";
+      }
+      form.querySelector("[data-game-save]").disabled = !configuration.pattern_id
+        || !configuration.board_profile_id
+        || !configuration.selected_game_ids.length;
+      synchronizeConfigurationArchitecture();
+    }
+
+    function touchscreenGameOptions() {
+      return [
+        { id: "nibbles", label: "Nibbles" },
+        { id: "snake", label: "Snake" },
+        { id: "frogger", label: "Frogger" },
+        { id: "tic_tac_toe", label: "Tic-Tac-Toe" },
+        { id: "pong", label: "Pong" },
+        { id: "breakout", label: "Breakout" },
+        { id: "memory", label: "Memory" },
+      ];
+    }
+
+    function touchscreenGameBoards() {
+      return availableProcessorBoards()
+        .filter((board) => processorBoardFamily(board) === "esp32" && isTouchscreenGameBoard(board))
+        .sort((left, right) => touchscreenBoardScore(right) - touchscreenBoardScore(left));
+    }
+
+    function isTouchscreenGameBoard(board) {
+      const capabilities = new Set(board.capability_ids || []);
+      const text = `${board.title || ""} ${board.form_factor || ""}`.toLowerCase();
+      return capabilities.has("capability.touchscreen_input") || /touch/.test(text);
+    }
+
+    function touchscreenBoardScore(board) {
+      const capabilities = new Set(board.capability_ids || []);
+      const text = `${board.title || ""} ${board.mcu_variant || ""} ${board.form_factor || ""}`.toLowerCase();
+      return (capabilities.has("capability.touchscreen_input") ? 100 : 0)
+        + (capabilities.has("capability.display_output") ? 50 : 0)
+        + (/touch/.test(text) ? 30 : 0)
+        + (/esp32-s3/.test(text) ? 10 : 0);
+    }
+
+    function touchscreenGameInventory(boardProfileId) {
+      return boardProfileId
+        ? (state.devices || []).filter((device) => touchscreenGameInventoryMatches(boardProfileId, device))
+        : [];
+    }
+
+    function touchscreenGameInventoryMatches(boardProfileId, device) {
+      const inventoryProfile = String(device?.hardware_profile_id || "");
+      return inventoryProfile === boardProfileId
+        || (boardProfileId === "hardware.processor_board.generic_esp32_s3_touch_display" && /touch|display/i.test(inventoryProfile));
+    }
+
+    function normalizeTouchscreenGameConfiguration(value = {}) {
+      const patterns = new Set(["", "touchscreen_game_loop", "event_driven_scene_loop", "turn_based_state_machine"]);
+      const games = new Set(touchscreenGameOptions().map((game) => game.id));
+      return {
+        schema_version: 1,
+        pattern_id: patterns.has(value?.pattern_id) ? value.pattern_id : "",
+        selected_game_ids: Array.from(new Set(Array.isArray(value?.selected_game_ids) ? value.selected_game_ids : ["nibbles", "snake", "frogger", "tic_tac_toe"])).filter((id) => games.has(id)),
+        board_profile_id: String(value?.board_profile_id || "hardware.processor_board.generic_esp32_s3_touch_display"),
+        inventory_device_id: String(value?.inventory_device_id || ""),
+      };
+    }
+
+    function collectTouchscreenGameConfiguration() {
+      const form = document.querySelector("#touchscreenGameForm");
+      return normalizeTouchscreenGameConfiguration({
+        pattern_id: form.querySelector('[data-game-field="pattern_id"]').value,
+        board_profile_id: form.querySelector('[data-game-field="board_profile_id"]').value,
+        inventory_device_id: form.querySelector('[data-game-field="inventory_device_id"]').value,
+        selected_game_ids: Array.from(form.querySelectorAll("[data-game-id]:checked"), (input) => input.dataset.gameId),
+      });
+    }
+
+    function handleTouchscreenGameChange(event) {
+      state.developmentPlatform.gameConfiguration = collectTouchscreenGameConfiguration();
+      if (event.target?.dataset.gameField === "board_profile_id") {
+        state.developmentPlatform.gameConfiguration.inventory_device_id = "";
+      }
+      synchronizeConfigurationArchitecture();
+      renderArchitectureDiagram();
+      renderTouchscreenGameAssistant();
+      setTouchscreenGameStatus("Vorschau aktualisiert. Bitte Spielprojekt speichern.");
+    }
+
+    function handleTouchscreenGameClick(event) {
+      if (event.target.closest("[data-game-save]")) saveTouchscreenGameConfiguration();
+    }
+
+    async function saveTouchscreenGameConfiguration() {
+      state.developmentPlatform.gameConfiguration = collectTouchscreenGameConfiguration();
+      synchronizeConfigurationArchitecture();
+      setTouchscreenGameStatus("Pattern, Spiele, Board und User-Quellen werden gespeichert...");
+      const saved = await persistDevelopmentDialog();
+      setTouchscreenGameStatus(saved
+        ? "Spielprojekt gespeichert. Startbildschirm und Spiele liegen getrennt im User-Bereich."
+        : "Spielprojekt konnte nicht gespeichert werden.");
+    }
+
+    function setTouchscreenGameStatus(text) {
+      const target = document.querySelector("#touchscreenGameStatus");
+      if (target) target.textContent = text;
+    }
+
+    function touchscreenGameArchitectureDiagram(configuration, title = "Touchscreen-Spielesammlung") {
+      const lines = [
+        "@startuml",
+        `title ${plantUmlLabel(title)}`,
+        "left to right direction",
+        'actor "Nutzer" as user',
+        'rectangle "Board mit Touchdisplay" as device',
+        "@enduml",
+      ];
+      return { type: "plantuml", source: lines.join("\n"), title: "Statische Architektur der Touchscreen-Spielesammlung", summary: "Logische Struktur aus Nutzer und Board; Verhalten und Realisierung werden getrennt gepflegt.", derived_from: "project_template" };
+    }
+
+    function normalizeHomeAutomationConfiguration(value = {}) {
+      const defaults = defaultHomeAutomationConfiguration();
+      const allowedCoordinators = new Set(["undecided", "none", "gernetix_home_server", "home_assistant", "gernetix_with_home_assistant"]);
+      const allowedPolicies = new Set(["local_fallback", "safe_state", "central_required", "undecided"]);
+      const allowedRoles = new Set(homeAutomationRoleOptions().map((option) => option.id));
+      const allowedTransports = new Set(homeAutomationTransportOptions().map((option) => option.id));
+      const nodes = Array.isArray(value?.nodes) ? value.nodes.slice(0, 30).map((node, index) => {
+        const legacyTouchscreen = boundedHomeAutomationCount(node?.control_count) > 0;
+        const boardFeatures = Object.fromEntries(homeAutomationBoardFeatureOptions().map((feature) => [feature.id, node?.board_features?.[feature.id] === true]));
+        if (legacyTouchscreen) boardFeatures.integrated_touchscreen = true;
+        if (boardFeatures.integrated_touchscreen) boardFeatures.integrated_display = true;
+        return {
+          name: String(node?.name || `IoT-Device ${index + 1}`).trim().slice(0, 80),
+          role: allowedRoles.has(node?.role) ? node.role : "combined_node",
+          transport: allowedTransports.has(node?.transport) ? node.transport : "undecided",
+          sensor_count: boundedHomeAutomationCount(node?.sensor_count),
+          actuator_count: boundedHomeAutomationCount(node?.actuator_count),
+          board_features: boardFeatures,
+        };
+      }) : defaults.nodes;
+      return {
+        schema_version: 2,
+        coordinator: allowedCoordinators.has(value?.coordinator) ? value.coordinator : defaults.coordinator,
+        failure_policy: allowedPolicies.has(value?.failure_policy) ? value.failure_policy : defaults.failure_policy,
+        state_model: Object.fromEntries(["commands", "desired_state", "actual_state", "events"].map((key) => [key, value?.state_model?.[key] !== false])),
+        nodes,
+      };
+    }
+
+    function boundedHomeAutomationCount(value) {
+      const number = Number.parseInt(value, 10);
+      return Number.isFinite(number) ? Math.min(20, Math.max(0, number)) : 0;
+    }
+
+    function defaultHomeAutomationConfiguration() {
+      return {
+        schema_version: 1,
+        coordinator: "undecided",
+        failure_policy: "local_fallback",
+        state_model: { commands: true, desired_state: true, actual_state: true, events: true },
+        nodes: [
+          { name: "Raumklima", role: "sensor_node", transport: "undecided", sensor_count: 2, actuator_count: 0, board_features: {} },
+          { name: "Lichtsteuerung", role: "actuator_node", transport: "undecided", sensor_count: 0, actuator_count: 1, board_features: {} },
+          { name: "Touchpanel", role: "control_node", transport: "undecided", sensor_count: 0, actuator_count: 0, board_features: { integrated_display: true, integrated_touchscreen: true } },
+        ],
+      };
+    }
+
+    function homeAutomationArchitectureDiagram(configuration, title = "Verteilte Hausautomatisierung") {
+      const config = normalizeHomeAutomationConfiguration(configuration);
+      const coordinatorLabels = {
+        undecided: "Zustandskoordination\\nNoch offen",
+        none: "Verteilte Zustandssynchronisation",
+        gernetix_home_server: "GerNetiX Home Server",
+        home_assistant: "Home Assistant",
+        gernetix_with_home_assistant: "GerNetiX Home Server\\nmit Home Assistant",
+      };
+      const roleLabels = Object.fromEntries(homeAutomationRoleOptions().map((option) => [option.id, option.label]));
+      const transportLabels = Object.fromEntries(homeAutomationTransportOptions().map((option) => [option.id, option.label]));
+      const failureLabels = {
+        local_fallback: "Lokal weiterarbeiten",
+        safe_state: "Sicheren Zustand einnehmen",
+        central_required: "Zentrale Instanz erforderlich",
+        undecided: "Noch offen",
+      };
+      const stateLabels = { commands: "Befehle", desired_state: "Sollzustand", actual_state: "Istzustand", events: "Ereignisse / Messwerte" };
+      const activeStates = Object.entries(config.state_model).filter(([, enabled]) => enabled).map(([key]) => stateLabels[key]);
+      const lines = [
+        "@startuml",
+        `title ${plantUmlLabel(title)}`,
+        "left to right direction",
+        `rectangle "${coordinatorLabels[config.coordinator]}" as coordination`,
+        `rectangle "Konfiguration\\nAusfall: ${plantUmlLabel(failureLabels[config.failure_policy])}\\nDaten: ${plantUmlLabel(activeStates.join(", ") || "Keine")}" as configuration`,
+        "configuration .. coordination",
+      ];
+      config.nodes.forEach((node, index) => {
+        const id = `device_${index + 1}`;
+        const featureLabels = homeAutomationBoardFeatureOptions().filter((feature) => node.board_features[feature.id]).map((feature) => feature.label);
+        lines.push(`rectangle "IoT-Device ${index + 1}\\n${plantUmlLabel(node.name)}\\n${plantUmlLabel(roleLabels[node.role])}\\n${plantUmlLabel(transportLabels[node.transport])}\\nBoard: ${plantUmlLabel(featureLabels.join(", ") || "Standard")}" as ${id}`);
+        if (config.state_model.events || config.state_model.actual_state) lines.push(`${id} --> coordination : ${plantUmlLabel(transportLabels[node.transport])} / Istzustand`);
+        if (config.state_model.commands || config.state_model.desired_state) lines.push(`coordination --> ${id} : Befehl / Sollzustand`);
+        for (let sensorIndex = 1; sensorIndex <= node.sensor_count; sensorIndex += 1) {
+          lines.push(`rectangle "Sensor ${index + 1}.${sensorIndex}" as sensor_${index + 1}_${sensorIndex}`);
+          lines.push(`sensor_${index + 1}_${sensorIndex} --> ${id} : Messwert`);
+        }
+        for (let actuatorIndex = 1; actuatorIndex <= node.actuator_count; actuatorIndex += 1) {
+          lines.push(`rectangle "Aktor ${index + 1}.${actuatorIndex}" as actuator_${index + 1}_${actuatorIndex}`);
+          lines.push(`${id} --> actuator_${index + 1}_${actuatorIndex} : schaltet`);
+        }
+      });
+      lines.push("@enduml");
+      return {
+        type: "plantuml",
+        source: lines.join("\n"),
+        title: "Konfigurierte Hausautomationsarchitektur",
+        summary: "Aus dem statischen Konfigurationsassistenten erzeugte Startarchitektur.",
+        derived_from: "project_template",
+      };
+    }
+
+    function plantUmlLabel(value) {
+      return String(value || "").replace(/["\r\n]/g, " ").trim();
     }
 
     function requirementSummaryItems(project, chat) {
@@ -236,6 +713,7 @@ const DevelopmentPlatform = (() => {
       return [
         [/\b(observer|benachrichtigung|benachrichtigen|ereignis)\b/, "Observer / Benachrichtigung"],
         [/\b(datenlogger|data logger|logger|messdaten|messwerte)\b/, "Datenlogger"],
+        [/\b(touchscreen game loop|touch[- ]?display|touchscreen.*spiel|spiel.*touchscreen|game loop)\b/, "Touchscreen Game Loop"],
         [/\b(remote|steuerung|steuern|schalten|aktor)\b/, "Remote-Steuerung / Aktorik"],
         [/\b(regelung|regelstrecke|autonom|ohne wlan|lokal ausfuehren)\b/, "Lokale Regel-/Steuerstrecke"],
         [/\b(zustandsmodell|state|states|synchronisiert|broadcast)\b/, "Synchronisiertes Zustandsmodell"],
@@ -278,16 +756,22 @@ const DevelopmentPlatform = (() => {
     }
 
     function showProjectPanel(mode) {
+      state.developmentPlatform.workflowStep = "project_start";
       state.developmentPlatform.projectPanelMode = mode;
       if (mode === "new-empty") {
         document.querySelector("#developmentProjectTemplate").value = "empty";
         applyProjectTemplate();
       } else if (mode === "new-template") {
-        document.querySelector("#developmentProjectTemplate").value = "esp32_device_only";
+        document.querySelector("#developmentProjectTemplate").value = "";
         applyProjectTemplate();
       }
       renderProjectPicker();
-      if (mode === "new-empty" || mode === "new-template") {
+      renderWorkflowStep();
+      renderArchitectureDiagram();
+      syncChatAvailability();
+      if (mode === "new-template") {
+        document.querySelector("#developmentProjectTemplate").focus();
+      } else if (mode === "new-empty") {
         document.querySelector("#developmentProjectTitle").focus();
       } else if (mode === "open") {
         document.querySelector("#developmentProjectSelect").focus();
@@ -311,9 +795,21 @@ const DevelopmentPlatform = (() => {
 
     function activateProject(projectId) {
       state.developmentPlatform.activeProjectId = projectId;
+      state.developmentPlatform.workflowStep = "project_start";
       storeActiveProjectId(projectId);
       state.developmentPlatform.projectPanelMode = "closed";
       restoreDevelopmentDialog(currentProject());
+      render();
+    }
+
+    function continueToDevelopmentConfiguration() {
+      if (!activeProjectId()) {
+        setProjectStatus("Bitte zuerst ein Projekt oeffnen oder neu aus einem Template anlegen.");
+        return;
+      }
+      state.developmentPlatform.workflowStep = "configuration";
+      state.developmentPlatform.projectPanelMode = "closed";
+      setActionStatus("Projekt und initiale Architektur uebernommen. Jetzt folgt die Konfiguration.");
       render();
     }
 
@@ -323,29 +819,51 @@ const DevelopmentPlatform = (() => {
       state.developmentPlatform.architectureDiagram = sanitizeArchitectureDiagram(dialog.architectureDiagram) || architectureDiagramForProject(project);
       state.developmentPlatform.lastRouting = dialog.lastRouting || null;
       state.developmentPlatform.assistantMode = dialog.assistantMode || "architecture_structure";
+      const storedConfiguration = project?.viewManifest?.home_automation_configuration || project?.viewManifest?.homeAutomationConfiguration;
+      state.developmentPlatform.homeAutomationConfiguration = currentProjectTemplateIdFor(project) === "distributed_home_automation"
+        ? normalizeHomeAutomationConfiguration(storedConfiguration)
+        : null;
+      const storedGameConfiguration = project?.viewManifest?.game_configuration || project?.viewManifest?.gameConfiguration;
+      state.developmentPlatform.gameConfiguration = currentProjectTemplateIdFor(project) === "touchscreen_game_collection"
+        ? normalizeTouchscreenGameConfiguration(storedGameConfiguration)
+        : null;
+    }
+
+    function currentProjectTemplateIdFor(project) {
+      return project?.viewManifest?.template_id || project?.viewManifest?.templateId || "";
     }
 
     async function persistDevelopmentDialog() {
       const projectId = activeProjectId();
-      if (!projectId) return;
+      if (!projectId) return false;
+      synchronizeConfigurationArchitecture();
       try {
         const response = await postJson(`/api/platform/development-projects/${encodeURIComponent(projectId)}/dialog`, {
           messages: state.developmentPlatform.chat,
           architectureDiagram: state.developmentPlatform.architectureDiagram,
           assistantMode: state.developmentPlatform.assistantMode,
           lastRouting: state.developmentPlatform.lastRouting,
+          homeAutomationConfiguration: state.developmentPlatform.homeAutomationConfiguration,
+          gameConfiguration: state.developmentPlatform.gameConfiguration,
         });
         if (response.project) {
           state.projects = state.projects.filter((project) => project.id !== response.project.id).concat(response.project);
         }
+        return true;
       } catch (error) {
         setActionStatus(`Dialog konnte nicht gespeichert werden: ${error.message}`);
+        return false;
       }
     }
 
     function architectureDiagramForProject(project) {
       const view = (project?.viewManifest?.views || []).find((item) => item.id === "architecture-diagram" || item.type === "plantuml");
-      const derivedFrom = view?.payload?.derived_from || (project?.buildConfig ? "project_template" : "persisted_project");
+      const storedDerivedFrom = view?.payload?.derived_from || "";
+      const templateId = project?.viewManifest?.template_id || project?.viewManifest?.templateId || "";
+      const usesProjectTemplate = Boolean(templateId && templateId !== "empty");
+      const derivedFrom = usesProjectTemplate && (!storedDerivedFrom || storedDerivedFrom === "persisted_project")
+        ? "project_template"
+        : storedDerivedFrom || (project?.buildConfig ? "project_template" : "persisted_project");
       const source = normalizeArchitecturePlantUml(stripPlantUmlNotes(view?.payload?.source || ""), derivedFrom);
       if (!source) return null;
       return {
@@ -413,11 +931,17 @@ const DevelopmentPlatform = (() => {
 
     async function createDevelopmentProject(event) {
       event.preventDefault();
+      const continueAfterCreate = Boolean(event.submitter?.hasAttribute("data-create-and-continue"));
       const titleInput = document.querySelector("#developmentProjectTitle");
       const descriptionInput = document.querySelector("#developmentProjectDescription");
       const templateInput = document.querySelector("#developmentProjectTemplate");
       const selectedTemplateId = templateInput.value;
       const title = titleInput.value.trim();
+      if (state.developmentPlatform.projectPanelMode === "new-template" && !selectedTemplateId) {
+        setProjectStatus("Bitte waehle zuerst ein Projekttemplate.");
+        templateInput.focus();
+        return;
+      }
       if (!title) {
         setProjectStatus("Bitte gib einen Projektnamen ein.");
         titleInput.focus();
@@ -433,10 +957,17 @@ const DevelopmentPlatform = (() => {
         if (response.project) {
           state.projects = state.projects.filter((project) => project.id !== response.project.id).concat(response.project);
           state.developmentPlatform.activeProjectId = response.project.id;
+          state.developmentPlatform.workflowStep = continueAfterCreate ? "configuration" : "project_start";
           state.developmentPlatform.chat = [];
           state.developmentPlatform.lastRouting = null;
           state.developmentPlatform.assistantMode = "architecture_structure";
           state.developmentPlatform.architectureDiagram = architectureDiagramForProject(response.project);
+          state.developmentPlatform.homeAutomationConfiguration = selectedTemplateId === "distributed_home_automation"
+            ? normalizeHomeAutomationConfiguration(response.project.viewManifest?.home_automation_configuration)
+            : null;
+          state.developmentPlatform.gameConfiguration = selectedTemplateId === "touchscreen_game_collection"
+            ? normalizeTouchscreenGameConfiguration(response.project.viewManifest?.game_configuration)
+            : null;
           storeActiveProjectId(response.project.id);
           if (selectedTemplateId !== "empty") {
             const architectureView = (response.project.viewManifest?.views || []).find((view) => view.id === "architecture-diagram");
@@ -455,7 +986,9 @@ const DevelopmentPlatform = (() => {
           descriptionInput.value = "";
           templateInput.value = "empty";
           applyProjectTemplate({ preserveValues: true });
-          setProjectStatus(`Projekt angelegt: ${response.project.name}`);
+          setProjectStatus(continueAfterCreate
+            ? `Projekt angelegt: ${response.project.name}. Konfiguration ist geoeffnet.`
+            : `Projekt angelegt: ${response.project.name}`);
         }
         render();
       } catch (error) {
@@ -468,11 +1001,29 @@ const DevelopmentPlatform = (() => {
       const template = projectTemplates[templateInput.value] || projectTemplates.empty;
       const titleInput = document.querySelector("#developmentProjectTitle");
       const descriptionInput = document.querySelector("#developmentProjectDescription");
-      document.querySelector("#developmentProjectTemplateHint").textContent = template.hint;
-      if (!event.preserveValues) {
-        titleInput.value = template.title;
-        descriptionInput.value = template.description;
+      const submitButtons = document.querySelectorAll('#developmentProjectForm button[type="submit"]');
+      const details = document.querySelector("#developmentProjectDetails");
+      const choosingTemplate = state.developmentPlatform.projectPanelMode === "new-template";
+      const templateSelected = Boolean(templateInput.value && templateInput.value !== "empty");
+      details?.classList.toggle("hidden", choosingTemplate && !templateSelected);
+      titleInput.disabled = choosingTemplate && !templateSelected;
+      descriptionInput.disabled = choosingTemplate && !templateSelected;
+      submitButtons.forEach((button) => {
+        button.disabled = choosingTemplate && !templateSelected;
+      });
+      document.querySelector("#developmentProjectTemplateHint").textContent = choosingTemplate && !templateSelected
+        ? "Bitte waehle zuerst ein Projekttemplate. Danach erscheinen Vorschau, Projektname und Beschreibung."
+        : template.hint;
+      if (["new-empty", "new-template"].includes(state.developmentPlatform.projectPanelMode)) {
+        const preview = projectTemplatePreviews[templateInput.value];
+        state.developmentPlatform.architectureDiagram = preview ? sanitizeArchitectureDiagram(preview) : null;
       }
+      if (!event.preserveValues) {
+        titleInput.value = templateSelected || !choosingTemplate ? template.title : "";
+        descriptionInput.value = templateSelected || !choosingTemplate ? template.description : "";
+      }
+      renderArchitectureDiagram();
+      renderWorkflowStep();
     }
 
     async function sendChatMessage(event) {
@@ -505,6 +1056,7 @@ const DevelopmentPlatform = (() => {
           messages: state.developmentPlatform.chat,
           architectureDiagram: state.developmentPlatform.architectureDiagram,
           assistantMode: state.developmentPlatform.assistantMode,
+          homeAutomationConfiguration: state.developmentPlatform.homeAutomationConfiguration,
         });
         setAssistantConfig(response.config || state.developmentPlatform.assistant);
         if (Object.hasOwn(response, "architectureDiagram")) {
@@ -569,7 +1121,7 @@ const DevelopmentPlatform = (() => {
       const hasProject = Boolean(activeProjectId());
       const functionCoverage = plantUmlFunctionCoverage(state.developmentPlatform.architectureDiagram?.source || "");
       const hasEffectChains = state.developmentPlatform.architectureDiagram?.derived_from === "architecture_effect_chain_derivation";
-      const usesProjectTemplate = state.developmentPlatform.architectureDiagram?.derived_from === "project_template";
+      const usesProjectTemplate = currentProjectUsesTemplate();
       const canContinue = hasProject
         && Boolean(state.developmentPlatform.architectureDiagram?.source)
         && (usesProjectTemplate || (functionCoverage.complete && (functionCoverage.element_count <= 1 || hasEffectChains)));
@@ -612,7 +1164,7 @@ const DevelopmentPlatform = (() => {
         return;
       }
       const functionCoverage = plantUmlFunctionCoverage(state.developmentPlatform.architectureDiagram.source);
-      const usesProjectTemplate = state.developmentPlatform.architectureDiagram.derived_from === "project_template";
+      const usesProjectTemplate = currentProjectUsesTemplate();
       const project = currentProject();
       if (continueToIde && !usesProjectTemplate && !functionCoverage.complete) {
         const missing = functionCoverage.missing.length ? ` Offen: ${functionCoverage.missing.join(", ")}.` : "";
@@ -1067,11 +1619,76 @@ const DevelopmentPlatform = (() => {
     function actuatorTypes() {
       return [
         { id: "dc_motor", label: "DC-Motor" },
+        { id: "stepper_motor", label: "Schrittmotor" },
+        { id: "synchronous_motor", label: "Synchronmotor / BLDC / PMSM" },
         { id: "relay", label: "Relais" },
         { id: "servo", label: "Servo" },
         { id: "led", label: "LED" },
         { id: "buzzer", label: "Summer" },
       ];
+    }
+
+    function motorDriverTypes(concreteType) {
+      const drivers = {
+        dc_motor: [
+          { id: "h_bridge", label: "H-Brücke (Drehrichtung und Drehzahl)", resources: "PWM + 2 GPIO" },
+          { id: "low_side_mosfet", label: "MOSFET-Treiber (eine Drehrichtung)", resources: "PWM + GPIO" },
+        ],
+        servo: [
+          { id: "servo_pwm", label: "Servo-PWM-Treiber", resources: "PWM + Zeitgeber" },
+        ],
+        stepper_motor: [
+          { id: "step_dir", label: "STEP/DIR-Schrittmotortreiber", resources: "Zeitgeber/RMT + 2 GPIO" },
+          { id: "four_phase", label: "4-Phasen-Treiber", resources: "4 GPIO + Zeitgeber" },
+        ],
+        synchronous_motor: [
+          { id: "three_phase_foc", label: "3-Phasen-Treiber mit FOC", resources: "Motor-PWM + 3 Phasen + ADC + Rotorlage" },
+          { id: "three_phase_six_step", label: "3-Phasen-Treiber mit 6-Step-Kommutierung", resources: "Motor-PWM + 3 Phasen + Rotorlage" },
+        ],
+      };
+      return drivers[concreteType] || [];
+    }
+
+    function motorDriverControls(component) {
+      const properties = component.properties || {};
+      const drivers = motorDriverTypes(component.concrete_type);
+      if (!drivers.length) return "";
+      const selectedDriver = drivers.find((driver) => driver.id === properties.motor_driver_type);
+      return `<label>Motorsteuerung<select data-hardware-property="motor_driver_type">
+        <option value="">Motorsteuerung waehlen</option>
+        ${drivers.map((driver) => `<option value="${escapeAttribute(driver.id)}" ${selected(properties.motor_driver_type, driver.id)}>${escapeHtml(driver.label)}</option>`).join("")}
+      </select><small>${escapeHtml(selectedDriver?.resources || "Die benötigten Boardressourcen werden aus der Motorsteuerung abgeleitet.")}</small></label>`;
+    }
+
+    function measurementAcquisitionControls(component) {
+      if (!component.concrete_type) return "";
+      const properties = component.properties || {};
+      const mode = properties.measurement_mode || "live";
+      const intervalValue = properties.sampling_interval_value || 5;
+      const intervalUnit = properties.sampling_interval_unit || "seconds";
+      const samplesPerRecord = properties.samples_per_record || 5;
+      const aggregation = properties.aggregation || "mean";
+      const storageMode = properties.storage_mode || "local_history";
+      const intervalLabels = { seconds: "Sekunden", minutes: "Minuten", hours: "Stunden" };
+      const aggregationLabels = { last: "letzten Wert", mean: "Mittelwert", min: "Minimum", max: "Maximum", rms: "Effektivwert (RMS)" };
+      const recordInterval = Number(intervalValue) * Number(samplesPerRecord);
+      const loggerSummary = Number.isFinite(recordInterval)
+        ? `Alle ${intervalValue} ${intervalLabels[intervalUnit] || intervalUnit} messen; nach ${samplesPerRecord} Werten den ${aggregationLabels[aggregation] || aggregation} speichern (ca. alle ${recordInterval} ${intervalLabels[intervalUnit] || intervalUnit}).`
+        : "Messintervall und Wertefenster bestimmen, wann ein Datensatz gespeichert wird.";
+      return `
+        <label>Messmodus<select data-hardware-property="measurement_mode">
+          <option value="live" ${selected(mode, "live")}>Live-Wert</option>
+          <option value="periodic_log" ${selected(mode, "periodic_log")}>Zyklischer Datenlogger</option>
+        </select><small>${mode === "periodic_log" ? "Der Runtime-Zeitgeber übernimmt die zyklische Ausführung." : "Es wird nur der aktuelle Messwert bereitgestellt."}</small></label>
+        ${mode === "periodic_log" ? `
+          <label>Messintervall<input data-hardware-property="sampling_interval_value" type="number" min="0.001" step="any" value="${escapeAttribute(intervalValue)}"><small>Abstand zwischen zwei Rohmessungen</small></label>
+          <label>Einheit<select data-hardware-property="sampling_interval_unit"><option value="seconds" ${selected(intervalUnit, "seconds")}>Sekunden</option><option value="minutes" ${selected(intervalUnit, "minutes")}>Minuten</option><option value="hours" ${selected(intervalUnit, "hours")}>Stunden</option></select></label>
+          <label>Werte pro Datensatz<input data-hardware-property="samples_per_record" type="number" min="1" step="1" value="${escapeAttribute(samplesPerRecord)}"><small>Größe des Auswertefensters</small></label>
+          <label>Auswertung<select data-hardware-property="aggregation"><option value="last" ${selected(aggregation, "last")}>Letzter Wert</option><option value="mean" ${selected(aggregation, "mean")}>Mittelwert</option><option value="min" ${selected(aggregation, "min")}>Minimum</option><option value="max" ${selected(aggregation, "max")}>Maximum</option><option value="rms" ${selected(aggregation, "rms")}>Effektivwert (RMS)</option></select></label>
+          <label>Speicherziel<select data-hardware-property="storage_mode"><option value="local_history" ${selected(storageMode, "local_history")}>Lokale Messwerthistorie</option><option value="publish" ${selected(storageMode, "publish")}>An angebundenes Ziel übertragen</option><option value="latest_only" ${selected(storageMode, "latest_only")}>Nur letzten Datensatz halten</option></select><small>Lokale Historien werden im persistenten Device-Speicher geführt.</small></label>
+          ${storageMode === "local_history" ? `<label>Max. Datensätze<input data-hardware-property="retention_records" type="number" min="1" step="1" value="${escapeAttribute(properties.retention_records || 1000)}"><small>Älteste Einträge werden anschließend überschrieben.</small></label>` : ""}
+          <label>Datenlogger-Ablauf<small>${escapeHtml(loggerSummary)}</small></label>
+        ` : ""}`;
     }
 
     function hardwarePropertyControls(component) {
@@ -1083,15 +1700,18 @@ const DevelopmentPlatform = (() => {
           ${inventoryDevices.map((device) => `<option value="${escapeAttribute(device.device_id)}" ${selected(component.inventory_device_id, device.device_id)}>${escapeHtml(device.display_name || device.device_id)}</option>`).join("")}
         </select><small>Ohne Inventar-Device kann kein Flash-Vorgang gestartet werden.</small></label>`;
       }
-      if (component.concrete_type === "pt1000") return `
-        <label>R0<input data-hardware-property="nominal_resistance_ohm" type="number" min="100" value="${escapeAttribute(properties.nominal_resistance_ohm || 1000)}"><small>Ohm bei 0 Grad C</small></label>
-        <label>Leiter<select data-hardware-property="wire_count">${[2, 3, 4].map((count) => `<option value="${count}" ${selected(properties.wire_count || 2, count)}>${count}-Leiter</option>`).join("")}</select></label>`;
-      if (["ntc", "ptc"].includes(component.concrete_type)) return `
-        <label>Nennwiderstand<input data-hardware-property="nominal_resistance_ohm" type="number" min="100" value="${escapeAttribute(properties.nominal_resistance_ohm || 10000)}"><small>Ohm</small></label>`;
-      if (component.concrete_type === "dc_motor") return `
+      if (component.abstract_type === "sensor") {
+        const electrical = component.concrete_type === "pt1000" ? `
+          <label>R0<input data-hardware-property="nominal_resistance_ohm" type="number" min="100" value="${escapeAttribute(properties.nominal_resistance_ohm || 1000)}"><small>Ohm bei 0 Grad C</small></label>
+          <label>Leiter<select data-hardware-property="wire_count">${[2, 3, 4].map((count) => `<option value="${count}" ${selected(properties.wire_count || 2, count)}>${count}-Leiter</option>`).join("")}</select></label>`
+          : ["ntc", "ptc"].includes(component.concrete_type) ? `
+          <label>Nennwiderstand<input data-hardware-property="nominal_resistance_ohm" type="number" min="100" value="${escapeAttribute(properties.nominal_resistance_ohm || 10000)}"><small>Ohm</small></label>` : "";
+        return `${electrical}${measurementAcquisitionControls(component)}`;
+      }
+      if (motorDriverTypes(component.concrete_type).length) return `
+        ${motorDriverControls(component)}
         <label>Nennspannung<input data-hardware-property="nominal_voltage_v" type="number" min="1" step="0.1" value="${escapeAttribute(properties.nominal_voltage_v || 5)}"><small>Volt</small></label>
         <label>Maximalstrom<input data-hardware-property="max_current_a" type="number" min="0.01" step="0.01" value="${escapeAttribute(properties.max_current_a || 0.5)}"><small>Ampere</small></label>`;
-      if (component.abstract_type === "sensor") return "";
       if (component.abstract_type === "actuator") return `<label>Beschreibung<input data-hardware-property="description" value="${escapeAttribute(properties.description || "")}" placeholder="Bauart oder wichtige Kenndaten"></label>`;
       return `<span class="hardware-not-applicable">-</span>`;
     }
@@ -1116,9 +1736,21 @@ const DevelopmentPlatform = (() => {
           <option value="">Pin waehlen</option>
           ${pinOptions.map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(component.pin, pin)}>${escapeHtml(pin)}</option>`).join("")}
         </select></label>
-        ${component.concrete_type === "dc_motor" ? `<label>Richtungspin<select data-hardware-field="secondary_pin"><option value="">Pin waehlen</option>${boardPins(targetDevice?.board_profile_id, "digital_output").map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(component.secondary_pin, pin)}>${escapeHtml(pin)}</option>`).join("")}</select></label>` : ""}
+        ${["dc_motor", "stepper_motor"].includes(component.concrete_type) ? `<label>Richtungspin<select data-hardware-field="secondary_pin"><option value="">Pin waehlen</option>${boardPins(targetDevice?.board_profile_id, "digital_output").map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(component.secondary_pin, pin)}>${escapeHtml(pin)}</option>`).join("")}</select></label>` : ""}
+        ${component.concrete_type === "synchronous_motor" ? synchronousMotorConnectionControls(component, targetDevice) : ""}
         ${component.signal_type === "incremental_ab" ? `<label>Kanal B<select data-hardware-field="secondary_pin"><option value="">Pin waehlen</option>${pinOptions.filter((pin) => pin !== component.pin || pin === component.secondary_pin).map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(component.secondary_pin, pin)}>${escapeHtml(pin)}</option>`).join("")}</select></label>` : ""}
       `;
+    }
+
+    function synchronousMotorConnectionControls(component, targetDevice) {
+      const properties = component.properties || {};
+      const phasePins = boardPins(targetDevice?.board_profile_id, component);
+      const analogPins = boardPins(targetDevice?.board_profile_id, "analog_sensor");
+      return `
+        <label>Phase V<select data-hardware-property="phase_v_pin"><option value="">PWM-Pin waehlen</option>${phasePins.map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(properties.phase_v_pin, pin)}>${escapeHtml(pin)}</option>`).join("")}</select></label>
+        <label>Phase W<select data-hardware-property="phase_w_pin"><option value="">PWM-Pin waehlen</option>${phasePins.map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(properties.phase_w_pin, pin)}>${escapeHtml(pin)}</option>`).join("")}</select></label>
+        <label>Strommessung (optional)<select data-hardware-property="current_sense_pin"><option value="">Keine / extern</option>${analogPins.map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(properties.current_sense_pin, pin)}>${escapeHtml(pin)}</option>`).join("")}</select></label>
+        <label>Rotorlage<select data-hardware-property="rotor_feedback"><option value="">Ohne Sensor / sensorlos</option><option value="hall" ${selected(properties.rotor_feedback, "hall")}>Hall-Sensoren</option><option value="encoder" ${selected(properties.rotor_feedback, "encoder")}>Encoder</option></select></label>`;
     }
 
     function selected(left, right) {
@@ -1135,7 +1767,8 @@ const DevelopmentPlatform = (() => {
       if (signalType === "uart") return "UART-Anschluss";
       if (signalType === "pulse_counter") return "Zaehleingang";
       if (signalType === "incremental_ab") return "Kanal A";
-      if (type === "dc_motor") return "PWM-Pin";
+      if (["dc_motor", "servo", "synchronous_motor"].includes(type)) return type === "synchronous_motor" ? "Phase U" : "PWM-Pin";
+      if (type === "stepper_motor") return "STEP-Pin";
       return "GPIO-Pin";
     }
 
@@ -1148,7 +1781,7 @@ const DevelopmentPlatform = (() => {
       const profile = board?.pin_profile || {};
       if ((signalType === "analog" || ["pt1000", "ntc", "ptc", "analog_sensor"].includes(concreteType)) && Array.isArray(profile.analog_inputs)) return profile.analog_inputs;
       if ((signalType === "i2c" || concreteType === "i2c_sensor") && Array.isArray(profile.i2c)) return profile.i2c;
-      if (concreteType === "dc_motor" && Array.isArray(profile.pwm_pins)) return profile.pwm_pins;
+      if (["dc_motor", "servo", "synchronous_motor"].includes(concreteType) && Array.isArray(profile.pwm_pins)) return profile.pwm_pins;
       if (Array.isArray(profile.digital_pins) && profile.digital_pins.length) return profile.digital_pins;
       const analog = id.includes("arduino_nano_r3") ? ["A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7"]
         : id.includes("esp8266") || id.includes("d1_mini") ? ["A0"]
@@ -1160,7 +1793,7 @@ const DevelopmentPlatform = (() => {
             : ["GPIO4", "GPIO5", "GPIO12", "GPIO13", "GPIO14", "GPIO16", "GPIO17", "GPIO18", "GPIO19", "GPIO21", "GPIO22", "GPIO23", "GPIO25", "GPIO26", "GPIO27"];
       if (signalType === "analog" || ["pt1000", "ntc", "ptc", "analog_sensor"].includes(concreteType)) return analog;
       if (signalType === "i2c" || concreteType === "i2c_sensor") return id.includes("arduino_nano_r3") ? ["SDA A4 + SCL A5"] : id.includes("raspberry") ? ["SDA GPIO2 + SCL GPIO3"] : ["SDA GPIO21 + SCL GPIO22"];
-      if (concreteType === "dc_motor") return digital.filter((pin) => /D3|D5|D6|D9|D10|D11|GPIO4|GPIO5|GPIO12|GPIO13|GPIO14|GPIO18|GPIO19|GPIO23|GPIO25|GPIO26|GPIO27/.test(pin));
+      if (["dc_motor", "servo", "synchronous_motor"].includes(concreteType)) return digital.filter((pin) => /D3|D5|D6|D9|D10|D11|GPIO4|GPIO5|GPIO12|GPIO13|GPIO14|GPIO18|GPIO19|GPIO23|GPIO25|GPIO26|GPIO27/.test(pin));
       return digital;
     }
 
@@ -1208,7 +1841,11 @@ const DevelopmentPlatform = (() => {
     function circuitFor(component) {
       if (component.concrete_type === "pt1000") return { type: "pt1000_measurement", label: "PT1000-Messschaltung", stages: ["PT1000", "Konstantstromquelle / Messbruecke", "Messverstaerker", "ADC"] };
       if (["ntc", "ptc"].includes(component.concrete_type)) return { type: "resistive_divider", label: "Widerstands-Messschaltung", stages: [component.concrete_type.toUpperCase(), "Spannungsteiler", "ADC"] };
-      if (component.concrete_type === "dc_motor") return { type: "motor_driver", label: "Motor-Treiberstufe", stages: ["PWM / Richtung", "Motortreiber / H-Bruecke", "DC-Motor"] };
+      const driver = component.properties?.motor_driver_type || "";
+      if (component.concrete_type === "dc_motor") return { type: "motor_driver", label: "DC-Motorsteuerung", stages: ["PWM / Richtung", driver === "low_side_mosfet" ? "MOSFET-Treiber" : "H-Bruecke", "DC-Motor"] };
+      if (component.concrete_type === "servo") return { type: "servo_driver", label: "Servo-Steuerung", stages: ["Zeitgeber", "Servo-PWM", "Servo"] };
+      if (component.concrete_type === "stepper_motor") return { type: "stepper_driver", label: "Schrittmotor-Steuerung", stages: ["Zeitgeber / RMT", driver === "four_phase" ? "4-Phasen-Treiber" : "STEP/DIR-Treiber", "Schrittmotor"] };
+      if (component.concrete_type === "synchronous_motor") return { type: "synchronous_motor_driver", label: "Synchronmotor-Steuerung", stages: [driver === "three_phase_six_step" ? "6-Step-Kommutierung" : "FOC", "Motor-PWM / ADC / Rotorlage", "3-Phasen-Leistungstreiber", "BLDC / PMSM"] };
       return null;
     }
 
@@ -1220,12 +1857,25 @@ const DevelopmentPlatform = (() => {
         if (component.abstract_type === "sensor") {
           if (!component.sensor_category) missing.push(`${component.label}: Sensorart`);
           if (!component.signal_type) missing.push(`${component.label}: Erfassung`);
+          if (component.properties?.measurement_mode === "periodic_log") {
+            if (!(Number(component.properties?.sampling_interval_value) > 0)) missing.push(`${component.label}: Messintervall`);
+            if (!(Number(component.properties?.samples_per_record) >= 1)) missing.push(`${component.label}: Werte pro Datensatz`);
+            if (!component.properties?.aggregation) missing.push(`${component.label}: Auswertung`);
+            if (!component.properties?.storage_mode) missing.push(`${component.label}: Speicherziel`);
+          }
         }
         if (["sensor", "actuator"].includes(component.abstract_type)) {
           if (!component.concrete_type) missing.push(`${component.label}: konkreter Typ`);
           if (!component.target_device_id) missing.push(`${component.label}: IoT-Device`);
           if (!component.pin) missing.push(`${component.label}: Pin`);
-          if (component.concrete_type === "dc_motor" && !component.secondary_pin) missing.push(`${component.label}: Richtungspin`);
+          if (motorDriverTypes(component.concrete_type).length && !component.properties?.motor_driver_type) missing.push(`${component.label}: Motorsteuerung`);
+          if (["dc_motor", "stepper_motor"].includes(component.concrete_type) && !component.secondary_pin) missing.push(`${component.label}: Richtungspin`);
+          if (component.concrete_type === "synchronous_motor") {
+            if (!component.properties?.phase_v_pin) missing.push(`${component.label}: Phase V`);
+            if (!component.properties?.phase_w_pin) missing.push(`${component.label}: Phase W`);
+            const phasePins = [component.pin, component.properties?.phase_v_pin, component.properties?.phase_w_pin].filter(Boolean);
+            if (new Set(phasePins).size !== phasePins.length) missing.push(`${component.label}: Phasenpins muessen verschieden sein`);
+          }
           if (component.signal_type === "incremental_ab" && !component.secondary_pin) missing.push(`${component.label}: Kanal B`);
           if (component.signal_type === "incremental_ab" && component.pin && component.secondary_pin === component.pin) missing.push(`${component.label}: Kanal A und B muessen verschieden sein`);
         }
@@ -1286,6 +1936,10 @@ const DevelopmentPlatform = (() => {
       if (/reales Board/.test(detail)) return "Wähle ein zum Prozessor passendes reales Board aus dem Hardware-Katalog.";
       if (/Sensorart/.test(detail)) return "Wähle die Sensorart beziehungsweise Messgröße.";
       if (/Erfassung/.test(detail)) return "Wähle die passende Erfassungs- oder Signalart.";
+      if (/Messintervall/.test(detail)) return "Gib ein positives Intervall für die zyklische Messung an.";
+      if (/Werte pro Datensatz/.test(detail)) return "Lege fest, wie viele Rohwerte zu einem Datensatz zusammengefasst werden.";
+      if (/Auswertung/.test(detail)) return "Wähle beispielsweise Mittelwert, Minimum, Maximum oder RMS.";
+      if (/Speicherziel/.test(detail)) return "Wähle lokale Historie, Übertragung oder nur den letzten Datensatz.";
       if (/konkreter Typ/.test(detail)) return "Wähle den konkreten Sensor- oder Aktortyp.";
       if (/IoT-Device/.test(detail)) return "Ordne den Sensor oder Aktor dem zuständigen IoT-Device zu.";
       if (/Pin/.test(detail)) return "Wähle einen geeigneten freien Pin am zugeordneten Board.";
@@ -1358,11 +2012,12 @@ const DevelopmentPlatform = (() => {
       if (!target) return;
       const diagram = state.developmentPlatform.architectureDiagram;
       if (!diagram?.source) {
-        target.innerHTML = `
-          <p class="helper-text">Noch keine statische Architektur vorhanden.</p>
-        `;
+        const configurationStep = state.developmentPlatform.workflowStep === "configuration";
+        target.classList.toggle("hidden", !configurationStep);
+        target.innerHTML = configurationStep ? `<p class="helper-text">Noch keine Architektur vorhanden. Beschreibe sie im KI-Chat oder waehle ein Template.</p>` : "";
         return;
       }
+      target.classList.remove("hidden");
       target.innerHTML = `
         <figure class="plantuml-viewer">
           <img class="plantuml-diagram" data-plantuml-source="${escapeAttribute(diagram.source)}" alt="${escapeAttribute(diagram.title || "Architekturdiagramm")}">
@@ -1463,6 +2118,7 @@ const DevelopmentPlatform = (() => {
       renderHardwareConfiguration,
       setAssistantConfig,
       setProjectTemplates,
+      enterProjectStart,
     };
   }
 

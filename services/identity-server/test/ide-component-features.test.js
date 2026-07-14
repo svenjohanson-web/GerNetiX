@@ -6,13 +6,18 @@ const test = require("node:test");
 const app = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
 const server = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
+const guidedProjectView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
 
 test("IDE exposes component properties and an embedded device webserver view", () => {
   assert.match(html, /id="ideComponentFeaturesView"/);
   assert.match(html, /id="ideBoardPropertiesView"/);
+  assert.match(html, /id="ideSensorPropertiesView"/);
+  assert.match(html, /id="ideDeviceConnectionsView"/);
   assert.match(html, /id="ideDeviceWebView"/);
   assert.match(app, /Webserver des Entwicklungsprojekts/);
   assert.match(app, /<iframe title="Device-Webserver"/);
+  assert.doesNotMatch(app, /renderProjectRealizations\(/);
+  assert.match(app, /async function loadIdeProject[\s\S]*renderIdeCodeAssistant\(project\);[\s\S]*if \(projectNeedsHardwareTools\(project\)\) await refreshUsbPorts\(false\);/);
 });
 
 test("software separates general properties webserver configuration and preview", () => {
@@ -34,20 +39,41 @@ test("project browser separates hardware files from software configuration views
   assert.match(app, /source\.treePath \|\| source\.path/);
   assert.match(app, /`Komponenten\/\$\{label\}\/Konfiguration\/Hardware\/Board\/Boardeigenschaften`/);
   assert.match(app, /data-board-properties="\$\{escapeAttribute\(file\.componentId \|\| ""\)\}"/);
-  assert.match(app, /"GPIO", "Digitale Ein- und Ausgänge", profile\.digital_pins/);
-  assert.match(app, /"ADC", "Analoge Eingänge", profile\.analog_inputs/);
-  assert.match(app, /"PWM", "Pulsweitenmodulation", profile\.pwm_pins/);
-  assert.match(app, /ADC verwenden/);
-  assert.match(app, /PWM verwenden/);
+  assert.match(app, /data-sensor-properties="\$\{escapeAttribute\(file\.componentId \|\| ""\)\}"/);
+  assert.match(app, /function renderSensorProperties/);
+  assert.match(app, /sensor-configuration-table/);
+  assert.match(app, /Diese Sicht wiederholt die gespeicherte Sensor-Zuordnung/);
+  assert.match(app, /sensor-connection-summary/);
+  assert.match(app, /data-device-connections="\$\{escapeAttribute\(file\.componentId \|\| ""\)\}"/);
+  assert.match(app, /function renderDeviceConnections/);
+  assert.match(app, /Alle direkt mit diesem IoT-Device verbundenen Sensoren und Aktoren/);
+  assert.match(app, /device-connections-table/);
+  assert.match(app, /device_sensor_input_config/);
+  assert.match(app, /device_actuator_output_config/);
+  assert.match(app, /peripheralProfile\.resources/);
+  assert.match(app, /boardCapabilityLayer\("Treiber und Steuerungen"/);
+  assert.match(app, /boardCapabilityLayer\("Runtime-Abstraktionen"/);
+  assert.match(app, /boardCapabilityLayer\("MCU-Peripherie"/);
+  assert.match(html, /id="ideDriverManagementView"/);
+  assert.match(app, /Konfiguration\/Software\/Treiber\/Verwaltung/);
+  assert.match(app, /function renderDriverManagement/);
+  assert.match(app, /openDriverManagement\(\)[\s\S]*ideCodeAssistant[\s\S]*renderIdeCodeAssistant\(project\)/);
+  assert.match(app, /Wiederverwendbare Treiber/);
+  assert.match(app, /Aus einer Funktion ableiten/);
+  assert.match(app, /Aktuelle Funktion mit KI prüfen/);
+  assert.match(app, /data-driver-ai-prompt/);
+  assert.match(guidedProjectView, /"ai_generated_driver"/);
+  assert.match(guidedProjectView, /state\.ideViewMode === "driver-management"/);
+  assert.match(app, /Durch Runtime verwaltet/);
+  assert.match(app, /Beim Aktor auswählen/);
   assert.match(app, /component_hardware_features/);
   assert.match(app, /component-hardware-features/);
   assert.match(server, /handleProjectComponentHardwareFeatures/);
-  assert.match(server, /const allowed = new Set\(\["adc", "pwm"\]\)/);
+  assert.match(server, /board\.peripheral_profile\?\.resources/);
+  assert.match(server, /resources\.filter\(\(item\) => item\.configurable\)/);
   assert.match(server, /component_hardware_features:/);
-  assert.match(server, /board\.pin_profile\?\.analog_inputs/);
-  assert.match(server, /board\.pin_profile\?\.pwm_pins/);
+  assert.match(server, /resource\.pin_profile_key/);
   assert.match(server, /board_peripheral_not_supported/);
-  assert.match(app, /"I²C", "Bus-Anschlüsse", profile\.i2c/);
 });
 
 test("basis features are visibly immutable and project web extensions remain configurable", () => {

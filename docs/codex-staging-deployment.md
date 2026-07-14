@@ -19,6 +19,7 @@ Voraussetzungen:
 - Git
 - Node.js 18 oder neuer
 - OpenSSH-Client
+- ein aktiver WireGuard-Tunnel zum Staging-VPS
 - ein fuer den Staging-VPS autorisierter SSH-Schluessel
 - ein sauberer Checkout des GerNetiX-Repositories
 
@@ -35,6 +36,7 @@ Copy-Item .env.staging.example .env.staging.local
 ```
 
 `.env.staging.local` ist absichtlich nicht versioniert. Dort werden SSH-Ziel und VPS-Verzeichnis je Rechner konfiguriert.
+Das SSH-Ziel muss auf die private WireGuard-Adresse oder einen entsprechenden lokalen SSH-Alias zeigen. Oeffentliche SSH-Ziele sind fuer Staging-Administration nicht zulaessig.
 
 ## Mit dem internen Staging-Admin verbinden
 
@@ -51,7 +53,7 @@ Plattform: http://127.0.0.1:14300/app/dashboard/
 Admin:     http://127.0.0.1:14600/admin/
 ```
 
-Das Terminal bleibt fuer die Dauer des SSH-Tunnels geoeffnet. `Strg+C` beendet die Verbindung. Der VPS benoetigt keinen Browser, und der Admin-Port wird nicht oeffentlich freigegeben.
+Das Terminal bleibt fuer die Dauer des SSH-Tunnels geoeffnet. `Strg+C` beendet die Verbindung. Der SSH-Tunnel laeuft innerhalb des WireGuard-VPN; der VPS benoetigt keinen Browser, und weder SSH noch der Admin-Port werden oeffentlich freigegeben.
 
 Nur die Konfiguration pruefen, ohne eine Verbindung aufzubauen:
 
@@ -90,12 +92,13 @@ Nach erfolgreicher Vorpruefung geschieht auf Staging automatisch:
 
 1. aktuellen Branch von `origin` abrufen,
 2. exakt auf die lokale Commit-ID wechseln,
-3. Compose-Konfiguration validieren,
-4. Images bauen,
-5. Container aktualisieren,
-6. auf Healthchecks warten,
-7. Nginx/Identity und Admin Tool pruefen,
-8. Containerstatus ausgeben.
+3. die versionierte nftables-Host-Firewall syntaktisch validieren, installieren und gezielt neu laden,
+4. Compose-Konfiguration validieren,
+5. Images bauen,
+6. Container aktualisieren,
+7. auf Healthchecks warten,
+8. Nginx/Identity und Admin Tool pruefen,
+9. Containerstatus ausgeben.
 
 Persistente Docker-Volumes und `.env.vps` werden nicht geloescht oder ueberschrieben.
 
@@ -105,6 +108,7 @@ Persistente Docker-Volumes und `.env.vps` werden nicht geloescht oder ueberschri
 - Vorher relevante lokale Tests ausfuehren und den Nutzer ueber den bevorstehenden Staging-Eingriff informieren.
 - Ausschliesslich `node tools/staging-deploy.js` verwenden; keine parallelen manuellen `git pull`-/Compose-Varianten erfinden.
 - Fuer einen angeforderten Admin-Zugriff ausschliesslich `node tools/connect-staging.js` verwenden.
+- Vor Staging-Deployment oder Admin-Zugriff den WireGuard-Tunnel pruefen; keinen oeffentlichen SSH-Fallback einrichten.
 - Niemals `docker compose down -v`, Volume-Loeschungen oder SQLite-Kopien ausfuehren.
 - Ein fehlgeschlagenes Deployment anhand der ersten konkreten Fehlerausgabe diagnostizieren; keine wiederholten Startvarianten ausprobieren.
 - Production ist nicht Staging. Dieses Tool darf nicht fuer Production-Ziele verwendet werden.

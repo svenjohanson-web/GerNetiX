@@ -31,6 +31,18 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
     content_type: userSource.content_type || "text/x-c++src",
     source_project_path: userSourcePath,
   });
+  const componentSourceRoot = userSourcePath.replace(/\/user_main\.cpp$/, "/");
+  for (const projectSource of projectSources) {
+    if (projectSource.path === userSourcePath || !projectSource.path.startsWith(componentSourceRoot)) continue;
+    const relative = projectSource.path.slice(componentSourceRoot.length);
+    if (!/\.(h|hpp)$/i.test(relative) || relative.includes("..")) continue;
+    byPath.set(`include/user_project/${relative}`, {
+      path: `include/user_project/${relative}`,
+      content: projectSource.content,
+      content_type: projectSource.content_type || "text/x-c++hdr",
+      source_project_path: projectSource.path,
+    });
+  }
   return Array.from(byPath.values()).sort((left, right) => left.path.localeCompare(right.path));
 }
 

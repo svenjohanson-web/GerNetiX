@@ -28,9 +28,13 @@ ipcMain.handle("processes:list", () => control.processStates());
 ipcMain.handle("processes:list-vps", () => control.remoteProcessStates());
 ipcMain.handle("interfaces:statistics", (_event, hours) => control.interfaceStatistics(hours));
 ipcMain.handle("runtime:alerts", (_event, hours) => control.runtimeAlerts(hours));
+ipcMain.handle("security:rules", (_event, force) => control.securityRuleStates({ force:Boolean(force) }));
 ipcMain.handle("processes:start-all", () => control.startAllServices());
 ipcMain.handle("processes:start", (_event, id) => control.startService(id));
 ipcMain.handle("processes:stop", (_event, id) => control.stopService(id));
+ipcMain.handle("vpn:status", () => control.vpnState());
+ipcMain.handle("vpn:connect", () => control.setVpnConnected(true));
+ipcMain.handle("vpn:disconnect", () => control.setVpnConnected(false));
 
 app.whenReady().then(() => {
   const workspace = resolveWorkspace();

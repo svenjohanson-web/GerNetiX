@@ -11,10 +11,12 @@ const { developmentProjectSources } = require("./dev/development-project-structu
 const {
   developmentProjectTemplate,
   developmentProjectTemplateCatalog,
+  developmentProjectTemplatePreviews,
   templateArchitecturePlantUml,
   templateBuildConfig,
   templateFirmwareSources,
   templateHardwareProfileId,
+  selectedGamesHeader,
 } = require("./dev/development-project-templates");
 const { createDevHardwareUtils } = require("./dev/hardware-utils");
 const { createLlmConfigStore } = require("../../shared/llm-config");
@@ -411,6 +413,24 @@ async function routeRequest(req, res) {
       return;
     }
     sendJson(res, 200, { items: await loadProcessorBoards() });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/platform/hardware/board-feature-options") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    try {
+      sendJson(res, 200, await hardwareCatalogJson("/api/hardware-catalog/board-feature-options"));
+    } catch (error) {
+      sendJson(res, 502, {
+        error: "hardware_catalog_unreachable",
+        dependency: "hardware_catalog",
+        message: "Die Boardausstattung konnte nicht aus dem Hardware Catalog geladen werden.",
+      });
+    }
     return;
   }
 
@@ -968,6 +988,7 @@ async function handlePlatformSummary(res, session) {
     workspace_state: getWorkspaceState(userId),
     development_assistant: developmentAssistant.config(),
     development_project_templates: developmentProjectTemplateCatalog(),
+    development_project_template_previews: developmentProjectTemplatePreviews(),
     projects: projects.map(toPlatformProject),
     learning_progress: listLearningProgress(userId, projects),
     devices,
@@ -1083,7 +1104,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
   const description = String(body.description || template.description || "Architektur-Discovery-Projekt").trim().slice(0, 1000);
   const buildConfig = templateBuildConfig(template);
   const projectId = `dev_project_${slugifyProjectId(title)}_${Date.now().toString(36)}`;
-  const initialSource = templateArchitecturePlantUml(template, title) || initialArchitecturePlantUml(title);
+  const initialSource = template.id === "empty" ? "" : templateArchitecturePlantUml(template, title);
   const sources = developmentProjectSources({ title, description, architectureSource: initialSource })
     .concat(templateFirmwareSources(template, title));
   const project = await projectServerJson("/api/projects", {
@@ -1104,6 +1125,12 @@ async function handleDevelopmentProjectCreate(req, res, session) {
         buildConfig,
         templateId: template.id,
         templateModelVersion: template.schemaVersion,
+        homeAutomationConfiguration: template.id === "distributed_home_automation"
+          ? defaultHomeAutomationConfiguration()
+          : null,
+        gameConfiguration: template.id === "touchscreen_game_collection"
+          ? defaultTouchscreenGameConfiguration()
+          : null,
       }),
       sources,
     },
@@ -1146,6 +1173,8 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
         templateId: project.view_manifest?.template_id,
         templateModelVersion: project.view_manifest?.template_ref?.model_schema_version,
         hardwareConfiguration: hardwareConfigurationFromManifest(project.view_manifest),
+        homeAutomationConfiguration: project.view_manifest?.home_automation_configuration,
+        gameConfiguration: project.view_manifest?.game_configuration,
       }),
       build_config: project.build_config || null,
     },
@@ -1172,14 +1201,71 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
   });
   const diagram = normalizeArchitectureDiagram(body.architectureDiagram || existingManifest.architecture_dialog?.architectureDiagram || architectureDiagramFromManifest(existingManifest));
   const architectureDialog = normalizeArchitectureDialog(body, diagram);
+  const homeAutomationConfiguration = normalizeHomeAutomationConfiguration(
+    body.homeAutomationConfiguration || body.home_automation_configuration || existingManifest.home_automation_configuration,
+  );
+  const gameConfiguration = normalizeTouchscreenGameConfiguration(
+    body.gameConfiguration || body.game_configuration || existingManifest.game_configuration,
+  );
+  let buildConfig = project.build_config || null;
+  let selectedBoard = null;
+  let selectedInventoryDevice = null;
+  if (existingManifest.template_id === "touchscreen_game_collection" && gameConfiguration) {
+    const boards = await loadProcessorBoards();
+    selectedBoard = boards.find((board) => board.hardware_item_id === gameConfiguration.board_profile_id) || null;
+    if (gameConfiguration.board_profile_id && !selectedBoard) {
+      sendJson(res, 409, { error: "game_board_not_found", message: "Das gewaehlte Touch-Display-Board ist nicht mehr im Hardware-Katalog vorhanden." });
+      return;
+    }
+    if (selectedBoard && !isTouchscreenGameBoard(selectedBoard)) {
+      sendJson(res, 409, { error: "game_board_not_touchscreen", message: "Das gewaehlte Board besitzt laut Hardware-Katalog keinen integrierten Touchscreen." });
+      return;
+    }
+    if (selectedBoard) buildConfig = buildConfigForBoard(selectedBoard.hardware_item_id, buildConfig);
+    if (gameConfiguration.inventory_device_id) {
+      const inventoryDevices = await loadUserIdeDevices(session);
+      selectedInventoryDevice = inventoryDevices.find((device) => device.device_id === gameConfiguration.inventory_device_id) || null;
+      if (!selectedInventoryDevice) {
+        sendJson(res, 404, { error: "game_inventory_device_not_found", message: "Das gewaehlte Inventar-Board wurde nicht gefunden." });
+        return;
+      }
+      if (gameConfiguration.board_profile_id && !touchscreenGameInventoryMatches(gameConfiguration.board_profile_id, selectedInventoryDevice)) {
+        sendJson(res, 409, { error: "game_inventory_device_not_compatible", message: "Das Inventar-Board entspricht nicht dem gewaehlten Touch-Display-Board." });
+        return;
+      }
+    }
+    if (buildConfig) {
+      buildConfig = {
+        ...buildConfig,
+        component_device_allocations: selectedInventoryDevice ? [{
+          component_path: "Komponenten/IoT-Device 1",
+          device_id: selectedInventoryDevice.device_id,
+          allocated_at: new Date().toISOString(),
+        }] : [],
+      };
+    }
+    await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
+      method: "PUT",
+      body: {
+        path: "Komponenten/IoT-Device 1/src/config/selected_games.h",
+        role: "user_code",
+        content_type: "text/x-c++hdr",
+        content: selectedGamesHeader(gameConfiguration.selected_game_ids),
+      },
+    });
+  }
   await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
+      ...(selectedBoard ? { hardware_profile_id: selectedBoard.hardware_item_id } : {}),
+      device_id: selectedInventoryDevice?.device_id || project.device_id || "",
       view_manifest: {
         ...existingManifest,
         architecture_dialog: architectureDialog,
+        ...(homeAutomationConfiguration ? { home_automation_configuration: homeAutomationConfiguration } : {}),
+        ...(gameConfiguration ? { game_configuration: gameConfiguration } : {}),
       },
-      build_config: project.build_config || null,
+      build_config: buildConfig,
     },
   });
   touchWorkspace(session, project.project_server_id, "development-platform", "/app/development-platform/");
@@ -1253,6 +1339,8 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
         templateId: existingManifest.template_id,
         templateModelVersion: existingManifest.template_ref?.model_schema_version,
         hardwareConfiguration,
+        homeAutomationConfiguration: existingManifest.home_automation_configuration,
+        gameConfiguration: existingManifest.game_configuration,
       }),
     },
   });
@@ -1321,10 +1409,6 @@ async function handleProjectComponentHardwareFeatures(req, res, session, project
     sendJson(res, 409, { error: "iot_device_component_not_found", message: "Die IoT-Device-Komponente gehoert nicht zur Hardware-Architektur des Projekts." });
     return;
   }
-  const allowed = new Set(["adc", "pwm"]);
-  const enabled = Array.isArray(body.enabled)
-    ? Array.from(new Set(body.enabled.map(String).filter((item) => allowed.has(item))))
-    : [];
   const boards = await loadProcessorBoards();
   const board = boards.find((item) => [item.hardware_item_id, item.hardware_profile_id, item.id]
     .filter(Boolean).some((id) => String(id) === String(component.board_profile_id)));
@@ -1332,11 +1416,22 @@ async function handleProjectComponentHardwareFeatures(req, res, session, project
     sendJson(res, 409, { error: "processor_board_not_found", message: "Das reale Board der IoT-Device-Komponente wurde im Hardware Catalog nicht gefunden." });
     return;
   }
-  const supported = {
-    adc: Array.isArray(board.pin_profile?.analog_inputs) && board.pin_profile.analog_inputs.length > 0,
-    pwm: Array.isArray(board.pin_profile?.pwm_pins) && board.pin_profile.pwm_pins.length > 0,
-  };
-  const unsupported = enabled.filter((item) => !supported[item]);
+  const resources = Array.isArray(board.peripheral_profile?.resources)
+    ? board.peripheral_profile.resources
+    : [
+      { id: "adc", configurable: true, pin_profile_key: "analog_inputs" },
+      { id: "pwm", configurable: true, pin_profile_key: "pwm_pins" },
+    ];
+  const configurable = new Map(resources.filter((item) => item.configurable).map((item) => [String(item.id), item]));
+  const enabled = Array.isArray(body.enabled)
+    ? Array.from(new Set(body.enabled.map(String).filter((item) => configurable.has(item))))
+    : [];
+  const unsupported = enabled.filter((item) => {
+    const resource = configurable.get(item);
+    if (resource.supported === false) return true;
+    if (!resource.pin_profile_key) return false;
+    return !Array.isArray(board.pin_profile?.[resource.pin_profile_key]) || board.pin_profile[resource.pin_profile_key].length === 0;
+  });
   if (unsupported.length) {
     sendJson(res, 409, { error: "board_peripheral_not_supported", message: `Das gewaehlte Board unterstuetzt nicht: ${unsupported.join(", ")}.` });
     return;
@@ -1812,11 +1907,11 @@ function mapUserIdeProjects(session, projectsById) {
 function mapProjectServerProject(session, project) {
   const userId = projectServerUserId(session);
   const workspace = getWorkspaceState(userId);
-  const manifest = project.view_manifest || developmentProjectViewManifest({
+  const manifest = restoreDevelopmentTemplateReference(project.view_manifest || developmentProjectViewManifest({
     title: project.title,
     description: project.description,
     source: initialArchitecturePlantUml(project.title),
-  });
+  }), project);
   const primarySourcePath = manifest.primary_source_path || "docs/architecture.puml";
   return {
     project_server_id: project.project_id,
@@ -2072,6 +2167,7 @@ function decorateUserIdeDevice(device) {
     hostname: device.hostname || device.node_name || "",
     hardware_profile_id: device.hardware_profile_id,
     technical_capability_ids: device.technical_capability_ids || [],
+    instance_configuration: device.instance_configuration || {},
     authenticity_status: device.authenticity_status,
     connectivity_status: device.connectivity_status,
     ota_status: device.ota_status,
@@ -2423,10 +2519,11 @@ function projectViewManifest(project) {
   };
 }
 
-function developmentProjectViewManifest({ title, description = "", source = "", diagram = null, buildConfig = null, architectureDialog = null, templateId = "", templateModelVersion = 1, hardwareConfiguration = null }) {
+function developmentProjectViewManifest({ title, description = "", source = "", diagram = null, buildConfig = null, architectureDialog = null, templateId = "", templateModelVersion = 1, hardwareConfiguration = null, homeAutomationConfiguration = null, gameConfiguration = null }) {
   const buildable = Boolean(buildConfig);
-  const derivedFrom = diagram?.derived_from || (buildable ? "project_template" : "persisted_project");
-  const plantUmlSource = normalizeArchitecturePlantUml(stripPlantUmlNotes(source || diagram?.source || initialArchitecturePlantUml(title)), derivedFrom);
+  const usesProjectTemplate = Boolean(templateId && templateId !== "empty");
+  const derivedFrom = diagram?.derived_from || (usesProjectTemplate || buildable ? "project_template" : "persisted_project");
+  const plantUmlSource = normalizeArchitecturePlantUml(stripPlantUmlNotes(source || diagram?.source || ""), derivedFrom);
   return {
     schema_version: 1,
     title: `${title || "Entwicklungsprojekt"} Architektur`,
@@ -2437,6 +2534,8 @@ function developmentProjectViewManifest({ title, description = "", source = "", 
     hide_source_editor: !buildable,
     mode: "architecture_discovery",
     ...(architectureDialog ? { architecture_dialog: normalizeArchitectureDialog(architectureDialog, diagram || { source: plantUmlSource }) } : {}),
+    ...(homeAutomationConfiguration ? { home_automation_configuration: normalizeHomeAutomationConfiguration(homeAutomationConfiguration) } : {}),
+    ...(gameConfiguration ? { game_configuration: normalizeTouchscreenGameConfiguration(gameConfiguration) } : {}),
     views: [
       ...(buildable ? [{
         id: "firmware-source",
@@ -2445,7 +2544,7 @@ function developmentProjectViewManifest({ title, description = "", source = "", 
         summary: "Account- und projektgebundene User-Main; die geschuetzte GerNetiX-Basissoftware wird erst im BuildPackage ergaenzt.",
         source_path: buildConfig.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp",
       }] : []),
-      {
+      ...(plantUmlSource ? [{
         id: "architecture-diagram",
         type: "plantuml",
         title: diagram?.title || "Architektur-Skizze",
@@ -2457,7 +2556,7 @@ function developmentProjectViewManifest({ title, description = "", source = "", 
           derived_from: derivedFrom,
           ...(diagram?.function_coverage ? { function_coverage: diagram.function_coverage } : {}),
         },
-      },
+      }] : []),
       ...(hardwareConfiguration ? [{
         id: "hardware-configuration",
         type: "hardware_configuration",
@@ -2491,6 +2590,114 @@ function initialArchitecturePlantUml(title) {
     "rectangle \"Projektidee / Anforderungen\" as requirements",
     "@enduml",
   ].join("\n");
+}
+
+function defaultHomeAutomationConfiguration() {
+  return normalizeHomeAutomationConfiguration({
+    coordinator: "undecided",
+    failure_policy: "local_fallback",
+    state_model: { commands: true, desired_state: true, actual_state: true, events: true },
+    nodes: [
+      { node_id: "node_1", name: "Raumklima", role: "sensor_node", transport: "undecided", sensor_count: 2, actuator_count: 0, board_features: {} },
+      { node_id: "node_2", name: "Lichtsteuerung", role: "actuator_node", transport: "undecided", sensor_count: 0, actuator_count: 1, board_features: {} },
+      { node_id: "node_3", name: "Touchpanel", role: "control_node", transport: "undecided", sensor_count: 0, actuator_count: 0, board_features: { integrated_display: true, integrated_touchscreen: true } },
+    ],
+  });
+}
+
+function normalizeHomeAutomationConfiguration(input) {
+  if (!input || typeof input !== "object") return null;
+  const coordinator = ["undecided", "none", "gernetix_home_server", "home_assistant", "gernetix_with_home_assistant"]
+    .includes(input.coordinator) ? input.coordinator : "undecided";
+  const failurePolicy = ["local_fallback", "safe_state", "central_required", "undecided"]
+    .includes(input.failure_policy) ? input.failure_policy : "undecided";
+  const roles = new Set(["sensor_node", "actuator_node", "combined_node", "control_node", "gateway"]);
+  const transports = new Set(["undecided", "local", "wifi_rest", "wifi_mqtt", "zigbee"]);
+  const boardFeatureIds = ["integrated_display", "integrated_touchscreen", "battery_operation", "sd_card", "audio", "many_gpio"];
+  const nodes = (Array.isArray(input.nodes) ? input.nodes : []).slice(0, 30).map((node, index) => {
+    const boardFeatures = Object.fromEntries(boardFeatureIds.map((id) => [id, node.board_features?.[id] === true]));
+    if (Number(node.control_count) > 0) boardFeatures.integrated_touchscreen = true;
+    if (boardFeatures.integrated_touchscreen) boardFeatures.integrated_display = true;
+    return {
+      node_id: String(node.node_id || `node_${index + 1}`).replace(/[^A-Za-z0-9_]/g, "_").slice(0, 60),
+      name: String(node.name || `IoT-Device ${index + 1}`).trim().slice(0, 120),
+      role: roles.has(node.role) ? node.role : "combined_node",
+      transport: transports.has(node.transport) ? node.transport : "undecided",
+      sensor_count: Math.max(0, Math.min(20, Number(node.sensor_count) || 0)),
+      actuator_count: Math.max(0, Math.min(20, Number(node.actuator_count) || 0)),
+      board_features: boardFeatures,
+    };
+  });
+  const stateModel = input.state_model && typeof input.state_model === "object" ? input.state_model : {};
+  return {
+    schema_version: 2,
+    coordinator,
+    failure_policy: failurePolicy,
+    state_model: {
+      commands: stateModel.commands !== false,
+      desired_state: stateModel.desired_state !== false,
+      actual_state: stateModel.actual_state !== false,
+      events: stateModel.events !== false,
+    },
+    nodes,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function defaultTouchscreenGameConfiguration() {
+  return normalizeTouchscreenGameConfiguration({
+    pattern_id: "",
+    selected_game_ids: ["nibbles", "snake", "frogger", "tic_tac_toe"],
+    board_profile_id: "hardware.processor_board.generic_esp32_s3_touch_display",
+    inventory_device_id: "",
+  });
+}
+
+function normalizeTouchscreenGameConfiguration(input) {
+  if (!input || typeof input !== "object") return null;
+  const patterns = new Set(["", "touchscreen_game_loop", "event_driven_scene_loop", "turn_based_state_machine"]);
+  const games = new Set(["nibbles", "snake", "frogger", "tic_tac_toe", "pong", "breakout", "memory"]);
+  const selectedGameIds = Array.from(new Set(Array.isArray(input.selected_game_ids) ? input.selected_game_ids : []))
+    .filter((id) => games.has(id))
+    .slice(0, 7);
+  return {
+    schema_version: 1,
+    pattern_id: patterns.has(input.pattern_id) ? input.pattern_id : "",
+    selected_game_ids: selectedGameIds,
+    board_profile_id: String(input.board_profile_id || "").slice(0, 180),
+    inventory_device_id: String(input.inventory_device_id || "").slice(0, 180),
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function isTouchscreenGameBoard(board) {
+  const capabilities = new Set(Array.isArray(board?.capability_ids) ? board.capability_ids : []);
+  return capabilities.has("capability.touchscreen_input") || /touch/i.test(`${board?.title || ""} ${board?.form_factor || ""}`);
+}
+
+function touchscreenGameInventoryMatches(boardProfileId, device) {
+  const inventoryProfile = String(device?.hardware_profile_id || "");
+  return inventoryProfile === boardProfileId
+    || (boardProfileId === "hardware.processor_board.generic_esp32_s3_touch_display" && /touch|display/i.test(inventoryProfile));
+}
+
+function restoreDevelopmentTemplateReference(manifest, project) {
+  if (manifest?.template_id || project?.learning_project_id !== "development_project") return manifest;
+  const architectureView = (manifest?.views || []).find((view) => view.id === "architecture-diagram" || view.type === "plantuml");
+  const source = normalizeArchitecturePlantUml(stripPlantUmlNotes(architectureView?.payload?.source || ""), "project_template");
+  if (!source) return manifest;
+  const match = developmentProjectTemplateCatalog()
+    .filter((template) => template.id !== "empty")
+    .find((template) => normalizeArchitecturePlantUml(
+      templateArchitecturePlantUml(developmentProjectTemplate(template.id), project.title),
+      "project_template",
+    ) === source);
+  if (!match) return manifest;
+  return {
+    ...manifest,
+    template_id: match.id,
+    template_ref: { template_id: match.id, model_schema_version: match.model_schema_version || 1 },
+  };
 }
 
 function normalizeArchitectureDiagram(input = {}) {
@@ -2598,7 +2805,7 @@ function normalizeHardwareConfiguration(input = {}, project = {}) {
       pin: String(component.pin || "").slice(0, 80),
       secondary_pin: String(component.secondary_pin || "").slice(0, 80),
       properties: normalizeHardwareProperties(component.properties),
-      circuit: hardwareCircuitFor(concreteType),
+      circuit: hardwareCircuitFor(concreteType, component.properties),
     };
     if (abstractType === "iot_device") {
       normalized.component_path = deviceIndex === 0
@@ -2626,10 +2833,14 @@ function normalizeHardwareProperties(input = {}) {
   return result;
 }
 
-function hardwareCircuitFor(concreteType) {
+function hardwareCircuitFor(concreteType, properties = {}) {
   if (concreteType === "pt1000") return { type: "pt1000_measurement", label: "PT1000-Messschaltung", stages: ["PT1000", "Konstantstromquelle / Messbruecke", "Messverstaerker", "ADC"] };
   if (["ntc", "ptc"].includes(concreteType)) return { type: "resistive_divider", label: "Widerstands-Messschaltung", stages: [concreteType.toUpperCase(), "Spannungsteiler", "ADC"] };
-  if (concreteType === "dc_motor") return { type: "motor_driver", label: "Motor-Treiberstufe", stages: ["PWM / Richtung", "Motortreiber / H-Bruecke", "DC-Motor"] };
+  const driver = String(properties?.motor_driver_type || "");
+  if (concreteType === "dc_motor") return { type: "motor_driver", label: "DC-Motorsteuerung", stages: ["PWM / Richtung", driver === "low_side_mosfet" ? "MOSFET-Treiber" : "H-Bruecke", "DC-Motor"] };
+  if (concreteType === "servo") return { type: "servo_driver", label: "Servo-Steuerung", stages: ["Zeitgeber", "Servo-PWM", "Servo"] };
+  if (concreteType === "stepper_motor") return { type: "stepper_driver", label: "Schrittmotor-Steuerung", stages: ["Zeitgeber / RMT", driver === "four_phase" ? "4-Phasen-Treiber" : "STEP/DIR-Treiber", "Schrittmotor"] };
+  if (concreteType === "synchronous_motor") return { type: "synchronous_motor_driver", label: "Synchronmotor-Steuerung", stages: [driver === "three_phase_six_step" ? "6-Step-Kommutierung" : "FOC", "Motor-PWM / ADC / Rotorlage", "3-Phasen-Leistungstreiber", "BLDC / PMSM"] };
   return null;
 }
 
@@ -2787,6 +2998,7 @@ function buildConfigForBoard(boardProfileId, existing = null) {
   const common = { ...(existing || {}), libraries: existing?.libraries || [] };
   if (/arduino_nano_r3_atmega328p/.test(boardProfileId)) return { ...common, platform: "atmelavr", framework: "arduino", board: "nanoatmega328", environment: "nanoatmega328", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
   if (/esp8266|d1_mini/.test(boardProfileId)) return { ...common, platform: "espressif8266", framework: "arduino", board: "d1_mini", environment: "d1_mini", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
+  if (/esp32_s3|esp32-s3/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: existing?.framework || "espidf", board: "esp32-s3-devkitc-1", environment: "esp32-s3-devkitc-1", firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: existing?.firmware_basis_version || "workspace", firmware_basis_variant: existing?.firmware_basis_variant || "comfort", user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/user/user_app.cpp" };
   if (/esp32|wroom32|nano_esp32/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: existing?.framework || "espidf", board: "esp32dev", environment: "esp32dev", firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: existing?.firmware_basis_version || "workspace", firmware_basis_variant: existing?.firmware_basis_variant || "comfort", user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/user/user_app.cpp" };
   return existing;
 }

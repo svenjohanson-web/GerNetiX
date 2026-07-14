@@ -1,0 +1,16 @@
+[Unit]
+Description=GerNetiX host firewall
+DefaultDependencies=no
+After=local-fs.target
+Before=network-pre.target docker.service shutdown.target
+Wants=network-pre.target
+Conflicts=shutdown.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/sbin/gernetix-firewall-apply
+ExecReload=/usr/local/sbin/gernetix-firewall-apply
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

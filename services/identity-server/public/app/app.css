@@ -622,7 +622,7 @@ button.danger:hover {
   overflow: visible;
 }
 .development-workspace-active .development-main-workspace {
-  grid-template-rows: auto minmax(260px, 1fr) minmax(34px, auto) minmax(18px, auto);
+  grid-template-rows: auto auto minmax(260px, 1fr) minmax(34px, auto) minmax(18px, auto);
 }
 .development-workspace-active .development-project-header {
   gap: 8px;
@@ -702,6 +702,9 @@ button.danger:hover {
 }
 .ide-component-features-view,
 .ide-board-properties-view,
+.ide-sensor-properties-view,
+.ide-device-connections-view,
+.ide-driver-management-view,
 .ide-device-web-view {
   min-height: 0;
   height: 100%;
@@ -751,6 +754,23 @@ button.danger:hover {
 .board-peripheral-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 8px; }
 .board-peripheral-usage-form > footer { display: flex; align-items: center; gap: 10px; }
 .board-peripheral-usage-form > footer span { color: #94a3b8; font-size: 11px; }
+.board-capability-hierarchy { display: grid; gap: 6px; }
+.board-capability-layer { display: grid; gap: 9px; padding: 11px; border: 1px solid #334155; border-radius: 7px; background: #0b1018; }
+.board-capability-layer > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.board-capability-layer > header div { display: grid; gap: 2px; }
+.board-capability-layer > header small { color: #64748b; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.board-capability-layer > header > span { min-width: 25px; padding: 2px 6px; border-radius: 999px; color: #a5f3fc; background: #164e63; text-align: center; font-size: 10px; }
+.board-capability-layer > div { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 7px; }
+.board-capability-node { display: grid; align-content: start; gap: 6px; min-height: 108px; padding: 9px; border: 1px solid #263241; border-radius: 5px; background: #111827; }
+.board-capability-node.managed { border-color: #155e75; background: #0f2530; }
+.board-capability-node > header { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+.board-capability-node > header small { color: #67e8f9; font-size: 9px; text-align: right; }
+.board-capability-node p { margin: 0; color: #94a3b8; font-size: 11px; line-height: 1.4; }
+.board-capability-node > div { display: flex; flex-wrap: wrap; gap: 4px; margin-top: auto; }
+.board-capability-node code { padding: 2px 5px; border: 1px solid #334155; border-radius: 4px; color: #cbd5e1; background: #0b1018; font-size: 9px; }
+.board-capability-node > button { justify-self: start; min-height: 26px; margin-top: 2px; padding: 4px 7px; font-size: 10px; }
+.board-capability-connector { display: grid; justify-items: center; gap: 0; color: #64748b; font-size: 9px; text-transform: uppercase; letter-spacing: .08em; }
+.board-capability-connector b { color: #22d3ee; font-size: 16px; line-height: 1; }
 .board-property-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 8px; }
 .board-property-card { display: grid; align-content: start; gap: 8px; padding: 11px; border: 1px solid #334155; border-radius: 6px; background: #0b1018; }
 .board-property-card > header { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
@@ -960,6 +980,72 @@ button.danger:hover {
   min-width: 0;
   color: #d1d5db;
   background: #0b1018;
+}
+.sensor-properties-workspace { display: grid; align-content: start; gap: 14px; }
+.sensor-properties-workspace > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.sensor-properties-workspace h3,
+.sensor-properties-empty h3 { margin: 2px 0 0; }
+.sensor-configuration-table { width: 100%; border-collapse: collapse; border: 1px solid #334155; background: #0b1018; }
+.sensor-configuration-table th,
+.sensor-configuration-table td { padding: 9px 11px; border-bottom: 1px solid #263241; text-align: left; vertical-align: top; }
+.sensor-configuration-table thead th { color: #94a3b8; background: #111827; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.sensor-configuration-table tbody th { width: 34%; color: #94a3b8; font-size: 11px; font-weight: 700; }
+.sensor-configuration-table tbody td { color: #e2e8f0; }
+.sensor-connection-summary { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto minmax(0, 1fr); align-items: center; gap: 9px; padding: 12px; border: 1px solid #155e75; border-radius: 7px; background: #0f2530; }
+.sensor-connection-summary span:last-child { text-align: right; }
+.sensor-connection-summary b { color: #22d3ee; }
+.sensor-connection-summary code { padding: 4px 7px; border-radius: 4px; color: #cffafe; background: #164e63; }
+.device-connections-workspace { display: grid; align-content: start; gap: 14px; }
+.device-connections-workspace > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.device-connections-workspace h3,
+.device-connections-empty h3 { margin: 2px 0 0; }
+.device-connections-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 0; }
+.device-connections-meta > div { padding: 9px 10px; border: 1px solid #334155; border-radius: 6px; background: #111827; }
+.device-connections-meta dt { color: #94a3b8; font-size: 10px; font-weight: 800; text-transform: uppercase; }
+.device-connections-meta dd { margin: 4px 0 0; color: #e2e8f0; }
+.device-connections-table { width: 100%; border-collapse: collapse; border: 1px solid #334155; background: #0b1018; }
+.device-connections-table th,
+.device-connections-table td { padding: 9px 10px; border-bottom: 1px solid #263241; text-align: left; vertical-align: top; }
+.device-connections-table thead th { color: #94a3b8; background: #111827; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+.device-connections-table td { color: #e2e8f0; font-size: 11px; }
+.device-connections-table code { color: #cffafe; }
+.connection-type-badge { display: inline-flex; padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.connection-type-badge.sensor { color: #a5f3fc; background: #164e63; }
+.connection-type-badge.actuator { color: #fde68a; background: #78350f; }
+.device-connections-empty { display: grid; gap: 5px; padding: 12px; border: 1px dashed #334155; border-radius: 6px; color: #cbd5e1; }
+.device-connections-empty p { margin: 0; color: #94a3b8; }
+.driver-management-workspace { display: grid; align-content: start; gap: 14px; }
+.driver-management-workspace > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.driver-management-workspace h3,
+.driver-management-workspace h4 { margin: 2px 0 0; }
+.driver-workflow-grid,
+.driver-management-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.driver-workflow-card,
+.driver-library-panel { display: grid; align-content: start; gap: 9px; padding: 12px; border: 1px solid #334155; border-radius: 7px; background: #0b1018; }
+.driver-workflow-card.managed { border-top: 3px solid #22d3ee; }
+.driver-workflow-card.ai { border-top: 3px solid #a78bfa; }
+.driver-workflow-card p,
+.driver-entry-card p,
+.driver-empty-state p { margin: 0; color: #94a3b8; font-size: 11px; line-height: 1.45; }
+.driver-workflow-card button { justify-self: start; }
+.driver-library-panel > header,
+.driver-entry-card > header { display: flex; align-items: start; justify-content: space-between; gap: 8px; }
+.driver-library-panel > header div { display: grid; gap: 2px; }
+.driver-library-panel > header small { color: #64748b; font-size: 10px; text-transform: uppercase; }
+.driver-library-panel > header > span { min-width: 25px; padding: 2px 6px; border-radius: 999px; color: #a5f3fc; background: #164e63; text-align: center; font-size: 10px; }
+.driver-card-list { display: grid; gap: 7px; }
+.driver-entry-card { display: grid; gap: 7px; padding: 10px; border: 1px solid #263241; border-radius: 5px; background: #111827; }
+.driver-entry-card > div { display: flex; flex-wrap: wrap; gap: 4px; }
+.driver-entry-card code { padding: 2px 5px; border: 1px solid #334155; border-radius: 4px; color: #cbd5e1; background: #0b1018; font-size: 9px; }
+.driver-entry-card button { justify-self: start; min-height: 27px; padding: 4px 8px; font-size: 10px; }
+.driver-origin-badge { display: inline-flex; width: max-content; padding: 3px 7px; border: 1px solid #475569; border-radius: 999px; color: #cbd5e1; font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; }
+.driver-origin-badge.managed { border-color: #0e7490; color: #67e8f9; background: #164e63; }
+.driver-origin-badge.ai { border-color: #7c3aed; color: #ddd6fe; background: #4c1d95; }
+.driver-origin-badge.combined { border-color: #0f766e; color: #99f6e4; background: #134e4a; }
+.driver-empty-state { display: grid; gap: 5px; padding: 12px; border: 1px dashed #334155; border-radius: 5px; color: #cbd5e1; }
+@media (max-width: 900px) {
+  .driver-workflow-grid,
+  .driver-management-columns { grid-template-columns: 1fr; }
 }
 .ide-console-workspace {
   display: block;
@@ -1329,7 +1415,7 @@ button.danger:hover {
 .development-main-workspace {
   grid-area: main;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto auto;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto;
   gap: 8px;
   min-height: 0;
   min-width: 0;
@@ -2903,6 +2989,21 @@ textarea:read-only {
 .provisioning-method-notice.warning { border-color: #f59e0b; background: color-mix(in srgb, #f59e0b 12%, transparent); }
 .provisioning-found-board { display: grid; gap: 9px; border-top: 1px solid var(--line); padding-top: 12px; }
 .provisioning-found-board .eyebrow, .provisioning-found-board .helper-text { margin: 0; }
+.provisioning-board-features { display: grid; gap: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: var(--panel-soft); }
+.provisioning-board-features .section-head, .provisioning-board-features .helper-text { margin: 0; }
+.provisioning-known-board { display: grid; grid-template-columns: minmax(260px, 520px) 1fr; align-items: end; gap: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
+.provisioning-known-board label { display: grid; gap: 5px; color: var(--muted); font-size: 0.82rem; font-weight: 800; }
+.provisioning-known-board select { width: 100%; }
+.board-feature-checklist { display: grid; gap: 8px; }
+.board-feature-row { border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--panel); }
+.board-feature-toggle { display: flex; align-items: center; gap: 9px; font-weight: 800; }
+.board-feature-toggle input { width: 18px; height: 18px; }
+.board-feature-fields { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; margin-top: 10px; }
+.board-feature-fields label { display: grid; gap: 5px; min-width: 0; color: var(--muted); font-size: 0.82rem; font-weight: 700; }
+.board-feature-fields select { width: 100%; min-width: 0; }
+.board-feature-datasheet { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; line-height: 1.4; }
+@media (max-width: 980px) { .board-feature-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 720px) { .provisioning-known-board { grid-template-columns: 1fr; } }
 .provisioning-tools { margin-bottom: 14px; }
 .recovery-intro { margin-bottom: 12px; }
 .recovery-intro .helper-text { margin-bottom: 0; }
@@ -3318,4 +3419,164 @@ textarea,
   border-top: 1px solid #2b3748;
   background: rgba(11, 16, 24, .96);
   box-shadow: 0 -10px 24px rgba(0, 0, 0, .18);
+}
+
+.home-automation-assistant {
+  display: grid;
+  gap: 9px;
+  border: 1px solid #2b3748;
+  border-radius: 10px;
+  padding: 10px;
+  background: #111827;
+  color: #e5e7eb;
+}
+.home-automation-assistant.hidden { display: none; }
+.home-automation-assistant > header,
+.home-automation-node-head,
+.home-automation-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.home-automation-assistant h3,
+.home-automation-assistant p { margin: 0; }
+.home-automation-assistant > header > small,
+.home-automation-assistant label,
+.home-automation-assistant legend { color: #94a3b8; }
+.home-automation-assistant form {
+  display: grid;
+  gap: 8px;
+}
+.home-automation-basics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+.home-automation-assistant label {
+  display: grid;
+  gap: 3px;
+  font-size: 11px;
+}
+.home-automation-assistant select,
+.home-automation-assistant input {
+  min-width: 0;
+  border: 1px solid #3c4a5d;
+  border-radius: 7px;
+  padding: 6px 7px;
+  background: #0b1018;
+  color: #e5e7eb;
+  font: inherit;
+}
+.home-automation-state-model {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  border: 1px solid #2b3748;
+  border-radius: 8px;
+  padding: 7px 9px;
+}
+.home-automation-state-model label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.home-automation-state-model input { margin: 0; }
+.home-automation-nodes {
+  display: grid;
+  gap: 6px;
+  max-height: 360px;
+  overflow: auto;
+}
+.home-automation-node {
+  display: grid;
+  min-width: 1050px;
+  grid-template-columns: minmax(100px, 1fr) minmax(110px, 1fr) minmax(110px, 1fr) repeat(2, minmax(62px, .5fr)) minmax(210px, 1.8fr) minmax(150px, 1.2fr) 30px;
+  align-items: end;
+  gap: 6px;
+  border: 1px solid #2b3748;
+  border-radius: 8px;
+  padding: 7px;
+  background: #0f1622;
+}
+.home-automation-board-features {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px 8px;
+  margin: 0;
+  border: 1px solid #2b3748;
+  border-radius: 7px;
+  padding: 4px 6px 6px;
+}
+.home-automation-board-features label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+}
+.home-automation-board-features input { margin: 0; }
+.home-automation-board-recommendation {
+  display: grid;
+  gap: 3px;
+  align-self: stretch;
+  align-content: center;
+}
+.home-automation-board-recommendation span { color: #94a3b8; font-size: 11px; }
+.home-automation-board-recommendation strong { color: #dbeafe; font-size: 12px; line-height: 1.3; }
+.touchscreen-game-assistant .home-automation-basics { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.touchscreen-game-choices { align-items: center; }
+.touchscreen-game-inventory-match {
+  display: grid;
+  gap: 3px;
+  border: 1px solid #2b3748;
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: #0f1622;
+}
+.touchscreen-game-inventory-match strong { color: #dbeafe; }
+.touchscreen-game-inventory-match span { color: #94a3b8; font-size: 12px; }
+.home-automation-node .icon-button {
+  min-height: 31px;
+  padding: 4px;
+}
+.home-automation-actions { justify-content: flex-end; }
+.development-workspace-panel.development-project-start-step,
+.development-workspace-active .development-workspace-panel.development-project-start-step {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-areas:
+    "project"
+    "main";
+}
+.development-project-start-step .development-main-workspace,
+.development-workspace-active .development-project-start-step .development-main-workspace {
+  grid-template-rows: minmax(360px, 1fr) auto auto;
+}
+.development-project-start-step .development-main-workspace.development-project-start-no-preview,
+.development-workspace-active .development-project-start-step .development-main-workspace.development-project-start-no-preview {
+  grid-template-rows: auto auto;
+}
+.development-project-start-step .development-project-header > .development-project-choice-panel:not(.hidden),
+.development-project-start-step .development-project-header > .development-project-panel:not(.hidden),
+.development-project-start-step .development-project-header > .development-project-form:not(.hidden) {
+  position: static;
+  width: 100%;
+  max-height: none;
+  box-shadow: none;
+}
+.development-project-start-step .development-project-choice-panel {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
+}
+.development-project-start-step .development-project-choice {
+  min-height: 132px;
+  padding: 18px;
+  gap: 8px;
+  align-content: center;
+}
+.development-project-start-step .development-project-choice strong { font-size: 18px; }
+.development-project-start-step .development-project-choice small { font-size: 13px; line-height: 1.45; }
+@media (max-width: 1050px) {
+  .home-automation-node { min-width: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .home-automation-basics { grid-template-columns: 1fr; }
 }

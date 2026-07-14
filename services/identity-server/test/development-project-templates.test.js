@@ -3,6 +3,7 @@ const test = require("node:test");
 const {
   developmentProjectTemplate,
   developmentProjectTemplateCatalog,
+  developmentProjectTemplatePreviews,
   templateArchitecturePlantUml,
   templateBuildConfig,
   templateFirmwareSources,
@@ -28,9 +29,70 @@ test("separates semantic template models from rendered views", () => {
 
 test("exposes one UI catalog without architecture or realization internals", () => {
   const catalog = developmentProjectTemplateCatalog();
-  assert.equal(catalog.length, 4);
+  assert.equal(catalog.length, 7);
   assert.equal(catalog.find((template) => template.id === "empty").default_title, "");
+  assert.deepEqual(catalog.find((template) => template.id === "sensor_actuator_control"), {
+    id: "sensor_actuator_control",
+    title: "Sensor-Aktor-Steuerung",
+    default_title: "Sensor-Aktor-Steuerung",
+    description: "IoT-Device erfasst einen Sensorwert, wertet ihn in einer lokalen Steuerlogik aus und steuert damit einen Aktor.",
+    hint: "Sensor, lokale Steuerlogik und Aktor als durchgaengige Wirkungskette.",
+    model_schema_version: 1,
+  });
   assert.equal(catalog.some((template) => "architecture" in template || "realization" in template), false);
+});
+
+test("renders initial previews separately and keeps the empty project blank", () => {
+  const previews = developmentProjectTemplatePreviews();
+  assert.equal(previews.some((preview) => preview.template_id === "empty"), false);
+  assert.equal(previews.length, developmentProjectTemplateCatalog().length - 1);
+  assert.match(previews.find((preview) => preview.template_id === "sensor_actuator_control").source, /Sensor 1/);
+  assert.equal(previews.every((preview) => preview.derived_from === "project_template_preview"), true);
+});
+
+test("provides a technology-neutral distributed home automation template", () => {
+  const template = developmentProjectTemplate("distributed_home_automation");
+  const source = templateArchitecturePlantUml(template, template.title);
+
+  assert.match(source, /IoT-Device 1\\nSensor-Node/);
+  assert.match(source, /IoT-Device 2\\nAktor-Node/);
+  assert.match(source, /IoT-Device 3\\nBediengeraet/);
+  assert.match(source, /rectangle "Zustandskoordination" as coordination/);
+  assert.match(source, /Befehle \/ Sollzustand/);
+  assert.match(source, /Istzustand/);
+  assert.doesNotMatch(source, /Home Assistant|GerNetiX Home Server|Zigbee|MQTT|REST|WLAN/);
+  assert.equal(templateHardwareProfileId(template), "architecture.discovery");
+});
+
+test("provides a sensor-actuator control template as one logical effect chain", () => {
+  const template = developmentProjectTemplate("sensor_actuator_control");
+  const source = templateArchitecturePlantUml(template, template.title);
+
+  assert.match(source, /rectangle "Sensor 1" as sensor/);
+  assert.match(source, /rectangle "IoT-Device 1" as device/);
+  assert.match(source, /rectangle "Aktor 1" as actuator/);
+  assert.match(source, /sensor --> device : liefert Messwert/);
+  assert.match(source, /device --> actuator : steuert anhand der lokalen Logik/);
+  assert.equal(templateHardwareProfileId(template), "architecture.discovery");
+  assert.equal(templateBuildConfig(template), null);
+});
+
+test("provides a buildable touchscreen game collection with separated user sources", () => {
+  const template = developmentProjectTemplate("touchscreen_game_collection");
+  const source = templateArchitecturePlantUml(template, template.title);
+  const files = templateFirmwareSources(template, "Meine Spiele");
+
+  assert.match(source, /actor "Nutzer" as user/);
+  assert.match(source, /rectangle "Board mit Touchdisplay" as device/);
+  assert.doesNotMatch(source, /Startbildschirm|Spielauswahl|Game Loop|Beispielspiele|Nibbles|-->/);
+  assert.equal(templateHardwareProfileId(template), "hardware.processor_board.generic_esp32_s3_touch_display");
+  assert.equal(templateBuildConfig(template).board, "esp32-s3-devkitc-1");
+  assert.match(files.find((file) => file.path.endsWith("user_main.cpp")).content, /GameApplication/);
+  assert.match(files.find((file) => file.path.endsWith("view\/start_screen.h")).content, /class StartScreen/);
+  for (const game of ["nibbles", "snake", "frogger", "tic_tac_toe", "pong", "breakout", "memory"]) {
+    assert.equal(files.some((file) => file.path.endsWith(`games/${game}.h`)), true);
+  }
+  assert.match(files.find((file) => file.path.endsWith("config/selected_games.h")).content, /GNX_GAME_SNAKE_ENABLED 1/);
 });
 
 test("provides IoT device project templates with distinct start architectures", () => {

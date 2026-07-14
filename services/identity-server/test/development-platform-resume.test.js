@@ -26,22 +26,25 @@ test("restores persisted PlantUML when an existing development project is activa
   assert.match(publicController, /Startarchitektur aus Projekttemplate/);
   assert.match(publicController, /^\s*const source = normalizeArchitecturePlantUml\(stripPlantUmlNotes\(view\?\.payload\?\.source \|\| ""\), derivedFrom\)/m);
   assert.match(publicController, /view\?\.payload\?\.source/);
-  assert.match(publicController, /const derivedFrom = view\?\.payload\?\.derived_from/);
+  assert.match(publicController, /const storedDerivedFrom = view\?\.payload\?\.derived_from \|\| ""/);
+  assert.match(publicController, /usesProjectTemplate && \(!storedDerivedFrom \|\| storedDerivedFrom === "persisted_project"\)/);
   assert.doesNotMatch(activateProjectBody, /architectureDiagram = null/);
 });
 
-test("restores the last development project into a compact header", () => {
-  assert.match(publicController, /if \(!activeProject && lastProject\)/);
-  assert.match(publicController, /projectPanelMode = "closed"/);
-  assert.match(publicCss, /grid-template-columns: repeat\(4, minmax\(0, 1fr\)\)/);
-  assert.match(publicCss, /min-height: 76px/);
+test("starts with visible large project choices without restoring a diagram", () => {
+  assert.doesNotMatch(publicController, /if \(!activeProject && lastProject\)/);
+  assert.match(publicController, /function enterProjectStart/);
+  assert.match(publicController, /activeProjectId = ""/);
+  assert.match(publicController, /architectureDiagram = null/);
+  assert.match(publicCss, /development-project-start-step \.development-project-choice-panel \{[\s\S]*repeat\(2, minmax\(0, 1fr\)\)/);
+  assert.match(publicCss, /development-project-start-step \.development-project-choice \{[\s\S]*min-height: 132px/);
 });
 
 test("separates the architecture discovery step from the active project", () => {
   assert.match(publicHtml, /Architektur-Discovery[\s\S]*id="developmentProjectName"/);
   const sectionHead = publicHtml.match(/<div class="section-head">[\s\S]*?<\/div>\s*<section class="development-platform-layout">/)?.[0] || "";
   assert.match(sectionHead, /Projekt[\s\S]*id="developmentProjectName"/);
-  assert.match(sectionHead, /chooseDevelopmentProjectButton/);
+  assert.doesNotMatch(sectionHead, /chooseDevelopmentProjectButton/);
   assert.doesNotMatch(sectionHead, /clearDevelopmentChatButton|Dialog leeren/);
   assert.doesNotMatch(publicHtml, /development-project-summary/);
   assert.doesNotMatch(publicHtml, /Aktueller Schritt/);
@@ -50,7 +53,8 @@ test("separates the architecture discovery step from the active project", () => 
 
 test("loads the development template catalog from the server model registry", () => {
   assert.match(devServer, /development_project_templates: developmentProjectTemplateCatalog\(\)/);
-  assert.match(publicApp, /setProjectTemplates\(summary\.development_project_templates \|\| \[\]\)/);
+  assert.match(devServer, /development_project_template_previews: developmentProjectTemplatePreviews\(\)/);
+  assert.match(publicApp, /summary\.development_project_template_previews \|\| \[\]/);
   assert.match(publicController, /function setProjectTemplates/);
   assert.match(publicController, /projectTemplates = Object\.fromEntries/);
   assert.match(publicHtml, /<select id="developmentProjectTemplate"><\/select>/);
@@ -74,18 +78,21 @@ test("persists architecture derivation metadata in the project view manifest", (
   assert.doesNotMatch(devServer, /KI-abgeleitete Skizze; Architekturentscheidungen/);
   assert.match(devServer, /template_id: String\(templateId \|\| ""\)/);
   assert.match(devServer, /template_ref: \{ template_id: String\(templateId\), model_schema_version:/);
+  assert.match(devServer, /function restoreDevelopmentTemplateReference/);
+  assert.match(devServer, /templateArchitecturePlantUml\(developmentProjectTemplate\(template\.id\), project\.title\)/);
   assert.match(devServer, /templateId: template\.id/);
   assert.match(devServer, /templateModelVersion: template\.schemaVersion/);
   assert.match(publicController, /persistDevelopmentDialog/);
   assert.match(publicController, /\/dialog`/);
-  assert.match(devServer, /const derivedFrom = diagram\?\.derived_from \|\| \(buildable \? "project_template" : "persisted_project"\)/);
+  assert.match(devServer, /const usesProjectTemplate = Boolean\(templateId && templateId !== "empty"\)/);
+  assert.match(devServer, /const derivedFrom = diagram\?\.derived_from \|\| \(usesProjectTemplate \|\| buildable \? "project_template" : "persisted_project"\)/);
   assert.match(devServer, /derived_from: derivedFrom/);
   assert.match(devServer, /diagram\?\.function_coverage/);
 });
 
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260714-09/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260714-22/);
   assert.match(publicHtml, /development-chat-input-box[\s\S]*developmentQuickPrompts[\s\S]*developmentChatInput[\s\S]*developmentChatSubmit/);
   assert.match(publicHtml, /development-send-button/);
   assert.match(publicHtml, /aria-label="Nachricht senden"/);
@@ -99,8 +106,99 @@ test("development chat uses a compact arrow send button inside the input", () =>
   assert.match(publicCss, /\.development-quick-prompts \{[\s\S]*display: flex/);
   assert.match(publicCss, /\.development-chat-form textarea \{[\s\S]*background: transparent/);
   assert.match(publicController, /function currentProjectUsesTemplate/);
+  assert.match(publicController, /currentProjectTemplateId\(\) === "distributed_home_automation"/);
   assert.match(publicController, /if \(currentProjectUsesTemplate\(\)\) return \[\]/);
+  assert.match(publicController, /Ich moechte einen Touchscreen Game Loop/);
+  assert.match(publicController, /"Touchscreen Game Loop"/);
+  assert.equal((publicController.match(/const usesProjectTemplate = currentProjectUsesTemplate\(\);/g) || []).length, 2);
   assert.match(publicController, /state\.developmentPlatform\.chat = \[\]/);
+});
+
+test("shows a persisted static-first assistant for distributed home automation", () => {
+  assert.match(publicHtml, /id="homeAutomationAssistant"/);
+  assert.match(publicHtml, /Zentrale Koordination/);
+  assert.match(publicHtml, /Verhalten bei Verbindungsausfall/);
+  assert.match(publicHtml, /data-home-automation-ai/);
+  assert.match(publicController, /function renderHomeAutomationAssistant/);
+  assert.match(publicController, /homeAutomationConfiguration: state\.developmentPlatform\.homeAutomationConfiguration/);
+  assert.match(publicController, /function homeAutomationArchitectureDiagram/);
+  assert.match(publicController, /data-home-node-feature="\$\{escapeAttribute\(feature\.id\)\}"/);
+  assert.match(publicController, /function recommendedBoardForNode/);
+  assert.match(publicController, /ESP32-S3 Touch-Display-Board/);
+  assert.match(publicController, /legacyTouchscreen/);
+  assert.doesNotMatch(publicController, /Touchscreen-Steuerung/);
+  assert.doesNotMatch(publicController, /Bedienelemente<input data-home-node-field="control_count"/);
+  assert.match(publicController, /Board: \$\{plantUmlLabel\(featureLabels\.join/);
+  assert.match(publicController, /function synchronizeConfigurationArchitecture/);
+  assert.match(publicController, /synchronizeConfigurationArchitecture\(\);[\s\S]*form\.querySelector/);
+  assert.match(publicController, /Ausfall: \$\{plantUmlLabel\(failureLabels\[config\.failure_policy\]\)\}/);
+  assert.match(publicController, /plantUmlLabel\(transportLabels\[node\.transport\]\)/);
+  assert.match(publicController, /async function persistDevelopmentDialog\(\) \{[\s\S]*synchronizeConfigurationArchitecture\(\)/);
+  assert.match(publicController, /Konfiguration pruefen/);
+  assert.match(publicCss, /\.home-automation-node \{/);
+  assert.match(devServer, /home_automation_configuration/);
+  assert.match(devServer, /function normalizeHomeAutomationConfiguration/);
+  assert.match(devServer, /schema_version: 2/);
+  assert.match(devServer, /board_features: boardFeatures/);
+});
+
+test("separates project start and initial architecture from configuration", () => {
+  assert.match(publicHtml, /id="continueDevelopmentConfigurationButton"[^>]*>Weiter zur Konfiguration<\/button>/);
+  assert.match(publicHtml, /development-requirements-panel development-configuration-only/);
+  assert.match(publicHtml, /development-chat-sidebar development-configuration-only/);
+  assert.match(publicHtml, /saveDevelopmentArchitectureButton" type="button" disabled>Konfiguration speichern<\/button>/);
+  assert.match(publicHtml, /acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Weiter zur Hardware<\/button>/);
+  assert.match(publicController, /workflowStep: "project_start"/);
+  assert.match(publicController, /function continueToDevelopmentConfiguration/);
+  assert.match(publicController, /workflowStep = "configuration"/);
+  assert.match(publicController, /function renderWorkflowStep/);
+  assert.match(publicCss, /\.development-workspace-panel\.development-project-start-step/);
+  assert.match(publicController, /projectTemplatePreviews\[templateInput\.value\]/);
+  assert.match(publicController, /target\.classList\.toggle\("hidden", !configurationStep\)/);
+  assert.match(publicApp, /enteringDevelopmentPlatform/);
+  assert.match(publicApp, /developmentPlatform\(\)\.enterProjectStart\(\)/);
+  assert.match(devServer, /template\.id === "empty" \? "" : templateArchitecturePlantUml/);
+});
+
+test("requires an explicit template choice before entering project details", () => {
+  assert.match(publicController, /`<option value="">Template waehlen<\/option>`/);
+  assert.match(publicController, /developmentProjectTemplate"\)\.value = ""/);
+  assert.doesNotMatch(publicController, /developmentProjectTemplate"\)\.value = "esp32_device_only"/);
+  assert.match(publicController, /const templateSelected = Boolean\(templateInput\.value && templateInput\.value !== "empty"\)/);
+  assert.match(publicHtml, /id="developmentProjectDetails"/);
+  assert.match(publicController, /details\?\.classList\.toggle\("hidden", choosingTemplate && !templateSelected\)/);
+  assert.match(publicController, /titleInput\.disabled = choosingTemplate && !templateSelected/);
+  assert.match(publicController, /submitButtons\.forEach/);
+  assert.match(publicController, /button\.disabled = choosingTemplate && !templateSelected/);
+  assert.match(publicController, /projectPanelMode === "new-template" && !selectedTemplateId/);
+  assert.match(publicController, /Bitte waehle zuerst ein Projekttemplate/);
+});
+
+test("can create a development project and continue directly to configuration", () => {
+  assert.match(publicHtml, /data-create-and-continue>Projekt anlegen und weiter<\/button>/);
+  assert.match(publicController, /event\.submitter\?\.hasAttribute\("data-create-and-continue"\)/);
+  assert.match(publicController, /workflowStep = continueAfterCreate \? "configuration" : "project_start"/);
+  assert.match(publicController, /Konfiguration ist geoeffnet/);
+});
+
+test("configures a touchscreen game collection through pattern, games, board and inventory", () => {
+  assert.match(publicHtml, /id="touchscreenGameAssistant"/);
+  assert.match(publicHtml, /Touchscreen Game Loop/);
+  assert.match(publicHtml, /Passendes Board im Inventar/);
+  assert.match(publicController, /function renderTouchscreenGameAssistant/);
+  assert.match(publicController, /Nibbles/);
+  assert.match(publicController, /Snake/);
+  assert.match(publicController, /Frogger/);
+  assert.match(publicController, /Tic-Tac-Toe/);
+  assert.match(publicController, /function touchscreenGameArchitectureDiagram/);
+  assert.match(publicController, /actor "Nutzer" as user/);
+  assert.match(publicController, /rectangle "Board mit Touchdisplay" as device/);
+  assert.doesNotMatch(publicController, /rectangle "Startbildschirm\\nSpielauswahl" as start_screen/);
+  assert.match(publicController, /gameConfiguration: state\.developmentPlatform\.gameConfiguration/);
+  assert.match(publicApp, /route === "development-platform"\) loadProcessorBoardCatalog/);
+  assert.match(devServer, /normalizeTouchscreenGameConfiguration/);
+  assert.match(devServer, /selectedGamesHeader\(gameConfiguration\.selected_game_ids\)/);
+  assert.match(devServer, /game_inventory_device_not_compatible/);
 });
 
 test("development platform scales like a compact workspace", () => {
@@ -122,9 +220,10 @@ test("development platform places requirements and architecture centrally with c
   assert.match(publicHtml, /development-main-workspace[\s\S]*developmentRequirementsText[\s\S]*developmentArchitectureDiagram/);
   assert.doesNotMatch(publicHtml.match(/<section id="developmentPlatformView"[\s\S]*?<section id="developmentHardwareView"/)?.[0] || "", /developmentHardwareAllocation/);
   assert.match(publicHtml, /development-chat-sidebar[\s\S]*developmentChatMessages[\s\S]*developmentChatForm/);
-  assert.match(publicHtml, /chooseDevelopmentProjectButton" type="button">Projekt<\/button>/);
-  assert.match(publicHtml, /saveDevelopmentArchitectureButton" type="button" disabled>Uebernehmen<\/button>/);
-  assert.match(publicHtml, /acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Uebernehmen und weiter<\/button>/);
+  assert.doesNotMatch(publicHtml, /chooseDevelopmentProjectButton/);
+  assert.match(publicHtml, /backToDevelopmentProjectStartButton" type="button">Projekt wechseln<\/button>/);
+  assert.match(publicHtml, /saveDevelopmentArchitectureButton" type="button" disabled>Konfiguration speichern<\/button>/);
+  assert.match(publicHtml, /acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Weiter zur Hardware<\/button>/);
   assert.doesNotMatch(publicHtml, /startFunctionClarificationButton|startEffectChainButton|Architektur speichern/);
   assert.match(publicCss, /\.development-workspace-panel \{[\s\S]*grid-template-areas:[\s\S]*"project chat"[\s\S]*"main chat"/);
   assert.match(publicCss, /\.development-chat-sidebar \{[\s\S]*grid-area: chat/);
@@ -157,7 +256,7 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(publicController, /function renderHardwareConfiguration/);
   assert.match(hardwareCatalogSeed, /PT1000 Widerstandsthermometer/);
   assert.match(publicController, /Konstantstromquelle \/ Messbruecke/);
-  assert.match(publicController, /Motortreiber \/ H-Bruecke/);
+  assert.match(publicController, /DC-Motorsteuerung/);
   assert.match(publicController, /function boardPins/);
   assert.match(publicController, /data-hardware-processor/);
   assert.match(publicController, /class="hardware-board-selection"/);
@@ -174,6 +273,11 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.doesNotMatch(sensorCatalogLoader, /setInventoryStatus/);
   assert.match(publicController, /Erfassung<select data-hardware-signal-type/);
   assert.match(publicController, /Konkreter Sensor<select data-hardware-field="concrete_type"/);
+  assert.match(publicController, /Zyklischer Datenlogger/);
+  assert.match(publicController, /data-hardware-property="sampling_interval_value"/);
+  assert.match(publicController, /data-hardware-property="samples_per_record"/);
+  assert.match(publicController, /Effektivwert \(RMS\)/);
+  assert.match(publicController, /Lokale Messwerthistorie/);
   assert.doesNotMatch(publicController, /\["sensor", "actuator"\]\.includes\(component\.abstract_type\).*Beschreibung/);
   assert.match(publicController, /next\.abstract_type === "sensor"\) delete next\.properties\.description/);
   assert.match(publicController, /incremental_ab/);
@@ -229,6 +333,17 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(publicCss, /\.hardware-page-actions \{[\s\S]*background: rgba\(11, 16, 24, \.96\)/);
   assert.match(publicCss, /\.hardware-overview \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) minmax\(280px, 360px\)/);
   assert.match(publicCss, /\.hardware-guidance-panel \{[\s\S]*background: #0d1520/);
+});
+
+test("motor actuators expose a concrete motor controller selection", () => {
+  assert.match(publicController, /Synchronmotor \/ BLDC \/ PMSM/);
+  assert.match(publicController, /Motorsteuerung<select data-hardware-property="motor_driver_type"/);
+  assert.match(publicController, /three_phase_foc/);
+  assert.match(publicController, /three_phase_six_step/);
+  assert.match(publicController, /Phase V<select data-hardware-property="phase_v_pin"/);
+  assert.match(publicController, /Phase W<select data-hardware-property="phase_w_pin"/);
+  assert.match(publicController, /Motorsteuerung`/);
+  assert.match(devServer, /synchronous_motor_driver/);
 });
 
 test("iot device suggestions include common board families", () => {

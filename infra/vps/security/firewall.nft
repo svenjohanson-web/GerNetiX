@@ -1,0 +1,29 @@
+table inet gernetix_host {
+  chain input {
+    type filter hook input priority filter; policy drop;
+
+    iifname "lo" accept
+    ct state invalid drop
+    ct state established,related accept
+
+    ip protocol icmp accept
+    ip6 nexthdr ipv6-icmp accept
+
+    udp dport { 68, 546, 51820 } accept
+    iifname "wg0" tcp dport 22 accept
+    tcp dport { 80, 443, 8883 } accept
+  }
+
+  # Docker publishes the public MQTT listener through the forward path after
+  # DNAT. Limit new TLS connections per source before Docker accepts them.
+  chain forward {
+    type filter hook forward priority filter - 1; policy accept;
+
+    ct status dnat tcp dport 8883 meta nfproto ipv4 meter mqtt_tls_ipv4 { ip saddr limit rate over 60/minute burst 30 packets } drop
+    ct status dnat tcp dport 8883 meta nfproto ipv6 meter mqtt_tls_ipv6 { ip6 saddr limit rate over 60/minute burst 30 packets } drop
+  }
+
+  chain output {
+    type filter hook output priority filter; policy accept;
+  }
+}

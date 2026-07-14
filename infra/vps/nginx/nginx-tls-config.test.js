@@ -50,3 +50,17 @@ test("compose and staging deploy manage HTTPS certificate lifecycle", () => {
   assert.match(deploy, /--force-recreate nginx-tls mqtt-broker certbot/);
   assert.match(deploy, /--no-deps --force-recreate mqtt-broker/);
 });
+
+test("public web and authentication requests are rate limited per source", () => {
+  for (const config of [http, tls]) {
+    assert.match(config, /limit_req_zone \$binary_remote_addr zone=gernetix_web_per_ip:10m rate=10r\/s/);
+    assert.match(config, /limit_req_zone \$binary_remote_addr zone=gernetix_auth_per_ip:10m rate=5r\/m/);
+    assert.match(config, /limit_conn_zone \$binary_remote_addr zone=gernetix_connections_per_ip:10m/);
+    assert.match(config, /limit_req_status 429/);
+    assert.match(config, /limit_conn_status 429/);
+    assert.match(config, /location ~ \^\/api\/\(login\(\?:\/external\)\?\|register\)\$/);
+    assert.match(config, /limit_req zone=gernetix_auth_per_ip burst=5 nodelay/);
+  }
+  assert.match(tls, /limit_req_zone \$binary_remote_addr zone=gernetix_build_per_ip:10m rate=30r\/s/);
+  assert.match(tls, /limit_req zone=gernetix_build_per_ip burst=100 nodelay/);
+});

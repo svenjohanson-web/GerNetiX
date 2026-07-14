@@ -1,6 +1,6 @@
 const { DEVELOPMENT_PROJECT_TEMPLATE_MODELS } = require("./development-project-template-models");
 const { templateArchitecturePlantUml } = require("./development-project-template-views");
-const { templateFirmwareSources } = require("./development-project-template-sources");
+const { selectedGamesHeader, templateFirmwareSources } = require("./development-project-template-sources");
 
 function developmentProjectTemplate(templateId) {
   return DEVELOPMENT_PROJECT_TEMPLATE_MODELS[String(templateId || "empty")]
@@ -18,6 +18,19 @@ function developmentProjectTemplateCatalog() {
   }));
 }
 
+function developmentProjectTemplatePreviews() {
+  return Object.values(DEVELOPMENT_PROJECT_TEMPLATE_MODELS)
+    .filter((template) => template.id !== "empty")
+    .map((template) => ({
+      template_id: template.id,
+      title: `${template.title} · Initiale Architektur`,
+      summary: template.hint || template.description,
+      type: "plantuml",
+      source: templateArchitecturePlantUml(template, template.title),
+      derived_from: "project_template_preview",
+    }));
+}
+
 function templateBuildConfig(template) {
   return template?.realization?.buildConfig || null;
 }
@@ -29,8 +42,10 @@ function templateHardwareProfileId(template) {
 module.exports = {
   developmentProjectTemplate,
   developmentProjectTemplateCatalog,
+  developmentProjectTemplatePreviews,
   templateArchitecturePlantUml,
   templateBuildConfig,
   templateFirmwareSources,
   templateHardwareProfileId,
+  selectedGamesHeader,
 };

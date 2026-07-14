@@ -290,8 +290,14 @@ const GuidedProjectView = (() => {
       const message = codeChatMessages(project, view)[Number(messageIndex)];
       const edit = message?.fileEdits?.[editIndex];
       if (!edit || edit.applied) return;
-      await putJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(edit.path)}`, { content: edit.content });
+      const role = /(^|\/)(treiber|drivers?)(\/|$)/i.test(String(edit.path || "")) ? "ai_generated_driver" : "user_code";
+      await putJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(edit.path)}`, { content: edit.content, role });
       edit.applied = true;
+      const cachedSources = state.projectSourcesByProjectId[project.id] || [];
+      const cachedSource = cachedSources.find((source) => source.path === edit.path);
+      if (cachedSource) cachedSource.role = role;
+      else cachedSources.push({ path: edit.path, role });
+      state.projectSourcesByProjectId[project.id] = cachedSources.sort((left, right) => left.path.localeCompare(right.path));
       updateGuidedSourceContent(project, edit.path, edit.content);
       if (state.sourcePath === edit.path) {
         document.querySelector("#sourceEditor").value = edit.content;
@@ -299,6 +305,7 @@ const GuidedProjectView = (() => {
       }
       renderProjectViewManifest(project);
       renderProjectAssistant(project);
+      if (state.ideViewMode === "driver-management" && typeof renderDriverManagement === "function") renderDriverManagement(project);
     }
 
     function updateGuidedSourceContent(project, sourcePath, content) {

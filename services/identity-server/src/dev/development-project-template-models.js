@@ -23,6 +23,71 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
       ],
     },
   }),
+  sensor_actuator_control: templateModel({
+    id: "sensor_actuator_control",
+    title: "Sensor-Aktor-Steuerung",
+    description: "IoT-Device erfasst einen Sensorwert, wertet ihn in einer lokalen Steuerlogik aus und steuert damit einen Aktor.",
+    hint: "Sensor, lokale Steuerlogik und Aktor als durchgaengige Wirkungskette.",
+    architecture: {
+      elements: [
+        element("sensor", "Sensor 1", "sensor"),
+        element("device", "IoT-Device 1", "iot_device"),
+        element("actuator", "Aktor 1", "actuator"),
+      ],
+      relations: [
+        relation("sensor", "device", "liefert Messwert"),
+        relation("device", "actuator", "steuert anhand der lokalen Logik"),
+      ],
+    },
+  }),
+  distributed_home_automation: templateModel({
+    id: "distributed_home_automation",
+    title: "Verteilte Hausautomatisierung",
+    description: "Mehrere Sensor-, Aktor- und Bediengeraete synchronisieren Befehle, Sollzustaende und Istzustaende ueber eine optional zentrale Hausautomationsinstanz.",
+    hint: "Geraete, Rollen, Kommunikation, Zustandsmodell und Ausfallverhalten werden nach dem Anlegen im Konfigurationsassistenten festgelegt.",
+    architecture: {
+      elements: [
+        element("sensor_node", "IoT-Device 1\nSensor-Node", "iot_device"),
+        element("actuator_node", "IoT-Device 2\nAktor-Node", "iot_device"),
+        element("control_node", "IoT-Device 3\nBediengeraet", "iot_device"),
+        element("coordination", "Zustandskoordination", "service"),
+      ],
+      relations: [
+        relation("sensor_node", "coordination", "Messwerte / Ereignisse"),
+        relation("control_node", "coordination", "Befehle / Sollzustand"),
+        relation("coordination", "actuator_node", "Sollzustand"),
+        relation("actuator_node", "coordination", "Istzustand"),
+      ],
+    },
+  }),
+  touchscreen_game_collection: templateModel({
+    id: "touchscreen_game_collection",
+    title: "Touchscreen-Spielesammlung",
+    description: "Ein Nutzer bedient eine Spielesammlung auf einem Board mit Touchdisplay.",
+    hint: "Die statische Architektur zeigt nur Nutzer und Board; Spielablauf und Spiele gehoeren in Verhalten und Code.",
+    architecture: {
+      elements: [
+        element("user", "Nutzer", "actor"),
+        element("device", "Board mit Touchdisplay", "iot_device"),
+      ],
+      relations: [],
+    },
+    realization: {
+      hardwareProfileId: "hardware.processor_board.generic_esp32_s3_touch_display",
+      buildConfig: {
+        platform: "espressif32",
+        framework: "espidf",
+        board: "esp32-s3-devkitc-1",
+        environment: "esp32-s3-devkitc-1",
+        firmware_basis_id: "gernetix-runtime-basissoftware",
+        firmware_basis_version: "workspace",
+        firmware_basis_variant: "comfort",
+        user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp",
+        user_target_path: "src/user/user_app.cpp",
+        libraries: [],
+      },
+    },
+  }),
   esp32_datalogger_local_web: templateModel({
     id: "esp32_datalogger_local_web",
     title: "Datenlogger mit lokalem Webserver",

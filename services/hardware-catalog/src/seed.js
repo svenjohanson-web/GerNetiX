@@ -15,6 +15,12 @@ function defaultCatalogSeed() {
       capability("capability.wifi", "WiFi"),
       capability("capability.ota", "OTA"),
       capability("capability.display_output", "Display-Ausgabe"),
+      capability("capability.touchscreen_input", "Touchscreen-Eingabe"),
+      capability("capability.audio_output", "Audio-Ausgabe"),
+      capability("capability.audio_input", "Audio-Eingabe"),
+      capability("capability.bluetooth", "Bluetooth"),
+      capability("capability.external_ram", "Externer RAM / PSRAM"),
+      capability("capability.flash_storage", "Flash-Speicher"),
       capability("capability.spi", "SPI"),
       capability("capability.rfid_reading", "RFID lesen"),
       capability("capability.item_identification", "Item Identification"),
@@ -31,6 +37,7 @@ function defaultCatalogSeed() {
       capability("capability.uart", "UART"),
     ],
     hardwareItems: [
+      ...boardFeatureOptions(),
       avrBoard({
         hardware_item_id: "hardware.processor_board.arduino_nano_r3_atmega328p",
         sku: "GNX-ARDUINO-NANO-R3-ATMEGA328P",
@@ -101,6 +108,104 @@ function defaultCatalogSeed() {
         mcu_variant: "ESP32-S3",
       }),
       esp32Board({
+        hardware_item_id: "hardware.processor_board.generic_esp32_s3_touch_display",
+        sku: "GNX-ESP32-S3-TOUCH-DISPLAY-GENERIC",
+        title: "Generisches ESP32-S3 Touch-Display-Board",
+        summary: "Katalogklasse fuer ESP32-S3-Boards mit integriertem Display und Touchcontroller.",
+        form_factor: "integrated_touch_display",
+        module_name: "ESP32-S3-WROOM-1",
+        mcu_variant: "ESP32-S3",
+        extra_capability_ids: ["capability.display_output", "capability.touchscreen_input"],
+      }),
+      esp32Board({
+        hardware_item_id: "hardware.processor_board.esp32_s3_es3c28p",
+        sku: "GNX-ESP32-S3-ES3C28P",
+        title: "ESP32-S3 ES3C28P Touch-Board",
+        summary: "Lokal getestetes ESP32-S3-Board mit 2,8-Zoll-ILI9341V-Display, FT6336G-Touch und ES8311/NS8002E-Audio.",
+        vendor: "ES3C28P",
+        form_factor: "integrated_touch_display_audio",
+        mcu_variant: "ESP32-S3",
+        extra_capability_ids: ["capability.display_output", "capability.touchscreen_input", "capability.audio_output", "capability.bluetooth", "capability.analog_input"],
+        pin_profile: {
+          assigned_pins: {
+            display_spi: { mosi: 11, miso: 13, sclk: 12, cs: 10, dc: 46, reset: -1, backlight: 45 },
+            touch_i2c: { sda: 16, scl: 15, interrupt: 17, reset: 18 },
+            audio_i2s: { enable: 1, mclk: 4, bclk: 5, data_out: 8, lrclk: 7 },
+            battery_adc: { pin: 9, voltage_divider: 2.0 },
+          },
+          diagnostic_output_allowlist: [],
+          diagnostic_note: "Keine Onboard-LED dokumentiert; belegte Pins duerfen nicht generisch als Testausgang verwendet werden.",
+        },
+        default_instance_configuration: {
+          board_model: "ESP32-S3 ES3C28P",
+          verification_status: "user_tested",
+          evidence: {
+            source_type: "working_platformio_project",
+            source_reference: "ESP32-OLED-Games/AI-Assistant-ESP32-Touch",
+          },
+          board_features: {
+            display: {
+              enabled: true,
+              hardware: "tft_lcd",
+              driver: "ili9341",
+              connection: "spi",
+              controller_variant: "ILI9341V",
+              width: 240,
+              height: 320,
+              pins: { mosi: 11, miso: 13, sclk: 12, cs: 10, dc: 46, reset: -1, backlight: 45 },
+              verification_status: "user_tested",
+            },
+            touch: {
+              enabled: true,
+              hardware: "kapazitiv",
+              driver: "ft6336g",
+              connection: "i2c",
+              address: "0x38",
+              clock_hz: 400000,
+              pins: { sda: 16, scl: 15, interrupt: 17, reset: 18 },
+              verification_status: "user_tested",
+            },
+            speaker: {
+              enabled: true,
+              hardware: "i2s_verst_rker",
+              driver: "es8311",
+              connection: "i2s",
+              codec_address: "0x18",
+              amplifier: "NS8002E",
+              format: "philips_i2s",
+              pins: { enable: 1, mclk: 4, bclk: 5, data_out: 8, lrclk: 7 },
+              verification_status: "user_tested",
+            },
+            bluetooth: {
+              enabled: true,
+              hardware: "bluetooth_low_energy",
+              connection: "im_prozessor_integriert",
+              verification_status: "processor_specification",
+            },
+            wifi: {
+              enabled: true,
+              hardware: "2_4_ghz",
+              driver: "arduino_wifi",
+              verification_status: "user_tested",
+            },
+          },
+          battery_measurement: {
+            enabled: true,
+            connection: "adc",
+            pin: 9,
+            voltage_divider: 2.0,
+            verification_status: "user_tested",
+          },
+          datasheet_url: "",
+          datasheet_required: true,
+        },
+        verification_status: "locally_verified",
+        evidence: {
+          source_type: "working_platformio_project",
+          source_reference: "ESP32-OLED-Games/AI-Assistant-ESP32-Touch",
+        },
+      }),
+      esp32Board({
         hardware_item_id: "hardware.processor_board.generic_esp32_c6_wroom1",
         sku: "GNX-ESP32-C6-WROOM1-GENERIC",
         title: "Generisches ESP32-C6-Board mit ESP32-C6-WROOM-1 Modul",
@@ -168,6 +273,81 @@ function defaultCatalogSeed() {
   };
 }
 
+function boardFeatureOptions() {
+  return [
+    boardFeature("display", "Display", "capability.display_output", {
+      hardware_options: options(["TFT-LCD", "IPS-LCD", "OLED", "E-Paper"]),
+      driver_options: options(["ST7789", "ILI9341", "ILI9488", "ST7735", "GC9A01", "SSD1306", "SH1106"]),
+      connection_options: options(["SPI", "I2C", "RGB parallel", "8080 parallel", "MIPI DSI"]),
+      datasheet_hint: "Controller-Aufdruck, Displaygröße, Auflösung, Pinbelegung und Versorgungsspannung im Board-Datenblatt prüfen.",
+    }),
+    boardFeature("touch", "Touch", "capability.touchscreen_input", {
+      hardware_options: options(["Kapazitiv", "Resistiv"]),
+      driver_options: options(["GT911", "FT6236", "FT6336G", "CST816", "XPT2046"]),
+      connection_options: options(["I2C", "SPI", "GPIO Interrupt"]),
+      datasheet_hint: "Touchcontroller und Interrupt-/Reset-Pins stehen meist separat im Schaltplan des Boards.",
+    }),
+    boardFeature("speaker", "Speaker", "capability.audio_output", {
+      hardware_options: options(["Passiver Lautsprecher", "Aktiver Buzzer", "I2S-Verstärker"]),
+      driver_options: options(["Direkt per PWM", "MAX98357A", "NS4168", "ES8311"]),
+      connection_options: options(["PWM", "DAC", "I2S"]),
+      datasheet_hint: "Verstärker, Impedanz und zulässige Leistung vor dem Flashen prüfen.",
+    }),
+    boardFeature("microphone", "Mikrofon", "capability.audio_input", {
+      hardware_options: options(["Analoges Mikrofon", "I2S-Mikrofon", "PDM-Mikrofon"]),
+      driver_options: options(["INMP441", "ICS-43434", "SPH0645", "ES7210", "Analog/ADC"]),
+      connection_options: options(["ADC", "I2S", "PDM"]),
+      datasheet_hint: "Takt, Kanalwahl und Versorgungsspannung des Mikrofonmoduls im Datenblatt prüfen.",
+    }),
+    boardFeature("bluetooth", "Bluetooth", "capability.bluetooth", {
+      hardware_options: options(["Bluetooth Classic", "Bluetooth Low Energy", "Classic + BLE"]),
+      driver_options: options(["ESP-IDF Bluetooth", "NimBLE", "Arduino BLE"]),
+      connection_options: options(["Im Prozessor integriert"]),
+      datasheet_hint: "Nicht jede ESP-Variante unterstützt Bluetooth Classic. Maßgeblich ist das konkrete MCU-Datenblatt.",
+    }),
+    boardFeature("wifi", "WLAN", "capability.wifi", {
+      hardware_options: options(["2,4 GHz", "2,4 + 5 GHz"]),
+      driver_options: options(["ESP-IDF Wi-Fi", "Arduino WiFi"]),
+      connection_options: options(["PCB-Antenne", "Externe Antenne / U.FL"]),
+      datasheet_hint: "Antennenvariante und zulässige Funkbänder anhand der exakten Modulbezeichnung prüfen.",
+    }),
+    boardFeature("ram", "RAM / PSRAM", "capability.external_ram", {
+      hardware_options: options(["Interner SRAM", "QSPI-PSRAM", "OPI-PSRAM"]),
+      driver_options: options(["ESP-IDF Heap/PSRAM", "Arduino PSRAM"]),
+      connection_options: options(["Im Modul integriert", "Extern auf dem Board"]),
+      value_options: options(["2 MB", "4 MB", "8 MB", "16 MB"]),
+      datasheet_hint: "Die PSRAM-Größe folgt der vollständigen Modul-/Boardbezeichnung, nicht nur dem Prozessortyp.",
+    }),
+    boardFeature("flash", "Flash", "capability.flash_storage", {
+      hardware_options: options(["QSPI-Flash", "OPI-Flash"]),
+      driver_options: options(["ESP-IDF Partition Table", "Arduino Partition Scheme"]),
+      connection_options: options(["Im Modul integriert", "Extern auf dem Board"]),
+      value_options: options(["2 MB", "4 MB", "8 MB", "16 MB", "32 MB"]),
+      datasheet_hint: "Flash-Größe und Partitionslayout müssen vor OTA und Basissoftware-Flash eindeutig feststehen.",
+    }),
+  ];
+}
+
+function boardFeature(id, title, capabilityId, details) {
+  return {
+    hardware_item_id: `hardware.board_feature.${id}`,
+    sku: `GNX-BOARD-FEATURE-${id.toUpperCase()}`,
+    item_type: "board_feature_option",
+    feature_id: id,
+    title,
+    summary: `${title} am konkreten Board erfassen.`,
+    capability_ids: [capabilityId],
+    support_policy: "catalog_reference",
+    provisioning_profile_id: "",
+    status: "active",
+    ...details,
+  };
+}
+
+function options(values) {
+  return values.map((title) => ({ id: title.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, ""), title }));
+}
+
 function avrBoard(input) {
   return {
     hardware_item_id: input.hardware_item_id,
@@ -220,16 +400,20 @@ function esp32Board(input) {
   return networkBoard({
     ...input,
     processor_family: "esp32",
-    capability_ids: ["capability.processor_esp32", "capability.wifi", "capability.ota", "capability.device_http_status", "capability.captive_setup_supported", "capability.basissoftware_supported", "capability.usb_identification", "capability.flash_firmware", "capability.digital_input", "capability.digital_output"],
+    capability_ids: ["capability.processor_esp32", "capability.wifi", "capability.ota", "capability.device_http_status", "capability.captive_setup_supported", "capability.basissoftware_supported", "capability.usb_identification", "capability.flash_firmware", "capability.digital_input", "capability.digital_output", ...(input.extra_capability_ids || [])],
     basissoftware_profile_id: "basissoftware.profile.esp32_factory",
     provisioning_profile_id: "provisioning_profile.esp32_ota_bootstrap",
     min_basissoftware_version: "0.1.0",
-    pin_profile: {
+    pin_profile: input.pin_profile || {
       analog_inputs: ["GPIO32 / ADC1_CH4", "GPIO33 / ADC1_CH5", "GPIO34 / ADC1_CH6", "GPIO35 / ADC1_CH7", "GPIO36 / ADC1_CH0", "GPIO39 / ADC1_CH3"],
       digital_pins: ["GPIO4", "GPIO5", "GPIO12", "GPIO13", "GPIO14", "GPIO16", "GPIO17", "GPIO18", "GPIO19", "GPIO21", "GPIO22", "GPIO23", "GPIO25", "GPIO26", "GPIO27"],
       pwm_pins: ["GPIO4", "GPIO5", "GPIO12", "GPIO13", "GPIO14", "GPIO18", "GPIO19", "GPIO23", "GPIO25", "GPIO26", "GPIO27"],
       i2c: ["SDA GPIO21 + SCL GPIO22"],
     },
+    default_instance_configuration: input.default_instance_configuration,
+    verification_status: input.verification_status,
+    evidence: input.evidence,
+    peripheral_profile: esp32PeripheralProfile(input.mcu_variant),
     factory_firmware_artifact: {
       artifact_id: "firmware_artifact.esp32_basissoftware_factory.latest",
       source: "sqlite",
@@ -259,14 +443,74 @@ function networkBoard(input) {
     basissoftware_profile_id: input.basissoftware_profile_id,
     factory_firmware_artifact: input.factory_firmware_artifact || null,
     min_basissoftware_version: input.min_basissoftware_version || "",
-    default_instance_configuration: {
+    default_instance_configuration: input.default_instance_configuration || {
       online_led: { configurable: true },
       display: { configurable: true, optional: true },
       sound: { configurable: true, optional: true },
     },
+    verification_status: input.verification_status || "catalog_seed",
+    evidence: input.evidence || {},
     pin_profile: input.pin_profile || {},
+    peripheral_profile: input.peripheral_profile || {},
     status: "active",
   };
+}
+
+function esp32PeripheralProfile(mcuVariant = "ESP32") {
+  return {
+    schema_version: 1,
+    documentation_url: esp32PeripheralDocumentationUrl(mcuVariant),
+    resources: [
+      peripheral("gpio", "GPIO", "Digitale Ein- und Ausgänge", { configurable: true, pin_profile_key: "digital_pins" }),
+      peripheral("adc", "ADC", "Analoge Signale digital erfassen", { configurable: true, pin_profile_key: "analog_inputs" }),
+      peripheral("pwm", "PWM", "Pulsweitenmodulierte Ausgänge", { configurable: true, pin_profile_key: "pwm_pins" }),
+      peripheral("i2c", "I²C", "Zweidraht-Bus für Sensoren und Erweiterungen", { configurable: true, pin_profile_key: "i2c" }),
+      peripheral("spi", "SPI", "Synchroner serieller Hochgeschwindigkeitsbus", { configurable: true }),
+      peripheral("uart", "UART", "Asynchrone serielle Kommunikation", { configurable: true }),
+      peripheral("pcnt", "PCNT", "Hardware-Impuls- und Quadraturzähler", { configurable: true }),
+      peripheral("rmt", "RMT", "Präzise Pulsfolgen senden und empfangen", { configurable: true }),
+      peripheral("i2s", "I²S", "Digitale Audio- und Datenströme", { configurable: true }),
+      peripheral("twai", "TWAI / CAN", "CAN-kompatible Feldbuskommunikation", { configurable: true }),
+      peripheral("mcpwm", "Motor-PWM", "Mehrkanal-PWM mit Totzeit für Motorsteuerungen", { configurable: true }),
+      peripheral("hardware_timer", "Hardware-Timer", "Zeitbasis für Scheduler, Regelung und präzise Ereignisse", { managed_by: "runtime_timer" }),
+      peripheral("interrupt", "Interrupt-Controller", "Ereignisgesteuerte Reaktion auf Peripherie und Pins", { managed_by: "runtime_events" }),
+    ],
+    abstractions: [
+      abstraction("runtime_timer", "Zeitgeber", "OS/Basissoftware verwaltet Zeitpunkte, Intervalle und Scheduler-Ticks.", ["hardware_timer"]),
+      abstraction("runtime_events", "Ereignisse", "Interrupts werden als sichere Ereignisse und Callbacks bereitgestellt.", ["interrupt", "gpio"]),
+      abstraction("digital_io", "Digital-I/O", "Einheitlicher Zugriff auf digitale Ein- und Ausgänge.", ["gpio"]),
+      abstraction("analog_input", "Analogeingang", "Kalibrierte Messwerte statt direkter ADC-Registerzugriffe.", ["adc"]),
+      abstraction("measurement_acquisition", "Messwerterfassung", "Sensorwerte zyklisch erfassen, kalibrieren und als einheitliche Messwerte bereitstellen.", ["runtime_timer", "analog_input", "serial_bus"]),
+      abstraction("waveform_output", "Puls- und Wellenformausgabe", "Zeitgesteuerte Ausgaben über PWM, Motor-PWM oder RMT.", ["pwm", "mcpwm", "rmt", "hardware_timer"]),
+      abstraction("serial_bus", "Serielle Busse", "Treiberzugriff auf I²C, SPI, UART, I²S und TWAI.", ["i2c", "spi", "uart", "i2s", "twai"]),
+    ],
+    drivers: [
+      driver("data_logger", "Datenlogger", "Messwerte in konfigurierbaren Intervallen sammeln, zusammenfassen und an ein Speicherziel übergeben.", ["measurement_acquisition", "runtime_timer"], { configures: "sensor" }),
+      driver("servo_driver", "Servo-Treiber", "Positionsvorgabe über zeitgenaue PWM-Signale.", ["waveform_output", "pwm"]),
+      driver("dc_motor_driver", "DC-Motortreiber / H-Brücke", "Drehzahl und Richtung über PWM und digitale Ausgänge.", ["waveform_output", "pwm", "gpio"]),
+      driver("stepper_driver", "Schrittmotor-Treiber", "STEP/DIR-Signale mit deterministischer Zeitbasis.", ["runtime_timer", "gpio", "rmt"]),
+      driver("synchronous_motor_driver", "Synchronmotor / BLDC / PMSM", "Kommutierung oder FOC über 3-Phasen-Leistungstreiber, Motor-PWM, Strommessung und Rotorlage.", ["mcpwm", "adc", "hardware_timer", "pcnt"]),
+    ],
+  };
+}
+
+function esp32PeripheralDocumentationUrl(mcuVariant) {
+  const normalized = String(mcuVariant || "").toLowerCase();
+  if (normalized.includes("s3")) return "https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/index.html";
+  if (normalized.includes("c6")) return "https://docs.espressif.com/projects/esp-idf/en/latest/esp32c6/api-reference/peripherals/index.html";
+  return "https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/peripherals/index.html";
+}
+
+function peripheral(id, title, description, options = {}) {
+  return { id, title, description, configurable: false, ...options };
+}
+
+function abstraction(id, title, description, dependsOn) {
+  return { id, title, description, depends_on: dependsOn };
+}
+
+function driver(id, title, description, dependsOn, options = {}) {
+  return { id, title, description, depends_on: dependsOn, configures: "actuator", ...options };
 }
 
 function capability(capabilityId, title) {

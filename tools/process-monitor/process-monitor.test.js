@@ -32,7 +32,7 @@ test("monitor UI displays life status and start stop controls", () => {
   assert.match(client, /item\.healthy\?"Läuft":"Gestoppt"/);
   assert.match(client, /data-action="start"/);
   assert.match(client, /data-action="stop"/);
-  assert.match(client, /setInterval\(load,10000\)/);
+  assert.match(client, /setInterval\(\(\)=>load\(false\),10000\)/);
 });
 
 test("monitor reads VPS compose state through the established staging SSH configuration", async () => {
@@ -62,6 +62,38 @@ test("monitor displays persisted external interface call statistics", () => {
   assert.equal(typeof statistics.summary.calls, "number");
 });
 
+test("monitor controls only the configured GerNetiX WireGuard tunnel", async () => {
+  assert.match(html, /id="vpnToggle"/);
+  assert.match(html, /GerNetiX VPN/);
+  assert.match(client, /vpnStatus\(\)/);
+  assert.match(client, /vpnConnect/);
+  assert.match(client, /vpnDisconnect/);
+  assert.match(desktopPreload, /vpn:status/);
+  assert.match(desktopMain, /vpn:connect/);
+  assert.match(desktopMain, /vpn:disconnect/);
+  assert.equal(control.parseWindowsServiceState("STATE              : 4  RUNNING"), 4);
+  assert.equal(control.parseWindowsServiceState("STATE              : 1  STOPPED"), 1);
+
+  let serviceCode = 1;
+  const calls = [];
+  const run = async (file, args) => {
+    calls.push([file, ...args]);
+    if (args[0] === "start") serviceCode = 4;
+    return { stdout:`STATE              : ${serviceCode}  ${serviceCode === 4 ? "RUNNING" : "STOPPED"}`, stderr:"" };
+  };
+  const initial = await control.vpnState({ platform:"win32", execFileAsync:run });
+  assert.equal(initial.connected, false);
+  const connected = await control.setVpnConnected(true, { platform:"win32", execFileAsync:run, delay:async()=>{}, maxAttempts:2 });
+  assert.equal(connected.connected, true);
+  assert.deepEqual(calls.find((call) => call[1] === "start"), ["sc.exe", "start", "WireGuardTunnel$gernetix-vps"]);
+});
+
+test("detects Windows listener PIDs independently of the localized state label", () => {
+  assert.equal(control.pidFromWindowsNetstat("  TCP    127.0.0.1:4300    0.0.0.0:0    ABHÖREN    29384", 4300), 29384);
+  assert.equal(control.pidFromWindowsNetstat("  TCP    127.0.0.1:4800    0.0.0.0:0    LISTENING    26300", 4800), 26300);
+  assert.equal(control.pidFromWindowsNetstat("  TCP    127.0.0.1:4300    127.0.0.1:51000    ESTABLISHED    999", 4300), null);
+});
+
 test("monitor shows runtime alerts from persisted system and interface failures", () => {
   assert.match(html, /id="runtimeAlerts"/);
   assert.match(html, /Auffaelligkeiten/);
@@ -72,6 +104,32 @@ test("monitor shows runtime alerts from persisted system and interface failures"
   const alerts = control.runtimeAlerts(24);
   assert.equal(Array.isArray(alerts.items), true);
   assert.equal(typeof alerts.summary.errors, "number");
+});
+
+test("monitor shows all VPS protection rules with status and recommended action", async () => {
+  assert.match(html, /VPS-Schutzregeln/);
+  assert.match(html, /Empfohlene Massnahme/);
+  assert.match(client, /renderSecurity/);
+  assert.match(client, /securityRules/);
+  assert.match(desktopPreload, /security:rules/);
+  assert.match(desktopMain, /security:rules/);
+  const checks = control.parseSecurityCheckOutput("firewall_protection=active\nweb_rate_limit=missing\n");
+  assert.equal(checks.firewall_protection, "active");
+  assert.equal(checks.web_rate_limit, "missing");
+  const result = await control.securityRuleStates({
+    config:{ GERNETIX_STAGING_SSH:"root@gernetix-vps" },
+    execFileAsync:async()=>({ stdout:[
+      "firewall_protection=active",
+      "ssh_wireguard_only=active",
+      "web_rate_limit=missing",
+      "root_login_disabled=missing"
+    ].join("\n"), stderr:"" })
+  });
+  assert.ok(result.items.length >= 16);
+  assert.equal(result.items.find((item)=>item.id==="firewall").status, "active");
+  assert.equal(result.items.find((item)=>item.id==="web-rate").status, "pending");
+  assert.equal(result.items.find((item)=>item.id==="root-login").status, "open");
+  assert.ok(result.items.every((item)=>item.recommendation));
 });
 
 test("all local services start in order and retain individual failures", async () => {
