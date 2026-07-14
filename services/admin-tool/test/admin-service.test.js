@@ -378,6 +378,28 @@ test("ai context summary falls back when context service is unavailable", async 
   assert.match(result.summary.error, /ECONNREFUSED/);
 });
 
+test("admin exposes prioritized clarification cases and forwards review decisions", async () => {
+  const service = createAdminServiceWithHttpJson({});
+  const calls = [];
+  service.httpJson = async (_baseUrl, pathname, options = {}) => {
+    calls.push({ pathname, options });
+    if (pathname.startsWith("/api/ai-context/clarification-cases?")) {
+      return { summary:{total:2,open:1,urgent:1,resolved:1}, items:[{case_id:"case-1",priority:"urgent",status:"open"}] };
+    }
+    return { clarificationCase:{case_id:"case-1",status:"resolved"} };
+  };
+
+  const listed = await service.aiClarificationCases({status:"open",priority:"urgent"}, adminContext());
+  const resolved = await service.resolveAiClarificationCase("case-1", {action:"correct",intent:"architecture.add_component",entity:"ESP32"}, adminContext());
+
+  assert.equal(listed.summary.urgent, 1);
+  assert.equal(listed.items[0].case_id, "case-1");
+  assert.match(calls[0].pathname, /status=open/);
+  assert.match(calls[0].pathname, /priority=urgent/);
+  assert.equal(calls[1].options.body.resolved_by, "admin-1");
+  assert.equal(resolved.clarificationCase.status, "resolved");
+});
+
 test("llm config test uses OpenAI Responses API when configured", async () => {
   const service = createAdminServiceWithHttpJson({});
   let requestedUrl = "";

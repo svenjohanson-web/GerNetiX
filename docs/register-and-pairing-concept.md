@@ -186,6 +186,16 @@ API-Prefix im MVP:
 
 Spaetere Auslagerung bleibt moeglich, z. B. als eigener Dienst `devices.gernetix.com`.
 
+### Provisioning-Weg zuerst auswaehlen
+
+Der Provisioning-Bereich im Plattform-Frontend beginnt immer mit einer expliziten, nicht vorbelegten Wahl zwischen `WLAN` und `USB`. Beide Wege sind gegenseitig ausschliessend. Erst nach der Wahl wird der zugehoerige Ablauf angezeigt; ein Wechsel verwirft vorhandene Suchergebnisse und Zwischenzustaende des vorherigen Wegs.
+
+- `WLAN` sucht ausschliesslich bereits provisionierte Boards, auf denen die GerNetiX-Basissoftware laeuft und die im gleichen lokalen Netzwerk erreichbar sind. Dieser Hinweis muss vor Beginn der WLAN-Suche sichtbar sein.
+- `USB` ist der Weg fuer neue, blanke, fremd geflashte oder ueber WLAN nicht erreichbare Boards. Nur in diesem Ablauf werden USB-Port, Browser-Web-Serial und USB-nahe Fallbacks angeboten.
+- Vor der Suche werden weder Prozessorfamilie noch IoT-Device abgefragt, weil der aktive Transport den Erkennungsweg bestimmt und der Treffer sein Hardwareprofil liefert. Ein kurzer Board-Name wird erst angeboten, nachdem ein uebernehmbares Board gefunden wurde.
+
+Die Transportwahl aendert nicht die fachliche Trennung zwischen Provisionierung, Registrierung und Pairing. Sie bestimmt lediglich, wie das Board fuer den gefuehrten Ablauf erreicht wird.
+
 ### Connectivity Setup ist kein Pairing
 
 Der Device-Webserver darf das WLAN-Setup anbieten, aber dieses Setup ist fachlich vom Pairing getrennt.

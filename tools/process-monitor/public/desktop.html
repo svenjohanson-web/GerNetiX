@@ -1,1 +1,67 @@
-<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>GerNetiX Prozess-Monitor</title><link rel="stylesheet" href="styles.css"></head><body><main><header><div><p>GERNETIX DESKTOP</p><h1>Prozess-Monitor</h1></div><div class="toolbar"><button id="refresh">Aktualisieren</button></div></header><nav class="view-tabs"><button class="active" data-view="processView">Prozesse</button><button data-view="statisticsView">Schnittstellen-Statistik</button></nav><div id="processView"><section class="monitor-group"><div class="group-head"><div><p>LOKAL</p><h2>Entwicklungsprozesse</h2></div><span id="summary">Prüfe Dienste ...</span></div><section id="processes" class="process-grid" aria-live="polite"></section></section><section class="monitor-group"><div class="group-head"><div><p>STAGING VPS</p><h2>Container und OTA-Infrastruktur</h2></div><span id="vpsSummary">Prüfe VPS ...</span></div><section id="vpsProcesses" class="process-grid" aria-live="polite"></section><p id="vpsError" class="group-error"></p></section></div><div id="statisticsView" class="hidden"><section class="monitor-group"><div class="group-head"><div><p>LETZTE 24 STUNDEN</p><h2>Ausgehende Schnittstellenaufrufe</h2></div><span id="statisticsSummary">Noch keine Daten</span></div><section id="statisticsMetrics" class="statistics-metrics"></section><div class="statistics-table-wrap"><table><thead><tr><th>Quelle → Ziel</th><th>Aufrufe</th><th>Fehler</th><th>Ø Dauer</th><th>Maximum</th><th>Letzter Aufruf</th></tr></thead><tbody id="statisticsRows"></tbody></table></div><p id="statisticsError" class="group-error"></p></section></div><footer>Eigenständige Desktop-App · lokale Prozesse direkt steuern · VPS-Status sicher über den konfigurierten SSH-Zugang lesen</footer></main><script src="desktop-app.js"></script></body></html>
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>GerNetiX Prozess-Monitor</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <main>
+    <header>
+      <div><p>GERNETIX DESKTOP</p><h1>Prozess-Monitor</h1></div>
+      <div class="toolbar"><button id="refresh">Aktualisieren</button></div>
+    </header>
+    <nav class="view-tabs">
+      <button class="active" data-view="processView">Prozesse</button>
+      <button data-view="statisticsView">Schnittstellen-Statistik</button>
+    </nav>
+    <div id="processView">
+      <section class="monitor-group">
+        <div class="group-head">
+          <div><p>LOKAL</p><h2>Entwicklungsprozesse</h2></div>
+          <div class="group-actions">
+            <span id="summary">Prüfe Dienste ...</span>
+            <button id="startAllLocal" class="primary" title="Alle gestoppten lokalen Dienste starten">Alle lokalen Prozesse starten</button>
+          </div>
+        </div>
+        <section id="processes" class="process-grid" aria-live="polite"></section>
+      </section>
+      <section class="monitor-group runtime-alerts-group">
+        <div class="group-head">
+          <div><p>LETZTE 24 STUNDEN</p><h2>Auffaelligkeiten</h2></div>
+          <span id="alertsSummary">Keine Auffaelligkeiten</span>
+        </div>
+        <section id="runtimeAlerts" class="runtime-alert-list" aria-live="polite"></section>
+        <p id="alertsError" class="group-error"></p>
+      </section>
+      <section class="monitor-group">
+        <div class="group-head">
+          <div><p>STAGING VPS</p><h2>Container und OTA-Infrastruktur</h2></div>
+          <span id="vpsSummary">Prüfe VPS ...</span>
+        </div>
+        <section id="vpsProcesses" class="process-grid" aria-live="polite"></section>
+        <p id="vpsError" class="group-error"></p>
+      </section>
+    </div>
+    <div id="statisticsView" class="hidden">
+      <section class="monitor-group">
+        <div class="group-head">
+          <div><p>LETZTE 24 STUNDEN</p><h2>Ausgehende Schnittstellenaufrufe</h2></div>
+          <span id="statisticsSummary">Noch keine Daten</span>
+        </div>
+        <section id="statisticsMetrics" class="statistics-metrics"></section>
+        <div class="statistics-table-wrap">
+          <table>
+            <thead><tr><th>Quelle → Ziel</th><th>Aufrufe</th><th>Fehler</th><th>Ø Dauer</th><th>Maximum</th><th>Letzter Aufruf</th></tr></thead>
+            <tbody id="statisticsRows"></tbody>
+          </table>
+        </div>
+        <p id="statisticsError" class="group-error"></p>
+      </section>
+    </div>
+    <footer>Eigenständige Desktop-App · lokale Prozesse direkt steuern · VPS-Status sicher über den konfigurierten SSH-Zugang lesen</footer>
+  </main>
+  <script src="desktop-app.js"></script>
+</body>
+</html>

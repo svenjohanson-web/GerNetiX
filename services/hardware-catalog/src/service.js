@@ -45,6 +45,10 @@ class HardwareCatalogService {
       .filter((item) => !deprecatedProcessorBoardIds().has(item.hardware_item_id));
   }
 
+  listSensors() {
+    return this.listHardwareItems({ item_type: "sensor", status: "active" });
+  }
+
   upsertHardwareItem(input = {}) {
     const capabilityIds = normalizeList(input.capability_ids || input.capabilities);
     for (const capabilityId of capabilityIds) this.getCapability(capabilityId);
@@ -59,6 +63,9 @@ class HardwareCatalogService {
       module_name: input.module_name || "",
       vendor: input.vendor || "",
       form_factor: input.form_factor || "",
+      sensor_type_id: input.sensor_type_id || "",
+      measurement_kinds: normalizeList(input.measurement_kinds),
+      signal_type: input.signal_type || "",
       capability_ids: capabilityIds,
       identification_methods: normalizeList(input.identification_methods || input.identificationMethods),
       support_policy: input.support_policy || "community_usable_no_gernetix_hardware_entitlement",
@@ -66,6 +73,7 @@ class HardwareCatalogService {
       basissoftware_profile_id: input.basissoftware_profile_id || "",
       factory_firmware_artifact: input.factory_firmware_artifact || null,
       min_basissoftware_version: input.min_basissoftware_version || "",
+      pin_profile: input.pin_profile && typeof input.pin_profile === "object" ? input.pin_profile : {},
       default_instance_configuration: input.default_instance_configuration || {},
       status: input.status || "active",
     };

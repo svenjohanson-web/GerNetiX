@@ -119,7 +119,7 @@ test("prompt foundations are centrally available from ai context", () => {
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Verlange diese Fachbegriffe nicht vom Nutzer"));
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Shortcut fuer erfahrene Nutzer"));
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Ich moechte einen Observer"));
-  assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Wie viele Devices"));
+  assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Wie viele IoT-Devices"));
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("mehrere Datenlogger"));
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("mehrere Aktoransteuerungen"));
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Welche Sensoren/Ereignisse/Aktionen"));
@@ -156,6 +156,60 @@ test("prompt foundations can be updated centrally without identity code changes"
 
   assert.equal(prompt.content, "Nur aus AI Context gepflegte Prompt-Regel.");
   assert.equal(service.listPromptFoundations({ route_task: "architecture_discovery" })[0].content, "Nur aus AI Context gepflegte Prompt-Regel.");
+});
+
+test("clarification cases aggregate repeated uncertain utterances and gain priority", () => {
+  const service = createService();
+  const input = {
+    utterance: "Ich haette gerne ein zusaetzliches DSP32",
+    domain: "architecture",
+    suggested_intent: "architecture.add_component",
+    suggested_entity: "ESP32",
+    semantic_score: 0.52,
+    ambiguity_reason: "unknown_entity",
+  };
+
+  const first = service.recordClarificationCase(input);
+  const second = service.recordClarificationCase(input);
+  const result = service.listClarificationCases({ status: "open" });
+
+  assert.equal(first.case_id, second.case_id);
+  assert.equal(second.occurrence_count, 2);
+  assert.ok(second.priority_score > first.priority_score);
+  assert.equal(result.summary.open, 1);
+  assert.equal(result.items[0].suggested_entity, "ESP32");
+});
+
+test("confirmed clarification becomes an active intent example", () => {
+  const service = createService();
+  const clarificationCase = service.recordClarificationCase({
+    utterance: "Mach noch ein zweites Board rein",
+    suggested_intent: "architecture.add_component",
+    suggested_entity: "ESP32",
+    semantic_score: 0.61,
+  });
+
+  const resolved = service.resolveClarificationCase(clarificationCase.case_id, {
+    action: "confirm",
+    scope: "global",
+  });
+
+  assert.equal(resolved.status, "resolved");
+  assert.equal(resolved.confirmation_count, 1);
+  assert.equal(service.listIntentExamples({ status: "active" })[0].intent, "architecture.add_component");
+  assert.equal(service.searchIntentExamples("zweites Board", 3).items[0].entity, "ESP32");
+});
+
+test("account intent examples are isolated while global examples remain shared", () => {
+  const service = createService();
+  const privateCase = service.recordClarificationCase({utterance:"Mein Ausdruck",account_id:"acct-1",suggested_intent:"architecture.add_component",suggested_entity:"ESP32",semantic_score:0.5});
+  service.resolveClarificationCase(privateCase.case_id,{action:"confirm",scope:"account"});
+  const globalCase = service.recordClarificationCase({utterance:"Allgemeiner Ausdruck",account_id:"acct-1",suggested_intent:"architecture.add_component",suggested_entity:"ESP32",semantic_score:0.5});
+  service.resolveClarificationCase(globalCase.case_id,{action:"confirm",scope:"global"});
+
+  assert.equal(service.searchIntentExamples("Mein Ausdruck",5,"acct-2").items.some((item)=>item.utterance==="Mein Ausdruck"),false);
+  assert.equal(service.searchIntentExamples("Mein Ausdruck",5,"acct-1").items[0].scope,"account");
+  assert.equal(service.searchIntentExamples("Allgemeiner Ausdruck",5,"acct-2").items[0].scope,"global");
 });
 
 test("customer data stays blocked for external provider by global policy", () => {
@@ -255,6 +309,29 @@ test("sqlite repository persists prompt foundation updates", () => {
   try {
     const row = db.prepare("SELECT content FROM ai_context_prompt_foundations WHERE foundation_id = ?").get("ai_prompt.architecture_discovery.system");
     assert.equal(row.content, "Persistierte AI-Context-Prompt-Regel.");
+  } finally {
+    db.close();
+  }
+});
+
+test("sqlite repository persists clarification cases and intent examples", () => {
+  const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-ai-context-")), "ai-context.sqlite");
+  const service = new AiContextService({ repository: SqliteBackedAiContextRepository.create(dbPath), now: () => fixedNow });
+  const clarificationCase = service.recordClarificationCase({
+    utterance: "Noch einen DSP32",
+    suggested_intent: "architecture.add_component",
+    suggested_entity: "ESP32",
+    semantic_score: 0.48,
+  });
+  service.resolveClarificationCase(clarificationCase.case_id, { action: "correct", intent: "architecture.add_component", entity: "ESP32" });
+
+  const reloaded = new AiContextService({ repository: SqliteBackedAiContextRepository.create(dbPath), now: () => fixedNow });
+  assert.equal(reloaded.listClarificationCases().items[0].status, "resolved");
+  assert.equal(reloaded.listIntentExamples()[0].entity, "ESP32");
+  const db = new DatabaseSync(dbPath);
+  try {
+    assert.equal(tableCount(db, "ai_context_clarification_cases"), 1);
+    assert.equal(tableCount(db, "ai_context_intent_examples"), 1);
   } finally {
     db.close();
   }

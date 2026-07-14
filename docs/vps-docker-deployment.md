@@ -1,6 +1,6 @@
 # GerNetiX VPS Deployment mit Docker Compose
 
-Diese Struktur startet den vorhandenen GerNetiX-Kern auf einem Linux-VPS. Sie fuehrt keine PostgreSQL- oder FastAPI-Komponenten ein, weil der aktuelle GerNetiX-Stand Node.js und SQLite verwendet.
+Diese Struktur startet den vorhandenen GerNetiX-Kern auf einem Linux-VPS. Der AI Context Server verwendet eine interne PostgreSQL-17-Datenbank mit pgvector; die uebrigen bestehenden Node.js-Services behalten ihre jeweiligen SQLite-Persistenzen.
 
 ## Sicherheitsgrenze dieses ersten Stands
 
@@ -82,7 +82,8 @@ Compose legt benannte Volumes an:
 
 - `identity_state`: Identity-Accounts und Credentials
 - `service_state`: aktueller gemeinsamer SQLite-Service-State
-- `ai_context_state`: AI-Context-SQLite
+- `ai_context_postgres_data`: fuehrende AI-Context-PostgreSQL-/pgvector-Datenbank
+- `ai_context_state`: bisherige AI-Context-SQLite, nur fuer die einmalige automatische Uebernahme und als Rueckfallkopie
 - `build_state`: Build-Caches und Artefakte
 - `mqtt_data` und `mqtt_log`: Mosquitto
 
@@ -114,7 +115,7 @@ docker compose --env-file .env.vps -f compose.vps.yaml ps
 3. `HTTP_BIND_ADDRESS=0.0.0.0` erst mit aktivem HTTPS verwenden.
 4. Firewall auf SSH, HTTP und HTTPS begrenzen.
 5. Admin Tool nicht oeffentlich weiterleiten.
-6. SQLite-Volumes regelmaessig und konsistent sichern.
+6. SQLite-Volumes und `ai_context_postgres_data` nach dem verbindlichen [Sicherungs- und Wiederherstellungskonzept](customer-data-backup-and-recovery.md) konsistent, verschluesselt und ausserhalb des VPS sichern; Wiederherstellungen regelmaessig pruefen.
 7. Firewall-Port `8883/tcp` erst freigeben, wenn `mqtt.gernetix.com`, Let's Encrypt und mindestens ein Device-Credential eingerichtet sind.
 
 Deployment-Topologie: [vps-docker-topology.svg](vps-docker-topology.svg)

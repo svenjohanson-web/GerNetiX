@@ -24,6 +24,7 @@
       <nav id="aiSubNav" class="admin-subnav hidden" aria-label="KI Navigation">
         <button type="button" data-admin-sub-view="ai-usage">Usage</button>
         <button type="button" data-admin-sub-view="ai-context">Daten</button>
+        <button type="button" data-admin-sub-view="ai-clarifications">Klaerfaelle</button>
         <button type="button" data-admin-sub-view="llm-config">Routing</button>
       </nav>
 
@@ -344,6 +345,50 @@
           <dl id="adminLlmStatus" class="meta-list"></dl>
           <p class="helper-text">Die Standardroute kann OpenAI, Claude oder lokal sein. Kostenkritische Artefakt- und Codegenerierung kann separat lokal geroutet werden, damit externe Providerkosten nur dort entstehen, wo sie fachlich gewollt sind.</p>
         </aside>
+      </section>
+
+      <section id="aiClarificationsView" class="admin-view hidden">
+        <section class="metrics-grid" id="aiClarificationMetrics"></section>
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Intent-Qualitaet</p>
+              <h2>KI-Klaerfaelle</h2>
+            </div>
+            <div class="clarification-filters">
+              <select id="aiClarificationStatusFilter" aria-label="Status filtern">
+                <option value="open">Offen</option>
+                <option value="deferred">Zurueckgestellt</option>
+                <option value="resolved">Geklaert</option>
+                <option value="ignored">Ignoriert</option>
+                <option value="">Alle</option>
+              </select>
+              <select id="aiClarificationPriorityFilter" aria-label="Prioritaet filtern">
+                <option value="">Alle Prioritaeten</option>
+                <option value="urgent">Dringend</option>
+                <option value="high">Hoch</option>
+                <option value="normal">Normal</option>
+                <option value="low">Niedrig</option>
+              </select>
+              <button id="refreshAiClarificationsButton" type="button">Aktualisieren</button>
+            </div>
+          </div>
+          <div id="aiClarificationStatus" class="flash-status hidden"></div>
+          <div class="table-wrap">
+            <table class="clarification-table">
+              <thead>
+                <tr>
+                  <th>Prioritaet</th>
+                  <th>Formulierung</th>
+                  <th>Interpretation</th>
+                  <th>Signale</th>
+                  <th>Entscheidung</th>
+                </tr>
+              </thead>
+              <tbody id="aiClarificationRows"></tbody>
+            </table>
+          </div>
+        </section>
       </section>
 
       <section id="aiContextView" class="admin-view hidden">

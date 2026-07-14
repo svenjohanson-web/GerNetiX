@@ -94,3 +94,22 @@ test("workspace sizes persist locally per account without backend storage", () =
   assert.match(app, /chatInputHeight/);
   assert.doesNotMatch(app, /postJson\([^\n]*ideLayoutStorageKey/);
 });
+
+test("project tree includes modeled hardware components and links back to their configuration", () => {
+  assert.match(app, /function projectHardwareComponents\(project\)/);
+  assert.match(app, /"iot_device", "sensor", "actuator", "actor", "structural"/);
+  assert.match(app, /path: `Komponenten\/\$\{label\}\/\$\{configurationPath\}`/);
+  assert.match(app, /data-hardware-configuration/);
+  assert.match(app, /development-platform\/hardware\/\?project=/);
+});
+
+test("IDE hints include dirty files model code consistency and build freshness", () => {
+  assert.match(app, /ideDirtySources/);
+  assert.match(app, /markIdeSourceDirty/);
+  assert.match(app, /Ungespeicherte Datei/);
+  assert.match(app, /Modell-Dateien und Quellcode-Dateien sind strukturell konsistent vorhanden/);
+  assert.match(app, /Inkonsistent: Modell-Dateien vorhanden/);
+  assert.match(app, /Build ist nicht aktuell, weil Dateien ungespeichert sind/);
+  assert.match(app, /Letzter Build ist erfolgreich und zu den gespeicherten Dateien passend/);
+  assert.match(app, /latestBuildForProject/);
+});

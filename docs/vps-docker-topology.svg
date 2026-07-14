@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX VPS Docker Topologie</title>
-  <desc id="desc">Nginx als einziger oeffentlicher Einstieg, Identity Server und Domaenenservices im internen Netz, internes Mosquitto sowie getrennte persistente SQLite-Volumes.</desc>
+  <desc id="desc">Nginx als einziger oeffentlicher Einstieg, interne Domaenenservices und getrennte persistente SQLite- und PostgreSQL-Volumes.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker>
     <style>
@@ -35,7 +35,7 @@
   <text class="label" x="62" y="580">Persistente Docker-Volumes</text>
   <rect class="store" x="62" y="605" width="230" height="66" rx="10"/><text class="label" x="177" y="633" text-anchor="middle">Identity SQLite</text><text class="small" x="177" y="653" text-anchor="middle">identity_state</text>
   <rect class="store" x="326" y="605" width="230" height="66" rx="10"/><text class="label" x="441" y="633" text-anchor="middle">Service SQLite</text><text class="small" x="441" y="653" text-anchor="middle">service_state</text>
-  <rect class="store" x="590" y="605" width="230" height="66" rx="10"/><text class="label" x="705" y="633" text-anchor="middle">AI Context SQLite</text><text class="small" x="705" y="653" text-anchor="middle">ai_context_state</text>
+  <rect class="store" x="590" y="605" width="230" height="66" rx="10"/><text class="label" x="705" y="633" text-anchor="middle">AI Context PostgreSQL</text><text class="small" x="705" y="653" text-anchor="middle">pgvector · ai_context_postgres_data</text>
   <rect class="store" x="854" y="605" width="230" height="66" rx="10"/><text class="label" x="969" y="633" text-anchor="middle">Build / MQTT State</text><text class="small" x="969" y="653" text-anchor="middle">build_state, mqtt_data</text>
 
   <text class="small" x="45" y="705">HTTPS, oeffentliches MQTT und externe Provider werden erst nach Domain-, Zertifikats-, Secret- und ACL-Konfiguration freigeschaltet.</text>

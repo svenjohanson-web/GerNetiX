@@ -1,6 +1,6 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { buildArchitectureDiagram, createDevelopmentAssistant, plantUmlFunctionCoverage } = require("../src/dev/development-assistant");
+const { architectureIntentContext, buildArchitectureDiagram, createDevelopmentAssistant, plantUmlFunctionCoverage } = require("../src/dev/development-assistant");
 
 const ARCHITECTURE_PROMPT = [
   "AI Context Architektur-Prompt.",
@@ -44,6 +44,22 @@ async function promptFoundationJson(pathname = "") {
   };
 }
 
+test("uncertain architecture additions create a clarification case", async () => {
+  const writes = [];
+  const context = await architectureIntentContext([{ role:"user", content:"Ich haette gerne ein zusaetzliches DSP32" }], async (pathname, options = {}) => {
+    if (pathname.startsWith("/api/ai-context/intent-examples/search")) return {strategy:"pgvector",items:[]};
+    if (pathname.startsWith("/api/ai-context/architecture-components/search")) return {strategy:"pgvector",items:[{component_id:"arch_component.esp32",name:"ESP32",semantic_score:0.63}]};
+    if (pathname === "/api/ai-context/clarification-cases") { writes.push(options.body); return {clarificationCase:{case_id:"case-1"}}; }
+    return {};
+  }, {accountId:"acct-1",projectId:"project-1"});
+
+  assert.equal(writes.length, 1);
+  assert.equal(writes[0].suggested_intent, "architecture.add_component");
+  assert.equal(writes[0].suggested_entity, "ESP32");
+  assert.equal(writes[0].ambiguity_reason, "low_confidence");
+  assert.match(context.prompt, /Moegliches Ziel: ESP32/);
+});
+
 test("builds a PlantUML architecture sketch from the AI architecture result", () => {
   const diagram = buildArchitectureDiagram([
     {
@@ -66,11 +82,11 @@ test("builds a PlantUML architecture sketch from the AI architecture result", ()
 
   assert.equal(diagram.type, "plantuml");
   assert.match(diagram.source, /^@startuml/);
-  assert.match(diagram.source, /node "IoT Device \/ ESP32" as device/);
+  assert.match(diagram.source, /rectangle "IoT Device \/ ESP32" as device/);
   assert.match(diagram.source, /rectangle "Backend \/ API\\n--\\nSoftware: SQL\/SQLite" as backend/);
   assert.match(diagram.source, /rectangle "Mobile App" as mobile/);
   assert.doesNotMatch(diagram.source, /database "Persistenz" as database/);
-  assert.match(diagram.source, /cloud "Cloud \/ Internet" as cloud/);
+  assert.match(diagram.source, /rectangle "Cloud \/ Internet" as cloud/);
   assert.doesNotMatch(diagram.source, /-->|\.\.>/);
   assert.doesNotMatch(diagram.source, /actor "Nutzer"|Projektidee \/ Anforderungen|requirements|note right/);
   assert.equal(diagram.derived_from, "architecture_discovery_ai_response");
@@ -84,7 +100,7 @@ test("adds an actor only when an explicit interface is part of the structure", (
     { role: "assistant", content: "Struktur: ESP32 mit Webserver-Interface fuer Kundenzugriff." },
   ]);
 
-  assert.match(diagram.source, /node "IoT Device \/ ESP32" as device/);
+  assert.match(diagram.source, /rectangle "IoT Device \/ ESP32" as device/);
   assert.match(diagram.source, /rectangle "Webserver" as webserver/);
   assert.match(diagram.source, /rectangle "Browser" as browser/);
   assert.match(diagram.source, /actor "Kunde" as actor/);
@@ -98,7 +114,7 @@ test("models ESP32 local storage without inventing a server database", () => {
     { role: "assistant", content: "Die Messwerte bleiben lokal auf dem ESP32 gespeichert." },
   ]);
 
-  assert.match(diagram.source, /node "IoT Device \/ ESP32" as device/);
+  assert.match(diagram.source, /rectangle "IoT Device \/ ESP32" as device/);
   assert.doesNotMatch(diagram.source, /database "Persistenz"|SQLite|Backend \/ API/);
   assert.equal(diagram.detected_blocks.includes("database"), false);
 });
@@ -111,7 +127,7 @@ test("extends an ESP32 structure with user browser access when a webserver provi
     { role: "assistant", content: "Der ESP32 stellt Messdaten ueber einen Webserver bereit." },
   ]);
 
-  assert.match(diagram.source, /node "IoT Device \/ ESP32" as device/);
+  assert.match(diagram.source, /rectangle "IoT Device \/ ESP32" as device/);
   assert.match(diagram.source, /rectangle "Webserver" as webserver/);
   assert.match(diagram.source, /rectangle "Browser" as browser/);
   assert.match(diagram.source, /actor "Nutzer" as actor/);
@@ -125,7 +141,7 @@ test("shows browser, ESP32 and backend as structure without arrows in one PlantU
     { role: "assistant", content: "Struktur: ESP32 Device, Browser UI und Backend/API. Browser nutzt lokale ESP32 Device UI und Backend API." },
   ]);
 
-  assert.match(diagram.source, /node "IoT Device \/ ESP32" as device/);
+  assert.match(diagram.source, /rectangle "IoT Device \/ ESP32" as device/);
   assert.match(diagram.source, /rectangle "Browser" as browser/);
   assert.match(diagram.source, /rectangle "Backend \/ API" as backend/);
   assert.doesNotMatch(diagram.source, /-->|\.\.>/);
@@ -317,7 +333,7 @@ test("does not add backend clarification note for explicit minimal ESP32 diagram
     { role: "assistant", content: "Minimale Struktur: Nutzer -> ESP32-Port." },
   ]);
 
-  assert.match(diagram.source, /node "ESP32" as esp32/);
+  assert.match(diagram.source, /rectangle "ESP32" as esp32/);
   assert.doesNotMatch(diagram.source, /IoT Device \/ ESP32/);
   assert.doesNotMatch(diagram.source, /Nutzer|Projektidee \/ Anforderungen|requirements|-->|note right/);
   assert.doesNotMatch(diagram.source, /Noch klaeren: nur lokales Device oder Backend\/Persistenz/);
@@ -382,7 +398,7 @@ test("uses configured route for ESP32-only architecture requests", async () => {
   assert.equal(payload.body.routing.costPolicy, "external_costs");
   assert.equal(payload.body.routing.requestComplexity, "configured_route");
   assert.equal(payload.body.usage.totalTokens, 11);
-  assert.match(payload.body.architectureDiagram.source, /node "ESP32" as esp32/);
+  assert.match(payload.body.architectureDiagram.source, /rectangle "ESP32" as esp32/);
   assert.doesNotMatch(payload.body.architectureDiagram.source, /IoT Device \/ ESP32/);
   assert.doesNotMatch(payload.body.architectureDiagram.source, /Nutzer|Projektidee \/ Anforderungen|requirements|-->|note right/);
   assert.doesNotMatch(payload.body.architectureDiagram.source, /Mobile App/);
@@ -440,7 +456,7 @@ test("uses configured route for plain bitte ESP32 only requests", async () => {
   assert.equal(payload.status, 200);
   assert.equal(payload.body.usedLocalRoute, false);
   assert.equal(payload.body.usage.totalTokens, 11);
-  assert.match(payload.body.architectureDiagram.source, /node "ESP32" as esp32/);
+  assert.match(payload.body.architectureDiagram.source, /rectangle "ESP32" as esp32/);
   assert.doesNotMatch(payload.body.architectureDiagram.source, /Nutzer|Projektidee \/ Anforderungen|requirements|-->|note right|IoT Device \/ ESP32/);
   assert.doesNotMatch(payload.body.architectureDiagram.source, /Mobile App|Backend \/ API|Cloud \/ Internet|HomeServer|Persistenz/);
 });
@@ -451,7 +467,7 @@ test("keeps ESP32-only diagrams minimal even when assistant text mentions exclud
     { role: "assistant", content: "Keine Mobile App, kein Backend, keine Cloud, kein HomeServer, keine Datenbank." },
   ]);
 
-  assert.match(diagram.source, /node "ESP32" as esp32/);
+  assert.match(diagram.source, /rectangle "ESP32" as esp32/);
   assert.doesNotMatch(diagram.source, /IoT Device \/ ESP32/);
   assert.doesNotMatch(diagram.source, /Nutzer|Projektidee \/ Anforderungen|requirements|-->|note right/);
   assert.doesNotMatch(diagram.source, /Mobile App/);
@@ -469,7 +485,7 @@ test("reduces diagram from AI answer when latest request keeps only ESP32", () =
     { role: "assistant", content: "ESP32" },
   ]);
 
-  assert.match(diagram.source, /node "ESP32" as esp32/);
+  assert.match(diagram.source, /rectangle "ESP32" as esp32/);
   assert.doesNotMatch(diagram.source, /IoT Device \/ ESP32/);
   assert.doesNotMatch(diagram.source, /Browser UI|Mobile App|Backend \/ API|MQTT Broker|Persistenz|Cloud \/ Internet|-->/);
   assert.deepEqual(diagram.detected_blocks, ["minimalScope", "device"]);
@@ -523,7 +539,7 @@ test("keeps architecture-only-with-ESP32 wording on the configured route path", 
   assert.equal(payload.status, 200);
   assert.equal(payload.body.usedLocalRoute, false);
   assert.equal(payload.body.usage.totalTokens, 11);
-  assert.match(payload.body.architectureDiagram.source, /node "ESP32" as esp32/);
+  assert.match(payload.body.architectureDiagram.source, /rectangle "ESP32" as esp32/);
   assert.doesNotMatch(payload.body.architectureDiagram.source, /Nutzer|Projektidee \/ Anforderungen|requirements|-->|note right|IoT Device \/ ESP32/);
   assert.doesNotMatch(payload.body.architectureDiagram.source, /Mobile App|Backend \/ API|Cloud \/ Internet|HomeServer|Persistenz/);
 });
@@ -534,7 +550,7 @@ test("keeps architecture-only-with-ESP32 diagrams minimal", () => {
     { role: "assistant", content: "Keine Mobile App, kein Backend, keine Cloud, kein HomeServer, keine Datenbank." },
   ]);
 
-  assert.match(diagram.source, /node "ESP32" as esp32/);
+  assert.match(diagram.source, /rectangle "ESP32" as esp32/);
   assert.doesNotMatch(diagram.source, /Nutzer|Projektidee \/ Anforderungen|requirements|-->|note right|IoT Device \/ ESP32/);
   assert.doesNotMatch(diagram.source, /Mobile App|Backend \/ API|Cloud \/ Internet|HomeServer|Persistenz/);
 });
@@ -595,7 +611,7 @@ test("uses ai context prompt rules for ausschliesslich ESP32 requests and keeps 
   assert.match(requestBody.messages[0].content, /AI Context Architektur-Prompt/);
   assert.match(payload.body.message.content, /Ich nehme eine lokale Bedienung/);
   assert.equal(requestBody.model, "gpt-expensive");
-  assert.match(payload.body.architectureDiagram.source, /node "ESP32" as esp32/);
+  assert.match(payload.body.architectureDiagram.source, /rectangle "ESP32" as esp32/);
   assert.doesNotMatch(payload.body.architectureDiagram.source, /Nutzer|Projektidee \/ Anforderungen|requirements|-->|note right|IoT Device \/ ESP32/);
   assert.doesNotMatch(payload.body.architectureDiagram.source, /Mobile App|Backend \/ API|Cloud \/ Internet|HomeServer|Persistenz|Noch klaeren/);
 });
@@ -893,9 +909,62 @@ test("answers architecture pattern quick prompts locally without provider call",
   assert.equal(payload.body.routing.costPolicy, "no_llm_call");
   assert.equal(payload.body.usage.totalTokens, 0);
   assert.match(payload.body.message.content, /Observer passt/);
-  assert.match(payload.body.message.content, /Welches Ereignis/);
+  assert.match(payload.body.message.content, /Welches Ereignis soll ueberwacht/);
+  assert.match(payload.body.message.content, /Sensor/);
+  assert.doesNotMatch(payload.body.message.content, /Wie viele IoT-Devices/);
+  assert.doesNotMatch(payload.body.message.content, /Wie viele Devices/);
   assert.doesNotMatch(payload.body.message.content, /Provider|Admin Tool|Zugangsdaten/);
   assert.equal(Object.hasOwn(payload.body, "architectureDiagram"), false);
+});
+
+test("answers data logger quick prompt with measured quantity and sensor clarification", async () => {
+  const previousFetch = global.fetch;
+  let providerCalled = false;
+  let payload = null;
+  global.fetch = async (url) => {
+    providerCalled = true;
+    throw new Error(`Provider should not be called: ${url}`);
+  };
+  const assistant = createDevelopmentAssistant({
+    aiContextJson: promptFoundationJson,
+    aiUsageJson: async () => {
+      throw new Error("AI usage should not be called");
+    },
+    llmConfigStore: {
+      publicConfig: () => ({ provider: "api", apiProvider: "openai-responses", apiModel: "gpt-5.5" }),
+      resolveRoute: () => ({
+        provider: "api",
+        apiProvider: "openai-responses",
+        apiBaseUrl: "https://api.openai.example/v1",
+        apiModel: "gpt-5.5",
+      }),
+    },
+    projectServerUserId: () => "usr_demo",
+    readJsonBody: async () => ({
+      projectId: "dev_project_quick_prompt",
+      messages: [{ role: "user", content: "Ich moechte einen Datenlogger" }],
+    }),
+    requireProjectAccess: async () => ({ area: "development_project" }),
+    sendJson: (res, status, body) => {
+      payload = { status, body };
+    },
+  });
+
+  try {
+    await assistant.handleChat({}, {}, { account: { user_id: "usr_demo" } });
+  } finally {
+    global.fetch = previousFetch;
+  }
+
+  assert.equal(providerCalled, false);
+  assert.equal(payload.status, 200);
+  assert.equal(payload.body.usedDialogControl, true);
+  assert.equal(payload.body.routing.provider, "dialog_control");
+  assert.equal(payload.body.usage.totalTokens, 0);
+  assert.match(payload.body.message.content, /Datenlogger passt/);
+  assert.match(payload.body.message.content, /physikalische Groesse/);
+  assert.match(payload.body.message.content, /Sensor/);
+  assert.doesNotMatch(payload.body.message.content, /Wie viele IoT-Logger/);
 });
 
 test("lists architecture patterns locally without provider call", async () => {
@@ -1189,7 +1258,7 @@ test("reduces max architecture to only ESP32 locally without provider call", asy
   assert.equal(payload.body.routing.costPolicy, "no_llm_call");
   assert.equal(payload.body.usage.totalTokens, 0);
   assert.match(payload.body.message.content, /auf ESP32 reduziert/);
-  assert.match(payload.body.architectureDiagram.source, /node "ESP32" as esp32/);
+  assert.match(payload.body.architectureDiagram.source, /rectangle "ESP32" as esp32/);
   assert.doesNotMatch(payload.body.architectureDiagram.source, /Browser UI|Mobile App|Backend \/ API|MQTT Broker|Persistenz|Cloud \/ Internet|-->/);
   assert.deepEqual(payload.body.architectureDiagram.detected_blocks, ["device"]);
 });

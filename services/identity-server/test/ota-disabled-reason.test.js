@@ -28,10 +28,12 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /browser-usb-flash-result/);
   assert.match(app, /Automatisch \(kein USB-Port erkannt\)/);
   assert.doesNotMatch(app, /<details class="ide-tree-folder"[^>]* open>/);
-  assert.match(app, /function projectRealizationsTreeEntry/);
-  assert.match(app, /Architektur\/Realisierungen/);
-  assert.match(app, /data-project-realizations/);
-  assert.match(app, /Komponenten und Realisierungen/);
+  assert.doesNotMatch(app, /function projectRealizationsTreeEntry/);
+  assert.doesNotMatch(app, /Architektur\/Realisierungen/);
+  assert.doesNotMatch(app, /data-project-realizations|<h3>Inventar-Device zuordnen<\/h3>/);
+  assert.match(app, /function isArchitectureBaselinePath/);
+  assert.match(app, /Freigegebene Architektur-Baseline/);
+  assert.match(app, /!ideSourceIsEditable\(project, state\.sourcePath\)/);
   assert.match(app, /component_device_allocations/);
   assert.match(app, /function appendIdeTerminal/);
 });

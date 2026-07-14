@@ -56,6 +56,11 @@ function createDevHardwareUtils({
     }
   }
 
+  async function loadSensors() {
+    const response = await hardwareCatalogJson("/api/hardware-catalog/sensors");
+    return response.items || [];
+  }
+
   function embeddedProcessorBoards() {
     return (defaultCatalogSeed().hardwareItems || [])
       .filter((item) => item.item_type === "processor_board")
@@ -252,6 +257,7 @@ function createDevHardwareUtils({
     isUsbFlashDevice,
     listUsbSerialPorts,
     loadProcessorBoards,
+    loadSensors,
     normalizeGerNetixNodeName,
     renderPlatformioIni,
     requiredField,

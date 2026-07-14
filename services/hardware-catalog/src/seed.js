@@ -23,6 +23,12 @@ function defaultCatalogSeed() {
       capability("capability.fallback_unlock", "Fallback-Entriegelung"),
       capability("capability.digital_input", "Digitaler Eingang"),
       capability("capability.digital_output", "Digitaler Ausgang"),
+      capability("capability.analog_input", "Analoger Eingang"),
+      capability("capability.pulse_counter", "Impulszaehler"),
+      capability("capability.quadrature_counter", "Inkrementalgeber A/B"),
+      capability("capability.i2c", "I2C"),
+      capability("capability.one_wire", "1-Wire"),
+      capability("capability.uart", "UART"),
     ],
     hardwareItems: [
       avrBoard({
@@ -102,6 +108,31 @@ function defaultCatalogSeed() {
         module_name: "ESP32-C6-WROOM-1",
         mcu_variant: "ESP32-C6",
       }),
+      sensor({ id: "pt1000", title: "PT1000 Widerstandsthermometer", measurements: ["temperature"], signal: "analog", capabilities: ["capability.analog_input"] }),
+      sensor({ id: "ntc", title: "NTC-Temperatursensor", measurements: ["temperature"], signal: "analog", capabilities: ["capability.analog_input"] }),
+      sensor({ id: "ptc", title: "PTC-Temperatursensor", measurements: ["temperature"], signal: "analog", capabilities: ["capability.analog_input"] }),
+      sensor({ id: "ds18b20", title: "DS18B20 Temperatursensor", measurements: ["temperature"], signal: "one_wire", capabilities: ["capability.one_wire"] }),
+      sensor({ id: "dht22", title: "DHT22 Temperatur- und Feuchtesensor", measurements: ["temperature", "humidity"], signal: "digital", capabilities: ["capability.digital_input"] }),
+      sensor({ id: "bme280", title: "BME280 Temperatur-, Feuchte- und Drucksensor", measurements: ["temperature", "humidity", "pressure"], signal: "i2c", capabilities: ["capability.i2c"] }),
+      sensor({ id: "soil_moisture_analog", title: "Kapazitiver Bodenfeuchtesensor", measurements: ["soil_moisture"], signal: "analog", capabilities: ["capability.analog_input"] }),
+      sensor({ id: "ldr", title: "LDR Fotowiderstand", measurements: ["light"], signal: "analog", capabilities: ["capability.analog_input"] }),
+      sensor({ id: "bh1750", title: "BH1750 Helligkeitssensor", measurements: ["light"], signal: "i2c", capabilities: ["capability.i2c"] }),
+      sensor({ id: "hc_sr04", title: "HC-SR04 Ultraschall-Abstandssensor", measurements: ["distance"], signal: "pulse_counter", capabilities: ["capability.pulse_counter"] }),
+      sensor({ id: "reed_contact", title: "Reedkontakt", measurements: ["contact"], signal: "digital", capabilities: ["capability.digital_input"] }),
+      sensor({ id: "hall_a3144", title: "A3144 Hall-Schaltsensor", measurements: ["magnetic_field"], signal: "digital", capabilities: ["capability.digital_input"] }),
+      sensor({ id: "hall_ss49e", title: "SS49E linearer Hallsensor", measurements: ["magnetic_field"], signal: "analog", capabilities: ["capability.analog_input"] }),
+      sensor({ id: "incremental_encoder_ab", title: "Inkrementalgeber A/B", measurements: ["position", "rotation"], signal: "incremental_ab", capabilities: ["capability.quadrature_counter"] }),
+      sensor({ id: "pulse_encoder", title: "Einspuriger Impulsgeber", measurements: ["rotation", "speed"], signal: "pulse_counter", capabilities: ["capability.pulse_counter"] }),
+      sensor({ id: "adxl335", title: "ADXL335 Beschleunigungssensor", measurements: ["acceleration"], signal: "analog", capabilities: ["capability.analog_input"] }),
+      sensor({ id: "adxl345", title: "ADXL345 Beschleunigungssensor", measurements: ["acceleration"], signal: "i2c", capabilities: ["capability.i2c"] }),
+      sensor({ id: "mpu6050", title: "MPU6050 Beschleunigungs- und Drehratensensor", measurements: ["acceleration", "rotation"], signal: "i2c", capabilities: ["capability.i2c"] }),
+      sensor({ id: "pir", title: "PIR-Bewegungssensor", measurements: ["motion"], signal: "digital", capabilities: ["capability.digital_input"] }),
+      sensor({ id: "water_level_analog", title: "Analoger Wasserstandssensor", measurements: ["level"], signal: "analog", capabilities: ["capability.analog_input"] }),
+      sensor({ id: "float_switch", title: "Schwimmerschalter", measurements: ["level"], signal: "digital", capabilities: ["capability.digital_input"] }),
+      sensor({ id: "acs712", title: "ACS712 Stromsensor", measurements: ["current"], signal: "analog", capabilities: ["capability.analog_input"] }),
+      sensor({ id: "voltage_divider", title: "Spannungsteiler-Messung", measurements: ["voltage"], signal: "analog", capabilities: ["capability.analog_input"] }),
+      sensor({ id: "bmp280", title: "BMP280 Drucksensor", measurements: ["pressure"], signal: "i2c", capabilities: ["capability.i2c"] }),
+      sensor({ id: "load_cell_hx711", title: "Waegezelle mit HX711", measurements: ["weight", "force"], signal: "digital", capabilities: ["capability.digital_input"] }),
       esp32Board({
         hardware_item_id: "hardware.processor_board.espressif_esp32_c6_devkitc_1",
         sku: "GNX-ESP32-C6-DEVKITC-1",
@@ -156,6 +187,12 @@ function avrBoard(input) {
     basissoftware_profile_id: "",
     factory_firmware_artifact: null,
     min_basissoftware_version: "",
+    pin_profile: {
+      analog_inputs: ["A0", "A1", "A2", "A3", "A4", "A5", "A6", "A7"],
+      digital_pins: ["D2", "D3", "D4", "D5", "D6", "D7", "D8", "D9", "D10", "D11", "D12", "D13"],
+      pwm_pins: ["D3", "D5", "D6", "D9", "D10", "D11"],
+      i2c: ["SDA A4 + SCL A5"],
+    },
     default_instance_configuration: {},
     status: "active",
   };
@@ -170,6 +207,12 @@ function esp8266Board(input) {
     basissoftware_profile_id: "basissoftware.profile.esp8266_factory",
     provisioning_profile_id: "provisioning_profile.esp8266_basissoftware",
     min_basissoftware_version: "0.1.0",
+    pin_profile: {
+      analog_inputs: ["A0"],
+      digital_pins: ["D1 / GPIO5", "D2 / GPIO4", "D5 / GPIO14", "D6 / GPIO12", "D7 / GPIO13"],
+      pwm_pins: ["D1 / GPIO5", "D2 / GPIO4", "D5 / GPIO14", "D6 / GPIO12", "D7 / GPIO13"],
+      i2c: ["SDA D2 / GPIO4 + SCL D1 / GPIO5"],
+    },
   });
 }
 
@@ -181,6 +224,12 @@ function esp32Board(input) {
     basissoftware_profile_id: "basissoftware.profile.esp32_factory",
     provisioning_profile_id: "provisioning_profile.esp32_ota_bootstrap",
     min_basissoftware_version: "0.1.0",
+    pin_profile: {
+      analog_inputs: ["GPIO32 / ADC1_CH4", "GPIO33 / ADC1_CH5", "GPIO34 / ADC1_CH6", "GPIO35 / ADC1_CH7", "GPIO36 / ADC1_CH0", "GPIO39 / ADC1_CH3"],
+      digital_pins: ["GPIO4", "GPIO5", "GPIO12", "GPIO13", "GPIO14", "GPIO16", "GPIO17", "GPIO18", "GPIO19", "GPIO21", "GPIO22", "GPIO23", "GPIO25", "GPIO26", "GPIO27"],
+      pwm_pins: ["GPIO4", "GPIO5", "GPIO12", "GPIO13", "GPIO14", "GPIO18", "GPIO19", "GPIO23", "GPIO25", "GPIO26", "GPIO27"],
+      i2c: ["SDA GPIO21 + SCL GPIO22"],
+    },
     factory_firmware_artifact: {
       artifact_id: "firmware_artifact.esp32_basissoftware_factory.latest",
       source: "sqlite",
@@ -215,6 +264,7 @@ function networkBoard(input) {
       display: { configurable: true, optional: true },
       sound: { configurable: true, optional: true },
     },
+    pin_profile: input.pin_profile || {},
     status: "active",
   };
 }
@@ -224,6 +274,23 @@ function capability(capabilityId, title) {
     capability_id: capabilityId,
     title,
     owner_domain: "Hardware",
+    status: "active",
+  };
+}
+
+function sensor(input) {
+  return {
+    hardware_item_id: `hardware.sensor.${input.id}`,
+    sku: `GNX-SENSOR-${input.id.toUpperCase().replace(/[^A-Z0-9]+/g, "-")}`,
+    item_type: "sensor",
+    sensor_type_id: input.id,
+    title: input.title,
+    summary: input.summary || input.title,
+    measurement_kinds: input.measurements,
+    signal_type: input.signal,
+    capability_ids: input.capabilities,
+    support_policy: "component_support",
+    provisioning_profile_id: "",
     status: "active",
   };
 }

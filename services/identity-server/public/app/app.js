@@ -6,6 +6,8 @@ const state = {
   discoveredDevices: [],
   avrBootloaderResult: null,
   processorBoards: [],
+  sensorCatalog: [],
+  sensorCatalogStatus: { state: "idle", message: "" },
   builds: [],
   billing: null,
   aiUsage: null,
@@ -18,15 +20,15 @@ const state = {
   recoveryCheckResult: null,
   activeLearnTab: "catalog",
   projectFilter: "all",
-  inventoryProcessorFamily: "",
-  inventoryHardwareType: "",
   inventoryEsp32Method: "",
   activeStep: 0,
   activeIdeStep: 0,
   guidedCodeChats: {},
   sourcePath: "src/main.cpp",
   projectSourcesByProjectId: {},
+  ideDirtySources: {},
   ideViewMode: "file",
+  activeIdeComponentId: "",
   developmentPlatform: null,
   esptoolModule: null,
   activeSerialTransport: null,
@@ -36,6 +38,7 @@ const state = {
 const routeMap = {
   dashboard: "dashboardView",
   "development-platform": "developmentPlatformView",
+  "development-hardware": "developmentHardwareView",
   learn: "learnView",
   ide: "ideView",
   "device-management": "deviceManagementView",
@@ -95,6 +98,7 @@ function developmentPlatform() {
       state,
       postJson,
       openProjectInIde,
+      navigate,
       escapeHtml,
       escapeAttribute,
       meta,
@@ -137,14 +141,24 @@ document.querySelectorAll("[data-device-management-route]").forEach((button) => 
   button.addEventListener("click", () => navigate(button.dataset.deviceManagementRoute));
 });
 document.querySelector("#ideProjectBrowser").addEventListener("click", (event) => {
-  const realizationsButton = event.target.closest("[data-project-realizations]");
-  if (realizationsButton) {
-    openProjectRealizations();
+  const boardPropertiesButton = event.target.closest("[data-board-properties]");
+  if (boardPropertiesButton) {
+    openBoardProperties(boardPropertiesButton.dataset.boardProperties);
+    return;
+  }
+  const hardwareConfigurationButton = event.target.closest("[data-hardware-configuration]");
+  if (hardwareConfigurationButton) {
+    navigate(`/app/development-platform/hardware/?project=${encodeURIComponent(state.activeProjectId)}`);
     return;
   }
   const componentFeaturesButton = event.target.closest("[data-component-features]");
   if (componentFeaturesButton) {
     openComponentFeatures();
+    return;
+  }
+  const webserverConfigurationButton = event.target.closest("[data-webserver-configuration]");
+  if (webserverConfigurationButton) {
+    openWebserverConfiguration();
     return;
   }
   const deviceWebButton = event.target.closest("[data-device-web]");
@@ -166,17 +180,23 @@ document.querySelector("#usbFlashButton").addEventListener("click", startUsbFlas
 document.querySelector("#otaFlashButton").addEventListener("click", startOtaFlash);
 document.querySelector("#checkOtaConnectivityButton").addEventListener("click", checkAllocatedDeviceConnectivity);
 document.querySelector("#clearIdeTerminalButton").addEventListener("click", clearIdeTerminal);
+document.querySelector("#showIdeTerminalButton").addEventListener("click", () => setIdeConsoleView("terminal"));
+document.querySelector("#showIdeProjectInformationButton").addEventListener("click", () => setIdeConsoleView("project-information"));
+document.querySelector("#showIdeProjectHintsButton").addEventListener("click", () => setIdeConsoleView("hints"));
+document.querySelector("#sourceEditor").addEventListener("input", () => markIdeSourceDirty());
 document.addEventListener("keydown", (event) => {
   if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s") return;
   if (document.querySelector("#ideView")?.classList.contains("hidden") || !state.activeProjectId) return;
   event.preventDefault();
   saveSource();
 });
-document.querySelector("#ideRealizationView").addEventListener("click", (event) => {
-  const button = event.target.closest("[data-allocate-component]");
-  if (button) allocateIdeDevice(button.dataset.allocateComponent);
-});
 document.querySelector("#ideComponentFeaturesView").addEventListener("submit", saveComponentFeatures);
+document.querySelector("#ideBoardPropertiesView").addEventListener("click", (event) => {
+  if (event.target.closest("[data-open-hardware-configuration]")) {
+    navigate(`/app/development-platform/hardware/?project=${encodeURIComponent(state.activeProjectId)}`);
+  }
+});
+document.querySelector("#ideBoardPropertiesView").addEventListener("submit", saveBoardPeripheralUsage);
 document.querySelector("#ideDeviceWebView").addEventListener("submit", loadDeviceWebPreview);
 document.querySelector("#recoveryDeviceSelect").addEventListener("change", () => {
   state.activeRecoveryDeviceId = document.querySelector("#recoveryDeviceSelect").value;
@@ -186,13 +206,13 @@ document.querySelector("#recoveryDeviceSelect").addEventListener("change", () =>
 document.querySelector("#refreshRecoveryDevicesButton").addEventListener("click", refreshRecoveryDevices);
 document.querySelector("#recoveryCheckUsbButton").addEventListener("click", () => checkRecoveryFirmware("usb"));
 document.querySelector("#recoveryCheckOtaButton").addEventListener("click", () => checkRecoveryFirmware("ota"));
-document.querySelector("#deviceDiscoveryMethod").addEventListener("change", selectDeviceDiscoveryMethod);
+document.querySelectorAll('input[name="deviceDiscoveryMethod"]').forEach((input) => {
+  input.addEventListener("change", selectDeviceDiscoveryMethod);
+});
 document.querySelector("#deviceDiscoverySearchButton").addEventListener("click", searchDevicesForInventory);
 document.querySelector("#avrBootloaderIdentifyButton").addEventListener("click", identifyAvrBootloaderExperimental);
 document.querySelector("#claimSelectedDiscoveredDevicesButton").addEventListener("click", claimSelectedDiscoveredDevices);
 document.querySelector("#deviceInventoryForm").addEventListener("submit", createInventoryDevice);
-document.querySelector("#inventoryProcessorFamily").addEventListener("change", selectInventoryProcessorFamily);
-document.querySelector("#inventoryHardwareType").addEventListener("change", selectInventoryHardwareType);
 document.querySelector("#inventoryHardwareProfile").addEventListener("change", syncInventoryCapabilities);
 document.querySelector("#inventoryBoardShortName").addEventListener("input", syncInventoryNodeNamePreview);
 document.querySelector("#inventoryUsbPort").addEventListener("change", () => {
@@ -223,6 +243,7 @@ async function refresh() {
   state.workspace = summary.workspace_state;
   state.serviceStatus = summary.service_status || {};
   developmentPlatform().setAssistantConfig(summary.development_assistant || null);
+  developmentPlatform().setProjectTemplates(summary.development_project_templates || []);
   state.activeProjectId = new URLSearchParams(window.location.search).get("project") || state.workspace.lastProjectId || state.projects[0]?.id || "";
   state.activeDeviceId = state.devices.find((device) => device.usb_flash_supported)?.device_id || state.devices[0]?.device_id || "";
   state.activeRecoveryDeviceId = state.activeRecoveryDeviceId || state.activeDeviceId;
@@ -246,6 +267,8 @@ function renderAll() {
 function renderRoute() {
   const route = routeName();
   document.body.classList.toggle("ide-workspace-active", route === "ide");
+  document.body.classList.toggle("development-workspace-active", route === "development-platform");
+  document.body.classList.toggle("development-hardware-active", route === "development-hardware");
   renderBreadcrumb(route);
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("hidden", view.id !== routeMap[route]));
   document.querySelectorAll(".tabs a").forEach((link) => link.classList.toggle("active", link.dataset.route === topLevelRouteName(route)));
@@ -253,6 +276,11 @@ function renderRoute() {
     button.classList.toggle("active", deviceManagementRouteFor(route) === button.dataset.deviceManagementRoute);
   });
   if (route === "development-platform") developmentPlatform().render();
+  if (route === "development-hardware") {
+    loadProcessorBoardCatalog();
+    loadSensorCatalog();
+    developmentPlatform().renderHardwareConfiguration();
+  }
   if (route === "ide") loadIdeProject();
   if (route === "device-recovery") {
     renderDeviceRecovery();
@@ -286,6 +314,11 @@ function currentLocationTrail(route) {
     "development-platform": [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Entwicklungsplattform", route: "/app/development-platform/" },
+    ],
+    "development-hardware": [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Entwicklungsplattform", route: "/app/development-platform/" },
+      { label: "Hardware-Zuordnung", route: "" },
     ],
     learn: [
       { label: "Plattform", route: "/app/dashboard/" },
@@ -332,6 +365,7 @@ function currentLocationTrail(route) {
 }
 
 function routeName() {
+  if (/^\/app\/development-platform\/hardware\/?$/.test(window.location.pathname)) return "development-hardware";
   if (/^\/app\/device-management\/?$/.test(window.location.pathname)) return "device-management";
   const deviceManagementMatch = window.location.pathname.match(/^\/app\/device-management\/([^/]+)/);
   if (deviceManagementMatch) {
@@ -351,7 +385,7 @@ function routeName() {
 
 function topLevelRouteName(route) {
   if (["device-management", "device-provisioning", "device-inventory", "device-recovery"].includes(route)) return "device-management";
-  if (route === "ide") return "development-platform";
+  if (["ide", "development-hardware"].includes(route)) return "development-platform";
   return route;
 }
 
@@ -411,15 +445,40 @@ function closeMainMenu() {
 }
 
 async function loadDevicePageTools() {
+  await loadProcessorBoardCatalog();
+  await refreshUsbPorts(false);
+}
+
+async function loadProcessorBoardCatalog() {
   if (!state.processorBoards.length) {
-    getJson("/api/platform/hardware/processor-boards")
+    await getJson("/api/platform/hardware/processor-boards")
       .then((boards) => {
         state.processorBoards = boards.items || [];
         renderDeviceInventoryForm();
+        if (routeName() === "development-hardware") developmentPlatform().renderHardwareConfiguration();
       })
       .catch((error) => setInventoryStatus("error", error.message));
   }
-  await refreshUsbPorts(false);
+}
+
+async function loadSensorCatalog() {
+  if (["loading", "ready"].includes(state.sensorCatalogStatus.state)) return;
+  state.sensorCatalogStatus = { state: "loading", message: "Sensorarten werden geladen." };
+  if (routeName() === "development-hardware") developmentPlatform().renderHardwareConfiguration();
+  await getJson("/api/platform/hardware/sensors")
+    .then((sensors) => {
+      state.sensorCatalog = sensors.items || [];
+      state.sensorCatalogStatus = {
+        state: "ready",
+        message: state.sensorCatalog.length ? "" : "Der Hardware Catalog ist erreichbar, enthaelt aber keine Sensorarten.",
+      };
+      if (routeName() === "development-hardware") developmentPlatform().renderHardwareConfiguration();
+    })
+    .catch((error) => {
+      state.sensorCatalog = [];
+      state.sensorCatalogStatus = { state: "error", message: error.message || "Hardware Catalog ist nicht erreichbar." };
+      if (routeName() === "development-hardware") developmentPlatform().renderHardwareConfiguration();
+    });
 }
 
 function renderDashboard() {
@@ -676,18 +735,20 @@ function renderIdeEmptyState() {
   document.querySelector("#ideModelView").innerHTML = "";
   document.querySelector("#ideProjectViewManifest").innerHTML = "";
   document.querySelector("#ideCodeAssistant").innerHTML = "";
+  document.querySelector("#ideProjectInformation").innerHTML = "";
+  document.querySelector("#ideActionReason").innerHTML = "";
+  state.ideDirtySources = {};
 }
 
 function updateIdeProjectTools(project) {
   const hardwareTools = projectNeedsHardwareTools(project);
-  const sourceEditing = projectNeedsSourceEditing(project);
+  const sourceEditing = ideSourceIsEditable(project, state.sourcePath);
   document.querySelector("#ideDeviceTools").classList.toggle("hidden", !hardwareTools);
   const allocated = allocatedIdeDevice(project);
   const actionReason = ideActionUnavailableReason(project, allocated);
   const buildButton = document.querySelector("#buildButton");
   const usbButton = document.querySelector("#usbFlashButton");
   const otaButton = document.querySelector("#otaFlashButton");
-  const actionReasonNode = document.querySelector("#ideActionReason");
   const otaReason = !allocated
     ? "OTA nicht verfügbar: Kein Device zugeordnet."
     : allocated.connectivity_status !== "online"
@@ -701,10 +762,133 @@ function updateIdeProjectTools(project) {
   buildButton.title = actionReason;
   usbButton.title = actionReason || (!allocated?.usb_flash_supported ? "Das zugeordnete Device unterstuetzt keinen USB-Flash." : "");
   otaButton.title = actionReason || otaReason;
-  const visibleReason = actionReason || otaReason;
-  actionReasonNode.textContent = visibleReason;
-  actionReasonNode.classList.toggle("hidden", !visibleReason);
+  renderIdeProjectInformation(project);
   document.querySelector("#sourceEditor").readOnly = !sourceEditing;
+}
+
+function renderIdeProjectInformation(project) {
+  const target = document.querySelector("#ideProjectInformation");
+  const noticeTarget = document.querySelector("#ideActionReason");
+  if (!target || !noticeTarget || !project) return;
+  const allocated = allocatedIdeDevice(project);
+  const buildConfig = project.buildConfig || {};
+  const buildProfile = [buildConfig.environment, buildConfig.board, buildConfig.framework].filter(Boolean).join(" · ") || "nicht konfiguriert";
+  const targetSystem = project.targetRuntime || buildConfig.platform || "noch nicht festgelegt";
+  const deviceLabel = allocated
+    ? `${allocated.display_name || allocated.device_id} · ${allocated.connectivity_status || "Status unbekannt"}`
+    : "nicht zugeordnet";
+  target.innerHTML = [
+    ["Projekt", project.name || project.id],
+    ["Projektart", project.type || "Entwicklungsprojekt"],
+    ["Zielsystem", targetSystem],
+    ["Build-Profil", buildProfile],
+    ["Aktive Datei", state.sourcePath || "keine Datei gewaehlt"],
+    ["Device", deviceLabel],
+  ].map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("");
+  const notices = [];
+  const healthNotices = ideProjectHealthNotices(project);
+  const actionReason = ideActionUnavailableReason(project, allocated);
+  if (actionReason) notices.push(actionReason);
+  if (!project.buildConfig) notices.push("Fuer dieses Projekt ist noch kein Build-Profil hinterlegt.");
+  if (allocated && !allocated.usb_flash_supported) notices.push("Das zugeordnete Device unterstuetzt keinen USB-Flash.");
+  if (allocated && allocated.connectivity_status !== "online") notices.push(`Das Device ist nicht online (${allocated.connectivity_status || "unknown"}).`);
+  if (allocated && allocated.ota_status !== "ready") notices.push(`OTA ist noch nicht bereit (${allocated.ota_status || "unknown"}).`);
+  const items = [
+    ...healthNotices,
+    ...Array.from(new Set(notices)).map((notice) => ({ level: "warn", text: notice })),
+  ];
+  noticeTarget.innerHTML = items.length
+    ? items.map((notice) => `<li class="${escapeHtml(notice.level || "warn")}">${escapeHtml(notice.text)}</li>`).join("")
+    : '<li class="ok">Keine offenen Hinweise fuer dieses Projekt.</li>';
+}
+
+function ideProjectHealthNotices(project) {
+  const sources = state.projectSourcesByProjectId[project?.id] || [];
+  const dirtyPaths = dirtyIdeSourcePaths(project?.id);
+  const modelFiles = sources.filter((source) => isIdeModelSource(source.path));
+  const codeFiles = sources.filter((source) => isIdeCodeSource(source.path));
+  const latestBuild = latestBuildForProject(project);
+  const notices = [];
+  notices.push(dirtyPaths.length
+    ? { level: "warn", text: `Ungespeicherte Datei${dirtyPaths.length === 1 ? "" : "en"}: ${dirtyPaths.slice(0, 3).join(", ")}${dirtyPaths.length > 3 ? " ..." : ""}.` }
+    : { level: "ok", text: "Keine ungespeicherten Dateien." });
+  if (modelFiles.length && codeFiles.length) {
+    notices.push({ level: "ok", text: "Modell-Dateien und Quellcode-Dateien sind strukturell konsistent vorhanden." });
+  } else if (modelFiles.length && !codeFiles.length) {
+    notices.push({ level: "warn", text: "Inkonsistent: Modell-Dateien vorhanden, aber keine Quellcode-Dateien im Projektbaum." });
+  } else if (!modelFiles.length && codeFiles.length) {
+    notices.push({ level: "warn", text: "Inkonsistent: Quellcode-Dateien vorhanden, aber keine Modell-Dateien im Projektbaum." });
+  } else {
+    notices.push({ level: "warn", text: "Inkonsistent: Es wurden noch keine Modell- oder Quellcode-Dateien erkannt." });
+  }
+  if (!projectNeedsSourceEditing(project)) return notices;
+  if (!latestBuild) {
+    notices.push({ level: "warn", text: "Build ist noch nicht erstellt." });
+  } else if (dirtyPaths.length) {
+    notices.push({ level: "warn", text: "Build ist nicht aktuell, weil Dateien ungespeichert sind." });
+  } else if (latestBuild.status !== "succeeded") {
+    notices.push({ level: "warn", text: `Letzter Build ist nicht erfolgreich (${latestBuild.status || "unknown"}).` });
+  } else {
+    notices.push({ level: "ok", text: "Letzter Build ist erfolgreich und zu den gespeicherten Dateien passend." });
+  }
+  return notices;
+}
+
+function isIdeModelSource(pathValue) {
+  const path = String(pathValue || "").toLowerCase();
+  return /(^|\/)(architektur|modell|model|models)(\/|$)/.test(path)
+    || /\.(puml|plantuml|uml|drawio)$/i.test(path);
+}
+
+function isIdeCodeSource(pathValue) {
+  const path = String(pathValue || "").toLowerCase();
+  return /(^|\/)(src|source|code|quellcode|verhalten\/code)(\/|$)/.test(path)
+    || /\.(c|cc|cpp|cxx|h|hpp|ino|js|ts|py)$/i.test(path);
+}
+
+function latestBuildForProject(project) {
+  const ids = new Set([project?.id, project?.slug, project?.name].filter(Boolean).map(String));
+  return state.builds.find((build) => ids.has(String(build.project_id || build.projectId || build.project_slug || build.project_title || ""))) || null;
+}
+
+function dirtyIdeSourcePaths(projectId) {
+  const prefix = `${projectId || ""}::`;
+  return Object.keys(state.ideDirtySources)
+    .filter((key) => key.startsWith(prefix))
+    .map((key) => key.slice(prefix.length))
+    .sort((left, right) => left.localeCompare(right));
+}
+
+function markIdeSourceDirty() {
+  const project = projectById(state.activeProjectId);
+  if (!project || !state.sourcePath || state.ideViewMode !== "file") return;
+  state.ideDirtySources[ideDirtyKey(project.id, state.sourcePath)] = true;
+  renderIdeProjectInformation(project);
+}
+
+function clearIdeSourceDirty(projectId, sourcePath) {
+  delete state.ideDirtySources[ideDirtyKey(projectId, sourcePath)];
+}
+
+function ideDirtyKey(projectId, sourcePath) {
+  return `${projectId || ""}::${sourcePath || ""}`;
+}
+
+function setIdeConsoleView(view) {
+  const showProjectInformation = view === "project-information";
+  const showHints = view === "hints";
+  const workspace = document.querySelector("#ideConsoleWorkspace");
+  const terminalButton = document.querySelector("#showIdeTerminalButton");
+  const informationButton = document.querySelector("#showIdeProjectInformationButton");
+  const hintsButton = document.querySelector("#showIdeProjectHintsButton");
+  workspace.classList.toggle("show-project-information", showProjectInformation);
+  workspace.classList.toggle("show-hints", showHints);
+  terminalButton.classList.toggle("active", !showProjectInformation && !showHints);
+  terminalButton.setAttribute("aria-selected", String(!showProjectInformation && !showHints));
+  informationButton.classList.toggle("active", showProjectInformation);
+  informationButton.setAttribute("aria-selected", String(showProjectInformation));
+  hintsButton.classList.toggle("active", showHints);
+  hintsButton.setAttribute("aria-selected", String(showHints));
 }
 
 function ideActionUnavailableReason(project, allocated) {
@@ -743,35 +927,6 @@ function allocatedIdeDevice(project = projectById(state.activeProjectId), compon
   const allocation = componentDeviceAllocations(project).find((item) => item.component_path === componentPath);
   if (!allocation?.device_id) return null;
   return state.devices.find((device) => device.device_id === allocation.device_id) || null;
-}
-
-async function allocateIdeDevice(componentPath) {
-  const project = projectById(state.activeProjectId);
-  const row = document.querySelector(`[data-realization-row="${CSS.escape(componentPath)}"]`);
-  const select = row?.querySelector("[data-realization-device]");
-  const status = row?.querySelector("[data-realization-status]");
-  const deviceId = select?.value || "";
-  if (!project || !deviceId) {
-    if (status) status.textContent = "Device wählen.";
-    return;
-  }
-  const button = row.querySelector("[data-allocate-component]");
-  button.disabled = true;
-  status.textContent = "Wird gespeichert...";
-  try {
-    const response = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/device-allocation`, {
-      component_path: componentPath,
-      device_id: deviceId,
-    });
-    state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
-    state.activeDeviceId = response.device.device_id;
-    await loadIdeProject();
-    state.ideViewMode = "realizations";
-    renderIdeViewMode(projectById(state.activeProjectId));
-  } catch (error) {
-    status.textContent = error.message;
-    button.disabled = false;
-  }
 }
 
 function projectNeedsHardwareTools(project) {
@@ -818,31 +973,87 @@ function renderIdeProjectBrowser(project, sources) {
   if (!target) return;
   const openFolders = new Set(Array.from(target.querySelectorAll("details[data-tree-path][open]"))
     .map((folder) => folder.dataset.treePath));
-  const treeSources = projectBrowserSources(project, sources).concat(projectRealizationsTreeEntry(project));
+  const treeSources = projectBrowserSources(project, sources).concat(projectVirtualTreeEntries(project));
   target.innerHTML = treeSources.length
     ? renderSourceTree(sourceTree(project.name, treeSources), 0, openFolders)
     : `<p class="empty">Keine Projektdateien.</p>`;
 }
 
 function projectBrowserSources(project, sources) {
-  const component = primaryComponentPath(project);
-  if (!component) return sources;
-  const configurationPrefix = `${component}/Konfiguration/`;
+  const mappings = projectHardwareComponents(project)
+    .filter((component) => component.abstract_type === "iot_device" && component.component_path)
+    .map((component) => ({
+      sourcePrefix: String(component.component_path).replace(/\/$/, ""),
+      treePrefix: `Komponenten/${componentTreeLabel(component)}`,
+    }))
+    .sort((left, right) => right.sourcePrefix.length - left.sourcePrefix.length);
+  if (!mappings.length) return sources;
   return sources.map((source) => {
-    if (!source.path.startsWith(configurationPrefix)) return source;
-    const relativePath = source.path.slice(configurationPrefix.length);
-    if (/^(Hardware|Software)\//.test(relativePath)) return source;
-    return { ...source, treePath: `${configurationPrefix}Hardware/${relativePath}` };
+    const mapping = mappings.find((item) => source.path === item.sourcePrefix || source.path.startsWith(`${item.sourcePrefix}/`));
+    if (!mapping) return source;
+    let relativePath = source.path.slice(mapping.sourcePrefix.length).replace(/^\//, "");
+    if (/^Konfiguration\//.test(relativePath) && !/^Konfiguration\/(Hardware|Software)\//.test(relativePath)) {
+      relativePath = relativePath.replace(/^Konfiguration\//, "Konfiguration/Hardware/");
+    }
+    return { ...source, treePath: [mapping.treePrefix, relativePath].filter(Boolean).join("/") };
   });
 }
 
-function projectRealizationsTreeEntry(project) {
-  if (!projectNeedsHardwareTools(project)) return [];
-  const component = primaryComponentPath(project) || "Komponenten/ESP32";
-  return [
-    { path: "Architektur/Realisierungen", role: "Gerätezuordnung", virtualAction: "realizations" },
-    { path: `${component}/Konfiguration/Software/Webserver`, role: "", virtualAction: "device-web" },
-  ];
+function projectVirtualTreeEntries(project) {
+  const entries = [];
+  const hardwareComponents = projectHardwareComponents(project);
+  if (projectNeedsHardwareTools(project)) {
+    const primaryPath = primaryComponentPath(project);
+    const primaryDevice = hardwareComponents.find((component) => component.abstract_type === "iot_device" && component.component_path === primaryPath);
+    const component = primaryDevice ? `Komponenten/${componentTreeLabel(primaryDevice)}` : (primaryPath || "Komponenten/ESP32");
+    entries.push(
+      { path: `${component}/Konfiguration/Software/Eigenschaften`, role: "", virtualAction: "component-features" },
+      { path: `${component}/Konfiguration/Software/Webserver/Konfiguration`, role: "", virtualAction: "webserver-configuration" },
+      { path: `${component}/Konfiguration/Software/Webserver/Vorschau`, role: "", virtualAction: "device-web" },
+    );
+  }
+  hardwareComponents.forEach((component) => {
+    const label = componentTreeLabel(component);
+    if (component.abstract_type === "iot_device") {
+      entries.push({
+        path: `Komponenten/${label}/Konfiguration/Hardware/Boardeigenschaften`,
+        role: "",
+        virtualAction: "board-properties",
+        componentId: component.component_id,
+      });
+      return;
+    }
+    const configurationPath = ["sensor", "actuator", "iot_device"].includes(component.abstract_type)
+      ? "Konfiguration/Hardware/Eigenschaften"
+      : "Konfiguration/Eigenschaften";
+    entries.push({
+      path: `Komponenten/${label}/${configurationPath}`,
+      role: "",
+      virtualAction: "hardware-configuration",
+    });
+  });
+  return entries;
+}
+
+function componentTreeLabel(component) {
+  return String(component?.label || component?.component_id || "Komponente").replace(/[\\/]+/g, "-");
+}
+
+function projectHardwareComponents(project) {
+  const view = (project?.viewManifest?.views || []).find((item) => item.id === "hardware-configuration");
+  const supportedTypes = new Set(["iot_device", "sensor", "actuator", "actor", "structural"]);
+  return Array.isArray(view?.payload?.components)
+    ? view.payload.components.filter((component) => supportedTypes.has(component.abstract_type))
+    : [];
+}
+
+function isArchitectureBaselinePath(sourcePath) {
+  const path = String(sourcePath || "").replace(/\\/g, "/");
+  return path.startsWith("Architektur/") || path === "docs/architecture.puml";
+}
+
+function ideSourceIsEditable(project, sourcePath) {
+  return projectNeedsSourceEditing(project) && !isArchitectureBaselinePath(sourcePath);
 }
 
 function sourceTree(projectName, sources) {
@@ -872,12 +1083,16 @@ function renderSourceTree(node, depth = 0, openFolders = new Set()) {
   const children = [
     ...folders.map((folder) => renderSourceTree(folder, depth + 1, openFolders)),
     ...files.map((file) => `
-      <button class="${file.path === state.sourcePath ? "active" : ""}" type="button" ${file.virtualAction === "realizations"
-        ? "data-project-realizations"
-        : file.virtualAction === "component-features"
+      <button class="${file.path === state.sourcePath ? "active" : ""}" type="button" ${file.virtualAction === "component-features"
           ? "data-component-features"
+          : file.virtualAction === "webserver-configuration"
+            ? "data-webserver-configuration"
           : file.virtualAction === "device-web"
             ? "data-device-web"
+            : file.virtualAction === "board-properties"
+              ? `data-board-properties="${escapeAttribute(file.componentId || "")}"`
+            : file.virtualAction === "hardware-configuration"
+              ? "data-hardware-configuration"
             : `data-source-path="${escapeAttribute(file.path)}"`} style="--depth:${depth + 1}">
         <span>${escapeHtml(file.name)}</span>
       </button>
@@ -905,13 +1120,6 @@ function treeContainsSource(node, sourcePath) {
   return Array.from(node.folders.values()).some((folder) => treeContainsSource(folder, sourcePath));
 }
 
-function openProjectRealizations() {
-  state.ideViewMode = "realizations";
-  const project = projectById(state.activeProjectId);
-  document.querySelector("#ideActiveSourceLabel").textContent = "Architektur/Realisierungen";
-  renderIdeViewMode(project);
-}
-
 function openComponentFeatures() {
   state.ideViewMode = "component-features";
   const project = projectById(state.activeProjectId);
@@ -920,10 +1128,29 @@ function openComponentFeatures() {
   renderIdeViewMode(project);
 }
 
+function openWebserverConfiguration() {
+  state.ideViewMode = "webserver-configuration";
+  const project = projectById(state.activeProjectId);
+  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Software/Webserver/Konfiguration`;
+  renderWebserverConfiguration(project);
+  renderIdeViewMode(project);
+}
+
+async function openBoardProperties(componentId) {
+  state.ideViewMode = "board-properties";
+  state.activeIdeComponentId = String(componentId || "");
+  const project = projectById(state.activeProjectId);
+  const component = projectHardwareComponents(project).find((item) => item.component_id === state.activeIdeComponentId);
+  document.querySelector("#ideActiveSourceLabel").textContent = `Komponenten/${component?.label || "IoT-Device"}/Konfiguration/Hardware/Boardeigenschaften`;
+  await loadProcessorBoardCatalog();
+  renderBoardProperties(project);
+  renderIdeViewMode(project);
+}
+
 function openDeviceWebView() {
   state.ideViewMode = "device-web";
   const project = projectById(state.activeProjectId);
-  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Software/Webserver`;
+  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Software/Webserver/Vorschau`;
   renderDeviceWebView(project);
   renderIdeViewMode(project);
 }
@@ -936,6 +1163,7 @@ async function openIdeSource(sourcePath) {
   document.querySelector("#ideActiveSourceLabel").textContent = state.sourcePath;
   await loadIdeSourceContent(project, sourcePath);
   renderIdeProjectBrowser(project, state.projectSourcesByProjectId[project.id] || []);
+  renderIdeProjectInformation(project);
   renderIdeViewMode(project);
   renderIdeCodeAssistant(project);
 }
@@ -947,24 +1175,28 @@ function renderIdeCodeAssistant(project) {
 async function loadIdeSourceContent(project, sourcePath) {
   const source = await getJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(sourcePath)}`);
   document.querySelector("#sourceEditor").value = source.content || "";
+  clearIdeSourceDirty(project.id, sourcePath);
 }
 
 function renderIdeViewMode(project) {
   const sourcePath = state.sourcePath || "";
   const source = document.querySelector("#sourceEditor").value;
-  const realizations = state.ideViewMode === "realizations";
   const componentFeatures = state.ideViewMode === "component-features";
+  const webserverConfiguration = state.ideViewMode === "webserver-configuration";
+  const boardProperties = state.ideViewMode === "board-properties";
   const deviceWeb = state.ideViewMode === "device-web";
-  const virtualView = realizations || componentFeatures || deviceWeb;
+  const virtualView = componentFeatures || webserverConfiguration || boardProperties || deviceWeb;
   const plantUml = /\.(puml|plantuml)$/i.test(sourcePath) && /@startuml/i.test(source);
   const image = /\.(svg|png|jpe?g|gif|webp)$/i.test(sourcePath);
+  const architectureBaseline = isArchitectureBaselinePath(sourcePath);
+  document.querySelector("#sourceEditor").readOnly = !ideSourceIsEditable(project, sourcePath);
   document.querySelector("#ideViewerPanel").classList.toggle("plantuml-split", plantUml && !virtualView);
-  document.querySelector("#ideViewerModeLabel").textContent = realizations ? "Realisierungen" : componentFeatures ? "Komponenteneigenschaften" : deviceWeb ? "Device-Webserver" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
+  document.querySelector("#ideViewerModeLabel").textContent = componentFeatures ? "Softwareeigenschaften" : webserverConfiguration ? "Webserver-Konfiguration" : boardProperties ? "Boardeigenschaften" : deviceWeb ? "Webserver-Vorschau" : architectureBaseline ? "Freigegebene Architektur-Baseline · schreibgeschützt" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
   document.querySelector("#sourcePanel").classList.toggle("hidden", virtualView || image);
   document.querySelector("#ideImageView").classList.toggle("hidden", virtualView || (!plantUml && !image));
   document.querySelector("#ideModelView").classList.add("hidden");
-  document.querySelector("#ideRealizationView").classList.toggle("hidden", !realizations);
-  document.querySelector("#ideComponentFeaturesView").classList.toggle("hidden", !componentFeatures);
+  document.querySelector("#ideComponentFeaturesView").classList.toggle("hidden", !componentFeatures && !webserverConfiguration);
+  document.querySelector("#ideBoardPropertiesView").classList.toggle("hidden", !boardProperties);
   document.querySelector("#ideDeviceWebView").classList.toggle("hidden", !deviceWeb);
   if (!virtualView && (plantUml || image)) renderIdeImageView(sourcePath, source);
 }
@@ -973,44 +1205,12 @@ function primaryComponentPath(project) {
   return String(project?.buildConfig?.user_source_path || "").match(/^(Komponenten\/[^/]+)\//)?.[1] || "";
 }
 
-function projectComponentPaths(project, sources = state.projectSourcesByProjectId[project?.id] || []) {
-  const paths = new Set(sources.map((source) => String(source.path || "").match(/^(Komponenten\/[^/]+)\//)?.[1]).filter(Boolean));
-  const primary = primaryComponentPath(project);
-  if (primary) paths.add(primary);
-  return Array.from(paths).sort((left, right) => left.localeCompare(right));
-}
-
-function renderProjectRealizations(project, sources) {
-  const target = document.querySelector("#ideRealizationView");
-  const components = projectComponentPaths(project, sources);
-  const compatible = state.devices.filter((device) => deviceCompatibleWithProject(project, device));
-  target.innerHTML = `
-    <div class="ide-realization-head"><h3>Komponenten und Realisierungen</h3><p>ProcessorBoards werden zentral einem Inventar-Device zugeordnet.</p></div>
-    <div class="ide-realization-table-wrap"><table class="ide-realization-table">
-      <thead><tr><th>Komponente</th><th>Typ</th><th>Realisierung</th><th>Status</th><th></th></tr></thead>
-      <tbody>${components.map((componentPath) => realizationRow(project, componentPath, compatible)).join("")}</tbody>
-    </table></div>`;
-}
-
-function realizationRow(project, componentPath, compatible) {
-  const isProcessorBoard = componentPath === primaryComponentPath(project) || /esp|processor|board/i.test(componentPath);
-  const allocated = allocatedIdeDevice(project, componentPath);
-  return `<tr data-realization-row="${escapeAttribute(componentPath)}">
-    <td><strong>${escapeHtml(componentPath.replace(/^Komponenten\//, ""))}</strong><small>${escapeHtml(componentPath)}</small></td>
-    <td>${isProcessorBoard ? "ProcessorBoard" : "Komponente"}</td>
-    <td>${isProcessorBoard ? `<select data-realization-device><option value="">Device wählen</option>${compatible.map((device) => `<option value="${escapeAttribute(device.device_id)}" ${device.device_id === allocated?.device_id ? "selected" : ""}>${escapeHtml(device.display_name)}</option>`).join("")}</select>` : "–"}</td>
-    <td data-realization-status>${allocated ? `Zugeordnet: ${escapeHtml(allocated.display_name)}` : isProcessorBoard ? "Offen" : "Keine Gerätezuordnung"}</td>
-    <td>${isProcessorBoard ? `<button type="button" data-allocate-component="${escapeAttribute(componentPath)}" ${compatible.length ? "" : "disabled"}>Zuordnen</button>` : ""}</td>
-  </tr>`;
-}
-
 const componentFeatureDefinitions = [
   ["wifi", "WLAN", "Netzwerkverbindung der Basissoftware"],
   ["mqtt", "MQTT", "Nachrichten, Status und OTA-Auftraege"],
   ["ota", "OTA", "Signierte Firmware-Aktualisierung"],
   ["http", "HTTP", "Lokale Status- und Konfigurations-API"],
   ["webserver", "Webserver", "Lokale Bedien- und Statusoberflaeche"],
-  ["measurement_chart", "Messwertdiagramm", "Erweiterbare Darstellung der letzten Messwerte"],
 ];
 
 function effectiveComponentFeatures(project) {
@@ -1053,6 +1253,121 @@ function renderComponentFeatures(project) {
     </fieldset>
     <footer><button type="submit">Eigenschaften speichern</button><span data-component-feature-status></span></footer>
   </form>`;
+  target.querySelector(".webserver-settings")?.remove();
+}
+
+function renderWebserverConfiguration(project) {
+  const target = document.querySelector("#ideComponentFeaturesView");
+  if (!target || !project?.buildConfig) {
+    if (target) target.innerHTML = `<p class="empty">Keine Webserver-Konfiguration vorhanden.</p>`;
+    return;
+  }
+  const config = effectiveComponentFeatures(project);
+  target.innerHTML = `<form class="component-features-form webserver-configuration-form">
+    <header><div><p class="eyebrow">Software · Webserver</p><h3>Konfiguration</h3></div>
+      <span class="basis-variant-badge">Basis: ${escapeHtml(config.basisVariant || "ohne Variante")}</span></header>
+    <p class="helper-text">Hier konfigurierst du die projektspezifische Weboberfläche. Die laufende Ansicht findest du direkt daneben unter Vorschau.</p>
+    <div class="component-feature-grid">
+      <label class="component-feature-card">
+        <input type="checkbox" name="measurement_chart" ${config.webserver.measurement_chart ? "checked" : ""}>
+        <span><strong>Messwertdiagramm</strong><small>Letzte Messwerte auf der lokalen Board-Seite darstellen</small></span>
+        <em>Projekt</em>
+      </label>
+    </div>
+    <fieldset class="webserver-settings"><legend>Darstellung</legend>
+      <label>Titel<input name="webserver_title" value="${escapeAttribute(config.webserver.title || "GerNetiX Device")}"></label>
+      <label>Messwert<input name="measurement_label" value="${escapeAttribute(config.webserver.measurement_label || "Messwert")}"></label>
+      <label>Einheit<input name="measurement_unit" value="${escapeAttribute(config.webserver.measurement_unit || "")}" placeholder="z. B. °C"></label>
+    </fieldset>
+    <footer><button type="submit">Webserver-Konfiguration speichern</button><span data-component-feature-status></span></footer>
+  </form>`;
+}
+
+function renderBoardProperties(project) {
+  const target = document.querySelector("#ideBoardPropertiesView");
+  if (!target) return;
+  const deviceComponent = projectHardwareComponents(project)
+    .find((component) => component.abstract_type === "iot_device" && component.component_id === state.activeIdeComponentId);
+  if (!deviceComponent) {
+    target.innerHTML = '<div class="board-properties-empty"><h3>IoT-Device nicht gefunden</h3><p>Waehle die Boardeigenschaften direkt unter einer IoT-Device-Komponente im Projektbrowser.</p></div>';
+    return;
+  }
+  const allocated = allocatedIdeDevice(project);
+  const boardProfileId = deviceComponent?.board_profile_id || allocated?.hardware_profile_id || "";
+  const board = state.processorBoards.find((item) => [item.hardware_item_id, item.hardware_profile_id, item.id]
+    .filter(Boolean).some((id) => String(id) === String(boardProfileId)));
+  if (!board) {
+    target.innerHTML = `<div class="board-properties-empty">
+      <h3>Boardeigenschaften noch nicht verfügbar</h3>
+      <p>Wähle zuerst ein reales Board in der Hardware-Konfiguration. Danach werden GPIO-, ADC-, PWM- und I²C-Ressourcen hier angezeigt.</p>
+      <button type="button" data-open-hardware-configuration>Board zuordnen</button>
+    </div>`;
+    return;
+  }
+  const profile = board.pin_profile || {};
+  const groups = [
+    ["GPIO", "Digitale Ein- und Ausgänge", profile.digital_pins],
+    ["ADC", "Analoge Eingänge", profile.analog_inputs],
+    ["PWM", "Pulsweitenmodulation", profile.pwm_pins],
+    ["I²C", "Bus-Anschlüsse", profile.i2c],
+  ];
+  const peripheralUsage = effectiveBoardPeripheralUsage(project, deviceComponent.component_id);
+  const configurablePeripherals = [
+    ["adc", "ADC verwenden", "Analoge Messwerte mit dem Analog-Digital-Wandler erfassen", profile.analog_inputs],
+    ["pwm", "PWM verwenden", "Ausgaenge per Pulsweitenmodulation ansteuern", profile.pwm_pins],
+  ];
+  target.innerHTML = `<div class="board-properties-workspace">
+    <header><div><p class="eyebrow">Hardware · Board</p><h3>${escapeHtml(board.title || deviceComponent?.label || "Boardeigenschaften")}</h3></div>
+      <button type="button" data-open-hardware-configuration>Belegung konfigurieren</button></header>
+    <p class="helper-text">Diese Ressourcen werden vom gewählten Board bereitgestellt. Die konkrete Belegung erfolgt bei den Sensoren und Aktoren in der Hardware-Konfiguration.</p>
+    <dl class="board-properties-meta">
+      <div><dt>Prozessorfamilie</dt><dd>${escapeHtml(board.processor_family || deviceComponent?.processor_family || "nicht angegeben")}</dd></div>
+      <div><dt>MCU</dt><dd>${escapeHtml(board.mcu_variant || deviceComponent?.processor_variant || "nicht angegeben")}</dd></div>
+    </dl>
+    <form class="board-peripheral-usage-form" data-component-id="${escapeAttribute(deviceComponent.component_id)}">
+      <header><div><p class="eyebrow">IoT-Device-Konfiguration</p><h4>Verwendete Boardfunktionen</h4></div></header>
+      <div class="board-peripheral-options">${configurablePeripherals.map(([id, title, description, pins]) => {
+        const supported = Array.isArray(pins) && pins.length > 0;
+        return `<label class="component-feature-card ${supported ? "" : "locked"}">
+          <input type="checkbox" name="peripheral" value="${id}" ${peripheralUsage.has(id) ? "checked" : ""} ${supported ? "" : "disabled"}>
+          <span><strong>${title}</strong><small>${description}</small></span>
+          <em>${supported ? `${pins.length} Pins verfuegbar` : "Vom Board nicht bereitgestellt"}</em>
+        </label>`;
+      }).join("")}</div>
+      <footer><button type="submit">Boardfunktionen speichern</button><span data-board-peripheral-status></span></footer>
+    </form>
+    <div class="board-property-grid">${groups.map(([name, description, pins]) => `<section class="board-property-card">
+      <header><strong>${escapeHtml(name)}</strong><span>${Array.isArray(pins) ? pins.length : 0}</span></header>
+      <p>${escapeHtml(description)}</p>
+      <div>${Array.isArray(pins) && pins.length ? pins.map((pin) => `<code>${escapeHtml(pin)}</code>`).join("") : "<small>Keine Einträge im Boardprofil</small>"}</div>
+    </section>`).join("")}</div>
+  </div>`;
+}
+
+function effectiveBoardPeripheralUsage(project, componentId) {
+  const configured = project?.buildConfig?.component_hardware_features?.[componentId]?.enabled;
+  return new Set(Array.isArray(configured) ? configured : []);
+}
+
+async function saveBoardPeripheralUsage(event) {
+  if (!event.target.matches(".board-peripheral-usage-form")) return;
+  event.preventDefault();
+  const project = projectById(state.activeProjectId);
+  const componentId = event.target.dataset.componentId || "";
+  const status = event.target.querySelector("[data-board-peripheral-status]");
+  const enabled = new FormData(event.target).getAll("peripheral").map(String);
+  status.textContent = "Wird gespeichert...";
+  try {
+    const response = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/component-hardware-features`, {
+      component_id: componentId,
+      enabled,
+    });
+    state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    renderBoardProperties(response.project);
+    document.querySelector("[data-board-peripheral-status]").textContent = "Gespeichert.";
+  } catch (error) {
+    status.textContent = error.message;
+  }
 }
 
 async function saveComponentFeatures(event) {
@@ -1063,21 +1378,32 @@ async function saveComponentFeatures(event) {
   const data = new FormData(event.target);
   status.textContent = "Wird gespeichert...";
   try {
-    const enabled = data.getAll("feature").map(String);
+    const webserverOnly = event.target.matches(".webserver-configuration-form");
+    const currentConfig = effectiveComponentFeatures(project);
+    const enabled = webserverOnly
+      ? Array.from(currentConfig.enabled)
+      : data.getAll("feature").map(String);
+    if (!webserverOnly && currentConfig.enabled.has("measurement_chart")) enabled.push("measurement_chart");
+    if (webserverOnly) {
+      const measurementChartIndex = enabled.indexOf("measurement_chart");
+      if (data.get("measurement_chart") && measurementChartIndex < 0) enabled.push("measurement_chart");
+      if (!data.get("measurement_chart") && measurementChartIndex >= 0) enabled.splice(measurementChartIndex, 1);
+    }
     const immutable = effectiveComponentFeatures(project).immutable;
     immutable.forEach((feature) => enabled.push(feature));
     const measurementChart = enabled.includes("measurement_chart");
     const response = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/component-features`, {
       enabled: Array.from(new Set(enabled)),
       webserver: {
-        title: data.get("webserver_title"),
+        title: webserverOnly ? data.get("webserver_title") : currentConfig.webserver.title,
         measurement_chart: measurementChart,
-        measurement_label: data.get("measurement_label"),
-        measurement_unit: data.get("measurement_unit"),
+        measurement_label: webserverOnly ? data.get("measurement_label") : currentConfig.webserver.measurement_label,
+        measurement_unit: webserverOnly ? data.get("measurement_unit") : currentConfig.webserver.measurement_unit,
       },
     });
     state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
-    renderComponentFeatures(response.project);
+    if (webserverOnly) renderWebserverConfiguration(response.project);
+    else renderComponentFeatures(response.project);
     document.querySelector("[data-component-feature-status]").textContent = "Gespeichert.";
   } catch (error) {
     status.textContent = error.message;
@@ -1171,7 +1497,7 @@ async function renderIdePlantUmlImage(image) {
 
 async function saveSource() {
   const project = projectById(state.activeProjectId);
-  if (!project || !state.sourcePath || !projectNeedsSourceEditing(project)) return;
+  if (!project || !state.sourcePath || !ideSourceIsEditable(project, state.sourcePath)) return;
   try {
     await persistCurrentSource(project);
     setFlashStatus("ok", `${state.sourcePath} gespeichert.`);
@@ -1181,11 +1507,12 @@ async function saveSource() {
 }
 
 async function persistCurrentSource(project = projectById(state.activeProjectId)) {
-  if (!project || !state.sourcePath || !projectNeedsSourceEditing(project)) return;
+  if (!project || !state.sourcePath || !ideSourceIsEditable(project, state.sourcePath)) return;
   await putJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(state.sourcePath)}`, {
     content: document.querySelector("#sourceEditor").value,
   });
-  delete state.projectSourcesByProjectId[project.id];
+  clearIdeSourceDirty(project.id, state.sourcePath);
+  renderIdeProjectInformation(project);
 }
 
 async function startBuild() {
@@ -1202,6 +1529,7 @@ async function startBuild() {
     });
     const completed = await waitForCompletedBuild(build);
     state.builds.unshift(completed);
+    renderIdeProjectInformation(project);
     if (completed.status !== "succeeded") appendBuildFailureLog(completed.build_log);
     setFlashStatus(completed.status === "succeeded" ? "ok" : "error", completed.status === "succeeded"
       ? "Build erfolgreich abgeschlossen."
@@ -1229,6 +1557,7 @@ async function startUsbFlash() {
     });
     activeBuild = await waitForCompletedBuild(build);
     state.builds.unshift(activeBuild);
+    renderIdeProjectInformation(project);
     if (activeBuild.status !== "succeeded") {
       appendBuildFailureLog(activeBuild.build_log);
       throw new Error(activeBuild.error || "PlatformIO-Build ist fehlgeschlagen.");
@@ -1353,6 +1682,7 @@ async function startOtaFlash() {
     });
     const completed = await waitForCompletedBuild(build);
     state.builds.unshift(completed);
+    renderIdeProjectInformation(project);
     if (completed.status !== "succeeded") {
       appendBuildFailureLog(completed.build_log);
       throw new Error(completed.error || "Build für das OTA-Update ist fehlgeschlagen.");
@@ -1630,14 +1960,6 @@ function renderDeviceInventoryForm() {
   return deviceOnboarding().renderDeviceInventoryForm();
 }
 
-function selectInventoryProcessorFamily() {
-  return deviceOnboarding().selectInventoryProcessorFamily();
-}
-
-function selectInventoryHardwareType() {
-  return deviceOnboarding().selectInventoryHardwareType();
-}
-
 function syncInventoryCapabilities() {
   return deviceOnboarding().syncInventoryCapabilities();
 }
@@ -1711,6 +2033,14 @@ function fallbackProcessorBoards() {
       processor_family: "avr_8bit",
       mcu_variant: "ATmega328P",
       capability_ids: ["processor_avr_8bit", "processor_arduino_avr", "arduino_framework_runtime", "atmel_avr_bare_metal_runtime", "usb_identification", "flash_firmware"],
+    },
+    {
+      hardware_item_id: "hardware.processor_board.raspberry_pi_zero_2w",
+      title: "Raspberry Pi Zero 2 W",
+      processor_family: "raspberry_pi",
+      module_name: "Zero 2 W",
+      mcu_variant: "Broadcom BCM2710A1",
+      capability_ids: ["processor_linux_sbc", "wifi", "linux_runtime", "usb_identification"],
     },
   ];
 }

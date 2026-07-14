@@ -8,7 +8,14 @@ const { createAccountTransparencyFactory } = require("./dev/account-transparency
 const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
 const { developmentProjectSources } = require("./dev/development-project-structure");
-const { developmentProjectTemplate, templateArchitecturePlantUml, templateFirmwareSources } = require("./dev/development-project-templates");
+const {
+  developmentProjectTemplate,
+  developmentProjectTemplateCatalog,
+  templateArchitecturePlantUml,
+  templateBuildConfig,
+  templateFirmwareSources,
+  templateHardwareProfileId,
+} = require("./dev/development-project-templates");
 const { createDevHardwareUtils } = require("./dev/hardware-utils");
 const { createLlmConfigStore } = require("../../shared/llm-config");
 const {
@@ -94,6 +101,7 @@ const {
   isUsbFlashDevice,
   listUsbSerialPorts,
   loadProcessorBoards,
+  loadSensors,
   normalizeGerNetixNodeName,
   renderPlatformioIni,
   requiredField,
@@ -353,14 +361,25 @@ async function routeRequest(req, res) {
     return;
   }
 
-  const projectDeviceAllocation = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/device-allocation$/);
-  if (req.method === "POST" && projectDeviceAllocation) {
+  const developmentProjectDialog = url.pathname.match(/^\/api\/platform\/development-projects\/([^/]+)\/dialog$/);
+  if (req.method === "POST" && developmentProjectDialog) {
     const session = readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
-    await handleProjectDeviceAllocation(req, res, session, decodeURIComponent(projectDeviceAllocation[1]));
+    await handleDevelopmentProjectDialogSave(req, res, session, decodeURIComponent(developmentProjectDialog[1]));
+    return;
+  }
+
+  const developmentProjectHardware = url.pathname.match(/^\/api\/platform\/development-projects\/([^/]+)\/hardware-configuration$/);
+  if (req.method === "POST" && developmentProjectHardware) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleDevelopmentProjectHardwareSave(req, res, session, decodeURIComponent(developmentProjectHardware[1]));
     return;
   }
 
@@ -392,6 +411,48 @@ async function routeRequest(req, res) {
       return;
     }
     sendJson(res, 200, { items: await loadProcessorBoards() });
+    return;
+  }
+
+  const projectComponentHardwareFeatures = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/component-hardware-features$/);
+  if (req.method === "POST" && projectComponentHardwareFeatures) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleProjectComponentHardwareFeatures(req, res, session, decodeURIComponent(projectComponentHardwareFeatures[1]));
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/platform/hardware/sensors") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    try {
+      const items = await loadSensors();
+      sendJson(res, 200, { items, catalog_status: items.length ? "available" : "empty" });
+    } catch (error) {
+      recordSystemEvent({
+        severity: "error",
+        source_service: "identity_server",
+        target_service: "hardware_catalog",
+        category: "dependency",
+        event_type: "dependency_unreachable",
+        message: "Sensorarten konnten nicht aus dem Hardware Catalog geladen werden.",
+        impact: "Die Sensor-Hardware-Zuordnung ist blockiert.",
+        account_id: projectServerUserId(session),
+        route: "/api/hardware-catalog/sensors",
+        details: { error: error.message || String(error) },
+      });
+      sendJson(res, 502, {
+        error: "hardware_catalog_unreachable",
+        dependency: "hardware_catalog",
+        message: "Der zugehoerige Service Hardware Catalog ist nicht erreichbar.",
+      });
+    }
     return;
   }
 
@@ -906,6 +967,7 @@ async function handlePlatformSummary(res, session) {
     },
     workspace_state: getWorkspaceState(userId),
     development_assistant: developmentAssistant.config(),
+    development_project_templates: developmentProjectTemplateCatalog(),
     projects: projects.map(toPlatformProject),
     learning_progress: listLearningProgress(userId, projects),
     devices,
@@ -1019,6 +1081,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
   const template = developmentProjectTemplate(body.template_id);
   const title = requiredField(body.title || template.title || "Neues Entwicklungsprojekt", "title").slice(0, 120);
   const description = String(body.description || template.description || "Architektur-Discovery-Projekt").trim().slice(0, 1000);
+  const buildConfig = templateBuildConfig(template);
   const projectId = `dev_project_${slugifyProjectId(title)}_${Date.now().toString(36)}`;
   const initialSource = templateArchitecturePlantUml(template, title) || initialArchitecturePlantUml(title);
   const sources = developmentProjectSources({ title, description, architectureSource: initialSource })
@@ -1031,10 +1094,17 @@ async function handleDevelopmentProjectCreate(req, res, session) {
       title,
       description,
       learning_project_id: "development_project",
-      hardware_profile_id: template.hardwareProfileId || "architecture.discovery",
+      hardware_profile_id: templateHardwareProfileId(template),
       device_id: null,
-      build_config: template.buildConfig || null,
-      view_manifest: developmentProjectViewManifest({ title, description, source: initialSource, buildConfig: template.buildConfig }),
+      build_config: buildConfig,
+      view_manifest: developmentProjectViewManifest({
+        title,
+        description,
+        source: initialSource,
+        buildConfig,
+        templateId: template.id,
+        templateModelVersion: template.schemaVersion,
+      }),
       sources,
     },
   });
@@ -1066,7 +1136,17 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
     body: {
       title,
       description,
-      view_manifest: developmentProjectViewManifest({ title, description, source: diagram.source, diagram, buildConfig: project.build_config }),
+      view_manifest: developmentProjectViewManifest({
+        title,
+        description,
+        source: diagram.source,
+        diagram,
+        buildConfig: project.build_config,
+        architectureDialog: project.view_manifest?.architecture_dialog,
+        templateId: project.view_manifest?.template_id,
+        templateModelVersion: project.view_manifest?.template_ref?.model_schema_version,
+        hardwareConfiguration: hardwareConfigurationFromManifest(project.view_manifest),
+      }),
       build_config: project.build_config || null,
     },
   });
@@ -1076,45 +1156,118 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
   sendJson(res, 200, { project: toPlatformProject(updated), saved_at: new Date().toISOString() });
 }
 
-async function handleProjectDeviceAllocation(req, res, session, projectId) {
+async function handleDevelopmentProjectDialogSave(req, res, session, projectId) {
   const project = await requireSessionProject(session, projectId);
+  if (!["development_project", "custom_project"].includes(project.area)) {
+    sendJson(res, 400, { error: "not_development_project", message: "Architektur-Dialog kann nur in eigenen Entwicklungsprojekten gespeichert werden." });
+    return;
+  }
+
   const body = await readJsonBody(req);
-  const devices = await loadUserIdeDevices(session);
-  const device = devices.find((item) => item.device_id === body.device_id);
-  if (!device) {
-    sendJson(res, 404, { error: "device_not_found", message: "Das Inventar-Device wurde nicht gefunden." });
-    return;
-  }
-  const projectConfig = project.build_config || {};
-  const deviceConfig = device.build_config || {};
-  const componentPath = requiredField(body.component_path || primaryProjectComponentPath(project), "component_path");
-  if (projectConfig.platform && deviceConfig.platform && projectConfig.platform !== deviceConfig.platform) {
-    sendJson(res, 409, { error: "device_not_compatible", message: "Das Device ist nicht mit dem Build-Ziel des Projektordners kompatibel." });
-    return;
-  }
-  const allocatedAt = new Date().toISOString();
-  const allocations = (Array.isArray(projectConfig.component_device_allocations) ? projectConfig.component_device_allocations : [])
-    .filter((item) => item.component_path !== componentPath)
-    .concat({ component_path: componentPath, device_id: device.device_id, allocated_at: allocatedAt });
+  const existingManifest = project.view_manifest || developmentProjectViewManifest({
+    title: project.title,
+    description: project.summary,
+    source: initialArchitecturePlantUml(project.title),
+    buildConfig: project.build_config,
+  });
+  const diagram = normalizeArchitectureDiagram(body.architectureDiagram || existingManifest.architecture_dialog?.architectureDiagram || architectureDiagramFromManifest(existingManifest));
+  const architectureDialog = normalizeArchitectureDialog(body, diagram);
   await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
-      device_id: device.device_id,
-      hardware_profile_id: device.hardware_profile_id || project.hardware_profile_id,
-      build_config: { ...resolveBuildConfig(project, device), component_device_allocations: allocations },
+      view_manifest: {
+        ...existingManifest,
+        architecture_dialog: architectureDialog,
+      },
+      build_config: project.build_config || null,
     },
   });
+  touchWorkspace(session, project.project_server_id, "development-platform", "/app/development-platform/");
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
-  touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
+  sendJson(res, 200, { project: toPlatformProject(updated), saved_at: new Date().toISOString() });
+}
+
+async function handleDevelopmentProjectHardwareSave(req, res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  if (!["development_project", "custom_project"].includes(project.area)) {
+    sendJson(res, 400, { error: "not_development_project", message: "Hardware kann nur in eigenen Entwicklungsprojekten konfiguriert werden." });
+    return;
+  }
+  const body = await readJsonBody(req);
+  const existingManifest = project.view_manifest || developmentProjectViewManifest({
+    title: project.title,
+    description: project.summary,
+    source: initialArchitecturePlantUml(project.title),
+    buildConfig: project.build_config,
+  });
+  const diagram = architectureDiagramFromManifest(existingManifest);
+  const hardwareConfiguration = normalizeHardwareConfiguration(body.hardware_configuration || body.hardwareConfiguration, project);
+  const boardComponent = hardwareConfiguration.components.find((component) => component.abstract_type === "iot_device" && component.board_profile_id);
+  const baseBuildConfig = boardComponent
+    ? buildConfigForBoard(boardComponent.board_profile_id, project.build_config)
+    : project.build_config;
+  const inventoryDevices = await loadUserIdeDevices(session);
+  const allocations = [];
+  let primaryInventoryDevice = null;
+  for (const component of hardwareConfiguration.components.filter((item) => item.abstract_type === "iot_device")) {
+    component.inventory_device_label = "";
+  }
+  for (const component of hardwareConfiguration.components.filter((item) => item.abstract_type === "iot_device" && item.inventory_device_id)) {
+    const inventoryDevice = inventoryDevices.find((device) => device.device_id === component.inventory_device_id);
+    if (!inventoryDevice) {
+      sendJson(res, 404, { error: "device_not_found", message: `Das Inventar-Device fuer ${component.label} wurde nicht gefunden.` });
+      return;
+    }
+    if (component.board_profile_id && inventoryDevice.hardware_profile_id !== component.board_profile_id) {
+      sendJson(res, 409, { error: "device_not_compatible", message: `Das Inventar-Device fuer ${component.label} entspricht nicht dem gewaehlten Board.` });
+      return;
+    }
+    component.inventory_device_label = String(inventoryDevice.display_name || inventoryDevice.device_id).slice(0, 180);
+    primaryInventoryDevice ||= inventoryDevice;
+    allocations.push({
+      component_path: component.component_path,
+      device_id: inventoryDevice.device_id,
+      allocated_at: new Date().toISOString(),
+    });
+  }
+  const buildConfig = baseBuildConfig ? { ...baseBuildConfig, component_device_allocations: allocations } : null;
+  const sources = hardwareConfigurationSources(hardwareConfiguration, project.title);
+  await Promise.all(sources.map((source) => projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
+    method: "PUT",
+    body: source,
+  })));
+  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+    method: "PATCH",
+    body: {
+      hardware_profile_id: boardComponent?.board_profile_id || project.hardware_profile_id,
+      device_id: primaryInventoryDevice?.device_id || "",
+      build_config: buildConfig || null,
+      view_manifest: developmentProjectViewManifest({
+        title: project.title,
+        description: project.summary,
+        source: diagram.source,
+        diagram,
+        buildConfig,
+        architectureDialog: existingManifest.architecture_dialog,
+        templateId: existingManifest.template_id,
+        templateModelVersion: existingManifest.template_ref?.model_schema_version,
+        hardwareConfiguration,
+      }),
+    },
+  });
+  touchWorkspace(session, project.project_server_id, "development-hardware", `/app/development-platform/hardware/?project=${encodeURIComponent(project.project_server_id)}`);
+  const projects = await loadUserIdeProjects(session);
+  const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   sendJson(res, 200, {
     project: toPlatformProject(updated),
-    device,
-    allocation: {
-      component_path: componentPath,
-      device_id: device.device_id,
-      allocated_at: allocatedAt,
+    hardware_configuration: hardwareConfiguration,
+    hardware_architecture: {
+      source: hardwareWiringPlantUml(hardwareConfiguration, project.title),
+      title: "Hardware-Architektur",
+      summary: "Vollstaendige Hardware-Realisierung des Projekts.",
     },
+    saved_at: new Date().toISOString(),
   });
 }
 
@@ -1144,6 +1297,59 @@ async function handleProjectComponentFeatures(req, res, session, projectId) {
             measurement_label: String(webserver.measurement_label || "Messwert").trim().slice(0, 60),
             measurement_unit: String(webserver.measurement_unit || "").trim().slice(0, 16),
           },
+        },
+      },
+    },
+  });
+  const projects = await loadUserIdeProjects(session);
+  const updated = projects.find((item) => item.project_server_id === project.project_server_id);
+  touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
+  sendJson(res, 200, { project: toPlatformProject(updated) });
+}
+
+async function handleProjectComponentHardwareFeatures(req, res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  if (!project.build_config) {
+    sendJson(res, 409, { error: "missing_build_config", message: "Das Projekt besitzt keine konfigurierbare IoT-Device-Komponente." });
+    return;
+  }
+  const body = await readJsonBody(req);
+  const componentId = String(body.component_id || "").trim();
+  const hardwareConfiguration = hardwareConfigurationFromManifest(project.view_manifest);
+  const component = hardwareConfiguration?.components?.find((item) => item.component_id === componentId && item.abstract_type === "iot_device");
+  if (!component) {
+    sendJson(res, 409, { error: "iot_device_component_not_found", message: "Die IoT-Device-Komponente gehoert nicht zur Hardware-Architektur des Projekts." });
+    return;
+  }
+  const allowed = new Set(["adc", "pwm"]);
+  const enabled = Array.isArray(body.enabled)
+    ? Array.from(new Set(body.enabled.map(String).filter((item) => allowed.has(item))))
+    : [];
+  const boards = await loadProcessorBoards();
+  const board = boards.find((item) => [item.hardware_item_id, item.hardware_profile_id, item.id]
+    .filter(Boolean).some((id) => String(id) === String(component.board_profile_id)));
+  if (!board) {
+    sendJson(res, 409, { error: "processor_board_not_found", message: "Das reale Board der IoT-Device-Komponente wurde im Hardware Catalog nicht gefunden." });
+    return;
+  }
+  const supported = {
+    adc: Array.isArray(board.pin_profile?.analog_inputs) && board.pin_profile.analog_inputs.length > 0,
+    pwm: Array.isArray(board.pin_profile?.pwm_pins) && board.pin_profile.pwm_pins.length > 0,
+  };
+  const unsupported = enabled.filter((item) => !supported[item]);
+  if (unsupported.length) {
+    sendJson(res, 409, { error: "board_peripheral_not_supported", message: `Das gewaehlte Board unterstuetzt nicht: ${unsupported.join(", ")}.` });
+    return;
+  }
+  const current = project.build_config.component_hardware_features || {};
+  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+    method: "PATCH",
+    body: {
+      build_config: {
+        ...project.build_config,
+        component_hardware_features: {
+          ...current,
+          [componentId]: { enabled },
         },
       },
     },
@@ -2217,16 +2423,20 @@ function projectViewManifest(project) {
   };
 }
 
-function developmentProjectViewManifest({ title, description = "", source = "", diagram = null, buildConfig = null }) {
-  const plantUmlSource = source || diagram?.source || initialArchitecturePlantUml(title);
+function developmentProjectViewManifest({ title, description = "", source = "", diagram = null, buildConfig = null, architectureDialog = null, templateId = "", templateModelVersion = 1, hardwareConfiguration = null }) {
   const buildable = Boolean(buildConfig);
+  const derivedFrom = diagram?.derived_from || (buildable ? "project_template" : "persisted_project");
+  const plantUmlSource = normalizeArchitecturePlantUml(stripPlantUmlNotes(source || diagram?.source || initialArchitecturePlantUml(title)), derivedFrom);
   return {
     schema_version: 1,
     title: `${title || "Entwicklungsprojekt"} Architektur`,
     summary: description || "Projektgebundene Architektur-Discovery mit PlantUML-Skizze.",
+    template_id: String(templateId || ""),
+    ...(templateId ? { template_ref: { template_id: String(templateId), model_schema_version: Number(templateModelVersion) || 1 } } : {}),
     primary_source_path: buildable ? (buildConfig.user_source_path || "Komponenten/ESP32/src/user_main.cpp") : "docs/architecture.puml",
     hide_source_editor: !buildable,
     mode: "architecture_discovery",
+    ...(architectureDialog ? { architecture_dialog: normalizeArchitectureDialog(architectureDialog, diagram || { source: plantUmlSource }) } : {}),
     views: [
       ...(buildable ? [{
         id: "firmware-source",
@@ -2244,14 +2454,18 @@ function developmentProjectViewManifest({ title, description = "", source = "", 
         validation: { type: "plantuml_contains", must_contain: ["@startuml", "@enduml"] },
         payload: {
           source: plantUmlSource,
-          derived_from: diagram?.derived_from || (buildable ? "project_template" : "persisted_project"),
+          derived_from: derivedFrom,
           ...(diagram?.function_coverage ? { function_coverage: diagram.function_coverage } : {}),
-          model_lines: [
-            { label: "Status", text: "KI-abgeleitete Skizze; Architekturentscheidungen muessen vom Nutzer bestaetigt werden." },
-            { label: "Quelle", text: "Gespeichert im Project Server und an den aktuellen Account gebunden." },
-          ],
         },
       },
+      ...(hardwareConfiguration ? [{
+        id: "hardware-configuration",
+        type: "hardware_configuration",
+        title: "Hardware-Architektur",
+        summary: "Vollstaendige Zuordnung von Prozessoren, Boards, Inventar-Devices, Sensoren, Aktoren, Messschaltungen und Pins.",
+        source_path: "Architektur/verdrahtung/hardware.puml",
+        payload: hardwareConfiguration,
+      }] : []),
       {
         id: "implementation-plan",
         type: "implementation_plan",
@@ -2274,30 +2488,324 @@ function initialArchitecturePlantUml(title) {
     "@startuml",
     `title Architektur-Skizze: ${String(title || "Neues Entwicklungsprojekt").replace(/"/g, "'")}`,
     "",
-    "actor \"Nutzer\" as user",
     "rectangle \"Projektidee / Anforderungen\" as requirements",
-    "user --> requirements : beschreibt Ziel und Rahmen",
-    "",
-    "note right of requirements",
-    "  Noch keine KI-abgeleitete Architektur gespeichert.",
-    "end note",
     "@enduml",
   ].join("\n");
 }
 
 function normalizeArchitectureDiagram(input = {}) {
-  const source = String(input.source || "").trim();
+  const derivedFrom = String(input.derived_from || input.derivedFrom || "architecture_discovery_ai_response").trim();
+  const source = normalizeArchitecturePlantUml(stripPlantUmlNotes(input.source || ""), derivedFrom);
   return {
     type: "plantuml",
     title: String(input.title || "Architektur-Skizze").trim(),
     summary: String(input.summary || "Gespeicherte Architektur-Skizze.").trim(),
     source,
-    derived_from: String(input.derived_from || input.derivedFrom || "architecture_discovery_ai_response").trim(),
+    derived_from: derivedFrom,
     generated_at: String(input.generated_at || input.generatedAt || new Date().toISOString()).trim(),
     confidence: Number(input.confidence || 0),
     detected_blocks: Array.isArray(input.detected_blocks || input.detectedBlocks)
       ? (input.detected_blocks || input.detectedBlocks).map(String)
       : [],
+  };
+}
+
+function stripPlantUmlNotes(source) {
+  const lines = String(source || "").split(/\r?\n/);
+  const cleaned = [];
+  let inNote = false;
+  for (const line of lines) {
+    if (/^\s*note\b/i.test(line)) {
+      inNote = true;
+      continue;
+    }
+    if (inNote) {
+      if (/^\s*end\s+note\b/i.test(line)) inNote = false;
+      continue;
+    }
+    cleaned.push(line);
+  }
+  return cleaned.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function normalizeArchitecturePlantUml(source, derivedFrom = "") {
+  const isTemplate = derivedFrom === "project_template" || /Startarchitektur aus Projekttemplate/i.test(source);
+  // Logische Architektur bleibt notationsoffen; konkrete UML-Symbole gehoeren in Realisierungssichten.
+  let normalized = String(source || "")
+    .replace(/^(\s*)(?:node|component|database|cloud|queue|artifact)\s+("[^"]+")(\s+as\s+[A-Za-z_][A-Za-z0-9_]*)?/gmi, "$1rectangle $2$3");
+  if (isTemplate) {
+    normalized = normalized
+      .replace(/ESP32 Datenlogger/g, "IoT-Device Datenlogger")
+      .replace(/ESP32 Device/g, "IoT-Device")
+      .replace(/ESP32-Device/g, "IoT-Device")
+      .replace(/^\s*Startarchitektur aus Projekttemplate;.*$/gmi, "");
+  }
+  return numberGenericIotDeviceInstances(normalized).replace(/\n{3,}/g, "\n\n").trim();
+}
+
+function numberGenericIotDeviceInstances(source) {
+  const text = String(source || "");
+  const usedNumbers = new Set(Array.from(text.matchAll(/\bIoT[- ]Device\s+(\d+)\b/gi), (match) => Number(match[1])));
+  let nextNumber = 1;
+  return text.replace(/(\brectangle\s+")IoT[- ]Device(")/gi, (_match, prefix, suffix) => {
+    while (usedNumbers.has(nextNumber)) nextNumber += 1;
+    const instanceNumber = nextNumber;
+    usedNumbers.add(instanceNumber);
+    nextNumber += 1;
+    return `${prefix}IoT-Device ${instanceNumber}${suffix}`;
+  });
+}
+
+function architectureDiagramFromManifest(manifest = {}) {
+  const view = (Array.isArray(manifest.views) ? manifest.views : [])
+    .find((item) => item.id === "architecture-diagram" || item.type === "plantuml");
+  return normalizeArchitectureDiagram({
+    title: view?.title,
+    summary: view?.summary,
+    ...(view?.payload || {}),
+  });
+}
+
+function hardwareConfigurationFromManifest(manifest = {}) {
+  const view = (Array.isArray(manifest?.views) ? manifest.views : [])
+    .find((item) => item.id === "hardware-configuration");
+  return view?.payload && typeof view.payload === "object" ? view.payload : null;
+}
+
+function normalizeHardwareConfiguration(input = {}, project = {}) {
+  const raw = input && typeof input === "object" ? input : {};
+  const rawComponents = Array.isArray(raw.components) ? raw.components.slice(0, 100) : [];
+  let deviceIndex = 0;
+  const components = rawComponents.map((component) => {
+    const abstractType = ["iot_device", "sensor", "actuator", "actor", "structural"].includes(component.abstract_type)
+      ? component.abstract_type
+      : "structural";
+    const concreteType = String(component.concrete_type || "").trim().slice(0, 80);
+    const normalized = {
+      component_id: requiredField(component.component_id, "component_id").replace(/[^A-Za-z0-9_]/g, "_").slice(0, 80),
+      label: requiredField(component.label, "label").slice(0, 160),
+      plantuml_type: String(component.plantuml_type || "component").slice(0, 40),
+      abstract_type: abstractType,
+      concrete_type: concreteType,
+      sensor_category: String(component.sensor_category || "").trim().toLowerCase().slice(0, 80),
+      signal_type: String(component.signal_type || "").trim().toLowerCase().slice(0, 80),
+      processor_family: String(component.processor_family || "").trim().toLowerCase().slice(0, 80),
+      processor_variant: String(component.processor_variant || "").trim().slice(0, 120),
+      board_profile_id: String(component.board_profile_id || "").slice(0, 180),
+      inventory_device_id: String(component.inventory_device_id || "").slice(0, 180),
+      inventory_device_label: String(component.inventory_device_label || "").slice(0, 180),
+      target_device_id: String(component.target_device_id || "").replace(/[^A-Za-z0-9_]/g, "_").slice(0, 80),
+      pin: String(component.pin || "").slice(0, 80),
+      secondary_pin: String(component.secondary_pin || "").slice(0, 80),
+      properties: normalizeHardwareProperties(component.properties),
+      circuit: hardwareCircuitFor(concreteType),
+    };
+    if (abstractType === "iot_device") {
+      normalized.component_path = deviceIndex === 0
+        ? primaryProjectComponentPath(project)
+        : `Komponenten/${slugifyHardwareFolder(normalized.label)}-${deviceIndex + 1}`;
+      deviceIndex += 1;
+    }
+    return normalized;
+  });
+  return {
+    schema_version: 4,
+    components,
+    updated_at: new Date().toISOString(),
+  };
+}
+
+function normalizeHardwareProperties(input = {}) {
+  const result = {};
+  if (!input || typeof input !== "object") return result;
+  for (const [key, value] of Object.entries(input).slice(0, 30)) {
+    const normalizedKey = String(key).replace(/[^A-Za-z0-9_]/g, "_").slice(0, 60);
+    if (!normalizedKey) continue;
+    result[normalizedKey] = String(value ?? "").slice(0, 300);
+  }
+  return result;
+}
+
+function hardwareCircuitFor(concreteType) {
+  if (concreteType === "pt1000") return { type: "pt1000_measurement", label: "PT1000-Messschaltung", stages: ["PT1000", "Konstantstromquelle / Messbruecke", "Messverstaerker", "ADC"] };
+  if (["ntc", "ptc"].includes(concreteType)) return { type: "resistive_divider", label: "Widerstands-Messschaltung", stages: [concreteType.toUpperCase(), "Spannungsteiler", "ADC"] };
+  if (concreteType === "dc_motor") return { type: "motor_driver", label: "Motor-Treiberstufe", stages: ["PWM / Richtung", "Motortreiber / H-Bruecke", "DC-Motor"] };
+  return null;
+}
+
+function hardwareConfigurationSources(configuration, title) {
+  const devices = configuration.components.filter((component) => component.abstract_type === "iot_device");
+  const deviceById = new Map(devices.map((component) => [component.component_id, component]));
+  const sources = [{
+    path: "Architektur/verdrahtung/hardware.puml",
+    role: "hardware_architecture_view",
+    content_type: "text/plain",
+    content: hardwareWiringPlantUml(configuration, title),
+  }];
+  for (const device of devices) {
+    const folder = device.component_path;
+    const sensors = configuration.components.filter((component) => component.abstract_type === "sensor" && component.target_device_id === device.component_id);
+    const actuators = configuration.components.filter((component) => component.abstract_type === "actuator" && component.target_device_id === device.component_id);
+    sources.push({
+      path: `${folder}/Konfiguration/Hardware/Board/board.md`,
+      role: "device_board_config",
+      content_type: "text/markdown",
+      content: hardwareBoardMarkdown(device),
+    });
+    sources.push({
+      path: `${folder}/Konfiguration/Hardware/Sensoren/in.md`,
+      role: "device_sensor_input_config",
+      content_type: "text/markdown",
+      content: hardwareIoMarkdown("Sensor/in", device, sensors),
+    });
+    sources.push({
+      path: `${folder}/Konfiguration/Hardware/Aktoren/out.md`,
+      role: "device_actuator_output_config",
+      content_type: "text/markdown",
+      content: hardwareIoMarkdown("Aktor/out", device, actuators),
+    });
+  }
+  for (const component of configuration.components.filter((item) => item.circuit)) {
+    const device = deviceById.get(component.target_device_id);
+    const folder = device?.component_path || primaryHardwareComponentPath(devices);
+    sources.push({
+      path: `${folder}/Konfiguration/Hardware/Schaltungen/${slugifyHardwareFolder(component.label)}.md`,
+      role: "device_measurement_circuit_config",
+      content_type: "text/markdown",
+      content: hardwareCircuitMarkdown(component, device),
+    });
+  }
+  return sources;
+}
+
+function primaryHardwareComponentPath(devices) {
+  return devices[0]?.component_path || "Komponenten/IoT-Device";
+}
+
+function hardwareBoardMarkdown(device) {
+  return [
+    `# Board-Konfiguration: ${device.label}`,
+    "",
+    `- Prozessorfamilie: ${device.processor_family || "noch nicht gewaehlt"}`,
+    `- Prozessor: ${device.processor_variant || "noch nicht gewaehlt"}`,
+    `- Board-Profil: ${device.board_profile_id || "noch nicht gewaehlt"}`,
+    `- Abstrakte Komponente: ${device.component_id}`,
+    "",
+    "Diese Auswahl konkretisiert das abstrakte IoT-Device. Sensoren, Aktoren und Pins bleiben in den zugehoerigen Hardware-Sichten getrennt.",
+    "",
+  ].join("\n");
+}
+
+function hardwareIoMarkdown(kind, device, components) {
+  const lines = [`# ${kind}-Konfiguration: ${device.label}`, ""];
+  if (!components.length) lines.push("- Keine Komponente zugeordnet.");
+  for (const component of components) {
+    lines.push(`## ${component.label}`);
+    if (component.abstract_type === "sensor") lines.push(`- Sensorart: ${component.sensor_category || "offen"}`);
+    if (component.abstract_type === "sensor") lines.push(`- Erfassung: ${component.signal_type || "offen"}`);
+    lines.push(`- Konkreter Typ: ${component.concrete_type || "offen"}`);
+    lines.push(`- Pin: ${component.pin || "offen"}`);
+    if (component.secondary_pin) lines.push(`- Zweiter Pin: ${component.secondary_pin}`);
+    if (component.circuit) lines.push(`- Vorschaltung: ${component.circuit.label}`);
+    for (const [key, value] of Object.entries(component.properties || {})) lines.push(`- ${key}: ${value}`);
+    lines.push("");
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function hardwareCircuitMarkdown(component, device) {
+  return [
+    `# Schaltung: ${component.label}`,
+    "",
+    `- Typ: ${component.circuit.label}`,
+    `- Signalkette: ${component.circuit.stages.join(" -> ")}`,
+    `- Ziel: ${device?.label || component.target_device_id || "IoT-Device"}`,
+    `- Ausgang der Schaltung: ${component.pin || "ADC/GPIO noch offen"}`,
+    "",
+    "Die Vorschaltung ist ein notwendiger Teil der Hardware-Realisierung und keine direkte Sensor-Pin-Verbindung.",
+    "",
+  ].join("\n");
+}
+
+function hardwareWiringPlantUml(configuration, title) {
+  const devices = new Map(configuration.components.filter((component) => component.abstract_type === "iot_device").map((component) => [component.component_id, component]));
+  const lines = ["@startuml", `title Hardware-Architektur: ${String(title || "Entwicklungsprojekt").replace(/"/g, "'")}`, "left to right direction", "skinparam componentStyle rectangle", ""];
+  for (const device of devices.values()) {
+    const deviceLabel = plantUmlLabel([
+      device.label,
+      `Prozessorfamilie: ${device.processor_family || "offen"}`,
+      `Prozessor: ${device.processor_variant || "offen"}`,
+      `Board: ${device.board_profile_id || "offen"}`,
+      ...hardwarePropertyLines(device.properties),
+    ]);
+    lines.push(`node "${deviceLabel}" as hw_${device.component_id}`);
+    if (device.inventory_device_id) {
+      const inventoryAlias = `inventory_${device.component_id}`;
+      lines.push(`node "${plantUmlLabel(["Inventar-Device", device.inventory_device_label || device.inventory_device_id, `ID: ${device.inventory_device_id}`])}" as ${inventoryAlias}`);
+      lines.push(`hw_${device.component_id} ..> ${inventoryAlias} : Inventarzuordnung`);
+    }
+  }
+  for (const component of configuration.components.filter((item) => ["sensor", "actuator"].includes(item.abstract_type))) {
+    const alias = `hw_${component.component_id}`;
+    const detailLines = component.abstract_type === "sensor"
+      ? [component.label, `Sensorart: ${component.sensor_category || "offen"}`, `Erfassung: ${component.signal_type || "offen"}`, `Sensor: ${component.concrete_type || "offen"}`]
+      : [component.label, `Aktor: ${component.concrete_type || "offen"}`];
+    lines.push(`component "${plantUmlLabel([...detailLines, ...hardwarePropertyLines(component.properties)])}" as ${alias}`);
+    const pinLabel = [component.pin || "Pin offen", component.secondary_pin ? `zweiter Pin: ${component.secondary_pin}` : ""].filter(Boolean).join(" / ");
+    if (component.circuit) {
+      lines.push(`component "${plantUmlLabel([component.circuit.label, ...component.circuit.stages])}" as ${alias}_circuit`);
+      lines.push(`${alias} --> ${alias}_circuit`);
+      lines.push(`${alias}_circuit --> hw_${component.target_device_id} : ${plantUmlText(pinLabel)}`);
+    } else if (devices.has(component.target_device_id)) {
+      lines.push(`${alias} --> hw_${component.target_device_id} : ${plantUmlText(pinLabel)}`);
+    }
+  }
+  lines.push("@enduml");
+  return lines.join("\n");
+}
+
+function plantUmlLabel(lines) {
+  return lines.filter(Boolean).map(plantUmlText).join("\\n");
+}
+
+function hardwarePropertyLines(properties = {}) {
+  return Object.entries(properties).map(([key, value]) => `${key}: ${value}`);
+}
+
+function plantUmlText(value) {
+  return String(value || "").replace(/["\\]/g, "'").slice(0, 180);
+}
+
+function slugifyHardwareFolder(value) {
+  return String(value || "Hardware")
+    .normalize("NFKD")
+    .replace(/[^A-Za-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "") || "Hardware";
+}
+
+function buildConfigForBoard(boardProfileId, existing = null) {
+  const common = { ...(existing || {}), libraries: existing?.libraries || [] };
+  if (/arduino_nano_r3_atmega328p/.test(boardProfileId)) return { ...common, platform: "atmelavr", framework: "arduino", board: "nanoatmega328", environment: "nanoatmega328", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
+  if (/esp8266|d1_mini/.test(boardProfileId)) return { ...common, platform: "espressif8266", framework: "arduino", board: "d1_mini", environment: "d1_mini", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
+  if (/esp32|wroom32|nano_esp32/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: existing?.framework || "espidf", board: "esp32dev", environment: "esp32dev", firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: existing?.firmware_basis_version || "workspace", firmware_basis_variant: existing?.firmware_basis_variant || "comfort", user_source_path: existing?.user_source_path || "Komponenten/ESP32/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/user/user_app.cpp" };
+  return existing;
+}
+
+function normalizeArchitectureDialog(input = {}, diagram = null) {
+  const messages = Array.isArray(input.messages)
+    ? input.messages.slice(-80).map((message) => ({
+      role: message.role === "user" ? "user" : "assistant",
+      content: String(message.content || "").slice(0, 8000),
+      ...(message.usage && typeof message.usage === "object" ? { usage: message.usage } : {}),
+      ...(message.routing && typeof message.routing === "object" ? { routing: message.routing } : {}),
+    })).filter((message) => message.content)
+    : [];
+  return {
+    messages,
+    assistantMode: String(input.assistantMode || input.assistant_mode || "architecture_structure"),
+    lastRouting: input.lastRouting || input.last_routing || null,
+    architectureDiagram: diagram?.source ? normalizeArchitectureDiagram(diagram) : null,
+    updated_at: new Date().toISOString(),
   };
 }
 

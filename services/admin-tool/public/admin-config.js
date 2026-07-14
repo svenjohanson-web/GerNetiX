@@ -8,6 +8,8 @@ const state = {
   accounts: [],
   aiUsage: null,
   aiContext: null,
+  aiClarifications: null,
+  aiClarificationsLoading: false,
   monitoring: null,
   monitoringLoading: false,
   systemEvents: null,
@@ -39,6 +41,10 @@ document.querySelector("#refreshLocalLlmModelsButton").addEventListener("click",
 document.querySelector("#refreshApiLlmModelsButton").addEventListener("click", loadApiModels);
 document.querySelector("#refreshMonitoringButton").addEventListener("click", () => loadMonitoring(true));
 document.querySelector("#refreshSystemEventsButton").addEventListener("click", () => loadSystemEvents(true));
+document.querySelector("#refreshAiClarificationsButton").addEventListener("click", () => loadAiClarifications(true));
+document.querySelector("#aiClarificationStatusFilter").addEventListener("change", () => loadAiClarifications(true));
+document.querySelector("#aiClarificationPriorityFilter").addEventListener("change", () => loadAiClarifications(true));
+document.querySelector("#aiClarificationRows").addEventListener("click", handleAiClarificationAction);
 document.querySelectorAll("[data-admin-view]").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.adminView));
 });
@@ -53,6 +59,7 @@ async function bootstrap() {
   await loadAccounts();
   await loadAiUsage();
   await loadAiContext();
+  await loadAiClarifications(false);
   await loadConfig();
   await loadLocalModels();
   await loadApiModels();
@@ -76,6 +83,22 @@ async function loadAccounts() {
 async function loadAiContext() {
   const result = await getJson("/api/admin/ai-context/summary");
   state.aiContext = result.summary || null;
+}
+
+async function loadAiClarifications(force) {
+  if (state.aiClarificationsLoading || (state.aiClarifications && !force)) return;
+  state.aiClarificationsLoading = true;
+  renderAiClarifications();
+  const status = value("#aiClarificationStatusFilter");
+  const priority = value("#aiClarificationPriorityFilter");
+  try {
+    state.aiClarifications = await getJson(`/api/admin/ai-clarification-cases?status=${encodeURIComponent(status)}&priority=${encodeURIComponent(priority)}`);
+  } catch (error) {
+    state.aiClarifications = {summary:{total:0,open:0,urgent:0,resolved:0},items:[],error:error.message};
+  } finally {
+    state.aiClarificationsLoading = false;
+    renderAiClarifications();
+  }
 }
 
 async function loadConfig() {
@@ -124,6 +147,7 @@ function render() {
   renderAccounts();
   renderAiUsage();
   renderAiContext();
+  renderAiClarifications();
   renderForm();
   renderStatus();
   renderProviderFields();
@@ -134,6 +158,7 @@ function setView(view) {
   renderNavigation();
   if (state.currentView === "monitoring") loadMonitoring(false);
   if (state.currentView === "system-events") loadSystemEvents(false);
+  if (state.currentView === "ai-clarifications") loadAiClarifications(false);
 }
 
 function renderNavigation() {
@@ -153,7 +178,7 @@ function renderNavigation() {
 }
 
 function isAiView(view) {
-  return ["ai-usage", "ai-context", "llm-config"].includes(view);
+  return ["ai-usage", "ai-context", "ai-clarifications", "llm-config"].includes(view);
 }
 
 function viewId(view) {
@@ -164,6 +189,7 @@ function viewId(view) {
     accounts: "accountsView",
     "ai-usage": "aiUsageView",
     "ai-context": "aiContextView",
+    "ai-clarifications": "aiClarificationsView",
     "llm-config": "llmConfigView",
   }[view] || "statisticsView";
 }
@@ -475,6 +501,97 @@ function renderAiContext() {
   renderAiContextSqlite(summary.sqlite || {});
   renderAiContextContentSources(summary.content_sources || {});
 }
+
+function renderAiClarifications() {
+  const result = state.aiClarifications || {};
+  const summary = result.summary || {};
+  const rows = document.querySelector("#aiClarificationRows");
+  if (!rows) return;
+  document.querySelector("#aiClarificationMetrics").innerHTML = [
+    metricCard("Offen", formatNumber(summary.open), `${formatNumber(summary.total)} gesamt`),
+    metricCard("Dringend", formatNumber(summary.urgent), "sofort pruefen"),
+    metricCard("Geklaert", formatNumber(summary.resolved), "als Beispiele nutzbar"),
+    metricCard("Angezeigt", formatNumber((result.items || []).length), "nach Filter"),
+  ].join("");
+  const status = document.querySelector("#aiClarificationStatus");
+  if (state.aiClarificationsLoading) {
+    status.className = "flash-status running";
+    status.textContent = "Klaerfaelle werden geladen.";
+  } else if (result.error) {
+    status.className = "flash-status error";
+    status.textContent = result.error;
+  } else {
+    status.className = "flash-status hidden";
+    status.textContent = "";
+  }
+  rows.innerHTML = (result.items || []).length
+    ? result.items.map(renderAiClarificationRow).join("")
+    : `<tr><td colspan="5" class="empty-cell">Keine Klaerfaelle fuer diesen Filter.</td></tr>`;
+}
+
+function renderAiClarificationRow(item) {
+  const resolved = item.status === "resolved";
+  return `
+    <tr data-clarification-case-id="${escapeHtml(item.case_id)}">
+      <td><strong class="severity ${escapeHtml(clarificationPrioritySeverity(item.priority))}">${escapeHtml(clarificationPriorityLabel(item.priority))}</strong><span>Score ${formatNumber(item.priority_score)}</span></td>
+      <td><strong>${escapeHtml(item.utterance || "-")}</strong><span>${escapeHtml(item.ambiguity_reason || "-")} · zuletzt ${escapeHtml(formatDateTime(item.last_seen_at))}</span></td>
+      <td>
+        <input class="clarification-intent-input" value="${escapeHtml(item.resolution?.intent || item.suggested_intent || "")}" aria-label="Intent">
+        <input class="clarification-entity-input" value="${escapeHtml(item.resolution?.entity || item.suggested_entity || "")}" aria-label="Ziel">
+      </td>
+      <td><strong>${escapeHtml(`${Math.round(Number(item.semantic_score || 0) * 100)} % Konfidenz`)}</strong><span>${formatNumber(item.occurrence_count)} Vorkommen · ${formatNumber(item.correction_count)} Korrekturen</span></td>
+      <td>
+        <div class="clarification-actions">
+          <select class="clarification-action-select" aria-label="Entscheidung">
+            ${resolved ? `<option value="reopen">Wieder oeffnen</option>` : `
+              <option value="confirm">Bestaetigen</option>
+              <option value="correct">Korrigieren</option>
+              <option value="defer">Zurueckstellen</option>
+              <option value="ignore">Ignorieren</option>
+              <option value="prioritize">Prioritaet setzen</option>`}
+          </select>
+          <select class="clarification-scope-select" aria-label="Gueltigkeitsbereich" ${resolved ? "disabled" : ""}>
+            <option value="global">Allgemein</option>
+            <option value="account">Nur Account</option>
+          </select>
+          <select class="clarification-priority-select" aria-label="Prioritaet" ${resolved ? "disabled" : ""}>
+            ${["urgent","high","normal","low"].map((priority) => `<option value="${priority}" ${item.priority===priority?"selected":""}>${clarificationPriorityLabel(priority)}</option>`).join("")}
+          </select>
+          <button type="button" class="primary" data-apply-clarification>Anwenden</button>
+        </div>
+      </td>
+    </tr>`;
+}
+
+async function handleAiClarificationAction(event) {
+  const button = event.target.closest("[data-apply-clarification]");
+  if (!button) return;
+  const row = button.closest("[data-clarification-case-id]");
+  const caseId = row?.dataset.clarificationCaseId;
+  if (!caseId) return;
+  button.disabled = true;
+  try {
+    await postJson(`/api/admin/ai-clarification-cases/${encodeURIComponent(caseId)}/actions`, {
+      action: row.querySelector(".clarification-action-select").value,
+      intent: row.querySelector(".clarification-intent-input").value.trim(),
+      entity: row.querySelector(".clarification-entity-input").value.trim(),
+      scope: row.querySelector(".clarification-scope-select").value,
+      priority: row.querySelector(".clarification-priority-select").value,
+      promote: true,
+    });
+    state.aiClarifications = null;
+    await loadAiClarifications(true);
+  } catch (error) {
+    const status = document.querySelector("#aiClarificationStatus");
+    status.className = "flash-status error";
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function clarificationPrioritySeverity(priority) { return priority === "urgent" ? "error" : priority === "high" ? "warning" : "info"; }
+function clarificationPriorityLabel(priority) { return ({urgent:"Dringend",high:"Hoch",normal:"Normal",low:"Niedrig"})[priority] || priority || "-"; }
 
 function renderAiContextStatus(summary) {
   const target = document.querySelector("#aiContextStatus");

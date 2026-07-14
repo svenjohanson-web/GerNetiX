@@ -24,6 +24,8 @@ Das Admin Tool bietet erste berechtigte Sichten auf Device-Status, Support-Entit
 - LLM-Provider fuer Kunden-KI-Chat und Entwicklungsplattform konfigurieren, inklusive lokalem Ollama, OpenAI-kompatiblen APIs und Claude/Anthropic
 - LLM-Task-Routen konfigurieren, damit Chat/Architektur und Artefakt-/Codegenerierung unterschiedliche Provider nutzen koennen
 - sichtbar machen, welche Datenquellen dem LLM per AI-Context-Grant bereitgestellt werden
+- unsichere KI-Interpretationen als priorisierte Klaerfaelle bestaetigen, korrigieren, zurueckstellen oder ignorieren
+- bestaetigte Bedeutungen als globale oder accountbezogene Intent-Beispiele fuer pgvector freigeben
 
 ## MVP-Implementierung
 
@@ -75,6 +77,13 @@ LLM-Datenfreigaben:
 - Fachliche Inhalte wie ESP32-Boards und Capabilities werden aus dem Hardware Catalog als Inhaltsvorschau angezeigt.
 - Feste Prompt-Grundlagen fuer KI-Chat und Architektur-Discovery werden aus der AI-Context-SQLite gelesen und mit Quelle, Route, erlaubten und blockierten Kontextquellen angezeigt.
 - Ist der AI Context Server nicht erreichbar, bleibt die Sicht verfuegbar und markiert den Kontext-Service als offline.
+
+KI-Klaerfaelle:
+
+- Die KI-Unterseite `Klaerfaelle` liest die priorisierte Warteschlange aus dem AI Context Server.
+- Wiederholte aehnliche Unsicherheiten werden als ein Fall mit Vorkommens- und Korrekturzaehlern gefuehrt.
+- Bestaetigen und Korrigieren erzeugen unmittelbar ein aktives Intent-Beispiel samt Embedding; ein separates Ticketsystem ist nicht Bestandteil dieses Stands.
+- Prioritaet kann automatisch berechnet und im Admin Tool bewusst auf `dringend`, `hoch`, `normal` oder `niedrig` gesetzt werden.
 
 KI Usage:
 

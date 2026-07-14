@@ -56,10 +56,11 @@ Startquellen:
 
 ```text
 GET  /api/ai-context/architecture-components
+GET  /api/ai-context/architecture-components/search?q={query}&limit={1..20}
 POST /api/ai-context/architecture-components
 ```
 
-Liefert die fuehrenden Architektur-Bausteine aus der AI-Context-SQLite. Nutzende Dienste verwenden diese Daten fuer kurze Erklaerfragen zu sichtbaren Strukturelementen, ohne dafuer Provider-spezifische Sonderregeln oder hart codierte Antworttexte zu pflegen.
+Liefert die fuehrenden Architektur-Bausteine aus der AI-Context-Datenbank. Der Suchpfad verwendet unter PostgreSQL Embeddings und pgvector-Cosine-Similarity. Ist der Embedding-Dienst nicht erreichbar, antwortet er mit `strategy: lexical_fallback`.
 
 Wichtige Felder:
 
@@ -102,6 +103,20 @@ Wichtige Felder fuer `POST`:
 - `content`
 - `status`: `active`, `draft` oder `archived`
 
+## KI-Klaerfaelle und Intent-Beispiele
+
+```text
+GET  /api/ai-context/clarification-cases?status=open&priority=urgent
+POST /api/ai-context/clarification-cases
+POST /api/ai-context/clarification-cases/{case_id}/actions
+GET  /api/ai-context/intent-examples?status=active
+GET  /api/ai-context/intent-examples/search?q={query}&account_id={account_id}
+```
+
+Unsichere Architektur-Erweiterungen werden anhand ihrer normalisierten Formulierung zusammengefuehrt. Prioritaet entsteht aus geringer semantischer Konfidenz, Wiederholungen, Konflikten und Korrekturen. Unterstuetzte Admin-Aktionen sind `confirm`, `correct`, `defer`, `ignore`, `reopen` und `prioritize`.
+
+`confirm` und `correct` koennen den Fall als aktives Intent-Beispiel uebernehmen. Globale Beispiele stehen allen Accounts zur Verfuegung; accountbezogene Beispiele werden bei der semantischen Suche strikt auf den angegebenen Account begrenzt.
+
 ## Preflight
 
 ```text
@@ -118,17 +133,11 @@ GET /api/ai-context/audit-events
 
 Liefert erlaubte und abgelehnte Kontextzugriffsentscheidungen.
 
-## SQLite Summary
+## Storage Summary
 
 ```text
+GET /api/ai-context/storage/summary
 GET /api/ai-context/sqlite/summary
 ```
 
-Liefert eine sichere Betriebsuebersicht der eigenen AI-Context-SQLite:
-
-- Datenbankpfad, Service-Key und Schema-Version
-- AI-Context-Tabellen mit Zeilenanzahl und Spaltenliste
-- begrenzte Vorschauzeilen fuer Policy, Sources, Prompt-Grundlagen, Grants und Audit-Events
-- Service-Document-Collections mit Zeilenanzahl
-
-Die Summary ist kein Rohdump. `raw_json` und unkontrollierte Inhalte werden nicht ausgegeben.
+Liefert eine sichere Betriebsuebersicht des aktiven Backends. Der alte SQLite-Pfad bleibt aus Kompatibilitaetsgruenden bestehen. Bei PostgreSQL werden Backend, Embedding-Modell und Zeilenanzahlen der AI-Context-Tabellen ausgegeben; bei SQLite bleibt die bisherige begrenzte Vorschau erhalten.

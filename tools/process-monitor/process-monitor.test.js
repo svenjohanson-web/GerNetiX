@@ -61,3 +61,33 @@ test("monitor displays persisted external interface call statistics", () => {
   assert.equal(Array.isArray(statistics.items), true);
   assert.equal(typeof statistics.summary.calls, "number");
 });
+
+test("monitor shows runtime alerts from persisted system and interface failures", () => {
+  assert.match(html, /id="runtimeAlerts"/);
+  assert.match(html, /Auffaelligkeiten/);
+  assert.match(client, /runtimeAlerts\(24\)/);
+  assert.match(client, /renderAlerts/);
+  assert.match(desktopPreload, /runtimeAlerts/);
+  assert.match(desktopMain, /runtime:alerts/);
+  const alerts = control.runtimeAlerts(24);
+  assert.equal(Array.isArray(alerts.items), true);
+  assert.equal(typeof alerts.summary.errors, "number");
+});
+
+test("all local services start in order and retain individual failures", async () => {
+  const calls = [];
+  const result = await control.startAllServices({ startService: async (id) => {
+    calls.push(id);
+    if (id === "hardware-shop") throw new Error("Start fehlgeschlagen");
+    return { id, healthy:true };
+  }});
+  assert.deepEqual(calls, control.services.map((service) => service.id));
+  assert.equal(result.items.length, control.services.length);
+  assert.equal(result.healthy, control.services.length - 1);
+  assert.equal(result.failed, 1);
+  assert.equal(result.items.find((item) => item.id === "hardware-shop").error, "Start fehlgeschlagen");
+  assert.match(desktopPreload, /processes:start-all/);
+  assert.match(desktopMain, /processes:start-all/);
+  assert.match(html, /id="startAllLocal"/);
+  assert.match(client, /gernetixProcesses\.startAll/);
+});

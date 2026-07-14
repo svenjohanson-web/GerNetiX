@@ -117,6 +117,15 @@ Liefert eine Admin-Zusammenfassung, welche Daten dem LLM als Kontext bereitgeste
 
 Die Antwort enthaelt Metadaten zu Quellen und Grants, fachliche Vorschauen wie Hardware-Catalog-Auszug und die festen Prompt-Grundlagen aus dem AI Context Server. Secrets werden nicht ausgegeben. Ist der AI Context Server nicht erreichbar, liefert der Endpunkt einen sicheren Offline-Status mit leeren Listen.
 
+## KI-Klaerfaelle
+
+```text
+GET  /api/admin/ai-clarification-cases?status=open&priority=urgent
+POST /api/admin/ai-clarification-cases/{case_id}/actions
+```
+
+Liefert die priorisierte Klärfall-Warteschlange aus dem AI Context Server. Entscheidungen werden mit Admin-Kennung weitergereicht. `confirm` und `correct` koennen die Formulierung als globales oder accountbezogenes Intent-Beispiel aktivieren; `prioritize` setzt die fachliche Prioritaet ohne ein separates Ticket anzulegen.
+
 ## LLM-Konfiguration
 
 ```text

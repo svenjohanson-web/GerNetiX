@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Plattform</title>
-    <link rel="stylesheet" href="/app/app.css?v=20260712-17" />
+    <link rel="stylesheet" href="/app/app.css?v=20260714-11" />
   </head>
   <body>
     <main class="app-shell">
@@ -149,8 +149,8 @@
               </section>
               <section id="ideImageView" class="ide-image-view hidden"></section>
               <section id="ideModelView" class="ide-model-view"></section>
-              <section id="ideRealizationView" class="ide-realization-view hidden"></section>
               <section id="ideComponentFeaturesView" class="ide-component-features-view hidden"></section>
+              <section id="ideBoardPropertiesView" class="ide-board-properties-view hidden"></section>
               <section id="ideDeviceWebView" class="ide-device-web-view hidden"></section>
             </article>
             <aside id="ideCodeAssistant" class="panel ide-code-assistant"></aside>
@@ -164,15 +164,29 @@
                 <button id="usbFlashButton" type="button" aria-describedby="ideActionReason">Flash via Web Serial</button>
                 <button id="otaFlashButton" type="button" aria-describedby="ideActionReason">OTA Flash</button>
                 <button id="checkOtaConnectivityButton" type="button" aria-describedby="ideActionReason">Online prüfen</button>
-                <small id="ideActionReason" class="ide-action-reason hidden"></small>
               </div>
-              <section class="ide-terminal" aria-label="Build Terminal">
-                <header class="ide-terminal-head">
-                  <strong>TERMINAL</strong>
-                  <button id="clearIdeTerminalButton" type="button">Leeren</button>
-                </header>
-                <pre id="ideTerminalOutput" aria-live="polite"><span class="terminal-muted">GerNetiX Build-Terminal bereit.</span></pre>
-              </section>
+              <div class="ide-console-tabs" role="tablist" aria-label="Untere IDE-Ansicht">
+                <button id="showIdeTerminalButton" class="active" type="button" role="tab" aria-selected="true" aria-controls="ideTerminalPanel">Terminal</button>
+                <button id="showIdeProjectInformationButton" type="button" role="tab" aria-selected="false" aria-controls="ideProjectInformationPanel">Projektinformationen</button>
+                <button id="showIdeProjectHintsButton" type="button" role="tab" aria-selected="false" aria-controls="ideProjectHintsPanel">Hinweise</button>
+              </div>
+              <div id="ideConsoleWorkspace" class="ide-console-workspace">
+                <section id="ideTerminalPanel" class="ide-terminal" aria-label="Build Terminal" role="tabpanel">
+                  <header class="ide-terminal-head">
+                    <strong>TERMINAL</strong>
+                    <button id="clearIdeTerminalButton" type="button">Leeren</button>
+                  </header>
+                  <pre id="ideTerminalOutput" aria-live="polite"><span class="terminal-muted">GerNetiX Build-Terminal bereit.</span></pre>
+                </section>
+                <aside id="ideProjectInformationPanel" class="ide-project-information" aria-label="Projektinformationen" role="tabpanel">
+                  <header><strong>PROJEKTINFORMATIONEN</strong></header>
+                  <dl id="ideProjectInformation"></dl>
+                </aside>
+                <aside id="ideProjectHintsPanel" class="ide-project-hints" aria-label="Hinweise" role="tabpanel">
+                  <header><strong>HINWEISE</strong></header>
+                  <ul id="ideActionReason" aria-live="polite"></ul>
+                </aside>
+              </div>
               <div id="flashStatus" class="flash-status hidden"></div>
             </section>
           </section>
@@ -196,7 +210,7 @@
         <section class="dashboard-grid">
           <button class="entry-card primary" type="button" data-open-route="/app/device-management/provisioning/">
             <span>Provisioning</span>
-            <strong>Unbekannte Boards flashen, registrieren und pairen</strong>
+            <strong>Boards per WLAN oder USB verbinden, registrieren und pairen</strong>
           </button>
           <button class="entry-card" type="button" data-open-route="/app/device-management/inventory/">
             <span>Inventar</span>
@@ -223,9 +237,9 @@
         </nav>
         <section class="provisioning-intro panel">
           <div>
-            <p class="eyebrow">Unbekanntes Gerät</p>
-            <h3>Board erstmalig in Betrieb nehmen</h3>
-            <p class="helper-text">Provisioning erkennt ein neues Board, installiert bei Bedarf die GerNetiX-Basissoftware, registriert seine Identität und verbindet es mit deinem Account.</p>
+            <p class="eyebrow">Board verbinden</p>
+            <h3>Per WLAN oder USB provisionieren</h3>
+            <p class="helper-text">WLAN übernimmt ein bereits provisioniertes Board aus deinem lokalen Netzwerk. USB nimmt ein neues oder nicht erreichbares Board in Betrieb. Danach wird das Board registriert und mit deinem Account verbunden.</p>
           </div>
           <ol class="provisioning-steps" aria-label="Provisioning-Ablauf">
             <li><span>1</span>Erkennen</li>
@@ -234,28 +248,44 @@
             <li><span>4</span>Pairen</li>
           </ol>
         </section>
-        <section class="inventory-tools provisioning-tools">
+        <fieldset id="provisioningMethodChoice" class="panel provisioning-method-choice">
+          <legend>Wie möchtest du das Board verbinden?</legend>
+          <p class="helper-text">Wähle genau einen Provisioning-Weg. Du kannst den Weg später wechseln; dabei werden vorhandene Suchergebnisse verworfen.</p>
+          <div class="provisioning-method-options">
+            <label class="provisioning-method-option">
+              <input type="radio" name="deviceDiscoveryMethod" value="wlan" />
+              <span>
+                <strong>Per WLAN</strong>
+                <small>Bereits provisioniertes Board im lokalen Netzwerk suchen</small>
+              </span>
+            </label>
+            <label class="provisioning-method-option">
+              <input type="radio" name="deviceDiscoveryMethod" value="usb" />
+              <span>
+                <strong>Per USB</strong>
+                <small>Neues oder nicht erreichbares Board direkt verbinden</small>
+              </span>
+            </label>
+          </div>
+        </fieldset>
+        <section id="provisioningWorkflowPanel" class="inventory-tools provisioning-tools hidden">
           <section class="panel discovery-panel">
             <div class="section-head">
               <div>
                 <p class="eyebrow">Geführtes Provisioning</p>
-                <h3>Unbekanntes Board suchen</h3>
+                <h3 id="provisioningWorkflowTitle">Board suchen</h3>
               </div>
             </div>
-            <label class="inventory-type-label">Prozessorfamilie optional<select id="inventoryProcessorFamily"></select></label>
-            <label class="inventory-type-label">ProcessorBoard optional<select id="inventoryHardwareType"></select></label>
-            <label class="inventory-type-label">Kurzer Board-Name<input id="inventoryBoardShortName" type="text" value="mein-board" maxlength="42" /></label>
-            <dl class="meta-list compact onboarding-preview">
-              <div><dt>Node-/SSID-Name</dt><dd id="inventoryNodeNamePreview">gernetix-mein-board</dd></div>
-              <div><dt>Seriennummer</dt><dd>wird automatisch von GerNetiX erstellt</dd></div>
-            </dl>
-            <p class="helper-text">Die Seriennummer und Device-Identität werden beim Provisioning erzeugt und dauerhaft gespeichert.</p>
+            <aside id="provisioningWifiNotice" class="provisioning-method-notice warning hidden" role="note">
+              <strong>Wichtig: WLAN funktioniert nur mit bereits provisionierten Boards.</strong>
+              <span>Das Board muss die GerNetiX-Basissoftware bereits besitzen und im gleichen lokalen Netzwerk erreichbar sein. Für ein neues oder nicht erreichbares Board bitte USB wählen.</span>
+            </aside>
+            <aside id="provisioningUsbNotice" class="provisioning-method-notice hidden" role="note">
+              <strong>USB-Provisioning</strong>
+              <span>Verbinde das Board direkt mit diesem Rechner und wähle bei Bedarf den erkannten USB-Port.</span>
+            </aside>
             <div class="inventory-methods">
               <div id="esp32DiscoveryActions" class="button-row">
-                <select id="deviceDiscoveryMethod" aria-label="Erkennungsweg wählen">
-                  <option value="wlan">WLAN</option>
-                  <option value="usb">USB</option>
-                </select>
                 <button id="deviceDiscoverySearchButton" class="primary" type="button">Board suchen</button>
               </div>
               <div id="avrDiscoveryActions" class="button-row hidden">
@@ -266,6 +296,15 @@
             <p id="inventoryTypeHint" class="helper-text"></p>
             <div id="networkDiscoveryStatus" class="flash-status hidden"></div>
             <section id="networkDiscoveryList" class="discovery-list"></section>
+            <section id="provisioningFoundBoardDetails" class="provisioning-found-board hidden">
+              <p class="eyebrow">Board gefunden</p>
+              <label class="inventory-type-label">Kurzer Board-Name<input id="inventoryBoardShortName" type="text" value="mein-board" maxlength="42" /></label>
+              <dl class="meta-list compact onboarding-preview">
+                <div><dt>Node-/SSID-Name</dt><dd id="inventoryNodeNamePreview">gernetix-mein-board</dd></div>
+                <div><dt>Seriennummer</dt><dd>wird automatisch von GerNetiX erstellt</dd></div>
+              </dl>
+              <p class="helper-text">Name und Device-Identität werden erst bei der Übernahme dauerhaft gespeichert.</p>
+            </section>
             <div class="card-actions">
               <button id="claimSelectedDiscoveredDevicesButton" class="primary" type="button" disabled>Provisionieren und mit Account verbinden</button>
             </div>
@@ -343,29 +382,18 @@
         <div class="section-head">
           <div>
             <p class="eyebrow">Architektur-Discovery</p>
-            <div class="development-discovery-step">
-              <span>Aktueller Schritt</span>
-              <strong id="developmentAssistantMode">Ziel/Funktion klaeren</strong>
+            <div class="development-current-project">
+              <span>Projekt</span>
+              <strong id="developmentProjectName">Kein Projekt geoeffnet</strong>
             </div>
           </div>
           <div class="button-row">
-            <button id="clearDevelopmentChatButton" type="button">Dialog leeren</button>
+            <button id="chooseDevelopmentProjectButton" type="button">Projekt</button>
           </div>
         </div>
         <section class="development-platform-layout">
-          <article class="panel development-chat-panel">
+          <article class="panel development-workspace-panel">
             <section class="development-project-header">
-              <div>
-                <p class="eyebrow">Projekt</p>
-                <h3>Entwicklungsprojekt</h3>
-              </div>
-              <div class="development-project-summary">
-                <span>Aktuelles Projekt</span>
-                <strong id="developmentProjectName">Kein Projekt geoeffnet</strong>
-              </div>
-              <div class="button-row development-project-actions">
-                <button id="chooseDevelopmentProjectButton" class="hidden" type="button">Projekt wechseln</button>
-              </div>
               <div id="developmentProjectChoicePanel" class="development-project-choice-panel">
                 <button id="continueDevelopmentProjectButton" class="development-project-choice hidden" type="button">
                   <span>Letztes Projekt fortsetzen</span>
@@ -393,12 +421,7 @@
               </div>
               <form id="developmentProjectForm" class="development-project-form hidden">
                 <label id="developmentProjectTemplateField">Projekttemplate
-                  <select id="developmentProjectTemplate">
-                    <option value="empty" hidden>Leeres Projekt</option>
-                    <option value="esp32_device_only">ESP32 Device only</option>
-                    <option value="esp32_datalogger_local_web">Datenlogger mit lokalem Webserver</option>
-                    <option value="esp32_datalogger_internet_web">ESP32 Datenlogger mit Internet-Webserver</option>
-                  </select>
+                  <select id="developmentProjectTemplate"></select>
                 </label>
                 <p id="developmentProjectTemplateHint" class="development-template-hint">Architektur und Anforderungen gemeinsam von Grund auf klaeren.</p>
                 <label>Name<input id="developmentProjectTitle" type="text" maxlength="120" placeholder="z. B. Pflanzenwaechter" /></label>
@@ -407,26 +430,68 @@
               </form>
               <p id="developmentProjectStatus" class="helper-text">Bitte Projekt oeffnen oder neu anlegen, bevor der Chat startet.</p>
             </section>
-            <div id="developmentChatMessages" class="development-chat-messages" aria-live="polite"></div>
-            <section id="developmentQuickPrompts" class="development-quick-prompts" aria-label="Schnellfragen"></section>
-            <form id="developmentChatForm" class="development-chat-form">
-              <label for="developmentChatInput">Nachricht</label>
-              <textarea id="developmentChatInput" rows="4" placeholder="Beschreibe kurz deine Projektidee oder antworte auf die Frage der KI."></textarea>
-              <div class="button-row">
-                <span id="developmentChatStatus" class="chat-status">Bereit fuer Architekturfragen.</span>
-                <button id="developmentChatSubmit" class="primary" type="submit">Senden</button>
+            <main class="development-main-workspace">
+              <section class="development-requirements-panel">
+                <div id="developmentRequirementsText" class="development-requirements-text"></div>
+              </section>
+              <section id="developmentArchitectureDiagram" class="architecture-diagram-panel"></section>
+              <div class="button-row development-project-actions development-page-actions">
+                <button id="saveDevelopmentArchitectureButton" type="button" disabled>Uebernehmen</button>
+                <button id="acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Uebernehmen und weiter</button>
               </div>
-            </form>
-            <section id="developmentArchitectureDiagram" class="architecture-diagram-panel"></section>
-            <div class="button-row development-project-actions development-page-actions">
-              <button id="saveDevelopmentArchitectureButton" type="button" disabled>Architektur speichern</button>
-              <button id="startFunctionClarificationButton" type="button" disabled>Funktion klaeren</button>
-              <button id="startEffectChainButton" type="button" disabled>Wirkketten ableiten</button>
-              <button id="acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Uebernehmen und weiter</button>
-            </div>
-            <p id="developmentActionStatus" class="helper-text development-action-status" aria-live="polite"></p>
+              <p id="developmentActionStatus" class="helper-text development-action-status" aria-live="polite"></p>
+            </main>
+            <aside class="development-chat-sidebar" aria-label="KI-Chat">
+              <div id="developmentChatMessages" class="development-chat-messages" aria-live="polite"></div>
+              <form id="developmentChatForm" class="development-chat-form">
+                <label for="developmentChatInput">Nachricht</label>
+                <span class="development-chat-input-box">
+                  <section id="developmentQuickPrompts" class="development-quick-prompts" aria-label="Textvorlagen"></section>
+                  <textarea id="developmentChatInput" rows="4" placeholder="Beschreibe kurz deine Projektidee oder antworte auf die Frage der KI."></textarea>
+                  <button id="developmentChatSubmit" class="development-send-button" type="submit" aria-label="Nachricht senden" title="Nachricht senden">&uarr;</button>
+                </span>
+              </form>
+            </aside>
           </article>
         </section>
+      </section>
+
+      <section id="developmentHardwareView" class="view hidden">
+        <div class="section-head">
+          <div>
+            <p class="eyebrow">Hardware-Zuordnung</p>
+            <div class="development-current-project">
+              <span>Projekt</span>
+              <strong id="developmentHardwareProjectName">Kein Projekt geoeffnet</strong>
+            </div>
+          </div>
+        </div>
+        <article class="panel hardware-configuration-workspace">
+          <section class="hardware-overview">
+            <div class="hardware-architecture-column">
+              <h2>Statische Architektur</h2>
+              <div id="developmentHardwareArchitecture" class="architecture-diagram-panel hardware-architecture-preview"></div>
+            </div>
+            <aside class="hardware-guidance-panel" aria-labelledby="developmentHardwareHintsTitle">
+              <header class="hardware-guidance-terminal-head">
+                <strong id="developmentHardwareHintsTitle">HINWEISE</strong>
+                <span>Hardware-Prüfung</span>
+              </header>
+              <div id="developmentHardwareHints" class="hardware-hint-terminal" role="log" aria-live="polite" tabindex="0"></div>
+            </aside>
+          </section>
+          <section class="hardware-component-section">
+            <form id="developmentHardwareForm">
+              <div id="developmentHardwareComponents" class="hardware-component-table"></div>
+            </form>
+          </section>
+          <div class="button-row development-page-actions hardware-page-actions">
+            <button id="backToDevelopmentArchitectureButton" type="button">Zurueck zur Architektur</button>
+            <button id="saveDevelopmentHardwareButton" type="button">Hardware speichern</button>
+            <button id="continueDevelopmentHardwareButton" class="primary" type="button">Weiter zur IDE</button>
+          </div>
+          <p id="developmentHardwareStatus" class="helper-text development-action-status" aria-live="polite"></p>
+        </article>
       </section>
 
       <section id="devicesView" class="view hidden">
@@ -479,9 +544,10 @@
     <script src="/app/api-client.js"></script>
     <script src="/app/dom-utils.js"></script>
     <script src="/app/device-onboarding-model.js"></script>
-    <script src="/app/device-onboarding-controller.js"></script>
+    <script src="/app/device-onboarding-controller.js?v=20260714-03"></script>
     <script src="/app/guided-project-view.js?v=20260712-10"></script>
-    <script src="/app/development-platform.js"></script>
-    <script src="/app/app.js?v=20260712-20"></script>
+    <script src="/app/development-hardware-model.js?v=20260713-03"></script>
+    <script src="/app/development-platform.js?v=20260714-08"></script>
+    <script src="/app/app.js?v=20260714-07"></script>
   </body>
 </html>

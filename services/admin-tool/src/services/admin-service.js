@@ -296,6 +296,34 @@ class AdminService {
     }
   }
 
+  async aiClarificationCases(filter, context) {
+    const access = this.accessPolicy.decideAdminCapability({
+      actor: context.actor,
+      capability: "admin_ai_usage_monitoring",
+      purpose: "ai_clarification_review",
+      dataModelId: "data_model.ai_clarification_case",
+    });
+    if (access.decision === "denied") throw new AdminToolError("access_denied", "KI-Klaerfaelle duerfen nicht gelesen werden.", 403, access);
+    if (!this.serviceClients?.aiContextBaseUrl) return { access, summary:{total:0,open:0,urgent:0,resolved:0}, items:[], error:"ai_context_service_not_configured" };
+    const query = new URLSearchParams(Object.entries(filter || {}).filter(([,value]) => value));
+    const result = await this.httpJson(this.serviceClients.aiContextBaseUrl, `/api/ai-context/clarification-cases${query.size ? `?${query}` : ""}`);
+    return { access, summary:result.summary||{}, items:result.items||[] };
+  }
+
+  async resolveAiClarificationCase(caseId, input, context) {
+    const access = this.accessPolicy.decideAdminCapability({
+      actor: context.actor,
+      capability: "admin_ai_usage_monitoring",
+      purpose: "ai_clarification_review",
+      dataModelId: "data_model.ai_clarification_case",
+    });
+    if (access.decision === "denied") throw new AdminToolError("access_denied", "KI-Klaerfaelle duerfen nicht bearbeitet werden.", 403, access);
+    return this.httpJson(this.serviceClients.aiContextBaseUrl, `/api/ai-context/clarification-cases/${encodeURIComponent(caseId)}/actions`, {
+      method:"POST",
+      body:{...input,resolved_by:context.actor.actor_id},
+    });
+  }
+
   async recordAiCostControlAction(input, context) {
     const access = this.accessPolicy.decideAdminCapability({
       actor: context.actor,

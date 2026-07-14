@@ -4,6 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
+const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const publicApp = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
 const assistant = fs.readFileSync(path.resolve(__dirname, "../src/dev/development-assistant.js"), "utf8");
 const devServer = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
@@ -26,6 +27,16 @@ test("renders the project assistant in the visible IDE workbench", () => {
 test("separates chat history from input before the first message", () => {
   assert.match(guidedView, />Verlauf<\/p>[\s\S]*code-explorer-chat-messages/);
   assert.match(guidedView, /<form data-code-explorer-chat>[\s\S]*>Eingabe<\/p>/);
+});
+
+test("code explorer chat uses a compact arrow send button inside the input", () => {
+  assert.match(guidedView, /code-explorer-chat-input-box/);
+  assert.match(guidedView, /code-explorer-send-button/);
+  assert.match(guidedView, /aria-label="Frage senden"/);
+  assert.match(guidedView, /&uarr;/);
+  assert.doesNotMatch(guidedView, />Fragen<\/button>/);
+  assert.match(css, /\.code-explorer-send-button \{[\s\S]*border-radius: 999px/);
+  assert.match(css, /\.code-explorer-chat textarea \{[\s\S]*padding-right: 48px/);
 });
 
 test("shows the submitted question immediately and an animated waiting answer", () => {

@@ -100,6 +100,21 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/admin/ai-clarification-cases") {
+      sendJson(res, 200, await service.aiClarificationCases({
+        status: url.searchParams.get("status") || "",
+        priority: url.searchParams.get("priority") || "",
+      }, readContext(url)));
+      return;
+    }
+
+    const clarificationAction = url.pathname.match(/^\/api\/admin\/ai-clarification-cases\/([^/]+)\/actions$/);
+    if (req.method === "POST" && clarificationAction) {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await service.resolveAiClarificationCase(decodeURIComponent(clarificationAction[1]), body, readContext(url, body)));
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/admin/ai-cost-controls/actions") {
       const body = await readJsonBody(req);
       sendJson(res, 201, await service.recordAiCostControlAction(body, readContext(url, body)));

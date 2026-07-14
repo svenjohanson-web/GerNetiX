@@ -147,13 +147,13 @@ const GuidedProjectView = (() => {
           </div>
           <form data-code-explorer-chat>
             <p class="code-explorer-chat-section-label">Eingabe</p>
-            <label>Frage zum Code
-              <textarea rows="3" name="message" placeholder="Was passiert in dieser Funktion?"></textarea>
+            <label class="code-explorer-chat-input"><span>Frage zum Code</span>
+              <span class="code-explorer-chat-input-box">
+                <textarea rows="3" name="message" placeholder="Was passiert in dieser Funktion?"></textarea>
+                <button class="code-explorer-send-button" type="submit" aria-label="Frage senden" title="Frage senden" ${waiting ? "disabled" : ""}>&uarr;</button>
+              </span>
             </label>
-            <div class="button-row">
-              <span class="chat-status" data-code-chat-status>Bereit.</span>
-              <button class="primary" type="submit" ${waiting ? "disabled" : ""}>Fragen</button>
-            </div>
+            <span class="chat-status" data-code-chat-status>Bereit.</span>
           </form>
         </section>
       `;

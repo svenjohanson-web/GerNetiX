@@ -117,7 +117,7 @@ function defaultPromptFoundations() {
       "Starte nutzerfreundlich etwa so: `Lass uns ein paar Fragen durchgehen, damit wir den technischen Loesungsraum fuer dein Projekt definieren koennen. Du kannst frei antworten; ich ordne deine Beschreibung danach auf passende technische Muster ab.`",
       "Frage dann in alltagsnaher Sprache: Moechtest du Messdaten ermitteln oder spaeter als Verlauf ansehen? Moechtest du von einem Handy oder Browser ein Device steuern koennen? Moechtest du Steuerungs- oder Regelungsaufgaben ohne WLAN-/Backend-Verbindung lokal ausfuehren? Moechtest du bei Ereignissen informiert werden? Sollen mehrere Geraete denselben Zustand synchron anzeigen?",
       "Leite daraus im Hintergrund die Funktionsklasse ab: lokale Regel-/Steuerstrecke, Datenlogger, Remote-Steuerung, Observer/Benachrichtigung, synchronisiertes Zustandsmodell oder eine Kombination davon. Verlange diese Fachbegriffe nicht vom Nutzer.",
-      "Shortcut fuer erfahrene Nutzer: Wenn der Nutzer eine Funktionsklasse direkt nennt, z. B. `Ich moechte einen Observer`, `Ich moechte einen Datenlogger`, `Remote-Steuerung` oder `synchronisiertes Zustandsmodell`, akzeptiere das als ausreichende Einordnung. Frage danach nur noch kurz: Soll der Zugriff nur lokal oder weltweit erfolgen? Wie viele Devices gehoeren zum Projekt und welche Rollen haben sie, z. B. mehrere Datenlogger, mehrere Aktoransteuerungen oder ein zentrales Anzeige-Device? Welche Sensoren/Ereignisse/Aktionen sind mindestens beteiligt?",
+      "Shortcut fuer erfahrene Nutzer: Wenn der Nutzer eine Funktionsklasse direkt nennt, z. B. `Ich moechte einen Observer`, `Ich moechte einen Datenlogger`, `Remote-Steuerung` oder `synchronisiertes Zustandsmodell`, akzeptiere das als ausreichende Einordnung. Frage danach nur noch kurz: Soll der Zugriff nur lokal oder weltweit erfolgen? Wie viele IoT-Devices gehoeren zum Projekt und welche Rollen haben sie, z. B. mehrere Datenlogger, mehrere Aktoransteuerungen oder ein zentrales Anzeige-Device? Welche Sensoren/Ereignisse/Aktionen sind mindestens beteiligt?",
       "Wenn der Nutzer fragt `Nenne mir deine Pattern`, liste knapp die verfuegbaren Pattern mit Alltagsbeispiel: lokale Regel-/Steuerstrecke, Datenlogger, Remote-Steuerung, Observer/Benachrichtigung und synchronisiertes Zustandsmodell. Frage danach, welches Pattern am ehesten passt.",
       "Eine lokale Regel-/Steuerstrecke kann ohne Backend auskommen, z. B. Sensor misst trockene Erde -> ESP32 schaltet Bewaesserung. Backend, MQTT, Push oder App sind dann optionale Erweiterungen, nicht automatisch Teil der Architektur.",
       "Observer/Benachrichtigung bedeutet: Ein Ereignis wird erkannt und ein Nutzer oder System wird informiert. Beispiele: Zugangskontrollsystem erkennt Zutritt und benachrichtigt mit Logging; Solarzelle liefert genug Spannung und Messung von Spannung/Strom wird gemeldet; Hell/Dunkel-Erkennung meldet moeglicherweise angelassenes Licht.",
@@ -268,6 +268,8 @@ class InMemoryAiContextRepository {
     this.sources = new Map(mergeSources(defaultSources(), seed.sources || []).map((item) => [item.source_id, clone(item)]));
     this.promptFoundations = new Map(mergePromptFoundations(defaultPromptFoundations(), seed.promptFoundations || []).map((item) => [item.foundation_id, clone(item)]));
     this.architectureComponents = new Map(mergeById(defaultArchitectureComponents(), seed.architectureComponents || [], "component_id").map((item) => [item.component_id, clone(item)]));
+    this.clarificationCases = new Map((seed.clarificationCases || []).map((item) => [item.case_id, clone(item)]));
+    this.intentExamples = new Map((seed.intentExamples || []).map((item) => [item.example_id, clone(item)]));
     this.policy = clone(mergePolicy(defaultPolicy(), seed.policy));
   }
 
@@ -344,6 +346,40 @@ class InMemoryAiContextRepository {
   listArchitectureComponents(filter = {}) {
     return Array.from(this.architectureComponents.values())
       .filter((item) => matchesArchitectureComponentFilter(item, filter))
+      .map(clone);
+  }
+
+  saveClarificationCase(item) {
+    this.clarificationCases.set(item.case_id, clone(item));
+    return clone(item);
+  }
+
+  findClarificationCaseByFingerprint(fingerprint) {
+    return clone(Array.from(this.clarificationCases.values()).find((item) => item.fingerprint === fingerprint));
+  }
+
+  findClarificationCase(caseId) {
+    return clone(this.clarificationCases.get(caseId));
+  }
+
+  listClarificationCases(filter = {}) {
+    return Array.from(this.clarificationCases.values())
+      .filter((item) => !filter.status || item.status === filter.status)
+      .filter((item) => !filter.priority || item.priority === filter.priority)
+      .sort((left, right) => Number(right.priority_score || 0) - Number(left.priority_score || 0) || String(right.last_seen_at).localeCompare(String(left.last_seen_at)))
+      .map(clone);
+  }
+
+  saveIntentExample(item) {
+    this.intentExamples.set(item.example_id, clone(item));
+    return clone(item);
+  }
+
+  listIntentExamples(filter = {}) {
+    return Array.from(this.intentExamples.values())
+      .filter((item) => !filter.status || item.status === filter.status)
+      .filter((item) => !filter.intent || item.intent === filter.intent)
+      .filter((item) => !filter.account_id || item.scope === "global" || item.account_id === filter.account_id)
       .map(clone);
   }
 }

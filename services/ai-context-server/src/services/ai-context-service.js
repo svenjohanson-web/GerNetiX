@@ -63,7 +63,8 @@ class AiContextService {
     validatePromptFoundationInput(input);
     const now = this.now().toISOString();
     const foundationId = clean(input.foundation_id);
-    const existing = this.repository.listPromptFoundations().find((item) => item.foundation_id === foundationId);
+    return mapMaybePromise(this.repository.listPromptFoundations(), (items) => {
+    const existing = items.find((item) => item.foundation_id === foundationId);
     return this.repository.savePromptFoundation({
       foundation_id: foundationId,
       title: clean(input.title),
@@ -76,13 +77,14 @@ class AiContextService {
       status: clean(input.status || "active"),
       created_at: existing?.created_at || now,
       updated_at: now,
-    });
+    });});
   }
 
   upsertSource(input = {}) {
     validateSourceInput(input);
     const now = this.now().toISOString();
-    const existing = this.repository.listSources().find((source) => source.source_id === clean(input.source_id));
+    return mapMaybePromise(this.repository.listSources(), (items) => {
+    const existing = items.find((source) => source.source_id === clean(input.source_id));
     return this.repository.saveSource({
       source_id: clean(input.source_id),
       source_type: clean(input.source_type),
@@ -98,14 +100,15 @@ class AiContextService {
       status: clean(input.status || "active"),
       created_at: existing?.created_at || now,
       updated_at: now,
-    });
+    });});
   }
 
   upsertArchitectureComponent(input = {}) {
     validateArchitectureComponentInput(input);
     const now = this.now().toISOString();
     const componentId = clean(input.component_id);
-    const existing = this.repository.listArchitectureComponents().find((item) => item.component_id === componentId);
+    return mapMaybePromise(this.repository.listArchitectureComponents(), (items) => {
+    const existing = items.find((item) => item.component_id === componentId);
     return this.repository.saveArchitectureComponent({
       component_id: componentId,
       name: clean(input.name),
@@ -119,7 +122,7 @@ class AiContextService {
       status: clean(input.status || "active"),
       created_at: existing?.created_at || now,
       updated_at: now,
-    });
+    });});
   }
 
   getPolicy() {
@@ -141,9 +144,9 @@ class AiContextService {
 
   preflight(input = {}) {
     const request = normalizePreflightInput(input);
-    const policy = this.repository.getPolicy();
-    const decision = decideAccess({ request, policy, grants: this.repository.listGrants() }, this.now());
-    const auditEvent = this.repository.addAuditEvent({
+    return mapMaybePromise(this.repository.getPolicy(), (policy) => mapMaybePromise(this.repository.listGrants(), (grants) => {
+    const decision = decideAccess({ request, policy, grants }, this.now());
+    return mapMaybePromise(this.repository.addAuditEvent({
       audit_event_id: createId("ai_ctx_audit"),
       occurred_at: this.now().toISOString(),
       account_id: request.account_id,
@@ -160,15 +163,136 @@ class AiContextService {
       rejection_reason: decision.allowed ? null : decision.reason,
       redaction_level: decision.redaction_level || null,
       allowed_context_items: decision.allowed_context_items || 0,
-    });
-    return {
+    }), (auditEvent) => ({
       allowed: decision.allowed,
       reason: decision.reason,
       grant: decision.grant || null,
       redaction_level: decision.redaction_level || null,
       allowed_context_items: decision.allowed_context_items || 0,
       audit_event_id: auditEvent.audit_event_id,
-    };
+    }));}));
+  }
+
+  searchArchitectureComponents(query, limit = 5) {
+    const normalizedQuery = clean(query);
+    if (!normalizedQuery) return { strategy:"none", items:[] };
+    const normalizedLimit = Math.min(20, positiveInt(limit, 5));
+    if (typeof this.repository.searchArchitectureComponents === "function") {
+      return this.repository.searchArchitectureComponents(normalizedQuery, normalizedLimit);
+    }
+    return mapMaybePromise(this.repository.listArchitectureComponents({ status:"active" }), (items) => ({
+      strategy:"lexical_fallback",
+      items:lexicalArchitectureSearch(normalizedQuery, items, normalizedLimit),
+    }));
+  }
+
+  recordClarificationCase(input = {}) {
+    const utterance = clean(input.utterance);
+    if (!utterance) throw new AiContextError("missing_utterance", "Eine Nutzerformulierung wird benoetigt.");
+    const now = this.now().toISOString();
+    const normalizedUtterance = normalizeLearningText(utterance);
+    const fingerprint = crypto.createHash("sha256").update([
+      clean(input.domain || "architecture"), normalizedUtterance,
+      clean(input.suggested_intent), clean(input.suggested_entity),
+    ].join("|")).digest("hex");
+    return mapMaybePromise(this.repository.findClarificationCaseByFingerprint(fingerprint), (existing) => {
+      const occurrenceCount = Number(existing?.occurrence_count || 0) + 1;
+      const semanticScore = boundedScore(input.semantic_score, existing?.semantic_score);
+      const correctionCount = Number(existing?.correction_count || 0);
+      const priorityScore = clarificationPriorityScore({ occurrenceCount, semanticScore, correctionCount, reason: input.ambiguity_reason });
+      return this.repository.saveClarificationCase({
+        case_id: existing?.case_id || createId("ai_clarification"),
+        fingerprint,
+        utterance,
+        normalized_utterance: normalizedUtterance,
+        domain: clean(input.domain || "architecture"),
+        account_id: clean(input.account_id) || null,
+        project_id: clean(input.project_id) || null,
+        suggested_intent: clean(input.suggested_intent) || null,
+        suggested_entity: clean(input.suggested_entity) || null,
+        semantic_score: semanticScore,
+        ambiguity_reason: clean(input.ambiguity_reason || "low_confidence"),
+        occurrence_count: occurrenceCount,
+        confirmation_count: Number(existing?.confirmation_count || 0),
+        correction_count: correctionCount,
+        priority: priorityLabel(priorityScore),
+        priority_score: priorityScore,
+        status: existing && !["resolved", "ignored"].includes(existing.status) ? existing.status : "open",
+        resolution: existing?.resolution || null,
+        created_at: existing?.created_at || now,
+        updated_at: now,
+        last_seen_at: now,
+      });
+    });
+  }
+
+  listClarificationCases(filter = {}) {
+    return mapMaybePromise(this.repository.listClarificationCases(), (allItems) => ({
+      summary: summarizeClarificationCases(allItems),
+      items: allItems.filter((item) => !filter.status || item.status === filter.status).filter((item) => !filter.priority || item.priority === filter.priority),
+    }));
+  }
+
+  resolveClarificationCase(caseId, input = {}) {
+    return mapMaybePromise(this.repository.findClarificationCase(clean(caseId)), (existing) => {
+      if (!existing) throw new AiContextError("clarification_case_not_found", "KI-Klaerfall wurde nicht gefunden.", 404);
+      const action = clean(input.action);
+      if (!new Set(["confirm", "correct", "defer", "ignore", "reopen", "prioritize"]).has(action)) {
+        throw new AiContextError("invalid_clarification_action", "Unbekannte Klaerfall-Aktion.");
+      }
+      const now = this.now().toISOString();
+      const confirmed = action === "confirm";
+      const corrected = action === "correct";
+      const intent = clean(input.intent || existing.suggested_intent);
+      const entity = clean(input.entity || existing.suggested_entity);
+      if ((confirmed || corrected) && !intent) throw new AiContextError("missing_intent", "Fuer die Uebernahme wird ein Intent benoetigt.");
+      const confirmationCount = Number(existing.confirmation_count || 0) + (confirmed ? 1 : 0);
+      const correctionCount = Number(existing.correction_count || 0) + (corrected ? 1 : 0);
+      const score = action === "prioritize"
+        ? Math.max(Number(existing.priority_score || 0), priorityFloor(clean(input.priority)))
+        : clarificationPriorityScore({ occurrenceCount:existing.occurrence_count, semanticScore:existing.semantic_score, correctionCount, reason:existing.ambiguity_reason });
+      const next = {
+        ...existing,
+        suggested_intent: intent || existing.suggested_intent,
+        suggested_entity: entity || existing.suggested_entity,
+        confirmation_count: confirmationCount,
+        correction_count: correctionCount,
+        priority_score: score,
+        priority: action === "prioritize" && clean(input.priority) ? clean(input.priority) : priorityLabel(score),
+        status: clarificationStatus(action),
+        resolution: confirmed || corrected ? { intent, entity:entity||null, scope:clean(input.scope||"global"), resolved_by:clean(input.resolved_by||"admin"), resolved_at:now } : existing.resolution,
+        updated_at: now,
+      };
+      return mapMaybePromise(this.repository.saveClarificationCase(next), (saved) => {
+        if (!(confirmed || corrected) || input.promote === false) return saved;
+        return mapMaybePromise(this.repository.saveIntentExample({
+          example_id: createId("ai_intent_example"),
+          utterance: existing.utterance,
+          normalized_utterance: existing.normalized_utterance,
+          intent,
+          entity: entity || null,
+          domain: existing.domain,
+          scope: clean(input.scope || "global"),
+          account_id: clean(input.scope) === "account" ? existing.account_id : null,
+          source_case_id: existing.case_id,
+          status: "active",
+          created_at: now,
+          updated_at: now,
+        }), () => saved);
+      });
+    });
+  }
+
+  listIntentExamples(filter = {}) {
+    return this.repository.listIntentExamples(filter);
+  }
+
+  searchIntentExamples(query, limit = 5, accountId = "") {
+    const normalizedQuery = clean(query);
+    if (!normalizedQuery) return { strategy:"none", items:[] };
+    const normalizedLimit = Math.min(20, positiveInt(limit, 5));
+    if (typeof this.repository.searchIntentExamples === "function") return this.repository.searchIntentExamples(normalizedQuery, normalizedLimit, clean(accountId));
+    return mapMaybePromise(this.repository.listIntentExamples({status:"active",account_id:clean(accountId)}), (items) => ({strategy:"lexical_fallback",items:lexicalIntentSearch(normalizedQuery,items,normalizedLimit)}));
   }
 
   listAuditEvents(filter = {}) {
@@ -186,6 +310,52 @@ class AiContextService {
       service_documents: [],
     };
   }
+
+  storageSummary() {
+    if (typeof this.repository.summary === "function") return this.repository.summary();
+    return this.sqliteSummary();
+  }
+}
+
+function mapMaybePromise(value, mapper) {
+  return value && typeof value.then === "function" ? value.then(mapper) : mapper(value);
+}
+
+function normalizeLearningText(value) {
+  return String(value || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9 ]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function boundedScore(value, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.min(1, number)) : Number(fallback || 0);
+}
+
+function clarificationPriorityScore({ occurrenceCount, semanticScore, correctionCount, reason }) {
+  const uncertainty = Math.round((1 - boundedScore(semanticScore)) * 45);
+  const frequency = Math.min(30, Math.max(0, Number(occurrenceCount || 1) - 1) * 5);
+  const corrections = Math.min(20, Number(correctionCount || 0) * 10);
+  const reasonWeight = clean(reason) === "conflicting_matches" ? 10 : clean(reason) === "unknown_entity" ? 8 : 0;
+  return Math.min(100, 15 + uncertainty + frequency + corrections + reasonWeight);
+}
+
+function priorityLabel(score) { return score >= 80 ? "urgent" : score >= 60 ? "high" : score >= 35 ? "normal" : "low"; }
+function priorityFloor(priority) { return ({urgent:80,high:60,normal:35,low:0})[priority] ?? 0; }
+function clarificationStatus(action) { return ({confirm:"resolved",correct:"resolved",defer:"deferred",ignore:"ignored",reopen:"open",prioritize:"open"})[action]; }
+function summarizeClarificationCases(items) { return {total:items.length,open:items.filter((item)=>item.status==="open").length,urgent:items.filter((item)=>item.status==="open"&&item.priority==="urgent").length,resolved:items.filter((item)=>item.status==="resolved").length}; }
+function lexicalIntentSearch(query,items,limit){const tokens=normalizeLearningText(query).split(" ").filter((token)=>token.length>2);return items.map((item)=>{const corpus=normalizeLearningText(`${item.utterance} ${item.intent} ${item.entity||""}`);const score=tokens.reduce((sum,token)=>sum+(corpus.includes(token)?1:0),0);return{...item,semantic_score:score};}).filter((item)=>item.semantic_score>0).sort((a,b)=>b.semantic_score-a.semantic_score).slice(0,limit);}
+
+function lexicalArchitectureSearch(query, items, limit) {
+  const queryTokens = lookupTokens(query);
+  return items.map((item) => {
+    const corpus = lookupTokens([item.name,...(item.aliases||[]),item.summary,...(item.properties||[]),...(item.provided_interfaces||[]),...(item.required_interfaces||[]),...(item.decision_hints||[])].join(" "));
+    const corpusSet = new Set(corpus);
+    const semanticScore = queryTokens.reduce((score, token) => score + (corpusSet.has(token) ? 1 : 0), 0);
+    return { ...item, semantic_score:semanticScore };
+  }).filter((item) => item.semantic_score > 0).sort((left,right) => right.semantic_score-left.semantic_score).slice(0,limit);
+}
+
+function lookupTokens(value) {
+  return clean(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]+/g," ").split(/\s+/).filter((token)=>token.length>2);
 }
 
 function decideAccess({ request, policy, grants }, now) {

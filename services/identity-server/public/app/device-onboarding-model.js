@@ -13,6 +13,7 @@ const DeviceOnboardingModel = (() => {
     if (text.includes("esp8266")) return "esp8266";
     if (text.includes("esp32")) return "esp32";
     if (text.includes("atmega") || text.includes("avr")) return "avr_8bit";
+    if (text.includes("raspberry") || text.includes("bcm2710") || text.includes("bcm2711")) return "raspberry_pi";
     return "other";
   }
 
@@ -23,13 +24,14 @@ const DeviceOnboardingModel = (() => {
       esp32: "ESP32",
       rp2040: "RP2040",
       arm_cortex_m: "ARM Cortex-M",
+      raspberry_pi: "Raspberry Pi",
     }[family] || "Andere";
   }
 
   function boardLabel(board) {
     const family = familyLabel(boardFamily(board));
     const moduleName = board?.module_name ? ` / ${board.module_name}` : "";
-    return `${family} - ${board?.title || board?.hardware_item_id || "ProcessorBoard"}${moduleName}`;
+    return `${family} - ${board?.title || board?.hardware_item_id || "IoT-Device"}${moduleName}`;
   }
 
   function capabilitySet(board) {

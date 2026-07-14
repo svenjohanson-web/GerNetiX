@@ -1,6 +1,23 @@
 name: gernetix-dev
 
 services:
+  ai-context-postgres:
+    image: pgvector/pgvector:pg17
+    container_name: gernetix-ai-context-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: gernetix_ai_context
+      POSTGRES_USER: gernetix_ai_context
+      POSTGRES_PASSWORD: gernetix-dev-only
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - ai_context_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_ai_context -d gernetix_ai_context"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
   mqtt-broker:
     image: eclipse-mosquitto:2.0
     container_name: gernetix-mqtt-broker
@@ -20,5 +37,6 @@ services:
       start_period: 5s
 
 volumes:
+  ai_context_postgres_data:
   mqtt_data:
   mqtt_log:

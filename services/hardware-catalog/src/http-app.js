@@ -41,6 +41,11 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && path === `${prefix}/sensors`) {
+      sendJson(res, 200, { items: service.listSensors() });
+      return;
+    }
+
     if (req.method === "POST" && path === `${prefix}/admin/capabilities`) {
       sendJson(res, 201, service.upsertCapability(await readJsonBody(req)));
       return;

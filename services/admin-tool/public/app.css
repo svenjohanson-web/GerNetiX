@@ -265,6 +265,25 @@ td span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px;
 .prompt-foundation-table { min-width: 900px; }
 .account-rating-table { min-width: 860px; }
 .system-event-table { min-width: 920px; }
+.clarification-table { min-width: 1040px; }
+.clarification-filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.clarification-filters select,
+.clarification-actions select,
+.clarification-intent-input,
+.clarification-entity-input {
+  width: 100%;
+  min-height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--text);
+  padding: 7px 9px;
+}
+.clarification-filters select { width: auto; min-width: 150px; }
+.clarification-intent-input { min-width: 210px; }
+.clarification-entity-input { min-width: 150px; margin-top: 6px; }
+.clarification-actions { display: grid; grid-template-columns: repeat(3, minmax(105px, 1fr)); gap: 7px; min-width: 340px; }
+.clarification-actions button { grid-column: 1 / -1; }
 .severity {
   display: inline-flex;
   width: fit-content;

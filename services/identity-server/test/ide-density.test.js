@@ -9,6 +9,9 @@ test("the complete IDE uses dense workbench spacing", () => {
   assert.match(css, /#ideView\s*\{[\s\S]*?margin: 0;[\s\S]*?padding: 5px;/);
   assert.match(css, /#ideView \.ide-layout \{ gap: 5px; \}/);
   assert.match(css, /#ideView \.ide-project-browser-panel,[\s\S]*?padding: 7px;/);
+  assert.match(css, /#ideView \.ide-tree-root > strong \{[\s\S]*?font-size: 14px;[\s\S]*?line-height: 1\.3;/);
+  assert.match(css, /#ideView \.ide-tree-folder summary \{[\s\S]*?font-size: 12px;[\s\S]*?line-height: 1\.3;/);
+  assert.match(css, /#ideView \.ide-project-browser button \{[\s\S]*?font-size: 12px;[\s\S]*?line-height: 1\.3;/);
   assert.match(css, /#ideView \.ide-code-assistant \.code-explorer-chat\s*\{[\s\S]*?gap: 6px;[\s\S]*?padding: 7px;/);
   assert.match(css, /#ideView \.ide-viewer-head\s*\{[\s\S]*?margin: -7px -7px 0;[\s\S]*?padding: 6px 8px;/);
 });

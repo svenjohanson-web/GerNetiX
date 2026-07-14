@@ -37,12 +37,14 @@ function createDeviceDiscoveryService({
       if (result.device) {
         const adminDevice = adminByDeviceId.get(result.device.device_id);
         const alreadyInInventory = knownDeviceIds.has(result.device.device_id);
+        const ownershipStatus = alreadyInInventory
+          ? "current_account"
+          : (adminDevice?.pairing_status === "paired_to_account" ? "other_account" : "unregistered");
         found.push({
           ...result.device,
           already_in_inventory: alreadyInInventory,
-          ownership_status: alreadyInInventory
-            ? "current_account"
-            : (adminDevice?.pairing_status === "paired_to_account" ? "other_account" : "unregistered"),
+          ownership_status: ownershipStatus,
+          treatment: discoveryTreatment(result.device, ownershipStatus),
         });
       } else if (result.error) {
         errors.push(result.error);
@@ -122,7 +124,7 @@ function createDeviceDiscoveryService({
       esp32_inventory_state: status.wifiMode === "setup_ap" ? "basissoftware_setup_ap" : "node_online",
       treatment: status.wifiMode === "setup_ap"
         ? "Basissoftware ist vorhanden, aber noch nicht im Kunden-WLAN. Im Setup-AP WLAN-Daten speichern und danach Node-Suche erneut ausfuehren."
-        : "Basissoftware ist als Node im WLAN erreichbar. Nach Kontopruefung kann das Board ins Inventar uebernommen werden.",
+        : "Basissoftware ist als Node im WLAN erreichbar.",
       ota_status: capabilities.includes("ota") ? "ready" : "unknown",
       authenticity_status: status.hasDeviceSecret ? "gernetix_verified_pending_proof" : "community_unverified",
     };
@@ -147,6 +149,17 @@ function createDeviceDiscoveryService({
   return {
     discoverNetworkDevices,
   };
+}
+
+function discoveryTreatment(device, ownershipStatus) {
+  if (device.esp32_inventory_state !== "node_online") return device.treatment;
+  if (ownershipStatus === "current_account") {
+    return "Basissoftware ist als Node im WLAN erreichbar. Das Board befindet sich bereits in deinem Inventar.";
+  }
+  if (ownershipStatus === "other_account") {
+    return "Basissoftware ist als Node im WLAN erreichbar. Das Board ist bereits einem anderen Konto zugeordnet und kann hier nicht uebernommen werden.";
+  }
+  return "Basissoftware ist als Node im WLAN erreichbar. Das Board ist noch keinem Konto zugeordnet und kann in dein Inventar uebernommen werden.";
 }
 
 function candidateStatusUrls(value) {

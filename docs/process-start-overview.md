@@ -58,9 +58,10 @@ Diese Gruppe reicht fuer Login, Dashboard, Entwicklungsplattform, User IDE, Proj
 | 4 | Hardware Catalog | 4910 | `services/hardware-catalog` | `$env:PORT="4910"; npm run dev` |
 | 5 | Hardware Shop | 4900 | `services/hardware-shop` | `$env:PORT="4900"; npm run dev` |
 | 6 | AI Usage Server | 5000 | `services/ai-usage-server` | `$env:PORT="5000"; npm run dev` |
-| 7 | AI Context Server | 5500 | `services/ai-context-server` | `$env:PORT="5500"; npm run dev` |
-| 8 | Admin Tool API | 4600 | `services/admin-tool` | `$env:PORT="4600"; npm run dev` |
-| 9 | Identity Server / Plattform UI | 4300 | `services/identity-server` | `$env:PORT="4300"; npm run dev` |
+| 7 | AI Context PostgreSQL + pgvector | 5432 | Repo-Root | `docker compose -f infra/dev/docker-compose.yml up -d ai-context-postgres` |
+| 8 | AI Context Server | 5500 | `services/ai-context-server` | `$env:PORT="5500"; $env:AI_CONTEXT_PERSISTENCE_BACKEND="postgres"; npm run dev` |
+| 9 | Admin Tool API | 4600 | `services/admin-tool` | `$env:PORT="4600"; npm run dev` |
+| 10 | Identity Server / Plattform UI | 4300 | `services/identity-server` | `$env:PORT="4300"; npm run dev` |
 
 Plattform-URL nach dem Start:
 

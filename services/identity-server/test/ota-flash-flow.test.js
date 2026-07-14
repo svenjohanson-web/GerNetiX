@@ -32,8 +32,9 @@ test("OTA button requires an online and ready device", () => {
   assert.match(server, /mode === "build_and_flash" && device\.connectivity_status !== "online"/);
   assert.match(server, /error: "device_not_online"/);
   assert.match(app, /OTA nicht verfügbar: Das Device ist nicht online/);
-  assert.match(app, /actionReasonNode\.textContent = visibleReason/);
-  assert.match(app, /actionReasonNode\.classList\.toggle\("hidden", !visibleReason\)/);
+  assert.match(app, /function renderIdeProjectInformation\(project\)/);
+  assert.match(app, /noticeTarget\.innerHTML = items\.length/);
+  assert.match(html, /id="ideActionReason" aria-live="polite"/);
 });
 
 test("OTA checks the complete server pipeline and reports deploy status instead of USB status", () => {

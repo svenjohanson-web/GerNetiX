@@ -17,24 +17,13 @@ const DeviceOnboardingController = (() => {
     } = deps;
 
     async function discoverNetworkDevices() {
-      const board = selectedInventoryBoard();
-      if (board && !model.allowedActions(board).wifiDiscovery) {
-        setDiscoveryStatus("running", "Dieser Hardware-Typ bietet laut Katalog keine WLAN-Suche.");
-        return;
-      }
       state.inventoryEsp32Method = "wlan";
       state.discoveredDevices = [];
       renderNetworkDiscovery();
       setDiscoveryStatus("running", "Lokales Netzwerk wird nach gernetix-* Nodes durchsucht...");
       try {
-        const family = board ? selectedInventoryHardwareFamily() : "";
-        const query = family ? `?processor_family=${encodeURIComponent(family)}` : "";
-        const result = await getJson(`/api/platform/devices/discover${query}`);
-        state.discoveredDevices = (result.items || []).filter((device) => {
-          if (!family) return true;
-          const detected = hardwareTypeForProfile(device.hardware_profile_id);
-          return detected === family || detected === "unknown" || family === "other";
-        });
+        const result = await getJson("/api/platform/devices/discover");
+        state.discoveredDevices = result.items || [];
         renderNetworkDiscovery();
         const found = state.discoveredDevices.length;
         setDiscoveryStatus("ok", found
@@ -46,11 +35,6 @@ const DeviceOnboardingController = (() => {
     }
 
     async function identifyEsp32Bootloader() {
-      const board = selectedInventoryBoard();
-      if (board && !model.allowedActions(board).usbIdentification) {
-        setDiscoveryStatus("running", "USB-Pruefung ist fuer diesen Hardware-Typ im Katalog nicht vorgesehen.");
-        return;
-      }
       if (state.inventoryEsp32Method !== "usb") {
         state.inventoryEsp32Method = "usb";
         state.discoveredDevices = [];
@@ -69,8 +53,8 @@ const DeviceOnboardingController = (() => {
       state.discoveredDevices = ports.map((usbPort) => ({
         discovery_id: `bootloader-browser-${usbPort.port}`,
         source_url: usbPort.port,
-        display_name: `${usbDiscoveryLabel(usbPort, board)} per Browser-Web-Serial`,
-        hardware_profile_id: board?.hardware_item_id || board?.hardware_profile_id || usbHardwareProfileForPort(usbPort),
+        display_name: `${usbDiscoveryLabel(usbPort)} per Browser-Web-Serial`,
+        hardware_profile_id: usbHardwareProfileForPort(usbPort),
         runtime_version: "",
         firmware_version: "",
         provisioning_state: "bootloader_check_required",
@@ -84,18 +68,26 @@ const DeviceOnboardingController = (() => {
       setDiscoveryStatus("ok", `${state.discoveredDevices.length} USB-Kandidat${state.discoveredDevices.length === 1 ? "" : "en"} gefunden. Markiere die Boards, die auf dein Konto laufen sollen.`);
     }
 
-    function selectDeviceDiscoveryMethod() {
-      const select = document.querySelector("#deviceDiscoveryMethod");
-      state.inventoryEsp32Method = select?.value || "";
-      if (state.inventoryEsp32Method) state.discoveredDevices = [];
+    function selectDeviceDiscoveryMethod(event) {
+      const method = event?.target?.value
+        || document.querySelector('input[name="deviceDiscoveryMethod"]:checked')?.value
+        || "";
+      if (!new Set(["wlan", "usb"]).has(method)) return;
+      state.inventoryEsp32Method = method;
+      state.discoveredDevices = [];
+      state.avrBootloaderResult = null;
       renderNetworkDiscovery();
       setDiscoveryStatus("running", state.inventoryEsp32Method === "usb"
         ? "USB ausgewaehlt. Waehle bei Bedarf den USB-Port und klicke auf Suchen."
-        : "WLAN ausgewaehlt. Klicke auf Suchen, um gernetix-* Nodes im Netzwerk zu finden.");
+        : "WLAN ausgewaehlt. Dieser Weg funktioniert nur mit bereits provisionierten Boards im gleichen lokalen Netzwerk.");
     }
 
     async function searchDevicesForInventory() {
-      const method = document.querySelector("#deviceDiscoveryMethod")?.value || state.inventoryEsp32Method || "wlan";
+      const method = document.querySelector('input[name="deviceDiscoveryMethod"]:checked')?.value || state.inventoryEsp32Method;
+      if (!method) {
+        setDiscoveryStatus("error", "Bitte zuerst WLAN oder USB als Provisioning-Weg waehlen.");
+        return;
+      }
       state.inventoryEsp32Method = method;
       if (method === "usb") return identifyEsp32Bootloader();
       return discoverNetworkDevices();
@@ -216,20 +208,31 @@ const DeviceOnboardingController = (() => {
       if (!list) return;
       renderEsp32UsbPortOptions();
       syncInventoryNodeNamePreview();
-      const board = selectedInventoryBoard();
-      const actions = discoveryActionsForBoard(board);
-      const family = board ? selectedInventoryHardwareFamily() : "";
-      const isAvr = family === "avr_8bit";
+      const board = null;
+      const actions = discoveryActionsForBoard();
+      const isAvr = false;
       const usesWirelessOrUsb = actions.wifiDiscovery || actions.usbIdentification;
       const showGenericMethods = usesWirelessOrUsb && !isAvr;
-      document.querySelector("#esp32DiscoveryActions").classList.toggle("hidden", !showGenericMethods);
       renderDiscoveryMethodOptions(actions);
+      const hasSelectedMethod = state.inventoryEsp32Method === "wlan" || state.inventoryEsp32Method === "usb";
       const isUsbSelected = actions.usbIdentification && state.inventoryEsp32Method === "usb";
-      document.querySelector("#avrDiscoveryActions").classList.toggle("hidden", !isAvr);
+      const isWifiSelected = actions.wifiDiscovery && state.inventoryEsp32Method === "wlan";
+      document.querySelector("#provisioningWorkflowPanel").classList.toggle("hidden", !hasSelectedMethod);
+      document.querySelector("#provisioningWifiNotice").classList.toggle("hidden", !isWifiSelected);
+      document.querySelector("#provisioningUsbNotice").classList.toggle("hidden", !isUsbSelected);
+      document.querySelector("#provisioningWorkflowTitle").textContent = isUsbSelected ? "Board per USB verbinden" : "Provisioniertes Board per WLAN suchen";
+      document.querySelector("#esp32DiscoveryActions").classList.toggle("hidden", !showGenericMethods || !hasSelectedMethod);
+      document.querySelector("#avrDiscoveryActions").classList.toggle("hidden", !isAvr || !isUsbSelected);
       document.querySelector("#esp32UsbPortLabel").classList.toggle("hidden", !isUsbSelected);
-      document.querySelector("#claimSelectedDiscoveredDevicesButton").classList.toggle("hidden", !actions.wifiDiscovery && !actions.usbIdentification);
-      document.querySelector("#deviceInventoryForm").classList.toggle("hidden", actions.wifiDiscovery && Boolean(board));
+      document.querySelector("#claimSelectedDiscoveredDevicesButton").classList.toggle("hidden", !hasSelectedMethod || (!actions.wifiDiscovery && !actions.usbIdentification));
+      document.querySelector("#deviceInventoryForm").classList.toggle("hidden", !isUsbSelected);
+      document.querySelector("#provisioningFoundBoardDetails").classList.toggle("hidden", !state.discoveredDevices.some(canClaimDiscoveredDevice));
       document.querySelector("#inventoryTypeHint").textContent = inventoryTypeHintText();
+      if (!hasSelectedMethod) {
+        list.innerHTML = `<p class="empty">Waehle zuerst WLAN oder USB als Provisioning-Weg.</p>`;
+        updateClaimSelectedButton();
+        return;
+      }
       if (isAvr) {
         list.innerHTML = renderAvrBootloaderResult();
         updateClaimSelectedButton();
@@ -241,7 +244,9 @@ const DeviceOnboardingController = (() => {
         return;
       }
       if (!state.discoveredDevices.length) {
-        list.innerHTML = `<p class="empty">Waehle WLAN oder USB und klicke auf Suchen. Die Board-Auswahl ist fuer die Suche optional.</p>`;
+        list.innerHTML = state.inventoryEsp32Method === "usb"
+          ? `<p class="empty">Verbinde das Board per USB, waehle bei Bedarf den Port und klicke auf Suchen.</p>`
+          : `<p class="empty">Suche nach einem bereits provisionierten Board im gleichen lokalen WLAN. Die Board-Auswahl ist optional.</p>`;
         updateClaimSelectedButton();
         return;
       }
@@ -278,19 +283,25 @@ const DeviceOnboardingController = (() => {
     }
 
     function renderDiscoveryMethodOptions(actions) {
-      const select = document.querySelector("#deviceDiscoveryMethod");
       const searchButton = document.querySelector("#deviceDiscoverySearchButton");
-      if (!select || !searchButton) return;
-      const methods = [
-        actions.wifiDiscovery ? { value: "wlan", label: "WLAN" } : null,
-        actions.usbIdentification ? { value: "usb", label: "USB" } : null,
-      ].filter(Boolean);
-      select.innerHTML = methods.map((method) => `<option value="${method.value}">${method.label}</option>`).join("");
-      if (!methods.some((method) => method.value === state.inventoryEsp32Method)) {
-        state.inventoryEsp32Method = methods[0]?.value || "";
+      if (!searchButton) return;
+      const allowedMethods = new Set([
+        actions.wifiDiscovery ? "wlan" : "",
+        actions.usbIdentification ? "usb" : "",
+      ].filter(Boolean));
+      document.querySelectorAll('input[name="deviceDiscoveryMethod"]').forEach((input) => {
+        input.disabled = !allowedMethods.has(input.value);
+        input.checked = input.value === state.inventoryEsp32Method;
+      });
+      if (state.inventoryEsp32Method && !allowedMethods.has(state.inventoryEsp32Method)) {
+        state.inventoryEsp32Method = "";
+        state.discoveredDevices = [];
+        document.querySelectorAll('input[name="deviceDiscoveryMethod"]').forEach((input) => {
+          input.checked = false;
+        });
       }
-      select.value = state.inventoryEsp32Method;
-      searchButton.disabled = !methods.length;
+      searchButton.disabled = !state.inventoryEsp32Method || !allowedMethods.has(state.inventoryEsp32Method);
+      searchButton.textContent = state.inventoryEsp32Method === "usb" ? "USB-Board suchen" : "WLAN-Board suchen";
     }
 
     function renderAvrBootloaderResult() {
@@ -325,24 +336,12 @@ const DeviceOnboardingController = (() => {
     }
 
     function inventoryTypeHintText() {
-      const board = selectedInventoryBoard();
-      if (!board) return "WLAN sucht nach erreichbaren gernetix-* Nodes. USB sucht nach bekannten USB-Serial-/Board-Strings. Die Board-Auswahl ist nur fuer manuelles Provisioning oder als Fallback noetig.";
-      const family = selectedInventoryHardwareFamily();
-      const modelHint = model.inventoryHint(board);
-      if (family === "esp32" || family === "esp8266") {
-        const versionHint = model.needsBasissoftwareVersionCheck(board)
-          ? ` Mindestversion Basissoftware: ${board.min_basissoftware_version}.`
-          : "";
-        return `${modelHint} WLAN sucht erreichbare Nodes im Kunden-Netz. USB prueft blanke oder fremd geflashte Boards per Browser-Web-Serial.${versionHint}`;
-      }
-      if (family === "avr_8bit") {
-        return `${modelHint} Der Bootloader-Handshake ist experimentell. Keine avrdude-Installation, kein lokaler Helper.`;
-      }
-      return modelHint;
+      return state.inventoryEsp32Method === "usb"
+        ? "USB sucht nach bekannten USB-Serial-/Board-Strings. Die Board-Auswahl ist nur fuer manuelles Provisioning oder als Fallback noetig."
+        : "WLAN sucht ausschliesslich nach bereits provisionierten, erreichbaren gernetix-* Nodes im gleichen lokalen Netzwerk.";
     }
 
-    function discoveryActionsForBoard(board) {
-      if (board) return model.allowedActions(board);
+    function discoveryActionsForBoard() {
       return {
         wifiDiscovery: true,
         usbIdentification: true,
@@ -409,7 +408,7 @@ const DeviceOnboardingController = (() => {
     function withOnboardingIdentity(device) {
       const shortName = model.normalizeShortName(document.querySelector("#inventoryBoardShortName")?.value || device.display_name || device.hostname);
       const nodeName = model.nodeName(shortName || device.hostname || device.serial_number);
-      const board = selectedInventoryBoard();
+      const board = catalogBoardForProfile(device.hardware_profile_id);
       return {
         ...device,
         board_short_name: shortName,
@@ -450,7 +449,11 @@ const DeviceOnboardingController = (() => {
     }
 
     function esp32TreatmentText(device) {
-      if (device.esp32_inventory_state === "node_online") return "Kann nach Kontopruefung registriert und gepairt werden.";
+      if (device.esp32_inventory_state === "node_online") {
+        if (device.already_in_inventory || device.ownership_status === "current_account") return "Das Board befindet sich bereits in deinem Inventar.";
+        if (device.ownership_status === "other_account") return "Das Board ist bereits einem anderen Konto zugeordnet und kann hier nicht uebernommen werden.";
+        return "Das Board ist noch keinem Konto zugeordnet und kann in dein Inventar uebernommen werden.";
+      }
       if (device.esp32_inventory_state === "basissoftware_setup_ap") return "Per USB provisionieren, weil der Setup-AP die Backend-Verbindung trennt.";
       if (device.esp32_inventory_state === "bootloader_only") return "Basissoftware per Browser-Web-Serial/USB flashen und danach registrieren.";
       return "Zustand pruefen, bevor das Board provisioniert wird.";
@@ -458,66 +461,18 @@ const DeviceOnboardingController = (() => {
 
     function renderDeviceInventoryForm() {
       const boards = state.processorBoards.length ? state.processorBoards : fallbackProcessorBoards();
-      const familyOptions = processorFamilyOptionsFromBoards(boards);
-      if (!state.inventoryProcessorFamily || !familyOptions.some((type) => type.id === state.inventoryProcessorFamily)) {
-        state.inventoryProcessorFamily = familyOptions[0]?.id || "esp32";
-      }
-      document.querySelector("#inventoryProcessorFamily").innerHTML = familyOptions.map((type) => `
-        <option value="${escapeHtml(type.id)}">${escapeHtml(type.label)}</option>
-      `).join("");
-      document.querySelector("#inventoryProcessorFamily").value = state.inventoryProcessorFamily;
-      const boardsForFamily = boards.filter((board) => hardwareTypeForBoard(board) === state.inventoryProcessorFamily);
-      const hardwareOptions = hardwareOptionsFromBoards(boardsForFamily);
-      if (state.inventoryHardwareType && !hardwareOptions.some((type) => type.id === state.inventoryHardwareType)) {
-        state.inventoryHardwareType = "";
-      }
-      document.querySelector("#inventoryHardwareType").innerHTML = [
-        `<option value="">ProcessorBoard waehlen</option>`,
-        ...hardwareOptions.map((type) => `
-        <option value="${escapeHtml(type.id)}">${escapeHtml(type.label)}</option>
-      `),
-      ].join("");
-      document.querySelector("#inventoryHardwareType").value = state.inventoryHardwareType;
-      const selectedBoards = boardsForFamily.filter((board) => boardId(board) === state.inventoryHardwareType);
-      document.querySelector("#inventoryHardwareProfile").innerHTML = selectedBoards.map((board) => `
+      const uniqueBoards = boards.filter((board, index, items) => items.findIndex((item) => boardId(item) === boardId(board)) === index);
+      document.querySelector("#inventoryHardwareProfile").innerHTML = uniqueBoards.map((board) => `
         <option value="${escapeHtml(board.hardware_item_id || board.hardware_profile_id)}">${escapeHtml(board.title || board.hardware_item_id || board.hardware_profile_id)}</option>
       `).join("");
       renderInventoryUsbPortOptions();
-      const actions = model.allowedActions(selectedInventoryBoard());
-      document.querySelector("#inventoryUsbPortLabel").classList.toggle("hidden", actions.wifiDiscovery || !actions.usbIdentification);
+      document.querySelector("#inventoryUsbPortLabel").classList.toggle("hidden", state.inventoryEsp32Method !== "usb");
       if (!document.querySelector("#inventoryDisplayName").value.trim()) {
-        document.querySelector("#inventoryDisplayName").value = selectedInventoryBoard()?.title || "Mein Board";
+        document.querySelector("#inventoryDisplayName").value = "Mein Board";
       }
       syncInventoryNodeNamePreview();
       syncInventoryCapabilities();
       renderNetworkDiscovery();
-    }
-
-    function selectInventoryProcessorFamily() {
-      state.inventoryProcessorFamily = document.querySelector("#inventoryProcessorFamily").value;
-      state.inventoryHardwareType = "";
-      state.inventoryEsp32Method = "";
-      state.discoveredDevices = [];
-      state.avrBootloaderResult = null;
-      renderDeviceInventoryForm();
-      setDiscoveryStatus("running", `${model.familyLabel(state.inventoryProcessorFamily)} gewaehlt. Waehle jetzt das konkrete ProcessorBoard.`);
-    }
-
-    function selectInventoryHardwareType() {
-      state.inventoryHardwareType = document.querySelector("#inventoryHardwareType").value;
-      state.inventoryEsp32Method = "";
-      state.discoveredDevices = [];
-      state.avrBootloaderResult = null;
-      renderDeviceInventoryForm();
-      const board = selectedInventoryBoard();
-      if (!board) {
-        setDiscoveryStatus("running", "Waehle ein konkretes ProcessorBoard aus dem Hardware-Katalog.");
-        return;
-      }
-      const actions = model.allowedActions(board);
-      setDiscoveryStatus("running", actions.wifiDiscovery || actions.usbIdentification
-        ? `${board?.title || "ProcessorBoard"} gewaehlt. Waehle jetzt einen passenden Erkennungsweg.`
-        : "Bereit fuer manuelle Registrierung und Pairing.");
     }
 
     function syncInventoryCapabilities() {
@@ -541,39 +496,14 @@ const DeviceOnboardingController = (() => {
       preview.textContent = model.nodeName(normalized || "mein-board");
     }
 
-    function processorFamilyOptionsFromBoards(boards) {
-      const seen = new Set();
-      return boards
-        .map((board) => hardwareTypeForBoard(board))
-        .filter((family) => {
-          if (!family || family === "unknown" || seen.has(family)) return false;
-          seen.add(family);
-          return true;
-        })
-        .map((family) => ({ id: family, label: model.familyLabel(family) }));
-    }
-
-    function hardwareOptionsFromBoards(boards) {
-      const seen = new Set();
-      return boards
-        .filter((board) => {
-          const id = boardId(board);
-          if (!id || seen.has(id)) return false;
-          seen.add(id);
-          return true;
-        })
-        .map((board) => ({ id: boardId(board), label: model.boardLabel(board) }));
-    }
-
-    function selectedInventoryBoard() {
+    function catalogBoardForProfile(profileId) {
       const boards = state.processorBoards.length ? state.processorBoards : fallbackProcessorBoards();
-      return boards.find((board) => boardId(board) === state.inventoryHardwareType && hardwareTypeForBoard(board) === state.inventoryProcessorFamily)
-        || boards.find((board) => boardId(board) === state.inventoryHardwareType)
-        || null;
+      return boards.find((board) => boardId(board) === profileId) || null;
     }
 
     function selectedInventoryHardwareFamily() {
-      return hardwareTypeForBoard(selectedInventoryBoard()) || state.inventoryProcessorFamily || "other";
+      const profileId = document.querySelector("#inventoryHardwareProfile")?.value || "";
+      return hardwareTypeForBoard(catalogBoardForProfile(profileId)) || hardwareTypeForProfile(profileId) || "other";
     }
 
     function hardwareTypeForBoard(board) {
@@ -632,12 +562,12 @@ const DeviceOnboardingController = (() => {
 
     async function createInventoryDevice(event) {
       event.preventDefault();
-      if (!selectedInventoryBoard()) {
-        setInventoryStatus("error", "Bitte zuerst ein ProcessorBoard aus dem Hardware-Katalog waehlen.");
+      if (!document.querySelector("#inventoryHardwareProfile").value) {
+        setInventoryStatus("error", "Bitte zuerst ein IoT-Device aus dem Hardware-Katalog waehlen.");
         return;
       }
       setInventoryStatus("running", "Gerät wird registriert und mit dem Account gepairt...");
-      const shortName = model.normalizeShortName(document.querySelector("#inventoryBoardShortName").value);
+      const shortName = model.normalizeShortName(document.querySelector("#inventoryDisplayName").value);
       const nodeName = model.nodeName(shortName || document.querySelector("#inventoryDisplayName").value);
       try {
         const device = await postJson("/api/platform/devices", {
@@ -685,8 +615,6 @@ const DeviceOnboardingController = (() => {
       renderNetworkDiscovery,
       searchDevicesForInventory,
       selectDeviceDiscoveryMethod,
-      selectInventoryHardwareType,
-      selectInventoryProcessorFamily,
       selectedInventoryHardwareFamily,
       setDiscoveryStatus,
       setInventoryStatus,

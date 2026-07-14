@@ -47,7 +47,7 @@
 
     <rect class="node app" x="265" y="150" width="260" height="74" rx="10"/>
     <text class="titleText" x="395" y="178" text-anchor="middle">GerNetiX Plattform UI</text>
-    <text class="smallText" x="395" y="198" text-anchor="middle">IDE · Komponenten · Device-Webansicht</text>
+    <text class="smallText" x="395" y="198" text-anchor="middle">Discovery - Hardware-PUML - IDE</text>
     <text class="smallText" x="395" y="216" text-anchor="middle">Build → Browser Web Serial / OTA :4300</text>
 
     <rect class="node app" x="265" y="245" width="260" height="64" rx="10"/>
@@ -79,7 +79,7 @@
     <text class="smallText" x="745" y="196" text-anchor="middle">:4300</text>
 
     <rect class="node edge" x="635" y="230" width="220" height="58" rx="10"/>
-    <text class="titleText" x="745" y="256" text-anchor="middle">Admin Tool API</text>
+    <text class="titleText" x="745" y="256" text-anchor="middle">Admin + KI-Klaerfaelle</text>
     <text class="smallText" x="745" y="276" text-anchor="middle">Account-Blatt + LLM :4600</text>
 
     <rect class="node edge" x="635" y="310" width="220" height="40" rx="10"/>
@@ -135,7 +135,7 @@
     <text class="smallText" x="1265" y="448" text-anchor="middle">Assistant :5300</text>
 
     <rect class="node domain" x="1385" y="405" width="190" height="54" rx="10"/>
-    <text class="titleText" x="1480" y="429" text-anchor="middle">AI Context</text>
+    <text class="titleText" x="1480" y="429" text-anchor="middle">AI Context + Intent-Lernen</text>
     <text class="smallText" x="1480" y="448" text-anchor="middle">Grants + Policy + Prompts + Bausteine :5500</text>
   </g>
 
@@ -187,8 +187,8 @@
     <text class="smallText" x="1265" y="840" text-anchor="middle">keine Runtime-Persistenz</text>
 
     <rect class="node store" x="895" y="870" width="220" height="46" rx="10"/>
-    <text class="titleText" x="1005" y="890" text-anchor="middle">AI Context SQLite</text>
-    <text class="smallText" x="1005" y="908" text-anchor="middle">gernetix-ai-context.sqlite</text>
+    <text class="titleText" x="1005" y="890" text-anchor="middle">AI Context PostgreSQL</text>
+    <text class="smallText" x="1005" y="908" text-anchor="middle">pgvector · produktive Wissensdaten</text>
   </g>
 
   <path class="line" d="M 190 141 L 265 187"/>

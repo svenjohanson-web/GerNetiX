@@ -19,6 +19,27 @@ x-node-service: &node-service
     start_period: 10s
 
 services:
+  ai-context-postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: gernetix_ai_context
+      POSTGRES_USER: gernetix_ai_context
+      POSTGRES_PASSWORD: ${AI_CONTEXT_POSTGRES_PASSWORD:?AI_CONTEXT_POSTGRES_PASSWORD muss gesetzt sein}
+    expose: ["5432"]
+    networks:
+      - backend
+    volumes:
+      - ai_context_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_ai_context -d gernetix_ai_context"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   project-server:
     <<: *node-service
     environment:
@@ -116,11 +137,24 @@ services:
       GERNETIX_SERVICE: ai-context-server
       HOST: 0.0.0.0
       PORT: 5500
-      AI_CONTEXT_PERSISTENCE_BACKEND: sqlite
+      AI_CONTEXT_PERSISTENCE_BACKEND: postgres
+      AI_CONTEXT_POSTGRES_HOST: ai-context-postgres
+      AI_CONTEXT_POSTGRES_PORT: 5432
+      AI_CONTEXT_POSTGRES_DATABASE: gernetix_ai_context
+      AI_CONTEXT_POSTGRES_USER: gernetix_ai_context
+      AI_CONTEXT_POSTGRES_PASSWORD: ${AI_CONTEXT_POSTGRES_PASSWORD:?AI_CONTEXT_POSTGRES_PASSWORD muss gesetzt sein}
+      AI_CONTEXT_EMBEDDING_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+      AI_CONTEXT_EMBEDDING_MODEL: ${AI_CONTEXT_EMBEDDING_MODEL:-embeddinggemma}
+      AI_CONTEXT_EMBEDDING_DIMENSIONS: ${AI_CONTEXT_EMBEDDING_DIMENSIONS:-768}
       AI_CONTEXT_SQLITE_PATH: /var/lib/gernetix/ai-context/gernetix-ai-context.sqlite
     expose: ["5500"]
     volumes:
       - ai_context_state:/var/lib/gernetix/ai-context
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    depends_on:
+      ai-context-postgres:
+        condition: service_healthy
 
   admin-tool:
     <<: *node-service
@@ -282,6 +316,7 @@ volumes:
   identity_state:
   service_state:
   ai_context_state:
+  ai_context_postgres_data:
   build_state:
   mqtt_data:
   mqtt_log:

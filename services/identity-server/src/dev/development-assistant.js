@@ -27,6 +27,10 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         return;
       }
       const requestProfile = architectureRequestProfile(userMessages, { assistantMode });
+      const learnedIntentContext = codeExplorerMode ? null : await architectureIntentContext(userMessages, aiContextJson, {
+        accountId: projectServerUserId(session),
+        projectId,
+      });
       const configuredRoute = routeConfig(codeExplorerMode ? "code_generation" : "architecture_discovery");
       const activeConfig = configuredRoute;
       if (codeExplorerMode && activeConfig.apiProvider !== "openai-responses") {
@@ -89,6 +93,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
         ...(!previousResponseId || !codeExplorerMode ? [{ role: "system", content: codeExplorerMode ? await codeExplorerSystemPrompt(session, codeContext) : await systemPrompt(session, requestProfile) }] : []),
         ...(functionMode ? [{ role: "system", content: functionClarificationPrompt(body.architectureDiagram) }] : []),
         ...(effectChainMode ? [{ role: "system", content: effectChainPrompt(body.architectureDiagram) }] : []),
+        ...(learnedIntentContext?.prompt ? [{ role: "system", content: learnedIntentContext.prompt }] : []),
         ...context.messages,
         ...(previousResponseId && codeExplorerMode ? [userMessages.at(-1)] : userMessages),
       ];
@@ -958,7 +963,7 @@ function buildArchitectureDiagram(messages, options = {}) {
     "",
   ];
 
-  if (signals.device) lines.push("node \"IoT Device / ESP32\" as device");
+  if (signals.device) lines.push("rectangle \"IoT Device / ESP32\" as device");
   if (actorInterface.webserver) lines.push("rectangle \"Webserver\" as webserver");
   if (signals.localUi) lines.push("rectangle \"Lokale Bedienung\" as local_ui");
   if (showBrowser) lines.push("rectangle \"Browser\" as browser");
@@ -967,9 +972,9 @@ function buildArchitectureDiagram(messages, options = {}) {
   if (signals.backend) lines.push(signals.database
     ? "rectangle \"Backend / API\\n--\\nSoftware: SQL/SQLite\" as backend"
     : "rectangle \"Backend / API\" as backend");
-  if (signals.mqtt) lines.push("queue \"MQTT Broker\" as mqtt");
-  if (signals.cloud) lines.push("cloud \"Cloud / Internet\" as cloud");
-  if (signals.homeServer) lines.push("node \"HomeServer / lokaler Server\" as homeserver");
+  if (signals.mqtt) lines.push("rectangle \"MQTT Broker\" as mqtt");
+  if (signals.cloud) lines.push("rectangle \"Cloud / Internet\" as cloud");
+  if (signals.homeServer) lines.push("rectangle \"HomeServer / lokaler Server\" as homeserver");
   if (signals.hardwareCatalog) lines.push("rectangle \"Hardware Catalog\" as hardware_catalog");
   if (signals.temperature) lines.push("rectangle \"Temperatur\" as temperature");
   if (signals.timer) lines.push("rectangle \"Timer\" as timer");
@@ -1053,13 +1058,13 @@ function architecturePatternShortcut(messages, options = {}) {
       intent: "observer",
       reason: "Observer-Pattern wurde als Chat-Schnellfrage erkannt.",
       content: [
-        "Observer passt: Ein Ereignis wird erkannt und ein Nutzer oder ein anderes System wird informiert.",
+        "Observer passt: Ein Ereignis wird ueberwacht und danach wird jemand oder ein System informiert.",
         "",
         "Bitte kurz klaeren:",
-        "1. Welches Ereignis soll erkannt werden?",
-        "2. Wer oder was soll benachrichtigt werden?",
-        "3. Soll das nur lokal funktionieren oder weltweit erreichbar sein?",
-        "4. Wie viele Devices gehoeren dazu?",
+        "1. Welches Ereignis soll ueberwacht werden, z. B. Temperaturgrenze, Wasserstand oder Helligkeit?",
+        "2. Gibt es dafuer schon einen Sensor oder soll ich einen passenden Sensor vorschlagen?",
+        "3. Wer oder was soll benachrichtigt werden?",
+        "4. Soll das nur lokal funktionieren oder weltweit erreichbar sein?",
       ].join("\n"),
     };
   }
@@ -1068,13 +1073,13 @@ function architecturePatternShortcut(messages, options = {}) {
       intent: "data_logger",
       reason: "Datenlogger-Pattern wurde als Chat-Schnellfrage erkannt.",
       content: [
-        "Datenlogger passt: Messwerte werden erfasst, gespeichert und spaeter angezeigt oder ausgewertet.",
+        "Datenlogger passt: Eine physikalische Groesse wird gemessen, gespeichert und spaeter angezeigt oder ausgewertet.",
         "",
         "Bitte kurz klaeren:",
-        "1. Welche Messwerte sollen erfasst werden?",
-        "2. Wie oft oder wodurch wird gemessen?",
-        "3. Sollen die Daten nur lokal oder weltweit abrufbar sein?",
-        "4. Wie viele Logger-Devices gehoeren zum Projekt?",
+        "1. Welche physikalische Groesse soll gemessen und geloggt werden, z. B. Temperatur, Wasserstand, Helligkeit oder Spannung?",
+        "2. Gibt es dafuer schon einen Sensor oder soll ich einen passenden Sensor vorschlagen?",
+        "3. Wie oft oder wodurch soll gemessen werden?",
+        "4. Sollen die Daten nur lokal oder weltweit abrufbar sein?",
       ].join("\n"),
     };
   }
@@ -1232,9 +1237,12 @@ function architectureEditContent(edit, diagram) {
 async function architectureContextLookup(messages, aiContextJson) {
   const latestUserText = [...(Array.isArray(messages) ? messages : [])].reverse().find((message) => message.role !== "assistant")?.content || "";
   if (!isArchitectureComponentQuestion(latestUserText)) return null;
-  const components = await loadArchitectureComponents(aiContextJson);
-  const match = bestArchitectureComponentMatch(latestUserText, components);
-  if (!match || match.score < 2) return null;
+  const search = await searchArchitectureComponents(aiContextJson, latestUserText);
+  const components = search.items;
+  const match = search.strategy === "pgvector"
+    ? (components[0] ? { component:components[0], score:Number(components[0].semantic_score || 0) } : null)
+    : bestArchitectureComponentMatch(latestUserText, components);
+  if (!match || (search.strategy === "pgvector" ? match.score < 0.35 : match.score < 2)) return null;
   const item = match.component;
   return {
     content: architectureComponentAnswer(item),
@@ -1245,6 +1253,82 @@ async function architectureContextLookup(messages, aiContextJson) {
       redaction_level: "none",
     },
   };
+}
+
+async function searchArchitectureComponents(aiContextJson, query) {
+  if (!aiContextJson) return { strategy:"none", items:[] };
+  try {
+    const response = await aiContextJson(`/api/ai-context/architecture-components/search?q=${encodeURIComponent(query)}&limit=5`);
+    if (response.strategy) return { strategy:response.strategy, items:Array.isArray(response.items)?response.items:[] };
+  } catch {}
+  return { strategy:"lexical_fallback", items:await loadArchitectureComponents(aiContextJson) };
+}
+
+async function architectureIntentContext(messages, aiContextJson, metadata = {}) {
+  const utterance = [...(Array.isArray(messages) ? messages : [])].reverse().find((message) => message.role !== "assistant")?.content || "";
+  if (!aiContextJson || !looksLikeArchitectureAddition(utterance)) return null;
+  const [intentSearch, componentSearch] = await Promise.all([
+    searchIntentExamples(aiContextJson, utterance, metadata.accountId),
+    searchArchitectureComponents(aiContextJson, utterance),
+  ]);
+  const intentMatch = intentSearch.items[0] || null;
+  const componentMatch = componentSearch.items[0] || null;
+  const intentScore = Number(intentMatch?.semantic_score || 0);
+  const componentScore = Number(componentMatch?.semantic_score || 0);
+  const suggestedIntent = intentMatch?.intent || "architecture.add_component";
+  const suggestedEntity = intentMatch?.entity || componentMatch?.name || componentMatch?.component_id || "";
+  const nextComponentScore = Number(componentSearch.items[1]?.semantic_score || 0);
+  const ambiguityReason = !suggestedEntity
+    ? "unknown_entity"
+    : nextComponentScore > 0 && componentScore - nextComponentScore < 0.08
+      ? "conflicting_matches"
+      : Math.max(intentScore, componentScore) < 0.78
+        ? "low_confidence"
+        : "";
+  if (ambiguityReason) {
+    try {
+      await aiContextJson("/api/ai-context/clarification-cases", {
+        method: "POST",
+        body: {
+          utterance,
+          domain: "architecture",
+          account_id: metadata.accountId || null,
+          project_id: metadata.projectId || null,
+          suggested_intent: suggestedIntent,
+          suggested_entity: suggestedEntity || null,
+          semantic_score: Math.max(intentScore, componentScore),
+          ambiguity_reason: ambiguityReason,
+        },
+      });
+    } catch {}
+  }
+  const source = intentMatch ? "bestaetigtes Intent-Beispiel" : "semantische Architektur-Suche";
+  return {
+    prompt: [
+      `Interpretationshilfe aus ${source}:`,
+      `Moegliches Intent: ${suggestedIntent}.`,
+      suggestedEntity ? `Moegliches Ziel: ${suggestedEntity}.` : "Das Ziel ist noch unklar.",
+      `Konfidenz: ${Math.max(intentScore, componentScore).toFixed(2)}.`,
+      ambiguityReason ? "Wenn die Aktion oder das Ziel nicht eindeutig ist, frage knapp nach, statt eine Komponente zu erfinden." : "Nutze die bestaetigte Bedeutung, sofern sie zum aktuellen Architekturzustand passt.",
+    ].join("\n"),
+    intent: suggestedIntent,
+    entity: suggestedEntity || null,
+    confidence: Math.max(intentScore, componentScore),
+  };
+}
+
+async function searchIntentExamples(aiContextJson, query, accountId = "") {
+  try {
+    const response = await aiContextJson(`/api/ai-context/intent-examples/search?q=${encodeURIComponent(query)}&limit=3&account_id=${encodeURIComponent(accountId)}`);
+    return { strategy:response.strategy||"none", items:Array.isArray(response.items)?response.items:[] };
+  } catch {
+    return { strategy:"none", items:[] };
+  }
+}
+
+function looksLikeArchitectureAddition(value) {
+  const text = normalizeLookupText(value);
+  return /\b(zusatz|zusaetz|weiter|zweit|noch ein|noch einen|noch eine|hinzufug|hinzufueg|erganz|ergaenz|add|mehr davon)/.test(text);
 }
 
 function isArchitectureComponentQuestion(value) {
@@ -1341,12 +1425,12 @@ function minimalEsp32ArchitectureDiagram(title, signals) {
     "",
     "skinparam shadowing false",
     "skinparam componentStyle rectangle",
-    "skinparam node {",
+    "skinparam rectangle {",
     "  BackgroundColor #fbfdff",
     "  BorderColor #8aa0bd",
     "}",
     "",
-    "node \"ESP32\" as esp32",
+    "rectangle \"ESP32\" as esp32",
     "@enduml",
   ];
   return {
@@ -1535,17 +1619,6 @@ function diagramTitle(text) {
   return `Architektur-Skizze: ${concise}`;
 }
 
-function diagramNotes(assistantText, signals, options) {
-  const notes = ["KI-abgeleitete Skizze, keine bestaetigte Architekturentscheidung."];
-  const openQuestionLine = String(assistantText || "")
-    .split(/\r?\n/)
-    .find((line) => /offene frage|offen|unklar|klaeren|klären|\?/.test(line.toLowerCase()));
-  if (openQuestionLine) notes.push(`Offen: ${openQuestionLine.replace(/^[-*\d.\s]+/, "").slice(0, 120)}`);
-  if (options.contextSources?.length) notes.push("Kontext: freigegebener Hardware-Catalog wurde beruecksichtigt.");
-  if (!signals.backend && !signals.database && signals.device && !signals.minimalScope) notes.push("Noch klaeren: nur lokales Device oder Backend/Persistenz?");
-  return notes.slice(0, 4);
-}
-
 function isMinimalEsp32StructureRequest(value) {
   const text = String(value || "").toLowerCase();
   if (!/esp32/.test(text)) return false;
@@ -1581,7 +1654,7 @@ function plantUmlFunctionCoverage(source) {
   const connected = new Set();
   const lines = String(source || "").split(/\r?\n/);
   for (const line of lines) {
-    const element = line.match(/^\s*(actor|node|rectangle|queue|database|cloud)\s+"[^"]+"\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\b/i);
+    const element = line.match(/^\s*(actor|node|component|rectangle|queue|database|cloud|artifact)\s+"[^"]+"\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\b/i);
     if (element) aliases.add(element[2]);
   }
   for (const line of lines) {
@@ -1613,4 +1686,4 @@ function cleanAssistantMode(value) {
   return ["function_clarification", "effect_chain_derivation", "code_explorer"].includes(mode) ? mode : "architecture_structure";
 }
 
-module.exports = { createDevelopmentAssistant, buildArchitectureDiagram, plantUmlFunctionCoverage };
+module.exports = { createDevelopmentAssistant, buildArchitectureDiagram, plantUmlFunctionCoverage, architectureIntentContext };

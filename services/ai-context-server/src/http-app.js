@@ -16,74 +16,110 @@ function createHttpApp(options) {
       }
 
       if (req.method === "GET" && path === `${prefix}/policy`) {
-        sendJson(res, 200, { policy: service.getPolicy() });
+        sendJson(res, 200, { policy: await service.getPolicy() });
         return;
       }
 
       if (req.method === "PUT" && path === `${prefix}/policy`) {
-        sendJson(res, 200, { policy: service.updatePolicy(await readJsonBody(req)) });
+        sendJson(res, 200, { policy: await service.updatePolicy(await readJsonBody(req)) });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/grants`) {
-        sendJson(res, 200, { items: service.listGrants(Object.fromEntries(url.searchParams.entries())) });
+        sendJson(res, 200, { items: await service.listGrants(Object.fromEntries(url.searchParams.entries())) });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/sources`) {
-        sendJson(res, 200, { items: service.listSources(Object.fromEntries(url.searchParams.entries())) });
+        sendJson(res, 200, { items: await service.listSources(Object.fromEntries(url.searchParams.entries())) });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/prompt-foundations`) {
-        sendJson(res, 200, { items: service.listPromptFoundations(Object.fromEntries(url.searchParams.entries())) });
+        sendJson(res, 200, { items: await service.listPromptFoundations(Object.fromEntries(url.searchParams.entries())) });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/architecture-components`) {
-        sendJson(res, 200, { items: service.listArchitectureComponents(Object.fromEntries(url.searchParams.entries())) });
+        sendJson(res, 200, { items: await service.listArchitectureComponents(Object.fromEntries(url.searchParams.entries())) });
+        return;
+      }
+
+      if (req.method === "GET" && path === `${prefix}/architecture-components/search`) {
+        sendJson(res, 200, await service.searchArchitectureComponents(url.searchParams.get("q"), url.searchParams.get("limit")));
+        return;
+      }
+
+      if (req.method === "GET" && path === `${prefix}/clarification-cases`) {
+        sendJson(res, 200, await service.listClarificationCases(Object.fromEntries(url.searchParams.entries())));
+        return;
+      }
+
+      if (req.method === "POST" && path === `${prefix}/clarification-cases`) {
+        sendJson(res, 201, { clarificationCase: await service.recordClarificationCase(await readJsonBody(req)) });
+        return;
+      }
+
+      const clarificationAction = path.match(new RegExp(`^${prefix}/clarification-cases/([^/]+)/actions$`));
+      if (req.method === "POST" && clarificationAction) {
+        sendJson(res, 200, { clarificationCase: await service.resolveClarificationCase(decodeURIComponent(clarificationAction[1]), await readJsonBody(req)) });
+        return;
+      }
+
+      if (req.method === "GET" && path === `${prefix}/intent-examples`) {
+        sendJson(res, 200, { items: await service.listIntentExamples(Object.fromEntries(url.searchParams.entries())) });
+        return;
+      }
+
+      if (req.method === "GET" && path === `${prefix}/intent-examples/search`) {
+        sendJson(res, 200, await service.searchIntentExamples(url.searchParams.get("q"), url.searchParams.get("limit"), url.searchParams.get("account_id")));
         return;
       }
 
       if (req.method === "POST" && path === `${prefix}/prompt-foundations`) {
-        sendJson(res, 201, { promptFoundation: service.upsertPromptFoundation(await readJsonBody(req)) });
+        sendJson(res, 201, { promptFoundation: await service.upsertPromptFoundation(await readJsonBody(req)) });
         return;
       }
 
       if (req.method === "POST" && path === `${prefix}/architecture-components`) {
-        sendJson(res, 201, { architectureComponent: service.upsertArchitectureComponent(await readJsonBody(req)) });
+        sendJson(res, 201, { architectureComponent: await service.upsertArchitectureComponent(await readJsonBody(req)) });
         return;
       }
 
       if (req.method === "POST" && path === `${prefix}/sources`) {
-        sendJson(res, 201, { source: service.upsertSource(await readJsonBody(req)) });
+        sendJson(res, 201, { source: await service.upsertSource(await readJsonBody(req)) });
         return;
       }
 
       if (req.method === "POST" && path === `${prefix}/grants`) {
-        sendJson(res, 201, { grant: service.createGrant(await readJsonBody(req)) });
+        sendJson(res, 201, { grant: await service.createGrant(await readJsonBody(req)) });
         return;
       }
 
       const revoke = path.match(new RegExp(`^${prefix}/grants/([^/]+)/revoke$`));
       if (req.method === "POST" && revoke) {
-        sendJson(res, 200, { grant: service.revokeGrant(decodeURIComponent(revoke[1]), await readJsonBody(req)) });
+        sendJson(res, 200, { grant: await service.revokeGrant(decodeURIComponent(revoke[1]), await readJsonBody(req)) });
         return;
       }
 
       if (req.method === "POST" && path === `${prefix}/preflight`) {
-        const result = service.preflight(await readJsonBody(req));
+        const result = await service.preflight(await readJsonBody(req));
         sendJson(res, result.allowed ? 200 : 403, result);
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/audit-events`) {
-        sendJson(res, 200, { items: service.listAuditEvents(Object.fromEntries(url.searchParams.entries())) });
+        sendJson(res, 200, { items: await service.listAuditEvents(Object.fromEntries(url.searchParams.entries())) });
+        return;
+      }
+
+      if (req.method === "GET" && path === `${prefix}/storage/summary`) {
+        sendJson(res, 200, { summary: await service.storageSummary() });
         return;
       }
 
       if (req.method === "GET" && path === `${prefix}/sqlite/summary`) {
-        sendJson(res, 200, { summary: service.sqliteSummary() });
+        sendJson(res, 200, { summary: await service.storageSummary() });
         return;
       }
 
