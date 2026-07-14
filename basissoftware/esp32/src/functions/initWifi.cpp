@@ -7,6 +7,7 @@
 
 #include "esp_event.h"
 #include "esp_netif.h"
+#include "esp_sntp.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -41,6 +42,7 @@ enum class StationState {
 EventGroupHandle_t wifiEvents = nullptr;
 bool wifiStarted = false;
 bool setupPortalActive = false;
+bool sntpStarted = false;
 TaskHandle_t wifiConnectTaskHandle = nullptr;
 TaskHandle_t wifiReconnectTaskHandle = nullptr;
 StationState stationState = StationState::Idle;
@@ -55,6 +57,16 @@ struct WifiCredentials {
 };
 
 void scheduleWifiReconnect();
+
+void startSecureClockSync() {
+  if (sntpStarted) return;
+  esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
+  esp_sntp_setservername(0, "pool.ntp.org");
+  esp_sntp_setservername(1, "time.cloudflare.com");
+  esp_sntp_init();
+  sntpStarted = true;
+  feedbackInfo(TAG, "SNTP clock synchronization started for TLS and signed OTA expiry checks");
+}
 
 uint32_t wifiReconnectDelayMs() {
   const size_t delayCount = sizeof(WIFI_RECONNECT_DELAYS_MS) / sizeof(WIFI_RECONNECT_DELAYS_MS[0]);
@@ -163,6 +175,7 @@ void wifiEventHandler(void *, esp_event_base_t eventBase, int32_t eventId, void 
     lastConnectStatus = ESP_OK;
     lastDisconnectReason = 0;
     wifiConnectRetryCount = 0;
+    startSecureClockSync();
     if (setupPortalActive) {
       const esp_err_t modeStatus = esp_wifi_set_mode(WIFI_MODE_STA);
       if (modeStatus == ESP_OK) {

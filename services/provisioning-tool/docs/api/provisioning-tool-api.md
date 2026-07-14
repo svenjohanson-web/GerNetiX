@@ -48,7 +48,7 @@ Beispiel:
 
 `mqtt_mode` ist `vps` oder `local`. Im VPS-Modus muss `mqtt_broker` eine `mqtts://`-Adresse sein. Im lokalen Modus wird beispielsweise `mqtt://192.168.50.20:1883` verwendet; aus Sicherheitsgruenden akzeptiert das Provisioning Tool dabei nur private IPv4-Adressen aus `10/8`, `172.16/12` oder `192.168/16`.
 
-Die Erstellungsantwort enthaelt einmalig `one_time_device_secret` und `usb_flash_package`. Dieses Secret wird nicht gespeichert und ist spaeter nicht erneut abrufbar. Das `processor_board_id` bestimmt den Hardware-Katalogeintrag; daraus werden Hardwareprofil, Basissoftware-Profil und Factory-Firmware-Artefakt abgeleitet.
+Die Erstellungsantwort enthaelt `usb_flash_package`, aber keinerlei Shared Secret oder privaten Schluessel. Das `processor_board_id` bestimmt den Hardware-Katalogeintrag; daraus werden Hardwareprofil, Basissoftware-Profil und Factory-Firmware-Artefakt abgeleitet.
 
 Das `usb_flash_package` enthaelt fuer die physische Erstinbetriebnahme eine generierte Header-Datei. Die Basissoftware selbst wird im Serverbetrieb als versioniertes Firmware-Artefakt aus SQLite/Artifact Store referenziert, nicht direkt aus dem Projektordner:
 
@@ -56,7 +56,7 @@ Das `usb_flash_package` enthaelt fuer die physische Erstinbetriebnahme eine gene
 sqlite://provisioning_firmware_artifacts/firmware_artifact.esp32_basissoftware_factory.latest
 ```
 
-Der Secret-Header wird nur in ein temporaeres Staging-Verzeichnis geschrieben und kann in ein Factory-Image eingebettet werden. Im normalen HMI-Ablauf bleibt das Firmware-Artefakt generisch; die konkrete Board-Kennung wird nach dem USB-Flash ueber den lokalen Device-Endpunkt `/provisioning` dauerhaft in NVS gespeichert.
+Der Header enthaelt nur nicht geheime Identitaets- und Trust-Metadaten. Im normalen HMI-Ablauf bleibt das Firmware-Artefakt generisch; die konkrete Board-Kennung wird nach dem USB-Flash ueber den lokalen Device-Endpunkt `/provisioning` dauerhaft in NVS gespeichert.
 
 Wenn `flash.write_factory_header` gesetzt ist, schreibt das Tool die Datei direkt an den konfigurierten Pfad `PROVISIONING_GENERATED_HEADER_PATH` beziehungsweise standardmaessig nach:
 
@@ -148,7 +148,7 @@ Beispiel:
 GET /api/provisioning-sessions/{session_id}
 ```
 
-Liefert Session-Status, Device, Credential-Referenz, Manufacturer-Registration-Payload, Flash-Plan und Audit-Events ohne Klartext-Secret.
+Liefert Session-Status, Device, Credential-Referenz, Public-Key-/Zertifikatsmetadaten, Flash-Plan und Audit-Events ohne private Schluessel.
 
 ## Manifest
 
@@ -156,7 +156,7 @@ Liefert Session-Status, Device, Credential-Referenz, Manufacturer-Registration-P
 GET /api/provisioning-sessions/{session_id}/manifest
 ```
 
-Liefert die Device-Konfiguration fuer Initial-Firmware ohne Klartext-Secret. Dieser Endpoint ist fuer Nachvollziehbarkeit und Pruefung gedacht, nicht fuer physisches Device-Provisioning.
+Liefert die Device-Konfiguration mit OTA-Public-Key fuer Initial-Firmware ohne privates Schluesselmaterial.
 
 ## Browser USB Flash Ergebnis
 
@@ -195,19 +195,18 @@ Beispiel fehlgeschlagen:
 POST /api/provisioning-sessions/{session_id}/device-provisioning
 ```
 
-Sendet den kompletten Session-Payload an den lokalen Device-Webserver der geflashten Basissoftware. Das Board speichert `device_id`, `serial_number`, Hardwareprofil, Credential-Referenz, Service-Endpunkte und `one_time_device_secret` dauerhaft im NVS-Namespace `prov`. Der Endpoint ist fuer den HMI-Schritt nach dem USB-Flash gedacht; er startet keinen Flash und baut kein Firmware-Binary.
+Sendet den Session-Payload an den lokalen Device-Webserver. Das Board erzeugt sein P-256-Schluesselpaar lokal und antwortet mit `public_key_pem`. Das Provisioning Tool stellt dafuer ein Client-Zertifikat aus, schreibt es in einem zweiten Request auf das Board und prueft den Private-Key-Besitz ueber `/auth/challenge`.
 
 Beispiel:
 
 ```json
 {
   "device_url": "http://192.168.4.1/provisioning",
-  "actor": "factory-user",
-  "one_time_device_secret": "nur-aus-aktueller-browser-session"
+  "actor": "factory-user"
 }
 ```
 
-Das `one_time_device_secret` wird nicht aus dem Session-Status zurueckgegeben und muss aus der aktuellen Browser-Session stammen. Ist es nicht mehr vorhanden, muss die Provisioning-Session neu vorbereitet werden.
+Der Abschluss ist erst moeglich, wenn Public Key, Client-Zertifikat und Besitznachweis in der Session vorliegen. Der private Device-Schluessel wird zu keinem Zeitpunkt an das Tool uebertragen.
 
 ## Complete
 

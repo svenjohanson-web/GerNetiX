@@ -110,7 +110,7 @@ Start lokal:
 docker compose -f infra/dev/docker-compose.yml up -d mqtt-broker
 ```
 
-Der lokale Dev-Broker nutzt Mosquitto auf `127.0.0.1:1883` und MQTT over WebSocket auf `127.0.0.1:9001`. Der VPS-Broker stellt fuer ESP32-Devices `mqtts://mqtt.gernetix.com:8883` mit Credentials und gerätespezifischen ACLs bereit. Der Build-&-Deploy-Server publiziert im VPS-Docker-Netz ueber den internen Listener, signiert den OTA-Auftrag mit dem aktiven Device-Secret aus der gemeinsamen SQLite und verfolgt Board-Statusmeldungen unter `gernetix/devices/{device_id}/status/deployment`. Vor einem OTA-Build prueft `/api/ota/preflight` gemeinsam die oeffentliche HTTPS-Artefaktadresse, MQTT-Publisher, gerätespezifischen HMAC-Signer und Device-Bestaetigung. Solange ein Glied fehlt, wird vor dem Build mit allen Blockern abgebrochen.
+Der lokale Dev-Broker nutzt Mosquitto auf `127.0.0.1:1883` und MQTT over WebSocket auf `127.0.0.1:9001`. Der VPS-Broker verlangt fuer ESP32-Devices auf `mqtts://mqtt.gernetix.com:8883` ein Device-Client-Zertifikat und geraetespezifische ACLs. Der Build-&-Deploy-Server publiziert im VPS-Docker-Netz ueber den internen Listener, signiert jeden kanonischen OTA-Auftrag mit dem separaten P-256-OTA-Private-Key und verfolgt Board-Statusmeldungen unter `gernetix/devices/{device_id}/status/deployment`. Vor einem OTA-Build prueft `/api/ota/preflight` gemeinsam die oeffentliche HTTPS-Artefaktadresse, MQTT-Publisher, ECDSA-Signer und Device-Bestaetigung.
 
 ## HTTPS
 

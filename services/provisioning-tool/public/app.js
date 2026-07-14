@@ -1,6 +1,5 @@
 const state = {
   session: null,
-  secret: "",
   processorBoards: [],
   firmwareArtifact: null,
   flashMode: null,
@@ -61,7 +60,6 @@ async function createSession(event) {
     });
     const manifest = await getJson(`/api/provisioning-sessions/${encodeURIComponent(session.session_id)}/manifest`);
     state.session = { ...session, manifest };
-    state.secret = session.one_time_device_secret || "";
     saveBrowserSessionState(state.session);
     state.flashMode = await getJson("/api/provisioning-flash-mode").catch(() => state.flashMode);
     render();
@@ -115,7 +113,6 @@ async function resetActiveCredential() {
       reason: "factory_reprovisioning",
     });
     state.session = null;
-    state.secret = "";
     clearBrowserSessionState();
     setStatus("flashStatus", "ok", `Credential zurueckgesetzt: ${result.credential_id}`);
     render();
@@ -208,33 +205,26 @@ async function completeSession() {
     quality_check_state: "passed",
     connectivity_status: "unknown",
     ota_status: "ready",
-    one_time_device_secret: state.secret,
   });
   const manifest = await getJson(`/api/provisioning-sessions/${encodeURIComponent(completed.session_id)}/manifest`);
   state.session = { ...completed, manifest };
-  state.secret = "";
   saveBrowserSessionState(state.session);
   render();
 }
 
 async function persistDeviceProvisioning() {
   if (!state.session) return;
-  if (!state.secret) {
-    setStatus("deviceProvisioningStatus", "error", "Das einmalige Device-Secret ist nicht mehr im Browser vorhanden. Bitte Session neu vorbereiten.");
-    return;
-  }
-  setStatus("deviceProvisioningStatus", "running", "Kennung wird im Board-NVS gespeichert...");
+  setStatus("deviceProvisioningStatus", "running", "Device-Schluessel wird auf dem Board erzeugt und das mTLS-Zertifikat ausgestellt...");
   try {
     const updated = await postJson(`/api/provisioning-sessions/${encodeURIComponent(state.session.session_id)}/device-provisioning`, {
       actor: value("#actor"),
       device_url: value("#deviceProvisioningUrl"),
-      one_time_device_secret: state.secret,
     });
     const manifest = await getJson(`/api/provisioning-sessions/${encodeURIComponent(updated.session_id)}/manifest`);
     state.session = { ...updated, manifest };
     saveBrowserSessionState(state.session);
     render();
-    setStatus("deviceProvisioningStatus", "ok", "Kennung wurde dauerhaft im Board gespeichert.");
+    setStatus("deviceProvisioningStatus", "ok", "Device-Identitaet und mTLS-Zertifikat wurden dauerhaft eingerichtet.");
   } catch (error) {
     setStatus("deviceProvisioningStatus", "error", error.message);
   }
@@ -245,7 +235,7 @@ function render() {
   const flashNeedsArtifact = !state.flashMode?.artifact_ready;
   const flashRunning = Boolean(state.flashOperation);
   document.querySelector("#usbFlashButton").disabled = flashRunning || !session || flashNeedsArtifact || needsUsbTargetSelection() || session.status === "completed" || hasUsbFlashSucceeded(session);
-  document.querySelector("#persistDeviceProvisioningButton").disabled = flashRunning || !session || !state.secret || session.status === "completed" || hasDeviceProvisioningStored(session);
+  document.querySelector("#persistDeviceProvisioningButton").disabled = flashRunning || !session || session.status === "completed" || hasDeviceProvisioningStored(session);
   document.querySelector("#cancelFlashButton").disabled = !flashRunning;
   document.querySelector("#completeButton").disabled = !session || session.status === "completed" || !hasDeviceProvisioningStored(session);
   renderUsbBrowserStatus();
@@ -267,18 +257,12 @@ function render() {
     ["artifact_uri", state.firmwareArtifact.uri],
   ].map(meta).join("") : "";
 
-  if (state.secret) {
-    setStatus("secretStatus", "ok", "Einmaliges Device-Secret liegt nur für diesen Vorgang im Tool vor.");
-  } else {
-    hideStatus("secretStatus");
-  }
+  hideStatus("secretStatus");
 
   if (session?.device?.local_provisioning_state === "stored_on_board") {
-    setStatus("deviceProvisioningStatus", "ok", "Kennung wurde dauerhaft im Board gespeichert.");
-  } else if (session && !state.secret) {
-    setStatus("deviceProvisioningStatus", "running", "Board-Speicherung braucht das einmalige Device-Secret der aktuellen Browser-Session.");
+    setStatus("deviceProvisioningStatus", "ok", "Device-Identität und mTLS-Zertifikat wurden dauerhaft eingerichtet.");
   } else if (session) {
-    setStatus("deviceProvisioningStatus", "running", "Nach dem Flash Board booten lassen und Kennung im Board speichern.");
+    setStatus("deviceProvisioningStatus", "running", "Nach dem Flash Board booten lassen und Device-Identität einrichten.");
   } else {
     hideStatus("deviceProvisioningStatus");
   }

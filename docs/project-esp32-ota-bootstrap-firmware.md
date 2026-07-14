@@ -6,7 +6,7 @@ Ziel: Ein ESP32 wird mit der GerNetiX-Basissoftware initial per USB geflasht und
 
 ## Implementierter OTA-Pfad
 
-Die ESP-IDF-Basissoftware besitzt einen lokalen `POST /ota`-Endpunkt. Ein Deploy-Auftrag bindet Deploy-ID, strikt steigende Sequenznummer, Device-ID, HTTPS-Artefakt-URL und erwarteten Image-SHA-256 durch einen HMAC-SHA-256 mit dem beim Factory-Provisioning hinterlegten Device-Secret. Das Device akzeptiert Artefakte nur vom Origin des provisionierten Build-&-Deploy-Endpunkts. Es schreibt in den inaktiven A/B-Slot, verifiziert den SHA-256 vor der Aktivierung und bestaetigt das neue Image erst nach erfolgreicher Initialisierung und Runtime-Diagnose. Als zusaetzlichen Transport abonniert die Basissoftware per TLS und QoS 1 das gerätespezifische Topic `gernetix/devices/<device_id>/ota`; der MQTT-Payload durchlaeuft denselben authentifizierten OTA-Pfad.
+Die ESP-IDF-Basissoftware besitzt einen lokalen `POST /ota`-Endpunkt. Ein Deploy-Auftrag bindet Schema, Signing-Key-ID, Deploy-ID, Sequenz, Device-ID, HTTPS-Artefakt-URL, Image-SHA-256 und Ablaufzeit durch eine ECDSA-P-256-Signatur. Das Device akzeptiert Artefakte nur vom provisionierten Build-&-Deploy-Origin, schreibt in den inaktiven A/B-Slot und bestaetigt das neue Image erst nach erfolgreicher Runtime-Diagnose. Als Transport abonniert die Basissoftware per mTLS und QoS 1 das geraetespezifische MQTT-Topic.
 
 ## Ablauf
 
@@ -29,8 +29,8 @@ Die ESP32-Basissoftware unter `basissoftware/esp32` setzt den ersten lokalen Con
 - USB-Factory-Provisioning ueber `generated_provisioning_payload.h`
 - lokaler `POST /provisioning` nur fuer Recovery-/Entwicklungsfaelle, nicht als normaler Provisioning-Tool-Kanal
 - lokale NVS-Speicherung von Device-ID, Seriennummer, Hardwareprofil, Firmware-Version, Credential-Referenz, Secret-Hash, Service-Endpunkten, Provisioning-Batch und Capabilities
-- optionale lokale NVS-Speicherung des einmaligen Device-Secrets beim physischen Provisionieren
-- `POST /auth/challenge` fuer den Device-seitigen `HMAC_SHA256`-Echtheitsnachweis
+- lokale Erzeugung und NVS-Speicherung des P-256-Privatschluessels beim physischen Provisionieren
+- `POST /auth/challenge` fuer den Device-seitigen ECDSA-P-256-Echtheitsnachweis
 - Serial/UART-Ausgabe bleibt parallel aktiv
 
 Nachweis:
@@ -49,7 +49,7 @@ Das Provisioning Tool stellt dafuer `POST /api/provisioning-sessions/{session_id
 ## Offene Entscheidungen
 
 - `decision.esp32_ota_bootstrap_firmware.framework`: Arduino OTA, ESP-IDF OTA oder PlatformIO/Arduino?
-- `decision.esp32_ota_bootstrap_firmware.ota_authentication`: HMAC-authentifizierter Auftrag und Image-SHA-256 sind umgesetzt; asymmetrische Artefaktsignatur, Secure Boot und Anti-Rollback-Fuses bleiben eine Produktionsentscheidung.
+- `architecture.esp32_authenticated_https_ota_path`: ECDSA-P-256-signierter, ablaufender Auftrag, Replay-Sequenz und Image-SHA-256 sind umgesetzt; Secure Boot und Anti-Rollback-Fuses bleiben Produktionshaertung.
 - `decision.esp32_ota_bootstrap_firmware.wifi_setup`: Wie werden WLAN-Scan, SSID-Auswahl, Passwort-Eingabe und lokale Speicherung umgesetzt?
 - `decision.esp32_ota_bootstrap_firmware.node_mode_policy`: Wird nach WLAN-Verbindung AP abgeschaltet, AP+STA betrieben oder ein zeitlich begrenzter Fallback-AP genutzt?
 - `decision.esp32_ota_bootstrap_firmware.flash_layout`: Wird das aktuell erkannte 2-MB-Flash-Board OTA-faehig unterstuetzt oder wird fuer OTA ein 4-MB-Boardprofil vorausgesetzt?

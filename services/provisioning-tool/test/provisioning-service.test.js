@@ -1,4 +1,5 @@
 const assert = require("node:assert/strict");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const os = require("node:os");
 const path = require("node:path");
@@ -9,6 +10,39 @@ const {
   createDefaultProvisioningTool,
   UsbFlashRunner,
 } = require("../src");
+
+const TEST_DEVICE_KEYS = crypto.generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+const TEST_DEVICE_PUBLIC_KEY = TEST_DEVICE_KEYS.publicKey.export({ type: "spki", format: "pem" }).toString();
+
+function configureAsymmetricDevice(service, onRequest = () => {}) {
+  service.certificateIssuer = {
+    isConfigured: () => true,
+    async issue() {
+      return {
+        certificate_pem: "-----BEGIN CERTIFICATE-----\nTEST-DEVICE-CERTIFICATE\n-----END CERTIFICATE-----\n",
+        certificate_serial_number: "01",
+        certificate_fingerprint_sha256: "ab".repeat(32),
+        issued_at: new Date().toISOString(),
+        expires_at: "2099-01-01T00:00:00.000Z",
+      };
+    },
+  };
+  service.fetchImpl = async (url, options = {}) => {
+    const payload = options.body ? JSON.parse(options.body) : {};
+    onRequest(url, payload);
+    if (String(url).endsWith("/auth/challenge")) {
+      const signature = crypto.sign("sha256", Buffer.from(payload.canonical), {
+        key: TEST_DEVICE_KEYS.privateKey,
+        dsaEncoding: "ieee-p1363",
+      }).toString("base64url");
+      return { ok: true, status: 200, async text() { return JSON.stringify({ signature }); } };
+    }
+    const body = payload.mqtt_client_certificate_pem
+      ? { status: "certificate_stored" }
+      : { status: "provisioned", public_key_pem: TEST_DEVICE_PUBLIC_KEY };
+    return { ok: true, status: 200, async text() { return JSON.stringify(body); } };
+  };
+}
 
 function createService() {
   return createDefaultProvisioningTool(createConfig({
@@ -48,7 +82,7 @@ function validInput(overrides = {}) {
   };
 }
 
-test("creates provisioning session with one-time secret and redacted later status", async () => {
+test("creates provisioning session without shared secret", async () => {
   const service = createService();
   const created = await service.createSession(validInput());
 
@@ -56,7 +90,7 @@ test("creates provisioning session with one-time secret and redacted later statu
   assert.ok(created.device.device_id.startsWith("device_"));
   assert.equal(created.device.processor_board_id, "hardware.processor_board.generic_esp_wroom32");
   assert.ok(created.credential.credential_id.startsWith("cred_"));
-  assert.ok(created.one_time_device_secret);
+  assert.equal(created.one_time_device_secret, undefined);
   assert.equal(created.flash_plan.status, "planned");
   assert.equal(created.flash_plan.transport, "usb");
   assert.equal(created.flash_plan.provisioning_transport, "usb_flash_image");
@@ -64,16 +98,16 @@ test("creates provisioning session with one-time secret and redacted later statu
   assert.equal(created.usb_flash_package.target_runtime, "server_firmware_artifact");
   assert.equal(created.usb_flash_package.firmware_artifact.source, "sqlite");
   assert.equal(created.usb_flash_package.generated_files[0].path, "basissoftware/esp32/include/basissoftware/generated_provisioning_payload.h");
-  assert.equal(created.usb_flash_package.generated_files[0].contains_secret, true);
+  assert.equal(created.usb_flash_package.generated_files[0].contains_secret, false);
   assert.match(created.usb_flash_package.generated_files[0].content, /GERNETIX_FACTORY_PROVISIONING_PAYLOAD/);
-  assert.match(created.usb_flash_package.generated_files[0].content, /one_time_device_secret/);
+  assert.doesNotMatch(created.usb_flash_package.generated_files[0].content, /one_time_device_secret/);
 
   const fetched = service.getSession(created.session_id);
   assert.equal(fetched.one_time_device_secret, undefined);
   assert.equal(fetched.usb_flash_package, undefined);
   assert.equal(fetched.credential.one_time_device_secret, undefined);
   assert.equal(fetched.credential.key_reference, created.credential.key_reference);
-  assert.ok(fetched.credential.secret_sha256);
+  assert.equal(fetched.credential.algorithm, "ECDSA_P256_SHA256");
 });
 
 test("manifest contains endpoint and credential reference but no raw secret", async () => {
@@ -159,28 +193,24 @@ test("persists provisioning identifier on board through local device endpoint", 
   const created = await service.createSession(validInput());
   let capturedUrl = "";
   let capturedPayload = null;
-  service.fetchImpl = async (url, options = {}) => {
-    capturedUrl = url;
-    capturedPayload = JSON.parse(options.body);
-    return {
-      ok: true,
-      status: 200,
-      async text() {
-        return "{\"status\":\"provisioned\"}\n";
-      },
-    };
-  };
+  configureAsymmetricDevice(service, (url, payload) => {
+    if (!String(url).endsWith("/auth/challenge") && !payload.mqtt_client_certificate_pem) {
+      capturedUrl = url;
+      capturedPayload = payload;
+    }
+  });
 
   const stored = await service.persistDeviceProvisioning(created.session_id, {
     actor: "factory@sven.local",
     device_url: "http://192.168.4.1/provisioning",
-    one_time_device_secret: created.one_time_device_secret,
   });
 
   assert.equal(capturedUrl, "http://192.168.4.1/provisioning");
   assert.equal(capturedPayload.serial_number, "GNX-ESP32-0001");
   assert.equal(capturedPayload.device_id, created.device.device_id);
-  assert.equal(capturedPayload.one_time_device_secret, created.one_time_device_secret);
+  assert.equal(capturedPayload.one_time_device_secret, undefined);
+  assert.match(stored.credential.public_key_pem, /BEGIN PUBLIC KEY/);
+  assert.equal(stored.credential.proof_of_possession, "verified");
   assert.equal(stored.device.local_provisioning_state, "stored_on_board");
   assert.equal(stored.device_provisioning.status, "stored_on_board");
   assert.equal(stored.audit_events.at(-1).type, "device_provisioning_stored_on_board");
@@ -241,12 +271,12 @@ test("writes factory provisioning header only for explicit USB flash package req
   }));
 
   assert.equal(created.usb_flash_package.written_file.path, headerPath);
-  assert.equal(created.usb_flash_package.written_file.contains_secret, true);
+  assert.equal(created.usb_flash_package.written_file.contains_secret, false);
   assert.equal(fs.existsSync(headerPath), true);
 
   const content = fs.readFileSync(headerPath, "utf8");
   assert.match(content, /GERNETIX_FACTORY_PROVISIONING_PAYLOAD/);
-  assert.match(content, /one_time_device_secret/);
+  assert.doesNotMatch(content, /one_time_device_secret/);
   assert.match(content, new RegExp(created.device.device_id));
 });
 
@@ -564,6 +594,11 @@ test("resets active credential and allows reprovisioning same serial number", as
 test("complete marks manufacturer registration and device lifecycle", async () => {
   const service = createService();
   const created = await service.createSession(validInput({ flash: { requested: false } }));
+  configureAsymmetricDevice(service);
+  await service.persistDeviceProvisioning(created.session_id, {
+    actor: "qa@sven.local",
+    device_url: "http://192.168.4.1/provisioning",
+  });
   const completed = await service.completeSession(created.session_id, {
     completed_by: "qa@sven.local",
     quality_check_state: "passed",

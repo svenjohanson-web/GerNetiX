@@ -64,16 +64,18 @@ services:
       PORT: 4400
       PERSISTENCE_BACKEND: sqlite
       PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
-      DEVICE_CREDENTIALS_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
       BUILD_DEPLOY_RUNTIME_DIR: /var/lib/gernetix/build
       BUILD_RUNNER: platformio
       PLATFORMIO_COMMAND: /opt/platformio/bin/platformio
       PUBLIC_BASE_URL: https://build.gernetix.com
       MQTT_BROKER_URL: mqtt://mqtt-broker:1883
+      OTA_SIGNING_PRIVATE_KEY_PATH: /run/gernetix-pki/ota-signing-key.pem
+      OTA_SIGNING_KEY_ID: ${OTA_SIGNING_KEY_ID:-ota-p256-2026-01}
     expose: ["4400"]
     volumes:
       - service_state:/var/lib/gernetix/services
       - build_state:/var/lib/gernetix/build
+      - ${OTA_SIGNING_PRIVATE_KEY_PATH:-/etc/gernetix/pki/ota-signing-key.pem}:/run/gernetix-pki/ota-signing-key.pem:ro
     depends_on:
       mqtt-broker:
         condition: service_healthy
@@ -237,6 +239,7 @@ services:
       - ./infra/vps/mosquitto/device.acl:/mosquitto/config/device.acl:ro
       - ./infra/vps/mosquitto/docker-entrypoint.sh:/mosquitto/config/docker-entrypoint.sh:ro
       - ${MQTT_LETSENCRYPT_DIR:-/etc/letsencrypt}:/etc/letsencrypt:ro
+      - ${DEVICE_CA_CERTIFICATE_PATH:-/etc/gernetix/pki/device-ca.pem}:/mosquitto/config/device-ca.pem:ro
       - mqtt_data:/mosquitto/data
       - mqtt_log:/mosquitto/log
     healthcheck:

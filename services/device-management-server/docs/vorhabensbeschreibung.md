@@ -50,6 +50,6 @@ Admin/Support
 
 - Wo liegt die erste echte Backend-Codebasis im Repo?
 - Welche Authentifizierung nutzt die IDE gegen das Backend im MVP?
-- Wird HMAC fuer erste GerNetiX-Boards ausreichend sein oder spaeter durch asymmetrische Signaturen ersetzt?
+- Wie werden Device-Issuing-CA, Zertifikatswiderruf und Schluesselrotation fuer Produktion betrieben?
 - Wie wird der Pairing-Code fuer Boards ohne Display nutzerfreundlich angezeigt?
 - Welche Device-Daten duerfen lokal in der IDE gecacht werden?

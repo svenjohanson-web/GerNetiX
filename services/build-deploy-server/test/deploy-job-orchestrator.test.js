@@ -9,7 +9,7 @@ test("reports every missing OTA chain prerequisite before the build", () => {
   assert.deepEqual(result.blockers.map((item) => item.id), [
     "public_firmware_url",
     "mqtt_publish",
-    "command_authorization",
+    "command_signature",
     "device_confirmation",
   ]);
 });
@@ -20,7 +20,7 @@ test("signs, publishes and records an authorized OTA deploy", async () => {
   const orchestrator = new DeployJobOrchestrator({
     publicBaseUrl: "https://build.example",
     mqttPublisher: { publish: async (...args) => published.push(args) },
-    authorizationSigner: { sign: async ({ canonical }) => `signed:${canonical.length}` },
+    authorizationSigner: { keyId: "ota-test-1", sign: async ({ canonical }) => `signed:${canonical.length}` },
     acknowledgementStore: { record: async (entry) => acknowledgements.push(entry) },
   });
   assert.equal(orchestrator.preflight().ready, true);
@@ -40,7 +40,12 @@ test("signs, publishes and records an authorized OTA deploy", async () => {
   assert.equal(published.length, 1);
   assert.equal(published[0][2].qos, 1);
   assert.equal(published[0][2].retain, true);
-  assert.equal(JSON.parse(published[0][1]).deploy_id, "deploy_job-123");
+  const command = JSON.parse(published[0][1]);
+  assert.equal(command.deploy_id, "deploy_job-123");
+  assert.equal(command.schema_version, "gernetix-ota-command-v1");
+  assert.equal(command.signing_key_id, "ota-test-1");
+  assert.ok(command.signature);
+  assert.ok(command.expires_at > Math.floor(Date.now() / 1000));
   assert.deepEqual(acknowledgements.map((item) => item.status), ["publishing", "published"]);
 });
 

@@ -150,7 +150,7 @@ function defaultSeed() {
         credential_history: [
           {
             credential_id: "cred_verified_1",
-            credential_type: "HMAC_SHA256",
+            credential_type: "ECDSA_P256_X509",
             key_reference: "device-key://device_verified_1/cred_verified_1",
             status: "active",
           },

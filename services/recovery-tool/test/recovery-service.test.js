@@ -41,15 +41,18 @@ test("confirms guided capabilities", () => {
   assert.equal(confirmed.guided_answers.wifi_available, true);
 });
 
-test("renews credentials without returning raw secret on stored session", () => {
+test("renews public-key credentials without receiving a private key", () => {
   const service = createService();
   const session = service.createSession({ detection: { usb_path: "COM9" } });
-  const renewed = service.renewCredentials(session.recovery_session_id);
+  const renewed = service.renewCredentials(session.recovery_session_id, {
+    public_key_pem: "-----BEGIN PUBLIC KEY-----\nTEST\n-----END PUBLIC KEY-----",
+    certificate_pem: "-----BEGIN CERTIFICATE-----\nTEST\n-----END CERTIFICATE-----",
+  });
   const fetched = service.getSession(session.recovery_session_id);
 
   assert.equal(renewed.status, "credentials_renewed");
-  assert.ok(renewed.one_time_device_secret);
-  assert.equal(fetched.one_time_device_secret, undefined);
+  assert.equal(renewed.one_time_device_secret, undefined);
+  assert.equal(fetched.credential.credential_type, "ECDSA_P256_X509");
   assert.equal(fetched.credential.credential_id, renewed.credential.credential_id);
 });
 
@@ -57,12 +60,12 @@ test("dry-run community registration updates recovery state", async () => {
   const service = createService();
   const session = service.createSession({ detection: { usb_path: "COM10" } });
   const registered = await service.registerCommunityDevice(session.recovery_session_id, {
-    one_time_device_secret: "secret",
+    credential: { credential_id: "cred-1", credential_type: "ECDSA_P256_X509" },
   });
 
   assert.equal(registered.status, "registered_with_device_management");
   assert.equal(registered.device_management_registration.registration_mode, "dry_run");
-  assert.equal(registered.recovery_state.credential, "registered_with_secret");
+  assert.equal(registered.recovery_state.credential, "registered_with_public_key");
 });
 
 test("prepares connectivity reset without storing wifi password centrally", () => {

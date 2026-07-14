@@ -107,7 +107,7 @@ emit fail2ban_sshd 'systemctl is-active --quiet fail2ban.service && fail2ban-cli
 emit web_rate_limit 'docker exec gernetix-nginx-tls-1 nginx -T 2>/dev/null | grep -q "zone=gernetix_web_per_ip:10m rate=10r/s"'
 emit auth_rate_limit 'docker exec gernetix-nginx-tls-1 nginx -T 2>/dev/null | grep -q "zone=gernetix_auth_per_ip:10m rate=5r/m"'
 emit build_rate_limit 'docker exec gernetix-nginx-tls-1 nginx -T 2>/dev/null | grep -q "zone=gernetix_build_per_ip:10m rate=30r/s"'
-emit mqtt_tls_auth 'docker exec gernetix-mqtt-broker-1 grep -q "allow_anonymous false" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "^password_file " /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "^acl_file " /mosquitto/config/mosquitto.conf'
+emit mqtt_tls_auth 'docker exec gernetix-mqtt-broker-1 grep -q "allow_anonymous false" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "^require_certificate true" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "^use_identity_as_username true" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "^acl_file " /mosquitto/config/mosquitto.conf'
 emit mqtt_connection_rate 'nft list table inet gernetix_host 2>/dev/null | grep -q "meter mqtt_tls_ipv4" && nft list table inet gernetix_host 2>/dev/null | grep -q "meter mqtt_tls_ipv6"'
 emit mqtt_resource_limits 'docker exec gernetix-mqtt-broker-1 grep -q "max_connections 2048" /mosquitto/config/mosquitto.conf && docker exec gernetix-mqtt-broker-1 grep -q "max_packet_size 131072" /mosquitto/config/mosquitto.conf'
 emit admin_loopback 'ss -lnt 2>/dev/null | grep -q "127.0.0.1:4600"'
@@ -136,7 +136,7 @@ function localSecurityReadiness() {
     web:nginx.includes("zone=gernetix_web_per_ip:10m rate=10r/s"),
     auth:nginx.includes("zone=gernetix_auth_per_ip:10m rate=5r/m"),
     build:nginx.includes("zone=gernetix_build_per_ip:10m rate=30r/s"),
-    mqttTls:mqtt.includes("allow_anonymous false") && mqtt.includes("password_file") && mqtt.includes("acl_file"),
+    mqttTls:mqtt.includes("allow_anonymous false") && mqtt.includes("require_certificate true") && mqtt.includes("use_identity_as_username true") && mqtt.includes("acl_file"),
     mqttRate:firewall.includes("meter mqtt_tls_ipv4") && firewall.includes("meter mqtt_tls_ipv6"),
     mqttResources:mqtt.includes("max_connections 2048") && mqtt.includes("max_packet_size 131072")
   };
@@ -155,7 +155,7 @@ function securityRuleDefinitions(ready) {
     securityRule("web-rate", "Web-Rate-Limit", "Angriffsschutz", "VPS / Nginx", "10 Anfragen pro Sekunde und IP, Burst 40; Ablehnung mit HTTP 429.", "web_rate_limit", ready.web, "Nach Aktivierung legitime Browseraufrufe und 429-Rate beobachten."),
     securityRule("auth-rate", "Login- und Registrierungs-Limit", "Angriffsschutz", "VPS / Nginx", "5 Versuche pro Minute und IP, Burst 5.", "auth_rate_limit", ready.auth, "Nach Aktivierung Fehlanmeldungen und verteilte Angriffe beobachten."),
     securityRule("build-rate", "Build-Download-Limit", "Angriffsschutz", "VPS / Nginx", "30 Anfragen pro Sekunde und IP, Burst 100 fuer gemeinsam genutzte NAT-Ausgaenge.", "build_rate_limit", ready.build, "Bei groesseren Device-Flotten die Grenze anhand realer OTA-Last pruefen."),
-    securityRule("mqtt-tls", "MQTT nur mit TLS, Credentials und ACL", "Device-Sicherheit", "VPS / Mosquitto :8883", "Keine anonymen Devices; jedes Device bleibt auf seine Topics begrenzt.", "mqtt_tls_auth", ready.mqttTls, "Device-Credentials bei Verdacht rotieren und ACL-Fehler alarmieren."),
+    securityRule("mqtt-tls", "MQTT nur mit mTLS und ACL", "Device-Sicherheit", "VPS / Mosquitto :8883", "Keine anonymen Devices; Client-Zertifikat und Zertifikats-CN begrenzen jedes Device auf seine Topics.", "mqtt_tls_auth", ready.mqttTls, "Device-Zertifikate bei Verdacht widerrufen beziehungsweise erneuern und ACL-Fehler alarmieren."),
     securityRule("mqtt-rate", "MQTT-Verbindungsrate", "Angriffsschutz", "VPS / nftables Forward", "60 neue TLS-Verbindungen pro Minute und Quell-IP, Burst 30, getrennt fuer IPv4 und IPv6.", "mqtt_connection_rate", ready.mqttRate, "Nach Aktivierung Drops messen und bei legitimen NAT-Flotten vorsichtig nachjustieren."),
     securityRule("mqtt-resources", "MQTT-Ressourcengrenzen", "Device-Sicherheit", "VPS / Mosquitto", "Maximal 2048 Verbindungen, 128 KiB Pakete und begrenzte Warteschlangen.", "mqtt_resource_limits", ready.mqttResources, "Broker-Auslastung und abgewiesene Pakete ueberwachen."),
     securityRule("admin-loopback", "Admin Tool nur auf Loopback", "Service-Isolation", "VPS / Docker", "Port 4600 nur auf 127.0.0.1; Zugriff ueber VPN-SSH-Tunnel.", "admin_loopback", false, "Keine oeffentliche Portfreigabe fuer das Admin Tool hinzufuegen."),

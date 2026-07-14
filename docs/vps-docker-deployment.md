@@ -10,7 +10,7 @@ Die fortlaufend gepflegte Uebersicht ueber umgesetzte und empfohlene Schutzmassn
 - SSH ist durch die Host-Firewall ausschliesslich ueber das WireGuard-Interface erreichbar. Es gibt keinen oeffentlichen administrativen Netzwerkzugang.
 - Identity und alle Domaenenservices bleiben im internen Docker-Netz.
 - Das Admin Tool bindet nur an `127.0.0.1` des VPS und ist per SSH-Tunnel innerhalb des WireGuard-VPN erreichbar.
-- Mosquitto behaelt die internen Listener `1883` und `9001`. Der externe Device-Listener `8883` verlangt TLS, registrierte Credentials und gerätespezifische Topic-ACLs.
+- Mosquitto behaelt die anonymen internen Listener `1883` und `9001` ausschliesslich im privaten Docker-Netz. Der externe Device-Listener `8883` verlangt mTLS mit einem registrierten Device-Zertifikat und geraetespezifische Topic-ACLs.
 - Nginx bedient HTTP fuer ACME-Challenges und leitet die oeffentlichen Domains auf HTTPS um. Ein separater TLS-Listener liefert die niederlaendische `.nl`-, deutsche `.de`- und englische `.com`-Startseite aus.
 - Nginx begrenzt allgemeine Webaufrufe pro Quell-IP auf 10 Anfragen pro Sekunde und Login-/Registrierungsversuche auf 5 pro Minute; begrenzte Aufrufe erhalten HTTP `429`. Firmware-Downloads besitzen wegen gemeinsam genutzter NAT-Ausgaenge eine grosszuegigere Grenze von 30 Anfragen pro Sekunde.
 - Der externe MQTT-TLS-Listener ist auf 2048 gleichzeitige Verbindungen und kleine, fuer OTA/Telemetrie ausreichende Pakete begrenzt. Die versionierte Host-Firewall verwirft zusaetzlich neue MQTT-TLS-Verbindungsbursts pro IPv4-/IPv6-Quelle oberhalb von 60 pro Minute mit einem Burst von 30. Interne Listener und Broker-Healthchecks durchlaufen diese DNAT-Regel nicht.
@@ -34,6 +34,11 @@ LETSENCRYPT_DIR=/etc/letsencrypt
 MQTT_TLS_BIND_ADDRESS=0.0.0.0
 MQTT_TLS_PORT=8883
 MQTT_LETSENCRYPT_DIR=/etc/letsencrypt
+DEVICE_CA_CERTIFICATE_PATH=/etc/gernetix/pki/device-ca.pem
+DEVICE_CA_PRIVATE_KEY_PATH=/etc/gernetix/pki/device-ca-key.pem
+OTA_SIGNING_PRIVATE_KEY_PATH=/etc/gernetix/pki/ota-signing-key.pem
+OTA_SIGNING_PUBLIC_KEY_PATH=/etc/gernetix/pki/ota-signing-public.pem
+OTA_SIGNING_KEY_ID=ota-p256-2026-01
 ```
 
 Vor dem Start muessen `build.gernetix.com` und `mqtt.gernetix.com` per DNS auf den VPS zeigen. Das Deployment fordert dafuer das gemeinsame Zertifikat `/etc/letsencrypt/live/gernetix-services.com/` an. Mosquitto bindet das gesamte Let's-Encrypt-Verzeichnis read-only ein, damit Zertifikatserneuerungen sichtbar bleiben. Nach einer Erneuerung wird nur der Broker neu geladen:
@@ -42,13 +47,14 @@ Vor dem Start muessen `build.gernetix.com` und `mqtt.gernetix.com` per DNS auf d
 docker compose --env-file .env.vps -f compose.vps.yaml kill -s HUP mqtt-broker
 ```
 
-Ein Device-Zugang wird aus dem einmaligen Device-Secret abgeleitet und direkt in das persistente Mosquitto-Passwortfile geschrieben. Das Secret wird ueber stdin uebergeben und nicht als Argument in der Shell-Historie gespeichert:
+Vor dem ersten nichtproduktiven Start werden eine P-256 Device-Issuing-CA und ein separates P-256 OTA-Signaturschluesselpaar ausserhalb des Repositories erzeugt:
 
 ```bash
-printf '%s' "$ONE_TIME_DEVICE_SECRET" | node tools/mqtt-device-credential.js install --device-id device_123 --secret-stdin --compose-file compose.vps.yaml --env-file .env.vps
+sudo install -d -m 0700 /etc/gernetix/pki
+sudo node tools/generate-device-pki.js --out /etc/gernetix/pki
 ```
 
-Die ACL erlaubt diesem Benutzer nur `gernetix/devices/device_123/ota` zu lesen und unter `gernetix/devices/device_123/status/#` zu schreiben.
+Das Device erzeugt seinen privaten P-256-Schluessel selbst und gibt ihn nie an Plattform oder Broker weiter. Das Provisioning Tool signiert nur den oeffentlichen Schluessel als Client-Zertifikat. Mosquitto verwendet dessen CN als MQTT-Benutzername; die ACL erlaubt dadurch nur `gernetix/devices/<device_id>/ota` zu lesen und unter `gernetix/devices/<device_id>/status/#` zu schreiben. Der OTA-Private-Key ist ausschliesslich im Build-&-Deploy-Service eingebunden, der OTA-Public-Key wird beim Provisioning auf das Device geschrieben. Fuer Produktion soll die Device-CA als getrennte Issuing-CA betrieben und ihre Rotation/Widerrufsliste organisatorisch festgelegt werden.
 
 Danach:
 
@@ -129,6 +135,6 @@ docker compose --env-file .env.vps -f compose.vps.yaml ps
 4. Firewall oeffentlich auf HTTP, HTTPS, MQTT-TLS und WireGuard begrenzen; SSH nur am WireGuard-Interface zulassen.
 5. Admin Tool nicht oeffentlich weiterleiten.
 6. SQLite-Volumes und `ai_context_postgres_data` nach dem verbindlichen [Sicherungs- und Wiederherstellungskonzept](customer-data-backup-and-recovery.md) konsistent, verschluesselt und ausserhalb des VPS sichern; Wiederherstellungen regelmaessig pruefen.
-7. Firewall-Port `8883/tcp` erst freigeben, wenn `mqtt.gernetix.com`, Let's Encrypt und mindestens ein Device-Credential eingerichtet sind.
+7. Firewall-Port `8883/tcp` erst freigeben, wenn `mqtt.gernetix.com`, Let's Encrypt, Device-CA und mindestens ein per mTLS getestetes Device-Zertifikat eingerichtet sind.
 
 Deployment-Topologie: [vps-docker-topology.svg](vps-docker-topology.svg)

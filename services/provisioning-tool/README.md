@@ -39,7 +39,7 @@ Eigenstaendige Oberflaeche:
 http://127.0.0.1:4500/
 ```
 
-Das Provisioning Tool ist ein eigenstaendiges Factory-/Support-Werkzeug. Es ist nicht Teil der User IDE und wird nicht ueber die GerNetiX Plattform bedient. Der Nutzer kann in dieser separaten HMI eine Provisioning-Session vorbereiten, das einmalige Device-Secret fuer den laufenden Vorgang halten, Manifest, USB-Flash-Paket und Flash-Plan pruefen, die Firmware per USB flashen, die Provisioning-Kennung im Board speichern und die Provisionierung abschliessen. Beim Abschluss registriert das Tool das Device im Device Management Server.
+Das Provisioning Tool ist ein eigenstaendiges Factory-/Support-Werkzeug. Es bereitet Manifest und USB-Flash vor, laesst den ESP32 sein P-256-Schluesselpaar lokal erzeugen, stellt fuer dessen Public Key ein mTLS-Client-Zertifikat aus und prueft den Schluesselbesitz per signierter Challenge. Beim Abschluss registriert es nur Public Key und Zertifikatsmetadaten im Device Management Server.
 
 Das Provisioning Tool flasht die Basissoftware fuer die physische Erstinbetriebnahme ausschliesslich ueber USB. Die Board-spezifische Kennung wird danach ueber den lokalen Device-Endpunkt `/provisioning` in den NVS-Speicher der Basissoftware geschrieben. Dadurch kann ein generisches, serverseitiges Firmware-Artefakt fuer mehrere Boards verwendet werden, ohne fuer jede Seriennummer neu zu bauen. Die Basissoftware darf im Serverbetrieb nicht aus der lokalen Projektumgebung gelesen werden. Stattdessen referenziert das Tool ein versioniertes Firmware-Artefakt aus SQLite/Artifact Store, z. B.:
 
@@ -47,19 +47,19 @@ Das Provisioning Tool flasht die Basissoftware fuer die physische Erstinbetriebn
 sqlite://provisioning_firmware_artifacts/firmware_artifact.esp32_basissoftware_factory.latest
 ```
 
-Der Factory-Provisioning-Header mit dem einmaligen Secret wird nur in ein temporaeres Staging-Verzeichnis geschrieben, defaultmaessig:
+Der optionale Factory-Provisioning-Header enthaelt nur nicht geheime Identitaets- und Trust-Metadaten und wird in ein temporaeres Staging-Verzeichnis geschrieben, defaultmaessig:
 
 ```text
 services/provisioning-tool/.runtime/factory-payload/generated_provisioning_payload.h
 ```
 
-Die staged Basissoftware kann diesen Payload beim ersten Boot aus dem per USB geflashten Image in NVS importieren. Im normalen Factory-HMI-Ablauf wird die generische Firmware geflasht und die konkrete Session-Kennung anschliessend ueber `POST /provisioning` dauerhaft im Board gespeichert. Direkter Zugriff auf `basissoftware/esp32` ist kein Provisioning-Betriebsweg.
+Die staged Basissoftware kann diesen Payload beim ersten Boot importieren. Im normalen Factory-HMI-Ablauf wird die generische Firmware geflasht und die konkrete Session-Kennung anschliessend ueber `POST /provisioning` gespeichert; der private Device-Schluessel entsteht erst auf dem Board.
 
 Die Factory-HMI darf keine Firmware-Dateien vom Bedienrechner hochladen. Sie zeigt nur die vom ProcessorBoard referenzierte Firmware an und flasht diese, wenn sie serverseitig im SQLite-/Artifact-Store materialisierbar ist. Firmware-Artefakte werden durch Build-/Admin-Prozesse oder beim Serverstart ueber einen konfigurierten Serverpfad bereitgestellt.
 
 Der physische USB-Flash laeuft direkt im Browser per Web Serial und `esptool-js`. Der Server startet dafuer keinen lokalen Flash-Prozess. Er liefert nur das Firmware-Binary aus dem Artifact Store und speichert danach das Ergebnis, das die HMI meldet. Die Oberflaeche zeigt Progress Bar, aktuelle Phase und Logzeilen des Browser-Flashs.
 
-Nach dem Flash startet das Board die Basissoftware und stellt den lokalen Device-Webserver bereit. Wenn der Bedienrechner mit einer Setup-AP-SSID verbunden ist, die mit `gernetix-` beginnt, ist der Endpunkt `http://192.168.4.1/provisioning`; der beliebige SSID-Suffix ist kein Hostname. Im normalen WLAN kann das Board z. B. ueber einen Hostnamen oder eine lokale IP erreichbar sein. Die HMI kann nach dem Board suchen oder per "Setup-AP verwenden" direkt die Setup-IP setzen. Danach sendet sie den Session-Payload inklusive `device_id`, `serial_number`, Credential-Referenz und einmaligem Device-Secret. Die Basissoftware speichert diese Daten im NVS-Namespace `prov`; `/status` zeigt danach `provisioningState=provisioned` und `serialNumber`.
+Nach dem Flash startet das Board den lokalen Device-Webserver. Die HMI sendet Identitaet und Trust-Anker, empfaengt den Board-Public-Key, laesst ihn durch die konfigurierte Device-CA zertifizieren, schreibt das Client-Zertifikat zurueck und fordert anschließend eine signierte Besitz-Challenge an.
 
 ## Einheitlicher Runtime-Vertrag
 
@@ -114,19 +114,24 @@ Konfiguration erfolgt ueber Umgebungsvariablen:
 - `PROVISIONING_FIRMWARE_ARTIFACT_URI`: URI des serverseitigen Artefakts, Standard `sqlite://provisioning_firmware_artifacts/{artifact_id}`
 - `PROVISIONING_FIRMWARE_FILE_PATH`: optionaler Serverpfad zu einem vorbereiteten Firmware-Binary; wird beim Start als Artefakt in SQLite referenziert
 - `PROVISIONING_GENERATED_HEADER_PATH`: Zielpfad fuer den generierten Factory-Provisioning-Header
+- `DEVICE_CA_CERTIFICATE_PATH`: PEM-Zertifikat der Device-Issuing-CA
+- `DEVICE_CA_PRIVATE_KEY_PATH`: privater PEM-Schluessel der Device-Issuing-CA; nur fuer den Provisioning-Prozess lesbar
+- `OPENSSL_COMMAND`: OpenSSL-Executable fuer die Zertifikatsausstellung; im Service-Container enthalten, unter Windows bei Bedarf als absoluter Pfad setzen
+- `DEVICE_CERTIFICATE_VALIDITY_DAYS`: Gueltigkeit neu ausgestellter Client-Zertifikate, Standard 365 Tage
+- `OTA_SIGNING_PUBLIC_KEY_PATH`: Public Key des OTA-Signers, der auf das Board geschrieben wird
+- `OTA_SIGNING_KEY_ID`: stabile Kennung des aktiven OTA-Signierschluessels
 
 ## Sicherheitsregeln
 
-- Secret-Material wird nicht dauerhaft gespeichert.
+- Private Device-Schluessel werden auf dem ESP32 erzeugt und verlassen das Board nicht.
 - Die Factory-HMI bietet keinen Firmware-Dateiupload und keinen manuellen Artefakt-Registrierbutton.
-- Status- und Manifest-Endpunkte geben nur `credential_id`, `key_reference` und Hash-Metadaten aus.
-- Das einmalige Device-Secret erscheint nur direkt in der Antwort auf `POST /api/provisioning-sessions` und im dort enthaltenen USB-Flash-Paket.
-- Die Secret-Header-Datei wird nur geschrieben, wenn `flash.write_factory_header` ausdruecklich gesetzt ist, und standardmaessig nur unter `.runtime`.
+- Status- und Manifest-Endpunkte geben nur Credential-, Public-Key-Fingerprint- und Zertifikatsmetadaten aus.
+- USB-Flash-Paket und Factory-Header enthalten weder Shared Secret noch privaten Device- oder OTA-Schluessel.
 - Ein Device kann im MVP nicht mehrfach mit aktivem Credential provisioniert werden.
 - Ein aktives Credential kann in der Factory-HMI explizit zurueckgesetzt werden; der alte Vorgang bleibt mit Audit-Event nachvollziehbar.
 - Flash-Ausfuehrung in der Factory-HMI laeuft ausschliesslich per Browser Web Serial. Der Server fuehrt keinen USB-Flash-Prozess aus.
 - Die UI zeigt keinen Mock- oder Server-Flash-Modus.
-- Der lokale Device-Webserver nimmt den Factory-Provisioning-Payload nur als expliziten HMI-Schritt an; das einmalige Device-Secret bleibt danach nur im Board-NVS und wird nicht ueber Status- oder Log-Endpunkte ausgegeben.
+- Der lokale Device-Webserver nimmt den Factory-Provisioning-Payload nur als expliziten HMI-Schritt an; private Schluessel werden nicht ueber Status- oder Log-Endpunkte ausgegeben.
 
 ## Nicht-Ziele fuer diesen Stand
 

@@ -22,7 +22,7 @@ Zweck:
 - Lifecycle und letzter Kontakt werden aktualisiert
 - Firmware, OTA, Connectivity und Pairing-Status koennen gemeldet werden
 
-`POST /devices/register` akzeptiert GerNetiX-provisionierte und Community-Devices. Secret-Material darf fuer den MVP als `one_time_device_secret` uebergeben werden, wird aber in keiner Antwort angezeigt.
+`POST /devices/register` akzeptiert GerNetiX-provisionierte und Community-Devices. Ein GerNetiX-Credential enthaelt den P-256-Public-Key sowie Client-Zertifikatsmetadaten; private Schluessel oder Shared Secrets werden abgelehnt.
 
 ## Authenticity
 
@@ -34,7 +34,7 @@ POST /devices/{deviceId}/auth/verify
 Zweck:
 
 - Server erzeugt Challenge
-- Device beantwortet Challenge mit HMAC oder spaeter Signatur
+- Device signiert die kanonische, zeitlich begrenzte Challenge mit seinem P-256-Privatschluessel
 - Server bewertet `gernetix_verified` oder `community_unverified`
 
 ## Pairing
@@ -157,8 +157,8 @@ Admin-/Support-Endpunkte muessen vor Anzeige von Kundendetails Consent oder eine
 
 ## MVP-Hinweise
 
-- Secrets werden nur intern fuer HMAC-Pruefung gehalten und nie ausgegeben.
+- Device Management speichert keinen privaten Device-Schluessel und kein Shared Secret.
 - Admin-Detailansichten erzeugen Audit-Events.
 - Ohne Consent, Rechtsgrundlage oder Sicherheitsgrund werden kundenrelevante Details maskiert.
 - OTA-Ziele enthalten `selectable` und `rejection_reasons`.
-- Die Datenhaltung ist im MVP In-Memory und wird spaeter durch Repository-/Datenbankadapter ersetzt.
+- Die fuehrende Datenhaltung erfolgt im SQLite-Repository.

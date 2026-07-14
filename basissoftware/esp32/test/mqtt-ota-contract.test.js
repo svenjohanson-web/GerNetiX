@@ -6,12 +6,13 @@ const test = require("node:test");
 const basisRoot = path.resolve(__dirname, "..");
 const source = fs.readFileSync(path.join(basisRoot, "src/functions/mqtt_ota.cpp"), "utf8");
 
-test("MQTT OTA subscriber uses TLS, device credentials and QoS 1", () => {
+test("MQTT OTA subscriber uses mTLS device certificates and QoS 1", () => {
   assert.match(source, /"mqtts:\/\/"/);
   assert.match(source, /crt_bundle_attach = esp_crt_bundle_attach/);
   assert.match(source, /credentials\.username = config\.deviceId/);
-  assert.match(source, /computeDeviceHmacSha256Hex/);
-  assert.match(source, /authentication\.password = mqttPassword/);
+  assert.match(source, /authentication\.certificate = config\.mqttClientCertificatePem/);
+  assert.match(source, /authentication\.key = config\.devicePrivateKeyPem/);
+  assert.doesNotMatch(source, /authentication\.password/);
   assert.match(source, /esp_mqtt_client_subscribe\(client, subscriptionTopic, 1\)/);
   assert.match(source, /status\/deployment/);
   assert.match(source, /esp_mqtt_client_publish\(client, topic, payload, payloadLength, 1, 0\)/);
@@ -22,7 +23,8 @@ test("MQTT permits plaintext only for a private IPv4 broker", () => {
   assert.match(source, /a == 10/);
   assert.match(source, /a == 172 && b >= 16 && b <= 31/);
   assert.match(source, /a == 192 && b == 168/);
-  assert.match(source, /if \(secureBroker\) mqttConfig\.broker\.verification\.crt_bundle_attach/);
+  assert.match(source, /if \(secureBroker\) \{/);
+  assert.match(source, /hasMqttClientCertificate/);
 });
 
 test("MQTT notifications use a device topic and the authenticated OTA path", () => {

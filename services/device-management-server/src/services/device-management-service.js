@@ -36,7 +36,7 @@ class DeviceManagementService {
     };
     this.repository.saveDevice(device);
 
-    if (input.credential || input.device_secret || input.one_time_device_secret) {
+    if (input.credential) {
       this.repository.saveCredential(deviceId, normalizeCredential(deviceId, input));
     }
 
@@ -70,8 +70,10 @@ class DeviceManagementService {
       device_id: deviceId,
       challenge: crypto.randomBytes(32).toString("base64url"),
       created_at: new Date().toISOString(),
+      expires_at: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
       used_at: null,
     };
+    challenge.canonical = challengeCanonical(challenge);
     return this.repository.saveChallenge(challenge);
   }
 
@@ -79,22 +81,32 @@ class DeviceManagementService {
     const device = this.requireDevice(deviceId);
     const challenge = this.repository.findChallenge(input.challenge_id);
     const credential = this.repository.findCredential(deviceId);
-    if (!challenge || challenge.device_id !== deviceId || challenge.used_at) {
+    if (!challenge || challenge.device_id !== deviceId || challenge.used_at || Date.parse(challenge.expires_at) <= Date.now()) {
       throw new DeviceManagementError("invalid_challenge", "Challenge ist ungueltig oder bereits verwendet.", 400);
     }
-    if (!credential || !credential.secret) {
+    if (!credential || !credential.public_key_pem || credential.status !== "active") {
       throw new DeviceManagementError("credential_missing", "Fuer dieses Device ist kein pruefbares Credential hinterlegt.", 400);
     }
 
-    const expected = crypto.createHmac("sha256", credential.secret).update(challenge.challenge).digest("hex");
-    const verified = safeEqual(expected, String(input.hmac || ""));
+    let verified = false;
+    try {
+      verified = crypto.verify(
+        "sha256",
+        Buffer.from(challenge.canonical || challengeCanonical(challenge)),
+        { key: credential.public_key_pem, dsaEncoding: "ieee-p1363" },
+        Buffer.from(String(input.signature || ""), "base64url"),
+      );
+    } catch {
+      verified = false;
+    }
     this.repository.markChallengeUsed(challenge.challenge_id);
 
     const next = {
       ...device,
       authenticity_status: verified ? "gernetix_verified" : "community_unverified",
       last_authenticity_proof: {
-        proof_type: "HMAC_SHA256",
+        proof_type: "ECDSA_P256_SHA256",
+        credential_id: credential.credential_id,
         verification_state: verified ? "verified" : "failed",
         verified_at: new Date().toISOString(),
       },
@@ -336,6 +348,10 @@ class DeviceManagementService {
         key_reference: credential.key_reference,
         status: credential.status,
         created_at: credential.created_at,
+        expires_at: credential.expires_at || null,
+        revoked_at: credential.revoked_at || null,
+        public_key_fingerprint_sha256: credential.public_key_fingerprint_sha256,
+        certificate_fingerprint_sha256: credential.certificate_fingerprint_sha256 || "",
       }],
     };
   }
@@ -439,16 +455,56 @@ class DeviceManagementService {
 
 function normalizeCredential(deviceId, input) {
   const source = input.credential || {};
-  const secret = input.device_secret || input.one_time_device_secret || source.secret || source.one_time_device_secret || "";
+  const publicKeyPem = required(source.public_key_pem, "credential.public_key_pem");
+  let publicKey;
+  try {
+    publicKey = crypto.createPublicKey(publicKeyPem);
+  } catch {
+    throw new DeviceManagementError("invalid_device_public_key", "Device Public Key ist ungueltig.", 400);
+  }
+  if (publicKey.asymmetricKeyType !== "ec" || publicKey.asymmetricKeyDetails?.namedCurve !== "prime256v1") {
+    throw new DeviceManagementError("unsupported_device_public_key", "Device Public Key muss ECDSA P-256 verwenden.", 400);
+  }
+  const normalizedPublicKeyPem = publicKey.export({ type: "spki", format: "pem" }).toString();
+  const publicKeyFingerprint = crypto.createHash("sha256")
+    .update(publicKey.export({ type: "spki", format: "der" }))
+    .digest("hex");
+  let certificateFingerprint = "";
+  let certificateExpiresAt = null;
+  if (source.certificate_pem) {
+    try {
+      const certificate = new crypto.X509Certificate(source.certificate_pem);
+      const certificatePublicKey = certificate.publicKey.export({ type: "spki", format: "der" });
+      const registeredPublicKey = publicKey.export({ type: "spki", format: "der" });
+      if (!certificatePublicKey.equals(registeredPublicKey)) throw new Error("public-key-mismatch");
+      const commonName = certificate.subject.split(/\n|,/).map((part) => part.trim()).find((part) => part.startsWith("CN="));
+      if (commonName !== `CN=${deviceId}`) throw new Error("subject-mismatch");
+      certificateFingerprint = certificate.fingerprint256.replaceAll(":", "").toLowerCase();
+      certificateExpiresAt = new Date(certificate.validTo).toISOString();
+    } catch {
+      throw new DeviceManagementError("invalid_device_certificate", "Device Client-Zertifikat ist ungueltig oder passt nicht zu Device-ID und Public Key.", 400);
+    }
+  }
   return {
     device_id: deviceId,
     credential_id: source.credential_id || createId("cred"),
-    credential_type: source.credential_type || "HMAC_SHA256",
+    credential_type: "ECDSA_P256_X509",
     key_reference: source.key_reference || `device-key://${deviceId}/active`,
-    status: "active",
-    created_at: new Date().toISOString(),
-    secret,
+    algorithm: "ECDSA_P256_SHA256",
+    status: source.status || "active",
+    created_at: source.created_at || new Date().toISOString(),
+    expires_at: certificateExpiresAt || source.expires_at || null,
+    revoked_at: source.revoked_at || null,
+    replaced_by: source.replaced_by || null,
+    public_key_pem: normalizedPublicKeyPem,
+    public_key_fingerprint_sha256: publicKeyFingerprint,
+    certificate_pem: source.certificate_pem || "",
+    certificate_fingerprint_sha256: certificateFingerprint,
   };
+}
+
+function challengeCanonical(challenge) {
+  return ["gernetix-device-auth-v1", challenge.challenge_id, challenge.device_id, challenge.challenge].join("\n");
 }
 
 function maskAdminDevice(device) {
@@ -517,12 +573,6 @@ function required(value, field) {
   const normalized = String(value || "").trim();
   if (!normalized) throw new DeviceManagementError("missing_required_field", `Pflichtfeld fehlt: ${field}`);
   return normalized;
-}
-
-function safeEqual(left, right) {
-  const leftBuffer = Buffer.from(left);
-  const rightBuffer = Buffer.from(right);
-  return leftBuffer.length === rightBuffer.length && crypto.timingSafeEqual(leftBuffer, rightBuffer);
 }
 
 module.exports = { DeviceManagementService };

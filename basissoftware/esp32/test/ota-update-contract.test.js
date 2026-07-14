@@ -21,8 +21,10 @@ test("OTA path downloads, verifies and activates through ESP-IDF", () => {
   assert.match(webSource, /config\.max_uri_handlers = 12/);
 });
 
-test("OTA path authenticates commands and rejects replayed sequences", () => {
-  assert.match(otaSource, /computeDeviceHmacSha256Hex/);
+test("OTA path verifies ECDSA signatures, expiry and replay sequences", () => {
+  assert.match(otaSource, /verifyEcdsaP256SignatureBase64Url/);
+  assert.match(otaSource, /gernetix-ota-command-v1/);
+  assert.match(otaSource, /expiresAt <= static_cast<uint64_t>\(now\)/);
   assert.match(otaSource, /sequence <= readAcceptedSequence\(\)/);
   assert.match(otaSource, /esp_crt_bundle_attach/);
   assert.match(otaSource, /httpsOrigin\(config\.buildDeployUrl\)/);

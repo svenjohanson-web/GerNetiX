@@ -5,7 +5,7 @@ ENV PLATFORMIO_COMMAND=/opt/platformio/bin/platformio
 WORKDIR /app
 
 RUN apt-get update \
-  && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates \
+  && apt-get install -y --no-install-recommends python3 python3-venv ca-certificates openssl \
   && python3 -m venv /opt/platformio \
   && /opt/platformio/bin/pip install --no-cache-dir platformio==6.1.18 \
   && rm -rf /var/lib/apt/lists/*

@@ -1,6 +1,7 @@
 #include "basissoftware/ota_update.h"
 
 #include <cctype>
+#include <ctime>
 #include <cstdio>
 #include <cstring>
 #include <string>
@@ -81,6 +82,14 @@ bool isDeployId(const std::string &value) {
   if (value.empty() || value.size() >= MAX_DEPLOY_ID) return false;
   for (char current : value) {
     if (!std::isalnum(static_cast<unsigned char>(current)) && current != '-' && current != '_' && current != '.') return false;
+  }
+  return true;
+}
+
+bool isBase64UrlSignature(const std::string &value) {
+  if (value.size() < 80 || value.size() > 96) return false;
+  for (char current : value) {
+    if (!std::isalnum(static_cast<unsigned char>(current)) && current != '-' && current != '_') return false;
   }
   return true;
 }
@@ -260,29 +269,38 @@ esp_err_t scheduleOtaUpdate(const char *payload, size_t payloadLength) {
   const std::string deployId = findStringValue(body, "deploy_id");
   const std::string firmwareUrl = findStringValue(body, "firmware_url");
   const std::string sha256 = lowerHex(findStringValue(body, "sha256"));
-  const std::string authorization = lowerHex(findStringValue(body, "authorization"));
+  const std::string schemaVersion = findStringValue(body, "schema_version");
+  const std::string signingKeyId = findStringValue(body, "signing_key_id");
+  const std::string signature = findStringValue(body, "signature");
   uint64_t sequence = 0;
+  uint64_t expiresAt = 0;
   if (!isDeployId(deployId) || !findUint64Value(body, "sequence", sequence) ||
-      !isHexSha256(sha256) || !isHexSha256(authorization)) {
+      !findUint64Value(body, "expires_at", expiresAt) || !isHexSha256(sha256) ||
+      schemaVersion != "gernetix-ota-command-v1" || signingKeyId.empty() || !isBase64UrlSignature(signature)) {
     return ESP_ERR_INVALID_ARG;
   }
 
   const ProvisioningConfig config = loadProvisioningConfig();
-  if (!config.provisioned || !config.hasDeviceSecret || !isAllowedFirmwareUrl(firmwareUrl, config)) {
+  if (!config.provisioned || !config.hasOtaSigningPublicKey || signingKeyId != config.otaSigningKeyId ||
+      !isAllowedFirmwareUrl(firmwareUrl, config)) {
     return ESP_ERR_INVALID_ARG;
   }
+  const std::time_t now = std::time(nullptr);
+  if (now < 1700000000 || expiresAt <= static_cast<uint64_t>(now)) return ESP_ERR_INVALID_STATE;
   if (sequence <= readAcceptedSequence()) return ESP_ERR_INVALID_STATE;
 
-  char canonical[640] = {};
+  char canonical[896] = {};
   const int canonicalLength = std::snprintf(
-      canonical, sizeof(canonical), "%s\n%llu\n%s\n%s\n%s",
-      deployId.c_str(), static_cast<unsigned long long>(sequence), config.deviceId,
-      firmwareUrl.c_str(), sha256.c_str());
+      canonical, sizeof(canonical), "gernetix-ota-command-v1\n%s\n%s\n%llu\n%s\n%s\n%s\n%llu",
+      signingKeyId.c_str(), deployId.c_str(), static_cast<unsigned long long>(sequence), config.deviceId,
+      firmwareUrl.c_str(), sha256.c_str(), static_cast<unsigned long long>(expiresAt));
   if (canonicalLength <= 0 || static_cast<size_t>(canonicalLength) >= sizeof(canonical)) return ESP_ERR_INVALID_ARG;
 
-  char expectedAuthorization[65] = {};
-  if (computeDeviceHmacSha256Hex(canonical, static_cast<size_t>(canonicalLength), expectedAuthorization, sizeof(expectedAuthorization)) != ESP_OK ||
-      !constantTimeEqual(expectedAuthorization, authorization)) {
+  if (verifyEcdsaP256SignatureBase64Url(
+          config.otaSigningPublicKeyPem,
+          canonical,
+          static_cast<size_t>(canonicalLength),
+          signature.c_str()) != ESP_OK) {
     return ESP_ERR_INVALID_RESPONSE;
   }
 

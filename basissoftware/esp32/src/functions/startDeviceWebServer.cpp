@@ -98,7 +98,7 @@ esp_err_t captivePortalHandler(httpd_req_t *request) {
 }
 
 esp_err_t statusHandler(httpd_req_t *request) {
-  char provisioningJson[1200] = {};
+  char provisioningJson[4096] = {};
   writeProvisioningStatusJson(provisioningJson, sizeof(provisioningJson));
   char hostname[32] = {};
   writeProvisioningHostname(hostname, sizeof(hostname));
@@ -107,7 +107,7 @@ esp_err_t statusHandler(httpd_req_t *request) {
   char mqttJson[256] = {};
   writeMqttOtaStatusJson(mqttJson, sizeof(mqttJson));
 
-  char body[2304] = {};
+  char body[6144] = {};
   const long long uptimeMs =
       static_cast<long long>(esp_timer_get_time() / 1000);
 
@@ -245,8 +245,12 @@ esp_err_t provisioningHandler(httpd_req_t *request) {
     feedbackWarning(TAG, "MQTT OTA client could not start after provisioning: %d", mqttStatus);
   }
 
+  char provisioningJson[4096] = {};
+  writeProvisioningStatusJson(provisioningJson, sizeof(provisioningJson));
+  char response[4200] = {};
+  std::snprintf(response, sizeof(response), "{%s}\n", provisioningJson);
   httpd_resp_set_type(request, "application/json");
-  return httpd_resp_sendstr(request, "{\"status\":\"provisioned\"}\n");
+  return httpd_resp_send(request, response, HTTPD_RESP_USE_STRLEN);
 }
 
 esp_err_t challengeHandler(httpd_req_t *request) {
@@ -260,7 +264,7 @@ esp_err_t challengeHandler(httpd_req_t *request) {
   const esp_err_t proofStatus = writeChallengeProofJson(body, std::strlen(body), proof, sizeof(proof));
   if (proofStatus == ESP_ERR_INVALID_STATE) {
     httpd_resp_set_status(request, "409 Conflict");
-    return httpd_resp_sendstr(request, "{\"error\":\"device_secret_missing\"}\n");
+    return httpd_resp_sendstr(request, "{\"error\":\"device_private_key_missing\"}\n");
   }
   if (proofStatus != ESP_OK) {
     httpd_resp_set_status(request, "422 Unprocessable Entity");
@@ -377,7 +381,7 @@ void startDeviceWebServer() {
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   config.server_port = DEVICE_WEB_SERVER_PORT;
   config.ctrl_port = DEVICE_WEB_SERVER_CONTROL_PORT;
-  config.stack_size = 8192;
+  config.stack_size = 16384;
   config.max_uri_handlers = 12;
   config.lru_purge_enable = true;
   config.uri_match_fn = httpd_uri_match_wildcard;

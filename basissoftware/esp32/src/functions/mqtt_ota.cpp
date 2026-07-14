@@ -14,15 +14,13 @@
 namespace {
 constexpr const char *TAG = "mqttOta";
 constexpr size_t MAX_OTA_MESSAGE = 2048;
-// TLS, JSON/HMAC validation and the OTA callback share the MQTT task stack.
+// TLS, ECDSA validation and the OTA callback share the MQTT task stack.
 // ESP-MQTT's 6 KiB default is too small for this authenticated deploy path and
 // caused a reboot loop as soon as a retained OTA command was delivered.
 constexpr int MQTT_TASK_STACK_SIZE = 12 * 1024;
-constexpr char MQTT_CREDENTIAL_CONTEXT[] = "gernetix:mqtt-broker-auth:v1";
 
 esp_mqtt_client_handle_t client = nullptr;
 char subscriptionTopic[160] = {};
-char mqttPassword[65] = {};
 char messageBuffer[MAX_OTA_MESSAGE + 1] = {};
 int messageLength = 0;
 char mqttState[24] = "not_configured";
@@ -127,11 +125,7 @@ esp_err_t startMqttOtaSubscriber() {
   }
   const bool secureBroker = std::strncmp(config.mqttBrokerUrl, "mqtts://", 8) == 0;
   if ((!secureBroker && !isPrivateIpv4MqttUrl(config.mqttBrokerUrl)) ||
-      computeDeviceHmacSha256Hex(
-          MQTT_CREDENTIAL_CONTEXT,
-          sizeof(MQTT_CREDENTIAL_CONTEXT) - 1,
-          mqttPassword,
-          sizeof(mqttPassword)) != ESP_OK) {
+      (secureBroker && (!config.hasDevicePrivateKey || !config.hasMqttClientCertificate))) {
     setState("invalid_config");
     return ESP_ERR_INVALID_ARG;
   }
@@ -144,10 +138,13 @@ esp_err_t startMqttOtaSubscriber() {
 
   esp_mqtt_client_config_t mqttConfig = {};
   mqttConfig.broker.address.uri = config.mqttBrokerUrl;
-  if (secureBroker) mqttConfig.broker.verification.crt_bundle_attach = esp_crt_bundle_attach;
+  if (secureBroker) {
+    mqttConfig.broker.verification.crt_bundle_attach = esp_crt_bundle_attach;
+    mqttConfig.credentials.username = config.deviceId;
+    mqttConfig.credentials.authentication.certificate = config.mqttClientCertificatePem;
+    mqttConfig.credentials.authentication.key = config.devicePrivateKeyPem;
+  }
   mqttConfig.credentials.client_id = config.deviceId;
-  mqttConfig.credentials.username = config.deviceId;
-  mqttConfig.credentials.authentication.password = mqttPassword;
   mqttConfig.session.keepalive = 60;
   mqttConfig.network.reconnect_timeout_ms = 5000;
   mqttConfig.task.stack_size = MQTT_TASK_STACK_SIZE;

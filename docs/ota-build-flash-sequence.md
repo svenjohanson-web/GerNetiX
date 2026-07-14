@@ -24,9 +24,9 @@ sequenceDiagram
     IDE->>DM: Account-, Pairing-, OTA- und Connectivity-Status lesen
     DM-->>IDE: Device-ID, online, ota_status=ready
     IDE->>BD: GET /api/ota/preflight
-    BD->>DB: Device-Credential und Ack-Store prüfen
+    BD->>DB: OTA-Signer und Ack-Store prüfen
     BD->>MQ: Publisher-Verbindung prüfen
-    BD-->>IDE: HTTPS, MQTT, HMAC und Acks bereit
+    BD-->>IDE: HTTPS, MQTT, ECDSA-Signer und Acks bereit
 
     alt Preflight nicht vollständig
         IDE-->>User: Alle Blocker gemeinsam anzeigen
@@ -47,9 +47,8 @@ sequenceDiagram
             PIO-->>BD: firmware.bin + Bootloader + Partitionen + Build-Log
             BD->>ART: Artefakte dauerhaft ablegen
             BD->>BD: Datei-SHA-256 und ESP-Image-SHA-256 berechnen
-            BD->>DB: Aktives Device-Secret lesen
-            BD->>BD: Kanonischen Auftrag HMAC-SHA256-signieren
-            Note over BD,ESP: deploy_id + sequence + device_id + firmware_url + sha256
+            BD->>BD: Kanonischen Auftrag mit OTA-P-256-Key signieren
+            Note over BD,ESP: schema + key_id + deploy_id + sequence + device_id + URL + sha256 + expiry
             BD->>DB: Status publishing persistieren
             BD->>MQ: OTA-Auftrag QoS 1 + retained publizieren
             MQ-->>BD: PUBACK
@@ -65,7 +64,7 @@ sequenceDiagram
             end
 
             ESP->>ESP: Device-ID, URL-Origin und Payload validieren
-            ESP->>ESP: HMAC konstantzeitlich prüfen
+            ESP->>ESP: ECDSA-Signatur, Key-ID und Ablaufzeit prüfen
             ESP->>ESP: Sequenz gegen NVS-Replay-Schutz prüfen
 
             alt Signatur, Ziel oder Sequenz ungültig
@@ -123,9 +122,9 @@ sequenceDiagram
 | --- | --- | --- |
 | Projekt und BuildPackage | Project Server | Runtime SQLite |
 | Device-Zuordnung, Pairing und OTA-Bereitschaft | Device Management | Runtime SQLite |
-| Build, Artefakte, HMAC-Auftrag und Acknowledgements | Build & Deploy Server | Runtime SQLite, Build-/Artifact-Volume und inkrementeller Cache |
+| Build, Artefakte, ECDSA-Auftrag und Acknowledgements | Build & Deploy Server | Runtime SQLite, Build-/Artifact-Volume, OTA-Private-Key und inkrementeller Cache |
 | Transport | Mosquitto | QoS-1-/Retain-Zustand im MQTT-Volume |
-| Secret, Replay-Schutz und aktive Firmware | ESP32 | NVS und A/B-Partitionen |
+| OTA-Public-Key, Replay-Schutz und aktive Firmware | ESP32 | NVS und A/B-Partitionen |
 | Erfolg für den Nutzer | IDE | Aus persistierten Server- und Device-Status abgeleitete Anzeige |
 
-Der MQTT-Broker transportiert den Auftrag, entscheidet aber nicht über dessen Berechtigung. Das ESP32 akzeptiert ausschließlich einen zum eigenen Device passenden, HMAC-signierten Auftrag mit neuer Sequenznummer und einem HTTPS-Artefakt vom provisionierten Build-Origin.
+Der MQTT-Broker transportiert den Auftrag, entscheidet aber nicht über dessen Berechtigung. Das ESP32 akzeptiert ausschließlich einen zum eigenen Device passenden, nicht abgelaufenen ECDSA-P-256-signierten Auftrag mit neuer Sequenznummer und einem HTTPS-Artefakt vom provisionierten Build-Origin.

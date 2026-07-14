@@ -34,6 +34,9 @@ function createConfig(env = process.env) {
     : path.join(toolchainRoot, "toolchain.json");
   const toolchainManifest = readToolchainManifest(toolchainManifestPath);
   const flashRunner = env.FLASH_RUNNER || "esptool";
+  const otaSigningPublicKeyPath = env.OTA_SIGNING_PUBLIC_KEY_PATH
+    ? path.resolve(env.OTA_SIGNING_PUBLIC_KEY_PATH)
+    : "";
 
   return {
     host: env.HOST || "127.0.0.1",
@@ -43,6 +46,15 @@ function createConfig(env = process.env) {
     deviceManagementBaseUrl: env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700/api/device-management",
     hardwareCatalogBaseUrl: env.HARDWARE_CATALOG_BASE_URL || env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900/api/hardware-shop",
     registerDeviceOnComplete: env.REGISTER_DEVICE_ON_COMPLETE !== "false",
+    deviceCaCertificatePath: env.DEVICE_CA_CERTIFICATE_PATH ? path.resolve(env.DEVICE_CA_CERTIFICATE_PATH) : "",
+    deviceCaPrivateKeyPath: env.DEVICE_CA_PRIVATE_KEY_PATH ? path.resolve(env.DEVICE_CA_PRIVATE_KEY_PATH) : "",
+    opensslCommand: env.OPENSSL_COMMAND || "openssl",
+    deviceCertificateValidityDays: Number(env.DEVICE_CERTIFICATE_VALIDITY_DAYS || 365),
+    otaSigningKeyId: env.OTA_SIGNING_KEY_ID || "",
+    otaSigningPublicKeyPath,
+    otaSigningPublicKeyPem: otaSigningPublicKeyPath && fs.existsSync(otaSigningPublicKeyPath)
+      ? fs.readFileSync(otaSigningPublicKeyPath, "utf8")
+      : "",
     flashRunner,
     allowRealUsbFlash: env.ALLOW_REAL_USB_FLASH === undefined ? flashRunner !== "mock" : env.ALLOW_REAL_USB_FLASH !== "false",
     allowFirmwareArtifactAdminWrite: env.ALLOW_FIRMWARE_ARTIFACT_ADMIN_WRITE === "true",

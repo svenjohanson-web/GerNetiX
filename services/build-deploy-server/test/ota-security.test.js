@@ -5,16 +5,23 @@ const os = require("node:os");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
 const test = require("node:test");
-const { SqliteDeviceOtaSigner, SqliteOtaAcknowledgementStore } = require("../src/modules/ota-security");
+const { PemOtaCommandSigner, SqliteOtaAcknowledgementStore } = require("../src/modules/ota-security");
 
-test("signs OTA commands with the active device credential and stores acknowledgements", async () => {
+test("signs OTA commands with a separate ECDSA P-256 key and stores acknowledgements", async () => {
   const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-ota-")), "state.sqlite");
-  const db = new DatabaseSync(dbPath);
-  db.exec("CREATE TABLE device_management_credentials (device_id TEXT PRIMARY KEY, status TEXT, secret TEXT)");
-  db.prepare("INSERT INTO device_management_credentials VALUES (?,?,?)").run("device-1", "active", "secret-1");
-  db.close();
-  const signer = new SqliteDeviceOtaSigner(dbPath);
-  assert.equal(await signer.sign({ deviceId: "device-1", canonical: "deploy" }), crypto.createHmac("sha256", "secret-1").update("deploy").digest("hex"));
+  const keys = crypto.generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+  const signer = new PemOtaCommandSigner({
+    keyId: "ota-key-1",
+    privateKeyPem: keys.privateKey.export({ type: "pkcs8", format: "pem" }).toString(),
+  });
+  const canonical = "gernetix-ota-command-v1\nota-key-1\ndeploy";
+  const signature = await signer.sign({ canonical });
+  assert.equal(crypto.verify(
+    "sha256",
+    Buffer.from(canonical),
+    { key: keys.publicKey, dsaEncoding: "ieee-p1363" },
+    Buffer.from(signature, "base64url"),
+  ), true);
 
   const store = new SqliteOtaAcknowledgementStore(dbPath);
   await store.record({ deploy_id: "deploy-1", device_id: "device-1", status: "published" });

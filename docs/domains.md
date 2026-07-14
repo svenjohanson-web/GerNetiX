@@ -157,7 +157,7 @@ Regeln:
 - Ein RegisteredProcessorBoard gehoert maximal einem Account.
 - Ein Account kann beliebig viele RegisteredProcessorBoards besitzen.
 - Pro Board existiert genau ein aktives BoardCredential.
-- Ein Board authentisiert sich immer ueber HMAC.
+- Ein GerNetiX-Board authentisiert sich mit seinem geraeteeigenen P-256-Privatschluessel; Plattform und Broker kennen nur Public Key beziehungsweise Client-Zertifikat.
 - OTA darf nur fuer gepairte Boards mit aktivem Credential verwendet werden.
 - Verlorene oder widerrufene Boards duerfen keine OTA-Auftraege mehr erhalten.
 - Pairing darf ausschliesslich den Besitzer eines RegisteredProcessorBoard aendern, niemals den ProcessorBoard-Typ.

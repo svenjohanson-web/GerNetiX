@@ -32,9 +32,8 @@ function createConfig(env = process.env) {
     interfaceTelemetrySqlitePath: env.INTERFACE_TELEMETRY_SQLITE_PATH
       ? path.resolve(env.INTERFACE_TELEMETRY_SQLITE_PATH)
       : (env.PERSISTENCE_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-services.sqlite")),
-    deviceCredentialsSqlitePath: env.DEVICE_CREDENTIALS_SQLITE_PATH
-      ? path.resolve(env.DEVICE_CREDENTIALS_SQLITE_PATH)
-      : (env.PERSISTENCE_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-services.sqlite")),
+    otaSigningPrivateKeyPath: env.OTA_SIGNING_PRIVATE_KEY_PATH ? path.resolve(env.OTA_SIGNING_PRIVATE_KEY_PATH) : "",
+    otaSigningKeyId: env.OTA_SIGNING_KEY_ID || "",
   };
 }
 

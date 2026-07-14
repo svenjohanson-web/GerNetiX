@@ -125,7 +125,7 @@ Der Fokus liegt auf dauerhaftem Engineering-Wissen, nicht auf schneller Code-Erz
 - Pairing
 - Provisioning
 - OTA
-- HMAC Credential
+- P-256 Device Identity und mTLS-Client-Zertifikat
 
 ## 12. Authorization und Account
 

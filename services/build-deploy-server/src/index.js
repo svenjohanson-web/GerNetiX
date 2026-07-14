@@ -4,7 +4,7 @@ const { ArtifactStore } = require("./modules/artifact-store");
 const { FirmwareBuildJobRunner } = require("./modules/firmware-build-job-runner");
 const { DeployJobOrchestrator } = require("./modules/deploy-job-orchestrator");
 const { MqttTransport } = require("./modules/mqtt-transport");
-const { SqliteDeviceOtaSigner, SqliteOtaAcknowledgementStore } = require("./modules/ota-security");
+const { PemOtaCommandSigner, SqliteOtaAcknowledgementStore } = require("./modules/ota-security");
 const { DeviceJobLock } = require("./modules/device-job-lock");
 const { BuildDeployService } = require("./services/build-deploy-service");
 const { createConfig } = require("./config");
@@ -14,7 +14,10 @@ const { createInterfaceCallTelemetry } = require("../../shared/persistence/inter
 
 function createDefaultBuildDeployService(config = createConfig()) {
   const acknowledgementStore = new SqliteOtaAcknowledgementStore(config.sqlitePath);
-  const authorizationSigner = new SqliteDeviceOtaSigner(config.deviceCredentialsSqlitePath);
+  const authorizationSigner = new PemOtaCommandSigner({
+    privateKeyPath: config.otaSigningPrivateKeyPath,
+    keyId: config.otaSigningKeyId,
+  });
   const interfaceTelemetry = createInterfaceCallTelemetry({ dbPath: config.interfaceTelemetrySqlitePath, sourceService: "build-deploy-server" });
   const mqttTransport = config.mqttBrokerUrl ? new MqttTransport({
     url: config.mqttBrokerUrl,
@@ -62,7 +65,7 @@ module.exports = {
   FirmwareBuildJobRunner,
   DeployJobOrchestrator,
   MqttTransport,
-  SqliteDeviceOtaSigner,
+  PemOtaCommandSigner,
   SqliteOtaAcknowledgementStore,
   DeviceJobLock,
   BuildDeployService,

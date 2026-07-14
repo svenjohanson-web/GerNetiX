@@ -21,7 +21,7 @@ Ziel:
 - konkretes physisches Board als GerNetiX-Board anlegen
 - Seriennummer, Hardwareprofil und Charge dokumentieren
 - initiale Firmware per USB flashen und OTA-Faehigkeit vorbereiten
-- Credential oder Secret erzeugen bzw. referenzieren
+- geräteeigenen P-256-Schluessel erzeugen und dessen oeffentlichen Schluessel zertifizieren
 - Support- und Garantiegrundlage schaffen
 
 Ergebnis:
@@ -31,7 +31,7 @@ Ergebnis:
 - `DeviceCredential` erlaubt spaeter einen Challenge-Response-Nachweis
 - `DeviceSupportEntitlement` kann fuer Support/Reklamation geprueft werden
 
-Das Provisioning Tool flasht im Hersteller-Register die Basissoftware fuer das physische Board ausschliesslich ueber USB. Es waehlt ein ProcessorBoard aus dem Hardware-Katalog und leitet daraus Hardwareprofil, Basissoftware-Profil und Factory-Firmware-Artefakt ab. Das Firmware-Artefakt bleibt im normalen HMI-Ablauf generisch; die konkrete Provisioning-Kennung mit Seriennummer, Device-ID, Credential-Referenz und einmaligem Secret wird nach dem Flash ueber den lokalen Device-Endpunkt `/provisioning` in den NVS-Speicher der ESP32-Basissoftware geschrieben. Die Basissoftware kommt im Serverbetrieb aus einem versionierten Firmware-Artefakt im SQLite-/Artifact-Store oder aus einem explizit konfigurierten Server-Firmwarepfad, nicht direkt aus der Projektumgebung `basissoftware/esp32` und nicht aus einem Browser-Dateiupload der Factory-HMI. Der geheime Factory-Header bleibt ein optionaler Staging-Pfad fuer spezielle Factory-Images. WLAN, Setup-AP und Device-Webserver bleiben Diagnose-, Recovery- und Connectivity-Funktionen; der lokale Provisioning-Endpunkt ist nur der explizite Persistenzschritt nach dem USB-Flash.
+Das Provisioning Tool flasht im Hersteller-Register die Basissoftware fuer das physische Board ausschliesslich ueber USB. Es waehlt ein ProcessorBoard aus dem Hardware-Katalog und leitet daraus Hardwareprofil, Basissoftware-Profil und Factory-Firmware-Artefakt ab. Nach dem Flash erzeugt der ESP32 seinen privaten P-256-Schluessel selbst. Ueber den lokalen Device-Endpunkt `/provisioning` werden Kennungen und Trust-Anker geschrieben; zurueck kommt nur der oeffentliche Device-Schluessel. Das Tool stellt dafuer ein mTLS-Client-Zertifikat aus und prueft den privaten Schluesselbesitz per signierter Challenge. Private Device- oder OTA-Schluessel werden weder im Factory-Payload noch im Device Management gespeichert.
 
 Der vollstaendige Ablauf ist als UML-Sequenzdiagramm dokumentiert: [provisioning-process-sequence-uml.md](provisioning-process-sequence-uml.md).
 
@@ -61,14 +61,14 @@ Minimaler Ablauf:
 
 ```text
 Backend/IDE -> Device: random challenge
-Device -> Backend/IDE: deviceId, serialNumber, HMAC(challenge, deviceSecret)
-Backend/IDE prueft: passt der Nachweis zum registrierten Geraet?
+Device -> Backend/IDE: deviceId, serialNumber, ECDSA-P256-Signatur(challenge)
+Backend/IDE prueft: passt die Signatur zum registrierten oeffentlichen Schluessel?
 ```
 
 Wichtig:
 
-- Das Secret wird nicht im Klartext angezeigt.
-- Das Backend speichert nur notwendige Pruef- oder Referenzdaten.
+- Der private Device-Schluessel verlaesst den ESP32 nicht.
+- Das Backend speichert nur oeffentlichen Schluessel, Zertifikatsmetadaten und Pruefergebnisse.
 - Kopierte Seriennummern erzeugen keinen gueltigen Echtheitsnachweis.
 - Community-Hardware darf weiter funktionieren, aber bleibt `community_unverified`.
 

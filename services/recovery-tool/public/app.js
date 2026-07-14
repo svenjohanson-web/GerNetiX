@@ -1,6 +1,5 @@
 const state = {
   session: null,
-  secret: "",
 };
 
 document.querySelector("#detectForm").addEventListener("submit", createSession);
@@ -56,11 +55,13 @@ async function confirmCapabilities() {
 
 async function renewCredentials() {
   if (!state.session) return;
-  setStatus("running", "Neue Credentials werden erzeugt...");
-  const renewed = await postJson(`/api/recovery/sessions/${encodeURIComponent(state.session.recovery_session_id)}/renew-credentials`, {});
+  setStatus("running", "Oeffentliche Device-Identitaet wird uebernommen...");
+  const renewed = await postJson(`/api/recovery/sessions/${encodeURIComponent(state.session.recovery_session_id)}/renew-credentials`, {
+    public_key_pem: value("#devicePublicKey"),
+    certificate_pem: value("#deviceCertificate"),
+  });
   state.session = renewed;
-  state.secret = renewed.one_time_device_secret || "";
-  setStatus("ok", "One-Time Device Secret wurde erzeugt. Es wird nicht dauerhaft gespeichert.");
+  setStatus("ok", "Public-Key-Credential wurde erneuert; kein Shared Secret wurde gespeichert.");
   render();
 }
 
@@ -76,10 +77,9 @@ async function registerDevice() {
   if (!state.session) return;
   setStatus("running", "Device wird im Device Management registriert...");
   state.session = await postJson(`/api/recovery/sessions/${encodeURIComponent(state.session.recovery_session_id)}/register-community-device`, {
-    one_time_device_secret: state.secret,
+    credential: state.session.credential,
     account_id: value("#accountId"),
   });
-  state.secret = "";
   setStatus("ok", "Device ist als Recovery-/Community-Device registriert.");
   render();
 }
@@ -110,14 +110,13 @@ function render() {
   document.querySelector("#detailsBox").textContent = session
     ? JSON.stringify({
         recovery_session: redactSession(session),
-        one_time_secret_available: Boolean(state.secret),
+        private_key_received_by_tool: false,
       }, null, 2)
     : "";
 }
 
 function redactSession(session) {
   const copy = { ...session };
-  delete copy.one_time_device_secret;
   return copy;
 }
 

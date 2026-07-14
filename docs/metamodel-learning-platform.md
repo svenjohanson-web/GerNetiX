@@ -126,7 +126,7 @@ Regel:
 - Hardware wird ausschliesslich ueber `ProjectVariant`, `TechnicalConstraint`, `TechnicalCapability` und `HardwareItem` beschrieben.
 - `LearningProject` kennt keinen Account, keinen Fortschritt und keine Skill Levels.
 - `LearningProject` kennt keine Plaene, Rollen oder Subscriptions.
-- `LearningProject` kennt keine Firmware, kein OTA, kein Pairing und keine HMAC Credentials.
+- `LearningProject` kennt keine Firmware, kein OTA, kein Pairing und keine Device Credentials.
 - `LearningProject` entscheidet nicht, welche Hardware geeignet ist.
 
 Verantwortungsfragen:
@@ -792,15 +792,16 @@ Jedes `RegisteredProcessorBoard` besitzt genau ein aktives Credential.
 
 Authentisierung:
 
-- HMAC
+- ECDSA P-256 mit mTLS-Client-Zertifikat
 
 Attribute:
 
 - id
 - registeredProcessorBoardId
-- credentialType = HMAC
+- credentialType = ECDSA_P256_X509
 - keyReference
-- keyHash
+- publicKeyFingerprint
+- certificateFingerprint
 - createdAt
 - rotatedAt
 - revokedAt
@@ -815,8 +816,8 @@ Statuswerte:
 
 Regeln:
 
-- Der eigentliche HMAC-Schluessel wird niemals im Klartext gespeichert.
-- Gespeichert werden nur Referenz oder Hash.
+- Der private Device-Schluessel wird auf dem Board erzeugt und verlaesst es nicht.
+- Serverseitig werden Public Key, Zertifikat und Fingerprints gespeichert.
 - Pro Board existiert genau ein aktives Credential.
 
 ### Firmware State
@@ -902,9 +903,9 @@ Ablauf:
 2. Benutzer gibt Pairing Code in der IDE ein.
 3. Backend ordnet das Board dem Benutzerkonto zu.
 
-### HMAC-Sicherheitsmodell
+### Public-Key-Sicherheitsmodell
 
-Ein Board authentisiert sich immer ueber HMAC.
+Ein GerNetiX-Board authentisiert sich ueber ECDSA-P-256 und externes MQTT ueber mTLS.
 
 Das Board sendet:
 
@@ -912,7 +913,7 @@ Das Board sendet:
 - timestamp
 - nonce
 - payload
-- hmacSignature
+- signature
 
 Das Backend prueft:
 
@@ -920,7 +921,7 @@ Das Backend prueft:
 - Credential aktiv?
 - Timestamp gueltig?
 - Nonce bereits verwendet?
-- HMAC korrekt?
+- Signatur gegen registrierten Public Key korrekt?
 
 Nur wenn alle Pruefungen erfolgreich sind, gilt das Board als authentisch.
 
@@ -954,8 +955,8 @@ Nur wenn alle Pruefungen erfolgreich sind, gilt das Board als authentisch.
 - `HardwareCatalog` enthaelt `HardwareItem`.
 - `ProcessorBoard` beschreibt den Produkttyp.
 - `RegisteredProcessorBoard` beschreibt das konkrete physische Board.
-- `BoardCredential` authentisiert ein `RegisteredProcessorBoard` per HMAC.
-- Der HMAC-Schluessel wird niemals im Klartext gespeichert.
+- `BoardCredential` authentisiert ein `RegisteredProcessorBoard` per ECDSA-P-256 und Client-Zertifikat.
+- Der private Device-Schluessel verlaesst das Board nicht.
 - Pairing kann ueber Board Webserver, Recovery Tool, Provisioning Tool oder IDE Pairing erfolgen.
 - Alle Pairing-Wege erzeugen dieselbe Zuordnung: `RegisteredProcessorBoard` zu `Account`.
 - `Account` speichert Lernzustand und Berechtigungen.

@@ -111,10 +111,10 @@ Aktuelle lokale Endpunkte:
 - `/logs` liefert den lokalen Feedback-Ringpuffer als Text.
 - Unbekannte GET-Pfade wie `/generate_204`, `/hotspot-detect.html` oder `/connecttest.txt` werden als Captive-Portal-Einstieg auf die lokale Setup-Seite beantwortet.
 - `POST /provisioning` speichert einen Factory-Provisioning-Payload dauerhaft in NVS. Das Provisioning Tool nutzt diesen Endpunkt nach dem USB-Flash, damit Seriennummer und Device-ID ohne Board-spezifischen Firmware-Neubuild auf dem Board landen.
-- `POST /auth/challenge` nimmt eine Device-Management-Challenge an und erzeugt einen lokalen `HMAC_SHA256`-Nachweis mit dem provisionierten Device-Secret.
+- `POST /auth/challenge` signiert eine Device-Management-Challenge mit dem ausschließlich auf dem Board gespeicherten P-256-Privatschluessel.
 - `POST /ota` nimmt einen authentifizierten OTA-Auftrag an und startet den Download in einem separaten Runtime-Task.
 
-Ein OTA-Auftrag enthaelt `deploy_id`, eine strikt steigende `sequence`, `firmware_url`, den erwarteten Image-`sha256` und `authorization`. Die Autorisierung ist `HMAC_SHA256` mit dem provisionierten Device-Secret ueber `deploy_id`, `sequence`, `device_id`, `firmware_url` und `sha256`, jeweils durch einen Zeilenumbruch getrennt und ohne abschliessenden Zeilenumbruch.
+Ein OTA-Auftrag enthaelt Schema, `deploy_id`, strikt steigende `sequence`, `firmware_url`, Image-`sha256`, Ablaufzeit, Signing-Key-ID und eine ECDSA-P-256-Signatur. Die Signatur bindet alle Felder sowie die Device-ID kanonisch aneinander.
 
 Das Device akzeptiert nur HTTPS-URLs vom Origin des provisionierten `buildDeployUrl` und nur einen laufenden Auftrag. Nach dem Download wird der SHA-256 des geschriebenen App-Images geprueft. Erst danach wird der neue Slot aktiviert und die Sequenznummer in NVS gespeichert. `/status` liefert den aktuellen Zustand unter `ota`.
 
@@ -122,13 +122,13 @@ Das Device akzeptiert nur HTTPS-URLs vom Origin des provisionierten `buildDeploy
 
 Beim Provisioning kann als MQTT-Ziel entweder der VPS oder ein Broker im lokalen Netzwerk gewaehlt werden. Der VPS wird per `mqtts://` angesprochen (Standard: `mqtts://mqtt.gernetix.com:8883`). Fuer Entwicklung und Inbetriebnahme im LAN ist `mqtt://<private-ip>:<port>` erlaubt; Klartext-MQTT zu Hostnamen oder oeffentlichen IP-Adressen wird von Basissoftware und Provisioning Tool abgewiesen.
 
-Das Device verbindet sich mit seiner Device-ID als Client-ID und Benutzername. Das Broker-Passwort wird lokal per HMAC mit dem festen Kontext `gernetix:mqtt-broker-auth:v1` aus dem Device-Secret abgeleitet; das eigentliche Device-Secret wird nicht an den Broker uebertragen. Auch der lokale Broker muss dieses Credential kennen. Die serverseitige Broker-Registrierung muss beim Factory-Provisioning dieselbe Ableitung verwenden. Das Device abonniert mit QoS 1:
+Zum externen Broker verbindet sich das Device per mTLS mit seinem Client-Zertifikat und dem nur lokal gespeicherten Privatschluessel. Device-ID, Zertifikats-CN und MQTT-Client-ID stimmen ueberein. Ein privater LAN-Broker darf fuer Entwicklung weiterhin ohne Anwendungs-Credential genutzt werden; dieser Transport begruendet kein Vertrauen in den OTA-Auftrag. Das Device abonniert mit QoS 1:
 
 ```text
 gernetix/devices/<device_id>/ota
 ```
 
-Der MQTT-Payload entspricht exakt dem JSON-Vertrag von `POST /ota`. MQTT ist nur der Pub/Sub-Transport: HMAC, Sequenznummer, HTTPS-Origin und Image-SHA-256 werden unveraendert im OTA-Modul geprueft. Der ESP-MQTT-Client verbindet sich nach Abbruechen automatisch neu. `/status` zeigt unter `mqtt` Verbindungszustand und Topic; Credentials werden dort nicht ausgegeben.
+Der MQTT-Payload entspricht exakt dem JSON-Vertrag von `POST /ota`. MQTT ist nur der Pub/Sub-Transport: ECDSA-Signatur, Ablaufzeit, Sequenznummer, HTTPS-Origin und Image-SHA-256 werden im OTA-Modul geprueft.
 
 Nach erfolgreichem Provisioning enthaelt `/status` zusaetzlich:
 
@@ -149,7 +149,9 @@ Nach erfolgreichem Provisioning enthaelt `/status` zusaetzlich:
 - `provisioningBatchId`
 - `provisionedBy`
 - `capabilities`
-- `hasDeviceSecret`
+- `hasDevicePrivateKey`
+- `hasMqttClientCertificate`
+- `hasOtaSigningPublicKey`
 - `authenticityProof`
 
 Der lokale Stations-Hostname wird nach dem Provisioning dynamisch aus der Seriennummer gebildet. Aus `GNX-ESP32-0001` wird zum Beispiel `gernetix-gnx-esp32-0001`. Ohne gespeicherte Seriennummer bleibt der Fallback `gernetix-esp32`. Der IDE-Device-Manager nutzt `/status`, um diese Namen beim WiFi-Scan im Nutzerinventar sichtbar zu machen.
@@ -164,9 +166,9 @@ include/basissoftware/generated_provisioning_payload.h
 
 Wenn diese Datei beim Build vorhanden ist, importiert die Basissoftware den enthaltenen Factory-Payload beim ersten Boot in NVS. Ist das Device bereits provisioniert, wird der Factory-Payload ignoriert. Das Provisioning Tool schreibt diese Datei nur bei einem expliziten USB-Flash-Paket, zum Beispiel mit `flash.write_factory_header`.
 
-Im normalen HMI-Ablauf kann ein generisches Factory-Firmware-Artefakt geflasht werden. Nach dem Boot sendet das Provisioning Tool den konkreten Session-Payload an `POST /provisioning`; die Basissoftware speichert daraus `device_id`, `serial_number`, Hardwareprofil, Firmwarestand, Credential-Referenz, Service-Endpunkte, Provisioning-Charge und das einmalige Device-Secret dauerhaft im NVS-Namespace `prov`.
+Im normalen HMI-Ablauf kann ein generisches Factory-Firmware-Artefakt geflasht werden. Nach dem Boot sendet das Provisioning Tool den konkreten Session-Payload an `POST /provisioning`. Der ESP32 erzeugt dabei sein P-256-Schluesselpaar lokal und liefert nur den Public Key zurueck. In einem zweiten Schritt speichert er das ausgestellte mTLS-Client-Zertifikat und den OTA-Public-Key im NVS-Namespace `prov`.
 
-Das Provisioning Tool liefert im abrufbaren Manifest nur Credential-Referenz und Secret-Hash. Das einmalig erzeugte `one_time_device_secret` darf nur im USB-Flash-Paket enthalten sein. Dieses Secret wird lokal im Device-NVS gespeichert, aber niemals ueber `/status`, `/logs` oder den Challenge-Endpunkt ausgegeben.
+Factory-Payload, Manifest und Serverzustand enthalten keinen privaten Device-Schluessel. Der Private Key wird nur auf dem ESP32 erzeugt und nicht ueber `/status`, `/logs` oder den Challenge-Endpunkt ausgegeben.
 
 Minimaler Echtheitsnachweis gegen Device Management:
 
@@ -188,8 +190,8 @@ Antwort:
   "serial_number": "GNX-ESP32-...",
   "credential_id": "cred_...",
   "challenge_id": "challenge_123",
-  "algorithm": "HMAC_SHA256",
-  "hmac": "..."
+  "algorithm": "ECDSA_P256_SHA256",
+  "signature": "base64url-ieee-p1363-signature"
 }
 ```
 
@@ -212,5 +214,5 @@ Die folgenden Punkte sind im fachlichen Graphen als offene Entscheidungen dokume
 - `decision.esp32_ota_bootstrap_firmware.wifi_setup`: WLAN-Scan, SSID-Auswahl, Passwort-Eingabe und lokale NVS-Speicherung.
 - `decision.esp32_ota_bootstrap_firmware.node_mode_policy`: Verhalten nach erfolgreicher WLAN-Verbindung, z. B. STA-only, AP+STA oder Fallback-AP.
 - `decision.esp32_ota_bootstrap_firmware.flash_layout`: 2-MB-Flash-Unterstuetzung vs. 4-MB-OTA-Zielprofil und Partitionierung.
-- `decision.esp32_ota_bootstrap_firmware.ota_authentication`: Der Device-Auftrag ist jetzt per HMAC authentifiziert und das Image per SHA-256 gebunden; eine zusaetzliche asymmetrische Artefaktsignatur und Secure-Boot-Policy bleiben als Produktionsentscheidung offen.
+- `architecture.esp32_authenticated_https_ota_path`: OTA-Auftraege sind per ECDSA-P-256 signiert, zeitlich begrenzt, gegen Replay geschuetzt und an den Image-SHA-256 gebunden; Secure Boot und Flash Encryption bleiben gesonderte Produktionshaertung.
 - `decision.esp32_ota_bootstrap_firmware.service_endpoints`: konfigurierbare Device-Management-, Build-&-Deploy-, MQTT- und HTTPS-Endpunkte.

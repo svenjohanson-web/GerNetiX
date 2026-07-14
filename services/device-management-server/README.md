@@ -57,7 +57,7 @@ Hardware-Plattform, Capability-Profil, Release-Channel oder Mindest-Runtime werd
 
 - `device-registry`: konkrete Devices und Lifecycle
 - `pairing`: Pairing-Sessions und Account-Zuordnung
-- `authenticity`: Challenge Response / HMAC-Pruefung
+- `authenticity`: ECDSA-P-256 Challenge Response gegen den registrierten Public Key
 - `account-device-inventory`: Devices im Nutzerprofil
 - `ota-target-discovery`: kompatible OTA-Zielgeraete finden
 - `connectivity-setup`: WLAN-Scan, SSID-Auswahl, Node/AP-Status als fachlicher Setup-Kontext
@@ -86,7 +86,7 @@ API-Prefix:
 /api/device-management
 ```
 
-Umgesetzt sind Device-Registrierung, Heartbeat, Status, HMAC-Challenge, Pairing Sessions, Account-Device-Inventar, OTA-Zielauswahl, Connectivity-Status, Purchase Contexts aus dem Hardware Shop, Support-Entitlement, Admin-Sichten, Consent und Audit-Events.
+Umgesetzt sind Device-Registrierung mit Public-Key-/Zertifikatsmetadaten, Heartbeat, Status, ECDSA-Challenge, Pairing Sessions, Account-Device-Inventar, OTA-Zielauswahl, Connectivity-Status, Purchase Contexts aus dem Hardware Shop, Support-Entitlement, Admin-Sichten, Consent und Audit-Events.
 
 Purchase Contexts speichern gekaufte Hardware-Angebote, HardwareItems, Capabilities, Provisioning-Profile und Supportbasis pro Account. Sie machen Support- und Reklamationsgrundlagen nachvollziehbar, erzeugen aber ohne Echtheitsnachweis keinen Supportanspruch fuer unverifizierte Community-Hardware.
 

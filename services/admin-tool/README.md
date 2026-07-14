@@ -94,7 +94,7 @@ KI Usage:
 
 ## Sicherheitsregeln
 
-- Secret-Material, Credential-Secrets und HMAC-Schluessel werden nie angezeigt.
+- Secret-Material und private Schluessel werden nie angezeigt; Device-Credentials erscheinen nur als Public-Key- und Zertifikatsmetadaten.
 - Ohne Consent oder dokumentierte Rechtsgrundlage werden kundenrelevante Details maskiert.
 - Jede Admin-/Support-Einsicht in kundenrelevante Daten erzeugt ein Audit-Event.
 - Support-Rollen brauchen `support_registered_board_check` oder `admin_device_management`.

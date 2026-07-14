@@ -28,7 +28,9 @@ Stand der letzten VPS-Pruefung: **2026-07-14**
 | Web Edge | Oeffentliche Webzugriffe ueber Nginx und HTTPS | Umgesetzt | Listener und laufende TLS-/Certbot-Container geprueft |
 | Admin Tool | Admin-Port nur an VPS-Loopback gebunden und per SSH-Tunnel innerhalb des VPN erreichbar | Umgesetzt | Listener nur auf `127.0.0.1` und Healthcheck ueber eine VPN-SSH-Sitzung geprueft |
 | Service-Isolation | Identity und Domaenendienste nicht direkt oeffentlich exponiert | Umgesetzt | Docker-Listener und Compose-Container geprueft |
-| MQTT | Oeffentlicher Device-Port nur ueber TLS; Credentials und geraetespezifische Topic-ACLs vorgesehen | Umgesetzt | TLS-Listener und Broker aktiv; ungueltige TLS-/Protokollzugriffe wurden abgewiesen |
+| MQTT Device-Authentifizierung | Oeffentlicher Device-Port nur ueber mTLS; Zertifikats-CN und geraetespezifische Topic-ACLs | Lokal umgesetzt | 2026-07-14: Mosquitto-Konfiguration und Contract-Tests verlangen `require_certificate`, Device-CA und `%u`-ACL; Aktivierung und mTLS-Verbindungstest auf dem VPS stehen aus |
+| Device-Identitaet | P-256-Privatschluessel entsteht auf dem ESP32; Server speichern nur Public Key und Zertifikatsmetadaten | Lokal umgesetzt | 2026-07-14: Provisioning-, Device-Management-, Recovery- und Firmware-Tests; kein Shared Device Secret im neuen Vertrag |
+| OTA-Autorisierung | Zeitlich begrenzte ECDSA-P-256-signierte Auftraege mit Key-ID, Device-Bindung und Replay-Sequenz | Lokal umgesetzt | 2026-07-14: Build-&-Deploy- und ESP32-Contract-Tests sowie erfolgreicher PlatformIO-Build; Schluesselinstallation auf dem VPS steht aus |
 | SSH Konten | SSH-Zugang auf `root` und `sven` begrenzt | Teilweise | `AllowUsers` geprueft; direkter Root-Zugang per Schluessel ist noch erlaubt |
 | Betriebszustand | Container-Healthchecks und lokales Prozessmonitoring | Teilweise | GerNetiX-Container gesund; zentrale Sicherheitsalarmierung fehlt |
 | Kundendaten | Persistente Docker-Volumes | Teilweise | Volumes vorhanden; sie sind gemaess Backup-Konzept kein externes Backup |
@@ -52,6 +54,7 @@ Stand der letzten VPS-Pruefung: **2026-07-14**
 | P1 | Restore-Nachweis | Automatisierten isolierten Restore-Test fuer alle fuehrenden SQL-Datenbanken etablieren | Empfohlen; erfolgreicher Restore mit Integritaets- und Contract-Checks |
 | P1 | Sicherheitsalarmierung | Fail2ban-Bans, ungewoehnliche erfolgreiche Logins, Containerfehler und Backupfehler zentral melden | Empfohlen; sichtbarer Alarm im Admin Tool oder zentralen Betriebsmonitor |
 | P1 | Log-Aufbewahrung | SSH-, Nginx-, MQTT-, Audit- und Containerlogs mit definierter Retention sichern | Empfohlen; ein Sicherheitsvorfall bleibt auch nach Container-Neustart nachvollziehbar |
+| P1 | PKI-Betrieb | Device-Issuing-CA und OTA-Signierschluessel getrennt sichern, Zugriffsrechte minimieren sowie Rotation und Zertifikatswiderruf festlegen | Lokal vorbereitet; Produktions-Key-Ceremony, CRL-/Sperrprozess und Restore-Test stehen aus |
 | P2 | Patchmanagement | Automatische Sicherheitsupdates oder einen verbindlichen Patchzyklus mit Neustartkontrolle einrichten | Zu pruefen; Updatezustand und ausstehende Neustarts werden ueberwacht |
 | P2 | Schwachstellenpruefung | Abhaengigkeiten und Containerimages regelmaessig auf bekannte Schwachstellen pruefen | Empfohlen; CI- oder Deployment-Nachweis mit priorisierten Findings |
 | P2 | Deployment-Rechte | Docker-Gruppenmitgliedschaft und Root-nahe Deployment-Rechte auf das notwendige Minimum reduzieren | Empfohlen; dokumentiertes Rollen- und Berechtigungskonzept |

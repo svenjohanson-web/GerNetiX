@@ -13,6 +13,8 @@ class ProvisioningService {
     this.repository = options.repository;
     this.deviceIdFactory = options.deviceIdFactory;
     this.credentialGenerator = options.credentialGenerator;
+    this.certificateIssuer = options.certificateIssuer || null;
+    this.otaTrust = options.otaTrust || {};
     this.flashPlanner = options.flashPlanner;
     this.firmwareArtifactStore = options.firmwareArtifactStore;
     this.hardwareCatalog = options.hardwareCatalog;
@@ -53,6 +55,7 @@ class ProvisioningService {
       deviceManagementBaseUrl: this.deviceManagementBaseUrl,
       firmwareArtifact,
       processorBoard,
+      otaTrust: this.otaTrust,
     });
     const flashPlan = this.flashPlanner.createPlan(input, manifest);
     const usbFlashPackage = createUsbFlashPackage({
@@ -108,7 +111,6 @@ class ProvisioningService {
 
     return {
       ...summarizeSession(session),
-      one_time_device_secret: credential.one_time_device_secret,
       usb_flash_package: usbFlashPackage,
     };
   }
@@ -445,6 +447,13 @@ class ProvisioningService {
     const session = this.repository.findSession(sessionId);
     if (!session) throw new ProvisioningError("session_not_found", "Provisioning Session wurde nicht gefunden.", 404);
     if (session.status === "completed") return summarizeSession(session);
+    if (!session.credential.public_key_pem || !session.credential.certificate_pem || session.credential.proof_of_possession !== "verified") {
+      throw new ProvisioningError(
+        "device_identity_not_ready",
+        "Device-Identitaet, Client-Zertifikat und Besitznachweis muessen vor dem Abschluss vorliegen.",
+        409,
+      );
+    }
 
     const now = new Date().toISOString();
     session.status = "completed";
@@ -471,20 +480,16 @@ class ProvisioningService {
   async persistDeviceProvisioning(sessionId, input = {}) {
     const session = this.repository.findSession(sessionId);
     if (!session) throw new ProvisioningError("session_not_found", "Provisioning Session wurde nicht gefunden.", 404);
-    const oneTimeDeviceSecret = normalizeRequired(input.one_time_device_secret);
-    if (!oneTimeDeviceSecret) {
+    if (!this.certificateIssuer?.isConfigured?.()) {
       throw new ProvisioningError(
-        "missing_one_time_device_secret",
-        "Das einmalige Device-Secret liegt nur in der aktuellen Browser-Session vor. Bereite die Provisioning-Session neu vor, um die Kennung im Board zu speichern.",
+        "device_ca_not_configured",
+        "Die Device-CA ist nicht konfiguriert; ein mTLS-Clientzertifikat kann nicht ausgestellt werden.",
         409,
       );
     }
 
     const deviceUrl = normalizeDeviceProvisioningUrl(input.device_url || input.url || "http://192.168.4.1/provisioning");
-    const payload = {
-      ...session.manifest,
-      one_time_device_secret: oneTimeDeviceSecret,
-    };
+    const payload = { ...session.manifest };
     const response = await this.fetchImpl(deviceUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -499,8 +504,45 @@ class ProvisioningService {
         { device_url: deviceUrl, response: responseText },
       );
     }
+    const deviceResponse = parseJson(responseText);
+    const publicKeyPem = normalizeDevicePublicKey(deviceResponse.public_key_pem || deviceResponse.publicKeyPem);
+    const certificate = await this.certificateIssuer.issue({
+      deviceId: session.device.device_id,
+      publicKeyPem,
+    });
+    const certificateResponse = await this.fetchImpl(deviceUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        ...session.manifest,
+        mqtt_client_certificate_pem: certificate.certificate_pem,
+      }),
+    });
+    if (!certificateResponse.ok) {
+      throw new ProvisioningError(
+        "device_certificate_write_failed",
+        "Board hat das Speichern des mTLS-Clientzertifikats abgelehnt.",
+        certificateResponse.status,
+      );
+    }
+    const proof = await verifyDeviceProofOfPossession({
+      fetchImpl: this.fetchImpl,
+      deviceUrl,
+      deviceId: session.device.device_id,
+      publicKeyPem,
+    });
 
     const now = new Date().toISOString();
+    session.credential = {
+      ...session.credential,
+      public_key_pem: publicKeyPem,
+      public_key_fingerprint_sha256: publicKeyFingerprint(publicKeyPem),
+      certificate_pem: certificate.certificate_pem,
+      certificate_serial_number: certificate.certificate_serial_number,
+      certificate_fingerprint_sha256: certificate.certificate_fingerprint_sha256,
+      expires_at: certificate.expires_at,
+      proof_of_possession: proof.verification_state,
+    };
     session.device.local_provisioning_state = "stored_on_board";
     session.device.local_provisioning_url = deviceUrl;
     session.device.local_provisioning_stored_at = now;
@@ -517,6 +559,9 @@ class ProvisioningService {
         status: "stored_on_board",
         device_url: deviceUrl,
         stored_at: now,
+        public_key_fingerprint_sha256: session.credential.public_key_fingerprint_sha256,
+        certificate_fingerprint_sha256: session.credential.certificate_fingerprint_sha256,
+        proof_of_possession: proof.verification_state,
       },
     };
   }
@@ -542,8 +587,13 @@ class ProvisioningService {
           credential_id: session.credential.credential_id,
           credential_type: session.credential.credential_type,
           key_reference: session.credential.key_reference,
+          algorithm: session.credential.algorithm,
+          public_key_pem: session.credential.public_key_pem,
+          public_key_fingerprint_sha256: session.credential.public_key_fingerprint_sha256,
+          certificate_pem: session.credential.certificate_pem,
+          certificate_fingerprint_sha256: session.credential.certificate_fingerprint_sha256,
+          expires_at: session.credential.expires_at,
         },
-        one_time_device_secret: input.one_time_device_secret || "",
       }),
     });
     const payload = await response.json().catch(() => ({}));
@@ -698,11 +748,8 @@ function lastMeaningfulLine(value) {
   return lines.length ? lines[lines.length - 1] : "";
 }
 
-function createUsbFlashPackage({ manifest, credential, flashPlan, generatedProvisioningHeaderPath, firmwareArtifact }) {
-  const factoryPayload = {
-    ...manifest,
-    one_time_device_secret: credential.one_time_device_secret,
-  };
+function createUsbFlashPackage({ manifest, flashPlan, generatedProvisioningHeaderPath, firmwareArtifact }) {
+  const factoryPayload = { ...manifest };
   const payloadJson = JSON.stringify(factoryPayload);
   const headerPath = "basissoftware/esp32/include/basissoftware/generated_provisioning_payload.h";
   return {
@@ -716,7 +763,7 @@ function createUsbFlashPackage({ manifest, credential, flashPlan, generatedProvi
       {
         path: headerPath,
         role: "factory_provisioning_payload",
-        contains_secret: true,
+        contains_secret: false,
         content: createProvisioningHeader(payloadJson),
       },
     ],
@@ -759,7 +806,7 @@ function writeFactoryProvisioningHeader(usbFlashPackage, targetPath) {
   return {
     path: resolvedPath,
     role: generatedFile.role,
-    contains_secret: true,
+    contains_secret: false,
     written_at: new Date().toISOString(),
   };
 }
@@ -769,7 +816,7 @@ function createProvisioningHeader(payloadJson) {
     "#pragma once",
     "",
     "// Generated by GerNetiX Provisioning Tool for one USB factory flash.",
-    "// This file contains a one-time device secret and must not be committed.",
+    "// This file contains public factory metadata only; the device private key is generated on-board.",
     `constexpr char GERNETIX_FACTORY_PROVISIONING_PAYLOAD[] = "${escapeCString(payloadJson)}";`,
     "",
   ].join("\n");
@@ -783,13 +830,13 @@ function escapeCString(value) {
     .replace(/\n/g, "\\n");
 }
 
-function createManifest({ input, deviceId, credential, deviceManagementBaseUrl, firmwareArtifact, processorBoard }) {
+function createManifest({ input, deviceId, credential, deviceManagementBaseUrl, firmwareArtifact, processorBoard, otaTrust }) {
   const mqttBroker = normalizeMqttBrokerEndpoint(
     input.service_endpoints && input.service_endpoints.mqtt_broker,
     input.mqtt_mode,
   );
   return {
-    schema_version: 1,
+    schema_version: 2,
     device_id: deviceId,
     serial_number: normalizeRequired(input.serial_number),
     hardware_profile_id: normalizeRequired(input.hardware_profile_id),
@@ -817,7 +864,12 @@ function createManifest({ input, deviceId, credential, deviceManagementBaseUrl, 
       credential_id: credential.credential_id,
       credential_type: credential.credential_type,
       key_reference: credential.key_reference,
-      secret_sha256: credential.secret_sha256,
+      algorithm: credential.algorithm,
+    },
+    trust: {
+      ota_signing_key_id: otaTrust?.key_id || "",
+      ota_signing_algorithm: otaTrust?.algorithm || "ECDSA_P256_SHA256",
+      ota_signing_public_key_pem: otaTrust?.public_key_pem || "",
     },
     capabilities: Array.isArray(input.capabilities) ? input.capabilities.slice().sort() : [],
     provisioning: {
@@ -901,8 +953,58 @@ function redactCredential(credential) {
     key_reference: credential.key_reference,
     status: credential.status,
     created_at: credential.created_at,
-    secret_sha256: credential.secret_sha256,
+    algorithm: credential.algorithm,
+    public_key_fingerprint_sha256: credential.public_key_fingerprint_sha256 || "",
+    certificate_fingerprint_sha256: credential.certificate_fingerprint_sha256 || "",
+    expires_at: credential.expires_at || null,
+    proof_of_possession: credential.proof_of_possession || "pending",
   };
+}
+
+function parseJson(value) {
+  try { return JSON.parse(value || "{}"); } catch { return {}; }
+}
+
+function normalizeDevicePublicKey(value) {
+  try {
+    const key = crypto.createPublicKey(String(value || ""));
+    if (key.asymmetricKeyType !== "ec" || key.asymmetricKeyDetails?.namedCurve !== "prime256v1") throw new Error("curve");
+    return key.export({ type: "spki", format: "pem" }).toString();
+  } catch {
+    throw new ProvisioningError("invalid_device_public_key", "Board hat keinen gueltigen ECDSA-P-256 Public Key geliefert.", 422);
+  }
+}
+
+function publicKeyFingerprint(publicKeyPem) {
+  const key = crypto.createPublicKey(publicKeyPem);
+  return crypto.createHash("sha256").update(key.export({ type: "spki", format: "der" })).digest("hex");
+}
+
+async function verifyDeviceProofOfPossession({ fetchImpl, deviceUrl, deviceId, publicKeyPem }) {
+  const challengeId = createId("factory_challenge");
+  const challenge = crypto.randomBytes(32).toString("base64url");
+  const canonical = ["gernetix-device-auth-v1", challengeId, deviceId, challenge].join("\n");
+  const challengeUrl = new URL(deviceUrl);
+  challengeUrl.pathname = "/auth/challenge";
+  challengeUrl.search = "";
+  const response = await fetchImpl(challengeUrl.toString(), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ challenge_id: challengeId, device_id: deviceId, challenge, canonical }),
+  });
+  const payload = parseJson(await response.text().catch(() => ""));
+  let verified = false;
+  try {
+    verified = response.ok && crypto.verify(
+      "sha256", Buffer.from(canonical),
+      { key: publicKeyPem, dsaEncoding: "ieee-p1363" },
+      Buffer.from(String(payload.signature || ""), "base64url"),
+    );
+  } catch {
+    verified = false;
+  }
+  if (!verified) throw new ProvisioningError("device_key_proof_failed", "Board konnte den Besitz des privaten Device-Schluessels nicht nachweisen.", 422);
+  return { verification_state: "verified", challenge_id: challengeId };
 }
 
 function validateInput(input) {

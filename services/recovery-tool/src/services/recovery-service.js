@@ -94,7 +94,6 @@ class RecoveryService {
         connectivity_status: input.connectivity_status || session.recovery_state.connectivity,
         ota_status: input.ota_status || "unknown",
         credential: input.credential,
-        one_time_device_secret: input.one_time_device_secret || "",
       }),
     });
     const payload = await response.json().catch(() => ({}));
@@ -107,11 +106,23 @@ class RecoveryService {
   renewCredentials(sessionId, input = {}) {
     const session = this.requireSession(sessionId);
     const now = new Date().toISOString();
+    const publicKeyPem = String(input.public_key_pem || "").trim();
+    const certificatePem = String(input.certificate_pem || "").trim();
+    if (!publicKeyPem || !certificatePem) {
+      throw new RecoveryToolError(
+        "asymmetric_credential_required",
+        "Recovery benoetigt einen auf dem Board erzeugten Public Key und ein ausgestelltes Clientzertifikat.",
+        400,
+      );
+    }
     const credential = {
       credential_id: createId("cred"),
-      credential_type: "HMAC_SHA256",
+      credential_type: "ECDSA_P256_X509",
+      algorithm: "ECDSA_P256_SHA256",
       key_reference: `device-key://${session.device_id}/recovery-${Date.now()}`,
-      one_time_device_secret: input.one_time_device_secret || crypto.randomBytes(24).toString("base64url"),
+      public_key_pem: publicKeyPem,
+      certificate_pem: certificatePem,
+      public_key_fingerprint_sha256: crypto.createHash("sha256").update(publicKeyPem).digest("hex"),
       issued_at: now,
     };
     const next = {
@@ -128,10 +139,7 @@ class RecoveryService {
       }),
     };
     this.repository.saveSession(next);
-    return {
-      ...next,
-      one_time_device_secret: credential.one_time_device_secret,
-    };
+    return next;
   }
 
   resetConnectivity(sessionId, input = {}) {
@@ -168,7 +176,7 @@ class RecoveryService {
       updated_at: now,
       recovery_state: {
         ...session.recovery_state,
-        credential: input.one_time_device_secret ? "registered_with_secret" : session.recovery_state.credential,
+        credential: input.credential ? "registered_with_public_key" : session.recovery_state.credential,
       },
       device_management_registration: registration,
       actions: session.actions.concat({
@@ -256,6 +264,8 @@ function redactCredential(credential) {
     credential_id: credential.credential_id,
     credential_type: credential.credential_type,
     key_reference: credential.key_reference,
+    algorithm: credential.algorithm,
+    public_key_fingerprint_sha256: credential.public_key_fingerprint_sha256,
     issued_at: credential.issued_at,
   };
 }

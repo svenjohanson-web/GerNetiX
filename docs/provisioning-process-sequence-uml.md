@@ -38,15 +38,14 @@ alt aktives Credential existiert bereits
   Server --> HMI: 409 Konflikt
   HMI --> User: Provisioning abbrechen oder Board pruefen
 else kein aktives Credential
-  Service -> Service: device_id, credential_id,\none_time_device_secret erzeugen
+  Service -> Service: device_id und credential_id erzeugen
   Service -> Service: Manifest mit Board- und Firmware-Artefakt erzeugen
   Service -> FirmwareStore: Basissoftware-Artefakt referenzieren
   Service -> Staging: generated_provisioning_payload.h schreiben
   Service -> Repo: Session speichern\nStatus provisioning
   Repo --> Service: gespeicherte Session
-  Service --> Server: Session + Secret einmalig
-  Server --> HMI: 201 Created\nSession, Flash-Plan, Secret
-  HMI --> User: Secret nur fuer laufenden Vorgang anzeigen
+  Service --> Server: Session ohne Schluesselmaterial
+  Server --> HMI: 201 Created\nSession und Flash-Plan
 end
 
 == USB Factory Flash ==
@@ -98,17 +97,25 @@ alt Board bereits provisioniert
   NVS --> Board: Provisioning vorhanden
   Board -> Board: Factory Payload ignorieren
 else noch nicht provisioniert
-  Board -> NVS: Device-ID, Seriennummer,\nHardwareprofil, Credential-Referenz,\nService-Endpunkte, Secret speichern
-  Board -> Board: Authenticity Proof per HMAC vorbereiten
+  Board -> Board: P-256-Schluesselpaar lokal erzeugen
+  Board -> NVS: Device-ID, Metadaten und Private Key speichern
+  Board --> HMI: Public Key PEM
+  HMI -> Server: Public Key weiterreichen
+  Server -> Service: Client-Zertifikat ausstellen
+  Service --> HMI: mTLS-Client-Zertifikat
+  HMI -> Board: Zertifikat und OTA-Public-Key speichern
+  HMI -> Board: kanonische Besitz-Challenge
+  Board --> HMI: ECDSA-P-256-Signatur
+  HMI -> Server: verifizierten Besitznachweis speichern
   Board -> NVS: Provisioning-Status setzen
 end
 
 == Abschluss und Registrierung ==
 
 User -> HMI: Provisionierung abschliessen
-HMI -> Server: POST /api/provisioning-sessions/{id}/complete\nquality_check_state=passed\none_time_device_secret
+HMI -> Server: POST /api/provisioning-sessions/{id}/complete\nquality_check_state=passed
 Server -> Service: completeSession(sessionId, input)
-Service -> DeviceManagement: POST /api/device-management/devices/register\nDevice, Lifecycle, Credential-Referenz,\nSecret fuer Registrierung
+Service -> DeviceManagement: POST /api/device-management/devices/register\nDevice, Public Key, Zertifikatsmetadaten
 
 alt Device Management nicht erreichbar oder lehnt ab
   DeviceManagement --> Service: Fehler
@@ -117,7 +124,7 @@ alt Device Management nicht erreichbar oder lehnt ab
   HMI --> User: Abschluss nicht bestaetigt,\nSession bleibt pruefbar
 else Registrierung erfolgreich
   DeviceManagement --> Service: registriertes Device
-  Service -> Repo: Session completed\nSecret redigieren\nAudit Event schreiben
+  Service -> Repo: Session completed\nAudit Event schreiben
   Service --> Server: abgeschlossene Session
   Server --> HMI: Provisionierung abgeschlossen
   HMI --> User: Board ist registriert und bereit
@@ -126,9 +133,9 @@ end
 == Sicherheitsregeln ==
 
 note over HMI,Service
-Das One-Time Device Secret wird nur im Session-Start
-und beim Abschluss fuer die Registrierung verwendet.
-Status- und Manifest-Abfragen geben kein Klartext-Secret aus.
+Der private Device-Schluessel entsteht auf dem Board.
+Server, HMI, Manifest und Factory-Payload erhalten nur
+Public Key, Zertifikat und Fingerprints.
 end note
 
 note over Board,NVS

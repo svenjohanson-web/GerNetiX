@@ -1,17 +1,37 @@
 const crypto = require("node:crypto");
+const fs = require("node:fs");
 const { DatabaseSync } = require("node:sqlite");
 const { BuildDeployError } = require("../errors");
 
-class SqliteDeviceOtaSigner {
-  constructor(sqlitePath) { this.sqlitePath = sqlitePath; }
-  async sign({ deviceId, canonical }) {
-    const db = new DatabaseSync(this.sqlitePath, { readOnly: true });
-    db.exec("PRAGMA busy_timeout = 5000;");
+class PemOtaCommandSigner {
+  constructor(options = {}) {
+    this.privateKeyPath = options.privateKeyPath || "";
+    this.privateKeyPem = options.privateKeyPem || "";
+    this.keyId = options.keyId || "";
+  }
+
+  isConfigured() {
+    return Boolean(this.keyId && (this.privateKeyPem || this.privateKeyPath));
+  }
+
+  async sign({ canonical }) {
+    if (!this.isConfigured()) {
+      throw new BuildDeployError("ota_signing_key_missing", "Aktiver privater OTA-Signing-Key fehlt.", 409);
+    }
+    const keyPem = this.privateKeyPem || fs.readFileSync(this.privateKeyPath, "utf8");
+    let key;
     try {
-      const credential = db.prepare("SELECT secret FROM device_management_credentials WHERE device_id = ? AND status = 'active'").get(deviceId);
-      if (!credential?.secret) throw new BuildDeployError("device_credential_missing", "Aktives Device-Secret für OTA-Signierung fehlt.", 409);
-      return crypto.createHmac("sha256", credential.secret).update(canonical).digest("hex");
-    } finally { db.close(); }
+      key = crypto.createPrivateKey(keyPem);
+    } catch {
+      throw new BuildDeployError("ota_signing_key_invalid", "Privater OTA-Signing-Key ist ungueltig.", 500);
+    }
+    if (key.asymmetricKeyType !== "ec" || key.asymmetricKeyDetails?.namedCurve !== "prime256v1") {
+      throw new BuildDeployError("ota_signing_key_unsupported", "OTA-Signing-Key muss ECDSA P-256 verwenden.", 500);
+    }
+    return crypto.sign("sha256", Buffer.from(canonical), {
+      key,
+      dsaEncoding: "ieee-p1363",
+    }).toString("base64url");
   }
 }
 
@@ -44,4 +64,4 @@ class SqliteOtaAcknowledgementStore {
   }
 }
 
-module.exports = { SqliteDeviceOtaSigner, SqliteOtaAcknowledgementStore };
+module.exports = { PemOtaCommandSigner, SqliteOtaAcknowledgementStore };

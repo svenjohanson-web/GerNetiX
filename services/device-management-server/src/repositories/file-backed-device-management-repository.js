@@ -8,7 +8,26 @@ class FileBackedDeviceManagementRepository extends InMemoryDeviceManagementRepos
     this.store = store;
     if (typeof this.store.ensureSchema === "function") {
       this.store.ensureSchema(deviceManagementSchema());
+      ensureCredentialColumns(this.store.db);
+      purgeLegacyCredentialColumns(this.store.db);
+      ensureColumns(this.store.db, "device_management_challenges", { canonical: "TEXT", expires_at: "TEXT" });
     }
+    if (this.scrubLegacyCredentialSecrets()) this.persist();
+  }
+
+  scrubLegacyCredentialSecrets() {
+    let changed = false;
+    for (const [deviceId, credential] of this.credentials.entries()) {
+      const sanitized = { ...credential };
+      for (const field of ["secret", "device_secret", "one_time_device_secret", "secret_sha256"]) {
+        if (Object.hasOwn(sanitized, field)) {
+          delete sanitized[field];
+          changed = true;
+        }
+      }
+      if (changed) this.credentials.set(deviceId, sanitized);
+    }
+    return changed;
   }
 
   static create(runtimeRoot) {
@@ -143,14 +162,23 @@ function deviceManagementSchema() {
       key_reference TEXT,
       status TEXT,
       created_at TEXT,
-      secret TEXT,
+      expires_at TEXT,
+      revoked_at TEXT,
+      replaced_by TEXT,
+      algorithm TEXT,
+      public_key_pem TEXT,
+      public_key_fingerprint_sha256 TEXT,
+      certificate_pem TEXT,
+      certificate_fingerprint_sha256 TEXT,
       raw_json TEXT NOT NULL
     );`,
     `CREATE TABLE IF NOT EXISTS device_management_challenges (
       challenge_id TEXT PRIMARY KEY,
       device_id TEXT,
       challenge TEXT,
+      canonical TEXT,
       created_at TEXT,
+      expires_at TEXT,
       used_at TEXT,
       raw_json TEXT NOT NULL
     );`,
@@ -250,9 +278,50 @@ function credentialColumns() {
     key_reference: "key_reference",
     status: "status",
     created_at: "created_at",
-    secret: "secret",
+    expires_at: "expires_at",
+    revoked_at: "revoked_at",
+    replaced_by: "replaced_by",
+    algorithm: "algorithm",
+    public_key_pem: "public_key_pem",
+    public_key_fingerprint_sha256: "public_key_fingerprint_sha256",
+    certificate_pem: "certificate_pem",
+    certificate_fingerprint_sha256: "certificate_fingerprint_sha256",
     raw_json: jsonColumn((row) => row),
   };
+}
+
+function ensureCredentialColumns(db) {
+  ensureColumns(db, "device_management_credentials", {
+    expires_at: "TEXT",
+    revoked_at: "TEXT",
+    replaced_by: "TEXT",
+    algorithm: "TEXT",
+    public_key_pem: "TEXT",
+    public_key_fingerprint_sha256: "TEXT",
+    certificate_pem: "TEXT",
+    certificate_fingerprint_sha256: "TEXT",
+  });
+}
+
+function purgeLegacyCredentialColumns(db) {
+  if (!db) return;
+  const existing = new Set(db.prepare("PRAGMA table_info(device_management_credentials)").all().map((column) => column.name));
+  for (const name of ["secret", "device_secret", "one_time_device_secret"]) {
+    if (existing.has(name)) db.exec(`UPDATE device_management_credentials SET ${name} = NULL WHERE ${name} IS NOT NULL`);
+  }
+  if (existing.has("raw_json")) {
+    db.exec(`UPDATE device_management_credentials
+      SET raw_json = json_remove(raw_json, '$.secret', '$.device_secret', '$.one_time_device_secret', '$.secret_sha256')
+      WHERE json_valid(raw_json)`);
+  }
+}
+
+function ensureColumns(db, table, columns) {
+  if (!db) return;
+  const existing = new Set(db.prepare(`PRAGMA table_info(${table})`).all().map((column) => column.name));
+  for (const [name, type] of Object.entries(columns)) {
+    if (!existing.has(name)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${name} ${type}`);
+  }
 }
 
 function challengeColumns() {
@@ -260,7 +329,9 @@ function challengeColumns() {
     challenge_id: "challenge_id",
     device_id: "device_id",
     challenge: "challenge",
+    canonical: "canonical",
     created_at: "created_at",
+    expires_at: "expires_at",
     used_at: "used_at",
     raw_json: jsonColumn((row) => row),
   };

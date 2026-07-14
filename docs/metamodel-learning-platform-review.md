@@ -267,7 +267,7 @@ Geklaerte Modellregel:
 
 - `ProcessorBoard` beschreibt den Produkttyp.
 - `RegisteredProcessorBoard` beschreibt das konkrete physische Board.
-- `BoardCredential` authentisiert ein konkretes Board per HMAC.
+- `BoardCredential` authentisiert ein konkretes Board per ECDSA-P-256 und Client-Zertifikat.
 - Pairing ordnet ein `RegisteredProcessorBoard` einem `Account` zu.
 - Pairing darf den Besitzer aendern, aber niemals den `ProcessorBoard`-Typ.
 
@@ -321,8 +321,8 @@ Pairing-Wege:
 
 Sicherheitsregel:
 
-- Ein Board authentisiert sich immer ueber HMAC.
-- Der HMAC-Schluessel wird niemals im Klartext gespeichert.
+- Ein GerNetiX-Board authentisiert sich mit seinem lokal erzeugten P-256-Privatschluessel.
+- Der private Device-Schluessel verlaesst das Board nicht.
 - Das Backend prueft Board, Credential, Timestamp, Nonce und Signatur.
 
 ## Korrekturvorschlaege fuer das Metamodell
@@ -367,7 +367,7 @@ Sicherheitsregel:
 - `AccountCompetencyEvidence` belegt, durch welche `LearningProject` eine Kompetenz aufgebaut wurde.
 - `validated` und `expired` werden aktuell nicht umgesetzt.
 - `RegisteredProcessorBoard` beschreibt ein konkretes physisches Board, nicht den Produkttyp.
-- `BoardCredential` authentisiert ein `RegisteredProcessorBoard` per HMAC.
+- `BoardCredential` authentisiert ein `RegisteredProcessorBoard` per ECDSA-P-256 und mTLS-Client-Zertifikat.
 - OTA darf nur fuer gepairte Boards mit aktivem Credential verwendet werden.
 
 ## Offene Entscheidungen fuer den naechsten Abgleich

@@ -37,10 +37,7 @@ async function createManifest() {
   return {
     manifest,
     usbFlashPackage: session.usb_flash_package,
-    provisioningPayload: {
-      ...manifest,
-      one_time_device_secret: session.one_time_device_secret,
-    },
+    provisioningPayload: manifest,
   };
 }
 
@@ -60,15 +57,15 @@ async function run() {
   const factorySource = fs.readFileSync(factoryProvisioningSource, "utf8");
   const webServerSource = fs.readFileSync(deviceWebServerSource, "utf8");
 
-  assert.equal(manifest.schema_version, 1);
+  assert.equal(manifest.schema_version, 2);
   assert.equal(manifest.firmware.basis, "gernetix-runtime-basissoftware");
   assert.equal(manifest.firmware.ota_preserved, true);
   assert.equal(manifest.credential.one_time_device_secret, undefined);
-  assert.ok(provisioningPayload.one_time_device_secret);
+  assert.equal(provisioningPayload.one_time_device_secret, undefined);
   assert.equal(usbFlashPackage.transport, "usb");
   assert.equal(usbFlashPackage.generated_files[0].path, "basissoftware/esp32/include/basissoftware/generated_provisioning_payload.h");
   assert.match(usbFlashPackage.generated_files[0].content, /GERNETIX_FACTORY_PROVISIONING_PAYLOAD/);
-  assert.match(usbFlashPackage.generated_files[0].content, /one_time_device_secret/);
+  assert.doesNotMatch(usbFlashPackage.generated_files[0].content, /one_time_device_secret/);
 
   for (const field of [
     "device_id",
@@ -79,8 +76,9 @@ async function run() {
     "credential_id",
     "credential_type",
     "key_reference",
-    "secret_sha256",
-    "one_time_device_secret",
+    "ota_signing_key_id",
+    "ota_signing_public_key_pem",
+    "mqtt_client_certificate_pem",
     "device_management",
     "build_deploy",
     "mqtt_broker",
@@ -92,8 +90,9 @@ async function run() {
   }
 
   assert.match(header, /writeChallengeProofJson/, "Firmware contract does not expose challenge proof writer");
-  assert.match(source, /psa_mac_compute/, "Firmware does not create an HMAC challenge proof");
-  assert.match(source, /dev_secret/, "Firmware does not persist the local device secret");
+  assert.match(source, /psa_sign_message/, "Firmware does not create an ECDSA challenge signature");
+  assert.match(source, /dev_priv/, "Firmware does not persist the local private device key");
+  assert.match(source, /psa_generate_key/, "Firmware does not generate its P-256 key on the board");
   assert.match(factorySource, /generated_provisioning_payload/, "Firmware does not import generated USB factory provisioning payload");
   assert.match(factorySource, /saveProvisioningPayload/, "Factory provisioning does not store payload through normal provisioning parser");
   assert.match(webServerSource, /\/provisioning/, "Device web server does not expose local provisioning persistence endpoint");

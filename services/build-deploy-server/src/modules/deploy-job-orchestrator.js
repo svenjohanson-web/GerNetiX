@@ -12,7 +12,7 @@ class DeployJobOrchestrator {
     const checks = [
       check("public_firmware_url", /^https:\/\//.test(this.publicBaseUrl), "Öffentliche HTTPS-Adresse für Firmware-Downloads fehlt."),
       check("mqtt_publish", Boolean(this.mqttPublisher?.publish), "MQTT-Publisher ist nicht konfiguriert."),
-      check("command_authorization", Boolean(this.authorizationSigner?.sign), "HMAC-Signierung für OTA-Aufträge ist nicht konfiguriert."),
+      check("command_signature", Boolean(this.authorizationSigner?.sign) && this.authorizationSigner?.isConfigured?.() !== false, "ECDSA-Signierung für OTA-Aufträge ist nicht konfiguriert."),
       check("device_confirmation", Boolean(this.acknowledgementStore?.record), "Rückmeldung und Abschlussbestätigung des Boards sind nicht angebunden."),
     ];
     return { ready: checks.every((item) => item.ok), checks, blockers: checks.filter((item) => !item.ok) };
@@ -62,15 +62,29 @@ class DeployJobOrchestrator {
       ? firmware.download_url
       : `${this.publicBaseUrl}${firmware.download_url.startsWith("/") ? "" : "/"}${firmware.download_url}`;
     const deviceFirmwareSha256 = firmware.esp_image_sha256 || firmware.sha256;
-    const canonical = `${deployId}\n${sequence}\n${deploy.device_id}\n${firmwareUrl}\n${deviceFirmwareSha256}`;
-    const authorization = await this.authorizationSigner.sign({ deviceId: deploy.device_id, canonical });
+    const expiresAt = Math.floor(Date.now() / 1000) + 10 * 60;
+    const signingKeyId = this.authorizationSigner.keyId || "test-key";
+    const canonical = [
+      "gernetix-ota-command-v1",
+      signingKeyId,
+      deployId,
+      sequence,
+      deploy.device_id,
+      firmwareUrl,
+      deviceFirmwareSha256,
+      expiresAt,
+    ].join("\n");
+    const signature = await this.authorizationSigner.sign({ canonical });
     const topic = `gernetix/devices/${deploy.device_id}/ota`;
     const command = {
+      schema_version: "gernetix-ota-command-v1",
       deploy_id: deployId,
       sequence,
       firmware_url: firmwareUrl,
       sha256: deviceFirmwareSha256,
-      authorization,
+      expires_at: expiresAt,
+      signing_key_id: signingKeyId,
+      signature,
     };
     await this.acknowledgementStore.record({
       deploy_id: deployId,

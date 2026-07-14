@@ -9,6 +9,9 @@ const test = require("node:test");
 const { createDefaultDeviceManagementServer, FileBackedDeviceManagementRepository, SqliteBackedDeviceManagementRepository } = require("../src");
 const { DeviceManagementService } = require("../src/services/device-management-service");
 
+const TEST_DEVICE_KEYS = crypto.generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+const TEST_DEVICE_PUBLIC_KEY = TEST_DEVICE_KEYS.publicKey.export({ type: "spki", format: "pem" }).toString();
+
 function registerVerified(service, overrides = {}) {
   return service.registerDevice({
     serial_number: "GNX-ESP32-0001",
@@ -19,10 +22,10 @@ function registerVerified(service, overrides = {}) {
     provisioned_by: "provisioning-tool",
     connectivity_status: "online",
     ota_status: "ready",
-    one_time_device_secret: "top-secret-device-key",
     credential: {
       credential_id: "cred-1",
       key_reference: "device-key://device/cred-1",
+      public_key_pem: TEST_DEVICE_PUBLIC_KEY,
     },
     ...overrides,
   });
@@ -38,19 +41,37 @@ test("registers provisioned device and never exposes raw credential", () => {
   assert.equal(credentials.credentials[0].secret, undefined);
 });
 
-test("verifies HMAC challenge for GerNetiX device", () => {
+test("verifies ECDSA P-256 challenge for GerNetiX device", () => {
   const service = createDefaultDeviceManagementServer();
   const device = registerVerified(service);
   const challenge = service.createChallenge(device.device_id);
-  const hmac = crypto.createHmac("sha256", "top-secret-device-key").update(challenge.challenge).digest("hex");
+  const signature = crypto.sign("sha256", Buffer.from(challenge.canonical), {
+    key: TEST_DEVICE_KEYS.privateKey,
+    dsaEncoding: "ieee-p1363",
+  }).toString("base64url");
 
   const result = service.verifyChallenge(device.device_id, {
     challenge_id: challenge.challenge_id,
-    hmac,
+    signature,
   });
 
   assert.equal(result.verification_state, "verified");
   assert.equal(result.authenticity_status, "gernetix_verified");
+});
+
+test("rejects a challenge signature from another device key", () => {
+  const service = createDefaultDeviceManagementServer();
+  const device = registerVerified(service);
+  const challenge = service.createChallenge(device.device_id);
+  const other = crypto.generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+  const signature = crypto.sign("sha256", Buffer.from(challenge.canonical), {
+    key: other.privateKey,
+    dsaEncoding: "ieee-p1363",
+  }).toString("base64url");
+
+  const result = service.verifyChallenge(device.device_id, { challenge_id: challenge.challenge_id, signature });
+  assert.equal(result.verification_state, "failed");
+  assert.equal(result.authenticity_status, "community_unverified");
 });
 
 test("pairing creates account device and OTA target discovery marks selectable device", () => {
@@ -215,6 +236,47 @@ test("json repository persists device inventory across reload", () => {
 
   assert.equal(reloaded.getStatus(device.device_id).serial_number, "GNX-PERSIST-001");
   assert.equal(reloaded.listAccountDevices("acct-1").length, 1);
+});
+
+test("repository migration removes legacy shared device secrets", () => {
+  const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gnx-device-secret-migration-"));
+  const statePath = path.join(runtimeRoot, "device-management-state.json");
+  fs.writeFileSync(statePath, JSON.stringify({
+    devices: [],
+    credentials: [{
+      device_id: "device-legacy",
+      credential_id: "cred-legacy",
+      secret: "legacy-shared-secret",
+      device_secret: "legacy-shared-secret",
+      one_time_device_secret: "legacy-shared-secret",
+      secret_sha256: "obsolete-hash",
+    }],
+  }));
+
+  FileBackedDeviceManagementRepository.create(runtimeRoot);
+  const migrated = fs.readFileSync(statePath, "utf8");
+  assert.doesNotMatch(migrated, /legacy-shared-secret|obsolete-hash|device_secret|one_time_device_secret/);
+});
+
+test("sqlite migration clears legacy normalized credential secrets", () => {
+  const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-device-secret-sqlite-")), "state.sqlite");
+  const legacy = new DatabaseSync(dbPath);
+  legacy.exec(`CREATE TABLE device_management_credentials (
+    device_id TEXT PRIMARY KEY, credential_id TEXT, credential_type TEXT, key_reference TEXT,
+    status TEXT, created_at TEXT, secret TEXT, raw_json TEXT NOT NULL
+  )`);
+  legacy.prepare("INSERT INTO device_management_credentials VALUES (?, ?, ?, ?, ?, ?, ?, ?)").run(
+    "device-legacy", "cred-legacy", "HMAC_SHA256", "legacy", "active", new Date().toISOString(),
+    "legacy-shared-secret", JSON.stringify({ device_id: "device-legacy", secret: "legacy-shared-secret" }),
+  );
+  legacy.close();
+
+  SqliteBackedDeviceManagementRepository.create(dbPath);
+  const migrated = new DatabaseSync(dbPath);
+  const row = migrated.prepare("SELECT secret, raw_json FROM device_management_credentials WHERE device_id = ?").get("device-legacy");
+  assert.equal(row.secret, null);
+  assert.doesNotMatch(row.raw_json, /legacy-shared-secret|secret/);
+  migrated.close();
 });
 
 test("sqlite repository persists device inventory across reload", () => {

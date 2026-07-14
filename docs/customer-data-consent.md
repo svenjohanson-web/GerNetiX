@@ -25,7 +25,7 @@ Als kundenrelevant gelten insbesondere:
 - Consent muss zeitlich begrenzt sein.
 - Consent muss widerrufbar sein.
 - Jede Einsicht muss auditierbar sein.
-- Secret Material, Credentials und HMAC-Schluessel duerfen nie im Klartext angezeigt werden.
+- Secret Material und private Schluessel duerfen nie angezeigt werden; Credentials nur als nicht geheime Metadaten und Fingerprints.
 
 ## Admin-/Support-Sichten
 

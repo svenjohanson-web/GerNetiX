@@ -165,7 +165,7 @@ ProcessorBoard beschreibt Produkttyp; RegisteredProcessorBoard beschreibt konkre
 Auswirkung:
 
 - Pairing aendert Besitzer, nicht Board-Typ.
-- HMAC-Credential authentisiert das Board.
+- Der auf dem Board erzeugte P-256-Privatschluessel authentisiert das Board; serverseitig liegen nur Public Key und Zertifikatsmetadaten.
 - OTA ist an Pairing und aktives Credential gebunden.
 
 ### Requirement-Dekomposition

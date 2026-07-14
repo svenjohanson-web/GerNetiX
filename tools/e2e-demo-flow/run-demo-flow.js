@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 const { spawn } = require("node:child_process");
+const { generateKeyPairSync } = require("node:crypto");
 const path = require("node:path");
 
 const root = path.resolve(__dirname, "..", "..");
@@ -72,16 +73,11 @@ async function smokeProvisioning() {
     capabilities: ["wifi", "ota"],
     flash: { requested: false },
   });
-  await request("POST", `http://127.0.0.1:4500/api/provisioning-sessions/${session.session_id}`, {
-    completed_by: "e2e-demo-flow",
-    quality_check_state: "passed",
-    one_time_device_secret: session.one_time_device_secret,
-  });
-  const status = await request("GET", `http://127.0.0.1:4700/api/device-management/devices/${session.device.device_id}/status`);
+  const manifest = await request("GET", `http://127.0.0.1:4500/api/provisioning-sessions/${session.session_id}/manifest`);
   return {
     device_id: session.device.device_id,
-    authenticity_status: status.authenticity_status,
-    lifecycle_state: status.lifecycle_state,
+    credential_type: manifest.credential.credential_type,
+    contains_private_key: JSON.stringify(session).includes("PRIVATE KEY"),
   };
 }
 
@@ -95,9 +91,12 @@ async function smokeRecovery() {
       serial_number: `REC-E2E-${Date.now()}`,
     },
   });
-  const renewed = await request("POST", `http://127.0.0.1:5100/api/recovery/sessions/${session.recovery_session_id}/renew-credentials`, {});
+  const { publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
+  const renewed = await request("POST", `http://127.0.0.1:5100/api/recovery/sessions/${session.recovery_session_id}/renew-credentials`, {
+    public_key_pem: publicKey.export({ type: "spki", format: "pem" }),
+    certificate_pem: "-----BEGIN CERTIFICATE-----\nE2E-PLACEHOLDER\n-----END CERTIFICATE-----",
+  });
   const registered = await request("POST", `http://127.0.0.1:5100/api/recovery/sessions/${session.recovery_session_id}/register-community-device`, {
-    one_time_device_secret: renewed.one_time_device_secret,
     connectivity_status: "online",
     ota_status: "ready",
   });

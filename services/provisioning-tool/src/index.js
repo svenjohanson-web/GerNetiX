@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const { createConfig } = require("./config");
 const { createHttpApp } = require("./http-app");
 const { CredentialGenerator } = require("./modules/credential-generator");
+const { OpenSslDeviceCertificateIssuer } = require("./modules/device-certificate-issuer");
 const { DeviceIdFactory } = require("./modules/device-id-factory");
 const { FlashPlanner } = require("./modules/flash-planner");
 const { FirmwareArtifactStore } = require("./modules/firmware-artifact-store");
@@ -18,6 +19,17 @@ function createDefaultProvisioningTool(config = createConfig()) {
     repository: createRepository(config),
     deviceIdFactory: new DeviceIdFactory(),
     credentialGenerator: new CredentialGenerator(),
+    certificateIssuer: new OpenSslDeviceCertificateIssuer({
+      caCertificatePath: config.deviceCaCertificatePath,
+      caPrivateKeyPath: config.deviceCaPrivateKeyPath,
+      opensslCommand: config.opensslCommand,
+      validityDays: config.deviceCertificateValidityDays,
+    }),
+    otaTrust: {
+      key_id: config.otaSigningKeyId,
+      algorithm: "ECDSA_P256_SHA256",
+      public_key_pem: config.otaSigningPublicKeyPem,
+    },
     flashPlanner: new FlashPlanner({ flashRunner: config.flashRunner }),
     firmwareArtifactStore,
     hardwareCatalog: new HardwareCatalogClient({ baseUrl: config.hardwareCatalogBaseUrl }),
@@ -72,6 +84,7 @@ module.exports = {
   createConfig,
   createHttpApp,
   CredentialGenerator,
+  OpenSslDeviceCertificateIssuer,
   DeviceIdFactory,
   FlashPlanner,
   FirmwareArtifactStore,
