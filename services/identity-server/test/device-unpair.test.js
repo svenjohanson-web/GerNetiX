@@ -12,6 +12,9 @@ test("inventory exposes account unpair without claiming to delete the physical d
   assert.match(app, />Zuordnung aufheben<\/button>/);
   assert.match(app, /Das registrierte physische Device und seine Provisionierung bleiben erhalten/);
   assert.match(app, /deleteJson\(`\/api\/platform\/devices\/\$\{encodeURIComponent\(accountDeviceId\)\}`\)/);
+  assert.match(app, /data-save-device-profile=/);
+  assert.match(app, /Update- und Speicherprofil/);
+  assert.match(app, /putJson\(`\/api\/platform\/devices\/\$\{encodeURIComponent\(accountDeviceId\)\}`/);
   assert.doesNotMatch(app, /data-remove-device=/);
 });
 
@@ -28,7 +31,7 @@ test("provisioning owns discovery, registration and pairing", () => {
   const provisioningView = html.slice(html.indexOf('<section id="deviceProvisioningView"'), html.indexOf('<section id="deviceRecoveryView"'));
   assert.match(provisioningView, /Erkennen[\s\S]*Flashen[\s\S]*Registrieren[\s\S]*Pairen/);
   assert.match(provisioningView, /id="deviceDiscoverySearchButton"/);
-  assert.match(provisioningView, /id="deviceInventoryForm"/);
+  assert.doesNotMatch(provisioningView, /id="deviceInventoryForm"|Manueller Fallback|inventoryHardwareProfile/);
   assert.match(provisioningView, /Provisionieren und mit Account verbinden/);
   assert.match(onboarding, /registriert und mit deinem Account verbunden/);
   assert.doesNotMatch(onboarding, /manuell inventarisieren|wurde inventarisiert/);

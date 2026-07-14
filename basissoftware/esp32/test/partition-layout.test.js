@@ -4,27 +4,27 @@ const path = require("node:path");
 const test = require("node:test");
 
 const basisRoot = path.resolve(__dirname, "..");
-const csvPath = path.join(basisRoot, "partitions_ota_4mb.csv");
-
-test("4 MB partition layout provides two aligned OTA slots without overlap", () => {
-  const partitions = parsePartitions(fs.readFileSync(csvPath, "utf8"));
-  const byName = new Map(partitions.map((partition) => [partition.name, partition]));
-
-  assert.equal(byName.get("otadata").size, 0x2000);
-  assert.equal(byName.get("nvs").offset, 0x9000);
-  assert.equal(byName.get("nvs").size, 0x6000);
-  assert.equal(byName.get("otadata").offset, 0xF000);
-  assert.equal(byName.get("ota_0").size, 0x170000);
-  assert.equal(byName.get("ota_1").size, 0x170000);
-  assert.equal(byName.get("ota_0").offset % 0x10000, 0);
-  assert.equal(byName.get("ota_1").offset % 0x10000, 0);
-
-  const ordered = partitions.slice().sort((left, right) => left.offset - right.offset);
-  for (let index = 1; index < ordered.length; index += 1) {
-    assert.ok(ordered[index - 1].offset + ordered[index - 1].size <= ordered[index].offset, `${ordered[index - 1].name} ueberlappt ${ordered[index].name}`);
+for (const flashSize of [4, 8, 16]) {
+  for (const profile of ["full", "medium", "low"]) {
+    test(`${profile.toUpperCase()} ${flashSize} MB partition layout is aligned and non-overlapping`, () => {
+      const csvPath = path.join(basisRoot, `partitions_${profile}_${flashSize}mb.csv`);
+      const partitions = parsePartitions(fs.readFileSync(csvPath, "utf8"));
+      const byName = new Map(partitions.map((partition) => [partition.name, partition]));
+      const apps = partitions.filter((partition) => partition.type === "app");
+      assert.equal(byName.get("nvs").offset, 0x9000);
+      apps.forEach((app) => assert.equal(app.offset % 0x10000, 0));
+      assert.equal(apps.length, profile === "full" ? 2 : profile === "medium" ? 2 : 1);
+      assert.equal(byName.has("ota_1"), profile === "full");
+      assert.equal(byName.has("bootstrap"), profile === "medium");
+      assert.equal(byName.has("otadata"), profile !== "low");
+      const ordered = partitions.slice().sort((left, right) => left.offset - right.offset);
+      for (let index = 1; index < ordered.length; index += 1) {
+        assert.ok(ordered[index - 1].offset + ordered[index - 1].size <= ordered[index].offset, `${ordered[index - 1].name} ueberlappt ${ordered[index].name}`);
+      }
+      assert.ok(ordered.at(-1).offset + ordered.at(-1).size <= flashSize * 0x100000);
+    });
   }
-  assert.equal(ordered.at(-1).offset + ordered.at(-1).size, 0x400000);
-});
+}
 
 test("PlatformIO and sdkconfig select the 4 MB OTA partition table", () => {
   const platformio = fs.readFileSync(path.join(basisRoot, "platformio.ini"), "utf8");

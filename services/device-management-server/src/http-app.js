@@ -92,6 +92,14 @@ function createHttpApp(options) {
     }
 
     const accountDevice = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/devices/([^/]+)$`));
+    if (req.method === "PUT" && accountDevice) {
+      sendJson(res, 200, service.updateAccountDeviceBasissoftwareProfile(
+        decodeURIComponent(accountDevice[1]),
+        decodeURIComponent(accountDevice[2]),
+        await readJsonBody(req),
+      ));
+      return;
+    }
     if (req.method === "DELETE" && accountDevice) {
       sendJson(res, 200, service.removeAccountDevice(decodeURIComponent(accountDevice[1]), decodeURIComponent(accountDevice[2])));
       return;

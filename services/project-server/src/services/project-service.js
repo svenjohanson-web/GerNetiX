@@ -335,21 +335,23 @@ function normalizeBuildConfig(input = {}) {
     libraries: input.libraries || [],
     firmware_basis_id: firmwareBasisId,
     firmware_basis_version: input.firmware_basis_version || "",
-    firmware_basis_variant: input.firmware_basis_variant || (firmwareBasisId ? "comfort" : ""),
+    firmware_basis_variant: input.firmware_basis_variant === "comfort" ? "full" : input.firmware_basis_variant || (firmwareBasisId ? "full" : ""),
+    partition_profile_id: input.partition_profile_id || "",
+    flash_size_mb: [4, 8, 16].includes(Number(input.flash_size_mb)) ? Number(input.flash_size_mb) : 4,
     user_source_path: input.user_source_path || "",
     user_target_path: input.user_target_path || "",
     component_device_allocations: Array.isArray(input.component_device_allocations)
       ? input.component_device_allocations.map((item) => ({ ...item })).filter((item) => item.component_path && item.device_id)
       : [],
-    component_features: normalizeComponentFeatures(input.component_features, input.firmware_basis_variant || (firmwareBasisId ? "comfort" : "")),
+    component_features: normalizeComponentFeatures(input.component_features, input.firmware_basis_variant === "comfort" ? "full" : input.firmware_basis_variant || (firmwareBasisId ? "full" : "")),
   };
 }
 
 function normalizeComponentFeatures(input, basisVariant) {
   const configured = input && typeof input === "object" ? input : {};
-  const immutable = basisVariant === "comfort"
-    ? ["wifi", "mqtt", "ota", "http", "webserver"]
-    : [];
+  const immutable = basisVariant === "low"
+    ? ["wifi", "http", "webserver"]
+    : ["wifi", "mqtt", "ota", "http", "webserver"];
   const enabled = new Set(Array.isArray(configured.enabled) ? configured.enabled.map(String) : []);
   immutable.forEach((feature) => enabled.add(feature));
   return {

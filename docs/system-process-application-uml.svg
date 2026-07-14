@@ -157,8 +157,8 @@
     <rect class="cluster" x="1420" y="530" width="220" height="145" rx="14"/>
     <text class="clusterTitle" x="1440" y="559">Device Runtime</text>
     <rect class="node edge" x="1445" y="585" width="170" height="58" rx="10"/>
-    <text class="titleText" x="1530" y="609" text-anchor="middle">ESP32 Basissoftware</text>
-    <text class="smallText" x="1530" y="629" text-anchor="middle">mTLS Device-ID + signiertes HTTPS OTA</text>
+    <text class="titleText" x="1530" y="609" text-anchor="middle">ESP32 Basissoftwareprofile</text>
+    <text class="smallText" x="1530" y="629" text-anchor="middle">FULL / MEDIUM / LOW</text>
   </g>
 
   <g id="platformInfrastructure">

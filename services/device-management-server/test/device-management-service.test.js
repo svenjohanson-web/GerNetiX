@@ -238,6 +238,32 @@ test("json repository persists device inventory across reload", () => {
   assert.equal(reloaded.listAccountDevices("acct-1").length, 1);
 });
 
+test("basissoftware profile can be changed later and exposes required USB migration", () => {
+  const service = createDefaultDeviceManagementServer();
+  const device = registerVerified(service);
+  const accountDevice = service.addAccountDevice("acct-1", {
+    device_id: device.device_id,
+    display_name: "Display Board",
+    technical_capability_ids: ["wifi", "ota", "flash_firmware"],
+    instance_configuration: {
+      basissoftware_profile: {
+        class: "full",
+        partition_profile_id: "partition.profile.esp32.ota_ab",
+      },
+    },
+  });
+
+  const result = service.updateAccountDeviceBasissoftwareProfile("acct-1", accountDevice.account_device_id, {
+    profile: "low",
+  });
+
+  assert.equal(result.requires_usb_reflash, true);
+  assert.equal(result.account_device.instance_configuration.basissoftware_profile.profile_id, "basissoftware.profile.esp32.low");
+  assert.equal(result.account_device.instance_configuration.basissoftware_profile.change_state, "usb_reflash_required");
+  assert.equal(result.account_device.technical_capability_ids.includes("ota"), false);
+  assert.equal(result.account_device.ota_status, "unsupported");
+});
+
 test("repository migration removes legacy shared device secrets", () => {
   const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gnx-device-secret-migration-"));
   const statePath = path.join(runtimeRoot, "device-management-state.json");

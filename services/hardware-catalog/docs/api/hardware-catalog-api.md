@@ -33,7 +33,8 @@ ProcessorBoard-Eintraege koennen unter anderem enthalten:
 
 Bekannte konkrete Boards koennen eine gepruefte
 `default_instance_configuration` mit Display-, Touch-, Audio-, Funk- und
-Pinbelegung liefern. Provisioning verwendet diese Werte als Vorbelegung; erst
+Pinbelegung sowie bekannten Speicherwerten liefern. Beim ES3C28P sind derzeit
+512 KB interner SRAM und 16 MB externer QSPI-Flash vorbelegt. Provisioning verwendet diese Werte als Vorbelegung; erst
 die Nutzerbestaetigung speichert sie am konkreten Account-Device.
 
 ## Basis

@@ -192,9 +192,21 @@ Der Provisioning-Bereich im Plattform-Frontend beginnt immer mit einer explizite
 
 - `WLAN` sucht ausschliesslich bereits provisionierte Boards, auf denen die GerNetiX-Basissoftware laeuft und die im gleichen lokalen Netzwerk erreichbar sind. Dieser Hinweis muss vor Beginn der WLAN-Suche sichtbar sein.
 - `USB` ist der Weg fuer neue, blanke, fremd geflashte oder ueber WLAN nicht erreichbare Boards. Nur in diesem Ablauf werden USB-Port, Browser-Web-Serial und USB-nahe Fallbacks angeboten.
-- Vor der Suche werden weder Prozessorfamilie noch IoT-Device abgefragt, weil der aktive Transport den Erkennungsweg bestimmt. Der USB-Bootloader liefert zunaechst nur das Prozessorprofil. Danach kann der Nutzer ein dazu kompatibles, bekanntes konkretes Board aus dem Hardware Catalog waehlen. Dessen gepruefte Standardausstattung wird zur Bestaetigung vorbelegt; ohne Auswahl bleibt das generische Prozessorprofil erhalten. Ein kurzer Board-Name wird erst angeboten, nachdem ein uebernehmbares Board gefunden wurde.
+- Vor der Suche werden weder Prozessorfamilie noch IoT-Device abgefragt, weil der aktive Transport den Erkennungsweg bestimmt. Der USB-Bootloader liefert zunaechst nur das Prozessorprofil. Danach muss der Nutzer bewusst entweder ein dazu kompatibles, vorgefertigtes Boardprofil aus dem Hardware Catalog waehlen oder die manuelle Boardkonfiguration oeffnen. Beim Katalogprofil wird die gepruefte Standardausstattung zur Bestaetigung vorbelegt; im manuellen Weg erfasst der Nutzer die Ausstattung anhand des Datenblatts. Ein kurzer Board-Name und die Uebernahme werden erst nach dieser Entscheidung angeboten.
 
 Die Transportwahl aendert nicht die fachliche Trennung zwischen Provisionierung, Registrierung und Pairing. Sie bestimmt lediglich, wie das Board fuer den gefuehrten Ablauf erreicht wird.
+
+### Update- und Speicherprofil waehlen
+
+Nach der Boardausstattung waehlt der Nutzer eine von drei verstaendlich beschriebenen Klassen. Die Wahl wird als `basissoftware_profile` an der Device-Instanz gespeichert und vom Project Server in die konkrete Firmwarevariante und Partitionstabelle uebersetzt:
+
+| Klasse | Verhalten | Typische Wahl |
+| --- | --- | --- |
+| `FULL` | Zwei vollstaendige Firmwarebereiche; nach einem fehlgeschlagenen Update startet weiterhin die letzte gueltige Software. | 4 MB fuer kleine Regelungen und Steuerungen; 8 MB fuer einfache Displays; 16 MB auch fuer uebliche Display- und Soundprojekte. |
+| `MEDIUM` | Kleiner Wiederherstellungs-Bootstrap und ein grosser Anwendungsbereich; ein abgebrochenes Update wird wiederholt, bis es vollstaendig ist. | 4 MB mit kleinem OLED oder einfachen Menues; 8/16 MB bei besonders grossen Ansichten oder Medienbestaenden. |
+| `LOW` | Ein maximal grosser Anwendungsbereich ohne OTA; Updates erfolgen ausschliesslich ueber USB. | 4 MB mit Vollgrafik, vielen Ansichten, Bildern oder Sound, wenn Anwendungsplatz wichtiger als OTA ist. |
+
+Die Tabelle in der Provisioning-Oberflaeche zeigt Beispiele fuer 4, 8 und 16 MB und markiert die erkannte Flashgroesse. Eine SD-Karte kann Bilder, Fonts, Audio und Webressourcen aufnehmen, ersetzt aber weder internen Firmware-Flash noch OTA-Partitionen; PSRAM vergroessert nur den Arbeitsspeicher. Das Profil kann spaeter im Device-Inventar geaendert werden. Weil sich dabei die Partitionstabelle aendert, verlangt ein Profilwechsel einmalig eine USB-Verbindung und einen vollstaendigen Neu-Flash. Der abschliessende Build bleibt die verbindliche Groessenpruefung.
 
 ### Connectivity Setup ist kein Pairing
 

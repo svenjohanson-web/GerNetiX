@@ -7,7 +7,7 @@ GerNetiX Basissoftware fuer ESP32-Projekte auf Basis von ESP-IDF.
 Jede Basissoftware muss zwei voneinander getrennte, nicht leere Identitätsangaben besitzen:
 
 - `basissoftwareVersion`: technische, veröffentlichte Version der konkreten Basissoftware
-- `basissoftwareVariant`: Funktionsprofil, aktuell `comfort`; weitere vorgesehene Profile sind beispielsweise `min-connect` oder `min-ota`
+- `basissoftwareVariant`: stabiles Funktionsprofil `full`, `medium` oder `low`
 
 Beide Angaben sind Compile-Time-Metadaten der Firmware und werden über `/status` ausgegeben. Die frei provisionierbare `firmwareVersion` bezeichnet dagegen die ausgelieferte Anwendungsfirmware und darf die Identität der Basissoftware nicht ersetzen.
 
@@ -71,7 +71,13 @@ Jede Basissoftware-Funktion liegt in einer eigenen Datei. Projektlogik wird nich
 platformio run
 ```
 
-### 4-MB-OTA-Partitionslayout
+### Update- und Speicherprofile
+
+Der Build waehlt ueber `GERNETIX_BASISSOFTWARE_PROFILE_FULL`, `_MEDIUM` oder `_LOW` eine stabile Firmwarevariante und ueber `partitions_<profil>_<flash>mb.csv` das Layout fuer 4, 8 oder 16 MB. `FULL` behaelt zwei OTA-Slots mit Rollback. `MEDIUM` reserviert einen grossen Factory-Anwendungsslot und einen kleinen, getrennt gebauten Wiederherstellungs-Bootstrap im `ota_0`-Slot. `LOW` verwendet einen einzelnen grossen App-Slot und startet keine MQTT-/HTTPS-OTA-Funktionen. Ein Wechsel der Klasse erfordert wegen der Partitionstabelle einen vollstaendigen USB-Flash.
+
+Der eigenstaendige MEDIUM-Bootstrap-Downloader ist noch kein freigegebenes Factory-Artefakt. Das Layout darf erst produktiv angeboten werden, wenn dessen Download-, Hash-, Signatur- und Stromausfalltests auf echter Hardware bestanden sind.
+
+### 4-MB-FULL-Partitionslayout
 
 Das Standardprofil `esp32dev` verwendet `partitions_ota_4mb.csv` fuer Boards mit 4 MB Flash:
 

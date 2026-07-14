@@ -11,7 +11,6 @@ const DeviceOnboardingController = (() => {
       renderDashboard,
       renderDevices,
       renderIdeShell,
-      renderInventoryUsbPortOptions,
       escapeHtml,
       meta,
     } = deps;
@@ -57,6 +56,11 @@ const DeviceOnboardingController = (() => {
             : `Kein kompatibler ESP- oder Arduino-Bootloader erkannt${bootloader.detail ? `: ${bootloader.detail}` : "."}`);
           return;
         }
+        state.provisioningBoardConfigurationMode = "";
+        state.provisioningKnownBoardId = "";
+        state.provisioningFeatureSelections = {};
+        state.provisioningDatasheetUrl = "";
+        state.provisioningUpdateProfile = "";
         state.discoveredDevices = [{
           discovery_id: `web-serial-${identifier}`,
           source_url: `Web Serial ${identifier}`,
@@ -164,9 +168,11 @@ const DeviceOnboardingController = (() => {
       state.inventoryEsp32Method = method;
       state.discoveredDevices = [];
       state.avrBootloaderResult = null;
+      state.provisioningBoardConfigurationMode = "";
       state.provisioningKnownBoardId = "";
       state.provisioningFeatureSelections = {};
       state.provisioningDatasheetUrl = "";
+      state.provisioningUpdateProfile = "";
       renderNetworkDiscovery();
       setDiscoveryStatus("running", state.inventoryEsp32Method === "usb"
         ? ("serial" in navigator
@@ -199,9 +205,6 @@ const DeviceOnboardingController = (() => {
         state.avrBootloaderResult = result;
         renderNetworkDiscovery();
         if (result.detected) {
-          document.querySelector("#inventoryDisplayName").value = "Mein Arduino Nano";
-          document.querySelector("#inventoryConnectivityStatus").value = "usb_connected";
-          setInventoryStatus("ok", "Nano-Bootloader experimentell erkannt. Seriennummer bitte eintragen, dann manuell registrieren und pairen.");
           setDiscoveryStatus("ok", `STK500v1-Bootloader hat bei ${result.baudRate} Baud geantwortet. Das Board wurde nicht geflasht.`);
         } else {
           setDiscoveryStatus("error", "Kein STK500v1-Bootloader erkannt. Das kann an falschem Board, Reset-Timing, Treiber oder anderer Bootloader-Variante liegen.");
@@ -318,7 +321,6 @@ const DeviceOnboardingController = (() => {
       document.querySelector("#provisioningWebSerialActions").classList.toggle("hidden", !isUsbSelected || !("serial" in navigator));
       document.querySelector("#provisioningUsbHelperHint").classList.toggle("hidden", !isUsbSelected || ("serial" in navigator));
       document.querySelector("#claimSelectedDiscoveredDevicesButton").classList.toggle("hidden", !hasSelectedMethod || (!actions.wifiDiscovery && !actions.usbIdentification));
-      document.querySelector("#deviceInventoryForm").classList.toggle("hidden", !isUsbSelected);
       document.querySelector("#provisioningFoundBoardDetails").classList.toggle("hidden", !state.discoveredDevices.some(canClaimDiscoveredDevice));
       const hasDetectedBootloader = isUsbSelected && state.discoveredDevices.some((device) => device.bootloader_type);
       document.querySelector("#provisioningBoardFeatures").classList.toggle("hidden", !hasDetectedBootloader);
@@ -376,6 +378,17 @@ const DeviceOnboardingController = (() => {
       const status = document.querySelector("#provisioningBoardFeatureStatus");
       if (!target || !status) return;
       renderKnownBoardSelection();
+      const hasConfigurationDecision = new Set(["catalog", "manual"]).has(state.provisioningBoardConfigurationMode);
+      document.querySelector("#provisioningBoardConfigurationDetails")?.classList.toggle("hidden", !hasConfigurationDecision);
+      const configurationTitle = document.querySelector("#provisioningBoardConfigurationTitle");
+      if (configurationTitle) configurationTitle.textContent = state.provisioningBoardConfigurationMode === "manual"
+        ? "Boardausstattung selbst konfigurieren"
+        : "Vorgefertigte Boardausstattung prüfen";
+      if (!hasConfigurationDecision) {
+        target.innerHTML = "";
+        renderUpdateProfileChooser();
+        return;
+      }
       const catalogStatus = state.boardFeatureCatalogStatus || { state: "idle", message: "" };
       status.className = `flash-status ${catalogStatus.state === "error" ? "error" : "hidden"}`;
       status.textContent = catalogStatus.message || "";
@@ -410,25 +423,37 @@ const DeviceOnboardingController = (() => {
       document.querySelector("#provisioningDatasheetUrl").oninput = (event) => {
         state.provisioningDatasheetUrl = event.target.value.trim();
       };
+      renderUpdateProfileChooser();
     }
 
     function renderKnownBoardSelection() {
       const select = document.querySelector("#provisioningKnownBoard");
       const hint = document.querySelector("#provisioningKnownBoardHint");
+      const catalogChoice = document.querySelector("#provisioningKnownBoardSelection");
+      const manualChoice = document.querySelector("#provisioningManualBoardChoice");
+      const manualButton = document.querySelector("#provisioningManualBoardButton");
       const device = state.discoveredDevices.find((item) => item.bootloader_type);
-      if (!select || !hint || !device) return;
+      if (!select || !hint || !manualButton || !device) return;
       const detectedProfileId = device.detected_hardware_profile_id || device.hardware_profile_id;
       const detectedBoard = catalogBoardForProfile(detectedProfileId);
       const candidates = compatibleProcessorBoards(detectedBoard);
       select.innerHTML = [
-        `<option value="">Nur Prozessor erkannt (${escapeHtml(detectedBoard?.title || detectedProfileId)})</option>`,
+        `<option value="">Bitte vorgefertigtes Board auswählen</option>`,
         ...candidates.map((board) => `<option value="${escapeHtml(boardId(board))}" ${boardId(board) === state.provisioningKnownBoardId ? "selected" : ""}>${escapeHtml(board.title)}</option>`),
       ].join("");
       const selectedBoard = catalogBoardForProfile(state.provisioningKnownBoardId);
       hint.textContent = selectedBoard
-        ? `${selectedBoard.title} ist bekannt. Gepruefte Ausstattung wurde aus dem Hardware Catalog vorbelegt.`
-        : "Waehle das konkrete Boardmodell, wenn es bekannt ist. Ohne Auswahl bleibt nur der erkannte Prozessor gespeichert.";
+        ? `${selectedBoard.title} ist bekannt. Geprüfte Ausstattung wurde aus dem Hardware Catalog vorbelegt.`
+        : candidates.length
+          ? `${candidates.length} passendes${candidates.length === 1 ? "" : "e"} Boardprofil${candidates.length === 1 ? "" : "e"} für den erkannten Prozessor gefunden.`
+          : "Für den erkannten Prozessor ist noch kein konkretes Boardprofil hinterlegt. Nutze die manuelle Konfiguration.";
+      catalogChoice?.classList.toggle("is-selected", state.provisioningBoardConfigurationMode === "catalog");
+      manualChoice?.classList.toggle("is-selected", state.provisioningBoardConfigurationMode === "manual");
+      manualButton.textContent = state.provisioningBoardConfigurationMode === "manual"
+        ? "Manuelle Konfiguration ist geöffnet"
+        : "Manuelle Konfiguration öffnen";
       select.onchange = selectKnownProvisioningBoard;
+      manualButton.onclick = activateManualBoardConfiguration;
     }
 
     function compatibleProcessorBoards(detectedBoard) {
@@ -453,8 +478,22 @@ const DeviceOnboardingController = (() => {
       const device = state.discoveredDevices.find((item) => item.bootloader_type);
       if (!device) return;
       state.provisioningKnownBoardId = hardwareProfileId;
+      state.provisioningBoardConfigurationMode = hardwareProfileId ? "catalog" : "";
+      state.provisioningUpdateProfile = "";
       device.hardware_profile_id = hardwareProfileId || device.detected_hardware_profile_id || device.hardware_profile_id;
       applyKnownBoardDefaults(catalogBoardForProfile(hardwareProfileId));
+      renderNetworkDiscovery();
+    }
+
+    function activateManualBoardConfiguration() {
+      const device = state.discoveredDevices.find((item) => item.bootloader_type);
+      if (!device) return;
+      state.provisioningBoardConfigurationMode = "manual";
+      state.provisioningKnownBoardId = "";
+      state.provisioningFeatureSelections = {};
+      state.provisioningDatasheetUrl = "";
+      state.provisioningUpdateProfile = "";
+      device.hardware_profile_id = device.detected_hardware_profile_id || device.hardware_profile_id;
       renderNetworkDiscovery();
     }
 
@@ -496,6 +535,131 @@ const DeviceOnboardingController = (() => {
         },
       };
       row.querySelector(".board-feature-fields")?.classList.toggle("hidden", !enabled);
+      renderUpdateProfileChooser();
+    }
+
+    function renderUpdateProfileChooser() {
+      const target = document.querySelector("#provisioningUpdateProfileChooser");
+      if (!target) return;
+      const hasBoardDecision = new Set(["catalog", "manual"]).has(state.provisioningBoardConfigurationMode);
+      if (!hasBoardDecision) {
+        target.innerHTML = "";
+        return;
+      }
+      const flashSize = selectedFlashSizeMb();
+      const recommendation = recommendedUpdateProfile(flashSize);
+      const profiles = updateProfileDefinitions();
+      target.innerHTML = `
+        <div class="provisioning-update-profile-head">
+          <h4 id="provisioningUpdateProfileTitle">Update- und Speicherprofil wählen</h4>
+          <p class="helper-text">Wähle nach gewünschter Ausfallsicherheit und verfügbarem Speicher. Technische Details übernimmt GerNetiX.</p>
+        </div>
+        <div class="update-profile-options">
+          ${profiles.map((profile) => `<label class="update-profile-option">
+            <input type="radio" name="provisioningUpdateProfile" value="${profile.id}" ${state.provisioningUpdateProfile === profile.id ? "checked" : ""} />
+            <span>
+              <em class="update-profile-badge">${profile.badge}</em>
+              <strong>${profile.title}</strong>
+              <small>${profile.description}</small>
+              <small><b>Updatefehler:</b> ${profile.failure}</small>
+            </span>
+          </label>`).join("")}
+        </div>
+        <p class="update-profile-recommendation"><strong>Empfehlung${flashSize ? ` für ${flashSize} MB Flash` : ""}:</strong> ${recommendation.text}</p>
+        ${updateProfileExamplesTable(flashSize)}
+        <p class="update-profile-change-note"><strong>Später änderbar:</strong> Du kannst dieses Profil jederzeit wechseln. Wenn sich die Speicheraufteilung ändert oder OTA bisher nicht vorhanden ist, muss das Board dafür einmal per USB verbunden und neu geflasht werden. GerNetiX weist vorher darauf hin.</p>
+        <p class="helper-text"><strong>SD-Karte:</strong> Bilder, Fonts, Audio und Webseiten können extern gespeichert werden. Firmwarecode und OTA-Partitionen müssen weiterhin in den internen Flash passen. Externe PSRAM vergrößert nur den Arbeitsspeicher, nicht den Firmware-Flash.</p>
+      `;
+      target.querySelectorAll('input[name="provisioningUpdateProfile"]').forEach((input) => {
+        input.addEventListener("change", () => {
+          state.provisioningUpdateProfile = input.value;
+          renderUpdateProfileChooser();
+          renderNetworkDiscovery();
+        });
+      });
+    }
+
+    function updateProfileDefinitions() {
+      return [
+        {
+          id: "full",
+          badge: "FULL",
+          title: "Maximale Ausfallsicherheit",
+          description: "Zwei Firmwarebereiche sorgen dafür, dass die letzte funktionierende Software erhalten bleibt.",
+          failure: "Das Board startet weiterhin mit der letzten gültigen Software.",
+        },
+        {
+          id: "medium",
+          badge: "MEDIUM",
+          title: "Speicheroptimiert",
+          description: "Ein kleiner Wiederherstellungsbereich lässt mehr Platz für Display, Sound und Anwendung.",
+          failure: "Das Update wird erneut ausgeführt, bis die neue Software vollständig geschrieben wurde.",
+        },
+        {
+          id: "low",
+          badge: "LOW",
+          title: "Minimalkonfiguration",
+          description: "Der größtmögliche Speicherbereich steht der Anwendung zur Verfügung; OTA wird nicht angeboten.",
+          failure: "Updates und Wiederherstellung erfolgen ausschließlich über USB.",
+        },
+      ];
+    }
+
+    function selectedFlashSizeMb() {
+      const value = state.provisioningFeatureSelections?.flash?.value || "";
+      const match = String(value).match(/^(\d+)_mb$/);
+      return match ? Number(match[1]) : 0;
+    }
+
+    function recommendedUpdateProfile(flashSize) {
+      const display = state.provisioningFeatureSelections?.display?.enabled;
+      const sound = state.provisioningFeatureSelections?.speaker?.enabled;
+      if (!flashSize) return { id: "", text: "Bestätige zuerst die interne Flashgröße. Danach kann GerNetiX eine belastbare Empfehlung geben." };
+      if (flashSize >= 16) return { id: "full", text: "FULL – auch mit Display und Sound sind bei üblichen Anwendungen keine Speicherprobleme zu erwarten." };
+      if (flashSize >= 8) return { id: "full", text: display && sound
+        ? "FULL ist für typische Display- und Soundprojekte geeignet; sehr große Medienbestände werden beim Build erneut geprüft."
+        : "FULL bietet normalerweise ausreichend Platz und die höchste Ausfallsicherheit." };
+      if (flashSize <= 4 && (display || sound)) return { id: "medium", text: "MEDIUM – bei 4 MB und Display oder Sound ist die Speicherreserve für zwei vollständige Firmwarestände kritisch." };
+      return { id: "full", text: "FULL – für kleine Regelungen und Steuerungen ohne umfangreiche Medien ist das 4-MB-Profil normalerweise ausreichend." };
+    }
+
+    function updateProfileExamplesTable(flashSize) {
+      const rows = [
+        [4, "Kleine Regelungen, Sensoren, Relais und LEDs", "Kleines OLED, einfache Menüs, wenige Fonts", "Vollgrafik, viele Ansichten, größere Bilder oder Sound"],
+        [8, "Regelungen mit OLED, einfache TFT- und Touch-Oberflächen", "Umfangreiche Touch-Oberflächen, mehrere Ansichten und lokale Daten", "Sehr große Medienanwendungen oder konsequent offline betriebene Spezialprojekte"],
+        [16, "Übliche Touchdisplays, Sound, mehrere Ansichten und sichere Updates", "Sehr große Font-, Bild-, Audio- oder Datenbestände", "Außergewöhnlich große Offline-Anwendungen; normalerweise nicht erforderlich"],
+      ];
+      return `<div class="update-profile-table-wrap"><table class="update-profile-examples">
+        <thead><tr><th>Interner Flash</th><th>FULL</th><th>MEDIUM</th><th>LOW</th></tr></thead>
+        <tbody>${rows.map((row) => `<tr class="${row[0] === flashSize ? "is-current" : ""}"><td><strong>${row[0]} MB</strong></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td></tr>`).join("")}</tbody>
+      </table></div>`;
+    }
+
+    function selectedUpdateProfileConfiguration() {
+      const profile = state.provisioningUpdateProfile;
+      return ({
+        full: {
+          profile_id: "basissoftware.profile.esp32.full",
+          class: "full",
+          partition_profile_id: "partition.profile.esp32.ota_ab",
+          update_strategy: "ota_ab_rollback",
+          supported_update_modes: ["usb", "ota"],
+        },
+        medium: {
+          profile_id: "basissoftware.profile.esp32.medium",
+          class: "medium",
+          partition_profile_id: "partition.profile.esp32.bootstrap_single_slot",
+          update_strategy: "bootstrap_retry",
+          supported_update_modes: ["usb", "ota"],
+        },
+        low: {
+          profile_id: "basissoftware.profile.esp32.low",
+          class: "low",
+          partition_profile_id: "partition.profile.esp32.single_app_usb",
+          update_strategy: "usb_only",
+          supported_update_modes: ["usb"],
+        },
+      })[profile] || null;
     }
 
     function selectedBoardFeatureConfiguration() {
@@ -515,6 +679,7 @@ const DeviceOnboardingController = (() => {
         board_features: selected,
         datasheet_url: state.provisioningDatasheetUrl || "",
         board_profile_source: state.provisioningKnownBoardId ? "hardware_catalog" : "manual_confirmation",
+        basissoftware_profile: selectedUpdateProfileConfiguration(),
       };
     }
 
@@ -576,7 +741,7 @@ const DeviceOnboardingController = (() => {
               ${result.detected ? "Experimentell erkannt" : "Experimentell nicht erkannt"}
             </strong>
             <p class="helper-text">${result.detected
-              ? "Der Browser konnte den STK500v1-Handshake lesen. Bitte Seriennummer eintragen und das Board manuell registrieren und pairen."
+              ? "Der Browser konnte den STK500v1-Handshake lesen. Die gefuehrte Registrierung fuer AVR-Boards ist noch nicht verfuegbar."
               : "Nicht jedes Nano-kompatible Board antwortet mit dieser Variante. Treiber, Reset-Timing und Bootloader koennen abweichen."}</p>
           </div>
           <dl class="meta-list">
@@ -592,7 +757,7 @@ const DeviceOnboardingController = (() => {
 
     function inventoryTypeHintText() {
       return state.inventoryEsp32Method === "usb"
-        ? "USB sucht nach bekannten USB-Serial-/Board-Strings. Die Board-Auswahl ist nur fuer manuelles Provisioning oder als Fallback noetig."
+        ? "USB identifiziert das verbundene Board und fuehrt anschliessend durch Provisionierung, Registrierung und Pairing."
         : "WLAN sucht ausschliesslich nach bereits provisionierten, erreichbaren gernetix-* Nodes im gleichen lokalen Netzwerk.";
     }
 
@@ -668,15 +833,20 @@ const DeviceOnboardingController = (() => {
       const selectedCapabilities = state.boardFeatureCatalog
         .filter((feature) => state.provisioningFeatureSelections?.[feature.feature_id]?.enabled)
         .flatMap((feature) => feature.capability_ids || []);
+      const profile = selectedUpdateProfileConfiguration();
+      const profileCapabilities = profile?.supported_update_modes.includes("ota") ? ["capability.ota"] : [];
+      const capabilities = Array.from(new Set([
+        ...(device.technical_capability_ids || device.capability_ids || board?.capability_ids || []),
+        ...selectedCapabilities,
+        ...profileCapabilities,
+      ])).filter((capability) => profile?.class !== "low" || !/(^|\.)ota$/.test(capability));
       return {
         ...device,
         board_short_name: shortName,
         node_name: nodeName,
         display_name: device.display_name || shortName || nodeName,
-        technical_capability_ids: Array.from(new Set([
-          ...(device.technical_capability_ids || device.capability_ids || board?.capability_ids || []),
-          ...selectedCapabilities,
-        ])),
+        technical_capability_ids: capabilities,
+        ota_status: profile?.class === "low" ? "unsupported" : "unknown",
         instance_configuration: {
           ...(device.instance_configuration || {}),
           ...featureConfiguration,
@@ -704,6 +874,8 @@ const DeviceOnboardingController = (() => {
       return device
         && !device.already_in_inventory
         && device.ownership_status !== "other_account"
+        && (!device.bootloader_type || new Set(["catalog", "manual"]).has(state.provisioningBoardConfigurationMode))
+        && (!device.bootloader_type || new Set(["full", "medium", "low"]).has(state.provisioningUpdateProfile))
         && claimableStates.has(device.esp32_inventory_state);
     }
 
@@ -725,35 +897,6 @@ const DeviceOnboardingController = (() => {
       return "Zustand pruefen, bevor das Board provisioniert wird.";
     }
 
-    function renderDeviceInventoryForm() {
-      const boards = state.processorBoards.length ? state.processorBoards : fallbackProcessorBoards();
-      const uniqueBoards = boards.filter((board, index, items) => items.findIndex((item) => boardId(item) === boardId(board)) === index);
-      document.querySelector("#inventoryHardwareProfile").innerHTML = uniqueBoards.map((board) => `
-        <option value="${escapeHtml(board.hardware_item_id || board.hardware_profile_id)}">${escapeHtml(board.title || board.hardware_item_id || board.hardware_profile_id)}</option>
-      `).join("");
-      renderInventoryUsbPortOptions();
-      document.querySelector("#inventoryUsbPortLabel").classList.toggle("hidden", state.inventoryEsp32Method !== "usb");
-      if (!document.querySelector("#inventoryDisplayName").value.trim()) {
-        document.querySelector("#inventoryDisplayName").value = "Mein Board";
-      }
-      syncInventoryNodeNamePreview();
-      syncInventoryCapabilities();
-      renderNetworkDiscovery();
-    }
-
-    function syncInventoryCapabilities() {
-      const boardId = document.querySelector("#inventoryHardwareProfile").value;
-      if (!boardId) {
-        document.querySelector("#inventoryCapabilities").value = "";
-        syncInventoryNodeNamePreview();
-        return;
-      }
-      const board = state.processorBoards.find((item) => item.hardware_item_id === boardId || item.hardware_profile_id === boardId)
-        || fallbackProcessorBoards().find((item) => item.hardware_item_id === boardId);
-      document.querySelector("#inventoryCapabilities").value = (board?.capability_ids || []).map((item) => String(item).replace(/^capability\./, "")).join(", ");
-      syncInventoryNodeNamePreview();
-    }
-
     function syncInventoryNodeNamePreview() {
       const shortNameInput = document.querySelector("#inventoryBoardShortName");
       const preview = document.querySelector("#inventoryNodeNamePreview");
@@ -767,26 +910,8 @@ const DeviceOnboardingController = (() => {
       return boards.find((board) => boardId(board) === profileId) || null;
     }
 
-    function selectedInventoryHardwareFamily() {
-      const profileId = document.querySelector("#inventoryHardwareProfile")?.value || "";
-      return hardwareTypeForBoard(catalogBoardForProfile(profileId)) || hardwareTypeForProfile(profileId) || "other";
-    }
-
-    function hardwareTypeForBoard(board) {
-      if (!board) return "";
-      return model.boardFamily(board);
-    }
-
     function boardId(board) {
       return board?.hardware_item_id || board?.hardware_profile_id || "";
-    }
-
-    function hardwareTypeForProfile(value) {
-      const normalized = String(value || "").toLowerCase();
-      if (normalized.includes("esp8266") || normalized.includes("esp-12")) return "esp8266";
-      if (normalized.includes("esp32") || normalized.includes("esp_wroom") || normalized.includes("esp-wroom") || normalized.includes("wroom-32")) return "esp32";
-      if (normalized.includes("avr") || normalized.includes("atmega328p") || normalized.includes("arduino_nano") || normalized.includes("arduino nano")) return "avr_8bit";
-      return "unknown";
     }
 
     function usbDiscoveryPorts() {
@@ -826,36 +951,6 @@ const DeviceOnboardingController = (() => {
       ].join(" ").toLowerCase();
     }
 
-    async function createInventoryDevice(event) {
-      event.preventDefault();
-      if (!document.querySelector("#inventoryHardwareProfile").value) {
-        setInventoryStatus("error", "Bitte zuerst ein IoT-Device aus dem Hardware-Katalog waehlen.");
-        return;
-      }
-      setInventoryStatus("running", "Gerät wird registriert und mit dem Account gepairt...");
-      const shortName = model.normalizeShortName(document.querySelector("#inventoryDisplayName").value);
-      const nodeName = model.nodeName(shortName || document.querySelector("#inventoryDisplayName").value);
-      try {
-        const device = await postJson("/api/platform/devices", {
-          display_name: document.querySelector("#inventoryDisplayName").value.trim(),
-          serial_number: document.querySelector("#inventorySerialNumber").value.trim(),
-          board_short_name: shortName,
-          node_name: nodeName,
-          hardware_profile_id: document.querySelector("#inventoryHardwareProfile").value,
-          technical_capability_ids: document.querySelector("#inventoryCapabilities").value.split(",").map((item) => item.trim()).filter(Boolean),
-          connectivity_status: document.querySelector("#inventoryConnectivityStatus").value,
-        });
-        state.devices = state.devices.filter((item) => item.account_device_id !== device.account_device_id).concat(device);
-        state.activeDeviceId = device.device_id;
-        renderIdeShell();
-        renderDevices();
-        setInventoryStatus("ok", `${device.display_name} wurde registriert und mit deinem Account verbunden.`);
-        document.querySelector("#inventorySerialNumber").value = "";
-      } catch (error) {
-        setInventoryStatus("error", error.message);
-      }
-    }
-
     function setDiscoveryStatus(kind, text) {
       const status = document.querySelector("#networkDiscoveryStatus");
       if (!status) return;
@@ -873,18 +968,14 @@ const DeviceOnboardingController = (() => {
     return {
       claimDiscoveredDevice,
       claimSelectedDiscoveredDevices,
-      createInventoryDevice,
       discoverNetworkDevices,
       identifyAvrBootloaderExperimental,
       identifyEsp32Bootloader,
-      renderDeviceInventoryForm,
       renderNetworkDiscovery,
       searchDevicesForInventory,
       selectDeviceDiscoveryMethod,
-      selectedInventoryHardwareFamily,
       setDiscoveryStatus,
       setInventoryStatus,
-      syncInventoryCapabilities,
       syncInventoryNodeNamePreview,
     };
   }

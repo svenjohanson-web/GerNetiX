@@ -1,5 +1,10 @@
 const crypto = require("node:crypto");
 const { DeviceManagementError } = require("../errors");
+const {
+  applyProfileCapabilities,
+  normalizeBasissoftwareProfile,
+  profileChangeRequiresUsb,
+} = require("../../../shared");
 
 class DeviceManagementService {
   constructor(options) {
@@ -187,6 +192,38 @@ class DeviceManagementService {
 
   listAccountDevices(accountId) {
     return this.repository.listAccountDevices(accountId);
+  }
+
+  updateAccountDeviceBasissoftwareProfile(accountId, accountDeviceId, input = {}) {
+    const accountDevice = this.repository.findAccountDevice(accountId, accountDeviceId);
+    if (!accountDevice) throw new DeviceManagementError("account_device_not_found", "AccountDevice wurde nicht gefunden.", 404);
+    const requested = normalizeBasissoftwareProfile(input.basissoftware_profile || input.profile || input.profile_id);
+    if (!requested) throw new DeviceManagementError("invalid_basissoftware_profile", "Unbekanntes Basissoftware-Profil.", 400);
+    const current = accountDevice.instance_configuration?.basissoftware_profile || null;
+    const requiresUsbReflash = profileChangeRequiresUsb(current, requested);
+    const changedAt = new Date().toISOString();
+    const basissoftwareProfile = {
+      ...requested,
+      change_state: requiresUsbReflash ? "usb_reflash_required" : "selected",
+      changed_at: changedAt,
+    };
+    const updated = {
+      ...accountDevice,
+      technical_capability_ids: applyProfileCapabilities(accountDevice.technical_capability_ids, requested),
+      ota_status: requested.class === "low" ? "unsupported" : requiresUsbReflash ? "profile_change_pending" : accountDevice.ota_status,
+      instance_configuration: {
+        ...(accountDevice.instance_configuration || {}),
+        basissoftware_profile: basissoftwareProfile,
+      },
+    };
+    this.repository.saveAccountDevice(updated);
+    return {
+      account_device: updated,
+      requires_usb_reflash: requiresUsbReflash,
+      message: requiresUsbReflash
+        ? "Das Profil wurde gespeichert. Fuer die neue Speicheraufteilung ist ein einmaliger USB-Flash erforderlich."
+        : "Das Profil wurde gespeichert.",
+    };
   }
 
   addAccountDevice(accountId, input = {}) {

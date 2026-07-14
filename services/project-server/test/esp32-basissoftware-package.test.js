@@ -20,7 +20,8 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
 
   assert.equal(files.some((file) => file.path === "src/main.cpp"), true);
   assert.equal(files.some((file) => file.path === "src/functions/initWifi.cpp"), true);
-  assert.equal(files.some((file) => file.path === "partitions_ota_4mb.csv"), true);
+  assert.equal(files.some((file) => file.path === "partitions_full_4mb.csv"), true);
+  assert.equal(files.some((file) => file.path === "partitions_medium_8mb.csv"), true);
   assert.equal(files.some((file) => file.path === "dependencies.lock"), true);
   assert.equal(files.some((file) => file.path === "src/idf_component.yml"), true);
   assert.equal(files.some((file) => file.path === "managed_components/espressif__mqtt/mqtt_client.c"), true);
@@ -31,6 +32,25 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
   assert.match(files.find((file) => file.path === "src/user/user_app.cpp").content, /void userMain/);
   assert.equal(files.some((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp"), false);
   assert.equal(files.some((file) => file.path.startsWith(".vscode/")), false);
+});
+
+test("selects profile and flash-specific build configuration", () => {
+  const files = composeEsp32BasissoftwarePackage({
+    basisFiles: loadEsp32BasissoftwareFiles(),
+    projectSources: [{ path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: "void userMain() {}" }],
+    buildConfig: {
+      firmware_basis_variant: "medium",
+      flash_size_mb: 8,
+      user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp",
+    },
+  });
+  const platformio = files.find((file) => file.path === "platformio.ini").content;
+  const sdkconfig = files.find((file) => file.path === "sdkconfig.esp32dev").content;
+  assert.match(platformio, /board_build\.flash_size = 8MB/);
+  assert.match(platformio, /board_build\.partitions = partitions_medium_8mb\.csv/);
+  assert.match(platformio, /GERNETIX_BASISSOFTWARE_PROFILE_MEDIUM=1/);
+  assert.match(sdkconfig, /CONFIG_ESPTOOLPY_FLASHSIZE_8MB=y/);
+  assert.match(sdkconfig, /CONFIG_PARTITION_TABLE_FILENAME="partitions_medium_8mb\.csv"/);
 });
 
 test("copies separated project user headers into the protected build package", () => {

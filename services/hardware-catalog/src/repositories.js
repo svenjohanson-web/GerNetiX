@@ -40,7 +40,8 @@ class InMemoryHardwareCatalogRepository {
 class SqliteBackedHardwareCatalogRepository extends InMemoryHardwareCatalogRepository {
   constructor(store) {
     const loaded = store.load();
-    const seed = mergeSeed(defaultCatalogSeed(), loaded);
+    const catalogSeed = defaultCatalogSeed();
+    const seed = mergeSeed(catalogSeed, migrateLoadedCatalog(catalogSeed, loaded));
     super(seed);
     this.store = store;
     this.store.ensureSchema?.(hardwareCatalogSchema());
@@ -104,6 +105,24 @@ function mergeSeed(seed, loaded) {
     capabilities: mergeById(seed.capabilities, loaded.capabilities, "capability_id"),
     hardwareItems: mergeById(seed.hardwareItems, loaded.hardwareItems, "hardware_item_id"),
   };
+}
+
+function migrateLoadedCatalog(seed, loaded = {}) {
+  const migrated = clone(loaded) || {};
+  const itemId = "hardware.processor_board.esp32_s3_es3c28p";
+  const seededBoard = (seed.hardwareItems || []).find((item) => item.hardware_item_id === itemId);
+  const loadedBoard = (migrated.hardwareItems || []).find((item) => item.hardware_item_id === itemId);
+  if (!seededBoard || !loadedBoard) return migrated;
+
+  const loadedFeatures = loadedBoard.default_instance_configuration?.board_features;
+  const seededFeatures = seededBoard.default_instance_configuration?.board_features || {};
+  if (!loadedFeatures) return migrated;
+  for (const featureId of ["ram", "flash"]) {
+    if (!Object.prototype.hasOwnProperty.call(loadedFeatures, featureId) && seededFeatures[featureId]) {
+      loadedFeatures[featureId] = clone(seededFeatures[featureId]);
+    }
+  }
+  return migrated;
 }
 
 function mergeById(seedItems = [], loadedItems = [], idField) {

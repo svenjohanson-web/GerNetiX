@@ -8,6 +8,16 @@ Ziel: Ein ESP32 wird mit der GerNetiX-Basissoftware initial per USB geflasht und
 
 Die ESP-IDF-Basissoftware besitzt einen lokalen `POST /ota`-Endpunkt. Ein Deploy-Auftrag bindet Schema, Signing-Key-ID, Deploy-ID, Sequenz, Device-ID, HTTPS-Artefakt-URL, Image-SHA-256 und Ablaufzeit durch eine ECDSA-P-256-Signatur. Das Device akzeptiert Artefakte nur vom provisionierten Build-&-Deploy-Origin, schreibt in den inaktiven A/B-Slot und bestaetigt das neue Image erst nach erfolgreicher Runtime-Diagnose. Als Transport abonniert die Basissoftware per mTLS und QoS 1 das geraetespezifische MQTT-Topic.
 
+## Speicherprofile
+
+Die Basissoftware wird nicht mehr als eine einzige Flashaufteilung behandelt. Der persistierte Device-Vertrag unterscheidet `full`, `medium` und `low`; der Build waehlt dazu ein geprueftes Layout fuer 4, 8 oder 16 MB internen Flash.
+
+- `full`: zwei OTA-Slots und Bootloader-Rollback; ein fehlgeschlagenes Image verdraengt die letzte gueltige Software nicht.
+- `medium`: grosser Factory-Anwendungsslot plus kleiner Wiederherstellungs-Bootstrap im `ota_0`-Slot; das Layout und die Hauptfirmwarevariante sind vorbereitet. Fuer ein Update wechselt die Hauptanwendung gezielt in den Bootstrap, der den Factory-Slot neu schreibt und bei einem Abbruch erneut versucht. Der eigenstaendige Bootstrap-Downloader muss vor Freigabe dieses Profils gebaut und auf echter Hardware gegen Stromausfall getestet werden.
+- `low`: ein grosser Factory-App-Slot ohne `otadata`; MQTT-/HTTPS-OTA wird in der Firmwarevariante nicht gestartet, Updates erfolgen per USB.
+
+Ein Wechsel zwischen diesen Klassen aendert die Partitionstabelle und benoetigt deshalb einmalig USB. Danach kann die neue Klasse wieder gemaess ihren eigenen Updatefaehigkeiten verwendet werden.
+
 ## Ablauf
 
 1. Board per USB erkennen.

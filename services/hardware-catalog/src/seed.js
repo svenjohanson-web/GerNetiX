@@ -188,6 +188,20 @@ function defaultCatalogSeed() {
               driver: "arduino_wifi",
               verification_status: "user_tested",
             },
+            ram: {
+              enabled: true,
+              hardware: "interner_sram",
+              connection: "im_modul_integriert",
+              value: "512_kb",
+              verification_status: "user_confirmed",
+            },
+            flash: {
+              enabled: true,
+              hardware: "qspi_flash",
+              connection: "extern_auf_dem_board",
+              value: "16_mb",
+              verification_status: "user_confirmed",
+            },
           },
           battery_measurement: {
             enabled: true,
@@ -315,7 +329,7 @@ function boardFeatureOptions() {
       hardware_options: options(["Interner SRAM", "QSPI-PSRAM", "OPI-PSRAM"]),
       driver_options: options(["ESP-IDF Heap/PSRAM", "Arduino PSRAM"]),
       connection_options: options(["Im Modul integriert", "Extern auf dem Board"]),
-      value_options: options(["2 MB", "4 MB", "8 MB", "16 MB"]),
+      value_options: options(["512 KB", "2 MB", "4 MB", "8 MB", "16 MB"]),
       datasheet_hint: "Die PSRAM-Größe folgt der vollständigen Modul-/Boardbezeichnung, nicht nur dem Prozessortyp.",
     }),
     boardFeature("flash", "Flash", "capability.flash_storage", {

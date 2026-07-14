@@ -2,6 +2,8 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { createDefaultHardwareCatalog } = require("../src");
+const { SqliteBackedHardwareCatalogRepository } = require("../src/repositories");
+const { defaultCatalogSeed } = require("../src/seed");
 
 test("lists catalog capabilities and processor boards from catalog", () => {
   const service = createDefaultHardwareCatalog({ persistenceBackend: "memory" });
@@ -22,6 +24,10 @@ test("lists catalog capabilities and processor boards from catalog", () => {
   assert.equal(es3c28p.default_instance_configuration.board_features.touch.driver, "ft6336g");
   assert.equal(es3c28p.default_instance_configuration.board_features.touch.pins.sda, 16);
   assert.equal(es3c28p.default_instance_configuration.board_features.speaker.pins.data_out, 8);
+  assert.equal(es3c28p.default_instance_configuration.board_features.ram.hardware, "interner_sram");
+  assert.equal(es3c28p.default_instance_configuration.board_features.ram.value, "512_kb");
+  assert.equal(es3c28p.default_instance_configuration.board_features.flash.hardware, "qspi_flash");
+  assert.equal(es3c28p.default_instance_configuration.board_features.flash.value, "16_mb");
   assert.equal(es3c28p.default_instance_configuration.battery_measurement.pin, 9);
   assert.deepEqual(es3c28p.pin_profile.diagnostic_output_allowlist, []);
   assert.equal(service.listProcessorBoards().some((item) => item.hardware_item_id === "hardware.processor_board.wemos_d1_mini_esp12f"), true);
@@ -52,7 +58,27 @@ test("lists catalog capabilities and processor boards from catalog", () => {
   assert.equal(display.connection_options.some((item) => item.title === "SPI"), true);
   assert.equal(boardFeatures.find((item) => item.feature_id === "touch").driver_options.some((item) => item.title === "FT6336G"), true);
   assert.equal(memory.value_options.some((item) => item.title === "8 MB"), true);
+  assert.equal(memory.value_options.some((item) => item.title === "512 KB"), true);
   assert.match(display.datasheet_hint, /Datenblatt/);
+});
+
+test("sqlite catalog migration enriches an existing ES3C28P board with known memory", () => {
+  const loaded = defaultCatalogSeed();
+  const board = loaded.hardwareItems.find((item) => item.hardware_item_id === "hardware.processor_board.esp32_s3_es3c28p");
+  delete board.default_instance_configuration.board_features.ram;
+  board.default_instance_configuration.board_features.flash.value = "custom_confirmed_value";
+  let persisted;
+  const repository = new SqliteBackedHardwareCatalogRepository({
+    load: () => loaded,
+    ensureSchema: () => {},
+    save: (state) => { persisted = state; },
+  });
+
+  const migrated = repository.findHardwareItem(board.hardware_item_id);
+  assert.equal(migrated.default_instance_configuration.board_features.ram.value, "512_kb");
+  assert.equal(migrated.default_instance_configuration.board_features.flash.value, "custom_confirmed_value");
+  assert.equal(persisted.hardwareItems.find((item) => item.hardware_item_id === board.hardware_item_id)
+    .default_instance_configuration.board_features.ram.hardware, "interner_sram");
 });
 
 test("admin can add catalog hardware item with known capabilities", () => {

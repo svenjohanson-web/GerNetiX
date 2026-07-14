@@ -8,8 +8,14 @@ constexpr uint32_t STATUS_INTERVAL_MS = 1000;
 
 constexpr char GERNETIX_RUNTIME_NAME[] = "basissoftware/esp32";
 constexpr char GERNETIX_FIRMWARE_BASIS[] = "gernetix-runtime-basissoftware";
-constexpr char GERNETIX_BASISSOFTWARE_VERSION[] = "0.2.0";
-constexpr char GERNETIX_BASISSOFTWARE_VARIANT[] = "comfort";
+constexpr char GERNETIX_BASISSOFTWARE_VERSION[] = "0.3.0";
+#if defined(GERNETIX_BASISSOFTWARE_PROFILE_MEDIUM)
+constexpr char GERNETIX_BASISSOFTWARE_VARIANT[] = "medium";
+#elif defined(GERNETIX_BASISSOFTWARE_PROFILE_LOW)
+constexpr char GERNETIX_BASISSOFTWARE_VARIANT[] = "low";
+#else
+constexpr char GERNETIX_BASISSOFTWARE_VARIANT[] = "full";
+#endif
 constexpr const char *GERNETIX_RUNTIME_VERSION = GERNETIX_BASISSOFTWARE_VERSION;
 
 constexpr char WIFI_SETUP_AP_SSID[] = "GerNetiX-Setup";

@@ -48,7 +48,7 @@ test("creates project with default source and lists it by user", () => {
   assert.equal(service.listProjects({ user_id: "user-1" }).length, 1);
 });
 
-test("comfort basis locks its runtime features while preserving project web extensions", () => {
+test("legacy comfort basis is normalized to full and preserves project web extensions", () => {
   const service = createMemoryProjectServer();
   const project = service.createProject({
     user_id: "user-1",
@@ -63,6 +63,7 @@ test("comfort basis locks its runtime features while preserving project web exte
     },
   });
 
+  assert.equal(project.build_config.firmware_basis_variant, "full");
   assert.deepEqual(project.build_config.component_features.immutable, ["wifi", "mqtt", "ota", "http", "webserver"]);
   assert.equal(project.build_config.component_features.enabled.includes("mqtt"), true);
   assert.equal(project.build_config.component_features.enabled.includes("measurement_chart"), true);
@@ -160,7 +161,7 @@ test("composes ESP32 basissoftware with only the project-owned user main", () =>
   const job = service.createBuildJob(project.project_id);
   const buildPackage = service.createBuildPackage(job.build_job_id);
 
-  assert.equal(project.build_config.firmware_basis_variant, "comfort");
+  assert.equal(project.build_config.firmware_basis_variant, "full");
   assert.equal(buildPackage.platformio_ini, "framework = espidf\n");
   assert.equal(buildPackage.files.some((file) => file.path === "src/main.cpp"), true);
   assert.equal(buildPackage.files.find((file) => file.path === "src/user/user_app.cpp").content, "extern \"C\" void userMain() {}\n");

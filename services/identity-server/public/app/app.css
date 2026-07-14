@@ -2991,9 +2991,32 @@ textarea:read-only {
 .provisioning-found-board .eyebrow, .provisioning-found-board .helper-text { margin: 0; }
 .provisioning-board-features { display: grid; gap: 12px; border: 1px solid var(--line); border-radius: 8px; padding: 14px; background: var(--panel-soft); }
 .provisioning-board-features .section-head, .provisioning-board-features .helper-text { margin: 0; }
-.provisioning-known-board { display: grid; grid-template-columns: minmax(260px, 520px) 1fr; align-items: end; gap: 12px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); }
-.provisioning-known-board label { display: grid; gap: 5px; color: var(--muted); font-size: 0.82rem; font-weight: 800; }
-.provisioning-known-board select { width: 100%; }
+.provisioning-board-choices { display: grid; grid-template-columns: minmax(0, 1.45fr) minmax(260px, .55fr); gap: 12px; }
+.provisioning-board-choice { display: grid; align-content: start; gap: 9px; min-width: 0; padding: 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.provisioning-board-choice.is-selected { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 20%, transparent); background: var(--soft); }
+.provisioning-board-choice .eyebrow, .provisioning-board-choice h4, .provisioning-board-choice .helper-text { margin: 0; }
+.provisioning-board-choice label { display: grid; gap: 5px; color: var(--muted); font-size: 0.82rem; font-weight: 800; }
+.provisioning-board-choice select { width: 100%; }
+.provisioning-board-choice button { justify-self: start; margin-top: auto; }
+.provisioning-board-configuration-details { display: grid; gap: 12px; padding-top: 4px; }
+.provisioning-board-configuration-details .section-head { padding-top: 12px; border-top: 1px solid var(--line); }
+.provisioning-update-profile { display: grid; gap: 12px; }
+.provisioning-update-profile-head { display: grid; gap: 5px; }
+.provisioning-update-profile-head h4, .provisioning-update-profile-head p { margin: 0; }
+.update-profile-options { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.update-profile-option { position: relative; display: block; cursor: pointer; }
+.update-profile-option input { position: absolute; inset: 14px auto auto 14px; }
+.update-profile-option span { display: grid; align-content: start; gap: 6px; min-height: 152px; padding: 14px 14px 14px 42px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); }
+.update-profile-option input:checked + span { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 22%, transparent); background: var(--soft); }
+.update-profile-option strong { font-size: .94rem; }
+.update-profile-option small { color: var(--muted); line-height: 1.45; }
+.update-profile-badge { width: max-content; border-radius: 999px; padding: 2px 7px; background: var(--soft); color: var(--accent); font-size: .7rem; font-weight: 900; letter-spacing: .08em; }
+.update-profile-recommendation { margin: 0; border-left: 3px solid var(--accent); padding: 9px 11px; background: var(--panel); color: var(--muted); line-height: 1.45; }
+.update-profile-examples { width: 100%; border-collapse: collapse; font-size: .82rem; }
+.update-profile-examples th, .update-profile-examples td { padding: 9px; border: 1px solid var(--line); text-align: left; vertical-align: top; line-height: 1.4; }
+.update-profile-examples th { background: var(--panel); }
+.update-profile-examples tr.is-current td { background: color-mix(in srgb, var(--accent) 9%, transparent); }
+.update-profile-change-note { margin: 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 7px; background: var(--panel); color: var(--muted); line-height: 1.45; }
 .board-feature-checklist { display: grid; gap: 8px; }
 .board-feature-row { border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--panel); }
 .board-feature-toggle { display: flex; align-items: center; gap: 9px; font-weight: 800; }
@@ -3003,8 +3026,9 @@ textarea:read-only {
 .board-feature-fields select { width: 100%; min-width: 0; }
 .board-feature-datasheet { margin: 8px 0 0; color: var(--muted); font-size: 0.82rem; line-height: 1.4; }
 @media (max-width: 980px) { .board-feature-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 720px) { .provisioning-known-board { grid-template-columns: 1fr; } }
-.provisioning-tools { margin-bottom: 14px; }
+@media (max-width: 900px) { .update-profile-options { grid-template-columns: 1fr; } .update-profile-option span { min-height: 0; } }
+@media (max-width: 720px) { .provisioning-board-choices { grid-template-columns: 1fr; } .update-profile-examples { display: block; overflow-x: auto; } }
+.provisioning-tools { grid-template-columns: minmax(0, 1fr); margin-bottom: 14px; }
 .recovery-intro { margin-bottom: 12px; }
 .recovery-intro .helper-text { margin-bottom: 0; }
 .device-list { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
@@ -3030,7 +3054,12 @@ textarea:read-only {
 .device-facts dd { margin: 3px 0 0; font-size: 13px; font-weight: 750; overflow-wrap: anywhere; }
 .device-technical { border-top: 1px solid var(--line); padding-top: 10px; }
 .device-technical summary { width: fit-content; color: var(--muted); cursor: pointer; font-size: 12px; font-weight: 700; }
+.device-basissoftware-profile { display: grid; grid-template-columns: minmax(220px, 1fr) auto; align-items: end; gap: 8px 10px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel-soft); }
+.device-basissoftware-profile label { display: grid; gap: 5px; color: var(--muted); font-size: .82rem; font-weight: 800; }
+.device-basissoftware-profile select { width: 100%; }
+.device-basissoftware-profile small { grid-column: 1 / -1; color: var(--muted); line-height: 1.4; }
 .device-card-actions { display: flex; justify-content: flex-end; }
+@media (max-width: 620px) { .device-basissoftware-profile { grid-template-columns: 1fr; } .device-basissoftware-profile small { grid-column: auto; } }
 .subtle-danger { padding: 7px 10px; font-size: 12px; }
 .inventory-empty { display: grid; gap: 5px; border: 1px dashed var(--line); border-radius: 8px; padding: 18px; color: var(--muted); }
 .inventory-empty strong { color: var(--text); }

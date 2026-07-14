@@ -528,6 +528,15 @@ async function routeRequest(req, res) {
   }
 
   const platformDevice = url.pathname.match(/^\/api\/platform\/devices\/([^/]+)$/);
+  if (req.method === "PUT" && platformDevice) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handlePlatformDeviceBasissoftwareProfileUpdate(req, res, session, decodeURIComponent(platformDevice[1]));
+    return;
+  }
   if (req.method === "DELETE" && platformDevice) {
     const session = readSession(req);
     if (!session) {
@@ -1317,7 +1326,18 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
       allocated_at: new Date().toISOString(),
     });
   }
-  const buildConfig = baseBuildConfig ? { ...baseBuildConfig, component_device_allocations: allocations } : null;
+  const allocatedBasissoftwareProfile = primaryInventoryDevice?.instance_configuration?.basissoftware_profile || null;
+  const allocatedFlashValue = primaryInventoryDevice?.instance_configuration?.board_features?.flash?.value || "";
+  const allocatedFlashSizeMb = Number(String(allocatedFlashValue).match(/^(\d+)_mb$/)?.[1] || 0);
+  const buildConfig = baseBuildConfig ? {
+    ...baseBuildConfig,
+    component_device_allocations: allocations,
+    ...(allocatedBasissoftwareProfile ? {
+      firmware_basis_variant: allocatedBasissoftwareProfile.class,
+      partition_profile_id: allocatedBasissoftwareProfile.partition_profile_id,
+      flash_size_mb: allocatedFlashSizeMb || undefined,
+    } : {}),
+  } : null;
   const sources = hardwareConfigurationSources(hardwareConfiguration, project.title);
   await Promise.all(sources.map((source) => projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
     method: "PUT",
@@ -2590,6 +2610,31 @@ function initialArchitecturePlantUml(title) {
     "rectangle \"Projektidee / Anforderungen\" as requirements",
     "@enduml",
   ].join("\n");
+}
+
+async function handlePlatformDeviceBasissoftwareProfileUpdate(req, res, session, accountDeviceId) {
+  try {
+    const body = await readJsonBody(req);
+    const accountId = projectServerUserId(session);
+    const result = await deviceManagementJson(
+      `/api/device-management/accounts/${encodeURIComponent(accountId)}/devices/${encodeURIComponent(accountDeviceId)}`,
+      {
+        method: "PUT",
+        body: { basissoftware_profile: body.basissoftware_profile || body.profile || body.profile_id },
+      },
+    );
+    sendJson(res, 200, {
+      device: decorateUserIdeDevice(result.account_device),
+      requires_usb_reflash: result.requires_usb_reflash,
+      message: result.message,
+    });
+  } catch (error) {
+    sendJson(res, error.status || 400, {
+      error: error.code || "basissoftware_profile_update_failed",
+      message: error.message || "Basissoftware-Profil konnte nicht gespeichert werden.",
+      details: error.payload || {},
+    });
+  }
 }
 
 function defaultHomeAutomationConfiguration() {

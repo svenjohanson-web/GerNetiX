@@ -8,9 +8,11 @@ const state = {
   processorBoards: [],
   boardFeatureCatalog: [],
   boardFeatureCatalogStatus: { state: "idle", message: "" },
+  provisioningBoardConfigurationMode: "",
   provisioningKnownBoardId: "",
   provisioningFeatureSelections: {},
   provisioningDatasheetUrl: "",
+  provisioningUpdateProfile: "",
   sensorCatalog: [],
   sensorCatalogStatus: { state: "idle", message: "" },
   builds: [],
@@ -74,7 +76,6 @@ function deviceOnboarding() {
       renderDashboard,
       renderDevices,
       renderIdeShell,
-      renderInventoryUsbPortOptions,
       escapeHtml,
       meta,
     });
@@ -241,12 +242,7 @@ document.querySelector("#deviceDiscoverySearchButton").addEventListener("click",
 document.querySelector("#selectProvisioningSerialPortButton").addEventListener("click", identifyEsp32Bootloader);
 document.querySelector("#avrBootloaderIdentifyButton").addEventListener("click", identifyAvrBootloaderExperimental);
 document.querySelector("#claimSelectedDiscoveredDevicesButton").addEventListener("click", claimSelectedDiscoveredDevices);
-document.querySelector("#deviceInventoryForm").addEventListener("submit", createInventoryDevice);
-document.querySelector("#inventoryHardwareProfile").addEventListener("change", syncInventoryCapabilities);
 document.querySelector("#inventoryBoardShortName").addEventListener("input", syncInventoryNodeNamePreview);
-document.querySelector("#inventoryUsbPort").addEventListener("change", () => {
-  setInventoryStatus("running", "USB-Port fuer spaeteres Flashen ausgewaehlt.");
-});
 window.addEventListener("popstate", renderRoute);
 document.addEventListener("click", closeMainMenu);
 
@@ -286,7 +282,6 @@ function renderAll() {
   developmentPlatform().render();
   renderIdeShell();
   renderDeviceRecovery();
-  renderDeviceInventoryForm();
   renderNetworkDiscovery();
   renderDevices();
   renderBuilds();
@@ -507,7 +502,7 @@ async function loadProcessorBoardCatalog() {
     await getJson("/api/platform/hardware/processor-boards")
       .then((boards) => {
         state.processorBoards = boards.items || [];
-        renderDeviceInventoryForm();
+        renderNetworkDiscovery();
         if (routeName() === "development-platform") developmentPlatform().render();
         if (routeName() === "development-hardware") developmentPlatform().renderHardwareConfiguration();
       })
@@ -2214,6 +2209,15 @@ function renderDevices() {
             ${meta("Node-Name", device.node_name || "nicht gesetzt")}
           </dl>
         </details>
+        <div class="device-basissoftware-profile">
+          <label>Update- und Speicherprofil
+            <select data-device-profile-select="${escapeHtml(device.account_device_id)}">
+              ${["full", "medium", "low"].map((profile) => `<option value="${profile}" ${deviceBasissoftwareProfileClass(device) === profile ? "selected" : ""}>${escapeHtml(deviceBasissoftwareProfileLabel(profile))}</option>`).join("")}
+            </select>
+          </label>
+          <button class="secondary" type="button" data-save-device-profile="${escapeHtml(device.account_device_id)}">Profil ändern</button>
+          <small>Jederzeit änderbar. Bei einem anderen Partitionslayout ist einmalig ein USB-Flash erforderlich.</small>
+        </div>
         <div class="device-card-actions">
           <button class="danger subtle-danger" type="button" data-unpair-device="${escapeHtml(device.account_device_id)}">Zuordnung aufheben</button>
         </div>
@@ -2223,6 +2227,39 @@ function renderDevices() {
   document.querySelectorAll("[data-unpair-device]").forEach((button) => {
     button.addEventListener("click", () => unpairInventoryDevice(button.dataset.unpairDevice));
   });
+  document.querySelectorAll("[data-save-device-profile]").forEach((button) => {
+    button.addEventListener("click", () => saveDeviceBasissoftwareProfile(button.dataset.saveDeviceProfile));
+  });
+}
+
+function deviceBasissoftwareProfileClass(device) {
+  return device.instance_configuration?.basissoftware_profile?.class || "full";
+}
+
+function deviceBasissoftwareProfileLabel(profile) {
+  return ({
+    full: "FULL – Maximale Ausfallsicherheit",
+    medium: "MEDIUM – Speicheroptimiert",
+    low: "LOW – Minimalkonfiguration",
+  })[profile] || profile;
+}
+
+async function saveDeviceBasissoftwareProfile(accountDeviceId) {
+  const device = state.devices.find((item) => item.account_device_id === accountDeviceId);
+  const select = document.querySelector(`[data-device-profile-select="${CSS.escape(accountDeviceId)}"]`);
+  if (!device || !select) return;
+  setInventoryStatus("running", `Profil für ${device.display_name} wird gespeichert...`);
+  try {
+    const result = await putJson(`/api/platform/devices/${encodeURIComponent(accountDeviceId)}`, {
+      basissoftware_profile: select.value,
+    });
+    state.devices = state.devices.map((item) => item.account_device_id === accountDeviceId ? result.device : item);
+    renderDevices();
+    renderIdeShell();
+    setInventoryStatus(result.requires_usb_reflash ? "running" : "ok", result.message);
+  } catch (error) {
+    setInventoryStatus("error", error.message);
+  }
 }
 
 function deviceConnectivityLabel(status) {
@@ -2242,27 +2279,18 @@ function deviceAuthenticityLabel(status) {
 }
 
 function deviceOtaLabel(status) {
-  return ({ ready: "Bereit", updating: "Update läuft", blocked: "Nicht verfügbar", unknown: "Noch nicht geprüft" })[status] || "Noch nicht geprüft";
-}
-
-function renderDeviceInventoryForm() {
-  return deviceOnboarding().renderDeviceInventoryForm();
-}
-
-function syncInventoryCapabilities() {
-  return deviceOnboarding().syncInventoryCapabilities();
+  return ({
+    ready: "Bereit",
+    updating: "Update läuft",
+    blocked: "Nicht verfügbar",
+    unsupported: "Nur USB",
+    profile_change_pending: "Profilwechsel per USB erforderlich",
+    unknown: "Noch nicht geprüft",
+  })[status] || "Noch nicht geprüft";
 }
 
 function syncInventoryNodeNamePreview() {
   return deviceOnboarding().syncInventoryNodeNamePreview();
-}
-
-function selectedInventoryHardwareFamily() {
-  return deviceOnboarding().selectedInventoryHardwareFamily();
-}
-
-async function createInventoryDevice(event) {
-  return deviceOnboarding().createInventoryDevice(event);
 }
 
 async function unpairInventoryDevice(accountDeviceId) {
@@ -2398,23 +2426,6 @@ function renderUsbPortOptions() {
     ? "Nur fuer USB-Flash: Port automatisch ermitteln oder einen erkannten Port auswaehlen."
     : "Nur fuer USB-Flash: Momentan wurde kein USB-Serial-Port erkannt.";
   if (current && Array.from(select.options).some((option) => option.value === current)) select.value = current;
-  renderInventoryUsbPortOptions();
-}
-
-function renderInventoryUsbPortOptions() {
-  const select = document.querySelector("#inventoryUsbPort");
-  if (!select) return;
-  const current = select.value;
-  const detected = state.usbPorts.map((port) => `
-    <option value="${escapeHtml(port.port)}">${escapeHtml(port.port)} - ${escapeHtml(port.name || port.manufacturer || "USB Serial")}</option>
-  `).join("");
-  select.innerHTML = `<option value="">USB-Port waehlen</option>${detected}`;
-  if (current && Array.from(select.options).some((option) => option.value === current)) {
-    select.value = current;
-  } else {
-    const matched = bestUsbPortForHardwareType(selectedInventoryHardwareFamily());
-    if (matched) select.value = matched.port;
-  }
 }
 
 function selectedUsbPort() {

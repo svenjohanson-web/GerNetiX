@@ -3,6 +3,7 @@ const path = require("node:path");
 
 const DEFAULT_BASIS_ROOT = path.resolve(__dirname, "../../../..", "basissoftware", "esp32");
 const INCLUDED_ROOT_FILES = new Set(["CMakeLists.txt", "dependencies.lock", "platformio.ini", "sdkconfig.esp32dev", "partitions_ota_4mb.csv"]);
+const PROFILE_PARTITION_FILE = /^partitions_(full|medium|low)_(4|8|16)mb\.csv$/;
 
 function loadEsp32BasissoftwareFiles(root = process.env.GERNETIX_ESP32_BASISSOFTWARE_ROOT || DEFAULT_BASIS_ROOT) {
   if (!fs.existsSync(root)) {
@@ -25,6 +26,7 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
     throw new Error(`Projektquelle fuer User-Main fehlt: ${userSourcePath}`);
   }
   const byPath = new Map(basisFiles.map((file) => [file.path, { ...file }]));
+  applyBasissoftwareProfile(byPath, buildConfig);
   byPath.set(userTargetPath, {
     path: userTargetPath,
     content: userSource.content,
@@ -63,7 +65,53 @@ function includeFile(root, filePath) {
       && !relative.includes("/.git")
       && !/\.(html|xml|toml|yml)$/i.test(relative.replace(/idf_component\.yml$/i, ""));
   }
-  return INCLUDED_ROOT_FILES.has(relative) || relative.startsWith("src/") || relative.startsWith("include/");
+  return INCLUDED_ROOT_FILES.has(relative) || PROFILE_PARTITION_FILE.test(relative) || relative.startsWith("src/") || relative.startsWith("include/");
+}
+
+function applyBasissoftwareProfile(byPath, buildConfig = {}) {
+  if (!byPath.has("platformio.ini")) return;
+  if (!/^board_build\.partitions\s*=/m.test(byPath.get("platformio.ini").content)) return;
+  const profile = normalizeProfile(buildConfig.firmware_basis_variant || buildConfig.basissoftware_profile?.class);
+  const flashSizeMb = normalizeFlashSize(buildConfig.flash_size_mb);
+  const requestedPartitionFile = `partitions_${profile}_${flashSizeMb}mb.csv`;
+  const partitionFile = byPath.has(requestedPartitionFile)
+    ? requestedPartitionFile
+    : profile === "full" && flashSizeMb === 4 && byPath.has("partitions_ota_4mb.csv")
+      ? "partitions_ota_4mb.csv"
+      : requestedPartitionFile;
+  if (!byPath.has(partitionFile)) {
+    throw new Error(`Partitionslayout fuer ${profile.toUpperCase()} mit ${flashSizeMb} MB fehlt: ${partitionFile}`);
+  }
+
+  const platformioFile = byPath.get("platformio.ini");
+  if (platformioFile) {
+    platformioFile.content = platformioFile.content
+      .replace(/^board_build\.flash_size\s*=.*$/m, `board_build.flash_size = ${flashSizeMb}MB`)
+      .replace(/^board_build\.partitions\s*=.*$/m, `board_build.partitions = ${partitionFile}`)
+      .replace(/^build_flags\s*=.*$/m, `build_flags = -D GERNETIX_BASISSOFTWARE_PROFILE_${profile.toUpperCase()}=1`);
+  }
+
+  const sdkconfigFile = byPath.get("sdkconfig.esp32dev");
+  if (sdkconfigFile) {
+    sdkconfigFile.content = [4, 8, 16].reduce((source, size) => source
+      .replace(new RegExp(`^(?:# )?CONFIG_ESPTOOLPY_FLASHSIZE_${size}MB(?:=y| is not set)$`, "m"),
+        size === flashSizeMb ? `CONFIG_ESPTOOLPY_FLASHSIZE_${size}MB=y` : `# CONFIG_ESPTOOLPY_FLASHSIZE_${size}MB is not set`), sdkconfigFile.content)
+      .replace(/^CONFIG_ESPTOOLPY_FLASHSIZE="[^"]+"$/m, `CONFIG_ESPTOOLPY_FLASHSIZE="${flashSizeMb}MB"`)
+      .replace(/^CONFIG_PARTITION_TABLE_FILENAME="[^"]+"$/m, `CONFIG_PARTITION_TABLE_FILENAME="${partitionFile}"`)
+      .replace(/^CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="[^"]+"$/m, `CONFIG_PARTITION_TABLE_CUSTOM_FILENAME="${partitionFile}"`);
+  }
+}
+
+function normalizeProfile(value) {
+  const normalized = String(value || "full").trim().toLowerCase();
+  if (normalized === "comfort") return "full";
+  if (["full", "medium", "low"].includes(normalized)) return normalized;
+  throw new Error(`Unbekanntes Basissoftwareprofil: ${value}`);
+}
+
+function normalizeFlashSize(value) {
+  const parsed = Number.parseInt(value, 10);
+  return [4, 8, 16].includes(parsed) ? parsed : 4;
 }
 
 function relativePath(root, filePath) {

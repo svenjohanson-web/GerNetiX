@@ -309,21 +309,41 @@
               <div class="section-head compact">
                 <div>
                   <p class="eyebrow">Konkretes Board</p>
-                  <h3 id="provisioningBoardFeaturesTitle">Boardausstattung prüfen</h3>
+                  <h3 id="provisioningBoardFeaturesTitle">Boardmodell festlegen</h3>
                 </div>
               </div>
-              <p class="helper-text">Der Bootloader erkennt den Prozessor, aber nicht zuverlässig die zusätzlich verbaute Hardware. Bestätige die vorhandenen Eigenschaften anhand des Board-Datenblatts.</p>
-              <div id="provisioningKnownBoardSelection" class="provisioning-known-board">
-                <label>Bekanntes Board
-                  <select id="provisioningKnownBoard"></select>
-                </label>
-                <p id="provisioningKnownBoardHint" class="helper-text"></p>
+              <p class="helper-text">Wir haben vorgefertigte Boardprofile. Prüfe zuerst, ob dein Board dabei ist. Falls nicht, kannst du seine Ausstattung selbst konfigurieren.</p>
+              <div class="provisioning-board-choices">
+                <article id="provisioningKnownBoardSelection" class="provisioning-board-choice">
+                  <p class="eyebrow">Empfohlen</p>
+                  <h4>Vorgefertigtes Board auswählen</h4>
+                  <p class="helper-text">Bekannte Speichergrößen, Anschlüsse und verbaute Hardware werden automatisch vorbelegt.</p>
+                  <label>Dein Boardmodell
+                    <select id="provisioningKnownBoard"></select>
+                  </label>
+                  <p id="provisioningKnownBoardHint" class="helper-text"></p>
+                </article>
+                <article id="provisioningManualBoardChoice" class="provisioning-board-choice">
+                  <p class="eyebrow">Board nicht dabei?</p>
+                  <h4>Board selbst konfigurieren</h4>
+                  <p class="helper-text">Lege die vorhandene Ausstattung anhand des Datenblatts per Hand fest.</p>
+                  <button id="provisioningManualBoardButton" class="secondary" type="button">Manuelle Konfiguration öffnen</button>
+                </article>
               </div>
-              <div id="provisioningBoardFeatureStatus" class="flash-status hidden"></div>
-              <div id="provisioningBoardFeatureList" class="board-feature-checklist"></div>
-              <label class="inventory-type-label">Datenblatt oder Produktseite
-                <input id="provisioningDatasheetUrl" type="url" placeholder="https://..." />
-              </label>
+              <div id="provisioningBoardConfigurationDetails" class="provisioning-board-configuration-details hidden">
+                <div class="section-head compact">
+                  <div>
+                    <p class="eyebrow">Ausstattung</p>
+                    <h4 id="provisioningBoardConfigurationTitle">Boardausstattung prüfen</h4>
+                  </div>
+                </div>
+                <div id="provisioningBoardFeatureStatus" class="flash-status hidden"></div>
+                <section id="provisioningUpdateProfileChooser" class="provisioning-update-profile" aria-labelledby="provisioningUpdateProfileTitle"></section>
+                <div id="provisioningBoardFeatureList" class="board-feature-checklist"></div>
+                <label class="inventory-type-label">Datenblatt oder Produktseite
+                  <input id="provisioningDatasheetUrl" type="url" placeholder="https://..." />
+                </label>
+              </div>
             </section>
             <section id="provisioningFoundBoardDetails" class="provisioning-found-board hidden">
               <p class="eyebrow">Board gefunden</p>
@@ -338,26 +358,6 @@
               <button id="claimSelectedDiscoveredDevicesButton" class="primary" type="button" disabled>Provisionieren und mit Account verbinden</button>
             </div>
           </section>
-          <form id="deviceInventoryForm" class="panel form-grid">
-            <p class="eyebrow">Manueller Fallback</p>
-            <h3>Board registrieren und pairen</h3>
-            <p class="helper-text">Nur verwenden, wenn die automatische Erkennung nicht möglich ist.</p>
-            <label>Name<input id="inventoryDisplayName" type="text" value="Mein Board" /></label>
-            <label>Seriennummer<input id="inventorySerialNumber" type="text" value="" placeholder="automatisch, falls leer" /></label>
-            <label>Board<select id="inventoryHardwareProfile"></select></label>
-            <label id="inventoryUsbPortLabel">USB-Port<select id="inventoryUsbPort"></select></label>
-            <label>Capabilities<input id="inventoryCapabilities" type="text" value="" /></label>
-            <label>Status
-              <select id="inventoryConnectivityStatus">
-                <option value="unknown">unbekannt</option>
-                <option value="usb_connected">USB verbunden</option>
-                <option value="online">online</option>
-                <option value="offline">offline</option>
-              </select>
-            </label>
-            <button type="submit">Registrieren und pairen</button>
-            <div id="inventoryStatus" class="flash-status hidden"></div>
-          </form>
         </section>
       </section>
 
