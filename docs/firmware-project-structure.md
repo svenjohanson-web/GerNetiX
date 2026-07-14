@@ -202,9 +202,9 @@ Die Variante wird explizit im Projektmodell oder BuildPackage gewaehlt. Sie darf
 
 Ein Build darf immer nur fuer ein Projektprofil laufen. Der Build-Prozess kopiert oder generiert daraus die freigegebenen Konfigurationsdateien in den temporaeren Build-Kontext.
 
-Fuer accountgebundene ESP32-Entwicklungsprojekte gilt im ersten IDE-Durchstich:
+Fuer accountgebundene IoT-Device-Entwicklungsprojekte gilt im ersten IDE-Durchstich:
 
-- Jede Architekturkomponente besitzt ihren eigenen Source-Bereich. Fuer den ESP32 speichert der Project Server als sichtbare und editierbare Projektquelle nur `Komponenten/ESP32/src/user_main.cpp`; ein projektweiter `src/`-Ordner ist nicht zulaessig.
+- Jede Architekturkomponente besitzt ihren eigenen Source-Bereich. Fuer die logische Komponente `IoT-Device 1` speichert der Project Server als sichtbare und editierbare Projektquelle nur `Komponenten/IoT-Device 1/src/user_main.cpp`; ein projektweiter `src/`-Ordner ist nicht zulaessig. Ein konkreter ESP32 ist eine spaetere Boardrealisierung und niemals der logische Komponentenname.
 - Diese User-Main gehoert fachlich zum Account-Projekt und wird nicht in `basissoftware/esp32` persistiert.
 - Beim Erzeugen des vollstaendigen BuildPackage legt der Project Server die User-Main auf `src/user/user_app.cpp` der versionierten ESP32-Basissoftware.
 - `src/main.cpp`, Runtime, Connectivity, Schutzmechanismen und spaetere OTA-Implementierung kommen ausschliesslich aus der Basissoftware-Version des BuildPackage.

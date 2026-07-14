@@ -7,6 +7,7 @@ const test = require("node:test");
 
 const { createConfig, createDefaultProjectServer, FileBackedProjectRepository, InMemoryProjectRepository, SqliteBackedProjectRepository } = require("../src");
 const { ProjectService } = require("../src/services/project-service");
+const { SqliteStateStore } = require("../../shared");
 
 function createMemoryProjectServer() {
   return createDefaultProjectServer({ persistenceBackend: "memory" });
@@ -89,7 +90,7 @@ test("searches project sources for a known task instead of returning the whole p
     content: "@startuml\nnode ESP32\n@enduml\n",
   });
   service.upsertSource(project.project_id, {
-    path: "Komponenten/ESP32/Sensoren/temperature.cpp",
+    path: "Komponenten/IoT-Device 1/Sensoren/temperature.cpp",
     content: "void readTemperatureSensor() {}\n",
   });
   service.upsertSource(project.project_id, {
@@ -105,13 +106,13 @@ test("searches project sources for a known task instead of returning the whole p
 
   assert.deepEqual(matches.map((source) => source.path), [
     "Architektur/system.puml",
-    "Komponenten/ESP32/Sensoren/temperature.cpp",
+    "Komponenten/IoT-Device 1/Sensoren/temperature.cpp",
   ]);
   assert.equal(matches[0].content.includes("@startuml"), true);
 
   const architectureOnly = service.searchSources(project.project_id, {
     query: "neues Prozessorboard ESP32",
-    current_path: "Komponenten/ESP32/Sensoren/temperature.cpp",
+    current_path: "Komponenten/IoT-Device 1/Sensoren/temperature.cpp",
     source_kind: "architecture",
     limit: 3,
   });
@@ -151,10 +152,10 @@ test("composes ESP32 basissoftware with only the project-owned user main", () =>
       framework: "espidf",
       firmware_basis_id: "gernetix-runtime-basissoftware",
       firmware_basis_version: "test",
-      user_source_path: "Komponenten/ESP32/src/user_main.cpp",
+      user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp",
       user_target_path: "src/user/user_app.cpp",
     },
-    sources: [{ path: "Komponenten/ESP32/src/user_main.cpp", content: "extern \"C\" void userMain() {}\n" }],
+    sources: [{ path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: "extern \"C\" void userMain() {}\n" }],
   });
   const job = service.createBuildJob(project.project_id);
   const buildPackage = service.createBuildPackage(job.build_job_id);
@@ -163,7 +164,7 @@ test("composes ESP32 basissoftware with only the project-owned user main", () =>
   assert.equal(buildPackage.platformio_ini, "framework = espidf\n");
   assert.equal(buildPackage.files.some((file) => file.path === "src/main.cpp"), true);
   assert.equal(buildPackage.files.find((file) => file.path === "src/user/user_app.cpp").content, "extern \"C\" void userMain() {}\n");
-  assert.equal(buildPackage.files.some((file) => file.path === "Komponenten/ESP32/src/user_main.cpp"), false);
+  assert.equal(buildPackage.files.some((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp"), false);
 });
 
 test("stores project view manifest and includes it in build package", () => {
@@ -352,6 +353,48 @@ test("sqlite repository persists projects, sources and build jobs across reload"
     "ESP32 Lernprojekt",
   );
   db.close();
+});
+
+test("sqlite repository migrates the legacy ESP32 component path to IoT-Device 1", () => {
+  const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-project-path-migration-")), "state.sqlite");
+  const store = new SqliteStateStore(dbPath, "project-server", {
+    defaultState: { projects: [], sources: [], buildJobs: [], artifacts: [], feedback: [], consents: [] },
+    collectionMap: { projects: "projects", sources: "sources", buildJobs: "build_jobs", artifacts: "artifacts", feedback: "feedback", consents: "consents" },
+  });
+  store.save({
+    projects: [{
+      project_id: "legacy-project",
+      user_id: "user-1",
+      title: "IoT-Device only",
+      build_config: {
+        user_source_path: "Komponenten/ESP32/src/user_main.cpp",
+        component_device_allocations: [{ component_path: "Komponenten/ESP32", device_id: "device-1" }],
+      },
+      view_manifest: { primary_source_path: "Komponenten/ESP32/src/user_main.cpp" },
+    }],
+    sources: [
+      { project_id: "legacy-project", path: "Komponenten/ESP32/src/user_main.cpp", content: "void setup() {}" },
+      { project_id: "legacy-project", path: "Architektur/statische-architektur/architektur.puml", content: '@startuml\nrectangle "IoT Device / ESP32" as device\n@enduml' },
+    ],
+    buildJobs: [], artifacts: [], feedback: [], consents: [],
+  });
+  store.close();
+
+  const repository = SqliteBackedProjectRepository.create(dbPath);
+  const project = repository.findProject("legacy-project");
+  assert.equal(project.build_config.user_source_path, "Komponenten/IoT-Device 1/src/user_main.cpp");
+  assert.equal(project.build_config.component_device_allocations[0].component_path, "Komponenten/IoT-Device 1");
+  assert.equal(project.view_manifest.primary_source_path, "Komponenten/IoT-Device 1/src/user_main.cpp");
+  assert.deepEqual(repository.listSources("legacy-project").map((source) => source.path), [
+    "Architektur/statische-architektur/architektur.puml",
+    "Komponenten/IoT-Device 1/src/user_main.cpp",
+  ]);
+  assert.match(
+    repository.findSource("legacy-project", "Architektur/statische-architektur/architektur.puml").content,
+    /rectangle "IoT-Device 1" as device/,
+  );
+  assert.equal(repository.store.schemaVersion("project-server-content"), 1);
+  repository.store.close();
 });
 
 function collectionCount(db, serviceKey, collectionName) {

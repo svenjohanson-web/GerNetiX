@@ -22,7 +22,6 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
         relation("sensors", "device", "Messwerte"),
       ],
     },
-    realization: esp32Realization(),
   }),
   esp32_datalogger_local_web: templateModel({
     id: "esp32_datalogger_local_web",
@@ -85,24 +84,6 @@ function element(id, label, kind) {
 
 function relation(source, target, label = "") {
   return Object.freeze({ source, target, label });
-}
-
-function esp32Realization() {
-  return Object.freeze({
-    hardwareProfileId: "hardware.processor_board.generic_esp_wroom32",
-    buildConfig: Object.freeze({
-      environment: "esp32dev",
-      platform: "espressif32",
-      board: "esp32dev",
-      framework: "espidf",
-      libraries: [],
-      firmware_basis_id: "gernetix-runtime-basissoftware",
-      firmware_basis_version: "workspace",
-      firmware_basis_variant: "comfort",
-      user_source_path: "Komponenten/ESP32/src/user_main.cpp",
-      user_target_path: "src/user/user_app.cpp",
-    }),
-  });
 }
 
 module.exports = { DEVELOPMENT_PROJECT_TEMPLATE_MODELS };

@@ -765,7 +765,7 @@ const DevelopmentPlatform = (() => {
     }
 
     function developmentComponentPath(project) {
-      return String(project?.buildConfig?.user_source_path || "").match(/^(Komponenten\/[^/]+)\//)?.[1] || "Komponenten/ESP32";
+      return String(project?.buildConfig?.user_source_path || "").match(/^(Komponenten\/[^/]+)\//)?.[1] || "Komponenten/IoT-Device 1";
     }
 
     function allocatedDevelopmentDevice(project) {

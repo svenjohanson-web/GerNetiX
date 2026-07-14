@@ -653,7 +653,7 @@ async function loadIdeProject() {
   if (projectNeedsHardwareTools(project)) {
     metaItems.push(
       ["linkedDeviceId", project.linkedDeviceId || "kein Device"],
-      ["ESP32 Allocation", allocatedIdeDevice(project)?.display_name || "nicht zugeordnet"],
+      ["IoT-Device-Zuordnung", allocatedIdeDevice(project)?.display_name || "nicht zugeordnet"],
       ["Boardprofil", allocatedIdeDevice(project)?.build_target_label || "kein Boardprofil"],
       ["USB-Port", selectedUsbPort() || (state.usbPorts.length ? "automatisch ermitteln" : "kein Port erkannt")],
     );
@@ -896,8 +896,8 @@ function ideActionUnavailableReason(project, allocated) {
   if (!allocated) {
     const compatible = state.devices.filter((device) => deviceCompatibleWithProject(project, device));
     return compatible.length
-      ? "Vor Build oder Flash: Ordne dem ESP32-Projektordner zuerst ein Inventar-Device zu."
-      : "Vor Build oder Flash: Kein kompatibler ESP32 im Inventar. Fuege das Board zum Inventar hinzu und ordne es dem Projekt zu.";
+      ? "Vor Build oder Flash: Ordne der IoT-Device-Komponente zuerst ein Inventar-Device zu."
+      : "Vor Build oder Flash: Kein kompatibles Board im Inventar. Fuege das Board zum Inventar hinzu und ordne es dem Projekt zu.";
   }
   return "";
 }
@@ -1005,7 +1005,7 @@ function projectVirtualTreeEntries(project) {
   if (projectNeedsHardwareTools(project)) {
     const primaryPath = primaryComponentPath(project);
     const primaryDevice = hardwareComponents.find((component) => component.abstract_type === "iot_device" && component.component_path === primaryPath);
-    const component = primaryDevice ? `Komponenten/${componentTreeLabel(primaryDevice)}` : (primaryPath || "Komponenten/ESP32");
+    const component = primaryDevice ? `Komponenten/${componentTreeLabel(primaryDevice)}` : (primaryPath || "Komponenten/IoT-Device 1");
     entries.push(
       { path: `${component}/Konfiguration/Software/Eigenschaften`, role: "", virtualAction: "component-features" },
       { path: `${component}/Konfiguration/Software/Webserver/Konfiguration`, role: "", virtualAction: "webserver-configuration" },
@@ -1016,7 +1016,7 @@ function projectVirtualTreeEntries(project) {
     const label = componentTreeLabel(component);
     if (component.abstract_type === "iot_device") {
       entries.push({
-        path: `Komponenten/${label}/Konfiguration/Hardware/Boardeigenschaften`,
+        path: `Komponenten/${label}/Konfiguration/Hardware/Board/Boardeigenschaften`,
         role: "",
         virtualAction: "board-properties",
         componentId: component.component_id,
@@ -1141,7 +1141,7 @@ async function openBoardProperties(componentId) {
   state.activeIdeComponentId = String(componentId || "");
   const project = projectById(state.activeProjectId);
   const component = projectHardwareComponents(project).find((item) => item.component_id === state.activeIdeComponentId);
-  document.querySelector("#ideActiveSourceLabel").textContent = `Komponenten/${component?.label || "IoT-Device"}/Konfiguration/Hardware/Boardeigenschaften`;
+  document.querySelector("#ideActiveSourceLabel").textContent = `Komponenten/${component?.label || "IoT-Device"}/Konfiguration/Hardware/Board/Boardeigenschaften`;
   await loadProcessorBoardCatalog();
   renderBoardProperties(project);
   renderIdeViewMode(project);
@@ -1543,7 +1543,7 @@ async function startBuild() {
 async function startUsbFlash() {
   const project = projectById(state.activeProjectId);
   const device = allocatedIdeDevice(project);
-  if (!project || !device) return setFlashStatus("error", "Bitte zuerst den ESP32-Projektordner einem Inventar-Device zuordnen.");
+  if (!project || !device) return setFlashStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
   if (!device.usb_flash_supported) return setFlashStatus("error", "Das zugeordnete Device unterstuetzt keinen USB-Flash.");
   if (!navigator.serial) return setFlashStatus("error", "Web Serial ist nicht verfügbar. Bitte Chrome oder Edge auf Desktop verwenden.");
   setFlashStatus("running", "Echter PlatformIO-Build wird gestartet...");
@@ -1669,7 +1669,7 @@ async function loadIdeEsptoolModule() {
 async function startOtaFlash() {
   const project = projectById(state.activeProjectId);
   const device = allocatedIdeDevice(project);
-  if (!project || !device) return setFlashStatus("error", "Bitte zuerst den ESP32-Projektordner einem Inventar-Device zuordnen.");
+  if (!project || !device) return setFlashStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
   if (device.connectivity_status !== "online") return setFlashStatus("error", `Das zugeordnete Device ist nicht online (${device.connectivity_status || "unknown"}).`);
   if (device.ota_status !== "ready") return setFlashStatus("error", "Das zugeordnete Device ist nicht OTA-ready.");
   setFlashStatus("running", "Build und OTA-Flash laufen...");
@@ -1701,7 +1701,7 @@ async function startOtaFlash() {
 async function checkAllocatedDeviceConnectivity() {
   const project = projectById(state.activeProjectId);
   const device = allocatedIdeDevice(project);
-  if (!project || !device) return setFlashStatus("error", "Bitte zuerst dem ESP32-Projektordner ein Inventar-Device zuordnen.");
+  if (!project || !device) return setFlashStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
   const button = document.querySelector("#checkOtaConnectivityButton");
   button.disabled = true;
   setFlashStatus("running", `Erreichbarkeit von ${device.display_name || device.device_id} wird geprüft...`);

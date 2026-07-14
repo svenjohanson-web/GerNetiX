@@ -60,17 +60,13 @@ test("falls back to the empty project template for unknown ids", () => {
   assert.equal(developmentProjectTemplate("unknown").id, "empty");
 });
 
-test("IoT-device-only template provides a buildable ESP32 firmware scaffold", () => {
+test("IoT-device-only template remains logical until hardware realization", () => {
   const template = developmentProjectTemplate("esp32_device_only");
   const sources = templateFirmwareSources(template, "Durchstich");
 
   const buildConfig = templateBuildConfig(template);
-  assert.equal(templateHardwareProfileId(template), "hardware.processor_board.generic_esp_wroom32");
-  assert.equal(buildConfig.platform, "espressif32");
-  assert.equal(buildConfig.board, "esp32dev");
-  assert.equal(buildConfig.framework, "espidf");
-  assert.equal(buildConfig.firmware_basis_id, "gernetix-runtime-basissoftware");
-  assert.equal(sources[0].path, "Komponenten/ESP32/src/user_main.cpp");
-  assert.match(sources[0].content, /void userMain/);
+  assert.equal(templateHardwareProfileId(template), "architecture.discovery");
+  assert.equal(buildConfig, null);
+  assert.deepEqual(sources, []);
   assert.deepEqual(templateFirmwareSources(developmentProjectTemplate("empty"), "Leer"), []);
 });

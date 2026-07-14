@@ -115,7 +115,7 @@ function detectProjectComponents({ title = "", description = "", diagram = null,
     components.push({
       id,
       name,
-      folder: slugFolder(name),
+      folder: id === "iot-device-1" ? "IoT-Device 1" : slugFolder(name),
       summary,
       provided,
       required,
@@ -127,9 +127,9 @@ function detectProjectComponents({ title = "", description = "", diagram = null,
 
   if (has([/esp32/, /iot device/, /\bdevice\b/, /board/, /sensor/, /aktor/, /messung/])) {
     add(
-      "esp32",
-      "ESP32",
-      "Embedded-Komponente fuer lokale Messung, Steuerung, Status oder Device-nahe Logik.",
+      "iot-device-1",
+      "IoT-Device 1",
+      "IoT-Device-Komponente fuer lokale Messung, Steuerung, Status oder Device-nahe Logik.",
       ["Device-Status", "lokale Mess-/Steuerereignisse", "optionaler Firmware-/Runtime-Status"],
       ["Stromversorgung", "Hardware-Pins und Peripherie", "optionale Kommunikationsstrecke zu UI, MQTT oder Server"],
       ["Betriebsort: Device", "Ressourcen: begrenzter Speicher und begrenzte Rechenleistung", "Zuverlaessigkeit: lokale Logik muss auch bei Verbindungsstoerung definiert bleiben"],
@@ -276,7 +276,7 @@ function verhaltenReadme(component, kind) {
 }
 
 function isDeviceComponent(component) {
-  return component?.id === "esp32";
+  return component?.id === "iot-device-1";
 }
 
 function deviceBoardConfigReadme(component) {

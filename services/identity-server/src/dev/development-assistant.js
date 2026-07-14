@@ -942,7 +942,7 @@ function buildArchitectureDiagram(messages, options = {}) {
   );
   const title = diagramTitle(fullText);
   if (signals.minimalScope) {
-    return minimalEsp32ArchitectureDiagram(title, signals);
+    return minimalIotDeviceArchitectureDiagram(title, signals);
   }
   const actorInterface = actorInterfaceSignals(fullText);
   const showBrowser = signals.browser || (actorInterface.actor && actorInterface.webserver);
@@ -963,7 +963,7 @@ function buildArchitectureDiagram(messages, options = {}) {
     "",
   ];
 
-  if (signals.device) lines.push("rectangle \"IoT Device / ESP32\" as device");
+  if (signals.device) lines.push("rectangle \"IoT-Device 1\" as device");
   if (actorInterface.webserver) lines.push("rectangle \"Webserver\" as webserver");
   if (signals.localUi) lines.push("rectangle \"Lokale Bedienung\" as local_ui");
   if (showBrowser) lines.push("rectangle \"Browser\" as browser");
@@ -1116,8 +1116,8 @@ function architectureEditIntent(value) {
     && /\besp32\b/.test(text)) {
     return {
       operation: "keep_only_component",
-      component: "esp32",
-      label: "nur ESP32 behalten",
+      component: "iot_device",
+      label: "nur IoT-Device 1 behalten",
       detectedBlock: "device",
     };
   }
@@ -1193,11 +1193,11 @@ function removableArchitectureComponents() {
 }
 
 function applyArchitectureEdit(currentDiagram, edit) {
-  if (edit.operation === "keep_only_component" && edit.component === "esp32") {
+  if (edit.operation === "keep_only_component" && edit.component === "iot_device") {
     return {
-      ...minimalEsp32ArchitectureDiagram("Architektur-Skizze: ESP32", { confidence: 1, detectedBlocks: ["device"] }),
+      ...minimalIotDeviceArchitectureDiagram("Architektur-Skizze: IoT-Device 1", { confidence: 1, detectedBlocks: ["device"] }),
       derived_from: "local_architecture_model_operation",
-      summary: "Lokal aktualisiert: nur ESP32 behalten.",
+      summary: "Lokal aktualisiert: nur IoT-Device 1 behalten.",
       changed: true,
     };
   }
@@ -1226,8 +1226,8 @@ function applyArchitectureEdit(currentDiagram, edit) {
 function architectureEditContent(edit, diagram) {
   if (edit.operation === "keep_only_component") {
     return diagram.changed
-      ? "Ich habe die aktuelle Architektur-Skizze auf ESP32 reduziert."
-      : "Die aktuelle Architektur-Skizze war bereits auf ESP32 reduziert.";
+      ? "Ich habe die aktuelle Architektur-Skizze auf IoT-Device 1 reduziert."
+      : "Die aktuelle Architektur-Skizze war bereits auf IoT-Device 1 reduziert.";
   }
   return diagram.changed
     ? `${edit.label} wurde aus der aktuellen Architektur-Skizze entfernt.`
@@ -1418,7 +1418,7 @@ function architectureComponentAnswer(component) {
   return sections.join("\n\n");
 }
 
-function minimalEsp32ArchitectureDiagram(title, signals) {
+function minimalIotDeviceArchitectureDiagram(title, signals) {
   const lines = [
     "@startuml",
     `title ${plantUmlText(title)}`,
@@ -1430,13 +1430,13 @@ function minimalEsp32ArchitectureDiagram(title, signals) {
     "  BorderColor #8aa0bd",
     "}",
     "",
-    "rectangle \"ESP32\" as esp32",
+    "rectangle \"IoT-Device 1\" as iot_device_1",
     "@enduml",
   ];
   return {
     type: "plantuml",
     title,
-    summary: "Technische Minimalarchitektur fuer ESP32-only.",
+    summary: "Logische Minimalarchitektur mit einem IoT-Device.",
     source: lines.join("\n"),
     derived_from: "architecture_discovery_ai_response",
     generated_at: new Date().toISOString(),

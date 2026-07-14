@@ -32,7 +32,7 @@ test("project browser separates hardware files from software configuration views
   assert.match(app, /treePath: \[mapping\.treePrefix, relativePath\]\.filter\(Boolean\)\.join\("\/"\)/);
   assert.match(app, /relativePath = relativePath\.replace\(\/\^Konfiguration/);
   assert.match(app, /source\.treePath \|\| source\.path/);
-  assert.match(app, /`Komponenten\/\$\{label\}\/Konfiguration\/Hardware\/Boardeigenschaften`/);
+  assert.match(app, /`Komponenten\/\$\{label\}\/Konfiguration\/Hardware\/Board\/Boardeigenschaften`/);
   assert.match(app, /data-board-properties="\$\{escapeAttribute\(file\.componentId \|\| ""\)\}"/);
   assert.match(app, /"GPIO", "Digitale Ein- und Ausgänge", profile\.digital_pins/);
   assert.match(app, /"ADC", "Analoge Eingänge", profile\.analog_inputs/);

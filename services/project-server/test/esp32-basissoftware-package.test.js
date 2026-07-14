@@ -8,12 +8,12 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
   const files = composeEsp32BasissoftwarePackage({
     basisFiles,
     projectSources: [{
-      path: "Komponenten/ESP32/src/user_main.cpp",
+      path: "Komponenten/IoT-Device 1/src/user_main.cpp",
       content: 'extern "C" void userMain() {}\nextern "C" void userTick() {}\n',
       content_type: "text/x-c++src",
     }],
     buildConfig: {
-      user_source_path: "Komponenten/ESP32/src/user_main.cpp",
+      user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp",
       user_target_path: "src/user/user_app.cpp",
     },
   });
@@ -29,6 +29,6 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
   assert.equal(files.some((file) => file.path.startsWith("managed_components/espressif__mqtt/docs/")), false);
   assert.ok(Buffer.byteLength(JSON.stringify(files)) < 10 * 1024 * 1024, "ESP32 build package must stay below the Build Server request limit");
   assert.match(files.find((file) => file.path === "src/user/user_app.cpp").content, /void userMain/);
-  assert.equal(files.some((file) => file.path === "Komponenten/ESP32/src/user_main.cpp"), false);
+  assert.equal(files.some((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp"), false);
   assert.equal(files.some((file) => file.path.startsWith(".vscode/")), false);
 });

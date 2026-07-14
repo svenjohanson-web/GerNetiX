@@ -15,8 +15,8 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(html, /id="clearIdeTerminalButton"/);
   assert.match(html, /Flash via Web Serial/);
   assert.match(app, /function ideActionUnavailableReason/);
-  assert.match(app, /Kein kompatibler ESP32 im Inventar/);
-  assert.match(app, /Ordne dem ESP32-Projektordner zuerst ein Inventar-Device zu/);
+  assert.match(app, /Kein kompatibles Board im Inventar/);
+  assert.match(app, /Ordne der IoT-Device-Komponente zuerst ein Inventar-Device zu/);
   assert.match(app, /meldet den OTA-Status/);
   assert.match(app, /buildButton\.disabled = false/);
   assert.match(app, /usbButton\.disabled = false/);

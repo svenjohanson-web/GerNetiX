@@ -1361,7 +1361,7 @@ async function handleProjectComponentHardwareFeatures(req, res, session, project
 }
 
 function primaryProjectComponentPath(project) {
-  return String(project?.build_config?.user_source_path || "").match(/^(Komponenten\/[^/]+)\//)?.[1] || "Komponenten/ESP32";
+  return String(project?.build_config?.user_source_path || "").match(/^(Komponenten\/[^/]+)\//)?.[1] || "Komponenten/IoT-Device 1";
 }
 
 async function handlePlatformDeviceCreate(req, res, session) {
@@ -2433,7 +2433,7 @@ function developmentProjectViewManifest({ title, description = "", source = "", 
     summary: description || "Projektgebundene Architektur-Discovery mit PlantUML-Skizze.",
     template_id: String(templateId || ""),
     ...(templateId ? { template_ref: { template_id: String(templateId), model_schema_version: Number(templateModelVersion) || 1 } } : {}),
-    primary_source_path: buildable ? (buildConfig.user_source_path || "Komponenten/ESP32/src/user_main.cpp") : "docs/architecture.puml",
+    primary_source_path: buildable ? (buildConfig.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp") : "docs/architecture.puml",
     hide_source_editor: !buildable,
     mode: "architecture_discovery",
     ...(architectureDialog ? { architecture_dialog: normalizeArchitectureDialog(architectureDialog, diagram || { source: plantUmlSource }) } : {}),
@@ -2441,9 +2441,9 @@ function developmentProjectViewManifest({ title, description = "", source = "", 
       ...(buildable ? [{
         id: "firmware-source",
         type: "source_analysis",
-        title: "ESP32 User Main",
+        title: "IoT-Device 1 User Main",
         summary: "Account- und projektgebundene User-Main; die geschuetzte GerNetiX-Basissoftware wird erst im BuildPackage ergaenzt.",
-        source_path: buildConfig.user_source_path || "Komponenten/ESP32/src/user_main.cpp",
+        source_path: buildConfig.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp",
       }] : []),
       {
         id: "architecture-diagram",
@@ -2787,7 +2787,7 @@ function buildConfigForBoard(boardProfileId, existing = null) {
   const common = { ...(existing || {}), libraries: existing?.libraries || [] };
   if (/arduino_nano_r3_atmega328p/.test(boardProfileId)) return { ...common, platform: "atmelavr", framework: "arduino", board: "nanoatmega328", environment: "nanoatmega328", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
   if (/esp8266|d1_mini/.test(boardProfileId)) return { ...common, platform: "espressif8266", framework: "arduino", board: "d1_mini", environment: "d1_mini", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
-  if (/esp32|wroom32|nano_esp32/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: existing?.framework || "espidf", board: "esp32dev", environment: "esp32dev", firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: existing?.firmware_basis_version || "workspace", firmware_basis_variant: existing?.firmware_basis_variant || "comfort", user_source_path: existing?.user_source_path || "Komponenten/ESP32/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/user/user_app.cpp" };
+  if (/esp32|wroom32|nano_esp32/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: existing?.framework || "espidf", board: "esp32dev", environment: "esp32dev", firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: existing?.firmware_basis_version || "workspace", firmware_basis_variant: existing?.firmware_basis_variant || "comfort", user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/user/user_app.cpp" };
   return existing;
 }
 

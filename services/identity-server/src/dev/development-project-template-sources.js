@@ -1,7 +1,7 @@
 function templateFirmwareSources(template, title) {
   if (!template?.realization?.buildConfig) return [];
   return [{
-    path: "Komponenten/ESP32/src/user_main.cpp",
+    path: "Komponenten/IoT-Device 1/src/user_main.cpp",
     role: "user_code",
     content_type: "text/x-c++src",
     content: [

@@ -9,6 +9,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
     if (typeof this.store.ensureSchema === "function") {
       this.store.ensureSchema(projectServerSchema());
     }
+    this.migrateLegacyIotDeviceComponentPaths();
   }
 
   static create(runtimeRoot) {
@@ -80,6 +81,52 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
       this.store.replaceTable("project_server_consents", state.consents, consentColumns());
     }
   }
+
+  migrateLegacyIotDeviceComponentPaths() {
+    const migrationNamespace = "project-server-content";
+    const migrationVersion = 1;
+    if (typeof this.store.schemaVersion === "function" && this.store.schemaVersion(migrationNamespace) >= migrationVersion) return;
+    let changed = false;
+    for (const [projectId, project] of this.projects) {
+      const migrated = replaceLegacyIotDevicePath(project);
+      if (JSON.stringify(migrated) !== JSON.stringify(project)) {
+        this.projects.set(projectId, migrated);
+        changed = true;
+      }
+    }
+    const migratedSources = new Map();
+    for (const source of this.sources.values()) {
+      const migrated = replaceLegacyIotDevicePath(source);
+      const migratedId = sourceDocumentId(migrated);
+      const existing = migratedSources.get(migratedId);
+      if (existing && JSON.stringify(existing) !== JSON.stringify(migrated)) {
+        throw new Error(`project_source_path_migration_conflict:${migratedId}`);
+      }
+      migratedSources.set(migratedId, migrated);
+      if (migrated.path !== source.path || migrated.content !== source.content) changed = true;
+    }
+    this.sources = migratedSources;
+    if (changed) this.persist();
+    if (typeof this.store.recordSchemaVersion === "function") {
+      this.store.recordSchemaVersion(migrationNamespace, migrationVersion);
+    }
+  }
+}
+
+function replaceLegacyIotDevicePath(value) {
+  if (Array.isArray(value)) return value.map(replaceLegacyIotDevicePath);
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, replaceLegacyIotDevicePath(entry)]));
+  }
+  if (typeof value !== "string") return value;
+  return value
+    .replaceAll("Komponenten/ESP32", "Komponenten/IoT-Device 1")
+    .replaceAll("IoT Device / ESP32", "IoT-Device 1")
+    .replaceAll("ESP32 Device only", "IoT-Device only")
+    .replaceAll("ESP32 Device", "IoT-Device")
+    .replaceAll("ESP32-Device", "IoT-Device")
+    .replaceAll("ESP32 Datenlogger", "IoT-Device Datenlogger")
+    .replaceAll('rectangle "ESP32" as esp32', 'rectangle "IoT-Device 1" as esp32');
 }
 
 function sourceDocumentId(source) {

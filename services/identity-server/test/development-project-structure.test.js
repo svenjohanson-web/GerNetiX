@@ -9,7 +9,7 @@ test("creates architecture folders and component interface folders from AI archi
     diagram: {
       source: [
         "@startuml",
-        "node \"IoT Device / ESP32\" as device",
+        "node \"IoT-Device 1\" as device",
         "rectangle \"Backend / API\" as backend",
         "device --> backend : MQTT",
         "@enduml",
@@ -25,16 +25,17 @@ test("creates architecture folders and component interface folders from AI archi
   assert.ok(paths.includes("Architektur/informationsfluss/informationsfluss.md"));
   assert.ok(paths.includes("Architektur/systemverhalten/systemverhalten.md"));
   assert.equal(paths.some((path) => path.includes("/Eigenschaften/")), false);
-  assert.ok(paths.includes("Komponenten/ESP32/Schnittstellen/provided.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Schnittstellen/required.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Verhalten/Modell/modell.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Verhalten/Code/code.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Konfiguration/Software/software.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Konfiguration/Hardware/Board/board.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Konfiguration/Hardware/Sensoren/in.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Konfiguration/Hardware/Aktoren/out.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Daten/daten.md"));
-  assert.ok(paths.includes("Komponenten/ESP32/Beziehungen/beziehungen.md"));
+  assert.ok(paths.includes("Komponenten/IoT-Device 1/Schnittstellen/provided.md"));
+  assert.ok(paths.includes("Komponenten/IoT-Device 1/Schnittstellen/required.md"));
+  assert.ok(paths.includes("Komponenten/IoT-Device 1/Verhalten/Modell/modell.md"));
+  assert.ok(paths.includes("Komponenten/IoT-Device 1/Verhalten/Code/code.md"));
+  assert.ok(paths.includes("Komponenten/IoT-Device 1/Konfiguration/Software/software.md"));
+  assert.ok(paths.includes("Komponenten/IoT-Device 1/Konfiguration/Hardware/Board/board.md"));
+  assert.ok(paths.includes("Komponenten/IoT-Device 1/Konfiguration/Hardware/Sensoren/in.md"));
+  assert.ok(paths.includes("Komponenten/IoT-Device 1/Konfiguration/Hardware/Aktoren/out.md"));
+  assert.ok(paths.includes("Komponenten/IoT-Device 1/Daten/daten.md"));
+  assert.ok(paths.includes("Komponenten/IoT-Device 1/Beziehungen/beziehungen.md"));
+  assert.equal(paths.some((sourcePath) => sourcePath.startsWith("Komponenten/ESP32/")), false);
   assert.ok(paths.includes("Komponenten/MQTT-Client/Schnittstellen/provided.md"));
   assert.ok(paths.includes("Komponenten/MQTT-Client/Schnittstellen/required.md"));
   assert.ok(paths.includes("Komponenten/MQTT-Client/Verhalten/Modell/modell.md"));
@@ -61,19 +62,19 @@ test("keeps required interfaces visible for minimal ESP32 projects", () => {
     diagram: {
       source: [
         "@startuml",
-        "node \"IoT Device / ESP32\" as device",
+        "node \"IoT-Device 1\" as device",
         "@enduml",
       ].join("\n"),
       detected_blocks: ["device"],
     },
   });
 
-  const required = sources.find((source) => source.path === "Komponenten/ESP32/Schnittstellen/required.md");
-  const data = sources.find((source) => source.path === "Komponenten/ESP32/Daten/daten.md");
-  const software = sources.find((source) => source.path === "Komponenten/ESP32/Konfiguration/Software/software.md");
-  const board = sources.find((source) => source.path === "Komponenten/ESP32/Konfiguration/Hardware/Board/board.md");
-  const sensorIn = sources.find((source) => source.path === "Komponenten/ESP32/Konfiguration/Hardware/Sensoren/in.md");
-  const actuatorOut = sources.find((source) => source.path === "Komponenten/ESP32/Konfiguration/Hardware/Aktoren/out.md");
+  const required = sources.find((source) => source.path === "Komponenten/IoT-Device 1/Schnittstellen/required.md");
+  const data = sources.find((source) => source.path === "Komponenten/IoT-Device 1/Daten/daten.md");
+  const software = sources.find((source) => source.path === "Komponenten/IoT-Device 1/Konfiguration/Software/software.md");
+  const board = sources.find((source) => source.path === "Komponenten/IoT-Device 1/Konfiguration/Hardware/Board/board.md");
+  const sensorIn = sources.find((source) => source.path === "Komponenten/IoT-Device 1/Konfiguration/Hardware/Sensoren/in.md");
+  const actuatorOut = sources.find((source) => source.path === "Komponenten/IoT-Device 1/Konfiguration/Hardware/Aktoren/out.md");
   assert.ok(required);
   assert.ok(data);
   assert.ok(software);
@@ -101,7 +102,7 @@ test("does not invent a SQLite component for storage on an ESP32 without a serve
     },
   });
   assert.equal(sources.some((source) => source.path.includes("SQLite-Datenbank")), false);
-  assert.equal(sources.some((source) => source.path.startsWith("Komponenten/ESP32/")), true);
+  assert.equal(sources.some((source) => source.path.startsWith("Komponenten/IoT-Device 1/")), true);
 });
 
 test("models central SQL storage as a software property of a server", () => {

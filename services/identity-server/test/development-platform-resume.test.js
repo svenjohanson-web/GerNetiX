@@ -85,7 +85,7 @@ test("persists architecture derivation metadata in the project view manifest", (
 
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260714-08/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260714-09/);
   assert.match(publicHtml, /development-chat-input-box[\s\S]*developmentQuickPrompts[\s\S]*developmentChatInput[\s\S]*developmentChatSubmit/);
   assert.match(publicHtml, /development-send-button/);
   assert.match(publicHtml, /aria-label="Nachricht senden"/);
