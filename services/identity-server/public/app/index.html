@@ -6,12 +6,18 @@
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
     <link rel="stylesheet" href="/app/app.css?v=20260715-15" />
+    <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
-  <body>
+  <body class="operator-surface">
     <main class="app-shell">
-      <header class="topbar">
+      <header class="topbar operator-header">
         <div class="top-navigation-context">
-          <p class="eyebrow">GerNetiX</p>
+          <div class="operator-brand">
+            <div class="operator-brand-copy">
+              <p class="operator-eyebrow">GerNetiX</p>
+              <span class="operator-surface-badge">Plattform · PWA</span>
+            </div>
+          </div>
           <nav id="platformBreadcrumb" class="breadcrumb-tree" aria-label="Aktueller Bereich"></nav>
         </div>
         <div class="top-actions">
@@ -25,11 +31,11 @@
       </header>
 
       <nav id="mainMenu" class="tabs app-menu hidden" aria-label="Plattformbereiche">
-        <a href="/app/dashboard/" data-route="dashboard">Dashboard</a>
+        <a href="/app/dashboard/" data-route="dashboard">Übersicht</a>
         <a href="/app/development-platform/" data-route="development-platform">Entwicklungsplattform</a>
         <a href="/app/learn/" data-route="learn">Lernplattform</a>
-        <a href="/app/device-management/" data-route="device-management">Device Management</a>
-        <a class="utility" href="/app/builds/" data-route="builds">Builds</a>
+        <a href="/app/device-management/" data-route="device-management">Geräte</a>
+        <a class="utility" href="/app/builds/" data-route="builds">Betrieb</a>
         <a class="utility" href="/app/downloads/" data-route="downloads">Downloads</a>
         <a class="utility" href="/app/billing/" data-route="billing">Billing</a>
         <a class="utility" href="/app/help/" data-route="help">Hilfe</a>

@@ -1,0 +1,83 @@
+/* Gemeinsame visuelle Sprache fuer Plattform-PWA und private Administration. */
+:root {
+  color-scheme: dark;
+  --operator-bg: #070b12;
+  --operator-panel: #111827;
+  --operator-panel-soft: #1b2430;
+  --operator-text: #e5e7eb;
+  --operator-muted: #94a3b8;
+  --operator-line: #334155;
+  --operator-accent: #22d3ee;
+  --operator-accent-strong: #0e7490;
+  --operator-accent-soft: #164e63;
+  --operator-shadow: 0 16px 42px rgba(0, 0, 0, .26);
+  font-family: Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+.operator-surface {
+  min-height: 100vh;
+  background: radial-gradient(circle at 12% 0%, rgba(14, 116, 144, .16), transparent 28rem), radial-gradient(circle at 88% 18%, rgba(37, 99, 235, .1), transparent 32rem), var(--operator-bg);
+  color: var(--operator-text);
+}
+
+.operator-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid #263241;
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(17, 24, 39, .88);
+  box-shadow: var(--operator-shadow);
+}
+
+.operator-brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.operator-brand-copy { display: grid; gap: 2px; min-width: 0; }
+.operator-brand-name { margin: 0; color: #e5e7eb; font-size: 20px; line-height: 1.1; }
+.operator-eyebrow { margin: 0; color: #67e8f9; font-size: 11px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+.operator-surface-badge { display: inline-flex; width: fit-content; border: 1px solid #0e7490; border-radius: 999px; padding: 3px 8px; background: #164e63; color: #cffafe; font-size: 11px; font-weight: 800; white-space: nowrap; }
+.operator-nav { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
+.operator-nav button, .operator-nav a {
+  min-height: 36px;
+  border: 1px solid #3c4a5d;
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: #1b2430;
+  color: #cbd5e1;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 750;
+  line-height: 1.2;
+  text-decoration: none;
+}
+.operator-nav button:hover, .operator-nav a:hover { border-color: var(--operator-accent); background: #273244; color: #ecfeff; }
+.operator-nav button.is-active, .operator-nav a.is-active { border-color: #0891b2; background: var(--operator-accent-soft); color: #cffafe; }
+.operator-nav button:focus-visible, .operator-nav a:focus-visible { outline: 2px solid var(--operator-accent); outline-offset: 2px; }
+
+@media (max-width: 760px) {
+  .operator-header { align-items: flex-start; flex-direction: column; }
+  .operator-nav { width: 100%; }
+}
+
+/* Das eigenstaendige Admin Tool verwendet dieselben Karten, Eingaben und Statusfarben. */
+.operator-surface .admin-shell { color: var(--operator-text); }
+.operator-surface .admin-shell .panel,
+.operator-surface .admin-shell .metric-card,
+.operator-surface .admin-shell .admin-subnav,
+.operator-surface .admin-shell .monitoring-card,
+.operator-surface .admin-shell table { border-color: #2b3748; background: #111827; box-shadow: none; }
+.operator-surface .admin-shell .metric-card p,
+.operator-surface .admin-shell .summary-list span,
+.operator-surface .admin-shell th,
+.operator-surface .admin-shell td span,
+.operator-surface .admin-shell .helper-text,
+.operator-surface .admin-shell .form-grid label { color: var(--operator-muted); }
+.operator-surface .admin-shell button,
+.operator-surface .admin-shell input,
+.operator-surface .admin-shell select,
+.operator-surface .admin-shell textarea { border-color: #3c4a5d; background: #1b2430; color: var(--operator-text); }
+.operator-surface .admin-shell button:hover:not(:disabled) { border-color: var(--operator-accent); background: #273244; color: #ecfeff; }
+.operator-surface .admin-shell button.primary { border-color: #0891b2; background: var(--operator-accent-strong); color: #ecfeff; }
+.operator-surface .admin-shell button.active-method { border-color: #0891b2; background: var(--operator-accent-soft); color: #cffafe; }
+.operator-surface .admin-shell button:disabled { border-color: #263241; background: #111827; color: #64748b; }

@@ -5,20 +5,24 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Admin Tool</title>
     <link rel="stylesheet" href="/admin/app.css" />
+    <link rel="stylesheet" href="/admin/operator-shell.css?v=20260715-operator" />
   </head>
-  <body>
+  <body class="operator-surface">
     <main class="admin-shell">
-      <header class="topbar">
-        <div>
-          <p class="eyebrow">GerNetiX</p>
-          <h1>Admin Tool</h1>
+      <header class="topbar operator-header">
+        <div class="operator-brand">
+          <div class="operator-brand-copy">
+            <p class="operator-eyebrow">GerNetiX</p>
+            <h1 class="operator-brand-name">Operator Console</h1>
+            <span class="operator-surface-badge">Private Administration</span>
+          </div>
         </div>
-        <nav class="admin-nav" aria-label="Admin Navigation">
-          <button type="button" data-admin-view="statistics">Statistik</button>
-          <button type="button" data-admin-view="monitoring">Monitoring</button>
-          <button type="button" data-admin-view="system-events">Auffaelligkeiten</button>
+        <nav class="admin-nav operator-nav" aria-label="Admin Navigation">
+          <button type="button" data-admin-view="statistics">Übersicht</button>
+          <button type="button" data-admin-view="monitoring">Betrieb</button>
+          <button type="button" data-admin-view="system-events">Sicherheit</button>
           <button type="button" data-admin-view="accounts">Accounts</button>
-          <button type="button" data-admin-view="email-config">E-Mail</button>
+          <button type="button" data-admin-view="email-config">Einstellungen</button>
           <button type="button" data-admin-view="ai-usage" data-admin-group="ai">KI</button>
         </nav>
       </header>

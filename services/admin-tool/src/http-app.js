@@ -3,6 +3,7 @@ const path = require("node:path");
 const { AdminToolError } = require("./errors");
 
 const publicDir = path.join(__dirname, "..", "public");
+const operatorShellDir = path.join(__dirname, "..", "..", "shared", "public");
 
 function createHttpApp(options) {
   const service = options.service;
@@ -17,6 +18,11 @@ function createHttpApp(options) {
 
     if (req.method === "GET" && ["/", "/admin", "/admin/"].includes(url.pathname)) {
       serveStatic(res, publicDir, "/index.html");
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/admin/operator-shell.css") {
+      serveStatic(res, operatorShellDir, "/operator-shell.css");
       return;
     }
 

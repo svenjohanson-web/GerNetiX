@@ -206,9 +206,12 @@ function renderNavigation() {
     const group = button.dataset.adminGroup || "";
     const active = group === "ai" ? aiView : button.dataset.adminView === state.currentView;
     button.classList.toggle("active-method", active);
+    button.classList.toggle("is-active", active);
   });
   document.querySelectorAll("[data-admin-sub-view]").forEach((button) => {
-    button.classList.toggle("active-method", button.dataset.adminSubView === state.currentView);
+    const active = button.dataset.adminSubView === state.currentView;
+    button.classList.toggle("active-method", active);
+    button.classList.toggle("is-active", active);
   });
 }
 

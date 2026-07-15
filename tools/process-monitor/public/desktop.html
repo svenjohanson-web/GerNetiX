@@ -6,16 +6,16 @@
   <title>GerNetiX Prozess-Monitor</title>
   <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body class="operator-surface">
   <main>
-    <header>
-      <div><p>GERNETIX DESKTOP</p><h1>Prozess-Monitor</h1></div>
+    <header class="operator-header">
+      <div class="operator-brand"><div class="operator-brand-copy"><p class="operator-eyebrow">GerNetiX</p><h1 class="operator-brand-name">Operator Console</h1><span class="operator-surface-badge">Desktop · lokale Steuerung</span></div></div>
       <div class="toolbar"><button id="refresh">Aktualisieren</button></div>
     </header>
-    <nav class="view-tabs">
-      <button class="active" data-view="processView">Prozesse</button>
-      <button data-view="statisticsView">Schnittstellen-Statistik</button>
-      <button data-view="securityView">VPS-Schutzregeln</button>
+    <nav class="view-tabs operator-nav">
+      <button class="active is-active" data-view="processView">Übersicht</button>
+      <button data-view="statisticsView">Betrieb</button>
+      <button data-view="securityView">Sicherheit</button>
     </nav>
     <div id="processView">
       <section class="monitor-group vpn-group">

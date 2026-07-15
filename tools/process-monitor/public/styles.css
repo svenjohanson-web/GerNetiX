@@ -1,9 +1,13 @@
-:root { color-scheme: dark; font-family: system-ui, -apple-system, Segoe UI, sans-serif; background:#070b12; color:#e5e7eb; }
+:root { color-scheme: dark; font-family: Segoe UI, system-ui, -apple-system, BlinkMacSystemFont, sans-serif; background:#070b12; color:#e5e7eb; }
 * { box-sizing:border-box; }
 body { margin:0; min-height:100vh; background:radial-gradient(circle at 10% 0%,#0e749033,transparent 34rem),#070b12; }
 main { width:min(1180px,100%); margin:auto; padding:24px; }
 header,.toolbar,.actions,.process-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 header { margin-bottom:18px; }
+.operator-header { padding:10px 12px; }
+.operator-brand-name { font-size:20px; }
+.operator-eyebrow { margin:0; color:#67e8f9; font-size:11px; font-weight:800; letter-spacing:.1em; text-transform:uppercase; }
+.operator-surface-badge { display:inline-flex; width:fit-content; border:1px solid #0e7490; border-radius:999px; padding:3px 8px; background:#164e63; color:#cffafe; font-size:11px; font-weight:800; }
 .view-tabs { display:flex; gap:8px; margin-bottom:12px; }
 .view-tabs button.active { border-color:#22d3ee; background:#164e63; color:#cffafe; }
 .hidden { display:none!important; }

@@ -47,6 +47,7 @@ const { defaultCatalogSeed } = require("../../hardware-catalog/src/seed");
 
 const publicDir = path.join(__dirname, "..", "public");
 const appDir = path.join(publicDir, "app");
+const operatorShellDir = path.join(__dirname, "..", "..", "shared", "public");
 const esptoolJsDir = path.join(__dirname, "..", "node_modules", "esptool-js");
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
 const provisioningFirmwarePath = process.env.PROVISIONING_FIRMWARE_FILE_PATH
@@ -286,6 +287,7 @@ async function routeRequest(req, res) {
   }
   if (url.pathname === "/app/manifest.webmanifest") { serveStatic(res, appDir, "/manifest.webmanifest"); return; }
   if (url.pathname === "/app/push-sw.js") { serveStatic(res, appDir, "/push-sw.js"); return; }
+  if (url.pathname === "/app/operator-shell.css") { serveStatic(res, operatorShellDir, "/operator-shell.css"); return; }
 
   if (url.pathname === "/api/internal/email-config") {
     requireInternalAdmin(req);

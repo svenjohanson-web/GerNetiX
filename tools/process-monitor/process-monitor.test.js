@@ -51,7 +51,7 @@ test("monitor reads VPS compose state through the established staging SSH config
 });
 
 test("monitor displays persisted external interface call statistics", () => {
-  assert.match(html, /Schnittstellen-Statistik/);
+  assert.match(html, /data-view="statisticsView">Betrieb/);
   assert.match(html, /Ausgehende Schnittstellenaufrufe/);
   assert.match(client, /interfaceStatistics\(24\)/);
   assert.match(client, /renderStatistics/);
@@ -60,6 +60,15 @@ test("monitor displays persisted external interface call statistics", () => {
   const statistics = control.interfaceStatistics(24);
   assert.equal(Array.isArray(statistics.items), true);
   assert.equal(typeof statistics.summary.calls, "number");
+});
+
+test("desktop monitor uses the same operator navigation terminology", () => {
+  assert.match(html, /Operator Console/);
+  assert.match(html, /Desktop · lokale Steuerung/);
+  assert.match(html, />Übersicht<\/button>/);
+  assert.match(html, />Betrieb<\/button>/);
+  assert.match(html, />Sicherheit<\/button>/);
+  assert.match(client, /classList\.toggle\("is-active",active\)/);
 });
 
 test("monitor controls only the configured GerNetiX WireGuard tunnel", async () => {
