@@ -1,0 +1,2 @@
+self.addEventListener("push", (event) => { const data = event.data?.json() || { title: "GerNetiX", body: "Neue Meldung" }; event.waitUntil(self.registration.showNotification(data.title, { body: data.body, data: { url: data.url || "/app/dashboard/" } })); });
+self.addEventListener("notificationclick", (event) => { event.notification.close(); event.waitUntil(clients.openWindow(event.notification.data.url)); });

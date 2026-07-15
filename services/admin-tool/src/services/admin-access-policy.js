@@ -3,6 +3,7 @@ const ROLE_CAPABILITIES = {
     "admin_device_management",
     "admin_ai_usage_monitoring",
     "admin_ai_cost_controls",
+    "admin_identity_configuration",
     "admin_learning",
   ],
   support: [

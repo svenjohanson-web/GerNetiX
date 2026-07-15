@@ -21,6 +21,7 @@ function createDefaultAdminTool(config = {}) {
       adminToolBaseUrl: config.adminToolBaseUrl,
       deviceManagementBaseUrl: config.deviceManagementBaseUrl,
       identityBaseUrl: config.identityBaseUrl,
+      identityAdminToken: config.identityAdminToken,
       buildDeployBaseUrl: config.buildDeployBaseUrl,
       projectServerBaseUrl: config.projectServerBaseUrl,
       hardwareShopBaseUrl: config.hardwareShopBaseUrl,
@@ -31,6 +32,7 @@ function createDefaultAdminTool(config = {}) {
       recoveryBaseUrl: config.recoveryBaseUrl,
       communityPlatformBaseUrl: config.communityPlatformBaseUrl,
       communityAiBaseUrl: config.communityAiBaseUrl,
+      securityMonitorToken: config.securityMonitorToken,
     } : null,
   });
 }

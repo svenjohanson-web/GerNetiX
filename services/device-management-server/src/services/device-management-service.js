@@ -68,6 +68,11 @@ class DeviceManagementService {
     return this.summarizeDevice(this.requireDevice(deviceId));
   }
 
+  pushRecipients(deviceId) {
+    this.requireDevice(deviceId);
+    return { device_id: deviceId, account_ids: this.repository.findAccountIdsByDeviceId(deviceId) };
+  }
+
   createChallenge(deviceId) {
     this.requireDevice(deviceId);
     const challenge = {
@@ -192,6 +197,64 @@ class DeviceManagementService {
 
   listAccountDevices(accountId) {
     return this.repository.listAccountDevices(accountId);
+  }
+
+  createProvisioningToken(input = {}) {
+    const now = new Date();
+    const token = crypto.randomBytes(32).toString("base64url");
+    const record = {
+      provisioning_token_id: createId("provisioning_token"),
+      account_id: required(input.account_id, "account_id"),
+      provisioning_binding: required(input.provisioning_binding, "provisioning_binding"),
+      token_hash_sha256: sha256(token),
+      status: "issued",
+      created_at: now.toISOString(),
+      expires_at: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
+      consumed_at: null,
+    };
+    this.repository.saveProvisioningToken(record);
+    this.repository.addAuditEvent({
+      audit_event_id: createId("audit"),
+      account_id: record.account_id,
+      accessed_by_user_id: record.account_id,
+      accessed_by_role: "account_owner",
+      accessed_data_model_id: "ProvisioningToken",
+      purpose: "usb_wifi_provisioning",
+      access_decision: "issued",
+      rejection_reason: "",
+    });
+    return {
+      provisioning_token: token,
+      provisioning_token_id: record.provisioning_token_id,
+      expires_at: record.expires_at,
+      provisioning_binding: record.provisioning_binding,
+    };
+  }
+
+  consumeProvisioningToken(input = {}) {
+    const token = required(input.provisioning_token, "provisioning_token");
+    const record = this.repository.findProvisioningTokenByHash(sha256(token));
+    const binding = required(input.provisioning_binding, "provisioning_binding");
+    if (!record || record.status !== "issued" || Date.parse(record.expires_at) <= Date.now() || record.provisioning_binding !== binding) {
+      throw new DeviceManagementError("invalid_provisioning_token", "Der Provisionierungs-Token ist ungueltig, abgelaufen oder bereits verwendet.", 403);
+    }
+    const consumed = { ...record, status: "consumed", consumed_at: new Date().toISOString() };
+    this.repository.saveProvisioningToken(consumed);
+    this.repository.addAuditEvent({
+      audit_event_id: createId("audit"),
+      account_id: consumed.account_id,
+      accessed_by_user_id: consumed.account_id,
+      accessed_by_role: "account_owner",
+      accessed_data_model_id: "ProvisioningToken",
+      purpose: "usb_wifi_provisioning",
+      access_decision: "consumed",
+      rejection_reason: "",
+    });
+    return {
+      account_id: consumed.account_id,
+      provisioning_token_id: consumed.provisioning_token_id,
+      consumed_at: consumed.consumed_at,
+    };
   }
 
   updateAccountDeviceBasissoftwareProfile(accountId, accountDeviceId, input = {}) {
@@ -604,6 +667,10 @@ function createPairingCode() {
 
 function createId(prefix) {
   return `${prefix}_${crypto.randomUUID()}`;
+}
+
+function sha256(value) {
+  return crypto.createHash("sha256").update(value).digest("hex");
 }
 
 function required(value, field) {

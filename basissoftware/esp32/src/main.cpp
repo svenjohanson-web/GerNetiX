@@ -4,6 +4,7 @@
 #include "basissoftware/functions/runDiagnostics.h"
 #include "basissoftware/functions/startRuntimeTasks.h"
 #include "basissoftware/factory_provisioning.h"
+#include "basissoftware/serial_provisioning.h"
 #if !defined(GERNETIX_BASISSOFTWARE_PROFILE_MEDIUM) && !defined(GERNETIX_BASISSOFTWARE_PROFILE_LOW)
 #include "basissoftware/mqtt_ota.h"
 #include "basissoftware/ota_update.h"
@@ -14,6 +15,7 @@ extern "C" void app_main() {
   initSerial();
   initPins();
   initWifi();
+  startSerialProvisioning();
   applyFactoryProvisioningIfAvailable();
   runDiagnostics();
   onProjectInit();

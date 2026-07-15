@@ -7,6 +7,12 @@ const app = fs.readFileSync(path.join(__dirname, "..", "public", "app", "app.js"
 const html = fs.readFileSync(path.join(__dirname, "..", "public", "app", "index.html"), "utf8");
 const onboarding = fs.readFileSync(path.join(__dirname, "..", "public", "app", "device-onboarding-controller.js"), "utf8");
 
+test("dashboard offers direct access to device management", () => {
+  const dashboard = html.slice(html.indexOf('<section id="dashboardView"'), html.indexOf('<section id="helpView"'));
+  assert.match(dashboard, /data-open-route="\/app\/device-management\/"/);
+  assert.match(dashboard, /Device Management[\s\S]*Boards verwalten/);
+});
+
 test("inventory exposes account unpair without claiming to delete the physical device", () => {
   assert.match(app, /data-unpair-device=/);
   assert.match(app, />Zuordnung aufheben<\/button>/);
@@ -29,7 +35,7 @@ test("inventory only shows registered account boards", () => {
 
 test("provisioning owns discovery, registration and pairing", () => {
   const provisioningView = html.slice(html.indexOf('<section id="deviceProvisioningView"'), html.indexOf('<section id="deviceRecoveryView"'));
-  assert.match(provisioningView, /Erkennen[\s\S]*Flashen[\s\S]*Registrieren[\s\S]*Pairen/);
+  assert.doesNotMatch(provisioningView, /Provisioning-Ablauf|Per WLAN oder USB provisionieren/);
   assert.match(provisioningView, /id="deviceDiscoverySearchButton"/);
   assert.doesNotMatch(provisioningView, /id="deviceInventoryForm"|Manueller Fallback|inventoryHardwareProfile/);
   assert.match(provisioningView, /Provisionieren und mit Account verbinden/);

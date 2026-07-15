@@ -15,7 +15,7 @@ test("learning area leads with a dedicated project catalog", () => {
 });
 
 test("catalog cards describe learning scope instead of internal file metadata", () => {
-  const renderer = app.match(/function renderProjects\(\)[\s\S]*?\n}\n\nfunction renderLearn/)?.[0] || "";
+  const renderer = app.match(/function renderProjects\(\)[\s\S]*?\nfunction renderLearn/)?.[0] || "";
   assert.match(renderer, /Lernschritte/);
   assert.match(renderer, /Hardware/);
   assert.match(renderer, /Lernprojekt starten/);

@@ -29,7 +29,7 @@ test("separates semantic template models from rendered views", () => {
 
 test("exposes one UI catalog without architecture or realization internals", () => {
   const catalog = developmentProjectTemplateCatalog();
-  assert.equal(catalog.length, 7);
+  assert.equal(catalog.length, 8);
   assert.equal(catalog.find((template) => template.id === "empty").default_title, "");
   assert.deepEqual(catalog.find((template) => template.id === "sensor_actuator_control"), {
     id: "sensor_actuator_control",
@@ -116,6 +116,22 @@ test("provides IoT device project templates with distinct start architectures", 
     assert.doesNotMatch(source, /ESP32/);
     assert.doesNotMatch(source, /^\s*(?:node|component|database|cloud|queue|artifact)\s+"/gmi);
   }
+});
+
+test("provides an account-bound web-push PWA data logger template", () => {
+  const template = developmentProjectTemplate("iot_datalogger_web_push_pwa");
+  const source = templateArchitecturePlantUml(template, template.title);
+
+  assert.equal(template.schemaVersion, 1);
+  assert.match(template.description, /private PWA auf dem iPhone/);
+  assert.match(source, /IoT-Device Datenlogger/);
+  assert.match(source, /GerNetiX VPS\\nPrivate Push-API/);
+  assert.match(source, /Private PWA auf dem iPhone/);
+  assert.match(source, /Push-Subscription und Konfiguration/);
+  assert.match(source, /Web Push an die private Subscription/);
+  assert.equal(templateHardwareProfileId(template), "architecture.discovery");
+  assert.equal(templateBuildConfig(template), null);
+  assert.deepEqual(templateFirmwareSources(template, "Mein Push-Logger"), []);
 });
 
 test("falls back to the empty project template for unknown ids", () => {

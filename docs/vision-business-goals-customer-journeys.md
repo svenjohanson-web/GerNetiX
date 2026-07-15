@@ -29,6 +29,10 @@ Aktuelle Produkte:
 - Learning Platform
 - Simple IDE
 
+### Kundenversprechen bei der Board-Inbetriebnahme
+
+GerNetiX macht den ersten WLAN-Zugang eines Boards komfortabel, ohne daraus Cloud-Daten zu machen: Das Board sucht die sichtbaren Netze selbst, SSID und Passwort gehen ausschliesslich lokal per USB an das Board und werden weder an GerNetiX gesendet noch im Browser dauerhaft gespeichert. Wer diesen Weg nicht nutzen moechte, kann das lokale Captive Portal des Boards verwenden.
+
 ## 2. Business Goals
 
 Business Goals beschreiben, welche Unternehmensziele unterstuetzt werden.
@@ -108,11 +112,11 @@ Ablauf:
 
 Ablauf:
 
-1. Board registrieren.
-2. Pairing durchfuehren.
-3. Provisioning durchfuehren.
-4. OTA einrichten.
-5. IDE verwenden.
+1. Board per USB erkennen und eine passende Boardkonfiguration auswaehlen oder manuell erfassen.
+2. Basissoftware flashen.
+3. Das Board laesst lokal sichtbare WLANs suchen; der Benutzer waehlt ein Netz und uebergibt das Passwort direkt per USB oder nutzt alternativ das Captive Portal.
+4. Einen kurzlebigen, accountgebundenen Einmalvorgang abschliessen und das Board registrieren und pairen.
+5. OTA einrichten und die IDE verwenden.
 
 ### CJ-007 - Administrator erweitert die Plattform
 

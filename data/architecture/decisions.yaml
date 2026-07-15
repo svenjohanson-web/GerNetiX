@@ -235,44 +235,6 @@ items:
       - Fehlende Runtime-Voraussetzungen sind als konkrete Readiness-Fehler sichtbar zu machen und duerfen nicht erst als `spawn ENOENT` beim Flashen auftreten.
       - Lokale Benutzerpfade duerfen nicht im Servercode hart kodiert oder automatisch erraten werden.
 
-  - id: architecture.firmware_minimal_update_strategy
-    type: architecture_decision
-    title: Minimale Firmware-Update-Strategie ueber Device Management und Build-&-Deploy
-    status: approved
-    ownerDomain: DeviceManagement
-    summary: Die ESP32-Basissoftware bleibt minimal und dauerhaft OTA-faehig. Sie kennt keine fest verdrahtete Homeserver-, IP- oder Cloud-Instanz, sondern nur konfigurierbare Service-Endpunkte fuer Device Management und Build-&-Deploy. Firmware-Downloads starten erst nach einem autorisierten Deploy-Auftrag.
-    derivedFromRequirements:
-      - requirement.learning_firmware_base_scaffold_preserves_ota
-      - requirement.firmware_build_deploy_server
-      - requirement.ide_ota_device_selection_from_profile
-    references:
-      - architecture.project_server_build_deploy_server_split
-      - architecture.service_process_portability
-    affectsArchitectureArtifacts:
-      - architecture_artifact.device_management_server
-      - architecture_artifact.build_deploy_server
-      - component.ota
-      - component.device_connectivity_setup
-    rationale:
-      - Kunden halten, weil OTA-Faehigkeit, Backend-Umzug ohne USB-Reflash und robuste Statusmeldungen langfristige Nutzung ohne technische Sackgassen ermoeglichen.
-      - Nutzer gewinnen, weil ein einfacher Einstieg mit Homeserver-Betrieb spaeter ohne Architekturbruch in Cloud-Betrieb wachsen kann.
-      - Kundenakzeptanz sichern, weil Firmware-Downloads nur nach autorisiertem Deploy-Auftrag starten und das Device Firmware-Groesse sowie SHA-256 prueft.
-    rules:
-      - Die Basissoftware besitzt keinen hart codierten Serverstandort, keine feste lokale IP und keine AWS-spezifische Adresse.
-      - Die Basissoftware verwendet konfigurierbare Endpunkte fuer Device Management, Build-&-Deploy, optional MQTT-Broker und HTTPS-Basis-URL.
-      - Device Management bleibt fachlicher Ansprechpartner fuer Registrierung, Pairing, Account-Zuordnung, Device-Status und OTA-Zielauswahl.
-      - Der Build-&-Deploy-Server bleibt fachlicher Ansprechpartner fuer Build-Ausfuehrung, Deploy-Auftrag, Firmware-Bereitstellung und Deploy-Status.
-      - Es wird kein separates Instanz-Konzept fuer diesen Zweck eingefuehrt.
-      - Das Device fragt beim konfigurierten Backend, ob es bekannt, gepairt und fuer einen Deploy-Auftrag berechtigt ist.
-      - Ein Firmware-Download startet erst nach einem autorisierten Deploy-Auftrag fuer die konkrete `device_id`.
-      - Deploy-Auftraege werden per MQTT signalisiert; Firmware-Dateien werden per HTTPS geladen.
-      - Das Device prueft mindestens Groesse und SHA-256 der Firmware, bevor es flasht.
-      - Das Device meldet Status wie `idle`, `downloading`, `flashing`, `rebooting`, `success` oder `failed` zurueck.
-      - Die minimale Device-Konfiguration umfasst `device_id`, Runtime-Version, App-Version, Service-Endpunkte, Credential-Referenz oder Device-Key und letzten Update-Status.
-      - Hardware-Plattform, Capability-Profil, Release-Channel oder Mindest-Runtime werden erst ergaenzt, wenn Kompatibilitaet, Support oder Rollout-Steuerung sie fachlich benoetigen.
-      - Ein Umzug von Linux-Homeserver zu Cloud darf ueber DNS, Konfiguration oder kontrolliertes Konfigurationsupdate erfolgen und darf keinen USB-Reflash erzwingen.
-      - User-Code bleibt Anwendungslogik; OTA, Connectivity, Pairing-Anknuepfung, Statusmeldung und Update-Pruefung bleiben Aufgabe der Basissoftware.
-
   - id: decision.esp32_ota_bootstrap_firmware.wifi_setup
     type: open_decision
     title: WLAN-Setup-Flow fuer ESP32-Basissoftware festlegen
@@ -293,22 +255,6 @@ items:
     derivedFromRequirements:
       - requirement.learning_firmware_base_scaffold_preserves_ota
       - requirement.firmware_local_feedback_weblog
-
-  - id: decision.esp32_ota_bootstrap_firmware.node_mode_policy
-    type: open_decision
-    title: AP-/STA-/Node-Modus-Policy festlegen
-    status: open
-    ownerDomain: DeviceManagement
-    summary: Nach gespeicherten WLAN-Daten muss entschieden werden, ob die Firmware den Setup-AP abschaltet, parallel AP+STA betreibt oder bei Fehlern automatisch in den Setup-AP zurueckfaellt.
-    options:
-      - Nach erfolgreicher WLAN-Verbindung nur STA/Node-Modus betreiben.
-      - AP+STA parallel betreiben, solange das Device nicht gepairt ist.
-      - Setup-AP nur als zeitlich begrenzten Fallback bei fehlgeschlagener WLAN-Verbindung starten.
-    affectsArchitectureArtifacts:
-      - component.device_connectivity_setup
-      - component.ota
-    derivedFromRequirements:
-      - requirement.learning_firmware_base_scaffold_preserves_ota
 
   - id: decision.esp32_ota_bootstrap_firmware.flash_layout
     type: open_decision

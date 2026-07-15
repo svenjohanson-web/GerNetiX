@@ -96,6 +96,20 @@ test("llm config routes cost-sensitive artifact tasks to local model by default"
   assert.equal(store.publicConfig().routes.artifact_generation.provider, "ollama");
 });
 
+test("llm config permanently routes GerNetiX Help to Ollama", () => {
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-llm-config-"));
+  const configPath = path.join(tmp, "identity-llm-config.json");
+  const store = createLlmConfigStore({ configPath, defaultOllamaBaseUrl: "http://127.0.0.1:11434", defaultOllamaModel: "llama-local" });
+
+  store.updateConfig({ provider: "api", apiModel: "gpt-external", routes: { help_chat: { provider: "api", reason: "must not be used" } } });
+
+  const route = store.resolveRoute("help_chat");
+  assert.equal(route.provider, "ollama");
+  assert.equal(route.model, "llama-local");
+  assert.equal(route.costPolicy, "local_only");
+  assert.equal(store.publicConfig().routes.help_chat.provider, "ollama");
+});
+
 test("llm config store persists route overrides", () => {
   const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-llm-config-"));
   const configPath = path.join(tmp, "identity-llm-config.json");

@@ -10,6 +10,9 @@ const state = {
   aiContext: null,
   aiClarifications: null,
   aiClarificationsLoading: false,
+  aiHelpKnowledge: null,
+  aiHelpKnowledgeLoading: false,
+  emailConfig: null,
   monitoring: null,
   monitoringLoading: false,
   systemEvents: null,
@@ -45,6 +48,10 @@ document.querySelector("#refreshAiClarificationsButton").addEventListener("click
 document.querySelector("#aiClarificationStatusFilter").addEventListener("change", () => loadAiClarifications(true));
 document.querySelector("#aiClarificationPriorityFilter").addEventListener("change", () => loadAiClarifications(true));
 document.querySelector("#aiClarificationRows").addEventListener("click", handleAiClarificationAction);
+document.querySelector("#aiHelpKnowledgeForm").addEventListener("submit", saveAiHelpKnowledge);
+document.querySelector("#aiHelpKnowledgeRows").addEventListener("click", editAiHelpKnowledge);
+document.querySelector("#adminEmailConfigForm").addEventListener("submit", saveEmailConfig);
+document.querySelector("#adminEmailTestButton").addEventListener("click", testEmailConfig);
 document.querySelectorAll("[data-admin-view]").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.adminView));
 });
@@ -60,6 +67,8 @@ async function bootstrap() {
   await loadAiUsage();
   await loadAiContext();
   await loadAiClarifications(false);
+  await loadAiHelpKnowledge(false);
+  await loadEmailConfig();
   await loadConfig();
   await loadLocalModels();
   await loadApiModels();
@@ -98,6 +107,28 @@ async function loadAiClarifications(force) {
   } finally {
     state.aiClarificationsLoading = false;
     renderAiClarifications();
+  }
+}
+
+async function loadAiHelpKnowledge(force) {
+  if (state.aiHelpKnowledgeLoading || (state.aiHelpKnowledge && !force)) return;
+  state.aiHelpKnowledgeLoading = true;
+  try {
+    state.aiHelpKnowledge = await getJson("/api/admin/ai-help-articles");
+  } catch (error) {
+    state.aiHelpKnowledge = { items: [], error: error.message };
+  } finally {
+    state.aiHelpKnowledgeLoading = false;
+    renderAiHelpKnowledge();
+  }
+}
+
+async function loadEmailConfig() {
+  try {
+    const result = await getJson("/api/admin/email-config");
+    state.emailConfig = result.config || null;
+  } catch (error) {
+    state.emailConfig = { error: error.message };
   }
 }
 
@@ -148,6 +179,8 @@ function render() {
   renderAiUsage();
   renderAiContext();
   renderAiClarifications();
+  renderAiHelpKnowledge();
+  renderEmailConfig();
   renderForm();
   renderStatus();
   renderProviderFields();
@@ -159,6 +192,8 @@ function setView(view) {
   if (state.currentView === "monitoring") loadMonitoring(false);
   if (state.currentView === "system-events") loadSystemEvents(false);
   if (state.currentView === "ai-clarifications") loadAiClarifications(false);
+  if (state.currentView === "ai-help-knowledge") loadAiHelpKnowledge(false);
+  if (state.currentView === "email-config") loadEmailConfig().then(renderEmailConfig);
 }
 
 function renderNavigation() {
@@ -178,7 +213,7 @@ function renderNavigation() {
 }
 
 function isAiView(view) {
-  return ["ai-usage", "ai-context", "ai-clarifications", "llm-config"].includes(view);
+  return ["ai-usage", "ai-context", "ai-help-knowledge", "ai-clarifications", "llm-config"].includes(view);
 }
 
 function viewId(view) {
@@ -190,6 +225,8 @@ function viewId(view) {
     "ai-usage": "aiUsageView",
     "ai-context": "aiContextView",
     "ai-clarifications": "aiClarificationsView",
+    "ai-help-knowledge": "aiHelpKnowledgeView",
+    "email-config": "emailConfigView",
     "llm-config": "llmConfigView",
   }[view] || "statisticsView";
 }
@@ -529,6 +566,125 @@ function renderAiClarifications() {
     : `<tr><td colspan="5" class="empty-cell">Keine Klaerfaelle fuer diesen Filter.</td></tr>`;
 }
 
+function renderAiHelpKnowledge() {
+  const result = state.aiHelpKnowledge || {};
+  const rows = document.querySelector("#aiHelpKnowledgeRows");
+  const status = document.querySelector("#aiHelpKnowledgeStatus");
+  if (!rows || !status) return;
+  if (state.aiHelpKnowledgeLoading) {
+    status.className = "flash-status running";
+    status.textContent = "Help-Wissen wird geladen.";
+  } else if (result.error) {
+    status.className = "flash-status error";
+    status.textContent = result.error;
+  } else {
+    status.className = "flash-status hidden";
+    status.textContent = "";
+  }
+  rows.innerHTML = (result.items || []).length
+    ? result.items.map((item) => `<tr><td><strong>${escapeHtml(item.title)}</strong><span>${escapeHtml(item.article_id)}</span></td><td>${escapeHtml(item.help_topic_id)}</td><td>${escapeHtml(item.status)}</td><td><button type="button" data-edit-help-article="${escapeHtml(item.article_id)}">Bearbeiten</button></td></tr>`).join("")
+    : '<tr><td colspan="4" class="empty-cell">Noch kein lokales Help-Wissen vorhanden.</td></tr>';
+}
+
+function renderEmailConfig() {
+  const config = state.emailConfig || {};
+  setValue("#adminEmailHost", config.host || "smtp.ionos.de");
+  setValue("#adminEmailPort", config.port || 465);
+  setValue("#adminEmailUsername", config.username || "");
+  setValue("#adminEmailFromAddress", config.from_address || "");
+  setValue("#adminEmailReplyTo", config.reply_to || "");
+  setValue("#adminSecurityAlertRecipient", config.security_alert_recipient || "");
+  document.querySelector("#adminEmailSecure").checked = config.secure !== false;
+  document.querySelector("#adminEmailConfigSummary").innerHTML = [
+    ["Verschluesselung", config.encryption_ready ? "bereit" : "Server-Schluessel fehlt"],
+    ["SMTP-Zugang", config.configured ? "konfiguriert" : "nicht konfiguriert"],
+    ["Absender", config.from_address || "nicht gesetzt"],
+    ["Letzte Aenderung", config.updated_at ? formatDateTime(config.updated_at) : "-"],
+  ].map(meta).join("");
+  if (config.error) setEmailConfigStatus("error", config.error);
+}
+
+async function saveEmailConfig(event) {
+  event.preventDefault();
+  const password = value("#adminEmailPassword");
+  const payload = {
+    host: value("#adminEmailHost").trim(),
+    port: Number(value("#adminEmailPort")),
+    username: value("#adminEmailUsername").trim(),
+    from_address: value("#adminEmailFromAddress").trim(),
+    reply_to: value("#adminEmailReplyTo").trim(),
+    security_alert_recipient: value("#adminSecurityAlertRecipient").trim(),
+    secure: document.querySelector("#adminEmailSecure").checked,
+  };
+  if (password) payload.password = password;
+  setEmailConfigStatus("running", "SMTP-Konfiguration wird verschluesselt gespeichert...");
+  try {
+    const result = await putJson("/api/admin/email-config", payload);
+    state.emailConfig = result.config;
+    document.querySelector("#adminEmailPassword").value = "";
+    renderEmailConfig();
+    setEmailConfigStatus("ok", "SMTP-Konfiguration gespeichert. Bitte anschliessend die Verbindung testen.");
+  } catch (error) {
+    setEmailConfigStatus("error", error.message);
+  }
+}
+
+async function testEmailConfig() {
+  setEmailConfigStatus("running", "IONOS SMTP-Verbindung wird getestet...");
+  try {
+    const result = await postJson("/api/admin/email-config/test", {});
+    state.emailConfig = result.config || state.emailConfig;
+    renderEmailConfig();
+    setEmailConfigStatus("ok", "Verbindung zu IONOS SMTP erfolgreich.");
+  } catch (error) {
+    setEmailConfigStatus("error", error.message);
+  }
+}
+
+function setEmailConfigStatus(kind, text) {
+  const status = document.querySelector("#adminEmailConfigStatus");
+  status.className = `flash-status ${kind}`;
+  status.textContent = text;
+}
+
+function editAiHelpKnowledge(event) {
+  const articleId = event.target.closest("[data-edit-help-article]")?.dataset.editHelpArticle;
+  if (!articleId) return;
+  const item = (state.aiHelpKnowledge?.items || []).find((article) => article.article_id === articleId);
+  if (!item) return;
+  document.querySelector("#aiHelpArticleId").value = item.article_id || "";
+  document.querySelector("#aiHelpTopicId").value = item.help_topic_id || "";
+  document.querySelector("#aiHelpArticleTitle").value = item.title || "";
+  document.querySelector("#aiHelpArticleSummary").value = item.summary || "";
+  document.querySelector("#aiHelpArticleContent").value = item.content || "";
+  document.querySelector("#aiHelpArticleStatus").value = item.status || "active";
+  document.querySelector("#aiHelpArticleTitle").focus();
+}
+
+async function saveAiHelpKnowledge(event) {
+  event.preventDefault();
+  const status = document.querySelector("#aiHelpKnowledgeStatus");
+  status.className = "flash-status running";
+  status.textContent = "Help-Wissen wird gespeichert und lokal eingebettet.";
+  try {
+    await postJson("/api/admin/ai-help-articles", {
+      article_id: value("#aiHelpArticleId").trim(),
+      help_topic_id: value("#aiHelpTopicId").trim(),
+      title: value("#aiHelpArticleTitle").trim(),
+      summary: value("#aiHelpArticleSummary").trim(),
+      content: value("#aiHelpArticleContent").trim(),
+      status: value("#aiHelpArticleStatus"),
+    });
+    state.aiHelpKnowledge = null;
+    await loadAiHelpKnowledge(true);
+    status.className = "flash-status ok";
+    status.textContent = "Help-Wissen gespeichert.";
+  } catch (error) {
+    status.className = "flash-status error";
+    status.textContent = error.message;
+  }
+}
+
 function renderAiClarificationRow(item) {
   const resolved = item.status === "resolved";
   return `
@@ -651,6 +807,7 @@ function renderForm() {
   setValue("#adminRouteArchitectureDiscovery", routeProvider(config, "architecture_discovery", "default"));
   setValue("#adminRouteArtifactGeneration", routeProvider(config, "artifact_generation", "ollama"));
   setValue("#adminRouteCodeGeneration", routeProvider(config, "code_generation", "ollama"));
+  setValue("#adminRouteHelpChat", routeProvider(config, "help_chat", "ollama"));
   renderLocalModelOptions(config.ollamaModel || config.model || "");
   renderApiModelOptions(config.apiModel || "");
 }
@@ -691,6 +848,7 @@ function renderStatus() {
     ["Architektur-Route", routeLabel(routeProvider(config, "architecture_discovery", "default"))],
     ["Artefakt-Route", routeLabel(routeProvider(config, "artifact_generation", "ollama"))],
     ["Code-Route", routeLabel(routeProvider(config, "code_generation", "ollama"))],
+    ["Help-Route", "Nur lokal (Ollama)"],
   ].map(meta).join("");
 }
 
@@ -731,6 +889,7 @@ async function saveLlmConfig(event) {
       architecture_discovery: { provider: value("#adminRouteArchitectureDiscovery"), reason: "Architektur-Discovery im Entwicklungsprojekt." },
       artifact_generation: { provider: value("#adminRouteArtifactGeneration"), reason: "PlantUML, Pseudocode und andere ableitbare Artefakte." },
       code_generation: { provider: value("#adminRouteCodeGeneration"), reason: "Quellcode- und Pseudocode-Generierung." },
+      help_chat: { provider: "ollama", reason: "GerNetiX Help bleibt ausschliesslich lokal." },
     },
   };
   const apiKey = value("#adminApiKey");

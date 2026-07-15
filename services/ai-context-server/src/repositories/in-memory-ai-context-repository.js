@@ -13,6 +13,22 @@ function defaultPolicy() {
 function defaultSources() {
   return [
     {
+      source_id: "ai_source.help_knowledge",
+      source_type: "help_knowledge",
+      source_scope: "help/articles",
+      title: "GerNetiX Help-Wissen",
+      summary: "Redaktionell gepflegte, ausschliesslich lokal nutzbare Hilfeartikel fuer den GerNetiX Help-Agenten.",
+      backing_service: "ai-context-server",
+      endpoint: "/api/ai-context/help-articles",
+      contains: ["help_articles", "help_topics"],
+      default_redaction_level: "none",
+      default_provider_scope: "local_only",
+      allowed_purposes: ["help_assistance"],
+      status: "active",
+      created_at: nowIso(),
+      updated_at: nowIso(),
+    },
+    {
       source_id: "ai_source.hardware_catalog.esp32_processor_boards",
       source_type: "hardware_catalog",
       source_scope: "processor_boards/esp32",
@@ -83,6 +99,18 @@ function defaultPromptFoundations() {
   // Bootstrap nur fuer leere AI-Context-SQLite: Prompt-Regeln werden fachlich
   // in der SQLite gepflegt, nicht in Identity- oder anderem Runtime-Code.
   return [{
+    foundation_id: "ai_prompt.help_chat.system",
+    title: "GerNetiX Help Systemprompt",
+    route_task: "help_chat",
+    source_scope: "prompt_foundations/help_chat/system",
+    content_kind: "system_prompt",
+    allowed_sources: ["current_chat", "help_knowledge"],
+    blocked_sources: ["project_files", "customer_data", "graph_database", "external_web", "general_world_knowledge"],
+    content: "Du bist GerNetiX Help. Antworte kurz und nur anhand der mitgegebenen GerNetiX-Hilfeartikel. Wenn die Artikel keine Antwort enthalten, sage das klar und empfehle einen passenden Hilfeartikel. Erfinde kein allgemeines oder externes Wissen.",
+    status: "active",
+    created_at: nowIso(),
+    updated_at: nowIso(),
+  }, {
     foundation_id: "ai_prompt.customer_ide_chat.system",
     title: "Kunden-IDE KI-Chat Systemprompt",
     route_task: "general_chat",
@@ -251,6 +279,18 @@ function defaultArchitectureComponents() {
   ];
 }
 
+function defaultHelpArticles() {
+  return [
+    helpArticle("help.provisioning.usb_wifi", "Neues Board per USB und WLAN einrichten", "Gefuehrter Ablauf fuer ein neues oder nicht erreichbares Board.", "Waehle USB fuer ein neues Board. Lasse es erkennen, waehle ein bekanntes Board oder konfiguriere es manuell und flashe die Basissoftware. Danach sucht das Board die WLANs selbst. SSID und Passwort werden nur per USB an das Board uebertragen, nicht an GerNetiX und nicht dauerhaft im Browser gespeichert. Danach wird das Board deinem Account zugeordnet.", "provision-new-board"),
+    helpArticle("help.provisioning.captive_portal", "Captive Portal als WLAN-Alternative", "Lokale Alternative zur WLAN-Eingabe per USB.", "Wenn du das WLAN-Passwort nicht per USB eingeben moechtest, verbinde dich mit dem vom Board bereitgestellten WLAN und oeffne die lokale Einrichtungsseite. Zugangsdaten bleiben auf dem Board.", "usb-wifi-setup"),
+    helpArticle("help.provisioning.board_profiles", "Update- und Speicherprofile", "FULL, MEDIUM und LOW fuer Sicherheit und Anwendungsplatz.", "FULL behaelt bei einem fehlgeschlagenen Update die letzte funktionierende Software. MEDIUM schafft mehr Platz mit einem Wiederherstellungsbereich. LOW reserviert maximalen Anwendungsplatz und aktualisiert nur per USB. Das Profil kann spaeter mit einem USB-Neuflash geaendert werden.", "update-profiles"),
+  ];
+}
+
+function helpArticle(article_id, title, summary, content, help_topic_id) {
+  return { article_id, title, summary, content, help_topic_id, status: "active", created_at: nowIso(), updated_at: nowIso() };
+}
+
 function architectureComponent(input) {
   return {
     ...input,
@@ -268,6 +308,7 @@ class InMemoryAiContextRepository {
     this.sources = new Map(mergeSources(defaultSources(), seed.sources || []).map((item) => [item.source_id, clone(item)]));
     this.promptFoundations = new Map(mergePromptFoundations(defaultPromptFoundations(), seed.promptFoundations || []).map((item) => [item.foundation_id, clone(item)]));
     this.architectureComponents = new Map(mergeById(defaultArchitectureComponents(), seed.architectureComponents || [], "component_id").map((item) => [item.component_id, clone(item)]));
+    this.helpArticles = new Map(mergeById(defaultHelpArticles(), seed.helpArticles || [], "article_id").map((item) => [item.article_id, clone(item)]));
     this.clarificationCases = new Map((seed.clarificationCases || []).map((item) => [item.case_id, clone(item)]));
     this.intentExamples = new Map((seed.intentExamples || []).map((item) => [item.example_id, clone(item)]));
     this.policy = clone(mergePolicy(defaultPolicy(), seed.policy));
@@ -346,6 +387,18 @@ class InMemoryAiContextRepository {
   listArchitectureComponents(filter = {}) {
     return Array.from(this.architectureComponents.values())
       .filter((item) => matchesArchitectureComponentFilter(item, filter))
+      .map(clone);
+  }
+
+  saveHelpArticle(article) {
+    this.helpArticles.set(article.article_id, clone(article));
+    return clone(article);
+  }
+
+  listHelpArticles(filter = {}) {
+    return Array.from(this.helpArticles.values())
+      .filter((item) => !filter.status || item.status === filter.status)
+      .filter((item) => !filter.article_id || item.article_id === filter.article_id)
       .map(clone);
   }
 
@@ -461,4 +514,4 @@ function clone(value) {
   return value ? JSON.parse(JSON.stringify(value)) : null;
 }
 
-module.exports = { InMemoryAiContextRepository, defaultPolicy, defaultSources, defaultPromptFoundations, defaultArchitectureComponents, isGrantActive };
+module.exports = { InMemoryAiContextRepository, defaultPolicy, defaultSources, defaultPromptFoundations, defaultArchitectureComponents, defaultHelpArticles, isGrantActive };

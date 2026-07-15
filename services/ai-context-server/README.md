@@ -2,7 +2,7 @@
 
 Eigenstaendiger Service fuer abgesicherten KI-Kontextzugriff.
 
-Der Service entscheidet vor einem KI-Aufruf, ob eine Datenquelle als Kontext genutzt werden darf. Auf dem VPS speichert er Grants, globale Policy, Prompt-Grundlagen, Architektur-Bausteine und Audit-Events in einer eigenen PostgreSQL-Datenbank mit pgvector. Die lokale SQLite-Datei bleibt als Entwicklungs-Fallback und einmalige Migrationsquelle erhalten.
+Der Service entscheidet vor einem KI-Aufruf, ob eine Datenquelle als Kontext genutzt werden darf. Auf dem VPS speichert er Grants, globale Policy, Prompt-Grundlagen, Architektur-Bausteine, lokales Help-Wissen und Audit-Events in einer eigenen PostgreSQL-Datenbank mit pgvector. Die lokale SQLite-Datei bleibt als Entwicklungs-Fallback und einmalige Migrationsquelle erhalten.
 
 ## Zweck
 
@@ -13,6 +13,7 @@ Der Service entscheidet vor einem KI-Aufruf, ob eine Datenquelle als Kontext gen
 - Source Registry fuer fachliche KI-Kontextquellen wie Hardware Catalog, Prompt-Grundlagen oder AI-Context-SQLite
 - zentrale Prompt-Grundlagen fuer KI-Chat, Architektur-Discovery und weitere KI-Routen
 - zentrale Architektur-Bausteine mit Eigenschaften, provided/required Schnittstellen, Entscheidungshinweisen und adaptiver Vektorsuche
+- kuratierbares Help-Wissen mit lokaler pgvector-Suche; nur Treffer werden an den lokalen Help-Agenten uebergeben
 - priorisierte KI-Klaerfaelle fuer unsichere Architektur-Interpretationen
 - kontrollierter Feedbackkreis aus bestaetigten oder korrigierten Intent-Beispielen, wahlweise global oder accountbezogen
 - Pflege von Prompt-Regeln ueber die AI-Context-SQLite, damit nutzende Dienste ohne Codeaenderung und ohne Neustart neue Prompt-Regeln verwenden koennen
@@ -61,6 +62,7 @@ Beim ersten PostgreSQL-Start werden vorhandene Daten aus `AI_CONTEXT_SQLITE_PATH
 - Registrierte Sources beschreiben Datenquellen; erst ein Grant erlaubt ihre Nutzung.
 - Systemprompts und andere KI-Grundlagen liegen fuehrend in der AI-Context-Datenbank, nicht in den nutzenden Apps.
 - Architektur-Bausteinwissen liegt fuehrend in PostgreSQL/pgvector; nutzende Dienste suchen semantisch und fallen bei nicht erreichbarem Embedding-Dienst kontrolliert auf lexikalische Suche zurueck.
+- Help-Wissen hat den eigenen Source-Typ `help_knowledge` und darf ausschliesslich mit `ollama` genutzt werden. Bei keinem Treffer antwortet Help ohne Modellaufruf, statt allgemeines oder externes Wissen zu verwenden.
 - Nicht bestaetigte Nutzerformulierungen werden nicht automatisch zu Lernbeispielen. Erst eine Admin-Bestaetigung oder -Korrektur aktiviert das Intent-Beispiel.
 - Accountbezogene Intent-Beispiele werden nur fuer denselben Account gesucht; globale Beispiele enthalten keine Accountbindung.
 - Nutzende Dienste duerfen Prompt-Regeln nur laden und dynamischen Laufzeitkontext ergaenzen; fachliche Prompt-Regeln gehoeren nicht in Identity-, IDE- oder Admin-Code.

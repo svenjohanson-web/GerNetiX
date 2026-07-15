@@ -100,11 +100,46 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/api/internal/security-events") {
+      if (!service.serviceClients?.securityMonitorToken || req.headers["x-gernetix-security-monitor-token"] !== service.serviceClients.securityMonitorToken) {
+        sendJson(res, 403, { error: "security_monitor_access_denied" }); return;
+      }
+      sendJson(res, 202, await service.recordSecurityEvent(await readJsonBody(req)));
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/admin/ai-clarification-cases") {
       sendJson(res, 200, await service.aiClarificationCases({
         status: url.searchParams.get("status") || "",
         priority: url.searchParams.get("priority") || "",
       }, readContext(url)));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/admin/ai-help-articles") {
+      sendJson(res, 200, await service.helpKnowledge(readContext(url)));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/admin/email-config") {
+      sendJson(res, 200, await service.emailConfig(readContext(url)));
+      return;
+    }
+
+    if (req.method === "PUT" && url.pathname === "/api/admin/email-config") {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await service.updateEmailConfig(body, readContext(url, body)));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/admin/email-config/test") {
+      sendJson(res, 200, await service.testEmailConfig(readContext(url)));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/admin/ai-help-articles") {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await service.upsertHelpKnowledge(body, readContext(url, body)));
       return;
     }
 

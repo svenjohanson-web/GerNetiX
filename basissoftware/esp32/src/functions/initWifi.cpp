@@ -323,7 +323,7 @@ esp_err_t saveWifiStationCredentials(const char *ssid, const char *password) {
   nvs_close(handle);
 
   if (status == ESP_OK) {
-    feedbackInfo(TAG, "WiFi credentials saved for ssid=%s", ssid);
+    feedbackInfo(TAG, "WiFi credentials saved locally");
   }
   return status;
 }
@@ -374,7 +374,7 @@ esp_err_t connectWifiStationFromSavedCredentials(uint32_t timeoutMs) {
     wifiStarted = true;
   }
 
-  feedbackInfo(TAG, "Connecting WiFi station to ssid=%s", credentials.ssid);
+  feedbackInfo(TAG, "Connecting WiFi station using locally stored credentials");
   status = esp_wifi_connect();
   if (status != ESP_OK) {
     feedbackError(TAG, "esp_wifi_connect failed: %d", status);

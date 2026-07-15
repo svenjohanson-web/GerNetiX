@@ -400,6 +400,44 @@ test("admin exposes prioritized clarification cases and forwards review decision
   assert.equal(resolved.clarificationCase.status, "resolved");
 });
 
+test("admin lists and maintains local help knowledge through AI Context", async () => {
+  const service = createAdminServiceWithHttpJson({});
+  const calls = [];
+  service.httpJson = async (_baseUrl, pathname, options = {}) => {
+    calls.push({ pathname, options });
+    if (options.method === "POST") return { article: options.body };
+    return { items: [{ article_id: "help.test", title: "Test", help_topic_id: "quick-start", status: "active" }] };
+  };
+
+  const listed = await service.helpKnowledge(adminContext());
+  const saved = await service.upsertHelpKnowledge({
+    article_id: "help.test", title: "Test", summary: "Kurz", content: "Inhalt", help_topic_id: "quick-start", status: "active",
+  }, adminContext());
+
+  assert.equal(listed.items[0].article_id, "help.test");
+  assert.equal(calls[0].pathname, "/api/ai-context/help-articles");
+  assert.equal(calls[1].options.method, "POST");
+  assert.equal(saved.article.article_id, "help.test");
+});
+
+test("admin keeps SMTP password server-side while configuring Identity mail delivery", async () => {
+  const service = createAdminServiceWithHttpJson({});
+  const calls = [];
+  service.httpJson = async (_baseUrl, pathname, options = {}) => {
+    calls.push({ pathname, options });
+    return { config: { configured: true, has_password: true, from_address: "noreply@example.test" }, ok: true };
+  };
+
+  const saved = await service.updateEmailConfig({ username: "noreply@example.test", from_address: "noreply@example.test", password: "secret" }, adminContext());
+  const tested = await service.testEmailConfig(adminContext());
+
+  assert.equal(saved.config.has_password, true);
+  assert.equal(calls[0].pathname, "/api/internal/email-config");
+  assert.equal(calls[0].options.headers["x-gernetix-admin-token"], "test-identity-admin-token");
+  assert.equal(calls[0].options.body.password, "secret");
+  assert.equal(tested.ok, true);
+});
+
 test("llm config test uses OpenAI Responses API when configured", async () => {
   const service = createAdminServiceWithHttpJson({});
   let requestedUrl = "";
@@ -464,6 +502,17 @@ test("loads selectable API models from the configured OpenAI provider", async ()
   }
 });
 
+test("security events are mailed once and then suppressed during cooldown", async () => {
+  const service = createAdminServiceWithHttpJson({ "/api/internal/security-alert": { accepted: true } });
+  let calls = 0;
+  service.identityEmailConfigRequest = async () => { calls += 1; return { accepted: true }; };
+  const first = await service.recordSecurityEvent({ severity: "critical", source_service: "vps-security-monitor", event_type: "unhealthy_container", message: "Container unhealthy", alert_key: "unhealthy_container" });
+  const second = await service.recordSecurityEvent({ severity: "critical", source_service: "vps-security-monitor", event_type: "unhealthy_container", message: "Container unhealthy", alert_key: "unhealthy_container" });
+  assert.equal(first.email, "sent");
+  assert.equal(second.email, "suppressed_duplicate");
+  assert.equal(calls, 1);
+});
+
 function createAdminServiceWithHttpJson(routes, error = null) {
   const repository = new InMemoryAdminRepository();
   const service = new AdminService({
@@ -480,6 +529,8 @@ function createAdminServiceWithHttpJson(routes, error = null) {
       hardwareCatalogBaseUrl: "http://hardware.test",
       aiUsageBaseUrl: "http://usage.test",
       aiContextBaseUrl: "http://context.test",
+      identityBaseUrl: "http://identity.test",
+      identityAdminToken: "test-identity-admin-token",
     },
   });
   service.httpJson = async (_baseUrl, pathname) => {

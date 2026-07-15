@@ -13,6 +13,7 @@ const DeviceOnboardingController = (() => {
       renderIdeShell,
       escapeHtml,
       meta,
+      openHelpTopic,
     } = deps;
 
     async function discoverNetworkDevices() {
@@ -33,20 +34,64 @@ const DeviceOnboardingController = (() => {
       }
     }
 
-    async function identifyEsp32Bootloader() {
+    async function scanProvisioningSerialPorts() {
       if (!("serial" in navigator)) {
         setDiscoveryStatus("error", "Web Serial ist in diesem Browser nicht verfuegbar. Verwende das GerNetiX USB Helper Tool.");
         return;
       }
-      setDiscoveryStatus("running", "Web-Serial-Portauswahl wird geoeffnet...");
+      state.provisioningSerialScanRunning = true;
+      state.provisioningSerialScanCompleted = false;
+      state.provisioningSerialPort = null;
+      state.discoveredDevices = [];
+      renderNetworkDiscovery();
+      setDiscoveryStatus("running", "Serielle Ports werden automatisch gesucht...");
       try {
-        const port = await navigator.serial.requestPort();
+        const ports = await navigator.serial.getPorts();
+        state.provisioningSerialScanCompleted = true;
+        state.provisioningSerialPort = ports.length === 1
+          ? ports[0]
+          : await navigator.serial.requestPort();
+        renderNetworkDiscovery();
+        await identifyEsp32Bootloader();
+      } catch (error) {
+        state.provisioningSerialScanCompleted = true;
+        renderNetworkDiscovery();
+        if (error.name === "NotFoundError") {
+          setDiscoveryStatus("hidden", "");
+          return;
+        }
+        setDiscoveryStatus("error", error.message || "Die automatische Suche konnte nicht ausgefuehrt werden.");
+      } finally {
+        state.provisioningSerialScanRunning = false;
+        renderNetworkDiscovery();
+      }
+    }
+
+    async function selectProvisioningSerialPort() {
+      if (!("serial" in navigator)) return;
+      try {
+        state.provisioningSerialPort = await navigator.serial.requestPort();
+        state.provisioningSerialScanCompleted = true;
+        state.discoveredDevices = [];
+        renderNetworkDiscovery();
+        setDiscoveryStatus("ok", "Serieller Port gewaehlt. Pruefe jetzt den seriellen Port.");
+      } catch (error) {
+        if (error.name !== "NotFoundError") setDiscoveryStatus("error", error.message || "Der serielle Port konnte nicht ausgewaehlt werden.");
+      }
+    }
+
+    async function identifyEsp32Bootloader() {
+      const port = state.provisioningSerialPort;
+      if (!port) {
+        setDiscoveryStatus("error", "Bitte zuerst einen seriellen Port waehlen.");
+        return;
+      }
+      setDiscoveryStatus("running", "Serieller Port und Bootloader werden geprueft...");
+      try {
         const info = port.getInfo ? port.getInfo() : {};
         const vendorId = usbIdentifier(info.usbVendorId);
         const productId = usbIdentifier(info.usbProductId);
         const identifier = vendorId && productId ? `${vendorId}:${productId}` : "browser-selected";
-        state.provisioningSerialPort = port;
-        setDiscoveryStatus("running", "Kompatibler Bootloader wird geprueft...");
         const bootloader = await probeCompatibleBootloader(port);
         if (!bootloader.detected) {
           state.discoveredDevices = [];
@@ -61,6 +106,7 @@ const DeviceOnboardingController = (() => {
         state.provisioningFeatureSelections = {};
         state.provisioningDatasheetUrl = "";
         state.provisioningUpdateProfile = "";
+        resetProvisioningUsbFlash();
         state.discoveredDevices = [{
           discovery_id: `web-serial-${identifier}`,
           source_url: `Web Serial ${identifier}`,
@@ -173,12 +219,12 @@ const DeviceOnboardingController = (() => {
       state.provisioningFeatureSelections = {};
       state.provisioningDatasheetUrl = "";
       state.provisioningUpdateProfile = "";
+      state.provisioningSerialPort = null;
+      state.provisioningSerialScanCompleted = false;
+      state.provisioningSerialScanRunning = false;
+      resetProvisioningUsbFlash();
       renderNetworkDiscovery();
-      setDiscoveryStatus("running", state.inventoryEsp32Method === "usb"
-        ? ("serial" in navigator
-          ? "USB ausgewaehlt. Oeffne jetzt die Web-Serial-Portauswahl."
-          : "Web Serial ist nicht verfuegbar. Verwende das GerNetiX USB Helper Tool.")
-        : "WLAN ausgewaehlt. Dieser Weg funktioniert nur mit bereits provisionierten Boards im gleichen lokalen Netzwerk.");
+      setDiscoveryStatus("hidden", "");
     }
 
     async function searchDevicesForInventory() {
@@ -188,7 +234,7 @@ const DeviceOnboardingController = (() => {
         return;
       }
       state.inventoryEsp32Method = method;
-      if (method === "usb") return identifyEsp32Bootloader();
+      if (method === "usb") return scanProvisioningSerialPorts();
       return discoverNetworkDevices();
     }
 
@@ -318,13 +364,28 @@ const DeviceOnboardingController = (() => {
       document.querySelector("#provisioningWorkflowTitle").textContent = isUsbSelected ? "Board per USB verbinden" : "Provisioniertes Board per WLAN suchen";
       document.querySelector("#esp32DiscoveryActions").classList.toggle("hidden", !showGenericMethods || !isWifiSelected);
       document.querySelector("#avrDiscoveryActions").classList.toggle("hidden", !isAvr || !isUsbSelected);
-      document.querySelector("#provisioningWebSerialActions").classList.toggle("hidden", !isUsbSelected || !("serial" in navigator));
-      document.querySelector("#provisioningUsbHelperHint").classList.toggle("hidden", !isUsbSelected || ("serial" in navigator));
-      document.querySelector("#claimSelectedDiscoveredDevicesButton").classList.toggle("hidden", !hasSelectedMethod || (!actions.wifiDiscovery && !actions.usbIdentification));
-      document.querySelector("#provisioningFoundBoardDetails").classList.toggle("hidden", !state.discoveredDevices.some(canClaimDiscoveredDevice));
+      const supportsWebSerial = "serial" in navigator;
+      const hasSelectedSerialPort = Boolean(state.provisioningSerialPort);
       const hasDetectedBootloader = isUsbSelected && state.discoveredDevices.some((device) => device.bootloader_type);
+      const hasBoardConfiguration = new Set(["catalog", "manual"]).has(state.provisioningBoardConfigurationMode);
+      document.querySelector("#provisioningAutomaticScanActions").classList.toggle("hidden", !isUsbSelected || !supportsWebSerial || hasSelectedSerialPort || hasDetectedBootloader);
+      document.querySelector("#provisioningWebSerialActions").classList.toggle("hidden", !isUsbSelected || !supportsWebSerial || !state.provisioningSerialScanCompleted || hasSelectedSerialPort);
+      document.querySelector("#provisioningSerialCheckActions").classList.toggle("hidden", !isUsbSelected || !supportsWebSerial || !hasSelectedSerialPort || hasDetectedBootloader);
+      const scanButton = document.querySelector("#scanProvisioningSerialPortsButton");
+      scanButton.disabled = Boolean(state.provisioningSerialScanRunning);
+      scanButton.textContent = state.provisioningSerialScanRunning ? "Suche laeuft..." : "Automatisch suchen";
+      document.querySelector("#provisioningUsbHelperHint").classList.toggle("hidden", !isUsbSelected || supportsWebSerial);
+      document.querySelector("#claimSelectedDiscoveredDevicesButton").classList.toggle("hidden",
+        !hasSelectedMethod
+        || (!actions.wifiDiscovery && !actions.usbIdentification)
+        || (hasDetectedBootloader && (!hasBoardConfiguration || !state.provisioningWifiSetupSucceeded)));
+      document.querySelector("#provisioningFoundBoardDetails").classList.toggle("hidden", !state.discoveredDevices.some(canClaimDiscoveredDevice));
       document.querySelector("#provisioningBoardFeatures").classList.toggle("hidden", !hasDetectedBootloader);
+      document.querySelector("#provisioningUsbFlashStep").classList.toggle("hidden", !hasDetectedBootloader || !hasBoardConfiguration);
+      document.querySelector("#provisioningWifiSetupStep").classList.toggle("hidden", !hasDetectedBootloader || !state.provisioningUsbFlashSucceeded);
       if (hasDetectedBootloader) renderBoardFeatureChecklist();
+      if (hasDetectedBootloader && state.provisioningUsbFlashSucceeded) renderProvisioningWifiSetup();
+      updateProvisioningUsbFlashButton();
       document.querySelector("#inventoryTypeHint").textContent = inventoryTypeHintText();
       if (!hasSelectedMethod) {
         list.innerHTML = `<p class="empty">Waehle zuerst WLAN oder USB als Provisioning-Weg.</p>`;
@@ -343,7 +404,7 @@ const DeviceOnboardingController = (() => {
       }
       if (!state.discoveredDevices.length) {
         list.innerHTML = state.inventoryEsp32Method === "usb"
-          ? `<p class="empty">Verbinde das Board per USB und waehle den Port ueber Web Serial aus.</p>`
+          ? ""
           : `<p class="empty">Suche nach einem bereits provisionierten Board im gleichen lokalen WLAN. Die Board-Auswahl ist optional.</p>`;
         updateClaimSelectedButton();
         return;
@@ -428,32 +489,17 @@ const DeviceOnboardingController = (() => {
 
     function renderKnownBoardSelection() {
       const select = document.querySelector("#provisioningKnownBoard");
-      const hint = document.querySelector("#provisioningKnownBoardHint");
-      const catalogChoice = document.querySelector("#provisioningKnownBoardSelection");
-      const manualChoice = document.querySelector("#provisioningManualBoardChoice");
-      const manualButton = document.querySelector("#provisioningManualBoardButton");
       const device = state.discoveredDevices.find((item) => item.bootloader_type);
-      if (!select || !hint || !manualButton || !device) return;
+      if (!select || !device) return;
       const detectedProfileId = device.detected_hardware_profile_id || device.hardware_profile_id;
       const detectedBoard = catalogBoardForProfile(detectedProfileId);
       const candidates = compatibleProcessorBoards(detectedBoard);
       select.innerHTML = [
-        `<option value="">Bitte vorgefertigtes Board auswählen</option>`,
+        `<option value="" ${state.provisioningBoardConfigurationMode ? "" : "selected"} disabled hidden>Board auswählen...</option>`,
+        `<option value="__manual__" ${state.provisioningBoardConfigurationMode === "manual" ? "selected" : ""}>Manuell konfigurieren</option>`,
         ...candidates.map((board) => `<option value="${escapeHtml(boardId(board))}" ${boardId(board) === state.provisioningKnownBoardId ? "selected" : ""}>${escapeHtml(board.title)}</option>`),
       ].join("");
-      const selectedBoard = catalogBoardForProfile(state.provisioningKnownBoardId);
-      hint.textContent = selectedBoard
-        ? `${selectedBoard.title} ist bekannt. Geprüfte Ausstattung wurde aus dem Hardware Catalog vorbelegt.`
-        : candidates.length
-          ? `${candidates.length} passendes${candidates.length === 1 ? "" : "e"} Boardprofil${candidates.length === 1 ? "" : "e"} für den erkannten Prozessor gefunden.`
-          : "Für den erkannten Prozessor ist noch kein konkretes Boardprofil hinterlegt. Nutze die manuelle Konfiguration.";
-      catalogChoice?.classList.toggle("is-selected", state.provisioningBoardConfigurationMode === "catalog");
-      manualChoice?.classList.toggle("is-selected", state.provisioningBoardConfigurationMode === "manual");
-      manualButton.textContent = state.provisioningBoardConfigurationMode === "manual"
-        ? "Manuelle Konfiguration ist geöffnet"
-        : "Manuelle Konfiguration öffnen";
       select.onchange = selectKnownProvisioningBoard;
-      manualButton.onclick = activateManualBoardConfiguration;
     }
 
     function compatibleProcessorBoards(detectedBoard) {
@@ -475,11 +521,16 @@ const DeviceOnboardingController = (() => {
 
     function selectKnownProvisioningBoard(event) {
       const hardwareProfileId = event.target.value;
+      if (hardwareProfileId === "__manual__") {
+        activateManualBoardConfiguration();
+        return;
+      }
       const device = state.discoveredDevices.find((item) => item.bootloader_type);
       if (!device) return;
       state.provisioningKnownBoardId = hardwareProfileId;
       state.provisioningBoardConfigurationMode = hardwareProfileId ? "catalog" : "";
       state.provisioningUpdateProfile = "";
+      resetProvisioningUsbFlash();
       device.hardware_profile_id = hardwareProfileId || device.detected_hardware_profile_id || device.hardware_profile_id;
       applyKnownBoardDefaults(catalogBoardForProfile(hardwareProfileId));
       renderNetworkDiscovery();
@@ -493,6 +544,7 @@ const DeviceOnboardingController = (() => {
       state.provisioningFeatureSelections = {};
       state.provisioningDatasheetUrl = "";
       state.provisioningUpdateProfile = "";
+      resetProvisioningUsbFlash();
       device.hardware_profile_id = device.detected_hardware_profile_id || device.hardware_profile_id;
       renderNetworkDiscovery();
     }
@@ -546,13 +598,11 @@ const DeviceOnboardingController = (() => {
         target.innerHTML = "";
         return;
       }
-      const flashSize = selectedFlashSizeMb();
-      const recommendation = recommendedUpdateProfile(flashSize);
       const profiles = updateProfileDefinitions();
       target.innerHTML = `
         <div class="provisioning-update-profile-head">
           <h4 id="provisioningUpdateProfileTitle">Update- und Speicherprofil wählen</h4>
-          <p class="helper-text">Wähle nach gewünschter Ausfallsicherheit und verfügbarem Speicher. Technische Details übernimmt GerNetiX.</p>
+          <a class="provisioning-help-link" href="/app/help/#update-profiles" aria-label="Hilfe zur Wahl des Update- und Speicherprofils" title="Wann wähle ich welches Profil?">?</a>
         </div>
         <div class="update-profile-options">
           ${profiles.map((profile) => `<label class="update-profile-option">
@@ -560,22 +610,25 @@ const DeviceOnboardingController = (() => {
             <span>
               <em class="update-profile-badge">${profile.badge}</em>
               <strong>${profile.title}</strong>
-              <small>${profile.description}</small>
-              <small><b>Updatefehler:</b> ${profile.failure}</small>
             </span>
           </label>`).join("")}
         </div>
-        <p class="update-profile-recommendation"><strong>Empfehlung${flashSize ? ` für ${flashSize} MB Flash` : ""}:</strong> ${recommendation.text}</p>
-        ${updateProfileExamplesTable(flashSize)}
-        <p class="update-profile-change-note"><strong>Später änderbar:</strong> Du kannst dieses Profil jederzeit wechseln. Wenn sich die Speicheraufteilung ändert oder OTA bisher nicht vorhanden ist, muss das Board dafür einmal per USB verbunden und neu geflasht werden. GerNetiX weist vorher darauf hin.</p>
-        <p class="helper-text"><strong>SD-Karte:</strong> Bilder, Fonts, Audio und Webseiten können extern gespeichert werden. Firmwarecode und OTA-Partitionen müssen weiterhin in den internen Flash passen. Externe PSRAM vergrößert nur den Arbeitsspeicher, nicht den Firmware-Flash.</p>
       `;
       target.querySelectorAll('input[name="provisioningUpdateProfile"]').forEach((input) => {
         input.addEventListener("change", () => {
           state.provisioningUpdateProfile = input.value;
+          resetProvisioningUsbFlash();
           renderUpdateProfileChooser();
           renderNetworkDiscovery();
         });
+      });
+      target.querySelector(".provisioning-help-link")?.addEventListener("click", (event) => {
+        event.preventDefault();
+        openHelpTopic("update-profiles");
+      });
+      document.querySelector(".provisioning-wifi-help-link")?.addEventListener("click", (event) => {
+        event.preventDefault();
+        openHelpTopic("usb-wifi-setup");
       });
     }
 
@@ -603,36 +656,6 @@ const DeviceOnboardingController = (() => {
           failure: "Updates und Wiederherstellung erfolgen ausschließlich über USB.",
         },
       ];
-    }
-
-    function selectedFlashSizeMb() {
-      const value = state.provisioningFeatureSelections?.flash?.value || "";
-      const match = String(value).match(/^(\d+)_mb$/);
-      return match ? Number(match[1]) : 0;
-    }
-
-    function recommendedUpdateProfile(flashSize) {
-      const display = state.provisioningFeatureSelections?.display?.enabled;
-      const sound = state.provisioningFeatureSelections?.speaker?.enabled;
-      if (!flashSize) return { id: "", text: "Bestätige zuerst die interne Flashgröße. Danach kann GerNetiX eine belastbare Empfehlung geben." };
-      if (flashSize >= 16) return { id: "full", text: "FULL – auch mit Display und Sound sind bei üblichen Anwendungen keine Speicherprobleme zu erwarten." };
-      if (flashSize >= 8) return { id: "full", text: display && sound
-        ? "FULL ist für typische Display- und Soundprojekte geeignet; sehr große Medienbestände werden beim Build erneut geprüft."
-        : "FULL bietet normalerweise ausreichend Platz und die höchste Ausfallsicherheit." };
-      if (flashSize <= 4 && (display || sound)) return { id: "medium", text: "MEDIUM – bei 4 MB und Display oder Sound ist die Speicherreserve für zwei vollständige Firmwarestände kritisch." };
-      return { id: "full", text: "FULL – für kleine Regelungen und Steuerungen ohne umfangreiche Medien ist das 4-MB-Profil normalerweise ausreichend." };
-    }
-
-    function updateProfileExamplesTable(flashSize) {
-      const rows = [
-        [4, "Kleine Regelungen, Sensoren, Relais und LEDs", "Kleines OLED, einfache Menüs, wenige Fonts", "Vollgrafik, viele Ansichten, größere Bilder oder Sound"],
-        [8, "Regelungen mit OLED, einfache TFT- und Touch-Oberflächen", "Umfangreiche Touch-Oberflächen, mehrere Ansichten und lokale Daten", "Sehr große Medienanwendungen oder konsequent offline betriebene Spezialprojekte"],
-        [16, "Übliche Touchdisplays, Sound, mehrere Ansichten und sichere Updates", "Sehr große Font-, Bild-, Audio- oder Datenbestände", "Außergewöhnlich große Offline-Anwendungen; normalerweise nicht erforderlich"],
-      ];
-      return `<div class="update-profile-table-wrap"><table class="update-profile-examples">
-        <thead><tr><th>Interner Flash</th><th>FULL</th><th>MEDIUM</th><th>LOW</th></tr></thead>
-        <tbody>${rows.map((row) => `<tr class="${row[0] === flashSize ? "is-current" : ""}"><td><strong>${row[0]} MB</strong></td><td>${row[1]}</td><td>${row[2]}</td><td>${row[3]}</td></tr>`).join("")}</tbody>
-      </table></div>`;
     }
 
     function selectedUpdateProfileConfiguration() {
@@ -757,7 +780,7 @@ const DeviceOnboardingController = (() => {
 
     function inventoryTypeHintText() {
       return state.inventoryEsp32Method === "usb"
-        ? "USB identifiziert das verbundene Board und fuehrt anschliessend durch Provisionierung, Registrierung und Pairing."
+        ? ""
         : "WLAN sucht ausschliesslich nach bereits provisionierten, erreichbaren gernetix-* Nodes im gleichen lokalen Netzwerk.";
     }
 
@@ -765,11 +788,298 @@ const DeviceOnboardingController = (() => {
       return {
         wifiDiscovery: true,
         usbIdentification: true,
-        usbFlash: false,
+        usbFlash: true,
         ota: false,
         basissoftware: false,
         captiveSetup: false,
       };
+    }
+
+    function resetProvisioningUsbFlash() {
+      state.provisioningUsbFlashSucceeded = false;
+      state.provisioningUsbFlashRunning = false;
+      state.provisioningPairingToken = "";
+      state.provisioningBinding = "";
+      state.provisioningWifiNetworks = [];
+      state.provisioningWifiSetupRunning = false;
+      state.provisioningWifiSetupSucceeded = false;
+      const status = document.querySelector("#provisioningUsbFlashStatus");
+      if (status) {
+        status.className = "flash-status hidden";
+        status.textContent = "";
+      }
+    }
+
+    function renderProvisioningWifiSetup() {
+      const scanButton = document.querySelector("#scanProvisioningWifiButton");
+      const selection = document.querySelector("#provisioningWifiNetworkSelection");
+      const select = document.querySelector("#provisioningWifiSsid");
+      const manualLabel = document.querySelector("#provisioningWifiManualSsidLabel");
+      const connectButton = document.querySelector("#connectProvisioningWifiButton");
+      if (!scanButton || !selection || !select || !manualLabel || !connectButton) return;
+      scanButton.disabled = state.provisioningWifiSetupRunning || !state.provisioningPairingToken;
+      scanButton.textContent = state.provisioningWifiSetupRunning ? "WLANs werden gesucht..." : "WLANs suchen";
+      selection.classList.toggle("hidden", state.provisioningWifiNetworks.length === 0 || state.provisioningWifiSetupSucceeded);
+      select.innerHTML = [
+        '<option value="" selected disabled>WLAN auswählen...</option>',
+        ...state.provisioningWifiNetworks.map((network) => `<option value="${escapeHtml(network.ssid)}">${escapeHtml(network.ssid)}${network.secure ? "" : " (offen)"} · ${escapeHtml(network.rssi)} dBm</option>`),
+        '<option value="__manual__">Anderes oder verborgenes WLAN</option>',
+      ].join("");
+      select.onchange = () => manualLabel.classList.toggle("hidden", select.value !== "__manual__");
+      connectButton.disabled = state.provisioningWifiSetupRunning || !state.provisioningPairingToken;
+      if (!state.provisioningPairingToken && !state.provisioningWifiSetupSucceeded) {
+        setProvisioningWifiStatus("running", "Sichere Account-Zuordnung wird vorbereitet...");
+      }
+    }
+
+    function setProvisioningWifiStatus(kind, message) {
+      const status = document.querySelector("#provisioningWifiSetupStatus");
+      if (!status) return;
+      status.className = `flash-status ${kind}`;
+      status.textContent = message;
+    }
+
+    async function prepareProvisioningWifiSetup() {
+      const device = state.discoveredDevices.find((item) => item.bootloader_type);
+      if (!device) throw new Error("Kein USB-Board für die WLAN-Einrichtung gefunden.");
+      state.provisioningBinding = device.discovery_id;
+      const session = await postJson("/api/platform/provisioning/session", {
+        provisioning_binding: state.provisioningBinding,
+      });
+      state.provisioningPairingToken = session.provisioning_token;
+      setProvisioningWifiStatus("ok", "Bereit. Die WLAN-Daten bleiben ausschließlich auf deinem Board.");
+      renderNetworkDiscovery();
+    }
+
+    async function scanProvisioningWifiNetworks() {
+      if (!state.provisioningPairingToken) return;
+      state.provisioningWifiSetupRunning = true;
+      renderProvisioningWifiSetup();
+      setProvisioningWifiStatus("running", "Board sucht verfügbare WLANs...");
+      try {
+        const response = await serialProvisioningRequest("wifi_scan");
+        state.provisioningWifiNetworks = (response.payload?.networks || []).filter((network) => network.ssid);
+        setProvisioningWifiStatus("ok", state.provisioningWifiNetworks.length
+          ? "WLANs gefunden. Wähle dein Netzwerk und gib das Passwort ein."
+          : "Kein sichtbares WLAN gefunden. Du kannst ein verborgenes WLAN manuell eingeben.");
+        if (!state.provisioningWifiNetworks.length) state.provisioningWifiNetworks = [{ ssid: "", rssi: 0, secure: true }];
+      } catch (error) {
+        setProvisioningWifiStatus("error", error.message || "WLANs konnten nicht gesucht werden.");
+      } finally {
+        state.provisioningWifiSetupRunning = false;
+        renderProvisioningWifiSetup();
+      }
+    }
+
+    async function connectProvisioningWifi() {
+      const select = document.querySelector("#provisioningWifiSsid");
+      const manual = document.querySelector("#provisioningWifiManualSsid");
+      const password = document.querySelector("#provisioningWifiPassword");
+      const ssid = select?.value === "__manual__" ? manual?.value.trim() : select?.value;
+      if (!ssid || !password || !state.provisioningPairingToken) {
+        setProvisioningWifiStatus("error", "Bitte WLAN und Passwort eingeben.");
+        return;
+      }
+      state.provisioningWifiSetupRunning = true;
+      renderProvisioningWifiSetup();
+      setProvisioningWifiStatus("running", "WLAN-Daten werden direkt per USB an das Board übertragen...");
+      try {
+        await serialProvisioningRequest("wifi_connect", { ssid, password: password.value });
+        password.value = "";
+        await waitForProvisioningWifiConnection();
+        state.provisioningWifiSetupSucceeded = true;
+        await completeProvisioningOverWifi();
+      } catch (error) {
+        password.value = "";
+        setProvisioningWifiStatus("error", error.message || "Das Board konnte nicht mit dem WLAN verbunden werden.");
+      } finally {
+        state.provisioningWifiSetupRunning = false;
+        renderProvisioningWifiSetup();
+      }
+    }
+
+    async function waitForProvisioningWifiConnection() {
+      for (let attempt = 0; attempt < 20; attempt += 1) {
+        await delay(1000);
+        const response = await serialProvisioningRequest("wifi_status");
+        const stateName = response.payload?.state || "";
+        if (stateName === "connected") return;
+        if (stateName === "failed") throw new Error("Das Board konnte keine WLAN-Verbindung aufbauen. Prüfe Passwort und Reichweite.");
+      }
+      throw new Error("Das Board verbindet noch. Bitte prüfe das WLAN und versuche es erneut.");
+    }
+
+    async function completeProvisioningOverWifi() {
+      const discovered = state.discoveredDevices.find((item) => item.bootloader_type);
+      if (!discovered) throw new Error("Das Board konnte nicht mehr dem USB-Provisioning zugeordnet werden.");
+      setProvisioningWifiStatus("running", "WLAN-Verbindung bestätigt. Device wird registriert und deinem Account zugeordnet...");
+      const device = await postJson("/api/platform/provisioning/complete", {
+        ...withOnboardingIdentity({ ...discovered, connectivity_status: "online", esp32_inventory_state: "node_online" }),
+        provisioning_token: state.provisioningPairingToken,
+        provisioning_binding: state.provisioningBinding,
+      });
+      state.devices = state.devices.filter((item) => item.account_device_id !== device.account_device_id).concat(device);
+      state.discoveredDevices = [];
+      state.provisioningPairingToken = "";
+      state.activeDeviceId = device.device_id;
+      renderIdeShell();
+      renderDevices();
+      renderDashboard();
+      renderNetworkDiscovery();
+      setProvisioningWifiStatus("ok", "Erledigt: Board ist per WLAN verbunden, registriert und deinem Account zugeordnet.");
+    }
+
+    async function serialProvisioningRequest(action, payload = {}) {
+      const port = state.provisioningSerialPort;
+      if (!port) throw new Error("Der serielle Port ist nicht mehr verbunden.");
+      const requestId = crypto.randomUUID();
+      let reader = null;
+      let writer = null;
+      let openedHere = false;
+      try {
+        if (!port.readable) {
+          await port.open({ baudRate: 115200 });
+          openedHere = true;
+        }
+        reader = port.readable.getReader();
+        writer = port.writable.getWriter();
+        await writer.write(new TextEncoder().encode(`${JSON.stringify({ type: "gernetix.serial_provisioning", action, request_id: requestId, ...payload })}\n`));
+        const decoder = new TextDecoder();
+        let buffer = "";
+        const deadline = Date.now() + 15000;
+        while (Date.now() < deadline) {
+          const result = await Promise.race([
+            reader.read(),
+            delay(Math.max(1, deadline - Date.now())).then(() => ({ timeout: true })),
+          ]);
+          if (result?.timeout) break;
+          if (result.done) break;
+          buffer += decoder.decode(result.value, { stream: true });
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            try {
+              const message = JSON.parse(line);
+              if (message.type !== "gernetix.serial_provisioning" || message.request_id !== requestId) continue;
+              if (message.event === "error") throw new Error("Das Board hat die Anfrage abgelehnt.");
+              return message;
+            } catch (error) {
+              if (error instanceof SyntaxError) continue;
+              throw error;
+            }
+          }
+        }
+        throw new Error("Das Board hat nicht rechtzeitig geantwortet. Warte nach dem Flash kurz und versuche es erneut.");
+      } finally {
+        try { await reader?.cancel(); } catch {}
+        try { reader?.releaseLock(); } catch {}
+        try { writer?.releaseLock(); } catch {}
+        if (openedHere) {
+          try { await port.close(); } catch {}
+        }
+      }
+    }
+
+    function updateProvisioningUsbFlashButton() {
+      const button = document.querySelector("#flashProvisioningBasissoftwareButton");
+      if (!button) return;
+      const disabledReason = document.querySelector("#provisioningUsbFlashDisabledReason");
+      const reasons = provisioningUsbFlashDisabledReasons();
+      const ready = reasons.length === 0;
+      button.disabled = !ready || state.provisioningUsbFlashRunning || state.provisioningUsbFlashSucceeded;
+      button.textContent = state.provisioningUsbFlashRunning
+        ? "Basissoftware wird geflasht..."
+        : state.provisioningUsbFlashSucceeded
+          ? "Basissoftware erfolgreich geflasht"
+          : "Basissoftware flashen";
+      if (disabledReason) {
+        disabledReason.textContent = state.provisioningUsbFlashRunning
+          ? "Der Flashvorgang laeuft. Bitte das Board verbunden lassen."
+          : state.provisioningUsbFlashSucceeded
+            ? "Der Flash ist abgeschlossen. Das Board kann jetzt registriert und verbunden werden."
+            : reasons.length
+              ? `Noch erforderlich: ${reasons.join(" · ")}`
+              : "Alle Voraussetzungen sind erfuellt. Du kannst die Basissoftware jetzt flashen.";
+      }
+    }
+
+    function provisioningUsbFlashDisabledReasons() {
+      const reasons = [];
+      if (state.inventoryEsp32Method !== "usb") reasons.push("USB als Provisioning-Weg waehlen");
+      if (!state.provisioningSerialPort) reasons.push("seriellen Port auswaehlen");
+      if (!state.discoveredDevices.some((device) => device.bootloader_type === "espressif_rom")) reasons.push("kompatiblen ESP32-Bootloader erkennen");
+      if (!new Set(["catalog", "manual"]).has(state.provisioningBoardConfigurationMode)) reasons.push("Boardmodell waehlen oder Ausstattung manuell festlegen");
+      if (!new Set(["full", "medium", "low"]).has(state.provisioningUpdateProfile)) reasons.push("Update- und Speicherprofil waehlen");
+      return reasons;
+    }
+
+    function setProvisioningUsbFlashStatus(kind, message) {
+      const status = document.querySelector("#provisioningUsbFlashStatus");
+      if (!status) return;
+      status.className = `flash-status ${kind}`;
+      status.textContent = message;
+    }
+
+    async function flashProvisioningBasissoftware() {
+      if (state.provisioningUsbFlashRunning) return;
+      updateProvisioningUsbFlashButton();
+      const button = document.querySelector("#flashProvisioningBasissoftwareButton");
+      if (!button || button.disabled) return;
+      state.provisioningUsbFlashRunning = true;
+      state.provisioningUsbFlashSucceeded = false;
+      updateProvisioningUsbFlashButton();
+      setProvisioningUsbFlashStatus("running", "Factory-Basissoftware wird geladen...");
+      let transport = null;
+      try {
+        const profile = encodeURIComponent(state.provisioningUpdateProfile);
+        const artifact = await getJson(`/api/platform/provisioning-firmware?profile=${profile}`);
+        const response = await fetch(artifact.content_url, { credentials: "same-origin" });
+        if (!response.ok) {
+          const payload = await response.json().catch(() => ({}));
+          throw new Error(payload.message || `Firmware konnte nicht geladen werden (${response.status}).`);
+        }
+        const firmware = new Uint8Array(await response.arrayBuffer());
+        const { ESPLoader, Transport } = await loadIdeEsptoolModule();
+        transport = new Transport(state.provisioningSerialPort, false);
+        const loader = new ESPLoader({
+          transport,
+          baudrate: 115200,
+          terminal: { clean() {}, writeLine() {}, write() {} },
+          debugLogging: false,
+        });
+        setProvisioningUsbFlashStatus("running", "Board wird verbunden...");
+        const chipName = await loader.main();
+        await loader.writeFlash({
+          fileArray: [{ data: firmware, address: Number(artifact.flash_offset || 0) }],
+          flashMode: "dio",
+          flashFreq: "40m",
+          flashSize: "keep",
+          eraseAll: false,
+          compress: true,
+          reportProgress: (_index, written, total) => {
+            const percent = Math.min(100, Math.round((written / Math.max(total, 1)) * 100));
+            setProvisioningUsbFlashStatus("running", `${chipName || "ESP32"}: Basissoftware schreiben ${percent} %`);
+          },
+        });
+        await loader.after("hard_reset");
+        await transport.disconnect();
+        transport = null;
+        state.provisioningUsbFlashSucceeded = true;
+        setProvisioningUsbFlashStatus("ok", "Basissoftware wurde erfolgreich geflasht. WLAN-Einrichtung wird vorbereitet.");
+        await delay(1500);
+        try {
+          await prepareProvisioningWifiSetup();
+        } catch (setupError) {
+          setProvisioningWifiStatus("error", setupError.message || "WLAN-Einrichtung konnte noch nicht vorbereitet werden.");
+        }
+        renderNetworkDiscovery();
+      } catch (error) {
+        try { await transport?.disconnect(); } catch {}
+        setProvisioningUsbFlashStatus("error", `${error.message || "USB-Flash fehlgeschlagen."} Das Board kann erneut geflasht oder unter Recovery gerettet werden.`);
+      } finally {
+        state.provisioningUsbFlashRunning = false;
+        updateProvisioningUsbFlashButton();
+      }
     }
 
     async function claimDiscoveredDevice(discoveryId) {
@@ -876,6 +1186,8 @@ const DeviceOnboardingController = (() => {
         && device.ownership_status !== "other_account"
         && (!device.bootloader_type || new Set(["catalog", "manual"]).has(state.provisioningBoardConfigurationMode))
         && (!device.bootloader_type || new Set(["full", "medium", "low"]).has(state.provisioningUpdateProfile))
+        && (!device.bootloader_type || state.provisioningUsbFlashSucceeded)
+        && (!device.bootloader_type || state.provisioningWifiSetupSucceeded)
         && claimableStates.has(device.esp32_inventory_state);
     }
 
@@ -968,9 +1280,14 @@ const DeviceOnboardingController = (() => {
     return {
       claimDiscoveredDevice,
       claimSelectedDiscoveredDevices,
+      connectProvisioningWifi,
       discoverNetworkDevices,
       identifyAvrBootloaderExperimental,
       identifyEsp32Bootloader,
+      scanProvisioningSerialPorts,
+      scanProvisioningWifiNetworks,
+      selectProvisioningSerialPort,
+      flashProvisioningBasissoftware,
       renderNetworkDiscovery,
       searchDevicesForInventory,
       selectDeviceDiscoveryMethod,

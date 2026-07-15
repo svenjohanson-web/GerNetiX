@@ -25,11 +25,17 @@ test("USB provisioning uses Web Serial and points unsupported browsers to the he
   const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
 
   assert.match(html, /id="selectProvisioningSerialPortButton"/);
+  assert.match(html, /id="scanProvisioningSerialPortsButton"[^>]*>Automatisch suchen/);
+  assert.match(html, /id="checkProvisioningSerialPortButton"[^>]*>Seriellen Port prüfen/);
   assert.match(html, /id="provisioningUsbHelperHint"/);
   assert.match(html, /GerNetiX USB Helper Tool/);
   assert.doesNotMatch(html, /id="esp32UsbPort"/);
   assert.match(app, /selectProvisioningSerialPortButton/);
   assert.match(onboarding, /navigator\.serial\.requestPort\(\)/);
+  assert.match(onboarding, /navigator\.serial\.getPorts\(\)/);
+  assert.match(onboarding, /await identifyEsp32Bootloader\(\)/);
+  assert.match(onboarding, /!state\.provisioningSerialScanCompleted \|\| hasSelectedSerialPort/);
+  assert.match(onboarding, /!hasSelectedSerialPort \|\| hasDetectedBootloader/);
   assert.match(onboarding, /loader\.main\(isEspressifUsbJtag \? "usb_reset" : "default_reset"\)/);
   assert.match(onboarding, /Arduino Bootloader \(STK500v1\)/);
   assert.match(onboarding, /compatible_bootloader_detected/);

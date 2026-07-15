@@ -1,0 +1,9 @@
+[Unit]
+Description=GerNetiX security alert scan
+After=docker.service
+
+[Service]
+Type=oneshot
+User=root
+EnvironmentFile=/etc/gernetix/security-alert-monitor.env
+ExecStart=/opt/gernetix/infra/vps/security/security-alert-scan.sh

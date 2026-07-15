@@ -4,7 +4,8 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Plattform</title>
-    <link rel="stylesheet" href="/app/app.css?v=20260714-14" />
+    <link rel="manifest" href="/app/manifest.webmanifest" />
+    <link rel="stylesheet" href="/app/app.css?v=20260715-15" />
   </head>
   <body>
     <main class="app-shell">
@@ -31,6 +32,7 @@
         <a class="utility" href="/app/builds/" data-route="builds">Builds</a>
         <a class="utility" href="/app/downloads/" data-route="downloads">Downloads</a>
         <a class="utility" href="/app/billing/" data-route="billing">Billing</a>
+        <a class="utility" href="/app/help/" data-route="help">Hilfe</a>
         <button id="logoutButton" class="menu-logout" type="button">Abmelden</button>
       </nav>
 
@@ -44,6 +46,18 @@
             <span>Lernbereich</span>
             <strong>Lernbereich beitreten</strong>
           </button>
+          <button class="entry-card" type="button" data-open-route="/app/device-management/">
+            <span>Device Management</span>
+            <strong>Boards verwalten</strong>
+          </button>
+          <article class="entry-card" aria-labelledby="mobileAlertsTitle">
+            <span>iPhone App</span>
+            <strong id="mobileAlertsTitle">Push-Meldungen</strong>
+            <p>In Safari zum Home-Bildschirm hinzufügen und Push-Meldungen aktivieren.</p>
+            <button id="enablePushButton" type="button">Push aktivieren</button>
+            <button id="sendPushTestButton" type="button">Testnachricht senden</button>
+            <small id="pushStatus" aria-live="polite"></small>
+          </article>
         </section>
 
         <section class="panel">
@@ -64,6 +78,108 @@
           </div>
           <div id="dashboardAiUsage" class="ai-rating-grid"></div>
         </section>
+      </section>
+
+      <section id="helpView" class="view hidden">
+        <div id="helpMount"></div>
+        <template id="legacyHelpMarkup">
+          <div>
+            <p class="eyebrow">Hilfe</p>
+            <h2>GerNetiX kennenlernen</h2>
+          </div>
+        <div class="help-layout">
+          <nav class="panel help-topic-navigation" aria-label="Hilfethemen">
+            <p class="eyebrow">Themen</p>
+            <a class="active" href="#quick-start" data-help-topic="quick-start" aria-current="page">
+              <strong>Schnellstartanleitung</strong>
+              <span>Vom Einstieg bis zum ersten Projekt</span>
+            </a>
+            <a href="#provisioning" data-help-topic="provisioning">
+              <strong>Provisionierung</strong>
+              <span>Board erkennen, flashen, registrieren und pairen</span>
+            </a>
+          </nav>
+          <article id="quick-start" class="panel help-article" data-help-article="quick-start">
+            <header class="help-article-head">
+              <p class="eyebrow">Erste Schritte</p>
+              <h2>Schnellstartanleitung</h2>
+              <p>Starte mit einem Lernprojekt oder entwickle ein eigenes System. Diese Schritte fuehren dich durch den typischen Ablauf.</p>
+            </header>
+            <ol class="quick-start-steps">
+              <li>
+                <span class="quick-start-number">1</span>
+                <div>
+                  <h3>Bereich waehlen</h3>
+                  <p>Die Lernplattform erklaert den Weg gefuehrt. In der Entwicklungsplattform setzt du eine eigene Projektidee um.</p>
+                </div>
+              </li>
+              <li>
+                <span class="quick-start-number">2</span>
+                <div>
+                  <h3>Projekt anlegen</h3>
+                  <p>Waehle ein passendes Template oder beginne leer. Vergib einen Projektnamen und beschreibe kurz Ziel und Funktion.</p>
+                </div>
+              </li>
+              <li>
+                <span class="quick-start-number">3</span>
+                <div>
+                  <h3>Architektur klaeren</h3>
+                  <p>Ergaenze im KI-Dialog die benoetigten Komponenten. Pruefe die Zusammenfassung und die statische Architektur, bevor du sie uebernimmst.</p>
+                </div>
+              </li>
+              <li>
+                <span class="quick-start-number">4</span>
+                <div>
+                  <h3>Hardware zuordnen</h3>
+                  <p>Waehle fuer jedes IoT-Device zuerst den Prozessor und danach ein kompatibles Board. Ordne Sensoren, Aktoren und Pins zu.</p>
+                </div>
+              </li>
+              <li>
+                <span class="quick-start-number">5</span>
+                <div>
+                  <h3>Board verbinden</h3>
+                  <p>Noch nicht bekannte Boards nimmst du unter Device Management per USB oder WLAN in Betrieb und verbindest sie mit deinem Account.</p>
+                </div>
+              </li>
+              <li>
+                <span class="quick-start-number">6</span>
+                <div>
+                  <h3>In der IDE weiterarbeiten</h3>
+                  <p>Bearbeite Modell, Konfiguration und Quellcode. Pruefe die Hinweise und starte anschliessend Build und Flash.</p>
+                </div>
+              </li>
+            </ol>
+            <section class="help-next-actions" aria-labelledby="helpNextActionsTitle">
+              <h3 id="helpNextActionsTitle">Direkt starten</h3>
+              <div class="button-row">
+                <button class="primary" type="button" data-open-route="/app/development-platform/">Entwicklungsprojekt starten</button>
+                <button type="button" data-open-route="/app/device-management/provisioning/">Board provisionieren</button>
+                <button type="button" data-open-route="/app/learn/">Lernprojekt starten</button>
+              </div>
+            </section>
+          </article>
+          <article id="provisioning" class="panel help-article hidden" data-help-article="provisioning">
+            <section class="provisioning-intro">
+              <div>
+                <p class="eyebrow">Board verbinden</p>
+                <h3>Per WLAN oder USB provisionieren</h3>
+                <p class="helper-text">WLAN übernimmt ein bereits provisioniertes Board aus deinem lokalen Netzwerk. USB nimmt ein neues oder nicht erreichbares Board in Betrieb. Danach wird das Board registriert und mit deinem Account verbunden.</p>
+              </div>
+              <ol class="provisioning-steps" aria-label="Provisioning-Ablauf">
+                <li><span>1</span>Erkennen</li>
+                <li><span>2</span>Flashen</li>
+                <li><span>3</span>Registrieren</li>
+                <li><span>4</span>Pairen</li>
+              </ol>
+            </section>
+            <section class="help-next-actions" aria-labelledby="provisioningUsbHelpTitle">
+              <h3 id="provisioningUsbHelpTitle">USB und virtueller COM-Port</h3>
+              <p>Bei USB stellt das Board einen virtuellen seriellen Port bereit. Unter Windows erscheint er als COM-Port. GerNetiX sucht zuerst automatisch nach bereits freigegebenen Ports.</p>
+              <p>Ein neu angeschlossenes Board benötigt einmalig die Browser-Freigabe – auch wenn Windows den COM-Port bereits im Geräte-Manager anzeigt. Danach verbindet und prüft GerNetiX den Port automatisch.</p>
+            </section>
+          </article>
+        </div>
+        </template>
       </section>
 
       <section id="downloadsView" class="view hidden">
@@ -238,35 +354,20 @@
           <button type="button" data-device-management-route="/app/device-management/inventory/">Inventar</button>
           <button type="button" data-device-management-route="/app/device-management/recovery/">Recovery</button>
         </nav>
-        <section class="provisioning-intro panel">
-          <div>
-            <p class="eyebrow">Board verbinden</p>
-            <h3>Per WLAN oder USB provisionieren</h3>
-            <p class="helper-text">WLAN übernimmt ein bereits provisioniertes Board aus deinem lokalen Netzwerk. USB nimmt ein neues oder nicht erreichbares Board in Betrieb. Danach wird das Board registriert und mit deinem Account verbunden.</p>
-          </div>
-          <ol class="provisioning-steps" aria-label="Provisioning-Ablauf">
-            <li><span>1</span>Erkennen</li>
-            <li><span>2</span>Flashen</li>
-            <li><span>3</span>Registrieren</li>
-            <li><span>4</span>Pairen</li>
-          </ol>
-        </section>
         <fieldset id="provisioningMethodChoice" class="panel provisioning-method-choice">
           <legend>Wie möchtest du das Board verbinden?</legend>
-          <p class="helper-text">Wähle genau einen Provisioning-Weg. Du kannst den Weg später wechseln; dabei werden vorhandene Suchergebnisse verworfen.</p>
+          <p class="helper-text">Wähle USB, wenn du das Board noch nie mit GerNetiX verbunden hast, es per WLAN nicht gefunden wird oder bisher nur die minimale Inbetriebnahme-Provisionierung ausgeführt wurde. WLAN ist für bereits vollständig provisionierte und erreichbare Boards.</p>
           <div class="provisioning-method-options">
             <label class="provisioning-method-option">
               <input type="radio" name="deviceDiscoveryMethod" value="wlan" />
               <span>
                 <strong>Per WLAN</strong>
-                <small>Bereits provisioniertes Board im lokalen Netzwerk suchen</small>
               </span>
             </label>
             <label class="provisioning-method-option">
               <input type="radio" name="deviceDiscoveryMethod" value="usb" />
               <span>
                 <strong>Per USB</strong>
-                <small>Neues oder nicht erreichbares Board direkt verbinden</small>
               </span>
             </label>
           </div>
@@ -284,10 +385,14 @@
               <span>Das Board muss die GerNetiX-Basissoftware bereits besitzen und im gleichen lokalen Netzwerk erreichbar sein. Für ein neues oder nicht erreichbares Board bitte USB wählen.</span>
             </aside>
             <aside id="provisioningUsbNotice" class="provisioning-method-notice hidden" role="note">
-              <strong>USB-Provisioning</strong>
-              <span>Verbinde das Board direkt mit diesem Rechner und wähle den Port über Web Serial aus.</span>
-              <div id="provisioningWebSerialActions" class="button-row">
-                <button id="selectProvisioningSerialPortButton" class="primary" type="button">Seriellen Port auswählen</button>
+              <div id="provisioningAutomaticScanActions" class="button-row">
+                <button id="scanProvisioningSerialPortsButton" class="primary" type="button">Automatisch suchen</button>
+              </div>
+              <div id="provisioningWebSerialActions" class="button-row hidden">
+                <button id="selectProvisioningSerialPortButton" class="primary" type="button">Seriellen Port wählen</button>
+              </div>
+              <div id="provisioningSerialCheckActions" class="button-row hidden">
+                <button id="checkProvisioningSerialPortButton" class="primary" type="button">Seriellen Port prüfen</button>
               </div>
               <p id="provisioningUsbHelperHint" class="helper-text hidden">
                 Dieser Browser unterstützt Web Serial nicht. Verwende stattdessen das
@@ -312,23 +417,10 @@
                   <h3 id="provisioningBoardFeaturesTitle">Boardmodell festlegen</h3>
                 </div>
               </div>
-              <p class="helper-text">Wir haben vorgefertigte Boardprofile. Prüfe zuerst, ob dein Board dabei ist. Falls nicht, kannst du seine Ausstattung selbst konfigurieren.</p>
-              <div class="provisioning-board-choices">
-                <article id="provisioningKnownBoardSelection" class="provisioning-board-choice">
-                  <p class="eyebrow">Empfohlen</p>
-                  <h4>Vorgefertigtes Board auswählen</h4>
-                  <p class="helper-text">Bekannte Speichergrößen, Anschlüsse und verbaute Hardware werden automatisch vorbelegt.</p>
-                  <label>Dein Boardmodell
-                    <select id="provisioningKnownBoard"></select>
-                  </label>
-                  <p id="provisioningKnownBoardHint" class="helper-text"></p>
-                </article>
-                <article id="provisioningManualBoardChoice" class="provisioning-board-choice">
-                  <p class="eyebrow">Board nicht dabei?</p>
-                  <h4>Board selbst konfigurieren</h4>
-                  <p class="helper-text">Lege die vorhandene Ausstattung anhand des Datenblatts per Hand fest.</p>
-                  <button id="provisioningManualBoardButton" class="secondary" type="button">Manuelle Konfiguration öffnen</button>
-                </article>
+              <div class="provisioning-board-selector">
+                <label>Boardmodell oder manuelle Konfiguration
+                  <select id="provisioningKnownBoard"></select>
+                </label>
               </div>
               <div id="provisioningBoardConfigurationDetails" class="provisioning-board-configuration-details hidden">
                 <div class="section-head compact">
@@ -353,6 +445,38 @@
                 <div><dt>Seriennummer</dt><dd>wird automatisch von GerNetiX erstellt</dd></div>
               </dl>
               <p class="helper-text">Name und Device-Identität werden erst bei der Übernahme dauerhaft gespeichert.</p>
+            </section>
+            <section id="provisioningUsbFlashStep" class="provisioning-flash-step hidden" aria-labelledby="provisioningUsbFlashStepTitle">
+              <p class="eyebrow">Basissoftware</p>
+              <h3 id="provisioningUsbFlashStepTitle">Board per USB flashen</h3>
+              <p class="helper-text">GerNetiX schreibt jetzt die Basissoftware auf das erkannte Board. Erst nach einem erfolgreichen Flash kann das Board registriert und mit deinem Account verbunden werden.</p>
+              <div class="provisioning-flash-action">
+                <button id="flashProvisioningBasissoftwareButton" class="primary" type="button" aria-describedby="provisioningUsbFlashDisabledReason" disabled>Basissoftware flashen</button>
+                <p id="provisioningUsbFlashDisabledReason" class="provisioning-flash-disabled-reason" role="note"></p>
+              </div>
+              <div id="provisioningUsbFlashStatus" class="flash-status hidden" role="status" aria-live="polite"></div>
+            </section>
+            <section id="provisioningWifiSetupStep" class="provisioning-wifi-setup hidden" aria-labelledby="provisioningWifiSetupTitle">
+              <p class="eyebrow">WLAN einrichten</p>
+              <h3 id="provisioningWifiSetupTitle">Board mit deinem WLAN verbinden</h3>
+              <p class="helper-text">Das Board sucht die WLANs selbst. SSID und Passwort werden weder an GerNetiX übertragen noch im Browser gespeichert – sie gehen ausschließlich per USB an das Board und werden dort lokal abgelegt.</p>
+              <div class="provisioning-wifi-actions">
+                <button id="scanProvisioningWifiButton" class="primary" type="button">WLANs suchen</button>
+              </div>
+              <div id="provisioningWifiNetworkSelection" class="provisioning-wifi-network-selection hidden">
+                <label>WLAN auswählen
+                  <select id="provisioningWifiSsid"></select>
+                </label>
+                <label id="provisioningWifiManualSsidLabel" class="hidden">SSID manuell eingeben
+                  <input id="provisioningWifiManualSsid" type="text" maxlength="32" autocomplete="off" />
+                </label>
+                <label>WLAN-Passwort
+                  <input id="provisioningWifiPassword" type="password" maxlength="64" autocomplete="new-password" />
+                </label>
+                <button id="connectProvisioningWifiButton" class="primary" type="button">Mit WLAN verbinden</button>
+              </div>
+              <p class="helper-text">Wenn du diesen Weg nicht nutzen möchtest, kannst du das Captive Portal des Boards verwenden. <a class="provisioning-wifi-help-link" href="/app/help/#usb-wifi-setup">Alternative in der Hilfe öffnen</a>.</p>
+              <div id="provisioningWifiSetupStatus" class="flash-status hidden" role="status" aria-live="polite"></div>
             </section>
             <div class="card-actions">
               <button id="claimSelectedDiscoveredDevicesButton" class="primary" type="button" disabled>Provisionieren und mit Account verbinden</button>
@@ -660,7 +784,10 @@
     <script src="/app/device-onboarding-controller.js?v=20260714-04"></script>
     <script src="/app/guided-project-view.js?v=20260714-01"></script>
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
-  <script src="/app/development-platform.js?v=20260714-22"></script>
-    <script src="/app/app.js?v=20260714-20"></script>
+    <script src="/app/development-platform.js?v=20260714-22"></script>
+    <script src="/app/help-content.js?v=20260715-01"></script>
+    <script src="/app/help-chat-service.js?v=20260715-01"></script>
+    <script src="/app/help-view.js?v=20260715-01"></script>
+    <script src="/app/app.js?v=20260715-22"></script>
   </body>
 </html>

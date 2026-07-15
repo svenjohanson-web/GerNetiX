@@ -46,6 +46,12 @@ function createHttpApp(options) {
       return;
     }
 
+    const pushRecipients = path.match(new RegExp(`^${prefix}/devices/([^/]+)/push-recipients$`));
+    if (req.method === "GET" && pushRecipients) {
+      sendJson(res, 200, service.pushRecipients(decodeURIComponent(pushRecipients[1])));
+      return;
+    }
+
     const challenge = path.match(new RegExp(`^${prefix}/devices/([^/]+)/auth/challenge$`));
     if (req.method === "POST" && challenge) {
       sendJson(res, 201, service.createChallenge(decodeURIComponent(challenge[1])));
@@ -60,6 +66,16 @@ function createHttpApp(options) {
 
     if (req.method === "POST" && path === `${prefix}/pairing/sessions`) {
       sendJson(res, 201, service.createPairingSession(await readJsonBody(req)));
+      return;
+    }
+
+    if (req.method === "POST" && path === `${prefix}/provisioning/tokens`) {
+      sendJson(res, 201, service.createProvisioningToken(await readJsonBody(req)));
+      return;
+    }
+
+    if (req.method === "POST" && path === `${prefix}/provisioning/tokens/consume`) {
+      sendJson(res, 200, service.consumeProvisioningToken(await readJsonBody(req)));
       return;
     }
 

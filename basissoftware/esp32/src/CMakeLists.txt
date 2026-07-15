@@ -14,6 +14,7 @@ idf_component_register(
     functions/provisioning_config.cpp
     functions/readSensors.cpp
     functions/runDiagnostics.cpp
+    functions/serial_provisioning.cpp
     functions/startDeviceWebServer.cpp
     functions/startRuntimeTasks.cpp
     functions/updateActuators.cpp
@@ -24,6 +25,7 @@ idf_component_register(
   REQUIRES
     app_update
     esp_driver_gpio
+    esp_driver_uart
     esp_event
     esp_http_server
     esp_https_ota

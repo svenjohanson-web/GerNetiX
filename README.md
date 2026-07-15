@@ -31,6 +31,7 @@ Legacy-Importquellen aus der YAML-Migration:
 
 Startdokumente:
 
+- [Zentrale Offline-Architekturdokumentation](docs/architecture-documentation.md) - erzeugt `tools/architecture-docs/dist/index.html`
 - [Leitprinzipien](docs/principles.md)
 - [Dokumentationsstrategie](docs/documentation-strategy.md)
 - [Vision, Business Goals und Customer Journeys](docs/vision-business-goals-customer-journeys.md)

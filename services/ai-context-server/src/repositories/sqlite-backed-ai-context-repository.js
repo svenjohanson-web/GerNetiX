@@ -1,5 +1,5 @@
 const { SqliteStateStore, jsonColumn } = require("../../../shared");
-const { InMemoryAiContextRepository, defaultPolicy, defaultSources, defaultPromptFoundations, defaultArchitectureComponents } = require("./in-memory-ai-context-repository");
+const { InMemoryAiContextRepository, defaultPolicy, defaultSources, defaultPromptFoundations, defaultArchitectureComponents, defaultHelpArticles } = require("./in-memory-ai-context-repository");
 
 class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
   constructor(store) {
@@ -17,6 +17,7 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
         sources: defaultSources(),
         promptFoundations: defaultPromptFoundations(),
         architectureComponents: defaultArchitectureComponents(),
+        helpArticles: defaultHelpArticles(),
         clarificationCases: [],
         intentExamples: [],
         policy: defaultPolicy(),
@@ -27,6 +28,7 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
         sources: "sources",
         promptFoundations: "prompt_foundations",
         architectureComponents: "architecture_components",
+        helpArticles: "help_articles",
         clarificationCases: "clarification_cases",
         intentExamples: "intent_examples",
       },
@@ -71,6 +73,12 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
 
   saveArchitectureComponent(component) {
     const result = super.saveArchitectureComponent(component);
+    this.persist();
+    return result;
+  }
+
+  saveHelpArticle(article) {
+    const result = super.saveHelpArticle(article);
     this.persist();
     return result;
   }
@@ -131,6 +139,9 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
           "status",
           "updated_at",
         ], "name"),
+        sqliteTableSummary(this.store, "ai_context_help_articles", [
+          "article_id", "title", "help_topic_id", "status", "updated_at",
+        ], "title"),
         sqliteTableSummary(this.store, "ai_context_clarification_cases", [
           "case_id", "utterance", "suggested_intent", "suggested_entity", "semantic_score",
           "occurrence_count", "priority", "priority_score", "status", "last_seen_at",
@@ -185,6 +196,7 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
       sources: Array.from(this.sources.values()),
       promptFoundations: Array.from(this.promptFoundations.values()),
       architectureComponents: Array.from(this.architectureComponents.values()),
+      helpArticles: Array.from(this.helpArticles.values()),
       clarificationCases: Array.from(this.clarificationCases.values()),
       intentExamples: Array.from(this.intentExamples.values()),
       policy: this.policy,
@@ -195,6 +207,7 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
     this.store.replaceCollection?.("sources", state.sources, "source_id");
     this.store.replaceCollection?.("prompt_foundations", state.promptFoundations, "foundation_id");
     this.store.replaceCollection?.("architecture_components", state.architectureComponents, "component_id");
+    this.store.replaceCollection?.("help_articles", state.helpArticles, "article_id");
     this.store.replaceCollection?.("clarification_cases", state.clarificationCases, "case_id");
     this.store.replaceCollection?.("intent_examples", state.intentExamples, "example_id");
     if (typeof this.store.replaceTable === "function") {
@@ -203,6 +216,7 @@ class SqliteBackedAiContextRepository extends InMemoryAiContextRepository {
       this.store.replaceTable("ai_context_sources", state.sources, sourceColumns());
       this.store.replaceTable("ai_context_prompt_foundations", state.promptFoundations, promptFoundationColumns());
       this.store.replaceTable("ai_context_architecture_components", state.architectureComponents, architectureComponentColumns());
+      this.store.replaceTable("ai_context_help_articles", state.helpArticles, helpArticleColumns());
       this.store.replaceTable("ai_context_clarification_cases", state.clarificationCases, clarificationCaseColumns());
       this.store.replaceTable("ai_context_intent_examples", state.intentExamples, intentExampleColumns());
       this.store.replaceTable("ai_context_policy", [state.policy], policyColumns());
@@ -229,6 +243,7 @@ function aiContextSchema() {
     `CREATE TABLE IF NOT EXISTS ai_context_sources (source_id TEXT PRIMARY KEY, source_type TEXT NOT NULL, source_scope TEXT NOT NULL, title TEXT NOT NULL, summary TEXT, backing_service TEXT NOT NULL, endpoint TEXT NOT NULL, contains_json TEXT NOT NULL, default_redaction_level TEXT NOT NULL, default_provider_scope TEXT NOT NULL, allowed_purposes_json TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS ai_context_prompt_foundations (foundation_id TEXT PRIMARY KEY, title TEXT NOT NULL, route_task TEXT NOT NULL, source_scope TEXT NOT NULL, content_kind TEXT NOT NULL, allowed_sources_json TEXT NOT NULL, blocked_sources_json TEXT NOT NULL, content TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS ai_context_architecture_components (component_id TEXT PRIMARY KEY, name TEXT NOT NULL, source_scope TEXT NOT NULL, aliases_json TEXT NOT NULL, summary TEXT NOT NULL, properties_json TEXT NOT NULL, provided_interfaces_json TEXT NOT NULL, required_interfaces_json TEXT NOT NULL, decision_hints_json TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS ai_context_help_articles (article_id TEXT PRIMARY KEY, title TEXT NOT NULL, summary TEXT NOT NULL, content TEXT NOT NULL, help_topic_id TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS ai_context_clarification_cases (case_id TEXT PRIMARY KEY, fingerprint TEXT NOT NULL UNIQUE, utterance TEXT NOT NULL, suggested_intent TEXT, suggested_entity TEXT, semantic_score REAL, occurrence_count INTEGER NOT NULL, confirmation_count INTEGER NOT NULL, correction_count INTEGER NOT NULL, priority TEXT NOT NULL, priority_score INTEGER NOT NULL, status TEXT NOT NULL, last_seen_at TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS ai_context_intent_examples (example_id TEXT PRIMARY KEY, utterance TEXT NOT NULL, intent TEXT NOT NULL, entity TEXT, scope TEXT NOT NULL, status TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS ai_context_policy (policy_id TEXT PRIMARY KEY, deny_without_grant INTEGER NOT NULL, require_explicit_source_scope INTEGER NOT NULL, allow_external_provider_customer_data INTEGER NOT NULL, default_max_context_items INTEGER NOT NULL, protected_source_types_json TEXT NOT NULL, updated_at TEXT NOT NULL, raw_json TEXT NOT NULL);`,
@@ -268,6 +283,13 @@ function architectureComponentColumns() {
     provided_interfaces_json: jsonColumn("provided_interfaces"),
     required_interfaces_json: jsonColumn("required_interfaces"),
     decision_hints_json: jsonColumn("decision_hints"),
+    raw_json: jsonColumn((row) => row),
+  };
+}
+
+function helpArticleColumns() {
+  return {
+    ...columns(["article_id", "title", "summary", "content", "help_topic_id", "status", "created_at", "updated_at"]),
     raw_json: jsonColumn((row) => row),
   };
 }

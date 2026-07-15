@@ -164,30 +164,6 @@ items:
     ownerDomain: Authorization
     summary: Protokolliert jede erlaubte und abgelehnte Kontextzugriffsentscheidung mit Account, Projekt, Quelle, Zweck, Provider, Modell, Grant und Ablehnungsgrund.
 
-  - id: architecture_artifact.local_ai_chat
-    type: architecture_artifact
-    title: Lokaler KI-Chat in der Kunden-IDE
-    businessStatus: In Analysis
-    implementationStatus: In Implementation
-    ownerDomain: IDE
-    summary: Architekturartefakt fuer einen allgemeinen KI-Chat in der Kunden-IDE. Der Chat ist vom Architektur-Discovery-Dialog der Entwicklungsplattform getrennt und nutzt im PoC das ueber das Admin Tool konfigurierte LLM-Routing mit bewusst begrenzten Datenquellen.
-    usedBy:
-      - app.user_ide
-    usesArchitectureArtifacts:
-      - architecture_artifact.ai_cost_protection
-      - architecture_artifact.ai_usage_observability
-      - architecture_artifact.ai_context_access_control
-    containsArchitectureComponents:
-      - component.local_ai_chat_adapter
-    implementationNotes:
-      - Kunden-IDE-Route ist `/app/ki-chat/`.
-      - Frontend-Logik liegt getrennt in `services/identity-server/public/app/ai-chat.js`.
-      - Backend-Proxy liegt getrennt in `services/identity-server/src/dev/ai-chat-assistant.js` und wird ueber `/api/platform/ai-chat/chat` angesprochen.
-      - Provider, Endpoint und Modell werden im PoC ueber das eigenstaendige Admin Tool `http://127.0.0.1:4600/admin/` und die Endpunkte `/api/admin/llm-config` konfiguriert.
-      - Die gemeinsame LLM-Routing-Konfiguration ist fachlicher Runtime-State und muss gemaess SQL-only-Persistenz in SQLite liegen; alte `.runtime/identity-llm-config.json`-Dev-Konfigurationen sind nur Migrationsaltlasten.
-      - Die Systemprompt-Grundlage wird aus der AI-Context-SQLite ueber den AI Context Server geladen; der Identity Server ist nicht fuehrend fuer KI-Grundlagen.
-      - Datenquellen sind im PoC auf den aktuellen Chat begrenzt; Projektdateien, Graphdaten, Kundendaten und externe Quellen sind blockiert.
-
   - id: component.local_ai_chat_adapter
     type: architecture_component
     title: Local AI Chat Adapter Component

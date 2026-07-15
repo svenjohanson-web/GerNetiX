@@ -10,6 +10,8 @@ function createConfig(env = process.env) {
       : path.join(__dirname, "..", ".runtime"),
     deviceManagementBaseUrl: env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700",
     identityBaseUrl: env.IDENTITY_BASE_URL || "http://127.0.0.1:4300",
+    identityAdminToken: env.IDENTITY_ADMIN_TOKEN || "",
+    securityMonitorToken: env.SECURITY_MONITOR_TOKEN || "",
     buildDeployBaseUrl: env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400",
     projectServerBaseUrl: env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800",
     hardwareShopBaseUrl: env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900",

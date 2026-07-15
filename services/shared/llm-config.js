@@ -13,7 +13,9 @@ function createLlmConfigStore({ configPath, defaultOllamaBaseUrl, defaultOllamaM
   function resolveRoute(task = "general_chat") {
     reloadIfChanged();
     const route = current.routes[task] || current.routes.default || {};
-    const provider = route.provider === "api" || route.provider === "ollama" ? route.provider : current.provider;
+    const provider = task === "help_chat"
+      ? "ollama"
+      : route.provider === "api" || route.provider === "ollama" ? route.provider : current.provider;
     return {
       ...current,
       provider,
@@ -21,8 +23,8 @@ function createLlmConfigStore({ configPath, defaultOllamaBaseUrl, defaultOllamaM
       baseUrl: provider === "api" ? current.apiBaseUrl : current.ollamaBaseUrl,
       apiKey: current.apiKey || "",
       routeTask: task,
-      routeReason: route.reason || defaultRouteReason(task, provider),
-      costPolicy: route.costPolicy || (provider === "api" ? "external_costs" : "local_no_provider_costs"),
+      routeReason: task === "help_chat" ? "Help-Chat ist verbindlich auf den lokalen Ollama-Provider begrenzt." : route.reason || defaultRouteReason(task, provider),
+      costPolicy: task === "help_chat" ? "local_only" : route.costPolicy || (provider === "api" ? "external_costs" : "local_no_provider_costs"),
     };
   }
 
@@ -129,11 +131,12 @@ function createLlmConfigStore({ configPath, defaultOllamaBaseUrl, defaultOllamaM
       architecture_discovery: { provider: "default", reason: "Architektur-Discovery darf die aktive Standardroute nutzen." },
       artifact_generation: { provider: "ollama", reason: "Artefakte wie PlantUML, Pseudocode und Code werden kostenschonend lokal erzeugt.", costPolicy: "prefer_local" },
       code_generation: { provider: "ollama", reason: "Codegenerierung laeuft standardmaessig lokal, um externe Kosten zu vermeiden.", costPolicy: "prefer_local" },
+      help_chat: { provider: "ollama", reason: "Help-Chat verwendet ausschliesslich das lokale Ollama-Modell.", costPolicy: "local_only" },
     };
     return Object.fromEntries(Object.entries(defaults).map(([task, fallback]) => {
       const route = input && typeof input === "object" ? input[task] || {} : {};
       return [task, {
-        provider: ["default", "ollama", "api"].includes(route.provider) ? route.provider : fallback.provider,
+        provider: task === "help_chat" ? "ollama" : ["default", "ollama", "api"].includes(route.provider) ? route.provider : fallback.provider,
         reason: clean(route.reason) || fallback.reason,
         costPolicy: clean(route.costPolicy) || fallback.costPolicy || "default",
       }];

@@ -18,12 +18,14 @@
           <button type="button" data-admin-view="monitoring">Monitoring</button>
           <button type="button" data-admin-view="system-events">Auffaelligkeiten</button>
           <button type="button" data-admin-view="accounts">Accounts</button>
+          <button type="button" data-admin-view="email-config">E-Mail</button>
           <button type="button" data-admin-view="ai-usage" data-admin-group="ai">KI</button>
         </nav>
       </header>
       <nav id="aiSubNav" class="admin-subnav hidden" aria-label="KI Navigation">
         <button type="button" data-admin-sub-view="ai-usage">Usage</button>
         <button type="button" data-admin-sub-view="ai-context">Daten</button>
+        <button type="button" data-admin-sub-view="ai-help-knowledge">Help-Wissen</button>
         <button type="button" data-admin-sub-view="ai-clarifications">Klaerfaelle</button>
         <button type="button" data-admin-sub-view="llm-config">Routing</button>
       </nav>
@@ -262,6 +264,30 @@
         </section>
       </section>
 
+      <section id="emailConfigView" class="admin-layout admin-view hidden">
+        <form id="adminEmailConfigForm" class="panel form-grid">
+          <p class="eyebrow">Account-E-Mails</p>
+          <h2>IONOS SMTP</h2>
+          <p class="helper-text">Verifizierung und Passwort-Reset werden ueber dein IONOS-Postfach versendet. Das Passwort wird verschluesselt im Identity-SQLite gespeichert und danach nicht erneut angezeigt.</p>
+          <label>SMTP-Server<input id="adminEmailHost" required value="smtp.ionos.de" autocomplete="off" /></label>
+          <label>Port<input id="adminEmailPort" required type="number" min="1" max="65535" value="465" /></label>
+          <label>SMTP-Benutzername<input id="adminEmailUsername" required type="email" autocomplete="username" /></label>
+          <label>Absenderadresse<input id="adminEmailFromAddress" required type="email" autocomplete="email" /></label>
+          <label>Antwortadresse <span class="helper-text">optional</span><input id="adminEmailReplyTo" type="email" autocomplete="email" /></label>
+          <label>Sicherheitsalarm an <span class="helper-text">optional, sonst Antwort- oder Absenderadresse</span><input id="adminSecurityAlertRecipient" type="email" autocomplete="email" /></label>
+          <label>SMTP-Passwort<input id="adminEmailPassword" type="password" placeholder="leer lassen, um das gespeicherte Passwort zu behalten" autocomplete="new-password" /></label>
+          <label class="checkbox-row"><input id="adminEmailSecure" type="checkbox" checked /> SSL/TLS verwenden (IONOS Port 465)</label>
+          <div class="button-row"><button id="adminEmailTestButton" type="button">Verbindung testen</button><button class="primary" type="submit">Speichern</button></div>
+          <div id="adminEmailConfigStatus" class="flash-status hidden"></div>
+        </form>
+        <aside class="panel">
+          <p class="eyebrow">Status</p>
+          <h2>E-Mail-Zustellung</h2>
+          <dl id="adminEmailConfigSummary" class="meta-list"></dl>
+          <p class="helper-text">Vor dem Speichern muss auf dem VPS ein eigener `EMAIL_CONFIG_ENCRYPTION_KEY` sowie derselbe `IDENTITY_ADMIN_TOKEN` in Identity und Admin Tool gesetzt sein.</p>
+        </aside>
+      </section>
+
       <section id="llmConfigView" class="admin-layout admin-view hidden">
         <form id="adminLlmForm" class="panel form-grid">
           <p class="eyebrow">KI-Konfiguration</p>
@@ -330,6 +356,13 @@
                 <option value="api">API</option>
               </select>
             </div>
+            <div>
+              <span>GerNetiX Help</span>
+              <select id="adminRouteHelpChat" aria-describedby="adminRouteHelpChatHint">
+                <option value="ollama">Nur lokal (Ollama)</option>
+              </select>
+              <small id="adminRouteHelpChatHint">Diese Route kann nicht an externe API-Provider gesendet werden.</small>
+            </div>
           </section>
 
           <div class="button-row">
@@ -343,7 +376,7 @@
           <p class="eyebrow">Aktiv</p>
           <h2>Konfiguration</h2>
           <dl id="adminLlmStatus" class="meta-list"></dl>
-          <p class="helper-text">Die Standardroute kann OpenAI, Claude oder lokal sein. Kostenkritische Artefakt- und Codegenerierung kann separat lokal geroutet werden, damit externe Providerkosten nur dort entstehen, wo sie fachlich gewollt sind.</p>
+          <p class="helper-text">Die Standardroute kann OpenAI, Claude oder lokal sein. GerNetiX Help bleibt immer lokal in Ollama; externe Provider erhalten keine Help-Chat-Anfragen.</p>
         </aside>
       </section>
 
@@ -388,6 +421,32 @@
               <tbody id="aiClarificationRows"></tbody>
             </table>
           </div>
+        </section>
+      </section>
+
+      <section id="aiHelpKnowledgeView" class="admin-view hidden">
+        <section class="admin-layout wide-main">
+          <form id="aiHelpKnowledgeForm" class="panel">
+            <p class="eyebrow">Lokaler Help-Agent</p>
+            <h2>Help-Wissen pflegen</h2>
+            <p class="helper-text">Diese kuratierten Inhalte werden nur an das lokale Ollama-Modell weitergegeben. Sie aendern nicht die sichtbaren Hilfeartikel.</p>
+            <div class="form-grid">
+              <label>Artikel-ID<input id="aiHelpArticleId" required placeholder="help.provisioning.wlan" /></label>
+              <label>Hilfe-Thema-ID<input id="aiHelpTopicId" required placeholder="provision-new-board" /></label>
+              <label class="full">Titel<input id="aiHelpArticleTitle" required /></label>
+              <label class="full">Kurzfassung<textarea id="aiHelpArticleSummary" required rows="3"></textarea></label>
+              <label class="full">Antwortwissen<textarea id="aiHelpArticleContent" required rows="9"></textarea></label>
+              <label>Status<select id="aiHelpArticleStatus"><option value="active">Aktiv</option><option value="draft">Entwurf</option><option value="archived">Archiviert</option></select></label>
+            </div>
+            <div class="button-row"><button class="primary" type="submit">Help-Wissen speichern</button></div>
+            <div id="aiHelpKnowledgeStatus" class="flash-status hidden"></div>
+          </form>
+          <aside class="panel">
+            <p class="eyebrow">Recherche</p>
+            <h2>Gespeicherte Wissenseintraege</h2>
+            <p class="helper-text">Die Suche nutzt die lokale pgvector-Einbettung. Ein Eintrag kann ueber seine ID zum Bearbeiten geladen werden.</p>
+            <div class="table-wrap"><table><thead><tr><th>Titel</th><th>Hilfe-Thema</th><th>Status</th><th></th></tr></thead><tbody id="aiHelpKnowledgeRows"></tbody></table></div>
+          </aside>
         </section>
       </section>
 

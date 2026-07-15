@@ -13,6 +13,16 @@ const state = {
   provisioningFeatureSelections: {},
   provisioningDatasheetUrl: "",
   provisioningUpdateProfile: "",
+  provisioningUsbFlashSucceeded: false,
+  provisioningUsbFlashRunning: false,
+  provisioningPairingToken: "",
+  provisioningBinding: "",
+  provisioningWifiNetworks: [],
+  provisioningWifiSetupRunning: false,
+  provisioningWifiSetupSucceeded: false,
+  provisioningSerialScanCompleted: false,
+  provisioningSerialScanRunning: false,
+  provisioningSerialPort: null,
   sensorCatalog: [],
   sensorCatalogStatus: { state: "idle", message: "" },
   builds: [],
@@ -55,6 +65,7 @@ const routeMap = {
   builds: "buildsView",
   downloads: "downloadsView",
   billing: "billingView",
+  help: "helpView",
   auth: "dashboardView",
 };
 
@@ -78,6 +89,7 @@ function deviceOnboarding() {
       renderIdeShell,
       escapeHtml,
       meta,
+      openHelpTopic: HelpView.openDialog,
     });
   }
   return deviceOnboardingController;
@@ -147,6 +159,8 @@ document.querySelector("#platformBreadcrumb").addEventListener("click", (event) 
 document.querySelectorAll("[data-device-management-route]").forEach((button) => {
   button.addEventListener("click", () => navigate(button.dataset.deviceManagementRoute));
 });
+document.querySelector("#enablePushButton")?.addEventListener("click", enablePushNotifications);
+document.querySelector("#sendPushTestButton")?.addEventListener("click", sendPushTestNotification);
 document.querySelector("#ideProjectBrowser").addEventListener("click", (event) => {
   const deviceConnectionsButton = event.target.closest("[data-device-connections]");
   if (deviceConnectionsButton) {
@@ -239,7 +253,12 @@ document.querySelectorAll('input[name="deviceDiscoveryMethod"]').forEach((input)
   input.addEventListener("change", selectDeviceDiscoveryMethod);
 });
 document.querySelector("#deviceDiscoverySearchButton").addEventListener("click", searchDevicesForInventory);
-document.querySelector("#selectProvisioningSerialPortButton").addEventListener("click", identifyEsp32Bootloader);
+document.querySelector("#scanProvisioningSerialPortsButton").addEventListener("click", scanProvisioningSerialPorts);
+document.querySelector("#selectProvisioningSerialPortButton").addEventListener("click", selectProvisioningSerialPort);
+document.querySelector("#checkProvisioningSerialPortButton").addEventListener("click", identifyEsp32Bootloader);
+document.querySelector("#flashProvisioningBasissoftwareButton").addEventListener("click", flashProvisioningBasissoftware);
+document.querySelector("#scanProvisioningWifiButton").addEventListener("click", scanProvisioningWifiNetworks);
+document.querySelector("#connectProvisioningWifiButton").addEventListener("click", connectProvisioningWifi);
 document.querySelector("#avrBootloaderIdentifyButton").addEventListener("click", identifyAvrBootloaderExperimental);
 document.querySelector("#claimSelectedDiscoveredDevicesButton").addEventListener("click", claimSelectedDiscoveredDevices);
 document.querySelector("#inventoryBoardShortName").addEventListener("input", syncInventoryNodeNamePreview);
@@ -315,7 +334,12 @@ function renderRoute() {
   }
   if (route === "device-provisioning") loadDevicePageTools();
   if (route === "downloads") renderDownloads();
+  if (route === "help") renderHelpTopic();
   lastRenderedRoute = route;
+}
+
+function renderHelpTopic() {
+  HelpView.render();
 }
 
 function renderBreadcrumb(route) {
@@ -387,6 +411,10 @@ function currentLocationTrail(route) {
     billing: [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Billing", route: "/app/billing/" },
+    ],
+    help: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Hilfe", route: "/app/help/" },
     ],
   };
   return locations[route] || locations.dashboard;
@@ -2155,6 +2183,26 @@ async function identifyEsp32Bootloader() {
   return deviceOnboarding().identifyEsp32Bootloader();
 }
 
+async function scanProvisioningSerialPorts() {
+  return deviceOnboarding().scanProvisioningSerialPorts();
+}
+
+async function selectProvisioningSerialPort() {
+  return deviceOnboarding().selectProvisioningSerialPort();
+}
+
+async function flashProvisioningBasissoftware() {
+  return deviceOnboarding().flashProvisioningBasissoftware();
+}
+
+async function scanProvisioningWifiNetworks() {
+  return deviceOnboarding().scanProvisioningWifiNetworks();
+}
+
+async function connectProvisioningWifi() {
+  return deviceOnboarding().connectProvisioningWifi();
+}
+
 function selectDeviceDiscoveryMethod() {
   return deviceOnboarding().selectDeviceDiscoveryMethod();
 }
@@ -2661,4 +2709,31 @@ function escapeAttribute(value) {
 
 function delay(ms) {
   return DomUtils.delay(ms);
+}
+
+async function enablePushNotifications() {
+  const status = document.querySelector("#pushStatus");
+  if (!window.isSecureContext || !("PushManager" in window) || !("Notification" in window)) { status.textContent = "Push ist nur in der installierten HTTPS-App auf diesem iPhone verfuegbar."; return; }
+  try {
+    const registration = await navigator.serviceWorker.ready;
+    const config = await getJson("/api/push/public-key");
+    if (!config.enabled) { status.textContent = "Push wird vom Server noch vorbereitet."; return; }
+    if (Notification.permission === "default" && await Notification.requestPermission() !== "granted") { status.textContent = "Push-Erlaubnis wurde nicht erteilt."; return; }
+    if (Notification.permission !== "granted") { status.textContent = "Push ist in den iPhone-Einstellungen deaktiviert."; return; }
+    const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(config.public_key) });
+    await postJson("/api/push/subscribe", subscription.toJSON());
+    status.textContent = "Push-Meldungen sind auf diesem Geraet aktiv.";
+  } catch (error) { status.textContent = error.message || "Push konnte nicht aktiviert werden."; }
+}
+async function sendPushTestNotification() {
+  const status = document.querySelector("#pushStatus");
+  try {
+    const result = await postJson("/api/push/test", {});
+    status.textContent = result.push?.enabled ? "Testnachricht wurde an deine aktivierten Geraete gesendet." : "Push wird vom Server noch vorbereitet.";
+  } catch (error) { status.textContent = error.message || "Testnachricht konnte nicht gesendet werden."; }
+}
+function base64UrlToBytes(value) { const padded = String(value).replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(String(value).length / 4) * 4, "="); return Uint8Array.from(atob(padded), (char) => char.charCodeAt(0)); }
+
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("/app/push-sw.js").catch(() => {});
 }

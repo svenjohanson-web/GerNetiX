@@ -65,6 +65,12 @@ class FileBackedDeviceManagementRepository extends InMemoryDeviceManagementRepos
     return result;
   }
 
+  saveProvisioningToken(token) {
+    const result = super.saveProvisioningToken(token);
+    this.persist();
+    return result;
+  }
+
   saveAccountDevice(accountDevice) {
     const result = super.saveAccountDevice(accountDevice);
     this.persist();
@@ -107,6 +113,7 @@ class FileBackedDeviceManagementRepository extends InMemoryDeviceManagementRepos
       credentials: Array.from(this.credentials.values()),
       challenges: Array.from(this.challenges.values()),
       pairingSessions: Array.from(this.pairingSessions.values()),
+      provisioningTokens: Array.from(this.provisioningTokens.values()),
       accountDevices: Array.from(this.accountDevices.values()).flat(),
       purchaseContexts: Array.from(this.purchaseContexts.values()).flat(),
       consents: Array.from(this.consents.values()),
@@ -118,6 +125,7 @@ class FileBackedDeviceManagementRepository extends InMemoryDeviceManagementRepos
       this.store.replaceCollection("credentials", state.credentials, "device_id");
       this.store.replaceCollection("challenges", state.challenges, "challenge_id");
       this.store.replaceCollection("pairing_sessions", state.pairingSessions, "pairing_session_id");
+      this.store.replaceCollection("provisioning_tokens", state.provisioningTokens, "provisioning_token_id");
       this.store.replaceCollection("account_devices", state.accountDevices, "account_device_id");
       this.store.replaceCollection("purchase_contexts", state.purchaseContexts, "purchase_context_id");
       this.store.replaceCollection("consents", state.consents, "consent_id");
@@ -128,6 +136,7 @@ class FileBackedDeviceManagementRepository extends InMemoryDeviceManagementRepos
       this.store.replaceTable("device_management_credentials", state.credentials, credentialColumns());
       this.store.replaceTable("device_management_challenges", state.challenges, challengeColumns());
       this.store.replaceTable("device_management_pairing_sessions", state.pairingSessions, pairingSessionColumns());
+      this.store.replaceTable("device_management_provisioning_tokens", state.provisioningTokens, provisioningTokenColumns());
       this.store.replaceTable("device_management_account_devices", state.accountDevices, accountDeviceColumns());
       this.store.replaceTable("device_management_purchase_contexts", state.purchaseContexts, purchaseContextColumns());
       this.store.replaceTable("device_management_consents", state.consents, consentColumns());
@@ -192,6 +201,17 @@ function deviceManagementSchema() {
       created_at TEXT,
       expires_at TEXT,
       completed_at TEXT,
+      raw_json TEXT NOT NULL
+    );`,
+    `CREATE TABLE IF NOT EXISTS device_management_provisioning_tokens (
+      provisioning_token_id TEXT PRIMARY KEY,
+      account_id TEXT NOT NULL,
+      provisioning_binding TEXT NOT NULL,
+      token_hash_sha256 TEXT NOT NULL UNIQUE,
+      status TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      consumed_at TEXT,
       raw_json TEXT NOT NULL
     );`,
     `CREATE TABLE IF NOT EXISTS device_management_account_devices (
@@ -352,6 +372,20 @@ function pairingSessionColumns() {
   };
 }
 
+function provisioningTokenColumns() {
+  return {
+    provisioning_token_id: "provisioning_token_id",
+    account_id: "account_id",
+    provisioning_binding: "provisioning_binding",
+    token_hash_sha256: "token_hash_sha256",
+    status: "status",
+    created_at: "created_at",
+    expires_at: "expires_at",
+    consumed_at: "consumed_at",
+    raw_json: jsonColumn((row) => row),
+  };
+}
+
 function accountDeviceColumns() {
   return {
     account_device_id: "account_device_id",
@@ -423,6 +457,7 @@ function emptyState() {
     credentials: [],
     challenges: [],
     pairingSessions: [],
+    provisioningTokens: [],
     accountDevices: [],
     purchaseContexts: [],
     consents: [],

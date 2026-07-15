@@ -59,6 +59,49 @@ test("verifies ECDSA P-256 challenge for GerNetiX device", () => {
   assert.equal(result.authenticity_status, "gernetix_verified");
 });
 
+test("issues only a hashed, short-lived, one-time provisioning token", () => {
+  const service = createDefaultDeviceManagementServer();
+  const issued = service.createProvisioningToken({ account_id: "acct-1", provisioning_binding: "usb-board-1" });
+
+  assert.match(issued.provisioning_token, /^[A-Za-z0-9_-]{32,}$/);
+  assert.equal(service.repository.provisioningTokens.size, 1);
+  const stored = Array.from(service.repository.provisioningTokens.values())[0];
+  assert.notEqual(stored.token_hash_sha256, issued.provisioning_token);
+  assert.equal(stored.status, "issued");
+
+  const consumed = service.consumeProvisioningToken({
+    provisioning_token: issued.provisioning_token,
+    provisioning_binding: "usb-board-1",
+  });
+  assert.equal(consumed.account_id, "acct-1");
+  assert.throws(() => service.consumeProvisioningToken({
+    provisioning_token: issued.provisioning_token,
+    provisioning_binding: "usb-board-1",
+  }), /ungueltig|abgelaufen|verwendet/);
+});
+
+test("sqlite repository persists only the provisioning token hash", () => {
+  const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-provisioning-token-")), "state.sqlite");
+  const service = new DeviceManagementService({
+    repository: SqliteBackedDeviceManagementRepository.create(dbPath),
+  });
+  const issued = service.createProvisioningToken({ account_id: "acct-1", provisioning_binding: "usb-board-1" });
+
+  const database = new DatabaseSync(dbPath);
+  const row = database.prepare("SELECT token_hash_sha256, raw_json FROM device_management_provisioning_tokens").get();
+  database.close();
+  assert.notEqual(row.token_hash_sha256, issued.provisioning_token);
+  assert.doesNotMatch(row.raw_json, new RegExp(issued.provisioning_token));
+
+  const reloaded = new DeviceManagementService({
+    repository: SqliteBackedDeviceManagementRepository.create(dbPath),
+  });
+  assert.equal(reloaded.consumeProvisioningToken({
+    provisioning_token: issued.provisioning_token,
+    provisioning_binding: "usb-board-1",
+  }).account_id, "acct-1");
+});
+
 test("rejects a challenge signature from another device key", () => {
   const service = createDefaultDeviceManagementServer();
   const device = registerVerified(service);
@@ -92,6 +135,18 @@ test("pairing creates account device and OTA target discovery marks selectable d
 
   assert.equal(completed.account_device.ownership_status, "paired_to_account");
   assert.equal(targets[0].selectable, true);
+});
+
+test("resolves push recipients from the current account-device ownership", () => {
+  const service = createDefaultDeviceManagementServer();
+  const device = registerVerified(service);
+  service.addAccountDevice("acct-owner", { device_id: device.device_id });
+  service.addAccountDevice("acct-second-device", { device_id: device.device_id });
+
+  assert.deepEqual(service.pushRecipients(device.device_id), {
+    device_id: device.device_id,
+    account_ids: ["acct-owner", "acct-second-device"],
+  });
 });
 
 test("connectivity checks refresh the account inventory projection", () => {

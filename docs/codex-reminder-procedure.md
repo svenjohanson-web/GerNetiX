@@ -13,8 +13,9 @@ Codex soll zu Beginn groesserer Arbeiten kurz diese Quellen pruefen:
 3. `docs/documentation-strategy.md` fuer die Reihenfolge von Fachlichkeit, Graph, Datenmodell, Implementierung und Nachweis.
 4. `docs/system-process-application-uml.md` fuer Serverprozesse, Applikationen und Abhaengigkeiten.
 5. `docs/system-process-application-uml.svg` als Bildartefakt der aktuellen Architekturansicht.
-6. `data/` und `model/` nur als Legacy-Import-, Bootstrap- oder Exportquellen pruefen, nicht als parallele fachliche Wahrheit.
-7. Den Context Manager fuer bestaetigte Projektkontexte und offene Vorschlaege.
+6. `docs/architecture-documentation.md` und die Offline-Lesesicht unter `tools/architecture-docs/dist/index.html` als zentralen Einstieg in bestehende Architekturtexte, Diagramme und rekonstruierte Dokumentationsansaetze.
+7. `data/` und `model/` nur als Legacy-Import-, Bootstrap- oder Exportquellen pruefen, nicht als parallele fachliche Wahrheit.
+8. Den Context Manager fuer bestaetigte Projektkontexte und offene Vorschlaege.
 
 ## Immer aktuell halten
 

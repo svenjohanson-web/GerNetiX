@@ -8,6 +8,7 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 - Lies den SQLite-Graphen `tools/yaml-graph-sqlite/out/model-graph.sqlite` als zentrale fachliche Quelle, insbesondere die aktiven Architekturentscheidungen, bevor Persistenz, Identity, Accounts, KI-Kontext, Projektmodell, Services oder Admin Tool geaendert werden.
 - Behandle YAML-Dateien unter `data/` und `model/` nur als Legacy-Import, Bootstrap oder Export. Neue fachliche Regeln, Entscheidungen und Requirements werden direkt im SQLite-Graphen gepflegt, nicht parallel in YAML.
 - Pruefe bei Architektur- oder Prozess-Aenderungen `docs/system-process-application-uml.md` und `docs/system-process-application-uml.svg`.
+- Pruefe bei groesseren Architektur- oder Dokumentationsaenderungen `docs/architecture-documentation.md` und erzeuge die zentrale Offline-Lesesicht mit `npm run build` unter `tools/architecture-docs` neu. Die erzeugte Browser-Sicht ist kein Ersatz fuer den SQLite-Graphen oder gepflegte Quelldokumente.
 - Lies vor Aenderungen an VPS, Authentifizierung, Autorisierung, oeffentlichen Endpunkten, Secrets, Persistenz, Backup, Logging oder Security-Monitoring `docs/security-posture.md` und aktualisiere dort umgesetzte sowie empfohlene Sicherheitsmassnahmen mit Nachweisstatus.
 - Pruefe bei neuen Anforderungen, Artefakten, Entscheidungen oder Runtime-Komponenten, ob Context-Manager-Vorschlaege oder Context-Eintraege aktualisiert werden muessen.
 

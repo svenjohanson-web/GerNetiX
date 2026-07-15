@@ -106,8 +106,9 @@ test("prompt foundations are centrally available from ai context", () => {
   const service = createService();
   const prompts = service.listPromptFoundations();
 
-  assert.equal(prompts.length, 2);
+  assert.equal(prompts.length, 3);
   assert.ok(prompts.some((prompt) => prompt.route_task === "general_chat"));
+  assert.ok(prompts.find((prompt) => prompt.route_task === "help_chat").content.includes("Hilfeartikel"));
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Minimalumfang"));
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("ESP32-only"));
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("PlantUML-Strukturdiagramme"));
@@ -137,6 +138,42 @@ test("prompt foundations are centrally available from ai context", () => {
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Heimnetzes"));
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Systemverhalten"));
   assert.ok(prompts.find((prompt) => prompt.route_task === "architecture_discovery").content.includes("Komponenten besitzen Eigenschaften"));
+});
+
+test("local help knowledge can be curated and searched without an external provider", () => {
+  const service = createService();
+  const article = service.upsertHelpArticle({
+    article_id: "help.test.wlan",
+    title: "WLAN einrichten",
+    summary: "WLAN-Zugang sicher an das Board uebertragen.",
+    content: "Das Passwort wird nur an das Board uebertragen und nicht im Backend gespeichert.",
+    help_topic_id: "provision-new-board",
+    status: "active",
+  });
+
+  assert.equal(article.article_id, "help.test.wlan");
+  assert.ok(service.searchHelpArticles("Wie bleibt mein WLAN Passwort privat?").items.some((item) => item.article_id === "help.test.wlan"));
+  assert.ok(service.listSources().some((source) => source.source_type === "help_knowledge" && source.default_provider_scope === "local_only"));
+});
+
+test("help knowledge denies an external provider even with a matching grant", () => {
+  const service = createService();
+  service.createGrant(grantInput({
+    source_type: "help_knowledge",
+    source_scope: "help/articles",
+    purpose: "help_assistance",
+    allowed_provider_scope: "external_allowed",
+  }));
+
+  const result = service.preflight(preflightRequest({
+    source_type: "help_knowledge",
+    source_scope: "help/articles",
+    purpose: "help_assistance",
+    provider: "api",
+  }));
+
+  assert.equal(result.allowed, false);
+  assert.equal(result.reason, "help_knowledge_local_only");
 });
 
 test("prompt foundations can be updated centrally without identity code changes", () => {
@@ -260,8 +297,9 @@ test("sqlite repository persists grants policy and audit events in own database"
   const summary = reloaded.sqliteSummary();
   assert.equal(summary.available, true);
   assert.equal(summary.db_path, dbPath);
-  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_sources").row_count, 4);
-  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_prompt_foundations").row_count, 2);
+  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_sources").row_count, 5);
+  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_prompt_foundations").row_count, 3);
+  assert.equal(summary.tables.find((table) => table.table_name === "ai_context_help_articles").row_count, 3);
   assert.ok(summary.tables.find((table) => table.table_name === "ai_context_architecture_components").row_count >= 8);
   assert.equal(summary.tables.find((table) => table.table_name === "ai_context_grants").row_count, 1);
   assert.equal(summary.tables.find((table) => table.table_name === "ai_context_audit_events").row_count, 1);
@@ -272,8 +310,9 @@ test("sqlite repository persists grants policy and audit events in own database"
     assert.equal(tableCount(db, "ai_context_grants"), 1);
     assert.equal(tableCount(db, "ai_context_audit_events"), 1);
     assert.equal(tableCount(db, "ai_context_policy"), 1);
-    assert.equal(tableCount(db, "ai_context_sources"), 4);
-    assert.equal(tableCount(db, "ai_context_prompt_foundations"), 2);
+    assert.equal(tableCount(db, "ai_context_sources"), 5);
+    assert.equal(tableCount(db, "ai_context_prompt_foundations"), 3);
+    assert.equal(tableCount(db, "ai_context_help_articles"), 3);
     assert.ok(tableCount(db, "ai_context_architecture_components") >= 8);
   } finally {
     db.close();

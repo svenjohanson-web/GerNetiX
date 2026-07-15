@@ -14,6 +14,7 @@ Initialer MVP-Implementierungskontrakt.
 POST /devices/register
 POST /devices/{deviceId}/heartbeat
 GET  /devices/{deviceId}/status
+GET  /devices/{deviceId}/push-recipients
 ```
 
 Zweck:
@@ -21,6 +22,7 @@ Zweck:
 - Device meldet sich beim Server
 - Lifecycle und letzter Kontakt werden aktualisiert
 - Firmware, OTA, Connectivity und Pairing-Status koennen gemeldet werden
+- `push-recipients` liefert ausschliesslich fuer interne GerNetiX-Adapter die aktuellen Account-IDs eines gepairten oder registrierten Devices, damit ein Ereignis gezielt an die private PWA des Besitzers zugestellt wird
 
 `POST /devices/register` akzeptiert GerNetiX-provisionierte und Community-Devices. Ein GerNetiX-Credential enthaelt den P-256-Public-Key sowie Client-Zertifikatsmetadaten; private Schluessel oder Shared Secrets werden abgelehnt.
 
@@ -106,6 +108,20 @@ Zweck:
 - SSID-Auswahl und Passwort bleiben lokal auf dem Device
 - WLAN-Scan wird vom Device-Webserver angeboten
 
+## USB-Provisioning-Einmalvorgang
+
+```text
+POST /provisioning/tokens
+POST /provisioning/tokens/consume
+```
+
+Zweck:
+
+- Der angemeldete Plattformnutzer erhaelt fuer einen konkreten `provisioning_binding` einen zufaelligen, kurzlebigen Einmalvorgang.
+- Device Management persistiert ausschliesslich dessen SHA-256-Hash, Account-Bindung, Status und Ablaufzeit.
+- Der Abschluss verbraucht den Vorgang atomar; Wiederverwendung, Ablauf oder falsche Bindung werden abgelehnt.
+- Der Vorgang enthaelt weder WLAN-Zugangsdaten noch einen Device-Private-Key und wird nicht an das Board uebergeben.
+
 ## Support Entitlement
 
 ```text
@@ -162,3 +178,4 @@ Admin-/Support-Endpunkte muessen vor Anzeige von Kundendetails Consent oder eine
 - Ohne Consent, Rechtsgrundlage oder Sicherheitsgrund werden kundenrelevante Details maskiert.
 - OTA-Ziele enthalten `selectable` und `rejection_reasons`.
 - Die fuehrende Datenhaltung erfolgt im SQLite-Repository.
+- WLAN-SSID und WLAN-Passwort werden von keinem Device-Management-Endpunkt akzeptiert oder persistiert.

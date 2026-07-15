@@ -132,6 +132,26 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
       ],
     },
   }),
+  iot_datalogger_web_push_pwa: templateModel({
+    id: "iot_datalogger_web_push_pwa",
+    title: "Datenlogger mit privater Web-Push-PWA",
+    description: "Ein Datenlogger sendet Ereignisse an einen GerNetiX-VPS. Der angemeldete Nutzer installiert seine private PWA auf dem iPhone und erhaelt dort Web-Push-Testnachrichten.",
+    hint: "Datenlogger, accountgebundener VPS-Push-Service und installierbare PWA als erster mobiler Durchstich.",
+    architecture: {
+      elements: [
+        element("user", "Nutzer", "actor"),
+        element("device", "IoT-Device Datenlogger", "iot_device"),
+        element("vps", "GerNetiX VPS\nPrivate Push-API", "service"),
+        element("pwa", "Private PWA auf dem iPhone", "client"),
+      ],
+      relations: [
+        relation("device", "vps", "Logger-Ereignisse und Testnachrichten"),
+        relation("pwa", "vps", "Anmeldung, Push-Subscription und Konfiguration"),
+        relation("vps", "pwa", "Web Push an die private Subscription"),
+        relation("user", "pwa", "installiert und liest Nachrichten"),
+      ],
+    },
+  }),
 });
 
 function templateModel(input) {

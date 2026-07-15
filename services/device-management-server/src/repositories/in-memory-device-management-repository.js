@@ -4,6 +4,7 @@ class InMemoryDeviceManagementRepository {
     this.credentials = new Map((seed.credentials || []).map((item) => [item.device_id, clone(item)]));
     this.challenges = new Map((seed.challenges || []).map((item) => [item.challenge_id, clone(item)]));
     this.pairingSessions = new Map((seed.pairingSessions || []).map((item) => [item.pairing_session_id, clone(item)]));
+    this.provisioningTokens = new Map((seed.provisioningTokens || []).map((item) => [item.provisioning_token_id, clone(item)]));
     this.accountDevices = groupedMap(seed.accountDevices || [], "account_id");
     this.purchaseContexts = groupedMap(seed.purchaseContexts || [], "account_id");
     this.consents = new Map((seed.consents || []).map((item) => [item.consent_id, clone(item)]));
@@ -60,6 +61,15 @@ class InMemoryDeviceManagementRepository {
     return clone(this.pairingSessions.get(sessionId));
   }
 
+  saveProvisioningToken(token) {
+    this.provisioningTokens.set(token.provisioning_token_id, clone(token));
+    return clone(token);
+  }
+
+  findProvisioningTokenByHash(tokenHash) {
+    return clone(Array.from(this.provisioningTokens.values()).find((item) => item.token_hash_sha256 === tokenHash));
+  }
+
   saveAccountDevice(accountDevice) {
     const items = this.accountDevices.get(accountDevice.account_id) || [];
     const next = items.filter((item) => item.account_device_id !== accountDevice.account_device_id);
@@ -70,6 +80,12 @@ class InMemoryDeviceManagementRepository {
 
   listAccountDevices(accountId) {
     return (this.accountDevices.get(accountId) || []).map(clone);
+  }
+
+  findAccountIdsByDeviceId(deviceId) {
+    return Array.from(this.accountDevices.entries())
+      .filter(([, items]) => items.some((item) => item.device_id === deviceId))
+      .map(([accountId]) => accountId);
   }
 
   findAccountDevice(accountId, accountDeviceId) {

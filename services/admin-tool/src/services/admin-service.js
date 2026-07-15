@@ -296,6 +296,17 @@ class AdminService {
     }
   }
 
+  async recordSecurityEvent(input) {
+    const alertKey = String(input.alert_key || `${input.source_service || "security-monitor"}:${input.event_type || "notice"}`);
+    const event = this.recordSystemEvent({ ...input, category: "security", details: { ...(input.details || {}), alert_key: alertKey } });
+    const duplicate = this.repository.listSystemEvents().some((item) => item.event_id !== event.event_id && item.details?.alert_key === alertKey && Date.now() - new Date(item.occurred_at).getTime() < 30 * 60 * 1000);
+    if (!["error", "critical"].includes(event.severity) || duplicate) return { event, email: duplicate ? "suppressed_duplicate" : "not_required" };
+    try {
+      await this.identityEmailConfigRequest("/api/internal/security-alert", { method: "POST", body: { severity: event.severity, message: event.message } });
+      return { event, email: "sent" };
+    } catch (error) { return { event, email: "failed", email_error: error.message }; }
+  }
+
   async aiClarificationCases(filter, context) {
     const access = this.accessPolicy.decideAdminCapability({
       actor: context.actor,
@@ -321,6 +332,80 @@ class AdminService {
     return this.httpJson(this.serviceClients.aiContextBaseUrl, `/api/ai-context/clarification-cases/${encodeURIComponent(caseId)}/actions`, {
       method:"POST",
       body:{...input,resolved_by:context.actor.actor_id},
+    });
+  }
+
+  async helpKnowledge(context) {
+    const access = this.accessPolicy.decideAdminCapability({
+      actor: context.actor,
+      capability: "admin_ai_usage_monitoring",
+      purpose: "help_knowledge_maintenance",
+      dataModelId: "data_model.ai_help_article",
+    });
+    if (access.decision === "denied") throw new AdminToolError("access_denied", "Lokales Help-Wissen darf nicht gelesen werden.", 403, access);
+    if (!this.serviceClients?.aiContextBaseUrl) return { access, items: [], error: "ai_context_service_not_configured" };
+    const result = await this.httpJson(this.serviceClients.aiContextBaseUrl, "/api/ai-context/help-articles");
+    return { access, items: result.items || [] };
+  }
+
+  async emailConfig(context) {
+    const access = this.requireIdentityConfiguration(context, "email_delivery_configuration_read");
+    const result = await this.identityEmailConfigRequest("/api/internal/email-config");
+    return { access, config: result.config };
+  }
+
+  async updateEmailConfig(input, context) {
+    const access = this.requireIdentityConfiguration(context, "email_delivery_configuration_write");
+    const result = await this.identityEmailConfigRequest("/api/internal/email-config", { method: "PUT", body: input });
+    return { access, config: result.config };
+  }
+
+  async testEmailConfig(context) {
+    const access = this.requireIdentityConfiguration(context, "email_delivery_configuration_test");
+    const result = await this.identityEmailConfigRequest("/api/internal/email-config/test", { method: "POST", body: {} });
+    return { access, ...result };
+  }
+
+  requireIdentityConfiguration(context, purpose) {
+    const access = this.accessPolicy.decideAdminCapability({
+      actor: context.actor,
+      capability: "admin_identity_configuration",
+      purpose,
+      dataModelId: "data_model.identity_email_delivery_config",
+    });
+    if (access.decision === "denied") throw new AdminToolError("access_denied", "E-Mail-Zustellung darf nicht konfiguriert werden.", 403, access);
+    return access;
+  }
+
+  async identityEmailConfigRequest(pathname, options = {}) {
+    if (!this.serviceClients?.identityBaseUrl || !this.serviceClients.identityAdminToken) {
+      throw new AdminToolError("identity_email_configuration_unavailable", "Die interne Identity-Admin-Verbindung ist noch nicht konfiguriert.", 503);
+    }
+    return this.httpJson(this.serviceClients.identityBaseUrl, pathname, {
+      ...options,
+      headers: { "x-gernetix-admin-token": this.serviceClients.identityAdminToken },
+    });
+  }
+
+  async upsertHelpKnowledge(input, context) {
+    const access = this.accessPolicy.decideAdminCapability({
+      actor: context.actor,
+      capability: "admin_ai_usage_monitoring",
+      purpose: "help_knowledge_maintenance",
+      dataModelId: "data_model.ai_help_article",
+    });
+    if (access.decision === "denied") throw new AdminToolError("access_denied", "Lokales Help-Wissen darf nicht bearbeitet werden.", 403, access);
+    validateRequired(input, ["article_id", "title", "summary", "content", "help_topic_id"]);
+    return this.httpJson(this.serviceClients.aiContextBaseUrl, "/api/ai-context/help-articles", {
+      method: "POST",
+      body: {
+        article_id: input.article_id,
+        title: input.title,
+        summary: input.summary,
+        content: input.content,
+        help_topic_id: input.help_topic_id,
+        status: input.status || "active",
+      },
     });
   }
 
@@ -603,7 +688,7 @@ class AdminService {
   async httpJson(baseUrl, pathname, options = {}) {
     const response = await fetch(`${baseUrl}${pathname}`, {
       method: options.method || "GET",
-      headers: options.body ? { "Content-Type": "application/json" } : {},
+      headers: { ...(options.body ? { "Content-Type": "application/json" } : {}), ...(options.headers || {}) },
       body: options.body ? JSON.stringify(options.body) : undefined,
     });
     const payload = await response.json().catch(() => ({}));

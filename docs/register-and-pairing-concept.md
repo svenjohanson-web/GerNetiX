@@ -232,6 +232,29 @@ Device startet AP
 
 Der zentrale Server speichert kein WLAN-Passwort. Eine manuelle SSID-Eingabe ist nur ein Fallback fuer versteckte WLANs oder Expertenmodus.
 
+### Kunden-Provisioning per USB: lokaler WLAN-Transfer
+
+Nach dem Flashen von FULL oder MEDIUM kann die Plattform das WLAN im selben USB-Schritt einrichten. Das ist bewusst ein lokaler Komfortweg und kein Cloud-Upload von Zugangsdaten:
+
+```text
+Browser fordert fuer den angemeldeten Account einen kurzlebigen Einmalvorgang an
+-> Board scannt WLANs selbst und antwortet nur ueber USB Serial
+-> Nutzer waehlt SSID oder gibt ein verborgenes WLAN manuell ein
+-> Browser uebergibt SSID und Passwort ausschliesslich ueber USB an das Board
+-> Board speichert die Daten lokal und verbindet sich
+-> Browser schliesst den Einmalvorgang ab; Registrierung und Account-Pairing folgen
+```
+
+Dabei gelten verbindlich folgende Regeln:
+
+- SSID und WLAN-Passwort werden nicht an Identity Server oder Device Management Server gesendet und nicht im Browser dauerhaft gespeichert oder geloggt.
+- Das Board speichert die Zugangsdaten ausschliesslich lokal. Die Firmware darf weder Passwort noch SSID in Logs ausgeben.
+- Der Server stellt nur einen zufaelligen, zehn Minuten gueltigen, account- und `provisioning_binding`-gebundenen Einmalvorgang aus. Persistiert wird ausschliesslich sein SHA-256-Hash, Status und Ablaufzeit; nach dem ersten Abschluss ist er ungueltig.
+- Dieser Einmalvorgang ist kein Device-Credential, kein Account-Identifier auf dem Board und kein Ersatz fuer den getrennten P-256-Challenge-Response-Nachweis eines GerNetiX-verified Devices.
+- Das Captive Portal bleibt als lokaler Alternativweg verfuegbar, wenn der Nutzer die USB-Uebergabe nicht verwenden moechte.
+
+Der erfolgreiche Kundenfluss belegt die lokale Verbindung des Boards und die einmalige Account-Zuordnung. Ein kryptographischer Online-/Echtheitsnachweis des Devices bleibt der gesonderte mTLS- und P-256-Flow des Hersteller-Registers.
+
 
 
 ### Datenschutz und Consent

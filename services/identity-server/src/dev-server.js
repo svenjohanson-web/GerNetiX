@@ -1,12 +1,18 @@
 const http = require("node:http");
+const crypto = require("node:crypto");
 const fs = require("node:fs");
 const path = require("node:path");
 const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
 const { createDefaultIdentityModule, MockEmailService } = require("./index");
+const { createSmtpConfigStore } = require("./services/smtp-config-store");
+const { SmtpEmailService } = require("./services/smtp-email-service");
+const { ConfigurableEmailService } = require("./services/configurable-email-service");
+const { createWebPushService } = require("./services/web-push-service");
 const { createAccountTransparencyFactory } = require("./dev/account-transparency");
 const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
+const { createHelpAssistant } = require("./dev/help-assistant");
 const { developmentProjectSources } = require("./dev/development-project-structure");
 const {
   developmentProjectTemplate,
@@ -43,9 +49,17 @@ const publicDir = path.join(__dirname, "..", "public");
 const appDir = path.join(publicDir, "app");
 const esptoolJsDir = path.join(__dirname, "..", "node_modules", "esptool-js");
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
+const provisioningFirmwarePath = process.env.PROVISIONING_FIRMWARE_FILE_PATH
+  ? path.resolve(process.env.PROVISIONING_FIRMWARE_FILE_PATH)
+  : path.join(workspaceRoot, ".runtime", "server-firmware", "esp32-basissoftware", "latest", "merged-firmware.bin");
 const usbSerialHelperDistDir = path.join(workspaceRoot, "tools", "usb-serial-helper", "dist");
 const identityPersistenceBackend = process.env.IDENTITY_PERSISTENCE_BACKEND || "sqlite";
 const identitySqlitePath = process.env.IDENTITY_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-identity.sqlite");
+const identityAppBaseUrl = process.env.IDENTITY_APP_BASE_URL || process.env.APP_BASE_URL || "";
+const identityAdminToken = process.env.IDENTITY_ADMIN_TOKEN || "";
+const emailConfigEncryptionKey = process.env.EMAIL_CONFIG_ENCRYPTION_KEY || "";
+const webPushService = createWebPushService({ sqlitePath: identitySqlitePath, publicKey: process.env.WEB_PUSH_VAPID_PUBLIC_KEY || "", privateKey: process.env.WEB_PUSH_VAPID_PRIVATE_KEY || "", subject: process.env.WEB_PUSH_VAPID_SUBJECT || "" });
+const securityAlertPushAccountIds = String(process.env.WEB_PUSH_SECURITY_ALERT_ACCOUNT_IDS || "").split(",").map((value) => value.trim()).filter(Boolean);
 const port = Number(process.env.PORT || 4300);
 const host = process.env.HOST || "127.0.0.1";
 const demoUsername = process.env.DEMO_USER || "demo";
@@ -150,16 +164,20 @@ const developmentAssistant = createDevelopmentAssistant({
   requireProjectAccess: requireSessionProject,
   sendJson,
 });
+const helpAssistant = createHelpAssistant({ aiContextJson, llmConfigStore, readJsonBody, sendJson });
 const builtInDemoAccounts = [
   { user_id: "acct-demo", username: demoUsername, email: demoEmail, password: demoPassword },
 ];
 
-const emailService = new MockEmailService({ log() {} });
+const mockEmailService = new MockEmailService({ log() {} });
+const smtpConfigStore = createSmtpConfigStore({ sqlitePath: identitySqlitePath, encryptionKey: emailConfigEncryptionKey });
+const smtpEmailService = new SmtpEmailService({ configStore: smtpConfigStore });
+const emailService = new ConfigurableEmailService({ smtpEmailService, fallbackEmailService: mockEmailService });
 const auth = createDefaultIdentityModule({
   emailService,
   persistenceBackend: identityPersistenceBackend,
   sqlitePath: identitySqlitePath,
-  appBaseUrl: `http://${host}:${port}`,
+  appBaseUrl: identityAppBaseUrl || `http://${host}:${port}`,
 });
 const sessions = new Map();
 const userIdeState = createUserIdeState();
@@ -197,11 +215,11 @@ async function bootstrap() {
 async function seedDemoAccount() {
   for (const account of builtInDemoAccounts) {
     try {
-      const beforeCount = emailService.sentMessages.length;
+      const beforeCount = mockEmailService.sentMessages.length;
       await auth.register_local(account.username, account.email, account.password, true, account.password, {
         user_id: account.user_id,
       });
-      const verification = emailService.sentMessages
+      const verification = mockEmailService.sentMessages
         .slice(beforeCount)
         .find((message) => message.type === "verification");
       const token = verification ? new URL(verification.link).searchParams.get("token") : "";
@@ -214,6 +232,39 @@ async function seedDemoAccount() {
       }
     }
   }
+}
+
+function requireInternalAdmin(req) {
+  if (!identityAdminToken) {
+    const error = new Error("Interne Admin-Authentifizierung ist nicht konfiguriert.");
+    error.status = 503;
+    error.code = "identity_admin_token_missing";
+    throw error;
+  }
+  const provided = String(req.headers["x-gernetix-admin-token"] || "");
+  const expectedBuffer = Buffer.from(identityAdminToken);
+  const providedBuffer = Buffer.from(provided);
+  if (expectedBuffer.length !== providedBuffer.length || !crypto.timingSafeEqual(expectedBuffer, providedBuffer)) {
+    const error = new Error("Interne Admin-Authentifizierung fehlgeschlagen.");
+    error.status = 403;
+    error.code = "internal_admin_access_denied";
+    throw error;
+  }
+}
+
+async function handleInternalDevicePushEvent(req, res) {
+  requireInternalAdmin(req);
+  const event = await readJsonBody(req);
+  const deviceId = String(event.device_id || "").trim();
+  if (!deviceId) { sendJson(res, 400, { error: "device_id_required" }); return; }
+  const recipients = await deviceManagementJson(`/api/device-management/devices/${encodeURIComponent(deviceId)}/push-recipients`);
+  const accountIds = Array.isArray(recipients.account_ids) ? recipients.account_ids : [];
+  const title = String(event.title || "GerNetiX Board").trim().slice(0, 120) || "GerNetiX Board";
+  const body = String(event.body || "Neue Meldung von deinem Board.").trim().slice(0, 500) || "Neue Meldung von deinem Board.";
+  const requestedUrl = String(event.url || "").trim();
+  const url = requestedUrl.startsWith("/app/") ? requestedUrl : "/app/device-management/";
+  const push = await webPushService.notifyAccounts(accountIds, { title, body, url });
+  sendJson(res, 202, { accepted: true, device_id: deviceId, recipients: accountIds.length, push });
 }
 
 async function routeRequest(req, res) {
@@ -233,6 +284,46 @@ async function routeRequest(req, res) {
     sendJson(res, 200, { status: "ok", service: "identity-server" });
     return;
   }
+  if (url.pathname === "/app/manifest.webmanifest") { serveStatic(res, appDir, "/manifest.webmanifest"); return; }
+  if (url.pathname === "/app/push-sw.js") { serveStatic(res, appDir, "/push-sw.js"); return; }
+
+  if (url.pathname === "/api/internal/email-config") {
+    requireInternalAdmin(req);
+    if (req.method === "GET") {
+      sendJson(res, 200, { config: smtpConfigStore.publicConfig() });
+      return;
+    }
+    if (req.method === "PUT") {
+      sendJson(res, 200, { config: smtpConfigStore.update(await readJsonBody(req)) });
+      return;
+    }
+    sendJson(res, 405, { error: "method_not_allowed" });
+    return;
+  }
+
+  if (url.pathname === "/api/internal/email-config/test" && req.method === "POST") {
+    requireInternalAdmin(req);
+    await smtpEmailService.testConnection();
+    sendJson(res, 200, { ok: true, config: smtpConfigStore.publicConfig() });
+    return;
+  }
+
+  if (url.pathname === "/api/internal/security-alert" && req.method === "POST") {
+    requireInternalAdmin(req);
+    const alert = await readJsonBody(req);
+    const config = smtpConfigStore.deliveryConfig();
+    const recipient = config?.security_alert_recipient || config?.reply_to || config?.from_address;
+    if (!recipient) { sendJson(res, 409, { error: "security_alert_recipient_missing" }); return; }
+    await smtpEmailService.send(recipient, `GerNetiX Sicherheitsalarm: ${String(alert.severity || "warning").toUpperCase()}`, String(alert.message || "Sicherheitsereignis erkannt."));
+    const push = await webPushService.notifyAccounts(securityAlertPushAccountIds, { title: "GerNetiX Sicherheitsalarm", body: String(alert.message || "Sicherheitsereignis erkannt."), url: "/app/dashboard/" });
+    sendJson(res, 202, { accepted: true, recipient, push });
+    return;
+  }
+
+  if (url.pathname === "/api/push/public-key" && req.method === "GET") { sendJson(res, 200, { enabled: webPushService.enabled, public_key: webPushService.publicKey || "" }); return; }
+  if (url.pathname === "/api/push/subscribe" && req.method === "POST") { const session = readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; } if (!webPushService.enabled) { sendJson(res, 503, { error: "push_not_configured" }); return; } webPushService.subscribe(projectServerUserId(session), await readJsonBody(req)); sendJson(res, 201, { subscribed: true }); return; }
+  if (url.pathname === "/api/push/test" && req.method === "POST") { const session = readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; } const push = await webPushService.notifyAccount(projectServerUserId(session), { title: "GerNetiX Testnachricht", body: "Hallo Welt – dein privater Push-Kanal ist aktiv.", url: "/app/dashboard/" }); sendJson(res, 202, { accepted: true, push }); return; }
+  if (url.pathname === "/api/internal/push/device-event" && req.method === "POST") { await handleInternalDevicePushEvent(req, res); return; }
 
   if (req.method === "POST" && url.pathname === "/api/login") {
     await handleLogin(req, res);
@@ -241,6 +332,33 @@ async function routeRequest(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/register") {
     await handleRegister(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/password-reset/request") {
+    const body = await readJsonBody(req);
+    sendJson(res, 202, await auth.request_password_reset(body.email));
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/password-reset/complete") {
+    const body = await readJsonBody(req);
+    sendJson(res, 200, await auth.reset_password(body.token, body.password));
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/verify-email") {
+    try {
+      await auth.verify_email(url.searchParams.get("token") || "");
+      redirect(res, "/app/auth/?verification=success");
+    } catch {
+      redirect(res, "/app/auth/?verification=invalid");
+    }
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/reset-password") {
+    redirect(res, `/app/auth/?mode=reset&token=${encodeURIComponent(url.searchParams.get("token") || "")}`);
     return;
   }
 
@@ -419,6 +537,16 @@ async function routeRequest(req, res) {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/platform/help-assistant/chat") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await helpAssistant.handleChat(req, res);
+    return;
+  }
+
   if (req.method === "GET" && url.pathname === "/api/platform/hardware/board-feature-options") {
     const session = readSession(req);
     if (!session) {
@@ -538,6 +666,70 @@ async function routeRequest(req, res) {
       return;
     }
     await handlePlatformDeviceBasissoftwareProfileUpdate(req, res, session, decodeURIComponent(platformDevice[1]));
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/platform/provisioning/session") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handlePlatformProvisioningSession(req, res, session);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/platform/provisioning/complete") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handlePlatformProvisioningComplete(req, res, session);
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/platform/provisioning-firmware") {
+    if (!readSession(req)) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    if (!fs.existsSync(provisioningFirmwarePath)) {
+      sendJson(res, 503, {
+        error: "provisioning_firmware_unavailable",
+        message: "Die Factory-Basissoftware ist auf diesem Server noch nicht bereitgestellt.",
+      });
+      return;
+    }
+    const profile = url.searchParams.get("profile") || "";
+    if (!new Set(["full", "medium", "low"]).has(profile)) {
+      sendJson(res, 400, { error: "invalid_basissoftware_profile", message: "Bitte zuerst ein Update- und Speicherprofil auswaehlen." });
+      return;
+    }
+    sendJson(res, 200, {
+      artifact_id: "firmware_artifact.esp32_basissoftware_factory.latest",
+      profile,
+      flash_offset: 0,
+      content_url: `/api/platform/provisioning-firmware/content?profile=${encodeURIComponent(profile)}`,
+    });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/platform/provisioning-firmware/content") {
+    if (!readSession(req)) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    if (!fs.existsSync(provisioningFirmwarePath)) {
+      sendJson(res, 503, { error: "provisioning_firmware_unavailable", message: "Die Factory-Basissoftware ist auf diesem Server noch nicht bereitgestellt." });
+      return;
+    }
+    res.writeHead(200, {
+      "Content-Type": "application/octet-stream",
+      "Content-Disposition": "attachment; filename=gernetix-esp32-factory.bin",
+      "Cache-Control": "no-store",
+    });
+    fs.createReadStream(provisioningFirmwarePath).pipe(res);
     return;
   }
   if (req.method === "DELETE" && platformDevice) {
@@ -819,7 +1011,7 @@ async function handleLogin(req, res) {
 async function handleRegister(req, res) {
   const body = await readJsonBody(req);
   try {
-    const beforeCount = emailService.sentMessages.length;
+    const beforeCount = mockEmailService.sentMessages.length;
     const registered = await auth.register_local(
       body.username,
       body.email,
@@ -827,7 +1019,15 @@ async function handleRegister(req, res) {
       body.accepted_terms === true,
       body.password_repeat,
     );
-    const verification = emailService.sentMessages
+    if (smtpEmailService.configured()) {
+      sendJson(res, 202, {
+        account: registered.account,
+        requires_email_verification: true,
+        message: "Konto erstellt. Bitte bestaetige jetzt die E-Mail-Adresse.",
+      });
+      return;
+    }
+    const verification = mockEmailService.sentMessages
       .slice(beforeCount)
       .find((message) => message.type === "verification");
     const token = verification ? new URL(verification.link).searchParams.get("token") : "";
@@ -1537,8 +1737,53 @@ async function handlePlatformDeviceCreate(req, res, session) {
 }
 
 async function handlePlatformDiscoveredDeviceClaim(req, res, session) {
+  const body = await readJsonBody(req);
+  return claimPlatformDiscoveredDevice(res, session, body);
+}
+
+async function handlePlatformProvisioningSession(req, res, session) {
   try {
     const body = await readJsonBody(req);
+    const accountId = projectServerUserId(session);
+    const provisioningBinding = requiredField(body.provisioning_binding, "provisioning_binding");
+    const token = await deviceManagementJson("/api/device-management/provisioning/tokens", {
+      method: "POST",
+      body: { account_id: accountId, provisioning_binding: provisioningBinding },
+    });
+    sendJson(res, 201, token);
+  } catch (error) {
+    sendJson(res, error.status || 400, {
+      error: error.code || "provisioning_session_create_failed",
+      message: error.message || "Provisionierungs-Token konnte nicht erstellt werden.",
+    });
+  }
+}
+
+async function handlePlatformProvisioningComplete(req, res, session) {
+  try {
+    const body = await readJsonBody(req);
+    const accountId = projectServerUserId(session);
+    const consumed = await deviceManagementJson("/api/device-management/provisioning/tokens/consume", {
+      method: "POST",
+      body: {
+        provisioning_token: requiredField(body.provisioning_token, "provisioning_token"),
+        provisioning_binding: requiredField(body.provisioning_binding, "provisioning_binding"),
+      },
+    });
+    if (consumed.account_id !== accountId) throw new Error("Provisionierungs-Token gehoert nicht zum angemeldeten Account.");
+    delete body.provisioning_token;
+    delete body.provisioning_binding;
+    return claimPlatformDiscoveredDevice(res, session, body);
+  } catch (error) {
+    sendJson(res, error.status || 400, {
+      error: error.code || "provisioning_complete_failed",
+      message: error.message || "WLAN-Provisionierung konnte nicht abgeschlossen werden.",
+    });
+  }
+}
+
+async function claimPlatformDiscoveredDevice(res, session, body) {
+  try {
     const accountId = projectServerUserId(session);
     const discoveredDeviceId = body.device_id || body.deviceId || "";
     const hardwareProfileId = requiredField(body.hardware_profile_id || body.hardwareProfileId, "hardware_profile_id");

@@ -50,6 +50,16 @@ function createHttpApp(options) {
         return;
       }
 
+      if (req.method === "GET" && path === `${prefix}/help-articles`) {
+        sendJson(res, 200, { items: await service.listHelpArticles(Object.fromEntries(url.searchParams.entries())) });
+        return;
+      }
+
+      if (req.method === "GET" && path === `${prefix}/help-articles/search`) {
+        sendJson(res, 200, await service.searchHelpArticles(url.searchParams.get("q"), url.searchParams.get("limit")));
+        return;
+      }
+
       if (req.method === "GET" && path === `${prefix}/clarification-cases`) {
         sendJson(res, 200, await service.listClarificationCases(Object.fromEntries(url.searchParams.entries())));
         return;
@@ -83,6 +93,11 @@ function createHttpApp(options) {
 
       if (req.method === "POST" && path === `${prefix}/architecture-components`) {
         sendJson(res, 201, { architectureComponent: await service.upsertArchitectureComponent(await readJsonBody(req)) });
+        return;
+      }
+
+      if (req.method === "POST" && path === `${prefix}/help-articles`) {
+        sendJson(res, 201, { helpArticle: await service.upsertHelpArticle(await readJsonBody(req)) });
         return;
       }
 

@@ -60,8 +60,18 @@
           <button class="primary" type="submit">Konto erstellen</button>
         </form>
 
+        <form class="login-form hidden" id="reset-request-form" autocomplete="on">
+          <label for="reset-email">E-Mail-Adresse<input id="reset-email" name="email" type="email" autocomplete="email" required /></label>
+          <button class="primary" type="submit">Reset-Link senden</button>
+        </form>
+
+        <form class="login-form hidden" id="reset-complete-form" autocomplete="on">
+          <label for="reset-new-password">Neues Passwort<input id="reset-new-password" name="password" type="password" autocomplete="new-password" required /></label>
+          <button class="primary" type="submit">Passwort speichern</button>
+        </form>
+
         <div class="links">
-          <button type="button" class="link-button">Passwort vergessen</button>
+          <button type="button" class="link-button" id="password-reset-toggle">Passwort vergessen</button>
           <button type="button" class="link-button" id="auth-mode-toggle">Konto erstellen</button>
         </div>
 

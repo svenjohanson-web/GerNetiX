@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GerNetiX Architektur</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div>
+        <p class="brand">GERNETIX</p>
+        <h1>Architektur-Dokumentation</h1>
+      </div>
+      <p class="offline-status"><span aria-hidden="true"></span>Offline-Lesesicht</p>
+    </header>
+    <div class="workspace">
+      <aside class="navigation">
+        <label class="search-field" for="documentationSearch">
+          <span>Dokumentation durchsuchen</span>
+          <input id="documentationSearch" type="search" autocomplete="off" placeholder="Begriff oder Komponente" />
+        </label>
+        <nav id="documentationNavigation" aria-label="Architekturthemen"></nav>
+      </aside>
+      <main id="documentationContent" class="document" tabindex="-1"></main>
+      <aside id="documentContext" class="document-context" aria-label="Dokumentkontext"></aside>
+    </div>
+    <script src="content.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>

@@ -2,8 +2,8 @@ const crypto = require("node:crypto");
 const { AiContextError } = require("../errors");
 const { isGrantActive } = require("../repositories/in-memory-ai-context-repository");
 
-const SOURCE_TYPES = new Set(["current_chat", "project_files", "graph_database", "device_data", "customer_data", "admin_statistics", "hardware_catalog", "ai_prompt", "architecture_context"]);
-const PURPOSES = new Set(["architecture_assistance", "debugging", "support_case", "usage_analysis", "general_chat"]);
+const SOURCE_TYPES = new Set(["current_chat", "project_files", "graph_database", "device_data", "customer_data", "admin_statistics", "hardware_catalog", "ai_prompt", "architecture_context", "help_knowledge"]);
+const PURPOSES = new Set(["architecture_assistance", "debugging", "support_case", "usage_analysis", "general_chat", "help_assistance"]);
 const PROVIDER_SCOPES = new Set(["local_only", "external_allowed", "external_redacted_only"]);
 const REDACTION_LEVELS = new Set(["none", "metadata_only", "summary_only", "masked"]);
 
@@ -57,6 +57,40 @@ class AiContextService {
 
   listArchitectureComponents(filter = {}) {
     return this.repository.listArchitectureComponents(filter);
+  }
+
+  listHelpArticles(filter = {}) {
+    return this.repository.listHelpArticles(filter);
+  }
+
+  upsertHelpArticle(input = {}) {
+    validateHelpArticleInput(input);
+    const now = this.now().toISOString();
+    const articleId = clean(input.article_id);
+    return mapMaybePromise(this.repository.listHelpArticles(), (items) => {
+      const existing = items.find((item) => item.article_id === articleId);
+      return this.repository.saveHelpArticle({
+        article_id: articleId,
+        title: clean(input.title),
+        summary: clean(input.summary),
+        content: clean(input.content),
+        help_topic_id: clean(input.help_topic_id),
+        status: clean(input.status || "active"),
+        created_at: existing?.created_at || now,
+        updated_at: now,
+      });
+    });
+  }
+
+  searchHelpArticles(query, limit = 3) {
+    const normalizedQuery = clean(query);
+    if (!normalizedQuery) return { strategy: "none", items: [] };
+    const normalizedLimit = Math.min(5, positiveInt(limit, 3));
+    if (typeof this.repository.searchHelpArticles === "function") return this.repository.searchHelpArticles(normalizedQuery, normalizedLimit);
+    return mapMaybePromise(this.repository.listHelpArticles({ status: "active" }), (items) => ({
+      strategy: "lexical_fallback",
+      items: lexicalHelpSearch(normalizedQuery, items, normalizedLimit),
+    }));
   }
 
   upsertPromptFoundation(input = {}) {
@@ -354,6 +388,15 @@ function lexicalArchitectureSearch(query, items, limit) {
   }).filter((item) => item.semantic_score > 0).sort((left,right) => right.semantic_score-left.semantic_score).slice(0,limit);
 }
 
+function lexicalHelpSearch(query, items, limit) {
+  const queryTokens = lookupTokens(query);
+  return items.map((item) => {
+    const corpus = new Set(lookupTokens(`${item.title} ${item.summary} ${item.content}`));
+    const semanticScore = queryTokens.reduce((score, token) => score + (corpus.has(token) ? 1 : 0), 0);
+    return { ...item, semantic_score: semanticScore };
+  }).filter((item) => item.semantic_score > 0).sort((left, right) => right.semantic_score - left.semantic_score).slice(0, limit);
+}
+
 function lookupTokens(value) {
   return clean(value).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]+/g," ").split(/\s+/).filter((token)=>token.length>2);
 }
@@ -366,6 +409,9 @@ function decideAccess({ request, policy, grants }, now) {
   const matchingGrant = grants.find((grant) => grantMatchesRequest(grant, request, now));
   if (!matchingGrant) return deny("missing_valid_grant");
 
+  if (request.source_type === "help_knowledge" && request.provider !== "ollama") {
+    return deny("help_knowledge_local_only");
+  }
   if (request.provider !== "ollama" && matchingGrant.allowed_provider_scope === "local_only") {
     return deny("external_provider_not_allowed_by_grant");
   }
@@ -438,6 +484,15 @@ function validateArchitectureComponentInput(input) {
   }
   if (!["active", "draft", "archived"].includes(clean(input.status || "active"))) {
     throw new AiContextError("invalid_status", "Unbekannter Komponenten-Status.");
+  }
+}
+
+function validateHelpArticleInput(input) {
+  for (const field of ["article_id", "title", "summary", "content", "help_topic_id"]) {
+    if (!clean(input[field])) throw new AiContextError("missing_required_field", `Pflichtfeld fehlt: ${field}`);
+  }
+  if (!["active", "draft", "archived"].includes(clean(input.status || "active"))) {
+    throw new AiContextError("invalid_status", "Unbekannter Help-Artikel-Status.");
   }
 }
 

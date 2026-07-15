@@ -284,7 +284,7 @@ function redactSensitiveJson(value) {
 }
 
 function isSensitiveKey(key) {
-  return /(secret|password_hash|token_hash|pairing_code|private_key)/i.test(key);
+  return /(secret|password|token_hash|pairing_code|private_key|ciphertext)/i.test(key);
 }
 
 function clone(value) {

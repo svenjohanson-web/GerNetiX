@@ -170,6 +170,8 @@ services:
       PERSISTENCE_BACKEND: sqlite
       PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
       IDENTITY_BASE_URL: http://identity-server:4300
+      IDENTITY_ADMIN_TOKEN: ${IDENTITY_ADMIN_TOKEN:-}
+      SECURITY_MONITOR_TOKEN: ${SECURITY_MONITOR_TOKEN:-}
       PROJECT_SERVER_BASE_URL: http://project-server:4800
       BUILD_DEPLOY_BASE_URL: http://build-deploy-server:4400
       DEVICE_MANAGEMENT_BASE_URL: http://device-management-server:4700
@@ -198,6 +200,12 @@ services:
       PORT: 4300
       IDENTITY_PERSISTENCE_BACKEND: sqlite
       IDENTITY_SQLITE_PATH: /var/lib/gernetix/identity/gernetix-identity.sqlite
+      IDENTITY_APP_BASE_URL: ${IDENTITY_APP_BASE_URL:-}
+      IDENTITY_ADMIN_TOKEN: ${IDENTITY_ADMIN_TOKEN:-}
+      EMAIL_CONFIG_ENCRYPTION_KEY: ${EMAIL_CONFIG_ENCRYPTION_KEY:-}
+      WEB_PUSH_VAPID_PUBLIC_KEY: ${WEB_PUSH_VAPID_PUBLIC_KEY:-}
+      WEB_PUSH_VAPID_PRIVATE_KEY: ${WEB_PUSH_VAPID_PRIVATE_KEY:-}
+      WEB_PUSH_VAPID_SUBJECT: ${WEB_PUSH_VAPID_SUBJECT:-}
       INTERFACE_TELEMETRY_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
       PROJECT_SERVER_BASE_URL: http://project-server:4800
       BUILD_DEPLOY_BASE_URL: http://build-deploy-server:4400

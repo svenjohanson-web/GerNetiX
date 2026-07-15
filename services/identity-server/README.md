@@ -44,7 +44,19 @@ npm run dev
 
 Oeffnet die Login-Ansicht unter `http://localhost:4300/app/auth/`. Die Ansicht nutzt den lokalen Dev-Login und setzt fuer die Demo ein HttpOnly-Session-Cookie.
 Der eingebaute Dev-Account `demo` nutzt lokal stabil die interne Account-ID `acct-demo`, damit Identity Server, Project Server, AI Usage und Admin Tool im MVP dieselbe Demo-Account-Referenz sehen.
+
+## Accountgebundene Web-Push-Meldungen
+
+Die installierbare Plattform-PWA kann pro iPhone eine Web-Push-Subscription an den angemeldeten Account binden. `POST /api/push/test` sendet eine `Hallo Welt`-Testnachricht ausschliesslich an die eigenen aktiven Subscriptions.
+
+Board-Ereignisse werden nicht direkt vom Board an einen Web-Push-Provider gesendet. Ein mTLS-/MQTT-authentifizierter Serveradapter ruft intern `POST /api/internal/push/device-event` mit `X-GerNetiX-Admin-Token`, `device_id`, Titel und Meldung auf. Identity fragt beim Device Management die aktuellen Account-Owner ab und stellt nur an deren Subscriptions zu. Die interne Route akzeptiert nur relative `/app/`-Deep-Links.
+
+VPS-Sicherheitsalarme verwenden dieselbe Technik, aber eine getrennte, explizite Empfaengergruppe aus `WEB_PUSH_SECURITY_ALERT_ACCOUNT_IDS`. Ohne diese Konfiguration gibt es bewusst keinen Broadcast an normale Nutzer-Subscriptions.
 Der Dev-Server speichert Identity-Accounts standardmaessig in `.runtime/gernetix-identity.sqlite`. Damit bleiben lokal angelegte Accounts und Identity-Sessions ueber Identity-Neustarts erhalten; der Prozessspeicher ist nur noch ein schneller Session-Cache.
+
+## USB-Provisioning
+
+Das gefuehrte Provisioning unter `/app/device-management/provisioning/` flasht neue ESP32-Boards per Browser Web Serial, bevor Registrierung und Pairing freigeschaltet werden. Der authentifizierte Firmware-Endpunkt verwendet `PROVISIONING_FIRMWARE_FILE_PATH` oder standardmaessig `.runtime/server-firmware/esp32-basissoftware/latest/merged-firmware.bin`. Der private Device-Schluessel ist nicht Bestandteil dieses Factory-Images; er entsteht spaeter auf dem Board.
 Ueber `Konto erstellen` kann lokal ein neuer Account mit Benutzername, E-Mail, Passwort und Zustimmung angelegt werden. Im Dev-Modus wird die Mock-E-Mail-Verifizierung direkt abgeschlossen und der Nutzer wird angemeldet.
 Die Provider-Buttons fuer Google, Apple, Microsoft und GitHub nutzen lokal Mock-Provider. Damit kann ein Dev-Account mit Apple-Providerreferenz angelegt werden, ohne echte Apple-OAuth-Schluessel oder einen produktiven Apple-ID-Redirect vorzutaeuschen.
 
@@ -75,7 +87,12 @@ services/identity-server/public/app
   /devices
   /builds
   /billing
+  /help
 ```
+
+Unter `/app/help/` liegt die eigenstaendige Anwenderhilfe. Ihre Themen- und Artikelstruktur liegt zentral in `public/app/help-content.js`; Navigation, Artikeldarstellung und Help-Chat-UI liegen getrennt in `help-view.js`, während `help-chat-service.js` derzeit einen klar abgegrenzten lokalen Platzhalteradapter mit Artikelreferenzen bereitstellt. Damit kann spaeter eine eigene Help-API oder ein eigener Assistant-Kontext angebunden werden, ohne den allgemeinen Projekt- oder Programmierchat zu vermischen.
+
+Der Help-Chat nutzt `/api/platform/help-assistant/chat` und die eigene LLM-Route `help_chat`. Diese Route ist technisch verbindlich auf Ollama begrenzt: Auch wenn die globale Chat-Route im Admin Tool auf OpenAI oder Claude steht, kann GerNetiX Help weder auf einen API-Provider umgestellt noch an ihn weitergeleitet werden. Im Admin Tool sind fuer Help deshalb nur das lokale Ollama-Modell und dessen lokaler Endpoint relevant.
 
 Ein Lernprojekt kann aus dem Lernmodus direkt in der IDE geoeffnet werden. Beide Modi greifen auf dieselben Project-Server-Projektdateien zu; Codeaenderungen aus der IDE bleiben dadurch am Projekt erhalten.
 
@@ -133,3 +150,13 @@ Der Service sollte fuer Kollegen nur ueber VPN oder Tunnel erreichbar sein, nich
 - Ports und externe Basis-URLs werden konfigurierbar gehalten.
 - `/health` liefert einen einfachen Healthcheck.
 - Persistenz, E-Mail-Versand und OAuth-Provider sind ueber Adapter gekapselt, damit spaeter Linux-Homeserver, Container oder Cloud-Betrieb moeglich bleiben.
+
+## IONOS E-Mail-Versand
+
+Der Identity Server kann Verifizierungs- und Passwort-Reset-E-Mails ueber ein vorhandenes IONOS-Postfach versenden. Es wird kein eigener E-Mail-Server betrieben und es werden keine eingehenden Mailports benoetigt.
+
+1. Auf dem VPS `IDENTITY_APP_BASE_URL`, denselben langen `IDENTITY_ADMIN_TOKEN` fuer Identity und Admin Tool sowie einen eigenen Base64-kodierten 32-Byte-Wert in `EMAIL_CONFIG_ENCRYPTION_KEY` setzen.
+2. Im Admin Tool unter **KI → E-Mail** IONOS SMTP eintragen und testen. Standard: `smtp.ionos.de`, Port `465`, SSL/TLS.
+3. Das SMTP-Passwort wird AES-256-GCM-verschluesselt in der Identity-SQLite gespeichert, nie erneut ausgegeben und nicht geloggt.
+
+Solange keine SMTP-Konfiguration vorliegt, bleibt der lokale Mock-Mailversand fuer die Entwicklung aktiv. Nach dem Speichern der SMTP-Konfiguration erhalten neu registrierte Nutzer einen echten Bestaetigungslink.

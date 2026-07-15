@@ -1,5 +1,5 @@
 const { Pool } = require("pg");
-const { defaultArchitectureComponents, defaultPolicy, defaultPromptFoundations, defaultSources, isGrantActive } = require("./in-memory-ai-context-repository");
+const { defaultArchitectureComponents, defaultHelpArticles, defaultPolicy, defaultPromptFoundations, defaultSources, isGrantActive } = require("./in-memory-ai-context-repository");
 
 class PostgresAiContextRepository {
   constructor(options = {}) {
@@ -30,12 +30,14 @@ class PostgresAiContextRepository {
     await this.seedDefaults();
     await this.pool.query("CREATE INDEX IF NOT EXISTS ai_context_architecture_components_embedding_hnsw ON ai_context_architecture_components USING hnsw (embedding vector_cosine_ops)");
     await this.pool.query("CREATE INDEX IF NOT EXISTS ai_context_intent_examples_embedding_hnsw ON ai_context_intent_examples USING hnsw (embedding vector_cosine_ops)");
+    await this.pool.query("CREATE INDEX IF NOT EXISTS ai_context_help_articles_embedding_hnsw ON ai_context_help_articles USING hnsw (embedding vector_cosine_ops)");
   }
 
   async seedDefaults() {
     for (const source of defaultSources()) await this.saveSource(source, { preserveExisting:true });
     for (const prompt of defaultPromptFoundations()) await this.savePromptFoundation(prompt, { preserveExisting:true });
     for (const component of defaultArchitectureComponents()) await this.saveArchitectureComponent(component, { preserveExisting:true });
+    for (const article of defaultHelpArticles()) await this.saveHelpArticle(article, { preserveExisting:true });
     await this.savePolicy(defaultPolicy(), { preserveExisting:true });
   }
 
@@ -99,6 +101,29 @@ class PostgresAiContextRepository {
   }
   async listArchitectureComponents(filter = {}) { return this.listFiltered("ai_context_architecture_components",filter,["component_id","status"]); }
 
+  async saveHelpArticle(article, options = {}) {
+    let embedding = null;
+    try { embedding = await this.embeddingClient?.embed(helpArticleText(article)); } catch {}
+    const conflict = options.preserveExisting ? "DO NOTHING" : "DO UPDATE SET title=EXCLUDED.title,status=EXCLUDED.status,search_text=EXCLUDED.search_text,embedding=COALESCE(EXCLUDED.embedding,ai_context_help_articles.embedding),updated_at=EXCLUDED.updated_at,raw_json=EXCLUDED.raw_json";
+    await this.pool.query(`INSERT INTO ai_context_help_articles (article_id,title,status,search_text,embedding,updated_at,raw_json)
+      VALUES ($1,$2,$3,$4,$5::vector,$6,$7) ON CONFLICT (article_id) ${conflict}`,
+    [article.article_id, article.title, article.status, helpArticleText(article), embedding ? vectorSql(embedding) : null, article.updated_at, article]);
+    return options.preserveExisting ? this.findById("ai_context_help_articles", "article_id", article.article_id) : clone(article);
+  }
+  async listHelpArticles(filter = {}) { return this.listFiltered("ai_context_help_articles", filter, ["article_id", "status"]); }
+  async searchHelpArticles(query, limit = 3) {
+    try {
+      const embedding = await this.embeddingClient?.embed(query);
+      if (embedding) {
+        const result = await this.pool.query(`SELECT raw_json, 1-(embedding <=> $1::vector) AS score
+          FROM ai_context_help_articles WHERE status='active' AND embedding IS NOT NULL AND 1-(embedding <=> $1::vector) >= 0.28
+          ORDER BY embedding <=> $1::vector LIMIT $2`, [vectorSql(embedding), limit]);
+        if (result.rows.length) return { strategy:"pgvector", items:result.rows.map((row) => ({ ...raw(row), semantic_score:Number(row.score) })) };
+      }
+    } catch {}
+    return { strategy:"lexical_fallback", items:lexicalHelpSearch(query, await this.listHelpArticles({ status:"active" }), limit) };
+  }
+
   async saveClarificationCase(item) {
     await this.pool.query(`INSERT INTO ai_context_clarification_cases
       (case_id,fingerprint,status,priority,priority_score,last_seen_at,updated_at,raw_json)
@@ -146,7 +171,7 @@ class PostgresAiContextRepository {
 
   async summary() {
     const tables=[];
-    for(const table of ["ai_context_policy","ai_context_sources","ai_context_prompt_foundations","ai_context_architecture_components","ai_context_clarification_cases","ai_context_intent_examples","ai_context_grants","ai_context_audit_events"]){
+    for(const table of ["ai_context_policy","ai_context_sources","ai_context_prompt_foundations","ai_context_architecture_components","ai_context_help_articles","ai_context_clarification_cases","ai_context_intent_examples","ai_context_grants","ai_context_audit_events"]){
       const count=Number((await this.pool.query(`SELECT COUNT(*) AS count FROM ${table}`)).rows[0].count);tables.push({table_name:table,row_count:count});
     }
     return {available:true,backend:"postgresql_pgvector",embedding_model:this.embeddingClient?.model||"",tables};
@@ -159,6 +184,7 @@ class PostgresAiContextRepository {
     for(const source of repository.listSources())await this.saveSource(source);
     for(const prompt of repository.listPromptFoundations())await this.savePromptFoundation(prompt);
     for(const component of repository.listArchitectureComponents())await this.saveArchitectureComponent(component);
+    for(const article of repository.listHelpArticles?.()||[])await this.saveHelpArticle(article);
     for(const grant of repository.listGrants())await this.saveGrant(grant);
     for(const event of repository.listAuditEvents())await this.addAuditEvent(event);
     for(const item of repository.listClarificationCases?.()||[])await this.saveClarificationCase(item);
@@ -176,6 +202,7 @@ function postgresSchema(dimensions){return [
   `CREATE TABLE IF NOT EXISTS ai_context_sources (source_id text PRIMARY KEY, source_type text NOT NULL, status text NOT NULL, updated_at timestamptz, raw_json jsonb NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS ai_context_prompt_foundations (foundation_id text PRIMARY KEY, route_task text NOT NULL, content_kind text NOT NULL, status text NOT NULL, updated_at timestamptz, raw_json jsonb NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS ai_context_architecture_components (component_id text PRIMARY KEY, name text NOT NULL, status text NOT NULL, search_text text NOT NULL, embedding vector(${dimensions}), updated_at timestamptz, raw_json jsonb NOT NULL)`,
+  `CREATE TABLE IF NOT EXISTS ai_context_help_articles (article_id text PRIMARY KEY, title text NOT NULL, status text NOT NULL, search_text text NOT NULL, embedding vector(${dimensions}), updated_at timestamptz, raw_json jsonb NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS ai_context_clarification_cases (case_id text PRIMARY KEY, fingerprint text NOT NULL UNIQUE, status text NOT NULL, priority text NOT NULL, priority_score integer NOT NULL, last_seen_at timestamptz NOT NULL, updated_at timestamptz NOT NULL, raw_json jsonb NOT NULL)`,
   `CREATE TABLE IF NOT EXISTS ai_context_intent_examples (example_id text PRIMARY KEY, intent text NOT NULL, entity text, scope text NOT NULL, account_id text, status text NOT NULL, embedding vector(${dimensions}), updated_at timestamptz NOT NULL, raw_json jsonb NOT NULL)`,
   `ALTER TABLE ai_context_intent_examples ADD COLUMN IF NOT EXISTS account_id text`,
@@ -189,8 +216,10 @@ function clone(value){return value?JSON.parse(JSON.stringify(value)):null;}
 function matches(item,filter,fields){return fields.every((field)=>!filter[field]||String(item[field])===String(filter[field]));}
 function vectorSql(vector){return `[${vector.join(",")}]`;}
 function componentText(component){return [component.name,...(component.aliases||[]),component.summary,...(component.properties||[]),...(component.provided_interfaces||[]),...(component.required_interfaces||[]),...(component.decision_hints||[])].filter(Boolean).join(" ");}
+function helpArticleText(article){return [article.title,article.summary,article.content].filter(Boolean).join(" ");}
 function normalize(value){return String(value||"").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/[^a-z0-9 ]+/g," ").replace(/\s+/g," ").trim();}
 function lexicalSearch(query,components,limit){const tokens=normalize(query).split(" ").filter((token)=>token.length>2);return components.map((item)=>{const corpus=normalize(componentText(item));const score=tokens.reduce((sum,token)=>sum+(corpus.includes(token)?1:0),0);return{...item,semantic_score:score};}).filter((item)=>item.semantic_score>0).sort((a,b)=>b.semantic_score-a.semantic_score).slice(0,limit);}
 function lexicalIntentSearch(query,items,limit){const tokens=normalize(query).split(" ").filter((token)=>token.length>2);return items.map((item)=>{const corpus=normalize(`${item.utterance} ${item.intent} ${item.entity||""}`);const score=tokens.reduce((sum,token)=>sum+(corpus.includes(token)?1:0),0);return{...item,semantic_score:score};}).filter((item)=>item.semantic_score>0).sort((a,b)=>b.semantic_score-a.semantic_score).slice(0,limit);}
+function lexicalHelpSearch(query,items,limit){const tokens=normalize(query).split(" ").filter((token)=>token.length>2);return items.map((item)=>{const corpus=normalize(helpArticleText(item));const score=tokens.reduce((sum,token)=>sum+(corpus.includes(token)?1:0),0);return{...item,semantic_score:score};}).filter((item)=>item.semantic_score>0).sort((a,b)=>b.semantic_score-a.semantic_score).slice(0,limit);}
 
 module.exports={PostgresAiContextRepository,componentText,lexicalSearch};

@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="980" viewBox="0 0 1680 980" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Aktuelle lokale MVP-Architektur mit Plattform UI, Identity Server, Domaenenservices, SQL-only Persistenz, Prozess-Monitor mit VPN-Schalter, read-only VPS-Schutzregeln und VPN-geschuetztem administrativem VPS-Zugang.</desc>
+  <desc id="desc">Aktuelle lokale MVP-Architektur mit Plattform UI, Identity Server, Domaenenservices, SQL-only Persistenz, lokalem USB-WLAN-Transfer ohne Cloud-Speicherung von Zugangsdaten, Prozess-Monitor, VPS-Sicherheitsalarmierung per Systemd-Timer und IONOS SMTP, VPN-geschuetztem administrativem VPS-Zugang und offline nutzbarer Architektur-Dokumentation.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -45,10 +45,12 @@
     <rect class="cluster" x="240" y="95" width="310" height="455" rx="14"/>
     <text class="clusterTitle" x="260" y="124">Applikationen / HMI</text>
 
-    <rect class="node app" x="265" y="150" width="260" height="74" rx="10"/>
+    <rect class="node app" x="265" y="150" width="260" height="92" rx="10"/>
     <text class="titleText" x="395" y="178" text-anchor="middle">GerNetiX Plattform UI</text>
     <text class="smallText" x="395" y="198" text-anchor="middle">Discovery - Hardware-PUML - IDE</text>
     <text class="smallText" x="395" y="216" text-anchor="middle">Build → Browser Web Serial / OTA :4300</text>
+
+    <text class="smallText" x="395" y="234" text-anchor="middle">Provisioning: lokaler WLAN-Scan + USB-Transfer</text>
 
     <rect class="node app" x="265" y="245" width="260" height="64" rx="10"/>
     <text class="titleText" x="395" y="273" text-anchor="middle">Recovery Tool HMI</text>
@@ -79,7 +81,7 @@
     <text class="smallText" x="745" y="196" text-anchor="middle">:4300</text>
 
     <rect class="node edge" x="635" y="230" width="220" height="58" rx="10"/>
-    <text class="titleText" x="745" y="256" text-anchor="middle">Admin + KI-Klaerfaelle</text>
+    <text class="titleText" x="745" y="256" text-anchor="middle">Admin + SMTP-/Help-Wissen</text>
     <text class="smallText" x="745" y="276" text-anchor="middle">VPS-Loopback :4600</text>
 
     <rect class="node edge" x="635" y="310" width="220" height="40" rx="10"/>
@@ -135,12 +137,16 @@
     <text class="smallText" x="1265" y="448" text-anchor="middle">Assistant :5300</text>
 
     <rect class="node domain" x="1385" y="405" width="190" height="54" rx="10"/>
-    <text class="titleText" x="1480" y="429" text-anchor="middle">AI Context + Intent-Lernen</text>
-    <text class="smallText" x="1480" y="448" text-anchor="middle">Grants + Policy + Prompts + Bausteine :5500</text>
+    <text class="titleText" x="1480" y="429" text-anchor="middle">AI Context + Help-Wissen</text>
+    <text class="smallText" x="1480" y="448" text-anchor="middle">Grants + Policy + Prompts + Vektorsuche :5500</text>
+
+    <rect class="node domain" x="1385" y="505" width="190" height="54" rx="10"/>
+    <text class="titleText" x="1480" y="529" text-anchor="middle">IONOS Mail</text>
+    <text class="smallText" x="1480" y="548" text-anchor="middle">SMTP/TLS</text>
   </g>
 
   <g id="tools">
-    <rect class="cluster" x="240" y="530" width="310" height="180" rx="14"/>
+    <rect class="cluster" x="240" y="530" width="310" height="190" rx="14"/>
     <text class="clusterTitle" x="260" y="559">Lokale Tools</text>
     <rect class="node tool" x="265" y="585" width="122" height="54" rx="10"/>
     <text class="titleText" x="326" y="608" text-anchor="middle">E2E Demo</text>
@@ -148,9 +154,10 @@
     <rect class="node tool" x="403" y="585" width="122" height="54" rx="10"/>
     <text class="titleText" x="464" y="608" text-anchor="middle">YAML Graph</text>
     <text class="smallText" x="464" y="627" text-anchor="middle">Importer</text>
-    <rect class="node tool" x="265" y="650" width="260" height="48" rx="10"/>
-    <text class="titleText" x="395" y="671" text-anchor="middle">Prozess-Monitor + VPN-Schalter</text>
-    <text class="smallText" x="395" y="689" text-anchor="middle">read-only VPS-Schutzregeln</text>
+    <rect class="node tool" x="265" y="648" width="260" height="30" rx="10"/>
+    <text class="titleText" x="395" y="668" text-anchor="middle">Prozess-Monitor + VPN-Schalter</text>
+    <rect class="node tool" x="265" y="686" width="260" height="24" rx="10"/>
+    <text class="smallText" x="395" y="703" text-anchor="middle">Architektur-Dokumentation · offline</text>
   </g>
 
   <g id="deviceRuntime">
@@ -202,6 +209,8 @@
   <path class="line" d="M 190 311 L 403 437"/>
 
   <path class="line" d="M 525 187 L 635 179"/>
+  <path class="line dashed" d="M 525 234 L 1445 614"/>
+  <text class="label" x="890" y="470">WLAN-Zugangsdaten nur lokal per USB</text>
   <path class="line dashed" d="M 395 480 L 395 224"/>
   <path class="line" d="M 525 277 L 1170 262"/>
   <path class="line" d="M 525 362 L 965 262"/>
@@ -215,6 +224,8 @@
   <path class="line" d="M 855 179 L 965 347"/>
   <path class="line" d="M 855 179 L 1170 347"/>
   <path class="line" d="M 855 179 L 1385 432"/>
+  <path class="line" d="M 855 179 L 1385 532"/>
+  <text class="label" x="1170" y="515">SMTP/TLS</text>
   <path class="line" d="M 855 179 L 1445 869"/>
   <path class="line" d="M 855 179 L 1445 914"/>
   <path class="line" d="M 855 259 L 1385 177"/>
@@ -255,6 +266,8 @@
   <path class="line" d="M 387 612 L 1170 262"/>
   <path class="line" d="M 387 612 L 1385 177"/>
   <path class="line" d="M 525 612 L 1005 795"/>
+  <path class="line dashed" d="M 525 698 L 1005 826"/>
+  <path class="line dashed" d="M 525 698 L 1155 826"/>
   <path class="line" d="M 1155 826 L 1005 826"/>
 
   <g id="legend">
