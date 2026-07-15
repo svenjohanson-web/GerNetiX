@@ -2,8 +2,10 @@ const HelpView = (() => {
   let selectedTopicId = "quick-start";
   let messages = [];
   let bound = false;
+  let access = { hasAccount: true, premium: false };
 
-  function render() {
+  function render(nextAccess = access) {
+    access = { ...access, ...nextAccess };
     const mount = document.querySelector("#helpMount");
     if (!mount) return;
     const requested = window.location.hash.replace(/^#/, "");
@@ -15,8 +17,8 @@ const HelpView = (() => {
       <header class="section-head help-page-head">
         <div>
           <p class="eyebrow">GerNetiX</p>
-          <h2>Help</h2>
-          <p class="helper-text">Find answers, explore GerNetiX topics or ask the assistant.</p>
+          <h2>Hilfe</h2>
+          <p class="helper-text">Öffentliche Grundlagen, Konto-Hilfe und vertiefende Premium-Inhalte sind getrennt dargestellt.</p>
         </div>
       </header>
       <div class="help-layout">
@@ -38,7 +40,8 @@ const HelpView = (() => {
         </div>
         <form id="helpChatForm" class="help-chat-form">
           <label for="helpChatInput">Your question</label>
-          <span class="help-chat-input-box"><textarea id="helpChatInput" rows="2" placeholder="Enter your question about GerNetiX..."></textarea><button class="primary" type="submit">Send</button></span>
+          <span class="help-chat-input-box"><textarea id="helpChatInput" rows="2" placeholder="${access.premium ? "Enter your question about GerNetiX..." : "KI-Unterstuetzung ist mit Premium verfuegbar."}" ${access.premium ? "" : "disabled"}></textarea><button class="primary" type="submit" ${access.premium ? "" : "disabled"}>Send</button></span>
+          ${access.premium ? "" : '<p class="chat-premium-hint">KI-Unterstuetzung ist im Premium-Abo enthalten. <a href="/app/help/#ai-premium">Warum?</a></p>'}
         </form>
       </section>`;
     if (article.hardwareCatalog) loadHardwareCatalog(mount);
@@ -48,14 +51,20 @@ const HelpView = (() => {
   function renderTopic(topic) {
     const hasSelectedChild = topic.children?.some((child) => child.id === selectedTopicId);
     return `<details class="help-topic-group" ${hasSelectedChild ? "open" : ""}>
-      <summary><span><strong>${escapeHtml(topic.title)}</strong><small>${escapeHtml(topic.description || "")}</small></span></summary>
+      <summary><span><strong>${escapeHtml(topic.title)}</strong><small>${escapeHtml(topic.description || "")}</small></span>${accessBadge(topic.access)}</summary>
       <div>${(topic.children || []).map((child) => child.articleId
-        ? `<button class="help-topic-link ${child.id === selectedTopicId ? "active" : ""}" type="button" data-help-topic="${escapeHtml(child.id)}" ${child.id === selectedTopicId ? 'aria-current="page"' : ""}>${escapeHtml(child.title)}</button>`
+        ? `<button class="help-topic-link ${child.id === selectedTopicId ? "active" : ""}" type="button" data-help-topic="${escapeHtml(child.id)}" ${child.id === selectedTopicId ? 'aria-current="page"' : ""}>${escapeHtml(child.title)}${accessBadge(HelpContent.articles[child.articleId]?.access)}</button>`
         : `<span class="help-topic-placeholder">${escapeHtml(child.title)}<small>Coming soon</small></span>`).join("")}</div>
     </details>`;
   }
 
   function renderArticle(article, topic) {
+    if (!canAccess(article.access)) {
+      const preview = article.access === "premium" ? article.sections.slice(0, 1) : [];
+      return `<header class="help-article-head"><p class="eyebrow">${escapeHtml(parentTitle(topic.id))}</p><h2>${escapeHtml(article.title)}</h2><p>${escapeHtml(article.summary)}</p></header>
+        ${preview.map((section) => `<section class="help-article-section"><h3>${escapeHtml(section.heading)}</h3>${(section.paragraphs || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}${section.list ? `<ul>${section.list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}</section>`).join("")}
+        ${renderPaywall(article.access)}`;
+    }
     return `<header class="help-article-head"><p class="eyebrow">${escapeHtml(parentTitle(topic.id))}</p><h2>${escapeHtml(article.title)}</h2><p>${escapeHtml(article.summary)}</p></header>
       ${article.sections.map((section) => `<section class="help-article-section">
         <h3>${escapeHtml(section.heading)}</h3>
@@ -68,6 +77,20 @@ const HelpView = (() => {
       ${article.hardwareCatalog ? '<section id="compatibleHardwareCatalog" class="help-hardware-catalog"><p class="helper-text">Hardware Catalog wird geladen …</p></section>' : ""}
       ${article.actions?.length ? `<div class="button-row help-next-actions">${article.actions.map((action) => `<button type="button" data-help-route="${escapeHtml(action.route)}">${escapeHtml(action.label)}</button>`).join("")}</div>` : ""}
       ${article.relatedTopics?.length ? `<section class="help-related"><h3>Related help topics</h3>${article.relatedTopics.map(renderRelatedTopic).join("")}</section>` : ""}`;
+  }
+
+  function canAccess(level = "public") {
+    return level === "public" || (level === "account" && access.hasAccount) || (level === "premium" && access.premium);
+  }
+
+  function accessBadge(level = "public") {
+    const labels = { public: "Öffentlich", account: "Konto", premium: "Premium" };
+    return `<small class="help-access-badge ${level}">${labels[level] || labels.public}</small>`;
+  }
+
+  function renderPaywall(level) {
+    const premium = level === "premium";
+    return `<section class="help-paywall"><p class="eyebrow">${premium ? "Premium-Inhalt" : "Konto erforderlich"}</p><h3>${premium ? "Hier geht es mit Premium weiter" : "Melde dich an, um weiterzulesen"}</h3><p>${premium ? "Die Einführung bleibt sichtbar. Die konkrete Schrittfolge und vertiefenden Hinweise sind Bestandteil des Premium-Abos." : "Dieser Ablauf bezieht sich auf dein persönliches Board, Inventar oder Projekt und ist deshalb erst nach der Anmeldung verfügbar."}</p><button class="primary" type="button" data-help-route="${premium ? "/app/billing/" : "/app/auth/"}">${premium ? "Premium ansehen" : "Anmelden"}</button></section>`;
   }
 
   async function loadHardwareCatalog(mount) {
@@ -131,6 +154,7 @@ const HelpView = (() => {
       if (event.target.id !== "helpChatForm") return;
       event.preventDefault();
       const input = mount.querySelector("#helpChatInput");
+      if (!access.premium) return;
       const question = input.value.trim();
       if (!question) return;
       messages.push({ role: "user", text: question });

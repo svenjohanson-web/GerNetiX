@@ -119,6 +119,7 @@ const GuidedProjectView = (() => {
       if (!isCodeExplorerView(view)) return "";
       const messages = codeChatMessages(project, view);
       const waiting = messages.some((message) => message.pending);
+      const hasPremiumAi = Boolean(state.billing?.entitlements?.includes("ai_assistant"));
       return `
         <section class="code-explorer-chat">
           <div class="code-explorer-chat-head">
@@ -149,10 +150,11 @@ const GuidedProjectView = (() => {
             <p class="code-explorer-chat-section-label">Eingabe</p>
             <label class="code-explorer-chat-input"><span>Frage zum Code</span>
               <span class="code-explorer-chat-input-box">
-                <textarea rows="3" name="message" placeholder="Was passiert in dieser Funktion?"></textarea>
-                <button class="code-explorer-send-button" type="submit" aria-label="Frage senden" title="Frage senden" ${waiting ? "disabled" : ""}>&uarr;</button>
+                <textarea rows="3" name="message" placeholder="${hasPremiumAi ? "Was passiert in dieser Funktion?" : "KI-Unterstuetzung ist mit Premium verfuegbar."}" ${hasPremiumAi ? "" : "disabled"}></textarea>
+                <button class="code-explorer-send-button" type="submit" aria-label="Frage senden" title="Frage senden" ${waiting || !hasPremiumAi ? "disabled" : ""}>&uarr;</button>
               </span>
             </label>
+            ${hasPremiumAi ? "" : '<p class="chat-premium-hint">KI-Unterstuetzung ist im Premium-Abo enthalten. <a href="/app/help/#ai-premium" data-route="help">Warum?</a></p>'}
             <span class="chat-status" data-code-chat-status>Bereit.</span>
           </form>
         </section>
@@ -163,6 +165,7 @@ const GuidedProjectView = (() => {
       event.preventDefault();
       const form = event.currentTarget;
       const input = form.elements.message;
+      if (!state.billing?.entitlements?.includes("ai_assistant")) return;
       const content = String(input.value || "").trim();
       if (!content) return;
       const messages = codeChatMessages(project, view);

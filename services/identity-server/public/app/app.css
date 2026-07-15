@@ -312,6 +312,8 @@ button.danger:hover {
 .help-chat-form label { color: var(--muted); font-size: 12px; font-weight: 700; }
 .help-chat-input-box { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
 .help-chat-input-box textarea { min-height: 48px; resize: vertical; }
+.chat-premium-hint { margin: 0; color: var(--muted); font-size: 12px; }
+.chat-premium-hint a { color: var(--accent); font-weight: 700; }
 @media (max-width: 760px) {
   .help-layout { grid-template-columns: 1fr; }
   .help-hardware-card { grid-template-columns: 1fr; }
@@ -3713,6 +3715,34 @@ textarea,
   min-height: 31px;
   padding: 4px;
 }
+
+.help-access-badge {
+  display: inline-flex;
+  width: fit-content;
+  margin-left: 8px;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  padding: 2px 7px;
+  color: #cbd5e1;
+  background: #1b2430;
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.help-access-badge.public { border-color: #0e7490; color: #cffafe; background: #164e63; }
+.help-access-badge.account { border-color: #475569; color: #cbd5e1; }
+.help-access-badge.premium { border-color: #a16207; color: #fde68a; background: #29210c; }
+.help-paywall {
+  display: grid;
+  gap: 9px;
+  border: 1px solid #a16207;
+  border-radius: 10px;
+  padding: 18px;
+  background: linear-gradient(135deg, #211a0d, #111827);
+}
+.help-paywall h3, .help-paywall p { margin: 0; }
+.help-paywall p:not(.eyebrow) { color: #cbd5e1; }
+.help-paywall button { width: fit-content; }
 .home-automation-actions { justify-content: flex-end; }
 .development-workspace-panel.development-project-start-step,
 .development-workspace-active .development-workspace-panel.development-project-start-step {

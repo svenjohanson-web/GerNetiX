@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GerNetiX Hilfe</title>
+    <style>
+      :root { color-scheme: dark; font-family: Segoe UI, system-ui, sans-serif; background: #070b12; color: #e5e7eb; }
+      body { margin: 0; background: radial-gradient(circle at 12% 0%, rgba(14,116,144,.16), transparent 28rem), #070b12; }
+      main { width: min(920px, calc(100% - 32px)); margin: 0 auto; padding: 32px 0 56px; }
+      header, article { border: 1px solid #2b3748; border-radius: 12px; padding: 22px; background: #111827; }
+      header { margin-bottom: 14px; } h1, h2 { margin: 0; } p { color: #cbd5e1; line-height: 1.55; }
+      .eyebrow { margin: 0 0 6px; color: #67e8f9; font-size: 12px; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; }
+      .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; } article h2 { font-size: 18px; }
+      .badge { display: inline-flex; margin: 12px 0 2px; border: 1px solid #0e7490; border-radius: 999px; padding: 3px 8px; color: #cffafe; background: #164e63; font-size: 12px; font-weight: 800; }
+      a { display: inline-flex; margin-top: 8px; border: 1px solid #0891b2; border-radius: 8px; padding: 9px 11px; background: #0e7490; color: #ecfeff; font-weight: 750; text-decoration: none; }
+      @media (max-width: 720px) { .grid { grid-template-columns: 1fr; } }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header><p class="eyebrow">GerNetiX Hilfe</p><h1>Informationen für deinen Einstieg</h1><p>Hier findest du öffentliche Grundlagen zu GerNetiX, passenden ESP32-Boards und dem Weg zum ersten Projekt.</p></header>
+      <section class="grid">
+        <article><span class="badge">Öffentlich</span><h2>Vor dem Start</h2><p>Erfahre, was GerNetiX bietet, wie du ein Konto anlegst und welche Boardfamilie zu deinem Vorhaben passen kann.</p><a href="/app/auth/?next=%2Fapp%2Fhelp%2F">Öffentliche Hilfe öffnen</a></article>
+        <article><span class="badge">Mit Konto</span><h2>Board einrichten</h2><p>Provisionierung, WLAN, Flashen und dein Geräteinventar gehören zu deinem persönlichen Konto.</p><a href="/app/auth/?next=%2Fapp%2Fhelp%2F">Anmelden</a></article>
+        <article><span class="badge">Premium</span><h2>Vertiefen und umsetzen</h2><p>Geführte Projekte und vertiefende Schrittfolgen stehen im Premium-Abo bereit. Die Einführungen bleiben vorher sichtbar.</p><a href="/app/auth/?next=%2Fapp%2Fbilling%2F">Premium ansehen</a></article>
+      </section>
+    </main>
+  </body>
+</html>

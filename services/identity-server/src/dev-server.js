@@ -66,6 +66,7 @@ const host = process.env.HOST || "127.0.0.1";
 const demoUsername = process.env.DEMO_USER || "demo";
 const demoEmail = process.env.DEMO_EMAIL || "demo@gernetix.local";
 const demoPassword = process.env.DEMO_PASSWORD || "demo-passwort";
+const defaultAccountPlan = process.env.GERNETIX_DEFAULT_ACCOUNT_PLAN || "premium_demo";
 const projectServerBaseUrl = process.env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800";
 const buildDeployBaseUrl = process.env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400";
 const otaBuildDeployBaseUrl = process.env.OTA_BUILD_DEPLOY_BASE_URL || "https://build.gernetix.com";
@@ -525,6 +526,7 @@ async function routeRequest(req, res) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
+    if (!requireEntitlement(res, session, "ai_assistant")) return;
     await developmentAssistant.handleChat(req, res, session);
     return;
   }
@@ -545,6 +547,7 @@ async function routeRequest(req, res) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
+    if (!requireEntitlement(res, session, "ai_assistant")) return;
     await helpAssistant.handleChat(req, res);
     return;
   }
@@ -945,6 +948,11 @@ async function routeRequest(req, res) {
     return;
   }
 
+  if (url.pathname === "/hilfe" || url.pathname === "/hilfe/") {
+    serveStatic(res, path.join(publicDir, "help"), "/index.html");
+    return;
+  }
+
   if (url.pathname.startsWith("/app/")) {
     if (!readSession(req)) {
       redirect(res, authRoute(url.pathname + url.search));
@@ -1201,7 +1209,10 @@ async function handlePlatformSummary(res, session) {
     },
     workspace_state: getWorkspaceState(userId),
     development_assistant: developmentAssistant.config(),
-    development_project_templates: developmentProjectTemplateCatalog(),
+    development_project_templates: developmentProjectTemplateCatalog().map((template) => ({
+      ...template,
+      available: hasEntitlements(session, template.required_entitlements),
+    })),
     development_project_template_previews: developmentProjectTemplatePreviews(),
     projects: projects.map(toPlatformProject),
     learning_progress: listLearningProgress(userId, projects),
@@ -1314,6 +1325,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
   const body = await readJsonBody(req);
   const userId = projectServerUserId(session);
   const template = developmentProjectTemplate(body.template_id);
+  if (!requireEntitlements(res, session, template.requiredEntitlements || [])) return;
   const title = requiredField(body.title || template.title || "Neues Entwicklungsprojekt", "title").slice(0, 120);
   const description = String(body.description || template.description || "Architektur-Discovery-Projekt").trim().slice(0, 1000);
   const buildConfig = templateBuildConfig(template);
@@ -2386,12 +2398,44 @@ function learningProgressKey(userId, courseId, lessonId, projectId) {
 
 async function loadBillingSummary(session, existingAiUsage = null) {
   const aiUsage = existingAiUsage || await loadAiUsageSummary(session);
+  const subscription = accountSubscription(session);
   return {
     account_id: projectServerUserId(session),
-    plan: "Premium Demo",
-    entitlements: ["learn_guided_projects", "ide_edit_code", "build_and_flash", "ai_assistant"],
+    plan: subscription.plan,
+    entitlements: subscription.entitlements,
     ai_credits: aiUsage.credits,
   };
+}
+
+function accountSubscription(session) {
+  const configuredPlan = String(session?.account?.subscription_plan || session?.account?.plan || defaultAccountPlan).trim().toLowerCase();
+  const premium = ["premium", "premium_demo", "premium-demo"].includes(configuredPlan);
+  return {
+    plan: premium ? "Premium" : "Kostenlos",
+    entitlements: premium
+      ? ["learn_guided_projects", "ide_edit_code", "build_and_flash", "ai_assistant", "web_push"]
+      : ["ide_edit_code", "build_and_flash"],
+  };
+}
+
+function hasEntitlements(session, requiredEntitlements = []) {
+  const granted = new Set(accountSubscription(session).entitlements);
+  return (requiredEntitlements || []).every((entitlement) => granted.has(entitlement));
+}
+
+function requireEntitlement(res, session, entitlement) {
+  return requireEntitlements(res, session, [entitlement]);
+}
+
+function requireEntitlements(res, session, requiredEntitlements = []) {
+  if (hasEntitlements(session, requiredEntitlements)) return true;
+  sendJson(res, 403, {
+    error: "premium_required",
+    message: "Diese Funktion ist nur mit einem Premium-Abo verfuegbar.",
+    required_entitlements: requiredEntitlements,
+    help_url: "/app/help/#ai-premium",
+  });
+  return false;
 }
 
 async function loadHardwareShopSummary(session) {
@@ -2599,10 +2643,11 @@ function projectServerUserId(session) {
 
 async function createAccountSummary(session) {
   const aiUsage = await loadAiUsageSummary(session);
+  const subscription = accountSubscription(session);
   return {
     username: session.account.username || "",
     user_id: projectServerUserId(session),
-    plan: "Premium Demo",
+    plan: subscription.plan,
     capabilities: ["ide_flash_usb", "ide_flash_ota", "cloud_flash"],
     ai_credits: aiUsage.credits.available_credits,
     consent_summary: "1 aktiver Device-Support-Consent",

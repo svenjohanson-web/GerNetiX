@@ -37,6 +37,7 @@ test("exposes one UI catalog without architecture or realization internals", () 
     default_title: "Sensor-Aktor-Steuerung",
     description: "IoT-Device erfasst einen Sensorwert, wertet ihn in einer lokalen Steuerlogik aus und steuert damit einen Aktor.",
     hint: "Sensor, lokale Steuerlogik und Aktor als durchgaengige Wirkungskette.",
+    required_entitlements: [],
     model_schema_version: 1,
   });
   assert.equal(catalog.some((template) => "architecture" in template || "realization" in template), false);
@@ -132,6 +133,8 @@ test("provides an account-bound web-push PWA data logger template", () => {
   assert.equal(templateHardwareProfileId(template), "architecture.discovery");
   assert.equal(templateBuildConfig(template), null);
   assert.deepEqual(templateFirmwareSources(template, "Mein Push-Logger"), []);
+  assert.deepEqual(template.requiredEntitlements, ["web_push"]);
+  assert.deepEqual(developmentProjectTemplateCatalog().find((item) => item.id === "iot_datalogger_web_push_pwa").required_entitlements, ["web_push"]);
 });
 
 test("falls back to the empty project template for unknown ids", () => {

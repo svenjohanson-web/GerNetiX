@@ -46,8 +46,9 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#touchscreenGameForm").addEventListener("click", handleTouchscreenGameClick);
     }
 
-    function setAssistantConfig(config) {
+    function setAssistantConfig(config, billing = null) {
       state.developmentPlatform.assistant = config || null;
+      state.developmentPlatform.billing = billing || state.developmentPlatform.billing || null;
     }
 
     function setProjectTemplates(templates, previews = []) {
@@ -57,12 +58,14 @@ const DevelopmentPlatform = (() => {
         title: template.default_title ?? template.title ?? "",
         description: template.description || "",
         hint: template.hint || template.description || "",
+        available: template.available !== false,
+        requiredEntitlements: template.required_entitlements || [],
       }]));
       const select = document.querySelector("#developmentProjectTemplate");
       if (!select) return;
       select.innerHTML = [
         `<option value="">Template waehlen</option>`,
-        ...catalog.map((template) => `<option value="${escapeAttribute(template.id)}" ${template.id === "empty" ? "hidden" : ""}>${escapeHtml(template.title)}</option>`),
+        ...catalog.map((template) => `<option value="${escapeAttribute(template.id)}" ${template.id === "empty" ? "hidden" : ""} ${template.available === false ? "disabled" : ""}>${escapeHtml(template.title)}${template.available === false ? " · Premium" : ""}</option>`),
       ].join("");
     }
 
@@ -1119,20 +1122,24 @@ const DevelopmentPlatform = (() => {
 
     function syncChatAvailability() {
       const hasProject = Boolean(activeProjectId());
+      const hasPremiumAi = Boolean(state.developmentPlatform.billing?.entitlements?.includes("ai_assistant"));
       const functionCoverage = plantUmlFunctionCoverage(state.developmentPlatform.architectureDiagram?.source || "");
       const hasEffectChains = state.developmentPlatform.architectureDiagram?.derived_from === "architecture_effect_chain_derivation";
       const usesProjectTemplate = currentProjectUsesTemplate();
       const canContinue = hasProject
         && Boolean(state.developmentPlatform.architectureDiagram?.source)
         && (usesProjectTemplate || (functionCoverage.complete && (functionCoverage.element_count <= 1 || hasEffectChains)));
-      document.querySelector("#developmentChatInput").disabled = !hasProject;
-      document.querySelector("#developmentChatSubmit").disabled = !hasProject;
+      document.querySelector("#developmentChatInput").disabled = !hasProject || !hasPremiumAi;
+      document.querySelector("#developmentChatSubmit").disabled = !hasProject || !hasPremiumAi;
+      document.querySelector("#developmentChatPremiumHint").classList.toggle("hidden", hasPremiumAi);
       document.querySelectorAll("[data-development-quick-prompt]").forEach((button) => {
-        button.disabled = !hasProject;
+        button.disabled = !hasProject || !hasPremiumAi;
       });
       document.querySelector("#saveDevelopmentArchitectureButton").disabled = !hasProject || !state.developmentPlatform.architectureDiagram?.source;
       document.querySelector("#acceptDevelopmentArchitectureButton").disabled = !canContinue;
-      document.querySelector("#developmentChatInput").placeholder = hasProject
+      document.querySelector("#developmentChatInput").placeholder = !hasPremiumAi
+        ? "KI-Unterstuetzung ist mit Premium verfuegbar."
+        : hasProject
         ? state.developmentPlatform.assistantMode === "function_clarification"
           ? "Beschreibe eine Funktion, z. B. Temperatur wird gemessen."
           : state.developmentPlatform.assistantMode === "effect_chain_derivation"

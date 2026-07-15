@@ -283,7 +283,7 @@ async function refresh() {
   state.progress = summary.learning_progress;
   state.workspace = summary.workspace_state;
   state.serviceStatus = summary.service_status || {};
-  developmentPlatform().setAssistantConfig(summary.development_assistant || null);
+  developmentPlatform().setAssistantConfig(summary.development_assistant || null, state.billing);
   developmentPlatform().setProjectTemplates(
     summary.development_project_templates || [],
     summary.development_project_template_previews || [],
@@ -339,7 +339,10 @@ function renderRoute() {
 }
 
 function renderHelpTopic() {
-  HelpView.render();
+  HelpView.render({
+    hasAccount: Boolean(state.account),
+    premium: Boolean(state.billing?.entitlements?.includes("learn_guided_projects")),
+  });
 }
 
 function renderBreadcrumb(route) {

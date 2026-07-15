@@ -18,7 +18,7 @@ test("keeps Help reachable through the main menu and renders it as a dedicated v
   assert.match(app, /help: "helpView"/);
   assert.match(app, /label: "Hilfe", route: "\/app\/help\/"/);
   assert.match(app, /function renderHelpTopic\(\)/);
-  assert.match(app, /HelpView\.render\(\)/);
+  assert.match(app, /HelpView\.render\(\{/);
   assert.match(css, /\.help-layout \{/);
   assert.match(css, /\.help-topic-navigation \{/);
   assert.match(css, /@media \(max-width: 760px\)/);
@@ -34,8 +34,8 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(helpContent, /"usb-wifi-setup"/);
   assert.match(helpContent, /SSID und Passwort/);
   assert.match(helpContent, /Captive Portal/);
-  assert.match(helpContent, /Getting Started[\s\S]*Account and Registration[\s\S]*Troubleshooting/);
-  assert.match(helpContent, /"quick-start"[\s\S]*"register-device"[\s\S]*"pair-device"[\s\S]*"supported-devices"/);
+  assert.match(helpContent, /Öffentliche Informationen[\s\S]*Mit GerNetiX-Konto[\s\S]*Premium-Abo/);
+  assert.match(helpContent, /"quick-start"[\s\S]*"supported-devices"/);
   assert.match(helpContent, /"update-profiles"[\s\S]*Wann wählt man was\?/);
   assert.match(helpView, /help-article-table/);
   assert.match(helpView, /function openDialog\(topicId\)/);
@@ -47,6 +47,10 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(helpChatService, /relatedTopics/);
   assert.match(css, /\.help-chat \{/);
   assert.match(css, /\.help-topic-group \{/);
+  assert.match(helpContent, /"ai-premium"/);
+  assert.match(helpContent, /externe KI-Anbieter/);
+  assert.match(helpView, /KI-Unterstuetzung ist im Premium-Abo enthalten/);
+  assert.match(helpView, /access\.premium/);
 });
 
 test("shows compatible hardware from the catalog and explains USB provisioning limits", () => {
@@ -58,4 +62,18 @@ test("shows compatible hardware from the catalog and explains USB provisioning l
   assert.match(helpView, /function renderHardwareCard/);
   assert.match(helpView, /compatibleHardwareCatalog/);
   assert.match(css, /\.help-hardware-card/);
+});
+
+test("separates public, account and premium help with an in-article paywall", () => {
+  const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
+  const publicHelp = fs.readFileSync(path.join(__dirname, "..", "public", "help", "index.html"), "utf8");
+  assert.match(helpContent, /const articleAccess =/);
+  assert.match(helpContent, /"first-project": "premium"/);
+  assert.match(helpContent, /"register-device": "account"/);
+  assert.match(helpView, /function renderPaywall/);
+  assert.match(helpView, /Premium-Inhalt/);
+  assert.match(helpView, /help-access-badge/);
+  assert.match(css, /\.help-paywall/);
+  assert.match(server, /url\.pathname === "\/hilfe"/);
+  assert.match(publicHelp, /Öffentlich[\s\S]*Mit Konto[\s\S]*Premium/);
 });

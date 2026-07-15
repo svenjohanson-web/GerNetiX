@@ -1,58 +1,37 @@
 const HelpContent = (() => {
   const topics = [
     {
-      id: "getting-started",
-      title: "Getting Started",
-      description: "Your first project and the platform basics.",
+      id: "public-information",
+      title: "Öffentliche Informationen",
+      description: "GerNetiX kennenlernen, Hardware einschätzen und den Einstieg planen.",
+      access: "public",
       children: [
-        { id: "quick-start", title: "How to get started", articleId: "quick-start" },
-        { id: "create-account", title: "Create an account", articleId: "create-account" },
-        { id: "first-project", title: "Start your first project", articleId: "first-project" },
+        { id: "quick-start", title: "So startest du", articleId: "quick-start" },
+        { id: "create-account", title: "Konto anlegen", articleId: "create-account" },
+        { id: "ai-premium", title: "KI-Unterstuetzung und Premium", articleId: "ai-premium" },
+        { id: "supported-devices", title: "Unterstützte Boards", articleId: "supported-devices" },
+        { id: "esp32-overview", title: "ESP32-Überblick", articleId: "esp32-overview" },
+        { id: "esp32-s3", title: "ESP32-S3", articleId: "esp32-s3" },
+        { id: "esp32-c6", title: "ESP32-C6", articleId: "esp32-c6" },
       ],
     },
     {
-      id: "account",
-      title: "Account and Registration",
-      description: "Sign in, registration and account access.",
-      children: [{ id: "create-account-link", title: "Create an account", articleId: "create-account" }],
+      id: "account-information",
+      title: "Mit GerNetiX-Konto",
+      description: "Board einrichten, registrieren und dein Inventar nutzen.",
+      access: "account",
+      children: [{ id: "provision-new-board", title: "Neues Board in Betrieb nehmen", articleId: "provision-new-board" }, { id: "register-device", title: "Board registrieren", articleId: "register-device" }, { id: "pair-device", title: "Board verbinden", articleId: "pair-device" }, { id: "flash-device", title: "Board flashen", articleId: "flash-device" }, { id: "usb-wifi-setup", title: "WLAN per USB einrichten", articleId: "usb-wifi-setup" }, { id: "compatible-hardware", title: "Kompatible Hardware", articleId: "compatible-hardware" }, { id: "device-not-detected", title: "Board wird nicht erkannt", articleId: "device-not-detected" }],
     },
     {
-      id: "devices",
-      title: "Devices",
-      description: "Register, pair and flash a board.",
+      id: "premium-information",
+      title: "Premium-Abo",
+      description: "Geführte Projekte, vertiefende Anleitungen und Projektwissen.",
+      access: "premium",
       children: [
-        { id: "provision-new-board", title: "Neues Board in Betrieb nehmen", articleId: "provision-new-board" },
-        { id: "register-device", title: "Register a device", articleId: "register-device" },
-        { id: "pair-device", title: "Pair a device", articleId: "pair-device" },
-        { id: "flash-device", title: "Flash a device", articleId: "flash-device" },
-      { id: "usb-wifi-setup", title: "WLAN per USB einrichten", articleId: "usb-wifi-setup" },
-      { id: "update-profiles", title: "Update- und Speicherprofile", articleId: "update-profiles" },
-      { id: "supported-devices", title: "Supported devices", articleId: "supported-devices" },
-      { id: "compatible-hardware", title: "Kompatible Hardware", articleId: "compatible-hardware" },
+        { id: "first-project", title: "Erstes Projekt umsetzen", articleId: "first-project" },
+        { id: "update-profiles", title: "Update- und Speicherprofile", articleId: "update-profiles" },
       ],
     },
-    { id: "hardware", title: "Hardware", description: "Boards, sensors and actuators.", children: [
-      { id: "esp32-overview", title: "ESP32 overview", articleId: "esp32-overview" },
-      { id: "esp32-s3", title: "ESP32-S3", articleId: "esp32-s3" },
-      { id: "esp32-c6", title: "ESP32-C6", articleId: "esp32-c6" },
-      { id: "arduino-overview", title: "Arduino overview" },
-      { id: "sensors-actuators", title: "Sensors and actuators" },
-    ] },
-    { id: "programming", title: "Programming", description: "Core programming concepts.", children: [
-      { id: "variables", title: "Variables" }, { id: "functions", title: "Functions" }, { id: "gpio", title: "GPIO" }, { id: "pwm", title: "PWM" }, { id: "interrupts", title: "Interrupts" },
-    ] },
-    { id: "communication", title: "Communication", description: "How devices exchange data.", children: [
-      { id: "wifi", title: "Wi-Fi" }, { id: "bluetooth", title: "Bluetooth" }, { id: "mqtt", title: "MQTT" }, { id: "http", title: "HTTP" }, { id: "rest", title: "REST" },
-    ] },
-    { id: "electronics", title: "Electronics", description: "Electrical basics for connected projects.", children: [
-      { id: "voltage", title: "Voltage and current" }, { id: "breadboard", title: "Using a breadboard" },
-    ] },
-    { id: "troubleshooting", title: "Troubleshooting", description: "Common setup and connection issues.", children: [
-      { id: "device-not-detected", title: "Device is not detected", articleId: "device-not-detected" },
-      { id: "pairing-failed", title: "Pairing failed", articleId: "pair-device" },
-      { id: "flashing-failed", title: "Flashing failed", articleId: "flash-device" },
-      { id: "wifi-failed", title: "Wi-Fi connection failed" },
-    ] },
   ];
 
   const articles = {
@@ -76,6 +55,14 @@ const HelpContent = (() => {
       summary: "Create one GerNetiX account to use projects, learning progress and your devices together.",
       sections: [{ heading: "Registration", paragraphs: ["Use the account creation form and confirm the required terms. After signing in, GerNetiX keeps projects, progress and registered devices connected to your account."] }],
       relatedTopics: ["quick-start", "register-device"],
+    },
+    "ai-premium": {
+      title: "KI-Unterstuetzung und Premium",
+      summary: "Die KI-Chats sind derzeit ein Bestandteil des Premium-Abos.",
+      sections: [
+        { heading: "Warum ist die KI kostenpflichtig?", paragraphs: ["GerNetiX nutzt fuer einzelne KI-Aufgaben externe KI-Anbieter. Dadurch entstehen je nach Anfrage laufende Kosten. Damit diese Kosten planbar bleiben und der Dienst nicht missbraucht wird, sind die KI-Chats aktuell nur mit Premium verfuegbar."] },
+        { heading: "Unser Ausblick", paragraphs: ["Wir pruefen fortlaufend kostenguenstigere und lokale Loesungen. Unser Ziel ist, moeglichst viele KI-Funktionen spaeter auch Nutzerinnen und Nutzern mit kostenlosem Abo anbieten zu koennen."] },
+      ],
     },
     "first-project": {
       title: "Start your first project",
@@ -181,6 +168,21 @@ const HelpContent = (() => {
     "esp32-c6": { title: "ESP32-C6", summary: "The ESP32-C6 is an ESP32 variant for modern wireless-focused projects.", sections: [{ heading: "When to choose it", paragraphs: ["Choose an ESP32-C6 when its supported connectivity and board capabilities match your project. GerNetiX shows the compatible functions for the selected board."] }], relatedTopics: ["esp32-s3", "supported-devices"] },
     "device-not-detected": { title: "Device is not detected", summary: "Check the cable, browser permission and the selected connection method.", sections: [{ heading: "Quick checks", list: ["Use a USB data cable, not a charging-only cable.", "Reconnect the board and choose its serial port in the browser permission dialog.", "Use USB for a new board; Wi-Fi works only for a previously provisioned and reachable board.", "If your browser does not support Web Serial, use the GerNetiX USB Serial Helper."] }], actions: [{ label: "Open downloads", route: "/app/downloads/" }], relatedTopics: ["register-device", "pair-device", "flash-device"] },
   };
+
+  const articleAccess = {
+    "first-project": "premium",
+    "update-profiles": "premium",
+    "provision-new-board": "account",
+    "register-device": "account",
+    "pair-device": "account",
+    "flash-device": "account",
+    "usb-wifi-setup": "account",
+    "compatible-hardware": "account",
+    "device-not-detected": "account",
+  };
+  Object.entries(articleAccess).forEach(([articleId, access]) => {
+    if (articles[articleId]) articles[articleId].access = access;
+  });
 
   function findTopic(topicId) {
     for (const topic of topics) {

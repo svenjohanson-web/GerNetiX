@@ -137,6 +137,7 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
     title: "Datenlogger mit privater Web-Push-PWA",
     description: "Ein Datenlogger sendet Ereignisse an einen GerNetiX-VPS. Der angemeldete Nutzer installiert seine private PWA auf dem iPhone und erhaelt dort Web-Push-Testnachrichten.",
     hint: "Datenlogger, accountgebundener VPS-Push-Service und installierbare PWA als erster mobiler Durchstich.",
+    requiredEntitlements: ["web_push"],
     architecture: {
       elements: [
         element("user", "Nutzer", "actor"),
