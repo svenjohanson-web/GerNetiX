@@ -208,6 +208,12 @@ Nach der Boardausstattung waehlt der Nutzer eine von drei verstaendlich beschrie
 
 Die Tabelle in der Provisioning-Oberflaeche zeigt Beispiele fuer 4, 8 und 16 MB und markiert die erkannte Flashgroesse. Eine SD-Karte kann Bilder, Fonts, Audio und Webressourcen aufnehmen, ersetzt aber weder internen Firmware-Flash noch OTA-Partitionen; PSRAM vergroessert nur den Arbeitsspeicher. Das Profil kann spaeter im Device-Inventar geaendert werden. Weil sich dabei die Partitionstabelle aendert, verlangt ein Profilwechsel einmalig eine USB-Verbindung und einen vollstaendigen Neu-Flash. Der abschliessende Build bleibt die verbindliche Groessenpruefung.
 
+Registration und Pairing verwenden fuer alle drei Profile denselben Device-Identity-Vertrag. Das Hardwareprofil beschreibt, ob das Board technisch OTA-faehig ist; das Basissoftwareprofil beschreibt, ob und wie diese Faehigkeit aktuell genutzt wird. `LOW` darf deshalb nicht als grundsaetzlich OTA-unfaehige Hardware gespeichert werden, sondern als `disabled_by_profile`. Ein spaeterer Profilwechsel bleibt dadurch fachlich moeglich, ohne das Board neu zu registrieren.
+
+MEDIUM startet nach einem normalen Reset zuerst einen geschuetzten Recovery-Bootstrap. Eine schnell blinkende LED kennzeichnet ein mindestens fuenf Sekunden langes Eingabefenster. `BOOT` waehrend dieses Fensters verriegelt den Recovery-Modus; `BOOT` bereits waehrend Reset bleibt der separate ESP-ROM-/USB-Rettungsanker. Ohne Eingabe prueft der Bootstrap Update-Server und Manifest nur innerhalb eines begrenzten Zeitbudgets. Ist eine gueltige Hauptfirmware vorhanden, startet sie auch ohne erreichbaren Server. Ohne gueltige Hauptfirmware bleibt der Bootstrap automatisch aktiv. Vollstaendige Sicherheits-, Unterbrechungs- und Abnahmeanforderungen stehen in [ESP32 OTA-Basissoftware](project-esp32-ota-bootstrap-firmware.md).
+
+**TODO:** Der vorhandene Identity-Reiter `Device Management > Recovery` muss MEDIUM-Nutzern den konkreten Ablauf Reset, sichtbares LED-Fenster, `BOOT` nach Beginn des Blinkens, erneuter signierter Download und USB-ROM-Fallback boardspezifisch erklaeren. Device-ID, Credentials und Account-Pairing muessen dabei erhalten bleiben.
+
 ### Connectivity Setup ist kein Pairing
 
 Der Device-Webserver darf das WLAN-Setup anbieten, aber dieses Setup ist fachlich vom Pairing getrennt.

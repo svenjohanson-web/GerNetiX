@@ -18,6 +18,44 @@ Die Basissoftware wird nicht mehr als eine einzige Flashaufteilung behandelt. De
 
 Ein Wechsel zwischen diesen Klassen aendert die Partitionstabelle und benoetigt deshalb einmalig USB. Danach kann die neue Klasse wieder gemaess ihren eigenen Updatefaehigkeiten verwendet werden.
 
+## Verbindliche Anforderungen an MEDIUM
+
+MEDIUM ist eine einzelne grosse Hauptfirmware mit einem getrennten, kleinen und ueber USB installierten Recovery-Bootstrap. Der Bootstrap ist kein zweiter vollstaendiger Anwendungsstand. Er muss auch dann startfaehig bleiben, wenn der Download oder das Schreiben der Hauptfirmware abbricht.
+
+### Start- und Recovery-Verhalten
+
+1. Nach einem normalen Reset wird zuerst der MEDIUM-Bootstrap ausgefuehrt. Ein bereits waehrend Reset gedrueckter `BOOT`-Taster darf weiterhin den ESP-ROM-Downloadmodus fuer USB-Recovery ausloesen.
+2. Sobald der Bootstrap laeuft, signalisiert eine schnell blinkende Status-LED fuer mindestens fuenf Sekunden das Recovery-Fenster. Boards ohne nutzbare LED benoetigen ein im Hardwareprofil festgelegtes alternatives Signal oder eine dokumentierte Ausnahme.
+3. Wird `BOOT` erst waehrend dieses sichtbaren Fensters gedrueckt, bleibt das Board im Bootstrap-/Recovery-Modus. Der Tastendruck wird entprellt und fuer den laufenden Startvorgang verriegelt.
+4. Ohne Tastendruck versucht der Bootstrap parallel, WLAN und den konfigurierten Update-Server zu erreichen und ein signiertes, zum Device und Hardwareprofil passendes Firmwaremanifest abzufragen.
+5. Existiert eine gueltige Hauptfirmware, darf ein nicht erreichbarer Server, ein fehlendes Update oder ein abgelaufenes Zeitbudget ihren Start nicht verhindern. Nach dem Recovery-Fenster wird die vorhandene Hauptfirmware gestartet.
+6. Existiert keine formal gueltige Hauptfirmware, darf der Bootstrap nicht in einen leeren oder unvollstaendigen Slot wechseln. Er bleibt automatisch im Recovery-Modus, auch ohne Tastendruck.
+
+### Update-Sicherheit
+
+- Der Bootstrap akzeptiert nur HTTPS-Artefakte und ECDSA-signierte, zeitlich begrenzte Deploy-Manifeste mit passender Device-ID, Hardware-/Partitionsprofil, monotoner Sequenz und SHA-256 des Images.
+- Er schreibt ausschliesslich den einzelnen Hauptfirmware-Slot und niemals seine eigene Partition, die Partitionstabelle, Device-Identitaet oder Trust-Anker.
+- Erst ein vollstaendig geschriebenes und kryptografisch verifiziertes Image darf als Hauptfirmware gestartet werden.
+- Nach Stromausfall, Reset, WLAN-Abbruch oder unvollstaendigem Download muss erneut der intakte Bootstrap starten und den Vorgang wiederholen koennen.
+- Registration und Pairing muessen denselben Public-Key-/Zertifikatsvertrag wie FULL und LOW verwenden. Ein Recovery darf Device-ID, privaten Device-Schluessel, Zertifikat, Account-Pairing und bestaetigte Boardkonfiguration nicht stillschweigend ersetzen oder loeschen.
+- Der Handoff zwischen Bootstrap und Hauptfirmware darf keine unbegrenzten persistenten Schreibvorgaenge bei jedem normalen Start verursachen. Vor Freigabe sind Flash-Verschleiss und eine hohe Zahl wiederholter Bootzyklen nachzuweisen.
+
+### Abnahme
+
+MEDIUM gilt erst als freigegeben, wenn mindestens folgende Faelle auf echter Hardware bestanden sind: Server nicht erreichbar, kein Update vorhanden, gueltiges Update, falsche Signatur, falscher Hash, Stromausfall waehrend Download und Schreiben, leere Hauptfirmware, defekte Hauptfirmware, `BOOT` im sichtbaren Recovery-Fenster sowie `BOOT` bereits waehrend Reset als USB-ROM-Fallback. Die normale Hauptfirmware muss bei vorhandenem gueltigem Image trotz fehlendem Server innerhalb eines definierten und in der UI genannten Zeitbudgets starten.
+
+## TODO: MEDIUM-Boardrettung in Identity erklaeren
+
+Der vorhandene Identity-Reiter `Device Management > Recovery` muss fuer MEDIUM einen gefuehrten Rettungsablauf erhalten. Die Anleitung muss mindestens erklaeren:
+
+1. Das bekannte Device im Inventar auswaehlen; Device-ID und Pairing bleiben erhalten.
+2. Board normal zuruecksetzen und warten, bis die Status-LED schnell blinkt.
+3. `BOOT` erst waehrend des Blinkens druecken, um im MEDIUM-Recovery-Modus zu bleiben.
+4. Recovery-Verbindung und Bootstrapstatus erkennen, Firmware pruefen und den signierten Download erneut ausloesen.
+5. Als letzten Rettungsanker `BOOT` bereits waehrend Reset halten und anschliessend per USB neu flashen.
+
+Das TODO umfasst profil- und boardspezifische Texte, abweichende LED-/Tasterbelegung aus dem Hardware Catalog, eindeutige Zustandsanzeigen, barrierearme Anweisungen und Contract-/UI-Tests. Bis dieser Ablauf implementiert und auf echter Hardware abgenommen ist, darf MEDIUM nicht als vollstaendig freigegeben dargestellt werden.
+
 ## Ablauf
 
 1. Board per USB erkennen.
