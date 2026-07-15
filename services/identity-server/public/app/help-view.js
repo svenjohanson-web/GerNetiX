@@ -41,6 +41,7 @@ const HelpView = (() => {
           <span class="help-chat-input-box"><textarea id="helpChatInput" rows="2" placeholder="Enter your question about GerNetiX..."></textarea><button class="primary" type="submit">Send</button></span>
         </form>
       </section>`;
+    if (article.hardwareCatalog) loadHardwareCatalog(mount);
     if (!bound) bind(mount);
   }
 
@@ -64,8 +65,41 @@ const HelpView = (() => {
         ${section.code ? `<pre><code>${escapeHtml(section.code)}</code></pre>` : ""}
         ${section.links ? `<p class="help-inline-links">${section.links.map((link) => `<button type="button" data-help-topic="${escapeHtml(link.topicId)}">${escapeHtml(link.label)}</button>`).join("")}</p>` : ""}
       </section>`).join("")}
+      ${article.hardwareCatalog ? '<section id="compatibleHardwareCatalog" class="help-hardware-catalog"><p class="helper-text">Hardware Catalog wird geladen …</p></section>' : ""}
       ${article.actions?.length ? `<div class="button-row help-next-actions">${article.actions.map((action) => `<button type="button" data-help-route="${escapeHtml(action.route)}">${escapeHtml(action.label)}</button>`).join("")}</div>` : ""}
       ${article.relatedTopics?.length ? `<section class="help-related"><h3>Related help topics</h3>${article.relatedTopics.map(renderRelatedTopic).join("")}</section>` : ""}`;
+  }
+
+  async function loadHardwareCatalog(mount) {
+    const target = mount.querySelector("#compatibleHardwareCatalog");
+    if (!target) return;
+    try {
+      const response = await ApiClient.getJson("/api/platform/hardware/processor-boards");
+      const items = (response.items || []).filter((item) => item.status === "active");
+      target.innerHTML = items.map(renderHardwareCard).join("") || '<p class="helper-text">Der Hardware Catalog enthält noch keine aktiven Boards.</p>';
+    } catch (error) {
+      target.innerHTML = `<p class="helper-text">Hardware Catalog ist gerade nicht erreichbar: ${escapeHtml(error.message || "Unbekannter Fehler")}</p>`;
+    }
+  }
+
+  function renderHardwareCard(item) {
+    const capabilities = (item.capability_ids || []).map((id) => id.replace(/^capability\./, "").replaceAll("_", " ")).slice(0, 7);
+    const links = [
+      item.documentation_url || item.peripheral_profile?.documentation_url ? `<a href="${escapeHtml(item.documentation_url || item.peripheral_profile.documentation_url)}" target="_blank" rel="noopener noreferrer">Datenblatt / Hersteller</a>` : "",
+      item.purchase_url ? `<a href="${escapeHtml(item.purchase_url)}" target="_blank" rel="noopener noreferrer">Kaufoption</a>` : "",
+    ].filter(Boolean).join("");
+    const visual = item.image_url
+      ? `<img src="${escapeHtml(item.image_url)}" alt="${escapeHtml(item.title)}" loading="lazy" />`
+      : `<span aria-hidden="true">${escapeHtml(item.mcu_variant || "Board")}</span>`;
+    return `<section class="help-hardware-card">
+      <div class="help-hardware-visual">${visual}</div>
+      <div><p class="eyebrow">${escapeHtml(item.vendor || "Hersteller unbekannt")} · ${escapeHtml(item.verification_status || "catalog")}</p><h3>${escapeHtml(item.title)}</h3>
+      <p>${escapeHtml(item.summary || "Keine Kurzbeschreibung hinterlegt.")}</p>
+      <p><strong>Prozessor:</strong> ${escapeHtml(item.mcu_variant || "nicht angegeben")} · <strong>Form:</strong> ${escapeHtml(item.form_factor || "nicht angegeben")}</p>
+      <div class="help-hardware-capabilities">${capabilities.map((capability) => `<span>${escapeHtml(capability)}</span>`).join("")}</div>
+      <p class="helper-text">Provisionierung: ${escapeHtml(item.provisioning_profile_id ? "USB-Flash mit GerNetiX-Profil vorgesehen" : "kein GerNetiX-Provisionierungsprofil hinterlegt")}</p>
+      ${links ? `<p class="help-hardware-links">${links}</p>` : '<p class="helper-text">Herstellerbild und Beschaffungslink werden für diesen Katalogeintrag noch geprüft.</p>'}</div>
+    </section>`;
   }
 
   function renderMessage(message) {

@@ -48,3 +48,14 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(css, /\.help-chat \{/);
   assert.match(css, /\.help-topic-group \{/);
 });
+
+test("shows compatible hardware from the catalog and explains USB provisioning limits", () => {
+  assert.match(helpContent, /"compatible-hardware"/);
+  assert.match(helpContent, /iPhone und iPad/);
+  assert.match(helpContent, /Android ist für kabelgebundenes Web Serial kein verlässlicher Provisionierungsweg/);
+  assert.match(helpContent, /GerNetiX-Webshop[\s\S]*geeigneten Basissoftware/);
+  assert.match(helpView, /api\/platform\/hardware\/processor-boards/);
+  assert.match(helpView, /function renderHardwareCard/);
+  assert.match(helpView, /compatibleHardwareCatalog/);
+  assert.match(css, /\.help-hardware-card/);
+});
