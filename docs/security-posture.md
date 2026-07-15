@@ -29,11 +29,11 @@ Stand der letzten VPS-Pruefung: **2026-07-15**
 | Admin Tool | Admin-Port nur an VPS-Loopback gebunden und per SSH-Tunnel innerhalb des VPN erreichbar | Umgesetzt | Listener nur auf `127.0.0.1` und Healthcheck ueber eine VPN-SSH-Sitzung geprueft |
 | Service-Isolation | Identity und Domaenendienste nicht direkt oeffentlich exponiert | Umgesetzt | Docker-Listener und Compose-Container geprueft |
 | MQTT Device-Authentifizierung | Oeffentlicher Device-Port nur ueber mTLS; Zertifikats-CN und geraetespezifische Topic-ACLs | Teilweise | 2026-07-15: Oeffentlicher TLS-Listener aktiv; Verbindung ohne gueltiges Geraetezertifikat beziehungsweise ohne MQTT-Protokoll wurde abgewiesen. End-to-End-Nachweis mit einem ausgestellten Geraetezertifikat und dessen Topic-ACL steht aus |
-| Device-Identitaet | P-256-Privatschluessel entsteht auf dem ESP32; Server speichern nur Public Key und Zertifikatsmetadaten | Lokal umgesetzt | 2026-07-14: Provisioning-, Device-Management-, Recovery- und Firmware-Tests; kein Shared Device Secret im neuen Vertrag |
-| OTA-Autorisierung | Zeitlich begrenzte ECDSA-P-256-signierte Auftraege mit Key-ID, Device-Bindung und Replay-Sequenz | Lokal umgesetzt | 2026-07-14: Build-&-Deploy- und ESP32-Contract-Tests sowie erfolgreicher PlatformIO-Build; Schluesselinstallation auf dem VPS steht aus |
+| Device-Identitaet | P-256-Privatschluessel entsteht auf dem ESP32; Server speichern nur Public Key und Zertifikatsmetadaten | Teilweise | 2026-07-15: Separate Device-Issuing-CA auf Staging installiert und Broker mit deren Zertifikat gesund gestartet; Provisioning-, Device-Management-, Recovery- und Firmware-Tests ohne Shared Device Secret vorhanden. End-to-End-Test mit einem realen Board steht aus |
+| OTA-Autorisierung | Zeitlich begrenzte ECDSA-P-256-signierte Auftraege mit Key-ID, Device-Bindung und Replay-Sequenz | Teilweise | 2026-07-15: Separates OTA-P-256-Schluesselpaar auf Staging installiert und Build-&-Deploy-Service gesund; Contract-Tests und PlatformIO-Build vorhanden. Signierter End-to-End-Auftrag mit einem realen Board sowie Rotation und Recovery-Test stehen aus |
 | SSH Konten | SSH-Zugang auf `root` und `sven` begrenzt | Teilweise | `AllowUsers` geprueft; direkter Root-Zugang per Schluessel ist noch erlaubt |
 | Betriebszustand | Container-Healthchecks und lokales Prozessmonitoring | Teilweise | 2026-07-15: Alle 13 Compose-Container aktiv, alle definierten Container-Healthchecks gesund und keine fehlgeschlagenen systemd-Units; zentrale Sicherheitsalarmierung fehlt |
-| Kundendaten | Persistente Docker-Volumes | Teilweise | Volumes vorhanden; sie sind gemaess Backup-Konzept kein externes Backup |
+| Kundendaten | Persistente Docker-Volumes | Teilweise | 2026-07-15: AI-Context-SQLite einmalig nach PostgreSQL/pgvector migriert, Migrationsmarker gesetzt und alte SQLite als Rueckfallkopie erhalten; Volumes sind gemaess Backup-Konzept kein externes Backup |
 
 ## Aktuelle Beobachtungen
 
@@ -44,6 +44,7 @@ Stand der letzten VPS-Pruefung: **2026-07-15**
 - Die aggregierte 24-Stunden-Auswertung am 2026-07-14 zaehlte 747 typische Web-Scannerpfade ohne Serverfehler, 12 abgewiesene MQTT-Anmeldungen und 143 MQTT-TLS-/Protokoll-/Socketfehler. Der weit ueberwiegende Teil der MQTT-Verbindungen stammte vom lokalen Broker-Healthcheck.
 - Die erneute Pruefung am 2026-07-15 bestaetigte die erwartete oeffentliche Erreichbarkeit von HTTP, HTTPS und MQTT-TLS sowie die Bindung des Admin Tools an Loopback. Die aktuellen Firewall-Regeln erlauben SSH nur ueber WireGuard. Die zuvor protokollierten automatisierten SSH-Angriffe lagen vor dem letzten Firewall-Reload; danach wurden keine weiteren oeffentlichen SSH-Preauth-Vorgaenge festgestellt.
 - Die VPS-Ressourcen waren unkritisch: rund 7 Prozent Datentraegerbelegung, ausreichend freier Arbeitsspeicher und keine ausstehenden Paketaktualisierungen. Es wurden keine fehlgeschlagenen systemd-Units festgestellt.
+- Das Staging-Deployment vom 2026-07-15 installierte getrennte Device-CA- und OTA-Schluessel, migrierte den AI Context automatisch von SQLite nach PostgreSQL/pgvector und startete alle 14 Container gesund. Identity-, Admin- und oeffentliche HTTPS-Healthchecks waren erfolgreich. Ein gueltiger Device-mTLS-/OTA-End-to-End-Test mit realer Hardware bleibt offen.
 
 ## Empfohlene Massnahmen
 

@@ -54,6 +54,17 @@ sudo install -d -m 0700 /etc/gernetix/pki
 sudo node tools/generate-device-pki.js --out /etc/gernetix/pki
 ```
 
+Das Projektwerkzeug benoetigt Node.js und OpenSSL auf dem Host. Ist auf einem minimalen VPS bewusst kein Host-Node.js installiert, koennen dieselben vier P-256-Dateien mit dem vorhandenen OpenSSL erzeugt werden:
+
+```bash
+sudo install -d -m 0700 /etc/gernetix/pki
+sudo openssl ecparam -name prime256v1 -genkey -noout -out /etc/gernetix/pki/device-ca-key.pem
+sudo openssl req -x509 -new -sha256 -key /etc/gernetix/pki/device-ca-key.pem -out /etc/gernetix/pki/device-ca.pem -days 3650 -subj /CN=GerNetiX-Device-Issuing-CA -addext basicConstraints=critical,CA:TRUE,pathlen:0 -addext keyUsage=critical,keyCertSign,cRLSign
+sudo openssl ecparam -name prime256v1 -genkey -noout -out /etc/gernetix/pki/ota-signing-key.pem
+sudo openssl pkey -in /etc/gernetix/pki/ota-signing-key.pem -pubout -out /etc/gernetix/pki/ota-signing-public.pem
+sudo chmod 0600 /etc/gernetix/pki/device-ca-key.pem /etc/gernetix/pki/ota-signing-key.pem
+```
+
 Das Device erzeugt seinen privaten P-256-Schluessel selbst und gibt ihn nie an Plattform oder Broker weiter. Das Provisioning Tool signiert nur den oeffentlichen Schluessel als Client-Zertifikat. Mosquitto verwendet dessen CN als MQTT-Benutzername; die ACL erlaubt dadurch nur `gernetix/devices/<device_id>/ota` zu lesen und unter `gernetix/devices/<device_id>/status/#` zu schreiben. Der OTA-Private-Key ist ausschliesslich im Build-&-Deploy-Service eingebunden, der OTA-Public-Key wird beim Provisioning auf das Device geschrieben. Fuer Produktion soll die Device-CA als getrennte Issuing-CA betrieben und ihre Rotation/Widerrufsliste organisatorisch festgelegt werden.
 
 Danach:
