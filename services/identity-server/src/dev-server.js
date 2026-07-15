@@ -65,7 +65,10 @@ const ollamaModel = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const deviceDiscoveryUrls = process.env.GERNETIX_DEVICE_DISCOVERY_URLS || process.env.DEVICE_DISCOVERY_URLS || "";
 const gernetixNodeHostnamePrefix = "gernetix-";
 const execFileAsync = promisify(execFile);
-const interfaceTelemetry = createInterfaceCallTelemetry({ sourceService: "identity-server" });
+const interfaceTelemetry = createInterfaceCallTelemetry({
+  dbPath: process.env.INTERFACE_TELEMETRY_SQLITE_PATH || process.env.PERSISTENCE_SQLITE_PATH,
+  sourceService: "identity-server",
+});
 const {
   aiContextJson,
   aiUsageJson,

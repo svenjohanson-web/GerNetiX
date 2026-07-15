@@ -198,6 +198,7 @@ services:
       PORT: 4300
       IDENTITY_PERSISTENCE_BACKEND: sqlite
       IDENTITY_SQLITE_PATH: /var/lib/gernetix/identity/gernetix-identity.sqlite
+      INTERFACE_TELEMETRY_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
       PROJECT_SERVER_BASE_URL: http://project-server:4800
       BUILD_DEPLOY_BASE_URL: http://build-deploy-server:4400
       OTA_BUILD_DEPLOY_BASE_URL: http://build-deploy-server:4400
@@ -213,6 +214,7 @@ services:
       - host.docker.internal:host-gateway
     volumes:
       - identity_state:/var/lib/gernetix/identity
+      - service_state:/var/lib/gernetix/services
     depends_on:
       project-server: { condition: service_healthy }
       build-deploy-server: { condition: service_healthy }
