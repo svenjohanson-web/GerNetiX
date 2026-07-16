@@ -1,9 +1,10 @@
 const DevelopmentPlatform = (() => {
   const activeProjectStorageKey = "gernetix.developmentPlatform.activeProjectId";
   let projectTemplates = {};
+  let projectTemplateCatalog = [];
   let projectTemplatePreviews = {};
 
-  function create({ state, postJson, openProjectInIde, navigate, escapeHtml, escapeAttribute }) {
+  function create({ state, postJson, openProjectInIde, navigate, escapeHtml, escapeAttribute, openHelpTopic }) {
     if (!state.developmentPlatform) {
       state.developmentPlatform = {
         assistant: null,
@@ -16,12 +17,16 @@ const DevelopmentPlatform = (() => {
         hardwareConfiguration: null,
         homeAutomationConfiguration: null,
         gameConfiguration: null,
+        assistantOpen: false,
+        componentDraftType: "iot_device",
         workflowStep: "project_start",
       };
     }
     if (!state.developmentPlatform.projectPanelMode) state.developmentPlatform.projectPanelMode = "choice";
     if (!state.developmentPlatform.assistantMode) state.developmentPlatform.assistantMode = "architecture_structure";
     if (!state.developmentPlatform.workflowStep) state.developmentPlatform.workflowStep = "project_start";
+    if (typeof state.developmentPlatform.assistantOpen !== "boolean") state.developmentPlatform.assistantOpen = false;
+    if (!state.developmentPlatform.componentDraftType) state.developmentPlatform.componentDraftType = "iot_device";
 
     function init() {
       document.querySelector("#developmentChatForm").addEventListener("submit", sendChatMessage);
@@ -29,19 +34,26 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#openDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("open"));
       document.querySelector("#newEmptyDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("new-empty"));
       document.querySelector("#newTemplateDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("new-template"));
+      document.querySelector("#openDevelopmentTemplateHelpButton").addEventListener("click", openDevelopmentTemplateHelp);
+      document.querySelector("#developmentTemplateHelpDialog").addEventListener("click", (event) => {
+        if (event.target === event.currentTarget || event.target.closest("[data-close-development-template-help]")) event.currentTarget.close();
+      });
       document.querySelector("#developmentProjectForm").addEventListener("submit", createDevelopmentProject);
       document.querySelector("#developmentProjectTemplate").addEventListener("change", applyProjectTemplate);
-      document.querySelector("#developmentProjectSelect").addEventListener("change", selectDevelopmentProject);
+      document.querySelector("#developmentProjectSelect").addEventListener("change", updateDevelopmentProjectSelection);
+      document.querySelector("#selectDevelopmentProjectButton").addEventListener("click", selectDevelopmentProject);
       document.querySelector("#continueDevelopmentConfigurationButton").addEventListener("click", continueToDevelopmentConfiguration);
       document.querySelector("#backToDevelopmentProjectStartButton").addEventListener("click", enterProjectStart);
       document.querySelector("#saveDevelopmentArchitectureButton").addEventListener("click", saveArchitectureDiagram);
       document.querySelector("#acceptDevelopmentArchitectureButton").addEventListener("click", acceptArchitectureAndContinue);
+      document.querySelector("#toggleDevelopmentAssistantButton").addEventListener("click", toggleDevelopmentAssistant);
+      document.querySelector("#templateComponentConfiguration").addEventListener("click", handleTemplateComponentConfigurationClick);
+      document.querySelector("#templateComponentConfiguration").addEventListener("change", handleTemplateComponentConfigurationChange);
       document.querySelector("#developmentHardwareForm").addEventListener("change", handleHardwareConfigurationChange);
+      document.querySelector("#developmentHardwareForm").addEventListener("click", handleHardwareHelpClick);
       document.querySelector("#backToDevelopmentArchitectureButton").addEventListener("click", () => navigate("/app/development-platform/"));
       document.querySelector("#saveDevelopmentHardwareButton").addEventListener("click", () => saveHardwareConfiguration(false));
       document.querySelector("#continueDevelopmentHardwareButton").addEventListener("click", () => saveHardwareConfiguration(true));
-      document.querySelector("#homeAutomationForm").addEventListener("change", handleHomeAutomationChange);
-      document.querySelector("#homeAutomationForm").addEventListener("click", handleHomeAutomationClick);
       document.querySelector("#touchscreenGameForm").addEventListener("change", handleTouchscreenGameChange);
       document.querySelector("#touchscreenGameForm").addEventListener("click", handleTouchscreenGameClick);
     }
@@ -53,6 +65,7 @@ const DevelopmentPlatform = (() => {
 
     function setProjectTemplates(templates, previews = []) {
       const catalog = Array.isArray(templates) ? templates : [];
+      projectTemplateCatalog = catalog.filter((template) => template.id !== "empty");
       projectTemplatePreviews = Object.fromEntries((Array.isArray(previews) ? previews : []).map((preview) => [preview.template_id, preview]));
       projectTemplates = Object.fromEntries(catalog.map((template) => [template.id, {
         title: template.default_title ?? template.title ?? "",
@@ -69,11 +82,37 @@ const DevelopmentPlatform = (() => {
       ].join("");
     }
 
+    function openDevelopmentTemplateHelp() {
+      const target = document.querySelector("#developmentTemplateHelpContent");
+      if (!target) return;
+      target.innerHTML = projectTemplateCatalog.length
+        ? projectTemplateCatalog.map((template) => {
+          const entitlements = Array.isArray(template.required_entitlements) ? template.required_entitlements : [];
+          const premium = entitlements.length > 0;
+          const access = premium
+            ? `${template.available === false ? "Premium erforderlich" : "Premium-Berechtigung vorhanden"}: ${entitlements.map(templateEntitlementLabel).join(", ")}`
+            : "Ohne Premium-Zusatz verfügbar";
+          return `<article class="development-template-help-card ${template.available === false ? "unavailable" : ""}">
+            <header><strong>${escapeHtml(template.title || template.id)}</strong><span>${escapeHtml(access)}</span></header>
+            <p>${escapeHtml(template.description || template.hint || "Keine Beschreibung vorhanden.")}</p>
+            ${template.hint ? `<small>${escapeHtml(template.hint)}</small>` : ""}
+          </article>`;
+        }).join("")
+        : "<p class=\"empty\">Die Projekttemplates werden geladen.</p>";
+      const dialog = document.querySelector("#developmentTemplateHelpDialog");
+      if (!dialog.open) dialog.showModal();
+    }
+
+    function templateEntitlementLabel(entitlement) {
+      const labels = { web_push: "Web Push" };
+      return labels[String(entitlement)] || String(entitlement).replace(/_/g, " ");
+    }
+
     function render() {
       renderProjectPicker();
       renderWorkflowStep();
       renderRequirementsText();
-      renderHomeAutomationAssistant();
+      renderTemplateComponentConfiguration();
       renderTouchscreenGameAssistant();
       renderChatMessages();
       renderQuickPrompts();
@@ -86,6 +125,7 @@ const DevelopmentPlatform = (() => {
       const workspace = document.querySelector(".development-workspace-panel");
       const mainWorkspace = document.querySelector(".development-main-workspace");
       workspace?.classList.toggle("development-project-start-step", !configurationStep);
+      workspace?.classList.toggle("development-assistant-closed", configurationStep && !state.developmentPlatform.assistantOpen);
       mainWorkspace?.classList.toggle("development-project-start-no-preview", !configurationStep && !state.developmentPlatform.architectureDiagram?.source);
       document.querySelectorAll(".development-configuration-only").forEach((element) => {
         element.classList.toggle("hidden", !configurationStep);
@@ -94,6 +134,11 @@ const DevelopmentPlatform = (() => {
       const continueButton = document.querySelector("#continueDevelopmentConfigurationButton");
       if (continueButton) continueButton.disabled = !activeProjectId();
       startActions?.classList.toggle("hidden", configurationStep || !activeProjectId());
+      const assistant = document.querySelector("#developmentChatSidebar");
+      const assistantToggle = document.querySelector("#toggleDevelopmentAssistantButton");
+      const assistantVisible = configurationStep && state.developmentPlatform.assistantOpen;
+      assistant?.classList.toggle("hidden", !assistantVisible);
+      if (assistantToggle) assistantToggle.textContent = assistantVisible ? "KI-Unterstuetzung ausblenden" : "KI-Unterstuetzung (optional)";
     }
 
     function providerLabel(config = state.developmentPlatform.assistant || {}) {
@@ -143,7 +188,6 @@ const DevelopmentPlatform = (() => {
     function quickPrompts() {
       if (state.developmentPlatform.assistantMode !== "architecture_structure") return [];
       if (state.developmentPlatform.chat.length) return [];
-      if (currentProjectTemplateId() === "distributed_home_automation") return ["Konfiguration pruefen"];
       if (currentProjectUsesTemplate()) return [];
       return [
         "Ich moechte einen Observer",
@@ -190,7 +234,7 @@ const DevelopmentPlatform = (() => {
       if (state.developmentPlatform.assistantMode === "effect_chain_derivation") {
         return "Jetzt leiten wir Wirkketten ab. Beschreibe Ausloeser und Ablauf, z. B. `Timer startet Messung, ESP32 misst Temperatur, publisht per MQTT, Server speichert`.";
       }
-      return "Beschreibe dein Projektziel oder nutze eine Vorlage. Ich leite daraus die passenden technischen Muster ab.";
+      return "Beschreibe dein Projektziel. Ich helfe dir bei Architekturfragen oder beim Ergaenzen von Komponenten.";
     }
 
     function renderProjectPicker() {
@@ -215,6 +259,8 @@ const DevelopmentPlatform = (() => {
         ...projects.map((project) => `<option value="${escapeAttribute(project.id)}">${escapeHtml(project.name)}</option>`),
       ].join("");
       select.value = state.developmentPlatform.activeProjectId || "";
+      const selectButton = document.querySelector("#selectDevelopmentProjectButton");
+      if (selectButton) selectButton.disabled = !select.value;
       setProjectStatus(activeProject
         ? ""
         : "Bitte waehle, wie du im Entwicklungsbereich starten moechtest.");
@@ -227,10 +273,166 @@ const DevelopmentPlatform = (() => {
       state.developmentPlatform.architectureDiagram = null;
       state.developmentPlatform.homeAutomationConfiguration = null;
       state.developmentPlatform.gameConfiguration = null;
+      state.developmentPlatform.assistantOpen = false;
       state.developmentPlatform.chat = [];
       state.developmentPlatform.lastRouting = null;
       setActionStatus("");
       render();
+    }
+
+    function usesTemplateComponentConfiguration(project = currentProject()) {
+      const templateId = currentProjectTemplateIdFor(project);
+      return Boolean(templateId && templateId !== "empty" && templateId !== "touchscreen_game_collection");
+    }
+
+    function toggleDevelopmentAssistant() {
+      state.developmentPlatform.assistantOpen = !state.developmentPlatform.assistantOpen;
+      renderWorkflowStep();
+      if (state.developmentPlatform.assistantOpen) {
+        document.querySelector("#developmentChatInput")?.focus();
+      }
+    }
+
+    function renderTemplateComponentConfiguration() {
+      const section = document.querySelector("#templateComponentConfiguration");
+      if (!section) return;
+      const visible = state.developmentPlatform.workflowStep === "configuration" && usesTemplateComponentConfiguration();
+      section.classList.toggle("hidden", !visible);
+      if (!visible) return;
+      const diagram = state.developmentPlatform.architectureDiagram || architectureDiagramForProject(currentProject());
+      const components = abstractArchitectureComponents(diagram?.source || "");
+      const componentById = new Map(components.map((component) => [component.component_id, component]));
+      const controlAssignments = controlUnitAssignments(diagram?.source || "");
+      const connections = componentConnectionAssignments(diagram?.source || "");
+      const connectionCoverage = plantUmlFunctionCoverage(diagram?.source || "");
+      const disconnectedComponents = connectionCoverage.missing.map((componentId) => componentById.get(componentId) || {
+        component_id: componentId,
+        label: componentId,
+      });
+      const invalidRelations = connectionCoverage.invalid || [];
+      const componentRows = components.length
+        ? components.map((component) => `
+          <li class="${connectionCoverage.missing.includes(component.component_id) ? "has-connection-hint" : ""}">
+            <strong>${escapeHtml(component.label)}</strong>
+            <small>${escapeHtml(templateComponentTypeLabel(component.abstract_type))}${connections.get(component.component_id) || controlAssignments.get(component.component_id) ? ` · ${controlAssignments.get(component.component_id) ? "Steuereinheit" : "Verbunden mit"}: ${escapeHtml(componentById.get(connections.get(component.component_id) || controlAssignments.get(component.component_id))?.label || connections.get(component.component_id) || controlAssignments.get(component.component_id))}` : ""}</small>
+          </li>`).join("")
+        : "<li class=\"empty\">Noch keine Komponenten vorhanden.</li>";
+      const connectionHints = disconnectedComponents.length || invalidRelations.length
+        ? `<aside class="template-component-connection-hints" role="status">
+            <strong>Hinweise zur Verbindung</strong>
+            ${disconnectedComponents.length ? `<p>Diese Komponenten haben noch keine zulaessige Verbindung:</p><ul>${disconnectedComponents.map((component) => `<li>${escapeHtml(component.label)}</li>`).join("")}</ul>` : ""}
+            ${invalidRelations.length ? `<p>Nicht zulaessige Beziehungen:</p><ul>${invalidRelations.map((relation) => `<li>${escapeHtml(`${relation.source.label} → ${relation.target.label}`)}</li>`).join("")}</ul>` : ""}
+          </aside>`
+        : "";
+      const draftType = state.developmentPlatform.componentDraftType || "iot_device";
+      const connectionOptions = componentConnectionOptions(draftType, components);
+      section.innerHTML = `
+        <header>
+          <div>
+            <p class="eyebrow">Komponenten konfigurieren</p>
+            <h3>Was soll dein Projekt enthalten?</h3>
+          </div>
+          <small>Das Template liefert den Start. Hier bleiben Sensoren und Aktoren abstrakt; Typ, Board und Pins werden erst im Hardware-Schritt festgelegt. Die KI bleibt eine optionale Hilfe.</small>
+        </header>
+        <div class="template-component-layout">
+          <section>
+            <h4>Vorhandene Komponenten</h4>
+            <ul class="template-component-list">${componentRows}</ul>
+            ${connectionHints}
+          </section>
+          <form class="template-component-add" onsubmit="return false">
+            <h4>Komponente hinzufuegen</h4>
+            <label>Art
+              <select data-template-component-type>
+                <option value="iot_device" ${selected(draftType, "iot_device")}>IoT-Device</option>
+                <option value="sensor" ${selected(draftType, "sensor")}>Sensor</option>
+                <option value="actuator" ${selected(draftType, "actuator")}>Aktor</option>
+                <option value="smartphone_app" ${selected(draftType, "smartphone_app")}>Smartphone-App</option>
+                <option value="browser_app" ${selected(draftType, "browser_app")}>Browser-App</option>
+                <option value="server_api" ${selected(draftType, "server_api")}>Server / API</option>
+              </select>
+            </label>
+            <label>Bezeichnung (optional)<input data-template-component-label maxlength="80" placeholder="z. B. Sensor Kueche"></label>
+            ${componentConnectionSelection(draftType, connectionOptions)}
+            <button type="button" class="secondary" data-template-component-add ${!connectionOptions.length ? "disabled" : ""}>+ Komponente</button>
+          </form>
+        </div>
+      `;
+    }
+
+    function templateComponentTypeLabel(type) {
+      return globalThis.DevelopmentComponentMetamodel?.typeLabel(type) || "Komponente";
+    }
+
+    function componentConnectionOptions(type, components) {
+      return globalThis.DevelopmentComponentMetamodel?.optionsForNewComponent(type, components) || [];
+    }
+
+    function componentConnectionSelection(type, options) {
+      const requiresControlUnit = ["sensor", "actuator"].includes(type);
+      if (!options.length) return `<p class="template-component-hint">${requiresControlUnit ? "Lege zuerst ein IoT-Device als Steuereinheit an." : "Es gibt noch keine Komponente mit einer zulaessigen Beziehung."}</p>`;
+      const label = requiresControlUnit ? "Steuereinheit" : "Zulaessige Beziehung";
+      const prompt = requiresControlUnit ? "IoT-Device waehlen" : "Beziehung waehlen";
+      return `<label>${label}
+        <select data-template-connection-target>
+          <option value="">${prompt}</option>
+          ${options.map((option) => `<option value="${escapeAttribute(`${option.rule.id}|${option.target.component_id}`)}">${escapeHtml(`${option.rule.label}: ${option.target.label}`)}</option>`).join("")}
+        </select>
+      </label>`;
+    }
+
+    function handleTemplateComponentConfigurationClick(event) {
+      if (!event.target.closest("[data-template-component-add]")) return;
+      const section = document.querySelector("#templateComponentConfiguration");
+      const type = section?.querySelector("[data-template-component-type]")?.value || "structural";
+      const labelInput = section?.querySelector("[data-template-component-label]");
+      const label = String(labelInput?.value || "").trim() || templateComponentDefaultLabel(type);
+      const connectionSelection = section?.querySelector("[data-template-connection-target]")?.value || "";
+      const [relationshipRuleId, connectionTargetId] = connectionSelection.split("|");
+      if (!relationshipRuleId || !connectionTargetId) {
+        setActionStatus(["sensor", "actuator"].includes(type)
+          ? "Bitte waehle die IoT-Steuereinheit fuer diese Komponente."
+          : "Bitte waehle eine zulaessige Beziehung fuer diese Komponente.");
+        return;
+      }
+      appendTemplateComponent(type, label, connectionTargetId, relationshipRuleId);
+      if (labelInput) labelInput.value = "";
+      renderTemplateComponentConfiguration();
+      renderArchitectureDiagram();
+      setActionStatus(`${label} wurde zur Architektur hinzugefuegt. Speichere die Konfiguration, wenn die Auswahl passt.`);
+    }
+
+    function handleTemplateComponentConfigurationChange(event) {
+      if (!event.target.matches("[data-template-component-type]")) return;
+      state.developmentPlatform.componentDraftType = event.target.value;
+      renderTemplateComponentConfiguration();
+    }
+
+    function templateComponentDefaultLabel(type) {
+      return globalThis.DevelopmentComponentMetamodel?.typeLabel(type) || "Komponente";
+    }
+
+    function appendTemplateComponent(type, label, connectionTargetId = "", relationshipRuleId = "") {
+      const diagram = state.developmentPlatform.architectureDiagram || architectureDiagramForProject(currentProject());
+      if (!diagram?.source) return;
+      const safeLabel = String(label).replace(/["\\\\]/g, " ").replace(/\s+/g, " ").trim();
+      const aliasBase = ({ iot_device: "iot_device", sensor: "sensor", actuator: "actuator", smartphone_app: "smartphone_app", browser_app: "browser_app", server_api: "server_api" })[type] || "component";
+      const aliases = new Set(abstractArchitectureComponents(diagram.source).map((component) => component.component_id));
+      let suffix = 1;
+      while (aliases.has(`${aliasBase}_${suffix}`)) suffix += 1;
+      const alias = `${aliasBase}_${suffix}`;
+      const plantUmlType = ({ iot_device: "node", smartphone_app: "component", server_api: "node" })[type] || "component";
+      const declaration = `${plantUmlType} "${safeLabel}" as ${alias}`;
+      const relationshipRule = globalThis.DevelopmentComponentMetamodel?.relationshipRules.find((item) => item.id === relationshipRuleId);
+      if (!relationshipRule) return;
+      const relation = relationshipRule.source_type === type
+        ? `${alias} --> ${connectionTargetId} : ${relationshipRule.label}`
+        : `${connectionTargetId} --> ${alias} : ${relationshipRule.label}`;
+      const additions = `${declaration}\n${relation}`;
+      const source = /@enduml\s*$/i.test(diagram.source)
+        ? diagram.source.replace(/@enduml\s*$/i, `${additions}\n@enduml`)
+        : `${diagram.source}\n${additions}`;
+      state.developmentPlatform.architectureDiagram = { ...diagram, source, derived_from: diagram.derived_from || "project_template" };
     }
 
     function renderRequirementsText() {
@@ -414,11 +616,7 @@ const DevelopmentPlatform = (() => {
         state.developmentPlatform.architectureDiagram = touchscreenGameArchitectureDiagram(gameConfiguration, currentProject()?.name);
         return true;
       }
-      if (currentProjectTemplateId() !== "distributed_home_automation") return false;
-      const configuration = normalizeHomeAutomationConfiguration(state.developmentPlatform.homeAutomationConfiguration);
-      state.developmentPlatform.homeAutomationConfiguration = configuration;
-      state.developmentPlatform.architectureDiagram = homeAutomationArchitectureDiagram(configuration, currentProject()?.name);
-      return true;
+      return false;
     }
 
     function setHomeAutomationStatus(text) {
@@ -578,6 +776,7 @@ const DevelopmentPlatform = (() => {
         "left to right direction",
         'actor "Nutzer" as user',
         'rectangle "Board mit Touchdisplay" as device',
+        'user --> device : bedient lokal',
         "@enduml",
       ];
       return { type: "plantuml", source: lines.join("\n"), title: "Statische Architektur der Touchscreen-Spielesammlung", summary: "Logische Struktur aus Nutzer und Board; Verhalten und Realisierung werden getrennt gepflegt.", derived_from: "project_template" };
@@ -796,12 +995,21 @@ const DevelopmentPlatform = (() => {
       activateProject(projectId);
     }
 
+    function updateDevelopmentProjectSelection() {
+      const projectId = document.querySelector("#developmentProjectSelect").value;
+      const selectButton = document.querySelector("#selectDevelopmentProjectButton");
+      if (selectButton) selectButton.disabled = !projectId;
+      if (!projectId) setProjectStatus("Bitte waehle ein vorhandenes Projekt aus.");
+    }
+
     function activateProject(projectId) {
       state.developmentPlatform.activeProjectId = projectId;
-      state.developmentPlatform.workflowStep = "project_start";
       storeActiveProjectId(projectId);
       state.developmentPlatform.projectPanelMode = "closed";
       restoreDevelopmentDialog(currentProject());
+      state.developmentPlatform.workflowStep = usesTemplateComponentConfiguration() || currentProjectTemplateId() === "touchscreen_game_collection"
+        ? "configuration"
+        : "project_start";
       render();
     }
 
@@ -812,6 +1020,7 @@ const DevelopmentPlatform = (() => {
       }
       state.developmentPlatform.workflowStep = "configuration";
       state.developmentPlatform.projectPanelMode = "closed";
+      state.developmentPlatform.assistantOpen = false;
       setActionStatus("Projekt und initiale Architektur uebernommen. Jetzt folgt die Konfiguration.");
       render();
     }
@@ -822,6 +1031,7 @@ const DevelopmentPlatform = (() => {
       state.developmentPlatform.architectureDiagram = sanitizeArchitectureDiagram(dialog.architectureDiagram) || architectureDiagramForProject(project);
       state.developmentPlatform.lastRouting = dialog.lastRouting || null;
       state.developmentPlatform.assistantMode = dialog.assistantMode || "architecture_structure";
+      state.developmentPlatform.assistantOpen = false;
       const storedConfiguration = project?.viewManifest?.home_automation_configuration || project?.viewManifest?.homeAutomationConfiguration;
       state.developmentPlatform.homeAutomationConfiguration = currentProjectTemplateIdFor(project) === "distributed_home_automation"
         ? normalizeHomeAutomationConfiguration(storedConfiguration)
@@ -934,7 +1144,6 @@ const DevelopmentPlatform = (() => {
 
     async function createDevelopmentProject(event) {
       event.preventDefault();
-      const continueAfterCreate = Boolean(event.submitter?.hasAttribute("data-create-and-continue"));
       const titleInput = document.querySelector("#developmentProjectTitle");
       const descriptionInput = document.querySelector("#developmentProjectDescription");
       const templateInput = document.querySelector("#developmentProjectTemplate");
@@ -960,10 +1169,12 @@ const DevelopmentPlatform = (() => {
         if (response.project) {
           state.projects = state.projects.filter((project) => project.id !== response.project.id).concat(response.project);
           state.developmentPlatform.activeProjectId = response.project.id;
-          state.developmentPlatform.workflowStep = continueAfterCreate ? "configuration" : "project_start";
+          const startsInConfiguration = selectedTemplateId && selectedTemplateId !== "empty";
+          state.developmentPlatform.workflowStep = startsInConfiguration ? "configuration" : "project_start";
           state.developmentPlatform.chat = [];
           state.developmentPlatform.lastRouting = null;
           state.developmentPlatform.assistantMode = "architecture_structure";
+          state.developmentPlatform.assistantOpen = false;
           state.developmentPlatform.architectureDiagram = architectureDiagramForProject(response.project);
           state.developmentPlatform.homeAutomationConfiguration = selectedTemplateId === "distributed_home_automation"
             ? normalizeHomeAutomationConfiguration(response.project.viewManifest?.home_automation_configuration)
@@ -989,7 +1200,7 @@ const DevelopmentPlatform = (() => {
           descriptionInput.value = "";
           templateInput.value = "empty";
           applyProjectTemplate({ preserveValues: true });
-          setProjectStatus(continueAfterCreate
+          setProjectStatus(startsInConfiguration
             ? `Projekt angelegt: ${response.project.name}. Konfiguration ist geoeffnet.`
             : `Projekt angelegt: ${response.project.name}`);
         }
@@ -1128,7 +1339,8 @@ const DevelopmentPlatform = (() => {
       const usesProjectTemplate = currentProjectUsesTemplate();
       const canContinue = hasProject
         && Boolean(state.developmentPlatform.architectureDiagram?.source)
-        && (usesProjectTemplate || (functionCoverage.complete && (functionCoverage.element_count <= 1 || hasEffectChains)));
+        && functionCoverage.complete
+        && (usesProjectTemplate || functionCoverage.element_count <= 1 || hasEffectChains);
       document.querySelector("#developmentChatInput").disabled = !hasProject || !hasPremiumAi;
       document.querySelector("#developmentChatSubmit").disabled = !hasProject || !hasPremiumAi;
       document.querySelector("#developmentChatPremiumHint").classList.toggle("hidden", hasPremiumAi);
@@ -1173,9 +1385,10 @@ const DevelopmentPlatform = (() => {
       const functionCoverage = plantUmlFunctionCoverage(state.developmentPlatform.architectureDiagram.source);
       const usesProjectTemplate = currentProjectUsesTemplate();
       const project = currentProject();
-      if (continueToIde && !usesProjectTemplate && !functionCoverage.complete) {
-        const missing = functionCoverage.missing.length ? ` Offen: ${functionCoverage.missing.join(", ")}.` : "";
-        setActionStatus(`Bitte zuerst die Funktion klaeren: jedes Element braucht mindestens eine funktionale Beziehung.${missing}`);
+      if (continueToIde && !functionCoverage.complete) {
+        const missing = functionCoverage.missing.length ? ` Nicht verbunden: ${functionCoverage.missing.join(", ")}.` : "";
+        const invalid = functionCoverage.invalid?.length ? ` Nicht zulaessig: ${functionCoverage.invalid.map((relation) => `${relation.source.label} → ${relation.target.label}`).join(", ")}.` : "";
+        setActionStatus(`Bitte zuerst die Verbindungen nach dem Komponenten-Metamodell klaeren.${missing}${invalid}`);
         syncChatAvailability();
         return;
       }
@@ -1307,6 +1520,9 @@ const DevelopmentPlatform = (() => {
         raspberry_pi: "Raspberry Pi",
       };
       const family = familyLabels[processor.family] || processor.family;
+      if (processor.family === "esp32") {
+        return processor.variant === "ESP32" ? "ESP32 (klassisch)" : processor.variant;
+      }
       return processor.variant.toLowerCase() === String(family).toLowerCase()
         ? processor.variant
         : `${processor.variant} (${family})`;
@@ -1474,6 +1690,7 @@ const DevelopmentPlatform = (() => {
       const legacyAllocations = Array.isArray(project?.buildConfig?.component_device_allocations)
         ? project.buildConfig.component_device_allocations
         : [];
+      const controlAssignments = controlUnitAssignments(source);
       const boards = availableProcessorBoards();
       let deviceIndex = 0;
       const components = abstractArchitectureComponents(source).map((component) => {
@@ -1483,6 +1700,9 @@ const DevelopmentPlatform = (() => {
           label: component.label,
           abstract_type: component.abstract_type,
         };
+        if (["sensor", "actuator"].includes(merged.abstract_type) && !merged.target_device_id && controlAssignments.get(merged.component_id)) {
+          merged.target_device_id = controlAssignments.get(merged.component_id);
+        }
         if (merged.abstract_type === "iot_device") {
           if (!merged.inventory_device_id) merged.inventory_device_id = legacyAllocations[deviceIndex]?.device_id || "";
           deviceIndex += 1;
@@ -1527,12 +1747,40 @@ const DevelopmentPlatform = (() => {
       return components;
     }
 
+    function controlUnitAssignments(source) {
+      const components = abstractArchitectureComponents(source);
+      const byId = new Map(components.map((component) => [component.component_id, component]));
+      const assignments = new Map();
+      componentConnectionAssignments(source).forEach((targetId, sourceId) => {
+        const sourceComponent = byId.get(sourceId);
+        const targetComponent = byId.get(targetId);
+        const allocationSide = globalThis.DevelopmentComponentMetamodel?.controlUnitForRelation(sourceComponent?.abstract_type, targetComponent?.abstract_type);
+        if (allocationSide === "target") {
+          assignments.set(sourceComponent.component_id, targetComponent.component_id);
+        }
+        if (allocationSide === "source") assignments.set(targetComponent.component_id, sourceComponent.component_id);
+      });
+      return assignments;
+    }
+
+    function componentConnectionAssignments(source) {
+      const assignments = new Map();
+      String(source || "").split(/\r?\n/).forEach((line) => {
+        const relation = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s+[-.]+>\s+([A-Za-z_][A-Za-z0-9_]*)\b/);
+        if (relation) assignments.set(relation[1], relation[2]);
+      });
+      return assignments;
+    }
+
     function hardwareComponentType(label, plantUmlType) {
       const text = String(label || "").toLowerCase();
+      if (String(plantUmlType).toLowerCase() === "actor") return "actor";
       if (/iot.?device|esp32|esp8266|arduino|raspberry|processor.?board|datenlogger/.test(text)) return "iot_device";
       if (/sensor|fuehler|fuhler|temperatur|feuchte|helligkeit|wasserstand|ntc|ptc|pt1000/.test(text)) return "sensor";
       if (/aktor|motor|relais|ventil|servo|summer|buzzer|led/.test(text)) return "actuator";
-      if (String(plantUmlType).toLowerCase() === "actor") return "actor";
+      if (/pwa|iphone|smartphone|mobile app/.test(text)) return "smartphone_app";
+      if (/browser|dashboard/.test(text)) return "browser_app";
+      if (/server|api|vps|koordination|webserver/.test(text)) return "server_api";
       return "structural";
     }
 
@@ -1573,7 +1821,7 @@ const DevelopmentPlatform = (() => {
         const processorKey = DevelopmentHardwareModel.selectionForComponent(component, boards);
         const compatibleBoards = DevelopmentHardwareModel.boardsForProcessor(boards, processorKey);
         return `<div class="hardware-board-selection">
-          <label>Prozessor<select data-hardware-processor>
+          <label>Prozessor <button type="button" class="hardware-inline-help" data-hardware-processor-help aria-label="Hilfe zu ESP32-Varianten" title="ESP32-Varianten erklaeren">?</button><select data-hardware-processor>
             <option value="">Prozessor waehlen</option>
             ${DevelopmentHardwareModel.processorOptions(boards).map((processor) => `<option value="${escapeAttribute(processor.key)}" ${selected(processorKey, processor.key)}>${escapeHtml(processorLabel(processor))}</option>`).join("")}
           </select></label>
@@ -1810,6 +2058,11 @@ const DevelopmentPlatform = (() => {
       syncHardwareActions(state.developmentPlatform.hardwareConfiguration);
     }
 
+    function handleHardwareHelpClick(event) {
+      if (!event.target.closest("[data-hardware-processor-help]")) return;
+      openHelpTopic?.("esp32-overview");
+    }
+
     function collectHardwareConfiguration() {
       const current = state.developmentPlatform.hardwareConfiguration || { schema_version: 4, components: [] };
       const boards = availableProcessorBoards();
@@ -2035,26 +2288,32 @@ const DevelopmentPlatform = (() => {
     }
 
     function plantUmlFunctionCoverage(source) {
-      const aliases = new Set();
+      const components = abstractArchitectureComponents(source);
+      const byId = new Map(components.map((component) => [component.component_id, component]));
       const connected = new Set();
+      const invalid = [];
       const lines = String(source || "").split(/\r?\n/);
-      lines.forEach((line) => {
-        const element = line.match(/^\s*(actor|node|rectangle|queue|database|cloud)\s+"[^"]+"\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\b/i);
-        if (element) aliases.add(element[2]);
-      });
       lines.forEach((line) => {
         const arrow = line.match(/\b([A-Za-z_][A-Za-z0-9_]*)\s+[-.]+>\s+([A-Za-z_][A-Za-z0-9_]*)\b/);
         if (!arrow) return;
-        if (aliases.has(arrow[1])) connected.add(arrow[1]);
-        if (aliases.has(arrow[2])) connected.add(arrow[2]);
+        const sourceComponent = byId.get(arrow[1]);
+        const targetComponent = byId.get(arrow[2]);
+        if (!sourceComponent || !targetComponent) return;
+        if (!globalThis.DevelopmentComponentMetamodel?.validatesRelation(sourceComponent.abstract_type, targetComponent.abstract_type)) {
+          invalid.push({ source: sourceComponent, target: targetComponent });
+          return;
+        }
+        connected.add(arrow[1]);
+        connected.add(arrow[2]);
       });
-      const elements = [...aliases];
-      const missing = elements.length <= 1 ? [] : elements.filter((alias) => !connected.has(alias));
+      const elements = components.map((component) => component.component_id);
+      const missing = elements.filter((alias) => !connected.has(alias));
       return {
         element_count: elements.length,
         arrow_count: lines.filter((line) => /\b[A-Za-z_][A-Za-z0-9_]*\s+[-.]+>\s+[A-Za-z_][A-Za-z0-9_]*\b/.test(line)).length,
-        complete: elements.length <= 1 || missing.length === 0,
+        complete: elements.length > 0 && missing.length === 0 && invalid.length === 0,
         missing,
+        invalid,
       };
     }
 

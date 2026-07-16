@@ -17,6 +17,8 @@ const state = {
   monitoringLoading: false,
   systemEvents: null,
   systemEventsLoading: false,
+  resources: null,
+  componentMetamodel: null,
   currentView: "statistics",
 };
 
@@ -44,6 +46,8 @@ document.querySelector("#refreshLocalLlmModelsButton").addEventListener("click",
 document.querySelector("#refreshApiLlmModelsButton").addEventListener("click", loadApiModels);
 document.querySelector("#refreshMonitoringButton").addEventListener("click", () => loadMonitoring(true));
 document.querySelector("#refreshSystemEventsButton").addEventListener("click", () => loadSystemEvents(true));
+document.querySelector("#refreshResourcesButton").addEventListener("click", () => loadResources(true));
+document.querySelector("#resourcePolicyRows").addEventListener("click", saveResourcePolicy);
 document.querySelector("#refreshAiClarificationsButton").addEventListener("click", () => loadAiClarifications(true));
 document.querySelector("#aiClarificationStatusFilter").addEventListener("change", () => loadAiClarifications(true));
 document.querySelector("#aiClarificationPriorityFilter").addEventListener("change", () => loadAiClarifications(true));
@@ -52,6 +56,10 @@ document.querySelector("#aiHelpKnowledgeForm").addEventListener("submit", saveAi
 document.querySelector("#aiHelpKnowledgeRows").addEventListener("click", editAiHelpKnowledge);
 document.querySelector("#adminEmailConfigForm").addEventListener("submit", saveEmailConfig);
 document.querySelector("#adminEmailTestButton").addEventListener("click", testEmailConfig);
+document.querySelector("#adminLogoutButton")?.addEventListener("click", async () => {
+  await fetch("/api/admin-access/logout", { method: "POST" });
+  location.assign("/admin/");
+});
 document.querySelectorAll("[data-admin-view]").forEach((button) => {
   button.addEventListener("click", () => setView(button.dataset.adminView));
 });
@@ -64,6 +72,8 @@ bootstrap();
 async function bootstrap() {
   await loadOverview();
   await loadAccounts();
+  await loadResources(false);
+  await loadComponentMetamodel();
   await loadAiUsage();
   await loadAiContext();
   await loadAiClarifications(false);
@@ -176,6 +186,8 @@ function render() {
   renderMonitoring();
   renderSystemEvents();
   renderAccounts();
+  renderResources();
+  renderComponentMetamodel();
   renderAiUsage();
   renderAiContext();
   renderAiClarifications();
@@ -225,6 +237,8 @@ function viewId(view) {
     monitoring: "monitoringView",
     "system-events": "systemEventsView",
     accounts: "accountsView",
+    resources: "resourcesView",
+    "component-metamodel": "componentMetamodelView",
     "ai-usage": "aiUsageView",
     "ai-context": "aiContextView",
     "ai-clarifications": "aiClarificationsView",
@@ -232,6 +246,108 @@ function viewId(view) {
     "email-config": "emailConfigView",
     "llm-config": "llmConfigView",
   }[view] || "statisticsView";
+}
+
+function renderComponentMetamodel() {
+  const model = state.componentMetamodel || { component_types: [], relationship_rules: [] };
+  const types = model.component_types || [];
+  const rules = model.relationship_rules || [];
+  const diagram = document.querySelector("#componentMetamodelDiagram");
+  const associationDiagram = document.querySelector("#componentMetamodelAssociationDiagram");
+  const typeTarget = document.querySelector("#componentMetamodelTypes");
+  const relationTarget = document.querySelector("#componentMetamodelRelationRows");
+  if (!diagram || !associationDiagram || !typeTarget || !relationTarget) return;
+  if (model.error) {
+    diagram.innerHTML = `<p class="empty">${escapeHtml(model.error)}</p>`;
+    associationDiagram.innerHTML = "";
+    typeTarget.innerHTML = "";
+    relationTarget.innerHTML = `<tr><td colspan="4" class="empty-cell">Metamodell konnte nicht geladen werden.</td></tr>`;
+    return;
+  }
+  diagram.innerHTML = metamodelClassDiagramSvg(types.length, rules.length);
+  associationDiagram.innerHTML = metamodelAssociationDiagramSvg(rules, types);
+  typeTarget.innerHTML = types.map((type) => `<article class="metamodel-type-card"><strong>${escapeHtml(type.label)}</strong><span>${escapeHtml(type.id)}</span><small>${type.allocation === "iot_device" ? "IoT-Steuereinheit erforderlich" : type.allocation === "board" ? "Board-Zuordnung" : "keine Hardware-Zuordnung"}</small></article>`).join("");
+  relationTarget.innerHTML = rules.map((rule) => `<tr><td>${escapeHtml(metamodelTypeLabel(rule.source_type, types))}</td><td><strong>${escapeHtml(rule.label)}</strong></td><td>${escapeHtml(metamodelTypeLabel(rule.target_type, types))}</td><td>${escapeHtml(rule.source_cardinality || "0..*")} → ${escapeHtml(rule.target_cardinality || "0..*")}</td><td><code>${escapeHtml(rule.id)}</code></td></tr>`).join("") || `<tr><td colspan="5" class="empty-cell">Keine Beziehungsregeln vorhanden.</td></tr>`;
+}
+
+function metamodelTypeLabel(id, types) {
+  return types.find((type) => type.id === id)?.label || id;
+}
+
+function metamodelClassDiagramSvg(typeCount, ruleCount) {
+  return `<svg viewBox="0 0 1120 470" role="img" aria-label="UML-Klassendiagramm mit ComponentType, ProjectComponent, AllowedRelationship und ProjectRelationship">
+    <defs><marker id="metamodelArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#0f766e" /></marker></defs>
+    <g class="uml-class" transform="translate(35 45)"><rect width="235" height="164"/><text x="118" y="28" class="uml-stereotype">«enumeration»</text><text x="118" y="52" class="uml-title">ComponentType</text><line x1="0" y1="66" x2="235" y2="66"/><text x="14" y="91">id: String</text><text x="14" y="116">label: String</text><text x="14" y="141">allocation: AllocationKind</text></g>
+    <g class="uml-class" transform="translate(340 45)"><rect width="260" height="164"/><text x="130" y="28" class="uml-stereotype">«class»</text><text x="130" y="52" class="uml-title">ProjectComponent</text><line x1="0" y1="66" x2="260" y2="66"/><text x="14" y="91">component_id: String</text><text x="14" y="116">label: String</text><text x="14" y="141">abstract_type: ComponentType</text></g>
+    <g class="uml-class" transform="translate(695 35)"><rect width="300" height="185"/><text x="150" y="28" class="uml-stereotype">«class»</text><text x="150" y="52" class="uml-title">AllowedRelationship</text><line x1="0" y1="66" x2="300" y2="66"/><text x="14" y="91">id: String</text><text x="14" y="116">label: String</text><text x="14" y="141">source_type: ComponentType</text><text x="14" y="166">target_type: ComponentType</text></g>
+    <g class="uml-class" transform="translate(390 290)"><rect width="290" height="140"/><text x="145" y="28" class="uml-stereotype">«class»</text><text x="145" y="52" class="uml-title">ProjectRelationship</text><line x1="0" y1="66" x2="290" y2="66"/><text x="14" y="91">source: ProjectComponent</text><text x="14" y="116">target: ProjectComponent</text></g>
+    <path class="uml-link" d="M270 127 H340" marker-end="url(#metamodelArrow)"/><text class="uml-link-label" x="281" y="114">type</text>
+    <path class="uml-link" d="M600 127 H695" marker-end="url(#metamodelArrow)"/><text class="uml-link-label" x="614" y="114">source / target</text>
+    <path class="uml-link" d="M470 209 V290" marker-end="url(#metamodelArrow)"/><text class="uml-link-label" x="480" y="250">source</text>
+    <path class="uml-link" d="M570 290 V209" marker-end="url(#metamodelArrow)"/><text class="uml-link-label" x="580" y="250">target</text>
+    <path class="uml-link dashed" d="M680 360 H845 V220" marker-end="url(#metamodelArrow)"/><text class="uml-link-label" x="704" y="348">conforms to</text>
+    <g class="uml-note" transform="translate(35 285)"><rect width="270" height="105"/><text x="14" y="28">Regelbestand</text><text x="14" y="53">${typeCount} Komponententypen</text><text x="14" y="78">${ruleCount} erlaubte Beziehungen</text></g>
+  </svg>`;
+}
+
+function metamodelAssociationDiagramSvg(rules, types) {
+  const rowHeight = 82;
+  const height = Math.max(160, rules.length * rowHeight + 48);
+  return `<svg viewBox="0 0 1320 ${height}" role="img" aria-label="UML-Assoziationen der erlaubten Komponentenbeziehungen">
+    <defs><marker id="metamodelAssociationArrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 Z" fill="#0f766e" /></marker></defs>
+    ${rules.map((rule, index) => {
+      const y = 28 + index * rowHeight;
+      const source = escapeHtml(metamodelTypeLabel(rule.source_type, types));
+      const target = escapeHtml(metamodelTypeLabel(rule.target_type, types));
+      const label = escapeHtml(rule.label);
+      const sourceCardinality = escapeHtml(rule.source_cardinality || "0..*");
+      const targetCardinality = escapeHtml(rule.target_cardinality || "0..*");
+      return `<g class="uml-association" transform="translate(0 ${y})">
+        <rect class="uml-association-class" x="25" y="0" width="255" height="46" rx="4"/><text x="152" y="29" class="uml-association-title">${source}</text>
+        <path d="M280 23 H1040" marker-end="url(#metamodelAssociationArrow)"/>
+        <text x="300" y="16" class="uml-cardinality">${sourceCardinality}</text><text x="1014" y="16" class="uml-cardinality">${targetCardinality}</text>
+        <text x="660" y="17" class="uml-association-label">${label}</text>
+        <rect class="uml-association-class" x="1040" y="0" width="255" height="46" rx="4"/><text x="1167" y="29" class="uml-association-title">${target}</text>
+      </g>`;
+    }).join("")}
+  </svg>`;
+}
+
+async function loadResources(force) {
+  if (state.resources && !force) return;
+  try { state.resources = await getJson("/api/admin/resources"); }
+  catch (error) { state.resources = { policies: [], accounts: [], error: error.message }; }
+  renderResources();
+}
+
+async function loadComponentMetamodel() {
+  try { state.componentMetamodel = await getJson("/api/admin/component-metamodel"); }
+  catch (error) { state.componentMetamodel = { component_types: [], relationship_rules: [], error: error.message }; }
+}
+
+function renderResources() {
+  const data = state.resources || { policies: [], accounts: [] };
+  const policies = data.policies || [];
+  const accounts = data.accounts || [];
+  document.querySelector("#resourceMetrics").innerHTML = [
+    metricCard("Profile", formatNumber(policies.length), "zentral geregelt"),
+    metricCard("Accounts", formatNumber(accounts.length), "mit Entwicklungsprojekten"),
+    metricCard("Free-Projekte", formatNumber(policies.find((item) => item.plan_id === "free")?.max_projects || 0), "harte Obergrenze"),
+    metricCard("Free-Speicher", formatBytes(policies.find((item) => item.plan_id === "free")?.max_storage_bytes || 0), "pro Account"),
+  ].join("");
+  document.querySelector("#resourcePolicyRows").innerHTML = policies.length ? policies.map((policy) => `<tr data-plan="${escapeHtml(policy.plan_id)}"><td><strong>${escapeHtml(policy.plan_id)}</strong></td><td><input data-field="max_projects" type="number" min="1" value="${Number(policy.max_projects)}" /></td><td><input data-field="max_storage_bytes" type="number" min="1" value="${Number(policy.max_storage_bytes)}" /></td><td><input data-field="max_monthly_traffic_bytes" type="number" min="1" value="${Number(policy.max_monthly_traffic_bytes)}" /></td><td><button type="button">Speichern</button></td></tr>`).join("") : `<tr><td colspan="5" class="empty-cell">${escapeHtml(data.error || "Keine Ressourcenregeln.")}</td></tr>`;
+  document.querySelector("#resourceAccountRows").innerHTML = accounts.length ? accounts.map((account) => `<tr><td>${escapeHtml(account.account_id)}</td><td>${formatNumber(account.projects)}</td><td>${formatBytes(account.storage_bytes)}</td></tr>`).join("") : `<tr><td colspan="3" class="empty-cell">Keine gespeicherten Projekte.</td></tr>`;
+}
+
+async function saveResourcePolicy(event) {
+  const button = event.target.closest("button"); if (!button) return;
+  const row = button.closest("tr"); const plan = row.dataset.plan; if (!plan) return;
+  button.disabled = true;
+  try {
+    const body = Object.fromEntries([...row.querySelectorAll("input")].map((input) => [input.dataset.field, Number(input.value)]));
+    await putJson(`/api/admin/resources/policies/${encodeURIComponent(plan)}`, body);
+    await loadResources(true);
+  } catch (error) { alert(error.message); } finally { button.disabled = false; }
 }
 
 async function loadSystemEvents(force) {
@@ -1416,6 +1532,12 @@ function routeTaskLabel(task) {
 function formatNumber(value) {
   const number = Number(value || 0);
   return number.toLocaleString("de-DE", { maximumFractionDigits: 2 });
+}
+
+function formatBytes(value) {
+  const bytes = Number(value || 0);
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toLocaleString("de-DE", { maximumFractionDigits: 1 })} MB`;
 }
 
 function formatMetric(value) {

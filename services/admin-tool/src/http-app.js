@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { AdminToolError } = require("./errors");
+const componentMetamodel = require("../../identity-server/public/app/development-component-metamodel");
 
 const publicDir = path.join(__dirname, "..", "public");
 const operatorShellDir = path.join(__dirname, "..", "..", "shared", "public");
@@ -31,8 +32,25 @@ function createHttpApp(options) {
       return;
     }
 
+    if (url.pathname.startsWith("/api/admin/")) {
+      const actor = trustedAdminActor(req, service);
+      if (service.serviceClients?.adminToolAccessToken && !actor) {
+        sendJson(res, 403, { error: "admin_access_denied" });
+        return;
+      }
+      req.gernetixAdminActor = actor;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/admin/overview") {
       sendJson(res, 200, await service.overview());
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/admin/component-metamodel") {
+      sendJson(res, 200, {
+        component_types: Object.entries(componentMetamodel.componentTypes).map(([id, item]) => ({ id, ...item })),
+        relationship_rules: componentMetamodel.relationshipRules,
+      });
       return;
     }
 
@@ -63,7 +81,7 @@ function createHttpApp(options) {
 
     const deviceMatch = url.pathname.match(/^\/api\/admin\/devices\/([^/]+)$/);
     if (req.method === "GET" && deviceMatch) {
-      sendJson(res, 200, await service.getDevice(decodeURIComponent(deviceMatch[1]), readContext(url)));
+      sendJson(res, 200, await service.getDevice(decodeURIComponent(deviceMatch[1]), readContext(url, {}, req)));
       return;
     }
 
@@ -87,22 +105,33 @@ function createHttpApp(options) {
     }
 
     if (req.method === "GET" && url.pathname === "/api/admin/learning-feedback") {
-      sendJson(res, 200, { items: await service.listLearningFeedback(readContext(url)) });
+      sendJson(res, 200, { items: await service.listLearningFeedback(readContext(url, {}, req)) });
       return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/admin/ai-usage/summary") {
-      sendJson(res, 200, await service.aiUsageSummary(readContext(url)));
+      sendJson(res, 200, await service.aiUsageSummary(readContext(url, {}, req)));
       return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/admin/accounts") {
-      sendJson(res, 200, await service.accountSheet(readContext(url)));
+      sendJson(res, 200, await service.accountSheet(readContext(url, {}, req)));
       return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/admin/ai-context/summary") {
-      sendJson(res, 200, await service.aiContextAccessSummary(readContext(url)));
+      sendJson(res, 200, await service.aiContextAccessSummary(readContext(url, {}, req)));
+      return;
+    }
+
+    if (req.method === "GET" && url.pathname === "/api/admin/resources") {
+      sendJson(res, 200, await service.resourceSummary(readContext(url, {}, req)));
+      return;
+    }
+    const resourcePolicy = url.pathname.match(/^\/api\/admin\/resources\/policies\/([^/]+)$/);
+    if (req.method === "PUT" && resourcePolicy) {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await service.updateResourcePolicy(decodeURIComponent(resourcePolicy[1]), body, readContext(url, body, req)));
       return;
     }
 
@@ -118,47 +147,47 @@ function createHttpApp(options) {
       sendJson(res, 200, await service.aiClarificationCases({
         status: url.searchParams.get("status") || "",
         priority: url.searchParams.get("priority") || "",
-      }, readContext(url)));
+      }, readContext(url, {}, req)));
       return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/admin/ai-help-articles") {
-      sendJson(res, 200, await service.helpKnowledge(readContext(url)));
+      sendJson(res, 200, await service.helpKnowledge(readContext(url, {}, req)));
       return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/admin/email-config") {
-      sendJson(res, 200, await service.emailConfig(readContext(url)));
+      sendJson(res, 200, await service.emailConfig(readContext(url, {}, req)));
       return;
     }
 
     if (req.method === "PUT" && url.pathname === "/api/admin/email-config") {
       const body = await readJsonBody(req);
-      sendJson(res, 200, await service.updateEmailConfig(body, readContext(url, body)));
+      sendJson(res, 200, await service.updateEmailConfig(body, readContext(url, body, req)));
       return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/admin/email-config/test") {
-      sendJson(res, 200, await service.testEmailConfig(readContext(url)));
+      sendJson(res, 200, await service.testEmailConfig(readContext(url, {}, req)));
       return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/admin/ai-help-articles") {
       const body = await readJsonBody(req);
-      sendJson(res, 200, await service.upsertHelpKnowledge(body, readContext(url, body)));
+      sendJson(res, 200, await service.upsertHelpKnowledge(body, readContext(url, body, req)));
       return;
     }
 
     const clarificationAction = url.pathname.match(/^\/api\/admin\/ai-clarification-cases\/([^/]+)\/actions$/);
     if (req.method === "POST" && clarificationAction) {
       const body = await readJsonBody(req);
-      sendJson(res, 200, await service.resolveAiClarificationCase(decodeURIComponent(clarificationAction[1]), body, readContext(url, body)));
+      sendJson(res, 200, await service.resolveAiClarificationCase(decodeURIComponent(clarificationAction[1]), body, readContext(url, body, req)));
       return;
     }
 
     if (req.method === "POST" && url.pathname === "/api/admin/ai-cost-controls/actions") {
       const body = await readJsonBody(req);
-      sendJson(res, 201, await service.recordAiCostControlAction(body, readContext(url, body)));
+      sendJson(res, 201, await service.recordAiCostControlAction(body, readContext(url, body, req)));
       return;
     }
 
@@ -223,17 +252,30 @@ function contentType(filePath) {
   return "application/octet-stream";
 }
 
-function readContext(url, body = {}) {
+function readContext(url, body = {}, req = null) {
+  const trustedActor = req?.gernetixAdminActor;
   return {
     actor: {
-      actor_id: body.actor_id || url.searchParams.get("actor_id") || "admin-1",
-      role: body.role || url.searchParams.get("role") || "administrator",
-      capabilities: parseCapabilities(body.capabilities || url.searchParams.get("capabilities")),
+      actor_id: trustedActor?.actor_id || body.actor_id || url.searchParams.get("actor_id") || "admin-1",
+      role: trustedActor?.role || body.role || url.searchParams.get("role") || "administrator",
+      capabilities: trustedActor?.capabilities || parseCapabilities(body.capabilities || url.searchParams.get("capabilities")),
     },
     purpose: body.purpose || url.searchParams.get("purpose") || "admin_review",
     legal_basis: body.legal_basis || url.searchParams.get("legal_basis") || "",
     security_reason: body.security_reason || url.searchParams.get("security_reason") || "",
   };
+}
+
+function trustedAdminActor(req, service) {
+  if (!service.serviceClients?.adminToolAccessToken) return null;
+  if (req.headers["x-gernetix-admin-access-token"] !== service.serviceClients.adminToolAccessToken) return null;
+  try {
+    const actor = JSON.parse(Buffer.from(String(req.headers["x-gernetix-admin-actor"] || ""), "base64url").toString("utf8"));
+    if (!actor?.actor_id || !actor?.role || !Array.isArray(actor.capabilities)) return null;
+    return { actor_id: String(actor.actor_id), role: String(actor.role), capabilities: actor.capabilities.map(String) };
+  } catch {
+    return null;
+  }
 }
 
 function parseCapabilities(value) {

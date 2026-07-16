@@ -54,6 +54,12 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
     return result;
   }
 
+  saveResourcePolicy(policy) {
+    const result = super.saveResourcePolicy(policy);
+    this.persist();
+    return result;
+  }
+
   persist() {
     const state = {
       projects: Array.from(this.projects.values()),
@@ -62,6 +68,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
       artifacts: Array.from(this.artifacts.values()),
       feedback: Array.from(this.feedback.values()),
       consents: Array.from(this.consents.values()),
+      resourcePolicies: Array.from(this.resourcePolicies.values()),
     };
     this.store.save(state);
     if (typeof this.store.replaceCollection === "function") {
@@ -71,6 +78,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
       this.store.replaceCollection("artifacts", state.artifacts, "artifact_id");
       this.store.replaceCollection("feedback", state.feedback, "feedback_id");
       this.store.replaceCollection("consents", state.consents, "consent_id");
+      this.store.replaceCollection("resourcePolicies", state.resourcePolicies, "plan_id");
     }
     if (typeof this.store.replaceTable === "function") {
       this.store.replaceTable("project_server_projects", state.projects, projectColumns());
@@ -79,6 +87,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
       this.store.replaceTable("project_server_artifacts", state.artifacts, artifactColumns());
       this.store.replaceTable("project_server_feedback", state.feedback, feedbackColumns());
       this.store.replaceTable("project_server_consents", state.consents, consentColumns());
+      this.store.replaceTable("project_server_resource_policies", state.resourcePolicies, resourcePolicyColumns());
     }
   }
 
@@ -214,6 +223,10 @@ function projectServerSchema() {
       created_at TEXT,
       raw_json TEXT NOT NULL
     );`,
+    `CREATE TABLE IF NOT EXISTS project_server_resource_policies (
+      plan_id TEXT PRIMARY KEY, max_projects INTEGER, max_storage_bytes INTEGER,
+      max_monthly_traffic_bytes INTEGER, updated_at TEXT, raw_json TEXT NOT NULL
+    );`,
   ];
 }
 
@@ -313,6 +326,10 @@ function consentColumns() {
   };
 }
 
+function resourcePolicyColumns() {
+  return { plan_id: "plan_id", max_projects: "max_projects", max_storage_bytes: "max_storage_bytes", max_monthly_traffic_bytes: "max_monthly_traffic_bytes", updated_at: "updated_at", raw_json: jsonColumn((row) => row) };
+}
+
 function emptyState() {
   return {
     projects: [],
@@ -321,6 +338,7 @@ function emptyState() {
     artifacts: [],
     feedback: [],
     consents: [],
+    resourcePolicies: [],
   };
 }
 

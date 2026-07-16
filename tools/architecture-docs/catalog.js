@@ -49,10 +49,11 @@ const curatedDocuments = {
   "docs/incremental-build-strategy.md": { category: "development", status: "maintained", order: 4 },
   "docs/fast-embedded-firmware-feedback.md": { category: "development", status: "maintained", order: 5 },
 
-  "docs/security-posture.md": { category: "operations", status: "maintained", order: 1 },
-  "docs/customer-data-backup-and-recovery.md": { category: "operations", status: "maintained", order: 2 },
-  "docs/codex-staging-deployment.md": { category: "operations", status: "maintained", order: 3 },
-  "docs/register-and-pairing-concept.md": { category: "operations", status: "maintained", order: 4 },
+  "docs/audit-security-legal-views.md": { category: "operations", status: "maintained", order: 1 },
+  "docs/security-posture.md": { category: "operations", status: "maintained", order: 2 },
+  "docs/customer-data-backup-and-recovery.md": { category: "operations", status: "maintained", order: 3 },
+  "docs/codex-staging-deployment.md": { category: "operations", status: "maintained", order: 4 },
+  "docs/register-and-pairing-concept.md": { category: "operations", status: "maintained", order: 5 },
 
   "docs/generated/decision-log.md": { category: "archive", status: "generated", order: 10 },
   "docs/yaml-first-repository-structure.md": { category: "archive", status: "superseded", order: 90 },

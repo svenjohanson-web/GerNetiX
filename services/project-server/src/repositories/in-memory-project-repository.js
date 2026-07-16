@@ -6,6 +6,7 @@ class InMemoryProjectRepository {
     this.artifacts = new Map((seed.artifacts || []).map((item) => [item.artifact_id, clone(item)]));
     this.feedback = new Map((seed.feedback || []).map((item) => [item.feedback_id, clone(item)]));
     this.consents = new Map((seed.consents || []).map((item) => [item.consent_id, clone(item)]));
+    this.resourcePolicies = new Map((seed.resourcePolicies || []).map((item) => [item.plan_id, clone(item)]));
   }
 
   saveProject(project) {
@@ -98,6 +99,15 @@ class InMemoryProjectRepository {
       if (consent.feedback_id === feedbackId && !consent.revoked_at) return clone(consent);
     }
     return null;
+  }
+
+  listResourcePolicies() {
+    return Array.from(this.resourcePolicies.values()).map(clone);
+  }
+
+  saveResourcePolicy(policy) {
+    this.resourcePolicies.set(policy.plan_id, clone(policy));
+    return clone(policy);
   }
 }
 

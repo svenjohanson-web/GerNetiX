@@ -296,6 +296,33 @@ class AdminService {
     }
   }
 
+  async resourceSummary(context) {
+    const access = this.accessPolicy.decideAdminCapability({
+      actor: context.actor,
+      capability: "admin_ai_usage_monitoring",
+      purpose: "resource_monitoring",
+      dataModelId: "data_model.account_resource_usage",
+    });
+    if (access.decision === "denied") throw new AdminToolError("access_denied", "Ressourcen-Monitoring ist nicht erlaubt.", 403, access);
+    if (!this.serviceClients?.projectServerBaseUrl) return { access, policies: [], accounts: [], degraded: true };
+    const summary = await this.httpJson(this.serviceClients.projectServerBaseUrl, "/api/resource-policies");
+    return { access, ...summary };
+  }
+
+  async updateResourcePolicy(planId, input, context) {
+    const access = this.accessPolicy.decideAdminCapability({
+      actor: context.actor,
+      capability: "admin_ai_cost_controls",
+      purpose: "resource_cost_control",
+      dataModelId: "data_model.account_resource_policy",
+    });
+    if (access.decision === "denied") throw new AdminToolError("access_denied", "Ressourcen-Limits duerfen nicht geaendert werden.", 403, access);
+    return this.httpJson(this.serviceClients.projectServerBaseUrl, `/api/resource-policies/${encodeURIComponent(planId)}`, {
+      method: "PUT",
+      body: input,
+    });
+  }
+
   async recordSecurityEvent(input) {
     const alertKey = String(input.alert_key || `${input.source_service || "security-monitor"}:${input.event_type || "notice"}`);
     const event = this.recordSystemEvent({ ...input, category: "security", details: { ...(input.details || {}), alert_key: alertKey } });

@@ -14,9 +14,9 @@ test("main menu uses the shared dark typography and states", () => {
   assert.match(css, /\.app-menu \.menu-logout[\s\S]*?color: #fca5a5/);
 });
 
-test("platform PWA uses the shared operator shell", () => {
+test("platform uses the shared operator shell without claiming PWA delivery", () => {
   assert.match(html, /operator-shell\.css/);
-  assert.match(html, /Plattform · PWA/);
+  assert.doesNotMatch(html, /Plattform · PWA/);
   assert.match(html, /operator-surface/);
   assert.match(html, /data-route="dashboard">Übersicht/);
   assert.match(html, /data-route="builds">Betrieb/);

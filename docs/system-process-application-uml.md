@@ -33,7 +33,8 @@ flowchart LR
 
   subgraph edgeServices["User- und Admin-nahe Serverprozesse"]
     identity["Identity Server<br/>:4300"]
-    adminTool["Admin Tool API<br/>Account-Blatt + LLM-/SMTP-Konfig<br/>Klaerfaelle + lokales Help-Wissen<br/>VPS-Loopback :4600"]
+    adminAccess["Admin Access Server + Admin Console PWA<br/>eigene Admin-Konten, Sitzungen, Rollen<br/>privat :4610"]
+    adminTool["Admin Tool API<br/>nur interner Proxyzugriff<br/>Account-Blatt + LLM-/SMTP-Konfig<br/>VPS-Loopback :4600"]
     contextManager["Context Manager<br/>:5050"]
   end
 
@@ -41,6 +42,7 @@ flowchart LR
     projectServer["Project Server<br/>:4800"]
     buildDeploy["Build & Deploy Server<br/>USB + authenticated HTTPS OTA<br/>:4400"]
     deviceManagement["Device Management Server<br/>:4700"]
+    telemetryServer["Telemetry Server<br/>interner Ingress + SQL-Retention<br/>:5600"]
     provisioning["Provisioning Tool Server<br/>:4500"]
     recovery["Recovery Tool Server<br/>:5100"]
     hardwareCatalog["Hardware Catalog<br/>:4910"]
@@ -80,7 +82,7 @@ flowchart LR
   user --> platformUi
   user --> recoveryHmi
   admin --> provisioningHmi
-  admin -->|"WireGuard VPN + SSH-Tunnel"| adminTool
+  admin -->|"WireGuard VPN + Admin-Login"| adminAccess
   codex --> contextHmi
   codex --> sqliteExplorer
   admin --> processMonitor
@@ -98,6 +100,7 @@ flowchart LR
     identity --> hardwareShop
     hardwareShop --> hardwareCatalog
   identity --> deviceManagement
+  identity --> telemetryServer
   identity --> aiUsage
   identity --> aiContext
   aiContext -->|"Embeddings"| localOllama
@@ -115,8 +118,10 @@ flowchart LR
   buildDeploy --> mqttBroker
   mqttBroker --> esp32Basis
   esp32Basis --> mqttBroker
+  mqttBroker -->|"mTLS-authentifizierte Telemetrie/Ereignisse<br/>ueber internen Adapter"| telemetryServer
   esp32Basis -. "Firmware per HTTPS laden" .-> buildDeploy
 
+  adminAccess --> adminTool
   adminTool --> deviceManagement
   adminTool --> projectServer
   adminTool --> aiUsage
@@ -135,6 +140,7 @@ flowchart LR
   projectServer -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   buildDeploy -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   deviceManagement -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  telemetryServer -. "TelemetryMeasurement, TelemetryEvent,<br/>Retention in SQLite" .-> runtimeDb
   provisioning -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   recovery -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   hardwareShop -. "direkte SQLite-State-Persistenz" .-> runtimeDb
@@ -166,9 +172,11 @@ flowchart LR
 | SQLite Graph Explorer | 4318 | `http://127.0.0.1:4318/` | Read-only Weboberflaeche auf den kanonischen Graphen |
 | Build & Deploy Server | 4400 | `http://127.0.0.1:4400/` | Echte PlatformIO-Builds, Build-Pakete und Firmware-Artefakte; kein serverseitiger USB-Flash |
 | Provisioning Tool Server | 4500 | `http://127.0.0.1:4500/` | eigenstaendige Factory-HMI, Provisioning-Sessions, USB-Factory-Flash, Device-Registrierung |
-| Admin Tool API | 4600 | `http://127.0.0.1:4600/admin/` | Admin-/Support-Sichten, Account-Blatt, KI Usage, Consent-/Audit-nahe API und LLM-Routing |
+| Admin Access Server + Admin Console | 4610 | `http://127.0.0.1:4610/admin/` | Eigene Admin-Login-PWA, persistente Sitzungen und serverseitige Rollenpruefung; proxyed danach die Admin-Funktionen |
+| Admin Tool API | 4600 | nur intern durch Admin Access Server | Account-Blatt, KI Usage, zentrale Ressourcenlimits pro Nutzerprofil, Consent-/Audit-nahe API und LLM-Routing |
 | Device Management Server | 4700 | `http://127.0.0.1:4700/` | Devices, Ownership, Purchase Contexts, Support-Status |
-| Project Server | 4800 | `http://127.0.0.1:4800/` | Projekte, Quellen, Build-Jobs, Learning Feedback |
+| Telemetry Server | 5600 | nur intern im Docker-Netz | Nimmt bereits authentifizierte Board-Telemetrie an, prueft Board-/Projektbesitz, persistiert Messwerte und Ereignisse mit Retention und loest gezielten Push aus |
+| Project Server | 4800 | `http://127.0.0.1:4800/` | Projekte, Quellen, Build-Jobs, Learning Feedback sowie SQLite-persistierte Ressourcenlimits und Nutzungswerte |
 | Hardware Shop | 4900 | `http://127.0.0.1:4900/` | Angebote, Warenkorb, Bestellung, Purchase Context; liest Hardwaredaten als Client des Hardware Catalog |
 | Hardware Catalog | 4910 | `http://127.0.0.1:4910/` | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als SQLite-persistente Quelle |
 | AI Usage Server | 5000 | `http://127.0.0.1:5000/` | Credits, Quellenrating je Account, Preflight, Usage Events, Cost Controls |
@@ -197,6 +205,7 @@ flowchart LR
 | GerNetiX Plattform UI / Identity Server | Hardware Shop | Angebote, Matching, Bestellungen |
 | Hardware Shop | Hardware Catalog | Aufloesung von HardwareItem-IDs und Capabilities fuer Angebote |
 | GerNetiX Plattform UI / Identity Server | Device Management Server | eigene Devices, Registrierung, Inventarauswahl fuer IDE-Allocation, OTA-Status und Purchase Context |
+| GerNetiX Plattform UI / Identity Server | Telemetry Server | PWA liest, konfiguriert Aufbewahrung oder loescht ausschliesslich Telemetrie des sessiongebundenen Projekts |
 | GerNetiX Plattform UI / Identity Server | AI Usage Server | Credit-Anzeige, AI-Preflight, Abschluss-/Fehlerbuchung echter Chat-Aufrufe |
 | GerNetiX Plattform UI / Identity Server | AI Context Server | Laedt zentrale KI-Prompt-Grundlagen und Architektur-Bausteine, sucht fuer GerNetiX Help ausschliesslich lokales Help-Wissen und prueft KI-Kontext-Preflights vor Zugriff auf Projekt-, Graph-, Device- oder Kundendaten |
 | GerNetiX Plattform UI / Identity Server | Lokaler Ollama LLM | Dev-PoC fuer Architektur-Discovery, wenn Admin-Routing auf lokalen Provider zeigt |
@@ -205,6 +214,10 @@ flowchart LR
 | GerNetiX Plattform UI | ESP32 Basissoftware | Browser Web Serial fuer USB-Flash sowie lokalen WLAN-Scan und die ausschliesslich lokale Uebergabe von SSID und Passwort |
 | Build & Deploy Server | MQTT Broker | Deploy-Auftraege fuer konkrete Devices veroeffentlichen und Statusmeldungen empfangen |
 | ESP32 Basissoftware | MQTT Broker | Deploy-Auftraege, Heartbeats und Statusmeldungen austauschen |
+| MQTT-Telemetrieadapter | Telemetry Server | Leitet nur die durch mTLS/MQTT-ACL bereits dem Board zugeordnete Telemetrie und Ereignisse ueber den internen Token-Kontrakt weiter |
+| Telemetry Server | Device Management Server | Prueft, ob das sendende Board dem Account des Projekts gehoert |
+| Telemetry Server | Project Server | Leitet den Projektbesitzer serverseitig ab |
+| Telemetry Server | Identity Server | Uebergibt nur bereits persistierte, als Push markierte Board-Ereignisse an die bestehende accountgebundene Push-Route |
 | ESP32 Basissoftware | Build & Deploy Server | Firmware-Artefakte per HTTP/HTTPS laden |
 | GerNetiX Prozess-Monitor | VPS-Host, Nginx und MQTT Broker | Liest feste Schutzregeln und ihren Nachweisstatus ueber den konfigurierten WireGuard-/SSH-Zugang; stellt keinen generischen Shellzugriff im Renderer bereit |
 | Recovery Tool HMI | Recovery Tool Server | Nutzer-/Support-Flow zum Retten von ProcessorBoards |
@@ -231,7 +244,7 @@ flowchart LR
 - Dauerhafte Persistenz ist in GerNetiX ausschliesslich SQL (SQLite oder PostgreSQL). JSON-Dateien, YAML-Dateien, Prozessspeicher, Browser-State, Temp-Dateien, Caches und generierte Sichten sind nur Logic/Control/View, Import-/Export, Test-Hilfe oder Cache und duerfen keine fachliche Quelle der Wahrheit sein.
 - Benannte Volumes sind keine Datensicherung. Fuer Accounts, Projekte, Hardware-Inventar und weitere Kundendaten gilt das [Sicherungs- und Wiederherstellungskonzept](customer-data-backup-and-recovery.md) mit deployment-unabhaengigen, verschluesselten Sicherungen und nachgewiesenen Restore-Proben. Da die Backup-Orchestrierung noch nicht als Runtime-Komponente implementiert ist, wird sie im aktuellen Prozessdiagramm noch nicht als bestehender Serverprozess dargestellt.
 - Login UI, Dashboard, Lernplattform, Entwicklungsplattform, User IDE und Guided-Code-Lesson-Einstieg sind ein gemeinsames Plattform-Frontend-Artefakt am Identity Server, keine getrennten Anwendungen mit getrennten Logins. Im Projekt liegt dieses Artefakt gebuendelt unter `services/identity-server/public/app`.
-- Die Entwicklungsplattform ist im PoC unter `/app/development-platform/` erreichbar und nutzt serverseitig `/api/platform/development-assistant/chat` als Proxy zum im Admin Tool konfigurierten LLM-Provider. Nach der statischen Architektur konkretisiert `/app/development-platform/hardware/` abstrakte IoT-Devices, Sensoren und Aktoren und persistiert Boards, Vorschaltungen und Pins projektgebunden ueber den Project Server. Lokal ist Ollama vorgesehen; optional kann ein OpenAI-kompatibler API-Endpunkt oder Claude/Anthropic konfiguriert werden. Prompt-Grundlagen und Architektur-Bausteine kommen fuehrend aus der AI-Context-Datenbank; die Bausteinsuche verwendet pgvector-Embeddings und einen lexikalischen Fallback. Fachliche Kontextdaten muessen per AI-Context-Grant freigegeben werden. Jeder echte Provider-Aufruf wird vorab ueber AI Usage freigegeben und danach als Erfolg oder Fehler gebucht.
+- Die Entwicklungsplattform ist im PoC unter `/app/development-platform/` erreichbar. Jedes Projekttemplate ausser der Touchscreen-Spielesammlung fuehrt nach dem Anlegen direkt in dieselbe Komponenten-Konfiguration: Das Template liefert die Startarchitektur; Nutzer fuegen dort IoT-Devices, Sensoren, Aktoren, Smartphone-Apps, Server oder weitere Komponenten hinzu. Das Komponenten- und Beziehungsmetamodell begrenzt diese Auswahl auf fachlich erlaubte, benannte Beziehungen; Sensoren und Aktoren leiten daraus zwingend ihre IoT-Steuereinheit ab. Der Wechsel zur Hardware ist erst moeglich, wenn jedes Architekturelement in mindestens einer erlaubten Beziehung vorkommt und keine unzulaessige Beziehung vorliegt. Die Architektur-KI unter `/api/platform/development-assistant/chat` bleibt als einklappbare, optionale Hilfe erreichbar und ist kein verpflichtender Zwischenschritt. Danach konkretisiert `/app/development-platform/hardware/` abstrakte IoT-Devices, Sensoren und Aktoren und persistiert Boards, Vorschaltungen und Pins projektgebunden ueber den Project Server. Lokal ist Ollama vorgesehen; optional kann ein OpenAI-kompatibler API-Endpunkt oder Claude/Anthropic konfiguriert werden. Prompt-Grundlagen und Architektur-Bausteine kommen fuehrend aus der AI-Context-Datenbank; die Bausteinsuche verwendet pgvector-Embeddings und einen lexikalischen Fallback. Fachliche Kontextdaten muessen per AI-Context-Grant freigegeben werden. Jeder echte Provider-Aufruf wird vorab ueber AI Usage freigegeben und danach als Erfolg oder Fehler gebucht.
 - Der Code-Explorer folgt einem kontrollierten Coding-Agent-Ansatz mit OpenAI Responses Function Calling: Die IDE uebergibt beim Start nur Nutzeraufgabe und aktuellen Pfad; Folgefragen setzen dieselbe Responses-Konversation fort. Das Modell nutzt serverseitig `find_and_read_project_sources`, das Suche und Lesen fuer hoechstens drei relevante Treffer in einem Schritt verbindet. Nur dadurch gelesene Projektpfade duerfen als Aenderung vorgeschlagen werden. Eine feste Uebergabe der ersten 40, einer willkuerlichen Treffermenge oder aller Projektdateien ist nicht zulaessig; Schreibzugriffe bleiben bestaetigungspflichtig.
 - Der eigenstaendige Desktop-Prozessmonitor zeigt persistierte Statistiken ausgehender Schnittstellenaufrufe. Instrumentierte Services schreiben Quelle, Ziel, Methode, Route, Status und Dauer in die gemeinsame Runtime-SQLite-Tabelle `gernetix_external_interface_calls`; der Monitor liest und aggregiert diese Daten, ohne selbst als Fachaufruf mitgezaehlt zu werden. Zusaetzlich liest er Warnungen und Fehler aus `admin_tool_system_events` sowie fehlgeschlagene Schnittstellenaufrufe und zeigt sie automatisch als Auffaelligkeiten der letzten 24 Stunden. Damit erscheint etwa ein nicht erreichbarer Hardware Catalog ohne manuellen Aufruf des Admin Tools in der Desktop-App. Produzenten sind der Identity Server einschliesslich seiner GerNetiX-Abhaengigkeiten und LLM-Provider sowie der Build-&-Deploy-Server fuer MQTT Publish, Subscribe und Receive. MQTT-Topics werden vor der Persistenz von Device-Kennungen bereinigt. Unter Windows zeigt und steuert der Monitor ausserdem ausschliesslich den fest konfigurierten WireGuard-Tunnel `gernetix-vps`. Eine eigene Schutzregelansicht vergleicht versionierte lokale Vorgaben mit festen read-only VPS-Nachweisen fuer nftables, OpenSSH, Fail2ban, Nginx, Mosquitto und Docker-Portbindungen. Jede Regel zeigt Ausfuehrungsort, Grenzwert, Status und empfohlene Massnahme; offene Backup-, Alarmierungs- und Log-Retention-Massnahmen bleiben sichtbar. Die Abfrage wird gecacht und nur bei geoeffneter Ansicht oder manueller Aktualisierung ausgefuehrt. Der Renderer erhaelt weder generischen Zugriff auf Windows-Dienste noch auf SSH oder eine Shell.
 - Die fruehere allgemeine Chat-Funktion und ihr separater Proxy sind entfernt. KI-gestuetzte Architekturarbeit laeuft ueber den Architektur-Discovery-Dialog der Entwicklungsplattform.
@@ -239,7 +252,7 @@ flowchart LR
 - Plattform-PWA, Desktop-Prozessmonitor und private Admin Console folgen einer gemeinsamen Operator-Sprache mit den Bereichen Uebersicht, Betrieb und Sicherheit. Die gemeinsame Oberflaeche vereinheitlicht Orientierung und Bedienung, ersetzt aber keine Berechtigungsgrenze: Die PWA bleibt accountgebunden, der Desktop steuert nur lokal ueber isolierte IPC und die private Admin Console behaelt ihre serverseitig geprueften Verwaltungsrechte.
 - Die Anwenderhilfe zeigt die aktiven ProcessorBoards direkt aus dem Hardware Catalog. Sie erklaert je Eintrag Fähigkeiten, Katalog-/Prüfstatus, den USB-Provisionierungsweg und optionale kuratierte Hersteller- oder Beschaffungslinks. Die Hilfe ist keine zweite Hardwarequelle; Bilder und Links werden nur verwendet, wenn sie am Katalogeintrag gepflegt und geprüft sind.
 - GerNetiX Help trennt sichtbare Bereiche für öffentliche Informationen, kontoabhängige Abläufe und Premium-Inhalte. Öffentliche Grundlagen sind unter `/hilfe/` ohne Anmeldung erreichbar; im Plattformbereich markieren Vorschau und Paywall den Übergang zu Konto- oder Premium-Wissen. Die vollständige serverseitige Entitlement-Prüfung für Premium-Artikel bleibt vor dem produktiven Verkauf verpflichtend.
-- Das eigenstaendige Admin Tool unter `http://127.0.0.1:4600/admin/` enthaelt im PoC die LLM-Konfiguration fuer Provider, Endpoint, lokales Modell, API-Modell und Verbindungstest. LLM-Routing-Konfiguration ist fachlicher Runtime-State und muss gemaess SQL-only-Persistenz in SQLite liegen; alte JSON-Dev-Konfigurationen sind nur Migrationsaltlasten.
+- Das eigenstaendige Admin Tool unter `http://127.0.0.1:4600/admin/` enthaelt im PoC die LLM-Konfiguration fuer Provider, Endpoint, lokales Modell, API-Modell und Verbindungstest. Zusaetzlich zeigt der reine Lese-Reiter `Metamodell` das Projekt-Komponenten- und Beziehungsmetamodell als UML-Klassendiagramm und Regelmatrix; die Daten kommen aus derselben Regelquelle wie der Projekteditor und bleiben durch den Admin-Access-Proxy geschuetzt. LLM-Routing-Konfiguration ist fachlicher Runtime-State und muss gemaess SQL-only-Persistenz in SQLite liegen; alte JSON-Dev-Konfigurationen sind nur Migrationsaltlasten.
 - Administrative VPS-Zugaenge sind ausschliesslich ueber WireGuard erlaubt. Die Host-Firewall akzeptiert SSH nur am VPN-Interface; das Admin Tool bleibt am VPS-Loopback und wird per SSH-Tunnel innerhalb des VPN erreicht. Ein oeffentlicher SSH- oder Admin-Fallback ist nicht vorgesehen.
 - Ein VPS-Systemd-Timer bewertet alle fuenf Minuten aggregierte Fail2ban-Sperren, fehlgeschlagene Systemd-Units und ungesunde GerNetiX-Container. Er uebergibt nur den Befund token-geschuetzt an das Loopback-Admin-Tool. Dieses persistiert die Auffaelligkeit und versendet kritische Befunde mit einem 30-Minuten-Cooldown ueber den internen Identity-/IONOS-SMTP-Kanal. Die spaetere mobile Administration bleibt WireGuard-geschuetzt; ein oeffentlicher Admin-Port wird nicht eingefuehrt.
 - Das Device Management im Identity-Server-Frontend trennt drei Nutzerprozesse: `Inventar` zeigt ausschliesslich bereits mit dem Account verbundene Devices und erlaubt Unpairing; `Provisioning` beginnt ohne vorbelegten Transport mit einer exklusiven Wahl zwischen WLAN und USB. WLAN ist nur fuer bereits provisionierte, im gleichen lokalen Netzwerk erreichbare Boards zulaessig und zeigt diesen Hinweis vor der Suche; USB ist der Weg fuer neue, blanke, fremd geflashte oder nicht erreichbare Boards. Ein Wechsel verwirft Treffer und Zwischenzustand des vorherigen Wegs. Prozessorfamilie und IoT-Device werden vor der Suche nicht abgefragt. Der USB-Bootloader bestimmt nur das Prozessorprofil; danach entscheidet der Nutzer verpflichtend zwischen einem kompatiblen vorgefertigten Boardprofil aus dem Hardware Catalog und der manuellen Boardkonfiguration. Beim Katalogprofil wird gepruefte Boardausstattung zur Bestaetigung vorbelegt; im manuellen Weg wird sie anhand des Datenblatts erfasst. Erst nach dieser Entscheidung werden Board-Name und Uebernahme freigeschaltet; gespeichert wird die Ausstattung am Account-Device als Instanz-Konfiguration. Danach flasht Provisioning bei Bedarf Basissoftware, registriert die Device-Identitaet und pairt sie mit dem Account. `Recovery` rettet bereits bekannte Devices unter Erhalt vorhandener Device-ID, Credentials und Secrets, etwa bei defekter Firmware, Connectivity-Verlust oder fehlgeschlagenem Update. Die Views sind keine eigenen Backend-Services: Controller orchestrieren Hardware Catalog, Device Management, Provisioning-/Recovery-Vertraege, Firmware-Artefakte und lokale Browser-Schnittstellen wie Web Serial.

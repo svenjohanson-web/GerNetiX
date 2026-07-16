@@ -68,6 +68,8 @@ const demoEmail = process.env.DEMO_EMAIL || "demo@gernetix.local";
 const demoPassword = process.env.DEMO_PASSWORD || "demo-passwort";
 const defaultAccountPlan = process.env.GERNETIX_DEFAULT_ACCOUNT_PLAN || "premium_demo";
 const projectServerBaseUrl = process.env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800";
+const telemetryServerBaseUrl = process.env.TELEMETRY_SERVER_BASE_URL || "http://127.0.0.1:5600";
+const telemetryInternalToken = process.env.TELEMETRY_INTERNAL_TOKEN || "";
 const buildDeployBaseUrl = process.env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400";
 const otaBuildDeployBaseUrl = process.env.OTA_BUILD_DEPLOY_BASE_URL || "https://build.gernetix.com";
 const hardwareShopBaseUrl = process.env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900";
@@ -93,6 +95,7 @@ const {
   hardwareCatalogJson,
   hardwareShopJson,
   projectServerJson,
+  telemetryJson,
 } = createDevServiceClients({
   aiContextBaseUrl,
   aiUsageBaseUrl,
@@ -101,6 +104,8 @@ const {
   hardwareCatalogBaseUrl,
   hardwareShopBaseUrl,
   projectServerBaseUrl,
+  telemetryBaseUrl: telemetryServerBaseUrl,
+  telemetryInternalToken,
   interfaceTelemetry,
 });
 const { buildDeployJson: otaBuildDeployJson } = createDevServiceClients({
@@ -328,6 +333,22 @@ async function routeRequest(req, res) {
   if (url.pathname === "/api/push/test" && req.method === "POST") { const session = readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; } const push = await webPushService.notifyAccount(projectServerUserId(session), { title: "GerNetiX Testnachricht", body: "Hallo Welt – dein privater Push-Kanal ist aktiv.", url: "/app/dashboard/" }); sendJson(res, 202, { accepted: true, push }); return; }
   if (url.pathname === "/api/internal/push/device-event" && req.method === "POST") { await handleInternalDevicePushEvent(req, res); return; }
 
+  const telemetryProjectRoute = url.pathname.match(/^\/api\/platform\/telemetry\/projects\/([^/]+)\/(measurements|events|retention|data)$/);
+  if (telemetryProjectRoute) {
+    const session = readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    const projectId = decodeURIComponent(telemetryProjectRoute[1]);
+    const resource = telemetryProjectRoute[2];
+    await requireSessionProject(session, projectId);
+    const accountId = projectServerUserId(session);
+    const query = url.search || "";
+    const telemetryPath = `/api/telemetry/internal/accounts/${encodeURIComponent(accountId)}/projects/${encodeURIComponent(projectId)}/${resource}${query}`;
+    if (req.method === "GET" && resource !== "data") { sendJson(res, 200, await telemetryJson(telemetryPath)); return; }
+    if (req.method === "PUT" && resource === "retention") { sendJson(res, 200, await telemetryJson(telemetryPath, { method: "PUT", body: await readJsonBody(req) })); return; }
+    if (req.method === "DELETE" && resource === "data") { sendJson(res, 200, await telemetryJson(telemetryPath, { method: "DELETE" })); return; }
+    sendJson(res, 405, { error: "method_not_allowed" }); return;
+  }
+
   if (req.method === "POST" && url.pathname === "/api/login") {
     await handleLogin(req, res);
     return;
@@ -538,6 +559,17 @@ async function routeRequest(req, res) {
       return;
     }
     sendJson(res, 200, { items: await loadProcessorBoards() });
+    return;
+  }
+
+  const projectPwaDashboard = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/pwa-dashboard$/);
+  if (req.method === "POST" && projectPwaDashboard) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleProjectPwaDashboard(req, res, session, decodeURIComponent(projectPwaDashboard[1]));
     return;
   }
 
@@ -1338,6 +1370,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
     body: {
       project_id: projectId,
       user_id: userId,
+      plan_id: accountSubscription(session).plan,
       title,
       description,
       learning_project_id: "development_project",
@@ -1357,6 +1390,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
         gameConfiguration: template.id === "touchscreen_game_collection"
           ? defaultTouchscreenGameConfiguration()
           : null,
+        dataLoggerConfiguration: template.dataLogger,
       }),
       sources,
     },
@@ -1401,6 +1435,8 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
         hardwareConfiguration: hardwareConfigurationFromManifest(project.view_manifest),
         homeAutomationConfiguration: project.view_manifest?.home_automation_configuration,
         gameConfiguration: project.view_manifest?.game_configuration,
+        pwaDashboardConfiguration: project.view_manifest?.pwa_dashboard,
+        dataLoggerConfiguration: project.view_manifest?.data_logger,
       }),
       build_config: project.build_config || null,
     },
@@ -1578,6 +1614,8 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
         hardwareConfiguration,
         homeAutomationConfiguration: existingManifest.home_automation_configuration,
         gameConfiguration: existingManifest.game_configuration,
+        pwaDashboardConfiguration: existingManifest.pwa_dashboard,
+        dataLoggerConfiguration: existingManifest.data_logger,
       }),
     },
   });
@@ -1690,6 +1728,41 @@ async function handleProjectComponentHardwareFeatures(req, res, session, project
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
   sendJson(res, 200, { project: toPlatformProject(updated) });
+}
+
+async function handleProjectPwaDashboard(req, res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  if (project.view_manifest?.template_id !== "iot_datalogger_web_push_pwa") {
+    sendJson(res, 409, { error: "pwa_dashboard_not_available", message: "Dieses Projekt besitzt keine konfigurierbare PWA-Dashboard-Komponente." });
+    return;
+  }
+  const body = await readJsonBody(req);
+  const pwaDashboard = normalizePwaDashboardConfiguration(body);
+  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+    method: "PATCH",
+    body: {
+      view_manifest: {
+        ...project.view_manifest,
+        pwa_dashboard: pwaDashboard,
+      },
+    },
+  });
+  const projects = await loadUserIdeProjects(session);
+  const updated = projects.find((item) => item.project_server_id === project.project_server_id);
+  touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
+  sendJson(res, 200, { project: toPlatformProject(updated) });
+}
+
+function normalizePwaDashboardConfiguration(input = {}) {
+  const cards = new Set(["current_values", "history", "events", "device_status"]);
+  const visibleCards = Array.isArray(input.visible_cards || input.visibleCards)
+    ? (input.visible_cards || input.visibleCards).map(String).filter((id) => cards.has(id))
+    : Array.from(cards);
+  return {
+    schema_version: 1,
+    title: String(input.title || "Mein Datenlogger").trim().slice(0, 80),
+    visible_cards: Array.from(new Set(visibleCards)),
+  };
 }
 
 function primaryProjectComponentPath(project) {
@@ -2834,7 +2907,7 @@ function projectViewManifest(project) {
   };
 }
 
-function developmentProjectViewManifest({ title, description = "", source = "", diagram = null, buildConfig = null, architectureDialog = null, templateId = "", templateModelVersion = 1, hardwareConfiguration = null, homeAutomationConfiguration = null, gameConfiguration = null }) {
+function developmentProjectViewManifest({ title, description = "", source = "", diagram = null, buildConfig = null, architectureDialog = null, templateId = "", templateModelVersion = 1, hardwareConfiguration = null, homeAutomationConfiguration = null, gameConfiguration = null, pwaDashboardConfiguration = null, dataLoggerConfiguration = null }) {
   const buildable = Boolean(buildConfig);
   const usesProjectTemplate = Boolean(templateId && templateId !== "empty");
   const derivedFrom = diagram?.derived_from || (usesProjectTemplate || buildable ? "project_template" : "persisted_project");
@@ -2851,6 +2924,8 @@ function developmentProjectViewManifest({ title, description = "", source = "", 
     ...(architectureDialog ? { architecture_dialog: normalizeArchitectureDialog(architectureDialog, diagram || { source: plantUmlSource }) } : {}),
     ...(homeAutomationConfiguration ? { home_automation_configuration: normalizeHomeAutomationConfiguration(homeAutomationConfiguration) } : {}),
     ...(gameConfiguration ? { game_configuration: normalizeTouchscreenGameConfiguration(gameConfiguration) } : {}),
+    ...(pwaDashboardConfiguration ? { pwa_dashboard: normalizePwaDashboardConfiguration(pwaDashboardConfiguration) } : {}),
+    ...(dataLoggerConfiguration ? { data_logger: normalizeDataLoggerConfiguration(dataLoggerConfiguration) } : {}),
     views: [
       ...(buildable ? [{
         id: "firmware-source",
@@ -2905,6 +2980,15 @@ function initialArchitecturePlantUml(title) {
     "rectangle \"Projektidee / Anforderungen\" as requirements",
     "@enduml",
   ].join("\n");
+}
+
+function normalizeDataLoggerConfiguration(input = {}) {
+  return {
+    schema_version: 1,
+    enabled: input.enabled !== false,
+    storage_scope: "project_private",
+    configuration_state: "requires_sensor_configuration",
+  };
 }
 
 async function handlePlatformDeviceBasissoftwareProfileUpdate(req, res, session, accountDeviceId) {

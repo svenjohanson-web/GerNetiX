@@ -22,6 +22,7 @@ function createDefaultAdminTool(config = {}) {
       deviceManagementBaseUrl: config.deviceManagementBaseUrl,
       identityBaseUrl: config.identityBaseUrl,
       identityAdminToken: config.identityAdminToken,
+      adminToolAccessToken: config.adminToolAccessToken,
       buildDeployBaseUrl: config.buildDeployBaseUrl,
       projectServerBaseUrl: config.projectServerBaseUrl,
       hardwareShopBaseUrl: config.hardwareShopBaseUrl,

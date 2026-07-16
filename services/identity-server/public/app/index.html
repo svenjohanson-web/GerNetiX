@@ -15,7 +15,6 @@
           <div class="operator-brand">
             <div class="operator-brand-copy">
               <p class="operator-eyebrow">GerNetiX</p>
-              <span class="operator-surface-badge">Plattform · PWA</span>
             </div>
           </div>
           <nav id="platformBreadcrumb" class="breadcrumb-tree" aria-label="Aktueller Bereich"></nav>
@@ -277,6 +276,7 @@
               <section id="ideDeviceConnectionsView" class="ide-device-connections-view hidden"></section>
               <section id="ideDriverManagementView" class="ide-driver-management-view hidden"></section>
               <section id="ideDeviceWebView" class="ide-device-web-view hidden"></section>
+              <section id="idePwaDashboardView" class="ide-pwa-dashboard-view hidden"></section>
             </article>
             <aside id="ideCodeAssistant" class="panel ide-code-assistant"></aside>
             <section id="ideBuildConsole" class="ide-build-console">
@@ -574,18 +574,21 @@
               </div>
               <div id="developmentProjectOpenPanel" class="development-project-panel hidden">
                 <label class="development-project-field">Projekt oeffnen<select id="developmentProjectSelect"></select></label>
+                <div class="button-row"><button id="selectDevelopmentProjectButton" class="primary" type="button" disabled>Wählen und weiter</button></div>
               </div>
               <form id="developmentProjectForm" class="development-project-form hidden">
-                <label id="developmentProjectTemplateField">Projekttemplate
-                  <select id="developmentProjectTemplate"></select>
-                </label>
+                <div id="developmentProjectTemplateField" class="development-template-field">
+                  <label for="developmentProjectTemplate">Projekttemplate
+                    <select id="developmentProjectTemplate"></select>
+                  </label>
+                  <button id="openDevelopmentTemplateHelpButton" class="development-template-help-button" type="button" aria-label="Hilfe zu Projekttemplates" aria-haspopup="dialog" title="Verfügbare Projekttemplates erklären">?</button>
+                </div>
                 <p id="developmentProjectTemplateHint" class="development-template-hint">Architektur und Anforderungen gemeinsam von Grund auf klaeren.</p>
                 <div id="developmentProjectDetails">
                   <label>Name<input id="developmentProjectTitle" type="text" maxlength="120" placeholder="z. B. Pflanzenwaechter" /></label>
                   <label>Beschreibung<textarea id="developmentProjectDescription" rows="3" placeholder="Kurz beschreiben, was entstehen soll."></textarea></label>
                   <div class="button-row">
-                    <button type="submit">Projekt anlegen</button>
-                    <button type="submit" class="primary" data-create-and-continue>Projekt anlegen und weiter</button>
+                    <button type="submit" class="primary">Projekt anlegen</button>
                   </div>
                 </div>
               </form>
@@ -595,53 +598,7 @@
               <section class="development-requirements-panel development-configuration-only">
                 <div id="developmentRequirementsText" class="development-requirements-text"></div>
               </section>
-              <section id="homeAutomationAssistant" class="home-automation-assistant development-configuration-only hidden" aria-labelledby="homeAutomationAssistantTitle">
-                <header>
-                  <div>
-                    <p class="eyebrow">Konfigurationsassistent</p>
-                    <h3 id="homeAutomationAssistantTitle">Verteilte Hausautomatisierung</h3>
-                  </div>
-                  <small>Der feste Ablauf erzeugt die Architektur. Die KI kann die Auswahl pruefen und begruenden.</small>
-                </header>
-                <form id="homeAutomationForm">
-                  <div class="home-automation-basics">
-                    <label>Zentrale Koordination
-                      <select data-home-automation-field="coordinator">
-                        <option value="undecided">Noch offen</option>
-                        <option value="none">Ohne zentrale Instanz</option>
-                        <option value="gernetix_home_server">GerNetiX Home Server</option>
-                        <option value="home_assistant">Home Assistant</option>
-                        <option value="gernetix_with_home_assistant">GerNetiX mit Home Assistant</option>
-                      </select>
-                    </label>
-                    <label>Verhalten bei Verbindungsausfall
-                      <select data-home-automation-field="failure_policy">
-                        <option value="local_fallback">Lokal weiterarbeiten</option>
-                        <option value="safe_state">Sicheren Zustand einnehmen</option>
-                        <option value="central_required">Zentrale Instanz erforderlich</option>
-                        <option value="undecided">Noch offen</option>
-                      </select>
-                    </label>
-                  </div>
-                  <fieldset class="home-automation-state-model">
-                    <legend>Ausgetauschte Informationen</legend>
-                    <label><input type="checkbox" data-home-automation-state="commands"> Befehle</label>
-                    <label><input type="checkbox" data-home-automation-state="desired_state"> Sollzustand</label>
-                    <label><input type="checkbox" data-home-automation-state="actual_state"> Istzustand</label>
-                    <label><input type="checkbox" data-home-automation-state="events"> Ereignisse / Messwerte</label>
-                  </fieldset>
-                  <div class="home-automation-node-head">
-                    <strong>IoT-Devices</strong>
-                    <button type="button" class="secondary" data-home-automation-add-node>Device hinzufuegen</button>
-                  </div>
-                  <div id="homeAutomationNodes" class="home-automation-nodes"></div>
-                  <div class="button-row home-automation-actions">
-                    <button type="button" data-home-automation-save>Konfiguration speichern</button>
-                    <button type="button" class="secondary" data-home-automation-ai>KI-Empfehlung anfordern</button>
-                  </div>
-                  <p id="homeAutomationStatus" class="helper-text" aria-live="polite"></p>
-                </form>
-              </section>
+              <section id="templateComponentConfiguration" class="template-component-configuration development-configuration-only hidden" aria-live="polite"></section>
               <section id="touchscreenGameAssistant" class="home-automation-assistant touchscreen-game-assistant development-configuration-only hidden" aria-labelledby="touchscreenGameAssistantTitle">
                 <header>
                   <div>
@@ -679,12 +636,13 @@
               </div>
               <div class="button-row development-project-actions development-page-actions development-configuration-only">
                 <button id="backToDevelopmentProjectStartButton" type="button">Projekt wechseln</button>
+                <button id="toggleDevelopmentAssistantButton" type="button" class="secondary">KI-Unterstuetzung (optional)</button>
                 <button id="saveDevelopmentArchitectureButton" type="button" disabled>Konfiguration speichern</button>
                 <button id="acceptDevelopmentArchitectureButton" class="primary" type="button" disabled>Weiter zur Hardware</button>
               </div>
               <p id="developmentActionStatus" class="helper-text development-action-status" aria-live="polite"></p>
             </main>
-            <aside class="development-chat-sidebar development-configuration-only" aria-label="KI-Chat">
+            <aside id="developmentChatSidebar" class="development-chat-sidebar development-configuration-only hidden" aria-label="KI-Chat">
               <div id="developmentChatMessages" class="development-chat-messages" aria-live="polite"></div>
               <form id="developmentChatForm" class="development-chat-form">
                 <label for="developmentChatInput">Nachricht</label>
@@ -699,6 +657,29 @@
           </article>
         </section>
       </section>
+      <dialog id="pwaDashboardDialog" class="pwa-dashboard-dialog" aria-labelledby="pwaDashboardDialogTitle">
+        <form id="pwaDashboardEditorForm" class="pwa-dashboard-editor-form">
+          <header>
+            <div>
+              <p class="eyebrow">Smartphone-App / PWA</p>
+              <h3 id="pwaDashboardDialogTitle">PWA-Dashboard konfigurieren</h3>
+            </div>
+            <button type="button" class="secondary" data-close-pwa-dashboard-editor>Schließen</button>
+          </header>
+          <div id="pwaDashboardEditorContent"></div>
+          <footer><button type="submit">Dashboard speichern</button><span data-pwa-dashboard-status></span></footer>
+        </form>
+      </dialog>
+      <dialog id="developmentTemplateHelpDialog" class="development-template-help-dialog" aria-labelledby="developmentTemplateHelpTitle">
+        <section class="development-template-help-shell">
+          <header>
+            <div><p class="eyebrow">Projekttemplates</p><h3 id="developmentTemplateHelpTitle">Vorlagen auswählen</h3></div>
+            <button type="button" class="secondary" data-close-development-template-help>Schließen</button>
+          </header>
+          <p>Templates geben eine Startarchitektur und eine kurze fachliche Richtung vor. Sie legen noch keine Alarm- oder Senderegeln fest.</p>
+          <div id="developmentTemplateHelpContent" class="development-template-help-content"></div>
+        </section>
+      </dialog>
 
       <section id="developmentHardwareView" class="view hidden">
         <div class="section-head">
@@ -791,7 +772,8 @@
     <script src="/app/device-onboarding-controller.js?v=20260714-04"></script>
     <script src="/app/guided-project-view.js?v=20260714-01"></script>
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
-    <script src="/app/development-platform.js?v=20260714-22"></script>
+    <script src="/app/development-component-metamodel.js?v=20260716-01"></script>
+    <script src="/app/development-platform.js?v=20260716-01"></script>
     <script src="/app/help-content.js?v=20260715-01"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
     <script src="/app/help-view.js?v=20260715-01"></script>

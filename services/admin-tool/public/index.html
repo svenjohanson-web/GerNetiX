@@ -22,8 +22,12 @@
           <button type="button" data-admin-view="monitoring">Betrieb</button>
           <button type="button" data-admin-view="system-events">Sicherheit</button>
           <button type="button" data-admin-view="accounts">Accounts</button>
+          <button type="button" data-admin-view="resources">Ressourcen</button>
+          <button type="button" data-admin-view="component-metamodel">Metamodell</button>
           <button type="button" data-admin-view="email-config">Einstellungen</button>
           <button type="button" data-admin-view="ai-usage" data-admin-group="ai">KI</button>
+          <a href="/admin/access/">Admin-Zugaenge</a>
+          <button type="button" id="adminLogoutButton">Abmelden</button>
         </nav>
       </header>
       <nav id="aiSubNav" class="admin-subnav hidden" aria-label="KI Navigation">
@@ -33,6 +37,43 @@
         <button type="button" data-admin-sub-view="ai-clarifications">Klaerfaelle</button>
         <button type="button" data-admin-sub-view="llm-config">Routing</button>
       </nav>
+
+      <section id="componentMetamodelView" class="admin-view hidden">
+        <section class="panel">
+          <p class="eyebrow">Projektarchitektur</p>
+          <h2>Komponenten- und Beziehungsmetamodell</h2>
+          <p class="helper-text">Die Sicht ist schreibgeschuetzt. Sie zeigt die zentral erlaubten Komponententypen und Beziehungen, die den Projekteditor und die Hardware-Zuordnung begrenzen.</p>
+          <div id="componentMetamodelDiagram" class="metamodel-diagram" aria-label="UML-Klassendiagramm des Komponenten- und Beziehungsmetamodells"></div>
+        </section>
+        <section class="panel">
+          <p class="eyebrow">UML-Assoziationen</p>
+          <h2>Erlaubte Beziehungen mit Kardinalitaeten</h2>
+          <p class="helper-text">Die Kardinalitaet am Ziel beschreibt, wie viele Zielkomponenten eine einzelne Quellkomponente haben darf. Sensoren und Aktoren besitzen genau eine IoT-Steuereinheit.</p>
+          <div id="componentMetamodelAssociationDiagram" class="metamodel-diagram metamodel-association-diagram" aria-label="UML-Klassendiagramm der erlaubten Komponentenbeziehungen mit Kardinalitaeten"></div>
+        </section>
+        <section class="admin-layout wide-main">
+          <article class="panel">
+            <p class="eyebrow">Klassen</p>
+            <h2>Komponententypen</h2>
+            <div id="componentMetamodelTypes" class="metamodel-type-grid"></div>
+          </article>
+          <aside class="panel">
+            <p class="eyebrow">Zuordnung</p>
+            <h2>Hardware-Regel</h2>
+            <p class="helper-text">Beim Sensor bestimmt das Ziel der Messwertbeziehung das IoT-Device. Beim Aktor bestimmt die Quelle der Steuerbeziehung das IoT-Device.</p>
+          </aside>
+        </section>
+        <section class="panel">
+          <p class="eyebrow">Assoziationen</p>
+          <h2>Erlaubte Beziehungen</h2>
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>Quelle</th><th>Beziehung</th><th>Ziel</th><th>Kardinalitaet</th><th>Regel-ID</th></tr></thead>
+              <tbody id="componentMetamodelRelationRows"></tbody>
+            </table>
+          </div>
+        </section>
+      </section>
 
       <section id="statisticsView" class="admin-view">
         <section class="metrics-grid" id="statisticsMetrics"></section>
@@ -290,6 +331,16 @@
           <dl id="adminEmailConfigSummary" class="meta-list"></dl>
           <p class="helper-text">Vor dem Speichern muss auf dem VPS ein eigener `EMAIL_CONFIG_ENCRYPTION_KEY` sowie derselbe `IDENTITY_ADMIN_TOKEN` in Identity und Admin Tool gesetzt sein.</p>
         </aside>
+      </section>
+
+      <section id="resourcesView" class="admin-view hidden">
+        <section class="metrics-grid" id="resourceMetrics"></section>
+        <section class="panel">
+          <div class="section-head"><div><p class="eyebrow">Kostenkontrolle</p><h2>Ressourcen pro Nutzerprofil</h2></div><button id="refreshResourcesButton" type="button">Neu laden</button></div>
+          <p class="muted">Die Limits werden zentral im Project Server (SQLite) gespeichert. Projekt- und Speicherlimits werden beim Anlegen/Speichern durchgesetzt; der Traffic-Wert ist fuer die anschliessende Messung und Durchsetzung vorbereitet.</p>
+          <div class="table-wrap"><table><thead><tr><th>Profil</th><th>Max. Projekte</th><th>Speicher</th><th>Monatlicher Traffic</th><th></th></tr></thead><tbody id="resourcePolicyRows"></tbody></table></div>
+        </section>
+        <section class="panel"><p class="eyebrow">Nutzung</p><h2>Gespeicherte Entwicklungsprojekte</h2><div class="table-wrap"><table><thead><tr><th>Account</th><th>Projekte</th><th>Speicher</th></tr></thead><tbody id="resourceAccountRows"></tbody></table></div></section>
       </section>
 
       <section id="llmConfigView" class="admin-layout admin-view hidden">

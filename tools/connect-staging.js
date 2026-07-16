@@ -55,7 +55,7 @@ function main() {
   const config = loadConfig();
   const host = assertSafeSshTarget(args.host || config.GERNETIX_STAGING_SSH || "");
   const localPort = parsePort(args.localPort || config.GERNETIX_STAGING_LOCAL_ADMIN_PORT || 14600, "Lokaler Port");
-  const remotePort = parsePort(args.remotePort || config.GERNETIX_STAGING_REMOTE_ADMIN_PORT || 4600, "Remote-Port");
+  const remotePort = parsePort(args.remotePort || config.GERNETIX_STAGING_REMOTE_ADMIN_PORT || 4610, "Remote-Port");
   const platformPort = parsePort(args.platformPort || config.GERNETIX_STAGING_LOCAL_PLATFORM_PORT || 14300, "Lokaler Plattform-Port");
   const remotePlatformPort = parsePort(args.remotePlatformPort || config.GERNETIX_STAGING_REMOTE_PLATFORM_PORT || 8080, "Remote-Plattform-Port");
   const sshArgs = sshTunnelArgs({ host, localPort, remotePort, platformPort, remotePlatformPort });

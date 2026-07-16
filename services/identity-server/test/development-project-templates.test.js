@@ -19,11 +19,7 @@ test("separates semantic template models from rendered views", () => {
     label: "IoT-Device Datenlogger",
     kind: "iot_device",
   });
-  assert.deepEqual(template.architecture.relations.find((relation) => relation.target === "storage"), {
-    source: "device",
-    target: "storage",
-    label: "Historie",
-  });
+  assert.equal(template.architecture.relations.some((relation) => relation.target === "storage"), false);
   assert.match(templateArchitecturePlantUml(template, template.title), /rectangle "IoT-Device Datenlogger" as device/);
 });
 
@@ -109,8 +105,9 @@ test("provides IoT device project templates with distinct start architectures", 
   assert.match(templateArchitecturePlantUml(localLogger, localLogger.title), /Lokaler Webserver/);
   assert.match(templateArchitecturePlantUml(internetLogger, internetLogger.title), /Webserver \/ API/);
   assert.match(templateArchitecturePlantUml(internetLogger, internetLogger.title), /Webserver \/ API\\nSoftware: SQL-Datenbank/);
+  assert.doesNotMatch(templateArchitecturePlantUml(internetLogger, internetLogger.title), /rectangle "Internet"/);
   assert.doesNotMatch(templateArchitecturePlantUml(internetLogger, internetLogger.title), /database "/);
-  assert.match(templateArchitecturePlantUml(localLogger, localLogger.title), /NVS \/ LittleFS/);
+  assert.doesNotMatch(templateArchitecturePlantUml(localLogger, localLogger.title), /NVS \/ LittleFS/);
   for (const template of [device, localLogger, internetLogger]) {
     const source = templateArchitecturePlantUml(template, template.title);
     assert.doesNotMatch(source, /\bnote\b|end note|KI-abgeleitete|bestaetigte Architekturentscheidung/i);
@@ -125,15 +122,22 @@ test("provides an account-bound web-push PWA data logger template", () => {
 
   assert.equal(template.schemaVersion, 1);
   assert.match(template.description, /private PWA auf dem iPhone/);
+  assert.match(template.description, /speichert Messwerte projektprivat/);
+  assert.match(template.hint, /Projektprivate Datenhaltung ist Grundfunktion/);
   assert.match(source, /IoT-Device Datenlogger/);
-  assert.match(source, /GerNetiX VPS\\nPrivate Push-API/);
+  assert.match(source, /GerNetiX VPS\\nPrivate Telemetrie-, Speicher- und Push-API/);
   assert.match(source, /Private PWA auf dem iPhone/);
-  assert.match(source, /Push-Subscription und Konfiguration/);
+  assert.match(source, /Messwertverlauf, Push-Subscription und Konfiguration/);
   assert.match(source, /Web Push an die private Subscription/);
   assert.equal(templateHardwareProfileId(template), "architecture.discovery");
   assert.equal(templateBuildConfig(template), null);
   assert.deepEqual(templateFirmwareSources(template, "Mein Push-Logger"), []);
   assert.deepEqual(template.requiredEntitlements, ["web_push"]);
+  assert.deepEqual(template.dataLogger, {
+    required: true,
+    storageScope: "project_private",
+    configurationState: "requires_sensor_configuration",
+  });
   assert.deepEqual(developmentProjectTemplateCatalog().find((item) => item.id === "iot_datalogger_web_push_pwa").required_entitlements, ["web_push"]);
 });
 

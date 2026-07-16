@@ -23,6 +23,16 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && path === "/api/resource-policies") {
+      sendJson(res, 200, service.resourceSummary());
+      return;
+    }
+    const resourcePolicy = path.match(/^\/api\/resource-policies\/([^/]+)$/);
+    if (req.method === "PUT" && resourcePolicy) {
+      sendJson(res, 200, service.updateResourcePolicy(decodeURIComponent(resourcePolicy[1]), await readJsonBody(req)));
+      return;
+    }
+
     const project = path.match(new RegExp(`^${prefix}/([^/]+)$`));
     if (req.method === "GET" && project) {
       sendJson(res, 200, service.getProject(decodeURIComponent(project[1])));

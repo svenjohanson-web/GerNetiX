@@ -106,6 +106,7 @@ function guidedProjectView() {
       escapeHtml,
       escapeAttribute,
       meta,
+      openHelpTopic: HelpView.openDialog,
     });
   }
   return guidedProjectViewController;
@@ -202,6 +203,11 @@ document.querySelector("#ideProjectBrowser").addEventListener("click", (event) =
     openDeviceWebView();
     return;
   }
+  const pwaDashboardButton = event.target.closest("[data-pwa-dashboard]");
+  if (pwaDashboardButton) {
+    openPwaDashboardView();
+    return;
+  }
   const button = event.target.closest("[data-source-path]");
   if (button) openIdeSource(button.dataset.sourcePath);
 });
@@ -227,6 +233,15 @@ document.addEventListener("keydown", (event) => {
   saveSource();
 });
 document.querySelector("#ideComponentFeaturesView").addEventListener("submit", saveComponentFeatures);
+document.querySelector("#idePwaDashboardView").addEventListener("click", (event) => {
+  if (event.target.closest("[data-open-pwa-dashboard-editor]")) openPwaDashboardEditor();
+});
+document.querySelector("#pwaDashboardEditorForm").addEventListener("submit", savePwaDashboard);
+document.querySelector("#pwaDashboardDialog").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget || event.target.closest("[data-close-pwa-dashboard-editor]")) {
+    event.currentTarget.close();
+  }
+});
 document.querySelector("#ideBoardPropertiesView").addEventListener("click", (event) => {
   if (event.target.closest("[data-open-hardware-configuration]")) {
     navigate(`/app/development-platform/hardware/?project=${encodeURIComponent(state.activeProjectId)}`);
@@ -1121,7 +1136,18 @@ function projectVirtualTreeEntries(project) {
       componentId: component.component_id,
     });
   });
+  if (isPwaDashboardProject(project)) {
+    entries.push({
+      path: "Komponenten/Smartphone-App (PWA)/Konfiguration/PWA-Dashboard",
+      role: "",
+      virtualAction: "pwa-dashboard",
+    });
+  }
   return entries;
+}
+
+function isPwaDashboardProject(project) {
+  return project?.viewManifest?.template_id === "iot_datalogger_web_push_pwa";
 }
 
 function componentTreeLabel(component) {
@@ -1184,6 +1210,8 @@ function renderSourceTree(node, depth = 0, openFolders = new Set()) {
             ? "data-webserver-configuration"
           : file.virtualAction === "device-web"
             ? "data-device-web"
+            : file.virtualAction === "pwa-dashboard"
+              ? "data-pwa-dashboard"
             : file.virtualAction === "board-properties"
               ? `data-board-properties="${escapeAttribute(file.componentId || "")}"`
             : file.virtualAction === "hardware-configuration"
@@ -1426,6 +1454,14 @@ function openDeviceWebView() {
   renderIdeViewMode(project);
 }
 
+function openPwaDashboardView() {
+  state.ideViewMode = "pwa-dashboard";
+  const project = projectById(state.activeProjectId);
+  document.querySelector("#ideActiveSourceLabel").textContent = "Komponenten/Smartphone-App (PWA)/Konfiguration/PWA-Dashboard";
+  renderPwaDashboardView(project);
+  renderIdeViewMode(project);
+}
+
 async function openIdeSource(sourcePath) {
   const project = projectById(state.activeProjectId);
   if (!project || !sourcePath) return;
@@ -1459,13 +1495,14 @@ function renderIdeViewMode(project) {
   const deviceConnections = state.ideViewMode === "device-connections";
   const driverManagement = state.ideViewMode === "driver-management";
   const deviceWeb = state.ideViewMode === "device-web";
-  const virtualView = componentFeatures || webserverConfiguration || boardProperties || sensorProperties || deviceConnections || driverManagement || deviceWeb;
+  const pwaDashboard = state.ideViewMode === "pwa-dashboard";
+  const virtualView = componentFeatures || webserverConfiguration || boardProperties || sensorProperties || deviceConnections || driverManagement || deviceWeb || pwaDashboard;
   const plantUml = /\.(puml|plantuml)$/i.test(sourcePath) && /@startuml/i.test(source);
   const image = /\.(svg|png|jpe?g|gif|webp)$/i.test(sourcePath);
   const architectureBaseline = isArchitectureBaselinePath(sourcePath);
   document.querySelector("#sourceEditor").readOnly = !ideSourceIsEditable(project, sourcePath);
   document.querySelector("#ideViewerPanel").classList.toggle("plantuml-split", plantUml && !virtualView);
-  document.querySelector("#ideViewerModeLabel").textContent = componentFeatures ? "Softwareeigenschaften" : webserverConfiguration ? "Webserver-Konfiguration" : boardProperties ? "Boardeigenschaften" : sensorProperties ? "Sensorkonfiguration" : deviceConnections ? "Angeschlossene Komponenten" : driverManagement ? "Treiberverwaltung" : deviceWeb ? "Webserver-Vorschau" : architectureBaseline ? "Freigegebene Architektur-Baseline · schreibgeschützt" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
+  document.querySelector("#ideViewerModeLabel").textContent = componentFeatures ? "Softwareeigenschaften" : webserverConfiguration ? "Webserver-Konfiguration" : boardProperties ? "Boardeigenschaften" : sensorProperties ? "Sensorkonfiguration" : deviceConnections ? "Angeschlossene Komponenten" : driverManagement ? "Treiberverwaltung" : deviceWeb ? "Webserver-Vorschau" : pwaDashboard ? "PWA-Dashboard" : architectureBaseline ? "Freigegebene Architektur-Baseline · schreibgeschützt" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
   document.querySelector("#sourcePanel").classList.toggle("hidden", virtualView || image);
   document.querySelector("#ideImageView").classList.toggle("hidden", virtualView || (!plantUml && !image));
   document.querySelector("#ideModelView").classList.add("hidden");
@@ -1475,7 +1512,77 @@ function renderIdeViewMode(project) {
   document.querySelector("#ideDeviceConnectionsView").classList.toggle("hidden", !deviceConnections);
   document.querySelector("#ideDriverManagementView").classList.toggle("hidden", !driverManagement);
   document.querySelector("#ideDeviceWebView").classList.toggle("hidden", !deviceWeb);
+  document.querySelector("#idePwaDashboardView").classList.toggle("hidden", !pwaDashboard);
   if (!virtualView && (plantUml || image)) renderIdeImageView(sourcePath, source);
+}
+
+const pwaDashboardCardDefinitions = [
+  ["current_values", "Aktuelle Messwerte", "Die zuletzt übertragenen Werte als kompakte Übersicht."],
+  ["history", "Messwertverlauf", "Eine spätere Zeitreihenansicht für gespeicherte Messwerte."],
+  ["events", "Ereignisprotokoll", "Eine spätere Liste protokollierter Geräteereignisse."],
+  ["device_status", "Board-Status", "Verbindungs- und Aktualitätsstatus des zugeordneten Boards."],
+];
+
+function effectivePwaDashboard(project) {
+  const configured = project?.viewManifest?.pwa_dashboard || {};
+  const visibleCards = new Set(Array.isArray(configured.visible_cards)
+    ? configured.visible_cards.map(String)
+    : pwaDashboardCardDefinitions.map(([id]) => id));
+  return {
+    title: String(configured.title || project?.name || "Mein Datenlogger").slice(0, 80),
+    visibleCards,
+  };
+}
+
+function renderPwaDashboardView(project) {
+  const target = document.querySelector("#idePwaDashboardView");
+  if (!target) return;
+  if (!isPwaDashboardProject(project)) {
+    target.innerHTML = "<p class=\"empty\">Dieses Projekt besitzt keine Smartphone-App/PWA-Komponente.</p>";
+    return;
+  }
+  const dashboard = effectivePwaDashboard(project);
+  const visible = pwaDashboardCardDefinitions.filter(([id]) => dashboard.visibleCards.has(id));
+  target.innerHTML = `<div class="pwa-dashboard-workspace">
+    <header><div><p class="eyebrow">Smartphone-App / PWA</p><h3>${escapeHtml(dashboard.title)}</h3></div><button type="button" data-open-pwa-dashboard-editor>Dashboard konfigurieren</button></header>
+    <p class="helper-text">Die projektprivate Datenhaltung ist in dieser Datenlogger-Vorlage aktiviert. Messquelle, Intervall, Verdichtung und Aufbewahrung werden anschliessend an der Sensor-Konfiguration festgelegt; Alarm- und Senderegeln folgen separat.</p>
+    <section class="pwa-phone-preview" aria-label="Vorschau des PWA-Dashboards">
+      <div class="pwa-phone-status"><span>9:41</span><strong>${escapeHtml(dashboard.title)}</strong><span>●●●</span></div>
+      <div class="pwa-phone-content">${visible.map(([, title, description]) => `<article><strong>${escapeHtml(title)}</strong><small>${escapeHtml(description)}</small><span>Vorschau wird nach Datenanbindung gefüllt</span></article>`).join("") || "<p class=\"empty\">Es sind noch keine Bereiche sichtbar.</p>"}</div>
+    </section>
+  </div>`;
+}
+
+function openPwaDashboardEditor() {
+  const project = projectById(state.activeProjectId);
+  if (!isPwaDashboardProject(project)) return;
+  const dashboard = effectivePwaDashboard(project);
+  const target = document.querySelector("#pwaDashboardEditorContent");
+  target.innerHTML = `<p class="helper-text">Die projektprivate Datenhaltung ist als Grundfunktion aktiv. Lege hier nur fest, welche Bereiche später in der privaten PWA sichtbar sind. Diese Konfiguration enthält ausdrücklich keine Alarm-, Schwellen- oder Senderegeln.</p>
+    <label class="pwa-dashboard-title-label">Titel der App<input name="pwa_dashboard_title" maxlength="80" value="${escapeAttribute(dashboard.title)}"></label>
+    <fieldset class="pwa-dashboard-card-options"><legend>Sichtbare Bereiche</legend>${pwaDashboardCardDefinitions.map(([id, title, description]) => `<label class="component-feature-card"><input type="checkbox" name="pwa_dashboard_card" value="${id}" ${dashboard.visibleCards.has(id) ? "checked" : ""}><span><strong>${escapeHtml(title)}</strong><small>${escapeHtml(description)}</small></span><em>PWA</em></label>`).join("")}</fieldset>`;
+  const dialog = document.querySelector("#pwaDashboardDialog");
+  if (!dialog.open) dialog.showModal();
+}
+
+async function savePwaDashboard(event) {
+  event.preventDefault();
+  const project = projectById(state.activeProjectId);
+  const status = event.target.querySelector("[data-pwa-dashboard-status]");
+  if (!isPwaDashboardProject(project)) return;
+  const data = new FormData(event.target);
+  status.textContent = "Wird gespeichert...";
+  try {
+    const response = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/pwa-dashboard`, {
+      title: data.get("pwa_dashboard_title"),
+      visible_cards: data.getAll("pwa_dashboard_card").map(String),
+    });
+    state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    renderPwaDashboardView(response.project);
+    status.textContent = "Gespeichert.";
+  } catch (error) {
+    status.textContent = error.message;
+  }
 }
 
 function primaryComponentPath(project) {

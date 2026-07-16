@@ -752,6 +752,10 @@ button.danger:hover {
   gap: 10px;
   padding: 10px;
 }
+.development-workspace-active .development-workspace-panel.development-assistant-closed {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "project" "main";
+}
 .development-workspace-active .development-main-workspace,
 .development-workspace-active .development-chat-sidebar {
   min-height: 0;
@@ -841,7 +845,8 @@ button.danger:hover {
 .ide-sensor-properties-view,
 .ide-device-connections-view,
 .ide-driver-management-view,
-.ide-device-web-view {
+.ide-device-web-view,
+.ide-pwa-dashboard-view {
   min-height: 0;
   height: 100%;
   overflow: auto;
@@ -925,6 +930,25 @@ button.danger:hover {
 .device-web-info { justify-content: flex-start; color: #94a3b8; font-size: 11px; }
 .device-web-workspace iframe { width: 100%; height: 100%; min-height: 320px; border: 1px solid #334155; border-radius: 6px; background: #fff; }
 .device-web-empty { display: grid; place-content: center; text-align: center; border: 1px dashed #334155; border-radius: 6px; color: #94a3b8; }
+.pwa-dashboard-workspace { display: grid; align-content: start; gap: 14px; min-height: 100%; }
+.pwa-dashboard-workspace > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pwa-dashboard-workspace h3 { margin: 2px 0 0; }
+.pwa-phone-preview { width: min(100%, 390px); justify-self: center; overflow: hidden; border: 8px solid #111827; border-radius: 30px; background: #f8fafc; box-shadow: 0 12px 30px rgba(2, 6, 23, .28); color: #0f172a; }
+.pwa-phone-status { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 12px; background: #e0f2fe; font-size: 11px; }
+.pwa-phone-status strong { max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pwa-phone-content { display: grid; gap: 10px; min-height: 410px; padding: 14px; }
+.pwa-phone-content article { display: grid; gap: 5px; min-height: 96px; padding: 13px; border: 1px solid #cbd5e1; border-radius: 12px; background: #fff; box-shadow: 0 2px 6px rgba(15, 23, 42, .06); }
+.pwa-phone-content article small { color: #475569; line-height: 1.35; }
+.pwa-phone-content article span { margin-top: auto; color: #0891b2; font-size: 10px; }
+.pwa-dashboard-dialog { width: min(720px, calc(100vw - 32px)); max-height: min(780px, calc(100vh - 32px)); border: 1px solid #334155; border-radius: 10px; background: #111827; color: #e5e7eb; box-shadow: 0 24px 80px rgba(2, 6, 23, .62); }
+.pwa-dashboard-dialog::backdrop { background: rgba(2, 6, 23, .72); }
+.pwa-dashboard-editor-form { display: grid; gap: 14px; padding: 18px; }
+.pwa-dashboard-editor-form > header, .pwa-dashboard-editor-form > footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.pwa-dashboard-editor-form h3 { margin: 2px 0 0; }
+.pwa-dashboard-editor-form > footer span { color: #94a3b8; font-size: 11px; }
+.pwa-dashboard-title-label { display: grid; gap: 5px; color: #cbd5e1; font-size: 12px; }
+.pwa-dashboard-card-options { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; border-color: #334155; }
+.pwa-dashboard-card-options legend { padding: 0 5px; color: #94a3b8; font-size: 11px; }
 .ide-project-browser {
   display: grid;
   align-content: start;
@@ -1555,6 +1579,10 @@ button.danger:hover {
   gap: 8px;
   min-height: 0;
   min-width: 0;
+}
+.development-workspace-panel.development-assistant-closed {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "project" "main";
 }
 .development-chat-sidebar {
   grid-area: chat;
@@ -2231,6 +2259,22 @@ button.danger:hover {
     grid-template-columns: 1fr;
   }
 }
+.development-template-field { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
+.development-template-field label { display: grid; gap: 5px; }
+.development-template-help-button { width: 34px; height: 34px; margin-bottom: 1px; border-radius: 50%; padding: 0; font-weight: 800; }
+.development-template-help-dialog { width: min(760px, calc(100vw - 32px)); max-height: min(760px, calc(100vh - 32px)); overflow: auto; border: 1px solid #334155; border-radius: 10px; padding: 0; background: #111827; color: #e5e7eb; box-shadow: 0 24px 80px rgba(2, 6, 23, .62); }
+.development-template-help-dialog::backdrop { background: rgba(2, 6, 23, .72); }
+.development-template-help-shell { display: grid; gap: 14px; padding: 18px; }
+.development-template-help-shell > header, .development-template-help-card > header { display: flex; align-items: start; justify-content: space-between; gap: 12px; }
+.development-template-help-shell h3 { margin: 2px 0 0; }
+.development-template-help-shell > p { margin: 0; color: #cbd5e1; line-height: 1.45; }
+.development-template-help-content { display: grid; gap: 8px; }
+.development-template-help-card { display: grid; gap: 7px; padding: 12px; border: 1px solid #334155; border-radius: 7px; background: #0b1018; }
+.development-template-help-card.unavailable { border-color: #854d0e; background: #2b210c; }
+.development-template-help-card header span { color: #67e8f9; font-size: 11px; text-align: right; }
+.development-template-help-card.unavailable header span { color: #fcd34d; }
+.development-template-help-card p { margin: 0; color: #cbd5e1; line-height: 1.4; }
+.development-template-help-card small { color: #94a3b8; line-height: 1.35; }
 .development-project-form textarea {
   min-height: 92px;
   max-height: 180px;
@@ -3607,6 +3651,80 @@ textarea,
   color: #e5e7eb;
 }
 .home-automation-assistant.hidden { display: none; }
+.template-component-configuration {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #334155;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #0f172a, #172554);
+  color: #e5e7eb;
+}
+.template-component-configuration.hidden { display: none; }
+.template-component-configuration > header {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  align-items: start;
+}
+.template-component-configuration h3,
+.template-component-configuration h4 { margin: 0; }
+.template-component-configuration header small { max-width: 460px; color: #bfdbfe; line-height: 1.45; }
+.template-component-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, .7fr);
+  gap: 12px;
+}
+.template-component-layout > section,
+.template-component-add {
+  display: grid;
+  align-content: start;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid #3b4b62;
+  border-radius: 8px;
+  background: rgba(15, 23, 42, .45);
+}
+.template-component-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.template-component-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 9px;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  background: rgba(30, 41, 59, .75);
+}
+.template-component-list small { color: #93c5fd; }
+.template-component-list li.has-connection-hint { border-color: #d97706; }
+.template-component-list li.has-connection-hint small { color: #fde68a; }
+.template-component-connection-hints {
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid rgba(217, 119, 6, .85);
+  border-radius: 6px;
+  background: rgba(120, 53, 15, .22);
+  color: #fde68a;
+  font-size: 12px;
+}
+.template-component-connection-hints p { margin: 5px 0; line-height: 1.35; }
+.template-component-connection-hints ul { margin: 0; padding-left: 18px; }
+.template-component-add label { display: grid; gap: 4px; color: #cbd5e1; font-size: 12px; }
+.template-component-add select,
+.template-component-add input { min-width: 0; border: 1px solid #475569; border-radius: 5px; padding: 7px; color: #0f172a; background: #f8fafc; }
+.template-component-hint { margin: 0; color: #fde68a; font-size: 12px; line-height: 1.4; }
+.hardware-inline-help {
+  display: inline-grid;
+  width: 19px;
+  height: 19px;
+  margin: 0 2px;
+  place-items: center;
+  border-radius: 50%;
+  padding: 0;
+  font-size: 11px;
+  font-weight: 800;
+  vertical-align: middle;
+}
 .home-automation-assistant > header,
 .home-automation-node-head,
 .home-automation-actions {
@@ -3783,4 +3901,6 @@ textarea,
 @media (max-width: 1050px) {
   .home-automation-node { min-width: 0; grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .home-automation-basics { grid-template-columns: 1fr; }
+  .template-component-layout { grid-template-columns: 1fr; }
+  .template-component-configuration > header { display: grid; }
 }

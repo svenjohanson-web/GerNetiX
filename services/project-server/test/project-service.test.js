@@ -180,6 +180,7 @@ test("stores project view manifest and includes it in build package", () => {
       architecture_dialog: { messages: [{ role: "user", content: "Hallo" }] },
       home_automation_configuration: { schema_version: 1, coordinator: "gernetix_home_server", nodes: [] },
       game_configuration: { schema_version: 1, pattern_id: "touchscreen_game_loop", selected_game_ids: ["snake"] },
+      pwa_dashboard: { schema_version: 1, title: "Messwerte unterwegs", visible_cards: ["current_values", "history", "not_allowed"] },
       primary_source_path: "src/main.cpp",
       hide_source_editor: true,
       views: [
@@ -224,6 +225,8 @@ test("stores project view manifest and includes it in build package", () => {
   assert.equal(stored.view_manifest.home_automation_configuration.coordinator, "gernetix_home_server");
   assert.equal(stored.view_manifest.game_configuration.pattern_id, "touchscreen_game_loop");
   assert.deepEqual(stored.view_manifest.game_configuration.selected_game_ids, ["snake"]);
+  assert.equal(stored.view_manifest.pwa_dashboard.title, "Messwerte unterwegs");
+  assert.deepEqual(stored.view_manifest.pwa_dashboard.visible_cards, ["current_values", "history"]);
   assert.equal(stored.view_manifest.primary_source_path, "src/main.cpp");
   assert.equal(stored.view_manifest.hide_source_editor, true);
   assert.equal(stored.view_manifest.views[0].editable_lines[0], 2);
@@ -368,6 +371,18 @@ test("sqlite repository persists projects, sources and build jobs across reload"
     "ESP32 Lernprojekt",
   );
   db.close();
+});
+
+test("enforces centrally configurable free resource limits", () => {
+  const service = createMemoryProjectServer();
+  service.updateResourcePolicy("free", { max_projects: 2, max_storage_bytes: 200, max_monthly_traffic_bytes: 1024 });
+  service.createProject({ user_id: "free-user", plan_id: "free", title: "Eins" });
+  service.createProject({ user_id: "free-user", plan_id: "free", title: "Zwei" });
+  assert.throws(() => service.createProject({ user_id: "free-user", plan_id: "free", title: "Drei" }), /Maximal 2 Projekte/);
+  const project = service.createProject({ user_id: "other-user", plan_id: "free", title: "Speicher" });
+  assert.throws(() => service.upsertSource(project.project_id, { path: "src/large.cpp", content: "x".repeat(201), plan_id: "free" }), /Speicherlimit/);
+  const summary = service.resourceSummary();
+  assert.equal(summary.policies.find((policy) => policy.plan_id === "free").max_projects, 2);
 });
 
 test("sqlite repository migrates the legacy ESP32 component path to IoT-Device 1", () => {

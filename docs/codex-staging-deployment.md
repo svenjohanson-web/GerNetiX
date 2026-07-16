@@ -97,7 +97,7 @@ Nach erfolgreicher Vorpruefung geschieht auf Staging automatisch:
 5. Images bauen,
 6. Container aktualisieren,
 7. auf Healthchecks warten,
-8. Nginx/Identity und Admin Tool pruefen,
+8. Nginx/Identity, Admin Access Server und den internen Admin Tool Service pruefen,
 9. Containerstatus ausgeben.
 
 Persistente Docker-Volumes und `.env.vps` werden nicht geloescht oder ueberschrieben.

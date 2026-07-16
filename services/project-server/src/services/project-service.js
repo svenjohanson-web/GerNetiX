@@ -6,13 +6,16 @@ class ProjectService {
   constructor(options) {
     this.repository = options.repository;
     this.loadEsp32BasissoftwareFiles = options.loadEsp32BasissoftwareFiles || loadEsp32BasissoftwareFiles;
+    this.ensureResourcePolicies();
   }
 
   createProject(input = {}) {
+    this.assertProjectQuota(input.user_id, input.plan_id || input.plan || "free");
     const now = new Date().toISOString();
     const project = {
       project_id: input.project_id || createId("project"),
       user_id: required(input.user_id, "user_id"),
+      plan_id: String(input.plan_id || input.plan || "free").toLowerCase(),
       title: required(input.title, "title"),
       description: input.description || "",
       learning_project_id: input.learning_project_id || "",
@@ -90,10 +93,11 @@ class ProjectService {
   }
 
   upsertSource(projectId, input = {}) {
-    this.requireProject(projectId);
+    const project = this.requireProject(projectId);
     const path = normalizeSourcePath(required(input.path, "path"));
     const now = new Date().toISOString();
     const content = String(input.content || "");
+    this.assertStorageQuota(project, path, content, input.plan_id || input.plan || project.plan_id || "free");
     const source = {
       project_id: projectId,
       path,
@@ -306,6 +310,63 @@ class ProjectService {
     };
   }
 
+  resourceSummary() {
+    const policies = this.repository.listResourcePolicies();
+    const byAccount = new Map();
+    for (const project of this.repository.listProjects()) {
+      const entry = byAccount.get(project.user_id) || { account_id: project.user_id, plan_id: project.plan_id || "free", projects: 0, storage_bytes: 0 };
+      entry.projects += 1;
+      entry.storage_bytes += this.projectStorageBytes(project.project_id);
+      byAccount.set(project.user_id, entry);
+    }
+    return { policies, accounts: Array.from(byAccount.values()).sort((a, b) => b.storage_bytes - a.storage_bytes) };
+  }
+
+  updateResourcePolicy(planId, input = {}) {
+    const current = this.policyFor(planId);
+    const policy = {
+      ...current,
+      plan_id: String(planId).toLowerCase(),
+      max_projects: positiveLimit(input.max_projects, current.max_projects),
+      max_storage_bytes: positiveLimit(input.max_storage_bytes, current.max_storage_bytes),
+      max_monthly_traffic_bytes: positiveLimit(input.max_monthly_traffic_bytes, current.max_monthly_traffic_bytes),
+      updated_at: new Date().toISOString(),
+    };
+    return this.repository.saveResourcePolicy(policy);
+  }
+
+  ensureResourcePolicies() {
+    if (this.repository.listResourcePolicies().length) return;
+    for (const policy of defaultResourcePolicies()) this.repository.saveResourcePolicy(policy);
+  }
+
+  policyFor(planId) {
+    const normalized = String(planId || "free").toLowerCase();
+    return this.repository.listResourcePolicies().find((item) => item.plan_id === normalized)
+      || this.repository.listResourcePolicies().find((item) => item.plan_id === "free")
+      || defaultResourcePolicies()[0];
+  }
+
+  assertProjectQuota(userId, planId) {
+    const policy = this.policyFor(planId);
+    if (this.repository.listProjects({ user_id: userId }).length >= policy.max_projects) {
+      throw new ProjectServerError("project_quota_exceeded", `Maximal ${policy.max_projects} Projekte fuer den Plan ${policy.plan_id}.`, 409);
+    }
+  }
+
+  assertStorageQuota(project, sourcePath, content, planId) {
+    const policy = this.policyFor(planId);
+    const existing = this.repository.findSource(project.project_id, sourcePath);
+    const nextBytes = this.projectStorageBytes(project.project_id) - Buffer.byteLength(existing?.content || "", "utf8") + Buffer.byteLength(content, "utf8");
+    if (nextBytes > policy.max_storage_bytes) {
+      throw new ProjectServerError("storage_quota_exceeded", `Speicherlimit von ${policy.max_storage_bytes} Bytes fuer den Plan ${policy.plan_id} erreicht.`, 413);
+    }
+  }
+
+  projectStorageBytes(projectId) {
+    return this.repository.listSources(projectId).reduce((sum, source) => sum + Buffer.byteLength(source.content || "", "utf8"), 0);
+  }
+
   touchProject(projectId) {
     const project = this.requireProject(projectId);
     this.repository.saveProject({ ...project, updated_at: new Date().toISOString() });
@@ -373,6 +434,7 @@ function normalizeViewManifest(input = {}) {
   const architectureDialog = manifest.architecture_dialog || manifest.architectureDialog;
   const homeAutomationConfiguration = manifest.home_automation_configuration || manifest.homeAutomationConfiguration;
   const gameConfiguration = manifest.game_configuration || manifest.gameConfiguration;
+  const pwaDashboard = manifest.pwa_dashboard || manifest.pwaDashboard;
   return {
     schema_version: Number(manifest.schema_version || manifest.schemaVersion || 1),
     title: manifest.title || "",
@@ -391,10 +453,40 @@ function normalizeViewManifest(input = {}) {
     ...(gameConfiguration && typeof gameConfiguration === "object"
       ? { game_configuration: gameConfiguration }
       : {}),
+    ...(pwaDashboard && typeof pwaDashboard === "object"
+      ? { pwa_dashboard: normalizePwaDashboard(pwaDashboard) }
+      : {}),
     primary_source_path: normalizeOptionalSourcePath(manifest.primary_source_path || manifest.primarySourcePath || ""),
     hide_source_editor: Boolean(manifest.hide_source_editor || manifest.hideSourceEditor),
     mode: manifest.mode || "guided_ide",
     views: Array.isArray(manifest.views) ? manifest.views.map(normalizeProjectView).filter(Boolean) : [],
+  };
+}
+
+function positiveLimit(value, fallback) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : fallback;
+}
+
+function defaultResourcePolicies() {
+  const now = new Date().toISOString();
+  return [
+    { plan_id: "free", max_projects: 5, max_storage_bytes: 5 * 1024 * 1024, max_monthly_traffic_bytes: 25 * 1024 * 1024, updated_at: now },
+    { plan_id: "premium", max_projects: 50, max_storage_bytes: 250 * 1024 * 1024, max_monthly_traffic_bytes: 1024 * 1024 * 1024, updated_at: now },
+    { plan_id: "premium_demo", max_projects: 50, max_storage_bytes: 250 * 1024 * 1024, max_monthly_traffic_bytes: 1024 * 1024 * 1024, updated_at: now },
+  ];
+}
+
+function normalizePwaDashboard(input = {}) {
+  const configured = input && typeof input === "object" ? input : {};
+  const availableCards = new Set(["current_values", "history", "events", "device_status"]);
+  const selected = Array.isArray(configured.visible_cards || configured.visibleCards)
+    ? (configured.visible_cards || configured.visibleCards).map(String).filter((id) => availableCards.has(id))
+    : Array.from(availableCards);
+  return {
+    schema_version: 1,
+    title: String(configured.title || "Mein Datenlogger").trim().slice(0, 80),
+    visible_cards: Array.from(new Set(selected)),
   };
 }
 

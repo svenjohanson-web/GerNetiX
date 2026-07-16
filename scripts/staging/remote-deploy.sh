@@ -61,11 +61,14 @@ docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls up -d --
 echo "==> Edge- und Admin-Healthchecks"
 edge_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port nginx 8080 | sed 's/.*://')
 admin_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port admin-tool 4600 | sed 's/.*://')
+admin_access_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port admin-access-server 4610 | sed 's/.*://')
 curl --fail --silent --show-error "http://127.0.0.1:${edge_port}/health"
 printf '\n'
 curl --fail --silent --show-error --resolve gernetix.nl:443:127.0.0.1 "https://gernetix.nl/" >/dev/null
 printf 'HTTPS ok\n'
 curl --fail --silent --show-error "http://127.0.0.1:${admin_port}/health"
+printf '\n'
+curl --fail --silent --show-error "http://127.0.0.1:${admin_access_port}/health"
 printf '\n'
 
 echo "==> Containerstatus"

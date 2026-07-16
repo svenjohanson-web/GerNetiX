@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="980" viewBox="0 0 1680 980" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Aktuelle lokale MVP-Architektur mit Plattform UI, Identity Server, Domaenenservices, SQL-only Persistenz, lokalem USB-WLAN-Transfer ohne Cloud-Speicherung von Zugangsdaten, Prozess-Monitor, VPS-Sicherheitsalarmierung per Systemd-Timer und IONOS SMTP, VPN-geschuetztem administrativem VPS-Zugang und offline nutzbarer Architektur-Dokumentation.</desc>
+  <desc id="desc">Aktuelle Architektur mit getrenntem Admin Access Server: WireGuard, eigenes Admin-Login, persistente Admin-Sitzungen und ein intern token-geschuetztes Admin Tool.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -73,7 +73,7 @@
   </g>
 
   <g id="edgeServices">
-    <rect class="cluster" x="610" y="95" width="270" height="275" rx="14"/>
+    <rect class="cluster" x="610" y="95" width="270" height="355" rx="14"/>
     <text class="clusterTitle" x="630" y="124">User-/Admin-nahe Server</text>
 
     <rect class="node edge" x="635" y="150" width="220" height="58" rx="10"/>
@@ -81,11 +81,15 @@
     <text class="smallText" x="745" y="196" text-anchor="middle">:4300</text>
 
     <rect class="node edge" x="635" y="230" width="220" height="58" rx="10"/>
-    <text class="titleText" x="745" y="256" text-anchor="middle">Admin + SMTP-/Help-Wissen</text>
-    <text class="smallText" x="745" y="276" text-anchor="middle">VPS-Loopback :4600</text>
+    <text class="titleText" x="745" y="256" text-anchor="middle">Admin Access Server</text>
+    <text class="smallText" x="745" y="276" text-anchor="middle">eigene Logins + Rollen :4610</text>
 
-    <rect class="node edge" x="635" y="310" width="220" height="40" rx="10"/>
-    <text class="titleText" x="745" y="335" text-anchor="middle">Context Manager :5050</text>
+    <rect class="node edge" x="635" y="310" width="220" height="58" rx="10"/>
+    <text class="titleText" x="745" y="336" text-anchor="middle">Admin Tool</text>
+    <text class="smallText" x="745" y="356" text-anchor="middle">interner Proxy :4600</text>
+
+    <rect class="node edge" x="635" y="390" width="220" height="40" rx="10"/>
+    <text class="titleText" x="745" y="415" text-anchor="middle">Context Manager :5050</text>
   </g>
 
   <g id="domainServices">
@@ -204,7 +208,7 @@
   <path class="line" d="M 190 141 L 265 187"/>
   <path class="line" d="M 190 226 L 265 362"/>
   <path class="line" d="M 190 226 L 635 259"/>
-  <text class="label" x="382" y="230">WireGuard + SSH-Tunnel</text>
+  <text class="label" x="382" y="230">WireGuard + Admin-Login</text>
   <path class="line" d="M 190 311 L 265 437"/>
   <path class="line" d="M 190 311 L 403 437"/>
 
@@ -214,7 +218,7 @@
   <path class="line dashed" d="M 395 480 L 395 224"/>
   <path class="line" d="M 525 277 L 1170 262"/>
   <path class="line" d="M 525 362 L 965 262"/>
-  <path class="line" d="M 387 437 L 635 330"/>
+  <path class="line" d="M 387 437 L 635 415"/>
   <path class="line" d="M 525 437 L 895 826"/>
 
   <path class="line" d="M 855 179 L 965 177"/>
@@ -228,11 +232,12 @@
   <text class="label" x="1170" y="515">SMTP/TLS</text>
   <path class="line" d="M 855 179 L 1445 869"/>
   <path class="line" d="M 855 179 L 1445 914"/>
-  <path class="line" d="M 855 259 L 1385 177"/>
-  <path class="line" d="M 855 259 L 965 177"/>
-  <path class="line" d="M 855 259 L 1385 432"/>
-  <path class="line" d="M 855 330 L 1155 826"/>
-  <path class="line" d="M 855 330 L 1005 826"/>
+  <path class="line" d="M 855 259 L 635 339"/>
+  <path class="line" d="M 855 339 L 1385 177"/>
+  <path class="line" d="M 855 339 L 965 177"/>
+  <path class="line" d="M 855 339 L 1385 432"/>
+  <path class="line" d="M 855 415 L 1155 826"/>
+  <path class="line" d="M 855 415 L 1005 826"/>
 
   <path class="line" d="M 1145 347 L 1385 262"/>
   <text class="label" x="1200" y="326">liest Hardwaredaten</text>

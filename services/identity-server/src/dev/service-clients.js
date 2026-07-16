@@ -7,7 +7,7 @@ function createJsonClient(baseUrl, fallbackMessage, clientOptions = {}) {
     try {
       response = await fetch(`${baseUrl}${pathname}`, {
         method: options.method || "GET",
-        headers: options.body ? { "Content-Type": "application/json" } : {},
+        headers: { ...(clientOptions.headers || {}), ...(options.body ? { "Content-Type": "application/json" } : {}) },
         body: options.body ? JSON.stringify(options.body) : undefined,
       });
     } catch (cause) {
@@ -39,6 +39,8 @@ function createDevServiceClients({
   hardwareCatalogBaseUrl,
   hardwareShopBaseUrl,
   projectServerBaseUrl,
+  telemetryBaseUrl = "",
+  telemetryInternalToken = "",
   interfaceTelemetry,
 }) {
   const telemetry = interfaceTelemetry || createInterfaceCallTelemetry({ sourceService: "identity-server" });
@@ -50,6 +52,7 @@ function createDevServiceClients({
     hardwareCatalogJson: createJsonClient(hardwareCatalogBaseUrl, "Hardware Catalog request failed.", { telemetry, targetService: "hardware-catalog" }),
     hardwareShopJson: createJsonClient(hardwareShopBaseUrl, "Hardware Shop request failed.", { telemetry, targetService: "hardware-shop" }),
     projectServerJson: createJsonClient(projectServerBaseUrl, "Project Server request failed.", { telemetry, targetService: "project-server" }),
+    telemetryJson: createJsonClient(telemetryBaseUrl || "http://127.0.0.1:5600", "Telemetry Server request failed.", { telemetry, targetService: "telemetry-server", headers: telemetryInternalToken ? { "X-GerNetiX-Telemetry-Token": telemetryInternalToken } : {} }),
   };
 }
 

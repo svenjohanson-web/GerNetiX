@@ -85,3 +85,20 @@ test("basis features are visibly immutable and project web extensions remain con
   assert.match(server, /component-features/);
   assert.match(server, /handleProjectComponentFeatures/);
 });
+
+test("data logger template exposes a project-bound PWA dashboard editor without notification rules", () => {
+  assert.match(html, /id="idePwaDashboardView"/);
+  assert.match(html, /id="pwaDashboardDialog"/);
+  assert.match(app, /Komponenten\/Smartphone-App \(PWA\)\/Konfiguration\/PWA-Dashboard/);
+  assert.match(app, /function renderPwaDashboardView\(project\)/);
+  assert.match(app, /function openPwaDashboardEditor\(\)/);
+  assert.match(app, /data-open-pwa-dashboard-editor/);
+  assert.match(app, /visible_cards: data\.getAll\("pwa_dashboard_card"\)/);
+  assert.match(app, /projektprivate Datenhaltung ist in dieser Datenlogger-Vorlage aktiviert/);
+  assert.match(server, /pwa-dashboard/);
+  assert.match(server, /handleProjectPwaDashboard/);
+  assert.match(server, /pwa_dashboard_not_available/);
+  assert.match(server, /normalizePwaDashboardConfiguration/);
+  assert.match(server, /normalizeDataLoggerConfiguration/);
+  assert.match(server, /dataLoggerConfiguration: template\.dataLogger/);
+});
