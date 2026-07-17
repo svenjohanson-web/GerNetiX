@@ -1,6 +1,15 @@
 name: gernetix-public-demo
 
 services:
+  public-demo-storage-init:
+    image: busybox:1.37
+    restart: "no"
+    security_opt:
+      - no-new-privileges:true
+    command: ["sh", "-c", "mkdir -p /var/lib/gernetix/public-demos && chown -R 1000:1000 /var/lib/gernetix/public-demos"]
+    volumes:
+      - public_demo_state:/var/lib/gernetix/public-demos
+
   public-demo-server:
     build:
       context: .
@@ -20,6 +29,9 @@ services:
     expose: ["4920"]
     volumes:
       - public_demo_state:/var/lib/gernetix/public-demos
+    depends_on:
+      public-demo-storage-init:
+        condition: service_completed_successfully
     networks:
       - public_demo
       - shared_edge
