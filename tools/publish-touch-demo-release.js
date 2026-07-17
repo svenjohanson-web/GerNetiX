@@ -13,7 +13,7 @@ try {
     board_hardware_item_id: "hardware.processor_board.esp32_s3_es3c28p",
     category: "spiele",
     games: ["Nibbles"],
-  version: "1.0.12",
+  version: "1.0.13",
     firmware_file_name: "firmware.bin",
     bootloader_base64: readBase64(path.join(build, "bootloader.bin")),
     partitions_base64: readBase64(path.join(build, "partitions.bin")),

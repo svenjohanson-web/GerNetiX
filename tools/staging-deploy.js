@@ -25,10 +25,11 @@ function parseEnvFile(content) {
 }
 
 function parseArgs(argv) {
-  const result = { dryRun: false };
+  const result = { dryRun: false, publicDemo: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--dry-run") result.dryRun = true;
+    else if (argument === "--public-demo") result.publicDemo = true;
     else if (["--host", "--remote-dir", "--branch"].includes(argument)) {
       const value = argv[index + 1];
       if (!value) throw new Error(`${argument} benoetigt einen Wert.`);
@@ -57,13 +58,13 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
-function remoteDeployCommand({ branch, commit, remoteDir }) {
+function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false }) {
   return [
     `cd ${shellQuote(remoteDir)}`,
     "test -z \"$(git status --porcelain --untracked-files=no)\"",
     `git fetch origin ${shellQuote(branch)}`,
     `git switch --detach ${shellQuote(commit)}`,
-    "./scripts/staging/remote-deploy.sh",
+    publicDemo ? "./scripts/staging/remote-deploy-public-demo.sh" : "./scripts/staging/remote-deploy.sh",
   ].join(" && ");
 }
 
@@ -101,7 +102,7 @@ function main() {
   const upstream = run("git", ["rev-parse", "@{upstream}"], { capture: true, quiet: true });
   if (commit !== upstream) throw new Error("Der aktuelle Commit ist noch nicht zum Upstream-Branch gepusht.");
 
-  const command = remoteDeployCommand({ branch, commit, remoteDir });
+  const command = remoteDeployCommand({ branch, commit, remoteDir, publicDemo: args.publicDemo });
   process.stdout.write(`Staging-Deploy: ${branch} @ ${commit.slice(0, 12)} -> ${host}:${remoteDir}\n`);
   if (args.dryRun) {
     process.stdout.write(`[dry-run] ssh ${host} ${command}\n`);

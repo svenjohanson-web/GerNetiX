@@ -19,6 +19,7 @@ void controls(BoardAdapter& b) {
   b.rectangle(92, 276, 56, 32, BoardAdapter::blue); b.text("v", 112, 280, BoardAdapter::white, 3);
   b.rectangle(154, 276, 56, 32, BoardAdapter::blue); b.text(">", 172, 280, BoardAdapter::white, 3);
 }
+bool fullyInsideBoard(int x, int width) { return x >= gridX && x + width <= gridX + boardWidth; }
 }
 
 void Frogger::resetRound() { frogX_ = 4; frogY_ = 8; frogPixelX_ = gridX + frogX_ * cell; }
@@ -68,9 +69,13 @@ void Frogger::render(BoardAdapter& b) const {
   for (int bay = 0; bay < 5; ++bay) b.roundedRectangle(gridX + bay * 36 + 5, gridY + 3, 18, 14, 5, BoardAdapter::green);
   for (int lane = 0; lane < 3; ++lane) {
     for (int copy = 0; copy < 2; ++copy) {
-      int logX = gridX + static_cast<int>(wrap(logs_[lane] + copy * 104, boardWidth)); b.roundedRectangle(logX, gridY + (lane + 1) * cell + 3, 62, 14, 6, BoardAdapter::yellow);
-      int carX = gridX + static_cast<int>(wrap(cars_[lane] + copy * 92, boardWidth)); b.roundedRectangle(carX, gridY + (lane + 5) * cell + 5, 34, 11, 4, lane == 1 ? BoardAdapter::yellow : BoardAdapter::red);
-      b.circle(carX + 7, gridY + (lane + 5) * cell + 17, 3, BoardAdapter::black); b.circle(carX + 27, gridY + (lane + 5) * cell + 17, 3, BoardAdapter::black);
+      int logX = gridX + static_cast<int>(wrap(logs_[lane] + copy * 104, boardWidth));
+      if (fullyInsideBoard(logX, 62)) b.roundedRectangle(logX, gridY + (lane + 1) * cell + 3, 62, 14, 6, BoardAdapter::yellow);
+      int carX = gridX + static_cast<int>(wrap(cars_[lane] + copy * 92, boardWidth));
+      if (fullyInsideBoard(carX, 34)) {
+        b.roundedRectangle(carX, gridY + (lane + 5) * cell + 5, 34, 11, 4, lane == 1 ? BoardAdapter::yellow : BoardAdapter::red);
+        b.circle(carX + 7, gridY + (lane + 5) * cell + 17, 3, BoardAdapter::black); b.circle(carX + 27, gridY + (lane + 5) * cell + 17, 3, BoardAdapter::black);
+      }
     }
   }
   if (running_) { const int x = static_cast<int>(frogPixelX_); const int y = gridY + frogY_ * cell; b.circle(x + 10, y + 10, 8, BoardAdapter::magenta); b.circle(x + 6, y + 6, 2, BoardAdapter::white); b.circle(x + 14, y + 6, 2, BoardAdapter::white); }

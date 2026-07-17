@@ -1,0 +1,43 @@
+name: gernetix-public-demo
+
+services:
+  public-demo-server:
+    build:
+      context: .
+      dockerfile: docker/node-service.Dockerfile
+    image: gernetix/public-demo:${GERNETIX_PUBLIC_DEMO_IMAGE_TAG:-local}
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      GERNETIX_SERVICE: public-demo-server
+      HOST: 0.0.0.0
+      PORT: 4920
+      PUBLIC_DEMO_SQLITE_PATH: /var/lib/gernetix/public-demos/gernetix-public-demos.sqlite
+      PUBLIC_DEMO_RUNTIME_DIR: /var/lib/gernetix/public-demos
+      PUBLIC_DEMO_PUBLISHER_TOKEN: ${PUBLIC_DEMO_PUBLISHER_TOKEN:?PUBLIC_DEMO_PUBLISHER_TOKEN muss gesetzt sein}
+    expose: ["4920"]
+    volumes:
+      - public_demo_state:/var/lib/gernetix/public-demos
+    networks:
+      - public_demo
+      - shared_edge
+    healthcheck:
+      test: ["CMD", "node", "/app/docker/healthcheck.js"]
+      interval: 15s
+      timeout: 4s
+      retries: 5
+      start_period: 10s
+
+networks:
+  public_demo:
+    internal: true
+  # The already running TLS edge is the only shared technical component. It
+  # forwards /demos/ and has no mount or access to this stack's database.
+  shared_edge:
+    external: true
+    name: gernetix_edge
+
+volumes:
+  public_demo_state:
