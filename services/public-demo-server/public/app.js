@@ -110,8 +110,20 @@ async function flashSelectedDemo() {
     address: asset.flash_offset,
     data: new Uint8Array(await (await fetch(asset.download_url)).arrayBuffer()),
   })));
-  flashStatus.textContent = "Bootloader, Partitionstabelle und Nibbles werden geflasht …";
-  await loader.writeFlash({ fileArray, flashMode: manifest.flash_mode, flashFreq: manifest.flash_freq, flashSize: manifest.flash_size, compress: true });
+  flashStatus.textContent = "Übertragung wird vorbereitet …";
+  await loader.writeFlash({
+    fileArray,
+    flashMode: manifest.flash_mode,
+    flashFreq: manifest.flash_freq,
+    flashSize: manifest.flash_size,
+    compress: true,
+    reportProgress(fileIndex, written, total) {
+      const asset = manifest.assets[fileIndex];
+      const assetPercent = total ? Math.round((written / total) * 100) : 0;
+      const overallPercent = Math.min(99, Math.round(((fileIndex + (total ? written / total : 0)) / manifest.assets.length) * 100));
+      flashStatus.textContent = `Übertrage ${asset.file_name}: ${assetPercent}% (${overallPercent}% gesamt) …`;
+    },
+  });
   await loader.after("hard_reset");
   await transport.disconnect();
   flashStatus.textContent = "Nibbles wurde erfolgreich auf das Board geflasht.";
