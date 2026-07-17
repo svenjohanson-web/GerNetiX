@@ -50,7 +50,7 @@ class SqlitePublicDemoRepository {
       CREATE TABLE IF NOT EXISTS public_demo_release_assets (
         demo_id TEXT NOT NULL,
         version TEXT NOT NULL,
-        asset_id TEXT NOT NULL CHECK (asset_id IN ('bootloader', 'partitions', 'firmware')),
+        asset_id TEXT NOT NULL CHECK (asset_id IN ('bootloader', 'partitions', 'boot_app0', 'firmware')),
         file_name TEXT NOT NULL,
         flash_offset INTEGER NOT NULL,
         content_blob BLOB NOT NULL,
@@ -60,6 +60,24 @@ class SqlitePublicDemoRepository {
         FOREIGN KEY (demo_id, version) REFERENCES public_demo_releases(demo_id, version) ON DELETE RESTRICT
       );
     `);
+    const assetTable = this.db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'public_demo_release_assets'").get();
+    if (assetTable && !assetTable.sql.includes("boot_app0")) {
+      this.db.exec(`
+        BEGIN IMMEDIATE;
+        CREATE TABLE public_demo_release_assets_next (
+          demo_id TEXT NOT NULL, version TEXT NOT NULL,
+          asset_id TEXT NOT NULL CHECK (asset_id IN ('bootloader', 'partitions', 'boot_app0', 'firmware')),
+          file_name TEXT NOT NULL, flash_offset INTEGER NOT NULL, content_blob BLOB NOT NULL,
+          size_bytes INTEGER NOT NULL, sha256 TEXT NOT NULL,
+          PRIMARY KEY (demo_id, version, asset_id),
+          FOREIGN KEY (demo_id, version) REFERENCES public_demo_releases(demo_id, version) ON DELETE RESTRICT
+        );
+        INSERT INTO public_demo_release_assets_next SELECT * FROM public_demo_release_assets;
+        DROP TABLE public_demo_release_assets;
+        ALTER TABLE public_demo_release_assets_next RENAME TO public_demo_release_assets;
+        COMMIT;
+      `);
+    }
   }
 
   publish(input) {
@@ -149,7 +167,7 @@ class SqlitePublicDemoRepository {
     this.getPublicDemo(demoId);
     const assets = this.db.prepare(`SELECT asset_id, file_name, flash_offset, size_bytes, sha256
       FROM public_demo_release_assets WHERE demo_id = ? AND version = ? ORDER BY flash_offset`).all(demoId, version);
-    if (assets.length !== 3) throw new PublicDemoError("release_not_found", "Der vollständige Flash-Release wurde nicht gefunden.", 404);
+    if (assets.length !== 4) throw new PublicDemoError("release_not_found", "Der vollständige Flash-Release wurde nicht gefunden.", 404);
     return { demo_id: demoId, version, chip: "esp32s3", flash_mode: "dio", flash_freq: "80m", flash_size: "16MB",
       assets: assets.map((asset) => ({ ...asset, download_url: `/api/public/demos/${encodeURIComponent(demoId)}/releases/${encodeURIComponent(version)}/assets/${asset.asset_id}` })) };
   }
@@ -192,6 +210,7 @@ function normalizeAssets(input) {
   const definitions = {
     bootloader: { file_name: "bootloader.bin", flash_offset: 0x0 },
     partitions: { file_name: "partitions.bin", flash_offset: 0x8000 },
+    boot_app0: { file_name: "boot_app0.bin", flash_offset: 0xe000 },
     firmware: { file_name: "firmware.bin", flash_offset: 0x10000 },
   };
   return Object.fromEntries(Object.entries(definitions).map(([asset_id, definition]) => {

@@ -12,6 +12,7 @@ Sie enthält keine Konten, Projekte, Inventar-, Telemetrie- oder Kundendaten.
 
 Ein Release ist ausschließlich über einen internen Veröffentlichungszugang mit
 `X-Public-Demo-Publisher-Token` anlegbar. Jeder Release enthält nur
-`firmware.bin`, wird einmalig gespeichert und mit SHA-256 ausgeliefert.
+den vier ESP32-Flash-Bestandteilen `bootloader.bin`, `partitions.bin`,
+`boot_app0.bin` und `firmware.bin`, wird einmalig gespeichert und mit SHA-256 ausgeliefert.
 OTA ist durch das Datenmodell ausgeschlossen; die Katalogseite darf nur den
 USB-Flash per WebSerial anbieten.

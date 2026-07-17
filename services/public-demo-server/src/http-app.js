@@ -26,7 +26,7 @@ function createHttpApp({ service, publisherToken, publicDir = nodePath.join(__di
     }
     const manifest = path.match(/^\/api\/public\/demos\/([^/]+)\/releases\/([^/]+)\/flash-manifest$/);
     if (req.method === "GET" && manifest) return sendJson(res, 200, service.getFlashManifest(decodeURIComponent(manifest[1]), decodeURIComponent(manifest[2])));
-    const asset = path.match(/^\/api\/public\/demos\/([^/]+)\/releases\/([^/]+)\/assets\/(bootloader|partitions|firmware)$/);
+    const asset = path.match(/^\/api\/public\/demos\/([^/]+)\/releases\/([^/]+)\/assets\/(bootloader|partitions|boot_app0|firmware)$/);
     if (req.method === "GET" && asset) return sendFirmware(res, service.getAsset(decodeURIComponent(asset[1]), decodeURIComponent(asset[2]), asset[3]));
     const demo = path.match(/^\/api\/public\/demos\/([^/]+)$/);
     if (req.method === "GET" && demo) {
