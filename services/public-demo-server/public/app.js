@@ -2,7 +2,6 @@ const container = document.querySelector("#demos");
 const count = document.querySelector("#count");
 const flow = document.querySelector("#flash-flow");
 const title = document.querySelector("#flash-title");
-const gameOptions = document.querySelector("#game-options");
 const portStep = document.querySelector("#port-step");
 const portButton = document.querySelector("#choose-port");
 const portStatus = document.querySelector("#port-status");
@@ -21,10 +20,10 @@ function localPreview() {
   if (location.hostname !== "127.0.0.1" && location.hostname !== "localhost") return [];
   return [{
     demo_id: "touch-spielesammlung",
-    title: 'ESP32 Touch 2,8" Spielesammlung',
+    title: "Spielfläche",
     description: "Vorschau der ersten Touch-Demo für das ESP32-S3 ES3C28P Touch-Board.",
     board_hardware_item_id: "hardware.processor_board.esp32_s3_es3c28p",
-    games: ["Nibbles"],
+    games: [],
     preview: true,
   }];
 }
@@ -36,11 +35,10 @@ function renderDemos(items) {
     const card = document.createElement("button");
     card.type = "button";
     card.className = "card";
-    const heading = document.createElement("h3"); heading.textContent = demo.title;
-    const description = document.createElement("p"); description.textContent = demo.description;
+    const heading = document.createElement("h3"); heading.textContent = "Spielfläche";
     const board = document.createElement("p"); board.className = "board"; board.textContent = `Unterstütztes Board: ${demo.board_hardware_item_id}`;
     const note = document.createElement("p"); note.className = "note"; note.textContent = demo.preview ? "Lokale Vorschau · Release steht noch aus" : "USB-Flash · kein Konto erforderlich";
-    card.append(heading, description, board, note);
+    card.append(heading, board, note);
     card.addEventListener("click", () => selectDemo(demo));
     return card;
   }));
@@ -49,24 +47,12 @@ function renderDemos(items) {
 function selectDemo(demo) {
   selectedDemo = demo;
   selectedPort = null;
-  title.textContent = demo.title;
-  const buttons = demo.games.map((game) => {
-    const button = document.createElement("button");
-    button.type = "button"; button.className = "game-option"; button.textContent = game;
-    button.addEventListener("click", () => selectGame(button));
-    return button;
-  });
-  gameOptions.replaceChildren(...buttons);
-  if (buttons[0]) selectGame(buttons[0]);
-  flow.hidden = false;
-  flow.scrollIntoView({ behavior: "smooth", block: "start" });
-}
-
-function selectGame(button) {
-  gameOptions.querySelectorAll(".game-option").forEach((item) => item.classList.toggle("selected", item === button));
+  title.textContent = "Spielfläche";
   portStep.hidden = false;
   flashStep.hidden = true;
-  portStatus.textContent = `„${button.textContent}“ ist ausgewählt. Wähle jetzt den COM-Port des angeschlossenen Boards.`;
+  portStatus.textContent = "Wähle jetzt den COM-Port des angeschlossenen Boards.";
+  flow.hidden = false;
+  flow.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 portButton.addEventListener("click", async () => {
@@ -135,7 +121,7 @@ async function flashSelectedDemo() {
   });
   await loader.after("hard_reset");
   await transport.disconnect();
-  flashStatus.textContent = "Nibbles wurde erfolgreich auf das Board geflasht.";
+  flashStatus.textContent = "Spielfläche wurde erfolgreich auf das Board geflasht.";
 }
 
 function hex(value) { return value === undefined ? "unbekannt" : `0x${value.toString(16).padStart(4, "0")}`; }

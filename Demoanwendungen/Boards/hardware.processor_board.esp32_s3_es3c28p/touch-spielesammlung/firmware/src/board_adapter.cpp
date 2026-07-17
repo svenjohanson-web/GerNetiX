@@ -50,7 +50,10 @@ class Es3c28pDisplay : public lgfx::LGFX_Device {
     panelConfig.offset_y = 0;
     panelConfig.offset_rotation = 0;
     panelConfig.readable = false;
-    panelConfig.invert = false;
+    // This ES3C28P panel presents normal RGB565 values as their visual
+    // negative unless display inversion is enabled. Calibrating it here keeps
+    // BoardAdapter::red, ::yellow, etc. true to their names everywhere else.
+    panelConfig.invert = true;
     panelConfig.rgb_order = false;
     panelConfig.dlen_16bit = false;
     panelConfig.bus_shared = true;
@@ -119,6 +122,9 @@ void BoardAdapter::clear(uint16_t color) {
 void BoardAdapter::rectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color) {
   if (frameBufferReady) frameBuffer.fillRect(x, y, w, h, color); else display.fillRect(x, y, w, h, color);
 }
+void BoardAdapter::line(int16_t startX, int16_t startY, int16_t endX, int16_t endY, uint16_t color) {
+  if (frameBufferReady) frameBuffer.drawLine(startX, startY, endX, endY, color); else display.drawLine(startX, startY, endX, endY, color);
+}
 void BoardAdapter::roundedRectangle(int16_t x, int16_t y, int16_t w, int16_t h, int16_t radius, uint16_t color) {
   if (frameBufferReady) frameBuffer.fillRoundRect(x, y, w, h, radius, color); else display.fillRoundRect(x, y, w, h, radius, color);
 }
@@ -134,6 +140,6 @@ void BoardAdapter::text(const char* value, int16_t x, int16_t y, uint16_t color,
 void BoardAdapter::present() { if (frameBufferReady) frameBuffer.pushSprite(0, 0); }
 void BoardAdapter::titleBar(uint16_t color) { rectangle(0, 0, width, 36, color); }
 void BoardAdapter::menuCard(int16_t y, uint16_t color, bool selected) {
-  rectangle(18, y, width - 36, 74, selected ? white : color);
-  rectangle(24, y + 6, width - 48, 62, color);
+  rectangle(18, y, width - 36, 60, selected ? white : color);
+  rectangle(24, y + 6, width - 48, 48, color);
 }

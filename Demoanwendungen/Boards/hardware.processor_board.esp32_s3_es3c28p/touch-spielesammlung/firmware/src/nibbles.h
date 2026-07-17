@@ -1,9 +1,11 @@
 #pragma once
 #include "board_adapter.h"
 
+class SoundDriver;
+
 class Nibbles {
  public:
-  void reset();
+  void reset(SoundDriver& sound);
   void touch(const TouchPoint& point);
   void tick();
   void render(BoardAdapter& board) const;
@@ -23,4 +25,5 @@ class Nibbles {
   int dx_ = 1;
   int dy_ = 0;
   bool running_ = true;
+  SoundDriver* sound_ = nullptr;
 };

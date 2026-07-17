@@ -1,9 +1,11 @@
 #pragma once
 #include "board_adapter.h"
 
+class SoundDriver;
+
 class Frogger {
  public:
-  void reset();
+  void reset(SoundDriver& sound);
   void touch(const TouchPoint& point);
   void tick();
  void render(BoardAdapter& board) const;
@@ -19,4 +21,5 @@ class Frogger {
   int lives_ = 3;
   int level_ = 1;
   bool running_ = true;
+  SoundDriver* sound_ = nullptr;
 };

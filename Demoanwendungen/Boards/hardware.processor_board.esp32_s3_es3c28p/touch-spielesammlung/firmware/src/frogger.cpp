@@ -1,5 +1,7 @@
 #include "frogger.h"
+#include "sound_driver.h"
 
+#include <algorithm>
 #include <cstdio>
 
 namespace {
@@ -19,26 +21,43 @@ void controls(BoardAdapter& b) {
   b.rectangle(92, 276, 56, 32, BoardAdapter::blue); b.text("v", 112, 280, BoardAdapter::white, 3);
   b.rectangle(154, 276, 56, 32, BoardAdapter::blue); b.text(">", 172, 280, BoardAdapter::white, 3);
 }
-bool fullyInsideBoard(int x, int width) { return x >= gridX && x + width <= gridX + boardWidth; }
+bool intersectsBoard(int x, int width) { return x < gridX + boardWidth && x + width > gridX; }
+void clippedRoundedRectangle(BoardAdapter& b, int x, int y, int width, int height, int radius, uint16_t color) {
+  if (!intersectsBoard(x, width)) return;
+  const int left = std::max(x, gridX);
+  const int right = std::min(x + width, gridX + boardWidth);
+  if (left == x && right == x + width) {
+    b.roundedRectangle(x, y, width, height, radius, color);
+    return;
+  }
+  b.rectangle(left, y, right - left, height, color);
+}
+bool insideBoard(int x) { return x >= gridX && x < gridX + boardWidth; }
 }
 
 void Frogger::resetRound() { frogX_ = 4; frogY_ = 8; frogPixelX_ = gridX + frogX_ * cell; }
-void Frogger::reset() {
+void Frogger::reset(SoundDriver& sound) {
+  sound_ = &sound;
   score_ = 0; lives_ = 3; level_ = 1; running_ = true;
   cars_[0] = 10; cars_[1] = 92; cars_[2] = 164;
   logs_[0] = 0; logs_[1] = 72; logs_[2] = 144;
   resetRound();
+  sound_->play(SoundEffect::gameStart);
 }
-void Frogger::loseLife() { if (--lives_ <= 0) running_ = false; else resetRound(); }
+void Frogger::loseLife() {
+  if (--lives_ <= 0) { running_ = false; if (sound_) sound_->play(SoundEffect::gameOver); }
+  else { if (sound_) sound_->play(SoundEffect::lifeLost); resetRound(); }
+}
 
 void Frogger::touch(const TouchPoint& point) {
-  if (!running_) { reset(); return; }
+  if (!running_) { if (sound_) reset(*sound_); return; }
   if (point.y >= 270 && point.x < 90 && frogX_ > 0) --frogX_;
   else if (point.y >= 270 && point.x > 150 && frogX_ < cols - 1) ++frogX_;
   else if (point.y < 270 && point.x >= 80 && point.x <= 160 && frogY_ > 0) --frogY_;
   else if (point.y >= 270 && point.x >= 80 && point.x <= 160 && frogY_ < rows - 1) ++frogY_;
   frogPixelX_ = gridX + frogX_ * cell;
-  if (frogY_ == 0) { score_ += 100; ++level_; resetRound(); }
+  if (sound_) sound_->play(SoundEffect::move);
+  if (frogY_ == 0) { score_ += 100; ++level_; resetRound(); if (sound_) sound_->play(SoundEffect::collect); }
 }
 
 void Frogger::tick() {
@@ -70,12 +89,11 @@ void Frogger::render(BoardAdapter& b) const {
   for (int lane = 0; lane < 3; ++lane) {
     for (int copy = 0; copy < 2; ++copy) {
       int logX = gridX + static_cast<int>(wrap(logs_[lane] + copy * 104, boardWidth));
-      if (fullyInsideBoard(logX, 62)) b.roundedRectangle(logX, gridY + (lane + 1) * cell + 3, 62, 14, 6, BoardAdapter::yellow);
+      clippedRoundedRectangle(b, logX, gridY + (lane + 1) * cell + 3, 62, 14, 6, BoardAdapter::yellow);
       int carX = gridX + static_cast<int>(wrap(cars_[lane] + copy * 92, boardWidth));
-      if (fullyInsideBoard(carX, 34)) {
-        b.roundedRectangle(carX, gridY + (lane + 5) * cell + 5, 34, 11, 4, lane == 1 ? BoardAdapter::yellow : BoardAdapter::red);
-        b.circle(carX + 7, gridY + (lane + 5) * cell + 17, 3, BoardAdapter::black); b.circle(carX + 27, gridY + (lane + 5) * cell + 17, 3, BoardAdapter::black);
-      }
+      clippedRoundedRectangle(b, carX, gridY + (lane + 5) * cell + 5, 34, 11, 4, lane == 1 ? BoardAdapter::yellow : BoardAdapter::red);
+      if (insideBoard(carX + 7)) b.circle(carX + 7, gridY + (lane + 5) * cell + 17, 3, BoardAdapter::black);
+      if (insideBoard(carX + 27)) b.circle(carX + 27, gridY + (lane + 5) * cell + 17, 3, BoardAdapter::black);
     }
   }
   if (running_) { const int x = static_cast<int>(frogPixelX_); const int y = gridY + frogY_ * cell; b.circle(x + 10, y + 10, 8, BoardAdapter::magenta); b.circle(x + 6, y + 6, 2, BoardAdapter::white); b.circle(x + 14, y + 6, 2, BoardAdapter::white); }

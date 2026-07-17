@@ -16,11 +16,11 @@ function createRepository() {
 function release(overrides = {}) {
   return {
     demo_id: "touch-spielesammlung",
-    title: "Touch-Spielesammlung: Nibbles und Frogger",
-    description: "Zwei kleine Touch-Spiele für das ESP32-S3 Touch-Board.",
+    title: "Spielfläche",
+    description: "Touch-Demo für das ESP32-S3 Touch-Board.",
     board_hardware_item_id: "hardware.processor_board.esp32_s3_es3c28p",
     category: "spiele",
-    games: ["Nibbles", "Frogger"],
+    games: [],
     version: "1.0.0",
     firmware_file_name: "firmware.bin",
     bootloader_base64: Buffer.from([0xe9, 0x00]).toString("base64"),
@@ -73,6 +73,11 @@ test("der öffentliche Lesezugang kann keine Release-Veröffentlichung auslösen
   const demoPage = await fetch(`http://127.0.0.1:${port}/`);
   assert.equal(demoPage.status, 200);
   assert.match(await demoPage.text(), /Demoanwendungen/);
+
+  const brandLogo = await fetch(`http://127.0.0.1:${port}/gernetix-logo.png`);
+  assert.equal(brandLogo.status, 200);
+  assert.equal(brandLogo.headers.get("content-type"), "image/png");
+  assert.ok((await brandLogo.arrayBuffer()).byteLength > 1_000);
 
   const forbidden = await fetch(`http://127.0.0.1:${port}/api/internal/public-demos`, {
     method: "POST",

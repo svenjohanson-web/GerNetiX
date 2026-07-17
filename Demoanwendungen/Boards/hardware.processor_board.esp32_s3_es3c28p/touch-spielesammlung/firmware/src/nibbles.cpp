@@ -1,4 +1,5 @@
 #include "nibbles.h"
+#include "sound_driver.h"
 
 #include <cstdio>
 
@@ -50,14 +51,16 @@ void Nibbles::placeSnakeAtLevelStart() {
   }
 }
 
-void Nibbles::reset() {
+void Nibbles::reset(SoundDriver& sound) {
+  sound_ = &sound;
   length_ = 6; growPending_ = 0; score_ = 0; level_ = 1; foodValue_ = 1; running_ = true;
   placeSnakeAtLevelStart();
   food_ = {15, 10}; placeFood();
+  sound_->play(SoundEffect::gameStart);
 }
 
 void Nibbles::touch(const TouchPoint& point) {
-  if (!running_) { reset(); return; }
+  if (!running_) { if (sound_) reset(*sound_); return; }
   if (point.y >= 270 && point.x < 90 && dx_ != 1) { dx_ = -1; dy_ = 0; }
   else if (point.y >= 270 && point.x > 150 && dx_ != -1) { dx_ = 1; dy_ = 0; }
   else if (point.y < 270 && point.x >= 80 && point.x <= 160 && dy_ != 1) { dx_ = 0; dy_ = -1; }
@@ -67,15 +70,15 @@ void Nibbles::touch(const TouchPoint& point) {
 void Nibbles::tick() {
   if (!running_) return;
   Cell next{static_cast<int8_t>(body_[0].x + dx_), static_cast<int8_t>(body_[0].y + dy_)};
-  if (isWall(next.x, next.y)) { running_ = false; return; }
-  for (int i = 0; i < length_; ++i) if (body_[i].x == next.x && body_[i].y == next.y) { running_ = false; return; }
+  if (isWall(next.x, next.y)) { running_ = false; if (sound_) sound_->play(SoundEffect::gameOver); return; }
+  for (int i = 0; i < length_; ++i) if (body_[i].x == next.x && body_[i].y == next.y) { running_ = false; if (sound_) sound_->play(SoundEffect::gameOver); return; }
   const bool ate = next.x == food_.x && next.y == food_.y;
-  if (ate) { growPending_ += foodValue_; score_ += foodValue_ * 10; }
+  if (ate) { growPending_ += foodValue_; score_ += foodValue_ * 10; if (sound_) sound_->play(SoundEffect::collect); }
   if (growPending_ > 0 && length_ < 400) { ++length_; --growPending_; }
   for (int i = length_ - 1; i > 0; --i) body_[i] = body_[i - 1];
   body_[0] = next;
   if (ate) {
-    if (foodValue_ == 9) { level_ = level_ == 10 ? 1 : level_ + 1; foodValue_ = 1; length_ = 6; placeSnakeAtLevelStart(); }
+    if (foodValue_ == 9) { level_ = level_ == 10 ? 1 : level_ + 1; foodValue_ = 1; length_ = 6; placeSnakeAtLevelStart(); if (sound_) sound_->play(SoundEffect::gameStart); }
     else ++foodValue_;
     placeFood();
   }

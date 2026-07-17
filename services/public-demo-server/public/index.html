@@ -10,7 +10,11 @@
   </head>
   <body>
     <header class="shell topbar">
-      <a class="brand" href="/">GerNeti<span>X</span></a>
+      <a class="brand" href="/" aria-label="GerNetiX Demoanwendungen – Startseite">
+        <span class="brand-mark" aria-hidden="true"><img src="gernetix-logo.png" alt=""></span>
+        <span class="brand-wordmark">GerNeti<span>X</span></span>
+      </a>
+      <span class="topbar-context">Demoanwendungen</span>
     </header>
     <main class="shell">
       <section class="hero">
@@ -26,7 +30,6 @@
       <section id="flash-flow" class="flash-flow" hidden aria-labelledby="flash-title">
         <p class="eyebrow">Demo vorbereiten</p>
         <h2 id="flash-title"></h2>
-        <div id="game-options" class="game-options"></div>
         <div id="port-step" hidden>
           <button id="choose-port" class="action-button" type="button">COM-Port wählen</button>
           <p id="port-status" class="step-status">Wähle zuerst einen COM-Port für das angeschlossene Board.</p>

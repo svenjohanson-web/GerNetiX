@@ -8,12 +8,12 @@ const repository = new SqlitePublicDemoRepository(path.join(root, ".runtime", "p
 try {
   const result = repository.publish({
     demo_id: "touch-spielesammlung",
-    title: "ESP32 Touch 2,8\" Spielesammlung",
-    description: "Nibbles und Frogger für das ESP32-S3 ES3C28P Touch-Board.",
+    title: "Spielfläche",
+    description: "Touch-Demo für das ESP32-S3 ES3C28P Touch-Board.",
     board_hardware_item_id: "hardware.processor_board.esp32_s3_es3c28p",
     category: "spiele",
-    games: ["Nibbles", "Frogger"],
-    version: "1.0.15",
+    games: [],
+    version: "1.0.39",
     firmware_file_name: "firmware.bin",
     bootloader_base64: readBase64(path.join(build, "bootloader.bin")),
     partitions_base64: readBase64(path.join(build, "partitions.bin")),

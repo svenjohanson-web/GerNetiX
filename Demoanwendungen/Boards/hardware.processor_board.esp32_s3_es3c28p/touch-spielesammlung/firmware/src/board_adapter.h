@@ -20,11 +20,17 @@ class BoardAdapter {
   static constexpr uint16_t yellow = 0xFFE0;
   static constexpr uint16_t cyan = 0x07FF;
   static constexpr uint16_t magenta = 0xF81F;
+  // GerNetiX application shell: matching the public site's dark-blue surface,
+  // medium-blue panels and light-blue accent.
+  static constexpr uint16_t brandNavy = 0x0083;
+  static constexpr uint16_t brandBlue = 0x11EC;
+  static constexpr uint16_t brandAccent = 0x5F1D;
 
   void begin();
   TouchPoint readTouch();
   void clear(uint16_t color);
   void rectangle(int16_t x, int16_t y, int16_t w, int16_t h, uint16_t color);
+  void line(int16_t startX, int16_t startY, int16_t endX, int16_t endY, uint16_t color);
   void roundedRectangle(int16_t x, int16_t y, int16_t w, int16_t h, int16_t radius, uint16_t color);
   void circle(int16_t x, int16_t y, int16_t radius, uint16_t color);
   void text(const char* value, int16_t x, int16_t y, uint16_t color, uint8_t size = 1);
