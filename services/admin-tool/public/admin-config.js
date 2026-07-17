@@ -335,7 +335,7 @@ function renderResources() {
     metricCard("Free-Projekte", formatNumber(policies.find((item) => item.plan_id === "free")?.max_projects || 0), "harte Obergrenze"),
     metricCard("Free-Speicher", formatBytes(policies.find((item) => item.plan_id === "free")?.max_storage_bytes || 0), "pro Account"),
   ].join("");
-  document.querySelector("#resourcePolicyRows").innerHTML = policies.length ? policies.map((policy) => `<tr data-plan="${escapeHtml(policy.plan_id)}"><td><strong>${escapeHtml(policy.plan_id)}</strong></td><td><input data-field="max_projects" type="number" min="1" value="${Number(policy.max_projects)}" /></td><td><input data-field="max_storage_bytes" type="number" min="1" value="${Number(policy.max_storage_bytes)}" /></td><td><input data-field="max_monthly_traffic_bytes" type="number" min="1" value="${Number(policy.max_monthly_traffic_bytes)}" /></td><td><button type="button">Speichern</button></td></tr>`).join("") : `<tr><td colspan="5" class="empty-cell">${escapeHtml(data.error || "Keine Ressourcenregeln.")}</td></tr>`;
+  document.querySelector("#resourcePolicyRows").innerHTML = policies.length ? policies.map((policy) => `<tr data-plan="${escapeHtml(policy.plan_id)}"><td><strong>${escapeHtml(policy.plan_id)}</strong></td><td><input data-field="max_projects" type="number" min="1" value="${policy.max_projects ?? ""}" placeholder="unbegrenzt" /></td><td><input data-field="max_storage_bytes" type="number" min="1" value="${Number(policy.max_storage_bytes)}" /></td><td><input data-field="max_monthly_traffic_bytes" type="number" min="1" value="${Number(policy.max_monthly_traffic_bytes)}" /></td><td><button type="button">Speichern</button></td></tr>`).join("") : `<tr><td colspan="5" class="empty-cell">${escapeHtml(data.error || "Keine Ressourcenregeln.")}</td></tr>`;
   document.querySelector("#resourceAccountRows").innerHTML = accounts.length ? accounts.map((account) => `<tr><td>${escapeHtml(account.account_id)}</td><td>${formatNumber(account.projects)}</td><td>${formatBytes(account.storage_bytes)}</td></tr>`).join("") : `<tr><td colspan="3" class="empty-cell">Keine gespeicherten Projekte.</td></tr>`;
 }
 
@@ -344,7 +344,7 @@ async function saveResourcePolicy(event) {
   const row = button.closest("tr"); const plan = row.dataset.plan; if (!plan) return;
   button.disabled = true;
   try {
-    const body = Object.fromEntries([...row.querySelectorAll("input")].map((input) => [input.dataset.field, Number(input.value)]));
+    const body = Object.fromEntries([...row.querySelectorAll("input")].map((input) => [input.dataset.field, input.dataset.field === "max_projects" && input.value === "" ? null : Number(input.value)]));
     await putJson(`/api/admin/resources/policies/${encodeURIComponent(plan)}`, body);
     await loadResources(true);
   } catch (error) { alert(error.message); } finally { button.disabled = false; }

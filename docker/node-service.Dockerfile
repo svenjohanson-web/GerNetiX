@@ -12,12 +12,13 @@ RUN apt-get update \
 
 COPY --chown=node:node services ./services
 COPY --chown=node:node basissoftware ./basissoftware
+COPY --chown=node:node tools/migrate-runtime-storage.js ./tools/migrate-runtime-storage.js
 COPY --chown=node:node docker/healthcheck.js ./docker/healthcheck.js
 
 RUN npm ci --omit=dev --prefix services/ai-context-server
 RUN npm ci --omit=dev --prefix services/identity-server
 
-RUN mkdir -p /var/lib/gernetix/services /var/lib/gernetix/identity /var/lib/gernetix/ai-context /var/lib/gernetix/build /var/lib/gernetix/admin-access \
+RUN mkdir -p /var/lib/gernetix/services /var/lib/gernetix/identity /var/lib/gernetix/projects /var/lib/gernetix/telemetry /var/lib/gernetix/ai-context /var/lib/gernetix/build /var/lib/gernetix/admin-access \
   && chown -R node:node /var/lib/gernetix /opt/platformio
 
 USER node

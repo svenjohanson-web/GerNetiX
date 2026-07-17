@@ -110,14 +110,29 @@ http://127.0.0.1:4600/admin/
 
 Compose legt benannte Volumes an:
 
-- `identity_state`: Identity-Accounts und Credentials
-- `service_state`: aktueller gemeinsamer SQLite-Service-State
+- `identity_state`: Identity-Accounts, Credentials, Sessions und Push-Subscriptions
+- `project_state`: Projekte, Projektquellen, Build-Metadaten und Ressourcenprofile des Project Server
+- `telemetry_state`: konto- und projektpartitionierte Messwerte, Ereignisse und Retention des Telemetry Server
+- `service_state`: gemeinsamer SQLite-State der verbleibenden technischen Dienste; keine Projekt- oder Telemetrie-Daten nach der Migration
 - `ai_context_postgres_data`: fuehrende AI-Context-PostgreSQL-/pgvector-Datenbank
 - `ai_context_state`: bisherige AI-Context-SQLite, nur fuer die einmalige automatische Uebernahme und als Rueckfallkopie
 - `build_state`: Build-Caches und Artefakte
+- `public_demo_state`: ausschliesslich veröffentlichte Demo-Metadaten und immutable USB-Firmware-Releases; keine Konto-, Projekt- oder Telemetriedaten
 - `mqtt_data` und `mqtt_log`: Mosquitto
 
 `docker compose down` behaelt diese Volumes. `docker compose down -v` loescht sie und darf fuer einen produktiven Stand nicht verwendet werden.
+
+### Einmalige Trennung bestehender Service-Daten
+
+Bei einem Upgrade von der bisherigen gemeinsamen `service_state`-SQLite muessen Project Server und Telemetry Server vor ihrem ersten produktiven Start angehalten sein. Der einmalige, idempotente Migrations-Container kopiert nur die Tabellen mit dem Praefix `project_server_` beziehungsweise die drei `telemetry_*`-Tabellen in die neuen Volumes. Er kopiert keine Identity- oder sonstigen Service-Tabellen und beendet sich bei einem bereits belegten Zielvolume ohne Migrationsmarker.
+
+```bash
+docker compose --env-file .env.vps -f compose.vps.yaml stop project-server telemetry-server
+docker compose --env-file .env.vps -f compose.vps.yaml --profile storage-migration run --rm runtime-storage-migration
+docker compose --env-file .env.vps -f compose.vps.yaml up -d project-server telemetry-server
+```
+
+Die Ausgabe nennt jede kopierte Tabelle und Zeilenanzahl. Erst danach darf das bisherige `service_state`-Volume aus dem Backup-/Restore-Plan als gemeinsamer Runtime-State ohne Projekt- und Telemetrie-Inhalte behandelt werden.
 
 ## Update
 

@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Vorgefertigte GerNetiX-Demoanwendungen für unterstützte Boards – sicher per USB ausprobieren.">
+    <meta name="theme-color" content="#07111e">
+    <title>GerNetiX Demoanwendungen</title>
+    <link rel="stylesheet" href="app.css">
+  </head>
+  <body>
+    <header class="shell topbar">
+      <a class="brand" href="/">GerNeti<span>X</span></a>
+      <a class="login-link" href="/login">Anmelden</a>
+    </header>
+    <main class="shell">
+      <section class="hero">
+        <p class="eyebrow">Demoanwendungen</p>
+        <h1>Ausprobieren.<br><em>Direkt auf dem Board.</em></h1>
+        <p>Hier findest du fertige, geprüfte Anwendungen für bekannte Boards. Du brauchst kein Konto: Board per USB anschließen, Demo auswählen und lokal flashen.</p>
+        <p class="safety">Nur USB-Flash. Kein OTA, kein Fernzugriff und keine Projekt- oder Kontodaten.</p>
+      </section>
+      <section aria-labelledby="demo-title">
+        <div class="section-heading"><h2 id="demo-title">Verfügbare Demos</h2><span id="count"></span></div>
+        <div id="demos" class="cards" aria-live="polite"><p class="loading">Demos werden geladen …</p></div>
+      </section>
+      <section id="flash-flow" class="flash-flow" hidden aria-labelledby="flash-title">
+        <p class="eyebrow">Demo vorbereiten</p>
+        <h2 id="flash-title"></h2>
+        <div id="game-options" class="game-options"></div>
+        <div id="port-step" hidden>
+          <button id="choose-port" class="action-button" type="button">COM-Port wählen</button>
+          <p id="port-status" class="step-status">Wähle zuerst einen COM-Port für das angeschlossene Board.</p>
+        </div>
+        <div id="flash-step" hidden>
+          <button id="flash-button" class="action-button" type="button" disabled>Flashen</button>
+          <p id="flash-status" class="step-status"></p>
+        </div>
+      </section>
+    </main>
+    <footer class="shell">© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</footer>
+    <script src="app.js"></script>
+  </body>
+</html>

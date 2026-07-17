@@ -189,16 +189,16 @@
     <text class="clusterTitle" x="630" y="764">SQL-Persistenz / Wissensbasis</text>
 
     <rect class="node store" x="635" y="795" width="220" height="62" rx="10"/>
-    <text class="titleText" x="745" y="820" text-anchor="middle">Runtime SQLite</text>
-    <text class="smallText" x="745" y="840" text-anchor="middle">.runtime/gernetix-services.sqlite</text>
+    <text class="titleText" x="745" y="820" text-anchor="middle">Projekt-Speicher SQLite</text>
+    <text class="smallText" x="745" y="840" text-anchor="middle">gernetix-projects.sqlite</text>
 
     <rect class="node store" x="895" y="795" width="220" height="62" rx="10"/>
-    <text class="titleText" x="1005" y="820" text-anchor="middle">Kanonischer Graph</text>
-    <text class="smallText" x="1005" y="840" text-anchor="middle">model-graph.sqlite</text>
+    <text class="titleText" x="1005" y="820" text-anchor="middle">Telemetrie SQLite</text>
+    <text class="smallText" x="1005" y="840" text-anchor="middle">gernetix-telemetry.sqlite</text>
 
     <rect class="node store" x="1155" y="795" width="220" height="62" rx="10"/>
-    <text class="titleText" x="1265" y="820" text-anchor="middle">Projektdateien</text>
-    <text class="smallText" x="1265" y="840" text-anchor="middle">keine Runtime-Persistenz</text>
+    <text class="titleText" x="1265" y="820" text-anchor="middle">Gemeinsamer Runtime-State</text>
+    <text class="smallText" x="1265" y="840" text-anchor="middle">gernetix-services.sqlite</text>
 
     <rect class="node store" x="895" y="870" width="220" height="46" rx="10"/>
     <text class="titleText" x="1005" y="890" text-anchor="middle">AI Context PostgreSQL</text>

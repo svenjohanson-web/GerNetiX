@@ -81,6 +81,7 @@ function deviceOnboarding() {
       model: DeviceOnboardingModel,
       getJson,
       postJson,
+      deleteJson,
       delay,
       loadIdeEsptoolModule,
       fallbackProcessorBoards,
@@ -162,6 +163,7 @@ document.querySelectorAll("[data-device-management-route]").forEach((button) => 
 });
 document.querySelector("#enablePushButton")?.addEventListener("click", enablePushNotifications);
 document.querySelector("#sendPushTestButton")?.addEventListener("click", sendPushTestNotification);
+document.querySelector("#pushProjectSelect")?.addEventListener("change", (event) => { state.activeProjectId = event.target.value; });
 document.querySelector("#ideProjectBrowser").addEventListener("click", (event) => {
   const deviceConnectionsButton = event.target.closest("[data-device-connections]");
   if (deviceConnectionsButton) {
@@ -191,6 +193,11 @@ document.querySelector("#ideProjectBrowser").addEventListener("click", (event) =
   const componentFeaturesButton = event.target.closest("[data-component-features]");
   if (componentFeaturesButton) {
     openComponentFeatures();
+    return;
+  }
+  const workerDispatcherButton = event.target.closest("[data-worker-dispatcher-configuration]");
+  if (workerDispatcherButton) {
+    openWorkerDispatcherConfiguration(workerDispatcherButton.dataset.workerDispatcherConfiguration);
     return;
   }
   const webserverConfigurationButton = event.target.closest("[data-webserver-configuration]");
@@ -232,7 +239,13 @@ document.addEventListener("keydown", (event) => {
   event.preventDefault();
   saveSource();
 });
-document.querySelector("#ideComponentFeaturesView").addEventListener("submit", saveComponentFeatures);
+document.querySelector("#ideComponentFeaturesView").addEventListener("submit", (event) => {
+  if (event.target.matches("[data-event-configuration-form]")) {
+    saveEventConfiguration(event);
+    return;
+  }
+  saveComponentFeatures(event);
+});
 document.querySelector("#idePwaDashboardView").addEventListener("click", (event) => {
   if (event.target.closest("[data-open-pwa-dashboard-editor]")) openPwaDashboardEditor();
 });
@@ -578,6 +591,13 @@ async function loadSensorCatalog() {
 
 function renderDashboard() {
   const developmentProjects = accountDevelopmentProjects();
+  const pushProjectSelect = document.querySelector("#pushProjectSelect");
+  if (pushProjectSelect) {
+    pushProjectSelect.innerHTML = developmentProjects.length
+      ? developmentProjects.map((project) => `<option value="${escapeAttribute(project.id)}">${escapeHtml(project.name)}</option>`).join("")
+      : `<option value="">Kein Projekt vorhanden</option>`;
+    pushProjectSelect.value = developmentProjects.some((project) => project.id === state.activeProjectId) ? state.activeProjectId : developmentProjects[0]?.id || "";
+  }
   document.querySelector("#dashboardSummary").innerHTML = [
     ["Account", state.account.username],
     ["Entwicklungsprojekte", developmentProjects.length],
@@ -1126,6 +1146,16 @@ function projectVirtualTreeEntries(project) {
       });
       return;
     }
+    if (["event_worker", "event_dispatcher"].includes(component.abstract_type)
+      || /ereignis-(?:worker|dispatcher)/i.test(String(component.label || ""))) {
+      entries.push({
+        path: `Komponenten/${label}/Konfiguration/Software/Regel-Konfiguration`,
+        role: "",
+        virtualAction: "worker-dispatcher-configuration",
+        componentType: /dispatcher/i.test(String(component.label || "")) ? "dispatcher" : "worker",
+      });
+      return;
+    }
     const configurationPath = ["sensor", "actuator", "iot_device"].includes(component.abstract_type)
       ? "Konfiguration/Hardware/Eigenschaften"
       : "Konfiguration/Eigenschaften";
@@ -1216,6 +1246,8 @@ function renderSourceTree(node, depth = 0, openFolders = new Set()) {
               ? `data-board-properties="${escapeAttribute(file.componentId || "")}"`
             : file.virtualAction === "hardware-configuration"
               ? "data-hardware-configuration"
+            : file.virtualAction === "worker-dispatcher-configuration"
+              ? `data-worker-dispatcher-configuration="${escapeAttribute(file.componentType || "worker")}"`
             : `data-source-path="${escapeAttribute(file.path)}"`} style="--depth:${depth + 1}">
         <span>${escapeHtml(file.name)}</span>
       </button>
@@ -1249,6 +1281,88 @@ function openComponentFeatures() {
   document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Software/Eigenschaften`;
   renderComponentFeatures(project);
   renderIdeViewMode(project);
+}
+
+function openWorkerDispatcherConfiguration(kind) {
+  return renderEventConfiguration(kind);
+  state.ideViewMode = "component-features";
+  const target = document.querySelector("#ideComponentFeaturesView");
+  const dispatcher = kind === "dispatcher";
+  document.querySelector("#ideActiveSourceLabel").textContent = dispatcher ? "Ereignis-Dispatcher · Konfiguration" : "Ereignis-Worker · Konfiguration";
+  target.innerHTML = dispatcher
+    ? `<form class="component-features-form"><header><p class="eyebrow">Ereignis-Dispatcher</p><h3>Zustellung konfigurieren</h3></header><label>Bedingung<select><option>Folgeereignis liegt vor</option><option>Statuswert erfüllt Bedingung</option></select></label><label>Zielgeräte<input placeholder="z. B. IoT-Zielgerät(e)"></label><label><input type="checkbox"> Projekt-PWA per Push benachrichtigen</label></form>`
+    : `<form class="component-features-form"><header><p class="eyebrow">Background Worker</p><h3>Auslöser konfigurieren</h3></header><label>Ereignisname<input placeholder="z. B. tägliche Auswertung"></label><label>Auslöser<select><option>Timer</option><option>Projekt-Ereignis</option></select></label><label>Zyklus<input placeholder="z. B. alle 15 Minuten"></label></form>`;
+  renderIdeViewMode(projectById(state.activeProjectId));
+}
+
+function renderEventConfiguration(kind) {
+  state.ideViewMode = "component-features";
+  const project = projectById(state.activeProjectId);
+  const target = document.querySelector("#ideComponentFeaturesView");
+  const dispatcher = kind === "dispatcher";
+  const configuration = project?.viewManifest?.event_configuration?.[kind] || {};
+  const targetDevices = projectHardwareComponents(project).filter((component) => component.abstract_type === "iot_device" && /ziel|target/i.test(`${component.label || ""} ${component.component_path || ""}`));
+  document.querySelector("#ideActiveSourceLabel").textContent = dispatcher ? "Ereignis-Dispatcher · Konfiguration" : "Ereignis-Worker · Konfiguration";
+  target.innerHTML = dispatcher
+    ? `<form class="component-features-form" data-event-configuration-form data-event-configuration-kind="dispatcher">
+        <header><p class="eyebrow">Ereignis-Dispatcher</p><h3>Zustellung konfigurieren</h3></header>
+        <p class="helper-text">Der Dispatcher stellt nur ein vom Worker freigegebenes Folgeereignis zu. Er verarbeitet keine Gerätedaten.</p>
+        <label>Bedingung<select name="condition_type"><option value="event_available" ${configuration.condition_type !== "field_equals" ? "selected" : ""}>Folgeereignis liegt vor</option><option value="field_equals" ${configuration.condition_type === "field_equals" ? "selected" : ""}>Ereigniswert erfüllt Bedingung</option></select></label>
+        <label>Ereigniswert (optional)<input name="condition_value" maxlength="120" value="${escapeAttribute(configuration.condition_value || "")}" placeholder="z. B. alarm"></label>
+        <label>Zielgerät<select name="target_component_id"><option value="">Zielgerät auswählen</option>${targetDevices.map((component) => `<option value="${escapeAttribute(component.component_id || "")}" ${configuration.target_component_id === component.component_id ? "selected" : ""}>${escapeHtml(componentTreeLabel(component))}</option>`).join("")}</select></label>
+        <label class="event-configuration-checkbox"><input type="checkbox" name="push_enabled" ${configuration.push_enabled ? "checked" : ""}> Projekt-PWA per Push benachrichtigen</label>
+        <footer><span class="form-status" data-event-configuration-status></span><button type="submit">Konfiguration speichern</button></footer>
+      </form>`
+    : `<form class="component-features-form" data-event-configuration-form data-event-configuration-kind="worker">
+        <header><p class="eyebrow">Ereignis-Worker</p><h3>Auslöser konfigurieren</h3></header>
+        <p class="helper-text">Der Worker erhält zeitlich begrenzten Projektzugriff. Die Ausführung selbst wird später durch eine freigegebene Regel ergänzt.</p>
+        <details class="worker-rule-help"><summary>Hilfe zur Regelsprache</summary>
+          <p>Ein Regelausdruck ergibt immer <code>true</code> oder <code>false</code>. Er entscheidet nur, ob ein Folgeereignis freigegeben wird. Zeitplan, Datenzugriff und Aktion werden außerhalb der Regel konfiguriert.</p>
+          <table><thead><tr><th>Gültige Werte</th><th>Bedeutung</th></tr></thead><tbody>
+            <tr><td><code>event.type</code></td><td>Name des eingegangenen Ereignisses</td></tr>
+            <tr><td><code>event.value</code></td><td>Mitgelieferter Text- oder Zahlenwert</td></tr>
+            <tr><td><code>state.&lt;name&gt;</code></td><td>Nur ein im Projektmodell ausdrücklich deklarierter Zustandswert</td></tr>
+          </tbody></table>
+          <p><strong>Erlaubte Operatoren:</strong> <code>==</code>, <code>!=</code>, <code>&lt;</code>, <code>&lt;=</code>, <code>&gt;</code>, <code>&gt;=</code>, <code>&amp;&amp;</code>, <code>||</code> und <code>!</code>.</p>
+          <p><strong>Beispiele:</strong></p>
+          <pre><code>event.type == "taste_gedrueckt"
+event.type == "timer_tick" &amp;&amp; state.hunger &gt;= 80
+event.type == "taste_gedrueckt" || event.type == "notruf"</code></pre>
+          <p>Schleifen, eigene Funktionen, Netzwerk-, Datei- und beliebige Speicherzugriffe sind nicht erlaubt.</p>
+        </details>
+        <label>Ereignisname<input name="event_name" maxlength="80" required value="${escapeAttribute(configuration.event_name || "")}" placeholder="z. B. tägliche Auswertung"></label>
+        <label>Auslöser<select name="trigger_type"><option value="timer" ${configuration.trigger_type !== "project_event" ? "selected" : ""}>Timer</option><option value="project_event" ${configuration.trigger_type === "project_event" ? "selected" : ""}>Projekt-Ereignis</option></select></label>
+        <label>Timer-Zyklus in Minuten<input name="cycle_minutes" type="number" min="1" max="10080" value="${escapeAttribute(configuration.cycle_minutes || 15)}"></label>
+        <footer><span class="form-status" data-event-configuration-status></span><button type="submit">Konfiguration speichern</button></footer>
+      </form>`;
+  renderIdeViewMode(project);
+}
+
+async function saveEventConfiguration(event) {
+  event.preventDefault();
+  const form = event.target;
+  const project = projectById(state.activeProjectId);
+  const status = form.querySelector("[data-event-configuration-status]");
+  const data = new FormData(form);
+  if (!project) return;
+  status.textContent = "Wird gespeichert...";
+  try {
+    const response = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/event-configuration`, {
+      kind: form.dataset.eventConfigurationKind,
+      event_name: data.get("event_name"),
+      trigger_type: data.get("trigger_type"),
+      cycle_minutes: data.get("cycle_minutes"),
+      condition_type: data.get("condition_type"),
+      condition_value: data.get("condition_value"),
+      target_component_id: data.get("target_component_id"),
+      push_enabled: data.get("push_enabled") === "on",
+    });
+    state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    renderEventConfiguration(form.dataset.eventConfigurationKind);
+    document.querySelector("[data-event-configuration-status]").textContent = "Gespeichert.";
+  } catch (error) {
+    status.textContent = error.message || "Die Konfiguration konnte nicht gespeichert werden.";
+  }
 }
 
 async function openDriverManagement() {
@@ -2823,6 +2937,8 @@ function delay(ms) {
 
 async function enablePushNotifications() {
   const status = document.querySelector("#pushStatus");
+  const projectId = selectedPushProjectId();
+  if (!projectId) { status.textContent = "Lege zuerst ein Projekt an oder waehle eines aus."; return; }
   if (!window.isSecureContext || !("PushManager" in window) || !("Notification" in window)) { status.textContent = "Push ist nur in der installierten HTTPS-App auf diesem iPhone verfuegbar."; return; }
   try {
     const registration = await navigator.serviceWorker.ready;
@@ -2831,16 +2947,21 @@ async function enablePushNotifications() {
     if (Notification.permission === "default" && await Notification.requestPermission() !== "granted") { status.textContent = "Push-Erlaubnis wurde nicht erteilt."; return; }
     if (Notification.permission !== "granted") { status.textContent = "Push ist in den iPhone-Einstellungen deaktiviert."; return; }
     const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: base64UrlToBytes(config.public_key) });
-    await postJson("/api/push/subscribe", subscription.toJSON());
-    status.textContent = "Push-Meldungen sind auf diesem Geraet aktiv.";
+    await postJson(`/api/push/projects/${encodeURIComponent(projectId)}/subscribe`, subscription.toJSON());
+    status.textContent = "Push-Meldungen sind auf diesem Geraet fuer das ausgewaehlte Projekt aktiv.";
   } catch (error) { status.textContent = error.message || "Push konnte nicht aktiviert werden."; }
 }
 async function sendPushTestNotification() {
   const status = document.querySelector("#pushStatus");
+  const projectId = selectedPushProjectId();
+  if (!projectId) { status.textContent = "Waehle zuerst ein Projekt aus."; return; }
   try {
-    const result = await postJson("/api/push/test", {});
-    status.textContent = result.push?.enabled ? "Testnachricht wurde an deine aktivierten Geraete gesendet." : "Push wird vom Server noch vorbereitet.";
+    const result = await postJson(`/api/push/projects/${encodeURIComponent(projectId)}/test`, {});
+    status.textContent = result.push?.enabled ? "Testnachricht wurde an die aktivierten Geraete dieses Projekts gesendet." : "Push wird vom Server noch vorbereitet.";
   } catch (error) { status.textContent = error.message || "Testnachricht konnte nicht gesendet werden."; }
+}
+function selectedPushProjectId() {
+  return String(document.querySelector("#pushProjectSelect")?.value || state.activeProjectId || "").trim();
 }
 function base64UrlToBytes(value) { const padded = String(value).replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(String(value).length / 4) * 4, "="); return Uint8Array.from(atob(padded), (char) => char.charCodeAt(0)); }
 

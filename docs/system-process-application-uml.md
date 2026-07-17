@@ -46,6 +46,7 @@ flowchart LR
     provisioning["Provisioning Tool Server<br/>:4500"]
     recovery["Recovery Tool Server<br/>:5100"]
     hardwareCatalog["Hardware Catalog<br/>:4910"]
+    publicDemo["Öffentlicher Demo-Katalog<br/>nur veröffentlichte USB-Releases<br/>:4920"]
     hardwareShop["Hardware Shop<br/>:4900"]
     aiUsage["AI Usage Server<br/>Credits + Quellenrating<br/>:5000"]
     aiContext["AI Context Server<br/>Grants + Policy + Prompts<br/>Architektur-, Intent- und Help-Wissen<br/>:5500"]
@@ -73,7 +74,11 @@ flowchart LR
   end
 
   subgraph storage["Persistenz / Wissensbasis"]
-    runtimeDb[("Runtime SQLite<br/>.runtime/gernetix-services.sqlite")]
+    identityDb[("Identity SQLite<br/>gernetix-identity.sqlite")]
+    projectDb[("Projekt-Speicher SQLite<br/>gernetix-projects.sqlite")]
+    telemetryDb[("Telemetrie SQLite<br/>gernetix-telemetry.sqlite")]
+    publicDemoDb[("Öffentliche Demo SQLite<br/>gernetix-public-demos.sqlite")]
+    runtimeDb[("Gemeinsamer Runtime-State<br/>gernetix-services.sqlite")]
     aiContextDb[("AI Context PostgreSQL + pgvector<br/>produktive Wissens- und Vektordaten")]
     graphDb[("Kanonischer SQLite Graph<br/>tools/yaml-graph-sqlite/out/model-graph.sqlite")]
     repoFiles[("Projektdateien<br/>README, data, services, tools, git<br/>keine Runtime-Persistenz")]
@@ -137,10 +142,12 @@ flowchart LR
   contextManager --> graphDb
   persistence --> runtimeDb
 
-  projectServer -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  identity -. "Accounts, Sessions und Push-Subscriptions" .-> identityDb
+  projectServer -. "Projekte, Quellen und Build-Metadaten" .-> projectDb
+  publicDemo -. "veröffentlichte Metadaten + immutable firmware.bin" .-> publicDemoDb
   buildDeploy -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   deviceManagement -. "direkte SQLite-State-Persistenz" .-> runtimeDb
-  telemetryServer -. "TelemetryMeasurement, TelemetryEvent,<br/>Retention in SQLite" .-> runtimeDb
+  telemetryServer -. "TelemetryMeasurement, TelemetryEvent,<br/>Retention in SQLite" .-> telemetryDb
   provisioning -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   recovery -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   hardwareShop -. "direkte SQLite-State-Persistenz" .-> runtimeDb
@@ -175,10 +182,11 @@ flowchart LR
 | Admin Access Server + Admin Console | 4610 | `http://127.0.0.1:4610/admin/` | Eigene Admin-Login-PWA, persistente Sitzungen und serverseitige Rollenpruefung; proxyed danach die Admin-Funktionen |
 | Admin Tool API | 4600 | nur intern durch Admin Access Server | Account-Blatt, KI Usage, zentrale Ressourcenlimits pro Nutzerprofil, Consent-/Audit-nahe API und LLM-Routing |
 | Device Management Server | 4700 | `http://127.0.0.1:4700/` | Devices, Ownership, Purchase Contexts, Support-Status |
-| Telemetry Server | 5600 | nur intern im Docker-Netz | Nimmt bereits authentifizierte Board-Telemetrie an, prueft Board-/Projektbesitz, persistiert Messwerte und Ereignisse mit Retention und loest gezielten Push aus |
-| Project Server | 4800 | `http://127.0.0.1:4800/` | Projekte, Quellen, Build-Jobs, Learning Feedback sowie SQLite-persistierte Ressourcenlimits und Nutzungswerte |
+| Telemetry Server | 5600 | nur intern im Docker-Netz | Nimmt bereits authentifizierte Board-Telemetrie an, prueft Board-/Projektbesitz, persistiert Messwerte und Ereignisse in der eigenen konto- und projektpartitionierten Telemetrie-SQLite mit Retention und kann gezielten Projekt-Push ausloesen |
+| Project Server | 4800 | `http://127.0.0.1:4800/` | Projekte, Quellen, Build-Jobs, Learning Feedback sowie SQLite-persistierte Ressourcenlimits und Nutzungswerte in eigener Projekt-SQLite |
 | Hardware Shop | 4900 | `http://127.0.0.1:4900/` | Angebote, Warenkorb, Bestellung, Purchase Context; liest Hardwaredaten als Client des Hardware Catalog |
 | Hardware Catalog | 4910 | `http://127.0.0.1:4910/` | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als SQLite-persistente Quelle |
+| Öffentlicher Demo-Katalog | 4920 | nur lesbarer öffentlicher Katalog-Endpunkt | Redaktionell veröffentlichte Board-Demos und immutable `firmware.bin`-Releases in eigener SQLite; keine Projekte, Konten, Inventar oder OTA |
 | AI Usage Server | 5000 | `http://127.0.0.1:5000/` | Credits, Quellenrating je Account, Preflight, Usage Events, Cost Controls |
 | Context Manager | 5050 | `http://127.0.0.1:5050/context-manager/` | Projektkontext, Vorschlaege, Context Packs |
 | Recovery Tool Server | 5100 | `http://127.0.0.1:5100/` | eigenstaendige Nutzer-/Support-HMI, Recovery-Sessions, Credential-Erneuerung, Connectivity-Recovery |
@@ -217,7 +225,7 @@ flowchart LR
 | MQTT-Telemetrieadapter | Telemetry Server | Leitet nur die durch mTLS/MQTT-ACL bereits dem Board zugeordnete Telemetrie und Ereignisse ueber den internen Token-Kontrakt weiter |
 | Telemetry Server | Device Management Server | Prueft, ob das sendende Board dem Account des Projekts gehoert |
 | Telemetry Server | Project Server | Leitet den Projektbesitzer serverseitig ab |
-| Telemetry Server | Identity Server | Uebergibt nur bereits persistierte, als Push markierte Board-Ereignisse an die bestehende accountgebundene Push-Route |
+| Telemetry Server | Identity Server | Uebergibt nur bereits persistierte, als Push markierte Board-Ereignisse mit `account_id` und `project_id`; Identity liefert nur an Subscriptions desselben Projekts |
 | ESP32 Basissoftware | Build & Deploy Server | Firmware-Artefakte per HTTP/HTTPS laden |
 | GerNetiX Prozess-Monitor | VPS-Host, Nginx und MQTT Broker | Liest feste Schutzregeln und ihren Nachweisstatus ueber den konfigurierten WireGuard-/SSH-Zugang; stellt keinen generischen Shellzugriff im Renderer bereit |
 | Recovery Tool HMI | Recovery Tool Server | Nutzer-/Support-Flow zum Retten von ProcessorBoards |
@@ -237,7 +245,7 @@ flowchart LR
 
 ## Hinweise
 
-- Der Persistence Server ist ein HTTP-Service fuer generische State-Dokumente. Mehrere Services nutzen aktuell zusaetzlich direkte SQLite-State-Persistenz ueber gemeinsame Repository-/Store-Bausteine.
+- Identity, Project Server und Telemetry Server besitzen getrennte SQLite-Dateien beziehungsweise Docker-Volumes. Die Zuordnung in Projekt- und Telemetriespeicher verwendet ausschliesslich technische `account_id`-/`user_id`- und `project_id`-Werte; Klaridentitaeten bleiben in der Identity-SQLite. Weitere technische Dienste nutzen weiterhin den gemeinsamen Runtime-State, bis sie fachlich separat ausgegliedert werden.
 - Der AI Context Server nutzt auf dem VPS eine eigene PostgreSQL-17-Datenbank mit pgvector. Kontext-Grants, Prompt-Grundlagen, Architektur-Bausteine samt Embeddings, globale Kontext-Policy und Audit-Events bleiben getrennt vom allgemeinen Runtime-State. Eine vorhandene AI-Context-SQLite wird einmalig automatisch importiert; lokal bleibt SQLite als Fallback moeglich.
 - GerNetiX Help sucht vor jedem Modellaufruf ausschliesslich kuratiertes Help-Wissen im AI Context Server. Nur die passenden Artikel werden dem lokalen Ollama-Modell als Kontext gegeben; ohne Treffer antwortet Help ohne Modellaufruf. Das Admin Tool pflegt diese Agenten-Wissenseintraege getrennt von den sichtbaren Hilfeartikeln.
 - Unsichere Architektur-Erweiterungen werden im AI Context Server zu deduplizierten, priorisierten Klaerfaellen zusammengefuehrt. Das Admin Tool kann sie bestaetigen, korrigieren, priorisieren, zurueckstellen oder ignorieren. Nur bestaetigte oder korrigierte Bedeutungen werden als globale oder accountisolierte Intent-Beispiele eingebettet und bei spaeteren Interpretationen gesucht; ein separates Ticketsystem ist dafuer nicht erforderlich.
@@ -248,7 +256,7 @@ flowchart LR
 - Der Code-Explorer folgt einem kontrollierten Coding-Agent-Ansatz mit OpenAI Responses Function Calling: Die IDE uebergibt beim Start nur Nutzeraufgabe und aktuellen Pfad; Folgefragen setzen dieselbe Responses-Konversation fort. Das Modell nutzt serverseitig `find_and_read_project_sources`, das Suche und Lesen fuer hoechstens drei relevante Treffer in einem Schritt verbindet. Nur dadurch gelesene Projektpfade duerfen als Aenderung vorgeschlagen werden. Eine feste Uebergabe der ersten 40, einer willkuerlichen Treffermenge oder aller Projektdateien ist nicht zulaessig; Schreibzugriffe bleiben bestaetigungspflichtig.
 - Der eigenstaendige Desktop-Prozessmonitor zeigt persistierte Statistiken ausgehender Schnittstellenaufrufe. Instrumentierte Services schreiben Quelle, Ziel, Methode, Route, Status und Dauer in die gemeinsame Runtime-SQLite-Tabelle `gernetix_external_interface_calls`; der Monitor liest und aggregiert diese Daten, ohne selbst als Fachaufruf mitgezaehlt zu werden. Zusaetzlich liest er Warnungen und Fehler aus `admin_tool_system_events` sowie fehlgeschlagene Schnittstellenaufrufe und zeigt sie automatisch als Auffaelligkeiten der letzten 24 Stunden. Damit erscheint etwa ein nicht erreichbarer Hardware Catalog ohne manuellen Aufruf des Admin Tools in der Desktop-App. Produzenten sind der Identity Server einschliesslich seiner GerNetiX-Abhaengigkeiten und LLM-Provider sowie der Build-&-Deploy-Server fuer MQTT Publish, Subscribe und Receive. MQTT-Topics werden vor der Persistenz von Device-Kennungen bereinigt. Unter Windows zeigt und steuert der Monitor ausserdem ausschliesslich den fest konfigurierten WireGuard-Tunnel `gernetix-vps`. Eine eigene Schutzregelansicht vergleicht versionierte lokale Vorgaben mit festen read-only VPS-Nachweisen fuer nftables, OpenSSH, Fail2ban, Nginx, Mosquitto und Docker-Portbindungen. Jede Regel zeigt Ausfuehrungsort, Grenzwert, Status und empfohlene Massnahme; offene Backup-, Alarmierungs- und Log-Retention-Massnahmen bleiben sichtbar. Die Abfrage wird gecacht und nur bei geoeffneter Ansicht oder manueller Aktualisierung ausgefuehrt. Der Renderer erhaelt weder generischen Zugriff auf Windows-Dienste noch auf SSH oder eine Shell.
 - Die fruehere allgemeine Chat-Funktion und ihr separater Proxy sind entfernt. KI-gestuetzte Architekturarbeit laeuft ueber den Architektur-Discovery-Dialog der Entwicklungsplattform.
-- Die installierbare Plattform-PWA ist keine zweite Anwendung und kein eigener Serverprozess: Sie verwendet denselben Identity-/Plattform-Origin, registriert pro angemeldetem Account eine Web-Push-Subscription und empfaengt accountgebundene Meldungen. Ein Board liefert sein Ereignis nicht direkt an einen Push-Provider, sondern ueber einen mTLS-/MQTT-authentifizierten Adapter an die token-geschuetzte interne Identity-Route. Identity loest die Account-Owner im Device Management auf und sendet nur an deren PWA-Subscriptions. VPS-Sicherheitsalarme verwenden dieselbe Technik, aber ausschliesslich die explizit konfigurierte Sicherheitsalarm-Empfaengergruppe; ein globaler Broadcast ist nicht erlaubt.
+- Die installierbare Plattform-PWA ist keine zweite Anwendung und kein eigener Serverprozess: Sie verwendet denselben Identity-/Plattform-Origin und registriert pro angemeldetem Account und ausgewaehltem Projekt eine Web-Push-Subscription. Ein Board liefert sein Ereignis nicht direkt an einen Push-Provider, sondern ueber einen mTLS-/MQTT-authentifizierten Adapter mit serverseitig abgeleiteten `account_id` und `project_id` an die token-geschuetzte interne Identity-Route. Identity sendet ausschliesslich an PWA-Subscriptions desselben Kontos und Projekts. VPS-Sicherheitsalarme verwenden eine getrennte, explizit konfigurierte Sicherheitsalarm-Empfaengergruppe; ein globaler Broadcast ist nicht erlaubt.
 - Plattform-PWA, Desktop-Prozessmonitor und private Admin Console folgen einer gemeinsamen Operator-Sprache mit den Bereichen Uebersicht, Betrieb und Sicherheit. Die gemeinsame Oberflaeche vereinheitlicht Orientierung und Bedienung, ersetzt aber keine Berechtigungsgrenze: Die PWA bleibt accountgebunden, der Desktop steuert nur lokal ueber isolierte IPC und die private Admin Console behaelt ihre serverseitig geprueften Verwaltungsrechte.
 - Die Anwenderhilfe zeigt die aktiven ProcessorBoards direkt aus dem Hardware Catalog. Sie erklaert je Eintrag Fähigkeiten, Katalog-/Prüfstatus, den USB-Provisionierungsweg und optionale kuratierte Hersteller- oder Beschaffungslinks. Die Hilfe ist keine zweite Hardwarequelle; Bilder und Links werden nur verwendet, wenn sie am Katalogeintrag gepflegt und geprüft sind.
 - GerNetiX Help trennt sichtbare Bereiche für öffentliche Informationen, kontoabhängige Abläufe und Premium-Inhalte. Öffentliche Grundlagen sind unter `/hilfe/` ohne Anmeldung erreichbar; im Plattformbereich markieren Vorschau und Paywall den Übergang zu Konto- oder Premium-Wissen. Die vollständige serverseitige Entitlement-Prüfung für Premium-Artikel bleibt vor dem produktiven Verkauf verpflichtend.

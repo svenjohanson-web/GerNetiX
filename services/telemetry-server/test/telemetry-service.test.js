@@ -18,12 +18,12 @@ test("derives account ownership server-side and only lists that account project 
   assert.equal(service.listMeasurements("acct-other", "project-1", {}).length, 0);
 });
 
-test("persists threshold events before requesting account push", async () => {
+test("persists threshold events before requesting project-scoped push", async () => {
   const delivered = [];
-  const service = subject({ pushNotifier: async (event) => { delivered.push(event.event_id); return { accepted: true }; } });
+  const service = subject({ pushNotifier: async (event) => { delivered.push({ event_id: event.event_id, account_id: event.account_id, project_id: event.project_id }); return { accepted: true }; } });
   await service.ingest({ device_id: "device-1", project_id: "project-1", events: [{ event_id: "e-1", event_type: "threshold_exceeded", severity: "warning", title: "Temperatur zu hoch", body: "31 C", notify_push: true, occurred_at: "2026-07-16T10:00:00Z" }] });
   assert.equal(service.listEvents("acct-owner", "project-1", {}).length, 1);
-  assert.deepEqual(delivered, ["e-1"]);
+  assert.deepEqual(delivered, [{ event_id: "e-1", account_id: "acct-owner", project_id: "project-1" }]);
 });
 
 test("retention deletes expired telemetry while keeping current data", async () => {

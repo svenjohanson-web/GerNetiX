@@ -1,0 +1,5 @@
+# The ES3C28P touch board is the catalogued 16 MiB variant.  Keep this
+# hardware fact in the reproducible ESP-IDF defaults instead of accepting the
+# generic devkit's 2 MiB fallback configuration.
+CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y
+CONFIG_ESPTOOLPY_FLASHSIZE="16MB"

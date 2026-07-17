@@ -81,7 +81,7 @@ function touchscreenGameSources(title) {
       "}",
       "",
     ].join("\n")),
-    header(`${root}/config/selected_games.h`, selectedGamesHeader(["nibbles", "snake", "frogger", "tic_tac_toe"])),
+    header(`${root}/config/selected_games.h`, selectedGamesHeader(["nibbles", "frogger"])),
     ...games.map(([id, name, update]) => header(`${root}/games/${id}.h`, gameExampleHeader(id, name, update))),
     header(`${root}/game/game_catalog.h`, gameCatalogHeader(games)),
     header(`${root}/game_application.h`, gameApplicationHeader()),

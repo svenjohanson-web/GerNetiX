@@ -5,6 +5,7 @@ const test = require("node:test");
 
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
 const app = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
+const server = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
 
 test("learning area leads with a dedicated project catalog", () => {
   const catalogPosition = html.indexOf("Lernprojekt-Katalog");
@@ -27,4 +28,9 @@ test("catalog classifies free, purchased and subscription access", () => {
   assert.match(app, /free: "Frei verfuegbar"/);
   assert.match(app, /purchased: "Kurs gekauft"/);
   assert.match(app, /subscription: "Im Abo enthalten"/);
+});
+
+test("catalog includes the button-to-smartphone notification learning project", () => {
+  assert.match(server, /button-to-smartphone-notification/);
+  assert.match(server, /createButtonToSmartphoneNotificationCourseModel/);
 });

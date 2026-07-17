@@ -47,8 +47,8 @@ services:
       HOST: 0.0.0.0
       PORT: 4800
       PERSISTENCE_BACKEND: sqlite
-      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
-      PROJECT_SERVER_RUNTIME_DIR: /var/lib/gernetix/services
+      PROJECT_SERVER_SQLITE_PATH: /var/lib/gernetix/projects/gernetix-projects.sqlite
+      PROJECT_SERVER_RUNTIME_DIR: /var/lib/gernetix/projects
     expose: ["4800"]
     volumes:
       - service_state:/var/lib/gernetix/services
@@ -73,12 +73,28 @@ services:
       OTA_SIGNING_KEY_ID: ${OTA_SIGNING_KEY_ID:-ota-p256-2026-01}
     expose: ["4400"]
     volumes:
-      - service_state:/var/lib/gernetix/services
+      - project_state:/var/lib/gernetix/projects
       - build_state:/var/lib/gernetix/build
       - ${OTA_SIGNING_PRIVATE_KEY_PATH:-/etc/gernetix/pki/ota-signing-key.pem}:/run/gernetix-pki/ota-signing-key.pem:ro
     depends_on:
       mqtt-broker:
         condition: service_healthy
+
+  public-demo-server:
+    <<: *node-service
+    networks:
+      - edge
+      - backend
+    environment:
+      GERNETIX_SERVICE: public-demo-server
+      HOST: 0.0.0.0
+      PORT: 4920
+      PUBLIC_DEMO_SQLITE_PATH: /var/lib/gernetix/public-demos/gernetix-public-demos.sqlite
+      PUBLIC_DEMO_RUNTIME_DIR: /var/lib/gernetix/public-demos
+      PUBLIC_DEMO_PUBLISHER_TOKEN: ${PUBLIC_DEMO_PUBLISHER_TOKEN:?PUBLIC_DEMO_PUBLISHER_TOKEN muss gesetzt sein}
+    expose: ["4920"]
+    volumes:
+      - public_demo_state:/var/lib/gernetix/public-demos
 
   device-management-server:
     <<: *node-service
@@ -99,8 +115,8 @@ services:
       GERNETIX_SERVICE: telemetry-server
       HOST: 0.0.0.0
       PORT: 5600
-      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
-      TELEMETRY_RUNTIME_DIR: /var/lib/gernetix/services
+      TELEMETRY_SQLITE_PATH: /var/lib/gernetix/telemetry/gernetix-telemetry.sqlite
+      TELEMETRY_RUNTIME_DIR: /var/lib/gernetix/telemetry
       TELEMETRY_INTERNAL_TOKEN: ${TELEMETRY_INTERNAL_TOKEN:?TELEMETRY_INTERNAL_TOKEN muss gesetzt sein}
       PROJECT_SERVER_BASE_URL: http://project-server:4800
       DEVICE_MANAGEMENT_BASE_URL: http://device-management-server:4700
@@ -109,7 +125,7 @@ services:
       MQTT_BROKER_URL: mqtt://mqtt-broker:1883
     expose: ["5600"]
     volumes:
-      - service_state:/var/lib/gernetix/services
+      - telemetry_state:/var/lib/gernetix/telemetry
     depends_on:
       project-server: { condition: service_healthy }
       device-management-server: { condition: service_healthy }
@@ -279,6 +295,24 @@ services:
       ai-usage-server: { condition: service_healthy }
       ai-context-server: { condition: service_healthy }
 
+  runtime-storage-migration:
+    <<: *node-service
+    profiles: ["storage-migration"]
+    restart: "no"
+    command:
+      - node
+      - /app/tools/migrate-runtime-storage.js
+      - --source
+      - /var/lib/gernetix/shared/gernetix-services.sqlite
+      - --projects
+      - /var/lib/gernetix/projects/gernetix-projects.sqlite
+      - --telemetry
+      - /var/lib/gernetix/telemetry/gernetix-telemetry.sqlite
+    volumes:
+      - service_state:/var/lib/gernetix/shared:ro
+      - project_state:/var/lib/gernetix/projects
+      - telemetry_state:/var/lib/gernetix/telemetry
+
   mqtt-broker:
     image: eclipse-mosquitto:2.0
     restart: unless-stopped
@@ -375,10 +409,13 @@ networks:
 volumes:
   identity_state:
   service_state:
+  project_state:
+  telemetry_state:
   ai_context_state:
   ai_context_postgres_data:
   admin_access_state:
   build_state:
+  public_demo_state:
   mqtt_data:
   mqtt_log:
   nginx_cache:

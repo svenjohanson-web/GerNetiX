@@ -45,11 +45,11 @@ npm run dev
 Oeffnet die Login-Ansicht unter `http://localhost:4300/app/auth/`. Die Ansicht nutzt den lokalen Dev-Login und setzt fuer die Demo ein HttpOnly-Session-Cookie.
 Der eingebaute Dev-Account `demo` nutzt lokal stabil die interne Account-ID `acct-demo`, damit Identity Server, Project Server, AI Usage und Admin Tool im MVP dieselbe Demo-Account-Referenz sehen.
 
-## Accountgebundene Web-Push-Meldungen
+## Projektgebundene Web-Push-Meldungen
 
-Die installierbare Plattform-PWA kann pro iPhone eine Web-Push-Subscription an den angemeldeten Account binden. `POST /api/push/test` sendet eine `Hallo Welt`-Testnachricht ausschliesslich an die eigenen aktiven Subscriptions.
+Die installierbare Plattform-PWA kann pro iPhone eine Web-Push-Subscription an ein ausgewaehltes Projekt des angemeldeten Accounts binden. `POST /api/push/projects/{project}/test` sendet eine `Hallo Welt`-Testnachricht ausschliesslich an aktive Subscriptions dieses Kontos und Projekts.
 
-Board-Ereignisse werden nicht direkt vom Board an einen Web-Push-Provider gesendet. Ein mTLS-/MQTT-authentifizierter Serveradapter ruft intern `POST /api/internal/push/device-event` mit `X-GerNetiX-Admin-Token`, `device_id`, Titel und Meldung auf. Identity fragt beim Device Management die aktuellen Account-Owner ab und stellt nur an deren Subscriptions zu. Die interne Route akzeptiert nur relative `/app/`-Deep-Links.
+Board-Ereignisse werden nicht direkt vom Board an einen Web-Push-Provider gesendet. Ein mTLS-/MQTT-authentifizierter Serveradapter ruft intern `POST /api/internal/push/device-event` mit `X-GerNetiX-Admin-Token`, serverseitig abgeleiteten `account_id`, `project_id`, `device_id`, Titel und Meldung auf. Identity stellt nur an Subscriptions derselben Konto-/Projektpartition zu. Die interne Route akzeptiert nur relative `/app/`-Deep-Links.
 
 VPS-Sicherheitsalarme verwenden dieselbe Technik, aber eine getrennte, explizite Empfaengergruppe aus `WEB_PUSH_SECURITY_ALERT_ACCOUNT_IDS`. Ohne diese Konfiguration gibt es bewusst keinen Broadcast an normale Nutzer-Subscriptions.
 Der Dev-Server speichert Identity-Accounts standardmaessig in `.runtime/gernetix-identity.sqlite`. Damit bleiben lokal angelegte Accounts und Identity-Sessions ueber Identity-Neustarts erhalten; der Prozessspeicher ist nur noch ein schneller Session-Cache.

@@ -103,7 +103,7 @@ test("persists architecture derivation metadata in the project view manifest", (
 
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260716-01/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260716-02/);
   assert.match(publicHtml, /development-chat-input-box[\s\S]*developmentQuickPrompts[\s\S]*developmentChatInput[\s\S]*developmentChatSubmit/);
   assert.match(publicHtml, /development-send-button/);
   assert.match(publicHtml, /aria-label="Nachricht senden"/);
@@ -151,6 +151,29 @@ test("uses one component configuration for every template except the game collec
   assert.match(publicCss, /\.template-component-configuration \{/);
   assert.match(publicCss, /\.template-component-layout \{/);
   assert.match(publicCss, /\.template-component-connection-hints \{/);
+});
+
+test("preserves managed event-application component types when PlantUML is reopened", () => {
+  assert.match(publicController, /function hardwareComponentType\(label, plantUmlType\)/);
+  assert.match(publicController, /projekt\.runtime\.daten.*return "project_runtime_data"/);
+  assert.match(publicController, /ereignis\.worker.*return "event_worker"/);
+  assert.match(publicController, /ereignis\.dispatcher.*return "event_dispatcher"/);
+  assert.match(publicController, /projekt\.push\.versand.*return "notification_service"/);
+  assert.match(publicController, /iot\.\?zielger\(\?:ae\|ä\)t.*return "iot_device"/);
+});
+
+test("keeps managed services out of the user component configuration", () => {
+  assert.match(publicController, /const configurableComponents = components\.filter\(isUserConfigurableComponent\)/);
+  assert.match(publicController, /function isUserConfigurableComponent\(component\)/);
+  assert.match(publicController, /user_configurable !== false/);
+});
+
+test("refreshes legacy templates without exposing infrastructure components", () => {
+  assert.match(publicController, /function refreshProjectTemplateDiagram\(diagram, templateId\)/);
+  assert.match(publicController, /event_driven_project_application", "iot_datalogger_web_push_pwa/);
+  assert.match(publicController, /telemetry\|runtime\|push/);
+  assert.match(publicController, /telemetry\|storage\|push/);
+  assert.match(publicController, /projectTemplatePreviews\[templateId\]\?\.source/);
 });
 
 test("separates project start and initial architecture from configuration", () => {
@@ -267,7 +290,7 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(publicController, /function renderHardwareConfiguration/);
   assert.match(publicController, /processor\.variant === "ESP32" \? "ESP32 \(klassisch\)" : processor\.variant/);
   assert.match(publicController, /data-hardware-processor-help/);
-  assert.match(publicController, /openHelpTopic\?\.\("esp32-overview"\)/);
+  assert.match(publicController, /openHelpTopic\?\.\("supported-devices"\)/);
   assert.match(publicApp, /openHelpTopic: HelpView\.openDialog/);
   assert.match(hardwareCatalogSeed, /PT1000 Widerstandsthermometer/);
   assert.match(publicController, /Konstantstromquelle \/ Messbruecke/);
@@ -307,8 +330,9 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(devServer, /sensor_category: String\(component\.sensor_category/);
   assert.match(devServer, /signal_type: String\(component\.signal_type/);
   assert.match(devServer, /inventory_device_id: String\(component\.inventory_device_id/);
-  assert.match(publicController, /Inventar-Device \(optional\)<select data-hardware-field="inventory_device_id"/);
-  assert.match(publicController, /Ohne Inventar-Device kann kein Flash-Vorgang gestartet werden\./);
+  assert.match(publicController, /Inventar-Board<select data-hardware-field="inventory_device_id"/);
+  assert.match(publicController, /Board und Prozessor werden übernommen\./);
+  assert.match(publicController, /inventoryBoard\s*\r?\n\s*\?\s*DevelopmentHardwareModel\.applyProcessorSelection/);
   assert.match(publicController, /function renderHardwareHints/);
   assert.match(publicController, /<h3>Offene Punkte<\/h3>/);
   assert.doesNotMatch(publicController, /<strong>Offen<\/strong>/);
@@ -337,7 +361,7 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(devServer, /Konfiguration\/Hardware\/Schaltungen/);
   assert.match(devServer, /PT1000-Messschaltung/);
   assert.match(publicCss, /\.hardware-component-table \{[\s\S]*min-width: 1380px/);
-  assert.match(publicCss, /\.hardware-board-selection \{[\s\S]*grid-template-columns: repeat\(2, minmax\(190px, 1fr\)\)/);
+  assert.match(publicCss, /\.hardware-board-selection \{[\s\S]*grid-template-columns: repeat\(3, minmax\(190px, 1fr\)\)/);
   assert.match(publicCss, /\.hardware-sensor-selection \{[\s\S]*display: contents/);
   assert.match(publicCss, /\.hardware-table-row\.hardware-sensor-row \{[\s\S]*grid-template-columns: minmax\(160px, \.55fr\) minmax\(920px, 3\.45fr\)/);
   assert.match(publicCss, /\.hardware-inline-assignment \{[\s\S]*grid-auto-flow: column/);

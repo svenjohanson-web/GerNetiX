@@ -7,9 +7,9 @@ function createConfig(env = process.env) {
   return {
     host: env.HOST || "127.0.0.1",
     port: Number(env.PORT || 5600),
-    sqlitePath: env.PERSISTENCE_SQLITE_PATH || env.TELEMETRY_SQLITE_PATH
-      ? path.resolve(env.PERSISTENCE_SQLITE_PATH || env.TELEMETRY_SQLITE_PATH)
-      : path.join(runtimeRoot, "gernetix-services.sqlite"),
+    sqlitePath: env.TELEMETRY_SQLITE_PATH || env.PERSISTENCE_SQLITE_PATH
+      ? path.resolve(env.TELEMETRY_SQLITE_PATH || env.PERSISTENCE_SQLITE_PATH)
+      : path.join(runtimeRoot, "gernetix-telemetry.sqlite"),
     internalToken: String(env.TELEMETRY_INTERNAL_TOKEN || ""),
     projectServerBaseUrl: String(env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800").replace(/\/$/, ""),
     deviceManagementBaseUrl: String(env.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700").replace(/\/$/, ""),

@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "demo_id": "touch-spielesammlung",
+  "title": "Touch-Spielesammlung: Nibbles und Frogger",
+  "status": "build_pending",
+  "board_hardware_item_id": "hardware.processor_board.esp32_s3_es3c28p",
+  "usb_flash_only": true,
+  "ota_supported": false,
+  "account_required": false,
+  "project_access": false,
+  "description": "Eine kleine Spieleauswahl für das ESP32-S3 ES3C28P Touch-Board. Der Startbildschirm wählt Nibbles oder Frogger aus.",
+  "required_board_features": ["capability.display_output", "capability.touchscreen_input"],
+  "games": [
+    { "id": "nibbles", "title": "Nibbles", "description": "Eine wachsende Spielfigur wird durch ein Raster geführt." },
+    { "id": "frogger", "title": "Frogger", "description": "Ein Frosch überquert Fahrspuren und erreicht sichere Zielzonen." }
+  ],
+  "release": null
+}

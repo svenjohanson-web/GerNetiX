@@ -30,6 +30,22 @@ test("software separates general properties webserver configuration and preview"
   assert.doesNotMatch(app, /file\.role \|\| file\.content_type \? `<small>/);
 });
 
+test("event workers and dispatchers are not routed into hardware configuration", () => {
+  assert.match(app, /virtualAction: "worker-dispatcher-configuration"/);
+  assert.match(app, /data-worker-dispatcher-configuration/);
+  assert.match(app, /function renderEventConfiguration\(kind\)/);
+  assert.match(app, /Auslöser konfigurieren/);
+  assert.match(app, /Zustellung konfigurieren/);
+  assert.match(app, /Hilfe zur Regelsprache/);
+  assert.match(app, /event\.type == "taste_gedrueckt"/);
+  assert.match(app, /Nur ein im Projektmodell ausdrücklich deklarierter Zustandswert/);
+  assert.match(app, /Schleifen, eigene Funktionen, Netzwerk-, Datei-/);
+  assert.match(app, /event-configuration/);
+  assert.match(server, /handleProjectEventConfiguration/);
+  assert.match(server, /normalizeEventConfiguration/);
+  assert.match(server, /event_configuration:/);
+});
+
 test("project browser separates hardware files from software configuration views", () => {
   assert.match(app, /function projectBrowserSources\(project, sources\)/);
   assert.match(app, /sourcePrefix: String\(component\.component_path\)/);

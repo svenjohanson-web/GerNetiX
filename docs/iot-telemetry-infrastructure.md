@@ -22,11 +22,11 @@ Projekt-Runtime auf dem Board
   -> token-geschuetzter Telemetry Ingress
   -> Device Management + Project Server: Ownership-Pruefung
   -> TelemetryMeasurement / TelemetryEvent in SQLite
-  -> Identity-Push-Route nur fuer notify_push-Ereignisse
-  -> accountgeschuetzte PWA-Lese- und Loesch-API
+  -> Identity-Push-Route nur fuer notify_push-Ereignisse, mit account_id + project_id
+  -> account- und projektgeschuetzte PWA-Lese- und Loesch-API
 ```
 
-Der Ingress speichert Ereignisse vor einem Push-Versuch. Ein fehlgeschlagener oder deaktivierter Push loescht daher keinen Alarm aus dem Protokoll.
+Der Ingress speichert Ereignisse vor einem Push-Versuch. Ein fehlgeschlagener oder deaktivierter Push loescht daher keinen Alarm aus dem Protokoll. Der Push-Versand ist optional und sucht Subscriptions ausschliesslich nach derselben Kombination aus `account_id` und `project_id`; ein Browser-Abonnement eines anderen Projekts desselben Accounts erhaelt keine Nachricht.
 
 ## Aufbewahrung und Loeschung
 

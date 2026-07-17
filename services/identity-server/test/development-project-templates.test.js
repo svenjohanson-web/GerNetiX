@@ -25,7 +25,7 @@ test("separates semantic template models from rendered views", () => {
 
 test("exposes one UI catalog without architecture or realization internals", () => {
   const catalog = developmentProjectTemplateCatalog();
-  assert.equal(catalog.length, 8);
+  assert.equal(catalog.length, 9);
   assert.equal(catalog.find((template) => template.id === "empty").default_title, "");
   assert.deepEqual(catalog.find((template) => template.id === "sensor_actuator_control"), {
     id: "sensor_actuator_control",
@@ -89,7 +89,10 @@ test("provides a buildable touchscreen game collection with separated user sourc
   for (const game of ["nibbles", "snake", "frogger", "tic_tac_toe", "pong", "breakout", "memory"]) {
     assert.equal(files.some((file) => file.path.endsWith(`games/${game}.h`)), true);
   }
-  assert.match(files.find((file) => file.path.endsWith("config/selected_games.h")).content, /GNX_GAME_SNAKE_ENABLED 1/);
+  const selectedGames = files.find((file) => file.path.endsWith("config/selected_games.h")).content;
+  assert.match(selectedGames, /GNX_GAME_NIBBLES_ENABLED 1/);
+  assert.match(selectedGames, /GNX_GAME_FROGGER_ENABLED 1/);
+  assert.match(selectedGames, /GNX_GAME_SNAKE_ENABLED 0/);
 });
 
 test("provides IoT device project templates with distinct start architectures", () => {
@@ -116,29 +119,46 @@ test("provides IoT device project templates with distinct start architectures", 
   }
 });
 
-test("provides an account-bound web-push PWA data logger template", () => {
+test("provides a data logger template with only user-configurable components", () => {
   const template = developmentProjectTemplate("iot_datalogger_web_push_pwa");
   const source = templateArchitecturePlantUml(template, template.title);
 
   assert.equal(template.schemaVersion, 1);
-  assert.match(template.description, /private PWA auf dem iPhone/);
-  assert.match(template.description, /speichert Messwerte projektprivat/);
-  assert.match(template.hint, /Projektprivate Datenhaltung ist Grundfunktion/);
+  assert.match(template.description, /Datenlogger erfasst Messwerte/);
+  assert.match(template.description, /optionalen Push in seiner Projekt-PWA/);
+  assert.match(template.hint, /Datenlogger und Projekt-PWA/);
   assert.match(source, /IoT-Device Datenlogger/);
-  assert.match(source, /GerNetiX VPS\\nPrivate Telemetrie-, Speicher- und Push-API/);
-  assert.match(source, /Private PWA auf dem iPhone/);
-  assert.match(source, /Messwertverlauf, Push-Subscription und Konfiguration/);
-  assert.match(source, /Web Push an die private Subscription/);
+  assert.match(source, /Projekt-PWA auf dem iPhone/);
+  assert.match(source, /richtet Datenerfassung ein/);
+  assert.match(source, /nutzt Messwertverlauf und optionalen Push/);
+  assert.doesNotMatch(source, /Telemetrie-API|Projekt-Speicher|Projekt-Push/);
   assert.equal(templateHardwareProfileId(template), "architecture.discovery");
   assert.equal(templateBuildConfig(template), null);
   assert.deepEqual(templateFirmwareSources(template, "Mein Push-Logger"), []);
-  assert.deepEqual(template.requiredEntitlements, ["web_push"]);
+  assert.deepEqual(template.requiredEntitlements, []);
   assert.deepEqual(template.dataLogger, {
     required: true,
     storageScope: "project_private",
     configurationState: "requires_sensor_configuration",
+    userConfiguration: ["Messquelle und Messintervall", "Messwertbezeichnung und Einheit", "Aufbewahrungsdauer", "Ereignisregel; optional Push aktivieren"],
   });
-  assert.deepEqual(developmentProjectTemplateCatalog().find((item) => item.id === "iot_datalogger_web_push_pwa").required_entitlements, ["web_push"]);
+  assert.deepEqual(developmentProjectTemplateCatalog().find((item) => item.id === "iot_datalogger_web_push_pwa").required_entitlements, []);
+});
+
+test("provides an event-driven project application with only user-configurable architecture elements", () => {
+  const template = developmentProjectTemplate("event_driven_project_application");
+  const source = templateArchitecturePlantUml(template, template.title);
+
+  assert.match(template.description, /IoT-Ereignisquelle loest eine projektdefinierte Worker-Regel aus/);
+  assert.match(source, /IoT-Device Ereignisquelle/);
+  assert.match(source, /Ereignis-Worker/);
+  assert.match(source, /Ereignis-Dispatcher/);
+  assert.match(source, /IoT-Zielgeraet\(e\)/);
+  assert.match(source, /Ereignis ausloesen/);
+  assert.match(source, /freigegebenes Folgeereignis/);
+  assert.match(source, /Aktion zustellen/);
+  assert.doesNotMatch(source, /Telemetrie-API|Projekt-Runtime-Daten|Projekt-Push/);
+  assert.equal(templateBuildConfig(template), null);
 });
 
 test("falls back to the empty project template for unknown ids", () => {

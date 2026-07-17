@@ -277,6 +277,23 @@ button.danger:hover {
 .help-article-table { width: 100%; border-collapse: collapse; font-size: .85rem; }
 .help-article-table th, .help-article-table td { min-width: 150px; padding: 9px; border: 1px solid var(--line); text-align: left; vertical-align: top; line-height: 1.4; }
 .help-article-table th { background: var(--panel-soft); }
+.help-state-chart { display: grid; gap: 12px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: #f8fafc; }
+.help-state-chart .eyebrow { margin: 0; }
+.help-state-chart-nodes { display: flex; flex-wrap: wrap; gap: 8px; }
+.help-state-node { border: 1px solid #9db0ca; border-radius: 999px; padding: 7px 12px; background: #fff; font-weight: 700; }
+.help-state-node.initial { border-color: var(--accent); background: var(--soft); color: var(--accent); }
+.help-state-chart-transitions { display: grid; gap: 7px; margin: 0; padding: 0; list-style: none; }
+.help-state-chart-transitions li { display: grid; grid-template-columns: minmax(78px, auto) 22px minmax(78px, auto) minmax(160px, 1fr); align-items: center; gap: 6px; color: var(--text); }
+.help-state-chart-transitions li > span { color: var(--accent); font-weight: 800; text-align: center; }
+.help-state-chart-transitions small { color: var(--muted); }
+.help-uml-state-chart { margin: 0; overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; padding: 14px; background: #fff; }
+.help-uml-state-chart svg { display: block; width: min(760px, 100%); min-width: 620px; height: auto; color: var(--text); font-size: 15px; font-family: inherit; }
+.help-uml-state-chart .uml-state { fill: #fff; stroke: #7085a3; stroke-width: 1.5; }
+.help-uml-state-chart .uml-state.warning { fill: #fff7ed; stroke: #c2410c; }
+.help-uml-state-chart .uml-transition { fill: none; stroke: #475569; stroke-width: 1.5; }
+.help-uml-state-chart .uml-initial, .help-uml-state-chart marker path { fill: #334155; }
+.help-uml-state-chart text { fill: currentColor; }
+.help-uml-state-chart figcaption { margin-top: 8px; color: var(--muted); line-height: 1.45; }
 .help-hardware-catalog { display: grid; gap: 14px; margin-top: 20px; }
 .help-hardware-card { display: grid; grid-template-columns: minmax(110px, 180px) minmax(0, 1fr); gap: 18px; padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: rgba(255, 255, 255, 0.03); }
 .help-hardware-card h3 { margin: 0 0 8px; }
@@ -2138,10 +2155,14 @@ button.danger:hover {
 }
 .hardware-board-selection {
   display: grid;
-  grid-template-columns: repeat(2, minmax(190px, 1fr));
+  grid-template-columns: repeat(3, minmax(190px, 1fr));
   gap: 10px;
   align-items: end;
 }
+.hardware-board-selection .hardware-choice { display: flex; justify-self: start; width: fit-content; align-items: center; gap: 9px; min-width: 0; margin: 0; padding: 6px 8px; border: 1px solid #334155; border-radius: 6px; }
+.hardware-board-selection .hardware-choice legend { padding: 0 4px; color: #94a3b8; font-size: 11px; }
+.hardware-board-selection .hardware-choice label { display: inline-flex; align-items: center; gap: 4px; white-space: nowrap; }
+.hardware-board-selection .hardware-choice input[type="radio"] { appearance: auto; width: 14px; height: 14px; min-width: 14px; margin: 0; accent-color: #38bdf8; }
 .hardware-sensor-selection {
   display: contents;
 }

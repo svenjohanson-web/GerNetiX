@@ -130,27 +130,47 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
   }),
   iot_datalogger_web_push_pwa: templateModel({
     id: "iot_datalogger_web_push_pwa",
-    title: "Datenlogger mit privater Web-Push-PWA",
-    description: "Ein Datenlogger speichert Messwerte projektprivat und sendet Ereignisse an einen GerNetiX-VPS. Der angemeldete Nutzer installiert seine private PWA auf dem iPhone und erhaelt dort Web-Push-Testnachrichten.",
-    hint: "Projektprivate Datenhaltung ist Grundfunktion; Datenlogger, accountgebundener VPS-Push-Service und installierbare PWA als erster mobiler Durchstich.",
-    requiredEntitlements: ["web_push"],
+    title: "Datenlogger mit Projekt-PWA und optionalem Push",
+    description: "Ein Datenlogger erfasst Messwerte. Der angemeldete Nutzer richtet Datenerfassung, Messwertverlauf und optionalen Push in seiner Projekt-PWA ein.",
+    hint: "Konfiguriert werden Datenlogger und Projekt-PWA. Telemetrie, Speicherung und Versand bleiben unsichtbare GerNetiX-Infrastruktur.",
+    // Push ist kein Einstiegskriterium: Das Projekt funktioniert auch ohne
+    // Benachrichtigungen. Eine Aktivierung wird erst bei einer Ereignisregel
+    // und der PWA-Push-Erlaubnis relevant.
+    requiredEntitlements: [],
     dataLogger: {
       required: true,
       storageScope: "project_private",
       configurationState: "requires_sensor_configuration",
+      userConfiguration: ["Messquelle und Messintervall", "Messwertbezeichnung und Einheit", "Aufbewahrungsdauer", "Ereignisregel; optional Push aktivieren"],
     },
     architecture: {
       elements: [
         element("user", "Nutzer", "actor"),
         element("device", "IoT-Device Datenlogger", "iot_device"),
-        element("vps", "GerNetiX VPS\nPrivate Telemetrie-, Speicher- und Push-API", "service"),
-        element("pwa", "Private PWA auf dem iPhone", "client"),
+        element("pwa", "Projekt-PWA auf dem iPhone", "client"),
       ],
       relations: [
-        relation("device", "vps", "Messwerte, Logger-Ereignisse und Testnachrichten"),
-        relation("pwa", "vps", "Anmeldung, Messwertverlauf, Push-Subscription und Konfiguration"),
-        relation("vps", "pwa", "Web Push an die private Subscription"),
-        relation("user", "pwa", "installiert und liest Nachrichten"),
+        relation("user", "device", "richtet Datenerfassung ein"),
+        relation("user", "pwa", "nutzt Messwertverlauf und optionalen Push"),
+      ],
+    },
+  }),
+  event_driven_project_application: templateModel({
+    id: "event_driven_project_application",
+    title: "Ereignisgesteuerte Projektanwendung",
+    description: "Eine IoT-Ereignisquelle loest eine projektdefinierte Worker-Regel aus. Der Dispatcher stellt das freigegebene Ergebnis an die gewaehlten IoT-Zielgeraete zu.",
+    hint: "Startmuster: Ereignisquelle → Worker-Regel → Dispatcher-Regel → Zielgeraet. Die technische Annahme, Speicherung und Zustellung sind GerNetiX-Infrastruktur und erscheinen nicht in der Projektarchitektur.",
+    architecture: {
+      elements: [
+        element("source_device", "IoT-Device Ereignisquelle", "iot_device"),
+        element("worker", "Ereignis-Worker", "event_worker"),
+        element("dispatcher", "Ereignis-Dispatcher", "event_dispatcher"),
+        element("target_devices", "IoT-Zielgeraet(e)", "iot_device"),
+      ],
+      relations: [
+        relation("source_device", "worker", "Ereignis ausloesen"),
+        relation("worker", "dispatcher", "freigegebenes Folgeereignis"),
+        relation("dispatcher", "target_devices", "Aktion zustellen"),
       ],
     },
   }),

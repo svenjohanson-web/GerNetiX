@@ -6,9 +6,9 @@ function createConfig(env = process.env) {
   const runtimeRoot = env.PROJECT_SERVER_RUNTIME_DIR
     ? path.resolve(env.PROJECT_SERVER_RUNTIME_DIR)
     : path.join(workspaceRoot, ".runtime");
-  const sqlitePath = env.PERSISTENCE_SQLITE_PATH || env.PROJECT_SERVER_SQLITE_PATH
-    ? path.resolve(env.PERSISTENCE_SQLITE_PATH || env.PROJECT_SERVER_SQLITE_PATH)
-    : path.join(runtimeRoot, "gernetix-services.sqlite");
+  const sqlitePath = env.PROJECT_SERVER_SQLITE_PATH || env.PERSISTENCE_SQLITE_PATH
+    ? path.resolve(env.PROJECT_SERVER_SQLITE_PATH || env.PERSISTENCE_SQLITE_PATH)
+    : path.join(runtimeRoot, "gernetix-projects.sqlite");
 
   return {
     host: env.HOST || "127.0.0.1",

@@ -4,7 +4,7 @@ const DevelopmentPlatform = (() => {
   let projectTemplateCatalog = [];
   let projectTemplatePreviews = {};
 
-  function create({ state, postJson, openProjectInIde, navigate, escapeHtml, escapeAttribute, openHelpTopic }) {
+  function create({ state, postJson, deleteJson, openProjectInIde, navigate, escapeHtml, escapeAttribute, openHelpTopic }) {
     if (!state.developmentPlatform) {
       state.developmentPlatform = {
         assistant: null,
@@ -32,6 +32,8 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#developmentChatForm").addEventListener("submit", sendChatMessage);
       document.querySelector("#continueDevelopmentProjectButton").addEventListener("click", continueLastProject);
       document.querySelector("#openDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("open"));
+      document.querySelector("#manageDevelopmentProjectsButton").addEventListener("click", () => showProjectPanel("manage"));
+      document.querySelector("#developmentProjectOverview").addEventListener("click", handleProjectOverviewClick);
       document.querySelector("#newEmptyDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("new-empty"));
       document.querySelector("#newTemplateDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("new-template"));
       document.querySelector("#openDevelopmentTemplateHelpButton").addEventListener("click", openDevelopmentTemplateHelp);
@@ -118,6 +120,27 @@ const DevelopmentPlatform = (() => {
       renderQuickPrompts();
       renderArchitectureDiagram();
       syncChatAvailability();
+    }
+
+    function handleProjectOverviewClick(event) {
+      const openButton = event.target.closest("[data-open-development-project]");
+      if (openButton) { activateProject(openButton.dataset.openDevelopmentProject); return; }
+      const editButton = event.target.closest("[data-edit-development-project]");
+      if (editButton) { openProjectInIde(editButton.dataset.editDevelopmentProject); return; }
+      const deleteButton = event.target.closest("[data-delete-development-project]");
+      if (deleteButton) deleteDevelopmentProject(deleteButton.dataset.deleteDevelopmentProject);
+    }
+
+    async function deleteDevelopmentProject(projectId) {
+      const project = developmentProjects().find((item) => item.id === projectId);
+      if (!project || !window.confirm(`Projekt „${project.name}“ wirklich unwiderruflich loeschen?`)) return;
+      try {
+        await deleteJson(`/api/platform/projects/${encodeURIComponent(projectId)}`);
+        state.projects = state.projects.filter((item) => item.id !== projectId);
+        if (activeProjectId() === projectId) enterProjectStart();
+        render();
+        setProjectStatus(`Projekt „${project.name}“ wurde geloescht.`);
+      } catch (error) { setProjectStatus(error.message || "Projekt konnte nicht geloescht werden."); }
     }
 
     function renderWorkflowStep() {
@@ -250,6 +273,11 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#continueDevelopmentProjectButton").classList.toggle("hidden", !lastProject);
       document.querySelector("#continueDevelopmentProjectName").textContent = lastProject?.name || "";
       document.querySelector("#developmentProjectOpenPanel").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "open");
+      const overview = document.querySelector("#developmentProjectOverview");
+      overview.classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "manage");
+      if (state.developmentPlatform.projectPanelMode === "manage") {
+        overview.innerHTML = projects.length ? `<header><p class="eyebrow">Meine Projekte</p><h3>Entwicklungsprojekte</h3></header>${projects.map((project) => `<article class="project-card"><div><strong>${escapeHtml(project.name)}</strong><p>${escapeHtml(project.description || "Keine Beschreibung.")}</p></div><div class="button-row"><button type="button" data-open-development-project="${escapeAttribute(project.id)}">Oeffnen</button><button type="button" data-edit-development-project="${escapeAttribute(project.id)}">Bearbeiten</button><button type="button" data-delete-development-project="${escapeAttribute(project.id)}">Loeschen</button></div></article>`).join("")}` : `<p class="empty">Noch keine eigenen Entwicklungsprojekte vorhanden.</p>`;
+      }
       const isNewProject = state.developmentPlatform.projectPanelMode === "new-empty" || state.developmentPlatform.projectPanelMode === "new-template";
       document.querySelector("#developmentProjectForm").classList.toggle("hidden", !isNewProject);
       document.querySelector("#developmentProjectTemplateField").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "new-template");
@@ -301,17 +329,18 @@ const DevelopmentPlatform = (() => {
       if (!visible) return;
       const diagram = state.developmentPlatform.architectureDiagram || architectureDiagramForProject(currentProject());
       const components = abstractArchitectureComponents(diagram?.source || "");
+      const configurableComponents = components.filter(isUserConfigurableComponent);
       const componentById = new Map(components.map((component) => [component.component_id, component]));
       const controlAssignments = controlUnitAssignments(diagram?.source || "");
-      const connections = componentConnectionAssignments(diagram?.source || "");
+      const connections = new Map([...componentConnectionAssignments(diagram?.source || "")]
+        .filter(([, targetId]) => isUserConfigurableComponent(componentById.get(targetId))));
       const connectionCoverage = plantUmlFunctionCoverage(diagram?.source || "");
-      const disconnectedComponents = connectionCoverage.missing.map((componentId) => componentById.get(componentId) || {
-        component_id: componentId,
-        label: componentId,
-      });
+      const disconnectedComponents = connectionCoverage.missing
+        .map((componentId) => componentById.get(componentId) || { component_id: componentId, label: componentId })
+        .filter(isUserConfigurableComponent);
       const invalidRelations = connectionCoverage.invalid || [];
-      const componentRows = components.length
-        ? components.map((component) => `
+      const componentRows = configurableComponents.length
+        ? configurableComponents.map((component) => `
           <li class="${connectionCoverage.missing.includes(component.component_id) ? "has-connection-hint" : ""}">
             <strong>${escapeHtml(component.label)}</strong>
             <small>${escapeHtml(templateComponentTypeLabel(component.abstract_type))}${connections.get(component.component_id) || controlAssignments.get(component.component_id) ? ` · ${controlAssignments.get(component.component_id) ? "Steuereinheit" : "Verbunden mit"}: ${escapeHtml(componentById.get(connections.get(component.component_id) || controlAssignments.get(component.component_id))?.label || connections.get(component.component_id) || controlAssignments.get(component.component_id))}` : ""}</small>
@@ -410,6 +439,10 @@ const DevelopmentPlatform = (() => {
 
     function templateComponentDefaultLabel(type) {
       return globalThis.DevelopmentComponentMetamodel?.typeLabel(type) || "Komponente";
+    }
+
+    function isUserConfigurableComponent(component) {
+      return globalThis.DevelopmentComponentMetamodel?.componentTypes?.[component?.abstract_type]?.user_configurable !== false;
     }
 
     function appendTemplateComponent(type, label, connectionTargetId = "", relationshipRuleId = "") {
@@ -1028,7 +1061,11 @@ const DevelopmentPlatform = (() => {
     function restoreDevelopmentDialog(project) {
       const dialog = project?.viewManifest?.architecture_dialog || project?.viewManifest?.architectureDialog || {};
       state.developmentPlatform.chat = Array.isArray(dialog.messages) ? dialog.messages : [];
-      state.developmentPlatform.architectureDiagram = sanitizeArchitectureDiagram(dialog.architectureDiagram) || architectureDiagramForProject(project);
+      const storedDiagram = sanitizeArchitectureDiagram(dialog.architectureDiagram);
+      state.developmentPlatform.architectureDiagram = refreshProjectTemplateDiagram(
+        storedDiagram || architectureDiagramForProject(project),
+        currentProjectTemplateIdFor(project),
+      );
       state.developmentPlatform.lastRouting = dialog.lastRouting || null;
       state.developmentPlatform.assistantMode = dialog.assistantMode || "architecture_structure";
       state.developmentPlatform.assistantOpen = false;
@@ -1079,12 +1116,26 @@ const DevelopmentPlatform = (() => {
         : storedDerivedFrom || (project?.buildConfig ? "project_template" : "persisted_project");
       const source = normalizeArchitecturePlantUml(stripPlantUmlNotes(view?.payload?.source || ""), derivedFrom);
       if (!source) return null;
-      return {
+      return refreshProjectTemplateDiagram({
         source,
         title: view.title || "Architektur-Skizze",
         summary: view.summary || "Gespeicherte Projektarchitektur.",
         derived_from: derivedFrom,
         ...(view.payload?.function_coverage ? { function_coverage: view.payload.function_coverage } : {}),
+      }, templateId);
+    }
+
+    function refreshProjectTemplateDiagram(diagram, templateId) {
+      if (!diagram?.source || !["event_driven_project_application", "iot_datalogger_web_push_pwa"].includes(templateId)) return diagram;
+      const containsLegacyInfrastructure = templateId === "event_driven_project_application"
+        ? /\bas\s+(?:telemetry|runtime|push)\b/i.test(diagram.source)
+        : /\bas\s+(?:telemetry|storage|push)\b/i.test(diagram.source);
+      const refreshedSource = projectTemplatePreviews[templateId]?.source;
+      if (!containsLegacyInfrastructure || !refreshedSource) return diagram;
+      return {
+        ...diagram,
+        source: normalizeArchitecturePlantUml(refreshedSource, "project_template"),
+        derived_from: "project_template",
       };
     }
 
@@ -1775,7 +1826,16 @@ const DevelopmentPlatform = (() => {
     function hardwareComponentType(label, plantUmlType) {
       const text = String(label || "").toLowerCase();
       if (String(plantUmlType).toLowerCase() === "actor") return "actor";
-      if (/iot.?device|esp32|esp8266|arduino|raspberry|processor.?board|datenlogger/.test(text)) return "iot_device";
+      // The start architecture is persisted as PlantUML.  Preserve the semantic
+      // component types of managed project services when it is read back into
+      // the editor; otherwise they would all fall through to "structural".
+      if (/telemetrie.api/.test(text)) return "telemetry_api";
+      if (/projekt.speicher/.test(text)) return "project_storage";
+      if (/projekt.runtime.daten/.test(text)) return "project_runtime_data";
+      if (/ereignis.worker/.test(text)) return "event_worker";
+      if (/ereignis.dispatcher/.test(text)) return "event_dispatcher";
+      if (/projekt.push.versand|benachrichtigungsdienst/.test(text)) return "notification_service";
+      if (/iot.?device|iot.?zielger(?:ae|ä)t|esp32|esp8266|arduino|raspberry|processor.?board|datenlogger/.test(text)) return "iot_device";
       if (/sensor|fuehler|fuhler|temperatur|feuchte|helligkeit|wasserstand|ntc|ptc|pt1000/.test(text)) return "sensor";
       if (/aktor|motor|relais|ventil|servo|summer|buzzer|led/.test(text)) return "actuator";
       if (/pwa|iphone|smartphone|mobile app/.test(text)) return "smartphone_app";
@@ -1818,17 +1878,25 @@ const DevelopmentPlatform = (() => {
     function hardwareRealizationControl(component) {
       if (component.abstract_type === "iot_device") {
         const boards = availableProcessorBoards();
-        const processorKey = DevelopmentHardwareModel.selectionForComponent(component, boards);
+        const inventoryDevice = (state.devices || []).find((device) => device.device_id === component.inventory_device_id);
+        const inventoryBoard = boards.find((board) => DevelopmentHardwareModel.boardIdentifier(board) === inventoryDevice?.hardware_profile_id);
+        const processorKey = inventoryBoard ? DevelopmentHardwareModel.processorKey(inventoryBoard) : DevelopmentHardwareModel.selectionForComponent(component, boards);
         const compatibleBoards = DevelopmentHardwareModel.boardsForProcessor(boards, processorKey);
+        const useInventory = Boolean(inventoryDevice);
         return `<div class="hardware-board-selection">
-          <label>Prozessor <button type="button" class="hardware-inline-help" data-hardware-processor-help aria-label="Hilfe zu ESP32-Varianten" title="ESP32-Varianten erklaeren">?</button><select data-hardware-processor>
+          <fieldset class="hardware-choice"><legend>Board aus Inventar verwenden? <button type="button" class="hardware-inline-help" data-hardware-inventory-help title="Ohne Inventar-Board kann die Zuordnung später nachgeholt werden.">?</button></legend>
+            <label><input type="radio" name="hardware-source-${escapeAttribute(component.component_id)}" data-hardware-source value="inventory" ${useInventory ? "checked" : ""}> Ja</label>
+            <label><input type="radio" name="hardware-source-${escapeAttribute(component.component_id)}" data-hardware-source value="catalog" ${useInventory ? "" : "checked"}> Nein</label>
+          </fieldset>
+          ${useInventory ? `<label>Inventar-Board<select data-hardware-field="inventory_device_id">${(state.devices || []).filter((device) => device.hardware_profile_id).map((device) => `<option value="${escapeAttribute(device.device_id)}" ${selected(component.inventory_device_id, device.device_id)}>${escapeHtml(device.display_name || device.device_id)} · ${inventoryConnectLabel(device)}</option>`).join("")}</select><small>${inventoryConnectLabel(inventoryDevice)}. Board und Prozessor werden übernommen.</small></label>` : `
+          <label>Prozessor <button type="button" class="hardware-inline-help" data-hardware-processor-help aria-label="Hilfe zu unterstützten Boards" title="Unterstützte Boards anzeigen">?</button><select data-hardware-processor>
             <option value="">Prozessor waehlen</option>
             ${DevelopmentHardwareModel.processorOptions(boards).map((processor) => `<option value="${escapeAttribute(processor.key)}" ${selected(processorKey, processor.key)}>${escapeHtml(processorLabel(processor))}</option>`).join("")}
           </select></label>
           <label>Board<select data-hardware-field="board_profile_id" ${processorKey ? "" : "disabled"}>
             <option value="">${processorKey ? "Board waehlen" : "Zuerst Prozessor waehlen"}</option>
             ${compatibleBoards.map((board) => `<option value="${escapeAttribute(DevelopmentHardwareModel.boardIdentifier(board))}" ${selected(component.board_profile_id, DevelopmentHardwareModel.boardIdentifier(board))}>${escapeHtml(processorBoardLabel(board))}</option>`).join("")}
-          </select></label>
+          </select></label>`}
         </div>`;
       }
       if (component.abstract_type === "sensor") return sensorRealizationControls(component);
@@ -1949,11 +2017,7 @@ const DevelopmentPlatform = (() => {
     function hardwarePropertyControls(component) {
       const properties = component.properties || {};
       if (component.abstract_type === "iot_device") {
-        const inventoryDevices = compatibleInventoryDevices(component);
-        return `<label>Inventar-Device (optional)<select data-hardware-field="inventory_device_id" ${component.board_profile_id ? "" : "disabled"}>
-          <option value="">${component.board_profile_id ? "Kein Device zuordnen" : "Zuerst Board waehlen"}</option>
-          ${inventoryDevices.map((device) => `<option value="${escapeAttribute(device.device_id)}" ${selected(component.inventory_device_id, device.device_id)}>${escapeHtml(device.display_name || device.device_id)}</option>`).join("")}
-        </select><small>Ohne Inventar-Device kann kein Flash-Vorgang gestartet werden.</small></label>`;
+        return `<span class="hardware-not-applicable">Board über Inventar oder Katalog wählen.</span>`;
       }
       if (component.abstract_type === "sensor") {
         const electrical = component.concrete_type === "pt1000" ? `
@@ -1976,6 +2040,12 @@ const DevelopmentPlatform = (() => {
       return (Array.isArray(state.devices) ? state.devices : []).filter((device) => (
         String(device.hardware_profile_id || "") === String(component.board_profile_id)
       ));
+    }
+
+    function inventoryConnectLabel(device) {
+      const profile = device?.instance_configuration?.basissoftware_profile;
+      if (!profile || device?.connectivity_status === "unsupported") return "Nicht connect-fähig";
+      return device?.connectivity_status === "online" ? "Connect-fähig · online" : "Connect-fähig · noch nicht online";
     }
 
     function hardwareConnectionControls(component, devices) {
@@ -2059,8 +2129,12 @@ const DevelopmentPlatform = (() => {
     }
 
     function handleHardwareHelpClick(event) {
+      if (event.target.closest("[data-hardware-inventory-help]")) {
+        setActionStatus("Kein Inventar-Board zu wählen ist erlaubt. Die konkrete Gerätezuordnung kann später nachgeholt werden; Flash und Online-Prüfung sind dann bis zur Zuordnung nicht verfügbar.");
+        return;
+      }
       if (!event.target.closest("[data-hardware-processor-help]")) return;
-      openHelpTopic?.("esp32-overview");
+      openHelpTopic?.("supported-devices");
     }
 
     function collectHardwareConfiguration() {
@@ -2071,12 +2145,19 @@ const DevelopmentPlatform = (() => {
         if (!row) return component;
         const next = { ...component, properties: { ...(component.properties || {}) } };
         row.querySelectorAll("[data-hardware-field]").forEach((input) => { next[input.dataset.hardwareField] = input.value; });
+        const source = row.querySelector("[data-hardware-source]:checked")?.value || "catalog";
+        if (source !== "inventory") next.inventory_device_id = "";
+        if (source === "inventory" && !next.inventory_device_id) {
+          next.inventory_device_id = (state.devices || []).find((device) => device.hardware_profile_id)?.device_id || "";
+        }
+        const inventoryDevice = (state.devices || []).find((device) => device.device_id === next.inventory_device_id);
+        const inventoryBoard = boards.find((board) => DevelopmentHardwareModel.boardIdentifier(board) === inventoryDevice?.hardware_profile_id);
         const processorInput = row.querySelector("[data-hardware-processor]");
-        const processorSelection = processorInput
-          ? DevelopmentHardwareModel.applyProcessorSelection(next, processorInput.value, boards)
-          : next;
+        const processorSelection = inventoryBoard
+          ? DevelopmentHardwareModel.applyProcessorSelection({ ...next, board_profile_id: DevelopmentHardwareModel.boardIdentifier(inventoryBoard) }, DevelopmentHardwareModel.processorKey(inventoryBoard), boards)
+          : processorInput ? DevelopmentHardwareModel.applyProcessorSelection(next, processorInput.value, boards) : next;
         Object.assign(next, processorSelection);
-        if (next.inventory_device_id && !compatibleInventoryDevices(next).some((device) => device.device_id === next.inventory_device_id)) {
+        if (next.inventory_device_id && !inventoryBoard) {
           next.inventory_device_id = "";
         }
         const sensorCategoryInput = row.querySelector("[data-hardware-sensor-category]");

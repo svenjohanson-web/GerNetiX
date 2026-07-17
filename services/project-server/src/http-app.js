@@ -42,6 +42,10 @@ function createHttpApp(options) {
       sendJson(res, 200, service.updateProject(decodeURIComponent(project[1]), await readJsonBody(req)));
       return;
     }
+    if (req.method === "DELETE" && project) {
+      sendJson(res, 200, service.deleteProject(decodeURIComponent(project[1])));
+      return;
+    }
 
     const sources = path.match(new RegExp(`^${prefix}/([^/]+)/sources$`));
     if (req.method === "GET" && sources) {

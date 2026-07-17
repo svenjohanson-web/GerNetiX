@@ -131,10 +131,16 @@ Konfiguration:
 - `PORT`: HTTP-Port, Standard `4800`
 - `PROJECT_SERVER_BASE_URL`: externe Basis-URL fuer spaetere Links
 - `PERSISTENCE_BACKEND` oder `PROJECT_SERVER_PERSISTENCE_BACKEND`: `memory`, `sqlite` oder `json`, Standard `sqlite`
-- `PERSISTENCE_SQLITE_PATH` oder `PROJECT_SERVER_SQLITE_PATH`: SQLite-Datei fuer `sqlite`, Standard `<Workspace>/.runtime/gernetix-services.sqlite`
+- `PROJECT_SERVER_SQLITE_PATH` oder `PERSISTENCE_SQLITE_PATH`: SQLite-Datei fuer `sqlite`, Standard `<Workspace>/.runtime/gernetix-projects.sqlite`
 - `PROJECT_SERVER_RUNTIME_DIR`: Runtime-Verzeichnis fuer JSON-Persistenz, Standard `<Workspace>/.runtime`
 
 Accountgebundene Entwicklungsprojekte werden standardmaessig in SQLite gespeichert. `memory` ist nur fuer isolierte Tests oder bewusst fluechtige Entwicklungslaeufe gedacht. Der Browser darf sich lokal das zuletzt geoeffnete Projekt merken; die Projektdaten selbst bleiben auf dem Project Server.
+
+## Ressourcenregeln
+
+Der Project Server prueft beim Anlegen die Projektanzahl des angeforderten Plans: Free hoechstens fuenf, Premium und Premium Demo hoechstens 200 Entwicklungsprojekte. Projektdateien haben kein kundenrelevantes Speicherlimit. Katalog-/Demo-Seeds erhalten stets den Plan der angemeldeten Session und ein Seed-Fehler darf die persoenliche Projektliste nicht verdecken.
+
+Eigene Entwicklungsprojekte koennen ueber die Entwicklungsplattform nach einer ausdruecklichen Bestaetigung geloescht werden. Dabei werden Projekt, Quellen, Build-Jobs, Artefaktreferenzen, Feedback und zugehoerige Consents entfernt; Identity bereinigt davor projektbezogene Telemetrie und Web-Push-Subscriptions.
 
 ## Nicht-Ziele fuer diesen Stand
 

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260715-15" />
+    <link rel="stylesheet" href="/app/app.css?v=20260717-17" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -58,7 +58,10 @@
           <article class="entry-card" aria-labelledby="mobileAlertsTitle">
             <span>iPhone App</span>
             <strong id="mobileAlertsTitle">Push-Meldungen</strong>
-            <p>In Safari zum Home-Bildschirm hinzufügen und Push-Meldungen aktivieren.</p>
+            <p>In Safari zum Home-Bildschirm hinzufügen und Push-Meldungen pro Projekt aktivieren.</p>
+            <label>Projekt
+              <select id="pushProjectSelect" aria-label="Projekt fuer Push-Meldungen"></select>
+            </label>
             <button id="enablePushButton" type="button">Push aktivieren</button>
             <button id="sendPushTestButton" type="button">Testnachricht senden</button>
             <small id="pushStatus" aria-live="polite"></small>
@@ -571,11 +574,17 @@
                   <strong>Projekt oeffnen</strong>
                   <small>Ein bereits angelegtes Entwicklungsprojekt auswaehlen.</small>
                 </button>
+                <button id="manageDevelopmentProjectsButton" class="development-project-choice" type="button">
+                  <span>Meine Projekte</span>
+                  <strong>Projekte verwalten</strong>
+                  <small>Oeffnen, weiterbearbeiten oder loeschen.</small>
+                </button>
               </div>
               <div id="developmentProjectOpenPanel" class="development-project-panel hidden">
                 <label class="development-project-field">Projekt oeffnen<select id="developmentProjectSelect"></select></label>
                 <div class="button-row"><button id="selectDevelopmentProjectButton" class="primary" type="button" disabled>Wählen und weiter</button></div>
               </div>
+              <section id="developmentProjectOverview" class="development-project-panel hidden" aria-label="Meine Entwicklungsprojekte"></section>
               <form id="developmentProjectForm" class="development-project-form hidden">
                 <div id="developmentProjectTemplateField" class="development-template-field">
                   <label for="developmentProjectTemplate">Projekttemplate
@@ -773,10 +782,10 @@
     <script src="/app/guided-project-view.js?v=20260714-01"></script>
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
     <script src="/app/development-component-metamodel.js?v=20260716-01"></script>
-    <script src="/app/development-platform.js?v=20260716-01"></script>
-    <script src="/app/help-content.js?v=20260715-01"></script>
+    <script src="/app/development-platform.js?v=20260717-04"></script>
+    <script src="/app/help-content.js?v=20260717-08"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
-    <script src="/app/help-view.js?v=20260715-01"></script>
-    <script src="/app/app.js?v=20260715-22"></script>
+    <script src="/app/help-view.js?v=20260717-03"></script>
+    <script src="/app/app.js?v=20260717-25"></script>
   </body>
 </html>

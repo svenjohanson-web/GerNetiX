@@ -9,10 +9,6 @@ const HelpContent = (() => {
         { id: "quick-start", title: "So startest du", articleId: "quick-start" },
         { id: "create-account", title: "Konto anlegen", articleId: "create-account" },
         { id: "ai-premium", title: "KI-Unterstuetzung und Premium", articleId: "ai-premium" },
-        { id: "supported-devices", title: "Unterstützte Boards", articleId: "supported-devices" },
-        { id: "esp32-overview", title: "ESP32-Überblick", articleId: "esp32-overview" },
-        { id: "esp32-s3", title: "ESP32-S3", articleId: "esp32-s3" },
-        { id: "esp32-c6", title: "ESP32-C6", articleId: "esp32-c6" },
       ],
     },
     {
@@ -20,7 +16,17 @@ const HelpContent = (() => {
       title: "Mit GerNetiX-Konto",
       description: "Board einrichten, registrieren und dein Inventar nutzen.",
       access: "account",
-      children: [{ id: "provision-new-board", title: "Neues Board in Betrieb nehmen", articleId: "provision-new-board" }, { id: "register-device", title: "Board registrieren", articleId: "register-device" }, { id: "pair-device", title: "Board verbinden", articleId: "pair-device" }, { id: "flash-device", title: "Board flashen", articleId: "flash-device" }, { id: "usb-wifi-setup", title: "WLAN per USB einrichten", articleId: "usb-wifi-setup" }, { id: "compatible-hardware", title: "Kompatible Hardware", articleId: "compatible-hardware" }, { id: "device-not-detected", title: "Board wird nicht erkannt", articleId: "device-not-detected" }],
+      children: [{ id: "provision-new-board", title: "Neues Board in Betrieb nehmen", articleId: "provision-new-board" }, { id: "register-device", title: "Board registrieren", articleId: "register-device" }, { id: "pair-device", title: "Board verbinden", articleId: "pair-device" }, { id: "flash-device", title: "Board flashen", articleId: "flash-device" }, { id: "usb-wifi-setup", title: "WLAN per USB einrichten", articleId: "usb-wifi-setup" }, { id: "supported-devices", title: "Unterstützte Boards", articleId: "supported-devices" }, { id: "device-not-detected", title: "Board wird nicht erkannt", articleId: "device-not-detected" }],
+    },
+    {
+      id: "project-support",
+      title: "Unterstützung bei Projekten",
+      description: "Komponenten verstehen und für dein eigenes Projekt konfigurieren.",
+      access: "account",
+      children: [
+        { id: "event-worker-rules", title: "Ereignis-Worker und Regelsprache", articleId: "event-worker-rules" },
+        { id: "event-dispatcher", title: "Ereignis-Dispatcher", articleId: "event-dispatcher" }
+      ],
     },
     {
       id: "premium-information",
@@ -146,10 +152,46 @@ const HelpContent = (() => {
       relatedTopics: ["flash-device", "supported-devices"],
     },
     "supported-devices": {
-      title: "Supported devices",
-      summary: "GerNetiX guides board selection from the hardware catalog and its available capabilities.",
-      sections: [{ heading: "Choosing a board", paragraphs: ["Choose a board with the interfaces and memory your project needs. ESP32 boards are a strong starting point for Wi-Fi-connected projects."], links: [{ topicId: "esp32-overview", label: "ESP32 overview" }, { topicId: "esp32-s3", label: "ESP32-S3" }, { topicId: "esp32-c6", label: "ESP32-C6" }] }],
-      relatedTopics: ["esp32-overview", "esp32-s3", "esp32-c6"],
+      title: "Unterstützte Boards",
+      summary: "Eine Sammlung aller aktiven Boards aus dem GerNetiX Hardware Catalog – mit Fähigkeiten, Prüfstatus und Beschaffungsinformationen.",
+      hardwareCatalog: true,
+      sections: [
+        { heading: "Die Sammlung", paragraphs: ["Jede Karte steht für eine konkrete unterstützte Boardvariante. Die Liste ist keine Sammlung eigener Hilfethemen: Eigenschaften, Schnittstellen und Hinweise stehen direkt bei dem Board."] },
+        { heading: "Was bedeutet unterstützt?", paragraphs: ["Ein Katalogeintrag beschreibt die bekannte Boardfamilie, ihre Schnittstellen und den vorgesehenen GerNetiX-Provisionierungsweg. Erst nach USB-Flash, Registrierung und Pairing wird ein konkretes gekauftes Board als GerNetiX-verified geführt. Prüfe vor dem Kauf immer die vollständige Modulbezeichnung, Flash-Größe, USB-Datenanschluss und bei Sonderboards das Datenblatt."] },
+        { heading: "Ersteinrichtung", list: ["Ein neues Board wird über ein USB-Datenkabel geflasht und provisioniert; ein reines Ladekabel reicht nicht.", "Für die browsergestützte USB-Provisionierung nutze einen PC oder Mac mit einem Chromium-Browser.", "iPhone und iPad eignen sich für die PWA, Push und Bedienung, aber nicht für Web Serial."] },
+        { heading: "Kauf und Herstellerinformationen", paragraphs: ["Datenblatt- und Beschaffungslinks stehen direkt bei dem jeweiligen Board. Entscheidend ist immer die genaue Boardvariante, nicht nur die allgemeine ESP32-Familie."] }
+      ],
+      relatedTopics: ["provision-new-board", "device-not-detected", "update-profiles"],
+    },
+    "event-worker-rules": {
+      title: "Ereignis-Worker und Regelsprache",
+      summary: "Lege fest, wann ein Ereignis verarbeitet wird – ohne allgemeine Skripte oder unkontrollierte Zugriffe.",
+      sections: [
+        { heading: "Aufgabe des Workers", paragraphs: ["Ein IoT-Gerät meldet ein Ereignis. Der Worker bewertet es anhand einer Regel und kann ein Folgeereignis freigeben. Der Dispatcher stellt dieses Folgeereignis anschließend an ein Ziel zu. Push ist nur eine mögliche Zustellart und nicht Aufgabe des Workers."] },
+        { heading: "Gültige Werte", table: { headers: ["Wert", "Bedeutung"], rows: [["event.type", "Name des eingegangenen Ereignisses"], ["event.value", "Mitgelieferter Text- oder Zahlenwert"], ["state.<name>", "Nur eine im Projektmodell ausdrücklich deklarierte Zustandsvariable"]] } },
+        { heading: "Was bedeutet true oder false?", paragraphs: ["Ein Regelausdruck beantwortet immer genau eine Frage mit true (wahr) oder false (falsch). true bedeutet: Die Regel trifft zu und der Worker darf ein Folgeereignis freigeben. false bedeutet: Die Regel trifft nicht zu; dieser Durchlauf endet ohne Folgeereignis."] },
+        { heading: "Vergleichsoperatoren", table: { headers: ["Operator", "Bedeutung", "Beispiel"], rows: [["==", "ist gleich", "event.type == taste_gedrueckt"], ["!=", "ist nicht gleich", "state.life_state != warnung"], ["<", "kleiner als", "state.hunger < 10"], ["<=", "kleiner oder gleich", "state.hunger <= 10"], [">", "größer als", "state.hunger > 20"], [">=", "größer oder gleich", "state.hunger >= 80"]] } },
+        { heading: "Verknüpfungen", table: { headers: ["Operator", "Bedeutung", "Beispiel"], rows: [["&&", "und – beide Seiten müssen wahr sein", "event.type == timer_tick && state.hunger >= 80"], ["||", "oder – mindestens eine Seite muss wahr sein", "event.type == fuettern || event.type == schlafenszeit"], ["!", "nicht – kehrt wahr und falsch um", "!(state.life_state == warnung)"]] } },
+        { heading: "So wird ein Ausdruck gelesen", paragraphs: ["event.type == timer_tick && state.hunger >= 80 bedeutet: Der Worker reagiert nur, wenn ein Zeitereignis eingegangen ist und gleichzeitig der deklarierte Hungerwert mindestens 80 beträgt. Bei einer und-Verknüpfung reicht eine falsche Seite aus, damit das Gesamtergebnis false ist."] },
+        { heading: "Beispiel: Tamagotchi-Zustandsmaschine", paragraphs: ["Ein Tamagotchi verändert seinen Zustand durch Ereignisse. Der Worker bewertet nur die Übergänge; der Dispatcher kann danach optional eine Smartphone-Benachrichtigung zustellen."], stateChart: { title: "Tamagotchi – vereinfachte Zustände", states: [{ title: "Satt", initial: true }, { title: "Hungrig" }, { title: "Warnung" }], transitions: [{ from: "Satt", to: "Hungrig", when: "timer_tick und state.hunger >= 50" }, { from: "Hungrig", to: "Warnung", when: "timer_tick und state.hunger >= 80" }, { from: "Hungrig", to: "Satt", when: "event.type == fuettern" }, { from: "Warnung", to: "Satt", when: "event.type == fuettern" }] } },
+        { heading: "UML-Statechart lesen", paragraphs: ["Der ausgefüllte Punkt ist der Start. Ab dort beginnt das Tamagotchi im Zustand satt. Abgerundete Rechtecke sind Zustände; genau einer davon ist als state.life_state gespeichert. Ein Pfeil ist ein erlaubter Übergang. Der Text am Pfeil wird als Ereignis [Bedingung] gelesen: timer_tick [hunger ≥ 50] bedeutet, dass das Ereignis timer_tick eingegangen sein muss und der deklarierte Wert state.hunger mindestens 50 beträgt. Bei Erreichen eines Zielzustands aktualisiert die Plattform state.life_state, zum Beispiel von satt auf hungrig. Der Worker darf keine anderen Zustände oder Variablen verwenden als die, die dieses Modell erklärt."], umlStateChart: true },
+        { heading: "So wird das Diagramm als Variablenmodell abgebildet", paragraphs: ["Die Zustandsnamen aus dem Diagramm werden nicht frei im Ausdruck geschrieben. Das Projektmodell erklärt zunächst, welche Variablen es gibt. Nur diese Namen stehen dem Worker zur Verfügung."], table: { headers: ["Diagramm", "Deklarierte Zustandsvariable", "Erlaubte Werte"], rows: [["Satt, Hungrig, Warnung", "state.life_state", "satt, hungrig, warnung"], ["Hunger als Übergangsbedingung", "state.hunger", "0 bis 100"], ["Auslösendes Ereignis", "event.type", "timer_tick, fuettern"]] } },
+        { heading: "Daraus abgeleitete Worker-Regel", paragraphs: ["Für den Übergang zur Warnung genügt ein einzelner, prüfbarer Regelausdruck. Ergibt er true, gibt die Plattform das Folgeereignis hunger_warnung frei. Der Nutzer schreibt dafür kein allgemeines JavaScript."], code: "event.type == \"timer_tick\" && state.hunger >= 80\n\n// Plattformwirkung bei true:\nfolgeereignis = \"hunger_warnung\"\n// Dispatcher kann dieses Ereignis optional per Push zustellen." },
+        { heading: "Beispiele", code: "event.type == \"taste_gedrueckt\"\n\nevent.type == \"timer_tick\" && state.life_state == \"hungrig\"\n\nevent.type == \"fuettern\" || state.life_state == \"warnung\"" },
+        { heading: "Klare Grenzen", list: ["Keine Schleifen und keine eigenen Funktionen", "Keine Netzwerk- oder Dateizugriffe", "Keine beliebigen Datenbankabfragen oder Speicherzugriffe", "Zeitplan, Zugriffsdauer und erlaubte Aktion werden außerhalb der Regel konfiguriert"] }
+      ],
+      relatedTopics: ["event-dispatcher", "first-project"],
+    },
+    "event-dispatcher": {
+      title: "Ereignis-Dispatcher",
+      summary: "Stelle ein vom Worker freigegebenes Folgeereignis an das konfigurierte Ziel zu.",
+      sections: [
+        { heading: "Aufgabe des Dispatchers", paragraphs: ["Der Dispatcher verarbeitet keine Rohdaten vom IoT-Gerät und führt keine Projektregel aus. Er prüft, ob ein freigegebenes Folgeereignis zu seiner Bedingung passt, und stellt es dann zu."] },
+        { heading: "Was wird konfiguriert?", table: { headers: ["Konfiguration", "Bedeutung"], rows: [["Bedingung", "Zum Beispiel: Folgeereignis liegt vor oder ein Ereigniswert entspricht einem erwarteten Wert."], ["Zielgerät", "Ein IoT-Zielgerät aus demselben Projekt."], ["PWA-Push", "Optional: Benachrichtigt registrierte Smartphone-PWAs für genau dieses Projekt."]] } },
+        { heading: "Dispatcher ist nicht Push", paragraphs: ["Push ist nur ein möglicher Zustellweg. Derselbe Dispatcher kann auch ein IoT-Zielgerät erreichen. Wird Push nicht aktiviert oder ist keine PWA registriert, bleibt die Ereignisverarbeitung davon unabhängig."] },
+        { heading: "Beispiel", code: "Worker gibt frei: benachrichtigung_anfordern\nDispatcher-Bedingung: Folgeereignis liegt vor\nZiel: Smartphone-PWA dieses Projekts\nOptionaler Weg: Push-Benachrichtigung" }
+      ],
+      relatedTopics: ["event-worker-rules"],
     },
     "compatible-hardware": {
       title: "Kompatible Hardware",
@@ -177,6 +219,9 @@ const HelpContent = (() => {
     "pair-device": "account",
     "flash-device": "account",
     "usb-wifi-setup": "account",
+    "supported-devices": "account",
+    "event-worker-rules": "account",
+    "event-dispatcher": "account",
     "compatible-hardware": "account",
     "device-not-detected": "account",
   };

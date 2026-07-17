@@ -30,13 +30,13 @@ function createDemoProject(service) {
   });
 }
 
-test("defaults project persistence to shared sqlite runtime storage", () => {
+test("defaults project persistence to dedicated project sqlite storage", () => {
   const config = createConfig({});
 
   assert.equal(config.persistenceBackend, "sqlite");
   assert.equal(path.isAbsolute(config.runtimeRoot), true);
   assert.equal(path.isAbsolute(config.sqlitePath), true);
-  assert.equal(path.basename(config.sqlitePath), "gernetix-services.sqlite");
+  assert.equal(path.basename(config.sqlitePath), "gernetix-projects.sqlite");
 });
 
 test("creates project with default source and lists it by user", () => {
@@ -379,10 +379,27 @@ test("enforces centrally configurable free resource limits", () => {
   service.createProject({ user_id: "free-user", plan_id: "free", title: "Eins" });
   service.createProject({ user_id: "free-user", plan_id: "free", title: "Zwei" });
   assert.throws(() => service.createProject({ user_id: "free-user", plan_id: "free", title: "Drei" }), /Maximal 2 Projekte/);
-  const project = service.createProject({ user_id: "other-user", plan_id: "free", title: "Speicher" });
-  assert.throws(() => service.upsertSource(project.project_id, { path: "src/large.cpp", content: "x".repeat(201), plan_id: "free" }), /Speicherlimit/);
   const summary = service.resourceSummary();
   assert.equal(summary.policies.find((policy) => policy.plan_id === "free").max_projects, 2);
+});
+
+test("enforces the generous premium project-count limit without storage enforcement", () => {
+  const service = createMemoryProjectServer();
+  for (let index = 0; index < 200; index += 1) {
+    service.createProject({ user_id: "premium-user", plan_id: "premium", title: `Projekt ${index}` });
+  }
+  assert.throws(() => service.createProject({ user_id: "premium-user", plan_id: "premium", title: "Zu viel" }), /Maximal 200 Projekte/);
+  assert.equal(service.resourceSummary().policies.find((policy) => policy.plan_id === "premium").max_projects, 200);
+});
+
+test("deletes a project together with its stored project data", () => {
+  const service = createMemoryProjectServer();
+  const project = service.createProject({ project_id: "delete-me", user_id: "user-1", title: "Loeschbar" });
+  service.upsertSource(project.project_id, { path: "src/main.cpp", content: "void setup() {}" });
+  const result = service.deleteProject(project.project_id);
+  assert.equal(result.project_id, project.project_id);
+  assert.equal(result.deleted.sources, 1);
+  assert.throws(() => service.getProject(project.project_id), /Projekt wurde nicht gefunden/);
 });
 
 test("sqlite repository migrates the legacy ESP32 component path to IoT-Device 1", () => {

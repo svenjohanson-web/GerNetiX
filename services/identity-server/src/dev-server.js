@@ -43,6 +43,7 @@ const { createDevServiceClients } = require("./dev/service-clients");
 const { createInterfaceCallTelemetry } = require("../../shared/persistence/interface-call-telemetry");
 const { createTamagotchiEntryCourseModel } = require("./dev/project-models/tamagotchi-entry-course");
 const { createSmartAssistantCourseModel } = require("./dev/project-models/smart-assistant-course");
+const { createButtonToSmartphoneNotificationCourseModel } = require("./dev/project-models/button-to-smartphone-notification-course");
 const { defaultCatalogSeed } = require("../../hardware-catalog/src/seed");
 
 const publicDir = path.join(__dirname, "..", "public");
@@ -148,6 +149,7 @@ const createAccountTransparency = createAccountTransparencyFactory({
 });
 const tamagotchiEntryCourseModel = createTamagotchiEntryCourseModel({ readWorkspaceText });
 const smartAssistantCourseModel = createSmartAssistantCourseModel();
+const buttonToSmartphoneNotificationCourseModel = createButtonToSmartphoneNotificationCourseModel();
 const llmConfigStore = createLlmConfigStore({
   configPath: path.join(workspaceRoot, ".runtime", "identity-llm-config.json"),
   defaultOllamaBaseUrl: ollamaBaseUrl,
@@ -262,16 +264,16 @@ function requireInternalAdmin(req) {
 async function handleInternalDevicePushEvent(req, res) {
   requireInternalAdmin(req);
   const event = await readJsonBody(req);
+  const accountId = String(event.account_id || "").trim();
+  const projectId = String(event.project_id || "").trim();
   const deviceId = String(event.device_id || "").trim();
-  if (!deviceId) { sendJson(res, 400, { error: "device_id_required" }); return; }
-  const recipients = await deviceManagementJson(`/api/device-management/devices/${encodeURIComponent(deviceId)}/push-recipients`);
-  const accountIds = Array.isArray(recipients.account_ids) ? recipients.account_ids : [];
+  if (!accountId || !projectId || !deviceId) { sendJson(res, 400, { error: "account_project_and_device_required" }); return; }
   const title = String(event.title || "GerNetiX Board").trim().slice(0, 120) || "GerNetiX Board";
   const body = String(event.body || "Neue Meldung von deinem Board.").trim().slice(0, 500) || "Neue Meldung von deinem Board.";
   const requestedUrl = String(event.url || "").trim();
   const url = requestedUrl.startsWith("/app/") ? requestedUrl : "/app/device-management/";
-  const push = await webPushService.notifyAccounts(accountIds, { title, body, url });
-  sendJson(res, 202, { accepted: true, device_id: deviceId, recipients: accountIds.length, push });
+  const push = await webPushService.notifyProject(accountId, projectId, { title, body, url });
+  sendJson(res, 202, { accepted: true, account_id: accountId, project_id: projectId, device_id: deviceId, push });
 }
 
 async function routeRequest(req, res) {
@@ -329,8 +331,8 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/api/push/public-key" && req.method === "GET") { sendJson(res, 200, { enabled: webPushService.enabled, public_key: webPushService.publicKey || "" }); return; }
-  if (url.pathname === "/api/push/subscribe" && req.method === "POST") { const session = readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; } if (!webPushService.enabled) { sendJson(res, 503, { error: "push_not_configured" }); return; } webPushService.subscribe(projectServerUserId(session), await readJsonBody(req)); sendJson(res, 201, { subscribed: true }); return; }
-  if (url.pathname === "/api/push/test" && req.method === "POST") { const session = readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; } const push = await webPushService.notifyAccount(projectServerUserId(session), { title: "GerNetiX Testnachricht", body: "Hallo Welt – dein privater Push-Kanal ist aktiv.", url: "/app/dashboard/" }); sendJson(res, 202, { accepted: true, push }); return; }
+  const pushProjectRoute = url.pathname.match(/^\/api\/push\/projects\/([^/]+)\/(subscribe|test)$/);
+  if (pushProjectRoute && req.method === "POST") { const session = readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; } const projectId = decodeURIComponent(pushProjectRoute[1]); await requireSessionProject(session, projectId); if (pushProjectRoute[2] === "subscribe") { if (!webPushService.enabled) { sendJson(res, 503, { error: "push_not_configured" }); return; } webPushService.subscribeProject(projectServerUserId(session), projectId, await readJsonBody(req)); sendJson(res, 201, { subscribed: true, project_id: projectId }); return; } const push = await webPushService.notifyProject(projectServerUserId(session), projectId, { title: "GerNetiX Testnachricht", body: "Hallo Welt – dein privater Projekt-Push-Kanal ist aktiv.", url: `/app/ide/?project=${encodeURIComponent(projectId)}` }); sendJson(res, 202, { accepted: true, project_id: projectId, push }); return; }
   if (url.pathname === "/api/internal/push/device-event" && req.method === "POST") { await handleInternalDevicePushEvent(req, res); return; }
 
   const telemetryProjectRoute = url.pathname.match(/^\/api\/platform\/telemetry\/projects\/([^/]+)\/(measurements|events|retention|data)$/);
@@ -508,6 +510,14 @@ async function routeRequest(req, res) {
     return;
   }
 
+  const platformProject = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)$/);
+  if (req.method === "DELETE" && platformProject) {
+    const session = readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    await handlePlatformProjectDelete(res, session, decodeURIComponent(platformProject[1]));
+    return;
+  }
+
   const developmentProjectDialog = url.pathname.match(/^\/api\/platform\/development-projects\/([^/]+)\/dialog$/);
   if (req.method === "POST" && developmentProjectDialog) {
     const session = readSession(req);
@@ -570,6 +580,17 @@ async function routeRequest(req, res) {
       return;
     }
     await handleProjectPwaDashboard(req, res, session, decodeURIComponent(projectPwaDashboard[1]));
+    return;
+  }
+
+  const projectEventConfiguration = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/event-configuration$/);
+  if (req.method === "POST" && projectEventConfiguration) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleProjectEventConfiguration(req, res, session, decodeURIComponent(projectEventConfiguration[1]));
     return;
   }
 
@@ -1437,6 +1458,7 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
         gameConfiguration: project.view_manifest?.game_configuration,
         pwaDashboardConfiguration: project.view_manifest?.pwa_dashboard,
         dataLoggerConfiguration: project.view_manifest?.data_logger,
+        eventConfiguration: project.view_manifest?.event_configuration,
       }),
       build_config: project.build_config || null,
     },
@@ -1445,6 +1467,20 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   sendJson(res, 200, { project: toPlatformProject(updated), saved_at: new Date().toISOString() });
+}
+
+async function handlePlatformProjectDelete(res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  if (!['development_project', 'custom_project'].includes(project.area)) {
+    sendJson(res, 400, { error: 'not_development_project', message: 'Nur eigene Entwicklungsprojekte koennen geloescht werden.' });
+    return;
+  }
+  const accountId = projectServerUserId(session);
+  const telemetryPath = `/api/telemetry/internal/accounts/${encodeURIComponent(accountId)}/projects/${encodeURIComponent(project.project_server_id)}/data`;
+  const telemetry = await telemetryJson(telemetryPath, { method: 'DELETE' });
+  const push = webPushService.unsubscribeProject(accountId, project.project_server_id);
+  const deletion = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, { method: 'DELETE' });
+  sendJson(res, 200, { deleted: true, project_id: project.project_server_id, project: deletion, telemetry, push });
 }
 
 async function handleDevelopmentProjectDialogSave(req, res, session, projectId) {
@@ -1616,6 +1652,7 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
         gameConfiguration: existingManifest.game_configuration,
         pwaDashboardConfiguration: existingManifest.pwa_dashboard,
         dataLoggerConfiguration: existingManifest.data_logger,
+        eventConfiguration: existingManifest.event_configuration,
       }),
     },
   });
@@ -1751,6 +1788,61 @@ async function handleProjectPwaDashboard(req, res, session, projectId) {
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
   sendJson(res, 200, { project: toPlatformProject(updated) });
+}
+
+async function handleProjectEventConfiguration(req, res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  if (project.view_manifest?.template_id !== "event_driven_project_application") {
+    sendJson(res, 409, { error: "event_configuration_not_available", message: "Dieses Projekt besitzt keinen konfigurierbaren Ereignis-Worker oder Dispatcher." });
+    return;
+  }
+  const configuration = normalizeEventConfiguration(await readJsonBody(req), project.view_manifest);
+  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+    method: "PATCH",
+    body: {
+      view_manifest: {
+        ...project.view_manifest,
+        event_configuration: {
+          ...(project.view_manifest.event_configuration || {}),
+          [configuration.kind]: configuration.value,
+        },
+      },
+    },
+  });
+  const projects = await loadUserIdeProjects(session);
+  const updated = projects.find((item) => item.project_server_id === project.project_server_id);
+  touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
+  sendJson(res, 200, { project: toPlatformProject(updated) });
+}
+
+function normalizeEventConfiguration(input = {}, manifest = {}) {
+  const kind = String(input.kind || "").trim();
+  if (!new Set(["worker", "dispatcher"]).has(kind)) throw new Error("Ungueltige Ereigniskomponente.");
+  if (kind === "worker") {
+    const triggerType = String(input.trigger_type || "timer");
+    if (!new Set(["timer", "project_event"]).has(triggerType)) throw new Error("Ungueltiger Ausloeser.");
+    const cycleMinutes = Number(input.cycle_minutes || 15);
+    if (!Number.isInteger(cycleMinutes) || cycleMinutes < 1 || cycleMinutes > 10080) throw new Error("Der Timer-Zyklus muss zwischen 1 und 10.080 Minuten liegen.");
+    const eventName = String(input.event_name || "").trim().slice(0, 80);
+    if (!eventName) throw new Error("Ein Ereignisname wird benoetigt.");
+    return { kind, value: { schema_version: 1, event_name: eventName, trigger_type: triggerType, cycle_minutes: cycleMinutes } };
+  }
+  const conditionType = String(input.condition_type || "event_available");
+  if (!new Set(["event_available", "field_equals"]).has(conditionType)) throw new Error("Ungueltige Bedingung.");
+  const targetComponentId = String(input.target_component_id || "").trim();
+  const components = hardwareConfigurationFromManifest(manifest)?.components || [];
+  const validTarget = components.some((component) => component.component_id === targetComponentId && component.abstract_type === "iot_device" && /ziel|target/i.test(`${component.label || ""} ${component.component_path || ""}`));
+  if (!validTarget) throw new Error("Waehle ein IoT-Zielgeraet aus diesem Projekt.");
+  return {
+    kind,
+    value: {
+      schema_version: 1,
+      condition_type: conditionType,
+      condition_value: String(input.condition_value || "").trim().slice(0, 120),
+      target_component_id: targetComponentId,
+      push_enabled: input.push_enabled === true,
+    },
+  };
 }
 
 function normalizePwaDashboardConfiguration(input = {}) {
@@ -2307,6 +2399,7 @@ async function ensureProjectServerDemoProjects(session) {
       body: {
         project_id: definition.project_server_id,
         user_id: userId,
+        plan_id: accountSubscription(session).plan,
         title: definition.title,
         description: definition.summary,
         learning_project_id: definition.learning_project_id,
@@ -2317,7 +2410,8 @@ async function ensureProjectServerDemoProjects(session) {
         sources: demoProjectSources(definition),
       },
     }).catch((error) => {
-      if (error.status !== 400) throw error;
+      // Ein Seed ist keine Nutzeraktion und darf weder die Projektliste noch das Anlegen eigener Projekte blockieren.
+      if (![400, 409].includes(error.status)) throw error;
     });
     await projectServerJson(`/api/projects/${encodeURIComponent(definition.project_server_id)}`, {
       method: "PATCH",
@@ -2758,6 +2852,7 @@ function createUserIdeState() {
     }),
     tamagotchiEntryCourseModel.createProject(project, step),
     smartAssistantCourseModel.createProject(project, step),
+    buttonToSmartphoneNotificationCourseModel.createProject(project, step),
     project("esp32-ota-bootstrap-firmware", "ESP32 OTA-Basissoftware", "Firmware", "USB-Erstflash vorbereiten und spaetere OTA-Faehigkeit erhalten.", [
       step("USB-Erstflash", "Das Board wird initial mit der GerNetiX-Basissoftware vorbereitet.", "OTA bleibt Teil der Basis, nicht Teil des User-Codes."),
       step("Service-Endpunkte", "Device Management und Build-&-Deploy bleiben konfigurierbar.", "Ein Serverumzug darf keinen USB-Reflash erzwingen."),
@@ -2907,7 +3002,7 @@ function projectViewManifest(project) {
   };
 }
 
-function developmentProjectViewManifest({ title, description = "", source = "", diagram = null, buildConfig = null, architectureDialog = null, templateId = "", templateModelVersion = 1, hardwareConfiguration = null, homeAutomationConfiguration = null, gameConfiguration = null, pwaDashboardConfiguration = null, dataLoggerConfiguration = null }) {
+function developmentProjectViewManifest({ title, description = "", source = "", diagram = null, buildConfig = null, architectureDialog = null, templateId = "", templateModelVersion = 1, hardwareConfiguration = null, homeAutomationConfiguration = null, gameConfiguration = null, pwaDashboardConfiguration = null, dataLoggerConfiguration = null, eventConfiguration = null }) {
   const buildable = Boolean(buildConfig);
   const usesProjectTemplate = Boolean(templateId && templateId !== "empty");
   const derivedFrom = diagram?.derived_from || (usesProjectTemplate || buildable ? "project_template" : "persisted_project");
@@ -2926,6 +3021,7 @@ function developmentProjectViewManifest({ title, description = "", source = "", 
     ...(gameConfiguration ? { game_configuration: normalizeTouchscreenGameConfiguration(gameConfiguration) } : {}),
     ...(pwaDashboardConfiguration ? { pwa_dashboard: normalizePwaDashboardConfiguration(pwaDashboardConfiguration) } : {}),
     ...(dataLoggerConfiguration ? { data_logger: normalizeDataLoggerConfiguration(dataLoggerConfiguration) } : {}),
+    ...(eventConfiguration ? { event_configuration: eventConfiguration } : {}),
     views: [
       ...(buildable ? [{
         id: "firmware-source",
@@ -2988,6 +3084,7 @@ function normalizeDataLoggerConfiguration(input = {}) {
     enabled: input.enabled !== false,
     storage_scope: "project_private",
     configuration_state: "requires_sensor_configuration",
+    user_configuration: Array.isArray(input.userConfiguration || input.user_configuration) ? (input.userConfiguration || input.user_configuration).map(String).slice(0, 8) : [],
   };
 }
 
@@ -3012,6 +3109,12 @@ async function handlePlatformDeviceBasissoftwareProfileUpdate(req, res, session,
       error: error.code || "basissoftware_profile_update_failed",
       message: error.message || "Basissoftware-Profil konnte nicht gespeichert werden.",
       details: error.payload || {},
+    });
+  }
+  if (project.slug === buttonToSmartphoneNotificationCourseModel.slug) {
+    return buttonToSmartphoneNotificationCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
     });
   }
 }
@@ -3071,7 +3174,7 @@ function normalizeHomeAutomationConfiguration(input) {
 function defaultTouchscreenGameConfiguration() {
   return normalizeTouchscreenGameConfiguration({
     pattern_id: "",
-    selected_game_ids: ["nibbles", "snake", "frogger", "tic_tac_toe"],
+    selected_game_ids: ["nibbles", "frogger"],
     board_profile_id: "hardware.processor_board.generic_esp32_s3_touch_display",
     inventory_device_id: "",
   });
@@ -3460,6 +3563,9 @@ function demoProjectSources(project) {
   }
   if (project.slug === smartAssistantCourseModel.slug) {
     return smartAssistantCourseModel.createSources();
+  }
+  if (project.slug === buttonToSmartphoneNotificationCourseModel.slug) {
+    return buttonToSmartphoneNotificationCourseModel.createSources();
   }
 
   if (project.slug === "arduino-atmel-bare-metal") {

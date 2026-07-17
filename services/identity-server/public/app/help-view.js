@@ -70,6 +70,8 @@ const HelpView = (() => {
         <h3>${escapeHtml(section.heading)}</h3>
         ${(section.paragraphs || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
         ${section.list ? `<ul>${section.list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+        ${section.stateChart ? renderStateChart(section.stateChart) : ""}
+        ${section.umlStateChart ? renderTamagotchiUmlStateChart() : ""}
         ${section.table ? `<div class="help-article-table-wrap"><table class="help-article-table"><thead><tr>${section.table.headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead><tbody>${section.table.rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : ""}
         ${section.code ? `<pre><code>${escapeHtml(section.code)}</code></pre>` : ""}
         ${section.links ? `<p class="help-inline-links">${section.links.map((link) => `<button type="button" data-help-topic="${escapeHtml(link.topicId)}">${escapeHtml(link.label)}</button>`).join("")}</p>` : ""}
@@ -77,6 +79,34 @@ const HelpView = (() => {
       ${article.hardwareCatalog ? '<section id="compatibleHardwareCatalog" class="help-hardware-catalog"><p class="helper-text">Hardware Catalog wird geladen …</p></section>' : ""}
       ${article.actions?.length ? `<div class="button-row help-next-actions">${article.actions.map((action) => `<button type="button" data-help-route="${escapeHtml(action.route)}">${escapeHtml(action.label)}</button>`).join("")}</div>` : ""}
       ${article.relatedTopics?.length ? `<section class="help-related"><h3>Related help topics</h3>${article.relatedTopics.map(renderRelatedTopic).join("")}</section>` : ""}`;
+  }
+
+  function renderStateChart(chart) {
+    return `<div class="help-state-chart" aria-label="${escapeHtml(chart.title || "Zustandsdiagramm")}">
+      <p class="eyebrow">${escapeHtml(chart.title || "Zustandsdiagramm")}</p>
+      <div class="help-state-chart-nodes">${(chart.states || []).map((state) => `<span class="help-state-node ${state.initial ? "initial" : ""}">${escapeHtml(state.title)}</span>`).join("")}</div>
+      <ul class="help-state-chart-transitions">${(chart.transitions || []).map((transition) => `<li><strong>${escapeHtml(transition.from)}</strong><span>→</span><strong>${escapeHtml(transition.to)}</strong><small>${escapeHtml(transition.when)}</small></li>`).join("")}</ul>
+    </div>`;
+  }
+
+  function renderTamagotchiUmlStateChart() {
+    return `<figure class="help-uml-state-chart">
+      <svg viewBox="0 0 760 300" role="img" aria-labelledby="tamagotchiStateChartTitle tamagotchiStateChartDescription">
+        <title id="tamagotchiStateChartTitle">UML-Statechart eines Tamagotchis</title>
+        <desc id="tamagotchiStateChartDescription">Der Start führt zu satt. Ein timer_tick mit Hunger mindestens 50 führt zu hungrig, bei mindestens 80 zu warnung. fuettern führt aus hungrig oder warnung zurück zu satt.</desc>
+        <defs><marker id="state-arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto"><path d="M0,0 L10,4 L0,8 z"></path></marker></defs>
+        <circle cx="42" cy="74" r="9" class="uml-initial"></circle>
+        <path d="M52 74 H100" class="uml-transition" marker-end="url(#state-arrow)"></path>
+        <rect x="102" y="48" width="132" height="52" rx="10" class="uml-state"></rect><text x="168" y="80" text-anchor="middle">satt</text>
+        <rect x="314" y="48" width="132" height="52" rx="10" class="uml-state"></rect><text x="380" y="80" text-anchor="middle">hungrig</text>
+        <rect x="526" y="48" width="132" height="52" rx="10" class="uml-state warning"></rect><text x="592" y="80" text-anchor="middle">warnung</text>
+        <path d="M234 74 H312" class="uml-transition" marker-end="url(#state-arrow)"></path><text x="273" y="35" text-anchor="middle">timer_tick [hunger ≥ 50]</text>
+        <path d="M446 74 H524" class="uml-transition" marker-end="url(#state-arrow)"></path><text x="485" y="35" text-anchor="middle">timer_tick [hunger ≥ 80]</text>
+        <path d="M380 101 V170 H168 V102" class="uml-transition" marker-end="url(#state-arrow)"></path><text x="274" y="160" text-anchor="middle">fuettern</text>
+        <path d="M592 101 V238 H168 V102" class="uml-transition" marker-end="url(#state-arrow)"></path><text x="380" y="228" text-anchor="middle">fuettern</text>
+      </svg>
+      <figcaption>UML-Statechart: Ein Pfeil beschreibt einen möglichen Zustandswechsel. Der Text am Pfeil nennt Ereignis und – in eckigen Klammern – die zusätzliche Bedingung.</figcaption>
+    </figure>`;
   }
 
   function canAccess(level = "public") {

@@ -38,6 +38,20 @@ class ProjectService {
     return this.projectWithSummary(this.requireProject(projectId));
   }
 
+  deleteProject(projectId) {
+    const project = this.requireProject(projectId);
+    const deleted = { sources: 0, build_jobs: 0, artifacts: 0, feedback: 0, consents: 0 };
+    for (const [id, source] of this.repository.sources) if (source.project_id === projectId) { this.repository.sources.delete(id); deleted.sources += 1; }
+    for (const [id, job] of this.repository.buildJobs) if (job.project_id === projectId) { this.repository.buildJobs.delete(id); deleted.build_jobs += 1; }
+    for (const [id, artifact] of this.repository.artifacts) if (artifact.project_id === projectId) { this.repository.artifacts.delete(id); deleted.artifacts += 1; }
+    const feedbackIds = new Set();
+    for (const [id, feedback] of this.repository.feedback) if (feedback.project_id === projectId) { feedbackIds.add(feedback.feedback_id); this.repository.feedback.delete(id); deleted.feedback += 1; }
+    for (const [id, consent] of this.repository.consents) if (feedbackIds.has(consent.feedback_id)) { this.repository.consents.delete(id); deleted.consents += 1; }
+    this.repository.projects.delete(projectId);
+    this.repository.persist?.();
+    return { project_id: project.project_id, deleted };
+  }
+
   listProjects(query = {}) {
     return this.repository.listProjects({ user_id: query.user_id || query.userId || "" })
       .map((project) => this.projectWithSummary(project));
@@ -97,7 +111,6 @@ class ProjectService {
     const path = normalizeSourcePath(required(input.path, "path"));
     const now = new Date().toISOString();
     const content = String(input.content || "");
-    this.assertStorageQuota(project, path, content, input.plan_id || input.plan || project.plan_id || "free");
     const source = {
       project_id: projectId,
       path,
@@ -327,7 +340,7 @@ class ProjectService {
     const policy = {
       ...current,
       plan_id: String(planId).toLowerCase(),
-      max_projects: positiveLimit(input.max_projects, current.max_projects),
+      max_projects: unlimitedOrPositiveLimit(input.max_projects, current.max_projects),
       max_storage_bytes: positiveLimit(input.max_storage_bytes, current.max_storage_bytes),
       max_monthly_traffic_bytes: positiveLimit(input.max_monthly_traffic_bytes, current.max_monthly_traffic_bytes),
       updated_at: new Date().toISOString(),
@@ -336,8 +349,15 @@ class ProjectService {
   }
 
   ensureResourcePolicies() {
-    if (this.repository.listResourcePolicies().length) return;
-    for (const policy of defaultResourcePolicies()) this.repository.saveResourcePolicy(policy);
+    const existing = new Map(this.repository.listResourcePolicies().map((policy) => [policy.plan_id, policy]));
+    for (const policy of defaultResourcePolicies()) {
+      const current = existing.get(policy.plan_id);
+      if (!current) { this.repository.saveResourcePolicy(policy); continue; }
+      // Migration bisheriger Premium-Vorgaben auf die beschlossene grosszuegige Missbrauchsgrenze.
+      if (["premium", "premium_demo"].includes(policy.plan_id) && [null, 50].includes(current.max_projects)) {
+        this.repository.saveResourcePolicy({ ...current, max_projects: 200, updated_at: new Date().toISOString() });
+      }
+    }
   }
 
   policyFor(planId) {
@@ -468,12 +488,17 @@ function positiveLimit(value, fallback) {
   return Number.isInteger(number) && number > 0 ? number : fallback;
 }
 
+function unlimitedOrPositiveLimit(value, fallback) {
+  if (value === null || value === "") return null;
+  return positiveLimit(value, fallback);
+}
+
 function defaultResourcePolicies() {
   const now = new Date().toISOString();
   return [
     { plan_id: "free", max_projects: 5, max_storage_bytes: 5 * 1024 * 1024, max_monthly_traffic_bytes: 25 * 1024 * 1024, updated_at: now },
-    { plan_id: "premium", max_projects: 50, max_storage_bytes: 250 * 1024 * 1024, max_monthly_traffic_bytes: 1024 * 1024 * 1024, updated_at: now },
-    { plan_id: "premium_demo", max_projects: 50, max_storage_bytes: 250 * 1024 * 1024, max_monthly_traffic_bytes: 1024 * 1024 * 1024, updated_at: now },
+    { plan_id: "premium", max_projects: 200, max_storage_bytes: null, max_monthly_traffic_bytes: 1024 * 1024 * 1024, updated_at: now },
+    { plan_id: "premium_demo", max_projects: 200, max_storage_bytes: null, max_monthly_traffic_bytes: 1024 * 1024 * 1024, updated_at: now },
   ];
 }
 
