@@ -112,12 +112,9 @@ async function flashSelectedDemo() {
   })));
   flashStatus.textContent = "Bootloader, Partitionstabelle und Nibbles werden geflasht …";
   await loader.writeFlash({ fileArray, flashMode: manifest.flash_mode, flashFreq: manifest.flash_freq, flashSize: manifest.flash_size, compress: true });
-  // The ES3C28P exposes the ESP32-S3's native USB serial interface.  Its
-  // generic "hard_reset" only releases RTS and can leave the chip in the
-  // download boot mode.  Explicitly keep BOOT released while pulsing reset.
-  await loader.after("custom_reset", false, "D0|R1|W100|D0|R0|W200|D0");
+  await loader.after("hard_reset");
   await transport.disconnect();
-  flashStatus.textContent = "Die Spielesammlung wurde erfolgreich geflasht und neu gestartet.";
+  flashStatus.textContent = "Nibbles wurde erfolgreich auf das Board geflasht.";
 }
 
 function hex(value) { return value === undefined ? "unbekannt" : `0x${value.toString(16).padStart(4, "0")}`; }

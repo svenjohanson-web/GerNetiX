@@ -25,7 +25,6 @@ function release(overrides = {}) {
     firmware_file_name: "firmware.bin",
     bootloader_base64: Buffer.from([0xe9, 0x00]).toString("base64"),
     partitions_base64: Buffer.from([0xaa, 0x55]).toString("base64"),
-    boot_app0_base64: Buffer.from([0x01, 0x02]).toString("base64"),
     firmware_base64: Buffer.from([0xe9, 0x01, 0x02, 0x03]).toString("base64"),
     ...overrides,
   };
