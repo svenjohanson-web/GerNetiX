@@ -106,10 +106,19 @@ async function flashSelectedDemo() {
   const transport = new Transport(selectedPort, false);
   const loader = new ESPLoader({ transport, baudrate: 115200, terminal: { clean: () => {}, writeLine: () => {}, write: () => {} } });
   await loader.main();
-  const fileArray = await Promise.all(manifest.assets.map(async (asset) => ({
-    address: asset.flash_offset,
-    data: new Uint8Array(await (await fetch(asset.download_url)).arrayBuffer()),
-  })));
+  const fileArray = await Promise.all(manifest.assets.map(async (asset) => {
+    // The demo is publicly mounted below /demos/.  API paths returned by the
+    // catalog are service-rooted, so resolve them relative to that mount.
+    const relativeAssetPath = asset.download_url.replace(/^\//, "");
+    const assetUrl = new URL(relativeAssetPath, new URL(".", location.href));
+    const response = await fetch(assetUrl);
+    if (!response.ok) throw new Error(`${asset.file_name} konnte nicht geladen werden (${response.status}).`);
+    const data = new Uint8Array(await response.arrayBuffer());
+    if (data.byteLength !== asset.size_bytes) {
+      throw new Error(`${asset.file_name} hat eine unerwartete Größe (${data.byteLength} statt ${asset.size_bytes} Bytes).`);
+    }
+    return { address: asset.flash_offset, data };
+  }));
   flashStatus.textContent = "Übertragung wird vorbereitet …";
   await loader.writeFlash({
     fileArray,
