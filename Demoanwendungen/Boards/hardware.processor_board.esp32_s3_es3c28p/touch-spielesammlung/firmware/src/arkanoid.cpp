@@ -51,9 +51,9 @@ void Arkanoid::resetBall() {
   paddleX_ = fieldX + (fieldWidth - paddleWidth) / 2;
   ballX_ = paddleX_ + paddleWidth / 2;
   ballY_ = paddleY - ballRadius - 2;
-  ballDx_ = level_ % 2 ? 2.1f : -2.1f;
+  ballDx_ = level_ % 2 ? 4.0f : -4.0f;
   const int speedLevel = level_ - 1 < 4 ? level_ - 1 : 4;
-  ballDy_ = -2.3f - speedLevel * 0.15f;
+  ballDy_ = -4.4f - speedLevel * 0.25f;
 }
 
 void Arkanoid::reset(SoundDriver& sound) {
@@ -118,8 +118,8 @@ void Arkanoid::tick() {
       ballX_ + ballRadius >= paddleX_ && ballX_ - ballRadius <= paddleX_ + paddleWidth) {
     ballY_ = paddleY - ballRadius;
     const float offset = (ballX_ - (paddleX_ + paddleWidth / 2)) / (paddleWidth / 2);
-    ballDx_ = clampFloat(offset * 3.6f, -3.6f, 3.6f);
-    if (std::abs(ballDx_) < 0.8f) ballDx_ = ballDx_ < 0 ? -0.8f : 0.8f;
+    ballDx_ = clampFloat(offset * 5.5f, -5.5f, 5.5f);
+    if (std::abs(ballDx_) < 1.2f) ballDx_ = ballDx_ < 0 ? -1.2f : 1.2f;
     ballDy_ = -std::abs(ballDy_);
     if (sound_) sound_->play(SoundEffect::paddle);
   }

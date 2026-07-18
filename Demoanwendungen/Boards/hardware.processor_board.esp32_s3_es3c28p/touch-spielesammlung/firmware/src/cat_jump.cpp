@@ -9,8 +9,9 @@ namespace {
 constexpr float pi = 3.1415926f;
 // Mit der wachsenden Hundegeschwindigkeit muss auch der Sprung zügig sein:
 // bei 40 ms pro Frame rund 0,9 Sekunden in der Luft.
-constexpr uint8_t jumpFrames = 22;
 constexpr uint8_t winAt = 30;
+
+float dogSpeed(uint8_t clearedDogs) { return 3.2f + clearedDogs * 0.26f; }
 
 uint8_t levelFor(uint8_t clearedDogs) {
   return clearedDogs >= 18 ? 3 : (clearedDogs >= 8 ? 2 : 1);
@@ -44,11 +45,20 @@ void CatJump::reset(SoundDriver& sound) {
   score_ = 0;
   clearedDogs_ = 0;
   jumpFrame_ = 0;
+  jumpDurationFrames_ = jumpDurationForCurrentDog();
   scoreFrames_ = 0;
   jumping_ = false;
   running_ = true;
   won_ = false;
   sound_->play(SoundEffect::gameStart);
+}
+
+uint8_t CatJump::jumpDurationForCurrentDog() const {
+  const float crossingDistance = catWidth + dogWidth + 32.0f;
+  const float frames = crossingDistance / dogSpeed(clearedDogs_) + 6.0f;
+  if (frames < 16.0f) return 16;
+  if (frames > 32.0f) return 32;
+  return static_cast<uint8_t>(frames);
 }
 
 void CatJump::touch(const TouchPoint&) {
@@ -59,6 +69,7 @@ void CatJump::touch(const TouchPoint&) {
   if (!jumping_) {
     jumping_ = true;
     jumpFrame_ = 0;
+    jumpDurationFrames_ = jumpDurationForCurrentDog();
     if (sound_) sound_->play(SoundEffect::move);
   }
 }
@@ -67,9 +78,9 @@ void CatJump::tick() {
   if (!running_ || won_) return;
 
   if (jumping_) {
-    const float progress = static_cast<float>(jumpFrame_) / jumpFrames;
+    const float progress = static_cast<float>(jumpFrame_) / jumpDurationFrames_;
     catY_ = (groundY - catHeight) - std::sin(progress * pi) * 102.0f;
-    if (++jumpFrame_ > jumpFrames) {
+    if (++jumpFrame_ > jumpDurationFrames_) {
       catY_ = groundY - catHeight;
       jumping_ = false;
     }
@@ -77,7 +88,7 @@ void CatJump::tick() {
 
   // Jeder übersprungene Hund beschleunigt die Runde deutlich. Der Unterschied
   // ist schon nach einem einzelnen Sprung sichtbar und steigt fortlaufend.
-  const float speed = 3.2f + clearedDogs_ * 0.26f;
+  const float speed = dogSpeed(clearedDogs_);
   dogX_ -= speed;
   if (dogX_ < -dogWidth) {
     ++clearedDogs_;

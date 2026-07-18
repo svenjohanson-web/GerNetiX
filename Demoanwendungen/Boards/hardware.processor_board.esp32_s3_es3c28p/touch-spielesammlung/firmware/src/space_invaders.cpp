@@ -65,7 +65,7 @@ void SpaceInvaders::touch(const TouchPoint& point) {
 void SpaceInvaders::tick() {
   if (!running_ || won_) return;
   if (shotActive_) {
-    shotY_ -= 9;
+    shotY_ -= 13;
     if (shotY_ < 38) {
       shotActive_ = false;
     } else {
@@ -89,7 +89,8 @@ void SpaceInvaders::tick() {
   }
 
   const uint8_t defeated = rows * columns - remaining_;
-  const uint8_t interval = defeated < 12 ? 15 - defeated : 4;
+  // Start briskly and accelerate further as the formation becomes smaller.
+  const uint8_t interval = defeated < 12 ? 8 - defeated / 2 : 2;
   if (++moveFrames_ < interval) return;
   moveFrames_ = 0;
 

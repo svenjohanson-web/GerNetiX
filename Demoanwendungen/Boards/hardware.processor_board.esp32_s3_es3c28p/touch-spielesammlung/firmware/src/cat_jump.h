@@ -19,12 +19,14 @@ class CatJump {
   static constexpr int dogWidth = 32;
   static constexpr int dogHeight = 22;
 
+  uint8_t jumpDurationForCurrentDog() const;
   SoundDriver* sound_ = nullptr;
   float catY_ = groundY - catHeight;
   float dogX_ = BoardAdapter::width + 30.0f;
   uint16_t score_ = 0;
   uint8_t clearedDogs_ = 0;
   uint8_t jumpFrame_ = 0;
+  uint8_t jumpDurationFrames_ = 32;
   uint8_t scoreFrames_ = 0;
   bool jumping_ = false;
   bool running_ = true;

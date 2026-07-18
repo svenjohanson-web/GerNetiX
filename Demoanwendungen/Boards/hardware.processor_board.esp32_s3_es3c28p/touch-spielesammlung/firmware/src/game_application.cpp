@@ -122,7 +122,7 @@ void GameApplication::tick() {
   // Die ursprüngliche Spieltaktung bleibt für die Sammlung erhalten.
   // Nur Cat Jump und Space Invaders benötigen einen eigenen Laufzyklus.
   const uint32_t frameIntervalMs = screen_ == Screen::catJump ? 40 :
-                                   ((screen_ == Screen::spaceInvaders || screen_ == Screen::frogger || screen_ == Screen::pacMaze) ? 70 : 130);
+                                   ((screen_ == Screen::arkanoid || screen_ == Screen::spaceInvaders || screen_ == Screen::frogger || screen_ == Screen::pacMaze) ? 70 : 130);
   if (now - lastFrameMs_ < frameIntervalMs) return;
   lastFrameMs_ = now;
   if (screen_ == Screen::nibbles) { nibbles_.tick(); nibbles_.render(board_); }

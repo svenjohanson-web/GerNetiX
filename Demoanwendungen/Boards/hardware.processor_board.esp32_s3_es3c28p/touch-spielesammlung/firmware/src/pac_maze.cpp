@@ -54,7 +54,8 @@ bool PacMaze::move(int8_t& x, int8_t& y, int direction) const {
 }
 
 void PacMaze::resetPositions() {
-  pacX_ = 9;
+  // A free corridor and a short grace period prevent an unavoidable hit at spawn.
+  pacX_ = 7;
   pacY_ = 7;
   currentDirection_ = wantedDirection_ = 0;
   ghosts_[0] = {7, 6, 7, 6, 1, BoardAdapter::red};
@@ -63,6 +64,7 @@ void PacMaze::resetPositions() {
   ghosts_[3] = {11, 7, 11, 7, 0, BoardAdapter::yellow};
   pacFrames_ = ghostFrames_ = 0;
   powerFrames_ = 0;
+  spawnProtectionFrames_ = 16;
 }
 
 void PacMaze::reset(SoundDriver& sound) {
@@ -77,8 +79,8 @@ void PacMaze::reset(SoundDriver& sound) {
       powerPellets_[y][x] = maze[y][x] == 'o';
     }
   }
-  pellets_[pacY_][pacX_] = false;
   resetPositions();
+  pellets_[pacY_][pacX_] = false;
   sound_->play(SoundEffect::gameStart);
 }
 
@@ -115,6 +117,7 @@ void PacMaze::collideWithGhosts() {
 void PacMaze::tick() {
   if (!running_ || won_) return;
   if (powerFrames_ > 0) --powerFrames_;
+  if (spawnProtectionFrames_ > 0) --spawnProtectionFrames_;
   if (++pacFrames_ >= 2) {
     pacFrames_ = 0;
     int8_t nextX = pacX_;
@@ -135,7 +138,7 @@ void PacMaze::tick() {
     }
     collideWithGhosts();
   }
-  if (++ghostFrames_ >= 3) {
+  if (spawnProtectionFrames_ == 0 && ++ghostFrames_ >= 3) {
     ghostFrames_ = 0;
     for (uint8_t index = 0; index < 4; ++index) {
       auto& ghost = ghosts_[index];
