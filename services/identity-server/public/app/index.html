@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260717-17" />
+    <link rel="stylesheet" href="/app/app.css?v=20260718-02" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -88,14 +88,16 @@
 
       <section id="accountSetupView" class="view hidden">
         <section class="panel">
-          <p class="eyebrow">Konto</p>
-          <h2>Konto einrichten abschließen</h2>
+          <div class="section-head">
+            <div><p class="eyebrow">Konto</p><h2>Konto einrichten abschließen</h2></div>
+            <a class="back-to-dashboard" href="/app/dashboard/">← Zur Übersicht</a>
+          </div>
           <p>Dein Passkey reicht für die Anmeldung. Die folgenden Wege sind freiwillige zusätzliche Sicherungen, falls du dein Passkey-Gerät nicht mehr verwenden kannst.</p>
         </section>
         <section class="dashboard-grid">
-          <article class="entry-card"><span>Optional</span><strong>Offline-Recovery-Set</strong><p>Ein einmaliger Code zum Ausdrucken oder getrennten sicheren Ablegen. Er hilft, wenn Geräte oder Schlüsselbünde verloren gehen.</p><button id="createOfflineRecoverySetButton" type="button">Recovery-Set erstellen</button><small id="offlineRecoverySetStatus" aria-live="polite"></small></article>
-          <article class="entry-card"><span>Optional</span><strong>ESP32-Recovery-Token</strong><p>Ein eigenes provisioniertes Board kann später als unabhängiger Wiederherstellungsweg gekoppelt werden.</p></article>
-          <article class="entry-card"><span>Später verfügbar</span><strong>Social Recovery</strong><p>Zwei von drei offline verteilten Anteilen können gemeinsam bei der Wiederherstellung helfen, ohne Kontaktdaten zu GerNetiX hochzuladen.</p></article>
+          <button id="createOfflineRecoverySetButton" class="entry-card account-setup-card" type="button"><span>Optional</span><strong>Offline-Recovery-Set</strong><p>Ein einmaliger Code zum Ausdrucken oder getrennten sicheren Ablegen. Er hilft, wenn Geräte oder Schlüsselbünde verloren gehen.</p><small id="offlineRecoverySetStatus" aria-live="polite"></small><em id="offlineRecoverySetAction">Recovery-Set erstellen →</em></button>
+          <a class="entry-card account-setup-card" href="/app/device-management/provisioning/"><span>Erster ESP32 = Recovery-Token</span><strong>ESP32 anmelden und Konto erweitern</strong><p>Dein erster angemeldeter ESP32 wird automatisch als Recovery-Board verknüpft – das ist keine zusätzliche Auswahl. Das ESP32-Konto erhält das größere Ressourcenprofil: als Zielwert 10 MB statt 5 MB sowie zusätzliche Funktionen wie Background Worker und Dispatcher, sobald diese für dein Konto freigeschaltet sind.</p><em>Ersten ESP32 als Recovery-Token provisionieren →</em></a>
+          <a class="entry-card account-setup-card" href="/app/help/?topic=registration-login-recovery#social-recovery"><span>Später verfügbar</span><strong>Social Recovery</strong><p>Zwei von drei offline verteilten Anteilen können gemeinsam bei der Wiederherstellung helfen, ohne Kontaktdaten zu GerNetiX hochzuladen.</p><em>Funktionsweise ansehen →</em></a>
         </section>
       </section>
 
@@ -267,6 +269,10 @@
           </div>
           <div id="learnProjectList"></div>
         </section>
+      </section>
+
+      <section id="learningProjectView" class="view hidden">
+        <section id="learningProjectWorkspace" class="panel learning-project-workspace" aria-live="polite"></section>
       </section>
 
       <section id="ideView" class="view hidden">
@@ -800,14 +806,16 @@
     <script src="/app/api-client.js"></script>
     <script src="/app/dom-utils.js"></script>
     <script src="/app/device-onboarding-model.js"></script>
-    <script src="/app/device-onboarding-controller.js?v=20260714-04"></script>
-    <script src="/app/guided-project-view.js?v=20260718-01"></script>
+    <script src="/app/device-onboarding-controller.js?v=20260718-01"></script>
+    <script src="/app/guided-project-view.js?v=20260718-02"></script>
+    <script src="/app/learning-project-view.js?v=20260718-02"></script>
+    <script src="/app/learning-project-controller.js?v=20260718-07"></script>
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
     <script src="/app/development-component-metamodel.js?v=20260716-01"></script>
     <script src="/app/development-platform.js?v=20260717-04"></script>
-    <script src="/app/help-content.js?v=20260718-01"></script>
+    <script src="/app/help-content.js?v=20260718-02"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
     <script src="/app/help-view.js?v=20260717-03"></script>
-    <script src="/app/app.js?v=20260718-01"></script>
+    <script src="/app/app.js?v=20260718-07"></script>
   </body>
 </html>

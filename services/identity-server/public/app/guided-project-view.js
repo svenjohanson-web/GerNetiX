@@ -11,8 +11,8 @@ const GuidedProjectView = (() => {
       meta,
     } = deps;
 
-    function renderProjectViewManifest(project) {
-      const target = document.querySelector("#ideProjectViewManifest");
+    function renderProjectViewManifest(project, targetSelector = "#ideProjectViewManifest") {
+      const target = document.querySelector(targetSelector);
       if (!target) return;
       const manifest = project?.viewManifest || {};
       const views = guidedViews(project);
@@ -56,13 +56,13 @@ const GuidedProjectView = (() => {
         </div>
       `;
       target.querySelectorAll("[data-ide-step]").forEach((button) => {
-        button.addEventListener("click", () => setIdeGuidedStep(project, Number(button.dataset.ideStep)));
+        button.addEventListener("click", () => setIdeGuidedStep(project, Number(button.dataset.ideStep), targetSelector));
       });
-      target.querySelector("[data-guided-back]")?.addEventListener("click", () => setIdeGuidedStep(project, Math.max(0, state.activeIdeStep - 1)));
-      target.querySelector("[data-guided-next]")?.addEventListener("click", () => completeIdeGuidedStep(project));
+      target.querySelector("[data-guided-back]")?.addEventListener("click", () => setIdeGuidedStep(project, Math.max(0, state.activeIdeStep - 1), targetSelector));
+      target.querySelector("[data-guided-next]")?.addEventListener("click", () => completeIdeGuidedStep(project, targetSelector));
       target.querySelector("[data-guided-preview]")?.addEventListener("click", () => openGuidedRuntimePreview(activeView));
       target.querySelectorAll("[data-guided-control]").forEach((button) => {
-        button.addEventListener("click", () => handleGuidedControl(project, activeView, button.dataset.guidedControl));
+        button.addEventListener("click", () => handleGuidedControl(project, activeView, button.dataset.guidedControl, targetSelector));
       });
       bindCodeExplorerChat(target, project, activeView);
       renderGuidedPlantUml(target);
@@ -735,28 +735,28 @@ const GuidedProjectView = (() => {
       return Array.isArray(required) ? required.map(String).filter(Boolean) : [];
     }
 
-    function handleGuidedControl(project, view, fn) {
-      if (fn === "previous_step") return setIdeGuidedStep(project, Math.max(0, state.activeIdeStep - 1));
-      if (fn === "next_step") return completeIdeGuidedStep(project);
+    function handleGuidedControl(project, view, fn, targetSelector) {
+      if (fn === "previous_step") return setIdeGuidedStep(project, Math.max(0, state.activeIdeStep - 1), targetSelector);
+      if (fn === "next_step") return completeIdeGuidedStep(project, targetSelector);
       if (fn === "runtime_preview") return openGuidedRuntimePreview(view);
       if (fn === "open_billing") return window.navigate("/app/billing/");
       return undefined;
     }
 
-    async function setIdeGuidedStep(project, index) {
+    async function setIdeGuidedStep(project, index, targetSelector = "#ideProjectViewManifest") {
       state.activeIdeStep = Math.max(0, Math.min(index, guidedViews(project).length - 1));
       await saveIdeGuidedProgress(project, state.activeIdeStep, progressFor(project.id).completedSteps);
-      renderProjectViewManifest(project);
+      renderProjectViewManifest(project, targetSelector);
       focusIdeStepSource(project);
     }
 
-    async function completeIdeGuidedStep(project) {
+    async function completeIdeGuidedStep(project, targetSelector = "#ideProjectViewManifest") {
       const completed = new Set(progressFor(project.id).completedSteps);
       completed.add(state.activeIdeStep);
       const next = Math.min(state.activeIdeStep + 1, guidedViews(project).length - 1);
       state.activeIdeStep = next;
       await saveIdeGuidedProgress(project, next, Array.from(completed));
-      renderProjectViewManifest(project);
+      renderProjectViewManifest(project, targetSelector);
       focusIdeStepSource(project);
     }
 

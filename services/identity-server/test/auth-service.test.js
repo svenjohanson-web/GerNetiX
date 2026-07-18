@@ -163,6 +163,18 @@ test("creates and logs in to a passkey-only base account without a password", as
   assert.equal(repository.findUserById(created.account.user_id).passkey_counter, 5);
 });
 
+test("finds and logs in to a passkey account by credential id without a username", async () => {
+  const { auth, repository } = createModule();
+  const created = await auth.create_passkey_account("discoverable-passkey-maker", {
+    credentialId: "discoverable-credential-id", publicKey: "public-key", counter: 4, transports: ["internal"],
+  });
+  const candidate = auth.get_passkey_login_candidate_by_credential_id("discoverable-credential-id");
+  assert.equal(candidate.id, created.account.user_id);
+  const login = await auth.login_passkey_by_credential_id("discoverable-credential-id", 5);
+  assert.equal(login.account.user_id, created.account.user_id);
+  assert.equal(repository.findUserById(created.account.user_id).passkey_counter, 5);
+});
+
 test("sqlite identity persistence keeps local accounts across repository reloads", async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-identity-"));
   const sqlitePath = path.join(tempDir, "identity.sqlite");

@@ -98,6 +98,15 @@ class InMemoryIdentityRepository {
     return id ? this.findUserById(id) : null;
   }
 
+  findUserByPasskeyCredentialId(credentialId) {
+    const expected = String(credentialId || "").trim();
+    if (!expected) return null;
+    for (const account of this.userAccounts.values()) {
+      if (account.passkey_credential_id === expected) return clone(account);
+    }
+    return null;
+  }
+
   findUserByEmail(email) {
     if (!email) return null;
     const id = this.emailIndex.get(normalizeEmail(email));

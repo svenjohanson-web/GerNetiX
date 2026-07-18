@@ -5,6 +5,7 @@ const guestAccessButton = document.querySelector("#guest-access-button");
 const guestHint = document.querySelector("#guest-hint");
 const titleElement = document.querySelector("#login-title");
 const statusElement = document.querySelector("#status");
+const identifierField = document.querySelector("#login-identifier-field");
 const query = new URLSearchParams(window.location.search);
 const nextUrl = query.get("next") || "/app/dashboard/";
 let mode = query.get("mode") === "register" ? "register" : "login";
@@ -13,16 +14,21 @@ applyMode(false);
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  const username = new FormData(loginForm).get("identifier");
+  const username = String(new FormData(loginForm).get("identifier") || "").trim();
   statusElement.textContent = "Passkey wird angefordert …";
   try {
-    const options = await postJson("/api/passkeys/authentication/options", { username });
+    const options = await postJson("/api/passkeys/authentication/options", username ? { username } : {});
     const credential = await navigator.credentials.get({ publicKey: parseRequestOptions(options) });
-    const result = await postJson("/api/passkeys/authentication/verify", { username, credential: credentialJson(credential), next: nextUrl });
+    const result = await postJson("/api/passkeys/authentication/verify", { ...(username ? { username } : {}), credential: credentialJson(credential), next: nextUrl });
     window.location.href = result.next || "/app/dashboard/";
   } catch (error) {
     statusElement.textContent = error.message || "Passkey-Login fehlgeschlagen.";
   }
+});
+
+document.querySelector("#show-identifier-login").addEventListener("click", () => {
+  identifierField.classList.remove("hidden");
+  document.querySelector("#login-identifier").focus();
 });
 
 registerForm.addEventListener("submit", async (event) => {

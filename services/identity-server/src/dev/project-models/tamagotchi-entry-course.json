@@ -568,6 +568,29 @@
         }
       },
       {
+        "id": "runtime-choice",
+        "type": "story_slide",
+        "title": "Browser App oder Embedded auswaehlen",
+        "summary": "Die fachliche State Machine bleibt gleich. Erst danach entscheidest du, in welcher Runtime du sie erleben und spaeter umsetzen willst.",
+        "completion": {
+          "type": "acknowledge",
+          "label": "Runtime verstanden"
+        },
+        "payload": {
+          "artifact": null,
+          "model_lines": [
+            {
+              "label": "Runtime-Auswahl",
+              "text": "Der Lernende waehlt zwischen Browser App und Embedded. Das Modell bleibt gleich."
+            },
+            {
+              "label": "Gleicher Modellkern",
+              "text": "Browser App und Embedded unterscheiden sich technisch, aber nutzen denselben fachlichen Modellkern."
+            }
+          ]
+        }
+      },
+      {
         "id": "browser-first",
         "type": "story_slide",
         "title": "Browser App zuerst",
@@ -590,6 +613,29 @@
             {
               "label": "Erste Version",
               "text": "Anfangs veraendert sich das Tamagotchi nur durch Benutzerinteraktionen."
+            }
+          ]
+        }
+      },
+      {
+        "id": "embedded-preview",
+        "type": "story_slide",
+        "title": "Embedded als spaetere Runtime einordnen",
+        "summary": "Ein ESP32 mit Display ist ein spaeterer Ausfuehrungsweg. Er veraendert die technische Huelle, nicht das fachliche Modell.",
+        "completion": {
+          "type": "acknowledge",
+          "label": "Eingeordnet"
+        },
+        "payload": {
+          "artifact": null,
+          "model_lines": [
+            {
+              "label": "Embedded",
+              "text": "Spaeter kann dasselbe Modell fuer ein Embedded Board erzeugt werden."
+            },
+            {
+              "label": "Gleicher Modellkern",
+              "text": "Browser App und Embedded unterscheiden sich technisch, aber nutzen denselben fachlichen Modellkern."
             }
           ]
         }

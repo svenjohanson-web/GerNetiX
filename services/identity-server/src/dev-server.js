@@ -586,6 +586,17 @@ async function routeRequest(req, res) {
     return;
   }
 
+  const learningProjectStart = url.pathname.match(/^\/api\/platform\/learning-projects\/([^/]+)\/start$/);
+  if (req.method === "POST" && learningProjectStart) {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleLearningProjectStart(res, session, decodeURIComponent(learningProjectStart[1]));
+    return;
+  }
+
   const platformProject = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)$/);
   if (req.method === "DELETE" && platformProject) {
     const session = readSession(req);
@@ -1132,15 +1143,19 @@ function passkeyConfiguration(req) {
 }
 
 function storePasskeyChallenge(kind, username, challenge, config) {
-  passkeyChallenges.set(`${kind}:${String(username).toLowerCase()}`, { challenge, config, expiresAt: Date.now() + 5 * 60 * 1000 });
+  passkeyChallenges.set(`${kind}:${passkeyChallengeSubject(username)}`, { challenge, config, expiresAt: Date.now() + 5 * 60 * 1000 });
 }
 
 function readPasskeyChallenge(kind, username) {
-  const key = `${kind}:${String(username).toLowerCase()}`;
+  const key = `${kind}:${passkeyChallengeSubject(username)}`;
   const value = passkeyChallenges.get(key);
   passkeyChallenges.delete(key);
   if (!value || value.expiresAt < Date.now()) throw new Error("passkey_challenge_expired");
   return value;
+}
+
+function passkeyChallengeSubject(username) {
+  return String(username || "").trim().toLowerCase() || "__discoverable_passkey__";
 }
 
 function toBase64Url(bytes) {
@@ -1156,7 +1171,7 @@ async function handlePasskeyRegistrationOptions(req, res) {
     const options = await generateRegistrationOptions({
       rpName: "GerNetiX", rpID: config.rpID, userName: username,
       attestationType: "none",
-      authenticatorSelection: { residentKey: "preferred", userVerification: "required" },
+      authenticatorSelection: { residentKey: "required", userVerification: "required" },
     });
     storePasskeyChallenge("register", username, options.challenge, config);
     sendJson(res, 200, options);
@@ -1199,11 +1214,11 @@ async function handlePasskeyAuthenticationOptions(req, res) {
   try {
     const body = await readJsonBody(req);
     const username = String(body.username || "").trim();
-    const account = auth.get_passkey_login_candidate(username);
     const config = passkeyConfiguration(req);
+    const account = username ? auth.get_passkey_login_candidate(username) : null;
     const options = await generateAuthenticationOptions({
       rpID: config.rpID, userVerification: "required",
-      allowCredentials: [{ id: account.passkey_credential_id, transports: account.passkey_transports || [] }],
+      ...(account ? { allowCredentials: [{ id: account.passkey_credential_id, transports: account.passkey_transports || [] }] } : {}),
     });
     storePasskeyChallenge("authenticate", username, options.challenge, config);
     sendJson(res, 200, options);
@@ -1216,7 +1231,9 @@ async function handlePasskeyAuthenticationVerify(req, res) {
   try {
     const body = await readJsonBody(req);
     const username = String(body.username || "").trim();
-    const account = auth.get_passkey_login_candidate(username);
+    const account = username
+      ? auth.get_passkey_login_candidate(username)
+      : auth.get_passkey_login_candidate_by_credential_id(body.credential?.id);
     const challenge = readPasskeyChallenge("authenticate", username);
     const verification = await verifyAuthenticationResponse({
       response: body.credential, expectedChallenge: challenge.challenge,
@@ -1230,7 +1247,7 @@ async function handlePasskeyAuthenticationVerify(req, res) {
       },
     });
     if (!verification.verified) throw new Error("passkey_authentication_not_verified");
-    const login = await auth.login_passkey(username, verification.authenticationInfo.newCounter);
+    const login = await auth.login_passkey_by_credential_id(account.passkey_credential_id, verification.authenticationInfo.newCounter);
     sessions.set(login.session.token, { account: login.account, expiresAt: login.session.expires_at });
     setSessionCookie(res, login.session.token, login.session.expires_at);
     sendJson(res, 200, { account: login.account, next: sanitizeNextPath(body.next) || "/app/dashboard/" });
@@ -1656,6 +1673,39 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   sendJson(res, 200, { project: toPlatformProject(updated), saved_at: new Date().toISOString() });
+}
+
+async function handleLearningProjectStart(res, session, catalogProjectId) {
+  const definition = userIdeState.projectDefinitions
+    .find((item) => item.project_server_id === catalogProjectId || catalogProjectIdForDefinition(item) === catalogProjectId);
+  if (!definition) {
+    sendJson(res, 404, { error: "learning_project_not_found", message: "Dieses Lernprojekt ist im Katalog nicht vorhanden." });
+    return;
+  }
+
+  const userId = projectServerUserId(session);
+  const existing = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}`);
+  const alreadyStarted = existing.items.find((item) => item.learning_project_id === definition.learning_project_id
+    && item.project_id !== definition.project_server_id);
+  const project = alreadyStarted || await projectServerJson("/api/projects", {
+    method: "POST",
+    body: {
+      project_id: `learning_${definition.slug}_${crypto.randomUUID().slice(0, 8)}`,
+      user_id: userId,
+      plan_id: accountSubscription(session).plan,
+      title: definition.title,
+      description: definition.summary,
+      learning_project_id: definition.learning_project_id,
+      hardware_profile_id: definition.hardware_profile_id,
+      device_id: null,
+      build_config: definition.build_config,
+      view_manifest: projectViewManifest(definition),
+      sources: demoProjectSources(definition),
+    },
+  });
+  const mapped = mapProjectServerProject(session, project);
+  touchWorkspace(session, project.project_id, "learn", `/app/learning-project/?project=${encodeURIComponent(project.project_id)}`);
+  sendJson(res, alreadyStarted ? 200 : 201, { project: toPlatformProject(mapped), created: !alreadyStarted });
 }
 
 async function handlePlatformProjectDelete(res, session, projectId) {
@@ -2090,7 +2140,12 @@ async function handlePlatformDeviceCreate(req, res, session) {
         instance_configuration: body.instance_configuration || {},
       },
     });
-    sendJson(res, 201, decorateUserIdeDevice(accountDevice));
+    const recoveryAccount = await assignFirstEsp32AsRecoveryToken(req, session, registered.device_id, hardwareProfileId);
+    sendJson(res, 201, {
+      ...decorateUserIdeDevice(accountDevice),
+      recovery_token_assigned: Boolean(recoveryAccount),
+      account: recoveryAccount || undefined,
+    });
   } catch (error) {
     recordDeviceInventoryFailure(session, "device_inventory_create_failed", error, {
       operation: "handlePlatformDeviceCreate",
@@ -2106,7 +2161,7 @@ async function handlePlatformDeviceCreate(req, res, session) {
 
 async function handlePlatformDiscoveredDeviceClaim(req, res, session) {
   const body = await readJsonBody(req);
-  return claimPlatformDiscoveredDevice(res, session, body);
+  return claimPlatformDiscoveredDevice(req, res, session, body);
 }
 
 async function handlePlatformProvisioningSession(req, res, session) {
@@ -2141,7 +2196,7 @@ async function handlePlatformProvisioningComplete(req, res, session) {
     if (consumed.account_id !== accountId) throw new Error("Provisionierungs-Token gehoert nicht zum angemeldeten Account.");
     delete body.provisioning_token;
     delete body.provisioning_binding;
-    return claimPlatformDiscoveredDevice(res, session, body);
+    return claimPlatformDiscoveredDevice(req, res, session, body);
   } catch (error) {
     sendJson(res, error.status || 400, {
       error: error.code || "provisioning_complete_failed",
@@ -2150,7 +2205,7 @@ async function handlePlatformProvisioningComplete(req, res, session) {
   }
 }
 
-async function claimPlatformDiscoveredDevice(res, session, body) {
+async function claimPlatformDiscoveredDevice(req, res, session, body) {
   try {
     const accountId = projectServerUserId(session);
     const discoveredDeviceId = body.device_id || body.deviceId || "";
@@ -2188,7 +2243,12 @@ async function claimPlatformDiscoveredDevice(res, session, body) {
         instance_configuration: body.instance_configuration || {},
       },
     });
-    sendJson(res, 201, decorateUserIdeDevice(accountDevice));
+    const recoveryAccount = await assignFirstEsp32AsRecoveryToken(req, session, registered.device_id, hardwareProfileId);
+    sendJson(res, 201, {
+      ...decorateUserIdeDevice(accountDevice),
+      recovery_token_assigned: Boolean(recoveryAccount),
+      account: recoveryAccount || undefined,
+    });
   } catch (error) {
     recordDeviceInventoryFailure(session, "discovered_device_claim_failed", error, {
       operation: "handlePlatformDiscoveredDeviceClaim",
@@ -2510,31 +2570,30 @@ function mapUserIdeProjects(session, projectsById) {
   const workspace = getWorkspaceState(userId);
   const definitionIds = new Set(userIdeState.projectDefinitions.map((definition) => definition.project_server_id));
   const seededProjects = userIdeState.projectDefinitions.map((definition) => {
-    const project = projectsById.get(definition.project_server_id);
     return {
       ...definition,
-      owner_user_id: project ? project.user_id : userId,
-      title: project ? project.title : definition.title,
-      summary: project ? project.description : definition.summary,
+      project_server_id: catalogProjectIdForDefinition(definition),
+      owner_user_id: userId,
       hardware_profile_id: definition.hardware_profile_id,
-      build_config: Object.hasOwn(definition, "build_config") ? definition.build_config : project?.build_config,
-      linked_device_id: definition.default_device_id || null,
+      build_config: definition.build_config,
+      linked_device_id: "",
       project_origin: "catalog",
-      status: project ? project.status : "project_server_missing",
-      last_build_status: latestBuildStatus(project),
-      source_count: project ? project.source_count : 0,
-      build_count: project ? project.build_count : 0,
+      status: "catalog_template",
+      last_build_status: "",
+      source_count: 0,
+      build_count: 0,
       access_model: definition.access_model || "subscription",
       view_manifest: projectViewManifest(definition),
-      created_at: project ? project.created_at : "",
-      updated_at: project ? project.updated_at : "",
-      last_opened_mode: workspace.lastProjectId === definition.project_server_id ? workspace.lastMode : "",
-      last_opened_at: workspace.lastProjectId === definition.project_server_id ? workspace.updatedAt : "",
-      source_files: definition.source_files || [{ path: "src/main.cpp", role: "user_code" }],
+      created_at: "",
+      updated_at: "",
+      last_opened_mode: "",
+      last_opened_at: "",
+      source_files: [],
     };
   });
   const customProjects = Array.from(projectsById.values())
-    .filter((project) => !definitionIds.has(project.project_id))
+    .filter((project) => !isRetiredCatalogProject(project))
+    .filter((project) => !definitionIds.has(project.project_id) || isEstablishedLearningProject(project))
     .map((project) => mapProjectServerProject(session, project));
   return seededProjects.concat(customProjects)
     .sort((left, right) => String(right.updated_at || "").localeCompare(String(left.updated_at || "")));
@@ -2543,6 +2602,30 @@ function mapUserIdeProjects(session, projectsById) {
 function mapProjectServerProject(session, project) {
   const userId = projectServerUserId(session);
   const workspace = getWorkspaceState(userId);
+  const learningDefinition = userIdeState.projectDefinitions
+    .find((definition) => definition.learning_project_id === project.learning_project_id);
+  if (learningDefinition && (project.project_id !== learningDefinition.project_server_id || isEstablishedLearningProject(project))) {
+    return {
+      ...learningDefinition,
+      project_server_id: project.project_id,
+      title: project.title || learningDefinition.title,
+      summary: project.description || learningDefinition.summary,
+      project_origin: "account_project",
+      owner_user_id: project.user_id || userId,
+      hardware_profile_id: project.hardware_profile_id || learningDefinition.hardware_profile_id,
+      build_config: project.build_config || learningDefinition.build_config,
+      linked_device_id: project.device_id || "",
+      status: project.status || "active",
+      last_build_status: latestBuildStatus(project),
+      source_count: project.source_count || 0,
+      build_count: project.build_count || 0,
+      view_manifest: project.view_manifest || projectViewManifest(learningDefinition),
+      created_at: project.created_at || "",
+      updated_at: project.updated_at || "",
+      last_opened_mode: workspace.lastProjectId === project.project_id ? workspace.lastMode : "",
+      last_opened_at: workspace.lastProjectId === project.project_id ? workspace.updatedAt : "",
+    };
+  }
   const manifest = restoreDevelopmentTemplateReference(project.view_manifest || developmentProjectViewManifest({
     title: project.title,
     description: project.description,
@@ -2615,10 +2698,8 @@ async function ensureProjectServerDemoProjects(session) {
     });
     for (const source of demoProjectSources(definition)) {
       await projectServerJson(`/api/projects/${encodeURIComponent(definition.project_server_id)}/sources`, {
-        method: "POST",
+        method: "PUT",
         body: source,
-      }).catch((error) => {
-        if (error.status !== 404) throw error;
       });
     }
   }
@@ -2761,6 +2842,28 @@ async function loadBillingSummary(session, existingAiUsage = null) {
     entitlements: subscription.entitlements,
     ai_credits: aiUsage.credits,
   };
+}
+
+function catalogProjectIdForDefinition(definition) {
+  return `catalog_${definition.slug}`;
+}
+
+function isEstablishedLearningProject(project) {
+  return project.learning_project_id === "learning_project.software_engineering_tamagotchi";
+}
+
+function isRetiredCatalogProject(project) {
+  return project.project_id === "project_esp32-ota-bootstrap-firmware"
+    || project.learning_project_id === "learning_project.esp32_ota_bootstrap_firmware";
+}
+
+async function assignFirstEsp32AsRecoveryToken(req, session, deviceId, hardwareProfileId) {
+  if (!/esp32/i.test(String(hardwareProfileId || ""))) return null;
+  if (Number(session.account?.recovery_board_count || 0) > 0) return null;
+  const result = await auth.add_esp32_recovery_token(session.account.user_id, deviceId);
+  session.account = result.account;
+  updateCachedSessionAccount(req, result.account);
+  return result.account;
 }
 
 function accountSubscription(session) {
@@ -3043,11 +3146,6 @@ function createUserIdeState() {
     smartAssistantCourseModel.createProject(project, step),
     buttonToSmartphoneNotificationCourseModel.createProject(project, step),
     homeAutomationNetworkCourseModel.createProject(project, step),
-    project("esp32-ota-bootstrap-firmware", "ESP32 OTA-Basissoftware", "Firmware", "USB-Erstflash vorbereiten und spaetere OTA-Faehigkeit erhalten.", [
-      step("USB-Erstflash", "Das Board wird initial mit der GerNetiX-Basissoftware vorbereitet.", "OTA bleibt Teil der Basis, nicht Teil des User-Codes."),
-      step("Service-Endpunkte", "Device Management und Build-&-Deploy bleiben konfigurierbar.", "Ein Serverumzug darf keinen USB-Reflash erzwingen."),
-      step("OTA pruefen", "Das Board meldet Update-Status und prueft Firmware-Groesse sowie SHA-256.", "Robuste Updates brauchen Rueckmeldung und Verifikation."),
-    ]),
     project("plant-watering-control", "Pflanzenbewaesserung", "Sensor und Aktor", "Feuchtigkeit messen und eine Pumpe kontrolliert schalten.", [
       step("Nutzen und Risiko", "Die Pflanze soll Wasser bekommen, ohne Ueberschwemmung.", "Automatisierung braucht Grenzen."),
       step("Sensor lesen", "Bodenfeuchte wird zur Eingangsseite der Steuerung.", "Ein Sensor liefert Hinweise, keine fertige Entscheidung."),
@@ -3089,7 +3187,6 @@ function project(slug, title, area, summary, steps, options = {}) {
     "software-engineering-tamagotchi": [],
     "arduino-blink": ["capability.arduino_framework_runtime", "capability.flash_firmware"],
     "arduino-atmel-bare-metal": ["capability.atmel_avr_bare_metal_runtime", "capability.flash_firmware"],
-    "esp32-ota-bootstrap-firmware": ["capability.processor_esp32", "capability.wifi", "capability.ota"],
     "plant-watering-control": ["capability.processor_esp32", "capability.wifi", "capability.digital_output"],
   };
   const accessModelsBySlug = {
@@ -3097,7 +3194,6 @@ function project(slug, title, area, summary, steps, options = {}) {
     "software-engineering-tamagotchi": "free",
     "arduino-atmel-bare-metal": "subscription",
     "smart-assistant-ai-automation": "subscription",
-    "esp32-ota-bootstrap-firmware": "subscription",
     "plant-watering-control": "purchased",
   };
   return {

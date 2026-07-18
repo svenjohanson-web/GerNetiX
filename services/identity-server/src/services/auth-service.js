@@ -110,6 +110,15 @@ class AuthService {
 
   get_passkey_login_candidate(username) {
     const account = this.repository.findUserByUsername(username);
+    return this.assertPasskeyLoginCandidate(account);
+  }
+
+  get_passkey_login_candidate_by_credential_id(credentialId) {
+    const account = this.repository.findUserByPasskeyCredentialId(credentialId);
+    return this.assertPasskeyLoginCandidate(account);
+  }
+
+  assertPasskeyLoginCandidate(account) {
     assertAccountCanLogin(account);
     if (!account.passkey_credential_id || !account.passkey_public_key) throw new AuthError("passkey_not_configured", "No passkey is configured for this account.", 400);
     return account;
@@ -117,6 +126,15 @@ class AuthService {
 
   async login_passkey(username, counter) {
     const account = this.get_passkey_login_candidate(username);
+    return this.login_passkey_account(account, counter);
+  }
+
+  async login_passkey_by_credential_id(credentialId, counter) {
+    const account = this.get_passkey_login_candidate_by_credential_id(credentialId);
+    return this.login_passkey_account(account, counter);
+  }
+
+  async login_passkey_account(account, counter) {
     const updated = this.repository.updateUserAccount(account.id, { passkey_counter: Number(counter || account.passkey_counter || 0) });
     return this.createSessionResponse(updated);
   }

@@ -918,6 +918,7 @@ const DeviceOnboardingController = (() => {
         provisioning_token: state.provisioningPairingToken,
         provisioning_binding: state.provisioningBinding,
       });
+      if (device.account) state.account = device.account;
       state.devices = state.devices.filter((item) => item.account_device_id !== device.account_device_id).concat(device);
       state.discoveredDevices = [];
       state.provisioningPairingToken = "";
@@ -926,7 +927,9 @@ const DeviceOnboardingController = (() => {
       renderDevices();
       renderDashboard();
       renderNetworkDiscovery();
-      setProvisioningWifiStatus("ok", "Erledigt: Board ist per WLAN verbunden, registriert und deinem Account zugeordnet.");
+      setProvisioningWifiStatus("ok", device.recovery_token_assigned
+        ? "Erledigt: Board ist verbunden und als dein erstes ESP32-Recovery-Token registriert."
+        : "Erledigt: Board ist per WLAN verbunden, registriert und deinem Account zugeordnet.");
     }
 
     async function serialProvisioningRequest(action, payload = {}) {
@@ -1088,6 +1091,7 @@ const DeviceOnboardingController = (() => {
       setDiscoveryStatus("running", `${discovered.display_name || discovered.serial_number} wird registriert und mit deinem Account verbunden...`);
       try {
         const device = await postJson("/api/platform/devices/from-discovery", withOnboardingIdentity(discovered));
+        if (device.account) state.account = device.account;
         state.devices = state.devices.filter((item) => item.account_device_id !== device.account_device_id).concat(device);
         state.discoveredDevices = state.discoveredDevices.filter((item) => item.discovery_id !== discoveryId);
         state.activeDeviceId = device.device_id;
@@ -1095,7 +1099,9 @@ const DeviceOnboardingController = (() => {
         renderNetworkDiscovery();
         renderDevices();
         renderDashboard();
-        setDiscoveryStatus("ok", `${device.display_name} wurde provisioniert und mit deinem Account verbunden.`);
+        setDiscoveryStatus("ok", device.recovery_token_assigned
+          ? `${device.display_name} wurde als dein erstes ESP32-Recovery-Token provisioniert und verbunden.`
+          : `${device.display_name} wurde provisioniert und mit deinem Account verbunden.`);
       } catch (error) {
         setDiscoveryStatus("error", error.message);
       }
@@ -1117,6 +1123,7 @@ const DeviceOnboardingController = (() => {
       try {
         for (const discovered of selected) {
           const device = await postJson("/api/platform/devices/from-discovery", withOnboardingIdentity(discovered));
+          if (device.account) state.account = device.account;
           claimed.push(device);
           state.devices = state.devices.filter((item) => item.account_device_id !== device.account_device_id).concat(device);
           state.discoveredDevices = state.discoveredDevices.map((item) => item.discovery_id === discovered.discovery_id

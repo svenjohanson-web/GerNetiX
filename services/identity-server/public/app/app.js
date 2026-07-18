@@ -57,6 +57,7 @@ const routeMap = {
   "development-platform": "developmentPlatformView",
   "development-hardware": "developmentHardwareView",
   learn: "learnView",
+  "learning-project": "learningProjectView",
   ide: "ideView",
   "device-management": "deviceManagementView",
   "device-provisioning": "deviceProvisioningView",
@@ -73,6 +74,7 @@ const routeMap = {
 let deviceOnboardingController = null;
 let guidedProjectViewController = null;
 let developmentPlatformController = null;
+let learningProjectController = null;
 let lastRenderedRoute = "";
 
 function deviceOnboarding() {
@@ -363,6 +365,7 @@ function renderRoute() {
     developmentPlatform().renderHardwareConfiguration();
   }
   if (route === "ide") loadIdeProject();
+  if (route === "learning-project") learningProject().render();
   if (route === "device-recovery") {
     renderDeviceRecovery();
     refreshUsbPorts(false);
@@ -371,6 +374,13 @@ function renderRoute() {
   if (route === "downloads") renderDownloads();
   if (route === "help") renderHelpTopic();
   lastRenderedRoute = route;
+}
+
+function learningProject() {
+  if (!learningProjectController) {
+    learningProjectController = LearningProjectController.create({ state, postJson, navigate, renderLearn, renderDashboard, renderGuidedProject, projectById, progressFor, escapeHtml });
+  }
+  return learningProjectController;
 }
 
 function renderHelpTopic() {
@@ -414,6 +424,11 @@ function currentLocationTrail(route) {
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Lernplattform", route: "/app/learn/" },
     ],
+    "learning-project": [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Lernplattform", route: "/app/learn/" },
+      { label: "Lernprojekt", route: "" },
+    ],
     ide: [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Entwicklungsplattform", route: "/app/development-platform/" },
@@ -454,6 +469,10 @@ function currentLocationTrail(route) {
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Hilfe", route: "/app/help/" },
     ],
+    "account-setup": [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Konto einrichten", route: "" },
+    ],
   };
   return locations[route] || locations.dashboard;
 }
@@ -478,6 +497,7 @@ function routeName() {
 }
 
 function topLevelRouteName(route) {
+  if (route === "learning-project") return "learn";
   if (["device-management", "device-provisioning", "device-inventory", "device-recovery"].includes(route)) return "device-management";
   if (["ide", "development-hardware"].includes(route)) return "development-platform";
   return route;
@@ -618,9 +638,10 @@ function renderDashboard() {
 function renderAccountSetup() {
   const button = document.querySelector("#createOfflineRecoverySetButton");
   const status = document.querySelector("#offlineRecoverySetStatus");
-  if (!button || !status || !state.account) return;
+  const action = document.querySelector("#offlineRecoverySetAction");
+  if (!button || !status || !action || !state.account) return;
   const configured = Boolean(state.account.offline_recovery_set_configured);
-  button.textContent = configured ? "Recovery-Set neu erzeugen" : "Recovery-Set erstellen";
+  action.textContent = configured ? "Recovery-Set neu erzeugen →" : "Recovery-Set erstellen →";
   status.textContent = configured
     ? "Ein Recovery-Set ist eingerichtet. Beim Neuerzeugen wird der bisherige Code ungültig."
     : "Noch kein Offline-Recovery-Set eingerichtet.";
@@ -661,18 +682,13 @@ function renderProjects() {
         <h2>${escapeHtml(project.name)}</h2>
         <p>${escapeHtml(project.description)}</p>
       </div>
-      <dl class="learning-catalog-facts">
-        ${meta("Lernschritte", `${project.steps.length}`)}
-        ${meta("Umgebung", project.targetRuntime || "Modell und Planung")}
-        ${meta("Hardware", project.hardwareProfileId || "optional")}
-      </dl>
       <div class="card-actions">
         <button class="primary" type="button" data-open-project="${escapeHtml(project.id)}">Lernprojekt starten</button>
       </div>
     </article>
   `).join("") : `<p class="empty">Im Lernprojekt-Katalog sind noch keine Projekte verfuegbar.</p>`;
   document.querySelectorAll("#projectList [data-open-project]").forEach((button) => {
-    button.addEventListener("click", () => openProjectInIde(button.dataset.openProject));
+    button.addEventListener("click", () => learningProject().open(button.dataset.openProject));
   });
 }
 
@@ -722,7 +738,7 @@ function renderLearn() {
     </table>
   ` : `<p class="empty">Keine Projekte für diesen Filter.</p>`;
   document.querySelectorAll("#learnProjectList [data-open-project]").forEach((button) => {
-    button.addEventListener("click", () => openProjectInIde(button.dataset.openProject));
+    button.addEventListener("click", () => learningProject().open(button.dataset.openProject));
   });
 }
 
@@ -2432,7 +2448,7 @@ function continueLastProject() {
   }
   const lastRoute = state.workspace.lastRoute || `/app/${state.workspace.lastMode}/?project=${encodeURIComponent(state.workspace.lastProjectId)}`;
   if (/^\/app\/(?:learn|projects)\//.test(lastRoute)) {
-    navigate(`/app/ide/?project=${encodeURIComponent(state.workspace.lastProjectId)}`);
+    navigate(`/app/learn/?project=${encodeURIComponent(state.workspace.lastProjectId)}`);
     return;
   }
   navigate(lastRoute);
@@ -2928,6 +2944,10 @@ function primarySourcePath(project) {
 
 function renderProjectViewManifest(project) {
   return guidedProjectView().renderProjectViewManifest(project);
+}
+
+function renderGuidedProject(project) {
+  return guidedProjectView().renderProjectViewManifest(project, "#learningProjectArtifact");
 }
 
 function guidedViews(project) {

@@ -8,7 +8,7 @@ function createTamagotchiEntryCourseModel({ readWorkspaceText }) {
       definition.title,
       definition.area,
       definition.summary,
-      definition.steps.map((item) => step(item.title, item.text, item.insight)),
+      modelData.view_manifest.views.map((view) => step(view.title, view.summary, "")),
       {
         build_config: definition.build_config,
         default_device_id: definition.default_device_id,

@@ -90,10 +90,10 @@ const HelpContent = (() => {
         { heading: "Die Zugangsstufen", table: { headers: ["Begriff", "Zweck", "Regeln"], rows: [
           ["Gastzugang", "Unverbindlich ausprobieren", "1 MB; endet nach 24 Stunden; keine Wiederherstellung."],
           ["Passkey-Konto", "Dauerhaft lernen und eigene Projekte speichern", "Passkey ist Pflicht; persoenliches Offline-Recovery-Set, Social Recovery und ESP32-Recovery-Token sind freiwillige Zusatzwege. Derzeit als Zielwert 5 MB; Loeschung erst nach konfigurierbarer Inaktivitaet."],
-          ["Konto mit ESP32-Recovery-Token", "Zusaetzliche Wiederherstellung und hoehere Ressourcen", "Bis zu drei aktive Boards; Zielwert 10 MB und laengere Inaktivitaetsfrist."],
+          ["Konto mit ESP32-Recovery-Token", "Zusaetzliche Wiederherstellung und hoehere Ressourcen", "Der erste angemeldete ESP32 wird automatisch zum Recovery-Board; bis zu drei aktive Boards. Zielwert 10 MB und laengere Inaktivitaetsfrist."],
           ["Premium-Entitlement", "Zusaetzliche Inhalte und Dienste", "Kein eigener Kontotyp. Es erweitert ein bestehendes Konto fuer eine Laufzeit oder als bezahlte Leistung."],
         ] } },
-        { heading: "Wichtig", paragraphs: ["Ein ESP32-Recovery-Token ist ein Board zur Wiederherstellung. Ein Kampagnen-Premium-Token ist dagegen ein einmal einloesbarer Gutschein. Beide Begriffe beschreiben unterschiedliche Dinge."] },
+        { heading: "Wichtig", paragraphs: ["Der erste ESP32, den du deinem Konto hinzufuegst, wird zwingend als ESP32-Recovery-Token gefuehrt. Er erweitert damit das Basiskonto zum ESP32-Konto. Ein Kampagnen-Premium-Token ist dagegen ein einmal einloesbarer Gutschein. Beide Begriffe beschreiben unterschiedliche Dinge."] },
       ],
       relatedTopics: ["registration-login-recovery", "entitlements-and-tokens"],
     },
@@ -103,7 +103,7 @@ const HelpContent = (() => {
       sections: [
         { heading: "Konto anlegen", list: ["Lege einen Spitznamen fest.", "Richte einen Passkey auf deinem Smartphone, Computer oder Sicherheitsschluessel ein. Er ist der verpflichtende Login für das dauerhafte Konto.", "Danach ist das Konto sofort nutzbar; weitere Absicherungen sind nicht Teil des Einstiegs."] },
         { heading: "Konto einrichten abschließen", paragraphs: ["Auf dem Dashboard findest du anschließend die Kachel Konto einrichten abschließen. Dort kannst du in Ruhe erklären lassen und freiwillig ein persönliches Offline-Recovery-Set, ESP32-Recovery-Token oder später Social Recovery ergänzen."] },
-        { heading: "Anmelden", paragraphs: ["Das geplante Passkey-Konto kann sich mit Passwort oder Passkey anmelden. Ein Passkey bestaetigt lokal auf deinem Geraet, zum Beispiel mit PIN, Fingerabdruck oder Gesicht. Diese lokalen Daten werden nicht an GerNetiX uebertragen."] },
+        { heading: "Anmelden", paragraphs: ["Wähle beim Anmelden einfach deinen gespeicherten Passkey. GerNetiX ordnet das ausgewählte Credential deinem Konto zu; dein Spitzname ist dafür nicht erforderlich. Der Spitzname bleibt nur als freiwilliger Kompatibilitätsweg verfügbar. Ein Passkey bestätigt lokal auf deinem Gerät, zum Beispiel mit PIN, Fingerabdruck oder Gesicht. Diese lokalen Daten werden nicht an GerNetiX übertragen."] },
         { heading: "Passwort vergessen", paragraphs: ["Ein neues Passwort kann jeweils allein durch einen eingerichteten Passkey, dein persoenliches Offline-Recovery-Set, Social Recovery mit zwei von drei Anteilen oder ein aktives ESP32-Recovery-Token gesetzt werden. Nach einer Wiederherstellung enden bestehende Sitzungen."] },
         { heading: "Wenn ein Recovery-Weg verloren geht", paragraphs: ["Melde dich ueber einen anderen vorhandenen Weg an und widerrufe oder ersetze den verlorenen Passkey beziehungsweise das Board. Nach einer endgueltigen Kontoloeschung kann kein Recovery-Weg das alte Konto wiederherstellen."] },
       ],
