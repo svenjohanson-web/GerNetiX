@@ -79,6 +79,90 @@ test("local registration can use a stable account id for dev integrations", asyn
   assert.equal(registered.account.user_id, "acct-demo");
 });
 
+test("keeps one identity while a guest becomes a base account and then an ESP32 account", async () => {
+  const { auth } = createModule();
+  const guest = await auth.create_guest({ ttlMs: 60_000 });
+  assert.equal(guest.account.account_type, "guest");
+
+  const base = await auth.upgrade_guest_to_base(
+    guest.account.user_id,
+    "maker",
+    "a long enough password",
+      true,
+      "passkey-credential-placeholder",
+      true,
+      "test-offline-recovery-set",
+  );
+  assert.equal(base.account.user_id, guest.account.user_id);
+  assert.equal(base.account.account_type, "base");
+
+  const esp32 = await auth.add_esp32_recovery_token(base.account.user_id, "board-1");
+  assert.equal(esp32.account.account_type, "esp32");
+  assert.equal(esp32.account.recovery_board_count, 1);
+
+  await auth.add_esp32_recovery_token(base.account.user_id, "board-2");
+  await auth.add_esp32_recovery_token(base.account.user_id, "board-3");
+  await assert.rejects(auth.add_esp32_recovery_token(base.account.user_id, "board-4"), /At most three recovery boards/);
+
+  const downgraded = await auth.remove_esp32_recovery_token(base.account.user_id, "board-1");
+  assert.equal(downgraded.account.account_type, "esp32");
+  const stillEsp32 = await auth.remove_esp32_recovery_token(base.account.user_id, "board-2");
+  const baseAgain = await auth.remove_esp32_recovery_token(base.account.user_id, "board-3");
+  assert.equal(stillEsp32.account.account_type, "esp32");
+  assert.equal(baseAgain.account.account_type, "base");
+});
+
+test("allows a passkey base account without an optional offline recovery set", async () => {
+  const { auth, repository } = createModule();
+  const guest = await auth.create_guest({ ttlMs: 60_000 });
+
+  const base = await auth.upgrade_guest_to_base(
+    guest.account.user_id,
+    "passkey-only-maker",
+    "a long enough password",
+    true,
+    "passkey-credential-placeholder",
+    false,
+    "",
+  );
+
+  assert.equal(base.account.account_type, "base");
+  const stored = repository.findUserById(base.account.user_id);
+  assert.equal(stored.offline_recovery_set_confirmed_at, null);
+  assert.equal(stored.offline_recovery_set_hash, null);
+});
+
+test("creates an offline recovery set once and stores only its hash", async () => {
+  const { auth, repository } = createModule();
+  const created = await auth.create_passkey_account("offline-recovery-maker", {
+    credentialId: "credential-id", publicKey: "public-key", counter: 0, transports: ["internal"],
+  });
+
+  const result = await auth.create_offline_recovery_set(created.account.user_id);
+  const stored = repository.findUserById(created.account.user_id);
+  assert.match(result.recovery_set, /^[A-Za-z0-9_-]{4}(?:-[A-Za-z0-9_-]{4})+$/);
+  assert.equal(result.account.offline_recovery_set_configured, true);
+  assert.ok(stored.offline_recovery_set_confirmed_at);
+  assert.ok(stored.offline_recovery_set_hash);
+  assert.notEqual(stored.offline_recovery_set_hash, result.recovery_set);
+  assert.equal(Object.hasOwn(result.account, "offline_recovery_set_hash"), false);
+});
+
+test("creates and logs in to a passkey-only base account without a password", async () => {
+  const { auth, repository } = createModule();
+  const created = await auth.create_passkey_account("passkey-maker", {
+    credentialId: "credential-id", publicKey: "public-key", counter: 4, transports: ["internal"],
+  });
+  assert.equal(created.account.account_type, "base");
+  assert.equal(repository.findLocalCredentialByUserId(created.account.user_id), null);
+
+  const candidate = auth.get_passkey_login_candidate("passkey-maker");
+  assert.equal(candidate.passkey_counter, 4);
+  const login = await auth.login_passkey("passkey-maker", 5);
+  assert.equal(login.account.user_id, created.account.user_id);
+  assert.equal(repository.findUserById(created.account.user_id).passkey_counter, 5);
+});
+
 test("sqlite identity persistence keeps local accounts across repository reloads", async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-identity-"));
   const sqlitePath = path.join(tempDir, "identity.sqlite");
@@ -112,6 +196,22 @@ test("sqlite identity persistence keeps local accounts across repository reloads
   assert.equal(registered.account.user_id, "acct-persisted");
   assert.equal(login.account.user_id, "acct-persisted");
   assert.equal(resolved.account.user_id, "acct-persisted");
+});
+
+test("sqlite persistence retains only the offline recovery set hash", async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-recovery-set-"));
+  const sqlitePath = path.join(tempDir, "identity.sqlite");
+  const first = createDefaultIdentityModule({ persistenceBackend: "sqlite", sqlitePath });
+  const account = await first.create_passkey_account("persisted-recovery-maker", {
+    credentialId: "credential-id", publicKey: "public-key", counter: 0, transports: ["internal"],
+  });
+  const recovery = await first.create_offline_recovery_set(account.account.user_id);
+  const second = createDefaultIdentityModule({ persistenceBackend: "sqlite", sqlitePath });
+  const stored = second.get_passkey_login_candidate("persisted-recovery-maker");
+
+  assert.ok(stored.offline_recovery_set_confirmed_at);
+  assert.ok(stored.offline_recovery_set_hash);
+  assert.notEqual(stored.offline_recovery_set_hash, recovery.recovery_set);
 });
 
 test("social login creates exactly one internal account and reuses it on next login", async () => {

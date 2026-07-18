@@ -1,6 +1,7 @@
 const { AuthError } = require("../errors");
 const { PasswordHasher } = require("../security/password-hasher");
 const { TokenService } = require("../security/token-service");
+const crypto = require("node:crypto");
 
 const USER_STATUS = {
   PENDING_VERIFICATION: "pending_verification",
@@ -77,6 +78,99 @@ class AuthService {
     });
 
     return { account: toPublicAccount(verifiedAccount) };
+  }
+
+  async create_guest(options = {}) {
+    const expiresAt = new Date(Date.now() + Number(options.ttlMs || 24 * 60 * 60 * 1000)).toISOString();
+    const account = this.repository.createUserAccount({
+      username: this.suggestGuestUsername(),
+      email: null,
+      status: USER_STATUS.VERIFIED,
+      accountType: "guest",
+      guestExpiresAt: expiresAt,
+    });
+    return this.createSessionResponse(account);
+  }
+
+  async create_passkey_account(username, passkey) {
+    assertPseudonymousUsername(username);
+    if (!passkey?.credentialId || !passkey?.publicKey) throw new AuthError("passkey_required", "A verified passkey is required.", 400);
+    try {
+      const account = this.repository.createUserAccount({
+        username: username.trim(), email: null, status: USER_STATUS.VERIFIED, accountType: "base",
+        passkeyCredentialId: passkey.credentialId, passkeyPublicKey: passkey.publicKey,
+        passkeyCounter: Number(passkey.counter || 0), passkeyTransports: passkey.transports || [],
+      });
+      return this.createSessionResponse(account);
+    } catch (error) {
+      if (error.message === "USERNAME_ALREADY_EXISTS") throw new AuthError("username_already_exists", "Username is already in use.", 409);
+      throw error;
+    }
+  }
+
+  get_passkey_login_candidate(username) {
+    const account = this.repository.findUserByUsername(username);
+    assertAccountCanLogin(account);
+    if (!account.passkey_credential_id || !account.passkey_public_key) throw new AuthError("passkey_not_configured", "No passkey is configured for this account.", 400);
+    return account;
+  }
+
+  async login_passkey(username, counter) {
+    const account = this.get_passkey_login_candidate(username);
+    const updated = this.repository.updateUserAccount(account.id, { passkey_counter: Number(counter || account.passkey_counter || 0) });
+    return this.createSessionResponse(updated);
+  }
+
+  async upgrade_guest_to_base(userId, username, password, accepted_terms, passkey_credential_id, offline_recovery_set_confirmed, offline_recovery_set) {
+    assertTermsAccepted(accepted_terms);
+    assertPseudonymousRegistrationInput(username, password);
+    const account = this.repository.findUserById(userId);
+    if (!account || account.account_type !== "guest") throw new AuthError("guest_account_required", "A valid guest account is required.", 400);
+    if (isGuestExpired(account)) throw new AuthError("guest_expired", "The guest account has expired.", 410);
+    if (!String(passkey_credential_id || "").trim()) throw new AuthError("passkey_required", "A passkey registration is required.", 400);
+    const offlineRecoverySet = String(offline_recovery_set || "").trim();
+    if (offline_recovery_set_confirmed === true && !offlineRecoverySet) throw new AuthError("offline_recovery_set_required", "A selected offline recovery set must be generated.", 400);
+    try {
+      const upgraded = this.repository.updateUserAccount(account.id, {
+        username: username.trim(), account_type: "base", guest_expires_at: null,
+          passkey_credential_id: String(passkey_credential_id).trim(),
+          offline_recovery_set_confirmed_at: offline_recovery_set_confirmed === true ? new Date().toISOString() : null,
+          offline_recovery_set_hash: offline_recovery_set_confirmed === true ? this.passwordHasher.hash(offlineRecoverySet) : null,
+      });
+      this.repository.createLocalCredential({ userId: account.id, passwordHash: this.passwordHasher.hash(password) });
+      return { account: toPublicAccount(upgraded) };
+    } catch (error) {
+      if (error.message === "USERNAME_ALREADY_EXISTS") throw new AuthError("username_already_exists", "Username is already in use.", 409);
+      throw error;
+    }
+  }
+
+  async add_esp32_recovery_token(userId, board_id) {
+    const account = this.repository.findUserById(userId);
+    if (!account || !["base", "esp32"].includes(account.account_type)) throw new AuthError("base_account_required", "A base account is required.", 400);
+    const boardId = String(board_id || "").trim();
+    if (!boardId) throw new AuthError("invalid_board_id", "A board id is required.", 400);
+    const boardIds = Array.from(new Set([...(account.recovery_board_ids || []), boardId]));
+    if (boardIds.length > 3) throw new AuthError("recovery_board_limit", "At most three recovery boards are allowed.", 409);
+    return { account: toPublicAccount(this.repository.updateUserAccount(account.id, { account_type: "esp32", recovery_board_ids: boardIds })) };
+  }
+
+  async remove_esp32_recovery_token(userId, board_id) {
+    const account = this.repository.findUserById(userId);
+    if (!account || account.account_type !== "esp32") throw new AuthError("esp32_account_required", "An ESP32 account is required.", 400);
+    const boardIds = (account.recovery_board_ids || []).filter((id) => id !== String(board_id || "").trim());
+    return { account: toPublicAccount(this.repository.updateUserAccount(account.id, { account_type: boardIds.length ? "esp32" : "base", recovery_board_ids: boardIds })) };
+  }
+
+  async create_offline_recovery_set(userId) {
+    const account = this.repository.findUserById(userId);
+    if (!account || !["base", "esp32"].includes(account.account_type)) throw new AuthError("base_account_required", "A base account is required.", 400);
+    const recoverySet = formatOfflineRecoverySet(crypto.randomBytes(24).toString("base64url"));
+    const updated = this.repository.updateUserAccount(account.id, {
+      offline_recovery_set_confirmed_at: new Date().toISOString(),
+      offline_recovery_set_hash: this.passwordHasher.hash(recoverySet),
+    });
+    return { account: toPublicAccount(updated), recovery_set: recoverySet };
   }
 
   async login_local(identifier, password) {
@@ -180,7 +274,7 @@ class AuthService {
     const session = this.repository.findSessionByTokenHash(this.tokenService.hashToken(rawToken));
     if (!session || session.revoked_at || isExpired(session.expires_at)) return null;
     const account = this.repository.findUserById(session.user_id);
-    if (!account) return null;
+    if (!account || isGuestExpired(account)) return null;
     return {
       account: toPublicAccount(account),
       session: {
@@ -286,6 +380,12 @@ class AuthService {
     }
     return candidate;
   }
+
+  suggestGuestUsername() {
+    let candidate = `guest_${this.tokenService.createRawToken().replace(/[^a-z0-9]/gi, "").slice(0, 10).toLowerCase()}`;
+    while (this.repository.usernameExists(candidate)) candidate = `${candidate}x`;
+    return candidate;
+  }
 }
 
 function assertRegistrationInput(username, email, password, passwordRepeat) {
@@ -298,6 +398,15 @@ function assertRegistrationInput(username, email, password, passwordRepeat) {
   if (password !== passwordRepeat) {
     throw new AuthError("password_repeat_mismatch", "Password repeat does not match.", 400);
   }
+}
+
+function assertPseudonymousRegistrationInput(username, password) {
+  assertPseudonymousUsername(username);
+  if (!password || String(password).length < 12) throw new AuthError("invalid_password", "Password must contain at least 12 characters.", 400);
+}
+
+function assertPseudonymousUsername(username) {
+  if (!username || String(username).trim().length < 3) throw new AuthError("invalid_username", "Username must contain at least 3 characters.", 400);
 }
 
 function assertTermsAccepted(acceptedTerms) {
@@ -321,6 +430,11 @@ function assertAccountCanLogin(account) {
   if (account.status !== USER_STATUS.VERIFIED) {
     throw new AuthError("account_not_verified", "Account is not verified.", 403);
   }
+  if (isGuestExpired(account)) throw new AuthError("guest_expired", "The guest account has expired.", 410);
+}
+
+function isGuestExpired(account) {
+  return account?.account_type === "guest" && account.guest_expires_at && isExpired(account.guest_expires_at);
 }
 
 function isExpired(expiresAt) {
@@ -346,7 +460,14 @@ function toPublicAccount(account) {
     status: account.status,
     created_at: account.created_at,
     updated_at: account.updated_at,
+    account_type: account.account_type || "email_account",
+    offline_recovery_set_configured: Boolean(account.offline_recovery_set_confirmed_at && account.offline_recovery_set_hash),
+    recovery_board_count: (account.recovery_board_ids || []).length,
   };
+}
+
+function formatOfflineRecoverySet(value) {
+  return String(value).match(/.{1,4}/g).join("-");
 }
 
 module.exports = {

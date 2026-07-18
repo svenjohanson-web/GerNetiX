@@ -12,6 +12,26 @@ const HelpContent = (() => {
       ],
     },
     {
+      id: "hardware-basics",
+      title: "Hardware verstehen",
+      description: "Prozessorfamilien einordnen, bevor du ein konkretes Board auswaehlst.",
+      access: "public",
+      children: [
+        { id: "processor-overview", title: "ESP32-Prozessorfamilien im Vergleich", articleId: "processor-overview" },
+      ],
+    },
+    {
+      id: "account-access",
+      title: "Konto und Zugang",
+      description: "Gastzugang, dauerhaftes Konto, Anmeldung, Wiederherstellung und Angebote verstehen.",
+      access: "public",
+      children: [
+        { id: "account-types", title: "Kontotypen und Zugangsstufen", articleId: "account-types" },
+        { id: "registration-login-recovery", title: "Registrierung, Anmeldung und Wiederherstellung", articleId: "registration-login-recovery" },
+        { id: "entitlements-and-tokens", title: "Premium, Entitlements und Token", articleId: "entitlements-and-tokens" },
+      ],
+    },
+    {
       id: "account-information",
       title: "Mit GerNetiX-Konto",
       description: "Board einrichten, registrieren und dein Inventar nutzen.",
@@ -62,6 +82,50 @@ const HelpContent = (() => {
       sections: [{ heading: "Registration", paragraphs: ["Use the account creation form and confirm the required terms. After signing in, GerNetiX keeps projects, progress and registered devices connected to your account."] }],
       relatedTopics: ["quick-start", "register-device"],
     },
+    "account-types": {
+      title: "Kontotypen und Zugangsstufen",
+      summary: "GerNetiX trennt einen kurzlebigen Einstieg von einem dauerhaften Konto. Erweiterungen sind keine eigenen Konten, sondern klar benannte Berechtigungen.",
+      sections: [
+        { heading: "Das geplante Zielbild", paragraphs: ["Diese Regeln werden derzeit vorbereitet. Bis sie in der Plattform verfuegbar sind, zeigt GerNetiX bei einer Funktion immer die aktuell wirksame Freischaltung an."] },
+        { heading: "Die Zugangsstufen", table: { headers: ["Begriff", "Zweck", "Regeln"], rows: [
+          ["Gastzugang", "Unverbindlich ausprobieren", "1 MB; endet nach 24 Stunden; keine Wiederherstellung."],
+          ["Passkey-Konto", "Dauerhaft lernen und eigene Projekte speichern", "Passkey ist Pflicht; persoenliches Offline-Recovery-Set, Social Recovery und ESP32-Recovery-Token sind freiwillige Zusatzwege. Derzeit als Zielwert 5 MB; Loeschung erst nach konfigurierbarer Inaktivitaet."],
+          ["Konto mit ESP32-Recovery-Token", "Zusaetzliche Wiederherstellung und hoehere Ressourcen", "Bis zu drei aktive Boards; Zielwert 10 MB und laengere Inaktivitaetsfrist."],
+          ["Premium-Entitlement", "Zusaetzliche Inhalte und Dienste", "Kein eigener Kontotyp. Es erweitert ein bestehendes Konto fuer eine Laufzeit oder als bezahlte Leistung."],
+        ] } },
+        { heading: "Wichtig", paragraphs: ["Ein ESP32-Recovery-Token ist ein Board zur Wiederherstellung. Ein Kampagnen-Premium-Token ist dagegen ein einmal einloesbarer Gutschein. Beide Begriffe beschreiben unterschiedliche Dinge."] },
+      ],
+      relatedTopics: ["registration-login-recovery", "entitlements-and-tokens"],
+    },
+    "registration-login-recovery": {
+      title: "Registrierung, Anmeldung und Wiederherstellung",
+      summary: "So wird aus einem Gastzugang ein dauerhaftes Konto – ohne verpflichtende E-Mail-Adresse.",
+      sections: [
+        { heading: "Konto anlegen", list: ["Lege einen Spitznamen fest.", "Richte einen Passkey auf deinem Smartphone, Computer oder Sicherheitsschluessel ein. Er ist der verpflichtende Login für das dauerhafte Konto.", "Danach ist das Konto sofort nutzbar; weitere Absicherungen sind nicht Teil des Einstiegs."] },
+        { heading: "Konto einrichten abschließen", paragraphs: ["Auf dem Dashboard findest du anschließend die Kachel Konto einrichten abschließen. Dort kannst du in Ruhe erklären lassen und freiwillig ein persönliches Offline-Recovery-Set, ESP32-Recovery-Token oder später Social Recovery ergänzen."] },
+        { heading: "Anmelden", paragraphs: ["Das geplante Passkey-Konto kann sich mit Passwort oder Passkey anmelden. Ein Passkey bestaetigt lokal auf deinem Geraet, zum Beispiel mit PIN, Fingerabdruck oder Gesicht. Diese lokalen Daten werden nicht an GerNetiX uebertragen."] },
+        { heading: "Passwort vergessen", paragraphs: ["Ein neues Passwort kann jeweils allein durch einen eingerichteten Passkey, dein persoenliches Offline-Recovery-Set, Social Recovery mit zwei von drei Anteilen oder ein aktives ESP32-Recovery-Token gesetzt werden. Nach einer Wiederherstellung enden bestehende Sitzungen."] },
+        { heading: "Wenn ein Recovery-Weg verloren geht", paragraphs: ["Melde dich ueber einen anderen vorhandenen Weg an und widerrufe oder ersetze den verlorenen Passkey beziehungsweise das Board. Nach einer endgueltigen Kontoloeschung kann kein Recovery-Weg das alte Konto wiederherstellen."] },
+      ],
+      relatedTopics: ["account-types", "entitlements-and-tokens", "register-device"],
+    },
+    "entitlements-and-tokens": {
+      title: "Premium, Entitlements und Token",
+      summary: "Entitlements steuern Zusatzfunktionen. Sie sind von Kontotypen und Recovery-Wege getrennt.",
+      sections: [
+        { heading: "Heute in der Plattform", table: { headers: ["Plan", "Derzeit freigeschaltet"], rows: [
+          ["Kostenlos", "Code in der IDE bearbeiten und per USB bauen beziehungsweise flashen."],
+          ["Premium", "Zusaetzlich gefuehrte Lernprojekte, KI-Assistent und Web Push."],
+        ] } },
+        { heading: "Geplante Angebote", paragraphs: ["Basis Plus, Kampagnen und Hardware-Bundles werden als zeitlich begrenzte oder dauerhafte Entitlements eingefuehrt. Geplant sind zum Beispiel zusaetzliche Background Worker, Dispatcher-Zugriff und hoehere, aber nie unbegrenzte Ausfuehrungsfrequenzen."] },
+        { heading: "Die Token unterscheiden", table: { headers: ["Begriff", "Wirkung"], rows: [
+          ["ESP32-Recovery-Token", "Ein aktives, provisioniertes Board kann ein Passwort zuruecksetzen."],
+          ["Kampagnen-Premium-Token", "Ein einmaliger Gutschein aus Workshop, Partneraktion oder Hardware-Bundle. Er aktiviert ein festgelegtes Premium-Entitlement und wird danach ungueltig."],
+        ] } },
+        { heading: "Paywall in Lernprojekten", paragraphs: ["Ein Lernprojekt kann bis zu einem Schritt offen sein, der zum Beispiel Dispatcher oder Background Worker braucht. Dort erklaert GerNetiX, welche Faehigkeit fehlt und welches Angebot sie freischaltet. Die Sperre wird auch serverseitig geprueft."] },
+      ],
+      relatedTopics: ["account-types", "registration-login-recovery", "ai-premium", "event-worker-rules", "event-dispatcher"],
+    },
     "ai-premium": {
       title: "KI-Unterstuetzung und Premium",
       summary: "Die KI-Chats sind derzeit ein Bestandteil des Premium-Abos.",
@@ -69,6 +133,36 @@ const HelpContent = (() => {
         { heading: "Warum ist die KI kostenpflichtig?", paragraphs: ["GerNetiX nutzt fuer einzelne KI-Aufgaben externe KI-Anbieter. Dadurch entstehen je nach Anfrage laufende Kosten. Damit diese Kosten planbar bleiben und der Dienst nicht missbraucht wird, sind die KI-Chats aktuell nur mit Premium verfuegbar."] },
         { heading: "Unser Ausblick", paragraphs: ["Wir pruefen fortlaufend kostenguenstigere und lokale Loesungen. Unser Ziel ist, moeglichst viele KI-Funktionen spaeter auch Nutzerinnen und Nutzern mit kostenlosem Abo anbieten zu koennen."] },
       ],
+    },
+    "processor-overview": {
+      title: "ESP32-Prozessorfamilien im Vergleich",
+      summary: "Die ESP32-Bezeichnung beschreibt zuerst den Chip. Ein Board ergaenzt ihn um Flash, USB, Spannungsversorgung, Antenne und oft Display, Sensoren oder weitere Anschluesse.",
+      sections: [
+        { heading: "Erst die Aufgabe, dann der Chip", paragraphs: ["Die Buchstaben sind keine Reihenfolge von gut nach schlecht. C steht vor allem fuer kompakte, vernetzte RISC-V-Controller, S fuer umfangreichere WLAN-Controller, H fuer 802.15.4 ohne WLAN und P fuer einen leistungsstarken Prozessor ohne eingebauten Funk. Entscheidend sind Funkweg, Energieversorgung, lokale Bedienung und die benoetigten Anschluesse."] },
+        { heading: "Familienuebersicht", table: { headers: ["Familie", "Funk", "Fuer Hausautomation besonders passend", "Einordnung"], rows: [
+          ["ESP32 (klassisch)", "WLAN 2,4 GHz, Bluetooth Classic und BLE", "Bestehende Maker-Projekte, einfache WLAN-Nodes", "Sehr weit verbreitet; fuer neue Projekte nur waehlen, wenn ein konkretes Board oder Beispiel dafuer spricht."],
+          ["ESP32-S2", "WLAN 2,4 GHz", "WLAN-Sensor, USB-Geraet, einfache lokale Webseite", "Kein Bluetooth und kein Zigbee/Thread."],
+          ["ESP32-S3", "WLAN 2,4 GHz, BLE", "Touchdisplay, lokale Weboberflaeche, Audio, Kamera oder mehr lokale Logik", "Gute Wahl fuer sichtbare, interaktive Home Nodes; kein Zigbee/Thread."],
+          ["ESP32-C2", "WLAN 2,4 GHz, BLE", "Sehr kleine, preiswerte WLAN-Sensoren oder Aktoren", "Weniger Reserven und Anschluesse; nicht fuer Display- oder umfangreiche Projekte."],
+          ["ESP32-C3", "WLAN 2,4 GHz, BLE", "Einfacher WLAN-Home-Node, Sensor, Relais oder lokale Statusseite", "Solider Einstieg fuer WLAN. C3 hat kein Zigbee und kein Thread."],
+          ["ESP32-C5", "Dual-Band WLAN 6 (2,4/5 GHz), BLE", "Anforderungsvolle WLAN-Umgebungen oder 5-GHz-WLAN", "Kein Zigbee/Thread. Fuer einen ersten Home-Node meist mehr als erforderlich."],
+          ["ESP32-C6", "WLAN 6 (2,4 GHz), BLE, 802.15.4", "WLAN-Node mit spaeterem Zigbee- oder Thread-Pfad; versorgte Bridge oder Gateway", "Der flexible Funkchip: 802.15.4 ist die Grundlage fuer Zigbee und Thread. Funk-Koexistenz muss im Projekt bewusst geplant werden."],
+          ["ESP32-C61", "WLAN 6 (2,4 GHz), BLE", "Moderne WLAN-Sensoren, Aktoren und energieoptimierte WLAN-Nodes", "Kein Zigbee/Thread; moderne Alternative im WLAN-Zweig."],
+          ["ESP32-H2", "BLE, 802.15.4 Zigbee/Thread", "Batterie-Sensor oder Aktor als Zigbee-/Thread-Endgeraet", "Kein WLAN. Ein H2 kann keine lokale WLAN-Webseite anbieten und braucht fuer den Weg ins Netzwerk einen passenden Koordinator oder eine Bridge."],
+          ["ESP32-P4", "kein eingebauter Funk", "Grosse lokale Bedienoberflaechen, Kamera, Multimedia oder leistungsfaehige Steuerung", "Funk kommt bei Bedarf von einem zusaetzlichen C-, S- oder H-Chip. Kein Einstiegschip fuer einen einzelnen WLAN-Sensor."],
+        ] } },
+        { heading: "Schnellauswahl fuer das Lernprojekt", table: { headers: ["Wenn du moechtest ...", "sinnvoller Start"], rows: [
+          ["Temperatur messen und die Werte im Browser des Heimnetzes sehen", "C3, S3 oder C6 als WLAN-Home-Node."],
+          ["Ein Display, Touch oder eine umfangreiche lokale Ansicht", "S3; bei sehr anspruchsvoller Grafik oder Kamera spaeter P4 mit getrenntem Funkchip."],
+          ["Einen moeglichst sparsamen Batterie-Sensor im Zigbee-Netz", "H2 als schlafendes Endgeraet plus vorhandener Zigbee-Koordinator."],
+          ["Heute WLAN nutzen, Zigbee oder Thread aber als Lernpfad offenhalten", "C6. Erst den WLAN-Teil sauber bauen, dann den 802.15.4-Pfad gezielt ergaenzen."],
+          ["Viele Zigbee-Geraete mit einer lokalen Oberflaeche verbinden", "Eine dauerhaft versorgte Bridge; bei anspruchsvolleren Varianten ein S3 plus H2 als getrennte Funk- und Bedienkomponenten."],
+        ] } },
+        { heading: "Akku und Funk realistisch beurteilen", paragraphs: ["Eine Chipfamilie allein bestimmt nicht die Batterielaufzeit. Entscheidend sind Messintervall, Schlafdauer, Sendezeit, Sensor und die Rolle im Funknetz. Ein batteriebetriebenes Zigbee-Geraet ist normalerweise ein schlafendes Endgeraet; ein Router oder Koordinator muss dagegen erreichbar bleiben und wird typischerweise dauerhaft versorgt. WLAN kann ebenfalls sparsam sein, wenn ein Node nur selten aufwacht und sendet, braucht aber fuer eine staendig erreichbare lokale Webseite deutlich mehr Energie."] },
+        { heading: "Was die Tabelle nicht behauptet", paragraphs: ["Es gibt keine allgemeine ESP32-C-Familie und aktuell keine ESP32-S6-Familie. C5 und C61 gibt es, P4 ebenfalls. Die Tabelle ist eine Orientierung, keine Freigabeliste. Ob ein konkretes Board fuer GerNetiX flashbar und passend ist, pruefst du anschliessend in Unterstuetzte Boards anhand der exakten Boardvariante, ihres Flash-Speichers und der Anschluesse."] },
+      ],
+      actions: [{ label: "Unterstuetzte Boards ansehen", route: "/app/help/#supported-devices" }],
+      relatedTopics: ["supported-devices", "provision-new-board", "update-profiles"],
     },
     "first-project": {
       title: "Start your first project",

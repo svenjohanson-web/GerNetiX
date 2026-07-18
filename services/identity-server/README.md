@@ -14,6 +14,7 @@ Das Modul erzeugt unabhaengig vom Registrierungsweg immer genau einen internen `
 - Mock-Provider fuer Google, Apple, Microsoft und GitHub
 - MockEmailService fuer Verifizierungs- und Reset-Links
 - Session/AuthToken-Erzeugung und Logout
+- vorbereitete, pseudonyme Kontostufen Gast → Basiskonto → ESP32-Konto ohne E-Mail-Pflicht (noch kein produktiver WebAuthn-/Board-Nachweis)
 
 ## Architekturregeln
 

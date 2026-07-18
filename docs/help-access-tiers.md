@@ -13,3 +13,7 @@ Die oeffentliche Hilfe erklaert bei gesperrten KI-Chats, dass derzeit externe KI
 ## Noch offene Durchsetzung
 
 Die eigentlichen Premium-Artikel liegen aktuell noch im geschuetzten Plattform-Frontend. Vor dem produktiven Verkauf werden sie in eine serverseitige Artikelauslieferung ueberfuehrt. Der Server liefert den vollstaendigen Premium-Abschnitt dann nur nach einer Entitlement-Pruefung aus; der Browser erhaelt ohne Abo ausschliesslich Titel, Vorschau und Paywall. Die sichtbare Sperre wird dadurch zu einer fachlich durchgesetzten Zugriffskontrolle.
+
+## Konto-, Recovery- und Entitlement-Hilfe
+
+Die oeffentliche Hilfe enthaelt zusaetzlich die Kategorie **Konto und Zugang**. Sie erklaert den Unterschied zwischen Gastzugang, dauerhaftem Passkey-Konto, ESP32-Recovery-Token, Kampagnen-Premium-Token und Premium-Entitlement. Die Artikel trennen sichtbar zwischen dem bereits implementierten Free-/Premium-Entitlement-Modell und dem vorgeschlagenen Zielbild mit Passkeys, Offline-Recovery-Set, Social Recovery, Ressourcenstufen, Background Workern und Dispatchern. Dadurch verspricht die Hilfe keine noch nicht verfuegbaren Funktionen.

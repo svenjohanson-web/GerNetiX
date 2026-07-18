@@ -74,6 +74,10 @@ h1 {
   display: none !important;
 }
 
+.legacy-auth {
+  display: none !important;
+}
+
 label {
   display: grid;
   gap: 7px;
@@ -152,6 +156,119 @@ button:hover {
   padding: 0;
   color: #67e8f9;
   background: transparent;
+  font-size: 14px;
+}
+
+.guest-button {
+  width: 100%;
+  border-color: #475569;
+  background: #18212f;
+}
+
+.guest-hint {
+  margin: 8px 0 0;
+  color: #94a3b8;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+.recovery-set {
+  padding: 12px;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  background: #101926;
+}
+
+.registration-step {
+  display: grid;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+}
+
+.registration-step > strong {
+  color: #f8fafc;
+}
+
+.step-label {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.registration-finish {
+  border-color: #0e7490;
+}
+
+.recovery-choice {
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+  border: 1px solid #475569;
+  border-radius: 7px;
+  background: #101926;
+}
+
+.recovery-choice > strong {
+  color: #f8fafc;
+}
+
+.recovery-choice > strong span {
+  margin-left: 6px;
+  color: #94a3b8;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.required-choice {
+  border-color: #0e7490;
+}
+
+.required-choice > strong span {
+  color: #67e8f9;
+}
+
+.recovery-choice p,
+.recovery-intro {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.wizard-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.wizard-actions > button {
+  flex: 1;
+}
+
+button.secondary {
+  border-color: #475569;
+  background: #18212f;
+}
+
+.recovery-set p {
+  margin: 7px 0 10px;
+  color: #cbd5e1;
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.recovery-set code {
+  display: block;
+  margin-top: 10px;
+  padding: 10px;
+  overflow-wrap: anywhere;
+  border-radius: 6px;
+  background: #020617;
+  color: #fef08a;
   font-size: 14px;
 }
 

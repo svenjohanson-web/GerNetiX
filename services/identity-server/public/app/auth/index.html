@@ -9,89 +9,28 @@
   <body>
     <main class="login-shell">
       <section class="login-panel" aria-labelledby="login-title">
-        <div class="brand">
-          <div class="brand-mark" aria-hidden="true">G</div>
-          <div>
-            <p class="eyebrow">GerNetiX Plattform</p>
-            <h1 id="login-title">Anmelden</h1>
-          </div>
-        </div>
+        <div class="brand"><div class="brand-mark" aria-hidden="true">G</div><div><p class="eyebrow">GerNetiX Plattform</p><h1 id="login-title">Anmelden</h1></div></div>
 
-        <form class="login-form" id="login-form" autocomplete="on">
-          <label for="login-identifier">
-            Benutzername oder E-Mail
-            <input id="login-identifier" name="identifier" autocomplete="username" required />
-          </label>
-
-          <label for="login-password">
-            Passwort
-            <input id="login-password" name="password" type="password" autocomplete="current-password" required />
-          </label>
-
-          <button class="primary" type="submit">Einloggen</button>
+        <form class="login-form" id="login-form" autocomplete="username webauthn">
+          <label for="login-identifier">Spitzname<input id="login-identifier" name="identifier" autocomplete="username webauthn" required /></label>
+          <p class="form-hint">Mit Passkey anmelden – zum Beispiel per Fingerabdruck, Face ID oder Geräte-PIN.</p>
+          <button class="primary" type="submit">Mit Passkey anmelden</button>
         </form>
 
-        <form class="login-form hidden" id="register-form" autocomplete="on">
-          <label for="register-username">
-            Benutzername
-            <input id="register-username" name="username" autocomplete="username" minlength="3" required />
-          </label>
-
-          <label for="register-email">
-            E-Mail
-            <input id="register-email" name="email" type="email" autocomplete="email" required />
-          </label>
-
-          <label for="register-password">
-            Passwort
-            <input id="register-password" name="password" type="password" autocomplete="new-password" required />
-          </label>
-
-          <label for="register-password-repeat">
-            Passwort wiederholen
-            <input id="register-password-repeat" name="password_repeat" type="password" autocomplete="new-password" required />
-          </label>
-
-          <label class="check-line" for="register-accepted-terms">
-            <input id="register-accepted-terms" name="accepted_terms" type="checkbox" required />
-            <span>Ich akzeptiere Datenschutz und Nutzungsbedingungen.</span>
-          </label>
-
-          <button class="primary" type="submit">Konto erstellen</button>
+        <form class="login-form hidden" id="register-form" autocomplete="username">
+          <p class="step-label">Konto anlegen</p>
+          <p class="form-hint">Du musst dir kein Passwort merken. Dein Passkey wird sicher auf diesem Gerät oder in deinem Schlüsselbund gespeichert.</p>
+          <label for="register-username">Spitzname<input id="register-username" name="username" autocomplete="username" minlength="3" required /></label>
+          <label class="check-line" for="register-accepted-terms"><input id="register-accepted-terms" name="accepted_terms" type="checkbox" required /><span>Ich akzeptiere Datenschutz und Nutzungsbedingungen.</span></label>
+          <button class="primary" type="submit">Passkey einrichten und Konto erstellen</button>
         </form>
 
-        <form class="login-form hidden" id="reset-request-form" autocomplete="on">
-          <label for="reset-email">E-Mail-Adresse<input id="reset-email" name="email" type="email" autocomplete="email" required /></label>
-          <button class="primary" type="submit">Reset-Link senden</button>
-        </form>
-
-        <form class="login-form hidden" id="reset-complete-form" autocomplete="on">
-          <label for="reset-new-password">Neues Passwort<input id="reset-new-password" name="password" type="password" autocomplete="new-password" required /></label>
-          <button class="primary" type="submit">Passwort speichern</button>
-        </form>
-
-        <div class="links">
-          <button type="button" class="link-button" id="password-reset-toggle">Passwort vergessen</button>
-          <button type="button" class="link-button" id="auth-mode-toggle">Konto erstellen</button>
-        </div>
-
-        <div class="separator"><span>oder</span></div>
-
-        <div class="provider-grid" aria-label="Externe Anmeldung">
-          <button type="button" data-provider="google">Google</button>
-          <button type="button" data-provider="apple">Apple</button>
-          <button type="button" data-provider="microsoft">Microsoft</button>
-          <button type="button" data-provider="github">GitHub</button>
-        </div>
-
+        <button type="button" class="guest-button" id="guest-access-button">Ohne Konto ausprobieren</button>
+        <p class="guest-hint" id="guest-hint">Der Gastzugang ist auf 24 Stunden begrenzt und hat keine Wiederherstellung.</p>
+        <div class="links"><button type="button" class="link-button" id="auth-mode-toggle">Konto anlegen</button></div>
         <p class="status" id="status" role="status"></p>
-
-        <p class="demo-hint">
-          Lokale Demo: <strong>demo</strong> / <strong>demo-passwort</strong>
-        </p>
       </section>
     </main>
-
     <script src="/app/auth/auth.js"></script>
   </body>
 </html>

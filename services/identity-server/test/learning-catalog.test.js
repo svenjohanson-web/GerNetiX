@@ -34,3 +34,15 @@ test("catalog includes the button-to-smartphone notification learning project", 
   assert.match(server, /button-to-smartphone-notification/);
   assert.match(server, /createButtonToSmartphoneNotificationCourseModel/);
 });
+
+test("catalog includes the home automation network course with a resource boundary", () => {
+  const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
+  const course = fs.readFileSync(path.resolve(__dirname, "../src/dev/project-models/home-automation-network-course.json"), "utf8");
+  assert.match(server, /home-automation-network/);
+  assert.match(server, /createHomeAutomationNetworkCourseModel/);
+  assert.match(server, /homeAutomationNetworkCourseModel\.createProject/);
+  assert.match(guidedView, /access_gate/);
+  assert.match(guidedView, /open_billing/);
+  assert.match(course, /background_worker/);
+  assert.match(course, /Home-Assistant-Kompatibilitaet/);
+});

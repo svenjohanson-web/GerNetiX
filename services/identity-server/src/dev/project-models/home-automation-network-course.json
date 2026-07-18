@@ -1,0 +1,138 @@
+{
+  "slug": "home-automation-network",
+  "project": {
+    "slug": "home-automation-network",
+    "title": "Baue dein eigenes Hausautomationsnetz",
+    "area": "Hausautomation und vernetzte Home Nodes",
+    "summary": "Baue einen lokalen ESP32-Home-Node und erweitere ihn schrittweise zu einem Home-Assistant-kompatiblen Hausautomationsnetz.",
+    "steps": [
+      { "title": "Aufgabe und Grenzen verstehen", "text": "Ein Home Node misst, zeigt und schaltet zuerst lokal. Ein Home Assistant oder Cloud-Dienst ist eine spaetere Erweiterung.", "insight": "Die lokale Funktion bleibt der nachvollziehbare Kern." },
+      { "title": "Passende ESP32-Familie waehlen", "text": "WLAN, Zigbee/Thread, Display und Akku-Betrieb fuehren zu unterschiedlichen Chipfamilien.", "insight": "C3, S3, C6 und H2 loesen verschiedene Aufgaben; ein Board wird erst danach konkret ausgewaehlt." },
+      { "title": "Lokalen Home Node bauen", "text": "Ein Sensorwert, eine lokale Webseite und eine kleine lokale Regel ergeben bereits eine nutzbare Hausautomatisierung.", "insight": "Ein Node muss nicht auf einen externen Server warten, um sinnvoll zu sein." },
+      { "title": "Datenmodell definieren", "text": "Temperatur, Zeitstempel, Zielwert und Aktorstatus werden klar voneinander getrennt.", "insight": "Eindeutige Zustaende machen lokale Regeln und spaetere Integrationen verstaendlich." },
+      { "title": "Home-Assistant-Kompatibilitaet herstellen", "text": "MQTT und Discovery machen den Node fuer eine vorhandene Zentrale sichtbar, ohne die lokale Funktion zu ersetzen.", "insight": "Kompatibilitaet ist ein Vertrag zwischen Node und Zentrale." },
+      { "title": "Zentrale bewusst waehlen", "text": "Vergleiche Home Assistant, eine kleine lokale Bridge und einen eigenstaendigen GerNetiX-Backend-Pfad.", "insight": "Nicht jede Automatisierung braucht denselben Server oder dieselbe Reichweite." },
+      { "title": "Erweiterte Automatisierung freischalten", "text": "Ein Background Worker oder Dispatcher wird erst benoetigt, wenn das Projekt serverseitig zeitgesteuert arbeiten oder ausserhalb des Hauses zustellen soll.", "insight": "Serverressourcen sind ein klar abgegrenzter Mehrwert, keine Voraussetzung fuer den ersten Home Node." }
+    ],
+    "hardware_profile_id": "",
+    "access_model": "free",
+    "default_device_id": "",
+    "source_files": [
+      { "path": "docs/home-automation-architecture.puml", "role": "architecture_model" },
+      { "path": "docs/home-node-plan.md", "role": "decision_record" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Dein Hausautomationsnetz",
+    "summary": "Vom lokalen ESP32-Home-Node bis zur optionalen serverseitigen Automatisierung.",
+    "primary_source_path": "docs/home-automation-architecture.puml",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "home-automation-goal",
+        "type": "story_slide",
+        "title": "Ein Home Node ist schon Hausautomation",
+        "summary": "Wir starten nicht mit einer Cloud, sondern mit einer kleinen lokalen Funktion.",
+        "completion": { "type": "acknowledge", "label": "Ziel verstanden" },
+        "payload": { "model_lines": [
+          { "label": "Sensor", "text": "Ein ESP32 misst zum Beispiel Temperatur oder erkennt einen Taster." },
+          { "label": "Lokale Sicht", "text": "Eine kleine Webseite im Heimnetz zeigt den aktuellen Zustand und einen Verlauf." },
+          { "label": "Lokale Regel", "text": "Der Node kann beispielsweise bei einem Grenzwert einen Aktor schalten." },
+          { "label": "Spaetere Erweiterung", "text": "Home Assistant, MQTT, Zigbee oder GerNetiX kommen gezielt hinzu, wenn sie einen konkreten Nutzen bringen." }
+        ] }
+      },
+      {
+        "id": "processor-choice",
+        "type": "explanation",
+        "title": "Funk und Energie zuerst entscheiden",
+        "summary": "Die Chipfamilie folgt der Aufgabe, nicht umgekehrt.",
+        "completion": { "type": "acknowledge", "label": "Hardwareweg verstanden" },
+        "payload": { "cards": [
+          { "title": "WLAN-Home-Node", "text": "C3, S3 oder C6 passen, wenn der Node im Heimnetz eine lokale Webseite anbieten soll." },
+          { "title": "Display und Bedienung", "text": "S3 ist der uebliche Weg fuer Touch, sichtbare Ansichten und mehr lokale Logik." },
+          { "title": "Zigbee oder Thread", "text": "C6 kombiniert WLAN und 802.15.4. H2 ist ein sparsames 802.15.4-Endgeraet ohne WLAN und braucht eine Bridge oder einen Koordinator." },
+          { "title": "Akku", "text": "Nicht der Name des Chips entscheidet allein: Schlafdauer, Messintervall, Sensor und Netzrolle bestimmen die Laufzeit." }
+        ] }
+      },
+      {
+        "id": "local-node-architecture",
+        "type": "plantuml",
+        "title": "Der lokale Home Node",
+        "summary": "Die Basis funktioniert vollstaendig in deinem Heimnetz.",
+        "source_path": "docs/home-automation-architecture.puml",
+        "validation": { "type": "plantuml_contains", "must_contain": ["@startuml", "@enduml"] },
+        "payload": { "source": "@startuml\ntitle Hausautomationsnetz - lokaler Start\ncomponent \"Sensor\" as sensor\ncomponent \"ESP32 Home Node\\nMesswert + lokale Regel + Weboberflaeche\" as node\ncomponent \"Aktor\" as actor\nactor \"Browser im Heimnetz\" as browser\nsensor --> node : Messwert\nnode --> actor : lokale Entscheidung\nbrowser --> node : Status und Bedienung\n@enduml" }
+      },
+      {
+        "id": "state-model",
+        "type": "implementation_plan",
+        "title": "Daten und Regeln klar benennen",
+        "summary": "Definiere erst wenige, sichtbare Werte statt einer grossen Automatisierung.",
+        "payload": { "tasks": [
+          "Einen Sensorwert mit Einheit festlegen, zum Beispiel Temperatur in Grad Celsius",
+          "Zeitstempel und letzten bekannten Wert unterscheiden",
+          "Einen Zielwert oder Grenzwert definieren",
+          "Den Aktorstatus als eigenen Zustand ablegen",
+          "Eine lokale Regel formulieren: Wenn Temperatur unter Zielwert, dann Aktor einschalten"
+        ] }
+      },
+      {
+        "id": "home-assistant-compatibility",
+        "type": "story_slide",
+        "title": "Kompatibel mit Home Assistant werden",
+        "summary": "Eine Zentrale ergänzt den Node; sie ersetzt nicht seine klare Aufgabe.",
+        "completion": { "type": "acknowledge", "label": "Integrationsvertrag verstanden" },
+        "payload": { "model_lines": [
+          { "label": "MQTT", "text": "Der Node publiziert klar benannte Messwerte und nimmt nur erlaubte Befehle entgegen." },
+          { "label": "Discovery", "text": "Home Assistant kann passende Entitaeten aus der vom Node bereitgestellten Beschreibung anlegen." },
+          { "label": "Lokal bleibt lokal", "text": "Der Node misst und regelt weiterhin im Heimnetz; die Zentrale liefert Historie, Dashboards und uebergreifende Automationen." },
+          { "label": "Spaeter", "text": "Matter oder ein Zigbee-Netz sind Anschlusswege, nicht Voraussetzung fuer diesen ersten Lernpfad." }
+        ] }
+      },
+      {
+        "id": "central-options",
+        "type": "explanation",
+        "title": "Welche Zentrale brauchst du wirklich?",
+        "summary": "Wahle die kleinste Architektur, die dein Ziel verlaesslich erreicht.",
+        "completion": { "type": "acknowledge", "label": "Zentrale eingeordnet" },
+        "payload": { "cards": [
+          { "title": "Nur Home Node", "text": "Gut fuer eine einzelne sichtbare Messung, lokale Bedienung und eine einfache lokale Regel." },
+          { "title": "Home Assistant", "text": "Gut fuer Dashboards, Historie und die Verbindung vieler vorhandener Smart-Home-Produkte im Haus." },
+          { "title": "Kleine Bridge", "text": "Gut, wenn ein WLAN-Teil und ein Zigbee-/Thread-Teil getrennt zusammenarbeiten sollen." },
+          { "title": "GerNetiX Backend", "text": "Erst sinnvoll fuer projektgebundene Hintergrundarbeit, externe Benachrichtigungen oder Verarbeitung ausserhalb des Heimnetzes." }
+        ] }
+      },
+      {
+        "id": "resource-gate",
+        "type": "access_gate",
+        "title": "Erweiterte Automatisierung aktivieren",
+        "summary": "Background Worker und Dispatcher sind serverseitige Projektressourcen.",
+        "required_entitlements": ["background_worker"],
+        "payload": {
+          "offer_title": "Background Worker und Dispatcher freischalten",
+          "offer_text": "Du brauchst diese Ressource erst, wenn dein Home Node auch ohne geoeffneten Browser zeitgesteuert im GerNetiX-Backend arbeiten, Daten dort auswerten oder eine PWA ausserhalb deines Hauses benachrichtigen soll. Die lokale Home-Node- und Home-Assistant-Funktion bleibt davon unabhaengig.",
+          "included": ["Zeitgesteuerte Ausfuehrung eines projektgebundenen Background Workers", "Freigegebene Verarbeitung von Projektdaten", "Optionaler Dispatcher zu IoT-Zielen oder einer PWA"],
+          "help_topic": "entitlements-and-tokens"
+        },
+        "controls": { "actions": [
+          { "function": "open_billing", "label": "Freischaltung ansehen", "primary": true, "requires_valid": false },
+          { "function": "previous_step", "label": "Zurueck", "requires_valid": false }
+        ] }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "docs/home-automation-architecture.puml",
+      "role": "architecture_model",
+      "content": "@startuml\ntitle Hausautomationsnetz - lokaler Start\ncomponent \"Sensor\" as sensor\ncomponent \"ESP32 Home Node\\nMesswert + lokale Regel + Weboberflaeche\" as node\ncomponent \"Aktor\" as actor\nactor \"Browser im Heimnetz\" as browser\nsensor --> node : Messwert\nnode --> actor : lokale Entscheidung\nbrowser --> node : Status und Bedienung\n@enduml"
+    },
+    {
+      "path": "docs/home-node-plan.md",
+      "role": "decision_record",
+      "content": "# Mein Hausautomationsnetz\n\n- Aufgabe des ersten Home Node:\n- Sensor und Einheit:\n- Lokale Regel:\n- Aktor:\n- Gewaehlter Funkweg (WLAN, Zigbee oder Thread):\n- Gewaehlte ESP32-Familie und Begruendung:\n- Brauche ich eine Zentrale?\n- Soll der Node mit Home Assistant per MQTT Discovery kompatibel werden?\n- Erst wenn notwendig: Warum braucht dieses Projekt einen GerNetiX Background Worker oder Dispatcher?\n"
+    }
+  ]
+}

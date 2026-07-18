@@ -362,6 +362,7 @@ const GuidedProjectView = (() => {
     }
 
     function renderGuidedArtifact(view) {
+      if (view.type === "access_gate") return renderEntitlementGate(view);
       const artifact = view.payload?.artifact || {};
       const artifactRenderers = {
         code: renderGuidedCodeArtifact,
@@ -381,6 +382,22 @@ const GuidedProjectView = (() => {
           <h3>${escapeHtml(view.title || "Projektartefakt")}</h3>
           <p>${escapeHtml(view.summary || "Dieses Projekt legt fest, welches Artefakt hier angezeigt wird.")}</p>
         </div>
+      `;
+    }
+
+    function renderEntitlementGate(view) {
+      const payload = view.payload || {};
+      const required = Array.isArray(view.required_entitlements) ? view.required_entitlements : [];
+      const granted = new Set(state.billing?.entitlements || []);
+      const available = required.every((entitlement) => granted.has(entitlement));
+      return `
+        <section class="guided-entitlement-gate ${available ? "available" : "locked"}">
+          <p class="eyebrow">${available ? "Ressource verfuegbar" : "Ressourcenfreigabe"}</p>
+          <h3>${escapeHtml(payload.offer_title || view.title || "Projektressource")}</h3>
+          <p>${escapeHtml(payload.offer_text || view.summary || "Diese Erweiterung braucht eine gesonderte Freischaltung.")}</p>
+          ${payload.included?.length ? `<ul>${payload.included.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+          <p class="helper-text">${available ? "Die Entitlement-Pruefung ist positiv. Die konkrete Worker-Konfiguration wird in einem folgenden Lernschritt ergaenzt." : `Benötigt: ${escapeHtml(required.join(", ") || "eine passende Projektressource")}. Lokale Home-Node- und Home-Assistant-Funktionen bleiben ohne diese Ressource nutzbar.`}</p>
+        </section>
       `;
     }
 
@@ -517,6 +534,7 @@ const GuidedProjectView = (() => {
         plantuml: "PlantUML",
         implementation_plan: "Umsetzung",
         runtime_preview: "Preview",
+        access_gate: "Ressourcenfreigabe",
       }[view.type] || view.type;
       return `
         <article class="manifest-view-card active-step">
@@ -583,6 +601,10 @@ const GuidedProjectView = (() => {
         const tasks = payload.tasks || [];
         return tasks.length ? `<ul class="manifest-list">${tasks.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : "";
       }
+      if (view.type === "access_gate") {
+        const required = Array.isArray(view.required_entitlements) ? view.required_entitlements : [];
+        return `<dl class="meta-list compact">${meta("Benötigte Ressource", required.join(", ") || "noch festzulegen")}</dl>`;
+      }
       return Object.keys(payload).length ? `<pre class="plantuml-box">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>` : "";
     }
 
@@ -601,6 +623,17 @@ const GuidedProjectView = (() => {
       const validation = view?.validation || {};
       const completion = view?.completion || {};
       const focus = sourceFocusText(source, view?.source_lines || view?.editable_lines || []);
+
+      if (view?.type === "access_gate") {
+        const required = Array.isArray(view.required_entitlements) ? view.required_entitlements : [];
+        const granted = new Set(state.billing?.entitlements || []);
+        const missing = required.filter((entitlement) => !granted.has(entitlement));
+        return {
+          canContinue: missing.length === 0,
+          message: missing.length ? `Dieser Abschnitt braucht die Projektressource: ${missing.join(", ")}.` : "",
+          focus,
+        };
+      }
 
       if (validation.type === "source_contains_all" || completion.type === "source_contains_all") {
         const required = validation.must_contain || completion.must_contain || ["delay"];
@@ -706,6 +739,7 @@ const GuidedProjectView = (() => {
       if (fn === "previous_step") return setIdeGuidedStep(project, Math.max(0, state.activeIdeStep - 1));
       if (fn === "next_step") return completeIdeGuidedStep(project);
       if (fn === "runtime_preview") return openGuidedRuntimePreview(view);
+      if (fn === "open_billing") return window.navigate("/app/billing/");
       return undefined;
     }
 

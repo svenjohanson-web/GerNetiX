@@ -66,6 +66,7 @@ const routeMap = {
   downloads: "downloadsView",
   billing: "billingView",
   help: "helpView",
+  "account-setup": "accountSetupView",
   auth: "dashboardView",
 };
 
@@ -290,6 +291,11 @@ document.querySelector("#connectProvisioningWifiButton").addEventListener("click
 document.querySelector("#avrBootloaderIdentifyButton").addEventListener("click", identifyAvrBootloaderExperimental);
 document.querySelector("#claimSelectedDiscoveredDevicesButton").addEventListener("click", claimSelectedDiscoveredDevices);
 document.querySelector("#inventoryBoardShortName").addEventListener("input", syncInventoryNodeNamePreview);
+document.querySelector("#createOfflineRecoverySetButton")?.addEventListener("click", createOfflineRecoverySet);
+document.querySelector("#confirmOfflineRecoverySetButton")?.addEventListener("click", () => document.querySelector("#offlineRecoverySetDialog")?.close());
+document.querySelector("#offlineRecoverySetDialog")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget || event.target.closest("[data-close-offline-recovery-set]")) event.currentTarget.close();
+});
 window.addEventListener("popstate", renderRoute);
 document.addEventListener("click", closeMainMenu);
 
@@ -324,6 +330,7 @@ async function refresh() {
 function renderAll() {
   document.querySelector("#accountBadge").textContent = state.account ? `${state.account.username} · ${state.account.plan}` : "";
   renderDashboard();
+  renderAccountSetup();
   renderProjects();
   renderLearn();
   developmentPlatform().render();
@@ -606,6 +613,38 @@ function renderDashboard() {
     ["Letzter Modus", state.workspace.lastMode || "kein Eintrag"],
   ].map(summaryItem).join("");
   renderAiRating("#dashboardAiUsage");
+}
+
+function renderAccountSetup() {
+  const button = document.querySelector("#createOfflineRecoverySetButton");
+  const status = document.querySelector("#offlineRecoverySetStatus");
+  if (!button || !status || !state.account) return;
+  const configured = Boolean(state.account.offline_recovery_set_configured);
+  button.textContent = configured ? "Recovery-Set neu erzeugen" : "Recovery-Set erstellen";
+  status.textContent = configured
+    ? "Ein Recovery-Set ist eingerichtet. Beim Neuerzeugen wird der bisherige Code ungültig."
+    : "Noch kein Offline-Recovery-Set eingerichtet.";
+}
+
+async function createOfflineRecoverySet() {
+  const configured = Boolean(state.account?.offline_recovery_set_configured);
+  if (configured && !window.confirm("Das bisherige Offline-Recovery-Set wird ungültig. Möchtest du wirklich einen neuen Code erzeugen?")) return;
+  const button = document.querySelector("#createOfflineRecoverySetButton");
+  const status = document.querySelector("#offlineRecoverySetStatus");
+  if (!button || !status) return;
+  button.disabled = true;
+  status.textContent = "Recovery-Set wird erzeugt ...";
+  try {
+    const response = await postJson("/api/account/offline-recovery-set", {});
+    state.account = response.account;
+    document.querySelector("#offlineRecoverySetValue").textContent = response.recovery_set || "";
+    document.querySelector("#offlineRecoverySetDialog")?.showModal();
+    renderAccountSetup();
+  } catch (error) {
+    status.textContent = error.message || "Recovery-Set konnte nicht erzeugt werden.";
+  } finally {
+    button.disabled = false;
+  }
 }
 
 function renderProjects() {

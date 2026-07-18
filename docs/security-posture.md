@@ -15,7 +15,7 @@ Die Uebersicht enthaelt keine IP-Adressen, Schluessel, Fingerprints, Passwoerter
 
 ## Aktuell umgesetzte Massnahmen
 
-Stand der letzten VPS-Pruefung: **2026-07-16**
+Stand der letzten VPS-Pruefung: **2026-07-18**
 
 | Bereich | Massnahme | Status | Letzter Nachweis |
 | --- | --- | --- | --- |
@@ -46,6 +46,7 @@ Stand der letzten VPS-Pruefung: **2026-07-16**
 | Ressourcen-Kostenkontrolle | Zentral nachregelbare Kontingente je Nutzerprofil | Teilweise | 2026-07-16: Project Server persistiert Profilgrenzen in der getrennten Projekt-SQLite; Admin Tool zeigt und aendert Projekt-/Speicher-/Traffic-Limits. Free ist auf fuenf, Premium und Premium Demo auf 200 Entwicklungsprojekte als Missbrauchsschutz begrenzt; ein kundenrelevantes Projekt-Speicherlimit wird nicht durchgesetzt. Durchsetzung fuer monatlichen Traffic steht noch aus |
 | KI-Datenrouting | GerNetiX Help ausschliesslich ueber lokale Ollama-Route `help_chat` und kuratiertes lokales Help-Wissen | Teilweise | 2026-07-15: Identity sucht passende Help-Artikel im AI Context Server (pgvector mit lexikalischem Fallback) und uebergibt nur diese an Ollama. Ohne Treffer erfolgt kein Modellaufruf; `help_knowledge` weist externe Provider ab. Unit-/Contract-Tests vorhanden, Live-Nachweis mit dem konfigurierten Ollama-Modell steht aus |
 | Account-E-Mail | IONOS SMTP fuer Verifizierung und Passwort-Reset, Passwort AES-256-GCM-verschluesselt in Identity-SQLite | Teilweise | 2026-07-15: Admin Tool leitet SMTP-Daten nur an den intern token-geschuetzten Identity-Endpunkt weiter; Passwort wird nie erneut ausgegeben oder geloggt. Unit-Tests fuer Verschluesselung und SMTP-Adapter vorhanden; VPS-Schluessel, IONOS-Konfiguration und Live-Test stehen aus |
+| Pseudonyme Kontostufen | Persistente Zustandsmaschine Gast → Passkey-Basiskonto → ESP32-Konto unter derselben internen `user_id`; maximal drei Board-Referenzen | Teilweise | 2026-07-18: Der Einstieg besteht aus Spitzname und verpflichtendem Passkey; der Server erzeugt eine kurzlebige WebAuthn-Challenge, prüft Registrierungs- und Login-Signaturen und speichert nur öffentlichen Credential-Schlüssel, ID und Zähler. Das Dashboard verlinkt auf freiwillige Recovery-Wege. Das persönliche Offline-Recovery-Set wird einmalig aus kryptographischem Zufall erzeugt, ausschließlich einmal im Browser angezeigt und in Identity-SQLite nur als scrypt-Hash mit Zeitstempel gespeichert. Noch nicht produktiv: der eigentliche Recovery-Ablauf zum Hinzufügen eines neuen Login-Passkeys, persistente Challenge-Ablage für mehrere Serverinstanzen, ESP32-Signatur-/Ownership-Prüfung, Board-Verwaltungs-UI, Ablaufloeschung und IP-/CAPTCHA-Schutz |
 
 ## Aktuelle Beobachtungen
 
@@ -58,6 +59,7 @@ Stand der letzten VPS-Pruefung: **2026-07-16**
 - Die VPS-Ressourcen waren unkritisch: rund 7 Prozent Datentraegerbelegung, ausreichend freier Arbeitsspeicher und keine ausstehenden Paketaktualisierungen. Es wurden keine fehlgeschlagenen systemd-Units festgestellt.
 - Das Staging-Deployment vom 2026-07-15 installierte getrennte Device-CA- und OTA-Schluessel, migrierte den AI Context automatisch von SQLite nach PostgreSQL/pgvector und startete alle 14 Container gesund. Identity-, Admin- und oeffentliche HTTPS-Healthchecks waren erfolgreich. Ein gueltiger Device-mTLS-/OTA-End-to-End-Test mit realer Hardware bleibt offen.
 - Die read-only VPS-Pruefung am 2026-07-16 zeigte keine fehlgeschlagenen SSH-Anmeldungen, keine aktuellen Fail2ban-Sperren, keine Konto- oder Rechteaenderungen sowie keine fehlgeschlagenen Systemd-Units oder ungesunden GerNetiX-Container in den letzten 24 Stunden. Erfolgreiche SSH-Anmeldungen erfolgten ausschliesslich per Public Key von einem privaten WireGuard-Peer; Passwort- oder oeffentliche SSH-Anmeldungen wurden nicht festgestellt. Es wurden 2.806 typische Web-Scannerpfade und 56 abgewiesene MQTT-TLS-/Protokollfehler aggregiert, jeweils ohne Nginx-5xx-Antworten. Dies ist automatisierter Angriffsverkehr, aber kein Hinweis auf erfolgreichen Zugriff.
+- Die read-only VPS-Pruefung am 2026-07-18 zeigte in den letzten 24 Stunden 1.490 Nginx-404-Antworten, darunter 372 typische Web-Scannerpfade, jedoch keine Nginx-5xx- oder Upstream-Fehler. MQTT protokollierte 25 Protokollfehler und zahlreiche Verbindungsabbrueche, aber keine nicht autorisierten Anmeldungen. Es gab eine SSH-Preauth-Abweisung, keine Passwort- oder Invalid-User-Versuche, keine aktuellen Fail2ban-Sperren und keine erfolgreichen SSH-Anmeldungen ausserhalb eines einzelnen WireGuard-Peers. Keine Konto- oder Rechteaenderungen, fehlgeschlagenen Systemd-Units oder ungesunden Container wurden festgestellt. Die Host-Firewall hat Default-Drop, akzeptiert SSH nur ueber `wg0`; Passwort-SSH, oeffentliche SSH-Freigaben und erfolgreicher Fremdzutritt wurden nicht festgestellt.
 
 ## Empfohlene Massnahmen
 

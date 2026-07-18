@@ -12,6 +12,8 @@
     "node": ">=18"
   },
   "dependencies": {
+    "@simplewebauthn/browser": "^13.3.0",
+    "@simplewebauthn/server": "^13.3.2",
     "esptool-js": "^0.6.0",
     "nodemailer": "^9.0.3",
     "web-push": "^3.6.7"

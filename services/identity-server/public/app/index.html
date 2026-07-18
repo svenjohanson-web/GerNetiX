@@ -42,33 +42,31 @@
       </nav>
 
       <section id="dashboardView" class="view">
-        <section class="dashboard-grid">
-          <button class="entry-card primary" type="button" data-open-route="/app/development-platform/">
-            <span>Entwicklungsbereich</span>
-            <strong>Entwicklungsbereich beitreten</strong>
-          </button>
-          <button class="entry-card" type="button" data-open-route="/app/learn/">
-            <span>Lernbereich</span>
-            <strong>Lernbereich beitreten</strong>
-          </button>
-          <button class="entry-card" type="button" data-open-route="/app/device-management/">
-            <span>Device Management</span>
-            <strong>Boards verwalten</strong>
-          </button>
-          <article class="entry-card" aria-labelledby="mobileAlertsTitle">
-            <span>iPhone App</span>
-            <strong id="mobileAlertsTitle">Push-Meldungen</strong>
-            <p>In Safari zum Home-Bildschirm hinzufügen und Push-Meldungen pro Projekt aktivieren.</p>
-            <label>Projekt
-              <select id="pushProjectSelect" aria-label="Projekt fuer Push-Meldungen"></select>
-            </label>
-            <button id="enablePushButton" type="button">Push aktivieren</button>
-            <button id="sendPushTestButton" type="button">Testnachricht senden</button>
-            <small id="pushStatus" aria-live="polite"></small>
-          </article>
+        <section class="dashboard-hero" aria-labelledby="dashboardTitle">
+          <p class="eyebrow">GerNetiX Plattform</p>
+          <h1 id="dashboardTitle">Willkommen</h1>
+          <p>Wähle einen Arbeitsbereich oder schließe zuerst die Einrichtung deines Kontos ab.</p>
         </section>
 
-        <section class="panel">
+        <section class="dashboard-next" aria-labelledby="accountSetupTitle">
+          <a class="entry-card primary dashboard-next-card" href="/app/account-setup/">
+            <span>Nächster Schritt</span>
+            <strong id="accountSetupTitle">Konto einrichten abschließen</strong>
+            <p>Dein Passkey funktioniert bereits. Ergänze bei Bedarf einen unabhängigen Wiederherstellungsweg.</p>
+            <small>Einrichtung öffnen →</small>
+          </a>
+        </section>
+
+        <section class="dashboard-section" aria-labelledby="workspaceTitle">
+          <div class="section-head"><div><p class="eyebrow">Arbeitsbereiche</p><h2 id="workspaceTitle">Was möchtest du tun?</h2></div></div>
+          <div class="dashboard-grid workspace-grid">
+            <button class="entry-card" type="button" data-open-route="/app/development-platform/"><span>Eigene Idee</span><strong>Entwicklungsbereich</strong><p>Ein eigenes Projekt planen, konfigurieren und programmieren.</p></button>
+            <button class="entry-card" type="button" data-open-route="/app/learn/"><span>Geführt lernen</span><strong>Lernbereich</strong><p>Ein Lernprojekt auswählen und Schritt für Schritt umsetzen.</p></button>
+            <button class="entry-card" type="button" data-open-route="/app/device-management/"><span>Vorhandene Hardware</span><strong>Boards verwalten</strong><p>Boards verbinden, provisionieren und deinem Konto zuordnen.</p></button>
+          </div>
+        </section>
+
+        <section class="panel dashboard-status">
           <div class="section-head">
             <div>
               <p class="eyebrow">Ein Account</p>
@@ -77,16 +75,40 @@
           </div>
           <div id="dashboardSummary" class="summary-grid"></div>
         </section>
-        <section class="panel">
+        <section class="panel dashboard-ai">
           <div class="section-head">
             <div>
-              <p class="eyebrow">KI Nutzung</p>
-              <h2>Quellenrating</h2>
+              <p class="eyebrow">KI-Nutzung</p>
+              <h2>Verbrauch und Quellen</h2>
             </div>
           </div>
           <div id="dashboardAiUsage" class="ai-rating-grid"></div>
         </section>
       </section>
+
+      <section id="accountSetupView" class="view hidden">
+        <section class="panel">
+          <p class="eyebrow">Konto</p>
+          <h2>Konto einrichten abschließen</h2>
+          <p>Dein Passkey reicht für die Anmeldung. Die folgenden Wege sind freiwillige zusätzliche Sicherungen, falls du dein Passkey-Gerät nicht mehr verwenden kannst.</p>
+        </section>
+        <section class="dashboard-grid">
+          <article class="entry-card"><span>Optional</span><strong>Offline-Recovery-Set</strong><p>Ein einmaliger Code zum Ausdrucken oder getrennten sicheren Ablegen. Er hilft, wenn Geräte oder Schlüsselbünde verloren gehen.</p><button id="createOfflineRecoverySetButton" type="button">Recovery-Set erstellen</button><small id="offlineRecoverySetStatus" aria-live="polite"></small></article>
+          <article class="entry-card"><span>Optional</span><strong>ESP32-Recovery-Token</strong><p>Ein eigenes provisioniertes Board kann später als unabhängiger Wiederherstellungsweg gekoppelt werden.</p></article>
+          <article class="entry-card"><span>Später verfügbar</span><strong>Social Recovery</strong><p>Zwei von drei offline verteilten Anteilen können gemeinsam bei der Wiederherstellung helfen, ohne Kontaktdaten zu GerNetiX hochzuladen.</p></article>
+        </section>
+      </section>
+
+      <dialog id="offlineRecoverySetDialog" class="runtime-dialog recovery-set-dialog">
+        <div class="runtime-dialog-header">
+          <div><p class="eyebrow">Persönliches Offline-Recovery-Set</p><h2>Jetzt sicher ablegen</h2></div>
+          <button type="button" data-close-offline-recovery-set aria-label="Schließen">Schließen</button>
+        </div>
+        <p>Dieser Code wird nur jetzt angezeigt. GerNetiX speichert ausschließlich einen Hash und kann ihn später nicht erneut anzeigen.</p>
+        <pre id="offlineRecoverySetValue" class="offline-recovery-set-value"></pre>
+        <p><strong>Bitte schreibe ihn auf oder drucke ihn aus und bewahre ihn getrennt von deinen Geräten auf.</strong></p>
+        <button id="confirmOfflineRecoverySetButton" class="primary" type="button">Ich habe den Code sicher abgelegt</button>
+      </dialog>
 
       <section id="helpView" class="view hidden">
         <div id="helpMount"></div>
@@ -779,13 +801,13 @@
     <script src="/app/dom-utils.js"></script>
     <script src="/app/device-onboarding-model.js"></script>
     <script src="/app/device-onboarding-controller.js?v=20260714-04"></script>
-    <script src="/app/guided-project-view.js?v=20260714-01"></script>
+    <script src="/app/guided-project-view.js?v=20260718-01"></script>
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
     <script src="/app/development-component-metamodel.js?v=20260716-01"></script>
     <script src="/app/development-platform.js?v=20260717-04"></script>
-    <script src="/app/help-content.js?v=20260717-08"></script>
+    <script src="/app/help-content.js?v=20260718-01"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
     <script src="/app/help-view.js?v=20260717-03"></script>
-    <script src="/app/app.js?v=20260717-25"></script>
+    <script src="/app/app.js?v=20260718-01"></script>
   </body>
 </html>

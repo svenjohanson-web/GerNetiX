@@ -21,7 +21,7 @@ class InMemoryIdentityRepository {
   rebuildIndexes() {
     for (const account of this.userAccounts.values()) {
       this.usernameIndex.set(normalizeUsername(account.username), account.id);
-      this.emailIndex.set(normalizeEmail(account.email), account.id);
+      if (account.email) this.emailIndex.set(normalizeEmail(account.email), account.id);
     }
     for (const identity of this.externalIdentities.values()) {
       this.externalIdentityIndex.set(externalKey(identity.provider, identity.provider_user_id), identity.id);
@@ -35,14 +35,14 @@ class InMemoryIdentityRepository {
     return this.clock().toISOString();
   }
 
-  createUserAccount({ id, username, email, status }) {
+  createUserAccount({ id, username, email, status, accountType = "email_account", guestExpiresAt = null, passkeyCredentialId = null, passkeyPublicKey = null, passkeyCounter = 0, passkeyTransports = [], offlineRecoverySetConfirmedAt = null, offlineRecoverySetHash = null, recoveryBoardIds = [] }) {
     const normalizedUsername = normalizeUsername(username);
-    const normalizedEmail = normalizeEmail(email);
+    const normalizedEmail = email ? normalizeEmail(email) : null;
 
     if (this.usernameIndex.has(normalizedUsername)) {
       throw new Error("USERNAME_ALREADY_EXISTS");
     }
-    if (this.emailIndex.has(normalizedEmail)) {
+    if (normalizedEmail && this.emailIndex.has(normalizedEmail)) {
       throw new Error("EMAIL_ALREADY_EXISTS");
     }
 
@@ -56,19 +56,34 @@ class InMemoryIdentityRepository {
       username,
       email: normalizedEmail,
       status,
+      account_type: accountType,
+      guest_expires_at: guestExpiresAt,
+      passkey_credential_id: passkeyCredentialId,
+      passkey_public_key: passkeyPublicKey,
+      passkey_counter: passkeyCounter,
+      passkey_transports: [...passkeyTransports],
+      offline_recovery_set_confirmed_at: offlineRecoverySetConfirmedAt,
+      offline_recovery_set_hash: offlineRecoverySetHash,
+      recovery_board_ids: [...recoveryBoardIds],
       created_at: now,
       updated_at: now,
     };
 
     this.userAccounts.set(account.id, account);
     this.usernameIndex.set(normalizedUsername, account.id);
-    this.emailIndex.set(normalizedEmail, account.id);
+    if (normalizedEmail) this.emailIndex.set(normalizedEmail, account.id);
     return { ...account };
   }
 
   updateUserAccount(userId, patch) {
     const current = this.userAccounts.get(userId);
     if (!current) return null;
+    if (patch.username && normalizeUsername(patch.username) !== normalizeUsername(current.username)) {
+      const nextUsername = normalizeUsername(patch.username);
+      if (this.usernameIndex.has(nextUsername)) throw new Error("USERNAME_ALREADY_EXISTS");
+      this.usernameIndex.delete(normalizeUsername(current.username));
+      this.usernameIndex.set(nextUsername, userId);
+    }
     const next = { ...current, ...patch, updated_at: this.nowIso() };
     this.userAccounts.set(userId, next);
     return { ...next };
@@ -84,6 +99,7 @@ class InMemoryIdentityRepository {
   }
 
   findUserByEmail(email) {
+    if (!email) return null;
     const id = this.emailIndex.get(normalizeEmail(email));
     return id ? this.findUserById(id) : null;
   }

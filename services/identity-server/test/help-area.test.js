@@ -74,6 +74,21 @@ test("groups supported boards into one help topic instead of individual board to
   assert.match(helpContent, /Die Sammlung/);
 });
 
+test("keeps a public processor-family overview separate from concrete supported boards", () => {
+  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  assert.match(navigation, /title: "Hardware verstehen"/);
+  assert.match(navigation, /"processor-overview", title: "ESP32-Prozessorfamilien im Vergleich"/);
+  assert.match(helpContent, /"processor-overview": \{/);
+  assert.match(helpContent, /ESP32-C5/);
+  assert.match(helpContent, /ESP32-C61/);
+  assert.match(helpContent, /ESP32-H2/);
+  assert.match(helpContent, /ESP32-P4/);
+  assert.match(helpContent, /C3 hat kein Zigbee und kein Thread/);
+  assert.match(helpContent, /Kein WLAN/);
+  assert.match(helpContent, /keine ESP32-S6-Familie/);
+  assert.match(helpContent, /Unterstuetzte Boards ansehen/);
+});
+
 test("offers event worker rule help as a central account help topic", () => {
   assert.match(helpContent, /"event-worker-rules", title: "Ereignis-Worker und Regelsprache"/);
   assert.match(helpContent, /event\.type == \\"taste_gedrueckt\\"/);
@@ -101,6 +116,27 @@ test("groups worker and dispatcher help beneath project support", () => {
   assert.match(navigation, /"event-dispatcher", title: "Ereignis-Dispatcher"/);
   assert.match(helpContent, /"event-dispatcher": \{/);
   assert.match(helpContent, /Dispatcher ist nicht Push/);
+});
+
+test("explains account access, recovery and current versus planned entitlements", () => {
+  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  assert.match(navigation, /title: "Konto und Zugang"/);
+  assert.match(navigation, /"account-types", title: "Kontotypen und Zugangsstufen"/);
+  assert.match(helpContent, /"registration-login-recovery"/);
+  assert.match(helpContent, /Passkey ist Pflicht; persoenliches Offline-Recovery-Set/);
+  assert.match(helpContent, /Konto einrichten abschließen/);
+  assert.match(helpContent, /ESP32-Recovery-Token/);
+  assert.match(helpContent, /Kampagnen-Premium-Token/);
+  assert.match(helpContent, /Heute in der Plattform/);
+  assert.match(helpContent, /Basis Plus, Kampagnen und Hardware-Bundles/);
+  assert.match(helpContent, /Dispatcher oder Background Worker braucht/);
+});
+
+test("links account setup to the personal offline recovery set", () => {
+  assert.match(html, /id="createOfflineRecoverySetButton"/);
+  assert.match(html, /id="offlineRecoverySetDialog"/);
+  assert.match(app, /api\/account\/offline-recovery-set/);
+  assert.match(app, /Recovery-Set erstellen/);
 });
 
 test("separates public, account and premium help with an in-article paywall", () => {

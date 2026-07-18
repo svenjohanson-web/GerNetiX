@@ -44,7 +44,14 @@ const { createInterfaceCallTelemetry } = require("../../shared/persistence/inter
 const { createTamagotchiEntryCourseModel } = require("./dev/project-models/tamagotchi-entry-course");
 const { createSmartAssistantCourseModel } = require("./dev/project-models/smart-assistant-course");
 const { createButtonToSmartphoneNotificationCourseModel } = require("./dev/project-models/button-to-smartphone-notification-course");
+const { createHomeAutomationNetworkCourseModel } = require("./dev/project-models/home-automation-network-course");
 const { defaultCatalogSeed } = require("../../hardware-catalog/src/seed");
+const {
+  generateRegistrationOptions,
+  verifyRegistrationResponse,
+  generateAuthenticationOptions,
+  verifyAuthenticationResponse,
+} = require("@simplewebauthn/server");
 
 const publicDir = path.join(__dirname, "..", "public");
 const appDir = path.join(publicDir, "app");
@@ -68,6 +75,7 @@ const demoUsername = process.env.DEMO_USER || "demo";
 const demoEmail = process.env.DEMO_EMAIL || "demo@gernetix.local";
 const demoPassword = process.env.DEMO_PASSWORD || "demo-passwort";
 const defaultAccountPlan = process.env.GERNETIX_DEFAULT_ACCOUNT_PLAN || "premium_demo";
+const passkeyChallenges = new Map();
 const projectServerBaseUrl = process.env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800";
 const telemetryServerBaseUrl = process.env.TELEMETRY_SERVER_BASE_URL || "http://127.0.0.1:5600";
 const telemetryInternalToken = process.env.TELEMETRY_INTERNAL_TOKEN || "";
@@ -150,6 +158,7 @@ const createAccountTransparency = createAccountTransparencyFactory({
 const tamagotchiEntryCourseModel = createTamagotchiEntryCourseModel({ readWorkspaceText });
 const smartAssistantCourseModel = createSmartAssistantCourseModel();
 const buttonToSmartphoneNotificationCourseModel = createButtonToSmartphoneNotificationCourseModel();
+const homeAutomationNetworkCourseModel = createHomeAutomationNetworkCourseModel();
 const llmConfigStore = createLlmConfigStore({
   configPath: path.join(workspaceRoot, ".runtime", "identity-llm-config.json"),
   defaultOllamaBaseUrl: ollamaBaseUrl,
@@ -358,6 +367,73 @@ async function routeRequest(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/register") {
     await handleRegister(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/passkeys/registration/options") {
+    await handlePasskeyRegistrationOptions(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/passkeys/registration/verify") {
+    await handlePasskeyRegistrationVerify(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/passkeys/authentication/options") {
+    await handlePasskeyAuthenticationOptions(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/passkeys/authentication/verify") {
+    await handlePasskeyAuthenticationVerify(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/account/guest") {
+    const guest = await auth.create_guest();
+    sessions.set(guest.session.token, { account: guest.account, expiresAt: guest.session.expires_at });
+    setSessionCookie(res, guest.session.token, guest.session.expires_at);
+    sendJson(res, 201, { account: guest.account, next: "/app/dashboard/" });
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/account/access-profile") {
+    const session = readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    sendJson(res, 200, { account: session.account });
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/account/upgrade-guest") {
+    const session = readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    const body = await readJsonBody(req);
+      const result = await auth.upgrade_guest_to_base(session.account.user_id, body.username, body.password, body.accepted_terms === true, body.passkey_credential_id, body.offline_recovery_set_confirmed === true, body.offline_recovery_set);
+    updateCachedSessionAccount(req, result.account);
+    sendJson(res, 200, result);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/account/offline-recovery-set") {
+    const session = readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    const result = await auth.create_offline_recovery_set(session.account.user_id);
+    updateCachedSessionAccount(req, result.account);
+    sendJson(res, 201, result);
+    return;
+  }
+
+  const recoveryBoardRoute = url.pathname.match(/^\/api\/account\/recovery-boards\/([^/]+)$/);
+  if (recoveryBoardRoute && ["POST", "DELETE"].includes(req.method)) {
+    const session = readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    const boardId = decodeURIComponent(recoveryBoardRoute[1]);
+    const result = req.method === "POST"
+      ? await auth.add_esp32_recovery_token(session.account.user_id, boardId)
+      : await auth.remove_esp32_recovery_token(session.account.user_id, boardId);
+    updateCachedSessionAccount(req, result.account);
+    sendJson(res, 200, result);
     return;
   }
 
@@ -1048,6 +1124,119 @@ async function routeRequest(req, res) {
   }
 
   serveStatic(res, publicDir, url.pathname);
+}
+
+function passkeyConfiguration(req) {
+  const origin = String(req.headers.origin || identityAppBaseUrl || `http://${host}:${port}`).replace(/\/$/, "");
+  return { origin, rpID: new URL(origin).hostname };
+}
+
+function storePasskeyChallenge(kind, username, challenge, config) {
+  passkeyChallenges.set(`${kind}:${String(username).toLowerCase()}`, { challenge, config, expiresAt: Date.now() + 5 * 60 * 1000 });
+}
+
+function readPasskeyChallenge(kind, username) {
+  const key = `${kind}:${String(username).toLowerCase()}`;
+  const value = passkeyChallenges.get(key);
+  passkeyChallenges.delete(key);
+  if (!value || value.expiresAt < Date.now()) throw new Error("passkey_challenge_expired");
+  return value;
+}
+
+function toBase64Url(bytes) {
+  return Buffer.from(bytes).toString("base64url");
+}
+
+async function handlePasskeyRegistrationOptions(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const username = String(body.username || "").trim();
+    if (username.length < 3) throw new Error("invalid_username");
+    const config = passkeyConfiguration(req);
+    const options = await generateRegistrationOptions({
+      rpName: "GerNetiX", rpID: config.rpID, userName: username,
+      attestationType: "none",
+      authenticatorSelection: { residentKey: "preferred", userVerification: "required" },
+    });
+    storePasskeyChallenge("register", username, options.challenge, config);
+    sendJson(res, 200, options);
+  } catch (error) {
+    sendJson(res, 400, { error: error.code || "passkey_registration_unavailable", message: "Passkey konnte nicht vorbereitet werden." });
+  }
+}
+
+async function handlePasskeyRegistrationVerify(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const username = String(body.username || "").trim();
+    if (body.accepted_terms !== true) throw new Error("terms_not_accepted");
+    const challenge = readPasskeyChallenge("register", username);
+    const verification = await verifyRegistrationResponse({
+      response: body.credential, expectedChallenge: challenge.challenge,
+      expectedOrigin: challenge.config.origin, expectedRPID: challenge.config.rpID,
+      requireUserVerification: true,
+    });
+    if (!verification.verified || !verification.registrationInfo) throw new Error("passkey_registration_not_verified");
+    const credential = verification.registrationInfo.credential;
+    const created = await auth.create_passkey_account(username, {
+      credentialId: credential.id, publicKey: toBase64Url(credential.publicKey),
+      counter: credential.counter, transports: credential.transports || [],
+    });
+    sessions.set(created.session.token, { account: created.account, expiresAt: created.session.expires_at });
+    setSessionCookie(res, created.session.token, created.session.expires_at);
+    sendJson(res, 201, { account: created.account, next: "/app/dashboard/" });
+  } catch (error) {
+    const message = error.message === "terms_not_accepted"
+      ? "Bitte bestätige Datenschutz und Nutzungsbedingungen."
+      : host === "127.0.0.1"
+        ? `Passkey konnte nicht verifiziert werden: ${error.message || "unbekannter Fehler"}`
+        : "Passkey konnte nicht verifiziert werden.";
+    sendJson(res, error.status || 400, { error: error.code || "passkey_registration_failed", message });
+  }
+}
+
+async function handlePasskeyAuthenticationOptions(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const username = String(body.username || "").trim();
+    const account = auth.get_passkey_login_candidate(username);
+    const config = passkeyConfiguration(req);
+    const options = await generateAuthenticationOptions({
+      rpID: config.rpID, userVerification: "required",
+      allowCredentials: [{ id: account.passkey_credential_id, transports: account.passkey_transports || [] }],
+    });
+    storePasskeyChallenge("authenticate", username, options.challenge, config);
+    sendJson(res, 200, options);
+  } catch (error) {
+    sendJson(res, error.status || 400, { error: error.code || "passkey_authentication_unavailable", message: "Passkey-Login konnte nicht vorbereitet werden." });
+  }
+}
+
+async function handlePasskeyAuthenticationVerify(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const username = String(body.username || "").trim();
+    const account = auth.get_passkey_login_candidate(username);
+    const challenge = readPasskeyChallenge("authenticate", username);
+    const verification = await verifyAuthenticationResponse({
+      response: body.credential, expectedChallenge: challenge.challenge,
+      expectedOrigin: challenge.config.origin, expectedRPID: challenge.config.rpID,
+      requireUserVerification: true,
+      credential: {
+        id: account.passkey_credential_id,
+        publicKey: Buffer.from(account.passkey_public_key, "base64url"),
+        counter: Number(account.passkey_counter || 0),
+        transports: account.passkey_transports || [],
+      },
+    });
+    if (!verification.verified) throw new Error("passkey_authentication_not_verified");
+    const login = await auth.login_passkey(username, verification.authenticationInfo.newCounter);
+    sessions.set(login.session.token, { account: login.account, expiresAt: login.session.expires_at });
+    setSessionCookie(res, login.session.token, login.session.expires_at);
+    sendJson(res, 200, { account: login.account, next: sanitizeNextPath(body.next) || "/app/dashboard/" });
+  } catch (error) {
+    sendJson(res, error.status || 401, { error: error.code || "passkey_authentication_failed", message: "Passkey-Login fehlgeschlagen." });
+  }
 }
 
 async function handleLogin(req, res) {
@@ -2853,6 +3042,7 @@ function createUserIdeState() {
     tamagotchiEntryCourseModel.createProject(project, step),
     smartAssistantCourseModel.createProject(project, step),
     buttonToSmartphoneNotificationCourseModel.createProject(project, step),
+    homeAutomationNetworkCourseModel.createProject(project, step),
     project("esp32-ota-bootstrap-firmware", "ESP32 OTA-Basissoftware", "Firmware", "USB-Erstflash vorbereiten und spaetere OTA-Faehigkeit erhalten.", [
       step("USB-Erstflash", "Das Board wird initial mit der GerNetiX-Basissoftware vorbereitet.", "OTA bleibt Teil der Basis, nicht Teil des User-Codes."),
       step("Service-Endpunkte", "Device Management und Build-&-Deploy bleiben konfigurierbar.", "Ein Serverumzug darf keinen USB-Reflash erzwingen."),
@@ -2970,6 +3160,12 @@ function projectViewManifest(project) {
   }
   if (project.slug === smartAssistantCourseModel.slug) {
     return smartAssistantCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === homeAutomationNetworkCourseModel.slug) {
+    return homeAutomationNetworkCourseModel.createViewManifest(project, {
       override,
       primarySourcePath,
     });
@@ -3567,6 +3763,9 @@ function demoProjectSources(project) {
   if (project.slug === buttonToSmartphoneNotificationCourseModel.slug) {
     return buttonToSmartphoneNotificationCourseModel.createSources();
   }
+  if (project.slug === homeAutomationNetworkCourseModel.slug) {
+    return homeAutomationNetworkCourseModel.createSources();
+  }
 
   if (project.slug === "arduino-atmel-bare-metal") {
     return [
@@ -3693,6 +3892,12 @@ function readSession(req) {
 function readSessionToken(req) {
   const cookies = parseCookies(req.headers.cookie || "");
   return cookies.gernetix_demo_session || "";
+}
+
+function updateCachedSessionAccount(req, account) {
+  const token = readSessionToken(req);
+  const existing = sessions.get(token);
+  if (existing) sessions.set(token, { ...existing, account });
 }
 
 async function handleDevLessonPreviewMigration(req, res) {
