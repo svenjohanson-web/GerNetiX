@@ -133,6 +133,9 @@ services:
 
   hardware-catalog:
     <<: *node-service
+    networks:
+      - edge
+      - backend
     environment:
       GERNETIX_SERVICE: hardware-catalog
       HOST: 0.0.0.0
@@ -236,6 +239,9 @@ services:
 
   admin-access-server:
     <<: *node-service
+    networks:
+      - edge
+      - backend
     environment:
       GERNETIX_SERVICE: admin-access-server
       HOST: 0.0.0.0
