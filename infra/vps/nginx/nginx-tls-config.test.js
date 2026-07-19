@@ -25,9 +25,11 @@ test("all public domains use ACME and redirect HTTP to HTTPS", () => {
 });
 
 test("TLS serves Dutch, German and English pages with one SAN certificate", () => {
-  assert.match(tls, /welcome\.nl\.html/);
-  assert.match(tls, /welcome\.html/);
-  assert.match(tls, /welcome\.en\.html/);
+  for (const landingPage of ["welcome.nl.html", "welcome.html", "welcome.en.html"]) {
+    const escapedLandingPage = landingPage.replaceAll(".", "\\.");
+    assert.match(tls, new RegExp(`location = / \\{ try_files /${escapedLandingPage} =404; \\}`));
+    assert.match(compose, new RegExp(`:/usr/share/nginx/html/${escapedLandingPage}:ro`));
+  }
   assert.match(tls, /live\/gernetix\.nl\/fullchain\.pem/);
   assert.match(english, /From vision to/);
   assert.match(english, /Understand\. Develop\. Create\./);
