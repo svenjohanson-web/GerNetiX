@@ -15,6 +15,7 @@ COPY --chown=node:node basissoftware ./basissoftware
 COPY --chown=node:node tools/migrate-runtime-storage.js ./tools/migrate-runtime-storage.js
 COPY --chown=node:node tools/publish-touch-demo-release.js ./tools/publish-touch-demo-release.js
 COPY --chown=node:node tools/publish-platform-download.js ./tools/publish-platform-download.js
+COPY --chown=node:node tools/usb-serial-helper ./tools/usb-serial-helper
 COPY --chown=node:node Demoanwendungen/Boards/hardware.processor_board.esp32_s3_es3c28p/touch-spielesammlung ./Demoanwendungen/Boards/hardware.processor_board.esp32_s3_es3c28p/touch-spielesammlung
 COPY --chown=node:node docker/healthcheck.js ./docker/healthcheck.js
 
