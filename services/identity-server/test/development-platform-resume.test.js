@@ -15,7 +15,8 @@ const hardwareCatalogSeed = fs.readFileSync(path.resolve(__dirname, "../../hardw
 test("restores persisted PlantUML when an existing development project is activated", () => {
   const activateProjectBody = publicController.match(/function activateProject[\s\S]*?\n    }\n\n    function architectureDiagramForProject/)?.[0] || "";
   assert.match(publicController, /function restoreDevelopmentDialog/);
-  assert.match(publicController, /architectureDiagram = sanitizeArchitectureDiagram\(dialog\.architectureDiagram\) \|\| architectureDiagramForProject\(project\)/);
+  assert.match(publicController, /const storedDiagram = sanitizeArchitectureDiagram\(dialog\.architectureDiagram\)/);
+  assert.match(publicController, /architectureDiagram = refreshProjectTemplateDiagram\([\s\S]*storedDiagram \|\| architectureDiagramForProject\(project\)/);
   assert.match(publicController, /function stripPlantUmlNotes/);
   assert.match(publicController, /function normalizeArchitecturePlantUml/);
   assert.match(publicController, /function numberGenericIotDeviceInstances/);
@@ -103,7 +104,7 @@ test("persists architecture derivation metadata in the project view manifest", (
 
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260716-02/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260717-04/);
   assert.match(publicHtml, /development-chat-input-box[\s\S]*developmentQuickPrompts[\s\S]*developmentChatInput[\s\S]*developmentChatSubmit/);
   assert.match(publicHtml, /development-send-button/);
   assert.match(publicHtml, /aria-label="Nachricht senden"/);
@@ -385,10 +386,9 @@ test("motor actuators expose a concrete motor controller selection", () => {
   assert.match(devServer, /synchronous_motor_driver/);
 });
 
-test("iot device suggestions include common board families", () => {
-  assert.match(publicApp, /hardware\.processor_board\.raspberry_pi_zero_2w/);
-  assert.match(publicApp, /Arduino Nano R3 \/ ATmega328P/);
-  assert.match(publicApp, /ESP-WROOM-32/);
+test("iot device suggestions use board families from the hardware catalog only", () => {
+  assert.doesNotMatch(publicApp, /function fallbackProcessorBoards/);
+  assert.match(publicController, /return Array\.isArray\(state\.processorBoards\) \? state\.processorBoards : \[\]/);
   assert.match(deviceOnboardingModel, /raspberry_pi: "Raspberry Pi"/);
   assert.match(deviceOnboardingModel, /text\.includes\("raspberry"\)/);
 });

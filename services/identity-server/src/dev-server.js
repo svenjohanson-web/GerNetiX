@@ -9,6 +9,10 @@ const { createSmtpConfigStore } = require("./services/smtp-config-store");
 const { SmtpEmailService } = require("./services/smtp-email-service");
 const { ConfigurableEmailService } = require("./services/configurable-email-service");
 const { createWebPushService } = require("./services/web-push-service");
+const { SqlitePlatformDownloadRepository } = require("./repositories/sqlite-platform-download-repository");
+const { canonicalLocalPasskeyLocation } = require("./services/local-passkey-origin");
+const { passkeyBrowserFailureEvent, passkeyLoginFailureEvent } = require("./services/passkey-login-events");
+const { createSystemEventReporter } = require("./services/system-event-reporter");
 const { createRuntimeStreamHub } = require("./runtime-stream-hub");
 const { createAccountTransparencyFactory } = require("./dev/account-transparency");
 const { createDeviceDiscoveryService } = require("./dev/device-discovery");
@@ -46,7 +50,6 @@ const { createTamagotchiEntryCourseModel } = require("./dev/project-models/tamag
 const { createSmartAssistantCourseModel } = require("./dev/project-models/smart-assistant-course");
 const { createButtonToSmartphoneNotificationCourseModel } = require("./dev/project-models/button-to-smartphone-notification-course");
 const { createHomeAutomationNetworkCourseModel } = require("./dev/project-models/home-automation-network-course");
-const { defaultCatalogSeed } = require("../../hardware-catalog/src/seed");
 const { getFirmwareBuildTarget, getFactoryFirmwareRelease } = require("../../../basissoftware/esp32/firmware-build-targets");
 const {
   generateRegistrationOptions,
@@ -64,8 +67,14 @@ const provisioningFirmwareRoot = process.env.PROVISIONING_FIRMWARE_ROOT
   ? path.resolve(process.env.PROVISIONING_FIRMWARE_ROOT)
   : path.join(workspaceRoot, ".runtime", "server-firmware", "esp32-basissoftware");
 const usbSerialHelperDistDir = path.join(workspaceRoot, "tools", "usb-serial-helper", "dist");
+const usbSerialHelperManifest = require(path.join(workspaceRoot, "tools", "usb-serial-helper", "package.json"));
 const identityPersistenceBackend = process.env.IDENTITY_PERSISTENCE_BACKEND || "sqlite";
 const identitySqlitePath = process.env.IDENTITY_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-identity.sqlite");
+const platformDownloadSqlitePath = process.env.PLATFORM_DOWNLOAD_SQLITE_PATH
+  || path.join(path.dirname(identitySqlitePath), "gernetix-platform-downloads.sqlite");
+const platformDownloadRepository = identityPersistenceBackend === "sqlite"
+  ? new SqlitePlatformDownloadRepository(platformDownloadSqlitePath)
+  : null;
 const identityAppBaseUrl = process.env.IDENTITY_APP_BASE_URL || process.env.APP_BASE_URL || "";
 const identityAdminToken = process.env.IDENTITY_ADMIN_TOKEN || "";
 const emailConfigEncryptionKey = process.env.EMAIL_CONFIG_ENCRYPTION_KEY || "";
@@ -90,6 +99,11 @@ const deviceManagementBaseUrl = process.env.DEVICE_MANAGEMENT_BASE_URL || "http:
 const aiUsageBaseUrl = process.env.AI_USAGE_BASE_URL || "http://127.0.0.1:5000";
 const aiContextBaseUrl = process.env.AI_CONTEXT_BASE_URL || "http://127.0.0.1:5500";
 const adminToolBaseUrl = process.env.ADMIN_TOOL_BASE_URL || "http://127.0.0.1:4600";
+const systemEventIngestToken = process.env.SYSTEM_EVENT_INGEST_TOKEN || "";
+const recordSystemEvent = createSystemEventReporter({
+  baseUrl: adminToolBaseUrl,
+  ingestToken: systemEventIngestToken,
+});
 const ollamaBaseUrl = process.env.OLLAMA_BASE_URL || "http://127.0.0.1:11434";
 const ollamaModel = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const deviceDiscoveryUrls = process.env.GERNETIX_DEVICE_DISCOVERY_URLS || process.env.DEVICE_DISCOVERY_URLS || "";
@@ -144,7 +158,6 @@ const {
   renderPlatformioIni,
   requiredField,
 } = createDevHardwareUtils({
-  defaultCatalogSeed,
   execFileAsync,
   hardwareCatalogJson,
   interfaceTelemetry,
@@ -317,6 +330,11 @@ async function handleProjectRuntimeStream(req, res, session, projectId) {
 }
 
 async function routeRequest(req, res) {
+  const canonicalLocation = canonicalLocalPasskeyLocation(req);
+  if (canonicalLocation) {
+    redirect(res, canonicalLocation);
+    return;
+  }
   const url = new URL(req.url, `http://${req.headers.host}`);
 
   if (url.pathname === "/api/dev/lesson-preview-migration" && req.method === "OPTIONS") {
@@ -430,6 +448,12 @@ async function routeRequest(req, res) {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/passkeys/client-error") {
+    await recordSystemEvent(passkeyBrowserFailureEvent(await readJsonBody(req)));
+    sendJson(res, 202, { accepted: true });
+    return;
+  }
+
   if (req.method === "POST" && url.pathname === "/api/account/guest") {
     const guest = await auth.create_guest();
     sessions.set(guest.session.token, { account: guest.account, expiresAt: guest.session.expires_at });
@@ -533,7 +557,7 @@ async function routeRequest(req, res) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
-    serveUsbSerialHelperDownload(res, path.basename(url.pathname));
+    await serveUsbSerialHelperDownload(res, path.basename(url.pathname));
     return;
   }
 
@@ -703,7 +727,15 @@ async function routeRequest(req, res) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
-    sendJson(res, 200, { items: await loadProcessorBoards() });
+    try {
+      sendJson(res, 200, { items: await loadProcessorBoards() });
+    } catch {
+      sendJson(res, 502, {
+        error: "hardware_catalog_unreachable",
+        dependency: "hardware_catalog",
+        message: "Hardware-Katalog nicht erreichbar.",
+      });
+    }
     return;
   }
 
@@ -1184,7 +1216,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/") {
-    redirect(res, "/app/auth/");
+    serveStatic(res, publicDir, "/index.html");
     return;
   }
 
@@ -1230,7 +1262,7 @@ async function handlePasskeyRegistrationOptions(req, res) {
     storePasskeyChallenge("register", username, options.challenge, config);
     sendJson(res, 200, options);
   } catch (error) {
-    sendJson(res, 400, { error: error.code || "passkey_registration_unavailable", message: "Passkey konnte nicht vorbereitet werden." });
+    sendJson(res, 400, { error: error.code || "passkey_registration_unavailable", message: "Konto wurde nicht angelegt. Grund: Passkey konnte nicht vorbereitet werden." });
   }
 }
 
@@ -1253,23 +1285,24 @@ async function handlePasskeyRegistrationVerify(req, res) {
     });
     sessions.set(created.session.token, { account: created.account, expiresAt: created.session.expires_at });
     setSessionCookie(res, created.session.token, created.session.expires_at);
-    sendJson(res, 201, { account: created.account, next: "/app/dashboard/" });
+    sendJson(res, 201, { account: created.account, message: "Konto wurde angelegt.", next: "/app/dashboard/" });
   } catch (error) {
     const message = error.message === "terms_not_accepted"
-      ? "Bitte bestätige Datenschutz und Nutzungsbedingungen."
+      ? "Konto wurde nicht angelegt. Grund: Bitte bestätige Datenschutz und Nutzungsbedingungen."
       : host === "127.0.0.1"
-        ? `Passkey konnte nicht verifiziert werden: ${error.message || "unbekannter Fehler"}`
-        : "Passkey konnte nicht verifiziert werden.";
+        ? `Konto wurde nicht angelegt. Grund: Passkey konnte nicht verifiziert werden: ${error.message || "unbekannter Fehler"}`
+        : "Konto wurde nicht angelegt. Grund: Passkey konnte nicht verifiziert werden.";
     sendJson(res, error.status || 400, { error: error.code || "passkey_registration_failed", message });
   }
 }
 
 async function handlePasskeyAuthenticationOptions(req, res) {
+  let account = null;
   try {
     const body = await readJsonBody(req);
     const username = String(body.username || "").trim();
     const config = passkeyConfiguration(req);
-    const account = username ? auth.get_passkey_login_candidate(username) : null;
+    account = username ? auth.get_passkey_login_candidate(username) : null;
     const options = await generateAuthenticationOptions({
       rpID: config.rpID, userVerification: "required",
       ...(account ? { allowCredentials: [{ id: account.passkey_credential_id, transports: account.passkey_transports || [] }] } : {}),
@@ -1277,15 +1310,17 @@ async function handlePasskeyAuthenticationOptions(req, res) {
     storePasskeyChallenge("authenticate", username, options.challenge, config);
     sendJson(res, 200, options);
   } catch (error) {
+    await recordPasskeyLoginFailure("options", error, account);
     sendJson(res, error.status || 400, { error: error.code || "passkey_authentication_unavailable", message: "Passkey-Login konnte nicht vorbereitet werden." });
   }
 }
 
 async function handlePasskeyAuthenticationVerify(req, res) {
+  let account = null;
   try {
     const body = await readJsonBody(req);
     const username = String(body.username || "").trim();
-    const account = username
+    account = username
       ? auth.get_passkey_login_candidate(username)
       : auth.get_passkey_login_candidate_by_credential_id(body.credential?.id);
     const challenge = readPasskeyChallenge("authenticate", username);
@@ -1306,6 +1341,7 @@ async function handlePasskeyAuthenticationVerify(req, res) {
     setSessionCookie(res, login.session.token, login.session.expires_at);
     sendJson(res, 200, { account: login.account, next: sanitizeNextPath(body.next) || "/app/dashboard/" });
   } catch (error) {
+    await recordPasskeyLoginFailure("verification", error, account);
     sendJson(res, error.status || 401, { error: error.code || "passkey_authentication_failed", message: "Passkey-Login fehlgeschlagen." });
   }
 }
@@ -1556,19 +1592,8 @@ function registrationMessage(error) {
   return "Konto konnte nicht erstellt werden.";
 }
 
-function recordSystemEvent(event) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 700);
-  fetch(`${adminToolBaseUrl.replace(/\/$/, "")}/api/admin/system-events`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(event),
-    signal: controller.signal,
-  })
-    .catch((error) => {
-      console.warn(`System event logging failed: ${error.message || error}`);
-    })
-    .finally(() => clearTimeout(timeout));
+function recordPasskeyLoginFailure(stage, error, account) {
+  return recordSystemEvent(passkeyLoginFailureEvent(stage, error, account));
 }
 
 function recordDeviceInventoryFailure(session, eventType, error, context = {}) {
@@ -4217,32 +4242,75 @@ async function handleDevLessonPreviewMigration(req, res) {
 
 function usbSerialHelperDownloads() {
   const files = fs.existsSync(usbSerialHelperDistDir) ? fs.readdirSync(usbSerialHelperDistDir) : [];
+  const published = platformDownloadRepository?.listCurrent("serial-service") || [];
   const definitions = [
-    { platform: "macos", label: "Für macOS", pattern: /^GerNetiX-USB-Serial-Helper-mac-arm64\.zip$/i, detail: "ZIP · Apple Silicon" },
-    { platform: "windows", label: "Für Windows", pattern: /^GerNetiX-USB-Serial-Helper-win-x64\.exe$/i, detail: "Portable EXE · Windows 10/11 x64" },
+    {
+      platform: "macos",
+      architecture: "arm64",
+      label: "Für macOS",
+      localFilenames: [
+        `GerNetiX-Serial-Service-${usbSerialHelperManifest.version}-mac-arm64.pkg`,
+        "GerNetiX-Serial-Service-mac-arm64.pkg",
+      ],
+      detail: "Installationspaket · Apple Silicon",
+    },
+    {
+      platform: "windows",
+      architecture: "x64",
+      label: "Für Windows",
+      localFilenames: ["GerNetiX-Serial-Service-win-x64.exe"],
+      detail: "Hintergrunddienst · Windows 10/11 x64",
+    },
   ];
   return definitions.map((definition) => {
-    const filename = files.find((file) => definition.pattern.test(file)) || "";
+    const localFilename = definition.localFilenames.find((file) => files.includes(file)) || "";
+    const release = published.find((item) =>
+      item.platform === definition.platform && item.architecture === definition.architecture);
+    const filename = localFilename || release?.file_name || "";
     return {
       platform: definition.platform,
-      label: definition.label,
-      detail: definition.detail,
+      architecture: definition.architecture,
+      label: release?.label || definition.label,
+      detail: release?.detail || definition.detail,
       available: Boolean(filename),
+      file_name: filename,
       url: filename ? `/downloads/usb-serial-helper/${encodeURIComponent(filename)}` : "",
+      source: localFilename ? "local" : release ? "published" : "",
+      version: release?.version || (localFilename ? usbSerialHelperManifest.version : ""),
+      sha256: release?.sha256 || "",
+      size_bytes: release?.size_bytes || (localFilename ? fs.statSync(path.join(usbSerialHelperDistDir, localFilename)).size : 0),
     };
   });
 }
 
-function serveUsbSerialHelperDownload(res, filename) {
+async function serveUsbSerialHelperDownload(res, filename) {
   const download = usbSerialHelperDownloads().find((item) => item.available && decodeURIComponent(item.url).endsWith(`/${filename}`));
   if (!download) {
     sendJson(res, 404, { error: "download_not_found" });
     return;
   }
+  if (download.source === "published") {
+    const release = platformDownloadRepository.getContent(
+      "serial-service",
+      download.version,
+      download.platform,
+      download.architecture,
+    );
+    res.writeHead(200, {
+      "Content-Type": release.content_type,
+      "Content-Disposition": `attachment; filename="${release.file_name.replace(/[\"\\]/g, "")}"`,
+      "Content-Length": release.size_bytes,
+      "X-Content-SHA256": release.sha256,
+      "Cache-Control": "private, no-store",
+    });
+    res.end(release.content_blob);
+    return;
+  }
   const filePath = path.join(usbSerialHelperDistDir, filename);
   res.writeHead(200, {
-    "Content-Type": filename.endsWith(".zip") ? "application/zip" : "application/vnd.microsoft.portable-executable",
+    "Content-Type": filename.endsWith(".pkg") ? "application/vnd.apple.installer+xml" : "application/vnd.microsoft.portable-executable",
     "Content-Disposition": `attachment; filename="${filename.replace(/[\"\\]/g, "")}"`,
+    "Content-Length": fs.statSync(filePath).size,
     "Cache-Control": "no-store",
   });
   fs.createReadStream(filePath).pipe(res);

@@ -16,12 +16,16 @@ loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const username = String(new FormData(loginForm).get("identifier") || "").trim();
   statusElement.textContent = "Passkey wird angefordert …";
+  let browserPasskeyRequest = false;
   try {
     const options = await postJson("/api/passkeys/authentication/options", username ? { username } : {});
+    browserPasskeyRequest = true;
     const credential = await navigator.credentials.get({ publicKey: parseRequestOptions(options) });
+    browserPasskeyRequest = false;
     const result = await postJson("/api/passkeys/authentication/verify", { ...(username ? { username } : {}), credential: credentialJson(credential), next: nextUrl });
     window.location.href = result.next || "/app/dashboard/";
   } catch (error) {
+    if (browserPasskeyRequest) await reportPasskeyBrowserError("authentication", error);
     statusElement.textContent = error.message || "Passkey-Login fehlgeschlagen.";
   }
 });
@@ -36,13 +40,18 @@ registerForm.addEventListener("submit", async (event) => {
   const data = new FormData(registerForm);
   const username = data.get("username");
   statusElement.textContent = "Passkey wird eingerichtet …";
+  let browserPasskeyRequest = false;
   try {
     const options = await postJson("/api/passkeys/registration/options", { username });
+    browserPasskeyRequest = true;
     const credential = await navigator.credentials.create({ publicKey: parseCreationOptions(options) });
+    browserPasskeyRequest = false;
     const result = await postJson("/api/passkeys/registration/verify", { username, accepted_terms: data.get("accepted_terms") === "on", credential: credentialJson(credential) });
-    window.location.href = result.next || "/app/dashboard/";
+    statusElement.textContent = result.message || "Konto wurde angelegt.";
+    window.setTimeout(() => { window.location.href = result.next || "/app/dashboard/"; }, 900);
   } catch (error) {
-    statusElement.textContent = error.message || "Konto konnte nicht erstellt werden.";
+    if (browserPasskeyRequest) await reportPasskeyBrowserError("registration", error);
+    statusElement.textContent = registrationFailureMessage(error);
   }
 });
 
@@ -70,6 +79,23 @@ async function postJson(url, body) {
   const payload = await response.json();
   if (!response.ok) throw new Error(payload.message || "Anfrage fehlgeschlagen.");
   return payload;
+}
+async function reportPasskeyBrowserError(flow, error) {
+  try {
+    await fetch("/api/passkeys/client-error", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ flow, error_name: error?.name || "UnknownError" }),
+    });
+  } catch {}
+}
+function registrationFailureMessage(error) {
+  const reason = {
+    SecurityError: "Die Passkey-Domain ist ungültig.",
+    NotAllowedError: "Die Passkey-Erstellung wurde abgebrochen oder ist abgelaufen.",
+    NotSupportedError: "Passkeys werden in diesem Browser nicht unterstützt.",
+  }[error?.name] || error?.message || "Die Passkey-Erstellung konnte nicht abgeschlossen werden.";
+  return `Konto wurde nicht angelegt. Grund: ${reason}`;
 }
 function parseCreationOptions(options) {
   if (PublicKeyCredential.parseCreationOptionsFromJSON) return PublicKeyCredential.parseCreationOptionsFromJSON(options);

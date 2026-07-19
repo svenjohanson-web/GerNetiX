@@ -13,7 +13,7 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(html, /id="ideBuildConsole"/);
   assert.match(html, /id="ideTerminalOutput"/);
   assert.match(html, /id="clearIdeTerminalButton"/);
-  assert.match(html, /Flash via Web Serial/);
+  assert.match(html, /Per USB flashen/);
   assert.match(app, /function ideActionUnavailableReason/);
   assert.match(app, /Kein kompatibles Board im Inventar/);
   assert.match(app, /Ordne der IoT-Device-Komponente zuerst ein Inventar-Device zu/);
@@ -24,6 +24,8 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(html, /id="checkOtaConnectivityButton"/);
   assert.match(app, /unterstuetzt keinen USB-Flash/);
   assert.match(app, /navigator\.serial\.requestPort/);
+  assert.match(app, /flashBuildViaSerialService/);
+  assert.match(app, /state\.serialService\.flash/);
   assert.match(app, /loadIdeEsptoolModule/);
   assert.match(app, /browser-usb-flash-result/);
   assert.match(app, /Automatisch \(kein USB-Port erkannt\)/);

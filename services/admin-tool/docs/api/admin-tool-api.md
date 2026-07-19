@@ -37,6 +37,7 @@ Der Endpunkt ist rein lesend und persistiert keine Monitoring-Daten.
 ```text
 GET  /api/admin/system-events
 POST /api/admin/system-events
+POST /api/internal/system-events
 ```
 
 Zentrales leichtgewichtiges Betriebslog fuer auffaellige Runtime-Ereignisse, ohne Kibana/ELK-Stack.
@@ -52,6 +53,8 @@ Zentrales leichtgewichtiges Betriebslog fuer auffaellige Runtime-Ereignisse, ohn
 - `details`: technische Zusatzdaten ohne Secrets
 
 Die Ereignisse werden im Admin Tool persistiert. Bei SQLite-Persistenz liegen sie in `admin_tool_system_events`.
+
+`POST /api/internal/system-events` ist der Dienstweg fuer Runtime- und Authentifizierungsereignisse. Er verlangt den Header `X-GerNetiX-System-Event-Token` mit dem nur fuer diesen Ingest vorgesehenen `SYSTEM_EVENT_INGEST_TOKEN`. Passkey-Loginfehler werden mit Phase, Fehlercode, Account-ID soweit bereits serverseitig bekannt und Korrelations-ID erfasst. Credential-ID, Public Key, Challenge, Signatur und Browser-Credential-Payload werden nicht protokolliert.
 
 ## Device Management
 

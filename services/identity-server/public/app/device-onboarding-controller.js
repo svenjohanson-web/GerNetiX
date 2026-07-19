@@ -1,4 +1,20 @@
 const DeviceOnboardingController = (() => {
+  function preferredSerialServicePorts(ports) {
+    const selectedByDevice = new Map();
+    for (const port of Array.isArray(ports) ? ports : []) {
+      const path = String(port?.path || "");
+      const match = path.match(/^\/dev\/(tty|cu)\.(.+)$/i);
+      if (!match) {
+        selectedByDevice.set(path || `unknown-${selectedByDevice.size}`, port);
+        continue;
+      }
+      const deviceKey = match[2].toLowerCase();
+      const selected = selectedByDevice.get(deviceKey);
+      if (!selected || match[1].toLowerCase() === "cu") selectedByDevice.set(deviceKey, port);
+    }
+    return [...selectedByDevice.values()];
+  }
+
   function create(deps) {
     const {
       state,
@@ -7,13 +23,15 @@ const DeviceOnboardingController = (() => {
       postJson,
       delay,
       loadIdeEsptoolModule,
-      fallbackProcessorBoards,
+      loadProcessorBoardCatalog,
+      loadBoardFeatureCatalog,
       renderDashboard,
       renderDevices,
       renderIdeShell,
       escapeHtml,
       meta,
       openHelpTopic,
+      showSerialServiceChoiceDialog,
     } = deps;
 
     async function discoverNetworkDevices() {
@@ -36,10 +54,6 @@ const DeviceOnboardingController = (() => {
     }
 
     async function scanProvisioningSerialPorts() {
-      if (!("serial" in navigator)) {
-        setDiscoveryStatus("error", "Web Serial ist in diesem Browser nicht verfuegbar. Verwende das GerNetiX USB Helper Tool.");
-        return;
-      }
       state.provisioningSerialScanRunning = true;
       state.provisioningSerialScanCompleted = false;
       state.provisioningSerialPort = null;
@@ -48,6 +62,48 @@ const DeviceOnboardingController = (() => {
       renderNetworkDiscovery();
       setDiscoveryStatus("running", "Serielle Ports werden automatisch gesucht...");
       try {
+        await Promise.all([
+          loadProcessorBoardCatalog({ force: true }),
+          loadBoardFeatureCatalog({ force: true }),
+        ]);
+        const catalogStatus = state.processorBoardCatalogStatus || { state: "error", message: "" };
+        const featureCatalogStatus = state.boardFeatureCatalogStatus || { state: "error", message: "" };
+        if (
+          catalogStatus.state !== "ready"
+          || featureCatalogStatus.state !== "ready"
+          || !state.processorBoards.length
+          || !state.boardFeatureCatalog.length
+        ) {
+          setDiscoveryStatus(
+            "error",
+            "Hardware-Katalog nicht erreichbar. Das Board kann derzeit nicht provisioniert werden.",
+          );
+          return;
+        }
+        state.serialServiceAvailable = await state.serialService.available();
+        if (state.serialServiceAvailable) {
+          const ports = preferredSerialServicePorts(await state.serialService.ports());
+          state.provisioningSerialServicePorts = ports;
+          state.provisioningSerialScanCompleted = true;
+          if (!ports.length) {
+            setDiscoveryStatus("error", "Der GerNetiX Serial Service läuft, aber es wurde kein USB-Gerät gefunden.");
+            return;
+          }
+          if (ports.length > 1) {
+            renderNetworkDiscovery();
+            setDiscoveryStatus("running", "Mehrere USB-Geräte gefunden. Wähle das Board direkt in GerNetiX.");
+            return;
+          }
+          state.provisioningSerialPort = daemonPort(ports[0]);
+          renderNetworkDiscovery();
+          await identifyEsp32Bootloader();
+          return;
+        }
+        if (!("serial" in navigator)) {
+          setDiscoveryStatus("error", "Für USB wird Web Serial oder der GerNetiX WebHelper benötigt.");
+          showSerialServiceChoiceDialog();
+          return;
+        }
         const ports = await navigator.serial.getPorts();
         state.provisioningSerialScanCompleted = true;
         state.provisioningSerialPort = ports.length === 1
@@ -70,6 +126,18 @@ const DeviceOnboardingController = (() => {
     }
 
     async function selectProvisioningSerialPort() {
+      if (state.serialServiceAvailable) {
+        const selectedPath = document.querySelector("#provisioningSerialServicePortSelect")?.value || "";
+        const selected = state.provisioningSerialServicePorts.find((port) => port.path === selectedPath);
+        if (!selected) return;
+        state.provisioningSerialPort = daemonPort(selected);
+        state.provisioningSerialScanCompleted = true;
+        state.discoveredDevices = [];
+        state.selectedProvisioningDiscoveryIds = [];
+        renderNetworkDiscovery();
+        await identifyEsp32Bootloader();
+        return;
+      }
       if (!("serial" in navigator)) return;
       try {
         state.provisioningSerialPort = await navigator.serial.requestPort();
@@ -91,6 +159,21 @@ const DeviceOnboardingController = (() => {
       }
       setDiscoveryStatus("running", "Serieller Port und Bootloader werden geprueft...");
       try {
+        if (isDaemonPort(port)) {
+          const bootloader = await state.serialService.probe(port.path);
+          applyDetectedEspBootloader({
+            detected: true,
+            type: "espressif_rom",
+            name: `${bootloader.chipName || "ESP32"} Bootloader`,
+            label: `${bootloader.chipName || "ESP32"}-kompatibles Board`,
+            hardwareProfileId: bootloader.hardwareProfileId,
+            detail: bootloader.detail,
+            flash_size: "wird aus dem gewählten Boardprofil übernommen",
+            ram_size: "wird aus dem gewählten Boardprofil übernommen",
+            psram_size: "wird aus dem gewählten Boardprofil übernommen",
+          }, `${port.vendorId || "USB"}:${port.productId || port.path}`);
+          return;
+        }
         const info = port.getInfo ? port.getInfo() : {};
         const vendorId = usbIdentifier(info.usbVendorId);
         const productId = usbIdentifier(info.usbProductId);
@@ -104,16 +187,41 @@ const DeviceOnboardingController = (() => {
             : `Kein kompatibler ESP- oder Arduino-Bootloader erkannt${bootloader.detail ? `: ${bootloader.detail}` : "."}`);
           return;
         }
-        state.provisioningBoardConfigurationMode = "";
-        state.provisioningKnownBoardId = "";
-        state.provisioningFeatureSelections = {};
-        state.provisioningDatasheetUrl = "";
-        state.provisioningUpdateProfile = "";
-        resetProvisioningUsbFlash();
+        applyDetectedEspBootloader(bootloader, identifier);
+      } catch (error) {
+        if (error.name === "NotFoundError") {
+          setDiscoveryStatus("running", "Keine serielle Schnittstelle ausgewählt.");
+          return;
+        }
+        setDiscoveryStatus("error", error.message || "Der serielle Port konnte nicht geprüft werden.");
+      }
+    }
+
+    function applyDetectedEspBootloader(bootloader, identifier) {
+      const catalogStatus = state.processorBoardCatalogStatus || { state: "idle", message: "" };
+      const featureCatalogStatus = state.boardFeatureCatalogStatus || { state: "idle", message: "" };
+      if (
+        catalogStatus.state !== "ready"
+        || featureCatalogStatus.state !== "ready"
+        || !state.processorBoards.length
+        || !state.boardFeatureCatalog.length
+      ) {
+        state.discoveredDevices = [];
         state.selectedProvisioningDiscoveryIds = [];
-        state.discoveredDevices = [{
+        renderNetworkDiscovery();
+        setDiscoveryStatus("error", "Hardware-Katalog nicht erreichbar. Das Board kann derzeit nicht provisioniert werden.");
+        return;
+      }
+      state.provisioningBoardConfigurationMode = "";
+      state.provisioningKnownBoardId = "";
+      state.provisioningFeatureSelections = {};
+      state.provisioningDatasheetUrl = "";
+      state.provisioningUpdateProfile = "";
+      resetProvisioningUsbFlash();
+      state.selectedProvisioningDiscoveryIds = [];
+      state.discoveredDevices = [{
           discovery_id: `web-serial-${identifier}`,
-          source_url: `Web Serial ${identifier}`,
+          source_url: `${isDaemonPort(state.provisioningSerialPort) ? "GerNetiX Serial Service" : "Web Serial"} ${identifier}`,
           display_name: bootloader.label,
           hardware_profile_id: bootloader.hardwareProfileId,
           detected_hardware_profile_id: bootloader.hardwareProfileId,
@@ -131,20 +239,18 @@ const DeviceOnboardingController = (() => {
           esp32_inventory_state: "bootloader_only",
           treatment: `${bootloader.name} erkannt. Das Flashen einer kompatiblen Basissoftware ist möglich.`,
           already_in_inventory: false,
-        }];
-        // Web Serial kann genau einen vom Browser freigegebenen Port pruefen.
-        // Ist dessen ESP-Bootloader erkannt, ist dieses eine Board der
-        // eindeutige Provisioning-Kandidat und wird ohne weiteren Klick gewählt.
-        state.selectedProvisioningDiscoveryIds = [state.discoveredDevices[0].discovery_id];
-        renderNetworkDiscovery();
-        setDiscoveryStatus("ok", `Kompatibler Bootloader gefunden: ${bootloader.name}. Basissoftware kann geflasht werden.`);
-      } catch (error) {
-        if (error.name === "NotFoundError") {
-          setDiscoveryStatus("running", "Keine serielle Schnittstelle ausgewählt.");
-          return;
-        }
-        setDiscoveryStatus("error", error.message || "Der serielle Port konnte nicht über Web Serial ausgewählt werden.");
-      }
+      }];
+      state.selectedProvisioningDiscoveryIds = [state.discoveredDevices[0].discovery_id];
+      renderNetworkDiscovery();
+      setDiscoveryStatus("ok", `Kompatibler Bootloader gefunden: ${bootloader.name}. Basissoftware kann geflasht werden.`);
+    }
+
+    function daemonPort(port) {
+      return { ...port, source: "gernetix_serial_service" };
+    }
+
+    function isDaemonPort(port) {
+      return port?.source === "gernetix_serial_service" && Boolean(port.path);
     }
 
     function usbIdentifier(value) {
@@ -249,6 +355,8 @@ const DeviceOnboardingController = (() => {
       state.provisioningDatasheetUrl = "";
       state.provisioningUpdateProfile = "";
       state.provisioningSerialPort = null;
+      state.provisioningSerialServicePorts = [];
+      state.serialServiceAvailable = false;
       state.provisioningSerialScanCompleted = false;
       state.provisioningSerialScanRunning = false;
       resetProvisioningUsbFlash();
@@ -269,7 +377,8 @@ const DeviceOnboardingController = (() => {
 
     async function identifyAvrBootloaderExperimental() {
       if (!("serial" in navigator)) {
-        setDiscoveryStatus("error", "Dieser Browser unterstuetzt Web Serial nicht. Bitte Chrome oder Edge auf Desktop verwenden.");
+        setDiscoveryStatus("error", "Für USB wird Web Serial oder der GerNetiX WebHelper benötigt.");
+        showSerialServiceChoiceDialog();
         return;
       }
       setDiscoveryStatus("running", "Arduino-Nano-Bootloader wird experimentell per Browser-Web-Serial geprueft...");
@@ -394,16 +503,25 @@ const DeviceOnboardingController = (() => {
       document.querySelector("#esp32DiscoveryActions").classList.toggle("hidden", !showGenericMethods || !isWifiSelected);
       document.querySelector("#avrDiscoveryActions").classList.toggle("hidden", !isAvr || !isUsbSelected);
       const supportsWebSerial = "serial" in navigator;
+      const supportsLocalSerial = supportsWebSerial || state.serialServiceAvailable;
       const hasSelectedSerialPort = Boolean(state.provisioningSerialPort);
       const hasDetectedBootloader = isUsbSelected && state.discoveredDevices.some((device) => device.bootloader_type);
       const hasBoardConfiguration = new Set(["catalog", "manual"]).has(state.provisioningBoardConfigurationMode);
-      document.querySelector("#provisioningAutomaticScanActions").classList.toggle("hidden", !isUsbSelected || !supportsWebSerial || hasSelectedSerialPort || hasDetectedBootloader);
-      document.querySelector("#provisioningWebSerialActions").classList.toggle("hidden", !isUsbSelected || !supportsWebSerial || !state.provisioningSerialScanCompleted || hasSelectedSerialPort);
-      document.querySelector("#provisioningSerialCheckActions").classList.toggle("hidden", !isUsbSelected || !supportsWebSerial || !hasSelectedSerialPort || hasDetectedBootloader);
+      document.querySelector("#provisioningAutomaticScanActions").classList.toggle("hidden", !isUsbSelected || hasSelectedSerialPort || hasDetectedBootloader);
+      document.querySelector("#provisioningWebSerialActions").classList.toggle("hidden", !isUsbSelected || state.serialServiceAvailable || !supportsWebSerial || !state.provisioningSerialScanCompleted || hasSelectedSerialPort);
+      document.querySelector("#provisioningSerialCheckActions").classList.toggle("hidden", !isUsbSelected || !supportsLocalSerial || !hasSelectedSerialPort || hasDetectedBootloader);
+      const daemonPortSelect = document.querySelector("#provisioningSerialServicePortSelect");
+      const showDaemonPortSelect = isUsbSelected && state.serialServiceAvailable && state.provisioningSerialServicePorts.length > 1 && !hasSelectedSerialPort;
+      daemonPortSelect.classList.toggle("hidden", !showDaemonPortSelect);
+      if (showDaemonPortSelect) {
+        daemonPortSelect.innerHTML = `<option value="">USB-Gerät wählen</option>${state.provisioningSerialServicePorts.map((port) => `
+          <option value="${escapeHtml(port.path)}">${escapeHtml(port.label || port.path)}</option>
+        `).join("")}`;
+      }
       const scanButton = document.querySelector("#scanProvisioningSerialPortsButton");
       scanButton.disabled = Boolean(state.provisioningSerialScanRunning);
       scanButton.textContent = state.provisioningSerialScanRunning ? "Suche laeuft..." : "Automatisch suchen";
-      document.querySelector("#provisioningUsbHelperHint").classList.toggle("hidden", !isUsbSelected || supportsWebSerial);
+      document.querySelector("#provisioningUsbHelperHint").classList.toggle("hidden", !isUsbSelected || supportsLocalSerial || !state.provisioningSerialScanCompleted);
       document.querySelector("#claimSelectedDiscoveredDevicesButton").classList.toggle("hidden",
         !hasSelectedMethod
         || (!actions.wifiDiscovery && !actions.usbIdentification)
@@ -699,8 +817,7 @@ const DeviceOnboardingController = (() => {
         detectedBoard?.mcu_variant || processorVariantForDetectedProfile(detectedProfileId),
       );
       if (!variant) return [];
-      const boards = state.processorBoards.length ? state.processorBoards : fallbackProcessorBoards();
-      return boards
+      return state.processorBoards
         .filter((board) => !board.item_type || board.item_type === "processor_board")
         .filter((board) => normalizeProcessorVariant(board.mcu_variant) === variant)
         .sort((left, right) => {
@@ -1201,6 +1318,9 @@ const DeviceOnboardingController = (() => {
     }
 
     async function serialProvisioningRequest(action, payload = {}) {
+      if (isDaemonPort(state.provisioningSerialPort)) {
+        return state.serialService.serialRequest(state.provisioningSerialPort.path, action, payload);
+      }
       const requestId = crypto.randomUUID();
       let reader = null;
       let writer = null;
@@ -1298,6 +1418,12 @@ const DeviceOnboardingController = (() => {
       renderProvisioningWifiSetup();
       let reader = null;
       try {
+        if (isDaemonPort(state.provisioningSerialPort)) {
+          await state.serialService.waitReady(state.provisioningSerialPort.path, 30000);
+          state.provisioningSerialReady = true;
+          setProvisioningWifiStatus("ok", "Board gestartet. WLANs können jetzt gesucht werden.");
+          return;
+        }
         const connection = await ensureProvisioningSerialConnection();
         reader = connection.port.readable.getReader();
         const decoder = new TextDecoder();
@@ -1467,6 +1593,31 @@ const DeviceOnboardingController = (() => {
           throw new Error(payload.message || `Firmware konnte nicht geladen werden (${response.status}).`);
         }
         const firmware = new Uint8Array(await response.arrayBuffer());
+        if (isDaemonPort(state.provisioningSerialPort)) {
+          setProvisioningUsbFlashStatus("running", "Board wird über den GerNetiX Serial Service verbunden...");
+          const probe = await state.serialService.probe(state.provisioningSerialPort.path);
+          const result = await state.serialService.flash({
+            port: state.provisioningSerialPort.path,
+            chip: "auto",
+            files: [{ name: artifact.filename || "merged-firmware.bin", data: firmware, address: Number(artifact.flash_offset || 0) }],
+            flashMode: artifact.flash_mode || "dio",
+            flashFreq: artifact.flash_freq || "40m",
+            flashSize: artifact.flash_size || "keep",
+            onProgress(job) {
+              const progressLine = [...(job.logs || [])].reverse().find((line) => /Writing at|%|Hash of data verified/i.test(line));
+              setProvisioningUsbFlashStatus("running", progressLine || `${probe.chipName || "ESP32"}: Basissoftware wird geschrieben...`);
+            },
+          });
+          if (result.status !== "succeeded") throw new Error(result.error || "USB-Flash fehlgeschlagen.");
+          state.provisioningUsbFlashSucceeded = true;
+          setProvisioningUsbFlashStatus("ok", `Basissoftware${artifact.version ? ` ${artifact.version}` : ""} wurde erfolgreich geflasht. WLAN-Einrichtung wird vorbereitet.`);
+          void waitForProvisioningSerialReady();
+          prepareProvisioningWifiSetup().catch((setupError) => {
+            setProvisioningWifiStatus("error", `${setupError.message || "Sichere Account-Zuordnung konnte noch nicht vorbereitet werden."} WLANs können weiterhin lokal gesucht werden.`);
+          });
+          renderNetworkDiscovery();
+          return;
+        }
         const { ESPLoader, Transport } = await loadIdeEsptoolModule();
         transport = new Transport(state.provisioningSerialPort, false);
         const loader = new ESPLoader({
@@ -1674,8 +1825,7 @@ const DeviceOnboardingController = (() => {
     }
 
     function catalogBoardForProfile(profileId) {
-      const boards = state.processorBoards.length ? state.processorBoards : fallbackProcessorBoards();
-      return boards.find((board) => boardId(board) === profileId) || null;
+      return state.processorBoards.find((board) => boardId(board) === profileId) || null;
     }
 
     function boardId(board) {
@@ -1753,5 +1903,5 @@ const DeviceOnboardingController = (() => {
     };
   }
 
-  return { create };
+  return { create, preferredSerialServicePorts };
 })();

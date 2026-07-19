@@ -153,9 +153,32 @@ h1 { font-size: 32px; }
 table { width: 100%; border-collapse: collapse; min-width: 620px; }
 th, td { border-bottom: 1px solid var(--line); padding: 11px 8px; text-align: left; vertical-align: top; }
 th { color: var(--muted); font-size: 12px; text-transform: uppercase; }
+.table-unit { display: inline; text-transform: none; white-space: nowrap; }
 td strong { display: block; }
 td strong.subline { margin-top: 9px; }
 td span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px; }
+.resource-limit-help {
+  margin: 12px 0 0;
+  border-left: 3px solid var(--accent);
+  background: var(--soft);
+  padding: 10px 12px;
+  color: var(--text);
+  line-height: 1.45;
+}
+.resource-limit-input {
+  display: grid;
+  grid-template-columns: minmax(110px, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+}
+.resource-limit-input input {
+  width: 100%;
+  min-width: 110px;
+}
+.resource-limit-input span {
+  margin: 0;
+  font-weight: 700;
+}
 .provider-status-link {
   display: inline-flex;
   width: fit-content;

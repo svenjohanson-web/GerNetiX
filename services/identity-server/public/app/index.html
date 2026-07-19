@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260718-02" />
+    <link rel="stylesheet" href="/app/app.css?v=20260719-07" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -31,6 +31,7 @@
 
       <nav id="mainMenu" class="tabs app-menu hidden" aria-label="Plattformbereiche">
         <a href="/app/dashboard/" data-route="dashboard">Übersicht</a>
+        <a href="/app/vision/" data-route="vision">Vision</a>
         <a href="/app/development-platform/" data-route="development-platform">Entwicklungsplattform</a>
         <a href="/app/learn/" data-route="learn">Lernplattform</a>
         <a href="/app/device-management/" data-route="device-management">Geräte</a>
@@ -43,9 +44,10 @@
 
       <section id="dashboardView" class="view">
         <section class="dashboard-hero" aria-labelledby="dashboardTitle">
-          <p class="eyebrow">GerNetiX Plattform</p>
-          <h1 id="dashboardTitle">Willkommen</h1>
-          <p>Wähle einen Arbeitsbereich oder schließe zuerst die Einrichtung deines Kontos ab.</p>
+          <p class="eyebrow">Verstehen. Entwickeln. Erschaffen.</p>
+          <h1 id="dashboardTitle">Willkommen bei GerNetiX</h1>
+          <p class="dashboard-hero-intro">Wähle deinen Arbeitsbereich und setze deinen Lern- oder Entwicklungsweg fort.</p>
+          <button class="dashboard-vision-link" type="button" data-open-route="/app/vision/">Unsere Vision →</button>
         </section>
 
         <section class="dashboard-next" aria-labelledby="accountSetupTitle">
@@ -60,9 +62,9 @@
         <section class="dashboard-section" aria-labelledby="workspaceTitle">
           <div class="section-head"><div><p class="eyebrow">Arbeitsbereiche</p><h2 id="workspaceTitle">Was möchtest du tun?</h2></div></div>
           <div class="dashboard-grid workspace-grid">
-            <button class="entry-card" type="button" data-open-route="/app/development-platform/"><span>Eigene Idee</span><strong>Entwicklungsbereich</strong><p>Ein eigenes Projekt planen, konfigurieren und programmieren.</p></button>
-            <button class="entry-card" type="button" data-open-route="/app/learn/"><span>Geführt lernen</span><strong>Lernbereich</strong><p>Ein Lernprojekt auswählen und Schritt für Schritt umsetzen.</p></button>
-            <button class="entry-card" type="button" data-open-route="/app/device-management/"><span>Vorhandene Hardware</span><strong>Boards verwalten</strong><p>Boards verbinden, provisionieren und deinem Konto zuordnen.</p></button>
+            <button class="entry-card" type="button" data-open-route="/app/development-platform/"><span>Eigene Idee</span><strong>Entwicklungsbereich</strong><p>Vom Ziel zur begründeten Lösung.</p></button>
+            <button class="entry-card" type="button" data-open-route="/app/learn/"><span>Geführt lernen</span><strong>Lernbereich</strong><p>Verstehen, entscheiden, ausprobieren.</p></button>
+            <button class="entry-card" type="button" data-open-route="/app/device-management/"><span>Vorhandene Hardware</span><strong>Boards verwalten</strong><p>Boards verbinden und verwalten.</p></button>
           </div>
         </section>
 
@@ -84,6 +86,97 @@
           </div>
           <div id="dashboardAiUsage" class="ai-rating-grid"></div>
         </section>
+      </section>
+
+      <section id="visionView" class="view hidden">
+        <header class="panel vision-hero" aria-labelledby="visionTitle">
+          <p class="eyebrow">Unsere Vision</p>
+          <h1 id="visionTitle">Verstehen. Entwickeln. Erschaffen.</h1>
+          <p class="vision-lead">Wir möchten Menschen befähigen, komplexe technische Systeme wirklich zu verstehen – und nicht nur fertige Lösungen nachzubauen.</p>
+          <p class="vision-team">GerNetiX entsteht in einem kleinen Team aus Pädagogen und erfahrenen Entwicklern. Praxis, Technik und individuelle Vermittlung gehören für uns zusammen.</p>
+        </header>
+
+        <section class="panel vision-section vision-ai" aria-labelledby="visionAiTitle">
+          <div>
+            <p class="eyebrow">Mensch und KI</p>
+            <h2 id="visionAiTitle">Du bleibst der Architekt.</h2>
+          </div>
+          <div class="vision-ai-copy">
+            <p>KI kann Quellcode erzeugen, Verdrahtungen vorbereiten und wiederkehrende Arbeit beschleunigen. Sie kann jedoch weder technische Sicherheit noch eine gute Systementscheidung garantieren.</p>
+            <p><strong>Die KI nimmt dir Routinearbeit ab – niemals das Denken und die Verantwortung.</strong></p>
+          </div>
+        </section>
+
+        <section class="vision-section" aria-labelledby="visionScopeTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Vom Sensor bis zum verteilten System</p>
+              <h2 id="visionScopeTitle">Technik als Gesamtsystem verstehen</h2>
+            </div>
+          </div>
+          <div class="vision-grid">
+            <article class="panel vision-card">
+              <span>01</span>
+              <h3>Embedded &amp; Elektronik</h3>
+              <p>Sensoren, Aktoren, Mikrocontroller, Echtzeitverhalten und die Grenzen realer Hardware.</p>
+            </article>
+            <article class="panel vision-card">
+              <span>02</span>
+              <h3>Kommunikation &amp; Netzwerke</h3>
+              <p>Daten zuverlässig und sicher zwischen Geräten, lokalen Netzen und entfernten Systemen übertragen.</p>
+            </article>
+            <article class="panel vision-card">
+              <span>03</span>
+              <h3>Apps &amp; Services</h3>
+              <p>Bedienoberflächen, APIs und Server so entwickeln, dass sie gemeinsam eine verständliche Lösung bilden.</p>
+            </article>
+            <article class="panel vision-card">
+              <span>04</span>
+              <h3>Systemarchitektur</h3>
+              <p>Anforderungen analysieren, Alternativen vergleichen und technische Entscheidungen begründen.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="vision-section" aria-labelledby="visionLearningTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Lernen mit GerNetiX</p>
+              <h2 id="visionLearningTitle">Wissen passend vermitteln</h2>
+            </div>
+          </div>
+          <div class="vision-grid vision-learning-grid">
+            <article class="panel vision-card">
+              <h3>Schritt für Schritt</h3>
+              <p>Kleine, nachvollziehbare Schritte helfen dir, keine entscheidende Kleinigkeit zu übersehen.</p>
+            </article>
+            <article class="panel vision-card">
+              <h3>Praxis und Hintergrund</h3>
+              <p>Projekte, Lektüre und Erklärungen verbinden das praktische Handeln mit dem technischen Warum.</p>
+            </article>
+            <article class="panel vision-card">
+              <h3>Menschliche Hilfe</h3>
+              <p>Wenn ein Lernweg oder eine Erklärung nicht passt, bleibt persönlicher Austausch unverzichtbar.</p>
+            </article>
+          </div>
+        </section>
+
+        <section class="panel vision-section vision-complexity" aria-labelledby="visionComplexityTitle">
+          <div>
+            <p class="eyebrow">Komplexität beherrschbar machen</p>
+            <h2 id="visionComplexityTitle">Einfach einsteigen. Später tiefer gehen.</h2>
+          </div>
+          <p>GerNetiX stellt Infrastruktur für Build-Prozesse, Deployment, Updates, Geräte, Apps und Server bereit. Am Anfang bleibt davon vieles bewusst im Hintergrund. Wenn du bereit bist, kannst du auch diese Ebenen verstehen und selbst gestalten.</p>
+        </section>
+
+        <footer class="panel vision-section vision-closing">
+          <p>Werkzeuge, Hersteller und Trends ändern sich. Verstandene Zusammenhänge bleiben.</p>
+          <h2>Wer versteht, kann entwickeln. Wer entwickelt, kann erschaffen.</h2>
+          <div class="button-row vision-actions">
+            <button class="primary" type="button" data-open-route="/app/learn/">Geführt lernen</button>
+            <button type="button" data-open-route="/app/development-platform/">Eigene Idee entwickeln</button>
+          </div>
+        </footer>
       </section>
 
       <section id="accountSetupView" class="view hidden">
@@ -110,6 +203,31 @@
         <pre id="offlineRecoverySetValue" class="offline-recovery-set-value"></pre>
         <p><strong>Bitte schreibe ihn auf oder drucke ihn aus und bewahre ihn getrennt von deinen Geräten auf.</strong></p>
         <button id="confirmOfflineRecoverySetButton" class="primary" type="button">Ich habe den Code sicher abgelegt</button>
+      </dialog>
+
+      <dialog id="serialServiceChoiceDialog" class="runtime-dialog serial-service-choice-dialog" aria-labelledby="serialServiceChoiceTitle">
+        <div class="runtime-dialog-header">
+          <div>
+            <p class="eyebrow">USB-Verbindung</p>
+            <h2 id="serialServiceChoiceTitle">Wie möchtest du flashen?</h2>
+          </div>
+          <button type="button" data-close-serial-service-choice aria-label="Schließen">Schließen</button>
+        </div>
+        <p>Dieser Browser kann nicht direkt auf den USB-Port zugreifen. Wähle einen der beiden Wege:</p>
+        <section class="serial-service-choice-grid">
+          <article>
+            <h3>Browser mit Web Serial</h3>
+            <p>Öffne dieselbe GerNetiX-Seite in Chrome oder Edge und starte dort den USB-Schritt erneut.</p>
+            <button type="button" data-close-serial-service-choice>Chrome oder Edge verwenden</button>
+          </article>
+          <article class="recommended">
+            <span class="access-badge">Empfohlen</span>
+            <h3>GerNetiX WebHelper</h3>
+            <p>Installiert den GerNetiX Serial Service einmalig. Danach funktionieren Erkennung und Flashen direkt in GerNetiX.</p>
+            <a id="serialServiceChoiceInstall" class="button-link primary" href="/app/downloads/" data-serial-service-install>WebHelper installieren</a>
+          </article>
+        </section>
+        <p id="serialServiceChoiceStatus" class="helper-text" aria-live="polite"></p>
       </dialog>
 
       <section id="helpView" class="view hidden">
@@ -219,7 +337,7 @@
           <div>
             <p class="eyebrow">Werkzeuge für deinen Rechner</p>
             <h2>Downloads</h2>
-            <p class="helper-text">Hilfsprogramme für Funktionen, die der Browser nicht direkt bereitstellt.</p>
+            <p class="helper-text">Einmalige Systemintegration für den durchgängigen GerNetiX-Arbeitsablauf.</p>
           </div>
         </div>
         <section class="download-grid" aria-label="Verfügbare Downloads">
@@ -227,14 +345,14 @@
             <div class="download-card-head">
               <div>
                 <p class="eyebrow">USB &amp; Recovery</p>
-                <h3>USB Serial Helper</h3>
+                <h3>GerNetiX Serial Service</h3>
               </div>
               <span id="usbHelperRecommendation" class="access-badge hidden">Für dieses Gerät</span>
             </div>
-            <p>Verbindet die GerNetiX IDE mit einem per USB angeschlossenen Board, wenn dein Browser Web Serial nicht unterstützt.</p>
+            <p>Läuft nach der Installation unsichtbar im Hintergrund. Er stellt USB direkt in GerNetiX bereit; es gibt keine separate Bedienoberfläche.</p>
             <ul class="download-feature-list">
-              <li>ESP32 per USB erkennen und flashen</li>
-              <li>Alternative für Safari und Browser ohne Web Serial</li>
+              <li>Boards direkt in GerNetiX erkennen und flashen</li>
+              <li>Automatischer Hintergrundstart auf macOS</li>
               <li>Keine Zugangsdaten oder Projektdaten dauerhaft lokal speichern</li>
             </ul>
             <div id="usbHelperDownloads" class="download-actions" aria-live="polite"></div>
@@ -317,7 +435,7 @@
                 <select id="usbPortSelect" class="hidden" aria-label="USB-Port"></select>
                 <button id="refreshUsbPortsButton" class="hidden" type="button">USB suchen</button>
                 <button id="buildButton" type="button" aria-describedby="ideActionReason">Build</button>
-                <button id="usbFlashButton" type="button" aria-describedby="ideActionReason">Flash via Web Serial</button>
+                <button id="usbFlashButton" type="button" aria-describedby="ideActionReason">Per USB flashen</button>
                 <button id="otaFlashButton" type="button" aria-describedby="ideActionReason">OTA Flash</button>
                 <button id="checkOtaConnectivityButton" type="button" aria-describedby="ideActionReason">Online prüfen</button>
               </div>
@@ -424,6 +542,7 @@
             <aside id="provisioningUsbNotice" class="provisioning-method-notice hidden" role="note">
               <div id="provisioningAutomaticScanActions" class="button-row">
                 <button id="scanProvisioningSerialPortsButton" class="primary" type="button">Automatisch suchen</button>
+                <select id="provisioningSerialServicePortSelect" class="hidden" aria-label="Gefundenes USB-Gerät"></select>
               </div>
               <div id="provisioningWebSerialActions" class="button-row hidden">
                 <button id="selectProvisioningSerialPortButton" class="primary" type="button">Seriellen Port wählen</button>
@@ -432,8 +551,9 @@
                 <button id="checkProvisioningSerialPortButton" class="primary" type="button">Seriellen Port prüfen</button>
               </div>
               <p id="provisioningUsbHelperHint" class="helper-text hidden">
-                Dieser Browser unterstützt Web Serial nicht. Verwende stattdessen das
-                <a href="/app/downloads/">GerNetiX USB Helper Tool</a>.
+                Der GerNetiX Serial Service ist nicht erreichbar.
+                <a href="/app/downloads/" data-serial-service-install>Jetzt installieren oder reparieren</a>.
+                Öffne danach das geladene Installationspaket.
               </p>
             </aside>
             <div class="inventory-methods">
@@ -797,17 +917,18 @@
 
     <script src="/app/api-client.js"></script>
     <script src="/app/dom-utils.js"></script>
+    <script src="/app/serial-service-client.js?v=20260719-02"></script>
     <script src="/app/device-onboarding-model.js"></script>
-    <script src="/app/device-onboarding-controller.js?v=20260718-08"></script>
+    <script src="/app/device-onboarding-controller.js?v=20260719-04"></script>
     <script src="/app/guided-project-view.js?v=20260718-03"></script>
     <script src="/app/learning-project-view.js?v=20260718-02"></script>
     <script src="/app/learning-project-controller.js?v=20260718-07"></script>
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
     <script src="/app/development-component-metamodel.js?v=20260716-01"></script>
     <script src="/app/development-platform.js?v=20260717-04"></script>
-    <script src="/app/help-content.js?v=20260719-01"></script>
+    <script src="/app/help-content.js?v=20260719-02"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
     <script src="/app/help-view.js?v=20260719-01"></script>
-    <script src="/app/app.js?v=20260718-07"></script>
+    <script src="/app/app.js?v=20260719-05"></script>
   </body>
 </html>

@@ -335,7 +335,7 @@ function renderResources() {
     metricCard("Free-Projekte", formatNumber(policies.find((item) => item.plan_id === "free")?.max_projects || 0), "harte Obergrenze"),
     metricCard("Free-Speicher", formatBytes(policies.find((item) => item.plan_id === "free")?.max_storage_bytes || 0), "pro Account"),
   ].join("");
-  document.querySelector("#resourcePolicyRows").innerHTML = policies.length ? policies.map((policy) => `<tr data-plan="${escapeHtml(policy.plan_id)}"><td><strong>${escapeHtml(policy.plan_id)}</strong></td><td><input data-field="max_projects" type="number" min="1" value="${policy.max_projects ?? ""}" placeholder="unbegrenzt" /></td><td><input data-field="max_storage_bytes" type="number" min="1" value="${Number(policy.max_storage_bytes)}" /></td><td><input data-field="max_monthly_traffic_bytes" type="number" min="1" value="${Number(policy.max_monthly_traffic_bytes)}" /></td><td><button type="button">Speichern</button></td></tr>`).join("") : `<tr><td colspan="5" class="empty-cell">${escapeHtml(data.error || "Keine Ressourcenregeln.")}</td></tr>`;
+  document.querySelector("#resourcePolicyRows").innerHTML = policies.length ? policies.map((policy) => `<tr data-plan="${escapeHtml(policy.plan_id)}"><td><strong>${escapeHtml(policy.plan_id)}</strong></td><td><input data-field="max_projects" type="number" min="1" value="${policy.max_projects ?? ""}" placeholder="unbegrenzt" aria-label="Maximale Anzahl Projekte fuer ${escapeHtml(policy.plan_id)}" /></td><td><div class="resource-limit-input"><input data-field="max_storage_bytes" data-display-unit="mib" type="number" min="0" step="any" value="${bytesToMebibytes(policy.max_storage_bytes)}" aria-label="Speicherlimit in MiB fuer ${escapeHtml(policy.plan_id)}" /><span>MiB</span></div></td><td><div class="resource-limit-input"><input data-field="max_monthly_traffic_bytes" data-display-unit="mib" type="number" min="0" step="any" value="${bytesToMebibytes(policy.max_monthly_traffic_bytes)}" aria-label="Monatlicher Traffic in MiB fuer ${escapeHtml(policy.plan_id)}" /><span>MiB</span></div></td><td><button type="button">Speichern</button></td></tr>`).join("") : `<tr><td colspan="5" class="empty-cell">${escapeHtml(data.error || "Keine Ressourcenregeln.")}</td></tr>`;
   document.querySelector("#resourceAccountRows").innerHTML = accounts.length ? accounts.map((account) => `<tr><td>${escapeHtml(account.account_id)}</td><td>${formatNumber(account.projects)}</td><td>${formatBytes(account.storage_bytes)}</td></tr>`).join("") : `<tr><td colspan="3" class="empty-cell">Keine gespeicherten Projekte.</td></tr>`;
 }
 
@@ -344,10 +344,25 @@ async function saveResourcePolicy(event) {
   const row = button.closest("tr"); const plan = row.dataset.plan; if (!plan) return;
   button.disabled = true;
   try {
-    const body = Object.fromEntries([...row.querySelectorAll("input")].map((input) => [input.dataset.field, input.dataset.field === "max_projects" && input.value === "" ? null : Number(input.value)]));
+    const body = Object.fromEntries([...row.querySelectorAll("input")].map((input) => {
+      if (input.dataset.displayUnit === "mib") return [input.dataset.field, mebibytesToBytes(input.value)];
+      return [input.dataset.field, input.value === "" ? null : Number(input.value)];
+    }));
     await putJson(`/api/admin/resources/policies/${encodeURIComponent(plan)}`, body);
     await loadResources(true);
   } catch (error) { alert(error.message); } finally { button.disabled = false; }
+}
+
+function bytesToMebibytes(value) {
+  const bytes = Number(value);
+  if (!Number.isFinite(bytes) || bytes <= 0) return 0;
+  return Number((bytes / (1024 * 1024)).toFixed(6));
+}
+
+function mebibytesToBytes(value) {
+  const mebibytes = Number(value);
+  if (!Number.isFinite(mebibytes) || mebibytes <= 0) return null;
+  return Math.round(mebibytes * 1024 * 1024);
 }
 
 async function loadSystemEvents(force) {
@@ -424,9 +439,19 @@ function renderSystemEventRows(items) {
       <td><strong class="severity ${escapeHtml(item.severity || "info")}">${escapeHtml(severityLabel(item.severity))}</strong></td>
       <td><strong>${escapeHtml(item.source_service || "-")}</strong><span>${escapeHtml(item.target_service ? `-> ${item.target_service}` : item.category || "-")}</span></td>
       <td><strong>${escapeHtml(item.message || "-")}</strong><span>${escapeHtml(item.event_type || "-")}</span></td>
-      <td>${escapeHtml(item.impact || "-")}</td>
+      <td><strong>${escapeHtml(item.impact || "-")}</strong>${systemEventContext(item) ? `<span>${escapeHtml(systemEventContext(item))}</span>` : ""}</td>
     </tr>
   `).join("");
+}
+
+function systemEventContext(item) {
+  const details = item.details || {};
+  return [
+    details.stage ? `Phase: ${details.stage}` : "",
+    details.error_code ? `Fehlercode: ${details.error_code}` : "",
+    item.account_id ? `Konto: ${item.account_id}` : "",
+    item.correlation_id ? `Korrelation: ${item.correlation_id}` : "",
+  ].filter(Boolean).join(" · ");
 }
 
 function severityLabel(value) {

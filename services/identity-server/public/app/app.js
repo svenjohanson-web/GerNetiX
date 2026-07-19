@@ -7,6 +7,7 @@ const state = {
   selectedProvisioningDiscoveryIds: [],
   avrBootloaderResult: null,
   processorBoards: [],
+  processorBoardCatalogStatus: { state: "idle", message: "" },
   boardFeatureCatalog: [],
   boardFeatureCatalogStatus: { state: "idle", message: "" },
   provisioningBoardConfigurationMode: "",
@@ -25,6 +26,9 @@ const state = {
   provisioningSerialScanCompleted: false,
   provisioningSerialScanRunning: false,
   provisioningSerialPort: null,
+  provisioningSerialServicePorts: [],
+  serialServiceAvailable: false,
+  platformDownloads: [],
   sensorCatalog: [],
   sensorCatalogStatus: { state: "idle", message: "" },
   builds: [],
@@ -51,11 +55,13 @@ const state = {
   developmentPlatform: null,
   esptoolModule: null,
   activeSerialTransport: null,
+  serialService: GerNetiXSerialService.create(),
   ideLayoutPersistenceReady: false,
 };
 
 const routeMap = {
   dashboard: "dashboardView",
+  vision: "visionView",
   "development-platform": "developmentPlatformView",
   "development-hardware": "developmentHardwareView",
   learn: "learnView",
@@ -78,6 +84,8 @@ let guidedProjectViewController = null;
 let developmentPlatformController = null;
 let learningProjectController = null;
 let lastRenderedRoute = "";
+let processorBoardCatalogLoadPromise = null;
+let boardFeatureCatalogLoadPromise = null;
 
 function deviceOnboarding() {
   if (!deviceOnboardingController) {
@@ -89,13 +97,15 @@ function deviceOnboarding() {
       deleteJson,
       delay,
       loadIdeEsptoolModule,
-      fallbackProcessorBoards,
+      loadProcessorBoardCatalog,
+      loadBoardFeatureCatalog,
       renderDashboard,
       renderDevices,
       renderIdeShell,
       escapeHtml,
       meta,
       openHelpTopic: HelpView.openDialog,
+      showSerialServiceChoiceDialog,
     });
   }
   return deviceOnboardingController;
@@ -288,6 +298,7 @@ document.querySelectorAll('input[name="deviceDiscoveryMethod"]').forEach((input)
 document.querySelector("#deviceDiscoverySearchButton").addEventListener("click", searchDevicesForInventory);
 document.querySelector("#scanProvisioningSerialPortsButton").addEventListener("click", scanProvisioningSerialPorts);
 document.querySelector("#selectProvisioningSerialPortButton").addEventListener("click", selectProvisioningSerialPort);
+document.querySelector("#provisioningSerialServicePortSelect").addEventListener("change", selectProvisioningSerialPort);
 document.querySelector("#checkProvisioningSerialPortButton").addEventListener("click", identifyEsp32Bootloader);
 document.querySelector("#flashProvisioningBasissoftwareButton").addEventListener("click", flashProvisioningBasissoftware);
 document.querySelector("#scanProvisioningWifiButton").addEventListener("click", scanProvisioningWifiNetworks);
@@ -300,14 +311,63 @@ document.querySelector("#confirmOfflineRecoverySetButton")?.addEventListener("cl
 document.querySelector("#offlineRecoverySetDialog")?.addEventListener("click", (event) => {
   if (event.target === event.currentTarget || event.target.closest("[data-close-offline-recovery-set]")) event.currentTarget.close();
 });
+document.querySelector("#serialServiceChoiceDialog")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget || event.target.closest("[data-close-serial-service-choice]")) event.currentTarget.close();
+});
+document.querySelector("#serialServiceChoiceInstall")?.addEventListener("click", () => {
+  const status = document.querySelector("#serialServiceChoiceStatus");
+  if (status && preferredSerialServiceDownload()) {
+    status.textContent = "Download gestartet. Öffne das geladene Installationspaket; der WebHelper startet danach automatisch.";
+  }
+});
 window.addEventListener("popstate", renderRoute);
 document.addEventListener("click", closeMainMenu);
 
 async function bootstrap() {
   developmentPlatform().init();
   await refresh();
+  await loadPlatformDownloads();
   renderAll();
   renderRoute();
+}
+
+async function loadPlatformDownloads() {
+  try {
+    const payload = await getJson("/api/platform/downloads");
+    state.platformDownloads = payload.downloads || [];
+  } catch {
+    state.platformDownloads = [];
+  }
+  document.querySelectorAll("[data-serial-service-install]").forEach(configureSerialServiceInstallLink);
+}
+
+function preferredSerialServiceDownload() {
+  const platform = /Mac/i.test(navigator.platform) ? "macos" : /Win/i.test(navigator.platform) ? "windows" : "";
+  return platform
+    ? state.platformDownloads.find((item) => item.platform === platform && item.available) || null
+    : null;
+}
+
+function configureSerialServiceInstallLink(link) {
+  const download = preferredSerialServiceDownload();
+  link.href = download?.url || "/app/downloads/";
+  if (download) link.setAttribute("download", download.file_name || "");
+  else link.removeAttribute("download");
+  return link;
+}
+
+function showSerialServiceChoiceDialog() {
+  const dialog = document.querySelector("#serialServiceChoiceDialog");
+  const install = document.querySelector("#serialServiceChoiceInstall");
+  const status = document.querySelector("#serialServiceChoiceStatus");
+  if (!dialog || !install) return;
+  configureSerialServiceInstallLink(install);
+  const download = preferredSerialServiceDownload();
+  install.textContent = download ? "WebHelper jetzt installieren" : "Downloads öffnen";
+  if (status) status.textContent = download
+    ? "Die Installation beginnt erst, wenn du den WebHelper auswählst."
+    : "Für dieses Betriebssystem ist noch kein Installationspaket veröffentlicht.";
+  if (!dialog.open) dialog.showModal();
 }
 
 async function refresh() {
@@ -413,6 +473,10 @@ function currentLocationTrail(route) {
   const project = projectById(state.activeProjectId);
   const locations = {
     dashboard: [{ label: "Plattform", route: "/app/dashboard/" }],
+    vision: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Vision", route: "/app/vision/" },
+    ],
     "development-platform": [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Entwicklungsplattform", route: "/app/development-platform/" },
@@ -528,11 +592,13 @@ async function renderDownloads() {
   try {
     const payload = await getJson("/api/platform/downloads");
     const downloads = payload.downloads || [];
+    state.platformDownloads = downloads;
+    document.querySelectorAll("[data-serial-service-install]").forEach(configureSerialServiceInstallLink);
     target.innerHTML = downloads.map((item) => `
       <a class="button-link ${item.platform === platform ? "primary" : ""} ${item.available ? "" : "disabled"}"
         ${item.available ? `href="${escapeAttribute(item.url)}" download` : 'aria-disabled="true"'}>
         ${escapeHtml(item.label)}
-        <small>${escapeHtml(item.available ? item.detail : "Noch nicht bereit")}</small>
+        <small>${escapeHtml(item.available ? `${item.detail}${item.version ? ` · Version ${item.version}` : ""}` : "Noch nicht bereit")}</small>
       </a>
     `).join("");
     const available = downloads.filter((item) => item.available).length;
@@ -566,10 +632,13 @@ async function loadDevicePageTools() {
   await refreshUsbPorts(false);
 }
 
-async function loadBoardFeatureCatalog() {
-  if (["loading", "ready"].includes(state.boardFeatureCatalogStatus.state)) return;
+async function loadBoardFeatureCatalog({ force = false } = {}) {
+  if (state.boardFeatureCatalogStatus.state === "loading" && boardFeatureCatalogLoadPromise) {
+    return boardFeatureCatalogLoadPromise;
+  }
+  if (!force && state.boardFeatureCatalogStatus.state === "ready") return;
   state.boardFeatureCatalogStatus = { state: "loading", message: "Boardausstattung wird geladen." };
-  await getJson("/api/platform/hardware/board-feature-options")
+  boardFeatureCatalogLoadPromise = getJson("/api/platform/hardware/board-feature-options")
     .then((result) => {
       state.boardFeatureCatalog = result.items || [];
       state.boardFeatureCatalogStatus = {
@@ -580,22 +649,48 @@ async function loadBoardFeatureCatalog() {
     })
     .catch((error) => {
       state.boardFeatureCatalog = [];
-      state.boardFeatureCatalogStatus = { state: "error", message: error.message || "Hardware Catalog ist nicht erreichbar." };
+      state.boardFeatureCatalogStatus = {
+        state: "error",
+        message: error.message || "Hardware-Katalog nicht erreichbar.",
+      };
       renderNetworkDiscovery();
+    })
+    .finally(() => {
+      boardFeatureCatalogLoadPromise = null;
     });
+  return boardFeatureCatalogLoadPromise;
 }
 
-async function loadProcessorBoardCatalog() {
-  if (!state.processorBoards.length) {
-    await getJson("/api/platform/hardware/processor-boards")
-      .then((boards) => {
-        state.processorBoards = boards.items || [];
-        renderNetworkDiscovery();
-        if (routeName() === "development-platform") developmentPlatform().render();
-        if (routeName() === "development-hardware") developmentPlatform().renderHardwareConfiguration();
-      })
-      .catch((error) => setInventoryStatus("error", error.message));
+async function loadProcessorBoardCatalog({ force = false } = {}) {
+  if (state.processorBoardCatalogStatus.state === "loading" && processorBoardCatalogLoadPromise) {
+    return processorBoardCatalogLoadPromise;
   }
+  if (!force && state.processorBoardCatalogStatus.state === "ready") return;
+  state.processorBoardCatalogStatus = { state: "loading", message: "Hardware-Katalog wird geladen." };
+  processorBoardCatalogLoadPromise = getJson("/api/platform/hardware/processor-boards")
+    .then((boards) => {
+      state.processorBoards = boards.items || [];
+      state.processorBoardCatalogStatus = {
+        state: "ready",
+        message: state.processorBoards.length ? "" : "Der Hardware-Katalog enthält keine provisionierbaren Boards.",
+      };
+      renderNetworkDiscovery();
+      if (routeName() === "development-platform") developmentPlatform().render();
+      if (routeName() === "development-hardware") developmentPlatform().renderHardwareConfiguration();
+    })
+    .catch((error) => {
+      state.processorBoards = [];
+      state.processorBoardCatalogStatus = {
+        state: "error",
+        message: error.message || "Hardware-Katalog nicht erreichbar.",
+      };
+      renderNetworkDiscovery();
+      setInventoryStatus("error", state.processorBoardCatalogStatus.message);
+    })
+    .finally(() => {
+      processorBoardCatalogLoadPromise = null;
+    });
+  return processorBoardCatalogLoadPromise;
 }
 
 async function loadSensorCatalog() {
@@ -2138,7 +2233,12 @@ async function startUsbFlash() {
   const device = allocatedIdeDevice(project);
   if (!project || !device) return setFlashStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
   if (!device.usb_flash_supported) return setFlashStatus("error", "Das zugeordnete Device unterstuetzt keinen USB-Flash.");
-  if (!navigator.serial) return setFlashStatus("error", "Web Serial ist nicht verfügbar. Bitte Chrome oder Edge auf Desktop verwenden.");
+  const serialServiceAvailable = await state.serialService.available();
+  if (!serialServiceAvailable && !navigator.serial) {
+    setFlashStatus("error", "Für USB wird Web Serial oder der GerNetiX WebHelper benötigt.");
+    showSerialServiceChoiceDialog();
+    return;
+  }
   setFlashStatus("running", "Echter PlatformIO-Build wird gestartet...");
   let activeBuild = null;
   try {
@@ -2155,15 +2255,19 @@ async function startUsbFlash() {
       appendBuildFailureLog(activeBuild.build_log);
       throw new Error(activeBuild.error || "PlatformIO-Build ist fehlgeschlagen.");
     }
-    setFlashStatus("running", "Build erfolgreich. USB-Gerät im Browser auswählen...");
-    const flashResult = await flashBuildViaWebSerial(activeBuild);
+    setFlashStatus("running", serialServiceAvailable
+      ? "Build erfolgreich. GerNetiX verbindet das USB-Gerät..."
+      : "Build erfolgreich. USB-Gerät im Browser auswählen...");
+    const flashResult = serialServiceAvailable
+      ? await flashBuildViaSerialService(activeBuild, device)
+      : await flashBuildViaWebSerial(activeBuild);
     await postJson(`/api/user-ide/build-jobs/${encodeURIComponent(activeBuild.build_job_id)}/browser-usb-flash-result`, {
       status: "succeeded",
       chip_name: flashResult.chipName,
       logs: flashResult.logs,
     });
     activeBuild.flash_status = "succeeded";
-    setFlashStatus("ok", `Web-Serial-Flash erfolgreich: ${flashResult.chipName}`);
+    setFlashStatus("ok", `USB-Flash erfolgreich: ${flashResult.chipName}`);
     renderBuilds();
   } catch (error) {
     if (activeBuild?.build_job_id) {
@@ -2174,6 +2278,42 @@ async function startUsbFlash() {
     }
     setFlashStatus("error", error.message);
   }
+}
+
+async function flashBuildViaSerialService(build, device) {
+  const manifest = Array.isArray(build.flash_manifest) ? build.flash_manifest : [];
+  const required = ["bootloader.bin", "partitions.bin", "firmware.bin"];
+  if (!required.every((name) => manifest.some((item) => item.name === name))) {
+    throw new Error("Build enthält kein vollständiges ESP32-USB-Flashpaket.");
+  }
+  const files = await Promise.all(manifest.map(async (item) => {
+    const response = await fetch(item.url);
+    if (!response.ok) throw new Error(`${item.name} konnte nicht geladen werden.`);
+    return { name: item.name, data: new Uint8Array(await response.arrayBuffer()), address: Number(item.address) };
+  }));
+  const ports = await state.serialService.ports();
+  state.usbPorts = ports.map((port) => ({ ...port, port: port.path, name: port.label }));
+  renderUsbPortOptions();
+  const port = selectedUsbPort() || bestUsbPortForDevice(device)?.port || (ports.length === 1 ? ports[0].path : "");
+  if (!port) throw new Error("Mehrere USB-Geräte sind verbunden. Wähle in GerNetiX den passenden USB-Port.");
+  const probe = await state.serialService.probe(port);
+  const seenLogs = new Set();
+  const result = await state.serialService.flash({
+    port,
+    files,
+    chip: "auto",
+    flashMode: "dio",
+    flashFreq: "40m",
+    flashSize: "keep",
+    onProgress(job) {
+      for (const line of job.logs || []) {
+        if (seenLogs.has(line)) continue;
+        seenLogs.add(line);
+        appendIdeTerminal("running", line);
+      }
+    },
+  });
+  return { chipName: probe.chipName || result.chipName || "ESP32", logs: result.logs || [] };
 }
 
 async function waitForCompletedBuild(build) {
@@ -2647,50 +2787,6 @@ function setInventoryStatus(kind, text) {
   return deviceOnboarding().setInventoryStatus(kind, text);
 }
 
-function fallbackProcessorBoards() {
-  return [
-    {
-      hardware_item_id: "hardware.processor_board.generic_esp_wroom32",
-      title: "Generisches ESP32-Board mit ESP-WROOM-32 Modul",
-      processor_family: "esp32",
-      module_name: "ESP-WROOM-32",
-      mcu_variant: "ESP32",
-      capability_ids: ["processor_esp32", "wifi", "ota", "device_http_status", "basissoftware_supported", "usb_identification", "flash_firmware", "arduino_framework_runtime"],
-    },
-    {
-      hardware_item_id: "hardware.processor_board.espressif_esp32_s3_devkitc_1",
-      title: "Espressif ESP32-S3-DevKitC-1",
-      processor_family: "esp32",
-      module_name: "ESP32-S3-WROOM-1",
-      mcu_variant: "ESP32-S3",
-      capability_ids: ["processor_esp32", "wifi", "ota", "device_http_status", "basissoftware_supported", "usb_identification", "flash_firmware", "arduino_framework_runtime"],
-    },
-    {
-      hardware_item_id: "hardware.processor_board.wemos_d1_mini_esp12f",
-      title: "Wemos D1 mini / ESP-12F",
-      processor_family: "esp8266",
-      module_name: "ESP-12F",
-      mcu_variant: "ESP8266EX",
-      capability_ids: ["processor_esp8266", "wifi", "device_http_status", "basissoftware_supported", "usb_identification", "flash_firmware", "arduino_framework_runtime"],
-    },
-    {
-      hardware_item_id: "hardware.processor_board.arduino_nano_r3_atmega328p",
-      title: "Arduino Nano R3 / ATmega328P",
-      processor_family: "avr_8bit",
-      mcu_variant: "ATmega328P",
-      capability_ids: ["processor_avr_8bit", "processor_arduino_avr", "arduino_framework_runtime", "atmel_avr_bare_metal_runtime", "usb_identification", "flash_firmware"],
-    },
-    {
-      hardware_item_id: "hardware.processor_board.raspberry_pi_zero_2w",
-      title: "Raspberry Pi Zero 2 W",
-      processor_family: "raspberry_pi",
-      module_name: "Zero 2 W",
-      mcu_variant: "Broadcom BCM2710A1",
-      capability_ids: ["processor_linux_sbc", "wifi", "linux_runtime", "usb_identification"],
-    },
-  ];
-}
-
 function renderBuilds() {
   document.querySelector("#buildList").innerHTML = state.builds.length ? state.builds.map((build) => `
     <article class="build-row">
@@ -2725,8 +2821,15 @@ function syncSelectedDevicePort() {
 
 async function refreshUsbPorts(showStatus = true) {
   try {
-    const result = await getJson("/api/platform/usb-serial/ports");
-    state.usbPorts = result.items || [];
+    const daemonAvailable = await state.serialService.available();
+    const items = daemonAvailable
+      ? await state.serialService.ports()
+      : (await getJson("/api/platform/usb-serial/ports")).items || [];
+    state.usbPorts = items.map((port) => ({
+      ...port,
+      port: port.port || port.path,
+      name: port.name || port.label || port.manufacturer,
+    }));
     renderUsbPortOptions();
     syncSelectedDevicePort();
     renderDevices();

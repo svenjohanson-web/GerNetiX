@@ -138,7 +138,7 @@ Accountgebundene Entwicklungsprojekte werden standardmaessig in SQLite gespeiche
 
 ## Ressourcenregeln
 
-Der Project Server prueft beim Anlegen die Projektanzahl des angeforderten Plans: Free hoechstens fuenf, Premium und Premium Demo hoechstens 200 Entwicklungsprojekte. Projektdateien haben kein kundenrelevantes Speicherlimit. Katalog-/Demo-Seeds erhalten stets den Plan der angemeldeten Session und ein Seed-Fehler darf die persoenliche Projektliste nicht verdecken.
+Der Project Server prueft beim Anlegen die Projektanzahl des angeforderten Plans: Free hoechstens fuenf, Premium und Premium Demo hoechstens 200 Entwicklungsprojekte. Projekt-, Speicher- und vorbereitete monatliche Traffic-Limits werden intern als Anzahl beziehungsweise Bytes gespeichert. Das Admin Tool zeigt Speicher und Traffic lesbar in MiB an. Der Wert `0` in der Admin-Oberflaeche wird als `null` gespeichert und bedeutet fuer Speicher und Traffic unbegrenzt; ein leeres Projektlimit bedeutet ebenfalls unbegrenzt. Katalog-/Demo-Seeds erhalten stets den Plan der angemeldeten Session und ein Seed-Fehler darf die persoenliche Projektliste nicht verdecken.
 
 Eigene Entwicklungsprojekte koennen ueber die Entwicklungsplattform nach einer ausdruecklichen Bestaetigung geloescht werden. Dabei werden Projekt, Quellen, Build-Jobs, Artefaktreferenzen, Feedback und zugehoerige Consents entfernt; Identity bereinigt davor projektbezogene Telemetrie und Web-Push-Subscriptions.
 

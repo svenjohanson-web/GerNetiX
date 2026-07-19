@@ -12,6 +12,7 @@ function createConfig(env = process.env) {
     identityBaseUrl: env.IDENTITY_BASE_URL || "http://127.0.0.1:4300",
     identityAdminToken: env.IDENTITY_ADMIN_TOKEN || "",
     adminToolAccessToken: env.ADMIN_TOOL_ACCESS_TOKEN || "",
+    systemEventIngestToken: env.SYSTEM_EVENT_INGEST_TOKEN || "",
     securityMonitorToken: env.SECURITY_MONITOR_TOKEN || "",
     buildDeployBaseUrl: env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400",
     projectServerBaseUrl: env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800",
@@ -26,8 +27,8 @@ function createConfig(env = process.env) {
     defaultOllamaBaseUrl: env.OLLAMA_BASE_URL || "http://127.0.0.1:11434",
     defaultOllamaModel: env.OLLAMA_MODEL || "llama3.2:3b",
     llmConfigPath: env.LLM_CONFIG_PATH || path.join(__dirname, "..", "..", "..", ".runtime", "identity-llm-config.json"),
-    persistenceBackend: env.PERSISTENCE_BACKEND || env.ADMIN_TOOL_PERSISTENCE_BACKEND || "memory",
-    sqlitePath: env.PERSISTENCE_SQLITE_PATH || env.ADMIN_TOOL_SQLITE_PATH || path.join(__dirname, "..", ".runtime", "gernetix-services.sqlite"),
+    persistenceBackend: env.PERSISTENCE_BACKEND || env.ADMIN_TOOL_PERSISTENCE_BACKEND || "sqlite",
+    sqlitePath: env.PERSISTENCE_SQLITE_PATH || env.ADMIN_TOOL_SQLITE_PATH || path.join(__dirname, "..", "..", "..", ".runtime", "gernetix-services.sqlite"),
   };
 }
 

@@ -4,7 +4,7 @@ Die LLM-Konfiguration laedt API-Modelle dynamisch vom konfigurierten Provider un
 
 MVP fuer das GerNetiX Admin Tool als eigenstaendiger Admin-Backend/API-Service.
 
-Das Admin Tool bietet erste berechtigte Sichten auf Device-Status, Support-Entitlement, Learning-Feedback, Customer-Data-Consent, Audit-Events, KI-Usage-Monitoring und LLM-Datenfreigaben. Es besitzt im MVP keine fuehrenden Domaenendaten, sondern nutzt Seed-/In-Memory-Daten als Adapter-Stellvertreter fuer die spaeteren Domaenen-APIs.
+Das Admin Tool bietet erste berechtigte Sichten auf Device-Status, Support-Entitlement, Learning-Feedback, Customer-Data-Consent, Audit-Events, KI-Usage-Monitoring und LLM-Datenfreigaben. Es besitzt keine fuehrenden Domaenendaten. Lokale Systemereignisse werden standardmaessig in der gemeinsamen Runtime-SQLite persistiert; Domaenensichten nutzen weiterhin die vorgesehenen Service-Adapter.
 
 ## Zweck
 
@@ -52,6 +52,9 @@ Konfiguration:
 - `HOST`: Bind-Adresse, Standard `127.0.0.1`
 - `PORT`: HTTP-Port, Standard `4600`
 - `ADMIN_TOOL_RUNTIME_DIR`: Runtime-Verzeichnis fuer spaetere temporaere Artefakte
+- `PERSISTENCE_BACKEND`: System-Event-Persistenz, lokal standardmaessig `sqlite`
+- `PERSISTENCE_SQLITE_PATH`: lokale System-Event-SQLite, standardmaessig `.runtime/gernetix-services.sqlite` im Projekt
+- `SYSTEM_EVENT_INGEST_TOKEN`: eigener Dienst-zu-Dienst-Token fuer den internen System-Event-Eingang; im VPS-Betrieb identisch in Admin Tool und meldenden Diensten setzen
 - `LLM_CONFIG_PATH`: Legacy-Pfad zur alten lokalen LLM-JSON-Konfiguration; fachliche LLM-Routing-Persistenz muss gemaess Architekturentscheidung in SQLite liegen.
 - `AI_CONTEXT_BASE_URL`: AI-Context-Server fuer LLM-Datenfreigaben, Standard `http://127.0.0.1:5500`
 - `HARDWARE_CATALOG_BASE_URL`: Hardware Catalog fuer fachliche KI-Kontextinhalte wie Boards und Capabilities, Standard `http://127.0.0.1:4910`

@@ -57,7 +57,8 @@ test("keeps help content, navigation and assistant integration independently ext
 test("shows compatible hardware from the catalog and explains USB provisioning limits", () => {
   assert.match(helpContent, /"compatible-hardware"/);
   assert.match(helpContent, /iPhone und iPad/);
-  assert.match(helpContent, /Android ist für kabelgebundenes Web Serial kein verlässlicher Provisionierungsweg/);
+  assert.match(helpContent, /GerNetiX Serial Service[\s\S]*Alle Schritte bleiben in der GerNetiX-Oberfläche/);
+  assert.match(helpContent, /Android eignen sich für mobile Bedienung, aber nicht als verlässlicher USB-Host/);
   assert.match(helpContent, /GerNetiX-Webshop[\s\S]*geeigneten Basissoftware/);
   assert.match(helpView, /api\/platform\/hardware\/processor-boards/);
   assert.match(helpView, /function renderHardwareCard/);

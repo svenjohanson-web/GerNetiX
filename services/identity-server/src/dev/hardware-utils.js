@@ -2,7 +2,6 @@ const crypto = require("node:crypto");
 const fs = require("node:fs");
 
 function createDevHardwareUtils({
-  defaultCatalogSeed,
   execFileAsync,
   hardwareCatalogJson,
   platform = process.platform,
@@ -47,35 +46,16 @@ function createDevHardwareUtils({
   }
 
   async function loadProcessorBoards() {
-    const fallback = embeddedProcessorBoards();
-    try {
-      const response = await hardwareCatalogJson("/api/hardware-catalog/processor-boards");
-      return mergeProcessorBoards(response.items || [], fallback);
-    } catch {
-      return fallback;
-    }
+    const response = await hardwareCatalogJson("/api/hardware-catalog/processor-boards");
+    return (response.items || []).filter((item) => {
+      const id = item.hardware_item_id || item.hardware_profile_id;
+      return id && !deprecatedProcessorBoardIds().has(id);
+    });
   }
 
   async function loadSensors() {
     const response = await hardwareCatalogJson("/api/hardware-catalog/sensors");
     return response.items || [];
-  }
-
-  function embeddedProcessorBoards() {
-    return (defaultCatalogSeed().hardwareItems || [])
-      .filter((item) => item.item_type === "processor_board")
-      .filter((item) => !deprecatedProcessorBoardIds().has(item.hardware_item_id));
-  }
-
-  function mergeProcessorBoards(primary = [], fallback = []) {
-    const items = new Map();
-    for (const item of fallback) items.set(item.hardware_item_id || item.hardware_profile_id, item);
-    for (const item of primary) {
-      const id = item.hardware_item_id || item.hardware_profile_id;
-      if (!id || deprecatedProcessorBoardIds().has(id)) continue;
-      items.set(id, item);
-    }
-    return Array.from(items.values());
   }
 
   function deprecatedProcessorBoardIds() {
@@ -88,7 +68,7 @@ function createDevHardwareUtils({
   }
 
   async function findProcessorBoard(hardwareProfileId) {
-    const boards = await loadProcessorBoards().catch(() => []);
+    const boards = await loadProcessorBoards();
     return boards.find((board) => (
       board.hardware_item_id === hardwareProfileId
       || board.hardware_profile_id === hardwareProfileId

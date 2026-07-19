@@ -1,4 +1,7 @@
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const test = require("node:test");
 
 const { createDefaultAdminTool } = require("../src");
@@ -222,6 +225,30 @@ test("system event severity is normalized", () => {
   });
 
   assert.equal(event.severity, "info");
+});
+
+test("system events remain available after reopening the Admin Tool SQLite", () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-admin-events-"));
+  const sqlitePath = path.join(tempDir, "admin.sqlite");
+  try {
+    const first = createDefaultAdminTool({ persistenceBackend: "sqlite", sqlitePath });
+    first.recordSystemEvent({
+      severity: "warning",
+      source_service: "identity_server",
+      category: "security",
+      event_type: "passkey_login_failed",
+      message: "Passkey-Login konnte nicht verifiziert werden.",
+      account_id: "acct-1",
+    });
+
+    const second = createDefaultAdminTool({ persistenceBackend: "sqlite", sqlitePath });
+    const events = second.systemEvents();
+    assert.equal(events.summary.total, 1);
+    assert.equal(events.items[0].event_type, "passkey_login_failed");
+    assert.equal(events.items[0].account_id, "acct-1");
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
+  }
 });
 
 test("support without admin ai capability cannot read ai monitoring", async () => {

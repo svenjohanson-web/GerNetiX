@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const vm = require("node:vm");
 const { normalizeAppPath } = require("../src/dev/http-utils");
 
 const html = fs.readFileSync(path.join(__dirname, "..", "public", "app", "index.html"), "utf8");
@@ -9,6 +10,12 @@ const app = fs.readFileSync(path.join(__dirname, "..", "public", "app", "app.js"
 const onboarding = fs.readFileSync(path.join(__dirname, "..", "public", "app", "device-onboarding-controller.js"), "utf8");
 const css = fs.readFileSync(path.join(__dirname, "..", "public", "app", "app.css"), "utf8");
 const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
+
+function onboardingControllerForTest() {
+  const context = {};
+  vm.runInNewContext(`${onboarding}\nglobalThis.controller = DeviceOnboardingController;`, context);
+  return context.controller;
+}
 
 test("nested device-management routes survive a direct browser reload", () => {
   assert.equal(normalizeAppPath("/app/device-management/provisioning/"), "/index.html");
@@ -32,6 +39,27 @@ test("provisioning requires an exclusive WLAN or USB choice before showing a wor
   assert.match(css, /grid-template-columns:\s*repeat\(2, minmax\(180px, 260px\)\)/);
   assert.match(css, /min-height:\s*38px/);
   assert.doesNotMatch(view, /Vollständig provisioniertes Board im gleichen WLAN suchen|Erstverbindung, WLAN-Suche erfolglos/);
+});
+
+test("USB provisioning treats macOS tty and cu paths as one device and prefers cu", () => {
+  const { preferredSerialServicePorts } = onboardingControllerForTest();
+  const ports = preferredSerialServicePorts([
+    { path: "/dev/tty.usbmodem101", label: "tty board" },
+    { path: "/dev/cu.usbmodem101", label: "cu board" },
+  ]);
+
+  assert.equal(ports.length, 1);
+  assert.equal(ports[0].path, "/dev/cu.usbmodem101");
+});
+
+test("USB provisioning keeps genuinely different serial devices selectable", () => {
+  const { preferredSerialServicePorts } = onboardingControllerForTest();
+  const ports = preferredSerialServicePorts([
+    { path: "/dev/cu.usbmodem101" },
+    { path: "/dev/cu.usbserial-210" },
+  ]);
+
+  assert.equal(ports.length, 2);
 });
 
 test("guided provisioning uses the full width without a manual fallback", () => {
@@ -90,7 +118,14 @@ test("USB provisioning offers a compatible known board and applies its catalog d
   assert.match(onboarding, /normalizeProcessorVariant\(board\.mcu_variant\) === variant/);
   assert.match(onboarding, /processorVariantForDetectedProfile\(detectedProfileId\)/);
   assert.match(onboarding, /const detectedProfileId = detectedBoard \? boardId\(detectedBoard\) : \(/);
-  assert.match(onboarding, /const boards = state\.processorBoards\.length \? state\.processorBoards : fallbackProcessorBoards\(\)/);
+  assert.doesNotMatch(onboarding, /fallbackProcessorBoards/);
+  assert.doesNotMatch(server, /defaultCatalogSeed/);
+  assert.match(server, /error: "hardware_catalog_unreachable"[\s\S]*message: "Hardware-Katalog nicht erreichbar\."/);
+  assert.match(onboarding, /loadProcessorBoardCatalog\(\{ force: true \}\)/);
+  assert.match(onboarding, /loadBoardFeatureCatalog\(\{ force: true \}\)/);
+  assert.match(onboarding, /featureCatalogStatus\.state !== "ready"/);
+  assert.match(onboarding, /!state\.boardFeatureCatalog\.length/);
+  assert.match(onboarding, /Hardware-Katalog nicht erreichbar/);
   assert.match(onboarding, /default_instance_configuration \|\| \{\}/);
   assert.match(onboarding, /integratedMemoryDrivers/);
   assert.match(onboarding, /esp_idf_partition_table/);

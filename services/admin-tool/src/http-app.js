@@ -143,6 +143,14 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/api/internal/system-events") {
+      if (!service.serviceClients?.systemEventIngestToken || req.headers["x-gernetix-system-event-token"] !== service.serviceClients.systemEventIngestToken) {
+        sendJson(res, 403, { error: "system_event_ingest_access_denied" }); return;
+      }
+      sendJson(res, 201, { event: service.recordSystemEvent(await readJsonBody(req)) });
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/admin/ai-clarification-cases") {
       sendJson(res, 200, await service.aiClarificationCases({
         status: url.searchParams.get("status") || "",

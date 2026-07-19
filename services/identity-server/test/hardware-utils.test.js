@@ -4,12 +4,23 @@ const { createDevHardwareUtils } = require("../src/dev/hardware-utils");
 
 function createUtils(overrides = {}) {
   return createDevHardwareUtils({
-    defaultCatalogSeed: () => ({ hardwareItems: [] }),
     execFileAsync: async () => ({ stdout: "" }),
     hardwareCatalogJson: async () => ({ items: [] }),
     ...overrides,
   });
 }
+
+test("does not invent processor boards when the hardware catalog is unavailable", async () => {
+  const { loadProcessorBoards } = createUtils({
+    hardwareCatalogJson: async () => {
+      const error = new Error("Hardware Catalog request failed.");
+      error.status = 502;
+      throw error;
+    },
+  });
+
+  await assert.rejects(loadProcessorBoards(), /Hardware Catalog request failed/);
+});
 
 test("keeps USB firmware recovery available for offline ESP32 devices", () => {
   const { isUsbFlashDevice, deviceBuildConfig, buildTargetLabel } = createUtils();

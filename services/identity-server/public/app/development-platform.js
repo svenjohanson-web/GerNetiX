@@ -1545,8 +1545,7 @@ const DevelopmentPlatform = (() => {
     }
 
     function availableProcessorBoards() {
-      if (Array.isArray(state.processorBoards) && state.processorBoards.length) return state.processorBoards;
-      return typeof fallbackProcessorBoards === "function" ? fallbackProcessorBoards() : [];
+      return Array.isArray(state.processorBoards) ? state.processorBoards : [];
     }
 
     function processorBoardFamily(board) {

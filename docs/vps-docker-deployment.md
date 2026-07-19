@@ -43,6 +43,8 @@ OTA_SIGNING_KEY_ID=ota-p256-2026-01
 
 Vor dem Start muessen `build.gernetix.com` und `mqtt.gernetix.com` per DNS auf den VPS zeigen. Das Deployment fordert dafuer das gemeinsame Zertifikat `/etc/letsencrypt/live/gernetix-services.com/` an. Mosquitto bindet das gesamte Let's-Encrypt-Verzeichnis read-only ein, damit Zertifikatserneuerungen sichtbar bleiben. Nach einer Erneuerung wird nur der Broker neu geladen:
 
+Fuer persistente Identity-Systemereignisse muss in `.env.vps` ein eigener langer Zufallswert als `SYSTEM_EVENT_INGEST_TOKEN` gesetzt sein. Compose uebergibt denselben Wert ausschliesslich an Identity Server und Admin Tool.
+
 ```bash
 docker compose --env-file .env.vps -f compose.vps.yaml kill -s HUP mqtt-broker
 ```
@@ -110,7 +112,7 @@ http://127.0.0.1:4600/admin/
 
 Compose legt benannte Volumes an:
 
-- `identity_state`: Identity-Accounts, Credentials, Sessions und Push-Subscriptions
+- `identity_state`: Identity-Accounts, Credentials, Sessions, Push-Subscriptions und unveraenderliche Plattform-Download-Releases
 - `project_state`: Projekte, Projektquellen, Build-Metadaten und Ressourcenprofile des Project Server
 - `telemetry_state`: konto- und projektpartitionierte Messwerte, Ereignisse und Retention des Telemetry Server
 - `service_state`: gemeinsamer SQLite-State der verbleibenden technischen Dienste; keine Projekt- oder Telemetrie-Daten nach der Migration

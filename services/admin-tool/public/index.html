@@ -338,7 +338,8 @@
         <section class="panel">
           <div class="section-head"><div><p class="eyebrow">Kostenkontrolle</p><h2>Ressourcen pro Nutzerprofil</h2></div><button id="refreshResourcesButton" type="button">Neu laden</button></div>
           <p class="muted">Die Limits werden zentral im Project Server (SQLite) gespeichert. Projekt- und Speicherlimits werden beim Anlegen/Speichern durchgesetzt; der Traffic-Wert ist fuer die anschliessende Messung und Durchsetzung vorbereitet.</p>
-          <div class="table-wrap"><table><thead><tr><th>Profil</th><th>Max. Projekte</th><th>Speicher</th><th>Monatlicher Traffic</th><th></th></tr></thead><tbody id="resourcePolicyRows"></tbody></table></div>
+          <p class="resource-limit-help"><strong>Einheiten:</strong> Projekte werden als Anzahl, Speicher und monatlicher Traffic in MiB angegeben. 1 MiB entspricht 1.048.576 Bytes. <strong>0 bedeutet bei Speicher und Traffic: unbegrenzt.</strong></p>
+          <div class="table-wrap"><table><thead><tr><th>Profil</th><th>Max. Projekte <span class="table-unit">(Anzahl)</span></th><th>Speicher <span class="table-unit">(MiB)</span></th><th>Monatlicher Traffic <span class="table-unit">(MiB)</span></th><th></th></tr></thead><tbody id="resourcePolicyRows"></tbody></table></div>
         </section>
         <section class="panel"><p class="eyebrow">Nutzung</p><h2>Gespeicherte Entwicklungsprojekte</h2><div class="table-wrap"><table><thead><tr><th>Account</th><th>Projekte</th><th>Speicher</th></tr></thead><tbody id="resourceAccountRows"></tbody></table></div></section>
       </section>

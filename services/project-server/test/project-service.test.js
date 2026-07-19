@@ -385,11 +385,27 @@ test("enforces centrally configurable free resource limits", () => {
 
 test("enforces the generous premium project-count limit without storage enforcement", () => {
   const service = createMemoryProjectServer();
+  const first = service.createProject({ user_id: "premium-storage-user", plan_id: "premium", title: "Mit Quelltext" });
+  service.upsertSource(first.project_id, { path: "src/main.cpp", content: "void setup() {}" });
   for (let index = 0; index < 200; index += 1) {
     service.createProject({ user_id: "premium-user", plan_id: "premium", title: `Projekt ${index}` });
   }
   assert.throws(() => service.createProject({ user_id: "premium-user", plan_id: "premium", title: "Zu viel" }), /Maximal 200 Projekte/);
   assert.equal(service.resourceSummary().policies.find((policy) => policy.plan_id === "premium").max_projects, 200);
+});
+
+test("treats zero resource limits as unlimited", () => {
+  const service = createMemoryProjectServer();
+  const policy = service.updateResourcePolicy("free", {
+    max_projects: 0,
+    max_storage_bytes: 0,
+    max_monthly_traffic_bytes: 0,
+  });
+  assert.equal(policy.max_projects, null);
+  assert.equal(policy.max_storage_bytes, null);
+  assert.equal(policy.max_monthly_traffic_bytes, null);
+  const project = service.createProject({ user_id: "unlimited-user", plan_id: "free", title: "Ohne Grenze" });
+  assert.doesNotThrow(() => service.upsertSource(project.project_id, { path: "src/main.cpp", content: "void setup() {}" }));
 });
 
 test("deletes a project together with its stored project data", () => {

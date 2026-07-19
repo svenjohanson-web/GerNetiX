@@ -36,3 +36,29 @@ test("Admin API stellt das Projekt-Komponentenmetamodell nur ueber den geschuetz
     assert.ok(body.relationship_rules.some((item) => item.id === "measures_for"));
   });
 });
+
+test("interner System-Event-Eingang akzeptiert nur den eigenen Ingest-Token", async () => {
+  const recorded = [];
+  const service = {
+    serviceClients: { systemEventIngestToken: "event-ingest-token" },
+    recordSystemEvent(event) { recorded.push(event); return { event_id: "evt-1", ...event }; },
+  };
+  const app = createHttpApp({ service });
+  await withServer(app, async (baseUrl) => {
+    const denied = await fetch(`${baseUrl}/api/internal/system-events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source_service: "identity_server", event_type: "passkey_login_failed", message: "Login fehlgeschlagen." }),
+    });
+    assert.equal(denied.status, 403);
+
+    const allowed = await fetch(`${baseUrl}/api/internal/system-events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-GerNetiX-System-Event-Token": "event-ingest-token" },
+      body: JSON.stringify({ source_service: "identity_server", event_type: "passkey_login_failed", message: "Login fehlgeschlagen." }),
+    });
+    assert.equal(allowed.status, 201);
+    assert.equal(recorded.length, 1);
+    assert.equal(recorded[0].event_type, "passkey_login_failed");
+  });
+});

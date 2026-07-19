@@ -1,0 +1,76 @@
+#!/bin/sh
+set -eu
+
+PLIST="/Library/LaunchAgents/com.gernetix.serial-service.plist"
+SUPPORT_DIR="/Library/Application Support/GerNetiX Serial Service"
+ROOT_CERTIFICATE="$SUPPORT_DIR/root-ca-cert.pem"
+ROOT_PRIVATE_KEY="$SUPPORT_DIR/root-ca-key.pem"
+CERTIFICATE="$SUPPORT_DIR/localhost-cert.pem"
+PRIVATE_KEY="$SUPPORT_DIR/localhost-key.pem"
+CERTIFICATE_REQUEST="$SUPPORT_DIR/localhost.csr"
+PKCS12_IDENTITY="$SUPPORT_DIR/localhost-identity.p12"
+PKCS12_PASSWORD_FILE="$SUPPORT_DIR/localhost-identity.password"
+OPENSSL_CONFIG="$(dirname "$0")/localhost-openssl.cnf"
+ROOT_OPENSSL_CONFIG="$(dirname "$0")/root-ca-openssl.cnf"
+CONSOLE_USER="$(stat -f '%Su' /dev/console)"
+
+if [ -n "$CONSOLE_USER" ] && [ "$CONSOLE_USER" != "root" ] && [ "$CONSOLE_USER" != "loginwindow" ]; then
+  USER_ID="$(id -u "$CONSOLE_USER")"
+  mkdir -p "$SUPPORT_DIR"
+  chown root:wheel "$SUPPORT_DIR"
+  chmod 755 "$SUPPORT_DIR"
+  if [ ! -f "$ROOT_CERTIFICATE" ] || [ ! -f "$ROOT_PRIVATE_KEY" ] || ! openssl x509 -checkend 2592000 -noout -in "$ROOT_CERTIFICATE" >/dev/null 2>&1; then
+    security delete-certificate -c "GerNetiX Serial Service Local CA" /Library/Keychains/System.keychain >/dev/null 2>&1 || true
+    security delete-certificate -c "GerNetiX Serial Service Localhost" /Library/Keychains/System.keychain >/dev/null 2>&1 || true
+    rm -f "$ROOT_CERTIFICATE" "$ROOT_PRIVATE_KEY" "$CERTIFICATE" "$PRIVATE_KEY" \
+      "$CERTIFICATE_REQUEST" "$PKCS12_IDENTITY" "$PKCS12_PASSWORD_FILE" "$SUPPORT_DIR/root-ca-cert.srl"
+    openssl req -x509 -newkey rsa:2048 -nodes -sha256 -days 3650 \
+      -config "$ROOT_OPENSSL_CONFIG" \
+      -keyout "$ROOT_PRIVATE_KEY" \
+      -out "$ROOT_CERTIFICATE"
+  fi
+  if [ ! -f "$CERTIFICATE" ] || [ ! -f "$PRIVATE_KEY" ] || ! openssl x509 -checkend 2592000 -noout -in "$CERTIFICATE" >/dev/null 2>&1; then
+    rm -f "$CERTIFICATE" "$PRIVATE_KEY" "$CERTIFICATE_REQUEST" "$PKCS12_IDENTITY" "$PKCS12_PASSWORD_FILE"
+    openssl req -new -newkey rsa:2048 -nodes -sha256 \
+      -config "$OPENSSL_CONFIG" \
+      -keyout "$PRIVATE_KEY" \
+      -out "$CERTIFICATE_REQUEST"
+    openssl x509 -req -sha256 -days 825 \
+      -in "$CERTIFICATE_REQUEST" \
+      -CA "$ROOT_CERTIFICATE" \
+      -CAkey "$ROOT_PRIVATE_KEY" \
+      -CAcreateserial \
+      -extfile "$OPENSSL_CONFIG" \
+      -extensions localhost \
+      -out "$CERTIFICATE"
+    rm -f "$CERTIFICATE_REQUEST"
+  fi
+  if [ ! -f "$PKCS12_IDENTITY" ] || [ ! -f "$PKCS12_PASSWORD_FILE" ]; then
+    openssl rand -hex 32 > "$PKCS12_PASSWORD_FILE"
+    openssl pkcs12 -export \
+      -inkey "$PRIVATE_KEY" \
+      -in "$CERTIFICATE" \
+      -certfile "$ROOT_CERTIFICATE" \
+      -name "GerNetiX Serial Service Localhost" \
+      -passout "file:$PKCS12_PASSWORD_FILE" \
+      -out "$PKCS12_IDENTITY"
+  fi
+  chown root:wheel "$ROOT_PRIVATE_KEY" "$ROOT_CERTIFICATE"
+  chmod 600 "$ROOT_PRIVATE_KEY"
+  chmod 644 "$ROOT_CERTIFICATE"
+  chown "$CONSOLE_USER":staff "$PRIVATE_KEY" "$CERTIFICATE" "$PKCS12_IDENTITY" "$PKCS12_PASSWORD_FILE"
+  chmod 600 "$PRIVATE_KEY" "$PKCS12_IDENTITY" "$PKCS12_PASSWORD_FILE"
+  chmod 644 "$CERTIFICATE"
+  if ! security verify-cert -c "$CERTIFICATE" -p ssl -n localhost \
+    -k /Library/Keychains/System.keychain -L >/dev/null 2>&1; then
+    security add-trusted-cert -d -r trustRoot \
+      -k /Library/Keychains/System.keychain "$ROOT_CERTIFICATE"
+  fi
+  security verify-cert -c "$CERTIFICATE" -p ssl -n localhost \
+    -k /Library/Keychains/System.keychain -L
+  launchctl bootout "gui/$USER_ID/com.gernetix.serial-service" >/dev/null 2>&1 || true
+  launchctl bootstrap "gui/$USER_ID" "$PLIST"
+  launchctl kickstart -k "gui/$USER_ID/com.gernetix.serial-service"
+fi
+
+exit 0

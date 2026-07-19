@@ -210,6 +210,7 @@ services:
       IDENTITY_BASE_URL: http://identity-server:4300
       IDENTITY_ADMIN_TOKEN: ${IDENTITY_ADMIN_TOKEN:-}
       ADMIN_TOOL_ACCESS_TOKEN: ${ADMIN_TOOL_ACCESS_TOKEN:?ADMIN_TOOL_ACCESS_TOKEN muss gesetzt sein}
+      SYSTEM_EVENT_INGEST_TOKEN: ${SYSTEM_EVENT_INGEST_TOKEN:?SYSTEM_EVENT_INGEST_TOKEN muss gesetzt sein}
       SECURITY_MONITOR_TOKEN: ${SECURITY_MONITOR_TOKEN:-}
       PROJECT_SERVER_BASE_URL: http://project-server:4800
       BUILD_DEPLOY_BASE_URL: http://build-deploy-server:4400
@@ -260,6 +261,7 @@ services:
       PORT: 4300
       IDENTITY_PERSISTENCE_BACKEND: sqlite
       IDENTITY_SQLITE_PATH: /var/lib/gernetix/identity/gernetix-identity.sqlite
+      PLATFORM_DOWNLOAD_SQLITE_PATH: /var/lib/gernetix/identity/gernetix-platform-downloads.sqlite
       IDENTITY_APP_BASE_URL: ${IDENTITY_APP_BASE_URL:-}
       IDENTITY_ADMIN_TOKEN: ${IDENTITY_ADMIN_TOKEN:-}
       EMAIL_CONFIG_ENCRYPTION_KEY: ${EMAIL_CONFIG_ENCRYPTION_KEY:-}
@@ -278,6 +280,7 @@ services:
       AI_USAGE_BASE_URL: http://ai-usage-server:5000
       AI_CONTEXT_BASE_URL: http://ai-context-server:5500
       ADMIN_TOOL_BASE_URL: http://admin-tool:4600
+      SYSTEM_EVENT_INGEST_TOKEN: ${SYSTEM_EVENT_INGEST_TOKEN:?SYSTEM_EVENT_INGEST_TOKEN muss gesetzt sein}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
     expose: ["4300"]
     extra_hosts:

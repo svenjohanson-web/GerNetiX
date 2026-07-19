@@ -1,0 +1,13 @@
+[req]
+distinguished_name = subject
+x509_extensions = root_ca
+prompt = no
+
+[subject]
+CN = GerNetiX Serial Service Local CA
+
+[root_ca]
+basicConstraints = critical,CA:TRUE,pathlen:0
+keyUsage = critical,keyCertSign,cRLSign
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer

@@ -10,7 +10,7 @@ const onboarding = fs.readFileSync(path.join(__dirname, "..", "public", "app", "
 test("dashboard offers direct access to device management", () => {
   const dashboard = html.slice(html.indexOf('<section id="dashboardView"'), html.indexOf('<section id="helpView"'));
   assert.match(dashboard, /data-open-route="\/app\/device-management\/"/);
-  assert.match(dashboard, /Device Management[\s\S]*Boards verwalten/);
+  assert.match(dashboard, /Vorhandene Hardware[\s\S]*Boards verwalten/);
 });
 
 test("inventory exposes account unpair without claiming to delete the physical device", () => {

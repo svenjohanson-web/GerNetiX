@@ -341,8 +341,8 @@ class ProjectService {
       ...current,
       plan_id: String(planId).toLowerCase(),
       max_projects: unlimitedOrPositiveLimit(input.max_projects, current.max_projects),
-      max_storage_bytes: positiveLimit(input.max_storage_bytes, current.max_storage_bytes),
-      max_monthly_traffic_bytes: positiveLimit(input.max_monthly_traffic_bytes, current.max_monthly_traffic_bytes),
+      max_storage_bytes: unlimitedOrPositiveLimit(input.max_storage_bytes, current.max_storage_bytes),
+      max_monthly_traffic_bytes: unlimitedOrPositiveLimit(input.max_monthly_traffic_bytes, current.max_monthly_traffic_bytes),
       updated_at: new Date().toISOString(),
     };
     return this.repository.saveResourcePolicy(policy);
@@ -369,7 +369,7 @@ class ProjectService {
 
   assertProjectQuota(userId, planId) {
     const policy = this.policyFor(planId);
-    if (this.repository.listProjects({ user_id: userId }).length >= policy.max_projects) {
+    if (policy.max_projects !== null && this.repository.listProjects({ user_id: userId }).length >= policy.max_projects) {
       throw new ProjectServerError("project_quota_exceeded", `Maximal ${policy.max_projects} Projekte fuer den Plan ${policy.plan_id}.`, 409);
     }
   }
@@ -378,7 +378,7 @@ class ProjectService {
     const policy = this.policyFor(planId);
     const existing = this.repository.findSource(project.project_id, sourcePath);
     const nextBytes = this.projectStorageBytes(project.project_id) - Buffer.byteLength(existing?.content || "", "utf8") + Buffer.byteLength(content, "utf8");
-    if (nextBytes > policy.max_storage_bytes) {
+    if (policy.max_storage_bytes !== null && nextBytes > policy.max_storage_bytes) {
       throw new ProjectServerError("storage_quota_exceeded", `Speicherlimit von ${policy.max_storage_bytes} Bytes fuer den Plan ${policy.plan_id} erreicht.`, 413);
     }
   }
@@ -489,7 +489,7 @@ function positiveLimit(value, fallback) {
 }
 
 function unlimitedOrPositiveLimit(value, fallback) {
-  if (value === null || value === "") return null;
+  if (value === null || value === "" || Number(value) === 0) return null;
   return positiveLimit(value, fallback);
 }
 
