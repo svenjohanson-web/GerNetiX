@@ -21,7 +21,6 @@ test("nested device-management routes survive a direct browser reload", () => {
   assert.equal(normalizeAppPath("/app/device-management/provisioning/"), "/index.html");
   assert.equal(normalizeAppPath("/app/device-management/inventory/"), "/index.html");
   assert.equal(normalizeAppPath("/app/device-management/recovery/"), "/index.html");
-  assert.equal(normalizeAppPath("/app/help/"), "/index.html");
 });
 
 test("provisioning requires an exclusive WLAN or USB choice before showing a workflow", () => {
@@ -174,7 +173,7 @@ test("USB provisioning flashes the basis software before registration and pairin
   assert.match(onboarding, /Noch erforderlich:.*reasons\.join/);
   assert.match(onboarding, /Boardmodell waehlen oder Ausstattung manuell festlegen/);
   assert.match(onboarding, /Update- und Speicherprofil waehlen/);
-  assert.match(onboarding, /href="\/app\/help\/#update-profiles"/);
+  assert.match(onboarding, /href="\/hilfe\/#update-profiles"/);
   assert.match(onboarding, /openHelpTopic\("update-profiles"\)/);
   assert.match(onboarding, /!hasDetectedBootloader \|\| !hasBoardConfiguration/);
   assert.match(onboarding, /!device\.bootloader_type \|\| state\.provisioningUsbFlashSucceeded/);

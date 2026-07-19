@@ -7,6 +7,21 @@
     <link rel="stylesheet" href="/app/auth/auth.css" />
   </head>
   <body>
+    <header class="auth-site-header">
+      <a class="auth-site-brand" href="/" aria-label="GerNetiX Startseite">
+        <span class="auth-site-brand-mark" aria-hidden="true">G</span>
+        <span><strong>GerNetiX</strong><small>Engineering Knowledge Platform</small></span>
+      </a>
+      <button id="authMenuButton" class="auth-menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="authMenu">
+        <span></span><span></span><span></span>
+      </button>
+      <nav id="authMenu" class="auth-site-menu" aria-label="Öffentliche Bereiche" hidden>
+        <a href="/">Startseite</a>
+        <a href="/wissen/">Wissensportal</a>
+        <a href="/hilfe/">Hilfe</a>
+        <a href="/app/auth/">Anmelden</a>
+      </nav>
+    </header>
     <main class="login-shell">
       <section class="login-panel" aria-labelledby="login-title">
         <div class="brand"><div class="brand-mark" aria-hidden="true">G</div><div><p class="eyebrow">GerNetiX Plattform</p><h1 id="login-title">Anmelden</h1></div></div>
@@ -29,6 +44,10 @@
         <p class="status" id="status" role="status"></p>
       </section>
     </main>
+    <footer class="auth-site-footer">
+      <span>© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
+      <nav aria-label="Weiterführende Informationen"><a href="/app/vision/">Vision</a><a href="/#motivation">Über uns</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/">Startseite</a></nav>
+    </footer>
     <script src="/app/auth/auth.js?v=20260718-02"></script>
   </body>
 </html>

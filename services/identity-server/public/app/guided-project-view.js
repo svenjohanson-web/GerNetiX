@@ -149,7 +149,7 @@ const GuidedProjectView = (() => {
                 <button class="code-explorer-send-button" type="submit" aria-label="Frage senden" title="Frage senden" ${waiting || !hasPremiumAi ? "disabled" : ""}>&uarr;</button>
               </span>
             </label>
-            ${hasPremiumAi ? "" : '<p class="chat-premium-hint">KI-Unterstuetzung ist im Premium-Abo enthalten. <a href="/app/help/#ai-premium" data-route="help">Warum?</a></p>'}
+            ${hasPremiumAi ? "" : '<p class="chat-premium-hint">KI-Unterstuetzung ist im Premium-Abo enthalten. <a href="/hilfe/#ai-premium">Warum?</a></p>'}
           </form>
         </section>
       `;

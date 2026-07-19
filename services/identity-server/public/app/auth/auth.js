@@ -3,6 +3,26 @@ const registerForm = document.querySelector("#register-form");
 const modeToggle = document.querySelector("#auth-mode-toggle");
 const guestAccessButton = document.querySelector("#guest-access-button");
 const guestHint = document.querySelector("#guest-hint");
+const authMenuButton = document.querySelector("#authMenuButton");
+const authMenu = document.querySelector("#authMenu");
+
+function closeAuthMenu() {
+  if (!authMenu || !authMenuButton) return;
+  authMenu.hidden = true;
+  authMenuButton.setAttribute("aria-expanded", "false");
+  authMenuButton.setAttribute("aria-label", "Menü öffnen");
+}
+
+authMenuButton?.addEventListener("click", (event) => {
+  event.stopPropagation();
+  const open = authMenu.hidden;
+  authMenu.hidden = !open;
+  authMenuButton.setAttribute("aria-expanded", open ? "true" : "false");
+  authMenuButton.setAttribute("aria-label", open ? "Menü schließen" : "Menü öffnen");
+});
+authMenu?.addEventListener("click", (event) => event.stopPropagation());
+document.addEventListener("click", closeAuthMenu);
+document.addEventListener("keydown", (event) => { if (event.key === "Escape") closeAuthMenu(); });
 const titleElement = document.querySelector("#login-title");
 const statusElement = document.querySelector("#status");
 const identifierField = document.querySelector("#login-identifier-field");

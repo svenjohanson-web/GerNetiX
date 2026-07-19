@@ -1,52 +1,121 @@
 const HelpContent = (() => {
   const topics = [
     {
-      id: "public-information",
-      title: "Öffentliche Informationen",
-      description: "GerNetiX kennenlernen, Hardware einschätzen und den Einstieg planen.",
+      id: "start-and-access",
+      title: "Start und Zugang",
+      description: "Konto, Anmeldung, Wiederherstellung und die ersten Schritte verstehen.",
+      surface: "help",
       access: "public",
       children: [
         { id: "quick-start", title: "So startest du", articleId: "quick-start" },
         { id: "create-account", title: "Konto anlegen", articleId: "create-account" },
+        { id: "account-types", title: "Kontotypen und Zugangsstufen", articleId: "account-types" },
+        { id: "registration-login-recovery", title: "Registrierung, Anmeldung und Wiederherstellung", articleId: "registration-login-recovery" },
+        { id: "entitlements-and-tokens", title: "Premium, Entitlements und Token", articleId: "entitlements-and-tokens" },
         { id: "plan-comparison", title: "Basis, Basis Plus und Premium vergleichen", articleId: "plan-comparison" },
-        { id: "ai-premium", title: "KI-Unterstuetzung und Premium", articleId: "ai-premium" },
+      ],
+    },
+    {
+      id: "system-landscapes",
+      title: "Systemlandschaften",
+      description: "Lokale und globale Systeme verbinden, Cloud-Kosten und Datenschutz verstehen.",
+      surface: "knowledge",
+      access: "public",
+      children: [
+        { id: "server-systems", title: "Moderne Systemlandschaften", articleId: "server-systems" },
       ],
     },
     {
       id: "hardware-basics",
-      title: "Hardware verstehen",
-      description: "Prozessorfamilien einordnen, bevor du ein konkretes Board auswaehlst.",
+      title: "Hardware und Embedded",
+      description: "Boards, Elektronik, Messtechnik, Debugging und Sicherheit einordnen.",
+      surface: "knowledge",
       access: "public",
       children: [
         { id: "hardware-landscape", title: "Hardware-Landkarte: vom Akku bis Edge AI", articleId: "hardware-landscape" },
-        { id: "server-systems", title: "Moderne Systemlandschaften", articleId: "server-systems" },
         { id: "processor-overview", title: "ESP32-Prozessorfamilien im Vergleich", articleId: "processor-overview" },
+        { id: "microcontroller-basics", title: "Grundlagen Mikrocontroller", articleId: "microcontroller-basics", subchapters: [
+          { id: "microcontroller-flashing", title: "Flashen" },
+          { id: "microcontroller-memory", title: "Speicherorganisation" },
+          { id: "microcontroller-registers", title: "Register" },
+          { id: "microcontroller-gpio", title: "GPIO" },
+          { id: "microcontroller-adc", title: "ADC" },
+          { id: "microcontroller-timer", title: "Timer" },
+          { id: "microcontroller-pwm", title: "PWM" },
+        ] },
+        { id: "physical-limits", title: "Grenzen der Physik", articleId: "physical-limits", subchapters: [
+          { id: "physical-limits-ratings", title: "Absolute Maximum Ratings – absolute Grenzwerte" },
+          { id: "physical-limits-current", title: "Strom pro Pin und Gesamtstrom" },
+          { id: "physical-limits-frequency", title: "Maximale Frequenz und Prozessortakt" },
+        ] },
+        { id: "sampling-rate", title: "Abtastrate und Shannon-Theorem", articleId: "sampling-rate", subchapters: [
+          { id: "sampling-rate-shannon", title: "Nyquist-Shannon-Abtasttheorem" },
+          { id: "sampling-rate-aliasing", title: "Aliasing – wenn hohe Frequenzen täuschen" },
+          { id: "sampling-rate-practice", title: "Abtastrate praktisch wählen" },
+        ] },
+        { id: "embedded-measurement-debugging", title: "Embedded-Systeme: Messtechnik und Debugging", articleId: "embedded-measurement-debugging" },
+        { id: "embedded-safety", title: "Elektrische und funktionale Sicherheit", articleId: "embedded-safety" },
       ],
     },
     {
-      id: "account-access",
-      title: "Konto und Zugang",
-      description: "Gastzugang, dauerhaftes Konto, Anmeldung, Wiederherstellung und Angebote verstehen.",
+      id: "servers",
+      title: "Server",
+      description: "Server passend zu Reichweite, Kontrolle, Last und Betriebsaufwand auswählen.",
+      surface: "knowledge",
       access: "public",
       children: [
-        { id: "account-types", title: "Kontotypen und Zugangsstufen", articleId: "account-types" },
-        { id: "registration-login-recovery", title: "Registrierung, Anmeldung und Wiederherstellung", articleId: "registration-login-recovery" },
-        { id: "entitlements-and-tokens", title: "Premium, Entitlements und Token", articleId: "entitlements-and-tokens" },
+        { id: "local-servers", title: "Lokale Server und Gateways", articleId: "local-servers" },
+        { id: "internet-vps", title: "Internet-Server und VPS", articleId: "internet-vps" },
+        { id: "cloud-services", title: "Cloud-Dienste", articleId: "cloud-services" },
+        { id: "choosing-servers", title: "Server passend auswählen", articleId: "choosing-servers" },
       ],
     },
     {
-      id: "account-information",
-      title: "Mit GerNetiX-Konto",
-      description: "Board einrichten, registrieren und dein Inventar nutzen.",
-      access: "account",
-      children: [{ id: "provision-new-board", title: "Neues Board in Betrieb nehmen", articleId: "provision-new-board" }, { id: "board-definition", title: "Warum eine Board Definition?", articleId: "board-definition" }, { id: "register-device", title: "Board registrieren", articleId: "register-device" }, { id: "pair-device", title: "Board verbinden", articleId: "pair-device" }, { id: "flash-device", title: "Board flashen", articleId: "flash-device" }, { id: "usb-wifi-setup", title: "WLAN per USB einrichten", articleId: "usb-wifi-setup" }, { id: "supported-devices", title: "Unterstützte Boards", articleId: "supported-devices" }, { id: "device-not-detected", title: "Board wird nicht erkannt", articleId: "device-not-detected" }],
+      id: "software",
+      title: "Software",
+      description: "Firmware, Dienste und Apps als zusammenhängende Softwarelandschaft verstehen.",
+      surface: "knowledge",
+      access: "public",
+      children: [
+        { id: "software-basics", title: "Software in verteilten Systemen", articleId: "software-basics" },
+        { id: "workers-and-queues", title: "Worker, Queues und Hintergrundaufgaben", articleId: "workers-and-queues" },
+      ],
     },
     {
-      id: "project-support",
-      title: "Unterstützung bei Projekten",
-      description: "Komponenten verstehen und für dein eigenes Projekt konfigurieren.",
+      id: "cross-cutting-topics",
+      title: "Querschnittsthemen",
+      description: "Themen, die jede Systemebene und jedes Projekt betreffen.",
+      surface: "knowledge",
+      access: "public",
+      children: [
+        { id: "privacy-basics", title: "Datenschutz in vernetzten Projekten", articleId: "privacy-basics" },
+      ],
+    },
+    {
+      id: "glossary",
+      title: "Lexikon",
+      description: "Fachbegriffe kurz, verständlich und mit einem praktischen Beispiel nachschlagen.",
+      surface: "knowledge",
+      access: "public",
+      children: [
+        { id: "glossary-basics", title: "Fachbegriffe einfach erklärt", articleId: "glossary-basics" },
+      ],
+    },
+    {
+      id: "devices-and-projects",
+      title: "Geräte und Projekte",
+      description: "Boards einrichten und Projektfunktionen konfigurieren.",
+      surface: "help",
       access: "account",
       children: [
+        { id: "provision-new-board", title: "Neues Board in Betrieb nehmen", articleId: "provision-new-board" },
+        { id: "board-definition", title: "Warum eine Board Definition?", articleId: "board-definition" },
+        { id: "register-device", title: "Board registrieren", articleId: "register-device" },
+        { id: "pair-device", title: "Board verbinden", articleId: "pair-device" },
+        { id: "flash-device", title: "Board flashen", articleId: "flash-device" },
+        { id: "usb-wifi-setup", title: "WLAN per USB einrichten", articleId: "usb-wifi-setup" },
+        { id: "supported-devices", title: "Unterstützte Boards", articleId: "supported-devices" },
+        { id: "device-not-detected", title: "Board wird nicht erkannt", articleId: "device-not-detected" },
         { id: "event-worker-rules", title: "Ereignis-Worker und Regelsprache", articleId: "event-worker-rules" },
         { id: "event-dispatcher", title: "Ereignis-Dispatcher", articleId: "event-dispatcher" }
       ],
@@ -55,8 +124,10 @@ const HelpContent = (() => {
       id: "premium-information",
       title: "Premium-Abo",
       description: "Geführte Projekte, vertiefende Anleitungen und Projektwissen.",
+      surface: "help",
       access: "premium",
       children: [
+        { id: "ai-premium", title: "KI-Unterstuetzung und Premium", articleId: "ai-premium" },
         { id: "first-project", title: "Erstes Projekt umsetzen", articleId: "first-project" },
         { id: "update-profiles", title: "Update- und Speicherprofile", articleId: "update-profiles" },
       ],
@@ -174,19 +245,43 @@ const HelpContent = (() => {
       summary: "Ein Embedded-Gerät, ein lokaler Server, globale Dienste und eine iPhone-App sind mögliche Bausteine – keine Pflichtkette. Die Aufgabe bestimmt, was wirklich gebraucht wird.",
       access: "public",
       sections: [
-        { heading: "Vom Gerät bis zur App", paragraphs: ["Moderne Systeme sind oft verteilt: Ein Embedded-System misst oder steuert direkt vor Ort. Ein lokaler Server kann Geräte im Gebäude bündeln. Globale Server machen Daten und Funktionen von überall erreichbar. Eine iPhone-App ist die Bedienoberfläche für Menschen. Jede Ebene löst eine andere Aufgabe; ein kleines Projekt kann nur aus einem ESP32 bestehen, während ein größeres Projekt mehrere Ebenen sinnvoll verbindet."], table: { headers: ["Baustein", "Aufgabe", "Wann er sinnvoll ist"], rows: [
-          ["Embedded-System", "Reagiert direkt auf Sensoren, Taster, Motoren oder LEDs; arbeitet nahe an der Hardware.", "Wenn kurze Reaktionszeit, geringer Energiebedarf oder Betrieb ohne Internet wichtig sind – zum Beispiel ESP32-Sensor, Türkontakt oder Bewässerungssteuerung."],
-          ["Lokaler Server oder Gateway", "Bündelt Geräte im Haus, Betrieb oder Fahrzeug; kann Daten puffern, Regeln ausführen und lokale Bedienung anbieten.", "Wenn Geräte auch bei Internet-Ausfall zusammenarbeiten sollen, Kamera- oder Maschinendaten lokal bleiben oder verschiedene Funknetze verbunden werden."],
-          ["Globaler Server", "Stellt Konten, APIs, Synchronisation, Benachrichtigungen und zentrale Daten für mehrere Standorte bereit.", "Wenn Fernzugriff, gemeinsame Nutzung, Backups außerhalb des Gebäudes oder viele Nutzer und Geräte erforderlich sind."],
-          ["iPhone-App", "Zeigt Informationen, fragt Einstellungen ab und sendet Bedienbefehle. Sie ersetzt nicht die verlässliche Steuerung im Gerät.", "Wenn Menschen mobil benachrichtigt werden, Werte ansehen oder Funktionen komfortabel bedienen sollen."]
+        { heading: "Vom IoT-Device-Bus zur App", paragraphs: ["Die Grafik zeigt drei Hauptbereiche. IoT-Geräte arbeiten an der realen Umgebung. Server verbinden, speichern oder verarbeiten Daten. Apps machen Funktionen für Menschen bedienbar. Die Server- und App-Varianten werden hier bewusst einzeln erklärt."], systemLandscape: true, table: { headers: ["Baustein aus der Übersicht", "Aufgabe", "Wann er sinnvoll ist"], rows: [
+          ["IoT-Geräte", "Embedded-Systeme lesen Sensoren, steuern Aktoren und reagieren direkt vor Ort.", "Wenn kurze Reaktionszeit, geringer Energiebedarf oder Betrieb ohne Internet wichtig sind – zum Beispiel ESP32-Sensor, Türkontakt oder Bewässerungssteuerung."],
+          ["Server: Lokal", "Ein lokaler Server oder Gateway bündelt Geräte im Haus, Betrieb oder Fahrzeug; er kann Daten puffern und Regeln ausführen.", "Wenn Geräte bei Internet-Ausfall zusammenarbeiten sollen, Daten vor Ort bleiben oder verschiedene Funknetze verbunden werden."],
+          ["Server: Internet/VPS", "Ein Internet-Server oder VPS stellt APIs, Konten, Synchronisation und zentrale Dienste bereit.", "Wenn Fernzugriff, gemeinsame Nutzung, zentrale Backups oder mehrere Standorte erforderlich sind."],
+          ["Server: Cloud", "Cloud-Dienste liefern nach Bedarf verwalteten Speicher, Datenbanken, Auswertung oder skalierbare Verarbeitung.", "Wenn Last stark schwankt, weltweite Reichweite gebraucht wird oder verwaltete Dienste Betriebsaufwand sparen."],
+          ["Apps: Mobil", "Mobile Apps auf iPhone, iPad oder Android zeigen Werte, senden Bedienbefehle und empfangen Benachrichtigungen.", "Wenn Menschen unterwegs informiert werden oder Funktionen mobil bedienen sollen."],
+          ["Apps: PC/Mac und Web", "Desktop- und Web-Apps bieten größere Übersichten, Konfiguration und Analyse im Browser oder auf dem Rechner.", "Wenn längere Bedienabläufe, Planung, Auswertung oder Administration im Vordergrund stehen."]
         ] } },
         { heading: "Nicht jedes Projekt braucht alles", table: { headers: ["Beispiel", "Sinnvolle Bausteine", "Warum"], rows: [
-          ["Batteriebetriebener Temperatursensor", "Embedded-System", "Er misst und sendet in Intervallen. Ein Server ist erst nötig, wenn Werte dauerhaft gesammelt oder aus der Ferne gesehen werden sollen."],
-          ["Bewässerung im Gewächshaus", "Embedded-System, optional lokaler Server", "Die Steuerung muss auch ohne Internet funktionieren. Ein lokales Gateway kann mehrere Sensoren und Zeitpläne koordinieren."],
-          ["Hausautomation mit Fernzugriff", "Embedded-Systeme, lokaler Server, globaler Server, optional iPhone-App", "Lokal bleiben Automationen reaktionsfähig; global kommen Fernzugriff und sichere Benachrichtigungen dazu."],
-          ["Produkt mit Kunden-App", "Embedded-System, globaler Server, iPhone-App", "Das Gerät arbeitet vor Ort; Server verwalten Konten und Synchronisation; die App ist die persönliche Bedienung."],
-          ["Maschinenüberwachung an mehreren Standorten", "Embedded-System, lokaler Gateway, globaler Server, Web- oder iPhone-App", "Das Gateway puffert und filtert Daten vor Ort, während die zentrale Plattform Standorte vergleicht und Alarme verteilt."]
+          ["Batteriebetriebener Temperatursensor", "IoT-Gerät", "Er misst und sendet in Intervallen. Ein Server oder eine App ist erst nötig, wenn Werte dauerhaft gesammelt oder aus der Ferne gesehen werden sollen."],
+          ["Bewässerung im Gewächshaus", "IoT-Geräte, optional Server: lokal", "Die Steuerung muss auch ohne Internet funktionieren. Ein lokales Gateway kann mehrere Sensoren und Zeitpläne koordinieren."],
+          ["Hausautomation mit Fernzugriff", "IoT-Geräte, Server: lokal und Internet/VPS, Apps: mobil oder Web", "Lokal bleiben Automationen reaktionsfähig; über Internet-Server und Apps kommen Fernzugriff und sichere Benachrichtigungen dazu."],
+          ["Produkt mit Kunden-App", "IoT-Gerät, Server: Internet/VPS oder Cloud, Apps: mobil", "Das Gerät arbeitet vor Ort; Server verwalten Konten und Synchronisation; die mobile App ist die persönliche Bedienung."],
+          ["Maschinenüberwachung an mehreren Standorten", "IoT-Geräte, Server: lokal und Cloud/VPS, Apps: PC/Mac oder Web", "Der lokale Server puffert und filtert Daten vor Ort, während zentrale Server Standorte vergleichen und Alarme verteilen."]
         ] } },
+        { heading: "GerNetiX einordnen", paragraphs: ["GerNetiX nutzt für seine Plattform einen VPS als gemeinsame Deployment-Umgebung für getrennte Dienste. Das ist kein Cloud-Autopilot: Zugänge, Updates, Container-Netzwerk, Backups und Monitoring bleiben bewusst kontrollierte Betriebsaufgaben. Hardware-nahe Funktionen wie USB-Provisionierung bleiben lokal beim Gerät und werden nicht auf den VPS verlagert.", "Ein GerNetiX-Projekt kann deshalb klein beginnen: ESP32 plus lokale Bedienung. Erst wenn es einen fachlichen Nutzen gibt, kommen ein lokales Gateway, der VPS für Fernzugriff oder eine iPhone-App dazu. Die verlässliche Reaktion auf Sensoren und Aktoren bleibt dabei am Embedded-System oder lokalen Gateway."] },
+      ],
+      relatedTopics: ["hardware-landscape", "processor-overview", "glossary-basics"],
+    },
+    "local-servers": {
+      title: "Lokale Server und Gateways",
+      summary: "Ein lokaler Server läuft im Haus, Büro oder Werk und verbindet Geräte nahe an ihrem Einsatzort.",
+      access: "public",
+      sections: [
+        { heading: "Wofür ein lokaler Server da ist", paragraphs: ["Ein lokaler Server oder Gateway sammelt Daten von IoT-Geräten, führt Regeln aus, puffert Informationen und stellt bei Bedarf eine lokale Bedienoberfläche bereit. Weil er nah bei den Geräten ist, kann die Kernfunktion auch ohne Internet weiterlaufen."], serverLandscape: true },
+        { heading: "Typische Anwendungen", list: ["Hausautomation mit lokalen Regeln und Funk-Bridges.", "Maschinen- oder Kameradaten, die das Gebäude nicht verlassen sollen.", "Lokale Datenpufferung bei unzuverlässigem Internet.", "Protokollübersetzung zwischen IoT-Geräten und weiteren Systemen."] },
+        { heading: "Verantwortung", paragraphs: ["Lokale Kontrolle bedeutet auch lokaler Betrieb: Stromausfall, Netzwerk, Updates, Backups und Fernwartung müssen geplant werden. Ein lokaler Server ersetzt kein Sicherheitskonzept, kann aber Latenz, Datenschutz und Ausfallsicherheit verbessern."] },
+      ],
+      relatedTopics: ["server-systems", "internet-vps", "cloud-services"],
+    },
+    "internet-vps": {
+      title: "Internet-Server und VPS",
+      summary: "Ein Internet-Server macht Dienste von außen erreichbar. Ein VPS ist dafür oft ein ausgewogener Startpunkt.",
+      access: "public",
+      sections: [
+        { heading: "Internet-Server", paragraphs: ["Ein öffentlich erreichbarer Server stellt beispielsweise APIs, Konten, Synchronisation oder eine Web-Anwendung bereit. Er verbindet Nutzer, Apps und Standorte über das Internet, muss aber besonders sorgfältig gegen unbefugte Zugriffe geschützt werden."] },
+        { heading: "VPS: Virtual Private Server", paragraphs: ["Ein VPS ist eine logisch getrennte virtuelle Serverinstanz im Rechenzentrum. Er fühlt sich wie ein eigener Linux-Server an, ohne dass du die physische Hardware betreiben musst. Web-App, API, kleine bis mittlere Datenbanken, VPN, Staging und getrennte Container sind typische Anwendungen."] },
         { heading: "Die vier verbreiteten Betriebsmodelle", table: { headers: ["Modell", "Was es ist", "Typische Anwendungen"], rows: [
           ["Lokaler Server", "Ein Rechner im eigenen Haus, Büro oder Werk; er läuft im lokalen Netzwerk oder hinter einem eigenen Internetanschluss.", "Home Assistant, lokale Datenablage, Maschinen-Gateway, Kameraaufzeichnung, Entwicklung und Offline-Betrieb."],
           ["Klassischer dedizierter Server", "Ein vollständig gemieteter physischer Server im Rechenzentrum. Die Hardware gehört nur einem Kunden.", "Dauerlast mit festen Anforderungen, große Datenbanken, spezielle Hardware, Anwendungen mit planbarer Auslastung."],
@@ -199,6 +294,27 @@ const HelpContent = (() => {
           ["Skalierbarkeit", "Begrenzt durch die vorhandene Hardware; Aufrüstung oder zweiter Server sind Handarbeit.", "Vertikal durch stärkere Hardware, horizontal mit mehreren Servern – meist mit Planung und Vertrag.", "Meist schnell auf einen größeren Tarif wechselbar; für hohe Last sind mehrere Instanzen nötig.", "Am flexibelsten: Instanzen, Speicher und verwaltete Dienste können je nach Angebot automatisch oder kurzfristig wachsen."],
           ["Betriebsaufwand", "Hoch: Hardware, Netzwerk, USV, Monitoring und Fernzugriff selbst organisieren.", "Mittel bis hoch: Hardware ist gemietet, Softwarebetrieb bleibt selbst verwaltet.", "Mittel: kein Hardwarebetrieb, aber Linux, Container, Updates, Monitoring und Backups bleiben wichtig.", "Niedrig bis mittel bei verwalteten Diensten; Architektur, Rechte und Kostenkontrolle benötigen weiterhin Fachwissen."]
         ] } },
+        { heading: "Betrieb und Sicherheit", list: ["Zugänge mit Schlüsseln und starken Identitäten schützen; unnötige Dienste und offene Ports vermeiden.", "Betriebssystem und Anwendungen zeitnah aktualisieren sowie Backups und Wiederherstellung testen.", "Logs, Erreichbarkeit, Speicher und Ressourcen überwachen.", "Verlässliche Echtzeit- oder Schutzfunktionen nicht vom Internet abhängig machen."] },
+      ],
+      relatedTopics: ["local-servers", "cloud-services", "server-systems"],
+    },
+    "cloud-services": {
+      title: "Cloud-Dienste",
+      summary: "Cloud-Dienste liefern Rechenleistung, Speicher und verwaltete Plattformbausteine nach Bedarf – mit hoher Flexibilität und eigener Kostenverantwortung.",
+      access: "public",
+      sections: [
+        { heading: "Wann Cloud sinnvoll ist", paragraphs: ["Cloud-Dienste passen zu stark schwankender Last, globaler Reichweite oder verwalteten Datenbanken und Speichern. Sie können Infrastrukturarbeit reduzieren, ersetzen aber keine gute Architektur und keine Verantwortung für Daten, Rechte und Ausgaben."] },
+        { heading: "Die Kostenfalle Cloud-Computing", paragraphs: ["Cloud-Plattformen wie AWS können bei steigender Last automatisch zusätzliche Ressourcen bereitstellen. Das ist ein großer Vorteil: Anwendungen wachsen, ohne dass jemand Server manuell nachbestellen muss. Genau dieselbe Automatik kann aber einen Fehler sehr schnell und teuer verstärken.", "Läuft eine Funktion, ein Worker oder Hintergrundprozess unbegrenzt, startet sich ständig neu oder erzeugt ohne Grenze neue Aufgaben, kann die Cloud dieses Verhalten mit immer weiteren Ausführungen beantworten. Ein kleiner Fehler im Code kann so in kurzer Zeit hohe Kosten verursachen.", "Automatische Skalierung verstärkt nicht nur erfolgreiche Anwendungen, sondern auch Fehler. Wer Cloud-Systeme entwickelt, muss deshalb neben der technischen Funktion auch die wirtschaftliche Wirkung jeder einzelnen Ausführung verstehen."] },
+        { heading: "Typische Ursachen", list: ["Endlosschleifen oder fehlende Abbruchbedingungen.", "Unbegrenzte Wiederholungsversuche und fehlende Timeouts bei externen Aufrufen.", "Rekursiv erzeugte Events oder Cloud-Funktionen, die sich gegenseitig erneut auslösen.", "Unkontrolliert skalierende Queue-Consumer und zu große Batch-Mengen.", "Dauerhaft laufende, blockierende oder nach Fehlern sofort neu gestartete Prozesse."] },
+        { heading: "Jede Ausführung muss begrenzt sein", list: ["Im Code: maximale Laufzeit, klare Abbruchbedingungen, begrenzte Wiederholungsversuche und kontrollierte Batch- oder Mengenlimits festlegen.", "Bei externen Diensten: verbindliche Timeouts setzen und Fehler nicht ohne Pause sofort erneut ausführen.", "In der Cloud-Infrastruktur: Parallelität, Queue-Größen, Skalierungsgrenzen und Ausgaben begrenzen; Budgets und Warnmeldungen aktivieren.", "Der Dienst soll sich selbst kontrolliert beenden oder in einen sicheren Fehlerzustand wechseln. Infrastruktur-Limits sind das letzte Sicherheitsnetz, nicht die einzige Schutzmaßnahme."] },
+      ],
+      relatedTopics: ["local-servers", "internet-vps", "workers-and-queues"],
+    },
+    "choosing-servers": {
+      title: "Server passend auswählen",
+      summary: "Die passende Serverart folgt aus Aufgabe, Reichweite, Reaktionszeit, Datenschutz und dem Aufwand, den du dauerhaft übernehmen kannst.",
+      access: "public",
+      sections: [
         { heading: "Wie du auswählst", list: [
           "Wähle lokal, wenn Geräte auch ohne Internet zuverlässig funktionieren müssen oder Daten das Gebäude nicht verlassen sollen. Plane Stromausfall, Fernwartung und externe Backups mit ein.",
           "Wähle einen dedizierten Server bei dauerhaft hoher, gut planbarer Last oder wenn spezielle Hardware und maximale Kontrolle nötig sind.",
@@ -206,9 +322,176 @@ const HelpContent = (() => {
           "Wähle Cloud-Dienste bei stark schwankender Last, globaler Reichweite oder wenn verwaltete Datenbanken und Speicher den Betriebsaufwand senken sollen. Prüfe vorher Datenschutz, Region, Anbieterbindung und laufende Kosten.",
           "Viele Systeme kombinieren beides: Ein ESP32 oder lokales Gateway reagiert schnell vor Ort; VPS oder Cloud liefern Fernzugriff, Benachrichtigungen, Auswertung und zentrale Datensicherung."
         ] },
-        { heading: "GerNetiX einordnen", paragraphs: ["GerNetiX nutzt für seine Plattform einen VPS als gemeinsame Deployment-Umgebung für getrennte Dienste. Das ist kein Cloud-Autopilot: Zugänge, Updates, Container-Netzwerk, Backups und Monitoring bleiben bewusst kontrollierte Betriebsaufgaben. Hardware-nahe Funktionen wie USB-Provisionierung bleiben lokal beim Gerät und werden nicht auf den VPS verlagert.", "Ein GerNetiX-Projekt kann deshalb klein beginnen: ESP32 plus lokale Bedienung. Erst wenn es einen fachlichen Nutzen gibt, kommen ein lokales Gateway, der VPS für Fernzugriff oder eine iPhone-App dazu. Die verlässliche Reaktion auf Sensoren und Aktoren bleibt dabei am Embedded-System oder lokalen Gateway."] },
+        { heading: "Mit kleinster sinnvoller Architektur beginnen", paragraphs: ["Baue keine globale Plattform, wenn ein Gerät mit lokaler Regelung die Aufgabe vollständig löst. Ergänze erst dann Gateway, VPS, Cloud oder App, wenn ein konkreter Nutzen entsteht: mehrere Geräte koordinieren, Fernzugriff anbieten, Daten langfristig auswerten oder Menschen informieren. Jede zusätzliche Komponente schafft auch zusätzlichen Betriebs-, Sicherheits- und Datenschutzaufwand."] },
       ],
-      relatedTopics: ["hardware-landscape", "processor-overview", "event-dispatcher"],
+      relatedTopics: ["local-servers", "internet-vps", "cloud-services", "server-systems"],
+    },
+    "software-basics": {
+      title: "Software in verteilten Systemen",
+      summary: "Ein modernes Produkt besteht oft aus mehreren Softwareteilen: Firmware im Gerät, Diensten auf Servern und Apps für Menschen. Zusammen müssen sie klar zusammenspielen.",
+      access: "public",
+      sections: [
+        { heading: "Software auf jeder Ebene", table: { headers: ["Ebene", "Typische Software", "Aufgabe"], rows: [
+          ["IoT-Gerät", "Firmware", "Liest Sensoren, steuert Aktoren und setzt die Kernfunktion mit begrenzten Ressourcen um."],
+          ["Lokaler Server", "Gateway- oder Automatisierungsdienst", "Verbindet Geräte, übersetzt Protokolle, puffert Daten und führt lokale Regeln aus."],
+          ["Internet/VPS oder Cloud", "API, Datenbank, Hintergrunddienste", "Verwaltet Konten, Synchronisation, zentrale Daten und Dienste für mehrere Nutzer oder Standorte."],
+          ["Apps", "Mobile, Desktop- und Web-Anwendungen", "Machen Funktionen bedienbar, zeigen Informationen und senden bewusst ausgelöste Befehle."]
+        ] } },
+        { heading: "Schnittstellen statt Vermischung", paragraphs: ["Die Teile sollten über klar definierte Schnittstellen zusammenarbeiten: Datenformate, APIs, Ereignisse und Fehlerfälle werden bewusst beschrieben. Eine App sollte nicht die einzige Stelle sein, an der ein Gerät korrekt funktioniert; eine Internetverbindung sollte keine lokale Schutzfunktion ersetzen.", "Gute Software trennt Verantwortung: Die Firmware reagiert zuverlässig am Gerät, ein Server koordiniert und speichert, Apps stellen Menschen eine verständliche Bedienung bereit. Diese Trennung macht Änderungen, Tests und Fehlersuche beherrschbar."] },
+        { heading: "Ein praktischer Ablauf", list: ["Zuerst Kernfunktion und Fehlergrenzen am Gerät oder in der lokalen Logik klären.", "Dann Schnittstellen und Datenflüsse zwischen Geräten, Servern und Apps benennen.", "Zeitaufwändige Arbeit in klar begrenzte Hintergrundaufgaben auslagern.", "Logs, Tests und Messwerte nutzen, um jedes Teil einzeln und im Zusammenspiel zu prüfen."] },
+      ],
+      relatedTopics: ["workers-and-queues", "server-systems", "hardware-landscape"],
+    },
+    "workers-and-queues": {
+      title: "Worker, Queues und Hintergrundaufgaben",
+      summary: "Worker erledigen Aufgaben außerhalb der direkten Benutzeranfrage. Sie entkoppeln Systeme, brauchen aber klare Grenzen für Zeit, Menge und Wiederholungen.",
+      access: "public",
+      sections: [
+        { heading: "Was ein Worker ist", paragraphs: ["Ein Worker ist ein Hintergrundprozess: Er bearbeitet Aufgaben, die nicht sofort in einer Webseite oder App fertig sein müssen. Beispiele sind das Versenden einer Benachrichtigung, das Umwandeln eines Bildes, die Auswertung einer Messreihe oder das Erzeugen eines Berichts.", "Eine Queue ist eine Warteschlange für solche Aufgaben. Die Anwendung legt eine Aufgabe ab; ein oder mehrere Worker holen sie ab und verarbeiten sie. Damit bleibt die direkte Bedienung schnell, auch wenn die Hintergrundarbeit länger dauert."] },
+        { heading: "Warum das Konzept wichtig ist", list: ["Entkopplung: Ein Fehler oder eine langsame externe Schnittstelle blockiert nicht automatisch die Benutzeroberfläche.", "Skalierung: Bei mehr Aufgaben können kontrolliert weitere Worker arbeiten.", "Zuverlässigkeit: Aufgaben lassen sich nachvollziehbar speichern, begrenzt wiederholen oder in eine Fehlerwarteschlange verschieben.", "Reihenfolge: Nicht jede Aufgabe darf parallel laufen. Für ein einzelnes Gerät oder Konto kann eine definierte Reihenfolge wichtig sein."] },
+        { heading: "Sichere Grenzen für Hintergrundarbeit", list: ["Jede Aufgabe erhält ein Timeout, eine maximale Anzahl von Wiederholungen und eine eindeutige Abbruchbedingung.", "Die Queue und die Anzahl paralleler Worker werden begrenzt. Sonst kann ein Fehler zu einer Kosten- oder Lastspirale werden.", "Fehlgeschlagene Aufgaben werden sichtbar gemacht und untersucht, statt sie unendlich erneut auszuführen.", "Eine Aufgabe muss möglichst idempotent sein: Wird sie nach einem Fehler erneut gestartet, darf sie nicht ungewollt doppelt buchen, schalten oder benachrichtigen."] },
+        { heading: "Bezug zu GerNetiX", paragraphs: ["Im Wissensportal bleibt dieses Modell bewusst allgemein. Die Hilfe erklärt anschließend, wie Ereignis-Worker und der Ereignis-Dispatcher innerhalb eines GerNetiX-Projekts eingerichtet und begrenzt werden."] },
+      ],
+      relatedTopics: ["event-worker-rules", "event-dispatcher", "server-systems"],
+    },
+    "embedded-measurement-debugging": {
+      title: "Embedded-Systeme: Messtechnik und Debugging",
+      summary: "Embedded-Entwicklung verbindet Software mit Elektrotechnik. Verständnis für Schaltungen, sorgfältiges Aufbauen und passende Messmittel sind genauso wichtig wie der Programmcode.",
+      access: "public",
+      sections: [
+        { heading: "Embedded heißt: Software trifft Elektronik", paragraphs: ["Ein Embedded-System steuert reale elektrische Signale. Deshalb gehören neben dem Programmieren Grundlagen wie Spannung, Strom, Widerstand, Massebezug, Pegel und sichere Spannungsversorgung dazu. Praktische Fähigkeiten – sauber verdrahten, löten, Datenblätter lesen und Messwerte einordnen – entscheiden oft schneller über Erfolg als noch mehr Code.", "Das ist kein Grund, sich abschrecken zu lassen: Starte mit ungefährlichen Kleinspannungen und einfachen Schaltungen. Baue Schritt für Schritt, ändere immer nur eine Sache und prüfe sie anschließend. Arbeiten an Netzspannung oder leistungsstarken Akkus gehören nur in erfahrene Hände und mit passender Schutztechnik."] },
+        { heading: "Messtechnik: erst messen, dann raten", paragraphs: ["Messtechnik macht unsichtbare elektrische Zustände sichtbar. Die Werkzeuge ergänzen sich: Ein Multimeter prüft einzelne Werte, ein Oszilloskop zeigt deren Verlauf über die Zeit und ein Logikanalysator erklärt digitale Kommunikation."], table: { headers: ["Kapitel", "Werkzeug", "Wofür es da ist", "Erste typische Fragen"], rows: [
+          ["1. Multimeter", "Multimeter", "Misst Gleichspannung, Strom, Widerstand und oft Durchgang. Es ist das wichtigste erste Messgerät.", "Liegt wirklich 3,3 V oder 5 V an? Ist ein Kabel unterbrochen? Verursacht ein Bauteil einen Kurzschluss?"],
+          ["2. Oszilloskop", "Oszilloskop", "Zeigt Spannung als Kurve über die Zeit. Damit werden Impulse, Störungen, Takt und Signalform sichtbar.", "Kommt der PWM-Impuls wirklich an? Bricht die Versorgung beim Schalten ein? Gibt es Störungen auf einem Signal?"],
+          ["3. Logikanalysator", "Logikanalysator", "Zeichnet digitale Pegel und Protokolle wie I²C, SPI oder UART auf. Er ist besonders hilfreich bei der Kommunikation zwischen Bauteilen.", "Sendet der Sensor eine Antwort? Stimmen Adresse und Daten? Sind Takt, Datenleitung und Timing plausibel?"]
+        ] } },
+        { heading: "1. Multimeter", list: [
+          "Vor dem Einschalten: Widerstand oder Durchgang prüfen, um vertauschte Verbindungen und mögliche Kurzschlüsse zu finden. Dabei muss die Schaltung spannungsfrei sein.",
+          "Nach dem Einschalten: Spannung immer zwischen dem Messpunkt und dem passenden Massebezug (GND) messen. Bei ESP32-Schaltungen sind 3,3 V ein häufiger Referenzwert.",
+          "Strom misst man in Reihe zur Last. Das ist ein anderer Anschluss und Messbereich als bei Spannungsmessung – bei Unsicherheit zuerst die Anleitung des Multimeters lesen.",
+          "Ein Messwert ist ein Hinweis, keine automatische Diagnose: Vergleiche ihn mit Schaltplan, Datenblatt und erwarteter Versorgung."] },
+        { heading: "2. Oszilloskop", list: [
+          "Ein Oszilloskop hilft, wenn ein Multimeter zwar einen Mittelwert zeigt, das System aber trotzdem unzuverlässig arbeitet. Kurze Spannungseinbrüche oder Impulse bleiben im Multimeter oft unsichtbar.",
+          "Die Masseklemme der Tastspitze verbindet sich elektrisch mit der Masse des Messgeräts. Prüfe deshalb den Massebezug, bevor du sie anschließt; bei netzbetriebenen Geräten gelten zusätzliche Sicherheitsregeln.",
+          "Für erste Projekte reichen Fragen wie: Welche Spannung liegt an? Wie lang ist der Impuls? Wiederholt er sich? Bricht die Versorgung beim Schalten ein?"] },
+        { heading: "3. Logikanalysator", list: [
+          "Ein Logikanalysator liest digitale Zustände als 0 und 1. Er ersetzt kein Oszilloskop für analoge Signalqualität, ist aber oft leichter für Bus-Protokolle auszuwerten.",
+          "Verbinde immer auch eine gemeinsame Masse. Prüfe vorab, ob die Eingänge zum Pegel passen – bei ESP32 in der Regel 3,3 V, nicht 5 V.",
+          "Mit Protokoll-Decodern werden Folgen aus Bits zu lesbaren I²C-, SPI- oder UART-Nachrichten. Das grenzt Fehler in Verdrahtung, Adresse, Timing oder Firmware schnell ein."] },
+        { heading: "Debugwerkzeuge: moderne Hilfe statt unnötiger Hürden", paragraphs: ["Debugging ist die systematische Suche nach der Ursache eines Fehlers. Früher bedeutete das oft teure Zusatzhardware und schwer zugängliche Debug-Schnittstellen. Bei vielen heutigen Entwicklungsboards sind USB-Serielle Ausgabe, Bootloader und Debug-Schnittstellen wie JTAG bereits auf dem Board integriert oder einfach erreichbar.", "JTAG ist eine standardisierte Schnittstelle, mit der ein Debugger den Prozessor anhalten, Variablen ansehen und Schritt für Schritt durch Code gehen kann. Nicht jedes Projekt braucht das sofort: Serielle Logs, klare Fehlermeldungen, Messgeräte und kleine reproduzierbare Tests lösen viele Probleme schneller.", "Auch KI kann heute Logausgaben, Compilerfehler, Protokollmitschnitte und einfache Schaltbilder gut strukturieren und mögliche Ursachen priorisieren. Sie ersetzt aber keine Messung: Prüfe Vorschläge immer gegen Datenblatt, Sicherheitsregeln und reale Messwerte. So nimmt KI Komplexität heraus, ohne Verantwortung vorzutäuschen."] },
+        { heading: "Ein ruhiger Debug-Ablauf", list: [
+          "Problem klein machen: Eine LED, ein Sensor oder eine Verbindung isoliert testen.",
+          "Versorgung und Masse zuerst mit dem Multimeter prüfen.",
+          "Serielle Logs und eindeutige Fehlermeldungen erfassen.",
+          "Bei digitalen Schnittstellen einen Logikanalysator, bei Signalform oder Einbrüchen ein Oszilloskop einsetzen.",
+          "Ergebnisse mit Datenblatt und Schaltplan vergleichen; erst danach Firmware oder Verdrahtung gezielt ändern.",
+          "KI für die Einordnung nutzen: Messwerte, Logs und Fragestellung gemeinsam beschreiben – aber Änderungen bewusst und einzeln übernehmen."] },
+      ],
+      relatedTopics: ["hardware-landscape", "processor-overview", "server-systems", "supported-devices"],
+    },
+    "embedded-safety": {
+      title: "Elektrische und funktionale Sicherheit",
+      summary: "Sicherheit beginnt bei der Elektronik und endet nicht beim Code. Elektrische Gefährdungen und Fehlfunktionen können Menschen gefährden – beides braucht klare Grenzen und fachgerechte Lösungen.",
+      access: "public",
+      sections: [
+        { heading: "Elektrische Sicherheit: Strom durch den Körper ist entscheidend", paragraphs: ["Eine elektrische Verletzung hängt vor allem davon ab, welcher Strom wie lange und auf welchem Weg durch den Körper fließt. Wechselstrom und Gleichstrom wirken unterschiedlich; auch Frequenz, Feuchtigkeit, Kontaktfläche und der Weg durch den Körper beeinflussen das Risiko. Spannung ist trotzdem entscheidend, weil sie den Strom durch den Körperwiderstand antreibt: Vereinfacht gilt Strom = Spannung geteilt durch Widerstand.", "Der Körperwiderstand ist nicht verlässlich: Trockene Haut kann stark isolieren, feuchte oder verletzte Haut deutlich weniger. Deshalb wird Sicherheit nicht dadurch hergestellt, dass man auf einen hohen Körperwiderstand hofft. Stattdessen begrenzen Schutzkonzepte die berührbare Spannung, die verfügbare Energie und den möglichen Fehlerstrom.", "Als grobe Einordnung werden in Normen für gewöhnliche, trockene Bedingungen oft Schutzkleinspannungen bis 50 V Wechselspannung und 120 V Gleichspannung genannt. Bei Feuchtigkeit, leitfähiger Umgebung oder besonderen Bedingungen gelten niedrigere Grenzen, häufig 25 V AC oder 60 V DC. Diese Werte sind keine persönliche Sicherheitsfreigabe und ersetzen weder eine Gefährdungsbeurteilung noch die jeweils geltenden Normen."] },
+        { heading: "Praktische Regeln für Embedded-Projekte", list: [
+          "Zum Lernen bei sicherer Kleinspannung bleiben, zum Beispiel USB-versorgte 3,3-V- oder 5-V-Schaltungen. Netzspannung, Schaltnetzteile, große Akkupacks und leistungsstarke Motoren nur mit passender Fachkenntnis, Schutzaufbau und Aufsicht bearbeiten.",
+          "Nie unter Spannung umverdrahten oder löten. Vor Änderungen Energiequellen trennen und gespeicherte Energie in Kondensatoren beachten.",
+          "Sicherungen, Strombegrenzung, passende Leitungsquerschnitte, Zugentlastung, isolierte Gehäuse und sichere Steckverbinder sind Teil der Funktion – keine optionalen Extras.",
+          "Messgeräte und Tastköpfe nur innerhalb ihrer Kategorie, ihres Messbereichs und gemäß Anleitung einsetzen. Ein falscher Masseanschluss oder Messbereich kann selbst einen Fehler erzeugen."] },
+        { heading: "Funktionale Sicherheit: Wenn korrektes Funktionieren Leben schützt", paragraphs: ["Funktionale Sicherheit verbindet die Wörter bewusst: Sie betrifft Systeme, bei denen eine Fehlfunktion unter bestimmten Randbedingungen zu einer Gefahr für Leib und Leben führen kann. Es reicht nicht, dass ein System meistens funktioniert. Es muss nachweisbar mit Fehlern umgehen und in einen sicheren Zustand gelangen oder dort bleiben.", "Eine Lenkung, die auf der Autobahn ohne Eingriffsmöglichkeit stark einschlägt, kann katastrophale Folgen haben. Dreht sich dieselbe Lenkung im stehenden Fahrzeug in einer abgesicherten Werkstatt, ist die Fehlfunktion weiterhin relevant, aber die Randbedingung und damit die mögliche Folge ist eine andere. Für die Sicherheitsbetrachtung wird nicht der günstige Alltag angenommen, sondern die ungünstigste vorhersehbare Situation.", "Dasselbe gilt für Bremsen, Schutzabschaltungen oder Antriebe. Man betrachtet Fehler, Fehlbedienung, Ausfall von Sensoren, Kabelbruch, Spannungsabfall, Softwarefehler und Diagnoseversagen – und legt fest, wie das System eine gefährliche Wirkung verhindert oder begrenzt."] },
+        { heading: "Keine Basteländerungen an sicherheitskritischen Fahrzeugfunktionen", paragraphs: ["Fahrzeuge enthalten mehrere Bussysteme und Steuergeräte. Auch Daten, die harmlos wirken – etwa eine Lichtinformation – können in Netzen liegen, über die weitere sicherheitsrelevante Zustände, Diagnose oder Abschaltbedingungen ausgetauscht werden. Ohne vollständige Fahrzeugarchitektur lässt sich nicht zuverlässig erkennen, welche Wechselwirkung eine Änderung hat.", "Jede zusätzliche Klemme, Lötstelle, Stromabnahme, Leitung oder Verbindung kann Kontaktprobleme, Unterbrechungen, Störungen oder unerwartete Lasten verursachen. Im ungünstigsten Fall wird ein Signalweg unterbrochen, ein Steuergerät meldet einen Fehler oder das Fahrzeug geht in einen Notlauf. Deshalb keine Änderungen an Fahrzeugbussen, Lenkung, Bremse, Airbag-, Rückhalte- oder Antriebssystemen vornehmen. Solche Arbeiten gehören in freigegebene Entwicklungs- und Prüfprozesse mit Systemwissen, Risikoanalyse, validierter Hardware und rechtlicher Zulassung."] },
+        { heading: "Sicher entwickeln heißt Grenzen kennen", paragraphs: ["Für Lern- und Prototyping-Projekte bedeutet das: Die Funktion klar begrenzen, Energie klein halten, Fehler erwarten und sicher testen. Wenn ein Projekt Menschen, Straßenverkehr, Maschinen oder hohe Energien beeinflussen könnte, ist der nächste Schritt nicht ein schneller Code-Patch, sondern eine fachliche Sicherheitsbewertung."] },
+      ],
+      relatedTopics: ["embedded-measurement-debugging", "hardware-landscape", "server-systems"],
+    },
+    "privacy-basics": {
+      title: "Datenschutz in vernetzten Projekten",
+      summary: "Vernetzte Geräte können schnell personenbezogene Daten erzeugen. Gute Projekte erfassen nur, was sie wirklich brauchen, erklären den Zweck und schützen Daten über ihren gesamten Lebenszyklus.",
+      access: "public",
+      sections: [
+        { heading: "Was personenbezogene Daten sein können", paragraphs: ["Personenbezogene Daten sind Informationen, die eine Person direkt oder indirekt erkennbar machen können. Dazu gehören nicht nur Name und E-Mail-Adresse, sondern je nach Zusammenhang auch Standort, Gerätekennung, Sprachaufnahme, Kamerabild, Bewegungsprofil, Zeitstempel oder Nutzungsverhalten.", "Ein einzelner Temperaturwert ist meist unkritisch. Wird er aber einer Wohnung, einem Konto und festen Zeitpunkten zugeordnet, kann er Rückschlüsse auf Anwesenheit oder Gewohnheiten erlauben. Der Kontext entscheidet."] },
+        { heading: "Datenschutz durch Gestaltung", list: [
+          "Zweck festlegen: Vor dem Erfassen klar benennen, wofür ein Datum gebraucht wird. Ohne Zweck keine Sammlung.",
+          "Daten minimieren: Nur die benötigten Werte, Genauigkeiten und Zeiträume erfassen. Ein Ereignis kann oft besser sein als ein dauerhafter Rohdatenstrom.",
+          "Lokal verarbeiten, wenn möglich: Edge Computing kann vermeiden, dass Rohbilder, Audiodaten oder detaillierte Sensordaten den Ort verlassen.",
+          "Transparenz schaffen: Nutzerinnen und Nutzer verständlich informieren, welche Daten wohin fließen, wie lange sie gespeichert bleiben und wer Zugriff hat.",
+          "Schützen und löschen: Zugriffe begrenzen, Übertragung absichern, Daten getrennt speichern und Lösch- beziehungsweise Aufbewahrungsregeln umsetzen."] },
+        { heading: "Beispiele", table: { headers: ["Projekt", "Datensparsame Lösung", "Warum"], rows: [
+          ["Bewegungsmelder für Licht", "Nur Bewegung erkannt / nicht erkannt lokal verarbeiten; keine dauerhafte Personenhistorie speichern.", "Die Lichtfunktion benötigt keine Identität und kein Bewegungsprofil."],
+          ["Kamera zur Qualitätsprüfung", "Bild direkt am Edge-Gerät auswerten; nur Qualitätskennzahl oder Fehlerbild bei Bedarf übertragen.", "Rohbilder können Personen oder Betriebsgeheimnisse enthalten."],
+          ["Smartes Raumklima", "Messwerte pro Raum mit begrenzter Aufbewahrung; Kontodaten und Telemetrie getrennt behandeln.", "Lange Zeitreihen können Rückschlüsse auf Anwesenheit ermöglichen."],
+          ["iPhone-App", "Nur notwendige Berechtigungen anfragen und klar erklären; Standort, Kamera oder Kontakte nicht vorsorglich sammeln.", "Mobile Berechtigungen geben tiefen Zugriff auf persönliche Informationen."]
+        ] } },
+        { heading: "Datenschutz und Sicherheit gehören zusammen", paragraphs: ["Datenschutz beantwortet zuerst: Dürfen und müssen wir diese Daten verarbeiten? Sicherheit beantwortet: Wie verhindern wir, dass Unbefugte darauf zugreifen oder sie verändern? Gute Technik braucht beides. Bei echten Produkten kommen außerdem Rechtsgrundlage, Verantwortlichkeiten, Verträge und gegebenenfalls eine Datenschutz-Folgenabschätzung hinzu."] },
+      ],
+      relatedTopics: ["server-systems", "embedded-safety", "ai-premium"],
+    },
+    "glossary-basics": {
+      title: "Fachbegriffe einfach erklärt",
+      summary: "Dieses Lexikon erklärt häufige Begriffe aus modernen Systemlandschaften kurz, ohne vorauszusetzen, dass du sie bereits kennst.",
+      access: "public",
+      sections: [
+        { heading: "Systeme und Vernetzung", table: { headers: ["Begriff", "Bedeutung", "Praktisches Beispiel"], rows: [
+          ["Edge Computing", "Rechenarbeit findet nahe an der Datenquelle statt, also auf dem Gerät oder im lokalen Netzwerk – nicht erst in einem weit entfernten Rechenzentrum.", "Eine Kamera erkennt ein fehlerhaftes Teil direkt am lokalen Industrie-PC. Nur das Ergebnis oder ein Alarm wird weitergegeben."],
+          ["Gateway", "Ein Vermittler zwischen Geräten, Netzen oder Protokollen. Es sammelt, übersetzt oder schützt den Weg zu anderen Systemen.", "Ein Raspberry Pi nimmt Werte von ESP32-Geräten entgegen und gibt sie gesammelt an einen Server weiter."],
+          ["Latenz", "Die Zeit vom Senden einer Anfrage bis zur Reaktion. Kurze Latenz ist für direkte Bedienung und Steuerung wichtig.", "Ein Not-Aus oder ein Lichtschalter darf nicht von einer langsamen Internetverbindung abhängen."],
+          ["API", "Eine klar definierte Schnittstelle, über die Programme Daten oder Funktionen anfordern können. Menschen nutzen meist eine App, Programme eine API.", "Die iPhone-App fragt über eine API den aktuellen Temperaturwert ab oder sendet einen Schaltbefehl."],
+          ["Offline-first", "Die Kernfunktion funktioniert auch ohne Internet. Eine spätere Verbindung synchronisiert Daten oder erweitert Funktionen.", "Die Bewässerung läuft nach lokalen Regeln weiter; Messwerte werden übertragen, sobald die Verbindung zurück ist."]
+        ] } },
+        { heading: "Server und Betrieb", table: { headers: ["Begriff", "Bedeutung", "Praktisches Beispiel"], rows: [
+          ["Container", "Eine abgegrenzte Laufzeitumgebung für eine Anwendung und ihre Abhängigkeiten. Mehrere Container können auf einem VPS laufen.", "Web-App, Datenbank und Hintergrunddienst laufen getrennt, lassen sich aber gemeinsam betreiben und aktualisieren."],
+          ["Cloud Computing", "Rechenleistung, Speicher oder fertige Plattformdienste werden über das Internet nach Bedarf bezogen.", "Ein verwalteter Speicher bewahrt Bilder auf, ohne dass ein eigener Dateiserver betrieben werden muss."],
+          ["VPS", "Ein Virtual Private Server ist ein virtueller Server im Rechenzentrum. Er verhält sich für dich wie ein eigener Server, teilt aber die physische Hardware mit anderen Instanzen.", "Eine kleine Plattform mit API, Website und Datenbank läuft kostengünstig auf einem VPS."],
+          ["Worker", "Ein Hintergrunddienst, der einzelne Aufgaben abarbeitet, ohne dass eine App darauf warten muss.", "Nach dem Upload eines Bildes erzeugt ein Worker eine kleinere Vorschau."],
+          ["Queue", "Eine Warteschlange für Aufgaben oder Ereignisse. Sie verteilt Arbeit kontrolliert an Worker.", "Viele Messwerte warten geordnet, bis ein Worker sie speichert oder auswertet."]
+        ] } },
+        { heading: "Embedded und Entwicklung", table: { headers: ["Begriff", "Bedeutung", "Praktisches Beispiel"], rows: [
+          ["Firmware", "Software, die direkt auf einem eingebetteten Gerät läuft und seine Hardware steuert.", "Die Firmware eines ESP32 liest einen Temperatursensor und schaltet bei Bedarf ein Relais."],
+          ["JTAG", "Eine Schnittstelle, über die Entwicklungswerkzeuge ein eingebettetes System gezielt prüfen und debuggen können.", "Ein Debugger hält die Firmware an und zeigt, welche Variable gerade einen unerwarteten Wert hat."],
+          ["Funktionale Sicherheit", "Die Eigenschaft eines Systems, bei Fehlern oder Fehlbedienung keine unvertretbare Gefahr zu verursachen.", "Eine Maschine stoppt sicher, wenn ein Sensor ausfällt, statt unkontrolliert weiterzulaufen."]
+        ] } },
+        { heading: "Begriffe im Zusammenhang lesen", paragraphs: ["Ein Fachbegriff beschreibt selten allein eine gute oder schlechte Lösung. Edge Computing kann Latenz senken, ersetzt aber keine sichere Software. Ein VPS kann einfach zu betreiben sein, braucht aber weiterhin Updates und Backups. Nutze das Lexikon zum Nachschlagen und lies für Entscheidungen anschließend das passende Kapitel im Wissensportal."] },
+      ],
+      relatedTopics: ["server-systems", "local-servers", "software-basics", "embedded-measurement-debugging"],
+    },
+    "microcontroller-basics": {
+      title: "Grundlagen Mikrocontroller",
+      summary: "Ein Mikrocontroller verbindet Prozessor, Speicher und Hardware-Schnittstellen in einem Baustein. Diese Grundlagen helfen dir, Firmware und Schaltungen bewusst zusammenzubringen.",
+      access: "public",
+      sections: [
+        { id: "microcontroller-flashing", heading: "Flashen", paragraphs: ["Flashen bedeutet, ein Firmware-Programm in den nichtflüchtigen Programmspeicher des Mikrocontrollers zu schreiben. Beim nächsten Einschalten startet der Chip diese Firmware selbstständig.", "Dafür braucht es einen passenden Bootloader oder Programmierweg, eine stabile Stromversorgung und die zur Hardware passende Firmware. Ein unterbrochener Flash-Vorgang kann dazu führen, dass das Gerät zunächst nicht mehr normal startet; deshalb Kabel und Energieversorgung währenddessen nicht trennen."] },
+        { id: "microcontroller-memory", heading: "Speicherorganisation", paragraphs: ["Mikrocontroller verwenden unterschiedliche Speicherarten für unterschiedliche Aufgaben. Flash speichert Firmware dauerhaft. RAM enthält während des Betriebs Variablen, Zwischenergebnisse und den Programmstapel. Manche Systeme haben zusätzlich nichtflüchtigen Datenspeicher oder externen PSRAM.", "Wichtig ist die Unterscheidung: Viel Flash schafft Platz für Programm und Assets, viel RAM erlaubt größere Datenstrukturen und mehr parallele Aufgaben. Ein Neustart löscht normalen RAM, aber nicht die Firmware im Flash."] },
+        { id: "microcontroller-registers", heading: "Register", paragraphs: ["Register sind sehr kleine Speicherplätze direkt im Prozessor oder in einem Hardware-Modul. Sie enthalten zum Beispiel einen Messwert, eine Konfiguration oder einen Status.", "Firmware schreibt gezielt in Konfigurationsregister und liest Statusregister aus. Bibliotheken nehmen dir viele Details ab, aber beim Debuggen hilft es zu wissen: Hinter GPIO, Timer oder ADC stehen immer Register mit klaren Bitfeldern und Datenblatt-Beschreibungen."] },
+        { id: "microcontroller-gpio", heading: "GPIO", paragraphs: ["GPIO bedeutet General Purpose Input/Output: frei nutzbare Pins für digitale Ein- und Ausgänge. Als Eingang liest ein Pin etwa einen Tasterzustand. Als Ausgang schaltet er ein Signal für LED, Transistor oder ein anderes Logikmodul.", "Ein GPIO-Pin ist kein universeller Leistungsausgang. Strom, Spannung, Schutzbeschaltung und die zulässige Pin-Funktion müssen zum Datenblatt passen. Größere Lasten wie Motoren oder Relais werden über geeignete Treiberstufen geschaltet."] },
+        { id: "microcontroller-adc", heading: "ADC", paragraphs: ["Ein Analog-Digital-Converter (ADC) wandelt eine analoge Spannung in einen digitalen Zahlenwert. Damit kann ein Mikrocontroller beispielsweise Potentiometer, Batteriespannung oder analoge Sensoren auswerten.", "Die Auflösung bestimmt, wie fein der Zahlenbereich ist; Messbereich, Referenzspannung, Störungen und Kalibrierung bestimmen, wie aussagekräftig der Messwert wirklich ist. Analoge Messung braucht deshalb oft Mittelwerte, Filter oder eine saubere elektrische Umgebung."] },
+        { id: "microcontroller-timer", heading: "Timer", paragraphs: ["Timer sind Hardware-Zähler im Mikrocontroller. Sie zählen Takte unabhängig vom eigentlichen Programmablauf und können zu festen Zeitpunkten Ereignisse oder Interrupts auslösen.", "Sie eignen sich für regelmäßige Abtastungen, Zeitmessungen, präzise Schaltfolgen und als Grundlage für PWM. Ein Timer ist verlässlicher als eine lange Warteschleife, weil die Firmware währenddessen andere Aufgaben erledigen kann."] },
+        { id: "microcontroller-pwm", heading: "PWM", paragraphs: ["Pulsweitenmodulation (PWM) schaltet ein digitales Signal schnell ein und aus. Das Verhältnis von Ein- zu Auszeit heißt Tastgrad und bestimmt die mittlere Wirkung.", "PWM kann LEDs dimmen, Motoren über passende Treiber ansteuern oder Steuersignale erzeugen. Sie ersetzt keine echte analoge Spannung in jeder Anwendung: Frequenz, Filter, Treiber und die angeschlossene Last müssen bewusst gewählt werden."] },
+      ],
+      relatedTopics: ["processor-overview", "embedded-measurement-debugging", "embedded-safety", "glossary-basics"],
+    },
+    "physical-limits": {
+      title: "Grenzen der Physik",
+      summary: "Datenblattwerte sind keine Wunschliste. Strom, Spannung, Temperatur und Geschwindigkeit haben Grenzen, die für jedes einzelne Bauteil und für das gesamte System gelten.",
+      access: "public",
+      sections: [
+        { id: "physical-limits-ratings", heading: "Absolute Maximum Ratings – absolute Grenzwerte", paragraphs: ["Absolute Maximum Ratings, auf Deutsch absolute Grenzwerte, beschreiben Belastungen, die ein Bauteil keinesfalls überschreiten darf: etwa Spannung an einem Pin, Strom, Temperatur oder maximale Verlustleistung. Sie sind eine Schadensgrenze, kein normaler Arbeitspunkt.", "Für die Auslegung werden die empfohlenen Betriebsbedingungen (Recommended Operating Conditions) verwendet. Dort ist beschrieben, in welchem Bereich Funktionen, Pegel und Genauigkeit zugesichert sind. Wer dauerhaft direkt am absoluten Grenzwert arbeitet, plant keinen Sicherheitsabstand ein und riskiert vorzeitige Alterung, Fehlverhalten oder sofortigen Schaden."] },
+        { id: "physical-limits-current", heading: "Strom pro Pin und Gesamtstrom", paragraphs: ["Ein GPIO-Pin darf nur einen begrenzten Strom liefern oder aufnehmen. Dieser Strom pro Pin ist nicht mit dem Gesamtstrom aller Pins gleichzusetzen. Viele gleichzeitig betriebene LEDs, Sensoren oder Logikeingänge können zusammen eine zweite, oft strengere Grenze des Mikrocontrollers oder seiner Versorgung erreichen.", "Das Datenblatt nennt je nach Baustein Grenzen für einzelne Pins, Pin-Gruppen, Versorgungspins und die gesamte Verlustleistung. Plane mit Reserve und benutze für größere Lasten geeignete Treiber: Transistoren, MOSFETs, Treiber-ICs oder Relaismodule mit eigener, passend abgesicherter Versorgung. Ein Mikrocontroller-Pin steuert dann den Treiber, nicht die Last direkt.", "Auch ein Ausgang, der nur kurzzeitig überlastet wird, kann sich stark erwärmen oder intern beschädigt werden. Widerstände für LEDs, Strombegrenzung und eine gemeinsame, korrekt geführte Masse sind keine optionalen Details."] },
+        { id: "physical-limits-frequency", heading: "Maximale Frequenz und Prozessortakt", paragraphs: ["Die Prozessortaktrate sagt, wie schnell der Kern Befehle ausführen kann. Sie ist nicht automatisch die höchste brauchbare Frequenz an einem GPIO-Pin, auf einer Leitung oder bei einem angeschlossenen Bauteil.", "Eine Signalkette hat eigene Grenzen: GPIO-Schaltzeit, Timer-Auflösung, Bus- und Peripherietakt, Leitungslänge, Flankensteilheit, Lastkapazität, Störungen und die Anforderungen des Empfängers. Deshalb kann ein Prozessor mit hoher Taktrate ein externes Signal nur deutlich langsamer zuverlässig erzeugen, messen oder übertragen.", "Prüfe für jede Schnittstelle den passenden Datenblattwert und messe bei kritischen Signalen. Ein Oszilloskop oder Logikanalysator zeigt, ob Frequenz, Tastgrad, Pegel und Flanken am tatsächlichen Ziel noch korrekt ankommen. Für schnelle oder leistungsstarke Anwendungen sind spezialisierte Treiber, kürzere Leitungen, saubere Versorgung und ein passendes Übertragungsverfahren oft wichtiger als ein höherer Prozessortakt."] },
+      ],
+      relatedTopics: ["microcontroller-basics", "embedded-measurement-debugging", "embedded-safety"],
+    },
+    "sampling-rate": {
+      title: "Abtastrate und Shannon-Theorem",
+      summary: "Ein Mikrocontroller sieht ein analoges Signal nicht kontinuierlich, sondern als Folge einzelner Messwerte. Die Abtastrate entscheidet, welche Veränderungen zuverlässig erkennbar sind.",
+      access: "public",
+      sections: [
+        { id: "sampling-rate-shannon", heading: "Nyquist-Shannon-Abtasttheorem", paragraphs: ["Das Nyquist-Shannon-Abtasttheorem beschreibt die Grundgrenze: Ein Signal mit einer höchsten relevanten Frequenz f lässt sich nur dann aus seinen Messwerten rekonstruieren, wenn die Abtastrate größer als das Doppelte dieser Frequenz ist. Die Nyquist-Frequenz ist die halbe Abtastrate.", "Beispiel: Sollen Signalanteile bis 100 Hz erfasst werden, muss mindestens mit mehr als 200 Messungen pro Sekunde abgetastet werden. Das ist eine theoretische Mindestgrenze unter idealen Bedingungen, nicht automatisch eine gute praktische Wahl."] },
+        { id: "sampling-rate-aliasing", heading: "Aliasing – wenn hohe Frequenzen täuschen", paragraphs: ["Liegt ein Signalanteil oberhalb der Nyquist-Frequenz, kann er in den Messwerten als falsche, niedrigere Frequenz erscheinen. Dieses Phänomen heißt Aliasing. Die nachträgliche Software kann dann nicht mehr sicher erkennen, welche hohe Frequenz tatsächlich vorhanden war.", "Ein bekanntes Bild ist ein Rad im Film, das scheinbar langsam rückwärts dreht: Die Bildrate tastet seine Bewegung zu selten ab. Bei Sensoren kann dieselbe Täuschung Vibrationen, Störungen oder schnelle Wechsel falsch darstellen."] },
+        { id: "sampling-rate-practice", heading: "Abtastrate praktisch wählen", paragraphs: ["Zuerst wird festgelegt, welche schnellste Signaländerung fachlich relevant ist. Danach wählt man eine Abtastrate mit ausreichender Reserve – oft deutlich höher als das bloße Zweifache. Reserve schaffen Abweichungen von Sensor, ADC, Zeitplanung und Filterung beherrschbar.", "Ein analoger Tiefpass vor dem ADC, ein Anti-Aliasing-Filter, dämpft Frequenzen oberhalb des gewünschten Bereichs schon vor der Messung. Erst dann kann die digitale Verarbeitung sinnvoll mitteln, filtern oder auswerten. Abtastrate, Messdauer, Datenmenge und Energieverbrauch gehören dabei zusammen: schnelleres Messen erzeugt mehr Daten und kostet häufig mehr Energie."] },
+      ],
+      relatedTopics: ["microcontroller-adc", "microcontroller-timer", "embedded-measurement-debugging", "physical-limits"],
     },
     "processor-overview": {
       title: "ESP32-Prozessorfamilien im Vergleich",
@@ -237,7 +520,7 @@ const HelpContent = (() => {
         { heading: "Akku und Funk realistisch beurteilen", paragraphs: ["Eine Chipfamilie allein bestimmt nicht die Batterielaufzeit. Entscheidend sind Messintervall, Schlafdauer, Sendezeit, Sensor und die Rolle im Funknetz. Ein batteriebetriebenes Zigbee-Geraet ist normalerweise ein schlafendes Endgeraet; ein Router oder Koordinator muss dagegen erreichbar bleiben und wird typischerweise dauerhaft versorgt. WLAN kann ebenfalls sparsam sein, wenn ein Node nur selten aufwacht und sendet, braucht aber fuer eine staendig erreichbare lokale Webseite deutlich mehr Energie."] },
         { heading: "Was die Tabelle nicht behauptet", paragraphs: ["Es gibt keine allgemeine ESP32-C-Familie und aktuell keine ESP32-S6-Familie. C5 und C61 gibt es, P4 ebenfalls. Die Tabelle ist eine Orientierung, keine Freigabeliste. Ob ein konkretes Board fuer GerNetiX flashbar und passend ist, pruefst du anschliessend in Unterstuetzte Boards anhand der exakten Boardvariante, ihres Flash-Speichers und der Anschluesse."] },
       ],
-      actions: [{ label: "Unterstuetzte Boards ansehen", route: "/app/help/#supported-devices" }],
+      actions: [{ label: "Unterstuetzte Boards ansehen", route: "/hilfe/#supported-devices" }],
       relatedTopics: ["supported-devices", "provision-new-board", "update-profiles"],
     },
     "first-project": {
@@ -418,5 +701,9 @@ const HelpContent = (() => {
     return null;
   }
 
-  return { topics, articles, findTopic };
+  function findParentTopic(topicId) {
+    return topics.find((topic) => topic.children?.some((item) => item.id === topicId)) || null;
+  }
+
+  return { topics, articles, findTopic, findParentTopic };
 })();

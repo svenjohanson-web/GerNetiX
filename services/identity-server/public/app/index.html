@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260719-07" />
+    <link rel="stylesheet" href="/app/app.css?v=20260719-08" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -30,6 +30,7 @@
       </header>
 
       <nav id="mainMenu" class="tabs app-menu hidden" aria-label="Plattformbereiche">
+        <a class="utility public-information-link" href="/">Startseite</a>
         <a href="/app/dashboard/" data-route="dashboard">Übersicht</a>
         <a href="/app/vision/" data-route="vision">Vision</a>
         <a href="/app/development-platform/" data-route="development-platform">Entwicklungsplattform</a>
@@ -38,7 +39,8 @@
         <a class="utility" href="/app/builds/" data-route="builds">Betrieb</a>
         <a class="utility" href="/app/downloads/" data-route="downloads">Downloads</a>
         <a class="utility" href="/app/billing/" data-route="billing">Billing</a>
-        <a class="utility" href="/app/help/" data-route="help">Hilfe</a>
+        <a class="utility" href="/wissen/" data-route="knowledge">Wissensportal</a>
+        <a class="utility public-information-link" href="/hilfe/">Hilfe</a>
         <button id="logoutButton" class="menu-logout" type="button">Abmelden</button>
       </nav>
 
@@ -64,6 +66,7 @@
           <div class="dashboard-grid workspace-grid">
             <button class="entry-card" type="button" data-open-route="/app/development-platform/"><span>Eigene Idee</span><strong>Entwicklungsbereich</strong><p>Vom Ziel zur begründeten Lösung.</p></button>
             <button class="entry-card" type="button" data-open-route="/app/learn/"><span>Geführt lernen</span><strong>Lernbereich</strong><p>Verstehen, entscheiden, ausprobieren.</p></button>
+            <button class="entry-card" type="button" data-open-route="/wissen/"><span>Zusammenhängend lesen</span><strong>Wissensportal</strong><p>Grundlagen, Fachbegriffe und Systemzusammenhänge als Lektüre.</p></button>
             <button class="entry-card" type="button" data-open-route="/app/device-management/"><span>Vorhandene Hardware</span><strong>Boards verwalten</strong><p>Boards verbinden und verwalten.</p></button>
           </div>
         </section>
@@ -190,7 +193,7 @@
         <section class="dashboard-grid">
           <button id="createOfflineRecoverySetButton" class="entry-card account-setup-card" type="button"><span>Optional</span><strong>Offline-Recovery-Set</strong><p>Ein einmaliger Code zum Ausdrucken oder getrennten sicheren Ablegen. Er hilft, wenn Geräte oder Schlüsselbünde verloren gehen.</p><small id="offlineRecoverySetStatus" aria-live="polite"></small><em id="offlineRecoverySetAction">Recovery-Set erstellen →</em></button>
           <a class="entry-card account-setup-card" href="/app/device-management/provisioning/"><span>Erster ESP32 = Recovery-Token</span><strong>ESP32 anmelden und Konto erweitern</strong><p>Dein erster angemeldeter ESP32 wird automatisch als Recovery-Board verknüpft – das ist keine zusätzliche Auswahl. Das ESP32-Konto erhält das größere Ressourcenprofil: als Zielwert 10 MB statt 5 MB sowie zusätzliche Funktionen wie Background Worker und Dispatcher, sobald diese für dein Konto freigeschaltet sind.</p><em>Ersten ESP32 als Recovery-Token provisionieren →</em></a>
-          <a class="entry-card account-setup-card" href="/app/help/?topic=registration-login-recovery#social-recovery"><span>Später verfügbar</span><strong>Social Recovery</strong><p>Zwei von drei offline verteilten Anteilen können gemeinsam bei der Wiederherstellung helfen, ohne Kontaktdaten zu GerNetiX hochzuladen.</p><em>Funktionsweise ansehen →</em></a>
+          <a class="entry-card account-setup-card" href="/hilfe/#registration-login-recovery"><span>Später verfügbar</span><strong>Social Recovery</strong><p>Zwei von drei offline verteilten Anteilen können gemeinsam bei der Wiederherstellung helfen, ohne Kontaktdaten zu GerNetiX hochzuladen.</p><em>Funktionsweise ansehen →</em></a>
         </section>
       </section>
 
@@ -624,7 +627,7 @@
                 </label>
                 <button id="connectProvisioningWifiButton" class="primary" type="button">Mit WLAN verbinden</button>
               </div>
-              <p class="helper-text">Wenn du diesen Weg nicht nutzen möchtest, kannst du das Captive Portal des Boards verwenden. <a class="provisioning-wifi-help-link" href="/app/help/#usb-wifi-setup">Alternative in der Hilfe öffnen</a>.</p>
+              <p class="helper-text">Wenn du diesen Weg nicht nutzen möchtest, kannst du das Captive Portal des Boards verwenden. <a class="provisioning-wifi-help-link" href="/hilfe/#usb-wifi-setup">Alternative in der Hilfe öffnen</a>.</p>
               <div id="provisioningWifiSetupStatus" class="flash-status hidden" role="status" aria-live="polite"></div>
             </section>
             <div class="card-actions">
@@ -800,7 +803,7 @@
                   <textarea id="developmentChatInput" rows="4" placeholder="Beschreibe kurz deine Projektidee oder antworte auf die Frage der KI."></textarea>
                   <button id="developmentChatSubmit" class="development-send-button" type="submit" aria-label="Nachricht senden" title="Nachricht senden">&uarr;</button>
                 </span>
-                <p id="developmentChatPremiumHint" class="chat-premium-hint hidden">KI-Unterstuetzung ist im Premium-Abo enthalten. <a href="/app/help/#ai-premium" data-route="help">Warum?</a></p>
+                <p id="developmentChatPremiumHint" class="chat-premium-hint hidden">KI-Unterstuetzung ist im Premium-Abo enthalten. <a href="/hilfe/#ai-premium">Warum?</a></p>
               </form>
             </aside>
           </article>
@@ -913,6 +916,10 @@
         </div>
         <section id="billingSummary" class="summary-grid"></section>
       </section>
+      <footer class="platform-footer">
+        <span>© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
+        <nav aria-label="Weiterführende Informationen"><a href="/app/vision/">Vision</a><a href="/#motivation">Über uns</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/">Startseite</a></nav>
+      </footer>
     </main>
 
     <script src="/app/api-client.js"></script>
@@ -926,9 +933,9 @@
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
     <script src="/app/development-component-metamodel.js?v=20260716-01"></script>
     <script src="/app/development-platform.js?v=20260717-04"></script>
-    <script src="/app/help-content.js?v=20260719-04"></script>
+    <script src="/app/help-content.js?v=20260719-30"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
-    <script src="/app/help-view.js?v=20260719-01"></script>
-    <script src="/app/app.js?v=20260719-05"></script>
+    <script src="/app/help-view.js?v=20260719-16"></script>
+    <script src="/app/app.js?v=20260719-09"></script>
   </body>
 </html>

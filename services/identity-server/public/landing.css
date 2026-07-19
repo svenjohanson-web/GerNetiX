@@ -110,6 +110,7 @@ main { display: grid; gap: 16px; width: min(1180px, calc(100% - 32px)); margin: 
 }
 h1, h2 { margin: 0; line-height: 1.12; }
 h1 { max-width: 1040px; font-size: clamp(34px, 5.4vw, 66px); }
+.hero h1 { font-size: clamp(30px, 4.2vw, 52px); }
 h2 { font-size: clamp(24px, 3.4vw, 38px); }
 .hero, .copy-box { display: grid; gap: 14px; scroll-margin-top: 92px; }
 .lead { max-width: 900px; margin: 0; color: var(--muted); font-size: clamp(17px, 2vw, 21px); line-height: 1.6; }
@@ -155,6 +156,9 @@ footer {
   color: var(--muted);
   font-size: 12px;
 }
+.site-footer-links { display: flex; flex-wrap: wrap; gap: 14px; }
+.site-footer-links a { color: #cbd5e1; font-weight: 750; }
+.site-footer-links a:hover { color: var(--accent); }
 @media (max-width: 720px) {
   .scope-list { grid-template-columns: 1fr; }
   footer { flex-direction: column; }

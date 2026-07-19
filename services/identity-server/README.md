@@ -99,7 +99,7 @@ services/identity-server/public/app
   /help
 ```
 
-Unter `/app/help/` liegt die eigenstaendige Anwenderhilfe. Ihre Themen- und Artikelstruktur liegt zentral in `public/app/help-content.js`; Navigation, Artikeldarstellung und Help-Chat-UI liegen getrennt in `help-view.js`, während `help-chat-service.js` derzeit einen klar abgegrenzten lokalen Platzhalteradapter mit Artikelreferenzen bereitstellt. Damit kann spaeter eine eigene Help-API oder ein eigener Assistant-Kontext angebunden werden, ohne den allgemeinen Projekt- oder Programmierchat zu vermischen.
+Unter `/wissen/` liegt das öffentliche Wissensportal mit fachlichen Grundlagen wie Embedded, Systemlandschaften, Sicherheit und Datenschutz. Unter `/hilfe/` liegt die GerNetiX-Anwenderhilfe mit Konto-, Geräte- und Projektabläufen. Beide Ansichten verwenden dasselbe Kapitel- und Artikelmodell in `public/app/help-content.js`, sind dort aber ausdrücklich einer Oberfläche zugeordnet. So können allgemeine und GerNetiX-spezifische Artikel – etwa zu Workern – aufeinander verweisen, ohne ihre Zwecke zu vermischen. Navigation, Artikeldarstellung und Help-Chat-UI liegen getrennt in `help-view.js`; `help-chat-service.js` stellt einen klar abgegrenzten lokalen Adapter mit Artikelreferenzen bereit.
 
 Der Help-Chat nutzt `/api/platform/help-assistant/chat` und die eigene LLM-Route `help_chat`. Diese Route ist technisch verbindlich auf Ollama begrenzt: Auch wenn die globale Chat-Route im Admin Tool auf OpenAI oder Claude steht, kann GerNetiX Help weder auf einen API-Provider umgestellt noch an ihn weitergeleitet werden. Im Admin Tool sind fuer Help deshalb nur das lokale Ollama-Modell und dessen lokaler Endpoint relevant.
 

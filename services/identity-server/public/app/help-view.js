@@ -3,34 +3,39 @@ const HelpView = (() => {
   let messages = [];
   let bound = false;
   let access = { hasAccount: true, premium: false };
+  let surface = "help";
+  let knowledgeScrollHandler = null;
 
   function render(nextAccess = access) {
     access = { ...access, ...nextAccess };
+    surface = nextAccess.surface || surface;
     const mount = document.querySelector("#helpMount");
     if (!mount) return;
+    const visibleTopics = HelpContent.topics.filter((topic) => (topic.surface || "help") === surface);
     const requested = window.location.hash.replace(/^#/, "");
-    if (requested && HelpContent.findTopic(requested)?.articleId) selectedTopicId = requested;
-    if (!HelpContent.findTopic(selectedTopicId)?.articleId) selectedTopicId = "quick-start";
+    if (requested && visibleTopics.some((topic) => topic.children?.some((child) => child.id === requested))) selectedTopicId = requested;
+    if (!visibleTopics.some((topic) => topic.children?.some((child) => child.id === selectedTopicId))) selectedTopicId = visibleTopics[0]?.children?.[0]?.id || "quick-start";
     const selected = HelpContent.findTopic(selectedTopicId);
     const article = HelpContent.articles[selected.articleId];
+    const portal = surface === "knowledge";
     mount.innerHTML = `
       <header class="section-head help-page-head">
         <div>
           <p class="eyebrow">GerNetiX</p>
-          <h2>Hilfe</h2>
-          <p class="helper-text">Öffentliche Grundlagen, Konto-Hilfe und vertiefende Premium-Inhalte sind getrennt dargestellt.</p>
+          <h2>${portal ? "Wissensportal" : "Hilfe"}</h2>
+          <p class="helper-text">${portal ? "Grundlagen und Zusammenhänge, die über einzelne GerNetiX-Projekte hinausgehen." : "Konkrete Abläufe, Konto- und Projektfunktionen in GerNetiX."}</p>
         </div>
       </header>
-      <div class="help-layout">
-        <nav class="panel help-topic-navigation" aria-label="Help topics">
-          <p class="eyebrow">Topics</p>
-          ${HelpContent.topics.map(renderTopic).join("")}
+      ${portal ? renderKnowledgeBook(visibleTopics) : `<div class="help-layout">
+        <nav class="panel help-topic-navigation" aria-label="${portal ? "Wissensportal-Themen" : "Hilfethemen"}">
+          <p class="eyebrow">${portal ? "Themenbereiche" : "Hilfethemen"}</p>
+          ${visibleTopics.map(renderTopic).join("")}
         </nav>
         <article class="panel help-article" aria-live="polite">
           ${renderArticle(article, selected)}
         </article>
-      </div>
-      <section class="panel help-chat" aria-labelledby="helpChatTitle">
+      </div>`}
+      ${portal ? "" : `<section class="panel help-chat" aria-labelledby="helpChatTitle">
         <header class="help-chat-head">
           <div><p class="eyebrow">Dedicated help assistant</p><h3 id="helpChatTitle">Ask GerNetiX Help</h3></div>
           <p>Ask about using GerNetiX or a basic technical topic. This is separate from your project and programming chats.</p>
@@ -41,11 +46,68 @@ const HelpView = (() => {
         <form id="helpChatForm" class="help-chat-form">
           <label for="helpChatInput">Your question</label>
           <span class="help-chat-input-box"><textarea id="helpChatInput" rows="2" placeholder="${access.premium ? "Enter your question about GerNetiX..." : "KI-Unterstuetzung ist mit Premium verfuegbar."}" ${access.premium ? "" : "disabled"}></textarea><button class="primary" type="submit" ${access.premium ? "" : "disabled"}>Send</button></span>
-          ${access.premium ? "" : '<p class="chat-premium-hint">KI-Unterstuetzung ist im Premium-Abo enthalten. <a href="/app/help/#ai-premium">Warum?</a></p>'}
+          ${access.premium ? "" : '<p class="chat-premium-hint">KI-Unterstuetzung ist im Premium-Abo enthalten. <a href="/hilfe/#ai-premium">Warum?</a></p>'}
         </form>
-      </section>`;
+      </section>`}`;
     if (article.hardwareCatalog) loadHardwareCatalog(mount);
+    if (portal) activateKnowledgeBook(mount, selectedTopicId);
     if (!bound) bind(mount);
+  }
+
+  function renderKnowledgeBook(topics) {
+    return `<div class="knowledge-book-layout">
+      <nav class="panel knowledge-book-navigation" aria-label="Kapitelübersicht">
+        <p class="eyebrow">Inhalt</p>
+        ${topics.map((topic, index) => `<section><button class="knowledge-part-link" type="button" data-knowledge-part="${escapeHtml(topic.id)}"><span>${index + 1}</span>${escapeHtml(topic.title)}</button>${(topic.children || []).map((child, childIndex) => {
+          const chapterNumber = `${index + 1}.${childIndex + 1}`;
+          return `<a href="#${escapeHtml(child.id)}" data-knowledge-topic="${escapeHtml(child.id)}"><span>${chapterNumber}</span>${escapeHtml(child.title)}</a>${(child.subchapters || []).map((subchapter, subchapterIndex) => `<a class="knowledge-subchapter-link" href="#${escapeHtml(subchapter.id)}" data-knowledge-subchapter="${escapeHtml(subchapter.id)}"><span>${chapterNumber}.${subchapterIndex + 1}</span>${escapeHtml(subchapter.title)}</a>`).join("")}`;
+        }).join("")}</section>`).join("")}
+      </nav>
+      <main class="knowledge-book-content" aria-label="Wissensportal-Lektüre">
+        ${topics.map((topic, index) => `<section id="knowledge-part-${escapeHtml(topic.id)}" class="knowledge-book-part" data-knowledge-part="${escapeHtml(topic.id)}"><header><p class="eyebrow">Hauptkapitel ${index + 1}</p><h2>${index + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}</header>${(topic.children || []).map((child, childIndex) => {
+          const chapter = HelpContent.articles[child.articleId];
+          const chapterNumber = `${index + 1}.${childIndex + 1}`;
+          return `<article id="${escapeHtml(child.id)}" class="panel help-article knowledge-book-chapter" data-knowledge-chapter="${escapeHtml(child.id)}"><p class="knowledge-chapter-number">${chapterNumber}</p>${renderArticle(chapter, child, { showRelated: false, chapterNumber })}</article>`;
+        }).join("")}</section>`).join("")}
+      </main>
+    </div>`;
+  }
+
+  function activateKnowledgeBook(mount, topicId) {
+    if (knowledgeScrollHandler) window.removeEventListener("scroll", knowledgeScrollHandler);
+    const updateActiveChapter = (nextTopicId) => {
+      selectedTopicId = nextTopicId;
+      mount.querySelectorAll("[data-knowledge-topic]").forEach((link) => {
+        const active = link.dataset.knowledgeTopic === nextTopicId;
+        link.classList.toggle("active", active);
+        link.toggleAttribute("aria-current", active);
+      });
+    };
+    const chapters = [...mount.querySelectorAll("[data-knowledge-chapter]")];
+    let activeTopicId = "";
+    const syncChapterWithScroll = () => {
+      const readingLine = 132;
+      const current = chapters.reduce((latest, chapter) => chapter.getBoundingClientRect().top <= readingLine ? chapter : latest, chapters[0]);
+      const nextTopicId = current?.dataset.knowledgeChapter;
+      if (!nextTopicId || nextTopicId === activeTopicId) return;
+      activeTopicId = nextTopicId;
+      updateActiveChapter(nextTopicId);
+      history.replaceState({}, "", `/wissen/#${nextTopicId}`);
+    };
+    let animationFrame = 0;
+    knowledgeScrollHandler = () => {
+      if (animationFrame) return;
+      animationFrame = requestAnimationFrame(() => {
+        animationFrame = 0;
+        syncChapterWithScroll();
+      });
+    };
+    window.addEventListener("scroll", knowledgeScrollHandler, { passive: true });
+    const requested = mount.querySelector(`[data-knowledge-chapter="${topicId}"]`);
+    requestAnimationFrame(() => {
+      if (requested && window.location.hash) requested.scrollIntoView({ block: "start" });
+      syncChapterWithScroll();
+    });
   }
 
   function renderTopic(topic) {
@@ -58,7 +120,7 @@ const HelpView = (() => {
     </details>`;
   }
 
-  function renderArticle(article, topic) {
+  function renderArticle(article, topic, { showRelated = true, chapterNumber = "" } = {}) {
     if (!canAccess(article.access)) {
       const preview = article.access === "premium" ? article.sections.slice(0, 1) : [];
       return `<header class="help-article-head"><p class="eyebrow">${escapeHtml(parentTitle(topic.id))}</p><h2>${escapeHtml(article.title)}</h2><p>${escapeHtml(article.summary)}</p></header>
@@ -66,9 +128,12 @@ const HelpView = (() => {
         ${renderPaywall(article.access)}`;
     }
     return `<header class="help-article-head"><p class="eyebrow">${escapeHtml(parentTitle(topic.id))}</p><h2>${escapeHtml(article.title)}</h2><p>${escapeHtml(article.summary)}</p></header>
-      ${article.sections.map((section) => `<section class="help-article-section">
+      ${article.sections.map((section, sectionIndex) => `<section${section.id ? ` id="${escapeHtml(section.id)}"` : ""} class="help-article-section">
+        ${chapterNumber && section.id ? `<p class="knowledge-subchapter-number">${chapterNumber}.${sectionIndex + 1}</p>` : ""}
         <h3>${escapeHtml(section.heading)}</h3>
         ${(section.paragraphs || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+        ${section.systemLandscape ? renderSystemLandscapeVisual() : ""}
+        ${section.serverLandscape ? renderServerTypesVisual() : ""}
         ${section.hardwareVisual ? renderHardwareVisual() : ""}
         ${section.list ? `<ul>${section.list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
         ${section.stateChart ? renderStateChart(section.stateChart) : ""}
@@ -76,10 +141,18 @@ const HelpView = (() => {
         ${section.table ? `<div class="help-article-table-wrap"><table class="help-article-table"><thead><tr>${section.table.headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead><tbody>${section.table.rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : ""}
         ${section.code ? `<pre><code>${escapeHtml(section.code)}</code></pre>` : ""}
         ${section.links ? `<p class="help-inline-links">${section.links.map((link) => `<button type="button" data-help-topic="${escapeHtml(link.topicId)}">${escapeHtml(link.label)}</button>`).join("")}</p>` : ""}
+        ${chapterNumber && section.id ? renderPracticeLessonLink(section.id, section.heading) : ""}
       </section>`).join("")}
       ${article.hardwareCatalog ? '<section id="compatibleHardwareCatalog" class="help-hardware-catalog"><p class="helper-text">Hardware Catalog wird geladen …</p></section>' : ""}
       ${article.actions?.length ? `<div class="button-row help-next-actions">${article.actions.map((action) => `<button type="button" data-help-route="${escapeHtml(action.route)}">${escapeHtml(action.label)}</button>`).join("")}</div>` : ""}
-      ${article.relatedTopics?.length ? `<section class="help-related"><h3>Related help topics</h3>${article.relatedTopics.map(renderRelatedTopic).join("")}</section>` : ""}`;
+      ${chapterNumber ? renderPracticeLessonLink(topic.id, article.title, "chapter") : ""}
+      ${showRelated && article.relatedTopics?.length ? `<section class="help-related"><h3>Weiterführende Artikel</h3>${article.relatedTopics.map(renderRelatedTopic).join("")}</section>` : ""}`;
+  }
+
+  function renderPracticeLessonLink(knowledgeTopicId, title, kind = "section") {
+    const route = `/app/learn/?knowledge-topic=${encodeURIComponent(knowledgeTopicId)}`;
+    const label = kind === "chapter" ? "Praktisches Beispiel im Lernbereich" : "Praxis-Lesson öffnen";
+    return `<a class="help-practice-lesson ${kind === "chapter" ? "chapter" : ""}" href="${route}" data-practice-lesson="${escapeHtml(knowledgeTopicId)}"><span>${label}</span><small>Demo-Link · Zuordnung zu einer Lesson folgt</small><b aria-hidden="true">→</b></a>`;
   }
 
   function renderStateChart(chart) {
@@ -88,6 +161,28 @@ const HelpView = (() => {
       <div class="help-state-chart-nodes">${(chart.states || []).map((state) => `<span class="help-state-node ${state.initial ? "initial" : ""}">${escapeHtml(state.title)}</span>`).join("")}</div>
       <ul class="help-state-chart-transitions">${(chart.transitions || []).map((transition) => `<li><strong>${escapeHtml(transition.from)}</strong><span>→</span><strong>${escapeHtml(transition.to)}</strong><small>${escapeHtml(transition.when)}</small></li>`).join("")}</ul>
     </div>`;
+  }
+
+  function renderSystemLandscapeVisual() {
+    return `<figure class="help-hardware-landscape knowledge-system-landscape" aria-label="Übersicht einer modernen Systemlandschaft"><div>
+      <span>IoT-Geräte<small>Embedded-Systeme, Sensoren und Aktoren</small></span>
+      <b aria-hidden="true">↔</b>
+      <span>Server<small>Lokal · Internet/VPS · Cloud</small></span>
+      <b aria-hidden="true">↔</b>
+      <span>Apps<small>Mobil · PC/Mac · Web</small></span>
+      </div>
+    </figure>`;
+  }
+
+  function renderServerTypesVisual() {
+    return `<figure class="help-hardware-landscape server-types-landscape" aria-label="Server als Oberbegriff für verschiedene Technologien">
+      <div class="server-types-root"><span>Server</span></div>
+      <div class="server-types-list">
+        <span>Lokaler Server oder Gateway<small>vor Ort, nah an den Geräten</small></span>
+        <span>Internet-Server oder VPS<small>öffentlich erreichbar, eigene Dienste</small></span>
+        <span>Cloud-Dienste<small>verwaltet, flexibel skalierbar</small></span>
+      </div>
+    </figure>`;
   }
 
   function renderHardwareVisual() {
@@ -177,6 +272,25 @@ const HelpView = (() => {
   function bind(mount) {
     bound = true;
     mount.addEventListener("click", (event) => {
+      const knowledgePart = event.target.closest(".knowledge-part-link[data-knowledge-part]");
+      if (knowledgePart) {
+        const part = mount.querySelector(`#knowledge-part-${knowledgePart.dataset.knowledgePart}`);
+        part?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      const knowledgeTopic = event.target.closest("[data-knowledge-topic]");
+      if (knowledgeTopic) {
+        event.preventDefault();
+        const chapter = mount.querySelector(`[data-knowledge-chapter="${knowledgeTopic.dataset.knowledgeTopic}"]`);
+        chapter?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
+      const knowledgeSubchapter = event.target.closest("[data-knowledge-subchapter]");
+      if (knowledgeSubchapter) {
+        event.preventDefault();
+        mount.querySelector(`#${knowledgeSubchapter.dataset.knowledgeSubchapter}`)?.scrollIntoView({ behavior: "smooth", block: "start" });
+        return;
+      }
       const topic = event.target.closest("[data-help-topic]");
       if (topic) {
         selectTopic(topic.dataset.helpTopic);
@@ -209,8 +323,13 @@ const HelpView = (() => {
   function selectTopic(topicId) {
     const topic = HelpContent.findTopic(topicId);
     if (!topic?.articleId) return;
+    const targetSurface = HelpContent.findParentTopic(topicId)?.surface || "help";
+    if (targetSurface !== surface) {
+      window.navigate(`${targetSurface === "knowledge" ? "/wissen/" : "/hilfe/"}#${topicId}`);
+      return;
+    }
     selectedTopicId = topicId;
-    history.replaceState({}, "", `/app/help/#${topicId}`);
+    history.replaceState({}, "", `${surface === "knowledge" ? "/wissen/" : "/hilfe/"}#${topicId}`);
     render();
   }
 

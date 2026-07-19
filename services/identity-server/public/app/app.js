@@ -75,9 +75,13 @@ const routeMap = {
   downloads: "downloadsView",
   billing: "billingView",
   help: "helpView",
+  knowledge: "helpView",
   "account-setup": "accountSetupView",
   auth: "dashboardView",
 };
+const isPublicHelpPage = /^\/hilfe\/?$/.test(window.location.pathname);
+const isPublicKnowledgePage = /^\/wissen\/?$/.test(window.location.pathname);
+const isPublicInformationPage = isPublicHelpPage || isPublicKnowledgePage;
 
 let deviceOnboardingController = null;
 let guidedProjectViewController = null;
@@ -324,6 +328,23 @@ window.addEventListener("popstate", renderRoute);
 document.addEventListener("click", closeMainMenu);
 
 async function bootstrap() {
+  if (isPublicInformationPage) {
+    try {
+      const summary = await getJson("/api/platform/summary");
+      state.account = summary.account;
+      state.billing = summary.billing;
+    } catch {
+      state.account = null;
+      state.billing = null;
+    }
+    if (!state.account) {
+      document.body.classList.add("public-help-page", "public-information-anonymous");
+    }
+    document.querySelector("#accountBadge").textContent = state.account ? `${state.account.username} · ${state.account.plan}` : (isPublicKnowledgePage ? "Wissensportal" : "Öffentliche Hilfe");
+    document.querySelector("#logoutButton").textContent = state.account ? "Abmelden" : "Anmelden";
+    renderRoute();
+    return;
+  }
   developmentPlatform().init();
   await refresh();
   await loadPlatformDownloads();
@@ -434,7 +455,7 @@ function renderRoute() {
   }
   if (route === "device-provisioning") loadDevicePageTools();
   if (route === "downloads") renderDownloads();
-  if (route === "help") renderHelpTopic();
+  if (["help", "knowledge"].includes(route)) renderHelpTopic();
   lastRenderedRoute = route;
 }
 
@@ -449,6 +470,7 @@ function renderHelpTopic() {
   HelpView.render({
     hasAccount: Boolean(state.account),
     premium: Boolean(state.billing?.entitlements?.includes("learn_guided_projects")),
+    surface: routeName() === "knowledge" ? "knowledge" : "help",
   });
 }
 
@@ -533,7 +555,10 @@ function currentLocationTrail(route) {
     ],
     help: [
       { label: "Plattform", route: "/app/dashboard/" },
-      { label: "Hilfe", route: "/app/help/" },
+      { label: "Hilfe", route: "/hilfe/" },
+    ],
+    knowledge: [
+      { label: "Wissensportal", route: "/wissen/" },
     ],
     "account-setup": [
       { label: "Plattform", route: "/app/dashboard/" },
@@ -544,6 +569,8 @@ function currentLocationTrail(route) {
 }
 
 function routeName() {
+  if (/^\/hilfe\/?$/.test(window.location.pathname)) return "help";
+  if (/^\/wissen\/?$/.test(window.location.pathname)) return "knowledge";
   if (/^\/app\/development-platform\/hardware\/?$/.test(window.location.pathname)) return "development-hardware";
   if (/^\/app\/device-management\/?$/.test(window.location.pathname)) return "device-management";
   const deviceManagementMatch = window.location.pathname.match(/^\/app\/device-management\/([^/]+)/);

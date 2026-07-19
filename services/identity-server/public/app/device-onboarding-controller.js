@@ -931,7 +931,7 @@ const DeviceOnboardingController = (() => {
       target.innerHTML = `
         <div class="provisioning-update-profile-head">
           <h4 id="provisioningUpdateProfileTitle">Varianten der Komfort- und Sicherheitsoptionen</h4>
-          <a class="provisioning-help-link" href="/app/help/#update-profiles" aria-label="Hilfe zu Komfort- und Sicherheitsoptionen" title="Wann wähle ich welche Variante?">?</a>
+          <a class="provisioning-help-link" href="/hilfe/#update-profiles" aria-label="Hilfe zu Komfort- und Sicherheitsoptionen" title="Wann wähle ich welche Variante?">?</a>
         </div>
         <div class="update-profile-options">
           ${profiles.map((profile) => `<label class="update-profile-option">

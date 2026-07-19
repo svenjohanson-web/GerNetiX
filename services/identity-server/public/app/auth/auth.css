@@ -12,10 +12,43 @@
 body {
   margin: 0;
   min-height: 100vh;
+  background: #070b12;
 }
 
+.auth-site-header {
+  position: sticky;
+  z-index: 10;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  width: min(1180px, calc(100% - 32px));
+  margin: 16px auto 0;
+  padding: 10px 12px;
+  border: 1px solid #263241;
+  border-radius: 10px;
+  background: rgba(17, 24, 39, .92);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, .26);
+  backdrop-filter: blur(14px);
+}
+
+.auth-site-brand { display: flex; align-items: center; gap: 10px; min-width: 0; color: #e5e7eb; text-decoration: none; }
+.auth-site-brand-mark { display: grid; flex: 0 0 auto; width: 38px; height: 38px; place-items: center; border-radius: 7px; background: linear-gradient(135deg, #0e7490, #2563eb); color: white; font-weight: 850; }
+.auth-site-brand > span:last-child { display: grid; gap: 1px; }
+.auth-site-brand small { color: #94a3b8; font-size: 10px; }
+.auth-menu-button { display: inline-grid; gap: 4px; width: 42px; min-height: 42px; height: 42px; place-content: center; padding: 0; border-radius: 7px; }
+.auth-menu-button span { width: 18px; height: 2px; border-radius: 999px; background: #cbd5e1; }
+.auth-site-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; display: grid; gap: 7px; width: min(300px, calc(100vw - 32px)); padding: 8px; border: 1px solid #2b3748; border-radius: 8px; background: #111827; box-shadow: 0 16px 42px rgba(0, 0, 0, .34); }
+.auth-site-menu a { min-height: 36px; padding: 8px 10px; border: 1px solid #3c4a5d; border-radius: 7px; background: #1b2430; color: #cbd5e1; font-size: 13px; font-weight: 750; text-decoration: none; }
+.auth-site-menu a:hover { border-color: #22d3ee; background: #273244; color: #ecfeff; }
+.auth-site-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 14px 2px 24px; color: #94a3b8; font-size: 12px; }
+.auth-site-footer nav { display: flex; flex-wrap: wrap; gap: 14px; }
+.auth-site-footer a { color: #cbd5e1; font-weight: 750; text-decoration: none; }
+.auth-site-footer a:hover { color: #67e8f9; }
+
 .login-shell {
-  min-height: 100vh;
+  min-height: calc(100vh - 88px);
   display: grid;
   place-items: center;
   padding: 24px;

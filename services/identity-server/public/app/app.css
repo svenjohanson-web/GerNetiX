@@ -311,6 +311,67 @@ button.danger:hover {
   justify-content: center;
   gap: 16px;
 }
+.knowledge-book-layout {
+  display: grid;
+  grid-template-columns: minmax(230px, 290px) minmax(0, 900px);
+  align-items: start;
+  justify-content: center;
+  gap: 24px;
+}
+.knowledge-book-navigation {
+  position: sticky;
+  top: 16px;
+  display: grid;
+  gap: 14px;
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+}
+.knowledge-book-navigation section { display: grid; gap: 4px; }
+.knowledge-part-link { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 8px; width: 100%; border: 0; border-radius: 7px; padding: 6px; background: transparent; color: var(--muted); font: inherit; font-size: 13px; font-weight: 800; text-align: left; }
+.knowledge-part-link:hover { background: var(--soft); color: var(--accent); }
+.knowledge-part-link span { font-variant-numeric: tabular-nums; }
+.knowledge-book-part { scroll-margin-top: 80px; }
+.knowledge-book-navigation a {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr);
+  gap: 8px;
+  align-items: start;
+  border-radius: 7px;
+  padding: 8px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.knowledge-book-navigation a span { color: var(--muted); font-variant-numeric: tabular-nums; }
+.knowledge-book-navigation a:hover, .knowledge-book-navigation a.active { background: var(--soft); color: var(--accent); }
+.knowledge-book-navigation a.active span { color: inherit; font-weight: 800; }
+.knowledge-book-navigation .knowledge-subchapter-link { padding-left: 26px; font-size: 12px; }
+.knowledge-book-content { display: grid; gap: 32px; min-width: 0; }
+.knowledge-book-part { display: grid; gap: 16px; }
+.knowledge-book-part > header { padding: 4px 8px 0; }
+.knowledge-book-part > header h2 { max-width: 720px; margin: 3px 0 0; font-size: clamp(22px, 3vw, 32px); line-height: 1.15; }
+.knowledge-book-part > header p:last-child { max-width: 720px; margin: 8px 0 0; color: var(--muted); line-height: 1.5; }
+.knowledge-book-chapter { scroll-margin-top: 80px; }
+.knowledge-book-chapter .help-article-section[id] { scroll-margin-top: 80px; }
+.knowledge-book-chapter .help-article-head h2 { font-size: clamp(24px, 3vw, 36px); }
+.knowledge-chapter-number { margin: 0 0 8px; color: var(--accent); font-size: 14px; font-weight: 850; letter-spacing: .04em; }
+.knowledge-subchapter-number { margin: 0 0 4px; color: var(--accent); font-size: 12px; font-weight: 800; }
+.help-practice-lesson { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 2px 12px; align-items: center; margin-top: 14px; padding: 10px 12px; border: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius: 10px; color: var(--accent); text-decoration: none; }
+.help-practice-lesson:hover { background: var(--soft); }
+.help-practice-lesson span { font-weight: 800; }
+.help-practice-lesson small { grid-column: 1; color: var(--muted); }
+.help-practice-lesson b { grid-column: 2; grid-row: 1 / span 2; font-size: 18px; }
+.help-practice-lesson.chapter { margin: 20px 0 0; border-style: solid; }
+.knowledge-system-landscape { margin: 20px 0; }
+.knowledge-system-landscape > div { min-width: 510px; justify-content: center; }
+.knowledge-system-landscape span { min-width: 145px; }
+.knowledge-system-landscape span small { color: #94a3b8; font-size: 10px; font-weight: 600; line-height: 1.25; }
+.server-types-landscape { margin: 20px 0; }
+.server-types-landscape > .server-types-root { min-width: 0; justify-content: center; margin-bottom: 10px; }
+.server-types-landscape > .server-types-root span { min-width: 150px; }
+.server-types-landscape > .server-types-list { min-width: 560px; justify-content: center; }
+.server-types-landscape span { min-width: 160px; }
+.server-types-landscape span small { color: #94a3b8; font-size: 10px; font-weight: 600; line-height: 1.25; }
 .help-topic-navigation {
   position: sticky;
   top: 16px;
@@ -451,9 +512,14 @@ button.danger:hover {
 .chat-premium-hint { margin: 0; color: var(--muted); font-size: 12px; }
 .chat-premium-hint a { color: var(--accent); font-weight: 700; }
 @media (max-width: 760px) {
-  .help-layout { grid-template-columns: 1fr; }
+  .help-layout, .knowledge-book-layout { grid-template-columns: 1fr; }
   .help-hardware-card { grid-template-columns: 1fr; }
-  .help-topic-navigation { position: static; }
+  .help-topic-navigation, .knowledge-book-navigation { position: static; max-height: none; }
+  .knowledge-book-navigation { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+  .knowledge-book-navigation > .eyebrow { grid-column: 1 / -1; }
+  .knowledge-book-navigation section { gap: 2px; }
+  .knowledge-system-landscape > div { min-width: 510px; }
+  .server-types-landscape > .server-types-list { min-width: 560px; }
   .help-article { padding: 18px; }
   .help-next-actions .button-row { align-items: stretch; flex-direction: column; }
   .help-chat-head { align-items: start; flex-direction: column; gap: 6px; }
@@ -4389,4 +4455,11 @@ textarea,
 .provisioning-pin-chip-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
 .provisioning-pin-chip-list span { border: 1px solid var(--line); border-radius: 99px; padding: 3px 7px; color: var(--accent); font-size: .78rem; font-weight: 800; }
 .provisioning-pin-editor-form footer { display: flex; justify-content: flex-end; gap: 8px; border-top: 1px solid var(--line); padding-top: 14px; }
+.platform-footer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; margin-top: 22px; padding: 18px 2px 4px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.platform-footer nav { display: flex; flex-wrap: wrap; gap: 14px; }
+.platform-footer a { color: #cbd5e1; font-weight: 750; }
+.platform-footer a:hover { color: var(--accent); }
+body.public-information-anonymous #mainMenu a:not(.public-information-link) { display: none; }
+body.public-information-anonymous #mainMenu .menu-logout { display: none; }
+body.public-help-page .topbar { position: sticky; top: 0; z-index: 5; }
 @media (max-width: 680px) { .provisioning-pin-editor-content { grid-template-columns: 1fr; } .provisioning-pin-editor-content aside { border-left: 0; border-top: 1px solid var(--line); padding: 14px 0 0; } .provisioning-pin-fields { grid-template-columns: 1fr; } }

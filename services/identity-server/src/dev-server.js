@@ -1174,8 +1174,13 @@ async function routeRequest(req, res) {
     return;
   }
 
-  if (url.pathname === "/hilfe" || url.pathname === "/hilfe/") {
-    serveStatic(res, path.join(publicDir, "help"), "/index.html");
+  if (["/hilfe", "/hilfe/", "/wissen", "/wissen/"].includes(url.pathname)) {
+    serveStatic(res, appDir, "/index.html");
+    return;
+  }
+
+  if (url.pathname.startsWith("/app/") && path.extname(url.pathname)) {
+    serveStatic(res, appDir, normalizeAppPath(url.pathname));
     return;
   }
 
@@ -3021,7 +3026,7 @@ function requireEntitlements(res, session, requiredEntitlements = []) {
     error: "premium_required",
     message: "Diese Funktion ist nur mit einem Premium-Abo verfuegbar.",
     required_entitlements: requiredEntitlements,
-    help_url: "/app/help/#ai-premium",
+    help_url: "/hilfe/#ai-premium",
   });
   return false;
 }

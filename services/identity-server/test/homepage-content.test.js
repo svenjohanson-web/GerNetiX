@@ -17,6 +17,10 @@ test("serves the GerNetiX homepage publicly before authentication", () => {
 });
 
 test("presents the four requested homepage text boxes", () => {
+  assert.match(html, /Verstehe komplexe technische Systeme – vom Embedded-System bis zur Cloud\./);
+  assert.match(html, /für alle, die mehr wollen, als nur fertige Lösungen nachzubauen/);
+  assert.match(html, /sondern vor allem, <strong>warum<\/strong> sie funktionieren/);
+  assert.match(html, /Die KI ist ein Werkzeug – sie unterstützt dich, übernimmt aber weder Denken noch Verantwortung\./);
   assert.match(html, /Verstehen\. Entwickeln\. Erschaffen\./);
   assert.match(html, /Unsere Motivation[\s\S]*Warum GerNetiX\?/);
   assert.match(html, /Der komplette Scope[\s\S]*Vom Embedded-System bis zur Cloud/);
@@ -37,6 +41,7 @@ test("uses the GerNetiX corporate design and collapses the scope on mobile", () 
   assert.match(css, /--accent: #22d3ee/);
   assert.match(css, /\.panel \{[\s\S]*background: var\(--panel\)/);
   assert.match(css, /@media \(max-width: 720px\) \{[\s\S]*\.scope-list \{ grid-template-columns: 1fr; \}/);
+  assert.match(css, /\.hero h1 \{ font-size: clamp\(30px, 4\.2vw, 52px\); \}/);
 });
 
 test("offers a hamburger menu containing public information only", () => {
@@ -51,4 +56,5 @@ test("offers a hamburger menu containing public information only", () => {
   assert.match(css, /\.site-menu \{[\s\S]*position: absolute/);
   assert.match(client, /aria-expanded/);
   assert.match(client, /event\.key === "Escape"/);
+  assert.match(html, /class="site-footer-links"[\s\S]*Vision[\s\S]*Über uns[\s\S]*Hilfe/);
 });
