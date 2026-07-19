@@ -1179,6 +1179,16 @@ async function routeRequest(req, res) {
     return;
   }
 
+  const dashboardRoute = url.pathname === "/app/dashboard" || url.pathname.startsWith("/app/dashboard/");
+  if (dashboardRoute) {
+    if (!readSession(req)) {
+      redirect(res, authRoute(url.pathname + url.search));
+      return;
+    }
+    serveStatic(res, appDir, "/index.html");
+    return;
+  }
+
   if (url.pathname.startsWith("/app/") && path.extname(url.pathname)) {
     serveStatic(res, appDir, normalizeAppPath(url.pathname));
     return;

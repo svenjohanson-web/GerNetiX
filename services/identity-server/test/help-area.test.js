@@ -46,6 +46,9 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(helpContent, /"microcontroller-basics": \{[\s\S]*Flashen[\s\S]*Speicherorganisation[\s\S]*Register[\s\S]*GPIO[\s\S]*ADC[\s\S]*Timer[\s\S]*PWM/);
   assert.match(helpContent, /"physical-limits": \{[\s\S]*Absolute Maximum Ratings[\s\S]*absolute Grenzwerte[\s\S]*Strom pro Pin und Gesamtstrom[\s\S]*Maximale Frequenz und Prozessortakt/);
   assert.match(helpContent, /"sampling-rate": \{[\s\S]*Nyquist-Shannon-Abtasttheorem[\s\S]*Aliasing[\s\S]*Abtastrate praktisch wählen/);
+  assert.match(helpContent, /"sensors": \{[\s\S]*Sensortypen[\s\S]*I²C[\s\S]*Messschaltungen[\s\S]*Spannungsteiler/);
+  assert.match(helpContent, /"actuators": \{[\s\S]*Aktor-Typen[\s\S]*Schaltungen zur Ansteuerung[\s\S]*MOSFETs[\s\S]*Freilaufdiode/);
+  assert.match(helpContent, /"bus-systems": \{[\s\S]*Chip-zu-Chip-Schnittstellen[\s\S]*I²C[\s\S]*SPI[\s\S]*Feld- und Systembusse[\s\S]*CAN[\s\S]*RS-485/);
   assert.match(helpContent, /title: "Querschnittsthemen"[\s\S]*"privacy-basics", title: "Datenschutz in vernetzten Projekten"/);
   assert.match(helpContent, /title: "Server"[\s\S]*"local-servers"[\s\S]*"internet-vps"[\s\S]*"cloud-services"[\s\S]*"choosing-servers"/);
   assert.doesNotMatch(helpContent, /title: "Öffentliche Informationen"/);
@@ -115,6 +118,8 @@ test("keeps the hardware landscape as a public page in the common help model", (
   assert.match(helpView, /function renderHardwareVisual/);
   assert.match(helpView, /function renderSystemLandscapeVisual/);
   assert.match(helpView, /function renderServerTypesVisual/);
+  assert.match(helpContent, /id: "servers"[\s\S]*serverLandscape: true/);
+  assert.match(helpView, /topic\.serverLandscape \? renderServerTypesVisual\(\) : ""/);
   assert.match(helpView, /server-types-root[\s\S]*Server[\s\S]*server-types-list/);
   assert.match(helpView, /IoT-Geräte[\s\S]*Server[\s\S]*Apps/);
   assert.match(helpView, /Lokal · Internet\/VPS · Cloud/);
@@ -259,6 +264,8 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.doesNotMatch(server, /url\.pathname === "\/app\/help"/);
   assert.match(app, /const isPublicHelpPage/);
   assert.match(app, /const isPublicKnowledgePage/);
+  assert.match(app, /label: state\.account \? "Plattform" : "Startseite", route: state\.account \? "\/app\/dashboard\/" : "\/"/);
+  assert.match(app, /if \(link\.dataset\.breadcrumbRoute === "\/"\) \{[\s\S]*?window\.location\.assign\("\/"\)/);
   assert.match(app, /document\.body\.classList\.add\("public-help-page", "public-information-anonymous"\)/);
   assert.match(app, /public-information-anonymous/);
   assert.match(app, /getJson\("\/api\/platform\/summary"\)/);
@@ -277,6 +284,8 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(helpView, /data-knowledge-subchapter/);
   assert.match(helpView, /function renderPracticeLessonLink/);
   assert.match(helpView, /knowledge-topic=/);
+  assert.match(helpView, /if \(!access\.hasAccount\)/);
+  assert.match(helpView, /Anmeldung erforderlich · Demo-Link/);
   assert.match(helpView, /Demo-Link · Zuordnung zu einer Lesson folgt/);
   assert.match(helpView, /data-knowledge-chapter/);
   assert.match(helpView, /renderArticle\(chapter, child, \{ showRelated: false, chapterNumber \}\)/);
@@ -290,6 +299,9 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(css, /\.knowledge-book-chapter \{ scroll-margin-top/);
   assert.match(css, /\.knowledge-subchapter-link/);
   assert.match(css, /\.help-practice-lesson/);
+  assert.match(css, /\.help-practice-lesson\.is-disabled/);
   assert.match(css, /body\.public-help-page/);
+  assert.match(css, /body\.public-help-page \.topbar \{ position: sticky; top: 0; z-index: 50; \}/);
+  assert.match(css, /body\.public-help-page \.app-menu \{ position: fixed; top: 80px; right: 22px; z-index: 60; \}/);
   assert.match(css, /body\.public-information-anonymous #mainMenu a:not\(\.public-information-link\)/);
 });

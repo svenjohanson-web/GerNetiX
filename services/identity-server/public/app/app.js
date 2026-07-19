@@ -175,6 +175,10 @@ document.querySelector("#platformBreadcrumb").addEventListener("click", (event) 
   const link = event.target.closest("[data-breadcrumb-route]");
   if (!link) return;
   event.preventDefault();
+  if (link.dataset.breadcrumbRoute === "/") {
+    window.location.assign("/");
+    return;
+  }
   navigate(link.dataset.breadcrumbRoute);
 });
 document.querySelectorAll("[data-device-management-route]").forEach((button) => {
@@ -554,7 +558,7 @@ function currentLocationTrail(route) {
       { label: "Billing", route: "/app/billing/" },
     ],
     help: [
-      { label: "Plattform", route: "/app/dashboard/" },
+      { label: state.account ? "Plattform" : "Startseite", route: state.account ? "/app/dashboard/" : "/" },
       { label: "Hilfe", route: "/hilfe/" },
     ],
     knowledge: [
@@ -605,6 +609,12 @@ function deviceManagementRouteFor(route) {
 }
 
 function navigate(route) {
+  const target = new URL(route, window.location.origin);
+  const protectedAppRoute = /^\/app\/(?!auth(?:\/|$))/.test(target.pathname);
+  if (protectedAppRoute && !state.account) {
+    window.location.assign(`/app/auth/?next=${encodeURIComponent(target.pathname + target.search)}`);
+    return;
+  }
   history.pushState({}, "", route);
   renderRoute();
 }

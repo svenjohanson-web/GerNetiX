@@ -53,6 +53,18 @@ const HelpContent = (() => {
           { id: "sampling-rate-aliasing", title: "Aliasing – wenn hohe Frequenzen täuschen" },
           { id: "sampling-rate-practice", title: "Abtastrate praktisch wählen" },
         ] },
+        { id: "sensors", title: "Sensoren", articleId: "sensors", subchapters: [
+          { id: "sensor-types", title: "Sensortypen" },
+          { id: "measurement-circuits", title: "Messschaltungen" },
+        ] },
+        { id: "actuators", title: "Aktoren", articleId: "actuators", subchapters: [
+          { id: "actuator-types", title: "Aktor-Typen" },
+          { id: "actuator-driver-circuits", title: "Schaltungen zur Ansteuerung" },
+        ] },
+        { id: "bus-systems", title: "Bussysteme", articleId: "bus-systems", subchapters: [
+          { id: "chip-to-chip-buses", title: "Chip-zu-Chip-Schnittstellen" },
+          { id: "field-and-system-buses", title: "Feld- und Systembusse" },
+        ] },
         { id: "embedded-measurement-debugging", title: "Embedded-Systeme: Messtechnik und Debugging", articleId: "embedded-measurement-debugging" },
         { id: "embedded-safety", title: "Elektrische und funktionale Sicherheit", articleId: "embedded-safety" },
       ],
@@ -61,6 +73,7 @@ const HelpContent = (() => {
       id: "servers",
       title: "Server",
       description: "Server passend zu Reichweite, Kontrolle, Last und Betriebsaufwand auswählen.",
+      serverLandscape: true,
       surface: "knowledge",
       access: "public",
       children: [
@@ -269,7 +282,7 @@ const HelpContent = (() => {
       summary: "Ein lokaler Server läuft im Haus, Büro oder Werk und verbindet Geräte nahe an ihrem Einsatzort.",
       access: "public",
       sections: [
-        { heading: "Wofür ein lokaler Server da ist", paragraphs: ["Ein lokaler Server oder Gateway sammelt Daten von IoT-Geräten, führt Regeln aus, puffert Informationen und stellt bei Bedarf eine lokale Bedienoberfläche bereit. Weil er nah bei den Geräten ist, kann die Kernfunktion auch ohne Internet weiterlaufen."], serverLandscape: true },
+        { heading: "Wofür ein lokaler Server da ist", paragraphs: ["Ein lokaler Server oder Gateway sammelt Daten von IoT-Geräten, führt Regeln aus, puffert Informationen und stellt bei Bedarf eine lokale Bedienoberfläche bereit. Weil er nah bei den Geräten ist, kann die Kernfunktion auch ohne Internet weiterlaufen."] },
         { heading: "Typische Anwendungen", list: ["Hausautomation mit lokalen Regeln und Funk-Bridges.", "Maschinen- oder Kameradaten, die das Gebäude nicht verlassen sollen.", "Lokale Datenpufferung bei unzuverlässigem Internet.", "Protokollübersetzung zwischen IoT-Geräten und weiteren Systemen."] },
         { heading: "Verantwortung", paragraphs: ["Lokale Kontrolle bedeutet auch lokaler Betrieb: Stromausfall, Netzwerk, Updates, Backups und Fernwartung müssen geplant werden. Ein lokaler Server ersetzt kein Sicherheitskonzept, kann aber Latenz, Datenschutz und Ausfallsicherheit verbessern."] },
       ],
@@ -492,6 +505,36 @@ const HelpContent = (() => {
         { id: "sampling-rate-practice", heading: "Abtastrate praktisch wählen", paragraphs: ["Zuerst wird festgelegt, welche schnellste Signaländerung fachlich relevant ist. Danach wählt man eine Abtastrate mit ausreichender Reserve – oft deutlich höher als das bloße Zweifache. Reserve schaffen Abweichungen von Sensor, ADC, Zeitplanung und Filterung beherrschbar.", "Ein analoger Tiefpass vor dem ADC, ein Anti-Aliasing-Filter, dämpft Frequenzen oberhalb des gewünschten Bereichs schon vor der Messung. Erst dann kann die digitale Verarbeitung sinnvoll mitteln, filtern oder auswerten. Abtastrate, Messdauer, Datenmenge und Energieverbrauch gehören dabei zusammen: schnelleres Messen erzeugt mehr Daten und kostet häufig mehr Energie."] },
       ],
       relatedTopics: ["microcontroller-adc", "microcontroller-timer", "embedded-measurement-debugging", "physical-limits"],
+    },
+    "sensors": {
+      title: "Sensoren",
+      summary: "Sensoren übersetzen Eigenschaften der realen Welt in elektrische Signale. Erst die passende Messschaltung und Auswertung machen daraus einen verlässlichen Messwert.",
+      access: "public",
+      sections: [
+        { id: "sensor-types", heading: "Sensortypen", paragraphs: ["Sensoren können Temperatur, Licht, Abstand, Bewegung, Druck, Feuchte, Beschleunigung, Magnetfelder, Strom oder Spannung erfassen. Die physikalische Größe und die benötigte Genauigkeit bestimmen, welcher Sensortyp sinnvoll ist.", "Analoge Sensoren liefern meist eine Spannung oder einen Strom, der über einen ADC gemessen wird. Digitale Sensoren übertragen bereits aufbereitete Werte über Schnittstellen wie I²C, SPI, UART oder ein einfaches digitales Schaltsignal. Ein digitaler Sensor spart nicht automatisch Arbeit: Versorgung, Pegel, Timing, Buslänge und Fehlerfälle müssen trotzdem zur Schaltung passen.", "Wichtig ist auch die Unterscheidung zwischen absoluter Messung und Änderung: Ein Temperatursensor kann einen Wert in Grad liefern; ein Taster oder Bewegungsmelder meldet oft nur einen Zustand oder ein Ereignis. Für die Auswahl zählen Messbereich, Auflösung, Genauigkeit, Reaktionszeit, Drift, Umgebungsbedingungen und Energiebedarf."] },
+        { id: "measurement-circuits", heading: "Messschaltungen", paragraphs: ["Eine Messschaltung verbindet Sensor und Mikrocontroller so, dass das Signal im erlaubten Spannungs-, Strom- und Frequenzbereich ankommt. Sie schützt Eingänge, legt Bezugspotenziale fest und bereitet das Signal für ADC oder digitale Schnittstelle auf.", "Typische Bausteine sind Vorwiderstände, Spannungsteiler, Pull-up- oder Pull-down-Widerstände, Filterkondensatoren, Referenzspannungen, Operationsverstärker und galvanische Trennung. Welche davon nötig sind, entscheidet das Sensordatenblatt – nicht nur der Anschlussname am Board.", "Beispiel: Ein Spannungsteiler kann eine zu hohe Sensorspannung für einen ADC verringern. Ein Tiefpass kann Rauschen dämpfen, verändert aber zugleich die Reaktionszeit. Ein Pull-up sorgt bei offenen Eingängen für einen definierten Zustand. Prüfe deshalb immer Versorgung, gemeinsame Masse, Signalpegel und die zulässigen Grenzwerte, bevor du misst oder verbindest."] },
+      ],
+      relatedTopics: ["microcontroller-adc", "sampling-rate", "embedded-measurement-debugging", "physical-limits"],
+    },
+    "actuators": {
+      title: "Aktoren",
+      summary: "Aktoren setzen elektrische Signale in eine sichtbare oder physische Wirkung um: Licht, Bewegung, Wärme, Schall oder einen Schaltvorgang. Sie brauchen fast immer mehr als einen Mikrocontroller-Pin.",
+      access: "public",
+      sections: [
+        { id: "actuator-types", heading: "Aktor-Typen", paragraphs: ["Zu den einfachen Aktoren gehören LEDs, Summer und Displays. Sie zeigen oder signalisieren etwas. Schaltaktoren wie Relais, Ventile, Magnetventile und Leistungsschalter verändern einen Stromkreis. Bewegungsaktoren wie Gleichstrommotoren, Servos, Schrittmotoren und Linearantriebe bewegen mechanische Teile.", "Auch Heizungen, Lüfter, Pumpen und elektromagnetische Schlösser sind Aktoren. Ihre Auswahl hängt von benötigter Kraft, Geschwindigkeit, Betriebsdauer, Versorgung, Umgebung, Geräusch, Wärmeentwicklung und Sicherheitsanforderungen ab. Ein Aktor ist nicht nur das bewegte Bauteil: Mechanik, Stromversorgung, Treiber und Rückmeldung gehören zur gesamten Funktion.", "Für Lern- und Prototyping-Projekte sollten Aktoren mit geringer Energie und klaren Fehlergrenzen gewählt werden. Sobald Kräfte, hohe Temperaturen, Netzspannung oder Menschen gefährdende Bewegungen beteiligt sind, gelten zusätzliche Sicherheits- und Prüfanforderungen."] },
+        { id: "actuator-driver-circuits", heading: "Schaltungen zur Ansteuerung", paragraphs: ["Ein GPIO-Pin liefert nur ein schwaches Logiksignal. Er darf Motoren, Relais, Pumpen oder Magnetventile nicht direkt versorgen. Eine Treiberschaltung übernimmt die Leistung: Der Mikrocontroller gibt den Befehl, der Treiber schaltet die Energie für den Aktor.", "Für Gleichstromlasten werden häufig Transistoren oder MOSFETs verwendet. Relais, Motoren und Magnetventile erzeugen beim Abschalten eine Spannungsspitze; eine passende Freilaufdiode oder ein spezialisierter Treiber schützt die Schaltung. Motoren brauchen je nach Richtung und Regelung H-Brücken oder fertige Motortreiber. Servos benötigen eine stabile, ausreichend dimensionierte Versorgung und ein PWM-Steuersignal.", "Versorgung und Signalmasse müssen bewusst geplant werden. Eine getrennte Aktorversorgung kann Störungen vom Mikrocontroller fernhalten, braucht aber bei nicht galvanisch getrennter Ansteuerung meist einen definierten gemeinsamen Bezug. Sicherungen, Strombegrenzung, korrekte Leitungsquerschnitte und Schutz vor Verpolung gehören zur Schaltung. Vor dem Anschluss Datenblatt, Spannungsbereich, Spitzenstrom und Wärmeentwicklung prüfen."] },
+      ],
+      relatedTopics: ["microcontroller-gpio", "microcontroller-pwm", "physical-limits", "embedded-safety"],
+    },
+    "bus-systems": {
+      title: "Bussysteme",
+      summary: "Ein Bussystem überträgt Daten zwischen elektronischen Teilnehmern. Die passende Wahl hängt vor allem davon ab, ob Chips auf einer Platine oder Geräte über längere Strecken verbunden werden.",
+      access: "public",
+      sections: [
+        { id: "chip-to-chip-buses", heading: "Chip-zu-Chip-Schnittstellen", paragraphs: ["Chip-zu-Chip-Schnittstellen verbinden Bausteine auf derselben Platine oder über sehr kurze Leitungen: Mikrocontroller, Sensoren, Speicher, Displays oder Wandler. Typische Beispiele sind I²C, SPI und UART.", "I²C benötigt meist nur zwei Signalleitungen und erlaubt mehrere adressierbare Teilnehmer; es ist praktisch für viele Sensoren und Konfigurationsbausteine. SPI verwendet getrennte Daten- und Taktleitungen sowie meist eine Auswahlleitung pro Ziel; es ist oft schneller und passt zu Displays, Speichern oder schnellen Wandlern. UART ist eine einfache serielle Punkt-zu-Punkt-Verbindung, häufig für Debug-Ausgaben, Module oder eine direkte Gerätekommunikation.", "Diese Schnittstellen sind nicht für beliebig lange Kabel oder raue Umgebungen gedacht. Leitungslänge, Taktfrequenz, Pull-up-Widerstände, Massebezug, Pegel und die Anzahl der Teilnehmer begrenzen, was zuverlässig funktioniert."] },
+        { id: "field-and-system-buses", heading: "Feld- und Systembusse", paragraphs: ["Die zweite wichtige Kategorie sind Feld- und Systembusse. Sie verbinden eigenständige Geräte, Steuergeräte oder Maschinen über längere Leitungen und sind auf störungsärmere Übertragung, mehrere Teilnehmer und definierte Protokolle ausgelegt.", "CAN und LIN sind typische Fahrzeug- und Steuergerätebusse. RS-485 ist eine robuste elektrische Grundlage für serielle Feldkommunikation und wird oft mit Protokollen wie Modbus kombiniert. Ethernet verbindet Geräte mit hoher Datenrate in lokalen Netzwerken und industriellen Varianten. Je nach Anwendung kommen weitere Feldbusse und industrielle Ethernet-Protokolle hinzu.", "Ein Bus besteht nie nur aus zwei Datenpins: Topologie, Abschlusswiderstände, Leitungstyp, Teilnehmerzahl, Bitrate, galvanische Trennung, Fehlerbehandlung und das konkrete Protokoll gehören zusammen. Besonders in Fahrzeugen oder Maschinen dürfen unbekannte Bussysteme nicht durch Bastelanschlüsse verändert oder unterbrochen werden; auch vermeintlich harmlose Informationen können Teil sicherheitskritischer Abläufe sein."] },
+      ],
+      relatedTopics: ["sensors", "actuators", "embedded-measurement-debugging", "embedded-safety"],
     },
     "processor-overview": {
       title: "ESP32-Prozessorfamilien im Vergleich",

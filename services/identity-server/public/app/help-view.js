@@ -64,7 +64,7 @@ const HelpView = (() => {
         }).join("")}</section>`).join("")}
       </nav>
       <main class="knowledge-book-content" aria-label="Wissensportal-Lektüre">
-        ${topics.map((topic, index) => `<section id="knowledge-part-${escapeHtml(topic.id)}" class="knowledge-book-part" data-knowledge-part="${escapeHtml(topic.id)}"><header><p class="eyebrow">Hauptkapitel ${index + 1}</p><h2>${index + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}</header>${(topic.children || []).map((child, childIndex) => {
+        ${topics.map((topic, index) => `<section id="knowledge-part-${escapeHtml(topic.id)}" class="knowledge-book-part" data-knowledge-part="${escapeHtml(topic.id)}"><header><p class="eyebrow">Hauptkapitel ${index + 1}</p><h2>${index + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}${topic.serverLandscape ? renderServerTypesVisual() : ""}</header>${(topic.children || []).map((child, childIndex) => {
           const chapter = HelpContent.articles[child.articleId];
           const chapterNumber = `${index + 1}.${childIndex + 1}`;
           return `<article id="${escapeHtml(child.id)}" class="panel help-article knowledge-book-chapter" data-knowledge-chapter="${escapeHtml(child.id)}"><p class="knowledge-chapter-number">${chapterNumber}</p>${renderArticle(chapter, child, { showRelated: false, chapterNumber })}</article>`;
@@ -152,7 +152,9 @@ const HelpView = (() => {
   function renderPracticeLessonLink(knowledgeTopicId, title, kind = "section") {
     const route = `/app/learn/?knowledge-topic=${encodeURIComponent(knowledgeTopicId)}`;
     const label = kind === "chapter" ? "Praktisches Beispiel im Lernbereich" : "Praxis-Lesson öffnen";
-    return `<a class="help-practice-lesson ${kind === "chapter" ? "chapter" : ""}" href="${route}" data-practice-lesson="${escapeHtml(knowledgeTopicId)}"><span>${label}</span><small>Demo-Link · Zuordnung zu einer Lesson folgt</small><b aria-hidden="true">→</b></a>`;
+    const className = `help-practice-lesson ${kind === "chapter" ? "chapter" : ""}`;
+    if (!access.hasAccount) return `<div class="${className} is-disabled" aria-disabled="true"><span>${label}</span><small>Anmeldung erforderlich · Demo-Link</small><b aria-hidden="true">→</b></div>`;
+    return `<a class="${className}" href="${route}" data-practice-lesson="${escapeHtml(knowledgeTopicId)}" aria-label="${escapeHtml(`${label}: ${title}`)}"><span>${label}</span><small>Demo-Link · Zuordnung zu einer Lesson folgt</small><b aria-hidden="true">→</b></a>`;
   }
 
   function renderStateChart(chart) {

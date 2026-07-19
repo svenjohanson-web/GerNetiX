@@ -362,6 +362,7 @@ button.danger:hover {
 .help-practice-lesson small { grid-column: 1; color: var(--muted); }
 .help-practice-lesson b { grid-column: 2; grid-row: 1 / span 2; font-size: 18px; }
 .help-practice-lesson.chapter { margin: 20px 0 0; border-style: solid; }
+.help-practice-lesson.is-disabled { border-color: var(--line); color: var(--muted); cursor: default; opacity: .72; }
 .knowledge-system-landscape { margin: 20px 0; }
 .knowledge-system-landscape > div { min-width: 510px; justify-content: center; }
 .knowledge-system-landscape span { min-width: 145px; }
@@ -4461,5 +4462,7 @@ textarea,
 .platform-footer a:hover { color: var(--accent); }
 body.public-information-anonymous #mainMenu a:not(.public-information-link) { display: none; }
 body.public-information-anonymous #mainMenu .menu-logout { display: none; }
-body.public-help-page .topbar { position: sticky; top: 0; z-index: 5; }
+body.public-help-page .topbar { position: sticky; top: 0; z-index: 50; }
+body.public-help-page .app-menu { position: fixed; top: 80px; right: 22px; z-index: 60; }
+@media (max-width: 760px) { body.public-help-page .app-menu { top: 72px; right: 12px; max-width: calc(100vw - 24px); } }
 @media (max-width: 680px) { .provisioning-pin-editor-content { grid-template-columns: 1fr; } .provisioning-pin-editor-content aside { border-left: 0; border-top: 1px solid var(--line); padding: 14px 0 0; } .provisioning-pin-fields { grid-template-columns: 1fr; } }
