@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "node src/dev-server.js",
     "test": "node --test",
-    "check": "node --check src/index.js"
+    "check": "node --check src/index.js",
+    "verify:runtime-deps": "node scripts/verify-runtime-dependencies.js"
   },
   "engines": {
     "node": ">=18"
