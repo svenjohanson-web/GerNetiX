@@ -11,6 +11,7 @@ table inet gernetix_host {
 
     udp dport { 68, 546, 51820 } accept
     iifname "wg0" tcp dport 22 accept
+    iifname "wg0" tcp dport 4910 accept
     tcp dport { 80, 443, 8883 } accept
   }
 

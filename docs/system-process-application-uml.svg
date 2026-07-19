@@ -117,7 +117,7 @@
     <text class="smallText" x="1265" y="278" text-anchor="middle">:5100</text>
 
     <rect class="node domain" x="1385" y="235" width="190" height="54" rx="10"/>
-    <text class="titleText" x="1480" y="259" text-anchor="middle">Hardware Catalog</text>
+    <text class="titleText" x="1480" y="259" text-anchor="middle">Hardware Catalog (WireGuard)</text>
     <text class="smallText" x="1480" y="278" text-anchor="middle">:4910</text>
 
     <rect class="node domain" x="965" y="320" width="180" height="54" rx="10"/>

@@ -51,11 +51,11 @@ Danach im lokalen Browser oeffnen:
 ```text
 Plattform: http://127.0.0.1:14300/app/dashboard/
 Admin:     http://127.0.0.1:14600/admin/
-Hardware:  http://127.0.0.1:14910/api/hardware-catalog/
+Hardware:  http://10.77.0.1:4910/api/hardware-catalog/
 ```
 
 Das Terminal bleibt fuer die Dauer des SSH-Tunnels geoeffnet. `Strg+C` beendet die Verbindung. Der SSH-Tunnel laeuft innerhalb des WireGuard-VPN; der VPS benoetigt keinen Browser, und weder SSH noch der Admin-Port werden oeffentlich freigegeben.
-Der Hardware Catalog bleibt ebenfalls privat: Identity auf dem Entwicklungsrechner nutzt ihn ueber den lokalen Tunnel-Port `14910`; ein lokaler Hardware-Catalog-Prozess ist nicht erforderlich.
+Der Hardware Catalog bleibt ebenfalls privat: Identity auf dem Entwicklungsrechner nutzt ihn direkt ueber die feste WireGuard-Adresse `10.77.0.1:4910`; ein lokaler Hardware-Catalog-Prozess und ein SSH-Tunnel dafuer sind nicht erforderlich.
 
 Nur die Konfiguration pruefen, ohne eine Verbindung aufzubauen:
 

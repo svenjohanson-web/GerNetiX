@@ -187,7 +187,7 @@ flowchart LR
 | Telemetry Server | 5600 | nur intern im Docker-Netz | Nimmt bereits authentifizierte Board-Telemetrie an, prueft Board-/Projektbesitz, persistiert Messwerte und Ereignisse in der eigenen konto- und projektpartitionierten Telemetrie-SQLite mit Retention, kann gezielten Projekt-Push ausloesen und leitet kurzlebige Runtime-Zeilen an Identity weiter |
 | Project Server | 4800 | `http://127.0.0.1:4800/` | Projekte, Quellen, Build-Jobs, Learning Feedback sowie SQLite-persistierte Ressourcenlimits und Nutzungswerte in eigener Projekt-SQLite |
 | Hardware Shop | 4900 | `http://127.0.0.1:4900/` | Angebote, Warenkorb, Bestellung, Purchase Context; liest Hardwaredaten als Client des Hardware Catalog |
-| Hardware Catalog | 4910 | VPS-intern; lokal ausschliesslich ueber den WireGuard-/SSH-Tunnel `http://127.0.0.1:14910/` | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als SQLite-persistente Quelle |
+| Hardware Catalog | 4910 | VPS-intern sowie ausschliesslich am WireGuard-Interface `http://10.77.0.1:4910/`; kein oeffentlicher Listener | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als SQLite-persistente Quelle |
 | Öffentlicher Demo-Katalog | 4920 | nur lesbarer öffentlicher Katalog-Endpunkt | Redaktionell veröffentlichte Board-Demos und immutable `firmware.bin`-Releases in eigener SQLite; keine Projekte, Konten, Inventar oder OTA |
 | AI Usage Server | 5000 | `http://127.0.0.1:5000/` | Credits, Quellenrating je Account, Preflight, Usage Events, Cost Controls |
 | Context Manager | 5050 | `http://127.0.0.1:5050/context-manager/` | Projektkontext, Vorschlaege, Context Packs |

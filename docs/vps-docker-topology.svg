@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="720" viewBox="0 0 1200 720" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX VPS Docker Topologie</title>
-  <desc id="desc">Oeffentliche Web-, MQTT-TLS- und WireGuard-Endpunkte, SSH nur ueber VPN, Admin Tool am VPS-Loopback sowie interne Domaenenservices und persistente SQL-Volumes.</desc>
+  <desc id="desc">Oeffentliche Web-, MQTT-TLS- und WireGuard-Endpunkte, SSH nur ueber VPN, Hardware Catalog nur am WireGuard-Interface, Admin Tool am VPS-Loopback sowie interne Domaenenservices und persistente SQL-Volumes.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto"><path d="M0 0L10 5L0 10z" fill="#475569"/></marker>
     <style>
@@ -9,7 +9,7 @@
   </defs>
   <rect class="bg" width="1200" height="720"/>
   <text class="title" x="44" y="48">GerNetiX VPS Docker Topologie</text>
-  <text class="small" x="44" y="72">Oeffentlich: HTTP/HTTPS, MQTT-TLS und WireGuard; SSH nur ueber VPN; Admin und Domaenenservices bleiben privat.</text>
+  <text class="small" x="44" y="72">Oeffentlich: HTTP/HTTPS, MQTT-TLS und WireGuard; SSH und Hardware Catalog nur ueber VPN.</text>
 
   <rect class="zone" x="34" y="100" width="1132" height="430" rx="16"/>
   <text class="zoneTitle" x="58" y="130">Docker Compose Projekt: gernetix</text>
@@ -24,7 +24,7 @@
 
   <rect class="service" x="640" y="150" width="210" height="60" rx="10"/><text class="label" x="745" y="178" text-anchor="middle">Project Server</text><text class="small" x="745" y="196" text-anchor="middle">:4800</text>
   <rect class="service" x="890" y="150" width="210" height="60" rx="10"/><text class="label" x="995" y="178" text-anchor="middle">Device Management</text><text class="small" x="995" y="196" text-anchor="middle">:4700</text>
-  <rect class="service" x="640" y="230" width="210" height="60" rx="10"/><text class="label" x="745" y="258" text-anchor="middle">Hardware Shop/Catalog</text><text class="small" x="745" y="276" text-anchor="middle">:4900 / :4910</text>
+  <rect class="service" x="640" y="230" width="210" height="60" rx="10"/><text class="label" x="745" y="258" text-anchor="middle">Hardware Shop/Catalog</text><text class="small" x="745" y="276" text-anchor="middle">:4900 intern / :4910 WireGuard</text>
   <rect class="service" x="890" y="230" width="210" height="60" rx="10"/><text class="label" x="995" y="258" text-anchor="middle">AI Usage / Context</text><text class="small" x="995" y="276" text-anchor="middle">:5000 / :5500</text>
   <rect class="service" x="640" y="310" width="210" height="60" rx="10"/><text class="label" x="745" y="338" text-anchor="middle">Build &amp; Deploy</text><text class="small" x="745" y="356" text-anchor="middle">:4400</text>
   <rect class="infra" x="890" y="310" width="210" height="60" rx="10"/><text class="label" x="995" y="338" text-anchor="middle">Mosquitto</text><text class="small" x="995" y="356" text-anchor="middle">intern :1883/:9001 · TLS :8883</text>
