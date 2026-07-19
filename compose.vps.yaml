@@ -140,6 +140,8 @@ services:
       PERSISTENCE_BACKEND: sqlite
       PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
     expose: ["4910"]
+    ports:
+      - "127.0.0.1:${HARDWARE_CATALOG_TUNNEL_PORT:-4910}:4910"
     volumes:
       - service_state:/var/lib/gernetix/services
 

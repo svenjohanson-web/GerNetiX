@@ -101,6 +101,19 @@ test("keeps the hardware landscape as a public page in the common help model", (
   assert.match(css, /\.help-hardware-landscape/);
 });
 
+test("explains optional embedded, local, global and iPhone system landscapes in public help", () => {
+  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  assert.match(navigation, /"server-systems", title: "Moderne Systemlandschaften"/);
+  assert.match(helpContent, /"server-systems": \{[\s\S]*access: "public"/);
+  assert.match(helpContent, /Embedded-System[\s\S]*Lokaler Server oder Gateway[\s\S]*Globaler Server[\s\S]*iPhone-App/);
+  assert.match(helpContent, /Nicht jedes Projekt braucht alles/);
+  assert.match(helpContent, /Batteriebetriebener Temperatursensor[\s\S]*Hausautomation mit Fernzugriff[\s\S]*Maschinenüberwachung an mehreren Standorten/);
+  assert.match(helpContent, /Lokaler Server[\s\S]*Klassischer dedizierter Server[\s\S]*VPS \(Virtual Private Server\)[\s\S]*Cloud-Dienste/);
+  assert.match(helpContent, /Performance[\s\S]*Sicherheit[\s\S]*Skalierbarkeit[\s\S]*Betriebsaufwand/);
+  assert.match(helpContent, /Web-App, API, kleine bis mittlere Datenbanken, VPN, Staging/);
+  assert.match(helpContent, /GerNetiX nutzt für seine Plattform einen VPS/);
+});
+
 test("offers event worker rule help as a central account help topic", () => {
   assert.match(helpContent, /"event-worker-rules", title: "Ereignis-Worker und Regelsprache"/);
   assert.match(helpContent, /event\.type == \\"taste_gedrueckt\\"/);

@@ -19,6 +19,7 @@ const HelpContent = (() => {
       access: "public",
       children: [
         { id: "hardware-landscape", title: "Hardware-Landkarte: vom Akku bis Edge AI", articleId: "hardware-landscape" },
+        { id: "server-systems", title: "Moderne Systemlandschaften", articleId: "server-systems" },
         { id: "processor-overview", title: "ESP32-Prozessorfamilien im Vergleich", articleId: "processor-overview" },
       ],
     },
@@ -167,6 +168,47 @@ const HelpContent = (() => {
         { heading: "Was GerNetiX heute nutzt", paragraphs: ["GerNetiX konzentriert Basissoftware und geführte Inbetriebnahme auf kompatible ESP32-Boards. Sie sind die praktische Mitte: genug Rechenleistung und Konnektivität für vernetzte Geräte, aber weiterhin nah genug an Sensoren, Aktoren und energieeffizientem Betrieb.", "Ein gutes System verteilt Aufgaben: Der Mikrocontroller liest und schaltet zuverlässig. Ein Linux-Gateway bündelt Geräte, Bedienung und lokale Dienste. Eine GPU kommt nur dazu, wenn Bild- oder KI-Rechenlast sie rechtfertigt. Cloud-Dienste bleiben optional für Fernzugriff und Auswertung."] },
       ],
       relatedTopics: ["processor-overview", "supported-devices"],
+    },
+    "server-systems": {
+      title: "Moderne Systemlandschaften verstehen",
+      summary: "Ein Embedded-Gerät, ein lokaler Server, globale Dienste und eine iPhone-App sind mögliche Bausteine – keine Pflichtkette. Die Aufgabe bestimmt, was wirklich gebraucht wird.",
+      access: "public",
+      sections: [
+        { heading: "Vom Gerät bis zur App", paragraphs: ["Moderne Systeme sind oft verteilt: Ein Embedded-System misst oder steuert direkt vor Ort. Ein lokaler Server kann Geräte im Gebäude bündeln. Globale Server machen Daten und Funktionen von überall erreichbar. Eine iPhone-App ist die Bedienoberfläche für Menschen. Jede Ebene löst eine andere Aufgabe; ein kleines Projekt kann nur aus einem ESP32 bestehen, während ein größeres Projekt mehrere Ebenen sinnvoll verbindet."], table: { headers: ["Baustein", "Aufgabe", "Wann er sinnvoll ist"], rows: [
+          ["Embedded-System", "Reagiert direkt auf Sensoren, Taster, Motoren oder LEDs; arbeitet nahe an der Hardware.", "Wenn kurze Reaktionszeit, geringer Energiebedarf oder Betrieb ohne Internet wichtig sind – zum Beispiel ESP32-Sensor, Türkontakt oder Bewässerungssteuerung."],
+          ["Lokaler Server oder Gateway", "Bündelt Geräte im Haus, Betrieb oder Fahrzeug; kann Daten puffern, Regeln ausführen und lokale Bedienung anbieten.", "Wenn Geräte auch bei Internet-Ausfall zusammenarbeiten sollen, Kamera- oder Maschinendaten lokal bleiben oder verschiedene Funknetze verbunden werden."],
+          ["Globaler Server", "Stellt Konten, APIs, Synchronisation, Benachrichtigungen und zentrale Daten für mehrere Standorte bereit.", "Wenn Fernzugriff, gemeinsame Nutzung, Backups außerhalb des Gebäudes oder viele Nutzer und Geräte erforderlich sind."],
+          ["iPhone-App", "Zeigt Informationen, fragt Einstellungen ab und sendet Bedienbefehle. Sie ersetzt nicht die verlässliche Steuerung im Gerät.", "Wenn Menschen mobil benachrichtigt werden, Werte ansehen oder Funktionen komfortabel bedienen sollen."]
+        ] } },
+        { heading: "Nicht jedes Projekt braucht alles", table: { headers: ["Beispiel", "Sinnvolle Bausteine", "Warum"], rows: [
+          ["Batteriebetriebener Temperatursensor", "Embedded-System", "Er misst und sendet in Intervallen. Ein Server ist erst nötig, wenn Werte dauerhaft gesammelt oder aus der Ferne gesehen werden sollen."],
+          ["Bewässerung im Gewächshaus", "Embedded-System, optional lokaler Server", "Die Steuerung muss auch ohne Internet funktionieren. Ein lokales Gateway kann mehrere Sensoren und Zeitpläne koordinieren."],
+          ["Hausautomation mit Fernzugriff", "Embedded-Systeme, lokaler Server, globaler Server, optional iPhone-App", "Lokal bleiben Automationen reaktionsfähig; global kommen Fernzugriff und sichere Benachrichtigungen dazu."],
+          ["Produkt mit Kunden-App", "Embedded-System, globaler Server, iPhone-App", "Das Gerät arbeitet vor Ort; Server verwalten Konten und Synchronisation; die App ist die persönliche Bedienung."],
+          ["Maschinenüberwachung an mehreren Standorten", "Embedded-System, lokaler Gateway, globaler Server, Web- oder iPhone-App", "Das Gateway puffert und filtert Daten vor Ort, während die zentrale Plattform Standorte vergleicht und Alarme verteilt."]
+        ] } },
+        { heading: "Die vier verbreiteten Betriebsmodelle", table: { headers: ["Modell", "Was es ist", "Typische Anwendungen"], rows: [
+          ["Lokaler Server", "Ein Rechner im eigenen Haus, Büro oder Werk; er läuft im lokalen Netzwerk oder hinter einem eigenen Internetanschluss.", "Home Assistant, lokale Datenablage, Maschinen-Gateway, Kameraaufzeichnung, Entwicklung und Offline-Betrieb."],
+          ["Klassischer dedizierter Server", "Ein vollständig gemieteter physischer Server im Rechenzentrum. Die Hardware gehört nur einem Kunden.", "Dauerlast mit festen Anforderungen, große Datenbanken, spezielle Hardware, Anwendungen mit planbarer Auslastung."],
+          ["VPS (Virtual Private Server)", "Eine virtuelle, logisch getrennte Serverinstanz auf einem gemeinsamen physischen Host im Rechenzentrum.", "Web-App, API, kleine bis mittlere Datenbanken, VPN, Staging und mehrere Container-Dienste wie bei GerNetiX."],
+          ["Cloud-Dienste", "Bedarfsgerecht bereitgestellte Rechen-, Speicher- oder Plattformdienste; oft als verwaltete Bausteine statt eigener Server.", "Weltweit erreichbare Anwendungen, verwaltete Datenbanken, Objektspeicher, Lastspitzen, Analyse und Event-Verarbeitung."]
+        ] } },
+        { heading: "Auswirkungen im Alltag", table: { headers: ["Kriterium", "Lokal", "Dediziert", "VPS", "Cloud"], rows: [
+          ["Performance", "Sehr kurze Wege zu lokalen Geräten; Internetzugriff hängt am eigenen Anschluss.", "Konstant und gut planbar, da keine Hardware geteilt wird.", "Für viele Anwendungen stark genug; Leistung ist zugesichert, der physische Host wird jedoch geteilt.", "Ressourcen können sehr groß werden; Netzlatenz und Dienstwahl beeinflussen das Ergebnis."],
+          ["Sicherheit", "Volle Kontrolle, aber Updates, Backups, Stromausfall und Netzabsicherung liegen bei dir.", "Klare Hardware-Trennung; Betriebssystem, Firewall, Patches und Backups bleiben deine Aufgabe.", "Provider schützt Rechenzentrum und Virtualisierung; du verantwortest Betriebssystem, Zugänge, Updates und Daten.", "Provider übernimmt Teile der Plattform-Sicherheit; Identitäten, Rechte, Konfiguration, Daten und Kostenlimits bleiben deine Verantwortung."],
+          ["Skalierbarkeit", "Begrenzt durch die vorhandene Hardware; Aufrüstung oder zweiter Server sind Handarbeit.", "Vertikal durch stärkere Hardware, horizontal mit mehreren Servern – meist mit Planung und Vertrag.", "Meist schnell auf einen größeren Tarif wechselbar; für hohe Last sind mehrere Instanzen nötig.", "Am flexibelsten: Instanzen, Speicher und verwaltete Dienste können je nach Angebot automatisch oder kurzfristig wachsen."],
+          ["Betriebsaufwand", "Hoch: Hardware, Netzwerk, USV, Monitoring und Fernzugriff selbst organisieren.", "Mittel bis hoch: Hardware ist gemietet, Softwarebetrieb bleibt selbst verwaltet.", "Mittel: kein Hardwarebetrieb, aber Linux, Container, Updates, Monitoring und Backups bleiben wichtig.", "Niedrig bis mittel bei verwalteten Diensten; Architektur, Rechte und Kostenkontrolle benötigen weiterhin Fachwissen."]
+        ] } },
+        { heading: "Wie du auswählst", list: [
+          "Wähle lokal, wenn Geräte auch ohne Internet zuverlässig funktionieren müssen oder Daten das Gebäude nicht verlassen sollen. Plane Stromausfall, Fernwartung und externe Backups mit ein.",
+          "Wähle einen dedizierten Server bei dauerhaft hoher, gut planbarer Last oder wenn spezielle Hardware und maximale Kontrolle nötig sind.",
+          "Wähle einen VPS als ausgewogenen Start für öffentlich erreichbare Web-Anwendungen und klar abgegrenzte Dienste. Sichere ihn wie einen eigenen Server ab: Schlüssel statt Passwörter, Updates, Firewall, Backups und Monitoring.",
+          "Wähle Cloud-Dienste bei stark schwankender Last, globaler Reichweite oder wenn verwaltete Datenbanken und Speicher den Betriebsaufwand senken sollen. Prüfe vorher Datenschutz, Region, Anbieterbindung und laufende Kosten.",
+          "Viele Systeme kombinieren beides: Ein ESP32 oder lokales Gateway reagiert schnell vor Ort; VPS oder Cloud liefern Fernzugriff, Benachrichtigungen, Auswertung und zentrale Datensicherung."
+        ] },
+        { heading: "GerNetiX einordnen", paragraphs: ["GerNetiX nutzt für seine Plattform einen VPS als gemeinsame Deployment-Umgebung für getrennte Dienste. Das ist kein Cloud-Autopilot: Zugänge, Updates, Container-Netzwerk, Backups und Monitoring bleiben bewusst kontrollierte Betriebsaufgaben. Hardware-nahe Funktionen wie USB-Provisionierung bleiben lokal beim Gerät und werden nicht auf den VPS verlagert.", "Ein GerNetiX-Projekt kann deshalb klein beginnen: ESP32 plus lokale Bedienung. Erst wenn es einen fachlichen Nutzen gibt, kommen ein lokales Gateway, der VPS für Fernzugriff oder eine iPhone-App dazu. Die verlässliche Reaktion auf Sensoren und Aktoren bleibt dabei am Embedded-System oder lokalen Gateway."] },
+      ],
+      relatedTopics: ["hardware-landscape", "processor-overview", "event-dispatcher"],
     },
     "processor-overview": {
       title: "ESP32-Prozessorfamilien im Vergleich",

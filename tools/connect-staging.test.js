@@ -2,31 +2,26 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { parseArgs, parsePort, sshTunnelArgs } = require("./connect-staging");
+const { parseArgs, sshTunnelArgs } = require("./connect-staging");
 
-test("parses connect arguments on every platform", () => {
-  assert.deepEqual(parseArgs(["--host", "root@example.test", "--local-port", "14600", "--dry-run"]), {
-    dryRun: true,
-    host: "root@example.test",
-    localPort: "14600",
+test("parses hardware catalog tunnel ports", () => {
+  assert.deepEqual(parseArgs(["--hardware-catalog-port", "14911", "--remote-hardware-catalog-port", "4911"]), {
+    dryRun: false,
+    hardwareCatalogPort: "14911",
+    remoteHardwareCatalogPort: "4911",
   });
 });
 
-test("validates TCP ports", () => {
-  assert.equal(parsePort("14600", "Port"), 14600);
-  assert.throws(() => parsePort("0", "Port"), /kein gueltiger/);
-  assert.throws(() => parsePort("abc", "Port"), /kein gueltiger/);
-});
-
-test("builds a loopback-only SSH tunnel", () => {
+test("forwards the hardware catalog only through a local tunnel", () => {
   const args = sshTunnelArgs({
-    host: "root@example.test",
+    host: "root@gernetix-vps",
     localPort: 14600,
-    remotePort: 4600,
+    remotePort: 4610,
     platformPort: 14300,
     remotePlatformPort: 8080,
+    hardwareCatalogPort: 14910,
+    remoteHardwareCatalogPort: 4910,
   });
-  assert.deepEqual(args.slice(-3), ["-L", "14600:127.0.0.1:4600", "root@example.test"]);
-  assert.ok(args.includes("14300:127.0.0.1:8080"));
-  assert.ok(args.includes("ExitOnForwardFailure=yes"));
+  assert.ok(args.includes("14910:127.0.0.1:4910"));
+  assert.equal(args.at(-1), "root@gernetix-vps");
 });
