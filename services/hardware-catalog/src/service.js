@@ -65,6 +65,8 @@ class HardwareCatalogService {
       processor_family: input.processor_family || "",
       mcu_variant: input.mcu_variant || "",
       module_name: input.module_name || "",
+      module_memory_variant: input.module_memory_variant || "",
+      firmware_build_target_id: input.firmware_build_target_id || "",
       vendor: input.vendor || "",
       form_factor: input.form_factor || "",
       sensor_type_id: input.sensor_type_id || "",

@@ -1,10 +1,8 @@
-#include "driver/gpio.h"
-
-#include "basissoftware/config.h"
 #include "basissoftware/functions/initPins.h"
 
 void initPins() {
-  gpio_reset_pin(static_cast<gpio_num_t>(STATUS_LED_PIN));
-  gpio_set_direction(static_cast<gpio_num_t>(STATUS_LED_PIN), GPIO_MODE_OUTPUT);
-  gpio_set_level(static_cast<gpio_num_t>(STATUS_LED_PIN), 0);
+  // The basissoftware deliberately owns no arbitrary board GPIO.  GPIO 2 is
+  // not a portable status LED, especially on display boards such as the
+  // GEN4-ESP32-S3.  Project- or board-specific firmware initializes its own
+  // LEDs, displays and actuators through the project hooks.
 }

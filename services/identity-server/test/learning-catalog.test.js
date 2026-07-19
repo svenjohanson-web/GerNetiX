@@ -57,6 +57,67 @@ test("catalog includes the button-to-smartphone notification learning project", 
   assert.match(server, /createButtonToSmartphoneNotificationCourseModel/);
 });
 
+test("button-to-smartphone course starts with a simulated button and serial-monitor lab", () => {
+  const course = require("../src/dev/project-models/button-to-smartphone-notification-course.json");
+  const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
+  assert.equal(course.view_manifest.views[0].id, "goal");
+  assert.equal(course.view_manifest.views[1].id, "read-button-pin");
+  assert.equal(course.view_manifest.views[1].type, "device_lab");
+  assert.match(JSON.stringify(course.view_manifest.views[0]), /inventory_board_selection/);
+  assert.match(JSON.stringify(course.view_manifest.views[1]), /button_input_lab/);
+  assert.match(guidedView, /Per USB flashen/);
+  assert.match(guidedView, /Per OTA flashen/);
+  assert.match(guidedView, /Serial Monitor/);
+  assert.match(guidedView, /Bitte wähle jetzt dein ESP-Board/);
+  assert.match(guidedView, /Schritt 1: ESP-Board auswählen/);
+  assert.match(guidedView, /learning-projects\/\$\{encodeURIComponent\(project\.id\)\}\/device/);
+  assert.match(server, /handleLearningProjectDeviceAssign/);
+});
+
+test("button-to-smartphone course tests the local board webserver before PWA push", () => {
+  const course = require("../src/dev/project-models/button-to-smartphone-notification-course.json");
+  const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
+  const localWebserverIndex = course.view_manifest.views.findIndex((view) => view.id === "local-webserver");
+  const pushIndex = course.view_manifest.views.findIndex((view) => view.id === "push-boundary");
+  assert.ok(localWebserverIndex >= 0);
+  assert.ok(localWebserverIndex < pushIndex);
+  assert.equal(course.view_manifest.schema_version, 4);
+  assert.equal(course.view_manifest.views[localWebserverIndex].payload.artifact.type, "project_webserver_lab");
+  assert.match(guidedView, /Firmware bauen/);
+  assert.match(guidedView, /Webserver öffnen/);
+  assert.match(guidedView, /openGuidedWebserverPopup/);
+  assert.match(server, /schema_version \|\| 0\) < 4/);
+});
+
+test("button-to-smartphone course uses its guided learning entry instead of the generic source analysis", () => {
+  const courseModel = require("../src/dev/project-models/button-to-smartphone-notification-course");
+  const manifest = courseModel.createButtonToSmartphoneNotificationCourseModel().createViewManifest(
+    { source_files: [{ path: "Komponenten/IoT-Device 1/src/user_main.cpp" }] },
+    { primarySourcePath: (project) => project.source_files[0].path },
+  );
+  assert.equal(manifest.views[0].id, "goal");
+  assert.equal(manifest.views[1].id, "read-button-pin");
+  assert.equal(manifest.views[0].payload.artifact.type, "inventory_board_selection");
+  assert.match(server, /project\.slug === buttonToSmartphoneNotificationCourseModel\.slug/);
+});
+
+test("guided navigation renders the following learning step even if progress persistence is temporarily unavailable", () => {
+  const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
+  const completion = guidedView.match(/async function completeIdeGuidedStep[\s\S]*?\n    \}/)?.[0] || "";
+  assert.ok(completion.indexOf("renderProjectViewManifest") < completion.indexOf("await saveIdeGuidedProgress"));
+  assert.match(completion, /Lernfortschritt konnte nicht gespeichert werden/);
+});
+
+test("button-to-smartphone course provides a project-local user source on the FULL basis software", () => {
+  const course = require("../src/dev/project-models/button-to-smartphone-notification-course.json");
+  const model = require("../src/dev/project-models/button-to-smartphone-notification-course");
+  assert.equal(course.project.build_config.firmware_basis_variant, "full");
+  assert.equal(course.project.build_config.user_source_path, "Komponenten/IoT-Device 1/src/user_main.cpp");
+  assert.match(course.sources.find((source) => source.path.endsWith("user_main.cpp")).content, /extern \"C\" void userMain\(\)/);
+  const sources = model.createButtonToSmartphoneNotificationCourseModel().createSources({ projectId: "learning_example" });
+  assert.match(sources.find((source) => source.path.endsWith("project_config.h")).content, /learning_example/);
+});
+
 test("server creates one account-bound project per started catalog course", () => {
   assert.match(server, /handleLearningProjectStart/);
   assert.match(server, /learning_project_not_found/);

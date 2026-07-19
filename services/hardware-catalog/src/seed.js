@@ -125,6 +125,9 @@ function defaultCatalogSeed() {
         vendor: "ES3C28P",
         form_factor: "integrated_touch_display_audio",
         mcu_variant: "ESP32-S3",
+        module_name: "ESP32-S3-WROOM-1",
+        module_memory_variant: "N16R8",
+        firmware_build_target_id: "firmware_build_target.esp32_s3_opi_n16r8",
         extra_capability_ids: ["capability.display_output", "capability.touchscreen_input", "capability.audio_output", "capability.bluetooth", "capability.analog_input"],
         pin_profile: {
           assigned_pins: {
@@ -191,13 +194,23 @@ function defaultCatalogSeed() {
             ram: {
               enabled: true,
               hardware: "interner_sram",
+              driver: "esp_idf_heap",
               connection: "im_modul_integriert",
               value: "512_kb",
               verification_status: "user_confirmed",
             },
+            psram: {
+              enabled: true,
+              hardware: "octal_psram",
+              driver: "esp_idf_heap_psram",
+              connection: "im_modul_integriert",
+              value: "8_mb",
+              verification_status: "module_variant_confirmed",
+            },
             flash: {
               enabled: true,
               hardware: "qspi_flash",
+              driver: "esp_idf_partition_table",
               connection: "extern_auf_dem_board",
               value: "16_mb",
               verification_status: "user_confirmed",
@@ -325,11 +338,18 @@ function boardFeatureOptions() {
       connection_options: options(["PCB-Antenne", "Externe Antenne / U.FL"]),
       datasheet_hint: "Antennenvariante und zulässige Funkbänder anhand der exakten Modulbezeichnung prüfen.",
     }),
-    boardFeature("ram", "RAM / PSRAM", "capability.external_ram", {
-      hardware_options: options(["Interner SRAM", "QSPI-PSRAM", "OPI-PSRAM"]),
+    boardFeature("ram", "Interner SRAM", "capability.external_ram", {
+      hardware_options: options(["Interner SRAM"]),
+      driver_options: options(["ESP-IDF Heap"]),
+      connection_options: options(["Im Prozessor integriert"]),
+      value_options: options(["400 KB", "512 KB", "640 KB"]),
+      datasheet_hint: "Der interne SRAM gehoert zum SoC und ist vom externen PSRAM getrennt zu erfassen.",
+    }),
+    boardFeature("psram", "PSRAM", "capability.external_ram", {
+      hardware_options: options(["QSPI-PSRAM", "OPI-PSRAM"]),
       driver_options: options(["ESP-IDF Heap/PSRAM", "Arduino PSRAM"]),
       connection_options: options(["Im Modul integriert", "Extern auf dem Board"]),
-      value_options: options(["512 KB", "2 MB", "4 MB", "8 MB", "16 MB"]),
+      value_options: options(["2 MB", "4 MB", "8 MB", "16 MB"]),
       datasheet_hint: "Die PSRAM-Größe folgt der vollständigen Modul-/Boardbezeichnung, nicht nur dem Prozessortyp.",
     }),
     boardFeature("flash", "Flash", "capability.flash_storage", {
@@ -448,6 +468,10 @@ function networkBoard(input) {
     processor_family: input.processor_family,
     mcu_variant: input.mcu_variant,
     module_name: input.module_name || "",
+    module_memory_variant: input.module_memory_variant || "",
+    firmware_build_target_id: input.firmware_build_target_id
+      || (input.mcu_variant === "ESP32" ? "firmware_build_target.esp32_classic_qspi_4mb" : "")
+      || (input.mcu_variant === "ESP32-C6" ? "firmware_build_target.esp32_c6_qspi_4mb" : ""),
     vendor: input.vendor || "Generic",
     form_factor: input.form_factor || "",
     capability_ids: input.capability_ids,

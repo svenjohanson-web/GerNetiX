@@ -1,6 +1,7 @@
 #include "basissoftware/provisioning_config.h"
 
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 
@@ -408,11 +409,11 @@ bool base64UrlDecode(const char *source, unsigned char *target, size_t targetSiz
 }
 }
 
-ProvisioningConfig loadProvisioningConfig() {
-  ProvisioningConfig config = {};
+void loadProvisioningConfigInto(ProvisioningConfig &config) {
+  config = {};
   nvs_handle_t handle = 0;
   if (nvs_open(NVS_NAMESPACE, NVS_READONLY, &handle) != ESP_OK) {
-    return config;
+    return;
   }
 
   uint8_t provisioned = 0;
@@ -441,6 +442,11 @@ ProvisioningConfig loadProvisioningConfig() {
   readNvsString(handle, "prov_by", config.provisionedBy, sizeof(config.provisionedBy));
   readNvsString(handle, "capabilities", config.capabilities, sizeof(config.capabilities));
   nvs_close(handle);
+}
+
+ProvisioningConfig loadProvisioningConfig() {
+  ProvisioningConfig config = {};
+  loadProvisioningConfigInto(config);
   return config;
 }
 
@@ -534,44 +540,54 @@ size_t writeProvisioningStatusJson(char *target, size_t targetSize) {
     return 0;
   }
 
-  const ProvisioningConfig config = loadProvisioningConfig();
+  // This function is called from the HTTP server task.  The complete
+  // provisioning record contains certificate/key fields of several KiB and
+  // must not be put on that task's stack.
+  ProvisioningConfig *config = static_cast<ProvisioningConfig *>(std::calloc(1, sizeof(ProvisioningConfig)));
+  if (config == nullptr) {
+    target[0] = '\0';
+    return 0;
+  }
+  loadProvisioningConfigInto(*config);
   char deviceName[96] = {};
   char hostname[32] = {};
-  writeProvisioningNameValue(deviceName, sizeof(deviceName), config);
-  writeProvisioningHostnameValue(hostname, sizeof(hostname), config);
+  writeProvisioningNameValue(deviceName, sizeof(deviceName), *config);
+  writeProvisioningHostnameValue(hostname, sizeof(hostname), *config);
   size_t written = 0;
   written += std::snprintf(
       target,
       targetSize,
       "\"provisioningState\":\"%s\"",
-      config.provisioned ? "provisioned" : "not_configured");
+      config->provisioned ? "provisioned" : "not_configured");
   if (written >= targetSize) {
     target[targetSize - 1] = '\0';
+    std::free(config);
     return targetSize - 1;
   }
 
   appendJsonString(target, targetSize, written, "displayName", deviceName);
   appendJsonString(target, targetSize, written, "hostname", hostname);
-  appendJsonString(target, targetSize, written, "deviceId", config.deviceId);
-  appendJsonString(target, targetSize, written, "serialNumber", config.serialNumber);
-  appendJsonString(target, targetSize, written, "hardwareProfileId", config.hardwareProfileId);
-  appendJsonString(target, targetSize, written, "firmwareVersion", config.firmwareVersion);
-  appendJsonString(target, targetSize, written, "firmwareBasis", config.firmwareBasis);
-  appendJsonString(target, targetSize, written, "credentialId", config.credentialId);
-  appendJsonString(target, targetSize, written, "credentialType", config.credentialType);
-  appendJsonString(target, targetSize, written, "keyReference", config.keyReference);
-  appendJsonString(target, targetSize, written, "public_key_pem", config.devicePublicKeyPem);
-  appendJsonString(target, targetSize, written, "deviceManagementUrl", config.deviceManagementUrl);
-  appendJsonString(target, targetSize, written, "buildDeployUrl", config.buildDeployUrl);
-  appendJsonString(target, targetSize, written, "mqttBrokerUrl", config.mqttBrokerUrl);
-  appendJsonString(target, targetSize, written, "provisioningBatchId", config.provisioningBatchId);
-  appendJsonString(target, targetSize, written, "provisionedBy", config.provisionedBy);
-  appendJsonString(target, targetSize, written, "capabilities", config.capabilities);
-  appendJsonBool(target, targetSize, written, "hasDevicePrivateKey", config.hasDevicePrivateKey);
-  appendJsonBool(target, targetSize, written, "hasMqttClientCertificate", config.hasMqttClientCertificate);
-  appendJsonBool(target, targetSize, written, "hasOtaSigningPublicKey", config.hasOtaSigningPublicKey);
-  appendJsonString(target, targetSize, written, "authenticityProof", config.hasDevicePrivateKey ? "ready" : "missing_device_private_key");
+  appendJsonString(target, targetSize, written, "deviceId", config->deviceId);
+  appendJsonString(target, targetSize, written, "serialNumber", config->serialNumber);
+  appendJsonString(target, targetSize, written, "hardwareProfileId", config->hardwareProfileId);
+  appendJsonString(target, targetSize, written, "firmwareVersion", config->firmwareVersion);
+  appendJsonString(target, targetSize, written, "firmwareBasis", config->firmwareBasis);
+  appendJsonString(target, targetSize, written, "credentialId", config->credentialId);
+  appendJsonString(target, targetSize, written, "credentialType", config->credentialType);
+  appendJsonString(target, targetSize, written, "keyReference", config->keyReference);
+  appendJsonString(target, targetSize, written, "public_key_pem", config->devicePublicKeyPem);
+  appendJsonString(target, targetSize, written, "deviceManagementUrl", config->deviceManagementUrl);
+  appendJsonString(target, targetSize, written, "buildDeployUrl", config->buildDeployUrl);
+  appendJsonString(target, targetSize, written, "mqttBrokerUrl", config->mqttBrokerUrl);
+  appendJsonString(target, targetSize, written, "provisioningBatchId", config->provisioningBatchId);
+  appendJsonString(target, targetSize, written, "provisionedBy", config->provisionedBy);
+  appendJsonString(target, targetSize, written, "capabilities", config->capabilities);
+  appendJsonBool(target, targetSize, written, "hasDevicePrivateKey", config->hasDevicePrivateKey);
+  appendJsonBool(target, targetSize, written, "hasMqttClientCertificate", config->hasMqttClientCertificate);
+  appendJsonBool(target, targetSize, written, "hasOtaSigningPublicKey", config->hasOtaSigningPublicKey);
+  appendJsonString(target, targetSize, written, "authenticityProof", config->hasDevicePrivateKey ? "ready" : "missing_device_private_key");
   target[written] = '\0';
+  std::free(config);
   return written;
 }
 

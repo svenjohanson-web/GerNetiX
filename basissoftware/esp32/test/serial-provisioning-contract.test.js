@@ -14,7 +14,13 @@ test("serial provisioning scans and stores WiFi credentials only on the device",
   assert.match(source, /saveWifiStationCredentials/);
   assert.match(source, /wifi_status/);
   assert.match(source, /stored_only_on_device/);
+  assert.match(source, /usb_serial_jtag_read_bytes/);
+  assert.match(source, /usb_serial_jtag_write_bytes/);
+  assert.match(source, /responsePayload\[responsePayloadLength - 1\] == '\\n'/);
+  assert.match(source, /serialProvisioningWrite\(responsePayload, responsePayloadLength\)/);
   assert.doesNotMatch(source, /password.*feedback|feedback.*password/i);
   assert.match(wifi, /WiFi credentials saved locally/);
+  assert.match(wifi, /requestWifiStationConnectFromSavedCredentials\(\)[\s\S]*stationState = StationState::Connecting/);
+  assert.match(wifi, /requestWifiStationConnectFromSavedCredentials\(\)[\s\S]*lastConnectStatus = ESP_OK/);
   assert.doesNotMatch(wifi, /credentials saved for ssid|Connecting WiFi station to ssid/);
 });

@@ -34,6 +34,7 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 ## Performance-Regel fuer Codex
 
 - Vor Aenderungen zuerst bestimmen, ob Code, UI, SQLite-Graph, Doku oder Runtime betroffen ist.
+- Firmware-Builds und USB-/OTA-Flashes fuehrt ausschliesslich der Nutzer aus. Codex darf dafuer Befehle bereitstellen und Quellcode, Contract-Tests oder Konfiguration pruefen, aber weder `platformio run` noch Upload-/Flash-Befehle selbst ausfuehren.
 - Bei Code-/UI-Aenderungen zuerst lokal implementieren und gezielte Unit-/Contract-Tests ausfuehren.
 - Services nur gezielt neu starten, wenn geaenderter Runtime-Code live verifiziert werden muss.
 - Keine vorsorglichen Neustarts.
@@ -46,6 +47,7 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 - Project Server ist die SQLite-Wahrheit fuer accountgebundene Projekte.
 - AI Context Server ist die SQLite-Wahrheit fuer KI-Kontextquellen, Grants, Policy und Audit.
 - Dauerhaftes Persistieren ist nur in SQL/SQLite erlaubt. JSON-Dateien, Prozessspeicher, localStorage, Browser-State, Temp-Dateien und Caches sind nur Logic/Control/View- oder Test-/Runtime-Hilfen und duerfen nie fachliche Quelle der Wahrheit sein.
+- Basissoftware bleibt ein eigenstaendiger, stabiler Runtime-Kern. Projekt- und kundenspezifische Erweiterungen duerfen ihre Schnittstellen, ihren Provisioning-/SSID-Setup-Ablauf, ihre Sicherheitsfunktionen oder ihr Verhalten nicht veraendern; sie werden ausschliesslich ueber klar abgegrenzte Erweiterungspunkte integriert.
 - Abschlussnachweis kurz halten: geaenderte Bereiche, Tests, Graph-Status, offene Punkte.
 - Abschlussnachweis nicht kuenstlich verlaengern: keine Runtime-, Graph- oder Live-Daten-Schritte ergaenzen, wenn sie fuer die konkrete Aenderung nicht erforderlich sind.
 

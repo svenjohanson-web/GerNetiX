@@ -2,10 +2,11 @@ const crypto = require("node:crypto");
 const { TelemetryError } = require("../errors");
 
 class TelemetryService {
-  constructor({ repository, ownershipResolver, pushNotifier = null, defaultMeasurementRetentionDays = 90, defaultEventRetentionDays = 365 }) {
+  constructor({ repository, ownershipResolver, pushNotifier = null, runtimeNotifier = null, defaultMeasurementRetentionDays = 90, defaultEventRetentionDays = 365 }) {
     this.repository = repository;
     this.ownershipResolver = ownershipResolver;
     this.pushNotifier = pushNotifier;
+    this.runtimeNotifier = runtimeNotifier;
     this.defaultMeasurementRetentionDays = defaultMeasurementRetentionDays;
     this.defaultEventRetentionDays = defaultEventRetentionDays;
   }
@@ -27,6 +28,22 @@ class TelemetryService {
       catch (error) { push.push({ event_id: event.event_id, error: error.message || "push_failed" }); }
     }
     return { accepted: true, account_id: accountId, project_id: projectId, device_id: deviceId, measurements: measurements.length, events: events.length, push };
+  }
+
+  async relayRuntime(input = {}) {
+    const deviceId = requiredId(input.device_id, "device_id");
+    const projectId = requiredId(input.project_id, "project_id");
+    const ownership = await this.ownershipResolver({ device_id: deviceId, project_id: projectId });
+    const runtime = {
+      account_id: requiredId(ownership?.account_id, "resolved_account_id"),
+      project_id: projectId,
+      device_id: deviceId,
+      channel: optionalText(input.channel, 32) || "serial",
+      line: text(input.line, "line", 500),
+      occurred_at: timestamp(input.occurred_at || input.timestamp || new Date().toISOString(), "occurred_at"),
+    };
+    const delivery = await this.runtimeNotifier?.(runtime) || null;
+    return { accepted: true, ...runtime, delivery };
   }
 
   listMeasurements(accountId, projectId, query) { return this.repository.listMeasurements(requiredId(accountId, "account_id"), requiredId(projectId, "project_id"), query); }

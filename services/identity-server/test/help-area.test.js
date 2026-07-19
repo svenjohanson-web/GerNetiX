@@ -10,6 +10,7 @@ const css = fs.readFileSync(path.join(appRoot, "app.css"), "utf8");
 const helpContent = fs.readFileSync(path.join(appRoot, "help-content.js"), "utf8");
 const helpView = fs.readFileSync(path.join(appRoot, "help-view.js"), "utf8");
 const helpChatService = fs.readFileSync(path.join(appRoot, "help-chat-service.js"), "utf8");
+const publicHelp = fs.readFileSync(path.join(__dirname, "..", "public", "help", "index.html"), "utf8");
 
 test("keeps Help reachable through the main menu and renders it as a dedicated view", () => {
   assert.match(html, /href="\/app\/help\/" data-route="help">Hilfe<\/a>/);
@@ -89,6 +90,16 @@ test("keeps a public processor-family overview separate from concrete supported 
   assert.match(helpContent, /Unterstuetzte Boards ansehen/);
 });
 
+test("keeps the hardware landscape as a public page in the common help model", () => {
+  assert.match(helpContent, /"hardware-landscape", title: "Hardware-Landkarte: vom Akku bis Edge AI"/);
+  assert.match(helpContent, /"hardware-landscape": \{[\s\S]*access: "public"/);
+  assert.match(helpContent, /Raspberry Pi Pico/);
+  assert.match(helpContent, /Raspberry Pi Zero 2 W/);
+  assert.match(helpContent, /GPU-Edge-Computing/);
+  assert.match(helpView, /function renderHardwareVisual/);
+  assert.match(css, /\.help-hardware-landscape/);
+});
+
 test("offers event worker rule help as a central account help topic", () => {
   assert.match(helpContent, /"event-worker-rules", title: "Ereignis-Worker und Regelsprache"/);
   assert.match(helpContent, /event\.type == \\"taste_gedrueckt\\"/);
@@ -130,6 +141,17 @@ test("explains account access, recovery and current versus planned entitlements"
   assert.match(helpContent, /Heute in der Plattform/);
   assert.match(helpContent, /Basis Plus, Kampagnen und Hardware-Bundles/);
   assert.match(helpContent, /Dispatcher oder Background Worker braucht/);
+});
+
+test("offers a public, factual comparison of basis, basis plus and premium", () => {
+  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+
+  assert.match(navigation, /"plan-comparison", title: "Basis, Basis Plus und Premium vergleichen"/);
+  assert.match(helpContent, /"plan-comparison": \{/);
+  assert.match(helpContent, /Basis Plus ist noch nicht buchbar/);
+  assert.match(helpContent, /noch kein eigenes serverseitiges Entitlement/);
+  assert.match(helpContent, /KI-Hilfe in Entwicklung, Code Explorer und Hilfe/);
+  assert.match(helpContent, /Web Push f.r Projektbenachrichtigungen/);
 });
 
 test("links account setup to the personal offline recovery set", () => {

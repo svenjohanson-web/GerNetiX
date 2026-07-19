@@ -19,6 +19,12 @@ basissoftware/esp32/
 
 Die Basissoftware ist von Projektanpassungen und generiertem Code getrennt. Sie enthaelt nur die stabile Runtime, Initialisierung, freigegebene Hooks und gemeinsame Hardwareabstraktion.
 
+## Abgrenzung von Projekterweiterungen
+
+Die Basissoftware ist ein stabiler, eigenstaendiger Runtime-Kern. Projekt- und kundenspezifische Erweiterungen duerfen weder die Basissoftware noch ihre Provisioning-, WLAN-/SSID-Setup- oder Sicherheitsablaeufe veraendern. Sie werden ausschliesslich ueber dokumentierte Erweiterungspunkte eingebunden und duerfen keinen eigenen Webserver in das Basissoftware-Setup-Portal einschleusen.
+
+Firmware-Builds und USB-/OTA-Flashes erfolgen ausschliesslich durch den Nutzer. Codex darf Quellcode, Konfiguration und Contract-Tests vorbereiten oder pruefen, aber keinen Firmware-Build und keinen Flashvorgang ausfuehren.
+
 ## Einstieg
 
 Der ESP-IDF-Einstieg liegt in:

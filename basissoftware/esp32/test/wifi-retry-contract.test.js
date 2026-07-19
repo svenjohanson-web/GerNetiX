@@ -18,8 +18,10 @@ test("WiFi station reconnects indefinitely with bounded backoff", () => {
 test("WiFi reconnect backoff resets after receiving an IP address", () => {
   assert.match(source, /IP_EVENT_STA_GOT_IP/);
   assert.match(source, /wifiConnectRetryCount = 0/);
-  assert.match(source, /setupPortalActive = false/);
-  assert.match(source, /WiFi station recovered; setup AP disabled/);
+  assert.match(source, /setup AP remains active for provisioning status/);
+  assert.match(source, /shutting down setup AP after status grace period/);
+  const gotIpHandler = source.slice(source.indexOf("IP_EVENT_STA_GOT_IP"), source.indexOf("void configureSetupAp"));
+  assert.doesNotMatch(gotIpHandler, /esp_wifi_set_mode\(WIFI_MODE_STA\)/);
 });
 
 test("provisioned boards stay in station mode when the first connection times out", () => {

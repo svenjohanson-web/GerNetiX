@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>GerNetiX · Web-Serial-Test</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <main>
+      <p class="eyebrow">ISOLIERTER DIAGNOSETEST</p>
+      <h1>ESP32 Web-Serial</h1>
+      <p class="intro">Kein Flash, kein Konto und keine Provisionierung. Diese Seite sendet nur <code>wifi_scan</code> an das angeschlossene Board und zeigt jede Rohantwort an.</p>
+
+      <section class="card" aria-labelledby="connection-title">
+        <h2 id="connection-title">1. USB verbinden</h2>
+        <div class="actions">
+          <button id="connect" type="button">COM-Port wählen</button>
+          <button id="reset" type="button" class="secondary" disabled>ESP32 neu starten</button>
+          <button id="disconnect" type="button" class="secondary" disabled>Trennen</button>
+          <span id="connection-state" role="status">Nicht verbunden</span>
+        </div>
+      </section>
+
+      <section class="card" aria-labelledby="command-title">
+        <h2 id="command-title">2. WLANs suchen</h2>
+        <div class="actions">
+          <button id="scan" type="button" disabled>SSID-Suche starten</button>
+          <button id="status" type="button" class="secondary" disabled>WLAN-Status prüfen</button>
+          <span id="scan-state" role="status"></span>
+        </div>
+        <p class="hint">Die Seite sendet genau einen Befehl und zeigt jede Rohantwort an.</p>
+      </section>
+
+      <section class="card" aria-labelledby="result-title">
+        <h2 id="result-title">Gefundene SSIDs</h2>
+        <ul id="networks" class="networks"><li>Noch keine Antwort.</li></ul>
+      </section>
+
+      <section class="card" aria-labelledby="raw-title">
+        <h2 id="raw-title">Rohprotokoll</h2>
+        <pre id="log" aria-live="polite"></pre>
+      </section>
+    </main>
+    <script src="./app.js"></script>
+  </body>
+</html>

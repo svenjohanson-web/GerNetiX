@@ -8,10 +8,10 @@ extern "C" void userMain() {
 extern "C" void userTick() {
 }
 
-extern "C" void onProjectInit() {
+extern "C" __attribute__((weak)) void onProjectInit() {
   userMain();
 }
 
-extern "C" void onProjectTick() {
+extern "C" __attribute__((weak)) void onProjectTick() {
   userTick();
 }

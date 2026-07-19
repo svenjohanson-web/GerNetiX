@@ -46,3 +46,18 @@ test("USB provisioning uses Web Serial and points unsupported browsers to the he
   assert.match(server, /\/api\/platform\/hardware\/board-feature-options/);
   assert.doesNotMatch(onboarding, /USB-Board suchen/);
 });
+
+test("manual board provisioning edits feature pin assignments in a board-aware dialog", () => {
+  const onboarding = fs.readFileSync(path.join(appRoot, "device-onboarding-controller.js"), "utf8");
+
+  assert.match(onboarding, /data-edit-board-feature-pins/);
+  assert.match(onboarding, /provisioning-pin-editor-dialog/);
+  assert.match(onboarding, /Mögliche GPIOs/);
+  assert.match(onboarding, /availableProvisioningPins/);
+  assert.match(onboarding, /ESP32-S3/);
+  assert.match(onboarding, /ESP32-C6/);
+  assert.match(onboarding, /formatBoardFeaturePins\(pins\)/);
+  assert.match(onboarding, /data-board-feature-pin-signal/);
+  assert.match(onboarding, /existing\.pins \|\| ""/);
+  assert.match(onboarding, /pins: value\.pins \|\| ""/);
+});

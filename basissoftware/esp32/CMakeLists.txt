@@ -4,6 +4,13 @@ if(DEFINED ENV{GERNETIX_PROJECT_COMPONENT})
   list(APPEND EXTRA_COMPONENT_DIRS "$ENV{GERNETIX_PROJECT_COMPONENT}")
 endif()
 
+# PlatformIO forwards project-specific CMake arguments, while the remote build
+# service supplies the same path as an environment variable.  Both routes use
+# the identical component contract.
+if(DEFINED GERNETIX_PROJECT_COMPONENT)
+  list(APPEND EXTRA_COMPONENT_DIRS "${GERNETIX_PROJECT_COMPONENT}")
+endif()
+
 if(DEFINED ENV{GERNETIX_GENERATED_COMPONENT})
   list(APPEND EXTRA_COMPONENT_DIRS "$ENV{GERNETIX_GENERATED_COMPONENT}")
 endif()

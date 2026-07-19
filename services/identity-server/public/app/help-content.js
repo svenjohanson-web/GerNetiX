@@ -8,6 +8,7 @@ const HelpContent = (() => {
       children: [
         { id: "quick-start", title: "So startest du", articleId: "quick-start" },
         { id: "create-account", title: "Konto anlegen", articleId: "create-account" },
+        { id: "plan-comparison", title: "Basis, Basis Plus und Premium vergleichen", articleId: "plan-comparison" },
         { id: "ai-premium", title: "KI-Unterstuetzung und Premium", articleId: "ai-premium" },
       ],
     },
@@ -17,6 +18,7 @@ const HelpContent = (() => {
       description: "Prozessorfamilien einordnen, bevor du ein konkretes Board auswaehlst.",
       access: "public",
       children: [
+        { id: "hardware-landscape", title: "Hardware-Landkarte: vom Akku bis Edge AI", articleId: "hardware-landscape" },
         { id: "processor-overview", title: "ESP32-Prozessorfamilien im Vergleich", articleId: "processor-overview" },
       ],
     },
@@ -36,7 +38,7 @@ const HelpContent = (() => {
       title: "Mit GerNetiX-Konto",
       description: "Board einrichten, registrieren und dein Inventar nutzen.",
       access: "account",
-      children: [{ id: "provision-new-board", title: "Neues Board in Betrieb nehmen", articleId: "provision-new-board" }, { id: "register-device", title: "Board registrieren", articleId: "register-device" }, { id: "pair-device", title: "Board verbinden", articleId: "pair-device" }, { id: "flash-device", title: "Board flashen", articleId: "flash-device" }, { id: "usb-wifi-setup", title: "WLAN per USB einrichten", articleId: "usb-wifi-setup" }, { id: "supported-devices", title: "Unterstützte Boards", articleId: "supported-devices" }, { id: "device-not-detected", title: "Board wird nicht erkannt", articleId: "device-not-detected" }],
+      children: [{ id: "provision-new-board", title: "Neues Board in Betrieb nehmen", articleId: "provision-new-board" }, { id: "board-definition", title: "Warum eine Board Definition?", articleId: "board-definition" }, { id: "register-device", title: "Board registrieren", articleId: "register-device" }, { id: "pair-device", title: "Board verbinden", articleId: "pair-device" }, { id: "flash-device", title: "Board flashen", articleId: "flash-device" }, { id: "usb-wifi-setup", title: "WLAN per USB einrichten", articleId: "usb-wifi-setup" }, { id: "supported-devices", title: "Unterstützte Boards", articleId: "supported-devices" }, { id: "device-not-detected", title: "Board wird nicht erkannt", articleId: "device-not-detected" }],
     },
     {
       id: "project-support",
@@ -81,6 +83,24 @@ const HelpContent = (() => {
       summary: "Create one GerNetiX account to use projects, learning progress and your devices together.",
       sections: [{ heading: "Registration", paragraphs: ["Use the account creation form and confirm the required terms. After signing in, GerNetiX keeps projects, progress and registered devices connected to your account."] }],
       relatedTopics: ["quick-start", "register-device"],
+    },
+    "plan-comparison": {
+      title: "Basis, Basis Plus und Premium im Vergleich",
+      summary: "Diese Übersicht trennt Funktionen, die heute technisch freigeschaltet sind, von geplanten Angeboten.",
+      sections: [
+        { heading: "Was heute gilt", table: { headers: ["Funktion", "Basis (kostenlos)", "Basis Plus", "Premium"], rows: [
+          ["Eigene Projekte in der IDE bearbeiten", "Ja", "Geplant", "Ja"],
+          ["Per USB bauen und flashen", "Ja", "Geplant", "Ja"],
+          ["Geführte Lernprojekte", "Nein", "Geplant", "Ja"],
+          ["KI-Hilfe in Entwicklung, Code Explorer und Hilfe", "Nein", "Geplant", "Ja, innerhalb der verfügbaren Credits und Limits"],
+          ["Web Push für Projektbenachrichtigungen", "Nein", "Geplant", "Ja"],
+          ["Premium-Lerninhalte und verbundene Projekterweiterungen", "Nein", "Geplant", "Ja, sofern das jeweilige Projekt diese Freischaltung nutzt"],
+        ] } },
+        { heading: "Basis Plus ist noch nicht buchbar", paragraphs: ["Basis Plus ist derzeit kein technisch aktiver Plan. Es gibt noch kein eigenes serverseitiges Entitlement, keine separate Abrechnung und keine Funktion, die ausschließlich Basis Plus verlangt.", "Für Basis Plus sind zusätzliche, klar begrenzte Projektressourcen vorgesehen, zum Beispiel Background Worker, Dispatcher-Zugriff und höhere Ausführungsfrequenzen. Welche davon tatsächlich enthalten sind, wird erst mit der Einführung verbindlich angezeigt."] },
+        { heading: "Was Premium heute konkret freischaltet", list: ["Geführte Lernprojekte.", "KI-Assistenten in der Entwicklungsplattform, im Code Explorer und im Hilfe-Bereich. KI-Aufrufe bleiben durch Credits, Größenlimits und serverseitige Prüfungen begrenzt.", "Web Push für Projekte, wenn ein Projekt diese Funktion verwendet und du die Browser-Erlaubnis erteilst.", "Premium-Inhalte und Erweiterungen, sobald das jeweilige Lernprojekt oder Angebot sie verlangt."] },
+        { heading: "Wichtig", paragraphs: ["Ein ESP32-Recovery-Token erweitert die Wiederherstellung deines Kontos, ist aber kein Premium-Abo. Ebenso ist ein Kampagnen- oder Hardware-Bundle-Token nur dann Premium, wenn er ausdrücklich ein Premium-Entitlement aktiviert."] },
+      ],
+      relatedTopics: ["ai-premium", "entitlements-and-tokens", "account-types"],
     },
     "account-types": {
       title: "Kontotypen und Zugangsstufen",
@@ -134,6 +154,20 @@ const HelpContent = (() => {
         { heading: "Unser Ausblick", paragraphs: ["Wir pruefen fortlaufend kostenguenstigere und lokale Loesungen. Unser Ziel ist, moeglichst viele KI-Funktionen spaeter auch Nutzerinnen und Nutzern mit kostenlosem Abo anbieten zu koennen."] },
       ],
     },
+    "hardware-landscape": {
+      title: "Hardware-Landkarte: vom Akku bis Edge AI",
+      summary: "Hardware ist keine Rangliste. Die Aufgabe entscheidet, ob ein kleiner Mikrocontroller, ein ESP32, Embedded Linux oder GPU-Edge-Computing sinnvoll ist.",
+      access: "public",
+      hardwareLandscape: true,
+      sections: [
+        { heading: "Eine Rechenlandschaft statt einer Leistungspyramide", paragraphs: ["Ein Mikrocontroller führt ein einzelnes Programm direkt auf der Hardware aus. Er startet schnell, braucht wenig Energie und ist ideal für eine konkrete Aufgabe. Ein Embedded-Linux-System kann dagegen Prozesse, Netzwerkdienste und Dateien verwalten – dafür braucht es mehr Energie, Pflege und eine saubere Abschaltstrategie."], hardwareVisual: true },
+        { heading: "Die fünf Ebenen", table: { headers: ["Ebene", "Typische Beispiele", "Wofür sie passt"], rows: [["Kleiner Mikrocontroller", "ATtiny, Arduino Nano, Raspberry Pi Pico", "Akku-Sensoren, Taster, LEDs, Relais: wenig Energie, kein Betriebssystem, eine klare Aufgabe."], ["Vernetzter Mikrocontroller", "ESP32-C3, ESP32-S3, ESP32-C6", "Sensoren und Aktoren verbinden, lokale Bedienung oder kleine Webseite; direkter Hardwarezugriff mit WLAN und Bluetooth."], ["Embedded Linux", "Raspberry Pi Zero 2 W, Compute Module, Industrie-SBC", "Gateway, Kamera, lokale Dienste, Datenpuffer oder umfangreiche Bedienoberflächen."], ["Industrie-Mikrocontroller", "STM32, Renesas RA/RX; H8 im Bestand", "Robuste Echtzeitsteuerung, Feldschnittstellen, lange Produktzyklen und professionelle Toolchains."], ["GPU-Edge-Computing", "NVIDIA Jetson, Industrie-PC mit GPU", "Bildverarbeitung und KI-Inferenz nahe an Kamera oder Maschine; kein Ersatz für Echtzeit-I/O."]] } },
+        { heading: "Erst die Aufgabe, dann das Board", table: { headers: ["Wenn dein Projekt …", "meist passende Ebene", "Beispiel"], rows: [["lange mit Akku läuft und einen Sensor oder Aktor bedient", "Kleiner Mikrocontroller", "Temperatur-Node, Taster, LED, Relais"], ["per WLAN kommuniziert und nah an Pins und Sensoren bleibt", "ESP32", "GerNetiX-Device, Bewässerung, kleines Touch-UI"], ["lokal mehrere Dienste, eine Kamera oder ein Gateway braucht", "Embedded Linux", "Haus-Gateway, Datenablage, Kamera-Bridge"], ["eine Maschine mit definierten Echtzeit- und Lebenszyklusvorgaben steuert", "Industrie-Mikrocontroller", "Feldbus-Knoten, Serienprodukt"], ["Kamera- oder KI-Modelle ohne Cloud-Latenz auswertet", "GPU-Edge", "Qualitätsprüfung, Objekterkennung"]] } },
+        { heading: "Begriffe richtig einordnen", paragraphs: ["Einen Raspberry Pi Nano gibt es nicht als gängige Produktlinie. Für die kleine Mikrocontroller-Ebene passt der Raspberry Pi Pico; der Raspberry Pi Zero 2 W gehört wegen Linux bereits zur nächsten Ebene.", "STM32- und aktuelle Renesas-Familien sind typische Wege in professionelle und industrielle Produkte. Die Renesas-H8-Familie ist vor allem in bestehenden Anlagen anzutreffen; für ein neues Design wird normalerweise eine aktuelle, aktiv gepflegte Familie gewählt."] },
+        { heading: "Was GerNetiX heute nutzt", paragraphs: ["GerNetiX konzentriert Basissoftware und geführte Inbetriebnahme auf kompatible ESP32-Boards. Sie sind die praktische Mitte: genug Rechenleistung und Konnektivität für vernetzte Geräte, aber weiterhin nah genug an Sensoren, Aktoren und energieeffizientem Betrieb.", "Ein gutes System verteilt Aufgaben: Der Mikrocontroller liest und schaltet zuverlässig. Ein Linux-Gateway bündelt Geräte, Bedienung und lokale Dienste. Eine GPU kommt nur dazu, wenn Bild- oder KI-Rechenlast sie rechtfertigt. Cloud-Dienste bleiben optional für Fernzugriff und Auswertung."] },
+      ],
+      relatedTopics: ["processor-overview", "supported-devices"],
+    },
     "processor-overview": {
       title: "ESP32-Prozessorfamilien im Vergleich",
       summary: "Die ESP32-Bezeichnung beschreibt zuerst den Chip. Ein Board ergaenzt ihn um Flash, USB, Spannungsversorgung, Antenne und oft Display, Sensoren oder weitere Anschluesse.",
@@ -169,6 +203,15 @@ const HelpContent = (() => {
       summary: "Choose a template when you want a starting point, or begin with a blank development project.",
       sections: [{ heading: "Choose a path", paragraphs: ["Templates give you a structure to adapt. A blank project is useful when you already know what you want to build."], code: "// Your project source is managed in the GerNetiX IDE.\nvoid setup() {\n}\n\nvoid loop() {\n}" }],
       relatedTopics: ["quick-start", "supported-devices"],
+    },
+    "board-definition": {
+      title: "Warum eine Board Definition?",
+      summary: "Der erkannte ESP32-Chip reicht nicht aus, um eine sichere und passende Basissoftware auszuwählen.",
+      sections: [
+        { heading: "Chip ist nicht gleich Board", paragraphs: ["Die USB-Erkennung sieht den ESP32 und oft dessen Flash-Größe. Sie kann aber nicht zuverlässig erkennen, welches konkrete Board, Display, welche Pins oder welche externe Speicherbestückung verbaut sind."] },
+        { heading: "Wofür wir die Definition brauchen", list: ["Sie wählt das passende Firmware- und Partitionsprofil für die bestätigte Flash-Größe.", "Sie übernimmt bei bekannten Boards geprüfte Hardwareeigenschaften.", "Sie verhindert, dass eine unpassende Firmware oder Speicheraufteilung auf das Board geschrieben wird.", "Bei einem unbekannten Board kannst du die Ausstattung anhand des Datenblatts selbst festlegen."] },
+      ],
+      relatedTopics: ["supported-devices", "update-profiles"],
     },
     "register-device": {
       title: "Register a device",
@@ -309,6 +352,7 @@ const HelpContent = (() => {
     "first-project": "premium",
     "update-profiles": "premium",
     "provision-new-board": "account",
+    "board-definition": "account",
     "register-device": "account",
     "pair-device": "account",
     "flash-device": "account",

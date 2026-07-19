@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const { getFirmwareBuildTarget, getFactoryFirmwareRelease } = require("../firmware-build-targets");
 
 const basisRoot = path.resolve(__dirname, "..");
 for (const flashSize of [4, 8, 16]) {
@@ -35,6 +36,29 @@ test("PlatformIO and sdkconfig select the 4 MB OTA partition table", () => {
   assert.match(sdkconfig, /CONFIG_PARTITION_TABLE_CUSTOM=y/);
   assert.match(sdkconfig, /CONFIG_PARTITION_TABLE_FILENAME="partitions_ota_4mb\.csv"/);
   assert.doesNotMatch(sdkconfig, /^CONFIG_PARTITION_TABLE_SINGLE_APP=y$/m);
+});
+
+test("PlatformIO provides an ESP32-S3 FULL target with the 16 MB partition table", () => {
+  const platformio = fs.readFileSync(path.join(basisRoot, "platformio.ini"), "utf8");
+  const sdkconfig = fs.readFileSync(path.join(basisRoot, "sdkconfig.esp32-s3-n16r8"), "utf8");
+  assert.match(platformio, /\[env:esp32-s3-16mb-full\]/);
+  assert.match(platformio, /board = esp32-s3-devkitc-1/);
+  assert.match(platformio, /SDKCONFIG_DEFAULTS="sdkconfig\.esp32-s3-n16r8"/);
+  assert.match(platformio, /board_build\.flash_size = 16MB/);
+  assert.match(platformio, /board_build\.partitions = partitions_full_16mb\.csv/);
+  assert.match(sdkconfig, /CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y/);
+  assert.match(sdkconfig, /CONFIG_PARTITION_TABLE_FILENAME="partitions_full_16mb\.csv"/);
+});
+
+test("firmware build targets keep architecture, memory layout and releases together", () => {
+  const s3 = getFirmwareBuildTarget("firmware_build_target.esp32_s3_opi_n16r8");
+  assert.equal(s3.esp_idf_target, "esp32s3");
+  assert.equal(s3.flash.size_mb, 16);
+  assert.equal(s3.psram.size_mb, 8);
+  assert.equal(s3.platformio_environment, "esp32-s3-16mb-full");
+  assert.equal(getFactoryFirmwareRelease({ firmwareBuildTargetId: s3.firmware_build_target_id, basissoftwareProfile: "full" }).artifact_id,
+    "firmware_artifact.esp32_s3_opi_n16r8.full.factory.latest");
+  assert.equal(getFirmwareBuildTarget("firmware_build_target.esp32_c6_qspi_4mb").esp_idf_target, "esp32c6");
 });
 
 function parsePartitions(source) {

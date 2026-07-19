@@ -8,7 +8,7 @@ const { TelemetryService } = require("../src/services/telemetry-service");
 
 function subject(options = {}) {
   const repository = new SqliteTelemetryRepository(path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-telemetry-")), "telemetry.sqlite"));
-  return new TelemetryService({ repository, ownershipResolver: options.ownershipResolver || (async () => ({ account_id: "acct-owner" })), pushNotifier: options.pushNotifier, defaultMeasurementRetentionDays: 90, defaultEventRetentionDays: 365 });
+  return new TelemetryService({ repository, ownershipResolver: options.ownershipResolver || (async () => ({ account_id: "acct-owner" })), pushNotifier: options.pushNotifier, runtimeNotifier: options.runtimeNotifier, defaultMeasurementRetentionDays: 90, defaultEventRetentionDays: 365 });
 }
 
 test("derives account ownership server-side and only lists that account project data", async () => {
@@ -35,4 +35,15 @@ test("retention deletes expired telemetry while keeping current data", async () 
   const result = service.prune(new Date("2026-07-16T00:00:00Z"));
   assert.equal(result.measurements_deleted, 1);
   assert.equal(service.listMeasurements("acct-owner", "project-1", {}).length, 1);
+});
+
+test("forwards transient runtime lines only after resolving device and project ownership", async () => {
+  const received = [];
+  const service = subject({ runtimeNotifier: async (runtime) => { received.push(runtime); return { accepted: true }; } });
+  const result = await service.relayRuntime({ device_id: "device-1", project_id: "project-1", channel: "serial", line: "taste_gedrueckt" });
+  assert.equal(result.accepted, true);
+  assert.deepEqual(received[0], {
+    account_id: "acct-owner", project_id: "project-1", device_id: "device-1", channel: "serial", line: "taste_gedrueckt", occurred_at: received[0].occurred_at,
+  });
+  assert.equal(service.listEvents("acct-owner", "project-1", {}).length, 0);
 });

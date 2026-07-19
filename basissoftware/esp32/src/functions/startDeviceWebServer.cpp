@@ -29,21 +29,35 @@ esp_err_t sendPortalPage(httpd_req_t *request) {
       "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
       "<title>GerNetiX Device</title>"
       "<style>"
-      "body{font-family:system-ui,sans-serif;margin:2rem;line-height:1.4}"
-      "main{max-width:42rem}"
-      "a{display:block;margin:.75rem 0;color:#0645ad}"
-      "label{display:block;margin:.75rem 0 .25rem}"
-      "select,input,button{font:inherit;padding:.45rem;width:100%;box-sizing:border-box}"
-      "button{margin-top:1rem;cursor:pointer}"
-      "#wifi-status{margin-top:1rem;padding:.75rem;background:#f2f2f2;white-space:pre-wrap}"
-      "code{background:#eee;padding:.1rem .3rem}"
+      ":root{color-scheme:dark;--bg:#0b1018;--panel:#111827;--line:#334155;--text:#e5e7eb;--muted:#94a3b8;--accent:#22d3ee;--accent-dark:#0e7490}"
+      "*{box-sizing:border-box}"
+      "body{min-height:100vh;margin:0;background:radial-gradient(circle at top,#164e63 0,#0b1018 42rem);color:var(--text);font:16px/1.45 system-ui,-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif}"
+      "main{width:min(100% - 2rem,42rem);margin:0 auto;padding:2.5rem 0}"
+      ".brand{margin-bottom:1.25rem}.brand-row{display:flex;align-items:center;gap:.8rem}.brand-logo{width:52px;height:52px;flex:0 0 auto}.brand-word{margin:0 0 .28rem;color:#f8fafc;font-size:1.05rem;font-weight:900;letter-spacing:.12em}.brand-word span{color:var(--accent)}.eyebrow{margin:0 0 .35rem;color:var(--accent);font-size:.78rem;font-weight:800;letter-spacing:.09em;text-transform:uppercase}"
+      "h1{margin:0;font-size:clamp(1.65rem,6vw,2.2rem);line-height:1.1}.basis-meta{margin:.65rem 0 0;color:var(--muted);font-size:.9rem}"
+      ".panel{border:1px solid var(--line);border-radius:14px;padding:1.25rem;background:rgba(15,23,42,.92);box-shadow:0 24px 60px rgba(0,0,0,.22)}"
+      ".intro{margin:0 0 1.15rem;color:#cbd5e1}.intro code{color:#cffafe}"
+      "label{display:grid;gap:.45rem;margin:1rem 0 0;color:#cbd5e1;font-size:.88rem;font-weight:750}"
+      "select,input,button{width:100%;border-radius:8px;font:inherit}select,input{min-height:44px;border:1px solid var(--line);padding:.65rem .75rem;background:#0b1018;color:var(--text)}"
+      "select:focus,input:focus{outline:2px solid var(--accent);outline-offset:2px;border-color:var(--accent)}"
+      "button{min-height:44px;margin-top:1.25rem;border:1px solid var(--accent-dark);padding:.65rem .9rem;background:var(--accent-dark);color:#ecfeff;font-weight:800;cursor:pointer}button:hover{background:#0891b2;border-color:var(--accent)}"
+      "#wifi-status{min-height:48px;margin-top:1rem;border:1px solid #155e75;border-radius:8px;padding:.75rem;background:#0c2130;color:#cffafe;white-space:pre-wrap;font-size:.9rem}"
+      ".links{display:flex;gap:1rem;margin-top:1rem}.links a{color:#67e8f9;font-size:.88rem;text-decoration:none}.links a:hover{text-decoration:underline}"
       "</style>"
       "</head>"
       "<body>"
       "<main>"
-      "<h1>GerNetiX Device</h1>"
-      "<p id=\"basis-meta\"><strong>Basissoftware:</strong> wird geladen...</p>"
-      "<p>Setup-AP <code>GerNetiX-Setup</code> ist aktiv. Waehle dein WLAN und speichere die Zugangsdaten.</p>"
+      "<header class=\"brand\">"
+      "<div class=\"brand-row\">"
+      "<svg class=\"brand-logo\" viewBox=\"0 0 64 64\" role=\"img\" aria-label=\"GerNetiX\"><path d=\"M8 12c12-10 36-10 48 0\" fill=\"none\" stroke=\"#22d3ee\" stroke-width=\"3\" stroke-linecap=\"round\"/><path d=\"M8 52c12 10 36 10 48 0\" fill=\"none\" stroke=\"#22d3ee\" stroke-width=\"3\" stroke-linecap=\"round\"/><path d=\"M19 20l16 12-16 12h10l16-12-16-12z\" fill=\"#f8fafc\"/><path d=\"M45 20l-11 12 11 12h-9L25 32l11-12z\" fill=\"#22d3ee\"/></svg>"
+      "<div><p class=\"brand-word\">GERNETI<span>X</span></p>"
+      "<p class=\"eyebrow\">GerNetiX Basissoftware</p>"
+      "<h1>WLAN einrichten</h1>"
+      "<p id=\"basis-meta\" class=\"basis-meta\"><strong>Basissoftware:</strong> wird geladen...</p></div>"
+      "</div>"
+      "</header>"
+      "<section class=\"panel\">"
+      "<p class=\"intro\">Du bist mit <code>GerNetiX-Setup</code> verbunden. Waehle jetzt dein WLAN und speichere die Zugangsdaten direkt auf dem Board.</p>"
       "<form method=\"post\" action=\"/wifi\">"
       "<label for=\"ssid\">WLAN</label>"
       "<select id=\"ssid\" name=\"ssid\"><option value=\"\">Suche Netzwerke...</option></select>"
@@ -51,11 +65,9 @@ esp_err_t sendPortalPage(httpd_req_t *request) {
       "<input id=\"password\" name=\"password\" type=\"password\" autocomplete=\"current-password\">"
       "<button type=\"submit\">Verbinden</button>"
       "</form>"
-      "<div id=\"wifi-status\">Bereit.</div>"
-      "<a href=\"/status\">Status</a>"
-      "<a href=\"/logs\">Logs</a>"
-      "<p>Recovery/Entwicklung: <code>POST /provisioning</code></p>"
-      "<p>Echtheitsnachweis: <code>POST /auth/challenge</code></p>"
+      "<div id=\"wifi-status\" role=\"status\">Bereit.</div>"
+      "</section>"
+      "<nav class=\"links\"><a href=\"/status\">Status</a><a href=\"/logs\">Diagnose-Logs</a></nav>"
       "</main>"
       "<script>"
       "const statusBox=document.getElementById('wifi-status');"
@@ -93,13 +105,25 @@ esp_err_t rootHandler(httpd_req_t *request) {
   return sendPortalPage(request);
 }
 
+esp_err_t healthHandler(httpd_req_t *request) {
+  httpd_resp_set_type(request, "text/plain; charset=utf-8");
+  return httpd_resp_sendstr(request, "ok\n");
+}
+
 esp_err_t captivePortalHandler(httpd_req_t *request) {
   return sendPortalPage(request);
 }
 
 esp_err_t statusHandler(httpd_req_t *request) {
-  char provisioningJson[4096] = {};
-  writeProvisioningStatusJson(provisioningJson, sizeof(provisioningJson));
+  char *provisioningJson = static_cast<char *>(std::calloc(4096, 1));
+  char *body = static_cast<char *>(std::calloc(6144, 1));
+  if (provisioningJson == nullptr || body == nullptr) {
+    std::free(provisioningJson);
+    std::free(body);
+    httpd_resp_set_status(request, "500 Internal Server Error");
+    return httpd_resp_sendstr(request, "{\"error\":\"status_memory_allocation_failed\"}\n");
+  }
+  writeProvisioningStatusJson(provisioningJson, 4096);
   char hostname[32] = {};
   writeProvisioningHostname(hostname, sizeof(hostname));
   char otaJson[256] = {};
@@ -107,13 +131,12 @@ esp_err_t statusHandler(httpd_req_t *request) {
   char mqttJson[256] = {};
   writeMqttOtaStatusJson(mqttJson, sizeof(mqttJson));
 
-  char body[6144] = {};
   const long long uptimeMs =
       static_cast<long long>(esp_timer_get_time() / 1000);
 
   std::snprintf(
       body,
-      sizeof(body),
+      6144,
       "{"
       "\"device\":\"%s\","
       "\"runtime\":\"%s\","
@@ -148,7 +171,10 @@ esp_err_t statusHandler(httpd_req_t *request) {
       mqttJson);
 
   httpd_resp_set_type(request, "application/json");
-  return httpd_resp_send(request, body, HTTPD_RESP_USE_STRLEN);
+  const esp_err_t status = httpd_resp_send(request, body, HTTPD_RESP_USE_STRLEN);
+  std::free(provisioningJson);
+  std::free(body);
+  return status;
 }
 
 char hexToNibble(char value) {
@@ -379,14 +405,30 @@ void startDeviceWebServer() {
   }
 
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+#if defined(GERNETIX_DIAGNOSTIC_MINIMAL_HTTP_SERVER)
+  // Deliberately use the ESP-IDF defaults without GerNetiX routes, custom
+  // stack sizing, core affinity or wildcard matching. This is a controlled
+  // baseline for the S3 HTTP task itself.
+  feedbackInfo(TAG, "Starting minimal HTTP diagnostic server with ESP-IDF defaults");
+  ESP_ERROR_CHECK(httpd_start(&server, &config));
+  registerUri("/health", HTTP_GET, healthHandler);
+  feedbackInfo(TAG, "Minimal HTTP diagnostic server started on port 80");
+  return;
+#else
   config.server_port = DEVICE_WEB_SERVER_PORT;
   config.ctrl_port = DEVICE_WEB_SERVER_CONTROL_PORT;
   config.stack_size = 16384;
+  // WiFi and its event handlers are pinned to Core 0 on ESP32-S3.  Run the
+  // device UI independently on Core 1 instead of letting the HTTP task race
+  // the WiFi startup on the same core.
+  config.core_id = 1;
   config.max_uri_handlers = 12;
   config.lru_purge_enable = true;
   config.uri_match_fn = httpd_uri_match_wildcard;
 
+  feedbackInfo(TAG, "Starting device web server on Core 1");
   ESP_ERROR_CHECK(httpd_start(&server, &config));
+  feedbackInfo(TAG, "Device web server task started; registering routes");
   registerUri("/", HTTP_GET, rootHandler);
   registerUri("/status", HTTP_GET, statusHandler);
   registerUri("/logs", HTTP_GET, logsHandler);
@@ -398,4 +440,5 @@ void startDeviceWebServer() {
   registerUri("/*", HTTP_GET, captivePortalHandler);
 
   feedbackInfo(TAG, "Device web server started on port %u", DEVICE_WEB_SERVER_PORT);
+#endif
 }

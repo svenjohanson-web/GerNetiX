@@ -13,6 +13,7 @@ function createButtonToSmartphoneNotificationCourseModel() {
         default_device_id: definition.default_device_id,
         hardware_profile_id: definition.hardware_profile_id,
         access_model: definition.access_model,
+        build_config: definition.build_config,
         source_files: definition.source_files,
       },
     );
@@ -23,8 +24,11 @@ function createButtonToSmartphoneNotificationCourseModel() {
     return { ...clone(modelData.view_manifest), primary_source_path: primarySourcePath(project) };
   }
 
-  function createSources() {
-    return clone(modelData.sources);
+  function createSources({ projectId = "" } = {}) {
+    return clone(modelData.sources).map((source) => ({
+      ...source,
+      content: projectId ? String(source.content || "").replaceAll("__PROJECT_ID__", projectId) : source.content,
+    }));
   }
 
   return { createProject, createSources, createViewManifest, slug: modelData.slug };

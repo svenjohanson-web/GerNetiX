@@ -26,6 +26,8 @@ ProcessorBoard-Eintraege koennen unter anderem enthalten:
 - `processor_family`, z. B. `avr_8bit`, `esp8266`, `esp32`
 - `mcu_variant`, z. B. `ATmega328P`, `ESP8266EX`, `ESP32-S3`, `ESP32-C6`
 - `module_name`, z. B. `ESP-WROOM-32`, `ESP32-S3-WROOM-1`
+- `module_memory_variant`, z. B. `N16R8`: 16 MB Flash und 8 MB PSRAM innerhalb der Modulvariante
+- `firmware_build_target_id`, z. B. `firmware_build_target.esp32_s3_opi_n16r8`
 - `capability_ids`, z. B. WLAN, OTA, USB-Identifikation, Basissoftware
 - `min_basissoftware_version`
 - `default_instance_configuration`
@@ -33,9 +35,15 @@ ProcessorBoard-Eintraege koennen unter anderem enthalten:
 
 Bekannte konkrete Boards koennen eine gepruefte
 `default_instance_configuration` mit Display-, Touch-, Audio-, Funk- und
-Pinbelegung sowie bekannten Speicherwerten liefern. Beim ES3C28P sind derzeit
-512 KB interner SRAM und 16 MB externer QSPI-Flash vorbelegt. Provisioning verwendet diese Werte als Vorbelegung; erst
+Pinbelegung sowie bekannten Speicherwerten liefern. Beim ES3C28P ist das Modul
+`ESP32-S3-WROOM-1-N16R8` hinterlegt: 512 KB interner SRAM, 8 MB PSRAM und
+16 MB Flash. Provisioning verwendet diese Werte als Vorbelegung; erst
 die Nutzerbestaetigung speichert sie am konkreten Account-Device.
+
+Die Referenz `firmware_build_target_id` ist keine Compiler-Konfiguration im
+Hardware-Katalog. Sie verweist auf die bei der Basissoftware gepflegte,
+architektur- und speicherexakte Build-Definition. Details und der Release-Ablauf
+sind in `docs/firmware-build-targets-and-releases.md` beschrieben.
 
 ## Basis
 

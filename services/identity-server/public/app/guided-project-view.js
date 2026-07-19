@@ -23,7 +23,6 @@ const GuidedProjectView = (() => {
       state.activeIdeStep = Math.min(state.activeIdeStep || 0, views.length - 1);
       const activeView = views[state.activeIdeStep];
       const validation = validateGuidedView(activeView);
-      const progress = progressFor(project.id);
       target.innerHTML = `
         <div class="manifest-head">
           <p class="eyebrow">Projektansicht</p>
@@ -31,19 +30,11 @@ const GuidedProjectView = (() => {
           <p>${escapeHtml(manifest.summary || "")}</p>
         </div>
         <div class="guided-runner">
-          <nav class="guided-step-rail" aria-label="Guided IDE Schritte">
-            ${views.map((view, index) => `
-              <button class="${index === state.activeIdeStep ? "active" : ""} ${progress.completedSteps.includes(index) ? "done" : ""}" type="button" data-ide-step="${index}">
-                <span>${index + 1}</span>
-                ${escapeHtml(view.title || view.id)}
-              </button>
-            `).join("")}
-          </nav>
           <section class="guided-step-panel">
-            <p class="eyebrow">Schritt ${state.activeIdeStep + 1} von ${views.length}</p>
+            <p class="eyebrow">Aktueller Lerninhalt</p>
             <div class="guided-artifact-layout">
               <section class="guided-artifact-pane">
-                ${renderGuidedArtifact(activeView)}
+                ${renderGuidedArtifact(project, activeView)}
               </section>
               <aside class="guided-summary-pane">
                 ${renderManifestView(activeView, validation)}
@@ -55,15 +46,19 @@ const GuidedProjectView = (() => {
           </section>
         </div>
       `;
-      target.querySelectorAll("[data-ide-step]").forEach((button) => {
-        button.addEventListener("click", () => setIdeGuidedStep(project, Number(button.dataset.ideStep), targetSelector));
-      });
       target.querySelector("[data-guided-back]")?.addEventListener("click", () => setIdeGuidedStep(project, Math.max(0, state.activeIdeStep - 1), targetSelector));
       target.querySelector("[data-guided-next]")?.addEventListener("click", () => completeIdeGuidedStep(project, targetSelector));
       target.querySelector("[data-guided-preview]")?.addEventListener("click", () => openGuidedRuntimePreview(activeView));
       target.querySelectorAll("[data-guided-control]").forEach((button) => {
         button.addEventListener("click", () => handleGuidedControl(project, activeView, button.dataset.guidedControl, targetSelector));
       });
+      target.querySelectorAll("[data-guided-lab-action]").forEach((button) => {
+        button.addEventListener("click", () => handleGuidedLabAction(project, activeView, button.dataset.guidedLabAction, targetSelector));
+      });
+      target.querySelector("[data-guided-webserver-config]")?.addEventListener("submit", (event) => {
+        saveGuidedWebserverConfiguration(event, project, activeView, targetSelector);
+      });
+      target.querySelector("[data-guided-lab-device]")?.addEventListener("change", (event) => assignGuidedLabDevice(project, activeView, event.target.value, targetSelector));
       bindCodeExplorerChat(target, project, activeView);
       renderGuidedPlantUml(target);
     }
@@ -155,7 +150,6 @@ const GuidedProjectView = (() => {
               </span>
             </label>
             ${hasPremiumAi ? "" : '<p class="chat-premium-hint">KI-Unterstuetzung ist im Premium-Abo enthalten. <a href="/app/help/#ai-premium" data-route="help">Warum?</a></p>'}
-            <span class="chat-status" data-code-chat-status>Bereit.</span>
           </form>
         </section>
       `;
@@ -361,7 +355,7 @@ const GuidedProjectView = (() => {
       return lines;
     }
 
-    function renderGuidedArtifact(view) {
+    function renderGuidedArtifact(project, view) {
       if (view.type === "access_gate") return renderEntitlementGate(view);
       const artifact = view.payload?.artifact || {};
       const artifactRenderers = {
@@ -370,6 +364,9 @@ const GuidedProjectView = (() => {
         cycle: renderGuidedCycle,
         plantuml: () => renderGuidedPlantUmlArtifact(view),
         svg_note: renderGuidedSvgNote,
+        inventory_board_selection: () => renderInventoryBoardSelection(project),
+        button_input_lab: () => renderButtonInputLab(project, projectLabState(view)),
+        project_webserver_lab: () => renderProjectWebserverLab(project, projectLabState(view)),
       };
       const viewRenderers = {
         plantuml: () => renderGuidedPlantUmlArtifact(view),
@@ -503,6 +500,139 @@ const GuidedProjectView = (() => {
       `;
     }
 
+    function projectLabState(view) {
+      state.guidedLabs ||= {};
+      const key = view.id || "lab";
+      if (!state.guidedLabs[key]) state.guidedLabs[key] = { built: false, flashed: false, transport: "", streamStatus: "noch nicht verbunden", lines: [] };
+      return state.guidedLabs[key];
+    }
+
+    function renderInventoryBoardSelection(project) {
+      const selectedDeviceId = project.linkedDeviceId || "";
+      const selectedDevice = state.devices.find((device) => device.device_id === selectedDeviceId) || null;
+      const otaReadyDevices = state.devices.filter((device) => device.ota_status === "ready");
+      return `
+        <section class="guided-board-introduction">
+          <header class="guided-artifact-head">
+            <p class="eyebrow">Praxisnahes Lernprojekt</p>
+            <h3>Dein ESP-Board ist die zentrale Komponente</h3>
+            <p>In den folgenden Schritten arbeitet dein ESP-Board mit der GerNetiX-Infrastruktur zusammen. Deshalb muss es bereits in deinem Inventar angelegt und OTA-faehig sein.</p>
+          </header>
+          <section class="guided-device-selection guided-first-step-selection">
+            <p class="guided-lab-step">Schritt 1: ESP-Board auswählen</p>
+            <label for="guidedLabDevice">Bitte wähle jetzt dein ESP-Board aus, mit dem du arbeiten möchtest.</label>
+            <select id="guidedLabDevice" data-guided-lab-device>
+              <option value="">OTA-fähiges ESP-Board auswählen</option>
+              ${otaReadyDevices.map((device) => `<option value="${escapeAttribute(device.device_id)}" ${device.device_id === selectedDeviceId ? "selected" : ""}>${escapeHtml(device.display_name || device.device_id)} · OTA bereit</option>`).join("")}
+            </select>
+            <p>${selectedDevice ? `Ausgewählt: <strong>${escapeHtml(selectedDevice.display_name || selectedDevice.device_id)}</strong>. Dieses Board wird für die Taster-Firmware und die weiteren Schritte verwendet.` : otaReadyDevices.length ? "Wähle eines deiner OTA-fähigen Inventar-Boards. Die Minimal-Basissoftware genügt für dieses Lernprojekt nicht." : "Noch kein OTA-fähiges ESP-Board im Inventar. Provisioniere ein Board mit der FULL-Basissoftware und aktiviere OTA, bevor du fortfährst."}</p>
+          </section>
+          <aside class="guided-ota-requirement">
+            <strong>Warum OTA-fähig?</strong>
+            <p>Spätere Schritte bauen Firmware und verbinden das Board mit Projekt-Ressourcen. Dafür benötigen wir eine Netzwerkverbindung über die FULL-Basissoftware; eine Minimal-Konfiguration ist hier bewusst nicht auswählbar.</p>
+          </aside>
+        </section>
+      `;
+    }
+
+    function renderButtonInputLab(project, lab) {
+      const serialLines = lab.lines.length ? lab.lines : ["Warte auf Firmware-Flash."];
+      const selectedDeviceId = project.linkedDeviceId || "";
+      const selectedDevice = state.devices.find((device) => device.device_id === selectedDeviceId) || null;
+      const ready = lab.flashed && Boolean(selectedDevice);
+      return `
+        <section class="guided-device-lab">
+          <header class="guided-artifact-head">
+            <p class="eyebrow">Praxislabor</p>
+            <h3>Taster am ESP32 einlesen</h3>
+            <p>Du wählst zuerst das ESP-Board, mit dem du arbeiten möchtest. Danach bauen und flashen wir die Taster-Firmware für genau dieses Board.</p>
+          </header>
+          <div class="guided-device-lab-body">
+            <section class="guided-device-selection">
+              <p class="guided-lab-step">1. Board auswählen</p>
+              <label for="guidedLabDevice">Bitte wähle dein ESP-Board aus deinem Inventar. Mit welchem möchtest du arbeiten?</label>
+              <select id="guidedLabDevice" data-guided-lab-device>
+                <option value="">ESP-Board auswählen</option>
+                ${state.devices.map((device) => `<option value="${escapeAttribute(device.device_id)}" ${device.device_id === selectedDeviceId ? "selected" : ""}>${escapeHtml(device.display_name || device.device_id)}${device.ota_status === "ready" ? " · OTA bereit" : ""}</option>`).join("")}
+              </select>
+              <p>${selectedDevice ? `Dieses Lernprojekt ist mit <strong>${escapeHtml(selectedDevice.display_name || selectedDevice.device_id)}</strong> verbunden. Der MQTT-Broker akzeptiert nur das Zertifikat und die Device-Topics dieses Boards.` : "Waehle ein provisioniertes Board. Erst dessen technische Device-ID und Zertifikat machen die MQTT-Verbindung eindeutig."}</p>
+            </section>
+            <section class="guided-firmware-card">
+              <strong>2. Taster-Firmware bauen (Simulation)</strong>
+              <pre><code>pinMode(BUTTON_PIN, INPUT_PULLUP);
+if (digitalRead(BUTTON_PIN) == LOW) {
+  publishEvent("taste_gedrueckt");
+  Serial.println("taste_gedrueckt");
+}</code></pre>
+              <div class="guided-lab-actions">
+                <button type="button" data-guided-lab-action="build" ${selectedDevice ? "" : "disabled"}>Firmware bauen</button>
+                <button type="button" data-guided-lab-action="flash_usb" ${lab.built ? "" : "disabled"}>Per USB flashen</button>
+                <button type="button" data-guided-lab-action="flash_ota" ${lab.built ? "" : "disabled"}>Per OTA flashen</button>
+              </div>
+              <p class="helper-text">Build und Flash sind in diesem Lernschritt simuliert. Die echten Build- und Flashdienste werden anschliessend angeschlossen.</p>
+            </section>
+            <section class="guided-serial-monitor" aria-live="polite">
+              <div><strong>Serial Monitor</strong><span>${ready ? `${escapeHtml(lab.streamStatus)} · ${escapeHtml(lab.transport)}` : "noch nicht verbunden"}</span></div>
+              <pre>${serialLines.map((line) => escapeHtml(line)).join("\n")}</pre>
+              <button type="button" data-guided-lab-action="press_button" ${ready ? "" : "disabled"}>Tastendruck ausloesen</button>
+            </section>
+          </div>
+          <aside class="guided-ota-explanation">
+            <strong>Was bei OTA anders ist</strong>
+            <p>Beim OTA-Weg ist das ESP32 bereits ueber seine GerNetiX-Basissoftware mit dem Backend verbunden. Das Backend liefert die Firmware an das Board und leitet dessen Laufzeitmeldung an deinen PC bzw. Browser weiter. Es ist keine direkte elektrische USB-Seriellverbindung.</p>
+          </aside>
+        </section>
+      `;
+    }
+
+    function suggestedGuidedDeviceWebUrl(device) {
+      const address = [device?.local_address, device?.ip_address, device?.hostname, device?.node_name]
+        .map((value) => String(value || "").trim())
+        .find(Boolean);
+      if (!address) return "";
+      return /^https?:\/\//i.test(address) ? address : `http://${address.replace(/\/$/, "")}/`;
+    }
+
+    function renderProjectWebserverLab(project, lab) {
+      const selectedDevice = state.devices.find((device) => device.device_id === (project.linkedDeviceId || "")) || null;
+      const deviceUrl = lab.webUrl || suggestedGuidedDeviceWebUrl(selectedDevice);
+      const lines = lab.lines.length ? lab.lines : ["Konfiguriere zuerst die lokale Anzeige."];
+      return `
+        <section class="guided-device-lab">
+          <header class="guided-artifact-head">
+            <p class="eyebrow">Lokale Projekt-Webseite</p>
+            <h3>Messwert am Board sichtbar machen</h3>
+            <p>Diese Ansicht läuft direkt auf deinem ESP32 im lokalen WLAN. Sie ist noch keine PWA und sendet keine Werte an GerNetiX.</p>
+          </header>
+          <div class="guided-device-lab-body">
+            <form class="guided-firmware-card" data-guided-webserver-config>
+              <strong>1. Anzeige konfigurieren</strong>
+              <label>Titel der Seite<input name="web_title" value="${escapeAttribute(lab.webTitle || "Tastendruck-Monitor")}"></label>
+              <label>Lokale Board-Adresse<input name="web_url" value="${escapeAttribute(deviceUrl)}" placeholder="http://192.168.x.x/"></label>
+              <p class="helper-text">Die Adresse bleibt nur in diesem Browser-Lernschritt. Das Board muss im selben WLAN erreichbar sein.</p>
+              <button type="submit" ${selectedDevice ? "" : "disabled"}>Anzeige speichern</button>
+            </form>
+            <section class="guided-firmware-card">
+              <strong>2. Projekt-Firmware bauen und flashen</strong>
+              <p>Die Firmware enthält die lokale Projekt-Webseite mit aktuellem Zustand und Projekt-Log.</p>
+              <div class="guided-lab-actions">
+                <button type="button" data-guided-lab-action="build_webserver" ${lab.configured ? "" : "disabled"}>Firmware bauen</button>
+                <button type="button" data-guided-lab-action="flash_webserver_usb" ${lab.built ? "" : "disabled"}>Per USB flashen</button>
+                <button type="button" data-guided-lab-action="flash_webserver_ota" ${lab.built ? "" : "disabled"}>Per OTA flashen</button>
+              </div>
+              <p class="helper-text">Build und Flash sind in diesem Lernschritt simuliert. Der Ablauf zeigt bereits dieselben Schritte wie der spätere echte Build-Service.</p>
+            </section>
+            <section class="guided-serial-monitor" aria-live="polite">
+              <div><strong>Projekt-Log</strong><span>${lab.flashed ? "Firmware geflasht" : "noch nicht geflasht"}</span></div>
+              <pre>${lines.map((line) => escapeHtml(line)).join("\n")}</pre>
+              <button type="button" data-guided-lab-action="open_webserver" ${lab.flashed && deviceUrl ? "" : "disabled"}>Webserver öffnen</button>
+            </section>
+          </div>
+          <aside class="guided-ota-explanation"><strong>Lokaler Zugriff</strong><p>Die Board-Seite ist nur im lokalen Netzwerk erreichbar. Erst der nächste Lernschritt erweitert die Ereigniskette um Backend und optionale PWA-Push-Benachrichtigungen.</p></aside>
+        </section>
+      `;
+    }
+
     function renderGuidedStateCard(state) {
       const value = state.value && state.showValue !== false ? `<span>${escapeHtml(state.value)}</span>` : "";
       const substates = state.substates?.length ? `<div class="guided-substates">${state.substates.map((item) => `<em>${escapeHtml(item)}</em>`).join("")}</div>` : "";
@@ -535,6 +665,7 @@ const GuidedProjectView = (() => {
         implementation_plan: "Umsetzung",
         runtime_preview: "Preview",
         access_gate: "Ressourcenfreigabe",
+        device_lab: "Praxislabor",
       }[view.type] || view.type;
       return `
         <article class="manifest-view-card active-step">
@@ -584,6 +715,9 @@ const GuidedProjectView = (() => {
             </article>
           `).join("")}</div>` : ""}
         `;
+      }
+      if (view.type === "device_lab") {
+        return `<p class="helper-text">Baue zuerst die Beispiel-Firmware, waehle USB oder OTA und pruefe danach die Ereignismeldung im Serial Monitor.</p>`;
       }
       if (view.type === "plantuml") {
         const lines = payload.model_lines || [];
@@ -743,11 +877,113 @@ const GuidedProjectView = (() => {
       return undefined;
     }
 
+    function handleGuidedLabAction(project, view, action, targetSelector) {
+      const lab = projectLabState(view);
+      if (action === "build") {
+        lab.built = true;
+        lab.lines = ["[Build] Starte ESP32-Firmware-Build (Simulation) ...", "[Build] Erfolgreich: firmware.bin bereit."];
+      }
+      if (action === "flash_usb" || action === "flash_ota") {
+        const ota = action === "flash_ota";
+        lab.flashed = true;
+        lab.transport = ota ? "OTA ueber GerNetiX Backend" : "USB-Seriell";
+        lab.streamStatus = "Runtime-Stream wird verbunden";
+        lab.lines = ota
+          ? ["[OTA] Board meldet sich beim GerNetiX Backend.", "[OTA] firmware.bin wird an das Board uebertragen.", "[OTA] Flash erfolgreich. Laufzeitmeldungen werden an den Browser weitergeleitet.", "[Serial] Bereit. Druecke den Taster am Board."]
+          : ["[USB] ESP32 verbunden.", "[USB] firmware.bin wird geschrieben.", "[USB] Flash erfolgreich.", "[Serial] Bereit. Druecke den Taster am Board."];
+      }
+      if (action === "press_button" && lab.flashed) {
+        lab.lines.push("[Serial] taste_gedrueckt", "[Event] Ereignis fuer das Projekt erzeugt.");
+      }
+      if (action === "build_webserver" && lab.configured) {
+        lab.built = true;
+        lab.lines = ["[Build] Projekt-Webseite wird in die ESP32-Firmware eingebunden.", "[Build] Erfolgreich: firmware.bin bereit."];
+      }
+      if (action === "flash_webserver_usb" || action === "flash_webserver_ota") {
+        const ota = action === "flash_webserver_ota";
+        lab.flashed = true;
+        lab.lines = ota
+          ? ["[OTA] Projekt-Firmware wird übertragen.", "[OTA] Flash erfolgreich. Board startet neu.", "[Web] Lokaler Projekt-Webserver ist bereit."]
+          : ["[USB] Projekt-Firmware wird geschrieben.", "[USB] Flash erfolgreich. Board startet neu.", "[Web] Lokaler Projekt-Webserver ist bereit."];
+      }
+      if (action === "open_webserver" && lab.flashed && lab.webUrl) {
+        return openGuidedWebserverPopup(lab.webUrl, lab.webTitle || "Lokale Board-Webseite");
+      }
+      if ((action === "flash_usb" || action === "flash_ota") && lab.flashed) startGuidedRuntimeStream(project, view, targetSelector);
+      renderProjectViewManifest(project, targetSelector);
+    }
+
+    function saveGuidedWebserverConfiguration(event, project, view, targetSelector) {
+      event.preventDefault();
+      const lab = projectLabState(view);
+      const data = new FormData(event.currentTarget);
+      lab.webTitle = String(data.get("web_title") || "").trim() || "Lokale Board-Webseite";
+      lab.webUrl = String(data.get("web_url") || "").trim();
+      lab.configured = true;
+      lab.lines = [`[Konfiguration] Titel: ${lab.webTitle}`, lab.webUrl ? `[Konfiguration] Board-Adresse: ${lab.webUrl}` : "[Konfiguration] Board-Adresse wird später eingetragen."];
+      renderProjectViewManifest(project, targetSelector);
+    }
+
+    function openGuidedWebserverPopup(url, title) {
+      const overlay = document.createElement("div");
+      overlay.className = "runtime-modal";
+      overlay.innerHTML = `<section class="runtime-dialog guided-webserver-dialog" role="dialog" aria-modal="true" aria-label="${escapeAttribute(title)}"><div class="runtime-dialog-header"><div><p class="eyebrow">Lokaler ESP32-Webserver</p><strong>${escapeHtml(title)}</strong></div><button type="button" data-close-guided-webserver>Schließen</button></div><p><a href="${escapeAttribute(url)}" target="_blank" rel="noreferrer">Im eigenen Tab öffnen</a></p><iframe title="${escapeAttribute(title)}" src="${escapeAttribute(url)}"></iframe></section>`;
+      overlay.querySelector("[data-close-guided-webserver]").addEventListener("click", () => overlay.remove());
+      overlay.addEventListener("click", (event) => { if (event.target === overlay) overlay.remove(); });
+      document.body.append(overlay);
+    }
+
+    async function assignGuidedLabDevice(project, view, deviceId, targetSelector) {
+      if (!deviceId) return;
+      const lab = projectLabState(view);
+      lab.lines = ["[Inventar] Board wird dem Lernprojekt zugeordnet ..."];
+      renderProjectViewManifest(project, targetSelector);
+      try {
+        const response = await postJson(`/api/platform/learning-projects/${encodeURIComponent(project.id)}/device`, { device_id: deviceId });
+        Object.assign(project, response.project);
+        state.projects = state.projects.map((item) => item.id === project.id ? response.project : item);
+        lab.lines = [`[Inventar] ${response.device?.display_name || deviceId} ist diesem Lernprojekt zugeordnet.`, "[MQTT] Board-ID und Projektzuordnung werden vor jeder Runtime-Meldung serverseitig geprueft."];
+      } catch (error) {
+        lab.lines = [`[Inventar] Zuordnung fehlgeschlagen: ${error.message}`];
+      }
+      renderProjectViewManifest(project, targetSelector);
+    }
+
+    function startGuidedRuntimeStream(project, view, targetSelector) {
+      if (typeof EventSource === "undefined") return;
+      state.guidedRuntimeStreams ||= {};
+      const key = `${project.id}:${view.id || "lab"}`;
+      if (state.guidedRuntimeStreams[key]) return;
+      const lab = projectLabState(view);
+      const stream = new EventSource(`/api/platform/projects/${encodeURIComponent(project.id)}/runtime-stream`);
+      state.guidedRuntimeStreams[key] = stream;
+      stream.addEventListener("ready", () => {
+        lab.streamStatus = "live verbunden";
+        renderProjectViewManifest(project, targetSelector);
+      });
+      stream.addEventListener("runtime", (event) => {
+        try {
+          const message = JSON.parse(event.data || "{}");
+          lab.lines.push(`[${message.channel || "serial"}] ${message.line || "Runtime-Meldung"}`);
+          lab.lines = lab.lines.slice(-40);
+          renderProjectViewManifest(project, targetSelector);
+        } catch {
+          lab.lines.push("[Runtime] Ungueltige Laufzeitmeldung empfangen.");
+          renderProjectViewManifest(project, targetSelector);
+        }
+      });
+      stream.onerror = () => { lab.streamStatus = "Verbindung wird erneut aufgebaut"; };
+    }
+
     async function setIdeGuidedStep(project, index, targetSelector = "#ideProjectViewManifest") {
       state.activeIdeStep = Math.max(0, Math.min(index, guidedViews(project).length - 1));
-      await saveIdeGuidedProgress(project, state.activeIdeStep, progressFor(project.id).completedSteps);
       renderProjectViewManifest(project, targetSelector);
       focusIdeStepSource(project);
+      try {
+        await saveIdeGuidedProgress(project, state.activeIdeStep, progressFor(project.id).completedSteps);
+      } catch (error) {
+        console.warn("Lernfortschritt konnte nicht gespeichert werden.", error);
+      }
     }
 
     async function completeIdeGuidedStep(project, targetSelector = "#ideProjectViewManifest") {
@@ -755,9 +991,13 @@ const GuidedProjectView = (() => {
       completed.add(state.activeIdeStep);
       const next = Math.min(state.activeIdeStep + 1, guidedViews(project).length - 1);
       state.activeIdeStep = next;
-      await saveIdeGuidedProgress(project, next, Array.from(completed));
       renderProjectViewManifest(project, targetSelector);
       focusIdeStepSource(project);
+      try {
+        await saveIdeGuidedProgress(project, next, Array.from(completed));
+      } catch (error) {
+        console.warn("Lernfortschritt konnte nicht gespeichert werden.", error);
+      }
     }
 
     async function saveIdeGuidedProgress(project, currentStep, completedSteps) {

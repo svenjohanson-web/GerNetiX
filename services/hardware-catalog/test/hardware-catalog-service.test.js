@@ -18,6 +18,9 @@ test("lists catalog capabilities and processor boards from catalog", () => {
   assert.ok(touchBoard.capability_ids.includes("capability.touchscreen_input"));
   const es3c28p = service.getHardwareItem("hardware.processor_board.esp32_s3_es3c28p");
   assert.equal(es3c28p.mcu_variant, "ESP32-S3");
+  assert.equal(es3c28p.module_name, "ESP32-S3-WROOM-1");
+  assert.equal(es3c28p.module_memory_variant, "N16R8");
+  assert.equal(es3c28p.firmware_build_target_id, "firmware_build_target.esp32_s3_opi_n16r8");
   assert.equal(es3c28p.verification_status, "locally_verified");
   assert.equal(es3c28p.default_instance_configuration.board_features.display.driver, "ili9341");
   assert.equal(es3c28p.default_instance_configuration.board_features.display.pins.backlight, 45);
@@ -26,6 +29,8 @@ test("lists catalog capabilities and processor boards from catalog", () => {
   assert.equal(es3c28p.default_instance_configuration.board_features.speaker.pins.data_out, 8);
   assert.equal(es3c28p.default_instance_configuration.board_features.ram.hardware, "interner_sram");
   assert.equal(es3c28p.default_instance_configuration.board_features.ram.value, "512_kb");
+  assert.equal(es3c28p.default_instance_configuration.board_features.psram.hardware, "octal_psram");
+  assert.equal(es3c28p.default_instance_configuration.board_features.psram.value, "8_mb");
   assert.equal(es3c28p.default_instance_configuration.board_features.flash.hardware, "qspi_flash");
   assert.equal(es3c28p.default_instance_configuration.board_features.flash.value, "16_mb");
   assert.equal(es3c28p.default_instance_configuration.battery_measurement.pin, 9);
@@ -53,12 +58,15 @@ test("lists catalog capabilities and processor boards from catalog", () => {
   const boardFeatures = service.listBoardFeatureOptions();
   const display = boardFeatures.find((item) => item.feature_id === "display");
   const memory = boardFeatures.find((item) => item.feature_id === "ram");
-  assert.equal(boardFeatures.length, 8);
+  assert.equal(boardFeatures.length, 9);
   assert.equal(display.driver_options.some((item) => item.title === "ST7789"), true);
   assert.equal(display.connection_options.some((item) => item.title === "SPI"), true);
   assert.equal(boardFeatures.find((item) => item.feature_id === "touch").driver_options.some((item) => item.title === "FT6336G"), true);
-  assert.equal(memory.value_options.some((item) => item.title === "8 MB"), true);
+  const psram = boardFeatures.find((item) => item.feature_id === "psram");
+  assert.equal(psram.value_options.some((item) => item.title === "8 MB"), true);
   assert.equal(memory.value_options.some((item) => item.title === "512 KB"), true);
+  assert.equal(memory.driver_options.some((item) => item.title === "ESP-IDF Heap"), true);
+  assert.equal(psram.driver_options.some((item) => item.title === "ESP-IDF Heap/PSRAM"), true);
   assert.match(display.datasheet_hint, /Datenblatt/);
 });
 
@@ -66,6 +74,10 @@ test("sqlite catalog migration enriches an existing ES3C28P board with known mem
   const loaded = defaultCatalogSeed();
   const board = loaded.hardwareItems.find((item) => item.hardware_item_id === "hardware.processor_board.esp32_s3_es3c28p");
   delete board.default_instance_configuration.board_features.ram;
+  delete board.default_instance_configuration.board_features.psram;
+  delete board.module_name;
+  delete board.module_memory_variant;
+  delete board.firmware_build_target_id;
   board.default_instance_configuration.board_features.flash.value = "custom_confirmed_value";
   let persisted;
   const repository = new SqliteBackedHardwareCatalogRepository({
@@ -76,6 +88,10 @@ test("sqlite catalog migration enriches an existing ES3C28P board with known mem
 
   const migrated = repository.findHardwareItem(board.hardware_item_id);
   assert.equal(migrated.default_instance_configuration.board_features.ram.value, "512_kb");
+  assert.equal(migrated.default_instance_configuration.board_features.psram.value, "8_mb");
+  assert.equal(migrated.module_name, "ESP32-S3-WROOM-1");
+  assert.equal(migrated.module_memory_variant, "N16R8");
+  assert.equal(migrated.firmware_build_target_id, "firmware_build_target.esp32_s3_opi_n16r8");
   assert.equal(migrated.default_instance_configuration.board_features.flash.value, "custom_confirmed_value");
   assert.equal(persisted.hardwareItems.find((item) => item.hardware_item_id === board.hardware_item_id)
     .default_instance_configuration.board_features.ram.hardware, "interner_sram");

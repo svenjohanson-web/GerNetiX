@@ -7,7 +7,6 @@
 
 #include "esp_event.h"
 #include "esp_netif.h"
-#include "esp_sntp.h"
 #include "esp_wifi.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
@@ -42,7 +41,6 @@ enum class StationState {
 EventGroupHandle_t wifiEvents = nullptr;
 bool wifiStarted = false;
 bool setupPortalActive = false;
-bool sntpStarted = false;
 TaskHandle_t wifiConnectTaskHandle = nullptr;
 TaskHandle_t wifiReconnectTaskHandle = nullptr;
 StationState stationState = StationState::Idle;
@@ -58,14 +56,12 @@ struct WifiCredentials {
 
 void scheduleWifiReconnect();
 
-void startSecureClockSync() {
-  if (sntpStarted) return;
-  esp_sntp_setoperatingmode(SNTP_OPMODE_POLL);
-  esp_sntp_setservername(0, "pool.ntp.org");
-  esp_sntp_setservername(1, "time.cloudflare.com");
-  esp_sntp_init();
-  sntpStarted = true;
-  feedbackInfo(TAG, "SNTP clock synchronization started for TLS and signed OTA expiry checks");
+void startDeviceWebServerForRuntime() {
+#if defined(GERNETIX_DIAGNOSTIC_DISABLE_DEVICE_WEB_SERVER)
+  feedbackWarning(TAG, "Device web server disabled in S3 diagnostic build");
+#else
+  startDeviceWebServer();
+#endif
 }
 
 uint32_t wifiReconnectDelayMs() {
@@ -175,15 +171,16 @@ void wifiEventHandler(void *, esp_event_base_t eventBase, int32_t eventId, void 
     lastConnectStatus = ESP_OK;
     lastDisconnectReason = 0;
     wifiConnectRetryCount = 0;
-    startSecureClockSync();
+    // Do not initialize SNTP from the WiFi/IP event callback.  On the S3 this
+    // caused a StoreProhibited panic immediately after DHCP completed.  Time
+    // synchronization is a later, optional network capability; the device
+    // must remain stable and reachable before it is started.
+    // Keep the setup AP and the USB provisioning task alive for the short
+    // status grace period in connectWifiStationFromSavedCredentials().  The
+    // browser needs that final wifi_status reply after DHCP; switching to STA
+    // mode here used to close the serial task before it could answer.
     if (setupPortalActive) {
-      const esp_err_t modeStatus = esp_wifi_set_mode(WIFI_MODE_STA);
-      if (modeStatus == ESP_OK) {
-        setupPortalActive = false;
-        feedbackInfo(TAG, "WiFi station recovered; setup AP disabled");
-      } else {
-        feedbackWarning(TAG, "Setup AP could not be disabled after station recovery: %d", modeStatus);
-      }
+      feedbackInfo(TAG, "WiFi station connected; setup AP remains active for provisioning status");
     }
     feedbackInfo(TAG, "WiFi station connected: " IPSTR, IP2STR(&event->ip_info.ip));
   }
@@ -398,7 +395,7 @@ esp_err_t connectWifiStationFromSavedCredentials(uint32_t timeoutMs) {
     return ESP_ERR_TIMEOUT;
   }
 
-  startDeviceWebServer();
+  startDeviceWebServerForRuntime();
 
   if (setupPortalActive) {
     feedbackInfo(TAG, "WiFi station connected; shutting down setup AP after status grace period");
@@ -419,6 +416,14 @@ esp_err_t requestWifiStationConnectFromSavedCredentials() {
     feedbackWarning(TAG, "WiFi station connect request ignored: already running");
     return ESP_ERR_INVALID_STATE;
   }
+
+  // The connect task deliberately waits a moment before starting WiFi.  Mark
+  // the new request immediately, otherwise a caller reads the stale
+  // ESP_ERR_NOT_FOUND from boot and treats a valid connection request as
+  // failed before the task has even started.
+  stationState = StationState::Connecting;
+  lastDisconnectReason = 0;
+  lastConnectStatus = ESP_OK;
 
   const BaseType_t created = xTaskCreate(
       wifiConnectTask,
@@ -503,7 +508,7 @@ void startWifiSetupPortal() {
   }
 
   startCaptiveDnsServer();
-  startDeviceWebServer();
+  startDeviceWebServerForRuntime();
   feedbackInfo(TAG, "WiFi setup AP started: ssid=%s channel=%u captive=%s", WIFI_SETUP_AP_SSID, WIFI_SETUP_AP_CHANNEL, CAPTIVE_PORTAL_AP_IP);
 }
 
@@ -519,7 +524,13 @@ void initWifi() {
   esp_netif_create_default_wifi_ap();
   stationNetif = esp_netif_create_default_wifi_sta();
   char stationHostname[32] = {};
+#if defined(GERNETIX_DIAGNOSTIC_DISABLE_PROVISIONING_NVS)
+  // Preserve the separately stored WiFi credentials, but do not touch the
+  // provisioning namespace while isolating the new key/certificate path.
+  std::snprintf(stationHostname, sizeof(stationHostname), "%s", WIFI_STATION_HOSTNAME);
+#else
   writeProvisioningHostname(stationHostname, sizeof(stationHostname));
+#endif
   ESP_ERROR_CHECK(esp_netif_set_hostname(stationNetif, stationHostname));
   feedbackInfo(TAG, "WiFi station hostname: %s", stationHostname);
 
@@ -535,6 +546,10 @@ void initWifi() {
     startWifiSetupPortal();
   } else if (connectStatus != ESP_OK) {
     feedbackWarning(TAG, "Saved WiFi exists; remaining in station mode and reconnecting: %d", connectStatus);
+    // Bind the local device UI now.  It becomes reachable as soon as the
+    // scheduled station reconnect receives an IP; otherwise a first DHCP
+    // timeout left an already configured board without any local UI.
+    startDeviceWebServerForRuntime();
     scheduleWifiReconnect();
   }
 }

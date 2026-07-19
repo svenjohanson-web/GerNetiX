@@ -6,8 +6,8 @@
     "area": "IoT und ereignisgesteuerte Anwendungen",
     "summary": "Verstehe eine vollständige, aber überschaubare Ereigniskette vom IoT-Taster bis zur privaten Smartphone-PWA.",
     "steps": [
-      { "title": "Ein sichtbares Ziel", "text": "Ein Taster am IoT-Gerät löst eine Benachrichtigung auf dem Smartphone aus.", "insight": "Ein kleines Ende-zu-Ende-Ergebnis macht die Rollen der Komponenten verständlich." },
-      { "title": "Tastendruck wird ein Ereignis", "text": "Das IoT-Gerät meldet nur das Ereignis taste_gedrueckt. Es kennt weder die PWA noch Push.", "insight": "Die Ereignisquelle bleibt einfach und wiederverwendbar." },
+      { "title": "Das Ziel und dein Lernweg", "text": "Du baust eine nachvollziehbare Kette vom Taster am ESP32 bis zu einer privaten Smartphone-Benachrichtigung.", "insight": "Wir beginnen mit dem sichtbaren Hardware-Ereignis, bevor Worker, Dispatcher und Push dazukommen." },
+      { "title": "Taster am Pin einlesen", "text": "Die erste Firmware liest einen Taster am Board und schreibt taste_gedrueckt in den Serial Monitor.", "insight": "Der Taster ist die Ereignisquelle; die weiteren Komponenten werden erst danach ergänzt." },
       { "title": "Worker bewertet das Ereignis", "text": "Der Ereignis-Worker entscheidet nach einer freigegebenen Regel, ob ein Folgeereignis entstehen darf.", "insight": "Der Worker verarbeitet fachliche Regeln, nicht die Zustellung." },
       { "title": "Dispatcher stellt zu", "text": "Der Dispatcher prüft seine Bedingung und stellt das Folgeereignis an ein Ziel zu.", "insight": "Der Dispatcher ist eine Zustellkomponente; Push ist nur eine mögliche Zustellart." },
       { "title": "Smartphone-PWA benachrichtigen", "text": "Ist Push aktiviert und die PWA für das Projekt registriert, erhält das Smartphone die Benachrichtigung.", "insight": "Die PWA bleibt ein optionales Ziel und ist keine Voraussetzung für den Worker." },
@@ -16,30 +16,48 @@
     "hardware_profile_id": "",
     "access_model": "subscription",
     "default_device_id": "",
+    "build_config": {
+      "platform": "espressif32",
+      "framework": "espidf",
+      "board": "esp32dev",
+      "environment": "esp32dev",
+      "firmware_basis_id": "gernetix-runtime-basissoftware",
+      "firmware_basis_version": "workspace",
+      "firmware_basis_variant": "full",
+      "flash_size_mb": 4,
+      "user_source_path": "Komponenten/IoT-Device 1/src/user_main.cpp",
+      "user_target_path": "src/user/user_app.cpp"
+    },
     "source_files": [
+      { "path": "Komponenten/IoT-Device 1/src/user_main.cpp", "role": "user_code" },
+      { "path": "Komponenten/IoT-Device 1/src/project_config.h", "role": "user_header" },
       { "path": "docs/ereigniskette.puml", "role": "architecture_model" },
       { "path": "docs/testplan.md", "role": "decision_record" }
     ]
   },
   "view_manifest": {
-    "schema_version": 1,
+    "schema_version": 4,
     "title": "Vom Tastendruck zur Smartphone-Benachrichtigung",
     "summary": "Eine kleine ereignisgesteuerte IoT-Anwendung, Schritt für Schritt erklärt.",
-    "primary_source_path": "docs/ereigniskette.puml",
+    "primary_source_path": "Komponenten/IoT-Device 1/src/user_main.cpp",
     "hide_source_editor": false,
     "mode": "guided_ide",
     "views": [
       {
         "id": "goal",
         "type": "story_slide",
-        "title": "Was soll passieren?",
-        "summary": "Ein Tastendruck löst eine private Nachricht auf deinem Smartphone aus.",
-        "completion": { "type": "acknowledge", "label": "Ziel verstanden" },
-        "payload": { "model_lines": [
-          { "label": "Eingabe", "text": "Ein Taster am IoT-Gerät wird gedrückt." },
-          { "label": "Ergebnis", "text": "Die private Smartphone-PWA zeigt eine Benachrichtigung." },
-          { "label": "Lernziel", "text": "Du lernst, warum Ereignisquelle, Worker, Dispatcher und Push getrennte Aufgaben haben." }
-        ] }
+        "title": "Das Ziel und dein Lernweg",
+        "summary": "Du gehst vom Taster am Board schrittweise bis zur privaten Smartphone-Benachrichtigung.",
+        "completion": { "type": "acknowledge", "label": "Lernweg verstanden" },
+        "payload": { "artifact": { "type": "inventory_board_selection" } }
+      },
+      {
+        "id": "read-button-pin",
+        "type": "device_lab",
+        "title": "Taster am GPIO-Pin lesen",
+        "summary": "Baue die Beispiel-Firmware, flashe sie per USB oder OTA und prüfe den Tastendruck im Serial Monitor.",
+        "completion": { "type": "acknowledge", "label": "Taster ausprobiert" },
+        "payload": { "artifact": { "type": "button_input_lab" } }
       },
       {
         "id": "event-chain",
@@ -77,6 +95,14 @@
         ] }
       },
       {
+        "id": "local-webserver",
+        "type": "device_lab",
+        "title": "Lokale Board-Webseite konfigurieren",
+        "summary": "Konfiguriere eine kleine lokale Anzeige, baue und flashe die Projekt-Firmware und öffne danach die Webseite deines ESP32.",
+        "completion": { "type": "acknowledge", "label": "Lokale Webseite getestet" },
+        "payload": { "artifact": { "type": "project_webserver_lab" } }
+      },
+      {
         "id": "push-boundary",
         "type": "story_slide",
         "title": "Warum Push optional ist",
@@ -91,6 +117,18 @@
     ]
   },
   "sources": [
+    {
+      "path": "Komponenten/IoT-Device 1/src/user_main.cpp",
+      "role": "user_code",
+      "content_type": "text/x-c++src",
+      "content": "#include \"driver/gpio.h\"\n#include \"esp_timer.h\"\n\n#include \"basissoftware/feedback.h\"\n#include \"user_project/project_config.h\"\n\nnamespace {\nconstexpr const char *TAG = \"buttonLesson\";\nconstexpr gpio_num_t BUTTON_PIN = GPIO_NUM_0;\nconstexpr int BUTTON_PRESSED_LEVEL = 0;\nconstexpr int64_t DEBOUNCE_US = 50000;\n\nbool wasPressed = false;\nint64_t lastChangeUs = 0;\n\nvoid reportButtonPressed() {\n  feedbackInfo(TAG, \"Tastendruck erkannt: taste_gedrueckt (Projekt %s)\", GERNETIX_PROJECT_ID);\n}\n}\n\nextern \"C\" void userMain() {\n  gpio_config_t buttonConfig = {};\n  buttonConfig.pin_bit_mask = 1ULL << BUTTON_PIN;\n  buttonConfig.mode = GPIO_MODE_INPUT;\n  buttonConfig.pull_up_en = GPIO_PULLUP_ENABLE;\n  buttonConfig.pull_down_en = GPIO_PULLDOWN_DISABLE;\n  buttonConfig.intr_type = GPIO_INTR_DISABLE;\n  gpio_config(&buttonConfig);\n\n  wasPressed = gpio_get_level(BUTTON_PIN) == BUTTON_PRESSED_LEVEL;\n  feedbackInfo(TAG, \"Taster-Lektion bereit: GPIO 0 mit internem Pull-up\");\n}\n\nextern \"C\" void userTick() {\n  const bool isPressed = gpio_get_level(BUTTON_PIN) == BUTTON_PRESSED_LEVEL;\n  const int64_t nowUs = esp_timer_get_time();\n  if (isPressed && !wasPressed && nowUs - lastChangeUs >= DEBOUNCE_US) {\n    lastChangeUs = nowUs;\n    reportButtonPressed();\n  }\n  wasPressed = isPressed;\n}\n"
+    },
+    {
+      "path": "Komponenten/IoT-Device 1/src/project_config.h",
+      "role": "user_header",
+      "content_type": "text/x-c++hdr",
+      "content": "#pragma once\n\n// This value is created when the account-bound learning project is created.\n#define GERNETIX_PROJECT_ID \"__PROJECT_ID__\"\n"
+    },
     {
       "path": "docs/ereigniskette.puml",
       "role": "architecture_model",

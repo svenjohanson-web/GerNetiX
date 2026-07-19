@@ -447,17 +447,17 @@
             <p id="inventoryTypeHint" class="helper-text"></p>
             <div id="networkDiscoveryStatus" class="flash-status hidden"></div>
             <section id="networkDiscoveryList" class="discovery-list"></section>
+            <section id="provisioningFoundBoardDetails" class="provisioning-found-board hidden">
+              <p class="provisioning-board-name-title">Wähle Boardnamen…</p>
+              <input id="inventoryBoardShortName" type="text" value="mein-board" maxlength="42" aria-label="Boardname" />
+              <p class="provisioning-node-name-hint">Hinweis: Dein Board ist im Netzwerk mit folgendem Namen sichtbar: <strong id="inventoryNodeNamePreview">gernetix-mein-board</strong></p>
+            </section>
             <section id="provisioningBoardFeatures" class="provisioning-board-features hidden" aria-labelledby="provisioningBoardFeaturesTitle">
-              <div class="section-head compact">
-                <div>
-                  <p class="eyebrow">Konkretes Board</p>
-                  <h3 id="provisioningBoardFeaturesTitle">Boardmodell festlegen</h3>
-                </div>
-              </div>
+              <button id="provisioningBoardDefinitionHelp" class="provisioning-board-definition-help" type="button" aria-haspopup="dialog">
+                Wähle Board Definition… <span aria-hidden="true">?</span>
+              </button>
               <div class="provisioning-board-selector">
-                <label>Boardmodell oder manuelle Konfiguration
-                  <select id="provisioningKnownBoard"></select>
-                </label>
+                <select id="provisioningKnownBoard" aria-label="Board Definition auswählen"></select>
               </div>
               <div id="provisioningBoardConfigurationDetails" class="provisioning-board-configuration-details hidden">
                 <div class="section-head compact">
@@ -467,22 +467,13 @@
                   </div>
                 </div>
                 <div id="provisioningBoardFeatureStatus" class="flash-status hidden"></div>
-                <section id="provisioningUpdateProfileChooser" class="provisioning-update-profile" aria-labelledby="provisioningUpdateProfileTitle"></section>
                 <div id="provisioningBoardFeatureList" class="board-feature-checklist"></div>
                 <label class="inventory-type-label">Datenblatt oder Produktseite
                   <input id="provisioningDatasheetUrl" type="url" placeholder="https://..." />
                 </label>
               </div>
             </section>
-            <section id="provisioningFoundBoardDetails" class="provisioning-found-board hidden">
-              <p class="eyebrow">Board gefunden</p>
-              <label class="inventory-type-label">Kurzer Board-Name<input id="inventoryBoardShortName" type="text" value="mein-board" maxlength="42" /></label>
-              <dl class="meta-list compact onboarding-preview">
-                <div><dt>Node-/SSID-Name</dt><dd id="inventoryNodeNamePreview">gernetix-mein-board</dd></div>
-                <div><dt>Seriennummer</dt><dd>wird automatisch von GerNetiX erstellt</dd></div>
-              </dl>
-              <p class="helper-text">Name und Device-Identität werden erst bei der Übernahme dauerhaft gespeichert.</p>
-            </section>
+            <section id="provisioningUpdateProfileChooser" class="provisioning-update-profile" aria-labelledby="provisioningUpdateProfileTitle"></section>
             <section id="provisioningUsbFlashStep" class="provisioning-flash-step hidden" aria-labelledby="provisioningUsbFlashStepTitle">
               <p class="eyebrow">Basissoftware</p>
               <h3 id="provisioningUsbFlashStepTitle">Board per USB flashen</h3>
@@ -491,6 +482,7 @@
                 <button id="flashProvisioningBasissoftwareButton" class="primary" type="button" aria-describedby="provisioningUsbFlashDisabledReason" disabled>Basissoftware flashen</button>
                 <p id="provisioningUsbFlashDisabledReason" class="provisioning-flash-disabled-reason" role="note"></p>
               </div>
+              <div id="provisioningFirmwareAvailability" class="flash-status hidden" role="status" aria-live="polite"></div>
               <div id="provisioningUsbFlashStatus" class="flash-status hidden" role="status" aria-live="polite"></div>
             </section>
             <section id="provisioningWifiSetupStep" class="provisioning-wifi-setup hidden" aria-labelledby="provisioningWifiSetupTitle">
@@ -806,16 +798,16 @@
     <script src="/app/api-client.js"></script>
     <script src="/app/dom-utils.js"></script>
     <script src="/app/device-onboarding-model.js"></script>
-    <script src="/app/device-onboarding-controller.js?v=20260718-01"></script>
-    <script src="/app/guided-project-view.js?v=20260718-02"></script>
+    <script src="/app/device-onboarding-controller.js?v=20260718-08"></script>
+    <script src="/app/guided-project-view.js?v=20260718-03"></script>
     <script src="/app/learning-project-view.js?v=20260718-02"></script>
     <script src="/app/learning-project-controller.js?v=20260718-07"></script>
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
     <script src="/app/development-component-metamodel.js?v=20260716-01"></script>
     <script src="/app/development-platform.js?v=20260717-04"></script>
-    <script src="/app/help-content.js?v=20260718-02"></script>
+    <script src="/app/help-content.js?v=20260719-01"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
-    <script src="/app/help-view.js?v=20260717-03"></script>
+    <script src="/app/help-view.js?v=20260719-01"></script>
     <script src="/app/app.js?v=20260718-07"></script>
   </body>
 </html>

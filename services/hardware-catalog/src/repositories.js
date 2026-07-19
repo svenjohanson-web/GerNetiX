@@ -117,10 +117,17 @@ function migrateLoadedCatalog(seed, loaded = {}) {
   const loadedFeatures = loadedBoard.default_instance_configuration?.board_features;
   const seededFeatures = seededBoard.default_instance_configuration?.board_features || {};
   if (!loadedFeatures) return migrated;
-  for (const featureId of ["ram", "flash"]) {
+  for (const featureId of ["ram", "psram", "flash"]) {
     if (!Object.prototype.hasOwnProperty.call(loadedFeatures, featureId) && seededFeatures[featureId]) {
       loadedFeatures[featureId] = clone(seededFeatures[featureId]);
     }
+  }
+  if (!loadedBoard.module_name && seededBoard.module_name) loadedBoard.module_name = seededBoard.module_name;
+  if (!loadedBoard.module_memory_variant && seededBoard.module_memory_variant) {
+    loadedBoard.module_memory_variant = seededBoard.module_memory_variant;
+  }
+  if (!loadedBoard.firmware_build_target_id && seededBoard.firmware_build_target_id) {
+    loadedBoard.firmware_build_target_id = seededBoard.firmware_build_target_id;
   }
   return migrated;
 }

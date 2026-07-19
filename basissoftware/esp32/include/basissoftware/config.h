@@ -8,7 +8,9 @@ constexpr uint32_t STATUS_INTERVAL_MS = 1000;
 
 constexpr char GERNETIX_RUNTIME_NAME[] = "basissoftware/esp32";
 constexpr char GERNETIX_FIRMWARE_BASIS[] = "gernetix-runtime-basissoftware";
-constexpr char GERNETIX_BASISSOFTWARE_VERSION[] = "0.3.0";
+// Erhöht sich bei jeder ausgelieferten Factory-Firmware. Die ESP-ROM-
+// Chiprevision (z. B. v0.2) ist davon unabhängig und nicht veränderbar.
+constexpr char GERNETIX_BASISSOFTWARE_VERSION[] = "0.3.1";
 #if defined(GERNETIX_BASISSOFTWARE_PROFILE_MEDIUM)
 constexpr char GERNETIX_BASISSOFTWARE_VARIANT[] = "medium";
 #elif defined(GERNETIX_BASISSOFTWARE_PROFILE_LOW)

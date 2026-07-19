@@ -9,6 +9,7 @@ const { createSmtpConfigStore } = require("./services/smtp-config-store");
 const { SmtpEmailService } = require("./services/smtp-email-service");
 const { ConfigurableEmailService } = require("./services/configurable-email-service");
 const { createWebPushService } = require("./services/web-push-service");
+const { createRuntimeStreamHub } = require("./runtime-stream-hub");
 const { createAccountTransparencyFactory } = require("./dev/account-transparency");
 const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
@@ -46,6 +47,7 @@ const { createSmartAssistantCourseModel } = require("./dev/project-models/smart-
 const { createButtonToSmartphoneNotificationCourseModel } = require("./dev/project-models/button-to-smartphone-notification-course");
 const { createHomeAutomationNetworkCourseModel } = require("./dev/project-models/home-automation-network-course");
 const { defaultCatalogSeed } = require("../../hardware-catalog/src/seed");
+const { getFirmwareBuildTarget, getFactoryFirmwareRelease } = require("../../../basissoftware/esp32/firmware-build-targets");
 const {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -58,9 +60,9 @@ const appDir = path.join(publicDir, "app");
 const operatorShellDir = path.join(__dirname, "..", "..", "shared", "public");
 const esptoolJsDir = path.join(__dirname, "..", "node_modules", "esptool-js");
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
-const provisioningFirmwarePath = process.env.PROVISIONING_FIRMWARE_FILE_PATH
-  ? path.resolve(process.env.PROVISIONING_FIRMWARE_FILE_PATH)
-  : path.join(workspaceRoot, ".runtime", "server-firmware", "esp32-basissoftware", "latest", "merged-firmware.bin");
+const provisioningFirmwareRoot = process.env.PROVISIONING_FIRMWARE_ROOT
+  ? path.resolve(process.env.PROVISIONING_FIRMWARE_ROOT)
+  : path.join(workspaceRoot, ".runtime", "server-firmware", "esp32-basissoftware");
 const usbSerialHelperDistDir = path.join(workspaceRoot, "tools", "usb-serial-helper", "dist");
 const identityPersistenceBackend = process.env.IDENTITY_PERSISTENCE_BACKEND || "sqlite";
 const identitySqlitePath = process.env.IDENTITY_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-identity.sqlite");
@@ -76,6 +78,7 @@ const demoEmail = process.env.DEMO_EMAIL || "demo@gernetix.local";
 const demoPassword = process.env.DEMO_PASSWORD || "demo-passwort";
 const defaultAccountPlan = process.env.GERNETIX_DEFAULT_ACCOUNT_PLAN || "premium_demo";
 const passkeyChallenges = new Map();
+const runtimeStreamHub = createRuntimeStreamHub();
 const projectServerBaseUrl = process.env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800";
 const telemetryServerBaseUrl = process.env.TELEMETRY_SERVER_BASE_URL || "http://127.0.0.1:5600";
 const telemetryInternalToken = process.env.TELEMETRY_INTERNAL_TOKEN || "";
@@ -285,6 +288,34 @@ async function handleInternalDevicePushEvent(req, res) {
   sendJson(res, 202, { accepted: true, account_id: accountId, project_id: projectId, device_id: deviceId, push });
 }
 
+async function handleInternalDeviceRuntimeEvent(req, res) {
+  requireInternalAdmin(req);
+  const event = await readJsonBody(req);
+  const accountId = String(event.account_id || "").trim();
+  const projectId = String(event.project_id || "").trim();
+  const deviceId = String(event.device_id || "").trim();
+  const line = String(event.line || "").trim().slice(0, 500);
+  if (!accountId || !projectId || !deviceId || !line) { sendJson(res, 400, { error: "account_project_device_and_line_required" }); return; }
+  runtimeStreamHub.publish({ accountId, projectId, deviceId, channel: event.channel, line, occurredAt: event.occurred_at });
+  sendJson(res, 202, { accepted: true, account_id: accountId, project_id: projectId, device_id: deviceId });
+}
+
+async function handleProjectRuntimeStream(req, res, session, projectId) {
+  await requireSessionProject(session, projectId);
+  const accountId = projectServerUserId(session);
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream; charset=utf-8",
+    "Cache-Control": "no-store",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  res.write("event: ready\ndata: {}\n\n");
+  const unsubscribe = runtimeStreamHub.subscribe({ accountId, projectId, send: (payload) => res.write(`event: runtime\ndata: ${payload}\n\n`) });
+  const heartbeat = setInterval(() => res.write(": keepalive\n\n"), 25000);
+  heartbeat.unref?.();
+  req.on("close", () => { clearInterval(heartbeat); unsubscribe(); });
+}
+
 async function routeRequest(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
@@ -343,6 +374,15 @@ async function routeRequest(req, res) {
   const pushProjectRoute = url.pathname.match(/^\/api\/push\/projects\/([^/]+)\/(subscribe|test)$/);
   if (pushProjectRoute && req.method === "POST") { const session = readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; } const projectId = decodeURIComponent(pushProjectRoute[1]); await requireSessionProject(session, projectId); if (pushProjectRoute[2] === "subscribe") { if (!webPushService.enabled) { sendJson(res, 503, { error: "push_not_configured" }); return; } webPushService.subscribeProject(projectServerUserId(session), projectId, await readJsonBody(req)); sendJson(res, 201, { subscribed: true, project_id: projectId }); return; } const push = await webPushService.notifyProject(projectServerUserId(session), projectId, { title: "GerNetiX Testnachricht", body: "Hallo Welt – dein privater Projekt-Push-Kanal ist aktiv.", url: `/app/ide/?project=${encodeURIComponent(projectId)}` }); sendJson(res, 202, { accepted: true, project_id: projectId, push }); return; }
   if (url.pathname === "/api/internal/push/device-event" && req.method === "POST") { await handleInternalDevicePushEvent(req, res); return; }
+  if (url.pathname === "/api/internal/runtime/device-event" && req.method === "POST") { await handleInternalDeviceRuntimeEvent(req, res); return; }
+
+  const runtimeStreamRoute = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/runtime-stream$/);
+  if (runtimeStreamRoute && req.method === "GET") {
+    const session = readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    await handleProjectRuntimeStream(req, res, session, decodeURIComponent(runtimeStreamRoute[1]));
+    return;
+  }
 
   const telemetryProjectRoute = url.pathname.match(/^\/api\/platform\/telemetry\/projects\/([^/]+)\/(measurements|events|retention|data)$/);
   if (telemetryProjectRoute) {
@@ -597,6 +637,14 @@ async function routeRequest(req, res) {
     return;
   }
 
+  const learningProjectDevice = url.pathname.match(/^\/api\/platform\/learning-projects\/([^/]+)\/device$/);
+  if (req.method === "POST" && learningProjectDevice) {
+    const session = readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    await handleLearningProjectDeviceAssign(req, res, session, decodeURIComponent(learningProjectDevice[1]));
+    return;
+  }
+
   const platformProject = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)$/);
   if (req.method === "DELETE" && platformProject) {
     const session = readSession(req);
@@ -839,23 +887,27 @@ async function routeRequest(req, res) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
-    if (!fs.existsSync(provisioningFirmwarePath)) {
+    const request = provisioningFirmwareRequest(url.searchParams);
+    const artifact = await resolveProvisioningFirmwareArtifact(request);
+    if (!fs.existsSync(artifact.path)) {
       sendJson(res, 503, {
         error: "provisioning_firmware_unavailable",
-        message: "Die Factory-Basissoftware ist auf diesem Server noch nicht bereitgestellt.",
+        message: `Die Factory-Basissoftware fuer ${artifact.label} ist auf diesem Server noch nicht bereitgestellt.`,
       });
       return;
     }
-    const profile = url.searchParams.get("profile") || "";
-    if (!new Set(["full", "medium", "low"]).has(profile)) {
-      sendJson(res, 400, { error: "invalid_basissoftware_profile", message: "Bitte zuerst ein Update- und Speicherprofil auswaehlen." });
-      return;
-    }
     sendJson(res, 200, {
-      artifact_id: "firmware_artifact.esp32_basissoftware_factory.latest",
-      profile,
+      artifact_id: artifact.id,
+      profile: request.profile,
+      hardware_profile_id: request.hardwareProfileId,
+      firmware_build_target_id: artifact.firmwareBuildTargetId,
+      version: artifact.version,
+      flash_size_mb: request.flashSizeMb,
+      flash_mode: artifact.flashMode,
+      flash_freq: artifact.flashFreq,
+      flash_size: artifact.flashSize,
       flash_offset: 0,
-      content_url: `/api/platform/provisioning-firmware/content?profile=${encodeURIComponent(profile)}`,
+      content_url: `/api/platform/provisioning-firmware/content?profile=${encodeURIComponent(request.profile)}&hardware_profile_id=${encodeURIComponent(request.hardwareProfileId)}&flash_size_mb=${request.flashSizeMb}`,
     });
     return;
   }
@@ -865,16 +917,18 @@ async function routeRequest(req, res) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
-    if (!fs.existsSync(provisioningFirmwarePath)) {
-      sendJson(res, 503, { error: "provisioning_firmware_unavailable", message: "Die Factory-Basissoftware ist auf diesem Server noch nicht bereitgestellt." });
+    const request = provisioningFirmwareRequest(url.searchParams);
+    const artifact = await resolveProvisioningFirmwareArtifact(request);
+    if (!fs.existsSync(artifact.path)) {
+      sendJson(res, 503, { error: "provisioning_firmware_unavailable", message: `Die Factory-Basissoftware fuer ${artifact.label} ist auf diesem Server noch nicht bereitgestellt.` });
       return;
     }
     res.writeHead(200, {
       "Content-Type": "application/octet-stream",
-      "Content-Disposition": "attachment; filename=gernetix-esp32-factory.bin",
+      "Content-Disposition": `attachment; filename=${artifact.fileName}`,
       "Cache-Control": "no-store",
     });
-    fs.createReadStream(provisioningFirmwarePath).pipe(res);
+    fs.createReadStream(artifact.path).pipe(res);
     return;
   }
   if (req.method === "DELETE" && platformDevice) {
@@ -1687,10 +1741,13 @@ async function handleLearningProjectStart(res, session, catalogProjectId) {
   const existing = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}`);
   const alreadyStarted = existing.items.find((item) => item.learning_project_id === definition.learning_project_id
     && item.project_id !== definition.project_server_id);
-  const project = alreadyStarted || await projectServerJson("/api/projects", {
+  const projectId = `learning_${definition.slug}_${crypto.randomUUID().slice(0, 8)}`;
+  const project = alreadyStarted
+    ? await synchronizeLearningProjectStructure(alreadyStarted, definition)
+    : await projectServerJson("/api/projects", {
     method: "POST",
     body: {
-      project_id: `learning_${definition.slug}_${crypto.randomUUID().slice(0, 8)}`,
+      project_id: projectId,
       user_id: userId,
       plan_id: accountSubscription(session).plan,
       title: definition.title,
@@ -1700,12 +1757,52 @@ async function handleLearningProjectStart(res, session, catalogProjectId) {
       device_id: null,
       build_config: definition.build_config,
       view_manifest: projectViewManifest(definition),
-      sources: demoProjectSources(definition),
+      sources: demoProjectSources(definition, { projectId }),
     },
-  });
+    });
   const mapped = mapProjectServerProject(session, project);
   touchWorkspace(session, project.project_id, "learn", `/app/learning-project/?project=${encodeURIComponent(project.project_id)}`);
   sendJson(res, alreadyStarted ? 200 : 201, { project: toPlatformProject(mapped), created: !alreadyStarted });
+}
+
+async function synchronizeLearningProjectStructure(project, definition) {
+  const projectId = project.project_id;
+  const needsBuildConfig = !project.build_config?.user_source_path;
+  const updated = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}`, {
+    method: "PATCH",
+    body: {
+      view_manifest: projectViewManifest(definition),
+      ...(needsBuildConfig ? { build_config: definition.build_config } : {}),
+    },
+  });
+  for (const source of demoProjectSources(definition, { projectId })) {
+    const present = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources/${encodeURIComponent(source.path)}`)
+      .then(() => true)
+      .catch((error) => {
+        if (error.status === 404) return false;
+        throw error;
+      });
+    if (!present) {
+      await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources`, { method: "PUT", body: source });
+    }
+  }
+  return updated;
+}
+
+async function handleLearningProjectDeviceAssign(req, res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  if (!project.learning_project_id || project.project_origin !== "account_project") {
+    sendJson(res, 409, { error: "learning_project_required", message: "Ein Board kann hier nur einem eigenen Lernprojekt zugeordnet werden." });
+    return;
+  }
+  const deviceId = String((await readJsonBody(req)).device_id || "").trim();
+  const device = (await loadUserIdeDevices(session)).find((item) => item.device_id === deviceId);
+  if (!device) { sendJson(res, 404, { error: "inventory_device_not_found", message: "Das gewaehlte Board ist nicht in deinem Inventar." }); return; }
+  const updated = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+    method: "PATCH",
+    body: { device_id: device.device_id },
+  });
+  sendJson(res, 200, { project: toPlatformProject(mapProjectServerProject(session, updated)), device });
 }
 
 async function handlePlatformProjectDelete(res, session, projectId) {
@@ -2562,7 +2659,14 @@ async function loadUserIdeProjects(session) {
   const userId = projectServerUserId(session);
   await ensureProjectServerDemoProjects(session);
   const response = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}`);
-  return mapUserIdeProjects(session, new Map(response.items.map((item) => [item.project_id, item])));
+  const synchronizedItems = await Promise.all(response.items.map(async (project) => {
+    const definition = userIdeState.projectDefinitions
+      .find((item) => item.learning_project_id === project.learning_project_id);
+    const needsLearningViewSync = definition?.slug === buttonToSmartphoneNotificationCourseModel.slug
+      && Number(project.view_manifest?.schema_version || 0) < 4;
+    return needsLearningViewSync ? synchronizeLearningProjectStructure(project, definition) : project;
+  }));
+  return mapUserIdeProjects(session, new Map(synchronizedItems.map((item) => [item.project_id, item])));
 }
 
 function mapUserIdeProjects(session, projectsById) {
@@ -3266,6 +3370,12 @@ function projectViewManifest(project) {
       primarySourcePath,
     });
   }
+  if (project.slug === buttonToSmartphoneNotificationCourseModel.slug) {
+    return buttonToSmartphoneNotificationCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
 
   return {
     schema_version: 1,
@@ -3370,6 +3480,69 @@ function initialArchitecturePlantUml(title) {
   ].join("\n");
 }
 
+function provisioningFirmwareRequest(searchParams) {
+  const profile = String(searchParams.get("profile") || "").trim().toLowerCase();
+  if (!new Set(["full", "medium", "low"]).has(profile)) {
+    const error = new Error("Bitte zuerst ein Update- und Speicherprofil auswaehlen.");
+    error.status = 400;
+    error.code = "invalid_basissoftware_profile";
+    throw error;
+  }
+  const hardwareProfileId = String(searchParams.get("hardware_profile_id") || "").trim();
+  const flashSizeMb = Number.parseInt(String(searchParams.get("flash_size_mb") || ""), 10);
+  if (!hardwareProfileId || ![4, 8, 16].includes(flashSizeMb)) {
+    const error = new Error("Boardmodell und bestaetigte Flashgroesse werden fuer das Provisioning benoetigt.");
+    error.status = 400;
+    error.code = "provisioning_board_configuration_required";
+    throw error;
+  }
+  return { profile, hardwareProfileId, flashSizeMb };
+}
+
+async function resolveProvisioningFirmwareArtifact({ profile, hardwareProfileId, flashSizeMb }) {
+  let board;
+  try {
+    board = await hardwareCatalogJson(`/api/hardware-catalog/hardware-items/${encodeURIComponent(hardwareProfileId)}`);
+  } catch (cause) {
+    const error = new Error("Das ausgewaehlte Board konnte im Hardware-Katalog nicht fuer das Provisioning aufgeloest werden.");
+    error.status = cause.status === 404 ? 404 : 502;
+    error.code = "provisioning_hardware_catalog_unavailable";
+    throw error;
+  }
+  const targetId = String(board.firmware_build_target_id || "");
+  const target = getFirmwareBuildTarget(targetId);
+  if (!target) {
+    const error = new Error("Dieses Board besitzt noch kein exakt freigegebenes Firmware-Build-Target. Es wird deshalb nicht provisioniert.");
+    error.status = 409;
+    error.code = "provisioning_build_target_missing";
+    throw error;
+  }
+  if (target.flash.size_mb !== flashSizeMb) {
+    const error = new Error(`Das Board verlangt ${target.flash.size_mb} MB Flash; bestaetigt wurden ${flashSizeMb} MB.`);
+    error.status = 409;
+    error.code = "provisioning_flash_size_mismatch";
+    throw error;
+  }
+  const release = getFactoryFirmwareRelease({ firmwareBuildTargetId: targetId, basissoftwareProfile: profile });
+  if (!release) {
+    const error = new Error(`Fuer ${target.title} ist das Profil ${profile.toUpperCase()} noch nicht als Factory-Release freigegeben.`);
+    error.status = 409;
+    error.code = "provisioning_firmware_variant_not_available";
+    throw error;
+  }
+  return {
+    id: release.artifact_id,
+    label: release.label,
+    fileName: release.file_name,
+    path: path.join(provisioningFirmwareRoot, release.relative_file_path),
+    firmwareBuildTargetId: targetId,
+    version: release.version || "",
+    flashMode: release.flash_mode || "dio",
+    flashFreq: release.flash_freq || "40m",
+    flashSize: release.flash_size || "keep",
+  };
+}
+
 function normalizeDataLoggerConfiguration(input = {}) {
   return {
     schema_version: 1,
@@ -3401,12 +3574,6 @@ async function handlePlatformDeviceBasissoftwareProfileUpdate(req, res, session,
       error: error.code || "basissoftware_profile_update_failed",
       message: error.message || "Basissoftware-Profil konnte nicht gespeichert werden.",
       details: error.payload || {},
-    });
-  }
-  if (project.slug === buttonToSmartphoneNotificationCourseModel.slug) {
-    return buttonToSmartphoneNotificationCourseModel.createViewManifest(project, {
-      override,
-      primarySourcePath,
     });
   }
 }
@@ -3849,7 +4016,7 @@ function slugifyProjectId(value) {
     .slice(0, 48) || "projekt";
 }
 
-function demoProjectSources(project) {
+function demoProjectSources(project, options = {}) {
   if (project.slug === tamagotchiEntryCourseModel.slug) {
     return tamagotchiEntryCourseModel.createSources(project, primarySourcePath);
   }
@@ -3857,7 +4024,7 @@ function demoProjectSources(project) {
     return smartAssistantCourseModel.createSources();
   }
   if (project.slug === buttonToSmartphoneNotificationCourseModel.slug) {
-    return buttonToSmartphoneNotificationCourseModel.createSources();
+    return buttonToSmartphoneNotificationCourseModel.createSources(options);
   }
   if (project.slug === homeAutomationNetworkCourseModel.slug) {
     return homeAutomationNetworkCourseModel.createSources();

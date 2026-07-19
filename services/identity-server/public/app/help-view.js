@@ -69,6 +69,7 @@ const HelpView = (() => {
       ${article.sections.map((section) => `<section class="help-article-section">
         <h3>${escapeHtml(section.heading)}</h3>
         ${(section.paragraphs || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+        ${section.hardwareVisual ? renderHardwareVisual() : ""}
         ${section.list ? `<ul>${section.list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
         ${section.stateChart ? renderStateChart(section.stateChart) : ""}
         ${section.umlStateChart ? renderTamagotchiUmlStateChart() : ""}
@@ -87,6 +88,10 @@ const HelpView = (() => {
       <div class="help-state-chart-nodes">${(chart.states || []).map((state) => `<span class="help-state-node ${state.initial ? "initial" : ""}">${escapeHtml(state.title)}</span>`).join("")}</div>
       <ul class="help-state-chart-transitions">${(chart.transitions || []).map((transition) => `<li><strong>${escapeHtml(transition.from)}</strong><span>→</span><strong>${escapeHtml(transition.to)}</strong><small>${escapeHtml(transition.when)}</small></li>`).join("")}</ul>
     </div>`;
+  }
+
+  function renderHardwareVisual() {
+    return `<figure class="help-hardware-landscape" aria-label="Hardware-Landkarte von Mikrocontroller bis Edge AI"><div><span>Akku-I/O</span><b>→</b><span>ESP32</span><b>→</b><span>Embedded Linux</span><b>→</b><span>Industrie</span><b>→</b><span>Edge AI</span></div><figcaption>Je weiter rechts, desto mehr System- und Energieaufwand. Die beste Wahl ist die kleinste Ebene, die die Aufgabe zuverlässig erfüllt.</figcaption></figure>`;
   }
 
   function renderTamagotchiUmlStateChart() {

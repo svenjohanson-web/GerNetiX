@@ -19,6 +19,7 @@ const DeviceOnboardingController = (() => {
     async function discoverNetworkDevices() {
       state.inventoryEsp32Method = "wlan";
       state.discoveredDevices = [];
+      state.selectedProvisioningDiscoveryIds = [];
       renderNetworkDiscovery();
       setDiscoveryStatus("running", "Lokales Netzwerk wird nach gernetix-* Nodes durchsucht...");
       try {
@@ -43,6 +44,7 @@ const DeviceOnboardingController = (() => {
       state.provisioningSerialScanCompleted = false;
       state.provisioningSerialPort = null;
       state.discoveredDevices = [];
+      state.selectedProvisioningDiscoveryIds = [];
       renderNetworkDiscovery();
       setDiscoveryStatus("running", "Serielle Ports werden automatisch gesucht...");
       try {
@@ -73,6 +75,7 @@ const DeviceOnboardingController = (() => {
         state.provisioningSerialPort = await navigator.serial.requestPort();
         state.provisioningSerialScanCompleted = true;
         state.discoveredDevices = [];
+        state.selectedProvisioningDiscoveryIds = [];
         renderNetworkDiscovery();
         setDiscoveryStatus("ok", "Serieller Port gewaehlt. Pruefe jetzt den seriellen Port.");
       } catch (error) {
@@ -107,6 +110,7 @@ const DeviceOnboardingController = (() => {
         state.provisioningDatasheetUrl = "";
         state.provisioningUpdateProfile = "";
         resetProvisioningUsbFlash();
+        state.selectedProvisioningDiscoveryIds = [];
         state.discoveredDevices = [{
           discovery_id: `web-serial-${identifier}`,
           source_url: `Web Serial ${identifier}`,
@@ -118,6 +122,9 @@ const DeviceOnboardingController = (() => {
           bootloader_type: bootloader.type,
           bootloader_name: bootloader.name,
           bootloader_detail: bootloader.detail,
+          flash_size: bootloader.flash_size,
+          ram_size: bootloader.ram_size,
+          psram_size: bootloader.psram_size,
           provisioning_state: "compatible_bootloader_detected",
           connectivity_status: "usb_bootloader_ready",
           ownership_status: "unregistered",
@@ -125,6 +132,10 @@ const DeviceOnboardingController = (() => {
           treatment: `${bootloader.name} erkannt. Das Flashen einer kompatiblen Basissoftware ist möglich.`,
           already_in_inventory: false,
         }];
+        // Web Serial kann genau einen vom Browser freigegebenen Port pruefen.
+        // Ist dessen ESP-Bootloader erkannt, ist dieses eine Board der
+        // eindeutige Provisioning-Kandidat und wird ohne weiteren Klick gewählt.
+        state.selectedProvisioningDiscoveryIds = [state.discoveredDevices[0].discovery_id];
         renderNetworkDiscovery();
         setDiscoveryStatus("ok", `Kompatibler Bootloader gefunden: ${bootloader.name}. Basissoftware kann geflasht werden.`);
       } catch (error) {
@@ -177,6 +188,8 @@ const DeviceOnboardingController = (() => {
         const info = port.getInfo ? port.getInfo() : {};
         const isEspressifUsbJtag = info.usbVendorId === 0x303A && info.usbProductId === 0x1001;
         const chipName = await loader.main(isEspressifUsbJtag ? "usb_reset" : "default_reset");
+        const flashSize = await loader.detectFlashSize();
+        const memory = await espMemoryInfo(loader, chipName);
         return {
           detected: true,
           type: "espressif_rom",
@@ -184,6 +197,9 @@ const DeviceOnboardingController = (() => {
           label: `${chipName || "ESP32"}-kompatibles Board`,
           hardwareProfileId: espHardwareProfile(chipName),
           detail: chipName || "Espressif ROM Bootloader",
+          flash_size: flashSize || "unbekannt",
+          ram_size: memory.ramSize,
+          psram_size: memory.psramSize,
         };
       } catch (error) {
         const detail = error.message || "Kein Espressif-ROM-Bootloader erkannt";
@@ -195,6 +211,18 @@ const DeviceOnboardingController = (() => {
       } finally {
         try { await transport?.disconnect(); } catch {}
         try { if (port.readable || port.writable) await port.close(); } catch {}
+      }
+    }
+
+    async function espMemoryInfo(loader, chipName) {
+      const chip = String(chipName || "").toUpperCase();
+      const ramSize = chip.includes("ESP32-S3") ? "512 KB intern" : "unbekannt";
+      try {
+        const features = await loader.chip?.getChipFeatures?.(loader) || [];
+        const psram = features.find((feature) => /PSRAM/i.test(feature));
+        return { ramSize, psramSize: psram || "nicht sicher ermittelbar" };
+      } catch {
+        return { ramSize, psramSize: "nicht sicher ermittelbar" };
       }
     }
 
@@ -213,6 +241,7 @@ const DeviceOnboardingController = (() => {
       if (!new Set(["wlan", "usb"]).has(method)) return;
       state.inventoryEsp32Method = method;
       state.discoveredDevices = [];
+      state.selectedProvisioningDiscoveryIds = [];
       state.avrBootloaderResult = null;
       state.provisioningBoardConfigurationMode = "";
       state.provisioningKnownBoardId = "";
@@ -379,13 +408,16 @@ const DeviceOnboardingController = (() => {
         !hasSelectedMethod
         || (!actions.wifiDiscovery && !actions.usbIdentification)
         || (hasDetectedBootloader && (!hasBoardConfiguration || !state.provisioningWifiSetupSucceeded)));
-      document.querySelector("#provisioningFoundBoardDetails").classList.toggle("hidden", !state.discoveredDevices.some(canClaimDiscoveredDevice));
+      document.querySelector("#provisioningFoundBoardDetails").classList.toggle("hidden", !hasDetectedBootloader);
       document.querySelector("#provisioningBoardFeatures").classList.toggle("hidden", !hasDetectedBootloader);
       document.querySelector("#provisioningUsbFlashStep").classList.toggle("hidden", !hasDetectedBootloader || !hasBoardConfiguration);
       document.querySelector("#provisioningWifiSetupStep").classList.toggle("hidden", !hasDetectedBootloader || !state.provisioningUsbFlashSucceeded);
+      const boardDefinitionHelp = document.querySelector("#provisioningBoardDefinitionHelp");
+      if (boardDefinitionHelp) boardDefinitionHelp.onclick = () => openHelpTopic("board-definition");
       if (hasDetectedBootloader) renderBoardFeatureChecklist();
       if (hasDetectedBootloader && state.provisioningUsbFlashSucceeded) renderProvisioningWifiSetup();
       updateProvisioningUsbFlashButton();
+      void checkProvisioningFirmwareAvailability();
       document.querySelector("#inventoryTypeHint").textContent = inventoryTypeHintText();
       if (!hasSelectedMethod) {
         list.innerHTML = `<p class="empty">Waehle zuerst WLAN oder USB als Provisioning-Weg.</p>`;
@@ -410,13 +442,15 @@ const DeviceOnboardingController = (() => {
         return;
       }
       list.innerHTML = state.discoveredDevices.map((device) => `
-        <article class="discovery-row ${device.ownership_status === "other_account" ? "is-locked" : ""}">
-          <label class="discovery-select">
+        <article class="discovery-row ${device.ownership_status === "other_account" ? "is-locked" : ""} ${canSelectDiscoveredDevice(device) ? "is-claimable" : ""}">
+          <label class="discovery-select ${canSelectDiscoveredDevice(device) ? "is-available" : "is-unavailable"}">
             <input
               type="checkbox"
               data-select-discovered-device="${escapeHtml(device.discovery_id)}"
-              ${canClaimDiscoveredDevice(device) ? "" : "disabled"}
+              ${selectedProvisioningDiscoveryIds().has(device.discovery_id) ? "checked" : ""}
+              ${canSelectDiscoveredDevice(device) ? "" : "disabled"}
             />
+            <span><strong>Dieses Board auswählen</strong><small>Für die Account-Verbindung</small></span>
           </label>
           <div class="discovery-main">
             <h3>${escapeHtml(device.display_name || device.serial_number || device.source_url)}</h3>
@@ -428,8 +462,22 @@ const DeviceOnboardingController = (() => {
           <dl class="meta-list">${discoveryMetadata(device)}</dl>
         </article>
       `).join("");
+      list.innerHTML = `
+        <div class="discovery-table-scroll">
+          <table class="discovery-table">
+            <thead><tr><th>Auswahl</th><th>Board</th><th>Bootloader</th><th>Flash</th><th>RAM</th></tr></thead>
+            <tbody>${state.discoveredDevices.map((device) => discoveryTableRow(device, board)).join("")}</tbody>
+          </table>
+        </div>`;
       document.querySelectorAll("[data-select-discovered-device]").forEach((checkbox) => {
-        checkbox.addEventListener("change", updateClaimSelectedButton);
+        checkbox.addEventListener("change", () => {
+          const selected = selectedProvisioningDiscoveryIds();
+          if (checkbox.checked) selected.add(checkbox.dataset.selectDiscoveredDevice);
+          else selected.delete(checkbox.dataset.selectDiscoveredDevice);
+          state.selectedProvisioningDiscoveryIds = [...selected];
+          updateClaimSelectedButton();
+          updateProvisioningUsbFlashButton();
+        });
       });
       updateClaimSelectedButton();
     }
@@ -458,6 +506,29 @@ const DeviceOnboardingController = (() => {
         return;
       }
       const selections = state.provisioningFeatureSelections || {};
+      target.innerHTML = renderBoardFeatureTable(state.boardFeatureCatalog, selections);
+      const featureHeader = target.querySelector(".board-feature-table thead tr");
+      if (featureHeader) {
+        featureHeader.children[5].textContent = "Pin-Zuordnung";
+        featureHeader.insertAdjacentHTML("beforeend", "<th>Größe / Wert</th>");
+      }
+      document.querySelector("#provisioningDatasheetUrl").value = state.provisioningDatasheetUrl || "";
+      target.querySelectorAll("[data-board-feature-enabled]").forEach((checkbox) => {
+        checkbox.addEventListener("change", () => updateBoardFeatureSelection(checkbox.dataset.boardFeatureEnabled));
+      });
+      target.querySelectorAll("[data-board-feature-field]").forEach((field) => {
+        const update = () => updateBoardFeatureSelection(field.closest("[data-board-feature-row]").dataset.boardFeatureRow);
+        field.addEventListener("change", update);
+        field.addEventListener("input", update);
+      });
+      target.querySelectorAll("[data-edit-board-feature-pins]").forEach((button) => {
+        button.addEventListener("click", () => openBoardFeaturePinEditor(button.dataset.editBoardFeaturePins));
+      });
+      document.querySelector("#provisioningDatasheetUrl").oninput = (event) => {
+        state.provisioningDatasheetUrl = event.target.value.trim();
+      };
+      renderUpdateProfileChooser();
+      return;
       target.innerHTML = state.boardFeatureCatalog.map((feature) => {
         const selected = selections[feature.feature_id] || {};
         return `<article class="board-feature-row" data-board-feature-row="${escapeHtml(feature.feature_id)}">
@@ -478,13 +549,127 @@ const DeviceOnboardingController = (() => {
       target.querySelectorAll("[data-board-feature-enabled]").forEach((checkbox) => {
         checkbox.addEventListener("change", () => updateBoardFeatureSelection(checkbox.dataset.boardFeatureEnabled));
       });
-      target.querySelectorAll("[data-board-feature-field]").forEach((select) => {
-        select.addEventListener("change", () => updateBoardFeatureSelection(select.closest("[data-board-feature-row]").dataset.boardFeatureRow));
+      target.querySelectorAll("[data-board-feature-field]").forEach((field) => {
+        const update = () => updateBoardFeatureSelection(field.closest("[data-board-feature-row]").dataset.boardFeatureRow);
+        field.addEventListener("change", update);
+        field.addEventListener("input", update);
       });
       document.querySelector("#provisioningDatasheetUrl").oninput = (event) => {
         state.provisioningDatasheetUrl = event.target.value.trim();
       };
       renderUpdateProfileChooser();
+    }
+
+    function renderBoardFeatureTable(features, selections) {
+      return `<div class="board-feature-table-scroll"><table class="board-feature-table">
+        <thead><tr><th aria-label="Aktiv"></th><th>Komponente</th><th>Art</th><th>Treiber</th><th>Anschluss</th><th>Größe / Wert</th></tr></thead>
+        <tbody>${features.map((feature) => {
+          const selected = selections[feature.feature_id] || {};
+          const disabled = selected.enabled ? "" : "disabled";
+          return `<tr class="board-feature-row ${selected.enabled ? "" : "is-disabled"}" data-board-feature-row="${escapeHtml(feature.feature_id)}">
+            <td class="board-feature-toggle"><input type="checkbox" aria-label="${escapeHtml(feature.title)} aktivieren" data-board-feature-enabled="${escapeHtml(feature.feature_id)}" ${selected.enabled ? "checked" : ""} /></td>
+            <td><strong>${escapeHtml(feature.title)}</strong></td>
+            <td>${boardFeatureTableSelect("hardware", feature.hardware_options, selected.hardware, `${feature.title}: Art`, disabled)}</td>
+            <td>${boardFeatureTableSelect("driver", feature.driver_options, selected.driver, `${feature.title}: Treiber`, disabled)}</td>
+            <td>${boardFeatureTableSelect("connection", feature.connection_options, selected.connection, `${feature.title}: Anschluss`, disabled)}</td>
+            <td>${boardFeaturePinEditorButton(feature, selected.pins, disabled)}</td>
+            <td>${boardFeatureTableSelect("value", feature.value_options, selected.value, `${feature.title}: Größe oder Wert`, disabled)}</td>
+          </tr>`;
+        }).join("")}</tbody>
+      </table></div>`;
+    }
+
+    function boardFeatureTableSelect(field, options, selected, ariaLabel, disabled) {
+      const items = Array.isArray(options) ? options : [];
+      if (!items.length) return "";
+      const selectedIsKnown = !selected || items.some((item) => item.id === selected);
+      return `<select aria-label="${escapeHtml(ariaLabel)}" data-board-feature-field="${field}" ${disabled}>
+        <option value="">Bitte waehlen</option>
+        ${selectedIsKnown ? "" : `<option value="${escapeHtml(selected)}" selected>${escapeHtml(selected)} (Boardprofil)</option>`}
+        ${items.map((option) => `<option value="${escapeHtml(option.id)}" ${option.id === selected ? "selected" : ""}>${escapeHtml(option.title)}</option>`).join("")}
+      </select>`;
+    }
+
+    function boardFeaturePinEditorButton(feature, pins, disabled) {
+      const assigned = formatBoardFeaturePins(pins);
+      return `<button type="button" class="board-feature-pin-editor-button" data-edit-board-feature-pins="${escapeHtml(feature.feature_id)}" aria-label="${escapeHtml(feature.title)}: Pins bearbeiten" title="Pins bearbeiten" ${disabled}><span aria-hidden="true">&#9998;</span><span>Bearbeiten</span>${assigned ? `<small>${escapeHtml(assigned)}</small>` : ""}</button>`;
+    }
+
+    function openBoardFeaturePinEditor(featureId) {
+      const feature = state.boardFeatureCatalog.find((item) => item.feature_id === featureId);
+      if (!feature) return;
+      const selected = state.provisioningFeatureSelections?.[featureId] || {};
+      const board = selectedProvisioningBoard();
+      const availablePins = availableProvisioningPins(board);
+      const dialog = document.createElement("dialog");
+      dialog.className = "provisioning-pin-editor-dialog";
+      dialog.setAttribute("aria-labelledby", "provisioningPinEditorTitle");
+      const boardTitle = board?.title || processorVariantForDetectedProfile(state.discoveredDevices.find((item) => item.bootloader_type)?.hardware_profile_id) || "Erkanntes Board";
+      dialog.innerHTML = `<form method="dialog" class="provisioning-pin-editor-form"><header><div><p class="eyebrow">Hardware · Pin-Zuordnung</p><h3 id="provisioningPinEditorTitle">${escapeHtml(feature.title)}</h3><p>${escapeHtml(boardTitle)}</p></div><button type="submit" value="cancel" aria-label="Dialog schließen" title="Schließen">×</button></header><div class="provisioning-pin-editor-content"><section><p class="helper-text">Ordne jedem Signal einen GPIO des ausgewählten Boardprofils zu.</p><div class="provisioning-pin-fields">${boardFeaturePinSignals(featureId, selected.pins).map((signal) => pinSelectField(signal, selected.pins?.[signal], availablePins)).join("")}</div></section><aside><h4>Mögliche GPIOs</h4><p>Aus der bekannten ${escapeHtml(board?.mcu_variant || "ESP")}-Konfiguration.</p><div class="provisioning-pin-chip-list">${availablePins.map((pin) => `<span>${escapeHtml(pin)}</span>`).join("") || "<span>Keine GPIOs im Boardprofil hinterlegt</span>"}</div>${occupiedProvisioningPins(featureId, board).length ? `<h4>Bereits belegt</h4><ul>${occupiedProvisioningPins(featureId, board).map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}</aside></div><footer><button type="submit" value="cancel">Abbrechen</button><button type="button" class="primary" data-save-board-feature-pins>Übernehmen</button></footer></form>`;
+      document.body.append(dialog);
+      dialog.addEventListener("close", () => dialog.remove());
+      dialog.addEventListener("click", (event) => { if (event.target === dialog) dialog.close(); });
+      dialog.querySelector("[data-save-board-feature-pins]").addEventListener("click", () => {
+        const pins = {};
+        dialog.querySelectorAll("[data-board-feature-pin-signal]").forEach((input) => {
+          if (input.value !== "") pins[input.dataset.boardFeaturePinSignal] = Number(input.value);
+        });
+        state.provisioningFeatureSelections = { ...(state.provisioningFeatureSelections || {}), [featureId]: { ...selected, pins } };
+        dialog.close();
+        renderNetworkDiscovery();
+      });
+      dialog.showModal();
+    }
+
+    function boardFeaturePinSignals(featureId, pins) {
+      const defaults = { display: ["sclk", "mosi", "miso", "cs", "dc", "reset", "backlight"], touch: ["sda", "scl", "interrupt", "reset"], speaker: ["enable", "mclk", "bclk", "data_out", "lrclk"], microphone: ["bclk", "ws", "din"] };
+      return [...new Set([...Object.keys(pins || {}), ...(defaults[featureId] || [])])];
+    }
+
+    function pinSelectField(signal, currentValue, availablePins) {
+      const numericValue = Number.isInteger(currentValue) ? currentValue : "";
+      const values = [...new Set([...availablePins, ...(numericValue !== "" ? [`GPIO${numericValue}`] : [])])];
+      return `<label>${escapeHtml(signal.toUpperCase())}<select data-board-feature-pin-signal="${escapeHtml(signal)}"><option value="">Nicht belegt</option><option value="-1" ${numericValue === -1 ? "selected" : ""}>Nicht verbunden</option>${values.map((pin) => { const value = Number(String(pin).replace(/\D/g, "")); return `<option value="${value}" ${value === numericValue ? "selected" : ""}>${escapeHtml(pin)}</option>`; }).join("")}</select></label>`;
+    }
+
+    function selectedProvisioningBoard() {
+      const device = state.discoveredDevices.find((item) => item.bootloader_type) || {};
+      return catalogBoardForProfile(state.provisioningKnownBoardId || device.hardware_profile_id || device.detected_hardware_profile_id);
+    }
+
+    function availableProvisioningPins(board) {
+      const variant = String(board?.mcu_variant || processorVariantForDetectedProfile(state.discoveredDevices.find((item) => item.bootloader_type)?.hardware_profile_id) || "").toUpperCase();
+      const configured = (board?.pin_profile?.digital_pins || []).map((pin) => String(pin).match(/GPIO\s*(\d+)/i)?.[1]).filter(Boolean).map((pin) => `GPIO${pin}`);
+      if (configured.length && !((variant.includes("S3") || variant.includes("C6")) && configured.some((pin) => /GPIO(?:25|26|27|32|33|34|36|39)/.test(pin)))) return configured;
+      if (variant.includes("S3")) return [...Array(22).keys(), ...Array.from({ length: 14 }, (_, index) => index + 35)].map((pin) => `GPIO${pin}`);
+      if (variant.includes("C6")) return Array.from({ length: 24 }, (_, index) => `GPIO${index}`);
+      return configured;
+    }
+
+    function occupiedProvisioningPins(currentFeatureId, board) {
+      const boardPins = Object.entries(board?.pin_profile?.assigned_pins || {}).flatMap(([group, pins]) => Object.entries(pins || {}).filter(([, pin]) => Number.isInteger(pin) && pin >= 0).map(([signal, pin]) => `${group}.${signal.toUpperCase()} = GPIO${pin}`));
+      const featurePins = Object.entries(state.provisioningFeatureSelections || {}).flatMap(([featureId, selection]) => featureId === currentFeatureId ? [] : Object.entries(selection?.pins || {}).filter(([, pin]) => Number.isInteger(pin) && pin >= 0).map(([signal, pin]) => `${featureId}.${signal.toUpperCase()} = GPIO${pin}`));
+      return [...new Set([...boardPins, ...featurePins])];
+    }
+
+    function formatBoardFeaturePins(pins) {
+      if (!pins || typeof pins !== "object" || Array.isArray(pins)) return String(pins || "");
+      return Object.entries(pins)
+        .map(([signal, pin]) => `${signal.toUpperCase()}=${Number.isInteger(pin) && pin >= 0 ? `GPIO${pin}` : pin}`)
+        .join(", ");
+    }
+
+    function parseBoardFeaturePins(value) {
+      const text = String(value || "").trim();
+      if (!text) return "";
+      const entries = text.split(/[,;]+/).map((item) => item.trim()).filter(Boolean);
+      const pins = {};
+      for (const entry of entries) {
+        const match = entry.match(/^([a-z0-9_ -]+)\s*[=:]\s*(?:gpio)?\s*(-?\d+)$/i);
+        if (!match) return text;
+        pins[match[1].trim().toLowerCase().replace(/\s+/g, "_")] = Number(match[2]);
+      }
+      return Object.keys(pins).length ? pins : text;
     }
 
     function renderKnownBoardSelection() {
@@ -503,16 +688,34 @@ const DeviceOnboardingController = (() => {
     }
 
     function compatibleProcessorBoards(detectedBoard) {
-      if (!detectedBoard) return [];
-      const variant = normalizeProcessorVariant(detectedBoard.mcu_variant);
-      return state.processorBoards
-        .filter((board) => board.item_type === "processor_board")
-        .filter((board) => boardId(board) !== boardId(detectedBoard))
+      // The ROM bootloader tells us the chip family, not the concrete board
+      // model.  A generic detected profile (for example ESP32-S3) therefore
+      // deliberately has no catalog entry.  Still offer every catalog board
+      // with the same MCU family so the user can make the actual choice.
+      const detectedProfileId = detectedBoard ? boardId(detectedBoard) : (
+        state.discoveredDevices.find((item) => item.bootloader_type)?.detected_hardware_profile_id || ""
+      );
+      const variant = normalizeProcessorVariant(
+        detectedBoard?.mcu_variant || processorVariantForDetectedProfile(detectedProfileId),
+      );
+      if (!variant) return [];
+      const boards = state.processorBoards.length ? state.processorBoards : fallbackProcessorBoards();
+      return boards
+        .filter((board) => !board.item_type || board.item_type === "processor_board")
         .filter((board) => normalizeProcessorVariant(board.mcu_variant) === variant)
         .sort((left, right) => {
           const verified = Number(right.verification_status === "locally_verified") - Number(left.verification_status === "locally_verified");
           return verified || String(left.title).localeCompare(String(right.title), "de");
         });
+    }
+
+    function processorVariantForDetectedProfile(profileId) {
+      const value = String(profileId || "").toLowerCase();
+      if (value.includes("esp32_s3") || value.includes("esp32-s3")) return "ESP32-S3";
+      if (value.includes("esp32_c6") || value.includes("esp32-c6")) return "ESP32-C6";
+      if (value.includes("esp8266")) return "ESP8266EX";
+      if (value.includes("esp32")) return "ESP32";
+      return "";
     }
 
     function normalizeProcessorVariant(value) {
@@ -551,9 +754,14 @@ const DeviceOnboardingController = (() => {
 
     function applyKnownBoardDefaults(board) {
       const defaults = board?.default_instance_configuration || {};
+      const integratedMemoryDrivers = {
+        ram: "esp_idf_heap",
+        psram: "esp_idf_heap_psram",
+        flash: "esp_idf_partition_table",
+      };
       state.provisioningFeatureSelections = Object.fromEntries(Object.entries(defaults.board_features || {}).map(([featureId, value]) => [
         featureId,
-        { ...value, enabled: value.enabled !== false },
+        { ...value, driver: value.driver || integratedMemoryDrivers[featureId] || "", enabled: value.enabled !== false },
       ]));
       state.provisioningDatasheetUrl = defaults.datasheet_url || "";
     }
@@ -575,6 +783,7 @@ const DeviceOnboardingController = (() => {
       const enabled = row.querySelector("[data-board-feature-enabled]").checked;
       const read = (field) => row.querySelector(`[data-board-feature-field="${field}"]`)?.value || "";
       const existing = state.provisioningFeatureSelections?.[featureId] || {};
+      const pinField = row.querySelector('[data-board-feature-field="pins"]');
       state.provisioningFeatureSelections = {
         ...(state.provisioningFeatureSelections || {}),
         [featureId]: {
@@ -583,9 +792,12 @@ const DeviceOnboardingController = (() => {
           hardware: read("hardware"),
           driver: read("driver"),
           connection: read("connection"),
+          pins: pinField ? parseBoardFeaturePins(pinField.value) : (existing.pins || ""),
           value: read("value"),
         },
       };
+      row.classList.toggle("is-disabled", !enabled);
+      row.querySelectorAll("[data-board-feature-field]").forEach((select) => { select.disabled = !enabled; });
       row.querySelector(".board-feature-fields")?.classList.toggle("hidden", !enabled);
       renderUpdateProfileChooser();
     }
@@ -601,8 +813,8 @@ const DeviceOnboardingController = (() => {
       const profiles = updateProfileDefinitions();
       target.innerHTML = `
         <div class="provisioning-update-profile-head">
-          <h4 id="provisioningUpdateProfileTitle">Update- und Speicherprofil wählen</h4>
-          <a class="provisioning-help-link" href="/app/help/#update-profiles" aria-label="Hilfe zur Wahl des Update- und Speicherprofils" title="Wann wähle ich welches Profil?">?</a>
+          <h4 id="provisioningUpdateProfileTitle">Varianten der Komfort- und Sicherheitsoptionen</h4>
+          <a class="provisioning-help-link" href="/app/help/#update-profiles" aria-label="Hilfe zu Komfort- und Sicherheitsoptionen" title="Wann wähle ich welche Variante?">?</a>
         </div>
         <div class="update-profile-options">
           ${profiles.map((profile) => `<label class="update-profile-option">
@@ -695,6 +907,7 @@ const DeviceOnboardingController = (() => {
             hardware: value.hardware || "",
             driver: value.driver || "",
             connection: value.connection || "",
+            pins: value.pins || "",
             value: value.value || "",
           }];
         }));
@@ -704,6 +917,29 @@ const DeviceOnboardingController = (() => {
         board_profile_source: state.provisioningKnownBoardId ? "hardware_catalog" : "manual_confirmation",
         basissoftware_profile: selectedUpdateProfileConfiguration(),
       };
+    }
+
+    function discoveryTableRow(device, board) {
+      const selectable = canSelectDiscoveredDevice(device);
+      const selected = selectedProvisioningDiscoveryIds().has(device.discovery_id);
+      const boardName = device.bootloader_type
+        ? String(device.display_name || "ESP-kompatibles Board").replace(/-kompatibles Board$/, "")
+        : device.display_name || device.serial_number || device.source_url;
+      const bootloader = device.bootloader_type
+        ? device.bootloader_detail || device.bootloader_name
+        : model.stateText(model.classifyDiscoveredDevice(device, board));
+      const flash = device.flash_size || (device.bootloader_type ? "unbekannt" : "–");
+      const ram = device.ram_size
+        ? `${device.ram_size}${device.psram_size && device.psram_size !== "nicht sicher ermittelbar" ? ` + ${device.psram_size}` : ""}`
+        : "–";
+      return `
+        <tr class="${device.ownership_status === "other_account" ? "is-locked" : ""}">
+          <td><label class="discovery-table-select"><input type="checkbox" aria-label="${escapeHtml(boardName)} auswählen" data-select-discovered-device="${escapeHtml(device.discovery_id)}" ${selected ? "checked" : ""} ${selectable ? "" : "disabled"} /> Auswählen</label></td>
+          <td><strong>${escapeHtml(boardName)}</strong></td>
+          <td>${escapeHtml(bootloader)}</td>
+          <td>${escapeHtml(flash)}</td>
+          <td>${escapeHtml(ram)}</td>
+        </tr>`;
     }
 
     function discoveryMetadata(device) {
@@ -803,6 +1039,9 @@ const DeviceOnboardingController = (() => {
       state.provisioningWifiNetworks = [];
       state.provisioningWifiSetupRunning = false;
       state.provisioningWifiSetupSucceeded = false;
+      state.provisioningSerialReady = false;
+      state.provisioningSerialReadyWaiting = false;
+      state.provisioningFirmwareAvailability = { state: "idle", requestKey: "", message: "", artifact: null };
       const status = document.querySelector("#provisioningUsbFlashStatus");
       if (status) {
         status.className = "flash-status hidden";
@@ -817,8 +1056,12 @@ const DeviceOnboardingController = (() => {
       const manualLabel = document.querySelector("#provisioningWifiManualSsidLabel");
       const connectButton = document.querySelector("#connectProvisioningWifiButton");
       if (!scanButton || !selection || !select || !manualLabel || !connectButton) return;
-      scanButton.disabled = state.provisioningWifiSetupRunning || !state.provisioningPairingToken;
-      scanButton.textContent = state.provisioningWifiSetupRunning ? "WLANs werden gesucht..." : "WLANs suchen";
+      scanButton.disabled = state.provisioningWifiSetupRunning || !state.provisioningSerialReady;
+      scanButton.textContent = state.provisioningWifiSetupRunning
+        ? "WLANs werden gesucht..."
+        : state.provisioningSerialReady
+          ? "WLANs suchen"
+          : "Board startet...";
       selection.classList.toggle("hidden", state.provisioningWifiNetworks.length === 0 || state.provisioningWifiSetupSucceeded);
       select.innerHTML = [
         '<option value="" selected disabled>WLAN auswählen...</option>',
@@ -827,8 +1070,10 @@ const DeviceOnboardingController = (() => {
       ].join("");
       select.onchange = () => manualLabel.classList.toggle("hidden", select.value !== "__manual__");
       connectButton.disabled = state.provisioningWifiSetupRunning || !state.provisioningPairingToken;
-      if (!state.provisioningPairingToken && !state.provisioningWifiSetupSucceeded) {
-        setProvisioningWifiStatus("running", "Sichere Account-Zuordnung wird vorbereitet...");
+      if (state.provisioningSerialReadyWaiting && !state.provisioningWifiSetupSucceeded) {
+        setProvisioningWifiStatus("running", "Das Board startet. Die WLAN-Suche wird freigegeben, sobald es über USB „Status: running“ meldet.");
+      } else if (!state.provisioningPairingToken && !state.provisioningWifiSetupSucceeded && !state.provisioningWifiSetupRunning) {
+        setProvisioningWifiStatus("running", "WLANs können bereits lokal gesucht werden. Die sichere Account-Zuordnung wird parallel vorbereitet.");
       }
     }
 
@@ -852,13 +1097,18 @@ const DeviceOnboardingController = (() => {
     }
 
     async function scanProvisioningWifiNetworks() {
-      if (!state.provisioningPairingToken) return;
       state.provisioningWifiSetupRunning = true;
       renderProvisioningWifiSetup();
       setProvisioningWifiStatus("running", "Board sucht verfügbare WLANs...");
       try {
         const response = await serialProvisioningRequest("wifi_scan");
-        state.provisioningWifiNetworks = (response.payload?.networks || []).filter((network) => network.ssid);
+        const strongestNetworkBySsid = new Map();
+        for (const network of (response.payload?.networks || []).filter((item) => item.ssid)) {
+          const known = strongestNetworkBySsid.get(network.ssid);
+          if (!known || Number(network.rssi) > Number(known.rssi)) strongestNetworkBySsid.set(network.ssid, network);
+        }
+        state.provisioningWifiNetworks = [...strongestNetworkBySsid.values()]
+          .sort((left, right) => Number(right.rssi) - Number(left.rssi));
         setProvisioningWifiStatus("ok", state.provisioningWifiNetworks.length
           ? "WLANs gefunden. Wähle dein Netzwerk und gib das Passwort ein."
           : "Kein sichtbares WLAN gefunden. Du kannst ein verborgenes WLAN manuell eingeben.");
@@ -884,7 +1134,17 @@ const DeviceOnboardingController = (() => {
       renderProvisioningWifiSetup();
       setProvisioningWifiStatus("running", "WLAN-Daten werden direkt per USB an das Board übertragen...");
       try {
-        await serialProvisioningRequest("wifi_connect", { ssid, password: password.value });
+        try {
+          await serialProvisioningRequest("wifi_connect", { ssid, password: password.value });
+        } catch (error) {
+          // The command is idempotent only until the board starts its connect
+          // task.  Do not retransmit it after a missing USB acknowledgement:
+          // the credentials may already be stored and a second request would
+          // be rejected as "connect already running".  The authoritative
+          // result is the next wifi_status response.
+          if (!/nicht rechtzeitig geantwortet/i.test(String(error?.message || ""))) throw error;
+          setProvisioningWifiStatus("running", "Die USB-Bestätigung blieb aus. Das Board prüft jetzt die WLAN-Verbindung...");
+        }
         password.value = "";
         await waitForProvisioningWifiConnection();
         state.provisioningWifiSetupSucceeded = true;
@@ -904,7 +1164,15 @@ const DeviceOnboardingController = (() => {
         const response = await serialProvisioningRequest("wifi_status");
         const stateName = response.payload?.state || "";
         if (stateName === "connected") return;
-        if (stateName === "failed") throw new Error("Das Board konnte keine WLAN-Verbindung aufbauen. Prüfe Passwort und Reichweite.");
+        if (stateName === "failed") {
+          const disconnectReason = Number(response.payload?.last_disconnect_reason || 0);
+          const connectStatus = Number(response.payload?.last_connect_status || 0);
+          const detail = [
+            disconnectReason ? `WLAN-Trennungsgrund ${disconnectReason}` : "",
+            connectStatus ? `ESP-Status ${connectStatus}` : "",
+          ].filter(Boolean).join(", ");
+          throw new Error(`Das Board konnte keine WLAN-Verbindung aufbauen.${detail ? ` ${detail}.` : " Prüfe Passwort und Reichweite."}`);
+        }
       }
       throw new Error("Das Board verbindet noch. Bitte prüfe das WLAN und versuche es erneut.");
     }
@@ -933,20 +1201,19 @@ const DeviceOnboardingController = (() => {
     }
 
     async function serialProvisioningRequest(action, payload = {}) {
-      const port = state.provisioningSerialPort;
-      if (!port) throw new Error("Der serielle Port ist nicht mehr verbunden.");
       const requestId = crypto.randomUUID();
       let reader = null;
       let writer = null;
       let openedHere = false;
+      let port = null;
       try {
-        if (!port.readable) {
-          await port.open({ baudRate: 115200 });
-          openedHere = true;
-        }
+        const connection = await ensureProvisioningSerialConnection();
+        port = connection.port;
+        openedHere = connection.openedHere;
         reader = port.readable.getReader();
         writer = port.writable.getWriter();
-        await writer.write(new TextEncoder().encode(`${JSON.stringify({ type: "gernetix.serial_provisioning", action, request_id: requestId, ...payload })}\n`));
+        const command = new TextEncoder().encode(`${JSON.stringify({ type: "gernetix.serial_provisioning", action, request_id: requestId, ...payload })}\n`);
+        await writer.write(command);
         const decoder = new TextDecoder();
         let buffer = "";
         const deadline = Date.now() + 15000;
@@ -983,6 +1250,80 @@ const DeviceOnboardingController = (() => {
       }
     }
 
+    async function ensureProvisioningSerialConnection() {
+      let port = state.provisioningSerialPort;
+      if (!port) throw new Error("Der serielle Port ist nicht mehr verbunden.");
+      if (port.readable && port.writable) return { port, openedHere: false };
+      const previousInfo = port.getInfo ? port.getInfo() : {};
+      try {
+        await port.close();
+      } catch {
+        // Ein bereits geschlossener Port oder ein gerade abgemeldetes Board
+        // braucht vor dem erneuten Öffnen keine weitere Behandlung.
+      }
+      for (let attempt = 0; attempt < 4; attempt += 1) {
+        await delay(500);
+        try {
+          // Ein Hardware-Reset kann den nativen USB-Port neu anmelden. Der
+          // Browser kennt ihn bereits, liefert aber ein neues Port-Objekt.
+          const ports = await navigator.serial.getPorts();
+          const replacement = ports.find((candidate) => {
+            const info = candidate.getInfo ? candidate.getInfo() : {};
+            return info.usbVendorId === previousInfo.usbVendorId
+              && info.usbProductId === previousInfo.usbProductId;
+          });
+          if (replacement) {
+            port = replacement;
+            state.provisioningSerialPort = replacement;
+          }
+          await port.open({ baudRate: 115200 });
+          return { port, openedHere: true };
+        } catch (cause) {
+          // Chromium kann nach einem Hardware-Reset kurz noch den alten,
+          // bereits geschlossenen Port-Zustand melden. Falls die Streams
+          // inzwischen wieder da sind, ist kein zweites Öffnen nötig.
+          if (port.readable && port.writable) return { port, openedHere: false };
+          if (attempt === 3) {
+            throw new Error("Die USB-Verbindung zum Board konnte nach dem Reset nicht neu geöffnet werden. Wähle den COM-Port erneut aus und versuche es noch einmal.", { cause });
+          }
+          try { await port.close(); } catch {}
+        }
+      }
+      return { port, openedHere: false };
+    }
+
+    async function waitForProvisioningSerialReady() {
+      if (state.provisioningSerialReady || state.provisioningSerialReadyWaiting) return;
+      state.provisioningSerialReadyWaiting = true;
+      renderProvisioningWifiSetup();
+      let reader = null;
+      try {
+        const connection = await ensureProvisioningSerialConnection();
+        reader = connection.port.readable.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        while (true) {
+          const result = await reader.read();
+          if (result.done) throw new Error("Die USB-Verbindung wurde geschlossen, bevor das Board gestartet ist.");
+          buffer += decoder.decode(result.value, { stream: true });
+          const lines = buffer.split(/\r?\n/);
+          buffer = lines.pop() || "";
+          if (lines.some((line) => /publishStatus: Status: running|Local USB WiFi provisioning is ready/.test(line))) {
+            state.provisioningSerialReady = true;
+            setProvisioningWifiStatus("ok", "Board gestartet. WLANs können jetzt gesucht werden.");
+            return;
+          }
+        }
+      } catch (error) {
+        state.provisioningSerialReady = false;
+        setProvisioningWifiStatus("error", error.message || "Das Board konnte nicht über USB als gestartet erkannt werden.");
+      } finally {
+        try { reader?.releaseLock(); } catch {}
+        state.provisioningSerialReadyWaiting = false;
+        renderProvisioningWifiSetup();
+      }
+    }
+
     function updateProvisioningUsbFlashButton() {
       const button = document.querySelector("#flashProvisioningBasissoftwareButton");
       if (!button) return;
@@ -1011,9 +1352,89 @@ const DeviceOnboardingController = (() => {
       if (state.inventoryEsp32Method !== "usb") reasons.push("USB als Provisioning-Weg waehlen");
       if (!state.provisioningSerialPort) reasons.push("seriellen Port auswaehlen");
       if (!state.discoveredDevices.some((device) => device.bootloader_type === "espressif_rom")) reasons.push("kompatiblen ESP32-Bootloader erkennen");
+      if (!state.discoveredDevices.some((device) => device.bootloader_type && selectedProvisioningDiscoveryIds().has(device.discovery_id))) reasons.push("dieses Board fuer die Account-Verbindung auswaehlen");
       if (!new Set(["catalog", "manual"]).has(state.provisioningBoardConfigurationMode)) reasons.push("Boardmodell waehlen oder Ausstattung manuell festlegen");
       if (!new Set(["full", "medium", "low"]).has(state.provisioningUpdateProfile)) reasons.push("Update- und Speicherprofil waehlen");
+      const firmwareRequest = provisioningFirmwareRequestDetails();
+      const availability = state.provisioningFirmwareAvailability || {};
+      if (firmwareRequest && availability.requestKey !== firmwareRequest.key) reasons.push("verfuegbare Basissoftware pruefen");
+      if (firmwareRequest && availability.requestKey === firmwareRequest.key && availability.state === "loading") reasons.push("verfuegbare Basissoftware wird geprueft");
+      if (firmwareRequest && availability.requestKey === firmwareRequest.key && ["unavailable", "error"].includes(availability.state)) reasons.push(availability.message);
       return reasons;
+    }
+
+    function provisioningFirmwareRequestDetails() {
+      const device = state.discoveredDevices.find((item) => item.bootloader_type && selectedProvisioningDiscoveryIds().has(item.discovery_id));
+      const boardConfiguration = selectedBoardFeatureConfiguration();
+      const hardwareProfileId = state.provisioningKnownBoardId || device?.hardware_profile_id || "";
+      const flashSizeMb = Number(String(boardConfiguration.board_features?.flash?.value || "").match(/^(\d+)_mb$/)?.[1] || 0);
+      const profile = state.provisioningUpdateProfile;
+      if (!device || !hardwareProfileId || ![4, 8, 16].includes(flashSizeMb) || !new Set(["full", "medium", "low"]).has(profile)) return null;
+      return {
+        profile,
+        hardwareProfileId,
+        flashSizeMb,
+        processorVariant: processorVariantForDetectedProfile(device.detected_hardware_profile_id || device.hardware_profile_id) || "ESP32",
+        key: [profile, hardwareProfileId, flashSizeMb].join(":"),
+      };
+    }
+
+    function renderProvisioningFirmwareAvailability() {
+      const target = document.querySelector("#provisioningFirmwareAvailability");
+      if (!target) return;
+      const availability = state.provisioningFirmwareAvailability || {};
+      const visible = ["loading", "available", "unavailable", "error"].includes(availability.state);
+      target.className = `flash-status ${availability.state === "available" ? "ok" : ["unavailable", "error"].includes(availability.state) ? "error" : availability.state === "loading" ? "running" : "hidden"}`;
+      target.classList.toggle("hidden", !visible);
+      target.textContent = availability.message || "";
+    }
+
+    async function checkProvisioningFirmwareAvailability() {
+      const request = provisioningFirmwareRequestDetails();
+      if (!request) {
+        if (state.provisioningFirmwareAvailability?.state !== "idle") {
+          state.provisioningFirmwareAvailability = { state: "idle", requestKey: "", message: "", artifact: null };
+          renderProvisioningFirmwareAvailability();
+        }
+        return;
+      }
+      const current = state.provisioningFirmwareAvailability || {};
+      if (current.requestKey === request.key && ["loading", "available", "unavailable", "error"].includes(current.state)) {
+        renderProvisioningFirmwareAvailability();
+        return;
+      }
+      state.provisioningFirmwareAvailability = {
+        state: "loading",
+        requestKey: request.key,
+        message: `Pruefe Basissoftware fuer ${request.processorVariant} mit ${request.flashSizeMb} MB Flash...`,
+        artifact: null,
+      };
+      renderProvisioningFirmwareAvailability();
+      updateProvisioningUsbFlashButton();
+      try {
+        const artifact = await getJson(`/api/platform/provisioning-firmware?profile=${encodeURIComponent(request.profile)}&hardware_profile_id=${encodeURIComponent(request.hardwareProfileId)}&flash_size_mb=${request.flashSizeMb}`);
+        if (state.provisioningFirmwareAvailability?.requestKey !== request.key) return;
+        state.provisioningFirmwareAvailability = {
+          state: "available",
+          requestKey: request.key,
+          message: `Passende Basissoftware ist verfuegbar${artifact.version ? ` (${artifact.version})` : ""}.`,
+          artifact,
+        };
+      } catch (error) {
+        if (state.provisioningFirmwareAvailability?.requestKey !== request.key) return;
+        const isMissingConfiguration = [404, 409, 503].includes(Number(error?.status))
+          || String(error?.code || "").startsWith("provisioning_");
+        state.provisioningFirmwareAvailability = {
+          state: isMissingConfiguration ? "unavailable" : "error",
+          requestKey: request.key,
+          message: isMissingConfiguration
+            ? `Derzeit gibt es keine Basissoftware fuer diese Konfiguration (${request.processorVariant}, ${request.flashSizeMb} MB Flash).`
+            : `Die Verfuegbarkeit der Basissoftware konnte nicht geprueft werden: ${error?.message || "unbekannter Fehler"}`,
+          artifact: null,
+        };
+      }
+      renderProvisioningFirmwareAvailability();
+      updateProvisioningUsbFlashButton();
     }
 
     function setProvisioningUsbFlashStatus(kind, message) {
@@ -1034,8 +1455,12 @@ const DeviceOnboardingController = (() => {
       setProvisioningUsbFlashStatus("running", "Factory-Basissoftware wird geladen...");
       let transport = null;
       try {
-        const profile = encodeURIComponent(state.provisioningUpdateProfile);
-        const artifact = await getJson(`/api/platform/provisioning-firmware?profile=${profile}`);
+        const firmwareRequest = provisioningFirmwareRequestDetails();
+        if (!firmwareRequest) throw new Error("Die Firmware-Konfiguration ist nicht vollstaendig.");
+        const availability = state.provisioningFirmwareAvailability || {};
+        const artifact = availability.requestKey === firmwareRequest.key && availability.state === "available"
+          ? availability.artifact
+          : await getJson(`/api/platform/provisioning-firmware?profile=${encodeURIComponent(firmwareRequest.profile)}&hardware_profile_id=${encodeURIComponent(firmwareRequest.hardwareProfileId)}&flash_size_mb=${firmwareRequest.flashSizeMb}`);
         const response = await fetch(artifact.content_url, { credentials: "same-origin" });
         if (!response.ok) {
           const payload = await response.json().catch(() => ({}));
@@ -1051,30 +1476,46 @@ const DeviceOnboardingController = (() => {
           debugLogging: false,
         });
         setProvisioningUsbFlashStatus("running", "Board wird verbunden...");
-        const chipName = await loader.main();
+        const portInfo = state.provisioningSerialPort.getInfo ? state.provisioningSerialPort.getInfo() : {};
+        const usesNativeUsbSerialJtag = portInfo.usbVendorId === 0x303A && portInfo.usbProductId === 0x1001;
+        const chipName = await loader.main(usesNativeUsbSerialJtag ? "usb_reset" : "default_reset");
         await loader.writeFlash({
           fileArray: [{ data: firmware, address: Number(artifact.flash_offset || 0) }],
-          flashMode: "dio",
-          flashFreq: "40m",
-          flashSize: "keep",
+          flashMode: artifact.flash_mode || "dio",
+          flashFreq: artifact.flash_freq || "40m",
+          flashSize: artifact.flash_size || "keep",
           eraseAll: false,
           compress: true,
           reportProgress: (_index, written, total) => {
             const percent = Math.min(100, Math.round((written / Math.max(total, 1)) * 100));
-            setProvisioningUsbFlashStatus("running", `${chipName || "ESP32"}: Basissoftware schreiben ${percent} %`);
+            setProvisioningUsbFlashStatus("running", `${chipName || "ESP32"}: Basissoftware${artifact.version ? ` ${artifact.version}` : ""} schreiben ${percent} %`);
           },
         });
-        await loader.after("hard_reset");
+        setProvisioningUsbFlashStatus("running", "Firmware geschrieben. Board wird neu gestartet...");
+        // The USB-JTAG reset sequence used before `loader.main("usb_reset")`
+        // enters download mode.  To leave it, release the boot pin, pulse
+        // reset, then release reset again: the same electrical sequence as a
+        // manual reset button press while GPIO0 is not held low.
+        if (usesNativeUsbSerialJtag) {
+          await transport.setDTR(false);
+          await transport.setRTS(true);
+          await delay(100);
+          await transport.setRTS(false);
+          await delay(300);
+        } else {
+          await loader.after("hard_reset");
+        }
         await transport.disconnect();
         transport = null;
+        // Der USB-Port wird erst bei der konkreten WLAN-Abfrage geöffnet. Das
+        // verhindert, dass ein noch auslaufender Bootloader-Handle den Flash-
+        // Ablauf blockiert.
         state.provisioningUsbFlashSucceeded = true;
-        setProvisioningUsbFlashStatus("ok", "Basissoftware wurde erfolgreich geflasht. WLAN-Einrichtung wird vorbereitet.");
-        await delay(1500);
-        try {
-          await prepareProvisioningWifiSetup();
-        } catch (setupError) {
-          setProvisioningWifiStatus("error", setupError.message || "WLAN-Einrichtung konnte noch nicht vorbereitet werden.");
-        }
+        setProvisioningUsbFlashStatus("ok", `Basissoftware${artifact.version ? ` ${artifact.version}` : ""} wurde erfolgreich geflasht. WLAN-Einrichtung wird vorbereitet.`);
+        void waitForProvisioningSerialReady();
+        prepareProvisioningWifiSetup().catch((setupError) => {
+          setProvisioningWifiStatus("error", `${setupError.message || "Sichere Account-Zuordnung konnte noch nicht vorbereitet werden."} WLANs können weiterhin lokal gesucht werden.`);
+        });
         renderNetworkDiscovery();
       } catch (error) {
         try { await transport?.disconnect(); } catch {}
@@ -1108,8 +1549,7 @@ const DeviceOnboardingController = (() => {
     }
 
     async function claimSelectedDiscoveredDevices() {
-      const selectedIds = Array.from(document.querySelectorAll("[data-select-discovered-device]:checked"))
-        .map((checkbox) => checkbox.dataset.selectDiscoveredDevice);
+      const selectedIds = [...selectedProvisioningDiscoveryIds()];
       const selected = selectedIds
         .map((id) => state.discoveredDevices.find((item) => item.discovery_id === id))
         .filter(canClaimDiscoveredDevice);
@@ -1174,8 +1614,7 @@ const DeviceOnboardingController = (() => {
     function updateClaimSelectedButton() {
       const button = document.querySelector("#claimSelectedDiscoveredDevicesButton");
       if (!button) return;
-      const selectedIds = Array.from(document.querySelectorAll("[data-select-discovered-device]:checked"))
-        .map((checkbox) => checkbox.dataset.selectDiscoveredDevice);
+      const selectedIds = [...selectedProvisioningDiscoveryIds()];
       const count = selectedIds
         .map((id) => state.discoveredDevices.find((item) => item.discovery_id === id))
         .filter(canClaimDiscoveredDevice)
@@ -1196,6 +1635,16 @@ const DeviceOnboardingController = (() => {
         && (!device.bootloader_type || state.provisioningUsbFlashSucceeded)
         && (!device.bootloader_type || state.provisioningWifiSetupSucceeded)
         && claimableStates.has(device.esp32_inventory_state);
+    }
+
+    function canSelectDiscoveredDevice(device) {
+      return Boolean(device)
+        && !device.already_in_inventory
+        && device.ownership_status !== "other_account";
+    }
+
+    function selectedProvisioningDiscoveryIds() {
+      return new Set(state.selectedProvisioningDiscoveryIds || []);
     }
 
     function ownershipStatusText(device) {
