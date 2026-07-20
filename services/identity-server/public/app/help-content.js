@@ -7,12 +7,46 @@ const HelpContent = (() => {
       surface: "help",
       access: "public",
       children: [
-        { id: "quick-start", title: "So startest du", articleId: "quick-start" },
+        { id: "registration-login-recovery", title: "Einloggen und Konto anlegen", articleId: "registration-login-recovery" },
         { id: "create-account", title: "Konto anlegen", articleId: "create-account" },
+        { id: "quick-start", title: "So startest du", articleId: "quick-start" },
         { id: "account-types", title: "Kontotypen und Zugangsstufen", articleId: "account-types" },
-        { id: "registration-login-recovery", title: "Registrierung, Anmeldung und Wiederherstellung", articleId: "registration-login-recovery" },
         { id: "entitlements-and-tokens", title: "Premium, Entitlements und Token", articleId: "entitlements-and-tokens" },
+        { id: "webshop-activation-codes", title: "Webshop, E-Mail und Aktivierungscodes", articleId: "webshop-activation-codes" },
         { id: "plan-comparison", title: "Basis, Basis Plus und Premium vergleichen", articleId: "plan-comparison" },
+      ],
+    },
+    {
+      id: "engineering-thinking",
+      title: "Ingenieursmäßig denken",
+      description: "Von einer echten Problemstellung zu einer nachvollziehbaren technischen Lösung.",
+      surface: "knowledge",
+      access: "public",
+      children: [
+        { id: "from-problem-to-system", title: "Vom Problem zum verteilten System", articleId: "from-problem-to-system", subchapters: [
+          { id: "engineering-thinking-problem", title: "Nicht Technologie, sondern Problem" },
+          { id: "engineering-thinking-knowledge", title: "Wissen, Analyse und KI" },
+          { id: "engineering-thinking-learning", title: "Viele Wege ins Lernen" },
+          { id: "engineering-thinking-tamagotchi", title: "Die Tamagotchi-Lernreise" },
+          { id: "engineering-thinking-models", title: "Vorgehensmodelle" },
+          { id: "engineering-thinking-industry", title: "Was das mit Industrie zu tun hat" },
+          { id: "engineering-thinking-next-steps", title: "Mit Beispielen weiterlernen" },
+        ] },
+      ],
+    },
+    {
+      id: "artificial-intelligence",
+      title: "Die Künstliche Intelligenz",
+      description: "KI als Werkzeug verstehen: von Sprachassistenten über GPT bis zu lokalen und internetbasierten Sprachmodellen.",
+      surface: "knowledge",
+      access: "public",
+      children: [
+        { id: "ai-basics", title: "GPT, Alexa und LLMs", articleId: "ai-basics", subchapters: [
+          { id: "ai-gpt-and-alexa", title: "GPT und Alexa sind nicht dasselbe" },
+          { id: "ai-llm", title: "Was ist ein LLM?" },
+          { id: "ai-local-or-online", title: "Lokal oder über das Internet?" },
+          { id: "ai-payment-models", title: "Kosten und Zahlungsmodelle" },
+        ] },
       ],
     },
     {
@@ -148,25 +182,114 @@ const HelpContent = (() => {
   ];
 
   const articles = {
-    "quick-start": {
-      title: "How to get started",
-      summary: "Start with a learning project or turn your own idea into a GerNetiX project.",
+    "from-problem-to-system": {
+      title: "Ingenieursmäßig denken: vom Problem zur Lösung",
+      summary: "Technisches Interesse ist ein guter Anfang. Ingenieursmäßiges Denken beginnt dort, wo aus einer Idee eine klare Problemstellung, nachvollziehbare Entscheidungen und eine prüfbare Lösung werden.",
+      access: "public",
       sections: [
-        { heading: "Your first project", list: [
-          "Choose the Learning Platform for a guided project, or Development Platform for your own idea.",
-          "Create a project from a template or start with an empty project and describe its goal.",
-          "Clarify the architecture, choose compatible hardware, then continue in the IDE.",
-          "Register and pair a new board in Device Management before you build and flash.",
+        { id: "engineering-thinking-problem", heading: "Nicht Technologie, sondern Problem", paragraphs: [
+          "Ein Ingenieur beginnt selten mit der Frage: Welche Technologie möchte ich einsetzen? Am Anfang steht eine Aufgabe. Ein Unternehmen will Kosten senken, ein Team will einen Fehler vermeiden, ein Mensch will ein Gerät einfacher bedienen oder ein eigenes Projekt umsetzen.",
+          "Technik ist dabei ein Mittel, nicht das Ziel. Auch bei KI gilt das: Ein Versprechen wie 'mehr Effizienz durch KI' ist noch keine Lösung. Erst wenn klar ist, welcher Ablauf heute zu langsam, fehlerhaft oder teuer ist, kann man beurteilen, ob KI, eine Automatisierung oder vielleicht nur eine bessere Struktur wirklich hilft.",
+          "Ingenieursmäßig denken bedeutet deshalb: Ziel, Rahmenbedingungen, Risiken und Erfolgskriterien zuerst sichtbar machen. Danach wird die kleinste Lösung gesucht, die das Problem zuverlässig löst."
         ] },
-        { heading: "What comes next?", paragraphs: ["Learning lessons teach a project step by step. Help articles stay short and searchable when you need to look something up."] },
+        { id: "engineering-thinking-knowledge", heading: "Wissen, Analyse und KI", paragraphs: [
+          "Ein technisches Studium ist nicht für jeden der passende Weg. Es verlangt Ausdauer für Mathematik, Modelle, unvollständige Informationen, Fehleranalyse und Verantwortung. Das bedeutet nicht, dass Menschen ohne Studium kein technisches Verständnis haben oder keine anspruchsvollen Projekte bauen können.",
+          "Lange war tiefes technisches Wissen vor allem dort gut erreichbar, wo Zeit, Ausbildung oder ein erfahrener Mentor vorhanden waren. Ich möchte dieses Wissen weitergeben, ohne so zu tun, als könne eine einzelne Person jede Frage für alle beantworten.",
+          "KI verändert den Zugang: Sie kann Begriffe erklären, Beispiele erzeugen, Code lesen und beim Nachdenken helfen. Sie hat aber keine eigenen Wünsche, kein eigenes Ziel und keine Verantwortung für die Folgen. Die Problemstellung, die Bewertung von Risiken und die Entscheidung, wann ein Ergebnis gut genug ist, bleiben beim Menschen. Genau deshalb passt KI gut zum ingenieursmäßigen Arbeiten: als Werkzeug für einen Menschen, der bewusst entscheidet."
+        ] },
+        { id: "engineering-thinking-learning", heading: "Viele Wege ins Lernen", paragraphs: [
+          "Meine Problemstellung für GerNetiX lautet: Wie kann ich Wissen und Fähigkeiten zu verteilten Systemen so vermitteln, dass Menschen wirklich eigene Projekte umsetzen können? Schon hier gibt es keine Einheitslösung. Manche lesen gern, andere verstehen durch Ausprobieren, wieder andere brauchen Rückfragen oder einen Mentor.",
+          "Darum ist GerNetiX kein einzelnes Mammutprojekt und kein Kurs, den alle gleich durchlaufen müssen. Der Lernprojektkatalog bietet kleine Projekte mit unterschiedlichen Schwerpunkten. Du kannst lesen, experimentieren, eine Vorlage verändern oder dir gezielt Unterstützung holen.",
+          "Ein gutes Lernprojekt soll Spaß machen, klein beginnen dürfen und keine große Anfangsinvestition verlangen. Gleichzeitig darf es wachsen, wenn du mehr lernen willst."
+        ] },
+        { id: "engineering-thinking-tamagotchi", heading: "Die Tamagotchi-Lernreise: ein Projekt wächst mit dir", tamagotchiIllustration: true, aiIllustrationAfterParagraph: 4, paragraphs: [
+          "Ein Tamagotchi ist ein gutes Beispiel, weil es klein anfangen kann und jede Erweiterung eine neue, nachvollziehbare Frage aufwirft. Zuerst lebt es als kleine Browser-App. Ein Zustandsautomat entscheidet etwa: satt, hungrig oder Warnung. Das ist bereits ein vollwertiges erstes Projekt.",
+          "Soll das Tamagotchi seinen Zustand behalten, wenn die App geschlossen wird? Dann brauchst du dauerhaften Speicher und lernst, warum Daten modelliert und gespeichert werden. Soll es weiterleben, obwohl keine App geöffnet ist? Dann kommt ein Hintergrundprozess dazu. Soll es in deine Tasche? Dann brauchst du ein IoT-Gerät mit Anzeige, Eingaben, eventuell Ton und einer passenden Stromversorgung.",
+          "Möchtest du dasselbe Tamagotchi auf Handy, Computer und Gerät sehen, entsteht die nächste Frage: Wie werden Zustände synchronisiert? Ein kleiner Server kann zuerst auf einem ESP-Board laufen. Soll er von mehreren Orten erreichbar sein, wird daraus ein Internet-Server. Wenn zwei Geräte gleichzeitig füttern, musst du Konflikte behandeln. Wenn Fremde es nicht füttern dürfen, brauchst du Identität und Berechtigungen.",
+          "Bis hierhin ist dein Tamagotchi ein absolut vorhersehbares Modell. Es reagiert auf dieselben Ereignisse immer auf dieselbe Weise. Das nennt man deterministisch. Im Zeitalter der KI können wir den nächsten Schritt gehen: Das Tamagotchi darf überraschendere Bedürfnisse und Interaktionen entwickeln – und es kann zugleich zu einem kleinen persönlichen Assistenten werden.",
+          "Dafür verbinden wir es mit KI. Hier trifft eine früher kaum umsetzbare Anforderung auf verfügbare Technik. Aber auch KI hat Grenzen: Sie beantwortet Fragen nicht von allein, sie braucht einen Auslöser. Außerdem kostet ein Online-Aufruf Geld und benötigt eine Internetverbindung. Die Ingenieursfrage lautet deshalb nicht nur: Können wir KI einsetzen? Sondern: Welches Modell erfüllt unsere Aufgabe mit vertretbarem Aufwand?",
+          "Wir könnten die Online-KI jede Stunde fragen, ob das Tamagotchi mit uns interagieren möchte. Das wäre möglich, aber teuer und unnötig abhängig vom Internet. Wir könnten auch ein lokales KI-Modell einsetzen. Je nach Komplexität reicht dafür ein normaler PC, oder es wird spezielle Embedded-Hardware benötigt, etwa ein aktueller Raspberry Pi. Eine dritte Möglichkeit ist, die KI einmalig ein Verhaltensmodell entwickeln zu lassen. Dieses Modell läuft danach lokal und deterministisch. Wenn wir seine Regeln nicht im Detail analysieren, bleibt sein Verhalten für uns trotzdem überraschend.",
+          "Für dieses Lernprojekt entscheide ich mich aus Kosten- und Verfügbarkeitsgründen für diese dritte Variante: Wir lassen eine KI einmalig ein Verhaltensmodell erstellen und beobachten anschließend, was daraus entsteht. So wird deutlich: KI ist nicht gleich KI. Je nachdem, was wir erreichen wollen, wählen wir Online-KI, lokale KI oder ein von KI erzeugtes Regelmodell – bewusst statt nur, weil die Technik gerade möglich ist.",
+          "So lernst du nicht abstrakt 'alles über IT'. Du hast bei jedem Schritt einen Grund für Zustandsautomaten, Apps, Embedded-Hardware, Kommunikation, Datenspeicherung, Server, Synchronisierung, Sicherheit und nun auch für eine begründete KI-Architekturentscheidung."
+        ] },
+        { id: "engineering-thinking-models", heading: "Vorgehensmodelle: Struktur für unterschiedliche Aufgaben", paragraphs: [
+          "Wasserfallmodell, V-Modell und agiles Arbeiten sind keine konkurrierenden Glaubensrichtungen. Sie unterstützen je nach Umfang, Risiko und Problemstellung unterschiedlich: Wie klar ist die Aufgabe schon? Wie teuer wäre ein Fehler? Wie schnell kann sich das Ziel noch verändern?"
+        ], developmentPhases: true, phaseDescriptions: [
+          { title: "Anforderungen klären:", description: "Das Problem, die Ziele, Rahmenbedingungen und Erfolgskriterien werden verständlich beschrieben. Es wird festgelegt, was die Lösung leisten muss – und was ausdrücklich nicht dazugehört." },
+          { title: "Entwurf erstellen:", description: "Es wird entschieden, wie die Lösung grundsätzlich aufgebaut sein soll: Komponenten, Daten, Schnittstellen, Bedienung und technische Risiken werden geplant." },
+          { title: "Umsetzung realisieren:", description: "Der Entwurf wird in funktionierende Hardware, Software, Konfiguration oder Dokumentation überführt. Dabei entsteht etwas, das tatsächlich ausprobiert werden kann." },
+          { title: "Testen und bewerten:", description: "Es wird gezielt geprüft, ob die Lösung die Anforderungen erfüllt. Fehler, Abweichungen und offene Risiken werden sichtbar gemacht und nachvollziehbar bearbeitet." },
+          { title: "Betrieb und Weiterentwicklung:", description: "Die Lösung wird genutzt, überwacht, gewartet und bei Bedarf verbessert. Rückmeldungen aus der Praxis können neue oder veränderte Anforderungen erzeugen." }
+        ], followUpParagraphs: [
+          "Die Phasen werden je nach Vorgehensmodell unterschiedlich verbunden. Man springt nicht beliebig mittendrin zu einem anderen Abschnitt. Wenn neue Erkenntnisse eine Änderung verlangen, wird bewusst zu der Phase zurückgegangen, deren Ergebnis überarbeitet werden muss – mit klarer Begründung und erneutem Durchlaufen der betroffenen Schritte.",
+          "Das Wasserfallmodell passt, wenn das Problem sehr genau bekannt ist und sich Anforderungen kaum ändern. Eine große Idee wird schrittweise konkret beschrieben, realisiert und am Ende getestet. Sein Schwerpunkt liegt auf Planbarkeit: Man weiß früh, was wann entstehen soll. Genau das ist aber auch sein Nachteil. Stellt ein später Test fest, dass die Umsetzung oder schon der Entwurf falsch war, muss das starre Modell durch Rücksprünge und Ausnahmeregeln ergänzt werden. Deshalb wird es heute vor allem noch in klar abgegrenzten Bereichen eingesetzt.",
+          "Das V-Modell eignet sich besonders für sicherheitsrelevante oder sehr qualitätskritische Systeme. Zu jeder Entwicklungsstufe auf der linken Seite gehört eine passende Prüfstufe auf der rechten Seite: Der Software-Entwurf wird mit Unit-Tests geprüft, der System-Entwurf mit Integrationstests und die Systemanforderung mit Systemtest und Abnahme. Findet ein Test einen Fehler, führt die Rückmeldung gezielt zu der zugehörigen Anforderung oder Entwurfsstufe zurück. So bleibt nachvollziehbar, was geprüft wurde, warum etwas geändert wird und welche Tests danach erneut nötig sind.",
+          "Agiles Arbeiten ist sinnvoll, wenn das Ziel noch nicht vollständig klar ist oder sich durch Rückmeldung verändern kann. Statt einen sehr großen Plan einmal komplett umzusetzen, wird in kurzen Zyklen gearbeitet: ein kleines Ziel klären, entwerfen, bauen, prüfen, mit Nutzern bewerten und aus den Erkenntnissen den nächsten Schritt ableiten. Auch hier werden die Entwicklungsphasen nicht ausgelassen; sie werden nur in kleinen, wiederholbaren Abschnitten durchlaufen. Das schafft frühes Feedback und senkt das Risiko, lange an einer Lösung zu arbeiten, die am Ende niemand braucht.",
+          "Kein Modell ersetzt Denken. Für ein kleines Lernprojekt kann ein kurzer agiler Zyklus reichen. Für ein fest definiertes Gerät hilft eine wasserfallartige Planung. Für Systeme, bei denen Fehler Menschen gefährden oder hohe Schäden verursachen können, braucht es die nachweisbare Absicherung des V-Modells. Gute Ingenieursarbeit wählt den Prozess, der das Risiko der jeweiligen Aufgabe sinnvoll beherrscht."
+        ], waterfallModelAfterFollowUp: 0, vModelAfterFollowUp: 1, agileModelAfterFollowUp: 2, engineeringModels: true },
+        { id: "engineering-thinking-industry", heading: "Was das mit Industrie zu tun hat", paragraphs: [
+          "Auch in der Industrie wird meist nicht die Welt neu erfunden. Vorhandene Technologien werden so kombiniert, dass ein Ziel mit vertretbarem Risiko, nachvollziehbaren Kosten und passendem Aufwand erreicht wird. Forschung ist wichtig, aber sie ist nicht jede Aufgabe.",
+          "Die beste technische Lösung ist nicht die größte oder modernste. Warum sollte jedes Auto einen KI-Supercomputer erhalten, wenn ein kleiner Mikrocontroller die Aufgabe sicherer, sparsamer und zuverlässiger erledigt? Die richtige Frage lautet: Welche Fähigkeit wird wirklich gebraucht, und welche Technik erfüllt sie mit möglichst wenig unnötiger Komplexität?",
+          "Genau diese Denkweise übst du in GerNetiX. Du lernst Technologien nicht als Sammlung von Schlagwörtern kennen, sondern weil dein Projekt sie an einer bestimmten Stelle wirklich braucht."
+        ] },
+        { id: "engineering-thinking-next-steps", heading: "Mit Beispielen weiterlernen", paragraphs: [
+          "Du hast noch nicht alles verstanden? Kein Problem. Vorgehensmodelle, Tests und Rückkopplungen lernt man nicht durch einen kurzen Text. Sie werden greifbar, wenn du sie in einem konkreten Projekt anwendest, Entscheidungen triffst und die Folgen davon siehst.",
+          "Deshalb wird es für jedes Modell ein Lernprojekt mit einer nachvollziehbaren Problemstellung geben. Die folgenden Einträge sind zunächst Platzhalter für diese Beispiele."
+        ], learningProjects: [
+          { model: "Wasserfallmodell", title: "Wetterstation mit festem Auftrag", description: "Eine klar beschriebene Aufgabe von der Anforderung bis zum Test planen.", href: "/app/learn/?project=waterfall-wetterstation" },
+          { model: "V-Modell", title: "Zutrittsanzeige mit Prüfnachweisen", description: "Anforderungen, Entwurf und passende Tests gezielt miteinander verbinden.", href: "/app/learn/?project=v-modell-zutrittsanzeige" },
+          { model: "Agil", title: "Tamagotchi in kleinen Zyklen", description: "Eine Idee schrittweise bauen, erproben und aus Rückmeldungen weiterentwickeln.", href: "/app/learn/?project=agil-tamagotchi" }
+        ] },
       ],
-      actions: [{ label: "Start a development project", route: "/app/development-platform/" }, { label: "Start a learning project", route: "/app/learn/" }],
+      relatedTopics: ["software-basics", "microcontroller-basics", "server-systems"],
+    },
+    "ai-basics": {
+      title: "Die Künstliche Intelligenz: GPT, Alexa und LLMs",
+      summary: "KI ist kein einzelnes Produkt. Entscheidend ist, welche Aufgabe sie lösen soll, wo sie laufen darf und welche Kosten sowie Datenwege dazu passen.",
+      access: "public",
+      sections: [
+        { id: "ai-gpt-and-alexa", heading: "GPT und Alexa sind nicht dasselbe", paragraphs: [
+          "GPT bezeichnet eine Familie großer Sprachmodelle. Solche Modelle können Sprache verstehen und erzeugen, Texte zusammenfassen, Ideen ausarbeiten, Code erklären oder bei Entscheidungen unterstützen. GPT ist dabei das Modell – nicht automatisch eine fertige Anwendung mit Mikrofon, Lautsprecher und Haussteuerung.",
+          "Alexa ist dagegen vor allem ein Sprachassistent und ein Produkt: Du sprichst mit einem Gerät oder einer App, die Sprache wird erkannt, eine Anfrage wird verarbeitet und eine Antwort oder Aktion ausgelöst. Klassische Sprachassistenten arbeiten häufig mit fest definierten Befehlen und Diensten, etwa für Timer, Musik oder Smart Home. Sie können LLMs nutzen, sind aber nicht selbst gleichbedeutend mit einem LLM.",
+          "Für dein Projekt ist diese Trennung wichtig: Ein Assistent beschreibt die sichtbare Bedienung. Ein LLM ist eine mögliche Denk- und Sprachkomponente dahinter. Dazwischen liegen weiterhin klare Regeln, Berechtigungen, Schnittstellen und die Entscheidung, welche Aktion ein System tatsächlich ausführen darf."
+        ] },
+        { id: "ai-llm", heading: "LLM: ein großes Sprachmodell", paragraphs: [
+          "LLM steht für Large Language Model, also großes Sprachmodell. Vereinfacht gesagt verarbeitet es Text in kleinen Einheiten und berechnet, welche nächste Einheit zu einer Eingabe wahrscheinlich sinnvoll passt. Dadurch kann es Gespräche führen, Inhalte umformulieren und Muster aus vielen Beispielen anwenden.",
+          "Ein LLM hat dabei kein eigenes Ziel, keine Wünsche und kein verlässliches Weltverständnis wie ein Mensch. Es erzeugt plausible Antworten auf Grundlage seiner Eingabe und seines Trainings. Deshalb braucht es eine gute Aufgabenbeschreibung, überprüfbare Regeln und bei wichtigen Entscheidungen immer eine menschliche oder technisch klar definierte Kontrolle.",
+          "Ein LLM kann als Gesprächspartner dienen, ein Regelmodell für dein Tamagotchi entwerfen oder Texte in strukturierte Daten überführen. Es sollte aber nicht ohne zusätzliche Schutzmechanismen selbstständig Türen öffnen, Geld ausgeben oder sicherheitsrelevante Geräte steuern."
+        ] },
+        { id: "ai-local-or-online", heading: "Lokal oder über das Internet?", paragraphs: [
+          "Ein internetbasiertes LLM läuft bei einem Anbieter. Dein Gerät sendet die Anfrage über das Internet an dessen Dienst und erhält eine Antwort zurück. Das kann leistungsfähige Modelle ohne eigene starke Hardware ermöglichen. Dafür brauchst du eine Verbindung, musst den Datenweg bewusst bewerten und bist von Verfügbarkeit, Regeln und Preisen des Dienstes abhängig.",
+          "Ein lokales LLM läuft auf eigener Hardware: zum Beispiel auf einem PC, einem Server zu Hause oder – bei kleineren Modellen – auf geeigneter Edge-Hardware. Das kann auch ohne Internet funktionieren und gibt dir mehr Kontrolle über Daten und Verfügbarkeit. Im Gegenzug musst du Rechenleistung, Speicher, Energiebedarf, Updates und Betrieb selbst einplanen.",
+          "Es gibt keine grundsätzlich bessere Variante. Für eine seltene, anspruchsvolle Frage kann ein Online-Modell sinnvoll sein. Für private Daten, häufige kleine Anfragen oder einen offlinefähigen Assistenten kann ein lokales Modell die bessere Wahl sein. Manchmal ist ein Mischmodell passend: Die eigentliche Steuerung bleibt lokal, nur freiwillige Wissens- oder Kreativaufgaben gehen an einen Online-Dienst."
+        ] },
+        { id: "ai-payment-models", heading: "Kosten und Zahlungsmodelle", paragraphs: [
+          "Bei Online-KI gibt es häufig zwei unterschiedliche Zahlungsarten. Ein Abo bezahlt meist den Zugang zu einer fertigen Anwendung mit bestimmten Funktionen und Grenzen. Es ist nicht automatisch dasselbe wie ein technischer Zugang für deine eigene App oder dein IoT-Projekt.",
+          "Für die direkte Einbindung in eigene Software wird oft nutzungsbasiert abgerechnet. Dabei zählen Eingabe und Antwort, meist in Textmengen oder Tokens. Eine einzelne Anfrage kann sehr günstig sein, viele regelmäßige Aufrufe können sich aber summieren. Deshalb gehört zur Architektur immer eine Kostenfrage: Wie oft ist eine KI-Antwort wirklich nötig, und welche günstigere Logik kann dieselbe Aufgabe lokal erledigen?",
+          "Ein lokales Modell hat normalerweise keine Abrechnung pro Anfrage durch einen Anbieter. Die Kosten verschwinden dadurch nicht: Hardware, Strom, Speicher, Wartung und gegebenenfalls ein leistungsfähiger PC oder Server gehören zur Rechnung. Ingenieursmäßig gedacht vergleichst du also nicht nur den Preis pro KI-Aufruf, sondern auch Datenschutz, Verfügbarkeit, Antwortzeit, Energiebedarf und den Aufwand für den Betrieb."
+        ] }
+      ],
+      relatedTopics: ["from-problem-to-system", "server-systems", "microcontroller-basics"],
+    },
+    "quick-start": {
+      title: "So startest du",
+      summary: "Starte mit einem Lernprojekt oder entwickle aus deiner eigenen Idee ein GerNetiX-Projekt.",
+      sections: [
+        { heading: "Dein erstes Projekt", list: [
+          "Wähle für ein geführtes Projekt die Lernplattform oder für deine eigene Idee die Entwicklungsplattform.",
+          "Erstelle ein Projekt aus einer Vorlage oder beginne mit einem leeren Projekt und beschreibe sein Ziel.",
+          "Klär zuerst die Architektur, wähle passende Hardware und arbeite dann in der IDE weiter.",
+          "Registriere und verbinde ein neues Board in der Geräteverwaltung, bevor du es baust und flashst.",
+        ] },
+        { heading: "Wie geht es weiter?", paragraphs: ["Lernlektionen führen dich Schritt für Schritt durch ein Projekt. Hilfeartikel bleiben kurz und durchsuchbar, wenn du etwas nachschlagen möchtest."] },
+      ],
+      actions: [{ label: "Entwicklungsprojekt starten", route: "/app/development-platform/" }, { label: "Lernprojekt starten", route: "/app/learn/" }],
       relatedTopics: ["register-device", "pair-device"],
     },
     "create-account": {
-      title: "Create an account",
-      summary: "Create one GerNetiX account to use projects, learning progress and your devices together.",
-      sections: [{ heading: "Registration", paragraphs: ["Use the account creation form and confirm the required terms. After signing in, GerNetiX keeps projects, progress and registered devices connected to your account."] }],
+      title: "Konto anlegen",
+      summary: "Lege ein GerNetiX-Konto an, um Projekte, Lernfortschritt und deine Geräte gemeinsam zu nutzen.",
+      sections: [{ heading: "Registrierung", paragraphs: ["Nutze das Formular zur Kontoerstellung und bestätige die erforderlichen Bedingungen. Nach dem Einloggen verbindet GerNetiX Projekte, Lernfortschritt und registrierte Geräte mit deinem Konto."] }],
       relatedTopics: ["quick-start", "register-device"],
     },
     "plan-comparison": {
@@ -200,7 +323,7 @@ const HelpContent = (() => {
         ] } },
         { heading: "Wichtig", paragraphs: ["Der erste ESP32, den du deinem Konto hinzufuegst, wird zwingend als ESP32-Recovery-Token gefuehrt. Er erweitert damit das Basiskonto zum ESP32-Konto. Ein Kampagnen-Premium-Token ist dagegen ein einmal einloesbarer Gutschein. Beide Begriffe beschreiben unterschiedliche Dinge."] },
       ],
-      relatedTopics: ["registration-login-recovery", "entitlements-and-tokens"],
+      relatedTopics: ["registration-login-recovery", "entitlements-and-tokens", "webshop-activation-codes"],
     },
     "registration-login-recovery": {
       title: "Registrierung, Anmeldung und Wiederherstellung",
@@ -229,7 +352,26 @@ const HelpContent = (() => {
         ] } },
         { heading: "Paywall in Lernprojekten", paragraphs: ["Ein Lernprojekt kann bis zu einem Schritt offen sein, der zum Beispiel Dispatcher oder Background Worker braucht. Dort erklaert GerNetiX, welche Faehigkeit fehlt und welches Angebot sie freischaltet. Die Sperre wird auch serverseitig geprueft."] },
       ],
-      relatedTopics: ["account-types", "registration-login-recovery", "ai-premium", "event-worker-rules", "event-dispatcher"],
+      relatedTopics: ["account-types", "registration-login-recovery", "webshop-activation-codes", "ai-premium", "event-worker-rules", "event-dispatcher"],
+    },
+    "webshop-activation-codes": {
+      title: "Webshop, E-Mail und Aktivierungscodes",
+      summary: "Der Webshop verkauft Produkte. GerNetiX verwaltet die technische Nutzung. Aktivierungscodes verbinden beides bewusst.",
+      access: "public",
+      sections: [
+        { heading: "Warum getrennt?", paragraphs: ["Der GerNetiX-Webshop und dein GerNetiX-Account sind fachlich getrennt. Im Webshop kaufst du Hardware, Bundles, Software-Lizenzen oder Abos. In GerNetiX nutzt du Projekte, Geraete, Lizenzen und Entitlements.", "Ein Kauf erzeugt nicht automatisch ein GerNetiX-Konto und verknuepft die Shop-E-Mail nicht automatisch mit deinem GerNetiX-Account. Das schuetzt deine Zahlungs-, Rechnungs- und Versanddaten vor unnoetiger Vermischung mit der technischen Plattform."] },
+        { heading: "Wofuer braucht der Webshop eine E-Mail?", list: ["Bestellbestaetigung und Rechnung senden.", "Versandstatus und Rueckfragen zur Lieferung klaeren.", "Support, Reklamation oder Gewaehrleistung einer Bestellung zuordnen.", "Aktivierungscode oder Bestellreferenz zusenden, wenn ein Produkt ein Nutzungsrecht enthaelt."] },
+        { heading: "Was ist ein Aktivierungscode?", paragraphs: ["Ein Aktivierungscode ist die Bruecke zwischen Kauf und GerNetiX-Account. Du kaufst zum Beispiel Premium jaehrlich, eine Home-Server-Lizenz oder ein Hardware-Bundle im Webshop. Danach loest du den Code in GerNetiX ein und ordnest das Nutzungsrecht bewusst deinem Account zu."] },
+        { heading: "Typischer Ablauf", list: ["Du kaufst im Webshop und gibst dort eine E-Mail fuer Bestellung, Rechnung und Kontakt an.", "Der Webshop sendet dir Rechnung, Bestellreferenz und gegebenenfalls einen Aktivierungscode.", "Du meldest dich in GerNetiX mit deinem Passkey an oder legst ein Konto an.", "Du gibst den Aktivierungscode in GerNetiX ein.", "GerNetiX prueft den Code und aktiviert das passende Entitlement fuer deinen Account."] },
+        { heading: "Beispiele", table: { headers: ["Angebot", "Webshop", "GerNetiX"], rows: [
+          ["Hardware ohne Lizenz", "E-Mail fuer Rechnung, Versand und Support.", "Kein Konto noetig, solange keine technische Aktivierung gebraucht wird."],
+          ["Hardware-Bundle mit Lizenz", "E-Mail und Bestellreferenz; Code per E-Mail oder im Paket.", "Code aktiviert das enthaltene Nutzungsrecht."],
+          ["GerNetiX Home Server Software-Lizenz", "Verkauft das Nutzungsrecht.", "Account aktiviert und verwaltet die Home-Server-Lizenz."],
+          ["Premium jaehrlich inkl. Home Server", "Kann als Abo oder Code verkauft werden.", "Aktivierungscode schaltet Premium und Home-Server-Nutzung frei."],
+        ] } },
+        { heading: "Wichtig", paragraphs: ["Die Webshop-E-Mail ist keine Passwort-Anmeldung fuer GerNetiX. GerNetiX bleibt passkey- und accountbasiert. Der Aktivierungscode ist die ausdrueckliche Entscheidung, einen Kauf mit einem GerNetiX-Account zu verbinden."] },
+      ],
+      relatedTopics: ["entitlements-and-tokens", "account-types", "plan-comparison", "ai-premium"],
     },
     "ai-premium": {
       title: "KI-Unterstuetzung und Premium",
