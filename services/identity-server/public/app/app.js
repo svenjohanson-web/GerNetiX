@@ -52,6 +52,7 @@ const state = {
   ideDirtySources: {},
   ideViewMode: "file",
   activeIdeComponentId: "",
+  flashboxMockOrder: null,
   developmentPlatform: null,
   esptoolModule: null,
   activeSerialTransport: null,
@@ -73,6 +74,7 @@ const routeMap = {
   "device-inventory": "devicesView",
   builds: "buildsView",
   downloads: "downloadsView",
+  shop: "shopView",
   billing: "billingView",
   help: "helpView",
   knowledge: "helpView",
@@ -250,6 +252,7 @@ document.querySelector("#refreshUsbPortsButton").addEventListener("click", refre
 document.querySelector("#buildButton").addEventListener("click", startBuild);
 document.querySelector("#usbFlashButton").addEventListener("click", startUsbFlash);
 document.querySelector("#otaFlashButton").addEventListener("click", startOtaFlash);
+document.querySelector("#flashBoxFlashButton").addEventListener("click", startFlashBoxFlash);
 document.querySelector("#checkOtaConnectivityButton").addEventListener("click", checkAllocatedDeviceConnectivity);
 document.querySelector("#clearIdeTerminalButton").addEventListener("click", clearIdeTerminal);
 document.querySelector("#showIdeTerminalButton").addEventListener("click", () => setIdeConsoleView("terminal"));
@@ -328,6 +331,9 @@ document.querySelector("#serialServiceChoiceInstall")?.addEventListener("click",
     status.textContent = "Download gestartet. Öffne das geladene Installationspaket; der WebHelper startet danach automatisch.";
   }
 });
+document.querySelector("#flashboxConfigForm")?.addEventListener("change", renderShopConfiguration);
+document.querySelector("#createFlashboxMockOrderButton")?.addEventListener("click", createFlashboxMockOrder);
+document.querySelector("#flashboxClaimForm")?.addEventListener("submit", claimFlashboxFromCode);
 window.addEventListener("popstate", renderRoute);
 document.addEventListener("click", closeMainMenu);
 
@@ -428,6 +434,7 @@ function renderAll() {
   renderNetworkDiscovery();
   renderDevices();
   renderBuilds();
+  renderShopConfiguration();
   renderBilling();
 }
 
@@ -553,6 +560,10 @@ function currentLocationTrail(route) {
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Downloads", route: "/app/downloads/" },
     ],
+    shop: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Webshop", route: "/app/shop/" },
+    ],
     billing: [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Billing", route: "/app/billing/" },
@@ -645,6 +656,63 @@ async function renderDownloads() {
   } catch (error) {
     target.innerHTML = "";
     status.textContent = "Die Download-Verfügbarkeit konnte nicht geladen werden.";
+  }
+}
+
+function renderShopConfiguration() {
+  const form = document.querySelector("#flashboxConfigForm");
+  const target = document.querySelector("#flashboxConfigSummary");
+  if (!form || !target) return;
+  const data = new FormData(form);
+  const variant = data.get("variant") === "lab"
+    ? "Lab-Variante fuer mehrere Boardtypen"
+    : "Starter-Variante fuer einzelne Boards";
+  const connection = data.get("connection") === "wifi"
+    ? "WLAN-Hotspot fuer die Ersteinrichtung"
+    : "BLE gefuehrte Einrichtung mit Handy oder Tablet";
+  const extras = [
+    data.get("usb_cable") ? "USB-C-Kabel" : "",
+    data.get("esp32_adapter") ? "ESP32-Adapterset" : "",
+  ].filter(Boolean);
+  target.innerHTML = `
+    <p class="eyebrow">Konfiguration</p>
+    <dl class="meta-list compact">
+      ${meta("Variante", variant)}
+      ${meta("Verbindung", connection)}
+      ${meta("Zubehoer", extras.length ? extras.join(", ") : "ohne Zusatzpaket")}
+    </dl>
+    <p class="helper-text">Mock: Diese Auswahl wird noch nicht gespeichert und erzeugt keine Bestellung.</p>
+  `;
+}
+
+async function createFlashboxMockOrder() {
+  const target = document.querySelector("#flashboxMockOrderResult");
+  if (!target) return;
+  target.classList.remove("hidden");
+  target.innerHTML = `<p class="helper-text">Mock-Kauf wird angelegt...</p>`;
+  try {
+    const result = await postJson("/api/user-ide/hardware-shop/orders", {
+      offer_id: "offer.gernetix_flashbox_s3_usb_helper",
+      quantity: 1,
+    });
+    state.flashboxMockOrder = result;
+    const unit = result.purchase_context?.claimable_hardware_units?.[0] || null;
+    if (unit?.claim_code) {
+      const claimInput = document.querySelector("#flashboxClaimCode");
+      if (claimInput) claimInput.value = unit.claim_code;
+    }
+    target.innerHTML = unit ? `
+      <p class="eyebrow">Mock-Bestellung angelegt</p>
+      <dl class="meta-list compact">
+        ${meta("Bestellung", result.order?.order_id || "")}
+        ${meta("Flashbox", unit.serial_number)}
+        ${meta("Claim-Code", unit.claim_code)}
+      </dl>
+      <p class="helper-text">Der Code ist nur fuer diesen Account vorgesehen. Im echten Shop wuerde er ueber Bestellung/E-Mail bereitgestellt und serverseitig nur gehasht gespeichert.</p>
+      <button type="button" data-open-route="/app/device-management/inventory/">Jetzt im Inventar uebernehmen</button>
+    ` : `<p class="helper-text">Mock-Bestellung wurde angelegt, aber es wurde keine claimbare Flashbox erzeugt.</p>`;
+  } catch (error) {
+    target.innerHTML = `<p class="helper-text error-text">${escapeHtml(error.message || "Mock-Kauf konnte nicht angelegt werden.")}</p>`;
   }
 }
 
@@ -1053,6 +1121,7 @@ function updateIdeProjectTools(project) {
   const buildButton = document.querySelector("#buildButton");
   const usbButton = document.querySelector("#usbFlashButton");
   const otaButton = document.querySelector("#otaFlashButton");
+  const flashBoxButton = document.querySelector("#flashBoxFlashButton");
   const otaReason = !allocated
     ? "OTA nicht verfügbar: Kein Device zugeordnet."
     : allocated.connectivity_status !== "online"
@@ -1063,9 +1132,11 @@ function updateIdeProjectTools(project) {
   buildButton.disabled = false;
   usbButton.disabled = false;
   otaButton.disabled = !allocated || allocated.ota_status !== "ready" || allocated.connectivity_status !== "online";
+  flashBoxButton.disabled = false;
   buildButton.title = actionReason;
   usbButton.title = actionReason || (!allocated?.usb_flash_supported ? "Das zugeordnete Device unterstuetzt keinen USB-Flash." : "");
   otaButton.title = actionReason || otaReason;
+  flashBoxButton.title = actionReason || "FlashBox-Flash nutzt eine inventarisierte GerNetiX FlashBox als USB-Helper.";
   renderIdeProjectInformation(project);
   document.querySelector("#sourceEditor").readOnly = !sourceEditing;
 }
@@ -2468,6 +2539,46 @@ async function startOtaFlash() {
   }
 }
 
+function inventoryFlashboxes() {
+  return state.devices.filter((device) => {
+    const profile = String(device.hardware_profile_id || "").toLowerCase();
+    return device.hardware_class === "flashbox" || profile.includes("hardware.flashbox.");
+  });
+}
+
+async function startFlashBoxFlash() {
+  const project = projectById(state.activeProjectId);
+  const device = allocatedIdeDevice(project);
+  if (!project || !device) return setFlashStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
+  const flashboxes = inventoryFlashboxes();
+  if (!flashboxes.length) {
+    return setFlashStatus("error", "Keine GerNetiX FlashBox im Inventar. Kaufe oder uebernimm zuerst eine FlashBox im Webshop/Inventar.");
+  }
+  const flashbox = flashboxes[0];
+  setFlashStatus("running", `Build fuer FlashBox-Flash wird vorbereitet (${flashbox.display_name || flashbox.device_id}).`);
+  try {
+    await persistCurrentSource(project);
+    const build = await postJson("/api/user-ide/build-jobs", {
+      project_slug: project.slug,
+      device_id: device.device_id,
+      mode: "build",
+      flash_transport: "flashbox",
+      flashbox_device_id: flashbox.device_id,
+    });
+    const completed = await waitForCompletedBuild(build);
+    state.builds.unshift(completed);
+    renderIdeProjectInformation(project);
+    if (completed.status !== "succeeded") {
+      appendBuildFailureLog(completed.build_log);
+      throw new Error(completed.error || "Build fuer FlashBox-Flash ist fehlgeschlagen.");
+    }
+    setFlashStatus("ok", `Build fertig. FlashBox-Transport ist vorbereitet; Auftrag an ${flashbox.display_name || flashbox.device_id} folgt im FlashBox-Job-Endpunkt.`);
+    renderBuilds();
+  } catch (error) {
+    setFlashStatus("error", error.message);
+  }
+}
+
 async function checkAllocatedDeviceConnectivity() {
   const project = projectById(state.activeProjectId);
   const device = allocatedIdeDevice(project);
@@ -2691,7 +2802,7 @@ function setDiscoveryStatus(kind, text) {
 
 function renderDevices() {
   const count = document.querySelector("#inventoryDeviceCount");
-  count.textContent = `${state.devices.length} ${state.devices.length === 1 ? "Board" : "Boards"}`;
+  count.textContent = `${state.devices.length} ${state.devices.length === 1 ? "Geraet" : "Geraete"}`;
   document.querySelector("#deviceList").innerHTML = state.devices.length ? state.devices.map((device) => `
     <article class="device-row">
       <div class="device-card-main">
@@ -2740,6 +2851,37 @@ function renderDevices() {
 
 function deviceBasissoftwareProfileClass(device) {
   return device.instance_configuration?.basissoftware_profile?.class || "full";
+}
+
+async function claimFlashboxFromCode(event) {
+  event.preventDefault();
+  const form = event.currentTarget;
+  const data = new FormData(form);
+  const claimCode = String(data.get("claim_code") || "").trim();
+  if (!claimCode) {
+    setFlashboxClaimStatus("error", "Bitte gib den Claim-Code der Flashbox ein.");
+    return;
+  }
+  setFlashboxClaimStatus("running", "Flashbox wird deinem Account zugeordnet...");
+  try {
+    const result = await postJson("/api/platform/flashbox/claim", { claim_code: claimCode });
+    state.devices = state.devices.filter((item) => item.account_device_id !== result.device.account_device_id).concat(result.device);
+    state.activeDeviceId = state.activeDeviceId || result.device.device_id;
+    renderDevices();
+    renderIdeShell();
+    renderDashboard();
+    form.reset();
+    setFlashboxClaimStatus("ok", `${result.device.display_name} ist jetzt im Inventar.`);
+  } catch (error) {
+    setFlashboxClaimStatus("error", error.message || "Flashbox konnte nicht uebernommen werden.");
+  }
+}
+
+function setFlashboxClaimStatus(kind, text) {
+  const status = document.querySelector("#flashboxClaimStatus");
+  if (!status) return;
+  status.className = `flash-status ${kind}`;
+  status.textContent = text;
 }
 
 function deviceBasissoftwareProfileLabel(profile) {

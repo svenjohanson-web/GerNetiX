@@ -1,8 +1,10 @@
 const loginForm = document.querySelector("#login-form");
 const registerForm = document.querySelector("#register-form");
+const recoveryForm = document.querySelector("#recovery-form");
 const modeToggle = document.querySelector("#auth-mode-toggle");
+const recoveryModeToggle = document.querySelector("#recovery-mode-toggle");
 const guestAccessButton = document.querySelector("#guest-access-button");
-const guestHint = document.querySelector("#guest-hint");
+const guestAccess = document.querySelector(".guest-access");
 const authMenuButton = document.querySelector("#authMenuButton");
 const authMenu = document.querySelector("#authMenu");
 
@@ -28,7 +30,7 @@ const statusElement = document.querySelector("#status");
 const identifierField = document.querySelector("#login-identifier-field");
 const query = new URLSearchParams(window.location.search);
 const nextUrl = query.get("next") || "/app/dashboard/";
-let mode = query.get("mode") === "register" ? "register" : "login";
+let mode = query.get("mode") === "register" ? "register" : query.get("mode") === "recovery" ? "recovery" : "login";
 
 applyMode(false);
 
@@ -76,6 +78,27 @@ registerForm.addEventListener("submit", async (event) => {
 });
 
 modeToggle.addEventListener("click", () => { mode = mode === "login" ? "register" : "login"; applyMode(true); });
+recoveryModeToggle.addEventListener("click", () => { mode = "recovery"; applyMode(true); });
+recoveryForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  const data = new FormData(recoveryForm);
+  statusElement.textContent = "Recovery-Set wird geprüft …";
+  let browserPasskeyRequest = false;
+  try {
+    const recovery = await postJson("/api/recovery/offline/start", Object.fromEntries(data));
+    statusElement.textContent = "Recovery-Set bestätigt. Neuer Passkey wird eingerichtet …";
+    const options = await postJson("/api/recovery/offline/passkey/options", { recovery_token: recovery.recovery_token });
+    browserPasskeyRequest = true;
+    const credential = await navigator.credentials.create({ publicKey: parseCreationOptions(options) });
+    browserPasskeyRequest = false;
+    const result = await postJson("/api/recovery/offline/passkey/verify", { recovery_token: recovery.recovery_token, credential: credentialJson(credential), next: nextUrl });
+    statusElement.textContent = "Zugang wurde wiederhergestellt.";
+    window.setTimeout(() => { window.location.href = result.next || "/app/dashboard/"; }, 600);
+  } catch (error) {
+    if (browserPasskeyRequest) await reportPasskeyBrowserError("registration", error);
+    statusElement.textContent = error.message || "Zugang konnte nicht wiederhergestellt werden.";
+  }
+});
 guestAccessButton.addEventListener("click", async () => {
   statusElement.textContent = "Gastzugang wird angelegt …";
   try { const result = await postJson("/api/account/guest", {}); window.location.href = result.next || "/app/dashboard/"; }
@@ -84,14 +107,19 @@ guestAccessButton.addEventListener("click", async () => {
 
 function applyMode(updateUrl) {
   const registration = mode === "register";
-  loginForm.classList.toggle("hidden", registration);
+  const recovery = mode === "recovery";
+  loginForm.classList.toggle("hidden", registration || recovery);
   registerForm.classList.toggle("hidden", !registration);
-  guestAccessButton.classList.toggle("hidden", registration);
-  guestHint.classList.toggle("hidden", registration);
-  titleElement.textContent = registration ? "Konto anlegen" : "Anmelden";
+  recoveryForm.classList.toggle("hidden", !recovery);
+  guestAccess.classList.toggle("hidden", registration || recovery);
+  titleElement.textContent = registration ? "Konto anlegen" : recovery ? "Zugang wiederherstellen" : "Anmelden";
   modeToggle.textContent = registration ? "Zur Anmeldung" : "Konto anlegen";
   statusElement.textContent = "";
-  if (updateUrl) { const params = new URLSearchParams(window.location.search); registration ? params.set("mode", "register") : params.delete("mode"); window.history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`); }
+  if (updateUrl) {
+    const params = new URLSearchParams(window.location.search);
+    registration ? params.set("mode", "register") : recovery ? params.set("mode", "recovery") : params.delete("mode");
+    window.history.replaceState({}, "", `${window.location.pathname}${params.toString() ? `?${params}` : ""}`);
+  }
 }
 
 async function postJson(url, body) {

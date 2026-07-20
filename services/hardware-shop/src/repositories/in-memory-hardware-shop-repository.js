@@ -65,6 +65,17 @@ function defaultSeed() {
         stock_state: "available",
         status: "active",
       },
+      {
+        offer_id: "offer.gernetix_flashbox_s3_usb_helper",
+        offer_type: "flashbox",
+        title: "GerNetiX FlashBox ESP32-S3 USB Helper",
+        summary: "Mock-Verkaufsprodukt fuer eine gekaufte, displaylose GerNetiX-FlashBox mit Dual-USB-Helper-Rolle, sicherem Self-Update und Account-Claim.",
+        hardware_item_ids: ["hardware.flashbox.esp32_s3_usb_helper"],
+        related_learning_project_ids: ["project.flashbox_firmware"],
+        price: { amount_cents: 12900, currency: "EUR", tax_included: true },
+        stock_state: "available",
+        status: "active",
+      },
     ],
   };
 }

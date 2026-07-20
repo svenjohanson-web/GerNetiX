@@ -35,6 +35,17 @@ test("keeps USB firmware recovery available for offline ESP32 devices", () => {
   assert.equal(buildTargetLabel(device), "espressif32/esp32dev/arduino");
 });
 
+test("labels Flashbox inventory devices as USB helper flash devices", () => {
+  const { buildTargetLabel } = createUtils();
+
+  assert.equal(buildTargetLabel({
+    device_id: "device_flashbox_1",
+    hardware_profile_id: "hardware.flashbox.esp32_s3_usb_helper",
+    hardware_class: "flashbox",
+    instance_configuration: { role: "flashbox" },
+  }), "GerNetiX FlashBox / USB-Helper-Flash");
+});
+
 test("detects ESP32 USB serial ports on macOS without listing duplicate tty devices", async () => {
   const { listUsbSerialPorts } = createUtils({
     platform: "darwin",

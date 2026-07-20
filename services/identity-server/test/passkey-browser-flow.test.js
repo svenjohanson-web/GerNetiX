@@ -30,3 +30,20 @@ test("Passkey registration reports an explicit persisted success or a failure wi
   assert.match(serverSource, /Konto wurde nicht angelegt\. Grund: Passkey konnte nicht vorbereitet werden\./);
   assert.match(serverSource, /Konto wurde nicht angelegt\. Grund: Passkey konnte nicht verifiziert werden/);
 });
+
+test("offline recovery is wired as a token-bound passkey registration flow", () => {
+  assert.match(authSource, /\/api\/recovery\/offline\/start/);
+  assert.match(authSource, /\/api\/recovery\/offline\/passkey\/options/);
+  assert.match(authSource, /\/api\/recovery\/offline\/passkey\/verify/);
+  assert.match(serverSource, /handleOfflineRecoveryStart/);
+  assert.match(serverSource, /handleOfflineRecoveryPasskeyOptions/);
+  assert.match(serverSource, /handleOfflineRecoveryPasskeyVerify/);
+  assert.match(serverSource, /offlineRecoveryChallengeSubject\(recoveryToken\)/);
+  assert.match(serverSource, /evictCachedSessionsForUser\(completed\.account\.user_id\)/);
+  assert.match(serverSource, /const resolved = auth\.resolve_session_token\(token\)/);
+  assert.match(serverSource, /offlineRecoveryRateLimit\(req, username\)/);
+  assert.match(serverSource, /offlineRecoveryAttempts = new Map/);
+  assert.match(serverSource, /event_type: eventType/);
+  assert.match(serverSource, /username_hash: hashedAuditValue/);
+  assert.match(serverSource, /client_hash: hashedAuditValue/);
+});

@@ -139,6 +139,18 @@ function createHttpApp(options) {
       return;
     }
 
+    const claimableHardwareUnits = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/claimable-hardware-units$`));
+    if (req.method === "GET" && claimableHardwareUnits) {
+      sendJson(res, 200, { items: service.listClaimableHardwareUnits(decodeURIComponent(claimableHardwareUnits[1])) });
+      return;
+    }
+
+    const hardwareUnitClaims = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/hardware-unit-claims$`));
+    if (req.method === "POST" && hardwareUnitClaims) {
+      sendJson(res, 201, service.claimHardwareUnit(decodeURIComponent(hardwareUnitClaims[1]), await readJsonBody(req)));
+      return;
+    }
+
     const connectivity = path.match(new RegExp(`^${prefix}/devices/([^/]+)/connectivity/status$`));
     if (req.method === "POST" && connectivity) {
       sendJson(res, 200, service.updateConnectivity(decodeURIComponent(connectivity[1]), await readJsonBody(req)));

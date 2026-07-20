@@ -17,7 +17,7 @@ test("serves the GerNetiX homepage publicly before authentication", () => {
 });
 
 test("presents the four requested homepage text boxes", () => {
-  assert.match(html, /Verstehe komplexe technische Systeme – vom Embedded-System bis zur Cloud\./);
+  assert.match(html, /Verstehe komplexe technische Systeme – von der Cloud bis zum Embedded-System\./);
   assert.match(html, /für alle, die mehr wollen, als nur fertige Lösungen nachzubauen/);
   assert.match(html, /sondern vor allem, <strong>warum<\/strong> sie funktionieren/);
   assert.match(html, /Die KI ist ein Werkzeug – sie unterstützt dich, übernimmt aber weder Denken noch Verantwortung\./);
@@ -25,6 +25,11 @@ test("presents the four requested homepage text boxes", () => {
   assert.match(html, /Unsere Motivation[\s\S]*Warum GerNetiX\?/);
   assert.match(html, /Der komplette Scope[\s\S]*Vom Embedded-System bis zur Cloud/);
   assert.match(html, /Unsere Plattform[\s\S]*Wissen und Infrastruktur aus einer Hand/);
+  assert.match(html, /class="hero-system-graphic"/);
+  assert.match(html, /PROBLEM[\s\S]*KONZEPTE[\s\S]*BEWERTEN[\s\S]*ENTSCHEIDEN[\s\S]*REALISIEREN/);
+  assert.match(html, /class="scope-uml"[\s\S]*«device»[\s\S]*«component»[\s\S]*«service»[\s\S]*«application»/);
+  assert.doesNotMatch(html, /UML-KOMPONENTENÜBERSICHT|Die Bausteine sind keine Pflichtkette|>lokal<|>optional<|>nutzen</);
+  assert.match(html, /scopeUmlArrow[\s\S]*fill="#67e8f9"[\s\S]*stroke="#67e8f9"/);
 });
 
 test("shows the complete system scope and preserves user choice", () => {
@@ -41,20 +46,34 @@ test("uses the GerNetiX corporate design and collapses the scope on mobile", () 
   assert.match(css, /--accent: #22d3ee/);
   assert.match(css, /\.panel \{[\s\S]*background: var\(--panel\)/);
   assert.match(css, /@media \(max-width: 720px\) \{[\s\S]*\.scope-list \{ grid-template-columns: 1fr; \}/);
-  assert.match(css, /\.hero h1 \{ font-size: clamp\(30px, 4\.2vw, 52px\); \}/);
+  assert.match(css, /\.hero h1 \{ font-size: clamp\(25px, 3\.1vw, 40px\); \}/);
+  assert.match(css, /\.hero-system-graphic \{/);
+  assert.match(css, /\.hero-process-step rect \{/);
+  assert.match(css, /\.hero-process-line \{ fill: none; stroke: #67e8f9; stroke-width: 3;/);
+  assert.match(css, /\.scope-uml \{/);
+  assert.match(css, /\.hero \{ grid-template-columns: minmax\(0, 1\.1fr\) minmax\(300px, \.9fr\);/);
 });
 
-test("offers a hamburger menu containing public information only", () => {
+test("connects the public motivation with the engineering-thinking chapter", () => {
+  assert.match(html, /Wie GerNetiX entstanden ist/);
+  assert.match(html, /KI macht dieses Wissen heute leichter zugänglich/);
+  assert.match(html, /Menschen lernen unterschiedlich/);
+  assert.match(html, /href="\/wissen\/#from-problem-to-system">Ingenieursmäßiges Denken kennenlernen →<\/a>/);
+  assert.match(css, /\.motivation-origin \{/);
+});
+
+test("offers a hamburger menu with the public webshop entry only", () => {
   const menu = html.slice(html.indexOf('id="publicMenu"'), html.indexOf("</nav>", html.indexOf('id="publicMenu"')));
   assert.match(html, /id="publicMenuButton"[\s\S]*aria-expanded="false"/);
   assert.match(menu, /href="\/">Startseite/);
-  assert.match(menu, /href="#motivation">Warum GerNetiX\?/);
-  assert.match(menu, /href="#scope">Themen/);
   assert.match(menu, /href="\/hilfe\/">Hilfe/);
+  assert.match(menu, /href="\/downloads\/">Downloads/);
+  assert.match(menu, /href="\/shop\/">Webshop/);
   assert.match(menu, /href="\/app\/auth\/">Anmelden/);
   assert.doesNotMatch(menu, /Dashboard|Geräte|Billing|Entwicklungsplattform/);
   assert.match(css, /\.site-menu \{[\s\S]*position: absolute/);
   assert.match(client, /aria-expanded/);
   assert.match(client, /event\.key === "Escape"/);
-  assert.match(html, /class="site-footer-links"[\s\S]*Vision[\s\S]*Über uns[\s\S]*Hilfe/);
+  assert.match(html, /class="site-footer-links"[\s\S]*Warum GerNetiX\?[\s\S]*Wissensportal[\s\S]*Hilfe/);
+  assert.doesNotMatch(html.match(/class="site-footer-links"[\s\S]*/)?.[0] || "", /href="\/app\/vision\/"/);
 });

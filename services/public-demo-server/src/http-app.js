@@ -11,7 +11,7 @@ function createHttpApp({ service, publisherToken, publicDir = nodePath.join(__di
     if (req.method === "GET" && path === "/health") {
       return sendJson(res, 200, { status: "ok", service: "public-demo-server" });
     }
-    if (req.method === "GET" && (path === "/" || path === "/index.html" || path === "/app.js" || path === "/app.css" || path === "/gernetix-logo.png")) {
+    if (req.method === "GET" && (path === "/" || path === "/index.html" || path === "/app.js" || path === "/app.css" || path === "/gernetix-logo.png" || path === "/gernetix-wordmark.png")) {
       return serveStatic(res, publicDir, path === "/" ? "/index.html" : path);
     }
     if (req.method === "GET" && path.startsWith("/vendor/esptool-js/")) {

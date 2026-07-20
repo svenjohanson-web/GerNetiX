@@ -50,6 +50,26 @@ test("creates cart, order and purchase context for device support", async () => 
   assert.equal(context.provisioning_profile_ids[0], "provisioning_profile.esp32_ota_bootstrap");
 });
 
+test("creates a claimable hardware unit for a Flashbox mock order", async () => {
+  const service = createDefaultHardwareShop();
+  const cart = await service.createCart({ account_id: "acct-1" });
+  await service.addCartItem(cart.cart_id, {
+    offer_id: "offer.gernetix_flashbox_s3_usb_helper",
+    quantity: 1,
+  });
+
+  const order = await service.createOrder({ cart_id: cart.cart_id, payment_status: "paid" });
+  const context = service.purchaseContext(order.order_id);
+  const unit = context.claimable_hardware_units[0];
+
+  assert.equal(order.status, "paid");
+  assert.equal(context.hardware_item_ids.includes("hardware.flashbox.esp32_s3_usb_helper"), true);
+  assert.equal(unit.hardware_class, "flashbox");
+  assert.match(unit.claim_code, /^GNX-FB-/);
+  assert.equal(unit.claim_code_hash_sha256.length, 64);
+  assert.notEqual(unit.claim_code_hash_sha256, unit.claim_code);
+});
+
 test("admin can add offer for known catalog item", async () => {
   const service = createDefaultHardwareShop();
   const offer = await service.upsertOffer({

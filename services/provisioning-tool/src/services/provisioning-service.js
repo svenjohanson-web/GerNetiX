@@ -31,12 +31,20 @@ class ProvisioningService {
 
   async createSession(input = {}) {
     validateInput(input);
-    const processorBoard = await this.resolveProcessorBoard(input);
-    const firmwareArtifact = this.resolveFirmwareArtifact(processorBoard.factory_firmware_artifact || this.firmwareArtifact);
+    const target = await this.resolveProvisioningTarget(input);
+    const processorBoard = target.hardware_class === "processor_board" ? target.item : null;
+    const flashbox = target.hardware_class === "flashbox" ? target.item : null;
+    const firmwareArtifact = this.resolveFirmwareArtifact(
+      target.hardware_class === "flashbox"
+        ? target.item.factory_firmware_artifact
+        : target.item.factory_firmware_artifact || this.firmwareArtifact,
+    );
     input = {
       ...input,
-      processor_board_id: processorBoard.hardware_item_id,
-      hardware_profile_id: processorBoard.hardware_profile_id || input.hardware_profile_id,
+      hardware_class: target.hardware_class,
+      processor_board_id: processorBoard?.hardware_item_id || "",
+      flashbox_id: flashbox?.hardware_item_id || "",
+      hardware_profile_id: target.item.hardware_profile_id || input.hardware_profile_id,
     };
     const deviceId = this.deviceIdFactory.createDeviceId(input.serial_number);
     if (this.repository.hasActiveCredential(deviceId)) {
@@ -55,6 +63,7 @@ class ProvisioningService {
       deviceManagementBaseUrl: this.deviceManagementBaseUrl,
       firmwareArtifact,
       processorBoard,
+      flashbox,
       otaTrust: this.otaTrust,
     });
     const flashPlan = this.flashPlanner.createPlan(input, manifest);
@@ -80,10 +89,17 @@ class ProvisioningService {
       device: {
         device_id: deviceId,
         serial_number: normalizeRequired(input.serial_number),
+        hardware_class: target.hardware_class,
         hardware_profile_id: normalizeRequired(input.hardware_profile_id),
-        processor_board_id: processorBoard.hardware_item_id,
+        processor_board_id: processorBoard?.hardware_item_id || "",
+        flashbox_id: flashbox?.hardware_item_id || "",
         authenticity_status: "gernetix_verified_pending_proof",
         lifecycle_state: "provisioning",
+        inventory_policy: flashbox?.inventory_policy || "",
+        purchase_policy: flashbox?.purchase_policy || "",
+        factory_claim_mode: flashbox ? "wlan_visible_challenge" : "",
+        device_key_policy: flashbox ? "device_private_key_non_exportable" : "",
+        release_trust_anchor_id: flashbox ? "gernetix_flashbox_release_key.v1" : "",
       },
       manufacturer_registration: {
         device_id: deviceId,
@@ -94,6 +110,8 @@ class ProvisioningService {
         quality_check_state: "pending",
         support_entitlement_basis: "gernetix_manufacturer_registration",
         device_management_target: `${this.deviceManagementBaseUrl.replace(/\/$/, "")}/devices/register`,
+        public_key_registration: flashbox ? "factory_public_key_required" : "device_public_key_required",
+        private_key_policy: flashbox ? "generated_or_injected_non_exportable_on_device" : "generated_on_device",
       },
       credential: redactCredential(credential),
       manifest,
@@ -187,6 +205,10 @@ class ProvisioningService {
 
   async listProcessorBoards() {
     return { items: await this.hardwareCatalog.listProcessorBoards() };
+  }
+
+  async listFlashboxes() {
+    return { items: await this.hardwareCatalog.listFlashboxes() };
   }
 
   async getFirmwareArtifact(boardId = "") {
@@ -627,6 +649,42 @@ class ProvisioningService {
     return processorBoard;
   }
 
+  async resolveProvisioningTarget(input = {}) {
+    const hardwareClass = normalizeHardwareClass(input.hardware_class || input.hardware_type || input.provisioning_target_type || input.target_type);
+    if (hardwareClass === "flashbox") {
+      const flashboxId = normalizeRequired(input.flashbox_id || input.hardware_item_id || input.hardware_profile_id);
+      const flashbox = flashboxId
+        ? await this.hardwareCatalog.getFlashbox(flashboxId)
+        : null;
+      if (!flashbox) {
+        throw new ProvisioningError(
+          "flashbox_not_found",
+          "Flashbox wurde im Hardware-Katalog nicht gefunden.",
+          404,
+          { flashbox_id: flashboxId || "" },
+        );
+      }
+      if (flashbox.self_creation_allowed === true) {
+        throw new ProvisioningError(
+          "flashbox_self_creation_not_allowed",
+          "Flashboxen duerfen nicht als selbst erzeugte GerNetiX-Flashbox provisioniert werden.",
+          409,
+          { flashbox_id: flashbox.hardware_item_id },
+        );
+      }
+      if (!flashbox.factory_firmware_artifact) {
+        throw new ProvisioningError(
+          "flashbox_missing_factory_firmware",
+          "Flashbox hat keine Factory-Firmware-Artefaktreferenz im Hardware-Katalog.",
+          409,
+          { flashbox_id: flashbox.hardware_item_id },
+        );
+      }
+      return { hardware_class: "flashbox", item: flashbox };
+    }
+    return { hardware_class: "processor_board", item: await this.resolveProcessorBoard(input) };
+  }
+
   listFirmwareArtifacts() {
     return { items: this.firmwareArtifactStore.listArtifacts() };
   }
@@ -830,25 +888,43 @@ function escapeCString(value) {
     .replace(/\n/g, "\\n");
 }
 
-function createManifest({ input, deviceId, credential, deviceManagementBaseUrl, firmwareArtifact, processorBoard, otaTrust }) {
+function createManifest({ input, deviceId, credential, deviceManagementBaseUrl, firmwareArtifact, processorBoard, flashbox, otaTrust }) {
   const mqttBroker = normalizeMqttBrokerEndpoint(
     input.service_endpoints && input.service_endpoints.mqtt_broker,
     input.mqtt_mode,
   );
+  const hardwareClass = normalizeHardwareClass(input.hardware_class);
   return {
     schema_version: 2,
     device_id: deviceId,
     serial_number: normalizeRequired(input.serial_number),
+    hardware_class: hardwareClass,
     hardware_profile_id: normalizeRequired(input.hardware_profile_id),
-    processor_board: {
+    processor_board: processorBoard ? {
       hardware_item_id: processorBoard.hardware_item_id,
       title: processorBoard.title || "",
       basissoftware_profile_id: processorBoard.basissoftware_profile_id || "",
-    },
+    } : null,
+    flashbox: flashbox ? {
+      hardware_item_id: flashbox.hardware_item_id,
+      title: flashbox.title || "",
+      purchase_policy: flashbox.purchase_policy || "gernetix_purchase_only",
+      inventory_policy: flashbox.inventory_policy || "claim_required",
+      self_creation_allowed: false,
+      supported_target_families: Array.isArray(flashbox.supported_target_families) ? flashbox.supported_target_families : [],
+      claim_modes: ["wlan_visible_challenge", "manual_purchase_code_fallback"],
+      copy_protection: {
+        device_key_policy: "device_private_key_non_exportable",
+        proof: "challenge_signature",
+        claim_primary_path: "wlan_visible_flashbox",
+        fallback_path: "manual_purchase_code",
+        release_public_key_id: "gernetix_flashbox_release_key.v1",
+      },
+    } : null,
     firmware: {
       version: normalizeRequired(input.firmware_version),
-      basis: "gernetix-runtime-basissoftware",
-      ota_preserved: true,
+      basis: hardwareClass === "flashbox" ? "gernetix-flashbox-firmware" : "gernetix-runtime-basissoftware",
+      ota_preserved: hardwareClass !== "flashbox",
       artifact: summarizeFirmwareArtifact(firmwareArtifact),
     },
     service_endpoints: {
@@ -1017,6 +1093,12 @@ function validateInput(input) {
 
 function normalizeRequired(value) {
   return String(value || "").trim();
+}
+
+function normalizeHardwareClass(value) {
+  const text = normalizeRequired(value).toLowerCase().replace(/-/g, "_");
+  if (["flashbox", "gernetix_flashbox"].includes(text)) return "flashbox";
+  return "processor_board";
 }
 
 function deviceStatusCandidateUrls(explicit = []) {

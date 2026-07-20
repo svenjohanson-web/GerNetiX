@@ -16,6 +16,14 @@ GET /api/provisioning-processor-boards
 
 Liefert die provisionierbaren ProcessorBoards aus dem Hardware-Katalog. Jedes Board enthaelt die Basissoftware-/Factory-Firmware-Artefaktreferenz, die das Provisioning Tool fuer den USB-Flash verwendet.
 
+## Flashboxen Anzeigen
+
+```text
+GET /api/provisioning-flashboxes
+```
+
+Liefert die provisionierbaren GerNetiX-Flashbox-Produktklassen aus dem Hardware-Katalog. Flashboxen haben `hardware_class = flashbox`, `purchase_policy = gernetix_purchase_only`, eine Claim-/Inventory-Policy und Flashbox-Capabilities. Das Provisioning Tool bietet keinen Pfad an, aus selbst gebauter Hardware eine GerNetiX-Flashbox zu erzeugen.
+
 ## Provisioning Session Erstellen
 
 ```text
@@ -26,6 +34,7 @@ Beispiel:
 
 ```json
 {
+  "hardware_class": "processor_board",
   "serial_number": "GNX-ESP32-0001",
   "processor_board_id": "hardware.processor_board.generic_esp_wroom32",
   "hardware_profile_id": "hardware.processor_board.generic_esp_wroom32",
@@ -49,6 +58,27 @@ Beispiel:
 `mqtt_mode` ist `vps` oder `local`. Im VPS-Modus muss `mqtt_broker` eine `mqtts://`-Adresse sein. Im lokalen Modus wird beispielsweise `mqtt://192.168.50.20:1883` verwendet; aus Sicherheitsgruenden akzeptiert das Provisioning Tool dabei nur private IPv4-Adressen aus `10/8`, `172.16/12` oder `192.168/16`.
 
 Die Erstellungsantwort enthaelt `usb_flash_package`, aber keinerlei Shared Secret oder privaten Schluessel. Das `processor_board_id` bestimmt den Hardware-Katalogeintrag; daraus werden Hardwareprofil, Basissoftware-Profil und Factory-Firmware-Artefakt abgeleitet.
+
+Fuer Flashboxen wird `hardware_class = flashbox` gesetzt und statt `processor_board_id` eine `flashbox_id` uebergeben:
+
+```json
+{
+  "hardware_class": "flashbox",
+  "serial_number": "GNX-FLASHBOX-0001",
+  "flashbox_id": "hardware.flashbox.esp32_s3_28_otg",
+  "hardware_profile_id": "hardware.flashbox.esp32_s3_28_otg",
+  "provisioning_batch_id": "batch-2026-07",
+  "firmware_version": "0.1.0",
+  "provisioned_by": "factory-user",
+  "capabilities": ["flashbox.self_update", "flashbox.usb_otg_host", "flashbox.target_flash"],
+  "flash": {
+    "requested": false,
+    "write_factory_header": false
+  }
+}
+```
+
+Eine Flashbox-Session erzeugt ein Manifest mit `hardware_class = flashbox`, `flashbox`, Purchase-/Inventory-Policy und Flashbox-Firmwarebasis. Der Zielboard-Web-Serial-Flash bleibt deaktiviert, bis die Flashbox-Firmware mit eigenem signiertem Update-/Recovery-Vertrag implementiert ist.
 
 Das `usb_flash_package` enthaelt fuer die physische Erstinbetriebnahme eine generierte Header-Datei. Die Basissoftware selbst wird im Serverbetrieb als versioniertes Firmware-Artefakt aus SQLite/Artifact Store referenziert, nicht direkt aus dem Projektordner:
 

@@ -137,6 +137,59 @@ test("accepts a local private IPv4 MQTT broker", async () => {
   assert.equal(service.getManifest(created.session_id).service_endpoints.mqtt_broker, "mqtt://192.168.50.20:1883");
 });
 
+test("lists GerNetiX Flashbox as purchase-only provisioning target", async () => {
+  const service = createService();
+  const result = await service.listFlashboxes();
+
+  assert.equal(result.items.length, 1);
+  assert.equal(result.items[0].hardware_class, "flashbox");
+  assert.equal(result.items[0].purchase_policy, "gernetix_purchase_only");
+  assert.equal(result.items[0].self_creation_allowed, false);
+  assert.ok(result.items[0].capabilities.includes("flashbox.target_flash"));
+  assert.equal(result.items[0].factory_firmware_artifact.artifact_id, "firmware_artifact.flashbox_factory.latest");
+  assert.equal(result.items[0].factory_firmware_artifact.source, "public_signed_manifest");
+});
+
+test("creates flashbox register session without treating it as processor board", async () => {
+  const service = createService();
+  const created = await service.createSession(validInput({
+    hardware_class: "flashbox",
+    serial_number: "GNX-FLASHBOX-0001",
+    hardware_profile_id: "hardware.flashbox.esp32_s3_28_otg",
+    flashbox_id: "hardware.flashbox.esp32_s3_28_otg",
+    capabilities: ["flashbox.self_update", "flashbox.target_flash"],
+    flash: {
+      requested: false,
+      write_factory_header: false,
+    },
+  }));
+  const manifest = service.getManifest(created.session_id);
+
+  assert.equal(created.device.hardware_class, "flashbox");
+  assert.equal(created.device.processor_board_id, "");
+  assert.equal(created.device.flashbox_id, "hardware.flashbox.esp32_s3_28_otg");
+  assert.equal(created.device.purchase_policy, "gernetix_purchase_only");
+  assert.equal(created.device.factory_claim_mode, "wlan_visible_challenge");
+  assert.equal(created.device.device_key_policy, "device_private_key_non_exportable");
+  assert.equal(created.device.release_trust_anchor_id, "gernetix_flashbox_release_key.v1");
+  assert.equal(created.manufacturer_registration.public_key_registration, "factory_public_key_required");
+  assert.equal(created.manufacturer_registration.private_key_policy, "generated_or_injected_non_exportable_on_device");
+  assert.equal(manifest.hardware_class, "flashbox");
+  assert.equal(manifest.processor_board, null);
+  assert.equal(manifest.flashbox.hardware_item_id, "hardware.flashbox.esp32_s3_28_otg");
+  assert.equal(manifest.flashbox.self_creation_allowed, false);
+  assert.deepEqual(manifest.flashbox.claim_modes, ["wlan_visible_challenge", "manual_purchase_code_fallback"]);
+  assert.equal(manifest.flashbox.copy_protection.proof, "challenge_signature");
+  assert.equal(manifest.flashbox.copy_protection.device_key_policy, "device_private_key_non_exportable");
+  assert.equal(manifest.flashbox.copy_protection.claim_primary_path, "wlan_visible_flashbox");
+  assert.equal(manifest.flashbox.copy_protection.fallback_path, "manual_purchase_code");
+  assert.equal(manifest.firmware.basis, "gernetix-flashbox-firmware");
+  assert.equal(manifest.firmware.artifact.artifact_id, "firmware_artifact.flashbox_factory.latest");
+  assert.equal(manifest.firmware.artifact.source, "public_signed_manifest");
+  assert.equal(JSON.stringify(manifest).includes("PRIVATE KEY"), false);
+  assert.equal(created.flash_plan.requested, false);
+});
+
 test("rejects a public plaintext MQTT broker", async () => {
   const service = createService();
   const input = validInput({ mqtt_mode: "local" });

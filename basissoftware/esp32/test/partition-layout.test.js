@@ -42,11 +42,16 @@ test("PlatformIO provides an ESP32-S3 FULL target with the 16 MB partition table
   const platformio = fs.readFileSync(path.join(basisRoot, "platformio.ini"), "utf8");
   const sdkconfig = fs.readFileSync(path.join(basisRoot, "sdkconfig.esp32-s3-n16r8"), "utf8");
   assert.match(platformio, /\[env:esp32-s3-16mb-full\]/);
-  assert.match(platformio, /board = esp32-s3-devkitc-1/);
+  assert.match(platformio, /board = 4d_systems_esp32s3_gen4_r8n16/);
   assert.match(platformio, /SDKCONFIG_DEFAULTS="sdkconfig\.esp32-s3-n16r8"/);
   assert.match(platformio, /board_build\.flash_size = 16MB/);
+  assert.match(platformio, /board_upload\.flash_size = 16MB/);
   assert.match(platformio, /board_build\.partitions = partitions_full_16mb\.csv/);
+  assert.match(platformio, /N16R8: 16 MB QIO flash plus 8 MB octal PSRAM/);
   assert.match(sdkconfig, /CONFIG_ESPTOOLPY_FLASHSIZE_16MB=y/);
+  assert.match(sdkconfig, /CONFIG_SPIRAM=y/);
+  assert.match(sdkconfig, /CONFIG_SPIRAM_MODE_OCT=y/);
+  assert.match(sdkconfig, /CONFIG_SPIRAM_SPEED_80M=y/);
   assert.match(sdkconfig, /CONFIG_PARTITION_TABLE_FILENAME="partitions_full_16mb\.csv"/);
 });
 

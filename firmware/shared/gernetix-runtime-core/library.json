@@ -1,0 +1,13 @@
+{
+  "name": "gernetix-runtime-core",
+  "version": "0.1.0",
+  "description": "Shared GerNetiX firmware runtime helpers for Basissoftware and Flashbox.",
+  "keywords": ["gernetix", "esp32", "runtime", "json", "provisioning"],
+  "frameworks": ["arduino", "espidf"],
+  "platforms": ["espressif32"],
+  "build": {
+    "srcDir": "src",
+    "includeDir": "include"
+  }
+}
+

@@ -25,6 +25,18 @@ Die Basissoftware ist ein stabiler, eigenstaendiger Runtime-Kern. Projekt- und k
 
 Firmware-Builds und USB-/OTA-Flashes erfolgen ausschliesslich durch den Nutzer. Codex darf Quellcode, Konfiguration und Contract-Tests vorbereiten oder pruefen, aber keinen Firmware-Build und keinen Flashvorgang ausfuehren.
 
+## Gemeinsamer Runtime Core
+
+Die Basissoftware nutzt fuer stabile Querschnittsregeln den gemeinsamen Firmware-Kern `firmware/shared/gernetix-runtime-core`.
+
+Aktuell daraus verwendet:
+
+- GerNetiX Device-Name-Regeln
+- Hostname-Normalisierung
+- JSON-Ausgabe/Escaping fuer Provisioning-Status und Challenge-Proof
+
+Damit bleibt die Flashbox-Firmware nah an der Basissoftware-DNA, ohne dass beide Pakete ihre Sicherheitsgrenzen vermischen. Flashbox-spezifische Display-, USB-OTG- und Zielgeraete-Flash-Logik bleibt ausserhalb der Basissoftware.
+
 ## Einstieg
 
 Der ESP-IDF-Einstieg liegt in:

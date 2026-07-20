@@ -10,14 +10,17 @@ const css = fs.readFileSync(path.join(appRoot, "app.css"), "utf8");
 const helpContent = fs.readFileSync(path.join(appRoot, "help-content.js"), "utf8");
 const helpView = fs.readFileSync(path.join(appRoot, "help-view.js"), "utf8");
 const helpChatService = fs.readFileSync(path.join(appRoot, "help-chat-service.js"), "utf8");
+const webshopAccountSeparationDoc = fs.readFileSync(path.join(__dirname, "..", "..", "..", "docs", "webshop-account-separation.md"), "utf8");
 
 test("keeps Help reachable through the main menu and renders it as a dedicated view", () => {
   assert.match(html, /href="\/hilfe\/">Hilfe<\/a>/);
   assert.match(html, /class="utility public-information-link" href="\/">Startseite<\/a>/);
+  assert.match(html, /class="utility public-information-link" href="\/app\/auth\/">Anmelden<\/a>/);
   assert.match(html, /data-open-route="\/wissen\/"[\s\S]*Wissensportal/);
   assert.match(html, /id="helpView"/);
   assert.match(html, /id="helpMount"/);
-  assert.match(html, /class="platform-footer"[\s\S]*Vision[\s\S]*Über uns[\s\S]*Hilfe/);
+  assert.match(html, /class="platform-footer"[\s\S]*Startseite[\s\S]*Warum GerNetiX\?[\s\S]*Hilfe/);
+  assert.doesNotMatch(html.match(/class="platform-footer"[\s\S]*/)?.[0] || "", /href="\/app\/vision\/"/);
   assert.match(app, /help: "helpView"/);
   assert.match(app, /knowledge: "helpView"/);
   assert.match(app, /label: "Hilfe", route: "\/hilfe\/"/);
@@ -52,6 +55,9 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(helpContent, /title: "Querschnittsthemen"[\s\S]*"privacy-basics", title: "Datenschutz in vernetzten Projekten"/);
   assert.match(helpContent, /title: "Server"[\s\S]*"local-servers"[\s\S]*"internet-vps"[\s\S]*"cloud-services"[\s\S]*"choosing-servers"/);
   assert.doesNotMatch(helpContent, /title: "Öffentliche Informationen"/);
+  assert.match(helpContent, /children: \[\s*\{ id: "registration-login-recovery", title: "Einloggen und Konto anlegen"[\s\S]*\{ id: "create-account", title: "Konto anlegen"[\s\S]*\{ id: "quick-start", title: "So startest du"/);
+  assert.match(helpContent, /"quick-start": \{[\s\S]*title: "So startest du"[\s\S]*Dein erstes Projekt[\s\S]*Wie geht es weiter\?/);
+  assert.match(helpContent, /"create-account": \{[\s\S]*title: "Konto anlegen"[\s\S]*heading: "Registrierung"/);
   assert.match(helpContent, /"create-account"[\s\S]*"account-types"[\s\S]*"plan-comparison"/);
   assert.match(helpContent, /"provision-new-board"[\s\S]*"event-worker-rules"[\s\S]*"event-dispatcher"/);
   assert.match(helpContent, /"quick-start"[\s\S]*"supported-devices"/);
@@ -130,6 +136,16 @@ test("keeps the hardware landscape as a public page in the common help model", (
   assert.match(css, /\.server-types-landscape/);
   assert.match(helpContent, /serverLandscape: true/);
   assert.match(css, /\.help-hardware-landscape/);
+});
+
+test("opens the knowledge portal with engineering thinking and the Tamagotchi learning journey", () => {
+  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  assert.match(navigation, /id: "engineering-thinking"[\s\S]*title: "Ingenieursmäßig denken"[\s\S]*"from-problem-to-system"/);
+  assert.match(helpContent, /"from-problem-to-system": \{[\s\S]*Nicht Technologie, sondern Problem[\s\S]*Wissen, Analyse und KI/);
+  assert.match(helpContent, /KI verändert den Zugang[\s\S]*keine eigenen Wünsche[\s\S]*Verantwortung für die Folgen/);
+  assert.match(helpContent, /Viele Wege ins Lernen[\s\S]*Lernprojektkatalog/);
+  assert.match(helpContent, /Die Tamagotchi-Lernreise[\s\S]*Zustandsautomat[\s\S]*Zustände synchronisiert[\s\S]*Identität und Berechtigungen/);
+  assert.match(helpContent, /Was das mit Industrie zu tun hat[\s\S]*kleiner Mikrocontroller/);
 });
 
 test("explains embedded measurement technology and approachable debugging", () => {
@@ -223,6 +239,7 @@ test("explains account access, recovery and current versus planned entitlements"
   const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
   assert.match(navigation, /title: "Start und Zugang"/);
   assert.match(navigation, /"account-types", title: "Kontotypen und Zugangsstufen"/);
+  assert.match(navigation, /"webshop-activation-codes", title: "Webshop, E-Mail und Aktivierungscodes"/);
   assert.match(helpContent, /"registration-login-recovery"/);
   assert.match(helpContent, /Passkey ist Pflicht; persoenliches Offline-Recovery-Set/);
   assert.match(helpContent, /Konto einrichten abschließen/);
@@ -231,6 +248,22 @@ test("explains account access, recovery and current versus planned entitlements"
   assert.match(helpContent, /Heute in der Plattform/);
   assert.match(helpContent, /Basis Plus, Kampagnen und Hardware-Bundles/);
   assert.match(helpContent, /Dispatcher oder Background Worker braucht/);
+});
+
+test("documents webshop email separation and activation codes in Identity help", () => {
+  assert.match(webshopAccountSeparationDoc, /GerNetiX trennt den Webshop fachlich vom GerNetiX-Account/);
+  assert.match(webshopAccountSeparationDoc, /Die Webshop-E-Mail = Kontakt-, Rechnungs- und Versandadresse|Kontakt- und Nachweisadresse/);
+  assert.match(webshopAccountSeparationDoc, /Aktivierungscode verbindet einen Kauf mit einem GerNetiX-Account/);
+  assert.match(webshopAccountSeparationDoc, /Premium jaehrlich inkl\. Home Server/);
+  assert.match(webshopAccountSeparationDoc, /Shop-E-Mail und GerNetiX-Account werden nicht automatisch gleichgesetzt/);
+  assert.match(helpContent, /"webshop-activation-codes": \{/);
+  assert.match(helpContent, /Der Webshop verkauft Produkte\. GerNetiX verwaltet die technische Nutzung/);
+  assert.match(helpContent, /Ein Kauf erzeugt nicht automatisch ein GerNetiX-Konto/);
+  assert.match(helpContent, /Wofuer braucht der Webshop eine E-Mail\?/);
+  assert.match(helpContent, /Bestellbestaetigung und Rechnung/);
+  assert.match(helpContent, /Aktivierungscode ist die Bruecke zwischen Kauf und GerNetiX-Account/);
+  assert.match(helpContent, /Premium jaehrlich inkl\. Home Server[\s\S]*Aktivierungscode schaltet Premium und Home-Server-Nutzung frei/);
+  assert.match(helpContent, /Die Webshop-E-Mail ist keine Passwort-Anmeldung fuer GerNetiX/);
 });
 
 test("offers a public, factual comparison of basis, basis plus and premium", () => {

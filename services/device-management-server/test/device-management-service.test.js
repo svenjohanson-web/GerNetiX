@@ -201,6 +201,39 @@ test("purchase context links sold hardware to support entitlement after authenti
   assert.equal(entitlement.source, "gernetix_purchase_context");
 });
 
+test("claims a purchased Flashbox unit into account inventory by hashed claim code", () => {
+  const service = createDefaultDeviceManagementServer();
+  const purchaseContext = service.registerPurchaseContext("acct-1", {
+    order_id: "order-flashbox-1",
+    hardware_item_ids: ["hardware.flashbox.esp32_s3_28_otg"],
+    capability_ids: ["capability.usb_otg_host", "capability.flashbox_target_flash", "capability.flashbox_self_update"],
+    support_basis: "gernetix_purchase_context",
+    claimable_hardware_units: [{
+      unit_id: "hardware_unit.flashbox.1",
+      hardware_item_id: "hardware.flashbox.esp32_s3_28_otg",
+      hardware_class: "flashbox",
+      serial_number: "GNX-FLASHBOX-0001",
+      claim_code: "GNX-FB-TEST-01",
+      claim_state: "unclaimed",
+    }],
+  });
+
+  assert.equal(purchaseContext.claimable_hardware_units[0].claim_code, undefined);
+  assert.equal(service.listClaimableHardwareUnits("acct-1")[0].claim_state, "unclaimed");
+
+  const claimed = service.claimHardwareUnit("acct-1", {
+    claim_code: "GNX-FB-TEST-01",
+    display_name: "Werkstatt Flashbox",
+  });
+
+  assert.equal(claimed.account_device.hardware_class, "flashbox");
+  assert.equal(claimed.account_device.ownership_status, "claimed_purchase_unit");
+  assert.equal(claimed.account_device.purchase_context_id, "order-flashbox-1");
+  assert.equal(service.listAccountDevices("acct-1")[0].display_name, "Werkstatt Flashbox");
+  assert.equal(service.listClaimableHardwareUnits("acct-1")[0].claim_state, "claimed");
+  assert.throws(() => service.claimHardwareUnit("acct-1", { claim_code: "GNX-FB-TEST-01" }), /bereits inventarisiert/);
+});
+
 test("purchase context alone does not make community hardware support eligible", () => {
   const service = createDefaultDeviceManagementServer();
   service.registerPurchaseContext("acct-1", {

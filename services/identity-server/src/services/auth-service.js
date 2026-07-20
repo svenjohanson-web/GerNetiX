@@ -191,6 +191,41 @@ class AuthService {
     return { account: toPublicAccount(updated), recovery_set: recoverySet };
   }
 
+  async start_offline_recovery(username, recoverySet) {
+    const account = this.repository.findUserByUsername(username);
+    const suppliedRecoverySet = String(recoverySet || "").trim();
+    if (!account || !["base", "esp32"].includes(account.account_type) || !account.offline_recovery_set_hash || !this.passwordHasher.verify(suppliedRecoverySet, account.offline_recovery_set_hash)) {
+      throw new AuthError("invalid_recovery_set", "Recovery set is invalid.", 401);
+    }
+    const recovery = this.tokenService.createTokenRecord({ userId: account.id, ttlMinutes: 10 });
+    this.repository.createOfflineRecoveryTransaction(recovery.record);
+    return { recovery_token: recovery.rawToken, username: account.username };
+  }
+
+  get_offline_recovery_account(token) {
+    const record = this.readValidOfflineRecoveryTransaction(token);
+    const account = this.repository.findUserById(record.user_id);
+    assertAccountCanLogin(account);
+    return account;
+  }
+
+  async complete_offline_recovery(token, passkey) {
+    const record = this.readValidOfflineRecoveryTransaction(token);
+    if (!passkey?.credentialId || !passkey?.publicKey) throw new AuthError("passkey_required", "A verified passkey is required.", 400);
+    const account = this.repository.findUserById(record.user_id);
+    if (!account) throw new AuthError("invalid_recovery_token", "Recovery token is invalid or expired.", 401);
+    assertAccountCanLogin(account);
+    const updated = this.repository.updateUserAccount(account.id, {
+      passkey_credential_id: String(passkey.credentialId).trim(),
+      passkey_public_key: String(passkey.publicKey).trim(),
+      passkey_counter: Number(passkey.counter || 0),
+      passkey_transports: passkey.transports || [],
+    });
+    this.repository.markOfflineRecoveryTransactionUsed(record.id);
+    this.repository.revokeSessionsByUserId(account.id);
+    return this.createSessionResponse(updated);
+  }
+
   async login_local(identifier, password) {
     const account = findAccountByIdentifier(this.repository, identifier);
     if (!account) {
@@ -362,6 +397,15 @@ class AuthService {
     const tokenRecord = this.repository.findVerificationTokenByHash(tokenHash);
     if (!tokenRecord || tokenRecord.used_at || isExpired(tokenRecord.expires_at)) {
       throw new AuthError("invalid_token", "Verification token is invalid or expired.", 400);
+    }
+    return tokenRecord;
+  }
+
+  readValidOfflineRecoveryTransaction(token) {
+    const tokenHash = this.tokenService.hashToken(token);
+    const tokenRecord = this.repository.findOfflineRecoveryTransactionByHash(tokenHash);
+    if (!tokenRecord || tokenRecord.used_at || isExpired(tokenRecord.expires_at)) {
+      throw new AuthError("invalid_recovery_token", "Recovery token is invalid or expired.", 401);
     }
     return tokenRecord;
   }

@@ -9,8 +9,7 @@
   <body>
     <header class="auth-site-header">
       <a class="auth-site-brand" href="/" aria-label="GerNetiX Startseite">
-        <span class="auth-site-brand-mark" aria-hidden="true">G</span>
-        <span><strong>GerNetiX</strong><small>Engineering Knowledge Platform</small></span>
+        <img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" />
       </a>
       <button id="authMenuButton" class="auth-menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="authMenu">
         <span></span><span></span><span></span>
@@ -19,17 +18,24 @@
         <a href="/">Startseite</a>
         <a href="/wissen/">Wissensportal</a>
         <a href="/hilfe/">Hilfe</a>
+        <a href="/shop/">Webshop</a>
         <a href="/app/auth/">Anmelden</a>
       </nav>
     </header>
     <main class="login-shell">
       <section class="login-panel" aria-labelledby="login-title">
-        <div class="brand"><div class="brand-mark" aria-hidden="true">G</div><div><p class="eyebrow">GerNetiX Plattform</p><h1 id="login-title">Anmelden</h1></div></div>
+        <header class="login-heading"><h1 id="login-title">Anmelden</h1></header>
         <form class="login-form" id="login-form" autocomplete="webauthn">
           <p class="form-hint">Wähle deinen gespeicherten Passkey – zum Beispiel per Fingerabdruck, Face ID oder Geräte-PIN. Dein Spitzname ist dafür nicht erforderlich.</p>
           <button class="primary" type="submit">Mit Passkey anmelden</button>
           <button class="link-button" type="button" id="show-identifier-login">Spitzname stattdessen eingeben</button>
           <label id="login-identifier-field" class="hidden" for="login-identifier">Spitzname<input id="login-identifier" name="identifier" autocomplete="username webauthn" /></label>
+        </form>
+        <form class="login-form hidden" id="recovery-form" autocomplete="off">
+          <p class="form-hint">Gib deinen Spitznamen und dein Offline-Recovery-Set ein. Anschließend richtest du einen neuen Passkey ein.</p>
+          <label for="recovery-username">Spitzname<input id="recovery-username" name="username" required /></label>
+          <label for="recovery-set">Offline-Recovery-Set<input id="recovery-set" name="recovery_set" required /></label>
+          <button class="primary" type="submit">Recovery-Set prüfen</button>
         </form>
         <form class="login-form hidden" id="register-form" autocomplete="username">
           <p class="step-label">Konto anlegen</p>
@@ -38,9 +44,12 @@
           <label class="check-line" for="register-accepted-terms"><input id="register-accepted-terms" name="accepted_terms" type="checkbox" required /><span>Ich akzeptiere Datenschutz und Nutzungsbedingungen.</span></label>
           <button class="primary" type="submit">Passkey einrichten und Konto erstellen</button>
         </form>
-        <button type="button" class="guest-button" id="guest-access-button">Ohne Konto ausprobieren</button>
-        <p class="guest-hint" id="guest-hint">Der Gastzugang ist auf 24 Stunden begrenzt und hat keine Wiederherstellung.</p>
-        <div class="links"><button type="button" class="link-button" id="auth-mode-toggle">Konto anlegen</button><a class="link-button" href="/">Zur Startseite</a></div>
+        <section class="guest-access" aria-labelledby="guest-access-title">
+          <p id="guest-access-title">Ohne Konto ausprobieren</p>
+          <button type="button" class="guest-button" id="guest-access-button">Als Gast starten</button>
+          <p class="guest-hint" id="guest-hint">Der Gastzugang ist auf 24 Stunden begrenzt und hat keine Wiederherstellung.</p>
+        </section>
+        <div class="links"><button type="button" class="link-button" id="auth-mode-toggle">Konto anlegen</button><button type="button" class="link-button" id="recovery-mode-toggle">Passwort/Passkey vergessen</button><a class="link-button" href="/">Zur Startseite</a></div>
         <p class="status" id="status" role="status"></p>
       </section>
     </main>
@@ -48,6 +57,6 @@
       <span>© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
       <nav aria-label="Weiterführende Informationen"><a href="/app/vision/">Vision</a><a href="/#motivation">Über uns</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/">Startseite</a></nav>
     </footer>
-    <script src="/app/auth/auth.js?v=20260718-02"></script>
+    <script src="/app/auth/auth.js?v=20260720-01"></script>
   </body>
 </html>

@@ -42,8 +42,8 @@
       a { color: inherit; }
       .shell { width: min(1180px, calc(100% - 40px)); margin: 0 auto; }
       header { display: flex; align-items: center; justify-content: space-between; min-height: 88px; border-bottom: 1px solid var(--line); }
-      .brand { font-size: .86rem; font-weight: 800; letter-spacing: .24em; text-transform: uppercase; text-decoration: none; }
-      .brand span { color: var(--cyan); }
+      .brand { display: inline-flex; align-items: center; text-decoration: none; }
+      .brand img { display: block; width: min(270px, 58vw); height: auto; border-radius: 7px; }
       .status { display: inline-flex; align-items: center; gap: 9px; color: var(--muted); font-size: .82rem; }
       .status::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: #45e6a8; box-shadow: 0 0 16px rgba(69, 230, 168, .9); }
       .hero { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr); gap: clamp(30px, 7vw, 100px); align-items: center; min-height: 650px; padding: 70px 0 84px; }
@@ -84,7 +84,7 @@
   <body>
     <div class="shell">
       <header>
-        <a class="brand" href="/" aria-label="GerNetiX homepage">GerNeti<span>X</span></a>
+        <a class="brand" href="/" aria-label="GerNetiX homepage"><img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX"></a>
         <div class="status"><span>Platform in ontwikkeling</span></div>
       </header>
 

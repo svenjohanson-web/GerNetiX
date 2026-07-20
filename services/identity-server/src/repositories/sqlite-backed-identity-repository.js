@@ -18,6 +18,7 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
         externalIdentities: "external_identities",
         verificationTokens: "verification_tokens",
         passwordResetTokens: "password_reset_tokens",
+        offlineRecoveryTransactions: "offline_recovery_transactions",
         sessions: "sessions",
       },
     }), clock);
@@ -33,8 +34,11 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
   markVerificationTokenUsed(tokenId) { const result = super.markVerificationTokenUsed(tokenId); this.persist(); return result; }
   createPasswordResetToken(token) { const result = super.createPasswordResetToken(token); this.persist(); return result; }
   markPasswordResetTokenUsed(tokenId) { const result = super.markPasswordResetTokenUsed(tokenId); this.persist(); return result; }
+  createOfflineRecoveryTransaction(token) { const result = super.createOfflineRecoveryTransaction(token); this.persist(); return result; }
+  markOfflineRecoveryTransactionUsed(tokenId) { const result = super.markOfflineRecoveryTransactionUsed(tokenId); this.persist(); return result; }
   createSession(input) { const result = super.createSession(input); this.persist(); return result; }
   revokeSession(sessionId) { const result = super.revokeSession(sessionId); this.persist(); return result; }
+  revokeSessionsByUserId(userId) { const result = super.revokeSessionsByUserId(userId); this.persist(); return result; }
 
   persist() {
     const state = {
@@ -43,6 +47,7 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
       externalIdentities: Array.from(this.externalIdentities.values()),
       verificationTokens: Array.from(this.verificationTokens.values()),
       passwordResetTokens: Array.from(this.passwordResetTokens.values()),
+      offlineRecoveryTransactions: Array.from(this.offlineRecoveryTransactions.values()),
       sessions: Array.from(this.sessions.values()),
     };
     this.store.save(state);
@@ -51,6 +56,7 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
     this.store.replaceCollection?.("external_identities", state.externalIdentities, "id");
     this.store.replaceCollection?.("verification_tokens", state.verificationTokens, "id");
     this.store.replaceCollection?.("password_reset_tokens", state.passwordResetTokens, "id");
+    this.store.replaceCollection?.("offline_recovery_transactions", state.offlineRecoveryTransactions, "id");
     this.store.replaceCollection?.("sessions", state.sessions, "id");
     if (typeof this.store.replaceTable === "function") {
       this.store.replaceTable("identity_user_accounts", state.userAccounts, identityColumns([
@@ -68,6 +74,9 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
       this.store.replaceTable("identity_password_reset_tokens", state.passwordResetTokens, identityColumns([
         "id", "user_id", "token_hash", "expires_at", "used_at", "created_at",
       ]));
+      this.store.replaceTable("identity_offline_recovery_transactions", state.offlineRecoveryTransactions, identityColumns([
+        "id", "user_id", "token_hash", "expires_at", "used_at", "created_at",
+      ]));
       this.store.replaceTable("identity_sessions", state.sessions, identityColumns([
         "id", "user_id", "token_hash", "jwt_id", "expires_at", "revoked_at", "created_at",
       ]));
@@ -82,6 +91,7 @@ function identitySchema() {
     `CREATE TABLE IF NOT EXISTS identity_external_identities (id TEXT PRIMARY KEY, user_id TEXT, provider TEXT, provider_user_id TEXT, provider_email TEXT, linked_at TEXT, last_login_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_verification_tokens (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, expires_at TEXT, used_at TEXT, created_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_password_reset_tokens (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, expires_at TEXT, used_at TEXT, created_at TEXT);`,
+    `CREATE TABLE IF NOT EXISTS identity_offline_recovery_transactions (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, expires_at TEXT, used_at TEXT, created_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_sessions (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, jwt_id TEXT, expires_at TEXT, revoked_at TEXT, created_at TEXT);`,
   ];
 }
@@ -113,6 +123,7 @@ function emptyState() {
     externalIdentities: [],
     verificationTokens: [],
     passwordResetTokens: [],
+    offlineRecoveryTransactions: [],
     sessions: [],
   };
 }

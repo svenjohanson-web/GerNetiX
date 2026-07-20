@@ -23,19 +23,23 @@ test("nested device-management routes survive a direct browser reload", () => {
   assert.equal(normalizeAppPath("/app/device-management/recovery/"), "/index.html");
 });
 
-test("provisioning requires an exclusive WLAN or USB choice before showing a workflow", () => {
+test("provisioning requires an exclusive WLAN, USB or FlashBox choice before showing a workflow", () => {
   const view = html.slice(html.indexOf('<section id="deviceProvisioningView"'), html.indexOf('<section id="deviceRecoveryView"'));
-  const methodInputs = view.match(/type="radio" name="deviceDiscoveryMethod" value="(?:wlan|usb)"/g) || [];
+  const methodInputs = view.match(/type="radio" name="deviceDiscoveryMethod" value="(?:wlan|usb|flashbox)"/g) || [];
 
-  assert.equal(methodInputs.length, 2);
+  assert.equal(methodInputs.length, 3);
   assert.doesNotMatch(methodInputs.join(" "), /checked/);
   assert.match(view, /id="provisioningWorkflowPanel" class="inventory-tools provisioning-tools hidden"/);
   assert.match(app, /querySelectorAll\('input\[name="deviceDiscoveryMethod"\]'\)/);
   assert.match(onboarding, /state\.discoveredDevices = \[\];[\s\S]*state\.avrBootloaderResult = null;/);
   assert.doesNotMatch(onboarding, /state\.inventoryEsp32Method = methods\[0\]/);
-  assert.match(view, /noch nie mit GerNetiX verbunden/);
-  assert.match(view, /minimale Inbetriebnahme-Provisionierung/);
-  assert.match(css, /grid-template-columns:\s*repeat\(2, minmax\(180px, 260px\)\)/);
+  assert.match(view, /ESP32-S3 Helper/);
+  assert.match(view, /Target-USB-Port/);
+  assert.match(view, /value="flashbox"/);
+  assert.match(view, /Per FlashBox/);
+  assert.match(onboarding, /new Set\(\["wlan", "usb", "flashbox"\]\)/);
+  assert.match(onboarding, /Board per FlashBox flashen/);
+  assert.match(css, /grid-template-columns:\s*repeat\(3, minmax\(180px, 260px\)\)/);
   assert.match(css, /min-height:\s*38px/);
   assert.doesNotMatch(view, /Vollständig provisioniertes Board im gleichen WLAN suchen|Erstverbindung, WLAN-Suche erfolglos/);
 });
@@ -73,7 +77,7 @@ test("WLAN workflow warns that the board must already be provisioned", () => {
   assert.match(html, /WLAN funktioniert nur mit bereits provisionierten Boards/);
   assert.match(html, /GerNetiX-Basissoftware bereits besitzen/);
   assert.match(onboarding, /setDiscoveryStatus\("hidden", ""\)/);
-  assert.match(onboarding, /Bitte zuerst WLAN oder USB als Provisioning-Weg waehlen/);
+  assert.match(onboarding, /Bitte zuerst WLAN, USB oder FlashBox als Provisioning-Weg waehlen/);
 });
 
 test("guided provisioning asks for a board name only after discovery", () => {

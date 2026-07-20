@@ -79,6 +79,11 @@ test("der öffentliche Lesezugang kann keine Release-Veröffentlichung auslösen
   assert.equal(brandLogo.headers.get("content-type"), "image/png");
   assert.ok((await brandLogo.arrayBuffer()).byteLength > 1_000);
 
+  const brandWordmark = await fetch(`http://127.0.0.1:${port}/gernetix-wordmark.png`);
+  assert.equal(brandWordmark.status, 200);
+  assert.equal(brandWordmark.headers.get("content-type"), "image/png");
+  assert.ok((await brandWordmark.arrayBuffer()).byteLength > 1_000);
+
   const forbidden = await fetch(`http://127.0.0.1:${port}/api/internal/public-demos`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },

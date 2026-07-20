@@ -288,6 +288,23 @@ Mehrere Pairing-Kanaele sind erlaubt:
 - `ide_pairing_code`
 
 Alle Kanaele erzeugen dasselbe fachliche Ergebnis: `AccountDevice`, `DeviceOwnership` und eine abgeschlossene `DevicePairingSession`.
+
+### Flashbox als kaufbares Inventar-Geraet
+
+Die Flashbox ist kein frei erfassbares Zielboard, sondern ein gekauftes und inventarisiertes GerNetiX-Werkzeuggeraet. Sie wird im Hardware Catalog als eigene Klasse `flashbox` gefuehrt und im Account als konkrete Einheit mit Seriennummer, Besitzstatus, Firmwareversion, Updatezustand und Trust-State angezeigt.
+
+Fuer Provisioning- und Flash-Ablaeufe gilt:
+
+- Die Transportwahl unterscheidet mindestens `native_mobile`, `wlan` und `flashbox`.
+- Wird `flashbox` gewaehlt, muss der Nutzer eine konkrete inventarisierte Flashbox seines Accounts auswaehlen.
+- Die UI darf keine manuelle Anlage einer Flashbox anbieten. Wenn keine Flashbox vorhanden ist, fuehrt sie zu "Flashbox kaufen" oder "gekaufte Flashbox aktivieren".
+- Selbst gebaute Hardware darf als Community-/Zielhardware erfasst werden, aber nicht als GerNetiX-Flashbox mit Flashbox-Trust oder Flashbox-Capabilities.
+- Flashbox-Inventory entsteht nur aus Webshop-/Produktions-/Provisioning-Kontext oder durch explizite Admin-/Support-Korrektur.
+
+Das dazugehoerige logische Datenmodell steht in [GerNetiX Flashbox - Inventar- und Katalog-Datenmodell](flashbox-inventory-data-model.md).
+
+Das uebergreifende Zusammenspiel von Identity, Hardware Catalog, Webshop, Provisioning Tool, Device Management, Firmware-Artefakten und Recovery ist in [GerNetiX Flashbox - Systemzusammenspiel](flashbox-system-integration.md) festgelegt.
+
 ## Traceability
 
 Business-Ziele:

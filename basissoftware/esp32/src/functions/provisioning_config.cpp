@@ -10,50 +10,12 @@
 
 #include "basissoftware/config.h"
 #include "basissoftware/feedback.h"
+#include "gernetix/runtime_core.h"
 
 namespace {
 constexpr const char *TAG = "provisioning";
 constexpr const char *NVS_NAMESPACE = "prov";
 constexpr size_t ECDSA_SIGNATURE_SIZE = 64;
-
-void copyString(char *target, size_t targetSize, const char *source) {
-  if (target == nullptr || targetSize == 0) {
-    return;
-  }
-  std::snprintf(target, targetSize, "%s", source == nullptr ? "" : source);
-}
-
-bool isHostnameChar(char value) {
-  return (value >= 'a' && value <= 'z') ||
-         (value >= '0' && value <= '9') ||
-         value == '-';
-}
-
-char toLowerAscii(char value) {
-  return value >= 'A' && value <= 'Z' ? static_cast<char>(value - 'A' + 'a') : value;
-}
-
-void appendHostnamePart(char *target, size_t targetSize, size_t &written, const char *value) {
-  if (target == nullptr || targetSize == 0 || value == nullptr) {
-    return;
-  }
-  bool previousDash = written == 0 || target[written - 1] == '-';
-  for (const char *cursor = value; *cursor != '\0' && written + 1 < targetSize; cursor++) {
-    char next = toLowerAscii(*cursor);
-    if (!isHostnameChar(next)) {
-      next = '-';
-    }
-    if (next == '-' && previousDash) {
-      continue;
-    }
-    target[written++] = next;
-    previousDash = next == '-';
-  }
-  while (written > 0 && target[written - 1] == '-') {
-    written--;
-  }
-  target[written] = '\0';
-}
 
 std::string findStringValue(const std::string &payload, const char *key) {
   const std::string quotedKey = std::string("\"") + key + "\"";
@@ -162,105 +124,18 @@ esp_err_t setNvsString(nvs_handle_t handle, const char *key, const std::string &
 void readNvsString(nvs_handle_t handle, const char *key, char *target, size_t targetSize) {
   size_t length = targetSize;
   if (nvs_get_str(handle, key, target, &length) != ESP_OK) {
-    copyString(target, targetSize, "");
-  }
-}
-
-std::string escapeJsonString(const char *value) {
-  std::string escaped;
-  const char *safeValue = value == nullptr ? "" : value;
-  for (const char *cursor = safeValue; *cursor != '\0'; cursor++) {
-    switch (*cursor) {
-      case '"':
-        escaped += "\\\"";
-        break;
-      case '\\':
-        escaped += "\\\\";
-        break;
-      case '\n':
-        escaped += "\\n";
-        break;
-      case '\r':
-        escaped += "\\r";
-        break;
-      case '\t':
-        escaped += "\\t";
-        break;
-      default:
-        escaped.push_back(*cursor);
-        break;
-    }
-  }
-  return escaped;
-}
-
-void appendJsonString(char *target, size_t targetSize, size_t &written, const char *key, const char *value) {
-  const std::string escapedValue = escapeJsonString(value);
-  const int result = std::snprintf(
-      target + written,
-      targetSize > written ? targetSize - written : 0,
-      "%s\"%s\":\"%s\"",
-      written > 1 ? "," : "",
-      key,
-      escapedValue.c_str());
-  if (result > 0) {
-    written += static_cast<size_t>(result);
-    if (written >= targetSize) {
-      written = targetSize - 1;
-    }
-  }
-}
-
-void appendJsonBool(char *target, size_t targetSize, size_t &written, const char *key, bool value) {
-  const int result = std::snprintf(
-      target + written,
-      targetSize > written ? targetSize - written : 0,
-      "%s\"%s\":%s",
-      written > 1 ? "," : "",
-      key,
-      value ? "true" : "false");
-  if (result > 0) {
-    written += static_cast<size_t>(result);
-    if (written >= targetSize) {
-      written = targetSize - 1;
-    }
+    gernetix::runtime::copyString(target, targetSize, "");
   }
 }
 
 void writeProvisioningNameValue(char *target, size_t targetSize, const ProvisioningConfig &config) {
-  if (target == nullptr || targetSize == 0) {
-    return;
-  }
-  if (config.serialNumber[0] != '\0') {
-    std::snprintf(target, targetSize, "GerNetiX %s", config.serialNumber);
-    return;
-  }
-  if (config.deviceId[0] != '\0') {
-    std::snprintf(target, targetSize, "GerNetiX %s", config.deviceId);
-    return;
-  }
-  copyString(target, targetSize, WIFI_STATION_HOSTNAME);
+  gernetix::runtime::writeGerNetixDeviceName(
+      target, targetSize, config.serialNumber, config.deviceId, WIFI_STATION_HOSTNAME);
 }
 
 void writeProvisioningHostnameValue(char *target, size_t targetSize, const ProvisioningConfig &config) {
-  if (target == nullptr || targetSize == 0) {
-    return;
-  }
-  target[0] = '\0';
-  if (config.serialNumber[0] == '\0' && config.deviceId[0] == '\0') {
-    copyString(target, targetSize, WIFI_STATION_HOSTNAME);
-    return;
-  }
-  size_t written = 0;
-  appendHostnamePart(target, targetSize, written, "gernetix");
-  if (written + 1 < targetSize) {
-    target[written++] = '-';
-    target[written] = '\0';
-  }
-  appendHostnamePart(target, targetSize, written, config.serialNumber[0] != '\0' ? config.serialNumber : config.deviceId);
-  if (written == 0) {
-    copyString(target, targetSize, WIFI_STATION_HOSTNAME);
-  }
+  gernetix::runtime::writeGerNetixHostname(
+      target, targetSize, config.serialNumber, config.deviceId, WIFI_STATION_HOSTNAME);
 }
 
 constexpr char BASE64_ALPHABET[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
@@ -553,42 +428,32 @@ size_t writeProvisioningStatusJson(char *target, size_t targetSize) {
   char hostname[32] = {};
   writeProvisioningNameValue(deviceName, sizeof(deviceName), *config);
   writeProvisioningHostnameValue(hostname, sizeof(hostname), *config);
-  size_t written = 0;
-  written += std::snprintf(
-      target,
-      targetSize,
-      "\"provisioningState\":\"%s\"",
-      config->provisioned ? "provisioned" : "not_configured");
-  if (written >= targetSize) {
-    target[targetSize - 1] = '\0';
-    std::free(config);
-    return targetSize - 1;
-  }
-
-  appendJsonString(target, targetSize, written, "displayName", deviceName);
-  appendJsonString(target, targetSize, written, "hostname", hostname);
-  appendJsonString(target, targetSize, written, "deviceId", config->deviceId);
-  appendJsonString(target, targetSize, written, "serialNumber", config->serialNumber);
-  appendJsonString(target, targetSize, written, "hardwareProfileId", config->hardwareProfileId);
-  appendJsonString(target, targetSize, written, "firmwareVersion", config->firmwareVersion);
-  appendJsonString(target, targetSize, written, "firmwareBasis", config->firmwareBasis);
-  appendJsonString(target, targetSize, written, "credentialId", config->credentialId);
-  appendJsonString(target, targetSize, written, "credentialType", config->credentialType);
-  appendJsonString(target, targetSize, written, "keyReference", config->keyReference);
-  appendJsonString(target, targetSize, written, "public_key_pem", config->devicePublicKeyPem);
-  appendJsonString(target, targetSize, written, "deviceManagementUrl", config->deviceManagementUrl);
-  appendJsonString(target, targetSize, written, "buildDeployUrl", config->buildDeployUrl);
-  appendJsonString(target, targetSize, written, "mqttBrokerUrl", config->mqttBrokerUrl);
-  appendJsonString(target, targetSize, written, "provisioningBatchId", config->provisioningBatchId);
-  appendJsonString(target, targetSize, written, "provisionedBy", config->provisionedBy);
-  appendJsonString(target, targetSize, written, "capabilities", config->capabilities);
-  appendJsonBool(target, targetSize, written, "hasDevicePrivateKey", config->hasDevicePrivateKey);
-  appendJsonBool(target, targetSize, written, "hasMqttClientCertificate", config->hasMqttClientCertificate);
-  appendJsonBool(target, targetSize, written, "hasOtaSigningPublicKey", config->hasOtaSigningPublicKey);
-  appendJsonString(target, targetSize, written, "authenticityProof", config->hasDevicePrivateKey ? "ready" : "missing_device_private_key");
-  target[written] = '\0';
+  gernetix::runtime::JsonWriter writer{target, targetSize, 0, false};
+  target[0] = '\0';
+  gernetix::runtime::jsonAppendString(writer, "provisioningState", config->provisioned ? "provisioned" : "not_configured");
+  gernetix::runtime::jsonAppendString(writer, "displayName", deviceName);
+  gernetix::runtime::jsonAppendString(writer, "hostname", hostname);
+  gernetix::runtime::jsonAppendString(writer, "deviceId", config->deviceId);
+  gernetix::runtime::jsonAppendString(writer, "serialNumber", config->serialNumber);
+  gernetix::runtime::jsonAppendString(writer, "hardwareProfileId", config->hardwareProfileId);
+  gernetix::runtime::jsonAppendString(writer, "firmwareVersion", config->firmwareVersion);
+  gernetix::runtime::jsonAppendString(writer, "firmwareBasis", config->firmwareBasis);
+  gernetix::runtime::jsonAppendString(writer, "credentialId", config->credentialId);
+  gernetix::runtime::jsonAppendString(writer, "credentialType", config->credentialType);
+  gernetix::runtime::jsonAppendString(writer, "keyReference", config->keyReference);
+  gernetix::runtime::jsonAppendString(writer, "public_key_pem", config->devicePublicKeyPem);
+  gernetix::runtime::jsonAppendString(writer, "deviceManagementUrl", config->deviceManagementUrl);
+  gernetix::runtime::jsonAppendString(writer, "buildDeployUrl", config->buildDeployUrl);
+  gernetix::runtime::jsonAppendString(writer, "mqttBrokerUrl", config->mqttBrokerUrl);
+  gernetix::runtime::jsonAppendString(writer, "provisioningBatchId", config->provisioningBatchId);
+  gernetix::runtime::jsonAppendString(writer, "provisionedBy", config->provisionedBy);
+  gernetix::runtime::jsonAppendString(writer, "capabilities", config->capabilities);
+  gernetix::runtime::jsonAppendBool(writer, "hasDevicePrivateKey", config->hasDevicePrivateKey);
+  gernetix::runtime::jsonAppendBool(writer, "hasMqttClientCertificate", config->hasMqttClientCertificate);
+  gernetix::runtime::jsonAppendBool(writer, "hasOtaSigningPublicKey", config->hasOtaSigningPublicKey);
+  gernetix::runtime::jsonAppendString(writer, "authenticityProof", config->hasDevicePrivateKey ? "ready" : "missing_device_private_key");
   std::free(config);
-  return written;
+  return writer.written;
 }
 
 esp_err_t writeChallengeProofJson(const char *payload, size_t payloadLength, char *target, size_t targetSize) {
@@ -616,15 +481,14 @@ esp_err_t writeChallengeProofJson(const char *payload, size_t payloadLength, cha
       canonical.c_str(), canonical.size(), signature, sizeof(signature));
   if (signatureStatus != ESP_OK) return signatureStatus;
 
-  size_t written = 0;
+  gernetix::runtime::JsonWriter writer{target, targetSize, 0, false};
   target[0] = '\0';
-  appendJsonString(target, targetSize, written, "device_id", config.deviceId);
-  appendJsonString(target, targetSize, written, "serial_number", config.serialNumber);
-  appendJsonString(target, targetSize, written, "credential_id", config.credentialId);
-  appendJsonString(target, targetSize, written, "challenge_id", challengeId.c_str());
-  appendJsonString(target, targetSize, written, "algorithm", "ECDSA_P256_SHA256");
-  appendJsonString(target, targetSize, written, "signature", signature);
-  target[written] = '\0';
+  gernetix::runtime::jsonAppendString(writer, "device_id", config.deviceId);
+  gernetix::runtime::jsonAppendString(writer, "serial_number", config.serialNumber);
+  gernetix::runtime::jsonAppendString(writer, "credential_id", config.credentialId);
+  gernetix::runtime::jsonAppendString(writer, "challenge_id", challengeId.c_str());
+  gernetix::runtime::jsonAppendString(writer, "algorithm", "ECDSA_P256_SHA256");
+  gernetix::runtime::jsonAppendString(writer, "signature", signature);
 
   feedbackInfo(TAG, "Challenge proof created for %s", config.deviceId);
   return ESP_OK;

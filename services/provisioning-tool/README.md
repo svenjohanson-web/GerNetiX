@@ -2,12 +2,13 @@
 
 MVP fuer das GerNetiX Provisioning Tool.
 
-Das Tool unterstuetzt die interne Erstinbetriebnahme von ProcessorBoards. Es erzeugt einen nachvollziehbaren Provisioning-Datensatz, bereitet Device-Credentials vor, waehlt ein ProcessorBoard aus dem Hardware-Katalog, leitet daraus das serverseitig gespeicherte Basissoftware-Firmware-Artefakt ab und beschreibt den Flash-Schritt als sicheren Plan. Es ist nicht die fachliche Quelle der Wahrheit fuer Device Management, sondern bereitet den Hersteller-Register-Auftrag vor.
+Das Tool unterstuetzt die interne Erstinbetriebnahme von ProcessorBoards und die Register-/Pairing-Vorbereitung kaufbarer GerNetiX-Flashboxen. Es erzeugt einen nachvollziehbaren Provisioning-Datensatz, bereitet Device-Credentials vor, waehlt das Ziel aus dem Hardware-Katalog, leitet fuer ProcessorBoards das serverseitig gespeicherte Basissoftware-Firmware-Artefakt ab und beschreibt den Flash-Schritt als sicheren Plan. Es ist nicht die fachliche Quelle der Wahrheit fuer Device Management, sondern bereitet den Hersteller-Register-Auftrag vor.
 
 ## Zweck
 
 - konkrete GerNetiX-Boards fuer das Hersteller-Register vorbereiten
 - ProcessorBoard aus dem Hardware-Katalog auswaehlen
+- GerNetiX-Flashbox als eigene kaufbare Hardwareklasse auswaehlen
 - Basissoftware-/Factory-Firmware-Artefakt aus dem ProcessorBoard ableiten
 - Seriennummer, Hardwareprofil, Charge und Firmwarestand erfassen
 - Device-ID und Credential-Referenz erzeugen
@@ -17,6 +18,7 @@ Das Tool unterstuetzt die interne Erstinbetriebnahme von ProcessorBoards. Es erz
 - USB-Flash-Paket mit Factory-Provisioning-Header fuer ein serverseitiges Basissoftware-Artefakt erzeugen
 - Flash-Plan mit Recovery-Hinweisen erzeugen
 - erfolgreich provisionierte Devices im Device Management registrieren
+- Flashboxen als kaufbare, claimbare Inventar-Geraete vorbereiten, ohne einen Selbstbau-Pfad anzubieten
 - Support- und Reklamationsnachvollziehbarkeit vorbereiten
 
 ## MVP-Implementierung
@@ -60,6 +62,28 @@ Die Factory-HMI darf keine Firmware-Dateien vom Bedienrechner hochladen. Sie zei
 Der physische USB-Flash laeuft direkt im Browser per Web Serial und `esptool-js`. Der Server startet dafuer keinen lokalen Flash-Prozess. Er liefert nur das Firmware-Binary aus dem Artifact Store und speichert danach das Ergebnis, das die HMI meldet. Die Oberflaeche zeigt Progress Bar, aktuelle Phase und Logzeilen des Browser-Flashs.
 
 Nach dem Flash startet das Board den lokalen Device-Webserver. Die HMI sendet Identitaet und Trust-Anker, empfaengt den Board-Public-Key, laesst ihn durch die konfigurierte Device-CA zertifizieren, schreibt das Client-Zertifikat zurueck und fordert anschließend eine signierte Besitz-Challenge an.
+
+## Flashbox-Register/Pairing im Tool
+
+Die HMI unterscheidet im ersten Schritt zwischen `ESP32 / Zielboard` und `GerNetiX Flashbox`.
+
+Bei `ESP32 / Zielboard` bleibt der bisherige Ablauf aktiv: ProcessorBoard waehlen, Firmware-Artefakt pruefen, per Browser-Web-Serial flashen, Kennung auf dem Board speichern und Session abschliessen.
+
+Bei `GerNetiX Flashbox` wird eine konkrete Flashbox-Produktklasse aus dem Hardware Catalog gewaehlt. Die Session enthaelt `hardware_class = flashbox`, `flashbox_id`, Seriennummer, Purchase-/Inventory-Policy und Flashbox-Capabilities wie `flashbox.self_update`, `flashbox.usb_otg_host` und `flashbox.target_flash`. Die UI bietet keinen Weg an, eine selbst gebaute Flashbox als GerNetiX-Flashbox anzulegen. Ist der Flashbox-Modus gewaehlt, ist der Zielboard-Web-Serial-Flash deaktiviert; der Schritt dient zunaechst Register, Pairing und spaeterem Inventory-Claim.
+
+Die Flashbox-Firmware selbst ist ein eigenes Firmwarepaket mit eigener Update- und Recovery-Strategie. Sie wird nicht still ueber den bestehenden Basissoftware-Flashpfad behandelt. Der Hardware Catalog muss fuer Flashboxen ein `factory_firmware_artifact` liefern; im lokalen Fallback ist das `firmware_artifact.flashbox_factory.latest` mit `source = public_signed_manifest`.
+
+Der Kopierschutz-/Echtheitsvertrag ist asymmetrisch:
+
+- der Device Private Key liegt auf der Flashbox und wird nicht exportiert,
+- das Provisioning Tool und Device Management arbeiten nur mit Public Key, Zertifikat/Fingerprint und Seriennummer,
+- eine per WLAN sichtbare Flashbox wird erst nach `wlan_visible_challenge` und `challenge_signature` als echt akzeptiert,
+- ein Kauf-/Claim-Code bleibt Fallback und ersetzt nicht den kryptographischen Nachweis, wenn die Flashbox erreichbar ist,
+- das Flashbox-Factory-Manifest referenziert den GerNetiX Release Public Key, aber enthaelt keine privaten GerNetiX-Schluessel.
+
+## Admin-Tool-Abgrenzung
+
+Das Provisioning Tool bleibt in diesem Stand ein eigenes privates Factory-/Support-Werkzeug. Das Admin Tool verlinkt es, integriert aber den Ablauf noch nicht nativ. Eine spaetere Integration ins Admin Tool ist sinnvoll, sobald Berechtigungen, Audit, Claim-Code-Verwaltung und Device-/Inventory-Sichten gemeinsam entschieden sind.
 
 ## Einheitlicher Runtime-Vertrag
 

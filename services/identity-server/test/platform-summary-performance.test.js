@@ -4,7 +4,7 @@ const path = require("node:path");
 const test = require("node:test");
 
 const devServer = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
-const platformSummary = devServer.match(/async function handlePlatformSummary[\s\S]*?\n}\n\nasync function/)?.[0] || "";
+const platformSummary = devServer.match(/async function handlePlatformSummary[\s\S]*?\r?\n}\r?\n\r?\nfunction externalLoginMessage/)?.[0] || "";
 
 test("loads independent platform summary dependencies concurrently", () => {
   assert.match(platformSummary, /const projectsPromise = loadUserIdeProjects/);

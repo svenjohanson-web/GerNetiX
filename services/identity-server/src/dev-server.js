@@ -87,6 +87,7 @@ const demoEmail = process.env.DEMO_EMAIL || "demo@gernetix.local";
 const demoPassword = process.env.DEMO_PASSWORD || "demo-passwort";
 const defaultAccountPlan = process.env.GERNETIX_DEFAULT_ACCOUNT_PLAN || "premium_demo";
 const passkeyChallenges = new Map();
+const offlineRecoveryAttempts = new Map();
 const runtimeStreamHub = createRuntimeStreamHub();
 const projectServerBaseUrl = process.env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800";
 const telemetryServerBaseUrl = process.env.TELEMETRY_SERVER_BASE_URL || "http://127.0.0.1:5600";
@@ -1179,6 +1180,31 @@ async function routeRequest(req, res) {
     return;
   }
 
+  if (req.method === "POST" && url.pathname === "/api/platform/flashbox/claim") {
+    const session = readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handlePlatformFlashboxClaim(req, res, session);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/recovery/offline/start") {
+    await handleOfflineRecoveryStart(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/recovery/offline/passkey/options") {
+    await handleOfflineRecoveryPasskeyOptions(req, res);
+    return;
+  }
+
+  if (req.method === "POST" && url.pathname === "/api/recovery/offline/passkey/verify") {
+    await handleOfflineRecoveryPasskeyVerify(req, res);
+    return;
+  }
+
   const dashboardRoute = url.pathname === "/app/dashboard" || url.pathname.startsWith("/app/dashboard/");
   if (dashboardRoute) {
     if (!readSession(req)) {
@@ -1230,6 +1256,21 @@ async function routeRequest(req, res) {
     return;
   }
 
+  if (url.pathname === "/shop" || url.pathname === "/shop/") {
+    serveStatic(res, publicDir, "/shop/index.html");
+    return;
+  }
+
+  if (url.pathname === "/produkte" || url.pathname === "/produkte/") {
+    serveStatic(res, publicDir, "/produkte/index.html");
+    return;
+  }
+
+  if (url.pathname === "/downloads" || url.pathname === "/downloads/") {
+    serveStatic(res, publicDir, "/downloads/index.html");
+    return;
+  }
+
   if (url.pathname === "/") {
     serveStatic(res, publicDir, "/index.html");
     return;
@@ -1259,8 +1300,145 @@ function passkeyChallengeSubject(username) {
   return String(username || "").trim().toLowerCase() || "__discoverable_passkey__";
 }
 
+function offlineRecoveryChallengeSubject(token) {
+  return `offline-recovery:${crypto.createHash("sha256").update(String(token || "")).digest("base64url")}`;
+}
+
 function toBase64Url(bytes) {
   return Buffer.from(bytes).toString("base64url");
+}
+
+async function handleOfflineRecoveryStart(req, res) {
+  const body = await readJsonBody(req);
+  const username = String(body.username || "");
+  const rateLimit = offlineRecoveryRateLimit(req, username);
+  if (rateLimit.limited) {
+    await recordOfflineRecoveryEvent(req, "offline_recovery_rate_limited", "warning", "Offline-Recovery wurde wegen zu vieler Fehlversuche begrenzt.", username);
+    sendJson(res, 429, { error: "offline_recovery_rate_limited", message: "Zu viele Recovery-Versuche. Bitte warte einige Minuten." });
+    return;
+  }
+  try {
+    const recovery = await auth.start_offline_recovery(username, String(body.recovery_set || ""));
+    clearOfflineRecoveryAttempts(rateLimit.key);
+    await recordOfflineRecoveryEvent(req, "offline_recovery_started", "info", "Offline-Recovery wurde vorbereitet.", username);
+    sendJson(res, 200, recovery);
+  } catch (error) {
+    recordOfflineRecoveryFailure(rateLimit.key);
+    await recordOfflineRecoveryEvent(req, "offline_recovery_failed", "warning", "Offline-Recovery-Set konnte nicht geprüft werden.", username, error);
+    sendJson(res, error.status || 401, { error: error.code || "offline_recovery_failed", message: "Recovery-Set konnte nicht geprüft werden." });
+  }
+}
+
+async function handleOfflineRecoveryPasskeyOptions(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const recoveryToken = String(body.recovery_token || "");
+    const account = auth.get_offline_recovery_account(recoveryToken);
+    const config = passkeyConfiguration(req);
+    const options = await generateRegistrationOptions({
+      rpName: "GerNetiX",
+      rpID: config.rpID,
+      userID: Buffer.from(account.id),
+      userName: account.username,
+      userDisplayName: account.username,
+      attestationType: "none",
+      authenticatorSelection: { residentKey: "required", userVerification: "required" },
+      excludeCredentials: account.passkey_credential_id ? [{ id: account.passkey_credential_id, transports: account.passkey_transports || [] }] : [],
+    });
+    storePasskeyChallenge("offline-recovery", offlineRecoveryChallengeSubject(recoveryToken), options.challenge, config);
+    sendJson(res, 200, options);
+  } catch (error) {
+    sendJson(res, error.status || 401, { error: error.code || "offline_recovery_passkey_unavailable", message: "Neuer Passkey konnte nicht vorbereitet werden." });
+  }
+}
+
+async function handleOfflineRecoveryPasskeyVerify(req, res) {
+  try {
+    const body = await readJsonBody(req);
+    const recoveryToken = String(body.recovery_token || "");
+    auth.get_offline_recovery_account(recoveryToken);
+    const challenge = readPasskeyChallenge("offline-recovery", offlineRecoveryChallengeSubject(recoveryToken));
+    const verification = await verifyRegistrationResponse({
+      response: body.credential,
+      expectedChallenge: challenge.challenge,
+      expectedOrigin: challenge.config.origin,
+      expectedRPID: challenge.config.rpID,
+      requireUserVerification: true,
+    });
+    if (!verification.verified || !verification.registrationInfo) throw new Error("offline_recovery_passkey_not_verified");
+    const credential = verification.registrationInfo.credential;
+    const completed = await auth.complete_offline_recovery(recoveryToken, {
+      credentialId: credential.id,
+      publicKey: toBase64Url(credential.publicKey),
+      counter: credential.counter,
+      transports: credential.transports || [],
+    });
+    evictCachedSessionsForUser(completed.account.user_id);
+    await recordOfflineRecoveryEvent(req, "offline_recovery_passkey_replaced", "warning", "Offline-Recovery hat den Login-Passkey ersetzt.", completed.account.username);
+    sessions.set(completed.session.token, { account: completed.account, expiresAt: completed.session.expires_at });
+    setSessionCookie(res, completed.session.token, completed.session.expires_at);
+    sendJson(res, 200, { account: completed.account, next: sanitizeNextPath(body.next) || "/app/dashboard/" });
+  } catch (error) {
+    sendJson(res, error.status || 401, { error: error.code || "offline_recovery_passkey_failed", message: "Zugang konnte nicht wiederhergestellt werden." });
+  }
+}
+
+function offlineRecoveryRateLimit(req, username) {
+  const now = Date.now();
+  const windowMs = 10 * 60 * 1000;
+  const maxAttempts = 5;
+  const key = `${clientAddress(req)}:${String(username || "").trim().toLowerCase()}`;
+  for (const [attemptKey, attempt] of offlineRecoveryAttempts.entries()) {
+    if (attempt.expiresAt <= now) offlineRecoveryAttempts.delete(attemptKey);
+  }
+  const attempt = offlineRecoveryAttempts.get(key);
+  return {
+    key,
+    limited: Boolean(attempt && attempt.count >= maxAttempts && attempt.expiresAt > now),
+    expiresAt: attempt?.expiresAt || now + windowMs,
+  };
+}
+
+function recordOfflineRecoveryFailure(key) {
+  const now = Date.now();
+  const windowMs = 10 * 60 * 1000;
+  const current = offlineRecoveryAttempts.get(key);
+  offlineRecoveryAttempts.set(key, {
+    count: current && current.expiresAt > now ? current.count + 1 : 1,
+    expiresAt: current && current.expiresAt > now ? current.expiresAt : now + windowMs,
+  });
+}
+
+function clearOfflineRecoveryAttempts(key) {
+  offlineRecoveryAttempts.delete(key);
+}
+
+function clientAddress(req) {
+  const forwarded = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
+  return forwarded || req.socket?.remoteAddress || "unknown";
+}
+
+function hashedAuditValue(value) {
+  return crypto.createHash("sha256").update(String(value || "")).digest("base64url");
+}
+
+function recordOfflineRecoveryEvent(req, eventType, severity, message, username, error = null) {
+  return recordSystemEvent({
+    severity,
+    source_service: "identity_server",
+    category: "authentication",
+    event_type: eventType,
+    message,
+    impact: eventType === "offline_recovery_passkey_replaced"
+      ? "Ein Konto hat seinen Login-Passkey über Offline-Recovery ersetzt; vorherige Sessions wurden widerrufen."
+      : "Offline-Recovery-Zugriffe werden begrenzt und ohne Recovery-Geheimnisse protokolliert.",
+    route: "/app/auth/",
+    details: {
+      username_hash: hashedAuditValue(String(username || "").trim().toLowerCase()),
+      client_hash: hashedAuditValue(clientAddress(req)),
+      ...(error ? { error_code: error.code || "offline_recovery_failed" } : {}),
+    },
+  });
 }
 
 async function handlePasskeyRegistrationOptions(req, res) {
@@ -3083,6 +3261,7 @@ function decorateUserIdeDevice(device) {
     node_name: device.node_name || "",
     hostname: device.hostname || device.node_name || "",
     hardware_profile_id: device.hardware_profile_id,
+    hardware_class: device.hardware_class || device.instance_configuration?.role || "",
     technical_capability_ids: device.technical_capability_ids || [],
     instance_configuration: device.instance_configuration || {},
     authenticity_status: device.authenticity_status,
@@ -3094,7 +3273,32 @@ function decorateUserIdeDevice(device) {
     build_target_label: buildTargetLabel(device),
     ownership_status: device.ownership_status,
     purchase_context_id: device.purchase_context_id || "",
+    hardware_unit_id: device.instance_configuration?.hardware_unit_id || "",
   };
+}
+
+async function handlePlatformFlashboxClaim(req, res, session) {
+  try {
+    const body = await readJsonBody(req);
+    const accountId = projectServerUserId(session);
+    const result = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/hardware-unit-claims`, {
+      method: "POST",
+      body: {
+        claim_code: requiredField(body.claim_code || body.claimCode, "claim_code"),
+        display_name: body.display_name || body.displayName || "GerNetiX Flashbox",
+      },
+    });
+    sendJson(res, 201, {
+      hardware_unit: result.hardware_unit,
+      device: decorateUserIdeDevice(result.account_device),
+    });
+  } catch (error) {
+    sendJson(res, error.status || 400, {
+      error: error.code || "flashbox_claim_failed",
+      message: error.message || "Flashbox konnte nicht inventarisiert werden.",
+      details: error.payload || {},
+    });
+  }
 }
 
 async function handleHardwareShopOrder(req, res, session) {
@@ -4176,10 +4380,16 @@ function readSession(req) {
   const token = readSessionToken(req);
   if (!token) return null;
   const session = sessions.get(token);
-  if (session && new Date(session.expiresAt).getTime() > Date.now()) {
-    return session;
-  }
   if (session) {
+    const resolved = auth.resolve_session_token(token);
+    if (resolved) {
+      const refreshedSession = {
+        account: resolved.account,
+        expiresAt: resolved.session.expires_at,
+      };
+      sessions.set(token, refreshedSession);
+      return refreshedSession;
+    }
     sessions.delete(token);
   }
   const resolved = auth.resolve_session_token(token);
@@ -4190,6 +4400,12 @@ function readSession(req) {
   };
   sessions.set(token, restoredSession);
   return restoredSession;
+}
+
+function evictCachedSessionsForUser(userId) {
+  for (const [token, session] of sessions.entries()) {
+    if (session.account?.user_id === userId) sessions.delete(token);
+  }
 }
 
 function readSessionToken(req) {

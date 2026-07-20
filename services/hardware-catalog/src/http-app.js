@@ -41,6 +41,11 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && path === `${prefix}/flashboxes`) {
+      sendJson(res, 200, { items: service.listFlashboxes() });
+      return;
+    }
+
     if (req.method === "GET" && path === `${prefix}/sensors`) {
       sendJson(res, 200, { items: service.listSensors() });
       return;

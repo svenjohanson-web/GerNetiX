@@ -31,6 +31,7 @@
 
       <nav id="mainMenu" class="tabs app-menu hidden" aria-label="Plattformbereiche">
         <a class="utility public-information-link" href="/">Startseite</a>
+        <a class="utility public-information-link" href="/app/auth/">Anmelden</a>
         <a href="/app/dashboard/" data-route="dashboard">Übersicht</a>
         <a href="/app/vision/" data-route="vision">Vision</a>
         <a href="/app/development-platform/" data-route="development-platform">Entwicklungsplattform</a>
@@ -38,6 +39,7 @@
         <a href="/app/device-management/" data-route="device-management">Geräte</a>
         <a class="utility" href="/app/builds/" data-route="builds">Betrieb</a>
         <a class="utility" href="/app/downloads/" data-route="downloads">Downloads</a>
+        <a class="utility public-information-link" href="/shop/">Webshop</a>
         <a class="utility" href="/app/billing/" data-route="billing">Billing</a>
         <a class="utility" href="/wissen/" data-route="knowledge">Wissensportal</a>
         <a class="utility public-information-link" href="/hilfe/">Hilfe</a>
@@ -440,6 +442,7 @@
                 <button id="buildButton" type="button" aria-describedby="ideActionReason">Build</button>
                 <button id="usbFlashButton" type="button" aria-describedby="ideActionReason">Per USB flashen</button>
                 <button id="otaFlashButton" type="button" aria-describedby="ideActionReason">OTA Flash</button>
+                <button id="flashBoxFlashButton" type="button" aria-describedby="ideActionReason">Per FlashBox flashen</button>
                 <button id="checkOtaConnectivityButton" type="button" aria-describedby="ideActionReason">Online prüfen</button>
               </div>
               <div class="ide-console-tabs" role="tablist" aria-label="Untere IDE-Ansicht">
@@ -487,7 +490,7 @@
         <section class="dashboard-grid">
           <button class="entry-card primary" type="button" data-open-route="/app/device-management/provisioning/">
             <span>Provisioning</span>
-            <strong>Boards per WLAN oder USB verbinden, registrieren und pairen</strong>
+            <strong>Boards per WLAN, USB oder FlashBox verbinden, registrieren und pairen</strong>
           </button>
           <button class="entry-card" type="button" data-open-route="/app/device-management/inventory/">
             <span>Inventar</span>
@@ -514,7 +517,7 @@
         </nav>
         <fieldset id="provisioningMethodChoice" class="panel provisioning-method-choice">
           <legend>Wie möchtest du das Board verbinden?</legend>
-          <p class="helper-text">Wähle USB, wenn du das Board noch nie mit GerNetiX verbunden hast, es per WLAN nicht gefunden wird oder bisher nur die minimale Inbetriebnahme-Provisionierung ausgeführt wurde. WLAN ist für bereits vollständig provisionierte und erreichbare Boards.</p>
+          <p class="helper-text">Wähle USB, wenn du das Board direkt am Rechner flashst. WLAN ist für bereits vollständig provisionierte und erreichbare Boards. FlashBox ist der neue dritte Weg: ein gekaufter ESP32-S3 Helper flasht das Zielboard über seinen Target-USB-Port.</p>
           <div class="provisioning-method-options">
             <label class="provisioning-method-option">
               <input type="radio" name="deviceDiscoveryMethod" value="wlan" />
@@ -526,6 +529,12 @@
               <input type="radio" name="deviceDiscoveryMethod" value="usb" />
               <span>
                 <strong>Per USB</strong>
+              </span>
+            </label>
+            <label class="provisioning-method-option">
+              <input type="radio" name="deviceDiscoveryMethod" value="flashbox" />
+              <span>
+                <strong>Per FlashBox</strong>
               </span>
             </label>
           </div>
@@ -888,10 +897,21 @@
             <div class="section-head inventory-overview-head">
               <div>
                 <p class="eyebrow">Deine Geräte</p>
-                <h3>Registrierte Boards</h3>
+                <h3>Registrierte Boards und Flashboxen</h3>
               </div>
               <span id="inventoryDeviceCount" class="inventory-count">0 Boards</span>
             </div>
+            <form id="flashboxClaimForm" class="flashbox-claim-form" aria-label="GerNetiX Flashbox inventarisieren">
+              <div>
+                <strong>Flashbox per Kauf-Code hinzufuegen</strong>
+                <p class="helper-text">Nutze den Claim-Code aus dem Webshop-Mock oder spaeter aus deiner Bestellung. Die Flashbox wird dann diesem Account zugeordnet.</p>
+              </div>
+              <label>Claim-Code
+                <input id="flashboxClaimCode" name="claim_code" type="text" placeholder="GNX-FB-..." autocomplete="off" />
+              </label>
+              <button class="primary" type="submit">Flashbox uebernehmen</button>
+            </form>
+            <div id="flashboxClaimStatus" class="flash-status hidden" role="status" aria-live="polite"></div>
             <section id="deviceList" class="device-list"></section>
           </section>
         </section>
@@ -907,6 +927,198 @@
         <section id="buildList" class="build-list"></section>
       </section>
 
+      <section id="shopView" class="view hidden">
+        <header class="shop-hero panel" aria-labelledby="shopTitle">
+          <div>
+            <p class="eyebrow">GerNetiX Webshop</p>
+            <h1 id="shopTitle">Hardware, Bundles und Lizenzen planen</h1>
+            <p>Der Shop ist als Mock aufgebaut: Du kannst Kategorien, Dummy-Produkte und Lizenzlogik ansehen. Checkout, Preise, echte Bestellungen und Zahlungen kommen spaeter.</p>
+          </div>
+          <span class="shop-status-badge">Mock</span>
+        </header>
+
+        <section class="shop-category-grid" aria-label="Shop-Kategorien">
+          <button class="entry-card primary" type="button" data-shop-category="software-licenses">
+            <span>Nutzungsrechte</span>
+            <strong>Software-Lizenzen</strong>
+            <p>Zeitgebundene Rechte fuer GerNetiX Home Server, Updates, Cloud-Funktionen, KI und Integrationen.</p>
+          </button>
+          <button class="entry-card" type="button" data-shop-category="hardware-bundles">
+            <span>Fertig kombiniert</span>
+            <strong>Hardware-Bundles</strong>
+            <p>Home-Server-Hardware oder Starterpakete mit vorbereiteter Software und passendem Zubehoer.</p>
+          </button>
+          <button class="entry-card" type="button" data-shop-category="flashbox">
+            <span>Initial flashen</span>
+            <strong>Flashbox</strong>
+            <p>Hilfsgeraet fuer blanke ESP32-Boards, wenn kein PC oder Mac verfuegbar ist.</p>
+          </button>
+          <button class="entry-card" type="button" data-shop-category="provisioned">
+            <span>Sofort starten</span>
+            <strong>Provisionierte Boards</strong>
+            <p>Boards mit vorbereiteter GerNetiX-Bootstrap-Firmware fuer WLAN oder BLE.</p>
+          </button>
+          <button class="entry-card" type="button" data-shop-category="accessories">
+            <span>Zubehoer</span>
+            <strong>Kabel und Sensorik</strong>
+            <p>USB-C-Kabel, Breadboards und erste Sensor-Sets fuer Lernprojekte.</p>
+          </button>
+          <button class="entry-card" type="button" data-shop-category="subscriptions">
+            <span>Account-Modell</span>
+            <strong>Premium-Abos</strong>
+            <p>Monatliche oder jaehrliche Premium-Nutzung; im Jahresabo kann die Home-Server-Nutzung enthalten sein.</p>
+          </button>
+        </section>
+
+        <section class="shop-layout">
+          <aside class="panel shop-product-navigation" aria-labelledby="shopProductNavigationTitle">
+            <p class="eyebrow">Produkte</p>
+            <h2 id="shopProductNavigationTitle">Auswahl</h2>
+            <nav aria-label="Produktnavigation">
+              <a class="active" href="#homeServerLicense">Home Server Software-Lizenz</a>
+              <a href="#homeServerBundle">Home Server Hardware-Bundle</a>
+              <a href="#premiumPlans">Premium-Abos</a>
+              <a href="#flashboxConfigurator">GerNetiX Flashbox</a>
+              <a href="#provisionedBoards">Vorbereitete ESP32-Boards</a>
+              <a href="#starterAccessories">Starter-Zubehoer</a>
+            </nav>
+          </aside>
+
+          <section class="shop-product-stack">
+            <article id="homeServerLicense" class="panel shop-product-card featured">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Software-Lizenz</p>
+                  <h2>GerNetiX Home Server Software</h2>
+                </div>
+                <span class="shop-status-badge">Dummy</span>
+              </div>
+              <p>Lizenzgebundene Nutzung des GerNetiX Home Servers fuer eigene oder vorhandene Hardware. Dieses Produkt ist nur ein sichtbarer Platzhalter ohne Kaufabwicklung.</p>
+              <section class="shop-offer-grid" aria-label="Home Server Lizenzangebote">
+                <article>
+                  <span>Einzellizenz</span>
+                  <strong>Home Server Lizenz - 12 Monate</strong>
+                  <p>Nutzungsrecht fuer Installation, Konfiguration, Updates, Cloud-Funktionen, KI und neue Integrationen.</p>
+                  <button type="button" disabled>Lizenz vormerken (bald)</button>
+                </article>
+                <article>
+                  <span>Premium enthalten</span>
+                  <strong>Premium jaehrlich inkl. Home Server</strong>
+                  <p>Bei jaehrlicher Premium-Abrechnung ist die Home-Server-Nutzung als Entitlement enthalten.</p>
+                  <button type="button" disabled>Abo ansehen (bald)</button>
+                </article>
+              </section>
+              <section class="shop-license-grid" aria-label="Lizenzzustand Home Server">
+                <article class="shop-license-state active">
+                  <h3>Lizenz aktiv</h3>
+                  <ul>
+                    <li>Home Server installieren</li>
+                    <li>neue Geraete hinzufuegen</li>
+                    <li>Server konfigurieren</li>
+                    <li>Updates erhalten</li>
+                    <li>Cloud-Funktionen nutzen</li>
+                    <li>KI nutzen</li>
+                    <li>neue Integrationen aktivieren</li>
+                  </ul>
+                </article>
+                <article class="shop-license-state expired">
+                  <h3>Lizenz abgelaufen</h3>
+                  <ul>
+                    <li>bestehende Geraete funktionieren weiter</li>
+                    <li>MQTT laeuft weiter</li>
+                    <li>Home Assistant laeuft weiter</li>
+                    <li>OTA fuer eingerichtete Modelle bleibt moeglich</li>
+                    <li>keine neuen Geraete, Integrationen, Cloud-/KI-Funktionen oder Feature-Updates</li>
+                  </ul>
+                </article>
+              </section>
+              <p class="shop-license-note"><strong>Bestandsschutz:</strong> Eine abgelaufene Lizenz legt das lokale Zuhause nicht lahm. Sie stoppt nur Erweiterung, Cloud-Komfort und neue kostenpflichtige Funktionen.</p>
+            </article>
+
+            <article id="homeServerBundle" class="panel shop-product-card">
+              <p class="eyebrow">Hardware-Bundle</p>
+              <h2>GerNetiX Home Server Hardware-Bundle</h2>
+              <p>Dummy-Bundle fuer Kunden, die die Home-Server-Software zusammen mit passender ausfuehrender Hardware kaufen moechten.</p>
+              <ul class="shop-inclusion-list">
+                <li>Home-Server-Hardware als vorbereitete Zielplattform</li>
+                <li>GerNetiX Home Server Software vorinstalliert oder installationsbereit</li>
+                <li>optionale Erstlaufzeit der Home-Server-Lizenz</li>
+                <li>spaetere Trennung von Hardware-Kauf und Software-Nutzungsrecht bleibt sichtbar</li>
+              </ul>
+              <button type="button" disabled>Bundle konfigurieren (bald)</button>
+            </article>
+
+            <article id="premiumPlans" class="panel shop-product-card">
+              <p class="eyebrow">Abo & Entitlements</p>
+              <h2>Premium monatlich oder jaehrlich</h2>
+              <section class="shop-offer-grid" aria-label="Premium Dummy-Angebote">
+                <article>
+                  <span>Monatlich</span>
+                  <strong>Premium monatlich</strong>
+                  <p>Dummy-Abo fuer Premium-Funktionen. Home Server kann spaeter separat als Lizenz oder Add-on gefuehrt werden.</p>
+                </article>
+                <article>
+                  <span>Jaehrlich</span>
+                  <strong>Premium jaehrlich</strong>
+                  <p>Dummy-Abo mit enthaltenem Nutzungsrecht fuer den GerNetiX Home Server.</p>
+                </article>
+              </section>
+              <button type="button" disabled>Premium vergleichen (bald)</button>
+            </article>
+
+            <article id="flashboxConfigurator" class="panel shop-product-card featured">
+              <div class="section-head">
+                <div>
+                  <p class="eyebrow">Mock-Konfigurator</p>
+                  <h2>GerNetiX FlashBox USB Helper konfigurieren</h2>
+                </div>
+                <span class="shop-status-badge">Stub</span>
+              </div>
+              <p>Die FlashBox ist als Produktplatzhalter fuer einen displaylosen ESP32-S3 Helper angelegt. Sie soll spaeter Zielboards ueber ihren Target-USB-Port initial oder im Recovery-Fall flashen.</p>
+              <form id="flashboxConfigForm" class="shop-configurator">
+                <label>Variante
+                  <select id="flashboxVariant" name="variant">
+                    <option value="starter">Starter - ein Board nach dem anderen flashen</option>
+                    <option value="lab">Lab - mehrere Boardtypen vorbereiten</option>
+                  </select>
+                </label>
+                <label>Verbindung zum Handy
+                  <select id="flashboxConnection" name="connection">
+                    <option value="ble">BLE gefuehrte Einrichtung</option>
+                    <option value="wifi">WLAN-Hotspot fuer Setup</option>
+                  </select>
+                </label>
+                <fieldset>
+                  <legend>Zubehoer</legend>
+                  <label class="check-line"><input type="checkbox" name="usb_cable" checked /> USB-C-Kabel beilegen</label>
+                  <label class="check-line"><input type="checkbox" name="esp32_adapter" /> ESP32-Adapterset vormerken</label>
+                </fieldset>
+              </form>
+              <section id="flashboxConfigSummary" class="shop-config-summary" aria-live="polite"></section>
+              <div class="button-row">
+                <button id="createFlashboxMockOrderButton" class="primary" type="button">Mock-Kauf erzeugen</button>
+                <button type="button" data-open-route="/app/device-management/provisioning/">Zum Provisioning</button>
+              </div>
+              <section id="flashboxMockOrderResult" class="shop-config-summary hidden" aria-live="polite"></section>
+            </article>
+
+            <article id="provisionedBoards" class="panel shop-product-card">
+              <p class="eyebrow">Produktkategorie</p>
+              <h2>Provisionierte ESP32-Boards</h2>
+              <p>Boards mit vorbereiteter Bootstrap-Firmware, damit iPhone und iPad ueber BLE oder WLAN-Setup weitermachen koennen.</p>
+              <button type="button" disabled>Produkte folgen</button>
+            </article>
+
+            <article id="starterAccessories" class="panel shop-product-card">
+              <p class="eyebrow">Produktkategorie</p>
+              <h2>Starter-Zubehoer</h2>
+              <p>Hier entstehen Kabel-, Sensor- und Lernsets, passend zu den gefuehrten GerNetiX-Projekten.</p>
+              <button type="button" disabled>Produkte folgen</button>
+            </article>
+          </section>
+        </section>
+      </section>
+
       <section id="billingView" class="view hidden">
         <div class="section-head">
           <div>
@@ -918,7 +1130,7 @@
       </section>
       <footer class="platform-footer">
         <span>© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
-        <nav aria-label="Weiterführende Informationen"><a href="/app/vision/">Vision</a><a href="/#motivation">Über uns</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/">Startseite</a></nav>
+        <nav aria-label="Weiterführende Informationen"><a href="/">Startseite</a><a href="/#motivation">Warum GerNetiX?</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav>
       </footer>
     </main>
 
@@ -936,6 +1148,6 @@
     <script src="/app/help-content.js?v=20260720-07"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
     <script src="/app/help-view.js?v=20260720-04"></script>
-    <script src="/app/app.js?v=20260720-02"></script>
+    <script src="/app/app.js?v=20260720-03"></script>
   </body>
 </html>

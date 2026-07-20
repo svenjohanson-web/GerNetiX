@@ -148,6 +148,43 @@ test("creates an offline recovery set once and stores only its hash", async () =
   assert.equal(Object.hasOwn(result.account, "offline_recovery_set_hash"), false);
 });
 
+test("offline recovery replaces the passkey, consumes its own token and revokes old sessions", async () => {
+  const { auth, repository } = createModule();
+  const created = await auth.create_passkey_account("recoverable-maker", {
+    credentialId: "old-credential-id", publicKey: "old-public-key", counter: 2, transports: ["internal"],
+  });
+  const recoverySet = await auth.create_offline_recovery_set(created.account.user_id);
+
+  await assert.rejects(
+    auth.start_offline_recovery("recoverable-maker", "wrong-recovery-set"),
+    /Recovery set is invalid/,
+  );
+
+  const recovery = await auth.start_offline_recovery("recoverable-maker", recoverySet.recovery_set);
+  const recoveryAccount = auth.get_offline_recovery_account(recovery.recovery_token);
+  assert.equal(recoveryAccount.id, created.account.user_id);
+  assert.equal(repository.passwordResetTokens.size, 0);
+  assert.equal(repository.offlineRecoveryTransactions.size, 1);
+
+  const completed = await auth.complete_offline_recovery(recovery.recovery_token, {
+    credentialId: "new-credential-id",
+    publicKey: "new-public-key",
+    counter: 0,
+    transports: ["usb"],
+  });
+  const stored = repository.findUserById(created.account.user_id);
+
+  assert.equal(completed.account.user_id, created.account.user_id);
+  assert.equal(stored.passkey_credential_id, "new-credential-id");
+  assert.equal(stored.passkey_public_key, "new-public-key");
+  assert.equal(auth.resolve_session_token(created.session.token), null);
+  assert.equal(auth.resolve_session_token(completed.session.token).account.user_id, created.account.user_id);
+  await assert.rejects(
+    auth.complete_offline_recovery(recovery.recovery_token, { credentialId: "again", publicKey: "again" }),
+    /Recovery token is invalid or expired/,
+  );
+});
+
 test("creates and logs in to a passkey-only base account without a password", async () => {
   const { auth, repository } = createModule();
   const created = await auth.create_passkey_account("passkey-maker", {
@@ -224,6 +261,30 @@ test("sqlite persistence retains only the offline recovery set hash", async () =
   assert.ok(stored.offline_recovery_set_confirmed_at);
   assert.ok(stored.offline_recovery_set_hash);
   assert.notEqual(stored.offline_recovery_set_hash, recovery.recovery_set);
+});
+
+test("sqlite persistence retains pending offline recovery transactions across reloads", async () => {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-recovery-transaction-"));
+  const sqlitePath = path.join(tempDir, "identity.sqlite");
+  const first = createDefaultIdentityModule({ persistenceBackend: "sqlite", sqlitePath });
+  const created = await first.create_passkey_account("persisted-recoverable-maker", {
+    credentialId: "old-credential-id", publicKey: "old-public-key", counter: 0, transports: ["internal"],
+  });
+  const recoverySet = await first.create_offline_recovery_set(created.account.user_id);
+  const recovery = await first.start_offline_recovery("persisted-recoverable-maker", recoverySet.recovery_set);
+
+  const second = createDefaultIdentityModule({ persistenceBackend: "sqlite", sqlitePath });
+  const completed = await second.complete_offline_recovery(recovery.recovery_token, {
+    credentialId: "persisted-new-credential-id",
+    publicKey: "persisted-new-public-key",
+    counter: 0,
+    transports: ["internal"],
+  });
+  const stored = second.get_passkey_login_candidate("persisted-recoverable-maker");
+
+  assert.equal(completed.account.user_id, created.account.user_id);
+  assert.equal(stored.passkey_credential_id, "persisted-new-credential-id");
+  assert.equal(second.resolve_session_token(created.session.token), null);
 });
 
 test("social login creates exactly one internal account and reuses it on next login", async () => {

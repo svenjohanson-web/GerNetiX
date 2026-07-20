@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="GerNetiX Webshop-Mock fuer Hardware, Bundles, Software-Lizenzen und Premium-Angebote." />
+    <title>GerNetiX Webshop</title>
+    <link rel="stylesheet" href="/landing.css?v=20260720-shop" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="GerNetiX Startseite">
+        <img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" />
+      </a>
+      <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menue oeffnen" aria-expanded="false" aria-controls="publicMenu">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <nav id="publicMenu" class="site-menu" aria-label="Oeffentliche Bereiche" hidden>
+        <a href="/">Startseite</a>
+        <a href="/produkte/">Produkte</a>
+        <a href="/wissen/">Wissensportal</a>
+        <a href="/hilfe/">Hilfe</a>
+        <a href="/shop/" aria-current="page">Webshop</a>
+        <a href="/app/auth/">Anmelden</a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="panel shop-public-hero" aria-labelledby="shop-title">
+        <div>
+          <p class="eyebrow">GerNetiX Webshop</p>
+          <h1 id="shop-title">Hardware, Bundles und Lizenzen ansehen.</h1>
+          <p class="lead">Dieser Webshop ist ein oeffentlicher Mock. Produkte, Lizenzmodelle und Bundles sind sichtbar; Checkout, Preise, Zahlung und echte Lizenzzuordnung kommen spaeter.</p>
+        </div>
+        <span class="shop-public-badge">Mock</span>
+      </section>
+
+      <section class="shop-public-categories" aria-label="Shop-Kategorien">
+        <article class="panel shop-public-category primary">
+          <span>Nutzungsrechte</span>
+          <h2>Software-Lizenzen</h2>
+          <p>Zeitgebundene Rechte fuer GerNetiX Home Server, Updates, Cloud, KI und Integrationen.</p>
+        </article>
+        <article class="panel shop-public-category">
+          <span>Fertig kombiniert</span>
+          <h2>Hardware-Bundles</h2>
+          <p>Home-Server-Hardware oder Starterpakete mit vorbereiteter Software und passendem Zubehoer.</p>
+        </article>
+        <article class="panel shop-public-category">
+          <span>Initial flashen</span>
+          <h2>Flashbox</h2>
+          <p>Hilfsgeraet fuer blanke ESP32-Boards, wenn kein PC oder Mac verfuegbar ist.</p>
+        </article>
+        <article class="panel shop-public-category">
+          <span>Account-Modell</span>
+          <h2>Premium-Abos</h2>
+          <p>Monatliche oder jaehrliche Premium-Nutzung; im Jahresabo kann Home Server enthalten sein.</p>
+        </article>
+      </section>
+
+      <section class="shop-public-layout">
+        <aside class="panel shop-public-nav" aria-labelledby="shop-products-title">
+          <p class="eyebrow">Produkte</p>
+          <h2 id="shop-products-title">Auswahl</h2>
+          <nav aria-label="Produktnavigation">
+            <a href="#home-server-license">Home Server Software-Lizenz</a>
+            <a href="#home-server-bundle">Home Server Hardware-Bundle</a>
+            <a href="#premium-plans">Premium-Abos</a>
+            <a href="#flashbox">GerNetiX Flashbox</a>
+            <a href="#boards">Provisionierte Boards</a>
+          </nav>
+        </aside>
+
+        <section class="shop-public-products">
+          <article id="home-server-license" class="panel shop-public-product featured">
+            <p class="eyebrow">Software-Lizenz</p>
+            <h2>GerNetiX Home Server Software</h2>
+            <p>Lizenzgebundene Nutzung des GerNetiX Home Servers fuer eigene oder vorhandene Hardware. Dieses Produkt ist nur ein Platzhalter ohne Kaufabwicklung.</p>
+            <section class="shop-public-offers" aria-label="Home Server Lizenzangebote">
+              <article>
+                <span>Einzellizenz</span>
+                <h3>Home Server Lizenz - 12 Monate</h3>
+                <p>Installation, Konfiguration, Updates, Cloud-Funktionen, KI und neue Integrationen.</p>
+                <button type="button" disabled>Lizenz vormerken (bald)</button>
+              </article>
+              <article>
+                <span>Premium enthalten</span>
+                <h3>Premium jaehrlich inkl. Home Server</h3>
+                <p>Bei jaehrlicher Premium-Abrechnung ist die Home-Server-Nutzung als Nutzungsrecht enthalten.</p>
+                <button type="button" disabled>Abo ansehen (bald)</button>
+              </article>
+            </section>
+            <section class="shop-public-license-grid" aria-label="Lizenzzustand Home Server">
+              <article class="shop-public-license active">
+                <h3>Lizenz aktiv</h3>
+                <ul>
+                  <li>Home Server installieren</li>
+                  <li>neue Geraete hinzufuegen</li>
+                  <li>Server konfigurieren</li>
+                  <li>Updates erhalten</li>
+                  <li>Cloud-Funktionen nutzen</li>
+                  <li>KI nutzen</li>
+                  <li>neue Integrationen aktivieren</li>
+                </ul>
+              </article>
+              <article class="shop-public-license expired">
+                <h3>Lizenz abgelaufen</h3>
+                <ul>
+                  <li>bestehende Geraete funktionieren weiter</li>
+                  <li>MQTT laeuft weiter</li>
+                  <li>Home Assistant laeuft weiter</li>
+                  <li>OTA fuer eingerichtete Modelle bleibt moeglich</li>
+                  <li>keine neuen Geraete, Integrationen, Cloud-/KI-Funktionen oder Feature-Updates</li>
+                </ul>
+              </article>
+            </section>
+            <p class="shop-public-note"><strong>Bestandsschutz:</strong> Eine abgelaufene Lizenz legt das lokale Zuhause nicht lahm. Sie stoppt nur Erweiterung, Cloud-Komfort und neue kostenpflichtige Funktionen.</p>
+          </article>
+
+          <article id="home-server-bundle" class="panel shop-public-product">
+            <p class="eyebrow">Hardware-Bundle</p>
+            <h2>GerNetiX Home Server Hardware-Bundle</h2>
+            <p>Dummy-Bundle fuer Kunden, die die Home-Server-Software zusammen mit passender ausfuehrender Hardware kaufen moechten.</p>
+            <ul>
+              <li>Home-Server-Hardware als vorbereitete Zielplattform</li>
+              <li>GerNetiX Home Server Software vorinstalliert oder installationsbereit</li>
+              <li>optionale Erstlaufzeit der Home-Server-Lizenz</li>
+              <li>Hardware-Kauf und Software-Nutzungsrecht bleiben fachlich getrennt</li>
+            </ul>
+            <button type="button" disabled>Bundle konfigurieren (bald)</button>
+          </article>
+
+          <article id="premium-plans" class="panel shop-public-product">
+            <p class="eyebrow">Abo & Entitlements</p>
+            <h2>Premium monatlich oder jaehrlich</h2>
+            <section class="shop-public-offers" aria-label="Premium Dummy-Angebote">
+              <article>
+                <span>Monatlich</span>
+                <h3>Premium monatlich</h3>
+                <p>Dummy-Abo fuer Premium-Funktionen. Home Server kann spaeter separat als Lizenz oder Add-on gefuehrt werden.</p>
+              </article>
+              <article>
+                <span>Jaehrlich</span>
+                <h3>Premium jaehrlich</h3>
+                <p>Dummy-Abo mit enthaltenem Nutzungsrecht fuer den GerNetiX Home Server.</p>
+              </article>
+            </section>
+            <button type="button" disabled>Premium vergleichen (bald)</button>
+          </article>
+
+          <article id="flashbox" class="panel shop-public-product">
+            <p class="eyebrow">Hardware</p>
+            <h2>GerNetiX FlashBox USB Helper</h2>
+            <p>Platzhalter fuer einen displaylosen ESP32-S3 Helper, der Zielboards ueber seinen Target-USB-Port initial oder im Recovery-Fall flashen soll.</p>
+            <button type="button" disabled>FlashBox vormerken (bald)</button>
+          </article>
+
+          <article id="boards" class="panel shop-public-product">
+            <p class="eyebrow">Hardware</p>
+            <h2>Provisionierte ESP32-Boards</h2>
+            <p>Boards mit vorbereiteter Bootstrap-Firmware, damit iPhone und iPad ueber BLE oder WLAN-Setup weitermachen koennen.</p>
+            <button type="button" disabled>Produkte folgen</button>
+          </article>
+        </section>
+      </section>
+    </main>
+
+    <footer>
+      <span>© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
+      <nav class="site-footer-links" aria-label="Weiterfuehrende Informationen"><a href="/app/vision/">Vision</a><a href="/#motivation">Ueber uns</a><a href="/produkte/">Produkte</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/">Startseite</a></nav>
+    </footer>
+    <script src="/landing.js?v=20260719-01"></script>
+  </body>
+</html>

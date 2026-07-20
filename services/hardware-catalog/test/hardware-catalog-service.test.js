@@ -97,6 +97,39 @@ test("sqlite catalog migration enriches an existing ES3C28P board with known mem
     .default_instance_configuration.board_features.ram.hardware, "interner_sram");
 });
 
+test("lists GerNetiX Flashbox as purchase-only claimable hardware", () => {
+  const service = createDefaultHardwareCatalog({ persistenceBackend: "memory" });
+  const flashbox = service.listFlashboxes().find((item) => item.hardware_item_id === "hardware.flashbox.esp32_s3_usb_helper");
+
+  assert.ok(flashbox);
+  assert.equal(flashbox.item_type, "flashbox");
+  assert.equal(flashbox.hardware_class, "flashbox");
+  assert.equal(flashbox.form_factor, "displayless_dual_usb_helper");
+  assert.equal(flashbox.purchase_policy, "gernetix_purchase_only");
+  assert.equal(flashbox.inventory_policy, "claim_required");
+  assert.equal(flashbox.self_creation_allowed, false);
+  assert.equal(flashbox.capability_ids.includes("capability.usb_otg_host"), true);
+  assert.equal(flashbox.capability_ids.includes("capability.device_http_status"), true);
+  assert.equal(flashbox.capability_ids.includes("capability.display_output"), false);
+  assert.equal(flashbox.capability_ids.includes("capability.touchscreen_input"), false);
+  assert.equal(flashbox.flashbox_capability_keys.includes("flashbox.self_update"), true);
+  assert.equal(flashbox.default_instance_configuration.ui.display_enabled, false);
+  assert.equal(flashbox.default_instance_configuration.ui.touch_enabled, false);
+  assert.equal(flashbox.default_instance_configuration.usb_ports.control.role, "control_upstream_power_and_service");
+  assert.equal(flashbox.default_instance_configuration.usb_ports.target.role, "target_downstream_usb_host");
+  assert.equal(flashbox.default_instance_configuration.usb_otg_power.vbus_power_mode, "two_usb_s3_helper_target_vbus_pending_verification");
+  assert.equal(flashbox.default_instance_configuration.usb_otg_power.vbus_power_switch_pin, null);
+  assert.equal(flashbox.default_instance_configuration.usb_otg_power.vbus_boost_enable_pin, null);
+  assert.equal(flashbox.default_instance_configuration.usb_otg_power.vbus_source_select_pin, null);
+  assert.equal(flashbox.default_instance_configuration.usb_otg_power.vbus_current_limit_enable_pin, null);
+  assert.equal(flashbox.default_instance_configuration.usb_otg_power.software_vbus_switching, "pending_two_usb_s3_board_verification");
+  assert.equal(flashbox.default_instance_configuration.usb_otg_power.unpowered_targets_require_external_power, true);
+  assert.equal(flashbox.default_instance_configuration.usb_otg_power.battery_input.documented, false);
+  assert.equal(flashbox.default_instance_configuration.usb_otg_power.battery_input.adc_pin, null);
+  assert.equal(flashbox.default_instance_configuration.usb_otg_power.required_product_verification, "two_usb_s3_helper_target_vbus_hardware_test");
+  assert.equal(flashbox.default_instance_configuration.usb_otg_power.schematic_conclusion, "pending_new_two_usb_s3_board_schematic");
+});
+
 test("admin can add catalog hardware item with known capabilities", () => {
   const service = createDefaultHardwareCatalog({ persistenceBackend: "memory" });
   const item = service.upsertHardwareItem({

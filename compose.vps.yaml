@@ -368,6 +368,7 @@ services:
       - ./infra/vps/nginx/welcome.nl.html:/usr/share/nginx/html/welcome.nl.html:ro
       - ./infra/vps/nginx/welcome.en.html:/usr/share/nginx/html/welcome.en.html:ro
       - ./infra/vps/nginx/gernetix-logo.png:/usr/share/nginx/html/gernetix-logo.png:ro
+      - ./infra/vps/nginx/gernetix-wordmark.png:/usr/share/nginx/html/gernetix-wordmark.png:ro
       - certbot_www:/var/www/certbot:ro
       - nginx_cache:/var/cache/nginx
       - nginx_run:/var/run
@@ -395,6 +396,7 @@ services:
       - ./infra/vps/nginx/welcome.nl.html:/usr/share/nginx/html/welcome.nl.html:ro
       - ./infra/vps/nginx/welcome.en.html:/usr/share/nginx/html/welcome.en.html:ro
       - ./infra/vps/nginx/gernetix-logo.png:/usr/share/nginx/html/gernetix-logo.png:ro
+      - ./infra/vps/nginx/gernetix-wordmark.png:/usr/share/nginx/html/gernetix-wordmark.png:ro
       - ${LETSENCRYPT_DIR:-/etc/letsencrypt}:/etc/letsencrypt:ro
       - nginx_tls_cache:/var/cache/nginx
       - nginx_tls_run:/var/run

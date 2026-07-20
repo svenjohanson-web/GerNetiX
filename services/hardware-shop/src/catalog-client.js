@@ -22,6 +22,10 @@ class LocalHardwareCatalogClient {
   listProcessorBoards() {
     return this.service.listProcessorBoards();
   }
+
+  listFlashboxes() {
+    return this.service.listFlashboxes();
+  }
 }
 
 class HttpHardwareCatalogClient {
@@ -48,6 +52,10 @@ class HttpHardwareCatalogClient {
 
   async listProcessorBoards() {
     return (await this.getJson("/api/hardware-catalog/processor-boards")).items || [];
+  }
+
+  async listFlashboxes() {
+    return (await this.getJson("/api/hardware-catalog/flashboxes")).items || [];
   }
 
   async getJson(pathname) {

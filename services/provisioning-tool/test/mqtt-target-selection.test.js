@@ -17,6 +17,11 @@ test("provisioning UI offers VPS and local MQTT targets", () => {
   assert.match(html, /value="local"/);
   assert.match(html, /id="mqttVpsUrl"/);
   assert.match(html, /id="mqttLocalHost"/);
+  assert.match(html, /id="hardwareClass"/);
+  assert.match(html, /value="processor_board"/);
+  assert.match(html, /value="flashbox"/);
   assert.match(app, /mqtt_broker: selectedMqttBrokerUrl\(\)/);
-  assert.match(app, /capabilities: \["wifi", "ota", "mqtt", "flash_firmware"\]/);
+  assert.match(app, /capabilities: selectedCapabilities\(\)/);
+  assert.match(app, /return \["wifi", "ota", "mqtt", "flash_firmware"\]/);
+  assert.match(app, /"flashbox\.target_flash"/);
 });

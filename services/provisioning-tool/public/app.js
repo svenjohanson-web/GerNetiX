@@ -1,6 +1,7 @@
 const state = {
   session: null,
   processorBoards: [],
+  flashboxes: [],
   firmwareArtifact: null,
   flashMode: null,
   serialPort: null,
@@ -11,7 +12,9 @@ const state = {
 };
 
 document.querySelector("#sessionForm").addEventListener("submit", createSession);
-document.querySelector("#processorBoard").addEventListener("change", selectProcessorBoard);
+document.querySelector("#hardwareClass").addEventListener("change", selectHardwareTarget);
+document.querySelector("#processorBoard").addEventListener("change", selectHardwareTarget);
+document.querySelector("#flashbox").addEventListener("change", selectHardwareTarget);
 document.querySelector("#mqttMode").addEventListener("change", renderMqttMode);
 document.querySelector("#credentialResetButton").addEventListener("click", resetActiveCredential);
 document.querySelector("#selectUsbDeviceButton").addEventListener("click", selectUsbDevice);
@@ -26,12 +29,14 @@ async function bootstrap() {
   document.querySelector("#runnerBadge").textContent = health ? "Provisioning Tool" : "Nicht verbunden";
   const boards = await getJson("/api/provisioning-processor-boards").catch(() => ({ items: [] }));
   state.processorBoards = boards.items || [];
+  const flashboxes = await getJson("/api/provisioning-flashboxes").catch(() => ({ items: [] }));
+  state.flashboxes = flashboxes.items || [];
   state.flashMode = await getJson("/api/provisioning-flash-mode").catch(() => null);
   await restoreSessionFromBrowserState();
-  renderProcessorBoards();
+  renderHardwareTargets();
   renderMqttMode();
   renderFlashMode();
-  await selectProcessorBoard();
+  await selectHardwareTarget();
   render();
 }
 
@@ -40,13 +45,15 @@ async function createSession(event) {
   setStatus("flashStatus", "running", "Session und USB-Factory-Header werden vorbereitet...");
   try {
     const session = await postJson("/api/provisioning-sessions", {
+      hardware_class: selectedHardwareClass(),
       serial_number: value("#serialNumber"),
       hardware_profile_id: value("#hardwareProfile"),
       provisioning_batch_id: value("#batchId"),
       firmware_version: value("#firmwareVersion"),
       provisioned_by: value("#actor"),
-      processor_board_id: value("#processorBoard"),
-      capabilities: ["wifi", "ota", "mqtt", "flash_firmware"],
+      processor_board_id: selectedHardwareClass() === "processor_board" ? value("#processorBoard") : "",
+      flashbox_id: selectedHardwareClass() === "flashbox" ? value("#flashbox") : "",
+      capabilities: selectedCapabilities(),
       mqtt_mode: value("#mqttMode"),
       service_endpoints: {
         device_management: value("#deviceManagementUrl"),
@@ -54,8 +61,8 @@ async function createSession(event) {
         mqtt_broker: selectedMqttBrokerUrl(),
       },
       flash: {
-        requested: true,
-        write_factory_header: true,
+        requested: selectedHardwareClass() === "processor_board",
+        write_factory_header: selectedHardwareClass() === "processor_board",
       },
     });
     const manifest = await getJson(`/api/provisioning-sessions/${encodeURIComponent(session.session_id)}/manifest`);
@@ -121,11 +128,17 @@ async function resetActiveCredential() {
   }
 }
 
-async function selectProcessorBoard() {
-  const board = state.processorBoards.find((item) => item.hardware_item_id === value("#processorBoard")) || state.processorBoards[0];
-  if (!board) return;
-  document.querySelector("#hardwareProfile").value = board.hardware_profile_id || board.hardware_item_id;
-  state.firmwareArtifact = await getJson(`/api/provisioning-firmware-artifact?processor_board_id=${encodeURIComponent(board.hardware_item_id)}`).catch(() => board.factory_firmware_artifact || null);
+async function selectHardwareTarget() {
+  const hardwareClass = selectedHardwareClass();
+  document.querySelector("#processorBoardField").classList.toggle("hidden", hardwareClass !== "processor_board");
+  document.querySelector("#flashboxField").classList.toggle("hidden", hardwareClass !== "flashbox");
+  document.querySelector("#serialNumber").value = defaultSerialNumberFor(hardwareClass, value("#serialNumber"));
+  const target = selectedHardwareTarget();
+  if (!target) return;
+  document.querySelector("#hardwareProfile").value = target.hardware_profile_id || target.hardware_item_id;
+  state.firmwareArtifact = hardwareClass === "processor_board"
+    ? await getJson(`/api/provisioning-firmware-artifact?processor_board_id=${encodeURIComponent(target.hardware_item_id)}`).catch(() => target.factory_firmware_artifact || null)
+    : target.factory_firmware_artifact || null;
   state.flashMode = await getJson("/api/provisioning-flash-mode").catch(() => state.flashMode);
   renderFlashMode();
   render();
@@ -232,9 +245,16 @@ async function persistDeviceProvisioning() {
 
 function render() {
   const session = state.session;
+  const hardwareClass = session?.device?.hardware_class || selectedHardwareClass();
+  const isFlashbox = hardwareClass === "flashbox";
   const flashNeedsArtifact = !state.flashMode?.artifact_ready;
   const flashRunning = Boolean(state.flashOperation);
-  document.querySelector("#usbFlashButton").disabled = flashRunning || !session || flashNeedsArtifact || needsUsbTargetSelection() || session.status === "completed" || hasUsbFlashSucceeded(session);
+  document.querySelector("#executionTitle").textContent = isFlashbox ? "Register & Pairing" : "USB-Flash";
+  document.querySelector("#selectUsbDeviceButton").disabled = isFlashbox || Boolean(state.flashOperation);
+  document.querySelector("#usbFlashButton").textContent = isFlashbox ? "Flashbox-Flash noch nicht aktiv" : "Firmware per USB flashen";
+  document.querySelector("#persistDeviceProvisioningButton").textContent = isFlashbox ? "Flashbox-Identitaet speichern" : "Kennung speichern";
+  document.querySelector("#completeButton").textContent = isFlashbox ? "Flashbox-Provisionierung abschliessen" : "Provisionierung abschliessen";
+  document.querySelector("#usbFlashButton").disabled = isFlashbox || flashRunning || !session || flashNeedsArtifact || needsUsbTargetSelection() || session.status === "completed" || hasUsbFlashSucceeded(session);
   document.querySelector("#persistDeviceProvisioningButton").disabled = flashRunning || !session || session.status === "completed" || hasDeviceProvisioningStored(session);
   document.querySelector("#cancelFlashButton").disabled = !flashRunning;
   document.querySelector("#completeButton").disabled = !session || session.status === "completed" || !hasDeviceProvisioningStored(session);
@@ -244,8 +264,10 @@ function render() {
   document.querySelector("#sessionMeta").innerHTML = session ? [
     ["session_id", session.session_id],
     ["status", session.status],
+    ["hardware_class", session.device.hardware_class || ""],
     ["device_id", session.device.device_id],
     ["serial_number", session.device.serial_number],
+    ["hardware_item", session.device.flashbox_id || session.device.processor_board_id || ""],
     ["credential_id", session.credential.credential_id],
     ["board_storage", session.device.local_provisioning_state || ""],
     ["firmware_artifact", session.manifest?.firmware?.artifact?.artifact_id || state.firmwareArtifact?.artifact_id || ""],
@@ -296,6 +318,19 @@ function render() {
 
 function renderFlashReadinessStatus() {
   if (state.flashOperation) return;
+  const hardwareClass = state.session?.device?.hardware_class || selectedHardwareClass();
+  if (hardwareClass === "flashbox") {
+    if (!state.session) {
+      setStatus("flashStatus", "running", "Bitte zuerst die Flashbox-Register-Session vorbereiten.");
+      return;
+    }
+    if (hasDeviceProvisioningStored(state.session)) {
+      setStatus("flashStatus", "ok", "Flashbox-Identitaet ist gespeichert. Abschluss kann registriert werden.");
+      return;
+    }
+    setStatus("flashStatus", "running", "Flashbox wird als kaufbares Inventar-Geraet registriert. Der Firmware-Flash der Flashbox ist noch kein HMI-Schritt.");
+    return;
+  }
   if (!state.session) {
     setStatus("flashStatus", "running", "Bitte zuerst die Session vorbereiten.");
     return;
@@ -333,6 +368,12 @@ async function selectUsbDevice() {
 }
 
 function renderUsbBrowserStatus() {
+  const hardwareClass = state.session?.device?.hardware_class || selectedHardwareClass();
+  if (hardwareClass === "flashbox") {
+    document.querySelector("#selectUsbDeviceButton").disabled = true;
+    setStatus("usbBrowserStatus", "running", "Fuer Flashbox-Register/Pairing wird hier kein Zielboard per Web Serial geflasht. Die Flashbox-Firmware bekommt spaeter einen eigenen signierten Update-/Recovery-Weg.");
+    return;
+  }
   if (!("serial" in navigator)) {
     setStatus("usbBrowserStatus", "error", "Web Serial ist nicht verfuegbar. Bitte Chrome oder Edge verwenden.");
     document.querySelector("#selectUsbDeviceButton").disabled = true;
@@ -355,6 +396,8 @@ function selectedUsbPort() {
 }
 
 function needsUsbTargetSelection() {
+  const hardwareClass = state.session?.device?.hardware_class || selectedHardwareClass();
+  if (hardwareClass === "flashbox") return false;
   return !state.serialPort;
 }
 
@@ -520,6 +563,7 @@ async function restoreSessionFromBrowserState() {
     const session = await getJson(`/api/provisioning-sessions/${encodeURIComponent(sessionId)}`);
     const manifest = await getJson(`/api/provisioning-sessions/${encodeURIComponent(sessionId)}/manifest`);
     state.session = { ...session, manifest };
+    if (session.device?.hardware_class) document.querySelector("#hardwareClass").value = session.device.hardware_class;
   } catch {
     clearBrowserSessionState();
   }
@@ -543,11 +587,42 @@ function hasDeviceProvisioningStored(session) {
   return session?.device?.local_provisioning_state === "stored_on_board";
 }
 
-function renderProcessorBoards() {
+function renderHardwareTargets() {
   const select = document.querySelector("#processorBoard");
   select.innerHTML = state.processorBoards.map((board) => `
     <option value="${escapeHtml(board.hardware_item_id)}">${escapeHtml(board.title || board.hardware_item_id)}</option>
   `).join("");
+  const flashboxSelect = document.querySelector("#flashbox");
+  flashboxSelect.innerHTML = state.flashboxes.map((flashbox) => `
+    <option value="${escapeHtml(flashbox.hardware_item_id)}">${escapeHtml(flashbox.title || flashbox.hardware_item_id)}</option>
+  `).join("");
+}
+
+function selectedHardwareClass() {
+  return value("#hardwareClass") === "flashbox" ? "flashbox" : "processor_board";
+}
+
+function selectedHardwareTarget() {
+  if (selectedHardwareClass() === "flashbox") {
+    return state.flashboxes.find((item) => item.hardware_item_id === value("#flashbox")) || state.flashboxes[0] || null;
+  }
+  return state.processorBoards.find((item) => item.hardware_item_id === value("#processorBoard")) || state.processorBoards[0] || null;
+}
+
+function selectedCapabilities() {
+  if (selectedHardwareClass() === "flashbox") {
+    const target = selectedHardwareTarget();
+    return Array.isArray(target?.capabilities) && target.capabilities.length
+      ? target.capabilities
+      : ["flashbox.self_update", "flashbox.usb_otg_host", "flashbox.target_flash", "flashbox.signed_manifest_download"];
+  }
+  return ["wifi", "ota", "mqtt", "flash_firmware"];
+}
+
+function defaultSerialNumberFor(hardwareClass, current) {
+  if (hardwareClass === "flashbox" && /^GNX-ESP32-/i.test(current)) return "GNX-FLASHBOX-0001";
+  if (hardwareClass === "processor_board" && /^GNX-FLASHBOX-/i.test(current)) return "GNX-ESP32-0002";
+  return current;
 }
 
 function renderFlashMode() {
@@ -559,6 +634,7 @@ function renderFlashMode() {
 }
 
 function renderFirmwareArtifact() {
+  const hardwareClass = state.session?.device?.hardware_class || selectedHardwareClass();
   const artifact = state.session?.manifest?.firmware?.artifact || state.firmwareArtifact;
   document.querySelector("#firmwareArtifactMeta").innerHTML = artifact ? [
     ["artifact_id", artifact.artifact_id || ""],
@@ -569,6 +645,10 @@ function renderFirmwareArtifact() {
   ].map(meta).join("") : "";
 
   if (!artifact?.artifact_id) {
+    if (hardwareClass === "flashbox") {
+      setStatus("firmwareArtifactStatus", "running", "Flashbox-Firmware ist als eigenes Paket geplant; diese Register-Session legt zunaechst Inventar, Seriennummer und Geraeteidentitaet fest.");
+      return;
+    }
     setStatus("firmwareArtifactStatus", "error", "Kein Firmware-Artefakt fuer das gewaehlte Board bekannt.");
     return;
   }

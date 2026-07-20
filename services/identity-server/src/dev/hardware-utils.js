@@ -210,8 +210,15 @@ function createDevHardwareUtils({
   }
 
   function buildTargetLabel(device) {
+    if (isFlashboxInventoryDevice(device)) return "GerNetiX FlashBox / USB-Helper-Flash";
     const config = deviceBuildConfig(device);
     return [config.platform, config.board, config.framework || "ohne Framework"].join("/");
+  }
+
+  function isFlashboxInventoryDevice(device) {
+    return device?.hardware_class === "flashbox"
+      || device?.instance_configuration?.role === "flashbox"
+      || String(device?.hardware_profile_id || "").includes(".flashbox.");
   }
 
   function renderPlatformioIni(config) {

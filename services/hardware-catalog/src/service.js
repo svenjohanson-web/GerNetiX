@@ -45,6 +45,10 @@ class HardwareCatalogService {
       .filter((item) => !deprecatedProcessorBoardIds().has(item.hardware_item_id));
   }
 
+  listFlashboxes() {
+    return this.listHardwareItems({ item_type: "flashbox", status: "active" });
+  }
+
   listSensors() {
     return this.listHardwareItems({ item_type: "sensor", status: "active" });
   }
@@ -60,6 +64,7 @@ class HardwareCatalogService {
       hardware_item_id: input.hardware_item_id || input.id || createId("hardware"),
       sku: required(input.sku, "sku"),
       item_type: input.item_type || "module",
+      hardware_class: input.hardware_class || "",
       title: required(input.title, "title"),
       summary: input.summary || "",
       processor_family: input.processor_family || "",
@@ -73,12 +78,18 @@ class HardwareCatalogService {
       measurement_kinds: normalizeList(input.measurement_kinds),
       signal_type: input.signal_type || "",
       capability_ids: capabilityIds,
+      flashbox_capability_keys: normalizeList(input.flashbox_capability_keys),
+      supported_target_families: normalizeList(input.supported_target_families),
       identification_methods: normalizeList(input.identification_methods || input.identificationMethods),
       support_policy: input.support_policy || "community_usable_no_gernetix_hardware_entitlement",
+      purchase_policy: input.purchase_policy || "",
+      inventory_policy: input.inventory_policy || "",
+      self_creation_allowed: input.self_creation_allowed === false ? false : Boolean(input.self_creation_allowed),
       provisioning_profile_id: input.provisioning_profile_id || "",
       basissoftware_profile_id: input.basissoftware_profile_id || "",
       factory_firmware_artifact: input.factory_firmware_artifact || null,
       min_basissoftware_version: input.min_basissoftware_version || "",
+      min_flashbox_firmware_version: input.min_flashbox_firmware_version || "",
       pin_profile: input.pin_profile && typeof input.pin_profile === "object" ? input.pin_profile : {},
       peripheral_profile: input.peripheral_profile && typeof input.peripheral_profile === "object" ? input.peripheral_profile : {},
       default_instance_configuration: input.default_instance_configuration || {},

@@ -8,12 +8,14 @@ class InMemoryIdentityRepository {
     this.externalIdentities = new Map((seed.externalIdentities || []).map((item) => [item.id, clone(item)]));
     this.verificationTokens = new Map((seed.verificationTokens || []).map((item) => [item.id, clone(item)]));
     this.passwordResetTokens = new Map((seed.passwordResetTokens || []).map((item) => [item.id, clone(item)]));
+    this.offlineRecoveryTransactions = new Map((seed.offlineRecoveryTransactions || []).map((item) => [item.id, clone(item)]));
     this.sessions = new Map((seed.sessions || []).map((item) => [item.id, clone(item)]));
     this.usernameIndex = new Map();
     this.emailIndex = new Map();
     this.externalIdentityIndex = new Map();
     this.verificationTokenIndex = new Map();
     this.passwordResetTokenIndex = new Map();
+    this.offlineRecoveryTransactionIndex = new Map();
     this.sessionTokenIndex = new Map();
     this.rebuildIndexes();
   }
@@ -28,6 +30,7 @@ class InMemoryIdentityRepository {
     }
     for (const token of this.verificationTokens.values()) this.verificationTokenIndex.set(token.token_hash, token.id);
     for (const token of this.passwordResetTokens.values()) this.passwordResetTokenIndex.set(token.token_hash, token.id);
+    for (const token of this.offlineRecoveryTransactions.values()) this.offlineRecoveryTransactionIndex.set(token.token_hash, token.id);
     for (const session of this.sessions.values()) this.sessionTokenIndex.set(session.token_hash, session.id);
   }
 
@@ -217,6 +220,26 @@ class InMemoryIdentityRepository {
     return { ...next };
   }
 
+  createOfflineRecoveryTransaction(token) {
+    const record = { id: createId("ort"), ...token };
+    this.offlineRecoveryTransactions.set(record.id, record);
+    this.offlineRecoveryTransactionIndex.set(record.token_hash, record.id);
+    return { ...record };
+  }
+
+  findOfflineRecoveryTransactionByHash(tokenHash) {
+    const id = this.offlineRecoveryTransactionIndex.get(tokenHash);
+    return id ? clone(this.offlineRecoveryTransactions.get(id)) : null;
+  }
+
+  markOfflineRecoveryTransactionUsed(tokenId) {
+    const current = this.offlineRecoveryTransactions.get(tokenId);
+    if (!current) return null;
+    const next = { ...current, used_at: this.nowIso() };
+    this.offlineRecoveryTransactions.set(tokenId, next);
+    return { ...next };
+  }
+
   createSession({ userId, tokenHash, expiresAt, jwtId = null }) {
     const now = this.nowIso();
     const session = {
@@ -248,6 +271,16 @@ class InMemoryIdentityRepository {
     const next = { ...current, revoked_at: this.nowIso() };
     this.sessions.set(sessionId, next);
     return { ...next };
+  }
+
+  revokeSessionsByUserId(userId) {
+    let revoked = 0;
+    for (const session of this.sessions.values()) {
+      if (session.user_id !== userId || session.revoked_at) continue;
+      this.revokeSession(session.id);
+      revoked += 1;
+    }
+    return revoked;
   }
 }
 

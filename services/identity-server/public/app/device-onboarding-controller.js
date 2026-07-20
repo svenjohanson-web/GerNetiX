@@ -344,7 +344,7 @@ const DeviceOnboardingController = (() => {
       const method = event?.target?.value
         || document.querySelector('input[name="deviceDiscoveryMethod"]:checked')?.value
         || "";
-      if (!new Set(["wlan", "usb"]).has(method)) return;
+      if (!new Set(["wlan", "usb", "flashbox"]).has(method)) return;
       state.inventoryEsp32Method = method;
       state.discoveredDevices = [];
       state.selectedProvisioningDiscoveryIds = [];
@@ -367,11 +367,18 @@ const DeviceOnboardingController = (() => {
     async function searchDevicesForInventory() {
       const method = document.querySelector('input[name="deviceDiscoveryMethod"]:checked')?.value || state.inventoryEsp32Method;
       if (!method) {
-        setDiscoveryStatus("error", "Bitte zuerst WLAN oder USB als Provisioning-Weg waehlen.");
+        setDiscoveryStatus("error", "Bitte zuerst WLAN, USB oder FlashBox als Provisioning-Weg waehlen.");
         return;
       }
       state.inventoryEsp32Method = method;
       if (method === "usb") return scanProvisioningSerialPorts();
+      if (method === "flashbox") {
+        state.discoveredDevices = [];
+        state.selectedProvisioningDiscoveryIds = [];
+        renderNetworkDiscovery();
+        setDiscoveryStatus("running", "FlashBox-Workflow vorbereitet: Waehle spaeter eine inventarisierte FlashBox und verbinde das Zielboard am Target-USB-Port.");
+        return;
+      }
       return discoverNetworkDevices();
     }
 
@@ -490,16 +497,21 @@ const DeviceOnboardingController = (() => {
       const board = null;
       const actions = discoveryActionsForBoard();
       const isAvr = false;
-      const usesWirelessOrUsb = actions.wifiDiscovery || actions.usbIdentification;
+      const usesWirelessOrUsb = actions.wifiDiscovery || actions.usbIdentification || actions.flashboxFlash;
       const showGenericMethods = usesWirelessOrUsb && !isAvr;
       renderDiscoveryMethodOptions(actions);
-      const hasSelectedMethod = state.inventoryEsp32Method === "wlan" || state.inventoryEsp32Method === "usb";
+      const hasSelectedMethod = state.inventoryEsp32Method === "wlan" || state.inventoryEsp32Method === "usb" || state.inventoryEsp32Method === "flashbox";
       const isUsbSelected = actions.usbIdentification && state.inventoryEsp32Method === "usb";
       const isWifiSelected = actions.wifiDiscovery && state.inventoryEsp32Method === "wlan";
+      const isFlashboxSelected = actions.flashboxFlash && state.inventoryEsp32Method === "flashbox";
       document.querySelector("#provisioningWorkflowPanel").classList.toggle("hidden", !hasSelectedMethod);
       document.querySelector("#provisioningWifiNotice").classList.toggle("hidden", !isWifiSelected);
       document.querySelector("#provisioningUsbNotice").classList.toggle("hidden", !isUsbSelected);
-      document.querySelector("#provisioningWorkflowTitle").textContent = isUsbSelected ? "Board per USB verbinden" : "Provisioniertes Board per WLAN suchen";
+      document.querySelector("#provisioningWorkflowTitle").textContent = isUsbSelected
+        ? "Board per USB verbinden"
+        : isFlashboxSelected
+          ? "Board per FlashBox flashen"
+          : "Provisioniertes Board per WLAN suchen";
       document.querySelector("#esp32DiscoveryActions").classList.toggle("hidden", !showGenericMethods || !isWifiSelected);
       document.querySelector("#avrDiscoveryActions").classList.toggle("hidden", !isAvr || !isUsbSelected);
       const supportsWebSerial = "serial" in navigator;
@@ -524,7 +536,8 @@ const DeviceOnboardingController = (() => {
       document.querySelector("#provisioningUsbHelperHint").classList.toggle("hidden", !isUsbSelected || supportsLocalSerial || !state.provisioningSerialScanCompleted);
       document.querySelector("#claimSelectedDiscoveredDevicesButton").classList.toggle("hidden",
         !hasSelectedMethod
-        || (!actions.wifiDiscovery && !actions.usbIdentification)
+        || isFlashboxSelected
+        || (!actions.wifiDiscovery && !actions.usbIdentification && !actions.flashboxFlash)
         || (hasDetectedBootloader && (!hasBoardConfiguration || !state.provisioningWifiSetupSucceeded)));
       document.querySelector("#provisioningFoundBoardDetails").classList.toggle("hidden", !hasDetectedBootloader);
       document.querySelector("#provisioningBoardFeatures").classList.toggle("hidden", !hasDetectedBootloader);
@@ -538,7 +551,12 @@ const DeviceOnboardingController = (() => {
       void checkProvisioningFirmwareAvailability();
       document.querySelector("#inventoryTypeHint").textContent = inventoryTypeHintText();
       if (!hasSelectedMethod) {
-        list.innerHTML = `<p class="empty">Waehle zuerst WLAN oder USB als Provisioning-Weg.</p>`;
+        list.innerHTML = `<p class="empty">Waehle zuerst WLAN, USB oder FlashBox als Provisioning-Weg.</p>`;
+        updateClaimSelectedButton();
+        return;
+      }
+      if (isFlashboxSelected) {
+        list.innerHTML = `<p class="empty">FlashBox ist der dritte Flash-Weg: Die Zielhardware wird nicht am Browser-PC, sondern am Target-USB-Port einer gekauften, inventarisierten FlashBox angeschlossen. Der Job-Endpunkt und die konkrete FlashBox-Auswahl folgen als naechster Integrationsschnitt.</p>`;
         updateClaimSelectedButton();
         return;
       }
@@ -547,7 +565,7 @@ const DeviceOnboardingController = (() => {
         updateClaimSelectedButton();
         return;
       }
-      if (!actions.wifiDiscovery && !actions.usbIdentification) {
+      if (!actions.wifiDiscovery && !actions.usbIdentification && !actions.flashboxFlash) {
         list.innerHTML = `<p class="empty">Fuer diesen Hardware-Typ ist keine Netzwerksuche noetig.</p>`;
         updateClaimSelectedButton();
         return;
@@ -1084,6 +1102,7 @@ const DeviceOnboardingController = (() => {
       const allowedMethods = new Set([
         actions.wifiDiscovery ? "wlan" : "",
         actions.usbIdentification ? "usb" : "",
+        actions.flashboxFlash ? "flashbox" : "",
       ].filter(Boolean));
       document.querySelectorAll('input[name="deviceDiscoveryMethod"]').forEach((input) => {
         input.disabled = !allowedMethods.has(input.value);
@@ -1097,7 +1116,11 @@ const DeviceOnboardingController = (() => {
         });
       }
       searchButton.disabled = !state.inventoryEsp32Method || !allowedMethods.has(state.inventoryEsp32Method);
-      searchButton.textContent = "WLAN-Board suchen";
+      searchButton.textContent = state.inventoryEsp32Method === "usb"
+        ? "USB-Board suchen"
+        : state.inventoryEsp32Method === "flashbox"
+          ? "FlashBox-Weg vorbereiten"
+          : "WLAN-Board suchen";
     }
 
     function renderAvrBootloaderResult() {
@@ -1132,6 +1155,9 @@ const DeviceOnboardingController = (() => {
     }
 
     function inventoryTypeHintText() {
+      if (state.inventoryEsp32Method === "flashbox") {
+        return "FlashBox nutzt eine gekaufte, inventarisierte ESP32-S3 Helper-Einheit. Das Zielboard haengt am Target-USB-Port der FlashBox, nicht direkt am Browser.";
+      }
       return state.inventoryEsp32Method === "usb"
         ? ""
         : "WLAN sucht ausschliesslich nach bereits provisionierten, erreichbaren gernetix-* Nodes im gleichen lokalen Netzwerk.";
@@ -1141,6 +1167,7 @@ const DeviceOnboardingController = (() => {
       return {
         wifiDiscovery: true,
         usbIdentification: true,
+        flashboxFlash: true,
         usbFlash: true,
         ota: false,
         basissoftware: false,

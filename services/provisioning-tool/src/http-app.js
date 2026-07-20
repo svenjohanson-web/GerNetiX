@@ -73,6 +73,11 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/provisioning-flashboxes") {
+      sendJson(res, 200, await service.listFlashboxes());
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/provisioning-credentials/reset") {
       sendJson(res, 200, service.resetActiveCredential(await readJsonBody(req)));
       return;

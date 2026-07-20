@@ -104,8 +104,9 @@ class HardwareShopService {
     if (!cart.items.length) throw new HardwareShopError("empty_cart", "Warenkorb ist leer.");
     const enriched = await this.enrichCart(cart);
     const now = new Date().toISOString();
+    const orderId = createId("order");
     const order = {
-      order_id: createId("order"),
+      order_id: orderId,
       account_id: cart.account_id,
       cart_id: cart.cart_id,
       status: input.payment_status === "paid" ? "paid" : "created",
@@ -113,7 +114,7 @@ class HardwareShopService {
       fulfillment_status: "not_fulfilled",
       items: enriched.items,
       totals: enriched.totals,
-      purchase_context: createPurchaseContext(enriched),
+      purchase_context: createPurchaseContext(enriched, orderId),
       created_at: now,
       updated_at: now,
     };
@@ -183,9 +184,10 @@ function scoreOffer(offer, requiredCapabilities) {
   };
 }
 
-function createPurchaseContext(cart) {
+function createPurchaseContext(cart, orderId) {
   return {
     account_id: cart.account_id,
+    purchase_context_id: orderId,
     purchased_offer_ids: cart.items.map((item) => item.offer_id),
     hardware_item_ids: unique(cart.items.flatMap((item) => item.offer.hardware_item_ids)),
     capability_ids: unique(cart.items.flatMap((item) => item.offer.capability_ids)),
@@ -193,7 +195,41 @@ function createPurchaseContext(cart) {
       ? "gernetix_purchase_context"
       : "component_or_community_context",
     provisioning_profile_ids: unique(cart.items.flatMap((item) => item.offer.hardware_items.map((hardwareItem) => hardwareItem.provisioning_profile_id).filter(Boolean))),
+    claimable_hardware_units: createClaimableHardwareUnits(cart, orderId),
   };
+}
+
+function createClaimableHardwareUnits(cart, orderId) {
+  const orderSuffix = orderId.replace(/^order_/, "").replace(/[^a-zA-Z0-9]/g, "").slice(0, 10).toUpperCase();
+  const units = [];
+  let sequence = 1;
+  for (const item of cart.items) {
+    const flashboxes = item.offer.hardware_items.filter((hardwareItem) => (
+      hardwareItem.item_type === "flashbox"
+      || hardwareItem.hardware_class === "flashbox"
+      || hardwareItem.purchase_policy === "gernetix_purchase_only"
+    ));
+    for (const hardwareItem of flashboxes) {
+      for (let index = 0; index < item.quantity; index += 1) {
+        const serialNumber = `GNX-FLASHBOX-${orderSuffix}-${String(sequence).padStart(2, "0")}`;
+        const claimCode = `GNX-FB-${orderSuffix}-${String(sequence).padStart(2, "0")}`;
+        units.push({
+          unit_id: `hardware_unit.${orderSuffix}.${String(sequence).padStart(2, "0")}`,
+          hardware_item_id: hardwareItem.hardware_item_id,
+          hardware_class: hardwareItem.hardware_class || hardwareItem.item_type,
+          offer_id: item.offer_id,
+          serial_number: serialNumber,
+          claim_code: claimCode,
+          claim_code_hash_sha256: sha256(claimCode),
+          claim_state: "unclaimed",
+          target_account_id: cart.account_id,
+          purchase_context_id: orderId,
+        });
+        sequence += 1;
+      }
+    }
+  }
+  return units;
 }
 
 function mergeItems(items, nextItem) {
@@ -229,6 +265,10 @@ function required(value, field) {
 
 function createId(prefix) {
   return `${prefix}_${crypto.randomUUID()}`;
+}
+
+function sha256(value) {
+  return crypto.createHash("sha256").update(String(value)).digest("hex");
 }
 
 module.exports = { HardwareShopService };

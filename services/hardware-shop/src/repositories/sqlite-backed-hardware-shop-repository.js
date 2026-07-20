@@ -3,7 +3,12 @@ const { InMemoryHardwareShopRepository, defaultSeed } = require("./in-memory-har
 
 class SqliteBackedHardwareShopRepository extends InMemoryHardwareShopRepository {
   constructor(store) {
-    super({ ...defaultSeed(), ...store.load() });
+    const loaded = store.load();
+    super({
+      ...defaultSeed(),
+      ...loaded,
+      offers: mergeOffers(defaultSeed().offers, loaded.offers || []),
+    });
     this.store = store;
     this.store.ensureSchema?.(hardwareShopSchema());
   }
@@ -53,6 +58,14 @@ class SqliteBackedHardwareShopRepository extends InMemoryHardwareShopRepository 
       this.store.replaceTable("hardware_shop_orders", state.orders, orderColumns());
     }
   }
+}
+
+function mergeOffers(defaultOffers, loadedOffers) {
+  const byId = new Map((loadedOffers || []).map((offer) => [offer.offer_id, offer]));
+  for (const offer of defaultOffers || []) {
+    if (!byId.has(offer.offer_id)) byId.set(offer.offer_id, offer);
+  }
+  return Array.from(byId.values());
 }
 
 function hardwareShopSchema() {

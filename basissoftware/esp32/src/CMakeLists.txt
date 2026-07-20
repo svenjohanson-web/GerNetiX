@@ -22,6 +22,7 @@ idf_component_register(
     functions/startCaptiveDnsServer.cpp
     functions/publishStatus.cpp
     functions/provisioning_config.cpp
+    ../../../firmware/shared/gernetix-runtime-core/src/runtime_core.cpp
     functions/readSensors.cpp
     functions/runDiagnostics.cpp
     functions/serial_provisioning.cpp
@@ -32,7 +33,9 @@ idf_component_register(
     hooks/onProjectTick.cpp
     user/user_app.cpp
     ${GERNETIX_PROJECT_SOURCES}
-  INCLUDE_DIRS ../include
+  INCLUDE_DIRS
+    ../include
+    ../../../firmware/shared/gernetix-runtime-core/include
   REQUIRES
     app_update
     esp_driver_gpio

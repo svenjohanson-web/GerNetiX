@@ -389,8 +389,9 @@ class DeviceManagementService {
 
   registerPurchaseContext(accountId, input = {}) {
     const now = new Date().toISOString();
+    const purchaseContextId = input.purchase_context_id || input.order_id || createId("purchase_context");
     const purchaseContext = {
-      purchase_context_id: input.purchase_context_id || input.order_id || createId("purchase_context"),
+      purchase_context_id: purchaseContextId,
       account_id: accountId,
       source_order_id: input.order_id || input.source_order_id || "",
       purchased_offer_ids: parseCapabilities(input.purchased_offer_ids || []),
@@ -398,6 +399,11 @@ class DeviceManagementService {
       capability_ids: parseCapabilities(input.capability_ids || []),
       support_basis: input.support_basis || "component_or_community_context",
       provisioning_profile_ids: parseCapabilities(input.provisioning_profile_ids || []),
+      claimable_hardware_units: normalizeClaimableHardwareUnits(input.claimable_hardware_units || [], {
+        accountId,
+        purchaseContextId,
+        capabilityIds: parseCapabilities(input.capability_ids || []),
+      }),
       registered_at: now,
     };
     this.repository.savePurchaseContext(accountId, purchaseContext);
@@ -406,6 +412,100 @@ class DeviceManagementService {
 
   listPurchaseContexts(accountId) {
     return this.repository.listPurchaseContexts(accountId);
+  }
+
+  listClaimableHardwareUnits(accountId) {
+    return this.repository.listPurchaseContexts(accountId)
+      .flatMap((context) => (context.claimable_hardware_units || []).map((unit) => sanitizeClaimableHardwareUnit(unit, context)));
+  }
+
+  claimHardwareUnit(accountId, input = {}) {
+    const claimCode = required(input.claim_code || input.claimCode, "claim_code");
+    const claimCodeHash = sha256(claimCode);
+    for (const context of this.repository.listPurchaseContexts(accountId)) {
+      const units = context.claimable_hardware_units || [];
+      const unit = units.find((item) => item.claim_code_hash_sha256 === claimCodeHash);
+      if (!unit) continue;
+      if (unit.target_account_id && unit.target_account_id !== accountId) {
+        throw new DeviceManagementError("claim_code_not_for_account", "Dieser Claim-Code gehoert nicht zu diesem Account.", 403);
+      }
+      if (unit.claim_state === "claimed") {
+        throw new DeviceManagementError("hardware_unit_already_claimed", "Diese Hardware-Einheit ist bereits inventarisiert.", 409);
+      }
+      const now = new Date().toISOString();
+      const displayName = String(input.display_name || input.displayName || "GerNetiX Flashbox").trim().slice(0, 120) || "GerNetiX Flashbox";
+      const registered = this.registerDevice({
+        device_id: input.device_id || createDeviceId(unit.serial_number),
+        serial_number: unit.serial_number,
+        hardware_profile_id: unit.hardware_item_id,
+        authenticity_status: "gernetix_verified",
+        gernetix_verified: true,
+        lifecycle_state: "gernetix_flashbox_claimed",
+        connectivity_status: input.connectivity_status || "unknown",
+        ota_status: input.ota_status || "ready",
+        app_version: input.app_version || unit.firmware_version || "",
+        runtime_version: input.runtime_version || "",
+        purchase_context_id: context.purchase_context_id,
+        instance_configuration: {
+          role: unit.hardware_class || "flashbox",
+          hardware_unit_id: unit.unit_id,
+          supported_target_families: unit.supported_target_families || ["esp32", "esp32-s3", "esp32-c3", "esp32-c6"],
+          self_update_policy: "a_b_verified_rollback",
+        },
+      });
+      const accountDevice = this.repository.saveAccountDevice({
+        account_device_id: createId("account_device"),
+        account_id: accountId,
+        device_id: registered.device_id,
+        display_name: displayName,
+        hardware_profile_id: unit.hardware_item_id,
+        hardware_class: unit.hardware_class || "flashbox",
+        technical_capability_ids: unit.capability_ids || flashboxCapabilities(),
+        board_short_name: "",
+        node_name: "",
+        instance_configuration: {
+          role: unit.hardware_class || "flashbox",
+          hardware_unit_id: unit.unit_id,
+          purchase_claim: {
+            claimed_at: now,
+            purchase_context_id: context.purchase_context_id,
+          },
+        },
+        purchase_context_id: context.purchase_context_id,
+        authenticity_status: "gernetix_verified",
+        connectivity_status: registered.connectivity_status,
+        ota_status: registered.ota_status,
+        ownership_status: "claimed_purchase_unit",
+        paired_at: now,
+      });
+      const updatedContext = {
+        ...context,
+        claimable_hardware_units: units.map((item) => item.unit_id === unit.unit_id ? {
+          ...item,
+          claim_state: "claimed",
+          claimed_at: now,
+          claimed_account_device_id: accountDevice.account_device_id,
+          claimed_device_id: accountDevice.device_id,
+        } : item),
+      };
+      this.repository.savePurchaseContext(accountId, updatedContext);
+      this.repository.addAuditEvent({
+        audit_event_id: createId("audit"),
+        account_id: accountId,
+        accessed_by_user_id: accountId,
+        accessed_by_role: "account_owner",
+        accessed_data_model_id: "HardwareUnitClaim",
+        purpose: "flashbox_inventory_claim",
+        access_decision: "claimed",
+        rejection_reason: "",
+      });
+      return {
+        hardware_unit: sanitizeClaimableHardwareUnit(updatedContext.claimable_hardware_units.find((item) => item.unit_id === unit.unit_id), updatedContext),
+        account_device: accountDevice,
+        device: registered,
+      };
+    }
+    throw new DeviceManagementError("claim_code_not_found", "Claim-Code wurde fuer diesen Account nicht gefunden.", 404);
   }
 
   accountDeviceSupportEntitlement(accountId, accountDeviceId) {
@@ -641,6 +741,59 @@ function findPurchaseContextForDevice(repository, accountId, device) {
 function parseCapabilities(value) {
   if (Array.isArray(value)) return value;
   return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function normalizeClaimableHardwareUnits(units, context) {
+  if (!Array.isArray(units)) return [];
+  return units.map((unit) => {
+    const claimCodeHash = unit.claim_code_hash_sha256 || (unit.claim_code ? sha256(unit.claim_code) : "");
+    return {
+      unit_id: required(unit.unit_id, "claimable_hardware_units.unit_id"),
+      hardware_item_id: required(unit.hardware_item_id, "claimable_hardware_units.hardware_item_id"),
+      hardware_class: unit.hardware_class || "hardware_unit",
+      offer_id: unit.offer_id || "",
+      serial_number: required(unit.serial_number, "claimable_hardware_units.serial_number"),
+      claim_code_hash_sha256: required(claimCodeHash, "claimable_hardware_units.claim_code_hash_sha256"),
+      claim_state: unit.claim_state === "claimed" ? "claimed" : "unclaimed",
+      target_account_id: unit.target_account_id || context.accountId,
+      purchase_context_id: unit.purchase_context_id || context.purchaseContextId,
+      capability_ids: parseCapabilities(unit.capability_ids || context.capabilityIds || []),
+      supported_target_families: parseCapabilities(unit.supported_target_families || []),
+      claimed_at: unit.claimed_at || "",
+      claimed_account_device_id: unit.claimed_account_device_id || "",
+      claimed_device_id: unit.claimed_device_id || "",
+    };
+  });
+}
+
+function sanitizeClaimableHardwareUnit(unit, context) {
+  return {
+    unit_id: unit.unit_id,
+    hardware_item_id: unit.hardware_item_id,
+    hardware_class: unit.hardware_class,
+    offer_id: unit.offer_id || "",
+    serial_number: unit.serial_number,
+    claim_state: unit.claim_state || "unclaimed",
+    purchase_context_id: unit.purchase_context_id || context.purchase_context_id,
+    claimed_at: unit.claimed_at || "",
+    claimed_account_device_id: unit.claimed_account_device_id || "",
+    claimed_device_id: unit.claimed_device_id || "",
+  };
+}
+
+function flashboxCapabilities() {
+  return [
+    "capability.processor_esp32",
+    "capability.wifi",
+    "capability.ota",
+    "capability.display_output",
+    "capability.touchscreen_input",
+    "capability.usb_otg_host",
+    "capability.flash_firmware",
+    "capability.flashbox_target_flash",
+    "capability.flashbox_self_update",
+    "capability.flashbox_manifest_download",
+  ];
 }
 
 function findPairingStatus(repository, deviceId) {

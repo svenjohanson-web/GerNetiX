@@ -20,10 +20,17 @@
         <form id="sessionForm" class="panel form-grid">
           <div class="section-title">
             <p class="eyebrow">1</p>
-            <h2>Boarddaten</h2>
+            <h2>Provisioning-Ziel</h2>
           </div>
+          <label>Geraetetyp
+            <select id="hardwareClass">
+              <option value="processor_board">ESP32 / Zielboard</option>
+              <option value="flashbox">GerNetiX Flashbox</option>
+            </select>
+          </label>
           <label>Seriennummer<input id="serialNumber" type="text" value="GNX-ESP32-0002" /></label>
-          <label>ProcessorBoard<select id="processorBoard"></select></label>
+          <label id="processorBoardField">ProcessorBoard<select id="processorBoard"></select></label>
+          <label id="flashboxField" class="hidden">Flashbox-Modell<select id="flashbox"></select></label>
           <label>Hardwareprofil<input id="hardwareProfile" type="text" value="hardware.processor_board.generic_esp_wroom32" readonly /></label>
           <label>Charge<input id="batchId" type="text" value="batch-2026-07" /></label>
           <label>Firmwareversion<input id="firmwareVersion" type="text" value="0.1.0" /></label>
@@ -53,7 +60,7 @@
         <section class="panel">
           <div class="section-title">
             <p class="eyebrow">2</p>
-            <h2>USB-Flash</h2>
+            <h2 id="executionTitle">USB-Flash</h2>
           </div>
           <dl id="sessionMeta" class="meta-list"></dl>
           <fieldset class="mode-field">
