@@ -136,6 +136,7 @@ const HelpView = (() => {
         ${section.developmentPhases ? renderDevelopmentPhases() : ""}
         ${section.phaseDescriptions ? `<div class="engineering-phase-descriptions">${section.phaseDescriptions.map((phase) => `<p><strong>${escapeHtml(phase.title)}</strong> ${escapeHtml(phase.description)}</p>`).join("")}</div>` : ""}
         ${(section.followUpParagraphs || []).map((paragraph, paragraphIndex) => `<p>${escapeHtml(paragraph)}</p>${section.waterfallModelAfterFollowUp === paragraphIndex ? renderWaterfallModel() : ""}${section.vModelAfterFollowUp === paragraphIndex ? renderVModel() : ""}${section.agileModelAfterFollowUp === paragraphIndex ? renderAgileModel() : ""}`).join("")}
+        ${section.embeddingVisual ? renderEmbeddingVisuals() : ""}
         ${section.systemLandscape ? renderSystemLandscapeVisual() : ""}
         ${section.serverLandscape ? renderServerTypesVisual() : ""}
         ${section.hardwareVisual ? renderHardwareVisual() : ""}
@@ -184,6 +185,25 @@ const HelpView = (() => {
     return `<figure class="engineering-phase-overview" aria-label="Übersicht der Entwicklungsphasen ohne festgelegte Reihenfolge"><span>Anforderungen</span><span>Entwurf</span><span>Umsetzung</span><span>Test</span><span>Betrieb</span></figure>`;
   }
 
+  function renderEmbeddingVisuals() {
+    return `<div class="embedding-visuals">
+      <figure class="embedding-pipeline" aria-label="Vom Inhalt zum Embedding und zu ähnlichen Inhalten">
+        <figcaption><span>Vom Inhalt zur Bedeutung</span><small>Ein Embedding ist eine Zahlenbeschreibung, mit der ein System Ähnlichkeit berechnen kann.</small></figcaption>
+        <div class="embedding-pipeline-stages">
+          <article><b>1 · Inhalt</b><p>„Das Tamagotchi ist hungrig.“</p><small>Text, Bild oder Messwert</small></article>
+          <i aria-hidden="true">→</i>
+          <article><b>2 · Zahlenvektor</b><code>[0.12, −0.64, 0.81, …]</code><small>Viele Eigenschaften als Zahlen</small></article>
+          <i aria-hidden="true">→</i>
+          <article class="embedding-space"><b>3 · Bedeutungsraum</b><svg viewBox="0 0 200 100" role="img" aria-label="Ähnliche Inhalte liegen im Bedeutungsraum nah beieinander"><path d="M22 78 H184 M22 78 V14"/><circle cx="76" cy="37" r="7"/><circle cx="97" cy="47" r="7"/><circle cx="82" cy="58" r="7"/><circle cx="151" cy="25" r="7" class="different"/><circle cx="69" cy="47" r="8" class="query"/><text x="37" y="23">ähnlich</text><text x="132" y="49">anders</text></svg><small>Nahe Punkte: ähnliche Bedeutung</small></article>
+        </div>
+      </figure>
+      <figure class="embedding-logic" aria-label="Wie Embeddings zu einer begründeten KI-Antwort beitragen">
+        <figcaption><span>Von Zahlen zur Systemlogik</span><small>Die Ähnlichkeitssuche liefert passende Quellen. Regeln und ein LLM machen daraus noch keine automatische Handlung.</small></figcaption>
+        <div class="embedding-logic-inputs"><div><span>Eigene<br>Dokumente</span><i aria-hidden="true">→</i><span>Dokument-<br>Embeddings</span></div><div><span>Deine<br>Anfrage</span><i aria-hidden="true">→</i><span>Anfrage-<br>Embedding</span></div></div><i class="embedding-merge-arrow" aria-hidden="true">↓</i><div class="embedding-logic-flow"><span>Ähnlichkeit<br>vergleichen</span><i aria-hidden="true">→</i><span>Passende<br>Quellen finden</span><i aria-hidden="true">→</i><span>Regeln und<br>Berechtigungen prüfen</span><i aria-hidden="true">→</i><span class="embedding-answer">Antwort oder<br>freigegebene Aktion</span></div>
+      </figure>
+    </div>`;
+  }
+
   function renderWaterfallModel() {
     return `<figure class="engineering-models-visual single-model" aria-label="Wasserfallmodell"><article><h4>Wasserfall</h4><svg class="engineering-waterfall-flow" viewBox="0 0 320 300" role="img" aria-label="Wasserfallmodell mit stufenförmigen Übergängen"><defs><marker id="waterfallArrowStandalone" markerWidth="9" markerHeight="9" refX="7.5" refY="4.5" orient="auto"><path d="M0,0 L9,4.5 L0,9z" /></marker></defs><path class="engineering-waterfall-arrow" d="M26 50 V100 H75" marker-end="url(#waterfallArrowStandalone)"/><path class="engineering-waterfall-arrow" d="M91 120 V170 H140" marker-end="url(#waterfallArrowStandalone)"/><path class="engineering-waterfall-arrow" d="M156 190 V240 H205" marker-end="url(#waterfallArrowStandalone)"/><rect x="10" y="10" width="112" height="40" rx="6"/><rect x="75" y="80" width="88" height="40" rx="6"/><rect x="140" y="150" width="108" height="40" rx="6"/><rect x="205" y="220" width="60" height="40" rx="6"/><text x="66" y="36" text-anchor="middle">Anforderung</text><text x="119" y="106" text-anchor="middle">Entwurf</text><text x="194" y="176" text-anchor="middle">Umsetzung</text><text x="235" y="246" text-anchor="middle">Test</text></svg><small>Für stabile Anforderungen.</small></article></figure>`;
   }
@@ -219,7 +239,7 @@ const HelpView = (() => {
   }
 
   function renderHardwareVisual() {
-    return `<figure class="help-hardware-landscape" aria-label="Hardware-Landkarte von Mikrocontroller bis Edge AI"><div><span>Akku-I/O</span><b>→</b><span>ESP32</span><b>→</b><span>Embedded Linux</span><b>→</b><span>Industrie</span><b>→</b><span>Edge AI</span></div><figcaption>Je weiter rechts, desto mehr System- und Energieaufwand. Die beste Wahl ist die kleinste Ebene, die die Aufgabe zuverlässig erfüllt.</figcaption></figure>`;
+    return `<figure class="help-hardware-landscape" aria-label="Hardware-Landkarte von einfacher I/O-Steuerung bis Edge KI"><div><span>Einfache I/O-<br>Steuerung</span><b>→</b><span>Vernetztes<br>Embedded-System</span><b>→</b><span>Embedded Linux</span><b>→</b><span>Industrie-<br>system</span><b>→</b><span>Edge-KI-<br>System</span></div><figcaption>Je weiter rechts, desto mehr System- und Energieaufwand. Die beste Wahl ist die kleinste Ebene, die die Aufgabe zuverlässig erfüllt.</figcaption></figure>`;
   }
 
   function renderTamagotchiUmlStateChart() {

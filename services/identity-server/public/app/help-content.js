@@ -44,8 +44,24 @@ const HelpContent = (() => {
         { id: "ai-basics", title: "GPT, Alexa und LLMs", articleId: "ai-basics", subchapters: [
           { id: "ai-gpt-and-alexa", title: "GPT und Alexa sind nicht dasselbe" },
           { id: "ai-llm", title: "Was ist ein LLM?" },
+          { id: "ai-vectors-and-embeddings", title: "Vektoren und Embeddings" },
           { id: "ai-local-or-online", title: "Lokal oder über das Internet?" },
           { id: "ai-payment-models", title: "Kosten und Zahlungsmodelle" },
+        ] },
+      ],
+    },
+    {
+      id: "communication-and-interfaces",
+      title: "Kommunikation und Schnittstellen",
+      description: "Verstehen, wie Apps, Server und Geräte Daten austauschen – von REST über MQTT bis zu Ereignissen in Echtzeit.",
+      surface: "knowledge",
+      access: "public",
+      children: [
+        { id: "communication-basics", title: "Systeme miteinander verbinden", articleId: "communication-basics", subchapters: [
+          { id: "communication-rest", title: "REST und HTTP" },
+          { id: "communication-events", title: "Ereignisse, Webhooks und WebSockets" },
+          { id: "communication-mqtt", title: "MQTT für IoT" },
+          { id: "communication-data-security", title: "JSON, Identität und Berechtigungen" },
         ] },
       ],
     },
@@ -258,6 +274,12 @@ const HelpContent = (() => {
           "Ein LLM hat dabei kein eigenes Ziel, keine Wünsche und kein verlässliches Weltverständnis wie ein Mensch. Es erzeugt plausible Antworten auf Grundlage seiner Eingabe und seines Trainings. Deshalb braucht es eine gute Aufgabenbeschreibung, überprüfbare Regeln und bei wichtigen Entscheidungen immer eine menschliche oder technisch klar definierte Kontrolle.",
           "Ein LLM kann als Gesprächspartner dienen, ein Regelmodell für dein Tamagotchi entwerfen oder Texte in strukturierte Daten überführen. Es sollte aber nicht ohne zusätzliche Schutzmechanismen selbstständig Türen öffnen, Geld ausgeben oder sicherheitsrelevante Geräte steuern."
         ] },
+        { id: "ai-vectors-and-embeddings", heading: "Vektoren und Embeddings: Bedeutung als Zahlenraum", embeddingVisual: true, paragraphs: [
+          "Ein Vektor ist in der Mathematik zunächst einfach eine geordnete Liste von Zahlen. Er kann zum Beispiel eine Richtung im Raum, eine Geschwindigkeit oder mehrere Messwerte beschreiben. Mit Vektorgrafiken hat das nur den Namen gemeinsam: In der KI geht es hier nicht um gezeichnete Linien, sondern um Zahlen, mit denen ein Computer Eigenschaften vergleichen kann.",
+          "Ein Embedding übersetzt Text, ein Bild oder andere Inhalte in einen solchen Zahlenvektor. Dabei entstehen sehr viele Zahlen, die zusammen eine Art technische Bedeutungsbeschreibung bilden. Inhalte mit ähnlicher Bedeutung liegen in diesem Zahlenraum näher beieinander als völlig andere Inhalte. Eine Frage zu 'ESP32 und WLAN' kann dadurch auch passende Dokumente finden, in denen eher von 'Mikrocontroller' und 'Netzwerkverbindung' die Rede ist.",
+          "Das wird zum Beispiel für semantische Suche und für Retrieval Augmented Generation, kurz RAG, verwendet. Statt ein LLM alles wissen zu lassen, sucht dein System zunächst passende eigene Dokumente über ihre Embeddings. Nur diese geprüften Informationen werden der KI zusammen mit der Frage bereitgestellt. Das kann Antworten relevanter machen und begrenzt, welche Daten überhaupt verwendet werden.",
+          "Auch Vektoren sind kein magischer Wahrheitsbeweis. Sie zeigen Ähnlichkeit, nicht automatisch fachliche Richtigkeit. Deshalb gehören Quellen, Zugriffsrechte, Aktualität und eine klare Prüfung weiterhin zur Architektur. Ingenieursmäßig gedacht ist ein Embedding ein hilfreicher Suchbaustein – nicht die Entscheidung selbst."
+        ] },
         { id: "ai-local-or-online", heading: "Lokal oder über das Internet?", paragraphs: [
           "Ein internetbasiertes LLM läuft bei einem Anbieter. Dein Gerät sendet die Anfrage über das Internet an dessen Dienst und erhält eine Antwort zurück. Das kann leistungsfähige Modelle ohne eigene starke Hardware ermöglichen. Dafür brauchst du eine Verbindung, musst den Datenweg bewusst bewerten und bist von Verfügbarkeit, Regeln und Preisen des Dienstes abhängig.",
           "Ein lokales LLM läuft auf eigener Hardware: zum Beispiel auf einem PC, einem Server zu Hause oder – bei kleineren Modellen – auf geeigneter Edge-Hardware. Das kann auch ohne Internet funktionieren und gibt dir mehr Kontrolle über Daten und Verfügbarkeit. Im Gegenzug musst du Rechenleistung, Speicher, Energiebedarf, Updates und Betrieb selbst einplanen.",
@@ -267,6 +289,34 @@ const HelpContent = (() => {
           "Bei Online-KI gibt es häufig zwei unterschiedliche Zahlungsarten. Ein Abo bezahlt meist den Zugang zu einer fertigen Anwendung mit bestimmten Funktionen und Grenzen. Es ist nicht automatisch dasselbe wie ein technischer Zugang für deine eigene App oder dein IoT-Projekt.",
           "Für die direkte Einbindung in eigene Software wird oft nutzungsbasiert abgerechnet. Dabei zählen Eingabe und Antwort, meist in Textmengen oder Tokens. Eine einzelne Anfrage kann sehr günstig sein, viele regelmäßige Aufrufe können sich aber summieren. Deshalb gehört zur Architektur immer eine Kostenfrage: Wie oft ist eine KI-Antwort wirklich nötig, und welche günstigere Logik kann dieselbe Aufgabe lokal erledigen?",
           "Ein lokales Modell hat normalerweise keine Abrechnung pro Anfrage durch einen Anbieter. Die Kosten verschwinden dadurch nicht: Hardware, Strom, Speicher, Wartung und gegebenenfalls ein leistungsfähiger PC oder Server gehören zur Rechnung. Ingenieursmäßig gedacht vergleichst du also nicht nur den Preis pro KI-Aufruf, sondern auch Datenschutz, Verfügbarkeit, Antwortzeit, Energiebedarf und den Aufwand für den Betrieb."
+        ] }
+      ],
+      relatedTopics: ["from-problem-to-system", "server-systems", "microcontroller-basics"],
+    },
+    "communication-basics": {
+      title: "Kommunikation und Schnittstellen",
+      summary: "Verteilte Systeme werden erst dann zu einem gemeinsamen Projekt, wenn sie zuverlässig, verständlich und sicher miteinander kommunizieren können.",
+      access: "public",
+      sections: [
+        { id: "communication-rest", heading: "REST und HTTP: fragen und antworten", paragraphs: [
+          "REST ist ein verbreiteter Stil für Web-Schnittstellen. Eine App oder ein Gerät sendet über HTTP eine Anfrage an eine Adresse, der Server verarbeitet sie und sendet eine Antwort zurück. Ein Beispiel: Die Tamagotchi-App fragt den Server nach dem aktuellen Zustand oder sendet den Wunsch, das Tamagotchi zu füttern.",
+          "HTTP-Methoden machen die Absicht lesbar: GET liest Daten, POST legt etwas Neues an oder löst eine Aktion aus, PUT oder PATCH aktualisieren vorhandene Daten und DELETE entfernt etwas. Eine gute REST-API beschreibt klar, welche Adresse welche Daten erwartet, welche Antwort zurückkommt und was bei einem Fehler passiert.",
+          "REST passt besonders gut, wenn ein Nutzer oder eine App bewusst etwas abfragt oder auslöst. Es ist leicht zu testen, gut dokumentierbar und funktioniert über viele Plattformen hinweg. Für ständig neue Ereignisse oder sehr viele kleine Sensormeldungen ist ein anderes Kommunikationsmuster oft besser geeignet."
+        ] },
+        { id: "communication-events", heading: "Ereignisse, Webhooks und WebSockets", paragraphs: [
+          "Bei einem Ereignis informiert ein System ein anderes darüber, dass etwas passiert ist: Ein Grenzwert wurde überschritten, ein Update steht bereit oder dein Tamagotchi wird hungrig. Der Empfänger muss nicht ständig nachfragen. Das ist ein anderes Muster als die klassische REST-Anfrage.",
+          "Ein Webhook ist eine vorher vereinbarte HTTP-Adresse, die ein System bei einem Ereignis aufruft. WebSockets halten dagegen eine offene Verbindung zwischen Client und Server. So können beide Seiten schnell Nachrichten austauschen, etwa für einen Live-Status in einer Web-App.",
+          "Ereignisorientierte Kommunikation braucht klare Regeln: Welche Ereignisnamen gibt es? Welche Daten dürfen sie enthalten? Was passiert, wenn der Empfänger kurz offline ist? Ein Ereignis sollte auch doppelt eintreffen können, ohne ungewollt zweimal dieselbe Aktion auszulösen."
+        ] },
+        { id: "communication-mqtt", heading: "MQTT: Nachrichten für IoT", paragraphs: [
+          "MQTT ist ein leichtgewichtiges Nachrichtenprotokoll für Geräte, Sensoren und Aktoren. Geräte veröffentlichen Nachrichten zu einem Thema, zum Beispiel 'haus/wohnzimmer/temperatur'. Andere Systeme abonnieren dieses Thema und erhalten die Nachricht, wenn sie dafür berechtigt sind.",
+          "Dazwischen steht ein MQTT-Broker. Er nimmt Nachrichten entgegen und verteilt sie an die passenden Empfänger. Dadurch müssen Geräte einander nicht direkt kennen. Ein ESP32 kann einen Messwert senden, während eine App, ein Home Server und ein Regelwerk ihn gleichzeitig verwenden.",
+          "MQTT passt gut zu vielen kleinen Meldungen, wechselnden Verbindungen und verteilten IoT-Geräten. Es ersetzt REST nicht vollständig: Konfigurationen, Konten oder einmalige Abfragen können weiterhin sinnvoll über eine REST-API laufen. Gute Systeme kombinieren beide Muster bewusst."
+        ] },
+        { id: "communication-data-security", heading: "JSON, Identität und Berechtigungen", paragraphs: [
+          "JSON ist ein einfaches Textformat für strukturierte Daten. Statt nur '23' zu senden, kann eine Nachricht zum Beispiel Temperatur, Einheit, Zeit und Gerätekennung enthalten. Ein klar definiertes Datenformat verhindert Missverständnisse zwischen App, Server und Gerät.",
+          "Eine Schnittstelle darf nicht nur technisch erreichbar sein, sondern muss auch wissen, wer kommuniziert. Identität beantwortet die Frage: Wer ist dieses Gerät oder dieser Nutzer? Berechtigung beantwortet: Was darf diese Identität lesen, ändern oder auslösen? Diese beiden Fragen gehören zu jeder API und zu jedem MQTT-Thema.",
+          "Plane außerdem Fehlerfälle mit ein: ungültige Daten, fehlende Verbindung, abgelaufene Zugangsdaten oder doppelte Nachrichten. Eine gute Schnittstelle beantwortet nicht nur den Idealfall, sondern bleibt auch dann nachvollziehbar und sicher, wenn etwas schiefgeht."
         ] }
       ],
       relatedTopics: ["from-problem-to-system", "server-systems", "microcontroller-basics"],
@@ -388,8 +438,8 @@ const HelpContent = (() => {
       hardwareLandscape: true,
       sections: [
         { heading: "Eine Rechenlandschaft statt einer Leistungspyramide", paragraphs: ["Ein Mikrocontroller führt ein einzelnes Programm direkt auf der Hardware aus. Er startet schnell, braucht wenig Energie und ist ideal für eine konkrete Aufgabe. Ein Embedded-Linux-System kann dagegen Prozesse, Netzwerkdienste und Dateien verwalten – dafür braucht es mehr Energie, Pflege und eine saubere Abschaltstrategie."], hardwareVisual: true },
-        { heading: "Die fünf Ebenen", table: { headers: ["Ebene", "Typische Beispiele", "Wofür sie passt"], rows: [["Kleiner Mikrocontroller", "ATtiny, Arduino Nano, Raspberry Pi Pico", "Akku-Sensoren, Taster, LEDs, Relais: wenig Energie, kein Betriebssystem, eine klare Aufgabe."], ["Vernetzter Mikrocontroller", "ESP32-C3, ESP32-S3, ESP32-C6", "Sensoren und Aktoren verbinden, lokale Bedienung oder kleine Webseite; direkter Hardwarezugriff mit WLAN und Bluetooth."], ["Embedded Linux", "Raspberry Pi Zero 2 W, Compute Module, Industrie-SBC", "Gateway, Kamera, lokale Dienste, Datenpuffer oder umfangreiche Bedienoberflächen."], ["Industrie-Mikrocontroller", "STM32, Renesas RA/RX; H8 im Bestand", "Robuste Echtzeitsteuerung, Feldschnittstellen, lange Produktzyklen und professionelle Toolchains."], ["GPU-Edge-Computing", "NVIDIA Jetson, Industrie-PC mit GPU", "Bildverarbeitung und KI-Inferenz nahe an Kamera oder Maschine; kein Ersatz für Echtzeit-I/O."]] } },
-        { heading: "Erst die Aufgabe, dann das Board", table: { headers: ["Wenn dein Projekt …", "meist passende Ebene", "Beispiel"], rows: [["lange mit Akku läuft und einen Sensor oder Aktor bedient", "Kleiner Mikrocontroller", "Temperatur-Node, Taster, LED, Relais"], ["per WLAN kommuniziert und nah an Pins und Sensoren bleibt", "ESP32", "GerNetiX-Device, Bewässerung, kleines Touch-UI"], ["lokal mehrere Dienste, eine Kamera oder ein Gateway braucht", "Embedded Linux", "Haus-Gateway, Datenablage, Kamera-Bridge"], ["eine Maschine mit definierten Echtzeit- und Lebenszyklusvorgaben steuert", "Industrie-Mikrocontroller", "Feldbus-Knoten, Serienprodukt"], ["Kamera- oder KI-Modelle ohne Cloud-Latenz auswertet", "GPU-Edge", "Qualitätsprüfung, Objekterkennung"]] } },
+        { heading: "Die fünf Systemebenen", table: { headers: ["Systemebene", "Typische Beispiele", "Wofür sie passt"], rows: [["Einfache I/O-Steuerung", "Mikrocontroller mit wenigen Ein- und Ausgängen", "Ein Sensor, Taster, LED oder Relais mit geringem Energiebedarf und einer klaren Aufgabe."], ["Vernetztes Embedded-System", "ESP32-C3, ESP32-S3, ESP32-C6, vernetzter STM32", "Direkter Hardwarezugriff, Sensoren und Aktoren, lokale Bedienung sowie Funk oder Netzwerk."], ["Embedded Linux", "Raspberry Pi Zero 2 W, Compute Module, Industrie-SBC", "Gateway, Kamera, lokale Dienste, Datenpuffer oder umfangreichere Bedienoberflächen."], ["Industriesystem", "Industrie-Mikrocontroller, SPS, Industrie-PC", "Robuste Echtzeitsteuerung, Feldschnittstellen, lange Produktzyklen und definierte Betriebsanforderungen."], ["Edge-KI-System", "NVIDIA Jetson, Industrie-PC mit GPU, KI-fähiger SBC", "Bildverarbeitung und KI-Inferenz nahe an Kamera oder Maschine; kein Ersatz für Echtzeit-I/O."]] } },
+        { heading: "Erst die Aufgabe, dann die Systemebene", table: { headers: ["Wenn dein Projekt …", "meist passende Ebene", "Beispiel"], rows: [["lange mit Akku läuft und nur wenige Ein- und Ausgänge bedient", "Einfache I/O-Steuerung", "Temperatur-Node, Taster, LED, Relais"], ["nah an Pins und Sensoren bleibt und Daten oder Bedienung bereitstellt", "Vernetztes Embedded-System", "GerNetiX-Device, Bewässerung, kleines Touch-UI"], ["lokal mehrere Dienste, eine Kamera oder ein Gateway braucht", "Embedded Linux", "Haus-Gateway, Datenablage, Kamera-Bridge"], ["eine Maschine mit definierten Echtzeit- und Lebenszyklusvorgaben steuert", "Industriesystem", "Feldbus-Knoten, Serienprodukt"], ["Kamera- oder KI-Modelle ohne Cloud-Latenz auswertet", "Edge-KI-System", "Qualitätsprüfung, Objekterkennung"]] } },
         { heading: "Begriffe richtig einordnen", paragraphs: ["Einen Raspberry Pi Nano gibt es nicht als gängige Produktlinie. Für die kleine Mikrocontroller-Ebene passt der Raspberry Pi Pico; der Raspberry Pi Zero 2 W gehört wegen Linux bereits zur nächsten Ebene.", "STM32- und aktuelle Renesas-Familien sind typische Wege in professionelle und industrielle Produkte. Die Renesas-H8-Familie ist vor allem in bestehenden Anlagen anzutreffen; für ein neues Design wird normalerweise eine aktuelle, aktiv gepflegte Familie gewählt."] },
         { heading: "Was GerNetiX heute nutzt", paragraphs: ["GerNetiX konzentriert Basissoftware und geführte Inbetriebnahme auf kompatible ESP32-Boards. Sie sind die praktische Mitte: genug Rechenleistung und Konnektivität für vernetzte Geräte, aber weiterhin nah genug an Sensoren, Aktoren und energieeffizientem Betrieb.", "Ein gutes System verteilt Aufgaben: Der Mikrocontroller liest und schaltet zuverlässig. Ein Linux-Gateway bündelt Geräte, Bedienung und lokale Dienste. Eine GPU kommt nur dazu, wenn Bild- oder KI-Rechenlast sie rechtfertigt. Cloud-Dienste bleiben optional für Fernzugriff und Auswertung."] },
       ],
