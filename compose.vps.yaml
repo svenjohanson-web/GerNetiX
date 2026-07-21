@@ -51,7 +51,7 @@ services:
       PROJECT_SERVER_RUNTIME_DIR: /var/lib/gernetix/projects
     expose: ["4800"]
     volumes:
-      - service_state:/var/lib/gernetix/services
+      - project_state:/var/lib/gernetix/projects
 
   build-deploy-server:
     <<: *node-service

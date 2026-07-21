@@ -62,6 +62,18 @@ Der `mock` Runner erzeugt reproduzierbare Test-Artefakte ohne Toolchain. Fuer ec
 
 Fuer den lokalen USB-MVP unterstuetzt der Server den Modus `build_and_usb_flash`. Dann fuehrt der PlatformIO-Runner nach erfolgreichem Build `platformio run -t upload` aus. Ein optionaler Upload-Port wird ueber `usb_flash.upload_port` uebergeben, zum Beispiel `COM7`.
 
+## Headless Flashbox-Buildkette
+
+Der headless Client `tools/submit-flashbox-build-job.js` prueft die vollstaendige serverseitige Kette ohne UI: Er legt das versionierte Flashbox-Projekt im Project Server an, uebergibt den daraus erzeugten BuildPackage-Snapshot an den Build-&-Deploy-Server und schreibt Status sowie Artefakte zurueck in die Projekt-Build-Historie.
+
+Im VPS-Checkout wird er innerhalb des privaten Compose-Netzes gestartet:
+
+```text
+docker compose -f compose.vps.yaml exec project-server node /app/tools/submit-flashbox-build-job.js
+```
+
+Der Aufruf nutzt den im Buildserver-Container konfigurierten echten Runner (`/opt/platformio/bin/platformio`); eine lokale PlatformIO-Installation des aufrufenden Rechners wird nicht verwendet. Der Test legt den technischen Projekt-Datensatz `system-flashbox-build-verification` und einen neuen BuildJob in der Projekt-SQLite an.
+
 ## Cache-Regel
 
 Der Cache darf PlatformIO, Toolchains, Libraries, Objektdateien und vergleichbare technische Artefakte enthalten. Geht der Cache verloren, muss der Build aus dem Build-Paket weiterhin moeglich sein und dauert nur laenger.
