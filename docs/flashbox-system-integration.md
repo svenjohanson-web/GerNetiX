@@ -4,7 +4,9 @@
 
 Dieses Dokument definiert, wie Flashbox, Identity, Hardware Catalog, Webshop, Provisioning Tool, Device Management, Build-/Firmware-Artefakte und Recovery zusammenspielen.
 
-Die Flashbox ist dabei kein normales Zielboard. Sie ist ein kaufbares, inventarisierbares und widerrufbares GerNetiX-Werkzeuggeraet, das andere Zielgeraete flashen darf. Genau deshalb darf kein einzelner UI-Schritt sie "einfach anlegen"; Herkunft, Seriennummer, Hardwareprofil, Besitz, Firmwarestand und Trust-State muessen zusammenpassen.
+Die Flashbox ist dabei kein normales Zielboard. Sie ist ein inventarisierbares und widerrufbares GerNetiX-Werkzeuggeraet, das andere Zielgeraete flashen darf. Sie kann gekauft **oder nach einem gefuehrten Selbstbau-Zertifizierungsweg** hergestellt werden. Deshalb darf kein einzelner UI-Schritt sie "einfach anlegen": Herkunft, Hardwareprofil, kryptographische Identitaet, Besitz, Firmwarestand und Trust-State muessen zusammenpassen.
+
+Der Selbstbau senkt die Einstiegshuerde fuer Neukunden, erweitert aber nicht die Hardwarekompatibilitaet auf beliebige ESP32-Boards. Zugelassen ist ausschliesslich das aktive Flashbox-Referenzprofil: ESP32-S3, mindestens 16 MB interner Flash, 8 MB PSRAM, getrennte datenfaehige Control- und Target-USB-Ports, USB-OTG-Host sowie nachgewiesene 5-V-VBUS-Schaltung mit Power-Switch und Strombegrenzung. Ein aehnliches Board, ein einzelner USB-Port oder ein ESP32 ohne diese Eigenschaften kann nicht zertifiziert werden.
 
 Die abgeleiteten Umsetzungspakete stehen in [GerNetiX Flashbox - Arbeitspakete](flashbox-work-packages.md).
 
@@ -14,7 +16,7 @@ Die abgeleiteten Umsetzungspakete stehen in [GerNetiX Flashbox - Arbeitspakete](
 | --- | --- | --- |
 | Hardware Catalog | Produktklassen, Hardwareprofile, Capabilities, Zielgeraete-Unterstuetzung, retired/active Status | keine Account-Besitze oder Bestellungen fuehren |
 | Webshop | Angebot, Bestellung, Kontakt-E-Mail, Zahlung/Versand, kaufmaennischer Purchase Context | keine GerNetiX-Account-Identitaet erzwingen, keine Device-Credentials verwalten |
-| Provisioning Tool | interne Factory-/Support-Inbetriebnahme, Seriennummer, initiale Device-Identitaet, Register-/Pairing-Vorbereitung | keine selbst gebaute Flashbox als GerNetiX-Flashbox akzeptieren |
+| Provisioning Tool | Factory-/Support-Inbetriebnahme sowie gefuehrte Selbstbau-Zertifizierung, Device-Identitaet und Register-/Pairing-Vorbereitung | keine beliebige oder nur aehnliche Selbstbau-Hardware als Flashbox akzeptieren |
 | Identity | Account, Login, Aktivierungscode/Claim, Account-Inventar-UI, Auswahl einer konkreten Flashbox im Nutzerfluss | keine Zahlungsdaten fuehrend speichern, keine Hardwareprofile erfinden |
 | Device Management | Device-ID, mTLS-/Credential-Status, Ownership, Pairing, Connectivity, OTA-/Firmwarestatus, Trust-State | keine Shoppreise oder Rechnungslogik fuehren |
 | Build & Deploy / Firmware-Artefakte | signierte Manifeste, signierte Images, Hashes, Zielprofile, Versionen, Sperr-/Rollback-Regeln | keine Account- oder Kaufentscheidung ersetzen |
@@ -43,6 +45,7 @@ Recovery erhaelt Identitaet und Pairing, statt heimlich neu zu erzeugen.
 | `serial_number` | aufgedruckte oder factory-seitig vergebene Seriennummer |
 | `device_id` | kryptographisch registrierte Geraeteidentitaet fuer Device Management/mTLS |
 | `purchase_context_id` | kaufmaennischer Kontext aus Webshop/Bestellung/Provisionierung |
+| `origin_type` | `purchased`, `self_manufactured_certified` oder `support_rebound`; steuert Herkunft, Supportgrenze und Aktivierungsweg |
 | `claim_code` | Fallback-Aktivierungsweg, mit dem eine gekaufte Einheit in Identity einem Account zugeordnet wird, wenn WLAN-Discovery/Challenge nicht nutzbar ist |
 | `trust_state` | `trusted`, `update_required`, `recovery_required`, `revoked`, `lost`, `retired` |
 
@@ -53,29 +56,39 @@ Recovery erhaelt Identitaet und Pairing, statt heimlich neu zu erzeugen.
    - Capabilities werden gesetzt, mindestens `flashbox.self_update`, `flashbox.usb_otg_host`, `flashbox.target_flash`, `flashbox.signed_manifest_download`.
    - Unterstuetzte Zielgeraete-Familien und Mindest-Flashbox-Firmware werden gepflegt.
 
-2. **Factory / Provisioning Tool**
-   - Interner Nutzer waehlt im privaten Provisioning Tool den Typ `GerNetiX Flashbox`.
-   - Das Tool akzeptiert nur Flashbox-Katalogeintraege, keine manuelle Selbstbau-Flashbox.
-   - Seriennummer, Charge, Hardwareprofil und initialer Firmwarestand werden erfasst.
-   - Die Flashbox erhaelt eine eigene Device-Identitaet. Der private Schluessel entsteht auf der Flashbox oder in einem gleichwertig geschuetzten Factory-Schritt und verlaesst die Einheit nicht.
+2. **Oeffentlicher Flash-Assistent und Selbstbau-Zertifizierung**
+   - Der oeffentliche Bereich bietet den Flash-Assistenten ohne Anmeldung an, damit Nutzer keine Zugangsdaten auf einem fremden Rechner eingeben muessen. Er verwendet ausschliesslich ein versioniertes, signiertes und accountneutrales Flashbox-Initialimage.
+   - Der oeffentliche Assistent akzeptiert ausschliesslich das aktive Flashbox-Referenzprofil und erzeugt keine Account-, Besitz-, Entitlement- oder Inventardaten. Sein Ergebnis ist nur der technisch nachweisbare Zustand `flashbox_initial_firmware_ready`.
+   - Der interne Bereich verwendet dieselbe Assistenten-Komponente in einem Dialog. Die Komponente erhaelt dabei keine Accountdaten; nach erfolgreichem Flash gibt sie nur die lokale technische Nachweisreferenz an den angemeldeten Controller zurueck.
+   - Der interne Weg beginnt mit der Frage: **„Ist diese Flashbox bereits geflasht?“**
+     - **Ja:** lokale Discovery, Challenge-Signatur und Account-Uebernahme der vorhandenen Flashbox starten.
+     - **Nein, neue Flashbox erstellen:** derselbe oeffentliche Flash-Assistent wird im Dialog gestartet. Nach dem Flash setzt der interne Controller automatisch mit Discovery, Challenge-Signatur und Uebernahme in den aktuell angemeldeten Account fort.
+   - Dadurch bleibt ein oeffentlich geflashtes Geraet bewusst noch keinem Account zugeordnet. Eine im internen Dialog geflashte Flashbox wird ausschliesslich dem bereits angemeldeten Account zugeordnet – auch wenn dieselbe Person mehrere Accounts besitzt.
+
+3. **Factory oder Selbstbau-Zertifizierung / Provisioning Tool**
+   - Der interne Factory-Weg waehlt den Typ `GerNetiX Flashbox`; der Kundenweg waehlt `Flashbox selbst herstellen`.
+   - Der Kundenweg akzeptiert ausschliesslich das aktive Flashbox-Referenzprofil. Er prueft MCU-Familie, mindestens 16 MB Flash, mindestens 8 MB PSRAM, beide USB-Rollen sowie den dokumentierten Nachweis fuer VBUS-Power-Switch und Strombegrenzung.
+   - Nicht bestandene oder unvollstaendige Hardwarepruefungen bleiben Community-Hardware und erhalten weder Flashbox-Trust noch Flashbox-Capabilities.
+   - Im Factory-Weg werden Seriennummer und Charge erfasst. Im Selbstbau-Weg erzeugt das Tool eine GerNetiX-Registriernummer und speichert `origin_type = self_manufactured_certified`; sie ist keine Verkaufs- oder Garantie-Seriennummer.
+   - Die Flashbox erhaelt eine eigene Device-Identitaet. Der private Schluessel entsteht auf der Flashbox und verlaesst die Einheit nicht.
    - Device Management erhaelt Public Key, Zertifikatsmetadaten, Seriennummer, Hardwareprofil und Trust-State.
 
-3. **Webshop / Verkauf**
+4. **Webshop / Verkauf**
    - Eine verkaufte Einheit erzeugt oder referenziert `PurchasedHardwareUnit`.
    - Der Webshop kennt Bestellkontakt und Versanddaten, aber nicht zwingend den spaeteren GerNetiX-Account.
    - Der Kunde erhaelt eine Aktivierungs-/Claim-Moeglichkeit, nicht automatisch Device-Credentials.
 
-4. **Identity / Claim**
+5. **Identity / Claim**
    - Der Nutzer meldet sich mit GerNetiX-Account an.
    - Normalfall: Identity findet eine per WLAN sichtbare Flashbox, fordert ueber Device Management eine Challenge an und akzeptiert die Einheit erst nach gueltiger Signatur mit dem registrierten Device Public Key.
    - Fallback: Der Nutzer loest Claim-Code oder Seriennummer-plus-Berechtigungsnachweis ein, wenn Discovery oder Challenge nicht moeglich ist.
    - Identity verknuepft die konkrete `unit_id` mit dem Account-Inventar.
    - Device Management bestaetigt, ob die Seriennummer, Device-ID und Trust-State zur Einheit passen.
 
-5. **Nutzung**
+6. **Nutzung**
    - In Identity/IDE/Provisioning-UI wird beim Transportweg `flashbox` eine konkrete inventarisierte Flashbox ausgewaehlt.
    - Die UI zeigt Name, Seriennummer, Firmwareversion, Trust-State, letzte Verbindung, unterstuetzte Zielprofile und Updatehinweise.
-   - Ohne inventarisierte Flashbox gibt es nur "Flashbox kaufen" oder "gekaufte Flashbox aktivieren", keinen Selbstbau-Pfad.
+   - Ohne inventarisierte Flashbox gibt es "Flashbox kaufen", "gekaufte Flashbox aktivieren" oder "Flashbox selbst herstellen". Der Selbstbau-Pfad startet immer mit der Referenzprofil-Pruefung und nicht mit einer Freitextanlage.
 
 ## Flash-Auftrag mit Flashbox
 
@@ -170,10 +183,12 @@ Account-Recovery, Passkey-Recovery und Offline-Recovery-Sets gehoeren zu Identit
 Verbindlich:
 
 - Flashboxen authentifizieren sich gegen GerNetiX mit eigener Device-Identitaet, idealerweise mTLS.
-- Der Device Private Key ist der Kopierschutz- und Echtheitsnachweis der konkreten Flashbox. Er entsteht auf der Flashbox oder in einem gleichwertig geschuetzten Factory-Schritt und wird niemals exportiert.
+- Der Device Private Key ist der Echtheitsnachweis der konkreten zertifizierten Flashbox und wird niemals exportiert. Bei Selbstbau weist er nicht auf einen Kauf hin und begruendet weder Garantie noch Hardware-Support.
 - Device Management speichert nur Public Key, Zertifikatsmetadaten, Fingerprint und Trust-State.
 - WLAN-Sichtbarkeit, Seriennummer oder Kaufcode ersetzen nie den kryptographischen Challenge-Nachweis, wenn die Flashbox erreichbar ist.
-- Kauf-/Claim-Code ist ein Fallback fuer Verkauf, Support oder nicht erreichbare Discovery, nicht der Primaerbeweis fuer echte Hardware.
+- Der oeffentliche Flash-Assistent darf weder eine Account-ID, Sitzung, Besitzbindung noch Account-spezifische Manifeste annehmen oder speichern. Er darf ausschliesslich das freigegebene Initialimage und die lokale Referenzprofil-Pruefung nutzen.
+- Der im internen Bereich geoeffnete Assistent ist dieselbe UI-Komponente, aber keine zweite Accountgrenze: Die Account-Uebernahme erfolgt erst nach Rueckkehr im angemeldeten Controller und ausschliesslich gegen dessen serverseitige Sitzung.
+- Kauf-/Claim-Code ist ein Fallback fuer Verkauf, Support oder nicht erreichbare Discovery. Selbstbau verwendet stattdessen die erfolgreiche Referenzprofil-Pruefung plus Challenge-Signatur und Account-Bestaetigung.
 - GerNetiX Release Private Keys bleiben server-/factoryseitig; die Flashbox enthaelt nur den passenden Release Public Key zur Manifestpruefung.
 - Der Flashbox-Manifest-Validator setzt `artifact_download_allowed` erst nach gueltiger mbedTLS-Signaturpruefung. Der Artefakt-Hash ist eine eigene Pflichtpruefung vor jedem spaeteren Schreiben.
 - Die Write-State-Machine bleibt gesperrt, bis Selbstupdate-Writer und USB-OTG-Zielgeraete-Writer jeweils eigene Power-Loss-/Verify-Tests besitzen.
@@ -192,6 +207,7 @@ Identity beziehungsweise die Plattform-UI muss anzeigen:
 
 - ob der Nutzer keine Flashbox besitzt,
 - ob eine gekaufte Flashbox aktiviert werden kann,
+- ob das Referenzprofil fuer eine selbst hergestellte Flashbox erfuellt ist,
 - welche konkreten Flashboxen im Account inventarisiert sind,
 - ob eine Flashbox online, veraltet, gesperrt oder im Recovery-Zustand ist,
 - welche Zielgeraete/Familien sie unterstuetzt,
@@ -199,7 +215,7 @@ Identity beziehungsweise die Plattform-UI muss anzeigen:
 
 Sie darf nicht anbieten:
 
-- Flashbox selbst erstellen,
+- eine Flashbox ohne Referenzprofil-Pruefung selbst erstellen,
 - Flashbox per Freitext anlegen,
 - Trust-State lokal ueberschreiben,
 - eine nicht beanspruchte Shop-Bestellung ohne Claim als Account-Inventar ausgeben,

@@ -62,7 +62,9 @@ Die Lizenz ist an eine **Serverinstanz**, nicht an einen einzelnen physischen Da
 
 Die Flashbox ist deshalb nicht nur ein Komfort-Programmer, sondern die **lokale Brücke zwischen einem mobilen Gerät und einem absichtlich offline betriebenen IoT-Device**. Sie ist besonders wertvoll, wenn kein WLAN/Bluetooth/Mobilfunk erwünscht ist – etwa in Schule, Labor, sicherheits- oder datensensiblen Anwendungen, bei energiearmen Geräten oder während Recovery. Die Bedienung bleibt lokal: Mobiles Gerät → Flashbox → USB → Zielboard. Die Flashbox muss für diesen Grundablauf weder Cloud noch Funk am Zielboard voraussetzen.
 
-Die vorhandene technische Richtung ist richtig: Flashbox als gekauftes, seriennummerngebundenes Inventar statt als frei nachbaubare Vertrauensklasse. Sie darf aber **nicht** zur Voraussetzung für USB-Flash werden. Web Serial bzw. der lokale Serial Service bleibt der kostenlose Standardweg; sonst würde GerNetiX Community-Hardware unnötig ausschließen.
+Die Flashbox kann gekauft oder als zertifizierter Selbstbau hergestellt werden. Der Selbstbauweg ist ein gezielter Akquisekanal: Er senkt die Einstiegshuerde, ohne aus jedem ESP32 eine Flashbox zu machen. Zulassungsfaehig ist ausschliesslich das aktive Referenzprofil mit ESP32-S3, mindestens 16 MB Flash, 8 MB PSRAM, zwei getrennten datenfaehigen USB-Ports, USB-OTG-Host und nachgewiesener 5-V-VBUS-Schaltung mit Power-Switch und Strombegrenzung. Erfolgreicher Selbstbau wird als eigene Herkunftsklasse inventarisiert; er erhaelt die gleichen sicherheitsrelevanten Manifest- und Trust-Pruefungen, aber keinen Kauf-, Garantie- oder Hardware-Supportanspruch.
+
+Die Flashbox darf weiterhin **nicht** zur Voraussetzung für USB-Flash werden. Web Serial bzw. der lokale Serial Service bleibt der kostenlose Standardweg; sonst würde GerNetiX Community-Hardware unnötig ausschließen.
 
 **Ausbau in Stufen:**
 

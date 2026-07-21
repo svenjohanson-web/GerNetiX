@@ -289,17 +289,20 @@ Mehrere Pairing-Kanaele sind erlaubt:
 
 Alle Kanaele erzeugen dasselbe fachliche Ergebnis: `AccountDevice`, `DeviceOwnership` und eine abgeschlossene `DevicePairingSession`.
 
-### Flashbox als kaufbares Inventar-Geraet
+### Flashbox als kaufbares oder selbst herstellbares Inventar-Geraet
 
-Die Flashbox ist kein frei erfassbares Zielboard, sondern ein gekauftes und inventarisiertes GerNetiX-Werkzeuggeraet. Sie wird im Hardware Catalog als eigene Klasse `flashbox` gefuehrt und im Account als konkrete Einheit mit Seriennummer, Besitzstatus, Firmwareversion, Updatezustand und Trust-State angezeigt.
+Die Flashbox ist kein frei erfassbares Zielboard, sondern ein gekauftes oder nach einem gefuehrten Selbstbau-Zertifizierungsweg inventarisiertes GerNetiX-Werkzeuggeraet. Sie wird im Hardware Catalog als eigene Klasse `flashbox` gefuehrt und im Account als konkrete Einheit mit Registriernummer, Herkunft, Besitzstatus, Firmwareversion, Updatezustand und Trust-State angezeigt.
 
 Fuer Provisioning- und Flash-Ablaeufe gilt:
 
 - Die Transportwahl unterscheidet mindestens `native_mobile`, `wlan` und `flashbox`.
 - Wird `flashbox` gewaehlt, muss der Nutzer eine konkrete inventarisierte Flashbox seines Accounts auswaehlen.
-- Die UI darf keine manuelle Anlage einer Flashbox anbieten. Wenn keine Flashbox vorhanden ist, fuehrt sie zu "Flashbox kaufen" oder "gekaufte Flashbox aktivieren".
-- Selbst gebaute Hardware darf als Community-/Zielhardware erfasst werden, aber nicht als GerNetiX-Flashbox mit Flashbox-Trust oder Flashbox-Capabilities.
-- Flashbox-Inventory entsteht nur aus Webshop-/Produktions-/Provisioning-Kontext oder durch explizite Admin-/Support-Korrektur.
+- Die UI darf keine Freitextanlage einer Flashbox anbieten. Wenn keine Flashbox vorhanden ist, fuehrt sie zu "Flashbox kaufen", "gekaufte Flashbox aktivieren" oder "Flashbox selbst herstellen".
+- Der Selbstbau-Assistent akzeptiert ausschliesslich das aktive Flashbox-Referenzprofil: ESP32-S3, mindestens 16 MB Flash, 8 MB PSRAM, getrennte datenfaehige Control- und Target-USB-Ports, USB-OTG-Host sowie nachgewiesenen 5-V-VBUS-Power-Switch mit Strombegrenzung. Beliebige ESP32-Boards und aehnliche Selbstbauten bleiben Community-/Zielhardware.
+- Nach bestandener Profilpruefung erzeugt das Board seinen nicht exportierbaren Device-Key, besteht die Challenge-Signatur und wird mit `origin_type = self_manufactured_certified` inventarisiert. Dieser Status begruendet keinen Garantie- oder Hardware-Supportanspruch.
+- Flashbox-Inventory entsteht nur aus Webshop-/Produktions-/Provisioning-Kontext, erfolgreicher Selbstbau-Zertifizierung oder durch explizite Admin-/Support-Korrektur.
+
+Der Selbstbau-Flash darf auch im oeffentlichen Bereich ohne Login erfolgen, damit kein Account auf einem fremden Rechner verwendet werden muss. Dieser Assistent liefert nur ein signiertes, accountneutrales Initialimage und erzeugt keine Besitzbindung. Im internen Bereich erscheint zuerst die Wahl **„bereits geflasht“** oder **„neue Flashbox erstellen“**. Der zweite Weg oeffnet exakt denselben oeffentlichen Assistenten als Dialog; nach erfolgreichem Flash wird die Einheit per Discovery und Challenge-Signatur ausschliesslich dem aktuell angemeldeten Account zugeordnet.
 
 Das dazugehoerige logische Datenmodell steht in [GerNetiX Flashbox - Inventar- und Katalog-Datenmodell](flashbox-inventory-data-model.md).
 

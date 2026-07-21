@@ -132,11 +132,11 @@ const HelpView = (() => {
         ${chapterNumber && section.id ? `<p class="knowledge-subchapter-number">${chapterNumber}.${sectionIndex + 1}</p>` : ""}
         <h3>${escapeHtml(section.heading)}</h3>
         ${section.tamagotchiIllustration ? '<figure class="tamagotchi-learning-illustration"><img src="/assets/tamagotchi-learning-journey.png" alt="Fröhliches digitales Haustier auf einem vernetzten Taschen-Gerät"><figcaption>Ein kleines Projekt, das mit deinen Ideen wachsen kann.</figcaption></figure>' : ""}
+        ${section.embeddingVisual ? renderEmbeddingVisuals() : ""}
         ${(section.paragraphs || []).map((paragraph, paragraphIndex) => `<p>${escapeHtml(paragraph)}</p>${section.aiIllustrationAfterParagraph === paragraphIndex ? '<figure class="tamagotchi-learning-illustration tamagotchi-ai-illustration"><img src="/assets/tamagotchi-ai-architecture.png" alt="Digitales Haustier mit leuchtender KI- und Verhaltensmodell-Verbindung"><figcaption>KI kann eine Fähigkeit ermöglichen – die technische Umsetzung bleibt eine bewusste Entscheidung.</figcaption></figure>' : ""}`).join("")}
         ${section.developmentPhases ? renderDevelopmentPhases() : ""}
         ${section.phaseDescriptions ? `<div class="engineering-phase-descriptions">${section.phaseDescriptions.map((phase) => `<p><strong>${escapeHtml(phase.title)}</strong> ${escapeHtml(phase.description)}</p>`).join("")}</div>` : ""}
         ${(section.followUpParagraphs || []).map((paragraph, paragraphIndex) => `<p>${escapeHtml(paragraph)}</p>${section.waterfallModelAfterFollowUp === paragraphIndex ? renderWaterfallModel() : ""}${section.vModelAfterFollowUp === paragraphIndex ? renderVModel() : ""}${section.agileModelAfterFollowUp === paragraphIndex ? renderAgileModel() : ""}`).join("")}
-        ${section.embeddingVisual ? renderEmbeddingVisuals() : ""}
         ${section.systemLandscape ? renderSystemLandscapeVisual() : ""}
         ${section.serverLandscape ? renderServerTypesVisual() : ""}
         ${section.hardwareVisual ? renderHardwareVisual() : ""}

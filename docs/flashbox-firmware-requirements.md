@@ -20,15 +20,16 @@ Das systemweite Zusammenspiel mit Identity, Hardware Catalog, Webshop, Provision
 
 Die genaue neue Zwei-USB-S3-Boardvariante, Pinbelegung, VBUS-Schaltung und Stromversorgung muessen vor produktiver Freigabe im Hardware Catalog oder in einem FlashBox-Hardwareprofil festgelegt werden. Display und Touch gehoeren nicht mehr zum FlashBox-MVP.
 
-## Inventarisierung und Produktgrenze
+## Inventarisierung, Selbstbau und Produktgrenze
 
 Die Flashbox ist ein inventarisierbares GerNetiX-Werkzeuggeraet. Sie wird im Hardware Catalog als eigene Hardwareklasse `flashbox` gefuehrt und gehoert als konkrete Einheit mit Seriennummer in das Account-Inventar.
 
 Verbindliche Produktregel:
 
-- Flashboxen koennen nicht vom Nutzer selbst als GerNetiX-Flashbox angelegt werden.
-- Eine technisch aehnliche Selbstbau-Hardware bleibt normale Community- oder Zielhardware, aber keine vertrauenswuerdige GerNetiX-Flashbox.
-- Der Weg ins Account-Inventar fuehrt ueber Webshop-Kauf, Produktion/Provisionierung oder eine explizite Admin-/Support-Korrektur.
+- Flashboxen duerfen vom Nutzer selbst hergestellt werden, aber ausschliesslich mit dem aktiven Flashbox-Referenzprofil: ESP32-S3, mindestens 16 MB interner Flash, 8 MB PSRAM, getrennte datenfaehige Control- und Target-USB-Ports, USB-OTG-Host sowie nachgewiesener 5-V-VBUS-Power-Switch mit Strombegrenzung.
+- Eine technisch aehnliche Selbstbau-Hardware ohne vollstaendig bestandene Referenzprofil-Pruefung bleibt normale Community- oder Zielhardware; sie erhaelt keine Flashbox-Capabilities.
+- Der Weg ins Account-Inventar fuehrt ueber Webshop-Kauf, Factory-Provisionierung, den gefuehrten Selbstbau-Zertifizierungsweg oder eine explizite Admin-/Support-Korrektur.
+- Selbstbau-Flashboxen erhalten `origin_type = self_manufactured_certified`; sie haben keinen Verkaufs-, Garantie- oder Hardware-Supportanspruch.
 - Jeder Flashbox-basierte Flash- oder Provisioning-Ablauf muss eine konkrete inventarisierte Flashbox auswaehlen, nicht nur "Flashbox" als abstrakte Option.
 
 Das logische Datenmodell ist in [GerNetiX Flashbox - Inventar- und Katalog-Datenmodell](flashbox-inventory-data-model.md) festgelegt.
@@ -185,7 +186,7 @@ Fehlertexte muessen handlungsorientiert sein: "USB-Kabel pruefen", "Zielgeraet i
 ## Sicherheitsanforderungen
 
 - Nur signierte GerNetiX-Manifeste und signierte/verifizierte Firmwareartefakte.
-- Die Flashbox besitzt einen eigenen Device Private Key als Echtheitsnachweis; dieser Schluessel verlaesst die Einheit nie.
+- Die Flashbox besitzt einen eigenen Device Private Key als Echtheitsnachweis; dieser Schluessel verlaesst die Einheit nie. Bei Selbstbau belegt er die registrierte Einheit, nicht einen Kauf oder einen Garantieanspruch.
 - Der lokale Claim ueber WLAN braucht eine Server-Challenge und eine Device-Signatur. Sichtbarkeit im WLAN oder Seriennummer allein reichen nicht.
 - Ein Kauf-/Claim-Code bleibt nur ein Fallback-Weg fuer Verkauf/Support, nicht der normale kryptographische Besitznachweis.
 - Die Flashbox enthaelt nur GerNetiX Release Public Keys zur Manifestpruefung, niemals GerNetiX Release Private Keys.

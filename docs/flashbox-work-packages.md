@@ -27,7 +27,7 @@ Regeln:
 | Unit-/Schema-Tests | Regeln schnell und deterministisch pruefen | Manifest-Schema, Trust-State-Entscheidung, Claim-Code-Status |
 | Repository-/Migrationstests | Persistenz als Wahrheit pruefen | Inventory, PurchasedHardwareUnit, RuntimeState |
 | API-Contract-Tests | Servicegrenzen pruefen | Hardware Catalog, Identity, Device Management, Build & Deploy |
-| UI-Contract-/DOM-Tests | Nutzerfuehrung pruefen | kein Selbstbau-Pfad, iOS-Hinweis, konkrete Flashbox-Auswahl |
+| UI-Contract-/DOM-Tests | Nutzerfuehrung pruefen | gefuehrter Selbstbau nur mit Referenzprofil, iOS-Hinweis, konkrete Flashbox-Auswahl |
 | Simulator-/Host-Tests | Firmwarelogik ohne Board pruefen | Update-State-Machine, Flash-State-Machine, Recovery-Entscheidung |
 | Hardware-in-the-loop | physische Restrisiken pruefen | USB-Host, Target-VBUS, Power-Loss, Recovery-Tasten |
 | End-to-End | Geschaeftsfluss beweisen | Kauf -> Claim -> Inventar -> Manifest -> Flash -> Recovery |
@@ -37,7 +37,7 @@ Regeln:
 | ID | Testbare Scheibe | Hauptnachweis | Hardware noetig? |
 | --- | --- | --- | --- |
 | FB-TS-01 | Flashbox erscheint getrennt im Hardware Catalog | API-/Repository-Test | nein |
-| FB-TS-02 | Provisioning Tool verhindert Selbstbau-Flashbox | Service-/UI-Test | nein |
+| FB-TS-02 | Provisioning Tool zertifiziert nur das Selbstbau-Referenzprofil | Service-/UI-Test | nein |
 | FB-TS-03 | Flashbox-Inventory kann persistent entstehen | Repository-/Migrationstest | nein |
 | FB-TS-04 | Webshop-Mock erzeugt claimbare Einheit | API-Contract-Test | nein |
 | FB-TS-05 | Identity claimt Flashbox in Account-Inventar | API-/UI-Test | nein |
@@ -54,6 +54,7 @@ Regeln:
 | FB-TS-15 | Admin-/Support-Sicht kann Status pruefen | UI-/API-Test | nein |
 | FB-TS-16 | Hardware-in-the-loop: echte Flashbox | Hardware-Abnahmetest | ja |
 | FB-TS-17 | End-to-End vom Kauf bis Zielgeraete-Flash | E2E-Test | teilweise |
+| FB-TS-18 | Oeffentlicher Flash-Assistent und interne Account-Uebernahme | UI-/API-Contract-Test | nein |
 
 ## FB-TS-01 - Flashbox getrennt im Hardware Catalog
 
@@ -65,7 +66,7 @@ Testbare Regeln:
 
 - `GET /flashboxes` oder gleichwertiger Katalogzugriff liefert nur Flashboxen.
 - `GET /processor-boards` liefert keine Flashbox.
-- Flashbox hat `hardware_class = flashbox`, `self_creation_allowed = false`, Capabilities und Zielgeraete-Matrix.
+- Flashbox hat `hardware_class = flashbox`, ein aktives Selbstbau-Referenzprofil, Capabilities und Zielgeraete-Matrix.
 
 Mocks:
 
@@ -82,11 +83,11 @@ Umgesetzt in diesem Slice:
 - `GET /api/hardware-catalog/flashboxes` liefert Flashboxen getrennt von ProcessorBoards.
 - Automatischer Nachweis: `services/hardware-catalog/test/hardware-catalog-service.test.js`.
 
-## FB-TS-02 - Provisioning Tool verhindert Selbstbau-Flashbox
+## FB-TS-02 - Provisioning Tool zertifiziert nur das Selbstbau-Referenzprofil
 
 Ziel:
 
-- Das private Provisioning Tool kann Flashbox als Zieltyp fuehren, aber keine selbst gebaute Flashbox akzeptieren.
+- Das Provisioning Tool kann eine gekaufte Flashbox in Betrieb nehmen und eine selbst hergestellte Flashbox nur nach bestandener Referenzprofil-Pruefung zertifizieren.
 
 Aktueller Stand:
 
@@ -95,15 +96,15 @@ Aktueller Stand:
 
 Naechster testbarer Ausbau:
 
-- Service lehnt `hardware_class = flashbox` ohne Katalogtreffer ab.
-- Service lehnt `self_creation_allowed = true` fuer GerNetiX-Flashboxen ab.
-- UI zeigt keinen Freitext-/Selbstbau-Pfad.
+- Service lehnt `hardware_class = flashbox` ohne aktiven Katalog-/Referenzprofiltreffer ab.
+- Service prueft ESP32-S3, mindestens 16 MB Flash, 8 MB PSRAM, getrennte Daten-USB-Ports, USB-OTG-Host sowie VBUS-Power-Switch mit Strombegrenzung.
+- UI zeigt nur den gefuehrten Selbstbau-Assistenten, keinen Freitextpfad.
 
 Abnahme:
 
 - Service-Test fuer gueltige Flashbox.
-- Service-Test fuer unbekannte Flashbox.
-- UI-Contract-Test fuer getrennte Zieltyp-Auswahl.
+- Service-Test fuer unbekannte oder unvollstaendige Selbstbau-Hardware.
+- UI-Contract-Test fuer Referenzprofil-Gate und getrennte Zieltyp-Auswahl.
 
 ## FB-TS-03 - Flashbox-Inventory persistent
 
@@ -115,8 +116,8 @@ Testbare Regeln:
 
 - `PurchasedHardwareUnit.serial_number` eindeutig.
 - `AccountHardwareInventory` referenziert konkrete `unit_id`, nicht nur SKU.
-- Flashbox-Einheit braucht `purchase_context_id` oder Factory-/Admin-Kontext.
-- manuelle Nutzeranlage fuer `hardware_class = flashbox` ist serverseitig verboten.
+- Flashbox-Einheit braucht `purchase_context_id`, Factory-/Admin-Kontext oder einen erfolgreichen Selbstbau-Zertifizierungsnachweis.
+- Freitextanlage fuer `hardware_class = flashbox` ist serverseitig verboten; Selbstbau braucht den Referenzprofil-Gate.
 
 Mocks:
 
@@ -125,7 +126,7 @@ Mocks:
 Abnahme:
 
 - Migrationstest oder SQLite-Repository-Test.
-- Negativtests fuer doppelte Seriennummer und fehlenden Kauf-/Factory-Kontext.
+- Negativtests fuer doppelte Registriernummer, fehlenden Kauf-/Factory-/Selbstbau-Kontext und unvollstaendiges Referenzprofil.
 
 Umgesetzt in diesem Slice:
 
@@ -203,7 +204,7 @@ Testbare Regeln:
 
 - Karte zeigt Name, Seriennummer, Firmwareversion, Trust-State, letzter Kontakt.
 - `revoked`, `lost`, `recovery_required` werden sichtbar unterschieden.
-- Es gibt keinen Button "Flashbox selbst erstellen".
+- Es gibt einen gefuehrten Button "Flashbox selbst herstellen", aber keinen Freitext- oder Umgehungsweg.
 
 Mocks:
 
@@ -216,9 +217,30 @@ Abnahme:
 Umgesetzt in diesem Slice:
 
 - Flashbox-Account-Devices werden in Identity mit eigenem Build-/Inventarlabel `GerNetiX FlashBox / USB-Helper-Flash` angezeigt.
-- Die Inventaransicht spricht jetzt von Boards und Flashboxen und bietet keinen Selbstbau-Pfad fuer Flashboxen.
+- Die Inventaransicht spricht jetzt von Boards und Flashboxen und bietet einen gefuehrten Selbstbau-Pfad mit Referenzprofil-Pruefung.
 - Automatischer Nachweis: `services/identity-server/test/hardware-utils.test.js` und `services/identity-server/test/shop-page.test.js`.
 - Snapshot oder Contract-Test fuer sichtbare Actions.
+
+## FB-TS-18 - Oeffentlicher Flash-Assistent und interne Account-Uebernahme
+
+Ziel:
+
+- Das Flashen einer neuen Selbstbau-Flashbox ist ohne Login im oeffentlichen Bereich moeglich; die Besitzbindung bleibt ausschliesslich im internen Bereich.
+
+Testbare Regeln:
+
+- Der oeffentliche Assistent verwendet nur das signierte, accountneutrale Initialimage und akzeptiert oder speichert keine Account-ID, Sitzung, Besitzbindung oder account-spezifische Manifeste.
+- Der interne Einstieg fragt zuerst `bereits geflasht` oder `neue Flashbox erstellen`.
+- Bei `bereits geflasht` startet Discovery, Challenge-Signatur und Uebernahme der vorhandenen Einheit.
+- Bei `neue Flashbox erstellen` wird exakt dieselbe oeffentliche Assistenten-Komponente als Dialog geoeffnet; nach Erfolg erhaelt der angemeldete Controller nur die technische Nachweisreferenz und fuehrt Discovery, Challenge-Signatur sowie Uebernahme fort.
+- Die Uebernahme verwendet immer die aktuell serverseitig angemeldete Sitzung. Ein oeffentlich geflashtes Geraet ist bis zu diesem Schritt keinem Account zugeordnet.
+
+Abnahme:
+
+- UI-Contract-Test: oeffentlicher Assistent ist ohne Login erreichbar und zeigt keine Accountdaten.
+- UI-Contract-Test: der interne Dialog nutzt dieselbe Komponente und kehrt in die aktive Inventar-Sitzung zurueck.
+- API-Negativtest: der oeffentliche Endpoint lehnt Account- oder Ownership-Felder ab.
+- API-/Service-Test: Challenge und Inventaruebernahme erfolgen nur mit gueltiger interner Sitzung und ordnen genau diesem Account zu.
 
 ## FB-TS-07 - Transportauswahl filtert Flashbox korrekt
 
@@ -229,7 +251,7 @@ Ziel:
 Testbare Regeln:
 
 - iOS/iPad zeigt USB/WebSerial-Einschraenkung.
-- Keine Flashbox im Inventar -> nur kaufen/aktivieren.
+- Keine Flashbox im Inventar -> kaufen, aktivieren oder Referenzprofil-zertifiziert selbst herstellen.
 - Flashbox im Inventar -> Auswahl nach Trust-State und Zielprofil.
 - `revoked` oder inkompatible Flashbox ist nicht waehlbar.
 
