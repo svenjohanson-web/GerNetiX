@@ -74,6 +74,22 @@ docker compose -f compose.vps.yaml exec project-server node /app/tools/submit-fl
 
 Der Aufruf nutzt den im Buildserver-Container konfigurierten echten Runner (`/opt/platformio/bin/platformio`); eine lokale PlatformIO-Installation des aufrufenden Rechners wird nicht verwendet. Der Test legt den technischen Projekt-Datensatz `system-flashbox-build-verification` und einen neuen BuildJob in der Projekt-SQLite an.
 
+Fuer einen lokalen, isolierten Docker-Test ohne VPS-Secrets steht `compose.flashbox-build-test.yaml` bereit. Aus dem Projektstamm zuerst die beiden Testcontainer bauen und starten:
+
+```text
+docker compose -f compose.flashbox-build-test.yaml up -d --build
+```
+
+Danach denselben Headless-Job im Project-Server-Container starten:
+
+```text
+docker compose -f compose.flashbox-build-test.yaml exec project-server node /app/tools/submit-flashbox-build-job.js
+```
+
+Der lokale Test legt nur die Docker-Volumes `flashbox_project_state` und `flashbox_build_state` an. Beide sind technische Testdaten und enthalten keine fachliche Quelle der Wahrheit.
+
+Die Testcontainer verwenden bewusst eigene, kleine Dockerfiles. Der Buildkontext enthaelt nur Project Server, Buildserver, Flashbox-Quellen und den gemeinsamen Runtime-Kern; die Basissoftware, Demos und sonstigen Dienste werden nicht uebertragen.
+
 ## Cache-Regel
 
 Der Cache darf PlatformIO, Toolchains, Libraries, Objektdateien und vergleichbare technische Artefakte enthalten. Geht der Cache verloren, muss der Build aus dem Build-Paket weiterhin moeglich sein und dauert nur laenger.

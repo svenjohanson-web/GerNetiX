@@ -1,0 +1,10 @@
+**
+!services/
+!services/shared/
+!services/shared/**
+!services/build-deploy-server/
+!services/build-deploy-server/**
+!docker/
+!docker/healthcheck.js
+**/node_modules
+**/.pio

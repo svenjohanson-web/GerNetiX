@@ -117,12 +117,12 @@ function toProjectBuildResult(buildDeployJob) {
 }
 
 async function waitForCompletion(jobId) {
-  for (let attempt = 0; attempt < 120; attempt += 1) {
+  for (let attempt = 0; attempt < 1200; attempt += 1) {
     const job = await request("GET", `${buildServerUrl}/api/build-jobs/${encodeURIComponent(jobId)}`);
     if (["succeeded", "failed", "replaced"].includes(job.status)) return job;
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
-  throw new Error("Flashbox build job timed out after two minutes.");
+  throw new Error("Flashbox build job timed out after twenty minutes.");
 }
 
 async function request(method, url, body) {

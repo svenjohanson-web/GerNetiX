@@ -1,0 +1,57 @@
+name: gernetix-flashbox-build-test
+
+x-service: &service
+  init: true
+  security_opt:
+    - no-new-privileges:true
+  healthcheck:
+    test: ["CMD", "node", "/app/docker/healthcheck.js"]
+    interval: 10s
+    timeout: 4s
+    retries: 6
+    start_period: 10s
+
+services:
+  project-server:
+    <<: *service
+    build:
+      context: .
+      dockerfile: docker/flashbox-project-server.Dockerfile
+    image: gernetix/flashbox-project-server-test:local
+    environment:
+      GERNETIX_SERVICE: project-server
+      HOST: 0.0.0.0
+      PORT: 4800
+      PERSISTENCE_BACKEND: sqlite
+      PROJECT_SERVER_SQLITE_PATH: /var/lib/gernetix/projects/gernetix-projects.sqlite
+      PROJECT_SERVER_RUNTIME_DIR: /var/lib/gernetix/projects
+    ports:
+      - "127.0.0.1:14800:4800"
+    volumes:
+      - flashbox_project_state:/var/lib/gernetix/projects
+
+  build-deploy-server:
+    <<: *service
+    build:
+      context: .
+      dockerfile: docker/flashbox-build-server.Dockerfile
+    image: gernetix/flashbox-build-server-test:local
+    environment:
+      GERNETIX_SERVICE: build-deploy-server
+      HOST: 0.0.0.0
+      PORT: 4400
+      PERSISTENCE_BACKEND: sqlite
+      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/build/gernetix-build.sqlite
+      BUILD_DEPLOY_RUNTIME_DIR: /var/lib/gernetix/build
+      BUILD_RUNNER: platformio
+      PLATFORMIO_COMMAND: /opt/platformio/bin/platformio
+      PUBLIC_BASE_URL: http://127.0.0.1:14400
+      MQTT_BROKER_URL: ""
+    ports:
+      - "127.0.0.1:14400:4400"
+    volumes:
+      - flashbox_build_state:/var/lib/gernetix/build
+
+volumes:
+  flashbox_project_state:
+  flashbox_build_state:
