@@ -69,7 +69,7 @@ Der headless Client `tools/submit-flashbox-build-job.js` prueft die vollstaendig
 Im VPS-Checkout wird er innerhalb des privaten Compose-Netzes gestartet:
 
 ```text
-docker compose -f compose.vps.yaml exec project-server node /app/tools/submit-flashbox-build-job.js
+docker compose --env-file .env.vps -f compose.vps.yaml exec project-server node /app/tools/submit-flashbox-build-job.js
 ```
 
 Der Aufruf nutzt den im Buildserver-Container konfigurierten echten Runner (`/opt/platformio/bin/platformio`); eine lokale PlatformIO-Installation des aufrufenden Rechners wird nicht verwendet. Der Test legt den technischen Projekt-Datensatz `system-flashbox-build-verification` und einen neuen BuildJob in der Projekt-SQLite an.
