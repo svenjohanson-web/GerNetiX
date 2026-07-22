@@ -13,14 +13,14 @@ test("serves the GerNetiX homepage publicly before authentication", () => {
   assert.match(server, /url\.pathname === "\/"[\s\S]*serveStatic\(res, publicDir, "\/index\.html"\)/);
   assert.doesNotMatch(server, /url\.pathname === "\/"[\s\S]*redirect\(res, "\/app\/auth\/"\)/);
   assert.match(html, /href="\/app\/auth\/">Anmelden/);
-  assert.match(html, /href="\/app\/auth\/\?next=%2Fapp%2Fdashboard%2F">Jetzt starten/);
+  assert.doesNotMatch(html, /Jetzt starten/);
 });
 
 test("presents the four requested homepage text boxes", () => {
-  assert.match(html, /Verstehe komplexe technische Systeme – von der Cloud bis zum Embedded-System\./);
+  assert.match(html, /von der Cloud bis zum Embedded-System/);
   assert.match(html, /für alle, die mehr wollen, als nur fertige Lösungen nachzubauen/);
-  assert.match(html, /sondern vor allem, <strong>warum<\/strong> sie funktionieren/);
-  assert.match(html, /Die KI ist ein Werkzeug – sie unterstützt dich, übernimmt aber weder Denken noch Verantwortung\./);
+  assert.match(html, /machen auch ihre Zusammenhänge verständlich/);
+  assert.doesNotMatch(html, /Die KI ist ein Werkzeug/);
   assert.match(html, /Verstehen\. Entwickeln\. Erschaffen\./);
   assert.match(html, /Unsere Motivation[\s\S]*Warum GerNetiX\?/);
   assert.match(html, /Der komplette Scope[\s\S]*Vom Embedded-System bis zur Cloud/);
@@ -58,8 +58,17 @@ test("connects the public motivation with the engineering-thinking chapter", () 
   assert.match(html, /Wie GerNetiX entstanden ist/);
   assert.match(html, /KI macht dieses Wissen heute leichter zugänglich/);
   assert.match(html, /Menschen lernen unterschiedlich/);
-  assert.match(html, /href="\/wissen\/#from-problem-to-system">Ingenieursmäßiges Denken kennenlernen →<\/a>/);
+  assert.doesNotMatch(html, /Ingenieursmäßiges Denken kennenlernen/);
   assert.match(css, /\.motivation-origin \{/);
+});
+
+test("offers reading, practice and personal guidance as equally valid learning paths", () => {
+  assert.match(html, /Drei Wege, ein Ziel/);
+  assert.match(html, /Wähle den Zugang, der dir gerade hilft/);
+  assert.match(html, /href="\/wissen\/" class="learning-path-card"/);
+  assert.match(html, /href="\/app\/auth\/\?next=%2Fapp%2Flearn%2F" class="learning-path-card"/);
+  assert.match(html, /href="\/community\/" class="learning-path-card"/);
+  assert.match(css, /\.learning-path-grid \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
 });
 
 test("offers a hamburger menu with the public webshop entry only", () => {
@@ -67,7 +76,9 @@ test("offers a hamburger menu with the public webshop entry only", () => {
   assert.match(html, /id="publicMenuButton"[\s\S]*aria-expanded="false"/);
   assert.match(menu, /href="\/">Startseite/);
   assert.match(menu, /href="\/hilfe\/">Hilfe/);
-  assert.match(menu, /href="\/downloads\/">Downloads/);
+  assert.match(menu, /href="\/entdecken\/">GerNetiX entdecken/);
+  assert.match(menu, /href="\/flashbox-einrichten\/">USB Helper/);
+  assert.match(menu, /href="\/nachbauprojekte\/">Nachbauprojekte/);
   assert.match(menu, /href="\/shop\/">Webshop/);
   assert.match(menu, /href="\/app\/auth\/">Anmelden/);
   assert.doesNotMatch(menu, /Dashboard|Geräte|Billing|Entwicklungsplattform/);

@@ -20,21 +20,30 @@ test("declares Flashbox hardware profile and release public key contract", () =>
 });
 
 test("exposes WLAN status and claim challenge endpoints", () => {
+  const config = read("include/gernetix_flashbox_config.h");
   const main = read("src/main.cpp");
 
+  assert.match(config, /GERNETIX_FLASHBOX_SETUP_AP_PREFIX = "GerNetiX_FB-"/);
+  assert.match(main, /String\(GERNETIX_FLASHBOX_SETUP_AP_PREFIX\) \+ serialNumber\(\)\.substring/);
   assert.match(main, /gernetix\/runtime_core\.h/);
   assert.match(main, /gernetix_flashbox_json_response\.h/);
   assert.match(main, /writeRuntimeIdentityJsonFields/);
   assert.match(main, /server\.on\("\/", HTTP_GET, handleRoot\)/);
   assert.match(main, /server\.on\("\/status", HTTP_GET/);
   assert.match(main, /server\.on\("\/wifi\/status", HTTP_GET, handleWifiStatus\)/);
+  assert.match(main, /server\.on\("\/wifi", HTTP_POST, handleWifiConnect\)/);
+  assert.match(main, /server\.on\("\/ble\/status", HTTP_GET, handleBleStatus\)/);
   assert.match(main, /server\.on\("\/power\/status", HTTP_GET, handlePowerStatus\)/);
   assert.match(main, /server\.on\("\/favicon\.ico", HTTP_GET, handleFavicon\)/);
   assert.match(main, /server\.on\("\/claim\/challenge", HTTP_POST/);
+  assert.match(main, /server\.on\("\/provisioning", HTTP_POST, handleProvisioning\)/);
+  assert.match(main, /server\.on\("\/provisioning\/status", HTTP_GET, handleProvisioningStatus\)/);
+  assert.match(main, /server\.on\("\/mqtt\/jobs\/status", HTTP_GET, handleMqttJobClientStatus\)/);
   assert.match(main, /server\.on\("\/firmware\/download\/status", HTTP_GET/);
   assert.match(main, /server\.on\("\/firmware\/manifest\/check", HTTP_POST/);
   assert.match(main, /server\.on\("\/firmware\/artifact\/verify", HTTP_POST/);
   assert.match(main, /server\.on\("\/targets\/status", HTTP_GET/);
+  assert.match(main, /server\.on\("\/targets\/serial\/status", HTTP_GET, handleTargetSerialStatus\)/);
   assert.match(main, /updateWifiDisplay/);
   assert.match(main, /WiFi\.scanNetworks\(true, false\)/);
   assert.match(main, /WiFi\.scanComplete/);
@@ -49,7 +58,18 @@ test("exposes WLAN status and claim challenge endpoints", () => {
   assert.match(main, /wifi_state/);
   assert.match(main, /visible_ssids/);
   assert.match(main, /scan_state/);
-  assert.match(main, /Nutze \/status, \/wifi\/status, \/power\/status oder \/targets\/status/);
+  assert.match(main, /FLASHBOX_SETUP_PORTAL/);
+  assert.match(main, /WLAN einrichten/);
+  assert.match(main, /Das Passwort wird nur lokal auf der FlashBox gespeichert/);
+  assert.match(main, /DNSServer captiveDns/);
+  assert.match(main, /captiveDns\.start\(53, "\*", WiFi\.softAPIP\(\)\)/);
+  assert.match(main, /captiveDns\.processNextRequest\(\)/);
+  assert.match(main, /server\.onNotFound\(handleCaptivePortal\)/);
+  assert.match(main, /wifiPreferences\.putString\("password", password\)/);
+  assert.match(main, /flashboxBleBegin/);
+  assert.match(main, /FLASHBOX_BLE_SERVICE_UUID/);
+  assert.doesNotMatch(main, /BLECharacteristic::PROPERTY_WRITE/);
+  assert.doesNotMatch(main, /Serial\.(print|println)\([^\n]*password/);
   assert.doesNotMatch(main, /WIFI_DISPLAY_REFRESH_MS/);
   assert.match(main, /wlan_visible_claim_challenge_required/);
   assert.match(main, /firmware_manifest_url/);
@@ -57,9 +77,54 @@ test("exposes WLAN status and claim challenge endpoints", () => {
   assert.match(main, /target_detection_state/);
   assert.match(main, /target_connection_state/);
   assert.match(main, /display_profile_id/);
-  assert.match(main, /challenge_signature/);
+  assert.match(main, /flashboxSignProvisioningChallenge/);
   assert.doesNotMatch(main, /char body\[/);
   assert.doesNotMatch(main, /BEGIN PRIVATE KEY/);
+});
+
+test("offers a BLE discovery and status service without accepting credentials over BLE", () => {
+  const main = read("src/main.cpp");
+  const ble = read("src/gernetix_flashbox_ble.cpp");
+  const sdkconfig = read("sdkconfig.defaults");
+  const cmake = read("src/CMakeLists.txt");
+  const readme = read("README.md");
+
+  assert.match(sdkconfig, /CONFIG_BT_ENABLED=y/);
+  assert.match(sdkconfig, /CONFIG_BT_BLE_ENABLED=y/);
+  assert.match(sdkconfig, /CONFIG_BT_NIMBLE_ENABLED=y/);
+  assert.match(cmake, /REQUIRES bt/);
+  assert.match(ble, /esp_nimble_hci_and_controller_init/);
+  assert.match(ble, /nimble_port_freertos_init/);
+  assert.match(ble, /BLE_GATT_CHR_F_READ/);
+  assert.doesNotMatch(ble, /BLE_GATT_CHR_F_WRITE/);
+  assert.match(readme, /BLE neben WLAN/);
+  assert.match(readme, /nicht.*ungeschuetzte BLE-Characteristic angenommen/);
+});
+
+test("uses a certificate-authenticated MQTT client only for its own FlashBox job topic", () => {
+  const client = read("src/gernetix_flashbox_mqtt_job_client.cpp");
+  assert.match(client, /esp_mqtt_client_init/);
+  assert.match(client, /client_cert_pem/);
+  assert.match(client, /client_key_pem/);
+  assert.match(client, /broker\.startsWith\("mqtts:\/\/"\)/);
+  assert.match(client, /\/flashbox\/jobs/);
+  assert.match(client, /incomingTopic!=topic/);
+  assert.match(client, /flashbox_job_id/);
+  assert.match(client, /status\/flashbox/);
+});
+
+test("generates the P-256 device key after flashing and accepts only certificate/configuration provisioning", () => {
+  const provisioning = read("src/gernetix_flashbox_provisioning.cpp");
+  const header = read("include/gernetix_flashbox_provisioning.h");
+  assert.match(provisioning, /mbedtls_ecp_gen_key\(MBEDTLS_ECP_DP_SECP256R1/);
+  assert.match(provisioning, /mbedtls_pk_write_key_pem/);
+  assert.match(provisioning, /mbedtls_pk_write_pubkey_pem/);
+  assert.match(provisioning, /mqtt_client_certificate_pem/);
+  assert.match(provisioning, /flashboxSignProvisioningChallenge/);
+  assert.match(provisioning, /mbedtls_ecdsa_sign/);
+  assert.match(provisioning, /private_key_ready/);
+  assert.doesNotMatch(provisioning, /mqtt_client_private_key_pem/);
+  assert.match(header, /flashboxProvisioningApply/);
 });
 
 test("defines the HTTPS firmware manifest download path and delegates trust checks to the validator", () => {
@@ -232,6 +297,8 @@ test("detects USB-OTG target candidates and exposes them on webserver and displa
   assert.match(config, /303A/);
   assert.match(main, /flashboxTargetDetectionBegin/);
   assert.match(main, /flashboxTargetDetectionLoop/);
+  assert.match(main, /flashboxTargetSerialBegin/);
+  assert.match(main, /flashboxTargetSerialLoop/);
   assert.match(main, /flashboxTargetDetectionStatusJson/);
   assert.match(header, /FlashboxTargetDeviceStatus/);
   assert.match(header, /targetKind/);
@@ -289,6 +356,30 @@ test("detects USB-OTG target candidates and exposes them on webserver and displa
   assert.doesNotMatch(detector, /char numeric\[/);
   assert.doesNotMatch(detector, /Update\.begin/);
   assert.doesNotMatch(detector, /esp_ota_begin/);
+});
+
+test("installs the official USB CDC host transport for ESP target candidates", () => {
+  const platformio = read("platformio.ini");
+  const sdkconfigDefaults = read("sdkconfig.defaults");
+  const component = read("src/idf_component.yml");
+  const serial = read("src/gernetix_flashbox_target_serial.cpp");
+  const serialHeader = read("include/gernetix_flashbox_target_serial.h");
+  const detector = read("src/gernetix_flashbox_target_detection.cpp");
+
+  assert.match(platformio, /framework\s*=\s*arduino, espidf/);
+  assert.match(sdkconfigDefaults, /CONFIG_FREERTOS_HZ=1000/);
+  assert.match(sdkconfigDefaults, /CONFIG_ARDUINO_VARIANT="esp32s3"/);
+  assert.match(component, /espressif\/usb_host_cdc_acm/);
+  assert.match(component, /\^2\.0\.6/);
+  assert.match(serial, /usb\/cdc_acm_host\.h/);
+  assert.match(serial, /cdc_acm_host_install/);
+  assert.match(serial, /cdc_acm_host_open_vendor_specific/);
+  assert.match(serial, /cdc_acm_host_data_tx_blocking/);
+  assert.match(serial, /usb_host_lib_handle_events/);
+  assert.match(serial, /Deliberately do not toggle DTR\/RTS here/);
+  assert.match(serialHeader, /FlashboxTargetSerialStatus/);
+  assert.match(serialHeader, /flashboxTargetSerialStatusJson/);
+  assert.match(detector, /CDC transport owns the single USB Host event task/);
 });
 
 test("keeps webserver JSON response buffers off the request stack", () => {

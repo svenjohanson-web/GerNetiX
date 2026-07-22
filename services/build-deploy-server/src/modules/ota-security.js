@@ -52,9 +52,9 @@ class SqliteOtaAcknowledgementStore {
     let detail;
     try { detail = JSON.parse(payload); } catch { return; }
     const deviceId = topic.split("/")[2] || detail.device_id || "";
-    const deployId = detail.deploy_id || detail.deployId || "";
-    if (!deviceId || !deployId) return;
-    this.upsert({ ...detail, deploy_id: deployId, device_id: deviceId, status: detail.status || detail.state || "acknowledged", acknowledged_at: new Date().toISOString() });
+    const commandId = detail.deploy_id || detail.deployId || detail.flashbox_job_id || detail.flashboxJobId || "";
+    if (!deviceId || !commandId) return;
+    this.upsert({ ...detail, deploy_id: commandId, device_id: deviceId, status: detail.status || detail.state || "acknowledged", acknowledged_at: new Date().toISOString() });
   }
   upsert(entry) {
     this.db.prepare(`INSERT INTO build_deploy_ota_acknowledgements

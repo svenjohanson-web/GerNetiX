@@ -33,12 +33,14 @@ const state = {
   sensorCatalogStatus: { state: "idle", message: "" },
   builds: [],
   billing: null,
+  community: { questions: [], activeQuestionId: "", answers: [] },
   aiUsage: null,
   progress: [],
   workspace: null,
   serviceStatus: {},
   activeProjectId: "",
   activeDeviceId: "",
+  activeFlashboxDeviceId: "",
   activeRecoveryDeviceId: "",
   recoveryCheckResult: null,
   activeLearnTab: "catalog",
@@ -76,6 +78,7 @@ const routeMap = {
   downloads: "downloadsView",
   shop: "shopView",
   billing: "billingView",
+  community: "communityView",
   help: "helpView",
   knowledge: "helpView",
   "account-setup": "accountSetupView",
@@ -247,6 +250,13 @@ document.querySelector("#ideDeviceSelect").addEventListener("change", () => {
   state.activeDeviceId = document.querySelector("#ideDeviceSelect").value;
   syncSelectedDevicePort();
   loadIdeProject();
+});
+document.querySelector("#communityRefreshButton")?.addEventListener("click", loadCommunity);
+document.querySelector("#communityRequestForm")?.addEventListener("submit", submitCommunityRequest);
+document.querySelector("#communityQuestionList")?.addEventListener("click", (event) => { const button = event.target.closest("[data-community-question]"); if (button) openCommunityQuestion(button.dataset.communityQuestion); });
+document.querySelector("#communityThread")?.addEventListener("submit", submitCommunityAnswer);
+document.querySelector("#flashboxDeviceSelect").addEventListener("change", () => {
+  state.activeFlashboxDeviceId = document.querySelector("#flashboxDeviceSelect").value;
 });
 document.querySelector("#refreshUsbPortsButton").addEventListener("click", refreshUsbPorts);
 document.querySelector("#buildButton").addEventListener("click", startBuild);
@@ -466,6 +476,7 @@ function renderRoute() {
   }
   if (route === "device-provisioning") loadDevicePageTools();
   if (route === "downloads") renderDownloads();
+  if (route === "community") loadCommunity();
   if (["help", "knowledge"].includes(route)) renderHelpTopic();
   lastRenderedRoute = route;
 }
@@ -571,6 +582,10 @@ function currentLocationTrail(route) {
     help: [
       { label: state.account ? "Plattform" : "Startseite", route: state.account ? "/app/dashboard/" : "/" },
       { label: "Hilfe", route: "/hilfe/" },
+    ],
+    community: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Community & Begleitung", route: "" },
     ],
     knowledge: [
       { label: "Wissensportal", route: "/wissen/" },
@@ -837,6 +852,45 @@ function renderDashboard() {
   renderAiRating("#dashboardAiUsage");
 }
 
+async function loadCommunity() {
+  const target = document.querySelector("#communityQuestionList");
+  if (!target) return;
+  target.innerHTML = `<p class="helper-text">Anfragen werden geladen ...</p>`;
+  try {
+    const response = await getJson("/api/community/questions");
+    state.community.questions = response.items || [];
+    renderCommunity();
+  } catch (error) { target.innerHTML = `<p class="helper-text error-text">${escapeHtml(error.message || "Community ist gerade nicht erreichbar.")}</p>`; }
+}
+
+function renderCommunity() {
+  const select = document.querySelector("#communityProjectSelect");
+  if (select) select.innerHTML = `<option value="">Keinem Projekt zuordnen</option>${state.projects.map((project) => `<option value="${escapeAttribute(project.id)}">${escapeHtml(project.name)}</option>`).join("")}`;
+  const target = document.querySelector("#communityQuestionList");
+  target.innerHTML = state.community.questions.length ? state.community.questions.map((question) => `<button class="community-question-card ${question.question_id === state.community.activeQuestionId ? "active" : ""}" type="button" data-community-question="${escapeAttribute(question.question_id)}"><span>${question.visibility === "private" ? "Privat" : "Öffentlich"} · ${escapeHtml(question.status)}</span><strong>${escapeHtml(question.title)}</strong><small>${question.answer_count || 0} Antworten</small></button>`).join("") : `<p class="helper-text">Noch keine Anfragen. Starte gern mit deiner Projektidee.</p>`;
+}
+
+async function submitCommunityRequest(event) {
+  event.preventDefault(); const form = event.currentTarget; const status = document.querySelector("#communityRequestStatus");
+  status.textContent = "Anfrage wird gesendet ...";
+  try { const question = await postJson("/api/community/questions", Object.fromEntries(new FormData(form).entries())); form.reset(); status.textContent = "Anfrage wurde gesendet."; await loadCommunity(); await openCommunityQuestion(question.question_id); } catch (error) { status.textContent = error.message || "Anfrage konnte nicht gesendet werden."; }
+}
+
+async function openCommunityQuestion(questionId) {
+  try {
+    const [question, answers] = await Promise.all([getJson(`/api/community/questions/${encodeURIComponent(questionId)}`), getJson(`/api/community/questions/${encodeURIComponent(questionId)}/answers`)]);
+    state.community.activeQuestionId = questionId; state.community.answers = answers.items || []; renderCommunity();
+    const target = document.querySelector("#communityThread"); target.classList.remove("hidden");
+    target.innerHTML = `<header><div><p class="eyebrow">${question.visibility === "private" ? "Private Begleitung" : "Öffentliche Community-Anfrage"}</p><h2>${escapeHtml(question.title)}</h2></div><span>${escapeHtml(question.status)}</span></header><p class="community-question-body">${escapeHtml(question.body)}</p><div class="community-answers">${state.community.answers.map((answer) => `<article><strong>${escapeHtml(answer.author_label)}</strong><p>${escapeHtml(answer.body)}</p></article>`).join("") || `<p class="helper-text">Noch keine Antwort. GerNetiX meldet sich hier.</p>`}</div><form class="community-answer-form"><label>Ergänzung oder Rückfrage<textarea name="body" required rows="3"></textarea></label><input type="hidden" name="question_id" value="${escapeAttribute(question.question_id)}" /><button type="submit">Antwort senden</button></form>`;
+  } catch (error) { window.alert(error.message || "Anfrage konnte nicht geöffnet werden."); }
+}
+
+async function submitCommunityAnswer(event) {
+  if (!event.target.matches(".community-answer-form")) return;
+  event.preventDefault(); const form = event.target; const data = new FormData(form); const questionId = data.get("question_id");
+  try { await postJson(`/api/community/questions/${encodeURIComponent(questionId)}/answers`, { body: data.get("body") }); await openCommunityQuestion(questionId); } catch (error) { window.alert(error.message || "Antwort konnte nicht gesendet werden."); }
+}
+
 function renderAccountSetup() {
   const button = document.querySelector("#createOfflineRecoverySetButton");
   const status = document.querySelector("#offlineRecoverySetStatus");
@@ -979,6 +1033,15 @@ function renderIdeShell() {
     <option value="${escapeHtml(device.device_id)}">${escapeHtml(device.display_name)}${device.usb_flash_supported ? ` - ${device.build_target_label || "USB"}` : ""}</option>
   `).join("");
   document.querySelector("#ideDeviceSelect").value = state.activeDeviceId;
+  const flashboxSelect = document.querySelector("#flashboxDeviceSelect");
+  const flashboxes = inventoryFlashboxes();
+  flashboxSelect.innerHTML = flashboxes.map((flashbox) => `
+    <option value="${escapeHtml(flashbox.device_id)}">${escapeHtml(flashbox.display_name || flashbox.device_id)}${flashbox.trust_state ? ` - ${escapeHtml(flashbox.trust_state)}` : ""}</option>
+  `).join("");
+  if (!flashboxes.some((flashbox) => flashbox.device_id === state.activeFlashboxDeviceId)) {
+    state.activeFlashboxDeviceId = flashboxes[0]?.device_id || "";
+  }
+  flashboxSelect.value = state.activeFlashboxDeviceId;
   renderUsbPortOptions();
   syncSelectedDevicePort();
 }
@@ -1122,6 +1185,8 @@ function updateIdeProjectTools(project) {
   const usbButton = document.querySelector("#usbFlashButton");
   const otaButton = document.querySelector("#otaFlashButton");
   const flashBoxButton = document.querySelector("#flashBoxFlashButton");
+  const flashboxSelect = document.querySelector("#flashboxDeviceSelect");
+  const flashboxes = inventoryFlashboxes();
   const otaReason = !allocated
     ? "OTA nicht verfügbar: Kein Device zugeordnet."
     : allocated.connectivity_status !== "online"
@@ -1132,11 +1197,15 @@ function updateIdeProjectTools(project) {
   buildButton.disabled = false;
   usbButton.disabled = false;
   otaButton.disabled = !allocated || allocated.ota_status !== "ready" || allocated.connectivity_status !== "online";
-  flashBoxButton.disabled = false;
+  flashBoxButton.disabled = !flashboxes.length;
+  flashboxSelect.classList.toggle("hidden", !flashboxes.length);
+  flashboxSelect.disabled = !flashboxes.length;
   buildButton.title = actionReason;
   usbButton.title = actionReason || (!allocated?.usb_flash_supported ? "Das zugeordnete Device unterstuetzt keinen USB-Flash." : "");
   otaButton.title = actionReason || otaReason;
-  flashBoxButton.title = actionReason || "FlashBox-Flash nutzt eine inventarisierte GerNetiX FlashBox als USB-Helper.";
+  flashBoxButton.title = actionReason || (!flashboxes.length
+    ? "Keine FlashBox im Inventar verfügbar."
+    : "FlashBox: Der WLAN-zu-USB-Helper flasht das angeschlossene Zielgerät.");
   renderIdeProjectInformation(project);
   document.querySelector("#sourceEditor").readOnly = !sourceEditing;
 }
@@ -2554,7 +2623,10 @@ async function startFlashBoxFlash() {
   if (!flashboxes.length) {
     return setFlashStatus("error", "Keine GerNetiX FlashBox im Inventar. Kaufe oder uebernimm zuerst eine FlashBox im Webshop/Inventar.");
   }
-  const flashbox = flashboxes[0];
+  const flashbox = flashboxes.find((item) => item.device_id === state.activeFlashboxDeviceId) || null;
+  if (!flashbox) {
+    return setFlashStatus("error", "Waehle zuerst eine verfuegbare FlashBox aus deinem Inventar.");
+  }
   setFlashStatus("running", `Build fuer FlashBox-Flash wird vorbereitet (${flashbox.display_name || flashbox.device_id}).`);
   try {
     await persistCurrentSource(project);
@@ -2572,7 +2644,9 @@ async function startFlashBoxFlash() {
       appendBuildFailureLog(completed.build_log);
       throw new Error(completed.error || "Build fuer FlashBox-Flash ist fehlgeschlagen.");
     }
-    setFlashStatus("ok", `Build fertig. FlashBox-Transport ist vorbereitet; Auftrag an ${flashbox.display_name || flashbox.device_id} folgt im FlashBox-Job-Endpunkt.`);
+    const delivery = completed.result?.flashbox || completed.flashbox || {};
+    const deliveryStatus = completed.flash_status || delivery.status || "veröffentlicht";
+    setFlashStatus("ok", `Build fertig. FlashBox-Auftrag an ${flashbox.display_name || flashbox.device_id}: ${deliveryStatus}.`);
     renderBuilds();
   } catch (error) {
     setFlashStatus("error", error.message);

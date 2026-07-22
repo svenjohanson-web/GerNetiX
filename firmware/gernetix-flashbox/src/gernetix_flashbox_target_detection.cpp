@@ -320,8 +320,8 @@ void showDisplayIfChanged() {
 void pollUsbOtgBackend() {
 #if GERNETIX_FLASHBOX_USB_OTG_DETECTION_ENABLED
   if (!ensureUsbHostStarted()) return;
-  uint32_t hostEvents = 0;
-  usb_host_lib_handle_events(0, &hostEvents);
+  // The CDC transport owns the single USB Host event task.  This client only
+  // drains its own descriptor events here.
   if (usbClientHandle) {
     usb_host_client_handle_events(usbClientHandle, 0);
   }

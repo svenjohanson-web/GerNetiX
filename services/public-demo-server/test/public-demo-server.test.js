@@ -7,6 +7,9 @@ const test = require("node:test");
 const { createHttpApp } = require("../src/http-app");
 const { SqlitePublicDemoRepository } = require("../src/repositories/sqlite-public-demo-repository");
 const { PublicDemoService } = require("../src/services/public-demo-service");
+const browserApp = fs.readFileSync(path.join(__dirname, "..", "public", "app.js"), "utf8");
+const browserPage = fs.readFileSync(path.join(__dirname, "..", "public", "index.html"), "utf8");
+const browserStyles = fs.readFileSync(path.join(__dirname, "..", "public", "app.css"), "utf8");
 
 function createRepository() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-public-demo-"));
@@ -72,7 +75,7 @@ test("der öffentliche Lesezugang kann keine Release-Veröffentlichung auslösen
 
   const demoPage = await fetch(`http://127.0.0.1:${port}/`);
   assert.equal(demoPage.status, 200);
-  assert.match(await demoPage.text(), /Demoanwendungen/);
+  assert.match(await demoPage.text(), /S3 Touch-Spielesammlung/);
 
   const brandLogo = await fetch(`http://127.0.0.1:${port}/gernetix-logo.png`);
   assert.equal(brandLogo.status, 200);
@@ -83,6 +86,11 @@ test("der öffentliche Lesezugang kann keine Release-Veröffentlichung auslösen
   assert.equal(brandWordmark.status, 200);
   assert.equal(brandWordmark.headers.get("content-type"), "image/png");
   assert.ok((await brandWordmark.arrayBuffer()).byteLength > 1_000);
+
+  const browserIcon = await fetch(`http://127.0.0.1:${port}/gernetix-gx.svg`);
+  assert.equal(browserIcon.status, 200);
+  assert.equal(browserIcon.headers.get("content-type"), "image/svg+xml");
+  assert.match(await browserIcon.text(), /aria-label="GerNetiX GX"/);
 
   const forbidden = await fetch(`http://127.0.0.1:${port}/api/internal/public-demos`, {
     method: "POST",
@@ -103,4 +111,25 @@ test("der öffentliche Lesezugang kann keine Release-Veröffentlichung auslösen
 
   await new Promise((resolve) => server.close(resolve));
   repository.close();
+});
+
+test("WebSerial pulses the reset pin after flashing", () => {
+  assert.match(browserStyles, /\.hero h1 \{ font-size:clamp\(2rem,4vw,2\.5rem\)/);
+  assert.doesNotMatch(browserStyles, /5\.8rem/);
+  assert.match(browserPage, /S3 Touch-Spielesammlung installieren/);
+  assert.match(browserPage, /data-transport="ota"/);
+  assert.match(browserPage, /data-transport="flashbox"/);
+  assert.match(browserPage, /id="account-transport"/);
+  assert.match(browserPage, /id="publicMenuButton"/);
+  assert.match(browserPage, /href="\/s3-touch-spielesammlung\/" aria-current="page"/);
+  assert.match(browserPage, /\/landing\.js/);
+  assert.doesNotMatch(browserPage, /Verfügbare Demos/);
+  assert.match(browserApp, /api\/public\/demos\/\$\{DEMO_ID\}/);
+  assert.match(browserApp, /OTA ist für ein Board gedacht/);
+  assert.match(browserApp, /FlashBox übernimmt den USB-Flash/);
+  assert.match(browserApp, /app\/auth\/\?next=/);
+  assert.doesNotMatch(browserApp, /fetch\("api\/public\/demos"\)/);
+  assert.match(browserApp, /loader\.after\("custom_reset", false, "D0\|R1\|W120\|R0\|W120"\)/);
+  assert.doesNotMatch(browserApp, /loader\.after\("hard_reset"\)/);
+  assert.match(browserApp, /RESET-Taste am Board/);
 });

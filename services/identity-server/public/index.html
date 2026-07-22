@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/gernetix-gx.svg?v=20260721-03" type="image/svg+xml" />
     <meta name="description" content="GerNetiX vermittelt systemisches Engineering-Wissen vom Embedded-System bis zur Cloud." />
     <title>GerNetiX · Verstehen. Entwickeln. Erschaffen.</title>
     <link rel="stylesheet" href="/landing.css?v=20260719-01" />
@@ -20,8 +21,15 @@
       <nav id="publicMenu" class="site-menu" aria-label="Öffentliche Bereiche" hidden>
         <a href="/">Startseite</a>
         <a href="/produkte/">Produkte</a>
-        <a href="/downloads/">Downloads</a>
+        <div class="site-menu-discover">
+          <a href="/entdecken/">GerNetiX entdecken</a>
+          <div class="site-menu-subitems">
+            <a href="/flashbox-einrichten/">USB Helper</a>
+            <a href="/nachbauprojekte/">Nachbauprojekte</a>
+          </div>
+        </div>
         <a href="/wissen/">Wissensportal</a>
+        <a href="/community/">Community</a>
         <a href="/hilfe/">Hilfe</a>
         <a href="/shop/">Webshop</a>
         <a href="/app/auth/">Anmelden</a>
@@ -32,10 +40,8 @@
       <section class="panel hero" aria-labelledby="hero-title">
         <div class="hero-copy">
           <p class="eyebrow">Verstehen. Entwickeln. Erschaffen.</p>
-          <h1 id="hero-title">Verstehe komplexe technische Systeme – von der Cloud bis zum Embedded-System.</h1>
-          <p class="lead">GerNetiX ist eine Lern- und Entwicklungsplattform für alle, die mehr wollen, als nur fertige Lösungen nachzubauen. Wir vermitteln nicht nur, <strong>wie</strong> Systeme funktionieren, sondern vor allem, <strong>warum</strong> sie funktionieren.</p>
-          <p class="ai-statement">Die KI ist ein Werkzeug – sie unterstützt dich, übernimmt aber weder Denken noch Verantwortung.</p>
-          <a class="primary-action" href="/app/auth/?next=%2Fapp%2Fdashboard%2F">Jetzt starten →</a>
+          <h1 id="hero-title">von der Cloud bis zum Embedded-System</h1>
+          <p class="lead">GerNetiX ist eine Lern- und Entwicklungsplattform für alle, die mehr wollen, als nur fertige Lösungen nachzubauen. Wir zeigen nicht nur, wie Systeme aufgebaut sind, sondern machen auch ihre Zusammenhänge verständlich.</p>
         </div>
         <figure class="hero-system-graphic" aria-labelledby="system-graphic-caption">
           <svg viewBox="0 0 620 400" role="img" aria-label="Entscheidungsweg vom Problem bis zur Realisierung">
@@ -43,11 +49,11 @@
             <rect class="hero-system-surface" x="14" y="14" width="592" height="372" rx="22"/>
             <text class="hero-system-overline" x="45" y="53">VOM PROBLEM ZUR LÖSUNG</text><text class="hero-system-caption" x="45" y="79">Technik folgt der Aufgabe – nicht umgekehrt.</text>
             <path class="hero-process-line" marker-end="url(#heroArrow)" d="M200 160 H233"/><path class="hero-process-line" marker-end="url(#heroArrow)" d="M385 160 H418"/><path class="hero-process-line" marker-end="url(#heroArrow)" d="M495 210 V232 H235 V252"/><path class="hero-process-line" marker-end="url(#heroArrow)" d="M310 302 H343"/>
-            <g class="hero-process-step idea"><rect x="50" y="110" width="150" height="100" rx="14"/><circle cx="125" cy="139" r="15"/><path d="M125 116v-8M125 170v-8M102 139h-8M156 139h-8M109 123l-6-6M141 123l6-6M109 155l-6 6M141 155l6 6"/><text x="125" y="181" text-anchor="middle">PROBLEM</text></g>
-            <g class="hero-process-step"><rect x="235" y="110" width="150" height="100" rx="14"/><circle cx="310" cy="139" r="15"/><path d="M302 139h16M310 131v16M303 132l14 14M317 132l-14 14"/><text x="310" y="181" text-anchor="middle">KONZEPTE</text></g>
-            <g class="hero-process-step"><rect x="420" y="110" width="150" height="100" rx="14"/><circle cx="495" cy="139" r="15"/><path d="M487 131h16M487 139h16M487 147h16"/><text x="495" y="181" text-anchor="middle">BEWERTEN</text></g>
-            <g class="hero-process-step"><rect x="160" y="252" width="150" height="100" rx="14"/><circle cx="235" cy="281" r="15"/><path d="M227 281l5 5 11-13"/><text x="235" y="323" text-anchor="middle">ENTSCHEIDEN</text></g>
-            <g class="hero-process-step final"><rect x="343" y="252" width="150" height="100" rx="14"/><circle cx="418" cy="281" r="15"/><path d="M410 289l16-16M413 273h13v13"/><text x="418" y="323" text-anchor="middle">REALISIEREN</text></g>
+            <g class="hero-process-step idea"><rect x="50" y="110" width="150" height="100" rx="14"/><g transform="translate(0 8)"><circle cx="125" cy="139" r="15"/><path d="M125 116v-5M125 167v-5M102 139h-8M156 139h-8M109 123l-6-6M141 123l6-6M109 155l-6 6M141 155l6 6"/><text x="125" y="181" text-anchor="middle">PROBLEM</text></g></g>
+            <g class="hero-process-step"><rect x="235" y="110" width="150" height="100" rx="14"/><g transform="translate(0 8)"><circle cx="310" cy="139" r="15"/><path d="M302 139h16M310 131v16M303 132l14 14M317 132l-14 14"/><text x="310" y="181" text-anchor="middle">KONZEPTE</text></g></g>
+            <g class="hero-process-step"><rect x="420" y="110" width="150" height="100" rx="14"/><g transform="translate(0 8)"><circle cx="495" cy="139" r="15"/><path d="M487 131h16M487 139h16M487 147h16"/><text x="495" y="181" text-anchor="middle">BEWERTEN</text></g></g>
+            <g class="hero-process-step"><rect x="160" y="252" width="150" height="100" rx="14"/><g transform="translate(0 8)"><circle cx="235" cy="281" r="15"/><path d="M227 281l5 5 11-13"/><text x="235" y="323" text-anchor="middle">ENTSCHEIDEN</text></g></g>
+            <g class="hero-process-step final"><rect x="343" y="252" width="150" height="100" rx="14"/><g transform="translate(0 8)"><circle cx="418" cy="281" r="15"/><path d="M410 289l16-16M413 273h13v13"/><text x="418" y="323" text-anchor="middle">REALISIEREN</text></g></g>
           </svg>
           <figcaption id="system-graphic-caption">Ingenieursmäßiges Denken macht aus einem Problem eine begründete Realisierung.</figcaption>
         </figure>
@@ -63,7 +69,19 @@
           <h3>Wie GerNetiX entstanden ist</h3>
           <p>Ich möchte Wissen weitergeben, ohne technische Tiefe künstlich zu verstecken. KI macht dieses Wissen heute leichter zugänglich: Sie kann erklären, Beispiele geben und beim Denken helfen. Die Problemstellung verstehen, Möglichkeiten abwägen und Verantwortung übernehmen bleibt jedoch unsere Aufgabe.</p>
           <p>Menschen lernen unterschiedlich. Manche lesen, andere experimentieren oder brauchen ein Gespräch. Deshalb führt GerNetiX nicht durch ein einziges Pflichtprojekt, sondern eröffnet Lernwege von einer kleinen Idee bis zu einem eigenen, verteilten System.</p>
-          <a class="secondary-action" href="/wissen/#from-problem-to-system">Ingenieursmäßiges Denken kennenlernen →</a>
+        </div>
+      </section>
+
+      <section class="panel learning-paths" aria-labelledby="learning-paths-title">
+        <div class="learning-paths-intro">
+          <p class="eyebrow">Dein Lernweg</p>
+          <h2 id="learning-paths-title">Drei Wege, ein Ziel.</h2>
+          <p>Wähle den Zugang, der dir gerade hilft.</p>
+        </div>
+        <div class="learning-path-grid">
+          <a href="/wissen/" class="learning-path-card"><span>Lesen &amp; verstehen</span><h3>Wissen, das Zusammenhänge erklärt</h3><p>Grundlagen, Begriffe und Hintergründe in deinem eigenen Tempo entdecken.</p><strong>Wissensportal öffnen →</strong></a>
+          <a href="/app/auth/?next=%2Fapp%2Flearn%2F" class="learning-path-card"><span>Ausprobieren &amp; bauen</span><h3>Praxis, die Verständnis schafft</h3><p>Mit geführten Lernprojekten starten oder eigene Ideen Schritt für Schritt entwickeln.</p><strong>Lernbereich öffnen →</strong></a>
+          <a href="/community/" class="learning-path-card"><span>Austauschen &amp; begleitet werden</span><h3>Projektbegleitung auf Augenhöhe</h3><p>Fragen öffentlich mit der Community teilen oder persönlich mit GerNetiX weiterdenken.</p><strong>Community &amp; Begleitung öffnen →</strong></a>
         </div>
       </section>
 

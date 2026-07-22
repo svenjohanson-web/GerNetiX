@@ -3,43 +3,58 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Vorgefertigte GerNetiX-Demoanwendungen für unterstützte Boards – sicher per USB ausprobieren.">
+    <link rel="icon" href="/s3-touch-spielesammlung/gernetix-gx.svg?v=20260721-03" type="image/svg+xml">
+    <meta name="description" content="Die GerNetiX S3 Touch-Spielesammlung sicher per WebSerial auf ein ESP32-S3 Touch-Board installieren.">
     <meta name="theme-color" content="#07111e">
-    <title>GerNetiX Demoanwendungen</title>
+    <title>S3 Touch-Spielesammlung · GerNetiX</title>
+    <link rel="stylesheet" href="/landing.css?v=20260721-public-header-1">
     <link rel="stylesheet" href="app.css">
   </head>
   <body>
-    <header class="shell topbar">
-      <a class="brand" href="/" aria-label="GerNetiX Demoanwendungen – Startseite">
-        <img class="brand-wordmark-image" src="gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX">
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="GerNetiX Startseite">
+        <img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX">
       </a>
-      <span class="topbar-context">Demoanwendungen</span>
+      <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="publicMenu"><span></span><span></span><span></span></button>
+      <nav id="publicMenu" class="site-menu" aria-label="Öffentliche Bereiche" hidden>
+        <a href="/">Startseite</a><a href="/produkte/">Produkte</a><div class="site-menu-discover"><a href="/entdecken/">GerNetiX entdecken</a><div class="site-menu-subitems"><a href="/flashbox-einrichten/">USB Helper</a><a href="/nachbauprojekte/">Nachbauprojekte</a><a href="/s3-touch-spielesammlung/" aria-current="page">S3 Touch-Spielesammlung</a></div></div><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/shop/">Webshop</a><a href="/app/auth/">Anmelden</a>
+      </nav>
     </header>
     <main class="shell">
       <section class="hero">
-        <p class="eyebrow">Demoanwendungen</p>
-        <h1>Ausprobieren.<br><em>Direkt auf dem Board.</em></h1>
-        <p>Hier findest du fertige, geprüfte Anwendungen für bekannte Boards. Du brauchst kein Konto: Board per USB anschließen, Demo auswählen und lokal flashen.</p>
-        <p class="safety">Nur USB-Flash. Kein OTA, kein Fernzugriff und keine Projekt- oder Kontodaten.</p>
+        <p class="eyebrow">ESP32-S3 Touch-Board</p>
+        <h1>S3 Touch-<br><em>Spielesammlung.</em></h1>
+        <p>Installiere Nibbles und Frogger auf dein passendes ESP32-S3 Touch-Board: direkt per USB, über ein bereits eingerichtetes WLAN-Gerät oder mit einer FlashBox.</p>
+        <p class="safety">Direktes USB-Flashen funktioniert ohne Konto. OTA und FlashBox schützen dein Gerät und deine FlashBox über dein persönliches Inventar.</p>
       </section>
-      <section aria-labelledby="demo-title">
-        <div class="section-heading"><h2 id="demo-title">Verfügbare Demos</h2><span id="count"></span></div>
-        <div id="demos" class="cards" aria-live="polite"><p class="loading">Demos werden geladen …</p></div>
-      </section>
-      <section id="flash-flow" class="flash-flow" hidden aria-labelledby="flash-title">
-        <p class="eyebrow">Demo vorbereiten</p>
-        <h2 id="flash-title"></h2>
-        <div id="port-step" hidden>
-          <button id="choose-port" class="action-button" type="button">COM-Port wählen</button>
-          <p id="port-status" class="step-status">Wähle zuerst einen COM-Port für das angeschlossene Board.</p>
+      <section class="flash-flow" aria-labelledby="flash-title">
+        <p class="eyebrow">Installation</p>
+        <h2 id="flash-title">S3 Touch-Spielesammlung installieren</h2>
+        <p class="step-status">Wähle zuerst den Weg, der zu deinem Board und deinem Arbeitsplatz passt.</p>
+        <div class="flash-transport-choice" role="group" aria-label="Flash-Weg auswählen">
+          <button class="transport-card active" type="button" data-transport="usb" aria-pressed="true"><strong>Direktes USB</strong><span>Board ist an diesem Computer angeschlossen.</span></button>
+          <button class="transport-card" type="button" data-transport="ota" aria-pressed="false"><strong>OTA über WLAN</strong><span>Für bereits eingerichtete, online erreichbare Boards.</span></button>
+          <button class="transport-card" type="button" data-transport="flashbox" aria-pressed="false"><strong>Mit FlashBox</strong><span>Das Zielboard steckt am USB-Port deiner FlashBox.</span></button>
         </div>
-        <div id="flash-step" hidden>
-          <button id="flash-button" class="action-button" type="button" disabled>Flashen</button>
-          <p id="flash-status" class="step-status"></p>
+        <div id="usb-transport" class="transport-panel">
+          <p class="step-status">Verbinde das Board mit einem Daten-USB-Kabel. WebSerial funktioniert mit Chrome oder Edge auf einem Desktop-PC.</p>
+          <div id="port-step">
+            <button id="choose-port" class="action-button" type="button" disabled>COM-Port wählen</button>
+            <p id="port-status" class="step-status" aria-live="polite">Release wird geprüft …</p>
+          </div>
+          <div id="flash-step" hidden>
+            <button id="flash-button" class="action-button" type="button" disabled>Spielesammlung flashen</button>
+            <p id="flash-status" class="step-status" aria-live="polite"></p>
+          </div>
+        </div>
+        <div id="account-transport" class="transport-panel" hidden aria-live="polite">
+          <p id="account-transport-copy" class="step-status"></p>
+          <a id="account-transport-link" class="action-button account-action" href="/app/auth/?next=%2Fapp%2Fdashboard%2F">Anmelden und fortfahren</a>
         </div>
       </section>
     </main>
     <footer class="shell">© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</footer>
+    <script src="/landing.js?v=20260719-01"></script>
     <script src="app.js"></script>
   </body>
 </html>

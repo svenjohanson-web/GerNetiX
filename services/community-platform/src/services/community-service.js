@@ -5,17 +5,19 @@ class CommunityService {
   constructor(options) {
     this.repository = options.repository;
     this.triageSlaHours = options.triageSlaHours || 24;
+    this.internalToken = options.internalToken || "";
     seedKnowledge(this);
   }
 
-  createQuestion(input = {}) {
+  createQuestion(input = {}, actor = {}) {
     const now = new Date();
     const question = {
       question_id: createId("question"),
       title: required(input.title, "title"),
       body: required(input.body, "body"),
-      author_user_id: input.author_user_id || "anonymous",
+      author_user_id: required(actor.user_id, "actor_user_id"),
       project_id: input.project_id || "",
+      visibility: input.visibility === "private" ? "private" : "public",
       tags: normalizeList(input.tags),
       status: "open",
       triage_status: "new",
@@ -30,17 +32,21 @@ class CommunityService {
     return this.repository.saveQuestion(question);
   }
 
-  listQuestions(query = {}) {
+  listQuestions(query = {}, actor = {}) {
     const items = this.repository.listQuestions(query)
-      .map((question) => this.decorateQuestion(question));
+      .filter((question) => canAccess(question, actor))
+      .map((question) => this.presentQuestion(this.decorateQuestion(question), actor));
     return { items };
   }
 
-  getQuestion(questionId) {
-    return this.decorateQuestion(this.requireQuestion(questionId));
+  getQuestion(questionId, actor = {}) {
+    const question = this.requireQuestion(questionId);
+    requireAccess(question, actor);
+    return this.presentQuestion(this.decorateQuestion(question), actor);
   }
 
-  triageQuestion(questionId, input = {}) {
+  triageQuestion(questionId, input = {}, actor = {}) {
+    requireOperator(actor);
     const question = this.requireQuestion(questionId);
     const now = new Date().toISOString();
     const next = {
@@ -56,14 +62,16 @@ class CommunityService {
     return this.decorateQuestion(this.repository.saveQuestion(next));
   }
 
-  createAnswer(questionId, input = {}) {
+  createAnswer(questionId, input = {}, actor = {}) {
     const question = this.requireQuestion(questionId);
+    requireAccess(question, actor);
+    if (!actor.is_operator && question.author_user_id !== actor.user_id) throw new CommunityPlatformError("community_access_denied", "Antworten sind nur fuer die anfragende Person oder GerNetiX moeglich.", 403);
     const now = new Date().toISOString();
     const answer = {
       answer_id: createId("answer"),
       question_id: question.question_id,
       body: required(input.body, "body"),
-      author_user_id: input.author_user_id || "anonymous",
+      author_user_id: actor.user_id,
       verification_state: "unverified",
       verified_at: null,
       verified_by: "",
@@ -75,8 +83,9 @@ class CommunityService {
     return this.repository.saveAnswer(answer);
   }
 
-  updateAnswer(answerId, input = {}) {
+  updateAnswer(answerId, input = {}, actor = {}) {
     const answer = this.requireAnswer(answerId);
+    if (!actor.is_operator && answer.author_user_id !== actor.user_id) throw new CommunityPlatformError("community_access_denied", "Diese Antwort darf nicht bearbeitet werden.", 403);
     const now = new Date().toISOString();
     const bodyChanged = input.body && input.body !== answer.body;
     const next = {
@@ -89,7 +98,8 @@ class CommunityService {
     return this.repository.saveAnswer(next);
   }
 
-  verifyAnswer(answerId, input = {}) {
+  verifyAnswer(answerId, input = {}, actor = {}) {
+    requireOperator(actor);
     const answer = this.requireAnswer(answerId);
     const question = this.requireQuestion(answer.question_id);
     const now = new Date().toISOString();
@@ -116,31 +126,32 @@ class CommunityService {
         updated_at: now,
       });
     }
-    this.publishKnowledgeDocument(question, next);
+    if (question.visibility === "public") this.publishKnowledgeDocument(question, next);
     return next;
   }
 
-  listAnswers(questionId) {
-    this.requireQuestion(questionId);
-    return { items: this.repository.listAnswers(questionId) };
+  listAnswers(questionId, actor = {}) {
+    const question = this.requireQuestion(questionId);
+    requireAccess(question, actor);
+    return { items: this.repository.listAnswers(questionId).map((answer) => this.presentAnswer(answer, actor)) };
   }
 
-  search(query = {}) {
+  search(query = {}, actor = {}) {
     const term = String(query.q || query.query || "").toLowerCase();
-    const questions = this.repository.listQuestions({}).filter((question) => matches(question, term));
-    const answers = Array.from(this.repository.answers.values()).filter((answer) => matches(answer, term));
-    const documents = this.repository.listKnowledgeDocuments({}).filter((document) => matches(document, term));
+    const questions = this.repository.listQuestions({}).filter((question) => canAccess(question, actor) && matches(question, term));
+    const answers = Array.from(this.repository.answers.values()).filter((answer) => canAccess(this.requireQuestion(answer.question_id), actor) && matches(answer, term));
+    const documents = this.visibleKnowledgeDocuments(actor).filter((document) => matches(document, term));
     return {
       items: [
-        ...questions.map((question) => ({ type: "question", score: score(question, term), item: this.decorateQuestion(question) })),
-        ...answers.map((answer) => ({ type: "answer", score: score(answer, term), item: answer })),
+        ...questions.map((question) => ({ type: "question", score: score(question, term), item: this.presentQuestion(this.decorateQuestion(question), actor) })),
+        ...answers.map((answer) => ({ type: "answer", score: score(answer, term), item: this.presentAnswer(answer, actor) })),
         ...documents.map((document) => ({ type: "knowledge_document", score: score(document, term), item: document })),
       ].sort((left, right) => right.score - left.score),
     };
   }
 
-  listKnowledgeDocuments(query = {}) {
-    return { items: this.repository.listKnowledgeDocuments(query) };
+  listKnowledgeDocuments(query = {}, actor = {}) {
+    return { items: this.visibleKnowledgeDocuments(actor).filter((document) => (!query.source_type || document.source_type === query.source_type) && (!query.verification_state || document.verification_state === query.verification_state)) };
   }
 
   publishKnowledgeDocument(question, answer) {
@@ -174,6 +185,23 @@ class CommunityService {
     };
   }
 
+  presentQuestion(question, actor) {
+    const { author_user_id, ...visible } = question;
+    return { ...visible, author_label: actor.is_operator ? author_user_id : "Mitglied", is_owner: question.author_user_id === actor.user_id };
+  }
+
+  presentAnswer(answer, actor) {
+    const { author_user_id, ...visible } = answer;
+    return { ...visible, author_label: actor.is_operator ? author_user_id : answer.author_user_id === actor.user_id ? "Du" : "GerNetiX" };
+  }
+
+  visibleKnowledgeDocuments(actor) {
+    return this.repository.listKnowledgeDocuments({}).filter((document) => {
+      const question = this.repository.findQuestion(document.question_id);
+      return question && question.visibility === "public" && canAccess(question, actor);
+    });
+  }
+
   requireQuestion(questionId) {
     const question = this.repository.findQuestion(questionId);
     if (!question) throw new CommunityPlatformError("question_not_found", "Community-Frage wurde nicht gefunden.", 404);
@@ -194,13 +222,13 @@ function seedKnowledge(service) {
     body: "Nach einem WLAN-Wechsel ist das Board erreichbar, OTA meldet aber timeout.",
     author_user_id: "seed",
     tags: ["esp32", "ota", "wifi"],
-  });
-  service.triageQuestion(question.question_id, { triaged_by: "system", priority: "normal" });
+  }, { user_id: "seed", is_operator: true });
+  service.triageQuestion(question.question_id, { triaged_by: "system", priority: "normal" }, { user_id: "seed", is_operator: true });
   const answer = service.createAnswer(question.question_id, {
     author_user_id: "seed-expert",
     body: "Pruefe zuerst den OTA-Hostname im Device-Webserver und sende danach einen Connectivity-Heartbeat an Device Management.",
-  });
-  service.verifyAnswer(answer.answer_id, { verified_by: "seed-expert" });
+  }, { user_id: "seed-expert", is_operator: true });
+  service.verifyAnswer(answer.answer_id, { verified_by: "seed-expert" }, { user_id: "seed-expert", is_operator: true });
 }
 
 function normalizeList(value) {
@@ -230,3 +258,15 @@ function createId(prefix) {
 }
 
 module.exports = { CommunityService };
+
+function canAccess(question, actor) {
+  return question.visibility !== "private" || question.author_user_id === actor.user_id || actor.is_operator;
+}
+
+function requireAccess(question, actor) {
+  if (!canAccess(question, actor)) throw new CommunityPlatformError("community_access_denied", "Diese Anfrage ist privat.", 403);
+}
+
+function requireOperator(actor) {
+  if (!actor.is_operator) throw new CommunityPlatformError("community_access_denied", "Diese Aktion ist GerNetiX vorbehalten.", 403);
+}

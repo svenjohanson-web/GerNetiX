@@ -134,7 +134,7 @@
 
     <rect class="node domain" x="965" y="405" width="180" height="54" rx="10"/>
     <text class="titleText" x="1055" y="429" text-anchor="middle">Community Platform</text>
-    <text class="smallText" x="1055" y="448" text-anchor="middle">:5200</text>
+    <text class="smallText" x="1055" y="448" text-anchor="middle">Private Threads + Public Community :5200</text>
 
     <rect class="node domain" x="1170" y="405" width="190" height="54" rx="10"/>
     <text class="titleText" x="1265" y="429" text-anchor="middle">Community AI</text>

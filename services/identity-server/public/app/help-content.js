@@ -23,76 +23,25 @@ const HelpContent = (() => {
       surface: "knowledge",
       access: "public",
       children: [
-        { id: "from-problem-to-system", title: "Vom Problem zum verteilten System", articleId: "from-problem-to-system", subchapters: [
+        { id: "from-problem-to-system", title: "Vom Problem zu technischen Grundlagen", articleId: "from-problem-to-system", subchapters: [
           { id: "engineering-thinking-problem", title: "Nicht Technologie, sondern Problem" },
           { id: "engineering-thinking-knowledge", title: "Wissen, Analyse und KI" },
           { id: "engineering-thinking-learning", title: "Viele Wege ins Lernen" },
           { id: "engineering-thinking-tamagotchi", title: "Die Tamagotchi-Lernreise" },
           { id: "engineering-thinking-models", title: "Vorgehensmodelle" },
           { id: "engineering-thinking-industry", title: "Was das mit Industrie zu tun hat" },
+          { id: "engineering-thinking-foundations", title: "Welche Grundlagen verteilte Systeme brauchen" },
           { id: "engineering-thinking-next-steps", title: "Mit Beispielen weiterlernen" },
         ] },
       ],
     },
     {
-      id: "artificial-intelligence",
-      title: "Die Künstliche Intelligenz",
-      description: "KI als Werkzeug verstehen: von Sprachassistenten über GPT bis zu lokalen und internetbasierten Sprachmodellen.",
+      id: "electrical-engineering",
+      title: "Elektrotechnik",
+      description: "Physikalische Grundlagen, Messschaltungen sowie Ein- und Ausgangsbeschaltungen verstehen.",
       surface: "knowledge",
       access: "public",
       children: [
-        { id: "ai-basics", title: "GPT, Alexa und LLMs", articleId: "ai-basics", subchapters: [
-          { id: "ai-gpt-and-alexa", title: "GPT und Alexa sind nicht dasselbe" },
-          { id: "ai-llm", title: "Was ist ein LLM?" },
-          { id: "ai-vectors-and-embeddings", title: "Vektoren und Embeddings" },
-          { id: "ai-local-or-online", title: "Lokal oder über das Internet?" },
-          { id: "ai-payment-models", title: "Kosten und Zahlungsmodelle" },
-        ] },
-      ],
-    },
-    {
-      id: "communication-and-interfaces",
-      title: "Kommunikation und Schnittstellen",
-      description: "Verstehen, wie Apps, Server und Geräte Daten austauschen – von REST über MQTT bis zu Ereignissen in Echtzeit.",
-      surface: "knowledge",
-      access: "public",
-      children: [
-        { id: "communication-basics", title: "Systeme miteinander verbinden", articleId: "communication-basics", subchapters: [
-          { id: "communication-rest", title: "REST und HTTP" },
-          { id: "communication-events", title: "Ereignisse, Webhooks und WebSockets" },
-          { id: "communication-mqtt", title: "MQTT für IoT" },
-          { id: "communication-data-security", title: "JSON, Identität und Berechtigungen" },
-        ] },
-      ],
-    },
-    {
-      id: "system-landscapes",
-      title: "Systemlandschaften",
-      description: "Lokale und globale Systeme verbinden, Cloud-Kosten und Datenschutz verstehen.",
-      surface: "knowledge",
-      access: "public",
-      children: [
-        { id: "server-systems", title: "Moderne Systemlandschaften", articleId: "server-systems" },
-      ],
-    },
-    {
-      id: "hardware-basics",
-      title: "Hardware und Embedded",
-      description: "Boards, Elektronik, Messtechnik, Debugging und Sicherheit einordnen.",
-      surface: "knowledge",
-      access: "public",
-      children: [
-        { id: "hardware-landscape", title: "Hardware-Landkarte: vom Akku bis Edge AI", articleId: "hardware-landscape" },
-        { id: "processor-overview", title: "ESP32-Prozessorfamilien im Vergleich", articleId: "processor-overview" },
-        { id: "microcontroller-basics", title: "Grundlagen Mikrocontroller", articleId: "microcontroller-basics", subchapters: [
-          { id: "microcontroller-flashing", title: "Flashen" },
-          { id: "microcontroller-memory", title: "Speicherorganisation" },
-          { id: "microcontroller-registers", title: "Register" },
-          { id: "microcontroller-gpio", title: "GPIO" },
-          { id: "microcontroller-adc", title: "ADC" },
-          { id: "microcontroller-timer", title: "Timer" },
-          { id: "microcontroller-pwm", title: "PWM" },
-        ] },
         { id: "physical-limits", title: "Grenzen der Physik", articleId: "physical-limits", subchapters: [
           { id: "physical-limits-ratings", title: "Absolute Maximum Ratings – absolute Grenzwerte" },
           { id: "physical-limits-current", title: "Strom pro Pin und Gesamtstrom" },
@@ -109,24 +58,77 @@ const HelpContent = (() => {
         ] },
         { id: "actuators", title: "Aktoren", articleId: "actuators", subchapters: [
           { id: "actuator-types", title: "Aktor-Typen" },
-          { id: "actuator-driver-circuits", title: "Schaltungen zur Ansteuerung" },
+          { id: "actuator-driver-circuits", title: "Ausgangsbeschaltungen und Treiber" },
+        ] },
+        { id: "embedded-safety", title: "Elektrische und funktionale Sicherheit", articleId: "embedded-safety" },
+      ],
+    },
+    {
+      id: "microcontrollers-and-embedded",
+      title: "Mikrocontroller und Embedded",
+      description: "Programmierbare Boards, Prozessoren, Firmware-nahe Schnittstellen und systematische Fehlersuche.",
+      surface: "knowledge",
+      access: "public",
+      children: [
+        { id: "hardware-landscape", title: "Hardware-Landkarte: vom Akku bis Edge AI", articleId: "hardware-landscape" },
+        { id: "processor-overview", title: "ESP32-Prozessorfamilien im Vergleich", articleId: "processor-overview" },
+        { id: "microcontroller-basics", title: "Grundlagen Mikrocontroller", articleId: "microcontroller-basics", subchapters: [
+          { id: "microcontroller-flashing", title: "Flashen" },
+          { id: "microcontroller-flash-build", title: "Aus Quelltext wird Firmware" },
+          { id: "microcontroller-flash-bootloader", title: "Bootloader und Programmierweg" },
+          { id: "microcontroller-flash-write", title: "Löschen, schreiben und prüfen" },
+          { id: "microcontroller-flash-start", title: "Start nach dem Flashen" },
+          { id: "microcontroller-memory", title: "Speicherorganisation" },
+          { id: "microcontroller-registers", title: "Register" },
+          { id: "microcontroller-gpio", title: "GPIO" },
+          { id: "microcontroller-adc", title: "ADC" },
+          { id: "microcontroller-timer", title: "Timer" },
+          { id: "microcontroller-pwm", title: "PWM" },
         ] },
         { id: "bus-systems", title: "Bussysteme", articleId: "bus-systems", subchapters: [
           { id: "chip-to-chip-buses", title: "Chip-zu-Chip-Schnittstellen" },
           { id: "field-and-system-buses", title: "Feld- und Systembusse" },
         ] },
         { id: "embedded-measurement-debugging", title: "Embedded-Systeme: Messtechnik und Debugging", articleId: "embedded-measurement-debugging" },
-        { id: "embedded-safety", title: "Elektrische und funktionale Sicherheit", articleId: "embedded-safety" },
       ],
     },
     {
-      id: "servers",
-      title: "Server",
-      description: "Server passend zu Reichweite, Kontrolle, Last und Betriebsaufwand auswählen.",
+      id: "software-basics",
+      title: "Informatik und Software",
+      description: "Wie Software Regeln und Abläufe beschreibt – auf Mikrocontrollern als Firmware, auf Computern als Anwendungen und Dienste.",
+      surface: "knowledge",
+      access: "public",
+      children: [
+        { id: "software-basics-introduction", title: "Von der Idee zum ausführbaren Programm", articleId: "software-basics-introduction", subchapters: [
+          { id: "software-purpose", title: "Warum gibt es Software?" },
+          { id: "software-source-code", title: "Quelltext: Anweisungen für Maschinen" },
+          { id: "software-compilation", title: "Kompilieren: in Maschinencode übersetzen" },
+          { id: "software-libraries", title: "Bibliotheken: bewährte Bausteine nutzen" },
+          { id: "software-scripts", title: "Skripte, Interpreter und Laufzeitumgebungen" },
+          { id: "software-embedded", title: "Firmware auf Mikrocontrollern" },
+          { id: "software-backend", title: "Backend: Entwicklungsgeschwindigkeit zählt" },
+          { id: "software-client-devices", title: "PC, Tablet und Smartphone: beide Welten" },
+        ] },
+        { id: "workers-and-queues", title: "Worker, Queues und Hintergrundaufgaben", articleId: "workers-and-queues" },
+      ],
+    },
+    {
+      id: "distributed-systems",
+      title: "Verteilte Systeme",
+      description: "Wie Elektrotechnik, Firmware, Netzwerke, Server und Anwendungen zu einem gemeinsamen System werden.",
       serverLandscape: true,
       surface: "knowledge",
       access: "public",
       children: [
+        { id: "distributed-systems-introduction", title: "Wenn zwei Welten zusammenarbeiten", articleId: "distributed-systems-introduction" },
+        { id: "software-basics", title: "Software in verteilten Systemen", articleId: "software-basics" },
+        { id: "communication-basics", title: "Kommunikation und Schnittstellen", articleId: "communication-basics", subchapters: [
+          { id: "communication-rest", title: "REST und HTTP" },
+          { id: "communication-events", title: "Ereignisse, Webhooks und WebSockets" },
+          { id: "communication-mqtt", title: "MQTT für IoT" },
+          { id: "communication-data-security", title: "JSON, Identität und Berechtigungen" },
+        ] },
+        { id: "server-systems", title: "Systemlandschaften und Server", articleId: "server-systems" },
         { id: "local-servers", title: "Lokale Server und Gateways", articleId: "local-servers" },
         { id: "internet-vps", title: "Internet-Server und VPS", articleId: "internet-vps" },
         { id: "cloud-services", title: "Cloud-Dienste", articleId: "cloud-services" },
@@ -134,14 +136,19 @@ const HelpContent = (() => {
       ],
     },
     {
-      id: "software",
-      title: "Software",
-      description: "Firmware, Dienste und Apps als zusammenhängende Softwarelandschaft verstehen.",
+      id: "artificial-intelligence",
+      title: "Die Künstliche Intelligenz",
+      description: "KI als Werkzeug verstehen: von Sprachassistenten über GPT bis zu lokalen und internetbasierten Sprachmodellen.",
       surface: "knowledge",
       access: "public",
       children: [
-        { id: "software-basics", title: "Software in verteilten Systemen", articleId: "software-basics" },
-        { id: "workers-and-queues", title: "Worker, Queues und Hintergrundaufgaben", articleId: "workers-and-queues" },
+        { id: "ai-basics", title: "GPT, Alexa und LLMs", articleId: "ai-basics", subchapters: [
+          { id: "ai-gpt-and-alexa", title: "GPT und Alexa sind nicht dasselbe" },
+          { id: "ai-llm", title: "Was ist ein LLM?" },
+          { id: "ai-vectors-and-embeddings", title: "Vektoren und Embeddings" },
+          { id: "ai-local-or-online", title: "Lokal oder über das Internet?" },
+          { id: "ai-payment-models", title: "Kosten und Zahlungsmodelle" },
+        ] },
       ],
     },
     {
@@ -175,7 +182,7 @@ const HelpContent = (() => {
         { id: "board-definition", title: "Warum eine Board Definition?", articleId: "board-definition" },
         { id: "register-device", title: "Board registrieren", articleId: "register-device" },
         { id: "pair-device", title: "Board verbinden", articleId: "pair-device" },
-        { id: "flash-device", title: "Board flashen", articleId: "flash-device" },
+        { id: "flash-device", title: "Geräte flashen", articleId: "flash-device" },
         { id: "usb-wifi-setup", title: "WLAN per USB einrichten", articleId: "usb-wifi-setup" },
         { id: "supported-devices", title: "Unterstützte Boards", articleId: "supported-devices" },
         { id: "device-not-detected", title: "Board wird nicht erkannt", articleId: "device-not-detected" },
@@ -248,6 +255,13 @@ const HelpContent = (() => {
           "Die beste technische Lösung ist nicht die größte oder modernste. Warum sollte jedes Auto einen KI-Supercomputer erhalten, wenn ein kleiner Mikrocontroller die Aufgabe sicherer, sparsamer und zuverlässiger erledigt? Die richtige Frage lautet: Welche Fähigkeit wird wirklich gebraucht, und welche Technik erfüllt sie mit möglichst wenig unnötiger Komplexität?",
           "Genau diese Denkweise übst du in GerNetiX. Du lernst Technologien nicht als Sammlung von Schlagwörtern kennen, sondern weil dein Projekt sie an einer bestimmten Stelle wirklich braucht."
         ] },
+        { id: "engineering-thinking-foundations", heading: "Welche Grundlagen verteilte Systeme brauchen", paragraphs: [
+          "Ingenieursmäßiges Denken sagt noch nicht, wie ein Sensor misst, ein Widerstand eine Spannung begrenzt oder ein Mikrocontroller ein Programm ausführt. Um ein verteiltes System wirklich zu begreifen, brauchen wir deshalb Grundlagen aus zwei Welten: Elektrotechnik und Informatik.",
+          "Die Elektrotechnik erklärt, was Hardware physikalisch kann und welche Grenzen sie hat. Ein Widerstand, Kondensator, Transistor oder fest verdrahtetes Logikgatter folgt Material, Schaltung und elektrischen Gesetzen. Diese Bauteile werden nicht durch Software neu beschrieben.",
+          "Die Informatik erklärt, wie Software Regeln, Daten und Abläufe beschreibt. Ein Mikrocontroller ist Hardware mit einem Prozessor; auf ihm läuft Firmware – also Software, die die vorhandene Hardware innerhalb ihrer physikalischen Grenzen steuert. Sie entscheidet zum Beispiel, wann ein Sensor gelesen, ein Signal ausgewertet oder ein Ausgang geschaltet wird.",
+          "Erst danach kommt das Zusammenspiel: Wenn Geräte, ihre Firmware, Netzwerke, Server und Anwendungen Informationen austauschen, entsteht ein verteiltes System. Die folgenden Kapitel bauen genau in dieser Reihenfolge auf: zuerst Elektrotechnik, dann Mikrocontroller und Embedded, danach Informatik und Software – und schließlich verteilte Systeme.",
+          "Du musst dafür nicht von Anfang an alles können. Je nach Problemstellung braucht ein Projekt mehr Elektrotechnik, mehr Informatik oder nur ein grundlegendes Verständnis von einem Bereich. Manche Menschen starten lieber mit Schaltungen und Messungen, andere mit Programmierung, Daten oder Bedienoberflächen. Konzentriere dich zunächst auf deine Stärken und die nächste sinnvolle Aufgabe. Wenn dich der Ehrgeiz packt, kannst du dich Schritt für Schritt in das andere Fachgebiet einarbeiten – genau dafür ist dieses Wissensportal da."
+        ] },
         { id: "engineering-thinking-next-steps", heading: "Mit Beispielen weiterlernen", paragraphs: [
           "Du hast noch nicht alles verstanden? Kein Problem. Vorgehensmodelle, Tests und Rückkopplungen lernt man nicht durch einen kurzen Text. Sie werden greifbar, wenn du sie in einem konkreten Projekt anwendest, Entscheidungen triffst und die Folgen davon siehst.",
           "Deshalb wird es für jedes Modell ein Lernprojekt mit einer nachvollziehbaren Problemstellung geben. Die folgenden Einträge sind zunächst Platzhalter für diese Beispiele."
@@ -293,6 +307,18 @@ const HelpContent = (() => {
       ],
       relatedTopics: ["from-problem-to-system", "server-systems", "microcontroller-basics"],
     },
+    "distributed-systems-introduction": {
+      title: "Verteilte Systeme: Wenn zwei Welten zusammenarbeiten",
+      summary: "Ein verteiltes System verbindet die physische Welt mit Software, Kommunikation und Bedienung. Keine einzelne Komponente löst die Aufgabe allein.",
+      access: "public",
+      sections: [
+        { heading: "Von der einzelnen Aufgabe zum System", paragraphs: ["Ein Temperatursensor kann eine Temperatur messen. Ein Mikrocontroller kann den Messwert lesen und mit seiner Firmware bewerten. Damit daraus eine verständliche Anzeige, eine Benachrichtigung oder eine Regel für mehrere Orte wird, kommen Netzwerk, Server und eine Anwendung hinzu. Diese Teile arbeiten getrennt, müssen aber zuverlässig zusammenpassen – deshalb sprechen wir von einem verteilten System."] },
+        { heading: "Die Rollen sind verschieden", table: { headers: ["Teil", "Stärke", "Typische Aufgabe"], rows: [["Elektrotechnik und Hardware", "misst, schaltet, speichert Energie und überträgt Signale", "Sensor, Stromversorgung, Aktor und Board"], ["Firmware", "reagiert nah an der Hardware und mit begrenzten Ressourcen", "Messwert auswerten, Motor sicher ansteuern, WLAN verbinden"], ["Netzwerk und Server", "verbindet mehrere Geräte und Nutzer", "Daten speichern, Regeln koordinieren, Fernzugriff anbieten"], ["Apps und Web-Oberflächen", "machen Informationen und bewusste Befehle für Menschen zugänglich", "Status zeigen, Einstellungen ändern, Warnungen darstellen"]] } },
+        { heading: "Die richtige Verteilung wählen", paragraphs: ["Nicht jedes Projekt braucht Cloud, App und mehrere Server. Eine lokale Temperaturregelung muss auch ohne Internet sicher funktionieren. Ein Server ist sinnvoll, wenn Geräte oder Menschen über mehrere Orte hinweg zusammenarbeiten, Daten langfristig ausgewertet werden oder ein zentraler Zugang gebraucht wird. Gute Architektur verteilt Aufgaben nur dort, wo es einen klaren Nutzen gibt."] },
+        { heading: "So geht es weiter", paragraphs: ["In diesem Kapitel geht es nun um die Verbindungen zwischen den Teilen: Software auf mehreren Ebenen, Schnittstellen, Nachrichten und passende Server. Die vorherigen Kapitel liefern dafür die Grundlagen: Hardware bestimmt die physikalischen Möglichkeiten, Software und Firmware beschreiben das Verhalten innerhalb dieser Grenzen."] },
+      ],
+      relatedTopics: ["from-problem-to-system", "hardware-landscape", "software-basics-introduction", "communication-basics", "server-systems"],
+    },
     "communication-basics": {
       title: "Kommunikation und Schnittstellen",
       summary: "Verteilte Systeme werden erst dann zu einem gemeinsamen Projekt, wenn sie zuverlässig, verständlich und sicher miteinander kommunizieren können.",
@@ -320,6 +346,51 @@ const HelpContent = (() => {
         ] }
       ],
       relatedTopics: ["from-problem-to-system", "server-systems", "microcontroller-basics"],
+    },
+    "software-basics-introduction": {
+      title: "Was Software ist: von der Idee zum ausführbaren Programm",
+      summary: "Software beschreibt, welche Aufgabe ein Gerät erfüllen soll. Je nach Zielsystem wird sie direkt in Maschinencode übersetzt oder mit einer Laufzeitumgebung ausgeführt.",
+      access: "public",
+      sections: [
+        { id: "software-purpose", heading: "Warum gibt es Software?", paragraphs: [
+          "Hardware kann rechnen, speichern, messen und Signale ausgeben. Ohne Software weiß sie aber nicht, welche Aufgabe sie in welcher Reihenfolge erledigen soll. Software macht aus derselben Hardware eine Uhr, eine Wetterstation, eine Musik-App oder einen Server für viele Nutzer.",
+          "Sie hält Regeln und Abläufe fest: Was passiert, wenn ein Taster gedrückt wird? Welche Temperatur soll angezeigt werden? Wer darf eine Einstellung ändern? Gute Software übersetzt eine fachliche Aufgabe in eindeutige Schritte, die ein Computer wiederholt und zuverlässig ausführen kann. Sie verändert dabei nicht die physikalischen Eigenschaften eines Widerstands, eines Transistors oder eines fest verdrahteten Logikgatters; sie steuert nur die vorhandenen programmierbaren Teile innerhalb ihrer Grenzen."
+        ] },
+        { id: "software-source-code", heading: "Quelltext: Anweisungen für Maschinen", paragraphs: [
+          "Menschen schreiben Software meist als Quelltext in einer Programmiersprache wie C, C++, Rust, Java, Python oder JavaScript. Dieser Text ist für Menschen lesbar genug, um ihn zu erklären, zu prüfen und zu verändern. Für den Prozessor ist er zunächst noch nicht direkt ausführbar.",
+          "Ein Programm besteht nicht nur aus Rechenbefehlen. Es beschreibt auch Daten, Entscheidungen, Wiederholungen, Fehlerfälle und die Zusammenarbeit mit Anzeige, Netzwerk, Speicher oder Sensoren. Das Ergebnis kann eine App, eine Website, Firmware für ein Gerät oder ein Hintergrunddienst sein."
+        ] },
+        { id: "software-compilation", heading: "Kompilieren: in Maschinencode übersetzen", paragraphs: [
+          "Beim Kompilieren übersetzt ein Compiler den Quelltext vor dem Start in Befehle für eine bestimmte Prozessorfamilie. Diese sehr einfachen Befehle heißen Maschinencode. Ein Programm für einen ESP32 enthält daher andere Maschinenbefehle als ein Programm für einen Windows-PC oder ein iPhone.",
+          "Oft folgt danach das Linken: Der Linker verbindet den eigenen Code mit benötigten Programmteilen zu einer ausführbaren Datei oder Firmware. Beim Flashen wird diese Firmware in den nichtflüchtigen Speicher des Mikrocontrollers geschrieben. Beim Start kann der Prozessor die Befehle direkt ausführen.",
+          "Kompilieren findet nicht nur bei C oder C++ statt. Auch andere Sprachen können vorher oder während der Ausführung in Maschinencode überführt werden. Entscheidend ist: Für die CPU müssen am Ende immer passende Maschinenbefehle entstehen."
+        ] },
+        { id: "software-libraries", heading: "Bibliotheken: bewährte Bausteine nutzen", paragraphs: [
+          "Eine Bibliothek ist ein wiederverwendeter Programmbaustein. Sie kann zum Beispiel eine Anzeige ansteuern, verschlüsselte Netzwerkverbindungen aufbauen, Daten speichern oder eine Schaltfläche darstellen. So muss nicht jedes Projekt dieselben Grundlagen neu schreiben.",
+          "Bibliotheken sparen Zeit, bringen aber Verantwortung mit: Sie müssen zum Zielsystem passen, gepflegt und aktualisiert werden und dürfen nicht mehr Speicher oder Rechenzeit verbrauchen, als das Projekt verträgt. Eine Bibliothek ist kein Zauberpaket, sondern Code mit einer klaren Aufgabe und Abhängigkeiten."
+        ] },
+        { id: "software-scripts", heading: "Skripte, Interpreter und Laufzeitumgebungen", paragraphs: [
+          "Ein Skript ist Quelltext, der häufig erst beim Start von einem Interpreter gelesen und ausgeführt wird. Python ist ein typisches Beispiel: Das Python-Programm braucht eine Python-Laufzeitumgebung. JavaScript im Browser braucht eine JavaScript-Engine. Diese Laufzeitumgebung übernimmt viele allgemeine Aufgaben, benötigt aber selbst Speicher und Rechenzeit.",
+          "Die Grenze ist in der Praxis fließend. Java und C# werden oft zuerst in einen Zwischencode übersetzt; eine virtuelle Maschine führt ihn aus oder übersetzt häufig genutzte Teile später mit einem Just-in-Time-Compiler in Maschinencode. Moderne JavaScript-Engines tun Ähnliches. 'Interpretiert' heißt also nicht automatisch langsam, sondern beschreibt vor allem, dass zwischen Quelltext und Prozessor noch eine Laufzeitumgebung arbeitet.",
+          "Der Vorteil solcher Umgebungen ist oft eine schnelle Entwicklung: Viele Funktionen, gute Diagnosewerkzeuge und dieselbe Anwendung auf verschiedenen Systemen. Der Nachteil ist zusätzlicher Platzbedarf, ein späterer Start und weniger direkte Kontrolle über Ressourcen."
+        ] },
+        { id: "software-embedded", heading: "Firmware auf Mikrocontrollern: klein, schnell und berechenbar", paragraphs: [
+          "Embedded-Software läuft in Geräten mit klarer Aufgabe, etwa in einem Sensor, einer Fernbedienung, einer Maschine oder einem ESP32-Projekt. Dort sind Flash-Speicher, Arbeitsspeicher, Energie und Rechenzeit begrenzt. Deshalb wird Firmware häufig in C, C++ oder Rust kompiliert und direkt als schlanke Firmware ausgeführt.",
+          "Ein großer Interpreter wäre für viele Mikrocontroller unnötiger Ballast: Er belegt Speicher, erzeugt zusätzliche Prozessorlast und kann die Antwortzeit schlechter berechenbar machen. Gerade wenn Sensorwerte rechtzeitig verarbeitet, Motoren gesteuert oder Energie gespart werden muss, zählt ein überschaubares und vorhersehbares Programm.",
+          "Das ist keine absolute Regel. Es gibt Mikrocontroller mit MicroPython, Lua oder anderen Laufzeitumgebungen, besonders zum Lernen oder für leistungsfähigere Geräte. Für ein dauerhaftes, ressourcenarmes oder zeitkritisches Produkt wird jedoch meist eine direkt kompilierte Firmware gewählt."
+        ] },
+        { id: "software-backend", heading: "Backend: Entwicklungsgeschwindigkeit zählt", paragraphs: [
+          "Ein Backend ist Software, die im Hintergrund läuft: Es verwaltet Daten, prüft Berechtigungen, stellt Schnittstellen bereit oder verarbeitet Nachrichten von Apps und Geräten. Server haben oft deutlich mehr Arbeitsspeicher und Rechenleistung als ein Mikrocontroller. Speicher und Rechenzeit sind dort nicht kostenlos, aber für viele Anwendungen weniger knapp.",
+          "Darum sind im Backend Sprachen mit produktiven Laufzeitumgebungen beliebt, zum Beispiel JavaScript mit Node.js, Python, Java oder C#. Sie ermöglichen schnelle Änderungen, umfangreiche Bibliotheken und gute Werkzeuge für Tests, Fehlersuche und Betrieb. Wenn viel Leistung nötig ist, können einzelne Teile gezielt optimiert oder in kompilierten Sprachen umgesetzt werden.",
+          "Die passende Entscheidung hängt nicht nur von Geschwindigkeit ab: Zuverlässigkeit, Sicherheit, Teamwissen, Wartbarkeit, Kosten und Antwortzeiten gehören genauso dazu. Ein kleiner Dienst braucht keine komplizierte Hochleistungsarchitektur, aber ein stark belasteter Dienst braucht klare Grenzen und Messwerte."
+        ] },
+        { id: "software-client-devices", heading: "PC, Tablet und Smartphone: beide Welten", paragraphs: [
+          "Auf PC, Tablet und Smartphone existieren beide Welten nebeneinander. Betriebssysteme und anspruchsvolle Teile von Apps sind häufig nativ kompiliert, damit sie schnell und direkt mit Hardware arbeiten können. Gleichzeitig laufen Web-Apps und viele Programme in Browsern, virtuellen Maschinen oder anderen Laufzeitumgebungen.",
+          "Eine Smartphone-App kann zum Beispiel einen nativen Teil für Kamera oder Bluetooth haben, eine Web-Oberfläche anzeigen und mit einem JavaScript- oder Dart-Framework entwickelt sein. Ein PC kann ein kompiliertes Spiel, ein Python-Werkzeug und mehrere Browser-Tabs gleichzeitig ausführen. Leistungsfähige Geräte machen diese Mischung möglich.",
+          "Für ein Projekt wählst du daher nicht 'kompiliert gegen interpretiert' als Glaubensfrage. Du fragst: Wo läuft die Software? Wie knapp sind Speicher, Energie und Antwortzeit? Wie schnell muss sich das Produkt ändern? Welche Bibliotheken und Kenntnisse stehen zur Verfügung? So kann ein System aus schlanker Embedded-Firmware, einem entwicklungsfreundlichen Backend und einer plattformübergreifenden App bestehen."
+        ] }
+      ],
+      relatedTopics: ["from-problem-to-system", "server-systems", "microcontroller-basics", "communication-basics"],
     },
     "quick-start": {
       title: "So startest du",
@@ -666,7 +737,22 @@ const HelpContent = (() => {
       summary: "Ein Mikrocontroller verbindet Prozessor, Speicher und Hardware-Schnittstellen in einem Baustein. Diese Grundlagen helfen dir, Firmware und Schaltungen bewusst zusammenzubringen.",
       access: "public",
       sections: [
-        { id: "microcontroller-flashing", heading: "Flashen", paragraphs: ["Flashen bedeutet, ein Firmware-Programm in den nichtflüchtigen Programmspeicher des Mikrocontrollers zu schreiben. Beim nächsten Einschalten startet der Chip diese Firmware selbstständig.", "Dafür braucht es einen passenden Bootloader oder Programmierweg, eine stabile Stromversorgung und die zur Hardware passende Firmware. Ein unterbrochener Flash-Vorgang kann dazu führen, dass das Gerät zunächst nicht mehr normal startet; deshalb Kabel und Energieversorgung währenddessen nicht trennen."] },
+        { id: "microcontroller-flashing", heading: "Wie Software in einen Mikrocontroller kommt – und warum das Flashen heißt", paragraphs: [
+          "Ein Mikrocontroller startet nicht mit einem Betriebssystem, das ein Programm von einer Festplatte lädt. Seine Software heißt Firmware und liegt dauerhaft in einem speziellen, nichtflüchtigen Speicher: dem Flash-Speicher. Nichtflüchtig bedeutet: Auch ohne Strom bleibt sie erhalten. Beim Einschalten liest der Chip seine Startinformationen aus diesem Speicher und führt anschließend die dort abgelegten Maschinenbefehle aus.",
+          "Umgangssprachlich heißt das Übertragen der Firmware deshalb Flashen. Der Name kommt vom Flash-Speicher selbst. Diese Speichertechnik konnte im Vergleich zu älteren, einzeln löschbaren EEPROMs größere Bereiche schnell – wie einen kurzen Lichtblitz, englisch flash – löschen. Heute ist Flashen einfach der gebräuchliche Begriff dafür, eine Firmware in diesen Speicher zu schreiben; es hat nichts mit einer blinkenden LED oder einem Webbrowser-Plugin zu tun."
+        ], list: ["Der Flash-Speicher enthält Firmware, Bootloader und oft Einstellungen oder Dateidaten dauerhaft.", "RAM ist nur Arbeitsspeicher für den laufenden Betrieb und wird beim Ausschalten gelöscht.", "Die Firmware muss zur Prozessorfamilie, zum Board und zur vorgesehenen Speicheraufteilung passen."] },
+        { id: "microcontroller-flash-build", heading: "1. Aus Quelltext wird eine Firmware-Datei", paragraphs: [
+          "Zuerst übersetzt der Compiler den Quelltext in Maschinenbefehle für genau diese Prozessorfamilie, etwa für einen ESP32-S3. Der Linker fügt den eigenen Code, Bibliotheken und die Startteile zusammen. Das Ergebnis ist nicht mehr der für Menschen geschriebene Quelltext, sondern eine oder mehrere Binärdateien.",
+          "Bei vielen ESP32-Projekten gehören dazu ein Bootloader, eine Partitionstabelle und die eigentliche Anwendung. Die Partitionstabelle legt fest, an welchen Stellen des Flash-Speichers diese Teile liegen und ob zum Beispiel zwei Bereiche für OTA-Updates reserviert sind. Ein Build-Werkzeug erzeugt diese Dateien vor dem Übertragen und prüft dabei Größe, Adressen und Abhängigkeiten." ] },
+        { id: "microcontroller-flash-bootloader", heading: "2. Der Bootloader öffnet den Programmierweg", paragraphs: [
+          "Ein Mikrocontroller besitzt einen kleinen Startcode im Chip oder im Flash-Speicher: den Bootloader. Er kann entscheiden, ob das Gerät die vorhandene Firmware normal startet oder auf neue Daten wartet. Beim ESP32 wird dafür häufig die USB- oder serielle Schnittstelle verwendet. Manche Boards brauchen dafür einen Reset und eine BOOT-Taste, andere können automatisch in den Download-Modus wechseln.",
+          "Das Flash-Werkzeug auf dem Computer, die FlashBox oder ein anderer Programmer verbindet sich mit diesem Bootloader. Es ermittelt den Chip, liest wichtige Eigenschaften wie Flash-Größe und sendet die Firmware in einem festgelegten Protokoll. Der Bootloader schreibt die empfangenen Daten nicht in den RAM, sondern an die vorgesehenen Adressen im Flash-Speicher." ] },
+        { id: "microcontroller-flash-write", heading: "3. Löschen, schreiben und prüfen", paragraphs: [
+          "Flash-Speicher kann nicht wie ein Notizblock einzelne Zeichen beliebig überschreiben. Er wird in größeren Bereichen, sogenannten Sektoren oder Blöcken, gelöscht und anschließend in kleineren Einheiten beschrieben. Deshalb löscht ein Flash-Werkzeug zuerst nur die benötigten Bereiche und schreibt dann Bootloader, Partitionstabelle und Anwendung an ihre festgelegten Adressen.",
+          "Während des Vorgangs prüfen Werkzeug und Bootloader Prüfsummen. Sie helfen zu erkennen, ob Daten beim Übertragen beschädigt wurden oder an der falschen Stelle gelandet sind. Erst wenn das Schreiben und die Prüfung erfolgreich sind, wird das Gerät neu gestartet. Ein Fortschrittsbalken zeigt daher nicht nur das Senden der Datei, sondern auch Lösch- und Prüfschritte." ], list: ["Stromversorgung und Datenverbindung bis zum Abschluss nicht trennen.", "Ein USB-Ladekabel ohne Datenleitungen kann keinen Flash-Vorgang übertragen.", "Bei einem Fehler erneut verbinden, den Boot-Modus prüfen und die passende Firmware verwenden – nicht wahllos andere Images schreiben."] },
+        { id: "microcontroller-flash-start", heading: "4. Start nach dem Flashen", paragraphs: [
+          "Nach dem Neustart liest der Bootloader die Partitionstabelle und startet die ausgewählte Anwendung. Die Firmware richtet anschließend Pins, Speicher, Netzwerk und ihre eigentliche Aufgabe ein. Bei einem OTA-fähigen Gerät kann sie später eine neue Anwendung in eine zweite, freie Partition laden und erst nach erfolgreicher Prüfung darauf umschalten.",
+          "Die erste Basissoftware wird meist über USB oder eine FlashBox aufgespielt, weil ein neues Gerät noch nicht im WLAN ist. Spätere Projekt-Updates können, wenn die Basissoftware und das Netzwerk eingerichtet sind, per OTA kommen. Der technische Kern bleibt derselbe: Eine geprüfte Binärdatei wird in einen vorgesehenen Bereich des nichtflüchtigen Flash-Speichers geschrieben." ] },
         { id: "microcontroller-memory", heading: "Speicherorganisation", paragraphs: ["Mikrocontroller verwenden unterschiedliche Speicherarten für unterschiedliche Aufgaben. Flash speichert Firmware dauerhaft. RAM enthält während des Betriebs Variablen, Zwischenergebnisse und den Programmstapel. Manche Systeme haben zusätzlich nichtflüchtigen Datenspeicher oder externen PSRAM.", "Wichtig ist die Unterscheidung: Viel Flash schafft Platz für Programm und Assets, viel RAM erlaubt größere Datenstrukturen und mehr parallele Aufgaben. Ein Neustart löscht normalen RAM, aber nicht die Firmware im Flash."] },
         { id: "microcontroller-registers", heading: "Register", paragraphs: ["Register sind sehr kleine Speicherplätze direkt im Prozessor oder in einem Hardware-Modul. Sie enthalten zum Beispiel einen Messwert, eine Konfiguration oder einen Status.", "Firmware schreibt gezielt in Konfigurationsregister und liest Statusregister aus. Bibliotheken nehmen dir viele Details ab, aber beim Debuggen hilft es zu wissen: Hinter GPIO, Timer oder ADC stehen immer Register mit klaren Bitfeldern und Datenblatt-Beschreibungen."] },
         { id: "microcontroller-gpio", heading: "GPIO", paragraphs: ["GPIO bedeutet General Purpose Input/Output: frei nutzbare Pins für digitale Ein- und Ausgänge. Als Eingang liest ein Pin etwa einen Tasterzustand. Als Ausgang schaltet er ein Signal für LED, Transistor oder ein anderes Logikmodul.", "Ein GPIO-Pin ist kein universeller Leistungsausgang. Strom, Spannung, Schutzbeschaltung und die zulässige Pin-Funktion müssen zum Datenblatt passen. Größere Lasten wie Motoren oder Relais werden über geeignete Treiberstufen geschaltet."] },
@@ -794,10 +880,17 @@ const HelpContent = (() => {
       relatedTopics: ["register-device", "flash-device", "device-not-detected"],
     },
     "flash-device": {
-      title: "Flash a device",
-      summary: "Flash writes GerNetiX base software or your project build to a board through the browser USB connection.",
-      sections: [{ heading: "Before flashing", list: ["Use a data-capable USB cable.", "Allow the browser to access the serial port.", "Keep the board connected until GerNetiX reports the result."], code: "// Flashing is started from GerNetiX.\n// Do not disconnect the board while a flash is running." }],
-      relatedTopics: ["register-device", "device-not-detected"],
+      title: "Geräte flashen: USB, OTA oder FlashBox?",
+      summary: "Beim Flashen wird die Basissoftware oder ein Projekt-Build auf ein Gerät geschrieben. GerNetiX bietet dafür drei Wege.",
+      sections: [
+        { heading: "Den passenden Weg wählen", list: ["Das Gerät ist neu, hat noch kein WLAN oder liegt direkt am Rechner: USB verwenden.", "Das Gerät ist bereits eingerichtet, im WLAN und online: OTA verwenden.", "Du arbeitest mit iPad, Android oder ohne USB-Serial-Anschluss am Arbeitsgerät: FlashBox verwenden." ] },
+        { heading: "1. Direkt per USB", paragraphs: ["Verbinde das Zielgerät mit einem USB-Datenkabel mit deinem Computer. GerNetiX benötigt einmalig die Freigabe für den seriellen Anschluss und schreibt die Firmware direkt auf das Board. Das ist der einfachste Weg für neue Geräte und für die erste Basissoftware."], list: ["Ein Ladekabel ohne Datenleitungen funktioniert nicht.", "Das Board während des Flashens nicht abziehen."] },
+        { heading: "2. OTA über WLAN", paragraphs: ["OTA bedeutet Over-the-Air. Es funktioniert nur, wenn die GerNetiX-Basissoftware bereits auf dem Gerät läuft, das Gerät im WLAN erreichbar ist und OTA aktiviert wurde. Der Projekt-Build wird dann ohne Kabel über das Netzwerk übertragen."], list: ["Ideal für Updates bereits eingerichteter Geräte.", "Für ein neues oder nicht erreichbares Gerät zuerst USB oder FlashBox nutzen."] },
+        { heading: "3. Über die FlashBox", paragraphs: ["Die FlashBox ist eine WLAN-zu-USB-/Serial-Brücke. Sie steht bei dem Zielgerät und verbindet dessen USB-Anschluss mit GerNetiX über WLAN. So kannst du ein Gerät auch vom iPad, Android oder einem Rechner ohne passenden USB-Serial-Anschluss flashen."], list: ["Die FlashBox zuerst einrichten und bei Bedarf deinem Inventar hinzufügen.", "Das Zielgerät per Target-USB an die FlashBox anschließen.", "In einem Projekt bei Flashen die FlashBox auswählen; sie übernimmt die USB-Verbindung zum Zielgerät."] },
+        { heading: "Was wird geschrieben?", paragraphs: ["Bei einem neuen Gerät schreibt GerNetiX zunächst die Basissoftware. Sie richtet die sichere Geräteidentität, WLAN und spätere OTA-Updates ein. Danach können Projekt-Builds per USB, OTA oder FlashBox aufgespielt werden."] },
+      ],
+      actions: [{ label: "Provisionierung öffnen", route: "/app/device-management/provisioning/" }, { label: "FlashBox einrichten", route: "/flashbox-einrichten/" }],
+      relatedTopics: ["provision-new-board", "usb-wifi-setup", "register-device", "device-not-detected"],
     },
     "provision-new-board": {
       title: "Neues Board in Betrieb nehmen",

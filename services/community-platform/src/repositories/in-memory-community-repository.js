@@ -19,6 +19,7 @@ class InMemoryCommunityRepository {
       if (filter.status && question.status !== filter.status) return false;
       if (filter.triage_status && question.triage_status !== filter.triage_status) return false;
       if (filter.project_id && question.project_id !== filter.project_id) return false;
+      if (filter.visibility && question.visibility !== filter.visibility) return false;
       if (filter.tag && !question.tags.includes(filter.tag)) return false;
       return true;
     });

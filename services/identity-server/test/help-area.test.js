@@ -39,21 +39,27 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(helpContent, /const topics = \[/);
   assert.match(helpContent, /"provision-new-board"[\s\S]*Neues Board in Betrieb nehmen/);
   assert.match(helpContent, /"usb-wifi-setup"/);
+  assert.match(helpContent, /"flash-device": \{[\s\S]*Geräte flashen: USB, OTA oder FlashBox\?/);
+  assert.match(helpContent, /OTA bedeutet Over-the-Air/);
+  assert.match(helpContent, /WLAN-zu-USB-\/Serial-Brücke/);
   assert.match(helpContent, /SSID und Passwort/);
   assert.match(helpContent, /Captive Portal/);
-  assert.match(helpContent, /title: "Start und Zugang"[\s\S]*title: "Systemlandschaften"[\s\S]*title: "Hardware und Embedded"[\s\S]*title: "Server"[\s\S]*title: "Software"[\s\S]*title: "Querschnittsthemen"[\s\S]*title: "Geräte und Projekte"[\s\S]*title: "Premium-Abo"/);
-  assert.match(helpContent, /title: "Software"[\s\S]*"software-basics"[\s\S]*"workers-and-queues"/);
+  assert.match(helpContent, /title: "Ingenieursmäßig denken"[\s\S]*title: "Elektrotechnik"[\s\S]*title: "Mikrocontroller und Embedded"[\s\S]*title: "Informatik und Software"[\s\S]*title: "Verteilte Systeme"[\s\S]*title: "Die Künstliche Intelligenz"/);
+  assert.match(helpContent, /title: "Informatik und Software"[\s\S]*"software-basics-introduction"[\s\S]*"workers-and-queues"/);
   assert.match(helpContent, /title: "Lexikon"[\s\S]*"glossary-basics"/);
-  assert.match(helpContent, /"hardware-landscape"[\s\S]*"processor-overview"[\s\S]*"embedded-measurement-debugging"[\s\S]*"embedded-safety"/);
+  assert.match(helpContent, /title: "Elektrotechnik"[\s\S]*"physical-limits"[\s\S]*"sampling-rate"[\s\S]*"sensors"[\s\S]*"actuators"[\s\S]*"embedded-safety"/);
+  assert.match(helpContent, /title: "Mikrocontroller und Embedded"[\s\S]*"hardware-landscape"[\s\S]*"processor-overview"[\s\S]*"microcontroller-basics"[\s\S]*"bus-systems"[\s\S]*"embedded-measurement-debugging"/);
   assert.match(helpContent, /"processor-overview"[\s\S]*"microcontroller-basics"[\s\S]*"microcontroller-flashing"[\s\S]*"microcontroller-pwm"[\s\S]*"embedded-measurement-debugging"/);
-  assert.match(helpContent, /"microcontroller-basics": \{[\s\S]*Flashen[\s\S]*Speicherorganisation[\s\S]*Register[\s\S]*GPIO[\s\S]*ADC[\s\S]*Timer[\s\S]*PWM/);
+  assert.match(helpContent, /"microcontroller-basics": \{[\s\S]*Wie Software in einen Mikrocontroller kommt[\s\S]*Speicherorganisation[\s\S]*Register[\s\S]*GPIO[\s\S]*ADC[\s\S]*Timer[\s\S]*PWM/);
+  assert.match(helpContent, /Der Name kommt vom Flash-Speicher selbst[\s\S]*älteren, einzeln löschbaren EEPROMs/);
+  assert.match(helpContent, /Aus Quelltext wird eine Firmware-Datei[\s\S]*Der Bootloader öffnet den Programmierweg[\s\S]*Löschen, schreiben und prüfen[\s\S]*Start nach dem Flashen/);
   assert.match(helpContent, /"physical-limits": \{[\s\S]*Absolute Maximum Ratings[\s\S]*absolute Grenzwerte[\s\S]*Strom pro Pin und Gesamtstrom[\s\S]*Maximale Frequenz und Prozessortakt/);
   assert.match(helpContent, /"sampling-rate": \{[\s\S]*Nyquist-Shannon-Abtasttheorem[\s\S]*Aliasing[\s\S]*Abtastrate praktisch wählen/);
   assert.match(helpContent, /"sensors": \{[\s\S]*Sensortypen[\s\S]*I²C[\s\S]*Messschaltungen[\s\S]*Spannungsteiler/);
   assert.match(helpContent, /"actuators": \{[\s\S]*Aktor-Typen[\s\S]*Schaltungen zur Ansteuerung[\s\S]*MOSFETs[\s\S]*Freilaufdiode/);
   assert.match(helpContent, /"bus-systems": \{[\s\S]*Chip-zu-Chip-Schnittstellen[\s\S]*I²C[\s\S]*SPI[\s\S]*Feld- und Systembusse[\s\S]*CAN[\s\S]*RS-485/);
   assert.match(helpContent, /title: "Querschnittsthemen"[\s\S]*"privacy-basics", title: "Datenschutz in vernetzten Projekten"/);
-  assert.match(helpContent, /title: "Server"[\s\S]*"local-servers"[\s\S]*"internet-vps"[\s\S]*"cloud-services"[\s\S]*"choosing-servers"/);
+  assert.match(helpContent, /title: "Verteilte Systeme"[\s\S]*"distributed-systems-introduction"[\s\S]*"communication-basics"[\s\S]*"local-servers"[\s\S]*"internet-vps"[\s\S]*"cloud-services"[\s\S]*"choosing-servers"/);
   assert.doesNotMatch(helpContent, /title: "Öffentliche Informationen"/);
   assert.match(helpContent, /children: \[\s*\{ id: "registration-login-recovery", title: "Einloggen und Konto anlegen"[\s\S]*\{ id: "create-account", title: "Konto anlegen"[\s\S]*\{ id: "quick-start", title: "So startest du"/);
   assert.match(helpContent, /"quick-start": \{[\s\S]*title: "So startest du"[\s\S]*Dein erstes Projekt[\s\S]*Wie geht es weiter\?/);
@@ -102,7 +108,7 @@ test("groups supported boards into one help topic instead of individual board to
 
 test("keeps a public processor-family overview separate from concrete supported boards", () => {
   const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
-  assert.match(navigation, /title: "Hardware und Embedded"/);
+  assert.match(navigation, /title: "Mikrocontroller und Embedded"/);
   assert.match(navigation, /"processor-overview", title: "ESP32-Prozessorfamilien im Vergleich"/);
   assert.match(helpContent, /"processor-overview": \{/);
   assert.match(helpContent, /ESP32-C5/);
@@ -116,7 +122,7 @@ test("keeps a public processor-family overview separate from concrete supported 
 });
 
 test("keeps the hardware landscape as a public page in the common help model", () => {
-  assert.match(helpContent, /"server-systems", title: "Moderne Systemlandschaften"[\s\S]*"hardware-landscape", title: "Hardware-Landkarte: vom Akku bis Edge AI"/);
+  assert.match(helpContent, /"hardware-landscape", title: "Hardware-Landkarte: vom Akku bis Edge AI"[\s\S]*"distributed-systems-introduction", title: "Wenn zwei Welten zusammenarbeiten"[\s\S]*"server-systems", title: "Systemlandschaften und Server"/);
   assert.match(helpContent, /"hardware-landscape": \{[\s\S]*access: "public"/);
   assert.match(helpContent, /Raspberry Pi Pico/);
   assert.match(helpContent, /Raspberry Pi Zero 2 W/);
@@ -124,7 +130,7 @@ test("keeps the hardware landscape as a public page in the common help model", (
   assert.match(helpView, /function renderHardwareVisual/);
   assert.match(helpView, /function renderSystemLandscapeVisual/);
   assert.match(helpView, /function renderServerTypesVisual/);
-  assert.match(helpContent, /id: "servers"[\s\S]*serverLandscape: true/);
+  assert.match(helpContent, /id: "distributed-systems"[\s\S]*serverLandscape: true/);
   assert.match(helpView, /topic\.serverLandscape \? renderServerTypesVisual\(\) : ""/);
   assert.match(helpView, /server-types-root[\s\S]*Server[\s\S]*server-types-list/);
   assert.match(helpView, /IoT-Geräte[\s\S]*Server[\s\S]*Apps/);
@@ -146,6 +152,19 @@ test("opens the knowledge portal with engineering thinking and the Tamagotchi le
   assert.match(helpContent, /Viele Wege ins Lernen[\s\S]*Lernprojektkatalog/);
   assert.match(helpContent, /Die Tamagotchi-Lernreise[\s\S]*Zustandsautomat[\s\S]*Zustände synchronisiert[\s\S]*Identität und Berechtigungen/);
   assert.match(helpContent, /Was das mit Industrie zu tun hat[\s\S]*kleiner Mikrocontroller/);
+  assert.match(helpContent, /Welche Grundlagen verteilte Systeme brauchen[\s\S]*Ein Widerstand, Kondensator, Transistor oder fest verdrahtetes Logikgatter[\s\S]*Firmware/);
+  assert.match(helpContent, /Du musst dafür nicht von Anfang an alles können[\s\S]*Konzentriere dich zunächst auf deine Stärken[\s\S]*Schritt für Schritt in das andere Fachgebiet einarbeiten/);
+});
+
+test("explains what software is from source code to embedded, backend and apps", () => {
+  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  assert.match(navigation, /id: "software-basics"[\s\S]*title: "Informatik und Software"[\s\S]*"software-basics-introduction"/);
+  assert.match(helpContent, /"software-basics-introduction": \{[\s\S]*access: "public"/);
+  assert.match(helpContent, /Warum gibt es Software\?[\s\S]*Kompilieren: in Maschinencode übersetzen/);
+  assert.match(helpContent, /Bibliotheken: bewährte Bausteine nutzen[\s\S]*Skripte, Interpreter und Laufzeitumgebungen/);
+  assert.match(helpContent, /Firmware auf Mikrocontrollern: klein, schnell und berechenbar[\s\S]*MicroPython/);
+  assert.match(helpContent, /Backend: Entwicklungsgeschwindigkeit zählt[\s\S]*Node\.js[\s\S]*Python/);
+  assert.match(helpContent, /PC, Tablet und Smartphone: beide Welten[\s\S]*plattformübergreifenden App/);
 });
 
 test("explains embedded measurement technology and approachable debugging", () => {
@@ -184,7 +203,8 @@ test("explains privacy as data minimization, transparency and protection", () =>
 
 test("explains optional embedded, local, global and iPhone system landscapes in public help", () => {
   const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
-  assert.match(navigation, /"server-systems", title: "Moderne Systemlandschaften"/);
+  assert.match(navigation, /id: "distributed-systems"[\s\S]*"server-systems", title: "Systemlandschaften und Server"/);
+  assert.match(helpContent, /"distributed-systems-introduction": \{[\s\S]*Ein verteiltes System verbindet die physische Welt mit Software[\s\S]*Die Rollen sind verschieden/);
   assert.match(helpContent, /"server-systems": \{[\s\S]*access: "public"/);
   assert.match(helpContent, /Vom IoT-Device-Bus zur App[\s\S]*IoT-Geräte[\s\S]*Server: Lokal[\s\S]*Server: Internet\/VPS[\s\S]*Server: Cloud[\s\S]*Apps: Mobil[\s\S]*Apps: PC\/Mac und Web/);
   assert.match(helpContent, /Nicht jedes Projekt braucht alles/);
@@ -315,6 +335,12 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(helpView, /knowledge-subchapter-link/);
   assert.match(helpView, /knowledge-subchapter-number/);
   assert.match(helpView, /data-knowledge-subchapter/);
+  assert.match(helpView, /<details class="knowledge-book-toc" open>/);
+  assert.match(helpView, /<details class="knowledge-part-toc" open>/);
+  assert.match(helpView, /<details class="knowledge-chapter-toc" open>/);
+  assert.doesNotMatch(helpView, /Kapitel lesen|Unterkapitel/);
+  assert.match(css, /\.knowledge-part-toc > summary/);
+  assert.match(helpView, /Kapitelübersicht öffnen oder schließen/);
   assert.match(helpView, /function renderPracticeLessonLink/);
   assert.match(helpView, /knowledge-topic=/);
   assert.match(helpView, /if \(!access\.hasAccount\)/);
@@ -328,6 +354,8 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(helpView, /const syncChapterWithScroll/);
   assert.match(helpView, /window\.addEventListener\("scroll", knowledgeScrollHandler/);
   assert.match(css, /\.knowledge-book-navigation/);
+  assert.match(css, /\.knowledge-book-toc summary/);
+  assert.match(css, /\.knowledge-book-toc\[open\] summary::after/);
   assert.match(css, /\.knowledge-part-link/);
   assert.match(css, /\.knowledge-book-chapter \{ scroll-margin-top/);
   assert.match(css, /\.knowledge-subchapter-link/);

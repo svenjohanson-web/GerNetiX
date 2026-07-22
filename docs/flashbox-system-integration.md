@@ -122,6 +122,41 @@ Der Flashauftrag referenziert:
 - Firmware-Artefaktklasse: Bootstrap, Basissoftware, Projektfirmware oder Recovery
 - signiertes Manifest mit Ablaufzeit, Hash und Hardwareprofil
 
+### Zertifikatsgebundener FlashBox-Auftrag
+
+Ein Projekt- oder Basissoftware-Build wird nach Auswahl einer konkreten
+FlashBox aus dem Account-Inventar als `flashbox_certificate_authenticated_mqtt_job`
+an genau diese Helper-ID gebunden. Build & Deploy persistiert dabei nur die
+FlashBox-ID, ihr Hardwareprofil sowie die Firmware-Referenz mit Hash. Der
+signierte Auftrag wird mit QoS 1 auf dem retained Topic
+`gernetix/devices/<flashbox_device_id>/flashbox/jobs` veroeffentlicht. Dieses
+Topic ist aufgrund der mTLS-Zertifikats-CN und Broker-ACL ausschliesslich fuer
+genau diese inventarisierte FlashBox lesbar. Ablaufzeit und Sequenznummer
+verhindern eine spaetere Wiederholung eines alten Auftrags.
+
+Der Zustand `published_waiting_flashbox` bedeutet ausdruecklich: Das Artefakt
+ist gebaut und an den zertifikatsgeschuetzten Helper-Kanal uebergeben, aber
+noch nicht als USB-Flash auf dem Zielgeraet bestaetigt. Browser,
+Account-Sitzungen und frei uebergebene Device-IDs berechtigen weder zum Lesen
+dieses Topics noch zum Flashen.
+
+Die FlashBox meldet die Zustandsfolge (zum Beispiel `job_received`,
+`target_detected`, `target_flash_succeeded` oder `target_flash_failed`) nur
+unter `gernetix/devices/<flashbox_device_id>/status/flashbox` zurueck. Build &
+Deploy ordnet die Rueckmeldung ueber `flashbox_job_id` zu und zeigt sie als
+aktuellen Jobzustand an.
+
+### Lokale Zertifikats-Provisionierung nach dem Flash
+
+Die unveraenderliche Basisfirmware enthaelt weder eine Device-ID noch ein
+Client-Zertifikat oder einen privaten Schluessel. Beim ersten lokalen Aufruf
+von `POST /provisioning` erzeugt die FlashBox selbst ein P-256-Schluesselpaar
+und gibt ausschliesslich den Public Key zurueck. Der Provisioning Service
+signiert diesen Key und sendet im zweiten lokalen Aufruf nur das
+Client-Zertifikat, die Device-ID und die MQTT-Broker-Adresse. Der private Key
+wird niemals ueber HTTP ausgegeben; NVS-/Flash-Verschluesselung ist vor dem
+Produktiveinsatz verbindlich.
+
 ## Flashbox-Use-Cases und Manifesttypen
 
 Die Flashbox deckt zwei getrennte Nutzerfaelle ab:
@@ -220,6 +255,43 @@ Sie darf nicht anbieten:
 - Trust-State lokal ueberschreiben,
 - eine nicht beanspruchte Shop-Bestellung ohne Claim als Account-Inventar ausgeben,
 - eine gesperrte Flashbox fuer neue Flashauftraege verwenden.
+
+## Oeffentlicher Initial-Setup-Assistent
+
+Der oeffentliche Assistent ist unter `/flashbox-einrichten/` erreichbar und
+bleibt bewusst getrennt von Login, Claim und Account-Inventar. Er fuehrt keine
+Build-Jobs aus. Stattdessen laedt er ausschliesslich den aktuell freigegebenen,
+unveraenderlichen Release `flashbox-initial-image` fuer `esp32/esp32-s3` aus
+dem SQLite-Release-Speicher.
+
+Der Ablauf ist verbindlich:
+
+1. Der Nutzer verbindet die Flashbox ueber Control-USB und startet die
+   automatische Suche. Bereits im Browser freigegebene serielle ESP-Geraete
+   werden zuerst geprueft.
+2. Wird kein passendes Geraet gefunden, bietet die UI die manuelle Auswahl an.
+   Der Browser zeigt dabei seinen eigenen sicheren COM-Port-Dialog; eine
+   Webseite darf keine Portliste ohne Nutzerfreigabe auslesen.
+3. Der ROM-Bootloader muss `ESP32-S3` melden. Flash, interner RAM und PSRAM
+   werden angezeigt und vom Nutzer bestaetigt. Verbindliche Mindestgroessen
+   werden erst nach dem fertigen USB-OTG-Schreibpfad und Hardwaremessungen
+   festgelegt.
+4. Der Nutzer bestaetigt die angezeigten Werte. Erst danach wird das Image
+   geladen, seine SHA-256-Pruefsumme lokal geprueft und ueber Web Serial
+   geschrieben.
+
+Ein Release wird ausschliesslich durch einen Betreiber mit dem Offline-Tool
+veroeffentlicht. Beispiel auf dem VPS (nach einem erfolgreich verifizierten
+Build):
+
+```text
+node tools/publish-flashbox-initial-release.js --file /pfad/firmware.bin --version 1.0.0
+```
+
+Die Veroeffentlichung ist append-only; dieselbe Version kann nicht
+ueberschrieben werden. Die kryptographische Freigabe des Images vor dem
+Veroeffentlichen bleibt Teil des Release-Prozesses; der Assistent prueft beim
+Download zusaetzlich den gespeicherten SHA-256-Wert.
 
 ## Offene Umsetzungspakete
 

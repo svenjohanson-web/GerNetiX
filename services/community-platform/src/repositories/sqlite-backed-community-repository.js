@@ -57,14 +57,14 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
 
 function communitySchema() {
   return [
-    `CREATE TABLE IF NOT EXISTS community_questions (question_id TEXT PRIMARY KEY, account_id TEXT, project_id TEXT, title TEXT, body TEXT, status TEXT, triage_status TEXT, tags_json TEXT, created_at TEXT, updated_at TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS community_questions (question_id TEXT PRIMARY KEY, account_id TEXT, project_id TEXT, title TEXT, body TEXT, visibility TEXT, status TEXT, triage_status TEXT, tags_json TEXT, created_at TEXT, updated_at TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS community_answers (answer_id TEXT PRIMARY KEY, question_id TEXT, account_id TEXT, body TEXT, verification_state TEXT, visible_state TEXT, created_at TEXT, updated_at TEXT, verified_at TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS community_knowledge_documents (document_id TEXT PRIMARY KEY, source_type TEXT, source_id TEXT, title TEXT, body TEXT, verification_state TEXT, tags_json TEXT, updated_at TEXT, raw_json TEXT NOT NULL);`,
   ];
 }
 
 function questionColumns() {
-  return { question_id: "question_id", account_id: "account_id", project_id: "project_id", title: "title", body: "body", status: "status", triage_status: "triage_status", tags_json: jsonColumn("tags"), created_at: "created_at", updated_at: "updated_at", raw_json: jsonColumn((row) => row) };
+  return { question_id: "question_id", account_id: "account_id", project_id: "project_id", title: "title", body: "body", visibility: "visibility", status: "status", triage_status: "triage_status", tags_json: jsonColumn("tags"), created_at: "created_at", updated_at: "updated_at", raw_json: jsonColumn((row) => row) };
 }
 
 function answerColumns() {

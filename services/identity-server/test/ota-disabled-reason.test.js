@@ -6,14 +6,17 @@ const test = require("node:test");
 const publicRoot = path.resolve(__dirname, "../public/app");
 const html = fs.readFileSync(path.join(publicRoot, "index.html"), "utf8");
 const app = fs.readFileSync(path.join(publicRoot, "app.js"), "utf8");
+const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
 
 test("build and flash actions expose their concrete prerequisite without becoming inert", () => {
   assert.match(html, /id="ideActionReason"/);
-  assert.equal((html.match(/aria-describedby="ideActionReason"/g) || []).length, 4);
+  assert.equal((html.match(/aria-describedby="ideActionReason"/g) || []).length, 5);
   assert.match(html, /id="ideBuildConsole"/);
   assert.match(html, /id="ideTerminalOutput"/);
   assert.match(html, /id="clearIdeTerminalButton"/);
-  assert.match(html, /Per USB flashen/);
+  assert.match(html, /id="usbFlashButton"[^>]*>USB</);
+  assert.match(html, /id="otaFlashButton"[^>]*>OTA</);
+  assert.match(html, /id="flashBoxFlashButton"[^>]*>FlashBox</);
   assert.match(app, /function ideActionUnavailableReason/);
   assert.match(app, /Kein kompatibles Board im Inventar/);
   assert.match(app, /Ordne der IoT-Device-Komponente zuerst ein Inventar-Device zu/);
@@ -38,11 +41,15 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /!ideSourceIsEditable\(project, state\.sourcePath\)/);
   assert.match(app, /component_device_allocations/);
   assert.match(app, /function appendIdeTerminal/);
+  assert.match(html, /id="flashboxDeviceSelect"/);
+  assert.match(app, /activeFlashboxDeviceId/);
+  assert.match(app, /Waehle zuerst eine verfuegbare FlashBox/);
+  assert.match(server, /flashbox_not_in_inventory/);
+  assert.match(server, /flashbox_cannot_be_target/);
 });
 
 test("plain project build does not require an inventory device", () => {
   const app = fs.readFileSync(path.join(__dirname, "..", "public", "app", "app.js"), "utf8");
-  const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
 
   assert.match(app, /device_id: device\?\.device_id \|\| ""/);
   assert.match(server, /if \(!device && mode !== "build"\)/);

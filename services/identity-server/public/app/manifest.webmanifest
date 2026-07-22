@@ -1,1 +1,1 @@
-{"name":"GerNetiX","short_name":"GerNetiX","start_url":"/app/dashboard/","display":"standalone","background_color":"#101827","theme_color":"#101827"}
+{"name":"GerNetiX","short_name":"GerNetiX","start_url":"/app/dashboard/","display":"standalone","background_color":"#101827","theme_color":"#101827","icons":[{"src":"/gernetix-gx.svg?v=20260721-03","sizes":"any","type":"image/svg+xml","purpose":"any maskable"}]}

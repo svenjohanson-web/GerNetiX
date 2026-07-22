@@ -42,6 +42,7 @@ body {
 .auth-site-menu { position: absolute; top: calc(100% + 8px); right: 0; z-index: 20; display: grid; gap: 7px; width: min(300px, calc(100vw - 32px)); padding: 8px; border: 1px solid #2b3748; border-radius: 8px; background: #111827; box-shadow: 0 16px 42px rgba(0, 0, 0, .34); }
 .auth-site-menu a { min-height: 36px; padding: 8px 10px; border: 1px solid #3c4a5d; border-radius: 7px; background: #1b2430; color: #cbd5e1; font-size: 13px; font-weight: 750; text-decoration: none; }
 .auth-site-menu a:hover { border-color: #22d3ee; background: #273244; color: #ecfeff; }
+.auth-site-menu a[href="/app/auth/"] { border-color: #0891b2; background: #164e63; color: #cffafe; }
 .auth-site-footer { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 14px 2px 24px; color: #94a3b8; font-size: 12px; }
 .auth-site-footer nav { display: flex; flex-wrap: wrap; gap: 14px; }
 .auth-site-footer a { color: #cbd5e1; font-weight: 750; text-decoration: none; }

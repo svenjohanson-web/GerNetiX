@@ -84,6 +84,43 @@ test("build job can return avr hex firmware as primary artifact", async () => {
   assert.equal(job.result.deploy.status, "not_requested");
 });
 
+test("build job persists a certificate-authenticated FlashBox delivery for one helper", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-build-deploy-"));
+  const service = createDefaultBuildDeployService(createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  }));
+  const published = [];
+  service.deployOrchestrator.publicBaseUrl = "https://build.gernetix.com";
+  service.deployOrchestrator.mqttPublisher = { publish: async (...args) => published.push(args) };
+  service.deployOrchestrator.authorizationSigner = { keyId: "test", sign: async () => "signature" };
+
+  await service.submitJob({
+    job_id: "flashbox-delivery",
+    mode: "build",
+    device_id: "target-esp32",
+    flashbox: {
+      requested: true,
+      flashbox_device_id: "flashbox-1",
+      flashbox_hardware_profile_id: "hardware.flashbox.esp32_s3_usb_helper",
+      target_device_id: "target-esp32",
+      target_hardware_profile_id: "hardware.esp32_s3",
+    },
+    build_package: { files: { "build-job.json": "{}" } },
+  });
+  await service.jobs.get("flashbox-delivery").promise;
+
+  const job = service.getJob("flashbox-delivery");
+  assert.equal(job.status, "succeeded");
+  assert.equal(job.flashbox.flashbox_device_id, "flashbox-1");
+  assert.equal(job.result.flashbox.status, "published_waiting_flashbox");
+  assert.equal(job.result.flashbox.transport, "flashbox_certificate_authenticated_mqtt_job");
+  assert.equal(job.result.flashbox.topic, "gernetix/devices/flashbox-1/flashbox/jobs");
+  assert.match(job.result.flashbox.artifact_sha256, /^[a-f0-9]{64}$/);
+  assert.equal(published.length, 1);
+});
+
 test("successive project builds restore and update the PlatformIO incremental cache", async () => {
   const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-incremental-build-"));
   const config = createConfig({

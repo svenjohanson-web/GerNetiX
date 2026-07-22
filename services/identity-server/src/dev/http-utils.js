@@ -7,6 +7,7 @@ const contentTypes = {
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
   ".png": "image/png",
+  ".svg": "image/svg+xml",
   ".puml": "text/plain; charset=utf-8",
 };
 
@@ -39,7 +40,7 @@ function normalizeAppPath(pathname) {
   const stripped = pathname.replace(/^\/app\/?/, "/");
   if (stripped === "/" || stripped === "") return "/index.html";
   if (/^\/auth\/?$/.test(stripped)) return "/auth/index.html";
-  if (/^\/(auth|dashboard|learn|learning-project|development-platform(?:\/hardware)?|ide|projects|devices|device-management(?:\/(?:provisioning|inventory|recovery))?|builds|downloads|shop|billing|help|account-setup)\/?$/.test(stripped)) return "/index.html";
+  if (/^\/(auth|dashboard|learn|learning-project|development-platform(?:\/hardware)?|ide|projects|devices|device-management(?:\/(?:provisioning|inventory|recovery))?|builds|downloads|shop|billing|community|help|account-setup)\/?$/.test(stripped)) return "/index.html";
   return stripped;
 }
 

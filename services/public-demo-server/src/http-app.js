@@ -11,7 +11,7 @@ function createHttpApp({ service, publisherToken, publicDir = nodePath.join(__di
     if (req.method === "GET" && path === "/health") {
       return sendJson(res, 200, { status: "ok", service: "public-demo-server" });
     }
-    if (req.method === "GET" && (path === "/" || path === "/index.html" || path === "/app.js" || path === "/app.css" || path === "/gernetix-logo.png" || path === "/gernetix-wordmark.png")) {
+    if (req.method === "GET" && (path === "/" || path === "/index.html" || path === "/app.js" || path === "/app.css" || path === "/gernetix-gx.svg" || path === "/gernetix-logo.png" || path === "/gernetix-wordmark.png")) {
       return serveStatic(res, publicDir, path === "/" ? "/index.html" : path);
     }
     if (req.method === "GET" && path.startsWith("/vendor/esptool-js/")) {
@@ -49,6 +49,7 @@ function serveStatic(res, publicDir, requestPath) {
   const contentType = fileName.endsWith(".css") ? "text/css; charset=utf-8"
     : fileName.endsWith(".js") ? "application/javascript; charset=utf-8"
       : fileName.endsWith(".png") ? "image/png"
+        : fileName.endsWith(".svg") ? "image/svg+xml"
         : "text/html; charset=utf-8";
   res.writeHead(200, { "Content-Type": contentType, "X-Content-Type-Options": "nosniff" });
   res.end(fs.readFileSync(filePath));

@@ -176,6 +176,19 @@ services:
     volumes:
       - service_state:/var/lib/gernetix/services
 
+  community-platform:
+    <<: *node-service
+    environment:
+      GERNETIX_SERVICE: community-platform
+      HOST: 0.0.0.0
+      PORT: 5200
+      COMMUNITY_PERSISTENCE_BACKEND: sqlite
+      COMMUNITY_SQLITE_PATH: /var/lib/gernetix/community/gernetix-community.sqlite
+      COMMUNITY_INTERNAL_TOKEN: ${COMMUNITY_INTERNAL_TOKEN:?COMMUNITY_INTERNAL_TOKEN muss gesetzt sein}
+    expose: ["5200"]
+    volumes:
+      - community_state:/var/lib/gernetix/community
+
   ai-context-server:
     <<: *node-service
     environment:
@@ -287,6 +300,10 @@ services:
       HARDWARE_SHOP_BASE_URL: http://hardware-shop:4900
       AI_USAGE_BASE_URL: http://ai-usage-server:5000
       AI_CONTEXT_BASE_URL: http://ai-context-server:5500
+      COMMUNITY_PLATFORM_BASE_URL: http://community-platform:5200
+      COMMUNITY_INTERNAL_TOKEN: ${COMMUNITY_INTERNAL_TOKEN:?COMMUNITY_INTERNAL_TOKEN muss gesetzt sein}
+      COMMUNITY_OPERATOR_USER_IDS: ${COMMUNITY_OPERATOR_USER_IDS:-}
+      COMMUNITY_NOTIFICATION_EMAIL_RECIPIENT: ${COMMUNITY_NOTIFICATION_EMAIL_RECIPIENT:-}
       ADMIN_TOOL_BASE_URL: http://admin-tool:4600
       SYSTEM_EVENT_INGEST_TOKEN: ${SYSTEM_EVENT_INGEST_TOKEN:?SYSTEM_EVENT_INGEST_TOKEN muss gesetzt sein}
       OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
@@ -305,6 +322,7 @@ services:
       hardware-shop: { condition: service_healthy }
       ai-usage-server: { condition: service_healthy }
       ai-context-server: { condition: service_healthy }
+      community-platform: { condition: service_healthy }
 
   runtime-storage-migration:
     <<: *node-service
@@ -368,6 +386,7 @@ services:
       - ./infra/vps/nginx/welcome.nl.html:/usr/share/nginx/html/welcome.nl.html:ro
       - ./infra/vps/nginx/welcome.en.html:/usr/share/nginx/html/welcome.en.html:ro
       - ./infra/vps/nginx/gernetix-logo.png:/usr/share/nginx/html/gernetix-logo.png:ro
+      - ./infra/vps/nginx/gernetix-gx.svg:/usr/share/nginx/html/gernetix-gx.svg:ro
       - ./infra/vps/nginx/gernetix-wordmark.png:/usr/share/nginx/html/gernetix-wordmark.png:ro
       - certbot_www:/var/www/certbot:ro
       - nginx_cache:/var/cache/nginx
@@ -396,6 +415,7 @@ services:
       - ./infra/vps/nginx/welcome.nl.html:/usr/share/nginx/html/welcome.nl.html:ro
       - ./infra/vps/nginx/welcome.en.html:/usr/share/nginx/html/welcome.en.html:ro
       - ./infra/vps/nginx/gernetix-logo.png:/usr/share/nginx/html/gernetix-logo.png:ro
+      - ./infra/vps/nginx/gernetix-gx.svg:/usr/share/nginx/html/gernetix-gx.svg:ro
       - ./infra/vps/nginx/gernetix-wordmark.png:/usr/share/nginx/html/gernetix-wordmark.png:ro
       - ${LETSENCRYPT_DIR:-/etc/letsencrypt}:/etc/letsencrypt:ro
       - nginx_tls_cache:/var/cache/nginx
@@ -429,6 +449,7 @@ volumes:
   admin_access_state:
   build_state:
   public_demo_state:
+  community_state:
   mqtt_data:
   mqtt_log:
   nginx_cache:

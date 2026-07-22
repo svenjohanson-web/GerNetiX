@@ -29,6 +29,13 @@ C:\Users\sven_\.platformio\penv\Scripts\platformio.exe device monitor -b 115200 
 
 Das PlatformIO-Ziel ist auf 16 MB Flash, PSRAM und eine 16-MB-Partitionstabelle mit zwei OTA-App-Slots vorbereitet. Die Firmware definiert `ARDUINO_USB_MODE` und `ARDUINO_USB_CDC_ON_BOOT` nicht mehr selbst, weil dein Board-/Arduino-Core diese Makros bereits setzt und sonst Doppeldefinitionen im Build entstehen.
 
+Der USB-CDC-Host verwendet Arduino als ESP-IDF-Komponente. `sdkconfig.defaults` setzt dafuer den von Arduino benoetigten FreeRTOS-Tick auf 1000 Hz und waehlt die ESP32-S3-Variante explizit. Falls PlatformIO vor dieser Aenderung bereits eine ESP-IDF-Konfiguration angelegt hat, einmal den reinen Build-Cache bereinigen und danach erneut bauen:
+
+```powershell
+C:\Users\sven_\.platformio\penv\Scripts\platformio.exe run -e esp32_s3_usb_helper_flashbox -t clean
+C:\Users\sven_\.platformio\penv\Scripts\platformio.exe run -e esp32_s3_usb_helper_flashbox
+```
+
 Display und Touch sind aus dem FlashBox-Profil entfernt. Die Firmware nutzt eine displaylose Status-Fassade: Ereignisse gehen auf Serial und die lokalen HTTP-Endpunkte. Das bisherige ES3C28P-Displayboard bleibt im Hardware-Katalog ein normales Touch-Processor-Board, ist aber nicht mehr das FlashBox-Produkt.
 
 ## Rolle der Flashbox
@@ -66,13 +73,17 @@ Der Buffer ist bewusst ein einzelner globaler Response-Arbeitspuffer, weil der A
 
 ## Lokale Contract-Endpunkte
 
+Das Setup-WLAN ist klar von normaler Basissoftware getrennt benannt: `GerNetiX_FB-<Name>`. Die Firmware verwendet dafuer die letzten sechs Zeichen der Flashbox-Seriennummer, beispielsweise `GerNetiX_FB-A1B2C3`.
+
 Das Skeleton stellt fuer die naechste Integrationsscheibe lokale HTTP-Endpunkte bereit:
 
 | Methode | Pfad | Zweck |
 | --- | --- | --- |
-| `GET` | `/` | Liefert eine kleine JSON-Diagnose statt `not_found`, wenn der Browser die Flashbox ohne Pfad oeffnet. |
+| `GET` | `/` | Liefert das lokale, dunkle WLAN-Setup-Portal. |
 | `GET` | `/status` | Liefert Rolle, Hardwareprofil, Firmwarestand und Claim-Modus. |
 | `GET` | `/wifi/status` | Liefert Setup-AP, verbundenen WLAN-Status, IP-Adresse, letzte sichtbare SSID-Liste und Scan-Zustand. |
+| `POST` | `/wifi` | Nimmt SSID und Passwort ausschließlich aus dem lokalen Setup-Portal entgegen, speichert sie nur auf der FlashBox und startet die WLAN-Verbindung. |
+| `GET` | `/ble/status` | Liefert BLE-Gerätename, Service-ID und Funktionsumfang der lokalen BLE-Schnittstelle. |
 | `GET` | `/power/status` | Liefert Battery-ADC, Power-Switching-Policy und ob Software-VBUS-Umschaltung im aktuellen Hardwareprofil verfuegbar ist. |
 | `POST` | `/claim/challenge` | Nimmt eine Server-Challenge entgegen und liefert spaeter die Device-Signatur. |
 | `GET` | `/firmware/manifest-public-key` | Liefert den eingebetteten GerNetiX Release Public Key fuer Diagnose/Vertragstests. |
@@ -80,6 +91,13 @@ Das Skeleton stellt fuer die naechste Integrationsscheibe lokale HTTP-Endpunkte 
 | `POST` | `/firmware/manifest/check` | Laedt ein HTTPS-Manifest und prueft den Mindestvertrag, schreibt aber noch kein Artefakt. |
 | `POST` | `/firmware/artifact/verify` | Laedt nach gueltigem Manifest das Artefakt streamend, prueft SHA-256 und blockiert danach bewusst vor jedem Schreiben. |
 | `GET` | `/targets/status` | Liefert den aktuellen USB-OTG-Zielgeraetestatus mit VID/PID, Bootloader-Kandidat, VBUS-/Power-Status und Preflight-Sperrgrund. |
+| `GET` | `/targets/serial/status` | Liefert den Zustand des USB-CDC-Hosttransports fuer native ESP-USB- und ESP-USB-Seriell-Kandidaten. |
+
+## BLE neben WLAN
+
+Die FlashBox sendet parallel zum Setup-WLAN einen BLE-GATT-Service mit einem eindeutigen Namen wie `GNX-FlashBox-A1B2C3`. Damit kann eine spaetere Android-/iPad-App die Box in unmittelbarer Naehe finden und Seriennummer, Firmwarestand, WLAN-Zustand sowie IP-Adresse lesen. BLE dient fuer Discovery und lokalen Status, nicht fuer die datenintensive USB-Serial-Bruecke.
+
+WLAN-Zugangsdaten werden bewusst **nicht** über eine ungeschuetzte BLE-Characteristic angenommen. Die Ersteinrichtung bleibt deshalb im lokalen dunklen Web-Portal. Ein spaeterer BLE-Einrichtungsdialog braucht zuvor eine nachvollziehbare Geraete-Paarung und eine explizite Autorisierung; er darf keine frei beschreibbare Passwort-Schnittstelle fuer beliebige Geraete in Funkreichweite schaffen.
 
 ## Displayloser Status-Vertrag
 
@@ -185,7 +203,25 @@ Die Erkennung klassifiziert aktuell:
 | `2341:*`, `2A03:*` | `Arduino USB device` | originale Arduino-Boards |
 | `067B:2303` | `Arduino / ESP via Prolific` | PL2303 USB-Serial-Adapter |
 
-Espressif-Geraete mit VID `303A` werden als `rom_bootloader_candidate` behandelt. USB-Serial-Bridges wie CH340, CP210x oder FTDI werden als `serial_bridge_detected` behandelt, weil VID/PID allein noch nicht beweist, ob dahinter ein Nano, ESP32 oder ESP8266 im Bootloader haengt. Das ist noch kein Flash-Freigabesignal, sondern die erste Erkennungsstufe. Danach fehlen bewusst noch serieller Bootloader-Handschlag, Chip-Profil-Lesen, Zielwechsel-Sperre und Flash-Preflight. Deshalb bleibt `target_flash_preflight_allowed = false`.
+Espressif-Geraete mit VID `303A` werden als `rom_bootloader_candidate` behandelt. USB-Serial-Bridges wie CH340, CP210x oder FTDI werden als `serial_bridge_detected` behandelt, weil VID/PID allein noch nicht beweist, ob dahinter ein Nano, ESP32 oder ESP8266 im Bootloader haengt.
+
+### USB-CDC-Hosttransport
+
+Die FlashBox bindet den offiziellen Espressif-Component-Registry-Treiber
+`espressif/usb_host_cdc_acm` ein. PlatformIO baut das Paket ueber
+`src/idf_component.yml` zusammen mit Arduino und ESP-IDF. Der Treiber startet den
+einzigen USB-Host-Event-Task und oeffnet fuer erkannte ESP-Kandidaten einen
+CDC-ACM- oder CDC-aehnlichen seriellen Transport mit 1-KB-Ein-/Ausgabe-Puffern.
+Damit sind sowohl native ESP-USB-Geraete als auch CDC-aehnliche
+USB-Seriell-Bridges als Transportweg vorbereitet.
+
+Der Status ist unter `/targets/serial/status` sichtbar. Die Schicht setzt
+absichtlich weder DTR/RTS noch sendet sie Bootloaderdaten: Der anschliessende
+Espressif-ROM-Bootloader-Client muss zuerst den Chip per Handshake lesen,
+Hardwareprofil und Zielpartition gegen das signierte Manifest pruefen und erst
+dann Reset-/BOOT-Sequenz und Schreibvorgaenge steuern. Deshalb bleibt
+`target_flash_preflight_allowed = false`, bis dieser Client und der
+stromausfallfeste Schreibablauf implementiert und mit Hardware getestet sind.
 
 ## Wiederverwendung aus der Basissoftware-DNA
 

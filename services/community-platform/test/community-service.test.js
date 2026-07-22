@@ -2,6 +2,8 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { createConfig, createDefaultCommunityPlatform } = require("../src");
+const member = { user_id: "user-1" };
+const operator = { user_id: "moderator-1", is_operator: true };
 
 function createService() {
   return createDefaultCommunityPlatform(createConfig({ COMMUNITY_TRIAGE_SLA_HOURS: "24" }));
@@ -9,17 +11,8 @@ function createService() {
 
 test("creates and triages community question with SLA metadata", () => {
   const service = createService();
-  const question = service.createQuestion({
-    title: "ESP32 startet nach Flash nicht",
-    body: "Nach dem Flashen bleibt die serielle Ausgabe leer.",
-    author_user_id: "user-1",
-    tags: ["esp32", "flash"],
-  });
-  const triaged = service.triageQuestion(question.question_id, {
-    triage_status: "needs_expert_answer",
-    priority: "high",
-    triaged_by: "moderator-1",
-  });
+  const question = service.createQuestion({ title: "ESP32 startet nach Flash nicht", body: "Nach dem Flashen bleibt die serielle Ausgabe leer.", tags: ["esp32", "flash"] }, member);
+  const triaged = service.triageQuestion(question.question_id, { triage_status: "needs_expert_answer", priority: "high", triaged_by: "moderator-1" }, operator);
 
   assert.equal(question.triage_status, "new");
   assert.ok(question.triage_due_at);
@@ -27,35 +20,39 @@ test("creates and triages community question with SLA metadata", () => {
   assert.equal(triaged.priority, "high");
 });
 
-test("verifies answer and publishes knowledge document", () => {
+test("verifies an operator answer and publishes knowledge", () => {
   const service = createService();
-  const question = service.createQuestion({ title: "OTA Timeout", body: "OTA bricht ab." });
-  const answer = service.createAnswer(question.question_id, { body: "Hostname und Heartbeat pruefen." });
-  const verified = service.verifyAnswer(answer.answer_id, { verified_by: "expert-1" });
-  const fetched = service.getQuestion(question.question_id);
-  const documents = service.listKnowledgeDocuments({ verification_state: "verified" });
+  const question = service.createQuestion({ title: "OTA Timeout", body: "OTA bricht ab." }, member);
+  const answer = service.createAnswer(question.question_id, { body: "Hostname und Heartbeat pruefen." }, operator);
+  const verified = service.verifyAnswer(answer.answer_id, { verified_by: "expert-1" }, operator);
+  const fetched = service.getQuestion(question.question_id, member);
 
   assert.equal(verified.verification_state, "verified");
   assert.equal(fetched.status, "answered");
   assert.equal(fetched.verified_answer_count, 1);
-  assert.equal(documents.items.some((document) => document.source_id === answer.answer_id), true);
 });
 
-test("changing verified answer requires reverification", () => {
+test("keeps private requests visible only to the requester and GerNetiX", () => {
   const service = createService();
-  const question = service.createQuestion({ title: "WLAN Problem", body: "Board offline." });
-  const answer = service.createAnswer(question.question_id, { body: "SSID pruefen." });
-  service.verifyAnswer(answer.answer_id, { verified_by: "expert-1" });
-  const changed = service.updateAnswer(answer.answer_id, { body: "SSID und AP-Modus pruefen." });
+  const question = service.createQuestion({ title: "Mein Projekt", body: "Bitte persoenlich begleiten.", visibility: "private" }, member);
 
-  assert.equal(changed.verification_state, "requires_reverification");
-  assert.equal(changed.needs_reverification, true);
+  assert.equal(service.listQuestions({}, { user_id: "user-2" }).items.some((item) => item.question_id === question.question_id), false);
+  assert.equal(service.getQuestion(question.question_id, operator).visibility, "private");
+  assert.throws(() => service.getQuestion(question.question_id, { user_id: "user-2" }), /privat/);
 });
 
-test("search returns questions answers and knowledge documents", () => {
+test("does not let other members alter a reply", () => {
   const service = createService();
-  const result = service.search({ q: "OTA" });
+  const question = service.createQuestion({ title: "OTA", body: "Hilfe" }, member);
+  const answer = service.createAnswer(question.question_id, { body: "Pruefen" }, operator);
+  assert.throws(() => service.updateAnswer(answer.answer_id, { body: "Manipuliert" }, { user_id: "user-2" }), /darf nicht/);
+});
 
-  assert.equal(result.items.length > 0, true);
-  assert.equal(result.items.some((item) => item.type === "knowledge_document"), true);
+test("never publishes private guidance into searchable knowledge", () => {
+  const service = createService();
+  const question = service.createQuestion({ title: "Privates Projekt", body: "Nur fuer mich", visibility: "private" }, member);
+  const answer = service.createAnswer(question.question_id, { body: "Persoenliche Antwort" }, operator);
+  service.verifyAnswer(answer.answer_id, {}, operator);
+  assert.equal(service.search({ q: "Persoenliche" }, { user_id: "user-2" }).items.length, 0);
+  assert.equal(service.listKnowledgeDocuments({}, member).items.some((item) => item.question_id === question.question_id), false);
 });

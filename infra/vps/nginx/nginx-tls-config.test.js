@@ -31,7 +31,9 @@ test("TLS serves Dutch, German and English pages with one SAN certificate", () =
     assert.match(compose, new RegExp(`:/usr/share/nginx/html/${escapedLandingPage}:ro`));
   }
   assert.equal((tls.match(/location = \/gernetix-wordmark\.png/g) || []).length, 3);
+  assert.equal((tls.match(/location = \/gernetix-gx\.svg/g) || []).length, 3);
   assert.equal((compose.match(/gernetix-wordmark\.png:\/usr\/share\/nginx\/html\/gernetix-wordmark\.png:ro/g) || []).length, 2);
+  assert.equal((compose.match(/gernetix-gx\.svg:\/usr\/share\/nginx\/html\/gernetix-gx\.svg:ro/g) || []).length, 2);
   assert.match(tls, /live\/gernetix\.nl\/fullchain\.pem/);
   assert.match(english, /From vision to/);
   assert.match(english, /Understand\. Develop\. Create\./);

@@ -13,6 +13,7 @@ const { SqlitePlatformDownloadRepository } = require("./repositories/sqlite-plat
 const { canonicalLocalPasskeyLocation } = require("./services/local-passkey-origin");
 const { passkeyBrowserFailureEvent, passkeyLoginFailureEvent } = require("./services/passkey-login-events");
 const { createSystemEventReporter } = require("./services/system-event-reporter");
+const { createPrivateCommunityNotifier } = require("./services/private-community-notifier");
 const { createRuntimeStreamHub } = require("./runtime-stream-hub");
 const { createAccountTransparencyFactory } = require("./dev/account-transparency");
 const { createDeviceDiscoveryService } = require("./dev/device-discovery");
@@ -93,6 +94,11 @@ const projectServerBaseUrl = process.env.PROJECT_SERVER_BASE_URL || "http://127.
 const telemetryServerBaseUrl = process.env.TELEMETRY_SERVER_BASE_URL || "http://127.0.0.1:5600";
 const telemetryInternalToken = process.env.TELEMETRY_INTERNAL_TOKEN || "";
 const buildDeployBaseUrl = process.env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400";
+const publicDemoBaseUrl = process.env.PUBLIC_DEMO_BASE_URL || "http://127.0.0.1:4920";
+const communityPlatformBaseUrl = process.env.COMMUNITY_PLATFORM_BASE_URL || "http://127.0.0.1:5200";
+const communityInternalToken = process.env.COMMUNITY_INTERNAL_TOKEN || "";
+const communityOperatorUserIds = new Set(String(process.env.COMMUNITY_OPERATOR_USER_IDS || "").split(",").map((value) => value.trim()).filter(Boolean));
+const communityNotificationEmailRecipient = process.env.COMMUNITY_NOTIFICATION_EMAIL_RECIPIENT || "";
 const otaBuildDeployBaseUrl = process.env.OTA_BUILD_DEPLOY_BASE_URL || "https://build.gernetix.com";
 const hardwareShopBaseUrl = process.env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900";
 const hardwareCatalogBaseUrl = process.env.HARDWARE_CATALOG_BASE_URL || "http://10.77.0.1:4910";
@@ -118,6 +124,7 @@ const {
   aiContextJson,
   aiUsageJson,
   buildDeployJson,
+  communityJson,
   deviceManagementJson,
   hardwareCatalogJson,
   hardwareShopJson,
@@ -127,6 +134,8 @@ const {
   aiContextBaseUrl,
   aiUsageBaseUrl,
   buildDeployBaseUrl,
+  communityPlatformBaseUrl,
+  communityInternalToken,
   deviceManagementBaseUrl,
   hardwareCatalogBaseUrl,
   hardwareShopBaseUrl,
@@ -208,6 +217,14 @@ const mockEmailService = new MockEmailService({ log() {} });
 const smtpConfigStore = createSmtpConfigStore({ sqlitePath: identitySqlitePath, encryptionKey: emailConfigEncryptionKey });
 const smtpEmailService = new SmtpEmailService({ configStore: smtpConfigStore });
 const emailService = new ConfigurableEmailService({ smtpEmailService, fallbackEmailService: mockEmailService });
+const notifyPrivateCommunityRequest = createPrivateCommunityNotifier({
+  smtpEmailService,
+  smtpConfigStore,
+  recordSystemEvent,
+  webPushService,
+  operatorAccountIds: [...communityOperatorUserIds],
+  emailRecipient: communityNotificationEmailRecipient,
+});
 const auth = createDefaultIdentityModule({
   emailService,
   persistenceBackend: identityPersistenceBackend,
@@ -337,6 +354,53 @@ async function routeRequest(req, res) {
     return;
   }
   const url = new URL(req.url, `http://${req.headers.host}`);
+
+  if (url.pathname === "/api/public/community/questions" && req.method === "GET") {
+    const tag = String(url.searchParams.get("tag") || "").trim();
+    const payload = await communityJson(`/api/community/questions${tag ? `?tag=${encodeURIComponent(tag)}` : ""}`, {
+      headers: { "X-GerNetiX-Community-Actor": "", "X-GerNetiX-Community-Operator": "false" },
+    });
+    sendJson(res, 200, payload);
+    return;
+  }
+
+  const publicCommunityQuestion = url.pathname.match(/^\/api\/public\/community\/questions\/([^/]+)$/);
+  if (publicCommunityQuestion && req.method === "GET") {
+    const payload = await communityJson(`/api/community/questions/${encodeURIComponent(decodeURIComponent(publicCommunityQuestion[1]))}`, {
+      headers: { "X-GerNetiX-Community-Actor": "", "X-GerNetiX-Community-Operator": "false" },
+    });
+    sendJson(res, 200, payload);
+    return;
+  }
+
+  const publicCommunityAnswers = url.pathname.match(/^\/api\/public\/community\/questions\/([^/]+)\/answers$/);
+  if (publicCommunityAnswers && req.method === "GET") {
+    const questionId = encodeURIComponent(decodeURIComponent(publicCommunityAnswers[1]));
+    const payload = await communityJson(`/api/community/questions/${questionId}/answers`, {
+      headers: { "X-GerNetiX-Community-Actor": "", "X-GerNetiX-Community-Operator": "false" },
+    });
+    sendJson(res, 200, payload);
+    return;
+  }
+
+  if (url.pathname.startsWith("/api/community")) {
+    const session = readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    const body = ["POST", "PATCH"].includes(req.method) ? await readJsonBody(req) : undefined;
+    const payload = await communityJson(`${url.pathname}${url.search}`, {
+      method: req.method,
+      body,
+      headers: {
+        "X-GerNetiX-Community-Actor": session.account.user_id,
+        "X-GerNetiX-Community-Operator": String(communityOperatorUserIds.has(session.account.user_id)),
+      },
+    });
+    if (req.method === "POST" && url.pathname === "/api/community/questions" && body?.visibility === "private") {
+      await notifyPrivateCommunityRequest({ questionId: payload.question_id });
+    }
+    sendJson(res, req.method === "POST" ? 201 : 200, payload);
+    return;
+  }
 
   if (url.pathname === "/api/dev/lesson-preview-migration" && req.method === "OPTIONS") {
     sendDevJson(res, 204, {});
@@ -541,6 +605,29 @@ async function routeRequest(req, res) {
 
   if (url.pathname === "/api/session") {
     handleSession(req, res);
+    return;
+  }
+
+  // This endpoint deliberately remains outside the account area.  It exposes
+  // only one account-neutral, immutable initial Flashbox release; it never
+  // creates a device, a credential, or an ownership relation.
+  if (url.pathname === "/api/public/flashbox/initial-firmware" && req.method === "GET") {
+    const release = currentFlashboxInitialFirmware();
+    if (!release) {
+      sendJson(res, 404, { error: "flashbox_initial_firmware_not_published", message: "Es ist noch kein Flashbox-Initialimage freigegeben." });
+      return;
+    }
+    sendJson(res, 200, publicFlashboxFirmwareMetadata(release));
+    return;
+  }
+
+  if (url.pathname === "/api/public/flashbox/initial-firmware/content" && req.method === "GET") {
+    const release = currentFlashboxInitialFirmware();
+    if (!release) {
+      sendJson(res, 404, { error: "flashbox_initial_firmware_not_published", message: "Es ist noch kein Flashbox-Initialimage freigegeben." });
+      return;
+    }
+    servePublicFlashboxFirmware(res, release);
     return;
   }
 
@@ -1150,6 +1237,21 @@ async function routeRequest(req, res) {
     return;
   }
 
+  if (url.pathname === "/s3-touch-spielesammlung") {
+    redirect(res, "/s3-touch-spielesammlung/");
+    return;
+  }
+
+  if (req.method === "GET" && url.pathname.startsWith("/s3-touch-spielesammlung/")) {
+    await proxyPublicDemo(res, `${url.pathname.slice("/s3-touch-spielesammlung".length)}${url.search}`);
+    return;
+  }
+
+  if (url.pathname === "/demos" || url.pathname.startsWith("/demos/")) {
+    redirect(res, `/s3-touch-spielesammlung/${url.pathname.slice("/demos/".length)}${url.search}`);
+    return;
+  }
+
 
   if (url.pathname === "/demo" || url.pathname === "/demo/" || url.pathname === "/projects" || url.pathname === "/projects/") {
     redirect(res, "/app/dashboard/");
@@ -1266,8 +1368,33 @@ async function routeRequest(req, res) {
     return;
   }
 
-  if (url.pathname === "/downloads" || url.pathname === "/downloads/") {
+  if (url.pathname === "/entdecken" || url.pathname === "/entdecken/") {
     serveStatic(res, publicDir, "/downloads/index.html");
+    return;
+  }
+
+  if (url.pathname === "/downloads" || url.pathname === "/downloads/") {
+    redirect(res, "/entdecken/");
+    return;
+  }
+
+  if (url.pathname === "/nachbauprojekte" || url.pathname === "/nachbauprojekte/") {
+    serveStatic(res, publicDir, "/nachbauprojekte/index.html");
+    return;
+  }
+
+  if (url.pathname === "/community" || url.pathname === "/community/") {
+    serveStatic(res, publicDir, "/community/index.html");
+    return;
+  }
+
+  if (/^\/community\/questions\/[^/]+\/?$/.test(url.pathname)) {
+    serveStatic(res, publicDir, "/community/question.html");
+    return;
+  }
+
+  if (url.pathname === "/flashbox-einrichten" || url.pathname === "/flashbox-einrichten/") {
+    serveStatic(res, publicDir, "/flashbox-einrichten/index.html");
     return;
   }
 
@@ -2656,6 +2783,10 @@ async function handleUserIdeBuildJob(req, res) {
   const project = projects.find((item) => item.slug === body.project_slug);
   const device = devices.find((item) => item.device_id === body.device_id || item.account_device_id === body.device_id) || null;
   const mode = body.mode || "build";
+  const flashTransportRequested = body.flash_transport === "flashbox";
+  const flashbox = flashTransportRequested
+    ? devices.find((item) => item.device_id === body.flashbox_device_id || item.account_device_id === body.flashbox_device_id) || null
+    : null;
 
   if (!project) {
     sendJson(res, 404, { error: "project_not_found", message: "Projekt wurde nicht gefunden." });
@@ -2664,6 +2795,24 @@ async function handleUserIdeBuildJob(req, res) {
   if (!device && mode !== "build") {
     sendJson(res, 404, { error: "device_not_found", message: "Device wurde nicht gefunden." });
     return;
+  }
+  if (flashTransportRequested) {
+    const hardwareProfile = String(flashbox?.hardware_profile_id || "").toLowerCase();
+    const isFlashbox = flashbox?.hardware_class === "flashbox" || hardwareProfile.includes("hardware.flashbox.");
+    if (!flashbox || !isFlashbox) {
+      sendJson(res, 403, {
+        error: "flashbox_not_in_inventory",
+        message: "Die ausgewaehlte FlashBox gehoert nicht zum aktuellen Account-Inventar.",
+      });
+      return;
+    }
+    if (flashbox.device_id === device?.device_id) {
+      sendJson(res, 409, {
+        error: "flashbox_cannot_be_target",
+        message: "Eine FlashBox kann nicht gleichzeitig der USB-Helper und das Zielgeraet sein.",
+      });
+      return;
+    }
   }
   if (mode === "build_and_flash" && device.ota_status !== "ready") {
     sendJson(res, 409, { error: "device_not_ota_ready", message: "Das ausgewaehlte Device ist nicht OTA-ready." });
@@ -2719,6 +2868,15 @@ async function handleUserIdeBuildJob(req, res) {
         authorized: true,
         device_id: device.device_id,
       } : null,
+      flashbox: flashTransportRequested ? {
+        requested: true,
+        flashbox_device_id: flashbox.device_id,
+        flashbox_hardware_profile_id: flashbox.hardware_profile_id || "",
+        target_device_id: device.device_id,
+        target_hardware_profile_id: device.hardware_profile_id || "",
+        manifest_type: "project_firmware_flash",
+        transport: "flashbox_certificate_authenticated_mqtt_job",
+      } : null,
     },
   });
   await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/submitted`, {
@@ -2740,6 +2898,8 @@ async function handleUserIdeBuildJob(req, res) {
     project_title: project.title,
     device_id: device?.device_id || null,
     device_label: device?.display_name || "kein Device erforderlich",
+    flashbox_device_id: flashbox?.device_id || null,
+    flashbox_label: flashbox?.display_name || "",
     mode,
     status: completedBuildDeployJob ? completedBuildDeployJob.status : "submitted_to_build_deploy",
     created_at: projectServerJob.created_at,
@@ -2794,6 +2954,25 @@ async function proxyBuildArtifact(res, jobId, fileName) {
     "Cache-Control": "no-store",
   });
   res.end(content);
+}
+
+async function proxyPublicDemo(res, requestPath) {
+  try {
+    const upstream = await fetch(`${publicDemoBaseUrl.replace(/\/$/, "")}${requestPath}`);
+    const content = Buffer.from(await upstream.arrayBuffer());
+    res.writeHead(upstream.status, {
+      "Content-Type": upstream.headers.get("content-type") || "application/octet-stream",
+      "Content-Length": content.length,
+      "Cache-Control": upstream.headers.get("cache-control") || "no-store",
+      "X-Content-Type-Options": "nosniff",
+    });
+    res.end(content);
+  } catch {
+    sendJson(res, 503, {
+      error: "public_demo_unavailable",
+      message: "Der lokale Demo-Katalog ist noch nicht erreichbar. Starte den Public Demo Server auf Port 4920.",
+    });
+  }
 }
 
 function serveVendorEsptool(res, requestPath) {
@@ -4512,6 +4691,42 @@ function usbSerialHelperDownloads() {
       size_bytes: release?.size_bytes || (localFilename ? fs.statSync(path.join(usbSerialHelperDistDir, localFilename)).size : 0),
     };
   });
+}
+
+function currentFlashboxInitialFirmware() {
+  return (platformDownloadRepository?.listCurrent("flashbox-initial-image") || [])
+    .find((release) => release.platform === "esp32" && release.architecture === "esp32-s3") || null;
+}
+
+function publicFlashboxFirmwareMetadata(release) {
+  return {
+    release_id: "flashbox-initial-image",
+    version: release.version,
+    file_name: release.file_name,
+    size_bytes: release.size_bytes,
+    sha256: release.sha256,
+    published_at: release.published_at,
+    hardware_profile: "ESP32-S3 · Flash- und PSRAM-Werte werden vor dem Flash angezeigt",
+    content_url: "/api/public/flashbox/initial-firmware/content",
+  };
+}
+
+function servePublicFlashboxFirmware(res, release) {
+  const content = platformDownloadRepository.getContent(
+    "flashbox-initial-image",
+    release.version,
+    "esp32",
+    "esp32-s3",
+  );
+  res.writeHead(200, {
+    "Content-Type": content.content_type,
+    "Content-Disposition": `attachment; filename="${content.file_name.replace(/[\"\\]/g, "")}"`,
+    "Content-Length": content.size_bytes,
+    "X-Content-SHA256": content.sha256,
+    "Cache-Control": "no-store",
+    "X-Content-Type-Options": "nosniff",
+  });
+  res.end(content.content_blob);
 }
 
 async function serveUsbSerialHelperDownload(res, filename) {

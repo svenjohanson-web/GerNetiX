@@ -4,5 +4,6 @@
 # Telemetry connections use the isolated
 # non-TLS listener and is not evaluated against this external-device ACL.
 pattern read gernetix/devices/%u/ota
+pattern read gernetix/devices/%u/flashbox/jobs
 pattern write gernetix/devices/%u/status/#
 pattern write gernetix/devices/%u/telemetry

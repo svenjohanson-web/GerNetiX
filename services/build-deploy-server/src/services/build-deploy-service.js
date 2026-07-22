@@ -44,6 +44,11 @@ class BuildDeployService {
     const deployId = job.result?.deploy?.deploy_id;
     const acknowledgement = deployId ? this.deployOrchestrator.deployStatus(deployId) : null;
     if (acknowledgement) job.result.deploy = { ...job.result.deploy, status: acknowledgement.status, acknowledgement };
+    const flashboxJobId = job.result?.flashbox?.flashbox_job_id;
+    const flashboxAcknowledgement = flashboxJobId ? this.deployOrchestrator.flashboxStatus(flashboxJobId) : null;
+    if (flashboxAcknowledgement) {
+      job.result.flashbox = { ...job.result.flashbox, status: flashboxAcknowledgement.status, acknowledgement: flashboxAcknowledgement };
+    }
     return summarizeJob(job);
   }
 
@@ -92,6 +97,7 @@ class BuildDeployService {
         usb_flash: buildOutput.usb_flash || { requested: false, status: "not_requested" },
       };
       const deployResult = await this.deployOrchestrator.maybeCreateDeploy(job, buildResult);
+      const flashboxResult = await this.deployOrchestrator.maybeCreateFlashboxDelivery(job, buildResult);
       job.status = "succeeded";
       job.result = {
         job_id: job.job_id,
@@ -99,6 +105,7 @@ class BuildDeployService {
         device_id: job.device_id,
         build: buildResult,
         deploy: deployResult,
+        flashbox: flashboxResult,
       };
       this.persistJobs();
     } finally {
@@ -175,6 +182,7 @@ function normalizeJob(input = {}) {
     build_package: input.build_package,
     deploy: input.deploy || null,
     usb_flash: input.usb_flash || null,
+    flashbox: normalizeFlashboxDelivery(input.flashbox),
     status: "accepted",
     created_at: new Date().toISOString(),
   };
@@ -185,12 +193,30 @@ function summarizeJob(job) {
     job_id: job.job_id,
     mode: job.mode,
     device_id: job.device_id,
+    flashbox: job.flashbox,
     status: job.status,
     created_at: job.created_at,
     started_at: job.started_at,
     finished_at: job.finished_at,
     result: job.result,
     error: job.error,
+  };
+}
+
+function normalizeFlashboxDelivery(input) {
+  if (!input) return null;
+  const flashboxDeviceId = String(input.flashbox_device_id || "").trim();
+  if (!flashboxDeviceId) {
+    throw new BuildDeployError("missing_flashbox_device_id", "FlashBox-Auftrag braucht eine konkrete inventarisierte FlashBox.");
+  }
+  return {
+    requested: input.requested === true,
+    flashbox_device_id: flashboxDeviceId,
+    flashbox_hardware_profile_id: String(input.flashbox_hardware_profile_id || ""),
+    target_device_id: String(input.target_device_id || ""),
+    target_hardware_profile_id: String(input.target_hardware_profile_id || ""),
+    manifest_type: String(input.manifest_type || "project_firmware_flash"),
+    transport: "flashbox_certificate_authenticated_mqtt_job",
   };
 }
 

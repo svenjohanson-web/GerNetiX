@@ -8,6 +8,7 @@ function createDefaultCommunityPlatform(config = createConfig()) {
   return new CommunityService({
     repository: createRepository(config),
     triageSlaHours: config.triageSlaHours,
+    internalToken: config.internalToken,
   });
 }
 

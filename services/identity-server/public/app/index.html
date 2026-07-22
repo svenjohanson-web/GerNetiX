@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="/gernetix-gx.svg?v=20260721-03" type="image/svg+xml" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
     <link rel="stylesheet" href="/app/app.css?v=20260720-01" />
@@ -37,6 +38,7 @@
         <a href="/app/development-platform/" data-route="development-platform">Entwicklungsplattform</a>
         <a href="/app/learn/" data-route="learn">Lernplattform</a>
         <a href="/app/device-management/" data-route="device-management">Geräte</a>
+        <a href="/app/community/" data-route="community">Community &amp; Begleitung</a>
         <a class="utility" href="/app/builds/" data-route="builds">Betrieb</a>
         <a class="utility" href="/app/downloads/" data-route="downloads">Downloads</a>
         <a class="utility public-information-link" href="/shop/">Webshop</a>
@@ -70,6 +72,7 @@
             <button class="entry-card" type="button" data-open-route="/app/learn/"><span>Geführt lernen</span><strong>Lernbereich</strong><p>Verstehen, entscheiden, ausprobieren.</p></button>
             <button class="entry-card" type="button" data-open-route="/wissen/"><span>Zusammenhängend lesen</span><strong>Wissensportal</strong><p>Grundlagen, Fachbegriffe und Systemzusammenhänge als Lektüre.</p></button>
             <button class="entry-card" type="button" data-open-route="/app/device-management/"><span>Vorhandene Hardware</span><strong>Boards verwalten</strong><p>Boards verbinden und verwalten.</p></button>
+            <button class="entry-card" type="button" data-open-route="/app/community/"><span>Austausch &amp; Hilfe</span><strong>Community &amp; Begleitung</strong><p>Fragen stellen oder persönliche Projektbegleitung anfragen.</p></button>
           </div>
         </section>
 
@@ -437,12 +440,13 @@
               <div id="ideDeviceTools" class="ide-build-actions">
                 <span class="ide-build-actions-label">Build &amp; Flash</span>
                 <select id="ideDeviceSelect" class="hidden" aria-label="Zugeordnetes Geraet"></select>
+                <select id="flashboxDeviceSelect" class="hidden" aria-label="Ausgewaehlte FlashBox"></select>
                 <select id="usbPortSelect" class="hidden" aria-label="USB-Port"></select>
                 <button id="refreshUsbPortsButton" class="hidden" type="button">USB suchen</button>
                 <button id="buildButton" type="button" aria-describedby="ideActionReason">Build</button>
-                <button id="usbFlashButton" type="button" aria-describedby="ideActionReason">Per USB flashen</button>
-                <button id="otaFlashButton" type="button" aria-describedby="ideActionReason">OTA Flash</button>
-                <button id="flashBoxFlashButton" type="button" aria-describedby="ideActionReason">Per FlashBox flashen</button>
+                <button id="usbFlashButton" type="button" aria-describedby="ideActionReason">USB</button>
+                <button id="otaFlashButton" type="button" aria-describedby="ideActionReason">OTA</button>
+                <button id="flashBoxFlashButton" type="button" aria-describedby="ideActionReason">FlashBox</button>
                 <button id="checkOtaConnectivityButton" type="button" aria-describedby="ideActionReason">Online prüfen</button>
               </div>
               <div class="ide-console-tabs" role="tablist" aria-label="Untere IDE-Ansicht">
@@ -1127,6 +1131,13 @@
           </div>
         </div>
         <section id="billingSummary" class="summary-grid"></section>
+      </section>
+      <section id="communityView" class="view hidden">
+        <section class="panel community-hero"><p class="eyebrow">Community &amp; Projektbegleitung</p><h1>Frage stellen oder persönliche Begleitung anfragen</h1><p>Du entscheidest: öffentlich für die Community oder privat nur zwischen dir und GerNetiX.</p></section>
+        <section class="community-layout">
+          <form id="communityRequestForm" class="panel community-request-form"><h2>Neue Anfrage</h2><label>Titel<input name="title" required maxlength="160" placeholder="Worum geht es?" /></label><label>Deine Anfrage<textarea name="body" required maxlength="8000" rows="6" placeholder="Beschreibe dein Projekt und wobei du Unterstützung möchtest."></textarea></label><label>Kategorie<select name="tags" required><option value="">Kategorie wählen</option><option value="hardware">Hardware &amp; Elektronik</option><option value="firmware">Firmware &amp; ESP32</option><option value="software">Software &amp; Apps</option><option value="project">Projektentwicklung</option><option value="learning">Lernen &amp; Einstieg</option></select></label><label>Projekt (optional)<select id="communityProjectSelect" name="project_id"><option value="">Keinem Projekt zuordnen</option></select></label><fieldset><legend>Sichtbarkeit</legend><label><input type="radio" name="visibility" value="public" checked /> Öffentlich – die Community kann mitlesen.</label><label><input type="radio" name="visibility" value="private" /> Privat – nur du und GerNetiX.</label></fieldset><button class="primary" type="submit">Anfrage senden</button><p id="communityRequestStatus" class="helper-text" aria-live="polite"></p></form>
+          <section class="panel community-list-panel"><div class="section-head"><div><p class="eyebrow">Anfragen</p><h2>Community</h2></div><button id="communityRefreshButton" type="button">Aktualisieren</button></div><div id="communityQuestionList" class="community-question-list"></div></section>
+        </section><section id="communityThread" class="panel community-thread hidden"></section>
       </section>
       <footer class="platform-footer">
         <span>© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>

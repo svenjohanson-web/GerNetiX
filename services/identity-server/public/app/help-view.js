@@ -57,11 +57,10 @@ const HelpView = (() => {
   function renderKnowledgeBook(topics) {
     return `<div class="knowledge-book-layout">
       <nav class="panel knowledge-book-navigation" aria-label="Kapitelübersicht">
-        <p class="eyebrow">Inhalt</p>
-        ${topics.map((topic, index) => `<section><button class="knowledge-part-link" type="button" data-knowledge-part="${escapeHtml(topic.id)}"><span>${index + 1}</span>${escapeHtml(topic.title)}</button>${(topic.children || []).map((child, childIndex) => {
-          const chapterNumber = `${index + 1}.${childIndex + 1}`;
-          return `<a href="#${escapeHtml(child.id)}" data-knowledge-topic="${escapeHtml(child.id)}"><span>${chapterNumber}</span>${escapeHtml(child.title)}</a>${(child.subchapters || []).map((subchapter, subchapterIndex) => `<a class="knowledge-subchapter-link" href="#${escapeHtml(subchapter.id)}" data-knowledge-subchapter="${escapeHtml(subchapter.id)}"><span>${chapterNumber}.${subchapterIndex + 1}</span>${escapeHtml(subchapter.title)}</a>`).join("")}`;
-        }).join("")}</section>`).join("")}
+        <details class="knowledge-book-toc" open>
+          <summary><span>Inhalt</span><small>Kapitelübersicht öffnen oder schließen</small></summary>
+          <div class="knowledge-book-toc-content">${topics.map((topic) => `<details class="knowledge-part-toc" open><summary>${escapeHtml(topic.title)}</summary><div>${(topic.children || []).map((child) => `<details class="knowledge-chapter-toc" open><summary>${escapeHtml(child.title)}</summary><div>${(child.subchapters || []).map((subchapter) => `<a class="knowledge-subchapter-link" href="#${escapeHtml(subchapter.id)}" data-knowledge-subchapter="${escapeHtml(subchapter.id)}">${escapeHtml(subchapter.title)}</a>`).join("")}</div></details>`).join("")}</div></details>`).join("")}</div>
+        </details>
       </nav>
       <main class="knowledge-book-content" aria-label="Wissensportal-Lektüre">
         ${topics.map((topic, index) => `<section id="knowledge-part-${escapeHtml(topic.id)}" class="knowledge-book-part" data-knowledge-part="${escapeHtml(topic.id)}"><header><p class="eyebrow">Hauptkapitel ${index + 1}</p><h2>${index + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}${topic.serverLandscape ? renderServerTypesVisual() : ""}</header>${(topic.children || []).map((child, childIndex) => {

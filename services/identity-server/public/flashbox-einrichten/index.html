@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <link rel="icon" href="/gernetix-gx.svg?v=20260721-03" type="image/svg+xml" />
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="description" content="GerNetiX FlashBox sicher per USB einrichten." />
+    <title>FlashBox einrichten · GerNetiX</title>
+    <link rel="stylesheet" href="/landing.css?v=20260721-public-header-1" />
+    <link rel="stylesheet" href="/flashbox-einrichten/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="/" aria-label="GerNetiX Startseite"><img src="/gernetix-wordmark.png" alt="GerNetiX" /></a>
+      <button id="publicMenuButton" class="menu-button" type="button" aria-label="Men&uuml; &ouml;ffnen" aria-expanded="false" aria-controls="publicMenu"><span></span><span></span><span></span></button>
+      <nav id="publicMenu" class="site-menu" aria-label="&Ouml;ffentliche Bereiche" hidden>
+        <a href="/">Startseite</a>
+        <a href="/produkte/">Produkte</a>
+        <div class="site-menu-discover">
+          <a href="/entdecken/">GerNetiX entdecken</a>
+          <div class="site-menu-subitems">
+            <a href="/flashbox-einrichten/" aria-current="page">USB Helper</a>
+            <a href="/nachbauprojekte/">Nachbauprojekte</a>
+          </div>
+        </div>
+        <a href="/wissen/">Wissensportal</a>
+        <a href="/hilfe/">Hilfe</a>
+        <a href="/shop/">Webshop</a>
+        <a href="/app/auth/">Anmelden</a>
+      </nav>
+    </header>
+    <main>
+      <section class="why-flashbox"><h2>Wofür gibt es die FlashBox?</h2><p>Die FlashBox ist eine WLAN-zu-USB-/Serial-Brücke. Sie hilft beim Flashen von IoT-Geräten über WLAN, wenn du mit iPad, Android oder einem Rechner ohne USB-Serial arbeitest.</p><p><strong>OTA:</strong> Das Gerät ist schon im WLAN und erhält die Firmware direkt. <strong>USB:</strong> Ein Computer ist direkt mit dem Gerät verbunden. <strong>FlashBox:</strong> Sie bringt den USB-Anschluss über WLAN zu dir – ideal für neue Geräte ohne WLAN oder ohne direkten USB-Zugang.</p></section>
+      <ol class="steps" aria-label="Einrichtungsschritte"><li class="active" id="stepConnect">1. USB verbinden</li><li id="stepCheck">2. Hardware pr&uuml;fen</li><li id="stepConfirm">3. Best&auml;tigen</li><li id="stepFlash">4. Initialimage schreiben</li></ol>
+      <section class="card" aria-labelledby="connectTitle"><h2 id="connectTitle">1. FlashBox verbinden</h2><p>Schlie&szlig;e die FlashBox per <strong>Control-USB</strong> an. Halte bei Bedarf BOOT gedr&uuml;ckt und tippe kurz RESET.</p><div class="actions"><button id="autoSearchButton" class="primary">FlashBox automatisch suchen</button><button id="manualPortButton" class="secondary" hidden>COM-Port manuell ausw&auml;hlen</button></div><p class="hint">Der Browser fragt einmal nach dem USB-/seriellen Ger&auml;t. Aus Sicherheitsgr&uuml;nden kann eine Webseite COM-Ports nicht unsichtbar durchsuchen.</p><p id="connectionStatus" class="status" aria-live="polite">Noch kein Ger&auml;t ausgew&auml;hlt.</p></section>
+      <section class="card" aria-labelledby="hardwareTitle"><h2 id="hardwareTitle">2. Hardware pr&uuml;fen</h2><dl id="hardwareDetails" class="details empty"><div><dt>Board</dt><dd>Wird nach der USB-Pr&uuml;fung angezeigt.</dd></div></dl><p id="hardwareStatus" class="status" aria-live="polite">Die Pr&uuml;fung startet nach der Verbindung.</p><button id="hardwareCheckContinueButton" class="primary" type="button" hidden>Boarddaten best&auml;tigen und weiter</button></section>
+      <section class="card" aria-labelledby="releaseTitle"><h2 id="releaseTitle">3. Freigegebenes Initialimage</h2><dl id="releaseDetails" class="details empty"><div><dt>Release</dt><dd>Wird geladen …</dd></div></dl><p id="releaseStatus" class="status" aria-live="polite"></p><label class="confirmation"><input id="hardwareConfirmation" type="checkbox" disabled /> <span>Ich best&auml;tige, dass Board, Flash- und RAM-Angaben zu meiner FlashBox passen.</span></label><button id="flashButton" class="primary" disabled>Initialimage schreiben</button></section>
+      <section class="card" aria-labelledby="resultTitle"><h2 id="resultTitle">4. Ergebnis</h2><p id="flashStatus" class="status" aria-live="polite">Noch nicht gestartet.</p><div id="inventoryNext" class="inventory-next" hidden><h3>FlashBox zum Inventar hinzufügen?</h3><p>Die FlashBox ist jetzt im Netzwerk sichtbar. Du kannst sie sofort deinem Inventar hinzufügen – dafür ist eine Anmeldung nötig – oder diesen Schritt später im angemeldeten Bereich erledigen.</p><div class="actions"><a class="primary action-link" href="/login?next=/app/dashboard">Jetzt anmelden und hinzufügen</a><button id="inventoryLaterButton" class="secondary" type="button">Später hinzufügen</button></div><p id="inventoryLaterStatus" class="hint" aria-live="polite"></p></div><p class="hint">Diese Einrichtung erzeugt selbst keine Anmeldung, keinen Account und keine Besitzzuordnung.</p></section>
+    </main>
+    <script src="/landing.js?v=20260719-01"></script>
+    <script type="module" src="/flashbox-einrichten/app.js"></script>
+  </body>
+</html>

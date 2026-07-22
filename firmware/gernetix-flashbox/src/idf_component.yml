@@ -1,0 +1,5 @@
+dependencies:
+  # PlatformIO exposes src/ as the ESP-IDF application component.  The
+  # manifest must therefore live here for the Component Manager to fetch the
+  # official CDC host driver.
+  espressif/usb_host_cdc_acm: "^2.0.6"

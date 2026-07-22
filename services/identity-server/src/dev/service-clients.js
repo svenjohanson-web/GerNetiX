@@ -7,7 +7,7 @@ function createJsonClient(baseUrl, fallbackMessage, clientOptions = {}) {
     try {
       response = await fetch(`${baseUrl}${pathname}`, {
         method: options.method || "GET",
-        headers: { ...(clientOptions.headers || {}), ...(options.body ? { "Content-Type": "application/json" } : {}) },
+        headers: { ...(clientOptions.headers || {}), ...(options.headers || {}), ...(options.body ? { "Content-Type": "application/json" } : {}) },
         body: options.body ? JSON.stringify(options.body) : undefined,
       });
     } catch (cause) {
@@ -35,6 +35,8 @@ function createDevServiceClients({
   aiContextBaseUrl,
   aiUsageBaseUrl,
   buildDeployBaseUrl,
+  communityPlatformBaseUrl = "",
+  communityInternalToken = "",
   deviceManagementBaseUrl,
   hardwareCatalogBaseUrl,
   hardwareShopBaseUrl,
@@ -48,6 +50,7 @@ function createDevServiceClients({
     aiContextJson: createJsonClient(aiContextBaseUrl, "AI Context request failed.", { telemetry, targetService: "ai-context-server" }),
     aiUsageJson: createJsonClient(aiUsageBaseUrl, "AI Usage request failed.", { allowPaymentRequired: true, telemetry, targetService: "ai-usage-server" }),
     buildDeployJson: createJsonClient(buildDeployBaseUrl, "Build & Deploy request failed.", { telemetry, targetService: "build-deploy-server" }),
+    communityJson: createJsonClient(communityPlatformBaseUrl || "http://127.0.0.1:5200", "Community request failed.", { telemetry, targetService: "community-platform", headers: communityInternalToken ? { "X-GerNetiX-Community-Token": communityInternalToken } : {} }),
     deviceManagementJson: createJsonClient(deviceManagementBaseUrl, "Device Management request failed.", { telemetry, targetService: "device-management-server" }),
     hardwareCatalogJson: createJsonClient(hardwareCatalogBaseUrl, "Hardware Catalog request failed.", { telemetry, targetService: "hardware-catalog" }),
     hardwareShopJson: createJsonClient(hardwareShopBaseUrl, "Hardware Shop request failed.", { telemetry, targetService: "hardware-shop" }),
