@@ -4,7 +4,7 @@ const { sendJson } = require("./http-app");
 
 const config = createConfig();
 const service = createDefaultBuildDeployService(config);
-const app = createHttpApp({ service, artifactDir: config.artifactDir });
+const app = createHttpApp({ service, artifactStore: service.artifactStore });
 
 const server = http.createServer((req, res) => {
   app(req, res).catch((error) => {

@@ -40,6 +40,7 @@ function createDefaultBuildDeployService(config = createConfig()) {
     }),
     artifactStore: new ArtifactStore({
       artifactDir: config.artifactDir,
+      sqlitePath: config.artifactSqlitePath,
       publicBaseUrl: config.publicBaseUrl,
     }),
     deployOrchestrator: new DeployJobOrchestrator({

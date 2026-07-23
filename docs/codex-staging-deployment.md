@@ -38,7 +38,17 @@ Copy-Item .env.staging.example .env.staging.local
 `.env.staging.local` ist absichtlich nicht versioniert. Dort werden SSH-Ziel und VPS-Verzeichnis je Rechner konfiguriert.
 Das SSH-Ziel muss auf die private WireGuard-Adresse oder einen entsprechenden lokalen SSH-Alias zeigen. Oeffentliche SSH-Ziele sind fuer Staging-Administration nicht zulaessig.
 
-## Mit dem internen Staging-Admin verbinden
+## Private Plattform und internen Staging-Admin verwenden
+
+Die normale Nutzung erfolgt nach aktiviertem WireGuard direkt ueber:
+
+```text
+https://pwa.gernetix.com/app/dashboard/
+```
+
+Damit bleiben Origin, Secure Cookie und Passkey-Bindung auf allen Rechnern und
+dem iPad identisch. Der folgende SSH-Tunnel ist ein Diagnose- und
+Administrationsweg; er ist nicht die kanonische App-Adresse:
 
 Auf macOS, Windows und Linux identisch:
 
@@ -46,16 +56,32 @@ Auf macOS, Windows und Linux identisch:
 node tools/connect-staging.js
 ```
 
-Danach im lokalen Browser oeffnen:
+Danach sind lokal zusaetzlich erreichbar:
 
 ```text
-Plattform: http://127.0.0.1:14300/app/dashboard/
-Admin:     http://127.0.0.1:14600/admin/
-Hardware:  http://10.77.0.1:4910/api/hardware-catalog/
+Plattform-Diagnose: http://127.0.0.1:14300/app/dashboard/
+Admin-Diagnose:     http://127.0.0.1:14600/admin/
+Hardware Catalog:   http://10.77.0.1:4910/api/hardware-catalog/
 ```
 
 Das Terminal bleibt fuer die Dauer des SSH-Tunnels geoeffnet. `Strg+C` beendet die Verbindung. Der SSH-Tunnel laeuft innerhalb des WireGuard-VPN; der VPS benoetigt keinen Browser, und weder SSH noch der Admin-Port werden oeffentlich freigegeben.
 Der Hardware Catalog bleibt ebenfalls privat: Identity auf dem Entwicklungsrechner nutzt ihn direkt ueber die feste WireGuard-Adresse `10.77.0.1:4910`; ein lokaler Hardware-Catalog-Prozess und ein SSH-Tunnel dafuer sind nicht erforderlich.
+
+## Remote-first statt geteilter SQLite-Datei
+
+Der VPS ist der einzige Schreiber fuer seine Identity-, Projekt-, Community-,
+Telemetry- und weiteren SQL-Speicher. Lokale Rechner oeffnen diese Dateien nie
+direkt und mounten die Docker-Volumes nicht ueber SMB, NFS oder SSHFS.
+
+- Fuer Arbeit mit dem gemeinsamen Datenstand wird die private PWA verwendet.
+- Ein lokal gestarteter kompletter Service-Stack ist eine isolierte
+  Testumgebung mit eigener SQLite-Persistenz.
+- Ein lokaler Identity Server ist keine aktive Replik und darf nicht parallel
+  auf die VPS-Identity-SQLite schreiben.
+- Aenderungen, die den gemeinsamen Identity-/Persistenzstand benoetigen, werden
+  nach lokalen Contract-Tests als gepushter Commit auf Staging getestet.
+- Der Diagnose-Tunnel transportiert HTTP-Anfragen; er gibt keine SQLite-Datei
+  frei.
 
 Nur die Konfiguration pruefen, ohne eine Verbindung aufzubauen:
 

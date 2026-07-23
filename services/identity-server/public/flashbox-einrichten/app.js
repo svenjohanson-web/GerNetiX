@@ -5,7 +5,7 @@ const $ = (selector) => document.querySelector(selector);
 $("#autoSearchButton").addEventListener("click", () => findFlashbox(true));
 $("#manualPortButton").addEventListener("click", () => findFlashbox(false));
 $("#flashButton").addEventListener("click", flashInitialImage);
-$("#inventoryLaterButton").addEventListener("click", () => { $("#inventoryLaterStatus").textContent = "Kein Problem. Die FlashBox bleibt im Netzwerk sichtbar und kann später nach der Anmeldung zum Inventar hinzugefügt werden."; });
+$("#inventoryLaterButton").addEventListener("click", () => { $("#inventoryLaterStatus").textContent = "Kein Problem. Du kannst die FlashBox später unter Geräte → Inventar mit deinem Account verbinden."; });
 $("#hardwareConfirmation").addEventListener("change", updateFlashButton);
 $("#hardwareCheckContinueButton").addEventListener("click", confirmHardwareCheck);
 showOnlyStage(0);
@@ -98,6 +98,7 @@ async function flashInitialImage() {
     status("#flashStatus", "ok", `FlashBox-Initialimage ${state.release.version} wurde erfolgreich geschrieben. Als N&auml;chstes kannst du die FlashBox nach der Anmeldung aktivieren.`);
     $("#inventoryNext").hidden = false;
     markDone("stepFlash");
+    markActive("stepAccount");
   } catch (error) { status("#flashStatus", "error", error.message || "USB-Flash fehlgeschlagen."); }
   finally { try { await transport?.disconnect(); } catch {} try { if (state.port?.readable || state.port?.writable) await state.port.close(); } catch {} setBusy(false); updateFlashButton(); }
 }

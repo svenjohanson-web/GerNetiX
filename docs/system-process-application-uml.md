@@ -56,6 +56,7 @@ flowchart LR
   end
 
   subgraph platformInfrastructure["Technische Infrastruktur"]
+    privateVpsEdge["Privater VPS Edge<br/>PWA, Build, MQTT-TLS<br/>nur WireGuard 10.77.0.0/24"]
     mqttBroker["MQTT Broker<br/>Mosquitto<br/>TLS :8883 / WS :9001"]
     localOllama["Lokaler Ollama LLM<br/>:11434"]
     aiContextPostgres["PostgreSQL 17 + pgvector<br/>intern :5432"]
@@ -75,8 +76,12 @@ flowchart LR
 
   subgraph storage["Persistenz / Wissensbasis"]
     identityDb[("Identity SQLite<br/>gernetix-identity.sqlite")]
+    releaseDb[("Plattform-Releases SQLite<br/>public / authenticated / entitled / internal")]
+    accountAssetDb[("Account-Assets SQLite<br/>owner_only QR, Bilder, Bildstile")]
     projectDb[("Projekt-Speicher SQLite<br/>gernetix-projects.sqlite")]
+    buildArtifactDb[("Build-Artefakte SQLite<br/>Firmware, ELF, HEX, Map, Log")]
     telemetryDb[("Telemetrie SQLite<br/>gernetix-telemetry.sqlite")]
+    communityDb[("Community SQLite<br/>public / private Autor + Operator")]
     publicDemoDb[("Öffentliche Demo SQLite<br/>gernetix-public-demos.sqlite")]
     runtimeDb[("Gemeinsamer Runtime-State<br/>gernetix-services.sqlite")]
     aiContextDb[("AI Context PostgreSQL + pgvector<br/>produktive Wissens- und Vektordaten")]
@@ -84,16 +89,20 @@ flowchart LR
     repoFiles[("Projektdateien<br/>README, data, services, tools, git<br/>keine Runtime-Persistenz")]
   end
 
-  user --> platformUi
+  user -->|"WireGuard + HTTPS"| privateVpsEdge
+  privateVpsEdge --> platformUi
   user --> recoveryHmi
   admin --> provisioningHmi
   admin -->|"WireGuard VPN + Admin-Login"| adminAccess
   codex --> contextHmi
   codex --> sqliteExplorer
   admin --> processMonitor
+  processMonitor -. "WireGuard + SSH-Diagnosetunnel,<br/>keine SQLite-Freigabe" .-> privateVpsEdge
   user --> architectureDocs
 
   platformUi --> identity
+  privateVpsEdge --> buildDeploy
+  privateVpsEdge --> mqttBroker
   recoveryHmi --> recovery
   provisioningHmi --> provisioning
   contextHmi --> contextManager
@@ -145,16 +154,18 @@ flowchart LR
   persistence --> runtimeDb
 
   identity -. "Accounts, Sessions und Push-Subscriptions" .-> identityDb
+  identity -. "immutable Releases nach Sichtbarkeitsklasse" .-> releaseDb
+  identity -. "owner_only Account-Assets" .-> accountAssetDb
   projectServer -. "Projekte, Quellen und Build-Metadaten" .-> projectDb
   publicDemo -. "veröffentlichte Metadaten + immutable firmware.bin" .-> publicDemoDb
-  buildDeploy -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  buildDeploy -. "Firmware-, ELF-, HEX-, Map- und Log-BLOBs" .-> buildArtifactDb
   deviceManagement -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   telemetryServer -. "TelemetryMeasurement, TelemetryEvent,<br/>Retention in SQLite" .-> telemetryDb
   provisioning -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   recovery -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   hardwareShop -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   aiUsage -. "direkte SQLite-State-Persistenz" .-> runtimeDb
-  communityPlatform -. "direkte SQLite-State-Persistenz" .-> runtimeDb
+  communityPlatform -. "öffentliche und private Community-Inhalte" .-> communityDb
   communityAi -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   adminTool -. "direkte SQLite-State-Persistenz" .-> runtimeDb
 
@@ -196,7 +207,7 @@ flowchart LR
 | Community AI Assistant | 5300 | `http://127.0.0.1:5300/` | KI-gestuetzte Community-Antworten |
 | Persistence Server | 5400 | `http://127.0.0.1:5400/` | HTTP-Zugriff auf generische SQLite-State-Dokumente |
 | AI Context Server | 5500 | `http://127.0.0.1:5500/` | Kontext-Grants, Prompt-Grundlagen, Architektur-, Intent- und lokales Help-Wissen, Access Policy, Preflight und Audit fuer KI-Datenzugriff |
-| MQTT Broker | 1883 / 8883 / 9001 | intern `mqtt://mqtt-broker:1883`, Device-Zugriff `mqtts://<broker>:8883` | Interne anonyme Listener bleiben im privaten Docker-Netz; externe ESP32-Devices nutzen mTLS, Zertifikats-CN, QoS 1 und geraetespezifische ACLs |
+| MQTT Broker | 1883 / 8883 / 9001 | intern `mqtt://mqtt-broker:1883`, privater Device-Zugriff `mqtts://10.77.0.1:8883` ueber WireGuard | Interne anonyme Listener bleiben im privaten Docker-Netz; entfernte Devices benoetigen einen WireGuard-faehigen Gateway-Pfad und verwenden danach zusaetzlich mTLS, Zertifikats-CN, QoS 1 und geraetespezifische ACLs |
 | Lokaler Ollama LLM | 11434 | `http://127.0.0.1:11434/` | lokaler LLM-Provider fuer Routen, die auf Ollama zeigen |
 
 ## Lokale Anwendungen ohne Serverprozess
@@ -251,7 +262,15 @@ flowchart LR
 
 ## Hinweise
 
-- Identity, Project Server und Telemetry Server besitzen getrennte SQLite-Dateien beziehungsweise Docker-Volumes. Die Zuordnung in Projekt- und Telemetriespeicher verwendet ausschliesslich technische `account_id`-/`user_id`- und `project_id`-Werte; Klaridentitaeten bleiben in der Identity-SQLite. Weitere technische Dienste nutzen weiterhin den gemeinsamen Runtime-State, bis sie fachlich separat ausgegliedert werden.
+- Die persoenliche VPS-Instanz ist remote-first: HTTPS, PWA, Build-Auslieferung
+  und MQTT-TLS binden an `10.77.0.1`; die Host-Firewall akzeptiert diese Ports
+  nur ueber `wg0`. Der oeffentliche HTTP-Listener dient ausschliesslich der
+  ACME-Challenge und liefert fuer alle anderen Pfade 404.
+- VPS-SQLite-Dateien werden nie als Netzlaufwerk fuer lokale Prozesse
+  freigegeben. Der jeweilige VPS-Service bleibt alleiniger Schreiber. Lokale
+  Komplettstarts sind isolierte Testinstanzen; der SSH-Tunnel transportiert nur
+  HTTP-Zugriffe auf die kanonische VPS-Plattform.
+- Identity, Plattform-Releases, Account-Assets, Project Server, Build-Artefakte, Telemetry Server, Community und oeffentliche Demos besitzen getrennte SQLite-Dateien. Die Zuordnung verwendet ausschliesslich technische `account_id`-/`user_id`- und `project_id`-Werte; Klaridentitaeten bleiben in der Identity-SQLite. Weitere technische Dienste nutzen weiterhin den gemeinsamen Runtime-State, bis sie fachlich separat ausgegliedert werden. Pfade, Schutzklassen und bekannte Abweichungen stehen im [Persistenz- und Asset-Speicherkonzept](persistence-and-asset-storage.md).
 - Der AI Context Server nutzt auf dem VPS eine eigene PostgreSQL-17-Datenbank mit pgvector. Kontext-Grants, Prompt-Grundlagen, Architektur-Bausteine samt Embeddings, globale Kontext-Policy und Audit-Events bleiben getrennt vom allgemeinen Runtime-State. Eine vorhandene AI-Context-SQLite wird einmalig automatisch importiert; lokal bleibt SQLite als Fallback moeglich.
 - GerNetiX Help sucht vor jedem Modellaufruf ausschliesslich kuratiertes Help-Wissen im AI Context Server. Nur die passenden Artikel werden dem lokalen Ollama-Modell als Kontext gegeben; ohne Treffer antwortet Help ohne Modellaufruf. Das Admin Tool pflegt diese Agenten-Wissenseintraege getrennt von den sichtbaren Hilfeartikeln.
 - Unsichere Architektur-Erweiterungen werden im AI Context Server zu deduplizierten, priorisierten Klaerfaellen zusammengefuehrt. Das Admin Tool kann sie bestaetigen, korrigieren, priorisieren, zurueckstellen oder ignorieren. Nur bestaetigte oder korrigierte Bedeutungen werden als globale oder accountisolierte Intent-Beispiele eingebettet und bei spaeteren Interpretationen gesucht; ein separates Ticketsystem ist dafuer nicht erforderlich.
@@ -287,13 +306,18 @@ flowchart LR
 - Das eigenstaendige Provisioning Tool am Port 4500 bleibt die Factory-/Support-HMI. Der Nutzerbereich `Provisioning` im Plattform-Frontend bettet diese HMI nicht ein, sondern orchestriert den kundenbezogenen Ablauf Erkennen, Flashen, Registrieren und Pairen ueber die freigegebenen APIs und Browserfaehigkeiten.
 - Das Provisioning Tool darf im Serverbetrieb nicht auf die Projektumgebung zugreifen. Die Basissoftware fuer Factory-Flash muss als versioniertes Firmware-Artefakt in SQLite/Artifact Store vorliegen; lokale Quellen sind nur ein expliziter Entwicklungs-Fallback.
 - Die Provisioning-HMI darf keine Firmware-Dateien vom Bedienrechner hochladen. Firmware-Artefakte werden serverseitig aus SQLite/Artifact Store oder einem konfigurierten Server-Firmwarepfad bereitgestellt.
-- Die lokale Dev-Infrastruktur fuer den MQTT Broker liegt unter `infra/dev/docker-compose.yml` und bleibt auf Loopback ohne TLS. Der VPS-Broker behaelt `1883` und `9001` ausschliesslich im internen Docker-Netz und veroeffentlicht fuer Devices `8883`: Server-TLS, verpflichtendes Device-Client-Zertifikat, Device-CA und `%u`-basierte ACL begrenzen jedes Device auf sein eigenes OTA-/Status-Topic.
+- Die lokale Dev-Infrastruktur fuer den MQTT Broker liegt unter `infra/dev/docker-compose.yml` und bleibt auf Loopback ohne TLS. Der VPS-Broker behaelt `1883` und `9001` ausschliesslich im internen Docker-Netz und bindet den Device-Port `8883` nur an die WireGuard-Adresse. Server-TLS, verpflichtendes Device-Client-Zertifikat, Device-CA und `%u`-basierte ACL begrenzen jedes Device auf sein eigenes OTA-/Status-Topic. Ein ESP32 ohne eigenen WireGuard-Client erreicht die private Instanz nur ueber einen kontrollierten WireGuard-faehigen Gateway oder eine spaeter getrennt entworfene Device-Edge.
 - Der Context Manager ist kein Ersatz fuer die Graph-Dokumentation. Er liest Projektwissen, erstellt Vorschlaege und erzeugt bestaetigte Context Packs fuer Codex-Workflows.
 - Community und Projektbegleitung laufen ausschliesslich über die angemeldete Plattform. Der Nutzer wählt beim Erstellen zwischen `public` (für weitere angemeldete Mitglieder sichtbar) und `private` (nur anfragendes Konto plus konfigurierte GerNetiX-Operatoren). Der Community-Service ist nicht am Edge veröffentlicht, akzeptiert nur den token-geschützten Identity-Proxy und persistiert seine Inhalte getrennt in SQLite. Private Threads werden weder in öffentlichen Listen noch in der Wissensbasis oder KI-Suche verwendet.
 - Nach erfolgreicher Speicherung einer privaten Anfrage meldet Identity dem Betreiber den Eingang über eine konfigurierte E-Mail-Adresse, Web-Push an die konfigurierten Operator-Konten und ein persistentes Systemereignis im Admin Tool. Jede dieser Benachrichtigungen ist absichtlich generisch und enthält weder Anfrage-, Account- noch Projektinhalt; die Details bleiben ausschliesslich in der autorisierten Community-Ansicht.
+- Das Web-Admin-Tool prüft die Community Platform über Healthcheck und einen internen token-geschützten Betriebsendpunkt. Die Desktop-App ergänzt lokal den read-only SQLite-Dateistatus. Beide Operator-Sichten zeigen nur aggregierte Zähler und Speichertechnik, niemals Titel, Texte, Account- oder Projektkennungen.
 - **Regel: Öffentliche Community und persönliche Begleitung bleiben getrennt.** Öffentlich freigegebene Community-Fragen dürfen als lesbare, sprechende Seiten ohne Anmeldung am Edge bereitgestellt und für Suchmaschinen indexiert werden. Private Anfragen, Antworten, Account-, Projekt- und Metadaten erhalten nie eine öffentliche URL, sind stets `noindex` und dürfen weder in Sitemaps, Suchergebnissen, Vorschauen, Wissensbasis noch KI-Kontext übernommen werden. Die Veröffentlichung erfolgt nur durch eine explizite öffentliche Sichtbarkeitsentscheidung; ein späterer Wechsel nach privat entfernt die öffentliche Seite und ihre Indexierungsfreigabe.
 - Das Hauptdiagramm bildet den aktuellen lokalen MVP-Zuschnitt ab. Der separate VPS-Bootstrap ergaenzt einen Reverse Proxy und Container-Netze; weitergehende produktive Infrastruktur wie Auth Gateway, Deployment-Orchestrierung oder externe LLM-/Payment-Provider ist noch nicht modelliert.
-- Der VPS-Edge stellt die statischen Startseiten sprachspezifisch unter `.nl`, `.de` und `.com` bereit. HTTP dient der ACME-Validierung und leitet danach auf HTTPS um; Certbot verwaltet ein gemeinsames SAN-Zertifikat, dessen Erneuerungen der TLS-Nginx ohne Austausch persistenter Anwendungsdaten uebernimmt.
-- Fuer den VPS-Bootstrap kapselt `compose.vps.yaml` die vorhandenen Node-Services, Mosquitto und Nginx in einem Compose-Projekt. Nginx bedient den HTTP-/Web-Edge; Mosquitto besitzt zusaetzlich den abgesicherten Device-Port `8883`. Identity und Domaenenservices bleiben im internen Docker-Netz. Das Admin Tool bindet ausschliesslich an den VPS-Loopback. Die konkrete Deployment-Sicht ist in [vps-docker-topology.svg](vps-docker-topology.svg) dokumentiert.
-- Der HTTP-VPS-Bootstrap bleibt standardmaessig an `127.0.0.1:8080` gebunden. Mosquitto stellt `8883` nur mit mTLS und Topic-ACLs fuer zertifizierte ESP32-Devices bereit.
+- Der private VPS-Edge stellt die statischen Startseiten sprachspezifisch unter
+  `.nl`, `.de` und `.com` nur im WireGuard-Netz bereit. Oeffentliches HTTP dient
+  ausschliesslich der ACME-Validierung und gibt sonst 404 zurueck; Certbot
+  verwaltet die SAN-Zertifikate, deren Erneuerungen der TLS-Nginx ohne
+  Austausch persistenter Anwendungsdaten uebernimmt.
+- Fuer den VPS-Bootstrap kapselt `compose.vps.yaml` die vorhandenen Node-Services, Mosquitto und Nginx in einem Compose-Projekt. Nginx trennt den oeffentlichen ACME-HTTP-Listener vom privaten WireGuard-Web-Edge; Mosquitto besitzt zusaetzlich den an WireGuard gebundenen Device-Port `8883`. Identity und Domaenenservices bleiben im internen Docker-Netz. Das Admin Tool bindet ausschliesslich an den VPS-Loopback. Die konkrete Deployment-Sicht ist in [vps-docker-topology.svg](vps-docker-topology.svg) dokumentiert.
+- Der diagnostische Plattform-Proxy bindet standardmaessig an `127.0.0.1:8080`, der oeffentliche Port `80` beantwortet nur ACME-Challenges und der private HTTPS-Edge bindet an `10.77.0.1:443`. Mosquitto stellt `10.77.0.1:8883` nur ueber WireGuard und zusaetzlich mit mTLS sowie Topic-ACLs bereit.
 - Der VPS-Edge begrenzt Web-, Login- und Build-Anfragen in Nginx pro Quell-IP. Mosquitto begrenzt Verbindungen und Nachrichtenressourcen; eine versionierte nftables-Regel im Docker-Forward-Pfad verwirft uebermaessige neue MQTT-TLS-Verbindungsbursts pro IPv4-/IPv6-Quelle, ohne interne Broker-Healthchecks zu betreffen.

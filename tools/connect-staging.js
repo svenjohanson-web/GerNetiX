@@ -61,9 +61,11 @@ function main() {
   const sshArgs = sshTunnelArgs({ host, localPort, remotePort, platformPort, remotePlatformPort });
   const adminUrl = `http://127.0.0.1:${localPort}/admin/`;
   const platformUrl = `http://127.0.0.1:${platformPort}/app/dashboard/`;
+  const privatePwaUrl = config.GERNETIX_PRIVATE_PWA_URL || "https://pwa.gernetix.com/app/dashboard/";
 
-  process.stdout.write(`Staging-Plattform: ${platformUrl}\n`);
-  process.stdout.write(`Staging-Admin: ${adminUrl}\n`);
+  process.stdout.write(`Private PWA ueber WireGuard: ${privatePwaUrl}\n`);
+  process.stdout.write(`Lokaler Plattform-Diagnosetunnel: ${platformUrl}\n`);
+  process.stdout.write(`Lokaler Admin-Diagnosetunnel: ${adminUrl}\n`);
   process.stdout.write("Dieses Terminal offen lassen. Verbindung mit Strg+C beenden.\n");
   if (args.dryRun) {
     process.stdout.write(`[dry-run] ssh ${sshArgs.join(" ")}\n`);

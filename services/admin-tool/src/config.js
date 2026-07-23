@@ -23,6 +23,7 @@ function createConfig(env = process.env) {
     provisioningBaseUrl: env.PROVISIONING_BASE_URL || "http://127.0.0.1:4500",
     recoveryBaseUrl: env.RECOVERY_BASE_URL || "http://127.0.0.1:5100",
     communityPlatformBaseUrl: env.COMMUNITY_PLATFORM_BASE_URL || "http://127.0.0.1:5200",
+    communityInternalToken: env.COMMUNITY_INTERNAL_TOKEN || "",
     communityAiBaseUrl: env.COMMUNITY_AI_BASE_URL || "http://127.0.0.1:5300",
     defaultOllamaBaseUrl: env.OLLAMA_BASE_URL || "http://127.0.0.1:11434",
     defaultOllamaModel: env.OLLAMA_MODEL || "llama3.2:3b",

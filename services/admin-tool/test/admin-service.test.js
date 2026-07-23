@@ -540,6 +540,45 @@ test("security events are mailed once and then suppressed during cooldown", asyn
   assert.equal(calls, 1);
 });
 
+test("monitoring reads Community operational counts without exposing the internal token", async () => {
+  const repository = new InMemoryAdminRepository();
+  const service = new AdminService({
+    repository,
+    accessPolicy: new AdminAccessPolicy({ repository }),
+    serviceClients: {
+      communityPlatformBaseUrl: "http://community.test",
+      communityInternalToken: "community-secret",
+    },
+  });
+  const previousFetch = global.fetch;
+  const requests = [];
+  global.fetch = async (url, options = {}) => {
+    requests.push({ url, headers: options.headers || {} });
+    if (url.endsWith("/health")) {
+      return { ok: true, status: 200, json: async () => ({ status: "ok" }) };
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        persistence_backend: "sqlite",
+        questions: { total: 3, public: 2, private: 1, open: 2 },
+        answers: { total: 1, verified: 1 },
+        knowledge_documents: { total: 1 },
+      }),
+    };
+  };
+  try {
+    const result = await service.monitoring();
+    const community = result.services.find((item) => item.service_id === "community_platform");
+    assert.equal(community.operations.questions.private, 1);
+    assert.equal(requests.find((item) => item.url.endsWith("/operations-summary")).headers["X-GerNetiX-Community-Token"], "community-secret");
+    assert.doesNotMatch(JSON.stringify(community), /community-secret/);
+  } finally {
+    global.fetch = previousFetch;
+  }
+});
+
 function createAdminServiceWithHttpJson(routes, error = null) {
   const repository = new InMemoryAdminRepository();
   const service = new AdminService({

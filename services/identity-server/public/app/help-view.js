@@ -59,14 +59,14 @@ const HelpView = (() => {
       <nav class="panel knowledge-book-navigation" aria-label="Kapitelübersicht">
         <details class="knowledge-book-toc" open>
           <summary><span>Inhalt</span><small>Kapitelübersicht öffnen oder schließen</small></summary>
-          <div class="knowledge-book-toc-content">${topics.map((topic, topicIndex) => `<details class="knowledge-part-toc" open><summary>${escapeHtml(topic.title)}</summary><div>${(topic.children || []).map((child, childIndex) => renderKnowledgeChapterToc(child, topicIndex, childIndex)).join("")}</div></details>`).join("")}</div>
+          <div class="knowledge-book-toc-content">${topics.map((topic, topicIndex) => `<details class="knowledge-part-toc" open><summary><a class="knowledge-part-link" href="#knowledge-part-${escapeHtml(topic.id)}" data-knowledge-part="${escapeHtml(topic.id)}"><span>${topicIndex + 1}</span><strong>${escapeHtml(topic.title)}</strong></a></summary><div>${(topic.children || []).map((child, childIndex) => renderKnowledgeChapterToc(child, topicIndex, childIndex)).join("")}</div></details>`).join("")}</div>
         </details>
       </nav>
       <main class="knowledge-book-content" aria-label="Wissensportal-Lektüre">
         ${topics.map((topic, index) => `<section id="knowledge-part-${escapeHtml(topic.id)}" class="knowledge-book-part" data-knowledge-part="${escapeHtml(topic.id)}"><header><p class="eyebrow">Hauptkapitel ${index + 1}</p><h2>${index + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}${topic.serverLandscape ? renderServerTypesVisual() : ""}</header>${(topic.children || []).map((child, childIndex) => {
           const chapter = HelpContent.articles[child.articleId];
           const chapterNumber = `${index + 1}.${childIndex + 1}`;
-          return `<article id="${escapeHtml(child.id)}" class="panel help-article knowledge-book-chapter" data-knowledge-chapter="${escapeHtml(child.id)}"><div class="knowledge-chapter-meta"><p class="knowledge-chapter-number">${chapterNumber}</p>${accessBadge(chapter.access)}</div>${renderArticle(chapter, child, { showRelated: false, chapterNumber })}</article>`;
+          return `<article id="${escapeHtml(child.id)}" class="panel help-article knowledge-book-chapter" data-knowledge-chapter="${escapeHtml(child.id)}"><div class="knowledge-chapter-meta"><p class="knowledge-chapter-number">${chapterNumber}</p></div>${renderArticle(chapter, child, { showRelated: false, chapterNumber })}</article>`;
         }).join("")}</section>`).join("")}
       </main>
     </div>`;
@@ -80,12 +80,11 @@ const HelpView = (() => {
       if (!previewOnly || subchapterIndex === 0) {
         return `<a class="knowledge-subchapter-link" href="#${escapeHtml(subchapter.id)}" data-knowledge-subchapter="${escapeHtml(subchapter.id)}">${escapeHtml(subchapter.title)}</a>`;
       }
-      return `<span class="knowledge-subchapter-link is-locked" aria-label="${escapeHtml(`${subchapter.title} – Premium`)}">${escapeHtml(subchapter.title)}<small>Premium</small></span>`;
+      return `<span class="knowledge-subchapter-link is-locked">${escapeHtml(subchapter.title)}</span>`;
     }).join("");
     return `<details class="knowledge-chapter-toc" open>
-      <summary><span>${escapeHtml(chapter.title)}</span>${accessBadge(level)}</summary>
+      <summary><a class="knowledge-chapter-title-link" href="#${escapeHtml(chapter.id)}" data-knowledge-topic="${escapeHtml(chapter.id)}"><span>${chapterNumber}</span><strong>${escapeHtml(chapter.title)}</strong></a></summary>
       <div>
-        <a class="knowledge-chapter-link" href="#${escapeHtml(chapter.id)}" data-knowledge-topic="${escapeHtml(chapter.id)}"><span>${chapterNumber}</span><strong>${previewOnly ? "Leseprobe öffnen" : "Kapitel öffnen"}</strong><b aria-hidden="true">→</b></a>
         ${subchapters}
       </div>
     </details>`;
@@ -163,6 +162,7 @@ const HelpView = (() => {
         ${section.engineeringModels && section.vModelAfterFollowUp === undefined ? renderEngineeringModels(section.waterfallModelAfterFollowUp !== undefined, section.agileModelAfterFollowUp !== undefined) : ""}
         ${section.umlStateChart ? renderTamagotchiUmlStateChart() : ""}
         ${section.table ? `<div class="help-article-table-wrap"><table class="help-article-table"><thead><tr>${section.table.headers.map((header) => `<th>${escapeHtml(header)}</th>`).join("")}</tr></thead><tbody>${section.table.rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join("")}</tr>`).join("")}</tbody></table></div>` : ""}
+        ${section.quizzes ? renderKnowledgeQuizzes(section.quizzes) : ""}
         ${section.code ? `<pre><code>${escapeHtml(section.code)}</code></pre>` : ""}
         ${section.links ? `<p class="help-inline-links">${section.links.map((link) => `<button type="button" data-help-topic="${escapeHtml(link.topicId)}">${escapeHtml(link.label)}</button>`).join("")}</p>` : ""}
         ${section.learningProjects ? `<div class="engineering-project-links">${section.learningProjects.map((project) => `<a href="${escapeHtml(project.href)}"><span>${escapeHtml(project.model)}</span><strong>${escapeHtml(project.title)}</strong><small>${escapeHtml(project.description)}</small><b>Lernprojekt ansehen <em>→</em></b></a>`).join("")}</div>` : ""}
@@ -180,6 +180,18 @@ const HelpView = (() => {
     const className = `help-practice-lesson ${kind === "chapter" ? "chapter" : ""}`;
     if (!access.hasAccount) return `<div class="${className} is-disabled" aria-disabled="true"><span>${label}</span><small>Anmeldung erforderlich · Demo-Link</small><b aria-hidden="true">→</b></div>`;
     return `<a class="${className}" href="${route}" data-practice-lesson="${escapeHtml(knowledgeTopicId)}" aria-label="${escapeHtml(`${label}: ${title}`)}"><span>${label}</span><small>Demo-Link · Zuordnung zu einer Lesson folgt</small><b aria-hidden="true">→</b></a>`;
+  }
+
+  function renderKnowledgeQuizzes(quizzes) {
+    return `<div class="knowledge-quiz-list">${quizzes.map((quiz) => `<form class="knowledge-quiz" data-knowledge-quiz data-answer="${escapeHtml(quiz.answer)}">
+      <header><p class="eyebrow">Entscheidungssituation</p><h4>${escapeHtml(quiz.title)}</h4><p>${escapeHtml(quiz.situation)}</p></header>
+      <fieldset><legend>${escapeHtml(quiz.question)}</legend>${quiz.options.map((option) => `<label><input type="radio" name="quiz-${escapeHtml(quiz.id)}" value="${escapeHtml(option.id)}" /> <span>${escapeHtml(option.label)}</span></label>`).join("")}</fieldset>
+      <button type="button" data-knowledge-quiz-check>Antwort prüfen</button>
+      <p class="knowledge-quiz-feedback" data-quiz-feedback aria-live="polite" hidden></p>
+      <p data-quiz-correct hidden>${escapeHtml(quiz.correctText)}</p>
+      <p data-quiz-wrong hidden>${escapeHtml(quiz.wrongText)}</p>
+      <details class="knowledge-quiz-explanation" hidden><summary>Technische Begründung</summary><p>${escapeHtml(quiz.explanation)}</p></details>
+    </form>`).join("")}</div>`;
   }
 
   function renderStateChart(chart) {
@@ -349,8 +361,33 @@ const HelpView = (() => {
   function bind(mount) {
     bound = true;
     mount.addEventListener("click", (event) => {
+      const quizCheck = event.target.closest("[data-knowledge-quiz-check]");
+      if (quizCheck) {
+        const quiz = quizCheck.closest("[data-knowledge-quiz]");
+        const selected = quiz?.querySelector("input[type=radio]:checked");
+        const feedback = quiz?.querySelector("[data-quiz-feedback]");
+        const explanation = quiz?.querySelector(".knowledge-quiz-explanation");
+        if (!feedback) return;
+        feedback.hidden = false;
+        if (!selected) {
+          feedback.className = "knowledge-quiz-feedback";
+          feedback.textContent = "Wähle zuerst eine Antwort aus.";
+          if (explanation) explanation.hidden = true;
+          return;
+        }
+        const correct = selected.value === quiz.dataset.answer;
+        feedback.className = `knowledge-quiz-feedback ${correct ? "correct" : "wrong"}`;
+        feedback.textContent = quiz.querySelector(correct ? "[data-quiz-correct]" : "[data-quiz-wrong]")?.textContent || "";
+        if (explanation) {
+          explanation.hidden = false;
+          explanation.open = true;
+        }
+        return;
+      }
       const knowledgePart = event.target.closest(".knowledge-part-link[data-knowledge-part]");
       if (knowledgePart) {
+        event.preventDefault();
+        event.stopPropagation();
         const part = mount.querySelector(`#knowledge-part-${knowledgePart.dataset.knowledgePart}`);
         part?.scrollIntoView({ behavior: "smooth", block: "start" });
         return;
@@ -358,6 +395,7 @@ const HelpView = (() => {
       const knowledgeTopic = event.target.closest("[data-knowledge-topic]");
       if (knowledgeTopic) {
         event.preventDefault();
+        event.stopPropagation();
         const chapter = mount.querySelector(`[data-knowledge-chapter="${knowledgeTopic.dataset.knowledgeTopic}"]`);
         chapter?.scrollIntoView({ behavior: "smooth", block: "start" });
         return;

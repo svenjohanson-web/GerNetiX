@@ -98,16 +98,26 @@ function authRoute(next = "/app/dashboard/") {
   return `/app/auth/?next=${encodeURIComponent(next)}`;
 }
 
-function readJsonBody(req) {
+function readJsonBody(req, maxBytes = 64 * 1024) {
   return new Promise((resolve, reject) => {
     let body = "";
+    let sizeBytes = 0;
+    let rejected = false;
     req.on("data", (chunk) => {
-      body += chunk;
-      if (body.length > 64 * 1024) {
-        req.destroy();
+      if (rejected) return;
+      sizeBytes += Buffer.isBuffer(chunk) ? chunk.length : Buffer.byteLength(chunk, "utf8");
+      if (sizeBytes > maxBytes) {
+        rejected = true;
+        const error = new Error("Request Body ist zu gross.");
+        error.code = "request_too_large";
+        error.status = 413;
+        reject(error);
+        return;
       }
+      body += chunk;
     });
     req.on("end", () => {
+      if (rejected) return;
       try {
         resolve(body ? JSON.parse(body) : {});
       } catch (error) {

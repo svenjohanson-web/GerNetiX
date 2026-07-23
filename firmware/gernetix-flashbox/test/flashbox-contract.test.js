@@ -95,6 +95,8 @@ test("offers a BLE discovery and status service without accepting credentials ov
   assert.match(cmake, /REQUIRES bt/);
   assert.match(ble, /esp_nimble_hci_and_controller_init/);
   assert.match(ble, /nimble_port_freertos_init/);
+  assert.match(ble, /\{BLE_UUID_TYPE_128\}/);
+  assert.doesNotMatch(ble, /BLE_UUID128_INIT/);
   assert.match(ble, /BLE_GATT_CHR_F_READ/);
   assert.doesNotMatch(ble, /BLE_GATT_CHR_F_WRITE/);
   assert.match(readme, /BLE neben WLAN/);

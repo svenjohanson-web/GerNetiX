@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260723-03" />
+    <link rel="stylesheet" href="/app/app.css?v=20260723-15" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -16,6 +16,9 @@
       <header class="topbar operator-header">
         <div class="top-navigation-context">
           <div class="operator-brand">
+            <a class="public-header-brand" href="/" aria-label="GerNetiX Startseite">
+              <img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" />
+            </a>
             <div class="operator-brand-copy">
               <p class="operator-eyebrow">GerNetiX</p>
             </div>
@@ -34,6 +37,15 @@
 
       <nav id="mainMenu" class="tabs app-menu hidden" aria-label="Plattformbereiche">
         <a class="utility public-information-link" href="/">Startseite</a>
+        <a class="utility public-information-link" href="/produkte/">Produkte</a>
+        <a class="utility public-information-link" href="/entdecken/">GerNetiX entdecken</a>
+        <a class="utility public-information-link" href="/flashbox-einrichten/">USB Helper</a>
+        <a class="utility public-information-link" href="/nachbauprojekte/">Nachbauprojekte</a>
+        <a class="utility public-information-link" href="/wissen/">Wissensportal</a>
+        <a class="utility public-information-link" href="/community/">Community</a>
+        <a class="utility public-information-link" href="/hilfe/">Hilfe</a>
+        <a class="utility public-information-link" href="/support/">Support</a>
+        <a class="utility public-information-link" href="/shop/">Webshop</a>
         <a class="utility public-information-link" href="/app/auth/">Anmelden</a>
         <a href="/app/dashboard/" data-route="dashboard">Übersicht</a>
         <a href="/app/development-platform/" data-route="development-platform">Entwicklungsplattform</a>
@@ -41,10 +53,7 @@
         <a href="/app/device-management/" data-route="device-management">Geräte</a>
         <a href="/app/community/" data-route="community">Community &amp; Begleitung</a>
         <a class="utility" href="/app/downloads/" data-route="downloads">Downloads</a>
-        <a class="utility public-information-link" href="/shop/">Webshop</a>
         <a class="utility" href="/app/billing/" data-route="billing">Billing</a>
-        <a class="utility" href="/wissen/" data-route="knowledge">Wissensportal</a>
-        <a class="utility public-information-link" href="/hilfe/">Hilfe</a>
         <button id="logoutButton" class="menu-logout" type="button">Abmelden</button>
       </nav>
 
@@ -83,6 +92,16 @@
             </div>
           </div>
           <div id="dashboardSummary" class="summary-grid"></div>
+        </section>
+        <section class="panel dashboard-community" aria-labelledby="dashboardCommunityTitle">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Community &amp; Begleitung</p>
+              <h2 id="dashboardCommunityTitle">Meine Anfragen</h2>
+            </div>
+            <a href="/app/community/">Alle Anfragen öffnen →</a>
+          </div>
+          <div id="dashboardCommunitySummary" class="dashboard-community-summary"></div>
         </section>
         <section class="panel dashboard-ai">
           <div class="section-head">
@@ -436,6 +455,10 @@
             <span>Recovery</span>
             <strong>Bekannte Geräte reparieren und wiederherstellen</strong>
           </button>
+          <a class="entry-card entry-card-link" href="/flashbox-einrichten/">
+            <span>FlashBox</span>
+            <strong>FlashBox einrichten und anschließend dem Account zuordnen</strong>
+          </a>
         </section>
       </section>
 
@@ -837,17 +860,19 @@
               </div>
               <span id="inventoryDeviceCount" class="inventory-count">0 Boards</span>
             </div>
-            <form id="flashboxClaimForm" class="flashbox-claim-form" aria-label="GerNetiX Flashbox inventarisieren">
-              <div>
-                <strong>Flashbox per Kauf-Code hinzufuegen</strong>
-                <p class="helper-text">Nutze den Claim-Code aus dem Webshop-Mock oder spaeter aus deiner Bestellung. Die Flashbox wird dann diesem Account zugeordnet.</p>
-              </div>
-              <label>Claim-Code
-                <input id="flashboxClaimCode" name="claim_code" type="text" placeholder="GNX-FB-..." autocomplete="off" />
-              </label>
-              <button class="primary" type="submit">Flashbox uebernehmen</button>
-            </form>
-            <div id="flashboxClaimStatus" class="flash-status hidden" role="status" aria-live="polite"></div>
+            <section id="flashbox-account-assignment" class="flashbox-account-assignment" aria-labelledby="flashboxAccountAssignmentTitle">
+              <form id="flashboxClaimForm" class="flashbox-claim-form" aria-label="GerNetiX Flashbox inventarisieren">
+                <div>
+                  <strong id="flashboxAccountAssignmentTitle">FlashBox mit Account verbinden</strong>
+                  <p class="helper-text">Nutze den Claim-Code aus dem Webshop-Mock oder später aus deiner Bestellung. Die FlashBox wird dann diesem Account zugeordnet.</p>
+                </div>
+                <label>Claim-Code
+                  <input id="flashboxClaimCode" name="claim_code" type="text" placeholder="GNX-FB-..." autocomplete="off" />
+                </label>
+                <button class="primary" type="submit">FlashBox zuordnen</button>
+              </form>
+              <div id="flashboxClaimStatus" class="flash-status hidden" role="status" aria-live="polite"></div>
+            </section>
             <section id="deviceList" class="device-list"></section>
           </section>
         </section>
@@ -1078,9 +1103,9 @@
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
     <script src="/app/development-component-metamodel.js?v=20260716-01"></script>
     <script src="/app/development-platform.js?v=20260717-04"></script>
-    <script src="/app/help-content.js?v=20260720-07"></script>
+    <script src="/app/help-content.js?v=20260723-15"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
-    <script src="/app/help-view.js?v=20260720-04"></script>
-    <script src="/app/app.js?v=20260723-04"></script>
+    <script src="/app/help-view.js?v=20260723-12"></script>
+    <script src="/app/app.js?v=20260723-15"></script>
   </body>
 </html>

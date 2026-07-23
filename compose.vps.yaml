@@ -65,6 +65,7 @@ services:
       PERSISTENCE_BACKEND: sqlite
       PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
       BUILD_DEPLOY_RUNTIME_DIR: /var/lib/gernetix/build
+      BUILD_ARTIFACT_SQLITE_PATH: /var/lib/gernetix/build/gernetix-build-artifacts.sqlite
       BUILD_RUNNER: platformio
       PLATFORMIO_COMMAND: /opt/platformio/bin/platformio
       PUBLIC_BASE_URL: https://build.gernetix.com
@@ -237,6 +238,8 @@ services:
       HARDWARE_SHOP_BASE_URL: http://hardware-shop:4900
       AI_USAGE_BASE_URL: http://ai-usage-server:5000
       AI_CONTEXT_BASE_URL: http://ai-context-server:5500
+      COMMUNITY_PLATFORM_BASE_URL: http://community-platform:5200
+      COMMUNITY_INTERNAL_TOKEN: ${COMMUNITY_INTERNAL_TOKEN:?COMMUNITY_INTERNAL_TOKEN muss gesetzt sein}
     ports:
       - "127.0.0.1:${ADMIN_PORT:-4600}:4600"
     volumes:
@@ -247,6 +250,7 @@ services:
       device-management-server: { condition: service_healthy }
       hardware-catalog: { condition: service_healthy }
       hardware-shop: { condition: service_healthy }
+      community-platform: { condition: service_healthy }
       ai-usage-server: { condition: service_healthy }
       ai-context-server: { condition: service_healthy }
 
@@ -283,6 +287,7 @@ services:
       IDENTITY_PERSISTENCE_BACKEND: sqlite
       IDENTITY_SQLITE_PATH: /var/lib/gernetix/identity/gernetix-identity.sqlite
       PLATFORM_DOWNLOAD_SQLITE_PATH: /var/lib/gernetix/identity/gernetix-platform-downloads.sqlite
+      ACCOUNT_ASSET_SQLITE_PATH: /var/lib/gernetix/identity/gernetix-account-assets.sqlite
       IDENTITY_APP_BASE_URL: ${IDENTITY_APP_BASE_URL:-}
       IDENTITY_ADMIN_TOKEN: ${IDENTITY_ADMIN_TOKEN:-}
       EMAIL_CONFIG_ENCRYPTION_KEY: ${EMAIL_CONFIG_ENCRYPTION_KEY:-}
@@ -351,7 +356,7 @@ services:
       - edge
       - backend
     ports:
-      - "${MQTT_TLS_BIND_ADDRESS:-0.0.0.0}:${MQTT_TLS_PORT:-8883}:8883"
+      - "${PRIVATE_VPS_BIND_ADDRESS:-10.77.0.1}:${MQTT_TLS_PORT:-8883}:8883"
     expose: ["1883", "8883", "9001"]
     entrypoint: ["/mosquitto/config/docker-entrypoint.sh"]
     volumes:
@@ -376,7 +381,8 @@ services:
     security_opt:
       - no-new-privileges:true
     ports:
-      - "${HTTP_BIND_ADDRESS:-127.0.0.1}:${HTTP_PORT:-8080}:8080"
+      - "127.0.0.1:${PRIVATE_PLATFORM_TUNNEL_PORT:-8080}:8081"
+      - "${ACME_HTTP_BIND_ADDRESS:-0.0.0.0}:${ACME_HTTP_PORT:-80}:8080"
     networks:
       - edge
       - backend
@@ -404,7 +410,7 @@ services:
       - no-new-privileges:true
     entrypoint: ["/opt/gernetix/tls-entrypoint.sh"]
     ports:
-      - "${HTTPS_BIND_ADDRESS:-0.0.0.0}:${HTTPS_PORT:-443}:8443"
+      - "${PRIVATE_VPS_BIND_ADDRESS:-10.77.0.1}:${HTTPS_PORT:-443}:8443"
     networks:
       - edge
       - backend

@@ -8,8 +8,11 @@ const firewall = fs.readFileSync(path.join(__dirname, "firewall.nft"), "utf8");
 const applyScript = fs.readFileSync(path.join(__dirname, "gernetix-firewall-apply"), "utf8");
 const deploy = fs.readFileSync(path.join(repoRoot, "scripts/staging/remote-deploy.sh"), "utf8");
 
-test("public MQTT connection bursts are limited per IPv4 and IPv6 source", () => {
+test("HTTPS and MQTT are accepted only through WireGuard", () => {
+  assert.match(firewall, /iifname "wg0" tcp dport \{ 22, 443, 4910, 8883 \} accept/);
+  assert.doesNotMatch(firewall, /tcp dport \{ 80, 443, 8883 \} accept/);
   assert.match(firewall, /chain forward/);
+  assert.match(firewall, /ct status dnat tcp dport \{ 443, 8883 \} iifname != "wg0" drop/);
   assert.match(firewall, /ct status dnat tcp dport 8883 meta nfproto ipv4 meter mqtt_tls_ipv4/);
   assert.match(firewall, /ip saddr limit rate over 60\/minute burst 30 packets/);
   assert.match(firewall, /ct status dnat tcp dport 8883 meta nfproto ipv6 meter mqtt_tls_ipv6/);

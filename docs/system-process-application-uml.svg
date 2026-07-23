@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="980" viewBox="0 0 1680 980" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Aktuelle Architektur mit UI-losem GerNetiX Serial Service als lokalem Hintergrunddienst für durchgängigen USB-Zugriff aus der Plattform.</desc>
+  <desc id="desc">Remote-first Architektur: Die kanonischen GerNetiX-Services und SQL-Speicher laufen auf dem privaten VPS; PWA, Build und MQTT-TLS sind ausschließlich über WireGuard erreichbar. Lokale Prozesse teilen keine VPS-SQLite-Dateien.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -26,7 +26,7 @@
 
   <rect class="bg" width="1680" height="980"/>
   <text x="40" y="42" class="titleText" style="font-size:24px">GerNetiX Serverprozesse und Applikationen</text>
-  <text x="40" y="67" class="smallText">Lokaler MVP-Zuschnitt: UIs, Adapter-Server, Domaenenservices, Tools und SQL-only Persistenz</text>
+  <text x="40" y="67" class="smallText">Privater VPS als SQL-Wahrheit · PWA/HTTPS/MQTT nur via WireGuard · lokale Komplettstarts bleiben isoliert</text>
 
   <g id="actors">
     <rect class="node actor" x="40" y="110" width="150" height="62" rx="10"/>
@@ -177,7 +177,7 @@
     <text class="clusterTitle" x="1440" y="764">Infrastruktur</text>
     <rect class="node tool" x="1445" y="790" width="170" height="48" rx="10"/>
     <text class="titleText" x="1530" y="812" text-anchor="middle">MQTT Broker</text>
-    <text class="smallText" x="1530" y="830" text-anchor="middle">TLS :8883 / WS :9001</text>
+    <text class="smallText" x="1530" y="830" text-anchor="middle">WireGuard + mTLS :8883</text>
     <rect class="node tool" x="1445" y="852" width="170" height="34" rx="10"/>
     <text class="titleText" x="1530" y="875" text-anchor="middle">Ollama :11434</text>
     <rect class="node tool" x="1445" y="900" width="170" height="28" rx="10"/>
@@ -188,24 +188,33 @@
     <rect class="cluster" x="610" y="735" width="790" height="205" rx="14"/>
     <text class="clusterTitle" x="630" y="764">SQL-Persistenz / Wissensbasis</text>
 
-    <rect class="node store" x="635" y="795" width="220" height="62" rx="10"/>
-    <text class="titleText" x="745" y="820" text-anchor="middle">Projekt-Speicher SQLite</text>
-    <text class="smallText" x="745" y="840" text-anchor="middle">gernetix-projects.sqlite</text>
+    <rect class="node store" x="625" y="785" width="235" height="58" rx="10"/>
+    <text class="titleText" x="742" y="807" text-anchor="middle">Identity / Releases / Account</text>
+    <text class="smallText" x="742" y="826" text-anchor="middle">3 SQLite · Sichtbarkeit / owner_only</text>
 
-    <rect class="node store" x="895" y="795" width="220" height="62" rx="10"/>
-    <text class="titleText" x="1005" y="820" text-anchor="middle">Telemetrie SQLite</text>
-    <text class="smallText" x="1005" y="840" text-anchor="middle">gernetix-telemetry.sqlite</text>
+    <rect class="node store" x="875" y="785" width="235" height="58" rx="10"/>
+    <text class="titleText" x="992" y="807" text-anchor="middle">Projekte / Build-Artefakte</text>
+    <text class="smallText" x="992" y="826" text-anchor="middle">2 SQLite · Besitz / Firmware-BLOBs</text>
 
-    <rect class="node store" x="1155" y="795" width="220" height="62" rx="10"/>
-    <text class="titleText" x="1265" y="820" text-anchor="middle">Gemeinsamer Runtime-State</text>
-    <text class="smallText" x="1265" y="840" text-anchor="middle">gernetix-services.sqlite</text>
+    <rect class="node store" x="1125" y="785" width="250" height="58" rx="10"/>
+    <text class="titleText" x="1250" y="807" text-anchor="middle">Telemetrie / Community</text>
+    <text class="smallText" x="1250" y="826" text-anchor="middle">2 SQLite · Partition / public-private</text>
 
-    <rect class="node store" x="895" y="870" width="220" height="46" rx="10"/>
-    <text class="titleText" x="1005" y="890" text-anchor="middle">AI Context PostgreSQL</text>
-    <text class="smallText" x="1005" y="908" text-anchor="middle">pgvector · produktive Wissensdaten</text>
+    <rect class="node store" x="625" y="858" width="235" height="52" rx="10"/>
+    <text class="titleText" x="742" y="880" text-anchor="middle">Oeffentliche Demo SQLite</text>
+    <text class="smallText" x="742" y="899" text-anchor="middle">immutable Demo-Firmware</text>
+
+    <rect class="node store" x="875" y="858" width="235" height="52" rx="10"/>
+    <text class="titleText" x="992" y="880" text-anchor="middle">Gemeinsamer Runtime-State</text>
+    <text class="smallText" x="992" y="899" text-anchor="middle">Restdomaenen · Migrationsbedarf</text>
+
+    <rect class="node store" x="1125" y="858" width="250" height="52" rx="10"/>
+    <text class="titleText" x="1250" y="880" text-anchor="middle">AI Context PostgreSQL</text>
+    <text class="smallText" x="1250" y="899" text-anchor="middle">pgvector · produktive Wissensdaten</text>
   </g>
 
   <path class="line" d="M 190 141 L 265 187"/>
+  <text class="label" x="197" y="126">WireGuard + HTTPS PWA</text>
   <path class="line" d="M 190 226 L 265 362"/>
   <path class="line" d="M 190 226 L 635 259"/>
   <text class="label" x="382" y="230">WireGuard + Admin-Login</text>
@@ -275,6 +284,7 @@
   <path class="line" d="M 525 612 L 1005 795"/>
   <path class="line dashed" d="M 525 698 L 1005 826"/>
   <path class="line dashed" d="M 525 698 L 1155 826"/>
+  <text class="label" x="585" y="752">HTTP-Diagnose via SSH-Tunnel · keine SQLite-Freigabe</text>
   <path class="line" d="M 1155 826 L 1005 826"/>
 
   <g id="legend">

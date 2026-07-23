@@ -32,7 +32,8 @@ const curatedDocuments = {
   "docs/provisioning-process-sequence-uml.md": { category: "system", status: "maintained", order: 3 },
   "docs/ota-build-flash-sequence.md": { category: "system", status: "maintained", order: 4 },
   "docs/vps-docker-deployment.md": { category: "system", status: "maintained", order: 5 },
-  "docs/generated/architecture-view.md": { category: "system", status: "generated", order: 6 },
+  "docs/persistence-and-asset-storage.md": { category: "system", status: "maintained", order: 6 },
+  "docs/generated/architecture-view.md": { category: "system", status: "generated", order: 7 },
 
   "docs/metamodel.md": { category: "model", status: "maintained", order: 1 },
   "docs/metamodel-learning-platform.md": { category: "model", status: "maintained", order: 2 },

@@ -14,7 +14,7 @@ node tools/check-and-wake-processes.js check
 node tools/check-and-wake-processes.js wake
 ```
 
-Ohne Parameter wird `wake` ausgefuehrt: Alle neun Dienste der minimalen Plattform werden geprueft und fehlende Dienste automatisch in der definierten Reihenfolge gestartet. `check` veraendert nichts. Laufende Prozesse werden weder beendet noch neu gestartet. Einzelne Dienste lassen sich gezielt auswaehlen:
+Ohne Parameter wird `wake` ausgefuehrt: Alle zehn Dienste der minimalen Plattform werden geprueft und fehlende Dienste automatisch in der definierten Reihenfolge gestartet. `check` veraendert nichts. Laufende Prozesse werden weder beendet noch neu gestartet. Einzelne Dienste lassen sich gezielt auswaehlen:
 
 ```text
 node tools/check-and-wake-processes.js wake --service=identity-server,admin-tool
@@ -26,13 +26,15 @@ Auf macOS kann alternativ `tools/GerNetiX-Check-und-Start.command` per Doppelkli
 
 ## Grafischer Prozess-Monitor
 
-Die eigenstaendige Desktop-App zeigt alle neun Plattformdienste mit Port, HTTP-Status, PID und Lebensstatus. Jeder Dienst kann einzeln gestartet oder gestoppt werden. Die Ansicht aktualisiert sich alle fuenf Sekunden und benoetigt weder Admin Tool noch Monitor-Webserver.
+Die eigenstaendige Desktop-App zeigt alle zehn Plattformdienste mit Port, HTTP-Status, PID und Lebensstatus. Jeder Dienst kann einzeln gestartet oder gestoppt werden. Die Ansicht aktualisiert sich alle fuenf Sekunden und benoetigt weder Admin Tool noch Monitor-Webserver.
 
 - macOS: `tools/process-monitor/GerNetiX-Prozess-Monitor.command`
 - Windows: `tools/process-monitor/GerNetiX-Prozess-Monitor.cmd`
 - Entwicklung: im Ordner `tools/process-monitor` mit `pnpm start`
 
 Der Desktop-Prozessmonitor besitzt neben der Prozesssicht eine persistierte `Schnittstellen-Statistik`. Der Identity Server protokolliert seine ausgehenden GerNetiX-Serviceaufrufe sowie OpenAI-/Claude-/Ollama-Aufrufe in `gernetix_external_interface_calls` innerhalb der gemeinsamen Runtime-SQLite. Der Build-&-Deploy-Server erfasst dort zusaetzlich MQTT `PUBLISH`, `SUBSCRIBE` und empfangene Nachrichten; Device-Kennungen werden im Topic vor dem Speichern durch `{device}` ersetzt. Die Ansicht aggregiert fuer die letzten 24 Stunden Aufrufe, Fehler, mittlere/maximale Dauer und den letzten Aufruf je Quelle-Ziel-Verbindung. Monitor-Healthchecks werden nicht mitgezaehlt. Das Schema ist dienstuebergreifend, sodass weitere Services dieselbe Telemetrie spaeter ebenfalls schreiben koennen.
+
+Für die Community Platform zeigt die lokale Prozesskarte zusätzlich den read-only Zustand von `.runtime/gernetix-community.sqlite`: relativer Pfad, Dateigröße sowie aggregierte Zahlen für öffentliche, private und offene Fragen, Antworten und Wissensdokumente. Inhalte und Account-/Projektkennungen werden nicht gelesen oder dargestellt. Das Web-Admin-Tool bezieht dieselben fachlichen Zähler über den internen token-geschützten Community-Betriebsendpunkt.
 - macOS-Build: `pnpm run dist:mac`
 - Windows-Build auf Windows: `pnpm run dist:win`
 
@@ -61,13 +63,34 @@ Diese Gruppe reicht fuer Login, Dashboard, Entwicklungsplattform, User IDE, Proj
 | 7 | AI Context PostgreSQL + pgvector | 5432 | Repo-Root | `docker compose -f infra/dev/docker-compose.yml up -d ai-context-postgres` |
 | 8 | AI Context Server | 5500 | `services/ai-context-server` | `$env:PORT="5500"; $env:AI_CONTEXT_PERSISTENCE_BACKEND="postgres"; npm run dev` |
 | 9 | Admin Tool API | 4600 | `services/admin-tool` | `$env:PORT="4600"; npm run dev` |
-| 10 | Identity Server / Plattform UI | 4300 | `services/identity-server` | `$env:PORT="4300"; npm run dev` |
+| 10 | Community Platform | 5200 | `services/community-platform` | `$env:PORT="5200"; $env:COMMUNITY_PERSISTENCE_BACKEND="sqlite"; npm run dev` |
+| 11 | Identity Server / Plattform UI | 4300 | `services/identity-server` | `$env:PORT="4300"; npm run dev` |
 
 Plattform-URL nach dem Start:
 
 ```text
 http://127.0.0.1:4300/app/dashboard/
 ```
+
+## Gemeinsamen privaten VPS-Datenstand verwenden
+
+Wer auf mehreren Rechnern oder dem iPad mit demselben fachlichen Datenstand
+arbeitet, startet nicht vorsorglich den kompletten lokalen Plattform-Stack.
+Nach aktiviertem WireGuard ist die kanonische Adresse:
+
+```text
+https://pwa.gernetix.com/app/dashboard/
+```
+
+Identity, Projekte, Community, Telemetrie und weitere persistente Dienste
+laufen dabei auf dem VPS. Die SQLite-Dateien bleiben ausschliesslich in ihren
+VPS-Volumes. `node tools/connect-staging.js` stellt innerhalb des VPN
+zusaetzliche lokale Diagnose-Tunnel bereit, uebertraegt aber keine Datenbank.
+
+Ein lokal gestarteter Identity Server besitzt weiterhin eine eigene lokale
+Identity-SQLite. Er ist keine redundante Instanz des VPS-Identity-Servers.
+Aktiv-aktive Schreibzugriffe mehrerer Prozesse auf dieselbe entfernte
+SQLite-Datei sind nicht zulaessig.
 
 ## Device-, OTA- und Factory-Flows
 
@@ -93,7 +116,7 @@ Diese Gruppe ist fuer Community-Fragen und KI-gestuetzte Community-Antworten rel
 
 | Reihenfolge | Prozess | Port | Ordner | Start |
 | ---: | --- | ---: | --- | --- |
-| 1 | Community Platform | 5200 | `services/community-platform` | `$env:PORT="5200"; npm run dev` |
+| 1 | Community Platform | 5200 | `services/community-platform` | `$env:PORT="5200"; $env:COMMUNITY_PERSISTENCE_BACKEND="sqlite"; npm run dev` |
 | 2 | AI Usage Server | 5000 | `services/ai-usage-server` | `$env:PORT="5000"; npm run dev` |
 | 3 | Community AI Assistant | 5300 | `services/community-ai-assistant` | `$env:PORT="5300"; npm run dev` |
 
@@ -121,6 +144,7 @@ Invoke-WebRequest http://127.0.0.1:4900/health
 Invoke-WebRequest http://127.0.0.1:5000/health
 Invoke-WebRequest http://127.0.0.1:5500/health
 Invoke-WebRequest http://127.0.0.1:4600/health
+Invoke-WebRequest http://127.0.0.1:5200/health
 ```
 
 ## Optional externe Provider

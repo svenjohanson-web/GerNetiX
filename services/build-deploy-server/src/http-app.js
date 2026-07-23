@@ -1,10 +1,8 @@
-const fs = require("node:fs");
-const path = require("node:path");
 const { BuildDeployError } = require("./errors");
 
 function createHttpApp(options) {
   const service = options.service;
-  const artifactDir = options.artifactDir;
+  const artifactStore = options.artifactStore || service.artifactStore;
 
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -34,7 +32,7 @@ function createHttpApp(options) {
 
     const artifactMatch = url.pathname.match(/^\/artifacts\/([^/]+)\/([^/]+)$/);
     if (req.method === "GET" && artifactMatch) {
-      serveArtifact(res, artifactDir, decodeURIComponent(artifactMatch[1]), decodeURIComponent(artifactMatch[2]));
+      serveArtifact(res, artifactStore, decodeURIComponent(artifactMatch[1]), decodeURIComponent(artifactMatch[2]));
       return;
     }
 
@@ -42,31 +40,25 @@ function createHttpApp(options) {
   };
 }
 
-function serveArtifact(res, artifactDir, jobId, fileName) {
-  const safeJobId = sanitizeName(jobId);
+function serveArtifact(res, artifactStore, jobId, fileName) {
   const safeFileName = sanitizeArtifactName(fileName);
   if (!safeFileName) {
     sendJson(res, 404, { error: "not_found" });
     return;
   }
 
-  const filePath = path.join(artifactDir, safeJobId, safeFileName);
-  if (!filePath.startsWith(artifactDir)) {
-    sendJson(res, 403, { error: "forbidden" });
+  const artifact = artifactStore?.getArtifact(jobId, safeFileName);
+  if (!artifact) {
+    sendJson(res, 404, { error: "not_found" });
     return;
   }
-
-  fs.readFile(filePath, (error, content) => {
-    if (error) {
-      sendJson(res, 404, { error: "not_found" });
-      return;
-    }
-    res.writeHead(200, {
-      "Content-Type": safeFileName === "build.log" ? "text/plain; charset=utf-8" : "application/octet-stream",
-      "Cache-Control": "no-store",
-    });
-    res.end(content);
+  res.writeHead(200, {
+    "Content-Type": artifact.content_type,
+    "Content-Length": artifact.size_bytes,
+    "X-Content-SHA256": artifact.sha256,
+    "Cache-Control": "no-store",
   });
+  res.end(artifact.content_blob);
 }
 
 function readJsonBody(req) {
@@ -93,10 +85,6 @@ function readJsonBody(req) {
 function sendJson(res, status, payload) {
   res.writeHead(status, { "Content-Type": "application/json; charset=utf-8" });
   res.end(JSON.stringify(payload));
-}
-
-function sanitizeName(value) {
-  return String(value || "").replace(/[^a-zA-Z0-9_.-]/g, "_");
 }
 
 function sanitizeArtifactName(value) {

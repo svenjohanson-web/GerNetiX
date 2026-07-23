@@ -33,6 +33,7 @@ function main() {
       architecture: required(args.architecture, "architecture"),
       label: required(args.label, "label"),
       detail: required(args.detail, "detail"),
+      visibility: args.visibility || "authenticated",
       file_name: fileName,
       content_type: required(args["content-type"], "content-type"),
       content: fs.readFileSync(fileArgument === "-" ? 0 : filePath),

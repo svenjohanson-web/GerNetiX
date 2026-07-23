@@ -34,6 +34,7 @@ const state = {
   builds: [],
   billing: null,
   community: { questions: [], activeQuestionId: "", answers: [] },
+  communitySummary: { available: false, total: 0, public: { open: 0, closed: 0 }, private: { open: 0, closed: 0 } },
   aiUsage: null,
   progress: [],
   workspace: null,
@@ -87,6 +88,7 @@ const routeMap = {
 const isPublicHelpPage = /^\/hilfe\/?$/.test(window.location.pathname);
 const isPublicKnowledgePage = /^\/wissen\/?$/.test(window.location.pathname);
 const isPublicInformationPage = isPublicHelpPage || isPublicKnowledgePage;
+if (isPublicInformationPage) document.body.classList.add("public-help-page");
 
 let deviceOnboardingController = null;
 let guidedProjectViewController = null;
@@ -359,7 +361,7 @@ async function bootstrap() {
       state.billing = null;
     }
     if (!state.account) {
-      document.body.classList.add("public-help-page", "public-information-anonymous");
+      document.body.classList.add("public-information-anonymous");
     }
     document.querySelector("#accountBadge").textContent = state.account ? `${state.account.username} · ${state.account.plan}` : (isPublicKnowledgePage ? "Wissensportal" : "Öffentliche Hilfe");
     document.querySelector("#logoutButton").textContent = state.account ? "Abmelden" : "Anmelden";
@@ -418,6 +420,7 @@ async function refresh() {
   state.projects = summary.projects;
   state.devices = summary.devices;
   state.builds = summary.builds;
+  state.communitySummary = summary.community_summary || { available: false, total: 0, public: { open: 0, closed: 0 }, private: { open: 0, closed: 0 } };
   state.billing = summary.billing;
   state.aiUsage = summary.ai_usage || null;
   state.progress = summary.learning_progress;
@@ -846,7 +849,30 @@ function renderDashboard() {
     ["Builds", state.builds.length],
     ["Letzter Modus", state.workspace.lastMode || "kein Eintrag"],
   ].map(summaryItem).join("");
+  renderDashboardCommunitySummary();
   renderAiRating("#dashboardAiUsage");
+}
+
+function renderDashboardCommunitySummary() {
+  const target = document.querySelector("#dashboardCommunitySummary");
+  if (!target) return;
+  const summary = state.communitySummary;
+  if (!summary?.available) {
+    target.innerHTML = `<p class="helper-text error-text">Die Community ist gerade nicht erreichbar. Anfragen können erst wieder geladen oder gesendet werden, sobald der Dienst läuft.</p>`;
+    return;
+  }
+  target.innerHTML = [
+    ["Öffentlich", "Für alle lesbare Community-Anfragen", summary.public],
+    ["Privat", "Nur für dich und GerNetiX sichtbar", summary.private],
+  ].map(([label, description, counts]) => `
+    <section class="dashboard-community-group">
+      <header><div><h3>${escapeHtml(label)}</h3><p>${escapeHtml(description)}</p></div><strong>${Number(counts.open || 0) + Number(counts.closed || 0)}</strong></header>
+      <div class="dashboard-community-counts">
+        <a href="/app/community/"><span>Offen</span><strong>${Number(counts.open || 0)}</strong></a>
+        <a href="/app/community/"><span>Geschlossen</span><strong>${Number(counts.closed || 0)}</strong></a>
+      </div>
+    </section>
+  `).join("");
 }
 
 async function loadCommunity() {
@@ -857,7 +883,7 @@ async function loadCommunity() {
     const response = await getJson("/api/community/questions");
     state.community.questions = response.items || [];
     renderCommunity();
-  } catch (error) { target.innerHTML = `<p class="helper-text error-text">${escapeHtml(error.message || "Community ist gerade nicht erreichbar.")}</p>`; }
+  } catch (error) { target.innerHTML = `<p class="helper-text error-text">Die Community ist gerade nicht erreichbar. Bitte später erneut versuchen.</p>`; }
 }
 
 function renderCommunity() {
@@ -946,13 +972,14 @@ function renderProjects() {
       renderProjects();
     };
   }
+  const requestedCatalogSlug = new URLSearchParams(window.location.search).get("catalog") || "";
   const catalogProjects = allCatalogProjects.filter((project) => {
     const categoryMatches = state.learningCatalogCategory === "all" || project.learningCategory === state.learningCatalogCategory;
     const tagMatches = state.learningCatalogTag === "all" || project.tags?.includes(state.learningCatalogTag);
     return categoryMatches && tagMatches;
-  });
+  }).sort((left, right) => Number(right.slug === requestedCatalogSlug) - Number(left.slug === requestedCatalogSlug));
   projectList.innerHTML = catalogProjects.length ? catalogProjects.map((project) => `
-    <article class="project-card learning-catalog-card">
+    <article class="project-card learning-catalog-card${project.slug === requestedCatalogSlug ? " is-linked" : ""}" data-catalog-slug="${escapeAttribute(project.slug)}">
       <div>
         <div class="learning-catalog-card-head">
           <p class="eyebrow">${escapeHtml(project.type || "Lernprojekt")}</p>
@@ -975,6 +1002,9 @@ function renderProjects() {
   document.querySelectorAll("#projectList [data-open-project]").forEach((button) => {
     button.addEventListener("click", () => learningProject().open(button.dataset.openProject));
   });
+  if (requestedCatalogSlug) {
+    projectList.querySelector(`[data-catalog-slug="${CSS.escape(requestedCatalogSlug)}"]`)?.scrollIntoView({ block: "center" });
+  }
 }
 
 function learningCategoryLabel(category) {
@@ -1005,6 +1035,7 @@ function learningTagLabel(tag) {
     "topic:firmware": "Firmware",
     "topic:home-automation": "Hausautomation",
     "topic:modeling": "Modellierung",
+    "topic:radar": "Radar",
     "topic:sensors": "Sensoren",
     "topic:web-push": "Web Push",
   };

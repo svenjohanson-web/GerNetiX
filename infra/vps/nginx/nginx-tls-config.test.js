@@ -16,15 +16,17 @@ test("build deploy advertises the canonical public firmware origin", () => {
 const deploy = fs.readFileSync(path.join(repoRoot, "scripts/staging/remote-deploy.sh"), "utf8");
 const english = fs.readFileSync(path.join(__dirname, "welcome.en.html"), "utf8");
 
-test("all public domains use ACME and redirect HTTP to HTTPS", () => {
+test("public HTTP exposes ACME only and never the platform", () => {
   for (const domain of ["gernetix.nl", "gernetix.de", "gernetix.com"]) {
     assert.match(http, new RegExp(`server_name ${domain.replace(".", "\\.")} www\\.${domain.replace(".", "\\.")}`));
   }
   assert.match(http, /\.well-known\/acme-challenge/);
-  assert.match(http, /return 301 https:\/\/\$host\$request_uri/);
+  assert.doesNotMatch(http, /return 301 https:\/\/\$host\$request_uri/);
+  assert.match(http, /listen 8080;\s+default_server;[\s\S]*return 404;/);
+  assert.match(http, /listen 8081;[\s\S]*proxy_pass http:\/\/identity-server:4300/);
 });
 
-test("TLS serves Dutch, German and English pages with one SAN certificate", () => {
+test("TLS serves private Dutch, German and English pages with one SAN certificate", () => {
   for (const landingPage of ["welcome.nl.html", "welcome.html", "welcome.en.html"]) {
     const escapedLandingPage = landingPage.replaceAll(".", "\\.");
     assert.match(tls, new RegExp(`location = / \\{ try_files /${escapedLandingPage} =404; \\}`));
@@ -37,22 +39,31 @@ test("TLS serves Dutch, German and English pages with one SAN certificate", () =
   assert.match(tls, /live\/gernetix\.nl\/fullchain\.pem/);
   assert.match(english, /From vision to/);
   assert.match(english, /Understand\. Develop\. Create\./);
+  assert.equal((tls.match(/allow 10\.77\.0\.0\/24;/g) || []).length, 5);
+  assert.equal((tls.match(/deny all;/g) || []).length, 5);
 });
 
-test("device services and private PWA use dedicated .com hostnames", () => {
+test("private build and PWA hosts are WireGuard-only", () => {
   assert.match(http, /server_name build\.gernetix\.com mqtt\.gernetix\.com pwa\.gernetix\.com/);
   assert.match(tls, /server_name build\.gernetix\.com/);
   assert.match(tls, /server_name pwa\.gernetix\.com/);
   assert.match(tls, /proxy_pass http:\/\/build-deploy-server:4400/);
+  assert.match(tls, /proxy_pass http:\/\/identity-server:4300/);
+  assert.match(tls, /proxy_pass http:\/\/admin-access-server:4610/);
   assert.match(tls, /live\/gernetix-services\.com\/fullchain\.pem/);
   assert.match(tls, /allow 10\.77\.0\.0\/24;[\s\S]*deny all;/);
   assert.match(deploy, /-d build\.gernetix\.com -d mqtt\.gernetix\.com -d pwa\.gernetix\.com/);
 });
 
-test("compose and staging deploy manage HTTPS certificate lifecycle", () => {
+test("compose binds application traffic to WireGuard and keeps ACME separate", () => {
   assert.match(compose, /nginx-tls:/);
   assert.match(compose, /certbot:/);
+  assert.match(compose, /PRIVATE_VPS_BIND_ADDRESS:-10\.77\.0\.1/);
   assert.match(compose, /HTTPS_PORT:-443/);
+  assert.match(compose, /MQTT_TLS_PORT:-8883/);
+  assert.match(compose, /PRIVATE_PLATFORM_TUNNEL_PORT:-8080\}:8081/);
+  assert.match(compose, /ACME_HTTP_BIND_ADDRESS:-0\.0\.0\.0/);
+  assert.match(compose, /ACME_HTTP_PORT:-80\}:8080/);
   assert.match(deploy, /certonly --webroot/);
   assert.match(deploy, /--profile tls up -d/);
   assert.match(deploy, /--force-recreate nginx-tls mqtt-broker certbot/);
@@ -60,15 +71,12 @@ test("compose and staging deploy manage HTTPS certificate lifecycle", () => {
 });
 
 test("public web and authentication requests are rate limited per source", () => {
-  for (const config of [http, tls]) {
-    assert.match(config, /limit_req_zone \$binary_remote_addr zone=gernetix_web_per_ip:10m rate=10r\/s/);
-    assert.match(config, /limit_req_zone \$binary_remote_addr zone=gernetix_auth_per_ip:10m rate=5r\/m/);
-    assert.match(config, /limit_conn_zone \$binary_remote_addr zone=gernetix_connections_per_ip:10m/);
-    assert.match(config, /limit_req_status 429/);
-    assert.match(config, /limit_conn_status 429/);
-    assert.match(config, /location ~ \^\/api\/\(login\(\?:\/external\)\?\|register\)\$/);
-    assert.match(config, /limit_req zone=gernetix_auth_per_ip burst=5 nodelay/);
-  }
+  assert.match(tls, /limit_req_zone \$binary_remote_addr zone=gernetix_web_per_ip:10m rate=10r\/s/);
+  assert.match(tls, /limit_req_zone \$binary_remote_addr zone=gernetix_auth_per_ip:10m rate=5r\/m/);
+  assert.match(tls, /limit_conn_zone \$binary_remote_addr zone=gernetix_connections_per_ip:10m/);
+  assert.match(tls, /limit_req_status 429/);
+  assert.match(tls, /limit_conn_status 429/);
+  assert.match(tls, /limit_req zone=gernetix_auth_per_ip burst=5 nodelay/);
   assert.match(tls, /limit_req_zone \$binary_remote_addr zone=gernetix_build_per_ip:10m rate=30r\/s/);
   assert.match(tls, /limit_req zone=gernetix_build_per_ip burst=100 nodelay/);
 });

@@ -766,41 +766,66 @@ function monitoringTargets(serviceClients = {}) {
     monitoringTarget("ai_context", "AI Context", clients.aiContextBaseUrl),
     monitoringTarget("provisioning", "Provisioning Tool", clients.provisioningBaseUrl),
     monitoringTarget("recovery", "Recovery Tool", clients.recoveryBaseUrl),
-    monitoringTarget("community_platform", "Community Platform", clients.communityPlatformBaseUrl),
+    monitoringTarget("community_platform", "Community Platform", clients.communityPlatformBaseUrl, {
+      detailsPath: "/api/community/operations-summary",
+      requestHeaders: clients.communityInternalToken
+        ? { "X-GerNetiX-Community-Token": clients.communityInternalToken }
+        : {},
+    }),
     monitoringTarget("community_ai", "Community AI", clients.communityAiBaseUrl),
   ].filter((target) => target.base_url);
 }
 
-function monitoringTarget(serviceId, title, baseUrl) {
+function monitoringTarget(serviceId, title, baseUrl, options = {}) {
   const normalizedBaseUrl = String(baseUrl || "").replace(/\/$/, "");
   return {
     service_id: serviceId,
     title,
     base_url: normalizedBaseUrl,
     health_url: `${normalizedBaseUrl}/health`,
+    ...(options.detailsPath ? { details_url: `${normalizedBaseUrl}${options.detailsPath}` } : {}),
+    request_headers: options.requestHeaders || {},
   };
 }
 
 async function checkMonitoringTarget(target) {
+  const { request_headers: requestHeaders, ...visibleTarget } = target;
   const startedAt = Date.now();
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 900);
   try {
     const response = await fetch(target.health_url, { signal: controller.signal });
     const details = await response.json().catch(() => ({}));
+    let operations = null;
+    let operationsError = "";
+    if (response.ok && target.details_url) {
+      try {
+        const detailsResponse = await fetch(target.details_url, {
+          signal: controller.signal,
+          headers: requestHeaders,
+        });
+        const detailsPayload = await detailsResponse.json().catch(() => ({}));
+        if (detailsResponse.ok) operations = detailsPayload;
+        else operationsError = detailsPayload.message || `Betriebsdaten: HTTP ${detailsResponse.status}`;
+      } catch (error) {
+        operationsError = `Betriebsdaten: ${monitoringErrorMessage(error)}`;
+      }
+    }
     return {
-      ...target,
+      ...visibleTarget,
       ok: response.ok,
       status: response.ok ? "online" : "error",
       http_status: response.status,
       response_ms: Date.now() - startedAt,
       message: response.ok ? "erreichbar" : `HTTP ${response.status}`,
       details,
+      ...(operations ? { operations } : {}),
+      ...(operationsError ? { operations_error: operationsError } : {}),
       checked_at: new Date().toISOString(),
     };
   } catch (error) {
     return {
-      ...target,
+      ...visibleTarget,
       ok: false,
       status: "offline",
       response_ms: Date.now() - startedAt,

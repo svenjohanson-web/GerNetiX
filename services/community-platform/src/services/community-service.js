@@ -6,7 +6,39 @@ class CommunityService {
     this.repository = options.repository;
     this.triageSlaHours = options.triageSlaHours || 24;
     this.internalToken = options.internalToken || "";
+    this.persistenceBackend = options.persistenceBackend || "unknown";
     seedKnowledge(this);
+  }
+
+  operationsSummary() {
+    const questions = this.repository.listQuestions({});
+    const answers = questions.flatMap((question) => this.repository.listAnswers(question.question_id));
+    const knowledgeDocuments = this.repository.listKnowledgeDocuments({});
+    const now = Date.now();
+    return {
+      persistence_backend: this.persistenceBackend,
+      questions: {
+        total: questions.length,
+        public: questions.filter((question) => question.visibility === "public").length,
+        private: questions.filter((question) => question.visibility === "private").length,
+        open: questions.filter((question) => question.status === "open").length,
+        answered: questions.filter((question) => question.status === "answered").length,
+        awaiting_triage: questions.filter((question) => question.triage_status === "new").length,
+        overdue: questions.filter((question) => (
+          question.triage_status === "new"
+          && new Date(question.triage_due_at).getTime() < now
+        )).length,
+      },
+      answers: {
+        total: answers.length,
+        verified: answers.filter((answer) => answer.verification_state === "verified").length,
+        requires_reverification: answers.filter((answer) => answer.verification_state === "requires_reverification").length,
+      },
+      knowledge_documents: {
+        total: knowledgeDocuments.length,
+        verified: knowledgeDocuments.filter((document) => document.verification_state === "verified").length,
+      },
+    };
   }
 
   createQuestion(input = {}, actor = {}) {
@@ -35,6 +67,7 @@ class CommunityService {
   listQuestions(query = {}, actor = {}) {
     const items = this.repository.listQuestions(query)
       .filter((question) => canAccess(question, actor))
+      .filter((question) => query.mine !== "true" || question.author_user_id === actor.user_id)
       .map((question) => this.presentQuestion(this.decorateQuestion(question), actor));
     return { items };
   }

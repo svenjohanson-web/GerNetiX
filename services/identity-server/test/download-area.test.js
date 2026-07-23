@@ -27,7 +27,7 @@ test("VPS identity serves immutable platform releases from its existing SQLite s
   assert.match(serverSource, /SqlitePlatformDownloadRepository/);
   assert.match(serverSource, /PLATFORM_DOWNLOAD_SQLITE_PATH/);
   assert.match(serverSource, /platformDownloadRepository\.getContent/);
-  assert.match(serverSource, /listCurrent\("serial-service"\)/);
+  assert.match(serverSource, /listCurrent\("serial-service", \{ visibility: "authenticated" \}\)/);
   assert.match(serverSource, /await serveUsbSerialHelperDownload/);
   assert.match(serverSource, /source: localFilename \? "local" : release \? "published"/);
   assert.doesNotMatch(serverSource, /GERNETIX_SERIAL_SERVICE_MACOS_URL/);

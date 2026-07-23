@@ -15,6 +15,7 @@ const services = [
   service("device-management-server", "Device Management Server", 4700), service("hardware-catalog", "Hardware Catalog", 4910),
   service("hardware-shop", "Hardware Shop", 4900), service("ai-usage-server", "AI Usage Server", 5000),
   service("ai-context-server", "AI Context Server", 5500), service("admin-tool", "Admin Tool", 4600),
+  service("community-platform", "Community Platform", 5200),
   service("identity-server", "Identity Server", 4300)
 ];
 
@@ -23,10 +24,37 @@ function configureWorkspace(root) { workspaceRoot=path.resolve(root); for(const 
 function byId(id) { const item=services.find((entry)=>entry.id===id); if(!item) throw new Error("Unbekannter GerNetiX-Dienst."); return item; }
 
 async function check(item) {
-  try { const statusCode=await health(item.healthUrl); return {...item,healthy:statusCode>=200&&statusCode<300,statusCode,pid:await pidForPort(item.port),error:""}; }
-  catch(error){ return {...item,healthy:false,statusCode:0,pid:await pidForPort(item.port),error:error.message}; }
+  const communityStorage=item.id==="community-platform"?communityStorageSummary():null;
+  try { const statusCode=await health(item.healthUrl); return {...item,healthy:statusCode>=200&&statusCode<300,statusCode,pid:await pidForPort(item.port),error:"",...(communityStorage?{communityStorage}:{})}; }
+  catch(error){ return {...item,healthy:false,statusCode:0,pid:await pidForPort(item.port),error:error.message,...(communityStorage?{communityStorage}:{})}; }
 }
 async function processStates(){ return Promise.all(services.map(check)); }
+function communityStorageSummary(root=workspaceRoot){
+  const dbPath=path.join(root,".runtime","gernetix-community.sqlite");
+  const visiblePath=path.relative(root,dbPath)||path.basename(dbPath);
+  if(!fs.existsSync(dbPath))return {exists:false,path:visiblePath,bytes:0,questions:{total:0,public:0,private:0,open:0},answers:{total:0,verified:0},knowledgeDocuments:{total:0}};
+  let db;
+  try{
+    db=new DatabaseSync(dbPath,{readOnly:true});
+    const tables=new Set(db.prepare("SELECT name FROM sqlite_master WHERE type='table'").all().map((row)=>row.name));
+    const count=(table,where="")=>tables.has(table)?Number(db.prepare(`SELECT COUNT(*) AS count FROM ${table}${where}`).get().count):0;
+    return {
+      exists:true,path:visiblePath,bytes:fs.statSync(dbPath).size,
+      questions:{
+        total:count("community_questions"),
+        public:count("community_questions"," WHERE visibility = 'public'"),
+        private:count("community_questions"," WHERE visibility = 'private'"),
+        open:count("community_questions"," WHERE status = 'open'")
+      },
+      answers:{
+        total:count("community_answers"),
+        verified:count("community_answers"," WHERE verification_state = 'verified'")
+      },
+      knowledgeDocuments:{total:count("community_knowledge_documents")}
+    };
+  }catch(error){return {exists:true,path:visiblePath,bytes:fs.statSync(dbPath).size,error:error.message};}
+  finally{try{db?.close();}catch{}}
+}
 function interfaceStatistics(hours=24){
   const dbPath=path.join(workspaceRoot,".runtime","gernetix-services.sqlite");
   if(!fs.existsSync(dbPath))return {hours,items:[],summary:{calls:0,failed:0,targets:0}};
@@ -306,4 +334,4 @@ async function setVpnConnected(connected, options = {}) {
   throw new Error(`Der VPN-Tunnel wurde nicht rechtzeitig ${desired ? "verbunden" : "getrennt"}.`);
 }
 
-module.exports={configureWorkspace,interfaceStatistics,parseComposePs,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,processStates,remoteProcessStates,runtimeAlerts,securityRuleStates,services,setVpnConnected,startAllServices,startService,stopService,vpnState};
+module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,parseComposePs,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,processStates,remoteProcessStates,runtimeAlerts,securityRuleStates,services,setVpnConnected,startAllServices,startService,stopService,vpnState};

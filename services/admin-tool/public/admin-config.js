@@ -536,6 +536,17 @@ function monitoringCard(service) {
   const statusClass = service.ok ? "ok" : "error";
   const statusText = service.ok ? "online" : "offline";
   const responseTime = Number.isFinite(service.response_ms) ? `${service.response_ms} ms` : "-";
+  const operations = service.operations || null;
+  const communityMetrics = service.service_id === "community_platform" && operations ? `
+    <div class="monitoring-detail-grid" aria-label="Community-Speicherstatus">
+      ${monitoringDetail("Fragen", operations.questions?.total)}
+      ${monitoringDetail("Öffentlich", operations.questions?.public)}
+      ${monitoringDetail("Privat", operations.questions?.private)}
+      ${monitoringDetail("Offen", operations.questions?.open)}
+      ${monitoringDetail("Antworten", operations.answers?.total)}
+      ${monitoringDetail("Wissensdokumente", operations.knowledge_documents?.total)}
+    </div>
+  ` : "";
   return `
     <article class="monitoring-card ${statusClass}">
       <div class="monitoring-card-head">
@@ -550,9 +561,16 @@ function monitoringCard(service) {
         ${meta(["Health", service.health_url || "-"])}
         ${meta(["Antwortzeit", responseTime])}
         ${meta(["Status", service.message || statusText])}
+        ${operations ? meta(["Persistenz", operations.persistence_backend || "-"]) : ""}
       </dl>
+      ${communityMetrics}
+      ${service.operations_error ? `<p class="monitoring-detail-error">${escapeHtml(service.operations_error)}</p>` : ""}
     </article>
   `;
+}
+
+function monitoringDetail(label, value) {
+  return `<div><span>${escapeHtml(label)}</span><strong>${formatNumber(value || 0)}</strong></div>`;
 }
 
 function renderAccounts() {

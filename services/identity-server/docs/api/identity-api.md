@@ -19,7 +19,18 @@ Der Client-Fehlerendpunkt nimmt ausschliesslich den Ablauf (`authentication` ode
 
 Auf dem VPS wird das macOS-Paket nicht im Linux-Container gebaut. Ein signiertes und notarisiertes Paket wird als unveraenderlicher Release mit Version, Plattform, Architektur, Groesse und SHA-256 in der getrennten, persistenten Plattform-Download-SQLite veroeffentlicht. Identity liefert diesen Release im bereits vorhandenen angemeldeten Downloadbereich aus; es gibt keine externe Release-URL. `PLATFORM_DOWNLOAD_SQLITE_PATH` zeigt im VPS auf `/var/lib/gernetix/identity/gernetix-platform-downloads.sqlite`. In der lokalen Entwicklung hat ein vorhandenes Paket unter `tools/usb-serial-helper/dist` Vorrang.
 
+Plattform-Releases besitzen eine serverseitig gepruefte Sichtbarkeit: `public`, `authenticated`, `entitled` oder `internal`. Das accountneutrale Flashbox-Initialimage ist `public`; Serial-Service-/MaxSerial-Pakete sind `authenticated`. Eine Abfrage waehlt nur den neuesten Release innerhalb der verlangten Sichtbarkeit.
+
 Nach der Installation spricht das vom VPS gelieferte Plattform-Frontend den Dienst per TLS auf `https://localhost:43123` an. Der VPS liefert Firmware und Flash-Manifeste an den Browser, erhaelt aber keinen Zugriff auf den lokalen USB-Port. WLAN-Zugangsdaten laufen ausschliesslich zwischen Browser, lokalem Serial Service und Board.
+
+## Account-Assets
+
+- `GET /api/account/assets` listet ausschliesslich Assets des angemeldeten Kontos.
+- `POST /api/account/assets` legt ein `qr_code`, `image`, `image_style` oder `export` an.
+- `GET /api/account/assets/{asset_id}/content` liefert den Inhalt nur dem Eigentuemer.
+- `DELETE /api/account/assets/{asset_id}` markiert das Asset als geloescht und entfernt sein BLOB.
+
+`ACCOUNT_ASSET_SQLITE_PATH` zeigt auf dem VPS auf `/var/lib/gernetix/identity/gernetix-account-assets.sqlite`. Assets sind fest `owner_only`, maximal 16 MiB gross und werden mit Groesse und SHA-256 gespeichert; Metadaten sind auf 64 KiB begrenzt. Der POST-Vertrag akzeptiert `content_base64`, `display_name`, `content_type`, optionale `metadata` und den `asset_type`; Asset-ID und Eigentuemer erzeugt der Server, eine vom Client verlangte oeffentliche Sichtbarkeit wird abgewiesen. Die Inhaltsantwort setzt `nosniff` und eine Sandbox-CSP.
 
 ## Hardware-Katalog im Provisioning
 

@@ -10,6 +10,7 @@ const { SmtpEmailService } = require("./services/smtp-email-service");
 const { ConfigurableEmailService } = require("./services/configurable-email-service");
 const { createWebPushService } = require("./services/web-push-service");
 const { SqlitePlatformDownloadRepository } = require("./repositories/sqlite-platform-download-repository");
+const { SqliteAccountAssetRepository } = require("./repositories/sqlite-account-asset-repository");
 const { canonicalLocalPasskeyLocation } = require("./services/local-passkey-origin");
 const { passkeyBrowserFailureEvent, passkeyLoginFailureEvent } = require("./services/passkey-login-events");
 const { createSystemEventReporter } = require("./services/system-event-reporter");
@@ -46,11 +47,13 @@ const {
   setSessionCookie,
 } = require("./dev/http-utils");
 const { createDevServiceClients } = require("./dev/service-clients");
+const { summarizeCommunityQuestions } = require("./dev/community-summary");
 const { createInterfaceCallTelemetry } = require("../../shared/persistence/interface-call-telemetry");
 const { createTamagotchiEntryCourseModel } = require("./dev/project-models/tamagotchi-entry-course");
 const { createSmartAssistantCourseModel } = require("./dev/project-models/smart-assistant-course");
 const { createButtonToSmartphoneNotificationCourseModel } = require("./dev/project-models/button-to-smartphone-notification-course");
 const { createHomeAutomationNetworkCourseModel } = require("./dev/project-models/home-automation-network-course");
+const { createProximitySensorRadarCourseModel } = require("./dev/project-models/proximity-sensor-radar-course");
 const { getFirmwareBuildTarget, getFactoryFirmwareRelease } = require("../../../basissoftware/esp32/firmware-build-targets");
 const {
   generateRegistrationOptions,
@@ -75,6 +78,11 @@ const platformDownloadSqlitePath = process.env.PLATFORM_DOWNLOAD_SQLITE_PATH
   || path.join(path.dirname(identitySqlitePath), "gernetix-platform-downloads.sqlite");
 const platformDownloadRepository = identityPersistenceBackend === "sqlite"
   ? new SqlitePlatformDownloadRepository(platformDownloadSqlitePath)
+  : null;
+const accountAssetSqlitePath = process.env.ACCOUNT_ASSET_SQLITE_PATH
+  || path.join(path.dirname(identitySqlitePath), "gernetix-account-assets.sqlite");
+const accountAssetRepository = identityPersistenceBackend === "sqlite"
+  ? new SqliteAccountAssetRepository(accountAssetSqlitePath)
   : null;
 const identityAppBaseUrl = process.env.IDENTITY_APP_BASE_URL || process.env.APP_BASE_URL || "";
 const identityAdminToken = process.env.IDENTITY_ADMIN_TOKEN || "";
@@ -185,6 +193,7 @@ const tamagotchiEntryCourseModel = createTamagotchiEntryCourseModel({ readWorksp
 const smartAssistantCourseModel = createSmartAssistantCourseModel();
 const buttonToSmartphoneNotificationCourseModel = createButtonToSmartphoneNotificationCourseModel();
 const homeAutomationNetworkCourseModel = createHomeAutomationNetworkCourseModel();
+const proximitySensorRadarCourseModel = createProximitySensorRadarCourseModel();
 const llmConfigStore = createLlmConfigStore({
   configPath: path.join(workspaceRoot, ".runtime", "identity-llm-config.json"),
   defaultOllamaBaseUrl: ollamaBaseUrl,
@@ -532,6 +541,49 @@ async function routeRequest(req, res) {
     const session = readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     sendJson(res, 200, { account: session.account });
+    return;
+  }
+
+  if (url.pathname === "/api/account/assets" && ["GET", "POST"].includes(req.method)) {
+    const session = readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    if (!accountAssetRepository) { sendJson(res, 503, { error: "account_asset_store_unavailable" }); return; }
+    if (req.method === "GET") {
+      sendJson(res, 200, { items: accountAssetRepository.list(session.account.user_id) });
+      return;
+    }
+    const asset = accountAssetRepository.create(
+      session.account.user_id,
+      await readJsonBody(req, 24 * 1024 * 1024),
+    );
+    sendJson(res, 201, asset);
+    return;
+  }
+
+  const accountAssetRoute = url.pathname.match(/^\/api\/account\/assets\/([^/]+)$/);
+  if (accountAssetRoute && req.method === "DELETE") {
+    const session = readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    if (!accountAssetRepository) { sendJson(res, 503, { error: "account_asset_store_unavailable" }); return; }
+    sendJson(res, 200, accountAssetRepository.delete(session.account.user_id, decodeURIComponent(accountAssetRoute[1])));
+    return;
+  }
+
+  const accountAssetContentRoute = url.pathname.match(/^\/api\/account\/assets\/([^/]+)\/content$/);
+  if (accountAssetContentRoute && req.method === "GET") {
+    const session = readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    if (!accountAssetRepository) { sendJson(res, 503, { error: "account_asset_store_unavailable" }); return; }
+    const asset = accountAssetRepository.get(session.account.user_id, decodeURIComponent(accountAssetContentRoute[1]));
+    res.writeHead(200, {
+      "Content-Type": asset.content_type,
+      "Content-Length": asset.size_bytes,
+      "X-Content-SHA256": asset.sha256 || "",
+      "Cache-Control": "private, no-store",
+      "X-Content-Type-Options": "nosniff",
+      "Content-Security-Policy": "sandbox; default-src 'none'",
+    });
+    res.end(asset.content_blob);
     return;
   }
 
@@ -1396,6 +1448,11 @@ async function routeRequest(req, res) {
     return;
   }
 
+  if (url.pathname === "/support" || url.pathname === "/support/") {
+    serveStatic(res, publicDir, "/support/index.html");
+    return;
+  }
+
   if (/^\/community\/questions\/[^/]+\/?$/.test(url.pathname)) {
     serveStatic(res, publicDir, "/community/question.html");
     return;
@@ -1855,6 +1912,13 @@ async function handlePlatformSummary(res, session) {
     serviceStatus.ai_usage = { ok: false, error: error.message || String(error) };
     return null;
   });
+  const communitySummaryPromise = loadCommunityDashboardSummary(session).then((summary) => {
+    serviceStatus.community = { ok: true };
+    return summary;
+  }).catch((error) => {
+    serviceStatus.community = { ok: false, error: error.message || String(error) };
+    return { ...summarizeCommunityQuestions([]), available: false };
+  });
   const accountPromise = createAccountSummary(session);
   const projects = await projectsPromise;
   const buildsPromise = loadProjectBuilds(projects, session).then((items) => {
@@ -1864,10 +1928,11 @@ async function handlePlatformSummary(res, session) {
     serviceStatus.builds = { ok: false, error: error.message || String(error) };
     return [];
   });
-  const [devices, builds, aiUsage, account] = await Promise.all([
+  const [devices, builds, aiUsage, communitySummary, account] = await Promise.all([
     devicesPromise,
     buildsPromise,
     aiUsagePromise,
+    communitySummaryPromise,
     accountPromise,
   ]);
   const userId = projectServerUserId(session);
@@ -1894,10 +1959,21 @@ async function handlePlatformSummary(res, session) {
     learning_progress: listLearningProgress(userId, projects),
     devices,
     builds,
+    community_summary: communitySummary,
     billing: await loadBillingSummary(session, aiUsage),
     ai_usage: aiUsage,
     service_status: serviceStatus,
   });
+}
+
+async function loadCommunityDashboardSummary(session) {
+  const payload = await communityJson("/api/community/questions?mine=true", {
+    headers: {
+      "X-GerNetiX-Community-Actor": session.account.user_id,
+      "X-GerNetiX-Community-Operator": String(communityOperatorUserIds.has(session.account.user_id)),
+    },
+  });
+  return summarizeCommunityQuestions(payload.items);
 }
 
 function externalLoginMessage(error) {
@@ -3718,6 +3794,7 @@ function createUserIdeState() {
     smartAssistantCourseModel.createProject(project, step),
     buttonToSmartphoneNotificationCourseModel.createProject(project, step),
     homeAutomationNetworkCourseModel.createProject(project, step),
+    proximitySensorRadarCourseModel.createProject(project, step),
     project("plant-watering-control", "Pflanzenbewaesserung", "Sensor und Aktor", "Feuchtigkeit messen und eine Pumpe kontrolliert schalten.", [
       step("Nutzen und Risiko", "Die Pflanze soll Wasser bekommen, ohne Ueberschwemmung.", "Automatisierung braucht Grenzen."),
       step("Sensor lesen", "Bodenfeuchte wird zur Eingangsseite der Steuerung.", "Ein Sensor liefert Hinweise, keine fertige Entscheidung."),
@@ -3823,6 +3900,7 @@ function normalizeLearningProjectTags(value) {
     "topic:firmware",
     "topic:home-automation",
     "topic:modeling",
+    "topic:radar",
     "topic:sensors",
     "topic:web-push",
   ];
@@ -3883,6 +3961,12 @@ function projectViewManifest(project) {
   }
   if (project.slug === buttonToSmartphoneNotificationCourseModel.slug) {
     return buttonToSmartphoneNotificationCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === proximitySensorRadarCourseModel.slug) {
+    return proximitySensorRadarCourseModel.createViewManifest(project, {
       override,
       primarySourcePath,
     });
@@ -4540,6 +4624,9 @@ function demoProjectSources(project, options = {}) {
   if (project.slug === homeAutomationNetworkCourseModel.slug) {
     return homeAutomationNetworkCourseModel.createSources();
   }
+  if (project.slug === proximitySensorRadarCourseModel.slug) {
+    return proximitySensorRadarCourseModel.createSources();
+  }
 
   if (project.slug === "arduino-atmel-bare-metal") {
     return [
@@ -4740,7 +4827,7 @@ async function handleDevLessonPreviewMigration(req, res) {
 
 function usbSerialHelperDownloads() {
   const files = fs.existsSync(usbSerialHelperDistDir) ? fs.readdirSync(usbSerialHelperDistDir) : [];
-  const published = platformDownloadRepository?.listCurrent("serial-service") || [];
+  const published = platformDownloadRepository?.listCurrent("serial-service", { visibility: "authenticated" }) || [];
   const definitions = [
     {
       platform: "macos",
@@ -4782,7 +4869,7 @@ function usbSerialHelperDownloads() {
 }
 
 function currentFlashboxInitialFirmware() {
-  return (platformDownloadRepository?.listCurrent("flashbox-initial-image") || [])
+  return (platformDownloadRepository?.listCurrent("flashbox-initial-image", { visibility: "public" }) || [])
     .find((release) => release.platform === "esp32" && release.architecture === "esp32-s3") || null;
 }
 
@@ -4805,6 +4892,7 @@ function servePublicFlashboxFirmware(res, release) {
     release.version,
     "esp32",
     "esp32-s3",
+    { visibility: "public" },
   );
   res.writeHead(200, {
     "Content-Type": content.content_type,
@@ -4829,6 +4917,7 @@ async function serveUsbSerialHelperDownload(res, filename) {
       download.version,
       download.platform,
       download.architecture,
+      { visibility: "authenticated" },
     );
     res.writeHead(200, {
       "Content-Type": release.content_type,

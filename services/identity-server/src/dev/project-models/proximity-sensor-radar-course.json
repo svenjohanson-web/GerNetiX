@@ -1,0 +1,192 @@
+{
+  "slug": "build-your-own-proximity-sensor",
+  "project": {
+    "slug": "build-your-own-proximity-sensor",
+    "title": "Baue deinen eigenen Näherungssensor",
+    "area": "Sensorik und Radartechnik",
+    "summary": "Untersuche in der ersten Projektstufe ein FMCW-Radarmodul und entwickle daraus eine nachvollziehbare Näherungs- oder Präsenzerkennung.",
+    "learning_category": "embedded",
+    "tags": ["topic:sensors", "topic:radar"],
+    "steps": [
+      {
+        "title": "Messaufgabe statt Sensorname festlegen",
+        "text": "Lege fest, ob dein Aufbau Annäherung, Anwesenheit, Entfernung oder Bewegung erkennen soll und in welchem Erfassungsraum das gelten muss.",
+        "insight": "Ein Radar liefert Messdaten; die Bedeutung „jemand ist nahe“ entsteht erst durch eine fachliche Regel."
+      },
+      {
+        "title": "FMCW-Grundprinzip verstehen",
+        "text": "Das Radar sendet Chirps mit veränderlicher Frequenz. Aus der Differenz zwischen gesendetem und reflektiertem Signal entstehen Informationen über Ziele.",
+        "insight": "Entfernung, Relativgeschwindigkeit und Winkel sind unterschiedliche Auswertungen und nicht bei jedem Modul gleichermaßen verfügbar."
+      },
+      {
+        "title": "Das gekaufte Radarmodul identifizieren",
+        "text": "Dokumentiere Hersteller, Typ, Frequenzband, Versorgung, Logikpegel, Schnittstelle, Antennenaufbau, Ausgabedaten und verfügbare Herstellerwerkzeuge.",
+        "insight": "Erst das konkrete Datenblatt entscheidet, ob Rohdaten, Zielpunkte oder nur ein Präsenzsignal verfügbar sind."
+      },
+      {
+        "title": "Radar mit Infrarot und anderen Verfahren vergleichen",
+        "text": "Vergleiche Erfassungsraum, Material- und Umwelteinflüsse, Energiebedarf, Auflösung, Kosten und Auswertungsaufwand.",
+        "insight": "Radar ist nicht grundsätzlich besser; es löst manche Randbedingungen robuster und bringt dafür neue Mehrdeutigkeiten mit."
+      },
+      {
+        "title": "Einen sicheren Tischversuch planen",
+        "text": "Beginne mit Herstellerwerkzeug oder dokumentierter Schnittstelle. Miss nacheinander leeren Raum, stehende und bewegte Ziele sowie verschiedene Abstände.",
+        "insight": "Ein kontrollierter Versuchsplan trennt Sensoreffekt, Umgebung und Auswertungsregel."
+      },
+      {
+        "title": "Erfassungszone und Fehlalarme bestimmen",
+        "text": "Prüfe Seitenkeulen, Reflexionen an Wänden und Metall, Mehrfachziele, verdeckte Ziele sowie unbeabsichtigte Bewegung außerhalb der gewünschten Zone.",
+        "insight": "Ein guter Näherungssensor beschreibt nicht nur Treffer, sondern auch Ausschlussbereich und Fehlerverhalten."
+      },
+      {
+        "title": "Nächste Projektstufe vorbereiten",
+        "text": "Entscheide nach den Messungen, ob Radar bleibt oder eine Vergleichsstufe mit IR-ToF, Ultraschall oder einem anderen Prinzip folgt.",
+        "insight": "Die spätere Sensorauswahl wird durch Messergebnisse begründet, nicht durch den faszinierendsten Sensornamen."
+      }
+    ],
+    "hardware_profile_id": "",
+    "access_model": "free",
+    "default_device_id": "",
+    "source_files": [
+      { "path": "docs/radar-naeherungssensor-plan.md", "role": "decision_record" },
+      { "path": "messungen/versuchsplan.csv", "role": "measurement_plan" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Baue deinen eigenen Näherungssensor",
+    "summary": "Projektstufe 1: Ein gekauftes FMCW-Radarmodul verstehen, vergleichen und systematisch vermessen.",
+    "primary_source_path": "docs/radar-naeherungssensor-plan.md",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "radar-project-goal",
+        "type": "story_slide",
+        "title": "Was soll dein Näherungssensor erkennen?",
+        "summary": "Zuerst wird die Messaufgabe festgelegt, danach die technische Lösung.",
+        "completion": { "type": "acknowledge", "label": "Messaufgabe verstanden" },
+        "payload": {
+          "model_lines": [
+            { "label": "Annäherung", "text": "Ein Ziel kommt in einen festgelegten Bereich hinein oder verlässt ihn." },
+            { "label": "Präsenz", "text": "Mindestens ein relevantes Ziel befindet sich im Erfassungsraum – möglicherweise fast ohne Bewegung." },
+            { "label": "Entfernung", "text": "Das System liefert einen Abstand oder mehrere Zielabstände." },
+            { "label": "Bewegung", "text": "Das System erkennt eine Relativgeschwindigkeit oder eine Änderung im Raum." },
+            { "label": "Projektstufe 1", "text": "Wir beginnen mit FMCW-Radar. Spätere Stufen können IR-ToF, Ultraschall oder weitere Prinzipien als Vergleich ergänzen." }
+          ]
+        }
+      },
+      {
+        "id": "fmcw-principle",
+        "type": "explanation",
+        "title": "FMCW in einem ersten Modell",
+        "summary": "Chirps und Reflexionen werden zu Entfernung, Bewegung und gegebenenfalls Richtung ausgewertet.",
+        "completion": { "type": "acknowledge", "label": "Grundprinzip verstanden" },
+        "payload": {
+          "cards": [
+            { "title": "Chirp", "text": "Die Sendefrequenz verändert sich während einer kurzen Messrampe." },
+            { "title": "Mischsignal", "text": "Gesendetes und verzögert reflektiertes Signal werden verglichen. Die entstehende Beat-Frequenz trägt Entfernungsinformation." },
+            { "title": "Doppler", "text": "Phasenänderungen über mehrere Chirps liefern Information über die Relativgeschwindigkeit." },
+            { "title": "Winkel", "text": "Eine Winkelabschätzung benötigt einen geeigneten Antennenaufbau mit mehreren Empfangskanälen und passende Signalverarbeitung." },
+            { "title": "Wichtige Grenze", "text": "Welche dieser Größen verfügbar ist, entscheidet das konkrete Modul samt Firmware, Schnittstelle und Hersteller-API." }
+          ]
+        }
+      },
+      {
+        "id": "sensor-comparison",
+        "type": "explanation",
+        "title": "Radar ist anders – nicht automatisch besser",
+        "summary": "Vergleiche Verfahren anhand der Umgebung und der benötigten Aussage.",
+        "completion": { "type": "acknowledge", "label": "Verfahren verglichen" },
+        "payload": {
+          "cards": [
+            { "title": "FMCW-Radar", "text": "Funktioniert ohne sichtbares Licht und kann je nach Modul Entfernung sowie Bewegung erfassen. Reflexionen, Mehrfachziele, Kosten und Signalverarbeitung sind anspruchsvoller." },
+            { "title": "Reflektives Infrarot", "text": "Einfach und günstig für kurze Abstände, aber stark von Oberfläche, Winkel und Fremdlicht abhängig." },
+            { "title": "IR-Time-of-Flight", "text": "Misst optische Laufzeit statt nur Reflexionsstärke. Sichtfeld, Umgebungslicht, Schutzscheibe und Reichweite bleiben wichtig." },
+            { "title": "Ultraschall", "text": "Misst Schalllaufzeit und ist farbunabhängig. Schallkegel, tote Zone, Temperatur sowie weiche oder schräge Ziele können stören." },
+            { "title": "PIR", "text": "Sehr sparsam für Änderungen der Wärmestrahlung, aber kein allgemeiner Abstandssensor und für völlig ruhende Präsenz nur begrenzt geeignet." }
+          ]
+        }
+      },
+      {
+        "id": "identify-module",
+        "type": "implementation_plan",
+        "title": "Dein Radarmodul eindeutig erfassen",
+        "summary": "Ohne exakten Modultyp werden noch keine Pins, Pegel oder Programme angenommen.",
+        "payload": {
+          "tasks": [
+            "Foto von Vorder- und Rückseite sowie alle Aufdrucke sichern",
+            "Hersteller, Produktname und genaue Bestellvariante notieren",
+            "Frequenzband und regionale Zulässigkeit aus den Herstellerunterlagen prüfen",
+            "Versorgungsspannung, maximale Stromaufnahme und Logikpegel bestimmen",
+            "Schnittstelle wie UART, SPI, I²C, USB oder proprietären Debugzugang klären",
+            "Unterscheiden, ob Rohdaten, Zielpunkte, Abstandswerte oder nur Präsenz ausgegeben werden",
+            "Hersteller-Evaluationssoftware, SDK und Datenblatt verlinken",
+            "Antennenbereich und vorgeschriebene freie Fläche bei der Montage markieren"
+          ]
+        }
+      },
+      {
+        "id": "measurement-chain",
+        "type": "plantuml",
+        "title": "Vom reflektierten Signal zur Näherungsentscheidung",
+        "summary": "Messung und fachliche Entscheidung bleiben getrennte Schritte.",
+        "source_path": "docs/radar-messkette.puml",
+        "validation": { "type": "plantuml_contains", "must_contain": ["@startuml", "@enduml"] },
+        "payload": {
+          "source": "@startuml\ntitle FMCW-Näherungssensor – erste Messkette\nactor Ziel\ncomponent \"FMCW-Radarmodul\\nChirps + Empfang\" as radar\ncomponent \"Hersteller-Firmware oder SDK\\nRange / Doppler / Zielpunkte\" as sdk\ncomponent \"Filter und Erfassungszone\" as filter\ncomponent \"Fachliche Regel\\nnahe | präsent | entfernt\" as rule\ncomponent \"Anzeige und Messprotokoll\" as output\nZiel --> radar : Reflexion\nradar --> sdk : Roh- oder Ergebnisdaten\nsdk --> filter : Messwerte\nfilter --> rule : relevante Ziele\nrule --> output : Zustand + Begründung\n@enduml"
+        }
+      },
+      {
+        "id": "bench-experiment",
+        "type": "implementation_plan",
+        "title": "Erster Versuchsplan",
+        "summary": "Verändere jeweils nur eine Randbedingung und protokolliere auch Fehlmessungen.",
+        "payload": {
+          "tasks": [
+            "Leeren Erfassungsraum als Ausgangszustand messen",
+            "Eine Person oder ein definiertes Ziel in festen Abständen platzieren",
+            "Stillstand, langsame Annäherung und schnelle Querbewegung getrennt prüfen",
+            "Metall, Holz, Textil und weitere relevante Ziele vergleichen",
+            "Wände, Tischkante und Gegenstände außerhalb der Zielzone dokumentieren",
+            "Mehrere Ziele und teilweise verdeckte Ziele prüfen",
+            "Messrate, erkannte Ziele, Abstand, Stabilität und Fehlalarm notieren",
+            "Erst danach eine Schwelle und eine zeitliche Bestätigung für „nahe“ festlegen"
+          ]
+        }
+      },
+      {
+        "id": "next-sensor-stage",
+        "type": "story_slide",
+        "title": "Das Projekt darf später mehrere Sensorstufen bekommen",
+        "summary": "Die Radarstufe bildet den Anfang eines vergleichenden Näherungssensor-Projekts.",
+        "completion": { "type": "acknowledge", "label": "Nächste Stufen vorgemerkt" },
+        "payload": {
+          "model_lines": [
+            { "label": "Stufe 1", "text": "FMCW-Radar identifizieren, verstehen, vermessen und eine Erfassungszone definieren." },
+            { "label": "Stufe 2", "text": "Einen IR-ToF-Sensor unter demselben Versuchsplan messen." },
+            { "label": "Stufe 3", "text": "Optional Ultraschall, PIR oder kapazitive Näherung ergänzen." },
+            { "label": "Abschluss", "text": "Die Verfahren anhand eigener Messdaten und einer konkreten Anwendung auswählen oder kombinieren." }
+          ]
+        }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "docs/radar-naeherungssensor-plan.md",
+      "role": "decision_record",
+      "content": "# Mein FMCW-Näherungssensor – Projektstufe 1\n\n## Messaufgabe\n\n- Was soll erkannt werden: Annäherung, Präsenz, Entfernung oder Bewegung?\n- Gewünschter Erfassungsbereich:\n- Was soll ausdrücklich nicht erkannt werden?\n- Erlaubte Reaktionszeit:\n\n## Gekauftes Radarmodul\n\n- Hersteller und genaue Typbezeichnung:\n- Produktlink und Datenblatt:\n- Frequenzband:\n- Versorgung und maximale Stromaufnahme:\n- Logikpegel:\n- Schnittstelle:\n- Antennen und Empfangskanäle:\n- Ausgabedaten: Rohdaten, Zielpunkte, Abstand oder Präsenzsignal:\n- Herstellerwerkzeug oder SDK:\n- Regionale Vorgaben aus den Herstellerunterlagen:\n\n## Versuchsaufbau\n\n- Montagehöhe und Ausrichtung:\n- Freie Fläche vor der Antenne:\n- Raum und reflektierende Gegenstände:\n- Testziele und feste Abstände:\n- Messrate und Protokollformat:\n\n## Erste Entscheidung\n\n- Welche Radarwerte verwende ich?\n- Wie definiere ich die Erfassungszone?\n- Welche Schwelle und zeitliche Bestätigung verwende ich?\n- Welche Fehlalarme habe ich beobachtet?\n- Welches Vergleichsverfahren folgt als nächste Stufe?\n"
+    },
+    {
+      "path": "docs/radar-messkette.puml",
+      "role": "architecture_model",
+      "content": "@startuml\ntitle FMCW-Näherungssensor – erste Messkette\nactor Ziel\ncomponent \"FMCW-Radarmodul\\nChirps + Empfang\" as radar\ncomponent \"Hersteller-Firmware oder SDK\\nRange / Doppler / Zielpunkte\" as sdk\ncomponent \"Filter und Erfassungszone\" as filter\ncomponent \"Fachliche Regel\\nnahe | präsent | entfernt\" as rule\ncomponent \"Anzeige und Messprotokoll\" as output\nZiel --> radar : Reflexion\nradar --> sdk : Roh- oder Ergebnisdaten\nsdk --> filter : Messwerte\nfilter --> rule : relevante Ziele\nrule --> output : Zustand + Begründung\n@enduml"
+    },
+    {
+      "path": "messungen/versuchsplan.csv",
+      "role": "measurement_plan",
+      "content": "versuch,ziel,abstand_m,bewegung,umgebung,radar_ausgabe,entscheidung,auffaelligkeit\n1,kein Ziel,,,leerer Erfassungsraum,,,\n2,Person,0.5,still,freie Sicht,,,\n3,Person,1.0,langsame Annäherung,freie Sicht,,,\n4,Person,2.0,Querbewegung,freie Sicht,,,\n5,definiertes Testziel,1.0,still,neben reflektierender Wand,,,\n"
+    }
+  ]
+}

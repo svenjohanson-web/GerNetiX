@@ -23,6 +23,11 @@ function createHttpApp(options) {
       is_operator: req.headers["x-gernetix-community-operator"] === "true",
     };
 
+    if (req.method === "GET" && path === `${prefix}/operations-summary`) {
+      sendJson(res, 200, service.operationsSummary());
+      return;
+    }
+
     if (req.method === "GET" && path === `${prefix}/questions`) {
       sendJson(res, 200, service.listQuestions(Object.fromEntries(url.searchParams.entries()), actor));
       return;

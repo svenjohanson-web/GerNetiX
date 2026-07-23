@@ -177,6 +177,37 @@ test("catalog includes the home automation network course with a resource bounda
   assert.match(course, /Home-Assistant-Kompatibilitaet/);
 });
 
+test("catalog scaffolds the proximity-sensor project with FMCW radar as its first stage", () => {
+  const course = require("../src/dev/project-models/proximity-sensor-radar-course.json");
+  const model = require("../src/dev/project-models/proximity-sensor-radar-course");
+  assert.equal(course.project.title, "Baue deinen eigenen Näherungssensor");
+  assert.equal(course.project.learning_category, "embedded");
+  assert.equal(course.project.access_model, "free");
+  assert.ok(course.project.tags.includes("topic:sensors"));
+  assert.ok(course.project.tags.includes("topic:radar"));
+  assert.equal(course.project.steps.length, 7);
+  assert.deepEqual(course.view_manifest.views.map((view) => view.id), [
+    "radar-project-goal",
+    "fmcw-principle",
+    "sensor-comparison",
+    "identify-module",
+    "measurement-chain",
+    "bench-experiment",
+    "next-sensor-stage",
+  ]);
+  assert.match(JSON.stringify(course.view_manifest), /FMCW[\s\S]*Infrarot[\s\S]*Ultraschall[\s\S]*PIR/);
+  assert.match(course.sources.find((source) => source.path.endsWith("radar-naeherungssensor-plan.md")).content, /Hersteller und genaue Typbezeichnung/);
+  assert.match(course.sources.find((source) => source.path.endsWith("versuchsplan.csv")).content, /radar_ausgabe/);
+  assert.equal(model.createProximitySensorRadarCourseModel().slug, "build-your-own-proximity-sensor");
+  assert.match(server, /createProximitySensorRadarCourseModel/);
+  assert.match(server, /proximitySensorRadarCourseModel\.createProject/);
+  assert.match(server, /proximitySensorRadarCourseModel\.createViewManifest/);
+  assert.match(server, /proximitySensorRadarCourseModel\.createSources/);
+  assert.match(app, /"topic:radar": "Radar"/);
+  assert.match(app, /catalog=|get\("catalog"\)/);
+  assert.match(app, /learning-catalog-card\$\{project\.slug === requestedCatalogSlug \? " is-linked"/);
+});
+
 test("does not expose the retired ESP32 OTA basis software as a learning project", () => {
   assert.doesNotMatch(server, /project\("esp32-ota-bootstrap-firmware"/);
   assert.match(server, /isRetiredCatalogProject/);

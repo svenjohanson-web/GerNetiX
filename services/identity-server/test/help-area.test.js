@@ -16,6 +16,9 @@ const webshopAccountSeparationDoc = fs.readFileSync(path.join(__dirname, "..", "
 test("keeps Help reachable through the main menu and renders it as a dedicated view", () => {
   assert.match(html, /href="\/hilfe\/">Hilfe<\/a>/);
   assert.match(html, /class="utility public-information-link" href="\/">Startseite<\/a>/);
+  assert.match(html, /class="public-header-brand"[\s\S]*src="\/gernetix-wordmark\.png"/);
+  assert.match(html, /class="utility public-information-link" href="\/produkte\/">Produkte<\/a>/);
+  assert.match(html, /class="utility public-information-link" href="\/community\/">Community<\/a>/);
   assert.match(html, /class="utility public-information-link" href="\/app\/auth\/">Anmelden<\/a>/);
   assert.match(html, /data-open-route="\/wissen\/"[\s\S]*Wissensportal/);
   assert.match(html, /id="helpView"/);
@@ -56,7 +59,7 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(helpContent, /Aus Quelltext wird eine Firmware-Datei[\s\S]*Der Bootloader öffnet den Programmierweg[\s\S]*Löschen, schreiben und prüfen[\s\S]*Start nach dem Flashen/);
   assert.match(helpContent, /"physical-limits": \{[\s\S]*Absolute Maximum Ratings[\s\S]*absolute Grenzwerte[\s\S]*Strom pro Pin und Gesamtstrom[\s\S]*Maximale Frequenz und Prozessortakt/);
   assert.match(helpContent, /"sampling-rate": \{[\s\S]*Nyquist-Shannon-Abtasttheorem[\s\S]*Aliasing[\s\S]*Abtastrate praktisch wählen/);
-  assert.match(helpContent, /"sensors": \{[\s\S]*Sensortypen[\s\S]*I²C[\s\S]*Messschaltungen[\s\S]*Spannungsteiler/);
+  assert.match(helpContent, /"sensors": \{[\s\S]*Sensoren nach Messgröße und Wirkprinzip ordnen[\s\S]*I²C[\s\S]*Messschaltungen[\s\S]*Spannungsteiler/);
   assert.match(helpContent, /"actuators": \{[\s\S]*Aktor-Typen[\s\S]*Schaltungen zur Ansteuerung[\s\S]*MOSFETs[\s\S]*Freilaufdiode/);
   assert.match(helpContent, /"bus-systems": \{[\s\S]*Chip-zu-Chip-Schnittstellen[\s\S]*I²C[\s\S]*SPI[\s\S]*Feld- und Systembusse[\s\S]*CAN[\s\S]*RS-485/);
   assert.match(helpContent, /title: "Querschnittsthemen"[\s\S]*"privacy-basics", title: "Datenschutz in vernetzten Projekten"/);
@@ -148,6 +151,7 @@ test("keeps the hardware landscape as a public page in the common help model", (
 test("opens the knowledge portal with engineering thinking and the Tamagotchi learning journey", () => {
   const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
   assert.match(navigation, /id: "engineering-thinking"[\s\S]*title: "Ingenieursmäßig denken"[\s\S]*"from-problem-to-system"/);
+  assert.match(navigation, /id: "from-problem-to-system"[\s\S]*access: "public"/);
   assert.match(helpContent, /"from-problem-to-system": \{[\s\S]*Nicht Technologie, sondern Problem[\s\S]*Wissen, Analyse und KI/);
   assert.match(helpContent, /KI verändert den Zugang[\s\S]*keine eigenen Wünsche[\s\S]*Verantwortung für die Folgen/);
   assert.match(helpContent, /Viele Wege ins Lernen[\s\S]*Lernprojektkatalog/);
@@ -178,6 +182,54 @@ test("explains embedded measurement technology and approachable debugging", () =
   assert.match(helpContent, /Messtechnik: erst messen, dann raten[\s\S]*Multimeter[\s\S]*Oszilloskop[\s\S]*Logikanalysator/);
   assert.match(helpContent, /Debugwerkzeuge: moderne Hilfe statt unnötiger Hürden[\s\S]*JTAG[\s\S]*KI kann heute Logausgaben/);
   assert.match(helpContent, /Ein ruhiger Debug-Ablauf/);
+});
+
+test("compares door position sensors through the chicken-door engineering task", () => {
+  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  assert.match(navigation, /id: "sensors"[\s\S]*sensor-reed-contact[\s\S]*sensor-photoelectric[\s\S]*sensor-limit-switch[\s\S]*sensor-contact-bridge[\s\S]*sensor-chicken-door-task[\s\S]*sensor-selection-games[\s\S]*sensor-application-map/);
+  assert.match(helpContent, /Reed-Kontakt: Schalten mit einem Magneten[\s\S]*Vorteile[\s\S]*Nachteile/);
+  assert.match(helpContent, /Lichtschranke: Eine unterbrochene Lichtstrecke erkennen[\s\S]*Staub, Federn, Spinnweben/);
+  assert.match(helpContent, /mechanischer Endschalter oder Positionsschalter[\s\S]*Mikroschalter[\s\S]*Rollenhebel/);
+  assert.match(helpContent, /Leitende Kontaktbrücke[\s\S]*Oxidation und Korrosion/);
+  assert.match(helpContent, /Induktiver Näherungssensor[\s\S]*Metallziel/);
+  assert.match(helpContent, /Denkaufgabe: Endlagen einer automatischen Hühnerklappe[\s\S]*vollständig geöffnet[\s\S]*vollständig geschlossen/);
+  assert.match(helpContent, /fälschlich „Tür geschlossen“[\s\S]*beide Endlagen gleichzeitig aktiv/);
+});
+
+test("offers interactive sensor selection games with scenario-specific reasoning", () => {
+  assert.match(helpContent, /Frage-Antwort-Spiele: Welcher Sensor passt\?[\s\S]*CNC-Maschine: reproduzierbare Referenzfahrt/);
+  assert.match(helpContent, /Metallspäne und Kühlschmierstoff[\s\S]*answer: "inductive"[\s\S]*Encoder oder ein Längenmesssystem/);
+  assert.match(helpContent, /Fensteralarm: offen oder geschlossen[\s\S]*answer: "reed"[\s\S]*Sabotageerkennung/);
+  assert.match(helpContent, /Förderband: Werkstücke zählen[\s\S]*answer: "photoelectric"/);
+  assert.match(helpContent, /Außentor: Endlage mit Schlamm und Regen[\s\S]*Gekapselter induktiver Näherungssensor/);
+  assert.match(helpContent, /Welcher Sensor passt wohin\?[\s\S]*Sicherheitskritische Schutztür[\s\S]*Zertifizierter Sicherheitssensor/);
+  assert.match(helpView, /renderKnowledgeQuizzes[\s\S]*data-knowledge-quiz-check[\s\S]*Wähle zuerst eine Antwort aus\.[\s\S]*selected\.value === quiz\.dataset\.answer/);
+  assert.match(css, /\.knowledge-quiz-list[\s\S]*\.knowledge-quiz-feedback\.correct[\s\S]*\.knowledge-quiz-feedback\.wrong/);
+});
+
+test("organizes sensor families by measured quantity and physical principle", () => {
+  const navigation = helpContent.match(/id: "sensors", title: "Sensoren"[\s\S]*?\]\s*\},/)?.[0] || "";
+  assert.match(navigation, /sensor-position-presence[\s\S]*sensor-distance-proximity[\s\S]*sensor-temperature[\s\S]*sensor-light-radiation/);
+  assert.match(navigation, /sensor-motion-orientation[\s\S]*sensor-force-pressure[\s\S]*sensor-environment-chemical[\s\S]*sensor-level-flow[\s\S]*sensor-electrical/);
+  assert.match(helpContent, /Messgröße sagt, was erfasst wird[\s\S]*Wirkprinzip sagt, wie daraus ein elektrisches Signal entsteht/);
+  assert.match(helpContent, /Positions-, Endlagen- und Anwesenheitssensoren[\s\S]*Encoder oder Längenmesssystem/);
+  assert.match(helpContent, /Abstands- und Näherungssensoren[\s\S]*Infrarot[\s\S]*Ultraschall[\s\S]*Radar[\s\S]*LiDAR/);
+  assert.match(helpContent, /Temperatursensoren: NTC, PTC und weitere Bauarten[\s\S]*Pt100[\s\S]*Thermoelement[\s\S]*Halbleiter-IC/);
+  assert.match(helpContent, /Licht-, Farb- und Strahlungssensoren[\s\S]*Fotodiode[\s\S]*Thermopile/);
+  assert.match(helpContent, /Bewegungs-, Lage- und Orientierungssensoren[\s\S]*Beschleunigungssensor[\s\S]*Gyroskop[\s\S]*Magnetometer[\s\S]*PIR/);
+  assert.match(helpContent, /Kraft-, Gewichts-, Druck- und Berührungssensoren[\s\S]*Dehnungsmessstreifen[\s\S]*Piezoelement/);
+  assert.match(helpContent, /Umwelt-, Schall- und chemische Sensoren[\s\S]*Feuchtesensoren[\s\S]*Nichtdispersive Infrarotsensoren[\s\S]*Partikelsensoren/);
+  assert.match(helpContent, /Füllstands- und Durchflusssensoren[\s\S]*Schwimmerschalter[\s\S]*magnetisch-induktiv/);
+  assert.match(helpContent, /Sensoren für Spannung, Strom und Leistung[\s\S]*Shunt[\s\S]*Hall-Stromsensoren[\s\S]*Stromwandler/);
+});
+
+test("explains FMCW radar and links it to the first proximity-sensor project stage", () => {
+  const navigation = helpContent.match(/id: "sensors", title: "Sensoren"[\s\S]*?\]\s*\},/)?.[0] || "";
+  assert.match(navigation, /sensor-distance-proximity[\s\S]*sensor-fmcw-radar[\s\S]*sensor-temperature/);
+  assert.match(helpContent, /FMCW-Radar: Entfernung und Bewegung aus Chirps/);
+  assert.match(helpContent, /Beat-Frequenz[\s\S]*Relativgeschwindigkeit[\s\S]*mehreren Empfangskanälen/);
+  assert.match(helpContent, /Gegenüber reflektivem Infrarot[\s\S]*Gegenüber IR-Time-of-Flight[\s\S]*Gegenüber Ultraschall[\s\S]*Gegenüber PIR/);
+  assert.match(helpContent, /Baue deinen eigenen Näherungssensor[\s\S]*\/app\/learn\/\?catalog=build-your-own-proximity-sensor/);
 });
 
 test("explains electrical and functional safety without normalizing vehicle modifications", () => {
@@ -317,6 +369,9 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(helpView, /Dieses Kapitel mit Premium weiterlesen/);
   assert.match(helpView, /Du kannst jederzeit eine andere Kapitelvorschau öffnen/);
   assert.match(helpView, /help-access-badge/);
+  const knowledgeBookView = helpView.match(/function renderKnowledgeBook[\s\S]*?function activateKnowledgeBook/)?.[0] || "";
+  assert.doesNotMatch(knowledgeBookView, /accessBadge/);
+  assert.match(knowledgeBookView, /renderPaywall|renderArticle/);
   assert.match(css, /\.help-paywall/);
   assert.match(server, /\["\/hilfe", "\/hilfe\/", "\/wissen", "\/wissen\/"\]\.includes\(url\.pathname\)[\s\S]*serveStatic\(res, appDir, "\/index\.html"\)/);
   assert.doesNotMatch(server, /url\.pathname === "\/app\/help"/);
@@ -324,7 +379,8 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(app, /const isPublicKnowledgePage/);
   assert.match(app, /label: state\.account \? "Plattform" : "Startseite", route: state\.account \? "\/app\/dashboard\/" : "\/"/);
   assert.match(app, /if \(link\.dataset\.breadcrumbRoute === "\/"\) \{[\s\S]*?window\.location\.assign\("\/"\)/);
-  assert.match(app, /document\.body\.classList\.add\("public-help-page", "public-information-anonymous"\)/);
+  assert.match(app, /if \(isPublicInformationPage\) document\.body\.classList\.add\("public-help-page"\)/);
+  assert.match(app, /document\.body\.classList\.add\("public-information-anonymous"\)/);
   assert.match(app, /public-information-anonymous/);
   assert.match(app, /getJson\("\/api\/platform\/summary"\)/);
   assert.match(helpContent, /surface: "knowledge"/);
@@ -344,8 +400,11 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(helpView, /<details class="knowledge-part-toc" open>/);
   assert.match(helpView, /<details class="knowledge-chapter-toc" open>/);
   assert.match(helpView, /function renderKnowledgeChapterToc/);
-  assert.match(helpView, /Leseprobe öffnen/);
+  assert.match(helpView, /knowledge-chapter-title-link/);
+  assert.doesNotMatch(helpView, /Leseprobe öffnen|Kapitel öffnen/);
+  assert.doesNotMatch(helpView, /knowledge-chapter-link[^>]*>[\s\S]*?→/);
   assert.match(helpView, /knowledge-subchapter-link is-locked/);
+  assert.doesNotMatch(helpView, /knowledge-subchapter-link is-locked[^>]*>[^<]*<small>Premium<\/small>/);
   assert.doesNotMatch(helpView, /Kapitel lesen|Unterkapitel/);
   assert.match(css, /\.knowledge-part-toc > summary/);
   assert.match(helpView, /Kapitelübersicht öffnen oder schließen/);
@@ -358,12 +417,14 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(helpView, /renderArticle\(chapter, child, \{ showRelated: false, chapterNumber \}\)/);
   assert.match(helpView, /knowledge-part-link/);
   assert.match(helpView, /data-knowledge-part/);
+  assert.match(helpView, /event\.stopPropagation\(\)/);
   assert.match(helpView, /scrollIntoView\(\{ behavior: "smooth", block: "start" \}\)/);
   assert.match(helpView, /const syncChapterWithScroll/);
   assert.match(helpView, /window\.addEventListener\("scroll", knowledgeScrollHandler/);
   assert.match(css, /\.knowledge-book-navigation/);
-  assert.match(css, /\.knowledge-book-toc summary/);
-  assert.match(css, /\.knowledge-book-toc\[open\] summary::after/);
+  assert.match(css, /\.knowledge-book-toc > summary/);
+  assert.match(css, /\.knowledge-book-toc\[open\] > summary::after/);
+  assert.doesNotMatch(css, /\.knowledge-book-toc\[open\] summary::after/);
   assert.match(css, /\.knowledge-part-link/);
   assert.match(css, /\.knowledge-book-chapter \{ scroll-margin-top/);
   assert.match(css, /\.knowledge-subchapter-link/);
@@ -372,12 +433,13 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(css, /\.help-practice-lesson/);
   assert.match(css, /\.help-practice-lesson\.is-disabled/);
   assert.match(css, /body\.public-help-page/);
-  assert.match(css, /body\.public-help-page \.topbar \{ position: sticky; top: 0; z-index: 50; \}/);
-  assert.match(css, /body\.public-help-page \.app-menu \{ position: fixed; top: 80px; right: 22px; z-index: 60; \}/);
+  assert.match(css, /body\.public-help-page \.public-header-brand/);
+  assert.match(css, /body\.public-help-page \.topbar \{[\s\S]*position: sticky;[\s\S]*top: 16px;/);
+  assert.match(css, /body\.public-help-page \.app-menu \{ position: fixed; top: 96px; right: 22px; z-index: 60; \}/);
   assert.match(css, /body\.public-information-anonymous #mainMenu a:not\(\.public-information-link\)/);
 });
 
-test("gates every knowledge chapter independently while keeping its preview available", () => {
+test("keeps engineering thinking public and gates the remaining knowledge chapters independently", () => {
   const context = {};
   vm.createContext(context);
   vm.runInContext(`${helpContent};this.content = HelpContent;`, context);
@@ -386,7 +448,10 @@ test("gates every knowledge chapter independently while keeping its preview avai
     .flatMap((topic) => topic.children || []);
 
   assert.equal(chapters.length, 24);
-  assert.ok(chapters.every((chapter) => context.content.articles[chapter.articleId]?.access === "premium"));
+  assert.equal(context.content.articles["from-problem-to-system"].access, "public");
+  assert.ok(chapters
+    .filter((chapter) => chapter.id !== "from-problem-to-system")
+    .every((chapter) => context.content.articles[chapter.articleId]?.access === "premium"));
   assert.match(helpView, /article\.sections\.slice\(0, 1\)/);
   assert.match(helpView, /knowledge-chapter-preview/);
 });

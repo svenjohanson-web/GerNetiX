@@ -59,13 +59,19 @@ echo "==> HTTPS-Nginx und automatische Zertifikatserneuerung starten"
 docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls up -d --wait --wait-timeout "$wait_timeout" --force-recreate nginx-tls mqtt-broker certbot
 
 echo "==> Edge- und Admin-Healthchecks"
-edge_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port nginx 8080 | sed 's/.*://')
+edge_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port nginx 8081 | sed 's/.*://')
 admin_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port admin-tool 4600 | sed 's/.*://')
 admin_access_port=$(docker compose --env-file "$env_file" -f compose.vps.yaml port admin-access-server 4610 | sed 's/.*://')
 curl --fail --silent --show-error "http://127.0.0.1:${edge_port}/health"
 printf '\n'
-curl --fail --silent --show-error --resolve gernetix.nl:443:127.0.0.1 "https://gernetix.nl/" >/dev/null
-printf 'HTTPS ok\n'
+private_vps_bind_address=$(awk -F= '$1 == "PRIVATE_VPS_BIND_ADDRESS" { print $2 }' "$env_file" | tail -n 1 | tr -d '\r')
+private_vps_bind_address=${private_vps_bind_address:-10.77.0.1}
+if [ "$private_vps_bind_address" = "0.0.0.0" ] || [ "$private_vps_bind_address" = "::" ]; then
+  echo "PRIVATE_VPS_BIND_ADDRESS darf keinen oeffentlichen Wildcard-Listener verwenden." >&2
+  exit 1
+fi
+curl --fail --silent --show-error --resolve "pwa.gernetix.com:443:${private_vps_bind_address}" "https://pwa.gernetix.com/health" >/dev/null
+printf 'Private PWA HTTPS ok\n'
 curl --fail --silent --show-error "http://127.0.0.1:${admin_port}/health"
 printf '\n'
 curl --fail --silent --show-error "http://127.0.0.1:${admin_access_port}/health"

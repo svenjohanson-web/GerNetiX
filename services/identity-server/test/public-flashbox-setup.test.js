@@ -9,6 +9,7 @@ const root = path.join(__dirname, "..");
 const server = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
 const page = fs.readFileSync(path.join(root, "public", "flashbox-einrichten", "index.html"), "utf8");
 const app = fs.readFileSync(path.join(root, "public", "flashbox-einrichten", "app.js"), "utf8");
+const internalAppPage = fs.readFileSync(path.join(root, "public", "app", "index.html"), "utf8");
 const publisher = fs.readFileSync(path.join(root, "..", "..", "tools", "publish-flashbox-initial-release.js"), "utf8");
 
 test("serves a public Flashbox setup without account or build-job APIs", () => {
@@ -35,17 +36,28 @@ test("checks ESP32-S3 and shows storage values before enabling the initial flash
   assert.doesNotMatch(app, /minimumPsramMb/);
   assert.match(app, /crypto\.subtle\.digest\("SHA-256"/);
   assert.match(app, /hardwareConfirmation/);
-  assert.match(page, /FlashBox zum Inventar hinzufügen/);
-  assert.match(page, /Jetzt anmelden und hinzufügen/);
+  assert.match(page, /Mit Account verbinden/);
+  assert.match(page, /5\. Mit Account verbinden/);
+  assert.match(page, /href="\/app\/auth\/\?next=%2Fapp%2Fdevice-management%2Finventory%2F"/);
+  assert.match(page, /Anmelden und Account zuordnen/);
   assert.match(app, /inventoryNext/);
+  assert.match(app, /markActive\("stepAccount"\)/);
   assert.match(app, /confirmHardwareCheck/);
   assert.match(app, /hardwareAcknowledged/);
   assert.match(app, /loader\.writeFlash/);
+});
+
+test("links setup from devices and keeps account assignment in the authenticated inventory", () => {
+  assert.match(internalAppPage, /href="\/flashbox-einrichten\/"[\s\S]*FlashBox einrichten und anschließend dem Account zuordnen/);
+  assert.match(internalAppPage, /id="flashbox-account-assignment"/);
+  assert.match(internalAppPage, /id="flashboxClaimForm"/);
+  assert.match(internalAppPage, /FlashBox mit Account verbinden/);
 });
 
 test("publishing is fixed to the Flashbox initial-image release type", () => {
   assert.match(publisher, /download_id: "flashbox-initial-image"/);
   assert.match(publisher, /platform: "esp32"/);
   assert.match(publisher, /architecture: "esp32-s3"/);
+  assert.match(publisher, /visibility: "public"/);
   assert.match(publisher, /repository\.publish/);
 });

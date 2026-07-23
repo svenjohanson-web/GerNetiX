@@ -27,6 +27,11 @@ function createConfig(env = process.env) {
     artifactDir: env.BUILD_ARTIFACT_DIR
       ? path.resolve(env.BUILD_ARTIFACT_DIR)
       : path.join(runtimeRoot, "artifacts"),
+    artifactSqlitePath: env.BUILD_ARTIFACT_SQLITE_PATH
+      ? path.resolve(env.BUILD_ARTIFACT_SQLITE_PATH)
+      : env.NODE_ENV === "test"
+        ? ":memory:"
+        : path.join(runtimeRoot, "gernetix-build-artifacts.sqlite"),
     persistenceBackend: env.PERSISTENCE_BACKEND || env.BUILD_DEPLOY_PERSISTENCE_BACKEND || "memory",
     sqlitePath: env.PERSISTENCE_SQLITE_PATH || env.BUILD_DEPLOY_SQLITE_PATH || path.join(runtimeRoot, "gernetix-services.sqlite"),
     interfaceTelemetrySqlitePath: env.INTERFACE_TELEMETRY_SQLITE_PATH

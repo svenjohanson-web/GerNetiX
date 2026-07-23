@@ -15,6 +15,7 @@ const pages = [
   "nachbauprojekte/index.html",
   "produkte/index.html",
   "shop/index.html",
+  "support/index.html",
   "webserial-test/index.html",
 ];
 

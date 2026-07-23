@@ -35,6 +35,7 @@ function main() {
       architecture: "esp32-s3",
       label: "Flashbox Initialimage",
       detail: "Signiertes, accountneutrales ESP32-S3-Initialimage",
+      visibility: "public",
       file_name: path.basename(filePath),
       content_type: "application/octet-stream",
       content: fs.readFileSync(filePath),

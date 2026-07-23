@@ -23,7 +23,7 @@ const HelpContent = (() => {
       surface: "knowledge",
       access: "public",
       children: [
-        { id: "from-problem-to-system", title: "Vom Problem zu technischen Grundlagen", articleId: "from-problem-to-system", subchapters: [
+        { id: "from-problem-to-system", title: "Vom Problem zu technischen Grundlagen", articleId: "from-problem-to-system", access: "public", subchapters: [
           { id: "engineering-thinking-problem", title: "Nicht Technologie, sondern Problem" },
           { id: "engineering-thinking-knowledge", title: "Wissen, Analyse und KI" },
           { id: "engineering-thinking-learning", title: "Viele Wege ins Lernen" },
@@ -53,7 +53,25 @@ const HelpContent = (() => {
           { id: "sampling-rate-practice", title: "Abtastrate praktisch wählen" },
         ] },
         { id: "sensors", title: "Sensoren", articleId: "sensors", subchapters: [
-          { id: "sensor-types", title: "Sensortypen" },
+          { id: "sensor-types", title: "Messgröße und Wirkprinzip" },
+          { id: "sensor-position-presence", title: "Position und Anwesenheit" },
+          { id: "sensor-reed-contact", title: "Reed-Kontakt" },
+          { id: "sensor-photoelectric", title: "Lichtschranke" },
+          { id: "sensor-limit-switch", title: "Mechanischer Endschalter" },
+          { id: "sensor-contact-bridge", title: "Leitende Kontaktbrücke" },
+          { id: "sensor-inductive", title: "Induktiver Näherungssensor" },
+          { id: "sensor-chicken-door-task", title: "Denkaufgabe Hühnerklappe" },
+          { id: "sensor-selection-games", title: "Frage-Antwort-Spiele" },
+          { id: "sensor-application-map", title: "Welcher Sensor passt wohin?" },
+          { id: "sensor-distance-proximity", title: "Abstand und Näherung" },
+          { id: "sensor-fmcw-radar", title: "FMCW-Radar" },
+          { id: "sensor-temperature", title: "Temperatur" },
+          { id: "sensor-light-radiation", title: "Licht und Strahlung" },
+          { id: "sensor-motion-orientation", title: "Bewegung und Orientierung" },
+          { id: "sensor-force-pressure", title: "Kraft, Gewicht und Druck" },
+          { id: "sensor-environment-chemical", title: "Umwelt und chemische Größen" },
+          { id: "sensor-level-flow", title: "Füllstand und Durchfluss" },
+          { id: "sensor-electrical", title: "Elektrische Größen" },
           { id: "measurement-circuits", title: "Messschaltungen" },
         ] },
         { id: "actuators", title: "Aktoren", articleId: "actuators", subchapters: [
@@ -789,7 +807,192 @@ const HelpContent = (() => {
       summary: "Sensoren übersetzen Eigenschaften der realen Welt in elektrische Signale. Erst die passende Messschaltung und Auswertung machen daraus einen verlässlichen Messwert.",
       access: "public",
       sections: [
-        { id: "sensor-types", heading: "Sensortypen", paragraphs: ["Sensoren können Temperatur, Licht, Abstand, Bewegung, Druck, Feuchte, Beschleunigung, Magnetfelder, Strom oder Spannung erfassen. Die physikalische Größe und die benötigte Genauigkeit bestimmen, welcher Sensortyp sinnvoll ist.", "Analoge Sensoren liefern meist eine Spannung oder einen Strom, der über einen ADC gemessen wird. Digitale Sensoren übertragen bereits aufbereitete Werte über Schnittstellen wie I²C, SPI, UART oder ein einfaches digitales Schaltsignal. Ein digitaler Sensor spart nicht automatisch Arbeit: Versorgung, Pegel, Timing, Buslänge und Fehlerfälle müssen trotzdem zur Schaltung passen.", "Wichtig ist auch die Unterscheidung zwischen absoluter Messung und Änderung: Ein Temperatursensor kann einen Wert in Grad liefern; ein Taster oder Bewegungsmelder meldet oft nur einen Zustand oder ein Ereignis. Für die Auswahl zählen Messbereich, Auflösung, Genauigkeit, Reaktionszeit, Drift, Umgebungsbedingungen und Energiebedarf."] },
+        { id: "sensor-types", heading: "Sensoren nach Messgröße und Wirkprinzip ordnen", paragraphs: ["Sensoren lassen sich auf zwei Arten beschreiben. Die Messgröße sagt, was erfasst wird – zum Beispiel Position, Abstand, Temperatur, Licht, Beschleunigung, Druck oder Feuchte. Das Wirkprinzip sagt, wie daraus ein elektrisches Signal entsteht – zum Beispiel mechanisch, magnetisch, optisch, akustisch, kapazitiv, induktiv, resistiv, piezoelektrisch oder elektrochemisch.", "Diese Trennung ist wichtig, weil dieselbe Aufgabe mit verschiedenen Wirkprinzipien gelöst werden kann. Abstand lässt sich etwa mit Infrarotlicht, Ultraschall oder Radar messen. Umgekehrt kann dasselbe Wirkprinzip mehreren Aufgaben dienen: Ein Hall-Sensor kann einen Magneten erkennen, Drehzahl zählen oder Strom berührungslos erfassen.", "Analoge Sensoren liefern beispielsweise Widerstand, Spannung, Strom oder Frequenz. Digitale Sensoren bereiten den Messwert bereits auf und übertragen ihn über I²C, SPI, UART, 1-Wire oder einen Schaltausgang. Unabhängig vom Ausgang zählen Messbereich, Auflösung, Genauigkeit, Wiederholbarkeit, Reaktionszeit, Drift, Umgebung, Energiebedarf und mögliche Fehlerbilder."], table: { headers: ["Messgröße oder Aufgabe", "Typische Wirkprinzipien"], rows: [
+          ["Position, Endlage, Anwesenheit", "Mechanischer Kontakt, Reed, Hall, induktiv, kapazitiv, optisch, Encoder"],
+          ["Abstand und Annäherung", "Infrarot-Reflexion, optische Laufzeitmessung, Ultraschall, Radar, LiDAR"],
+          ["Temperatur", "NTC, PTC, Widerstandsthermometer, Thermoelement, Halbleiter-IC"],
+          ["Bewegung und Orientierung", "Beschleunigungssensor, Gyroskop, Magnetometer, PIR"],
+          ["Kraft, Gewicht und Druck", "Dehnungsmessstreifen, piezoresistiv, kapazitiv, piezoelektrisch"],
+          ["Umwelt und Stoffe", "Feuchte, Luftdruck, Gase, Partikel, Schall, elektrochemische Messzellen"],
+          ["Füllstand und Durchfluss", "Schwimmer, Druck, kapazitiv, Ultraschall, Radar, Turbine, thermisch"],
+          ["Elektrische Größen", "Shunt, Hall-Effekt, Stromwandler, Spannungsteiler, isolierter Messverstärker"]
+        ] } },
+        { id: "sensor-position-presence", heading: "Positions-, Endlagen- und Anwesenheitssensoren", paragraphs: ["Die bisher betrachteten Bauteile gehören überwiegend in diese Familie. Ein Reed-Kontakt erkennt einen Magneten, ein Endschalter wird mechanisch betätigt und ein induktiver Näherungssensor erkennt ein Metallziel. Sie liefern meist keinen Weg in Millimetern, sondern eine Aussage wie „Ziel vorhanden“ oder „Endlage erreicht“.", "Eine Lichtschranke ist zunächst ein Anwesenheitssensor: Sie erkennt, ob ihr Lichtweg frei oder unterbrochen ist. Erst durch die festgelegte Einbauposition wird dieses Ereignis zur Positions- oder Endlageninformation. Für eine kontinuierliche Position oder einen Drehwinkel sind Potentiometer, magnetische Winkelsensoren, Drehgeber sowie lineare oder optische Messsysteme geeigneter.", "Auch kapazitive Näherungssensoren gehören hierher. Sie reagieren auf die Änderung eines elektrischen Feldes und können neben Metall auch viele nichtmetallische Stoffe erkennen. Feuchte, Ablagerungen und die Einbausituation können ihre Schaltschwelle jedoch beeinflussen."], table: { headers: ["Sensor", "Typische Aussage", "Besondere Stärke"], rows: [
+          ["Reed- oder Hall-Sensor", "Magnet vorhanden oder Magnetposition erreicht", "Berührungslos und gut gekapselt realisierbar"],
+          ["Mechanischer Endschalter", "Mechanische Endlage tatsächlich betätigt", "Direkte und leicht nachvollziehbare Rückmeldung"],
+          ["Induktiver Näherungssensor", "Metallziel im Schaltbereich", "Robust und berührungslos in Industrieumgebungen"],
+          ["Kapazitiver Näherungssensor", "Material verändert das elektrische Feld", "Erkennt auch viele nichtmetallische Materialien"],
+          ["Lichtschranke", "Lichtweg frei oder unterbrochen", "Schnelle berührungslose Anwesenheitserkennung"],
+          ["Encoder oder Längenmesssystem", "Winkel, Weg oder Positionsänderung", "Viele aufeinanderfolgende Positionswerte statt nur eines Schaltpunkts"]
+        ] } },
+        { id: "sensor-reed-contact", heading: "Reed-Kontakt: Schalten mit einem Magneten", paragraphs: ["Ein Reed-Kontakt besteht aus zwei ferromagnetischen Kontaktzungen in einem hermetisch geschlossenen Glaskörper. Nähert sich ein Magnet, werden die Zungen magnetisiert und schließen oder öffnen den Stromkreis. An einer Tür sitzt deshalb meist der Reed-Kontakt am festen Rahmen und der Magnet am bewegten Teil.", "Für einen Mikrocontroller ist ein Reed-Kontakt ein einfacher digitaler Eingang. Er benötigt für das eigentliche Schließen des Kontakts keine eigene Versorgung, braucht aber eine passende Eingangsschaltung, meist mit Pull-up oder Pull-down. Wie bei mechanischen Kontakten können kurze Prellimpulse auftreten; Software oder ein kleines Filter muss den Zustand deshalb für eine kurze Zeit stabil bestätigen."], table: { headers: ["Vorteile", "Nachteile"], rows: [
+          ["Berührungslos betätigt; kein offen liegender Schaltkontakt; sehr geringer Energiebedarf; gekapselte Kontakte sind gut gegen die Umgebung geschützt; für Tür- und Positionsabfragen bewährt.", "Magnet und Kontakt müssen mit passendem Abstand und passender Orientierung montiert sein; ein loser Magnet führt zu falschen Zuständen; der nackte Glaskörper ist mechanisch empfindlich; Schaltstrom und Spannung sind begrenzt."]
+        ] } },
+        { id: "sensor-photoelectric", heading: "Lichtschranke: Eine unterbrochene Lichtstrecke erkennen", paragraphs: ["Eine Lichtschranke erkennt, ob Licht vom Sender zum Empfänger gelangt. Bei einer Einweg-Lichtschranke stehen sich Sender und Empfänger gegenüber. Unterbricht ein Objekt den Strahl, ändert sich das Ausgangssignal. Andere Bauformen arbeiten mit einem Reflektor oder werten das vom Objekt zurückgeworfene Licht aus.", "Die Lichtschranke arbeitet berührungslos und kann über größere Abstände erkennen. Für eine Tür-Endlage muss der Strahl jedoch so angeordnet sein, dass wirklich die Tür oder ein festes Zielstück erkannt wird – nicht zufällig ein Tier, ein Flügel, ein Blatt oder ein anderes Objekt."], table: { headers: ["Vorteile", "Nachteile"], rows: [
+          ["Berührungslos und damit ohne mechanischen Verschleiß am Messpunkt; größere Erfassungsabstände möglich; viele Materialien lassen sich erkennen; die Position kann ohne Magnet bestimmt werden.", "Staub, Federn, Spinnweben, Schlamm oder Kondenswasser können Sender, Empfänger oder Reflektor verdecken; Sender und Empfänger müssen ausgerichtet bleiben; Fremdlicht und ungeeignete Oberflächen können die Erkennung erschweren; benötigt Energie und meist mehr Verdrahtung."]
+        ] } },
+        { id: "sensor-limit-switch", heading: "Mechanischer Endschalter: Die Endlage direkt betätigen", paragraphs: ["Der korrekte Fachbegriff ist mechanischer Endschalter oder Positionsschalter. Im Inneren sitzt häufig ein Mikroschalter; außen überträgt ein Stößel, Hebel oder Rollenhebel die Bewegung. Erreicht die Tür die Endlage, drückt ein festes Betätigungsteil den Schalter.", "Ein industrieller Endschalter ist nicht dasselbe wie ein ungeschützter kleiner Taster. Geeignete Gehäuse und Dichtungen können den inneren Kontakt gegen Wasser, Öl, Staub und Schmutz schützen. Trotzdem bleibt die Betätigung mechanisch: Weg, Kraft, Überlaufweg und die sichere Rückstellung müssen zur Konstruktion passen."], table: { headers: ["Vorteile", "Nachteile"], rows: [
+          ["Direkte und leicht verständliche Bestätigung der physischen Endlage; einfaches digitales Signal; viele Betätigerformen; gekapselte Industrievarianten können mechanisch und gegenüber der Umgebung sehr robust sein.", "Betätiger und Mechanik werden belastet und können verschleißen; falscher Überlaufweg kann den Schalter beschädigen; Schlamm, Eis oder Fremdkörper können die Bewegung blockieren; die Tür muss den Schalter zuverlässig erreichen und mit passender Kraft betätigen."]
+        ] } },
+        { id: "sensor-contact-bridge", heading: "Leitende Kontaktbrücke: Zwei Metallflächen direkt verbinden", paragraphs: ["Die vorgeschlagene Lösung mit zwei Metallstiften und einem Metallblatt ist eine leitende Kontaktbrücke. In der Endlage verbindet das Metallblatt beide Kontakte; der Mikrocontroller erkennt den geschlossenen Stromkreis. Das Prinzip ist elektrisch einfach und kann in einem Versuchsaufbau anschaulich sein.", "Für eine dauerhaft zuverlässige Außenanwendung sind offen liegende Kontakte jedoch kritisch. Feuchtigkeit, Stallstaub, Schmutz, Oxidation und Korrosion verändern den Kontaktwiderstand. Das Metallblatt kann nur teilweise aufliegen, die Flächen können sich abnutzen oder leitfähiger Schmutz kann einen falschen Kontakt herstellen. Ohne gekapselte, korrosionsbeständige und selbstreinigende Konstruktion ist diese Variante deshalb eher ein Lernversuch als eine robuste Endlagenerkennung."], table: { headers: ["Vorteile", "Nachteile"], rows: [
+          ["Sehr einfach zu verstehen; wenige Bauteile; preiswert; Endlage wird unmittelbar durch elektrischen Kontakt bestätigt.", "Offene Kontaktflächen sind anfällig für Schmutz, Feuchtigkeit, Oxidation und Korrosion; Kontaktwiderstand kann schwanken; mechanische Ausrichtung und Anpressdruck sind nötig; Kurzschluss- und Fehlkontaktpfade müssen begrenzt werden."]
+        ] } },
+        { id: "sensor-inductive", heading: "Weiterdenken: Induktiver Näherungssensor", paragraphs: ["Wenn ein Metallziel erkannt werden soll, ist ein induktiver Näherungssensor eine berührungslose Alternative zur offenen Kontaktbrücke. Er erkennt ein Metallstück, ohne es elektrisch zu berühren. Dadurch gibt es an der Messstelle keinen offenen Schaltkontakt und keinen mechanischen Kontaktverschleiß.", "Induktive Sensoren können in schmutziger Umgebung sehr robust sein, benötigen aber eine Versorgung, eine passende Ausgangsschaltung und ein Metallziel innerhalb ihres begrenzten Schaltabstands. Sie sind meist teurer und größer als ein Reed-Kontakt. Für ein Lernprojekt sind sie eine gute Erinnerung daran, dass dieselbe fachliche Aufgabe mit unterschiedlichen physikalischen Prinzipien gelöst werden kann."] },
+        { id: "sensor-chicken-door-task", heading: "Denkaufgabe: Endlagen einer automatischen Hühnerklappe", paragraphs: ["Eine motorisierte Hühnerklappe soll zuverlässig melden, ob sie vollständig geöffnet oder vollständig geschlossen ist. Der Sensor sitzt in einem Stall: Staub, Federn, Spinnweben, Feuchtigkeit und gelegentlicher Schlamm sind realistische Einflüsse. Die Lösung soll langlebig sein und möglichst wenig Wartung benötigen.", "Vergleiche Reed-Kontakt, Lichtschranke, mechanischen Endschalter und leitende Kontaktbrücke. Du darfst zusätzlich einen induktiven Näherungssensor mit Metallziel berücksichtigen. Entscheide nicht nur nach dem Kaufpreis, sondern begründe deine Wahl aus dem Wirkprinzip und den Randbedingungen."], list: [
+          "Welches Prinzip würdest du für die vollständig geöffnete Endlage wählen – und warum?",
+          "Welches Prinzip würdest du für die vollständig geschlossene Endlage wählen? Würdest du bewusst zweimal denselben Sensortyp einsetzen?",
+          "Welche Lösung ist gegenüber Staub, Federn und Spinnweben am unempfindlichsten?",
+          "Was passiert bei einem verrutschten Magneten, einem verdeckten Lichtweg, einem klemmenden Schalter oder korrodierten Kontakten?",
+          "Welcher Fehler könnte fälschlich „Tür geschlossen“ melden? Wie müsste die Steuerung reagieren, wenn beide Endlagen gleichzeitig aktiv oder beide über längere Zeit inaktiv sind?",
+          "Wie würdest du Sensor, Kabel und Befestigung montieren, damit ein Huhn sie nicht beschädigt und die Tür trotzdem sicher stoppen kann?"
+        ] },
+        { id: "sensor-selection-games", heading: "Frage-Antwort-Spiele: Welcher Sensor passt?", paragraphs: ["Wähle zuerst selbst eine Antwort. Danach kannst du prüfen, welches Prinzip unter den genannten Randbedingungen am besten passt. In einem echten Projekt muss anschließend immer ein konkretes Datenblatt gegen Genauigkeit, Schutzart, Temperatur, Schaltabstand und Lebensdauer geprüft werden."], quizzes: [
+          {
+            id: "cnc-reference",
+            title: "CNC-Maschine: reproduzierbare Referenzfahrt",
+            situation: "Eine CNC-Achse fährt bei jeder Referenzfahrt aus derselben Richtung langsam auf ihren Referenzpunkt zu. Metallspäne und Kühlschmierstoff sind möglich. Das Signal soll verschleißfrei und sehr gut wiederholbar sein.",
+            question: "Welches der bisher vorgestellten Prinzipien ist für das robuste Referenzsignal die naheliegendste Wahl?",
+            answer: "inductive",
+            options: [
+              { id: "reed", label: "Reed-Kontakt mit Magnet" },
+              { id: "photoelectric", label: "Offene Lichtschranke" },
+              { id: "limit", label: "Einfacher ungekapselter Endschalter" },
+              { id: "inductive", label: "Industriegeeigneter induktiver Näherungssensor mit Metallfahne" },
+              { id: "bridge", label: "Offene leitende Kontaktbrücke" }
+            ],
+            correctText: "Für das robuste Referenzsignal ist hier ein geeigneter induktiver Näherungssensor mit Metallfahne die naheliegende Wahl.",
+            wrongText: "Prüfe noch einmal, welches Prinzip berührungslos arbeitet und in Varianten für Metallspäne sowie Kühlschmierstoff ausgelegt ist.",
+            explanation: "Induktive Sensoren erkennen ein Metallziel berührungslos und sind in öl- und schmutzbeständigen Industrieausführungen erhältlich. Hohe Wiederholgenauigkeit entsteht trotzdem nicht allein durch das Wort „induktiv“: Schaltabstand, Hysterese, Temperaturdrift, Einbaulage und immer gleiche langsame Anfahrrichtung müssen spezifiziert werden. Für die eigentliche hochgenaue Achsposition braucht die CNC zusätzlich einen Encoder oder ein Längenmesssystem; der Näherungssensor liefert vor allem Referenz- oder Endlagensignal. Ein gekapselter Präzisions-Endschalter kann ebenfalls funktionieren, hat aber eine mechanische Betätigung."
+          },
+          {
+            id: "window-alarm",
+            title: "Fensteralarm: offen oder geschlossen",
+            situation: "Ein Fenster in einem trockenen Wohnraum soll batteriebetrieben auf Öffnen reagieren. Schmutz und hohe Positioniergenauigkeit sind kaum relevant; der Sensor soll klein, leise und langlebig sein.",
+            question: "Welches Prinzip passt am besten?",
+            answer: "reed",
+            options: [
+              { id: "reed", label: "Reed-Kontakt mit Magnet" },
+              { id: "photoelectric", label: "Lichtschranke quer durch den Fensterrahmen" },
+              { id: "limit", label: "Großer mechanischer Endschalter" },
+              { id: "inductive", label: "Induktiver Sensor mit Metallfahne" }
+            ],
+            correctText: "Der Reed-Kontakt ist für diesen Fensteralarm eine typische und gut begründbare Wahl.",
+            wrongText: "Achte besonders auf geringen Energiebedarf, kleine Bauform und berührungslose Betätigung.",
+            explanation: "Ein Reed-Sensor mit Magnet lässt sich klein oder verdeckt montieren, benötigt für das Schließen des Kontakts keine eigene Sensorversorgung und bietet für die Zustandsmeldung genügend Wiederholbarkeit. Magnetabstand und Montage müssen dennoch geprüft werden. Bei einem echten Alarmsystem kommen außerdem Leitungsüberwachung, Sabotageerkennung und eine sichere Auswertung hinzu."
+          },
+          {
+            id: "conveyor-count",
+            title: "Förderband: Werkstücke zählen",
+            situation: "Unterschiedliche nicht transparente Werkstücke fahren berührungslos an einer festen Stelle vorbei. Gezählt werden soll jedes Objekt; die Umgebung ist weitgehend sauber.",
+            question: "Welcher Sensor erkennt die vorbeifahrenden Werkstücke am direktesten?",
+            answer: "photoelectric",
+            options: [
+              { id: "reed", label: "Reed-Kontakt" },
+              { id: "photoelectric", label: "Einweg-Lichtschranke" },
+              { id: "limit", label: "Mechanischer Endschalter im Förderweg" },
+              { id: "bridge", label: "Leitende Kontaktbrücke" }
+            ],
+            correctText: "Eine Einweg-Lichtschranke erkennt jedes Werkstück berührungslos durch die Unterbrechung des Lichtstrahls.",
+            wrongText: "Gesucht ist eine schnelle, berührungslose Erkennung unabhängig von einem Magneten oder elektrischer Leitfähigkeit.",
+            explanation: "Sender und Empfänger stehen sich gegenüber; ein Werkstück unterbricht den Lichtweg. Das vermeidet mechanischen Kontakt mit dem Fördergut. Für zuverlässiges Zählen müssen Strahlhöhe, Mindestobjektgröße, Objektabstand und mögliche Verschmutzung berücksichtigt werden."
+          },
+          {
+            id: "outdoor-gate",
+            title: "Außentor: Endlage mit Schlamm und Regen",
+            situation: "Ein metallisches Schiebetor soll seine geschlossene Endlage melden. Regen, Staub und Schlamm sind zu erwarten; eine Metallfahne kann fest am Tor montiert werden.",
+            question: "Welches Prinzip ist unter diesen Randbedingungen besonders robust?",
+            answer: "inductive",
+            options: [
+              { id: "photoelectric", label: "Ungeschützte Lichtschranke in Bodennähe" },
+              { id: "bridge", label: "Zwei offene Metallkontakte" },
+              { id: "inductive", label: "Gekapselter induktiver Näherungssensor" },
+              { id: "limit", label: "Offener kleiner Taster" }
+            ],
+            correctText: "Ein passend gekapselter induktiver Näherungssensor kann die Metallfahne berührungslos und schmutzunempfindlich erkennen.",
+            wrongText: "Suche nach einer gekapselten, berührungslosen Lösung, die ein vorhandenes Metallziel direkt erkennen kann.",
+            explanation: "Das induktive Prinzip braucht weder einen freien Lichtweg noch offene elektrische Kontakte. Entscheidend bleiben Schutzart, korrosionsfeste Montage, zulässiger Schaltabstand und eine Position, an der sich kein massiver Metallbelag vor der aktiven Fläche aufbauen kann. Ein abgedichteter Industrie-Endschalter wäre eine mögliche mechanische Alternative."
+          }
+        ] },
+        { id: "sensor-application-map", heading: "Welcher Sensor passt wohin?", paragraphs: ["Die Zuordnung ist kein universelles Rezept. Sie zeigt, welches Wirkprinzip häufig gut zu einer Aufgabe passt und welche zusätzliche Bedingung die Auswahl verändern kann."], table: { headers: ["Anwendung", "Naheliegendes Prinzip", "Entscheidender Grund oder Vorbehalt"], rows: [
+          ["Fenster- oder Türalarm", "Reed-Kontakt mit Magnet", "Klein, berührungslos und stromsparend; Montageabstand und Sabotagekonzept beachten."],
+          ["Hühnerklappe", "Reed-Kontakte oder gekapselte induktive Sensoren", "Schmutzresistent und berührungslos; zwei Endlagen getrennt und widerspruchsfrei auswerten."],
+          ["CNC-Referenz- oder Endsignal", "Industriegeeigneter induktiver Sensor oder gekapselter Präzisions-Endschalter", "Späne und Kühlschmierstoff berücksichtigen; Wiederholgenauigkeit spezifizieren. Die genaue Achsposition liefert ein Encoder oder Längenmesssystem."],
+          ["Werkstücke auf einem sauberen Förderband zählen", "Einweg-Lichtschranke", "Schnelle berührungslose Unterbrechungserkennung; Optik sauber und ausgerichtet halten."],
+          ["Metallisches Außentor", "Gekapselter induktiver Näherungssensor", "Metallziel berührungslos erkennen; passende Schutzart und Montage wählen."],
+          ["Einfacher Laborversuch", "Leitende Kontaktbrücke", "Sehr anschaulich und preiswert, aber ohne gekapselte Spezialkonstruktion nicht für schmutzige oder feuchte Daueranwendungen."],
+          ["Sicherheitskritische Schutztür", "Zertifizierter Sicherheitssensor und Sicherheitsauswertung", "Ein gewöhnlicher Sensor allein genügt nicht; erforderliche Sicherheitsfunktion und Diagnose bestimmen die Komponenten."]
+        ] } },
+        { id: "sensor-distance-proximity", heading: "Abstands- und Näherungssensoren", paragraphs: ["Abstandssensoren liefern mehr als nur „da“ oder „nicht da“: Sie schätzen oder messen die Entfernung zu einem Objekt. Dabei sind Infrarotsensoren keine einheitliche Bauart. Ein einfacher reflektiver IR-Sensor bewertet die Stärke des zurückkommenden Lichts; ein Time-of-Flight-Sensor misst dagegen die Laufzeit ausgesendeter Lichtimpulse. Farbe, Oberfläche, Fremdlicht, Schutzscheiben und Messbereich wirken je nach Verfahren unterschiedlich.", "Ultraschallsensoren bestimmen die Laufzeit eines Schallimpulses. Sie sind unabhängig von der sichtbaren Farbe eines Ziels, können aber durch weiche oder schräg stehende Flächen, Luftbewegung, Temperatur und gegenseitige Störung beeinflusst werden. Optische LiDAR- und ToF-Systeme arbeiten mit Licht und können präzise Entfernungs- oder Tiefendaten liefern, brauchen jedoch eine passende Optik und Bewertung der Augensicherheit.", "Radar sendet elektromagnetische Wellen aus und wertet Reflexionen aus. Je nach Verfahren lassen sich Entfernung, Relativgeschwindigkeit und Richtung bestimmen. Radar kann auch bei Dunkelheit und in manchen staubigen oder feuchten Situationen Vorteile haben, ist aber aufwendiger auszuwerten und kann mehrere Ziele, Reflexionen und störende Geometrien sehen."], table: { headers: ["Verfahren", "Gut geeignet für", "Typische Stolperstelle"], rows: [
+          ["Reflektives Infrarot", "Kurze Annäherung, Linienfolger, einfache Objekterkennung", "Reflexion hängt von Oberfläche, Winkel und Fremdlicht ab"],
+          ["Optisches Time-of-Flight oder LiDAR", "Direkte Distanz- und Tiefenmessung", "Messbereich, Sichtfeld, Schutzscheibe und starkes Umgebungslicht beachten"],
+          ["Ultraschall", "Abstand zu ausreichend großen Flächen, Füllstand", "Schallkegel, tote Zone, Temperatur und weiche oder schräge Ziele"],
+          ["Radar", "Präsenz, Bewegung, Abstand, Geschwindigkeit oder Füllstand", "Mehrdeutige Reflexionen und anspruchsvollere Signalverarbeitung"],
+          ["Kapazitiv", "Sehr kurze Annäherung, Berührung, Material hinter einer Wand", "Feuchte und Ablagerungen können die Schaltschwelle verschieben"]
+        ] } },
+        { id: "sensor-fmcw-radar", heading: "FMCW-Radar: Entfernung und Bewegung aus Chirps", paragraphs: ["FMCW bedeutet Frequency Modulated Continuous Wave. Das Radar sendet fortlaufend kurze Frequenzrampen, sogenannte Chirps. Ein Ziel reflektiert das Signal zeitlich verzögert. Im Empfänger werden Sende- und Empfangssignal gemischt; die entstehende Beat-Frequenz enthält Information über den Abstand. Phasenänderungen über mehrere Chirps liefern Information über die Relativgeschwindigkeit. Eine Winkelbestimmung erfordert einen geeigneten Antennenaufbau mit mehreren Empfangskanälen und zusätzliche Auswertung.", "Ein FMCW-Radarmodul ist deshalb nicht automatisch ein fertiger Näherungsschalter. Manche Module liefern Rohdaten, andere Zielpunkte mit Abstand und Geschwindigkeit, wieder andere nur ein aufbereitetes Präsenzsignal. Frequenzband, Antennen, Bandbreite, Firmware, Schnittstelle und Hersteller-API bestimmen, was tatsächlich messbar ist. Vor dem Anschluss müssen die exakte Typbezeichnung, Versorgung, Logikpegel, Pinbelegung und regionalen Herstellerhinweise geprüft werden.", "Für eine Näherungserkennung wird aus den Radarwerten eine fachliche Regel: Welche Ziele liegen in der gewünschten Zone, wie lange müssen sie dort erkannt werden und welche Bewegungen oder Reflexionen sollen ausgeschlossen werden? Leerer Raum, feste Abstände, Stillstand, Annäherung, Querbewegung, mehrere Ziele und reflektierende Gegenstände gehören deshalb in den Versuchsplan."], table: { headers: ["Vergleich", "Vorteil von FMCW-Radar", "Nachteil oder Grenze"], rows: [
+          ["Gegenüber reflektivem Infrarot", "Nicht von sichtbarer Objektfarbe abhängig; funktioniert ohne sichtbares Licht; kann je nach Modul Abstand und Bewegung trennen.", "Höhere Kosten und komplexere Auswertung; Reflexionen und mehrere Ziele können mehrdeutig sein."],
+          ["Gegenüber IR-Time-of-Flight", "Kein optischer Lichtweg im gleichen Sinn; kann in manchen staubigen, dunklen oder optisch schwierigen Situationen robuster sein und zusätzlich Geschwindigkeit liefern.", "Radar- und ToF-Eigenschaften hängen stark vom konkreten Modul ab; Radar hat oft gröbere räumliche Abgrenzung und sieht störende Reflexionen."],
+          ["Gegenüber Ultraschall", "Keine Abhängigkeit von Schallgeschwindigkeit, Luftbewegung oder weichen schallabsorbierenden Oberflächen; schnelle Bewegungsinformation möglich.", "Material, Geometrie und Mehrwegeausbreitung beeinflussen Radarreflexionen; Signalverarbeitung ist meist anspruchsvoller."],
+          ["Gegenüber PIR", "Kann je nach Ausführung Entfernung und sehr kleine Bewegungen erfassen und ist nicht auf Änderungen der Wärmestrahlung beschränkt.", "Benötigt mehr Energie und Rechenaufwand; eine stabile Personenerkennung braucht Zonen, Filter und Tests."],
+          ["Grundsätzliche Stärke", "Ein Sensorprinzip kann Präsenz, Entfernung, Relativgeschwindigkeit und bei geeigneter Antennenanordnung Winkelinformation liefern.", "Nicht jedes FMCW-Modul stellt alle Größen bereit; Datenblatt, SDK und reale Messungen entscheiden."]
+        ] }, learningProjects: [
+          {
+            model: "Lernprojekt · Projektstufe 1",
+            title: "Baue deinen eigenen Näherungssensor",
+            description: "Identifiziere dein gekauftes FMCW-Radarmodul, verstehe die Messkette und entwickle mit einem kontrollierten Versuchsplan eine erste Näherungs- oder Präsenzerkennung.",
+            href: "/app/learn/?catalog=build-your-own-proximity-sensor"
+          }
+        ] },
+        { id: "sensor-temperature", heading: "Temperatursensoren: NTC, PTC und weitere Bauarten", paragraphs: ["Ein NTC ist ein temperaturabhängiger Widerstand mit negativem Temperaturkoeffizienten: Steigt die Temperatur, sinkt sein Widerstand. NTCs sind preiswert, klein und empfindlich, aber deutlich nichtlinear. Für einen Messwert braucht man eine Messschaltung, eine Kennlinie oder Berechnungsformel und oft eine Kalibrierung.", "Bei einem PTC steigt der Widerstand mit der Temperatur. Manche PTCs eignen sich zur Temperaturerfassung; stark schaltende PTC-Ausführungen werden häufig eher zum Schutz vor Übertemperatur oder Überstrom eingesetzt. Deshalb sind „PTC“ und „genauer Temperatursensor“ nicht automatisch dasselbe.", "Widerstandsthermometer wie Pt100 oder Pt1000 bieten gute Stabilität und eine vergleichsweise gut definierte Kennlinie, benötigen aber eine präzise Auswertung und je nach Leitungslänge eine Drei- oder Vierleiterschaltung. Thermoelemente erzeugen eine kleine Spannung aus der Temperaturdifferenz zweier verschiedener Metalle und eignen sich für große Temperaturbereiche; sie brauchen Verstärkung und Kaltstellenkompensation. Halbleiter-Temperatursensoren liefern eine analoge Spannung oder bereits einen digitalen Messwert und sind für viele Elektronik- und Raumtemperaturaufgaben bequem."], table: { headers: ["Bauart", "Stärke", "Zu beachten"], rows: [
+          ["NTC-Thermistor", "Preiswert, klein, hohe Empfindlichkeit", "Widerstand sinkt bei Wärme; nichtlinear und durch Messstrom selbst erwärmbar"],
+          ["PTC-Thermistor", "Temperaturabhängiger Grenzwert oder Schutz", "Widerstand steigt; schaltende Typen sind nicht für jede Messaufgabe geeignet"],
+          ["Pt100/Pt1000 (RTD)", "Stabil und gut für präzise Messungen", "Präziser Messstrom, Leitungswiderstand und Auswertung nötig"],
+          ["Thermoelement", "Sehr große Temperaturbereiche und robuste Fühler möglich", "Sehr kleine Spannung sowie Kaltstellenkompensation erforderlich"],
+          ["Halbleiter-IC", "Einfacher analoger oder digitaler Messwert", "Begrenzter Temperaturbereich und thermische Ankopplung beachten"]
+        ] } },
+        { id: "sensor-light-radiation", heading: "Licht-, Farb- und Strahlungssensoren", paragraphs: ["Ein Fotowiderstand verändert seinen Widerstand mit der Helligkeit und eignet sich für einfache, langsame Hell-Dunkel-Erkennung. Fotodioden und Fototransistoren reagieren schneller und definierter; mit einer passenden Verstärkerschaltung können sie sehr kleine Lichtströme messen.", "Integrierte Umgebungslicht- und Farbsensoren enthalten Filter und digitale Auswertung. Sie können Helligkeit an die Wahrnehmung des Menschen annähern oder mehrere Farbkanäle liefern. UV- und Infrarotsensoren reagieren auf andere Wellenlängenbereiche. Eine Wärmebildkamera oder Thermopile misst abgegebene Infrarotstrahlung und darf nicht mit einem einfachen reflektiven IR-Abstandssensor verwechselt werden.", "Bei optischen Messungen gehören Lichtquelle, Wellenlänge, Blickwinkel, Oberfläche, Fremdlicht, Verschmutzung und Alterung immer zur Messkette."], table: { headers: ["Bauart", "Typische Aufgabe"], rows: [
+          ["Fotowiderstand (LDR)", "Einfache und eher langsame Helligkeitserkennung"],
+          ["Fotodiode oder Fototransistor", "Schnelle Lichtmessung, Lichtschranke, optische Kommunikation"],
+          ["Umgebungslicht- oder Farbsensor", "Helligkeitsanpassung, Farb- oder Materialunterscheidung"],
+          ["UV-Sensor", "UV-Anteil oder UV-Index abschätzen"],
+          ["Thermopile oder Wärmebildsensor", "Berührungslose Oberflächen- oder Wärmestrahlungsmessung"]
+        ] } },
+        { id: "sensor-motion-orientation", heading: "Bewegungs-, Lage- und Orientierungssensoren", paragraphs: ["Ein Beschleunigungssensor misst Beschleunigung entlang einer oder mehrerer Achsen. Im Stillstand sieht er auch die Erdbeschleunigung und kann daraus eine Neigung ableiten. Ein Gyroskop misst Drehgeschwindigkeit; durch Integration lässt sich eine Winkeländerung bestimmen, wobei sich Fehler mit der Zeit aufsummieren können.", "Ein Magnetometer misst das Magnetfeld und kann als elektronischer Kompass dienen, wird aber von Metall, Motoren und Strömen beeinflusst. Eine IMU kombiniert meist Beschleunigungssensor und Gyroskop, manchmal zusätzlich ein Magnetometer. Erst Sensorfusion verbindet diese unvollkommenen Messungen zu einer stabileren Lage- oder Bewegungsabschätzung.", "Ein PIR-Sensor reagiert auf Änderungen der Wärmestrahlung in mehreren Sichtbereichen. Er eignet sich für die Bewegung warmer Körper, liefert aber weder ein Kamerabild noch automatisch einen genauen Abstand oder eine sichere Personenerkennung."], table: { headers: ["Sensor", "Misst unmittelbar"], rows: [
+          ["Beschleunigungssensor", "Lineare Beschleunigung einschließlich Erdgravitation"],
+          ["Gyroskop", "Drehgeschwindigkeit"],
+          ["Magnetometer", "Magnetfeldstärke und -richtung"],
+          ["IMU", "Kombinierte Bewegungsgrößen mehrerer Sensoren"],
+          ["PIR", "Änderungen einfallender Wärmestrahlung in seinem Sichtfeld"]
+        ] } },
+        { id: "sensor-force-pressure", heading: "Kraft-, Gewichts-, Druck- und Berührungssensoren", paragraphs: ["Ein Dehnungsmessstreifen ändert seinen Widerstand, wenn er gedehnt oder gestaucht wird. Mehrere davon bilden häufig eine Wheatstone-Brücke in einer Wägezelle. Das Signal ist klein und benötigt einen geeigneten Messverstärker; Mechanik, Temperatur und Krafteinleitung bestimmen die Qualität der Messung wesentlich mit.", "Piezoresistive oder kapazitive Drucksensoren wandeln die Verformung einer Membran in ein elektrisches Signal um. Sie messen je nach Aufbau Absolutdruck, Relativdruck oder Differenzdruck. Barometer, Reifendrucksensoren und Drucktransmitter beruhen auf solchen Prinzipien.", "Piezoelektrische Sensoren erzeugen bei schneller Kraftänderung oder Vibration eine elektrische Ladung. Sie sind sehr gut für Stoß, Klopfen und Schwingung, aber ohne besondere Elektronik weniger für eine dauerhaft unveränderte statische Kraft. Ein Force-Sensitive Resistor reagiert einfach auf Druck, ist jedoch meist weniger genau und reproduzierbar als eine Wägezelle."], table: { headers: ["Bauart", "Typische Aufgabe"], rows: [
+          ["Wägezelle mit Dehnungsmessstreifen", "Gewicht und statische Kraft"],
+          ["Piezoresistiver oder kapazitiver Drucksensor", "Luft-, Flüssigkeits- oder Differenzdruck"],
+          ["Piezoelement", "Stoß, Klopfen, Vibration und schnelle Kraftänderung"],
+          ["Force-Sensitive Resistor", "Einfache Berührungs- oder Druckstufenerkennung"],
+          ["Kapazitiver Touchsensor", "Berührung oder Annäherung eines Fingers"]
+        ] } },
+        { id: "sensor-environment-chemical", heading: "Umwelt-, Schall- und chemische Sensoren", paragraphs: ["Feuchtesensoren bestimmen meist die relative Luftfeuchte über ein kapazitives oder resistives Messelement. Luftdrucksensoren messen den atmosphärischen Druck und können daraus Wetteränderungen oder relative Höhenänderungen abschätzen. Mikrofone wandeln Schalldruck in ein elektrisches Signal; Lautstärke, Frequenzanalyse und Spracherkennung entstehen erst in der nachfolgenden Verarbeitung.", "Bei Gassensoren muss genau benannt werden, was gemessen wird. Metalloxid-Sensoren reagieren oft auf mehrere Gase und benötigen Heizung, Aufwärmzeit und Kalibrierung. Elektrochemische Zellen können für bestimmte Gase empfindlicher sein, altern aber. Nichtdispersive Infrarotsensoren bestimmen beispielsweise CO₂ über Lichtabsorption. Ein allgemeiner „Luftqualitätssensor“ liefert daher nicht automatisch eine genaue Konzentration jedes Schadstoffs.", "Partikelsensoren beleuchten angesaugte Luft und werten gestreutes Licht aus. Sie schätzen Partikelkonzentrationen, benötigen aber einen kontrollierten Luftweg und können durch Feuchte, Staubablagerung und unterschiedliche Partikeleigenschaften beeinflusst werden. Chemische Messungen brauchen besonders sorgfältige Kalibrierung, Querempfindlichkeits- und Lebensdauerbetrachtung."], table: { headers: ["Messgröße", "Typische Bauart"], rows: [
+          ["Relative Luftfeuchte", "Kapazitives oder resistives Feuchteelement"],
+          ["Luftdruck", "Mikromechanischer Absolutdrucksensor"],
+          ["Schall", "MEMS- oder Elektretmikrofon"],
+          ["CO₂", "NDIR-Infrarotmessung"],
+          ["Bestimmte Gase", "Elektrochemische Zelle oder Metalloxid-Sensor"],
+          ["Feinstaub", "Optische Streulichtmessung mit Luftstrom"]
+        ] } },
+        { id: "sensor-level-flow", heading: "Füllstands- und Durchflusssensoren", paragraphs: ["Füllstand kann punktuell oder kontinuierlich erfasst werden. Ein Schwimmerschalter meldet einen Grenzstand mechanisch oder magnetisch. Leitfähige Elektroden funktionieren nur bei ausreichend leitfähigen Flüssigkeiten und können korrodieren. Kapazitive Sensoren können durch eine nichtleitende Behälterwand erkennen, reagieren aber auf Material, Wandstärke und Ablagerungen.", "Ultraschall und Radar messen berührungslos den Abstand zur Oberfläche. Drucksensoren am Behälterboden können aus dem hydrostatischen Druck auf die Füllhöhe schließen, benötigen dafür aber Dichte und Geometrie. Für aggressive, schäumende oder dampfende Medien muss das Verfahren besonders sorgfältig gewählt werden.", "Durchfluss lässt sich unter anderem mit Turbinenrad und Hall-Sensor, Druckdifferenz, Ultraschall, thermischem Prinzip oder magnetisch-induktiv messen. Jedes Verfahren stellt andere Anforderungen an Medium, Rohr, Einbaulage, Mindestdurchfluss und Wartung."], table: { headers: ["Aufgabe", "Mögliche Prinzipien"], rows: [
+          ["Grenzstand", "Schwimmer, Reed, kapazitiv, leitfähig, optisch"],
+          ["Kontinuierlicher Füllstand", "Druck, Ultraschall, Radar, kapazitive Sonde"],
+          ["Einfacher Wasserdurchfluss", "Turbinenrad mit Hall-Sensor"],
+          ["Berührungsloser Durchfluss", "Ultraschall"],
+          ["Leitfähige Flüssigkeit industriell", "Magnetisch-induktive Durchflussmessung"]
+        ] } },
+        { id: "sensor-electrical", heading: "Sensoren für Spannung, Strom und Leistung", paragraphs: ["Spannung wird häufig über einen Spannungsteiler und einen ADC gemessen. Der Teiler muss Grenzspannung, Toleranz, Eingangsimpedanz und Schutz berücksichtigen. Bei hohen oder netzbezogenen Spannungen sind sichere Trennung, geeignete Bauteile und normgerechter Aufbau erforderlich; ein einfacher Spannungsteiler genügt dort nicht.", "Strom kann über den Spannungsabfall an einem Shunt-Widerstand gemessen werden. Das ist direkt und präzise möglich, erzeugt aber Verlustleistung und liegt elektrisch im gemessenen Stromkreis. Hall-Stromsensoren und Stromwandler können galvanische Trennung ermöglichen; klassische Stromwandler eignen sich für Wechselstrom, nicht für unveränderten Gleichstrom.", "Leistung ist normalerweise keine einzelne unmittelbare Sensorgröße. Sie wird aus synchron gemessener Spannung und Strom berechnet. Bei Wechselstrom müssen außerdem Phasenlage, Effektivwerte und die Signalform berücksichtigt werden."], table: { headers: ["Verfahren", "Geeignet für", "Wichtiger Vorbehalt"], rows: [
+          ["Spannungsteiler und ADC", "Kleine, sicher bezogene Gleichspannungen", "Eingang schützen und zulässige Spannung niemals überschreiten"],
+          ["Shunt und Messverstärker", "Gleich- und Wechselstrom", "Verlustleistung und gemeinsames Potential beachten"],
+          ["Hall-Stromsensor", "Gleich- und Wechselstrom, oft galvanisch getrennt", "Offset, Temperaturdrift und externer Magnetismus"],
+          ["Stromwandler", "Galvanisch getrennte Wechselstrommessung", "Nicht für statischen Gleichstrom; Sekundärkreis sicher behandeln"],
+          ["Energie-Mess-IC", "Spannung, Strom, Leistung und Energie", "Messwandler, Isolation und Kalibrierung bleiben Teil des Systems"]
+        ] } },
         { id: "measurement-circuits", heading: "Messschaltungen", paragraphs: ["Eine Messschaltung verbindet Sensor und Mikrocontroller so, dass das Signal im erlaubten Spannungs-, Strom- und Frequenzbereich ankommt. Sie schützt Eingänge, legt Bezugspotenziale fest und bereitet das Signal für ADC oder digitale Schnittstelle auf.", "Typische Bausteine sind Vorwiderstände, Spannungsteiler, Pull-up- oder Pull-down-Widerstände, Filterkondensatoren, Referenzspannungen, Operationsverstärker und galvanische Trennung. Welche davon nötig sind, entscheidet das Sensordatenblatt – nicht nur der Anschlussname am Board.", "Beispiel: Ein Spannungsteiler kann eine zu hohe Sensorspannung für einen ADC verringern. Ein Tiefpass kann Rauschen dämpfen, verändert aber zugleich die Reaktionszeit. Ein Pull-up sorgt bei offenen Eingängen für einen definierten Zustand. Prüfe deshalb immer Versorgung, gemeinsame Masse, Signalpegel und die zulässigen Grenzwerte, bevor du misst oder verbindest."] },
       ],
       relatedTopics: ["microcontroller-adc", "sampling-rate", "embedded-measurement-debugging", "physical-limits"],

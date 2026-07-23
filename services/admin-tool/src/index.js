@@ -33,6 +33,7 @@ function createDefaultAdminTool(config = {}) {
       provisioningBaseUrl: config.provisioningBaseUrl,
       recoveryBaseUrl: config.recoveryBaseUrl,
       communityPlatformBaseUrl: config.communityPlatformBaseUrl,
+      communityInternalToken: config.communityInternalToken,
       communityAiBaseUrl: config.communityAiBaseUrl,
       securityMonitorToken: config.securityMonitorToken,
     } : null,

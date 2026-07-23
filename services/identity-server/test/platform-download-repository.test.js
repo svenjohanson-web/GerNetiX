@@ -17,7 +17,13 @@ test("publishes immutable platform downloads in SQLite and returns the current r
     assert.equal(first.sha256.length, 64);
     assert.equal(repository.listCurrent("serial-service")[0].version, "0.3.0");
     assert.equal(repository.getContent("serial-service", "0.2.0", "macos", "arm64").content_blob.toString(), "first");
+    assert.equal(repository.listCurrent("serial-service", { visibility: "authenticated" })[0].version, "0.3.0");
+    assert.equal(repository.listCurrent("serial-service", { visibility: "public" }).length, 0);
+    publish(repository, "0.4.0", "public", "public");
+    assert.equal(repository.listCurrent("serial-service", { visibility: "authenticated" })[0].version, "0.3.0");
+    assert.equal(repository.listCurrent("serial-service", { visibility: "public" })[0].version, "0.4.0");
     assert.throws(() => publish(repository, "0.3.0", "changed"), { code: "download_release_already_exists" });
+    assert.throws(() => publish(repository, "0.4.0", "bad", "owner_only"), { code: "invalid_download_visibility" });
     assert.equal(second.file_name, "GerNetiX-Serial-Service-mac-arm64.pkg");
   } finally {
     repository.close();
@@ -25,7 +31,7 @@ test("publishes immutable platform downloads in SQLite and returns the current r
   }
 });
 
-function publish(repository, version, content) {
+function publish(repository, version, content, visibility = "authenticated") {
   return repository.publish({
     download_id: "serial-service",
     version,
@@ -35,6 +41,7 @@ function publish(repository, version, content) {
     detail: "Installationspaket · Apple Silicon",
     file_name: "GerNetiX-Serial-Service-mac-arm64.pkg",
     content_type: "application/vnd.apple.installer+xml",
+    visibility,
     content: Buffer.from(content),
   });
 }

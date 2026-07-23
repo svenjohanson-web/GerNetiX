@@ -1,7 +1,9 @@
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
+const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
+const { DatabaseSync } = require("node:sqlite");
 const control = require("./desktop-process-control");
 const html = fs.readFileSync(path.join(__dirname, "public/desktop.html"), "utf8");
 const client = fs.readFileSync(path.join(__dirname, "public/desktop-app.js"), "utf8");
@@ -11,7 +13,40 @@ const desktopPreload = fs.readFileSync(path.join(__dirname, "desktop-preload.js"
 test("monitor exposes every managed platform service", () => {
   assert.equal(control.services.find((item) => item.id === "identity-server").port, 4300);
   assert.equal(control.services.find((item) => item.id === "admin-tool").port, 4600);
-  assert.equal(control.services.length, 9);
+  assert.equal(control.services.find((item) => item.id === "community-platform").port, 5200);
+  assert.equal(control.services.length, 10);
+});
+
+test("desktop monitor reports Community SQLite counts without reading content", () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-monitor-community-"));
+  const runtime = path.join(root, ".runtime");
+  const dbPath = path.join(runtime, "gernetix-community.sqlite");
+  fs.mkdirSync(runtime);
+  const db = new DatabaseSync(dbPath);
+  try {
+    db.exec(`
+      CREATE TABLE community_questions (question_id TEXT, visibility TEXT, status TEXT);
+      CREATE TABLE community_answers (answer_id TEXT, verification_state TEXT);
+      CREATE TABLE community_knowledge_documents (document_id TEXT);
+      INSERT INTO community_questions VALUES ('public-1', 'public', 'open');
+      INSERT INTO community_questions VALUES ('private-1', 'private', 'answered');
+      INSERT INTO community_answers VALUES ('answer-1', 'verified');
+      INSERT INTO community_knowledge_documents VALUES ('document-1');
+    `);
+  } finally {
+    db.close();
+  }
+
+  try {
+    const summary = control.communityStorageSummary(root);
+    assert.equal(summary.exists, true);
+    assert.deepEqual(summary.questions, { total:2, public:1, private:1, open:1 });
+    assert.deepEqual(summary.answers, { total:1, verified:1 });
+    assert.equal(summary.knowledgeDocuments.total, 1);
+    assert.equal(summary.path, path.join(".runtime", "gernetix-community.sqlite"));
+  } finally {
+    fs.rmSync(root, { recursive:true, force:true });
+  }
 });
 
 test("desktop app uses isolated IPC and has no admin tool dependency", () => {
@@ -33,6 +68,7 @@ test("monitor UI displays life status and start stop controls", () => {
   assert.match(client, /data-action="start"/);
   assert.match(client, /data-action="stop"/);
   assert.match(client, /setInterval\(\(\)=>load\(false\),10000\)/);
+  assert.match(client, /Community-Speicher/);
 });
 
 test("monitor reads VPS compose state through the established staging SSH configuration", async () => {

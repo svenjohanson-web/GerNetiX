@@ -56,9 +56,12 @@ Konfiguration erfolgt ueber Umgebungsvariablen:
 - `BUILD_DEPLOY_RUNTIME_DIR`: Runtime-Verzeichnis fuer temporaere Workspaces, Cache und Artefakte
 - `BUILD_CACHE_DIR`: optionales Cache-Verzeichnis; `platformio-default` nutzt den PlatformIO-Standardcache
 - `BUILD_ARTIFACT_DIR`: optionales temporaeres Artefakt-Verzeichnis
+- `BUILD_ARTIFACT_SQLITE_PATH`: fuehrende SQLite fuer Firmware-, ELF-, HEX-, Map- und Log-BLOBs; auf dem VPS `/var/lib/gernetix/build/gernetix-build-artifacts.sqlite`
 - `MQTT_BROKER_URL`: MQTT-Broker-URL fuer OTA-Deploy-Commands und Status, lokal z. B. `mqtt://127.0.0.1:1883`
 
 Der `mock` Runner erzeugt reproduzierbare Test-Artefakte ohne Toolchain. Fuer echte Firmware-Builds wird `BUILD_RUNNER=platformio` verwendet; dann kompiliert der Worker im uebergebenen BuildPackage per `platformio run`. Je nach Target kann das primaere Firmware-Artefakt `firmware.bin` (z. B. ESP32) oder `firmware.hex` (z. B. AVR/Arduino Uno) sein.
+
+Der Build-Workspace und seine Ausgabedateien sind temporaer. Nach dem Build uebernimmt der Artifact Store die Ergebnisse transaktional als SQL-BLOBs samt MIME-Type, Groesse und SHA-256. Downloads lesen aus dieser SQLite; ein loses Artefaktverzeichnis ist keine dauerhafte Quelle der Wahrheit.
 
 Fuer den lokalen USB-MVP unterstuetzt der Server den Modus `build_and_usb_flash`. Dann fuehrt der PlatformIO-Runner nach erfolgreichem Build `platformio run -t upload` aus. Ein optionaler Upload-Port wird ueber `usb_flash.upload_port` uebergeben, zum Beispiel `COM7`.
 

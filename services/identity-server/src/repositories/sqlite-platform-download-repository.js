@@ -30,6 +30,7 @@ class SqlitePlatformDownloadRepository {
         content_blob BLOB NOT NULL,
         size_bytes INTEGER NOT NULL,
         sha256 TEXT NOT NULL,
+        visibility TEXT NOT NULL DEFAULT 'authenticated',
         status TEXT NOT NULL CHECK (status IN ('published', 'revoked')),
         created_at TEXT NOT NULL,
         published_at TEXT NOT NULL,
@@ -39,6 +40,15 @@ class SqlitePlatformDownloadRepository {
       CREATE INDEX IF NOT EXISTS idx_identity_platform_download_releases_current
         ON identity_platform_download_releases(download_id, platform, architecture, status, published_at DESC);
     `);
+    const columns = this.db.prepare("PRAGMA table_info(identity_platform_download_releases)").all();
+    if (!columns.some((column) => column.name === "visibility")) {
+      this.db.exec("ALTER TABLE identity_platform_download_releases ADD COLUMN visibility TEXT NOT NULL DEFAULT 'authenticated';");
+    }
+    this.db.prepare(`
+      UPDATE identity_platform_download_releases
+      SET visibility = 'public'
+      WHERE download_id = 'flashbox-initial-image'
+    `).run();
   }
 
   publish(input) {
@@ -57,8 +67,8 @@ class SqlitePlatformDownloadRepository {
       this.db.prepare(`
         INSERT INTO identity_platform_download_releases (
           download_id, version, platform, architecture, label, detail, file_name,
-          content_type, content_blob, size_bytes, sha256, status, created_at, published_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, ?)
+          content_type, content_blob, size_bytes, sha256, visibility, status, created_at, published_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'published', ?, ?)
       `).run(
         release.download_id,
         release.version,
@@ -71,6 +81,7 @@ class SqlitePlatformDownloadRepository {
         content,
         content.length,
         sha256,
+        release.visibility,
         now,
         now,
       );
@@ -83,12 +94,14 @@ class SqlitePlatformDownloadRepository {
     return this.getRelease(release.download_id, release.version, release.platform, release.architecture);
   }
 
-  listCurrent(downloadId) {
+  listCurrent(downloadId, options = {}) {
+    const visibility = normalizeVisibilityFilter(options.visibility);
     return this.db.prepare(`
       SELECT download_id, version, platform, architecture, label, detail, file_name,
-             content_type, size_bytes, sha256, published_at
+             content_type, size_bytes, sha256, visibility, published_at
       FROM identity_platform_download_releases AS release
       WHERE download_id = ? AND status = 'published'
+        AND (? = '' OR visibility = ?)
         AND rowid = (
           SELECT candidate.rowid
           FROM identity_platform_download_releases AS candidate
@@ -96,30 +109,35 @@ class SqlitePlatformDownloadRepository {
             AND candidate.platform = release.platform
             AND candidate.architecture = release.architecture
             AND candidate.status = 'published'
+            AND (? = '' OR candidate.visibility = ?)
           ORDER BY candidate.published_at DESC, candidate.rowid DESC
           LIMIT 1
-        )
+      )
       ORDER BY platform, architecture
-    `).all(downloadId);
+    `).all(downloadId, visibility, visibility, visibility, visibility);
   }
 
-  getRelease(downloadId, version, platform, architecture) {
+  getRelease(downloadId, version, platform, architecture, options = {}) {
+    const visibility = normalizeVisibilityFilter(options.visibility);
     const release = this.db.prepare(`
       SELECT download_id, version, platform, architecture, label, detail, file_name,
-             content_type, size_bytes, sha256, published_at
+             content_type, size_bytes, sha256, visibility, published_at
       FROM identity_platform_download_releases
       WHERE download_id = ? AND version = ? AND platform = ? AND architecture = ? AND status = 'published'
-    `).get(downloadId, version, platform, architecture);
+        AND (? = '' OR visibility = ?)
+    `).get(downloadId, version, platform, architecture, visibility, visibility);
     if (!release) throw platformDownloadError("download_release_not_found", "Der Download-Release wurde nicht gefunden.");
     return release;
   }
 
-  getContent(downloadId, version, platform, architecture) {
+  getContent(downloadId, version, platform, architecture, options = {}) {
+    const visibility = normalizeVisibilityFilter(options.visibility);
     const release = this.db.prepare(`
-      SELECT file_name, content_type, content_blob, size_bytes, sha256
+      SELECT file_name, content_type, content_blob, size_bytes, sha256, visibility
       FROM identity_platform_download_releases
       WHERE download_id = ? AND version = ? AND platform = ? AND architecture = ? AND status = 'published'
-    `).get(downloadId, version, platform, architecture);
+        AND (? = '' OR visibility = ?)
+    `).get(downloadId, version, platform, architecture, visibility, visibility);
     if (!release) throw platformDownloadError("download_release_not_found", "Der Download-Release wurde nicht gefunden.");
     return { ...release, content_blob: Buffer.from(release.content_blob) };
   }
@@ -140,6 +158,7 @@ function normalizeRelease(input) {
     "file_name",
     "content_type",
   ].map((field) => [field, requiredString(input[field], field)]));
+  release.visibility = normalizeVisibility(input.visibility || "authenticated");
   if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(release.download_id)) {
     throw platformDownloadError("invalid_download_id", "download_id darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten.");
   }
@@ -150,6 +169,19 @@ function normalizeRelease(input) {
     throw platformDownloadError("invalid_download_file_name", "file_name enthält ungültige Zeichen.");
   }
   return release;
+}
+
+function normalizeVisibility(value) {
+  const visibility = String(value || "").trim();
+  if (!["public", "authenticated", "entitled", "internal"].includes(visibility)) {
+    throw platformDownloadError("invalid_download_visibility", "visibility muss public, authenticated, entitled oder internal sein.");
+  }
+  return visibility;
+}
+
+function normalizeVisibilityFilter(value) {
+  if (value === undefined || value === null || value === "") return "";
+  return normalizeVisibility(value);
 }
 
 function requiredString(value, field) {

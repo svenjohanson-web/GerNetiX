@@ -8,7 +8,7 @@ async function loadPublicCommunity() {
     const items = payload.items || [];
     renderCategories(items, selectedTag);
     target.innerHTML = items.length ? items.map((question) => `<a class="learning-path-card" href="/community/questions/${encodeURIComponent(question.question_id)}/"><span>${escapeText((question.tags || []).join(" · ") || question.status || "offen")} · ${Number(question.answer_count || 0)} Antworten</span><h3>${escapeText(question.title)}</h3><p>${escapeText(question.body)}</p><strong>Öffentliche Diskussion öffnen →</strong></a>`).join("") : `<p class="lead">Noch keine öffentlichen Anfragen in dieser Kategorie.</p>`;
-  } catch (error) { target.innerHTML = `<p class="lead">${escapeText(error.message)}</p>`; }
+  } catch (error) { target.innerHTML = `<p class="lead">Die Community ist gerade nicht erreichbar. Öffentliche Anfragen können momentan nicht geladen werden.</p>`; }
 }
 function renderCategories(items, selectedTag) {
   const target = document.querySelector("#publicCommunityCategories");

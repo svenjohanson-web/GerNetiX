@@ -49,7 +49,7 @@ test("adds Flashbox claim path to Identity inventory", () => {
   assert.match(inventory, /Registrierte Boards und Flashboxen/);
   assert.match(inventory, /id="flashboxClaimForm"/);
   assert.match(inventory, /Claim-Code/);
-  assert.match(inventory, /Flashbox uebernehmen/);
+  assert.match(inventory, /FlashBox zuordnen/);
   assert.match(app, /function claimFlashboxFromCode/);
   assert.match(app, /\/api\/platform\/flashbox\/claim/);
   assert.match(server, /url\.pathname === "\/api\/platform\/flashbox\/claim"/);

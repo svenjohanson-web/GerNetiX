@@ -17,6 +17,7 @@ const PLATFORM_SERVICES = [
   service("ai-usage-server", "AI Usage Server", 5000),
   service("ai-context-server", "AI Context Server", 5500),
   service("admin-tool", "Admin Tool", 4600),
+  service("community-platform", "Community Platform", 5200),
   service("identity-server", "Identity Server", 4300),
 ];
 

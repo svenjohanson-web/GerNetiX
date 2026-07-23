@@ -9,12 +9,14 @@ function createDefaultCommunityPlatform(config = createConfig()) {
     repository: createRepository(config),
     triageSlaHours: config.triageSlaHours,
     internalToken: config.internalToken,
+    persistenceBackend: config.persistenceBackend,
   });
 }
 
 function createRepository(config) {
   if (config.persistenceBackend === "sqlite") return SqliteBackedCommunityRepository.create(config.sqlitePath);
-  return new InMemoryCommunityRepository();
+  if (config.persistenceBackend === "memory") return new InMemoryCommunityRepository();
+  throw new Error(`Unsupported Community persistence backend: ${config.persistenceBackend}`);
 }
 
 module.exports = {

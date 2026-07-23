@@ -29,3 +29,5 @@ Die Ausgabe bietet:
 ## Pflege
 
 Fachliche Entscheidungen werden weiterhin im SQLite-Graphen gepflegt. Lesbare Konzepte werden in ihrem bestehenden Dokument aktualisiert. Nach Aenderungen wird die Offline-Sicht mit `npm run build` im Verzeichnis `tools/architecture-docs` neu erzeugt.
+
+Die Zuordnung von SQL-Datenbanken, Docker-Volumes, Downloadklassen, Firmware-BLOBs, Account-Assets, Community-Inhalten und technischen Caches steht im [Persistenz- und Asset-Speicherkonzept](persistence-and-asset-storage.md).
