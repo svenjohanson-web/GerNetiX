@@ -26,7 +26,7 @@ test("inventory exposes account unpair without claiming to delete the physical d
 
 test("inventory only shows registered account boards", () => {
   assert.match(html, /<section class="inventory-overview panel">[\s\S]*id="deviceList"/);
-  const inventoryView = html.slice(html.indexOf('<section id="devicesView"'), html.indexOf('<section id="buildsView"'));
+  const inventoryView = html.slice(html.indexOf('<section id="devicesView"'), html.indexOf('<section id="shopView"'));
   assert.doesNotMatch(inventoryView, /deviceDiscoverySearchButton|deviceInventoryForm|inventoryHardwareProfile/);
   assert.match(app, /deviceConnectivityLabel/);
   assert.match(app, /deviceAuthenticityLabel/);

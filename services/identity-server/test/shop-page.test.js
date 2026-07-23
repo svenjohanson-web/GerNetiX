@@ -45,7 +45,7 @@ test("provides a Flashbox mock configurator without checkout", () => {
 });
 
 test("adds Flashbox claim path to Identity inventory", () => {
-  const inventory = html.slice(html.indexOf('<section id="devicesView"'), html.indexOf('<section id="buildsView"'));
+  const inventory = html.slice(html.indexOf('<section id="devicesView"'), html.indexOf('<section id="shopView"'));
   assert.match(inventory, /Registrierte Boards und Flashboxen/);
   assert.match(inventory, /id="flashboxClaimForm"/);
   assert.match(inventory, /Claim-Code/);

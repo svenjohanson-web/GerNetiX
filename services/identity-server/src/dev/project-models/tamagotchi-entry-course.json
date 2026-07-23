@@ -5,6 +5,8 @@
     "title": "Software Engineering mit Tamagotchi",
     "area": "Modellbasierte Entwicklung",
     "summary": "Verhalten zuerst verstehen, bevor Code entsteht.",
+    "learning_category": "software_engineering",
+    "tags": ["runtime:browser", "topic:modeling", "level:beginner"],
     "steps": [
       {
         "title": "Warum Tamagotchi?",

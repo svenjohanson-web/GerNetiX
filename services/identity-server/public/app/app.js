@@ -45,6 +45,8 @@ const state = {
   recoveryCheckResult: null,
   activeLearnTab: "catalog",
   projectFilter: "all",
+  learningCatalogCategory: "all",
+  learningCatalogTag: "all",
   inventoryEsp32Method: "",
   activeStep: 0,
   activeIdeStep: 0,
@@ -64,7 +66,6 @@ const state = {
 
 const routeMap = {
   dashboard: "dashboardView",
-  vision: "visionView",
   "development-platform": "developmentPlatformView",
   "development-hardware": "developmentHardwareView",
   learn: "learnView",
@@ -74,7 +75,6 @@ const routeMap = {
   "device-provisioning": "deviceProvisioningView",
   "device-recovery": "deviceRecoveryView",
   "device-inventory": "devicesView",
-  builds: "buildsView",
   downloads: "downloadsView",
   shop: "shopView",
   billing: "billingView",
@@ -267,6 +267,7 @@ document.querySelector("#checkOtaConnectivityButton").addEventListener("click", 
 document.querySelector("#clearIdeTerminalButton").addEventListener("click", clearIdeTerminal);
 document.querySelector("#showIdeTerminalButton").addEventListener("click", () => setIdeConsoleView("terminal"));
 document.querySelector("#showIdeProjectInformationButton").addEventListener("click", () => setIdeConsoleView("project-information"));
+document.querySelector("#showIdeBuildResultsButton").addEventListener("click", () => setIdeConsoleView("build-results"));
 document.querySelector("#showIdeProjectHintsButton").addEventListener("click", () => setIdeConsoleView("hints"));
 document.querySelector("#sourceEditor").addEventListener("input", () => markIdeSourceDirty());
 document.addEventListener("keydown", (event) => {
@@ -517,10 +518,6 @@ function currentLocationTrail(route) {
   const project = projectById(state.activeProjectId);
   const locations = {
     dashboard: [{ label: "Plattform", route: "/app/dashboard/" }],
-    vision: [
-      { label: "Plattform", route: "/app/dashboard/" },
-      { label: "Vision", route: "/app/vision/" },
-    ],
     "development-platform": [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Entwicklungsplattform", route: "/app/development-platform/" },
@@ -562,10 +559,6 @@ function currentLocationTrail(route) {
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Device Management", route: "/app/device-management/" },
       { label: "Recovery", route: "/app/device-management/recovery/" },
-    ],
-    builds: [
-      { label: "Plattform", route: "/app/dashboard/" },
-      { label: "Builds", route: "/app/builds/" },
     ],
     downloads: [
       { label: "Plattform", route: "/app/dashboard/" },
@@ -616,7 +609,7 @@ function routeName() {
   if (route === "projects") return "learn";
   if (route === "devices") return "device-inventory";
   if (route === "device-recovery") return "device-recovery";
-  return route;
+  return routeMap[route] ? route : "dashboard";
 }
 
 function topLevelRouteName(route) {
@@ -636,6 +629,10 @@ function deviceManagementRouteFor(route) {
 
 function navigate(route) {
   const target = new URL(route, window.location.origin);
+  if (/^\/app\/auth(?:\/|$)/.test(target.pathname)) {
+    window.location.assign(target.pathname + target.search + target.hash);
+    return;
+  }
   const protectedAppRoute = /^\/app\/(?!auth(?:\/|$))/.test(target.pathname);
   if (protectedAppRoute && !state.account) {
     window.location.assign(`/app/auth/?next=${encodeURIComponent(target.pathname + target.search)}`);
@@ -927,7 +924,33 @@ async function createOfflineRecoverySet() {
 function renderProjects() {
   const projectList = document.querySelector("#projectList");
   if (!projectList) return;
-  const catalogProjects = learningCatalogProjects();
+  const allCatalogProjects = learningCatalogProjects();
+  const categoryFilter = document.querySelector("#learningCatalogCategory");
+  const tagFilter = document.querySelector("#learningCatalogTag");
+  const availableTags = Array.from(new Set(allCatalogProjects.flatMap((project) => project.tags || []))).sort();
+  if (categoryFilter) {
+    categoryFilter.value = state.learningCatalogCategory;
+    categoryFilter.onchange = () => {
+      state.learningCatalogCategory = categoryFilter.value;
+      renderProjects();
+    };
+  }
+  if (tagFilter) {
+    tagFilter.innerHTML = `<option value="all">Alle Tags</option>${availableTags.map((tag) => `
+      <option value="${escapeAttribute(tag)}"${tag === state.learningCatalogTag ? " selected" : ""}>${escapeHtml(learningTagLabel(tag))}</option>
+    `).join("")}`;
+    if (state.learningCatalogTag !== "all" && !availableTags.includes(state.learningCatalogTag)) state.learningCatalogTag = "all";
+    tagFilter.value = state.learningCatalogTag;
+    tagFilter.onchange = () => {
+      state.learningCatalogTag = tagFilter.value;
+      renderProjects();
+    };
+  }
+  const catalogProjects = allCatalogProjects.filter((project) => {
+    const categoryMatches = state.learningCatalogCategory === "all" || project.learningCategory === state.learningCatalogCategory;
+    const tagMatches = state.learningCatalogTag === "all" || project.tags?.includes(state.learningCatalogTag);
+    return categoryMatches && tagMatches;
+  });
   projectList.innerHTML = catalogProjects.length ? catalogProjects.map((project) => `
     <article class="project-card learning-catalog-card">
       <div>
@@ -938,6 +961,12 @@ function renderProjects() {
         <h2>${escapeHtml(project.name)}</h2>
         <p>${escapeHtml(project.description)}</p>
       </div>
+      <div class="learning-classification">
+        <span class="learning-category-badge">${escapeHtml(learningCategoryLabel(project.learningCategory))}</span>
+        <ul class="learning-tag-list" aria-label="Tags">
+          ${(project.tags || []).map((tag) => `<li>${escapeHtml(learningTagLabel(tag))}</li>`).join("")}
+        </ul>
+      </div>
       <div class="card-actions">
         <button class="primary" type="button" data-open-project="${escapeHtml(project.id)}">Lernprojekt starten</button>
       </div>
@@ -946,6 +975,40 @@ function renderProjects() {
   document.querySelectorAll("#projectList [data-open-project]").forEach((button) => {
     button.addEventListener("click", () => learningProject().open(button.dataset.openProject));
   });
+}
+
+function learningCategoryLabel(category) {
+  return {
+    software_engineering: "Software Engineering",
+    desktop: "PC / Mac",
+    embedded: "Embedded",
+    distributed_system: "Verteilte Systeme",
+    mobile: "Mobile",
+  }[category] || "Lernprojekt";
+}
+
+function learningTagLabel(tag) {
+  const labels = {
+    "client:mobile": "Mobile",
+    "level:beginner": "Einsteiger",
+    "platform:arduino": "Arduino",
+    "platform:avr": "AVR",
+    "platform:esp32": "ESP32",
+    "platform:raspberry-pi": "Raspberry Pi",
+    "platform:stm32": "STM32",
+    "protocol:mqtt": "MQTT",
+    "runtime:browser": "Browser",
+    "topic:actuators": "Aktoren",
+    "topic:ai": "KI",
+    "topic:automation": "Automatisierung",
+    "topic:bare-metal": "Bare Metal",
+    "topic:firmware": "Firmware",
+    "topic:home-automation": "Hausautomation",
+    "topic:modeling": "Modellierung",
+    "topic:sensors": "Sensoren",
+    "topic:web-push": "Web Push",
+  };
+  return labels[tag] || String(tag || "").split(":").pop();
 }
 
 function learningAccessLabel(accessModel) {
@@ -1320,19 +1383,25 @@ function ideDirtyKey(projectId, sourcePath) {
 
 function setIdeConsoleView(view) {
   const showProjectInformation = view === "project-information";
+  const showBuildResults = view === "build-results";
   const showHints = view === "hints";
   const workspace = document.querySelector("#ideConsoleWorkspace");
   const terminalButton = document.querySelector("#showIdeTerminalButton");
   const informationButton = document.querySelector("#showIdeProjectInformationButton");
+  const buildResultsButton = document.querySelector("#showIdeBuildResultsButton");
   const hintsButton = document.querySelector("#showIdeProjectHintsButton");
   workspace.classList.toggle("show-project-information", showProjectInformation);
+  workspace.classList.toggle("show-build-results", showBuildResults);
   workspace.classList.toggle("show-hints", showHints);
-  terminalButton.classList.toggle("active", !showProjectInformation && !showHints);
-  terminalButton.setAttribute("aria-selected", String(!showProjectInformation && !showHints));
+  terminalButton.classList.toggle("active", !showProjectInformation && !showBuildResults && !showHints);
+  terminalButton.setAttribute("aria-selected", String(!showProjectInformation && !showBuildResults && !showHints));
   informationButton.classList.toggle("active", showProjectInformation);
   informationButton.setAttribute("aria-selected", String(showProjectInformation));
+  buildResultsButton.classList.toggle("active", showBuildResults);
+  buildResultsButton.setAttribute("aria-selected", String(showBuildResults));
   hintsButton.classList.toggle("active", showHints);
   hintsButton.setAttribute("aria-selected", String(showHints));
+  if (showBuildResults) renderBuilds();
 }
 
 function ideActionUnavailableReason(project, allocated) {
@@ -3041,11 +3110,20 @@ function setInventoryStatus(kind, text) {
 }
 
 function renderBuilds() {
-  document.querySelector("#buildList").innerHTML = state.builds.length ? state.builds.map((build) => `
+  const target = document.querySelector("#buildList");
+  if (!target) return;
+  const project = projectById(state.activeProjectId);
+  if (!project) {
+    target.innerHTML = `<p class="empty">Öffne zuerst ein Projekt.</p>`;
+    return;
+  }
+  const projectBuilds = state.builds.filter((build) => build.project_server_id === project.id);
+  target.innerHTML = projectBuilds.length ? projectBuilds.map((build) => `
     <article class="build-row">
       <div>
-        <h3>${escapeHtml(build.project_title)}</h3>
-        <p>${escapeHtml(build.device_label)} · ${escapeHtml(build.mode)}</p>
+        <h3>${escapeHtml(buildArtifactVersionLabel(build))}</h3>
+        <p>${escapeHtml(build.device_label)} · ${escapeHtml(build.mode)} · ${escapeHtml(formatBuildDate(build.created_at))}</p>
+        ${renderBuildArtifacts(build)}
       </div>
       <dl class="meta-list">
         ${meta("Status", build.status)}
@@ -3053,7 +3131,39 @@ function renderBuilds() {
         ${meta("Flash", build.flash_status || "nicht angefordert")}
       </dl>
     </article>
-  `).join("") : `<p class="empty">Noch keine Builds gestartet.</p>`;
+  `).join("") : `<p class="empty">Für dieses Projekt wurden noch keine Builds gestartet.</p>`;
+}
+
+function buildArtifactVersionLabel(build) {
+  return build.status === "succeeded" ? "Erfolgreiches Build-Ergebnis" : `Build ${build.status || "ohne Status"}`;
+}
+
+function formatBuildDate(value) {
+  const date = new Date(value || "");
+  return Number.isNaN(date.getTime()) ? "Zeitpunkt unbekannt" : date.toLocaleString("de-DE");
+}
+
+function renderBuildArtifacts(build) {
+  const artifacts = Array.isArray(build.artifacts) ? build.artifacts : [];
+  if (!artifacts.length) return build.status === "succeeded"
+    ? `<p class="build-artifact-note">Für diesen älteren Build ist kein herunterladbares Ergebnis hinterlegt.</p>`
+    : "";
+  return `<div class="build-artifact-list" aria-label="Build-Ergebnisse">
+    ${artifacts.map((artifact) => `
+      <a href="${escapeAttribute(artifact.download_url)}" download="${escapeAttribute(artifact.file_name)}">
+        <strong>${escapeHtml(artifact.file_name)}</strong>
+        <span>${escapeHtml(formatArtifactSize(artifact.size_bytes))}${artifact.sha256 ? ` · SHA-256 ${escapeHtml(String(artifact.sha256).slice(0, 12))}…` : ""}</span>
+      </a>
+    `).join("")}
+  </div>`;
+}
+
+function formatArtifactSize(value) {
+  const bytes = Number(value || 0);
+  if (!bytes) return "Größe unbekannt";
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function selectedDevice() {

@@ -5,6 +5,8 @@
     "title": "Baue dein eigenes Hausautomationsnetz",
     "area": "Hausautomation und vernetzte Home Nodes",
     "summary": "Baue einen lokalen ESP32-Home-Node und erweitere ihn schrittweise zu einem Home-Assistant-kompatiblen Hausautomationsnetz.",
+    "learning_category": "distributed_system",
+    "tags": ["platform:esp32", "protocol:mqtt", "topic:home-automation"],
     "steps": [
       { "title": "Aufgabe und Grenzen verstehen", "text": "Ein Home Node misst, zeigt und schaltet zuerst lokal. Ein Home Assistant oder Cloud-Dienst ist eine spaetere Erweiterung.", "insight": "Die lokale Funktion bleibt der nachvollziehbare Kern." },
       { "title": "Passende ESP32-Familie waehlen", "text": "WLAN, Zigbee/Thread, Display und Akku-Betrieb fuehren zu unterschiedlichen Chipfamilien.", "insight": "C3, S3, C6 und H2 loesen verschiedene Aufgaben; ein Board wird erst danach konkret ausgewaehlt." },

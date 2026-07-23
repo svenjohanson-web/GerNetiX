@@ -11,21 +11,26 @@ test("IDE collects project information and action hints in a switchable terminal
   assert.match(html, /class="ide-console-workspace"/);
   assert.match(html, /id="showIdeTerminalButton"/);
   assert.match(html, /id="showIdeProjectInformationButton"/);
+  assert.match(html, /id="showIdeBuildResultsButton"[\s\S]*Builds &amp; Versionen/);
   assert.match(html, /id="showIdeProjectHintsButton"/);
   assert.match(html, /id="ideProjectInformation"/);
   assert.match(html, /id="ideActionReason"/);
   assert.match(html, /id="ideProjectHintsPanel" class="ide-project-hints"/);
+  assert.match(html, /id="ideBuildResultsPanel" class="ide-build-results"/);
+  assert.match(html, /id="buildList" class="build-list"/);
   assert.match(app, /function renderIdeProjectInformation\(project\)/);
   assert.match(app, /Build-Profil/);
   assert.match(app, /Keine offenen Hinweise fuer dieses Projekt/);
   assert.match(app, /function setIdeConsoleView\(view\)/);
   assert.match(css, /\.ide-console-workspace\.show-project-information \.ide-terminal \{ display: none; \}/);
   assert.match(css, /\.ide-console-workspace\.show-project-information \.ide-project-information \{ display: block;/);
+  assert.match(css, /\.ide-console-workspace\.show-build-results \.ide-build-results \{ display: block;/);
   assert.match(css, /\.ide-console-workspace\.show-hints \.ide-project-hints \{ display: block;/);
 });
 
-test("terminal is the default and all three lower IDE views are exclusive", () => {
+test("terminal is the default and all four lower IDE views are exclusive", () => {
   assert.match(html, /id="showIdeTerminalButton" class="active"/);
   assert.match(css, /\.ide-project-information,[\s\S]*?\.ide-project-hints\s*\{[\s\S]*?display: none;/);
   assert.match(app, /workspace\.classList\.toggle\("show-hints", showHints\)/);
+  assert.match(app, /workspace\.classList\.toggle\("show-build-results", showBuildResults\)/);
 });

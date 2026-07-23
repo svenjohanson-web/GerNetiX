@@ -6,6 +6,7 @@ const contentTypes = {
   ".css": "text/css; charset=utf-8",
   ".js": "text/javascript; charset=utf-8",
   ".json": "application/json; charset=utf-8",
+  ".ico": "image/x-icon",
   ".png": "image/png",
   ".svg": "image/svg+xml",
   ".puml": "text/plain; charset=utf-8",
@@ -118,8 +119,16 @@ function readJsonBody(req) {
 }
 
 function sanitizeNextPath(value) {
-  const next = String(value || "");
-  return next.startsWith("/") && !next.startsWith("//") ? next : "";
+  const next = String(value || "").trim();
+  if (!next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return "";
+  try {
+    const base = new URL("https://gernetix.invalid/");
+    const target = new URL(next, base);
+    if (target.origin !== base.origin) return "";
+    return `${target.pathname}${target.search}${target.hash}`;
+  } catch {
+    return "";
+  }
 }
 
 module.exports = {

@@ -59,17 +59,36 @@ const HelpView = (() => {
       <nav class="panel knowledge-book-navigation" aria-label="Kapitelübersicht">
         <details class="knowledge-book-toc" open>
           <summary><span>Inhalt</span><small>Kapitelübersicht öffnen oder schließen</small></summary>
-          <div class="knowledge-book-toc-content">${topics.map((topic) => `<details class="knowledge-part-toc" open><summary>${escapeHtml(topic.title)}</summary><div>${(topic.children || []).map((child) => `<details class="knowledge-chapter-toc" open><summary>${escapeHtml(child.title)}</summary><div>${(child.subchapters || []).map((subchapter) => `<a class="knowledge-subchapter-link" href="#${escapeHtml(subchapter.id)}" data-knowledge-subchapter="${escapeHtml(subchapter.id)}">${escapeHtml(subchapter.title)}</a>`).join("")}</div></details>`).join("")}</div></details>`).join("")}</div>
+          <div class="knowledge-book-toc-content">${topics.map((topic, topicIndex) => `<details class="knowledge-part-toc" open><summary>${escapeHtml(topic.title)}</summary><div>${(topic.children || []).map((child, childIndex) => renderKnowledgeChapterToc(child, topicIndex, childIndex)).join("")}</div></details>`).join("")}</div>
         </details>
       </nav>
       <main class="knowledge-book-content" aria-label="Wissensportal-Lektüre">
         ${topics.map((topic, index) => `<section id="knowledge-part-${escapeHtml(topic.id)}" class="knowledge-book-part" data-knowledge-part="${escapeHtml(topic.id)}"><header><p class="eyebrow">Hauptkapitel ${index + 1}</p><h2>${index + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}${topic.serverLandscape ? renderServerTypesVisual() : ""}</header>${(topic.children || []).map((child, childIndex) => {
           const chapter = HelpContent.articles[child.articleId];
           const chapterNumber = `${index + 1}.${childIndex + 1}`;
-          return `<article id="${escapeHtml(child.id)}" class="panel help-article knowledge-book-chapter" data-knowledge-chapter="${escapeHtml(child.id)}"><p class="knowledge-chapter-number">${chapterNumber}</p>${renderArticle(chapter, child, { showRelated: false, chapterNumber })}</article>`;
+          return `<article id="${escapeHtml(child.id)}" class="panel help-article knowledge-book-chapter" data-knowledge-chapter="${escapeHtml(child.id)}"><div class="knowledge-chapter-meta"><p class="knowledge-chapter-number">${chapterNumber}</p>${accessBadge(chapter.access)}</div>${renderArticle(chapter, child, { showRelated: false, chapterNumber })}</article>`;
         }).join("")}</section>`).join("")}
       </main>
     </div>`;
+  }
+
+  function renderKnowledgeChapterToc(chapter, topicIndex, chapterIndex) {
+    const chapterNumber = `${topicIndex + 1}.${chapterIndex + 1}`;
+    const level = HelpContent.articles[chapter.articleId]?.access || "public";
+    const previewOnly = !canAccess(level);
+    const subchapters = (chapter.subchapters || []).map((subchapter, subchapterIndex) => {
+      if (!previewOnly || subchapterIndex === 0) {
+        return `<a class="knowledge-subchapter-link" href="#${escapeHtml(subchapter.id)}" data-knowledge-subchapter="${escapeHtml(subchapter.id)}">${escapeHtml(subchapter.title)}</a>`;
+      }
+      return `<span class="knowledge-subchapter-link is-locked" aria-label="${escapeHtml(`${subchapter.title} – Premium`)}">${escapeHtml(subchapter.title)}<small>Premium</small></span>`;
+    }).join("");
+    return `<details class="knowledge-chapter-toc" open>
+      <summary><span>${escapeHtml(chapter.title)}</span>${accessBadge(level)}</summary>
+      <div>
+        <a class="knowledge-chapter-link" href="#${escapeHtml(chapter.id)}" data-knowledge-topic="${escapeHtml(chapter.id)}"><span>${chapterNumber}</span><strong>${previewOnly ? "Leseprobe öffnen" : "Kapitel öffnen"}</strong><b aria-hidden="true">→</b></a>
+        ${subchapters}
+      </div>
+    </details>`;
   }
 
   function activateKnowledgeBook(mount, topicId) {
@@ -123,8 +142,8 @@ const HelpView = (() => {
     if (!canAccess(article.access)) {
       const preview = article.access === "premium" ? article.sections.slice(0, 1) : [];
       return `<header class="help-article-head"><p class="eyebrow">${escapeHtml(parentTitle(topic.id))}</p><h2>${escapeHtml(article.title)}</h2><p>${escapeHtml(article.summary)}</p></header>
-        ${preview.map((section) => `<section class="help-article-section"><h3>${escapeHtml(section.heading)}</h3>${(section.paragraphs || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}${section.list ? `<ul>${section.list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}</section>`).join("")}
-        ${renderPaywall(article.access)}`;
+        ${preview.map((section, sectionIndex) => `<section${section.id ? ` id="${escapeHtml(section.id)}"` : ""} class="help-article-section knowledge-chapter-preview">${chapterNumber && section.id ? `<p class="knowledge-subchapter-number">${chapterNumber}.${sectionIndex + 1}</p>` : ""}<h3>${escapeHtml(section.heading)}</h3>${(section.paragraphs || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}${section.list ? `<ul>${section.list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}</section>`).join("")}
+        ${renderPaywall(article.access, { knowledgeChapter: Boolean(chapterNumber) })}`;
     }
     return `<header class="help-article-head"><p class="eyebrow">${escapeHtml(parentTitle(topic.id))}</p><h2>${escapeHtml(article.title)}</h2><p>${escapeHtml(article.summary)}</p></header>
       ${article.sections.map((section, sectionIndex) => `<section${section.id ? ` id="${escapeHtml(section.id)}"` : ""} class="help-article-section">
@@ -270,9 +289,15 @@ const HelpView = (() => {
     return `<small class="help-access-badge ${level}">${labels[level] || labels.public}</small>`;
   }
 
-  function renderPaywall(level) {
+  function renderPaywall(level, { knowledgeChapter = false } = {}) {
     const premium = level === "premium";
-    return `<section class="help-paywall"><p class="eyebrow">${premium ? "Premium-Inhalt" : "Konto erforderlich"}</p><h3>${premium ? "Hier geht es mit Premium weiter" : "Melde dich an, um weiterzulesen"}</h3><p>${premium ? "Die Einführung bleibt sichtbar. Die konkrete Schrittfolge und vertiefenden Hinweise sind Bestandteil des Premium-Abos." : "Dieser Ablauf bezieht sich auf dein persönliches Board, Inventar oder Projekt und ist deshalb erst nach der Anmeldung verfügbar."}</p><button class="primary" type="button" data-help-route="${premium ? "/app/billing/" : "/app/auth/"}">${premium ? "Premium ansehen" : "Anmelden"}</button></section>`;
+    const heading = premium && knowledgeChapter ? "Dieses Kapitel mit Premium weiterlesen" : premium ? "Hier geht es mit Premium weiter" : "Melde dich an, um weiterzulesen";
+    const description = premium && knowledgeChapter
+      ? "Die Zusammenfassung und der erste Abschnitt sind als Leseprobe frei. Alle weiteren Abschnitte dieses Kapitels sind Bestandteil des Premium-Abos. Du kannst jederzeit eine andere Kapitelvorschau öffnen."
+      : premium
+        ? "Die Einführung bleibt sichtbar. Die konkrete Schrittfolge und vertiefenden Hinweise sind Bestandteil des Premium-Abos."
+        : "Dieser Ablauf bezieht sich auf dein persönliches Board, Inventar oder Projekt und ist deshalb erst nach der Anmeldung verfügbar.";
+    return `<section class="help-paywall${knowledgeChapter ? " knowledge-chapter-paywall" : ""}"><p class="eyebrow">${premium ? "Premium-Inhalt" : "Konto erforderlich"}</p><h3>${heading}</h3><p>${description}</p><button class="primary" type="button" data-help-route="${premium ? "/app/billing/" : "/app/auth/"}">${premium ? "Premium ansehen" : "Anmelden"}</button></section>`;
   }
 
   async function loadHardwareCatalog(mount) {

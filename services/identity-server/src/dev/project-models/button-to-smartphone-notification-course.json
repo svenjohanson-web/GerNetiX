@@ -5,6 +5,8 @@
     "title": "Vom Tastendruck zur Smartphone-Benachrichtigung",
     "area": "IoT und ereignisgesteuerte Anwendungen",
     "summary": "Verstehe eine vollständige, aber überschaubare Ereigniskette vom IoT-Taster bis zur privaten Smartphone-PWA.",
+    "learning_category": "distributed_system",
+    "tags": ["platform:esp32", "client:mobile", "topic:web-push"],
     "steps": [
       { "title": "Das Ziel und dein Lernweg", "text": "Du baust eine nachvollziehbare Kette vom Taster am ESP32 bis zu einer privaten Smartphone-Benachrichtigung.", "insight": "Wir beginnen mit dem sichtbaren Hardware-Ereignis, bevor Worker, Dispatcher und Push dazukommen." },
       { "title": "Taster am Pin einlesen", "text": "Die erste Firmware liest einen Taster am Board und schreibt taste_gedrueckt in den Serial Monitor.", "insight": "Der Taster ist die Ereignisquelle; die weiteren Komponenten werden erst danach ergänzt." },

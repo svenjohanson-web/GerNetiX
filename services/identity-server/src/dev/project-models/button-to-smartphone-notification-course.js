@@ -12,9 +12,11 @@ function createButtonToSmartphoneNotificationCourseModel() {
       {
         default_device_id: definition.default_device_id,
         hardware_profile_id: definition.hardware_profile_id,
+        learning_category: definition.learning_category,
         access_model: definition.access_model,
         build_config: definition.build_config,
         source_files: definition.source_files,
+        tags: definition.tags,
       },
     );
   }

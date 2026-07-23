@@ -520,10 +520,11 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/account/guest") {
+    const body = await readJsonBody(req);
     const guest = await auth.create_guest();
     sessions.set(guest.session.token, { account: guest.account, expiresAt: guest.session.expires_at });
     setSessionCookie(res, guest.session.token, guest.session.expires_at);
-    sendJson(res, 201, { account: guest.account, next: "/app/dashboard/" });
+    sendJson(res, 201, { account: guest.account, next: sanitizeNextPath(body.next) || "/app/dashboard/" });
     return;
   }
 
@@ -1224,11 +1225,18 @@ async function routeRequest(req, res) {
 
   const buildArtifact = url.pathname.match(/^\/api\/user-ide\/build-artifacts\/([^/]+)\/([^/]+)$/);
   if (req.method === "GET" && buildArtifact) {
-    if (!readSession(req)) {
+    const session = readSession(req);
+    if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
-    await proxyBuildArtifact(res, decodeURIComponent(buildArtifact[1]), decodeURIComponent(buildArtifact[2]));
+    const jobId = decodeURIComponent(buildArtifact[1]);
+    const job = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
+    if (!job || job.user_id !== projectServerUserId(session)) {
+      sendJson(res, 404, { error: "build_artifact_not_found" });
+      return;
+    }
+    await proxyBuildArtifact(res, jobId, decodeURIComponent(buildArtifact[2]));
     return;
   }
 
@@ -1605,7 +1613,7 @@ async function handlePasskeyRegistrationVerify(req, res) {
     });
     sessions.set(created.session.token, { account: created.account, expiresAt: created.session.expires_at });
     setSessionCookie(res, created.session.token, created.session.expires_at);
-    sendJson(res, 201, { account: created.account, message: "Konto wurde angelegt.", next: "/app/dashboard/" });
+    sendJson(res, 201, { account: created.account, message: "Konto wurde angelegt.", next: sanitizeNextPath(body.next) || "/app/dashboard/" });
   } catch (error) {
     const message = error.message === "terms_not_accepted"
       ? "Konto wurde nicht angelegt. Grund: Bitte bestätige Datenschutz und Nutzungsbedingungen."
@@ -1873,7 +1881,6 @@ async function handlePlatformSummary(res, session) {
       projects: "/app/projects/",
       development_platform: "/app/development-platform/",
       devices: "/app/device-management/inventory/",
-      builds: "/app/builds/",
       billing: "/app/billing/",
     },
     workspace_state: getWorkspaceState(userId),
@@ -2908,6 +2915,7 @@ async function handleUserIdeBuildJob(req, res) {
       || completedBuildDeployJob?.result?.build?.artifacts?.["firmware.bin"]?.download_url
       || completedBuildDeployJob?.result?.build?.artifacts?.["firmware.hex"]?.download_url
       || "",
+    artifacts: buildArtifactDownloads(projectServerJob.build_job_id, completedBuildDeployJob),
     flash_status: completedBuildDeployJob?.result?.build?.usb_flash?.status
       || completedBuildDeployJob?.result?.deploy?.status
       || "nicht angefordert",
@@ -2942,6 +2950,18 @@ function browserFlashManifest(jobId, completedJob) {
   }));
 }
 
+function buildArtifactDownloads(jobId, completedJob) {
+  const artifacts = completedJob?.result?.build?.artifacts || {};
+  return Object.values(artifacts)
+    .filter((artifact) => artifact?.file_name)
+    .map((artifact) => ({
+      file_name: artifact.file_name,
+      size_bytes: artifact.size_bytes,
+      sha256: artifact.sha256,
+      download_url: `/api/user-ide/build-artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(artifact.file_name)}`,
+    }));
+}
+
 async function proxyBuildArtifact(res, jobId, fileName) {
   let upstream = await fetch(`${buildDeployBaseUrl.replace(/\/$/, "")}/artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(fileName)}`);
   if (upstream.status === 404 && otaBuildDeployBaseUrl !== buildDeployBaseUrl) {
@@ -2951,6 +2971,7 @@ async function proxyBuildArtifact(res, jobId, fileName) {
   res.writeHead(upstream.status, {
     "Content-Type": upstream.headers.get("content-type") || "application/octet-stream",
     "Content-Length": content.length,
+    "Content-Disposition": `attachment; filename="${String(fileName).replace(/[^A-Za-z0-9._-]/g, "_")}"`,
     "Cache-Control": "no-store",
   });
   res.end(content);
@@ -3211,9 +3232,20 @@ async function loadProjectBuilds(projects, session) {
   const devices = await loadUserIdeDevices(session);
   const result = [];
   for (const project of projects) {
-    const response = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/build-jobs`).catch(() => ({ items: [] }));
+    const [response, artifactResponse] = await Promise.all([
+      projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/build-jobs`).catch(() => ({ items: [] })),
+      projectServerJson(`/api/firmware-artifacts?project_id=${encodeURIComponent(project.project_server_id)}`).catch(() => ({ items: [] })),
+    ]);
     for (const job of response.items) {
       const device = devices.find((item) => item.device_id === job.device_id);
+      const artifacts = artifactResponse.items
+        .filter((artifact) => artifact.build_job_id === job.build_job_id)
+        .map((artifact) => ({
+          file_name: artifact.file_name,
+          size_bytes: artifact.size_bytes,
+          sha256: artifact.sha256,
+          download_url: `/api/user-ide/build-artifacts/${encodeURIComponent(job.build_job_id)}/${encodeURIComponent(artifact.file_name)}`,
+        }));
       result.push({
         build_job_id: job.build_job_id,
         project_server_id: job.project_id,
@@ -3223,7 +3255,10 @@ async function loadProjectBuilds(projects, session) {
         device_label: device ? device.display_name : job.device_id || "kein Device",
         mode: job.mode,
         status: job.status,
+        flash_status: job.result?.build?.usb_flash?.status || job.result?.deploy?.status || "nicht angefordert",
         created_at: job.created_at,
+        finished_at: job.finished_at,
+        artifacts,
         build_package_contract: "Project Server BuildPackage",
       });
     }
@@ -3232,7 +3267,7 @@ async function loadProjectBuilds(projects, session) {
 }
 
 function toPlatformProject(project) {
-  return {
+  const platformProject = {
     id: project.project_server_id,
     ownerUserId: project.owner_user_id || "",
     name: project.title,
@@ -3258,6 +3293,11 @@ function toPlatformProject(project) {
     viewManifest: project.view_manifest,
     steps: project.steps,
   };
+  if (project.project_origin === "catalog" || project.learning_project_id?.startsWith("learning_project.")) {
+    platformProject.learningCategory = project.learning_category;
+    platformProject.tags = project.tags || [];
+  }
+  return platformProject;
 }
 
 function getWorkspaceState(userId) {
@@ -3651,7 +3691,10 @@ function createUserIdeState() {
       step("Projekt waehlen", "Arduino Blink ist das kleinste sinnvolle Firmware-Projekt fuer Arduino-kompatible Boards.", "Der Sketch bleibt gleich, das Boardprofil bestimmt die Zielplattform."),
       step("Board anschliessen", "Ein ESP32 DevKit, Arduino Nano oder ein anderes Arduino-kompatibles Board haengt per USB am Rechner.", "USB-Flash ist der schnellste lokale MVP-Nachweis."),
       step("Flash starten", "Die IDE startet Build und Upload ueber den Build-&-Deploy-Server.", "Der Button prueft die Plattformkette Ende zu Ende."),
-    ]),
+    ], {
+      learning_category: "embedded",
+      tags: ["platform:arduino", "platform:esp32", "topic:firmware", "level:beginner"],
+    }),
     project("arduino-atmel-bare-metal", "Arduino Atmel/AVR ohne Arduino", "Firmware", "Bare-Metal-Basissoftware fuer Arduino-kompatible AVR-Boards mit avr-libc, Build und USB-Flash.", [
       step("Runtime waehlen", "Dieses Projekt nutzt ein Arduino-kompatibles AVR-Board ohne Arduino-Framework.", "Die Board-Hardware bleibt Arduino-kompatibel, die Software spricht aber direkt AVR-Register an."),
       step("User-Datei bearbeiten", "Deine Logik liegt in src/user/user_app.c; main.c bleibt geschuetzte Basissoftware.", "Basis und User-Code bleiben getrennt."),
@@ -3668,6 +3711,8 @@ function createUserIdeState() {
         monitorSpeed: "9600",
       },
       source_files: [{ path: "src/user/user_app.c", role: "user_code" }],
+      learning_category: "embedded",
+      tags: ["platform:arduino", "platform:avr", "topic:bare-metal"],
     }),
     tamagotchiEntryCourseModel.createProject(project, step),
     smartAssistantCourseModel.createProject(project, step),
@@ -3678,7 +3723,10 @@ function createUserIdeState() {
       step("Sensor lesen", "Bodenfeuchte wird zur Eingangsseite der Steuerung.", "Ein Sensor liefert Hinweise, keine fertige Entscheidung."),
       step("Pumpe schalten", "Die Pumpe ist die Ausgangsseite des Systems.", "Aktorik macht Software in der Welt wirksam."),
       step("Sicherheit", "Laufzeitbegrenzung und Fehlerfaelle gehoeren zur Funktion.", "Sichere Software plant Stoerungen mit ein."),
-    ]),
+    ], {
+      learning_category: "embedded",
+      tags: ["platform:esp32", "topic:sensors", "topic:actuators"],
+    }),
   ];
 
   return {
@@ -3723,6 +3771,8 @@ function project(slug, title, area, summary, steps, options = {}) {
     "smart-assistant-ai-automation": "subscription",
     "plant-watering-control": "purchased",
   };
+  const learningCategory = normalizeLearningProjectCategory(options.learning_category);
+  const learningTags = normalizeLearningProjectTags(options.tags);
   return {
     slug,
     project_server_id: `project_${slug}`,
@@ -3735,6 +3785,8 @@ function project(slug, title, area, summary, steps, options = {}) {
     source_files: options.source_files || [{ path: "src/main.cpp", role: "user_code" }],
     required_capability_ids: requiredCapabilitiesBySlug[slug] || ["capability.processor_esp32"],
     access_model: options.access_model || accessModelsBySlug[slug] || "subscription",
+    learning_category: learningCategory,
+    tags: learningTags,
     title,
     area,
     summary,
@@ -3742,6 +3794,42 @@ function project(slug, title, area, summary, steps, options = {}) {
     last_build_status: "",
     steps,
   };
+}
+
+function normalizeLearningProjectCategory(value) {
+  const category = String(value || "").trim();
+  const knownCategories = ["software_engineering", "desktop", "embedded", "distributed_system", "mobile"];
+  if (!knownCategories.includes(category)) {
+    throw new Error(`Unknown learning project category: ${category || "(empty)"}`);
+  }
+  return category;
+}
+
+function normalizeLearningProjectTags(value) {
+  const knownTags = [
+    "client:mobile",
+    "level:beginner",
+    "platform:arduino",
+    "platform:avr",
+    "platform:esp32",
+    "platform:raspberry-pi",
+    "platform:stm32",
+    "protocol:mqtt",
+    "runtime:browser",
+    "topic:actuators",
+    "topic:ai",
+    "topic:automation",
+    "topic:bare-metal",
+    "topic:firmware",
+    "topic:home-automation",
+    "topic:modeling",
+    "topic:sensors",
+    "topic:web-push",
+  ];
+  const tags = Array.from(new Set((Array.isArray(value) ? value : []).map((item) => String(item).trim()).filter(Boolean)));
+  const unknownTag = tags.find((tag) => !knownTags.includes(tag));
+  if (unknownTag) throw new Error(`Unknown learning project tag: ${unknownTag}`);
+  return tags;
 }
 
 function ownedCapabilityIds(devices) {

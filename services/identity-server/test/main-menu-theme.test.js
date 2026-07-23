@@ -19,6 +19,6 @@ test("platform uses the shared operator shell without claiming PWA delivery", ()
   assert.doesNotMatch(html, /Plattform · PWA/);
   assert.match(html, /operator-surface/);
   assert.match(html, /data-route="dashboard">Übersicht/);
-  assert.match(html, /data-route="builds">Betrieb/);
+  assert.doesNotMatch(html, /data-route="builds">Betrieb/);
   assert.match(server, /\/app\/operator-shell\.css/);
 });

@@ -32,6 +32,24 @@ test("catalog classifies free, purchased and subscription access", () => {
   assert.match(app, /subscription: "Im Abo enthalten"/);
 });
 
+test("categories and controlled tags classify only learning projects", () => {
+  const tamagotchi = require("../src/dev/project-models/tamagotchi-entry-course.json");
+  const smartAssistant = require("../src/dev/project-models/smart-assistant-course.json");
+  const notification = require("../src/dev/project-models/button-to-smartphone-notification-course.json");
+  assert.equal(tamagotchi.project.learning_category, "software_engineering");
+  assert.equal(smartAssistant.project.learning_category, "distributed_system");
+  assert.ok(notification.project.tags.includes("platform:esp32"));
+  assert.match(html, /id="learningCatalogCategory"/);
+  assert.match(html, /value="software_engineering">Software Engineering/);
+  assert.match(app, /software_engineering: "Software Engineering"/);
+  assert.match(server, /"software_engineering", "desktop", "embedded", "distributed_system", "mobile"/);
+  assert.match(html, /id="learningCatalogTag"/);
+  assert.match(app, /project\.learningCategory === state\.learningCatalogCategory/);
+  assert.match(app, /project\.tags\?\.includes\(state\.learningCatalogTag\)/);
+  assert.match(server, /project\.learning_project_id\?\.startsWith\("learning_project\."\)/);
+  assert.doesNotMatch(server, /learningCategory: project\.development_category/);
+});
+
 test("creates an account-bound project from the catalog before opening it", () => {
   assert.match(learningController, /\/api\/platform\/learning-projects\/\$\{encodeURIComponent\(selectedProject\.id\)\}\/start/);
   assert.match(learningController, /project\.projectOrigin === "account_project"/);

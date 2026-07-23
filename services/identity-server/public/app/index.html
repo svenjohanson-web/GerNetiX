@@ -3,10 +3,12 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <link rel="icon" href="/gernetix-gx.svg?v=20260721-03" type="image/svg+xml" />
+    <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
+    <link rel="shortcut icon" href="/gernetix-gx-browser.ico" type="image/x-icon" />
+    <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260720-01" />
+    <link rel="stylesheet" href="/app/app.css?v=20260723-03" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -34,12 +36,10 @@
         <a class="utility public-information-link" href="/">Startseite</a>
         <a class="utility public-information-link" href="/app/auth/">Anmelden</a>
         <a href="/app/dashboard/" data-route="dashboard">Übersicht</a>
-        <a href="/app/vision/" data-route="vision">Vision</a>
         <a href="/app/development-platform/" data-route="development-platform">Entwicklungsplattform</a>
         <a href="/app/learn/" data-route="learn">Lernplattform</a>
         <a href="/app/device-management/" data-route="device-management">Geräte</a>
         <a href="/app/community/" data-route="community">Community &amp; Begleitung</a>
-        <a class="utility" href="/app/builds/" data-route="builds">Betrieb</a>
         <a class="utility" href="/app/downloads/" data-route="downloads">Downloads</a>
         <a class="utility public-information-link" href="/shop/">Webshop</a>
         <a class="utility" href="/app/billing/" data-route="billing">Billing</a>
@@ -53,7 +53,6 @@
           <p class="eyebrow">Verstehen. Entwickeln. Erschaffen.</p>
           <h1 id="dashboardTitle">Willkommen bei GerNetiX</h1>
           <p class="dashboard-hero-intro">Wähle deinen Arbeitsbereich und setze deinen Lern- oder Entwicklungsweg fort.</p>
-          <button class="dashboard-vision-link" type="button" data-open-route="/app/vision/">Unsere Vision →</button>
         </section>
 
         <section class="dashboard-next" aria-labelledby="accountSetupTitle">
@@ -94,97 +93,6 @@
           </div>
           <div id="dashboardAiUsage" class="ai-rating-grid"></div>
         </section>
-      </section>
-
-      <section id="visionView" class="view hidden">
-        <header class="panel vision-hero" aria-labelledby="visionTitle">
-          <p class="eyebrow">Unsere Vision</p>
-          <h1 id="visionTitle">Verstehen. Entwickeln. Erschaffen.</h1>
-          <p class="vision-lead">Wir möchten Menschen befähigen, komplexe technische Systeme wirklich zu verstehen – und nicht nur fertige Lösungen nachzubauen.</p>
-          <p class="vision-team">GerNetiX entsteht in einem kleinen Team aus Pädagogen und erfahrenen Entwicklern. Praxis, Technik und individuelle Vermittlung gehören für uns zusammen.</p>
-        </header>
-
-        <section class="panel vision-section vision-ai" aria-labelledby="visionAiTitle">
-          <div>
-            <p class="eyebrow">Mensch und KI</p>
-            <h2 id="visionAiTitle">Du bleibst der Architekt.</h2>
-          </div>
-          <div class="vision-ai-copy">
-            <p>KI kann Quellcode erzeugen, Verdrahtungen vorbereiten und wiederkehrende Arbeit beschleunigen. Sie kann jedoch weder technische Sicherheit noch eine gute Systementscheidung garantieren.</p>
-            <p><strong>Die KI nimmt dir Routinearbeit ab – niemals das Denken und die Verantwortung.</strong></p>
-          </div>
-        </section>
-
-        <section class="vision-section" aria-labelledby="visionScopeTitle">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Vom Sensor bis zum verteilten System</p>
-              <h2 id="visionScopeTitle">Technik als Gesamtsystem verstehen</h2>
-            </div>
-          </div>
-          <div class="vision-grid">
-            <article class="panel vision-card">
-              <span>01</span>
-              <h3>Embedded &amp; Elektronik</h3>
-              <p>Sensoren, Aktoren, Mikrocontroller, Echtzeitverhalten und die Grenzen realer Hardware.</p>
-            </article>
-            <article class="panel vision-card">
-              <span>02</span>
-              <h3>Kommunikation &amp; Netzwerke</h3>
-              <p>Daten zuverlässig und sicher zwischen Geräten, lokalen Netzen und entfernten Systemen übertragen.</p>
-            </article>
-            <article class="panel vision-card">
-              <span>03</span>
-              <h3>Apps &amp; Services</h3>
-              <p>Bedienoberflächen, APIs und Server so entwickeln, dass sie gemeinsam eine verständliche Lösung bilden.</p>
-            </article>
-            <article class="panel vision-card">
-              <span>04</span>
-              <h3>Systemarchitektur</h3>
-              <p>Anforderungen analysieren, Alternativen vergleichen und technische Entscheidungen begründen.</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="vision-section" aria-labelledby="visionLearningTitle">
-          <div class="section-head">
-            <div>
-              <p class="eyebrow">Lernen mit GerNetiX</p>
-              <h2 id="visionLearningTitle">Wissen passend vermitteln</h2>
-            </div>
-          </div>
-          <div class="vision-grid vision-learning-grid">
-            <article class="panel vision-card">
-              <h3>Schritt für Schritt</h3>
-              <p>Kleine, nachvollziehbare Schritte helfen dir, keine entscheidende Kleinigkeit zu übersehen.</p>
-            </article>
-            <article class="panel vision-card">
-              <h3>Praxis und Hintergrund</h3>
-              <p>Projekte, Lektüre und Erklärungen verbinden das praktische Handeln mit dem technischen Warum.</p>
-            </article>
-            <article class="panel vision-card">
-              <h3>Menschliche Hilfe</h3>
-              <p>Wenn ein Lernweg oder eine Erklärung nicht passt, bleibt persönlicher Austausch unverzichtbar.</p>
-            </article>
-          </div>
-        </section>
-
-        <section class="panel vision-section vision-complexity" aria-labelledby="visionComplexityTitle">
-          <div>
-            <p class="eyebrow">Komplexität beherrschbar machen</p>
-            <h2 id="visionComplexityTitle">Einfach einsteigen. Später tiefer gehen.</h2>
-          </div>
-          <p>GerNetiX stellt Infrastruktur für Build-Prozesse, Deployment, Updates, Geräte, Apps und Server bereit. Am Anfang bleibt davon vieles bewusst im Hintergrund. Wenn du bereit bist, kannst du auch diese Ebenen verstehen und selbst gestalten.</p>
-        </section>
-
-        <footer class="panel vision-section vision-closing">
-          <p>Werkzeuge, Hersteller und Trends ändern sich. Verstandene Zusammenhänge bleiben.</p>
-          <h2>Wer versteht, kann entwickeln. Wer entwickelt, kann erschaffen.</h2>
-          <div class="button-row vision-actions">
-            <button class="primary" type="button" data-open-route="/app/learn/">Geführt lernen</button>
-            <button type="button" data-open-route="/app/development-platform/">Eigene Idee entwickeln</button>
-          </div>
-        </footer>
       </section>
 
       <section id="accountSetupView" class="view hidden">
@@ -384,6 +292,25 @@
               <p class="helper-text">Waehle ein Projekt nach Thema, Lernziel und gewuenschter Hardware.</p>
             </div>
           </div>
+          <div class="learning-catalog-filters" aria-label="Lernprojekte filtern">
+            <label>
+              Kategorie
+              <select id="learningCatalogCategory">
+                <option value="all">Alle Kategorien</option>
+                <option value="software_engineering">Software Engineering</option>
+                <option value="desktop">PC / Mac</option>
+                <option value="embedded">Embedded</option>
+                <option value="distributed_system">Verteilte Systeme</option>
+                <option value="mobile">Mobile</option>
+              </select>
+            </label>
+            <label>
+              Tag
+              <select id="learningCatalogTag">
+                <option value="all">Alle Tags</option>
+              </select>
+            </label>
+          </div>
           <section id="projectList" class="project-grid learning-catalog-grid"></section>
         </section>
         <section class="panel">
@@ -452,6 +379,7 @@
               <div class="ide-console-tabs" role="tablist" aria-label="Untere IDE-Ansicht">
                 <button id="showIdeTerminalButton" class="active" type="button" role="tab" aria-selected="true" aria-controls="ideTerminalPanel">Terminal</button>
                 <button id="showIdeProjectInformationButton" type="button" role="tab" aria-selected="false" aria-controls="ideProjectInformationPanel">Projektinformationen</button>
+                <button id="showIdeBuildResultsButton" type="button" role="tab" aria-selected="false" aria-controls="ideBuildResultsPanel">Builds &amp; Versionen</button>
                 <button id="showIdeProjectHintsButton" type="button" role="tab" aria-selected="false" aria-controls="ideProjectHintsPanel">Hinweise</button>
               </div>
               <div id="ideConsoleWorkspace" class="ide-console-workspace">
@@ -466,6 +394,10 @@
                   <header><strong>PROJEKTINFORMATIONEN</strong></header>
                   <dl id="ideProjectInformation"></dl>
                 </aside>
+                <section id="ideBuildResultsPanel" class="ide-build-results" aria-label="Builds und Versionen" role="tabpanel">
+                  <header><strong>BUILDS &amp; VERSIONEN</strong></header>
+                  <div id="buildList" class="build-list"></div>
+                </section>
                 <aside id="ideProjectHintsPanel" class="ide-project-hints" aria-label="Hinweise" role="tabpanel">
                   <header><strong>HINWEISE</strong></header>
                   <ul id="ideActionReason" aria-live="polite"></ul>
@@ -921,16 +853,6 @@
         </section>
       </section>
 
-      <section id="buildsView" class="view hidden">
-        <div class="section-head">
-          <div>
-            <p class="eyebrow">Build & Flash</p>
-            <h2>Builds</h2>
-          </div>
-        </div>
-        <section id="buildList" class="build-list"></section>
-      </section>
-
       <section id="shopView" class="view hidden">
         <header class="shop-hero panel" aria-labelledby="shopTitle">
           <div>
@@ -1133,10 +1055,10 @@
         <section id="billingSummary" class="summary-grid"></section>
       </section>
       <section id="communityView" class="view hidden">
-        <section class="panel community-hero"><p class="eyebrow">Community &amp; Projektbegleitung</p><h1>Frage stellen oder persönliche Begleitung anfragen</h1><p>Du entscheidest: öffentlich für die Community oder privat nur zwischen dir und GerNetiX.</p></section>
+        <section class="panel community-hero"><p class="eyebrow">Interner Kontobereich</p><h1>Community &amp; Projektbegleitung</h1><p>Nur angemeldete Mitglieder können Anfragen erstellen und antworten. Du entscheidest beim Absenden: öffentlich für die Community oder privat nur zwischen dir und GerNetiX.</p></section>
         <section class="community-layout">
-          <form id="communityRequestForm" class="panel community-request-form"><h2>Neue Anfrage</h2><label>Titel<input name="title" required maxlength="160" placeholder="Worum geht es?" /></label><label>Deine Anfrage<textarea name="body" required maxlength="8000" rows="6" placeholder="Beschreibe dein Projekt und wobei du Unterstützung möchtest."></textarea></label><label>Kategorie<select name="tags" required><option value="">Kategorie wählen</option><option value="hardware">Hardware &amp; Elektronik</option><option value="firmware">Firmware &amp; ESP32</option><option value="software">Software &amp; Apps</option><option value="project">Projektentwicklung</option><option value="learning">Lernen &amp; Einstieg</option></select></label><label>Projekt (optional)<select id="communityProjectSelect" name="project_id"><option value="">Keinem Projekt zuordnen</option></select></label><fieldset><legend>Sichtbarkeit</legend><label><input type="radio" name="visibility" value="public" checked /> Öffentlich – die Community kann mitlesen.</label><label><input type="radio" name="visibility" value="private" /> Privat – nur du und GerNetiX.</label></fieldset><button class="primary" type="submit">Anfrage senden</button><p id="communityRequestStatus" class="helper-text" aria-live="polite"></p></form>
-          <section class="panel community-list-panel"><div class="section-head"><div><p class="eyebrow">Anfragen</p><h2>Community</h2></div><button id="communityRefreshButton" type="button">Aktualisieren</button></div><div id="communityQuestionList" class="community-question-list"></div></section>
+          <form id="communityRequestForm" class="panel community-request-form"><h2>Neue Community-Anfrage</h2><p class="helper-text">Die Sichtbarkeit wird zusammen mit deiner Anfrage im Community Service gespeichert.</p><label>Titel<input name="title" required maxlength="160" placeholder="Worum geht es?" /></label><label>Deine Anfrage<textarea name="body" required maxlength="8000" rows="6" placeholder="Beschreibe dein Projekt und wobei du Unterstützung möchtest."></textarea></label><label>Kategorie<select name="tags" required><option value="">Kategorie wählen</option><option value="hardware">Hardware &amp; Elektronik</option><option value="firmware">Firmware &amp; ESP32</option><option value="software">Software &amp; Apps</option><option value="project">Projektentwicklung</option><option value="learning">Lernen &amp; Einstieg</option></select></label><label>Projekt (optional)<select id="communityProjectSelect" name="project_id"><option value="">Keinem Projekt zuordnen</option></select></label><fieldset><legend>Sichtbarkeit</legend><label><input type="radio" name="visibility" value="public" checked /> Öffentlich – alle können nach Veröffentlichung mitlesen.</label><label><input type="radio" name="visibility" value="private" /> Privat – nur du und GerNetiX können die Anfrage lesen.</label></fieldset><button class="primary" type="submit">Anfrage senden</button><p id="communityRequestStatus" class="helper-text" aria-live="polite"></p></form>
+          <section class="panel community-list-panel"><div class="section-head"><div><p class="eyebrow">Dein Community-Bereich</p><h2>Eigene und öffentliche Anfragen</h2></div><button id="communityRefreshButton" type="button">Aktualisieren</button></div><div id="communityQuestionList" class="community-question-list"></div></section>
         </section><section id="communityThread" class="panel community-thread hidden"></section>
       </section>
       <footer class="platform-footer">
@@ -1159,6 +1081,6 @@
     <script src="/app/help-content.js?v=20260720-07"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
     <script src="/app/help-view.js?v=20260720-04"></script>
-    <script src="/app/app.js?v=20260720-03"></script>
+    <script src="/app/app.js?v=20260723-04"></script>
   </body>
 </html>

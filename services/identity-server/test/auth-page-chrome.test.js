@@ -26,6 +26,7 @@ test("shows the public GerNetiX header and burger menu on the authentication pag
   assert.match(script, /\/api\/recovery\/offline\/passkey\/options/);
   assert.match(script, /\/api\/recovery\/offline\/passkey\/verify/);
   assert.doesNotMatch(script, /sessionStorage/);
-  assert.match(html, /class="auth-site-footer"[\s\S]*Vision[\s\S]*Über uns[\s\S]*Wissensportal[\s\S]*Hilfe/);
+  assert.match(html, /class="auth-site-footer"[\s\S]*Über uns[\s\S]*Wissensportal[\s\S]*Hilfe/);
+  assert.doesNotMatch(html, /href="\/app\/vision\/"/);
   assert.match(css, /\.auth-site-footer/);
 });

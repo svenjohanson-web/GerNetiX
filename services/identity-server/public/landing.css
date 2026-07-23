@@ -146,6 +146,11 @@ h2 { font-size: clamp(22px, 2.6vw, 30px); }
 .learning-path-card h3, .learning-path-card p { margin: 0; }
 .learning-path-card p { color: var(--muted); line-height: 1.6; }
 .learning-path-card strong { margin-top: auto; color: #cffafe; }
+.ide-invitation { display: flex; align-items: center; justify-content: space-between; gap: clamp(24px, 5vw, 64px); border-color: #155e75; background: radial-gradient(circle at 92% 20%, rgba(34, 211, 238, .18), transparent 18rem), linear-gradient(135deg, #0c2130, #111827 62%); }
+.ide-invitation > div { display: grid; gap: 12px; max-width: 800px; }
+.ide-invitation h2, .ide-invitation p { margin: 0; }
+.ide-invitation p:not(.eyebrow) { color: var(--muted); line-height: 1.65; }
+.ide-invitation .primary-action { flex: 0 0 auto; margin: 0; }
 .community-public-hero { display: grid; gap: 14px; border-color: #155e75; background: radial-gradient(circle at 94% 5%, rgba(34, 211, 238, .2), transparent 20rem), linear-gradient(135deg, #0c2130, #111827 56%); }
 .community-public-hero h1 { max-width: 760px; }
 .community-public-actions { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -495,6 +500,7 @@ footer {
 @media (max-width: 720px) {
   .scope-list { grid-template-columns: 1fr; }
   .hero { grid-template-columns: 1fr; }
+  .ide-invitation { display: grid; }
   .shop-public-hero,
   .shop-public-layout,
   .shop-public-offers,

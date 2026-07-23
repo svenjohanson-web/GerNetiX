@@ -12,8 +12,10 @@ function createHomeAutomationNetworkCourseModel() {
       {
         default_device_id: definition.default_device_id,
         hardware_profile_id: definition.hardware_profile_id,
+        learning_category: definition.learning_category,
         access_model: definition.access_model,
         source_files: definition.source_files,
+        tags: definition.tags,
       },
     );
   }

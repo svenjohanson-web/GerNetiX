@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const vm = require("node:vm");
 
 const appRoot = path.join(__dirname, "..", "public", "app");
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
@@ -309,8 +310,12 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(helpContent, /const articleAccess =/);
   assert.match(helpContent, /"first-project": "premium"/);
   assert.match(helpContent, /"register-device": "account"/);
+  assert.match(helpContent, /\.filter\(\(topic\) => topic\.surface === "knowledge"\)/);
+  assert.match(helpContent, /articles\[chapter\.articleId\]\.access = chapter\.access \|\| "premium"/);
   assert.match(helpView, /function renderPaywall/);
   assert.match(helpView, /Premium-Inhalt/);
+  assert.match(helpView, /Dieses Kapitel mit Premium weiterlesen/);
+  assert.match(helpView, /Du kannst jederzeit eine andere Kapitelvorschau öffnen/);
   assert.match(helpView, /help-access-badge/);
   assert.match(css, /\.help-paywall/);
   assert.match(server, /\["\/hilfe", "\/hilfe\/", "\/wissen", "\/wissen\/"\]\.includes\(url\.pathname\)[\s\S]*serveStatic\(res, appDir, "\/index\.html"\)/);
@@ -338,6 +343,9 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(helpView, /<details class="knowledge-book-toc" open>/);
   assert.match(helpView, /<details class="knowledge-part-toc" open>/);
   assert.match(helpView, /<details class="knowledge-chapter-toc" open>/);
+  assert.match(helpView, /function renderKnowledgeChapterToc/);
+  assert.match(helpView, /Leseprobe öffnen/);
+  assert.match(helpView, /knowledge-subchapter-link is-locked/);
   assert.doesNotMatch(helpView, /Kapitel lesen|Unterkapitel/);
   assert.match(css, /\.knowledge-part-toc > summary/);
   assert.match(helpView, /Kapitelübersicht öffnen oder schließen/);
@@ -359,10 +367,26 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(css, /\.knowledge-part-link/);
   assert.match(css, /\.knowledge-book-chapter \{ scroll-margin-top/);
   assert.match(css, /\.knowledge-subchapter-link/);
+  assert.match(css, /\.knowledge-chapter-meta/);
+  assert.match(css, /\.knowledge-chapter-paywall/);
   assert.match(css, /\.help-practice-lesson/);
   assert.match(css, /\.help-practice-lesson\.is-disabled/);
   assert.match(css, /body\.public-help-page/);
   assert.match(css, /body\.public-help-page \.topbar \{ position: sticky; top: 0; z-index: 50; \}/);
   assert.match(css, /body\.public-help-page \.app-menu \{ position: fixed; top: 80px; right: 22px; z-index: 60; \}/);
   assert.match(css, /body\.public-information-anonymous #mainMenu a:not\(\.public-information-link\)/);
+});
+
+test("gates every knowledge chapter independently while keeping its preview available", () => {
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(`${helpContent};this.content = HelpContent;`, context);
+  const chapters = context.content.topics
+    .filter((topic) => topic.surface === "knowledge")
+    .flatMap((topic) => topic.children || []);
+
+  assert.equal(chapters.length, 24);
+  assert.ok(chapters.every((chapter) => context.content.articles[chapter.articleId]?.access === "premium"));
+  assert.match(helpView, /article\.sections\.slice\(0, 1\)/);
+  assert.match(helpView, /knowledge-chapter-preview/);
 });

@@ -68,7 +68,7 @@ registerForm.addEventListener("submit", async (event) => {
     browserPasskeyRequest = true;
     const credential = await navigator.credentials.create({ publicKey: parseCreationOptions(options) });
     browserPasskeyRequest = false;
-    const result = await postJson("/api/passkeys/registration/verify", { username, accepted_terms: data.get("accepted_terms") === "on", credential: credentialJson(credential) });
+    const result = await postJson("/api/passkeys/registration/verify", { username, accepted_terms: data.get("accepted_terms") === "on", credential: credentialJson(credential), next: nextUrl });
     statusElement.textContent = result.message || "Konto wurde angelegt.";
     window.setTimeout(() => { window.location.href = result.next || "/app/dashboard/"; }, 900);
   } catch (error) {
@@ -101,7 +101,7 @@ recoveryForm.addEventListener("submit", async (event) => {
 });
 guestAccessButton.addEventListener("click", async () => {
   statusElement.textContent = "Gastzugang wird angelegt …";
-  try { const result = await postJson("/api/account/guest", {}); window.location.href = result.next || "/app/dashboard/"; }
+  try { const result = await postJson("/api/account/guest", { next: nextUrl }); window.location.href = result.next || "/app/dashboard/"; }
   catch (error) { statusElement.textContent = error.message || "Gastzugang konnte nicht angelegt werden."; }
 });
 

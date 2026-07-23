@@ -12,7 +12,7 @@ test("serves a readable public community while keeping requests behind login", (
   assert.match(server, /url\.pathname === "\/community"[\s\S]*serveStatic\(res, publicDir, "\/community\/index\.html"\)/);
   assert.match(server, /url\.pathname === "\/api\/public\/community\/questions"/);
   assert.match(server, /publicCommunityQuestion/);
-  assert.match(html, /Offene Community/);
-  assert.match(html, /href="\/app\/auth\/\?next=%2Fapp%2Fcommunity%2F">Private Begleitung anfragen/);
+  assert.match(html, /Öffentlich lesen/);
+  assert.match(html, /href="\/app\/auth\/\?next=%2Fapp%2Fcommunity%2F">Anmelden und Anfrage stellen/);
   assert.match(client, /\/api\/public\/community\/questions/);
 });

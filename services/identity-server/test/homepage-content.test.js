@@ -71,6 +71,16 @@ test("offers reading, practice and personal guidance as equally valid learning p
   assert.match(css, /\.learning-path-grid \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
 });
 
+test("invites experienced developers into the full-system IDE", () => {
+  assert.match(html, /Für Fortgeschrittene/);
+  assert.match(html, /Dein gesamtes System in einer IDE/);
+  assert.match(html, /vom Mikrocontroller bis zum Backend alles erstellen/);
+  assert.match(html, /href="\/app\/auth\/\?next=%2Fapp%2Fdevelopment-platform%2F">GerNetiX IDE besuchen/);
+  assert.match(html, /Für Fortgeschrittene[\s\S]*Unsere Motivation[\s\S]*Warum GerNetiX\?/);
+  assert.match(css, /\.ide-invitation \{ display: flex;/);
+  assert.match(css, /@media \(max-width: 720px\) \{[\s\S]*\.ide-invitation \{ display: grid; \}/);
+});
+
 test("offers a hamburger menu with the public webshop entry only", () => {
   const menu = html.slice(html.indexOf('id="publicMenu"'), html.indexOf("</nav>", html.indexOf('id="publicMenu"')));
   assert.match(html, /id="publicMenuButton"[\s\S]*aria-expanded="false"/);

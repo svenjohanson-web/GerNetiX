@@ -5,6 +5,8 @@
     "title": "Erschaffe dir deinen smart Assistenten",
     "area": "KI und Automatisierung",
     "summary": "Verbinde Sprach- und Automatisierungsdienste mit GPT, Gemini oder Claude und entwirf eine eigene Hardware-Realisierung.",
+    "learning_category": "distributed_system",
+    "tags": ["platform:esp32", "platform:raspberry-pi", "topic:ai", "topic:automation"],
     "steps": [
       { "title": "Warum ueberhaupt einen eigenen Assistenten?", "text": "Alexa-Geraete koennen ausserhalb von Rabattaktionen vergleichsweise teuer sein. GPT, Gemini oder Claude nutzt man dagegen typischerweise am PC oder Smartphone. Der grosse Vorteil entsteht, wenn die flexible Sprach- und Kontextfaehigkeit moderner KI mit den verlaesslichen Aktionen eines Automatisierungsassistenten verbunden wird.", "insight": "Die KI versteht, was der Mensch meint; der Automatisierungsassistent setzt erlaubte Aktionen in der realen Welt um." },
       { "title": "Assistenten-Ziel festlegen", "text": "Lege fest, welche Aufgaben dein Assistent verstehen und ausloesen soll.", "insight": "Ein guter Assistent beginnt mit klaren Funktionen statt mit einem bestimmten KI-Anbieter." },

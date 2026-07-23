@@ -27,3 +27,7 @@ test("never serves the dashboard route without an authenticated session", () => 
   assert.match(app, /const protectedAppRoute =/);
   assert.match(app, /if \(protectedAppRoute && !state\.account\) \{[\s\S]*?window\.location\.assign\(`\/app\/auth\/\?next=\$\{encodeURIComponent\(target\.pathname \+ target\.search\)\}`\)/);
 });
+
+test("sends standalone authentication routes to the login page instead of the dashboard view", () => {
+  assert.match(app, /if \(\/\^\\\/app\\\/auth\(\?:\\\/\|\$\)\/\.test\(target\.pathname\)\) \{[\s\S]*?window\.location\.assign\(target\.pathname \+ target\.search \+ target\.hash\);[\s\S]*?return;/);
+});

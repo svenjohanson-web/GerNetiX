@@ -1019,6 +1019,12 @@ const HelpContent = (() => {
   Object.entries(articleAccess).forEach(([articleId, access]) => {
     if (articles[articleId]) articles[articleId].access = access;
   });
+  topics
+    .filter((topic) => topic.surface === "knowledge")
+    .flatMap((topic) => topic.children || [])
+    .forEach((chapter) => {
+      if (articles[chapter.articleId]) articles[chapter.articleId].access = chapter.access || "premium";
+    });
 
   function findTopic(topicId) {
     for (const topic of topics) {
