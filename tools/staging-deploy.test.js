@@ -21,6 +21,7 @@ test("parses cross-platform staging config", () => {
 test("parses deploy arguments", () => {
   assert.deepEqual(parseArgs(["--dry-run", "--host", "deploy@example.test", "--branch", "agent/test"]), {
     dryRun: true,
+    publicDemo: false,
     host: "deploy@example.test",
     branch: "agent/test",
   });
@@ -43,4 +44,3 @@ test("quotes remote values and deploys an exact commit", () => {
   assert.match(command, /git switch --detach '0123456789abcdef'/);
   assert.match(command, /remote-deploy\.sh/);
 });
-

@@ -68,6 +68,8 @@ test("compose binds application traffic to WireGuard and keeps ACME separate", (
   assert.match(deploy, /--profile tls up -d/);
   assert.match(deploy, /--force-recreate nginx-tls mqtt-broker certbot/);
   assert.match(deploy, /--no-deps --force-recreate mqtt-broker/);
+  assert.doesNotMatch(deploy, /docker compose --env-file "\$env_file" -f compose\.vps\.yaml port nginx 8081/);
+  assert.match(deploy, /--resolve "pwa\.gernetix\.com:443:\$\{private_vps_bind_address\}"/);
 });
 
 test("public web and authentication requests are rate limited per source", () => {
