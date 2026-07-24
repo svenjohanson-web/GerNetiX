@@ -1,6 +1,6 @@
 function startRetentionScheduler({ service, intervalHours = 24, log = console, setIntervalImpl = setInterval }) {
-  const run = () => {
-    try { service.prune(); }
+  const run = async () => {
+    try { await service.prune(); }
     catch (error) { log.error?.(`Telemetry-Retention fehlgeschlagen: ${error.message}`); }
   };
   run();

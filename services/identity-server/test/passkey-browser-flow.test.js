@@ -40,7 +40,7 @@ test("offline recovery is wired as a token-bound passkey registration flow", () 
   assert.match(serverSource, /handleOfflineRecoveryPasskeyVerify/);
   assert.match(serverSource, /offlineRecoveryChallengeSubject\(recoveryToken\)/);
   assert.match(serverSource, /evictCachedSessionsForUser\(completed\.account\.user_id\)/);
-  assert.match(serverSource, /const resolved = auth\.resolve_session_token\(token\)/);
+  assert.match(serverSource, /const resolved = await auth\.resolve_session_token\(token\)/);
   assert.match(serverSource, /offlineRecoveryRateLimit\(req, username\)/);
   assert.match(serverSource, /offlineRecoveryAttempts = new Map/);
   assert.match(serverSource, /event_type: eventType/);

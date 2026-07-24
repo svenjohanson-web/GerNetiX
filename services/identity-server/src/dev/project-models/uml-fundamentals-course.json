@@ -1,0 +1,160 @@
+{
+  "slug": "uml-fundamentals",
+  "project": {
+    "slug": "uml-fundamentals",
+    "title": "UML-Grundlagen – Diagramme, die Mensch und Maschine verstehen",
+    "area": "Modellierung",
+    "summary": "Lerne UML als gemeinsame visuelle Sprache kennen und beschreibe einfache Systeme so, dass Menschen sie besprechen und Werkzeuge sie verarbeiten können.",
+    "learning_category": "software_engineering",
+    "tags": ["runtime:browser", "topic:modeling", "level:beginner"],
+    "steps": [
+      {
+        "title": "Vom Bild zur gemeinsamen Sprache",
+        "text": "Unterscheide eine freie Skizze von einem Diagramm mit vereinbarten Symbolen und Beziehungen.",
+        "insight": "Ein UML-Diagramm ist nicht nur ein Bild, sondern eine lesbare Aussage über ein System."
+      },
+      {
+        "title": "Die passende Sicht wählen",
+        "text": "Entscheide zuerst, ob du Nutzung, Struktur, zeitlichen Ablauf oder Zustände erklären möchtest.",
+        "insight": "Ein Diagramm beantwortet eine konkrete Frage und muss nicht das gesamte System zeigen."
+      },
+      {
+        "title": "Akteure und Anwendungsfälle",
+        "text": "Zeige, wer ein System nutzt und welches Ziel dabei erreicht werden soll.",
+        "insight": "Use-Case-Diagramme beginnen beim Nutzen, nicht bei technischen Komponenten."
+      },
+      {
+        "title": "Struktur mit Klassen und Beziehungen",
+        "text": "Beschreibe wichtige Begriffe, Eigenschaften und ihre fachlichen Beziehungen.",
+        "insight": "Ein Klassendiagramm ordnet Wissen; es ist nicht automatisch ein fertiges Datenbankschema."
+      },
+      {
+        "title": "Abläufe mit Sequenzen erklären",
+        "text": "Ordne Beteiligte und Nachrichten entlang einer Zeitachse.",
+        "insight": "Ein Sequenzdiagramm macht Verantwortung und Reihenfolge eines konkreten Ablaufs sichtbar."
+      },
+      {
+        "title": "Verhalten mit Zuständen modellieren",
+        "text": "Beschreibe erlaubte Zustände und die Ereignisse, die einen Übergang auslösen.",
+        "insight": "Ein Zustandsdiagramm erklärt Verhalten präziser als eine lose Liste von if-Abfragen."
+      },
+      {
+        "title": "Ein eigenes kleines UML-Modell erstellen",
+        "text": "Modelliere einen Bibliotheksautomaten als Kontext, Ablauf und Zustand und prüfe, ob die Sichten zusammenpassen.",
+        "insight": "Mehrere kleine, konsistente Diagramme sind verständlicher als ein überladenes Gesamtbild."
+      }
+    ],
+    "hardware_profile_id": "runtime.browser_plantuml",
+    "default_device_id": "",
+    "access_model": "free",
+    "source_files": [
+      { "path": "model/bibliotheksautomat.puml", "role": "architecture_model" },
+      { "path": "README.md", "role": "learning_guide" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "UML-Grundlagen",
+    "summary": "Ein komfortabler Einstieg von der visuellen Idee bis zum maschinenlesbaren PlantUML-Modell.",
+    "primary_source_path": "model/bibliotheksautomat.puml",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "picture-and-model",
+        "type": "story_slide",
+        "title": "Bilder, die Mensch und Maschine verstehen",
+        "summary": "UML verbindet visuelle Verständlichkeit mit einer vereinbarten, strukturierten Bedeutung.",
+        "completion": { "type": "acknowledge", "label": "Einstieg verstanden" },
+        "payload": {
+          "model_lines": [
+            { "label": "Mensch", "text": "Ein Diagramm macht Begriffe, Grenzen und Zusammenhänge schnell besprechbar." },
+            { "label": "Maschine", "text": "Eine strukturierte Quelle wie PlantUML kann gespeichert, verglichen, geprüft und erneut gerendert werden." },
+            { "label": "Wichtig", "text": "Die Grafik allein ist nicht die Wahrheit. Aussage, Notation und gepflegte Modellquelle gehören zusammen." }
+          ]
+        }
+      },
+      {
+        "id": "choose-view",
+        "type": "explanation",
+        "title": "Welche Frage soll das Diagramm beantworten?",
+        "summary": "Die Fragestellung entscheidet über die passende UML-Sicht.",
+        "completion": { "type": "acknowledge", "label": "Sichten unterschieden" },
+        "payload": {
+          "cards": [
+            { "title": "Use Case", "text": "Wer nutzt das System und mit welchem Ziel?" },
+            { "title": "Klasse", "text": "Welche fachlichen Begriffe und Beziehungen gibt es?" },
+            { "title": "Sequenz", "text": "Wer spricht in welcher Reihenfolge mit wem?" },
+            { "title": "Zustand", "text": "Welche Zustände sind erlaubt und wodurch wechseln sie?" }
+          ]
+        }
+      },
+      {
+        "id": "use-case-view",
+        "type": "plantuml",
+        "title": "Anwendungsfall: Ein Buch ausleihen",
+        "summary": "Ein Akteur verfolgt ein Ziel innerhalb einer klaren Systemgrenze.",
+        "completion": { "type": "acknowledge", "label": "Use Case gelesen" },
+        "payload": {
+          "source": "@startuml\nleft to right direction\nactor Mitglied\nrectangle Bibliotheksautomat {\n  usecase \"Buch ausleihen\" as Ausleihe\n  usecase \"Konto prüfen\" as Pruefung\n}\nMitglied --> Ausleihe\nAusleihe .> Pruefung : <<include>>\n@enduml"
+        }
+      },
+      {
+        "id": "class-view",
+        "type": "plantuml",
+        "title": "Struktur: Buch, Exemplar und Ausleihe",
+        "summary": "Fachliche Begriffe werden getrennt und eindeutig miteinander verbunden.",
+        "completion": { "type": "acknowledge", "label": "Struktur gelesen" },
+        "payload": {
+          "source": "@startuml\nclass Buch {\n  titel\n  isbn\n}\nclass Exemplar {\n  inventarnummer\n}\nclass Ausleihe {\n  ausgeliehenAm\n  faelligAm\n}\nBuch \"1\" -- \"1..*\" Exemplar\nExemplar \"1\" -- \"0..*\" Ausleihe\n@enduml"
+        }
+      },
+      {
+        "id": "sequence-view",
+        "type": "plantuml",
+        "title": "Ablauf: Ausleihe bestätigen",
+        "summary": "Nachrichten und Verantwortlichkeiten werden in zeitlicher Reihenfolge sichtbar.",
+        "completion": { "type": "acknowledge", "label": "Sequenz gelesen" },
+        "payload": {
+          "source": "@startuml\nactor Mitglied\nparticipant Automat\nparticipant Konto\nparticipant Bestand\nMitglied -> Automat : Exemplar scannen\nAutomat -> Konto : darfAusleihen()\nKonto --> Automat : ja\nAutomat -> Bestand : ausleihen()\nBestand --> Automat : bestätigt\nAutomat --> Mitglied : Ausgabe freigeben\n@enduml"
+        }
+      },
+      {
+        "id": "state-view",
+        "type": "plantuml",
+        "title": "Verhalten: Zustände eines Exemplars",
+        "summary": "Ereignisse führen zwischen klar benannten Zuständen.",
+        "completion": { "type": "acknowledge", "label": "Zustände gelesen" },
+        "payload": {
+          "source": "@startuml\n[*] --> Verfuegbar\nVerfuegbar --> Ausgeliehen : ausleihen\nAusgeliehen --> Verfuegbar : zurueckgeben\nAusgeliehen --> Ueberfaellig : faelligkeit erreicht\nUeberfaellig --> Verfuegbar : zurueckgeben\n@enduml"
+        }
+      },
+      {
+        "id": "uml-capstone",
+        "type": "story_slide",
+        "title": "Dein erstes konsistentes UML-Modell",
+        "summary": "Passe das PlantUML-Modell an und erkläre, welche Frage jede Sicht beantwortet.",
+        "completion": { "type": "acknowledge", "label": "Eigenes Modell erstellt" },
+        "payload": {
+          "model_lines": [
+            { "label": "Erweitern", "text": "Ergänze die Reservierung eines Buches als fachlichen Begriff und Ablauf." },
+            { "label": "Prüfen", "text": "Jedes Element benötigt einen verständlichen Namen und eine begründete Beziehung." },
+            { "label": "Abgleichen", "text": "Die Begriffe in Struktur, Sequenz und Zustand dürfen sich nicht widersprechen." }
+          ]
+        }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "model/bibliotheksautomat.puml",
+      "role": "architecture_model",
+      "content": "@startuml\ntitle Bibliotheksautomat – Systemkontext\nactor Mitglied\ncomponent Bibliotheksautomat\ncomponent Kontoservice\ncomponent Bestand\nMitglied --> Bibliotheksautomat : leiht aus\nBibliotheksautomat --> Kontoservice : prüft Berechtigung\nBibliotheksautomat --> Bestand : ändert Verfügbarkeit\n@enduml\n"
+    },
+    {
+      "path": "README.md",
+      "role": "learning_guide",
+      "content": "# UML-Grundlagen\n\nUML ist eine vereinbarte visuelle Sprache. Menschen lesen das gerenderte Diagramm; Werkzeuge und KI können die strukturierte PlantUML-Quelle verarbeiten.\n\n## Abschluss\n\nErgänze eine Reservierung und prüfe, ob Begriffe, Beziehungen, Nachrichten und Zustände über alle Sichten konsistent bleiben.\n"
+    }
+  ]
+}

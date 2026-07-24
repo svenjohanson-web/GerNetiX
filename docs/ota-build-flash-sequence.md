@@ -120,7 +120,7 @@ sequenceDiagram
 
 | Bereich | Verantwortlich | Persistenter Zustand |
 | --- | --- | --- |
-| Projekt und BuildPackage | Project Server | Runtime SQLite |
+| Projekt und BuildPackage | Project Server | Project-PostgreSQL |
 | Device-Zuordnung, Pairing und OTA-Bereitschaft | Device Management | Runtime SQLite |
 | Build, Artefakte, ECDSA-Auftrag und Acknowledgements | Build & Deploy Server | Runtime SQLite, Build-/Artifact-Volume, OTA-Private-Key und inkrementeller Cache |
 | Transport | Mosquitto | QoS-1-/Retain-Zustand im MQTT-Volume |

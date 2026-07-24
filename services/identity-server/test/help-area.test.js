@@ -17,7 +17,7 @@ test("keeps Help reachable through the main menu and renders it as a dedicated v
   assert.match(html, /href="\/hilfe\/">Hilfe<\/a>/);
   assert.match(html, /class="utility public-information-link" href="\/">Startseite<\/a>/);
   assert.match(html, /class="public-header-brand"[\s\S]*src="\/gernetix-wordmark\.png"/);
-  assert.match(html, /class="utility public-information-link" href="\/produkte\/">Produkte<\/a>/);
+  assert.doesNotMatch(html, /href="\/produkte\/"/);
   assert.match(html, /class="utility public-information-link" href="\/community\/">Community<\/a>/);
   assert.match(html, /class="utility public-information-link" href="\/app\/auth\/">Anmelden<\/a>/);
   assert.match(html, /data-open-route="\/wissen\/"[\s\S]*Wissensportal/);
@@ -170,6 +170,23 @@ test("explains what software is from source code to embedded, backend and apps",
   assert.match(helpContent, /Firmware auf Mikrocontrollern: klein, schnell und berechenbar[\s\S]*MicroPython/);
   assert.match(helpContent, /Backend: Entwicklungsgeschwindigkeit zählt[\s\S]*Node\.js[\s\S]*Python/);
   assert.match(helpContent, /PC, Tablet und Smartphone: beide Welten[\s\S]*plattformübergreifenden App/);
+});
+
+test("distinguishes microcontroller storage, databases and file servers in Software", () => {
+  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  assert.match(navigation, /title: "Informatik und Software"[\s\S]*"databases-and-storage", title: "Datenbanken, Speicher und Dateiserver"/);
+  assert.match(navigation, /storage-is-not-always-a-database[\s\S]*microcontroller-storage[\s\S]*sql-and-sqlite[\s\S]*database-families[\s\S]*file-and-object-storage[\s\S]*choosing-data-storage[\s\S]*storage-learning-path/);
+  assert.match(helpContent, /"databases-and-storage": \{[\s\S]*Speicher ist nicht automatisch eine Datenbank/);
+  assert.match(helpContent, /Speicher ist nicht automatisch eine Datenbank[\s\S]*SQL ist dabei keine Datenbank, sondern eine Sprache/);
+  assert.match(helpContent, /Was Mikrocontroller lokal speichern können[\s\S]*NVS[\s\S]*EEPROM[\s\S]*LittleFS[\s\S]*FatFS[\s\S]*Ringpuffer/);
+  assert.match(helpContent, /SQLite ist eine echte relationale SQL-Datenbank, aber kein eigener Datenbankserver/);
+  assert.match(helpContent, /PostgreSQL[\s\S]*MySQL[\s\S]*MariaDB/);
+  assert.match(helpContent, /Dokumentendatenbank[\s\S]*Zeitreihendatenbank[\s\S]*Graphdatenbank[\s\S]*Vektordatenbank/);
+  assert.match(helpContent, /Dateiserver und Objektspeicher[\s\S]*SMB[\s\S]*NFS[\s\S]*S3-Prinzip/);
+  assert.match(helpContent, /Der Mikrocontroller speichert lokal[\s\S]*Zentrale Konten, projektübergreifende Historien oder Fernzugriff/);
+  assert.match(helpContent, /Kleine Lernprojekte: vom Wert zur Datenbank[\s\S]*Werkstatt-Inventar im Arbeitsspeicher[\s\S]*ESP32-Einstellungswächter mit NVS oder EEPROM[\s\S]*LittleFS-Messwertlogbuch[\s\S]*SQLite-Pflanzeninventar[\s\S]*Lokales Projektarchiv mit SQLite-Metadaten/);
+  assert.match(helpContent, /Ein eigener Redis- oder WebDAV-Server ist für den Einstieg nicht nötig[\s\S]*WebDAV ist eine optionale Erweiterung/);
+  assert.match(helpContent, /catalog=storage-learning-story&lesson=development_lesson\.storage\.data_structures[\s\S]*lesson=development_lesson\.storage\.nvs[\s\S]*lesson=development_lesson\.storage\.littlefs[\s\S]*lesson=development_lesson\.storage\.sqlite[\s\S]*lesson=development_lesson\.storage\.file_archive/);
 });
 
 test("explains embedded measurement technology and approachable debugging", () => {
@@ -447,7 +464,7 @@ test("keeps engineering thinking public and gates the remaining knowledge chapte
     .filter((topic) => topic.surface === "knowledge")
     .flatMap((topic) => topic.children || []);
 
-  assert.equal(chapters.length, 24);
+  assert.equal(chapters.length, 25);
   assert.equal(context.content.articles["from-problem-to-system"].access, "public");
   assert.ok(chapters
     .filter((chapter) => chapter.id !== "from-problem-to-system")

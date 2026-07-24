@@ -15,51 +15,51 @@ function createHttpApp(options) {
     }
 
     if (req.method === "GET" && path === prefix) {
-      sendJson(res, 200, { items: service.listProjects(Object.fromEntries(url.searchParams.entries())) });
+      sendJson(res, 200, { items: await service.listProjects(Object.fromEntries(url.searchParams.entries())) });
       return;
     }
     if (req.method === "POST" && path === prefix) {
-      sendJson(res, 201, service.createProject(await readJsonBody(req)));
+      sendJson(res, 201, await service.createProject(await readJsonBody(req)));
       return;
     }
 
     if (req.method === "GET" && path === "/api/resource-policies") {
-      sendJson(res, 200, service.resourceSummary());
+      sendJson(res, 200, await service.resourceSummary());
       return;
     }
     const resourcePolicy = path.match(/^\/api\/resource-policies\/([^/]+)$/);
     if (req.method === "PUT" && resourcePolicy) {
-      sendJson(res, 200, service.updateResourcePolicy(decodeURIComponent(resourcePolicy[1]), await readJsonBody(req)));
+      sendJson(res, 200, await service.updateResourcePolicy(decodeURIComponent(resourcePolicy[1]), await readJsonBody(req)));
       return;
     }
 
     const project = path.match(new RegExp(`^${prefix}/([^/]+)$`));
     if (req.method === "GET" && project) {
-      sendJson(res, 200, service.getProject(decodeURIComponent(project[1])));
+      sendJson(res, 200, await service.getProject(decodeURIComponent(project[1])));
       return;
     }
     if (req.method === "PATCH" && project) {
-      sendJson(res, 200, service.updateProject(decodeURIComponent(project[1]), await readJsonBody(req)));
+      sendJson(res, 200, await service.updateProject(decodeURIComponent(project[1]), await readJsonBody(req)));
       return;
     }
     if (req.method === "DELETE" && project) {
-      sendJson(res, 200, service.deleteProject(decodeURIComponent(project[1])));
+      sendJson(res, 200, await service.deleteProject(decodeURIComponent(project[1])));
       return;
     }
 
     const sources = path.match(new RegExp(`^${prefix}/([^/]+)/sources$`));
     if (req.method === "GET" && sources) {
-      sendJson(res, 200, { items: service.listSources(decodeURIComponent(sources[1])) });
+      sendJson(res, 200, { items: await service.listSources(decodeURIComponent(sources[1])) });
       return;
     }
     if (req.method === "PUT" && sources) {
-      sendJson(res, 200, service.upsertSource(decodeURIComponent(sources[1]), await readJsonBody(req)));
+      sendJson(res, 200, await service.upsertSource(decodeURIComponent(sources[1]), await readJsonBody(req)));
       return;
     }
 
     const sourceSearch = path.match(new RegExp(`^${prefix}/([^/]+)/sources/search$`));
     if (req.method === "GET" && sourceSearch) {
-      sendJson(res, 200, { items: service.searchSources(decodeURIComponent(sourceSearch[1]), {
+      sendJson(res, 200, { items: await service.searchSources(decodeURIComponent(sourceSearch[1]), {
         query: url.searchParams.get("q") || "",
         current_path: url.searchParams.get("current_path") || "",
         source_kind: url.searchParams.get("source_kind") || "",
@@ -70,71 +70,71 @@ function createHttpApp(options) {
 
     const source = path.match(new RegExp(`^${prefix}/([^/]+)/sources/(.+)$`));
     if (req.method === "GET" && source) {
-      sendJson(res, 200, service.getSource(decodeURIComponent(source[1]), decodeURIComponent(source[2])));
+      sendJson(res, 200, await service.getSource(decodeURIComponent(source[1]), decodeURIComponent(source[2])));
       return;
     }
 
     const projectBuildJobs = path.match(new RegExp(`^${prefix}/([^/]+)/build-jobs$`));
     if (req.method === "POST" && projectBuildJobs) {
-      sendJson(res, 201, service.createBuildJob(decodeURIComponent(projectBuildJobs[1]), await readJsonBody(req)));
+      sendJson(res, 201, await service.createBuildJob(decodeURIComponent(projectBuildJobs[1]), await readJsonBody(req)));
       return;
     }
     if (req.method === "GET" && projectBuildJobs) {
-      sendJson(res, 200, { items: service.listBuildJobs({ project_id: decodeURIComponent(projectBuildJobs[1]) }) });
+      sendJson(res, 200, { items: await service.listBuildJobs({ project_id: decodeURIComponent(projectBuildJobs[1]) }) });
       return;
     }
 
     if (req.method === "GET" && path === "/api/build-jobs") {
-      sendJson(res, 200, { items: service.listBuildJobs(Object.fromEntries(url.searchParams.entries())) });
+      sendJson(res, 200, { items: await service.listBuildJobs(Object.fromEntries(url.searchParams.entries())) });
       return;
     }
 
     const buildJob = path.match(/^\/api\/build-jobs\/([^/]+)$/);
     if (req.method === "GET" && buildJob) {
-      sendJson(res, 200, service.getBuildJob(decodeURIComponent(buildJob[1])));
+      sendJson(res, 200, await service.getBuildJob(decodeURIComponent(buildJob[1])));
       return;
     }
 
     const buildPackage = path.match(/^\/api\/build-jobs\/([^/]+)\/build-package$/);
     if (req.method === "GET" && buildPackage) {
-      sendJson(res, 200, service.createBuildPackage(decodeURIComponent(buildPackage[1])));
+      sendJson(res, 200, await service.createBuildPackage(decodeURIComponent(buildPackage[1])));
       return;
     }
 
     const submit = path.match(/^\/api\/build-jobs\/([^/]+)\/submitted$/);
     if (req.method === "POST" && submit) {
-      sendJson(res, 200, service.markBuildSubmitted(decodeURIComponent(submit[1]), await readJsonBody(req)));
+      sendJson(res, 200, await service.markBuildSubmitted(decodeURIComponent(submit[1]), await readJsonBody(req)));
       return;
     }
 
     const result = path.match(/^\/api\/build-jobs\/([^/]+)\/result$/);
     if (req.method === "POST" && result) {
-      sendJson(res, 200, service.recordBuildResult(decodeURIComponent(result[1]), await readJsonBody(req)));
+      sendJson(res, 200, await service.recordBuildResult(decodeURIComponent(result[1]), await readJsonBody(req)));
       return;
     }
 
     if (req.method === "GET" && path === "/api/firmware-artifacts") {
-      sendJson(res, 200, { items: service.listArtifacts(Object.fromEntries(url.searchParams.entries())) });
+      sendJson(res, 200, { items: await service.listArtifacts(Object.fromEntries(url.searchParams.entries())) });
       return;
     }
 
     if (req.method === "POST" && path === "/api/learning-feedback") {
-      sendJson(res, 201, service.createFeedback(await readJsonBody(req)));
+      sendJson(res, 201, await service.createFeedback(await readJsonBody(req)));
       return;
     }
     if (req.method === "GET" && path === "/api/learning-feedback") {
-      sendJson(res, 200, { items: service.listFeedback(Object.fromEntries(url.searchParams.entries())) });
+      sendJson(res, 200, { items: await service.listFeedback(Object.fromEntries(url.searchParams.entries())) });
       return;
     }
 
     const feedbackConsent = path.match(/^\/api\/learning-feedback\/([^/]+)\/contact-consent$/);
     if (req.method === "POST" && feedbackConsent) {
-      sendJson(res, 201, service.createFeedbackConsent(decodeURIComponent(feedbackConsent[1]), await readJsonBody(req)));
+      sendJson(res, 201, await service.createFeedbackConsent(decodeURIComponent(feedbackConsent[1]), await readJsonBody(req)));
       return;
     }
 
     if (req.method === "POST" && path === "/api/learning-feedback/anonymize-expired") {
-      sendJson(res, 200, { items: service.anonymizeExpiredFeedback() });
+      sendJson(res, 200, { items: await service.anonymizeExpiredFeedback() });
       return;
     }
 

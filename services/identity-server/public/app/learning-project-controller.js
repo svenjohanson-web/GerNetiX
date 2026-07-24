@@ -36,6 +36,20 @@ const LearningProjectController = (() => {
         .catch((error) => showError(error));
     }
 
+    async function openLesson(projectId, lessonId) {
+      const selectedProject = projectById(projectId);
+      if (selectedProject?.projectOrigin !== "catalog") return;
+      const response = await postJson(
+        `/api/platform/learning-projects/${encodeURIComponent(selectedProject.id)}/lessons/${encodeURIComponent(lessonId)}/start`,
+        {},
+      );
+      const project = response.project;
+      state.projects = state.projects.filter((item) => item.id !== project.id).concat(project);
+      navigate(`/app/learning-project/?project=${encodeURIComponent(project.id)}`);
+      render();
+      void saveStep(project, 0, [], false).catch((error) => showError(error));
+    }
+
     async function saveStep(project, currentStep, completedSteps, shouldRender = true) {
       const progress = await postJson("/api/platform/learning-progress", { projectId: project.id, courseId: project.courseId, lessonId: project.lessonId, currentStep, completedSteps });
       state.progress = state.progress.filter((item) => item.projectId !== project.id).concat(progress);
@@ -50,7 +64,7 @@ const LearningProjectController = (() => {
       status.textContent = error?.message || "Der Lernfortschritt konnte nicht gespeichert werden. Bitte erneut versuchen.";
     }
 
-    return { render, open };
+    return { render, open, openLesson };
   }
   return { create };
 })();

@@ -21,10 +21,12 @@ Die Sicherung wird aus den fachlichen Quellen der Wahrheit abgeleitet und nicht 
 
 | Datenbereich | Fuehrende Persistenz | Beispiele |
 | --- | --- | --- |
-| Identitaet und Account | Identity-SQLite | Accounts, interne `user_id`, Credentials, Sessions und Berechtigungsbezug |
-| Projekte | gemeinsame Service-SQLite / Project Server | Projektstruktur, Quellen, View-Manifeste, Hardware-Konfiguration, Build-Historie und Lernfeedback |
-| Hardware-Inventar | gemeinsame Service-SQLite / Device Management | AccountDevices, Pairings, Seriennummern, Device-Identitaet, Credentials und Supportkontext |
-| Weitere Plattformdaten | gemeinsame Service-SQLite | Bestellungen, Ansprueche, Lernfortschritt, Consents, Usage- und Auditdaten |
+| Identitaet und Account | Identity-PostgreSQL `gernetix_identity` | Accounts, interne `user_id`, Credentials, Passkeys, Recovery-Transaktionen, Sessions und Berechtigungsbezug |
+| Projekte | Project-PostgreSQL `gernetix_projects` / Project Server | Projektstruktur, Quellen, View-Manifeste, Hardware-Konfiguration, Build-Historie und Lernfeedback |
+| Telemetrie | Telemetry-PostgreSQL `gernetix_telemetry` / Telemetry Server | Messwerte, Ereignisse und konto-/projektbezogene Aufbewahrungsregeln |
+| Community | Community-PostgreSQL `gernetix_community` / Community Platform | Oeffentliche Fragen, private Projektbegleitung, Antworten und Wissensdokumente |
+| Hardware-Inventar | Device-Management-PostgreSQL `gernetix_device_management` | AccountDevices, Pairings, Seriennummern, Device-Identitaet, Credentials, Purchase Contexts, Consents, Audit und Supportkontext |
+| Weitere Plattformdaten | gemeinsame Service-SQLite | Bestellungen, Ansprueche, Lernfortschritt, Usage- und weitere technische Auditdaten |
 | KI-Kontext | AI-Context-PostgreSQL | Grants, Policy, Prompts, Architektur-Bausteine, accountisolierte Intent-Beispiele und Audit |
 | Wiederaufbau-relevante Artefakte | Artifact Store / persistente Build-Daten | Nur Artefakte, die nicht deterministisch aus versionierten Quellen neu erzeugt werden koennen |
 
@@ -68,7 +70,7 @@ Diese Datei definiert die verbindliche fachliche und betriebliche Zielsetzung. B
 **Customer-Data-Backup und Restore technisch umsetzen und nachweisen.**
 
 - externen, verschluesselten und gegen den Deployment-Zugang geschuetzten Backup-Speicher auswaehlen und einrichten
-- konsistente Sicherung fuer Identity-SQLite, gemeinsame Service-SQLite, AI-Context-PostgreSQL und nicht reproduzierbare Artefakte automatisieren
+- konsistente Sicherung fuer Identity-, Project-, Telemetry-, Community-, Device-Management- und AI-Context-PostgreSQL, die verbleibenden SQLite-Domaenen und nicht reproduzierbare Artefakte automatisieren
 - Retention, Pruefsummen, Backup-Alter und Fehler alarmieren
 - isolierte Restore-Automation und fachliche Contract-Checks fuer Accounts, Projekte und Hardware-Inventar implementieren
 - ersten vollstaendigen Restore-Test innerhalb von RPO und RTO protokollieren

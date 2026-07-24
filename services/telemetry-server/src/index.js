@@ -1,15 +1,23 @@
 const { createConfig } = require("./config");
 const { createHttpApp } = require("./http-app");
 const { SqliteTelemetryRepository } = require("./repositories/sqlite-telemetry-repository");
+const { PostgresTelemetryRepository } = require("./repositories/postgres-telemetry-repository");
 const { TelemetryService } = require("./services/telemetry-service");
 const { createRemoteOwnershipResolver } = require("./ownership-resolver");
 const { createIdentityPushNotifier } = require("./push-notifier");
 const { createIdentityRuntimeNotifier } = require("./runtime-notifier");
 const { startMqttTelemetryAdapter, startMqttRuntimeAdapter } = require("./mqtt-telemetry-adapter");
 
-function createDefaultTelemetryServer(config = createConfig()) {
+async function createDefaultTelemetryServer(config = createConfig()) {
+  const repository = ["postgres", "postgresql"].includes(config.persistenceBackend)
+    ? await PostgresTelemetryRepository.create({
+        poolOptions: config.postgres.connectionString
+          ? { connectionString: config.postgres.connectionString }
+          : config.postgres,
+      })
+    : new SqliteTelemetryRepository(config.sqlitePath);
   const service = new TelemetryService({
-    repository: new SqliteTelemetryRepository(config.sqlitePath),
+    repository,
     ownershipResolver: createRemoteOwnershipResolver(config),
     pushNotifier: createIdentityPushNotifier(config),
     runtimeNotifier: createIdentityRuntimeNotifier(config),
@@ -21,4 +29,4 @@ function createDefaultTelemetryServer(config = createConfig()) {
   return service;
 }
 
-module.exports = { createConfig, createHttpApp, SqliteTelemetryRepository, TelemetryService, createDefaultTelemetryServer, startMqttTelemetryAdapter, startMqttRuntimeAdapter };
+module.exports = { createConfig, createHttpApp, PostgresTelemetryRepository, SqliteTelemetryRepository, TelemetryService, createDefaultTelemetryServer, startMqttTelemetryAdapter, startMqttRuntimeAdapter };

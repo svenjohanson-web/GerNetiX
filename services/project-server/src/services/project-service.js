@@ -6,11 +6,12 @@ class ProjectService {
   constructor(options) {
     this.repository = options.repository;
     this.loadEsp32BasissoftwareFiles = options.loadEsp32BasissoftwareFiles || loadEsp32BasissoftwareFiles;
-    this.ensureResourcePolicies();
+    this.ready = this.ensureResourcePolicies();
   }
 
-  createProject(input = {}) {
-    this.assertProjectQuota(input.user_id, input.plan_id || input.plan || "free");
+  async createProject(input = {}) {
+    await this.ready;
+    await this.assertProjectQuota(input.user_id, input.plan_id || input.plan || "free");
     const now = new Date().toISOString();
     const project = {
       project_id: input.project_id || createId("project"),
@@ -27,38 +28,34 @@ class ProjectService {
       created_at: now,
       updated_at: now,
     };
-    this.repository.saveProject(project);
+    await this.repository.saveProject(project);
     for (const source of defaultSources(project, input.sources || [])) {
-      this.upsertSource(project.project_id, source);
+      await this.upsertSource(project.project_id, source);
     }
     return this.projectWithSummary(project);
   }
 
-  getProject(projectId) {
-    return this.projectWithSummary(this.requireProject(projectId));
+  async getProject(projectId) {
+    await this.ready;
+    return this.projectWithSummary(await this.requireProject(projectId));
   }
 
-  deleteProject(projectId) {
-    const project = this.requireProject(projectId);
-    const deleted = { sources: 0, build_jobs: 0, artifacts: 0, feedback: 0, consents: 0 };
-    for (const [id, source] of this.repository.sources) if (source.project_id === projectId) { this.repository.sources.delete(id); deleted.sources += 1; }
-    for (const [id, job] of this.repository.buildJobs) if (job.project_id === projectId) { this.repository.buildJobs.delete(id); deleted.build_jobs += 1; }
-    for (const [id, artifact] of this.repository.artifacts) if (artifact.project_id === projectId) { this.repository.artifacts.delete(id); deleted.artifacts += 1; }
-    const feedbackIds = new Set();
-    for (const [id, feedback] of this.repository.feedback) if (feedback.project_id === projectId) { feedbackIds.add(feedback.feedback_id); this.repository.feedback.delete(id); deleted.feedback += 1; }
-    for (const [id, consent] of this.repository.consents) if (feedbackIds.has(consent.feedback_id)) { this.repository.consents.delete(id); deleted.consents += 1; }
-    this.repository.projects.delete(projectId);
-    this.repository.persist?.();
+  async deleteProject(projectId) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    const deleted = await this.repository.deleteProject(projectId);
     return { project_id: project.project_id, deleted };
   }
 
-  listProjects(query = {}) {
-    return this.repository.listProjects({ user_id: query.user_id || query.userId || "" })
-      .map((project) => this.projectWithSummary(project));
+  async listProjects(query = {}) {
+    await this.ready;
+    return Promise.all((await this.repository.listProjects({ user_id: query.user_id || query.userId || "" }))
+      .map((project) => this.projectWithSummary(project)));
   }
 
-  updateProject(projectId, input = {}) {
-    const project = this.requireProject(projectId);
+  async updateProject(projectId, input = {}) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
     const next = {
       ...project,
       title: input.title || project.title,
@@ -74,23 +71,25 @@ class ProjectService {
       status: input.status || project.status,
       updated_at: new Date().toISOString(),
     };
-    return this.projectWithSummary(this.repository.saveProject(next));
+    return this.projectWithSummary(await this.repository.saveProject(next));
   }
 
-  listSources(projectId) {
-    this.requireProject(projectId);
-    return this.repository.listSources(projectId).map(maskSourceContent);
+  async listSources(projectId) {
+    await this.ready;
+    await this.requireProject(projectId);
+    return (await this.repository.listSources(projectId)).map(maskSourceContent);
   }
 
-  searchSources(projectId, input = {}) {
-    this.requireProject(projectId);
+  async searchSources(projectId, input = {}) {
+    await this.ready;
+    await this.requireProject(projectId);
     const query = String(input.query || "").toLocaleLowerCase("de-DE");
     const currentPath = String(input.current_path || "");
     const sourceKind = normalizeSourceKind(input.source_kind);
     const limit = Math.max(1, Math.min(8, Number(input.limit) || 6));
     const terms = [...new Set(query.match(/[\p{L}\p{N}_-]{3,}/gu) || [])]
       .filter((term) => !SOURCE_SEARCH_STOP_WORDS.has(term));
-    return this.repository.listSources(projectId)
+    return (await this.repository.listSources(projectId))
       .filter((source) => !sourceKind || sourceMatchesKind(source.path, sourceKind))
       .map((source) => ({ source, score: sourceSearchScore(source, terms, currentPath) }))
       .filter((item) => item.score > 0)
@@ -99,15 +98,17 @@ class ProjectService {
       .map((item) => item.source);
   }
 
-  getSource(projectId, sourcePath) {
-    this.requireProject(projectId);
-    const source = this.repository.findSource(projectId, sourcePath);
+  async getSource(projectId, sourcePath) {
+    await this.ready;
+    await this.requireProject(projectId);
+    const source = await this.repository.findSource(projectId, sourcePath);
     if (!source) throw new ProjectServerError("source_not_found", "Projektquelle wurde nicht gefunden.", 404);
     return source;
   }
 
-  upsertSource(projectId, input = {}) {
-    const project = this.requireProject(projectId);
+  async upsertSource(projectId, input = {}) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
     const path = normalizeSourcePath(required(input.path, "path"));
     const now = new Date().toISOString();
     const content = String(input.content || "");
@@ -120,13 +121,14 @@ class ProjectService {
       role: input.role || inferSourceRole(path),
       updated_at: now,
     };
-    this.repository.saveSource(source);
-    this.touchProject(projectId);
+    await this.repository.saveSource(source);
+    await this.touchProject(projectId);
     return source;
   }
 
-  createBuildJob(projectId, input = {}) {
-    const project = this.requireProject(projectId);
+  async createBuildJob(projectId, input = {}) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
     const now = new Date().toISOString();
     const mode = input.mode || "build";
     if (!["build", "build_and_flash", "build_and_usb_flash", "prebuild"].includes(mode)) {
@@ -153,23 +155,26 @@ class ProjectService {
     return this.repository.saveBuildJob(job);
   }
 
-  getBuildJob(jobId) {
-    const job = this.repository.findBuildJob(jobId);
+  async getBuildJob(jobId) {
+    await this.ready;
+    const job = await this.repository.findBuildJob(jobId);
     if (!job) throw new ProjectServerError("build_job_not_found", "BuildJob wurde nicht gefunden.", 404);
     return job;
   }
 
-  listBuildJobs(query = {}) {
+  async listBuildJobs(query = {}) {
+    await this.ready;
     return this.repository.listBuildJobs({
       project_id: query.project_id || query.projectId || "",
       user_id: query.user_id || query.userId || "",
     });
   }
 
-  createBuildPackage(jobId) {
-    const job = this.getBuildJob(jobId);
-    const project = this.requireProject(job.project_id);
-    const sources = this.repository.listSources(project.project_id);
+  async createBuildPackage(jobId) {
+    await this.ready;
+    const job = await this.getBuildJob(jobId);
+    const project = await this.requireProject(job.project_id);
+    const sources = await this.repository.listSources(project.project_id);
     const firmwareSources = project.build_config?.firmware_basis_id === "gernetix-runtime-basissoftware"
       ? composeEsp32BasissoftwarePackage({
           basisFiles: this.loadEsp32BasissoftwareFiles(),
@@ -206,8 +211,9 @@ class ProjectService {
     };
   }
 
-  markBuildSubmitted(jobId, input = {}) {
-    const job = this.getBuildJob(jobId);
+  async markBuildSubmitted(jobId, input = {}) {
+    await this.ready;
+    const job = await this.getBuildJob(jobId);
     const next = {
       ...job,
       status: "submitted",
@@ -218,8 +224,9 @@ class ProjectService {
     return this.repository.saveBuildJob(next);
   }
 
-  recordBuildResult(jobId, input = {}) {
-    const job = this.getBuildJob(jobId);
+  async recordBuildResult(jobId, input = {}) {
+    await this.ready;
+    const job = await this.getBuildJob(jobId);
     const status = input.status || input.build_status || "succeeded";
     const next = {
       ...job,
@@ -233,9 +240,9 @@ class ProjectService {
       },
       error: input.error || null,
     };
-    this.repository.saveBuildJob(next);
+    await this.repository.saveBuildJob(next);
     for (const artifact of input.artifacts || []) {
-      this.repository.saveArtifact({
+      await this.repository.saveArtifact({
         artifact_id: artifact.artifact_id || createId("artifact"),
         project_id: job.project_id,
         build_job_id: job.build_job_id,
@@ -250,15 +257,17 @@ class ProjectService {
     return this.getBuildJob(jobId);
   }
 
-  listArtifacts(query = {}) {
+  async listArtifacts(query = {}) {
+    await this.ready;
     return this.repository.listArtifacts({
       project_id: query.project_id || query.projectId || "",
       build_job_id: query.build_job_id || query.buildJobId || "",
     });
   }
 
-  createFeedback(input = {}) {
-    const project = this.requireProject(required(input.project_id, "project_id"));
+  async createFeedback(input = {}) {
+    await this.ready;
+    const project = await this.requireProject(required(input.project_id, "project_id"));
     const now = new Date().toISOString();
     const feedback = {
       feedback_id: input.feedback_id || createId("feedback"),
@@ -273,18 +282,22 @@ class ProjectService {
       anonymized_at: null,
       created_at: now,
     };
-    return redactFeedback(this.repository.saveFeedback(feedback));
+    return redactFeedback(await this.repository.saveFeedback(feedback));
   }
 
-  listFeedback(query = {}) {
-    return this.repository.listFeedback({
+  async listFeedback(query = {}) {
+    await this.ready;
+    const feedbackItems = await this.repository.listFeedback({
       project_id: query.project_id || query.projectId || "",
       user_id: query.user_id || query.userId || "",
-    }).map((feedback) => redactFeedback(feedback, this.repository.findFeedbackConsent(feedback.feedback_id)));
+    });
+    return Promise.all(feedbackItems.map(async (feedback) =>
+      redactFeedback(feedback, await this.repository.findFeedbackConsent(feedback.feedback_id))));
   }
 
-  createFeedbackConsent(feedbackId, input = {}) {
-    const feedback = this.requireFeedback(feedbackId);
+  async createFeedbackConsent(feedbackId, input = {}) {
+    await this.ready;
+    const feedback = await this.requireFeedback(feedbackId);
     const now = new Date().toISOString();
     return this.repository.saveConsent({
       consent_id: input.consent_id || createId("consent"),
@@ -299,9 +312,10 @@ class ProjectService {
     });
   }
 
-  anonymizeExpiredFeedback(at = new Date()) {
+  async anonymizeExpiredFeedback(at = new Date()) {
+    await this.ready;
     const updated = [];
-    for (const feedback of this.repository.listFeedback()) {
+    for (const feedback of await this.repository.listFeedback()) {
       if (feedback.anonymized_at || new Date(feedback.anonymize_after).getTime() > at.getTime()) continue;
       const anonymized = {
         ...feedback,
@@ -310,33 +324,35 @@ class ProjectService {
         contact_mode: "no_contact",
         anonymized_at: at.toISOString(),
       };
-      updated.push(redactFeedback(this.repository.saveFeedback(anonymized)));
+      updated.push(redactFeedback(await this.repository.saveFeedback(anonymized)));
     }
     return updated;
   }
 
-  projectWithSummary(project) {
+  async projectWithSummary(project) {
     return {
       ...sanitizeProject(project),
-      source_count: this.repository.listSources(project.project_id).length,
-      build_count: this.repository.listBuildJobs({ project_id: project.project_id }).length,
+      source_count: (await this.repository.listSources(project.project_id)).length,
+      build_count: (await this.repository.listBuildJobs({ project_id: project.project_id })).length,
     };
   }
 
-  resourceSummary() {
-    const policies = this.repository.listResourcePolicies();
+  async resourceSummary() {
+    await this.ready;
+    const policies = await this.repository.listResourcePolicies();
     const byAccount = new Map();
-    for (const project of this.repository.listProjects()) {
+    for (const project of await this.repository.listProjects()) {
       const entry = byAccount.get(project.user_id) || { account_id: project.user_id, plan_id: project.plan_id || "free", projects: 0, storage_bytes: 0 };
       entry.projects += 1;
-      entry.storage_bytes += this.projectStorageBytes(project.project_id);
+      entry.storage_bytes += await this.projectStorageBytes(project.project_id);
       byAccount.set(project.user_id, entry);
     }
     return { policies, accounts: Array.from(byAccount.values()).sort((a, b) => b.storage_bytes - a.storage_bytes) };
   }
 
-  updateResourcePolicy(planId, input = {}) {
-    const current = this.policyFor(planId);
+  async updateResourcePolicy(planId, input = {}) {
+    await this.ready;
+    const current = await this.policyFor(planId);
     const policy = {
       ...current,
       plan_id: String(planId).toLowerCase(),
@@ -348,58 +364,59 @@ class ProjectService {
     return this.repository.saveResourcePolicy(policy);
   }
 
-  ensureResourcePolicies() {
-    const existing = new Map(this.repository.listResourcePolicies().map((policy) => [policy.plan_id, policy]));
+  async ensureResourcePolicies() {
+    const existing = new Map((await this.repository.listResourcePolicies()).map((policy) => [policy.plan_id, policy]));
     for (const policy of defaultResourcePolicies()) {
       const current = existing.get(policy.plan_id);
-      if (!current) { this.repository.saveResourcePolicy(policy); continue; }
+      if (!current) { await this.repository.saveResourcePolicy(policy); continue; }
       // Migration bisheriger Premium-Vorgaben auf die beschlossene grosszuegige Missbrauchsgrenze.
       if (["premium", "premium_demo"].includes(policy.plan_id) && [null, 50].includes(current.max_projects)) {
-        this.repository.saveResourcePolicy({ ...current, max_projects: 200, updated_at: new Date().toISOString() });
+        await this.repository.saveResourcePolicy({ ...current, max_projects: 200, updated_at: new Date().toISOString() });
       }
     }
   }
 
-  policyFor(planId) {
+  async policyFor(planId) {
     const normalized = String(planId || "free").toLowerCase();
-    return this.repository.listResourcePolicies().find((item) => item.plan_id === normalized)
-      || this.repository.listResourcePolicies().find((item) => item.plan_id === "free")
+    const policies = await this.repository.listResourcePolicies();
+    return policies.find((item) => item.plan_id === normalized)
+      || policies.find((item) => item.plan_id === "free")
       || defaultResourcePolicies()[0];
   }
 
-  assertProjectQuota(userId, planId) {
-    const policy = this.policyFor(planId);
-    if (policy.max_projects !== null && this.repository.listProjects({ user_id: userId }).length >= policy.max_projects) {
+  async assertProjectQuota(userId, planId) {
+    const policy = await this.policyFor(planId);
+    if (policy.max_projects !== null && (await this.repository.listProjects({ user_id: userId })).length >= policy.max_projects) {
       throw new ProjectServerError("project_quota_exceeded", `Maximal ${policy.max_projects} Projekte fuer den Plan ${policy.plan_id}.`, 409);
     }
   }
 
-  assertStorageQuota(project, sourcePath, content, planId) {
-    const policy = this.policyFor(planId);
-    const existing = this.repository.findSource(project.project_id, sourcePath);
-    const nextBytes = this.projectStorageBytes(project.project_id) - Buffer.byteLength(existing?.content || "", "utf8") + Buffer.byteLength(content, "utf8");
+  async assertStorageQuota(project, sourcePath, content, planId) {
+    const policy = await this.policyFor(planId);
+    const existing = await this.repository.findSource(project.project_id, sourcePath);
+    const nextBytes = await this.projectStorageBytes(project.project_id) - Buffer.byteLength(existing?.content || "", "utf8") + Buffer.byteLength(content, "utf8");
     if (policy.max_storage_bytes !== null && nextBytes > policy.max_storage_bytes) {
       throw new ProjectServerError("storage_quota_exceeded", `Speicherlimit von ${policy.max_storage_bytes} Bytes fuer den Plan ${policy.plan_id} erreicht.`, 413);
     }
   }
 
-  projectStorageBytes(projectId) {
-    return this.repository.listSources(projectId).reduce((sum, source) => sum + Buffer.byteLength(source.content || "", "utf8"), 0);
+  async projectStorageBytes(projectId) {
+    return (await this.repository.listSources(projectId)).reduce((sum, source) => sum + Buffer.byteLength(source.content || "", "utf8"), 0);
   }
 
-  touchProject(projectId) {
-    const project = this.requireProject(projectId);
-    this.repository.saveProject({ ...project, updated_at: new Date().toISOString() });
+  async touchProject(projectId) {
+    const project = await this.requireProject(projectId);
+    await this.repository.saveProject({ ...project, updated_at: new Date().toISOString() });
   }
 
-  requireProject(projectId) {
-    const project = this.repository.findProject(projectId);
+  async requireProject(projectId) {
+    const project = await this.repository.findProject(projectId);
     if (!project) throw new ProjectServerError("project_not_found", "Projekt wurde nicht gefunden.", 404);
     return project;
   }
 
-  requireFeedback(feedbackId) {
-    const feedback = this.repository.findFeedback(feedbackId);
+  async requireFeedback(feedbackId) {
+    const feedback = await this.repository.findFeedback(feedbackId);
     if (!feedback) throw new ProjectServerError("feedback_not_found", "Feedback wurde nicht gefunden.", 404);
     return feedback;
   }

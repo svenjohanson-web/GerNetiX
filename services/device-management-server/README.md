@@ -95,8 +95,9 @@ Konfiguration:
 - `HOST`: Bind-Adresse, Standard `127.0.0.1`
 - `PORT`: HTTP-Port, Standard `4700`
 - `DEVICE_MANAGEMENT_BASE_URL`: externe Basis-URL fuer spaetere Links
-- `PERSISTENCE_BACKEND` oder `DEVICE_MANAGEMENT_PERSISTENCE_BACKEND`: `memory`, `sqlite` oder `json`, Standard `memory`
-- `PERSISTENCE_SQLITE_PATH` oder `DEVICE_MANAGEMENT_SQLITE_PATH`: SQLite-Datei fuer `sqlite`, Standard `.runtime/gernetix-services.sqlite`
+- `PERSISTENCE_BACKEND` oder `DEVICE_MANAGEMENT_PERSISTENCE_BACKEND`: standardmaessig `postgres`; `memory`, `sqlite` und `json` sind nur fuer isolierte Tests beziehungsweise Altimporte vorgesehen
+- `DEVICE_MANAGEMENT_POSTGRES_URL` oder `DEVICE_MANAGEMENT_POSTGRES_HOST`, `..._PORT`, `..._DATABASE`, `..._USER`, `..._PASSWORD`: Verbindung zur fuehrenden Device-Management-Datenbank
+- `PERSISTENCE_SQLITE_PATH` oder `DEVICE_MANAGEMENT_SQLITE_PATH`: read-only Altquelle fuer den einmaligen PostgreSQL-Import
 - `DEVICE_MANAGEMENT_RUNTIME_DIR`: Runtime-Verzeichnis fuer JSON-Persistenz, Standard `.runtime`
 
 ## Nicht-Ziele fuer diesen Stand

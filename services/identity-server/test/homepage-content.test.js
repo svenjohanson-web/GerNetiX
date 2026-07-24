@@ -71,6 +71,11 @@ test("offers reading, practice and personal guidance as equally valid learning p
   assert.match(css, /\.learning-path-grid \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
 });
 
+test("does not single out the UML learning project on the homepage", () => {
+  assert.doesNotMatch(html, /Neues Lernprojekt · Modellierung/);
+  assert.doesNotMatch(html, /catalog%3Duml-fundamentals/);
+});
+
 test("invites experienced developers into the full-system IDE", () => {
   assert.match(html, /Für Fortgeschrittene/);
   assert.match(html, /Dein gesamtes System in einer IDE/);

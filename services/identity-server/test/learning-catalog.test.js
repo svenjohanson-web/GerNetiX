@@ -17,9 +17,13 @@ test("learning area leads with a dedicated project catalog", () => {
 });
 
 test("catalog cards show only the learning offer, not implementation facts", () => {
-  const renderer = app.match(/function renderProjects\(\)[\s\S]*?\nfunction renderLearn/)?.[0] || "";
-  assert.match(renderer, /Lernprojekt starten/);
+  const renderer = app.match(/function renderProjects\(\)[\s\S]*?\nfunction renderLearningProjectOverview/)?.[0] || "";
+  assert.match(renderer, /data-open-learning-project-overview/);
   assert.match(renderer, /learningAccessLabel\(project\.accessModel\)/);
+  assert.match(renderer, /learningHeadlineLabel\(project\)/);
+  assert.doesNotMatch(renderer, /Projekt ansehen|learning-project-tile-link/);
+  assert.doesNotMatch(renderer, /Lernprojekt starten/);
+  assert.doesNotMatch(renderer, /project\.type \|\| "Lernprojekt"/);
   assert.doesNotMatch(renderer, /Lernschritte/);
   assert.doesNotMatch(renderer, /Umgebung/);
   assert.doesNotMatch(renderer, /Hardware/);
@@ -65,7 +69,9 @@ test("opens the learning workspace before saving initial progress", () => {
 
 test("keeps the catalog and the active learning project in separate views", () => {
   assert.match(html, /id="learnView"[\s\S]*?id="projectList"/);
+  assert.match(html, /id="learningProjectOverviewView"[\s\S]*?id="learningProjectOverview"/);
   assert.match(html, /id="learningProjectView"[\s\S]*?id="learningProjectWorkspace"/);
+  assert.match(app, /"learning-project-overview": "learningProjectOverviewView"/);
   assert.match(app, /"learning-project": "learningProjectView"/);
   assert.match(learningController, /navigate\(`\/app\/learning-project\/\?project=/);
 });
@@ -104,7 +110,7 @@ test("button-to-smartphone course tests the local board webserver before PWA pus
   assert.match(guidedView, /Firmware bauen/);
   assert.match(guidedView, /Webserver öffnen/);
   assert.match(guidedView, /openGuidedWebserverPopup/);
-  assert.match(server, /schema_version \|\| 0\) < 4/);
+  assert.match(server, /canonicalManifest\?\.schema_version[\s\S]*project\.view_manifest\?\.schema_version/);
 });
 
 test("button-to-smartphone course uses its guided learning entry instead of the generic source analysis", () => {
@@ -165,6 +171,21 @@ test("renders the manifest artifact viewer instead of reducing a guided project 
   assert.match(guidedView, /guided-code-viewer/);
 });
 
+test("balances the guided learning workspace and keeps optional AI help outside the task column", () => {
+  const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
+  const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
+  const runner = guidedView.match(/function renderProjectViewManifest[\s\S]*?function renderGuidedCodeAssistant/)?.[0] || "";
+  assert.match(runner, /guided-artifact-pane[\s\S]*renderLearningContext\(activeView\)[\s\S]*renderGuidedArtifact/);
+  assert.match(runner, /guided-summary-pane[\s\S]*renderManifestView[\s\S]*renderGuidedActions/);
+  assert.ok(runner.indexOf("renderGuidedCodeAssistant(project, activeView)") > runner.indexOf("</div>"));
+  assert.doesNotMatch(runner.match(/<aside class="guided-summary-pane">[\s\S]*?<\/aside>/)?.[0] || "", /renderCodeExplorerChat/);
+  assert.match(guidedView, /<details class="guided-code-assistant">/);
+  assert.match(guidedView, /Worum es geht/);
+  assert.match(guidedView, /Prüffragen/);
+  assert.match(css, /\.guided-artifact-pane \{[\s\S]*display: grid;[\s\S]*gap: 12px/);
+  assert.match(css, /\.guided-artifact-empty \{[\s\S]*min-height: 260px/);
+});
+
 test("catalog includes the home automation network course with a resource boundary", () => {
   const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
   const course = fs.readFileSync(path.resolve(__dirname, "../src/dev/project-models/home-automation-network-course.json"), "utf8");
@@ -181,6 +202,7 @@ test("catalog scaffolds the proximity-sensor project with FMCW radar as its firs
   const course = require("../src/dev/project-models/proximity-sensor-radar-course.json");
   const model = require("../src/dev/project-models/proximity-sensor-radar-course");
   assert.equal(course.project.title, "Baue deinen eigenen Näherungssensor");
+  assert.equal(course.project.area, "Sensorik");
   assert.equal(course.project.learning_category, "embedded");
   assert.equal(course.project.access_model, "free");
   assert.ok(course.project.tags.includes("topic:sensors"));
@@ -204,8 +226,154 @@ test("catalog scaffolds the proximity-sensor project with FMCW radar as its firs
   assert.match(server, /proximitySensorRadarCourseModel\.createViewManifest/);
   assert.match(server, /proximitySensorRadarCourseModel\.createSources/);
   assert.match(app, /"topic:radar": "Radar"/);
+  assert.match(app, /"topic:sensors": "Sensorik"/);
   assert.match(app, /catalog=|get\("catalog"\)/);
   assert.match(app, /learning-catalog-card\$\{project\.slug === requestedCatalogSlug \? " is-linked"/);
+});
+
+test("catalog includes a software-only programming fundamentals course", () => {
+  const course = require("../src/dev/project-models/programming-fundamentals-course.json");
+  const model = require("../src/dev/project-models/programming-fundamentals-course");
+
+  assert.equal(course.project.title, "Grundlagen der Programmierung");
+  assert.equal(course.project.area, "Programmierung");
+  assert.equal(course.project.learning_category, "software_engineering");
+  assert.equal(course.project.hardware_profile_id, "runtime.browser_javascript");
+  assert.equal(course.project.default_device_id, "");
+  assert.equal(course.project.access_model, "free");
+  assert.ok(course.project.tags.includes("runtime:browser"));
+  assert.ok(course.project.tags.includes("topic:programming"));
+  assert.ok(course.project.tags.includes("level:beginner"));
+  assert.equal(course.project.steps.length, 7);
+  assert.deepEqual(course.view_manifest.views.map((view) => view.id), [
+    "program-sequence",
+    "values-and-variables",
+    "expressions",
+    "conditions",
+    "loops",
+    "functions",
+    "score-challenge",
+  ]);
+  assert.match(course.sources.find((source) => source.path === "src/grundlagen.js").content, /function istBestanden/);
+  assert.match(course.sources.find((source) => source.path === "README.md").content, /benötigt keine Hardware/);
+  assert.equal(model.createProgrammingFundamentalsCourseModel().slug, "programming-fundamentals");
+  assert.match(server, /createProgrammingFundamentalsCourseModel/);
+  assert.match(server, /programmingFundamentalsCourseModel\.createProject/);
+  assert.match(server, /programmingFundamentalsCourseModel\.createViewManifest/);
+  assert.match(server, /programmingFundamentalsCourseModel\.createSources/);
+  assert.match(app, /"topic:programming": "Programmierung"/);
+});
+
+test("models the storage story as one development project with reusable standalone lessons", () => {
+  const course = require("../src/dev/project-models/storage-learning-story-course.json");
+  const model = require("../src/dev/project-models/storage-learning-story-course");
+  const controller = fs.readFileSync(path.resolve(__dirname, "../public/app/learning-project-controller.js"), "utf8");
+  const learningView = fs.readFileSync(path.resolve(__dirname, "../public/app/learning-project-view.js"), "utf8");
+  const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
+
+  assert.equal(course.project_story.kind, "development_project");
+  assert.match(course.project_story.learning_goal, /Arbeitsspeicher.*ESP32-NVS.*LittleFS.*SQLite.*Dateiarchiv/);
+  assert.match(course.project_story.working_method, /15 kurzen Schritte.*konkretes Artefakt.*erwartete Ergebnis/);
+  assert.match(course.project_story.result, /begründete Speicherentscheidung/);
+  assert.match(course.project_story.continuation_rule, /Schwachpunkt der vorherigen Lösung/);
+  assert.match(course.project_story.standalone_rule, /unabhängig gestartet/);
+  assert.equal(course.development_lessons.length, 5);
+  assert.deepEqual(course.development_lessons.map((lesson) => lesson.step_ids.length), [3, 3, 3, 3, 3]);
+  assert.deepEqual(course.development_lessons.map((lesson) => lesson.order_index), [1, 2, 3, 4, 5]);
+  assert.deepEqual(course.development_lessons.map((lesson) => lesson.standalone_start.hardware_required), [false, true, true, false, false]);
+  assert.deepEqual(course.development_lessons[2].prerequisite_lesson_ids, ["development_lesson.storage.nvs"]);
+  assert.match(course.development_lessons[2].standalone_start.snapshot_id, /with_nvs_baseline/);
+  assert.match(course.development_lessons[3].standalone_start.snapshot_id, /with_sample_measurements/);
+
+  const viewIds = course.view_manifest.views.map((view) => view.id);
+  assert.equal(viewIds.length, 15);
+  assert.deepEqual(new Set(viewIds), new Set(course.development_lessons.flatMap((lesson) => lesson.step_ids)));
+  assert.ok(course.view_manifest.views.every((view) => view.lesson_id));
+  assert.ok(course.view_manifest.views.every((view) => Array.isArray(view.payload?.learning_text) && view.payload.learning_text.length));
+  assert.ok(course.view_manifest.views.every((view) => view.payload?.task && view.payload?.expected_result && view.payload?.why));
+
+  const storageModel = model.createStorageLearningStoryCourseModel();
+  const fullManifest = storageModel.createViewManifest(
+    { learning_project_id: "learning_project.storage_learning_story" },
+    { primarySourcePath: () => "lessons/01-datenstrukturen/inventar.js" },
+  );
+  assert.ok(fullManifest.views
+    .filter((view) => view.type === "source_analysis")
+    .every((view) => view.payload?.artifact?.type === "code" && view.payload.artifact.content));
+  const standaloneManifest = storageModel.createViewManifest(
+    { learning_project_id: "learning_project.storage_learning_story" },
+    { lessonId: "development_lesson.storage.sqlite", primarySourcePath: () => "unused" },
+  );
+  assert.equal(standaloneManifest.entry_mode, "standalone_lesson");
+  assert.equal(standaloneManifest.lesson_focus_id, "development_lesson.storage.sqlite");
+  assert.deepEqual(standaloneManifest.views.map((view) => view.id), ["sqlite-schema", "sqlite-queries", "sqlite-transaction"]);
+  assert.deepEqual(storageModel.createSources({ lessonId: "development_lesson.storage.sqlite" }).map((source) => source.path), [
+    "docs/projektstory.md",
+    "lessons/04-sqlite/schema.sql",
+    "lessons/04-sqlite/abfragen.sql",
+    "lessons/04-sqlite/beispieldaten.csv",
+  ]);
+
+  assert.match(server, /createStorageLearningStoryCourseModel/);
+  assert.match(server, /handleDevelopmentLessonStart/);
+  assert.match(server, /standalone_lesson/);
+  assert.match(server, /learningProjectManifestForPersistedProject/);
+  assert.match(server, /canonicalManifest\?\.schema_version[\s\S]*project\.view_manifest\?\.schema_version/);
+  assert.equal(course.view_manifest.schema_version, 6);
+  assert.match(app, /So ist das Projekt aufgebaut/);
+  const catalogRenderer = app.match(/function renderProjects\(\)[\s\S]*?\nfunction renderLearningProjectOverview/)?.[0] || "";
+  const overviewRenderer = app.match(/function renderLearningProjectOverview\(\)[\s\S]*?\nfunction learningCategoryLabel/)?.[0] || "";
+  assert.match(catalogRenderer, /data-open-learning-project-overview/);
+  assert.doesNotMatch(catalogRenderer, /Lernprojekt starten|Projektstory starten|Lesson einzeln starten|development-lesson-catalog/);
+  assert.doesNotMatch(catalogRenderer, /step_ids|Schrittanzahl|Lernschritte/);
+  assert.match(overviewRenderer, /Worum geht es in diesem Projekt/);
+  assert.match(overviewRenderer, /Was du lernst/);
+  assert.match(overviewRenderer, /So arbeitest du/);
+  assert.match(overviewRenderer, /Ohne zusätzliche Hardware/);
+  assert.match(overviewRenderer, /Fünf Etappen führen dich/);
+  assert.match(overviewRenderer, /Zurück/);
+  assert.match(overviewRenderer, /Lernprojekt starten/);
+  assert.doesNotMatch(overviewRenderer, /step_ids|Schrittanzahl|Lernschritte/);
+  assert.match(controller, /async function openLesson/);
+  assert.match(controller, /\/lessons\/\$\{encodeURIComponent\(lessonId\)\}\/start/);
+  assert.match(learningView, /Entwicklungsprojekt · Projektstory/);
+  assert.match(learningView, /Entwicklungslesson · einzeln gestartet/);
+  assert.match(guidedView, /Deine Aufgabe/);
+  assert.match(guidedView, /Das solltest du danach sehen/);
+  assert.match(guidedView, /Warum ist das wichtig\?/);
+  assert.match(guidedView, /artifact_text/);
+  assert.match(guidedView, /noch keine konkrete Aufgabe oder sichtbare Arbeitsgrundlage/);
+});
+
+test("catalog exposes the UML fundamentals course", () => {
+  const course = require("../src/dev/project-models/uml-fundamentals-course.json");
+  const model = require("../src/dev/project-models/uml-fundamentals-course");
+
+  assert.equal(course.project.title, "UML-Grundlagen – Diagramme, die Mensch und Maschine verstehen");
+  assert.equal(course.project.area, "Modellierung");
+  assert.equal(course.project.learning_category, "software_engineering");
+  assert.equal(course.project.hardware_profile_id, "runtime.browser_plantuml");
+  assert.equal(course.project.default_device_id, "");
+  assert.equal(course.project.access_model, "free");
+  assert.deepEqual(course.project.tags, ["runtime:browser", "topic:modeling", "level:beginner"]);
+  assert.equal(course.project.steps.length, 7);
+  assert.deepEqual(course.view_manifest.views.map((view) => view.id), [
+    "picture-and-model",
+    "choose-view",
+    "use-case-view",
+    "class-view",
+    "sequence-view",
+    "state-view",
+    "uml-capstone",
+  ]);
+  assert.equal(course.view_manifest.views.filter((view) => view.type === "plantuml").length, 4);
+  assert.match(JSON.stringify(course.view_manifest), /Bilder, die Mensch und Maschine verstehen/);
+  assert.match(course.sources.find((source) => source.path.endsWith(".puml")).content, /@startuml[\s\S]*@enduml/);
+  assert.equal(model.createUmlFundamentalsCourseModel().slug, "uml-fundamentals");
+  assert.match(server, /createUmlFundamentalsCourseModel/);
+  assert.match(server, /umlFundamentalsCourseModel\.createProject/);
+  assert.match(server, /umlFundamentalsCourseModel\.createViewManifest/);
+  assert.match(server, /umlFundamentalsCourseModel\.createSources/);
 });
 
 test("does not expose the retired ESP32 OTA basis software as a learning project", () => {

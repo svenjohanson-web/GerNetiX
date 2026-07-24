@@ -1,0 +1,185 @@
+{
+  "slug": "programming-fundamentals",
+  "project": {
+    "slug": "programming-fundamentals",
+    "title": "Grundlagen der Programmierung",
+    "area": "Programmierung",
+    "summary": "Lerne mit kleinen JavaScript-Beispielen, wie Werte, Entscheidungen, Wiederholungen und Funktionen ein Programm bilden.",
+    "learning_category": "software_engineering",
+    "tags": ["runtime:browser", "topic:programming", "level:beginner"],
+    "steps": [
+      {
+        "title": "Programme als Folge verständlicher Anweisungen",
+        "text": "Ordne kleine Anweisungen und beobachte, dass Reihenfolge und Eingabewerte das Ergebnis bestimmen.",
+        "insight": "Ein Programm beschreibt eindeutig, was mit Daten geschehen soll."
+      },
+      {
+        "title": "Werte, Variablen und Datentypen",
+        "text": "Speichere Text, Zahlen und Wahrheitswerte unter sprechenden Namen und verändere sie kontrolliert.",
+        "insight": "Eine Variable verbindet einen Namen mit einem aktuellen Wert."
+      },
+      {
+        "title": "Rechnen und Ausdrücke bilden",
+        "text": "Kombiniere Werte mit Rechen-, Vergleichs- und logischen Operatoren zu neuen Ergebnissen.",
+        "insight": "Ein Ausdruck wird ausgewertet und liefert genau einen Wert."
+      },
+      {
+        "title": "Mit Bedingungen entscheiden",
+        "text": "Verwende if und else, damit das Programm abhängig von Daten unterschiedliche Wege nimmt.",
+        "insight": "Eine Bedingung trennt Fälle anhand einer klaren Ja-Nein-Aussage."
+      },
+      {
+        "title": "Mit Schleifen wiederholen",
+        "text": "Verarbeite mehrere Werte mit for und vermeide dabei kopierte Anweisungsblöcke.",
+        "insight": "Eine Schleife beschreibt Wiederholung samt Start, Ende und Veränderung."
+      },
+      {
+        "title": "Logik in Funktionen gliedern",
+        "text": "Verpacke eine Berechnung in eine Funktion mit Eingaben und Rückgabewert.",
+        "insight": "Eine gute Funktion erfüllt eine kleine, benannte Aufgabe."
+      },
+      {
+        "title": "Abschlussaufgabe: Punktestand auswerten",
+        "text": "Verbinde Array, Schleife, Bedingung und Funktion zu einer Auswertung mehrerer Spielergebnisse.",
+        "insight": "Größere Programme entstehen durch das Zusammensetzen kleiner verständlicher Bausteine."
+      }
+    ],
+    "hardware_profile_id": "runtime.browser_javascript",
+    "default_device_id": "",
+    "access_model": "free",
+    "source_files": [
+      { "path": "src/grundlagen.js", "role": "user_code" },
+      { "path": "README.md", "role": "learning_guide" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Grundlagen der Programmierung",
+    "summary": "Ein kompakter Einstieg in Programmablauf, Variablen, Ausdrücke, Bedingungen, Schleifen und Funktionen.",
+    "primary_source_path": "src/grundlagen.js",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "program-sequence",
+        "type": "story_slide",
+        "title": "Was ist ein Programm?",
+        "summary": "Anweisungen werden in einer festgelegten Reihenfolge mit konkreten Daten ausgeführt.",
+        "completion": { "type": "acknowledge", "label": "Programmablauf verstanden" },
+        "payload": {
+          "artifact": {
+            "type": "code",
+            "title": "Erste Anweisungen",
+            "content": "const name = \"Mia\";\nconst begruessung = \"Hallo \" + name;\nconsole.log(begruessung);"
+          },
+          "model_lines": [
+            { "label": "Eingabe", "text": "Der Name ist ein Wert, mit dem das Programm arbeitet." },
+            { "label": "Verarbeitung", "text": "Aus Text und Name entsteht ein neuer Text." },
+            { "label": "Ausgabe", "text": "console.log macht das Ergebnis sichtbar." }
+          ]
+        }
+      },
+      {
+        "id": "values-and-variables",
+        "type": "explanation",
+        "title": "Werte, Variablen und Datentypen",
+        "summary": "Namen machen gespeicherte Werte im Programm verständlich.",
+        "completion": { "type": "acknowledge", "label": "Werte unterschieden" },
+        "payload": {
+          "cards": [
+            { "title": "Text", "text": "Strings enthalten Zeichen, zum Beispiel einen Namen oder eine Meldung." },
+            { "title": "Zahl", "text": "Numbers werden gerechnet und verglichen, zum Beispiel Alter, Temperatur oder Punkte." },
+            { "title": "Wahrheitswert", "text": "Boolean ist true oder false und eignet sich für klare Ja-Nein-Zustände." },
+            { "title": "const und let", "text": "const schützt eine Bindung vor Neuzuweisung; let erlaubt eine spätere Änderung." }
+          ]
+        }
+      },
+      {
+        "id": "expressions",
+        "type": "explanation",
+        "title": "Ausdrücke und Operatoren",
+        "summary": "Rechnen, vergleichen und logisch verknüpfen erzeugt neue Werte.",
+        "completion": { "type": "acknowledge", "label": "Ausdrücke verstanden" },
+        "payload": {
+          "artifact": {
+            "type": "code",
+            "title": "Ausdrücke",
+            "content": "const gesamt = 7 + 5;\nconst bestanden = gesamt >= 10;\nconst darfWeiter = bestanden && gesamt < 20;"
+          }
+        }
+      },
+      {
+        "id": "conditions",
+        "type": "story_slide",
+        "title": "Entscheidungen mit if und else",
+        "summary": "Das Programm wählt anhand einer Bedingung genau den passenden Fall.",
+        "completion": { "type": "acknowledge", "label": "Bedingung nachvollzogen" },
+        "payload": {
+          "artifact": {
+            "type": "code",
+            "title": "Punktestand bewerten",
+            "content": "if (punkte >= 10) {\n  console.log(\"Bestanden\");\n} else {\n  console.log(\"Noch einmal üben\");\n}"
+          }
+        }
+      },
+      {
+        "id": "loops",
+        "type": "explanation",
+        "title": "Wiederholungen mit Schleifen",
+        "summary": "Eine Schleife verarbeitet eine Menge von Werten nach derselben Regel.",
+        "completion": { "type": "acknowledge", "label": "Schleife verstanden" },
+        "payload": {
+          "artifact": {
+            "type": "code",
+            "title": "Mehrere Ergebnisse",
+            "content": "const punkte = [4, 7, 12];\nfor (const wert of punkte) {\n  console.log(wert);\n}"
+          }
+        }
+      },
+      {
+        "id": "functions",
+        "type": "explanation",
+        "title": "Funktionen als kleine Bausteine",
+        "summary": "Eingaben werden verarbeitet und ein Ergebnis wird zurückgegeben.",
+        "completion": { "type": "acknowledge", "label": "Funktion verstanden" },
+        "payload": {
+          "artifact": {
+            "type": "code",
+            "title": "Benannte Berechnung",
+            "content": "function istBestanden(punkte) {\n  return punkte >= 10;\n}\n\nconsole.log(istBestanden(12));"
+          }
+        }
+      },
+      {
+        "id": "score-challenge",
+        "type": "story_slide",
+        "title": "Abschlussaufgabe: Punktestände auswerten",
+        "summary": "Verbinde die gelernten Bausteine in einer kleinen, nachvollziehbaren Auswertung.",
+        "completion": { "type": "acknowledge", "label": "Abschlussaufgabe bearbeitet" },
+        "payload": {
+          "artifact": {
+            "type": "code",
+            "title": "src/grundlagen.js",
+            "content": "function auswertung(punkteListe) {\n  // Berechne die Summe und zähle Ergebnisse ab 10 Punkten.\n}\n\nconsole.log(auswertung([4, 10, 12, 7]));"
+          },
+          "model_lines": [
+            { "label": "Ziel", "text": "Gib Summe, Durchschnitt und Anzahl bestandener Ergebnisse zurück." },
+            { "label": "Werkzeuge", "text": "Nutze Variablen, eine Schleife, eine Bedingung und eine Funktion." }
+          ]
+        }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "src/grundlagen.js",
+      "role": "user_code",
+      "content": "const name = \"Mia\";\nlet punkte = 7;\n\nfunction istBestanden(wert) {\n  return wert >= 10;\n}\n\npunkte = punkte + 5;\n\nif (istBestanden(punkte)) {\n  console.log(`${name} hat bestanden.`);\n} else {\n  console.log(`${name} übt weiter.`);\n}\n\nconst ergebnisse = [4, 10, 12, 7];\nlet summe = 0;\nlet bestanden = 0;\n\nfor (const ergebnis of ergebnisse) {\n  summe += ergebnis;\n  if (istBestanden(ergebnis)) bestanden += 1;\n}\n\nconsole.log({ summe, durchschnitt: summe / ergebnisse.length, bestanden });\n"
+    },
+    {
+      "path": "README.md",
+      "role": "learning_guide",
+      "content": "# Grundlagen der Programmierung\n\nDieses Projekt läuft vollständig als JavaScript-Übung im Browser und benötigt keine Hardware.\n\n## Lernziel\n\nDu kannst Werte benennen, Ausdrücke lesen, Entscheidungen formulieren, Daten wiederholt verarbeiten und Logik in Funktionen gliedern.\n\n## Abschlussaufgabe\n\nVerändere die Liste `ergebnisse` und ergänze eine Funktion, die Summe, Durchschnitt und Anzahl bestandener Ergebnisse zurückgibt.\n"
+    }
+  ]
+}

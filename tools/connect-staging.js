@@ -7,13 +7,26 @@ const { spawnSync } = require("node:child_process");
 const { assertSafeSshTarget, parseEnvFile } = require("./staging-deploy");
 
 const repoRoot = path.resolve(__dirname, "..");
+const REMOTE_DEV_SERVICE_FORWARDS = [
+  [4400, 4400],
+  [4700, 4700],
+  [4800, 4800],
+  [4900, 4900],
+  [5001, 5000],
+  [5200, 5200],
+  [5500, 5500],
+  [5600, 5600],
+];
 
 function parseArgs(argv) {
   const result = { dryRun: false };
   for (let index = 0; index < argv.length; index += 1) {
     const argument = argv[index];
     if (argument === "--dry-run") result.dryRun = true;
-    else if (["--host", "--local-port", "--remote-port", "--platform-port", "--remote-platform-port"].includes(argument)) {
+    else if ([
+      "--host", "--local-port", "--remote-port", "--platform-port", "--remote-platform-port",
+      "--identity-db-port", "--remote-identity-db-port",
+    ].includes(argument)) {
       const value = argv[index + 1];
       if (!value) throw new Error(`${argument} benoetigt einen Wert.`);
       result[argument.slice(2).replace(/-([a-z])/g, (_, letter) => letter.toUpperCase())] = value;
@@ -37,8 +50,11 @@ function loadConfig() {
   return { ...fileValues, ...process.env };
 }
 
-function sshTunnelArgs({ host, localPort, remotePort, platformPort, remotePlatformPort }) {
-  return [
+function sshTunnelArgs({
+  host, localPort, remotePort, platformPort, remotePlatformPort,
+  identityDbPort, remoteIdentityDbPort,
+}) {
+  const args = [
     "-N",
     "-o", "BatchMode=yes",
     "-o", "ExitOnForwardFailure=yes",
@@ -46,8 +62,13 @@ function sshTunnelArgs({ host, localPort, remotePort, platformPort, remotePlatfo
     "-o", "ServerAliveCountMax=3",
     "-L", `${platformPort}:127.0.0.1:${remotePlatformPort}`,
     "-L", `${localPort}:127.0.0.1:${remotePort}`,
-    host,
+    "-L", `${identityDbPort}:127.0.0.1:${remoteIdentityDbPort}`,
   ];
+  for (const [localServicePort, remoteServicePort] of REMOTE_DEV_SERVICE_FORWARDS) {
+    args.push("-L", `${localServicePort}:127.0.0.1:${remoteServicePort}`);
+  }
+  args.push(host);
+  return args;
 }
 
 function main() {
@@ -58,7 +79,12 @@ function main() {
   const remotePort = parsePort(args.remotePort || config.GERNETIX_STAGING_REMOTE_ADMIN_PORT || 4610, "Remote-Port");
   const platformPort = parsePort(args.platformPort || config.GERNETIX_STAGING_LOCAL_PLATFORM_PORT || 14300, "Lokaler Plattform-Port");
   const remotePlatformPort = parsePort(args.remotePlatformPort || config.GERNETIX_STAGING_REMOTE_PLATFORM_PORT || 8080, "Remote-Plattform-Port");
-  const sshArgs = sshTunnelArgs({ host, localPort, remotePort, platformPort, remotePlatformPort });
+  const identityDbPort = parsePort(args.identityDbPort || config.GERNETIX_STAGING_LOCAL_IDENTITY_DB_PORT || 15432, "Lokaler Identity-PostgreSQL-Port");
+  const remoteIdentityDbPort = parsePort(args.remoteIdentityDbPort || config.GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT || 15432, "Remote-Identity-PostgreSQL-Port");
+  const sshArgs = sshTunnelArgs({
+    host, localPort, remotePort, platformPort, remotePlatformPort,
+    identityDbPort, remoteIdentityDbPort,
+  });
   const adminUrl = `http://127.0.0.1:${localPort}/admin/`;
   const platformUrl = `http://127.0.0.1:${platformPort}/app/dashboard/`;
   const privatePwaUrl = config.GERNETIX_PRIVATE_PWA_URL || "https://pwa.gernetix.com/app/dashboard/";
@@ -66,6 +92,8 @@ function main() {
   process.stdout.write(`Private PWA ueber WireGuard: ${privatePwaUrl}\n`);
   process.stdout.write(`Lokaler Plattform-Diagnosetunnel: ${platformUrl}\n`);
   process.stdout.write(`Lokaler Admin-Diagnosetunnel: ${adminUrl}\n`);
+  process.stdout.write(`Identity PostgreSQL fuer lokalen Port 4300: 127.0.0.1:${identityDbPort}\n`);
+  process.stdout.write(`Remote-Dev-Dienste: ${REMOTE_DEV_SERVICE_FORWARDS.map(([local, remote]) => `${local}->${remote}`).join(", ")}\n`);
   process.stdout.write("Dieses Terminal offen lassen. Verbindung mit Strg+C beenden.\n");
   if (args.dryRun) {
     process.stdout.write(`[dry-run] ssh ${sshArgs.join(" ")}\n`);
@@ -88,4 +116,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { parseArgs, parsePort, sshTunnelArgs };
+module.exports = { REMOTE_DEV_SERVICE_FORWARDS, parseArgs, parsePort, sshTunnelArgs };

@@ -23,7 +23,7 @@ test("uses the existing GerNetiX design tokens for the dashboard", () => {
 
 test("never serves the dashboard route without an authenticated session", () => {
   assert.match(server, /const dashboardRoute = url\.pathname === "\/app\/dashboard" \|\| url\.pathname\.startsWith\("\/app\/dashboard\/"\);/);
-  assert.match(server, /if \(dashboardRoute\) \{[\s\S]*?if \(!readSession\(req\)\) \{[\s\S]*?redirect\(res, authRoute\(url\.pathname \+ url\.search\)\);[\s\S]*?serveStatic\(res, appDir, "\/index\.html"\);/);
+  assert.match(server, /if \(dashboardRoute\) \{[\s\S]*?if \(!await readSession\(req\)\) \{[\s\S]*?redirect\(res, authRoute\(url\.pathname \+ url\.search\)\);[\s\S]*?serveStatic\(res, appDir, "\/index\.html"\);/);
   assert.match(app, /const protectedAppRoute =/);
   assert.match(app, /if \(protectedAppRoute && !state\.account\) \{[\s\S]*?window\.location\.assign\(`\/app\/auth\/\?next=\$\{encodeURIComponent\(target\.pathname \+ target\.search\)\}`\)/);
 });

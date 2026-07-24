@@ -14,9 +14,17 @@ function createConfig(env = process.env) {
     host: env.HOST || "127.0.0.1",
     port: Number(env.PORT || 4700),
     publicBaseUrl: env.DEVICE_MANAGEMENT_BASE_URL || "",
-    persistenceBackend: env.PERSISTENCE_BACKEND || env.DEVICE_MANAGEMENT_PERSISTENCE_BACKEND || "sqlite",
+    persistenceBackend: env.PERSISTENCE_BACKEND || env.DEVICE_MANAGEMENT_PERSISTENCE_BACKEND || "postgres",
     runtimeRoot,
     sqlitePath,
+    postgres: {
+      connectionString: env.DEVICE_MANAGEMENT_POSTGRES_URL || "",
+      host: env.DEVICE_MANAGEMENT_POSTGRES_HOST || "127.0.0.1",
+      port: Number(env.DEVICE_MANAGEMENT_POSTGRES_PORT || 5432),
+      database: env.DEVICE_MANAGEMENT_POSTGRES_DATABASE || "gernetix_device_management",
+      user: env.DEVICE_MANAGEMENT_POSTGRES_USER || "gernetix_device_management",
+      password: env.DEVICE_MANAGEMENT_POSTGRES_PASSWORD || "",
+    },
   };
 }
 

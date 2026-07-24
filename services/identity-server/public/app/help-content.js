@@ -127,6 +127,15 @@ const HelpContent = (() => {
           { id: "software-backend", title: "Backend: Entwicklungsgeschwindigkeit zählt" },
           { id: "software-client-devices", title: "PC, Tablet und Smartphone: beide Welten" },
         ] },
+        { id: "databases-and-storage", title: "Datenbanken, Speicher und Dateiserver", articleId: "databases-and-storage", subchapters: [
+          { id: "storage-is-not-always-a-database", title: "Speicher ist nicht automatisch eine Datenbank" },
+          { id: "microcontroller-storage", title: "Was Mikrocontroller lokal speichern können" },
+          { id: "sql-and-sqlite", title: "SQL, SQLite und relationale Server-Datenbanken" },
+          { id: "database-families", title: "Weitere Datenbankarten" },
+          { id: "file-and-object-storage", title: "Dateiserver und Objektspeicher" },
+          { id: "choosing-data-storage", title: "Den passenden Speicher auswählen" },
+          { id: "storage-learning-path", title: "Kleine Lernprojekte: vom Wert zur Datenbank" },
+        ] },
         { id: "workers-and-queues", title: "Worker, Queues und Hintergrundaufgaben", articleId: "workers-and-queues" },
       ],
     },
@@ -226,7 +235,6 @@ const HelpContent = (() => {
     "from-problem-to-system": {
       title: "Ingenieursmäßig denken: vom Problem zur Lösung",
       summary: "Technisches Interesse ist ein guter Anfang. Ingenieursmäßiges Denken beginnt dort, wo aus einer Idee eine klare Problemstellung, nachvollziehbare Entscheidungen und eine prüfbare Lösung werden.",
-      access: "public",
       sections: [
         { id: "engineering-thinking-problem", heading: "Nicht Technologie, sondern Problem", paragraphs: [
           "Ein Ingenieur beginnt selten mit der Frage: Welche Technologie möchte ich einsetzen? Am Anfang steht eine Aufgabe. Ein Unternehmen will Kosten senken, ein Team will einen Fehler vermeiden, ein Mensch will ein Gerät einfacher bedienen oder ein eigenes Projekt umsetzen.",
@@ -409,6 +417,107 @@ const HelpContent = (() => {
         ] }
       ],
       relatedTopics: ["from-problem-to-system", "server-systems", "microcontroller-basics", "communication-basics"],
+    },
+    "databases-and-storage": {
+      title: "Datenbanken, Speicher und Dateiserver",
+      summary: "Nicht jeder dauerhaft gespeicherte Wert braucht eine Datenbank. Mikrocontroller, Apps und Server haben unterschiedliche Speicherformen, Grenzen und Aufgaben.",
+      access: "public",
+      sections: [
+        { id: "storage-is-not-always-a-database", heading: "Speicher ist nicht automatisch eine Datenbank", paragraphs: [
+          "Persistenz bedeutet zunächst nur, dass Daten einen Neustart oder Stromausfall überstehen. Eine Konfigurationsdatei, ein gespeicherter Schlüssel oder ein Ringpuffer mit Messwerten ist deshalb bereits persistenter Speicher, aber noch keine vollwertige Datenbank.",
+          "Eine Datenbank organisiert Daten nach einem Modell und wird durch ein Datenbankmanagementsystem verwaltet. Dieses kann Datensätze suchen, filtern und ändern, Beziehungen oder Indizes pflegen, gleichzeitige Zugriffe koordinieren und Änderungen so absichern, dass nach einem Fehler kein halbfertiger Zustand übrig bleibt. Welche dieser Fähigkeiten nötig sind, hängt von der Aufgabe ab.",
+          "SQL ist dabei keine Datenbank, sondern eine Sprache für relationale Datenbanken. SQLite, PostgreSQL, MySQL und MariaDB sind konkrete Datenbanksysteme, die SQL verstehen – mit unterschiedlichen Betriebsmodellen und Stärken."
+        ] },
+        { id: "microcontroller-storage", heading: "Was Mikrocontroller lokal speichern können", paragraphs: [
+          "Ein Mikrocontroller wie der ESP32 kann dauerhaft Daten speichern, obwohl auf ihm normalerweise kein klassischer Datenbankserver läuft. Kleine Einstellungen, WLAN-Konfigurationen, Zähler oder Kalibrierwerte passen in einen Key-Value-Speicher wie NVS. Andere Controller besitzen echtes EEPROM oder bilden eine ähnliche Funktion in Flash-Speicher nach.",
+          "Für mehrere Dateien eignen sich eingebettete Dateisysteme wie LittleFS oder FatFS. Darin können zum Beispiel Konfigurationsdateien, kleine Webseiten, Protokolle oder gepufferte Messwerte liegen. Ein festes Binärformat, eine einfache CSV-Datei, ein Ringpuffer oder ein kleines Journal kann für eine klar begrenzte Aufgabe sinnvoller und robuster sein als eine allgemeine Datenbank.",
+          "Die Grenzen bleiben wichtig: Flash kann nicht beliebig oft beschrieben werden, RAM und Speicherplatz sind begrenzt, und ein Stromausfall darf keine zentrale Struktur zerstören. Schreibvorgänge werden deshalb gebündelt, über Speicherbereiche verteilt und möglichst atomar ausgeführt. Häufige Messwerte sollten nicht bei jeder Abtastung dauerhaft in dieselbe Flash-Zelle geschrieben werden.",
+          "SQLite lässt sich technisch auf einigen leistungsfähigeren Embedded-Systemen oder mit erheblichem Anpassungsaufwand auch sehr klein betreiben. Auf einem typischen Mikrocontroller ohne vollwertiges Betriebssystem und belastbares Dateisystem ist es jedoch selten die beste Standardlösung. Der Mikrocontroller speichert lokal meist Gerätezustand und einen begrenzten Puffer; umfangreiche Abfragen, viele Nutzer und lange Historien gehören auf einen Server oder ein Linux-System."
+        ], table: { headers: ["Mikrocontroller-Speicher", "Geeignet für", "Wichtige Grenze"], rows: [
+          ["NVS / Key-Value", "Einstellungen, Schlüssel, Kalibrierwerte, kleine Zustände", "Kein Ersatz für frei abfragbare Tabellen"],
+          ["EEPROM oder Flash-Emulation", "Wenige kleine Werte, die Neustarts überstehen", "Begrenzte Schreibzyklen und kleine Kapazität"],
+          ["LittleFS / FatFS", "Dateien, kleine Webseiten, Protokolle und Datenpuffer", "Anwendung muss Format, Konsistenz und Suche selbst beherrschen"],
+          ["Ringpuffer / Journal", "Begrenzte Messwerthistorie und Offline-Puffer", "Ältere Einträge werden bewusst überschrieben oder übertragen"],
+        ] } },
+        { id: "sql-and-sqlite", heading: "SQL, SQLite und relationale Server-Datenbanken", paragraphs: [
+          "Relationale Datenbanken speichern strukturierte Datensätze in Tabellen. Primärschlüssel identifizieren Zeilen, Fremdschlüssel verbinden fachlich zusammengehörige Tabellen, Indizes beschleunigen Suchen und Transaktionen fassen mehrere Änderungen zu einem zuverlässigen Ganzen zusammen. SQL formuliert Abfragen und Änderungen an diesem Modell.",
+          "SQLite ist eine echte relationale SQL-Datenbank, aber kein eigener Datenbankserver. Die Datenbank liegt normalerweise in einer Datei, und die Anwendung bindet die SQLite-Bibliothek direkt ein. Das ist hervorragend für lokale Programme, Desktop-Apps, mobile Apps, Entwicklungswerkzeuge und kleinere Server mit überschaubarer gleichzeitiger Schreiblast.",
+          "PostgreSQL, MySQL und MariaDB laufen dagegen als eigene Serverprozesse. Anwendungen verbinden sich über das Netzwerk oder einen lokalen Socket. Solche Systeme verwalten viele parallele Verbindungen, Benutzer und Berechtigungen, Replikation sowie umfangreiche Betriebs- und Diagnosefunktionen. Dafür brauchen sie Installation, Updates, Überwachung und Backups."
+        ], table: { headers: ["System", "Betriebsart", "Typische Verwendung"], rows: [
+          ["SQLite", "Eingebettete Bibliothek, meist eine lokale Datenbankdatei", "Lokale Anwendung, einzelner Dienst, Edge- oder Desktop-Software"],
+          ["PostgreSQL", "Eigenständiger Datenbankserver", "Komplexe Fachmodelle, viele Nutzer, hohe Datenintegrität, Erweiterungen"],
+          ["MySQL / MariaDB", "Eigenständiger Datenbankserver", "Webanwendungen, Content-Systeme und klassische Serverdienste"],
+        ] } },
+        { id: "database-families", heading: "Weitere Datenbankarten", paragraphs: [
+          "Nicht jedes Problem passt am besten in Tabellen. NoSQL ist ein Sammelbegriff für mehrere Modelle und bedeutet nicht automatisch schneller oder besser. Die Datenform, Abfragen, Konsistenzanforderungen und der Betrieb entscheiden.",
+          "Viele Produkte verbinden mehrere Fähigkeiten. PostgreSQL kann neben relationalen Tabellen auch JSON, Volltextsuche, Zeitreihenerweiterungen oder Vektoren verwalten. Eine zusätzliche Spezialdatenbank lohnt sich erst, wenn ihr Vorteil den zusätzlichen Betrieb wirklich rechtfertigt."
+        ], table: { headers: ["Datenbankart", "Beispiele", "Passt besonders zu"], rows: [
+          ["Dokumentendatenbank", "MongoDB, CouchDB", "JSON-ähnliche Dokumente mit flexibler Struktur"],
+          ["Key-Value-Datenbank", "Redis", "Sehr schneller Zugriff über einen Schlüssel, Cache und kurzlebige Zustände"],
+          ["Zeitreihendatenbank", "InfluxDB, TimescaleDB", "Zeitgestempelte Messwerte, Verdichtung und Zeitfenster"],
+          ["Graphdatenbank", "Neo4j", "Beziehungen und Pfade zwischen stark vernetzten Objekten"],
+          ["Vektordatenbank / Vektorsuche", "pgvector, Milvus", "Ähnlichkeitssuche für Embeddings, Texte, Bilder oder KI-Kontext"],
+        ] } },
+        { id: "file-and-object-storage", heading: "Dateiserver und Objektspeicher", paragraphs: [
+          "Ein Dateiserver stellt Dateien und Ordner für andere Geräte bereit, zum Beispiel über SMB, NFS, WebDAV oder SFTP. Er eignet sich für Dokumente, Bilder, Backups, Firmware-Artefakte und gemeinsam genutzte Verzeichnisse. Er ist keine relationale Datenbank: Eine Anwendung kann Dateien öffnen, muss deren fachlichen Inhalt und Beziehungen aber selbst verstehen.",
+          "Objektspeicher verwaltet Dateien oder Binärdaten als Objekte über eine API, häufig nach dem S3-Prinzip. Statt eines gemeinsam eingebundenen Ordnerbaums verwendet die Anwendung Objektschlüssel, Metadaten und Zugriffsregeln. Das passt gut zu großen Mengen unveränderlicher Bilder, Videos, Builds oder Backups.",
+          "In vielen Systemen arbeiten Datenbank und Datei- oder Objektspeicher zusammen. Die Datenbank enthält zum Beispiel Eigentümer, Status, Version und Zugriffsrecht; der Objektspeicher enthält die große Firmware- oder Bilddatei. Große Dateien ungeprüft in Datenbanktabellen abzulegen oder wichtige Fachmetadaten nur aus Dateinamen abzuleiten, macht Betrieb und Suche unnötig schwer."
+        ] },
+        { id: "choosing-data-storage", heading: "Den passenden Speicher auswählen", paragraphs: [
+          "Beginne mit der kleinsten Speicherform, die Datenmenge, Lebensdauer, Abfragen und Fehlerfälle sicher erfüllt. Entscheidend ist nicht der bekannteste Produktname, sondern wo die Daten entstehen, wer sie gleichzeitig nutzt, wie lange sie erhalten bleiben und wie sie gesichert oder wiederhergestellt werden.",
+          "Ein Mikrocontroller darf lokal sicherheitsrelevante Konfiguration und einen Offline-Puffer besitzen. Er sollte aber nicht zum weltweit erreichbaren Datenbank- oder Dateiserver gemacht werden. Zentrale Konten, projektübergreifende Historien oder Fernzugriff benötigen eine autorisierte Serverkomponente; deren Datenbank ist eine Softwareeigenschaft dieses Servers und keine eigenständige Gerätekomponente."
+        ], table: { headers: ["Aufgabe", "Meist passende Lösung", "Beispiel"], rows: [
+          ["Wenige Geräteeinstellungen", "NVS, EEPROM oder kleiner Key-Value-Speicher", "WLAN-Modus, Kalibrierung, letzter sicherer Zustand"],
+          ["Kurzer Offline-Puffer auf dem Gerät", "Ringpuffer oder Datei in LittleFS / FatFS", "Messwerte bis zur nächsten Verbindung"],
+          ["Lokale App mit strukturierten Daten", "SQLite", "Desktop-Werkzeug oder lokale Home-Server-Anwendung"],
+          ["Viele Nutzer und gleichzeitige Zugriffe", "PostgreSQL, MySQL oder MariaDB", "Webplattform, Konten und Projektverwaltung"],
+          ["Große Dateien und Artefakte", "Dateiserver oder Objektspeicher plus Metadaten in einer Datenbank", "Bilder, Firmware, Exporte und Backups"],
+          ["Spezialisierte Abfragen", "Gezielt gewählte Zeitreihen-, Graph- oder Vektorlösung", "Telemetrie, Beziehungsanalyse oder Ähnlichkeitssuche"],
+        ] } },
+        { id: "storage-learning-path", heading: "Kleine Lernprojekte: vom Wert zur Datenbank", paragraphs: [
+          "Die sinnvollste Lernreihenfolge beginnt nicht mit einem Produktnamen. Zuerst modellierst du Daten im Arbeitsspeicher: einzelne Werte, Listen, Datensätze, eindeutige IDs und Beziehungen. Danach speicherst du dasselbe Modell mit zunehmend mächtigeren Techniken. So erkennst du, welche Arbeit der Speicher übernimmt und welche Verantwortung weiterhin in deiner Software bleibt.",
+          "Die Projekte sind bewusst klein und können einzeln gebaut werden. Zusammen ergeben sie eine Lernreihe: Das Mini-Inventar aus dem ersten Projekt kann später auf dem ESP32 konfiguriert, als Datei exportiert, in SQLite abgefragt und schließlich um echte Dateien ergänzt werden. Jeder Schritt besitzt einen sichtbaren Test nach einem Neustart.",
+          "Ein eigener Redis- oder WebDAV-Server ist für den Einstieg nicht nötig. Das NVS-Projekt vermittelt bereits das Key-Value-Prinzip. WebDAV ist eine optionale Erweiterung des Dateiarchivs, wenn der Unterschied zwischen einer eigenen HTTP-API und einem standardisierten Dateizugriff untersucht werden soll."
+        ], table: { headers: ["Stufe", "Kleines Projekt", "Was du dabei lernst", "Fertig, wenn …"], rows: [
+          ["1 · Daten verstehen", "Werkstatt-Inventar im Arbeitsspeicher", "Datentypen, Listen, Objekte, IDs, Suchen, Sortieren und Beziehungen", "Bauteile können angelegt, gezählt, gesucht und einem Lagerplatz zugeordnet werden"],
+          ["2 · Key-Value auf dem Gerät", "ESP32-Einstellungswächter mit NVS oder EEPROM", "Schlüssel und Werte, Standardwerte, Validierung, Versionierung und begrenzte Schreibzyklen", "Modus, Grenzwert und Zähler bleiben nach Ausschalten erhalten; ungültige Werte fallen sicher zurück"],
+          ["3 · Dateien auf dem Gerät", "LittleFS-Messwertlogbuch", "Dateien, CSV oder JSON, Anhängen, Ringpuffer, Speichergrenzen und beschädigte Einträge", "Konfiguration und letzte Messwerte überstehen einen Neustart und alte Daten werden kontrolliert begrenzt"],
+          ["4 · Relationale Daten", "SQLite-Pflanzen- oder Bücherinventar", "Tabellen, Primär- und Fremdschlüssel, CRUD, Abfragen, Indizes und Transaktionen", "Eine Historie lässt sich filtern und eine zusammengehörige Änderung wird vollständig oder gar nicht gespeichert"],
+          ["5 · Daten plus Dateien", "Lokales Projektarchiv mit SQLite-Metadaten", "Trennung von Fachmetadaten und Binärdateien, Pfade, Prüfsummen, Versionen und Backup", "Dateien bleiben im Dateispeicher auffindbar und ihre Metadaten können in SQLite gesucht werden"],
+        ] }, learningProjects: [
+          {
+            model: "Lernprojekt · Datenstrukturen",
+            title: "Werkstatt-Inventar im Arbeitsspeicher",
+            description: "Modelliere Bauteile, Mengen und Lagerplätze zuerst ohne Datenbank und lerne den Unterschied zwischen Wert, Datensatz, Liste und Beziehung.",
+            href: "/app/learn/?catalog=storage-learning-story&lesson=development_lesson.storage.data_structures"
+          },
+          {
+            model: "Lernprojekt · Mikrocontroller",
+            title: "ESP32-Einstellungswächter mit NVS oder EEPROM",
+            description: "Speichere wenige geprüfte Einstellungen dauerhaft und untersuche Neustart, Standardwerte, Formatversion und Flash-Schonung.",
+            href: "/app/learn/?catalog=storage-learning-story&lesson=development_lesson.storage.nvs"
+          },
+          {
+            model: "Lernprojekt · Mikrocontroller",
+            title: "LittleFS-Messwertlogbuch",
+            description: "Lege Konfiguration und eine begrenzte Messwerthistorie als Dateien ab und mache Speichergrenzen sowie Fehlerfälle sichtbar.",
+            href: "/app/learn/?catalog=storage-learning-story&lesson=development_lesson.storage.littlefs"
+          },
+          {
+            model: "Lernprojekt · Datenbank",
+            title: "SQLite-Pflanzeninventar",
+            description: "Verbinde Pflanzen, Standorte und Pflegeereignisse in relationalen Tabellen und beantworte Fragen mit SQL.",
+            href: "/app/learn/?catalog=storage-learning-story&lesson=development_lesson.storage.sqlite"
+          },
+          {
+            model: "Lernprojekt · Server",
+            title: "Lokales Projektarchiv mit SQLite-Metadaten",
+            description: "Speichere Dateien getrennt von ihren suchbaren Metadaten; WebDAV kann später als freiwilliger Zugriffsweg ergänzt werden.",
+            href: "/app/learn/?catalog=storage-learning-story&lesson=development_lesson.storage.file_archive"
+          }
+        ] },
+      ],
+      relatedTopics: ["software-basics-introduction", "microcontroller-basics", "local-servers", "server-systems"],
     },
     "quick-start": {
       title: "So startest du",

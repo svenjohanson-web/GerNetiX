@@ -1,6 +1,6 @@
 # GerNetiX VPS Deployment mit Docker Compose
 
-Diese Struktur startet den vorhandenen GerNetiX-Kern auf einem Linux-VPS. Der AI Context Server verwendet eine interne PostgreSQL-17-Datenbank mit pgvector; die uebrigen bestehenden Node.js-Services behalten ihre jeweiligen SQLite-Persistenzen.
+Diese Struktur startet den vorhandenen GerNetiX-Kern auf einem Linux-VPS. Identity, Project Server, Telemetry, Community und Device Management verwenden jeweils eine eigene PostgreSQL-17-Datenbank, der AI Context Server eine weitere PostgreSQL-17-Datenbank mit pgvector. Die uebrigen bestehenden Node.js-Services behalten zunaechst ihre jeweiligen SQLite-Persistenzen auf dem VPS.
 
 Die fortlaufend gepflegte Uebersicht ueber umgesetzte und empfohlene Schutzmassnahmen steht in [Sicherheitslage und Massnahmenregister](security-posture.md).
 
@@ -13,6 +13,7 @@ Die fortlaufend gepflegte Uebersicht ueber umgesetzte und empfohlene Schutzmassn
   und leiten weder Plattform noch Login weiter.
 - SSH ist durch die Host-Firewall ausschliesslich ueber das WireGuard-Interface erreichbar. Es gibt keinen oeffentlichen administrativen Netzwerkzugang.
 - Identity und alle Domaenenservices bleiben im internen Docker-Netz.
+- Identity-PostgreSQL und die Remote-Dev-Domaenenports sind auf dem VPS nur an `127.0.0.1` gebunden. Ein Entwicklungsrechner erreicht sie ausschliesslich per SSH-Tunnel innerhalb WireGuard.
 - Das Admin Tool bindet nur an `127.0.0.1` des VPS und ist per SSH-Tunnel innerhalb des WireGuard-VPN erreichbar.
 - Mosquitto behaelt die anonymen internen Listener `1883` und `9001` ausschliesslich im privaten Docker-Netz. Der WireGuard-gebundene Device-Listener `8883` verlangt zusaetzlich mTLS mit einem registrierten Device-Zertifikat und geraetespezifische Topic-ACLs.
 - Nginx bedient auf dem oeffentlichen HTTP-Listener ausschliesslich ACME-Challenges. Der TLS-Listener ist nur am WireGuard-Interface gebunden; Nginx wiederholt die `10.77.0.0/24`-Allowlist als zweite Schutzschicht.
@@ -44,6 +45,10 @@ OTA_SIGNING_PRIVATE_KEY_PATH=/etc/gernetix/pki/ota-signing-key.pem
 OTA_SIGNING_PUBLIC_KEY_PATH=/etc/gernetix/pki/ota-signing-public.pem
 OTA_SIGNING_KEY_ID=ota-p256-2026-01
 IDENTITY_APP_BASE_URL=https://pwa.gernetix.com
+IDENTITY_POSTGRES_PASSWORD=<langer-zufaelliger-eigener-wert>
+PROJECT_POSTGRES_PASSWORD=<anderer-langer-zufaelliger-eigener-wert>
+TELEMETRY_POSTGRES_PASSWORD=<weiterer-langer-zufaelliger-eigener-wert>
+COMMUNITY_POSTGRES_PASSWORD=<weiterer-getrennter-langer-zufaelliger-wert>
 ```
 
 Vor dem Start muessen `build.gernetix.com`, `mqtt.gernetix.com` und
@@ -130,11 +135,16 @@ http://127.0.0.1:4600/admin/
 
 Compose legt benannte Volumes an:
 
-- `identity_state`: getrennte SQLite-Dateien fuer Identity-Accounts/Credentials/Sessions, unveraenderliche Plattform-Download-Releases und owner-only Account-Assets
-- `project_state`: Projekte, Projektquellen, Build-Metadaten und Ressourcenprofile des Project Server
+- `identity_postgres_data`: fuehrende Identity-PostgreSQL-Datenbank fuer Accounts, Credentials, Passkeys, Recovery-Transaktionen und Sessions
+- `identity_state`: bisherige Identity-SQLite fuer die einmalige Altuebernahme sowie weiterhin getrennte SQLite-Dateien fuer unveraenderliche Plattform-Download-Releases und owner-only Account-Assets
+- `project_postgres_data`: fuehrende Project-PostgreSQL-Datenbank fuer Projekte, Quellen, Build-Metadaten, Feedback und Ressourcenprofile
+- `project_state`: bisherige Projekt-SQLite, nur fuer die einmalige Altuebernahme und als Rueckfallkopie
 - `build_state`: temporaere Build-Arbeitsbereiche/Caches sowie die fuehrende Build-Artefakt-SQLite
-- `telemetry_state`: konto- und projektpartitionierte Messwerte, Ereignisse und Retention des Telemetry Server
-- `community_state`: oeffentliche Community-Inhalte und autorisierte private Projektbegleitung in eigener SQLite
+- `telemetry_postgres_data`: fuehrende Telemetry-PostgreSQL-Datenbank fuer konto- und projektpartitionierte Messwerte, Ereignisse und Retention
+- `telemetry_state`: bisherige Telemetrie-SQLite, nur fuer die einmalige Altuebernahme und als Rueckfallkopie
+- `community_postgres_data`: fuehrende Community-PostgreSQL-Datenbank fuer oeffentliche Inhalte und autorisierte private Projektbegleitung
+- `community_state`: bisherige Community-SQLite, nur fuer die einmalige Altuebernahme und als Rueckfallkopie
+- `device_management_postgres_data`: fuehrende Device-Management-PostgreSQL-Datenbank fuer Inventar, Pairing, Credentials, Purchase Contexts, Consents und Audit
 - `service_state`: gemeinsamer SQLite-State der verbleibenden technischen Dienste; keine Projekt- oder Telemetrie-Daten nach der Migration
 - `ai_context_postgres_data`: fuehrende AI-Context-PostgreSQL-/pgvector-Datenbank
 - `ai_context_state`: bisherige AI-Context-SQLite, nur fuer die einmalige automatische Uebernahme und als Rueckfallkopie
@@ -144,17 +154,29 @@ Compose legt benannte Volumes an:
 
 `docker compose down` behaelt diese Volumes. `docker compose down -v` loescht sie und darf fuer einen produktiven Stand nicht verwendet werden.
 
-### Einmalige Trennung bestehender Service-Daten
+### Einmalige Identity-Migration nach PostgreSQL
 
-Bei einem Upgrade von der bisherigen gemeinsamen `service_state`-SQLite muessen Project Server und Telemetry Server vor ihrem ersten produktiven Start angehalten sein. Der einmalige, idempotente Migrations-Container kopiert nur die Tabellen mit dem Praefix `project_server_` beziehungsweise die drei `telemetry_*`-Tabellen in die neuen Volumes. Er kopiert keine Identity- oder sonstigen Service-Tabellen und beendet sich bei einem bereits belegten Zielvolume ohne Migrationsmarker.
+Vor dem Start des Identity Servers wartet Compose auf `identity-postgres-migration`. Der einmalige Container liest `gernetix-identity.sqlite` read-only, importiert Accounts, Credentials, externe Identitaeten, Tokens, Recovery-Transaktionen und Sessions in einer Transaktion und setzt den Marker `identity-sqlite-v1`. Bei einem bereits belegten PostgreSQL-Ziel ohne Marker bricht er ab, statt Daten zusammenzufuehren. Bei weiteren Starts endet er mit `already_applied`.
 
-```bash
-docker compose --env-file .env.vps -f compose.vps.yaml stop project-server telemetry-server
-docker compose --env-file .env.vps -f compose.vps.yaml --profile storage-migration run --rm runtime-storage-migration
-docker compose --env-file .env.vps -f compose.vps.yaml up -d project-server telemetry-server
-```
+Die Alt-SQLite bleibt als Rueckfallkopie erhalten, ist danach aber nicht mehr fuehrend. Ein ausgefuehrter Rollout setzt deshalb vorab ein konsistentes Backup von `identity_state` und `identity_postgres_data` sowie einen dokumentierten Restore-Test voraus.
 
-Die Ausgabe nennt jede kopierte Tabelle und Zeilenanzahl. Erst danach darf das bisherige `service_state`-Volume aus dem Backup-/Restore-Plan als gemeinsamer Runtime-State ohne Projekt- und Telemetrie-Inhalte behandelt werden.
+### Einmalige Project-Migration nach PostgreSQL
+
+Vor dem Start des Project Servers wartet Compose auf `project-postgres-migration`. Der einmalige Container liest zuerst `project_state/gernetix-projects.sqlite` read-only. Ist diese getrennte Datei noch leer, liest er als Upgrade-Fallback die bisherigen `project-server`-Tabellen aus `service_state/gernetix-services.sqlite`. Projekte, Quellen, Build-Jobs, Artefaktmetadaten, Lernfeedback, Einwilligungen und Ressourcenprofile werden in einer Transaktion importiert; danach wird der Marker `project-sqlite-v1` gesetzt.
+
+Ein bereits belegtes PostgreSQL-Ziel ohne Marker fuehrt zum Abbruch statt zu einer unkontrollierten Zusammenfuehrung. Bei weiteren Starts endet die Migration mit `already_applied`. Beide SQLite-Volumes bleiben erhalten, sind fuer den Migrationscontainer aber nur read-only und nach erfolgreicher Uebernahme nicht mehr fuehrend. Vor dem Rollout sind `project_state`, `service_state` und `project_postgres_data` konsistent zu sichern; der Restore der neuen Datenbank ist gesondert nachzuweisen.
+
+### Einmalige Telemetry-Migration nach PostgreSQL
+
+Vor dem Start des Telemetry Servers wartet Compose auf `telemetry-postgres-migration`. Der Container liest bevorzugt die getrennte `gernetix-telemetry.sqlite` und faellt bei leerem Bestand auf die drei bisherigen Telemetrietabellen in `gernetix-services.sqlite` zurueck. Messwerte, Ereignisse und Retention werden in einer Transaktion importiert; der Marker `telemetry-sqlite-v1` verhindert Wiederholungen. Ein belegtes PostgreSQL-Ziel ohne Marker fuehrt zum Abbruch. Beide SQLite-Quellen bleiben read-only erhalten und sind danach nicht mehr fuehrend.
+
+### Einmalige Community-Migration nach PostgreSQL
+
+Vor dem Start der Community Platform wartet Compose auf `community-postgres-migration`. Der einmalige Container importiert Fragen, Antworten und freigegebene Wissensdokumente transaktional aus `gernetix-community.sqlite` und setzt `community-sqlite-v1`. Ein unerwartet belegtes Ziel ohne Marker fuehrt zum Abbruch. Die SQLite bleibt read-only als Rueckfallkopie erhalten und ist danach nicht mehr fuehrend.
+
+### Einmalige Device-Management-Migration nach PostgreSQL
+
+Vor dem Start des Device Management Servers wartet Compose auf `device-management-postgres-migration`. Der einmalige Container liest die bisherigen typisierten Device-Management-Tabellen aus `gernetix-services.sqlite` read-only, entfernt vorsorglich alte Shared-Secret-Felder und importiert den Bestand transaktional. Der Marker `device-management-sqlite-v1` verhindert Wiederholungen; ein belegtes Ziel ohne Marker fuehrt zum Abbruch. Danach ist ausschliesslich PostgreSQL fuehrend.
 
 ## Update
 

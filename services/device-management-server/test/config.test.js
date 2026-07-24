@@ -4,11 +4,11 @@ const test = require("node:test");
 
 const { createConfig } = require("../src/config");
 
-test("Device Management persists inventory in the shared SQLite database by default", () => {
+test("Device Management uses PostgreSQL by default", () => {
   const config = createConfig({});
 
-  assert.equal(config.persistenceBackend, "sqlite");
-  assert.equal(config.sqlitePath, path.resolve(__dirname, "..", "..", "..", ".runtime", "gernetix-services.sqlite"));
+  assert.equal(config.persistenceBackend, "postgres");
+  assert.equal(config.postgres.database, "gernetix_device_management");
 });
 
 test("Device Management resolves an explicitly configured SQLite path", () => {

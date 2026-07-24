@@ -61,27 +61,55 @@ Danach sind lokal zusaetzlich erreichbar:
 ```text
 Plattform-Diagnose: http://127.0.0.1:14300/app/dashboard/
 Admin-Diagnose:     http://127.0.0.1:14600/admin/
+Identity PostgreSQL: 127.0.0.1:15432
 Hardware Catalog:   http://10.77.0.1:4910/api/hardware-catalog/
 ```
 
 Das Terminal bleibt fuer die Dauer des SSH-Tunnels geoeffnet. `Strg+C` beendet die Verbindung. Der SSH-Tunnel laeuft innerhalb des WireGuard-VPN; der VPS benoetigt keinen Browser, und weder SSH noch der Admin-Port werden oeffentlich freigegeben.
 Der Hardware Catalog bleibt ebenfalls privat: Identity auf dem Entwicklungsrechner nutzt ihn direkt ueber die feste WireGuard-Adresse `10.77.0.1:4910`; ein lokaler Hardware-Catalog-Prozess und ein SSH-Tunnel dafuer sind nicht erforderlich.
 
+## Lokalen Port 4300 ohne Staging verwenden
+
+Fuer haeufige Arbeiten am Identity Server und an der Plattform-UI kann Port `4300` lokal laufen, waehrend der gemeinsame Entwicklungsdatenstand auf dem VPS bleibt.
+
+Einmalig:
+
+```bash
+cp .env.remote-dev.example .env.remote-dev.local
+```
+
+In `.env.remote-dev.local` muss mindestens `IDENTITY_POSTGRES_PASSWORD` fuer die gemeinsame Entwicklungsdatenbank gesetzt werden. Danach in zwei Terminals:
+
+```text
+node tools/connect-staging.js
+node tools/start-identity-remote-dev.js
+```
+
+Der erste Prozess stellt innerhalb von WireGuard die SSH-Weiterleitungen bereit. Der zweite startet nur Identity auf `127.0.0.1:4300`, verwendet die zentrale Identity-PostgreSQL-Datenbank und ruft Project, Build, Device, Shop, Usage, AI Context, Community und Telemetrie ueber deren getunnelte VPS-Dienste auf. Auf macOS wird AI Usage lokal auf `5001` weitergereicht, weil Port `5000` durch das System belegt sein kann.
+
+Im Remote-Dev-Modus legt Identity keine lokalen SQLite-Dateien an. VPS-seitige Release-/Account-Assets bleiben am kanonischen VPS-Identity-Endpunkt; lokale Schreibwege fuer diese Nebenspeicher sind deaktiviert. Push- und SMTP-Hilfsspeicher sind im lokalen Prozess nur fluechtig.
+
+Lokale Codeaenderungen an `4300` benoetigen dadurch weder Commit noch Staging-Deployment. Der gemeinsame Datenstand ist aber real: Tests und manuelle Aenderungen koennen andere Entwicklungsrechner beeinflussen. Diese Betriebsart darf deshalb nur eine getrennte Entwicklungs-/Staging-Datenbank verwenden, niemals die Produktionsdatenbank.
+
 ## Remote-first statt geteilter SQLite-Datei
 
-Der VPS ist der einzige Schreiber fuer seine Identity-, Projekt-, Community-,
-Telemetry- und weiteren SQL-Speicher. Lokale Rechner oeffnen diese Dateien nie
-direkt und mounten die Docker-Volumes nicht ueber SMB, NFS oder SSHFS.
+Der VPS bleibt der Speicherort fuer Project-, Telemetry- und Community-
+PostgreSQL sowie weitere SQLite-Speicher. Lokale Rechner oeffnen SQLite-Dateien
+nie direkt und mounten die Docker-Volumes nicht ueber SMB, NFS oder SSHFS.
 
 - Fuer Arbeit mit dem gemeinsamen Datenstand wird die private PWA verwendet.
 - Ein lokal gestarteter kompletter Service-Stack ist eine isolierte
   Testumgebung mit eigener SQLite-Persistenz.
-- Ein lokaler Identity Server ist keine aktive Replik und darf nicht parallel
-  auf die VPS-Identity-SQLite schreiben.
-- Aenderungen, die den gemeinsamen Identity-/Persistenzstand benoetigen, werden
-  nach lokalen Contract-Tests als gepushter Commit auf Staging getestet.
-- Der Diagnose-Tunnel transportiert HTTP-Anfragen; er gibt keine SQLite-Datei
-  frei.
+- Ein lokaler Identity Server darf im beschriebenen Remote-Dev-Modus direkt
+  die zentrale Identity-PostgreSQL-Datenbank verwenden. Er schreibt niemals in
+  eine entfernte SQLite-Datei.
+- Die Domaenentunnel transportieren HTTP-Anfragen. Nur der dedizierte
+  Identity-PostgreSQL-Port wird als Datenbankverbindung weitergereicht.
+- Das bisherige Identity-SQLite wird beim VPS-Upgrade einmalig und idempotent
+  nach PostgreSQL importiert und danach nicht parallel weitergeschrieben.
+- Die bisherigen Project-SQLite-Bestaende werden beim VPS-Upgrade einmalig
+  und idempotent nach Project-PostgreSQL importiert; Entwicklungsrechner
+  greifen weiterhin ausschliesslich ueber das Project-Server-API darauf zu.
 
 Nur die Konfiguration pruefen, ohne eine Verbindung aufzubauen:
 

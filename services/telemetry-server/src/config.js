@@ -7,6 +7,7 @@ function createConfig(env = process.env) {
   return {
     host: env.HOST || "127.0.0.1",
     port: Number(env.PORT || 5600),
+    persistenceBackend: env.TELEMETRY_PERSISTENCE_BACKEND || env.PERSISTENCE_BACKEND || "sqlite",
     sqlitePath: env.TELEMETRY_SQLITE_PATH || env.PERSISTENCE_SQLITE_PATH
       ? path.resolve(env.TELEMETRY_SQLITE_PATH || env.PERSISTENCE_SQLITE_PATH)
       : path.join(runtimeRoot, "gernetix-telemetry.sqlite"),
@@ -19,6 +20,14 @@ function createConfig(env = process.env) {
     defaultMeasurementRetentionDays: boundedDays(env.TELEMETRY_MEASUREMENT_RETENTION_DAYS, 90),
     defaultEventRetentionDays: boundedDays(env.TELEMETRY_EVENT_RETENTION_DAYS, 365),
     retentionIntervalHours: boundedInterval(env.TELEMETRY_RETENTION_INTERVAL_HOURS, 24),
+    postgres: {
+      connectionString: env.TELEMETRY_POSTGRES_URL || "",
+      host: env.TELEMETRY_POSTGRES_HOST || "127.0.0.1",
+      port: Number(env.TELEMETRY_POSTGRES_PORT || 5432),
+      database: env.TELEMETRY_POSTGRES_DATABASE || "gernetix_telemetry",
+      user: env.TELEMETRY_POSTGRES_USER || "gernetix_telemetry",
+      password: env.TELEMETRY_POSTGRES_PASSWORD || "",
+    },
   };
 }
 

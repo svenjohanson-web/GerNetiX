@@ -19,6 +19,207 @@ x-node-service: &node-service
     start_period: 10s
 
 services:
+  identity-postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: gernetix_identity
+      POSTGRES_USER: gernetix_identity
+      POSTGRES_PASSWORD: ${IDENTITY_POSTGRES_PASSWORD:?IDENTITY_POSTGRES_PASSWORD muss gesetzt sein}
+    expose: ["5432"]
+    ports:
+      - "127.0.0.1:${IDENTITY_POSTGRES_HOST_PORT:-15432}:5432"
+    networks:
+      - backend
+    volumes:
+      - identity_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_identity -d gernetix_identity"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  identity-postgres-migration:
+    <<: *node-service
+    restart: "no"
+    healthcheck:
+      disable: true
+    command: ["node", "/app/tools/migrate-identity-sqlite-to-postgres.js"]
+    environment:
+      IDENTITY_SQLITE_PATH: /var/lib/gernetix/identity/gernetix-identity.sqlite
+      IDENTITY_POSTGRES_HOST: identity-postgres
+      IDENTITY_POSTGRES_PORT: 5432
+      IDENTITY_POSTGRES_DATABASE: gernetix_identity
+      IDENTITY_POSTGRES_USER: gernetix_identity
+      IDENTITY_POSTGRES_PASSWORD: ${IDENTITY_POSTGRES_PASSWORD:?IDENTITY_POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - identity_state:/var/lib/gernetix/identity:ro
+    depends_on:
+      identity-postgres: { condition: service_healthy }
+
+  project-postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: gernetix_projects
+      POSTGRES_USER: gernetix_projects
+      POSTGRES_PASSWORD: ${PROJECT_POSTGRES_PASSWORD:?PROJECT_POSTGRES_PASSWORD muss gesetzt sein}
+    expose: ["5432"]
+    networks:
+      - backend
+    volumes:
+      - project_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_projects -d gernetix_projects"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  project-postgres-migration:
+    <<: *node-service
+    restart: "no"
+    healthcheck:
+      disable: true
+    command: ["node", "/app/tools/migrate-project-sqlite-to-postgres.js"]
+    environment:
+      PROJECT_SERVER_SQLITE_PATH: /var/lib/gernetix/projects/gernetix-projects.sqlite
+      PROJECT_LEGACY_SHARED_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      PROJECT_POSTGRES_HOST: project-postgres
+      PROJECT_POSTGRES_PORT: 5432
+      PROJECT_POSTGRES_DATABASE: gernetix_projects
+      PROJECT_POSTGRES_USER: gernetix_projects
+      PROJECT_POSTGRES_PASSWORD: ${PROJECT_POSTGRES_PASSWORD:?PROJECT_POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - project_state:/var/lib/gernetix/projects:ro
+      - service_state:/var/lib/gernetix/services:ro
+    depends_on:
+      project-postgres: { condition: service_healthy }
+
+  telemetry-postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: gernetix_telemetry
+      POSTGRES_USER: gernetix_telemetry
+      POSTGRES_PASSWORD: ${TELEMETRY_POSTGRES_PASSWORD:?TELEMETRY_POSTGRES_PASSWORD muss gesetzt sein}
+    expose: ["5432"]
+    networks:
+      - backend
+    volumes:
+      - telemetry_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_telemetry -d gernetix_telemetry"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  telemetry-postgres-migration:
+    <<: *node-service
+    restart: "no"
+    healthcheck:
+      disable: true
+    command: ["node", "/app/tools/migrate-telemetry-sqlite-to-postgres.js"]
+    environment:
+      TELEMETRY_SQLITE_PATH: /var/lib/gernetix/telemetry/gernetix-telemetry.sqlite
+      TELEMETRY_LEGACY_SHARED_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      TELEMETRY_POSTGRES_HOST: telemetry-postgres
+      TELEMETRY_POSTGRES_PORT: 5432
+      TELEMETRY_POSTGRES_DATABASE: gernetix_telemetry
+      TELEMETRY_POSTGRES_USER: gernetix_telemetry
+      TELEMETRY_POSTGRES_PASSWORD: ${TELEMETRY_POSTGRES_PASSWORD:?TELEMETRY_POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - telemetry_state:/var/lib/gernetix/telemetry:ro
+      - service_state:/var/lib/gernetix/services:ro
+    depends_on:
+      telemetry-postgres: { condition: service_healthy }
+
+  community-postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: gernetix_community
+      POSTGRES_USER: gernetix_community
+      POSTGRES_PASSWORD: ${COMMUNITY_POSTGRES_PASSWORD:?COMMUNITY_POSTGRES_PASSWORD muss gesetzt sein}
+    expose: ["5432"]
+    networks:
+      - backend
+    volumes:
+      - community_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_community -d gernetix_community"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  community-postgres-migration:
+    <<: *node-service
+    restart: "no"
+    healthcheck:
+      disable: true
+    command: ["node", "/app/tools/migrate-community-sqlite-to-postgres.js"]
+    environment:
+      COMMUNITY_SQLITE_PATH: /var/lib/gernetix/community/gernetix-community.sqlite
+      COMMUNITY_POSTGRES_HOST: community-postgres
+      COMMUNITY_POSTGRES_PORT: 5432
+      COMMUNITY_POSTGRES_DATABASE: gernetix_community
+      COMMUNITY_POSTGRES_USER: gernetix_community
+      COMMUNITY_POSTGRES_PASSWORD: ${COMMUNITY_POSTGRES_PASSWORD:?COMMUNITY_POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - community_state:/var/lib/gernetix/community:ro
+    depends_on:
+      community-postgres: { condition: service_healthy }
+
+  device-management-postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: gernetix_device_management
+      POSTGRES_USER: gernetix_device_management
+      POSTGRES_PASSWORD: ${DEVICE_MANAGEMENT_POSTGRES_PASSWORD:?DEVICE_MANAGEMENT_POSTGRES_PASSWORD muss gesetzt sein}
+    expose: ["5432"]
+    networks:
+      - backend
+    volumes:
+      - device_management_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_device_management -d gernetix_device_management"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  device-management-postgres-migration:
+    <<: *node-service
+    restart: "no"
+    healthcheck:
+      disable: true
+    command: ["node", "/app/tools/migrate-device-management-sqlite-to-postgres.js"]
+    environment:
+      DEVICE_MANAGEMENT_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      DEVICE_MANAGEMENT_POSTGRES_HOST: device-management-postgres
+      DEVICE_MANAGEMENT_POSTGRES_PORT: 5432
+      DEVICE_MANAGEMENT_POSTGRES_DATABASE: gernetix_device_management
+      DEVICE_MANAGEMENT_POSTGRES_USER: gernetix_device_management
+      DEVICE_MANAGEMENT_POSTGRES_PASSWORD: ${DEVICE_MANAGEMENT_POSTGRES_PASSWORD:?DEVICE_MANAGEMENT_POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - service_state:/var/lib/gernetix/services:ro
+    depends_on:
+      device-management-postgres: { condition: service_healthy }
+
   ai-context-postgres:
     image: pgvector/pgvector:pg17
     restart: unless-stopped
@@ -46,12 +247,17 @@ services:
       GERNETIX_SERVICE: project-server
       HOST: 0.0.0.0
       PORT: 4800
-      PERSISTENCE_BACKEND: sqlite
-      PROJECT_SERVER_SQLITE_PATH: /var/lib/gernetix/projects/gernetix-projects.sqlite
-      PROJECT_SERVER_RUNTIME_DIR: /var/lib/gernetix/projects
+      PERSISTENCE_BACKEND: postgres
+      PROJECT_POSTGRES_HOST: project-postgres
+      PROJECT_POSTGRES_PORT: 5432
+      PROJECT_POSTGRES_DATABASE: gernetix_projects
+      PROJECT_POSTGRES_USER: gernetix_projects
+      PROJECT_POSTGRES_PASSWORD: ${PROJECT_POSTGRES_PASSWORD:?PROJECT_POSTGRES_PASSWORD muss gesetzt sein}
     expose: ["4800"]
-    volumes:
-      - project_state:/var/lib/gernetix/projects
+    ports:
+      - "127.0.0.1:4800:4800"
+    depends_on:
+      project-postgres-migration: { condition: service_completed_successfully }
 
   build-deploy-server:
     <<: *node-service
@@ -73,8 +279,9 @@ services:
       OTA_SIGNING_PRIVATE_KEY_PATH: /run/gernetix-pki/ota-signing-key.pem
       OTA_SIGNING_KEY_ID: ${OTA_SIGNING_KEY_ID:-ota-p256-2026-01}
     expose: ["4400"]
+    ports:
+      - "127.0.0.1:4400:4400"
     volumes:
-      - project_state:/var/lib/gernetix/projects
       - build_state:/var/lib/gernetix/build
       - ${OTA_SIGNING_PRIVATE_KEY_PATH:-/etc/gernetix/pki/ota-signing-key.pem}:/run/gernetix-pki/ota-signing-key.pem:ro
     depends_on:
@@ -103,12 +310,17 @@ services:
       GERNETIX_SERVICE: device-management-server
       HOST: 0.0.0.0
       PORT: 4700
-      PERSISTENCE_BACKEND: sqlite
-      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
-      DEVICE_MANAGEMENT_RUNTIME_DIR: /var/lib/gernetix/services
+      DEVICE_MANAGEMENT_PERSISTENCE_BACKEND: postgres
+      DEVICE_MANAGEMENT_POSTGRES_HOST: device-management-postgres
+      DEVICE_MANAGEMENT_POSTGRES_PORT: 5432
+      DEVICE_MANAGEMENT_POSTGRES_DATABASE: gernetix_device_management
+      DEVICE_MANAGEMENT_POSTGRES_USER: gernetix_device_management
+      DEVICE_MANAGEMENT_POSTGRES_PASSWORD: ${DEVICE_MANAGEMENT_POSTGRES_PASSWORD:?DEVICE_MANAGEMENT_POSTGRES_PASSWORD muss gesetzt sein}
     expose: ["4700"]
-    volumes:
-      - service_state:/var/lib/gernetix/services
+    ports:
+      - "127.0.0.1:4700:4700"
+    depends_on:
+      device-management-postgres-migration: { condition: service_completed_successfully }
 
   telemetry-server:
     <<: *node-service
@@ -116,8 +328,12 @@ services:
       GERNETIX_SERVICE: telemetry-server
       HOST: 0.0.0.0
       PORT: 5600
-      TELEMETRY_SQLITE_PATH: /var/lib/gernetix/telemetry/gernetix-telemetry.sqlite
-      TELEMETRY_RUNTIME_DIR: /var/lib/gernetix/telemetry
+      TELEMETRY_PERSISTENCE_BACKEND: postgres
+      TELEMETRY_POSTGRES_HOST: telemetry-postgres
+      TELEMETRY_POSTGRES_PORT: 5432
+      TELEMETRY_POSTGRES_DATABASE: gernetix_telemetry
+      TELEMETRY_POSTGRES_USER: gernetix_telemetry
+      TELEMETRY_POSTGRES_PASSWORD: ${TELEMETRY_POSTGRES_PASSWORD:?TELEMETRY_POSTGRES_PASSWORD muss gesetzt sein}
       TELEMETRY_INTERNAL_TOKEN: ${TELEMETRY_INTERNAL_TOKEN:?TELEMETRY_INTERNAL_TOKEN muss gesetzt sein}
       PROJECT_SERVER_BASE_URL: http://project-server:4800
       DEVICE_MANAGEMENT_BASE_URL: http://device-management-server:4700
@@ -125,9 +341,10 @@ services:
       IDENTITY_ADMIN_TOKEN: ${IDENTITY_ADMIN_TOKEN:-}
       MQTT_BROKER_URL: mqtt://mqtt-broker:1883
     expose: ["5600"]
-    volumes:
-      - telemetry_state:/var/lib/gernetix/telemetry
+    ports:
+      - "127.0.0.1:5600:5600"
     depends_on:
+      telemetry-postgres-migration: { condition: service_completed_successfully }
       project-server: { condition: service_healthy }
       device-management-server: { condition: service_healthy }
       mqtt-broker: { condition: service_healthy }
@@ -159,6 +376,8 @@ services:
       PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
       HARDWARE_CATALOG_BASE_URL: http://hardware-catalog:4910
     expose: ["4900"]
+    ports:
+      - "127.0.0.1:4900:4900"
     volumes:
       - service_state:/var/lib/gernetix/services
     depends_on:
@@ -174,6 +393,8 @@ services:
       PERSISTENCE_BACKEND: sqlite
       PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
     expose: ["5000"]
+    ports:
+      - "127.0.0.1:5000:5000"
     volumes:
       - service_state:/var/lib/gernetix/services
 
@@ -183,12 +404,18 @@ services:
       GERNETIX_SERVICE: community-platform
       HOST: 0.0.0.0
       PORT: 5200
-      COMMUNITY_PERSISTENCE_BACKEND: sqlite
-      COMMUNITY_SQLITE_PATH: /var/lib/gernetix/community/gernetix-community.sqlite
+      COMMUNITY_PERSISTENCE_BACKEND: postgres
+      COMMUNITY_POSTGRES_HOST: community-postgres
+      COMMUNITY_POSTGRES_PORT: 5432
+      COMMUNITY_POSTGRES_DATABASE: gernetix_community
+      COMMUNITY_POSTGRES_USER: gernetix_community
+      COMMUNITY_POSTGRES_PASSWORD: ${COMMUNITY_POSTGRES_PASSWORD:?COMMUNITY_POSTGRES_PASSWORD muss gesetzt sein}
       COMMUNITY_INTERNAL_TOKEN: ${COMMUNITY_INTERNAL_TOKEN:?COMMUNITY_INTERNAL_TOKEN muss gesetzt sein}
     expose: ["5200"]
-    volumes:
-      - community_state:/var/lib/gernetix/community
+    ports:
+      - "127.0.0.1:5200:5200"
+    depends_on:
+      community-postgres-migration: { condition: service_completed_successfully }
 
   ai-context-server:
     <<: *node-service
@@ -207,6 +434,8 @@ services:
       AI_CONTEXT_EMBEDDING_DIMENSIONS: ${AI_CONTEXT_EMBEDDING_DIMENSIONS:-768}
       AI_CONTEXT_SQLITE_PATH: /var/lib/gernetix/ai-context/gernetix-ai-context.sqlite
     expose: ["5500"]
+    ports:
+      - "127.0.0.1:5500:5500"
     volumes:
       - ai_context_state:/var/lib/gernetix/ai-context
     extra_hosts:
@@ -284,8 +513,13 @@ services:
       GERNETIX_SERVICE: identity-server
       HOST: 0.0.0.0
       PORT: 4300
-      IDENTITY_PERSISTENCE_BACKEND: sqlite
+      IDENTITY_PERSISTENCE_BACKEND: postgres
       IDENTITY_SQLITE_PATH: /var/lib/gernetix/identity/gernetix-identity.sqlite
+      IDENTITY_POSTGRES_HOST: identity-postgres
+      IDENTITY_POSTGRES_PORT: 5432
+      IDENTITY_POSTGRES_DATABASE: gernetix_identity
+      IDENTITY_POSTGRES_USER: gernetix_identity
+      IDENTITY_POSTGRES_PASSWORD: ${IDENTITY_POSTGRES_PASSWORD:?IDENTITY_POSTGRES_PASSWORD muss gesetzt sein}
       PLATFORM_DOWNLOAD_SQLITE_PATH: /var/lib/gernetix/identity/gernetix-platform-downloads.sqlite
       ACCOUNT_ASSET_SQLITE_PATH: /var/lib/gernetix/identity/gernetix-account-assets.sqlite
       IDENTITY_APP_BASE_URL: ${IDENTITY_APP_BASE_URL:-}
@@ -319,6 +553,7 @@ services:
       - identity_state:/var/lib/gernetix/identity
       - service_state:/var/lib/gernetix/services
     depends_on:
+      identity-postgres-migration: { condition: service_completed_successfully }
       project-server: { condition: service_healthy }
       telemetry-server: { condition: service_healthy }
       build-deploy-server: { condition: service_healthy }
@@ -328,24 +563,6 @@ services:
       ai-usage-server: { condition: service_healthy }
       ai-context-server: { condition: service_healthy }
       community-platform: { condition: service_healthy }
-
-  runtime-storage-migration:
-    <<: *node-service
-    profiles: ["storage-migration"]
-    restart: "no"
-    command:
-      - node
-      - /app/tools/migrate-runtime-storage.js
-      - --source
-      - /var/lib/gernetix/shared/gernetix-services.sqlite
-      - --projects
-      - /var/lib/gernetix/projects/gernetix-projects.sqlite
-      - --telemetry
-      - /var/lib/gernetix/telemetry/gernetix-telemetry.sqlite
-    volumes:
-      - service_state:/var/lib/gernetix/shared:ro
-      - project_state:/var/lib/gernetix/projects
-      - telemetry_state:/var/lib/gernetix/telemetry
 
   mqtt-broker:
     image: eclipse-mosquitto:2.0
@@ -447,15 +664,20 @@ networks:
 
 volumes:
   identity_state:
+  identity_postgres_data:
   service_state:
   project_state:
+  project_postgres_data:
   telemetry_state:
+  telemetry_postgres_data:
   ai_context_state:
   ai_context_postgres_data:
   admin_access_state:
   build_state:
   public_demo_state:
   community_state:
+  community_postgres_data:
+  device_management_postgres_data:
   mqtt_data:
   mqtt_log:
   nginx_cache:

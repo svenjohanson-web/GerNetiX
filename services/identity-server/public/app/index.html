@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260723-15" />
+    <link rel="stylesheet" href="/app/app.css?v=20260724-02" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -37,7 +37,6 @@
 
       <nav id="mainMenu" class="tabs app-menu hidden" aria-label="Plattformbereiche">
         <a class="utility public-information-link" href="/">Startseite</a>
-        <a class="utility public-information-link" href="/produkte/">Produkte</a>
         <a class="utility public-information-link" href="/entdecken/">GerNetiX entdecken</a>
         <a class="utility public-information-link" href="/flashbox-einrichten/">USB Helper</a>
         <a class="utility public-information-link" href="/nachbauprojekte/">Nachbauprojekte</a>
@@ -341,6 +340,10 @@
           </div>
           <div id="learnProjectList"></div>
         </section>
+      </section>
+
+      <section id="learningProjectOverviewView" class="view hidden">
+        <section id="learningProjectOverview" class="panel learning-project-overview-page" aria-live="polite"></section>
       </section>
 
       <section id="learningProjectView" class="view hidden">
@@ -1097,7 +1100,7 @@
     <script src="/app/serial-service-client.js?v=20260719-02"></script>
     <script src="/app/device-onboarding-model.js"></script>
     <script src="/app/device-onboarding-controller.js?v=20260719-04"></script>
-    <script src="/app/guided-project-view.js?v=20260718-03"></script>
+    <script src="/app/guided-project-view.js?v=20260724-03"></script>
     <script src="/app/learning-project-view.js?v=20260718-02"></script>
     <script src="/app/learning-project-controller.js?v=20260718-07"></script>
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
@@ -1106,6 +1109,6 @@
     <script src="/app/help-content.js?v=20260723-15"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
     <script src="/app/help-view.js?v=20260723-12"></script>
-    <script src="/app/app.js?v=20260723-15"></script>
+    <script src="/app/app.js?v=20260724-01"></script>
   </body>
 </html>

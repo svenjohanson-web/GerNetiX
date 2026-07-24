@@ -19,3 +19,14 @@ Ein Tag beschreibt ein Merkmal des Lernangebots. Er ersetzt keine Hardware-, Run
 ## Abgrenzung
 
 Die Klassifikation gilt nicht für freie Entwicklungsprojekte. Startet ein Nutzer ein Lernprojekt, übernimmt das accountgebundene Projekt Kategorie und Tags aus seiner Lernprojekt-Katalogdefinition. Die Metadaten werden nicht als zweite fachliche Wahrheit im Project Server dupliziert.
+
+## Entwicklungsprojekte und einzeln startbare Lessons
+
+Ein projektzentriertes Lernangebot kann im Katalog als Entwicklungsprojekt mit einer zusammenhaengenden Projektstory erscheinen.
+
+Der Katalog bietet dann zwei Einstiege:
+
+- `Projektstory starten`: erzeugt ein accountgebundenes Entwicklungsprojekt und fuehrt die zugeordneten DevelopmentLessons in ihrer Projekt-Reihenfolge fort.
+- `Lesson einzeln starten`: erzeugt ein separates accountgebundenes Uebungsprojekt aus dem `LessonStartSnapshot` und zeigt nur die Schritte dieser DevelopmentLesson.
+
+Die DevelopmentLesson wird dabei nicht dupliziert. Projektmodus und Einzelmodus referenzieren dieselbe Lesson und dieselben Schritte. Nur der Ausgangszustand und der gespeicherte Arbeitskontext unterscheiden sich.

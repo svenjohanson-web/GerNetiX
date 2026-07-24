@@ -9,3 +9,4 @@ managed_components/
 services/*/.runtime/
 .env.vps
 .env.staging.local
+.env.remote-dev.local

@@ -1,0 +1,481 @@
+{
+  "slug": "storage-learning-story",
+  "project_story": {
+    "kind": "development_project",
+    "title": "Vom gespeicherten Wert zur Datenplattform",
+    "problem": "Ein intelligenter Pflanzenplatz soll Einstellungen und Messwerte zuverlässig behalten, später durchsuchen und um Dateien ergänzen.",
+    "learning_goal": "Du entscheidest an einem durchgängigen Beispiel, welche Daten nur im Arbeitsspeicher, im ESP32-NVS, in einer LittleFS-Datei, in SQLite oder im Dateiarchiv liegen sollen.",
+    "working_method": "Starte das Gesamtprojekt und arbeite die 15 kurzen Schritte der Reihe nach durch. Jeder Schritt erklärt zuerst die Ausgangslage, zeigt links ein konkretes Artefakt und nennt rechts deine Aufgabe sowie das erwartete Ergebnis. Du musst zu Beginn nichts installieren und keinen eigenen Code erfinden.",
+    "result": "Am Ende kannst du für Geräteeinstellungen, Offline-Messwerte, durchsuchbare Historien und große Dateien eine begründete Speicherentscheidung treffen und die Übergänge zwischen ESP32 und lokalem Server erklären.",
+    "continuation_rule": "Jede Lesson macht einen Schwachpunkt der vorherigen Lösung sichtbar und übernimmt deren bestätigte Ergebnisse.",
+    "standalone_rule": "Jede Lesson kann mit einem vorbereiteten Snapshot unabhängig gestartet werden."
+  },
+  "project": {
+    "slug": "storage-learning-story",
+    "title": "Intelligenter Pflanzenplatz – vom Gerätespeicher zur Datenplattform",
+    "area": "Daten und Persistenz",
+    "summary": "Du baust die Datenspeicherung eines intelligenten Pflanzenplatzes schrittweise auf: zuerst ohne dauerhaften Speicher, dann auf dem ESP32 und schließlich auf einem lokalen Server.",
+    "learning_category": "distributed_system",
+    "access_model": "free",
+    "hardware_profile_id": "learning.mixed_storage_story",
+    "default_device_id": "",
+    "required_capability_ids": [],
+    "tags": ["platform:esp32", "runtime:browser", "topic:data", "topic:databases", "topic:storage", "level:beginner"],
+    "source_files": [
+      { "path": "lessons/01-datenstrukturen/inventar.js", "role": "user_code" },
+      { "path": "lessons/02-nvs/nvs-einstellungen.cpp", "role": "learning_example" },
+      { "path": "lessons/03-littlefs/messwertlogbuch.cpp", "role": "learning_example" },
+      { "path": "lessons/04-sqlite/schema.sql", "role": "database_schema" },
+      { "path": "lessons/05-dateiarchiv/architektur.md", "role": "architecture_model" }
+    ],
+    "steps": [
+      { "title": "Daten modellieren", "text": "Pflanzen, Standorte und Messwerte werden zuerst als Werte, Listen und Beziehungen verstanden.", "insight": "Eine Datenbank ersetzt kein durchdachtes Datenmodell." },
+      { "title": "Einstellungen mit NVS sichern", "text": "Der ESP32 speichert wenige geprüfte Einstellungen als Schlüssel und Werte.", "insight": "Key-Value-Speicher passen zu Konfiguration, nicht zu frei abfragbarer Historie." },
+      { "title": "Messwerte mit LittleFS puffern", "text": "Eine begrenzte lokale Historie übersteht Verbindungsabbrüche und Neustarts.", "insight": "Dateien lösen Persistenz, aber noch keine flexiblen Abfragen." },
+      { "title": "Historie in SQLite auswerten", "text": "Ein lokaler Server übernimmt strukturierte Daten in relationale Tabellen.", "insight": "Relationen, Abfragen und Transaktionen rechtfertigen eine Datenbank." },
+      { "title": "Dateien und Metadaten trennen", "text": "Bilder und Exporte liegen im Dateispeicher, während SQLite ihre Metadaten verwaltet.", "insight": "Datenbank und Dateispeicher erfüllen unterschiedliche Aufgaben." }
+    ]
+  },
+  "development_lessons": [
+    {
+      "id": "development_lesson.storage.data_structures",
+      "title": "Daten und Datenstrukturen modellieren",
+      "summary": "Baue ein Pflanzeninventar zunächst ohne Persistenz.",
+      "order_index": 1,
+      "prerequisite_lesson_ids": [],
+      "step_ids": ["data-values", "data-records", "data-relationships"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.storage.data_structures.empty",
+        "runtime": "browser_javascript",
+        "hardware_required": false,
+        "primary_source_path": "lessons/01-datenstrukturen/inventar.js",
+        "source_paths": ["lessons/01-datenstrukturen/inventar.js", "docs/projektstory.md"]
+      }
+    },
+    {
+      "id": "development_lesson.storage.nvs",
+      "title": "Einstellungen mit NVS oder EEPROM sichern",
+      "summary": "Speichere wenige validierte Geräteeinstellungen dauerhaft.",
+      "order_index": 2,
+      "prerequisite_lesson_ids": ["development_lesson.storage.data_structures"],
+      "step_ids": ["nvs-choose-values", "nvs-persist", "nvs-recovery"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.storage.nvs.prepared_esp32",
+        "runtime": "esp32",
+        "hardware_required": true,
+        "primary_source_path": "lessons/02-nvs/nvs-einstellungen.cpp",
+        "source_paths": ["lessons/02-nvs/nvs-einstellungen.cpp", "docs/projektstory.md"]
+      }
+    },
+    {
+      "id": "development_lesson.storage.littlefs",
+      "title": "Messwertlogbuch mit LittleFS",
+      "summary": "Ergänze eine begrenzte, dateibasierte Offline-Historie.",
+      "order_index": 3,
+      "prerequisite_lesson_ids": ["development_lesson.storage.nvs"],
+      "step_ids": ["littlefs-file-format", "littlefs-ring-buffer", "littlefs-power-loss"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.storage.littlefs.with_nvs_baseline",
+        "runtime": "esp32",
+        "hardware_required": true,
+        "primary_source_path": "lessons/03-littlefs/messwertlogbuch.cpp",
+        "source_paths": ["lessons/02-nvs/nvs-einstellungen.cpp", "lessons/03-littlefs/messwertlogbuch.cpp", "docs/projektstory.md"]
+      }
+    },
+    {
+      "id": "development_lesson.storage.sqlite",
+      "title": "Messwerthistorie mit SQLite",
+      "summary": "Überführe Pflanzen, Geräte und Messwerte in relationale Tabellen.",
+      "order_index": 4,
+      "prerequisite_lesson_ids": ["development_lesson.storage.littlefs"],
+      "step_ids": ["sqlite-schema", "sqlite-queries", "sqlite-transaction"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.storage.sqlite.with_sample_measurements",
+        "runtime": "local_node_sqlite",
+        "hardware_required": false,
+        "primary_source_path": "lessons/04-sqlite/schema.sql",
+        "source_paths": ["lessons/04-sqlite/schema.sql", "lessons/04-sqlite/abfragen.sql", "lessons/04-sqlite/beispieldaten.csv", "docs/projektstory.md"]
+      }
+    },
+    {
+      "id": "development_lesson.storage.file_archive",
+      "title": "Dateiarchiv mit SQLite-Metadaten",
+      "summary": "Trenne große Dateien von ihren suchbaren Fachmetadaten.",
+      "order_index": 5,
+      "prerequisite_lesson_ids": ["development_lesson.storage.sqlite"],
+      "step_ids": ["archive-boundary", "archive-integrity", "archive-webdav-option"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.storage.file_archive.with_sqlite_baseline",
+        "runtime": "local_server",
+        "hardware_required": false,
+        "primary_source_path": "lessons/05-dateiarchiv/architektur.md",
+        "source_paths": ["lessons/04-sqlite/schema.sql", "lessons/05-dateiarchiv/architektur.md", "docs/projektstory.md"]
+      }
+    }
+  ],
+  "view_manifest": {
+    "schema_version": 6,
+    "title": "Intelligenter Pflanzenplatz: Speicher richtig auswählen",
+    "summary": "15 aufeinander aufbauende Schritte zeigen dir, was gespeichert wird, wo es gespeichert wird und welche Grenze zur nächsten Lösung führt.",
+    "mode": "guided_ide",
+    "primary_source_path": "lessons/01-datenstrukturen/inventar.js",
+    "views": [
+      {
+        "id": "data-values",
+        "lesson_id": "development_lesson.storage.data_structures",
+        "type": "explanation",
+        "title": "Werte und Datentypen",
+        "summary": "Unterscheide Text, Zahl, Wahrheitswert und fehlenden Wert.",
+        "completion": { "type": "acknowledge", "label": "Werte verstanden" },
+        "payload": {
+          "learning_text": [
+            "Der Pflanzenplatz kennt zunächst noch keine Datenbank. Er kennt nur einzelne Beobachtungen: Die Pflanze heißt Basilikum, steht am Südfenster und soll unterhalb von 35 Prozent Bodenfeuchte als trocken gelten.",
+            "Bevor etwas gespeichert werden kann, musst du entscheiden, welche Bedeutung ein Wert hat. Die Zahl 35 ist ohne den Namen Bodenfeuchte, die Einheit Prozent und einen gültigen Bereich nicht eindeutig."
+          ],
+          "task": "Ordne Pflanzenname, Bodenfeuchte, Messzeitpunkt und Bewässerungsstatus jeweils einem Datentyp zu. Achte darauf, welche Zahlen eine Einheit oder einen erlaubten Wertebereich brauchen.",
+          "expected_result": "Du kannst für jeden Wert Typ, Bedeutung und Gültigkeitsregel nennen, zum Beispiel: Bodenfeuchte = ganze Zahl von 0 bis 100 Prozent.",
+          "why": "Fehlerhafte Datentypen und fehlende Einheiten werden später durch keinen Speicher und keine Datenbank automatisch repariert.",
+          "artifact_text": "Links ist noch kein Programm nötig. In diesem ersten Schritt entsteht das Vokabular für alle späteren Speicherstufen.",
+          "cards": [
+            { "title": "Text", "text": "Der Pflanzenname beschreibt eine Zeichenkette." },
+            { "title": "Zahl", "text": "Feuchte und Messintervall besitzen Einheit und gültigen Bereich." },
+            { "title": "Wahrheitswert", "text": "Eine aktive Bewässerung ist wahr oder falsch." },
+            { "title": "Zeitpunkt", "text": "Eine Messung braucht einen eindeutig interpretierbaren Zeitstempel." }
+          ]
+        }
+      },
+      {
+        "id": "data-records",
+        "lesson_id": "development_lesson.storage.data_structures",
+        "type": "source_analysis",
+        "title": "Datensätze und Listen",
+        "summary": "Fasse zusammengehörige Werte zu einem Pflanzendatensatz zusammen.",
+        "source_path": "lessons/01-datenstrukturen/inventar.js",
+        "payload": {
+          "learning_text": [
+            "Im Code links liegen Standorte und Pflanzen in zwei getrennten Listen. Eine Pflanze verweist mit standortId auf ihren Standort. Dadurch muss der Text Südfenster nicht in jedem Pflanzendatensatz wiederholt werden.",
+            "Die Funktion pflanzenAmStandort filtert die Pflanzenliste. Sie speichert nichts dauerhaft; sie zeigt nur, wie ein fachlich brauchbares Modell bereits im Arbeitsspeicher funktioniert."
+          ],
+          "task": "Lies die beiden Listen und die Filterfunktion. Finde die ID, welche Basilikum mit dem Südfenster verbindet, und überlege, welcher neue Datensatz für eine zweite Pflanze nötig wäre.",
+          "expected_result": "Du kannst erklären, warum standortId statt des Standortnamens gespeichert wird und welche Daten nach einem Browser-Neustart verloren wären.",
+          "why": "Datensätze, Listen und Beziehungen sind die Grundlage. Persistenz kommt erst im nächsten Schritt hinzu.",
+          "questions": [
+            "Welche ID verbindet die Pflanze mit ihrem Standort?",
+            "Welche Werte gehören zur Pflanze und welche zum Standort?",
+            "Was geht verloren, wenn das Programm beendet wird?"
+          ]
+        }
+      },
+      {
+        "id": "data-relationships",
+        "lesson_id": "development_lesson.storage.data_structures",
+        "type": "implementation_plan",
+        "title": "IDs und Beziehungen",
+        "summary": "Ordne Pflanzen über stabile IDs einem Standort zu.",
+        "payload": {
+          "learning_text": [
+            "Namen können sich ändern und müssen nicht eindeutig sein. Eine stabile ID bleibt dagegen gleich, auch wenn aus Südfenster später Küchenfenster wird.",
+            "Plane nun die Regeln, die das kleine Inventar zuverlässig machen. Noch schreibst du keine Datenbank; du legst fest, welche Beziehungen gültig sein dürfen."
+          ],
+          "task": "Ergänze gedanklich eine zweite Pflanze und einen zweiten Standort. Lege eindeutige IDs fest und beschreibe, was das Programm bei einer doppelten Pflanzen-ID oder einer unbekannten standortId tun soll.",
+          "expected_result": "Es gibt eine kleine, prüfbare Modellregel: Jede Pflanze hat eine eindeutige ID und verweist auf genau einen vorhandenen Standort.",
+          "why": "Diese Regeln werden später zu Validierung, Fremdschlüsseln und Tests. Ohne sie würde die Datenbank nur fehlerhafte Datensätze dauerhaft aufbewahren.",
+          "artifact_text": "Links entsteht dein fachlicher Plan: Welche Objekte gibt es, wie werden sie identifiziert und welche Beziehungen sind erlaubt?",
+          "tasks": ["Eindeutige IDs vergeben", "Pflanzen nach Standort filtern", "Doppelte IDs und unbekannte Standorte als Fehler behandeln"]
+        }
+      },
+      {
+        "id": "nvs-choose-values",
+        "lesson_id": "development_lesson.storage.nvs",
+        "type": "explanation",
+        "title": "Was gehört in NVS?",
+        "summary": "Wähle nur kleine, selten geänderte Einstellungen.",
+        "completion": { "type": "acknowledge", "label": "Speichergrenze verstanden" },
+        "payload": {
+          "learning_text": [
+            "Nach einem Neustart soll das Gerät seinen Feuchte-Grenzwert und sein Messintervall noch kennen. Dafür eignet sich NVS: ein kleiner dauerhafter Schlüssel-Wert-Speicher im ESP32.",
+            "NVS ist kein Messwertarchiv. Häufig wachsende Historien würden den Flash unnötig belasten und lassen sich als einzelne Schlüssel schlecht durchsuchen."
+          ],
+          "task": "Teile die Projektdaten in zwei Gruppen: wenige Geräteeinstellungen, die nach einem Neustart erhalten bleiben müssen, und fortlaufende Messdaten, die nicht in NVS gehören.",
+          "expected_result": "In NVS landen nur Pflanzen-ID, Grenzwert, Messintervall und Formatversion. Einzelne Bodenfeuchtemessungen bleiben außen vor.",
+          "why": "Die Speichertechnik wird nach Zugriffsmuster und Datenmenge gewählt, nicht danach, ob sie grundsätzlich Daten aufnehmen kann.",
+          "artifact_text": "Die Karten helfen dir, die Grenze zwischen Gerätekonfiguration und wachsender Messhistorie zu ziehen.",
+          "cards": [
+            { "title": "Geeignet", "text": "Pflanzen-ID, Feuchte-Grenzwert, Messintervall und Formatversion." },
+            { "title": "Nicht geeignet", "text": "Jeder einzelne Messwert einer unbegrenzten Historie." }
+          ]
+        }
+      },
+      {
+        "id": "nvs-persist",
+        "lesson_id": "development_lesson.storage.nvs",
+        "type": "source_analysis",
+        "title": "Schlüssel und Werte speichern",
+        "summary": "Lies Standardwerte und überschreibe sie nur nach erfolgreicher Validierung.",
+        "source_path": "lessons/02-nvs/nvs-einstellungen.cpp",
+        "payload": {
+          "learning_text": [
+            "Die Struktur Einstellungen enthält sichere Standardwerte. Die Funktion istGueltig entscheidet, ob gelesene oder neu eingegebene Werte verwendet werden dürfen.",
+            "Das eigentliche Schreiben in die ESP32-NVS ist bewusst noch nicht vorgegeben. Zuerst muss klar sein, welche Daten überhaupt gültig sind."
+          ],
+          "task": "Prüfe im Code die drei Regeln für Formatversion, Feuchte-Grenzwert und Messintervall. Entscheide anschließend, ob die Werte 1 / 35 / 60 und 1 / 140 / 2 jeweils akzeptiert würden.",
+          "expected_result": "Der erste Satz ist gültig. Der zweite wird abgelehnt, weil Feuchte und Intervall außerhalb der erlaubten Grenzen liegen.",
+          "why": "Dauerhaft gespeicherte ungültige Einstellungen können das Gerät nach jedem Neustart erneut in einen fehlerhaften Zustand versetzen.",
+          "questions": [
+            "Welche Standardwerte gelten ohne gespeicherten NVS-Eintrag?",
+            "Welche Prüfung verhindert einen Feuchtewert über 100 Prozent?",
+            "Warum wird zusätzlich eine Formatversion gespeichert?"
+          ]
+        }
+      },
+      {
+        "id": "nvs-recovery",
+        "lesson_id": "development_lesson.storage.nvs",
+        "type": "implementation_plan",
+        "title": "Neustart und Formatwechsel testen",
+        "summary": "Prüfe gültige Werte, beschädigte Werte und eine neue Formatversion.",
+        "payload": {
+          "learning_text": [
+            "Persistenz ist erst nachgewiesen, wenn die Daten einen Neustart überstehen. Gleichzeitig brauchst du einen sicheren Ausweg für beschädigte Werte oder eine spätere, unbekannte Formatversion.",
+            "Der Test beschreibt deshalb nicht nur den Normalfall, sondern auch die Rückkehr zu bekannten Standardwerten."
+          ],
+          "task": "Formuliere drei Testfälle: gültige Werte speichern und nach Neustart lesen, einen Grenzwert von 140 ablehnen und bei Formatversion 99 auf sichere Standardwerte zurückfallen.",
+          "expected_result": "Für jeden Testfall sind Eingabe, erwarteter gespeicherter Zustand und erwartetes Verhalten nach dem Neustart eindeutig beschrieben.",
+          "why": "Ein Speichermechanismus ohne Wiederanlauf- und Fehlerfalltest ist nur eine Schreibfunktion, noch keine zuverlässige Persistenz.",
+          "artifact_text": "Links planst du den Nachweis für Neustart, ungültige Daten und einen späteren Formatwechsel.",
+          "tasks": ["Strom trennen und Einstellungen erneut lesen", "Ungültigen Grenzwert ablehnen", "Unbekannte Formatversion auf sicheren Standard zurücksetzen"]
+        }
+      },
+      {
+        "id": "littlefs-file-format",
+        "lesson_id": "development_lesson.storage.littlefs",
+        "type": "explanation",
+        "title": "Ein begrenztes Dateiformat wählen",
+        "summary": "Ein Journal besitzt ein festes Format und eine klare Größenbegrenzung.",
+        "completion": { "type": "acknowledge", "label": "Format gewählt" },
+        "payload": {
+          "learning_text": [
+            "Wenn das WLAN ausfällt, sollen neue Messwerte nicht sofort verloren gehen. Eine kleine Datei im LittleFS kann sie vorübergehend aufnehmen, bis der Server wieder erreichbar ist.",
+            "Die Datei braucht ein festes Format und eine Obergrenze. Sonst wächst sie weiter, bis der Gerätespeicher voll ist."
+          ],
+          "task": "Entscheide dich für CSV oder JSON Lines und notiere einen vollständigen Beispieldatensatz mit Pflanzen-ID, Zeitstempel und Bodenfeuchte. Lege außerdem fest, dass höchstens 120 Einträge erhalten bleiben.",
+          "expected_result": "Du hast ein eindeutig lesbares Zeilenformat und eine klare Regel, welche Einträge bei Erreichen der Grenze entfernt werden.",
+          "why": "Ein definiertes Dateiformat macht aus beliebigem Text ein prüfbares Offline-Journal.",
+          "artifact_text": "Die drei Karten stellen Format und Begrenzungsstrategie gegenüber. Wähle eine nachvollziehbare Kombination.",
+          "cards": [
+            { "title": "CSV", "text": "Einfach lesbar, aber Schema und Escaping müssen festgelegt werden." },
+            { "title": "JSON Lines", "text": "Jede Zeile ist ein eigener Datensatz und kann einzeln geprüft werden." },
+            { "title": "Ringpuffer", "text": "Die ältesten Einträge werden kontrolliert ersetzt." }
+          ]
+        }
+      },
+      {
+        "id": "littlefs-ring-buffer",
+        "lesson_id": "development_lesson.storage.littlefs",
+        "type": "source_analysis",
+        "title": "Messwerte anhängen und begrenzen",
+        "summary": "Schreibe ein kleines Journal, ohne den Flash unbegrenzt zu füllen.",
+        "source_path": "lessons/03-littlefs/messwertlogbuch.cpp",
+        "payload": {
+          "learning_text": [
+            "Der Code links definiert den Inhalt eines Messwerts und die maximale Anzahl von 120 Einträgen. Die Schreib- und Kürzungslogik ist absichtlich noch als Aufgabe markiert.",
+            "Beim 121. Messwert muss nicht die ganze Historie behalten werden. Der älteste bestätigte Eintrag darf kontrolliert weichen."
+          ],
+          "task": "Lies Struktur und MAX_EINTRAEGE. Beschreibe in fünf kurzen Schritten, wie ein neuer Messwert angehängt, geprüft und bei voller Datei der älteste Eintrag entfernt wird.",
+          "expected_result": "Dein Ablauf endet immer mit höchstens 120 vollständig lesbaren Datensätzen und bewahrt die neuesten Messwerte.",
+          "why": "Begrenzter Speicher braucht eine vorhersehbare Aufbewahrungsregel; sonst wird aus Offline-Fähigkeit ein späterer Ausfall.",
+          "questions": [
+            "Welche zwei Werte enthält jeder Messdatensatz?",
+            "Was passiert beim 121. gültigen Eintrag?",
+            "Wann darf ein alter Eintrag entfernt werden?"
+          ]
+        }
+      },
+      {
+        "id": "littlefs-power-loss",
+        "lesson_id": "development_lesson.storage.littlefs",
+        "type": "implementation_plan",
+        "title": "Abbruch und beschädigte Zeile behandeln",
+        "summary": "Eine unvollständige letzte Zeile darf das gesamte Logbuch nicht unlesbar machen.",
+        "payload": {
+          "learning_text": [
+            "Ein Stromausfall kann genau während des Schreibens auftreten. Dann ist möglicherweise nur die letzte Zeile unvollständig; die 119 vorherigen Zeilen sind weiterhin wertvoll.",
+            "Beim Einlesen wird deshalb jeder Datensatz einzeln geprüft. Eine beschädigte letzte Zeile darf nicht das gesamte Journal unbrauchbar machen."
+          ],
+          "task": "Nimm drei gültige Beispielzeilen und hänge eine abgeschnittene vierte Zeile an. Beschreibe, welche Zeilen der Leser übernimmt und welche Fehlermeldung oder Reparatur er auslöst.",
+          "expected_result": "Die drei vollständigen Messwerte bleiben nutzbar, die unvollständige Zeile wird verworfen und das Journal kann anschließend weitergeführt werden.",
+          "why": "Robuste Persistenz schützt den bereits bestätigten Datenbestand auch bei einem abgebrochenen letzten Schreibvorgang.",
+          "artifact_text": "Links entsteht ein Fehlerfalltest für Stromverlust. Entscheidend ist, dass gültige ältere Daten erhalten bleiben.",
+          "tasks": ["Unvollständige letzte Zeile simulieren", "Nur gültige Datensätze übernehmen", "Maximalgröße und Löschstrategie nachweisen"]
+        }
+      },
+      {
+        "id": "sqlite-schema",
+        "lesson_id": "development_lesson.storage.sqlite",
+        "type": "source_analysis",
+        "title": "Relationales Schema erstellen",
+        "summary": "Trenne Pflanzen, Standorte und Messungen in verbundene Tabellen.",
+        "source_path": "lessons/04-sqlite/schema.sql",
+        "payload": {
+          "learning_text": [
+            "Sobald viele Messungen über längere Zeit durchsucht werden sollen, reicht das lineare Dateijournal nicht mehr. Der lokale Server übernimmt die Daten nun in SQLite.",
+            "Das Schema links trennt Orte, Pflanzen und Messungen. Fremdschlüssel verbinden die Tabellen; CHECK-Regeln verhindern unmögliche Feuchtewerte."
+          ],
+          "task": "Verfolge den Weg einer Messung: von messungen.pflanze_id zur Pflanze und von dort zum Standort. Finde außerdem die Regel, die Werte unter 0 oder über 100 verhindert.",
+          "expected_result": "Du kannst die drei Tabellen und ihre beiden Beziehungen erklären und weißt, welche Integritätsregeln SQLite selbst prüft.",
+          "why": "Die Datenbank lohnt sich hier nicht nur wegen Dauerhaftigkeit, sondern wegen Beziehungen, Regeln und späterer Abfragen.",
+          "questions": [
+            "Welche Tabelle wächst bei jeder neuen Messung?",
+            "Warum steht der Standort nicht noch einmal in jeder Messung?",
+            "Welche Spalten verhindern verwaiste Beziehungen?"
+          ]
+        }
+      },
+      {
+        "id": "sqlite-queries",
+        "lesson_id": "development_lesson.storage.sqlite",
+        "type": "source_analysis",
+        "title": "Fragen mit SQL beantworten",
+        "summary": "Filtere Messungen und verbinde sie mit Pflanze und Standort.",
+        "source_path": "lessons/04-sqlite/abfragen.sql",
+        "payload": {
+          "learning_text": [
+            "Die SQL-Abfrage beantwortet eine fachliche Frage: Welche Pflanze war wann trockener als ihr eigener Grenzwert und an welchem Standort stand sie?",
+            "JOIN verbindet die getrennt gespeicherten Informationen erst für die Ausgabe. WHERE vergleicht jeden Messwert mit dem Grenzwert seiner Pflanze."
+          ],
+          "task": "Lies die Abfrage von FROM über JOIN und WHERE bis ORDER BY. Formuliere anschließend in einem deutschen Satz, welche Ergebniszeilen erscheinen und in welcher Reihenfolge.",
+          "expected_result": "Du kannst erklären, dass nur zu trockene Messungen mit Pflanzen- und Standortname erscheinen, beginnend mit der neuesten Messung.",
+          "why": "Eine Datenbank wird nützlich, wenn sie konkrete Fragen zuverlässig beantwortet und nicht bloß Datensätze aufbewahrt.",
+          "questions": [
+            "Welche drei Tabellen werden verbunden?",
+            "Welche Bedingung entscheidet, ob eine Messung zu trocken ist?",
+            "Warum wird absteigend nach gemessen_am sortiert?"
+          ]
+        }
+      },
+      {
+        "id": "sqlite-transaction",
+        "lesson_id": "development_lesson.storage.sqlite",
+        "type": "implementation_plan",
+        "title": "Zusammengehörige Änderungen absichern",
+        "summary": "Import und Statusänderung werden vollständig oder gar nicht gespeichert.",
+        "payload": {
+          "learning_text": [
+            "Beim Import gehören zwei Änderungen zusammen: Der Messwert wird gespeichert und die Quelldatei als verarbeitet markiert. Passiert nur eine davon, kann derselbe Wert später doppelt importiert werden oder ganz verschwinden.",
+            "Eine Transaktion fasst beide Änderungen zu einer Einheit zusammen. Bei einem Fehler setzt ROLLBACK alles auf den vorherigen Zustand zurück."
+          ],
+          "task": "Schreibe einen Ablauf mit BEGIN, Einfügen des Messwerts, Aktualisieren des Importstatus und COMMIT. Setze gedanklich vor COMMIT einen Fehler und beschreibe den Zustand nach ROLLBACK.",
+          "expected_result": "Entweder sind Messwert und Importstatus beide gespeichert oder beide unverändert. Ein halbfertiger Import ist ausgeschlossen.",
+          "why": "Transaktionen schützen fachlich zusammengehörige Änderungen vor Zwischenzuständen.",
+          "artifact_text": "Links planst du den atomaren Import. Prüfe ausdrücklich Erfolgsfall und Rollback-Fall.",
+          "tasks": ["Transaktion beginnen", "Messwert importieren und Importstatus ändern", "Fehler auslösen und Rollback prüfen"]
+        }
+      },
+      {
+        "id": "archive-boundary",
+        "lesson_id": "development_lesson.storage.file_archive",
+        "type": "source_analysis",
+        "title": "Datei und Metadaten trennen",
+        "summary": "SQLite speichert Identität und Suchdaten; der Dateispeicher enthält das Bild oder den Export.",
+        "source_path": "lessons/05-dateiarchiv/architektur.md",
+        "payload": {
+          "learning_text": [
+            "Ein Foto der Pflanze oder ein großer CSV-Export ist anders aufgebaut als ein Messwert. Die Datei soll als Datei erhalten bleiben; trotzdem möchtest du nach Projekt, Medientyp oder Version suchen.",
+            "Darum speichert SQLite nur Identität und Metadaten. Der eigentliche Dateiinhalt liegt im Dateispeicher und wird über eine stabile ID und einen kontrollierten Pfad gefunden."
+          ],
+          "task": "Teile die genannten Felder in Datenbank-Metadaten und Dateiinhalt auf. Erkläre anschließend, wie die Anwendung von asset_id zur richtigen Datei gelangt.",
+          "expected_result": "SQLite enthält asset_id, Projektbezug, Dateiname, Typ, Version, Prüfsumme und Pfad; Bild oder Export bleiben außerhalb der Tabelle.",
+          "why": "Datenbank und Dateispeicher werden nach ihren Stärken kombiniert, statt große Binärdateien ohne fachlichen Nutzen in Tabellen zu pressen.",
+          "questions": [
+            "Welche Informationen müssen durchsuchbar sein?",
+            "Welcher Inhalt bleibt im Dateispeicher?",
+            "Welche Felder verbinden Metadatensatz und Datei?"
+          ]
+        }
+      },
+      {
+        "id": "archive-integrity",
+        "lesson_id": "development_lesson.storage.file_archive",
+        "type": "implementation_plan",
+        "title": "Prüfsumme, Version und Backup",
+        "summary": "Ein Datenbankeintrag darf nicht auf eine fehlende oder veränderte Datei zeigen.",
+        "payload": {
+          "learning_text": [
+            "Ein Metadatensatz ist wertlos, wenn die referenzierte Datei fehlt. Umgekehrt ist eine namenlose Datei ohne Projektbezug und Suchdaten kaum nutzbar.",
+            "Die SHA-256-Prüfsumme zeigt, ob sich der Dateiinhalt verändert hat. Das Backup muss deshalb Datenbank und Dateispeicher als zusammengehörigen Bestand behandeln."
+          ],
+          "task": "Beschreibe Speichern, Lesen und Wiederherstellen eines Pflanzenfotos. Nenne dabei stabile ID, Pfadprüfung, SHA-256-Vergleich und die gemeinsame Sicherung von Datei und Metadaten.",
+          "expected_result": "Nach einer Wiederherstellung findet jeder Metadatensatz genau eine unveränderte Datei; fehlende oder manipulierte Dateien werden erkannt.",
+          "why": "Referenzielle Integrität endet bei Dateispeichern nicht an der Datenbankgrenze und muss von Anwendung und Backup gemeinsam abgesichert werden.",
+          "artifact_text": "Links entsteht die Integritätskette vom Metadatensatz über Pfad und Prüfsumme bis zum gemeinsamen Restore.",
+          "tasks": ["Datei mit stabiler ID ablegen", "SHA-256-Prüfsumme speichern", "Datei und Metadaten gemeinsam sichern und wiederherstellen"]
+        }
+      },
+      {
+        "id": "archive-webdav-option",
+        "lesson_id": "development_lesson.storage.file_archive",
+        "type": "explanation",
+        "title": "WebDAV als freiwillige Erweiterung",
+        "summary": "Vergleiche eine eigene API mit einem standardisierten Dateizugriff.",
+        "completion": { "type": "acknowledge", "label": "Option eingeordnet" },
+        "payload": {
+          "learning_text": [
+            "Das Archiv funktioniert bereits über die Anwendung. WebDAV ist keine Voraussetzung, sondern eine mögliche zusätzliche Zugriffsschicht für Standard-Dateiclients.",
+            "Die Entscheidung fällt auf dem lokalen Server. Der ESP32 bleibt Sensor, Konfigurationsspeicher und Offline-Puffer; er wird nicht zum zentralen Dateiserver."
+          ],
+          "task": "Vergleiche eigene API und WebDAV für zwei Nutzerwünsche: gezielte Suche nach Pflanzendaten und bequemes Öffnen von Dateien im Dateimanager. Entscheide, welcher Zugriff jeweils besser passt.",
+          "expected_result": "Die eigene API übernimmt fachliche Suche und Regeln. WebDAV kann optional den allgemeinen Dateizugriff ergänzen, ohne Datenbank oder API zu ersetzen.",
+          "why": "Eine optionale Schnittstelle sollte ein echtes Zugriffsproblem lösen und nicht unnötig in jede Systemkomponente eingebaut werden.",
+          "artifact_text": "Zum Abschluss ordnest du WebDAV als optionale Serverschnittstelle ein und hältst die Verantwortungsgrenzen des Systems stabil.",
+          "cards": [
+            { "title": "Eigene API", "text": "Fachliche Regeln und Berechtigungen können exakt zugeschnitten werden." },
+            { "title": "WebDAV", "text": "Standard-Dateiclients können zugreifen; Betrieb und Autorisierung bleiben Serveraufgaben." },
+            { "title": "Kein Mikrocontroller-Dienst", "text": "Der ESP32 bleibt Datenquelle und Offline-Puffer, nicht zentraler Dateiserver." }
+          ]
+        }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "docs/projektstory.md",
+      "role": "project_story",
+      "content": "# Vom gespeicherten Wert zur Datenplattform\n\nDer intelligente Pflanzenplatz wächst in fünf Lessons. Jede Lesson übernimmt Ergebnisse der vorherigen Stufe und macht deren nächste Grenze sichtbar. Für einen Einzelstart liefert GerNetiX einen vorbereiteten Snapshot.\n"
+    },
+    {
+      "path": "lessons/01-datenstrukturen/inventar.js",
+      "role": "user_code",
+      "content": "const standorte = [{ id: \"fenster_sued\", name: \"Südfenster\" }];\nconst pflanzen = [{ id: \"basilikum_1\", name: \"Basilikum\", standortId: \"fenster_sued\", feuchteGrenzwert: 35 }];\n\nfunction pflanzenAmStandort(standortId) {\n  return pflanzen.filter((pflanze) => pflanze.standortId === standortId);\n}\n"
+    },
+    {
+      "path": "lessons/02-nvs/nvs-einstellungen.cpp",
+      "role": "learning_example",
+      "content": "// Lernbeispiel: API an das verwendete ESP32-Framework anpassen.\nstruct Einstellungen {\n  int formatVersion = 1;\n  int feuchteGrenzwert = 35;\n  int messintervallSekunden = 60;\n};\n\nbool istGueltig(const Einstellungen& wert) {\n  return wert.formatVersion == 1\n    && wert.feuchteGrenzwert >= 0 && wert.feuchteGrenzwert <= 100\n    && wert.messintervallSekunden >= 10;\n}\n"
+    },
+    {
+      "path": "lessons/03-littlefs/messwertlogbuch.cpp",
+      "role": "learning_example",
+      "content": "// Lernbeispiel: begrenztes Journal statt unbegrenzter Historie.\nstruct Messwert {\n  long zeitstempel;\n  int bodenfeuchteProzent;\n};\n\nconstexpr size_t MAX_EINTRAEGE = 120;\n// Aufgabe: als JSON Lines oder CSV schreiben, gültige Zeilen lesen\n// und bei MAX_EINTRAEGE die ältesten Einträge kontrolliert ersetzen.\n"
+    },
+    {
+      "path": "lessons/04-sqlite/schema.sql",
+      "role": "database_schema",
+      "content": "PRAGMA foreign_keys = ON;\n\nCREATE TABLE standorte (\n  standort_id TEXT PRIMARY KEY,\n  name TEXT NOT NULL\n);\n\nCREATE TABLE pflanzen (\n  pflanze_id TEXT PRIMARY KEY,\n  standort_id TEXT NOT NULL REFERENCES standorte(standort_id),\n  name TEXT NOT NULL,\n  feuchte_grenzwert INTEGER NOT NULL CHECK (feuchte_grenzwert BETWEEN 0 AND 100)\n);\n\nCREATE TABLE messungen (\n  messung_id INTEGER PRIMARY KEY,\n  pflanze_id TEXT NOT NULL REFERENCES pflanzen(pflanze_id),\n  gemessen_am TEXT NOT NULL,\n  bodenfeuchte_prozent INTEGER NOT NULL CHECK (bodenfeuchte_prozent BETWEEN 0 AND 100)\n);\n\nCREATE INDEX idx_messungen_pflanze_zeit ON messungen(pflanze_id, gemessen_am);\n"
+    },
+    {
+      "path": "lessons/04-sqlite/abfragen.sql",
+      "role": "database_query",
+      "content": "SELECT p.name, s.name AS standort, m.gemessen_am, m.bodenfeuchte_prozent\nFROM messungen m\nJOIN pflanzen p ON p.pflanze_id = m.pflanze_id\nJOIN standorte s ON s.standort_id = p.standort_id\nWHERE m.bodenfeuchte_prozent < p.feuchte_grenzwert\nORDER BY m.gemessen_am DESC;\n"
+    },
+    {
+      "path": "lessons/04-sqlite/beispieldaten.csv",
+      "role": "sample_data",
+      "content": "pflanze_id,gemessen_am,bodenfeuchte_prozent\nbasilikum_1,2026-07-23T08:00:00Z,42\nbasilikum_1,2026-07-23T12:00:00Z,31\n"
+    },
+    {
+      "path": "lessons/05-dateiarchiv/architektur.md",
+      "role": "architecture_model",
+      "content": "# Lokales Projektarchiv\n\n## SQLite-Metadaten\n\n- asset_id\n- projekt_id\n- dateiname\n- medientyp\n- version\n- sha256\n- speicherpfad\n\n## Dateispeicher\n\nBilder, CSV-Exporte und Berichte liegen außerhalb der relationalen Tabellen. Die Anwendung prüft beim Lesen Pfad, Berechtigung und SHA-256-Prüfsumme.\n\n## Option\n\nWebDAV kann später als zusätzlicher Dateizugriff des lokalen Servers ergänzt werden. Der ESP32 bleibt Datenquelle und Offline-Puffer.\n"
+    }
+  ]
+}

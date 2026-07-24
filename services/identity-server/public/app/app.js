@@ -70,6 +70,7 @@ const routeMap = {
   "development-platform": "developmentPlatformView",
   "development-hardware": "developmentHardwareView",
   learn: "learnView",
+  "learning-project-overview": "learningProjectOverviewView",
   "learning-project": "learningProjectView",
   ide: "ideView",
   "device-management": "deviceManagementView",
@@ -473,6 +474,7 @@ function renderRoute() {
     developmentPlatform().renderHardwareConfiguration();
   }
   if (route === "ide") loadIdeProject();
+  if (route === "learning-project-overview") renderLearningProjectOverview();
   if (route === "learning-project") learningProject().render();
   if (route === "device-recovery") {
     renderDeviceRecovery();
@@ -533,6 +535,11 @@ function currentLocationTrail(route) {
     learn: [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Lernplattform", route: "/app/learn/" },
+    ],
+    "learning-project-overview": [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Lernplattform", route: "/app/learn/" },
+      { label: "Projektübersicht", route: "" },
     ],
     "learning-project": [
       { label: "Plattform", route: "/app/dashboard/" },
@@ -616,7 +623,7 @@ function routeName() {
 }
 
 function topLevelRouteName(route) {
-  if (route === "learning-project") return "learn";
+  if (["learning-project-overview", "learning-project"].includes(route)) return "learn";
   if (["device-management", "device-provisioning", "device-inventory", "device-recovery"].includes(route)) return "device-management";
   if (["ide", "development-hardware"].includes(route)) return "development-platform";
   return route;
@@ -979,10 +986,13 @@ function renderProjects() {
     return categoryMatches && tagMatches;
   }).sort((left, right) => Number(right.slug === requestedCatalogSlug) - Number(left.slug === requestedCatalogSlug));
   projectList.innerHTML = catalogProjects.length ? catalogProjects.map((project) => `
-    <article class="project-card learning-catalog-card${project.slug === requestedCatalogSlug ? " is-linked" : ""}" data-catalog-slug="${escapeAttribute(project.slug)}">
+    <a class="project-card learning-catalog-card${project.slug === requestedCatalogSlug ? " is-linked" : ""} learning-project-tile"
+      href="/app/learning-project-overview/?project=${encodeURIComponent(project.id)}"
+      data-open-learning-project-overview="${escapeAttribute(project.id)}"
+      data-catalog-slug="${escapeAttribute(project.slug)}">
       <div>
         <div class="learning-catalog-card-head">
-          <p class="eyebrow">${escapeHtml(project.type || "Lernprojekt")}</p>
+          <p class="eyebrow">${escapeHtml(learningHeadlineLabel(project))}</p>
           <span class="learning-access-badge ${escapeAttribute(project.accessModel || "subscription")}">${escapeHtml(learningAccessLabel(project.accessModel))}</span>
         </div>
         <h2>${escapeHtml(project.name)}</h2>
@@ -994,17 +1004,83 @@ function renderProjects() {
           ${(project.tags || []).map((tag) => `<li>${escapeHtml(learningTagLabel(tag))}</li>`).join("")}
         </ul>
       </div>
-      <div class="card-actions">
-        <button class="primary" type="button" data-open-project="${escapeHtml(project.id)}">Lernprojekt starten</button>
-      </div>
-    </article>
+    </a>
   `).join("") : `<p class="empty">Im Lernprojekt-Katalog sind noch keine Projekte verfuegbar.</p>`;
-  document.querySelectorAll("#projectList [data-open-project]").forEach((button) => {
-    button.addEventListener("click", () => learningProject().open(button.dataset.openProject));
+  document.querySelectorAll("#projectList [data-open-learning-project-overview]").forEach((tile) => {
+    tile.addEventListener("click", (event) => {
+      event.preventDefault();
+      navigate(`/app/learning-project-overview/?project=${encodeURIComponent(tile.dataset.openLearningProjectOverview)}`);
+    });
   });
   if (requestedCatalogSlug) {
     projectList.querySelector(`[data-catalog-slug="${CSS.escape(requestedCatalogSlug)}"]`)?.scrollIntoView({ block: "center" });
   }
+}
+
+function renderLearningProjectOverview() {
+  const target = document.querySelector("#learningProjectOverview");
+  if (!target) return;
+  const query = new URLSearchParams(window.location.search);
+  const projectId = query.get("project") || "";
+  const catalogSlug = query.get("catalog") || "";
+  const project = learningCatalogProjects().find((item) => item.id === projectId || item.slug === catalogSlug);
+  if (!project) {
+    target.innerHTML = `
+      <p class="eyebrow">Lernprojekt</p>
+      <h2>Projekt nicht gefunden</h2>
+      <p class="helper-text">Dieses Lernprojekt ist im aktuellen Katalog nicht verfügbar.</p>
+      <div class="button-row learning-project-overview-actions">
+        <button type="button" data-back-to-learning-catalog>Zurück</button>
+      </div>
+    `;
+  } else {
+    const lessons = project.developmentLessons || [];
+    target.innerHTML = `
+      <header class="learning-project-overview-head">
+        <p class="eyebrow">${escapeHtml(learningHeadlineLabel(project))}</p>
+        <h2>${escapeHtml(project.name)}</h2>
+        <p>${escapeHtml(project.description)}</p>
+      </header>
+      ${project.projectStory?.problem ? `
+        <section class="learning-project-story-summary">
+          <h3>Worum geht es in diesem Projekt?</h3>
+          <p>${escapeHtml(project.projectStory.problem)}</p>
+          ${project.projectStory.learning_goal ? `<div><strong>Was du lernst</strong><p>${escapeHtml(project.projectStory.learning_goal)}</p></div>` : ""}
+          ${project.projectStory.working_method ? `<div><strong>So arbeitest du</strong><p>${escapeHtml(project.projectStory.working_method)}</p></div>` : ""}
+          ${project.projectStory.result ? `<div><strong>Dein Ergebnis</strong><p>${escapeHtml(project.projectStory.result)}</p></div>` : ""}
+        </section>
+      ` : ""}
+      <section class="learning-project-lesson-overview">
+        <header>
+          <p class="eyebrow">Projektaufbau</p>
+          <h3>So ist das Projekt aufgebaut</h3>
+          <p>Fünf Etappen führen dich von einfachen Daten im Arbeitsspeicher bis zur durchsuchbaren Datenbank und zum Dateiarchiv.</p>
+        </header>
+        ${lessons.length ? `
+          <ol>
+            ${lessons.map((lesson) => `
+              <li>
+                <span>${escapeHtml(String(lesson.order_index || ""))}</span>
+                <div>
+                  <strong>${escapeHtml(lesson.title)}</strong>
+                  <p>${escapeHtml(lesson.summary)}</p>
+                  <small>${lesson.standalone_start?.hardware_required ? "Praxisabschnitt mit ESP32" : "Ohne zusätzliche Hardware"}</small>
+                </div>
+              </li>
+            `).join("")}
+          </ol>
+        ` : `<p class="empty">Die Lessons für dieses Lernprojekt werden noch zugeordnet.</p>`}
+      </section>
+      <div class="button-row learning-project-overview-actions">
+        <button type="button" data-back-to-learning-catalog>Zurück</button>
+        <button class="primary" type="button" data-start-learning-project="${escapeAttribute(project.id)}">Lernprojekt starten</button>
+      </div>
+    `;
+  }
+  target.querySelector("[data-back-to-learning-catalog]")?.addEventListener("click", () => navigate("/app/learn/"));
+  target.querySelector("[data-start-learning-project]")?.addEventListener("click", (event) => {
+    learningProject().open(event.currentTarget.dataset.startLearningProject);
+  });
 }
 
 function learningCategoryLabel(category) {
@@ -1035,11 +1111,35 @@ function learningTagLabel(tag) {
     "topic:firmware": "Firmware",
     "topic:home-automation": "Hausautomation",
     "topic:modeling": "Modellierung",
+    "topic:programming": "Programmierung",
     "topic:radar": "Radar",
     "topic:sensors": "Sensoren",
+    "topic:data": "Daten",
+    "topic:databases": "Datenbanken",
+    "topic:storage": "Speicher",
     "topic:web-push": "Web Push",
   };
   return labels[tag] || String(tag || "").split(":").pop();
+}
+
+function learningHeadlineLabel(project) {
+  const primaryTopic = (project.tags || []).find((tag) => String(tag).startsWith("topic:"));
+  return {
+    "topic:actuators": "Aktorik",
+    "topic:ai": "Künstliche Intelligenz",
+    "topic:automation": "Automatisierung",
+    "topic:bare-metal": "Bare Metal",
+    "topic:firmware": "Firmware",
+    "topic:home-automation": "Hausautomation",
+    "topic:modeling": "Modellierung",
+    "topic:programming": "Programmierung",
+    "topic:radar": "Radartechnik",
+    "topic:sensors": "Sensorik",
+    "topic:data": "Daten",
+    "topic:databases": "Datenbanken",
+    "topic:storage": "Speicher",
+    "topic:web-push": "Web Push",
+  }[primaryTopic] || learningCategoryLabel(project.learningCategory);
 }
 
 function learningAccessLabel(accessModel) {

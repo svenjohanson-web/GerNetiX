@@ -13,8 +13,8 @@ function createMemoryProjectServer() {
   return createDefaultProjectServer({ persistenceBackend: "memory" });
 }
 
-function createDemoProject(service) {
-  return service.createProject({
+async function createDemoProject(service) {
+  return await service.createProject({
     user_id: "user-1",
     title: "ESP32 Lernprojekt",
     description: "Blinken und OTA lernen",
@@ -30,7 +30,7 @@ function createDemoProject(service) {
   });
 }
 
-test("defaults project persistence to dedicated project sqlite storage", () => {
+test("defaults project persistence to dedicated project sqlite storage", async () => {
   const config = createConfig({});
 
   assert.equal(config.persistenceBackend, "sqlite");
@@ -39,18 +39,39 @@ test("defaults project persistence to dedicated project sqlite storage", () => {
   assert.equal(path.basename(config.sqlitePath), "gernetix-projects.sqlite");
 });
 
-test("creates project with default source and lists it by user", () => {
+test("configures the shared VPS project PostgreSQL backend explicitly", () => {
+  const config = createConfig({
+    PERSISTENCE_BACKEND: "postgres",
+    PROJECT_POSTGRES_HOST: "project-postgres",
+    PROJECT_POSTGRES_PORT: "5433",
+    PROJECT_POSTGRES_DATABASE: "gernetix_projects",
+    PROJECT_POSTGRES_USER: "project-user",
+    PROJECT_POSTGRES_PASSWORD: "secret",
+  });
+
+  assert.equal(config.persistenceBackend, "postgres");
+  assert.deepEqual(config.postgres, {
+    connectionString: "",
+    host: "project-postgres",
+    port: 5433,
+    database: "gernetix_projects",
+    user: "project-user",
+    password: "secret",
+  });
+});
+
+test("creates project with default source and lists it by user", async () => {
   const service = createMemoryProjectServer();
-  const project = createDemoProject(service);
+  const project = await createDemoProject(service);
 
   assert.equal(project.user_id, "user-1");
   assert.equal(project.source_count, 1);
-  assert.equal(service.listProjects({ user_id: "user-1" }).length, 1);
+  assert.equal((await service.listProjects({ user_id: "user-1" })).length, 1);
 });
 
-test("legacy comfort basis is normalized to full and preserves project web extensions", () => {
+test("legacy comfort basis is normalized to full and preserves project web extensions", async () => {
   const service = createMemoryProjectServer();
-  const project = service.createProject({
+  const project = await service.createProject({
     user_id: "user-1",
     title: "Web Device",
     build_config: {
@@ -70,36 +91,39 @@ test("legacy comfort basis is normalized to full and preserves project web exten
   assert.equal(project.build_config.component_features.webserver.measurement_label, "Temperatur");
 });
 
-test("stores project sources with hashes and rejects path traversal", () => {
+test("stores project sources with hashes and rejects path traversal", async () => {
   const service = createMemoryProjectServer();
-  const project = createDemoProject(service);
-  const source = service.upsertSource(project.project_id, {
+  const project = await createDemoProject(service);
+  const source = await service.upsertSource(project.project_id, {
     path: "include/settings.h",
     content: "#define GNX 1\n",
   });
 
   assert.equal(source.role, "header");
   assert.equal(source.content_sha256.length, 64);
-  assert.throws(() => service.upsertSource(project.project_id, { path: "../secret.txt", content: "x" }), /Source-Pfad/);
+  await assert.rejects(
+    service.upsertSource(project.project_id, { path: "../secret.txt", content: "x" }),
+    /Source-Pfad/,
+  );
 });
 
-test("searches project sources for a known task instead of returning the whole project", () => {
+test("searches project sources for a known task instead of returning the whole project", async () => {
   const service = createMemoryProjectServer();
-  const project = createDemoProject(service);
-  service.upsertSource(project.project_id, {
+  const project = await createDemoProject(service);
+  await service.upsertSource(project.project_id, {
     path: "Architektur/system.puml",
     content: "@startuml\nnode ESP32\n@enduml\n",
   });
-  service.upsertSource(project.project_id, {
+  await service.upsertSource(project.project_id, {
     path: "Komponenten/IoT-Device 1/Sensoren/temperature.cpp",
     content: "void readTemperatureSensor() {}\n",
   });
-  service.upsertSource(project.project_id, {
+  await service.upsertSource(project.project_id, {
     path: "docs/unrelated.md",
     content: "Abrechnung und Vertrag\n",
   });
 
-  const matches = service.searchSources(project.project_id, {
+  const matches = await service.searchSources(project.project_id, {
     query: "Temperature Sensor in die Architektur aufnehmen",
     current_path: "Architektur/system.puml",
     limit: 2,
@@ -111,7 +135,7 @@ test("searches project sources for a known task instead of returning the whole p
   ]);
   assert.equal(matches[0].content.includes("@startuml"), true);
 
-  const architectureOnly = service.searchSources(project.project_id, {
+  const architectureOnly = await service.searchSources(project.project_id, {
     query: "neues Prozessorboard ESP32",
     current_path: "Komponenten/IoT-Device 1/Sensoren/temperature.cpp",
     source_kind: "architecture",
@@ -120,22 +144,22 @@ test("searches project sources for a known task instead of returning the whole p
   assert.deepEqual(architectureOnly.map((source) => source.path), ["Architektur/system.puml"]);
 });
 
-test("creates reproducible build package for build deploy server", () => {
+test("creates reproducible build package for build deploy server", async () => {
   const service = createMemoryProjectServer();
-  const project = createDemoProject(service);
-  service.upsertSource(project.project_id, {
+  const project = await createDemoProject(service);
+  await service.upsertSource(project.project_id, {
     path: "src/app.cpp",
     content: "void app() {}\n",
   });
-  const job = service.createBuildJob(project.project_id, { mode: "build_and_flash" });
-  const buildPackage = service.createBuildPackage(job.build_job_id);
+  const job = await service.createBuildJob(project.project_id, { mode: "build_and_flash" });
+  const buildPackage = await service.createBuildPackage(job.build_job_id);
 
   assert.equal(buildPackage.build_job.mode, "build_and_flash");
   assert.equal(buildPackage.files.some((file) => file.path === "platformio.ini"), true);
   assert.equal(buildPackage.files.some((file) => file.path === "src/app.cpp"), true);
 });
 
-test("composes ESP32 basissoftware with only the project-owned user main", () => {
+test("composes ESP32 basissoftware with only the project-owned user main", async () => {
   const service = new ProjectService({
     repository: new InMemoryProjectRepository(),
     loadEsp32BasissoftwareFiles: () => [
@@ -144,7 +168,7 @@ test("composes ESP32 basissoftware with only the project-owned user main", () =>
       { path: "src/user/user_app.cpp", content: "void oldUserMain() {}\n", content_type: "text/x-c++src" },
     ],
   });
-  const project = service.createProject({
+  const project = await service.createProject({
     user_id: "user-1",
     title: "ESP32 Durchstich",
     build_config: {
@@ -158,8 +182,8 @@ test("composes ESP32 basissoftware with only the project-owned user main", () =>
     },
     sources: [{ path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: "extern \"C\" void userMain() {}\n" }],
   });
-  const job = service.createBuildJob(project.project_id);
-  const buildPackage = service.createBuildPackage(job.build_job_id);
+  const job = await service.createBuildJob(project.project_id);
+  const buildPackage = await service.createBuildPackage(job.build_job_id);
 
   assert.equal(project.build_config.firmware_basis_variant, "full");
   assert.equal(buildPackage.platformio_ini, "framework = espidf\n");
@@ -168,9 +192,9 @@ test("composes ESP32 basissoftware with only the project-owned user main", () =>
   assert.equal(buildPackage.files.some((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp"), false);
 });
 
-test("stores project view manifest and includes it in build package", () => {
+test("stores project view manifest and includes it in build package", async () => {
   const service = createMemoryProjectServer();
-  const project = service.createProject({
+  const project = await service.createProject({
     user_id: "user-1",
     title: "Gefuehrte IDE",
     view_manifest: {
@@ -210,9 +234,9 @@ test("stores project view manifest and includes it in build package", () => {
       ],
     },
   });
-  const stored = service.getProject(project.project_id);
-  const job = service.createBuildJob(project.project_id);
-  const buildPackage = service.createBuildPackage(job.build_job_id);
+  const stored = await service.getProject(project.project_id);
+  const job = await service.createBuildJob(project.project_id);
+  const buildPackage = await service.createBuildPackage(job.build_job_id);
   const manifestFile = buildPackage.files.find((file) => file.path === "project-view-manifest.json");
 
   assert.equal(stored.view_manifest.views.length, 2);
@@ -238,9 +262,9 @@ test("stores project view manifest and includes it in build package", () => {
   assert.equal(JSON.parse(manifestFile.content).views[1].type, "plantuml");
 });
 
-test("rejects build jobs for model-only projects without build config", () => {
+test("rejects build jobs for model-only projects without build config", async () => {
   const service = createMemoryProjectServer();
-  const project = service.createProject({
+  const project = await service.createProject({
     user_id: "user-1",
     title: "Tamagotchi Verhaltensmodell",
     build_config: null,
@@ -251,15 +275,15 @@ test("rejects build jobs for model-only projects without build config", () => {
     },
   });
 
-  assert.throws(
-    () => service.createBuildJob(project.project_id),
+  await assert.rejects(
+    service.createBuildJob(project.project_id),
     /keine Build-Konfiguration/
   );
 });
 
-test("creates atmel avr build package without arduino framework", () => {
+test("creates atmel avr build package without arduino framework", async () => {
   const service = createMemoryProjectServer();
-  const project = service.createProject({
+  const project = await service.createProject({
     user_id: "user-1",
     title: "Arduino Atmel Bare Metal",
     build_config: {
@@ -270,34 +294,34 @@ test("creates atmel avr build package without arduino framework", () => {
     },
     sources: [{ path: "src/main.c", content: "int main(void) { return 0; }\n" }],
   });
-  const job = service.createBuildJob(project.project_id, { mode: "build_and_usb_flash" });
-  const buildPackage = service.createBuildPackage(job.build_job_id);
+  const job = await service.createBuildJob(project.project_id, { mode: "build_and_usb_flash" });
+  const buildPackage = await service.createBuildPackage(job.build_job_id);
   const platformioIni = buildPackage.files.find((file) => file.path === "platformio.ini").content;
 
   assert.match(platformioIni, /platform = atmelavr/);
   assert.doesNotMatch(platformioIni, /framework = arduino/);
 });
 
-test("records build result and firmware artifacts in project history", () => {
+test("records build result and firmware artifacts in project history", async () => {
   const service = createMemoryProjectServer();
-  const project = createDemoProject(service);
-  const job = service.createBuildJob(project.project_id);
-  service.markBuildSubmitted(job.build_job_id, { build_deploy_job_id: "bd-1" });
+  const project = await createDemoProject(service);
+  const job = await service.createBuildJob(project.project_id);
+  await service.markBuildSubmitted(job.build_job_id, { build_deploy_job_id: "bd-1" });
 
-  const result = service.recordBuildResult(job.build_job_id, {
+  const result = await service.recordBuildResult(job.build_job_id, {
     status: "succeeded",
     artifacts: [{ file_name: "firmware.bin", url: "http://127.0.0.1/artifacts/job/firmware.bin", sha256: "abc" }],
   });
-  const artifacts = service.listArtifacts({ project_id: project.project_id });
+  const artifacts = await service.listArtifacts({ project_id: project.project_id });
 
   assert.equal(result.status, "succeeded");
   assert.equal(artifacts[0].file_name, "firmware.bin");
 });
 
-test("feedback hides contact data until explicit feedback consent exists", () => {
+test("feedback hides contact data until explicit feedback consent exists", async () => {
   const service = createMemoryProjectServer();
-  const project = createDemoProject(service);
-  const feedback = service.createFeedback({
+  const project = await createDemoProject(service);
+  const feedback = await service.createFeedback({
     project_id: project.project_id,
     message: "Ich haenge bei OTA.",
     contact_mode: "email",
@@ -305,15 +329,15 @@ test("feedback hides contact data until explicit feedback consent exists", () =>
   });
 
   assert.equal(feedback.contact_email, "");
-  service.createFeedbackConsent(feedback.feedback_id, { valid_until: "2099-01-01T00:00:00.000Z" });
-  const visible = service.listFeedback({ project_id: project.project_id })[0];
+  await service.createFeedbackConsent(feedback.feedback_id, { valid_until: "2099-01-01T00:00:00.000Z" });
+  const visible = (await service.listFeedback({ project_id: project.project_id }))[0];
   assert.equal(visible.contact_email, "sven@example.test");
 });
 
-test("anonymizes expired feedback after maximum retention window", () => {
+test("anonymizes expired feedback after maximum retention window", async () => {
   const service = createMemoryProjectServer();
-  const project = createDemoProject(service);
-  service.createFeedback({
+  const project = await createDemoProject(service);
+  await service.createFeedback({
     project_id: project.project_id,
     user_id: "user-1",
     message: "Bitte anonymisieren.",
@@ -321,43 +345,43 @@ test("anonymizes expired feedback after maximum retention window", () => {
     anonymize_after: "2020-01-01T00:00:00.000Z",
   });
 
-  const anonymized = service.anonymizeExpiredFeedback(new Date("2026-01-01T00:00:00.000Z"));
+  const anonymized = await service.anonymizeExpiredFeedback(new Date("2026-01-01T00:00:00.000Z"));
   assert.equal(anonymized[0].user_id, "anonymous");
   assert.equal(anonymized[0].contact_email, "");
 });
 
-test("json repository persists projects, sources and build jobs across reload", () => {
+test("json repository persists projects, sources and build jobs across reload", async () => {
   const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gnx-project-server-"));
   const service = new ProjectService({
     repository: FileBackedProjectRepository.create(runtimeRoot),
   });
-  const project = createDemoProject(service);
-  const job = service.createBuildJob(project.project_id, { mode: "prebuild" });
+  const project = await createDemoProject(service);
+  const job = await service.createBuildJob(project.project_id, { mode: "prebuild" });
 
   const reloaded = new ProjectService({
     repository: FileBackedProjectRepository.create(runtimeRoot),
   });
 
-  assert.equal(reloaded.getProject(project.project_id).title, "ESP32 Lernprojekt");
-  assert.equal(reloaded.listSources(project.project_id).length, 1);
-  assert.equal(reloaded.getBuildJob(job.build_job_id).mode, "prebuild");
+  assert.equal((await reloaded.getProject(project.project_id)).title, "ESP32 Lernprojekt");
+  assert.equal((await reloaded.listSources(project.project_id)).length, 1);
+  assert.equal((await reloaded.getBuildJob(job.build_job_id)).mode, "prebuild");
 });
 
-test("sqlite repository persists projects, sources and build jobs across reload", () => {
+test("sqlite repository persists projects, sources and build jobs across reload", async () => {
   const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-project-server-sqlite-")), "state.sqlite");
   const service = new ProjectService({
     repository: SqliteBackedProjectRepository.create(dbPath),
   });
-  const project = createDemoProject(service);
-  const job = service.createBuildJob(project.project_id, { mode: "prebuild" });
+  const project = await createDemoProject(service);
+  const job = await service.createBuildJob(project.project_id, { mode: "prebuild" });
 
   const reloaded = new ProjectService({
     repository: SqliteBackedProjectRepository.create(dbPath),
   });
 
-  assert.equal(reloaded.getProject(project.project_id).title, "ESP32 Lernprojekt");
-  assert.equal(reloaded.listSources(project.project_id).length, 1);
-  assert.equal(reloaded.getBuildJob(job.build_job_id).mode, "prebuild");
+  assert.equal((await reloaded.getProject(project.project_id)).title, "ESP32 Lernprojekt");
+  assert.equal((await reloaded.listSources(project.project_id)).length, 1);
+  assert.equal((await reloaded.getBuildJob(job.build_job_id)).mode, "prebuild");
 
   const db = new DatabaseSync(dbPath);
   assert.equal(collectionCount(db, "project-server", "projects"), 1);
@@ -373,30 +397,36 @@ test("sqlite repository persists projects, sources and build jobs across reload"
   db.close();
 });
 
-test("enforces centrally configurable free resource limits", () => {
+test("enforces centrally configurable free resource limits", async () => {
   const service = createMemoryProjectServer();
-  service.updateResourcePolicy("free", { max_projects: 2, max_storage_bytes: 200, max_monthly_traffic_bytes: 1024 });
-  service.createProject({ user_id: "free-user", plan_id: "free", title: "Eins" });
-  service.createProject({ user_id: "free-user", plan_id: "free", title: "Zwei" });
-  assert.throws(() => service.createProject({ user_id: "free-user", plan_id: "free", title: "Drei" }), /Maximal 2 Projekte/);
-  const summary = service.resourceSummary();
+  await service.updateResourcePolicy("free", { max_projects: 2, max_storage_bytes: 200, max_monthly_traffic_bytes: 1024 });
+  await service.createProject({ user_id: "free-user", plan_id: "free", title: "Eins" });
+  await service.createProject({ user_id: "free-user", plan_id: "free", title: "Zwei" });
+  await assert.rejects(
+    service.createProject({ user_id: "free-user", plan_id: "free", title: "Drei" }),
+    /Maximal 2 Projekte/,
+  );
+  const summary = await service.resourceSummary();
   assert.equal(summary.policies.find((policy) => policy.plan_id === "free").max_projects, 2);
 });
 
-test("enforces the generous premium project-count limit without storage enforcement", () => {
+test("enforces the generous premium project-count limit without storage enforcement", async () => {
   const service = createMemoryProjectServer();
-  const first = service.createProject({ user_id: "premium-storage-user", plan_id: "premium", title: "Mit Quelltext" });
-  service.upsertSource(first.project_id, { path: "src/main.cpp", content: "void setup() {}" });
+  const first = await service.createProject({ user_id: "premium-storage-user", plan_id: "premium", title: "Mit Quelltext" });
+  await service.upsertSource(first.project_id, { path: "src/main.cpp", content: "void setup() {}" });
   for (let index = 0; index < 200; index += 1) {
-    service.createProject({ user_id: "premium-user", plan_id: "premium", title: `Projekt ${index}` });
+    await service.createProject({ user_id: "premium-user", plan_id: "premium", title: `Projekt ${index}` });
   }
-  assert.throws(() => service.createProject({ user_id: "premium-user", plan_id: "premium", title: "Zu viel" }), /Maximal 200 Projekte/);
-  assert.equal(service.resourceSummary().policies.find((policy) => policy.plan_id === "premium").max_projects, 200);
+  await assert.rejects(
+    service.createProject({ user_id: "premium-user", plan_id: "premium", title: "Zu viel" }),
+    /Maximal 200 Projekte/,
+  );
+  assert.equal((await service.resourceSummary()).policies.find((policy) => policy.plan_id === "premium").max_projects, 200);
 });
 
-test("treats zero resource limits as unlimited", () => {
+test("treats zero resource limits as unlimited", async () => {
   const service = createMemoryProjectServer();
-  const policy = service.updateResourcePolicy("free", {
+  const policy = await service.updateResourcePolicy("free", {
     max_projects: 0,
     max_storage_bytes: 0,
     max_monthly_traffic_bytes: 0,
@@ -404,21 +434,23 @@ test("treats zero resource limits as unlimited", () => {
   assert.equal(policy.max_projects, null);
   assert.equal(policy.max_storage_bytes, null);
   assert.equal(policy.max_monthly_traffic_bytes, null);
-  const project = service.createProject({ user_id: "unlimited-user", plan_id: "free", title: "Ohne Grenze" });
-  assert.doesNotThrow(() => service.upsertSource(project.project_id, { path: "src/main.cpp", content: "void setup() {}" }));
+  const project = await service.createProject({ user_id: "unlimited-user", plan_id: "free", title: "Ohne Grenze" });
+  await assert.doesNotReject(
+    service.upsertSource(project.project_id, { path: "src/main.cpp", content: "void setup() {}" }),
+  );
 });
 
-test("deletes a project together with its stored project data", () => {
+test("deletes a project together with its stored project data", async () => {
   const service = createMemoryProjectServer();
-  const project = service.createProject({ project_id: "delete-me", user_id: "user-1", title: "Loeschbar" });
-  service.upsertSource(project.project_id, { path: "src/main.cpp", content: "void setup() {}" });
-  const result = service.deleteProject(project.project_id);
+  const project = await service.createProject({ project_id: "delete-me", user_id: "user-1", title: "Loeschbar" });
+  await service.upsertSource(project.project_id, { path: "src/main.cpp", content: "void setup() {}" });
+  const result = await service.deleteProject(project.project_id);
   assert.equal(result.project_id, project.project_id);
   assert.equal(result.deleted.sources, 1);
-  assert.throws(() => service.getProject(project.project_id), /Projekt wurde nicht gefunden/);
+  await assert.rejects(service.getProject(project.project_id), /Projekt wurde nicht gefunden/);
 });
 
-test("sqlite repository migrates the legacy ESP32 component path to IoT-Device 1", () => {
+test("sqlite repository migrates the legacy ESP32 component path to IoT-Device 1", async () => {
   const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-project-path-migration-")), "state.sqlite");
   const store = new SqliteStateStore(dbPath, "project-server", {
     defaultState: { projects: [], sources: [], buildJobs: [], artifacts: [], feedback: [], consents: [] },

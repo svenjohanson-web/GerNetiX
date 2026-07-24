@@ -61,6 +61,12 @@ class InMemoryDeviceManagementRepository {
     return clone(this.pairingSessions.get(sessionId));
   }
 
+  listPairingSessionsForDevice(deviceId) {
+    return Array.from(this.pairingSessions.values())
+      .filter((session) => session.device_id === deviceId)
+      .map(clone);
+  }
+
   saveProvisioningToken(token) {
     this.provisioningTokens.set(token.provisioning_token_id, clone(token));
     return clone(token);
@@ -80,6 +86,10 @@ class InMemoryDeviceManagementRepository {
 
   listAccountDevices(accountId) {
     return (this.accountDevices.get(accountId) || []).map(clone);
+  }
+
+  listAllAccountDevices() {
+    return Array.from(this.accountDevices.values()).flat().map(clone);
   }
 
   findAccountIdsByDeviceId(deviceId) {

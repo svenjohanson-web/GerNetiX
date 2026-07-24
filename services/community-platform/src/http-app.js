@@ -24,61 +24,61 @@ function createHttpApp(options) {
     };
 
     if (req.method === "GET" && path === `${prefix}/operations-summary`) {
-      sendJson(res, 200, service.operationsSummary());
+      sendJson(res, 200, await service.operationsSummary());
       return;
     }
 
     if (req.method === "GET" && path === `${prefix}/questions`) {
-      sendJson(res, 200, service.listQuestions(Object.fromEntries(url.searchParams.entries()), actor));
+      sendJson(res, 200, await service.listQuestions(Object.fromEntries(url.searchParams.entries()), actor));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/questions`) {
-      sendJson(res, 201, service.createQuestion(await readJsonBody(req), actor));
+      sendJson(res, 201, await service.createQuestion(await readJsonBody(req), actor));
       return;
     }
 
     const questionMatch = path.match(new RegExp(`^${prefix}/questions/([^/]+)$`));
     if (req.method === "GET" && questionMatch) {
-      sendJson(res, 200, service.getQuestion(decodeURIComponent(questionMatch[1]), actor));
+      sendJson(res, 200, await service.getQuestion(decodeURIComponent(questionMatch[1]), actor));
       return;
     }
 
     const triageMatch = path.match(new RegExp(`^${prefix}/questions/([^/]+)/triage$`));
     if (req.method === "POST" && triageMatch) {
-      sendJson(res, 200, service.triageQuestion(decodeURIComponent(triageMatch[1]), await readJsonBody(req), actor));
+      sendJson(res, 200, await service.triageQuestion(decodeURIComponent(triageMatch[1]), await readJsonBody(req), actor));
       return;
     }
 
     const answersMatch = path.match(new RegExp(`^${prefix}/questions/([^/]+)/answers$`));
     if (req.method === "GET" && answersMatch) {
-      sendJson(res, 200, service.listAnswers(decodeURIComponent(answersMatch[1]), actor));
+      sendJson(res, 200, await service.listAnswers(decodeURIComponent(answersMatch[1]), actor));
       return;
     }
     if (req.method === "POST" && answersMatch) {
-      sendJson(res, 201, service.createAnswer(decodeURIComponent(answersMatch[1]), await readJsonBody(req), actor));
+      sendJson(res, 201, await service.createAnswer(decodeURIComponent(answersMatch[1]), await readJsonBody(req), actor));
       return;
     }
 
     const answerMatch = path.match(new RegExp(`^${prefix}/answers/([^/]+)$`));
     if (req.method === "PATCH" && answerMatch) {
-      sendJson(res, 200, service.updateAnswer(decodeURIComponent(answerMatch[1]), await readJsonBody(req), actor));
+      sendJson(res, 200, await service.updateAnswer(decodeURIComponent(answerMatch[1]), await readJsonBody(req), actor));
       return;
     }
 
     const verifyMatch = path.match(new RegExp(`^${prefix}/answers/([^/]+)/verify$`));
     if (req.method === "POST" && verifyMatch) {
-      sendJson(res, 200, service.verifyAnswer(decodeURIComponent(verifyMatch[1]), await readJsonBody(req), actor));
+      sendJson(res, 200, await service.verifyAnswer(decodeURIComponent(verifyMatch[1]), await readJsonBody(req), actor));
       return;
     }
 
     if (req.method === "GET" && path === `${prefix}/search`) {
-      sendJson(res, 200, service.search(Object.fromEntries(url.searchParams.entries()), actor));
+      sendJson(res, 200, await service.search(Object.fromEntries(url.searchParams.entries()), actor));
       return;
     }
 
     if (req.method === "GET" && path === `${prefix}/knowledge-documents`) {
-      sendJson(res, 200, service.listKnowledgeDocuments(Object.fromEntries(url.searchParams.entries()), actor));
+      sendJson(res, 200, await service.listKnowledgeDocuments(Object.fromEntries(url.searchParams.entries()), actor));
       return;
     }
 

@@ -11,7 +11,7 @@ class DeviceManagementService {
     this.repository = options.repository;
   }
 
-  registerDevice(input = {}) {
+  async registerDevice(input = {}) {
     const deviceId = input.device_id || createDeviceId(input.serial_number);
     const now = new Date().toISOString();
     const authenticity = input.authenticity_status || (input.gernetix_verified ? "gernetix_verified" : "community_unverified");
@@ -39,17 +39,17 @@ class DeviceManagementService {
         quality_check_state: input.quality_check_state || "pending",
       } : null,
     };
-    this.repository.saveDevice(device);
+    await this.repository.saveDevice(device);
 
     if (input.credential) {
-      this.repository.saveCredential(deviceId, normalizeCredential(deviceId, input));
+      await this.repository.saveCredential(deviceId, normalizeCredential(deviceId, input));
     }
 
     return this.summarizeDevice(device);
   }
 
-  heartbeat(deviceId, input = {}) {
-    const device = this.requireDevice(deviceId);
+  async heartbeat(deviceId, input = {}) {
+    const device = await this.requireDevice(deviceId);
     const next = {
       ...device,
       runtime_version: input.runtime_version || device.runtime_version,
@@ -59,22 +59,22 @@ class DeviceManagementService {
       last_update_status: input.last_update_status || device.last_update_status || "",
       last_seen_at: new Date().toISOString(),
     };
-    this.repository.saveDevice(next);
-    this.syncAccountDeviceStatus(next);
+    await this.repository.saveDevice(next);
+    await this.syncAccountDeviceStatus(next);
     return this.summarizeDevice(next);
   }
 
-  getStatus(deviceId) {
-    return this.summarizeDevice(this.requireDevice(deviceId));
+  async getStatus(deviceId) {
+    return this.summarizeDevice(await this.requireDevice(deviceId));
   }
 
-  pushRecipients(deviceId) {
-    this.requireDevice(deviceId);
-    return { device_id: deviceId, account_ids: this.repository.findAccountIdsByDeviceId(deviceId) };
+  async pushRecipients(deviceId) {
+    await this.requireDevice(deviceId);
+    return { device_id: deviceId, account_ids: await this.repository.findAccountIdsByDeviceId(deviceId) };
   }
 
-  createChallenge(deviceId) {
-    this.requireDevice(deviceId);
+  async createChallenge(deviceId) {
+    await this.requireDevice(deviceId);
     const challenge = {
       challenge_id: createId("challenge"),
       device_id: deviceId,
@@ -84,13 +84,13 @@ class DeviceManagementService {
       used_at: null,
     };
     challenge.canonical = challengeCanonical(challenge);
-    return this.repository.saveChallenge(challenge);
+    return await this.repository.saveChallenge(challenge);
   }
 
-  verifyChallenge(deviceId, input = {}) {
-    const device = this.requireDevice(deviceId);
-    const challenge = this.repository.findChallenge(input.challenge_id);
-    const credential = this.repository.findCredential(deviceId);
+  async verifyChallenge(deviceId, input = {}) {
+    const device = await this.requireDevice(deviceId);
+    const challenge = await this.repository.findChallenge(input.challenge_id);
+    const credential = await this.repository.findCredential(deviceId);
     if (!challenge || challenge.device_id !== deviceId || challenge.used_at || Date.parse(challenge.expires_at) <= Date.now()) {
       throw new DeviceManagementError("invalid_challenge", "Challenge ist ungueltig oder bereits verwendet.", 400);
     }
@@ -109,7 +109,7 @@ class DeviceManagementService {
     } catch {
       verified = false;
     }
-    this.repository.markChallengeUsed(challenge.challenge_id);
+    await this.repository.markChallengeUsed(challenge.challenge_id);
 
     const next = {
       ...device,
@@ -121,7 +121,7 @@ class DeviceManagementService {
         verified_at: new Date().toISOString(),
       },
     };
-    this.repository.saveDevice(next);
+    await this.repository.saveDevice(next);
     return {
       device_id: deviceId,
       verification_state: verified ? "verified" : "failed",
@@ -129,8 +129,8 @@ class DeviceManagementService {
     };
   }
 
-  createPairingSession(input = {}) {
-    this.requireDevice(required(input.device_id, "device_id"));
+  async createPairingSession(input = {}) {
+    await this.requireDevice(required(input.device_id, "device_id"));
     const now = new Date();
     const session = {
       pairing_session_id: createId("pairing"),
@@ -143,24 +143,24 @@ class DeviceManagementService {
       expires_at: new Date(now.getTime() + 15 * 60 * 1000).toISOString(),
       completed_at: null,
     };
-    return this.repository.savePairingSession(session);
+    return await this.repository.savePairingSession(session);
   }
 
-  getPairingSession(sessionId) {
-    const session = this.repository.findPairingSession(sessionId);
+  async getPairingSession(sessionId) {
+    const session = await this.repository.findPairingSession(sessionId);
     if (!session) throw new DeviceManagementError("pairing_session_not_found", "Pairing Session wurde nicht gefunden.", 404);
     return session;
   }
 
-  completePairing(sessionId, input = {}) {
-    const session = this.getPairingSession(sessionId);
+  async completePairing(sessionId, input = {}) {
+    const session = await this.getPairingSession(sessionId);
     if (session.status !== "pending") {
       throw new DeviceManagementError("pairing_not_pending", "Pairing Session ist nicht mehr offen.", 409);
     }
     if (input.pairing_code && input.pairing_code !== session.pairing_code) {
       throw new DeviceManagementError("invalid_pairing_code", "Pairing Code ist ungueltig.", 403);
     }
-    const device = this.requireDevice(session.device_id);
+    const device = await this.requireDevice(session.device_id);
     const accountDevice = {
       account_device_id: createId("account_device"),
       account_id: session.account_id,
@@ -171,7 +171,7 @@ class DeviceManagementService {
       board_short_name: input.board_short_name || device.board_short_name || "",
       node_name: input.node_name || device.node_name || "",
       instance_configuration: input.instance_configuration || device.instance_configuration || {},
-      purchase_context_id: input.purchase_context_id || bestPurchaseContextId(this.repository, session.account_id, device),
+      purchase_context_id: input.purchase_context_id || await bestPurchaseContextId(this.repository, session.account_id, device),
       authenticity_status: device.authenticity_status,
       connectivity_status: device.connectivity_status,
       ota_status: device.ota_status,
@@ -183,23 +183,23 @@ class DeviceManagementService {
       status: "completed",
       completed_at: accountDevice.paired_at,
     };
-    this.repository.savePairingSession(completed);
-    this.repository.saveAccountDevice(accountDevice);
+    await this.repository.savePairingSession(completed);
+    await this.repository.saveAccountDevice(accountDevice);
     return { pairing_session: completed, account_device: accountDevice };
   }
 
-  cancelPairing(sessionId) {
-    const session = this.getPairingSession(sessionId);
+  async cancelPairing(sessionId) {
+    const session = await this.getPairingSession(sessionId);
     const canceled = { ...session, status: "canceled" };
-    this.repository.savePairingSession(canceled);
+    await this.repository.savePairingSession(canceled);
     return canceled;
   }
 
-  listAccountDevices(accountId) {
-    return this.repository.listAccountDevices(accountId);
+  async listAccountDevices(accountId) {
+    return await this.repository.listAccountDevices(accountId);
   }
 
-  createProvisioningToken(input = {}) {
+  async createProvisioningToken(input = {}) {
     const now = new Date();
     const token = crypto.randomBytes(32).toString("base64url");
     const record = {
@@ -212,8 +212,8 @@ class DeviceManagementService {
       expires_at: new Date(now.getTime() + 10 * 60 * 1000).toISOString(),
       consumed_at: null,
     };
-    this.repository.saveProvisioningToken(record);
-    this.repository.addAuditEvent({
+    await this.repository.saveProvisioningToken(record);
+    await this.repository.addAuditEvent({
       audit_event_id: createId("audit"),
       account_id: record.account_id,
       accessed_by_user_id: record.account_id,
@@ -231,16 +231,16 @@ class DeviceManagementService {
     };
   }
 
-  consumeProvisioningToken(input = {}) {
+  async consumeProvisioningToken(input = {}) {
     const token = required(input.provisioning_token, "provisioning_token");
-    const record = this.repository.findProvisioningTokenByHash(sha256(token));
+    const record = await this.repository.findProvisioningTokenByHash(sha256(token));
     const binding = required(input.provisioning_binding, "provisioning_binding");
     if (!record || record.status !== "issued" || Date.parse(record.expires_at) <= Date.now() || record.provisioning_binding !== binding) {
       throw new DeviceManagementError("invalid_provisioning_token", "Der Provisionierungs-Token ist ungueltig, abgelaufen oder bereits verwendet.", 403);
     }
     const consumed = { ...record, status: "consumed", consumed_at: new Date().toISOString() };
-    this.repository.saveProvisioningToken(consumed);
-    this.repository.addAuditEvent({
+    await this.repository.saveProvisioningToken(consumed);
+    await this.repository.addAuditEvent({
       audit_event_id: createId("audit"),
       account_id: consumed.account_id,
       accessed_by_user_id: consumed.account_id,
@@ -257,8 +257,8 @@ class DeviceManagementService {
     };
   }
 
-  updateAccountDeviceBasissoftwareProfile(accountId, accountDeviceId, input = {}) {
-    const accountDevice = this.repository.findAccountDevice(accountId, accountDeviceId);
+  async updateAccountDeviceBasissoftwareProfile(accountId, accountDeviceId, input = {}) {
+    const accountDevice = await this.repository.findAccountDevice(accountId, accountDeviceId);
     if (!accountDevice) throw new DeviceManagementError("account_device_not_found", "AccountDevice wurde nicht gefunden.", 404);
     const requested = normalizeBasissoftwareProfile(input.basissoftware_profile || input.profile || input.profile_id);
     if (!requested) throw new DeviceManagementError("invalid_basissoftware_profile", "Unbekanntes Basissoftware-Profil.", 400);
@@ -279,7 +279,7 @@ class DeviceManagementService {
         basissoftware_profile: basissoftwareProfile,
       },
     };
-    this.repository.saveAccountDevice(updated);
+    await this.repository.saveAccountDevice(updated);
     return {
       account_device: updated,
       requires_usb_reflash: requiresUsbReflash,
@@ -289,8 +289,8 @@ class DeviceManagementService {
     };
   }
 
-  addAccountDevice(accountId, input = {}) {
-    const device = this.requireDevice(required(input.device_id, "device_id"));
+  async addAccountDevice(accountId, input = {}) {
+    const device = await this.requireDevice(required(input.device_id, "device_id"));
     const accountDevice = {
       account_device_id: createId("account_device"),
       account_id: accountId,
@@ -301,18 +301,18 @@ class DeviceManagementService {
       board_short_name: input.board_short_name || device.board_short_name || "",
       node_name: input.node_name || device.node_name || "",
       instance_configuration: input.instance_configuration || device.instance_configuration || {},
-      purchase_context_id: input.purchase_context_id || bestPurchaseContextId(this.repository, accountId, device),
+      purchase_context_id: input.purchase_context_id || await bestPurchaseContextId(this.repository, accountId, device),
       authenticity_status: device.authenticity_status,
       connectivity_status: device.connectivity_status,
       ota_status: device.ota_status,
       ownership_status: "registered_by_customer",
       paired_at: null,
     };
-    return this.repository.saveAccountDevice(accountDevice);
+    return await this.repository.saveAccountDevice(accountDevice);
   }
 
-  removeAccountDevice(accountId, accountDeviceId) {
-    const removed = this.repository.deleteAccountDevice(accountId, accountDeviceId);
+  async removeAccountDevice(accountId, accountDeviceId) {
+    const removed = await this.repository.deleteAccountDevice(accountId, accountDeviceId);
     if (!removed) throw new DeviceManagementError("account_device_not_found", "AccountDevice wurde nicht gefunden.", 404);
     return {
       removed: true,
@@ -323,9 +323,9 @@ class DeviceManagementService {
     };
   }
 
-  otaTargets(accountId, query = {}) {
+  async otaTargets(accountId, query = {}) {
     const requiredCapabilities = parseCapabilities(query.requiredCapabilities || query.required_capabilities || "");
-    return this.repository.listAccountDevices(accountId).map((device) => {
+    return (await this.repository.listAccountDevices(accountId)).map((device) => {
       const missing = requiredCapabilities.filter((capability) => !device.technical_capability_ids.includes(capability));
       const selectable = missing.length === 0 && device.connectivity_status === "online" && device.ota_status === "ready";
       return {
@@ -340,8 +340,8 @@ class DeviceManagementService {
     });
   }
 
-  updateConnectivity(deviceId, input = {}) {
-    const device = this.requireDevice(deviceId);
+  async updateConnectivity(deviceId, input = {}) {
+    const device = await this.requireDevice(deviceId);
     const next = {
       ...device,
       connectivity_status: input.connectivity_status || device.connectivity_status,
@@ -351,16 +351,15 @@ class DeviceManagementService {
       ap_mode: input.ap_mode || false,
       last_seen_at: new Date().toISOString(),
     };
-    this.repository.saveDevice(next);
-    this.syncAccountDeviceStatus(next);
+    await this.repository.saveDevice(next);
+    await this.syncAccountDeviceStatus(next);
     return this.summarizeDevice(next);
   }
 
-  syncAccountDeviceStatus(device) {
-    for (const accountId of this.repository.accountDevices.keys()) {
-      const accountDevice = this.repository.listAccountDevices(accountId).find((item) => item.device_id === device.device_id);
-      if (!accountDevice) continue;
-      this.repository.saveAccountDevice({
+  async syncAccountDeviceStatus(device) {
+    const accountDevices = await this.repository.listAllAccountDevices();
+    for (const accountDevice of accountDevices.filter((item) => item.device_id === device.device_id)) {
+      await this.repository.saveAccountDevice({
         ...accountDevice,
         connectivity_status: device.connectivity_status,
         ota_status: device.ota_status,
@@ -368,10 +367,10 @@ class DeviceManagementService {
     }
   }
 
-  supportEntitlement(deviceId) {
-    const device = this.requireDevice(deviceId);
-    const accountId = findAccountId(this.repository, deviceId);
-    const purchaseContext = accountId ? findPurchaseContextForDevice(this.repository, accountId, device) : null;
+  async supportEntitlement(deviceId) {
+    const device = await this.requireDevice(deviceId);
+    const accountId = await findAccountId(this.repository, deviceId);
+    const purchaseContext = accountId ? await findPurchaseContextForDevice(this.repository, accountId, device) : null;
     const verified = device.authenticity_status === "gernetix_verified" && device.lifecycle_state !== "revoked";
     const eligible = verified && (!purchaseContext || purchaseContext.support_basis === "gernetix_purchase_context");
     return {
@@ -387,7 +386,7 @@ class DeviceManagementService {
     };
   }
 
-  registerPurchaseContext(accountId, input = {}) {
+  async registerPurchaseContext(accountId, input = {}) {
     const now = new Date().toISOString();
     const purchaseContextId = input.purchase_context_id || input.order_id || createId("purchase_context");
     const purchaseContext = {
@@ -406,23 +405,23 @@ class DeviceManagementService {
       }),
       registered_at: now,
     };
-    this.repository.savePurchaseContext(accountId, purchaseContext);
+    await this.repository.savePurchaseContext(accountId, purchaseContext);
     return purchaseContext;
   }
 
-  listPurchaseContexts(accountId) {
-    return this.repository.listPurchaseContexts(accountId);
+  async listPurchaseContexts(accountId) {
+    return await this.repository.listPurchaseContexts(accountId);
   }
 
-  listClaimableHardwareUnits(accountId) {
-    return this.repository.listPurchaseContexts(accountId)
+  async listClaimableHardwareUnits(accountId) {
+    return (await this.repository.listPurchaseContexts(accountId))
       .flatMap((context) => (context.claimable_hardware_units || []).map((unit) => sanitizeClaimableHardwareUnit(unit, context)));
   }
 
-  claimHardwareUnit(accountId, input = {}) {
+  async claimHardwareUnit(accountId, input = {}) {
     const claimCode = required(input.claim_code || input.claimCode, "claim_code");
     const claimCodeHash = sha256(claimCode);
-    for (const context of this.repository.listPurchaseContexts(accountId)) {
+    for (const context of await this.repository.listPurchaseContexts(accountId)) {
       const units = context.claimable_hardware_units || [];
       const unit = units.find((item) => item.claim_code_hash_sha256 === claimCodeHash);
       if (!unit) continue;
@@ -434,7 +433,7 @@ class DeviceManagementService {
       }
       const now = new Date().toISOString();
       const displayName = String(input.display_name || input.displayName || "GerNetiX Flashbox").trim().slice(0, 120) || "GerNetiX Flashbox";
-      const registered = this.registerDevice({
+      const registered = await this.registerDevice({
         device_id: input.device_id || createDeviceId(unit.serial_number),
         serial_number: unit.serial_number,
         hardware_profile_id: unit.hardware_item_id,
@@ -453,7 +452,7 @@ class DeviceManagementService {
           self_update_policy: "a_b_verified_rollback",
         },
       });
-      const accountDevice = this.repository.saveAccountDevice({
+      const accountDevice = await this.repository.saveAccountDevice({
         account_device_id: createId("account_device"),
         account_id: accountId,
         device_id: registered.device_id,
@@ -488,8 +487,8 @@ class DeviceManagementService {
           claimed_device_id: accountDevice.device_id,
         } : item),
       };
-      this.repository.savePurchaseContext(accountId, updatedContext);
-      this.repository.addAuditEvent({
+      await this.repository.savePurchaseContext(accountId, updatedContext);
+      await this.repository.addAuditEvent({
         audit_event_id: createId("audit"),
         account_id: accountId,
         accessed_by_user_id: accountId,
@@ -508,21 +507,21 @@ class DeviceManagementService {
     throw new DeviceManagementError("claim_code_not_found", "Claim-Code wurde fuer diesen Account nicht gefunden.", 404);
   }
 
-  accountDeviceSupportEntitlement(accountId, accountDeviceId) {
-    const accountDevice = this.repository.findAccountDevice(accountId, accountDeviceId);
+  async accountDeviceSupportEntitlement(accountId, accountDeviceId) {
+    const accountDevice = await this.repository.findAccountDevice(accountId, accountDeviceId);
     if (!accountDevice) throw new DeviceManagementError("account_device_not_found", "AccountDevice wurde nicht gefunden.", 404);
-    return this.supportEntitlement(accountDevice.device_id);
+    return await this.supportEntitlement(accountDevice.device_id);
   }
 
-  adminListDevices(query = {}) {
-    return this.repository.listDevices({ authenticity_status: query.authenticityStatus || query.authenticity_status })
-      .map((device) => this.adminDeviceSummary(device));
+  async adminListDevices(query = {}) {
+    const devices = await this.repository.listDevices({ authenticity_status: query.authenticityStatus || query.authenticity_status });
+    return Promise.all(devices.map((device) => this.adminDeviceSummary(device)));
   }
 
-  adminDevice(deviceId, context = {}) {
-    const device = this.requireDevice(deviceId);
-    const access = this.auditCustomerAccess({
-      accountId: context.account_id || findAccountId(this.repository, deviceId),
+  async adminDevice(deviceId, context = {}) {
+    const device = await this.requireDevice(deviceId);
+    const access = await this.auditCustomerAccess({
+      accountId: context.account_id || await findAccountId(this.repository, deviceId),
       actorId: context.actor_id || "admin",
       role: context.role || "administrator",
       purpose: context.purpose || "device_admin_status",
@@ -532,13 +531,13 @@ class DeviceManagementService {
     });
     return {
       access,
-      device: access.decision === "full" ? this.adminDeviceSummary(device) : maskAdminDevice(device),
+      device: access.decision === "full" ? await this.adminDeviceSummary(device) : maskAdminDevice(device),
     };
   }
 
-  adminCredentials(deviceId) {
-    this.requireDevice(deviceId);
-    const credential = this.repository.findCredential(deviceId);
+  async adminCredentials(deviceId) {
+    await this.requireDevice(deviceId);
+    const credential = await this.repository.findCredential(deviceId);
     if (!credential) return { device_id: deviceId, credentials: [] };
     return {
       device_id: deviceId,
@@ -556,9 +555,9 @@ class DeviceManagementService {
     };
   }
 
-  createConsent(input = {}) {
+  async createConsent(input = {}) {
     const now = new Date().toISOString();
-    return this.repository.createConsent({
+    return await this.repository.createConsent({
       consent_id: createId("consent"),
       account_id: required(input.account_id, "account_id"),
       granted_by_account_id: input.granted_by_account_id || input.account_id,
@@ -572,20 +571,20 @@ class DeviceManagementService {
     });
   }
 
-  getConsent(consentId) {
-    const consent = this.repository.findConsent(consentId);
+  async getConsent(consentId) {
+    const consent = await this.repository.findConsent(consentId);
     if (!consent) throw new DeviceManagementError("consent_not_found", "Consent wurde nicht gefunden.", 404);
     return consent;
   }
 
-  revokeConsent(consentId) {
-    const consent = this.repository.revokeConsent(consentId);
+  async revokeConsent(consentId) {
+    const consent = await this.repository.revokeConsent(consentId);
     if (!consent) throw new DeviceManagementError("consent_not_found", "Consent wurde nicht gefunden.", 404);
     return consent;
   }
 
-  auditEvents(filter = {}) {
-    return this.repository.listAuditEvents(filter);
+  async auditEvents(filter = {}) {
+    return await this.repository.listAuditEvents(filter);
   }
 
   summarizeDevice(device) {
@@ -607,17 +606,17 @@ class DeviceManagementService {
     };
   }
 
-  adminDeviceSummary(device) {
+  async adminDeviceSummary(device) {
     return {
       ...this.summarizeDevice(device),
       service_endpoints: device.service_endpoints,
       manufacturer_registration: device.manufacturer_registration,
-      pairing_status: findPairingStatus(this.repository, device.device_id),
-      support_entitlement: this.supportEntitlement(device.device_id),
+      pairing_status: await findPairingStatus(this.repository, device.device_id),
+      support_entitlement: await this.supportEntitlement(device.device_id),
     };
   }
 
-  auditCustomerAccess({ accountId, actorId, role, purpose, dataModelId, legalBasis, securityReason }) {
+  async auditCustomerAccess({ accountId, actorId, role, purpose, dataModelId, legalBasis, securityReason }) {
     let decision = "masked";
     let reason = "missing_consent_or_legal_basis";
     let consentId = null;
@@ -625,14 +624,14 @@ class DeviceManagementService {
       decision = "full";
       reason = legalBasis ? "documented_legal_basis" : "security_reason";
     } else if (accountId) {
-      const consent = this.repository.findValidConsent({ accountId, role, purpose });
+      const consent = await this.repository.findValidConsent({ accountId, role, purpose });
       if (consent) {
         decision = "full";
         reason = "valid_consent";
         consentId = consent.consent_id;
       }
     }
-    const event = this.repository.addAuditEvent({
+    const event = await this.repository.addAuditEvent({
       audit_event_id: createId("audit"),
       account_id: accountId || null,
       accessed_by_user_id: actorId,
@@ -646,8 +645,8 @@ class DeviceManagementService {
     return { decision, reason, audit_event_id: event.audit_event_id };
   }
 
-  requireDevice(deviceId) {
-    const device = this.repository.findDevice(deviceId);
+  async requireDevice(deviceId) {
+    const device = await this.repository.findDevice(deviceId);
     if (!device) throw new DeviceManagementError("device_not_found", "Device wurde nicht gefunden.", 404);
     return device;
   }
@@ -725,13 +724,13 @@ function inferCapabilities(device) {
   return capabilities;
 }
 
-function bestPurchaseContextId(repository, accountId, device) {
-  const purchaseContext = findPurchaseContextForDevice(repository, accountId, device);
+async function bestPurchaseContextId(repository, accountId, device) {
+  const purchaseContext = await findPurchaseContextForDevice(repository, accountId, device);
   return purchaseContext ? purchaseContext.purchase_context_id : "";
 }
 
-function findPurchaseContextForDevice(repository, accountId, device) {
-  const contexts = repository.listPurchaseContexts(accountId);
+async function findPurchaseContextForDevice(repository, accountId, device) {
+  const contexts = await repository.listPurchaseContexts(accountId);
   return contexts.find((context) => (
     context.support_basis === "gernetix_purchase_context"
     && context.hardware_item_ids.includes(device.hardware_profile_id)
@@ -796,17 +795,14 @@ function flashboxCapabilities() {
   ];
 }
 
-function findPairingStatus(repository, deviceId) {
-  for (const accountId of repository.accountDevices.keys()) {
-    if (repository.listAccountDevices(accountId).some((item) => item.device_id === deviceId)) return "paired_to_account";
-  }
+async function findPairingStatus(repository, deviceId) {
+  if ((await repository.listAllAccountDevices()).some((item) => item.device_id === deviceId)) return "paired_to_account";
   return "unpaired";
 }
 
-function findAccountId(repository, deviceId) {
-  for (const accountId of repository.accountDevices.keys()) {
-    if (repository.listAccountDevices(accountId).some((item) => item.device_id === deviceId)) return accountId;
-  }
+async function findAccountId(repository, deviceId) {
+  const item = (await repository.listAllAccountDevices()).find((candidate) => candidate.device_id === deviceId);
+  if (item) return item.account_id;
   return null;
 }
 

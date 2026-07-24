@@ -59,6 +59,11 @@ flowchart LR
     privateVpsEdge["Privater VPS Edge<br/>PWA, Build, MQTT-TLS<br/>nur WireGuard 10.77.0.0/24"]
     mqttBroker["MQTT Broker<br/>Mosquitto<br/>TLS :8883 / WS :9001"]
     localOllama["Lokaler Ollama LLM<br/>:11434"]
+    identityPostgres["Identity PostgreSQL 17<br/>VPS-intern :5432<br/>SSH-Dev-Tunnel :15432"]
+    projectPostgres["Project PostgreSQL 17<br/>VPS-intern :5432"]
+    telemetryPostgres["Telemetry PostgreSQL 17<br/>VPS-intern :5432"]
+    communityPostgres["Community PostgreSQL 17<br/>VPS-intern :5432"]
+    deviceManagementPostgres["Device Management PostgreSQL 17<br/>VPS-intern :5432"]
     aiContextPostgres["PostgreSQL 17 + pgvector<br/>intern :5432"]
     externalLlm["Externe LLM API<br/>OpenAI-kompatibel / Claude"]
   end
@@ -75,13 +80,18 @@ flowchart LR
   end
 
   subgraph storage["Persistenz / Wissensbasis"]
-    identityDb[("Identity SQLite<br/>gernetix-identity.sqlite")]
+    identityDb[("Identity PostgreSQL<br/>Accounts, Credentials, Sessions")]
+    identityLegacyDb[("Identity Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     releaseDb[("Plattform-Releases SQLite<br/>public / authenticated / entitled / internal")]
     accountAssetDb[("Account-Assets SQLite<br/>owner_only QR, Bilder, Bildstile")]
-    projectDb[("Projekt-Speicher SQLite<br/>gernetix-projects.sqlite")]
+    projectDb[("Project PostgreSQL<br/>Projekte, Quellen, Build-Metadaten, Feedback")]
+    projectLegacyDb[("Projekt Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     buildArtifactDb[("Build-Artefakte SQLite<br/>Firmware, ELF, HEX, Map, Log")]
-    telemetryDb[("Telemetrie SQLite<br/>gernetix-telemetry.sqlite")]
-    communityDb[("Community SQLite<br/>public / private Autor + Operator")]
+    telemetryDb[("Telemetry PostgreSQL<br/>Messwerte, Ereignisse, Retention")]
+    telemetryLegacyDb[("Telemetry Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
+    communityDb[("Community PostgreSQL<br/>public / private Autor + Operator")]
+    deviceManagementDb[("Device Management PostgreSQL<br/>Devices, Pairing, Inventar, Audit")]
+    communityLegacyDb[("Community Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     publicDemoDb[("Öffentliche Demo SQLite<br/>gernetix-public-demos.sqlite")]
     runtimeDb[("Gemeinsamer Runtime-State<br/>gernetix-services.sqlite")]
     aiContextDb[("AI Context PostgreSQL + pgvector<br/>produktive Wissens- und Vektordaten")]
@@ -101,6 +111,8 @@ flowchart LR
   user --> architectureDocs
 
   platformUi --> identity
+  identity --> identityPostgres
+  identityPostgres --> identityDb
   privateVpsEdge --> buildDeploy
   privateVpsEdge --> mqttBroker
   recoveryHmi --> recovery
@@ -153,19 +165,26 @@ flowchart LR
   contextManager --> graphDb
   persistence --> runtimeDb
 
-  identity -. "Accounts, Sessions und Push-Subscriptions" .-> identityDb
+  identity -. "einmalige Altuebernahme" .-> identityLegacyDb
   identity -. "immutable Releases nach Sichtbarkeitsklasse" .-> releaseDb
   identity -. "owner_only Account-Assets" .-> accountAssetDb
-  projectServer -. "Projekte, Quellen und Build-Metadaten" .-> projectDb
+  projectServer --> projectPostgres
+  projectPostgres --> projectDb
+  projectServer -. "einmalige Altuebernahme" .-> projectLegacyDb
   publicDemo -. "veröffentlichte Metadaten + immutable firmware.bin" .-> publicDemoDb
   buildDeploy -. "Firmware-, ELF-, HEX-, Map- und Log-BLOBs" .-> buildArtifactDb
-  deviceManagement -. "direkte SQLite-State-Persistenz" .-> runtimeDb
-  telemetryServer -. "TelemetryMeasurement, TelemetryEvent,<br/>Retention in SQLite" .-> telemetryDb
+  deviceManagement --> deviceManagementPostgres
+  deviceManagementPostgres --> deviceManagementDb
+  telemetryServer --> telemetryPostgres
+  telemetryPostgres --> telemetryDb
+  telemetryServer -. "einmalige Altuebernahme" .-> telemetryLegacyDb
   provisioning -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   recovery -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   hardwareShop -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   aiUsage -. "direkte SQLite-State-Persistenz" .-> runtimeDb
-  communityPlatform -. "öffentliche und private Community-Inhalte" .-> communityDb
+  communityPlatform --> communityPostgres
+  communityPostgres --> communityDb
+  communityPlatform -. "einmalige Altuebernahme" .-> communityLegacyDb
   communityAi -. "direkte SQLite-State-Persistenz" .-> runtimeDb
   adminTool -. "direkte SQLite-State-Persistenz" .-> runtimeDb
 
@@ -195,15 +214,15 @@ flowchart LR
 | Admin Access Server + Admin Console | 4610 | `http://127.0.0.1:4610/admin/` | Eigene Admin-Login-PWA, persistente Sitzungen und serverseitige Rollenpruefung; proxyed danach die Admin-Funktionen |
 | Admin Tool API | 4600 | nur intern durch Admin Access Server | Account-Blatt, KI Usage, zentrale Ressourcenlimits pro Nutzerprofil, Consent-/Audit-nahe API und LLM-Routing |
 | Device Management Server | 4700 | `http://127.0.0.1:4700/` | Devices, Ownership, Purchase Contexts, Support-Status |
-| Telemetry Server | 5600 | nur intern im Docker-Netz | Nimmt bereits authentifizierte Board-Telemetrie an, prueft Board-/Projektbesitz, persistiert Messwerte und Ereignisse in der eigenen konto- und projektpartitionierten Telemetrie-SQLite mit Retention, kann gezielten Projekt-Push ausloesen und leitet kurzlebige Runtime-Zeilen an Identity weiter |
-| Project Server | 4800 | `http://127.0.0.1:4800/` | Projekte, Quellen, Build-Jobs, Learning Feedback sowie SQLite-persistierte Ressourcenlimits und Nutzungswerte in eigener Projekt-SQLite |
+| Telemetry Server | 5600 | nur intern im Docker-Netz | Nimmt bereits authentifizierte Board-Telemetrie an, prueft Board-/Projektbesitz, persistiert Messwerte und Ereignisse in der eigenen konto- und projektpartitionierten PostgreSQL-Datenbank mit Retention, kann gezielten Projekt-Push ausloesen und leitet kurzlebige Runtime-Zeilen an Identity weiter |
+| Project Server | 4800 | `http://127.0.0.1:4800/` | Projekte, Quellen, Build-Jobs, Learning Feedback sowie PostgreSQL-persistierte Ressourcenlimits und Nutzungswerte in eigener Project-Datenbank |
 | Hardware Shop | 4900 | `http://127.0.0.1:4900/` | Angebote, Warenkorb, Bestellung, Purchase Context; liest Hardwaredaten als Client des Hardware Catalog |
 | Hardware Catalog | 4910 | VPS-intern sowie ausschliesslich am WireGuard-Interface `http://10.77.0.1:4910/`; kein oeffentlicher Listener | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als SQLite-persistente Quelle |
 | Öffentlicher Demo-Katalog | 4920 | nur lesbarer öffentlicher Katalog-Endpunkt | Redaktionell veröffentlichte Board-Demos und immutable `firmware.bin`-Releases in eigener SQLite; keine Projekte, Konten, Inventar oder OTA |
 | AI Usage Server | 5000 | `http://127.0.0.1:5000/` | Credits, Quellenrating je Account, Preflight, Usage Events, Cost Controls |
 | Context Manager | 5050 | `http://127.0.0.1:5050/context-manager/` | Projektkontext, Vorschlaege, Context Packs |
 | Recovery Tool Server | 5100 | `http://127.0.0.1:5100/` | eigenstaendige Nutzer-/Support-HMI, Recovery-Sessions, Credential-Erneuerung, Connectivity-Recovery |
-| Community Platform | 5200 | intern im Docker-Netz | Öffentliche Community-Anfragen sowie private, account- und operatorgebundene Projektbegleitung; eigene SQLite-Persistenz |
+| Community Platform | 5200 | intern im Docker-Netz | Öffentliche Community-Anfragen sowie private, account- und operatorgebundene Projektbegleitung; eigene PostgreSQL-Persistenz |
 | Community AI Assistant | 5300 | `http://127.0.0.1:5300/` | KI-gestuetzte Community-Antworten |
 | Persistence Server | 5400 | `http://127.0.0.1:5400/` | HTTP-Zugriff auf generische SQLite-State-Dokumente |
 | AI Context Server | 5500 | `http://127.0.0.1:5500/` | Kontext-Grants, Prompt-Grundlagen, Architektur-, Intent- und lokales Help-Wissen, Access Policy, Preflight und Audit fuer KI-Datenzugriff |
@@ -270,13 +289,15 @@ flowchart LR
   freigegeben. Der jeweilige VPS-Service bleibt alleiniger Schreiber. Lokale
   Komplettstarts sind isolierte Testinstanzen; der SSH-Tunnel transportiert nur
   HTTP-Zugriffe auf die kanonische VPS-Plattform.
-- Identity, Plattform-Releases, Account-Assets, Project Server, Build-Artefakte, Telemetry Server, Community und oeffentliche Demos besitzen getrennte SQLite-Dateien. Die Zuordnung verwendet ausschliesslich technische `account_id`-/`user_id`- und `project_id`-Werte; Klaridentitaeten bleiben in der Identity-SQLite. Weitere technische Dienste nutzen weiterhin den gemeinsamen Runtime-State, bis sie fachlich separat ausgegliedert werden. Pfade, Schutzklassen und bekannte Abweichungen stehen im [Persistenz- und Asset-Speicherkonzept](persistence-and-asset-storage.md).
+- Identity, Project Server, Telemetry, Community und Device Management nutzen getrennte PostgreSQL-17-Datenbanken. Ihre bisherigen SQLite-Bestaende dienen nur der einmaligen, idempotenten Altuebernahme. Plattform-Releases, Account-Assets, Build-Artefakte und oeffentliche Demos besitzen weiterhin getrennte SQLite-Dateien auf dem VPS. Die Zuordnung verwendet ausschliesslich technische `account_id`-/`user_id`- und `project_id`-Werte; Klaridentitaeten bleiben in Identity-PostgreSQL. Weitere technische Dienste nutzen weiterhin den gemeinsamen Runtime-State, bis sie fachlich separat ausgegliedert werden. Pfade, Schutzklassen und bekannte Abweichungen stehen im [Persistenz- und Asset-Speicherkonzept](persistence-and-asset-storage.md).
 - Der AI Context Server nutzt auf dem VPS eine eigene PostgreSQL-17-Datenbank mit pgvector. Kontext-Grants, Prompt-Grundlagen, Architektur-Bausteine samt Embeddings, globale Kontext-Policy und Audit-Events bleiben getrennt vom allgemeinen Runtime-State. Eine vorhandene AI-Context-SQLite wird einmalig automatisch importiert; lokal bleibt SQLite als Fallback moeglich.
+- Fuer haeufige Entwicklung kann nur Identity auf `127.0.0.1:4300` lokal laufen. Ein SSH-Tunnel innerhalb von WireGuard verbindet diesen Prozess mit der getrennten gemeinsamen Entwicklungs-Identity-PostgreSQL-Datenbank und mit den loopback-gebundenen Domaenendiensten auf dem VPS. Keine VPS-SQLite-Datei wird freigegeben oder lokal geoeffnet; dieser Modus ist nicht fuer Produktionsdaten zugelassen.
 - GerNetiX Help sucht vor jedem Modellaufruf ausschliesslich kuratiertes Help-Wissen im AI Context Server. Nur die passenden Artikel werden dem lokalen Ollama-Modell als Kontext gegeben; ohne Treffer antwortet Help ohne Modellaufruf. Das Admin Tool pflegt diese Agenten-Wissenseintraege getrennt von den sichtbaren Hilfeartikeln.
 - Unsichere Architektur-Erweiterungen werden im AI Context Server zu deduplizierten, priorisierten Klaerfaellen zusammengefuehrt. Das Admin Tool kann sie bestaetigen, korrigieren, priorisieren, zurueckstellen oder ignorieren. Nur bestaetigte oder korrigierte Bedeutungen werden als globale oder accountisolierte Intent-Beispiele eingebettet und bei spaeteren Interpretationen gesucht; ein separates Ticketsystem ist dafuer nicht erforderlich.
 - Dauerhafte Persistenz ist in GerNetiX ausschliesslich SQL (SQLite oder PostgreSQL). JSON-Dateien, YAML-Dateien, Prozessspeicher, Browser-State, Temp-Dateien, Caches und generierte Sichten sind nur Logic/Control/View, Import-/Export, Test-Hilfe oder Cache und duerfen keine fachliche Quelle der Wahrheit sein.
 - Benannte Volumes sind keine Datensicherung. Fuer Accounts, Projekte, Hardware-Inventar und weitere Kundendaten gilt das [Sicherungs- und Wiederherstellungskonzept](customer-data-backup-and-recovery.md) mit deployment-unabhaengigen, verschluesselten Sicherungen und nachgewiesenen Restore-Proben. Da die Backup-Orchestrierung noch nicht als Runtime-Komponente implementiert ist, wird sie im aktuellen Prozessdiagramm noch nicht als bestehender Serverprozess dargestellt.
 - Login UI, Dashboard, Lernplattform, Entwicklungsplattform, User IDE und Guided-Code-Lesson-Einstieg sind ein gemeinsames Plattform-Frontend-Artefakt am Identity Server, keine getrennten Anwendungen mit getrennten Logins. Im Projekt liegt dieses Artefakt gebuendelt unter `services/identity-server/public/app`.
+- Projektzentrierte Lernangebote werden in diesem Plattform-Frontend als DevelopmentProject-Story mit wiederverwendbaren DevelopmentLessons dargestellt. `Projektstory starten` erzeugt ein durchgaengiges accountgebundenes Projekt; `Lesson einzeln starten` erzeugt ueber denselben Identity-/Project-Server-Pfad ein separates Uebungsprojekt aus dem LessonStartSnapshot. Beide Modi referenzieren dieselbe Lesson und dieselben Schritte. Es entstehen dadurch weder ein neuer Serverprozess noch eine zweite Persistenzwahrheit.
 - Die Entwicklungsplattform ist im PoC unter `/app/development-platform/` erreichbar. Jedes Projekttemplate ausser der Touchscreen-Spielesammlung fuehrt nach dem Anlegen direkt in dieselbe Komponenten-Konfiguration: Das Template liefert die Startarchitektur; Nutzer fuegen dort IoT-Devices, Sensoren, Aktoren, Smartphone-Apps, Server oder weitere Komponenten hinzu. Das Komponenten- und Beziehungsmetamodell begrenzt diese Auswahl auf fachlich erlaubte, benannte Beziehungen; Sensoren und Aktoren leiten daraus zwingend ihre IoT-Steuereinheit ab. Der Wechsel zur Hardware ist erst moeglich, wenn jedes Architekturelement in mindestens einer erlaubten Beziehung vorkommt und keine unzulaessige Beziehung vorliegt. Die Architektur-KI unter `/api/platform/development-assistant/chat` bleibt als einklappbare, optionale Hilfe erreichbar und ist kein verpflichtender Zwischenschritt. Danach konkretisiert `/app/development-platform/hardware/` abstrakte IoT-Devices, Sensoren und Aktoren und persistiert Boards, Vorschaltungen und Pins projektgebunden ueber den Project Server. Lokal ist Ollama vorgesehen; optional kann ein OpenAI-kompatibler API-Endpunkt oder Claude/Anthropic konfiguriert werden. Prompt-Grundlagen und Architektur-Bausteine kommen fuehrend aus der AI-Context-Datenbank; die Bausteinsuche verwendet pgvector-Embeddings und einen lexikalischen Fallback. Fachliche Kontextdaten muessen per AI-Context-Grant freigegeben werden. Jeder echte Provider-Aufruf wird vorab ueber AI Usage freigegeben und danach als Erfolg oder Fehler gebucht.
 - Der Code-Explorer folgt einem kontrollierten Coding-Agent-Ansatz mit OpenAI Responses Function Calling: Die IDE uebergibt beim Start nur Nutzeraufgabe und aktuellen Pfad; Folgefragen setzen dieselbe Responses-Konversation fort. Das Modell nutzt serverseitig `find_and_read_project_sources`, das Suche und Lesen fuer hoechstens drei relevante Treffer in einem Schritt verbindet. Nur dadurch gelesene Projektpfade duerfen als Aenderung vorgeschlagen werden. Eine feste Uebergabe der ersten 40, einer willkuerlichen Treffermenge oder aller Projektdateien ist nicht zulaessig; Schreibzugriffe bleiben bestaetigungspflichtig.
 - Der eigenstaendige Desktop-Prozessmonitor zeigt persistierte Statistiken ausgehender Schnittstellenaufrufe. Instrumentierte Services schreiben Quelle, Ziel, Methode, Route, Status und Dauer in die gemeinsame Runtime-SQLite-Tabelle `gernetix_external_interface_calls`; der Monitor liest und aggregiert diese Daten, ohne selbst als Fachaufruf mitgezaehlt zu werden. Zusaetzlich liest er Warnungen und Fehler aus `admin_tool_system_events` sowie fehlgeschlagene Schnittstellenaufrufe und zeigt sie automatisch als Auffaelligkeiten der letzten 24 Stunden. Damit erscheint etwa ein nicht erreichbarer Hardware Catalog ohne manuellen Aufruf des Admin Tools in der Desktop-App. Produzenten sind der Identity Server einschliesslich seiner GerNetiX-Abhaengigkeiten und LLM-Provider sowie der Build-&-Deploy-Server fuer MQTT Publish, Subscribe und Receive. MQTT-Topics werden vor der Persistenz von Device-Kennungen bereinigt. Unter Windows zeigt und steuert der Monitor ausserdem ausschliesslich den fest konfigurierten WireGuard-Tunnel `gernetix-vps`. Eine eigene Schutzregelansicht vergleicht versionierte lokale Vorgaben mit festen read-only VPS-Nachweisen fuer nftables, OpenSSH, Fail2ban, Nginx, Mosquitto und Docker-Portbindungen. Jede Regel zeigt Ausfuehrungsort, Grenzwert, Status und empfohlene Massnahme; offene Backup-, Alarmierungs- und Log-Retention-Massnahmen bleiben sichtbar. Die Abfrage wird gecacht und nur bei geoeffneter Ansicht oder manueller Aktualisierung ausgefuehrt. Der Renderer erhaelt weder generischen Zugriff auf Windows-Dienste noch auf SSH oder eine Shell.
@@ -308,7 +329,7 @@ flowchart LR
 - Die Provisioning-HMI darf keine Firmware-Dateien vom Bedienrechner hochladen. Firmware-Artefakte werden serverseitig aus SQLite/Artifact Store oder einem konfigurierten Server-Firmwarepfad bereitgestellt.
 - Die lokale Dev-Infrastruktur fuer den MQTT Broker liegt unter `infra/dev/docker-compose.yml` und bleibt auf Loopback ohne TLS. Der VPS-Broker behaelt `1883` und `9001` ausschliesslich im internen Docker-Netz und bindet den Device-Port `8883` nur an die WireGuard-Adresse. Server-TLS, verpflichtendes Device-Client-Zertifikat, Device-CA und `%u`-basierte ACL begrenzen jedes Device auf sein eigenes OTA-/Status-Topic. Ein ESP32 ohne eigenen WireGuard-Client erreicht die private Instanz nur ueber einen kontrollierten WireGuard-faehigen Gateway oder eine spaeter getrennt entworfene Device-Edge.
 - Der Context Manager ist kein Ersatz fuer die Graph-Dokumentation. Er liest Projektwissen, erstellt Vorschlaege und erzeugt bestaetigte Context Packs fuer Codex-Workflows.
-- Community und Projektbegleitung laufen ausschliesslich über die angemeldete Plattform. Der Nutzer wählt beim Erstellen zwischen `public` (für weitere angemeldete Mitglieder sichtbar) und `private` (nur anfragendes Konto plus konfigurierte GerNetiX-Operatoren). Der Community-Service ist nicht am Edge veröffentlicht, akzeptiert nur den token-geschützten Identity-Proxy und persistiert seine Inhalte getrennt in SQLite. Private Threads werden weder in öffentlichen Listen noch in der Wissensbasis oder KI-Suche verwendet.
+- Community und Projektbegleitung laufen ausschliesslich über die angemeldete Plattform. Der Nutzer wählt beim Erstellen zwischen `public` (für weitere angemeldete Mitglieder sichtbar) und `private` (nur anfragendes Konto plus konfigurierte GerNetiX-Operatoren). Der Community-Service ist nicht am Edge veröffentlicht, akzeptiert nur den token-geschützten Identity-Proxy und persistiert seine Inhalte getrennt in PostgreSQL. Private Threads werden weder in öffentlichen Listen noch in der Wissensbasis oder KI-Suche verwendet.
 - Nach erfolgreicher Speicherung einer privaten Anfrage meldet Identity dem Betreiber den Eingang über eine konfigurierte E-Mail-Adresse, Web-Push an die konfigurierten Operator-Konten und ein persistentes Systemereignis im Admin Tool. Jede dieser Benachrichtigungen ist absichtlich generisch und enthält weder Anfrage-, Account- noch Projektinhalt; die Details bleiben ausschliesslich in der autorisierten Community-Ansicht.
 - Das Web-Admin-Tool prüft die Community Platform über Healthcheck und einen internen token-geschützten Betriebsendpunkt. Die Desktop-App ergänzt lokal den read-only SQLite-Dateistatus. Beide Operator-Sichten zeigen nur aggregierte Zähler und Speichertechnik, niemals Titel, Texte, Account- oder Projektkennungen.
 - **Regel: Öffentliche Community und persönliche Begleitung bleiben getrennt.** Öffentlich freigegebene Community-Fragen dürfen als lesbare, sprechende Seiten ohne Anmeldung am Edge bereitgestellt und für Suchmaschinen indexiert werden. Private Anfragen, Antworten, Account-, Projekt- und Metadaten erhalten nie eine öffentliche URL, sind stets `noindex` und dürfen weder in Sitemaps, Suchergebnissen, Vorschauen, Wissensbasis noch KI-Kontext übernommen werden. Die Veröffentlichung erfolgt nur durch eine explizite öffentliche Sichtbarkeitsentscheidung; ein späterer Wechsel nach privat entfernt die öffentliche Seite und ihre Indexierungsfreigabe.

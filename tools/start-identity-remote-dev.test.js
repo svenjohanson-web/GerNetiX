@@ -1,0 +1,19 @@
+"use strict";
+
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { loadRemoteDevConfig } = require("./start-identity-remote-dev");
+
+test("remote identity dev mode forces local 4300 and central PostgreSQL", () => {
+  const config = loadRemoteDevConfig({ IDENTITY_POSTGRES_PASSWORD: "test-secret" });
+  assert.equal(config.HOST, "127.0.0.1");
+  assert.equal(config.PORT, "4300");
+  assert.equal(config.IDENTITY_REMOTE_DEV, "1");
+  assert.equal(config.IDENTITY_PERSISTENCE_BACKEND, "postgres");
+  assert.equal(config.IDENTITY_POSTGRES_PORT, "15432");
+  assert.equal(config.AI_USAGE_BASE_URL, "http://127.0.0.1:5001");
+});
+
+test("remote identity dev mode refuses to start without a database secret", () => {
+  assert.throws(() => loadRemoteDevConfig({}), /IDENTITY_POSTGRES_PASSWORD/);
+});

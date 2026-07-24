@@ -34,15 +34,16 @@ const GuidedProjectView = (() => {
             <p class="eyebrow">Aktueller Lerninhalt</p>
             <div class="guided-artifact-layout">
               <section class="guided-artifact-pane">
+                ${renderLearningContext(activeView)}
                 ${renderGuidedArtifact(project, activeView)}
               </section>
               <aside class="guided-summary-pane">
                 ${renderManifestView(activeView, validation)}
                 ${renderGuidedValidation(activeView, validation)}
-                ${renderCodeExplorerChat(project, activeView)}
                 ${renderGuidedActions(project, activeView, validation)}
               </aside>
             </div>
+            ${renderGuidedCodeAssistant(project, activeView)}
           </section>
         </div>
       `;
@@ -61,6 +62,19 @@ const GuidedProjectView = (() => {
       target.querySelector("[data-guided-lab-device]")?.addEventListener("change", (event) => assignGuidedLabDevice(project, activeView, event.target.value, targetSelector));
       bindCodeExplorerChat(target, project, activeView);
       renderGuidedPlantUml(target);
+    }
+
+    function renderGuidedCodeAssistant(project, view) {
+      if (!isCodeExplorerView(view)) return "";
+      return `
+        <details class="guided-code-assistant">
+          <summary>
+            <span>KI-Hilfe zum Code</span>
+            <small>Bei Bedarf öffnen und eine konkrete Frage stellen</small>
+          </summary>
+          ${renderCodeExplorerChat(project, view)}
+        </details>
+      `;
     }
 
     function renderProjectAssistant(project) {
@@ -373,11 +387,14 @@ const GuidedProjectView = (() => {
       };
       const renderer = artifactRenderers[artifact.type] || viewRenderers[view.type];
       if (renderer) return renderer(artifact);
+      const hasGuidance = Boolean(view.payload?.task || view.payload?.expected_result || view.payload?.why);
       return `
         <div class="guided-artifact-empty">
           <p class="eyebrow">Artefakt</p>
           <h3>${escapeHtml(view.title || "Projektartefakt")}</h3>
-          <p>${escapeHtml(view.summary || "Dieses Projekt legt fest, welches Artefakt hier angezeigt wird.")}</p>
+          <p>${escapeHtml(view.payload?.artifact_text || (hasGuidance
+            ? "Nutze die Erklärung und die konkrete Aufgabe rechts, um diesen Schritt zu bearbeiten."
+            : "Für diesen Schritt ist noch keine konkrete Aufgabe oder sichtbare Arbeitsgrundlage hinterlegt."))}</p>
         </div>
       `;
     }
@@ -673,7 +690,7 @@ if (digitalRead(BUTTON_PIN) == LOW) {
             <span>${escapeHtml(typeLabel)}</span>
             <strong>${escapeHtml(view.title || view.id)}</strong>
           </div>
-          <p>${escapeHtml(view.summary || "")}</p>
+          ${renderLearningGuidance(view)}
           ${renderRequiredFunctions(view)}
           ${renderManifestPayload(view)}
           ${validation?.focus ? `<pre class="source-focus-box">${escapeHtml(validation.focus)}</pre>` : ""}
@@ -691,7 +708,12 @@ if (digitalRead(BUTTON_PIN) == LOW) {
             ${meta("Datei", view.source_path || "Projektquelle")}
             ${lines ? meta("Fokus", lines) : ""}
           </dl>
-          ${questions.length ? `<ul class="manifest-list">${questions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}
+          ${questions.length ? `
+            <section class="guided-check-questions">
+              <strong>Prüffragen</strong>
+              <ul class="manifest-list">${questions.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>
+            </section>
+          ` : ""}
         `;
       }
       if (view.type === "explanation") {
@@ -740,6 +762,48 @@ if (digitalRead(BUTTON_PIN) == LOW) {
         return `<dl class="meta-list compact">${meta("Benötigte Ressource", required.join(", ") || "noch festzulegen")}</dl>`;
       }
       return Object.keys(payload).length ? `<pre class="plantuml-box">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>` : "";
+    }
+
+    function renderLearningContext(view) {
+      const payload = view.payload || {};
+      const learningText = Array.isArray(payload.learning_text)
+        ? payload.learning_text
+        : (payload.learning_text ? [payload.learning_text] : []);
+      const paragraphs = [view.summary, ...learningText]
+        .map((text) => String(text || "").trim())
+        .filter((text, index, values) => text && values.indexOf(text) === index);
+      if (!paragraphs.length && !payload.why) return "";
+      return `
+        <section class="guided-learning-context">
+          <p class="eyebrow">Worum es geht</p>
+          ${paragraphs.map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}
+          ${payload.why ? `
+            <aside>
+              <strong>Warum ist das wichtig?</strong>
+              <p>${escapeHtml(payload.why)}</p>
+            </aside>
+          ` : ""}
+        </section>
+      `;
+    }
+
+    function renderLearningGuidance(view) {
+      const payload = view.payload || {};
+      const sections = [
+        ["Deine Aufgabe", payload.task],
+        ["Das solltest du danach sehen", payload.expected_result],
+      ].filter(([, text]) => text);
+      if (!sections.length) return "";
+      return `
+        <div class="guided-learning-guidance">
+          ${sections.map(([title, text]) => `
+            <section>
+              <strong>${escapeHtml(title)}</strong>
+              <p>${escapeHtml(text)}</p>
+            </section>
+          `).join("")}
+        </div>
+      `;
     }
 
     function renderRequiredFunctions(view) {

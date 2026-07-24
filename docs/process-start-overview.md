@@ -14,7 +14,7 @@ node tools/check-and-wake-processes.js check
 node tools/check-and-wake-processes.js wake
 ```
 
-Ohne Parameter wird `wake` ausgefuehrt: Alle zehn Dienste der minimalen Plattform werden geprueft und fehlende Dienste automatisch in der definierten Reihenfolge gestartet. `check` veraendert nichts. Laufende Prozesse werden weder beendet noch neu gestartet. Einzelne Dienste lassen sich gezielt auswaehlen:
+Ohne Parameter wird `wake` ausgefuehrt und startet den vollstaendigen isolierten Lokal-Stack. Fuer die normale Remote-Dev-Arbeit ist das nicht erforderlich. `check` veraendert nichts. Laufende Prozesse werden weder beendet noch neu gestartet. Einzelne Dienste lassen sich gezielt auswaehlen:
 
 ```text
 node tools/check-and-wake-processes.js wake --service=identity-server,admin-tool
@@ -82,15 +82,28 @@ Nach aktiviertem WireGuard ist die kanonische Adresse:
 https://pwa.gernetix.com/app/dashboard/
 ```
 
-Identity, Projekte, Community, Telemetrie und weitere persistente Dienste
-laufen dabei auf dem VPS. Die SQLite-Dateien bleiben ausschliesslich in ihren
-VPS-Volumes. `node tools/connect-staging.js` stellt innerhalb des VPN
-zusaetzliche lokale Diagnose-Tunnel bereit, uebertraegt aber keine Datenbank.
+Fuer die haeufige lokale Arbeit an Port `4300` werden nur zwei Prozesse
+benoetigt:
 
-Ein lokal gestarteter Identity Server besitzt weiterhin eine eigene lokale
-Identity-SQLite. Er ist keine redundante Instanz des VPS-Identity-Servers.
-Aktiv-aktive Schreibzugriffe mehrerer Prozesse auf dieselbe entfernte
-SQLite-Datei sind nicht zulaessig.
+```text
+node tools/connect-staging.js
+node tools/start-identity-remote-dev.js
+```
+
+Der lokale Identity Server verwendet dann die zentrale Identity-PostgreSQL-
+Datenbank ueber den SSH-Tunnel. Projekte werden vom Project Server aus der
+zentralen Project-PostgreSQL-Datenbank geliefert; Telemetrie liegt ebenfalls
+in einer eigenen PostgreSQL-Datenbank. Community verwendet ebenfalls eine
+getrennte PostgreSQL-Datenbank, ebenso Device Management fuer Inventar,
+Pairing und Supportdaten. Weitere persistente Dienste laufen auf dem VPS;
+ihre SQLite-Dateien bleiben ausschliesslich in den
+VPS-Volumes. Alle Domaenen werden nur ueber die
+getunnelten Dienst-APIs angesprochen. Ein lokaler PostgreSQL-, AI-Context- oder
+sonstiger SQL-Prozess ist dafuer nicht erforderlich.
+
+Der bisherige vollstaendige lokale Start bleibt fuer isolierte Tests verfuegbar.
+Aktiv-aktive Schreibzugriffe auf eine entfernte SQLite-Datei sind weiterhin
+nicht zulaessig.
 
 ## Device-, OTA- und Factory-Flows
 

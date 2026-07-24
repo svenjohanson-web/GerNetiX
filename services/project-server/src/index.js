@@ -6,9 +6,15 @@ const { SqliteBackedProjectRepository } = require("./repositories/sqlite-backed-
 const { ProjectService } = require("./services/project-service");
 
 function createDefaultProjectServer(config = createConfig()) {
-  return new ProjectService({
-    repository: createRepository(config),
-  });
+  const repository = createRepository(config);
+  if (repository && typeof repository.then === "function") {
+    return repository.then(async (resolvedRepository) => {
+      const service = new ProjectService({ repository: resolvedRepository });
+      await service.ready;
+      return service;
+    });
+  }
+  return new ProjectService({ repository });
 }
 
 function createRepository(config) {
@@ -17,6 +23,14 @@ function createRepository(config) {
   }
   if (config.persistenceBackend === "json") {
     return FileBackedProjectRepository.create(config.runtimeRoot);
+  }
+  if (["postgres", "postgresql"].includes(config.persistenceBackend)) {
+    const { PostgresProjectRepository } = require("./repositories/postgres-project-repository");
+    return PostgresProjectRepository.create({
+      poolOptions: config.postgres?.connectionString
+        ? { connectionString: config.postgres.connectionString }
+        : config.postgres,
+    });
   }
   return new InMemoryProjectRepository();
 }
@@ -27,6 +41,7 @@ module.exports = {
   FileBackedProjectRepository,
   InMemoryProjectRepository,
   SqliteBackedProjectRepository,
+  PostgresProjectRepository: require("./repositories/postgres-project-repository").PostgresProjectRepository,
   ProjectService,
   createDefaultProjectServer,
 };

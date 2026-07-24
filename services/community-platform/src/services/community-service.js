@@ -7,13 +7,12 @@ class CommunityService {
     this.triageSlaHours = options.triageSlaHours || 24;
     this.internalToken = options.internalToken || "";
     this.persistenceBackend = options.persistenceBackend || "unknown";
-    seedKnowledge(this);
   }
 
-  operationsSummary() {
-    const questions = this.repository.listQuestions({});
-    const answers = questions.flatMap((question) => this.repository.listAnswers(question.question_id));
-    const knowledgeDocuments = this.repository.listKnowledgeDocuments({});
+  async operationsSummary() {
+    const questions = await this.repository.listQuestions({});
+    const answers = await this.repository.listAllAnswers();
+    const knowledgeDocuments = await this.repository.listKnowledgeDocuments({});
     const now = Date.now();
     return {
       persistence_backend: this.persistenceBackend,
@@ -41,7 +40,7 @@ class CommunityService {
     };
   }
 
-  createQuestion(input = {}, actor = {}) {
+  async createQuestion(input = {}, actor = {}) {
     const now = new Date();
     const question = {
       question_id: createId("question"),
@@ -64,23 +63,24 @@ class CommunityService {
     return this.repository.saveQuestion(question);
   }
 
-  listQuestions(query = {}, actor = {}) {
-    const items = this.repository.listQuestions(query)
+  async listQuestions(query = {}, actor = {}) {
+    const visible = (await this.repository.listQuestions(query))
       .filter((question) => canAccess(question, actor))
-      .filter((question) => query.mine !== "true" || question.author_user_id === actor.user_id)
-      .map((question) => this.presentQuestion(this.decorateQuestion(question), actor));
+      .filter((question) => query.mine !== "true" || question.author_user_id === actor.user_id);
+    const items = await Promise.all(visible.map(async (question) =>
+      this.presentQuestion(await this.decorateQuestion(question), actor)));
     return { items };
   }
 
-  getQuestion(questionId, actor = {}) {
-    const question = this.requireQuestion(questionId);
+  async getQuestion(questionId, actor = {}) {
+    const question = await this.requireQuestion(questionId);
     requireAccess(question, actor);
-    return this.presentQuestion(this.decorateQuestion(question), actor);
+    return this.presentQuestion(await this.decorateQuestion(question), actor);
   }
 
-  triageQuestion(questionId, input = {}, actor = {}) {
+  async triageQuestion(questionId, input = {}, actor = {}) {
     requireOperator(actor);
-    const question = this.requireQuestion(questionId);
+    const question = await this.requireQuestion(questionId);
     const now = new Date().toISOString();
     const next = {
       ...question,
@@ -92,11 +92,11 @@ class CommunityService {
       updated_at: now,
       moderation_note: input.moderation_note || question.moderation_note || "",
     };
-    return this.decorateQuestion(this.repository.saveQuestion(next));
+    return this.decorateQuestion(await this.repository.saveQuestion(next));
   }
 
-  createAnswer(questionId, input = {}, actor = {}) {
-    const question = this.requireQuestion(questionId);
+  async createAnswer(questionId, input = {}, actor = {}) {
+    const question = await this.requireQuestion(questionId);
     requireAccess(question, actor);
     if (!actor.is_operator && question.author_user_id !== actor.user_id) throw new CommunityPlatformError("community_access_denied", "Antworten sind nur fuer die anfragende Person oder GerNetiX moeglich.", 403);
     const now = new Date().toISOString();
@@ -116,8 +116,8 @@ class CommunityService {
     return this.repository.saveAnswer(answer);
   }
 
-  updateAnswer(answerId, input = {}, actor = {}) {
-    const answer = this.requireAnswer(answerId);
+  async updateAnswer(answerId, input = {}, actor = {}) {
+    const answer = await this.requireAnswer(answerId);
     if (!actor.is_operator && answer.author_user_id !== actor.user_id) throw new CommunityPlatformError("community_access_denied", "Diese Antwort darf nicht bearbeitet werden.", 403);
     const now = new Date().toISOString();
     const bodyChanged = input.body && input.body !== answer.body;
@@ -131,10 +131,10 @@ class CommunityService {
     return this.repository.saveAnswer(next);
   }
 
-  verifyAnswer(answerId, input = {}, actor = {}) {
+  async verifyAnswer(answerId, input = {}, actor = {}) {
     requireOperator(actor);
-    const answer = this.requireAnswer(answerId);
-    const question = this.requireQuestion(answer.question_id);
+    const answer = await this.requireAnswer(answerId);
+    const question = await this.requireQuestion(answer.question_id);
     const now = new Date().toISOString();
     const next = {
       ...answer,
@@ -150,44 +150,49 @@ class CommunityService {
       }),
       updated_at: now,
     };
-    this.repository.saveAnswer(next);
+    await this.repository.saveAnswer(next);
     if (next.verification_state === "verified" && input.accept !== false) {
-      this.repository.saveQuestion({
+      await this.repository.saveQuestion({
         ...question,
         status: "answered",
         accepted_answer_id: next.answer_id,
         updated_at: now,
       });
     }
-    if (question.visibility === "public") this.publishKnowledgeDocument(question, next);
+    if (question.visibility === "public") await this.publishKnowledgeDocument(question, next);
     return next;
   }
 
-  listAnswers(questionId, actor = {}) {
-    const question = this.requireQuestion(questionId);
+  async listAnswers(questionId, actor = {}) {
+    const question = await this.requireQuestion(questionId);
     requireAccess(question, actor);
-    return { items: this.repository.listAnswers(questionId).map((answer) => this.presentAnswer(answer, actor)) };
+    return { items: (await this.repository.listAnswers(questionId)).map((answer) => this.presentAnswer(answer, actor)) };
   }
 
-  search(query = {}, actor = {}) {
+  async search(query = {}, actor = {}) {
     const term = String(query.q || query.query || "").toLowerCase();
-    const questions = this.repository.listQuestions({}).filter((question) => canAccess(question, actor) && matches(question, term));
-    const answers = Array.from(this.repository.answers.values()).filter((answer) => canAccess(this.requireQuestion(answer.question_id), actor) && matches(answer, term));
-    const documents = this.visibleKnowledgeDocuments(actor).filter((document) => matches(document, term));
+    const allQuestions = await this.repository.listQuestions({});
+    const questionById = new Map(allQuestions.map((question) => [question.question_id, question]));
+    const questions = allQuestions.filter((question) => canAccess(question, actor) && matches(question, term));
+    const answers = (await this.repository.listAllAnswers()).filter((answer) => {
+      const question = questionById.get(answer.question_id);
+      return question && canAccess(question, actor) && matches(answer, term);
+    });
+    const documents = (await this.visibleKnowledgeDocuments(actor)).filter((document) => matches(document, term));
     return {
       items: [
-        ...questions.map((question) => ({ type: "question", score: score(question, term), item: this.presentQuestion(this.decorateQuestion(question), actor) })),
+        ...await Promise.all(questions.map(async (question) => ({ type: "question", score: score(question, term), item: this.presentQuestion(await this.decorateQuestion(question), actor) }))),
         ...answers.map((answer) => ({ type: "answer", score: score(answer, term), item: this.presentAnswer(answer, actor) })),
         ...documents.map((document) => ({ type: "knowledge_document", score: score(document, term), item: document })),
       ].sort((left, right) => right.score - left.score),
     };
   }
 
-  listKnowledgeDocuments(query = {}, actor = {}) {
-    return { items: this.visibleKnowledgeDocuments(actor).filter((document) => (!query.source_type || document.source_type === query.source_type) && (!query.verification_state || document.verification_state === query.verification_state)) };
+  async listKnowledgeDocuments(query = {}, actor = {}) {
+    return { items: (await this.visibleKnowledgeDocuments(actor)).filter((document) => (!query.source_type || document.source_type === query.source_type) && (!query.verification_state || document.verification_state === query.verification_state)) };
   }
 
-  publishKnowledgeDocument(question, answer) {
+  async publishKnowledgeDocument(question, answer) {
     if (answer.verification_state !== "verified") return null;
     const document = {
       document_id: `knowledge_${answer.answer_id}`,
@@ -208,8 +213,8 @@ class CommunityService {
     return this.repository.saveKnowledgeDocument(document);
   }
 
-  decorateQuestion(question) {
-    const answers = this.repository.listAnswers(question.question_id);
+  async decorateQuestion(question) {
+    const answers = await this.repository.listAnswers(question.question_id);
     return {
       ...question,
       answer_count: answers.length,
@@ -228,40 +233,42 @@ class CommunityService {
     return { ...visible, author_label: actor.is_operator ? author_user_id : answer.author_user_id === actor.user_id ? "Du" : "GerNetiX" };
   }
 
-  visibleKnowledgeDocuments(actor) {
-    return this.repository.listKnowledgeDocuments({}).filter((document) => {
-      const question = this.repository.findQuestion(document.question_id);
-      return question && question.visibility === "public" && canAccess(question, actor);
-    });
+  async visibleKnowledgeDocuments(actor) {
+    const documents = await this.repository.listKnowledgeDocuments({});
+    const visible = await Promise.all(documents.map(async (document) => {
+      const question = await this.repository.findQuestion(document.question_id);
+      return question && question.visibility === "public" && canAccess(question, actor) ? document : null;
+    }));
+    return visible.filter(Boolean);
   }
 
-  requireQuestion(questionId) {
-    const question = this.repository.findQuestion(questionId);
+  async requireQuestion(questionId) {
+    const question = await this.repository.findQuestion(questionId);
     if (!question) throw new CommunityPlatformError("question_not_found", "Community-Frage wurde nicht gefunden.", 404);
     return question;
   }
 
-  requireAnswer(answerId) {
-    const answer = this.repository.findAnswer(answerId);
+  async requireAnswer(answerId) {
+    const answer = await this.repository.findAnswer(answerId);
     if (!answer) throw new CommunityPlatformError("answer_not_found", "Community-Antwort wurde nicht gefunden.", 404);
     return answer;
   }
 }
 
-function seedKnowledge(service) {
-  if (service.repository.listQuestions({}).length > 0) return;
-  const question = service.createQuestion({
+async function seedKnowledge(service) {
+  if ((await service.repository.listQuestions({})).length > 0) return;
+  const question = await service.createQuestion({
     title: "ESP32 OTA Update schlaegt nach WLAN-Wechsel fehl",
     body: "Nach einem WLAN-Wechsel ist das Board erreichbar, OTA meldet aber timeout.",
     author_user_id: "seed",
     tags: ["esp32", "ota", "wifi"],
   }, { user_id: "seed", is_operator: true });
-  service.triageQuestion(question.question_id, { triaged_by: "system", priority: "normal" }, { user_id: "seed", is_operator: true });
-  const answer = service.createAnswer(question.question_id, {
+  await service.triageQuestion(question.question_id, { triaged_by: "system", priority: "normal" }, { user_id: "seed", is_operator: true });
+  const answer = await service.createAnswer(question.question_id, {
     author_user_id: "seed-expert",
     body: "Pruefe zuerst den OTA-Hostname im Device-Webserver und sende danach einen Connectivity-Heartbeat an Device Management.",
   }, { user_id: "seed-expert", is_operator: true });
-  service.verifyAnswer(answer.answer_id, { verified_by: "seed-expert" }, { user_id: "seed-expert", is_operator: true });
+  await service.verifyAnswer(answer.answer_id, { verified_by: "seed-expert" }, { user_id: "seed-expert", is_operator: true });
 }
 
 function normalizeList(value) {
@@ -290,7 +297,7 @@ function createId(prefix) {
   return `${prefix}_${crypto.randomUUID()}`;
 }
 
-module.exports = { CommunityService };
+module.exports = { CommunityService, seedKnowledge };
 
 function canAccess(question, actor) {
   return question.visibility !== "private" || question.author_user_id === actor.user_id || actor.is_operator;

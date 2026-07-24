@@ -90,7 +90,7 @@ Jede erkannte Komponente bekommt einen eigenen Ordner. Komponenten tragen ihre H
 
 Architektur besteht generisch aus statischer Architektur, Informationsfluss und Systemverhalten. Systemverhalten beschreibt komponentenuebergreifende Ablaeufe, Zustaende, Regeln, Ereignisse, Fehlerfaelle und Reaktionen des Gesamtsystems. Die KI kann bestaetigtes Systemverhalten spaeter in komponentenspezifisches Verhalten, Schnittstellenanforderungen, Datenfluesse, Code und Konfiguration dekomponieren.
 
-Diese Struktur liegt als Project-Server-Quelle in SQLite und ist keine lokale Dateisystemwahrheit.
+Diese Struktur liegt als Project-Server-Quelle in PostgreSQL und ist keine lokale Dateisystemwahrheit.
 
 ## Module
 
@@ -103,7 +103,7 @@ Diese Struktur liegt als Project-Server-Quelle in SQLite und ist keine lokale Da
 
 ## MVP-Implementierung
 
-Der aktuelle MVP ist ein eigenstaendiger Node.js-Prozess ohne externe Runtime-Abhaengigkeiten.
+Der aktuelle MVP ist ein eigenstaendiger Node.js-Prozess. Auf dem VPS verwendet er eine eigene PostgreSQL-Datenbank; SQLite bleibt nur als lokaler, isolierter Entwicklungsfallback und als read-only Migrationsquelle erhalten.
 
 Start:
 
@@ -130,11 +130,13 @@ Konfiguration:
 - `HOST`: Bind-Adresse, Standard `127.0.0.1`
 - `PORT`: HTTP-Port, Standard `4800`
 - `PROJECT_SERVER_BASE_URL`: externe Basis-URL fuer spaetere Links
-- `PERSISTENCE_BACKEND` oder `PROJECT_SERVER_PERSISTENCE_BACKEND`: `memory`, `sqlite` oder `json`, Standard `sqlite`
+- `PERSISTENCE_BACKEND` oder `PROJECT_SERVER_PERSISTENCE_BACKEND`: `postgres`, `memory`, `sqlite` oder `json`; lokal Standard `sqlite`, auf dem VPS `postgres`
+- `PROJECT_POSTGRES_URL`: optionale vollstaendige PostgreSQL-Verbindungs-URL
+- `PROJECT_POSTGRES_HOST`, `PROJECT_POSTGRES_PORT`, `PROJECT_POSTGRES_DATABASE`, `PROJECT_POSTGRES_USER`, `PROJECT_POSTGRES_PASSWORD`: getrennte PostgreSQL-Verbindungswerte
 - `PROJECT_SERVER_SQLITE_PATH` oder `PERSISTENCE_SQLITE_PATH`: SQLite-Datei fuer `sqlite`, Standard `<Workspace>/.runtime/gernetix-projects.sqlite`
 - `PROJECT_SERVER_RUNTIME_DIR`: Runtime-Verzeichnis fuer JSON-Persistenz, Standard `<Workspace>/.runtime`
 
-Accountgebundene Entwicklungsprojekte werden standardmaessig in SQLite gespeichert. `memory` ist nur fuer isolierte Tests oder bewusst fluechtige Entwicklungslaeufe gedacht. Der Browser darf sich lokal das zuletzt geoeffnete Projekt merken; die Projektdaten selbst bleiben auf dem Project Server.
+Accountgebundene Entwicklungsprojekte werden im gemeinsamen VPS-Betrieb in `gernetix_projects` gespeichert. Der einmalige Migrationscontainer uebernimmt alte Projektdaten transaktional aus der getrennten Projekt-SQLite oder, falls diese noch leer ist, aus der frueheren gemeinsamen Service-SQLite. Entwicklungsrechner verwenden den Project Server ueber HTTP und oeffnen keine Datenbankdatei. `memory`, `sqlite` und `json` sind nur fuer isolierte Tests oder lokale Fallbacks gedacht. Der Browser darf sich lokal das zuletzt geoeffnete Projekt merken; die Projektdaten selbst bleiben auf dem Project Server.
 
 ## Ressourcenregeln
 
@@ -144,7 +146,6 @@ Eigene Entwicklungsprojekte koennen ueber die Entwicklungsplattform nach einer a
 
 ## Nicht-Ziele fuer diesen Stand
 
-- keine Datenbankmigration
 - kein Build-Prozess im Projektserver
 - keine echte Authentifizierung
 - keine UI
@@ -153,5 +154,5 @@ Eigene Entwicklungsprojekte koennen ueber die Entwicklungsplattform nach einer a
 
 - Der Projektserver bleibt als eigenstaendiger Prozess schneidbar.
 - Andere Services duerfen Projektdaten nicht direkt lesen, sondern nur ueber API/Adapter.
-- Ports, Datenbankverbindungen und externe Service-URLs muessen spaeter konfigurierbar sein.
+- Ports, Datenbankverbindungen und externe Service-URLs sind ueber Umgebungsvariablen konfigurierbar.
 - Der erste Zielbetrieb darf ein Linux-Homeserver sein; Cloud-Migration darf keine fachlichen API-Vertraege brechen.

@@ -30,7 +30,6 @@ test("links Support from every public hamburger menu", () => {
     "downloads/index.html",
     "flashbox-einrichten/index.html",
     "nachbauprojekte/index.html",
-    "produkte/index.html",
     "shop/index.html",
     "app/auth/index.html",
     "app/index.html",

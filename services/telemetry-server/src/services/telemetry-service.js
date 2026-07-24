@@ -21,7 +21,7 @@ class TelemetryService {
     const measurements = normalizeMeasurements(input.measurements, context);
     const events = normalizeEvents(input.events, context);
     if (!measurements.length && !events.length) throw new TelemetryError("telemetry_empty", "Mindestens ein Messwert oder Ereignis wird benötigt.");
-    this.repository.saveBatch({ measurements, events });
+    await this.repository.saveBatch({ measurements, events });
     const push = [];
     for (const event of events.filter((item) => item.notify_push)) {
       try { push.push({ event_id: event.event_id, delivered: await this.pushNotifier?.(event) || null }); }
@@ -46,16 +46,16 @@ class TelemetryService {
     return { accepted: true, ...runtime, delivery };
   }
 
-  listMeasurements(accountId, projectId, query) { return this.repository.listMeasurements(requiredId(accountId, "account_id"), requiredId(projectId, "project_id"), query); }
-  listEvents(accountId, projectId, query) { return this.repository.listEvents(requiredId(accountId, "account_id"), requiredId(projectId, "project_id"), query); }
-  deleteProjectData(accountId, projectId) { return this.repository.deleteProjectData(requiredId(accountId, "account_id"), requiredId(projectId, "project_id")); }
+  async listMeasurements(accountId, projectId, query) { return this.repository.listMeasurements(requiredId(accountId, "account_id"), requiredId(projectId, "project_id"), query); }
+  async listEvents(accountId, projectId, query) { return this.repository.listEvents(requiredId(accountId, "account_id"), requiredId(projectId, "project_id"), query); }
+  async deleteProjectData(accountId, projectId) { return this.repository.deleteProjectData(requiredId(accountId, "account_id"), requiredId(projectId, "project_id")); }
 
-  setRetentionPolicy(accountId, projectId, input = {}) {
+  async setRetentionPolicy(accountId, projectId, input = {}) {
     const policy = { measurement_retention_days: days(input.measurement_retention_days, this.defaultMeasurementRetentionDays), event_retention_days: days(input.event_retention_days, this.defaultEventRetentionDays) };
     return this.repository.setRetentionPolicy(requiredId(accountId, "account_id"), requiredId(projectId, "project_id"), policy);
   }
-  getRetentionPolicy(accountId, projectId) { return this.repository.getRetentionPolicy(accountId, projectId) || { measurement_retention_days: this.defaultMeasurementRetentionDays, event_retention_days: this.defaultEventRetentionDays, source: "default" }; }
-  prune(now) { return this.repository.prune(this.defaultMeasurementRetentionDays, this.defaultEventRetentionDays, now); }
+  async getRetentionPolicy(accountId, projectId) { return await this.repository.getRetentionPolicy(accountId, projectId) || { measurement_retention_days: this.defaultMeasurementRetentionDays, event_retention_days: this.defaultEventRetentionDays, source: "default" }; }
+  async prune(now) { return this.repository.prune(this.defaultMeasurementRetentionDays, this.defaultEventRetentionDays, now); }
 }
 
 function normalizeMeasurements(value, context) {

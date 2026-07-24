@@ -13,7 +13,6 @@ const pages = [
   "downloads/index.html",
   "flashbox-einrichten/index.html",
   "nachbauprojekte/index.html",
-  "produkte/index.html",
   "shop/index.html",
   "support/index.html",
   "webserial-test/index.html",

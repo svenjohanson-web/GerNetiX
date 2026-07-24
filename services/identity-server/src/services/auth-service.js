@@ -31,18 +31,18 @@ class AuthService {
     assertRegistrationInput(username, email, password, password_repeat);
 
     try {
-      const account = this.repository.createUserAccount({
+      const account = await this.repository.createUserAccount({
         id: options.user_id || options.userId || "",
         username: username.trim(),
         email,
         status: USER_STATUS.PENDING_VERIFICATION,
       });
-      this.repository.createLocalCredential({
+      await this.repository.createLocalCredential({
         userId: account.id,
         passwordHash: this.passwordHasher.hash(password),
       });
 
-      const verification = this.createVerificationToken(account.id);
+      const verification = await this.createVerificationToken(account.id);
       await this.emailService.send_verification_email(
         account.email,
         `${this.appBaseUrl}/verify-email?token=${encodeURIComponent(verification.rawToken)}`,
@@ -66,14 +66,14 @@ class AuthService {
   }
 
   async verify_email(token) {
-    const tokenRecord = this.readValidVerificationToken(token);
-    const account = this.repository.findUserById(tokenRecord.user_id);
+    const tokenRecord = await this.readValidVerificationToken(token);
+    const account = await this.repository.findUserById(tokenRecord.user_id);
     if (!account) {
       throw new AuthError("invalid_token", "Verification token is invalid.", 400);
     }
 
-    this.repository.markVerificationTokenUsed(tokenRecord.id);
-    const verifiedAccount = this.repository.updateUserAccount(account.id, {
+    await this.repository.markVerificationTokenUsed(tokenRecord.id);
+    const verifiedAccount = await this.repository.updateUserAccount(account.id, {
       status: USER_STATUS.VERIFIED,
     });
 
@@ -82,8 +82,8 @@ class AuthService {
 
   async create_guest(options = {}) {
     const expiresAt = new Date(Date.now() + Number(options.ttlMs || 24 * 60 * 60 * 1000)).toISOString();
-    const account = this.repository.createUserAccount({
-      username: this.suggestGuestUsername(),
+    const account = await this.repository.createUserAccount({
+      username: await this.suggestGuestUsername(),
       email: null,
       status: USER_STATUS.VERIFIED,
       accountType: "guest",
@@ -96,7 +96,7 @@ class AuthService {
     assertPseudonymousUsername(username);
     if (!passkey?.credentialId || !passkey?.publicKey) throw new AuthError("passkey_required", "A verified passkey is required.", 400);
     try {
-      const account = this.repository.createUserAccount({
+      const account = await this.repository.createUserAccount({
         username: username.trim(), email: null, status: USER_STATUS.VERIFIED, accountType: "base",
         passkeyCredentialId: passkey.credentialId, passkeyPublicKey: passkey.publicKey,
         passkeyCounter: Number(passkey.counter || 0), passkeyTransports: passkey.transports || [],
@@ -108,13 +108,13 @@ class AuthService {
     }
   }
 
-  get_passkey_login_candidate(username) {
-    const account = this.repository.findUserByUsername(username);
+  async get_passkey_login_candidate(username) {
+    const account = await this.repository.findUserByUsername(username);
     return this.assertPasskeyLoginCandidate(account);
   }
 
-  get_passkey_login_candidate_by_credential_id(credentialId) {
-    const account = this.repository.findUserByPasskeyCredentialId(credentialId);
+  async get_passkey_login_candidate_by_credential_id(credentialId) {
+    const account = await this.repository.findUserByPasskeyCredentialId(credentialId);
     return this.assertPasskeyLoginCandidate(account);
   }
 
@@ -125,37 +125,37 @@ class AuthService {
   }
 
   async login_passkey(username, counter) {
-    const account = this.get_passkey_login_candidate(username);
+    const account = await this.get_passkey_login_candidate(username);
     return this.login_passkey_account(account, counter);
   }
 
   async login_passkey_by_credential_id(credentialId, counter) {
-    const account = this.get_passkey_login_candidate_by_credential_id(credentialId);
+    const account = await this.get_passkey_login_candidate_by_credential_id(credentialId);
     return this.login_passkey_account(account, counter);
   }
 
   async login_passkey_account(account, counter) {
-    const updated = this.repository.updateUserAccount(account.id, { passkey_counter: Number(counter || account.passkey_counter || 0) });
+    const updated = await this.repository.updateUserAccount(account.id, { passkey_counter: Number(counter || account.passkey_counter || 0) });
     return this.createSessionResponse(updated);
   }
 
   async upgrade_guest_to_base(userId, username, password, accepted_terms, passkey_credential_id, offline_recovery_set_confirmed, offline_recovery_set) {
     assertTermsAccepted(accepted_terms);
     assertPseudonymousRegistrationInput(username, password);
-    const account = this.repository.findUserById(userId);
+    const account = await this.repository.findUserById(userId);
     if (!account || account.account_type !== "guest") throw new AuthError("guest_account_required", "A valid guest account is required.", 400);
     if (isGuestExpired(account)) throw new AuthError("guest_expired", "The guest account has expired.", 410);
     if (!String(passkey_credential_id || "").trim()) throw new AuthError("passkey_required", "A passkey registration is required.", 400);
     const offlineRecoverySet = String(offline_recovery_set || "").trim();
     if (offline_recovery_set_confirmed === true && !offlineRecoverySet) throw new AuthError("offline_recovery_set_required", "A selected offline recovery set must be generated.", 400);
     try {
-      const upgraded = this.repository.updateUserAccount(account.id, {
+      const upgraded = await this.repository.updateUserAccount(account.id, {
         username: username.trim(), account_type: "base", guest_expires_at: null,
           passkey_credential_id: String(passkey_credential_id).trim(),
           offline_recovery_set_confirmed_at: offline_recovery_set_confirmed === true ? new Date().toISOString() : null,
           offline_recovery_set_hash: offline_recovery_set_confirmed === true ? this.passwordHasher.hash(offlineRecoverySet) : null,
       });
-      this.repository.createLocalCredential({ userId: account.id, passwordHash: this.passwordHasher.hash(password) });
+      await this.repository.createLocalCredential({ userId: account.id, passwordHash: this.passwordHasher.hash(password) });
       return { account: toPublicAccount(upgraded) };
     } catch (error) {
       if (error.message === "USERNAME_ALREADY_EXISTS") throw new AuthError("username_already_exists", "Username is already in use.", 409);
@@ -164,27 +164,27 @@ class AuthService {
   }
 
   async add_esp32_recovery_token(userId, board_id) {
-    const account = this.repository.findUserById(userId);
+    const account = await this.repository.findUserById(userId);
     if (!account || !["base", "esp32"].includes(account.account_type)) throw new AuthError("base_account_required", "A base account is required.", 400);
     const boardId = String(board_id || "").trim();
     if (!boardId) throw new AuthError("invalid_board_id", "A board id is required.", 400);
     const boardIds = Array.from(new Set([...(account.recovery_board_ids || []), boardId]));
     if (boardIds.length > 3) throw new AuthError("recovery_board_limit", "At most three recovery boards are allowed.", 409);
-    return { account: toPublicAccount(this.repository.updateUserAccount(account.id, { account_type: "esp32", recovery_board_ids: boardIds })) };
+    return { account: toPublicAccount(await this.repository.updateUserAccount(account.id, { account_type: "esp32", recovery_board_ids: boardIds })) };
   }
 
   async remove_esp32_recovery_token(userId, board_id) {
-    const account = this.repository.findUserById(userId);
+    const account = await this.repository.findUserById(userId);
     if (!account || account.account_type !== "esp32") throw new AuthError("esp32_account_required", "An ESP32 account is required.", 400);
     const boardIds = (account.recovery_board_ids || []).filter((id) => id !== String(board_id || "").trim());
-    return { account: toPublicAccount(this.repository.updateUserAccount(account.id, { account_type: boardIds.length ? "esp32" : "base", recovery_board_ids: boardIds })) };
+    return { account: toPublicAccount(await this.repository.updateUserAccount(account.id, { account_type: boardIds.length ? "esp32" : "base", recovery_board_ids: boardIds })) };
   }
 
   async create_offline_recovery_set(userId) {
-    const account = this.repository.findUserById(userId);
+    const account = await this.repository.findUserById(userId);
     if (!account || !["base", "esp32"].includes(account.account_type)) throw new AuthError("base_account_required", "A base account is required.", 400);
     const recoverySet = formatOfflineRecoverySet(crypto.randomBytes(24).toString("base64url"));
-    const updated = this.repository.updateUserAccount(account.id, {
+    const updated = await this.repository.updateUserAccount(account.id, {
       offline_recovery_set_confirmed_at: new Date().toISOString(),
       offline_recovery_set_hash: this.passwordHasher.hash(recoverySet),
     });
@@ -192,47 +192,47 @@ class AuthService {
   }
 
   async start_offline_recovery(username, recoverySet) {
-    const account = this.repository.findUserByUsername(username);
+    const account = await this.repository.findUserByUsername(username);
     const suppliedRecoverySet = String(recoverySet || "").trim();
     if (!account || !["base", "esp32"].includes(account.account_type) || !account.offline_recovery_set_hash || !this.passwordHasher.verify(suppliedRecoverySet, account.offline_recovery_set_hash)) {
       throw new AuthError("invalid_recovery_set", "Recovery set is invalid.", 401);
     }
     const recovery = this.tokenService.createTokenRecord({ userId: account.id, ttlMinutes: 10 });
-    this.repository.createOfflineRecoveryTransaction(recovery.record);
+    await this.repository.createOfflineRecoveryTransaction(recovery.record);
     return { recovery_token: recovery.rawToken, username: account.username };
   }
 
-  get_offline_recovery_account(token) {
-    const record = this.readValidOfflineRecoveryTransaction(token);
-    const account = this.repository.findUserById(record.user_id);
+  async get_offline_recovery_account(token) {
+    const record = await this.readValidOfflineRecoveryTransaction(token);
+    const account = await this.repository.findUserById(record.user_id);
     assertAccountCanLogin(account);
     return account;
   }
 
   async complete_offline_recovery(token, passkey) {
-    const record = this.readValidOfflineRecoveryTransaction(token);
+    const record = await this.readValidOfflineRecoveryTransaction(token);
     if (!passkey?.credentialId || !passkey?.publicKey) throw new AuthError("passkey_required", "A verified passkey is required.", 400);
-    const account = this.repository.findUserById(record.user_id);
+    const account = await this.repository.findUserById(record.user_id);
     if (!account) throw new AuthError("invalid_recovery_token", "Recovery token is invalid or expired.", 401);
     assertAccountCanLogin(account);
-    const updated = this.repository.updateUserAccount(account.id, {
+    const updated = await this.repository.updateUserAccount(account.id, {
       passkey_credential_id: String(passkey.credentialId).trim(),
       passkey_public_key: String(passkey.publicKey).trim(),
       passkey_counter: Number(passkey.counter || 0),
       passkey_transports: passkey.transports || [],
     });
-    this.repository.markOfflineRecoveryTransactionUsed(record.id);
-    this.repository.revokeSessionsByUserId(account.id);
+    await this.repository.markOfflineRecoveryTransactionUsed(record.id);
+    await this.repository.revokeSessionsByUserId(account.id);
     return this.createSessionResponse(updated);
   }
 
   async login_local(identifier, password) {
-    const account = findAccountByIdentifier(this.repository, identifier);
+    const account = await findAccountByIdentifier(this.repository, identifier);
     if (!account) {
       throw new AuthError("invalid_credentials", "Invalid username/email or password.", 401);
     }
 
-    const credential = this.repository.findLocalCredentialByUserId(account.id);
+    const credential = await this.repository.findLocalCredentialByUserId(account.id);
     if (!credential || !this.passwordHasher.verify(password, credential.password_hash)) {
       throw new AuthError("invalid_credentials", "Invalid username/email or password.", 401);
     }
@@ -248,22 +248,22 @@ class AuthService {
     }
 
     const providerIdentity = await provider.authenticate(providerTokenOrMockPayload);
-    const existingIdentity = this.repository.findExternalIdentity(
+    const existingIdentity = await this.repository.findExternalIdentity(
       providerIdentity.provider,
       providerIdentity.provider_user_id,
     );
 
     if (existingIdentity) {
-      this.repository.touchExternalIdentity(existingIdentity.id);
-      const existingAccount = this.repository.findUserById(existingIdentity.user_id);
+      await this.repository.touchExternalIdentity(existingIdentity.id);
+      const existingAccount = await this.repository.findUserById(existingIdentity.user_id);
       assertAccountCanLogin(existingAccount);
       return this.createSessionResponse(existingAccount);
     }
 
-    const username = this.suggestUniqueUsername(providerIdentity);
+    const username = await this.suggestUniqueUsername(providerIdentity);
     let account;
     try {
-      account = this.repository.createUserAccount({
+      account = await this.repository.createUserAccount({
         username,
         email: providerIdentity.email,
         status: providerIdentity.email_verified
@@ -284,7 +284,7 @@ class AuthService {
       throw error;
     }
 
-    this.repository.createExternalIdentity({
+    await this.repository.createExternalIdentity({
       userId: account.id,
       provider: providerIdentity.provider,
       providerUserId: providerIdentity.provider_user_id,
@@ -292,7 +292,7 @@ class AuthService {
     });
 
     if (!providerIdentity.email_verified) {
-      const verification = this.createVerificationToken(account.id);
+      const verification = await this.createVerificationToken(account.id);
       await this.emailService.send_verification_email(
         account.email,
         `${this.appBaseUrl}/verify-email?token=${encodeURIComponent(verification.rawToken)}`,
@@ -312,21 +312,21 @@ class AuthService {
 
   async logout(sessionIdOrToken) {
     const session =
-      this.repository.findSessionById(sessionIdOrToken) ||
-      this.repository.findSessionByTokenHash(this.tokenService.hashToken(sessionIdOrToken));
+      await this.repository.findSessionById(sessionIdOrToken) ||
+      await this.repository.findSessionByTokenHash(this.tokenService.hashToken(sessionIdOrToken));
 
     if (!session || session.revoked_at) {
       return { logged_out: true };
     }
 
-    this.repository.revokeSession(session.id);
+    await this.repository.revokeSession(session.id);
     return { logged_out: true };
   }
 
-  resolve_session_token(rawToken) {
-    const session = this.repository.findSessionByTokenHash(this.tokenService.hashToken(rawToken));
+  async resolve_session_token(rawToken) {
+    const session = await this.repository.findSessionByTokenHash(this.tokenService.hashToken(rawToken));
     if (!session || session.revoked_at || isExpired(session.expires_at)) return null;
-    const account = this.repository.findUserById(session.user_id);
+    const account = await this.repository.findUserById(session.user_id);
     if (!account || isGuestExpired(account)) return null;
     return {
       account: toPublicAccount(account),
@@ -339,18 +339,18 @@ class AuthService {
   }
 
   async request_password_reset(email) {
-    const account = this.repository.findUserByEmail(email);
+    const account = await this.repository.findUserByEmail(email);
     if (!account) {
       return neutralPasswordResetResponse();
     }
 
-    const credential = this.repository.findLocalCredentialByUserId(account.id);
+    const credential = await this.repository.findLocalCredentialByUserId(account.id);
     if (!credential) {
       return neutralPasswordResetResponse();
     }
 
     const reset = this.tokenService.createTokenRecord({ userId: account.id, ttlMinutes: 30 });
-    this.repository.createPasswordResetToken(reset.record);
+    await this.repository.createPasswordResetToken(reset.record);
     await this.emailService.send_password_reset_email(
       account.email,
       `${this.appBaseUrl}/reset-password?token=${encodeURIComponent(reset.rawToken)}`,
@@ -363,58 +363,58 @@ class AuthService {
 
   async reset_password(token, newPassword) {
     const tokenHash = this.tokenService.hashToken(token);
-    const tokenRecord = this.repository.findPasswordResetTokenByHash(tokenHash);
+    const tokenRecord = await this.repository.findPasswordResetTokenByHash(tokenHash);
     if (!tokenRecord || tokenRecord.used_at || isExpired(tokenRecord.expires_at)) {
       throw new AuthError("invalid_token", "Password reset token is invalid or expired.", 400);
     }
 
-    const account = this.repository.findUserById(tokenRecord.user_id);
+    const account = await this.repository.findUserById(tokenRecord.user_id);
     if (!account) {
       throw new AuthError("invalid_token", "Password reset token is invalid or expired.", 400);
     }
 
-    const credential = this.repository.findLocalCredentialByUserId(account.id);
+    const credential = await this.repository.findLocalCredentialByUserId(account.id);
     if (!credential) {
       throw new AuthError("local_credential_missing", "No local credential exists for this account.", 400);
     }
 
-    this.repository.updateLocalCredential(account.id, {
+    await this.repository.updateLocalCredential(account.id, {
       password_hash: this.passwordHasher.hash(newPassword),
     });
-    this.repository.markPasswordResetTokenUsed(tokenRecord.id);
+    await this.repository.markPasswordResetTokenUsed(tokenRecord.id);
 
     return { password_changed: true };
   }
 
-  createVerificationToken(userId) {
+  async createVerificationToken(userId) {
     const verification = this.tokenService.createTokenRecord({ userId, ttlMinutes: 24 * 60 });
-    const record = this.repository.createVerificationToken(verification.record);
+    const record = await this.repository.createVerificationToken(verification.record);
     return { rawToken: verification.rawToken, record };
   }
 
-  readValidVerificationToken(token) {
+  async readValidVerificationToken(token) {
     const tokenHash = this.tokenService.hashToken(token);
-    const tokenRecord = this.repository.findVerificationTokenByHash(tokenHash);
+    const tokenRecord = await this.repository.findVerificationTokenByHash(tokenHash);
     if (!tokenRecord || tokenRecord.used_at || isExpired(tokenRecord.expires_at)) {
       throw new AuthError("invalid_token", "Verification token is invalid or expired.", 400);
     }
     return tokenRecord;
   }
 
-  readValidOfflineRecoveryTransaction(token) {
+  async readValidOfflineRecoveryTransaction(token) {
     const tokenHash = this.tokenService.hashToken(token);
-    const tokenRecord = this.repository.findOfflineRecoveryTransactionByHash(tokenHash);
+    const tokenRecord = await this.repository.findOfflineRecoveryTransactionByHash(tokenHash);
     if (!tokenRecord || tokenRecord.used_at || isExpired(tokenRecord.expires_at)) {
       throw new AuthError("invalid_recovery_token", "Recovery token is invalid or expired.", 401);
     }
     return tokenRecord;
   }
 
-  createSessionResponse(account) {
+  async createSessionResponse(account) {
     const rawToken = this.tokenService.createRawToken();
     const now = Date.now();
     const expiresAt = new Date(now + 12 * 60 * 60 * 1000).toISOString();
-    const session = this.repository.createSession({
+    const session = await this.repository.createSession({
       userId: account.id,
       tokenHash: this.tokenService.hashToken(rawToken),
       expiresAt,
@@ -431,21 +431,21 @@ class AuthService {
     };
   }
 
-  suggestUniqueUsername(providerIdentity) {
+  async suggestUniqueUsername(providerIdentity) {
     const preferred = providerIdentity.username || String(providerIdentity.email).split("@")[0];
     const base = sanitizeUsername(preferred || providerIdentity.provider_user_id || "user");
     let candidate = base;
     let suffix = 2;
-    while (this.repository.usernameExists(candidate)) {
+    while (await this.repository.usernameExists(candidate)) {
       candidate = `${base}${suffix}`;
       suffix += 1;
     }
     return candidate;
   }
 
-  suggestGuestUsername() {
+  async suggestGuestUsername() {
     let candidate = `guest_${this.tokenService.createRawToken().replace(/[^a-z0-9]/gi, "").slice(0, 10).toLowerCase()}`;
-    while (this.repository.usernameExists(candidate)) candidate = `${candidate}x`;
+    while (await this.repository.usernameExists(candidate)) candidate = `${candidate}x`;
     return candidate;
   }
 }
@@ -477,9 +477,11 @@ function assertTermsAccepted(acceptedTerms) {
   }
 }
 
-function findAccountByIdentifier(repository, identifier) {
+async function findAccountByIdentifier(repository, identifier) {
   const value = String(identifier || "").trim();
-  return value.includes("@") ? repository.findUserByEmail(value) : repository.findUserByUsername(value);
+  return value.includes("@")
+    ? repository.findUserByEmail(value)
+    : repository.findUserByUsername(value);
 }
 
 function assertAccountCanLogin(account) {

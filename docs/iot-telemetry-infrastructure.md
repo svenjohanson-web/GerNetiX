@@ -21,7 +21,7 @@ Projekt-Runtime auf dem Board
   -> mTLS/MQTT-Adapter
   -> token-geschuetzter Telemetry Ingress
   -> Device Management + Project Server: Ownership-Pruefung
-  -> TelemetryMeasurement / TelemetryEvent in SQLite
+  -> TelemetryMeasurement / TelemetryEvent in PostgreSQL
   -> Identity-Push-Route nur fuer notify_push-Ereignisse, mit account_id + project_id
   -> account- und projektgeschuetzte PWA-Lese- und Loesch-API
 ```
@@ -30,7 +30,7 @@ Der Ingress speichert Ereignisse vor einem Push-Versuch. Ein fehlgeschlagener od
 
 ## Aufbewahrung und Loeschung
 
-Standardmaessig bewahrt der Dienst Messwerte 90 Tage und Ereignisse 365 Tage auf. Pro Account und Projekt kann die Infrastruktur eine abweichende Dauer zwischen einem und 3650 Tagen speichern. Der Telemetry Server fuehrt die Retention beim Start und danach standardmaessig alle 24 Stunden aus; sie loescht abgelaufene Datensaetze direkt aus SQLite.
+Standardmaessig bewahrt der Dienst Messwerte 90 Tage und Ereignisse 365 Tage auf. Pro Account und Projekt kann die Infrastruktur eine abweichende Dauer zwischen einem und 3650 Tagen speichern. Der Telemetry Server fuehrt die Retention beim Start und danach standardmaessig alle 24 Stunden aus; sie loescht abgelaufene Datensaetze direkt aus PostgreSQL.
 
 Eine Projektloeschung wirkt immer nur innerhalb der serverseitig geprueften Kombination aus Account und Projekt. Sie entfernt Messwerte, Ereignisse und deren Retention-Konfiguration. Sie entfernt weder das physische Board noch dessen Geraete-Credential.
 

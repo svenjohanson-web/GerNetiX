@@ -196,6 +196,7 @@ Attribute:
 Typen:
 
 - Lesson
+- DevelopmentLesson
 - Step
 - Summary
 - Quiz (zukuenftig)
@@ -213,6 +214,7 @@ Regeln:
 - Die Reihenfolge gehoert nicht zu `ProjectStep`.
 - Die Reihenfolge gehoert ausschliesslich zum Projektablauf.
 - `Lesson` und `ProjectStep` bleiben dadurch wiederverwendbar.
+- Eine `DevelopmentLesson` erscheint ueber ein `ProjectFlowItem` in der Story eines Entwicklungsprojekts; ihre internen Schritte werden nicht als parallele Projekt-Flow-Items dupliziert.
 - `ProjectFlowItem` folgt demselben Muster wie `LearningPathStep`.
 
 ### Lesson
@@ -233,6 +235,99 @@ Regel:
 
 - kann in mehreren Projekten verwendet werden
 - besitzt keine eigenen PreConditions oder PostConditions als Freitext
+
+### DevelopmentProject
+
+Beschreibt die projektzentrierte Form eines `LearningProject`.
+`DevelopmentProject` ist kein zweites Persistenzaggregat neben `LearningProject`, sondern dessen didaktisches Profil fuer eine zusammenhaengende Projektstory.
+
+Eigenschaften und Regeln:
+
+- besitzt eine fachliche Projektstory
+- besitzt mehrere geordnete `ProjectLessonAssignment`
+- uebernimmt Ergebnisse einer DevelopmentLesson in die naechste DevelopmentLesson
+- bleibt als accountgebundenes Projekt ueber alle zugeordneten Lessons erhalten
+- der Start erzeugt genau ein accountgebundenes Projekt, das ueber die gesamte Story fortgesetzt wird
+- eine technische Grenze der vorherigen Lesson begruendet den naechsten Entwicklungsschritt
+- freie Entwicklungsprojekte ohne Lernstory bleiben davon fachlich getrennt
+
+### DevelopmentLesson
+
+Beschreibt eine wiederverwendbare praktische Lerneinheit innerhalb eines oder mehrerer Entwicklungsprojekte.
+
+Eigenschaften:
+
+- id
+- Titel
+- Kurzbeschreibung
+- besitzt mehrere geordnete `DevelopmentLessonStep`
+- besitzt genau einen `LessonStartSnapshot` fuer den Einzelstart
+- benoetigt optional andere DevelopmentLessons als fachliche Voraussetzungen
+
+Regeln:
+
+- Die DevelopmentLesson besitzt das konkrete Lernziel.
+- Ihre Schritte bilden eine zusammenhaengende praktische Einheit.
+- Dieselbe DevelopmentLesson kann ueber `ProjectLessonAssignment` mehreren Entwicklungsprojekten zugeordnet werden.
+- Im Projektmodus arbeitet sie auf dem fortgeschriebenen Projektstand.
+- Im Einzelmodus wird kein vorheriger Abschluss erzwungen; ein vorbereiteter Snapshot stellt den benoetigten Ausgangszustand bereit.
+- Die Lesson wird fuer den Einzelstart nicht kopiert oder fachlich dupliziert.
+
+### DevelopmentLessonStep
+
+Beschreibt einen geordneten Arbeitsschritt innerhalb genau einer `DevelopmentLesson`.
+
+Eigenschaften:
+
+- id
+- orderIndex
+- Titel
+- Beschreibung
+- Expected Result
+- Validation
+
+Regeln:
+
+- Die Schrittreihenfolge gehoert zur DevelopmentLesson.
+- Ein DevelopmentLessonStep ist nicht gleichzeitig ein eigenstaendiges `ProjectFlowItem`.
+- Einzelstart und Projektmodus verwenden dieselben Schritte.
+
+### ProjectLessonAssignment
+
+Ordnet eine wiederverwendbare `DevelopmentLesson` einer Projektstory zu.
+
+Eigenschaften:
+
+- orderIndex
+- mandatory
+- unlockCondition (optional)
+- narrativeTransition
+
+Regeln:
+
+- Die Zuordnung besitzt die Reihenfolge innerhalb des Entwicklungsprojekts.
+- `narrativeTransition` beschreibt, welche Grenze des bisherigen Projektstands die naechste Lesson motiviert.
+- Die Zuordnung enthaelt keine Kopie der Lesson-Schritte.
+
+### LessonStartSnapshot
+
+Beschreibt den vorbereiteten Ausgangszustand fuer den Einzelstart einer DevelopmentLesson.
+
+Eigenschaften:
+
+- id
+- Runtime
+- benoetigte Hardware-Klasse oder keine Hardware
+- primaere Quelldatei
+- enthaltene Quelldateien und Beispieldaten
+- Ausgangsbedingungen
+
+Regeln:
+
+- Der Snapshot ist Startzustand, keine zweite fachliche Quelle der Lesson.
+- Er enthaelt nur Ergebnisse vorheriger Lessons, die fuer die isolierte Bearbeitung benoetigt werden.
+- Ein SQLite-Einzelstart darf vorbereitete Beispieldaten liefern und benoetigt keinen zuvor durchlaufenen ESP32- oder LittleFS-Schritt.
+- Ein LittleFS-Einzelstart darf einen vorbereiteten NVS-Basisstand enthalten, benoetigt aber weiterhin ein geeignetes Mikrocontroller-Ziel.
 
 ### ProjectStep
 
@@ -516,6 +611,9 @@ Attribute:
 - learningProjectId
 - projectVariantId
 - currentProjectFlowItemId
+- currentDevelopmentLessonId (optional)
+- currentDevelopmentLessonStepId (optional)
+- entryMode (`project_story` oder `standalone_lesson`)
 - status
 - startedAt
 - lastSeenAt
@@ -533,6 +631,7 @@ Regeln:
 
 - Ein `Account` kann mehrere `AccountProjectProgress`-Objekte besitzen.
 - Ein Benutzer kann mehrere Projekte gleichzeitig bearbeiten.
+- Ein Einzelstart erzeugt ein eigenes accountgebundenes Uebungsprojekt mit `entryMode=standalone_lesson`, verweist aber auf dieselbe DevelopmentLesson und dieselben Schritte.
 - Ein Benutzer kann Projekte pausieren.
 - Ein Benutzer kann dasselbe `LearningProject` ueber unterschiedliche `LearningPath` starten.
 - Der gestartete `LearningPath` bleibt nachvollziehbar.

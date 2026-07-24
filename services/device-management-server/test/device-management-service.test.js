@@ -12,8 +12,8 @@ const { DeviceManagementService } = require("../src/services/device-management-s
 const TEST_DEVICE_KEYS = crypto.generateKeyPairSync("ec", { namedCurve: "prime256v1" });
 const TEST_DEVICE_PUBLIC_KEY = TEST_DEVICE_KEYS.publicKey.export({ type: "spki", format: "pem" }).toString();
 
-function registerVerified(service, overrides = {}) {
-  return service.registerDevice({
+async function registerVerified(service, overrides = {}) {
+  return await service.registerDevice({
     serial_number: "GNX-ESP32-0001",
     hardware_profile_id: "hardware.processor_board.generic_esp_wroom32",
     gernetix_verified: true,
@@ -31,26 +31,26 @@ function registerVerified(service, overrides = {}) {
   });
 }
 
-test("registers provisioned device and never exposes raw credential", () => {
-  const service = createDefaultDeviceManagementServer();
-  const device = registerVerified(service);
-  const credentials = service.adminCredentials(device.device_id);
+test("registers provisioned device and never exposes raw credential", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  const device = await registerVerified(service);
+  const credentials = await service.adminCredentials(device.device_id);
 
   assert.equal(device.authenticity_status, "gernetix_verified");
   assert.equal(credentials.credentials[0].credential_id, "cred-1");
   assert.equal(credentials.credentials[0].secret, undefined);
 });
 
-test("verifies ECDSA P-256 challenge for GerNetiX device", () => {
-  const service = createDefaultDeviceManagementServer();
-  const device = registerVerified(service);
-  const challenge = service.createChallenge(device.device_id);
+test("verifies ECDSA P-256 challenge for GerNetiX device", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  const device = await registerVerified(service);
+  const challenge = await service.createChallenge(device.device_id);
   const signature = crypto.sign("sha256", Buffer.from(challenge.canonical), {
     key: TEST_DEVICE_KEYS.privateKey,
     dsaEncoding: "ieee-p1363",
   }).toString("base64url");
 
-  const result = service.verifyChallenge(device.device_id, {
+  const result = await service.verifyChallenge(device.device_id, {
     challenge_id: challenge.challenge_id,
     signature,
   });
@@ -59,9 +59,9 @@ test("verifies ECDSA P-256 challenge for GerNetiX device", () => {
   assert.equal(result.authenticity_status, "gernetix_verified");
 });
 
-test("issues only a hashed, short-lived, one-time provisioning token", () => {
-  const service = createDefaultDeviceManagementServer();
-  const issued = service.createProvisioningToken({ account_id: "acct-1", provisioning_binding: "usb-board-1" });
+test("issues only a hashed, short-lived, one-time provisioning token", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  const issued = await service.createProvisioningToken({ account_id: "acct-1", provisioning_binding: "usb-board-1" });
 
   assert.match(issued.provisioning_token, /^[A-Za-z0-9_-]{32,}$/);
   assert.equal(service.repository.provisioningTokens.size, 1);
@@ -69,23 +69,23 @@ test("issues only a hashed, short-lived, one-time provisioning token", () => {
   assert.notEqual(stored.token_hash_sha256, issued.provisioning_token);
   assert.equal(stored.status, "issued");
 
-  const consumed = service.consumeProvisioningToken({
+  const consumed = await service.consumeProvisioningToken({
     provisioning_token: issued.provisioning_token,
     provisioning_binding: "usb-board-1",
   });
   assert.equal(consumed.account_id, "acct-1");
-  assert.throws(() => service.consumeProvisioningToken({
+  await assert.rejects(() => service.consumeProvisioningToken({
     provisioning_token: issued.provisioning_token,
     provisioning_binding: "usb-board-1",
   }), /ungueltig|abgelaufen|verwendet/);
 });
 
-test("sqlite repository persists only the provisioning token hash", () => {
+test("sqlite repository persists only the provisioning token hash", async () => {
   const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-provisioning-token-")), "state.sqlite");
   const service = new DeviceManagementService({
     repository: SqliteBackedDeviceManagementRepository.create(dbPath),
   });
-  const issued = service.createProvisioningToken({ account_id: "acct-1", provisioning_binding: "usb-board-1" });
+  const issued = await service.createProvisioningToken({ account_id: "acct-1", provisioning_binding: "usb-board-1" });
 
   const database = new DatabaseSync(dbPath);
   const row = database.prepare("SELECT token_hash_sha256, raw_json FROM device_management_provisioning_tokens").get();
@@ -96,114 +96,114 @@ test("sqlite repository persists only the provisioning token hash", () => {
   const reloaded = new DeviceManagementService({
     repository: SqliteBackedDeviceManagementRepository.create(dbPath),
   });
-  assert.equal(reloaded.consumeProvisioningToken({
+  assert.equal((await reloaded.consumeProvisioningToken({
     provisioning_token: issued.provisioning_token,
     provisioning_binding: "usb-board-1",
-  }).account_id, "acct-1");
+  })).account_id, "acct-1");
 });
 
-test("rejects a challenge signature from another device key", () => {
-  const service = createDefaultDeviceManagementServer();
-  const device = registerVerified(service);
-  const challenge = service.createChallenge(device.device_id);
+test("rejects a challenge signature from another device key", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  const device = await registerVerified(service);
+  const challenge = await service.createChallenge(device.device_id);
   const other = crypto.generateKeyPairSync("ec", { namedCurve: "prime256v1" });
   const signature = crypto.sign("sha256", Buffer.from(challenge.canonical), {
     key: other.privateKey,
     dsaEncoding: "ieee-p1363",
   }).toString("base64url");
 
-  const result = service.verifyChallenge(device.device_id, { challenge_id: challenge.challenge_id, signature });
+  const result = await service.verifyChallenge(device.device_id, { challenge_id: challenge.challenge_id, signature });
   assert.equal(result.verification_state, "failed");
   assert.equal(result.authenticity_status, "community_unverified");
 });
 
-test("pairing creates account device and OTA target discovery marks selectable device", () => {
-  const service = createDefaultDeviceManagementServer();
-  const device = registerVerified(service);
-  const session = service.createPairingSession({
+test("pairing creates account device and OTA target discovery marks selectable device", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  const device = await registerVerified(service);
+  const session = await service.createPairingSession({
     account_id: "acct-1",
     device_id: device.device_id,
     pairing_channel: "ide_pairing_code",
   });
 
-  const completed = service.completePairing(session.pairing_session_id, {
+  const completed = await service.completePairing(session.pairing_session_id, {
     pairing_code: session.pairing_code,
     display_name: "Sven ESP32",
     technical_capability_ids: ["wifi", "ota", "flash_firmware"],
   });
-  const targets = service.otaTargets("acct-1", { requiredCapabilities: "wifi,ota" });
+  const targets = await service.otaTargets("acct-1", { requiredCapabilities: "wifi,ota" });
 
   assert.equal(completed.account_device.ownership_status, "paired_to_account");
   assert.equal(targets[0].selectable, true);
 });
 
-test("resolves push recipients from the current account-device ownership", () => {
-  const service = createDefaultDeviceManagementServer();
-  const device = registerVerified(service);
-  service.addAccountDevice("acct-owner", { device_id: device.device_id });
-  service.addAccountDevice("acct-second-device", { device_id: device.device_id });
+test("resolves push recipients from the current account-device ownership", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  const device = await registerVerified(service);
+  await service.addAccountDevice("acct-owner", { device_id: device.device_id });
+  await service.addAccountDevice("acct-second-device", { device_id: device.device_id });
 
-  assert.deepEqual(service.pushRecipients(device.device_id), {
+  assert.deepEqual(await service.pushRecipients(device.device_id), {
     device_id: device.device_id,
     account_ids: ["acct-owner", "acct-second-device"],
   });
 });
 
-test("connectivity checks refresh the account inventory projection", () => {
-  const service = createDefaultDeviceManagementServer();
-  const device = registerVerified(service, { connectivity_status: "unknown" });
-  service.addAccountDevice("acct-1", {
+test("connectivity checks refresh the account inventory projection", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  const device = await registerVerified(service, { connectivity_status: "unknown" });
+  await service.addAccountDevice("acct-1", {
     device_id: device.device_id,
     display_name: "Sven ESP32",
     technical_capability_ids: ["wifi", "ota"],
   });
 
-  service.updateConnectivity(device.device_id, { connectivity_status: "online", ota_status: "ready" });
+  await service.updateConnectivity(device.device_id, { connectivity_status: "online", ota_status: "ready" });
 
-  const inventoryDevice = service.listAccountDevices("acct-1")[0];
+  const inventoryDevice = (await service.listAccountDevices("acct-1"))[0];
   assert.equal(inventoryDevice.connectivity_status, "online");
   assert.equal(inventoryDevice.ota_status, "ready");
-  assert.equal(service.otaTargets("acct-1", { requiredCapabilities: "wifi,ota" })[0].selectable, true);
+  assert.equal((await service.otaTargets("acct-1", { requiredCapabilities: "wifi,ota" }))[0].selectable, true);
 });
 
-test("community hardware remains usable but not support eligible", () => {
-  const service = createDefaultDeviceManagementServer();
-  const device = service.registerDevice({
+test("community hardware remains usable but not support eligible", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  const device = await service.registerDevice({
     serial_number: "COMM-1",
     hardware_profile_id: "hardware.processor_board.esp32_unknown",
     connectivity_status: "offline",
     ota_status: "unknown",
   });
 
-  const entitlement = service.supportEntitlement(device.device_id);
+  const entitlement = await service.supportEntitlement(device.device_id);
   assert.equal(device.authenticity_status, "community_unverified");
   assert.equal(entitlement.entitlement_status, "not_eligible");
 });
 
-test("purchase context links sold hardware to support entitlement after authenticity proof", () => {
-  const service = createDefaultDeviceManagementServer();
-  service.registerPurchaseContext("acct-1", {
+test("purchase context links sold hardware to support entitlement after authenticity proof", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  await service.registerPurchaseContext("acct-1", {
     order_id: "order-1",
     hardware_item_ids: ["hardware.processor_board.generic_esp_wroom32"],
     capability_ids: ["capability.processor_esp32", "capability.wifi", "capability.ota"],
     support_basis: "gernetix_purchase_context",
     provisioning_profile_ids: ["provisioning_profile.esp32_ota_bootstrap"],
   });
-  const device = registerVerified(service, { serial_number: "GNX-ESP32-0002" });
-  const accountDevice = service.addAccountDevice("acct-1", {
+  const device = await registerVerified(service, { serial_number: "GNX-ESP32-0002" });
+  const accountDevice = await service.addAccountDevice("acct-1", {
     device_id: device.device_id,
     display_name: "Gekauftes ESP32",
   });
-  const entitlement = service.supportEntitlement(device.device_id);
+  const entitlement = await service.supportEntitlement(device.device_id);
 
   assert.equal(accountDevice.purchase_context_id, "order-1");
   assert.equal(entitlement.entitlement_status, "eligible");
   assert.equal(entitlement.source, "gernetix_purchase_context");
 });
 
-test("claims a purchased Flashbox unit into account inventory by hashed claim code", () => {
-  const service = createDefaultDeviceManagementServer();
-  const purchaseContext = service.registerPurchaseContext("acct-1", {
+test("claims a purchased Flashbox unit into account inventory by hashed claim code", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  const purchaseContext = await service.registerPurchaseContext("acct-1", {
     order_id: "order-flashbox-1",
     hardware_item_ids: ["hardware.flashbox.esp32_s3_28_otg"],
     capability_ids: ["capability.usb_otg_host", "capability.flashbox_target_flash", "capability.flashbox_self_update"],
@@ -219,9 +219,9 @@ test("claims a purchased Flashbox unit into account inventory by hashed claim co
   });
 
   assert.equal(purchaseContext.claimable_hardware_units[0].claim_code, undefined);
-  assert.equal(service.listClaimableHardwareUnits("acct-1")[0].claim_state, "unclaimed");
+  assert.equal((await service.listClaimableHardwareUnits("acct-1"))[0].claim_state, "unclaimed");
 
-  const claimed = service.claimHardwareUnit("acct-1", {
+  const claimed = await service.claimHardwareUnit("acct-1", {
     claim_code: "GNX-FB-TEST-01",
     display_name: "Werkstatt Flashbox",
   });
@@ -229,64 +229,64 @@ test("claims a purchased Flashbox unit into account inventory by hashed claim co
   assert.equal(claimed.account_device.hardware_class, "flashbox");
   assert.equal(claimed.account_device.ownership_status, "claimed_purchase_unit");
   assert.equal(claimed.account_device.purchase_context_id, "order-flashbox-1");
-  assert.equal(service.listAccountDevices("acct-1")[0].display_name, "Werkstatt Flashbox");
-  assert.equal(service.listClaimableHardwareUnits("acct-1")[0].claim_state, "claimed");
-  assert.throws(() => service.claimHardwareUnit("acct-1", { claim_code: "GNX-FB-TEST-01" }), /bereits inventarisiert/);
+  assert.equal((await service.listAccountDevices("acct-1"))[0].display_name, "Werkstatt Flashbox");
+  assert.equal((await service.listClaimableHardwareUnits("acct-1"))[0].claim_state, "claimed");
+  await assert.rejects(() => service.claimHardwareUnit("acct-1", { claim_code: "GNX-FB-TEST-01" }), /bereits inventarisiert/);
 });
 
-test("purchase context alone does not make community hardware support eligible", () => {
-  const service = createDefaultDeviceManagementServer();
-  service.registerPurchaseContext("acct-1", {
+test("purchase context alone does not make community hardware support eligible", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  await service.registerPurchaseContext("acct-1", {
     order_id: "order-1",
     hardware_item_ids: ["hardware.processor_board.generic_esp_wroom32"],
     support_basis: "gernetix_purchase_context",
   });
-  const device = service.registerDevice({
+  const device = await service.registerDevice({
     serial_number: "COMM-2",
     hardware_profile_id: "hardware.processor_board.generic_esp_wroom32",
   });
-  service.addAccountDevice("acct-1", { device_id: device.device_id });
+  await service.addAccountDevice("acct-1", { device_id: device.device_id });
 
-  const entitlement = service.supportEntitlement(device.device_id);
+  const entitlement = await service.supportEntitlement(device.device_id);
   assert.equal(entitlement.entitlement_status, "not_eligible");
   assert.equal(entitlement.source, "purchase_context_requires_authenticity");
 });
 
-test("removes account device without deleting registered device", () => {
-  const service = createDefaultDeviceManagementServer();
-  const device = registerVerified(service);
-  const accountDevice = service.addAccountDevice("acct-1", {
+test("removes account device without deleting registered device", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  const device = await registerVerified(service);
+  const accountDevice = await service.addAccountDevice("acct-1", {
     device_id: device.device_id,
     display_name: "Sven ESP32",
   });
 
-  const removed = service.removeAccountDevice("acct-1", accountDevice.account_device_id);
+  const removed = await service.removeAccountDevice("acct-1", accountDevice.account_device_id);
 
   assert.equal(removed.removed, true);
   assert.equal(removed.device_id, device.device_id);
-  assert.equal(service.listAccountDevices("acct-1").length, 0);
-  assert.equal(service.getStatus(device.device_id).device_id, device.device_id);
+  assert.equal((await service.listAccountDevices("acct-1")).length, 0);
+  assert.equal((await service.getStatus(device.device_id)).device_id, device.device_id);
 });
 
-test("removing unknown account device returns not found", () => {
-  const service = createDefaultDeviceManagementServer();
+test("removing unknown account device returns not found", async () => {
+  const service = await createDefaultDeviceManagementServer();
 
-  assert.throws(
+  await assert.rejects(
     () => service.removeAccountDevice("acct-1", "account_device_missing"),
     /AccountDevice wurde nicht gefunden/,
   );
 });
 
-test("admin device detail is masked without consent and full with consent", () => {
-  const service = createDefaultDeviceManagementServer();
-  const device = registerVerified(service);
-  service.addAccountDevice("acct-1", {
+test("admin device detail is masked without consent and full with consent", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  const device = await registerVerified(service);
+  await service.addAccountDevice("acct-1", {
     device_id: device.device_id,
     display_name: "Sven ESP32",
     technical_capability_ids: ["wifi", "ota"],
   });
 
-  const masked = service.adminDevice(device.device_id, {
+  const masked = await service.adminDevice(device.device_id, {
     actor_id: "support-1",
     role: "support",
     purpose: "support_case",
@@ -294,42 +294,42 @@ test("admin device detail is masked without consent and full with consent", () =
   assert.equal(masked.access.decision, "masked");
   assert.equal(masked.device.serial_number, undefined);
 
-  service.createConsent({
+  await service.createConsent({
     account_id: "acct-1",
     granted_to_role: "support",
     purpose: "support_case",
     valid_until: "2099-01-01T00:00:00.000Z",
   });
-  const full = service.adminDevice(device.device_id, {
+  const full = await service.adminDevice(device.device_id, {
     actor_id: "support-1",
     role: "support",
     purpose: "support_case",
   });
   assert.equal(full.access.decision, "full");
   assert.equal(full.device.serial_number, "GNX-ESP32-0001");
-  assert.equal(service.auditEvents().length, 2);
+  assert.equal((await service.auditEvents()).length, 2);
 });
 
-test("json repository persists device inventory across reload", () => {
+test("json repository persists device inventory across reload", async () => {
   const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gnx-device-management-"));
   const service = new DeviceManagementService({
     repository: FileBackedDeviceManagementRepository.create(runtimeRoot),
   });
-  const device = registerVerified(service, { serial_number: "GNX-PERSIST-001" });
-  service.addAccountDevice("acct-1", { device_id: device.device_id });
+  const device = await registerVerified(service, { serial_number: "GNX-PERSIST-001" });
+  await service.addAccountDevice("acct-1", { device_id: device.device_id });
 
   const reloaded = new DeviceManagementService({
     repository: FileBackedDeviceManagementRepository.create(runtimeRoot),
   });
 
-  assert.equal(reloaded.getStatus(device.device_id).serial_number, "GNX-PERSIST-001");
-  assert.equal(reloaded.listAccountDevices("acct-1").length, 1);
+  assert.equal((await reloaded.getStatus(device.device_id)).serial_number, "GNX-PERSIST-001");
+  assert.equal((await reloaded.listAccountDevices("acct-1")).length, 1);
 });
 
-test("basissoftware profile can be changed later and exposes required USB migration", () => {
-  const service = createDefaultDeviceManagementServer();
-  const device = registerVerified(service);
-  const accountDevice = service.addAccountDevice("acct-1", {
+test("basissoftware profile can be changed later and exposes required USB migration", async () => {
+  const service = await createDefaultDeviceManagementServer();
+  const device = await registerVerified(service);
+  const accountDevice = await service.addAccountDevice("acct-1", {
     device_id: device.device_id,
     display_name: "Display Board",
     technical_capability_ids: ["wifi", "ota", "flash_firmware"],
@@ -341,7 +341,7 @@ test("basissoftware profile can be changed later and exposes required USB migrat
     },
   });
 
-  const result = service.updateAccountDeviceBasissoftwareProfile("acct-1", accountDevice.account_device_id, {
+  const result = await service.updateAccountDeviceBasissoftwareProfile("acct-1", accountDevice.account_device_id, {
     profile: "low",
   });
 
@@ -352,7 +352,7 @@ test("basissoftware profile can be changed later and exposes required USB migrat
   assert.equal(result.account_device.ota_status, "unsupported");
 });
 
-test("repository migration removes legacy shared device secrets", () => {
+test("repository migration removes legacy shared device secrets", async () => {
   const runtimeRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gnx-device-secret-migration-"));
   const statePath = path.join(runtimeRoot, "device-management-state.json");
   fs.writeFileSync(statePath, JSON.stringify({
@@ -372,7 +372,7 @@ test("repository migration removes legacy shared device secrets", () => {
   assert.doesNotMatch(migrated, /legacy-shared-secret|obsolete-hash|device_secret|one_time_device_secret/);
 });
 
-test("sqlite migration clears legacy normalized credential secrets", () => {
+test("sqlite migration clears legacy normalized credential secrets", async () => {
   const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-device-secret-sqlite-")), "state.sqlite");
   const legacy = new DatabaseSync(dbPath);
   legacy.exec(`CREATE TABLE device_management_credentials (
@@ -393,20 +393,20 @@ test("sqlite migration clears legacy normalized credential secrets", () => {
   migrated.close();
 });
 
-test("sqlite repository persists device inventory across reload", () => {
+test("sqlite repository persists device inventory across reload", async () => {
   const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-device-management-sqlite-")), "state.sqlite");
   const service = new DeviceManagementService({
     repository: SqliteBackedDeviceManagementRepository.create(dbPath),
   });
-  const device = registerVerified(service, { serial_number: "GNX-SQLITE-001" });
-  service.addAccountDevice("acct-1", { device_id: device.device_id });
+  const device = await registerVerified(service, { serial_number: "GNX-SQLITE-001" });
+  await service.addAccountDevice("acct-1", { device_id: device.device_id });
 
   const reloaded = new DeviceManagementService({
     repository: SqliteBackedDeviceManagementRepository.create(dbPath),
   });
 
-  assert.equal(reloaded.getStatus(device.device_id).serial_number, "GNX-SQLITE-001");
-  assert.equal(reloaded.listAccountDevices("acct-1").length, 1);
+  assert.equal((await reloaded.getStatus(device.device_id)).serial_number, "GNX-SQLITE-001");
+  assert.equal((await reloaded.listAccountDevices("acct-1")).length, 1);
 
   const db = new DatabaseSync(dbPath);
   assert.equal(collectionCount(db, "device-management-server", "devices"), 1);

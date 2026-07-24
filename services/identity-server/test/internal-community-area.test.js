@@ -10,7 +10,7 @@ const internalClient = fs.readFileSync(path.join(identityRoot, "public", "app", 
 const publicHtml = fs.readFileSync(path.join(identityRoot, "public", "community", "index.html"), "utf8");
 
 test("keeps creation and replies inside the authenticated community area", () => {
-  assert.match(server, /if \(url\.pathname\.startsWith\("\/app\/"\)\) \{[\s\S]*?if \(!readSession\(req\)\) \{[\s\S]*?redirect\(res, authRoute\(url\.pathname \+ url\.search\)\)/);
+  assert.match(server, /if \(url\.pathname\.startsWith\("\/app\/"\)\) \{[\s\S]*?if \(!await readSession\(req\)\) \{[\s\S]*?redirect\(res, authRoute\(url\.pathname \+ url\.search\)\)/);
   assert.match(server, /if \(url\.pathname\.startsWith\("\/api\/community"\)\) \{[\s\S]*?if \(!session\) \{ sendJson\(res, 401, \{ error: "not_authenticated" \}\)/);
   assert.match(internalHtml, /id="communityView"[\s\S]*Interner Kontobereich[\s\S]*id="communityRequestForm"/);
   assert.match(internalHtml, /name="visibility" value="public"[\s\S]*name="visibility" value="private"/);

@@ -3,7 +3,7 @@
   "project": {
     "slug": "build-your-own-proximity-sensor",
     "title": "Baue deinen eigenen Näherungssensor",
-    "area": "Sensorik und Radartechnik",
+    "area": "Sensorik",
     "summary": "Untersuche in der ersten Projektstufe ein FMCW-Radarmodul und entwickle daraus eine nachvollziehbare Näherungs- oder Präsenzerkennung.",
     "learning_category": "embedded",
     "tags": ["topic:sensors", "topic:radar"],

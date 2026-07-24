@@ -12,17 +12,17 @@ function createHttpApp({ service, internalToken }) {
     requireInternalToken(req, internalToken);
 
     if (req.method === "POST" && path === `${prefix}/internal/ingest`) return sendJson(res, 202, await service.ingest(await readJsonBody(req)));
-    if (req.method === "POST" && path === `${prefix}/internal/retention/run`) return sendJson(res, 200, service.prune());
+    if (req.method === "POST" && path === `${prefix}/internal/retention/run`) return sendJson(res, 200, await service.prune());
 
     const project = path.match(/^\/api\/telemetry\/internal\/accounts\/([^/]+)\/projects\/([^/]+)\/(measurements|events|retention|data)$/);
     if (!project) return sendJson(res, 404, { error: "not_found" });
     const [, accountId, projectId, resource] = project.map(decodeURIComponent);
     const query = Object.fromEntries(url.searchParams.entries());
-    if (req.method === "GET" && resource === "measurements") return sendJson(res, 200, { items: service.listMeasurements(accountId, projectId, query) });
-    if (req.method === "GET" && resource === "events") return sendJson(res, 200, { items: service.listEvents(accountId, projectId, query) });
-    if (req.method === "GET" && resource === "retention") return sendJson(res, 200, service.getRetentionPolicy(accountId, projectId));
-    if (req.method === "PUT" && resource === "retention") return sendJson(res, 200, service.setRetentionPolicy(accountId, projectId, await readJsonBody(req)));
-    if (req.method === "DELETE" && resource === "data") return sendJson(res, 200, { deleted: service.deleteProjectData(accountId, projectId) });
+    if (req.method === "GET" && resource === "measurements") return sendJson(res, 200, { items: await service.listMeasurements(accountId, projectId, query) });
+    if (req.method === "GET" && resource === "events") return sendJson(res, 200, { items: await service.listEvents(accountId, projectId, query) });
+    if (req.method === "GET" && resource === "retention") return sendJson(res, 200, await service.getRetentionPolicy(accountId, projectId));
+    if (req.method === "PUT" && resource === "retention") return sendJson(res, 200, await service.setRetentionPolicy(accountId, projectId, await readJsonBody(req)));
+    if (req.method === "DELETE" && resource === "data") return sendJson(res, 200, { deleted: await service.deleteProjectData(accountId, projectId) });
     return sendJson(res, 405, { error: "method_not_allowed" });
   };
 }

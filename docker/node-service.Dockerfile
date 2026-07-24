@@ -15,6 +15,11 @@ COPY --chown=node:node basissoftware ./basissoftware
 COPY --chown=node:node firmware/gernetix-flashbox ./firmware/gernetix-flashbox
 COPY --chown=node:node firmware/shared/gernetix-runtime-core ./firmware/shared/gernetix-runtime-core
 COPY --chown=node:node tools/migrate-runtime-storage.js ./tools/migrate-runtime-storage.js
+COPY --chown=node:node tools/migrate-identity-sqlite-to-postgres.js ./tools/migrate-identity-sqlite-to-postgres.js
+COPY --chown=node:node tools/migrate-project-sqlite-to-postgres.js ./tools/migrate-project-sqlite-to-postgres.js
+COPY --chown=node:node tools/migrate-telemetry-sqlite-to-postgres.js ./tools/migrate-telemetry-sqlite-to-postgres.js
+COPY --chown=node:node tools/migrate-community-sqlite-to-postgres.js ./tools/migrate-community-sqlite-to-postgres.js
+COPY --chown=node:node tools/migrate-device-management-sqlite-to-postgres.js ./tools/migrate-device-management-sqlite-to-postgres.js
 COPY --chown=node:node tools/submit-flashbox-build-job.js ./tools/submit-flashbox-build-job.js
 COPY --chown=node:node tools/publish-touch-demo-release.js ./tools/publish-touch-demo-release.js
 COPY --chown=node:node tools/publish-platform-download.js ./tools/publish-platform-download.js
@@ -24,6 +29,10 @@ COPY --chown=node:node docker/healthcheck.js ./docker/healthcheck.js
 
 RUN npm ci --omit=dev --prefix services/ai-context-server
 RUN npm ci --omit=dev --prefix services/identity-server
+RUN npm ci --omit=dev --prefix services/project-server
+RUN npm ci --omit=dev --prefix services/telemetry-server
+RUN npm ci --omit=dev --prefix services/community-platform
+RUN npm ci --omit=dev --prefix services/device-management-server
 RUN npm run verify:runtime-deps --prefix services/identity-server
 
 RUN mkdir -p /var/lib/gernetix/services /var/lib/gernetix/identity /var/lib/gernetix/projects /var/lib/gernetix/telemetry /var/lib/gernetix/ai-context /var/lib/gernetix/build /var/lib/gernetix/admin-access /var/lib/gernetix/public-demos /var/lib/gernetix/community \

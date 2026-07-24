@@ -62,8 +62,10 @@ Codex soll lokale Serverprozesse sparsam behandeln:
 - Graph-Import nur fuer Legacy-/Bootstrap-YAML oder nach bewusstem YAML-Export ausfuehren.
 - Graph-Import oder Graph-Validierung nur einmal am Ende eines fachlichen Blocks oder direkt vor Commit ausfuehren.
 - Live-LLM-Aufrufe vermeiden, wenn ein Unit-Test oder API-Contract-Test denselben Nachweis liefert.
-- Project Server ist die SQLite-Wahrheit fuer accountgebundene Projekte.
-- AI Context Server ist die SQLite-Wahrheit fuer KI-Kontextquellen, Grants, Policy und Audit.
+- Project Server ist die PostgreSQL-Wahrheit fuer accountgebundene Projekte.
+- Telemetry Server ist die PostgreSQL-Wahrheit fuer konto- und projektgebundene Telemetrie.
+- Community Platform ist die PostgreSQL-Wahrheit fuer oeffentliche Fragen und private Projektbegleitung.
+- AI Context Server ist die PostgreSQL-Wahrheit fuer KI-Kontextquellen, Grants, Policy und Audit.
 - Dauerhaftes Persistieren ist nur in SQL/SQLite erlaubt. JSON-Dateien, Prozessspeicher, localStorage, Browser-State, Temp-Dateien und Caches sind nur Logic/Control/View- oder Test-/Runtime-Hilfen und duerfen nie fachliche Quelle der Wahrheit sein.
 - Abschlussnachweis kurz halten: geaenderte Bereiche, Tests, Graph-Status, offene Punkte.
 - Abschlussnachweis nicht kuenstlich verlaengern: keine Runtime-, Graph- oder Live-Daten-Schritte ergaenzen, wenn sie fuer die konkrete Aenderung nicht erforderlich sind.

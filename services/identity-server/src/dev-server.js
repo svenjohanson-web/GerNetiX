@@ -54,6 +54,9 @@ const { createSmartAssistantCourseModel } = require("./dev/project-models/smart-
 const { createButtonToSmartphoneNotificationCourseModel } = require("./dev/project-models/button-to-smartphone-notification-course");
 const { createHomeAutomationNetworkCourseModel } = require("./dev/project-models/home-automation-network-course");
 const { createProximitySensorRadarCourseModel } = require("./dev/project-models/proximity-sensor-radar-course");
+const { createProgrammingFundamentalsCourseModel } = require("./dev/project-models/programming-fundamentals-course");
+const { createUmlFundamentalsCourseModel } = require("./dev/project-models/uml-fundamentals-course");
+const { createStorageLearningStoryCourseModel } = require("./dev/project-models/storage-learning-story-course");
 const { getFirmwareBuildTarget, getFactoryFirmwareRelease } = require("../../../basissoftware/esp32/firmware-build-targets");
 const {
   generateRegistrationOptions,
@@ -74,20 +77,26 @@ const usbSerialHelperDistDir = path.join(workspaceRoot, "tools", "usb-serial-hel
 const usbSerialHelperManifest = require(path.join(workspaceRoot, "tools", "usb-serial-helper", "package.json"));
 const identityPersistenceBackend = process.env.IDENTITY_PERSISTENCE_BACKEND || "sqlite";
 const identitySqlitePath = process.env.IDENTITY_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-identity.sqlite");
+const identityRemoteDev = process.env.IDENTITY_REMOTE_DEV === "1";
+const identityAuxiliarySqlitePath = identityRemoteDev ? ":memory:" : identitySqlitePath;
 const platformDownloadSqlitePath = process.env.PLATFORM_DOWNLOAD_SQLITE_PATH
   || path.join(path.dirname(identitySqlitePath), "gernetix-platform-downloads.sqlite");
-const platformDownloadRepository = identityPersistenceBackend === "sqlite"
-  ? new SqlitePlatformDownloadRepository(platformDownloadSqlitePath)
-  : null;
+const platformDownloadRepository = identityRemoteDev ? null : new SqlitePlatformDownloadRepository(platformDownloadSqlitePath);
 const accountAssetSqlitePath = process.env.ACCOUNT_ASSET_SQLITE_PATH
   || path.join(path.dirname(identitySqlitePath), "gernetix-account-assets.sqlite");
-const accountAssetRepository = identityPersistenceBackend === "sqlite"
-  ? new SqliteAccountAssetRepository(accountAssetSqlitePath)
-  : null;
+const accountAssetRepository = identityRemoteDev ? null : new SqliteAccountAssetRepository(accountAssetSqlitePath);
+const identityPostgres = {
+  connectionString: process.env.IDENTITY_POSTGRES_URL || "",
+  host: process.env.IDENTITY_POSTGRES_HOST || "127.0.0.1",
+  port: Number(process.env.IDENTITY_POSTGRES_PORT || 5432),
+  database: process.env.IDENTITY_POSTGRES_DATABASE || "gernetix_identity",
+  user: process.env.IDENTITY_POSTGRES_USER || "gernetix_identity",
+  password: process.env.IDENTITY_POSTGRES_PASSWORD || "",
+};
 const identityAppBaseUrl = process.env.IDENTITY_APP_BASE_URL || process.env.APP_BASE_URL || "";
 const identityAdminToken = process.env.IDENTITY_ADMIN_TOKEN || "";
 const emailConfigEncryptionKey = process.env.EMAIL_CONFIG_ENCRYPTION_KEY || "";
-const webPushService = createWebPushService({ sqlitePath: identitySqlitePath, publicKey: process.env.WEB_PUSH_VAPID_PUBLIC_KEY || "", privateKey: process.env.WEB_PUSH_VAPID_PRIVATE_KEY || "", subject: process.env.WEB_PUSH_VAPID_SUBJECT || "" });
+const webPushService = createWebPushService({ sqlitePath: identityAuxiliarySqlitePath, publicKey: process.env.WEB_PUSH_VAPID_PUBLIC_KEY || "", privateKey: process.env.WEB_PUSH_VAPID_PRIVATE_KEY || "", subject: process.env.WEB_PUSH_VAPID_SUBJECT || "" });
 const securityAlertPushAccountIds = String(process.env.WEB_PUSH_SECURITY_ALERT_ACCOUNT_IDS || "").split(",").map((value) => value.trim()).filter(Boolean);
 const port = Number(process.env.PORT || 4300);
 const host = process.env.HOST || "127.0.0.1";
@@ -124,10 +133,12 @@ const ollamaModel = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const deviceDiscoveryUrls = process.env.GERNETIX_DEVICE_DISCOVERY_URLS || process.env.DEVICE_DISCOVERY_URLS || "";
 const gernetixNodeHostnamePrefix = "gernetix-";
 const execFileAsync = promisify(execFile);
-const interfaceTelemetry = createInterfaceCallTelemetry({
-  dbPath: process.env.INTERFACE_TELEMETRY_SQLITE_PATH || process.env.PERSISTENCE_SQLITE_PATH,
-  sourceService: "identity-server",
-});
+const interfaceTelemetry = identityRemoteDev
+  ? { record() {} }
+  : createInterfaceCallTelemetry({
+      dbPath: process.env.INTERFACE_TELEMETRY_SQLITE_PATH || process.env.PERSISTENCE_SQLITE_PATH,
+      sourceService: "identity-server",
+    });
 const {
   aiContextJson,
   aiUsageJson,
@@ -194,6 +205,9 @@ const smartAssistantCourseModel = createSmartAssistantCourseModel();
 const buttonToSmartphoneNotificationCourseModel = createButtonToSmartphoneNotificationCourseModel();
 const homeAutomationNetworkCourseModel = createHomeAutomationNetworkCourseModel();
 const proximitySensorRadarCourseModel = createProximitySensorRadarCourseModel();
+const programmingFundamentalsCourseModel = createProgrammingFundamentalsCourseModel();
+const umlFundamentalsCourseModel = createUmlFundamentalsCourseModel();
+const storageLearningStoryCourseModel = createStorageLearningStoryCourseModel();
 const llmConfigStore = createLlmConfigStore({
   configPath: path.join(workspaceRoot, ".runtime", "identity-llm-config.json"),
   defaultOllamaBaseUrl: ollamaBaseUrl,
@@ -223,7 +237,7 @@ const builtInDemoAccounts = [
 ];
 
 const mockEmailService = new MockEmailService({ log() {} });
-const smtpConfigStore = createSmtpConfigStore({ sqlitePath: identitySqlitePath, encryptionKey: emailConfigEncryptionKey });
+const smtpConfigStore = createSmtpConfigStore({ sqlitePath: identityAuxiliarySqlitePath, encryptionKey: emailConfigEncryptionKey });
 const smtpEmailService = new SmtpEmailService({ configStore: smtpConfigStore });
 const emailService = new ConfigurableEmailService({ smtpEmailService, fallbackEmailService: mockEmailService });
 const notifyPrivateCommunityRequest = createPrivateCommunityNotifier({
@@ -234,16 +248,18 @@ const notifyPrivateCommunityRequest = createPrivateCommunityNotifier({
   operatorAccountIds: [...communityOperatorUserIds],
   emailRecipient: communityNotificationEmailRecipient,
 });
-const auth = createDefaultIdentityModule({
-  emailService,
-  persistenceBackend: identityPersistenceBackend,
-  sqlitePath: identitySqlitePath,
-  appBaseUrl: identityAppBaseUrl || `http://${host}:${port}`,
-});
+let auth;
 const sessions = new Map();
 const userIdeState = createUserIdeState();
 
 async function bootstrap() {
+  auth = await createDefaultIdentityModule({
+    emailService,
+    persistenceBackend: identityPersistenceBackend,
+    sqlitePath: identitySqlitePath,
+    postgres: identityPostgres,
+    appBaseUrl: identityAppBaseUrl || `http://${host}:${port}`,
+  });
   await seedDemoAccount();
 
   const server = http.createServer((req, res) => {
@@ -393,7 +409,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname.startsWith("/api/community")) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     const body = ["POST", "PATCH"].includes(req.method) ? await readJsonBody(req) : undefined;
     const payload = await communityJson(`${url.pathname}${url.search}`, {
@@ -464,13 +480,13 @@ async function routeRequest(req, res) {
 
   if (url.pathname === "/api/push/public-key" && req.method === "GET") { sendJson(res, 200, { enabled: webPushService.enabled, public_key: webPushService.publicKey || "" }); return; }
   const pushProjectRoute = url.pathname.match(/^\/api\/push\/projects\/([^/]+)\/(subscribe|test)$/);
-  if (pushProjectRoute && req.method === "POST") { const session = readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; } const projectId = decodeURIComponent(pushProjectRoute[1]); await requireSessionProject(session, projectId); if (pushProjectRoute[2] === "subscribe") { if (!webPushService.enabled) { sendJson(res, 503, { error: "push_not_configured" }); return; } webPushService.subscribeProject(projectServerUserId(session), projectId, await readJsonBody(req)); sendJson(res, 201, { subscribed: true, project_id: projectId }); return; } const push = await webPushService.notifyProject(projectServerUserId(session), projectId, { title: "GerNetiX Testnachricht", body: "Hallo Welt – dein privater Projekt-Push-Kanal ist aktiv.", url: `/app/ide/?project=${encodeURIComponent(projectId)}` }); sendJson(res, 202, { accepted: true, project_id: projectId, push }); return; }
+  if (pushProjectRoute && req.method === "POST") { const session = await readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; } const projectId = decodeURIComponent(pushProjectRoute[1]); await requireSessionProject(session, projectId); if (pushProjectRoute[2] === "subscribe") { if (!webPushService.enabled) { sendJson(res, 503, { error: "push_not_configured" }); return; } webPushService.subscribeProject(projectServerUserId(session), projectId, await readJsonBody(req)); sendJson(res, 201, { subscribed: true, project_id: projectId }); return; } const push = await webPushService.notifyProject(projectServerUserId(session), projectId, { title: "GerNetiX Testnachricht", body: "Hallo Welt – dein privater Projekt-Push-Kanal ist aktiv.", url: `/app/ide/?project=${encodeURIComponent(projectId)}` }); sendJson(res, 202, { accepted: true, project_id: projectId, push }); return; }
   if (url.pathname === "/api/internal/push/device-event" && req.method === "POST") { await handleInternalDevicePushEvent(req, res); return; }
   if (url.pathname === "/api/internal/runtime/device-event" && req.method === "POST") { await handleInternalDeviceRuntimeEvent(req, res); return; }
 
   const runtimeStreamRoute = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/runtime-stream$/);
   if (runtimeStreamRoute && req.method === "GET") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     await handleProjectRuntimeStream(req, res, session, decodeURIComponent(runtimeStreamRoute[1]));
     return;
@@ -478,7 +494,7 @@ async function routeRequest(req, res) {
 
   const telemetryProjectRoute = url.pathname.match(/^\/api\/platform\/telemetry\/projects\/([^/]+)\/(measurements|events|retention|data)$/);
   if (telemetryProjectRoute) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     const projectId = decodeURIComponent(telemetryProjectRoute[1]);
     const resource = telemetryProjectRoute[2];
@@ -538,14 +554,14 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/account/access-profile") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     sendJson(res, 200, { account: session.account });
     return;
   }
 
   if (url.pathname === "/api/account/assets" && ["GET", "POST"].includes(req.method)) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     if (!accountAssetRepository) { sendJson(res, 503, { error: "account_asset_store_unavailable" }); return; }
     if (req.method === "GET") {
@@ -562,7 +578,7 @@ async function routeRequest(req, res) {
 
   const accountAssetRoute = url.pathname.match(/^\/api\/account\/assets\/([^/]+)$/);
   if (accountAssetRoute && req.method === "DELETE") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     if (!accountAssetRepository) { sendJson(res, 503, { error: "account_asset_store_unavailable" }); return; }
     sendJson(res, 200, accountAssetRepository.delete(session.account.user_id, decodeURIComponent(accountAssetRoute[1])));
@@ -571,7 +587,7 @@ async function routeRequest(req, res) {
 
   const accountAssetContentRoute = url.pathname.match(/^\/api\/account\/assets\/([^/]+)\/content$/);
   if (accountAssetContentRoute && req.method === "GET") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     if (!accountAssetRepository) { sendJson(res, 503, { error: "account_asset_store_unavailable" }); return; }
     const asset = accountAssetRepository.get(session.account.user_id, decodeURIComponent(accountAssetContentRoute[1]));
@@ -588,7 +604,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/account/upgrade-guest") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     const body = await readJsonBody(req);
       const result = await auth.upgrade_guest_to_base(session.account.user_id, body.username, body.password, body.accepted_terms === true, body.passkey_credential_id, body.offline_recovery_set_confirmed === true, body.offline_recovery_set);
@@ -598,7 +614,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/account/offline-recovery-set") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     const result = await auth.create_offline_recovery_set(session.account.user_id);
     updateCachedSessionAccount(req, result.account);
@@ -608,7 +624,7 @@ async function routeRequest(req, res) {
 
   const recoveryBoardRoute = url.pathname.match(/^\/api\/account\/recovery-boards\/([^/]+)$/);
   if (recoveryBoardRoute && ["POST", "DELETE"].includes(req.method)) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     const boardId = decodeURIComponent(recoveryBoardRoute[1]);
     const result = req.method === "POST"
@@ -657,7 +673,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/api/session") {
-    handleSession(req, res);
+    await handleSession(req, res);
     return;
   }
 
@@ -685,7 +701,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/api/platform/downloads" && req.method === "GET") {
-    if (!readSession(req)) {
+    if (!await readSession(req)) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
@@ -694,7 +710,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname.startsWith("/downloads/usb-serial-helper/") && req.method === "GET") {
-    if (!readSession(req)) {
+    if (!await readSession(req)) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
@@ -703,7 +719,7 @@ async function routeRequest(req, res) {
   }
 
   if (["/api/account/me/transparency", "/account/me/transparency"].includes(url.pathname)) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -717,7 +733,7 @@ async function routeRequest(req, res) {
   }
 
   if (["/api/account/me/transparency/refresh", "/account/me/transparency/refresh"].includes(url.pathname)) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -731,7 +747,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/api/user-ide/summary") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -741,7 +757,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/api/platform/summary") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -751,7 +767,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/platform/workspace-state") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -761,7 +777,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/platform/learning-progress") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -771,7 +787,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/platform/development-projects") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -782,7 +798,7 @@ async function routeRequest(req, res) {
 
   const developmentProjectArchitecture = url.pathname.match(/^\/api\/platform\/development-projects\/([^/]+)\/architecture$/);
   if (req.method === "POST" && developmentProjectArchitecture) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -793,7 +809,7 @@ async function routeRequest(req, res) {
 
   const learningProjectStart = url.pathname.match(/^\/api\/platform\/learning-projects\/([^/]+)\/start$/);
   if (req.method === "POST" && learningProjectStart) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -802,9 +818,25 @@ async function routeRequest(req, res) {
     return;
   }
 
+  const developmentLessonStart = url.pathname.match(/^\/api\/platform\/learning-projects\/([^/]+)\/lessons\/([^/]+)\/start$/);
+  if (req.method === "POST" && developmentLessonStart) {
+    const session = await readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleDevelopmentLessonStart(
+      res,
+      session,
+      decodeURIComponent(developmentLessonStart[1]),
+      decodeURIComponent(developmentLessonStart[2]),
+    );
+    return;
+  }
+
   const learningProjectDevice = url.pathname.match(/^\/api\/platform\/learning-projects\/([^/]+)\/device$/);
   if (req.method === "POST" && learningProjectDevice) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     await handleLearningProjectDeviceAssign(req, res, session, decodeURIComponent(learningProjectDevice[1]));
     return;
@@ -812,7 +844,7 @@ async function routeRequest(req, res) {
 
   const platformProject = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)$/);
   if (req.method === "DELETE" && platformProject) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     await handlePlatformProjectDelete(res, session, decodeURIComponent(platformProject[1]));
     return;
@@ -820,7 +852,7 @@ async function routeRequest(req, res) {
 
   const developmentProjectDialog = url.pathname.match(/^\/api\/platform\/development-projects\/([^/]+)\/dialog$/);
   if (req.method === "POST" && developmentProjectDialog) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -831,7 +863,7 @@ async function routeRequest(req, res) {
 
   const developmentProjectHardware = url.pathname.match(/^\/api\/platform\/development-projects\/([^/]+)\/hardware-configuration$/);
   if (req.method === "POST" && developmentProjectHardware) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -842,7 +874,7 @@ async function routeRequest(req, res) {
 
   const projectComponentFeatures = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/component-features$/);
   if (req.method === "POST" && projectComponentFeatures) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -852,7 +884,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/platform/development-assistant/chat") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -863,7 +895,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/platform/hardware/processor-boards") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -882,7 +914,7 @@ async function routeRequest(req, res) {
 
   const projectPwaDashboard = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/pwa-dashboard$/);
   if (req.method === "POST" && projectPwaDashboard) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -893,7 +925,7 @@ async function routeRequest(req, res) {
 
   const projectEventConfiguration = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/event-configuration$/);
   if (req.method === "POST" && projectEventConfiguration) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -903,7 +935,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/platform/help-assistant/chat") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -914,7 +946,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/platform/hardware/board-feature-options") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -933,7 +965,7 @@ async function routeRequest(req, res) {
 
   const projectComponentHardwareFeatures = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/component-hardware-features$/);
   if (req.method === "POST" && projectComponentHardwareFeatures) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -943,7 +975,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/platform/hardware/sensors") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -974,7 +1006,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/platform/devices/discover") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -985,7 +1017,7 @@ async function routeRequest(req, res) {
 
   const connectivityCheck = url.pathname.match(/^\/api\/user-ide\/devices\/([^/]+)\/connectivity-check$/);
   if (req.method === "POST" && connectivityCheck) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -995,7 +1027,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/platform/usb-serial/ports") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1005,7 +1037,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/platform/devices/from-discovery") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1015,7 +1047,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/platform/devices") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1026,7 +1058,7 @@ async function routeRequest(req, res) {
 
   const platformDevice = url.pathname.match(/^\/api\/platform\/devices\/([^/]+)$/);
   if (req.method === "PUT" && platformDevice) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1036,7 +1068,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/platform/provisioning/session") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1046,7 +1078,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/platform/provisioning/complete") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1056,7 +1088,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/platform/provisioning-firmware") {
-    if (!readSession(req)) {
+    if (!await readSession(req)) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
@@ -1086,7 +1118,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "GET" && url.pathname === "/api/platform/provisioning-firmware/content") {
-    if (!readSession(req)) {
+    if (!await readSession(req)) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
@@ -1105,7 +1137,7 @@ async function routeRequest(req, res) {
     return;
   }
   if (req.method === "DELETE" && platformDevice) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1118,7 +1150,7 @@ async function routeRequest(req, res) {
   const platformSources = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/sources$/);
   const platformSourceSearch = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/source-search$/);
   if (platformSourceSearch && req.method === "GET") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1127,7 +1159,7 @@ async function routeRequest(req, res) {
     return;
   }
   if (platformSources && req.method === "GET") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1137,7 +1169,7 @@ async function routeRequest(req, res) {
   }
 
   if (platformSource && ["GET", "PUT"].includes(req.method)) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1151,7 +1183,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/api/user-ide/projects") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1161,7 +1193,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/api/user-ide/devices") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1171,7 +1203,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/user-ide/device-recovery/check-firmware") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1181,7 +1213,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/api/user-ide/hardware-shop") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1191,7 +1223,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/api/user-ide/ai-usage") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1201,7 +1233,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/user-ide/hardware-shop/orders") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1211,7 +1243,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/user-ide/build-jobs") {
-    if (!readSession(req)) {
+    if (!await readSession(req)) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
@@ -1221,7 +1253,7 @@ async function routeRequest(req, res) {
 
   const browserFlashResult = url.pathname.match(/^\/api\/user-ide\/build-jobs\/([^/]+)\/browser-usb-flash-result$/);
   if (req.method === "POST" && browserFlashResult) {
-    if (!readSession(req)) {
+    if (!await readSession(req)) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
@@ -1254,7 +1286,7 @@ async function routeRequest(req, res) {
 
   const buildJobStatus = url.pathname.match(/^\/api\/user-ide\/build-jobs\/([^/]+)\/status$/);
   if (req.method === "GET" && buildJobStatus) {
-    if (!readSession(req)) {
+    if (!await readSession(req)) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
@@ -1277,7 +1309,7 @@ async function routeRequest(req, res) {
 
   const buildArtifact = url.pathname.match(/^\/api\/user-ide\/build-artifacts\/([^/]+)\/([^/]+)$/);
   if (req.method === "GET" && buildArtifact) {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1319,7 +1351,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/app" || url.pathname === "/app/") {
-    if (!readSession(req)) {
+    if (!await readSession(req)) {
       redirect(res, authRoute("/app/dashboard/"));
       return;
     }
@@ -1343,7 +1375,7 @@ async function routeRequest(req, res) {
   }
 
   if (req.method === "POST" && url.pathname === "/api/platform/flashbox/claim") {
-    const session = readSession(req);
+    const session = await readSession(req);
     if (!session) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
@@ -1369,7 +1401,7 @@ async function routeRequest(req, res) {
 
   const dashboardRoute = url.pathname === "/app/dashboard" || url.pathname.startsWith("/app/dashboard/");
   if (dashboardRoute) {
-    if (!readSession(req)) {
+    if (!await readSession(req)) {
       redirect(res, authRoute(url.pathname + url.search));
       return;
     }
@@ -1383,7 +1415,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname.startsWith("/app/")) {
-    if (!readSession(req)) {
+    if (!await readSession(req)) {
       redirect(res, authRoute(url.pathname + url.search));
       return;
     }
@@ -1392,7 +1424,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname.startsWith("/projects/")) {
-    if (!readSession(req)) {
+    if (!await readSession(req)) {
       redirect(res, authRoute(url.pathname + url.search));
       return;
     }
@@ -1401,7 +1433,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/dev/projects" || url.pathname === "/dev/projects/") {
-    if (!readSession(req)) {
+    if (!await readSession(req)) {
       redirect(res, authRoute("/app/learn/"));
       return;
     }
@@ -1410,7 +1442,7 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname.startsWith("/dev/projects/")) {
-    if (!readSession(req)) {
+    if (!await readSession(req)) {
       redirect(res, authRoute("/app/learn/"));
       return;
     }
@@ -1420,11 +1452,6 @@ async function routeRequest(req, res) {
 
   if (url.pathname === "/shop" || url.pathname === "/shop/") {
     serveStatic(res, publicDir, "/shop/index.html");
-    return;
-  }
-
-  if (url.pathname === "/produkte" || url.pathname === "/produkte/") {
-    serveStatic(res, publicDir, "/produkte/index.html");
     return;
   }
 
@@ -1525,7 +1552,7 @@ async function handleOfflineRecoveryPasskeyOptions(req, res) {
   try {
     const body = await readJsonBody(req);
     const recoveryToken = String(body.recovery_token || "");
-    const account = auth.get_offline_recovery_account(recoveryToken);
+    const account = await auth.get_offline_recovery_account(recoveryToken);
     const config = passkeyConfiguration(req);
     const options = await generateRegistrationOptions({
       rpName: "GerNetiX",
@@ -1548,7 +1575,7 @@ async function handleOfflineRecoveryPasskeyVerify(req, res) {
   try {
     const body = await readJsonBody(req);
     const recoveryToken = String(body.recovery_token || "");
-    auth.get_offline_recovery_account(recoveryToken);
+    await auth.get_offline_recovery_account(recoveryToken);
     const challenge = readPasskeyChallenge("offline-recovery", offlineRecoveryChallengeSubject(recoveryToken));
     const verification = await verifyRegistrationResponse({
       response: body.credential,
@@ -1687,7 +1714,7 @@ async function handlePasskeyAuthenticationOptions(req, res) {
     const body = await readJsonBody(req);
     const username = String(body.username || "").trim();
     const config = passkeyConfiguration(req);
-    account = username ? auth.get_passkey_login_candidate(username) : null;
+    account = username ? await auth.get_passkey_login_candidate(username) : null;
     const options = await generateAuthenticationOptions({
       rpID: config.rpID, userVerification: "required",
       ...(account ? { allowCredentials: [{ id: account.passkey_credential_id, transports: account.passkey_transports || [] }] } : {}),
@@ -1706,8 +1733,8 @@ async function handlePasskeyAuthenticationVerify(req, res) {
     const body = await readJsonBody(req);
     const username = String(body.username || "").trim();
     account = username
-      ? auth.get_passkey_login_candidate(username)
-      : auth.get_passkey_login_candidate_by_credential_id(body.credential?.id);
+      ? await auth.get_passkey_login_candidate(username)
+      : await auth.get_passkey_login_candidate_by_credential_id(body.credential?.id);
     const challenge = readPasskeyChallenge("authenticate", username);
     const verification = await verifyAuthenticationResponse({
       response: body.credential, expectedChallenge: challenge.challenge,
@@ -1845,8 +1872,8 @@ async function handleLogout(req, res) {
   sendJson(res, 200, { logged_out: true });
 }
 
-function handleSession(req, res) {
-  const session = readSession(req);
+async function handleSession(req, res) {
+  const session = await readSession(req);
   if (!session) {
     sendJson(res, 401, { authenticated: false });
     return;
@@ -2168,7 +2195,8 @@ async function handleLearningProjectStart(res, session, catalogProjectId) {
   const userId = projectServerUserId(session);
   const existing = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}`);
   const alreadyStarted = existing.items.find((item) => item.learning_project_id === definition.learning_project_id
-    && item.project_id !== definition.project_server_id);
+    && item.project_id !== definition.project_server_id
+    && item.view_manifest?.entry_mode !== "standalone_lesson");
   const projectId = `learning_${definition.slug}_${crypto.randomUUID().slice(0, 8)}`;
   const project = alreadyStarted
     ? await synchronizeLearningProjectStructure(alreadyStarted, definition)
@@ -2193,17 +2221,61 @@ async function handleLearningProjectStart(res, session, catalogProjectId) {
   sendJson(res, alreadyStarted ? 200 : 201, { project: toPlatformProject(mapped), created: !alreadyStarted });
 }
 
+async function handleDevelopmentLessonStart(res, session, catalogProjectId, lessonId) {
+  const definition = userIdeState.projectDefinitions
+    .find((item) => item.project_server_id === catalogProjectId || catalogProjectIdForDefinition(item) === catalogProjectId);
+  const lesson = definition?.development_lessons?.find((item) => item.id === lessonId);
+  if (!definition || !lesson) {
+    sendJson(res, 404, {
+      error: "development_lesson_not_found",
+      message: "Diese Entwicklungslesson ist im gewählten Entwicklungsprojekt nicht vorhanden.",
+    });
+    return;
+  }
+
+  const userId = projectServerUserId(session);
+  const projectId = `lesson_${lesson.id.replace(/[^a-zA-Z0-9]+/g, "_")}_${crypto.randomUUID().slice(0, 8)}`;
+  const project = await projectServerJson("/api/projects", {
+    method: "POST",
+    body: {
+      project_id: projectId,
+      user_id: userId,
+      plan_id: accountSubscription(session).plan,
+      title: `${lesson.title} – Einzelübung`,
+      description: lesson.summary,
+      learning_project_id: definition.learning_project_id,
+      hardware_profile_id: lesson.standalone_start.runtime,
+      device_id: null,
+      build_config: null,
+      view_manifest: projectViewManifest(definition, { lessonId: lesson.id }),
+      sources: demoProjectSources(definition, { lessonId: lesson.id, projectId }),
+    },
+  });
+  const mapped = mapProjectServerProject(session, project);
+  touchWorkspace(session, project.project_id, "learn", `/app/learning-project/?project=${encodeURIComponent(project.project_id)}`);
+  sendJson(res, 201, {
+    project: toPlatformProject(mapped),
+    created: true,
+    entryMode: "standalone_lesson",
+    lessonId: lesson.id,
+  });
+}
+
 async function synchronizeLearningProjectStructure(project, definition) {
   const projectId = project.project_id;
   const needsBuildConfig = !project.build_config?.user_source_path;
+  const canonicalManifest = learningProjectManifestForPersistedProject(project, definition);
   const updated = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}`, {
     method: "PATCH",
     body: {
-      view_manifest: projectViewManifest(definition),
+      view_manifest: canonicalManifest,
       ...(needsBuildConfig ? { build_config: definition.build_config } : {}),
     },
   });
-  for (const source of demoProjectSources(definition, { projectId })) {
+  const lessonId = canonicalManifest.entry_mode === "standalone_lesson"
+    ? canonicalManifest.lesson_focus_id
+    : "";
+  for (const source of demoProjectSources(definition, { lessonId, projectId })) {
     const present = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources/${encodeURIComponent(source.path)}`)
       .then(() => true)
       .catch((error) => {
@@ -2215,6 +2287,13 @@ async function synchronizeLearningProjectStructure(project, definition) {
     }
   }
   return updated;
+}
+
+function learningProjectManifestForPersistedProject(project, definition) {
+  const lessonId = project.view_manifest?.entry_mode === "standalone_lesson"
+    ? project.view_manifest.lesson_focus_id || ""
+    : "";
+  return projectViewManifest(definition, { lessonId });
 }
 
 async function handleLearningProjectDeviceAssign(req, res, session, projectId) {
@@ -2860,7 +2939,7 @@ async function handleDeviceConnectivityCheck(res, session, deviceId) {
 
 async function handleUserIdeBuildJob(req, res) {
   const body = await readJsonBody(req);
-  const session = readSession(req);
+  const session = await readSession(req);
   const projects = await loadUserIdeProjects(session);
   const devices = await loadUserIdeDevices(session);
   const project = projects.find((item) => item.slug === body.project_slug);
@@ -3156,8 +3235,11 @@ async function loadUserIdeProjects(session) {
   const synchronizedItems = await Promise.all(response.items.map(async (project) => {
     const definition = userIdeState.projectDefinitions
       .find((item) => item.learning_project_id === project.learning_project_id);
-    const needsLearningViewSync = definition?.slug === buttonToSmartphoneNotificationCourseModel.slug
-      && Number(project.view_manifest?.schema_version || 0) < 4;
+    const canonicalManifest = definition
+      ? learningProjectManifestForPersistedProject(project, definition)
+      : null;
+    const needsLearningViewSync = Number(canonicalManifest?.schema_version || 0)
+      > Number(project.view_manifest?.schema_version || 0);
     return needsLearningViewSync ? synchronizeLearningProjectStructure(project, definition) : project;
   }));
   return mapUserIdeProjects(session, new Map(synchronizedItems.map((item) => [item.project_id, item])));
@@ -3203,6 +3285,15 @@ function mapProjectServerProject(session, project) {
   const learningDefinition = userIdeState.projectDefinitions
     .find((definition) => definition.learning_project_id === project.learning_project_id);
   if (learningDefinition && (project.project_id !== learningDefinition.project_server_id || isEstablishedLearningProject(project))) {
+    const lessonFocusId = project.view_manifest?.lesson_focus_id || "";
+    const focusedLesson = learningDefinition.development_lessons?.find((lesson) => lesson.id === lessonFocusId);
+    const focusedSteps = focusedLesson
+      ? (project.view_manifest?.views || []).map((view) => ({
+          title: view.title,
+          text: view.summary || "",
+          insight: `Teil der Entwicklungslesson ${focusedLesson.title}.`,
+        }))
+      : learningDefinition.steps;
     return {
       ...learningDefinition,
       project_server_id: project.project_id,
@@ -3218,6 +3309,10 @@ function mapProjectServerProject(session, project) {
       source_count: project.source_count || 0,
       build_count: project.build_count || 0,
       view_manifest: project.view_manifest || projectViewManifest(learningDefinition),
+      lesson_id: focusedLesson?.id || learningDefinition.lesson_id,
+      steps: focusedSteps,
+      entry_mode: project.view_manifest?.entry_mode || "project_story",
+      current_lesson_id: focusedLesson?.id || "",
       created_at: project.created_at || "",
       updated_at: project.updated_at || "",
       last_opened_mode: workspace.lastProjectId === project.project_id ? workspace.lastMode : "",
@@ -3360,6 +3455,10 @@ function toPlatformProject(project) {
     slug: project.slug,
     courseId: project.course_id,
     lessonId: project.lesson_id,
+    currentLessonId: project.current_lesson_id || "",
+    entryMode: project.entry_mode || "project_story",
+    developmentLessons: project.development_lessons || [],
+    projectStory: project.project_story || null,
     requiredCapabilityIds: project.required_capability_ids,
     accessModel: project.access_model || "subscription",
     buildConfig: project.build_config,
@@ -3795,6 +3894,9 @@ function createUserIdeState() {
     buttonToSmartphoneNotificationCourseModel.createProject(project, step),
     homeAutomationNetworkCourseModel.createProject(project, step),
     proximitySensorRadarCourseModel.createProject(project, step),
+    programmingFundamentalsCourseModel.createProject(project, step),
+    umlFundamentalsCourseModel.createProject(project, step),
+    storageLearningStoryCourseModel.createProject(project, step),
     project("plant-watering-control", "Pflanzenbewaesserung", "Sensor und Aktor", "Feuchtigkeit messen und eine Pumpe kontrolliert schalten.", [
       step("Nutzen und Risiko", "Die Pflanze soll Wasser bekommen, ohne Ueberschwemmung.", "Automatisierung braucht Grenzen."),
       step("Sensor lesen", "Bodenfeuchte wird zur Eingangsseite der Steuerung.", "Ein Sensor liefert Hinweise, keine fertige Entscheidung."),
@@ -3860,10 +3962,14 @@ function project(slug, title, area, summary, steps, options = {}) {
     default_device_id: Object.hasOwn(options, "default_device_id") ? options.default_device_id : "device_verified_1",
     build_config: options.build_config || undefined,
     source_files: options.source_files || [{ path: "src/main.cpp", role: "user_code" }],
-    required_capability_ids: requiredCapabilitiesBySlug[slug] || ["capability.processor_esp32"],
+    required_capability_ids: Object.hasOwn(options, "required_capability_ids")
+      ? options.required_capability_ids
+      : (requiredCapabilitiesBySlug[slug] || ["capability.processor_esp32"]),
     access_model: options.access_model || accessModelsBySlug[slug] || "subscription",
     learning_category: learningCategory,
     tags: learningTags,
+    development_lessons: options.development_lessons || [],
+    project_story: options.project_story || null,
     title,
     area,
     summary,
@@ -3900,8 +4006,12 @@ function normalizeLearningProjectTags(value) {
     "topic:firmware",
     "topic:home-automation",
     "topic:modeling",
+    "topic:programming",
     "topic:radar",
     "topic:sensors",
+    "topic:data",
+    "topic:databases",
+    "topic:storage",
     "topic:web-push",
   ];
   const tags = Array.from(new Set((Array.isArray(value) ? value : []).map((item) => String(item).trim()).filter(Boolean)));
@@ -3938,7 +4048,7 @@ function primarySourcePath(project) {
   return project.source_files?.[0]?.path || "src/main.cpp";
 }
 
-function projectViewManifest(project) {
+function projectViewManifest(project, options = {}) {
   const override = userIdeState.lessonManifestOverrides.get(project.slug);
 
   if (project.slug === tamagotchiEntryCourseModel.slug) {
@@ -3967,6 +4077,25 @@ function projectViewManifest(project) {
   }
   if (project.slug === proximitySensorRadarCourseModel.slug) {
     return proximitySensorRadarCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === programmingFundamentalsCourseModel.slug) {
+    return programmingFundamentalsCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === umlFundamentalsCourseModel.slug) {
+    return umlFundamentalsCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === storageLearningStoryCourseModel.slug) {
+    return storageLearningStoryCourseModel.createViewManifest(project, {
+      lessonId: options.lessonId || "",
       override,
       primarySourcePath,
     });
@@ -4627,6 +4756,15 @@ function demoProjectSources(project, options = {}) {
   if (project.slug === proximitySensorRadarCourseModel.slug) {
     return proximitySensorRadarCourseModel.createSources();
   }
+  if (project.slug === programmingFundamentalsCourseModel.slug) {
+    return programmingFundamentalsCourseModel.createSources();
+  }
+  if (project.slug === umlFundamentalsCourseModel.slug) {
+    return umlFundamentalsCourseModel.createSources();
+  }
+  if (project.slug === storageLearningStoryCourseModel.slug) {
+    return storageLearningStoryCourseModel.createSources({ lessonId: options.lessonId || "" });
+  }
 
   if (project.slug === "arduino-atmel-bare-metal") {
     return [
@@ -4730,12 +4868,12 @@ function readWorkspaceText(relativePath) {
   return fs.readFileSync(path.join(workspaceRoot, relativePath), "utf8");
 }
 
-function readSession(req) {
+async function readSession(req) {
   const token = readSessionToken(req);
   if (!token) return null;
   const session = sessions.get(token);
   if (session) {
-    const resolved = auth.resolve_session_token(token);
+    const resolved = await auth.resolve_session_token(token);
     if (resolved) {
       const refreshedSession = {
         account: resolved.account,
@@ -4746,7 +4884,7 @@ function readSession(req) {
     }
     sessions.delete(token);
   }
-  const resolved = auth.resolve_session_token(token);
+  const resolved = await auth.resolve_session_token(token);
   if (!resolved) return null;
   const restoredSession = {
     account: resolved.account,

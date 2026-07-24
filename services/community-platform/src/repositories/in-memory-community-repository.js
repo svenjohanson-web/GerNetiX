@@ -38,6 +38,10 @@ class InMemoryCommunityRepository {
     return Array.from(this.answers.values()).filter((answer) => answer.question_id === questionId);
   }
 
+  listAllAnswers() {
+    return Array.from(this.answers.values());
+  }
+
   saveKnowledgeDocument(document) {
     this.knowledgeDocuments.set(document.document_id, document);
     return document;

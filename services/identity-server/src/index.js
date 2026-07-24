@@ -11,6 +11,13 @@ const {
 
 function createDefaultIdentityModule(options = {}) {
   const repository = options.repository || createRepository(options);
+  if (repository && typeof repository.then === "function") {
+    return repository.then((resolvedRepository) => createAuthService(options, resolvedRepository));
+  }
+  return createAuthService(options, repository);
+}
+
+function createAuthService(options, repository) {
   const emailService = options.emailService || new MockEmailService();
   const providers = options.providers || [
     new MockGoogleProvider(),
@@ -28,8 +35,17 @@ function createDefaultIdentityModule(options = {}) {
 }
 
 function createRepository(options) {
-  if ((options.persistenceBackend || process.env.PERSISTENCE_BACKEND || process.env.IDENTITY_PERSISTENCE_BACKEND) === "sqlite") {
+  const backend = options.persistenceBackend || process.env.PERSISTENCE_BACKEND || process.env.IDENTITY_PERSISTENCE_BACKEND;
+  if (backend === "sqlite") {
     return SqliteBackedIdentityRepository.create(options.sqlitePath || process.env.PERSISTENCE_SQLITE_PATH || process.env.IDENTITY_SQLITE_PATH || ".runtime/gernetix-services.sqlite");
+  }
+  if (backend === "postgres" || backend === "postgresql") {
+    const { PostgresIdentityRepository } = require("./repositories/postgres-identity-repository");
+    return PostgresIdentityRepository.create({
+      poolOptions: options.postgres?.connectionString
+        ? { connectionString: options.postgres.connectionString }
+        : options.postgres,
+    });
   }
   return new InMemoryIdentityRepository();
 }

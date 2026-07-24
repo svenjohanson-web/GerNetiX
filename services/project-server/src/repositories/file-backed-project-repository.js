@@ -60,6 +60,12 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
     return result;
   }
 
+  deleteProject(projectId) {
+    const result = super.deleteProject(projectId);
+    this.persist();
+    return result;
+  }
+
   persist() {
     const state = {
       projects: Array.from(this.projects.values()),

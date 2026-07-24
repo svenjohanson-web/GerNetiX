@@ -14,7 +14,7 @@ test("platform offers an authenticated GerNetiX Serial Service download area", (
   assert.match(html, /href="\/app\/downloads\/"/);
   assert.match(html, /GerNetiX Serial Service/);
   assert.match(app, /\/api\/platform\/downloads/);
-  assert.match(serverSource, /if \(!readSession\(req\)\)/);
+  assert.match(serverSource, /if \(!await readSession\(req\)\)/);
   assert.match(serverSource, /downloads\/usb-serial-helper/);
   assert.match(serverSource, /file_name: filename/);
   assert.match(serverSource, /GerNetiX-Serial-Service-mac-arm64\.pkg/);
