@@ -56,7 +56,14 @@ const { createHomeAutomationNetworkCourseModel } = require("./dev/project-models
 const { createProximitySensorRadarCourseModel } = require("./dev/project-models/proximity-sensor-radar-course");
 const { createProgrammingFundamentalsCourseModel } = require("./dev/project-models/programming-fundamentals-course");
 const { createUmlFundamentalsCourseModel } = require("./dev/project-models/uml-fundamentals-course");
+const { createYamlFundamentalsCourseModel } = require("./dev/project-models/yaml-fundamentals-course");
 const { createStorageLearningStoryCourseModel } = require("./dev/project-models/storage-learning-story-course");
+const {
+  canReadKnowledgeChapter,
+  findKnowledgeChapterRelease,
+  knowledgeChapterHistory,
+  unreadKnowledgeChapterReleases,
+} = require("./knowledge/knowledge-chapter-releases");
 const { getFirmwareBuildTarget, getFactoryFirmwareRelease } = require("../../../basissoftware/esp32/firmware-build-targets");
 const {
   generateRegistrationOptions,
@@ -209,6 +216,7 @@ const homeAutomationNetworkCourseModel = createHomeAutomationNetworkCourseModel(
 const proximitySensorRadarCourseModel = createProximitySensorRadarCourseModel();
 const programmingFundamentalsCourseModel = createProgrammingFundamentalsCourseModel();
 const umlFundamentalsCourseModel = createUmlFundamentalsCourseModel();
+const yamlFundamentalsCourseModel = createYamlFundamentalsCourseModel();
 const storageLearningStoryCourseModel = createStorageLearningStoryCourseModel();
 const llmConfigStore = createLlmConfigStore({
   configPath: path.join(workspaceRoot, ".runtime", "identity-llm-config.json"),
@@ -944,6 +952,17 @@ async function routeRequest(req, res) {
     }
     if (!requireEntitlement(res, session, "ai_assistant")) return;
     await helpAssistant.handleChat(req, res);
+    return;
+  }
+
+  const knowledgeChapterRead = url.pathname.match(/^\/api\/platform\/knowledge\/chapters\/([^/]+)\/read$/);
+  if (req.method === "POST" && knowledgeChapterRead) {
+    const session = await readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleKnowledgeChapterRead(res, session, decodeURIComponent(knowledgeChapterRead[1]));
     return;
   }
 
@@ -1949,6 +1968,7 @@ async function handlePlatformSummary(res, session) {
     return { ...summarizeCommunityQuestions([]), available: false };
   });
   const accountPromise = createAccountSummary(session);
+  const knowledgeStatePromise = loadKnowledgeState(session);
   const projects = await projectsPromise;
   const buildsPromise = loadProjectBuilds(projects, session).then((items) => {
     serviceStatus.builds = { ok: true };
@@ -1957,12 +1977,13 @@ async function handlePlatformSummary(res, session) {
     serviceStatus.builds = { ok: false, error: error.message || String(error) };
     return [];
   });
-  const [devices, builds, aiUsage, communitySummary, account] = await Promise.all([
+  const [devices, builds, aiUsage, communitySummary, account, knowledgeState] = await Promise.all([
     devicesPromise,
     buildsPromise,
     aiUsagePromise,
     communitySummaryPromise,
     accountPromise,
+    knowledgeStatePromise,
   ]);
   const userId = projectServerUserId(session);
   sendJson(res, 200, {
@@ -1989,10 +2010,43 @@ async function handlePlatformSummary(res, session) {
     devices,
     builds,
     community_summary: communitySummary,
+    knowledge_updates: knowledgeState.updates,
+    knowledge_history: knowledgeState.history,
     billing: await loadBillingSummary(session, aiUsage),
     ai_usage: aiUsage,
     service_status: serviceStatus,
   });
+}
+
+async function loadKnowledgeState(session) {
+  const accountId = projectServerUserId(session);
+  const reads = await auth.list_knowledge_chapter_reads(accountId);
+  const entitlements = accountSubscription(session).entitlements;
+  return {
+    updates: unreadKnowledgeChapterReleases(reads, entitlements),
+    history: knowledgeChapterHistory(reads, entitlements),
+  };
+}
+
+async function handleKnowledgeChapterRead(res, session, chapterId) {
+  const release = findKnowledgeChapterRelease(chapterId);
+  if (!release) {
+    sendJson(res, 404, { error: "knowledge_chapter_not_found" });
+    return;
+  }
+  if (!canReadKnowledgeChapter(release, accountSubscription(session).entitlements)) {
+    sendJson(res, 403, {
+      error: "knowledge_chapter_access_required",
+      required_entitlements: release.required_entitlements,
+    });
+    return;
+  }
+  const read = await auth.mark_knowledge_chapter_read(
+    projectServerUserId(session),
+    release.chapter_id,
+    release.version,
+  );
+  sendJson(res, 200, { read });
 }
 
 async function loadCommunityDashboardSummary(session) {
@@ -3898,6 +3952,7 @@ function createUserIdeState() {
     proximitySensorRadarCourseModel.createProject(project, step),
     programmingFundamentalsCourseModel.createProject(project, step),
     umlFundamentalsCourseModel.createProject(project, step),
+    yamlFundamentalsCourseModel.createProject(project, step),
     storageLearningStoryCourseModel.createProject(project, step),
     project("plant-watering-control", "Pflanzenbewaesserung", "Sensor und Aktor", "Feuchtigkeit messen und eine Pumpe kontrolliert schalten.", [
       step("Nutzen und Risiko", "Die Pflanze soll Wasser bekommen, ohne Ueberschwemmung.", "Automatisierung braucht Grenzen."),
@@ -4015,6 +4070,7 @@ function normalizeLearningProjectTags(value) {
     "topic:databases",
     "topic:storage",
     "topic:web-push",
+    "topic:yaml",
   ];
   const tags = Array.from(new Set((Array.isArray(value) ? value : []).map((item) => String(item).trim()).filter(Boolean)));
   const unknownTag = tags.find((tag) => !knownTags.includes(tag));
@@ -4091,6 +4147,12 @@ function projectViewManifest(project, options = {}) {
   }
   if (project.slug === umlFundamentalsCourseModel.slug) {
     return umlFundamentalsCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === yamlFundamentalsCourseModel.slug) {
+    return yamlFundamentalsCourseModel.createViewManifest(project, {
       override,
       primarySourcePath,
     });
@@ -4763,6 +4825,9 @@ function demoProjectSources(project, options = {}) {
   }
   if (project.slug === umlFundamentalsCourseModel.slug) {
     return umlFundamentalsCourseModel.createSources();
+  }
+  if (project.slug === yamlFundamentalsCourseModel.slug) {
+    return yamlFundamentalsCourseModel.createSources();
   }
   if (project.slug === storageLearningStoryCourseModel.slug) {
     return storageLearningStoryCourseModel.createSources({ lessonId: options.lessonId || "" });

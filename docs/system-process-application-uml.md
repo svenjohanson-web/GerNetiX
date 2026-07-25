@@ -84,7 +84,7 @@ flowchart LR
   end
 
   subgraph storage["Persistenz / Wissensbasis"]
-    identityDb[("Identity PostgreSQL<br/>Accounts, Credentials, Sessions")]
+    identityDb[("Identity PostgreSQL<br/>Accounts, Credentials, Sessions,<br/>Wissenskapitel-Lesestaende")]
     identityLegacyDb[("Identity Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     releaseDb[("Plattform-Releases SQLite<br/>public / authenticated / entitled / internal")]
     accountAssetDb[("Account-Assets SQLite<br/>owner_only QR, Bilder, Bildstile")]
@@ -224,7 +224,7 @@ flowchart LR
 
 | Prozess | Port | Lokale URL / Zugriff | Rolle |
 | --- | ---: | --- | --- |
-| Identity Server | 4300 | `http://127.0.0.1:4300/app/dashboard/` | Login, Session, gemeinsame Plattform-UI, Adapter zu Domaenenservices |
+| Identity Server | 4300 | `http://127.0.0.1:4300/app/dashboard/` | Login, Session, gemeinsame Plattform-UI, entitlement-gefilterte Wissenskapitel-Hinweise und Adapter zu Domaenenservices |
 | SQLite Graph Explorer | 4318 | `http://127.0.0.1:4318/` | Read-only Weboberflaeche auf den kanonischen Graphen |
 | Build & Deploy Server | 4400 | `http://127.0.0.1:4400/` | Echte PlatformIO-Builds, Build-Pakete und Firmware-Artefakte; kein serverseitiger USB-Flash |
 | Provisioning Tool Server | 4500 | `http://127.0.0.1:4500/` | eigenstaendige Factory-HMI, Provisioning-Sessions, USB-Factory-Flash, Device-Registrierung |
@@ -323,6 +323,7 @@ flowchart LR
 - Plattform-PWA, Desktop-Prozessmonitor und private Admin Console folgen einer gemeinsamen Operator-Sprache mit den Bereichen Uebersicht, Betrieb und Sicherheit. Die gemeinsame Oberflaeche vereinheitlicht Orientierung und Bedienung, ersetzt aber keine Berechtigungsgrenze: Die PWA bleibt accountgebunden, der Desktop steuert nur lokal ueber isolierte IPC und die private Admin Console behaelt ihre serverseitig geprueften Verwaltungsrechte.
 - Die Anwenderhilfe zeigt die aktiven ProcessorBoards direkt aus dem Hardware Catalog. Sie erklaert je Eintrag Fähigkeiten, Katalog-/Prüfstatus, den USB-Provisionierungsweg und optionale kuratierte Hersteller- oder Beschaffungslinks. Die Hilfe ist keine zweite Hardwarequelle; Bilder und Links werden nur verwendet, wenn sie am Katalogeintrag gepflegt und geprüft sind.
 - GerNetiX nutzt zwei fachlich getrennte, technisch gemeinsam gerenderte Leseansichten: `/wissen/` ist das öffentliche Wissensportal für übertragbare Grundlagen; `/hilfe/` erklärt konkrete GerNetiX-Abläufe. Artikel können zwischen beiden Ansichten verweisen, etwa von allgemeinen Worker-Grundlagen zur projektbezogenen Worker-Konfiguration. Konto- und premiumgebundene Hilfeartikel bleiben an derselben Stelle mit Vorschau und Zugriffshinweis sichtbar. Die vollständige serverseitige Entitlement-Prüfung für Premium-Artikel bleibt vor dem produktiven Verkauf verpflichtend.
+- Veroeffentlichungsrelevante Wissenskapitel besitzen im Identity-Code eine stabile Kapitel-ID und Inhaltsversion; neue Versionen werden dem Release-Manifest hinzugefuegt, damit frühere Veröffentlichungen in der Historie erhalten bleiben. Bei einer angemeldeten Plattformabfrage filtert Identity neue Versionen und die Historie anhand der effektiven Account-Entitlements und vergleicht sie mit `identity_knowledge_chapter_reads` in Identity-PostgreSQL. Das Dashboard fasst ungelesene Versionen in genau einer Benachrichtigung zusammen, die zur Historie mit Datum, Version und Lesestatus fuehrt. Weder dieser Klick noch das reine Oeffnen der Historie veraendert den Lesestand; erst das ausdrueckliche Oeffnen eines Kapitels markiert die aktuelle Version als gesehen. Browser-State ist keine Persistenzwahrheit und ein globaler E-Mail- oder Push-Broadcast findet nicht statt. Staging und Produktion behalten durch ihre getrennten Identity-Datenbanken unabhaengige Lesestaende.
 - Das eigenstaendige Admin Tool unter `http://127.0.0.1:4600/admin/` enthaelt im PoC die LLM-Konfiguration fuer Provider, Endpoint, lokales Modell, API-Modell und Verbindungstest. Zusaetzlich zeigt der reine Lese-Reiter `Metamodell` das Projekt-Komponenten- und Beziehungsmetamodell als UML-Klassendiagramm und Regelmatrix; die Daten kommen aus derselben Regelquelle wie der Projekteditor und bleiben durch den Admin-Access-Proxy geschuetzt. LLM-Routing-Konfiguration ist fachlicher Runtime-State und muss gemaess SQL-only-Persistenz in SQLite liegen; alte JSON-Dev-Konfigurationen sind nur Migrationsaltlasten.
 - Administrative VPS-Zugaenge sind ausschliesslich ueber WireGuard erlaubt. Die Host-Firewall akzeptiert SSH nur am VPN-Interface; das Admin Tool bleibt am VPS-Loopback und wird per SSH-Tunnel innerhalb des VPN erreicht. Ein oeffentlicher SSH- oder Admin-Fallback ist nicht vorgesehen.
 - Ein VPS-Systemd-Timer bewertet alle fuenf Minuten aggregierte Fail2ban-Sperren, fehlgeschlagene Systemd-Units und ungesunde GerNetiX-Container. Er uebergibt nur den Befund token-geschuetzt an das Loopback-Admin-Tool. Dieses persistiert die Auffaelligkeit und versendet kritische Befunde mit einem 30-Minuten-Cooldown ueber den internen Identity-/IONOS-SMTP-Kanal. Die spaetere mobile Administration bleibt WireGuard-geschuetzt; ein oeffentlicher Admin-Port wird nicht eingefuehrt.

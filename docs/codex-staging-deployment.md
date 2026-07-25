@@ -112,6 +112,43 @@ ueber SMB, NFS oder SSHFS.
 - Die bisherigen Project-SQLite-Bestaende werden beim VPS-Upgrade einmalig
   und idempotent nach Project-PostgreSQL importiert; Entwicklungsrechner
   greifen weiterhin ausschliesslich ueber das Project-Server-API darauf zu.
+- Der bisherige AI-Usage-Bestand aus der gemeinsamen Runtime-SQLite wird
+  einmalig transaktional nach AI-Usage-PostgreSQL importiert; danach erfolgt
+  jeder Zugriff ausschliesslich ueber das AI-Usage-API.
+- Der bisherige Hardware-Catalog-Bestand aus der gemeinsamen Runtime-SQLite
+  wird einmalig transaktional nach Hardware-Catalog-PostgreSQL importiert.
+  Entwicklungsrechner greifen weiterhin nur ueber das private Katalog-API zu.
+- Der bisherige Hardware-Shop-Bestand aus der gemeinsamen Runtime-SQLite wird
+  einmalig transaktional nach Hardware-Shop-PostgreSQL importiert. Angebote,
+  Warenkoerbe, Bestellungen und Purchase Contexts werden danach nur ueber das
+  Shop-API verwendet.
+- Admin-Consents, Audit-, Systemereignisse und Schnittstellenstatistik werden
+  einmalig nach Operations-PostgreSQL importiert. Danach besitzt die
+  Runtime-SQLite keinen produktiven Schreiber mehr.
+
+## Neue Wissenskapitel auf Staging pruefen
+
+Neue Wissenskapitel, die einen Nutzerhinweis ausloesen sollen, werden mit stabiler
+Kapitel-ID, Inhaltsversion, Veroeffentlichungszeitpunkt und erforderlichen
+Entitlements im versionierten Release-Manifest des Identity Servers eingetragen.
+Das Deployment uebertraegt damit nur Code und Manifest aus dem bereits gepushten
+Commit. Es kopiert keine lokalen Lesestaende auf den VPS.
+
+Identity vergleicht das Manifest bei einer angemeldeten Plattformabfrage mit den
+accountgebundenen Lesestaenden in Identity-PostgreSQL:
+
+- Nur Konten mit allen fuer das Kapitel erforderlichen Entitlements sehen den Hinweis.
+- Das Dashboard fasst alle ungelesenen Veroeffentlichungen in einer Benachrichtigung zusammen; es wird dadurch keine E-Mail und kein Web-Push versendet.
+- Ein Klick auf die Benachrichtigung oeffnet die entitlement-gefilterte Historie des Wissensspeichers mit Veroeffentlichungsdatum, Version und Lesestatus. Das reine Oeffnen der Historie markiert nichts als gelesen.
+- Erst beim ausdruecklichen Oeffnen eines Kapitels aus Historie oder Inhaltsverzeichnis speichert Identity dessen aktuelle Version als gesehen.
+- Eine spaetere neue Inhaltsversion wird im Manifest ergaenzt statt der frueheren Version ersetzt. So bleibt sie in der Historie erhalten und kann denselben Account erneut informieren.
+- Staging- und Produktionsdatenbanken besitzen getrennte Lesestaende. Ein Staging-Test nimmt daher keinen Produktionshinweis vorweg.
+- Der lokale Remote-Dev-Modus schreibt absichtlich in die gemeinsame Staging-Datenbank. Fuer wiederholbare Tests ist ein dafuer bestimmtes Staging-Konto oder eine isolierte lokale SQLite zu verwenden.
+
+Ein neues Kapitel gilt erst als veroeffentlicht, wenn Inhalt und Release-Manifest
+im selben sauberen, gepushten Commit liegen. Ein Staging-Test erfolgt danach ueber
+den normalen Deployment-Befehl; direkte SQL-Seeds oder kopierte SQLite-Dateien
+sind dafuer nicht zulaessig.
 
 Nur die Konfiguration pruefen, ohne eine Verbindung aufzubauen:
 

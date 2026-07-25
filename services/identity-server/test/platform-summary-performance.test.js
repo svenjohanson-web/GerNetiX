@@ -12,7 +12,8 @@ test("loads independent platform summary dependencies concurrently", () => {
   assert.match(platformSummary, /const aiUsagePromise = loadAiUsageSummary/);
   assert.match(platformSummary, /const communitySummaryPromise = loadCommunityDashboardSummary/);
   assert.match(platformSummary, /const accountPromise = createAccountSummary/);
+  assert.match(platformSummary, /const knowledgeStatePromise = loadKnowledgeState/);
   assert.match(platformSummary, /const projects = await projectsPromise;[\s\S]*const buildsPromise = loadProjectBuilds\(projects/);
-  assert.match(platformSummary, /const \[devices, builds, aiUsage, communitySummary, account\] = await Promise\.all/);
+  assert.match(platformSummary, /const \[devices, builds, aiUsage, communitySummary, account, knowledgeState\] = await Promise\.all/);
   assert.doesNotMatch(platformSummary, /const devices = await loadUserIdeDevices/);
 });

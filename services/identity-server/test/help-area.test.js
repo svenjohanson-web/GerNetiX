@@ -172,6 +172,19 @@ test("explains what software is from source code to embedded, backend and apps",
   assert.match(helpContent, /PC, Tablet und Smartphone: beide Welten[\s\S]*plattformübergreifenden App/);
 });
 
+test("teaches YAML fundamentals and points to the matching learning project", () => {
+  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  assert.match(navigation, /title: "Informatik und Software"[\s\S]*"yaml-basics", title: "YAML: strukturierte Daten lesbar beschreiben"/);
+  assert.match(navigation, /yaml-purpose[\s\S]*yaml-scalars[\s\S]*yaml-indentation[\s\S]*yaml-lists[\s\S]*yaml-text[\s\S]*yaml-errors[\s\S]*yaml-learning-project/);
+  assert.match(helpContent, /"yaml-basics": \{[\s\S]*YAML ist keine Programmiersprache/);
+  assert.match(helpContent, /Schlüssel und einfache Werte[\s\S]*Wahrheitswerte[\s\S]*null/);
+  assert.match(helpContent, /Einrückung und Verschachtelung[\s\S]*keine Tabs/);
+  assert.match(helpContent, /Listen und Objekte kombinieren[\s\S]*Bindestrich/);
+  assert.match(helpContent, /Anführungszeichen und mehrzeiliger Text[\s\S]*Textblock/);
+  assert.match(helpContent, /Typische Fehler und Validierung[\s\S]*Schema/);
+  assert.match(helpContent, /kostenlose Lernprojekt „YAML-Grundlagen“[\s\S]*Pflanzenmonitor/);
+});
+
 test("distinguishes microcontroller storage, databases and file servers in Software", () => {
   const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
   assert.match(navigation, /title: "Informatik und Software"[\s\S]*"databases-and-storage", title: "Datenbanken, Speicher und Dateiserver"/);
@@ -464,7 +477,7 @@ test("keeps engineering thinking public and gates the remaining knowledge chapte
     .filter((topic) => topic.surface === "knowledge")
     .flatMap((topic) => topic.children || []);
 
-  assert.equal(chapters.length, 25);
+  assert.equal(chapters.length, 26);
   assert.equal(context.content.articles["from-problem-to-system"].access, "public");
   assert.ok(chapters
     .filter((chapter) => chapter.id !== "from-problem-to-system")

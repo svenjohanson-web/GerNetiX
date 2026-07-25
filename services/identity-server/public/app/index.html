@@ -40,7 +40,7 @@
         <a class="utility public-information-link" href="/entdecken/">GerNetiX entdecken</a>
         <a class="utility public-information-link" href="/flashbox-einrichten/">USB Helper</a>
         <a class="utility public-information-link" href="/nachbauprojekte/">Nachbauprojekte</a>
-        <a class="utility public-information-link" href="/wissen/">Wissensportal</a>
+        <a class="utility public-information-link" href="/wissen/">Wissensportal <span id="knowledgeUpdateMenuBadge" class="knowledge-update-count" hidden></span></a>
         <a class="utility public-information-link" href="/community/">Community</a>
         <a class="utility public-information-link" href="/hilfe/">Hilfe</a>
         <a class="utility public-information-link" href="/support/">Support</a>
@@ -81,6 +81,16 @@
             <button class="entry-card" type="button" data-open-route="/app/device-management/"><span>Vorhandene Hardware</span><strong>Boards verwalten</strong><p>Boards verbinden und verwalten.</p></button>
             <button class="entry-card" type="button" data-open-route="/app/community/"><span>Austausch &amp; Hilfe</span><strong>Community &amp; Begleitung</strong><p>Fragen stellen oder persönliche Projektbegleitung anfragen.</p></button>
           </div>
+        </section>
+
+        <section id="dashboardKnowledgeUpdates" class="panel dashboard-knowledge-updates" aria-labelledby="dashboardKnowledgeUpdatesTitle" hidden>
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Neu im Wissensportal</p>
+              <h2 id="dashboardKnowledgeUpdatesTitle">Der Wissensspeicher wurde erweitert</h2>
+            </div>
+          </div>
+          <div id="dashboardKnowledgeUpdateList" class="dashboard-knowledge-update-list"></div>
         </section>
 
         <section class="panel dashboard-status">

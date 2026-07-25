@@ -26,6 +26,14 @@ class AuthService {
     this.providers = new Map(providers.map((provider) => [provider.providerName, provider]));
   }
 
+  async list_knowledge_chapter_reads(accountId) {
+    return this.repository.listKnowledgeChapterReads(accountId);
+  }
+
+  async mark_knowledge_chapter_read(accountId, chapterId, chapterVersion) {
+    return this.repository.markKnowledgeChapterRead(accountId, chapterId, chapterVersion);
+  }
+
   async register_local(username, email, password, accepted_terms, password_repeat = password, options = {}) {
     assertTermsAccepted(accepted_terms);
     assertRegistrationInput(username, email, password, password_repeat);

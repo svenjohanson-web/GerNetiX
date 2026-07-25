@@ -12,6 +12,8 @@ test("postgres identity repository creates its normalized account and session sc
   assert.match(pool.calls[0].text, /username_normalized text NOT NULL UNIQUE/);
   assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS identity_sessions/);
   assert.match(pool.calls[0].text, /token_hash text NOT NULL UNIQUE/);
+  assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS identity_knowledge_chapter_reads/);
+  assert.match(pool.calls[0].text, /PRIMARY KEY \(account_id, chapter_id\)/);
 });
 
 test("postgres identity repository writes normalized lookup values and JSON documents", async () => {
@@ -53,6 +55,31 @@ test("postgres identity repository maps unique account constraints to stable aut
     repository.createUserAccount({ id: "acct-1", username: "maker", email: null, status: "verified" }),
     /USERNAME_ALREADY_EXISTS/,
   );
+});
+
+test("postgres identity repository upserts account-bound knowledge chapter read versions", async () => {
+  const pool = {
+    calls: [],
+    async query(text, values = []) {
+      this.calls.push({ text, values });
+      return {
+        rows: [{
+          account_id: values[0],
+          chapter_id: values[1],
+          chapter_version: values[2],
+          seen_at: new Date(values[3]),
+        }],
+        rowCount: 1,
+      };
+    },
+  };
+  const repository = new PostgresIdentityRepository(pool, () => new Date("2026-07-24T20:00:00.000Z"));
+  const read = await repository.markKnowledgeChapterRead("acct-1", "yaml-basics", "2026-07-24.1");
+
+  assert.equal(read.seen_at, "2026-07-24T20:00:00.000Z");
+  assert.match(pool.calls[0].text, /INSERT INTO identity_knowledge_chapter_reads/);
+  assert.match(pool.calls[0].text, /ON CONFLICT\(account_id, chapter_id\) DO UPDATE/);
+  assert.deepEqual(pool.calls[0].values.slice(0, 3), ["acct-1", "yaml-basics", "2026-07-24.1"]);
 });
 
 class RecordingPool {

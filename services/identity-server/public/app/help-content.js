@@ -127,6 +127,15 @@ const HelpContent = (() => {
           { id: "software-backend", title: "Backend: Entwicklungsgeschwindigkeit zählt" },
           { id: "software-client-devices", title: "PC, Tablet und Smartphone: beide Welten" },
         ] },
+        { id: "yaml-basics", title: "YAML: strukturierte Daten lesbar beschreiben", articleId: "yaml-basics", subchapters: [
+          { id: "yaml-purpose", title: "Was YAML ist – und was nicht" },
+          { id: "yaml-scalars", title: "Schlüssel und einfache Werte" },
+          { id: "yaml-indentation", title: "Einrückung und Verschachtelung" },
+          { id: "yaml-lists", title: "Listen und Objekte kombinieren" },
+          { id: "yaml-text", title: "Anführungszeichen und mehrzeiliger Text" },
+          { id: "yaml-errors", title: "Typische Fehler und Validierung" },
+          { id: "yaml-learning-project", title: "Im Lernprojekt selbst ausprobieren" },
+        ] },
         { id: "databases-and-storage", title: "Datenbanken, Speicher und Dateiserver", articleId: "databases-and-storage", subchapters: [
           { id: "storage-is-not-always-a-database", title: "Speicher ist nicht automatisch eine Datenbank" },
           { id: "microcontroller-storage", title: "Was Mikrocontroller lokal speichern können" },
@@ -417,6 +426,48 @@ const HelpContent = (() => {
         ] }
       ],
       relatedTopics: ["from-problem-to-system", "server-systems", "microcontroller-basics", "communication-basics"],
+    },
+    "yaml-basics": {
+      title: "YAML: strukturierte Daten lesbar beschreiben",
+      summary: "YAML ist ein textbasiertes Datenformat für Konfigurationen und andere strukturierte Informationen. Seine wenigen Grundregeln sind schnell gelernt – die Einrückung muss jedoch stimmen.",
+      access: "public",
+      sections: [
+        { id: "yaml-purpose", heading: "Was YAML ist – und was nicht", paragraphs: [
+          "YAML beschreibt Daten in einer für Menschen gut lesbaren Textform. Es wird häufig für Konfigurationen, Build-Abläufe, Deployment-Dateien und technische Metadaten verwendet. Eine Anwendung liest die Datei und entscheidet, was die darin enthaltenen Werte bedeuten.",
+          "YAML ist keine Programmiersprache. Eine YAML-Datei führt selbst keine Funktionen, Bedingungen oder Schleifen aus. Wenn ein Werkzeug in einer YAML-Konfiguration besondere Ausdrücke erlaubt, ist das eine Erweiterung dieses Werkzeugs und keine allgemeine YAML-Regel.",
+          "JSON und YAML können oft dieselbe Datenstruktur ausdrücken. JSON verwendet viele Klammern und Kommas; YAML bildet Hierarchie überwiegend mit Einrückung ab. Das macht YAML kompakt, aber auch empfindlich gegenüber falsch gesetzten Leerzeichen."
+        ] },
+        { id: "yaml-scalars", heading: "Schlüssel und einfache Werte", paragraphs: [
+          "Die kleinste gut lesbare Einheit ist ein Schlüssel mit einem Wert: `name: Pflanzenmonitor`. Hinter dem Doppelpunkt steht normalerweise ein Leerzeichen. Schlüssel sollten verständlich und innerhalb ihres Bereichs eindeutig sein.",
+          "Werte können Text, Zahlen, Wahrheitswerte wie `true` und `false` oder ein leerer Wert wie `null` sein. Ein Parser erkennt diese Typen anhand der Schreibweise. Darum ist `port: 4300` eine Zahl, während `port: \"4300\"` Text ist.",
+          "Kommentare beginnen mit `#` und werden nicht Teil der Daten. Sie erklären besondere Entscheidungen, sollten aber keine Pflichtinformation verstecken, die das verwendende Werkzeug eigentlich als eigenes Feld prüfen müsste."
+        ] },
+        { id: "yaml-indentation", heading: "Einrückung und Verschachtelung", paragraphs: [
+          "Zusammengehörige Werte werden eingerückt. Unter `sensor:` können zum Beispiel `typ`, `pin` und eine weitere `kalibrierung` stehen. Je tiefer ein Wert eingerückt ist, desto tiefer liegt er in der entstehenden Datenstruktur.",
+          "Für die Einrückung werden Leerzeichen verwendet, keine Tabs. Ob ein Projekt zwei oder vier Leerzeichen pro Ebene nutzt, ist weniger wichtig als eine durchgehend konsistente Schreibweise. Ein versehentliches Leerzeichen zu viel kann einen Wert einem anderen Objekt zuordnen oder die Datei ungültig machen.",
+          "Einrückung dient deshalb nicht nur der Schönheit. Sie ist Syntax und trägt fachliche Bedeutung."
+        ], example: "sensor:\n  typ: bodenfeuchte\n  pin: 34\n  kalibrierung:\n    trocken: 3200\n    nass: 1400" },
+        { id: "yaml-lists", heading: "Listen und Objekte kombinieren", paragraphs: [
+          "Ein Bindestrich beginnt einen Eintrag in einer Liste. Ein einfacher Eintrag kann nur aus einem Wert bestehen. Häufig ist jeder Listeneintrag selbst ein Objekt mit mehreren benannten Eigenschaften.",
+          "In einer Aufgabenliste kann ein Eintrag beispielsweise `name: messen` und `alle_sekunden: 60` enthalten. Der nächste Bindestrich auf derselben Ebene beginnt eine neue Aufgabe. Die eingerückten Schlüssel darunter gehören nur zu diesem Listeneintrag.",
+          "So lassen sich Objekte, Listen und weitere Unterobjekte beliebig kombinieren. Große Dateien bleiben jedoch nur verständlich, wenn Namen, Ebenen und Verantwortlichkeiten klar geschnitten sind."
+        ], example: "aufgaben:\n  - name: messen\n    alle_sekunden: 60\n  - name: warnen\n    unter_prozent: 25" },
+        { id: "yaml-text", heading: "Anführungszeichen und mehrzeiliger Text", paragraphs: [
+          "Einfacher Text braucht oft keine Anführungszeichen. Enthält er jedoch einen Doppelpunkt mit nachfolgendem Leerzeichen, ein Kommentarzeichen oder eine Schreibweise, die wie Zahl oder Wahrheitswert aussieht, machen Anführungszeichen die Absicht eindeutig.",
+          "Mit `|` beginnt ein Textblock, der Zeilenumbrüche bewahrt. Mit `>` werden mehrere Quellzeilen zu einem fortlaufenden Absatz gefaltet. Die folgenden Textzeilen müssen jeweils weiter eingerückt sein als der zugehörige Schlüssel.",
+          "Anführungszeichen lösen keine fehlerhafte Struktur. Sie sichern nur einen einzelnen Textwert; Einrückung und Datentypen müssen weiterhin zum erwarteten Modell passen."
+        ] },
+        { id: "yaml-errors", heading: "Typische Fehler und Validierung", paragraphs: [
+          "Häufige Fehler sind Tabs, uneinheitliche Einrückung, ein fehlendes Leerzeichen nach dem Doppelpunkt, ein Bindestrich auf der falschen Ebene oder ein unbeabsichtigter Datentyp. Auch doppelte Schlüssel sind gefährlich, weil Werkzeuge sie unterschiedlich behandeln können.",
+          "Ein YAML-Parser prüft, ob die Syntax lesbar ist. Das reicht fachlich noch nicht aus: Eine gültige Datei kann einen Pflichtschlüssel vergessen oder einen unbekannten Wert enthalten. Ein Schema oder die Validierung des verwendenden Werkzeugs prüft zusätzlich, ob die Daten die erwartete Form und Bedeutung haben.",
+          "Gehe bei einer Fehlermeldung von der genannten Zeile nach oben bis zum Beginn des aktuellen Blocks. Die eigentliche Ursache liegt oft eine Zeile vor der Stelle, an der der Parser nicht mehr weiterweiß."
+        ] },
+        { id: "yaml-learning-project", heading: "Im Lernprojekt selbst ausprobieren", paragraphs: [
+          "Das kostenlose Lernprojekt „YAML-Grundlagen“ führt ohne Hardware durch Schlüssel und Werte, Verschachtelung, Listen, Textblöcke und typische Fehler. Als Abschluss entsteht eine kleine Konfiguration für einen Pflanzenmonitor.",
+          "Du findest es nach der Anmeldung im Bereich Lernen unter „YAML-Grundlagen“. Bearbeite die Beispieldatei bewusst in kleinen Schritten: erst einen Wert ändern, dann ein Unterobjekt ergänzen und zuletzt einen Listeneintrag hinzufügen. Erkläre anschließend die resultierende Struktur in eigenen Worten. Wer die Hierarchie erklären kann, hat die wichtigste YAML-Hürde bereits genommen."
+        ] }
+      ],
+      relatedTopics: ["software-basics-introduction", "databases-and-storage", "from-problem-to-system"],
     },
     "databases-and-storage": {
       title: "Datenbanken, Speicher und Dateiserver",

@@ -33,7 +33,7 @@ Dieses Dokument inventarisiert die dauerhaften GerNetiX-Speicher und ordnet Down
 
 | Fachbereich | Fuehrender Speicherpfad | Compose-Volume | Inhalt |
 |---|---|---|---|
-| Identity | PostgreSQL-Datenbank `gernetix_identity` | `identity_postgres_data` | Accounts, Credentials, Passkeys, Recovery-Transaktionen und Sessions |
+| Identity | PostgreSQL-Datenbank `gernetix_identity` | `identity_postgres_data` | Accounts, Credentials, Passkeys, Recovery-Transaktionen, Sessions und accountgebundene Lesestaende versionierter Wissenskapitel; die Veröffentlichungshistorie selbst stammt aus dem versionierten Release-Manifest |
 | Identity-Altbestand | `/var/lib/gernetix/identity/gernetix-identity.sqlite` | `identity_state` | einmalige, idempotente Altuebernahme; nach erfolgreicher Migration nicht mehr fuehrend |
 | Plattform-Releases | `/var/lib/gernetix/identity/gernetix-platform-downloads.sqlite` | `identity_state` | Flashbox-Initialimage und Serial-Service als versionierte BLOBs |
 | Account-Assets | `/var/lib/gernetix/identity/gernetix-account-assets.sqlite` | `identity_state` | owner-only QR-Codes, Bilder, Bildstile und Exporte |

@@ -62,6 +62,15 @@ class PostgresIdentityRepository {
       );
       CREATE INDEX IF NOT EXISTS idx_identity_sessions_user_id
         ON identity_sessions (user_id);
+      CREATE TABLE IF NOT EXISTS identity_knowledge_chapter_reads (
+        account_id text NOT NULL REFERENCES identity_user_accounts(id) ON DELETE CASCADE,
+        chapter_id text NOT NULL,
+        chapter_version text NOT NULL,
+        seen_at timestamptz NOT NULL,
+        PRIMARY KEY (account_id, chapter_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_identity_knowledge_chapter_reads_account
+        ON identity_knowledge_chapter_reads (account_id, seen_at DESC);
       CREATE TABLE IF NOT EXISTS identity_migrations (
         migration_id text PRIMARY KEY,
         applied_at timestamptz NOT NULL DEFAULT now()
@@ -340,6 +349,34 @@ class PostgresIdentityRepository {
     return result.rowCount;
   }
 
+  async listKnowledgeChapterReads(accountId) {
+    const result = await this.pool.query(`
+      SELECT account_id, chapter_id, chapter_version, seen_at
+      FROM identity_knowledge_chapter_reads
+      WHERE account_id=$1
+      ORDER BY seen_at DESC, chapter_id
+    `, [accountId]);
+    return result.rows.map((row) => ({
+      ...row,
+      seen_at: toIso(row.seen_at),
+    }));
+  }
+
+  async markKnowledgeChapterRead(accountId, chapterId, chapterVersion) {
+    const seenAt = this.nowIso();
+    const result = await this.pool.query(`
+      INSERT INTO identity_knowledge_chapter_reads
+        (account_id, chapter_id, chapter_version, seen_at)
+      VALUES ($1, $2, $3, $4)
+      ON CONFLICT(account_id, chapter_id) DO UPDATE SET
+        chapter_version=excluded.chapter_version,
+        seen_at=excluded.seen_at
+      RETURNING account_id, chapter_id, chapter_version, seen_at
+    `, [accountId, chapterId, chapterVersion, seenAt]);
+    const row = result.rows[0];
+    return { ...row, seen_at: toIso(row.seen_at) };
+  }
+
   async hasMigration(migrationId) {
     return (await this.pool.query(
       "SELECT 1 FROM identity_migrations WHERE migration_id=$1",
@@ -522,6 +559,10 @@ function normalizeUsername(username) {
 
 function externalKey(provider, providerUserId) {
   return `${provider}:${providerUserId}`;
+}
+
+function toIso(value) {
+  return value instanceof Date ? value.toISOString() : String(value || "");
 }
 
 function clone(value) {

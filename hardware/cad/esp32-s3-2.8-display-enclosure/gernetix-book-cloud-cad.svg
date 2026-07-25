@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 64">
+  <!-- Druckgerecht vereinfachte Kontur der GerNetiX-Buch-/Cloud-Marke. -->
+  <path
+    d="M50 58C39 52 24 51 8 56V8C23 3 39 4 50 10C61 4 77 3 92 8V56C76 51 61 52 50 58Z"
+    fill="none"
+    stroke="#000"
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M50 10V58"
+    fill="none"
+    stroke="#000"
+    stroke-width="4"
+    stroke-linecap="round"
+  />
+  <path
+    d="M65 39H79C84 39 88 35 88 30C88 25 84 21 79 21C78 16 74 13 69 13C63 13 59 17 58 23C54 24 51 27 51 31C51 35 55 39 60 39Z"
+    fill="none"
+    stroke="#000"
+    stroke-width="4"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M14 20H24L30 15H36M14 33H27L33 28H39"
+    fill="none"
+    stroke="#000"
+    stroke-width="3"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="40" cy="15" r="3" fill="none" stroke="#000" stroke-width="3"/>
+  <circle cx="43" cy="28" r="3" fill="none" stroke="#000" stroke-width="3"/>
+</svg>

@@ -10,6 +10,7 @@ class InMemoryIdentityRepository {
     this.passwordResetTokens = new Map((seed.passwordResetTokens || []).map((item) => [item.id, clone(item)]));
     this.offlineRecoveryTransactions = new Map((seed.offlineRecoveryTransactions || []).map((item) => [item.id, clone(item)]));
     this.sessions = new Map((seed.sessions || []).map((item) => [item.id, clone(item)]));
+    this.knowledgeChapterReads = new Map((seed.knowledgeChapterReads || []).map((item) => [knowledgeReadKey(item.account_id, item.chapter_id), clone(item)]));
     this.usernameIndex = new Map();
     this.emailIndex = new Map();
     this.externalIdentityIndex = new Map();
@@ -282,6 +283,23 @@ class InMemoryIdentityRepository {
     }
     return revoked;
   }
+
+  listKnowledgeChapterReads(accountId) {
+    return Array.from(this.knowledgeChapterReads.values())
+      .filter((read) => read.account_id === accountId)
+      .map(clone);
+  }
+
+  markKnowledgeChapterRead(accountId, chapterId, chapterVersion) {
+    const read = {
+      account_id: String(accountId),
+      chapter_id: String(chapterId),
+      chapter_version: String(chapterVersion),
+      seen_at: this.nowIso(),
+    };
+    this.knowledgeChapterReads.set(knowledgeReadKey(read.account_id, read.chapter_id), read);
+    return clone(read);
+  }
 }
 
 function createId(prefix) {
@@ -298,6 +316,10 @@ function normalizeUsername(username) {
 
 function externalKey(provider, providerUserId) {
   return `${provider}:${providerUserId}`;
+}
+
+function knowledgeReadKey(accountId, chapterId) {
+  return `${accountId}:${chapterId}`;
 }
 
 function clone(value) {

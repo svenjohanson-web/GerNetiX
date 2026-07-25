@@ -81,6 +81,28 @@ test("catalog includes the button-to-smartphone notification learning project", 
   assert.match(server, /createButtonToSmartphoneNotificationCourseModel/);
 });
 
+test("catalog includes a free browser-based YAML fundamentals project", () => {
+  const course = require("../src/dev/project-models/yaml-fundamentals-course.json");
+  const model = require("../src/dev/project-models/yaml-fundamentals-course");
+  assert.equal(course.project.slug, "yaml-fundamentals");
+  assert.equal(course.project.hardware_profile_id, "runtime.browser_text");
+  assert.deepEqual(course.project.required_capability_ids, []);
+  assert.equal(course.project.access_model, "free");
+  assert.equal(course.view_manifest.primary_source_path, "projekt.yaml");
+  assert.ok(course.project.tags.includes("topic:yaml"));
+  assert.match(JSON.stringify(course.view_manifest), /Einrückung bildet Hierarchie/);
+  assert.match(JSON.stringify(course.view_manifest), /typische Stolperfallen/i);
+  assert.equal(typeof model.createYamlFundamentalsCourseModel, "function");
+  const created = model.createYamlFundamentalsCourseModel().createProject(
+    (slug, title, area, summary, steps, options) => ({ slug, title, area, summary, steps, ...options }),
+    (title, text, insight) => ({ title, text, insight }),
+  );
+  assert.deepEqual(created.required_capability_ids, []);
+  assert.match(server, /createYamlFundamentalsCourseModel/);
+  assert.match(server, /yamlFundamentalsCourseModel\.createProject/);
+  assert.match(server, /"topic:yaml"/);
+});
+
 test("button-to-smartphone course starts with a simulated button and serial-monitor lab", () => {
   const course = require("../src/dev/project-models/button-to-smartphone-notification-course.json");
   const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");

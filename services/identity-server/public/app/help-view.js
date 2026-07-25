@@ -2,7 +2,14 @@ const HelpView = (() => {
   let selectedTopicId = "quick-start";
   let messages = [];
   let bound = false;
-  let access = { hasAccount: true, premium: false };
+  let access = {
+    hasAccount: true,
+    premium: false,
+    newChapterIds: [],
+    knowledgeHistory: [],
+    showKnowledgeHistory: false,
+    onKnowledgeChapterOpen: null,
+  };
   let surface = "help";
   let knowledgeScrollHandler = null;
 
@@ -26,6 +33,7 @@ const HelpView = (() => {
           <p class="helper-text">${portal ? "Grundlagen und Zusammenhänge, die über einzelne GerNetiX-Projekte hinausgehen." : "Konkrete Abläufe, Konto- und Projektfunktionen in GerNetiX."}</p>
         </div>
       </header>
+      ${portal && access.showKnowledgeHistory ? renderKnowledgeHistory() : ""}
       ${portal ? renderKnowledgeBook(visibleTopics) : `<div class="help-layout">
         <nav class="panel help-topic-navigation" aria-label="${portal ? "Wissensportal-Themen" : "Hilfethemen"}">
           <p class="eyebrow">${portal ? "Themenbereiche" : "Hilfethemen"}</p>
@@ -51,7 +59,50 @@ const HelpView = (() => {
       </section>`}`;
     if (article.hardwareCatalog) loadHardwareCatalog(mount);
     if (portal) activateKnowledgeBook(mount, selectedTopicId);
+    if (portal && requested) notifyKnowledgeChapterOpen(requested);
     if (!bound) bind(mount);
+  }
+
+  function renderKnowledgeHistory() {
+    const entries = access.knowledgeHistory || [];
+    return `<section id="wissensspeicher-historie" class="panel knowledge-history" aria-labelledby="knowledgeHistoryTitle">
+      <header class="knowledge-history-head">
+        <div>
+          <p class="eyebrow">Änderungsverlauf</p>
+          <h3 id="knowledgeHistoryTitle">Historie des Wissensspeichers</h3>
+          <p>Hier siehst du neue und bereits gelesene Veröffentlichungen, die für deinen Account freigeschaltet sind.</p>
+        </div>
+        <a href="/wissen/">Historie schließen</a>
+      </header>
+      <div class="knowledge-history-list">
+        ${entries.length ? entries.map(renderKnowledgeHistoryEntry).join("") : '<p class="helper-text">Für deinen Account gibt es noch keine Veröffentlichungen in der Historie.</p>'}
+      </div>
+    </section>`;
+  }
+
+  function renderKnowledgeHistoryEntry(entry) {
+    const status = entry.is_new
+      ? '<strong class="knowledge-history-status is-new">Neu</strong>'
+      : entry.seen_at
+        ? `<span class="knowledge-history-status">Gelesen am ${escapeHtml(formatKnowledgeDate(entry.seen_at))}</span>`
+        : '<span class="knowledge-history-status">Frühere Version</span>';
+    return `<article class="knowledge-history-entry">
+      <div class="knowledge-history-entry-meta">
+        <time datetime="${escapeHtml(entry.published_at)}">${escapeHtml(formatKnowledgeDate(entry.published_at))}</time>
+        <span>Version ${escapeHtml(entry.version)}</span>
+        ${status}
+      </div>
+      <h4>${escapeHtml(entry.title)}</h4>
+      <p>${escapeHtml(entry.summary)}</p>
+      <a href="#${escapeHtml(entry.chapter_id)}" data-knowledge-topic="${escapeHtml(entry.chapter_id)}">Veröffentlichung öffnen →</a>
+    </article>`;
+  }
+
+  function formatKnowledgeDate(value) {
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+      ? String(value || "")
+      : new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
   }
 
   function renderKnowledgeBook(topics) {
@@ -66,7 +117,7 @@ const HelpView = (() => {
         ${topics.map((topic, index) => `<section id="knowledge-part-${escapeHtml(topic.id)}" class="knowledge-book-part" data-knowledge-part="${escapeHtml(topic.id)}"><header><p class="eyebrow">Hauptkapitel ${index + 1}</p><h2>${index + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}${topic.serverLandscape ? renderServerTypesVisual() : ""}</header>${(topic.children || []).map((child, childIndex) => {
           const chapter = HelpContent.articles[child.articleId];
           const chapterNumber = `${index + 1}.${childIndex + 1}`;
-          return `<article id="${escapeHtml(child.id)}" class="panel help-article knowledge-book-chapter" data-knowledge-chapter="${escapeHtml(child.id)}"><div class="knowledge-chapter-meta"><p class="knowledge-chapter-number">${chapterNumber}</p></div>${renderArticle(chapter, child, { showRelated: false, chapterNumber })}</article>`;
+          return `<article id="${escapeHtml(child.id)}" class="panel help-article knowledge-book-chapter" data-knowledge-chapter="${escapeHtml(child.id)}"><div class="knowledge-chapter-meta"><p class="knowledge-chapter-number">${chapterNumber}</p>${renderNewChapterBadge(child.id)}</div>${renderArticle(chapter, child, { showRelated: false, chapterNumber })}</article>`;
         }).join("")}</section>`).join("")}
       </main>
     </div>`;
@@ -83,11 +134,21 @@ const HelpView = (() => {
       return `<span class="knowledge-subchapter-link is-locked">${escapeHtml(subchapter.title)}</span>`;
     }).join("");
     return `<details class="knowledge-chapter-toc" open>
-      <summary><a class="knowledge-chapter-title-link" href="#${escapeHtml(chapter.id)}" data-knowledge-topic="${escapeHtml(chapter.id)}"><span>${chapterNumber}</span><strong>${escapeHtml(chapter.title)}</strong></a></summary>
+      <summary><a class="knowledge-chapter-title-link" href="#${escapeHtml(chapter.id)}" data-knowledge-topic="${escapeHtml(chapter.id)}"><span>${chapterNumber}</span><strong>${escapeHtml(chapter.title)}</strong>${renderNewChapterBadge(chapter.id)}</a></summary>
       <div>
         ${subchapters}
       </div>
     </details>`;
+  }
+
+  function renderNewChapterBadge(chapterId) {
+    return access.newChapterIds?.includes(chapterId)
+      ? `<small class="knowledge-new-badge" data-knowledge-new="${escapeHtml(chapterId)}">Neu</small>`
+      : "";
+  }
+
+  function notifyKnowledgeChapterOpen(chapterId) {
+    if (access.newChapterIds?.includes(chapterId)) access.onKnowledgeChapterOpen?.(chapterId);
   }
 
   function activateKnowledgeBook(mount, topicId) {
@@ -398,6 +459,7 @@ const HelpView = (() => {
         event.stopPropagation();
         const chapter = mount.querySelector(`[data-knowledge-chapter="${knowledgeTopic.dataset.knowledgeTopic}"]`);
         chapter?.scrollIntoView({ behavior: "smooth", block: "start" });
+        notifyKnowledgeChapterOpen(knowledgeTopic.dataset.knowledgeTopic);
         return;
       }
       const knowledgeSubchapter = event.target.closest("[data-knowledge-subchapter]");

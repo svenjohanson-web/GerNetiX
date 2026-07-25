@@ -1,0 +1,187 @@
+{
+  "slug": "yaml-fundamentals",
+  "project": {
+    "slug": "yaml-fundamentals",
+    "title": "YAML-Grundlagen – strukturierte Daten lesbar beschreiben",
+    "area": "Datenformate",
+    "summary": "Lerne YAML ohne Vorwissen kennen und erstelle eine kleine Projektkonfiguration mit Werten, Listen und verschachtelten Strukturen.",
+    "learning_category": "software_engineering",
+    "tags": ["runtime:browser", "topic:data", "topic:yaml", "level:beginner"],
+    "steps": [
+      {
+        "title": "YAML als Datenformat einordnen",
+        "text": "Unterscheide Daten von Programmlogik und vergleiche dieselbe kleine Konfiguration als YAML und JSON.",
+        "insight": "YAML beschreibt strukturierte Daten; es ist keine Programmiersprache."
+      },
+      {
+        "title": "Schlüssel und einfache Werte lesen",
+        "text": "Beschreibe Text, Zahlen, Wahrheitswerte und leere Werte als benannte Eigenschaften.",
+        "insight": "Ein Doppelpunkt trennt den Schlüssel von seinem Wert."
+      },
+      {
+        "title": "Einrückung und Verschachtelung verstehen",
+        "text": "Ordne zusammengehörige Eigenschaften durch Leerzeichen zu einer hierarchischen Struktur.",
+        "insight": "Einrückung trägt Bedeutung und muss innerhalb einer Ebene konsistent sein."
+      },
+      {
+        "title": "Listen und Objekte kombinieren",
+        "text": "Erstelle eine Liste von Projektaufgaben, deren Einträge jeweils mehrere Eigenschaften besitzen.",
+        "insight": "Ein Bindestrich beginnt einen Listeneintrag; eingerückte Schlüssel gehören zu diesem Eintrag."
+      },
+      {
+        "title": "Text sicher schreiben",
+        "text": "Verwende Anführungszeichen und mehrzeilige Textblöcke dort, wo Sonderzeichen oder lange Beschreibungen sonst missverständlich wären.",
+        "insight": "Lesbarkeit ist wichtig, aber ein YAML-Parser entscheidet nach festen Syntaxregeln."
+      },
+      {
+        "title": "Typische Fehler erkennen",
+        "text": "Finde Tabs, uneinheitliche Einrückung, fehlende Leerzeichen und unbeabsichtigte Datentypen.",
+        "insight": "Validieren prüft Syntax und Schema; bloßes Anschauen reicht bei strukturierten Daten nicht."
+      },
+      {
+        "title": "Abschlussaufgabe: Projektkonfiguration bauen",
+        "text": "Vervollständige eine YAML-Datei für ein kleines Pflanzenmonitor-Projekt und gleiche sie mit den Anforderungen ab.",
+        "insight": "Eine gute Konfiguration ist verständlich, eindeutig und gegen die erwartete Struktur geprüft."
+      }
+    ],
+    "hardware_profile_id": "runtime.browser_text",
+    "default_device_id": "",
+    "required_capability_ids": [],
+    "access_model": "free",
+    "source_files": [
+      { "path": "projekt.yaml", "role": "configuration" },
+      { "path": "README.md", "role": "learning_guide" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "YAML-Grundlagen",
+    "summary": "Vom ersten Schlüssel-Wert-Paar bis zu einer verständlichen und prüfbaren Projektkonfiguration.",
+    "primary_source_path": "projekt.yaml",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "yaml-purpose",
+        "type": "story_slide",
+        "title": "Wofür ist YAML da?",
+        "summary": "YAML transportiert strukturierte Daten zwischen Menschen und Werkzeugen.",
+        "completion": { "type": "acknowledge", "label": "YAML eingeordnet" },
+        "payload": {
+          "model_lines": [
+            { "label": "Konfiguration", "text": "Werkzeuge lesen Einstellungen wie Name, Port oder aktivierte Funktionen." },
+            { "label": "Daten", "text": "Schlüssel, Werte, Listen und Hierarchien bilden eine gemeinsame Struktur." },
+            { "label": "Keine Logik", "text": "YAML führt keine Schleifen oder Funktionen aus. Die verwendende Anwendung interpretiert die Daten." }
+          ]
+        }
+      },
+      {
+        "id": "yaml-and-json",
+        "type": "explanation",
+        "title": "Dieselben Daten, andere Schreibweise",
+        "summary": "YAML und JSON können dieselbe Struktur ausdrücken.",
+        "completion": { "type": "acknowledge", "label": "Formate verglichen" },
+        "payload": {
+          "cards": [
+            { "title": "YAML", "text": "name: Pflanzenmonitor\naktiv: true" },
+            { "title": "JSON", "text": "{ \"name\": \"Pflanzenmonitor\", \"aktiv\": true }" },
+            { "title": "Entscheidend", "text": "Nicht die Optik, sondern die entstehende Datenstruktur muss zur Anwendung passen." }
+          ]
+        }
+      },
+      {
+        "id": "scalars",
+        "type": "explanation",
+        "title": "Schlüssel und einfache Werte",
+        "summary": "Einzelne Werte haben Namen und erkennbare Datentypen.",
+        "completion": { "type": "acknowledge", "label": "Werte gelesen" },
+        "payload": {
+          "artifact": {
+            "type": "code",
+            "title": "Einfache Werte",
+            "content": "name: Pflanzenmonitor\nintervall_sekunden: 60\naktiv: true\nbeschreibung: \"Misst Feuchtigkeit: alle 60 Sekunden\"\nnotiz: null"
+          }
+        }
+      },
+      {
+        "id": "nesting",
+        "type": "story_slide",
+        "title": "Einrückung bildet Hierarchie",
+        "summary": "Leerzeichen zeigen, welche Eigenschaften zu einem gemeinsamen Objekt gehören.",
+        "completion": { "type": "acknowledge", "label": "Verschachtelung verstanden" },
+        "payload": {
+          "artifact": {
+            "type": "code",
+            "title": "Verschachtelte Konfiguration",
+            "content": "sensor:\n  typ: bodenfeuchte\n  pin: 34\n  kalibrierung:\n    trocken: 3200\n    nass: 1400"
+          },
+          "model_lines": [
+            { "label": "sensor", "text": "Enthält typ, pin und kalibrierung." },
+            { "label": "kalibrierung", "text": "Enthält wiederum trocken und nass." },
+            { "label": "Regel", "text": "Verwende Leerzeichen, niemals Tabs, und bleibe pro Ebene konsistent." }
+          ]
+        }
+      },
+      {
+        "id": "lists",
+        "type": "explanation",
+        "title": "Listen mit mehreren Einträgen",
+        "summary": "Bindestriche beginnen Listeneinträge; jeder Eintrag kann selbst ein Objekt sein.",
+        "completion": { "type": "acknowledge", "label": "Listen verstanden" },
+        "payload": {
+          "artifact": {
+            "type": "code",
+            "title": "Aufgabenliste",
+            "content": "aufgaben:\n  - name: messen\n    alle_sekunden: 60\n  - name: warnen\n    unter_prozent: 25"
+          }
+        }
+      },
+      {
+        "id": "text-and-pitfalls",
+        "type": "story_slide",
+        "title": "Text und typische Stolperfallen",
+        "summary": "Anführungszeichen, Textblöcke und Validierung verhindern stille Missverständnisse.",
+        "completion": { "type": "acknowledge", "label": "Fehlerquellen erkannt" },
+        "payload": {
+          "model_lines": [
+            { "label": "Sonderzeichen", "text": "Setze Text mit Doppelpunkt oder mehrdeutigen Werten vorsichtshalber in Anführungszeichen." },
+            { "label": "Mehrere Zeilen", "text": "| bewahrt Zeilenumbrüche; > faltet Zeilen zu einem Absatz." },
+            { "label": "Tabs", "text": "Tabs sind für die Einrückung nicht erlaubt." },
+            { "label": "Schema", "text": "Gültige YAML-Syntax garantiert noch nicht, dass alle erwarteten Felder vorhanden sind." }
+          ]
+        }
+      },
+      {
+        "id": "yaml-capstone",
+        "type": "story_slide",
+        "title": "Abschlussaufgabe: Projektkonfiguration",
+        "summary": "Vervollständige projekt.yaml zu einer klaren Konfiguration für Sensor und Aufgaben.",
+        "completion": { "type": "acknowledge", "label": "Konfiguration erstellt" },
+        "payload": {
+          "artifact": {
+            "type": "code",
+            "title": "projekt.yaml",
+            "content": "projekt:\n  name: Pflanzenmonitor\n  aktiv: true\n  sensor:\n    typ: bodenfeuchte\n    pin: 34\n  aufgaben:\n    - name: messen\n      alle_sekunden: 60\n    # Ergänze eine Warnung unterhalb von 25 Prozent."
+          },
+          "model_lines": [
+            { "label": "Prüfen", "text": "projekt enthält name, aktiv, sensor und aufgaben." },
+            { "label": "Erweitern", "text": "Ergänze die zweite Aufgabe mit name und unter_prozent." },
+            { "label": "Erklären", "text": "Beschreibe in eigenen Worten, welche Werte Liste, Objekt, Zahl und Wahrheitswert sind." }
+          ]
+        }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "projekt.yaml",
+      "role": "configuration",
+      "content": "projekt:\n  name: Pflanzenmonitor\n  aktiv: true\n  beschreibung: >\n    Misst regelmäßig die Bodenfeuchte und warnt,\n    bevor die Pflanze zu trocken wird.\n  sensor:\n    typ: bodenfeuchte\n    pin: 34\n    kalibrierung:\n      trocken: 3200\n      nass: 1400\n  aufgaben:\n    - name: messen\n      alle_sekunden: 60\n    - name: warnen\n      unter_prozent: 25\n"
+    },
+    {
+      "path": "README.md",
+      "role": "learning_guide",
+      "content": "# YAML-Grundlagen\n\nYAML beschreibt strukturierte Daten in einer menschenfreundlichen Textform. Dieses browserbasierte Lernprojekt benötigt keine Hardware.\n\n## Lernziel\n\nDu kannst Schlüssel und Werte, verschachtelte Objekte und Listen lesen und selbst schreiben. Du weißt außerdem, warum Einrückung, Anführungszeichen und Validierung wichtig sind.\n\n## Abschlussaufgabe\n\nVervollständige `projekt.yaml`, prüfe die Einrückung und erkläre die entstandene Datenstruktur in eigenen Worten.\n"
+    }
+  ]
+}

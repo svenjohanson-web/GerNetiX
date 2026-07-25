@@ -35,6 +35,8 @@ const state = {
   billing: null,
   community: { questions: [], activeQuestionId: "", answers: [] },
   communitySummary: { available: false, total: 0, public: { open: 0, closed: 0 }, private: { open: 0, closed: 0 } },
+  knowledgeUpdates: [],
+  knowledgeHistory: [],
   aiUsage: null,
   progress: [],
   workspace: null,
@@ -357,6 +359,8 @@ async function bootstrap() {
       const summary = await getJson("/api/platform/summary");
       state.account = summary.account;
       state.billing = summary.billing;
+      state.knowledgeUpdates = summary.knowledge_updates || [];
+      state.knowledgeHistory = summary.knowledge_history || [];
     } catch {
       state.account = null;
       state.billing = null;
@@ -422,6 +426,8 @@ async function refresh() {
   state.devices = summary.devices;
   state.builds = summary.builds;
   state.communitySummary = summary.community_summary || { available: false, total: 0, public: { open: 0, closed: 0 }, private: { open: 0, closed: 0 } };
+  state.knowledgeUpdates = summary.knowledge_updates || [];
+  state.knowledgeHistory = summary.knowledge_history || [];
   state.billing = summary.billing;
   state.aiUsage = summary.ai_usage || null;
   state.progress = summary.learning_progress;
@@ -498,8 +504,29 @@ function renderHelpTopic() {
   HelpView.render({
     hasAccount: Boolean(state.account),
     premium: Boolean(state.billing?.entitlements?.includes("learn_guided_projects")),
+    newChapterIds: state.knowledgeUpdates.map((update) => update.chapter_id),
+    knowledgeHistory: state.knowledgeHistory,
+    showKnowledgeHistory: new URLSearchParams(window.location.search).get("ansicht") === "historie",
+    onKnowledgeChapterOpen: markKnowledgeChapterRead,
     surface: routeName() === "knowledge" ? "knowledge" : "help",
   });
+}
+
+async function markKnowledgeChapterRead(chapterId) {
+  const update = state.knowledgeUpdates.find((item) => item.chapter_id === chapterId);
+  if (!state.account || !update || update.marking) return;
+  update.marking = true;
+  try {
+    const payload = await postJson(`/api/platform/knowledge/chapters/${encodeURIComponent(chapterId)}/read`, {});
+    state.knowledgeUpdates = state.knowledgeUpdates.filter((item) => item.chapter_id !== chapterId);
+    state.knowledgeHistory = state.knowledgeHistory.map((item) => item.chapter_id === chapterId && item.is_current
+      ? { ...item, is_new: false, seen_at: payload.read?.seen_at || item.seen_at }
+      : item);
+    renderKnowledgeUpdates();
+    document.querySelectorAll(`[data-knowledge-new="${CSS.escape(chapterId)}"]`).forEach((badge) => badge.remove());
+  } catch {
+    update.marking = false;
+  }
 }
 
 function renderBreadcrumb(route) {
@@ -857,7 +884,32 @@ function renderDashboard() {
     ["Letzter Modus", state.workspace.lastMode || "kein Eintrag"],
   ].map(summaryItem).join("");
   renderDashboardCommunitySummary();
+  renderKnowledgeUpdates();
   renderAiRating("#dashboardAiUsage");
+}
+
+function renderKnowledgeUpdates() {
+  const panel = document.querySelector("#dashboardKnowledgeUpdates");
+  const target = document.querySelector("#dashboardKnowledgeUpdateList");
+  const menuBadge = document.querySelector("#knowledgeUpdateMenuBadge");
+  const updates = state.knowledgeUpdates || [];
+  if (menuBadge) {
+    menuBadge.hidden = updates.length === 0;
+    menuBadge.textContent = updates.length ? String(updates.length) : "";
+  }
+  if (!panel || !target) return;
+  panel.hidden = updates.length === 0;
+  const latest = updates[0];
+  target.innerHTML = updates.length ? `
+    <a class="dashboard-knowledge-update-card" href="/wissen/?ansicht=historie">
+      <span>${updates.length === 1 ? "Ein neuer Eintrag" : `${updates.length} neue Einträge`}</span>
+      <strong>${escapeHtml(latest.title)}</strong>
+      <p>${updates.length === 1
+        ? "In der Historie des Wissensspeichers findest du Veröffentlichung, Version und Lesestatus."
+        : `Zuletzt veröffentlicht und ${updates.length - 1} weitere neue Einträge.`}</p>
+      <small>Historie des Wissensspeichers öffnen →</small>
+    </a>
+  ` : "";
 }
 
 function renderDashboardCommunitySummary() {

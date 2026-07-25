@@ -7,6 +7,9 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
     this.store = store;
     this.store.ensureSchema?.(identitySchema());
     ensureIdentityUserAccountColumns(this.store);
+    this.knowledgeChapterReads = new Map(this.store.db.prepare(
+      "SELECT account_id, chapter_id, chapter_version, seen_at FROM identity_knowledge_chapter_reads",
+    ).all().map((item) => [`${item.account_id}:${item.chapter_id}`, item]));
   }
 
   static create(sqlitePath, clock = () => new Date()) {
@@ -39,6 +42,25 @@ class SqliteBackedIdentityRepository extends InMemoryIdentityRepository {
   createSession(input) { const result = super.createSession(input); this.persist(); return result; }
   revokeSession(sessionId) { const result = super.revokeSession(sessionId); this.persist(); return result; }
   revokeSessionsByUserId(userId) { const result = super.revokeSessionsByUserId(userId); this.persist(); return result; }
+  listKnowledgeChapterReads(accountId) {
+    return this.store.db.prepare(`
+      SELECT account_id, chapter_id, chapter_version, seen_at
+      FROM identity_knowledge_chapter_reads
+      WHERE account_id = ?
+      ORDER BY seen_at DESC, chapter_id
+    `).all(accountId).map((row) => ({ ...row }));
+  }
+  markKnowledgeChapterRead(accountId, chapterId, chapterVersion) {
+    const read = super.markKnowledgeChapterRead(accountId, chapterId, chapterVersion);
+    this.store.db.prepare(`
+      INSERT INTO identity_knowledge_chapter_reads (account_id, chapter_id, chapter_version, seen_at)
+      VALUES (?, ?, ?, ?)
+      ON CONFLICT(account_id, chapter_id) DO UPDATE SET
+        chapter_version = excluded.chapter_version,
+        seen_at = excluded.seen_at
+    `).run(read.account_id, read.chapter_id, read.chapter_version, read.seen_at);
+    return read;
+  }
 
   persist() {
     const state = {
@@ -93,6 +115,7 @@ function identitySchema() {
     `CREATE TABLE IF NOT EXISTS identity_password_reset_tokens (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, expires_at TEXT, used_at TEXT, created_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_offline_recovery_transactions (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, expires_at TEXT, used_at TEXT, created_at TEXT);`,
     `CREATE TABLE IF NOT EXISTS identity_sessions (id TEXT PRIMARY KEY, user_id TEXT, token_hash TEXT, jwt_id TEXT, expires_at TEXT, revoked_at TEXT, created_at TEXT);`,
+    `CREATE TABLE IF NOT EXISTS identity_knowledge_chapter_reads (account_id TEXT NOT NULL, chapter_id TEXT NOT NULL, chapter_version TEXT NOT NULL, seen_at TEXT NOT NULL, PRIMARY KEY (account_id, chapter_id));`,
   ];
 }
 
