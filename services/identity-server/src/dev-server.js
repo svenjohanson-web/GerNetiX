@@ -342,7 +342,7 @@ async function seedDemoAccount() {
         await auth.verify_email(token);
       }
     } catch (error) {
-      if (!["username_already_exists", "email_already_exists"].includes(error.code)) {
+      if (!["username_already_exists", "email_already_exists", "user_id_already_exists"].includes(error.code)) {
         throw error;
       }
     }
