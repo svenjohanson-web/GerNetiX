@@ -6,17 +6,17 @@ class HardwareCatalogService {
     this.repository = options.repository;
   }
 
-  listCapabilities() {
-    return this.repository.listCapabilities();
+  async listCapabilities() {
+    return await this.repository.listCapabilities();
   }
 
-  getCapability(capabilityId) {
-    const capability = this.repository.findCapability(capabilityId);
+  async getCapability(capabilityId) {
+    const capability = await this.repository.findCapability(capabilityId);
     if (!capability) throw new HardwareCatalogError("capability_not_found", "TechnicalCapability wurde nicht gefunden.", 404);
     return capability;
   }
 
-  upsertCapability(input = {}) {
+  async upsertCapability(input = {}) {
     const capability = {
       capability_id: input.capability_id || input.id || required(input.capabilityId, "capability_id"),
       title: required(input.title, "title"),
@@ -24,42 +24,42 @@ class HardwareCatalogService {
       status: input.status || "active",
       summary: input.summary || "",
     };
-    return this.repository.saveCapability(capability);
+    return await this.repository.saveCapability(capability);
   }
 
-  listHardwareItems(query = {}) {
-    return this.repository.listHardwareItems({
+  async listHardwareItems(query = {}) {
+    return await this.repository.listHardwareItems({
       item_type: query.item_type || query.itemType || "",
       status: query.status || "active",
     });
   }
 
-  getHardwareItem(itemId) {
-    const item = this.repository.findHardwareItem(itemId);
+  async getHardwareItem(itemId) {
+    const item = await this.repository.findHardwareItem(itemId);
     if (!item) throw new HardwareCatalogError("hardware_item_not_found", "HardwareItem wurde nicht gefunden.", 404);
     return item;
   }
 
-  listProcessorBoards() {
-    return this.listHardwareItems({ item_type: "processor_board", status: "active" })
+  async listProcessorBoards() {
+    return (await this.listHardwareItems({ item_type: "processor_board", status: "active" }))
       .filter((item) => !deprecatedProcessorBoardIds().has(item.hardware_item_id));
   }
 
-  listFlashboxes() {
-    return this.listHardwareItems({ item_type: "flashbox", status: "active" });
+  async listFlashboxes() {
+    return await this.listHardwareItems({ item_type: "flashbox", status: "active" });
   }
 
-  listSensors() {
-    return this.listHardwareItems({ item_type: "sensor", status: "active" });
+  async listSensors() {
+    return await this.listHardwareItems({ item_type: "sensor", status: "active" });
   }
 
-  listBoardFeatureOptions() {
-    return this.listHardwareItems({ item_type: "board_feature_option", status: "active" });
+  async listBoardFeatureOptions() {
+    return await this.listHardwareItems({ item_type: "board_feature_option", status: "active" });
   }
 
-  upsertHardwareItem(input = {}) {
+  async upsertHardwareItem(input = {}) {
     const capabilityIds = normalizeList(input.capability_ids || input.capabilities);
-    for (const capabilityId of capabilityIds) this.getCapability(capabilityId);
+    for (const capabilityId of capabilityIds) await this.getCapability(capabilityId);
     const item = {
       hardware_item_id: input.hardware_item_id || input.id || createId("hardware"),
       sku: required(input.sku, "sku"),
@@ -103,7 +103,7 @@ class HardwareCatalogService {
       evidence: input.evidence && typeof input.evidence === "object" ? input.evidence : {},
       status: input.status || "active",
     };
-    return this.repository.saveHardwareItem(item);
+    return await this.repository.saveHardwareItem(item);
   }
 }
 

@@ -26,7 +26,10 @@ Die Sicherung wird aus den fachlichen Quellen der Wahrheit abgeleitet und nicht 
 | Telemetrie | Telemetry-PostgreSQL `gernetix_telemetry` / Telemetry Server | Messwerte, Ereignisse und konto-/projektbezogene Aufbewahrungsregeln |
 | Community | Community-PostgreSQL `gernetix_community` / Community Platform | Oeffentliche Fragen, private Projektbegleitung, Antworten und Wissensdokumente |
 | Hardware-Inventar | Device-Management-PostgreSQL `gernetix_device_management` | AccountDevices, Pairings, Seriennummern, Device-Identitaet, Credentials, Purchase Contexts, Consents, Audit und Supportkontext |
-| Weitere Plattformdaten | gemeinsame Service-SQLite | Bestellungen, Ansprueche, Lernfortschritt, Usage- und weitere technische Auditdaten |
+| KI-Nutzung und Kostenkontrolle | AI-Usage-PostgreSQL `gernetix_ai_usage` | Credit-Konten, Ledger, Usage Events, Cost-Control-Policy und Admin-Audit |
+| Hardware-Katalog | Hardware-Catalog-PostgreSQL `gernetix_hardware_catalog` | TechnicalCapabilities, HardwareItems, ProcessorBoards, Sensoren, Board-Optionen und Flashbox-Klassen |
+| Hardware-Shop | Hardware-Shop-PostgreSQL `gernetix_hardware_shop` | Angebote, Warenkoerbe, Bestellungen und Purchase Contexts |
+| Operations | Operations-PostgreSQL `gernetix_operations` | Admin-Consents, Audit- und Systemereignisse sowie Schnittstellenstatistik |
 | KI-Kontext | AI-Context-PostgreSQL | Grants, Policy, Prompts, Architektur-Bausteine, accountisolierte Intent-Beispiele und Audit |
 | Wiederaufbau-relevante Artefakte | Artifact Store / persistente Build-Daten | Nur Artefakte, die nicht deterministisch aus versionierten Quellen neu erzeugt werden koennen |
 
@@ -70,7 +73,7 @@ Diese Datei definiert die verbindliche fachliche und betriebliche Zielsetzung. B
 **Customer-Data-Backup und Restore technisch umsetzen und nachweisen.**
 
 - externen, verschluesselten und gegen den Deployment-Zugang geschuetzten Backup-Speicher auswaehlen und einrichten
-- konsistente Sicherung fuer Identity-, Project-, Telemetry-, Community-, Device-Management- und AI-Context-PostgreSQL, die verbleibenden SQLite-Domaenen und nicht reproduzierbare Artefakte automatisieren
+- konsistente Sicherung fuer Identity-, Project-, Telemetry-, Community-, Device-Management-, AI-Usage-, Hardware-Catalog-, Hardware-Shop-, Operations- und AI-Context-PostgreSQL, die verbleibenden SQLite-Domaenen und nicht reproduzierbare Artefakte automatisieren
 - Retention, Pruefsummen, Backup-Alter und Fehler alarmieren
 - isolierte Restore-Automation und fachliche Contract-Checks fuer Accounts, Projekte und Hardware-Inventar implementieren
 - ersten vollstaendigen Restore-Test innerhalb von RPO und RTO protokollieren

@@ -220,6 +220,162 @@ services:
     depends_on:
       device-management-postgres: { condition: service_healthy }
 
+  ai-usage-postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: gernetix_ai_usage
+      POSTGRES_USER: gernetix_ai_usage
+      POSTGRES_PASSWORD: ${AI_USAGE_POSTGRES_PASSWORD:?AI_USAGE_POSTGRES_PASSWORD muss gesetzt sein}
+    expose: ["5432"]
+    networks:
+      - backend
+    volumes:
+      - ai_usage_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_ai_usage -d gernetix_ai_usage"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  ai-usage-postgres-migration:
+    <<: *node-service
+    restart: "no"
+    healthcheck:
+      disable: true
+    command: ["node", "/app/tools/migrate-ai-usage-sqlite-to-postgres.js"]
+    environment:
+      AI_USAGE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      AI_USAGE_POSTGRES_HOST: ai-usage-postgres
+      AI_USAGE_POSTGRES_PORT: 5432
+      AI_USAGE_POSTGRES_DATABASE: gernetix_ai_usage
+      AI_USAGE_POSTGRES_USER: gernetix_ai_usage
+      AI_USAGE_POSTGRES_PASSWORD: ${AI_USAGE_POSTGRES_PASSWORD:?AI_USAGE_POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - service_state:/var/lib/gernetix/services:ro
+    depends_on:
+      ai-usage-postgres: { condition: service_healthy }
+
+  hardware-catalog-postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: gernetix_hardware_catalog
+      POSTGRES_USER: gernetix_hardware_catalog
+      POSTGRES_PASSWORD: ${HARDWARE_CATALOG_POSTGRES_PASSWORD:?HARDWARE_CATALOG_POSTGRES_PASSWORD muss gesetzt sein}
+    expose: ["5432"]
+    networks:
+      - backend
+    volumes:
+      - hardware_catalog_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_hardware_catalog -d gernetix_hardware_catalog"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  hardware-catalog-postgres-migration:
+    <<: *node-service
+    restart: "no"
+    healthcheck:
+      disable: true
+    command: ["node", "/app/tools/migrate-hardware-catalog-sqlite-to-postgres.js"]
+    environment:
+      HARDWARE_CATALOG_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      HARDWARE_CATALOG_POSTGRES_HOST: hardware-catalog-postgres
+      HARDWARE_CATALOG_POSTGRES_PORT: 5432
+      HARDWARE_CATALOG_POSTGRES_DATABASE: gernetix_hardware_catalog
+      HARDWARE_CATALOG_POSTGRES_USER: gernetix_hardware_catalog
+      HARDWARE_CATALOG_POSTGRES_PASSWORD: ${HARDWARE_CATALOG_POSTGRES_PASSWORD:?HARDWARE_CATALOG_POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - service_state:/var/lib/gernetix/services:ro
+    depends_on:
+      hardware-catalog-postgres: { condition: service_healthy }
+
+  hardware-shop-postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: gernetix_hardware_shop
+      POSTGRES_USER: gernetix_hardware_shop
+      POSTGRES_PASSWORD: ${HARDWARE_SHOP_POSTGRES_PASSWORD:?HARDWARE_SHOP_POSTGRES_PASSWORD muss gesetzt sein}
+    expose: ["5432"]
+    networks:
+      - backend
+    volumes:
+      - hardware_shop_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_hardware_shop -d gernetix_hardware_shop"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  hardware-shop-postgres-migration:
+    <<: *node-service
+    restart: "no"
+    healthcheck:
+      disable: true
+    command: ["node", "/app/tools/migrate-hardware-shop-sqlite-to-postgres.js"]
+    environment:
+      HARDWARE_SHOP_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      HARDWARE_SHOP_POSTGRES_HOST: hardware-shop-postgres
+      HARDWARE_SHOP_POSTGRES_PORT: 5432
+      HARDWARE_SHOP_POSTGRES_DATABASE: gernetix_hardware_shop
+      HARDWARE_SHOP_POSTGRES_USER: gernetix_hardware_shop
+      HARDWARE_SHOP_POSTGRES_PASSWORD: ${HARDWARE_SHOP_POSTGRES_PASSWORD:?HARDWARE_SHOP_POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - service_state:/var/lib/gernetix/services:ro
+    depends_on:
+      hardware-shop-postgres: { condition: service_healthy }
+
+  operations-postgres:
+    image: postgres:17-bookworm
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      POSTGRES_DB: gernetix_operations
+      POSTGRES_USER: gernetix_operations
+      POSTGRES_PASSWORD: ${OPERATIONS_POSTGRES_PASSWORD:?OPERATIONS_POSTGRES_PASSWORD muss gesetzt sein}
+    expose: ["5432"]
+    networks:
+      - backend
+    volumes:
+      - operations_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gernetix_operations -d gernetix_operations"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  operations-postgres-migration:
+    <<: *node-service
+    restart: "no"
+    healthcheck:
+      disable: true
+    command: ["node", "/app/tools/migrate-operations-sqlite-to-postgres.js"]
+    environment:
+      OPERATIONS_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      OPERATIONS_POSTGRES_HOST: operations-postgres
+      OPERATIONS_POSTGRES_PORT: 5432
+      OPERATIONS_POSTGRES_DATABASE: gernetix_operations
+      OPERATIONS_POSTGRES_USER: gernetix_operations
+      OPERATIONS_POSTGRES_PASSWORD: ${OPERATIONS_POSTGRES_PASSWORD:?OPERATIONS_POSTGRES_PASSWORD muss gesetzt sein}
+    volumes:
+      - service_state:/var/lib/gernetix/services:ro
+    depends_on:
+      operations-postgres: { condition: service_healthy }
+
   ai-context-postgres:
     image: pgvector/pgvector:pg17
     restart: unless-stopped
@@ -268,14 +424,15 @@ services:
       GERNETIX_SERVICE: build-deploy-server
       HOST: 0.0.0.0
       PORT: 4400
-      PERSISTENCE_BACKEND: sqlite
-      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      PERSISTENCE_BACKEND: memory
       BUILD_DEPLOY_RUNTIME_DIR: /var/lib/gernetix/build
       BUILD_ARTIFACT_SQLITE_PATH: /var/lib/gernetix/build/gernetix-build-artifacts.sqlite
       BUILD_RUNNER: platformio
       PLATFORMIO_COMMAND: /opt/platformio/bin/platformio
       PUBLIC_BASE_URL: https://build.gernetix.com
       MQTT_BROKER_URL: mqtt://mqtt-broker:1883
+      INTERFACE_TELEMETRY_ENDPOINT: http://admin-tool:4600/api/internal/interface-calls
+      INTERFACE_TELEMETRY_TOKEN: ${SYSTEM_EVENT_INGEST_TOKEN:?SYSTEM_EVENT_INGEST_TOKEN muss gesetzt sein}
       OTA_SIGNING_PRIVATE_KEY_PATH: /run/gernetix-pki/ota-signing-key.pem
       OTA_SIGNING_KEY_ID: ${OTA_SIGNING_KEY_ID:-ota-p256-2026-01}
     expose: ["4400"]
@@ -358,13 +515,17 @@ services:
       GERNETIX_SERVICE: hardware-catalog
       HOST: 0.0.0.0
       PORT: 4910
-      PERSISTENCE_BACKEND: sqlite
-      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      PERSISTENCE_BACKEND: postgres
+      HARDWARE_CATALOG_POSTGRES_HOST: hardware-catalog-postgres
+      HARDWARE_CATALOG_POSTGRES_PORT: 5432
+      HARDWARE_CATALOG_POSTGRES_DATABASE: gernetix_hardware_catalog
+      HARDWARE_CATALOG_POSTGRES_USER: gernetix_hardware_catalog
+      HARDWARE_CATALOG_POSTGRES_PASSWORD: ${HARDWARE_CATALOG_POSTGRES_PASSWORD:?HARDWARE_CATALOG_POSTGRES_PASSWORD muss gesetzt sein}
     expose: ["4910"]
     ports:
       - "10.77.0.1:${HARDWARE_CATALOG_PORT:-4910}:4910"
-    volumes:
-      - service_state:/var/lib/gernetix/services
+    depends_on:
+      hardware-catalog-postgres-migration: { condition: service_completed_successfully }
 
   hardware-shop:
     <<: *node-service
@@ -372,15 +533,19 @@ services:
       GERNETIX_SERVICE: hardware-shop
       HOST: 0.0.0.0
       PORT: 4900
-      PERSISTENCE_BACKEND: sqlite
-      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      PERSISTENCE_BACKEND: postgres
+      HARDWARE_SHOP_POSTGRES_HOST: hardware-shop-postgres
+      HARDWARE_SHOP_POSTGRES_PORT: 5432
+      HARDWARE_SHOP_POSTGRES_DATABASE: gernetix_hardware_shop
+      HARDWARE_SHOP_POSTGRES_USER: gernetix_hardware_shop
+      HARDWARE_SHOP_POSTGRES_PASSWORD: ${HARDWARE_SHOP_POSTGRES_PASSWORD:?HARDWARE_SHOP_POSTGRES_PASSWORD muss gesetzt sein}
       HARDWARE_CATALOG_BASE_URL: http://hardware-catalog:4910
     expose: ["4900"]
     ports:
       - "127.0.0.1:4900:4900"
-    volumes:
-      - service_state:/var/lib/gernetix/services
     depends_on:
+      hardware-shop-postgres-migration:
+        condition: service_completed_successfully
       hardware-catalog:
         condition: service_healthy
 
@@ -390,13 +555,17 @@ services:
       GERNETIX_SERVICE: ai-usage-server
       HOST: 0.0.0.0
       PORT: 5000
-      PERSISTENCE_BACKEND: sqlite
-      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      PERSISTENCE_BACKEND: postgres
+      AI_USAGE_POSTGRES_HOST: ai-usage-postgres
+      AI_USAGE_POSTGRES_PORT: 5432
+      AI_USAGE_POSTGRES_DATABASE: gernetix_ai_usage
+      AI_USAGE_POSTGRES_USER: gernetix_ai_usage
+      AI_USAGE_POSTGRES_PASSWORD: ${AI_USAGE_POSTGRES_PASSWORD:?AI_USAGE_POSTGRES_PASSWORD muss gesetzt sein}
     expose: ["5000"]
     ports:
       - "127.0.0.1:5000:5000"
-    volumes:
-      - service_state:/var/lib/gernetix/services
+    depends_on:
+      ai-usage-postgres-migration: { condition: service_completed_successfully }
 
   community-platform:
     <<: *node-service
@@ -453,8 +622,12 @@ services:
       GERNETIX_SERVICE: admin-tool
       HOST: 0.0.0.0
       PORT: 4600
-      PERSISTENCE_BACKEND: sqlite
-      PERSISTENCE_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      PERSISTENCE_BACKEND: postgres
+      OPERATIONS_POSTGRES_HOST: operations-postgres
+      OPERATIONS_POSTGRES_PORT: 5432
+      OPERATIONS_POSTGRES_DATABASE: gernetix_operations
+      OPERATIONS_POSTGRES_USER: gernetix_operations
+      OPERATIONS_POSTGRES_PASSWORD: ${OPERATIONS_POSTGRES_PASSWORD:?OPERATIONS_POSTGRES_PASSWORD muss gesetzt sein}
       IDENTITY_BASE_URL: http://identity-server:4300
       IDENTITY_ADMIN_TOKEN: ${IDENTITY_ADMIN_TOKEN:-}
       ADMIN_TOOL_ACCESS_TOKEN: ${ADMIN_TOOL_ACCESS_TOKEN:?ADMIN_TOOL_ACCESS_TOKEN muss gesetzt sein}
@@ -471,9 +644,8 @@ services:
       COMMUNITY_INTERNAL_TOKEN: ${COMMUNITY_INTERNAL_TOKEN:?COMMUNITY_INTERNAL_TOKEN muss gesetzt sein}
     ports:
       - "127.0.0.1:${ADMIN_PORT:-4600}:4600"
-    volumes:
-      - service_state:/var/lib/gernetix/services
     depends_on:
+      operations-postgres-migration: { condition: service_completed_successfully }
       project-server: { condition: service_healthy }
       build-deploy-server: { condition: service_healthy }
       device-management-server: { condition: service_healthy }
@@ -528,7 +700,8 @@ services:
       WEB_PUSH_VAPID_PUBLIC_KEY: ${WEB_PUSH_VAPID_PUBLIC_KEY:-}
       WEB_PUSH_VAPID_PRIVATE_KEY: ${WEB_PUSH_VAPID_PRIVATE_KEY:-}
       WEB_PUSH_VAPID_SUBJECT: ${WEB_PUSH_VAPID_SUBJECT:-}
-      INTERFACE_TELEMETRY_SQLITE_PATH: /var/lib/gernetix/services/gernetix-services.sqlite
+      INTERFACE_TELEMETRY_ENDPOINT: http://admin-tool:4600/api/internal/interface-calls
+      INTERFACE_TELEMETRY_TOKEN: ${SYSTEM_EVENT_INGEST_TOKEN:?SYSTEM_EVENT_INGEST_TOKEN muss gesetzt sein}
       PROJECT_SERVER_BASE_URL: http://project-server:4800
       TELEMETRY_SERVER_BASE_URL: http://telemetry-server:5600
       TELEMETRY_INTERNAL_TOKEN: ${TELEMETRY_INTERNAL_TOKEN:?TELEMETRY_INTERNAL_TOKEN muss gesetzt sein}
@@ -551,7 +724,6 @@ services:
       - host.docker.internal:host-gateway
     volumes:
       - identity_state:/var/lib/gernetix/identity
-      - service_state:/var/lib/gernetix/services
     depends_on:
       identity-postgres-migration: { condition: service_completed_successfully }
       project-server: { condition: service_healthy }
@@ -678,6 +850,10 @@ volumes:
   community_state:
   community_postgres_data:
   device_management_postgres_data:
+  ai_usage_postgres_data:
+  hardware_catalog_postgres_data:
+  hardware_shop_postgres_data:
+  operations_postgres_data:
   mqtt_data:
   mqtt_log:
   nginx_cache:

@@ -16,63 +16,63 @@ function createHttpApp(options) {
 
     const credits = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/credits$`));
     if (req.method === "GET" && credits) {
-      sendJson(res, 200, service.getCreditBalance(decodeURIComponent(credits[1])));
+      sendJson(res, 200, await service.getCreditBalance(decodeURIComponent(credits[1])));
       return;
     }
 
     const grant = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/credits/grant$`));
     if (req.method === "POST" && grant) {
-      sendJson(res, 200, service.grantCredits(decodeURIComponent(grant[1]), await readJsonBody(req)));
+      sendJson(res, 200, await service.grantCredits(decodeURIComponent(grant[1]), await readJsonBody(req)));
       return;
     }
 
     const hold = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/credits/hold$`));
     if (req.method === "POST" && hold) {
-      sendJson(res, 200, service.holdCredits(decodeURIComponent(hold[1]), await readJsonBody(req)));
+      sendJson(res, 200, await service.holdCredits(decodeURIComponent(hold[1]), await readJsonBody(req)));
       return;
     }
 
     const rating = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/rating$`));
     if (req.method === "GET" && rating) {
-      sendJson(res, 200, service.getAccountRating(decodeURIComponent(rating[1])));
+      sendJson(res, 200, await service.getAccountRating(decodeURIComponent(rating[1])));
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/preflight`) {
-      const result = service.preflight(await readJsonBody(req));
+      const result = await service.preflight(await readJsonBody(req));
       sendJson(res, result.allowed ? 200 : 402, result);
       return;
     }
 
     const complete = path.match(new RegExp(`^${prefix}/events/([^/]+)/complete$`));
     if (req.method === "POST" && complete) {
-      sendJson(res, 200, service.completeUsageEvent(decodeURIComponent(complete[1]), await readJsonBody(req)));
+      sendJson(res, 200, await service.completeUsageEvent(decodeURIComponent(complete[1]), await readJsonBody(req)));
       return;
     }
 
     const fail = path.match(new RegExp(`^${prefix}/events/([^/]+)/fail$`));
     if (req.method === "POST" && fail) {
-      sendJson(res, 200, service.failUsageEvent(decodeURIComponent(fail[1]), await readJsonBody(req)));
+      sendJson(res, 200, await service.failUsageEvent(decodeURIComponent(fail[1]), await readJsonBody(req)));
       return;
     }
 
     if (req.method === "GET" && path === `${prefix}/events`) {
-      sendJson(res, 200, { items: service.listUsageEvents(Object.fromEntries(url.searchParams.entries())) });
+      sendJson(res, 200, { items: await service.listUsageEvents(Object.fromEntries(url.searchParams.entries())) });
       return;
     }
 
     if (req.method === "GET" && path === `${prefix}/admin/dashboard`) {
-      sendJson(res, 200, service.adminDashboard());
+      sendJson(res, 200, await service.adminDashboard());
       return;
     }
 
     if (req.method === "GET" && path === `${prefix}/admin/audit-events`) {
-      sendJson(res, 200, { items: service.listAdminAuditEvents() });
+      sendJson(res, 200, { items: await service.listAdminAuditEvents() });
       return;
     }
 
     if (req.method === "POST" && path === `${prefix}/admin/cost-controls`) {
-      sendJson(res, 201, service.recordCostControlAction(await readJsonBody(req)));
+      sendJson(res, 201, await service.recordCostControlAction(await readJsonBody(req)));
       return;
     }
 

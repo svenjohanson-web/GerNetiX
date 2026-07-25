@@ -12,14 +12,14 @@ let workspaceRoot = process.env.GERNETIX_WORKSPACE || path.resolve(__dirname, ".
 let securityCache = null;
 const services = [
   service("project-server", "Project Server", 4800), service("build-deploy-server", "Build & Deploy Server", 4400),
-  service("device-management-server", "Device Management Server", 4700), service("hardware-catalog", "Hardware Catalog", 4910),
-  service("hardware-shop", "Hardware Shop", 4900), service("ai-usage-server", "AI Usage Server", 5000),
-  service("ai-context-server", "AI Context Server", 5500), service("admin-tool", "Admin Tool", 4600),
+  service("device-management-server", "Device Management Server", 4700), service("hardware-catalog", "Hardware Catalog", 4910, {PERSISTENCE_BACKEND:"memory"}),
+  service("hardware-shop", "Hardware Shop", 4900, {PERSISTENCE_BACKEND:"memory"}), service("ai-usage-server", "AI Usage Server", 5000, {PERSISTENCE_BACKEND:"memory"}),
+  service("ai-context-server", "AI Context Server", 5500), service("admin-tool", "Admin Tool", 4600, {PERSISTENCE_BACKEND:"memory"}),
   service("community-platform", "Community Platform", 5200),
   service("identity-server", "Identity Server", 4300)
 ];
 
-function service(id, name, port) { return { id, name, port, cwd:path.join(workspaceRoot,"services",id), healthUrl:`http://127.0.0.1:${port}/health` }; }
+function service(id, name, port, environment={}) { return { id, name, port, cwd:path.join(workspaceRoot,"services",id), healthUrl:`http://127.0.0.1:${port}/health`, environment }; }
 function configureWorkspace(root) { workspaceRoot=path.resolve(root); for(const item of services)item.cwd=path.join(workspaceRoot,"services",item.id); }
 function byId(id) { const item=services.find((entry)=>entry.id===id); if(!item) throw new Error("Unbekannter GerNetiX-Dienst."); return item; }
 
@@ -227,7 +227,7 @@ async function securityRuleStates(options={}) {
   return value;
 }
 
-async function startService(id){ const item=byId(id); const current=await check(item); if(current.healthy)return current; const child=spawn(process.execPath,["src/dev-server.js"],{cwd:item.cwd,detached:true,windowsHide:true,env:{...process.env,ELECTRON_RUN_AS_NODE:"1",PORT:String(item.port)},stdio:"ignore"}); child.unref(); for(let i=0;i<40;i+=1){await delay(250);const state=await check(item);if(state.healthy)return state;} throw new Error(`${item.name} konnte nicht gestartet werden.`); }
+async function startService(id){ const item=byId(id); const current=await check(item); if(current.healthy)return current; const child=spawn(process.execPath,["src/dev-server.js"],{cwd:item.cwd,detached:true,windowsHide:true,env:{...process.env,...item.environment,ELECTRON_RUN_AS_NODE:"1",PORT:String(item.port)},stdio:"ignore"}); child.unref(); for(let i=0;i<40;i+=1){await delay(250);const state=await check(item);if(state.healthy)return state;} throw new Error(`${item.name} konnte nicht gestartet werden.`); }
 async function startAllServices(options={}){const start=options.startService||startService;const items=[];for(const item of services){try{items.push(await start(item.id));}catch(error){items.push({...item,healthy:false,statusCode:0,pid:null,error:error.message});}}return{items,healthy:items.filter((item)=>item.healthy).length,failed:items.filter((item)=>!item.healthy).length};}
 async function stopService(id){ const item=byId(id); const pid=await pidForPort(item.port); if(!pid)return check(item); if(process.platform==="win32")await execFileAsync("taskkill",["/PID",String(pid),"/T","/F"],{windowsHide:true});else process.kill(pid,"SIGTERM"); for(let i=0;i<20;i+=1){await delay(150);const state=await check(item);if(!state.healthy)return state;} throw new Error(`${item.name} konnte nicht beendet werden.`); }
 function pidFromWindowsNetstat(output,port){

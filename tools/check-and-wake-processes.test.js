@@ -6,6 +6,10 @@ test("defines every minimal platform service with a unique port", () => {
   assert.equal(PLATFORM_SERVICES.length, 10);
   assert.equal(new Set(PLATFORM_SERVICES.map((item) => item.port)).size, PLATFORM_SERVICES.length);
   assert.equal(PLATFORM_SERVICES.find((item) => item.id === "community-platform").port, 5200);
+  assert.equal(PLATFORM_SERVICES.find((item) => item.id === "ai-usage-server").environment.PERSISTENCE_BACKEND, "memory");
+  assert.equal(PLATFORM_SERVICES.find((item) => item.id === "hardware-catalog").environment.PERSISTENCE_BACKEND, "memory");
+  assert.equal(PLATFORM_SERVICES.find((item) => item.id === "hardware-shop").environment.PERSISTENCE_BACKEND, "memory");
+  assert.equal(PLATFORM_SERVICES.find((item) => item.id === "admin-tool").environment.PERSISTENCE_BACKEND, "memory");
   assert.equal(PLATFORM_SERVICES.at(-1).id, "identity-server");
 });
 

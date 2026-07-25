@@ -1,8 +1,10 @@
-# Hardware Shop / Hardware-Katalog
+# Hardware Shop
 
-MVP fuer den GerNetiX Hardware Shop und Hardware-Katalog.
+MVP fuer den GerNetiX Hardware Shop.
 
-Der Service stellt TechnicalCapabilities, HardwareItems, Shop-Angebote, Hardware-Matching, Warenkoerbe, Bestellungen und Kaufkontexte bereit. Die User IDE kann darueber passende Hardware zu Lernprojekten anzeigen; Provisioning und Device Management koennen spaeter den Kaufkontext fuer Support- und Reklamationspruefungen referenzieren.
+Der Service stellt Shop-Angebote, Hardware-Matching, Warenkoerbe, Bestellungen und Kaufkontexte bereit. TechnicalCapabilities und HardwareItems liest er als Client des getrennten Hardware Catalog. Die User IDE kann darueber passende Hardware zu Lernprojekten anzeigen; Provisioning und Device Management koennen den Kaufkontext fuer Support- und Reklamationspruefungen referenzieren.
+
+Fuehrende Persistenz ist die eigene PostgreSQL-Datenbank `gernetix_hardware_shop`. Die bisherige gemeinsame SQLite dient nur der einmaligen Altuebernahme. Fuer isolierte lokale Tests kann `PERSISTENCE_BACKEND=memory` gesetzt werden.
 
 ## Start
 
@@ -24,14 +26,12 @@ API-Prefix:
 
 ## Umgesetzt
 
-- TechnicalCapabilities lesen
-- HardwareItems und ProcessorBoards verwalten
-- ProcessorBoards mit Basissoftware-Profil und Factory-Firmware-Artefaktreferenz bereitstellen
+- TechnicalCapabilities und HardwareItems ueber den Hardware Catalog lesen
 - Shop-Angebote fuer Boards und Kits lesen
 - passende Angebote nach benoetigten Capabilities finden
 - einfache Warenkoerbe und Bestellungen erzeugen
 - Kaufkontext fuer Support/Provisionierung ausgeben
-- Admin-Endpunkte fuer HardwareItems, Capabilities und Angebote
+- Admin-Endpunkt fuer Angebote
 
 ## Nicht-Ziele fuer diesen Stand
 

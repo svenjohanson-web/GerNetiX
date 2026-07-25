@@ -60,7 +60,7 @@ function createHttpApp(options) {
     }
 
     if (req.method === "GET" && url.pathname === "/api/admin/system-events") {
-      sendJson(res, 200, service.systemEvents({
+      sendJson(res, 200, await service.systemEvents({
         severity: url.searchParams.get("severity") || "",
         source_service: url.searchParams.get("source_service") || "",
         target_service: url.searchParams.get("target_service") || "",
@@ -70,7 +70,7 @@ function createHttpApp(options) {
     }
 
     if (req.method === "POST" && url.pathname === "/api/admin/system-events") {
-      sendJson(res, 201, { event: service.recordSystemEvent(await readJsonBody(req)) });
+      sendJson(res, 201, { event: await service.recordSystemEvent(await readJsonBody(req)) });
       return;
     }
 
@@ -87,19 +87,19 @@ function createHttpApp(options) {
 
     if (req.method === "POST" && url.pathname === "/api/admin/customer-data-access/consents") {
       const body = await readJsonBody(req);
-      sendJson(res, 201, service.createConsent(body));
+      sendJson(res, 201, await service.createConsent(body));
       return;
     }
 
     const revokeMatch = url.pathname.match(/^\/api\/admin\/customer-data-access\/consents\/([^/]+)\/revoke$/);
     if (req.method === "POST" && revokeMatch) {
-      sendJson(res, 200, service.revokeConsent(decodeURIComponent(revokeMatch[1])));
+      sendJson(res, 200, await service.revokeConsent(decodeURIComponent(revokeMatch[1])));
       return;
     }
 
     if (req.method === "GET" && url.pathname === "/api/admin/customer-data-access/audit-events") {
       sendJson(res, 200, {
-        items: service.listAuditEvents({ account_id: url.searchParams.get("account_id") || "" }),
+        items: await service.listAuditEvents({ account_id: url.searchParams.get("account_id") || "" }),
       });
       return;
     }
@@ -147,7 +147,15 @@ function createHttpApp(options) {
       if (!service.serviceClients?.systemEventIngestToken || req.headers["x-gernetix-system-event-token"] !== service.serviceClients.systemEventIngestToken) {
         sendJson(res, 403, { error: "system_event_ingest_access_denied" }); return;
       }
-      sendJson(res, 201, { event: service.recordSystemEvent(await readJsonBody(req)) });
+      sendJson(res, 201, { event: await service.recordSystemEvent(await readJsonBody(req)) });
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/internal/interface-calls") {
+      if (!service.serviceClients?.systemEventIngestToken || req.headers["x-gernetix-system-event-token"] !== service.serviceClients.systemEventIngestToken) {
+        sendJson(res, 403, { error: "interface_call_ingest_access_denied" }); return;
+      }
+      sendJson(res, 202, await service.recordInterfaceCall(await readJsonBody(req)));
       return;
     }
 

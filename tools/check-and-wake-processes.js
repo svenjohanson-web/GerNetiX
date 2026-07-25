@@ -12,16 +12,16 @@ const PLATFORM_SERVICES = [
   service("project-server", "Project Server", 4800),
   service("build-deploy-server", "Build & Deploy Server", 4400),
   service("device-management-server", "Device Management Server", 4700),
-  service("hardware-catalog", "Hardware Catalog", 4910),
-  service("hardware-shop", "Hardware Shop", 4900),
-  service("ai-usage-server", "AI Usage Server", 5000),
+  service("hardware-catalog", "Hardware Catalog", 4910, { PERSISTENCE_BACKEND: "memory" }),
+  service("hardware-shop", "Hardware Shop", 4900, { PERSISTENCE_BACKEND: "memory" }),
+  service("ai-usage-server", "AI Usage Server", 5000, { PERSISTENCE_BACKEND: "memory" }),
   service("ai-context-server", "AI Context Server", 5500),
-  service("admin-tool", "Admin Tool", 4600),
+  service("admin-tool", "Admin Tool", 4600, { PERSISTENCE_BACKEND: "memory" }),
   service("community-platform", "Community Platform", 5200),
   service("identity-server", "Identity Server", 4300),
 ];
 
-function service(id, name, port) {
+function service(id, name, port, environment = {}) {
   return {
     id,
     name,
@@ -29,6 +29,7 @@ function service(id, name, port) {
     cwd: path.join(workspaceRoot, "services", id),
     entry: "src/dev-server.js",
     healthUrl: `http://127.0.0.1:${port}/health`,
+    environment,
   };
 }
 
@@ -87,7 +88,7 @@ function spawnDetached(target) {
     cwd: target.cwd,
     detached: true,
     windowsHide: true,
-    env: { ...process.env, PORT: String(target.port) },
+    env: { ...process.env, ...target.environment, PORT: String(target.port) },
     stdio: ["ignore", output, output],
   });
   child.unref();

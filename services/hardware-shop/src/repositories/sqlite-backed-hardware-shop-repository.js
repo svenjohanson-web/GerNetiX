@@ -4,11 +4,7 @@ const { InMemoryHardwareShopRepository, defaultSeed } = require("./in-memory-har
 class SqliteBackedHardwareShopRepository extends InMemoryHardwareShopRepository {
   constructor(store) {
     const loaded = store.load();
-    super({
-      ...defaultSeed(),
-      ...loaded,
-      offers: mergeOffers(defaultSeed().offers, loaded.offers || []),
-    });
+    super(mergeShopState(loaded));
     this.store = store;
     this.store.ensureSchema?.(hardwareShopSchema());
   }
@@ -68,6 +64,16 @@ function mergeOffers(defaultOffers, loadedOffers) {
   return Array.from(byId.values());
 }
 
+function mergeShopState(loaded = {}) {
+  return {
+    ...defaultSeed(),
+    ...loaded,
+    offers: mergeOffers(defaultSeed().offers, loaded.offers || []),
+    carts: loaded.carts || [],
+    orders: loaded.orders || [],
+  };
+}
+
 function hardwareShopSchema() {
   return [
     `CREATE TABLE IF NOT EXISTS hardware_shop_offers (offer_id TEXT PRIMARY KEY, offer_type TEXT, title TEXT, summary TEXT, hardware_item_ids_json TEXT, related_learning_project_ids_json TEXT, price_json TEXT, stock_state TEXT, status TEXT, raw_json TEXT NOT NULL);`,
@@ -92,4 +98,4 @@ function orderColumns() {
   return { ...columns(["order_id", "cart_id", "account_id", "status", "payment_status", "fulfillment_status", "created_at"]), totals_json: jsonColumn("totals"), items_json: jsonColumn("items"), raw_json: jsonColumn((row) => row) };
 }
 
-module.exports = { SqliteBackedHardwareShopRepository };
+module.exports = { SqliteBackedHardwareShopRepository, mergeShopState };

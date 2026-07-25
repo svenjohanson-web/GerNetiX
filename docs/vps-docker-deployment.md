@@ -1,6 +1,6 @@
 # GerNetiX VPS Deployment mit Docker Compose
 
-Diese Struktur startet den vorhandenen GerNetiX-Kern auf einem Linux-VPS. Identity, Project Server, Telemetry, Community und Device Management verwenden jeweils eine eigene PostgreSQL-17-Datenbank, der AI Context Server eine weitere PostgreSQL-17-Datenbank mit pgvector. Die uebrigen bestehenden Node.js-Services behalten zunaechst ihre jeweiligen SQLite-Persistenzen auf dem VPS.
+Diese Struktur startet den vorhandenen GerNetiX-Kern auf einem Linux-VPS. Identity, Project Server, Telemetry, Community, Device Management, AI Usage, Hardware Catalog, Hardware Shop und Operations verwenden jeweils eine eigene PostgreSQL-17-Datenbank, der AI Context Server eine weitere PostgreSQL-17-Datenbank mit pgvector. SQLite bleibt fuer klar getrennte BLOB-/Release-Speicher und als read-only Migrationsaltbestand erhalten; `gernetix-services.sqlite` hat keinen produktiven Schreiber mehr.
 
 Die fortlaufend gepflegte Uebersicht ueber umgesetzte und empfohlene Schutzmassnahmen steht in [Sicherheitslage und Massnahmenregister](security-posture.md).
 
@@ -49,6 +49,11 @@ IDENTITY_POSTGRES_PASSWORD=<langer-zufaelliger-eigener-wert>
 PROJECT_POSTGRES_PASSWORD=<anderer-langer-zufaelliger-eigener-wert>
 TELEMETRY_POSTGRES_PASSWORD=<weiterer-langer-zufaelliger-eigener-wert>
 COMMUNITY_POSTGRES_PASSWORD=<weiterer-getrennter-langer-zufaelliger-wert>
+DEVICE_MANAGEMENT_POSTGRES_PASSWORD=<weiterer-getrennter-langer-zufaelliger-wert>
+AI_USAGE_POSTGRES_PASSWORD=<weiterer-getrennter-langer-zufaelliger-wert>
+HARDWARE_CATALOG_POSTGRES_PASSWORD=<weiterer-getrennter-langer-zufaelliger-wert>
+HARDWARE_SHOP_POSTGRES_PASSWORD=<weiterer-getrennter-langer-zufaelliger-wert>
+OPERATIONS_POSTGRES_PASSWORD=<weiterer-getrennter-langer-zufaelliger-wert>
 ```
 
 Vor dem Start muessen `build.gernetix.com`, `mqtt.gernetix.com` und
@@ -145,7 +150,11 @@ Compose legt benannte Volumes an:
 - `community_postgres_data`: fuehrende Community-PostgreSQL-Datenbank fuer oeffentliche Inhalte und autorisierte private Projektbegleitung
 - `community_state`: bisherige Community-SQLite, nur fuer die einmalige Altuebernahme und als Rueckfallkopie
 - `device_management_postgres_data`: fuehrende Device-Management-PostgreSQL-Datenbank fuer Inventar, Pairing, Credentials, Purchase Contexts, Consents und Audit
-- `service_state`: gemeinsamer SQLite-State der verbleibenden technischen Dienste; keine Projekt- oder Telemetrie-Daten nach der Migration
+- `ai_usage_postgres_data`: fuehrende AI-Usage-PostgreSQL-Datenbank fuer Credits, Ledger, Usage Events, Policy und Audit
+- `hardware_catalog_postgres_data`: fuehrende Hardware-Catalog-PostgreSQL-Datenbank fuer Capabilities und Hardware-Items
+- `hardware_shop_postgres_data`: fuehrende Hardware-Shop-PostgreSQL-Datenbank fuer Angebote, Warenkoerbe, Bestellungen und Purchase Contexts
+- `operations_postgres_data`: fuehrende Operations-PostgreSQL-Datenbank fuer Admin-Consents, Audit, Systemereignisse und Schnittstellenstatistik
+- `service_state`: read-only Altbestand fuer die einmaligen Domaenenmigrationen; kein produktiver Laufzeitschreiber
 - `ai_context_postgres_data`: fuehrende AI-Context-PostgreSQL-/pgvector-Datenbank
 - `ai_context_state`: bisherige AI-Context-SQLite, nur fuer die einmalige automatische Uebernahme und als Rueckfallkopie
 - `build_state`: Build-Caches und Artefakte
@@ -177,6 +186,22 @@ Vor dem Start der Community Platform wartet Compose auf `community-postgres-migr
 ### Einmalige Device-Management-Migration nach PostgreSQL
 
 Vor dem Start des Device Management Servers wartet Compose auf `device-management-postgres-migration`. Der einmalige Container liest die bisherigen typisierten Device-Management-Tabellen aus `gernetix-services.sqlite` read-only, entfernt vorsorglich alte Shared-Secret-Felder und importiert den Bestand transaktional. Der Marker `device-management-sqlite-v1` verhindert Wiederholungen; ein belegtes Ziel ohne Marker fuehrt zum Abbruch. Danach ist ausschliesslich PostgreSQL fuehrend.
+
+### Einmalige AI-Usage-Migration nach PostgreSQL
+
+Vor dem Start des AI Usage Servers wartet Compose auf `ai-usage-postgres-migration`. Der einmalige Container liest Credit-Konten, Ledger, Usage Events, Cost-Control-Policy und Admin-Audit aus `gernetix-services.sqlite` read-only und importiert sie transaktional. Der Marker `ai-usage-sqlite-v1` verhindert Wiederholungen; ein belegtes Ziel ohne Marker fuehrt zum Abbruch. Danach ist ausschliesslich PostgreSQL fuehrend.
+
+### Einmalige Hardware-Catalog-Migration nach PostgreSQL
+
+Vor dem Start des Hardware Catalog wartet Compose auf `hardware-catalog-postgres-migration`. Der einmalige Container liest Capabilities und Hardware-Items aus `gernetix-services.sqlite` read-only, ergänzt fehlende Einträge aus dem aktuellen Standardkatalog und importiert den Bestand transaktional. Vorhandene redaktionelle Katalogobjekte gewinnen dabei gegen gleichnamige Standardwerte. Der Marker `hardware-catalog-sqlite-v1` verhindert Wiederholungen; ein belegtes Ziel ohne Marker führt zum Abbruch. Danach ist ausschliesslich PostgreSQL führend.
+
+### Einmalige Hardware-Shop-Migration nach PostgreSQL
+
+Vor dem Start des Hardware Shop wartet Compose auf `hardware-shop-postgres-migration`. Der einmalige Container liest Angebote, Warenkoerbe und Bestellungen samt eingebettetem Purchase Context aus `gernetix-services.sqlite` read-only, ergaenzt fehlende aktuelle Standardangebote und importiert den Bestand transaktional. Vorhandene redaktionelle Angebote gewinnen gegen gleichnamige Standardwerte. Der Marker `hardware-shop-sqlite-v1` verhindert Wiederholungen; ein belegtes Ziel ohne Marker fuehrt zum Abbruch. Danach ist ausschliesslich PostgreSQL fuehrend.
+
+### Einmalige Operations-Migration nach PostgreSQL
+
+Vor dem Start des Admin Tool wartet Compose auf `operations-postgres-migration`. Der einmalige Container importiert Admin-Consents, Audit-, Aktions- und Systemereignisse sowie die bisherige Schnittstellenstatistik transaktional aus `gernetix-services.sqlite`. Der Marker `operations-sqlite-v1` verhindert Wiederholungen; ein belegtes Ziel ohne Marker fuehrt zum Abbruch. Identity und Build & Deploy senden neue Schnittstellenmessungen danach token-geschuetzt an das interne Admin-/Operations-API. Die Legacy-SQLite bleibt read-only erhalten.
 
 ## Update
 

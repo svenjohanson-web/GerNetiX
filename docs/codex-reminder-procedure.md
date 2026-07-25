@@ -65,6 +65,10 @@ Codex soll lokale Serverprozesse sparsam behandeln:
 - Project Server ist die PostgreSQL-Wahrheit fuer accountgebundene Projekte.
 - Telemetry Server ist die PostgreSQL-Wahrheit fuer konto- und projektgebundene Telemetrie.
 - Community Platform ist die PostgreSQL-Wahrheit fuer oeffentliche Fragen und private Projektbegleitung.
+- AI Usage Server ist die PostgreSQL-Wahrheit fuer Credit-Konten, Ledger, KI-Nutzungsereignisse, Cost-Control-Policy und Audit.
+- Hardware Catalog ist die PostgreSQL-Wahrheit fuer TechnicalCapabilities, HardwareItems, ProcessorBoards, Sensoren, Board-Optionen und Flashbox-Klassen.
+- Hardware Shop ist die PostgreSQL-Wahrheit fuer Angebote, Warenkoerbe, Bestellungen und Purchase Contexts.
+- Operations-PostgreSQL ist die Wahrheit fuer Admin-Consents, Admin-Audit, Systemereignisse und zentrale Schnittstellenstatistik.
 - AI Context Server ist die PostgreSQL-Wahrheit fuer KI-Kontextquellen, Grants, Policy und Audit.
 - Dauerhaftes Persistieren ist nur in SQL/SQLite erlaubt. JSON-Dateien, Prozessspeicher, localStorage, Browser-State, Temp-Dateien und Caches sind nur Logic/Control/View- oder Test-/Runtime-Hilfen und duerfen nie fachliche Quelle der Wahrheit sein.
 - Abschlussnachweis kurz halten: geaenderte Bereiche, Tests, Graph-Status, offene Punkte.

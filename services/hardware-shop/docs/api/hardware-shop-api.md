@@ -6,6 +6,9 @@ Der Hardware Shop ist fachlich ein Client des Hardware Catalog Service. Bekannte
 Module und TechnicalCapabilities werden nicht im Shop gepflegt, sondern ueber den
 Hardware Catalog gelesen.
 
+Angebote, Warenkoerbe, Bestellungen und der in einer Bestellung enthaltene Kaufkontext
+liegen fuehrend in der eigenen Hardware-Shop-PostgreSQL-Datenbank.
+
 ## Basis
 
 - `GET /health`

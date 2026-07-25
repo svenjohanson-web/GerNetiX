@@ -93,13 +93,15 @@ Lokale Codeaenderungen an `4300` benoetigen dadurch weder Commit noch Staging-De
 
 ## Remote-first statt geteilter SQLite-Datei
 
-Der VPS bleibt der Speicherort fuer Project-, Telemetry- und Community-
-PostgreSQL sowie weitere SQLite-Speicher. Lokale Rechner oeffnen SQLite-Dateien
-nie direkt und mounten die Docker-Volumes nicht ueber SMB, NFS oder SSHFS.
+Der VPS bleibt der Speicherort fuer Project-, Telemetry-, Community-, Device-
+Management-, AI-Usage-, Hardware-Catalog-, Hardware-Shop- und Operations-PostgreSQL sowie getrennte Release-/Artefakt-SQLite-Speicher. Lokale
+Rechner oeffnen SQLite-Dateien nie direkt und mounten die Docker-Volumes nicht
+ueber SMB, NFS oder SSHFS.
 
 - Fuer Arbeit mit dem gemeinsamen Datenstand wird die private PWA verwendet.
 - Ein lokal gestarteter kompletter Service-Stack ist eine isolierte
-  Testumgebung mit eigener SQLite-Persistenz.
+  Testumgebung mit eigener Testpersistenz; AI Usage, Hardware Catalog und
+  Hardware Shop werden dabei explizit fluechtig im In-Memory-Modus gestartet.
 - Ein lokaler Identity Server darf im beschriebenen Remote-Dev-Modus direkt
   die zentrale Identity-PostgreSQL-Datenbank verwenden. Er schreibt niemals in
   eine entfernte SQLite-Datei.

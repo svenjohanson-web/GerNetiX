@@ -62,3 +62,25 @@ test("interner System-Event-Eingang akzeptiert nur den eigenen Ingest-Token", as
     assert.equal(recorded[0].event_type, "passkey_login_failed");
   });
 });
+
+test("interner Schnittstellen-Eingang verwendet denselben geschuetzten Ingest-Kanal", async () => {
+  const recorded = [];
+  const service = {
+    serviceClients: { systemEventIngestToken: "event-ingest-token" },
+    async recordInterfaceCall(call) { recorded.push(call); return { accepted: true }; },
+  };
+  const app = createHttpApp({ service });
+  await withServer(app, async (baseUrl) => {
+    const response = await fetch(`${baseUrl}/api/internal/interface-calls`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-GerNetiX-System-Event-Token": "event-ingest-token" },
+      body: JSON.stringify({
+        source_service: "identity-server", target_service: "project-server",
+        method: "GET", route: "/api/projects", status_code: 200,
+        duration_ms: 12, succeeded: true,
+      }),
+    });
+    assert.equal(response.status, 202);
+    assert.equal(recorded[0].target_service, "project-server");
+  });
+});

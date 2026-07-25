@@ -18,7 +18,12 @@ function createDefaultBuildDeployService(config = createConfig()) {
     privateKeyPath: config.otaSigningPrivateKeyPath,
     keyId: config.otaSigningKeyId,
   });
-  const interfaceTelemetry = createInterfaceCallTelemetry({ dbPath: config.interfaceTelemetrySqlitePath, sourceService: "build-deploy-server" });
+  const interfaceTelemetry = createInterfaceCallTelemetry({
+    dbPath: config.interfaceTelemetrySqlitePath,
+    endpoint: config.interfaceTelemetryEndpoint,
+    token: config.interfaceTelemetryToken,
+    sourceService: "build-deploy-server",
+  });
   const mqttTransport = config.mqttBrokerUrl ? new MqttTransport({
     url: config.mqttBrokerUrl,
     topicFilter: "gernetix/devices/+/status/#",

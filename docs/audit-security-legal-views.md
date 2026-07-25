@@ -17,10 +17,10 @@ Die fachliche Kundenkennung ist die interne, stabile `user_id`. Sie ist der Tena
 | Projekte und Lernstand | Projekttitel, Beschreibung, Quellen, Hardware-Konfiguration, Build-Historie, Feedback | Project-PostgreSQL, Volume `project_postgres_data`, Project Server | `user_id` und `project_id` binden Inhalt an den Tenant. Projektzugriff muss serverseitig gegen die Session geprueft werden. |
 | Telemetrie und Ereignisse | Messwerte, Ereignisse, technische Metadaten und Aufbewahrungsregeln | Telemetry-PostgreSQL, Volume `telemetry_postgres_data`, Telemetry Server | `account_id` und `project_id` trennen die Daten. Rohdaten werden nicht automatisch an KI, Logs oder Kundenansichten weitergegeben. |
 | Geraete und Support | Device-ID, Anzeigename, Seriennummer, Board-/Instanz-Konfiguration, Ownership, Pairing, Connectivity- und OTA-Status, Supportanspruch | gemeinsame Service-SQLite, Device Management | Private Device-Schluessel werden nicht gespeichert. Support-/Admin-Einsicht erfordert Consent, Rechtsgrundlage oder Sicherheitsfall und wird auditiert. |
-| Kauf- und Leistungsbezug | Purchase Context, Bestell-ID, Angebot, Plan, Support-Level | gemeinsame Service-SQLite, Hardware Shop / Device Management | Nur der kundenbezogene Kontext, keine Zahlungsdaten als fuehrende GerNetiX-Persistenz dokumentiert. Zahlungsdienst-/Auftragsverarbeiter-Status ist vor Produktivbetrieb zu klaeren. |
-| KI-Nutzung | Credits, Usage Events, angefragter Zweck, freigegebene Quellen, Modell-/Provider-Metadaten | gemeinsame Service-SQLite sowie AI-Context-PostgreSQL | Provider-Kosten werden aus der Kunden-Transparenz redigiert. Jeder Kontextzugriff wird policy- und grant-basiert entschieden und auditiert. |
+| Kauf- und Leistungsbezug | Purchase Context, Bestell-ID, Angebot, Plan, Support-Level | Hardware-Shop-PostgreSQL und Device-Management-PostgreSQL | Nur der kundenbezogene Kontext, keine Zahlungsdaten als fuehrende GerNetiX-Persistenz dokumentiert. Zahlungsdienst-/Auftragsverarbeiter-Status ist vor Produktivbetrieb zu klaeren. |
+| KI-Nutzung | Credits, Usage Events, angefragter Zweck, freigegebene Quellen, Modell-/Provider-Metadaten | AI-Usage-PostgreSQL sowie AI-Context-PostgreSQL | Provider-Kosten werden aus der Kunden-Transparenz redigiert. Jeder Kontextzugriff wird policy- und grant-basiert entschieden und auditiert. |
 | KI-Kontext | Grants, Policy, Prompt-Grundlagen, accountisolierte Intent-Beispiele, KI-Audit | AI-Context-PostgreSQL + pgvector, Volume `ai_context_postgres_data` | Account- und optional Projekt-Scope, Ablauf und Widerruf eines Grants; externe Provider fuer Kundendaten sind policy-gesteuert. |
-| Einwilligung und Audit | Consent-ID, Zweck, Zugriff, Actor, Zeitpunkt, Entscheidung | gemeinsame Service-SQLite und AI-Context-PostgreSQL | Jede Support-/Admin-Einsicht soll nachvollziehbar sein; Details nur nach Berechtigung und Zweckbindung. |
+| Einwilligung und Audit | Consent-ID, Zweck, Zugriff, Actor, Zeitpunkt, Entscheidung | Operations-PostgreSQL und AI-Context-PostgreSQL | Jede Support-/Admin-Einsicht soll nachvollziehbar sein; Details nur nach Berechtigung und Zweckbindung. |
 | Kommunikationsdaten | Web-Push-Subscription, Accountbezug; SMTP-Konfiguration fuer Verifikation/Reset | gemeinsame Service-SQLite bzw. Identity-SQLite | Push wird accountgebunden zugestellt. SMTP-Passwort ist AES-256-GCM-verschluesselt und wird nicht erneut ausgegeben oder geloggt. |
 
 Nicht als Kundenpersistenz vorgesehen sind Browser-State, `localStorage`, Caches, Temp-Dateien, YAML/JSON-Modelldateien und generierte Dokumentationssichten. WLAN-SSID und -Passwort werden beim USB-Provisioning ausschliesslich zwischen Browser und Board uebertragen; serverseitig bleibt nur ein gehashter, zehn Minuten gueltiger Einmalvorgang.
@@ -47,7 +47,7 @@ Wichtige Auditfrage: Die Tenant-Grenze ist nur dann belastbar, wenn API-Contract
 ```text
 Kunde / Plattform
   -> Identity (Login, Session, Accountbezug)
-  -> Project / Device / AI Usage (interne Docker-Services, Service-SQLite)
+  -> Project / Device / AI Usage / Hardware Catalog / Hardware Shop (interne Docker-Services, getrennte PostgreSQL-Datenbanken)
   -> AI Context (Grant- und Policy-Pruefung, PostgreSQL)
   -> freigegebener Modellroute oder lokaler Ollama
 

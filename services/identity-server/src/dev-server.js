@@ -137,6 +137,8 @@ const interfaceTelemetry = identityRemoteDev
   ? { record() {} }
   : createInterfaceCallTelemetry({
       dbPath: process.env.INTERFACE_TELEMETRY_SQLITE_PATH || process.env.PERSISTENCE_SQLITE_PATH,
+      endpoint: process.env.INTERFACE_TELEMETRY_ENDPOINT,
+      token: process.env.INTERFACE_TELEMETRY_TOKEN,
       sourceService: "identity-server",
     });
 const {

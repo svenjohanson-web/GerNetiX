@@ -57,9 +57,9 @@ Diese Gruppe reicht fuer Login, Dashboard, Entwicklungsplattform, User IDE, Proj
 | 1 | Project Server | 4800 | `services/project-server` | `$env:PORT="4800"; npm run dev` |
 | 2 | Build & Deploy Server | 4400 | `services/build-deploy-server` | `$env:PORT="4400"; npm run dev` |
 | 3 | Device Management Server | 4700 | `services/device-management-server` | `$env:PORT="4700"; npm run dev` |
-| 4 | Hardware Catalog | 4910 | `services/hardware-catalog` | `$env:PORT="4910"; npm run dev` |
-| 5 | Hardware Shop | 4900 | `services/hardware-shop` | `$env:PORT="4900"; npm run dev` |
-| 6 | AI Usage Server | 5000 | `services/ai-usage-server` | `$env:PORT="5000"; npm run dev` |
+| 4 | Hardware Catalog (isolierter Test ohne dauerhafte Daten) | 4910 | `services/hardware-catalog` | `$env:PORT="4910"; $env:PERSISTENCE_BACKEND="memory"; npm run dev` |
+| 5 | Hardware Shop (isolierter Test ohne dauerhafte Daten) | 4900 | `services/hardware-shop` | `$env:PORT="4900"; $env:PERSISTENCE_BACKEND="memory"; npm run dev` |
+| 6 | AI Usage Server (isolierter Test ohne dauerhafte Daten) | 5000 | `services/ai-usage-server` | `$env:PORT="5000"; $env:PERSISTENCE_BACKEND="memory"; npm run dev` |
 | 7 | AI Context PostgreSQL + pgvector | 5432 | Repo-Root | `docker compose -f infra/dev/docker-compose.yml up -d ai-context-postgres` |
 | 8 | AI Context Server | 5500 | `services/ai-context-server` | `$env:PORT="5500"; $env:AI_CONTEXT_PERSISTENCE_BACKEND="postgres"; npm run dev` |
 | 9 | Admin Tool API | 4600 | `services/admin-tool` | `$env:PORT="4600"; npm run dev` |
@@ -95,9 +95,11 @@ Datenbank ueber den SSH-Tunnel. Projekte werden vom Project Server aus der
 zentralen Project-PostgreSQL-Datenbank geliefert; Telemetrie liegt ebenfalls
 in einer eigenen PostgreSQL-Datenbank. Community verwendet ebenfalls eine
 getrennte PostgreSQL-Datenbank, ebenso Device Management fuer Inventar,
-Pairing und Supportdaten. Weitere persistente Dienste laufen auf dem VPS;
-ihre SQLite-Dateien bleiben ausschliesslich in den
-VPS-Volumes. Alle Domaenen werden nur ueber die
+Pairing und Supportdaten, AI Usage fuer Credits, Ledger und Cost Controls sowie
+Hardware Catalog fuer den gemeinsamen technischen Katalog und Hardware Shop
+fuer Angebote, Warenkoerbe, Bestellungen und Purchase Contexts.
+Weitere persistente Dienste laufen auf dem VPS; ihre SQLite-Dateien bleiben
+ausschliesslich in den VPS-Volumes. Alle Domaenen werden nur ueber die
 getunnelten Dienst-APIs angesprochen. Ein lokaler PostgreSQL-, AI-Context- oder
 sonstiger SQL-Prozess ist dafuer nicht erforderlich.
 
@@ -130,7 +132,7 @@ Diese Gruppe ist fuer Community-Fragen und KI-gestuetzte Community-Antworten rel
 | Reihenfolge | Prozess | Port | Ordner | Start |
 | ---: | --- | ---: | --- | --- |
 | 1 | Community Platform | 5200 | `services/community-platform` | `$env:PORT="5200"; $env:COMMUNITY_PERSISTENCE_BACKEND="sqlite"; npm run dev` |
-| 2 | AI Usage Server | 5000 | `services/ai-usage-server` | `$env:PORT="5000"; npm run dev` |
+| 2 | AI Usage Server (isolierter Test ohne dauerhafte Daten) | 5000 | `services/ai-usage-server` | `$env:PORT="5000"; $env:PERSISTENCE_BACKEND="memory"; npm run dev` |
 | 3 | Community AI Assistant | 5300 | `services/community-ai-assistant` | `$env:PORT="5300"; npm run dev` |
 
 ## Wissens- und Diagnose-Tools
@@ -171,5 +173,5 @@ Invoke-WebRequest http://127.0.0.1:5200/health
 
 - Die Identity-Server-UI ist der Einstieg fuer Login, Dashboard, Lernplattform, Entwicklungsplattform und User IDE.
 - Der Identity Server erwartet die Default-URLs der Domaenenservices. Wenn ein Port geaendert wird, muessen die passenden `*_BASE_URL`-Umgebungsvariablen gesetzt werden.
-- Runtime-State liegt lokal in SQLite-Dateien unter `.runtime/`; JSON, Browser-State und Caches sind keine fachliche Quelle der Wahrheit.
+- Isolierte lokale Tests duerfen SQLite-Dateien unter `.runtime/` verwenden. Im VPS-Betrieb ist `gernetix-services.sqlite` nur noch read-only Altquelle; zentrale Domaenen liegen in PostgreSQL. JSON, Browser-State und Caches sind keine fachliche Quelle der Wahrheit.
 - Der MQTT Broker wird ueber Docker Compose gestartet und gestoppt. Die Node-Services laufen jeweils als eigene Dev-Prozesse.

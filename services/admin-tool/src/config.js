@@ -28,8 +28,16 @@ function createConfig(env = process.env) {
     defaultOllamaBaseUrl: env.OLLAMA_BASE_URL || "http://127.0.0.1:11434",
     defaultOllamaModel: env.OLLAMA_MODEL || "llama3.2:3b",
     llmConfigPath: env.LLM_CONFIG_PATH || path.join(__dirname, "..", "..", "..", ".runtime", "identity-llm-config.json"),
-    persistenceBackend: env.PERSISTENCE_BACKEND || env.ADMIN_TOOL_PERSISTENCE_BACKEND || "sqlite",
+    persistenceBackend: env.PERSISTENCE_BACKEND || env.ADMIN_TOOL_PERSISTENCE_BACKEND || "postgres",
     sqlitePath: env.PERSISTENCE_SQLITE_PATH || env.ADMIN_TOOL_SQLITE_PATH || path.join(__dirname, "..", "..", "..", ".runtime", "gernetix-services.sqlite"),
+    postgres: {
+      connectionString: env.OPERATIONS_POSTGRES_URL || "",
+      host: env.OPERATIONS_POSTGRES_HOST || "127.0.0.1",
+      port: Number(env.OPERATIONS_POSTGRES_PORT || 5432),
+      database: env.OPERATIONS_POSTGRES_DATABASE || "gernetix_operations",
+      user: env.OPERATIONS_POSTGRES_USER || "gernetix_operations",
+      password: env.OPERATIONS_POSTGRES_PASSWORD || "",
+    },
   };
 }
 

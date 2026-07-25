@@ -54,13 +54,13 @@ function createHttpApp(options) {
 
     const order = path.match(new RegExp(`^${prefix}/orders/([^/]+)$`));
     if (req.method === "GET" && order) {
-      sendJson(res, 200, service.getOrder(decodeURIComponent(order[1])));
+      sendJson(res, 200, await service.getOrder(decodeURIComponent(order[1])));
       return;
     }
 
     const purchaseContext = path.match(new RegExp(`^${prefix}/orders/([^/]+)/purchase-context$`));
     if (req.method === "GET" && purchaseContext) {
-      sendJson(res, 200, service.purchaseContext(decodeURIComponent(purchaseContext[1])));
+      sendJson(res, 200, await service.purchaseContext(decodeURIComponent(purchaseContext[1])));
       return;
     }
 

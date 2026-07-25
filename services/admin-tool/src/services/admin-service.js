@@ -24,12 +24,12 @@ class AdminService {
           },
           ai_usage: aiUsage.summary,
           audit_events: {
-            total: this.repository.listAuditEvents().length,
+            total: (await this.repository.listAuditEvents()).length,
           },
         };
       } catch (error) {
         return {
-          ...this.localOverview(),
+          ...(await this.localOverview()),
           degraded: true,
           source: "local_snapshot_after_remote_error",
           remote_error: error.message || String(error),
@@ -39,10 +39,13 @@ class AdminService {
     return this.localOverview();
   }
 
-  localOverview() {
-    const devices = this.repository.listDevices();
-    const feedback = this.repository.listFeedback();
-    const aiUsage = this.repository.listAiUsageEvents();
+  async localOverview() {
+    const [devices, feedback, aiUsage, auditEvents] = await Promise.all([
+      this.repository.listDevices(),
+      this.repository.listFeedback(),
+      this.repository.listAiUsageEvents(),
+      this.repository.listAuditEvents(),
+    ]);
     return {
       devices: summarizeDevices(devices),
       feedback: {
@@ -51,7 +54,7 @@ class AdminService {
       },
       ai_usage: summarizeAiUsage(aiUsage),
       audit_events: {
-        total: this.repository.listAuditEvents().length,
+        total: auditEvents.length,
       },
     };
   }
@@ -70,7 +73,7 @@ class AdminService {
     };
   }
 
-  recordSystemEvent(input) {
+  async recordSystemEvent(input) {
     validateRequired(input, ["source_service", "event_type", "message"]);
     return this.repository.addSystemEvent({
       severity: normalizeSystemEventSeverity(input.severity),
@@ -87,12 +90,27 @@ class AdminService {
     });
   }
 
-  systemEvents(filter = {}) {
-    const items = this.repository.listSystemEvents(filter);
+  async systemEvents(filter = {}) {
+    const items = await this.repository.listSystemEvents(filter);
     return {
       summary: summarizeSystemEvents(items),
       items: items.slice(0, Number(filter.limit || 100)),
     };
+  }
+
+  async recordInterfaceCall(input) {
+    validateRequired(input, ["source_service", "target_service", "method", "route"]);
+    await this.repository.addInterfaceCall({
+      occurred_at: input.occurred_at || new Date().toISOString(),
+      source_service: String(input.source_service),
+      target_service: String(input.target_service),
+      method: String(input.method).toUpperCase().slice(0, 16),
+      route: String(input.route).split("?")[0].slice(0, 300),
+      status_code: Number(input.status_code || 0),
+      duration_ms: Math.max(0, Math.round(Number(input.duration_ms || 0))),
+      succeeded: Boolean(input.succeeded),
+    });
+    return { accepted: true };
   }
 
   async listDevices() {
@@ -108,7 +126,7 @@ class AdminService {
         support_entitlement_status: device.support_entitlement?.entitlement_status || "unknown",
       }));
     }
-    return this.repository.listDevices().map((device) => ({
+    return (await this.repository.listDevices()).map((device) => ({
       device_id: device.device_id,
       display_name: device.display_name,
       hardware_profile_id: device.hardware_profile_id,
@@ -131,9 +149,9 @@ class AdminService {
       });
       return this.httpJson(this.serviceClients.deviceManagementBaseUrl, `/api/device-management/admin/devices/${encodeURIComponent(deviceId)}?${query}`);
     }
-    const device = this.repository.findDevice(deviceId);
+    const device = await this.repository.findDevice(deviceId);
     if (!device) throw new AdminToolError("device_not_found", "Device wurde nicht gefunden.", 404);
-    const access = this.accessPolicy.decideCustomerDataAccess({
+    const access = await this.accessPolicy.decideCustomerDataAccess({
       actor: context.actor,
       accountId: device.account_id,
       dataModelId: "data_model.account_device",
@@ -152,26 +170,26 @@ class AdminService {
     };
   }
 
-  createConsent(input) {
+  async createConsent(input) {
     validateRequired(input, ["account_id", "granted_to_role", "purpose", "valid_until"]);
     return this.repository.createConsent(input);
   }
 
-  revokeConsent(consentId) {
-    const consent = this.repository.revokeConsent(consentId);
+  async revokeConsent(consentId) {
+    const consent = await this.repository.revokeConsent(consentId);
     if (!consent) throw new AdminToolError("consent_not_found", "Consent wurde nicht gefunden.", 404);
     return consent;
   }
 
-  listAuditEvents(filter = {}) {
+  async listAuditEvents(filter = {}) {
     return this.repository.listAuditEvents(filter);
   }
 
   async listLearningFeedback(context) {
     if (this.serviceClients) {
       const feedback = await this.remoteFeedback();
-      return feedback.map((item) => {
-        const access = this.accessPolicy.decideCustomerDataAccess({
+      return Promise.all(feedback.map(async (item) => {
+        const access = await this.accessPolicy.decideCustomerDataAccess({
           actor: context.actor,
           accountId: item.user_id || item.account_id || null,
           dataModelId: "data_model.learning_feedback",
@@ -183,10 +201,10 @@ class AdminService {
           access,
           feedback: access.decision === "full" ? item : maskProjectFeedback(item),
         };
-      });
+      }));
     }
-    return this.repository.listFeedback().map((feedback) => {
-      const access = this.accessPolicy.decideCustomerDataAccess({
+    return Promise.all((await this.repository.listFeedback()).map(async (feedback) => {
+      const access = await this.accessPolicy.decideCustomerDataAccess({
         actor: context.actor,
         accountId: feedback.account_id,
         dataModelId: "data_model.learning_feedback",
@@ -198,11 +216,11 @@ class AdminService {
         access,
         feedback: access.decision === "full" ? feedback : maskFeedback(feedback),
       };
-    });
+    }));
   }
 
   async aiUsageSummary(context) {
-    const access = this.accessPolicy.decideAdminCapability({
+    const access = await this.accessPolicy.decideAdminCapability({
       actor: context.actor,
       capability: "admin_ai_usage_monitoring",
       purpose: "ai_usage_monitoring",
@@ -218,18 +236,18 @@ class AdminService {
       } catch (error) {
         return {
           access,
-          summary: summarizeAiUsage(this.repository.listAiUsageEvents()),
+          summary: summarizeAiUsage(await this.repository.listAiUsageEvents()),
           degraded: true,
           source: "local_snapshot_after_remote_error",
           remote_error: error.message || String(error),
         };
       }
     }
-    return { access, summary: summarizeAiUsage(this.repository.listAiUsageEvents()) };
+    return { access, summary: summarizeAiUsage(await this.repository.listAiUsageEvents()) };
   }
 
   async accountSheet(context) {
-    const access = this.accessPolicy.decideAdminCapability({
+    const access = await this.accessPolicy.decideAdminCapability({
       actor: context.actor,
       capability: "admin_ai_usage_monitoring",
       purpose: "account_review",
@@ -245,18 +263,18 @@ class AdminService {
       } catch (error) {
         return {
           access,
-          accounts: summarizeAccountSheets(this.repository.listAiUsageEvents()),
+          accounts: summarizeAccountSheets(await this.repository.listAiUsageEvents()),
           degraded: true,
           source: "local_snapshot_after_remote_error",
           remote_error: error.message || String(error),
         };
       }
     }
-    return { access, accounts: summarizeAccountSheets(this.repository.listAiUsageEvents()) };
+    return { access, accounts: summarizeAccountSheets(await this.repository.listAiUsageEvents()) };
   }
 
   async aiContextAccessSummary(context) {
-    const access = this.accessPolicy.decideAdminCapability({
+    const access = await this.accessPolicy.decideAdminCapability({
       actor: context.actor,
       capability: "admin_ai_usage_monitoring",
       purpose: "ai_context_access_review",
@@ -297,7 +315,7 @@ class AdminService {
   }
 
   async resourceSummary(context) {
-    const access = this.accessPolicy.decideAdminCapability({
+    const access = await this.accessPolicy.decideAdminCapability({
       actor: context.actor,
       capability: "admin_ai_usage_monitoring",
       purpose: "resource_monitoring",
@@ -310,7 +328,7 @@ class AdminService {
   }
 
   async updateResourcePolicy(planId, input, context) {
-    const access = this.accessPolicy.decideAdminCapability({
+    const access = await this.accessPolicy.decideAdminCapability({
       actor: context.actor,
       capability: "admin_ai_cost_controls",
       purpose: "resource_cost_control",
@@ -325,8 +343,8 @@ class AdminService {
 
   async recordSecurityEvent(input) {
     const alertKey = String(input.alert_key || `${input.source_service || "security-monitor"}:${input.event_type || "notice"}`);
-    const event = this.recordSystemEvent({ ...input, category: "security", details: { ...(input.details || {}), alert_key: alertKey } });
-    const duplicate = this.repository.listSystemEvents().some((item) => item.event_id !== event.event_id && item.details?.alert_key === alertKey && Date.now() - new Date(item.occurred_at).getTime() < 30 * 60 * 1000);
+    const event = await this.recordSystemEvent({ ...input, category: "security", details: { ...(input.details || {}), alert_key: alertKey } });
+    const duplicate = (await this.repository.listSystemEvents()).some((item) => item.event_id !== event.event_id && item.details?.alert_key === alertKey && Date.now() - new Date(item.occurred_at).getTime() < 30 * 60 * 1000);
     if (!["error", "critical"].includes(event.severity) || duplicate) return { event, email: duplicate ? "suppressed_duplicate" : "not_required" };
     try {
       await this.identityEmailConfigRequest("/api/internal/security-alert", { method: "POST", body: { severity: event.severity, message: event.message } });
@@ -335,7 +353,7 @@ class AdminService {
   }
 
   async aiClarificationCases(filter, context) {
-    const access = this.accessPolicy.decideAdminCapability({
+    const access = await this.accessPolicy.decideAdminCapability({
       actor: context.actor,
       capability: "admin_ai_usage_monitoring",
       purpose: "ai_clarification_review",
@@ -349,7 +367,7 @@ class AdminService {
   }
 
   async resolveAiClarificationCase(caseId, input, context) {
-    const access = this.accessPolicy.decideAdminCapability({
+    const access = await this.accessPolicy.decideAdminCapability({
       actor: context.actor,
       capability: "admin_ai_usage_monitoring",
       purpose: "ai_clarification_review",
@@ -363,7 +381,7 @@ class AdminService {
   }
 
   async helpKnowledge(context) {
-    const access = this.accessPolicy.decideAdminCapability({
+    const access = await this.accessPolicy.decideAdminCapability({
       actor: context.actor,
       capability: "admin_ai_usage_monitoring",
       purpose: "help_knowledge_maintenance",
@@ -376,25 +394,25 @@ class AdminService {
   }
 
   async emailConfig(context) {
-    const access = this.requireIdentityConfiguration(context, "email_delivery_configuration_read");
+    const access = await this.requireIdentityConfiguration(context, "email_delivery_configuration_read");
     const result = await this.identityEmailConfigRequest("/api/internal/email-config");
     return { access, config: result.config };
   }
 
   async updateEmailConfig(input, context) {
-    const access = this.requireIdentityConfiguration(context, "email_delivery_configuration_write");
+    const access = await this.requireIdentityConfiguration(context, "email_delivery_configuration_write");
     const result = await this.identityEmailConfigRequest("/api/internal/email-config", { method: "PUT", body: input });
     return { access, config: result.config };
   }
 
   async testEmailConfig(context) {
-    const access = this.requireIdentityConfiguration(context, "email_delivery_configuration_test");
+    const access = await this.requireIdentityConfiguration(context, "email_delivery_configuration_test");
     const result = await this.identityEmailConfigRequest("/api/internal/email-config/test", { method: "POST", body: {} });
     return { access, ...result };
   }
 
-  requireIdentityConfiguration(context, purpose) {
-    const access = this.accessPolicy.decideAdminCapability({
+  async requireIdentityConfiguration(context, purpose) {
+    const access = await this.accessPolicy.decideAdminCapability({
       actor: context.actor,
       capability: "admin_identity_configuration",
       purpose,
@@ -415,7 +433,7 @@ class AdminService {
   }
 
   async upsertHelpKnowledge(input, context) {
-    const access = this.accessPolicy.decideAdminCapability({
+    const access = await this.accessPolicy.decideAdminCapability({
       actor: context.actor,
       capability: "admin_ai_usage_monitoring",
       purpose: "help_knowledge_maintenance",
@@ -437,7 +455,7 @@ class AdminService {
   }
 
   async recordAiCostControlAction(input, context) {
-    const access = this.accessPolicy.decideAdminCapability({
+    const access = await this.accessPolicy.decideAdminCapability({
       actor: context.actor,
       capability: "admin_ai_cost_controls",
       purpose: "ai_cost_control",

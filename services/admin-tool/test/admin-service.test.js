@@ -28,12 +28,12 @@ test("device detail is masked without consent or legal basis and audited", async
   assert.equal(result.access.decision, "masked");
   assert.equal(result.device.display_name, "masked");
   assert.equal(result.device.last_seen_ip, undefined);
-  assert.equal(service.listAuditEvents().length, 1);
+  assert.equal((await service.listAuditEvents()).length, 1);
 });
 
 test("device detail is full with matching consent and secrets stay redacted", async () => {
   const service = createDefaultAdminTool();
-  service.createConsent({
+  await service.createConsent({
     account_id: "acct_1",
     granted_to_role: "administrator",
     purpose: "support_case",
@@ -50,13 +50,13 @@ test("device detail is full with matching consent and secrets stay redacted", as
 
 test("revoked consent no longer grants full access", async () => {
   const service = createDefaultAdminTool();
-  const consent = service.createConsent({
+  const consent = await service.createConsent({
     account_id: "acct_1",
     granted_to_role: "administrator",
     purpose: "support_case",
     valid_until: "2099-01-01T00:00:00.000Z",
   });
-  service.revokeConsent(consent.consent_id);
+  await service.revokeConsent(consent.consent_id);
 
   const result = await service.getDevice("device_verified_1", adminContext());
   assert.equal(result.access.decision, "masked");
@@ -92,7 +92,7 @@ test("ai usage summary requires monitoring capability and cost control action is
     reason: "suspicious_usage_pattern",
   }, adminContext({ purpose: "ai_cost_control" }));
   assert.equal(action.action_type, "temporary_ai_block");
-  assert.ok(service.listAuditEvents().some((event) => event.accessed_data_model_id === "data_model.ai_admin_action_audit_event"));
+  assert.ok((await service.listAuditEvents()).some((event) => event.accessed_data_model_id === "data_model.ai_admin_action_audit_event"));
 });
 
 test("remote ai usage summary exposes cost-control policy and rejection causes", async () => {
@@ -194,10 +194,10 @@ test("remote account sheet marks local snapshot fallback as degraded", async () 
   assert.match(result.remote_error, /ECONNREFUSED/);
 });
 
-test("system events can be recorded and summarized centrally", () => {
+test("system events can be recorded and summarized centrally", async () => {
   const service = createDefaultAdminTool();
 
-  const event = service.recordSystemEvent({
+  const event = await service.recordSystemEvent({
     severity: "error",
     source_service: "identity_server",
     target_service: "device_management",
@@ -207,7 +207,7 @@ test("system events can be recorded and summarized centrally", () => {
     impact: "Device-Inventarisierung blockiert.",
     account_id: "acct-demo",
   });
-  const result = service.systemEvents();
+  const result = await service.systemEvents();
 
   assert.equal(event.severity, "error");
   assert.equal(result.summary.total, 1);
@@ -215,9 +215,9 @@ test("system events can be recorded and summarized centrally", () => {
   assert.equal(result.items[0].target_service, "device_management");
 });
 
-test("system event severity is normalized", () => {
+test("system event severity is normalized", async () => {
   const service = createDefaultAdminTool();
-  const event = service.recordSystemEvent({
+  const event = await service.recordSystemEvent({
     severity: "surprise",
     source_service: "identity_server",
     event_type: "notice",
@@ -227,12 +227,12 @@ test("system event severity is normalized", () => {
   assert.equal(event.severity, "info");
 });
 
-test("system events remain available after reopening the Admin Tool SQLite", () => {
+test("system events remain available after reopening the Admin Tool SQLite", async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-admin-events-"));
   const sqlitePath = path.join(tempDir, "admin.sqlite");
   try {
     const first = createDefaultAdminTool({ persistenceBackend: "sqlite", sqlitePath });
-    first.recordSystemEvent({
+    await first.recordSystemEvent({
       severity: "warning",
       source_service: "identity_server",
       category: "security",
@@ -242,7 +242,7 @@ test("system events remain available after reopening the Admin Tool SQLite", () 
     });
 
     const second = createDefaultAdminTool({ persistenceBackend: "sqlite", sqlitePath });
-    const events = second.systemEvents();
+    const events = await second.systemEvents();
     assert.equal(events.summary.total, 1);
     assert.equal(events.items[0].event_type, "passkey_login_failed");
     assert.equal(events.items[0].account_id, "acct-1");

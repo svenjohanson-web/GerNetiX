@@ -16,27 +16,27 @@ class AiUsageService {
     this.repository = options.repository;
   }
 
-  getCreditBalance(accountId) {
-    const account = this.ensureCreditAccount(accountId);
-    return summarizeCreditAccount(account, this.repository.listLedgerEntries({ account_id: account.account_id }));
+  async getCreditBalance(accountId) {
+    const account = await this.ensureCreditAccount(accountId);
+    return summarizeCreditAccount(account, await this.repository.listLedgerEntries({ account_id: account.account_id }));
   }
 
-  getAccountRating(accountId) {
-    const account = this.ensureCreditAccount(accountId);
-    return accountRating(account, this.repository.listUsageEvents({ account_id: account.account_id }), normalizePolicy(this.repository.getPolicy()));
+  async getAccountRating(accountId) {
+    const account = await this.ensureCreditAccount(accountId);
+    return accountRating(account, await this.repository.listUsageEvents({ account_id: account.account_id }), normalizePolicy(await this.repository.getPolicy()));
   }
 
-  grantCredits(accountId, input = {}) {
+  async grantCredits(accountId, input = {}) {
     const amount = positiveNumber(input.amount_credits || input.amount, "amount_credits");
-    const account = this.ensureCreditAccount(accountId);
+    const account = await this.ensureCreditAccount(accountId);
     const now = new Date().toISOString();
     const next = {
       ...account,
       total_granted_credits: account.total_granted_credits + amount,
       updated_at: now,
     };
-    this.repository.saveCreditAccount(next);
-    this.repository.addLedgerEntry({
+    await this.repository.saveCreditAccount(next);
+    await this.repository.addLedgerEntry({
       ledger_entry_id: createId("ledger"),
       account_id: account.account_id,
       entry_type: "credit_grant",
@@ -45,22 +45,22 @@ class AiUsageService {
       reference_id: input.reference_id || "",
       created_at: now,
     });
-    return this.getCreditBalance(accountId);
+    return await this.getCreditBalance(accountId);
   }
 
-  holdCredits(accountId, input = {}) {
+  async holdCredits(accountId, input = {}) {
     const amount = positiveNumber(input.amount_credits || input.amount, "amount_credits");
-    const account = this.ensureCreditAccount(accountId);
+    const account = await this.ensureCreditAccount(accountId);
     if (availableCredits(account) < amount) {
       throw new AiUsageError("insufficient_available_credits", "Nicht genug verfuegbare Credits fuer Sperre.", 409);
     }
     const now = new Date().toISOString();
-    this.repository.saveCreditAccount({
+    await this.repository.saveCreditAccount({
       ...account,
       held_credits: account.held_credits + amount,
       updated_at: now,
     });
-    this.repository.addLedgerEntry({
+    await this.repository.addLedgerEntry({
       ledger_entry_id: createId("ledger"),
       account_id: account.account_id,
       entry_type: "credit_hold",
@@ -69,25 +69,25 @@ class AiUsageService {
       reference_id: input.reference_id || "",
       created_at: now,
     });
-    return this.getCreditBalance(accountId);
+    return await this.getCreditBalance(accountId);
   }
 
-  preflight(input = {}) {
+  async preflight(input = {}) {
     const accountId = identityAccountId(input.account_id);
     if (input.user_id && String(input.user_id).trim() !== accountId) {
       throw new AiUsageError("identity_user_id_mismatch", "user_id muss der fuehrenden identity.user_id entsprechen.", 400);
     }
     const model = required(input.model, "model");
-    const account = this.ensureCreditAccount(accountId);
-    const policy = normalizePolicy(this.repository.getPolicy());
+    const account = await this.ensureCreditAccount(accountId);
+    const policy = normalizePolicy(await this.repository.getPolicy());
     const estimate = estimateCredits(policy, {
       model,
       input_tokens: Number(input.estimated_input_tokens || input.input_tokens || 0),
       output_tokens: Number(input.estimated_output_tokens || input.output_tokens || 0),
     });
-    const decision = this.decidePreflight({ account, policy, input, model, estimate });
-    const currentUsage = usageForAccount(this.repository.listUsageEvents({ account_id: account.account_id }));
-    const event = this.repository.addUsageEvent(createUsageEvent({
+    const decision = await this.decidePreflight({ account, policy, input, model, estimate });
+    const currentUsage = usageForAccount(await this.repository.listUsageEvents({ account_id: account.account_id }));
+    const event = await this.repository.addUsageEvent(createUsageEvent({
       input,
       account,
       model,
@@ -113,20 +113,20 @@ class AiUsageService {
     };
   }
 
-  completeUsageEvent(eventId, input = {}) {
-    const event = this.requireUsageEvent(eventId);
+  async completeUsageEvent(eventId, input = {}) {
+    const event = await this.requireUsageEvent(eventId);
     if (event.status !== "preflight_approved") {
       throw new AiUsageError("event_not_billable", "Nur genehmigte Preflight-Events koennen abgeschlossen werden.", 409);
     }
-    const policy = normalizePolicy(this.repository.getPolicy());
+    const policy = normalizePolicy(await this.repository.getPolicy());
     const actual = estimateCredits(policy, {
       model: event.model,
       input_tokens: Number(input.input_tokens || event.input_tokens || 0),
       output_tokens: Number(input.output_tokens || event.output_tokens || 0),
     });
-    const account = this.ensureCreditAccount(event.account_id);
+    const account = await this.ensureCreditAccount(event.account_id);
     if (availableCredits(account) < actual.credits) {
-      const failed = this.repository.updateUsageEvent(eventId, {
+      const failed = await this.repository.updateUsageEvent(eventId, {
         status: "failed",
         error_code: "insufficient_credits_at_completion",
         protection_action: "block_completion",
@@ -134,8 +134,8 @@ class AiUsageService {
       });
       return failed;
     }
-    this.consumeCredits(account.account_id, actual.credits, eventId);
-    return this.repository.updateUsageEvent(eventId, {
+    await this.consumeCredits(account.account_id, actual.credits, eventId);
+    return await this.repository.updateUsageEvent(eventId, {
       status: "success",
       input_tokens: actual.input_tokens,
       output_tokens: actual.output_tokens,
@@ -145,9 +145,9 @@ class AiUsageService {
     });
   }
 
-  failUsageEvent(eventId, input = {}) {
-    this.requireUsageEvent(eventId);
-    return this.repository.updateUsageEvent(eventId, {
+  async failUsageEvent(eventId, input = {}) {
+    await this.requireUsageEvent(eventId);
+    return await this.repository.updateUsageEvent(eventId, {
       status: "failed",
       error_code: input.error_code || "provider_error",
       error_message: input.error_message || "",
@@ -155,28 +155,29 @@ class AiUsageService {
     });
   }
 
-  listUsageEvents(query = {}) {
+  async listUsageEvents(query = {}) {
     const accountId = query.account_id || query.accountId || "";
-    return this.repository.listUsageEvents({
+    return await this.repository.listUsageEvents({
       account_id: accountId ? identityAccountId(accountId) : "",
       status: query.status || "",
     });
   }
 
-  adminDashboard() {
-    const events = this.repository.listUsageEvents();
-    const accounts = this.repository.listCreditAccounts();
+  async adminDashboard() {
+    const events = await this.repository.listUsageEvents();
+    const accounts = await this.repository.listCreditAccounts();
+    const policy = normalizePolicy(await this.repository.getPolicy());
     const summary = summarizeUsage(events);
     return {
       summary,
-      by_account: accounts.map((account) => accountDashboard(account, events, normalizePolicy(this.repository.getPolicy()))),
+      by_account: accounts.map((account) => accountDashboard(account, events, policy)),
       by_model: groupByModel(events),
-      suspicious_usage: detectSuspiciousUsage(accounts, events, normalizePolicy(this.repository.getPolicy())),
-      policy: normalizePolicy(this.repository.getPolicy()),
+      suspicious_usage: detectSuspiciousUsage(accounts, events, policy),
+      policy,
     };
   }
 
-  recordCostControlAction(input = {}) {
+  async recordCostControlAction(input = {}) {
     const actionType = required(input.action_type, "action_type");
     const actorId = input.actor_id || "admin";
     const reason = required(input.reason, "reason");
@@ -184,17 +185,17 @@ class AiUsageService {
     const payload = input.payload || {};
     let result = null;
 
-    if (actionType === "grant_credits") result = this.grantCredits(required(accountId, "account_id"), { ...payload, reason });
-    else if (actionType === "hold_credits") result = this.holdCredits(required(accountId, "account_id"), { ...payload, reason });
-    else if (actionType === "block_account") result = this.blockAccount(required(accountId, "account_id"), payload);
-    else if (actionType === "unblock_account") result = this.unblockAccount(required(accountId, "account_id"));
-    else if (actionType === "update_policy") result = this.updatePolicy(payload);
-    else if (actionType === "set_global_kill_switch") result = this.updatePolicy({ global_kill_switch: Boolean(payload.enabled) });
-    else if (actionType === "allow_model") result = this.allowModel(required(payload.model, "model"));
-    else if (actionType === "block_model") result = this.blockModel(required(payload.model, "model"));
+    if (actionType === "grant_credits") result = await this.grantCredits(required(accountId, "account_id"), { ...payload, reason });
+    else if (actionType === "hold_credits") result = await this.holdCredits(required(accountId, "account_id"), { ...payload, reason });
+    else if (actionType === "block_account") result = await this.blockAccount(required(accountId, "account_id"), payload);
+    else if (actionType === "unblock_account") result = await this.unblockAccount(required(accountId, "account_id"));
+    else if (actionType === "update_policy") result = await this.updatePolicy(payload);
+    else if (actionType === "set_global_kill_switch") result = await this.updatePolicy({ global_kill_switch: Boolean(payload.enabled) });
+    else if (actionType === "allow_model") result = await this.allowModel(required(payload.model, "model"));
+    else if (actionType === "block_model") result = await this.blockModel(required(payload.model, "model"));
     else throw new AiUsageError("unknown_cost_control_action", "Unbekannte KI-Cost-Control-Aktion.");
 
-    const auditEvent = this.repository.addAdminAuditEvent({
+    const auditEvent = await this.repository.addAdminAuditEvent({
       admin_audit_event_id: createId("ai_admin_audit"),
       actor_id: actorId,
       action_type: actionType,
@@ -206,25 +207,25 @@ class AiUsageService {
     return { audit_event: auditEvent, result };
   }
 
-  listAdminAuditEvents() {
-    return this.repository.listAdminAuditEvents();
+  async listAdminAuditEvents() {
+    return await this.repository.listAdminAuditEvents();
   }
 
-  blockAccount(accountId, input = {}) {
-    const account = this.ensureCreditAccount(accountId);
+  async blockAccount(accountId, input = {}) {
+    const account = await this.ensureCreditAccount(accountId);
     const blockedUntil = input.blocked_until || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
-    return this.repository.saveCreditAccount({ ...account, blocked_until: blockedUntil, updated_at: new Date().toISOString() });
+    return await this.repository.saveCreditAccount({ ...account, blocked_until: blockedUntil, updated_at: new Date().toISOString() });
   }
 
-  unblockAccount(accountId) {
-    const account = this.ensureCreditAccount(accountId);
-    return this.repository.saveCreditAccount({ ...account, blocked_until: null, updated_at: new Date().toISOString() });
+  async unblockAccount(accountId) {
+    const account = await this.ensureCreditAccount(accountId);
+    return await this.repository.saveCreditAccount({ ...account, blocked_until: null, updated_at: new Date().toISOString() });
   }
 
-  updatePolicy(input = {}) {
-    const policy = normalizePolicy(this.repository.getPolicy());
+  async updatePolicy(input = {}) {
+    const policy = normalizePolicy(await this.repository.getPolicy());
     const limitPatch = unifiedLimitPatch(input);
-    return this.repository.savePolicy({
+    return await this.repository.savePolicy({
       ...normalizePolicy({ ...policy, ...input, ...limitPatch }),
       allowed_models: input.allowed_models || policy.allowed_models,
       premium_models: input.premium_models || policy.premium_models,
@@ -232,17 +233,17 @@ class AiUsageService {
     });
   }
 
-  allowModel(model) {
-    const policy = normalizePolicy(this.repository.getPolicy());
-    return this.repository.savePolicy({ ...policy, allowed_models: unique([...policy.allowed_models, model]) });
+  async allowModel(model) {
+    const policy = normalizePolicy(await this.repository.getPolicy());
+    return await this.repository.savePolicy({ ...policy, allowed_models: unique([...policy.allowed_models, model]) });
   }
 
-  blockModel(model) {
-    const policy = normalizePolicy(this.repository.getPolicy());
-    return this.repository.savePolicy({ ...policy, allowed_models: policy.allowed_models.filter((item) => item !== model) });
+  async blockModel(model) {
+    const policy = normalizePolicy(await this.repository.getPolicy());
+    return await this.repository.savePolicy({ ...policy, allowed_models: policy.allowed_models.filter((item) => item !== model) });
   }
 
-  decidePreflight({ account, policy, input, model, estimate }) {
+  async decidePreflight({ account, policy, input, model, estimate }) {
     if (policy.global_kill_switch) return reject("global_kill_switch", "global_kill_switch");
     if (isBlocked(account)) return reject("account_blocked", "block_account");
     if (!policy.allowed_models.includes(model)) return reject("model_not_allowed", "block_model");
@@ -254,21 +255,21 @@ class AiUsageService {
     if (availableCredits(account) < estimate.credits) return reject("insufficient_credits", "block_call");
     const rating = sourceRatingForModel(policy, model);
     const sourceUsage = sourceUsageForAccount(
-      this.repository.listUsageEvents({ account_id: account.account_id }),
+      await this.repository.listUsageEvents({ account_id: account.account_id }),
       policy,
       rating.source_id,
     );
     if (rating.token_limit !== null && sourceUsage.month_tokens + estimate.input_tokens + estimate.output_tokens > rating.token_limit) {
       return reject("source_token_limit_exceeded", "budget_limit");
     }
-    const usage = usageForAccount(this.repository.listUsageEvents({ account_id: account.account_id }));
+    const usage = usageForAccount(await this.repository.listUsageEvents({ account_id: account.account_id }));
     if (usage.today_credits + estimate.credits > policy.daily_credit_limit) return reject("daily_limit_exceeded", "rate_limit");
     if (usage.month_credits + estimate.credits > policy.monthly_credit_limit) return reject("monthly_limit_exceeded", "budget_limit");
     return { allowed: true, reason: "", protection_action: "preflight_approved" };
   }
 
-  consumeCredits(accountId, amount, referenceId) {
-    const account = this.ensureCreditAccount(accountId);
+  async consumeCredits(accountId, amount, referenceId) {
+    const account = await this.ensureCreditAccount(accountId);
     const now = new Date().toISOString();
     const next = {
       ...account,
@@ -278,8 +279,8 @@ class AiUsageService {
     if (next.consumed_credits + next.held_credits > next.total_granted_credits) {
       throw new AiUsageError("negative_credit_balance_forbidden", "Negative KI-Credits sind unzulaessig.", 409);
     }
-    this.repository.saveCreditAccount(next);
-    this.repository.addLedgerEntry({
+    await this.repository.saveCreditAccount(next);
+    await this.repository.addLedgerEntry({
       ledger_entry_id: createId("ledger"),
       account_id: account.account_id,
       entry_type: "credit_consumption",
@@ -290,15 +291,15 @@ class AiUsageService {
     });
   }
 
-  ensureCreditAccount(accountId) {
+  async ensureCreditAccount(accountId) {
     const identityUserId = identityAccountId(accountId);
-    const existing = this.repository.findCreditAccount(identityUserId);
+    const existing = await this.repository.findCreditAccount(identityUserId);
     if (existing) return normalizeAccount(existing);
     const now = new Date().toISOString();
-    return this.repository.saveCreditAccount({
+    return await this.repository.saveCreditAccount({
       account_id: identityUserId,
       plan_id: "plan.free",
-      total_granted_credits: normalizePolicy(this.repository.getPolicy()).monthly_credit_limit || DEFAULT_INITIAL_CREDITS,
+      total_granted_credits: normalizePolicy(await this.repository.getPolicy()).monthly_credit_limit || DEFAULT_INITIAL_CREDITS,
       consumed_credits: 0,
       held_credits: 0,
       blocked_until: null,
@@ -307,8 +308,8 @@ class AiUsageService {
     });
   }
 
-  requireUsageEvent(eventId) {
-    const event = this.repository.findUsageEvent(eventId);
+  async requireUsageEvent(eventId) {
+    const event = await this.repository.findUsageEvent(eventId);
     if (!event) throw new AiUsageError("usage_event_not_found", "Usage Event wurde nicht gefunden.", 404);
     return event;
   }

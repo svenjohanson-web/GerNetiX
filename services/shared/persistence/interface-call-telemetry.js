@@ -4,6 +4,7 @@ const { DatabaseSync } = require("node:sqlite");
 const connections = new Map();
 
 function createInterfaceCallTelemetry(options = {}) {
+  if (options.endpoint) return createHttpTelemetry(options);
   const dbPath = path.resolve(options.dbPath || path.join(__dirname, "../../../.runtime/gernetix-services.sqlite"));
   const sourceService = String(options.sourceService || "unknown");
   let db = connections.get(dbPath);
@@ -43,6 +44,34 @@ function createInterfaceCallTelemetry(options = {}) {
       } catch {
         // Telemetrie darf den eigentlichen Schnittstellenaufruf nie blockieren.
       }
+    },
+  };
+}
+
+function createHttpTelemetry(options) {
+  const endpoint = String(options.endpoint).replace(/\/$/, "");
+  const sourceService = String(options.sourceService || "unknown");
+  return {
+    record(input = {}) {
+      fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(options.token ? { "x-gernetix-system-event-token": options.token } : {}),
+        },
+        body: JSON.stringify({
+          occurred_at: new Date().toISOString(),
+          source_service: sourceService,
+          target_service: String(input.targetService || "unknown"),
+          method: String(input.method || "GET").toUpperCase(),
+          route: normalizeRoute(input.route),
+          status_code: Number(input.statusCode || 0),
+          duration_ms: Math.max(0, Math.round(Number(input.durationMs || 0))),
+          succeeded: Boolean(input.succeeded),
+        }),
+      }).catch(() => {
+        // Betriebliche Telemetrie darf den Fachaufruf nie blockieren.
+      });
     },
   };
 }

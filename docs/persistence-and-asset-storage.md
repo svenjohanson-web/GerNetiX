@@ -46,11 +46,19 @@ Dieses Dokument inventarisiert die dauerhaften GerNetiX-Speicher und ordnet Down
 | Community-Altbestand | `/var/lib/gernetix/community/gernetix-community.sqlite` | `community_state` | einmalige, read-only Altuebernahme; danach nicht mehr fuehrend |
 | Device Management | PostgreSQL-Datenbank `gernetix_device_management` | `device_management_postgres_data` | Devices, Credentials, Pairing, Account-Inventar, Purchase Contexts, Consents und Audit |
 | Device-Management-Altbestand | fruehere `/var/lib/gernetix/services/gernetix-services.sqlite` | `service_state` | einmalige, read-only Altuebernahme; danach nicht mehr fuehrend |
+| AI Usage | PostgreSQL-Datenbank `gernetix_ai_usage` | `ai_usage_postgres_data` | Credit-Konten, Ledger, Usage Events, Cost-Control-Policy und Admin-Audit |
+| AI-Usage-Altbestand | fruehere `/var/lib/gernetix/services/gernetix-services.sqlite` | `service_state` | einmalige, transaktionale read-only Altuebernahme; danach nicht mehr fuehrend |
+| Hardware Catalog | PostgreSQL-Datenbank `gernetix_hardware_catalog` | `hardware_catalog_postgres_data` | TechnicalCapabilities, ProcessorBoards, Sensoren, Board-Optionen und Flashbox-Klassen |
+| Hardware-Catalog-Altbestand | fruehere `/var/lib/gernetix/services/gernetix-services.sqlite` | `service_state` | einmalige, transaktionale read-only Altuebernahme; danach nicht mehr fuehrend |
+| Hardware Shop | PostgreSQL-Datenbank `gernetix_hardware_shop` | `hardware_shop_postgres_data` | Angebote, Warenkoerbe, Bestellungen und Purchase Contexts |
+| Hardware-Shop-Altbestand | fruehere `/var/lib/gernetix/services/gernetix-services.sqlite` | `service_state` | einmalige, transaktionale read-only Altuebernahme; danach nicht mehr fuehrend |
+| Operations | PostgreSQL-Datenbank `gernetix_operations` | `operations_postgres_data` | Admin-Consents, Admin-Audit, Systemereignisse und Schnittstellenstatistik |
+| Operations-Altbestand | fruehere `/var/lib/gernetix/services/gernetix-services.sqlite` | `service_state` | einmalige, transaktionale read-only Altuebernahme; danach nur Rueckfallkopie |
 | Oeffentliche Demos | `/var/lib/gernetix/public-demos/gernetix-public-demos.sqlite` | `public_demo_state` | redaktionell freigegebene Demos und Firmware |
 | AI Context | PostgreSQL-Datenbank `gernetix_ai_context` | `ai_context_postgres_data` | Kontext, Grants, Policy, Audit und Vektoren |
 | AI-Context-Migration | `/var/lib/gernetix/ai-context/gernetix-ai-context.sqlite` | `ai_context_state` | einmalige Altuebernahme/Fallback, nicht parallel fuehrend |
 | Admin-Zugang | `/var/lib/gernetix/admin-access/gernetix-admin-access.sqlite` | `admin_access_state` | private Admin-Anmeldung und Sessions |
-| verbleibende Services | `/var/lib/gernetix/services/gernetix-services.sqlite` | `service_state` | Provisioning, Shop, Usage, Admin-Ereignisse und Schnittstellenstatistik |
+| Legacy Runtime-State | `/var/lib/gernetix/services/gernetix-services.sqlite` | `service_state` | read-only Quellen der abgeschlossenen Domaenenmigrationen; keine fuehrende Laufzeitpersistenz mehr |
 
 Die Plattform-Release- und Account-Asset-SQLite liegen im gesicherten Identity-Volume, aber nicht in der Credential-Datenbank. Grosse BLOBs bleiben damit getrennt inventarisierbar und spaeter verschiebbar.
 
@@ -62,7 +70,7 @@ Der Identity Server darf auf einem Entwicklungsrechner lokal auf Port `4300` lau
 2. `tools/start-identity-remote-dev.js` startet ausschliesslich den lokalen Identity Server auf `127.0.0.1:4300`, erzwingt `IDENTITY_PERSISTENCE_BACKEND=postgres` und verwendet die getunnelten Dienst-URLs.
 3. Das Passwort liegt nur in `.env.remote-dev.local`; die Datei ist nicht versioniert.
 4. Diese Betriebsart ist fuer einen gemeinsamen Entwicklungs-/Staging-Datenstand vorgesehen, nicht fuer die Produktionsdatenbank. Schemaaenderungen muessen rueckwaertskompatibel und vor dem gemeinsamen Einsatz getestet sein.
-5. Projekt-, Telemetrie-, Community- und Device-Management-Daten liegen in ihren getrennten PostgreSQL-Datenbanken. Build- und weitere SQLite-Dateien bleiben ausschliesslich in ihren VPS-Volumes. Der lokale Identity-Prozess greift auf alle Domaenen nur ueber deren HTTP-Dienste zu.
+5. Projekt-, Telemetrie-, Community-, Device-Management-, AI-Usage-, Hardware-Catalog-, Hardware-Shop- und Operations-Daten liegen in ihren getrennten PostgreSQL-Datenbanken. Build- und weitere klar abgegrenzte SQLite-Dateien bleiben ausschliesslich in ihren VPS-Volumes. Der lokale Identity-Prozess greift auf alle Domaenen nur ueber deren HTTP-Dienste zu.
 6. Der Remote-Dev-Starter setzt `IDENTITY_REMOTE_DEV=1`. Dadurch werden lokal weder Identity-, Asset-, Download- noch Schnittstellenstatistik-SQLite-Dateien angelegt. Push-/SMTP-Hilfsspeicher sind fuer die Prozesslaufzeit fluechtig; lokale Asset-Schreibwege antworten als nicht verfuegbar, damit keine scheinbar dauerhaften Daten auf dem Entwicklungsrechner entstehen.
 
 Damit laufen auf dem MacBook fuer die normale Plattformarbeit nur der SSH-Tunnel und der lokale Prozess `4300`. PostgreSQL, AI Context und die anderen SQL-Dienste laufen auf dem VPS.
@@ -94,8 +102,9 @@ Damit kann dasselbe Release auf mehreren Rechnern verwendet werden, ohne lokal e
 
 ## Bekannte Abweichungen und naechste Migrationen
 
-- Identity, Project Server, Telemetry, Community, Device Management und AI Context sind auf getrennte PostgreSQL-Datenbanken umgestellt. Die uebrigen SQLite-Domaenen bleiben zentral auf dem VPS und werden erst nach eigenen Repository-, Migrations- und Backup-/Restore-Nachweisen einzeln umgestellt.
-- Mehrere technische Domaenen teilen noch `gernetix-services.sqlite`. Sie sind tabellarisch getrennt, aber noch keine getrennten Backup-/Restore-Einheiten.
+- Identity, Project Server, Telemetry, Community, Device Management, AI Usage, Hardware Catalog, Hardware Shop, Operations und AI Context sind auf getrennte PostgreSQL-Datenbanken umgestellt.
+- `gernetix-services.sqlite` bleibt nur als read-only Altquelle der idempotenten Migrationen erhalten. Kein produktiver Compose-Dienst schreibt weiter hinein.
+- Provisioning, Recovery, Context Manager und Community AI halten ihren Workflow-State standardmaessig nur im Prozessspeicher. Dauerhafte Ergebnisse werden ueber Device Management, Community, AI Context oder den getrennten Firmware-Artefaktspeicher uebernommen.
 - Die LLM-Routing-Konfiguration besitzt noch die Dev-Altlast `.runtime/identity-llm-config.json`; sie muss verschluesselt nach SQLite migriert werden.
 - Provisioning besitzt weiterhin explizite Entwicklungsfallbacks fuer lokale Firmwarepfade. Im VPS-Betrieb muss das SQL-Artefakt fuehrend bleiben.
 - Account-Assets verwenden derzeit JSON/Base64 bis 16 MiB. Fuer groessere Bilder ist spaeter ein streamingfaehiger Uploadvertrag sinnvoll; Eigentumspruefung und SQL-Wahrheit bleiben unveraendert.

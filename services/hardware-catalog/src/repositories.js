@@ -40,9 +40,7 @@ class InMemoryHardwareCatalogRepository {
 class SqliteBackedHardwareCatalogRepository extends InMemoryHardwareCatalogRepository {
   constructor(store) {
     const loaded = store.load();
-    const catalogSeed = defaultCatalogSeed();
-    const seed = mergeSeed(catalogSeed, migrateLoadedCatalog(catalogSeed, loaded));
-    super(seed);
+    super(mergeCatalogState(loaded));
     this.store = store;
     this.store.ensureSchema?.(hardwareCatalogSchema());
     this.persist();
@@ -107,6 +105,11 @@ function mergeSeed(seed, loaded) {
   };
 }
 
+function mergeCatalogState(loaded = {}) {
+  const catalogSeed = defaultCatalogSeed();
+  return mergeSeed(catalogSeed, migrateLoadedCatalog(catalogSeed, loaded));
+}
+
 function migrateLoadedCatalog(seed, loaded = {}) {
   const migrated = clone(loaded) || {};
   const itemId = "hardware.processor_board.esp32_s3_es3c28p";
@@ -142,4 +145,4 @@ function clone(value) {
   return value ? JSON.parse(JSON.stringify(value)) : null;
 }
 
-module.exports = { InMemoryHardwareCatalogRepository, SqliteBackedHardwareCatalogRepository };
+module.exports = { InMemoryHardwareCatalogRepository, SqliteBackedHardwareCatalogRepository, mergeCatalogState };

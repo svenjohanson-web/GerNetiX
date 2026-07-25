@@ -9,6 +9,7 @@ class InMemoryAdminRepository {
     this.auditEvents = seed.auditEvents.map(clone);
     this.adminActions = (seed.adminActions || []).map(clone);
     this.systemEvents = (seed.systemEvents || []).map(clone);
+    this.interfaceCalls = (seed.interfaceCalls || []).map(clone);
   }
 
   listDevices() {
@@ -128,6 +129,11 @@ class InMemoryAdminRepository {
       .filter((event) => !filter.target_service || event.target_service === filter.target_service)
       .sort((left, right) => String(right.occurred_at).localeCompare(String(left.occurred_at)))
       .map(clone);
+  }
+
+  addInterfaceCall(input) {
+    this.interfaceCalls.push(clone(input));
+    return clone(input);
   }
 }
 

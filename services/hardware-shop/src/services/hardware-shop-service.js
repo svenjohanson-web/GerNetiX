@@ -27,7 +27,7 @@ class HardwareShopService {
   }
 
   async listOffers(query = {}) {
-    const offers = this.repository.listOffers({
+    const offers = await this.repository.listOffers({
       status: query.status || "active",
       offer_type: query.offer_type || query.offerType || "",
     });
@@ -35,7 +35,7 @@ class HardwareShopService {
   }
 
   async getOffer(offerId) {
-    return this.decorateOffer(this.requireOffer(offerId));
+    return this.decorateOffer(await this.requireOffer(offerId));
   }
 
   async upsertOffer(input = {}) {
@@ -52,7 +52,7 @@ class HardwareShopService {
       stock_state: input.stock_state || "available",
       status: input.status || "active",
     };
-    return this.decorateOffer(this.repository.saveOffer(offer));
+    return this.decorateOffer(await this.repository.saveOffer(offer));
   }
 
   async matchOffers(input = {}) {
@@ -74,20 +74,20 @@ class HardwareShopService {
       created_at: now,
       updated_at: now,
     };
-    return this.enrichCart(this.repository.saveCart(cart));
+    return this.enrichCart(await this.repository.saveCart(cart));
   }
 
   async getCart(cartId) {
-    const cart = this.repository.findCart(cartId);
+    const cart = await this.repository.findCart(cartId);
     if (!cart) throw new HardwareShopError("cart_not_found", "Warenkorb wurde nicht gefunden.", 404);
     return this.enrichCart(cart);
   }
 
   async addCartItem(cartId, input = {}) {
-    const cart = this.repository.findCart(cartId);
+    const cart = await this.repository.findCart(cartId);
     if (!cart) throw new HardwareShopError("cart_not_found", "Warenkorb wurde nicht gefunden.", 404);
     if (cart.status !== "open") throw new HardwareShopError("cart_closed", "Warenkorb ist nicht mehr offen.", 409);
-    const offer = this.requireOffer(required(input.offer_id, "offer_id"));
+    const offer = await this.requireOffer(required(input.offer_id, "offer_id"));
     const quantity = Number(input.quantity || 1);
     if (!Number.isInteger(quantity) || quantity <= 0) throw new HardwareShopError("invalid_quantity", "Menge muss eine positive Ganzzahl sein.");
     const next = {
@@ -95,11 +95,11 @@ class HardwareShopService {
       items: mergeItems(cart.items, { offer_id: offer.offer_id, quantity }),
       updated_at: new Date().toISOString(),
     };
-    return this.enrichCart(this.repository.saveCart(next));
+    return this.enrichCart(await this.repository.saveCart(next));
   }
 
   async createOrder(input = {}) {
-    const cart = this.repository.findCart(required(input.cart_id, "cart_id"));
+    const cart = await this.repository.findCart(required(input.cart_id, "cart_id"));
     if (!cart) throw new HardwareShopError("cart_not_found", "Warenkorb wurde nicht gefunden.", 404);
     if (!cart.items.length) throw new HardwareShopError("empty_cart", "Warenkorb ist leer.");
     const enriched = await this.enrichCart(cart);
@@ -118,18 +118,18 @@ class HardwareShopService {
       created_at: now,
       updated_at: now,
     };
-    this.repository.saveCart({ ...cart, status: "ordered", updated_at: now });
+    await this.repository.saveCart({ ...cart, status: "ordered", updated_at: now });
     return this.repository.saveOrder(order);
   }
 
-  getOrder(orderId) {
-    const order = this.repository.findOrder(orderId);
+  async getOrder(orderId) {
+    const order = await this.repository.findOrder(orderId);
     if (!order) throw new HardwareShopError("order_not_found", "Bestellung wurde nicht gefunden.", 404);
     return order;
   }
 
-  purchaseContext(orderId) {
-    return this.getOrder(orderId).purchase_context;
+  async purchaseContext(orderId) {
+    return (await this.getOrder(orderId)).purchase_context;
   }
 
   async decorateOffer(offer) {
@@ -165,8 +165,8 @@ class HardwareShopService {
     };
   }
 
-  requireOffer(offerId) {
-    const offer = this.repository.findOffer(offerId);
+  async requireOffer(offerId) {
+    const offer = await this.repository.findOffer(offerId);
     if (!offer) throw new HardwareShopError("offer_not_found", "Shop-Angebot wurde nicht gefunden.", 404);
     return offer;
   }

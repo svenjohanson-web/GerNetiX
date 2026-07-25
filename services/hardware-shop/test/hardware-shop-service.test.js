@@ -4,7 +4,7 @@ const test = require("node:test");
 const { createDefaultHardwareShop } = require("../src");
 
 test("lists catalog capabilities, boards and shop offers", async () => {
-  const service = createDefaultHardwareShop();
+  const service = createDefaultHardwareShop({ persistenceBackend: "memory" });
 
   assert.equal((await service.listCapabilities()).some((item) => item.capability_id === "capability.wifi"), true);
   assert.equal((await service.listProcessorBoards()).some((item) => item.hardware_item_id === "hardware.processor_board.generic_esp_wroom32"), true);
@@ -13,7 +13,7 @@ test("lists catalog capabilities, boards and shop offers", async () => {
 });
 
 test("matches book vault bundle by required capabilities", async () => {
-  const service = createDefaultHardwareShop();
+  const service = createDefaultHardwareShop({ persistenceBackend: "memory" });
   const matches = await service.matchOffers({
     required_capability_ids: ["capability.rfid_reading", "capability.servo_control", "capability.mechanical_locking"],
   });
@@ -24,7 +24,7 @@ test("matches book vault bundle by required capabilities", async () => {
 });
 
 test("accounts for owned capabilities when matching", async () => {
-  const service = createDefaultHardwareShop();
+  const service = createDefaultHardwareShop({ persistenceBackend: "memory" });
   const matches = await service.matchOffers({
     required_capability_ids: ["capability.processor_esp32", "capability.wifi", "capability.rfid_reading"],
     owned_capability_ids: ["capability.processor_esp32", "capability.wifi"],
@@ -35,14 +35,14 @@ test("accounts for owned capabilities when matching", async () => {
 });
 
 test("creates cart, order and purchase context for device support", async () => {
-  const service = createDefaultHardwareShop();
+  const service = createDefaultHardwareShop({ persistenceBackend: "memory" });
   const cart = await service.createCart({ account_id: "acct-1" });
   const updated = await service.addCartItem(cart.cart_id, {
     offer_id: "offer.esp32_starter_board",
     quantity: 2,
   });
   const order = await service.createOrder({ cart_id: cart.cart_id, payment_status: "paid" });
-  const context = service.purchaseContext(order.order_id);
+  const context = await service.purchaseContext(order.order_id);
 
   assert.equal(updated.totals.amount_cents, 4980);
   assert.equal(order.status, "paid");
@@ -51,7 +51,7 @@ test("creates cart, order and purchase context for device support", async () => 
 });
 
 test("creates a claimable hardware unit for a Flashbox mock order", async () => {
-  const service = createDefaultHardwareShop();
+  const service = createDefaultHardwareShop({ persistenceBackend: "memory" });
   const cart = await service.createCart({ account_id: "acct-1" });
   await service.addCartItem(cart.cart_id, {
     offer_id: "offer.gernetix_flashbox_s3_usb_helper",
@@ -59,7 +59,7 @@ test("creates a claimable hardware unit for a Flashbox mock order", async () => 
   });
 
   const order = await service.createOrder({ cart_id: cart.cart_id, payment_status: "paid" });
-  const context = service.purchaseContext(order.order_id);
+  const context = await service.purchaseContext(order.order_id);
   const unit = context.claimable_hardware_units[0];
 
   assert.equal(order.status, "paid");
@@ -71,7 +71,7 @@ test("creates a claimable hardware unit for a Flashbox mock order", async () => 
 });
 
 test("admin can add offer for known catalog item", async () => {
-  const service = createDefaultHardwareShop();
+  const service = createDefaultHardwareShop({ persistenceBackend: "memory" });
   const offer = await service.upsertOffer({
     offer_id: "offer.esp_wroom32_board",
     title: "Generisches ESP-WROOM-32 Board",

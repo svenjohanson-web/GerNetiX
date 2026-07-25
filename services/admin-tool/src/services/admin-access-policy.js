@@ -17,7 +17,7 @@ class AdminAccessPolicy {
     this.repository = options.repository;
   }
 
-  decideCustomerDataAccess({ actor, accountId, dataModelId, purpose, legalBasis, securityReason }) {
+  async decideCustomerDataAccess({ actor, accountId, dataModelId, purpose, legalBasis, securityReason }) {
     const role = actor.role || "support";
     const hasCapability = hasAnyCapability(actor, [
       "admin_device_management",
@@ -46,7 +46,7 @@ class AdminAccessPolicy {
       });
     }
 
-    const consent = this.repository.findValidConsent({ accountId, role, purpose });
+    const consent = await this.repository.findValidConsent({ accountId, role, purpose });
     if (consent) {
       return this.audit({
         actor,
@@ -69,7 +69,7 @@ class AdminAccessPolicy {
     });
   }
 
-  decideAdminCapability({ actor, capability, purpose, dataModelId, accountId = null }) {
+  async decideAdminCapability({ actor, capability, purpose, dataModelId, accountId = null }) {
     const decision = hasCapability(actor, capability) ? "full" : "denied";
     return this.audit({
       actor,
@@ -81,8 +81,8 @@ class AdminAccessPolicy {
     });
   }
 
-  audit({ actor, accountId, dataModelId, purpose, decision, reason, consentId = null }) {
-    const event = this.repository.addAuditEvent({
+  async audit({ actor, accountId, dataModelId, purpose, decision, reason, consentId = null }) {
+    const event = await this.repository.addAuditEvent({
       actor_id: actor.actor_id || "unknown_actor",
       actor_role: actor.role || "unknown_role",
       account_id: accountId,

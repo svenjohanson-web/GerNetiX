@@ -7,37 +7,37 @@ function createTestAiUsageServer() {
   return createDefaultAiUsageServer({ persistenceBackend: "memory" });
 }
 
-test("grants credits and exposes available credit balance", () => {
-  const service = createTestAiUsageServer();
-  const balance = service.grantCredits("acct-1", { amount_credits: 50, reason: "addon_purchase" });
+test("grants credits and exposes available credit balance", async () => {
+  const service = await createTestAiUsageServer();
+  const balance = await service.grantCredits("acct-1", { amount_credits: 50, reason: "addon_purchase" });
 
   assert.equal(balance.available_credits, 100050);
   assert.equal(balance.ledger_entries.some((entry) => entry.entry_type === "credit_grant"), true);
 });
 
-test("approves preflight and consumes credits on completion", () => {
-  const service = createTestAiUsageServer();
-  const preflight = service.preflight({
+test("approves preflight and consumes credits on completion", async () => {
+  const service = await createTestAiUsageServer();
+  const preflight = await service.preflight({
     account_id: "acct-1",
     user_id: "acct-1",
     model: "gpt-4.1-mini",
     estimated_input_tokens: 1000,
     estimated_output_tokens: 1000,
   });
-  const event = service.completeUsageEvent(preflight.event_id, {
+  const event = await service.completeUsageEvent(preflight.event_id, {
     input_tokens: 1000,
     output_tokens: 1000,
   });
-  const balance = service.getCreditBalance("acct-1");
+  const balance = await service.getCreditBalance("acct-1");
 
   assert.equal(preflight.allowed, true);
   assert.equal(event.status, "success");
   assert.equal(balance.consumed_credits, 2000);
 });
 
-test("prices GPT 5.6 Terra with separate input and output rates", () => {
-  const service = createTestAiUsageServer();
-  const preflight = service.preflight({
+test("prices GPT 5.6 Terra with separate input and output rates", async () => {
+  const service = await createTestAiUsageServer();
+  const preflight = await service.preflight({
     account_id: "acct-terra",
     model: "gpt-5.6-terra",
     estimated_input_tokens: 1000,
@@ -48,20 +48,20 @@ test("prices GPT 5.6 Terra with separate input and output rates", () => {
   assert.equal(preflight.estimated_provider_cost, 0.0175);
 });
 
-test("does not count approved preflight estimates as spent usage until completion", () => {
-  const service = createTestAiUsageServer();
-  const preflight = service.preflight({
+test("does not count approved preflight estimates as spent usage until completion", async () => {
+  const service = await createTestAiUsageServer();
+  const preflight = await service.preflight({
     account_id: "acct-provider-fails",
     user_id: "acct-provider-fails",
     model: "gpt-4.1-mini",
     estimated_input_tokens: 1000,
     estimated_output_tokens: 1000,
   });
-  const failed = service.failUsageEvent(preflight.event_id, {
+  const failed = await service.failUsageEvent(preflight.event_id, {
     error_code: "provider_error",
     error_message: "provider rejected request",
   });
-  const dashboard = service.adminDashboard();
+  const dashboard = await service.adminDashboard();
   const account = dashboard.by_account.find((item) => item.account_id === "acct-provider-fails");
 
   assert.equal(preflight.allowed, true);
@@ -73,25 +73,25 @@ test("does not count approved preflight estimates as spent usage until completio
   assert.equal(account.month_credits, 0);
 });
 
-test("rejects account id fallbacks instead of creating phantom usage accounts", () => {
-  const service = createTestAiUsageServer();
+test("rejects account id fallbacks instead of creating phantom usage accounts", async () => {
+  const service = await createTestAiUsageServer();
 
-  assert.throws(
-    () => service.grantCredits("demo", { amount_credits: 10 }),
+  await assert.rejects(
+    service.grantCredits("demo", { amount_credits: 10 }),
     /Account-ID-Fallbacks sind verboten/,
   );
-  assert.throws(
-    () => service.getCreditBalance(""),
+  await assert.rejects(
+    service.getCreditBalance(""),
     /Pflichtfeld fehlt: identity.user_id/,
   );
 });
 
-test("rejects mismatched user_id and account_id on preflight", () => {
-  const service = createTestAiUsageServer();
-  service.grantCredits("acct-1", { amount_credits: 50 });
+test("rejects mismatched user_id and account_id on preflight", async () => {
+  const service = await createTestAiUsageServer();
+  await service.grantCredits("acct-1", { amount_credits: 50 });
 
-  assert.throws(
-    () => service.preflight({
+  await assert.rejects(
+    service.preflight({
       account_id: "acct-1",
       user_id: "other-user",
       model: "gpt-4.1-mini",
@@ -102,30 +102,30 @@ test("rejects mismatched user_id and account_id on preflight", () => {
   );
 });
 
-test("rejects calls without sufficient credits and still logs usage event", () => {
-  const service = createTestAiUsageServer();
-  service.holdCredits("acct-low", { amount_credits: 99999, reason: "test_exhausted_budget" });
-  const preflight = service.preflight({
+test("rejects calls without sufficient credits and still logs usage event", async () => {
+  const service = await createTestAiUsageServer();
+  await service.holdCredits("acct-low", { amount_credits: 99999, reason: "test_exhausted_budget" });
+  const preflight = await service.preflight({
     account_id: "acct-low",
     model: "gpt-4.1",
     estimated_input_tokens: 8000,
     estimated_output_tokens: 4000,
     system_capabilities: ["system_capability.ai_premium_models"],
   });
-  const events = service.listUsageEvents({ account_id: "acct-low" });
+  const events = await service.listUsageEvents({ account_id: "acct-low" });
 
   assert.equal(preflight.allowed, false);
   assert.equal(preflight.rejection_reason, "insufficient_credits");
   assert.equal(events[0].status, "rejected");
-  const dashboard = service.adminDashboard();
+  const dashboard = await service.adminDashboard();
   assert.equal(dashboard.summary.rejection_breakdown[0].reason, "insufficient_credits");
   assert.equal(dashboard.summary.recent_rejections[0].protection_action, "block_call");
 });
 
-test("blocks premium model without premium model capability", () => {
-  const service = createTestAiUsageServer();
-  service.grantCredits("acct-1", { amount_credits: 100 });
-  const preflight = service.preflight({
+test("blocks premium model without premium model capability", async () => {
+  const service = await createTestAiUsageServer();
+  await service.grantCredits("acct-1", { amount_credits: 100 });
+  const preflight = await service.preflight({
     account_id: "acct-1",
     model: "gpt-4.1",
     estimated_input_tokens: 100,
@@ -136,15 +136,15 @@ test("blocks premium model without premium model capability", () => {
   assert.equal(preflight.rejection_reason, "premium_model_not_allowed");
 });
 
-test("admin cost controls can enable kill switch and audit the action", () => {
-  const service = createTestAiUsageServer();
-  const action = service.recordCostControlAction({
+test("admin cost controls can enable kill switch and audit the action", async () => {
+  const service = await createTestAiUsageServer();
+  const action = await service.recordCostControlAction({
     actor_id: "admin-1",
     action_type: "set_global_kill_switch",
     reason: "provider outage",
     payload: { enabled: true },
   });
-  const preflight = service.preflight({
+  const preflight = await service.preflight({
     account_id: "acct-1",
     model: "gpt-4.1-mini",
     estimated_input_tokens: 100,
@@ -153,24 +153,24 @@ test("admin cost controls can enable kill switch and audit the action", () => {
 
   assert.equal(action.result.global_kill_switch, true);
   assert.equal(preflight.rejection_reason, "global_kill_switch");
-  assert.equal(service.listAdminAuditEvents().length, 1);
+  assert.equal((await service.listAdminAuditEvents()).length, 1);
 });
 
-test("admin dashboard summarizes usage and flags budget proximity", () => {
-  const service = createTestAiUsageServer();
-  service.recordCostControlAction({
+test("admin dashboard summarizes usage and flags budget proximity", async () => {
+  const service = await createTestAiUsageServer();
+  await service.recordCostControlAction({
     action_type: "update_policy",
     reason: "test low limits",
     payload: { monthly_credit_limit: 2500, daily_credit_limit: 2500, budget_warning_threshold_percent: 50 },
   });
-  const preflight = service.preflight({
+  const preflight = await service.preflight({
     account_id: "acct-1",
     model: "gpt-4.1-mini",
     estimated_input_tokens: 1000,
     estimated_output_tokens: 1000,
   });
-  service.completeUsageEvent(preflight.event_id, { input_tokens: 1000, output_tokens: 1000 });
-  const dashboard = service.adminDashboard();
+  await service.completeUsageEvent(preflight.event_id, { input_tokens: 1000, output_tokens: 1000 });
+  const dashboard = await service.adminDashboard();
 
   assert.equal(dashboard.summary.successful, 1);
   assert.equal(dashboard.summary.cost_by_day.length, 1);
@@ -178,27 +178,27 @@ test("admin dashboard summarizes usage and flags budget proximity", () => {
   assert.equal(dashboard.suspicious_usage.some((item) => item.finding_type === "near_budget_limit"), true);
 });
 
-test("account rating tracks local unlimited and GPT token limits", () => {
-  const service = createTestAiUsageServer();
-  service.recordCostControlAction({
+test("account rating tracks local unlimited and GPT token limits", async () => {
+  const service = await createTestAiUsageServer();
+  await service.recordCostControlAction({
     action_type: "update_policy",
     reason: "test token rating",
     payload: { max_prompt_tokens: 100000, max_response_tokens: 100000, daily_credit_limit: 100000, monthly_credit_limit: 100000 },
   });
-  const gptPreflight = service.preflight({
+  const gptPreflight = await service.preflight({
     account_id: "acct-rating",
     model: "gpt-4.1-mini",
     estimated_input_tokens: 30000,
     estimated_output_tokens: 20000,
   });
-  service.completeUsageEvent(gptPreflight.event_id, { input_tokens: 30000, output_tokens: 20000 });
-  const localPreflight = service.preflight({
+  await service.completeUsageEvent(gptPreflight.event_id, { input_tokens: 30000, output_tokens: 20000 });
+  const localPreflight = await service.preflight({
     account_id: "acct-rating",
     model: "llama3.2:3b",
     estimated_input_tokens: 1000,
     estimated_output_tokens: 1000,
   });
-  const rating = service.getAccountRating("acct-rating");
+  const rating = await service.getAccountRating("acct-rating");
   const gpt = rating.sources.find((source) => source.source_id === "openai_gpt");
   const local = rating.sources.find((source) => source.source_id === "local_llm");
 
@@ -208,22 +208,22 @@ test("account rating tracks local unlimited and GPT token limits", () => {
   assert.equal(local.unlimited, true);
 });
 
-test("preflight rejects GPT source when monthly token rating is exhausted", () => {
-  const service = createTestAiUsageServer();
-  service.recordCostControlAction({
+test("preflight rejects GPT source when monthly token rating is exhausted", async () => {
+  const service = await createTestAiUsageServer();
+  await service.recordCostControlAction({
     action_type: "update_policy",
     reason: "test token rating",
     payload: { max_prompt_tokens: 100000, max_response_tokens: 100000, daily_credit_limit: 100000, monthly_credit_limit: 100000 },
   });
-  const first = service.preflight({
+  const first = await service.preflight({
     account_id: "acct-limit",
     model: "gpt-4.1-mini",
     estimated_input_tokens: 60000,
     estimated_output_tokens: 30000,
   });
-  service.completeUsageEvent(first.event_id, { input_tokens: 60000, output_tokens: 30000 });
-  service.grantCredits("acct-limit", { amount_credits: 20000 });
-  const second = service.preflight({
+  await service.completeUsageEvent(first.event_id, { input_tokens: 60000, output_tokens: 30000 });
+  await service.grantCredits("acct-limit", { amount_credits: 20000 });
+  const second = await service.preflight({
     account_id: "acct-limit",
     model: "gpt-4.1-mini",
     estimated_input_tokens: 8000,

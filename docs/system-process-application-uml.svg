@@ -197,16 +197,16 @@
     <text class="smallText" x="992" y="826" text-anchor="middle">Projekte in PostgreSQL · Artefakte SQLite</text>
 
     <rect class="node store" x="1125" y="785" width="250" height="58" rx="10"/>
-    <text class="titleText" x="1250" y="807" text-anchor="middle">Telemetry / Community / Device PostgreSQL</text>
-    <text class="smallText" x="1250" y="826" text-anchor="middle">getrennte Datenbanken · account-/projekt-/devicegebunden</text>
+    <text class="titleText" x="1250" y="807" text-anchor="middle">Weitere Domaenen-PostgreSQL</text>
+    <text class="smallText" x="1250" y="826" text-anchor="middle">Telemetry · Community · Device · Usage · Catalog · Shop · Ops</text>
 
     <rect class="node store" x="625" y="858" width="235" height="52" rx="10"/>
     <text class="titleText" x="742" y="880" text-anchor="middle">Oeffentliche Demo SQLite</text>
     <text class="smallText" x="742" y="899" text-anchor="middle">immutable Demo-Firmware</text>
 
     <rect class="node store" x="875" y="858" width="235" height="52" rx="10"/>
-    <text class="titleText" x="992" y="880" text-anchor="middle">Gemeinsamer Runtime-State</text>
-    <text class="smallText" x="992" y="899" text-anchor="middle">Restdomaenen · Migrationsbedarf</text>
+    <text class="titleText" x="992" y="880" text-anchor="middle">Legacy Runtime SQLite</text>
+    <text class="smallText" x="992" y="899" text-anchor="middle">nur read-only Altuebernahme</text>
 
     <rect class="node store" x="1125" y="858" width="250" height="52" rx="10"/>
     <text class="titleText" x="1250" y="880" text-anchor="middle">AI Context PostgreSQL</text>
@@ -270,9 +270,9 @@
   <path class="line" d="M 1480 204 L 1250 795"/>
   <path class="line dashed" d="M 1055 289 L 745 795"/>
   <path class="line dashed" d="M 1265 289 L 745 795"/>
-  <path class="line dashed" d="M 1480 289 L 745 795"/>
-  <path class="line dashed" d="M 1055 374 L 745 795"/>
-  <path class="line dashed" d="M 1265 374 L 745 795"/>
+  <path class="line" d="M 1480 289 L 1250 795"/>
+  <path class="line" d="M 1055 374 L 1250 795"/>
+  <path class="line" d="M 1265 374 L 1250 795"/>
   <path class="line dashed" d="M 1480 374 L 745 795"/>
   <path class="line dashed" d="M 1055 459 L 745 795"/>
   <path class="line dashed" d="M 1265 459 L 745 795"/>
