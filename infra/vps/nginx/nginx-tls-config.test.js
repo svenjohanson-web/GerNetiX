@@ -22,7 +22,8 @@ test("public HTTP exposes ACME only and never the platform", () => {
   }
   assert.match(http, /\.well-known\/acme-challenge/);
   assert.doesNotMatch(http, /return 301 https:\/\/\$host\$request_uri/);
-  assert.match(http, /listen 8080;\s+default_server;[\s\S]*return 404;/);
+  assert.match(http, /listen 8080 default_server;[\s\S]*return 404;/);
+  assert.doesNotMatch(http, /^\s*default_server;/m);
   assert.match(http, /listen 8081;[\s\S]*proxy_pass http:\/\/identity-server:4300/);
 });
 
