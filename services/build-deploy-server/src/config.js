@@ -32,6 +32,15 @@ function createConfig(env = process.env) {
       : env.NODE_ENV === "test"
         ? ":memory:"
         : path.join(runtimeRoot, "gernetix-build-artifacts.sqlite"),
+    artifactPersistenceBackend: env.BUILD_ARTIFACT_PERSISTENCE_BACKEND || "sqlite",
+    postgres: {
+      connectionString: env.BUILD_POSTGRES_URL || "",
+      host: env.BUILD_POSTGRES_HOST || "127.0.0.1",
+      port: Number(env.BUILD_POSTGRES_PORT || 5432),
+      database: env.BUILD_POSTGRES_DATABASE || "gernetix_runtime",
+      user: env.BUILD_POSTGRES_USER || "gernetix_runtime",
+      password: env.BUILD_POSTGRES_PASSWORD || "",
+    },
     persistenceBackend: env.PERSISTENCE_BACKEND || env.BUILD_DEPLOY_PERSISTENCE_BACKEND || "memory",
     sqlitePath: env.PERSISTENCE_SQLITE_PATH || env.BUILD_DEPLOY_SQLITE_PATH || path.join(runtimeRoot, "gernetix-services.sqlite"),
     interfaceTelemetrySqlitePath: env.INTERFACE_TELEMETRY_SQLITE_PATH

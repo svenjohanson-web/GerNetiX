@@ -80,8 +80,8 @@ async function main() {
       connectionString: process.env.DEVICE_MANAGEMENT_POSTGRES_URL || undefined,
       host: process.env.DEVICE_MANAGEMENT_POSTGRES_HOST || "device-management-postgres",
       port: Number(process.env.DEVICE_MANAGEMENT_POSTGRES_PORT || 5432),
-      database: process.env.DEVICE_MANAGEMENT_POSTGRES_DATABASE || "gernetix_device_management",
-      user: process.env.DEVICE_MANAGEMENT_POSTGRES_USER || "gernetix_device_management",
+      database: process.env.DEVICE_MANAGEMENT_POSTGRES_DATABASE || "gernetix_runtime",
+      user: process.env.DEVICE_MANAGEMENT_POSTGRES_USER || "gernetix_runtime",
       password: requiredSecret(process.env.DEVICE_MANAGEMENT_POSTGRES_PASSWORD),
     },
   });

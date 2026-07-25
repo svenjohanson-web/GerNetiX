@@ -59,16 +59,7 @@ flowchart LR
     privateVpsEdge["Privater VPS Edge<br/>PWA, Build, MQTT-TLS<br/>nur WireGuard 10.77.0.0/24"]
     mqttBroker["MQTT Broker<br/>Mosquitto<br/>TLS :8883 / WS :9001"]
     localOllama["Lokaler Ollama LLM<br/>:11434"]
-    identityPostgres["Identity PostgreSQL 17<br/>VPS-intern :5432<br/>SSH-Dev-Tunnel :15432"]
-    projectPostgres["Project PostgreSQL 17<br/>VPS-intern :5432"]
-    telemetryPostgres["Telemetry PostgreSQL 17<br/>VPS-intern :5432"]
-    communityPostgres["Community PostgreSQL 17<br/>VPS-intern :5432"]
-    deviceManagementPostgres["Device Management PostgreSQL 17<br/>VPS-intern :5432"]
-    aiUsagePostgres["AI Usage PostgreSQL 17<br/>VPS-intern :5432"]
-    hardwareCatalogPostgres["Hardware Catalog PostgreSQL 17<br/>VPS-intern :5432"]
-    hardwareShopPostgres["Hardware Shop PostgreSQL 17<br/>VPS-intern :5432"]
-    operationsPostgres["Operations PostgreSQL 17<br/>VPS-intern :5432"]
-    aiContextPostgres["PostgreSQL 17 + pgvector<br/>intern :5432"]
+    runtimePostgres["Zentrales PostgreSQL 17 + pgvector<br/>gernetix_runtime · intern :5432<br/>SSH-Dev-Tunnel :25432"]
     externalLlm["Externe LLM API<br/>OpenAI-kompatibel / Claude"]
   end
 
@@ -119,8 +110,8 @@ flowchart LR
   user --> architectureDocs
 
   platformUi --> identity
-  identity --> identityPostgres
-  identityPostgres --> identityDb
+  identity --> runtimePostgres
+  runtimePostgres --> identityDb
   privateVpsEdge --> buildDeploy
   privateVpsEdge --> mqttBroker
   recoveryHmi --> recovery
@@ -138,8 +129,8 @@ flowchart LR
   identity --> aiUsage
   identity --> aiContext
   aiContext -->|"Embeddings"| localOllama
-  aiContext --> aiContextPostgres
-  aiContextPostgres --> aiContextDb
+  aiContext --> runtimePostgres
+  runtimePostgres --> aiContextDb
   identity -->|"lokale Help-Wissenssuche"| aiContext
   identity --> localOllama
   identity -->|"SMTP/TLS"| ionosMail["IONOS Mail"]
@@ -176,33 +167,33 @@ flowchart LR
   identity -. "einmalige Altuebernahme" .-> identityLegacyDb
   identity -. "immutable Releases nach Sichtbarkeitsklasse" .-> releaseDb
   identity -. "owner_only Account-Assets" .-> accountAssetDb
-  projectServer --> projectPostgres
-  projectPostgres --> projectDb
+  projectServer --> runtimePostgres
+  runtimePostgres --> projectDb
   projectServer -. "einmalige Altuebernahme" .-> projectLegacyDb
   publicDemo -. "veröffentlichte Metadaten + immutable firmware.bin" .-> publicDemoDb
   buildDeploy -. "Firmware-, ELF-, HEX-, Map- und Log-BLOBs" .-> buildArtifactDb
-  deviceManagement --> deviceManagementPostgres
-  deviceManagementPostgres --> deviceManagementDb
-  telemetryServer --> telemetryPostgres
-  telemetryPostgres --> telemetryDb
+  deviceManagement --> runtimePostgres
+  runtimePostgres --> deviceManagementDb
+  telemetryServer --> runtimePostgres
+  runtimePostgres --> telemetryDb
   telemetryServer -. "einmalige Altuebernahme" .-> telemetryLegacyDb
   provisioning -. "fluechtiger Workflow-State;<br/>Ergebnis an Device Management / Artifact Store" .-> deviceManagement
   recovery -. "fluechtiger Workflow-State;<br/>Ergebnis an Device Management" .-> deviceManagement
-  hardwareShop --> hardwareShopPostgres
-  hardwareShopPostgres --> hardwareShopDb
+  hardwareShop --> runtimePostgres
+  runtimePostgres --> hardwareShopDb
   hardwareShop -. "einmalige Altuebernahme" .-> runtimeDb
-  hardwareCatalog --> hardwareCatalogPostgres
-  hardwareCatalogPostgres --> hardwareCatalogDb
+  hardwareCatalog --> runtimePostgres
+  runtimePostgres --> hardwareCatalogDb
   hardwareCatalog -. "einmalige Altuebernahme" .-> runtimeDb
-  aiUsage --> aiUsagePostgres
-  aiUsagePostgres --> aiUsageDb
+  aiUsage --> runtimePostgres
+  runtimePostgres --> aiUsageDb
   aiUsage -. "einmalige Altuebernahme" .-> runtimeDb
-  communityPlatform --> communityPostgres
-  communityPostgres --> communityDb
+  communityPlatform --> runtimePostgres
+  runtimePostgres --> communityDb
   communityPlatform -. "einmalige Altuebernahme" .-> communityLegacyDb
   communityAi -. "fluechtiger Workflow-State;<br/>dauerhafte Ergebnisse per Domaenen-API" .-> communityPlatform
-  adminTool --> operationsPostgres
-  operationsPostgres --> operationsDb
+  adminTool --> runtimePostgres
+  runtimePostgres --> operationsDb
   adminTool -. "einmalige Altuebernahme" .-> runtimeDb
 
   e2e --> provisioning
@@ -231,7 +222,7 @@ flowchart LR
 | Admin Access Server + Admin Console | 4610 | `http://127.0.0.1:4610/admin/` | Eigene Admin-Login-PWA, persistente Sitzungen und serverseitige Rollenpruefung; proxyed danach die Admin-Funktionen |
 | Admin Tool API | 4600 | nur intern durch Admin Access Server | Account-Blatt, KI Usage, zentrale Ressourcenlimits pro Nutzerprofil, Consent-/Audit-nahe API und LLM-Routing |
 | Device Management Server | 4700 | `http://127.0.0.1:4700/` | Devices, Ownership, Purchase Contexts, Support-Status |
-| Telemetry Server | 5600 | nur intern im Docker-Netz | Nimmt bereits authentifizierte Board-Telemetrie an, prueft Board-/Projektbesitz, persistiert Messwerte und Ereignisse in der eigenen konto- und projektpartitionierten PostgreSQL-Datenbank mit Retention, kann gezielten Projekt-Push ausloesen und leitet kurzlebige Runtime-Zeilen an Identity weiter |
+| Telemetry Server | 5600 | nur intern im Docker-Netz | Nimmt bereits authentifizierte Board-Telemetrie an, prueft Board-/Projektbesitz, persistiert Messwerte und Ereignisse konto- und projektpartitioniert in `telemetry_*` mit Retention, kann gezielten Projekt-Push ausloesen und leitet kurzlebige Runtime-Zeilen an Identity weiter |
 | Project Server | 4800 | `http://127.0.0.1:4800/` | Projekte, Quellen, Build-Jobs, Learning Feedback sowie PostgreSQL-persistierte Ressourcenlimits und Nutzungswerte in eigener Project-Datenbank |
 | Hardware Shop | 4900 | `http://127.0.0.1:4900/` | PostgreSQL-persistente Angebote, Warenkoerbe, Bestellungen und Purchase Contexts; liest Hardwaredaten als Client des Hardware Catalog |
 | Hardware Catalog | 4910 | VPS-intern sowie ausschliesslich am WireGuard-Interface `http://10.77.0.1:4910/`; kein oeffentlicher Listener | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als PostgreSQL-persistente Quelle |
@@ -239,7 +230,7 @@ flowchart LR
 | AI Usage Server | 5000 | `http://127.0.0.1:5000/` | Credits, Quellenrating je Account, Preflight, Usage Events, Cost Controls |
 | Context Manager | 5050 | `http://127.0.0.1:5050/context-manager/` | Projektkontext, Vorschlaege, Context Packs |
 | Recovery Tool Server | 5100 | `http://127.0.0.1:5100/` | eigenstaendige Nutzer-/Support-HMI, Recovery-Sessions, Credential-Erneuerung, Connectivity-Recovery |
-| Community Platform | 5200 | intern im Docker-Netz | Öffentliche Community-Anfragen sowie private, account- und operatorgebundene Projektbegleitung; eigene PostgreSQL-Persistenz |
+| Community Platform | 5200 | intern im Docker-Netz | Öffentliche Community-Anfragen sowie private, account- und operatorgebundene Projektbegleitung; eigener Tabellenbereich `community_*` in `gernetix_runtime` |
 | Community AI Assistant | 5300 | `http://127.0.0.1:5300/` | KI-gestuetzte Community-Antworten |
 | Persistence Server | 5400 | `http://127.0.0.1:5400/` | HTTP-Zugriff auf generische SQLite-State-Dokumente |
 | AI Context Server | 5500 | `http://127.0.0.1:5500/` | Kontext-Grants, Prompt-Grundlagen, Architektur-, Intent- und lokales Help-Wissen, Access Policy, Preflight und Audit fuer KI-Datenzugriff |
@@ -306,9 +297,9 @@ flowchart LR
   freigegeben. Der jeweilige VPS-Service bleibt alleiniger Schreiber. Lokale
   Komplettstarts sind isolierte Testinstanzen; der SSH-Tunnel transportiert nur
   HTTP-Zugriffe auf die kanonische VPS-Plattform.
-- Identity, Project Server, Telemetry, Community, Device Management, AI Usage, Hardware Catalog, Hardware Shop und Operations nutzen getrennte PostgreSQL-17-Datenbanken. Ihre bisherigen SQLite-Bestaende dienen nur der einmaligen, idempotenten Altuebernahme. Plattform-Releases, Account-Assets, Build-Artefakte und oeffentliche Demos besitzen weiterhin getrennte SQLite-Dateien auf dem VPS. Die Zuordnung verwendet ausschliesslich technische `account_id`-/`user_id`- und `project_id`-Werte; Klaridentitaeten bleiben in Identity-PostgreSQL. Der gemeinsame Runtime-State ist nur noch read-only Altquelle und wird von keinem produktiven Compose-Dienst beschrieben. Pfade, Schutzklassen und bekannte Abweichungen stehen im [Persistenz- und Asset-Speicherkonzept](persistence-and-asset-storage.md).
-- Der AI Context Server nutzt auf dem VPS eine eigene PostgreSQL-17-Datenbank mit pgvector. Kontext-Grants, Prompt-Grundlagen, Architektur-Bausteine samt Embeddings, globale Kontext-Policy und Audit-Events bleiben getrennt vom allgemeinen Runtime-State. Eine vorhandene AI-Context-SQLite wird einmalig automatisch importiert; lokal bleibt SQLite als Fallback moeglich.
-- Fuer haeufige Entwicklung kann nur Identity auf `127.0.0.1:4300` lokal laufen. Ein SSH-Tunnel innerhalb von WireGuard verbindet diesen Prozess mit der getrennten gemeinsamen Entwicklungs-Identity-PostgreSQL-Datenbank und mit den loopback-gebundenen Domaenendiensten auf dem VPS. Keine VPS-SQLite-Datei wird freigegeben oder lokal geoeffnet; dieser Modus ist nicht fuer Produktionsdaten zugelassen.
+- Alle dauerhaften VPS-Laufzeitdaten liegen in genau einem PostgreSQL-17/pgvector-Prozess und der Datenbank `gernetix_runtime`. Domaenen bleiben durch Tabellenpraefixe, Service-APIs und Autorisierung getrennt. Die bisherigen PostgreSQL-Volumes und SQLite-Dateien dienen nur der einmaligen read-only Altuebernahme; Fachservices mounten sie nicht mehr. Pfade, Schutzklassen und Migrationsregeln stehen im [Persistenz- und Asset-Speicherkonzept](persistence-and-asset-storage.md).
+- Der AI Context Server nutzt die `ai_context_*`-Tabellen und pgvector in `gernetix_runtime`. Grants, Prompt-Grundlagen, Embeddings, Policy und Audit bleiben durch Tabellen und Service-Vertrag fachlich getrennt, aber nicht durch einen zweiten Datenbankprozess.
+- Fuer haeufige Entwicklung kann nur Identity auf `127.0.0.1:4300` lokal laufen. Ein SSH-Tunnel innerhalb von WireGuard verbindet diesen Prozess mit der gemeinsamen Entwicklungsdatenbank `gernetix_runtime` und den loopback-gebundenen Domaenendiensten auf dem VPS. Keine VPS-SQLite-Datei wird freigegeben oder lokal geoeffnet; dieser Modus ist nicht fuer Produktionsdaten zugelassen.
 - GerNetiX Help sucht vor jedem Modellaufruf ausschliesslich kuratiertes Help-Wissen im AI Context Server. Nur die passenden Artikel werden dem lokalen Ollama-Modell als Kontext gegeben; ohne Treffer antwortet Help ohne Modellaufruf. Das Admin Tool pflegt diese Agenten-Wissenseintraege getrennt von den sichtbaren Hilfeartikeln.
 - Unsichere Architektur-Erweiterungen werden im AI Context Server zu deduplizierten, priorisierten Klaerfaellen zusammengefuehrt. Das Admin Tool kann sie bestaetigen, korrigieren, priorisieren, zurueckstellen oder ignorieren. Nur bestaetigte oder korrigierte Bedeutungen werden als globale oder accountisolierte Intent-Beispiele eingebettet und bei spaeteren Interpretationen gesucht; ein separates Ticketsystem ist dafuer nicht erforderlich.
 - Dauerhafte Persistenz ist in GerNetiX ausschliesslich SQL (SQLite oder PostgreSQL). JSON-Dateien, YAML-Dateien, Prozessspeicher, Browser-State, Temp-Dateien, Caches und generierte Sichten sind nur Logic/Control/View, Import-/Export, Test-Hilfe oder Cache und duerfen keine fachliche Quelle der Wahrheit sein.

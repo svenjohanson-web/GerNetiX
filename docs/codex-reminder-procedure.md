@@ -62,7 +62,8 @@ Codex soll lokale Serverprozesse sparsam behandeln:
 - Graph-Import nur fuer Legacy-/Bootstrap-YAML oder nach bewusstem YAML-Export ausfuehren.
 - Graph-Import oder Graph-Validierung nur einmal am Ende eines fachlichen Blocks oder direkt vor Commit ausfuehren.
 - Live-LLM-Aufrufe vermeiden, wenn ein Unit-Test oder API-Contract-Test denselben Nachweis liefert.
-- Project Server ist die PostgreSQL-Wahrheit fuer accountgebundene Projekte.
+- Der VPS betreibt genau einen PostgreSQL-17/pgvector-Prozess und die Datenbank `gernetix_runtime`; fachliche Trennung erfolgt ueber Tabellenpraefixe und Service-APIs, nicht ueber weitere Datenbankprozesse oder Laufzeit-SQLite-Dateien.
+- Project Server ist innerhalb dieser Datenbank die PostgreSQL-Wahrheit fuer accountgebundene Projekte.
 - Telemetry Server ist die PostgreSQL-Wahrheit fuer konto- und projektgebundene Telemetrie.
 - Community Platform ist die PostgreSQL-Wahrheit fuer oeffentliche Fragen und private Projektbegleitung.
 - AI Usage Server ist die PostgreSQL-Wahrheit fuer Credit-Konten, Ledger, KI-Nutzungsereignisse, Cost-Control-Policy und Audit.

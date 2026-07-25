@@ -90,16 +90,10 @@ node tools/connect-staging.js
 node tools/start-identity-remote-dev.js
 ```
 
-Der lokale Identity Server verwendet dann die zentrale Identity-PostgreSQL-
-Datenbank ueber den SSH-Tunnel. Projekte werden vom Project Server aus der
-zentralen Project-PostgreSQL-Datenbank geliefert; Telemetrie liegt ebenfalls
-in einer eigenen PostgreSQL-Datenbank. Community verwendet ebenfalls eine
-getrennte PostgreSQL-Datenbank, ebenso Device Management fuer Inventar,
-Pairing und Supportdaten, AI Usage fuer Credits, Ledger und Cost Controls sowie
-Hardware Catalog fuer den gemeinsamen technischen Katalog und Hardware Shop
-fuer Angebote, Warenkoerbe, Bestellungen und Purchase Contexts.
-Weitere persistente Dienste laufen auf dem VPS; ihre SQLite-Dateien bleiben
-ausschliesslich in den VPS-Volumes. Alle Domaenen werden nur ueber die
+Der lokale Identity Server verwendet die zentrale PostgreSQL-Datenbank
+`gernetix_runtime` ueber den SSH-Tunnel. Projekte, Telemetrie, Community,
+Device Management, AI Usage, Hardware Catalog und Hardware Shop verwenden
+dieselbe Datenbank auf dem VPS, werden lokal aber ausschliesslich ueber ihre
 getunnelten Dienst-APIs angesprochen. Ein lokaler PostgreSQL-, AI-Context- oder
 sonstiger SQL-Prozess ist dafuer nicht erforderlich.
 

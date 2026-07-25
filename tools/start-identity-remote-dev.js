@@ -17,6 +17,10 @@ function loadRemoteDevConfig(environment = process.env) {
   if (!String(config.IDENTITY_POSTGRES_PASSWORD || "").trim()) {
     throw new Error("IDENTITY_POSTGRES_PASSWORD fehlt in .env.remote-dev.local.");
   }
+  const runtimeStateKey = Buffer.from(String(config.RUNTIME_STATE_ENCRYPTION_KEY || ""), "base64");
+  if (runtimeStateKey.length !== 32) {
+    throw new Error("RUNTIME_STATE_ENCRYPTION_KEY muss als Base64-kodierter 32-Byte-Schluessel in .env.remote-dev.local stehen.");
+  }
   return {
     ...config,
     HOST: "127.0.0.1",
@@ -25,9 +29,9 @@ function loadRemoteDevConfig(environment = process.env) {
     IDENTITY_APP_BASE_URL: config.IDENTITY_APP_BASE_URL || "http://localhost:4300",
     IDENTITY_PERSISTENCE_BACKEND: "postgres",
     IDENTITY_POSTGRES_HOST: config.IDENTITY_POSTGRES_HOST || "127.0.0.1",
-    IDENTITY_POSTGRES_PORT: config.IDENTITY_POSTGRES_PORT || "15432",
-    IDENTITY_POSTGRES_DATABASE: config.IDENTITY_POSTGRES_DATABASE || "gernetix_identity",
-    IDENTITY_POSTGRES_USER: config.IDENTITY_POSTGRES_USER || "gernetix_identity",
+    IDENTITY_POSTGRES_PORT: config.IDENTITY_POSTGRES_PORT || "25432",
+    IDENTITY_POSTGRES_DATABASE: config.IDENTITY_POSTGRES_DATABASE || "gernetix_runtime",
+    IDENTITY_POSTGRES_USER: config.IDENTITY_POSTGRES_USER || "gernetix_runtime",
     PROJECT_SERVER_BASE_URL: config.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800",
     BUILD_DEPLOY_BASE_URL: config.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400",
     DEVICE_MANAGEMENT_BASE_URL: config.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700",

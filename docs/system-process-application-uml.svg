@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="980" viewBox="0 0 1680 980" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Remote-first Architektur: Die kanonischen GerNetiX-Services sowie Identity-, Project-, Telemetry-, Community-, Device-Management-, AI-Usage-, Hardware-Catalog-, Hardware-Shop-, Operations- und AI-Context-PostgreSQL laufen auf dem privaten VPS. Identity speichert dort auch accountgebundene Lesestaende versionierter Wissenskapitel; das Dashboard führt über eine berechtigungsgefilterte Benachrichtigung zur Veröffentlichungshistorie. PWA, Build und MQTT-TLS sind ausschließlich über WireGuard erreichbar. Ein lokaler Identity Server auf Port 4300 verwendet zentrale VPS-Dienste per SSH-Tunnel; VPS-SQLite-Dateien werden nicht geteilt.</desc>
+  <desc id="desc">Remote-first Architektur: Alle dauerhaften GerNetiX-Laufzeitdaten liegen in einer zentralen PostgreSQL-17/pgvector-Datenbank gernetix_runtime auf dem privaten VPS. Domaenen sind durch Tabellenpraefixe und Service-APIs getrennt. Alte SQLite-Dateien sind nur read-only Migrationsquellen. Ein lokaler Identity Server auf Port 4300 verwendet die zentrale Datenbank und VPS-Dienste per SSH-Tunnel.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -26,7 +26,7 @@
 
   <rect class="bg" width="1680" height="980"/>
   <text x="40" y="42" class="titleText" style="font-size:24px">GerNetiX Serverprozesse und Applikationen</text>
-  <text x="40" y="67" class="smallText">Privater VPS als SQL-Wahrheit · Identity + Project + Telemetry + Community + Devices in PostgreSQL · lokaler Identity :4300 via SSH</text>
+  <text x="40" y="67" class="smallText">Eine PostgreSQL-Laufzeitdatenbank · Domaenen per Tabellenpraefix und API getrennt · lokaler Identity :4300 via SSH</text>
 
   <g id="actors">
     <rect class="node actor" x="40" y="110" width="150" height="62" rx="10"/>
@@ -189,27 +189,27 @@
     <text class="clusterTitle" x="630" y="764">SQL-Persistenz / Wissensbasis</text>
 
     <rect class="node store" x="625" y="785" width="235" height="58" rx="10"/>
-    <text class="titleText" x="742" y="807" text-anchor="middle">Identity PostgreSQL / Assets</text>
-    <text class="smallText" x="742" y="826" text-anchor="middle">Accounts + Kapitel-Lesestaende · 2 Asset-SQLite</text>
+    <text class="titleText" x="742" y="807" text-anchor="middle">Zentrales PostgreSQL / Identity</text>
+    <text class="smallText" x="742" y="826" text-anchor="middle">Accounts · Assets · Releases · Konfiguration</text>
 
     <rect class="node store" x="875" y="785" width="235" height="58" rx="10"/>
-    <text class="titleText" x="992" y="807" text-anchor="middle">Project PostgreSQL / Build</text>
-    <text class="smallText" x="992" y="826" text-anchor="middle">Projekte in PostgreSQL · Artefakte SQLite</text>
+    <text class="titleText" x="992" y="807" text-anchor="middle">Dasselbe PostgreSQL / Project + Build</text>
+    <text class="smallText" x="992" y="826" text-anchor="middle">Projekte · Build-Artefakte · OTA</text>
 
     <rect class="node store" x="1125" y="785" width="250" height="58" rx="10"/>
     <text class="titleText" x="1250" y="807" text-anchor="middle">Weitere Domaenen-PostgreSQL</text>
     <text class="smallText" x="1250" y="826" text-anchor="middle">Telemetry · Community · Device · Usage · Catalog · Shop · Ops</text>
 
     <rect class="node store" x="625" y="858" width="235" height="52" rx="10"/>
-    <text class="titleText" x="742" y="880" text-anchor="middle">Oeffentliche Demo SQLite</text>
-    <text class="smallText" x="742" y="899" text-anchor="middle">immutable Demo-Firmware</text>
+    <text class="titleText" x="742" y="880" text-anchor="middle">Dasselbe PostgreSQL / Demos</text>
+    <text class="smallText" x="742" y="899" text-anchor="middle">immutable Demo-Firmware als BYTEA</text>
 
     <rect class="node store" x="875" y="858" width="235" height="52" rx="10"/>
     <text class="titleText" x="992" y="880" text-anchor="middle">Legacy Runtime SQLite</text>
-    <text class="smallText" x="992" y="899" text-anchor="middle">nur read-only Altuebernahme</text>
+    <text class="smallText" x="992" y="899" text-anchor="middle">nur am Migrationscontainer read-only</text>
 
     <rect class="node store" x="1125" y="858" width="250" height="52" rx="10"/>
-    <text class="titleText" x="1250" y="880" text-anchor="middle">AI Context PostgreSQL</text>
+    <text class="titleText" x="1250" y="880" text-anchor="middle">Dasselbe PostgreSQL + pgvector</text>
     <text class="smallText" x="1250" y="899" text-anchor="middle">pgvector · produktive Wissensdaten</text>
   </g>
 

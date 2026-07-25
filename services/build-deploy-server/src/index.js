@@ -1,10 +1,11 @@
 const { BuildCache } = require("./modules/build-cache");
 const { BuildPackageStore } = require("./modules/build-package-store");
 const { ArtifactStore } = require("./modules/artifact-store");
+const { PostgresArtifactStore } = require("./modules/postgres-artifact-store");
 const { FirmwareBuildJobRunner } = require("./modules/firmware-build-job-runner");
 const { DeployJobOrchestrator } = require("./modules/deploy-job-orchestrator");
 const { MqttTransport } = require("./modules/mqtt-transport");
-const { PemOtaCommandSigner, SqliteOtaAcknowledgementStore } = require("./modules/ota-security");
+const { PemOtaCommandSigner, SqliteOtaAcknowledgementStore, PostgresOtaAcknowledgementStore } = require("./modules/ota-security");
 const { DeviceJobLock } = require("./modules/device-job-lock");
 const { BuildDeployService } = require("./services/build-deploy-service");
 const { createConfig } = require("./config");
@@ -12,8 +13,7 @@ const { createHttpApp } = require("./http-app");
 const { SqliteStateStore } = require("../../shared");
 const { createInterfaceCallTelemetry } = require("../../shared/persistence/interface-call-telemetry");
 
-function createDefaultBuildDeployService(config = createConfig()) {
-  const acknowledgementStore = new SqliteOtaAcknowledgementStore(config.sqlitePath);
+function createBuildDeployService(config, { acknowledgementStore, artifactStore }) {
   const authorizationSigner = new PemOtaCommandSigner({
     privateKeyPath: config.otaSigningPrivateKeyPath,
     keyId: config.otaSigningKeyId,
@@ -43,11 +43,7 @@ function createDefaultBuildDeployService(config = createConfig()) {
       cacheDir: config.cacheDir,
       allowMockRunner: config.allowMockRunner,
     }),
-    artifactStore: new ArtifactStore({
-      artifactDir: config.artifactDir,
-      sqlitePath: config.artifactSqlitePath,
-      publicBaseUrl: config.publicBaseUrl,
-    }),
+    artifactStore,
     deployOrchestrator: new DeployJobOrchestrator({
       publicBaseUrl: config.publicBaseUrl,
       mqttPublisher: mqttTransport,
@@ -64,15 +60,42 @@ function createDefaultBuildDeployService(config = createConfig()) {
   });
 }
 
+function createDefaultBuildDeployService(config = createConfig()) {
+  if (config.artifactPersistenceBackend === "postgres") {
+    const { Pool } = require("pg");
+    const poolOptions = config.postgres.connectionString
+      ? { connectionString: config.postgres.connectionString }
+      : config.postgres;
+    const runtimePool = new Pool(poolOptions);
+    return Promise.all([
+      PostgresOtaAcknowledgementStore.create(runtimePool),
+      PostgresArtifactStore.create({ poolOptions, publicBaseUrl: config.publicBaseUrl }),
+    ]).then(([acknowledgementStore, artifactStore]) => createBuildDeployService(config, {
+      acknowledgementStore,
+      artifactStore,
+    }));
+  }
+  return createBuildDeployService(config, {
+    acknowledgementStore: new SqliteOtaAcknowledgementStore(config.sqlitePath),
+    artifactStore: new ArtifactStore({
+      artifactDir: config.artifactDir,
+      sqlitePath: config.artifactSqlitePath,
+      publicBaseUrl: config.publicBaseUrl,
+    }),
+  });
+}
+
 module.exports = {
   BuildCache,
   BuildPackageStore,
   ArtifactStore,
+  PostgresArtifactStore,
   FirmwareBuildJobRunner,
   DeployJobOrchestrator,
   MqttTransport,
   PemOtaCommandSigner,
   SqliteOtaAcknowledgementStore,
+  PostgresOtaAcknowledgementStore,
   DeviceJobLock,
   BuildDeployService,
   createConfig,

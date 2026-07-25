@@ -18,23 +18,23 @@ function createHttpApp({ service, publisherToken, publicDir = nodePath.join(__di
       return serveStatic(res, nodePath.join(__dirname, "..", "..", "identity-server", "node_modules", "esptool-js"), path.replace("/vendor/esptool-js", ""));
     }
     if (req.method === "GET" && path === "/api/public/demos") {
-      return sendJson(res, 200, { items: service.listPublicDemos() });
+      return sendJson(res, 200, { items: await service.listPublicDemos() });
     }
     const firmware = path.match(/^\/api\/public\/demos\/([^/]+)\/releases\/([^/]+)\/firmware$/);
     if (req.method === "GET" && firmware) {
-      return sendFirmware(res, service.getFirmware(decodeURIComponent(firmware[1]), decodeURIComponent(firmware[2])));
+      return sendFirmware(res, await service.getFirmware(decodeURIComponent(firmware[1]), decodeURIComponent(firmware[2])));
     }
     const manifest = path.match(/^\/api\/public\/demos\/([^/]+)\/releases\/([^/]+)\/flash-manifest$/);
-    if (req.method === "GET" && manifest) return sendJson(res, 200, service.getFlashManifest(decodeURIComponent(manifest[1]), decodeURIComponent(manifest[2])));
+    if (req.method === "GET" && manifest) return sendJson(res, 200, await service.getFlashManifest(decodeURIComponent(manifest[1]), decodeURIComponent(manifest[2])));
     const asset = path.match(/^\/api\/public\/demos\/([^/]+)\/releases\/([^/]+)\/assets\/(bootloader|partitions|firmware)$/);
-    if (req.method === "GET" && asset) return sendFirmware(res, service.getAsset(decodeURIComponent(asset[1]), decodeURIComponent(asset[2]), asset[3]));
+    if (req.method === "GET" && asset) return sendFirmware(res, await service.getAsset(decodeURIComponent(asset[1]), decodeURIComponent(asset[2]), asset[3]));
     const demo = path.match(/^\/api\/public\/demos\/([^/]+)$/);
     if (req.method === "GET" && demo) {
-      return sendJson(res, 200, service.getPublicDemo(decodeURIComponent(demo[1])));
+      return sendJson(res, 200, await service.getPublicDemo(decodeURIComponent(demo[1])));
     }
     if (req.method === "POST" && path === "/api/internal/public-demos") {
       requirePublisherToken(req, publisherToken);
-      return sendJson(res, 201, service.publishDemo(await readJsonBody(req)));
+      return sendJson(res, 201, await service.publishDemo(await readJsonBody(req)));
     }
     return sendJson(res, 404, { error: "not_found" });
   };

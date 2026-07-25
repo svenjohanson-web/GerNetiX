@@ -11,8 +11,8 @@ function createConfig(env = process.env) {
       connectionString: env.AI_USAGE_POSTGRES_URL || "",
       host: env.AI_USAGE_POSTGRES_HOST || "127.0.0.1",
       port: Number(env.AI_USAGE_POSTGRES_PORT || 5432),
-      database: env.AI_USAGE_POSTGRES_DATABASE || "gernetix_ai_usage",
-      user: env.AI_USAGE_POSTGRES_USER || "gernetix_ai_usage",
+      database: env.AI_USAGE_POSTGRES_DATABASE || "gernetix_runtime",
+      user: env.AI_USAGE_POSTGRES_USER || "gernetix_runtime",
       password: env.AI_USAGE_POSTGRES_PASSWORD || "",
     },
   };

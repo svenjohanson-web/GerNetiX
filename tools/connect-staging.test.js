@@ -11,11 +11,11 @@ test("forwards platform, admin and loopback-only identity PostgreSQL access", ()
     remotePort: 4610,
     platformPort: 14300,
     remotePlatformPort: 8080,
-    identityDbPort: 15432,
-    remoteIdentityDbPort: 15432,
+    identityDbPort: 25432,
+    remoteIdentityDbPort: 25432,
   });
   assert.equal(args.filter((arg) => arg === "-L").length, 3 + REMOTE_DEV_SERVICE_FORWARDS.length);
-  assert.ok(args.includes("15432:127.0.0.1:15432"));
+  assert.ok(args.includes("25432:127.0.0.1:25432"));
   for (const [localPort, remotePort] of REMOTE_DEV_SERVICE_FORWARDS) {
     assert.ok(args.includes(`${localPort}:127.0.0.1:${remotePort}`));
   }

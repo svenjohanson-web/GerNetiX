@@ -20,6 +20,34 @@ docker compose --env-file "$env_file" -f compose.vps.yaml config --quiet
 echo "==> Images bauen"
 docker compose --env-file "$env_file" -f compose.vps.yaml build
 
+echo "==> Legacy-PostgreSQL-Secrets fuer eine sichere Erstkonsolidierung pruefen"
+for legacy_spec in \
+  "identity-postgres:IDENTITY_POSTGRES_PASSWORD" \
+  "project-postgres:PROJECT_POSTGRES_PASSWORD" \
+  "telemetry-postgres:TELEMETRY_POSTGRES_PASSWORD" \
+  "community-postgres:COMMUNITY_POSTGRES_PASSWORD" \
+  "device-management-postgres:DEVICE_MANAGEMENT_POSTGRES_PASSWORD" \
+  "ai-usage-postgres:AI_USAGE_POSTGRES_PASSWORD" \
+  "hardware-catalog-postgres:HARDWARE_CATALOG_POSTGRES_PASSWORD" \
+  "hardware-shop-postgres:HARDWARE_SHOP_POSTGRES_PASSWORD" \
+  "operations-postgres:OPERATIONS_POSTGRES_PASSWORD" \
+  "ai-context-postgres:AI_CONTEXT_POSTGRES_PASSWORD"
+do
+  legacy_service=${legacy_spec%%:*}
+  legacy_secret=${legacy_spec#*:}
+  legacy_container=$(docker ps -aq --filter "label=com.docker.compose.service=$legacy_service" | head -n 1)
+  if [ -n "$legacy_container" ]; then
+    if [ "$(docker inspect -f '{{.State.Running}}' "$legacy_container")" != "true" ]; then
+      echo "Legacy-Container $legacy_service ist gestoppt; vor der Konsolidierung kontrolliert starten." >&2
+      exit 1
+    fi
+    if ! grep -q "^${legacy_secret}=." "$env_file"; then
+      echo "Bestehender Container $legacy_service erfordert $legacy_secret fuer die Konsolidierung." >&2
+      exit 1
+    fi
+  fi
+done
+
 echo "==> Validierte Host-Firewall installieren"
 install -d -m 0755 /etc/gernetix
 install -m 0644 infra/vps/security/firewall.nft /etc/gernetix/firewall.nft
@@ -36,6 +64,13 @@ fi
 echo "==> Staging aktualisieren und auf Healthchecks warten"
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --force-recreate mqtt-broker
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --wait --wait-timeout "$wait_timeout"
+
+echo "==> Vorhandene PostgreSQL-Domaenendaten einmalig zentral konsolidieren"
+docker compose --env-file "$env_file" -f compose.vps.yaml --profile postgres-consolidation \
+  run --rm --no-deps postgres-consolidation-migration
+
+echo "==> Alte PostgreSQL-Container erst nach erfolgreicher Konsolidierung entfernen"
+docker compose --env-file "$env_file" -f compose.vps.yaml up -d --remove-orphans
 
 echo "==> Nginx an aktuelle Upstreams und Bind-Mounts binden"
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --force-recreate nginx

@@ -68,8 +68,8 @@ async function main() {
       connectionString: process.env.TELEMETRY_POSTGRES_URL || undefined,
       host: process.env.TELEMETRY_POSTGRES_HOST || "telemetry-postgres",
       port: Number(process.env.TELEMETRY_POSTGRES_PORT || 5432),
-      database: process.env.TELEMETRY_POSTGRES_DATABASE || "gernetix_telemetry",
-      user: process.env.TELEMETRY_POSTGRES_USER || "gernetix_telemetry",
+      database: process.env.TELEMETRY_POSTGRES_DATABASE || "gernetix_runtime",
+      user: process.env.TELEMETRY_POSTGRES_USER || "gernetix_runtime",
       password: requiredSecret(process.env.TELEMETRY_POSTGRES_PASSWORD),
     },
   });

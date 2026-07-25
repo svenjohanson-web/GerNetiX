@@ -33,10 +33,8 @@
   <path class="line" d="M260 218H340"/><path class="line" d="M550 218C590 218 600 180 640 180"/><path class="line" d="M550 218C620 218 820 180 890 180"/><path class="line" d="M550 218C610 218 610 260 640 260"/><path class="line" d="M550 218C650 218 820 260 890 260"/><path class="line" d="M550 218C610 218 610 340 640 340"/><path class="line" d="M850 340H890"/><path class="line dash" d="M445 340V256"/>
 
   <text class="label" x="62" y="580">Persistente Docker-Volumes</text>
-  <rect class="store" x="62" y="605" width="230" height="66" rx="10"/><text class="label" x="177" y="633" text-anchor="middle">Identity PostgreSQL</text><text class="small" x="177" y="653" text-anchor="middle">identity_postgres_data</text>
-  <rect class="store" x="326" y="605" width="230" height="66" rx="10"/><text class="label" x="441" y="633" text-anchor="middle">Project PostgreSQL</text><text class="small" x="441" y="653" text-anchor="middle">project_postgres_data</text>
-  <rect class="store" x="590" y="605" width="230" height="66" rx="10"/><text class="label" x="705" y="633" text-anchor="middle">AI Context PostgreSQL</text><text class="small" x="705" y="653" text-anchor="middle">pgvector · ai_context_postgres_data</text>
-  <rect class="store" x="854" y="605" width="230" height="66" rx="10"/><text class="label" x="969" y="633" text-anchor="middle">Weitere Domaenen-PostgreSQL</text><text class="small" x="969" y="653" text-anchor="middle">Telemetry · Community · Device · Usage · Catalog · Shop · Ops</text>
+  <rect class="store" x="62" y="605" width="758" height="66" rx="10"/><text class="label" x="441" y="633" text-anchor="middle">Zentrales PostgreSQL 17 + pgvector</text><text class="small" x="441" y="653" text-anchor="middle">gernetix_runtime · runtime_postgres_data · praefixierte Domaenentabellen</text>
+  <rect class="store" x="854" y="605" width="230" height="66" rx="10"/><text class="label" x="969" y="633" text-anchor="middle">Legacy-Volumes</text><text class="small" x="969" y="653" text-anchor="middle">nur Migration und Rueckfall, keine Laufzeitschreiber</text>
 
-  <text class="small" x="45" y="705">VPS ist alleiniger Laufzeit-SQL-Schreiber; zentrale Domaenen einschliesslich Hardware Shop, Operations und AI Context nutzen getrennte PostgreSQL-Datenbanken.</text>
+  <text class="small" x="45" y="705">VPS ist alleiniger Laufzeit-SQL-Schreiber; alle Domaenen nutzen genau eine PostgreSQL-Datenbank und bleiben ueber Tabellen und APIs getrennt.</text>
 </svg>

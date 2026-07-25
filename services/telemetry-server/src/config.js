@@ -24,8 +24,8 @@ function createConfig(env = process.env) {
       connectionString: env.TELEMETRY_POSTGRES_URL || "",
       host: env.TELEMETRY_POSTGRES_HOST || "127.0.0.1",
       port: Number(env.TELEMETRY_POSTGRES_PORT || 5432),
-      database: env.TELEMETRY_POSTGRES_DATABASE || "gernetix_telemetry",
-      user: env.TELEMETRY_POSTGRES_USER || "gernetix_telemetry",
+      database: env.TELEMETRY_POSTGRES_DATABASE || "gernetix_runtime",
+      user: env.TELEMETRY_POSTGRES_USER || "gernetix_runtime",
       password: env.TELEMETRY_POSTGRES_PASSWORD || "",
     },
   };

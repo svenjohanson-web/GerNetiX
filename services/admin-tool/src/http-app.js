@@ -214,7 +214,7 @@ function createHttpApp(options) {
 
     if (req.method === "PUT" && url.pathname === "/api/admin/llm-config") {
       const body = await readJsonBody(req);
-      sendJson(res, 200, { config: service.updateLlmConfig(body) });
+      sendJson(res, 200, { config: await service.updateLlmConfig(body) });
       return;
     }
 

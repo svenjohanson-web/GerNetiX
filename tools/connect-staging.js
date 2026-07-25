@@ -79,8 +79,8 @@ function main() {
   const remotePort = parsePort(args.remotePort || config.GERNETIX_STAGING_REMOTE_ADMIN_PORT || 4610, "Remote-Port");
   const platformPort = parsePort(args.platformPort || config.GERNETIX_STAGING_LOCAL_PLATFORM_PORT || 14300, "Lokaler Plattform-Port");
   const remotePlatformPort = parsePort(args.remotePlatformPort || config.GERNETIX_STAGING_REMOTE_PLATFORM_PORT || 8080, "Remote-Plattform-Port");
-  const identityDbPort = parsePort(args.identityDbPort || config.GERNETIX_STAGING_LOCAL_IDENTITY_DB_PORT || 15432, "Lokaler Identity-PostgreSQL-Port");
-  const remoteIdentityDbPort = parsePort(args.remoteIdentityDbPort || config.GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT || 15432, "Remote-Identity-PostgreSQL-Port");
+  const identityDbPort = parsePort(args.identityDbPort || config.GERNETIX_STAGING_LOCAL_IDENTITY_DB_PORT || 25432, "Lokaler Runtime-PostgreSQL-Port");
+  const remoteIdentityDbPort = parsePort(args.remoteIdentityDbPort || config.GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT || 25432, "Remote-Runtime-PostgreSQL-Port");
   const sshArgs = sshTunnelArgs({
     host, localPort, remotePort, platformPort, remotePlatformPort,
     identityDbPort, remoteIdentityDbPort,

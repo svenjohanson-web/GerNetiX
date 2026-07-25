@@ -8,7 +8,7 @@ test("Device Management uses PostgreSQL by default", () => {
   const config = createConfig({});
 
   assert.equal(config.persistenceBackend, "postgres");
-  assert.equal(config.postgres.database, "gernetix_device_management");
+  assert.equal(config.postgres.database, "gernetix_runtime");
 });
 
 test("Device Management resolves an explicitly configured SQLite path", () => {

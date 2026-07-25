@@ -493,7 +493,7 @@ class AdminService {
     return this.llmConfigStore.publicConfig();
   }
 
-  updateLlmConfig(input) {
+  async updateLlmConfig(input) {
     return this.llmConfigStore.updateConfig(input);
   }
 

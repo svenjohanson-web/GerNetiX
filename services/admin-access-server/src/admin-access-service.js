@@ -7,47 +7,47 @@ const ROLE_CAPABILITIES = {
 class AdminAccessService {
   constructor({ repository, config }) { this.repository = repository; this.config = config; }
 
-  bootstrap() {
-    if (this.repository.countUsers() > 0) return { created: false };
+  async bootstrap() {
+    if (await this.repository.countUsers() > 0) return { created: false };
     if (!this.config.bootstrapUsername || !this.config.bootstrapPassword) return { created: false, setup_required: true };
     validateCredential(this.config.bootstrapUsername, this.config.bootstrapPassword);
-    const user = this.repository.createUser({ username: this.config.bootstrapUsername, password: this.config.bootstrapPassword });
+    const user = await this.repository.createUser({ username: this.config.bootstrapUsername, password: this.config.bootstrapPassword });
     return { created: true, username: user.username };
   }
 
-  login({ username, password }) {
-    const user = this.repository.findUser(normalizeUsername(username));
+  async login({ username, password }) {
+    const user = await this.repository.findUser(normalizeUsername(username));
     if (!user || !user.enabled || !verifyPassword(password, user)) {
-      this.repository.audit(user?.admin_id || null, "login_denied", normalizeUsername(username));
+      await this.repository.audit(user?.admin_id || null, "login_denied", normalizeUsername(username));
       return null;
     }
     const expiresAt = new Date(Date.now() + this.config.sessionHours * 60 * 60 * 1000).toISOString();
-    const session = this.repository.createSession(user.admin_id, expiresAt);
-    this.repository.markLogin(user.admin_id);
+    const session = await this.repository.createSession(user.admin_id, expiresAt);
+    await this.repository.markLogin(user.admin_id);
     return { token: session.token, expires_at: expiresAt, admin: publicAdmin(user) };
   }
 
-  session(token) {
-    const session = this.repository.resolveSession(token);
+  async session(token) {
+    const session = await this.repository.resolveSession(token);
     return session ? { admin: publicAdmin(session), expires_at: session.expires_at } : null;
   }
-  logout(token) { const session = this.repository.resolveSession(token); this.repository.revokeSession(token); if (session) this.repository.audit(session.admin_id, "logout", ""); }
-  actorFor(token) {
-    const session = this.repository.resolveSession(token);
+  async logout(token) { const session = await this.repository.resolveSession(token); await this.repository.revokeSession(token); if (session) await this.repository.audit(session.admin_id, "logout", ""); }
+  async actorFor(token) {
+    const session = await this.repository.resolveSession(token);
     if (!session) return null;
     return { actor_id: session.admin_id, role: session.role, capabilities: ROLE_CAPABILITIES[session.role] || [] };
   }
-  listAdmins(token) {
-    if (!this.actorFor(token)) return null;
+  async listAdmins(token) {
+    if (!await this.actorFor(token)) return null;
     return this.repository.listUsers();
   }
-  createAdministrator(token, { username, password }) {
-    const actor = this.actorFor(token);
+  async createAdministrator(token, { username, password }) {
+    const actor = await this.actorFor(token);
     if (!actor || actor.role !== "administrator") return null;
     validateCredential(username, password);
-    if (this.repository.findUser(normalizeUsername(username))) throw new Error("Dieser Admin-Benutzername existiert bereits.");
-    const user = this.repository.createUser({ username, password, role: "administrator" });
-    this.repository.audit(actor.actor_id, "administrator_created", user.admin_id);
+    if (await this.repository.findUser(normalizeUsername(username))) throw new Error("Dieser Admin-Benutzername existiert bereits.");
+    const user = await this.repository.createUser({ username, password, role: "administrator" });
+    await this.repository.audit(actor.actor_id, "administrator_created", user.admin_id);
     return publicAdmin(user);
   }
 }

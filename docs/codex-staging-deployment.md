@@ -61,7 +61,7 @@ Danach sind lokal zusaetzlich erreichbar:
 ```text
 Plattform-Diagnose: http://127.0.0.1:14300/app/dashboard/
 Admin-Diagnose:     http://127.0.0.1:14600/admin/
-Identity PostgreSQL: 127.0.0.1:15432
+Runtime PostgreSQL:  127.0.0.1:25432
 Hardware Catalog:   http://10.77.0.1:4910/api/hardware-catalog/
 ```
 
@@ -85,16 +85,20 @@ node tools/connect-staging.js
 node tools/start-identity-remote-dev.js
 ```
 
-Der erste Prozess stellt innerhalb von WireGuard die SSH-Weiterleitungen bereit. Der zweite startet nur Identity auf `127.0.0.1:4300`, verwendet die zentrale Identity-PostgreSQL-Datenbank und ruft Project, Build, Device, Shop, Usage, AI Context, Community und Telemetrie ueber deren getunnelte VPS-Dienste auf. Auf macOS wird AI Usage lokal auf `5001` weitergereicht, weil Port `5000` durch das System belegt sein kann.
+Der erste Prozess stellt innerhalb von WireGuard die SSH-Weiterleitungen bereit. Der zweite startet nur Identity auf `127.0.0.1:4300`, verwendet `gernetix_runtime` und ruft Project, Build, Device, Shop, Usage, AI Context, Community und Telemetrie ueber deren getunnelte VPS-Dienste auf. Auf macOS wird AI Usage lokal auf `5001` weitergereicht, weil Port `5000` durch das System belegt sein kann.
 
-Im Remote-Dev-Modus legt Identity keine lokalen SQLite-Dateien an. VPS-seitige Release-/Account-Assets bleiben am kanonischen VPS-Identity-Endpunkt; lokale Schreibwege fuer diese Nebenspeicher sind deaktiviert. Push- und SMTP-Hilfsspeicher sind im lokalen Prozess nur fluechtig.
+Im Remote-Dev-Modus legt Identity keine lokalen SQLite-Dateien an. Releases,
+Account-Assets, Push-, SMTP- und LLM-State verwenden ihre zentralen Tabellen in
+`gernetix_runtime`. Schreibende Tests wirken deshalb auf den gemeinsamen
+Entwicklungsstand und duerfen niemals gegen Produktion laufen.
 
 Lokale Codeaenderungen an `4300` benoetigen dadurch weder Commit noch Staging-Deployment. Der gemeinsame Datenstand ist aber real: Tests und manuelle Aenderungen koennen andere Entwicklungsrechner beeinflussen. Diese Betriebsart darf deshalb nur eine getrennte Entwicklungs-/Staging-Datenbank verwenden, niemals die Produktionsdatenbank.
 
 ## Remote-first statt geteilter SQLite-Datei
 
-Der VPS bleibt der Speicherort fuer Project-, Telemetry-, Community-, Device-
-Management-, AI-Usage-, Hardware-Catalog-, Hardware-Shop- und Operations-PostgreSQL sowie getrennte Release-/Artefakt-SQLite-Speicher. Lokale
+Der VPS bleibt der Speicherort fuer die eine zentrale PostgreSQL-Datenbank
+`gernetix_runtime`. Sie enthaelt alle Domaenen-, Release-, Asset- und
+Artefaktdaten in getrennten Tabellen. Lokale
 Rechner oeffnen SQLite-Dateien nie direkt und mounten die Docker-Volumes nicht
 ueber SMB, NFS oder SSHFS.
 
@@ -103,15 +107,26 @@ ueber SMB, NFS oder SSHFS.
   Testumgebung mit eigener Testpersistenz; AI Usage, Hardware Catalog und
   Hardware Shop werden dabei explizit fluechtig im In-Memory-Modus gestartet.
 - Ein lokaler Identity Server darf im beschriebenen Remote-Dev-Modus direkt
-  die zentrale Identity-PostgreSQL-Datenbank verwenden. Er schreibt niemals in
+  die zentralen Identity-Tabellen in `gernetix_runtime` verwenden. Er schreibt niemals in
   eine entfernte SQLite-Datei.
 - Die Domaenentunnel transportieren HTTP-Anfragen. Nur der dedizierte
-  Identity-PostgreSQL-Port wird als Datenbankverbindung weitergereicht.
+  Runtime-PostgreSQL-Port wird als Datenbankverbindung weitergereicht.
 - Das bisherige Identity-SQLite wird beim VPS-Upgrade einmalig und idempotent
   nach PostgreSQL importiert und danach nicht parallel weitergeschrieben.
 - Die bisherigen Project-SQLite-Bestaende werden beim VPS-Upgrade einmalig
   und idempotent nach Project-PostgreSQL importiert; Entwicklungsrechner
   greifen weiterhin ausschliesslich ueber das Project-Server-API darauf zu.
+
+Beim ersten Rollout der zentralen Datenbank muessen die bisherigen
+`*_POSTGRES_PASSWORD`-Eintraege noch in `.env.vps` erhalten bleiben. Der
+Deployment-Ablauf erkennt laufende alte Domaenencontainer, bricht bei einem
+fehlenden Legacy-Secret ab, konsolidiert deren Daten idempotent nach
+`gernetix_runtime` und entfernt die alten Container erst danach. Die alten
+Volumes werden nicht geloescht und bleiben bis zu einem nachgewiesenen Backup-
+und Restore-Test als Rueckfallstand erhalten.
+- Die bisherigen getrennten PostgreSQL- und SQLite-Bestaende werden
+  einmalig in `gernetix_runtime` zusammengefuehrt. Alte Volumes sind dabei nur
+  fuer den Migrationscontainer read-only sichtbar.
 - Der bisherige AI-Usage-Bestand aus der gemeinsamen Runtime-SQLite wird
   einmalig transaktional nach AI-Usage-PostgreSQL importiert; danach erfolgt
   jeder Zugriff ausschliesslich ueber das AI-Usage-API.

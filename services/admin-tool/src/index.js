@@ -6,22 +6,30 @@ const { PostgresAdminRepository } = require("./repositories/postgres-admin-repos
 const { AdminAccessPolicy } = require("./services/admin-access-policy");
 const { AdminService } = require("./services/admin-service");
 const { createLlmConfigStore } = require("../../shared/llm-config");
+const { PostgresStateStore } = require("../../shared/persistence/postgres-state-store");
 
 function createDefaultAdminTool(config = {}) {
   const repository = createRepository(config);
   if (repository && typeof repository.then === "function") {
-    return repository.then((resolved) => createAdminService(config, resolved));
+    return repository.then(async (resolved) => {
+      const llmStateStore = new PostgresStateStore(resolved.pool, "llm-routing-config", { config: null }, {
+        encryptionKey: config.runtimeStateEncryptionKey,
+      });
+      await llmStateStore.initialize();
+      return createAdminService(config, resolved, llmStateStore);
+    });
   }
   return createAdminService(config, repository);
 }
 
-function createAdminService(config, repository) {
+function createAdminService(config, repository, llmStateStore = null) {
   const accessPolicy = new AdminAccessPolicy({ repository });
   return new AdminService({
     repository,
     accessPolicy,
     llmConfigStore: createLlmConfigStore({
       configPath: config.llmConfigPath,
+      stateStore: llmStateStore,
       defaultOllamaBaseUrl: config.defaultOllamaBaseUrl,
       defaultOllamaModel: config.defaultOllamaModel,
     }),

@@ -1,6 +1,10 @@
 # GerNetiX VPS Deployment mit Docker Compose
 
-Diese Struktur startet den vorhandenen GerNetiX-Kern auf einem Linux-VPS. Identity, Project Server, Telemetry, Community, Device Management, AI Usage, Hardware Catalog, Hardware Shop und Operations verwenden jeweils eine eigene PostgreSQL-17-Datenbank, der AI Context Server eine weitere PostgreSQL-17-Datenbank mit pgvector. SQLite bleibt fuer klar getrennte BLOB-/Release-Speicher und als read-only Migrationsaltbestand erhalten; `gernetix-services.sqlite` hat keinen produktiven Schreiber mehr.
+Diese Struktur startet den vorhandenen GerNetiX-Kern auf einem Linux-VPS. Genau ein Container `runtime-postgres` stellt PostgreSQL 17 mit pgvector und die Datenbank `gernetix_runtime` bereit. Alle dauerhaften Laufzeitdaten, Konfigurationen und BLOB-Artefakte liegen dort in fachlich praefigierten Tabellen. SQLite-Dateien und fruehere PostgreSQL-Volumes sind nur noch read-only Quellen der einmaligen Migration und werden von keinem laufenden Fachservice gemountet.
+
+Der einmalige Container `runtime-postgres-migration` uebernimmt Admin-Zugang,
+Plattform-Downloads, Account-Assets, Build-/OTA-Artefakte, oeffentliche Demo-
+Releases, Push-/SMTP-State und die verschluesselte LLM-Konfiguration.
 
 Die fortlaufend gepflegte Uebersicht ueber umgesetzte und empfohlene Schutzmassnahmen steht in [Sicherheitslage und Massnahmenregister](security-posture.md).
 
@@ -13,7 +17,7 @@ Die fortlaufend gepflegte Uebersicht ueber umgesetzte und empfohlene Schutzmassn
   und leiten weder Plattform noch Login weiter.
 - SSH ist durch die Host-Firewall ausschliesslich ueber das WireGuard-Interface erreichbar. Es gibt keinen oeffentlichen administrativen Netzwerkzugang.
 - Identity und alle Domaenenservices bleiben im internen Docker-Netz.
-- Identity-PostgreSQL und die Remote-Dev-Domaenenports sind auf dem VPS nur an `127.0.0.1` gebunden. Ein Entwicklungsrechner erreicht sie ausschliesslich per SSH-Tunnel innerhalb WireGuard.
+- Runtime-PostgreSQL und die Remote-Dev-Domaenenports sind auf dem VPS nur an `127.0.0.1` gebunden. Ein Entwicklungsrechner erreicht sie ausschliesslich per SSH-Tunnel innerhalb WireGuard.
 - Das Admin Tool bindet nur an `127.0.0.1` des VPS und ist per SSH-Tunnel innerhalb des WireGuard-VPN erreichbar.
 - Mosquitto behaelt die anonymen internen Listener `1883` und `9001` ausschliesslich im privaten Docker-Netz. Der WireGuard-gebundene Device-Listener `8883` verlangt zusaetzlich mTLS mit einem registrierten Device-Zertifikat und geraetespezifische Topic-ACLs.
 - Nginx bedient auf dem oeffentlichen HTTP-Listener ausschliesslich ACME-Challenges. Der TLS-Listener ist nur am WireGuard-Interface gebunden; Nginx wiederholt die `10.77.0.0/24`-Allowlist als zweite Schutzschicht.
@@ -140,40 +144,30 @@ http://127.0.0.1:4600/admin/
 
 Compose legt benannte Volumes an:
 
-- `identity_postgres_data`: fuehrende Identity-PostgreSQL-Datenbank fuer Accounts, Credentials, Passkeys, Recovery-Transaktionen und Sessions
-- `identity_state`: bisherige Identity-SQLite fuer die einmalige Altuebernahme sowie weiterhin getrennte SQLite-Dateien fuer unveraenderliche Plattform-Download-Releases und owner-only Account-Assets
-- `project_postgres_data`: fuehrende Project-PostgreSQL-Datenbank fuer Projekte, Quellen, Build-Metadaten, Feedback und Ressourcenprofile
-- `project_state`: bisherige Projekt-SQLite, nur fuer die einmalige Altuebernahme und als Rueckfallkopie
-- `build_state`: temporaere Build-Arbeitsbereiche/Caches sowie die fuehrende Build-Artefakt-SQLite
-- `telemetry_postgres_data`: fuehrende Telemetry-PostgreSQL-Datenbank fuer konto- und projektpartitionierte Messwerte, Ereignisse und Retention
-- `telemetry_state`: bisherige Telemetrie-SQLite, nur fuer die einmalige Altuebernahme und als Rueckfallkopie
-- `community_postgres_data`: fuehrende Community-PostgreSQL-Datenbank fuer oeffentliche Inhalte und autorisierte private Projektbegleitung
-- `community_state`: bisherige Community-SQLite, nur fuer die einmalige Altuebernahme und als Rueckfallkopie
-- `device_management_postgres_data`: fuehrende Device-Management-PostgreSQL-Datenbank fuer Inventar, Pairing, Credentials, Purchase Contexts, Consents und Audit
-- `ai_usage_postgres_data`: fuehrende AI-Usage-PostgreSQL-Datenbank fuer Credits, Ledger, Usage Events, Policy und Audit
-- `hardware_catalog_postgres_data`: fuehrende Hardware-Catalog-PostgreSQL-Datenbank fuer Capabilities und Hardware-Items
-- `hardware_shop_postgres_data`: fuehrende Hardware-Shop-PostgreSQL-Datenbank fuer Angebote, Warenkoerbe, Bestellungen und Purchase Contexts
-- `operations_postgres_data`: fuehrende Operations-PostgreSQL-Datenbank fuer Admin-Consents, Audit, Systemereignisse und Schnittstellenstatistik
-- `service_state`: read-only Altbestand fuer die einmaligen Domaenenmigrationen; kein produktiver Laufzeitschreiber
-- `ai_context_postgres_data`: fuehrende AI-Context-PostgreSQL-/pgvector-Datenbank
-- `ai_context_state`: bisherige AI-Context-SQLite, nur fuer die einmalige automatische Uebernahme und als Rueckfallkopie
-- `build_state`: Build-Caches und Artefakte
-- `public_demo_state`: ausschliesslich veröffentlichte Demo-Metadaten und immutable USB-Firmware-Releases; keine Konto-, Projekt- oder Telemetriedaten
+- `runtime_postgres_data`: einzige fuehrende PostgreSQL-/pgvector-Laufzeitdatenbank `gernetix_runtime` fuer alle praefixierten Domaenentabellen, Runtime-Konfigurationen und dauerhaften BLOB-Artefakte
+- `identity_state`, `project_state`, `telemetry_state`, `community_state`, `service_state`, `admin_access_state` und `public_demo_state`: read-only Altbestaende fuer die einmaligen SQLite-Migrationen; keine laufenden Fachschreiber
+- `build_state`: temporaere Build-Arbeitsbereiche, materialisierte Ausgaben und Caches; dauerhafte Build-Artefakte liegen in PostgreSQL
 - `mqtt_data` und `mqtt_log`: Mosquitto
 
 `docker compose down` behaelt diese Volumes. `docker compose down -v` loescht sie und darf fuer einen produktiven Stand nicht verwendet werden.
 
-### Einmalige Identity-Migration nach PostgreSQL
+### Einmalige Konsolidierung nach PostgreSQL
+
+Beim ersten Rollout bleiben bestehende PostgreSQL-Domaenencontainer zunaechst als Compose-Orphans erreichbar. Nach dem Start und der Schemaanlage in `gernetix_runtime` kopiert `postgres-consolidation-migration` ihre Tabellen idempotent und mit Domaenenmarkern in die zentrale Datenbank. Nur nach erfolgreichem Abschluss entfernt der Deployment-Ablauf die alten Container mit `--remove-orphans`; deren Volumes werden nicht geloescht.
+
+Die nachfolgenden SQLite-Migrationen lesen die Altvolumes weiterhin ausschliesslich read-only:
+
+### Einmalige Identity-Migration aus SQLite
 
 Vor dem Start des Identity Servers wartet Compose auf `identity-postgres-migration`. Der einmalige Container liest `gernetix-identity.sqlite` read-only, importiert Accounts, Credentials, externe Identitaeten, Tokens, Recovery-Transaktionen und Sessions in einer Transaktion und setzt den Marker `identity-sqlite-v1`. Bei einem bereits belegten PostgreSQL-Ziel ohne Marker bricht er ab, statt Daten zusammenzufuehren. Bei weiteren Starts endet er mit `already_applied`.
 
-Die Alt-SQLite bleibt als Rueckfallkopie erhalten, ist danach aber nicht mehr fuehrend. Ein ausgefuehrter Rollout setzt deshalb vorab ein konsistentes Backup von `identity_state` und `identity_postgres_data` sowie einen dokumentierten Restore-Test voraus.
+Die Alt-SQLite bleibt als Rueckfallkopie erhalten, ist danach aber nicht mehr fuehrend. Ein ausgefuehrter Rollout setzt deshalb vorab ein konsistentes Backup von `identity_state`, den bisherigen PostgreSQL-Volumes und `runtime_postgres_data` sowie einen dokumentierten Restore-Test voraus.
 
 ### Einmalige Project-Migration nach PostgreSQL
 
 Vor dem Start des Project Servers wartet Compose auf `project-postgres-migration`. Der einmalige Container liest zuerst `project_state/gernetix-projects.sqlite` read-only. Ist diese getrennte Datei noch leer, liest er als Upgrade-Fallback die bisherigen `project-server`-Tabellen aus `service_state/gernetix-services.sqlite`. Projekte, Quellen, Build-Jobs, Artefaktmetadaten, Lernfeedback, Einwilligungen und Ressourcenprofile werden in einer Transaktion importiert; danach wird der Marker `project-sqlite-v1` gesetzt.
 
-Ein bereits belegtes PostgreSQL-Ziel ohne Marker fuehrt zum Abbruch statt zu einer unkontrollierten Zusammenfuehrung. Bei weiteren Starts endet die Migration mit `already_applied`. Beide SQLite-Volumes bleiben erhalten, sind fuer den Migrationscontainer aber nur read-only und nach erfolgreicher Uebernahme nicht mehr fuehrend. Vor dem Rollout sind `project_state`, `service_state` und `project_postgres_data` konsistent zu sichern; der Restore der neuen Datenbank ist gesondert nachzuweisen.
+Ein bereits belegtes PostgreSQL-Ziel ohne Marker fuehrt zum Abbruch statt zu einer unkontrollierten Zusammenfuehrung. Bei weiteren Starts endet die Migration mit `already_applied`. Beide SQLite-Volumes bleiben erhalten, sind fuer den Migrationscontainer aber nur read-only und nach erfolgreicher Uebernahme nicht mehr fuehrend. Vor dem Rollout sind `project_state`, `service_state`, das bisherige `project_postgres_data` und das neue `runtime_postgres_data` konsistent zu sichern; der Restore der neuen Datenbank ist gesondert nachzuweisen.
 
 ### Einmalige Telemetry-Migration nach PostgreSQL
 
@@ -222,6 +216,12 @@ docker compose --env-file .env.vps -f compose.vps.yaml up -d
 docker compose --env-file .env.vps -f compose.vps.yaml ps
 ```
 
+Dieser Fallback ist fuer den ersten Wechsel von getrennten PostgreSQL-
+Containern auf `gernetix_runtime` nicht zulaessig. Dieser Wechsel muss ueber
+`node tools/staging-deploy.js` erfolgen, weil nur der kontrollierte Ablauf die
+Legacy-Secrets prueft, Domaenendaten konsolidiert und alte Container erst nach
+erfolgreicher Uebernahme entfernt.
+
 ## Spaetere Produktionsinstanz
 
 Eine oeffentliche Produktion wird nicht durch das Oeffnen dieser privaten
@@ -229,8 +229,8 @@ Instanz hergestellt. Sie erhaelt einen neuen VPS, eigene Domains, Secrets,
 Zertifikate, Datenbanken und eine eigene Production-Edge-Konfiguration. Die
 privaten Docker-Volumes werden nicht als Ganzes nach Produktion kopiert.
 
-Vor der dauerhaften Nutzung der privaten Instanz muessen die SQLite-Volumes und
-`ai_context_postgres_data` nach dem verbindlichen
+Vor der dauerhaften Nutzung der privaten Instanz muessen `runtime_postgres_data`
+und die nur noch zur Rueckfallwiederherstellung aufbewahrten Legacy-Volumes nach dem verbindlichen
 [Sicherungs- und Wiederherstellungskonzept](customer-data-backup-and-recovery.md)
 konsistent, verschluesselt und ausserhalb des VPS gesichert sowie
 Wiederherstellungen geprueft werden.

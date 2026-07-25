@@ -8,8 +8,8 @@ class SmtpConfigError extends Error {
   }
 }
 
-function createSmtpConfigStore({ sqlitePath, encryptionKey = "" }) {
-  const store = new SqliteStateStore(sqlitePath, "identity-email-config", { defaultState: { config: null } });
+function createSmtpConfigStore({ sqlitePath, stateStore, encryptionKey = "" }) {
+  const store = stateStore || new SqliteStateStore(sqlitePath, "identity-email-config", { defaultState: { config: null } });
   const key = parseEncryptionKey(encryptionKey);
 
   function publicConfig() {
@@ -42,8 +42,10 @@ function createSmtpConfigStore({ sqlitePath, encryptionKey = "" }) {
     }
     if (!next.password_ciphertext) throw new SmtpConfigError("smtp_password_missing", "Bitte ein SMTP-Passwort hinterlegen.");
     next.updated_at = new Date().toISOString();
-    store.save({ config: next });
-    return publicConfig();
+    const saved = store.save({ config: next });
+    return saved && typeof saved.then === "function"
+      ? saved.then(() => publicConfig())
+      : publicConfig();
   }
 
   function deliveryConfig() {

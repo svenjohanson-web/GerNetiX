@@ -32,7 +32,7 @@ function createHttpApp(options) {
 
     const artifactMatch = url.pathname.match(/^\/artifacts\/([^/]+)\/([^/]+)$/);
     if (req.method === "GET" && artifactMatch) {
-      serveArtifact(res, artifactStore, decodeURIComponent(artifactMatch[1]), decodeURIComponent(artifactMatch[2]));
+      await serveArtifact(res, artifactStore, decodeURIComponent(artifactMatch[1]), decodeURIComponent(artifactMatch[2]));
       return;
     }
 
@@ -40,14 +40,14 @@ function createHttpApp(options) {
   };
 }
 
-function serveArtifact(res, artifactStore, jobId, fileName) {
+async function serveArtifact(res, artifactStore, jobId, fileName) {
   const safeFileName = sanitizeArtifactName(fileName);
   if (!safeFileName) {
     sendJson(res, 404, { error: "not_found" });
     return;
   }
 
-  const artifact = artifactStore?.getArtifact(jobId, safeFileName);
+  const artifact = await artifactStore?.getArtifact(jobId, safeFileName);
   if (!artifact) {
     sendJson(res, 404, { error: "not_found" });
     return;

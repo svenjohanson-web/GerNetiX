@@ -5,11 +5,11 @@ const {
 } = require("../src/repositories/postgres-ai-usage-repository");
 const { createConfig } = require("../src/config");
 
-test("uses the dedicated PostgreSQL database as the runtime default", () => {
+test("uses the central PostgreSQL database as the runtime default", () => {
   const config = createConfig({});
   assert.equal(config.persistenceBackend, "postgres");
-  assert.equal(config.postgres.database, "gernetix_ai_usage");
-  assert.equal(config.postgres.user, "gernetix_ai_usage");
+  assert.equal(config.postgres.database, "gernetix_runtime");
+  assert.equal(config.postgres.user, "gernetix_runtime");
 });
 
 test("creates normalized AI Usage PostgreSQL tables and the default policy", async () => {

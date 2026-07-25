@@ -4,6 +4,10 @@
 
 Accountgebundene Kundendaten duerfen weder durch ein fehlerhaftes Deployment noch durch versehentliches Loeschen dauerhaft verloren gehen. Dazu gehoeren insbesondere Accounts und Berechtigungen, Projekte und Projektquellen, Hardware-Inventar und Pairings, Lernfortschritt, Bestellungen und Ansprueche, Consents sowie kundenbezogener KI-Kontext.
 
+Fuehrende Quelle ist eine zentrale PostgreSQL-17/pgvector-Datenbank
+`gernetix_runtime`. Ein konsistenter Datenbank-Dump umfasst damit alle
+Domaenentabellen, Runtime-Konfigurationen und BYTEA-Artefakte.
+
 Ein persistentes Docker-Volume allein ist keine Datensicherung. Es schuetzt vor einem normalen Container-Austausch, aber nicht vor logischem Loeschen, `down -v`, defekten Volumes, Fehlbedienung, kompromittierten Zugangsdaten oder dem Ausfall des VPS.
 
 ## Verbindliche Schutzziele
@@ -21,17 +25,8 @@ Die Sicherung wird aus den fachlichen Quellen der Wahrheit abgeleitet und nicht 
 
 | Datenbereich | Fuehrende Persistenz | Beispiele |
 | --- | --- | --- |
-| Identitaet und Account | Identity-PostgreSQL `gernetix_identity` | Accounts, interne `user_id`, Credentials, Passkeys, Recovery-Transaktionen, Sessions und Berechtigungsbezug |
-| Projekte | Project-PostgreSQL `gernetix_projects` / Project Server | Projektstruktur, Quellen, View-Manifeste, Hardware-Konfiguration, Build-Historie und Lernfeedback |
-| Telemetrie | Telemetry-PostgreSQL `gernetix_telemetry` / Telemetry Server | Messwerte, Ereignisse und konto-/projektbezogene Aufbewahrungsregeln |
-| Community | Community-PostgreSQL `gernetix_community` / Community Platform | Oeffentliche Fragen, private Projektbegleitung, Antworten und Wissensdokumente |
-| Hardware-Inventar | Device-Management-PostgreSQL `gernetix_device_management` | AccountDevices, Pairings, Seriennummern, Device-Identitaet, Credentials, Purchase Contexts, Consents, Audit und Supportkontext |
-| KI-Nutzung und Kostenkontrolle | AI-Usage-PostgreSQL `gernetix_ai_usage` | Credit-Konten, Ledger, Usage Events, Cost-Control-Policy und Admin-Audit |
-| Hardware-Katalog | Hardware-Catalog-PostgreSQL `gernetix_hardware_catalog` | TechnicalCapabilities, HardwareItems, ProcessorBoards, Sensoren, Board-Optionen und Flashbox-Klassen |
-| Hardware-Shop | Hardware-Shop-PostgreSQL `gernetix_hardware_shop` | Angebote, Warenkoerbe, Bestellungen und Purchase Contexts |
-| Operations | Operations-PostgreSQL `gernetix_operations` | Admin-Consents, Audit- und Systemereignisse sowie Schnittstellenstatistik |
-| KI-Kontext | AI-Context-PostgreSQL | Grants, Policy, Prompts, Architektur-Bausteine, accountisolierte Intent-Beispiele und Audit |
-| Wiederaufbau-relevante Artefakte | Artifact Store / persistente Build-Daten | Nur Artefakte, die nicht deterministisch aus versionierten Quellen neu erzeugt werden koennen |
+| Alle Laufzeitdomaenen | PostgreSQL `gernetix_runtime` in `runtime_postgres_data` | `identity_*`, `project_*`, `telemetry_*`, `community_*`, `device_management_*`, `ai_usage_*`, `hardware_catalog_*`, `hardware_shop_*`, `operations_*`, `ai_context_*`, weitere Domaenentabellen und verschluesselter Runtime-State |
+| Wiederaufbau-relevante Artefakte | PostgreSQL `gernetix_runtime` | Plattform-Releases, Account-Assets, Public-Demo-Releases und Build-Artefakte, die nicht deterministisch neu erzeugt werden koennen |
 
 Jeder neue Service mit dauerhafter SQL-Persistenz muss vor Produktivsetzung entweder in diesen Sicherungsumfang aufgenommen oder ausdruecklich als vollstaendig reproduzierbar klassifiziert werden.
 
@@ -73,7 +68,7 @@ Diese Datei definiert die verbindliche fachliche und betriebliche Zielsetzung. B
 **Customer-Data-Backup und Restore technisch umsetzen und nachweisen.**
 
 - externen, verschluesselten und gegen den Deployment-Zugang geschuetzten Backup-Speicher auswaehlen und einrichten
-- konsistente Sicherung fuer Identity-, Project-, Telemetry-, Community-, Device-Management-, AI-Usage-, Hardware-Catalog-, Hardware-Shop-, Operations- und AI-Context-PostgreSQL, die verbleibenden SQLite-Domaenen und nicht reproduzierbare Artefakte automatisieren
+- konsistente Sicherung der einen Datenbank `gernetix_runtime` inklusive aller Domaenentabellen, BYTEA-Artefakte und pgvector-Daten automatisieren
 - Retention, Pruefsummen, Backup-Alter und Fehler alarmieren
 - isolierte Restore-Automation und fachliche Contract-Checks fuer Accounts, Projekte und Hardware-Inventar implementieren
 - ersten vollstaendigen Restore-Test innerhalb von RPO und RTO protokollieren

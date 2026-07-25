@@ -93,8 +93,8 @@ async function main() {
       connectionString: process.env.PROJECT_POSTGRES_URL || undefined,
       host: process.env.PROJECT_POSTGRES_HOST || "project-postgres",
       port: Number(process.env.PROJECT_POSTGRES_PORT || 5432),
-      database: process.env.PROJECT_POSTGRES_DATABASE || "gernetix_projects",
-      user: process.env.PROJECT_POSTGRES_USER || "gernetix_projects",
+      database: process.env.PROJECT_POSTGRES_DATABASE || "gernetix_runtime",
+      user: process.env.PROJECT_POSTGRES_USER || "gernetix_runtime",
       password: requiredSecret(process.env.PROJECT_POSTGRES_PASSWORD),
     },
   });

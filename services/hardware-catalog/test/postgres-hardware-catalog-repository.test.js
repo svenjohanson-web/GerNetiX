@@ -5,10 +5,10 @@ const {
   PostgresHardwareCatalogRepository,
 } = require("../src/postgres-repository");
 
-test("uses the dedicated Hardware Catalog PostgreSQL database by default", () => {
+test("uses the central runtime PostgreSQL database by default", () => {
   const config = createConfig({});
   assert.equal(config.persistenceBackend, "postgres");
-  assert.equal(config.postgres.database, "gernetix_hardware_catalog");
+  assert.equal(config.postgres.database, "gernetix_runtime");
 });
 
 test("creates normalized Hardware Catalog tables", async () => {

@@ -68,8 +68,8 @@ async function main() {
       connectionString: process.env.HARDWARE_CATALOG_POSTGRES_URL || undefined,
       host: process.env.HARDWARE_CATALOG_POSTGRES_HOST || "hardware-catalog-postgres",
       port: Number(process.env.HARDWARE_CATALOG_POSTGRES_PORT || 5432),
-      database: process.env.HARDWARE_CATALOG_POSTGRES_DATABASE || "gernetix_hardware_catalog",
-      user: process.env.HARDWARE_CATALOG_POSTGRES_USER || "gernetix_hardware_catalog",
+      database: process.env.HARDWARE_CATALOG_POSTGRES_DATABASE || "gernetix_runtime",
+      user: process.env.HARDWARE_CATALOG_POSTGRES_USER || "gernetix_runtime",
       password: requiredSecret(process.env.HARDWARE_CATALOG_POSTGRES_PASSWORD),
     },
   });

@@ -21,8 +21,8 @@ function createConfig(env = process.env) {
       connectionString: env.DEVICE_MANAGEMENT_POSTGRES_URL || "",
       host: env.DEVICE_MANAGEMENT_POSTGRES_HOST || "127.0.0.1",
       port: Number(env.DEVICE_MANAGEMENT_POSTGRES_PORT || 5432),
-      database: env.DEVICE_MANAGEMENT_POSTGRES_DATABASE || "gernetix_device_management",
-      user: env.DEVICE_MANAGEMENT_POSTGRES_USER || "gernetix_device_management",
+      database: env.DEVICE_MANAGEMENT_POSTGRES_DATABASE || "gernetix_runtime",
+      user: env.DEVICE_MANAGEMENT_POSTGRES_USER || "gernetix_runtime",
       password: env.DEVICE_MANAGEMENT_POSTGRES_PASSWORD || "",
     },
   };

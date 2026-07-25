@@ -10,8 +10,8 @@ function createConfig(env = process.env) {
       connectionString: env.HARDWARE_SHOP_POSTGRES_URL || "",
       host: env.HARDWARE_SHOP_POSTGRES_HOST || "127.0.0.1",
       port: Number(env.HARDWARE_SHOP_POSTGRES_PORT || 5432),
-      database: env.HARDWARE_SHOP_POSTGRES_DATABASE || "gernetix_hardware_shop",
-      user: env.HARDWARE_SHOP_POSTGRES_USER || "gernetix_hardware_shop",
+      database: env.HARDWARE_SHOP_POSTGRES_DATABASE || "gernetix_runtime",
+      user: env.HARDWARE_SHOP_POSTGRES_USER || "gernetix_runtime",
       password: env.HARDWARE_SHOP_POSTGRES_PASSWORD || "",
     },
   };

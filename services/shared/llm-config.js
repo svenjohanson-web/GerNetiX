@@ -1,7 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 
-function createLlmConfigStore({ configPath, defaultOllamaBaseUrl, defaultOllamaModel }) {
+function createLlmConfigStore({ configPath, stateStore, defaultOllamaBaseUrl, defaultOllamaModel }) {
   let current = loadConfig();
   let loadedMtimeMs = readConfigMtimeMs();
 
@@ -46,7 +46,7 @@ function createLlmConfigStore({ configPath, defaultOllamaBaseUrl, defaultOllamaM
     };
   }
 
-  function updateConfig(input = {}) {
+  async function updateConfig(input = {}) {
     current = normalizeConfig({
       ...current,
       provider: input.provider,
@@ -58,8 +58,12 @@ function createLlmConfigStore({ configPath, defaultOllamaBaseUrl, defaultOllamaM
       apiKey: Object.hasOwn(input, "apiKey") ? input.apiKey : current.apiKey,
       routes: input.routes || current.routes,
     });
-    fs.mkdirSync(path.dirname(configPath), { recursive: true });
-    fs.writeFileSync(configPath, `${JSON.stringify(current, null, 2)}\n`, "utf8");
+    if (stateStore) {
+      await stateStore.save({ config: current });
+    } else {
+      fs.mkdirSync(path.dirname(configPath), { recursive: true });
+      fs.writeFileSync(configPath, `${JSON.stringify(current, null, 2)}\n`, "utf8");
+    }
     loadedMtimeMs = readConfigMtimeMs();
     return publicConfig();
   }
@@ -70,6 +74,7 @@ function createLlmConfigStore({ configPath, defaultOllamaBaseUrl, defaultOllamaM
   }
 
   function loadConfig() {
+    if (stateStore) return normalizeConfig(stateStore.load().config || {});
     try {
       return normalizeConfig(JSON.parse(fs.readFileSync(configPath, "utf8")));
     } catch {
@@ -78,6 +83,10 @@ function createLlmConfigStore({ configPath, defaultOllamaBaseUrl, defaultOllamaM
   }
 
   function reloadIfChanged() {
+    if (stateStore) {
+      current = loadConfig();
+      return;
+    }
     const mtimeMs = readConfigMtimeMs();
     if (mtimeMs === loadedMtimeMs) return;
     current = loadConfig();
@@ -85,6 +94,7 @@ function createLlmConfigStore({ configPath, defaultOllamaBaseUrl, defaultOllamaM
   }
 
   function readConfigMtimeMs() {
+    if (stateStore) return 0;
     try {
       return fs.statSync(configPath).mtimeMs;
     } catch {

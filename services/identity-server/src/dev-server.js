@@ -4,6 +4,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { execFile } = require("node:child_process");
 const { promisify } = require("node:util");
+const { Pool } = require("pg");
 const { createDefaultIdentityModule, MockEmailService } = require("./index");
 const { createSmtpConfigStore } = require("./services/smtp-config-store");
 const { SmtpEmailService } = require("./services/smtp-email-service");
@@ -11,6 +12,8 @@ const { ConfigurableEmailService } = require("./services/configurable-email-serv
 const { createWebPushService } = require("./services/web-push-service");
 const { SqlitePlatformDownloadRepository } = require("./repositories/sqlite-platform-download-repository");
 const { SqliteAccountAssetRepository } = require("./repositories/sqlite-account-asset-repository");
+const { PostgresPlatformDownloadRepository } = require("./repositories/postgres-platform-download-repository");
+const { PostgresAccountAssetRepository } = require("./repositories/postgres-account-asset-repository");
 const { canonicalLocalPasskeyLocation } = require("./services/local-passkey-origin");
 const { passkeyBrowserFailureEvent, passkeyLoginFailureEvent } = require("./services/passkey-login-events");
 const { createSystemEventReporter } = require("./services/system-event-reporter");
@@ -49,6 +52,7 @@ const {
 const { createDevServiceClients } = require("./dev/service-clients");
 const { summarizeCommunityQuestions } = require("./dev/community-summary");
 const { createInterfaceCallTelemetry } = require("../../shared/persistence/interface-call-telemetry");
+const { PostgresStateStore } = require("../../shared/persistence/postgres-state-store");
 const { createTamagotchiEntryCourseModel } = require("./dev/project-models/tamagotchi-entry-course");
 const { createSmartAssistantCourseModel } = require("./dev/project-models/smart-assistant-course");
 const { createButtonToSmartphoneNotificationCourseModel } = require("./dev/project-models/button-to-smartphone-notification-course");
@@ -88,22 +92,38 @@ const identityRemoteDev = process.env.IDENTITY_REMOTE_DEV === "1";
 const identityAuxiliarySqlitePath = identityRemoteDev ? ":memory:" : identitySqlitePath;
 const platformDownloadSqlitePath = process.env.PLATFORM_DOWNLOAD_SQLITE_PATH
   || path.join(path.dirname(identitySqlitePath), "gernetix-platform-downloads.sqlite");
-const platformDownloadRepository = identityRemoteDev ? null : new SqlitePlatformDownloadRepository(platformDownloadSqlitePath);
+let platformDownloadRepository = identityRemoteDev || identityPersistenceBackend === "postgres"
+  ? null
+  : new SqlitePlatformDownloadRepository(platformDownloadSqlitePath);
 const accountAssetSqlitePath = process.env.ACCOUNT_ASSET_SQLITE_PATH
   || path.join(path.dirname(identitySqlitePath), "gernetix-account-assets.sqlite");
-const accountAssetRepository = identityRemoteDev ? null : new SqliteAccountAssetRepository(accountAssetSqlitePath);
+let accountAssetRepository = identityRemoteDev || identityPersistenceBackend === "postgres"
+  ? null
+  : new SqliteAccountAssetRepository(accountAssetSqlitePath);
 const identityPostgres = {
   connectionString: process.env.IDENTITY_POSTGRES_URL || "",
   host: process.env.IDENTITY_POSTGRES_HOST || "127.0.0.1",
   port: Number(process.env.IDENTITY_POSTGRES_PORT || 5432),
-  database: process.env.IDENTITY_POSTGRES_DATABASE || "gernetix_identity",
-  user: process.env.IDENTITY_POSTGRES_USER || "gernetix_identity",
+  database: process.env.IDENTITY_POSTGRES_DATABASE || "gernetix_runtime",
+  user: process.env.IDENTITY_POSTGRES_USER || "gernetix_runtime",
   password: process.env.IDENTITY_POSTGRES_PASSWORD || "",
 };
+const identityAuxiliaryPool = identityPersistenceBackend === "postgres" ? new Pool(identityPostgres) : null;
+const identityPushStateStore = identityAuxiliaryPool
+  ? new PostgresStateStore(identityAuxiliaryPool, "identity-web-push", { subscriptions: [] })
+  : null;
+const identitySmtpStateStore = identityAuxiliaryPool
+  ? new PostgresStateStore(identityAuxiliaryPool, "identity-email-config", { config: null })
+  : null;
+const identityLlmStateStore = identityAuxiliaryPool
+  ? new PostgresStateStore(identityAuxiliaryPool, "llm-routing-config", { config: null }, {
+    encryptionKey: process.env.RUNTIME_STATE_ENCRYPTION_KEY || "",
+  })
+  : null;
 const identityAppBaseUrl = process.env.IDENTITY_APP_BASE_URL || process.env.APP_BASE_URL || "";
 const identityAdminToken = process.env.IDENTITY_ADMIN_TOKEN || "";
 const emailConfigEncryptionKey = process.env.EMAIL_CONFIG_ENCRYPTION_KEY || "";
-const webPushService = createWebPushService({ sqlitePath: identityAuxiliarySqlitePath, publicKey: process.env.WEB_PUSH_VAPID_PUBLIC_KEY || "", privateKey: process.env.WEB_PUSH_VAPID_PRIVATE_KEY || "", subject: process.env.WEB_PUSH_VAPID_SUBJECT || "" });
+const webPushService = createWebPushService({ sqlitePath: identityAuxiliarySqlitePath, stateStore: identityPushStateStore, publicKey: process.env.WEB_PUSH_VAPID_PUBLIC_KEY || "", privateKey: process.env.WEB_PUSH_VAPID_PRIVATE_KEY || "", subject: process.env.WEB_PUSH_VAPID_SUBJECT || "" });
 const securityAlertPushAccountIds = String(process.env.WEB_PUSH_SECURITY_ALERT_ACCOUNT_IDS || "").split(",").map((value) => value.trim()).filter(Boolean);
 const port = Number(process.env.PORT || 4300);
 const host = process.env.HOST || "127.0.0.1";
@@ -220,6 +240,7 @@ const yamlFundamentalsCourseModel = createYamlFundamentalsCourseModel();
 const storageLearningStoryCourseModel = createStorageLearningStoryCourseModel();
 const llmConfigStore = createLlmConfigStore({
   configPath: path.join(workspaceRoot, ".runtime", "identity-llm-config.json"),
+  stateStore: identityLlmStateStore,
   defaultOllamaBaseUrl: ollamaBaseUrl,
   defaultOllamaModel: ollamaModel,
 });
@@ -247,7 +268,7 @@ const builtInDemoAccounts = [
 ];
 
 const mockEmailService = new MockEmailService({ log() {} });
-const smtpConfigStore = createSmtpConfigStore({ sqlitePath: identityAuxiliarySqlitePath, encryptionKey: emailConfigEncryptionKey });
+const smtpConfigStore = createSmtpConfigStore({ sqlitePath: identityAuxiliarySqlitePath, stateStore: identitySmtpStateStore, encryptionKey: emailConfigEncryptionKey });
 const smtpEmailService = new SmtpEmailService({ configStore: smtpConfigStore });
 const emailService = new ConfigurableEmailService({ smtpEmailService, fallbackEmailService: mockEmailService });
 const notifyPrivateCommunityRequest = createPrivateCommunityNotifier({
@@ -263,6 +284,13 @@ const sessions = new Map();
 const userIdeState = createUserIdeState();
 
 async function bootstrap() {
+  if (identityPushStateStore) await identityPushStateStore.initialize();
+  if (identitySmtpStateStore) await identitySmtpStateStore.initialize();
+  if (identityLlmStateStore) await identityLlmStateStore.initialize();
+  if (identityPersistenceBackend === "postgres") {
+    platformDownloadRepository = await PostgresPlatformDownloadRepository.create({ poolOptions: identityPostgres });
+    accountAssetRepository = await PostgresAccountAssetRepository.create({ poolOptions: identityPostgres });
+  }
   auth = await createDefaultIdentityModule({
     emailService,
     persistenceBackend: identityPersistenceBackend,
@@ -462,7 +490,7 @@ async function routeRequest(req, res) {
       return;
     }
     if (req.method === "PUT") {
-      sendJson(res, 200, { config: smtpConfigStore.update(await readJsonBody(req)) });
+      sendJson(res, 200, { config: await smtpConfigStore.update(await readJsonBody(req)) });
       return;
     }
     sendJson(res, 405, { error: "method_not_allowed" });
@@ -490,7 +518,7 @@ async function routeRequest(req, res) {
 
   if (url.pathname === "/api/push/public-key" && req.method === "GET") { sendJson(res, 200, { enabled: webPushService.enabled, public_key: webPushService.publicKey || "" }); return; }
   const pushProjectRoute = url.pathname.match(/^\/api\/push\/projects\/([^/]+)\/(subscribe|test)$/);
-  if (pushProjectRoute && req.method === "POST") { const session = await readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; } const projectId = decodeURIComponent(pushProjectRoute[1]); await requireSessionProject(session, projectId); if (pushProjectRoute[2] === "subscribe") { if (!webPushService.enabled) { sendJson(res, 503, { error: "push_not_configured" }); return; } webPushService.subscribeProject(projectServerUserId(session), projectId, await readJsonBody(req)); sendJson(res, 201, { subscribed: true, project_id: projectId }); return; } const push = await webPushService.notifyProject(projectServerUserId(session), projectId, { title: "GerNetiX Testnachricht", body: "Hallo Welt – dein privater Projekt-Push-Kanal ist aktiv.", url: `/app/ide/?project=${encodeURIComponent(projectId)}` }); sendJson(res, 202, { accepted: true, project_id: projectId, push }); return; }
+  if (pushProjectRoute && req.method === "POST") { const session = await readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; } const projectId = decodeURIComponent(pushProjectRoute[1]); await requireSessionProject(session, projectId); if (pushProjectRoute[2] === "subscribe") { if (!webPushService.enabled) { sendJson(res, 503, { error: "push_not_configured" }); return; } await webPushService.subscribeProject(projectServerUserId(session), projectId, await readJsonBody(req)); sendJson(res, 201, { subscribed: true, project_id: projectId }); return; } const push = await webPushService.notifyProject(projectServerUserId(session), projectId, { title: "GerNetiX Testnachricht", body: "Hallo Welt – dein privater Projekt-Push-Kanal ist aktiv.", url: `/app/ide/?project=${encodeURIComponent(projectId)}` }); sendJson(res, 202, { accepted: true, project_id: projectId, push }); return; }
   if (url.pathname === "/api/internal/push/device-event" && req.method === "POST") { await handleInternalDevicePushEvent(req, res); return; }
   if (url.pathname === "/api/internal/runtime/device-event" && req.method === "POST") { await handleInternalDeviceRuntimeEvent(req, res); return; }
 
@@ -575,10 +603,10 @@ async function routeRequest(req, res) {
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     if (!accountAssetRepository) { sendJson(res, 503, { error: "account_asset_store_unavailable" }); return; }
     if (req.method === "GET") {
-      sendJson(res, 200, { items: accountAssetRepository.list(session.account.user_id) });
+      sendJson(res, 200, { items: await accountAssetRepository.list(session.account.user_id) });
       return;
     }
-    const asset = accountAssetRepository.create(
+    const asset = await accountAssetRepository.create(
       session.account.user_id,
       await readJsonBody(req, 24 * 1024 * 1024),
     );
@@ -591,7 +619,7 @@ async function routeRequest(req, res) {
     const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     if (!accountAssetRepository) { sendJson(res, 503, { error: "account_asset_store_unavailable" }); return; }
-    sendJson(res, 200, accountAssetRepository.delete(session.account.user_id, decodeURIComponent(accountAssetRoute[1])));
+    sendJson(res, 200, await accountAssetRepository.delete(session.account.user_id, decodeURIComponent(accountAssetRoute[1])));
     return;
   }
 
@@ -600,7 +628,7 @@ async function routeRequest(req, res) {
     const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     if (!accountAssetRepository) { sendJson(res, 503, { error: "account_asset_store_unavailable" }); return; }
-    const asset = accountAssetRepository.get(session.account.user_id, decodeURIComponent(accountAssetContentRoute[1]));
+    const asset = await accountAssetRepository.get(session.account.user_id, decodeURIComponent(accountAssetContentRoute[1]));
     res.writeHead(200, {
       "Content-Type": asset.content_type,
       "Content-Length": asset.size_bytes,
@@ -691,7 +719,7 @@ async function routeRequest(req, res) {
   // only one account-neutral, immutable initial Flashbox release; it never
   // creates a device, a credential, or an ownership relation.
   if (url.pathname === "/api/public/flashbox/initial-firmware" && req.method === "GET") {
-    const release = currentFlashboxInitialFirmware();
+    const release = await currentFlashboxInitialFirmware();
     if (!release) {
       sendJson(res, 404, { error: "flashbox_initial_firmware_not_published", message: "Es ist noch kein Flashbox-Initialimage freigegeben." });
       return;
@@ -701,12 +729,12 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/api/public/flashbox/initial-firmware/content" && req.method === "GET") {
-    const release = currentFlashboxInitialFirmware();
+    const release = await currentFlashboxInitialFirmware();
     if (!release) {
       sendJson(res, 404, { error: "flashbox_initial_firmware_not_published", message: "Es ist noch kein Flashbox-Initialimage freigegeben." });
       return;
     }
-    servePublicFlashboxFirmware(res, release);
+    await servePublicFlashboxFirmware(res, release);
     return;
   }
 
@@ -715,7 +743,7 @@ async function routeRequest(req, res) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
-    sendJson(res, 200, { downloads: usbSerialHelperDownloads() });
+    sendJson(res, 200, { downloads: await usbSerialHelperDownloads() });
     return;
   }
 
@@ -2377,7 +2405,7 @@ async function handlePlatformProjectDelete(res, session, projectId) {
   const accountId = projectServerUserId(session);
   const telemetryPath = `/api/telemetry/internal/accounts/${encodeURIComponent(accountId)}/projects/${encodeURIComponent(project.project_server_id)}/data`;
   const telemetry = await telemetryJson(telemetryPath, { method: 'DELETE' });
-  const push = webPushService.unsubscribeProject(accountId, project.project_server_id);
+  const push = await webPushService.unsubscribeProject(accountId, project.project_server_id);
   const deletion = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, { method: 'DELETE' });
   sendJson(res, 200, { deleted: true, project_id: project.project_server_id, project: deletion, telemetry, push });
 }
@@ -5030,9 +5058,11 @@ async function handleDevLessonPreviewMigration(req, res) {
   });
 }
 
-function usbSerialHelperDownloads() {
+async function usbSerialHelperDownloads() {
   const files = fs.existsSync(usbSerialHelperDistDir) ? fs.readdirSync(usbSerialHelperDistDir) : [];
-  const published = platformDownloadRepository?.listCurrent("serial-service", { visibility: "authenticated" }) || [];
+  const published = platformDownloadRepository
+    ? await platformDownloadRepository.listCurrent("serial-service", { visibility: "authenticated" })
+    : [];
   const definitions = [
     {
       platform: "macos",
@@ -5073,8 +5103,11 @@ function usbSerialHelperDownloads() {
   });
 }
 
-function currentFlashboxInitialFirmware() {
-  return (platformDownloadRepository?.listCurrent("flashbox-initial-image", { visibility: "public" }) || [])
+async function currentFlashboxInitialFirmware() {
+  const releases = platformDownloadRepository
+    ? await platformDownloadRepository.listCurrent("flashbox-initial-image", { visibility: "public" })
+    : [];
+  return releases
     .find((release) => release.platform === "esp32" && release.architecture === "esp32-s3") || null;
 }
 
@@ -5091,8 +5124,8 @@ function publicFlashboxFirmwareMetadata(release) {
   };
 }
 
-function servePublicFlashboxFirmware(res, release) {
-  const content = platformDownloadRepository.getContent(
+async function servePublicFlashboxFirmware(res, release) {
+  const content = await platformDownloadRepository.getContent(
     "flashbox-initial-image",
     release.version,
     "esp32",
@@ -5111,13 +5144,13 @@ function servePublicFlashboxFirmware(res, release) {
 }
 
 async function serveUsbSerialHelperDownload(res, filename) {
-  const download = usbSerialHelperDownloads().find((item) => item.available && decodeURIComponent(item.url).endsWith(`/${filename}`));
+  const download = (await usbSerialHelperDownloads()).find((item) => item.available && decodeURIComponent(item.url).endsWith(`/${filename}`));
   if (!download) {
     sendJson(res, 404, { error: "download_not_found" });
     return;
   }
   if (download.source === "published") {
-    const release = platformDownloadRepository.getContent(
+    const release = await platformDownloadRepository.getContent(
       "serial-service",
       download.version,
       download.platform,

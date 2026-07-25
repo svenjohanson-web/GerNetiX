@@ -57,8 +57,8 @@ async function main() {
       connectionString: process.env.COMMUNITY_POSTGRES_URL || undefined,
       host: process.env.COMMUNITY_POSTGRES_HOST || "community-postgres",
       port: Number(process.env.COMMUNITY_POSTGRES_PORT || 5432),
-      database: process.env.COMMUNITY_POSTGRES_DATABASE || "gernetix_community",
-      user: process.env.COMMUNITY_POSTGRES_USER || "gernetix_community",
+      database: process.env.COMMUNITY_POSTGRES_DATABASE || "gernetix_runtime",
+      user: process.env.COMMUNITY_POSTGRES_USER || "gernetix_runtime",
       password: requiredSecret(process.env.COMMUNITY_POSTGRES_PASSWORD),
     },
   });

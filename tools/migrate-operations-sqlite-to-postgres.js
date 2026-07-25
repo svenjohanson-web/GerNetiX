@@ -75,8 +75,8 @@ async function main() {
       connectionString: process.env.OPERATIONS_POSTGRES_URL || undefined,
       host: process.env.OPERATIONS_POSTGRES_HOST || "operations-postgres",
       port: Number(process.env.OPERATIONS_POSTGRES_PORT || 5432),
-      database: process.env.OPERATIONS_POSTGRES_DATABASE || "gernetix_operations",
-      user: process.env.OPERATIONS_POSTGRES_USER || "gernetix_operations",
+      database: process.env.OPERATIONS_POSTGRES_DATABASE || "gernetix_runtime",
+      user: process.env.OPERATIONS_POSTGRES_USER || "gernetix_runtime",
       password: requiredSecret(process.env.OPERATIONS_POSTGRES_PASSWORD),
     },
   });

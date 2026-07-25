@@ -11,29 +11,29 @@ function createHttpApp({ service, config }) {
     if (req.method === "GET" && url.pathname === "/health") return sendJson(res, 200, { status: "ok", service: "admin-access-server" });
 
     if (req.method === "POST" && url.pathname === "/api/admin-access/login") {
-      const result = service.login(await readJsonBody(req));
+      const result = await service.login(await readJsonBody(req));
       if (!result) return sendJson(res, 401, { error: "invalid_credentials", message: "Benutzername oder Passwort ist nicht korrekt." });
       setSessionCookie(res, result.token, result.expires_at, config.cookieSecure || requestIsSecure(req));
       return sendJson(res, 200, { admin: result.admin, expires_at: result.expires_at });
     }
     if (url.pathname === "/api/admin-access/session") {
-      const session = service.session(readSessionToken(req));
+      const session = await service.session(readSessionToken(req));
       return session ? sendJson(res, 200, session) : sendJson(res, 401, { error: "not_authenticated" });
     }
     if (req.method === "POST" && url.pathname === "/api/admin-access/logout") {
-      service.logout(readSessionToken(req));
+      await service.logout(readSessionToken(req));
       clearSessionCookie(res, config.cookieSecure || requestIsSecure(req));
       return sendJson(res, 204, {});
     }
     if (url.pathname === "/api/admin-access/admins") {
       const token = readSessionToken(req);
       if (req.method === "GET") {
-        const admins = service.listAdmins(token);
+        const admins = await service.listAdmins(token);
         return admins ? sendJson(res, 200, { items: admins }) : sendJson(res, 401, { error: "not_authenticated" });
       }
       if (req.method === "POST") {
         try {
-          const admin = service.createAdministrator(token, await readJsonBody(req));
+          const admin = await service.createAdministrator(token, await readJsonBody(req));
           return admin ? sendJson(res, 201, { admin }) : sendJson(res, 403, { error: "admin_role_required" });
         } catch (error) { return sendJson(res, 400, { error: "invalid_admin", message: error.message }); }
       }
@@ -41,7 +41,7 @@ function createHttpApp({ service, config }) {
 
     if (url.pathname.startsWith("/api/admin/")) return proxyAdminRequest(req, res, url, service, config);
 
-    const session = service.session(readSessionToken(req));
+    const session = await service.session(readSessionToken(req));
     if (req.method === "GET" && ["/", "/admin", "/admin/"].includes(url.pathname)) return serveStatic(res, ownPublicDir, "/index.html");
     if (req.method === "GET" && ["/admin/login.css", "/admin/login.js", "/admin/access.js", "/admin/manifest.webmanifest", "/admin/sw.js"].includes(url.pathname)) return serveStatic(res, ownPublicDir, url.pathname.replace("/admin", ""));
     if (req.method === "GET" && url.pathname === "/admin/console") return redirect(res, "/admin/console/");
@@ -66,7 +66,7 @@ function createHttpApp({ service, config }) {
 }
 
 async function proxyAdminRequest(req, res, url, service, config) {
-  const actor = service.actorFor(readSessionToken(req));
+  const actor = await service.actorFor(readSessionToken(req));
   if (!actor) return sendJson(res, 401, { error: "not_authenticated" });
   if (actor.role !== "administrator") return sendJson(res, 403, { error: "admin_role_required" });
   if (!config.adminToolAccessToken) return sendJson(res, 503, { error: "admin_backend_not_configured" });

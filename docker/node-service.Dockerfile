@@ -24,6 +24,8 @@ COPY --chown=node:node tools/migrate-ai-usage-sqlite-to-postgres.js ./tools/migr
 COPY --chown=node:node tools/migrate-hardware-catalog-sqlite-to-postgres.js ./tools/migrate-hardware-catalog-sqlite-to-postgres.js
 COPY --chown=node:node tools/migrate-hardware-shop-sqlite-to-postgres.js ./tools/migrate-hardware-shop-sqlite-to-postgres.js
 COPY --chown=node:node tools/migrate-operations-sqlite-to-postgres.js ./tools/migrate-operations-sqlite-to-postgres.js
+COPY --chown=node:node tools/migrate-runtime-sqlite-to-postgres.js ./tools/migrate-runtime-sqlite-to-postgres.js
+COPY --chown=node:node tools/migrate-postgres-domains-to-runtime.js ./tools/migrate-postgres-domains-to-runtime.js
 COPY --chown=node:node tools/submit-flashbox-build-job.js ./tools/submit-flashbox-build-job.js
 COPY --chown=node:node tools/publish-touch-demo-release.js ./tools/publish-touch-demo-release.js
 COPY --chown=node:node tools/publish-platform-download.js ./tools/publish-platform-download.js
@@ -41,6 +43,9 @@ RUN npm ci --omit=dev --prefix services/ai-usage-server
 RUN npm ci --omit=dev --prefix services/hardware-catalog
 RUN npm ci --omit=dev --prefix services/hardware-shop
 RUN npm ci --omit=dev --prefix services/admin-tool
+RUN npm ci --omit=dev --prefix services/admin-access-server
+RUN npm ci --omit=dev --prefix services/build-deploy-server
+RUN npm ci --omit=dev --prefix services/public-demo-server
 RUN npm run verify:runtime-deps --prefix services/identity-server
 
 RUN mkdir -p /var/lib/gernetix/services /var/lib/gernetix/identity /var/lib/gernetix/projects /var/lib/gernetix/telemetry /var/lib/gernetix/ai-context /var/lib/gernetix/build /var/lib/gernetix/admin-access /var/lib/gernetix/public-demos /var/lib/gernetix/community \

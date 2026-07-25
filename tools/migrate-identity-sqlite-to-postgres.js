@@ -47,8 +47,8 @@ async function main() {
       connectionString: process.env.IDENTITY_POSTGRES_URL || undefined,
       host: process.env.IDENTITY_POSTGRES_HOST || "identity-postgres",
       port: Number(process.env.IDENTITY_POSTGRES_PORT || 5432),
-      database: process.env.IDENTITY_POSTGRES_DATABASE || "gernetix_identity",
-      user: process.env.IDENTITY_POSTGRES_USER || "gernetix_identity",
+      database: process.env.IDENTITY_POSTGRES_DATABASE || "gernetix_runtime",
+      user: process.env.IDENTITY_POSTGRES_USER || "gernetix_runtime",
       password: requiredSecret(process.env.IDENTITY_POSTGRES_PASSWORD),
     },
   });

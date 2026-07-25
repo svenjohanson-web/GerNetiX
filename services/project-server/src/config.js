@@ -21,8 +21,8 @@ function createConfig(env = process.env) {
       connectionString: env.PROJECT_POSTGRES_URL || "",
       host: env.PROJECT_POSTGRES_HOST || "127.0.0.1",
       port: Number(env.PROJECT_POSTGRES_PORT || 5432),
-      database: env.PROJECT_POSTGRES_DATABASE || "gernetix_projects",
-      user: env.PROJECT_POSTGRES_USER || "gernetix_projects",
+      database: env.PROJECT_POSTGRES_DATABASE || "gernetix_runtime",
+      user: env.PROJECT_POSTGRES_USER || "gernetix_runtime",
       password: env.PROJECT_POSTGRES_PASSWORD || "",
     },
   };

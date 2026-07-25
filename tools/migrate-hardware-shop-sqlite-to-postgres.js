@@ -63,8 +63,8 @@ async function main() {
       connectionString: process.env.HARDWARE_SHOP_POSTGRES_URL || undefined,
       host: process.env.HARDWARE_SHOP_POSTGRES_HOST || "hardware-shop-postgres",
       port: Number(process.env.HARDWARE_SHOP_POSTGRES_PORT || 5432),
-      database: process.env.HARDWARE_SHOP_POSTGRES_DATABASE || "gernetix_hardware_shop",
-      user: process.env.HARDWARE_SHOP_POSTGRES_USER || "gernetix_hardware_shop",
+      database: process.env.HARDWARE_SHOP_POSTGRES_DATABASE || "gernetix_runtime",
+      user: process.env.HARDWARE_SHOP_POSTGRES_USER || "gernetix_runtime",
       password: requiredSecret(process.env.HARDWARE_SHOP_POSTGRES_PASSWORD),
     },
   });

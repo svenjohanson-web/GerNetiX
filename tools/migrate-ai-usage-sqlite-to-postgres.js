@@ -99,8 +99,8 @@ async function main() {
       connectionString: process.env.AI_USAGE_POSTGRES_URL || undefined,
       host: process.env.AI_USAGE_POSTGRES_HOST || "ai-usage-postgres",
       port: Number(process.env.AI_USAGE_POSTGRES_PORT || 5432),
-      database: process.env.AI_USAGE_POSTGRES_DATABASE || "gernetix_ai_usage",
-      user: process.env.AI_USAGE_POSTGRES_USER || "gernetix_ai_usage",
+      database: process.env.AI_USAGE_POSTGRES_DATABASE || "gernetix_runtime",
+      user: process.env.AI_USAGE_POSTGRES_USER || "gernetix_runtime",
       password: requiredSecret(process.env.AI_USAGE_POSTGRES_PASSWORD),
     },
   });

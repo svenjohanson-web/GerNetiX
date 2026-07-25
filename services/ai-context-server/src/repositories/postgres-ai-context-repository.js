@@ -1,9 +1,8 @@
-const { Pool } = require("pg");
 const { defaultArchitectureComponents, defaultHelpArticles, defaultPolicy, defaultPromptFoundations, defaultSources, isGrantActive } = require("./in-memory-ai-context-repository");
 
 class PostgresAiContextRepository {
   constructor(options = {}) {
-    this.pool = options.pool || new Pool(options.poolOptions);
+    this.pool = options.pool || new (require("pg").Pool)(options.poolOptions);
     this.embeddingClient = options.embeddingClient;
     this.dimensions = Number(options.dimensions || 768);
   }
