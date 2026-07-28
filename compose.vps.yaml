@@ -33,6 +33,7 @@ services:
       - "127.0.0.1:${RUNTIME_POSTGRES_HOST_PORT:-25432}:5432"
     networks:
       - backend
+      - runtime-postgres-access
     volumes:
       - runtime_postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -713,6 +714,7 @@ networks:
   edge:
   backend:
     internal: true
+  runtime-postgres-access:
 
 volumes:
   identity_state:

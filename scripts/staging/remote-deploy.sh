@@ -63,6 +63,7 @@ fi
 
 echo "==> Staging aktualisieren und auf Healthchecks warten"
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --force-recreate mqtt-broker
+docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --force-recreate runtime-postgres
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --wait --wait-timeout "$wait_timeout"
 
 echo "==> Vorhandene PostgreSQL-Domaenendaten einmalig zentral konsolidieren"
