@@ -6,6 +6,7 @@ const ApiClient = (() => {
       const error = new Error(payload.message || payload.error || `Request failed: ${url}`);
       error.status = response.status;
       error.code = payload.error || "";
+      error.payload = payload;
       throw error;
     }
     return payload;
@@ -19,10 +20,20 @@ const ApiClient = (() => {
     return writeJson("PUT", url, body);
   }
 
+  async function patchJson(url, body) {
+    return writeJson("PATCH", url, body);
+  }
+
   async function deleteJson(url) {
     const response = await fetch(url, { method: "DELETE" });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(payload.message || payload.error || `Request failed: ${url}`);
+    if (!response.ok) {
+      const error = new Error(payload.message || payload.error || `Request failed: ${url}`);
+      error.status = response.status;
+      error.code = payload.error || "";
+      error.payload = payload;
+      throw error;
+    }
     return payload;
   }
 
@@ -40,6 +51,7 @@ const ApiClient = (() => {
   return {
     deleteJson,
     getJson,
+    patchJson,
     postJson,
     putJson,
   };

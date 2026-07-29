@@ -46,6 +46,7 @@ Damit bleibt der Webshop fuer Verkauf und Kommunikation zustaendig, waehrend Ger
 | Hardware ohne Lizenz | Ja, fuer Rechnung, Versand und Support | Nein | keine oder optionale Produktregistrierung |
 | Hardware-Bundle mit Lizenz | Ja | Spaetestens zur Nutzung | Aktivierungscode per E-Mail oder im Paket |
 | GerNetiX Home Server Software-Lizenz | Ja | Ja, zur Aktivierung und Entitlement-Verwaltung | Aktivierungscode |
+| KI-Credits | Ja | Ja, Credits werden ausschließlich einem registrierten GerNetiX-Konto gutgeschrieben | Nach bestätigter Zahlung direkte Gutschrift oder Aktivierungscode |
 | Premium monatlich | Ja | Ja | Aktivierungscode oder spaetere direkte Abo-Zuordnung |
 | Premium jaehrlich inkl. Home Server | Ja | Ja | Aktivierungscode, der Premium und Home-Server-Nutzung freischaltet |
 

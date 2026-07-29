@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260724-02" />
+    <link rel="stylesheet" href="/app/app.css?v=20260728-security-illustration-layout-2" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -26,6 +26,18 @@
           <nav id="platformBreadcrumb" class="breadcrumb-tree" aria-label="Aktueller Bereich"></nav>
         </div>
         <div class="top-actions">
+          <label class="platform-language-switcher" for="platformLanguage">
+            <span class="language-globe" aria-hidden="true">🌐</span>
+            <span class="language-switcher-copy">
+              <span data-i18n="language.label">Sprache</span>
+              <small>DE · EN · NL</small>
+            </span>
+            <select id="platformLanguage" aria-label="Sprache" data-i18n-aria-label="language.label">
+              <option value="de">Deutsch</option>
+              <option value="en">English</option>
+              <option value="nl">Nederlands</option>
+            </select>
+          </label>
           <span id="accountBadge" class="account-badge"></span>
           <button id="mainMenuButton" class="menu-button" type="button" aria-label="Menue oeffnen" aria-expanded="false" aria-controls="mainMenu">
             <span></span>
@@ -36,50 +48,72 @@
       </header>
 
       <nav id="mainMenu" class="tabs app-menu hidden" aria-label="Plattformbereiche">
-        <a class="utility public-information-link" href="/">Startseite</a>
-        <a class="utility public-information-link" href="/entdecken/">GerNetiX entdecken</a>
-        <a class="utility public-information-link" href="/flashbox-einrichten/">USB Helper</a>
-        <a class="utility public-information-link" href="/nachbauprojekte/">Nachbauprojekte</a>
-        <a class="utility public-information-link" href="/wissen/">Wissensportal <span id="knowledgeUpdateMenuBadge" class="knowledge-update-count" hidden></span></a>
-        <a class="utility public-information-link" href="/community/">Community</a>
-        <a class="utility public-information-link" href="/hilfe/">Hilfe</a>
-        <a class="utility public-information-link" href="/support/">Support</a>
-        <a class="utility public-information-link" href="/shop/">Webshop</a>
-        <a class="utility public-information-link" href="/app/auth/">Anmelden</a>
-        <a href="/app/dashboard/" data-route="dashboard">Übersicht</a>
-        <a href="/app/development-platform/" data-route="development-platform">Entwicklungsplattform</a>
-        <a href="/app/learn/" data-route="learn">Lernplattform</a>
-        <a href="/app/device-management/" data-route="device-management">Geräte</a>
-        <a href="/app/community/" data-route="community">Community &amp; Begleitung</a>
-        <a class="utility" href="/app/downloads/" data-route="downloads">Downloads</a>
-        <a class="utility" href="/app/billing/" data-route="billing">Billing</a>
-        <button id="logoutButton" class="menu-logout" type="button">Abmelden</button>
+        <a href="/app/dashboard/" data-route="dashboard" data-i18n="platform.nav.dashboard">Übersicht</a>
+        <details class="app-menu-group app-menu-group-private">
+          <summary data-i18n="platform.menu.work">Arbeiten</summary>
+          <div>
+            <a href="/app/development-platform/" data-route="development-platform" data-i18n="platform.nav.development">Entwicklungsplattform</a>
+            <a href="/app/learn/" data-route="learn" data-i18n="platform.nav.learning">Lernplattform</a>
+            <a href="/app/device-management/" data-route="device-management" data-i18n="platform.nav.devices">Geräte</a>
+            <a href="/app/community/" data-route="community" data-i18n="platform.nav.community">Community &amp; Begleitung</a>
+          </div>
+        </details>
+        <details class="app-menu-group">
+          <summary data-i18n="platform.menu.knowledge_tools">Wissen &amp; Werkzeuge</summary>
+          <div>
+            <a class="utility public-information-link" href="/wissen/">Wissensportal <span id="knowledgeUpdateMenuBadge" class="knowledge-update-count" hidden></span></a>
+            <a class="utility" href="/app/quiz/" data-route="quiz" data-i18n="platform.nav.quiz">Quiz</a>
+            <a class="utility" href="/app/downloads/" data-route="downloads" data-i18n="platform.nav.downloads">Downloads</a>
+            <a class="utility public-information-link" href="/flashbox-einrichten/">USB Helper</a>
+            <a class="utility public-information-link" href="/nachbauprojekte/">Nachbauprojekte</a>
+          </div>
+        </details>
+        <details class="app-menu-group">
+          <summary data-i18n="platform.menu.gernetix">GerNetiX</summary>
+          <div>
+            <a class="utility public-information-link" href="/entdecken/">GerNetiX entdecken</a>
+            <a class="utility public-information-link" href="/community/">Community</a>
+            <a class="utility public-information-link" href="/hilfe/">Hilfe</a>
+            <a class="utility public-information-link" href="/support/">Support</a>
+            <a class="utility public-information-link" href="/shop/">Webshop</a>
+            <a class="utility public-information-link" href="/app/auth/">Anmelden</a>
+          </div>
+        </details>
+        <details class="app-menu-group app-menu-group-private">
+          <summary data-i18n="platform.menu.account">Konto</summary>
+          <div>
+            <a class="utility" href="/app/account-setup/" data-route="account-setup" data-i18n="profile.menu">Profil</a>
+            <a class="utility" href="/app/billing/" data-route="billing" data-i18n="platform.nav.billing">Billing</a>
+            <button id="logoutButton" class="menu-logout" type="button" data-i18n="platform.nav.logout">Abmelden</button>
+          </div>
+        </details>
       </nav>
 
       <section id="dashboardView" class="view">
         <section class="dashboard-hero" aria-labelledby="dashboardTitle">
-          <p class="eyebrow">Verstehen. Entwickeln. Erschaffen.</p>
-          <h1 id="dashboardTitle">Willkommen bei GerNetiX</h1>
-          <p class="dashboard-hero-intro">Wähle deinen Arbeitsbereich und setze deinen Lern- oder Entwicklungsweg fort.</p>
+          <p class="eyebrow" data-i18n="dashboard.eyebrow">Verstehen. Entwickeln. Erschaffen.</p>
+          <h1 id="dashboardTitle" data-i18n="dashboard.title">Willkommen bei GerNetiX</h1>
+          <p class="dashboard-hero-intro" data-i18n="dashboard.intro">Wähle deinen Arbeitsbereich und setze deinen Lern- oder Entwicklungsweg fort.</p>
         </section>
 
         <section class="dashboard-next" aria-labelledby="accountSetupTitle">
           <a class="entry-card primary dashboard-next-card" href="/app/account-setup/">
-            <span>Nächster Schritt</span>
-            <strong id="accountSetupTitle">Konto einrichten abschließen</strong>
-            <p>Dein Passkey funktioniert bereits. Ergänze bei Bedarf einen unabhängigen Wiederherstellungsweg.</p>
-            <small>Einrichtung öffnen →</small>
+            <span data-i18n="dashboard.next.label">Nächster Schritt</span>
+            <strong id="accountSetupTitle" data-i18n="dashboard.next.title">Konto einrichten abschließen</strong>
+            <p data-i18n="dashboard.next.text">Dein Passkey funktioniert bereits. Ergänze bei Bedarf einen unabhängigen Wiederherstellungsweg.</p>
+            <small data-i18n="dashboard.next.action">Einrichtung öffnen →</small>
           </a>
         </section>
 
         <section class="dashboard-section" aria-labelledby="workspaceTitle">
-          <div class="section-head"><div><p class="eyebrow">Arbeitsbereiche</p><h2 id="workspaceTitle">Was möchtest du tun?</h2></div></div>
+          <div class="section-head"><div><p class="eyebrow" data-i18n="dashboard.workspaces.eyebrow">Arbeitsbereiche</p><h2 id="workspaceTitle" data-i18n="dashboard.workspaces.title">Was möchtest du tun?</h2></div></div>
           <div class="dashboard-grid workspace-grid">
-            <button class="entry-card" type="button" data-open-route="/app/development-platform/"><span>Eigene Idee</span><strong>Entwicklungsbereich</strong><p>Vom Ziel zur begründeten Lösung.</p></button>
-            <button class="entry-card" type="button" data-open-route="/app/learn/"><span>Geführt lernen</span><strong>Lernbereich</strong><p>Verstehen, entscheiden, ausprobieren.</p></button>
-            <button class="entry-card" type="button" data-open-route="/wissen/"><span>Zusammenhängend lesen</span><strong>Wissensportal</strong><p>Grundlagen, Fachbegriffe und Systemzusammenhänge als Lektüre.</p></button>
-            <button class="entry-card" type="button" data-open-route="/app/device-management/"><span>Vorhandene Hardware</span><strong>Boards verwalten</strong><p>Boards verbinden und verwalten.</p></button>
-            <button class="entry-card" type="button" data-open-route="/app/community/"><span>Austausch &amp; Hilfe</span><strong>Community &amp; Begleitung</strong><p>Fragen stellen oder persönliche Projektbegleitung anfragen.</p></button>
+            <button class="entry-card" type="button" data-open-route="/app/development-platform/"><span data-i18n="dashboard.development.label">Eigene Idee</span><strong data-i18n="dashboard.development.title">Entwicklungsbereich</strong><p data-i18n="dashboard.development.text">Vom Ziel zur begründeten Lösung.</p></button>
+            <button class="entry-card" type="button" data-open-route="/app/learn/"><span data-i18n="dashboard.learning.label">Geführt lernen</span><strong data-i18n="dashboard.learning.title">Lernbereich</strong><p data-i18n="dashboard.learning.text">Verstehen, entscheiden, ausprobieren.</p></button>
+            <button class="entry-card" type="button" data-open-route="/wissen/"><span data-i18n="dashboard.knowledge.label">Zusammenhängend lesen</span><strong data-i18n="dashboard.knowledge.title">Wissensportal</strong><p data-i18n="dashboard.knowledge.text">Grundlagen, Fachbegriffe und Systemzusammenhänge als Lektüre.</p></button>
+            <button class="entry-card" type="button" data-open-route="/app/quiz/"><span data-i18n="dashboard.quiz.label">Wissen prüfen</span><strong data-i18n="dashboard.quiz.title">Quiz</strong><p data-i18n="dashboard.quiz.text">Fragen beantworten und die technische Begründung verstehen.</p></button>
+            <button class="entry-card" type="button" data-open-route="/app/device-management/"><span data-i18n="dashboard.devices.label">Vorhandene Hardware</span><strong data-i18n="dashboard.devices.title">Boards verwalten</strong><p data-i18n="dashboard.devices.text">Boards verbinden und verwalten.</p></button>
+            <button class="entry-card" type="button" data-open-route="/app/community/"><span data-i18n="dashboard.community.label">Austausch &amp; Hilfe</span><strong data-i18n="dashboard.community.title">Community &amp; Begleitung</strong><p data-i18n="dashboard.community.text">Fragen stellen oder persönliche Projektbegleitung anfragen.</p></button>
           </div>
         </section>
 
@@ -126,7 +160,7 @@
       <section id="accountSetupView" class="view hidden">
         <section class="panel">
           <div class="section-head">
-            <div><p class="eyebrow">Konto</p><h2>Konto einrichten abschließen</h2></div>
+            <div><p class="eyebrow" data-i18n="profile.eyebrow">Profil &amp; Konto</p><h2 data-i18n="profile.title">Profileinstellungen</h2></div>
             <a class="back-to-dashboard" href="/app/dashboard/">← Zur Übersicht</a>
           </div>
           <p>Dein Passkey reicht für die Anmeldung. Die folgenden Wege sind freiwillige zusätzliche Sicherungen, falls du dein Passkey-Gerät nicht mehr verwenden kannst.</p>
@@ -308,34 +342,34 @@
       <section id="learnView" class="view hidden">
         <div class="section-head">
           <div>
-            <p class="eyebrow">Gefuehrte Projekte</p>
-            <h2>Lernplattform</h2>
+            <p class="eyebrow" data-i18n="learning.eyebrow">Geführte Projekte</p>
+            <h2 data-i18n="learning.title">Lernplattform</h2>
           </div>
         </div>
         <section class="panel learning-catalog-panel">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Entdecken und starten</p>
-              <h3>Lernprojekt-Katalog</h3>
-              <p class="helper-text">Waehle ein Projekt nach Thema, Lernziel und gewuenschter Hardware.</p>
+              <p class="eyebrow" data-i18n="learning.catalog.eyebrow">Entdecken und starten</p>
+              <h3 data-i18n="learning.catalog.title">Lernprojekt-Katalog</h3>
+              <p class="helper-text" data-i18n="learning.catalog.intro">Wähle ein Projekt nach Thema, Lernziel und gewünschter Hardware.</p>
             </div>
           </div>
           <div class="learning-catalog-filters" aria-label="Lernprojekte filtern">
             <label>
-              Kategorie
+              <span data-i18n="learning.filter.category">Kategorie</span>
               <select id="learningCatalogCategory">
-                <option value="all">Alle Kategorien</option>
-                <option value="software_engineering">Software Engineering</option>
+                <option value="all" data-i18n="learning.filter.all_categories">Alle Kategorien</option>
+                <option value="software_engineering" data-i18n="learning.category.software">Software Engineering</option>
                 <option value="desktop">PC / Mac</option>
                 <option value="embedded">Embedded</option>
-                <option value="distributed_system">Verteilte Systeme</option>
+                <option value="distributed_system" data-i18n="learning.category.distributed">Verteilte Systeme</option>
                 <option value="mobile">Mobile</option>
               </select>
             </label>
             <label>
-              Tag
+              <span data-i18n="learning.filter.tag">Tag</span>
               <select id="learningCatalogTag">
-                <option value="all">Alle Tags</option>
+                <option value="all" data-i18n="learning.filter.all_tags">Alle Tags</option>
               </select>
             </label>
           </div>
@@ -344,8 +378,8 @@
         <section class="panel">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Persoenlicher Bereich</p>
-              <h3>Meine Lernprojekte</h3>
+              <p class="eyebrow" data-i18n="learning.personal.eyebrow">Persönlicher Bereich</p>
+              <h3 data-i18n="learning.personal.title">Meine Lernprojekte</h3>
             </div>
           </div>
           <div id="learnProjectList"></div>
@@ -358,6 +392,10 @@
 
       <section id="learningProjectView" class="view hidden">
         <section id="learningProjectWorkspace" class="panel learning-project-workspace" aria-live="polite"></section>
+      </section>
+
+      <section id="quizView" class="view hidden">
+        <div id="quizMount"></div>
       </section>
 
       <section id="ideView" class="view hidden">
@@ -1105,20 +1143,24 @@
       </footer>
     </main>
 
+    <script src="/app/i18n/i18n.js?v=20260726-01"></script>
     <script src="/app/api-client.js"></script>
     <script src="/app/dom-utils.js"></script>
     <script src="/app/serial-service-client.js?v=20260719-02"></script>
     <script src="/app/device-onboarding-model.js"></script>
     <script src="/app/device-onboarding-controller.js?v=20260719-04"></script>
-    <script src="/app/guided-project-view.js?v=20260724-03"></script>
-    <script src="/app/learning-project-view.js?v=20260718-02"></script>
-    <script src="/app/learning-project-controller.js?v=20260718-07"></script>
+    <script src="/app/guided-project-view.js?v=20260729-ai-credit-purchase-1"></script>
+    <script src="/app/learning-project-view.js?v=20260728-i18n-1"></script>
+    <script src="/app/learning-project-controller.js?v=20260728-i18n-1"></script>
+    <script src="/app/learning-project-locales.js?v=20260728-02"></script>
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
     <script src="/app/development-component-metamodel.js?v=20260716-01"></script>
     <script src="/app/development-platform.js?v=20260717-04"></script>
-    <script src="/app/help-content.js?v=20260723-15"></script>
+    <script src="/app/help-content.js?v=20260729-ac-dc-motor-foundations-1"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
-    <script src="/app/help-view.js?v=20260723-12"></script>
-    <script src="/app/app.js?v=20260724-01"></script>
+    <script src="/app/help-view.js?v=20260729-ai-credit-purchase-1"></script>
+    <script src="/app/quiz-data.js?v=20260726-01"></script>
+    <script src="/app/quiz.js?v=20260726-01"></script>
+    <script src="/app/app.js?v=20260729-ai-credit-packages-1"></script>
   </body>
 </html>

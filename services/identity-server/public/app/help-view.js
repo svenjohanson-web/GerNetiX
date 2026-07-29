@@ -53,8 +53,8 @@ const HelpView = (() => {
         </div>
         <form id="helpChatForm" class="help-chat-form">
           <label for="helpChatInput">Your question</label>
-          <span class="help-chat-input-box"><textarea id="helpChatInput" rows="2" placeholder="${access.premium ? "Enter your question about GerNetiX..." : "KI-Unterstuetzung ist mit Premium verfuegbar."}" ${access.premium ? "" : "disabled"}></textarea><button class="primary" type="submit" ${access.premium ? "" : "disabled"}>Send</button></span>
-          ${access.premium ? "" : '<p class="chat-premium-hint">KI-Unterstuetzung ist im Premium-Abo enthalten. <a href="/hilfe/#ai-premium">Warum?</a></p>'}
+          <span class="help-chat-input-box"><textarea id="helpChatInput" rows="2" placeholder="${access.hasAccount ? "Enter your question about GerNetiX..." : "Bitte melde dich an, um GerNetiX Help zu fragen."}" ${access.hasAccount ? "" : "disabled"}></textarea><button class="primary" type="submit" ${access.hasAccount ? "" : "disabled"}>Send</button></span>
+          <p class="chat-premium-hint">GerNetiX Help verwendet ausschließlich das lokale Hilfe-Modell und ist für angemeldete Konten kostenlos.</p>
         </form>
       </section>`}`;
     if (article.hardwareCatalog) loadHardwareCatalog(mount);
@@ -108,10 +108,7 @@ const HelpView = (() => {
   function renderKnowledgeBook(topics) {
     return `<div class="knowledge-book-layout">
       <nav class="panel knowledge-book-navigation" aria-label="Kapitelübersicht">
-        <details class="knowledge-book-toc" open>
-          <summary><span>Inhalt</span><small>Kapitelübersicht öffnen oder schließen</small></summary>
-          <div class="knowledge-book-toc-content">${topics.map((topic, topicIndex) => `<details class="knowledge-part-toc" open><summary><a class="knowledge-part-link" href="#knowledge-part-${escapeHtml(topic.id)}" data-knowledge-part="${escapeHtml(topic.id)}"><span>${topicIndex + 1}</span><strong>${escapeHtml(topic.title)}</strong></a></summary><div>${(topic.children || []).map((child, childIndex) => renderKnowledgeChapterToc(child, topicIndex, childIndex)).join("")}</div></details>`).join("")}</div>
-        </details>
+        <div class="knowledge-book-toc-content">${topics.map((topic, topicIndex) => `<details class="knowledge-part-toc" open><summary><a class="knowledge-part-link" href="#knowledge-part-${escapeHtml(topic.id)}" data-knowledge-part="${escapeHtml(topic.id)}"><span>${topicIndex + 1}</span><strong>${escapeHtml(topic.title)}</strong></a></summary><div>${(topic.children || []).map((child, childIndex) => renderKnowledgeChapterToc(child, topicIndex, childIndex)).join("")}</div></details>`).join("")}</div>
       </nav>
       <main class="knowledge-book-content" aria-label="Wissensportal-Lektüre">
         ${topics.map((topic, index) => `<section id="knowledge-part-${escapeHtml(topic.id)}" class="knowledge-book-part" data-knowledge-part="${escapeHtml(topic.id)}"><header><p class="eyebrow">Hauptkapitel ${index + 1}</p><h2>${index + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}${topic.serverLandscape ? renderServerTypesVisual() : ""}</header>${(topic.children || []).map((child, childIndex) => {
@@ -133,7 +130,7 @@ const HelpView = (() => {
       }
       return `<span class="knowledge-subchapter-link is-locked">${escapeHtml(subchapter.title)}</span>`;
     }).join("");
-    return `<details class="knowledge-chapter-toc" open>
+    return `<details class="knowledge-chapter-toc">
       <summary><a class="knowledge-chapter-title-link" href="#${escapeHtml(chapter.id)}" data-knowledge-topic="${escapeHtml(chapter.id)}"><span>${chapterNumber}</span><strong>${escapeHtml(chapter.title)}</strong>${renderNewChapterBadge(chapter.id)}</a></summary>
       <div>
         ${subchapters}
@@ -211,7 +208,7 @@ const HelpView = (() => {
         <h3>${escapeHtml(section.heading)}</h3>
         ${section.tamagotchiIllustration ? '<figure class="tamagotchi-learning-illustration"><img src="/assets/tamagotchi-learning-journey.png" alt="Fröhliches digitales Haustier auf einem vernetzten Taschen-Gerät"><figcaption>Ein kleines Projekt, das mit deinen Ideen wachsen kann.</figcaption></figure>' : ""}
         ${section.embeddingVisual ? renderEmbeddingVisuals() : ""}
-        ${(section.paragraphs || []).map((paragraph, paragraphIndex) => `<p>${escapeHtml(paragraph)}</p>${section.aiIllustrationAfterParagraph === paragraphIndex ? '<figure class="tamagotchi-learning-illustration tamagotchi-ai-illustration"><img src="/assets/tamagotchi-ai-architecture.png" alt="Digitales Haustier mit leuchtender KI- und Verhaltensmodell-Verbindung"><figcaption>KI kann eine Fähigkeit ermöglichen – die technische Umsetzung bleibt eine bewusste Entscheidung.</figcaption></figure>' : ""}`).join("")}
+        ${(section.paragraphs || []).map((paragraph, paragraphIndex) => `<p>${escapeHtml(paragraph)}</p>${section.aiIllustrationAfterParagraph === paragraphIndex ? '<figure class="tamagotchi-learning-illustration tamagotchi-ai-illustration"><img src="/assets/tamagotchi-ai-architecture.png" alt="Digitales Haustier mit leuchtender KI- und Verhaltensmodell-Verbindung"><figcaption>KI kann eine Fähigkeit ermöglichen – die technische Umsetzung bleibt eine bewusste Entscheidung.</figcaption></figure>' : ""}${section.securityDoorIllustrations?.filter((illustration) => illustration.afterParagraph === paragraphIndex).map((illustration) => `<div class="security-door-illustrations"><figure><div class="security-door-illustration-label"><strong>${escapeHtml(illustration.title)}</strong></div><img src="${escapeHtml(illustration.src)}" alt="${escapeHtml(illustration.alt)}" loading="lazy"><figcaption>${escapeHtml(illustration.caption)}</figcaption></figure></div>`).join("") || ""}`).join("")}
         ${section.developmentPhases ? renderDevelopmentPhases() : ""}
         ${section.phaseDescriptions ? `<div class="engineering-phase-descriptions">${section.phaseDescriptions.map((phase) => `<p><strong>${escapeHtml(phase.title)}</strong> ${escapeHtml(phase.description)}</p>`).join("")}</div>` : ""}
         ${(section.followUpParagraphs || []).map((paragraph, paragraphIndex) => `<p>${escapeHtml(paragraph)}</p>${section.waterfallModelAfterFollowUp === paragraphIndex ? renderWaterfallModel() : ""}${section.vModelAfterFollowUp === paragraphIndex ? renderVModel() : ""}${section.agileModelAfterFollowUp === paragraphIndex ? renderAgileModel() : ""}`).join("")}
@@ -480,7 +477,7 @@ const HelpView = (() => {
       if (event.target.id !== "helpChatForm") return;
       event.preventDefault();
       const input = mount.querySelector("#helpChatInput");
-      if (!access.premium) return;
+      if (!access.hasAccount) return;
       const question = input.value.trim();
       if (!question) return;
       messages.push({ role: "user", text: question });
@@ -491,7 +488,16 @@ const HelpView = (() => {
         messages.push({ role: "assistant", text: response.answer, relatedTopics: response.relatedTopics || [] });
         if (response.openTopicId) selectedTopicId = response.openTopicId;
       } catch (error) {
-        messages.push({ role: "assistant", text: error.message || "The local help assistant is not available right now.", relatedTopics: [] });
+        const creditExhausted = error?.code === "ai_usage_rejected"
+          && error?.payload?.usagePreflight?.rejection_reason === "insufficient_credits";
+        if (creditExhausted) {
+          messages.push({ role: "assistant", text: "Keine KI-Credits mehr verfügbar. Bitte Tokens kaufen, um den KI-Chat weiter zu verwenden.", relatedTopics: [] });
+          window.dispatchEvent(new CustomEvent("ai-credit-purchase-required", {
+            detail: { usagePreflight: error.payload?.usagePreflight || {} },
+          }));
+        } else {
+          messages.push({ role: "assistant", text: error.message || "The local help assistant is not available right now.", relatedTopics: [] });
+        }
       }
       render();
     });

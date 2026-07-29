@@ -6,6 +6,8 @@ const test = require("node:test");
 const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
 const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const publicApp = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
+const helpView = fs.readFileSync(path.resolve(__dirname, "../public/app/help-view.js"), "utf8");
+const apiClient = fs.readFileSync(path.resolve(__dirname, "../public/app/api-client.js"), "utf8");
 const assistant = fs.readFileSync(path.resolve(__dirname, "../src/dev/development-assistant.js"), "utf8");
 const devServer = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
 
@@ -55,6 +57,21 @@ test("shows responder model token usage and duration below every AI answer", () 
   assert.match(guidedView, /totalTokens: Number\.isFinite\(usage\.totalTokens\)/);
   assert.match(guidedView, /code-explorer-response-meta/);
   assert.match(guidedView, /System \/ Fehler/);
+});
+
+test("directs exhausted AI chats to the credit purchase dialog", () => {
+  assert.match(apiClient, /error\.payload = payload/);
+  assert.match(guidedView, /rejection_reason === "insufficient_credits"/);
+  assert.match(guidedView, /Bitte Tokens kaufen/);
+  assert.match(guidedView, /ai-credit-purchase-required/);
+  assert.match(helpView, /rejection_reason === "insufficient_credits"/);
+  assert.match(helpView, /Bitte Tokens kaufen/);
+  assert.match(publicApp, /function openAiCreditPurchaseDialog/);
+  assert.match(publicApp, /Bitte Tokens kaufen/);
+  assert.match(publicApp, /Mehr KI-Credits kaufen/);
+  assert.match(publicApp, /Gekaufte Credits verfallen nicht/);
+  assert.match(publicApp, /ai_credit_packages/);
+  assert.match(publicApp, /navigate\("\/app\/billing\/"\)/);
 });
 
 test("shows and updates the account token allowance next to the development AI chat", () => {

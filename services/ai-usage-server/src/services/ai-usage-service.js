@@ -4,6 +4,11 @@ const { AiUsageError } = require("../errors");
 const DEFAULT_DAILY_TOKEN_CREDIT_LIMIT = 20000;
 const DEFAULT_MONTHLY_TOKEN_CREDIT_LIMIT = 100000;
 const DEFAULT_INITIAL_CREDITS = DEFAULT_MONTHLY_TOKEN_CREDIT_LIMIT;
+const CREDIT_PACKAGES = Object.freeze([
+  { package_id: "ai_credits_5_eur", title: "KI-Credits S", price_cents: 500, currency: "EUR", credits: 100000, expires: false },
+  { package_id: "ai_credits_10_eur", title: "KI-Credits M", price_cents: 1000, currency: "EUR", credits: 220000, expires: false },
+  { package_id: "ai_credits_20_eur", title: "KI-Credits L", price_cents: 2000, currency: "EUR", credits: 500000, expires: false },
+]);
 const BUILTIN_MODEL_PRICING = {
   "gpt-5.6-sol": { credits_per_1k_input_tokens: 1000, credits_per_1k_output_tokens: 1000, provider_input_cost_per_1k_tokens: 0.005, provider_output_cost_per_1k_tokens: 0.03 },
   "gpt-5.6": { credits_per_1k_input_tokens: 1000, credits_per_1k_output_tokens: 1000, provider_input_cost_per_1k_tokens: 0.005, provider_output_cost_per_1k_tokens: 0.03 },
@@ -21,6 +26,10 @@ class AiUsageService {
     return summarizeCreditAccount(account, await this.repository.listLedgerEntries({ account_id: account.account_id }));
   }
 
+  async listCreditPackages() {
+    return CREDIT_PACKAGES.map((item) => ({ ...item }));
+  }
+
   async getAccountRating(accountId) {
     const account = await this.ensureCreditAccount(accountId);
     return accountRating(account, await this.repository.listUsageEvents({ account_id: account.account_id }), normalizePolicy(await this.repository.getPolicy()));
@@ -32,6 +41,7 @@ class AiUsageService {
     const now = new Date().toISOString();
     const next = {
       ...account,
+      purchased_credits: account.purchased_credits + amount,
       total_granted_credits: account.total_granted_credits + amount,
       updated_at: now,
     };
@@ -41,7 +51,8 @@ class AiUsageService {
       account_id: account.account_id,
       entry_type: "credit_grant",
       amount_credits: amount,
-      reason: input.reason || "manual_credit_grant",
+      credit_bucket: "purchased_non_expiring",
+      reason: input.reason || "credit_purchase",
       reference_id: input.reference_id || "",
       created_at: now,
     });
@@ -271,8 +282,12 @@ class AiUsageService {
   async consumeCredits(accountId, amount, referenceId) {
     const account = await this.ensureCreditAccount(accountId);
     const now = new Date().toISOString();
+    const monthlyUsed = Math.min(monthlyAvailableCredits(account), amount);
+    const purchasedUsed = Number((amount - monthlyUsed).toFixed(4));
     const next = {
       ...account,
+      monthly_consumed_credits: Number((account.monthly_consumed_credits + monthlyUsed).toFixed(4)),
+      purchased_consumed_credits: Number((account.purchased_consumed_credits + purchasedUsed).toFixed(4)),
       consumed_credits: Number((account.consumed_credits + amount).toFixed(4)),
       updated_at: now,
     };
@@ -285,6 +300,7 @@ class AiUsageService {
       account_id: account.account_id,
       entry_type: "credit_consumption",
       amount_credits: -amount,
+      credit_sources: { monthly_included_credits: monthlyUsed, purchased_non_expiring_credits: purchasedUsed },
       reason: "ai_usage_event_completed",
       reference_id: referenceId,
       created_at: now,
@@ -294,11 +310,33 @@ class AiUsageService {
   async ensureCreditAccount(accountId) {
     const identityUserId = identityAccountId(accountId);
     const existing = await this.repository.findCreditAccount(identityUserId);
-    if (existing) return normalizeAccount(existing);
+    if (existing) {
+      const account = normalizeAccount(existing);
+      const currentPeriod = new Date().toISOString().slice(0, 7);
+      if (!account.monthly_credit_period) {
+        return await this.repository.saveCreditAccount({ ...account, monthly_credit_period: currentPeriod, updated_at: new Date().toISOString() });
+      }
+      if (account.monthly_credit_period !== currentPeriod) {
+        const next = {
+          ...account,
+          monthly_credit_period: currentPeriod,
+          monthly_consumed_credits: 0,
+          consumed_credits: account.purchased_consumed_credits,
+          updated_at: new Date().toISOString(),
+        };
+        return await this.repository.saveCreditAccount(next);
+      }
+      return account;
+    }
     const now = new Date().toISOString();
     return await this.repository.saveCreditAccount({
       account_id: identityUserId,
       plan_id: "plan.free",
+      monthly_included_credits: normalizePolicy(await this.repository.getPolicy()).monthly_credit_limit || DEFAULT_INITIAL_CREDITS,
+      monthly_consumed_credits: 0,
+      monthly_credit_period: now.slice(0, 7),
+      purchased_credits: 0,
+      purchased_consumed_credits: 0,
       total_granted_credits: normalizePolicy(await this.repository.getPolicy()).monthly_credit_limit || DEFAULT_INITIAL_CREDITS,
       consumed_credits: 0,
       held_credits: 0,
@@ -423,6 +461,14 @@ function summarizeCreditAccount(account, ledgerEntries) {
     consumed_credits: account.consumed_credits,
     held_credits: account.held_credits,
     available_credits: availableCredits(account),
+    monthly_included_credits: account.monthly_included_credits,
+    monthly_consumed_credits: account.monthly_consumed_credits,
+    monthly_credit_period: account.monthly_credit_period,
+    monthly_available_credits: monthlyAvailableCredits(account),
+    purchased_credits: account.purchased_credits,
+    purchased_consumed_credits: account.purchased_consumed_credits,
+    purchased_available_credits: purchasedAvailableCredits(account),
+    purchased_credits_expire: false,
     blocked_until: account.blocked_until,
     ledger_entries: ledgerEntries,
   };
@@ -645,7 +691,15 @@ function effectiveSourceRatings(policy = {}) {
 }
 
 function availableCredits(account) {
-  return Number((account.total_granted_credits - account.consumed_credits - account.held_credits).toFixed(4));
+  return Number((monthlyAvailableCredits(account) + purchasedAvailableCredits(account) - account.held_credits).toFixed(4));
+}
+
+function monthlyAvailableCredits(account) {
+  return Number(Math.max(0, account.monthly_included_credits - account.monthly_consumed_credits).toFixed(4));
+}
+
+function purchasedAvailableCredits(account) {
+  return Number(Math.max(0, account.purchased_credits - account.purchased_consumed_credits).toFixed(4));
 }
 
 function billableCredits(event) {
@@ -657,10 +711,20 @@ function billableProviderCost(event) {
 }
 
 function normalizeAccount(account) {
+  const legacyTotal = Number(account.total_granted_credits || 0);
+  const legacyConsumed = Number(account.consumed_credits || 0);
+  const monthlyIncluded = Number(account.monthly_included_credits ?? legacyTotal);
+  const monthlyConsumed = Number(account.monthly_consumed_credits ?? legacyConsumed);
+  const purchased = Number(account.purchased_credits || 0);
+  const purchasedConsumed = Number(account.purchased_consumed_credits || 0);
   return {
     ...account,
-    total_granted_credits: Number(account.total_granted_credits || 0),
-    consumed_credits: Number(account.consumed_credits || 0),
+    monthly_included_credits: monthlyIncluded,
+    monthly_consumed_credits: monthlyConsumed,
+    purchased_credits: purchased,
+    purchased_consumed_credits: purchasedConsumed,
+    total_granted_credits: monthlyIncluded + purchased,
+    consumed_credits: monthlyConsumed + purchasedConsumed,
     held_credits: Number(account.held_credits || 0),
   };
 }
@@ -706,4 +770,4 @@ function createId(prefix) {
   return `${prefix}_${crypto.randomUUID()}`;
 }
 
-module.exports = { AiUsageService };
+module.exports = { AiUsageService, CREDIT_PACKAGES };

@@ -26,7 +26,7 @@ GerNetiX unterscheidet bewusst zwei Geschäftsarten. Diese dürfen weder im Shop
 
 | Geschäftsart | Produkte | Betrieb und Daten | Kaufmodell |
 | --- | --- | --- | --- |
-| **Software as a Service (SaaS)** | Cloud Kostenlos, Basic+, Premium, KI-Credits | GerNetiX betreibt Clouddienste; konto- und projektgebundene Cloud-Daten liegen in den vorgesehenen Serverdomänen | Kostenlos oder Monats-/Jahresabo |
+| **Software as a Service (SaaS)** | Cloud Kostenlos, Basic+, Premium, KI-Credits | GerNetiX betreibt Clouddienste; konto- und projektgebundene Cloud-Daten liegen in den vorgesehenen Serverdomänen | Kostenlos oder Monats-/Jahresabo; KI-Credits kann jedes registrierte Konto als Prepaid-Guthaben kaufen |
 | **Lizenzierte Server-Software (Self-hosted)** | Home Small, Home Big, GerNetiX School | Kunde bzw. Organisation betreibt die Software auf eigener oder optional gekaufter Hardware; lokale Betriebsdaten bleiben in der Instanz | Zeitlich begrenzte Lizenz pro privater Instanz, Standort oder Organisation; Hardware ist optional |
 
 Die optionale Hardware verändert die Softwarelizenz nicht. Im Shop steht daher bei jedem Serverprodukt zuerst die fachliche Wahl **„Softwarelizenz“** oder **„Softwarelizenz mit zertifizierter Hardware“**. Ein Kunde kann die Lizenz auf eigener freigegebener Hardware installieren; eine Appliance kauft nur den komfortableren, getesteten Lieferweg hinzu.
@@ -328,7 +328,8 @@ Cloud ist hier kein Zwangsspeicher für ein Zuhause, sondern die kontoübergreif
 | Geräteinventar und lokales Pairing | Ja | Ja | Ja |
 | Geführte Grundlagen und Projektvorschau | Ja | Ja | Ja |
 | Zusätzliche geführte Lernprojekte, geprüfte Templates und Projekt-Assets | Vorschau bzw. einzelne kostenlose Inhalte | Enthalten: praxisnahe Standardbibliothek | Enthalten: vollständige Premium-Bibliothek und verbundene Erweiterungen |
-| Entwicklungs-, Hilfe- und Community-KI | Kein kostenpflichtiger externer KI-Anspruch; kostenlose lokale Hilfe kann später separat freigegeben werden | Kleines, klar veröffentlichtes Monatskontingent für konkrete Projektfragen | Höheres, klar veröffentlichtes Monatskontingent; über das Kontingent hinaus Prepaid-Credits |
+| Entwicklungs- und Community-KI | Kein enthaltenes Kontingent für kostenpflichtige externe KI; ein registriertes Konto kann bei Bedarf Prepaid-Credits kaufen | Kleines, klar veröffentlichtes Monatskontingent; zusätzlich Prepaid-Credits kaufbar | Höheres, klar veröffentlichtes Monatskontingent; zusätzlich Prepaid-Credits kaufbar |
+| GerNetiX Help KI | Kostenlos für jedes angemeldete Konto; ausschließlich lokales Help-Modell mit begrenztem Hilfe-Kontext | Kostenlos | Kostenlos |
 | Projekt-Push, Cloud-/OTA-Komfort und längere Retention | Kleine, transparent dokumentierte Basisquote | Praxis-Kontingent | Erweitertes Kontingent mit Limits und Kostenkontrolle |
 | Home-Server-Softwarelizenz | Nicht enthalten | Im Jahresabo für eine private Home-Instanz enthalten | Im Jahresabo für eine private Home-Instanz enthalten |
 
@@ -340,7 +341,7 @@ Die Stufen verkaufen **schrittweise mehr Zeitgewinn und fortlaufende Hilfe**, ni
 
 Damit wird Premium nicht zur bloßen Paywall, und Basic+ ist kein künstlich verstümmeltes Premium. Jede Stufe muss allein einen klaren Zweck erfüllen.
 
-Weitere private Stufen über Kostenlos, Basic+ und Premium hinaus sind vorerst abzulehnen. Falls sich später ein klarer Bedarf zeigt, ist ein **KI-Credit-Add-on** besser als ein vierter Tarif: Es löst ein messbares Verbrauchsproblem und passt zu der bereits vorgesehenen Prepaid-/Ledger-Architektur.
+Weitere private Stufen über Kostenlos, Basic+ und Premium hinaus sind vorerst abzulehnen. Ein **KI-Credit-Add-on** ist kein Premium-Privileg, sondern steht jedem registrierten Konto zur Verfügung: Der Tarif bestimmt enthaltenes Kontingent, Funktionszugriff und Komfort; gekaufte Credits lösen ausschließlich zusätzliches, verbrauchsabhängiges KI-Guthaben. Das Add-on löst damit ein messbares Verbrauchsproblem und passt zu der vorgesehenen Prepaid-/Ledger-Architektur.
 
 ### Modelle für Organisationen
 
@@ -373,7 +374,7 @@ Auf der öffentlichen Produktseite darf hierfür nur „nach Absprache“ geworb
 | Basic+ jährlich | Jährlich zum Preis von zehn Monaten | Zwölf Monate Basic+; **eine** Home-Server-Softwarelizenz für den privaten Betrieb | Fällt auf Kostenlos zurück; Home bleibt lokal funktionsfähig |
 | Premium jährlich | Jährlich zum Preis von zehn Monaten | Zwölf Monate Premium; **eine** Home-Server-Softwarelizenz für den privaten Betrieb | Fällt auf Kostenlos zurück; Home bleibt lokal funktionsfähig |
 | Home Small Server-Lizenz einzeln | Jährlich oder mehrjährig, nicht als unkündbare Einmalzahlung | Setup Tool, signierte Images, neue Installationen, Updates, neue Integrationen und Premium-Home-Komfort auf freigegebener Hardware | Bestehende lokale Funktionen laufen weiter |
-| KI-Credits | Prepaid, Ablauf transparent | Zusätzliches KI-Kontingent | Keine negativen Salden; Restlaufzeit offen ausweisen |
+| KI-Credits | Prepaid, für jedes registrierte Konto kaufbar: 5 €, 10 € oder 20 € | Zusätzliches KI-Kontingent unabhängig vom Cloud-Tarif | Keine negativen Salden; gekaufte Credits verfallen nicht und werden getrennt vom jeweils monatlich erneuerten enthaltenen Kontingent geführt |
 
 **Die Jahresabos von Basic+ und Premium kosten jeweils nur zehn Monatsraten, gewähren aber zwölf Monate Leistung und eine Home-Server-Softwarelizenz für eine private Instanz.** Der Bonus ist ein Nutzungsrecht, keine versteckte Hardwarefinanzierung. Er kann für eine gekaufte Appliance oder kundeneigene, freigegebene Hardware verwendet werden. Monatsabos schalten Home nicht frei; so bleibt die Lizenz einfach und es entstehen keine vermeidbaren Aktivierungs-/Churn-Konflikte. Wer ausschließlich lokal betreiben will, erhält die separate Home-Small-Server-Lizenz.
 

@@ -216,8 +216,11 @@ const GuidedProjectView = (() => {
           pending: false,
         });
       } catch (error) {
+        if (requiresAiCreditPurchase(error)) requestAiCreditPurchase(error);
         Object.assign(pendingMessage, {
-          content: `Der Code-Assistent ist gerade nicht erreichbar: ${error.message}`,
+          content: requiresAiCreditPurchase(error)
+            ? "Keine KI-Credits mehr verfügbar. Bitte Tokens kaufen, um den KI-Chat weiter zu verwenden."
+            : `Der Code-Assistent ist gerade nicht erreichbar: ${error.message}`,
           responseMeta: { responder: "System / Fehler" },
           pending: false,
         });
@@ -226,6 +229,17 @@ const GuidedProjectView = (() => {
       }
       renderProjectViewManifest(project);
       renderProjectAssistant(project);
+    }
+
+    function requiresAiCreditPurchase(error) {
+      return error?.code === "ai_usage_rejected"
+        && error?.payload?.usagePreflight?.rejection_reason === "insufficient_credits";
+    }
+
+    function requestAiCreditPurchase(error) {
+      window.dispatchEvent(new CustomEvent("ai-credit-purchase-required", {
+        detail: { usagePreflight: error.payload?.usagePreflight || {} },
+      }));
     }
 
     function renderCodeExplorerUsage() {
@@ -1065,12 +1079,16 @@ if (digitalRead(BUTTON_PIN) == LOW) {
     }
 
     async function saveIdeGuidedProgress(project, currentStep, completedSteps) {
+      const currentView = guidedViews(project)[currentStep] || {};
       const progress = await postJson("/api/platform/learning-progress", {
         courseId: project.courseId,
-        lessonId: project.lessonId,
+        lessonId: currentView.lesson_id || project.lessonId,
+        currentLessonId: currentView.lesson_id || project.currentLessonId || project.lessonId,
         projectId: project.id,
         currentStep,
+        currentStepId: currentView.id || "",
         completedSteps,
+        completedStepIds: completedSteps.map((index) => guidedViews(project)[index]?.id).filter(Boolean),
       });
       state.progress = state.progress.filter((item) => item.id !== progress.id).concat(progress);
       state.workspace = await postJson("/api/platform/workspace-state", {

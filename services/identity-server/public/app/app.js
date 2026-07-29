@@ -74,6 +74,7 @@ const routeMap = {
   learn: "learnView",
   "learning-project-overview": "learningProjectOverviewView",
   "learning-project": "learningProjectView",
+  quiz: "quizView",
   ide: "ideView",
   "device-management": "deviceManagementView",
   "device-provisioning": "deviceProvisioningView",
@@ -97,9 +98,11 @@ let deviceOnboardingController = null;
 let guidedProjectViewController = null;
 let developmentPlatformController = null;
 let learningProjectController = null;
+let quizController = null;
 let lastRenderedRoute = "";
 let processorBoardCatalogLoadPromise = null;
 let boardFeatureCatalogLoadPromise = null;
+let platformI18n = null;
 
 function deviceOnboarding() {
   if (!deviceOnboardingController) {
@@ -167,6 +170,7 @@ document.querySelector("#logoutButton").addEventListener("click", async () => {
   await fetch("/api/logout", { method: "POST" });
   window.location.href = "/app/auth/";
 });
+document.querySelector("#platformLanguage")?.addEventListener("change", changePlatformLocale);
 
 document.querySelectorAll("[data-open-route]").forEach((button) => {
   button.addEventListener("click", () => navigate(button.dataset.openRoute));
@@ -365,9 +369,8 @@ async function bootstrap() {
       state.account = null;
       state.billing = null;
     }
-    if (!state.account) {
-      document.body.classList.add("public-information-anonymous");
-    }
+    document.body.classList.toggle("public-information-anonymous", !state.account);
+    await initializePlatformI18n();
     document.querySelector("#accountBadge").textContent = state.account ? `${state.account.username} · ${state.account.plan}` : (isPublicKnowledgePage ? "Wissensportal" : "Öffentliche Hilfe");
     document.querySelector("#logoutButton").textContent = state.account ? "Abmelden" : "Anmelden";
     renderRoute();
@@ -375,9 +378,48 @@ async function bootstrap() {
   }
   developmentPlatform().init();
   await refresh();
+  await initializePlatformI18n();
   await loadPlatformDownloads();
   renderAll();
   renderRoute();
+}
+
+async function initializePlatformI18n() {
+  try {
+    platformI18n = await window.GerNetiXI18n.create({
+      accountLocale: state.account?.preferred_locale || "",
+    });
+    platformI18n.translateDocument();
+    syncLanguageControls(platformI18n.locale);
+  } catch (error) {
+    console.warn("Platform translations could not be initialized.", error);
+  }
+}
+
+function syncLanguageControls(locale) {
+  const select = document.querySelector("#platformLanguage");
+  if (select) select.value = locale;
+}
+
+async function changePlatformLocale(event) {
+  if (!platformI18n) return;
+  const previousLocale = platformI18n.locale;
+  const nextLocale = event.target.value;
+  try {
+    await platformI18n.setLocale(nextLocale);
+    syncLanguageControls(nextLocale);
+    quizController?.render();
+    renderRoute();
+    if (state.account) {
+      const result = await patchJson("/api/account/preferences", { preferred_locale: nextLocale });
+      state.account = { ...state.account, ...result.account };
+    }
+  } catch (error) {
+    await platformI18n.setLocale(previousLocale);
+    syncLanguageControls(previousLocale);
+    quizController?.render();
+    renderRoute();
+  }
 }
 
 async function loadPlatformDownloads() {
@@ -468,6 +510,9 @@ function renderRoute() {
   renderBreadcrumb(route);
   document.querySelectorAll(".view").forEach((view) => view.classList.toggle("hidden", view.id !== routeMap[route]));
   document.querySelectorAll(".tabs a").forEach((link) => link.classList.toggle("active", link.dataset.route === topLevelRouteName(route)));
+  document.querySelectorAll("#mainMenu .app-menu-group").forEach((group) => {
+    group.open = Boolean(group.querySelector("a.active"));
+  });
   document.querySelectorAll("[data-device-management-route]").forEach((button) => {
     button.classList.toggle("active", deviceManagementRouteFor(route) === button.dataset.deviceManagementRoute);
   });
@@ -480,8 +525,13 @@ function renderRoute() {
     developmentPlatform().renderHardwareConfiguration();
   }
   if (route === "ide") loadIdeProject();
+  if (route === "learn") {
+    renderProjects();
+    renderLearn();
+  }
   if (route === "learning-project-overview") renderLearningProjectOverview();
   if (route === "learning-project") learningProject().render();
+  if (route === "quiz") quiz().render();
   if (route === "device-recovery") {
     renderDeviceRecovery();
     refreshUsbPorts(false);
@@ -495,9 +545,31 @@ function renderRoute() {
 
 function learningProject() {
   if (!learningProjectController) {
-    learningProjectController = LearningProjectController.create({ state, postJson, navigate, renderLearn, renderDashboard, renderGuidedProject, projectById, progressFor, escapeHtml });
+    learningProjectController = LearningProjectController.create({
+      state,
+      postJson,
+      navigate,
+      renderLearn,
+      renderDashboard,
+      renderGuidedProject,
+      projectById,
+      progressFor,
+      escapeHtml,
+      localizeProject: (project) => LearningProjectLocales.project(project, currentLearningLocale()),
+      learningText,
+    });
   }
   return learningProjectController;
+}
+
+function quiz() {
+  if (!quizController) {
+    quizController = GerNetiXQuiz.create({
+      mount: document.querySelector("#quizMount"),
+      getLocale: () => platformI18n?.locale || document.documentElement.lang || "de",
+    });
+  }
+  return quizController;
 }
 
 function renderHelpTopic() {
@@ -573,6 +645,10 @@ function currentLocationTrail(route) {
       { label: "Lernplattform", route: "/app/learn/" },
       { label: "Lernprojekt", route: "" },
     ],
+    quiz: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Quiz", route: "/app/quiz/" },
+    ],
     ide: [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Entwicklungsplattform", route: "/app/development-platform/" },
@@ -622,7 +698,7 @@ function currentLocationTrail(route) {
     ],
     "account-setup": [
       { label: "Plattform", route: "/app/dashboard/" },
-      { label: "Konto einrichten", route: "" },
+      { label: "Profil", route: "" },
     ],
   };
   return locations[route] || locations.dashboard;
@@ -1021,7 +1097,7 @@ function renderProjects() {
     };
   }
   if (tagFilter) {
-    tagFilter.innerHTML = `<option value="all">Alle Tags</option>${availableTags.map((tag) => `
+    tagFilter.innerHTML = `<option value="all">${escapeHtml(learningText("allTags", "Alle Tags"))}</option>${availableTags.map((tag) => `
       <option value="${escapeAttribute(tag)}"${tag === state.learningCatalogTag ? " selected" : ""}>${escapeHtml(learningTagLabel(tag))}</option>
     `).join("")}`;
     if (state.learningCatalogTag !== "all" && !availableTags.includes(state.learningCatalogTag)) state.learningCatalogTag = "all";
@@ -1057,7 +1133,7 @@ function renderProjects() {
         </ul>
       </div>
     </a>
-  `).join("") : `<p class="empty">Im Lernprojekt-Katalog sind noch keine Projekte verfuegbar.</p>`;
+  `).join("") : `<p class="empty">${escapeHtml(learningText("emptyCatalog", "Im Lernprojekt-Katalog sind noch keine Projekte verfügbar."))}</p>`;
   document.querySelectorAll("#projectList [data-open-learning-project-overview]").forEach((tile) => {
     tile.addEventListener("click", (event) => {
       event.preventDefault();
@@ -1078,11 +1154,11 @@ function renderLearningProjectOverview() {
   const project = learningCatalogProjects().find((item) => item.id === projectId || item.slug === catalogSlug);
   if (!project) {
     target.innerHTML = `
-      <p class="eyebrow">Lernprojekt</p>
-      <h2>Projekt nicht gefunden</h2>
-      <p class="helper-text">Dieses Lernprojekt ist im aktuellen Katalog nicht verfügbar.</p>
+      <p class="eyebrow">${escapeHtml(learningText("notFoundEyebrow", "Lernprojekt"))}</p>
+      <h2>${escapeHtml(learningText("notFoundTitle", "Projekt nicht gefunden"))}</h2>
+      <p class="helper-text">${escapeHtml(learningText("notFoundText", "Dieses Lernprojekt ist im aktuellen Katalog nicht verfügbar."))}</p>
       <div class="button-row learning-project-overview-actions">
-        <button type="button" data-back-to-learning-catalog>Zurück</button>
+        <button type="button" data-back-to-learning-catalog>${escapeHtml(learningText("back", "Zurück"))}</button>
       </div>
     `;
   } else {
@@ -1095,18 +1171,18 @@ function renderLearningProjectOverview() {
       </header>
       ${project.projectStory?.problem ? `
         <section class="learning-project-story-summary">
-          <h3>Worum geht es in diesem Projekt?</h3>
+          <h3>${escapeHtml(learningText("about", "Worum geht es in diesem Projekt?"))}</h3>
           <p>${escapeHtml(project.projectStory.problem)}</p>
-          ${project.projectStory.learning_goal ? `<div><strong>Was du lernst</strong><p>${escapeHtml(project.projectStory.learning_goal)}</p></div>` : ""}
-          ${project.projectStory.working_method ? `<div><strong>So arbeitest du</strong><p>${escapeHtml(project.projectStory.working_method)}</p></div>` : ""}
-          ${project.projectStory.result ? `<div><strong>Dein Ergebnis</strong><p>${escapeHtml(project.projectStory.result)}</p></div>` : ""}
+          ${project.projectStory.learning_goal ? `<div><strong>${escapeHtml(learningText("learningGoal", "Was du lernst"))}</strong><p>${escapeHtml(project.projectStory.learning_goal)}</p></div>` : ""}
+          ${project.projectStory.working_method ? `<div><strong>${escapeHtml(learningText("workingMethod", "So arbeitest du"))}</strong><p>${escapeHtml(project.projectStory.working_method)}</p></div>` : ""}
+          ${project.projectStory.result ? `<div><strong>${escapeHtml(learningText("result", "Dein Ergebnis"))}</strong><p>${escapeHtml(project.projectStory.result)}</p></div>` : ""}
         </section>
       ` : ""}
       <section class="learning-project-lesson-overview">
         <header>
-          <p class="eyebrow">Projektaufbau</p>
-          <h3>So ist das Projekt aufgebaut</h3>
-          <p>Fünf Etappen führen dich von einfachen Daten im Arbeitsspeicher bis zur durchsuchbaren Datenbank und zum Dateiarchiv.</p>
+          <p class="eyebrow">${escapeHtml(learningText("structureEyebrow", "Projektaufbau"))}</p>
+          <h3>${escapeHtml(learningText("structureTitle", "So ist das Projekt aufgebaut"))}</h3>
+          <p>${escapeHtml(learningText("structureText", "Fünf Etappen führen dich von einfachen Daten im Arbeitsspeicher bis zur durchsuchbaren Datenbank und zum Dateiarchiv."))}</p>
         </header>
         ${lessons.length ? `
           <ol>
@@ -1116,16 +1192,18 @@ function renderLearningProjectOverview() {
                 <div>
                   <strong>${escapeHtml(lesson.title)}</strong>
                   <p>${escapeHtml(lesson.summary)}</p>
-                  <small>${lesson.standalone_start?.hardware_required ? "Praxisabschnitt mit ESP32" : "Ohne zusätzliche Hardware"}</small>
+                  <small>${escapeHtml(lesson.standalone_start?.hardware_required
+                    ? learningText("hardware", "Praxisabschnitt mit ESP32")
+                    : learningText("noHardware", "Ohne zusätzliche Hardware"))}</small>
                 </div>
               </li>
             `).join("")}
           </ol>
-        ` : `<p class="empty">Die Lessons für dieses Lernprojekt werden noch zugeordnet.</p>`}
+        ` : `<p class="empty">${escapeHtml(learningText("noLessons", "Die Lessons für dieses Lernprojekt werden noch zugeordnet."))}</p>`}
       </section>
       <div class="button-row learning-project-overview-actions">
-        <button type="button" data-back-to-learning-catalog>Zurück</button>
-        <button class="primary" type="button" data-start-learning-project="${escapeAttribute(project.id)}">Lernprojekt starten</button>
+        <button type="button" data-back-to-learning-catalog>${escapeHtml(learningText("back", "Zurück"))}</button>
+        <button class="primary" type="button" data-start-learning-project="${escapeAttribute(project.id)}">${escapeHtml(learningText("startProject", "Lernprojekt starten"))}</button>
       </div>
     `;
   }
@@ -1136,17 +1214,18 @@ function renderLearningProjectOverview() {
 }
 
 function learningCategoryLabel(category) {
-  return {
-    software_engineering: "Software Engineering",
-    desktop: "PC / Mac",
-    embedded: "Embedded",
-    distributed_system: "Verteilte Systeme",
-    mobile: "Mobile",
-  }[category] || "Lernprojekt";
+  const labels = {
+    de: { software_engineering: "Software Engineering", desktop: "PC / Mac", embedded: "Embedded", distributed_system: "Verteilte Systeme", mobile: "Mobile", fallback: "Lernprojekt" },
+    en: { software_engineering: "Software engineering", desktop: "PC / Mac", embedded: "Embedded", distributed_system: "Distributed systems", mobile: "Mobile", fallback: "Learning project" },
+    nl: { software_engineering: "Software-engineering", desktop: "PC / Mac", embedded: "Embedded", distributed_system: "Gedistribueerde systemen", mobile: "Mobiel", fallback: "Leerproject" },
+  };
+  const localized = labels[currentLearningLocale()] || labels.de;
+  return localized[category] || localized.fallback;
 }
 
 function learningTagLabel(tag) {
   const labels = {
+    de: {
     "client:mobile": "Mobile",
     "level:beginner": "Einsteiger",
     "platform:arduino": "Arduino",
@@ -1157,6 +1236,7 @@ function learningTagLabel(tag) {
     "protocol:mqtt": "MQTT",
     "runtime:browser": "Browser",
     "topic:actuators": "Aktoren",
+    "topic:motor-control": "Motoransteuerung",
     "topic:ai": "KI",
     "topic:automation": "Automatisierung",
     "topic:bare-metal": "Bare Metal",
@@ -1170,14 +1250,29 @@ function learningTagLabel(tag) {
     "topic:databases": "Datenbanken",
     "topic:storage": "Speicher",
     "topic:web-push": "Web Push",
+    },
+    en: {
+      "client:mobile": "Mobile", "level:beginner": "Beginner", "topic:actuators": "Actuators", "topic:ai": "AI",
+      "topic:automation": "Automation", "topic:home-automation": "Home automation", "topic:modeling": "Modelling",
+      "topic:programming": "Programming", "topic:sensors": "Sensors", "topic:data": "Data", "topic:databases": "Databases",
+      "topic:storage": "Storage",
+    },
+    nl: {
+      "client:mobile": "Mobiel", "level:beginner": "Beginner", "topic:actuators": "Actuatoren", "topic:ai": "AI",
+      "topic:automation": "Automatisering", "topic:home-automation": "Domotica", "topic:modeling": "Modellering",
+      "topic:programming": "Programmeren", "topic:sensors": "Sensoren", "topic:data": "Gegevens", "topic:databases": "Databases",
+      "topic:storage": "Opslag",
+    },
   };
-  return labels[tag] || String(tag || "").split(":").pop();
+  return labels[currentLearningLocale()]?.[tag] || labels.de[tag] || String(tag || "").split(":").pop();
 }
 
 function learningHeadlineLabel(project) {
   const primaryTopic = (project.tags || []).find((tag) => String(tag).startsWith("topic:"));
-  return {
+  const labels = {
+    de: {
     "topic:actuators": "Aktorik",
+    "topic:motor-control": "Motoransteuerung",
     "topic:ai": "Künstliche Intelligenz",
     "topic:automation": "Automatisierung",
     "topic:bare-metal": "Bare Metal",
@@ -1191,15 +1286,31 @@ function learningHeadlineLabel(project) {
     "topic:databases": "Datenbanken",
     "topic:storage": "Speicher",
     "topic:web-push": "Web Push",
-  }[primaryTopic] || learningCategoryLabel(project.learningCategory);
+    },
+    en: {
+      "topic:actuators": "Actuators", "topic:motor-control": "Motor control", "topic:ai": "Artificial intelligence", "topic:automation": "Automation",
+      "topic:home-automation": "Home automation", "topic:modeling": "Modelling", "topic:programming": "Programming",
+      "topic:radar": "Radar technology", "topic:sensors": "Sensors", "topic:data": "Data", "topic:databases": "Databases",
+      "topic:storage": "Storage",
+    },
+    nl: {
+      "topic:actuators": "Actuatoren", "topic:motor-control": "Motorbesturing", "topic:ai": "Kunstmatige intelligentie", "topic:automation": "Automatisering",
+      "topic:home-automation": "Domotica", "topic:modeling": "Modellering", "topic:programming": "Programmeren",
+      "topic:radar": "Radartechniek", "topic:sensors": "Sensoren", "topic:data": "Gegevens", "topic:databases": "Databases",
+      "topic:storage": "Opslag",
+    },
+  };
+  return labels[currentLearningLocale()]?.[primaryTopic] || labels.de[primaryTopic] || learningCategoryLabel(project.learningCategory);
 }
 
 function learningAccessLabel(accessModel) {
-  return {
-    free: "Frei verfuegbar",
-    purchased: "Kurs gekauft",
-    subscription: "Im Abo enthalten",
-  }[accessModel] || "Im Abo enthalten";
+  const labels = {
+    de: { free: "Frei verfügbar", purchased: "Kurs gekauft", subscription: "Im Abo enthalten" },
+    en: { free: "Available free", purchased: "Course purchased", subscription: "Included in subscription" },
+    nl: { free: "Gratis beschikbaar", purchased: "Cursus gekocht", subscription: "In abonnement inbegrepen" },
+  };
+  const localized = labels[currentLearningLocale()] || labels.de;
+  return localized[accessModel] || localized.subscription;
 }
 
 function renderLearn() {
@@ -1211,10 +1322,10 @@ function renderLearn() {
     <table class="learning-project-table">
       <thead>
         <tr>
-          <th>Projekt</th>
-          <th>Status</th>
-          <th>Fortschritt</th>
-          <th>Device</th>
+          <th>${escapeHtml(learningText("project", "Projekt"))}</th>
+          <th>${escapeHtml(learningText("status", "Status"))}</th>
+          <th>${escapeHtml(learningText("progress", "Fortschritt"))}</th>
+          <th>${escapeHtml(learningText("device", "Device"))}</th>
           <th></th>
         </tr>
       </thead>
@@ -1231,25 +1342,37 @@ function renderLearn() {
             </td>
             <td><span class="project-status ${learningProjectFilter(project, progress)}">${learningProjectStatus(project, progress)}</span></td>
             <td>${escapeHtml(progressText)}</td>
-            <td>${escapeHtml(project.linkedDeviceId || "kein Device")}</td>
-            <td><button type="button" data-open-project="${escapeHtml(project.id)}">${hasProgress ? "Fortsetzen" : "Starten"}</button></td>
+            <td>${escapeHtml(project.linkedDeviceId || learningText("noDevice", "kein Device"))}</td>
+            <td><button type="button" data-open-project="${escapeHtml(project.id)}">${escapeHtml(hasProgress ? learningText("continue", "Fortsetzen") : learningText("start", "Starten"))}</button></td>
           </tr>
     `;
   }).join("")}
       </tbody>
     </table>
-  ` : `<p class="empty">Keine Projekte für diesen Filter.</p>`;
+  ` : `<p class="empty">${escapeHtml(learningText("emptyPersonal", "Keine Projekte für diesen Filter."))}</p>`;
   document.querySelectorAll("#learnProjectList [data-open-project]").forEach((button) => {
     button.addEventListener("click", () => learningProject().open(button.dataset.openProject));
   });
 }
 
 function personalLearningProjects() {
-  return state.projects.filter((project) => project.projectOrigin === "account_project" || hasStartedLearningProject(project.id));
+  return state.projects
+    .filter((project) => project.projectOrigin === "account_project" || hasStartedLearningProject(project.id))
+    .map((project) => LearningProjectLocales.project(project, currentLearningLocale()));
 }
 
 function learningCatalogProjects() {
-  return state.projects.filter((project) => project.projectOrigin !== "account_project");
+  return state.projects
+    .filter((project) => project.projectOrigin !== "account_project")
+    .map((project) => LearningProjectLocales.project(project, currentLearningLocale()));
+}
+
+function currentLearningLocale() {
+  return platformI18n?.locale || document.documentElement.lang || "de";
+}
+
+function learningText(key, fallback) {
+  return LearningProjectLocales.text(currentLearningLocale(), key, fallback);
 }
 
 function accountDevelopmentProjects() {
@@ -1263,9 +1386,9 @@ function hasStartedLearningProject(projectId) {
 }
 
 function learningProjectStatus(project, progress) {
-  if (progress.completedSteps.length >= project.steps.length) return "abgeschlossen";
-  if (progress.currentStep > 0 || progress.completedSteps.length > 0) return "laufend";
-  return "bereit";
+  if (progress.completedSteps.length >= project.steps.length) return learningText("finished", "abgeschlossen");
+  if (progress.currentStep > 0 || progress.completedSteps.length > 0) return learningText("running", "laufend");
+  return learningText("ready", "bereit");
 }
 
 function learningProjectFilter(project, progress) {
@@ -3487,13 +3610,51 @@ function clearIdeTerminal() {
 }
 
 function renderBilling() {
-  document.querySelector("#billingSummary").innerHTML = [
+  const target = document.querySelector("#billingSummary");
+  const packages = state.billing.ai_credit_packages || [];
+  target.innerHTML = [
     ["Plan", state.billing.plan],
     ["Entitlements", state.billing.entitlements.join(", ")],
-    ["KI-Credits", state.billing.ai_credits.available_credits ?? 0],
+    ["Monatliche KI-Credits", state.billing.ai_credits.monthly_available_credits ?? 0],
+    ["Gekaufte KI-Credits", state.billing.ai_credits.purchased_available_credits ?? 0],
     ["Verbrauchte Credits", state.billing.ai_credits.consumed_credits ?? 0],
-  ].map(summaryItem).join("");
+  ].map(summaryItem).join("") + `<article class="summary-item ai-credit-purchase-card"><span>KI-Guthaben</span><strong>Mehr KI-Credits kaufen</strong><small>Gekaufte Credits verfallen nicht.</small><div class="ai-credit-package-list">${packages.map(renderAiCreditPackage).join("")}</div><button class="primary" type="button" data-buy-ai-credits>KI-Credits kaufen</button></article>`;
+  target.querySelector("[data-buy-ai-credits]")?.addEventListener("click", () => openAiCreditPurchaseDialog());
 }
+
+function renderAiCreditPackage(item) {
+  const price = new Intl.NumberFormat("de-DE", { style: "currency", currency: item.currency || "EUR" }).format(Number(item.price_cents || 0) / 100);
+  return `<span><strong>${escapeHtml(price)}</strong> · ${formatNumber(item.credits)} Credits · kein Verfall</span>`;
+}
+
+function openAiCreditPurchaseDialog(detail = {}) {
+  document.querySelector("#aiCreditPurchaseDialog")?.remove();
+  const estimate = Number(detail.usagePreflight?.estimated_credits || 0);
+  const remaining = Number(detail.usagePreflight?.remaining_credits_after_estimate || 0);
+  const overlay = document.createElement("div");
+  overlay.id = "aiCreditPurchaseDialog";
+  overlay.className = "runtime-modal ai-credit-purchase-modal";
+  overlay.innerHTML = `
+    <section class="runtime-dialog ai-credit-purchase-dialog" role="dialog" aria-modal="true" aria-labelledby="aiCreditPurchaseTitle">
+      <div class="runtime-dialog-header">
+        <div><p class="eyebrow">KI-Guthaben</p><h2 id="aiCreditPurchaseTitle">Bitte Tokens kaufen</h2></div>
+        <button type="button" data-close-ai-credit-purchase aria-label="Dialog schließen">Schließen</button>
+      </div>
+      <p>Für diese KI-Anfrage sind nicht genügend KI-Credits verfügbar${estimate ? ` (geschätzt: ${formatNumber(estimate)} Credits)` : ""}. Jede registrierte Person kann zusätzliches Guthaben kaufen – unabhängig vom Kontotyp. Gekaufte Credits verfallen nicht.</p>
+      ${remaining < 0 ? `<p class="helper-text">Es fehlen voraussichtlich ${formatNumber(Math.abs(remaining))} Credits.</p>` : ""}
+      <section class="ai-credit-purchase-packages" aria-label="KI-Credit-Pakete"><h3>Pakete</h3>${(state.billing?.ai_credit_packages || []).map(renderAiCreditPackage).join("")}</section>
+      <ol class="ai-credit-purchase-steps"><li>Im Billing ein KI-Credit-Paket auswählen.</li><li>Die Zahlung beim vorgesehenen Zahlungsanbieter bestätigen.</li><li>Nach der Zahlungsbestätigung wird das Guthaben automatisch deinem Konto gutgeschrieben.</li></ol>
+      <div class="button-row"><button class="primary" type="button" data-open-ai-credit-billing>Zu KI-Credits</button><button type="button" data-close-ai-credit-purchase>Später</button></div>
+    </section>`;
+  const close = () => overlay.remove();
+  overlay.querySelectorAll("[data-close-ai-credit-purchase]").forEach((button) => button.addEventListener("click", close));
+  overlay.querySelector("[data-open-ai-credit-billing]")?.addEventListener("click", () => { close(); navigate("/app/billing/"); });
+  overlay.addEventListener("click", (event) => { if (event.target === overlay) close(); });
+  document.body.append(overlay);
+  overlay.querySelector("[data-open-ai-credit-billing]")?.focus();
+}
+
+window.addEventListener("ai-credit-purchase-required", (event) => openAiCreditPurchaseDialog(event.detail || {}));
 
 function renderAiRating(selector, compact = false) {
   const target = document.querySelector(selector);
@@ -3582,7 +3743,14 @@ function encodePlantUml6Bit(value) {
 }
 
 function progressFor(projectId) {
-  return state.progress.find((item) => item.projectId === projectId) || { currentStep: 0, completedSteps: [] };
+  return state.progress.find((item) => item.projectId === projectId) || {
+    currentLessonId: "",
+    currentStepId: "",
+    currentStep: 0,
+    completedSteps: [],
+    completedStepIds: [],
+    lessonProgress: [],
+  };
 }
 
 function projectById(projectId) {
@@ -3627,6 +3795,10 @@ async function postJson(url, body) {
 
 async function putJson(url, body) {
   return ApiClient.putJson(url, body);
+}
+
+async function patchJson(url, body) {
+  return ApiClient.patchJson(url, body);
 }
 
 async function deleteJson(url) {

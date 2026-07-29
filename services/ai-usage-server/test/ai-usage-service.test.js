@@ -15,6 +15,56 @@ test("grants credits and exposes available credit balance", async () => {
   assert.equal(balance.ledger_entries.some((entry) => entry.entry_type === "credit_grant"), true);
 });
 
+test("keeps purchased credits separate and consumes the monthly allowance first", async () => {
+  const service = await createTestAiUsageServer();
+  await service.getCreditBalance("acct-buckets");
+  await service.recordCostControlAction({
+    action_type: "update_policy",
+    reason: "test credit buckets",
+    payload: { daily_credit_limit: 200000, monthly_credit_limit: 200000, max_prompt_tokens: 200000 },
+  });
+  await service.grantCredits("acct-buckets", { amount_credits: 500, reason: "credit_package_purchase" });
+  const preflight = await service.preflight({
+    account_id: "acct-buckets",
+    model: "gpt-4.1-mini",
+    estimated_input_tokens: 100000,
+    estimated_output_tokens: 200,
+  });
+  await service.completeUsageEvent(preflight.event_id, { input_tokens: 100000, output_tokens: 200 });
+  const balance = await service.getCreditBalance("acct-buckets");
+
+  assert.equal(balance.monthly_available_credits, 0);
+  assert.equal(balance.purchased_available_credits, 300);
+  assert.equal(balance.purchased_credits_expire, false);
+  assert.deepEqual(balance.ledger_entries.at(-1).credit_sources, { monthly_included_credits: 100000, purchased_non_expiring_credits: 200 });
+});
+
+test("publishes the three non-expiring credit packages", async () => {
+  const service = await createTestAiUsageServer();
+  const packages = await service.listCreditPackages();
+  assert.deepEqual(packages.map((item) => item.price_cents), [500, 1000, 2000]);
+  assert.equal(packages.every((item) => item.expires === false), true);
+});
+
+test("resets only the monthly credit bucket at the next monthly period", async () => {
+  const service = await createTestAiUsageServer();
+  const balance = await service.grantCredits("acct-month-reset", { amount_credits: 500, reason: "credit_package_purchase" });
+  const account = await service.repository.findCreditAccount("acct-month-reset");
+  await service.repository.saveCreditAccount({
+    ...account,
+    monthly_credit_period: "2000-01",
+    monthly_consumed_credits: 100000,
+    purchased_consumed_credits: 200,
+    consumed_credits: 100200,
+  });
+  const refreshed = await service.getCreditBalance("acct-month-reset");
+
+  assert.equal(balance.purchased_available_credits, 500);
+  assert.equal(refreshed.monthly_available_credits, 100000);
+  assert.equal(refreshed.purchased_available_credits, 300);
+  assert.equal(refreshed.monthly_credit_period, new Date().toISOString().slice(0, 7));
+});
+
 test("approves preflight and consumes credits on completion", async () => {
   const service = await createTestAiUsageServer();
   const preflight = await service.preflight({

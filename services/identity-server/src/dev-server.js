@@ -57,6 +57,8 @@ const { createTamagotchiEntryCourseModel } = require("./dev/project-models/tamag
 const { createSmartAssistantCourseModel } = require("./dev/project-models/smart-assistant-course");
 const { createButtonToSmartphoneNotificationCourseModel } = require("./dev/project-models/button-to-smartphone-notification-course");
 const { createHomeAutomationNetworkCourseModel } = require("./dev/project-models/home-automation-network-course");
+const { createHomeAutomationSensorsCourseModel } = require("./dev/project-models/home-automation-sensors-course");
+const { createMotorControlBasicsCourseModel } = require("./dev/project-models/motor-control-basics-course");
 const { createProximitySensorRadarCourseModel } = require("./dev/project-models/proximity-sensor-radar-course");
 const { createProgrammingFundamentalsCourseModel } = require("./dev/project-models/programming-fundamentals-course");
 const { createUmlFundamentalsCourseModel } = require("./dev/project-models/uml-fundamentals-course");
@@ -233,6 +235,8 @@ const tamagotchiEntryCourseModel = createTamagotchiEntryCourseModel({ readWorksp
 const smartAssistantCourseModel = createSmartAssistantCourseModel();
 const buttonToSmartphoneNotificationCourseModel = createButtonToSmartphoneNotificationCourseModel();
 const homeAutomationNetworkCourseModel = createHomeAutomationNetworkCourseModel();
+const homeAutomationSensorsCourseModel = createHomeAutomationSensorsCourseModel();
+const motorControlBasicsCourseModel = createMotorControlBasicsCourseModel();
 const proximitySensorRadarCourseModel = createProximitySensorRadarCourseModel();
 const programmingFundamentalsCourseModel = createProgrammingFundamentalsCourseModel();
 const umlFundamentalsCourseModel = createUmlFundamentalsCourseModel();
@@ -584,7 +588,7 @@ async function routeRequest(req, res) {
 
   if (req.method === "POST" && url.pathname === "/api/account/guest") {
     const body = await readJsonBody(req);
-    const guest = await auth.create_guest();
+    const guest = await auth.create_guest({ preferredLocale: body.locale });
     sessions.set(guest.session.token, { account: guest.account, expiresAt: guest.session.expires_at });
     setSessionCookie(res, guest.session.token, guest.session.expires_at);
     sendJson(res, 201, { account: guest.account, next: sanitizeNextPath(body.next) || "/app/dashboard/" });
@@ -595,6 +599,24 @@ async function routeRequest(req, res) {
     const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     sendJson(res, 200, { account: session.account });
+    return;
+  }
+
+  if (url.pathname === "/api/account/preferences" && ["GET", "PATCH"].includes(req.method)) {
+    const session = await readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    if (req.method === "GET") {
+      sendJson(res, 200, { preferred_locale: session.account.preferred_locale || "de" });
+      return;
+    }
+    try {
+      const body = await readJsonBody(req);
+      const account = await auth.update_preferred_locale(session.account.user_id, body.preferred_locale);
+      updateCachedSessionAccount(req, account);
+      sendJson(res, 200, { preferred_locale: account.preferred_locale, account });
+    } catch (error) {
+      sendJson(res, error.status || 400, { error: error.code || "invalid_locale" });
+    }
     return;
   }
 
@@ -820,7 +842,7 @@ async function routeRequest(req, res) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
-    sendJson(res, 200, updateLearningProgress(session, await readJsonBody(req)));
+    sendJson(res, 200, await updateLearningProgress(session, await readJsonBody(req)));
     return;
   }
 
@@ -978,7 +1000,6 @@ async function routeRequest(req, res) {
       sendJson(res, 401, { error: "not_authenticated" });
       return;
     }
-    if (!requireEntitlement(res, session, "ai_assistant")) return;
     await helpAssistant.handleChat(req, res);
     return;
   }
@@ -1641,6 +1662,7 @@ async function handleOfflineRecoveryPasskeyVerify(req, res) {
       counter: credential.counter,
       transports: credential.transports || [],
     });
+    if (body.locale) completed.account = await auth.update_preferred_locale(completed.account.user_id, body.locale);
     evictCachedSessionsForUser(completed.account.user_id);
     await recordOfflineRecoveryEvent(req, "offline_recovery_passkey_replaced", "warning", "Offline-Recovery hat den Login-Passkey ersetzt.", completed.account.username);
     sessions.set(completed.session.token, { account: completed.account, expiresAt: completed.session.expires_at });
@@ -1723,7 +1745,10 @@ async function handlePasskeyRegistrationOptions(req, res) {
     storePasskeyChallenge("register", username, options.challenge, config);
     sendJson(res, 200, options);
   } catch (error) {
-    sendJson(res, 400, { error: error.code || "passkey_registration_unavailable", message: "Konto wurde nicht angelegt. Grund: Passkey konnte nicht vorbereitet werden." });
+    sendJson(res, 400, {
+      error: error.code || (error.message === "invalid_username" ? "invalid_username" : "passkey_registration_unavailable"),
+      message: "Konto wurde nicht angelegt. Grund: Passkey konnte nicht vorbereitet werden.",
+    });
   }
 }
 
@@ -1743,7 +1768,7 @@ async function handlePasskeyRegistrationVerify(req, res) {
     const created = await auth.create_passkey_account(username, {
       credentialId: credential.id, publicKey: toBase64Url(credential.publicKey),
       counter: credential.counter, transports: credential.transports || [],
-    });
+    }, { preferredLocale: body.locale });
     sessions.set(created.session.token, { account: created.account, expiresAt: created.session.expires_at });
     setSessionCookie(res, created.session.token, created.session.expires_at);
     sendJson(res, 201, { account: created.account, message: "Konto wurde angelegt.", next: sanitizeNextPath(body.next) || "/app/dashboard/" });
@@ -1753,7 +1778,10 @@ async function handlePasskeyRegistrationVerify(req, res) {
       : host === "127.0.0.1"
         ? `Konto wurde nicht angelegt. Grund: Passkey konnte nicht verifiziert werden: ${error.message || "unbekannter Fehler"}`
         : "Konto wurde nicht angelegt. Grund: Passkey konnte nicht verifiziert werden.";
-    sendJson(res, error.status || 400, { error: error.code || "passkey_registration_failed", message });
+    sendJson(res, error.status || 400, {
+      error: error.code || (error.message === "terms_not_accepted" ? "terms_not_accepted" : "passkey_registration_failed"),
+      message,
+    });
   }
 }
 
@@ -1798,6 +1826,7 @@ async function handlePasskeyAuthenticationVerify(req, res) {
     });
     if (!verification.verified) throw new Error("passkey_authentication_not_verified");
     const login = await auth.login_passkey_by_credential_id(account.passkey_credential_id, verification.authenticationInfo.newCounter);
+    if (body.locale) login.account = await auth.update_preferred_locale(login.account.user_id, body.locale);
     sessions.set(login.session.token, { account: login.account, expiresAt: login.session.expires_at });
     setSessionCookie(res, login.session.token, login.session.expires_at);
     sendJson(res, 200, { account: login.account, next: sanitizeNextPath(body.next) || "/app/dashboard/" });
@@ -1811,6 +1840,7 @@ async function handleLogin(req, res) {
   const body = await readJsonBody(req);
   try {
     const login = await auth.login_local(body.identifier, body.password);
+    if (body.locale) login.account = await auth.update_preferred_locale(login.account.user_id, body.locale);
     sessions.set(login.session.token, {
       account: login.account,
       expiresAt: login.session.expires_at,
@@ -1838,6 +1868,7 @@ async function handleRegister(req, res) {
       body.password,
       body.accepted_terms === true,
       body.password_repeat,
+      { preferredLocale: body.locale },
     );
     if (smtpEmailService.configured()) {
       sendJson(res, 202, {
@@ -2034,7 +2065,7 @@ async function handlePlatformSummary(res, session) {
     })),
     development_project_template_previews: developmentProjectTemplatePreviews(),
     projects: projects.map(toPlatformProject),
-    learning_progress: listLearningProgress(userId, projects),
+    learning_progress: await listLearningProgress(userId, projects),
     devices,
     builds,
     community_summary: communitySummary,
@@ -3591,46 +3622,97 @@ function updateWorkspaceState(session, input = {}) {
   return updated;
 }
 
-function listLearningProgress(userId, projects) {
-  return projects.map((project) => {
-    const key = learningProgressKey(userId, project.course_id, project.lesson_id, project.project_server_id);
-    return userIdeState.learningProgress.get(key) || {
-      id: `learning_progress_${project.slug}`,
-      userId,
-      courseId: project.course_id,
-      lessonId: project.lesson_id,
-      projectId: project.project_server_id,
-      currentStep: 0,
-      completedSteps: [],
-      updatedAt: "",
-    };
-  });
+async function listLearningProgress(userId, projects) {
+  return Promise.all(projects.map(async (project) => {
+    const fallback = emptyPlatformLearningProgress(userId, project);
+    if (project.project_origin !== "account_project" || !project.learning_project_id?.startsWith("learning_project.")) {
+      return fallback;
+    }
+    return projectServerJson(
+      `/api/projects/${encodeURIComponent(project.project_server_id)}/learning-progress?user_id=${encodeURIComponent(userId)}`,
+    ).then((progress) => toPlatformLearningProgress(progress, project))
+      .catch((error) => {
+        if ([403, 404].includes(error.status)) return fallback;
+        throw error;
+      });
+  }));
 }
 
-function updateLearningProgress(session, input = {}) {
+async function updateLearningProgress(session, input = {}) {
   const userId = projectServerUserId(session);
   const projectId = requiredField(input.projectId || input.project_id, "projectId");
-  const courseId = requiredField(input.courseId || input.course_id, "courseId");
-  const lessonId = requiredField(input.lessonId || input.lesson_id, "lessonId");
+  const project = await requireSessionProject(session, projectId);
+  if (project.project_origin !== "account_project" || !project.learning_project_id?.startsWith("learning_project.")) {
+    const error = new Error("Lernfortschritt kann nur fuer ein accountgebundenes Lernprojekt gespeichert werden.");
+    error.status = 409;
+    throw error;
+  }
+  const courseId = requiredField(project.course_id || input.courseId || input.course_id, "courseId");
+  const lessonId = String(input.currentLessonId || input.current_lesson_id || input.lessonId || input.lesson_id || project.lesson_id || "");
   const currentStep = Number(input.currentStep ?? input.current_step ?? 0);
   const completedSteps = Array.from(new Set((input.completedSteps || input.completed_steps || []).map(Number))).sort((left, right) => left - right);
-  const progress = {
-    id: input.id || `learning_progress_${courseId}_${lessonId}_${projectId}`.replace(/[^a-zA-Z0-9_.-]+/g, "_"),
-    userId,
-    courseId,
-    lessonId,
-    projectId,
-    currentStep,
-    completedSteps,
-    updatedAt: new Date().toISOString(),
-  };
-  userIdeState.learningProgress.set(learningProgressKey(userId, courseId, lessonId, projectId), progress);
+  const persisted = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/learning-progress`, {
+    method: "PUT",
+    body: {
+      user_id: userId,
+      course_id: courseId,
+      current_lesson_id: lessonId,
+      current_step_id: input.currentStepId || input.current_step_id || "",
+      current_step_index: currentStep,
+      completed_step_indexes: completedSteps,
+      completed_step_ids: input.completedStepIds || input.completed_step_ids || [],
+    },
+  });
   touchWorkspace(session, projectId, "learn", `/app/learn/?project=${encodeURIComponent(projectId)}`);
-  return progress;
+  return toPlatformLearningProgress(persisted, project);
 }
 
-function learningProgressKey(userId, courseId, lessonId, projectId) {
-  return `${userId}:${courseId}:${lessonId}:${projectId}`;
+function emptyPlatformLearningProgress(userId, project) {
+  const firstView = project.view_manifest?.views?.[0] || {};
+  return {
+    id: `account_project_progress.${project.project_server_id}`,
+    userId,
+    courseId: project.course_id,
+    lessonId: firstView.lesson_id || project.lesson_id || "",
+    currentLessonId: firstView.lesson_id || "",
+    currentStepId: firstView.id || "",
+    projectId: project.project_server_id,
+    status: "not_started",
+    currentStep: 0,
+    completedSteps: [],
+    completedStepIds: [],
+    lessonProgress: [],
+    updatedAt: "",
+  };
+}
+
+function toPlatformLearningProgress(progress, project) {
+  return {
+    id: progress.progress_id || `account_project_progress.${project.project_server_id}`,
+    userId: progress.user_id || project.owner_user_id || "",
+    courseId: project.course_id,
+    lessonId: progress.current_lesson_id || project.lesson_id || "",
+    currentLessonId: progress.current_lesson_id || "",
+    currentStepId: progress.current_step_id || "",
+    projectId: progress.project_id || project.project_server_id,
+    entryMode: progress.entry_mode || project.entry_mode || "project_story",
+    status: progress.status || "not_started",
+    currentStep: Number(progress.current_step_index || 0),
+    completedSteps: progress.completed_step_indexes || [],
+    completedStepIds: progress.completed_step_ids || [],
+    lessonProgress: (progress.lesson_progress || []).map((lesson) => ({
+      lessonId: lesson.lesson_id,
+      status: lesson.status,
+      currentStepId: lesson.current_step_id,
+      currentStep: lesson.current_step_index,
+      completedStepIds: lesson.completed_step_ids || [],
+      completedSteps: lesson.completed_step_indexes || [],
+      globalStepIndex: lesson.global_step_index || 0,
+    })),
+    startedAt: progress.started_at || "",
+    updatedAt: progress.last_seen_at || "",
+    completedAt: progress.completed_at || "",
+  };
 }
 
 async function loadBillingSummary(session, existingAiUsage = null) {
@@ -3641,6 +3723,7 @@ async function loadBillingSummary(session, existingAiUsage = null) {
     plan: subscription.plan,
     entitlements: subscription.entitlements,
     ai_credits: aiUsage.credits,
+    ai_credit_packages: aiUsage.credit_packages || [],
   };
 }
 
@@ -3816,15 +3899,17 @@ async function handleHardwareShopOrder(req, res, session) {
 async function loadAiUsageSummary(session) {
   const accountId = projectServerUserId(session);
   try {
-    const [credits, rating, dashboard] = await Promise.all([
+    const [credits, rating, dashboard, creditPackages] = await Promise.all([
       aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/credits`),
       aiUsageJson(`/api/ai-usage/accounts/${encodeURIComponent(accountId)}/rating`),
       aiUsageJson("/api/ai-usage/admin/dashboard"),
+      aiUsageJson("/api/ai-usage/credit-packages"),
     ]);
     return {
       base_url: aiUsageBaseUrl,
       available: true,
       credits,
+      credit_packages: creditPackages.items || [],
       rating,
       usage_events: dashboard.summary,
       account_usage: (dashboard.by_account || []).find((item) => item.account_id === accountId) || null,
@@ -3839,6 +3924,7 @@ async function loadAiUsageSummary(session) {
         available_credits: 0,
         consumed_credits: 0,
       },
+      credit_packages: [],
       rating: {
         account_id: accountId,
         used_percent: 0,
@@ -3977,6 +4063,8 @@ function createUserIdeState() {
     smartAssistantCourseModel.createProject(project, step),
     buttonToSmartphoneNotificationCourseModel.createProject(project, step),
     homeAutomationNetworkCourseModel.createProject(project, step),
+    homeAutomationSensorsCourseModel.createProject(project, step),
+    motorControlBasicsCourseModel.createProject(project, step),
     proximitySensorRadarCourseModel.createProject(project, step),
     programmingFundamentalsCourseModel.createProject(project, step),
     umlFundamentalsCourseModel.createProject(project, step),
@@ -3997,7 +4085,6 @@ function createUserIdeState() {
     projectDefinitions: projects,
     projectServerSeeded: false,
     lessonManifestOverrides: new Map(),
-    learningProgress: new Map(),
     workspaceStates: new Map(),
     devices: [
       {
@@ -4151,6 +4238,18 @@ function projectViewManifest(project, options = {}) {
   }
   if (project.slug === homeAutomationNetworkCourseModel.slug) {
     return homeAutomationNetworkCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === homeAutomationSensorsCourseModel.slug) {
+    return homeAutomationSensorsCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === motorControlBasicsCourseModel.slug) {
+    return motorControlBasicsCourseModel.createViewManifest(project, {
       override,
       primarySourcePath,
     });
@@ -4844,6 +4943,12 @@ function demoProjectSources(project, options = {}) {
   }
   if (project.slug === homeAutomationNetworkCourseModel.slug) {
     return homeAutomationNetworkCourseModel.createSources();
+  }
+  if (project.slug === homeAutomationSensorsCourseModel.slug) {
+    return homeAutomationSensorsCourseModel.createSources();
+  }
+  if (project.slug === motorControlBasicsCourseModel.slug) {
+    return motorControlBasicsCourseModel.createSources();
   }
   if (project.slug === proximitySensorRadarCourseModel.slug) {
     return proximitySensorRadarCourseModel.createSources();

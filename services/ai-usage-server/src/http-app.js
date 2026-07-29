@@ -14,6 +14,11 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && path === `${prefix}/credit-packages`) {
+      sendJson(res, 200, { items: await service.listCreditPackages() });
+      return;
+    }
+
     const credits = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/credits$`));
     if (req.method === "GET" && credits) {
       sendJson(res, 200, await service.getCreditBalance(decodeURIComponent(credits[1])));

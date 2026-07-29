@@ -6,9 +6,9 @@ GerNetiX Help unterscheidet drei sichtbar getrennte Bereiche:
 - **Mit GerNetiX-Konto:** persoenliche Ablaeufe wie Provisionierung, Inventar und Board-Verbindung.
 - **Premium-Abo:** vertiefende Projekt- und Umsetzungsinhalte. Die Einleitung darf sichtbar bleiben; an der passenden Stelle folgt eine Paywall.
 
-Die Hilfe-Oberflaeche wertet Account-Entitlements aus. KI-Chats verwenden `ai_assistant`; Projekttemplates koennen eigene Technologie-Entitlements verlangen, zum Beispiel `web_push`. Der Identity Server prueft diese beiden Funktionen serverseitig. Im aktuellen Demo-Betrieb besitzt das Standardkonto weiter Premium-Zugriff; mit `subscription_plan` am Konto oder `GERNETIX_DEFAULT_ACCOUNT_PLAN` kann zwischen `Kostenlos` und `Premium` unterschieden werden.
+Die Hilfe-Oberflaeche wertet Account-Entitlements fuer Premium-Inhalte aus. Der eigenständige GerNetiX-Help-Chat ist für jedes angemeldete Konto kostenlos: Er verwendet ausschließlich das lokale Help-Modell und einen auf Hilfeartikel begrenzten Kontext; er verbraucht keine KI-Credits. Projekt- und Code-KI verwenden weiterhin `ai_assistant`; Projekttemplates koennen eigene Technologie-Entitlements verlangen, zum Beispiel `web_push`. Der Identity Server prueft diese Funktionen serverseitig. Im aktuellen Demo-Betrieb besitzt das Standardkonto weiter Premium-Zugriff; mit `subscription_plan` am Konto oder `GERNETIX_DEFAULT_ACCOUNT_PLAN` kann zwischen `Kostenlos` und `Premium` unterschieden werden.
 
-Die oeffentliche Hilfe erklaert bei gesperrten KI-Chats, dass derzeit externe KI-Anbieter Kosten verursachen. Sie verweist zugleich darauf, dass GerNetiX weiter an kostenguenstigeren und lokalen Loesungen fuer einen spaeteren kostenlosen Zugang arbeitet.
+Die öffentliche Hilfe erklärt, dass Projekt- und Code-KI externe Anbieter und KI-Credits benötigen können. Der getrennte Help-Chat bleibt dagegen lokal und kostenlos; er beantwortet nur Fragen, die durch passende GerNetiX-Hilfeartikel gedeckt sind.
 
 ## Noch offene Durchsetzung
 

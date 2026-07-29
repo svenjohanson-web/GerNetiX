@@ -15,7 +15,8 @@ const webshopAccountSeparationDoc = fs.readFileSync(path.join(__dirname, "..", "
 
 test("keeps Help reachable through the main menu and renders it as a dedicated view", () => {
   assert.match(html, /href="\/hilfe\/">Hilfe<\/a>/);
-  assert.match(html, /class="utility public-information-link" href="\/">Startseite<\/a>/);
+  assert.doesNotMatch(html, /class="utility public-information-link" href="\/">Startseite<\/a>/);
+  assert.match(html, /class="public-header-brand" href="\/" aria-label="GerNetiX Startseite"/);
   assert.match(html, /class="public-header-brand"[\s\S]*src="\/gernetix-wordmark\.png"/);
   assert.doesNotMatch(html, /href="\/produkte\/"/);
   assert.match(html, /class="utility public-information-link" href="\/community\/">Community<\/a>/);
@@ -48,10 +49,10 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(helpContent, /WLAN-zu-USB-\/Serial-Brücke/);
   assert.match(helpContent, /SSID und Passwort/);
   assert.match(helpContent, /Captive Portal/);
-  assert.match(helpContent, /title: "Ingenieursmäßig denken"[\s\S]*title: "Elektrotechnik"[\s\S]*title: "Mikrocontroller und Embedded"[\s\S]*title: "Informatik und Software"[\s\S]*title: "Verteilte Systeme"[\s\S]*title: "Die Künstliche Intelligenz"/);
+  assert.match(helpContent, /title: "Ingenieursmäßig denken"[\s\S]*title: "Elektrotechnik"[\s\S]*title: "Sensorik und Aktorik"[\s\S]*title: "Mikrocontroller und Embedded"[\s\S]*title: "Informatik und Software"[\s\S]*title: "Verteilte Systeme"[\s\S]*title: "Die Künstliche Intelligenz"/);
   assert.match(helpContent, /title: "Informatik und Software"[\s\S]*"software-basics-introduction"[\s\S]*"workers-and-queues"/);
   assert.match(helpContent, /title: "Lexikon"[\s\S]*"glossary-basics"/);
-  assert.match(helpContent, /title: "Elektrotechnik"[\s\S]*"physical-limits"[\s\S]*"sampling-rate"[\s\S]*"sensors"[\s\S]*"actuators"[\s\S]*"embedded-safety"/);
+  assert.match(helpContent, /title: "Elektrotechnik"[\s\S]*"physical-limits"[\s\S]*"sampling-rate"[\s\S]*"embedded-safety"[\s\S]*title: "Sensorik und Aktorik"[\s\S]*"sensors"[\s\S]*"actuators"/);
   assert.match(helpContent, /title: "Mikrocontroller und Embedded"[\s\S]*"hardware-landscape"[\s\S]*"processor-overview"[\s\S]*"microcontroller-basics"[\s\S]*"bus-systems"[\s\S]*"embedded-measurement-debugging"/);
   assert.match(helpContent, /"processor-overview"[\s\S]*"microcontroller-basics"[\s\S]*"microcontroller-flashing"[\s\S]*"microcontroller-pwm"[\s\S]*"embedded-measurement-debugging"/);
   assert.match(helpContent, /"microcontroller-basics": \{[\s\S]*Wie Software in einen Mikrocontroller kommt[\s\S]*Speicherorganisation[\s\S]*Register[\s\S]*GPIO[\s\S]*ADC[\s\S]*Timer[\s\S]*PWM/);
@@ -60,7 +61,7 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(helpContent, /"physical-limits": \{[\s\S]*Absolute Maximum Ratings[\s\S]*absolute Grenzwerte[\s\S]*Strom pro Pin und Gesamtstrom[\s\S]*Maximale Frequenz und Prozessortakt/);
   assert.match(helpContent, /"sampling-rate": \{[\s\S]*Nyquist-Shannon-Abtasttheorem[\s\S]*Aliasing[\s\S]*Abtastrate praktisch wählen/);
   assert.match(helpContent, /"sensors": \{[\s\S]*Sensoren nach Messgröße und Wirkprinzip ordnen[\s\S]*I²C[\s\S]*Messschaltungen[\s\S]*Spannungsteiler/);
-  assert.match(helpContent, /"actuators": \{[\s\S]*Aktor-Typen[\s\S]*Schaltungen zur Ansteuerung[\s\S]*MOSFETs[\s\S]*Freilaufdiode/);
+  assert.match(helpContent, /"actuators": \{[\s\S]*Zwei Motorfamilien: Wechselstrom und Gleichstrom[\s\S]*Synchronmaschinen: mit einem drehenden Magnetfeld mitlaufen[\s\S]*Gleichstrommotoren: Reihenschluss, Nebenschluss und permanent erregt[\s\S]*Motoransteuerung: Leistungsteil und Firmware[\s\S]*MOSFETs[\s\S]*Freilaufdiode/);
   assert.match(helpContent, /"bus-systems": \{[\s\S]*Chip-zu-Chip-Schnittstellen[\s\S]*I²C[\s\S]*SPI[\s\S]*Feld- und Systembusse[\s\S]*CAN[\s\S]*RS-485/);
   assert.match(helpContent, /title: "Querschnittsthemen"[\s\S]*"privacy-basics", title: "Datenschutz in vernetzten Projekten"/);
   assert.match(helpContent, /title: "Verteilte Systeme"[\s\S]*"distributed-systems-introduction"[\s\S]*"communication-basics"[\s\S]*"local-servers"[\s\S]*"internet-vps"[\s\S]*"cloud-services"[\s\S]*"choosing-servers"/);
@@ -84,8 +85,8 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(css, /\.help-topic-group \{/);
   assert.match(helpContent, /"ai-premium"/);
   assert.match(helpContent, /externe KI-Anbieter/);
-  assert.match(helpView, /KI-Unterstuetzung ist im Premium-Abo enthalten/);
-  assert.match(helpView, /access\.premium/);
+  assert.match(helpView, /lokale Hilfe-Modell und ist für angemeldete Konten kostenlos/);
+  assert.match(helpView, /access\.hasAccount/);
 });
 
 test("shows compatible hardware from the catalog and explains USB provisioning limits", () => {
@@ -153,6 +154,14 @@ test("opens the knowledge portal with engineering thinking and the Tamagotchi le
   assert.match(navigation, /id: "engineering-thinking"[\s\S]*title: "Ingenieursmäßig denken"[\s\S]*"from-problem-to-system"/);
   assert.match(navigation, /id: "from-problem-to-system"[\s\S]*access: "public"/);
   assert.match(helpContent, /"from-problem-to-system": \{[\s\S]*Nicht Technologie, sondern Problem[\s\S]*Wissen, Analyse und KI/);
+  assert.match(helpContent, /Ingenieursmäßiges Denken ist heute wichtiger denn je[\s\S]*nicht der Abschluss allein[\s\S]*Aufgeschlossenheit gegenüber neuen Technologien wie KI/);
+  assert.match(helpContent, /Anforderungen präzisiert[\s\S]*Zwischenergebnisse versteht[\s\S]*passende Tests ableitet[\s\S]*wie eine KI eine Anforderung bestmöglich begreift/);
+  assert.match(helpContent, /physikalischen, sicherheitstechnischen, normativen und systemischen Grenzen/);
+  assert.match(helpContent, /engineering-thinking-craft[\s\S]*Planung, Ausführung und Nachweis[\s\S]*nachvollziehbare Nachweis/);
+  assert.match(helpContent, /fachgerechte praktische Ausführung[\s\S]*wertvolles Erfahrungswissen in die Planung/);
+  assert.match(helpContent, /keine starre Trennung[\s\S]*Ingenieure bauen Prototypen[\s\S]*Handwerker lösen technische Probleme/);
+  assert.match(helpContent, /Viele Übungsaufgaben sind bewusst klar abgegrenzt[\s\S]*rechnerisch richtige Lösung muss sich erst in der Praxis bewähren/);
+  assert.match(helpContent, /Basteln bedeutet[\s\S]*verstehen, entwickeln, erschaffen/);
   assert.match(helpContent, /KI verändert den Zugang[\s\S]*keine eigenen Wünsche[\s\S]*Verantwortung für die Folgen/);
   assert.match(helpContent, /Viele Wege ins Lernen[\s\S]*Lernprojektkatalog/);
   assert.match(helpContent, /Die Tamagotchi-Lernreise[\s\S]*Zustandsautomat[\s\S]*Zustände synchronisiert[\s\S]*Identität und Berechtigungen/);
@@ -284,6 +293,47 @@ test("explains privacy as data minimization, transparency and protection", () =>
   assert.match(helpContent, /Datenschutz und Sicherheit gehören zusammen/);
 });
 
+test("offers security as a separate cross-cutting topic with network fundamentals", () => {
+  const navigation = helpContent.match(/id: "cross-cutting-topics"[\s\S]*?\n    \},\n    \{/)?.[0] || "";
+  assert.match(navigation, /"privacy-basics", title: "Datenschutz in vernetzten Projekten"/);
+  assert.match(navigation, /"security-basics", title: "Security in vernetzten Projekten"[\s\S]*security-network-technologies/);
+  assert.match(helpContent, /"security-basics": \{[\s\S]*Identifikation, Authentifizierung und Autorisierung/);
+  assert.match(helpContent, /Risikoanalyse: Was müssen wir schützen[\s\S]*Wie halten wir Angreifer ab[\s\S]*Wie erkennen wir Angreifer[\s\S]*Wie begrenzen wir den Schaden/);
+  assert.match(helpContent, /Updates, sichere Konfiguration, Eingabeprüfung und Rate Limits[\s\S]*Monitoring fasst sie zusammen[\s\S]*getrennte Netze oder VLANs[\s\S]*Getestete Backups/);
+  assert.doesNotMatch(helpContent, /security-systematic-overview\.png/);
+  assert.match(helpContent, /Security ist keine Anhäufung einzelner Maßnahmen[\s\S]*Was passiert, wenn sie kompromittiert werden[\s\S]*wie halten wir sie davon ab[\s\S]*Sitzungen und Tokens sind zeitlich begrenzte Zugangsnachweise[\s\S]*TLS, Zertifikate und Certificate Authorities[\s\S]*Firewall, VPN und Reverse Proxy/);
+  assert.match(helpContent, /vernetztes Türschloss[\s\S]*dauerhaft erreichbarer Informationsdienst[\s\S]*zeitlich begrenztes Recht zum Öffnen[\s\S]*Recht serverseitig widerrufen[\s\S]*Vertraulichkeit bedeutet[\s\S]*Integrität bedeutet[\s\S]*Verfügbarkeit bedeutet[\s\S]*Nachvollziehbarkeit bedeutet/);
+  assert.match(helpContent, /Abwesenheiten und Gewohnheiten ableiten[\s\S]*Einbrüche zu planen[\s\S]*gezielt für ein Verkaufsgespräch anzusprechen[\s\S]*kein Werbedatum/);
+  assert.match(helpContent, /security-smart-door-lock\.png[\s\S]*security-smart-door-status-privacy\.png[\s\S]*security-smart-door-remote-attack\.png[\s\S]*security-smart-door-access-rights\.png/);
+  assert.match(helpContent, /In der realen Welt kann grundsätzlich jede Person[\s\S]*setzt die Person selbst der Beobachtung aus[\s\S]*unbemerkt, von überall und beliebig oft abgefragt[\s\S]*dauerhaft erreichbarer Informationsdienst/);
+  assert.match(helpContent, /Die cyanfarbene Verbindung zeigt[\s\S]*Administration vergibt ein begrenztes Öffnungsrecht/);
+  assert.match(helpContent, /Türstatus ist eine sensible Information[\s\S]*Eine offene Tür ist keine öffentliche Information[\s\S]*Administration vergibt ein begrenztes Öffnungsrecht/);
+  assert.match(helpContent, /ohne sichtbare Gewalt und nahezu lautlos[\s\S]*Noch kritischer als ein ausgespähter Türstatus[\s\S]*Der legitime Anwendungsfall folgt danach[\s\S]*signierte, berechtigte Öffnungsbefehle/);
+  assert.doesNotMatch(helpContent, /security-smart-door-security-goals\.png/);
+  assert.match(helpContent, /Vertraulichkeit bedeutet[\s\S]*Integrität bedeutet[\s\S]*Verfügbarkeit bedeutet[\s\S]*Nachvollziehbarkeit bedeutet/);
+  assert.match(helpContent, /afterParagraph: 0[\s\S]*afterParagraph: 1[\s\S]*afterParagraph: 2[\s\S]*afterParagraph: 3/);
+  assert.match(helpView, /securityDoorIllustrations\?\.filter\(\(illustration\) => illustration\.afterParagraph === paragraphIndex\)[\s\S]*security-door-illustration-label/);
+  assert.match(css, /\.security-door-illustrations \{[\s\S]*grid-template-columns: minmax\(0, 760px\)[\s\S]*height: auto; object-fit: contain/);
+  assert.match(helpContent, /Sessions, Tokens und Rechte[\s\S]*geschütztes Session-Cookie[\s\S]*Ablaufzeit/);
+  assert.match(helpContent, /Verschlüsselung, Zertifikate und Certificate Authorities[\s\S]*privaten Schlüssel[\s\S]*Certificate Authority \(CA\)/);
+  assert.match(helpContent, /Typische Angriffsszenarien verstehen[\s\S]*Man in the Middle[\s\S]*Gestohlene Sitzung oder gestohlenes Token[\s\S]*Phishing[\s\S]*Offener oder ungepatchter Dienst/);
+  assert.match(helpContent, /Man in the Middle[\s\S]*HTTPS\/TLS[\s\S]*Zertifikatswarnungen ernst nehmen/);
+  assert.match(helpContent, /Netzwerktechnologien: IP, DNS, URLs und Ports[\s\S]*https:\/\/beispiel\.de:443\/app[\s\S]*Socket-Endpunkt/);
+  assert.match(helpContent, /MQTT sicher einsetzen[\s\S]*gegenseitigem TLS \(mTLS\)[\s\S]*MQTT-ACL[\s\S]*eigenen Mess-Topic/);
+  assert.match(helpContent, /Netzgrenzen: Firewall, NAT und Reverse Proxy[\s\S]*Portfreigabe[\s\S]*VPN/);
+  assert.match(helpContent, /Strategie für einen sicher erreichbaren Home-Server[\s\S]*Keine Portfreigabe für die Anwendung[\s\S]*vertrauenswürdigen Tunnel[\s\S]*direkte Portfreigabe/);
+  assert.match(helpContent, /Dadurch erhält nicht automatisch jede Person Zugriff auf deinen Rechner[\s\S]*Sicherheitslücke[\s\S]*separates Netz oder VLAN/);
+  assert.match(helpContent, /Sicherer Betrieb[\s\S]*Wiederherstellungen üben[\s\S]*Schlüssel rotieren/);
+});
+
+test("keeps sensors and actuators as a cross-cutting system topic and connects motor control to a learning project", () => {
+  assert.match(helpContent, /id: "sensors-and-actuators",[\s\S]*title: "Sensorik und Aktorik"[\s\S]*id: "sensors"[\s\S]*id: "actuators"/);
+  assert.match(helpContent, /id: "actuators", title: "Aktoren", articleId: "actuators", subchapters: \[\s*\{ id: "actuator-motor-theory", title: "Motoren und Antriebe" \},?\s*\]/);
+  assert.match(helpContent, /id: "actuator-motors-and-drives", heading: "Motoren und Antriebe auswählen"[\s\S]*id: "actuator-motor-control", heading: "Motoransteuerung: Leistungsteil und Firmware"[\s\S]*id: "actuator-safe-motion", heading: "Sicher bewegen: Rückmeldung und Fehlerfälle"/);
+  assert.match(helpContent, /id: "actuator-motor-theory", heading: "Zwei Motorfamilien: Wechselstrom und Gleichstrom"[\s\S]*id: "actuator-synchronous-machines", heading: "Synchronmaschinen: mit einem drehenden Magnetfeld mitlaufen"[\s\S]*id: "actuator-asynchronous-machines"[\s\S]*id: "actuator-dc-motors", heading: "Gleichstrommotoren: Reihenschluss, Nebenschluss und permanent erregt"[\s\S]*id: "actuator-bldc-basics"[\s\S]*B6-Brücke[\s\S]*sinusförmige Phasenströme/);
+  assert.match(helpContent, /\/app\/learn\/\?catalog=motor-control-basics/);
+});
+
 test("explains optional embedded, local, global and iPhone system landscapes in public help", () => {
   const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
   assert.match(navigation, /id: "distributed-systems"[\s\S]*"server-systems", title: "Systemlandschaften und Server"/);
@@ -300,13 +350,21 @@ test("explains optional embedded, local, global and iPhone system landscapes in 
   assert.match(helpContent, /"glossary-basics": \{[\s\S]*Fachbegriffe einfach erklärt[\s\S]*Edge Computing[\s\S]*Gateway[\s\S]*Latenz[\s\S]*API[\s\S]*Offline-first[\s\S]*Container[\s\S]*JTAG[\s\S]*Funktionale Sicherheit/);
   assert.match(helpContent, /Lokaler Server[\s\S]*Klassischer dedizierter Server[\s\S]*VPS \(Virtual Private Server\)[\s\S]*Cloud-Dienste/);
   assert.match(helpContent, /Performance[\s\S]*Sicherheit[\s\S]*Skalierbarkeit[\s\S]*Betriebsaufwand/);
-  assert.match(helpContent, /Web-App, API, kleine bis mittlere Datenbanken, VPN, Staging/);
-  assert.match(helpContent, /GerNetiX nutzt für seine Plattform einen VPS/);
+  assert.match(helpContent, /Websites, APIs, VPN-Gateways, kleine bis mittlere Datenbanken/);
+  assert.match(helpContent, /fest gebuchtes Paket aus virtuellen CPUs, RAM, Speicher und Netzwerk/);
+  assert.match(helpContent, /Cloud ist nicht einfach ein fremder Server/);
+  assert.match(helpContent, /bei mehr Anfragen mehr parallel ausgeführt; sinkt die Last, werden Ressourcen wieder reduziert/);
   assert.match(helpContent, /"choosing-servers": \{[\s\S]*Wie du auswählst[\s\S]*Mit kleinster sinnvoller Architektur beginnen/);
   const cloudChapter = helpContent.match(/"cloud-services": \{[\s\S]*?"workers-and-queues": \{/s)?.[0] || "";
   assert.match(cloudChapter, /Die Kostenfalle Cloud-Computing[\s\S]*Typische Ursachen[\s\S]*Jede Ausführung muss begrenzt sein/);
   const internetVpsChapter = helpContent.match(/"internet-vps": \{[\s\S]*?"cloud-services": \{/s)?.[0] || "";
   assert.match(internetVpsChapter, /Auswirkungen im Alltag[\s\S]*Performance[\s\S]*Sicherheit[\s\S]*Skalierbarkeit[\s\S]*Betriebsaufwand/);
+  assert.match(helpContent, /Sicherheit eines lokalen Servers[\s\S]*Verwaltungsoberflächen[\s\S]*VPN/);
+  assert.match(internetVpsChapter, /Sicherheitsverantwortung: dedizierter Server und VPS[\s\S]*Virtualisierungsplattform[\s\S]*Mehrfaktor-Authentisierung/);
+  assert.match(cloudChapter, /Sicherheit in der Cloud: gemeinsame Verantwortung[\s\S]*Identitäten und Rechte[\s\S]*Kostenlimits/);
+  assert.match(helpContent, /Sicherheitsgrenze folgt dem Servermodell[\s\S]*Eigener lokaler Server[\s\S]*Dedizierter Server oder VPS[\s\S]*Cloud-Dienst/);
+  assert.match(helpContent, /Sicherheit als Auswahlkriterium[\s\S]*kleinere oder stärker verwaltete Lösung/);
+  assert.doesNotMatch(internetVpsChapter, /GerNetiX/);
 });
 
 test("offers event worker rule help as a central account help topic", () => {
@@ -410,7 +468,7 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(app, /label: state\.account \? "Plattform" : "Startseite", route: state\.account \? "\/app\/dashboard\/" : "\/"/);
   assert.match(app, /if \(link\.dataset\.breadcrumbRoute === "\/"\) \{[\s\S]*?window\.location\.assign\("\/"\)/);
   assert.match(app, /if \(isPublicInformationPage\) document\.body\.classList\.add\("public-help-page"\)/);
-  assert.match(app, /document\.body\.classList\.add\("public-information-anonymous"\)/);
+  assert.match(app, /document\.body\.classList\.toggle\("public-information-anonymous", !state\.account\)/);
   assert.match(app, /public-information-anonymous/);
   assert.match(app, /getJson\("\/api\/platform\/summary"\)/);
   assert.match(helpContent, /surface: "knowledge"/);
@@ -426,9 +484,8 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(helpView, /knowledge-subchapter-link/);
   assert.match(helpView, /knowledge-subchapter-number/);
   assert.match(helpView, /data-knowledge-subchapter/);
-  assert.match(helpView, /<details class="knowledge-book-toc" open>/);
   assert.match(helpView, /<details class="knowledge-part-toc" open>/);
-  assert.match(helpView, /<details class="knowledge-chapter-toc" open>/);
+  assert.match(helpView, /<details class="knowledge-chapter-toc">/);
   assert.match(helpView, /function renderKnowledgeChapterToc/);
   assert.match(helpView, /knowledge-chapter-title-link/);
   assert.doesNotMatch(helpView, /Leseprobe öffnen|Kapitel öffnen/);
@@ -437,7 +494,7 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.doesNotMatch(helpView, /knowledge-subchapter-link is-locked[^>]*>[^<]*<small>Premium<\/small>/);
   assert.doesNotMatch(helpView, /Kapitel lesen|Unterkapitel/);
   assert.match(css, /\.knowledge-part-toc > summary/);
-  assert.match(helpView, /Kapitelübersicht öffnen oder schließen/);
+  assert.doesNotMatch(helpView, /Kapitelübersicht öffnen oder schließen/);
   assert.match(helpView, /function renderPracticeLessonLink/);
   assert.match(helpView, /knowledge-topic=/);
   assert.match(helpView, /if \(!access\.hasAccount\)/);
@@ -452,11 +509,9 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(helpView, /const syncChapterWithScroll/);
   assert.match(helpView, /window\.addEventListener\("scroll", knowledgeScrollHandler/);
   assert.match(css, /\.knowledge-book-navigation/);
-  assert.match(css, /\.knowledge-book-toc > summary/);
-  assert.match(css, /\.knowledge-book-toc\[open\] > summary::after/);
-  assert.doesNotMatch(css, /\.knowledge-book-toc\[open\] summary::after/);
+  assert.doesNotMatch(css, /\.knowledge-book-toc\s/);
   assert.match(css, /\.knowledge-part-link/);
-  assert.match(css, /\.knowledge-book-chapter \{ scroll-margin-top/);
+  assert.match(css, /\.knowledge-book-chapter \{[^}]*scroll-margin-top/);
   assert.match(css, /\.knowledge-subchapter-link/);
   assert.match(css, /\.knowledge-chapter-meta/);
   assert.match(css, /\.knowledge-chapter-paywall/);
@@ -464,8 +519,9 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(css, /\.help-practice-lesson\.is-disabled/);
   assert.match(css, /body\.public-help-page/);
   assert.match(css, /body\.public-help-page \.public-header-brand/);
-  assert.match(css, /body\.public-help-page \.topbar \{[\s\S]*position: sticky;[\s\S]*top: 16px;/);
-  assert.match(css, /body\.public-help-page \.app-menu \{ position: fixed; top: 96px; right: 22px; z-index: 60; \}/);
+  assert.match(css, /body\.public-help-page \.app-shell \{ width: calc\(100% - 32px\); padding: 82px 0 0; \}/);
+  assert.match(css, /body\.public-help-page \.topbar \{[\s\S]*position: fixed;[\s\S]*top: 0;[\s\S]*left: 16px;[\s\S]*right: 16px;/);
+  assert.match(css, /body\.public-help-page \.app-menu \{ position: fixed; top: 80px; right: 22px; z-index: 60; \}/);
   assert.match(css, /body\.public-information-anonymous #mainMenu a:not\(\.public-information-link\)/);
 });
 
@@ -477,7 +533,7 @@ test("keeps engineering thinking public and gates the remaining knowledge chapte
     .filter((topic) => topic.surface === "knowledge")
     .flatMap((topic) => topic.children || []);
 
-  assert.equal(chapters.length, 26);
+  assert.equal(chapters.length, 28);
   assert.equal(context.content.articles["from-problem-to-system"].access, "public");
   assert.ok(chapters
     .filter((chapter) => chapter.id !== "from-problem-to-system")
