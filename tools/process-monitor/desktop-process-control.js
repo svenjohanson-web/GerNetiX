@@ -7,9 +7,13 @@ const { DatabaseSync } = require("node:sqlite");
 
 const execFileAsync = promisify(execFile);
 const VPN_SERVICE_NAME = "WireGuardTunnel$gernetix-vps";
+const MACOS_VPN_SERVICE_NAME = "gernetix-vps-mac";
+const REMOTE_DEV_SERVICE_FORWARDS = [[4400,4400],[4700,4700],[4800,4800],[4900,4900],[5001,5000],[5200,5200],[5500,5500],[5600,5600]];
 const SECURITY_CACHE_MS = 60000;
 let workspaceRoot = process.env.GERNETIX_WORKSPACE || path.resolve(__dirname, "../..");
 let securityCache = null;
+let stagingTunnel = null;
+let stagingTunnelError = "";
 const services = [
   service("project-server", "Project Server", 4800), service("build-deploy-server", "Build & Deploy Server", 4400),
   service("device-management-server", "Device Management Server", 4700), service("hardware-catalog", "Hardware Catalog", 4910, {PERSISTENCE_BACKEND:"memory"}),
@@ -122,6 +126,78 @@ async function remoteProcessStates(options={}) {
     return {configured:true,host,items:[],error:remoteError(error)};
   }
 }
+
+function parsePort(value, label) {
+  const port=Number(value);
+  if(!Number.isInteger(port)||port<1||port>65535)throw new Error(`${label} ist kein gueltiger TCP-Port.`);
+  return port;
+}
+
+function stagingTunnelDefinition(config=loadStagingConfig()) {
+  const host=assertSafeSshTarget(config.GERNETIX_STAGING_SSH||"");
+  const adminPort=parsePort(config.GERNETIX_STAGING_LOCAL_ADMIN_PORT||14600,"Lokaler Admin-Port");
+  const remoteAdminPort=parsePort(config.GERNETIX_STAGING_REMOTE_ADMIN_PORT||4610,"Remote-Admin-Port");
+  const platformPort=parsePort(config.GERNETIX_STAGING_LOCAL_PLATFORM_PORT||14300,"Lokaler Plattform-Port");
+  const remotePlatformPort=parsePort(config.GERNETIX_STAGING_REMOTE_PLATFORM_PORT||8080,"Remote-Plattform-Port");
+  const identityDbPort=parsePort(config.GERNETIX_STAGING_LOCAL_IDENTITY_DB_PORT||25432,"Lokaler Identity-PostgreSQL-Port");
+  const remoteIdentityDbPort=parsePort(config.GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT||25432,"Remote-Identity-PostgreSQL-Port");
+  const forwards=[[platformPort,remotePlatformPort],[adminPort,remoteAdminPort],[identityDbPort,remoteIdentityDbPort],...REMOTE_DEV_SERVICE_FORWARDS];
+  return {host,adminPort,platformPort,identityDbPort,forwards,args:["-N","-o","BatchMode=yes","-o","ExitOnForwardFailure=yes","-o","ServerAliveInterval=30","-o","ServerAliveCountMax=3",...forwards.flatMap(([local,remote])=>["-L",`${local}:127.0.0.1:${remote}`]),host]};
+}
+
+async function stagingTunnelState(options={}) {
+  const config=options.config||loadStagingConfig();
+  if(!config.GERNETIX_STAGING_SSH)return {configured:false,active:false,owned:false,error:"VPS nicht konfiguriert: .env.staging.local fehlt oder enthält kein GERNETIX_STAGING_SSH."};
+  let definition;
+  try { definition=stagingTunnelDefinition(config); }
+  catch(error) { return {configured:false,active:false,owned:false,error:error.message}; }
+  const findPid=options.pidForPort||pidForPort;
+  const [adminPid,platformPid,identityDbPid]=await Promise.all([findPid(definition.adminPort),findPid(definition.platformPort),findPid(definition.identityDbPort)]);
+  const owned=Boolean(stagingTunnel&&!stagingTunnel.killed&&stagingTunnel.exitCode===null);
+  const active=Boolean(adminPid&&platformPid&&identityDbPid);
+  return {configured:true,active,owned,adminPort:definition.adminPort,platformPort:definition.platformPort,identityDbPort:definition.identityDbPort,adminUrl:`http://127.0.0.1:${definition.adminPort}/admin/`,platformUrl:`http://127.0.0.1:${definition.platformPort}/app/dashboard/`,error:stagingTunnelError||(!active&&owned?"SSH-Diagnosetunnel wird aufgebaut.":"")};
+}
+
+async function startStagingTunnel(options={}) {
+  const config=options.config||loadStagingConfig();
+  const definition=stagingTunnelDefinition(config);
+  const current=await stagingTunnelState({...options,config});
+  if(current.active)return current;
+  const vpn=await vpnState(options);
+  if(vpn.supported&&vpn.configured&&!vpn.connected)throw new Error("Der GerNetiX-VPN muss vor dem SSH-Diagnosetunnel verbunden sein.");
+  const launch=options.spawn||spawn;
+  stagingTunnelError="";
+  const child=launch("ssh",definition.args,{cwd:workspaceRoot,windowsHide:true,stdio:"ignore"});
+  stagingTunnel=child;
+  child.once("error",(error)=>{stagingTunnelError=`SSH-Diagnosetunnel konnte nicht gestartet werden: ${error.message}`;});
+  child.once("exit",(code,signal)=>{if(stagingTunnel===child&&code!==0&&signal!=="SIGTERM")stagingTunnelError=`SSH-Diagnosetunnel wurde beendet (${code===null?signal:`Exit-Code ${code}`}).`;});
+  const wait=options.delay||delay;
+  const attempts=options.maxAttempts||32;
+  for(let index=0;index<attempts;index+=1){
+    const state=await stagingTunnelState({...options,config});
+    if(state.active)return state;
+    if(child.exitCode!==null)break;
+    await wait(250);
+  }
+  if(child.exitCode!==null&&child.exitCode!==0)throw new Error(stagingTunnelError||"SSH-Diagnosetunnel konnte nicht aufgebaut werden.");
+  throw new Error("SSH-Diagnosetunnel wurde nicht rechtzeitig aufgebaut.");
+}
+
+async function stopStagingTunnel(options={}) {
+  const current=await stagingTunnelState(options);
+  if(!current.active)return current;
+  if(!stagingTunnel||stagingTunnel.killed||stagingTunnel.exitCode!==null)throw new Error("Der aktive SSH-Diagnosetunnel wurde nicht vom Prozess-Monitor gestartet und wird deshalb nicht beendet.");
+  stagingTunnelError="";
+  stagingTunnel.kill("SIGTERM");
+  const wait=options.delay||delay;
+  const attempts=options.maxAttempts||20;
+  for(let index=0;index<attempts;index+=1){
+    const state=await stagingTunnelState(options);
+    if(!state.active)return state;
+    await wait(150);
+  }
+  throw new Error("SSH-Diagnosetunnel wurde nicht rechtzeitig beendet.");
+}
 const SECURITY_CHECK_SCRIPT = `
 emit() {
   key="$1"
@@ -227,7 +303,38 @@ async function securityRuleStates(options={}) {
   return value;
 }
 
-async function startService(id){ const item=byId(id); const current=await check(item); if(current.healthy)return current; const child=spawn(process.execPath,["src/dev-server.js"],{cwd:item.cwd,detached:true,windowsHide:true,env:{...process.env,...item.environment,ELECTRON_RUN_AS_NODE:"1",PORT:String(item.port)},stdio:"ignore"}); child.unref(); for(let i=0;i<40;i+=1){await delay(250);const state=await check(item);if(state.healthy)return state;} throw new Error(`${item.name} konnte nicht gestartet werden.`); }
+function serviceLogPath(id){return path.join(workspaceRoot,".runtime","process-logs",`${id}.log`);}
+function recentServiceLog(id){try{return fs.readFileSync(serviceLogPath(id),"utf8").trim().split(/\r?\n/).slice(-8).join(" ").slice(-1600);}catch{return "";}}
+function launchLoggedService(item, env){
+  fs.mkdirSync(path.dirname(serviceLogPath(item.id)),{recursive:true});
+  const output=fs.openSync(serviceLogPath(item.id),"a");
+  try{return spawn(process.execPath,["src/dev-server.js"],{cwd:item.cwd,detached:true,windowsHide:true,env,stdio:["ignore",output,output]});}
+  finally{fs.closeSync(output);}
+}
+function remoteIdentityEnvironment(){
+  const remoteStarter=path.join(workspaceRoot,"tools","start-identity-remote-dev.js");
+  if(!fs.existsSync(remoteStarter))throw new Error("Der Remote-Dev-Starter tools/start-identity-remote-dev.js fehlt.");
+  const {loadRemoteDevConfig}=require(remoteStarter);
+  return {...loadRemoteDevConfig(process.env),ELECTRON_RUN_AS_NODE:"1"};
+}
+async function startIdentityRemoteDev(options={}){
+  const item=byId("identity-server");
+  const checkService=options.checkService||check;
+  const current=await checkService(item);
+  if(current.healthy)return current;
+  const tunnel=await stagingTunnelState(options);
+  if(!tunnel.active)throw new Error("Identity benötigt den verbundenen VPS SSH-Tunnel einschließlich Identity-PostgreSQL.");
+  let env;
+  try{env=(options.remoteIdentityEnvironment||remoteIdentityEnvironment)();}catch(error){throw new Error(`Identity Remote-Dev kann nicht starten: ${error.message}`);}
+  const launch=options.launchLoggedService||launchLoggedService;
+  const child=launch(item,env);
+  child.unref?.();
+  const wait=options.delay||delay;
+  for(let i=0;i<40;i+=1){const state=await checkService(item);if(state.healthy)return state;if(child.exitCode!==null)break;await wait(250);}
+  const detail=recentServiceLog(item.id);
+  throw new Error(`Identity Remote-Dev wurde nicht gestartet.${detail?` Letzte Logzeilen: ${detail}`:""}`);
+}
+async function startService(id,options={}){ if(id==="identity-server")return startIdentityRemoteDev(options); const item=byId(id); const checkService=options.checkService||check; const current=await checkService(item); if(current.healthy)return current; const child=launchLoggedService(item,{...process.env,...item.environment,ELECTRON_RUN_AS_NODE:"1",PORT:String(item.port)}); child.unref(); for(let i=0;i<40;i+=1){await delay(250);const state=await checkService(item);if(state.healthy)return state;} throw new Error(`${item.name} konnte nicht gestartet werden.${recentServiceLog(item.id)?` Letzte Logzeilen: ${recentServiceLog(item.id)}`:""}`); }
 async function startAllServices(options={}){const start=options.startService||startService;const items=[];for(const item of services){try{items.push(await start(item.id));}catch(error){items.push({...item,healthy:false,statusCode:0,pid:null,error:error.message});}}return{items,healthy:items.filter((item)=>item.healthy).length,failed:items.filter((item)=>!item.healthy).length};}
 async function stopService(id){ const item=byId(id); const pid=await pidForPort(item.port); if(!pid)return check(item); if(process.platform==="win32")await execFileAsync("taskkill",["/PID",String(pid),"/T","/F"],{windowsHide:true});else process.kill(pid,"SIGTERM"); for(let i=0;i<20;i+=1){await delay(150);const state=await check(item);if(!state.healthy)return state;} throw new Error(`${item.name} konnte nicht beendet werden.`); }
 function pidFromWindowsNetstat(output,port){
@@ -266,12 +373,29 @@ function parseWindowsServiceState(output) {
   return match ? Number(match[1]) : null;
 }
 
+function parseMacVpnState(output, serviceName=MACOS_VPN_SERVICE_NAME) {
+  const line=String(output||"").split(/\r?\n/).find((entry)=>entry.includes("com.wireguard.macos")&&entry.includes(`\"${serviceName}\"`));
+  if(!line)return {configured:false,connected:false,transitional:false,state:"not-installed"};
+  const state=String(line.match(/^\*\s+\(([^)]+)\)/)?.[1]||"unknown").toLowerCase();
+  return {configured:true,connected:state==="connected",transitional:["connecting","disconnecting"].includes(state),state};
+}
+
 async function vpnState(options = {}) {
   const platform = options.platform || process.platform;
+  const run = options.execFileAsync || execFileAsync;
+  if (platform === "darwin") {
+    try {
+      const {stdout}=await run("scutil",["--nc","list"],{windowsHide:true,timeout:5000});
+      const state=parseMacVpnState(stdout,options.macosServiceName||MACOS_VPN_SERVICE_NAME);
+      return {...state,supported:true,serviceName:options.macosServiceName||MACOS_VPN_SERVICE_NAME,error:state.configured?"":"Der GerNetiX-WireGuard-Tunnel ist nicht installiert."};
+    } catch(error) {
+      const detail=String(error.stderr||error.stdout||error.message||error).trim().split(/\r?\n/).slice(-1)[0];
+      return {supported:true,configured:false,connected:false,transitional:false,state:"error",serviceName:options.macosServiceName||MACOS_VPN_SERVICE_NAME,error:`VPN-Status nicht lesbar: ${detail}`};
+    }
+  }
   if (platform !== "win32") {
     return { supported:false, configured:false, connected:false, transitional:false, state:"unsupported", error:"Die VPN-Steuerung ist derzeit fuer Windows eingerichtet." };
   }
-  const run = options.execFileAsync || execFileAsync;
   try {
     const { stdout } = await run("sc.exe", ["query", VPN_SERVICE_NAME], { windowsHide:true, timeout:5000 });
     const code = parseWindowsServiceState(stdout);
@@ -304,26 +428,34 @@ async function vpnState(options = {}) {
 async function setVpnConnected(connected, options = {}) {
   const desired = Boolean(connected);
   const platform = options.platform || process.platform;
-  if (platform !== "win32") throw new Error("Die VPN-Steuerung ist derzeit fuer Windows eingerichtet.");
   const current = await vpnState(options);
   if (!current.configured) throw new Error(current.error || "Der GerNetiX-VPN-Tunnel ist nicht eingerichtet.");
   if (current.connected === desired && !current.transitional) return current;
   const run = options.execFileAsync || execFileAsync;
   const action = desired ? "start" : "stop";
-  try {
-    await run("sc.exe", [action, VPN_SERVICE_NAME], { windowsHide:true, timeout:10000 });
-  } catch (error) {
-    const detail = String(error.stderr || error.stdout || error.message || error);
-    if (!/access is denied|zugriff verweigert|\b5\b/i.test(`${error.code || ""} ${detail}`)) {
-      throw new Error(`VPN konnte nicht ${desired ? "verbunden" : "getrennt"} werden: ${detail.trim().split(/\r?\n/).slice(-1)[0]}`);
-    }
-    const command = `$process = Start-Process -FilePath 'sc.exe' -ArgumentList @('${action}', '${VPN_SERVICE_NAME}') -Verb RunAs -Wait -PassThru; exit $process.ExitCode`;
+  if(platform==="darwin") {
     try {
-      await run("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command], { windowsHide:true, timeout:60000 });
-    } catch {
-      throw new Error("Die VPN-Aktion wurde im Windows-Sicherheitsdialog nicht bestaetigt.");
+      await run("scutil",["--nc",action,options.macosServiceName||MACOS_VPN_SERVICE_NAME],{windowsHide:true,timeout:10000});
+    } catch(error) {
+      const detail=String(error.stderr||error.stdout||error.message||error).trim().split(/\r?\n/).slice(-1)[0];
+      throw new Error(`VPN konnte nicht ${desired?"verbunden":"getrennt"} werden: ${detail}`);
     }
-  }
+  } else if(platform==="win32") {
+    try {
+      await run("sc.exe", [action, VPN_SERVICE_NAME], { windowsHide:true, timeout:10000 });
+    } catch (error) {
+      const detail = String(error.stderr || error.stdout || error.message || error);
+      if (!/access is denied|zugriff verweigert|\b5\b/i.test(`${error.code || ""} ${detail}`)) {
+        throw new Error(`VPN konnte nicht ${desired ? "verbunden" : "getrennt"} werden: ${detail.trim().split(/\r?\n/).slice(-1)[0]}`);
+      }
+      const command = `$process = Start-Process -FilePath 'sc.exe' -ArgumentList @('${action}', '${VPN_SERVICE_NAME}') -Verb RunAs -Wait -PassThru; exit $process.ExitCode`;
+      try {
+        await run("powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", command], { windowsHide:true, timeout:60000 });
+      } catch {
+        throw new Error("Die VPN-Aktion wurde im Windows-Sicherheitsdialog nicht bestaetigt.");
+      }
+    }
+  } else throw new Error("Die VPN-Steuerung wird auf diesem Betriebssystem nicht unterstuetzt.");
   const wait = options.delay || delay;
   const attempts = options.maxAttempts || 24;
   for (let index = 0; index < attempts; index += 1) {
@@ -334,4 +466,4 @@ async function setVpnConnected(connected, options = {}) {
   throw new Error(`Der VPN-Tunnel wurde nicht rechtzeitig ${desired ? "verbunden" : "getrennt"}.`);
 }
 
-module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,parseComposePs,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,processStates,remoteProcessStates,runtimeAlerts,securityRuleStates,services,setVpnConnected,startAllServices,startService,stopService,vpnState};
+module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,processStates,remoteProcessStates,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startStagingTunnel,stopStagingTunnel,remoteIdentityEnvironment,startIdentityRemoteDev,setVpnConnected,startAllServices,startService,stopService,vpnState};

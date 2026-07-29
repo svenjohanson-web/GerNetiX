@@ -86,7 +86,7 @@ class PostgresIdentityRepository {
     id, username, email, status, accountType = "email_account", guestExpiresAt = null,
     passkeyCredentialId = null, passkeyPublicKey = null, passkeyCounter = 0,
     passkeyTransports = [], offlineRecoverySetConfirmedAt = null,
-    offlineRecoverySetHash = null, recoveryBoardIds = [],
+    offlineRecoverySetHash = null, recoveryBoardIds = [], preferredLocale = "de",
   }) {
     const now = this.nowIso();
     const account = {
@@ -103,6 +103,7 @@ class PostgresIdentityRepository {
       offline_recovery_set_confirmed_at: offlineRecoverySetConfirmedAt,
       offline_recovery_set_hash: offlineRecoverySetHash,
       recovery_board_ids: [...recoveryBoardIds],
+      preferred_locale: preferredLocale,
       created_at: now,
       updated_at: now,
     };

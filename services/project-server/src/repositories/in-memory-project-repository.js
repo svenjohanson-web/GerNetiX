@@ -6,6 +6,7 @@ class InMemoryProjectRepository {
     this.artifacts = new Map((seed.artifacts || []).map((item) => [item.artifact_id, clone(item)]));
     this.feedback = new Map((seed.feedback || []).map((item) => [item.feedback_id, clone(item)]));
     this.consents = new Map((seed.consents || []).map((item) => [item.consent_id, clone(item)]));
+    this.learningProgress = new Map((seed.learningProgress || []).map((item) => [item.project_id, clone(item)]));
     this.resourcePolicies = new Map((seed.resourcePolicies || []).map((item) => [item.plan_id, clone(item)]));
   }
 
@@ -90,6 +91,15 @@ class InMemoryProjectRepository {
     return clone(consent);
   }
 
+  saveLearningProgress(progress) {
+    this.learningProgress.set(progress.project_id, clone(progress));
+    return clone(progress);
+  }
+
+  findLearningProgress(projectId) {
+    return clone(this.learningProgress.get(projectId));
+  }
+
   findConsent(consentId) {
     return clone(this.consents.get(consentId));
   }
@@ -111,13 +121,14 @@ class InMemoryProjectRepository {
   }
 
   deleteProject(projectId) {
-    const deleted = { sources: 0, build_jobs: 0, artifacts: 0, feedback: 0, consents: 0 };
+    const deleted = { sources: 0, build_jobs: 0, artifacts: 0, feedback: 0, consents: 0, learning_progress: 0 };
     for (const [id, source] of this.sources) if (source.project_id === projectId) { this.sources.delete(id); deleted.sources += 1; }
     for (const [id, job] of this.buildJobs) if (job.project_id === projectId) { this.buildJobs.delete(id); deleted.build_jobs += 1; }
     for (const [id, artifact] of this.artifacts) if (artifact.project_id === projectId) { this.artifacts.delete(id); deleted.artifacts += 1; }
     const feedbackIds = new Set();
     for (const [id, feedback] of this.feedback) if (feedback.project_id === projectId) { feedbackIds.add(feedback.feedback_id); this.feedback.delete(id); deleted.feedback += 1; }
     for (const [id, consent] of this.consents) if (feedbackIds.has(consent.feedback_id)) { this.consents.delete(id); deleted.consents += 1; }
+    if (this.learningProgress.delete(projectId)) deleted.learning_progress += 1;
     this.projects.delete(projectId);
     return deleted;
   }

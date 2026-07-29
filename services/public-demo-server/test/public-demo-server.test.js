@@ -133,3 +133,21 @@ test("WebSerial pulses the reset pin after flashing", () => {
   assert.doesNotMatch(browserApp, /loader\.after\("hard_reset"\)/);
   assert.match(browserApp, /RESET-Taste am Board/);
 });
+
+test("unsupported macOS browsers offer the Serial Helper or a Web Serial browser", () => {
+  assert.match(browserPage, /id="serial-support-dialog"/);
+  assert.match(browserPage, /Empfohlen für macOS/);
+  assert.match(browserPage, /GerNetiX Serial Helper/);
+  assert.match(browserPage, /href="\/app\/downloads\/"/);
+  assert.match(browserPage, /Chrome oder Edge verwenden/);
+  assert.match(browserApp, /if \(!navigator\.serial\)/);
+  assert.match(browserApp, /showSerialSupportDialog\(\)/);
+  assert.match(browserApp, /navigator\.userAgentData\?\.platform/);
+  assert.match(browserApp, /serialSupportDialog\.showModal\(\)/);
+  assert.match(browserPage, /serial-service-client\.js/);
+  assert.match(browserPage, /id="serial-service-port"/);
+  assert.match(browserApp, /serialService\.available\(\)/);
+  assert.match(browserApp, /serialService\.ports\(\)/);
+  assert.match(browserApp, /serialService\.probe\(selectedPort\.path\)/);
+  assert.match(browserApp, /serialService\.flash\(/);
+});

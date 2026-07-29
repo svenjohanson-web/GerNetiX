@@ -14,6 +14,7 @@ GerNetiX braucht fuer Lernprojekte und Embedded-Projekte einen zentralen Projekt
 - Build-Historie und Firmware-Artefaktreferenzen gehoeren zum Projektserver.
 - Der Projektserver darf den Build-&-Deploy-Server fuer Prebuilds der Projekthuelle beauftragen.
 - Step- und Projektfeedback gehoert fachlich zum Projektserver beziehungsweise zur Learning-Domaene.
+- Der Wiedereinstieg in ein accountgebundenes Lernprojekt wird mit aktueller Lesson, aktuellem Step und abgeschlossenem Step-Stand im Projektserver persistiert.
 - Das Admin Tool zeigt Feedback nur an und sortiert/filtert es, ist aber nicht Quelle der Wahrheit.
 - Beim Absenden kann der Nutzer anonym bleiben oder zweckgebunden Kontakt fuer Rueckfragen zu genau diesem Feedback erlauben.
 - Kontakt-Consent ist auf maximal zwei Monate begrenzt; danach wird das Feedback anonymisiert.
@@ -29,6 +30,7 @@ Projektserver
   - Build-Historie
   - Firmware-Artefaktreferenzen
   - Step- und Projektfeedback
+  - AccountProjectProgress mit Lesson- und Step-Stand
   - Anonymisierungsstatus
 
 Build-&-Deploy-Server

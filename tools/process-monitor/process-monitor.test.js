@@ -133,6 +133,71 @@ test("monitor controls only the configured GerNetiX WireGuard tunnel", async () 
   assert.deepEqual(calls.find((call) => call[1] === "start"), ["sc.exe", "start", "WireGuardTunnel$gernetix-vps"]);
 });
 
+test("monitor controls only the configured macOS WireGuard network extension", async () => {
+  const disconnected='* (Disconnected)   example-id VPN (com.wireguard.macos) "gernetix-vps-mac"';
+  const connected='* (Connected)   example-id VPN (com.wireguard.macos) "gernetix-vps-mac"';
+  assert.deepEqual(control.parseMacVpnState(disconnected), {configured:true,connected:false,transitional:false,state:"disconnected"});
+  assert.deepEqual(control.parseMacVpnState(connected), {configured:true,connected:true,transitional:false,state:"connected"});
+  let state=disconnected;
+  const calls=[];
+  const run=async(file,args)=>{
+    calls.push([file,...args]);
+    if(args[1]==="start")state=connected;
+    return {stdout:args[1]==="list"?state:"",stderr:""};
+  };
+  const result=await control.setVpnConnected(true,{platform:"darwin",execFileAsync:run,delay:async()=>{},maxAttempts:2});
+  assert.equal(result.connected,true);
+  assert.deepEqual(calls.find((call)=>call[1]==="--nc"&&call[2]==="start"),["scutil","--nc","start","gernetix-vps-mac"]);
+});
+
+test("monitor defines a fixed SSH diagnostic tunnel from the staging configuration", () => {
+  const definition=control.stagingTunnelDefinition({
+    GERNETIX_STAGING_SSH:"root@gernetix-vps",
+    GERNETIX_STAGING_LOCAL_ADMIN_PORT:"14600",
+    GERNETIX_STAGING_REMOTE_ADMIN_PORT:"4610",
+    GERNETIX_STAGING_LOCAL_PLATFORM_PORT:"14300",
+    GERNETIX_STAGING_REMOTE_PLATFORM_PORT:"8080",
+    GERNETIX_STAGING_LOCAL_IDENTITY_DB_PORT:"25432",
+    GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT:"25432"
+  });
+  assert.deepEqual(definition.args.slice(0,7),["-N","-o","BatchMode=yes","-o","ExitOnForwardFailure=yes","-o","ServerAliveInterval=30"]);
+  assert.ok(definition.args.includes("14600:127.0.0.1:4610"));
+  assert.ok(definition.args.includes("14300:127.0.0.1:8080"));
+  assert.ok(definition.args.includes("25432:127.0.0.1:25432"));
+  assert.equal(definition.args.at(-1),"root@gernetix-vps");
+  assert.match(desktopPreload,/tunnelStart/);
+  assert.match(desktopMain,/tunnel:start/);
+  assert.match(html,/VPS SSH-Tunnel/);
+  assert.match(client,/renderTunnel/);
+});
+
+test("Identity starts only in remote-dev mode after the complete VPS tunnel is available", async () => {
+  const config={
+    GERNETIX_STAGING_SSH:"root@gernetix-vps",
+    GERNETIX_STAGING_LOCAL_ADMIN_PORT:"14600",
+    GERNETIX_STAGING_REMOTE_ADMIN_PORT:"4610",
+    GERNETIX_STAGING_LOCAL_PLATFORM_PORT:"14300",
+    GERNETIX_STAGING_REMOTE_PLATFORM_PORT:"8080",
+    GERNETIX_STAGING_LOCAL_IDENTITY_DB_PORT:"25432",
+    GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT:"25432"
+  };
+  let checks=0;
+  let launched=null;
+  const result=await control.startIdentityRemoteDev({
+    config,
+    pidForPort:async()=>123,
+    checkService:async(item)=>({ ...item, healthy:++checks>1 }),
+    remoteIdentityEnvironment:()=>({IDENTITY_REMOTE_DEV:"1",IDENTITY_PERSISTENCE_BACKEND:"postgres",ELECTRON_RUN_AS_NODE:"1"}),
+    launchLoggedService:(item,env)=>{launched={item,env};return {exitCode:null,unref(){}};},
+    delay:async()=>{}
+  });
+  assert.equal(result.healthy,true);
+  assert.equal(launched.item.id,"identity-server");
+  assert.equal(launched.env.IDENTITY_REMOTE_DEV,"1");
+  assert.equal(launched.env.IDENTITY_PERSISTENCE_BACKEND,"postgres");
+  assert.match(fs.readFileSync(path.join(__dirname,"desktop-process-control.js"),"utf8"),/Identity benötigt den verbundenen VPS SSH-Tunnel/);
+});
+
 test("detects Windows listener PIDs independently of the localized state label", () => {
   assert.equal(control.pidFromWindowsNetstat("  TCP    127.0.0.1:4300    0.0.0.0:0    ABHÖREN    29384", 4300), 29384);
   assert.equal(control.pidFromWindowsNetstat("  TCP    127.0.0.1:4800    0.0.0.0:0    LISTENING    26300", 4800), 26300);

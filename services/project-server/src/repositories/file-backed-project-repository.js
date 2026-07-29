@@ -54,6 +54,12 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
     return result;
   }
 
+  saveLearningProgress(progress) {
+    const result = super.saveLearningProgress(progress);
+    this.persist();
+    return result;
+  }
+
   saveResourcePolicy(policy) {
     const result = super.saveResourcePolicy(policy);
     this.persist();
@@ -74,6 +80,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
       artifacts: Array.from(this.artifacts.values()),
       feedback: Array.from(this.feedback.values()),
       consents: Array.from(this.consents.values()),
+      learningProgress: Array.from(this.learningProgress.values()),
       resourcePolicies: Array.from(this.resourcePolicies.values()),
     };
     this.store.save(state);
@@ -84,6 +91,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
       this.store.replaceCollection("artifacts", state.artifacts, "artifact_id");
       this.store.replaceCollection("feedback", state.feedback, "feedback_id");
       this.store.replaceCollection("consents", state.consents, "consent_id");
+      this.store.replaceCollection("learningProgress", state.learningProgress, "project_id");
       this.store.replaceCollection("resourcePolicies", state.resourcePolicies, "plan_id");
     }
     if (typeof this.store.replaceTable === "function") {
@@ -93,6 +101,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
       this.store.replaceTable("project_server_artifacts", state.artifacts, artifactColumns());
       this.store.replaceTable("project_server_feedback", state.feedback, feedbackColumns());
       this.store.replaceTable("project_server_consents", state.consents, consentColumns());
+      this.store.replaceTable("project_server_learning_progress", state.learningProgress, learningProgressColumns());
       this.store.replaceTable("project_server_resource_policies", state.resourcePolicies, resourcePolicyColumns());
     }
   }
@@ -229,6 +238,20 @@ function projectServerSchema() {
       created_at TEXT,
       raw_json TEXT NOT NULL
     );`,
+    `CREATE TABLE IF NOT EXISTS project_server_learning_progress (
+      project_id TEXT PRIMARY KEY,
+      user_id TEXT,
+      learning_project_id TEXT,
+      entry_mode TEXT,
+      status TEXT,
+      current_lesson_id TEXT,
+      current_step_id TEXT,
+      current_step_index INTEGER,
+      started_at TEXT,
+      last_seen_at TEXT,
+      completed_at TEXT,
+      raw_json TEXT NOT NULL
+    );`,
     `CREATE TABLE IF NOT EXISTS project_server_resource_policies (
       plan_id TEXT PRIMARY KEY, max_projects INTEGER, max_storage_bytes INTEGER,
       max_monthly_traffic_bytes INTEGER, updated_at TEXT, raw_json TEXT NOT NULL
@@ -332,6 +355,23 @@ function consentColumns() {
   };
 }
 
+function learningProgressColumns() {
+  return {
+    project_id: "project_id",
+    user_id: "user_id",
+    learning_project_id: "learning_project_id",
+    entry_mode: "entry_mode",
+    status: "status",
+    current_lesson_id: "current_lesson_id",
+    current_step_id: "current_step_id",
+    current_step_index: "current_step_index",
+    started_at: "started_at",
+    last_seen_at: "last_seen_at",
+    completed_at: "completed_at",
+    raw_json: jsonColumn((row) => row),
+  };
+}
+
 function resourcePolicyColumns() {
   return { plan_id: "plan_id", max_projects: "max_projects", max_storage_bytes: "max_storage_bytes", max_monthly_traffic_bytes: "max_monthly_traffic_bytes", updated_at: "updated_at", raw_json: jsonColumn((row) => row) };
 }
@@ -344,6 +384,7 @@ function emptyState() {
     artifacts: [],
     feedback: [],
     consents: [],
+    learningProgress: [],
     resourcePolicies: [],
   };
 }

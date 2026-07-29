@@ -40,9 +40,9 @@ mehr.
 
 | Fachbereich | Fuehrender Speicherpfad | Compose-Volume | Inhalt |
 |---|---|---|---|
-| Identity | PostgreSQL `gernetix_runtime`, Tabellen `identity_*` | `runtime_postgres_data` | Accounts, Credentials, Passkeys, Recovery-Transaktionen, Sessions, Push-/SMTP-State, Plattform-Releases, Account-Assets und Wissenskapitel-Lesestaende |
+| Identity | PostgreSQL `gernetix_runtime`, Tabellen `identity_*` | `runtime_postgres_data` | Accounts einschliesslich bevorzugter Oberflaechensprache, Credentials, Passkeys, Recovery-Transaktionen, Sessions, Push-/SMTP-State, Plattform-Releases, Account-Assets und Wissenskapitel-Lesestaende |
 | Identity-Altbestand | `/var/lib/gernetix/identity/gernetix-identity.sqlite` | `identity_state` | einmalige, idempotente Altuebernahme; nach erfolgreicher Migration nicht mehr fuehrend |
-| Projekte | PostgreSQL `gernetix_runtime`, Tabellen `project_*` | `runtime_postgres_data` | Projekte, Quellen, Build-Jobs, Lernstand, Feedback und Ressourcenprofile |
+| Projekte | PostgreSQL `gernetix_runtime`, Tabellen `project_*`, insbesondere `project_learning_progress` | `runtime_postgres_data` | Projekte, Quellen, Build-Jobs, aktuelle Lesson und aktueller Step, abgeschlossene Steps je Lesson, Feedback und Ressourcenprofile |
 | Projekt-Altbestand | `/var/lib/gernetix/projects/gernetix-projects.sqlite` beziehungsweise fruehere `gernetix-services.sqlite` | `project_state` / `service_state` | einmalige, read-only Altuebernahme; nach erfolgreicher Migration nicht mehr fuehrend |
 | Build und OTA | PostgreSQL `gernetix_runtime`, Tabellen `build_*` | `runtime_postgres_data` | Firmware-, ELF-, HEX-, Map- und Log-BLOBs sowie OTA-Bestaetigungen |
 | Telemetrie | PostgreSQL `gernetix_runtime`, Tabellen `telemetry_*` | `runtime_postgres_data` | partitionierte Messwerte, Ereignisse und Retention |

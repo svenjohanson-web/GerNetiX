@@ -64,6 +64,25 @@ Der Project Server kompiliert nicht selbst. `build-package` liefert einen reprod
 
 Kontaktinformationen werden ohne Feedback-spezifischen Consent nicht ausgegeben.
 
+## Lernfortschritt
+
+- `GET /api/projects/{projectId}/learning-progress?user_id={userId}`
+- `PUT /api/projects/{projectId}/learning-progress`
+
+Der Project Server speichert fuer jedes accountgebundene Lernprojekt genau einen
+`AccountProjectProgress`. Der Datensatz enthaelt:
+
+- `current_lesson_id` und `current_step_id` fuer den exakten Wiedereinstieg,
+- `current_step_index` fuer die bestehende lineare Darstellung,
+- `completed_step_ids` und `completed_step_indexes`,
+- `lesson_progress` mit eigenem Status und Schrittstand je Lesson,
+- `entry_mode`, `status`, `started_at`, `last_seen_at` und `completed_at`.
+
+Der Server leitet Lesson- und Step-Zuordnung aus den `lesson_id`- und `id`-Feldern
+der Manifest-Views ab. Lesen und Schreiben erfordern dieselbe `user_id` wie das
+zugehoerige Projekt; ein abweichender Account erhaelt `403 project_access_denied`.
+Alte Lernprojekte ohne `lesson_id` behalten ihren globalen Schrittfortschritt.
+
 ## Verantwortliche Schnittstellen
 
 - Projekt anlegen, lesen und aktualisieren
@@ -75,6 +94,7 @@ Kontaktinformationen werden ohne Feedback-spezifischen Consent nicht ausgegeben.
 - Firmware-Artefakte und Logs referenzieren
 - Build-Historie fuer Projekt und Nutzer anzeigen
 - Step- und Projektfeedback annehmen
+- aktuellen Lesson-/Step-Fortschritt eines accountgebundenen Lernprojekts speichern
 - Kontaktmodus fuer Feedback erfassen
 - Kontakt-Consent fuer Rueckfragen zu genau einem Feedback verwalten
 - Feedback nach Ablauf von maximal zwei Monaten anonymisieren

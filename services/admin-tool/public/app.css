@@ -33,7 +33,7 @@ button.active-method {
   color: var(--accent);
   font-weight: 700;
 }
-.admin-shell { max-width: 1120px; margin: 0 auto; padding: 22px; }
+.admin-shell { width: 100%; margin: 0 auto; padding: 22px; }
 .topbar, .button-row, .section-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .topbar { margin-bottom: 18px; }
 .admin-nav { display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; }

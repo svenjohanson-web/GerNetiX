@@ -295,6 +295,94 @@ class ProjectService {
       redactFeedback(feedback, await this.repository.findFeedbackConsent(feedback.feedback_id))));
   }
 
+  async getLearningProgress(projectId, userId) {
+    await this.ready;
+    const project = await this.requireOwnedProject(projectId, userId);
+    return (await this.repository.findLearningProgress(projectId))
+      || emptyLearningProgress(project);
+  }
+
+  async updateLearningProgress(projectId, input = {}) {
+    await this.ready;
+    const userId = required(input.user_id || input.userId, "user_id");
+    const project = await this.requireOwnedProject(projectId, userId);
+    if (!project.learning_project_id) {
+      throw new ProjectServerError("learning_project_required", "Lernfortschritt kann nur fuer ein Lernprojekt gespeichert werden.", 409);
+    }
+    const previous = (await this.repository.findLearningProgress(projectId))
+      || emptyLearningProgress(project);
+    const views = Array.isArray(project.view_manifest?.views) ? project.view_manifest.views : [];
+    const requestedStepId = String(input.current_step_id || input.currentStepId || "");
+    const requestedStepIndex = requestedStepId
+      ? views.findIndex((view) => view.id === requestedStepId)
+      : -1;
+    const currentStepIndex = requestedStepIndex >= 0
+      ? requestedStepIndex
+      : boundedIndex(input.current_step_index ?? input.currentStep ?? input.current_step, views.length);
+    const currentView = views[currentStepIndex] || {};
+    const currentLessonId = String(
+      currentView.lesson_id
+      || project.view_manifest?.lesson_focus_id
+      || input.current_lesson_id
+      || input.currentLessonId
+      || input.lesson_id
+      || input.lessonId
+      || previous.current_lesson_id
+      || "",
+    );
+    const currentStepId = String(
+      currentView.id
+      || requestedStepId
+      || previous.current_step_id
+      || "",
+    );
+    const completedStepIndexes = uniqueNonNegativeIntegers(
+      input.completed_step_indexes || input.completedSteps || input.completed_steps || [],
+    );
+    const submittedCompletedStepIds = Array.from(new Set([
+      ...(previous.completed_step_ids || []),
+      ...(input.completed_step_ids || input.completedStepIds || []).map(String),
+      ...completedStepIndexes.map((index) => views[index]?.id).filter(Boolean),
+    ]));
+    const knownStepIds = new Set(views.map((view) => view.id).filter(Boolean));
+    const completedStepIds = views.length
+      ? submittedCompletedStepIds.filter((stepId) => knownStepIds.has(stepId))
+      : submittedCompletedStepIds;
+    const persistedCompletedStepIndexes = views.length
+      ? views.map((view, index) => completedStepIds.includes(view.id) ? index : -1).filter((index) => index >= 0)
+      : completedStepIndexes;
+    const lessonProgress = lessonProgressFromViews(
+      views,
+      completedStepIds,
+      currentLessonId,
+      currentStepId,
+      currentStepIndex,
+      previous.lesson_progress,
+    );
+    const allStepIds = views.map((view) => String(view.id || "")).filter(Boolean);
+    const status = allStepIds.length && allStepIds.every((stepId) => completedStepIds.includes(stepId))
+      ? "completed"
+      : "active";
+    const now = new Date().toISOString();
+    return this.repository.saveLearningProgress({
+      progress_id: previous.progress_id || `account_project_progress.${project.project_id}`,
+      project_id: project.project_id,
+      user_id: project.user_id,
+      learning_project_id: project.learning_project_id,
+      entry_mode: project.view_manifest?.entry_mode || "project_story",
+      status,
+      current_lesson_id: currentLessonId,
+      current_step_id: currentStepId,
+      current_step_index: currentStepIndex,
+      completed_step_indexes: persistedCompletedStepIndexes,
+      completed_step_ids: completedStepIds,
+      lesson_progress: lessonProgress,
+      started_at: previous.started_at || now,
+      last_seen_at: now,
+      completed_at: status === "completed" ? (previous.completed_at || now) : null,
+    });
+  }
+
   async createFeedbackConsent(feedbackId, input = {}) {
     await this.ready;
     const feedback = await this.requireFeedback(feedbackId);
@@ -415,11 +503,81 @@ class ProjectService {
     return project;
   }
 
+  async requireOwnedProject(projectId, userId) {
+    const project = await this.requireProject(projectId);
+    if (!userId || project.user_id !== userId) {
+      throw new ProjectServerError("project_access_denied", "Das Lernprojekt gehoert nicht zu diesem Account.", 403);
+    }
+    return project;
+  }
+
   async requireFeedback(feedbackId) {
     const feedback = await this.repository.findFeedback(feedbackId);
     if (!feedback) throw new ProjectServerError("feedback_not_found", "Feedback wurde nicht gefunden.", 404);
     return feedback;
   }
+}
+
+function emptyLearningProgress(project) {
+  const views = Array.isArray(project.view_manifest?.views) ? project.view_manifest.views : [];
+  const firstView = views[0] || {};
+  return {
+    progress_id: `account_project_progress.${project.project_id}`,
+    project_id: project.project_id,
+    user_id: project.user_id,
+    learning_project_id: project.learning_project_id || "",
+    entry_mode: project.view_manifest?.entry_mode || "project_story",
+    status: "not_started",
+    current_lesson_id: firstView.lesson_id || project.view_manifest?.lesson_focus_id || "",
+    current_step_id: firstView.id || "",
+    current_step_index: 0,
+    completed_step_indexes: [],
+    completed_step_ids: [],
+    lesson_progress: lessonProgressFromViews(views, [], firstView.lesson_id || "", firstView.id || "", 0, []),
+    started_at: null,
+    last_seen_at: null,
+    completed_at: null,
+  };
+}
+
+function lessonProgressFromViews(views, completedStepIds, currentLessonId, currentStepId, currentStepIndex, previous = []) {
+  const previousByLesson = new Map((previous || []).map((item) => [item.lesson_id, item]));
+  const lessonIds = Array.from(new Set(views.map((view) => String(view.lesson_id || "")).filter(Boolean)));
+  if (currentLessonId && !lessonIds.includes(currentLessonId)) lessonIds.push(currentLessonId);
+  return lessonIds.map((lessonId) => {
+    const lessonViews = views.filter((view) => view.lesson_id === lessonId);
+    const lessonStepIds = lessonViews.map((view) => String(view.id || "")).filter(Boolean);
+    const completedLessonStepIds = lessonStepIds.filter((stepId) => completedStepIds.includes(stepId));
+    const currentLessonStepIndex = lessonId === currentLessonId
+      ? Math.max(0, lessonViews.findIndex((view) => view.id === currentStepId))
+      : Number(previousByLesson.get(lessonId)?.current_step_index || 0);
+    return {
+      lesson_id: lessonId,
+      status: lessonStepIds.length && lessonStepIds.every((stepId) => completedStepIds.includes(stepId))
+        ? "completed"
+        : (completedLessonStepIds.length || lessonId === currentLessonId ? "active" : "not_started"),
+      current_step_id: lessonId === currentLessonId
+        ? currentStepId
+        : String(previousByLesson.get(lessonId)?.current_step_id || lessonViews[0]?.id || ""),
+      current_step_index: currentLessonStepIndex,
+      completed_step_ids: completedLessonStepIds,
+      completed_step_indexes: completedLessonStepIds.map((stepId) => lessonViews.findIndex((view) => view.id === stepId)),
+      global_step_index: lessonId === currentLessonId
+        ? currentStepIndex
+        : Number(previousByLesson.get(lessonId)?.global_step_index || 0),
+    };
+  });
+}
+
+function uniqueNonNegativeIntegers(values) {
+  return Array.from(new Set((Array.isArray(values) ? values : []).map(Number)
+    .filter((value) => Number.isInteger(value) && value >= 0))).sort((left, right) => left - right);
+}
+
+function boundedIndex(value, length) {
+  const index = Number(value);
+  if (!Number.isInteger(index) || index < 0) return 0;
+  return Math.min(index, Math.max(0, length - 1));
 }
 
 function normalizeBuildConfig(input = {}) {
@@ -496,6 +654,9 @@ function normalizeViewManifest(input = {}) {
     primary_source_path: normalizeOptionalSourcePath(manifest.primary_source_path || manifest.primarySourcePath || ""),
     hide_source_editor: Boolean(manifest.hide_source_editor || manifest.hideSourceEditor),
     mode: manifest.mode || "guided_ide",
+    entry_mode: manifest.entry_mode || manifest.entryMode || "project_story",
+    lesson_focus_id: String(manifest.lesson_focus_id || manifest.lessonFocusId || ""),
+    parent_learning_project_id: String(manifest.parent_learning_project_id || manifest.parentLearningProjectId || ""),
     views: Array.isArray(manifest.views) ? manifest.views.map(normalizeProjectView).filter(Boolean) : [],
   };
 }
@@ -540,6 +701,7 @@ function normalizeProjectView(input = {}) {
   return {
     id,
     type,
+    lesson_id: String(input.lesson_id || input.lessonId || ""),
     title: input.title || id,
     summary: input.summary || input.text || "",
     source_path: normalizeOptionalSourcePath(input.source_path || input.sourcePath || ""),

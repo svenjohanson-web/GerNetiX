@@ -44,9 +44,11 @@ test("shows the complete system scope and preserves user choice", () => {
 
 test("uses the GerNetiX corporate design and collapses the scope on mobile", () => {
   assert.match(css, /--accent: #22d3ee/);
+  assert.match(css, /body \{[\s\S]*padding-top: 78px;/);
+  assert.match(css, /\.site-header \{[\s\S]*position: fixed;[\s\S]*top: 0;[\s\S]*left: 16px;[\s\S]*right: 16px;/);
   assert.match(css, /\.panel \{[\s\S]*background: var\(--panel\)/);
   assert.match(css, /@media \(max-width: 720px\) \{[\s\S]*\.scope-list \{ grid-template-columns: 1fr; \}/);
-  assert.match(css, /\.hero h1 \{ font-size: clamp\(25px, 3\.1vw, 40px\); \}/);
+  assert.match(css, /\.hero h1 \{ font-size: clamp\(26px, 3vw, 34px\); \}/);
   assert.match(css, /\.hero-system-graphic \{/);
   assert.match(css, /\.hero-process-step rect \{/);
   assert.match(css, /\.hero-process-line \{ fill: none; stroke: #67e8f9; stroke-width: 3;/);
@@ -80,7 +82,7 @@ test("invites experienced developers into the full-system IDE", () => {
   assert.match(html, /Für Fortgeschrittene/);
   assert.match(html, /Dein gesamtes System in einer IDE/);
   assert.match(html, /vom Mikrocontroller bis zum Backend alles erstellen/);
-  assert.match(html, /href="\/app\/auth\/\?next=%2Fapp%2Fdevelopment-platform%2F">GerNetiX IDE besuchen/);
+  assert.match(html, /href="\/app\/auth\/\?next=%2Fapp%2Fdevelopment-platform%2F"[^>]*>GerNetiX IDE besuchen/);
   assert.match(html, /Für Fortgeschrittene[\s\S]*Unsere Motivation[\s\S]*Warum GerNetiX\?/);
   assert.match(css, /\.ide-invitation \{ display: flex;/);
   assert.match(css, /@media \(max-width: 720px\) \{[\s\S]*\.ide-invitation \{ display: grid; \}/);

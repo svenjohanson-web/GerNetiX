@@ -7,9 +7,9 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="GerNetiX FlashBox sicher per USB einrichten." />
-    <title>FlashBox einrichten · GerNetiX</title>
-    <link rel="stylesheet" href="/landing.css?v=20260721-public-header-1" />
-    <link rel="stylesheet" href="/flashbox-einrichten/styles.css" />
+    <title data-i18n="flashbox.page.title">FlashBox einrichten · GerNetiX</title>
+    <link rel="stylesheet" href="/landing.css?v=20260728-fixed-header-1" />
+    <link rel="stylesheet" href="/flashbox-einrichten/styles.css?v=20260726-responsive-1" />
   </head>
   <body>
     <header class="site-header">
@@ -32,14 +32,38 @@
       </nav>
     </header>
     <main>
-      <section class="why-flashbox"><h2>Wofür gibt es die FlashBox?</h2><p>Die FlashBox ist eine WLAN-zu-USB-/Serial-Brücke. Sie hilft beim Flashen von IoT-Geräten über WLAN, wenn du mit iPad, Android oder einem Rechner ohne USB-Serial arbeitest.</p><p><strong>OTA:</strong> Das Gerät ist schon im WLAN und erhält die Firmware direkt. <strong>USB:</strong> Ein Computer ist direkt mit dem Gerät verbunden. <strong>FlashBox:</strong> Sie bringt den USB-Anschluss über WLAN zu dir – ideal für neue Geräte ohne WLAN oder ohne direkten USB-Zugang.</p></section>
-      <ol class="steps" aria-label="Einrichtungsschritte"><li class="active" id="stepConnect">1. USB verbinden</li><li id="stepCheck">2. Hardware pr&uuml;fen</li><li id="stepConfirm">3. Best&auml;tigen</li><li id="stepFlash">4. Initialimage schreiben</li><li id="stepAccount">5. Mit Account verbinden</li></ol>
-      <section class="card" aria-labelledby="connectTitle"><h2 id="connectTitle">1. FlashBox verbinden</h2><p>Schlie&szlig;e die FlashBox per <strong>Control-USB</strong> an. Halte bei Bedarf BOOT gedr&uuml;ckt und tippe kurz RESET.</p><div class="actions"><button id="autoSearchButton" class="primary">FlashBox automatisch suchen</button><button id="manualPortButton" class="secondary" hidden>COM-Port manuell ausw&auml;hlen</button></div><p class="hint">Der Browser fragt einmal nach dem USB-/seriellen Ger&auml;t. Aus Sicherheitsgr&uuml;nden kann eine Webseite COM-Ports nicht unsichtbar durchsuchen.</p><p id="connectionStatus" class="status" aria-live="polite">Noch kein Ger&auml;t ausgew&auml;hlt.</p></section>
-      <section class="card" aria-labelledby="hardwareTitle"><h2 id="hardwareTitle">2. Hardware pr&uuml;fen</h2><dl id="hardwareDetails" class="details empty"><div><dt>Board</dt><dd>Wird nach der USB-Pr&uuml;fung angezeigt.</dd></div></dl><p id="hardwareStatus" class="status" aria-live="polite">Die Pr&uuml;fung startet nach der Verbindung.</p><button id="hardwareCheckContinueButton" class="primary" type="button" hidden>Boarddaten best&auml;tigen und weiter</button></section>
-      <section class="card" aria-labelledby="releaseTitle"><h2 id="releaseTitle">3. Freigegebenes Initialimage</h2><dl id="releaseDetails" class="details empty"><div><dt>Release</dt><dd>Wird geladen …</dd></div></dl><p id="releaseStatus" class="status" aria-live="polite"></p><label class="confirmation"><input id="hardwareConfirmation" type="checkbox" disabled /> <span>Ich best&auml;tige, dass Board, Flash- und RAM-Angaben zu meiner FlashBox passen.</span></label><button id="flashButton" class="primary" disabled>Initialimage schreiben</button></section>
-      <section class="card" aria-labelledby="resultTitle"><h2 id="resultTitle">4. Ergebnis</h2><p id="flashStatus" class="status" aria-live="polite">Noch nicht gestartet.</p><div id="inventoryNext" class="inventory-next" hidden><h3>5. Mit Account verbinden</h3><p>Ordne die eingerichtete FlashBox jetzt mit dem Claim-Code aus deiner Bestellung deinem Account zu. Nach der Anmeldung landest du direkt im Geräte-Inventar bei der Account-Zuordnung.</p><div class="actions"><a class="primary action-link" href="/app/auth/?next=%2Fapp%2Fdevice-management%2Finventory%2F">Anmelden und Account zuordnen</a><button id="inventoryLaterButton" class="secondary" type="button">Später zuordnen</button></div><p id="inventoryLaterStatus" class="hint" aria-live="polite"></p></div><p class="hint">Das Schreiben des Initialimages erzeugt selbst keine Anmeldung, keinen Account und keine Besitzzuordnung.</p></section>
+      <section class="why-flashbox"><h2 data-i18n="flashbox.intro.title">Wofür gibt es die FlashBox?</h2><p data-i18n="flashbox.intro.text">Die FlashBox ist eine WLAN-zu-USB-/Serial-Brücke. Sie hilft beim Flashen von IoT-Geräten über WLAN, wenn du mit iPad, Android oder einem Rechner ohne USB-Serial arbeitest.</p><p data-i18n="flashbox.intro.compare"><strong>OTA:</strong> Das Gerät ist schon im WLAN und erhält die Firmware direkt. <strong>USB:</strong> Ein Computer ist direkt mit dem Gerät verbunden. <strong>FlashBox:</strong> Sie bringt den USB-Anschluss über WLAN zu dir – ideal für neue Geräte ohne WLAN oder ohne direkten USB-Zugang.</p></section>
+      <ol class="steps" data-i18n-aria-label="flashbox.steps.label" aria-label="Einrichtungsschritte"><li class="active" id="stepConnect" data-i18n="flashbox.steps.connect">1. USB verbinden</li><li id="stepCheck" data-i18n="flashbox.steps.check">2. Hardware pr&uuml;fen</li><li id="stepConfirm" data-i18n="flashbox.steps.confirm">3. Best&auml;tigen</li><li id="stepFlash" data-i18n="flashbox.steps.flash">4. Initialimage schreiben</li><li id="stepAccount" data-i18n="flashbox.steps.account">5. Mit Account verbinden</li></ol>
+      <section class="card" aria-labelledby="connectTitle"><h2 id="connectTitle" data-i18n="flashbox.connect.title">1. FlashBox verbinden</h2><p data-i18n="flashbox.connect.text">Schlie&szlig;e die FlashBox per Control-USB an. Halte bei Bedarf BOOT gedr&uuml;ckt und tippe kurz RESET.</p><div class="actions"><select id="serialServicePortSelect" data-i18n-aria-label="flashbox.connect.port_label" aria-label="USB-Port des installierten Serial Helpers" hidden></select><button id="autoSearchButton" class="primary" data-i18n="flashbox.connect.auto">FlashBox automatisch suchen</button><button id="manualPortButton" class="secondary" data-i18n="flashbox.connect.manual" hidden>COM-Port manuell ausw&auml;hlen</button></div><p class="hint" data-i18n="flashbox.connect.hint">Der Browser fragt einmal nach dem USB-/seriellen Ger&auml;t. Aus Sicherheitsgr&uuml;nden kann eine Webseite COM-Ports nicht unsichtbar durchsuchen.</p><p id="connectionStatus" class="status" aria-live="polite" data-i18n="flashbox.connect.idle">Noch kein Ger&auml;t ausgew&auml;hlt.</p></section>
+      <section class="card" aria-labelledby="hardwareTitle"><h2 id="hardwareTitle" data-i18n="flashbox.hardware.title">2. Hardware pr&uuml;fen</h2><dl id="hardwareDetails" class="details empty"><div><dt data-i18n="flashbox.hardware.board">Board</dt><dd data-i18n="flashbox.hardware.pending">Wird nach der USB-Pr&uuml;fung angezeigt.</dd></div></dl><p id="hardwareStatus" class="status" aria-live="polite" data-i18n="flashbox.hardware.idle">Die Pr&uuml;fung startet nach der Verbindung.</p><button id="hardwareCheckContinueButton" class="primary" type="button" data-i18n="flashbox.hardware.continue" hidden>Boarddaten best&auml;tigen und weiter</button></section>
+      <section class="card" aria-labelledby="releaseTitle"><h2 id="releaseTitle" data-i18n="flashbox.release.title">3. Freigegebenes Initialimage</h2><dl id="releaseDetails" class="details empty"><div><dt>Release</dt><dd data-i18n="flashbox.release.loading">Wird geladen …</dd></div></dl><p id="releaseStatus" class="status" aria-live="polite"></p><label class="confirmation"><input id="hardwareConfirmation" type="checkbox" disabled /> <span data-i18n="flashbox.release.confirm">Ich best&auml;tige, dass Board, Flash- und RAM-Angaben zu meiner FlashBox passen.</span></label><button id="flashButton" class="primary" data-i18n="flashbox.release.write" disabled>Initialimage schreiben</button></section>
+      <section class="card" aria-labelledby="resultTitle"><h2 id="resultTitle" data-i18n="flashbox.result.title">4. Ergebnis</h2><p id="flashStatus" class="status" aria-live="polite" data-i18n="flashbox.result.idle">Noch nicht gestartet.</p><div id="inventoryNext" class="inventory-next" hidden><h3 data-i18n="flashbox.account.title">5. Mit Account verbinden</h3><p data-i18n="flashbox.account.text">Ordne die eingerichtete FlashBox jetzt mit dem Claim-Code aus deiner Bestellung deinem Account zu. Nach der Anmeldung landest du direkt im Geräte-Inventar bei der Account-Zuordnung.</p><div class="actions"><a class="primary action-link" href="/app/auth/?next=%2Fapp%2Fdevice-management%2Finventory%2F" data-i18n="flashbox.account.login">Anmelden und Account zuordnen</a><button id="inventoryLaterButton" class="secondary" type="button" data-i18n="flashbox.account.later">Später zuordnen</button></div><p id="inventoryLaterStatus" class="hint" aria-live="polite"></p></div><p class="hint" data-i18n="flashbox.result.hint">Das Schreiben des Initialimages erzeugt selbst keine Anmeldung, keinen Account und keine Besitzzuordnung.</p></section>
     </main>
-    <script src="/landing.js?v=20260719-01"></script>
+    <dialog id="serialSupportDialog" class="serial-support-dialog" aria-labelledby="serialSupportTitle">
+      <div class="serial-support-header">
+        <div>
+          <p class="eyebrow" data-i18n="flashbox.dialog.eyebrow">USB-Verbindung</p>
+          <h2 id="serialSupportTitle" data-i18n="flashbox.dialog.title">Wie möchtest du die FlashBox verbinden?</h2>
+        </div>
+        <button class="secondary compact" type="button" data-close-serial-support data-i18n="flashbox.dialog.close" data-i18n-aria-label="flashbox.dialog.close_label" aria-label="Dialog schließen">Schließen</button>
+      </div>
+      <p data-i18n="flashbox.dialog.mac_text">Dieser Browser kann nicht direkt auf den USB-Port zugreifen. Auf dem Mac hast du zwei Möglichkeiten:</p>
+      <section class="serial-support-options">
+        <article id="macSerialHelperOption" class="recommended">
+          <span class="recommendation" data-i18n="flashbox.dialog.recommended">Empfohlen für macOS</span>
+          <h3>GerNetiX Serial Helper</h3>
+          <p data-i18n="flashbox.dialog.helper_text">Installiere den GerNetiX Serial Service einmalig. Danach kann GerNetiX den seriellen USB-Port über den lokalen Helper verwenden.</p>
+          <a class="primary action-link" href="/app/downloads/" data-i18n="flashbox.dialog.helper_download">Serial Helper für macOS laden</a>
+        </article>
+        <article>
+          <h3 data-i18n="flashbox.dialog.browser_title">Browser mit Web Serial</h3>
+          <p data-i18n="flashbox.dialog.browser_text">Öffne diese Seite in Chrome oder Edge auf deinem Mac und starte den USB-Schritt dort erneut.</p>
+          <button class="secondary" type="button" data-close-serial-support data-i18n="flashbox.dialog.browser_action">Chrome oder Edge verwenden</button>
+        </article>
+      </section>
+    </dialog>
+    <script src="/landing.js?v=20260726-i18n-2"></script>
+    <script src="/app/serial-service-client.js?v=20260719-02"></script>
     <script type="module" src="/flashbox-einrichten/app.js"></script>
   </body>
 </html>

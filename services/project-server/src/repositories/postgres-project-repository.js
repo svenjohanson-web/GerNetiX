@@ -82,6 +82,18 @@ class PostgresProjectRepository {
       CREATE INDEX IF NOT EXISTS idx_project_consents_feedback
         ON project_consents (feedback_id);
 
+      CREATE TABLE IF NOT EXISTS project_learning_progress (
+        project_id text PRIMARY KEY REFERENCES project_projects(project_id) ON DELETE CASCADE,
+        user_id text NOT NULL,
+        status text NOT NULL,
+        current_lesson_id text NOT NULL DEFAULT '',
+        current_step_id text NOT NULL DEFAULT '',
+        raw_json jsonb NOT NULL,
+        updated_at timestamptz NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_project_learning_progress_user
+        ON project_learning_progress (user_id, updated_at DESC);
+
       CREATE TABLE IF NOT EXISTS project_resource_policies (
         plan_id text PRIMARY KEY,
         raw_json jsonb NOT NULL,
@@ -303,6 +315,37 @@ class PostgresProjectRepository {
     `, [feedbackId]));
   }
 
+  async saveLearningProgress(progress) {
+    await this.pool.query(`
+      INSERT INTO project_learning_progress
+        (project_id, user_id, status, current_lesson_id, current_step_id, raw_json, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      ON CONFLICT (project_id) DO UPDATE SET
+        user_id=EXCLUDED.user_id,
+        status=EXCLUDED.status,
+        current_lesson_id=EXCLUDED.current_lesson_id,
+        current_step_id=EXCLUDED.current_step_id,
+        raw_json=EXCLUDED.raw_json,
+        updated_at=EXCLUDED.updated_at
+    `, [
+      progress.project_id,
+      progress.user_id,
+      progress.status,
+      progress.current_lesson_id,
+      progress.current_step_id,
+      progress,
+      progress.last_seen_at,
+    ]);
+    return clone(progress);
+  }
+
+  async findLearningProgress(projectId) {
+    return first(await this.pool.query(
+      "SELECT raw_json FROM project_learning_progress WHERE project_id=$1",
+      [projectId],
+    ));
+  }
+
   async listResourcePolicies() {
     return rows(await this.pool.query(
       "SELECT raw_json FROM project_resource_policies ORDER BY plan_id",
@@ -330,6 +373,7 @@ class PostgresProjectRepository {
         ["build_jobs", "project_build_jobs"],
         ["artifacts", "project_artifacts"],
         ["feedback", "project_feedback"],
+        ["learning_progress", "project_learning_progress"],
       ]) {
         counts[key] = Number((await client.query(
           `SELECT COUNT(*) AS count FROM ${table} WHERE project_id=$1`,
@@ -385,6 +429,7 @@ class PostgresProjectRepository {
       await importArtifacts(client, state.artifacts);
       await importFeedback(client, state.feedback);
       await importConsents(client, state.consents);
+      await importLearningProgress(client, state.learningProgress);
       await importPolicies(client, state.resourcePolicies);
       await client.query("INSERT INTO project_migrations (migration_id) VALUES ($1)", [migrationId]);
       await client.query("COMMIT");
@@ -453,6 +498,24 @@ async function importConsents(client, items = []) {
         (consent_id, feedback_id, user_id, revoked_at, raw_json, created_at)
       VALUES ($1, $2, $3, $4, $5, $6)
     `, [item.consent_id, item.feedback_id, item.user_id, item.revoked_at || null, item, timestamp(item, "created_at")]);
+  }
+}
+
+async function importLearningProgress(client, items = []) {
+  for (const item of items) {
+    await client.query(`
+      INSERT INTO project_learning_progress
+        (project_id, user_id, status, current_lesson_id, current_step_id, raw_json, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+    `, [
+      item.project_id,
+      item.user_id,
+      item.status || "active",
+      item.current_lesson_id || "",
+      item.current_step_id || "",
+      item,
+      timestamp(item, "last_seen_at", "updated_at", "started_at"),
+    ]);
   }
 }
 

@@ -2,7 +2,7 @@
 
 Vorhaben fuer den GerNetiX Projektserver.
 
-Der Projektserver ist die Quelle der Wahrheit fuer Benutzer, Nutzerprojekte, Geraete, Quellcode, Projektkonfiguration, Device-Zuordnung und Build-Historie. Er erstellt BuildJobs und vollstaendige BuildPackages fuer den Build-&-Deploy-Server und nimmt Firmware, Logs, BuildResults und Deploy-Ergebnisse wieder entgegen.
+Der Projektserver ist die Quelle der Wahrheit fuer Benutzer, Nutzerprojekte, projektgebundenen Lernfortschritt, Geraete, Quellcode, Projektkonfiguration, Device-Zuordnung und Build-Historie. Er erstellt BuildJobs und vollstaendige BuildPackages fuer den Build-&-Deploy-Server und nimmt Firmware, Logs, BuildResults und Deploy-Ergebnisse wieder entgegen.
 
 Fuer den projektgebundenen Entwicklungs-KI-Chat stellt er eine bedarfsgesteuerte Quellensuche bereit. Sie wird erst nach Bekanntwerden der konkreten Aufgabe ausgefuehrt, priorisiert die aktuell geoeffnete Datei und liefert standardmaessig hoechstens sechs relevante Pfad-/Inhaltstreffer. Dadurch muss die KI weder das gesamte Projekt noch eine starre Anzahl willkuerlicher Dateien erhalten. Die Architekturentscheidung ist in [`docs/ai-project-source-retrieval.md`](../../docs/ai-project-source-retrieval.md) beschrieben.
 
@@ -19,6 +19,7 @@ Fuer den projektgebundenen Entwicklungs-KI-Chat stellt er eine bedarfsgesteuerte
 - Build-, Flash- und Deploy-Historie nachvollziehbar speichern
 - Firmware-Artefakte und Logs dem Projektkontext zuordnen
 - Step- und Projektfeedback im Learning-/Projektkontext speichern
+- aktuelle Lesson, aktuellen Step und abgeschlossene Steps je Lesson dauerhaft speichern
 
 ## Abgrenzung
 
@@ -100,6 +101,7 @@ Diese Struktur liegt als Project-Server-Quelle in PostgreSQL und ist keine lokal
 - `project-build-history`: Build-, Flash- und Deploy-Historie
 - `firmware-artifact-repository`: Firmware-Artefakte, Logs und Statusmetadaten
 - `learning-feedback-repository`: Step- und Projektfeedback inklusive Anonymisierung und Kontakt-Consent-Verknuepfung
+- `learning-progress-repository`: account- und projektgebundener Wiedereinstieg in die letzte Lesson und den letzten Step
 
 ## MVP-Implementierung
 
@@ -123,7 +125,7 @@ API-Prefix:
 /api/projects
 ```
 
-Umgesetzt sind Projektanlage, Projektquellen, ProjectViewManifest, BuildJob-Erzeugung, reproduzierbare BuildPackages, BuildResult-Rueckmeldung, Firmware-Artefaktreferenzen, Build-Historie und Learning-Feedback inklusive Kontakt-Consent und Anonymisierung.
+Umgesetzt sind Projektanlage, Projektquellen, ProjectViewManifest, projektgebundener Lesson-/Step-Fortschritt, BuildJob-Erzeugung, reproduzierbare BuildPackages, BuildResult-Rueckmeldung, Firmware-Artefaktreferenzen, Build-Historie und Learning-Feedback inklusive Kontakt-Consent und Anonymisierung.
 
 Konfiguration:
 

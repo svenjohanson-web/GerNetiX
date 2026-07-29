@@ -1,0 +1,190 @@
+{
+  "slug": "motor-control-basics",
+  "project": {
+    "slug": "motor-control-basics",
+    "title": "Motoransteuerung: Bewegung sicher steuern",
+    "area": "Sensorik, Aktorik und Firmware",
+    "summary": "Lerne vom GPIO und PWM über DC-Motor, Transistor und H-Brücke bis zu Schritt-, Servo- und BLDC-Motoren, wie Bewegung technisch und sicher entsteht.",
+    "learning_category": "embedded",
+    "tags": ["platform:esp32", "topic:actuators", "topic:motor-control", "topic:firmware", "level:beginner"],
+    "steps": [
+      { "title": "GPIO: ein kleiner Befehl, keine Motorleistung", "text": "Ein GPIO liefert ein digitales Logiksignal. Du schaltest damit zunächst eine LED oder einen Treibereingang, aber niemals den Motor direkt.", "insight": "Der Mikrocontroller gibt Befehle; die Leistung entsteht erst in einer eigenen Treiberstufe." },
+      { "title": "PWM: Energie dosieren", "text": "Erzeuge ein PWM-Signal und verändere seinen Tastgrad. Beobachte an einer LED oder am Treibereingang, dass PWM schnell ein- und ausschaltet statt eine beliebige Analogspannung zu erzeugen.", "insight": "Der Tastgrad verändert den mittleren Energieeintrag und ist die Grundlage vieler Drehzahlsteuerungen." },
+      { "title": "DC-Motor und mechanische Kommutierung", "text": "Lerne den Bürsten-DC-Motor als erste Motorform kennen: Bürsten und Kommutator schalten die Rotorwicklung im Motor um, damit das Drehmoment weiter in eine Richtung wirkt.", "insight": "Beim klassischen DC-Motor übernimmt die Mechanik im Motor die Kommutierung." },
+      { "title": "Eine Richtung: Transistor als Leistungsschalter", "text": "Steuere den kleinen DC-Motor über eine geeignete Transistor- oder MOSFET-Stufe. Beachte externe Versorgung, gemeinsame Masse und den Schutz gegen die Abschaltenergie des Motors.", "insight": "Der Transistor schaltet den Motorstrom; PWM am Treiber ermöglicht die Drehzahlvorgabe in einer Richtung." },
+      { "title": "Zwei Richtungen: H-Brücke", "text": "Erweitere das Modell gedanklich oder mit einem fertigen Modul zur H-Brücke. Sie dreht die Polarität am Motor um und ermöglicht vorwärts, rückwärts, Stopp und je nach Treiber Bremsen.", "insight": "Richtungswechsel entsteht durch das Umschalten des Leistungspfads, nicht durch einen zweiten GPIO direkt am Motor." },
+      { "title": "Schrittmotor: Schritte zählen ist noch keine Positionsmessung", "text": "Ein Schrittmotortreiber nimmt STEP- und DIR-Signale an. Das passt zu 3D-Druckern und CNC-Maschinen: Beschleunigung, Referenzfahrt und Endschalter entscheiden, ob der reale Weg zur gezählten Schrittfolge passt.", "insight": "Schrittverlust bedeutet: Der Treiber zählt weiter, aber der Rotor folgt wegen zu hoher Last, Beschleunigung oder fehlendem Drehmoment nicht mehr – die angenommene Position ist dann falsch." },
+      { "title": "Servo: Position oder kontinuierliche Drehung", "text": "Ein Positionsservo enthält Motor, Getriebe, Positionssensor und Regler. Ein periodisches Steuersignal gibt eine Sollposition vor. Continuous-Rotation-Servos nutzen ein ähnliches Gehäuse, interpretieren das Signal aber als Richtung und Geschwindigkeit statt als Winkel.", "insight": "Servo ist kein einzelnes Motorprinzip, sondern meist ein fertig geregelter Antrieb mit klarer Schnittstelle." },
+      { "title": "BLDC: elektronische Kommutierung mit B6-Brücke", "text": "Ordne BLDC und PMSM als fortgeschrittene Antriebe ein. Sechs Schalter einer dreiphasigen B6-Brücke formen aus Gleichspannung PWM-Phasen. Rotorlage, Strommessung und Regelung bestimmen die Kommutierung.", "insight": "Der Inverter schaltet nur Zwischenkreispotentiale; durch PWM und die Motorinduktivität lassen sich annähernd sinusförmige Ströme für ein gleichmäßiges Drehfeld regeln." },
+      { "title": "Bewegung prüfen und sicher stoppen", "text": "Nutze Endschalter, Encoder oder Strommessung als Rückmeldung. Ergänze ein Zeitlimit und einen sicheren Stopp bei Blockade, Sensorfehler, Neustart oder Verbindungsverlust.", "insight": "Ein Ausgangsbefehl ist kein Beweis dafür, dass die Mechanik ihr Ziel erreicht hat." }
+    ],
+    "hardware_profile_id": "",
+    "access_model": "free",
+    "default_device_id": "",
+    "source_files": [
+      { "path": "docs/motorantrieb-plan.md", "role": "decision_record" },
+      { "path": "docs/motorantrieb-zustandsmodell.puml", "role": "architecture_model" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Motoransteuerung: Bewegung sicher steuern",
+    "summary": "Vom GPIO und PWM über verschiedene Motoren und Treiber bis zu Rückmeldung und sicherem Stopp.",
+    "primary_source_path": "docs/motorantrieb-plan.md",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "gpio-output",
+        "type": "story_slide",
+        "title": "GPIO: ein Steuerbefehl, keine Leistung",
+        "summary": "Der erste Schritt zur Motoransteuerung ist ein sicher verstandener Digitalausgang.",
+        "completion": { "type": "acknowledge", "label": "GPIO eingeordnet" },
+        "payload": { "model_lines": [
+          { "label": "GPIO", "text": "Ein Pin kann logisch 0 oder 1 ausgeben und damit eine LED oder einen Treibereingang steuern." },
+          { "label": "Grenze", "text": "Ein GPIO ist kein Motoranschluss: Strom, Spannung und Verlustleistung sind viel zu klein." },
+          { "label": "Rolle", "text": "Die Firmware entscheidet über den Befehl; ein Leistungsteil setzt ihn in Motorstrom um." },
+          { "label": "Sicherheit", "text": "Vor dem Anschluss stehen Datenblatt, Versorgung, Strombegrenzung und ein ungefährlicher Testaufbau." }
+        ] }
+      },
+      {
+        "id": "pwm-basics",
+        "type": "explanation",
+        "title": "PWM: den Energieeintrag dosieren",
+        "summary": "PWM schaltet schnell ein und aus. Der Tastgrad bestimmt die mittlere Wirkung.",
+        "completion": { "type": "acknowledge", "label": "PWM eingeordnet" },
+        "payload": { "cards": [
+          { "title": "Tastgrad", "text": "Bei 25 % ist das Signal ein Viertel der Zeit aktiv, bei 75 % drei Viertel." },
+          { "title": "Keine Analogspannung", "text": "Der GPIO erzeugt zwei Pegel. Die mittlere Wirkung entsteht durch schnelles Schalten und die Eigenschaften der Last." },
+          { "title": "Motor", "text": "Ein DC-Motor reagiert auf den mittleren Energieeintrag; Drehzahl und Drehmoment hängen zusätzlich von Last und Versorgung ab." },
+          { "title": "Treiber", "text": "Der PWM-Pin steuert einen Transistor oder Treiber-IC, nicht den Motor direkt." }
+        ] }
+      },
+      {
+        "id": "dc-motor-commutation",
+        "type": "explanation",
+        "title": "Der Bürsten-DC-Motor kommutiert sich selbst",
+        "summary": "Bürsten und Kommutator schalten die Rotorwicklung mechanisch um.",
+        "completion": { "type": "acknowledge", "label": "DC-Kommutierung verstanden" },
+        "payload": { "cards": [
+          { "title": "Magnetfelder", "text": "Stator und Rotor erzeugen ein Drehmoment, solange ihre Felder passend zueinander stehen." },
+          { "title": "Kommutator", "text": "Beim Drehen schaltet er die Rotorwicklung um, damit das Drehmoment weiter in dieselbe Richtung wirkt." },
+          { "title": "Folge", "text": "Von außen reicht Gleichspannung; die mechanische Umschaltung geschieht im Motor." },
+          { "title": "Grenze", "text": "Bürsten verschleißen und können elektrische Störungen erzeugen – das ist ein Unterschied zu BLDC-Motoren." }
+        ] }
+      },
+      {
+        "id": "transistor-driver",
+        "type": "implementation_plan",
+        "title": "Eine Drehrichtung mit Transistor oder MOSFET",
+        "summary": "Der Transistor arbeitet als Leistungsschalter zwischen Versorgung und Motor.",
+        "payload": { "tasks": [
+          "Kleinen DC-Motor, zulässige Versorgung und erwarteten Anlaufstrom notieren",
+          "Geeignete Treiberstufe oder ein Lernmodul wählen – kein Motor direkt am GPIO",
+          "GPIO, Treiber, Motorversorgung und gemeinsamen Massebezug nachvollziehen",
+          "Schutzweg für die Abschaltenergie des Motors prüfen",
+          "PWM zuerst mit frei laufendem Motor und kurzer Einschaltdauer testen"
+        ] }
+      },
+      {
+        "id": "h-bridge",
+        "type": "explanation",
+        "title": "Die H-Brücke kehrt die Drehrichtung um",
+        "summary": "Vier Schalter bilden zwei Seiten des Motors und können seine Polarität vertauschen.",
+        "completion": { "type": "acknowledge", "label": "H-Brücke eingeordnet" },
+        "payload": { "cards": [
+          { "title": "Vorwärts", "text": "Ein diagonales Schalterpaar legt die eine Polarität am Motor an." },
+          { "title": "Rückwärts", "text": "Das andere diagonale Paar vertauscht die Anschlüsse des Motors." },
+          { "title": "Gefahr", "text": "Schalter derselben Halbbrücke dürfen nicht gleichzeitig leiten. Das wäre ein Kurzschluss des Zwischenkreises." },
+          { "title": "Praxis", "text": "Ein fertiger H-Brücken-Treiber übernimmt Totzeiten und Schutzfunktionen; PWM und Richtung bleiben klare Firmware-Befehle." }
+        ] }
+      },
+      {
+        "id": "stepper-cnc",
+        "type": "explanation",
+        "title": "Schrittmotoren: gezählte Schritte und reale Position",
+        "summary": "3D-Drucker und CNC-Maschinen nutzen die einfache digitale Schnittstelle, brauchen aber eine Referenz zur Wirklichkeit.",
+        "completion": { "type": "acknowledge", "label": "Schrittverlust verstanden" },
+        "payload": { "cards": [
+          { "title": "STEP und DIR", "text": "Ein Treiber zählt Pulse als Schritte und legt über DIR die gewünschte Richtung fest." },
+          { "title": "3D-Druck und CNC", "text": "Geometrie wird als Wegfolge geplant: Beschleunigen, fahren und vor dem Richtungswechsel wieder abbremsen." },
+          { "title": "Schrittverlust", "text": "Bei zu hoher Last, zu harter Beschleunigung oder zu wenig Strom folgt der Rotor nicht einem Schritt. Die Software zählt trotzdem weiter." },
+          { "title": "Folge", "text": "Das Werkstück oder der Druck verschiebt sich. Endschalter, Referenzfahrt und bei anspruchsvollen Maschinen Encoder stellen den Bezug zur realen Position wieder her." }
+        ] }
+      },
+      {
+        "id": "servo-types",
+        "type": "explanation",
+        "title": "Servos: Position oder kontinuierliche Drehung",
+        "summary": "Ein klassischer Modellbau-Servo ist ein kompakter geregelter Antrieb; ein Continuous-Rotation-Servo verhält sich anders.",
+        "completion": { "type": "acknowledge", "label": "Servotypen unterschieden" },
+        "payload": { "cards": [
+          { "title": "Positionsservo", "text": "Motor, Getriebe, Positionssensor und Regelung liegen im Gehäuse. Das Steuersignal beschreibt eine Sollposition in einem begrenzten Winkelbereich." },
+          { "title": "Continuous Rotation", "text": "Der Positionsanschlag ist entfernt oder anders ausgelegt. Das Signal beschreibt Richtung und Geschwindigkeit um einen Neutralpunkt herum, nicht mehr einen Winkel." },
+          { "title": "Versorgung", "text": "Servos ziehen beim Anfahren oder Blockieren hohe Spitzenströme; ihre Versorgung darf nicht einfach vom Board-Pin oder USB-Port angenommen werden." },
+          { "title": "Mechanik", "text": "Endanschläge und Hebelkräfte müssen zum Servo passen. Die innere Regelung schützt nicht automatisch die äußere Mechanik." }
+        ] }
+      },
+      {
+        "id": "bldc-inverter",
+        "type": "explanation",
+        "title": "BLDC und B6-Brücke: elektronische Kommutierung",
+        "summary": "Der bürstenlose Motor braucht ein dreiphasiges Drehfeld aus einem Inverter statt eines mechanischen Kommutators.",
+        "completion": { "type": "acknowledge", "label": "B6-Brücke eingeordnet" },
+        "payload": { "cards": [
+          { "title": "B6-Brücke", "text": "Sechs Schalter bilden drei Halbbrücken. Jede Motorphase wird zwischen den Potentialen des Gleichspannungs-Zwischenkreises geschaltet." },
+          { "title": "Nicht direkt sinusförmig", "text": "Die Brücke kennt nur diskrete Schaltzustände. PWM approximiert daraus eine gewünschte gemittelte Phasenspannung." },
+          { "title": "Sinusförmiger Strom", "text": "Die Wicklungsinduktivität glättet die schnellen PWM-Anteile. Mit Stromregelung kann der Phasenstrom annähernd sinusförmig folgen." },
+          { "title": "Kommutierung", "text": "Rotorlage – Hall-Sensor, Encoder oder sensorlose Schätzung – bestimmt, welche Phasen gerade bestromt werden. Das ist die elektronische Kommutierung." }
+        ] }
+      },
+      {
+        "id": "motion-state-model",
+        "type": "plantuml",
+        "title": "Die Firmware begrenzt jede Bewegung",
+        "summary": "Ein kleines Zustandsmodell trennt Start, Bewegung, Erfolg und Fehler.",
+        "source_path": "docs/motorantrieb-zustandsmodell.puml",
+        "validation": { "type": "plantuml_contains", "must_contain": ["@startuml", "@enduml"] },
+        "payload": { "source": "@startuml\ntitle Begrenzte Motorbewegung\n[*] --> Bereit\nBereit --> Bewegen : berechtigter Start\nBewegen --> Erfolg : Endschalter erreicht\nBewegen --> Fehler : Zeitlimit / Störung\nErfolg --> Bereit : Motor aus\nFehler --> Bereit : Motor aus, Ursache prüfen\n@enduml" }
+      },
+      {
+        "id": "test-plan",
+        "type": "implementation_plan",
+        "title": "In kleinen, sicheren Schritten testen",
+        "summary": "Der erste Test läuft mit Kleinspannung und ohne gefährliche Mechanik.",
+        "payload": { "tasks": [
+          "Spannungsbereich, erwarteten Anlaufstrom und Treibermodul notieren",
+          "Stop, Vorwärts und Rückwärts zuerst ohne mechanische Last prüfen",
+          "PWM schrittweise erhöhen und Versorgung sowie Erwärmung beobachten",
+          "Endschalter und Zeitlimit einzeln testen",
+          "Blockade oder fehlende Rückmeldung simulieren: Motor muss sicher stoppen"
+        ] }
+      },
+      {
+        "id": "local-safety",
+        "type": "explanation",
+        "title": "Eine Fernverbindung ist kein Sicherheitsbauteil",
+        "summary": "Die lokale Steuerung begrenzt Bewegung auch bei App-, Netzwerk- oder Serverfehlern.",
+        "completion": { "type": "acknowledge", "label": "Sicherheitsgrenze verstanden" },
+        "payload": { "cards": [
+          { "title": "Lokaler Stopp", "text": "Endlage, Zeitlimit und Fehlerreaktion laufen auf dem Gerät oder unmittelbar in seiner Nähe." },
+          { "title": "Kleine Rechte", "text": "Eine App darf nur erlaubte Bewegungen anfordern; sie ersetzt keine Schutzlogik." },
+          { "title": "Nachvollziehbar", "text": "Der Plan hält Motor, Treiber, Grenzen, Rückmeldung und beobachtete Fehler fest." },
+          { "title": "Nächster Schritt", "text": "Encoder oder Strommessung können die Rückmeldung erweitern, bevor stärkere oder komplexere Antriebe eingesetzt werden." }
+        ] }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "docs/motorantrieb-plan.md",
+      "role": "decision_record",
+      "content": "# Mein sicherer Motorantrieb\n\n- Bewegungsaufgabe und Mechanik:\n- Motor und Versorgungsspannung:\n- Treiber und erwarteter Anlauf-/Blockierstrom:\n- Richtung und PWM-Bereich:\n- Endlage oder Rückmeldung:\n- Maximale Laufzeit:\n- Verhalten bei Blockade, Sensorfehler und Neustart:\n- Wer darf welche Bewegung anfordern?\n"
+    },
+    {
+      "path": "docs/motorantrieb-zustandsmodell.puml",
+      "role": "architecture_model",
+      "content": "@startuml\ntitle Begrenzte Motorbewegung\n[*] --> Bereit\nBereit --> Bewegen : berechtigter Start\nBewegen --> Erfolg : Endschalter erreicht\nBewegen --> Fehler : Zeitlimit / Störung\nErfolg --> Bereit : Motor aus\nFehler --> Bereit : Motor aus, Ursache prüfen\n@enduml"
+    }
+  ]
+}

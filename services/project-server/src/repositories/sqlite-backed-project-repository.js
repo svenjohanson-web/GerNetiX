@@ -11,6 +11,7 @@ class SqliteBackedProjectRepository extends FileBackedProjectRepository {
         artifacts: [],
         feedback: [],
         consents: [],
+        learningProgress: [],
       },
       collectionMap: {
         projects: "projects",
@@ -19,6 +20,7 @@ class SqliteBackedProjectRepository extends FileBackedProjectRepository {
         artifacts: "artifacts",
         feedback: "feedback",
         consents: "consents",
+        learningProgress: "learning_progress",
       },
     }));
   }

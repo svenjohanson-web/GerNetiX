@@ -12,6 +12,8 @@ test("creates separated project tables with cascading ownership", async () => {
   assert.match(pool.calls[0].text, /project_sources/);
   assert.match(pool.calls[0].text, /REFERENCES project_projects\(project_id\) ON DELETE CASCADE/);
   assert.match(pool.calls[0].text, /project_resource_policies/);
+  assert.match(pool.calls[0].text, /project_learning_progress/);
+  assert.match(pool.calls[0].text, /idx_project_learning_progress_user/);
 });
 
 test("stores projects and sources as queryable ownership plus JSON documents", async () => {

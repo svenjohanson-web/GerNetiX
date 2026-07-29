@@ -1,0 +1,42 @@
+const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
+const test = require("node:test");
+
+const repositoryRoot = path.resolve(__dirname, "..", "..", "..");
+const read = (...segments) => fs.readFileSync(path.join(repositoryRoot, ...segments), "utf8");
+
+test("public page shells use the visible width while readable content keeps its own limits", () => {
+  const landingCss = read("services", "identity-server", "public", "landing.css");
+  const flashboxCss = read("services", "identity-server", "public", "flashbox-einrichten", "styles.css");
+  const authCss = read("services", "identity-server", "public", "app", "auth", "auth.css");
+  const platformCss = read("services", "identity-server", "public", "app", "app.css");
+
+  assert.match(landingCss, /\.site-header \{[\s\S]*width: calc\(100% - 32px\)/);
+  assert.match(landingCss, /main \{[^}]*width: calc\(100% - 32px\)/);
+  assert.match(landingCss, /footer \{[\s\S]*width: calc\(100% - 32px\)/);
+  assert.match(flashboxCss, /main \{ width: calc\(100% - 32px\)/);
+  assert.match(authCss, /\.auth-site-header \{[\s\S]*width: calc\(100% - 32px\)/);
+  assert.match(platformCss, /body\.public-help-page \.app-shell \{ width: calc\(100% - 32px\)/);
+  assert.match(platformCss, /@media \(max-width: 520px\)[\s\S]*\.knowledge-book-navigation,[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(platformCss, /\.knowledge-chapter-title-link,[\s\S]*overflow-wrap: anywhere/);
+  assert.match(platformCss, /\.knowledge-book-part \{[^}]*grid-template-columns: minmax\(0, 1fr\)[^}]*min-width: 0; max-width: 100%/);
+  assert.match(platformCss, /\.knowledge-book-chapter \{ min-width: 0; max-width: 100%/);
+
+  assert.match(landingCss, /\.copy-box > p:not\(\.eyebrow\) \{ max-width: 980px/);
+  assert.match(authCss, /\.login-panel \{[\s\S]*width: min\(100%, 420px\)/);
+});
+
+test("standalone GerNetiX tools no longer impose different outer maximum widths", () => {
+  const styles = [
+    read("services", "public-demo-server", "public", "app.css"),
+    read("services", "admin-tool", "public", "app.css"),
+    read("services", "recovery-tool", "public", "app.css"),
+    read("services", "provisioning-tool", "public", "app.css"),
+  ];
+
+  assert.match(styles[0], /\.shell \{ width:calc\(100% - 36px\)/);
+  assert.match(styles[1], /\.admin-shell \{ width: 100%/);
+  assert.match(styles[2], /\.shell \{ width: 100%/);
+  assert.match(styles[3], /\.shell \{ width: 100%/);
+});

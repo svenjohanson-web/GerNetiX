@@ -47,6 +47,24 @@ test("checks ESP32-S3 and shows storage values before enabling the initial flash
   assert.match(app, /loader\.writeFlash/);
 });
 
+test("offers macOS users the Serial Helper or a Web Serial browser in a dialog", () => {
+  assert.match(page, /id="serialSupportDialog"/);
+  assert.match(page, /Empfohlen für macOS/);
+  assert.match(page, /GerNetiX Serial Helper/);
+  assert.match(page, /href="\/app\/downloads\/"/);
+  assert.match(page, /Chrome oder Edge verwenden/);
+  assert.match(app, /if \(!navigator\.serial\)/);
+  assert.match(app, /showSerialSupportDialog\(\)/);
+  assert.match(app, /navigator\.userAgentData\?\.platform/);
+  assert.match(app, /dialog\.showModal\(\)/);
+  assert.match(page, /serial-service-client\.js/);
+  assert.match(page, /id="serialServicePortSelect"/);
+  assert.match(app, /state\.serialService\.available\(\)/);
+  assert.match(app, /state\.serialService\.ports\(\)/);
+  assert.match(app, /state\.serialService\.probe\(selected\.path\)/);
+  assert.match(app, /state\.serialService\.flash\(/);
+});
+
 test("links setup from devices and keeps account assignment in the authenticated inventory", () => {
   assert.match(internalAppPage, /href="\/flashbox-einrichten\/"[\s\S]*FlashBox einrichten und anschließend dem Account zuordnen/);
   assert.match(internalAppPage, /id="flashbox-account-assignment"/);

@@ -25,7 +25,13 @@ test("shows the public GerNetiX header and burger menu on the authentication pag
   assert.match(script, /\/api\/recovery\/offline\/start/);
   assert.match(script, /\/api\/recovery\/offline\/passkey\/options/);
   assert.match(script, /\/api\/recovery\/offline\/passkey\/verify/);
+  assert.match(html, /id="auth-language"[\s\S]*Deutsch[\s\S]*English[\s\S]*Nederlands/);
+  assert.match(html, /DE · EN · NL/);
+  assert.match(html, /\/app\/i18n\/i18n\.js/);
+  assert.match(script, /window\.GerNetiXI18n\.create\(\)/);
+  assert.match(script, /locale: currentLocale\(\)/);
   assert.doesNotMatch(script, /sessionStorage/);
+  assert.doesNotMatch(script, /localStorage/);
   assert.match(html, /class="auth-site-footer"[\s\S]*Über uns[\s\S]*Wissensportal[\s\S]*Hilfe/);
   assert.doesNotMatch(html, /href="\/app\/vision\/"/);
   assert.match(css, /\.auth-site-footer/);

@@ -44,6 +44,7 @@ class AuthService {
         username: username.trim(),
         email,
         status: USER_STATUS.PENDING_VERIFICATION,
+        preferredLocale: normalizePreferredLocale(options.preferred_locale || options.preferredLocale),
       });
       await this.repository.createLocalCredential({
         userId: account.id,
@@ -96,11 +97,12 @@ class AuthService {
       status: USER_STATUS.VERIFIED,
       accountType: "guest",
       guestExpiresAt: expiresAt,
+      preferredLocale: normalizePreferredLocale(options.preferred_locale || options.preferredLocale),
     });
     return this.createSessionResponse(account);
   }
 
-  async create_passkey_account(username, passkey) {
+  async create_passkey_account(username, passkey, options = {}) {
     assertPseudonymousUsername(username);
     if (!passkey?.credentialId || !passkey?.publicKey) throw new AuthError("passkey_required", "A verified passkey is required.", 400);
     try {
@@ -108,6 +110,7 @@ class AuthService {
         username: username.trim(), email: null, status: USER_STATUS.VERIFIED, accountType: "base",
         passkeyCredentialId: passkey.credentialId, passkeyPublicKey: passkey.publicKey,
         passkeyCounter: Number(passkey.counter || 0), passkeyTransports: passkey.transports || [],
+        preferredLocale: normalizePreferredLocale(options.preferred_locale || options.preferredLocale),
       });
       return this.createSessionResponse(account);
     } catch (error) {
@@ -119,6 +122,14 @@ class AuthService {
   async get_passkey_login_candidate(username) {
     const account = await this.repository.findUserByUsername(username);
     return this.assertPasskeyLoginCandidate(account);
+  }
+
+  async update_preferred_locale(userId, locale) {
+    const preferredLocale = normalizePreferredLocale(locale, "");
+    if (!preferredLocale) throw new AuthError("invalid_locale", "Locale is not supported.", 400);
+    const account = await this.repository.updateUserAccount(userId, { preferred_locale: preferredLocale });
+    if (!account) throw new AuthError("account_not_found", "Account does not exist.", 404);
+    return toPublicAccount(account);
   }
 
   async get_passkey_login_candidate_by_credential_id(credentialId) {
@@ -533,9 +544,15 @@ function toPublicAccount(account) {
     created_at: account.created_at,
     updated_at: account.updated_at,
     account_type: account.account_type || "email_account",
+    preferred_locale: normalizePreferredLocale(account.preferred_locale),
     offline_recovery_set_configured: Boolean(account.offline_recovery_set_confirmed_at && account.offline_recovery_set_hash),
     recovery_board_count: (account.recovery_board_ids || []).length,
   };
+}
+
+function normalizePreferredLocale(value, fallback = "de") {
+  const locale = String(value || "").trim().toLowerCase().split(/[-_]/)[0];
+  return ["de", "en", "nl"].includes(locale) ? locale : fallback;
 }
 
 function formatOfflineRecoverySet(value) {

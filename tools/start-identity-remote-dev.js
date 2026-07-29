@@ -8,9 +8,9 @@ const { parseEnvFile } = require("./staging-deploy");
 
 const repoRoot = path.resolve(__dirname, "..");
 
-function loadRemoteDevConfig(environment = process.env) {
-  const localPath = path.join(repoRoot, ".env.remote-dev.local");
-  const fileValues = fs.existsSync(localPath)
+function loadRemoteDevConfig(environment = process.env, options = {}) {
+  const localPath = options.localPath || path.join(repoRoot, ".env.remote-dev.local");
+  const fileValues = options.readFile === false ? {} : fs.existsSync(localPath)
     ? parseEnvFile(fs.readFileSync(localPath, "utf8"))
     : {};
   const config = { ...fileValues, ...environment };

@@ -7,6 +7,22 @@ const releases = Object.freeze([
     published_at: "2026-07-24T18:00:00.000Z",
     required_entitlements: Object.freeze(["learn_guided_projects"]),
   }),
+  Object.freeze({
+    chapter_id: "home-server-internet-security",
+    version: "2026-07-28.1",
+    title: "Home-Server sicher betreiben: Risiken der Internetfreigabe",
+    summary: "Portfreigaben, Angriffsfläche, typische Fehlannahmen und sichere Alternativen verständlich einordnen.",
+    published_at: "2026-07-28T18:00:00.000Z",
+    required_entitlements: Object.freeze(["learn_guided_projects"]),
+  }),
+  Object.freeze({
+    chapter_id: "security-basics",
+    version: "2026-07-28.10",
+    title: "Security in vernetzten Projekten",
+    summary: "Identitäten, Rechte, Tokens, Zertifikate, MQTT-Sicherheit, typische Angriffsszenarien, Netzwerkgrenzen und eine Home-Server-Strategie verständlich einordnen.",
+    published_at: "2026-07-28T19:00:00.000Z",
+    required_entitlements: Object.freeze(["learn_guided_projects"]),
+  }),
 ]);
 
 function knowledgeChapterReleases() {

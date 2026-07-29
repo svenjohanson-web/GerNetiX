@@ -36,6 +36,6 @@ test("links Support from every public hamburger menu", () => {
   ];
   for (const relativePath of menuPages) {
     const html = fs.readFileSync(path.join(root, "public", relativePath), "utf8");
-    assert.match(html, /href="\/support\/">Support<\/a>/, relativePath);
+    assert.match(html, /href="\/support\/"[^>]*>Support<\/a>/, relativePath);
   }
 });

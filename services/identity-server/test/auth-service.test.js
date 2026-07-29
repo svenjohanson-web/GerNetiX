@@ -200,6 +200,22 @@ test("creates and logs in to a passkey-only base account without a password", as
   assert.equal(repository.findUserById(created.account.user_id).passkey_counter, 5);
 });
 
+test("normalizes and persists the preferred account locale", async () => {
+  const { auth, repository } = createModule();
+  const guest = await auth.create_guest({ preferredLocale: "nl-NL" });
+  assert.equal(guest.account.preferred_locale, "nl");
+  assert.equal(repository.findUserById(guest.account.user_id).preferred_locale, "nl");
+
+  const updated = await auth.update_preferred_locale(guest.account.user_id, "en-US");
+  assert.equal(updated.preferred_locale, "en");
+  assert.equal(repository.findUserById(guest.account.user_id).preferred_locale, "en");
+
+  await assert.rejects(
+    auth.update_preferred_locale(guest.account.user_id, "fr"),
+    /Locale is not supported/,
+  );
+});
+
 test("finds and logs in to a passkey account by credential id without a username", async () => {
   const { auth, repository } = createModule();
   const created = await auth.create_passkey_account("discoverable-passkey-maker", {

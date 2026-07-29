@@ -636,6 +636,9 @@ Regeln:
 - Ein Benutzer kann dasselbe `LearningProject` ueber unterschiedliche `LearningPath` starten.
 - Der gestartete `LearningPath` bleibt nachvollziehbar.
 - Der aktuelle Projektstand wird ueber `currentProjectFlowItemId` gespeichert.
+- Bei `DevelopmentLesson`-basierten Projekten werden zusaetzlich `currentDevelopmentLessonId` und `currentDevelopmentLessonStepId` gespeichert, damit der Wiedereinstieg nicht nur den globalen Projektabschnitt, sondern die konkrete Lesson und den konkreten Step wiederherstellt.
+- Abgeschlossene Steps werden ueber stabile Step-IDs und nicht ausschliesslich ueber ihre aktuelle Listenposition referenziert.
+- Der accountgebundene Fortschrittsdatensatz wird gemeinsam mit dem accountgebundenen Projekt im Project Server dauerhaft in SQL gespeichert; Browser-State und Prozessspeicher sind keine fachliche Quelle.
 - Beim Wiedereinstieg kann anhand referenzierter `Condition` geprueft werden, ob der Benutzer fortsetzen kann oder ob technischer Projektzustand wiederhergestellt werden muss.
 
 ## 6. Berechtigungen

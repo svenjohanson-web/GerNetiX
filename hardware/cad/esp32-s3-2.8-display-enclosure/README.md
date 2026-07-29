@@ -96,7 +96,10 @@ häufiges Öffnen als sprödes PLA.
 Die Passung lässt sich über `lid_fit_clearance`, `snap_bump_protrusion`,
 `snap_bump_radius`, `snap_recess_depth` und `snap_recess_height` abstimmen.
 Bei einem sehr strammen Probedruck sollte zuerst
-`snap_bump_protrusion` in Schritten von 0,05 mm reduziert werden.
+`snap_bump_protrusion` in Schritten von 0,05 mm reduziert werden. Die
+Standardwerte verwenden 0,20 mm Deckelspiel pro Seite und 0,85 mm
+Rastwulstüberstand, damit die Nasen auch bei leichtem seitlichem Spiel sicher
+in den Taschen bleiben.
 
 ## Bodenlogo
 

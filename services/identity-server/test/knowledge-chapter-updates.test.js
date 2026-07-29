@@ -24,8 +24,22 @@ test("offers a chapter update only to accounts that may read the chapter", () =>
   assert.deepEqual(unreadKnowledgeChapterReleases([], []), []);
   assert.deepEqual(
     unreadKnowledgeChapterReleases([], ["learn_guided_projects"]).map((item) => item.chapter_id),
-    ["yaml-basics"],
+    ["security-basics", "home-server-internet-security", "yaml-basics"],
   );
+});
+
+test("publishes the home-server security chapter with an entitlement-gated read receipt", () => {
+  const release = findKnowledgeChapterRelease("home-server-internet-security");
+  assert.equal(release.version, "2026-07-28.1");
+  assert.equal(canReadKnowledgeChapter(release, []), false);
+  assert.equal(canReadKnowledgeChapter(release, ["learn_guided_projects"]), true);
+});
+
+test("publishes the cross-cutting security chapter with an entitlement-gated read receipt", () => {
+  const release = findKnowledgeChapterRelease("security-basics");
+  assert.equal(release.version, "2026-07-28.10");
+  assert.equal(canReadKnowledgeChapter(release, []), false);
+  assert.equal(canReadKnowledgeChapter(release, ["learn_guided_projects"]), true);
 });
 
 test("a read receipt suppresses only the matching chapter version", () => {
@@ -36,23 +50,25 @@ test("a read receipt suppresses only the matching chapter version", () => {
     chapter_id: current.chapter_id,
     chapter_version: current.version,
     seen_at: "2026-07-24T19:00:00.000Z",
-  }], entitlements).length, 0);
+  }], entitlements).length, 2);
   assert.equal(unreadKnowledgeChapterReleases([{
     account_id: "acct-1",
     chapter_id: current.chapter_id,
     chapter_version: "older-version",
     seen_at: "2026-07-24T19:00:00.000Z",
-  }], entitlements).length, 1);
+  }], entitlements).length, 3);
 });
 
 test("builds an entitlement-filtered knowledge history with publication and read state", () => {
   const current = findKnowledgeChapterRelease("yaml-basics");
   assert.deepEqual(knowledgeChapterHistory([], []).map((item) => item.chapter_id), []);
   const unread = knowledgeChapterHistory([], ["learn_guided_projects"]);
-  assert.equal(unread[0].version, current.version);
-  assert.equal(unread[0].is_current, true);
-  assert.equal(unread[0].is_new, true);
-  assert.equal(unread[0].seen_at, null);
+  assert.equal(unread[0].chapter_id, "security-basics");
+  assert.equal(unread[1].chapter_id, "home-server-internet-security");
+  assert.equal(unread[2].version, current.version);
+  assert.equal(unread[2].is_current, true);
+  assert.equal(unread[2].is_new, true);
+  assert.equal(unread[2].seen_at, null);
 
   const seenAt = "2026-07-24T19:00:00.000Z";
   const read = knowledgeChapterHistory([{
@@ -60,8 +76,9 @@ test("builds an entitlement-filtered knowledge history with publication and read
     chapter_version: current.version,
     seen_at: seenAt,
   }], ["learn_guided_projects"]);
-  assert.equal(read[0].is_new, false);
-  assert.equal(read[0].seen_at, seenAt);
+  const readYaml = read.find((item) => item.chapter_id === current.chapter_id);
+  assert.equal(readYaml.is_new, false);
+  assert.equal(readYaml.seen_at, seenAt);
 });
 
 test("persists chapter read receipts in local SQLite without storing notifications in browser state", () => {

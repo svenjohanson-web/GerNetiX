@@ -6,17 +6,27 @@ const portStatus = document.querySelector("#port-status");
 const flashStep = document.querySelector("#flash-step");
 const flashButton = document.querySelector("#flash-button");
 const flashStatus = document.querySelector("#flash-status");
+const serialServicePort = document.querySelector("#serial-service-port");
 const transportButtons = Array.from(document.querySelectorAll("[data-transport]"));
 const usbTransport = document.querySelector("#usb-transport");
 const accountTransport = document.querySelector("#account-transport");
 const accountTransportCopy = document.querySelector("#account-transport-copy");
 const accountTransportLink = document.querySelector("#account-transport-link");
+const serialSupportDialog = document.querySelector("#serial-support-dialog");
+const serialSupportCopy = document.querySelector("#serial-support-copy");
+const macSerialHelperOption = document.querySelector("#mac-serial-helper-option");
+const serialService = window.GerNetiXSerialService?.create?.() || null;
 let selectedDemo = null;
 let selectedPort = null;
 
 loadGameCollection();
 
 transportButtons.forEach((button) => button.addEventListener("click", () => selectTransport(button.dataset.transport)));
+serialSupportDialog.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget || event.target.closest("[data-close-serial-support]")) {
+    closeSerialSupportDialog();
+  }
+});
 
 function selectTransport(transport) {
   const isUsb = transport === "usb";
@@ -55,7 +65,7 @@ async function loadGameCollection() {
 
 portButton.addEventListener("click", async () => {
   if (!navigator.serial) {
-    portStatus.textContent = "Web Serial ist nicht verfügbar. Verwende Chrome oder Edge auf einem Desktop-PC.";
+    await selectSerialServicePort();
     return;
   }
   try {
@@ -70,6 +80,62 @@ portButton.addEventListener("click", async () => {
   }
 });
 
+async function selectSerialServicePort() {
+  portButton.disabled = true;
+  portStatus.textContent = "Installierter GerNetiX Serial Helper wird geprüft …";
+  try {
+    if (!serialService || !await serialService.available()) {
+      portStatus.textContent = "Kein laufender Serial Helper gefunden. Wähle im Dialog die Installation oder einen kompatiblen Browser.";
+      showSerialSupportDialog();
+      return;
+    }
+    const ports = await serialService.ports();
+    if (!ports.length) {
+      portStatus.textContent = "Der GerNetiX Serial Helper läuft, findet aber noch kein USB-Gerät. Prüfe Datenkabel und Verbindung.";
+      return;
+    }
+    renderSerialServicePorts(ports);
+    const selectedPath = serialServicePort.value;
+    const port = ports.find((item) => item.path === selectedPath) || ports[0];
+    selectedPort = { ...port, source: "gernetix_serial_service" };
+    const probe = await serialService.probe(selectedPort.path);
+    portStatus.textContent = `${probe.chipName || "USB-Board"} über den installierten GerNetiX Serial Helper erkannt (${selectedPort.path}).`;
+    flashStep.hidden = false;
+    flashButton.disabled = false;
+    flashStatus.textContent = "Der lokale Serial Helper ist bereit. Die Spielesammlung kann jetzt geflasht werden.";
+  } catch (error) {
+    portStatus.textContent = error.message || "Der installierte Serial Helper konnte den USB-Port nicht prüfen.";
+  } finally {
+    portButton.disabled = !selectedDemo;
+  }
+}
+
+function renderSerialServicePorts(ports) {
+  serialServicePort.innerHTML = ports.map((port) =>
+    `<option value="${escapeHtml(port.path)}">${escapeHtml(port.displayName || port.path)}</option>`).join("");
+  serialServicePort.hidden = ports.length < 2;
+}
+
+function showSerialSupportDialog() {
+  const mac = isMacPlatform();
+  macSerialHelperOption.hidden = !mac;
+  serialSupportCopy.textContent = mac
+    ? "Dieser Browser kann nicht direkt auf den USB-Port zugreifen. Auf dem Mac hast du zwei Möglichkeiten:"
+    : "Dieser Browser kann nicht direkt auf den USB-Port zugreifen. Verwende Chrome oder Edge auf einem Desktop-Rechner.";
+  if (typeof serialSupportDialog.showModal === "function") serialSupportDialog.showModal();
+  else serialSupportDialog.setAttribute("open", "");
+}
+
+function closeSerialSupportDialog() {
+  if (typeof serialSupportDialog.close === "function") serialSupportDialog.close();
+  else serialSupportDialog.removeAttribute("open");
+}
+
+function isMacPlatform() {
+  const platform = navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || "";
+  return /Mac/i.test(platform);
+}
+
 flashButton.addEventListener("click", () => {
   if (!selectedPort || !selectedDemo) return;
   flashStatus.textContent = "Flash-Manifest wird geladen …";
@@ -83,10 +149,6 @@ async function flashSelectedDemo() {
   if (!manifestResponse.ok) throw new Error("Flash-Manifest konnte nicht geladen werden.");
   const manifest = await manifestResponse.json();
   flashStatus.textContent = "Board wird verbunden …";
-  const { Transport, ESPLoader } = await import("/vendor/esptool-js/bundle.js");
-  const transport = new Transport(selectedPort, false);
-  const loader = new ESPLoader({ transport, baudrate: 115200, terminal: { clean: () => {}, writeLine: () => {}, write: () => {} } });
-  await loader.main();
   const fileArray = await Promise.all(manifest.assets.map(async (asset) => {
     const relativeAssetPath = asset.download_url.replace(/^\//, "");
     const assetUrl = new URL(relativeAssetPath, new URL(".", location.href));
@@ -94,8 +156,25 @@ async function flashSelectedDemo() {
     if (!response.ok) throw new Error(`${asset.file_name} konnte nicht geladen werden (${response.status}).`);
     const data = new Uint8Array(await response.arrayBuffer());
     if (data.byteLength !== asset.size_bytes) throw new Error(`${asset.file_name} hat eine unerwartete Größe.`);
-    return { address: asset.flash_offset, data };
+    return { name: asset.file_name, address: asset.flash_offset, data };
   }));
+  if (selectedPort.source === "gernetix_serial_service") {
+    const result = await serialService.flash({
+      port: selectedPort.path,
+      files: fileArray,
+      onProgress(job) {
+        const progressLine = [...(job.logs || [])].reverse().find((line) => /Writing at|%|Hash of data verified/i.test(line));
+        flashStatus.textContent = progressLine || "Spielesammlung wird über den GerNetiX Serial Helper geschrieben …";
+      },
+    });
+    if (result.status !== "succeeded") throw new Error(result.error || "USB-Flash über den Serial Helper fehlgeschlagen.");
+    flashStatus.textContent = "Spielesammlung wurde über den GerNetiX Serial Helper erfolgreich geflasht und neu gestartet.";
+    return;
+  }
+  const { Transport, ESPLoader } = await import("/vendor/esptool-js/bundle.js");
+  const transport = new Transport(selectedPort, false);
+  const loader = new ESPLoader({ transport, baudrate: 115200, terminal: { clean: () => {}, writeLine: () => {}, write: () => {} } });
+  await loader.main();
   flashStatus.textContent = "Übertragung wird vorbereitet …";
   await loader.writeFlash({
     fileArray,
@@ -128,3 +207,4 @@ async function resetFlashedBoard(loader) {
 }
 
 function hex(value) { return value === undefined ? "unbekannt" : `0x${value.toString(16).padStart(4, "0")}`; }
+function escapeHtml(value) { return String(value ?? "").replace(/[&<>\"]/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[character]); }

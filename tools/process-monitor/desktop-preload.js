@@ -11,5 +11,8 @@ contextBridge.exposeInMainWorld("gernetixProcesses", {
   stop: (id) => ipcRenderer.invoke("processes:stop", id),
   vpnStatus: () => ipcRenderer.invoke("vpn:status"),
   vpnConnect: () => ipcRenderer.invoke("vpn:connect"),
-  vpnDisconnect: () => ipcRenderer.invoke("vpn:disconnect")
+  vpnDisconnect: () => ipcRenderer.invoke("vpn:disconnect"),
+  tunnelStatus: () => ipcRenderer.invoke("tunnel:status"),
+  tunnelStart: () => ipcRenderer.invoke("tunnel:start"),
+  tunnelStop: () => ipcRenderer.invoke("tunnel:stop")
 });

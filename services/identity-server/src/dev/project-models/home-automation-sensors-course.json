@@ -1,0 +1,113 @@
+{
+  "slug": "home-automation-sensors",
+  "project": {
+    "slug": "home-automation-sensors",
+    "title": "Sensorik für deine Hausautomation",
+    "area": "Hausautomation und Sensorik",
+    "summary": "Baue einen lokalen Sensor-Node, unterscheide Messwerte von Zuständen und entwickle daraus eine sichere, nachvollziehbare Hausautomatisierung.",
+    "learning_category": "embedded",
+    "tags": ["platform:esp32", "topic:sensors", "topic:home-automation", "topic:privacy"],
+    "steps": [
+      { "title": "Eine konkrete Beobachtungsaufgabe wählen", "text": "Entscheide dich zunächst für Temperatur, Helligkeit, einen Fensterkontakt oder Präsenz. Formuliere, welche Frage dein System beantworten soll – nicht nur, welchen Sensor du besitzt.", "insight": "Ein Sensor liefert einen Messwert; der fachliche Zustand entsteht erst durch eine verständliche Regel." },
+      { "title": "Messwert, Zustand und Ereignis trennen", "text": "Temperatur in °C, Fenster offen oder geschlossen und ‚Fenster wurde geöffnet‘ sind drei verschiedene Informationen. Sie brauchen unterschiedliche Speicherung und Regeln.", "insight": "Klare Zustände verhindern, dass eine Automatisierung aus einem einzelnen Rohwert falsche Schlüsse zieht." },
+      { "title": "Den Sensor am richtigen Ort testen", "text": "Miss unter normalen und besonderen Bedingungen: Sonne am Fenster, geöffnete Tür, Heizung in der Nähe oder keine Bewegung im Raum. Halte Messzeit und Umgebung fest.", "insight": "Die Montageposition ist Teil der Messung – ein guter Sensor am falschen Ort liefert trotzdem schlechte Ergebnisse." },
+      { "title": "Eine kleine lokale Regel bauen", "text": "Beispiel: Bei Dunkelheit und nur dann darf ein Licht eingeschaltet werden. Ein Fensterkontakt kann eine Heizungsregel sperren. Die erste Regel läuft nachvollziehbar auf dem lokalen Node.", "insight": "Eine Regel braucht Bedingungen, Grenzen und einen sicheren Zustand für Fehlerfälle." },
+      { "title": "Daten sparsam und sicher weitergeben", "text": "Eine Zentrale wie Home Assistant kann Zustände darstellen und mehrere Räume verbinden. Übertrage nur die Werte, die sie wirklich braucht, und vergib Lese- und Steuerrechte getrennt.", "insight": "Bewegungs-, Tür- und Fensterdaten können Anwesenheit verraten; lokale Funktion und minimale Datenweitergabe sind ein Sicherheitsgewinn." }
+    ],
+    "hardware_profile_id": "",
+    "access_model": "free",
+    "default_device_id": "",
+    "source_files": [
+      { "path": "docs/hausautomation-sensorplan.md", "role": "decision_record" },
+      { "path": "messungen/sensor-versuchsplan.csv", "role": "measurement_plan" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Sensorik für deine Hausautomation",
+    "summary": "Vom Messwert über einen verständlichen Zustand bis zur lokalen Automatisierungsregel.",
+    "primary_source_path": "docs/hausautomation-sensorplan.md",
+    "hide_source_editor": false,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "sensor-goal",
+        "type": "story_slide",
+        "title": "Welche Frage soll dein Zuhause beantworten?",
+        "summary": "Wir beginnen mit einer Beobachtungsaufgabe, nicht mit einem beliebigen Sensor.",
+        "completion": { "type": "acknowledge", "label": "Aufgabe verstanden" },
+        "payload": { "model_lines": [
+          { "label": "Temperatur", "text": "Wie warm ist es an einem sinnvollen Messort – und nicht direkt neben Heizung oder Fenster?" },
+          { "label": "Helligkeit", "text": "Ist es für eine lokale Lichtregel wirklich dunkel genug?" },
+          { "label": "Fensterkontakt", "text": "Ist ein bestimmtes Fenster geöffnet, geschlossen oder wurde sein Zustand geändert?" },
+          { "label": "Präsenz", "text": "Ist eine für die Aufgabe relevante Anwesenheit erkannt? Das ist nicht automatisch eine Aussage darüber, wer im Raum ist." }
+        ] }
+      },
+      {
+        "id": "signal-state-event",
+        "type": "explanation",
+        "title": "Aus einem Signal wird nicht automatisch ein Zustand",
+        "summary": "Messwert, abgeleiteter Zustand und Ereignis erfüllen verschiedene Aufgaben.",
+        "completion": { "type": "acknowledge", "label": "Datenarten unterschieden" },
+        "payload": { "cards": [
+          { "title": "Messwert", "text": "Zum Beispiel 19,8 °C, 42 Lux oder ein elektrischer Pegel. Messwerte können schwanken oder fehlen." },
+          { "title": "Zustand", "text": "Zum Beispiel ‚dunkel‘ oder ‚Fenster offen‘. Er wird durch eine dokumentierte Regel aus Messwerten abgeleitet." },
+          { "title": "Ereignis", "text": "Zum Beispiel ‚Fenster wurde um 08:42 geöffnet‘. Es beschreibt eine Änderung und gehört nicht in den gleichen Topf wie der aktuelle Zustand." },
+          { "title": "Hysterese", "text": "Zwei Grenzen verhindern ständiges Hin- und Herschalten, etwa Licht an unter 80 Lux und aus erst über 120 Lux." }
+        ] }
+      },
+      {
+        "id": "sensor-placement",
+        "type": "implementation_plan",
+        "title": "Sensoren erst beobachten, dann automatisieren",
+        "summary": "Ein kurzer Versuchsplan zeigt, ob Ort, Messintervall und Sensor zur Aufgabe passen.",
+        "payload": { "tasks": [
+          "Sensor, Montageort, Einheit und Messintervall notieren",
+          "Normalfall und mindestens zwei Störsituationen messen",
+          "Ausreißer, fehlende Werte und Verzögerungen markieren",
+          "Entscheiden, wann ein Wert als veraltet gilt",
+          "Erst danach eine Schwelle oder Zustandsregel festlegen"
+        ] }
+      },
+      {
+        "id": "local-rule",
+        "type": "plantuml",
+        "title": "Eine kleine Regel bleibt lokal verständlich",
+        "summary": "Der Sensor-Node kann eine Regel ausführen, auch wenn gerade keine Zentrale erreichbar ist.",
+        "source_path": "docs/hausautomation-sensorregel.puml",
+        "validation": { "type": "plantuml_contains", "must_contain": ["@startuml", "@enduml"] },
+        "payload": { "source": "@startuml\ntitle Lokale Sensorregel\ncomponent \"Helligkeitssensor\" as sensor\ncomponent \"ESP32 Sensor-Node\\nMesswert -> Zustand -> Regel\" as node\ncomponent \"Lichtaktor\" as light\nactor \"Browser im Heimnetz\" as browser\nsensor --> node : Luxwert\nnode --> light : nur bei Zustand dunkel\nbrowser --> node : Status ansehen\n@enduml" }
+      },
+      {
+        "id": "privacy-and-integration",
+        "type": "explanation",
+        "title": "Zentrale ergänzen, Privatsphäre schützen",
+        "summary": "Eine Zentrale ist nützlich für Übersicht und Regeln über mehrere Räume – aber nicht jede Information muss sie erhalten.",
+        "completion": { "type": "acknowledge", "label": "Integration eingeordnet" },
+        "payload": { "cards": [
+          { "title": "Lokal zuerst", "text": "Die einfache Sensorregel bleibt auf dem Node funktionsfähig, auch bei Ausfall von WLAN oder Zentrale." },
+          { "title": "Nur benötigte Daten", "text": "Für eine Heizungsregel kann ‚Fenster offen‘ reichen; ein lückenloses Bewegungsprotokoll ist dafür nicht erforderlich." },
+          { "title": "Getrennte Rechte", "text": "Ein Dashboard darf möglicherweise Zustände lesen, aber nicht Regeln oder Aktoren verändern." },
+          { "title": "Home Assistant oder MQTT", "text": "Sie verbinden Nodes, Historie und Visualisierung. Zugang, Verschlüsselung und Topic-Rechte gehören zur Integration dazu." }
+        ] }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "docs/hausautomation-sensorplan.md",
+      "role": "decision_record",
+      "content": "# Mein Sensor-Node für die Hausautomation\n\n- Beobachtungsaufgabe:\n- Gewählter Sensor und Einheit:\n- Montageort und Begründung:\n- Messintervall:\n- Störsituationen:\n- Abgeleiteter Zustand:\n- Regel mit Ein- und Ausschaltgrenze:\n- Was geschieht bei fehlendem oder veraltetem Messwert?\n- Welche Daten darf eine Zentrale erhalten?\n- Wer darf Status sehen und wer darf die Regel ändern?\n"
+    },
+    {
+      "path": "messungen/sensor-versuchsplan.csv",
+      "role": "measurement_plan",
+      "content": "zeitpunkt;sensor;messwert;einheit;montageort;situation;beobachtung\n;temperatur;;;normal;\n;helligkeit;;;sonne_am_fenster;\n;fensterkontakt;;;fenster_oeffnen;\n;praesenz;;;ruhe_im_raum;\n"
+    },
+    {
+      "path": "docs/hausautomation-sensorregel.puml",
+      "role": "architecture_model",
+      "content": "@startuml\ntitle Lokale Sensorregel\ncomponent \"Helligkeitssensor\" as sensor\ncomponent \"ESP32 Sensor-Node\\nMesswert -> Zustand -> Regel\" as node\ncomponent \"Lichtaktor\" as light\nactor \"Browser im Heimnetz\" as browser\nsensor --> node : Luxwert\nnode --> light : nur bei Zustand dunkel\nbrowser --> node : Status ansehen\n@enduml"
+    }
+  ]
+}

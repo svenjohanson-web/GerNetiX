@@ -31,9 +31,11 @@ test("catalog cards show only the learning offer, not implementation facts", () 
 });
 
 test("catalog classifies free, purchased and subscription access", () => {
-  assert.match(app, /free: "Frei verfuegbar"/);
+  assert.match(app, /free: "Frei verfügbar"/);
   assert.match(app, /purchased: "Kurs gekauft"/);
   assert.match(app, /subscription: "Im Abo enthalten"/);
+  assert.match(app, /en: \{ free: "Available free"/);
+  assert.match(app, /nl: \{ free: "Gratis beschikbaar"/);
 });
 
 test("categories and controlled tags classify only learning projects", () => {
@@ -44,7 +46,7 @@ test("categories and controlled tags classify only learning projects", () => {
   assert.equal(smartAssistant.project.learning_category, "distributed_system");
   assert.ok(notification.project.tags.includes("platform:esp32"));
   assert.match(html, /id="learningCatalogCategory"/);
-  assert.match(html, /value="software_engineering">Software Engineering/);
+  assert.match(html, /value="software_engineering" data-i18n="learning\.category\.software">Software Engineering/);
   assert.match(app, /software_engineering: "Software Engineering"/);
   assert.match(server, /"software_engineering", "desktop", "embedded", "distributed_system", "mobile"/);
   assert.match(html, /id="learningCatalogTag"/);
@@ -154,6 +156,18 @@ test("guided navigation renders the following learning step even if progress per
   assert.match(completion, /Lernfortschritt konnte nicht gespeichert werden/);
 });
 
+test("learning progress persists the current lesson and exact step through the project server", () => {
+  const controller = fs.readFileSync(path.resolve(__dirname, "../public/app/learning-project-controller.js"), "utf8");
+  const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
+  assert.match(server, /\/learning-progress\?user_id=/);
+  assert.match(server, /method: "PUT"[\s\S]*current_lesson_id:[\s\S]*current_step_id:/);
+  assert.doesNotMatch(server, /learningProgress: new Map/);
+  assert.match(controller, /currentLessonId: currentView\.lesson_id/);
+  assert.match(controller, /currentStepId: currentView\.id/);
+  assert.match(guidedView, /currentLessonId: currentView\.lesson_id/);
+  assert.match(guidedView, /completedStepIds:/);
+});
+
 test("button-to-smartphone course provides a project-local user source on the FULL basis software", () => {
   const course = require("../src/dev/project-models/button-to-smartphone-notification-course.json");
   const model = require("../src/dev/project-models/button-to-smartphone-notification-course");
@@ -187,7 +201,7 @@ test("uses the complete thirteen-step Tamagotchi learning sequence", () => {
 test("renders the manifest artifact viewer instead of reducing a guided project to plain step text", () => {
   const learningView = fs.readFileSync(path.resolve(__dirname, "../public/app/learning-project-view.js"), "utf8");
   assert.match(learningView, /id="learningProjectArtifact"/);
-  assert.match(learningController, /renderGuidedProject\(project\)/);
+  assert.match(learningController, /renderGuidedProject\(localizedProject\)/);
   const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
   assert.match(guidedView, /renderProjectViewManifest\(project, targetSelector = "#ideProjectViewManifest"\)/);
   assert.match(guidedView, /guided-code-viewer/);
@@ -218,6 +232,48 @@ test("catalog includes the home automation network course with a resource bounda
   assert.match(guidedView, /open_billing/);
   assert.match(course, /background_worker/);
   assert.match(course, /Home-Assistant-Kompatibilitaet/);
+});
+
+test("catalog includes a distinct sensor-learning project for home automation", () => {
+  const course = require("../src/dev/project-models/home-automation-sensors-course.json");
+  const model = require("../src/dev/project-models/home-automation-sensors-course");
+  assert.match(server, /createHomeAutomationSensorsCourseModel/);
+  assert.match(server, /homeAutomationSensorsCourseModel\.createProject/);
+  assert.equal(course.project.title, "Sensorik für deine Hausautomation");
+  assert.equal(course.project.learning_category, "embedded");
+  assert.ok(course.project.tags.includes("topic:home-automation"));
+  assert.match(course.view_manifest.views.find((view) => view.id === "signal-state-event").payload.cards.map((card) => card.title).join(" "), /Messwert.*Zustand.*Ereignis/);
+  assert.match(course.sources.find((source) => source.path.endsWith("hausautomation-sensorplan.md")).content, /Wer darf Status sehen und wer darf die Regel ändern/);
+  assert.equal(model.createHomeAutomationSensorsCourseModel().slug, "home-automation-sensors");
+});
+
+test("catalog includes a motor-control project that joins actuator electronics and firmware", () => {
+  const course = require("../src/dev/project-models/motor-control-basics-course.json");
+  const model = require("../src/dev/project-models/motor-control-basics-course");
+  assert.match(server, /createMotorControlBasicsCourseModel/);
+  assert.match(server, /motorControlBasicsCourseModel\.createProject/);
+  assert.equal(course.project.title, "Motoransteuerung: Bewegung sicher steuern");
+  assert.equal(course.project.learning_category, "embedded");
+  assert.ok(course.project.tags.includes("topic:actuators"));
+  assert.ok(course.project.tags.includes("topic:motor-control"));
+  assert.equal(course.project.steps.length, 9);
+  assert.deepEqual(course.view_manifest.views.map((view) => view.id), [
+    "gpio-output",
+    "pwm-basics",
+    "dc-motor-commutation",
+    "transistor-driver",
+    "h-bridge",
+    "stepper-cnc",
+    "servo-types",
+    "bldc-inverter",
+    "motion-state-model",
+    "test-plan",
+    "local-safety",
+  ]);
+  assert.match(JSON.stringify(course.view_manifest), /Schrittverlust[\s\S]*3D-Druck[\s\S]*CNC/);
+  assert.match(JSON.stringify(course.view_manifest), /B6-Brücke[\s\S]*Sinusförmiger Strom[\s\S]*elektronische Kommutierung/);
+  assert.match(course.sources.find((source) => source.path.endsWith("motorantrieb-plan.md")).content, /Maximale Laufzeit[\s\S]*Wer darf welche Bewegung anfordern/);
+  assert.equal(model.createMotorControlBasicsCourseModel().slug, "motor-control-basics");
 });
 
 test("catalog scaffolds the proximity-sensor project with FMCW radar as its first stage", () => {

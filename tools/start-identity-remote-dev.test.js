@@ -18,12 +18,12 @@ test("remote identity dev mode forces local 4300 and central PostgreSQL", () => 
 });
 
 test("remote identity dev mode refuses to start without a database secret", () => {
-  assert.throws(() => loadRemoteDevConfig({}), /IDENTITY_POSTGRES_PASSWORD/);
+  assert.throws(() => loadRemoteDevConfig({}, { readFile:false }), /IDENTITY_POSTGRES_PASSWORD/);
 });
 
 test("remote identity dev mode requires the shared runtime-state key", () => {
   assert.throws(
-    () => loadRemoteDevConfig({ IDENTITY_POSTGRES_PASSWORD: "test-secret" }),
+    () => loadRemoteDevConfig({ IDENTITY_POSTGRES_PASSWORD: "test-secret" }, { readFile:false }),
     /RUNTIME_STATE_ENCRYPTION_KEY/,
   );
 });

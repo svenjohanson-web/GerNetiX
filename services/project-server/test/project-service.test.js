@@ -69,6 +69,71 @@ test("creates project with default source and lists it by user", async () => {
   assert.equal((await service.listProjects({ user_id: "user-1" })).length, 1);
 });
 
+test("persists the exact lesson and step position for a learning project", async () => {
+  const repository = new InMemoryProjectRepository();
+  const service = new ProjectService({ repository });
+  const project = await service.createProject({
+    user_id: "user-1",
+    title: "Hausautomatisierung",
+    learning_project_id: "learning_project.home_automation",
+    view_manifest: {
+      entry_mode: "project_story",
+      views: [
+        { id: "sensor-read", lesson_id: "lesson.sensorics", type: "explanation", title: "Sensor lesen" },
+        { id: "sensor-state", lesson_id: "lesson.sensorics", type: "explanation", title: "Zustand ableiten" },
+        { id: "actuator-switch", lesson_id: "lesson.actuatorics", type: "explanation", title: "Aktor schalten" },
+      ],
+    },
+  });
+
+  const initial = await service.getLearningProgress(project.project_id, "user-1");
+  assert.equal(initial.status, "not_started");
+  assert.equal(initial.current_lesson_id, "lesson.sensorics");
+  assert.equal(initial.current_step_id, "sensor-read");
+
+  await service.updateLearningProgress(project.project_id, {
+    user_id: "user-1",
+    current_lesson_id: "lesson.sensorics",
+    current_step_id: "sensor-state",
+    current_step_index: 1,
+    completed_step_indexes: [0],
+  });
+  const saved = await service.updateLearningProgress(project.project_id, {
+    user_id: "user-1",
+    current_lesson_id: "lesson.forged",
+    current_step_id: "actuator-switch",
+    current_step_index: 2,
+    completed_step_indexes: [0, 1],
+    completed_step_ids: ["not-a-real-step"],
+  });
+
+  assert.equal(saved.current_lesson_id, "lesson.actuatorics");
+  assert.equal(saved.current_step_id, "actuator-switch");
+  assert.equal(saved.current_step_index, 2);
+  assert.deepEqual(saved.completed_step_ids, ["sensor-read", "sensor-state"]);
+  assert.equal(saved.lesson_progress.find((item) => item.lesson_id === "lesson.sensorics").status, "completed");
+  assert.equal(saved.lesson_progress.find((item) => item.lesson_id === "lesson.actuatorics").status, "active");
+
+  const restartedService = new ProjectService({ repository });
+  const resumed = await restartedService.getLearningProgress(project.project_id, "user-1");
+  assert.equal(resumed.current_lesson_id, "lesson.actuatorics");
+  assert.equal(resumed.current_step_id, "actuator-switch");
+});
+
+test("rejects learning progress access from a different account", async () => {
+  const service = createMemoryProjectServer();
+  const project = await createDemoProject(service);
+
+  await assert.rejects(
+    service.getLearningProgress(project.project_id, "user-2"),
+    (error) => error.status === 403 && error.code === "project_access_denied",
+  );
+  await assert.rejects(
+    service.updateLearningProgress(project.project_id, { user_id: "user-2", current_step_index: 0 }),
+    (error) => error.status === 403 && error.code === "project_access_denied",
+  );
+});
+
 test("legacy comfort basis is normalized to full and preserves project web extensions", async () => {
   const service = createMemoryProjectServer();
   const project = await service.createProject({
@@ -367,13 +432,18 @@ test("json repository persists projects, sources and build jobs across reload", 
   assert.equal((await reloaded.getBuildJob(job.build_job_id)).mode, "prebuild");
 });
 
-test("sqlite repository persists projects, sources and build jobs across reload", async () => {
+test("sqlite repository persists projects, learning progress, sources and build jobs across reload", async () => {
   const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-project-server-sqlite-")), "state.sqlite");
   const service = new ProjectService({
     repository: SqliteBackedProjectRepository.create(dbPath),
   });
   const project = await createDemoProject(service);
   const job = await service.createBuildJob(project.project_id, { mode: "prebuild" });
+  await service.updateLearningProgress(project.project_id, {
+    user_id: "user-1",
+    current_step_index: 0,
+    completed_step_indexes: [0],
+  });
 
   const reloaded = new ProjectService({
     repository: SqliteBackedProjectRepository.create(dbPath),
@@ -382,14 +452,17 @@ test("sqlite repository persists projects, sources and build jobs across reload"
   assert.equal((await reloaded.getProject(project.project_id)).title, "ESP32 Lernprojekt");
   assert.equal((await reloaded.listSources(project.project_id)).length, 1);
   assert.equal((await reloaded.getBuildJob(job.build_job_id)).mode, "prebuild");
+  assert.equal((await reloaded.getLearningProgress(project.project_id, "user-1")).status, "active");
 
   const db = new DatabaseSync(dbPath);
   assert.equal(collectionCount(db, "project-server", "projects"), 1);
   assert.equal(collectionCount(db, "project-server", "sources"), 1);
   assert.equal(collectionCount(db, "project-server", "build_jobs"), 1);
+  assert.equal(collectionCount(db, "project-server", "learning_progress"), 1);
   assert.equal(tableCount(db, "project_server_projects"), 1);
   assert.equal(tableCount(db, "project_server_sources"), 1);
   assert.equal(tableCount(db, "project_server_build_jobs"), 1);
+  assert.equal(tableCount(db, "project_server_learning_progress"), 1);
   assert.equal(
     db.prepare("SELECT title FROM project_server_projects WHERE project_id = ?").get(project.project_id).title,
     "ESP32 Lernprojekt",

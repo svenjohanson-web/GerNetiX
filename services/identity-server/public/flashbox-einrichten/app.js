@@ -1,4 +1,12 @@
-const state = { port: null, probe: null, release: null, esptool: null, busy: false, hardwareAcknowledged: false };
+const state = {
+  port: null,
+  probe: null,
+  release: null,
+  esptool: null,
+  serialService: window.GerNetiXSerialService?.create?.() || null,
+  busy: false,
+  hardwareAcknowledged: false,
+};
 const expected = { chip: "ESP32-S3" };
 
 const $ = (selector) => document.querySelector(selector);
@@ -8,6 +16,11 @@ $("#flashButton").addEventListener("click", flashInitialImage);
 $("#inventoryLaterButton").addEventListener("click", () => { $("#inventoryLaterStatus").textContent = "Kein Problem. Du kannst die FlashBox später unter Geräte → Inventar mit deinem Account verbinden."; });
 $("#hardwareConfirmation").addEventListener("change", updateFlashButton);
 $("#hardwareCheckContinueButton").addEventListener("click", confirmHardwareCheck);
+$("#serialSupportDialog").addEventListener("click", (event) => {
+  if (event.target === event.currentTarget || event.target.closest("[data-close-serial-support]")) {
+    closeSerialSupportDialog();
+  }
+});
 showOnlyStage(0);
 loadRelease();
 
@@ -26,7 +39,10 @@ async function loadRelease() {
 }
 
 async function findFlashbox(automatic) {
-  if (!navigator.serial) { status("#connectionStatus", "error", "Web Serial wird von diesem Browser nicht unterst&uuml;tzt. Bitte Chrome oder Edge am Desktop verwenden."); return; }
+  if (!navigator.serial) {
+    await findFlashboxWithSerialService(automatic);
+    return;
+  }
   setBusy(true);
   try {
     let port = null;
@@ -58,6 +74,72 @@ async function findFlashbox(automatic) {
   } finally { setBusy(false); updateFlashButton(); }
 }
 
+async function findFlashboxWithSerialService(automatic) {
+  setBusy(true);
+  status("#connectionStatus", "running", "Installierter GerNetiX Serial Helper wird geprüft …");
+  try {
+    if (!state.serialService || !await state.serialService.available()) {
+      status("#connectionStatus", "error", "Kein laufender Serial Helper gefunden. Wähle im Dialog die Installation oder einen kompatiblen Browser.");
+      showSerialSupportDialog();
+      return;
+    }
+    const ports = await state.serialService.ports();
+    if (!ports.length) {
+      status("#connectionStatus", "error", "Der GerNetiX Serial Helper läuft, findet aber noch kein USB-Gerät. Prüfe Datenkabel und Verbindung.");
+      return;
+    }
+    renderSerialServicePorts(ports);
+    const selectedPath = automatic
+      ? (ports.find((port) => Number(port.vendorId) === 0x303A) || ports[0]).path
+      : ($("#serialServicePortSelect").value || ports[0].path);
+    const selected = ports.find((port) => port.path === selectedPath) || ports[0];
+    state.port = { ...selected, source: "gernetix_serial_service" };
+    state.hardwareAcknowledged = false;
+    $("#hardwareCheckContinueButton").hidden = true;
+    showOnlyStage(1);
+    status("#connectionStatus", "ok", `FlashBox über den installierten Serial Helper gefunden (${selected.path}). Hardwareprüfung läuft jetzt.`);
+    markDone("stepConnect");
+    markActive("stepCheck");
+    status("#hardwareStatus", "running", "ESP32-Bootloader sowie Flash-Angaben werden geprüft …");
+    const helperProbe = await state.serialService.probe(selected.path);
+    const chipName = helperProbe.chipName || "ESP32";
+    state.probe = {
+      chipName,
+      isS3: /ESP32[- ]?S3/i.test(chipName),
+      flashSize: helperProbe.flashSize || "nicht gemeldet",
+      ramSize: "vom Serial Helper geprüft",
+      psramSize: "vom Serial Helper geprüft",
+    };
+    renderDetails("#hardwareDetails", [["Chip", state.probe.chipName], ["Flash", state.probe.flashSize], ["Interner RAM", state.probe.ramSize], ["PSRAM", state.probe.psramSize], ["USB", selected.path]]);
+    $("#hardwareConfirmation").disabled = true;
+    $("#hardwareConfirmation").checked = false;
+    if (state.probe.isS3) {
+      status("#hardwareStatus", "ok", "ESP32-S3 über den lokalen Serial Helper erkannt. Prüfe die Werte und bestätige danach Schritt 3.");
+      $("#hardwareCheckContinueButton").hidden = false;
+    } else {
+      status("#hardwareStatus", "error", `Keine kompatible FlashBox: erforderlich ist ein ${expected.chip}.`);
+      $("#manualPortButton").hidden = false;
+    }
+  } catch (error) {
+    state.probe = null;
+    $("#hardwareConfirmation").disabled = true;
+    $("#hardwareCheckContinueButton").hidden = true;
+    $("#manualPortButton").hidden = false;
+    status("#connectionStatus", "error", error.message || "Der installierte Serial Helper konnte die FlashBox nicht prüfen.");
+  } finally {
+    setBusy(false);
+    updateFlashButton();
+  }
+}
+
+function renderSerialServicePorts(ports) {
+  const select = $("#serialServicePortSelect");
+  select.innerHTML = ports.map((port) =>
+    `<option value="${escapeHtml(port.path)}">${escapeHtml(port.displayName || port.path)}</option>`).join("");
+  select.hidden = ports.length < 2;
+  $("#manualPortButton").hidden = ports.length < 2;
+}
+
 async function probeEsp32S3(port) {
   let transport;
   try {
@@ -87,6 +169,22 @@ async function flashInitialImage() {
     if (!response.ok) throw new Error("Initialimage konnte nicht geladen werden.");
     const bytes = new Uint8Array(await response.arrayBuffer());
     if (await sha256(bytes) !== state.release.sha256) throw new Error("Pr&uuml;fsumme des Initialimages stimmt nicht. Es wird nichts geschrieben.");
+    if (state.port.source === "gernetix_serial_service") {
+      const result = await state.serialService.flash({
+        port: state.port.path,
+        files: [{ name: state.release.file_name || "flashbox-initial.bin", data: bytes, address: 0 }],
+        onProgress(job) {
+          const progressLine = [...(job.logs || [])].reverse().find((line) => /Writing at|%|Hash of data verified/i.test(line));
+          status("#flashStatus", "running", progressLine || "Initialimage wird über den GerNetiX Serial Helper geschrieben …");
+        },
+      });
+      if (result.status !== "succeeded") throw new Error(result.error || "USB-Flash über den Serial Helper fehlgeschlagen.");
+      status("#flashStatus", "ok", `FlashBox-Initialimage ${state.release.version} wurde über den Serial Helper erfolgreich geschrieben.`);
+      $("#inventoryNext").hidden = false;
+      markDone("stepFlash");
+      markActive("stepAccount");
+      return;
+    }
     const { ESPLoader, Transport } = await loadEsptool();
     transport = new Transport(state.port, false);
     const loader = new ESPLoader({ transport, baudrate: 115200, terminal: { clean() {}, writeLine() {}, write() {} }, debugLogging: false });
@@ -112,6 +210,28 @@ function confirmHardwareCheck() {
   markActive("stepConfirm");
   showOnlyStage(2);
   updateFlashButton();
+}
+
+function showSerialSupportDialog() {
+  const dialog = $("#serialSupportDialog");
+  const mac = isMacPlatform();
+  $("#macSerialHelperOption").hidden = !mac;
+  dialog.querySelector(":scope > p").textContent = mac
+    ? "Dieser Browser kann nicht direkt auf den USB-Port zugreifen. Auf dem Mac hast du zwei Möglichkeiten:"
+    : "Dieser Browser kann nicht direkt auf den USB-Port zugreifen. Verwende Chrome oder Edge auf einem Desktop-Rechner.";
+  if (typeof dialog.showModal === "function") dialog.showModal();
+  else dialog.setAttribute("open", "");
+}
+
+function closeSerialSupportDialog() {
+  const dialog = $("#serialSupportDialog");
+  if (typeof dialog.close === "function") dialog.close();
+  else dialog.removeAttribute("open");
+}
+
+function isMacPlatform() {
+  const platform = navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || "";
+  return /Mac/i.test(platform);
 }
 
 async function loadEsptool() { if (!state.esptool) state.esptool = await import("/vendor/esptool-js/bundle.js"); return state.esptool; }

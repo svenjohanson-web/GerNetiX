@@ -28,7 +28,8 @@ Auf macOS kann alternativ `tools/GerNetiX-Check-und-Start.command` per Doppelkli
 
 Die eigenstaendige Desktop-App zeigt alle zehn Plattformdienste mit Port, HTTP-Status, PID und Lebensstatus. Jeder Dienst kann einzeln gestartet oder gestoppt werden. Die Ansicht aktualisiert sich alle fuenf Sekunden und benoetigt weder Admin Tool noch Monitor-Webserver.
 
-- macOS: `tools/process-monitor/GerNetiX-Prozess-Monitor.command`
+- macOS-App: `tools/process-monitor/GerNetiX Prozess-Monitor.app`
+- macOS-Entwicklung: `tools/process-monitor/GerNetiX-Prozess-Monitor.command`
 - Windows: `tools/process-monitor/GerNetiX-Prozess-Monitor.cmd`
 - Entwicklung: im Ordner `tools/process-monitor` mit `pnpm start`
 
@@ -37,6 +38,8 @@ Der Desktop-Prozessmonitor besitzt neben der Prozesssicht eine persistierte `Sch
 Für die Community Platform zeigt die lokale Prozesskarte zusätzlich den read-only Zustand von `.runtime/gernetix-community.sqlite`: relativer Pfad, Dateigröße sowie aggregierte Zahlen für öffentliche, private und offene Fragen, Antworten und Wissensdokumente. Inhalte und Account-/Projektkennungen werden nicht gelesen oder dargestellt. Das Web-Admin-Tool bezieht dieselben fachlichen Zähler über den internen token-geschützten Community-Betriebsendpunkt.
 - macOS-Build: `pnpm run dist:mac`
 - Windows-Build auf Windows: `pnpm run dist:win`
+
+Auf macOS steuert der Monitor ausschliesslich den vorhandenen WireGuard-Netzwerkdienst `gernetix-vps-mac`. Nach erfolgreicher VPN-Verbindung kann derselbe Monitor den festen SSH-Diagnosetunnel fuer Admin (`127.0.0.1:14600`), Plattform (`127.0.0.1:14300`), Identity-PostgreSQL und die fest definierten Domaenendienste starten. Der Identity-Start verwendet ausschliesslich den Remote-Dev-Modus mit PostgreSQL; ohne vollständigen Tunnel wird er abgewiesen und der Monitor zeigt die letzten Startlogzeilen an. Der Renderer kann dabei weder SSH-Ziele noch beliebige Portweiterleitungen eingeben.
 
 Die App oeffnet keinen eigenen HTTP-Port. Stop-Aktionen ermitteln ausschliesslich den Listener auf dem fest definierten Port des ausgewaehlten GerNetiX-Dienstes.
 

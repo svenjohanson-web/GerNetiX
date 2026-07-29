@@ -1,0 +1,1 @@
+dist/mac-arm64/GerNetiX Prozess-Monitor.app

@@ -131,3 +131,5 @@ const GerNetiXSerialService = (() => {
 
   return { create };
 })();
+
+window.GerNetiXSerialService = GerNetiXSerialService;

@@ -9,7 +9,7 @@ const serverSource = fs.readFileSync(path.join(__dirname, "..", "src", "dev-serv
 test("browser-side WebAuthn failures are reported without sending their message or credential", () => {
   const reporterSource = authSource.slice(
     authSource.indexOf("async function reportPasskeyBrowserError"),
-    authSource.indexOf("function parseCreationOptions"),
+    authSource.indexOf("function registrationFailureMessage"),
   );
   assert.match(authSource, /reportPasskeyBrowserError\("authentication", error\)/);
   assert.match(authSource, /reportPasskeyBrowserError\("registration", error\)/);
@@ -24,8 +24,8 @@ test("Identity wires the browser error endpoint to the configured system-event r
 });
 
 test("Passkey registration reports an explicit persisted success or a failure with reason", () => {
-  assert.match(authSource, /statusElement\.textContent = result\.message \|\| "Konto wurde angelegt\."/);
-  assert.match(authSource, /return `Konto wurde nicht angelegt\. Grund: \$\{reason\}`/);
+  assert.match(authSource, /statusElement\.textContent = tr\("auth\.status\.account\.created", "Konto wurde angelegt\."\)/);
+  assert.match(authSource, /return tr\("auth\.error\.registration_reason", "Konto wurde nicht angelegt\. Grund: \{reason\}", \{ reason \}\)/);
   assert.match(serverSource, /message: "Konto wurde angelegt\."/);
   assert.match(serverSource, /Konto wurde nicht angelegt\. Grund: Passkey konnte nicht vorbereitet werden\./);
   assert.match(serverSource, /Konto wurde nicht angelegt\. Grund: Passkey konnte nicht verifiziert werden/);

@@ -35,6 +35,9 @@ ipcMain.handle("processes:stop", (_event, id) => control.stopService(id));
 ipcMain.handle("vpn:status", () => control.vpnState());
 ipcMain.handle("vpn:connect", () => control.setVpnConnected(true));
 ipcMain.handle("vpn:disconnect", () => control.setVpnConnected(false));
+ipcMain.handle("tunnel:status", () => control.stagingTunnelState());
+ipcMain.handle("tunnel:start", () => control.startStagingTunnel());
+ipcMain.handle("tunnel:stop", () => control.stopStagingTunnel());
 
 app.whenReady().then(() => {
   const workspace = resolveWorkspace();
@@ -65,5 +68,6 @@ function readStoredWorkspace(settingsPath) {
 }
 
 app.on("window-all-closed", () => {
+  control.stopStagingTunnel().catch(()=>{});
   if (process.platform !== "darwin") app.quit();
 });

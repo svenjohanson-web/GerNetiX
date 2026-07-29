@@ -1,6 +1,18 @@
 const LearningProjectController = (() => {
   function create(deps) {
-    const { state, postJson, navigate, renderLearn, renderDashboard, renderGuidedProject, projectById, progressFor, escapeHtml } = deps;
+    const {
+      state,
+      postJson,
+      navigate,
+      renderLearn,
+      renderDashboard,
+      renderGuidedProject,
+      projectById,
+      progressFor,
+      escapeHtml,
+      localizeProject = (project) => project,
+      learningText = (_key, fallback) => fallback,
+    } = deps;
 
     function activeProject() {
       const projectId = new URLSearchParams(window.location.search).get("project");
@@ -15,9 +27,10 @@ const LearningProjectController = (() => {
     function render() {
       const target = document.querySelector("#learningProjectWorkspace");
       const project = activeProject();
-      const rendered = LearningProjectView.render({ target, project, escapeHtml });
+      const localizedProject = project ? localizeProject(project) : null;
+      const rendered = LearningProjectView.render({ target, project: localizedProject, escapeHtml, learningText });
       if (!target || !project || !rendered) return;
-      renderGuidedProject(project);
+      renderGuidedProject(localizedProject);
     }
 
     async function open(projectId) {
@@ -51,7 +64,17 @@ const LearningProjectController = (() => {
     }
 
     async function saveStep(project, currentStep, completedSteps, shouldRender = true) {
-      const progress = await postJson("/api/platform/learning-progress", { projectId: project.id, courseId: project.courseId, lessonId: project.lessonId, currentStep, completedSteps });
+      const currentView = project.viewManifest?.views?.[currentStep] || {};
+      const progress = await postJson("/api/platform/learning-progress", {
+        projectId: project.id,
+        courseId: project.courseId,
+        lessonId: currentView.lesson_id || project.lessonId,
+        currentLessonId: currentView.lesson_id || project.currentLessonId || project.lessonId,
+        currentStep,
+        currentStepId: currentView.id || "",
+        completedSteps,
+        completedStepIds: completedSteps.map((index) => project.viewManifest?.views?.[index]?.id).filter(Boolean),
+      });
       state.progress = state.progress.filter((item) => item.projectId !== project.id).concat(progress);
       state.workspace = { ...state.workspace, lastProjectId: project.id, lastMode: "learn", lastRoute: `/app/learning-project/?project=${encodeURIComponent(project.id)}` };
       if (shouldRender) { render(); renderDashboard(); }

@@ -84,6 +84,14 @@ test("USB provisioning prefers the background service without leaving GerNetiX",
   assert.doesNotMatch(onboarding, /USB-Board suchen/);
 });
 
+test("Serial Service client is reusable by public GerNetiX flash pages", () => {
+  const serialServiceClient = fs.readFileSync(path.join(appRoot, "serial-service-client.js"), "utf8");
+  assert.match(serialServiceClient, /window\.GerNetiXSerialService = GerNetiXSerialService/);
+  assert.match(serialServiceClient, /targetAddressSpace: "loopback"/);
+  assert.match(serialServiceClient, /async function available\(\)/);
+  assert.match(serialServiceClient, /async function flash\(/);
+});
+
 test("manual board provisioning edits feature pin assignments in a board-aware dialog", () => {
   const onboarding = fs.readFileSync(path.join(appRoot, "device-onboarding-controller.js"), "utf8");
 

@@ -7,12 +7,22 @@ const guestAccessButton = document.querySelector("#guest-access-button");
 const guestAccess = document.querySelector(".guest-access");
 const authMenuButton = document.querySelector("#authMenuButton");
 const authMenu = document.querySelector("#authMenu");
+const languageSelect = document.querySelector("#auth-language");
+let i18n = null;
+
+function tr(key, fallback, variables = {}) {
+  return i18n ? i18n.t(key, variables, fallback) : fallback;
+}
+
+function currentLocale() {
+  return i18n?.locale || window.GerNetiXI18n?.resolveLocale?.() || "de";
+}
 
 function closeAuthMenu() {
   if (!authMenu || !authMenuButton) return;
   authMenu.hidden = true;
   authMenuButton.setAttribute("aria-expanded", "false");
-  authMenuButton.setAttribute("aria-label", "Menü öffnen");
+  authMenuButton.setAttribute("aria-label", tr("menu.open", "Menü öffnen"));
 }
 
 authMenuButton?.addEventListener("click", (event) => {
@@ -20,7 +30,9 @@ authMenuButton?.addEventListener("click", (event) => {
   const open = authMenu.hidden;
   authMenu.hidden = !open;
   authMenuButton.setAttribute("aria-expanded", open ? "true" : "false");
-  authMenuButton.setAttribute("aria-label", open ? "Menü schließen" : "Menü öffnen");
+  authMenuButton.setAttribute("aria-label", open
+    ? tr("menu.close", "Menü schließen")
+    : tr("menu.open", "Menü öffnen"));
 });
 authMenu?.addEventListener("click", (event) => event.stopPropagation());
 document.addEventListener("click", closeAuthMenu);
@@ -32,23 +44,46 @@ const query = new URLSearchParams(window.location.search);
 const nextUrl = query.get("next") || "/app/dashboard/";
 let mode = query.get("mode") === "register" ? "register" : query.get("mode") === "recovery" ? "recovery" : "login";
 
-applyMode(false);
+initializeI18n();
+
+async function initializeI18n() {
+  try {
+    i18n = await window.GerNetiXI18n.create();
+    i18n.translateDocument();
+    languageSelect.value = i18n.locale;
+  } catch (error) {
+    console.warn("Identity translations could not be initialized.", error);
+  }
+  applyMode(false);
+}
+
+languageSelect?.addEventListener("change", async () => {
+  if (!i18n) return;
+  await i18n.setLocale(languageSelect.value);
+  applyMode(false);
+  closeAuthMenu();
+});
 
 loginForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const username = String(new FormData(loginForm).get("identifier") || "").trim();
-  statusElement.textContent = "Passkey wird angefordert …";
+  statusElement.textContent = tr("auth.status.passkey.requesting", "Passkey wird angefordert …");
   let browserPasskeyRequest = false;
   try {
     const options = await postJson("/api/passkeys/authentication/options", username ? { username } : {});
     browserPasskeyRequest = true;
     const credential = await navigator.credentials.get({ publicKey: parseRequestOptions(options) });
     browserPasskeyRequest = false;
-    const result = await postJson("/api/passkeys/authentication/verify", { ...(username ? { username } : {}), credential: credentialJson(credential), next: nextUrl });
+    const result = await postJson("/api/passkeys/authentication/verify", {
+      ...(username ? { username } : {}),
+      credential: credentialJson(credential),
+      next: nextUrl,
+      locale: currentLocale(),
+    });
     window.location.href = result.next || "/app/dashboard/";
   } catch (error) {
     if (browserPasskeyRequest) await reportPasskeyBrowserError("authentication", error);
-    statusElement.textContent = error.message || "Passkey-Login fehlgeschlagen.";
+    statusElement.textContent = localizedErrorMessage(error, "auth.status.passkey.login_failed", "Passkey-Login fehlgeschlagen.");
   }
 });
 
@@ -61,15 +96,21 @@ registerForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(registerForm);
   const username = data.get("username");
-  statusElement.textContent = "Passkey wird eingerichtet …";
+  statusElement.textContent = tr("auth.status.passkey.creating", "Passkey wird eingerichtet …");
   let browserPasskeyRequest = false;
   try {
     const options = await postJson("/api/passkeys/registration/options", { username });
     browserPasskeyRequest = true;
     const credential = await navigator.credentials.create({ publicKey: parseCreationOptions(options) });
     browserPasskeyRequest = false;
-    const result = await postJson("/api/passkeys/registration/verify", { username, accepted_terms: data.get("accepted_terms") === "on", credential: credentialJson(credential), next: nextUrl });
-    statusElement.textContent = result.message || "Konto wurde angelegt.";
+    const result = await postJson("/api/passkeys/registration/verify", {
+      username,
+      accepted_terms: data.get("accepted_terms") === "on",
+      credential: credentialJson(credential),
+      next: nextUrl,
+      locale: currentLocale(),
+    });
+    statusElement.textContent = tr("auth.status.account.created", "Konto wurde angelegt.");
     window.setTimeout(() => { window.location.href = result.next || "/app/dashboard/"; }, 900);
   } catch (error) {
     if (browserPasskeyRequest) await reportPasskeyBrowserError("registration", error);
@@ -82,27 +123,36 @@ recoveryModeToggle.addEventListener("click", () => { mode = "recovery"; applyMod
 recoveryForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   const data = new FormData(recoveryForm);
-  statusElement.textContent = "Recovery-Set wird geprüft …";
+  statusElement.textContent = tr("auth.status.recovery.checking", "Recovery-Set wird geprüft …");
   let browserPasskeyRequest = false;
   try {
     const recovery = await postJson("/api/recovery/offline/start", Object.fromEntries(data));
-    statusElement.textContent = "Recovery-Set bestätigt. Neuer Passkey wird eingerichtet …";
+    statusElement.textContent = tr("auth.status.recovery.confirmed", "Recovery-Set bestätigt. Neuer Passkey wird eingerichtet …");
     const options = await postJson("/api/recovery/offline/passkey/options", { recovery_token: recovery.recovery_token });
     browserPasskeyRequest = true;
     const credential = await navigator.credentials.create({ publicKey: parseCreationOptions(options) });
     browserPasskeyRequest = false;
-    const result = await postJson("/api/recovery/offline/passkey/verify", { recovery_token: recovery.recovery_token, credential: credentialJson(credential), next: nextUrl });
-    statusElement.textContent = "Zugang wurde wiederhergestellt.";
+    const result = await postJson("/api/recovery/offline/passkey/verify", {
+      recovery_token: recovery.recovery_token,
+      credential: credentialJson(credential),
+      next: nextUrl,
+      locale: currentLocale(),
+    });
+    statusElement.textContent = tr("auth.status.recovery.restored", "Zugang wurde wiederhergestellt.");
     window.setTimeout(() => { window.location.href = result.next || "/app/dashboard/"; }, 600);
   } catch (error) {
     if (browserPasskeyRequest) await reportPasskeyBrowserError("registration", error);
-    statusElement.textContent = error.message || "Zugang konnte nicht wiederhergestellt werden.";
+    statusElement.textContent = localizedErrorMessage(error, "auth.status.recovery.failed", "Zugang konnte nicht wiederhergestellt werden.");
   }
 });
 guestAccessButton.addEventListener("click", async () => {
-  statusElement.textContent = "Gastzugang wird angelegt …";
-  try { const result = await postJson("/api/account/guest", { next: nextUrl }); window.location.href = result.next || "/app/dashboard/"; }
-  catch (error) { statusElement.textContent = error.message || "Gastzugang konnte nicht angelegt werden."; }
+  statusElement.textContent = tr("auth.status.guest.creating", "Gastzugang wird angelegt …");
+  try {
+    const result = await postJson("/api/account/guest", { next: nextUrl, locale: currentLocale() });
+    window.location.href = result.next || "/app/dashboard/";
+  } catch (error) {
+    statusElement.textContent = localizedErrorMessage(error, "auth.status.guest.failed", "Gastzugang konnte nicht angelegt werden.");
+  }
 });
 
 function applyMode(updateUrl) {
@@ -112,8 +162,14 @@ function applyMode(updateUrl) {
   registerForm.classList.toggle("hidden", !registration);
   recoveryForm.classList.toggle("hidden", !recovery);
   guestAccess.classList.toggle("hidden", registration || recovery);
-  titleElement.textContent = registration ? "Konto anlegen" : recovery ? "Zugang wiederherstellen" : "Anmelden";
-  modeToggle.textContent = registration ? "Zur Anmeldung" : "Konto anlegen";
+  titleElement.textContent = registration
+    ? tr("auth.register.step", "Konto anlegen")
+    : recovery
+      ? tr("auth.recovery.title", "Zugang wiederherstellen")
+      : tr("auth.login.title", "Anmelden");
+  modeToggle.textContent = registration
+    ? tr("auth.mode.login", "Zur Anmeldung")
+    : tr("auth.mode.register", "Konto anlegen");
   statusElement.textContent = "";
   if (updateUrl) {
     const params = new URLSearchParams(window.location.search);
@@ -125,7 +181,11 @@ function applyMode(updateUrl) {
 async function postJson(url, body) {
   const response = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
   const payload = await response.json();
-  if (!response.ok) throw new Error(payload.message || "Anfrage fehlgeschlagen.");
+  if (!response.ok) {
+    const error = new Error(payload.message || tr("auth.error.request_failed", "Anfrage fehlgeschlagen."));
+    error.code = payload.error || "request_failed";
+    throw error;
+  }
   return payload;
 }
 async function reportPasskeyBrowserError(flow, error) {
@@ -139,11 +199,21 @@ async function reportPasskeyBrowserError(flow, error) {
 }
 function registrationFailureMessage(error) {
   const reason = {
-    SecurityError: "Die Passkey-Domain ist ungültig.",
-    NotAllowedError: "Die Passkey-Erstellung wurde abgebrochen oder ist abgelaufen.",
-    NotSupportedError: "Passkeys werden in diesem Browser nicht unterstützt.",
-  }[error?.name] || error?.message || "Die Passkey-Erstellung konnte nicht abgeschlossen werden.";
-  return `Konto wurde nicht angelegt. Grund: ${reason}`;
+    SecurityError: tr("auth.error.security", "Die Passkey-Domain ist ungültig."),
+    NotAllowedError: tr("auth.error.not_allowed", "Die Passkey-Erstellung wurde abgebrochen oder ist abgelaufen."),
+    NotSupportedError: tr("auth.error.not_supported", "Passkeys werden in diesem Browser nicht unterstützt."),
+  }[error?.name] || localizedErrorMessage(error, "auth.error.registration_failed", "Die Passkey-Erstellung konnte nicht abgeschlossen werden.");
+  return tr("auth.error.registration_reason", "Konto wurde nicht angelegt. Grund: {reason}", { reason });
+}
+
+function localizedErrorMessage(error, fallbackKey, fallbackText) {
+  const keyByCode = {
+    invalid_username: "auth.error.invalid_username",
+    username_already_exists: "auth.error.username_already_exists",
+    terms_not_accepted: "auth.error.terms_not_accepted",
+  };
+  const translationKey = keyByCode[error?.code];
+  return translationKey ? tr(translationKey, error.message || fallbackText) : error?.message || tr(fallbackKey, fallbackText);
 }
 function parseCreationOptions(options) {
   if (PublicKeyCredential.parseCreationOptionsFromJSON) return PublicKeyCredential.parseCreationOptionsFromJSON(options);

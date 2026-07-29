@@ -95,13 +95,13 @@ board_locator_height = 1.3;
 
 lid_skirt_height = 7.0;
 lid_skirt_wall = 1.6;
-lid_fit_clearance = 0.25;
+lid_fit_clearance = 0.20;
 lid_spacer_d = 5.6;
 
 // Tool-free snap connection between lid skirt and enclosure base
 snap_bump_radius = 0.8;
 snap_bump_length = 8.0;
-snap_bump_protrusion = 0.65;
+snap_bump_protrusion = 0.85;
 snap_recess_width = 9.0;
 snap_recess_height = 2.0;
 snap_recess_depth = 0.65;

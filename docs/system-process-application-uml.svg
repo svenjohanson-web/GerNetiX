@@ -98,7 +98,7 @@
 
     <rect class="node domain" x="965" y="150" width="180" height="54" rx="10"/>
     <text class="titleText" x="1055" y="174" text-anchor="middle">Project Server</text>
-    <text class="smallText" x="1055" y="193" text-anchor="middle">Projekt + Komponenteneigenschaften :4800</text>
+    <text class="smallText" x="1055" y="193" text-anchor="middle">Projekt + Lesson-/Step-Fortschritt :4800</text>
 
     <rect class="node domain" x="1170" y="150" width="190" height="54" rx="10"/>
     <text class="titleText" x="1265" y="174" text-anchor="middle">Build &amp; Deploy</text>
@@ -194,7 +194,7 @@
 
     <rect class="node store" x="875" y="785" width="235" height="58" rx="10"/>
     <text class="titleText" x="992" y="807" text-anchor="middle">Dasselbe PostgreSQL / Project + Build</text>
-    <text class="smallText" x="992" y="826" text-anchor="middle">Projekte · Build-Artefakte · OTA</text>
+    <text class="smallText" x="992" y="826" text-anchor="middle">Projekte · Lernfortschritt · Build-Artefakte</text>
 
     <rect class="node store" x="1125" y="785" width="250" height="58" rx="10"/>
     <text class="titleText" x="1250" y="807" text-anchor="middle">Weitere Domaenen-PostgreSQL</text>

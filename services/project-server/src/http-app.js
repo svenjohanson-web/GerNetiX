@@ -57,6 +57,22 @@ function createHttpApp(options) {
       return;
     }
 
+    const learningProgress = path.match(new RegExp(`^${prefix}/([^/]+)/learning-progress$`));
+    if (req.method === "GET" && learningProgress) {
+      sendJson(res, 200, await service.getLearningProgress(
+        decodeURIComponent(learningProgress[1]),
+        url.searchParams.get("user_id") || "",
+      ));
+      return;
+    }
+    if (req.method === "PUT" && learningProgress) {
+      sendJson(res, 200, await service.updateLearningProgress(
+        decodeURIComponent(learningProgress[1]),
+        await readJsonBody(req),
+      ));
+      return;
+    }
+
     const sourceSearch = path.match(new RegExp(`^${prefix}/([^/]+)/sources/search$`));
     if (req.method === "GET" && sourceSearch) {
       sendJson(res, 200, { items: await service.searchSources(decodeURIComponent(sourceSearch[1]), {
