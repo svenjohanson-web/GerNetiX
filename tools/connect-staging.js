@@ -60,12 +60,12 @@ function sshTunnelArgs({
     "-o", "ExitOnForwardFailure=yes",
     "-o", "ServerAliveInterval=30",
     "-o", "ServerAliveCountMax=3",
-    "-L", `${platformPort}:127.0.0.1:${remotePlatformPort}`,
-    "-L", `${localPort}:127.0.0.1:${remotePort}`,
-    "-L", `${identityDbPort}:127.0.0.1:${remoteIdentityDbPort}`,
+    "-L", `127.0.0.1:${platformPort}:127.0.0.1:${remotePlatformPort}`,
+    "-L", `127.0.0.1:${localPort}:127.0.0.1:${remotePort}`,
+    "-L", `127.0.0.1:${identityDbPort}:127.0.0.1:${remoteIdentityDbPort}`,
   ];
   for (const [localServicePort, remoteServicePort] of REMOTE_DEV_SERVICE_FORWARDS) {
-    args.push("-L", `${localServicePort}:127.0.0.1:${remoteServicePort}`);
+    args.push("-L", `127.0.0.1:${localServicePort}:127.0.0.1:${remoteServicePort}`);
   }
   args.push(host);
   return args;

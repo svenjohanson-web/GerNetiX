@@ -87,6 +87,13 @@ node tools/start-identity-remote-dev.js
 
 Der erste Prozess stellt innerhalb von WireGuard die SSH-Weiterleitungen bereit. Der zweite startet nur Identity auf `127.0.0.1:4300`, verwendet `gernetix_runtime` und ruft Project, Build, Device, Shop, Usage, AI Context, Community und Telemetrie ueber deren getunnelte VPS-Dienste auf. Auf macOS wird AI Usage lokal auf `5001` weitergereicht, weil Port `5000` durch das System belegt sein kann.
 
+Alle lokalen Tunnelenden sind ausdrücklich an IPv4-Loopback `127.0.0.1`
+gebunden. Ist einer der Remote-Dev-Ports bereits durch einen lokalen Dienst
+belegt, muss der Tunnel vollständig und sichtbar abbrechen. Ein gemischter
+Betrieb, bei dem Identity einzelne Domaenen versehentlich lokal und andere auf
+Staging anspricht, ist unzulässig; insbesondere dürfen Projekte dadurch nicht
+unbemerkt in einer lokalen SQLite statt im zentralen Project-PostgreSQL landen.
+
 Im Remote-Dev-Modus legt Identity keine lokalen SQLite-Dateien an. Releases,
 Account-Assets, Push-, SMTP- und LLM-State verwenden ihre zentralen Tabellen in
 `gernetix_runtime`. Schreibende Tests wirken deshalb auf den gemeinsamen

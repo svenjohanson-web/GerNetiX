@@ -226,14 +226,31 @@ test("monitor defines a fixed SSH diagnostic tunnel from the staging configurati
     GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT:"25432"
   });
   assert.deepEqual(definition.args.slice(0,7),["-N","-o","BatchMode=yes","-o","ExitOnForwardFailure=yes","-o","ServerAliveInterval=30"]);
-  assert.ok(definition.args.includes("14600:127.0.0.1:4610"));
-  assert.ok(definition.args.includes("14300:127.0.0.1:8080"));
-  assert.ok(definition.args.includes("25432:127.0.0.1:25432"));
+  assert.ok(definition.args.includes("127.0.0.1:14600:127.0.0.1:4610"));
+  assert.ok(definition.args.includes("127.0.0.1:14300:127.0.0.1:8080"));
+  assert.ok(definition.args.includes("127.0.0.1:25432:127.0.0.1:25432"));
   assert.equal(definition.args.at(-1),"root@gernetix-vps");
   assert.match(desktopPreload,/tunnelStart/);
   assert.match(desktopMain,/tunnel:start/);
   assert.match(html,/VPS SSH-Tunnel/);
   assert.match(client,/renderTunnel/);
+});
+
+test("monitor rejects a partial SSH tunnel mixed with local domain services", async () => {
+  const state=await control.stagingTunnelState({
+    config:{
+      GERNETIX_STAGING_SSH:"root@gernetix-vps",
+      GERNETIX_STAGING_LOCAL_ADMIN_PORT:"14600",
+      GERNETIX_STAGING_REMOTE_ADMIN_PORT:"4610",
+      GERNETIX_STAGING_LOCAL_PLATFORM_PORT:"14300",
+      GERNETIX_STAGING_REMOTE_PLATFORM_PORT:"8080",
+      GERNETIX_STAGING_LOCAL_IDENTITY_DB_PORT:"25432",
+      GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT:"25432"
+    },
+    pidForPort:async(port)=>port===4800?222:111
+  });
+  assert.equal(state.active,false);
+  assert.match(state.error,/Portkonflikte/);
 });
 
 test("Identity starts only in remote-dev mode after the complete VPS tunnel is available", async () => {

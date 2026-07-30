@@ -206,7 +206,7 @@ function stagingTunnelDefinition(config=loadStagingConfig()) {
   const identityDbPort=parsePort(config.GERNETIX_STAGING_LOCAL_IDENTITY_DB_PORT||25432,"Lokaler Identity-PostgreSQL-Port");
   const remoteIdentityDbPort=parsePort(config.GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT||25432,"Remote-Identity-PostgreSQL-Port");
   const forwards=[[platformPort,remotePlatformPort],[adminPort,remoteAdminPort],[identityDbPort,remoteIdentityDbPort],...REMOTE_DEV_SERVICE_FORWARDS];
-  return {host,adminPort,platformPort,identityDbPort,forwards,args:["-N","-o","BatchMode=yes","-o","ExitOnForwardFailure=yes","-o","ServerAliveInterval=30","-o","ServerAliveCountMax=3",...forwards.flatMap(([local,remote])=>["-L",`${local}:127.0.0.1:${remote}`]),host]};
+  return {host,adminPort,platformPort,identityDbPort,forwards,args:["-N","-o","BatchMode=yes","-o","ExitOnForwardFailure=yes","-o","ServerAliveInterval=30","-o","ServerAliveCountMax=3",...forwards.flatMap(([local,remote])=>["-L",`127.0.0.1:${local}:127.0.0.1:${remote}`]),host]};
 }
 
 async function stagingTunnelState(options={}) {
@@ -216,10 +216,12 @@ async function stagingTunnelState(options={}) {
   try { definition=stagingTunnelDefinition(config); }
   catch(error) { return {configured:false,active:false,owned:false,error:error.message}; }
   const findPid=options.pidForPort||pidForPort;
-  const [adminPid,platformPid,identityDbPid]=await Promise.all([findPid(definition.adminPort),findPid(definition.platformPort),findPid(definition.identityDbPort)]);
+  const listenerPids=await Promise.all(definition.forwards.map(([localPort])=>findPid(localPort)));
+  const distinctPids=new Set(listenerPids.filter(Boolean));
   const owned=Boolean(stagingTunnel&&!stagingTunnel.killed&&stagingTunnel.exitCode===null);
-  const active=Boolean(adminPid&&platformPid&&identityDbPid);
-  return {configured:true,active,owned,adminPort:definition.adminPort,platformPort:definition.platformPort,identityDbPort:definition.identityDbPort,adminUrl:`http://127.0.0.1:${definition.adminPort}/admin/`,platformUrl:`http://127.0.0.1:${definition.platformPort}/app/dashboard/`,error:stagingTunnelError||(!active&&owned?"SSH-Diagnosetunnel wird aufgebaut.":"")};
+  const active=listenerPids.every(Boolean)&&distinctPids.size===1;
+  const mixedListeners=distinctPids.size>1;
+  return {configured:true,active,owned,adminPort:definition.adminPort,platformPort:definition.platformPort,identityDbPort:definition.identityDbPort,adminUrl:`http://127.0.0.1:${definition.adminPort}/admin/`,platformUrl:`http://127.0.0.1:${definition.platformPort}/app/dashboard/`,error:stagingTunnelError||(mixedListeners?"Lokale Portkonflikte verhindern einen eindeutigen VPS SSH-Tunnel. Bitte die betroffenen lokalen Dienste zuerst beenden.":(!active&&owned?"SSH-Diagnosetunnel wird aufgebaut.":""))};
 }
 
 async function startStagingTunnel(options={}) {
