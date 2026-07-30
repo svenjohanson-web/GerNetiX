@@ -45,6 +45,7 @@ class AuthService {
         email,
         status: USER_STATUS.PENDING_VERIFICATION,
         preferredLocale: normalizePreferredLocale(options.preferred_locale || options.preferredLocale),
+        subscriptionPlan: normalizeSubscriptionPlan(options.subscription_plan || options.subscriptionPlan),
       });
       await this.repository.createLocalCredential({
         userId: account.id,
@@ -98,6 +99,7 @@ class AuthService {
       accountType: "guest",
       guestExpiresAt: expiresAt,
       preferredLocale: normalizePreferredLocale(options.preferred_locale || options.preferredLocale),
+      subscriptionPlan: "free",
     });
     return this.createSessionResponse(account);
   }
@@ -111,6 +113,7 @@ class AuthService {
         passkeyCredentialId: passkey.credentialId, passkeyPublicKey: passkey.publicKey,
         passkeyCounter: Number(passkey.counter || 0), passkeyTransports: passkey.transports || [],
         preferredLocale: normalizePreferredLocale(options.preferred_locale || options.preferredLocale),
+        subscriptionPlan: normalizeSubscriptionPlan(options.subscription_plan || options.subscriptionPlan),
       });
       return this.createSessionResponse(account);
     } catch (error) {
@@ -128,6 +131,14 @@ class AuthService {
     const preferredLocale = normalizePreferredLocale(locale, "");
     if (!preferredLocale) throw new AuthError("invalid_locale", "Locale is not supported.", 400);
     const account = await this.repository.updateUserAccount(userId, { preferred_locale: preferredLocale });
+    if (!account) throw new AuthError("account_not_found", "Account does not exist.", 404);
+    return toPublicAccount(account);
+  }
+
+  async update_subscription_plan(userId, plan) {
+    const subscriptionPlan = normalizeSubscriptionPlan(plan, "");
+    if (!subscriptionPlan) throw new AuthError("invalid_subscription_plan", "Subscription plan is not supported.", 400);
+    const account = await this.repository.updateUserAccount(userId, { subscription_plan: subscriptionPlan });
     if (!account) throw new AuthError("account_not_found", "Account does not exist.", 404);
     return toPublicAccount(account);
   }
@@ -545,6 +556,9 @@ function toPublicAccount(account) {
     updated_at: account.updated_at,
     account_type: account.account_type || "email_account",
     preferred_locale: normalizePreferredLocale(account.preferred_locale),
+    subscription_plan: account.subscription_plan
+      ? normalizeSubscriptionPlan(account.subscription_plan)
+      : undefined,
     offline_recovery_set_configured: Boolean(account.offline_recovery_set_confirmed_at && account.offline_recovery_set_hash),
     recovery_board_count: (account.recovery_board_ids || []).length,
   };
@@ -553,6 +567,11 @@ function toPublicAccount(account) {
 function normalizePreferredLocale(value, fallback = "de") {
   const locale = String(value || "").trim().toLowerCase().split(/[-_]/)[0];
   return ["de", "en", "nl"].includes(locale) ? locale : fallback;
+}
+
+function normalizeSubscriptionPlan(value, fallback = "free") {
+  const plan = String(value || "").trim().toLowerCase().replace(/-/g, "_");
+  return ["free", "premium", "premium_demo"].includes(plan) ? plan : fallback;
 }
 
 function formatOfflineRecoverySet(value) {

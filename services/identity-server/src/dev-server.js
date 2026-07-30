@@ -134,6 +134,9 @@ const host = process.env.HOST || "127.0.0.1";
 const demoUsername = process.env.DEMO_USER || "demo";
 const demoEmail = process.env.DEMO_EMAIL || "demo@gernetix.local";
 const demoPassword = process.env.DEMO_PASSWORD || "demo-passwort";
+const basisDemoUsername = process.env.BASIS_DEMO_USER || "basis";
+const basisDemoEmail = process.env.BASIS_DEMO_EMAIL || "basis@gernetix.local";
+const basisDemoPassword = process.env.BASIS_DEMO_PASSWORD || demoPassword;
 const defaultAccountPlan = process.env.GERNETIX_DEFAULT_ACCOUNT_PLAN || "premium_demo";
 const passkeyChallenges = new Map();
 const offlineRecoveryAttempts = new Map();
@@ -270,7 +273,8 @@ const developmentAssistant = createDevelopmentAssistant({
 });
 const helpAssistant = createHelpAssistant({ aiContextJson, llmConfigStore, readJsonBody, sendJson });
 const builtInDemoAccounts = [
-  { user_id: "acct-demo", username: demoUsername, email: demoEmail, password: demoPassword },
+  { user_id: "acct-demo", username: demoUsername, email: demoEmail, password: demoPassword, subscription_plan: "premium_demo" },
+  { user_id: "acct-basis-demo", username: basisDemoUsername, email: basisDemoEmail, password: basisDemoPassword, subscription_plan: "free" },
 ];
 
 const mockEmailService = new MockEmailService({ log() {} });
@@ -341,6 +345,7 @@ async function seedDemoAccount() {
       const beforeCount = mockEmailService.sentMessages.length;
       await auth.register_local(account.username, account.email, account.password, true, account.password, {
         user_id: account.user_id,
+        subscription_plan: account.subscription_plan,
       });
       const verification = mockEmailService.sentMessages
         .slice(beforeCount)
@@ -352,6 +357,10 @@ async function seedDemoAccount() {
     } catch (error) {
       if (!["username_already_exists", "email_already_exists", "user_id_already_exists"].includes(error.code)) {
         throw error;
+      }
+      const existing = await auth.repository.findUserByUsername(account.username);
+      if (existing && existing.subscription_plan !== account.subscription_plan) {
+        await auth.update_subscription_plan(existing.id, account.subscription_plan);
       }
     }
   }
@@ -2360,7 +2369,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
     body: {
       project_id: projectId,
       user_id: userId,
-      plan_id: accountSubscription(session).plan,
+      plan_id: accountSubscription(session).plan_id,
       title,
       description,
       learning_project_id: "development_project",
@@ -2459,7 +2468,7 @@ async function handleLearningProjectStart(res, session, catalogProjectId) {
     body: {
       project_id: projectId,
       user_id: userId,
-      plan_id: accountSubscription(session).plan,
+      plan_id: accountSubscription(session).plan_id,
       title: definition.title,
       description: definition.summary,
       learning_project_id: definition.learning_project_id,
@@ -2494,7 +2503,7 @@ async function handleDevelopmentLessonStart(res, session, catalogProjectId, less
     body: {
       project_id: projectId,
       user_id: userId,
-      plan_id: accountSubscription(session).plan,
+      plan_id: accountSubscription(session).plan_id,
       title: `${lesson.title} – Einzelübung`,
       description: lesson.summary,
       learning_project_id: definition.learning_project_id,
@@ -3622,7 +3631,7 @@ async function ensureProjectServerDemoProjects(session) {
       body: {
         project_id: definition.project_server_id,
         user_id: userId,
-        plan_id: accountSubscription(session).plan,
+        plan_id: accountSubscription(session).plan_id,
         title: definition.title,
         description: definition.summary,
         learning_project_id: definition.learning_project_id,
@@ -3897,7 +3906,8 @@ function accountSubscription(session) {
   const configuredPlan = String(session?.account?.subscription_plan || session?.account?.plan || defaultAccountPlan).trim().toLowerCase();
   const premium = ["premium", "premium_demo", "premium-demo"].includes(configuredPlan);
   return {
-    plan: premium ? "Premium" : "Kostenlos",
+    plan_id: premium ? configuredPlan.replace("-", "_") : "free",
+    plan: premium ? "Premium" : "Basis",
     entitlements: premium
       ? ["learn_guided_projects", "ide_edit_code", "build_and_flash", "ai_assistant", "web_push", "project_history"]
       : ["ide_edit_code", "build_and_flash"],

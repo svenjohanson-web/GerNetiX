@@ -73,10 +73,36 @@ test("local registration can use a stable account id for dev integrations", asyn
     "correct horse battery",
     true,
     "correct horse battery",
-    { user_id: "acct-demo" },
+    { user_id: "acct-demo", subscription_plan: "premium_demo" },
   );
 
   assert.equal(registered.account.user_id, "acct-demo");
+  assert.equal(registered.account.subscription_plan, "premium_demo");
+});
+
+test("creates new customer accounts with a persisted Basis profile by default", async () => {
+  const { auth, repository } = createModule();
+  const registered = await auth.register_local(
+    "basis-user",
+    "basis@example.com",
+    "correct horse battery",
+    true,
+  );
+  const passkey = await auth.create_passkey_account("basis-passkey", {
+    credentialId: "basis-credential",
+    publicKey: "basis-public-key",
+  });
+
+  assert.equal(registered.account.subscription_plan, "free");
+  assert.equal(passkey.account.subscription_plan, "free");
+  assert.equal(repository.findUserById(registered.account.user_id).subscription_plan, "free");
+
+  const updated = await auth.update_subscription_plan(registered.account.user_id, "premium");
+  assert.equal(updated.subscription_plan, "premium");
+  await assert.rejects(
+    auth.update_subscription_plan(registered.account.user_id, "unknown"),
+    /Subscription plan is not supported/,
+  );
 });
 
 test("keeps one identity while a guest becomes a base account and then an ESP32 account", async () => {

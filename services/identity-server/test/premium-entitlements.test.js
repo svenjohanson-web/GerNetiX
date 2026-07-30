@@ -20,3 +20,12 @@ test("protects premium technology and the project AI endpoint on server and clie
   const helpRoute = server.match(/if \(req\.method === "POST" && url\.pathname === "\/api\/platform\/help-assistant\/chat"\) \{[\s\S]*?\n  \}/)?.[0] || "";
   assert.doesNotMatch(helpRoute, /requireEntitlement/);
 });
+
+test("seeds separate persisted Basis and Premium demo profiles", () => {
+  assert.match(server, /user_id: "acct-demo"[\s\S]*subscription_plan: "premium_demo"/);
+  assert.match(server, /user_id: "acct-basis-demo"[\s\S]*subscription_plan: "free"/);
+  assert.match(server, /subscription_plan: account\.subscription_plan/);
+  assert.match(server, /plan_id: premium \? configuredPlan\.replace\("-", "_"\) : "free"/);
+  assert.match(server, /plan: premium \? "Premium" : "Basis"/);
+  assert.doesNotMatch(server, /plan_id: accountSubscription\(session\)\.plan,/);
+});

@@ -26,6 +26,7 @@ test("postgres identity repository writes normalized lookup values and JSON docu
     email: "Maker@Example.COM",
     status: "verified",
     preferredLocale: "nl",
+    subscriptionPlan: "free",
   });
   const session = await repository.createSession({
     userId: account.id,
@@ -37,6 +38,7 @@ test("postgres identity repository writes normalized lookup values and JSON docu
   assert.equal(pool.calls[0].values[1], "maker-one");
   assert.equal(pool.calls[0].values[2], "maker@example.com");
   assert.equal(pool.calls[0].values[4].preferred_locale, "nl");
+  assert.equal(pool.calls[0].values[4].subscription_plan, "free");
   assert.equal(pool.calls[1].values[1], "acct-1");
   assert.equal(pool.calls[1].values[2], "hashed-token");
   assert.equal(session.user_id, "acct-1");
