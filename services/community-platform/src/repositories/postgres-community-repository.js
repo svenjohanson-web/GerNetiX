@@ -270,6 +270,15 @@ class PostgresCommunityRepository {
     return first(await this.pool.query("SELECT raw_json FROM community_message_threads WHERE thread_id=$1", [threadId]));
   }
 
+  async listMessageThreads(filter = {}) {
+    const result = await this.pool.query(`
+      SELECT raw_json FROM community_message_threads
+      WHERE ${filter.archived === true ? "archived_at IS NOT NULL" : filter.archived === false ? "archived_at IS NULL" : "TRUE"}
+      ORDER BY updated_at DESC
+    `);
+    return rows(result).filter((thread) => !filter.mailbox_kind || thread.mailbox_kind === filter.mailbox_kind);
+  }
+
   async saveThreadMember(member) {
     await this.pool.query(`
       INSERT INTO community_message_thread_members
@@ -413,7 +422,7 @@ class PostgresCommunityRepository {
     return this.inTransaction(async (repository) => {
       await repository.saveMessage(message);
       await repository.saveMessageThread(thread);
-      await repository.saveThreadMember(authorMember);
+      if (authorMember) await repository.saveThreadMember(authorMember);
       for (const entry of inboxEntries) await repository.saveInboxEntry(entry);
       return clone({ thread, authorMember, message, inboxEntries });
     });

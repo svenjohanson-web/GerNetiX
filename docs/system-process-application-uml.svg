@@ -86,7 +86,7 @@
 
     <rect class="node edge" x="635" y="310" width="220" height="58" rx="10"/>
     <text class="titleText" x="745" y="336" text-anchor="middle">Admin Tool</text>
-    <text class="smallText" x="745" y="356" text-anchor="middle">Link Integrity + interner Proxy :4600</text>
+    <text class="smallText" x="745" y="356" text-anchor="middle">Community-Arbeitskorb + Audit :4600</text>
 
     <rect class="node edge" x="635" y="390" width="220" height="40" rx="10"/>
     <text class="titleText" x="745" y="415" text-anchor="middle">Context Manager :5050</text>
@@ -134,7 +134,7 @@
 
     <rect class="node domain" x="965" y="405" width="180" height="54" rx="10"/>
     <text class="titleText" x="1055" y="429" text-anchor="middle">Community Platform</text>
-    <text class="smallText" x="1055" y="448" text-anchor="middle">Messages + Public Community :5200</text>
+    <text class="smallText" x="1055" y="448" text-anchor="middle">Support + Fragen + Meldungen :5200</text>
 
     <rect class="node domain" x="1170" y="405" width="190" height="54" rx="10"/>
     <text class="titleText" x="1265" y="429" text-anchor="middle">Community AI</text>
@@ -248,6 +248,8 @@
   <text class="label" x="536" y="568">read-only Linkstatus via SSH + Admin API</text>
   <path class="line" d="M 855 339 L 1385 177"/>
   <path class="line" d="M 855 339 L 965 177"/>
+  <path class="line" d="M 855 339 L 965 432"/>
+  <text class="label" x="858" y="393">Admin-Token + Capability</text>
   <path class="line" d="M 855 339 L 1385 432"/>
   <path class="line" d="M 855 415 L 1155 826"/>
   <path class="line" d="M 855 415 L 1005 826"/>

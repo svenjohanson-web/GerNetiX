@@ -3766,8 +3766,8 @@ const KnowledgeContent = (() => {
           id: "actuator-simple-coil-motor",
           heading: "Der einfache Spulenmotor: Ein Kräftepaar erzeugt ein Drehmoment",
           illustration: {
-            src: "/assets/motor-learning-simple-coil-force-pair.png",
-            alt: "Dreidimensionale Darstellung eines einfachen Spulenmotors: Ein einziger durchgehender Hufeisen-Permanentmagnet hat links sein rotes Nordpol-Ende und rechts sein blaues Südpol-Ende. Im Luftspalt dreht sich eine Kupferspule auf einer senkrechten Welle. Türkise Pfeile zeigen das Magnetfeld, orange Pfeile den Strom in den Leiterseiten, grüne Pfeile die entgegengesetzten Kräfte und ein violetter Pfeil das Drehmoment.",
+            src: "/assets/motor-learning-simple-coil-force-pair-v2.png",
+            alt: "Dreidimensionale Darstellung eines einfachen Spulenmotors: Der gut sichtbare rote Plusleiter führt von der Batterie außen am Hufeisenmagneten entlang zum linken Bürstenkontakt; der schwarze Minusleiter führt zum rechten Kontakt. Im Luftspalt dreht sich eine Kupferspule auf einer senkrechten Welle. Türkise Pfeile zeigen das Magnetfeld, orange Pfeile den Strom, grüne Pfeile die entgegengesetzten Kräfte und ein violetter Pfeil das Drehmoment.",
             caption: "N und S sind die beiden Enden desselben Hufeisenmagneten. Türkis: Magnetfeld B im Luftspalt von N nach S. Orange: entgegengesetzte Stromrichtungen I in den beiden Leiterseiten. Grün: die daraus entstehenden Kräfte in entgegengesetzte Bildtiefe. Violett: das daraus entstehende Drehmoment M um die Welle.",
           },
           paragraphs: [
@@ -3794,15 +3794,28 @@ const KnowledgeContent = (() => {
         },
         {
           id: "actuator-reed-motor",
-          heading: "Reedkontakt-Motor: Die Rotorlage bestimmt den Einschaltmoment",
-          illustration: {
-            src: "/assets/motor-learning-reed-switch.svg",
-            alt: "Zwei Zustände eines Reedkontakt-Motors: Ein Permanentmagnet auf dem Rotor nähert sich einem Reedkontakt und schaltet eine feststehende Spule ein; anschließend läuft der Rotor über den Schaltpunkt hinaus.",
-            caption: "Der Magnet auf dem Rotor schließt den Reedkontakt nur in einem passenden Winkelbereich. Die feststehende Spule gibt dem Rotor dort einen magnetischen Schubs.",
-          },
+          heading: "Reedkontakt-Motor: Die Rotorlage bestimmt den Einschaltzeitpunkt",
+          illustrationSeries: [
+            {
+              src: "/assets/motor-learning-reed-timing-before.svg",
+              alt: "Rotorlage vor dem Schaltfenster: Der Permanentmagnet sitzt am Rotorrand und bewegt sich im Uhrzeigersinn auf den fest montierten Reedkontakt und die danach angeordnete Spule zu. Der Reedkontakt ist offen und die Spule stromlos.",
+              caption: "Bild 1: Der Randmagnet läuft im Pfeilsinn auf den fest montierten Reedkontakt zu. Außerhalb des cyan markierten Schaltfensters bleibt der Kontakt offen und die Spule stromlos.",
+            },
+            {
+              src: "/assets/motor-learning-reed-timing-on.svg",
+              alt: "Rotorlage im Schaltfenster: Der Permanentmagnet am Rotorrand steht parallel und nahe am fest montierten Reedkontakt. Der Kontakt ist geschlossen, die feststehende Spule ist bestromt und zieht den Nordpol des Magneten in Drehrichtung zur Spulenachse.",
+              caption: "Bild 2: Nur im Schaltfenster liegt der Magnet nah und parallel zum Reedkontakt. Der geschlossene Kontakt bestromt die Spule; deren S-Pol zieht den roten N-Pol zur Spulenachse.",
+            },
+            {
+              src: "/assets/motor-learning-reed-timing-after.svg",
+              alt: "Rotorlage nach der Spulenachse: Der Permanentmagnet am Rotorrand hat die Spule passiert und ist wieder vom fest montierten Reedkontakt entfernt. Kontakt und Spule sind aus; der Rotor läuft durch Trägheit weiter.",
+              caption: "Bild 3: Hinter der Spulenachse ist der Randmagnet wieder außerhalb des Schaltfensters. Der Reedkontakt öffnet, die Spule wird stromlos und der Rotor läuft durch Trägheit weiter.",
+            },
+          ],
           paragraphs: [
-            "Beim nächsten Experiment bleibt die Spule fest stehen. Auf dem Rotor sitzt ein Permanentmagnet. Ein Reedkontakt reagiert auf dessen Annäherung und schließt den Stromkreis der Spule. Die bestromte Spule zieht oder stößt den Rotor so, dass er sich über den Schaltpunkt hinaus bewegt. Danach öffnet der Reedkontakt wieder.",
-            "Dieser Aufbau trennt drei Aufgaben sichtbar: Der Rotormagnet speichert die aktuelle Lage, der Reedkontakt erkennt einen passenden Winkel und die Spule erzeugt die Kraft. Damit wird verständlich, warum ein Motor seine Spulen nicht beliebig, sondern abhängig von der Rotorstellung bestromen muss.",
+            "In Bild 1, 2 und 3 bleiben Reedkontakt und Spule an derselben Stelle. Nur der Rotor mit Randmagnet und gegenüberliegendem Gegengewicht bewegt sich im Pfeilsinn weiter. Dadurch lässt sich die jeweilige Rotorlage direkt vergleichen.",
+            "Bild 1 zeigt den offenen Stromkreis vor dem Schaltfenster. In Bild 2 liegt der Randmagnet nah am Reedkontakt: Der Kontakt schließt und die Spule zieht den roten N-Pol in Drehrichtung zur Spulenachse. Bild 3 zeigt den Magneten hinter der Spule; der Reedkontakt ist wieder offen, sodass die Spule den Rotor nicht zurückzieht.",
+            "Der genaue Abstand und Winkel sind keine festen Universalwerte: Magnetstärke, Orientierung, Reed-Empfindlichkeit, Spulenstrom und Mechanik bestimmen das Schaltfenster. Deshalb werden Reedkontakt und Spule im Nachbau verschiebbar montiert und zunächst bei kleiner Spannung eingestellt.",
             "Der Reedkontakt darf nur den Strom schalten, für den er ausgelegt ist. Bei größeren Spulenströmen übernimmt deshalb im nächsten Schritt ein Transistor das Schalten; der Kontakt oder Sensor liefert dann nur noch ein kleines Steuersignal.",
           ],
           rebuildProjects: [

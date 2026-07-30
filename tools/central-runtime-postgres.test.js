@@ -14,7 +14,8 @@ test("VPS compose runs exactly one PostgreSQL container", () => {
   assert.match(compose, /POSTGRES_DB: gernetix_runtime/);
   assert.match(compose, /runtime_postgres_data:\/var\/lib\/postgresql\/data/);
   assert.match(compose, /runtime-postgres-access:/);
-  assert.match(compose, /  backend:\n    internal: true\n  runtime-postgres-access:/);
+  assert.match(compose, /  backend:\n    internal: true\n/);
+  assert.match(compose, /\n  runtime-postgres-access:\n/);
 });
 
 test("productive runtime services do not select SQLite persistence", () => {
@@ -24,6 +25,11 @@ test("productive runtime services do not select SQLite persistence", () => {
   assert.match(remoteDeploy, /run --rm --no-deps postgres-consolidation-migration/);
   assert.match(remoteDeploy, /up -d --no-deps --force-recreate runtime-postgres/);
   assert.match(remoteDeploy, /up -d --remove-orphans/);
+});
+
+test("Community administration uses a dedicated token instead of Identity operator accounts", () => {
+  assert.match(compose, /COMMUNITY_ADMIN_TOKEN: \$\{COMMUNITY_ADMIN_TOKEN:\?COMMUNITY_ADMIN_TOKEN muss gesetzt sein\}/);
+  assert.doesNotMatch(compose, /COMMUNITY_OPERATOR_USER_IDS:/);
 });
 
 test("link integrity uses a dedicated token only in Identity and Admin Tool", () => {

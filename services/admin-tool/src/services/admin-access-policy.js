@@ -6,11 +6,15 @@ const ROLE_CAPABILITIES = {
     "admin_identity_configuration",
     "admin_link_integrity",
     "admin_learning",
+    "admin_community_support",
+    "admin_community_moderation",
   ],
   support: [
     "support_registered_board_check",
     "admin_device_management",
+    "admin_community_support",
   ],
+  community_moderator: ["admin_community_moderation"],
 };
 
 class AdminAccessPolicy {

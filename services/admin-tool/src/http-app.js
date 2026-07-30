@@ -119,6 +119,69 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/admin/community/overview") {
+      sendJson(res, 200, await service.communityOverview(readContext(url, {}, req)));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/admin/community/support-threads") {
+      sendJson(res, 200, await service.communitySupportThreads({
+        folder: url.searchParams.get("folder") || "",
+      }, readContext(url, {}, req)));
+      return;
+    }
+    const supportThread = url.pathname.match(/^\/api\/admin\/community\/support-threads\/([^/]+)$/);
+    if (req.method === "GET" && supportThread) {
+      sendJson(res, 200, await service.communitySupportThread(decodeURIComponent(supportThread[1]), readContext(url, {}, req)));
+      return;
+    }
+    const supportThreadMessage = url.pathname.match(/^\/api\/admin\/community\/support-threads\/([^/]+)\/messages$/);
+    if (req.method === "POST" && supportThreadMessage) {
+      const body = await readJsonBody(req);
+      sendJson(res, 201, await service.replyCommunitySupportThread(decodeURIComponent(supportThreadMessage[1]), body, readContext(url, body, req)));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/admin/community/questions") {
+      sendJson(res, 200, await service.communityQuestions({
+        visibility: url.searchParams.get("visibility") || "",
+        triage_status: url.searchParams.get("triage_status") || "",
+        status: url.searchParams.get("status") || "",
+      }, readContext(url, {}, req)));
+      return;
+    }
+    const communityQuestion = url.pathname.match(/^\/api\/admin\/community\/questions\/([^/]+)$/);
+    if (req.method === "GET" && communityQuestion) {
+      sendJson(res, 200, await service.communityQuestion(decodeURIComponent(communityQuestion[1]), readContext(url, {}, req)));
+      return;
+    }
+    const communityQuestionTriage = url.pathname.match(/^\/api\/admin\/community\/questions\/([^/]+)\/triage$/);
+    if (req.method === "POST" && communityQuestionTriage) {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await service.triageCommunityQuestion(decodeURIComponent(communityQuestionTriage[1]), body, readContext(url, body, req)));
+      return;
+    }
+    const communityQuestionAnswer = url.pathname.match(/^\/api\/admin\/community\/questions\/([^/]+)\/answers$/);
+    if (req.method === "POST" && communityQuestionAnswer) {
+      const body = await readJsonBody(req);
+      sendJson(res, 201, await service.answerCommunityQuestion(decodeURIComponent(communityQuestionAnswer[1]), body, readContext(url, body, req)));
+      return;
+    }
+    const communityAnswerVerify = url.pathname.match(/^\/api\/admin\/community\/answers\/([^/]+)\/verify$/);
+    if (req.method === "POST" && communityAnswerVerify) {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await service.verifyCommunityAnswer(decodeURIComponent(communityAnswerVerify[1]), body, readContext(url, body, req)));
+      return;
+    }
+    if (req.method === "GET" && url.pathname === "/api/admin/community/message-reports") {
+      sendJson(res, 200, await service.communityMessageReports({ status: url.searchParams.get("status") || "open" }, readContext(url, {}, req)));
+      return;
+    }
+    const communityReportResolve = url.pathname.match(/^\/api\/admin\/community\/message-reports\/([^/]+)\/resolve$/);
+    if (req.method === "POST" && communityReportResolve) {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await service.resolveCommunityMessageReport(decodeURIComponent(communityReportResolve[1]), body, readContext(url, body, req)));
+      return;
+    }
+
     if (req.method === "GET" && url.pathname === "/api/admin/ai-usage/summary") {
       sendJson(res, 200, await service.aiUsageSummary(readContext(url, {}, req)));
       return;

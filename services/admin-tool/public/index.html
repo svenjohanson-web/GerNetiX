@@ -24,6 +24,7 @@
           <button type="button" data-admin-view="system-events">Sicherheit</button>
           <button type="button" data-admin-view="accounts">Accounts</button>
           <button type="button" data-admin-view="resources">Ressourcen</button>
+          <button type="button" data-admin-view="community">Kommunikation</button>
           <button type="button" data-admin-view="component-metamodel">Metamodell</button>
           <button type="button" data-admin-view="email-config">Einstellungen</button>
           <button type="button" data-admin-view="ai-usage" data-admin-group="ai">KI</button>
@@ -38,6 +39,48 @@
         <button type="button" data-admin-sub-view="ai-clarifications">Klaerfaelle</button>
         <button type="button" data-admin-sub-view="llm-config">Routing</button>
       </nav>
+
+      <section id="communityView" class="admin-view hidden">
+        <section class="section-head panel community-intro">
+          <div>
+            <p class="eyebrow">Getrennte Community-Verwaltung</p>
+            <h2>Support, Community-Anfragen und Moderation</h2>
+            <p class="helper-text">Die Inhalte bleiben in der Community-Plattform. Jeder Abruf und jede Bearbeitung wird im Admin-Audit festgehalten.</p>
+          </div>
+          <button id="refreshCommunityButton" type="button">Aktualisieren</button>
+        </section>
+        <section class="metrics-grid" id="communityMetrics"></section>
+        <section class="admin-layout community-layout">
+          <article class="panel">
+            <p class="eyebrow">Privates Postfach</p>
+            <h2>Support-Anfragen</h2>
+            <div class="table-wrap"><table class="community-table"><thead><tr><th>Betreff</th><th>Konto</th><th>Letzte Nachricht</th><th></th></tr></thead><tbody id="communitySupportRows"></tbody></table></div>
+          </article>
+          <aside class="panel community-detail-panel">
+            <p class="eyebrow">Bearbeitung</p>
+            <h2>Support-Unterhaltung</h2>
+            <div id="communitySupportDetail" class="community-detail empty">Wähle eine Support-Anfrage aus.</div>
+          </aside>
+        </section>
+        <section class="admin-layout community-layout">
+          <article class="panel">
+            <p class="eyebrow">Fragen</p>
+            <h2>Community-Anfragen</h2>
+            <div class="table-wrap"><table class="community-table"><thead><tr><th>Frage</th><th>Sichtbarkeit</th><th>Triage</th><th>Antworten</th><th></th></tr></thead><tbody id="communityQuestionRows"></tbody></table></div>
+          </article>
+          <aside class="panel community-detail-panel">
+            <p class="eyebrow">Antwort und Triage</p>
+            <h2>Community-Frage</h2>
+            <div id="communityQuestionDetail" class="community-detail empty">Wähle eine Community-Anfrage aus.</div>
+          </aside>
+        </section>
+        <section class="panel">
+          <p class="eyebrow">Moderation</p>
+          <h2>Gemeldete Nachrichten</h2>
+          <p class="helper-text">Nur konkret gemeldete Nachrichten sind hier sichtbar; das ist kein Zugriff auf private Direktnachrichten.</p>
+          <div class="table-wrap"><table class="community-table"><thead><tr><th>Meldung</th><th>Nachricht</th><th>Grund</th><th>Bearbeitung</th></tr></thead><tbody id="communityReportRows"></tbody></table></div>
+        </section>
+      </section>
 
       <section id="componentMetamodelView" class="admin-view hidden">
         <section class="panel">

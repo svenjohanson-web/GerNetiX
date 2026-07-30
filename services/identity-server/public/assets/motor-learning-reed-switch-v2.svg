@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 675" role="img" aria-labelledby="title desc">
+  <title id="title">Reedkontakt-Motor mit vollständigem Stromkreis in zwei Rotorstellungen</title>
+  <desc id="desc">Links ist der Rotormagnet außerhalb des Schaltbereichs: Der Reedkontakt ist offen und die feststehende Spule stromlos. Rechts steht der Rotormagnet im Schaltbereich: Der Reedkontakt ist geschlossen, Strom fließt von der Batterie durch Reedkontakt und Spule, und die Spule zieht den Magneten in Drehrichtung.</desc>
+  <defs>
+    <linearGradient id="panelOff" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f8fafc"/>
+      <stop offset="1" stop-color="#eef2f7"/>
+    </linearGradient>
+    <linearGradient id="panelOn" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f0fdf4"/>
+      <stop offset="1" stop-color="#ecfeff"/>
+    </linearGradient>
+    <filter id="coilGlow" x="-80%" y="-30%" width="260%" height="160%">
+      <feGaussianBlur stdDeviation="9" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <marker id="arrowGreen" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="14" refX="16" refY="7" orient="auto">
+      <path d="M0 0L18 7L0 14Z" fill="#16a34a"/>
+    </marker>
+    <marker id="arrowRed" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="12" refX="14" refY="6" orient="auto">
+      <path d="M0 0L16 6L0 12Z" fill="#dc2626"/>
+    </marker>
+    <marker id="arrowBlack" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="12" refX="14" refY="6" orient="auto">
+      <path d="M0 0L16 6L0 12Z" fill="#334155"/>
+    </marker>
+  </defs>
+
+  <rect width="1200" height="675" rx="28" fill="#0f172a"/>
+  <text x="600" y="44" text-anchor="middle" font-family="system-ui,sans-serif" font-size="27" font-weight="750" fill="#f8fafc">Die Rotorlage schaltet die feststehende Spule</text>
+
+  <!-- Zustand 1: Kontakt offen -->
+  <g transform="translate(25 70)">
+    <rect width="560" height="575" rx="20" fill="url(#panelOff)" stroke="#64748b" stroke-width="3"/>
+    <rect x="18" y="18" width="118" height="38" rx="19" fill="#e2e8f0" stroke="#64748b" stroke-width="2"/>
+    <text x="77" y="44" text-anchor="middle" font-family="system-ui,sans-serif" font-size="20" font-weight="800" fill="#334155">SPULE AUS</text>
+    <text x="345" y="48" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="800" fill="#0f172a">1 · Magnet noch zu weit weg</text>
+
+    <circle cx="220" cy="246" r="133" fill="#dbe4ee" stroke="#64748b" stroke-width="6"/>
+    <circle cx="220" cy="246" r="17" fill="#334155"/>
+    <circle cx="220" cy="246" r="7" fill="#cbd5e1"/>
+    <text x="220" y="99" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="700" fill="#475569">Rotor</text>
+
+    <g transform="rotate(-138 220 246)">
+      <rect x="125" y="214" width="190" height="64" rx="16" fill="#2563eb"/>
+      <rect x="220" y="214" width="95" height="64" rx="16" fill="#dc2626"/>
+      <text x="172" y="255" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="850" fill="#fff">S</text>
+      <text x="268" y="255" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="850" fill="#fff">N</text>
+    </g>
+
+    <path d="M104 318A138 138 0 0 0 184 376" fill="none" stroke="#64748b" stroke-width="8" marker-end="url(#arrowBlack)"/>
+    <text x="82" y="402" font-family="system-ui,sans-serif" font-size="17" font-weight="700" fill="#475569">Drehrichtung</text>
+
+    <text x="452" y="102" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="750" fill="#475569">feststehende Spule</text>
+    <rect x="385" y="223" width="145" height="46" rx="9" fill="#94a3b8" stroke="#475569" stroke-width="3"/>
+    <g fill="none" stroke="#b45309" stroke-width="9">
+      <rect x="405" y="203" width="25" height="86" rx="13"/>
+      <rect x="430" y="203" width="25" height="86" rx="13"/>
+      <rect x="455" y="203" width="25" height="86" rx="13"/>
+      <rect x="480" y="203" width="25" height="86" rx="13"/>
+    </g>
+    <text x="457" y="322" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="800" fill="#64748b">stromlos</text>
+
+    <path d="M352 352A105 105 0 0 1 420 409" fill="none" stroke="#67e8f9" stroke-width="18" stroke-linecap="round" opacity=".45"/>
+    <text x="383" y="399" text-anchor="middle" font-family="system-ui,sans-serif" font-size="15" font-weight="800" fill="#0e7490">Schaltbereich</text>
+
+    <rect x="295" y="416" width="150" height="42" rx="21" fill="#eff6ff" stroke="#2563eb" stroke-width="4"/>
+    <line x1="316" y1="437" x2="352" y2="437" stroke="#334155" stroke-width="5" stroke-linecap="round"/>
+    <line x1="389" y1="426" x2="424" y2="437" stroke="#334155" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="352" cy="437" r="4" fill="#334155"/>
+    <circle cx="389" cy="437" r="4" fill="#334155"/>
+    <text x="370" y="488" text-anchor="middle" font-family="system-ui,sans-serif" font-size="19" font-weight="800" fill="#334155">Reedkontakt offen</text>
+
+    <rect x="55" y="474" width="118" height="58" rx="12" fill="#1e293b" stroke="#64748b" stroke-width="3"/>
+    <text x="79" y="510" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="850" fill="#cbd5e1">−</text>
+    <text x="149" y="510" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="850" fill="#fff">+</text>
+    <text x="114" y="554" text-anchor="middle" font-family="system-ui,sans-serif" font-size="17" font-weight="700" fill="#475569">Batterie</text>
+
+    <path d="M173 503H257V437H316" fill="none" stroke="#dc2626" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M424 437H510V289" fill="none" stroke="#94a3b8" stroke-width="6" stroke-dasharray="10 8" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M405 203V120H30V503H55" fill="none" stroke="#94a3b8" stroke-width="6" stroke-dasharray="10 8" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="382" y="558" text-anchor="middle" font-family="system-ui,sans-serif" font-size="17" font-weight="750" fill="#64748b">Offener Kreis: kein Strom</text>
+  </g>
+
+  <!-- Zustand 2: Kontakt geschlossen -->
+  <g transform="translate(615 70)">
+    <rect width="560" height="575" rx="20" fill="url(#panelOn)" stroke="#16a34a" stroke-width="3"/>
+    <rect x="18" y="18" width="118" height="38" rx="19" fill="#dcfce7" stroke="#16a34a" stroke-width="2"/>
+    <text x="77" y="44" text-anchor="middle" font-family="system-ui,sans-serif" font-size="20" font-weight="850" fill="#166534">SPULE EIN</text>
+    <text x="345" y="48" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="800" fill="#0f172a">2 · Magnet im Schaltbereich</text>
+
+    <circle cx="220" cy="246" r="133" fill="#dbe4ee" stroke="#64748b" stroke-width="6"/>
+    <circle cx="220" cy="246" r="17" fill="#334155"/>
+    <circle cx="220" cy="246" r="7" fill="#cbd5e1"/>
+    <text x="220" y="99" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="700" fill="#475569">Rotor</text>
+
+    <g transform="rotate(35 220 246)">
+      <rect x="125" y="214" width="190" height="64" rx="16" fill="#2563eb"/>
+      <rect x="220" y="214" width="95" height="64" rx="16" fill="#dc2626"/>
+      <text x="172" y="255" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="850" fill="#fff">S</text>
+      <text x="268" y="255" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="850" fill="#fff">N</text>
+    </g>
+
+    <path d="M104 318A138 138 0 0 0 184 376" fill="none" stroke="#16a34a" stroke-width="9" marker-end="url(#arrowGreen)"/>
+    <text x="82" y="402" font-family="system-ui,sans-serif" font-size="17" font-weight="800" fill="#15803d">Drehrichtung</text>
+    <path d="M321 304Q354 280 389 256" fill="none" stroke="#16a34a" stroke-width="9" stroke-linecap="round" marker-end="url(#arrowGreen)"/>
+    <text x="351" y="331" text-anchor="middle" font-family="system-ui,sans-serif" font-size="17" font-weight="850" fill="#15803d">Magnetkraft</text>
+
+    <text x="452" y="102" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="750" fill="#475569">feststehende Spule</text>
+    <rect x="385" y="223" width="145" height="46" rx="9" fill="#64748b" stroke="#334155" stroke-width="3"/>
+    <text x="397" y="253" text-anchor="middle" font-family="system-ui,sans-serif" font-size="17" font-weight="900" fill="#fff">S</text>
+    <text x="518" y="253" text-anchor="middle" font-family="system-ui,sans-serif" font-size="17" font-weight="900" fill="#fff">N</text>
+    <g fill="none" stroke="#ea580c" stroke-width="9" filter="url(#coilGlow)">
+      <rect x="405" y="203" width="25" height="86" rx="13"/>
+      <rect x="430" y="203" width="25" height="86" rx="13"/>
+      <rect x="455" y="203" width="25" height="86" rx="13"/>
+      <rect x="480" y="203" width="25" height="86" rx="13"/>
+    </g>
+    <text x="457" y="322" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="850" fill="#c2410c">bestromt</text>
+
+    <path d="M352 352A105 105 0 0 1 420 409" fill="none" stroke="#22d3ee" stroke-width="20" stroke-linecap="round" opacity=".65"/>
+    <text x="383" y="399" text-anchor="middle" font-family="system-ui,sans-serif" font-size="15" font-weight="850" fill="#0e7490">Schaltbereich</text>
+
+    <rect x="295" y="416" width="150" height="42" rx="21" fill="#eff6ff" stroke="#2563eb" stroke-width="4"/>
+    <line x1="316" y1="437" x2="352" y2="437" stroke="#334155" stroke-width="5" stroke-linecap="round"/>
+    <line x1="352" y1="437" x2="424" y2="437" stroke="#16a34a" stroke-width="6" stroke-linecap="round"/>
+    <circle cx="352" cy="437" r="4" fill="#334155"/>
+    <circle cx="389" cy="437" r="4" fill="#334155"/>
+    <text x="370" y="488" text-anchor="middle" font-family="system-ui,sans-serif" font-size="19" font-weight="850" fill="#166534">Reedkontakt geschlossen</text>
+
+    <rect x="55" y="474" width="118" height="58" rx="12" fill="#1e293b" stroke="#64748b" stroke-width="3"/>
+    <text x="79" y="510" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="850" fill="#cbd5e1">−</text>
+    <text x="149" y="510" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="850" fill="#fff">+</text>
+    <text x="114" y="554" text-anchor="middle" font-family="system-ui,sans-serif" font-size="17" font-weight="700" fill="#475569">Batterie</text>
+
+    <path d="M173 503H257V437H316" fill="none" stroke="#dc2626" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowRed)"/>
+    <path d="M424 437H510V289" fill="none" stroke="#dc2626" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowRed)"/>
+    <path d="M405 203V120H30V503H55" fill="none" stroke="#334155" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowBlack)"/>
+    <text x="382" y="558" text-anchor="middle" font-family="system-ui,sans-serif" font-size="17" font-weight="800" fill="#166534">Geschlossener Kreis: Strom fließt</text>
+  </g>
+</svg>

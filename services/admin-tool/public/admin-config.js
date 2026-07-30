@@ -21,6 +21,13 @@ const state = {
   linkIntegrityLoading: false,
   resources: null,
   componentMetamodel: null,
+  adminSession: null,
+  community: null,
+  communityLoading: false,
+  selectedSupportThread: null,
+  selectedSupportThreadLoading: false,
+  selectedCommunityQuestion: null,
+  selectedCommunityQuestionLoading: false,
   currentView: "statistics",
 };
 
@@ -60,6 +67,12 @@ document.querySelector("#aiHelpKnowledgeForm").addEventListener("submit", saveAi
 document.querySelector("#aiHelpKnowledgeRows").addEventListener("click", editAiHelpKnowledge);
 document.querySelector("#adminEmailConfigForm").addEventListener("submit", saveEmailConfig);
 document.querySelector("#adminEmailTestButton").addEventListener("click", testEmailConfig);
+document.querySelector("#refreshCommunityButton")?.addEventListener("click", () => loadCommunity(true));
+document.querySelector("#communitySupportRows")?.addEventListener("click", handleCommunitySupportSelection);
+document.querySelector("#communityQuestionRows")?.addEventListener("click", handleCommunityQuestionSelection);
+document.querySelector("#communitySupportDetail")?.addEventListener("submit", handleCommunitySupportAction);
+document.querySelector("#communityQuestionDetail")?.addEventListener("submit", handleCommunityQuestionAction);
+document.querySelector("#communityReportRows")?.addEventListener("click", handleCommunityReportAction);
 document.querySelector("#adminLogoutButton")?.addEventListener("click", async () => {
   await fetch("/api/admin-access/logout", { method: "POST" });
   location.assign("/admin/");
@@ -74,6 +87,13 @@ document.querySelectorAll("[data-admin-sub-view]").forEach((button) => {
 bootstrap();
 
 async function bootstrap() {
+  await loadAdminSession();
+  if (!isFullAdministrator()) state.currentView = "community";
+  if (!isFullAdministrator()) {
+    await loadCommunity(false);
+    render();
+    return;
+  }
   await loadOverview();
   await loadAccounts();
   await loadResources(false);
@@ -86,7 +106,25 @@ async function bootstrap() {
   await loadConfig();
   await loadLocalModels();
   await loadApiModels();
+  await loadCommunity(false);
   render();
+}
+
+async function loadAdminSession() {
+  try {
+    state.adminSession = await getJson("/api/admin-access/session");
+  } catch {
+    state.adminSession = null;
+  }
+}
+
+function isFullAdministrator() {
+  return state.adminSession?.admin?.role === "administrator";
+}
+
+function canUseCommunity(capability) {
+  const capabilities = new Set(state.adminSession?.admin?.capabilities || []);
+  return capabilities.has(capability);
 }
 
 async function loadOverview() {
@@ -198,6 +236,7 @@ function render() {
   renderAiClarifications();
   renderAiHelpKnowledge();
   renderEmailConfig();
+  renderCommunity();
   renderForm();
   renderStatus();
   renderProviderFields();
@@ -212,11 +251,16 @@ function setView(view) {
   if (state.currentView === "ai-clarifications") loadAiClarifications(false);
   if (state.currentView === "ai-help-knowledge") loadAiHelpKnowledge(false);
   if (state.currentView === "email-config") loadEmailConfig().then(renderEmailConfig);
+  if (state.currentView === "community") loadCommunity(false);
 }
 
 function renderNavigation() {
   const aiView = isAiView(state.currentView);
   document.querySelector("#aiSubNav")?.classList.toggle("hidden", !aiView);
+  const communityOnly = !isFullAdministrator();
+  document.querySelectorAll("[data-admin-view]").forEach((button) => {
+    button.classList.toggle("hidden", communityOnly && button.dataset.adminView !== "community");
+  });
   document.querySelectorAll(".admin-view").forEach((view) => {
     view.classList.toggle("hidden", view.id !== viewId(state.currentView));
   });
@@ -245,6 +289,7 @@ function viewId(view) {
     "link-integrity": "linkIntegrityView",
     accounts: "accountsView",
     resources: "resourcesView",
+    community: "communityView",
     "component-metamodel": "componentMetamodelView",
     "ai-usage": "aiUsageView",
     "ai-context": "aiContextView",
@@ -254,6 +299,209 @@ function viewId(view) {
     "llm-config": "llmConfigView",
   }[view] || "statisticsView";
 }
+
+async function loadCommunity(force) {
+  if (state.communityLoading || (state.community && !force)) return;
+  state.communityLoading = true;
+  renderCommunity();
+  const loadPart = async (path, fallback) => {
+    try { return await getJson(path); } catch (error) { return { ...fallback, error: error.message }; }
+  };
+  try {
+    const [overview, support, questions, reports] = await Promise.all([
+      loadPart("/api/admin/community/overview", { summary: {} }),
+      loadPart("/api/admin/community/support-threads", { items: [] }),
+      loadPart("/api/admin/community/questions", { items: [] }),
+      loadPart("/api/admin/community/message-reports?status=open", { items: [] }),
+    ]);
+    state.community = { overview, support, questions, reports };
+  } finally {
+    state.communityLoading = false;
+    renderCommunity();
+  }
+}
+
+function renderCommunity() {
+  const metrics = document.querySelector("#communityMetrics");
+  const supportRows = document.querySelector("#communitySupportRows");
+  const questionRows = document.querySelector("#communityQuestionRows");
+  const reportRows = document.querySelector("#communityReportRows");
+  if (!metrics || !supportRows || !questionRows || !reportRows) return;
+  const data = state.community || {};
+  const summary = data.overview?.summary || {};
+  const questionSummary = summary.questions || {};
+  metrics.innerHTML = [
+    metricCard("Support offen", formatNumber(summary.support?.open || 0), "private Anfragen"),
+    metricCard("Neue Fragen", formatNumber(questionSummary.awaiting_triage || 0), `${formatNumber(questionSummary.overdue || 0)} über SLA`),
+    metricCard("Private Fragen", formatNumber(questionSummary.private || 0), `${formatNumber(questionSummary.public || 0)} öffentlich`),
+    metricCard("Meldungen offen", formatNumber(summary.reports?.open || 0), "Moderation erforderlich"),
+  ].join("");
+  if (state.communityLoading) {
+    supportRows.innerHTML = questionRows.innerHTML = reportRows.innerHTML = `<tr><td colspan="5" class="empty-cell">Kommunikation wird geladen …</td></tr>`;
+    return;
+  }
+  const support = data.support?.items || [];
+  const questions = data.questions?.items || [];
+  const reports = data.reports?.items || [];
+  supportRows.innerHTML = data.support?.error
+    ? `<tr><td colspan="4" class="empty-cell">${escapeHtml(data.support.error)}</td></tr>`
+    : support.length ? support.map((thread) => `<tr>
+      <td><strong>${escapeHtml(thread.subject || "Support-Anfrage")}</strong><span>${formatNumber(thread.message_count || 0)} Nachrichten</span></td>
+      <td>${escapeHtml(thread.customer_user_id || "-")}</td>
+      <td>${escapeHtml(truncate(thread.latest_message?.body || "", 110))}<span>${escapeHtml(formatDateTime(thread.updated_at))}</span></td>
+      <td><button type="button" data-community-open-support="${escapeHtml(thread.thread_id)}">Öffnen</button></td>
+    </tr>`).join("") : `<tr><td colspan="4" class="empty-cell">Keine offenen Support-Anfragen.</td></tr>`;
+  questionRows.innerHTML = data.questions?.error
+    ? `<tr><td colspan="5" class="empty-cell">${escapeHtml(data.questions.error)}</td></tr>`
+    : questions.length ? questions.map((question) => `<tr>
+      <td><strong>${escapeHtml(question.title)}</strong><span>${escapeHtml(truncate(question.body, 110))}</span></td>
+      <td>${escapeHtml(question.visibility === "private" ? "privat" : "öffentlich")}</td>
+      <td><strong>${escapeHtml(triageLabel(question.triage_status))}</strong><span>${escapeHtml(priorityLabel(question.priority))}</span></td>
+      <td>${formatNumber(question.answer_count || 0)}</td>
+      <td><button type="button" data-community-open-question="${escapeHtml(question.question_id)}">Bearbeiten</button></td>
+    </tr>`).join("") : `<tr><td colspan="5" class="empty-cell">Keine Community-Anfragen.</td></tr>`;
+  reportRows.innerHTML = data.reports?.error
+    ? `<tr><td colspan="4" class="empty-cell">${escapeHtml(data.reports.error)}</td></tr>`
+    : reports.length ? reports.map((report) => `<tr data-community-report="${escapeHtml(report.report_id)}">
+      <td><strong>${escapeHtml(report.thread?.subject || "Unterhaltung")}</strong><span>${escapeHtml(formatDateTime(report.created_at))}</span></td>
+      <td>${escapeHtml(truncate(report.reported_message?.body || "Nachricht nicht verfügbar", 170))}<span>${escapeHtml(report.reported_message?.author_label || "-")}</span></td>
+      <td>${escapeHtml(report.reason || "-")}</td>
+      <td class="community-report-action"><select aria-label="Entscheidung"><option value="resolved">Erledigt</option><option value="dismissed">Verwerfen</option></select><input type="text" maxlength="1000" placeholder="Notiz (optional)" aria-label="Moderationsnotiz" /><button type="button" data-community-resolve-report>Speichern</button></td>
+    </tr>`).join("") : `<tr><td colspan="4" class="empty-cell">Keine offenen Meldungen.</td></tr>`;
+  renderCommunitySupportDetail();
+  renderCommunityQuestionDetail();
+}
+
+async function handleCommunitySupportSelection(event) {
+  const button = event.target.closest("[data-community-open-support]");
+  if (!button) return;
+  const threadId = button.dataset.communityOpenSupport;
+  state.selectedSupportThread = { thread_id: threadId };
+  state.selectedSupportThreadLoading = true;
+  renderCommunitySupportDetail();
+  try {
+    const result = await getJson(`/api/admin/community/support-threads/${encodeURIComponent(threadId)}`);
+    state.selectedSupportThread = result.thread || null;
+  } catch (error) {
+    state.selectedSupportThread = { error: error.message };
+  } finally {
+    state.selectedSupportThreadLoading = false;
+    renderCommunitySupportDetail();
+  }
+}
+
+function renderCommunitySupportDetail() {
+  const target = document.querySelector("#communitySupportDetail");
+  if (!target) return;
+  const thread = state.selectedSupportThread;
+  if (state.selectedSupportThreadLoading) { target.className = "community-detail"; target.innerHTML = "Unterhaltung wird geladen …"; return; }
+  if (!thread) { target.className = "community-detail empty"; target.textContent = "Wähle eine Support-Anfrage aus."; return; }
+  if (thread.error) { target.className = "community-detail error"; target.textContent = thread.error; return; }
+  target.className = "community-detail";
+  target.innerHTML = `<h3>${escapeHtml(thread.subject || "Support-Anfrage")}</h3>
+    <p class="community-meta">Konto: ${escapeHtml(thread.created_by_user_id || "-")} · ${formatDateTime(thread.created_at)}</p>
+    <div class="community-message-list">${(thread.messages || []).map((message) => `<article class="community-message"><strong>${escapeHtml(message.author_label || "Mitglied")}</strong><span>${escapeHtml(formatDateTime(message.created_at))}</span><p>${escapeHtml(message.body || "")}</p></article>`).join("") || "<p class=\"empty\">Keine Nachrichten.</p>"}</div>
+    <form class="community-action-form" data-community-action="reply-support" data-thread-id="${escapeHtml(thread.thread_id)}"><label>Antwort<textarea name="body" rows="5" maxlength="8000" required placeholder="Antwort als GerNetiX Support"></textarea></label><button class="primary" type="submit">Antwort senden</button><p class="flash-status hidden" role="status"></p></form>`;
+}
+
+async function handleCommunitySupportAction(event) {
+  event.preventDefault();
+  const form = event.target.closest("[data-community-action='reply-support']");
+  if (!form) return;
+  const button = form.querySelector("button"); const status = form.querySelector(".flash-status");
+  button.disabled = true;
+  try {
+    await postJson(`/api/admin/community/support-threads/${encodeURIComponent(form.dataset.threadId)}/messages`, { body: form.elements.body.value });
+    status.className = "flash-status ok"; status.textContent = "Antwort gesendet.";
+    const result = await getJson(`/api/admin/community/support-threads/${encodeURIComponent(form.dataset.threadId)}`);
+    state.selectedSupportThread = result.thread || null;
+    state.community = null;
+    await loadCommunity(true);
+  } catch (error) {
+    status.className = "flash-status error"; status.textContent = error.message;
+  } finally { button.disabled = false; }
+}
+
+async function handleCommunityQuestionSelection(event) {
+  const button = event.target.closest("[data-community-open-question]");
+  if (!button) return;
+  const questionId = button.dataset.communityOpenQuestion;
+  state.selectedCommunityQuestion = { question_id: questionId };
+  state.selectedCommunityQuestionLoading = true;
+  renderCommunityQuestionDetail();
+  try {
+    const result = await getJson(`/api/admin/community/questions/${encodeURIComponent(questionId)}`);
+    state.selectedCommunityQuestion = result.question || null;
+  } catch (error) {
+    state.selectedCommunityQuestion = { error: error.message };
+  } finally {
+    state.selectedCommunityQuestionLoading = false;
+    renderCommunityQuestionDetail();
+  }
+}
+
+function renderCommunityQuestionDetail() {
+  const target = document.querySelector("#communityQuestionDetail");
+  if (!target) return;
+  const question = state.selectedCommunityQuestion;
+  if (state.selectedCommunityQuestionLoading) { target.className = "community-detail"; target.innerHTML = "Frage wird geladen …"; return; }
+  if (!question) { target.className = "community-detail empty"; target.textContent = "Wähle eine Community-Anfrage aus."; return; }
+  if (question.error) { target.className = "community-detail error"; target.textContent = question.error; return; }
+  const allowVerification = canUseCommunity("admin_community_moderation");
+  target.className = "community-detail";
+  target.innerHTML = `<h3>${escapeHtml(question.title)}</h3><p class="community-meta">${escapeHtml(question.visibility === "private" ? "Private Anfrage" : "Öffentliche Anfrage")} · ${escapeHtml(question.author_label || "-")} · ${formatDateTime(question.created_at)}</p><p class="community-question-body">${escapeHtml(question.body || "")}</p>
+    <form class="community-action-form" data-community-action="triage-question" data-question-id="${escapeHtml(question.question_id)}"><label>Triage<select name="triage_status"><option value="triaged" ${question.triage_status === "triaged" ? "selected" : ""}>Triage abgeschlossen</option><option value="new" ${question.triage_status === "new" ? "selected" : ""}>Neu</option><option value="deferred" ${question.triage_status === "deferred" ? "selected" : ""}>Zurückgestellt</option></select></label><label>Priorität<select name="priority">${["low", "normal", "high", "urgent"].map((priority) => `<option value="${priority}" ${question.priority === priority ? "selected" : ""}>${priorityLabel(priority)}</option>`).join("")}</select></label><label>Interne Notiz<textarea name="moderation_note" rows="3" maxlength="1000">${escapeHtml(question.moderation_note || "")}</textarea></label><button type="submit">Triage speichern</button><p class="flash-status hidden" role="status"></p></form>
+    <form class="community-action-form" data-community-action="answer-question" data-question-id="${escapeHtml(question.question_id)}"><label>Antwort<textarea name="body" rows="5" maxlength="8000" required placeholder="Antwort als GerNetiX"></textarea></label>${allowVerification ? "<label class=\"community-check\"><input type=\"checkbox\" name=\"verify\" checked /> Als geprüfte Antwort freigeben</label>" : ""}<button class="primary" type="submit">Antwort speichern</button><p class="flash-status hidden" role="status"></p></form>`;
+}
+
+async function handleCommunityQuestionAction(event) {
+  event.preventDefault();
+  const form = event.target.closest("[data-community-action]");
+  if (!form || !["triage-question", "answer-question"].includes(form.dataset.communityAction)) return;
+  const button = form.querySelector("button"); const status = form.querySelector(".flash-status"); const questionId = form.dataset.questionId;
+  button.disabled = true;
+  try {
+    if (form.dataset.communityAction === "triage-question") {
+      await postJson(`/api/admin/community/questions/${encodeURIComponent(questionId)}/triage`, {
+        triage_status: form.elements.triage_status.value,
+        priority: form.elements.priority.value,
+        moderation_note: form.elements.moderation_note.value,
+      });
+      status.className = "flash-status ok"; status.textContent = "Triage gespeichert.";
+    } else {
+      const result = await postJson(`/api/admin/community/questions/${encodeURIComponent(questionId)}/answers`, { body: form.elements.body.value });
+      if (form.elements.verify?.checked) await postJson(`/api/admin/community/answers/${encodeURIComponent(result.answer.answer_id)}/verify`, { verification_state: "verified", accept: true });
+      status.className = "flash-status ok"; status.textContent = form.elements.verify?.checked ? "Antwort gespeichert und freigegeben." : "Antwort gespeichert.";
+      form.reset();
+    }
+    const detail = await getJson(`/api/admin/community/questions/${encodeURIComponent(questionId)}`);
+    state.selectedCommunityQuestion = detail.question || null;
+    state.community = null;
+    await loadCommunity(true);
+  } catch (error) {
+    status.className = "flash-status error"; status.textContent = error.message;
+  } finally { button.disabled = false; }
+}
+
+async function handleCommunityReportAction(event) {
+  const button = event.target.closest("[data-community-resolve-report]");
+  if (!button) return;
+  const row = button.closest("tr"); const reportId = row?.dataset.communityReport;
+  if (!reportId) return;
+  button.disabled = true;
+  try {
+    await postJson(`/api/admin/community/message-reports/${encodeURIComponent(reportId)}/resolve`, {
+      status: row.querySelector("select").value,
+      resolution_note: row.querySelector("input").value,
+    });
+    state.community = null;
+    await loadCommunity(true);
+  } catch (error) { alert(error.message); } finally { button.disabled = false; }
+}
+
+function triageLabel(value) { return ({ new: "neu", triaged: "triagiert", deferred: "zurückgestellt" })[value] || value || "-"; }
+function priorityLabel(value) { return ({ low: "niedrig", normal: "normal", high: "hoch", urgent: "dringend" })[value] || value || "-"; }
+function truncate(value, length) { const text = String(value || "").replace(/\s+/g, " ").trim(); return text.length > length ? `${text.slice(0, Math.max(0, length - 1))}…` : text; }
 
 async function loadLinkIntegrity(force) {
   if (state.linkIntegrityLoading || (state.linkIntegrity && !force)) return;

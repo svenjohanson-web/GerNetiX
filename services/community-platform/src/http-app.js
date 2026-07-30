@@ -1,6 +1,7 @@
 const { CommunityPlatformError } = require("./errors");
 
 const prefix = "/api/community";
+const adminPrefix = "/api/community/admin";
 
 function createHttpApp(options) {
   const service = options.service;
@@ -11,6 +12,16 @@ function createHttpApp(options) {
 
     if (req.method === "GET" && path === "/health") {
       sendJson(res, 200, { status: "ok", service: "community-platform" });
+      return;
+    }
+
+    if (path.startsWith(`${adminPrefix}/`) || path === adminPrefix) {
+      const adminActor = trustedAdminActor(req, service);
+      if (!adminActor) {
+        sendJson(res, 401, { error: "community_admin_access_denied", message: "Dieser Verwaltungszugang ist nicht freigegeben." });
+        return;
+      }
+      await routeAdminRequest({ req, res, path, url, service, actor: adminActor });
       return;
     }
 
@@ -184,6 +195,81 @@ function createHttpApp(options) {
 
     sendJson(res, 404, { error: "not_found" });
   };
+}
+
+async function routeAdminRequest({ req, res, path, url, service, actor }) {
+  if (req.method === "GET" && path === `${adminPrefix}/overview`) {
+    sendJson(res, 200, await service.adminOverview(actor));
+    return;
+  }
+
+  if (req.method === "GET" && path === `${adminPrefix}/support-threads`) {
+    sendJson(res, 200, await service.listAdminSupportThreads(actor, Object.fromEntries(url.searchParams.entries())));
+    return;
+  }
+  const supportThread = path.match(new RegExp(`^${adminPrefix}/support-threads/([^/]+)$`));
+  if (req.method === "GET" && supportThread) {
+    sendJson(res, 200, await service.getAdminSupportThread(decodeURIComponent(supportThread[1]), actor));
+    return;
+  }
+  const supportThreadMessage = path.match(new RegExp(`^${adminPrefix}/support-threads/([^/]+)/messages$`));
+  if (req.method === "POST" && supportThreadMessage) {
+    sendJson(res, 201, await service.appendAdminSupportMessage(decodeURIComponent(supportThreadMessage[1]), await readJsonBody(req), actor));
+    return;
+  }
+
+  if (req.method === "GET" && path === `${adminPrefix}/questions`) {
+    sendJson(res, 200, await service.listAdminQuestions(actor, Object.fromEntries(url.searchParams.entries())));
+    return;
+  }
+  const question = path.match(new RegExp(`^${adminPrefix}/questions/([^/]+)$`));
+  if (req.method === "GET" && question) {
+    sendJson(res, 200, await service.getAdminQuestion(decodeURIComponent(question[1]), actor));
+    return;
+  }
+  const questionTriage = path.match(new RegExp(`^${adminPrefix}/questions/([^/]+)/triage$`));
+  if (req.method === "POST" && questionTriage) {
+    sendJson(res, 200, await service.triageAdminQuestion(decodeURIComponent(questionTriage[1]), await readJsonBody(req), actor));
+    return;
+  }
+  const questionAnswer = path.match(new RegExp(`^${adminPrefix}/questions/([^/]+)/answers$`));
+  if (req.method === "POST" && questionAnswer) {
+    sendJson(res, 201, await service.createAdminAnswer(decodeURIComponent(questionAnswer[1]), await readJsonBody(req), actor));
+    return;
+  }
+  const answerVerify = path.match(new RegExp(`^${adminPrefix}/answers/([^/]+)/verify$`));
+  if (req.method === "POST" && answerVerify) {
+    sendJson(res, 200, await service.verifyAdminAnswer(decodeURIComponent(answerVerify[1]), await readJsonBody(req), actor));
+    return;
+  }
+
+  if (req.method === "GET" && path === `${adminPrefix}/message-reports`) {
+    sendJson(res, 200, await service.listAdminMessageReports(actor, Object.fromEntries(url.searchParams.entries())));
+    return;
+  }
+  const reportResolve = path.match(new RegExp(`^${adminPrefix}/message-reports/([^/]+)/resolve$`));
+  if (req.method === "POST" && reportResolve) {
+    sendJson(res, 200, await service.resolveAdminMessageReport(decodeURIComponent(reportResolve[1]), await readJsonBody(req), actor));
+    return;
+  }
+
+  sendJson(res, 404, { error: "not_found" });
+}
+
+function trustedAdminActor(req, service) {
+  if (!service.adminToken || req.headers["x-gernetix-community-admin-token"] !== service.adminToken) return null;
+  try {
+    const actor = JSON.parse(Buffer.from(String(req.headers["x-gernetix-community-admin-actor"] || ""), "base64url").toString("utf8"));
+    if (!actor?.actor_id || !actor?.role || !Array.isArray(actor.capabilities)) return null;
+    return {
+      actor_id: String(actor.actor_id),
+      role: String(actor.role),
+      capabilities: actor.capabilities.map(String),
+      is_admin: true,
+    };
+  } catch {
+    return null;
+  }
 }
 
 function readJsonBody(req) {

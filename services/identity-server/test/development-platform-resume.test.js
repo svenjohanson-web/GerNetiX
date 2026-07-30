@@ -59,10 +59,20 @@ test("separates the architecture discovery step from the active project", () => 
   assert.doesNotMatch(publicHtml, /developmentAssistantMode/);
 });
 
-test("confirms the selected existing project explicitly before continuing", () => {
-  assert.match(publicHtml, /id="selectDevelopmentProjectButton"[^>]*>Wählen und weiter<\/button>/);
+test("opens selected and last existing development projects directly in the IDE", () => {
+  assert.match(publicHtml, /id="selectDevelopmentProjectButton"[^>]*>In IDE öffnen<\/button>/);
   assert.match(publicController, /function updateDevelopmentProjectSelection/);
   assert.match(publicController, /selectDevelopmentProjectButton"\)\.addEventListener\("click", selectDevelopmentProject\)/);
+  assert.match(publicController, /async function continueLastProject\(\)[\s\S]*await openExistingDevelopmentProject\(storedProjectId\)/);
+  assert.match(publicController, /async function selectDevelopmentProject\(\)[\s\S]*await openExistingDevelopmentProject\(projectId\)/);
+  assert.match(publicController, /async function openExistingDevelopmentProject\(projectId\)[\s\S]*await openProjectInIde\(projectId\)/);
+  assert.doesNotMatch(publicController.match(/async function continueLastProject[\s\S]*?\n    \}/)?.[0] || "", /activateProject/);
+  assert.doesNotMatch(publicController.match(/async function selectDevelopmentProject[\s\S]*?\n    \}/)?.[0] || "", /activateProject/);
+  assert.match(publicController, /data-configure-development-project/);
+  assert.match(publicController, />In IDE oeffnen<\/button>/);
+  assert.match(publicController, />Konfiguration<\/button>/);
+  assert.match(publicController, /if \(openButton\) \{ await openExistingDevelopmentProject\(openButton\.dataset\.openDevelopmentProject\)/);
+  assert.match(publicController, /if \(configureButton\) \{ activateProject\(configureButton\.dataset\.configureDevelopmentProject\)/);
 });
 
 test("loads the development template catalog from the server model registry", () => {
@@ -111,12 +121,12 @@ test("persists architecture derivation metadata in the project view manifest", (
 
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260730-game-assistant-3/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260730-direct-project-resume-1/);
   assert.match(publicHtml, /development-chat-input-box[\s\S]*developmentQuickPrompts[\s\S]*developmentChatInput[\s\S]*developmentChatSubmit/);
   assert.match(publicHtml, /development-send-button/);
   assert.match(publicHtml, /aria-label="Nachricht senden"/);
   assert.match(publicHtml, /&uarr;/);
-  assert.doesNotMatch(publicHtml, /id="developmentChatSubmit"[\s\S]*>Senden<\/button>/);
+  assert.doesNotMatch(publicHtml, /id="developmentChatSubmit"[^>]*>Senden<\/button>/);
   assert.doesNotMatch(publicHtml, /developmentChatStatus|Bereit fuer Architekturfragen/);
   assert.doesNotMatch(publicController, /setChatStatus/);
   assert.doesNotMatch(publicCss, /\.chat-status/);

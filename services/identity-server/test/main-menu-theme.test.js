@@ -50,18 +50,21 @@ test("puts learning, development, quiz, knowledge, community and rebuild project
   assert.doesNotMatch(menu.slice(toolsStart, toolsEnd), /href="\/app\/quiz\/"/);
 });
 
-test("keeps Help and the session action permanently outside collapsible hamburger groups", () => {
+test("keeps Help, Messages and the session action permanently outside collapsible hamburger groups", () => {
   const menu = html.slice(html.indexOf('<nav id="mainMenu"'), html.indexOf("</nav>", html.indexOf('<nav id="mainMenu"')));
   const accountGroupEnd = menu.indexOf("</details>", menu.indexOf('platform.menu.account'));
   const helpIndex = menu.indexOf('id="helpMenuLink"');
+  const messagesIndex = menu.indexOf('id="messagesMenuLink"');
   const loginIndex = menu.indexOf('id="loginMenuLink"');
   const logoutIndex = menu.indexOf('id="logoutButton"');
   assert.ok(helpIndex > accountGroupEnd);
-  assert.ok(helpIndex < loginIndex);
+  assert.ok(helpIndex < messagesIndex);
+  assert.ok(messagesIndex < loginIndex);
   assert.ok(loginIndex > accountGroupEnd);
   assert.ok(logoutIndex > accountGroupEnd);
   assert.equal((menu.match(/href="\/hilfe\/"/g) || []).length, 1);
   assert.match(menu, /id="helpMenuLink" class="utility public-information-link menu-fixed-action"/);
+  assert.match(menu, /id="messagesMenuLink" class="utility menu-fixed-action"/);
   assert.match(css, /\.app-menu \.menu-fixed-action/);
   assert.match(menu, /menu-session-action/);
   assert.match(css, /\.app-menu \.menu-session-action/);

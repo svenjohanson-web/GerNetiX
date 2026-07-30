@@ -71,6 +71,14 @@ class InMemoryCommunityRepository {
 
   saveMessageThread(thread) { this.messageThreads.set(thread.thread_id, clone(thread)); return clone(thread); }
   findMessageThread(threadId) { return clone(this.messageThreads.get(threadId)); }
+
+  listMessageThreads(filter = {}) {
+    return Array.from(this.messageThreads.values())
+      .filter((thread) => !filter.mailbox_kind || thread.mailbox_kind === filter.mailbox_kind)
+      .filter((thread) => filter.archived === true ? Boolean(thread.archived_at) : filter.archived === false ? !thread.archived_at : true)
+      .sort((left, right) => String(right.updated_at).localeCompare(String(left.updated_at)))
+      .map(clone);
+  }
   saveThreadMember(member) { this.threadMembers.set(`${member.thread_id}:${member.user_id}`, clone(member)); return clone(member); }
   findThreadMember(threadId, userId) { return clone(this.threadMembers.get(`${threadId}:${userId}`)); }
   listThreadMembers(threadId) {
@@ -116,7 +124,7 @@ class InMemoryCommunityRepository {
   appendMessageBundle({ thread, authorMember, message, inboxEntries }) {
     this.saveMessage(message);
     this.saveMessageThread(thread);
-    this.saveThreadMember(authorMember);
+    if (authorMember) this.saveThreadMember(authorMember);
     for (const entry of inboxEntries) this.saveInboxEntry(entry);
     return clone({ thread, authorMember, message, inboxEntries });
   }

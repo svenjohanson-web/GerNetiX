@@ -631,6 +631,36 @@ test("monitoring reads Community operational counts without exposing the interna
   }
 });
 
+test("community support access is capability-gated, audited and uses the separate community admin token", async () => {
+  const repository = new InMemoryAdminRepository();
+  const service = new AdminService({
+    repository,
+    accessPolicy: new AdminAccessPolicy({ repository }),
+    llmConfigStore: { publicConfig: () => ({}), getConfig: () => ({}), updateConfig: () => ({}) },
+    serviceClients: {
+      communityPlatformBaseUrl: "http://community.test",
+      communityAdminToken: "community-admin-secret",
+    },
+  });
+  let request = null;
+  service.httpJson = async (baseUrl, pathname, options) => {
+    request = { baseUrl, pathname, options };
+    return { items: [{ thread_id: "thread-1", subject: "Hilfe" }] };
+  };
+  const context = adminContext({
+    actor: { actor_id: "admin-support", role: "support", capabilities: ["admin_community_support"] },
+  });
+  const result = await service.communitySupportThreads({}, context);
+  assert.equal(result.items[0].thread_id, "thread-1");
+  assert.equal(request.baseUrl, "http://community.test");
+  assert.equal(request.pathname, "/api/community/admin/support-threads");
+  assert.equal(request.options.headers["x-gernetix-community-admin-token"], "community-admin-secret");
+  const forwardedActor = JSON.parse(Buffer.from(request.options.headers["x-gernetix-community-admin-actor"], "base64url").toString("utf8"));
+  assert.deepEqual(forwardedActor, { actor_id: "admin-support", role: "support", capabilities: ["admin_community_support"] });
+  assert.ok((await repository.listAuditEvents()).some((event) => event.purpose === "community_support_queue_read" && event.access_decision === "full"));
+  await assert.rejects(service.communitySupportThreads({}, adminContext({ actor: { actor_id: "admin-none", role: "community_moderator", capabilities: [] } })), /nicht freigegeben/);
+});
+
 function createAdminServiceWithHttpJson(routes, error = null) {
   const repository = new InMemoryAdminRepository();
   const service = new AdminService({

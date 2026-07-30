@@ -81,7 +81,7 @@ test("USB provisioning prefers the background service without leaving GerNetiX",
   assert.match(onboarding, /board_features: selected/);
   assert.match(onboarding, /instance_configuration:/);
   assert.match(server, /\/api\/platform\/hardware\/board-feature-options/);
-  assert.doesNotMatch(onboarding, /USB-Board suchen/);
+  assert.match(onboarding, /USB-Board suchen/);
 });
 
 test("Serial Service client is reusable by public GerNetiX flash pages", () => {

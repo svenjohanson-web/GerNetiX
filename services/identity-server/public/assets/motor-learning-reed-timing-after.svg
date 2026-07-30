@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 640" role="img" aria-labelledby="title desc">
+  <title id="title">Reedkontakt-Motor nach dem magnetischen Impuls</title>
+  <desc id="desc">Der Permanentmagnet am Rotorrand hat die Achse der feststehenden Spule in Drehrichtung passiert. Er ist nun wieder außerhalb des Schaltfensters des fest montierten Reedkontakts. Der Reedkontakt ist offen und die Spule stromlos, sodass sie den Rotor nicht zurückbremst. Der Rotor läuft durch seine Trägheit weiter.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#111827"/>
+      <stop offset="1" stop-color="#0b1220"/>
+    </linearGradient>
+    <style>
+      text { fill: #e2e8f0; }
+      text[fill="#15803d"] { fill: #86efac; }
+      text[fill="#0e7490"] { fill: #67e8f9; }
+      path[stroke="#334155"], line[stroke="#334155"] { stroke: #cbd5e1; }
+    </style>
+    <marker id="arrowGreen" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="14" refX="16" refY="7" orient="auto">
+      <path d="M0 0L18 7L0 14Z" fill="#16a34a"/>
+    </marker>
+    <marker id="arrowRed" markerUnits="userSpaceOnUse" markerWidth="16" markerHeight="12" refX="14" refY="6" orient="auto">
+      <path d="M0 0L16 6L0 12Z" fill="#dc2626"/>
+    </marker>
+  </defs>
+
+  <rect x="3" y="3" width="794" height="634" rx="26" fill="url(#bg)" stroke="#64748b" stroke-width="6"/>
+  <rect x="24" y="22" width="124" height="38" rx="19" fill="#1e293b" stroke="#94a3b8" stroke-width="2"/>
+  <text x="86" y="48" text-anchor="middle" font-family="system-ui,sans-serif" font-size="20" font-weight="850" fill="#334155">SPULE AUS</text>
+  <text x="474" y="49" text-anchor="middle" font-family="system-ui,sans-serif" font-size="28" font-weight="800" fill="#0f172a">3 · Magnet hinter der Spule</text>
+
+  <text x="300" y="92" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="750" fill="#475569">Nur Rotor und Magnet drehen sich</text>
+  <circle cx="300" cy="280" r="165" fill="#1e293b" stroke="#94a3b8" stroke-width="6"/>
+  <circle cx="300" cy="280" r="20" fill="#334155"/>
+  <circle cx="300" cy="280" r="8" fill="#cbd5e1"/>
+  <text x="300" y="287" text-anchor="middle" font-family="system-ui,sans-serif" font-size="15" font-weight="800" fill="#fff">Achse</text>
+
+  <!-- Gegenwicht und Magnet bleiben ein ausgewuchteter Rotor -->
+  <g transform="translate(375 150) rotate(210)">
+    <rect x="-52" y="-19" width="104" height="38" rx="11" fill="#94a3b8" stroke="#475569" stroke-width="3"/>
+  </g>
+  <text x="422" y="126" font-family="system-ui,sans-serif" font-size="16" font-weight="800" fill="#475569">Gegengewicht</text>
+  <path d="M415 134L398 145" stroke="#475569" stroke-width="3"/>
+
+  <g transform="translate(225 410) rotate(210)">
+    <rect x="-58" y="-22" width="116" height="44" rx="12" fill="#2563eb" stroke="#1e3a8a" stroke-width="3"/>
+    <rect x="0" y="-22" width="58" height="44" rx="12" fill="#dc2626"/>
+    <text x="-29" y="7" text-anchor="middle" font-family="system-ui,sans-serif" font-size="20" font-weight="850" fill="#fff">S</text>
+    <text x="29" y="7" text-anchor="middle" font-family="system-ui,sans-serif" font-size="20" font-weight="850" fill="#fff">N</text>
+  </g>
+  <text x="88" y="395" font-family="system-ui,sans-serif" font-size="17" font-weight="800" fill="#334155">Rotormagnet</text>
+
+  <!-- Reedkontakt und Spule bleiben an denselben festen Positionen -->
+  <path d="M445 432A215 215 0 0 1 356 487" fill="none" stroke="#22d3ee" stroke-width="22" stroke-linecap="round" opacity=".45"/>
+  <text x="516" y="411" font-family="system-ui,sans-serif" font-size="17" font-weight="850" fill="#0e7490">Schaltfenster</text>
+  <g transform="translate(420 475) rotate(150)">
+    <rect x="-72" y="-20" width="144" height="40" rx="20" fill="#0f172a" stroke="#60a5fa" stroke-width="4"/>
+    <line x1="-53" y1="0" x2="-10" y2="0" stroke="#334155" stroke-width="5" stroke-linecap="round"/>
+    <line x1="10" y1="-9" x2="53" y2="0" stroke="#334155" stroke-width="5" stroke-linecap="round"/>
+    <circle cx="-10" cy="0" r="4" fill="#334155"/>
+    <circle cx="10" cy="0" r="4" fill="#334155"/>
+  </g>
+  <text x="520" y="482" font-family="system-ui,sans-serif" font-size="18" font-weight="850" fill="#334155">Reed wieder offen</text>
+  <text x="520" y="505" font-family="system-ui,sans-serif" font-size="15" font-weight="750" fill="#475569">fest montiert</text>
+
+  <rect x="276" y="454" width="48" height="142" rx="9" fill="#94a3b8" stroke="#475569" stroke-width="3"/>
+  <g fill="none" stroke="#b45309" stroke-width="9">
+    <rect x="247" y="477" width="106" height="24" rx="12"/>
+    <rect x="247" y="505" width="106" height="24" rx="12"/>
+    <rect x="247" y="533" width="106" height="24" rx="12"/>
+    <rect x="247" y="561" width="106" height="24" rx="12"/>
+  </g>
+  <text x="96" y="531" font-family="system-ui,sans-serif" font-size="17" font-weight="800" fill="#475569">Spule fest</text>
+  <path d="M172 526H240" stroke="#475569" stroke-width="3"/>
+  <path d="M226 466A200 200 0 0 1 107 332" fill="none" stroke="#16a34a" stroke-width="10" marker-end="url(#arrowGreen)"/>
+  <text x="45" y="421" font-family="system-ui,sans-serif" font-size="18" font-weight="850" fill="#15803d">läuft durch Trägheit weiter</text>
+
+  <rect x="590" y="548" width="150" height="56" rx="12" fill="#1e293b" stroke="#64748b" stroke-width="3"/>
+  <text x="616" y="584" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="850" fill="#fff">+</text>
+  <text x="713" y="584" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="850" fill="#cbd5e1">−</text>
+  <text x="665" y="538" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" font-weight="750" fill="#475569">Batterie</text>
+  <path d="M590 576H530V540L481 440" fill="none" stroke="#dc2626" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrowRed)"/>
+  <path d="M359 510L353 573" fill="none" stroke="#94a3b8" stroke-width="7" stroke-dasharray="10 8" stroke-linecap="round"/>
+  <path d="M247 489H190V616H713V604" fill="none" stroke="#334155" stroke-width="7" stroke-linecap="round" stroke-linejoin="round"/>
+
+</svg>

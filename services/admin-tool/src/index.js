@@ -51,6 +51,7 @@ function createAdminService(config, repository, llmStateStore = null) {
       recoveryBaseUrl: config.recoveryBaseUrl,
       communityPlatformBaseUrl: config.communityPlatformBaseUrl,
       communityInternalToken: config.communityInternalToken,
+      communityAdminToken: config.communityAdminToken,
       communityAiBaseUrl: config.communityAiBaseUrl,
       securityMonitorToken: config.securityMonitorToken,
     } : null,

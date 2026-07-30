@@ -145,7 +145,6 @@ const buildDeployBaseUrl = process.env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.
 const publicDemoBaseUrl = process.env.PUBLIC_DEMO_BASE_URL || "http://127.0.0.1:4920";
 const communityPlatformBaseUrl = process.env.COMMUNITY_PLATFORM_BASE_URL || "http://127.0.0.1:5200";
 const communityInternalToken = process.env.COMMUNITY_INTERNAL_TOKEN || "";
-const communityOperatorUserIds = new Set(String(process.env.COMMUNITY_OPERATOR_USER_IDS || "").split(",").map((value) => value.trim()).filter(Boolean));
 const communityNotificationEmailRecipient = process.env.COMMUNITY_NOTIFICATION_EMAIL_RECIPIENT || "";
 const otaBuildDeployBaseUrl = process.env.OTA_BUILD_DEPLOY_BASE_URL || "https://build.gernetix.com";
 const hardwareShopBaseUrl = process.env.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900";
@@ -283,7 +282,9 @@ const notifyPrivateCommunityRequest = createPrivateCommunityNotifier({
   smtpConfigStore,
   recordSystemEvent,
   webPushService,
-  operatorAccountIds: [...communityOperatorUserIds],
+  // Community processing is performed through the separate Admin Access and
+  // Admin Tool path. Customer Identity accounts never receive operator rights.
+  operatorAccountIds: [],
   emailRecipient: communityNotificationEmailRecipient,
 });
 let auth;
@@ -491,7 +492,7 @@ async function routeRequest(req, res) {
       body,
       headers: {
         "X-GerNetiX-Community-Actor": session.account.user_id,
-        "X-GerNetiX-Community-Operator": String(communityOperatorUserIds.has(session.account.user_id)),
+        "X-GerNetiX-Community-Operator": "false",
       },
     });
     if (req.method === "POST" && url.pathname === "/api/community/questions" && body?.visibility === "private") {
@@ -2199,7 +2200,7 @@ async function loadCommunityDashboardSummary(session) {
   const payload = await communityJson("/api/community/questions?mine=true", {
     headers: {
       "X-GerNetiX-Community-Actor": session.account.user_id,
-      "X-GerNetiX-Community-Operator": String(communityOperatorUserIds.has(session.account.user_id)),
+      "X-GerNetiX-Community-Operator": "false",
     },
   });
   return summarizeCommunityQuestions(payload.items);

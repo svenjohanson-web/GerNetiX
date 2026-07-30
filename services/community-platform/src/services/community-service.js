@@ -6,6 +6,7 @@ class CommunityService {
     this.repository = options.repository;
     this.triageSlaHours = options.triageSlaHours || 24;
     this.internalToken = options.internalToken || "";
+    this.adminToken = options.adminToken || "";
     this.persistenceBackend = options.persistenceBackend || "unknown";
     this.messageRateLimit = options.messageRateLimit || 20;
     this.messageRateWindowSeconds = options.messageRateWindowSeconds || 600;
@@ -40,6 +41,20 @@ class CommunityService {
         total: knowledgeDocuments.length,
         verified: knowledgeDocuments.filter((document) => document.verification_state === "verified").length,
       },
+    };
+  }
+
+  async adminOverview(actor = {}) {
+    requireAdminCapability(actor, ["admin_community_support", "admin_community_moderation"]);
+    const [supportThreads, reports, summary] = await Promise.all([
+      this.repository.listMessageThreads({ mailbox_kind: "support", archived: false }),
+      this.repository.listMessageReports({ status: "open" }),
+      this.operationsSummary(),
+    ]);
+    return {
+      support: { open: supportThreads.length },
+      questions: summary.questions,
+      reports: { open: reports.length },
     };
   }
 
@@ -270,6 +285,127 @@ class CommunityService {
     return { ...thread, members: members.map((item) => item.user_id), latest_message: message };
   }
 
+  async listAdminSupportThreads(actor = {}, query = {}) {
+    requireAdminCapability(actor, "admin_community_support");
+    const threads = await this.repository.listMessageThreads({
+      mailbox_kind: "support",
+      archived: query.folder === "archived",
+    });
+    return {
+      items: await Promise.all(threads.map((thread) => this.presentAdminSupportThread(thread))),
+    };
+  }
+
+  async getAdminSupportThread(threadId, actor = {}) {
+    requireAdminCapability(actor, "admin_community_support");
+    const thread = await this.requireSupportThread(threadId);
+    return {
+      ...thread,
+      members: await this.repository.listThreadMembers(threadId),
+      messages: await this.repository.listMessages(threadId),
+    };
+  }
+
+  async appendAdminSupportMessage(threadId, input = {}, actor = {}) {
+    requireAdminCapability(actor, "admin_community_support");
+    const thread = await this.requireSupportThread(threadId);
+    if (thread.archived_at) throw new CommunityPlatformError("message_thread_closed", "Diese Unterhaltung ist geschlossen.", 409);
+    const now = new Date().toISOString();
+    const message = {
+      message_id: createId("message"),
+      thread_id: threadId,
+      author_user_id: `admin:${required(actor.actor_id, "admin_actor_id")}`,
+      author_label: "GerNetiX Support",
+      body: required(input.body, "body").slice(0, 8000),
+      created_at: now,
+      edited_at: null,
+      deleted_at: null,
+    };
+    const members = await this.repository.listThreadMembers(threadId);
+    const recipients = members.filter((member) => member.member_role === "owner");
+    const recipientIds = recipients.length ? recipients.map((member) => member.user_id) : [thread.created_by_user_id];
+    const inboxEntries = [...new Set(recipientIds)].filter(Boolean).map((recipientUserId) => ({
+      inbox_entry_id: createId("inbox_entry"),
+      recipient_user_id: recipientUserId,
+      entry_kind: "thread",
+      thread_id: threadId,
+      state: "unread",
+      created_at: now,
+      read_at: null,
+      latest_message_id: message.message_id,
+    }));
+    await this.repository.appendMessageBundle({
+      thread: { ...thread, updated_at: now },
+      authorMember: null,
+      message,
+      inboxEntries,
+    });
+    return message;
+  }
+
+  async listAdminQuestions(actor = {}, query = {}) {
+    requireAdminCapability(actor, "admin_community_support");
+    return this.listQuestions(query, adminOperatorActor(actor));
+  }
+
+  async getAdminQuestion(questionId, actor = {}) {
+    requireAdminCapability(actor, "admin_community_support");
+    return this.getQuestion(questionId, adminOperatorActor(actor));
+  }
+
+  async triageAdminQuestion(questionId, input = {}, actor = {}) {
+    requireAdminCapability(actor, "admin_community_support");
+    return this.triageQuestion(questionId, {
+      ...input,
+      triaged_by: "GerNetiX Support",
+    }, adminOperatorActor(actor));
+  }
+
+  async createAdminAnswer(questionId, input = {}, actor = {}) {
+    requireAdminCapability(actor, "admin_community_support");
+    return this.createAnswer(questionId, input, adminOperatorActor(actor));
+  }
+
+  async verifyAdminAnswer(answerId, input = {}, actor = {}) {
+    requireAdminCapability(actor, "admin_community_moderation");
+    return this.verifyAnswer(answerId, {
+      ...input,
+      verified_by: "GerNetiX Moderation",
+    }, adminOperatorActor(actor));
+  }
+
+  async listAdminMessageReports(actor = {}, query = {}) {
+    requireAdminCapability(actor, "admin_community_moderation");
+    const result = await this.listMessageReports(query, adminOperatorActor(actor));
+    return {
+      items: await Promise.all(result.items.map(async (report) => {
+        const [message, thread] = await Promise.all([
+          this.repository.findMessage(report.message_id),
+          this.repository.findMessageThread(report.thread_id),
+        ]);
+        return {
+          ...report,
+          reported_message: message ? {
+            message_id: message.message_id,
+            author_label: message.author_label || "Mitglied",
+            body: message.body,
+            created_at: message.created_at,
+          } : null,
+          thread: thread ? {
+            thread_id: thread.thread_id,
+            thread_kind: thread.thread_kind,
+            subject: thread.subject || "Unterhaltung",
+          } : null,
+        };
+      })),
+    };
+  }
+
+  async resolveAdminMessageReport(reportId, input = {}, actor = {}) {
+    requireAdminCapability(actor, "admin_community_moderation");
+    return this.resolveMessageReport(reportId, input, adminOperatorActor(actor));
+  }
+
   async listMessageThreads(actor = {}, query = {}) {
     const userId = required(actor.user_id, "actor_user_id");
     const entries = await this.repository.listInboxEntries(userId);
@@ -300,6 +436,28 @@ class CommunityService {
       ...thread,
       members: await this.repository.listThreadMembers(threadId),
       messages: await this.repository.listMessages(threadId),
+    };
+  }
+
+  async requireSupportThread(threadId) {
+    const thread = await this.repository.findMessageThread(threadId);
+    if (!thread || thread.mailbox_kind !== "support") {
+      throw new CommunityPlatformError("support_thread_not_found", "Support-Anfrage wurde nicht gefunden.", 404);
+    }
+    return thread;
+  }
+
+  async presentAdminSupportThread(thread) {
+    const [messages, members] = await Promise.all([
+      this.repository.listMessages(thread.thread_id),
+      this.repository.listThreadMembers(thread.thread_id),
+    ]);
+    return {
+      ...thread,
+      customer_user_id: thread.created_by_user_id,
+      message_count: messages.length,
+      latest_message: messages.at(-1) || null,
+      member_count: members.length,
     };
   }
 
@@ -658,4 +816,22 @@ function requireAccess(question, actor) {
 
 function requireOperator(actor) {
   if (!actor.is_operator) throw new CommunityPlatformError("community_access_denied", "Diese Aktion ist GerNetiX vorbehalten.", 403);
+}
+
+function requireAdminCapability(actor, capabilities) {
+  const requiredCapabilities = Array.isArray(capabilities) ? capabilities : [capabilities];
+  const available = new Set(Array.isArray(actor.capabilities) ? actor.capabilities : []);
+  if (!actor.is_admin || !requiredCapabilities.some((capability) => available.has(capability))) {
+    throw new CommunityPlatformError("community_admin_access_denied", "Diese Community-Verwaltung ist nicht freigegeben.", 403);
+  }
+}
+
+function adminOperatorActor(actor) {
+  return {
+    user_id: `admin:${required(actor.actor_id, "admin_actor_id")}`,
+    is_operator: true,
+    is_admin: true,
+    actor_id: actor.actor_id,
+    capabilities: actor.capabilities || [],
+  };
 }

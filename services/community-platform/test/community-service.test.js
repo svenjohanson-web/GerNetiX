@@ -8,6 +8,8 @@ const { Readable } = require("node:stream");
 const { createConfig, createDefaultCommunityPlatform, createHttpApp } = require("../src");
 const member = { user_id: "user-1" };
 const operator = { user_id: "moderator-1", is_operator: true };
+const supportAdmin = { actor_id: "admin-support-1", is_admin: true, capabilities: ["admin_community_support"] };
+const moderationAdmin = { actor_id: "admin-moderator-1", is_admin: true, capabilities: ["admin_community_moderation"] };
 
 async function createService() {
   return createDefaultCommunityPlatform(createConfig({ COMMUNITY_TRIAGE_SLA_HOURS: "24", COMMUNITY_PERSISTENCE_BACKEND: "memory" }));
@@ -220,6 +222,41 @@ test("routes private support requests into the configured support mailbox", asyn
   await assert.rejects(service.getMessageThread(thread.thread_id, { user_id: "user-3" }), /nicht zugreifbar/);
 });
 
+test("allows the separate admin support role to process support requests without becoming an Identity operator", async () => {
+  const service = await createService();
+  const supportThread = await service.createSupportRequest({ subject: "Board startet nicht", body: "Bitte prüfen." }, member);
+  const directThread = await service.createDirectThread({ recipient_user_id: "user-2", body: "Private Direktnachricht" }, member);
+
+  const queue = await service.listAdminSupportThreads(supportAdmin);
+  assert.deepEqual(queue.items.map((item) => item.thread_id), [supportThread.thread_id]);
+  await assert.rejects(service.getAdminSupportThread(directThread.thread_id, supportAdmin), /Support-Anfrage/);
+
+  const reply = await service.appendAdminSupportMessage(supportThread.thread_id, { body: "Wir schauen uns das an." }, supportAdmin);
+  assert.equal(reply.author_label, "GerNetiX Support");
+  assert.match(reply.author_user_id, /^admin:/);
+  assert.equal((await service.getMessageThread(supportThread.thread_id, member)).messages.at(-1).body, "Wir schauen uns das an.");
+  assert.equal((await service.listInbox(member)).unread_count, 1);
+  await assert.rejects(service.listAdminSupportThreads(member), /nicht freigegeben/);
+});
+
+test("keeps community support and moderation capabilities separate for admin actors", async () => {
+  const service = await createService();
+  const privateQuestion = await service.createQuestion({ title: "Privates Projekt", body: "Bitte helfen.", visibility: "private" }, member);
+  const triaged = await service.triageAdminQuestion(privateQuestion.question_id, { priority: "high" }, supportAdmin);
+  assert.equal(triaged.triaged_by, "GerNetiX Support");
+  const answer = await service.createAdminAnswer(privateQuestion.question_id, { body: "Bitte die Spannungsversorgung prüfen." }, supportAdmin);
+  assert.match(answer.author_user_id, /^admin:/);
+  await assert.rejects(service.verifyAdminAnswer(answer.answer_id, {}, supportAdmin), /nicht freigegeben/);
+  assert.equal((await service.verifyAdminAnswer(answer.answer_id, {}, moderationAdmin)).verification_state, "verified");
+
+  const thread = await service.createDirectThread({ recipient_user_id: "user-2", body: "Bitte melden" }, member);
+  const report = await service.reportMessage(thread.thread_id, thread.latest_message.message_id, { reason: "Prüfen" }, { user_id: "user-2" });
+  await assert.rejects(service.listAdminMessageReports(supportAdmin), /nicht freigegeben/);
+  const reports = await service.listAdminMessageReports(moderationAdmin);
+  assert.equal(reports.items[0].report_id, report.report_id);
+  assert.equal(reports.items[0].reported_message.body, "Bitte melden");
+});
+
 test("archives threads per member and soft-deletes only own messages", async () => {
   const service = await createService();
   const thread = await service.createDirectThread({ recipient_user_id: "user-2", body: "Entfernen" }, member);
@@ -334,6 +371,34 @@ test("exposes thread creation, replies and read state through the Community HTTP
   });
   assert.equal(read.status, 200);
   assert.equal(read.body.state, "read");
+});
+
+test("protects the separate Community admin API with its own token and capability actor", async () => {
+  const service = await createService();
+  service.adminToken = "community-admin-secret";
+  const app = createHttpApp({ service });
+  const thread = await service.createSupportRequest({ subject: "Admin HTTP", body: "Bitte öffnen" }, member);
+  const actor = Buffer.from(JSON.stringify({ actor_id: "admin-1", role: "support", capabilities: ["admin_community_support"] })).toString("base64url");
+
+  const denied = await requestAppJson(app, "GET", "/api/community/admin/support-threads");
+  assert.equal(denied.status, 401);
+  const allowed = await requestAppJson(app, "GET", "/api/community/admin/support-threads", {
+    headers: {
+      "x-gernetix-community-admin-token": "community-admin-secret",
+      "x-gernetix-community-admin-actor": actor,
+    },
+  });
+  assert.equal(allowed.status, 200);
+  assert.equal(allowed.body.items[0].thread_id, thread.thread_id);
+  const reply = await requestAppJson(app, "POST", `/api/community/admin/support-threads/${thread.thread_id}/messages`, {
+    headers: {
+      "x-gernetix-community-admin-token": "community-admin-secret",
+      "x-gernetix-community-admin-actor": actor,
+    },
+    body: { body: "Über den getrennten Admin-Zugang." },
+  });
+  assert.equal(reply.status, 201);
+  assert.equal(reply.body.author_label, "GerNetiX Support");
 });
 
 async function requestJson(app, url, headers = {}) {

@@ -10,6 +10,7 @@ async function createDefaultCommunityPlatform(config = createConfig()) {
     repository: await createRepository(config),
     triageSlaHours: config.triageSlaHours,
     internalToken: config.internalToken,
+    adminToken: config.adminToken,
     persistenceBackend: config.persistenceBackend,
     messageRateLimit: config.messageRateLimit,
     messageRateWindowSeconds: config.messageRateWindowSeconds,

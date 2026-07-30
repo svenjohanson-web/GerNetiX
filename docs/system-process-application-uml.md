@@ -34,7 +34,7 @@ flowchart LR
     identity["Identity Server<br/>Route Registry + Linkinventar<br/>:4300"]
     usbSerialHelper["GerNetiX Serial Service<br/>nativer Swift-Hintergrunddienst<br/>TLS-Loopback :43123"]
     adminAccess["Admin Access Server + Admin Console PWA<br/>eigene Admin-Konten, Sitzungen, Rollen<br/>privat :4610"]
-    adminTool["Admin Tool API<br/>nur interner Proxyzugriff<br/>Account-Blatt + Link Integrity + LLM-/SMTP-Konfig<br/>VPS-Loopback :4600"]
+    adminTool["Admin Tool API<br/>nur interner Proxyzugriff<br/>Account-Blatt + Community-Arbeitskorb + Link Integrity + LLM-/SMTP-Konfig<br/>VPS-Loopback :4600"]
     contextManager["Context Manager<br/>:5050"]
   end
 
@@ -84,7 +84,7 @@ flowchart LR
     buildArtifactDb[("Build-Artefakte SQLite<br/>Firmware, ELF, HEX, Map, Log")]
     telemetryDb[("Telemetry PostgreSQL<br/>Messwerte, Ereignisse, Retention")]
     telemetryLegacyDb[("Telemetry Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
-    communityDb[("Community PostgreSQL<br/>public / private Autor + Operator")]
+    communityDb[("Community PostgreSQL<br/>public / private Autor + getrennte Admin-Akteure")]
     deviceManagementDb[("Device Management PostgreSQL<br/>Devices, Pairing, Inventar, Audit")]
     aiUsageDb[("AI Usage PostgreSQL<br/>Credits, Ledger, Usage, Policy, Audit")]
     hardwareCatalogDb[("Hardware Catalog PostgreSQL<br/>Capabilities, Boards, Sensoren, Flashbox-Klassen")]
@@ -150,6 +150,7 @@ flowchart LR
   esp32Basis -. "Firmware per HTTPS laden" .-> buildDeploy
 
   adminAccess --> adminTool
+  adminTool -->|"eigener Admin-Token + Capability-Akteur"| communityPlatform
   adminTool --> deviceManagement
   adminTool --> projectServer
   adminTool --> aiUsage
@@ -222,7 +223,7 @@ flowchart LR
 | Build & Deploy Server | 4400 | `http://127.0.0.1:4400/` | Echte PlatformIO-Builds, Build-Pakete und Firmware-Artefakte; kein serverseitiger USB-Flash |
 | Provisioning Tool Server | 4500 | `http://127.0.0.1:4500/` | eigenstaendige Factory-HMI, Provisioning-Sessions, USB-Factory-Flash, Device-Registrierung |
 | Admin Access Server + Admin Console | 4610 | `http://127.0.0.1:4610/admin/` | Eigene Admin-Login-PWA, persistente Sitzungen und serverseitige Rollenpruefung; proxyed danach die Admin-Funktionen |
-| Admin Tool API | 4600 | nur intern durch Admin Access Server | Account-Blatt, KI Usage, zentrale Ressourcenlimits pro Nutzerprofil, Consent-/Audit-nahe API und LLM-Routing |
+| Admin Tool API | 4600 | nur intern durch Admin Access Server | Account-Blatt, Community-Arbeitskorb für Support/Fragen/Meldungen, KI Usage, zentrale Ressourcenlimits pro Nutzerprofil, Consent-/Audit-nahe API und LLM-Routing |
 | Device Management Server | 4700 | `http://127.0.0.1:4700/` | Devices, Ownership, Purchase Contexts, Support-Status |
 | Telemetry Server | 5600 | nur intern im Docker-Netz | Nimmt bereits authentifizierte Board-Telemetrie an, prueft Board-/Projektbesitz, persistiert Messwerte und Ereignisse konto- und projektpartitioniert in `telemetry_*` mit Retention, kann gezielten Projekt-Push ausloesen und leitet kurzlebige Runtime-Zeilen an Identity weiter |
 | Project Server | 4800 | `http://127.0.0.1:4800/` | Projekte, Quellen, accountgebundener Lesson-/Step-Fortschritt, Build-Jobs, Learning Feedback sowie PostgreSQL-persistierte Ressourcenlimits und Nutzungswerte im Project-Tabellenbereich |
@@ -232,7 +233,7 @@ flowchart LR
 | AI Usage Server | 5000 | `http://127.0.0.1:5000/` | Credits, Quellenrating je Account, Preflight, Usage Events, Cost Controls |
 | Context Manager | 5050 | `http://127.0.0.1:5050/context-manager/` | Projektkontext, Vorschlaege, Context Packs |
 | Recovery Tool Server | 5100 | `http://127.0.0.1:5100/` | eigenstaendige Nutzer-/Support-HMI, Recovery-Sessions, Credential-Erneuerung, Connectivity-Recovery |
-| Community Platform | 5200 | intern im Docker-Netz | Öffentliche Community-Anfragen, private Projektbegleitung und interne Nachrichten mit Direktunterhaltungen, Projekteinladungen und Operator-Broadcasts; eigener Tabellenbereich `community_*` in `gernetix_runtime` |
+| Community Platform | 5200 | intern im Docker-Netz | Öffentliche Community-Anfragen, private Projektbegleitung und interne Nachrichten mit Direktunterhaltungen, Projekteinladungen und Broadcasts; Support, Fragen und Meldungen werden ausschließlich über getrennte Admin-Akteure mit eigener Capability geprüft; eigener Tabellenbereich `community_*` in `gernetix_runtime` |
 | Community AI Assistant | 5300 | `http://127.0.0.1:5300/` | KI-gestuetzte Community-Antworten |
 | Persistence Server | 5400 | `http://127.0.0.1:5400/` | HTTP-Zugriff auf generische SQLite-State-Dokumente |
 | AI Context Server | 5500 | `http://127.0.0.1:5500/` | Kontext-Grants, Prompt-Grundlagen, Architektur-, Intent- und lokales Help-Wissen, Access Policy, Preflight und Audit fuer KI-Datenzugriff |

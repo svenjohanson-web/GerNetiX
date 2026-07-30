@@ -153,11 +153,11 @@ const DevelopmentPlatform = (() => {
       syncChatAvailability();
     }
 
-    function handleProjectOverviewClick(event) {
+    async function handleProjectOverviewClick(event) {
       const openButton = event.target.closest("[data-open-development-project]");
-      if (openButton) { activateProject(openButton.dataset.openDevelopmentProject); return; }
-      const editButton = event.target.closest("[data-edit-development-project]");
-      if (editButton) { openProjectInIde(editButton.dataset.editDevelopmentProject); return; }
+      if (openButton) { await openExistingDevelopmentProject(openButton.dataset.openDevelopmentProject); return; }
+      const configureButton = event.target.closest("[data-configure-development-project]");
+      if (configureButton) { activateProject(configureButton.dataset.configureDevelopmentProject); return; }
       const deleteButton = event.target.closest("[data-delete-development-project]");
       if (deleteButton) deleteDevelopmentProject(deleteButton.dataset.deleteDevelopmentProject);
     }
@@ -307,7 +307,7 @@ const DevelopmentPlatform = (() => {
       const overview = document.querySelector("#developmentProjectOverview");
       overview.classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "manage");
       if (state.developmentPlatform.projectPanelMode === "manage") {
-        overview.innerHTML = projects.length ? `<header><p class="eyebrow">Meine Projekte</p><h3>Entwicklungsprojekte</h3></header>${projects.map((project) => `<article class="project-card"><div><strong>${escapeHtml(project.name)}</strong><p>${escapeHtml(project.description || "Keine Beschreibung.")}</p></div><div class="button-row"><button type="button" data-open-development-project="${escapeAttribute(project.id)}">Oeffnen</button><button type="button" data-edit-development-project="${escapeAttribute(project.id)}">Bearbeiten</button><button type="button" data-delete-development-project="${escapeAttribute(project.id)}">Loeschen</button></div></article>`).join("")}` : `<p class="empty">Noch keine eigenen Entwicklungsprojekte vorhanden.</p>`;
+        overview.innerHTML = projects.length ? `<header><p class="eyebrow">Meine Projekte</p><h3>Entwicklungsprojekte</h3></header>${projects.map((project) => `<article class="project-card"><div><strong>${escapeHtml(project.name)}</strong><p>${escapeHtml(project.description || "Keine Beschreibung.")}</p></div><div class="button-row"><button type="button" data-open-development-project="${escapeAttribute(project.id)}">In IDE oeffnen</button><button type="button" data-configure-development-project="${escapeAttribute(project.id)}">Konfiguration</button><button type="button" data-delete-development-project="${escapeAttribute(project.id)}">Loeschen</button></div></article>`).join("")}` : `<p class="empty">Noch keine eigenen Entwicklungsprojekte vorhanden.</p>`;
       }
       const isNewProject = state.developmentPlatform.projectPanelMode === "new-empty" || state.developmentPlatform.projectPanelMode === "new-template";
       document.querySelector("#developmentProjectForm").classList.toggle("hidden", !isNewProject);
@@ -1061,19 +1061,19 @@ const DevelopmentPlatform = (() => {
       }
     }
 
-    function continueLastProject() {
+    async function continueLastProject() {
       const storedProjectId = readStoredActiveProjectId();
       if (!developmentProjects().some((project) => project.id === storedProjectId)) return;
-      activateProject(storedProjectId);
+      await openExistingDevelopmentProject(storedProjectId);
     }
 
-    function selectDevelopmentProject() {
+    async function selectDevelopmentProject() {
       const projectId = document.querySelector("#developmentProjectSelect").value;
       if (!projectId) {
         setProjectStatus("Bitte waehle ein vorhandenes Projekt aus.");
         return;
       }
-      activateProject(projectId);
+      await openExistingDevelopmentProject(projectId);
     }
 
     function updateDevelopmentProjectSelection() {
@@ -1092,6 +1092,22 @@ const DevelopmentPlatform = (() => {
         ? "configuration"
         : "project_start";
       render();
+    }
+
+    async function openExistingDevelopmentProject(projectId) {
+      const project = developmentProjects().find((item) => item.id === projectId);
+      if (!project) {
+        setProjectStatus("Das ausgewaehlte Entwicklungsprojekt ist nicht mehr vorhanden.");
+        return;
+      }
+      state.developmentPlatform.activeProjectId = projectId;
+      storeActiveProjectId(projectId);
+      setProjectStatus(`Projekt „${project.name}“ wird direkt in der IDE geoeffnet...`);
+      try {
+        await openProjectInIde(projectId);
+      } catch (error) {
+        setProjectStatus(`Projekt konnte nicht in der IDE geoeffnet werden: ${error.message}`);
+      }
     }
 
     function continueToDevelopmentConfiguration() {

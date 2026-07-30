@@ -47,6 +47,24 @@ test("nur ein angemeldeter Administrator kann weitere Admin-Konten anlegen", asy
   runtime.repository.close(); fs.rmSync(runtime.dir, { recursive: true, force: true });
 });
 
+test("Admin-Zugänge können auf Support oder Community-Moderation begrenzt werden", async () => {
+  const runtime = createRuntime(); await runtime.service.bootstrap();
+  const login = await runtime.service.login({ username: "operator", password: "ein-ausreichend-langes-admin-passwort" });
+  const support = await runtime.service.createAdministrator(login.token, {
+    username: "support-team",
+    password: "ein-weiteres-ausreichend-langes-passwort",
+    role: "support",
+  });
+  const moderator = await runtime.service.createAdministrator(login.token, {
+    username: "community-team",
+    password: "noch-ein-ausreichend-langes-passwort",
+    role: "community_moderator",
+  });
+  assert.deepEqual(support.capabilities, ["admin_device_management", "support_registered_board_check", "admin_community_support"]);
+  assert.deepEqual(moderator.capabilities, ["admin_community_moderation"]);
+  runtime.repository.close(); fs.rmSync(runtime.dir, { recursive: true, force: true });
+});
+
 test("Login-PWA setzt eine HttpOnly-Sitzung und schuetzt die Console", async () => {
   const runtime = createRuntime(); await runtime.service.bootstrap();
   const app = createHttpApp({ service: runtime.service, config: { adminToolAccessToken: "", cookieSecure: false } });

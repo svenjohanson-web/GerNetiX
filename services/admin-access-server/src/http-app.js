@@ -68,7 +68,9 @@ function createHttpApp({ service, config }) {
 async function proxyAdminRequest(req, res, url, service, config) {
   const actor = await service.actorFor(readSessionToken(req));
   if (!actor) return sendJson(res, 401, { error: "not_authenticated" });
-  if (actor.role !== "administrator") return sendJson(res, 403, { error: "admin_role_required" });
+  if (actor.role !== "administrator" && !url.pathname.startsWith("/api/admin/community/")) {
+    return sendJson(res, 403, { error: "admin_role_required" });
+  }
   if (!config.adminToolAccessToken) return sendJson(res, 503, { error: "admin_backend_not_configured" });
   const target = new URL(`${url.pathname}${url.search}`, config.adminToolBaseUrl);
   const body = ["GET", "HEAD"].includes(req.method) ? undefined : await readRawBody(req);

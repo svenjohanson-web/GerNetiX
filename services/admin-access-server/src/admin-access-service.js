@@ -1,7 +1,9 @@
 const { normalizeUsername, verifyPassword } = require("./admin-access-repository");
 
 const ROLE_CAPABILITIES = {
-  administrator: ["admin_device_management", "admin_ai_usage_monitoring", "admin_ai_cost_controls", "admin_identity_configuration", "admin_link_integrity", "admin_learning"],
+  administrator: ["admin_device_management", "admin_ai_usage_monitoring", "admin_ai_cost_controls", "admin_identity_configuration", "admin_link_integrity", "admin_learning", "admin_community_support", "admin_community_moderation"],
+  support: ["admin_device_management", "support_registered_board_check", "admin_community_support"],
+  community_moderator: ["admin_community_moderation"],
 };
 
 class AdminAccessService {
@@ -41,13 +43,14 @@ class AdminAccessService {
     if (!await this.actorFor(token)) return null;
     return this.repository.listUsers();
   }
-  async createAdministrator(token, { username, password }) {
+  async createAdministrator(token, { username, password, role = "administrator" }) {
     const actor = await this.actorFor(token);
     if (!actor || actor.role !== "administrator") return null;
     validateCredential(username, password);
+    if (!Object.hasOwn(ROLE_CAPABILITIES, role)) throw new Error("Die gewählte Admin-Rolle ist ungültig.");
     if (await this.repository.findUser(normalizeUsername(username))) throw new Error("Dieser Admin-Benutzername existiert bereits.");
-    const user = await this.repository.createUser({ username, password, role: "administrator" });
-    await this.repository.audit(actor.actor_id, "administrator_created", user.admin_id);
+    const user = await this.repository.createUser({ username, password, role });
+    await this.repository.audit(actor.actor_id, "administrator_created", `${user.admin_id}:${role}`);
     return publicAdmin(user);
   }
 }

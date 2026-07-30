@@ -79,7 +79,7 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
   appendMessageBundle({ thread, authorMember, message, inboxEntries }) {
     InMemoryCommunityRepository.prototype.saveMessage.call(this, message);
     InMemoryCommunityRepository.prototype.saveMessageThread.call(this, thread);
-    InMemoryCommunityRepository.prototype.saveThreadMember.call(this, authorMember);
+    if (authorMember) InMemoryCommunityRepository.prototype.saveThreadMember.call(this, authorMember);
     for (const entry of inboxEntries) InMemoryCommunityRepository.prototype.saveInboxEntry.call(this, entry);
     this.persist();
     return { thread, authorMember, message, inboxEntries };

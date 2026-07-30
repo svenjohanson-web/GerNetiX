@@ -572,6 +572,139 @@ class AdminService {
     });
   }
 
+  async communityOverview(context) {
+    const access = await this.requireCommunityAccess(context, ["admin_community_support", "admin_community_moderation"], "community_operations_overview", "data_model.community_operations_summary");
+    const summary = await this.communityAdminRequest("/api/community/admin/overview", context);
+    return { access, summary };
+  }
+
+  async communitySupportThreads(filter, context) {
+    const access = await this.requireCommunityAccess(context, "admin_community_support", "community_support_queue_read", "data_model.community_support_thread");
+    const query = new URLSearchParams(Object.entries(filter || {}).filter(([, value]) => value));
+    const result = await this.communityAdminRequest(`/api/community/admin/support-threads${query.size ? `?${query}` : ""}`, context);
+    return { access, items: result.items || [] };
+  }
+
+  async communitySupportThread(threadId, context) {
+    const access = await this.requireCommunityAccess(context, "admin_community_support", "community_support_thread_read", `community_thread:${threadId}`);
+    const thread = await this.communityAdminRequest(`/api/community/admin/support-threads/${encodeURIComponent(threadId)}`, context);
+    return { access, thread };
+  }
+
+  async replyCommunitySupportThread(threadId, input, context) {
+    const access = await this.requireCommunityAccess(context, "admin_community_support", "community_support_thread_reply", `community_thread:${threadId}`);
+    validateRequired(input, ["body"]);
+    const message = await this.communityAdminRequest(`/api/community/admin/support-threads/${encodeURIComponent(threadId)}/messages`, context, {
+      method: "POST",
+      body: { body: input.body },
+    });
+    return { access, message };
+  }
+
+  async communityQuestions(filter, context) {
+    const access = await this.requireCommunityAccess(context, "admin_community_support", "community_question_queue_read", "data_model.community_question");
+    const query = new URLSearchParams(Object.entries(filter || {}).filter(([, value]) => value));
+    const result = await this.communityAdminRequest(`/api/community/admin/questions${query.size ? `?${query}` : ""}`, context);
+    return { access, items: result.items || [] };
+  }
+
+  async communityQuestion(questionId, context) {
+    const access = await this.requireCommunityAccess(context, "admin_community_support", "community_question_read", `community_question:${questionId}`);
+    const question = await this.communityAdminRequest(`/api/community/admin/questions/${encodeURIComponent(questionId)}`, context);
+    return { access, question };
+  }
+
+  async triageCommunityQuestion(questionId, input, context) {
+    const access = await this.requireCommunityAccess(context, "admin_community_support", "community_question_triage", `community_question:${questionId}`);
+    const question = await this.communityAdminRequest(`/api/community/admin/questions/${encodeURIComponent(questionId)}/triage`, context, {
+      method: "POST",
+      body: {
+        triage_status: input.triage_status || "triaged",
+        priority: input.priority || "normal",
+        question_status: input.question_status || "open",
+        moderation_note: String(input.moderation_note || "").slice(0, 1000),
+      },
+    });
+    return { access, question };
+  }
+
+  async answerCommunityQuestion(questionId, input, context) {
+    const access = await this.requireCommunityAccess(context, "admin_community_support", "community_question_answer", `community_question:${questionId}`);
+    validateRequired(input, ["body"]);
+    const answer = await this.communityAdminRequest(`/api/community/admin/questions/${encodeURIComponent(questionId)}/answers`, context, {
+      method: "POST",
+      body: { body: input.body },
+    });
+    return { access, answer };
+  }
+
+  async verifyCommunityAnswer(answerId, input, context) {
+    const access = await this.requireCommunityAccess(context, "admin_community_moderation", "community_answer_verify", `community_answer:${answerId}`);
+    const answer = await this.communityAdminRequest(`/api/community/admin/answers/${encodeURIComponent(answerId)}/verify`, context, {
+      method: "POST",
+      body: {
+        verification_state: input.verification_state || "verified",
+        note: String(input.note || "").slice(0, 1000),
+        accept: input.accept !== false,
+      },
+    });
+    return { access, answer };
+  }
+
+  async communityMessageReports(filter, context) {
+    const access = await this.requireCommunityAccess(context, "admin_community_moderation", "community_message_report_queue_read", "data_model.community_message_report");
+    const query = new URLSearchParams(Object.entries(filter || {}).filter(([, value]) => value));
+    const result = await this.communityAdminRequest(`/api/community/admin/message-reports${query.size ? `?${query}` : ""}`, context);
+    return { access, items: result.items || [] };
+  }
+
+  async resolveCommunityMessageReport(reportId, input, context) {
+    const access = await this.requireCommunityAccess(context, "admin_community_moderation", "community_message_report_resolve", `community_message_report:${reportId}`);
+    const report = await this.communityAdminRequest(`/api/community/admin/message-reports/${encodeURIComponent(reportId)}/resolve`, context, {
+      method: "POST",
+      body: {
+        status: input.status === "dismissed" ? "dismissed" : "resolved",
+        resolution_note: String(input.resolution_note || "").slice(0, 1000),
+      },
+    });
+    return { access, report };
+  }
+
+  async requireCommunityAccess(context, capabilities, purpose, dataModelId) {
+    const requiredCapabilities = Array.isArray(capabilities) ? capabilities : [capabilities];
+    const available = new Set(context.actor.capabilities || []);
+    const capability = requiredCapabilities.find((item) => available.has(item)) || requiredCapabilities[0];
+    const access = await this.accessPolicy.decideAdminCapability({
+      actor: context.actor,
+      capability,
+      purpose,
+      dataModelId,
+    });
+    if (access.decision === "denied") {
+      throw new AdminToolError("access_denied", "Die Community-Verwaltung ist für diesen Admin-Zugang nicht freigegeben.", 403, access);
+    }
+    return access;
+  }
+
+  async communityAdminRequest(pathname, context, options = {}) {
+    if (!this.serviceClients?.communityPlatformBaseUrl || !this.serviceClients.communityAdminToken) {
+      throw new AdminToolError("community_admin_connection_unavailable", "Die getrennte Community-Admin-Verbindung ist noch nicht konfiguriert.", 503);
+    }
+    const actor = {
+      actor_id: context.actor.actor_id,
+      role: context.actor.role,
+      capabilities: context.actor.capabilities || [],
+    };
+    return this.httpJson(this.serviceClients.communityPlatformBaseUrl, pathname, {
+      ...options,
+      headers: {
+        ...(options.headers || {}),
+        "x-gernetix-community-admin-token": this.serviceClients.communityAdminToken,
+        "x-gernetix-community-admin-actor": Buffer.from(JSON.stringify(actor)).toString("base64url"),
+      },
+    });
+  }
+
   llmConfig() {
     return this.llmConfigStore.publicConfig();
   }

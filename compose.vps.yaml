@@ -266,6 +266,9 @@ services:
 
   project-server:
     <<: *node-service
+    networks:
+      - backend
+      - loopback-access
     environment:
       GERNETIX_SERVICE: project-server
       HOST: 0.0.0.0
@@ -344,6 +347,9 @@ services:
 
   device-management-server:
     <<: *node-service
+    networks:
+      - backend
+      - loopback-access
     environment:
       GERNETIX_SERVICE: device-management-server
       HOST: 0.0.0.0
@@ -362,6 +368,9 @@ services:
 
   telemetry-server:
     <<: *node-service
+    networks:
+      - backend
+      - loopback-access
     environment:
       GERNETIX_SERVICE: telemetry-server
       HOST: 0.0.0.0
@@ -410,6 +419,9 @@ services:
 
   hardware-shop:
     <<: *node-service
+    networks:
+      - backend
+      - loopback-access
     environment:
       GERNETIX_SERVICE: hardware-shop
       HOST: 0.0.0.0
@@ -432,6 +444,9 @@ services:
 
   ai-usage-server:
     <<: *node-service
+    networks:
+      - backend
+      - loopback-access
     environment:
       GERNETIX_SERVICE: ai-usage-server
       HOST: 0.0.0.0
@@ -450,6 +465,9 @@ services:
 
   community-platform:
     <<: *node-service
+    networks:
+      - backend
+      - loopback-access
     environment:
       GERNETIX_SERVICE: community-platform
       HOST: 0.0.0.0
@@ -461,8 +479,8 @@ services:
       COMMUNITY_POSTGRES_USER: gernetix_runtime
       COMMUNITY_POSTGRES_PASSWORD: ${RUNTIME_POSTGRES_PASSWORD:?RUNTIME_POSTGRES_PASSWORD muss gesetzt sein}
       COMMUNITY_INTERNAL_TOKEN: ${COMMUNITY_INTERNAL_TOKEN:?COMMUNITY_INTERNAL_TOKEN muss gesetzt sein}
+      COMMUNITY_ADMIN_TOKEN: ${COMMUNITY_ADMIN_TOKEN:?COMMUNITY_ADMIN_TOKEN muss gesetzt sein}
       COMMUNITY_SUPPORT_USER_IDS: ${COMMUNITY_SUPPORT_USER_IDS:-}
-      COMMUNITY_OPERATOR_USER_IDS: ${COMMUNITY_OPERATOR_USER_IDS:-}
     expose: ["5200"]
     ports:
       - "127.0.0.1:5200:5200"
@@ -471,6 +489,15 @@ services:
 
   ai-context-server:
     <<: *node-service
+    networks:
+      - backend
+      - loopback-access
+    healthcheck:
+      test: ["CMD", "node", "/app/docker/healthcheck.js"]
+      interval: 15s
+      timeout: 4s
+      retries: 5
+      start_period: 120s
     environment:
       GERNETIX_SERVICE: ai-context-server
       HOST: 0.0.0.0
@@ -524,6 +551,7 @@ services:
       AI_CONTEXT_BASE_URL: http://ai-context-server:5500
       COMMUNITY_PLATFORM_BASE_URL: http://community-platform:5200
       COMMUNITY_INTERNAL_TOKEN: ${COMMUNITY_INTERNAL_TOKEN:?COMMUNITY_INTERNAL_TOKEN muss gesetzt sein}
+      COMMUNITY_ADMIN_TOKEN: ${COMMUNITY_ADMIN_TOKEN:?COMMUNITY_ADMIN_TOKEN muss gesetzt sein}
     ports:
       - "127.0.0.1:${ADMIN_PORT:-4600}:4600"
     depends_on:
@@ -599,7 +627,6 @@ services:
       AI_CONTEXT_BASE_URL: http://ai-context-server:5500
       COMMUNITY_PLATFORM_BASE_URL: http://community-platform:5200
       COMMUNITY_INTERNAL_TOKEN: ${COMMUNITY_INTERNAL_TOKEN:?COMMUNITY_INTERNAL_TOKEN muss gesetzt sein}
-      COMMUNITY_OPERATOR_USER_IDS: ${COMMUNITY_OPERATOR_USER_IDS:-}
       COMMUNITY_NOTIFICATION_EMAIL_RECIPIENT: ${COMMUNITY_NOTIFICATION_EMAIL_RECIPIENT:-}
       ADMIN_TOOL_BASE_URL: http://admin-tool:4600
       SYSTEM_EVENT_INGEST_TOKEN: ${SYSTEM_EVENT_INGEST_TOKEN:?SYSTEM_EVENT_INGEST_TOKEN muss gesetzt sein}
@@ -718,6 +745,7 @@ networks:
   edge:
   backend:
     internal: true
+  loopback-access:
   runtime-postgres-access:
 
 volumes:

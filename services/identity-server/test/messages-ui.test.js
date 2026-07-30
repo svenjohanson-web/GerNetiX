@@ -10,8 +10,12 @@ const html = fs.readFileSync(path.join(root, "public", "app", "index.html"), "ut
 const client = fs.readFileSync(path.join(root, "public", "app", "app.js"), "utf8");
 const css = fs.readFileSync(path.join(root, "public", "app", "app.css"), "utf8");
 
-test("adds Messages to the authenticated hamburger menu and route map", () => {
-  assert.match(html, /href="\/app\/messages\/" data-route="messages">Nachrichten<\/a>/);
+test("keeps Messages permanently visible outside the authenticated hamburger groups", () => {
+  const menu = html.slice(html.indexOf('<nav id="mainMenu"'), html.indexOf("</nav>", html.indexOf('<nav id="mainMenu"')));
+  const accountGroupEnd = menu.indexOf("</details>", menu.indexOf('platform.menu.account'));
+  const messagesIndex = menu.indexOf('id="messagesMenuLink"');
+  assert.ok(messagesIndex > accountGroupEnd);
+  assert.match(menu, /id="messagesMenuLink" class="utility menu-fixed-action" href="\/app\/messages\/" data-route="messages">Nachrichten<\/a>/);
   assert.match(client, /messages: "messagesView"/);
   assert.match(client, /if \(route === "messages"\) loadMessages\(\)/);
 });

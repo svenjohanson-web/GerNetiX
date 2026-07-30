@@ -9,7 +9,10 @@ const motorProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte"
 const printedMotorSeries = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "druckmotoren", "index.html"), "utf8");
 const motorFieldIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-current-magnetic-field.svg"), "utf8");
 const motorForceIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-current-force.svg"), "utf8");
-const motorCoilIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-simple-coil-force-pair.png"));
+const motorCoilIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-simple-coil-force-pair-v2.png"));
+const motorReedBeforeIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-reed-timing-before.svg"), "utf8");
+const motorReedOnIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-reed-timing-on.svg"), "utf8");
+const motorReedAfterIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-reed-timing-after.svg"), "utf8");
 const knowledgeContent = fs.readFileSync(path.join(root, "public", "app", "knowledge-content.js"), "utf8");
 const informationView = fs.readFileSync(path.join(root, "public", "app", "information-view.js"), "utf8");
 const server = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
@@ -76,12 +79,33 @@ test("keeps the printed motor series compact and material-first", () => {
 test("uses the motor diagrams at the matching build stages", () => {
   assert.match(motorProject, /motor-learning-current-magnetic-field\.svg/);
   assert.match(motorProject, /motor-learning-current-force\.svg/);
-  assert.match(motorProject, /motor-learning-simple-coil-force-pair\.png/);
+  assert.match(motorProject, /motor-learning-simple-coil-force-pair-v2\.png/);
   assert.equal(motorCoilIllustration.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
   assert.ok(motorCoilIllustration.length > 100_000);
-  assert.match(motorProject, /motor-learning-reed-switch\.svg/);
+  assert.match(motorProject, /motor-learning-reed-timing-on\.svg/);
   assert.match(motorProject, /motor-learning-transistor-switch\.svg/);
   assert.match(motorProject, /motor-learning-homopolar\.svg/);
+});
+
+test("shows the complete red positive lead from battery to the left brush", () => {
+  assert.match(knowledgeContent, /motor-learning-simple-coil-force-pair-v2\.png/);
+  assert.match(knowledgeContent, /rote Plusleiter führt von der Batterie außen am Hufeisenmagneten entlang zum linken Bürstenkontakt/);
+  assert.match(motorProject, /gut sichtbarem rotem Plusleiter vom Batteriepol zum linken Bürstenkontakt/);
+});
+
+test("shows a physically consistent three-step switching sequence for the reed motor", () => {
+  assert.match(knowledgeContent, /Reedkontakt-Motor: Die Rotorlage bestimmt den Einschaltzeitpunkt/);
+  assert.match(knowledgeContent, /motor-learning-reed-timing-before\.svg[\s\S]*motor-learning-reed-timing-on\.svg[\s\S]*motor-learning-reed-timing-after\.svg/);
+  assert.match(knowledgeContent, /In Bild 1, 2 und 3 bleiben Reedkontakt und Spule an derselben Stelle[\s\S]*Bild 1 zeigt den offenen Stromkreis[\s\S]*In Bild 2 liegt der Randmagnet nah am Reedkontakt[\s\S]*Bild 3 zeigt den Magneten hinter der Spule/);
+  assert.match(motorReedBeforeIllustration, /Vor dem Schaltfenster[\s\S]*Reed offen[\s\S]*stromlos/);
+  assert.match(motorReedOnIllustration, /Magnet im Schaltfenster[\s\S]*Reed geschlossen/);
+  assert.match(motorReedOnIllustration, /Drehrichtung[\s\S]*Anziehung/);
+  assert.match(motorReedAfterIllustration, /Magnet hinter der Spule[\s\S]*Reed wieder offen[\s\S]*läuft durch Trägheit weiter/);
+  for (const illustration of [motorReedBeforeIllustration, motorReedOnIllustration, motorReedAfterIllustration]) {
+    assert.match(illustration, /Rotormagnet[\s\S]*Schaltfenster[\s\S]*Spule fest[\s\S]*Batterie/);
+    assert.match(illustration, /stop-color="#(?:111827|10231d)"[\s\S]*stop-color="#0b1220"/);
+    assert.doesNotMatch(illustration, /Was passiert hier\?|Warum dreht er weiter\?|Warum läuft er weiter\?/);
+  }
 });
 
 test("explains current, field and winding without ambiguous loose conductors", () => {
