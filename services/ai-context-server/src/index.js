@@ -13,6 +13,28 @@ async function createDefaultAiContextServer(config = createConfig()) {
   });
 }
 
+async function startAiContextBackgroundInitialization(service, logger = console) {
+  if (typeof service?.repository?.backfillMissingEmbeddings !== "function") {
+    return { completed:true, updated:0 };
+  }
+  try {
+    const result = await service.repository.backfillMissingEmbeddings();
+    if (!result.completed) {
+      logger.warn(`AI Context Embedding-Backfill pausiert: ${result.reason}`);
+    } else if (result.updated > 0) {
+      logger.log(`AI Context Embedding-Backfill abgeschlossen: ${result.updated} Eintraege.`);
+    }
+    return result;
+  } catch (error) {
+    logger.warn(`AI Context Embedding-Backfill pausiert: ${error?.message || error}`);
+    return {
+      completed:false,
+      updated:0,
+      reason:error?.message || String(error),
+    };
+  }
+}
+
 async function createRepository(config) {
   if (config.persistenceBackend === "postgres" || config.persistenceBackend === "postgresql") {
     const repository = await PostgresAiContextRepository.create({
@@ -46,4 +68,5 @@ module.exports = {
   OllamaEmbeddingClient,
   AiContextService,
   createDefaultAiContextServer,
+  startAiContextBackgroundInitialization,
 };

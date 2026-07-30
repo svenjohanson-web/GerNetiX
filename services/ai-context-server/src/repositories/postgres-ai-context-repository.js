@@ -35,9 +35,52 @@ class PostgresAiContextRepository {
   async seedDefaults() {
     for (const source of defaultSources()) await this.saveSource(source, { preserveExisting:true });
     for (const prompt of defaultPromptFoundations()) await this.savePromptFoundation(prompt, { preserveExisting:true });
-    for (const component of defaultArchitectureComponents()) await this.saveArchitectureComponent(component, { preserveExisting:true });
-    for (const article of defaultHelpArticles()) await this.saveHelpArticle(article, { preserveExisting:true });
+    for (const component of defaultArchitectureComponents()) {
+      await this.saveArchitectureComponent(component, { preserveExisting:true, skipEmbedding:true });
+    }
+    for (const article of defaultHelpArticles()) {
+      await this.saveHelpArticle(article, { preserveExisting:true, skipEmbedding:true });
+    }
     await this.savePolicy(defaultPolicy(), { preserveExisting:true });
+  }
+
+  async backfillMissingEmbeddings() {
+    if (!this.embeddingClient) return { completed:true, updated:0 };
+    const targets = [
+      {
+        table:"ai_context_architecture_components",
+        idColumn:"component_id",
+        text:componentText,
+      },
+      {
+        table:"ai_context_help_articles",
+        idColumn:"article_id",
+        text:helpArticleText,
+      },
+    ];
+    let updated = 0;
+    for (const target of targets) {
+      const result = await this.pool.query(
+        `SELECT ${target.idColumn} AS item_id, raw_json FROM ${target.table} WHERE embedding IS NULL ORDER BY ${target.idColumn}`,
+      );
+      for (const row of result.rows) {
+        try {
+          const embedding = await this.embeddingClient.embed(target.text(raw(row)));
+          await this.pool.query(
+            `UPDATE ${target.table} SET embedding=$1::vector WHERE ${target.idColumn}=$2 AND embedding IS NULL`,
+            [vectorSql(embedding), row.item_id],
+          );
+          updated += 1;
+        } catch (error) {
+          return {
+            completed:false,
+            updated,
+            reason:error?.message || "embedding_provider_unavailable",
+          };
+        }
+      }
+    }
+    return { completed:true, updated };
   }
 
   async saveGrant(grant) {
@@ -91,7 +134,9 @@ class PostgresAiContextRepository {
 
   async saveArchitectureComponent(component, options = {}) {
     let embedding=null;
-    try { embedding=await this.embeddingClient?.embed(componentText(component)); } catch {}
+    if (!options.skipEmbedding) {
+      try { embedding=await this.embeddingClient?.embed(componentText(component)); } catch {}
+    }
     const conflict=options.preserveExisting?"DO NOTHING":"DO UPDATE SET name=EXCLUDED.name,status=EXCLUDED.status,search_text=EXCLUDED.search_text,embedding=COALESCE(EXCLUDED.embedding,ai_context_architecture_components.embedding),updated_at=EXCLUDED.updated_at,raw_json=EXCLUDED.raw_json";
     await this.pool.query(`INSERT INTO ai_context_architecture_components (component_id,name,status,search_text,embedding,updated_at,raw_json)
       VALUES ($1,$2,$3,$4,$5::vector,$6,$7) ON CONFLICT (component_id) ${conflict}`,
@@ -102,7 +147,9 @@ class PostgresAiContextRepository {
 
   async saveHelpArticle(article, options = {}) {
     let embedding = null;
-    try { embedding = await this.embeddingClient?.embed(helpArticleText(article)); } catch {}
+    if (!options.skipEmbedding) {
+      try { embedding = await this.embeddingClient?.embed(helpArticleText(article)); } catch {}
+    }
     const conflict = options.preserveExisting ? "DO NOTHING" : "DO UPDATE SET title=EXCLUDED.title,status=EXCLUDED.status,search_text=EXCLUDED.search_text,embedding=COALESCE(EXCLUDED.embedding,ai_context_help_articles.embedding),updated_at=EXCLUDED.updated_at,raw_json=EXCLUDED.raw_json";
     await this.pool.query(`INSERT INTO ai_context_help_articles (article_id,title,status,search_text,embedding,updated_at,raw_json)
       VALUES ($1,$2,$3,$4,$5::vector,$6,$7) ON CONFLICT (article_id) ${conflict}`,

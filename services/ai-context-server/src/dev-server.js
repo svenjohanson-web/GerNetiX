@@ -1,5 +1,10 @@
 const http = require("node:http");
-const { createConfig, createDefaultAiContextServer, createHttpApp } = require("./index");
+const {
+  createConfig,
+  createDefaultAiContextServer,
+  createHttpApp,
+  startAiContextBackgroundInitialization,
+} = require("./index");
 
 const config = createConfig();
 start().catch((error) => {
@@ -15,5 +20,6 @@ async function start() {
 
   server.listen(config.port, config.host, () => {
     console.log(`AI Context Server: http://${config.host}:${config.port}`);
+    void startAiContextBackgroundInitialization(service);
   });
 }

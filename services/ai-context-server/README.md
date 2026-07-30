@@ -54,6 +54,13 @@ npm run dev
 
 Beim ersten PostgreSQL-Start werden vorhandene Daten aus `AI_CONTEXT_SQLITE_PATH` einmalig uebernommen. Die Migration wird in `ai_context_migrations` markiert und bei folgenden Starts nicht wiederholt.
 
+Die PostgreSQL-Schema- und Seed-Initialisierung wartet nicht auf Ollama. Fehlende
+Embeddings fuer die mitgelieferten Architektur-Bausteine und Help-Artikel werden
+erst nach dem HTTP-Start im Hintergrund ergaenzt. Ist der Embedding-Provider nicht
+erreichbar, pausiert dieser Lauf nach dem ersten Fehler; die API bleibt gesund und
+die Suche verwendet weiterhin den lexikalischen Fallback. Ein spaeterer Neustart
+versucht ausschliesslich noch fehlende Embeddings erneut.
+
 ## Sicherheitsregeln
 
 - Ohne aktiven passenden Grant wird Kontextzugriff abgelehnt.

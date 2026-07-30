@@ -2,6 +2,9 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { createConfig } = require("../src/config");
+const {
+  startAiContextBackgroundInitialization,
+} = require("../src");
 const { PostgresAiContextRepository } = require("../src/repositories/postgres-ai-context-repository");
 
 test("PostgreSQL configuration keeps credentials separate from the connection URL", () => {
@@ -62,6 +65,97 @@ test("repository initializes pgvector and uses vector similarity search", async 
   assert.equal(result.items[0].component_id, "component.semantic_test");
   assert.equal(result.items[0].semantic_score, 0.91);
 });
+
+test("repository startup seeds defaults without waiting for embedding calls", async () => {
+  const queries = [];
+  let embeddingCalls = 0;
+  await PostgresAiContextRepository.create({
+    pool: createPoolStub(queries),
+    dimensions: 768,
+    embeddingClient: {
+      model: "test-embedding",
+      embed: async () => {
+        embeddingCalls += 1;
+        return Array(768).fill(0);
+      },
+    },
+  });
+
+  assert.equal(embeddingCalls, 0);
+  const componentInsert = queries.find(({ sql }) => sql.includes("INSERT INTO ai_context_architecture_components"));
+  const articleInsert = queries.find(({ sql }) => sql.includes("INSERT INTO ai_context_help_articles"));
+  assert.equal(componentInsert.params[4], null);
+  assert.equal(articleInsert.params[4], null);
+});
+
+test("background embedding backfill stops after the first provider failure", async () => {
+  let embeddingCalls = 0;
+  const repository = new PostgresAiContextRepository({
+    pool: {
+      query: async (sql) => {
+        if (sql.includes("FROM ai_context_architecture_components")) {
+          return {
+            rows: [
+              { item_id:"component-1", raw_json:{ name:"Component 1" } },
+              { item_id:"component-2", raw_json:{ name:"Component 2" } },
+            ],
+          };
+        }
+        return { rows:[] };
+      },
+    },
+    embeddingClient: {
+      embed: async () => {
+        embeddingCalls += 1;
+        throw new Error("provider timeout");
+      },
+    },
+  });
+  const warnings = [];
+
+  const result = await startAiContextBackgroundInitialization(repositoryService(repository), {
+    log() {},
+    warn(message) { warnings.push(message); },
+  });
+
+  assert.deepEqual(result, {
+    completed:false,
+    updated:0,
+    reason:"provider timeout",
+  });
+  assert.equal(embeddingCalls, 1);
+  assert.deepEqual(warnings, ["AI Context Embedding-Backfill pausiert: provider timeout"]);
+});
+
+test("background embedding backfill updates missing vectors", async () => {
+  const queries = [];
+  const embedding = Array(768).fill(0);
+  embedding[0] = 1;
+  const repository = new PostgresAiContextRepository({
+    pool: {
+      query: async (sql, params = []) => {
+        queries.push({ sql, params });
+        if (sql.includes("FROM ai_context_architecture_components")) {
+          return { rows:[{ item_id:"component-1", raw_json:{ name:"Component 1" } }] };
+        }
+        if (sql.includes("FROM ai_context_help_articles")) return { rows:[] };
+        return { rows:[] };
+      },
+    },
+    embeddingClient: { embed: async () => embedding },
+  });
+
+  const result = await repository.backfillMissingEmbeddings();
+
+  assert.deepEqual(result, { completed:true, updated:1 });
+  const update = queries.find(({ sql }) => sql.includes("UPDATE ai_context_architecture_components"));
+  assert.equal(update.params[1], "component-1");
+  assert.match(update.params[0], /^\[1,0,/);
+});
+
+function repositoryService(repository) {
+  return { repository };
+}
 
 function createPoolStub(queries) {
   const query = async (sql, params = []) => {
