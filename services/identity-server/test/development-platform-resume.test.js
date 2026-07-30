@@ -79,12 +79,10 @@ test("never traps an account without development projects in the open or manage 
   assert.match(publicHtml, /id="developmentProjectOpenEmpty"/);
   assert.match(publicHtml, /Noch kein Entwicklungsprojekt vorhanden/);
   assert.match(publicHtml, /data-development-project-back>Zurück zur Auswahl/);
-  assert.match(publicHtml, /data-development-project-new-empty>Leer beginnen/);
-  assert.match(publicHtml, /data-development-project-new-template>Aus Template/);
+  assert.doesNotMatch(publicHtml, /data-development-project-new-empty/);
+  assert.doesNotMatch(publicHtml, /data-development-project-new-template/);
   assert.match(publicController, /function handleProjectPanelNavigation/);
   assert.match(publicController, /showProjectPanel\("choice"\)/);
-  assert.match(publicController, /showProjectPanel\("new-empty"\)/);
-  assert.match(publicController, /showProjectPanel\("new-template"\)/);
   assert.match(publicController, /developmentProjectOpenSelection"\)\.classList\.toggle\("hidden", projects\.length === 0\)/);
   assert.match(publicController, /developmentProjectOpenEmpty"\)\.classList\.toggle\("hidden", projects\.length > 0\)/);
   assert.match(publicController, /Noch keine eigenen Entwicklungsprojekte vorhanden/);

@@ -166,14 +166,6 @@ const DevelopmentPlatform = (() => {
     function handleProjectPanelNavigation(event) {
       if (event.target.closest("[data-development-project-back]")) {
         showProjectPanel("choice");
-        return;
-      }
-      if (event.target.closest("[data-development-project-new-empty]")) {
-        showProjectPanel("new-empty");
-        return;
-      }
-      if (event.target.closest("[data-development-project-new-template]")) {
-        showProjectPanel("new-template");
       }
     }
 
@@ -326,7 +318,7 @@ const DevelopmentPlatform = (() => {
       if (state.developmentPlatform.projectPanelMode === "manage") {
         const content = projects.length
           ? projects.map((project) => `<article class="project-card"><div><strong>${escapeHtml(project.name)}</strong><p>${escapeHtml(project.description || "Keine Beschreibung.")}</p></div><div class="button-row"><button type="button" data-open-development-project="${escapeAttribute(project.id)}">In IDE oeffnen</button><button type="button" data-configure-development-project="${escapeAttribute(project.id)}">Konfiguration</button><button type="button" data-delete-development-project="${escapeAttribute(project.id)}">Loeschen</button></div></article>`).join("")
-          : `<div class="development-project-empty"><strong>Noch keine eigenen Entwicklungsprojekte vorhanden</strong><p>Lege ein neues Projekt an oder kehre zur Startauswahl zurück.</p><div class="button-row"><button type="button" data-development-project-new-empty>Leer beginnen</button><button type="button" data-development-project-new-template>Aus Template</button></div></div>`;
+          : `<div class="development-project-empty"><strong>Noch keine eigenen Entwicklungsprojekte vorhanden</strong><p>Kehre zur Auswahl zurück, um einen anderen Einstieg zu wählen.</p></div>`;
         overview.innerHTML = `<header><p class="eyebrow">Meine Projekte</p><h3>Entwicklungsprojekte</h3></header>${content}<div class="button-row"><button type="button" data-development-project-back>Zurück zur Auswahl</button></div>`;
       }
       const isNewProject = state.developmentPlatform.projectPanelMode === "new-empty" || state.developmentPlatform.projectPanelMode === "new-template";
@@ -344,7 +336,7 @@ const DevelopmentPlatform = (() => {
         ? ""
         : projects.length
           ? "Bitte waehle, wie du im Entwicklungsbereich starten moechtest."
-          : "Noch kein Entwicklungsprojekt vorhanden. Du kannst ein neues Projekt anlegen oder zurück zur Auswahl.");
+          : "Noch kein Entwicklungsprojekt vorhanden. Bitte kehre zur Auswahl zurück.");
     }
 
     function enterProjectStart() {
