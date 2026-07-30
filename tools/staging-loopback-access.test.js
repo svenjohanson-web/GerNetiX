@@ -34,3 +34,9 @@ test("remote-dev services with loopback ports use a non-internal access network"
 
   assert.match(compose, /\n  loopback-access:\n  runtime-postgres-access:\n/);
 });
+
+test("AI Context warmup does not fail the staging deployment prematurely", () => {
+  const block = serviceBlock("ai-context-server");
+  assert.match(block, /\n    healthcheck:\n      test: \["CMD", "node", "\/app\/docker\/healthcheck\.js"\]\n/);
+  assert.match(block, /\n      start_period: 120s\n/);
+});
