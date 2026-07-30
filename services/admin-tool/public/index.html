@@ -20,6 +20,7 @@
         <nav class="admin-nav operator-nav" aria-label="Admin Navigation">
           <button type="button" data-admin-view="statistics">Übersicht</button>
           <button type="button" data-admin-view="monitoring">Betrieb</button>
+          <button type="button" data-admin-view="link-integrity">Links</button>
           <button type="button" data-admin-view="system-events">Sicherheit</button>
           <button type="button" data-admin-view="accounts">Accounts</button>
           <button type="button" data-admin-view="resources">Ressourcen</button>
@@ -102,6 +103,38 @@
             <button id="refreshMonitoringButton" type="button">Status aktualisieren</button>
           </div>
           <div id="monitoringServiceList" class="monitoring-grid"></div>
+        </section>
+      </section>
+
+      <section id="linkIntegrityView" class="admin-view hidden">
+        <section class="metrics-grid" id="linkIntegrityMetrics"></section>
+        <section class="panel">
+          <div class="section-head">
+            <div>
+              <p class="eyebrow">Operations</p>
+              <h2>Zentrales Referenz- und Linkregister</h2>
+              <p class="helper-text">Identity liefert Ziele und Fundstellen automatisch. Prüfungen verwenden für interne Routen ein technisches Testkonto; Geheimnisse werden weder im Register noch in Prüfergebnissen gespeichert.</p>
+            </div>
+            <div class="button-row">
+              <button id="refreshLinkIntegrityButton" type="button">Neu laden</button>
+              <button id="syncLinkIntegrityButton" class="primary" type="button">Identity-Inventar synchronisieren</button>
+            </div>
+          </div>
+          <div id="linkIntegrityStatus" class="flash-status hidden"></div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Ziel</th>
+                  <th>Typ / Zugriff</th>
+                  <th>Owner</th>
+                  <th>Fundstellen</th>
+                  <th>Letzte Prüfung</th>
+                </tr>
+              </thead>
+              <tbody id="linkIntegrityRows"></tbody>
+            </table>
+          </div>
         </section>
       </section>
 

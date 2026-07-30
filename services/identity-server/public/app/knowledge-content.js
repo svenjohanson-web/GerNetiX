@@ -22,6 +22,16 @@ const KnowledgeContent = (() => {
       access: "public",
       children: [
         {
+          id: "electrical-basics-and-component-protection",
+          title: "Elektrische Grundbegriffe und Bauteilschutz",
+          articleId: "electrical-basics-and-component-protection",
+        },
+        {
+          id: "digital-signals-data-and-protocols",
+          title: "Digitale Signale, Daten und Protokolle",
+          articleId: "digital-signals-data-and-protocols",
+        },
+        {
           id: "physical-limits",
           title: "Grenzen der Physik",
           articleId: "physical-limits",
@@ -42,7 +52,7 @@ const KnowledgeContent = (() => {
       id: "sensors-and-actuators",
       title: "Sensorik und Aktorik",
       description: "Wie Systeme ihre Umgebung wahrnehmen, Entscheidungen treffen und darauf wirken – von Physik und Elektronik bis zur Firmware.",
-      access: "public",
+      access: "premium",
       children: [
         {
           id: "sensors",
@@ -2634,6 +2644,170 @@ const KnowledgeContent = (() => {
         "glossary-basics",
       ],
     },
+    "electrical-basics-and-component-protection": {
+      title: "Elektrische Grundbegriffe und Bauteilschutz",
+      summary: "Spannung, Strom, Leistung, Energie und Arbeit verständlich unterscheiden – und verstehen, warum Bauteile durch zu viel Spannung, Strom oder Temperatur kaputtgehen.",
+      access: "public",
+      sections: [
+        {
+          id: "electrical-basics-voltage-current",
+          heading: "Spannung und Strom: Antrieb und Bewegung",
+          paragraphs: [
+            "Spannung U beschreibt einen elektrischen Unterschied zwischen zwei Punkten. Sie ist der Antrieb dafür, dass sich elektrische Ladung bewegen kann; gemessen wird sie in Volt (V). Eine Batterie mit 5 V stellt zwischen Plus und Minus diesen Unterschied bereit.",
+            "Strom I ist die tatsächlich fließende Ladungsmenge pro Zeit. Er wird in Ampere (A) gemessen. Ob und wie viel Strom fließt, hängt nicht nur von der Spannung ab, sondern auch vom angeschlossenen Stromkreis: Ein offener Schalter lässt praktisch keinen Strom fließen, ein passender Widerstand begrenzt ihn.",
+          ],
+          table: {
+            headers: ["Größe", "Frage", "Einheit", "Einfaches Bild"],
+            rows: [
+              ["Spannung U", "Wie stark treibt der Unterschied?", "Volt (V)", "Druckunterschied"],
+              ["Strom I", "Wie viel fließt gerade?", "Ampere (A)", "Menge pro Sekunde"],
+            ],
+          },
+        },
+        {
+          id: "electrical-basics-power-energy-work",
+          heading: "Leistung, Energie und Arbeit: Wie schnell und wie lange?",
+          paragraphs: [
+            "Leistung P beschreibt, wie schnell elektrische Energie gerade umgesetzt wird. Sie wird in Watt (W) gemessen. In einem Gleichstromkreis gilt näherungsweise P = U × I: 12 V und 2 A bedeuten 24 W. Leistung ist deshalb kein Vorrat, sondern eine momentane Rate.",
+            "Energie E ist der Vorrat beziehungsweise die über eine Zeit umgesetzte Menge. Sie wird oft in Wattstunden (Wh) oder Joule (J) angegeben. Elektrische Arbeit ist die übertragene oder umgesetzte Energie: Läuft eine 24-W-Lampe eine Stunde, setzt sie 24 Wh Energie um. Darum gilt E = P × t.",
+          ],
+          list: [
+            "Ein Netzteil wird häufig nach Spannung und maximalem Strom ausgewählt; daraus ergibt sich seine mögliche Leistung.",
+            "Ein Akku wird nach Energie bewertet: Seine Wattstunden sagen mehr über die Laufzeit aus als nur die Zahl auf dem Spannungsaufdruck.",
+            "Für ein Bauteil ist die Verlustleistung wichtig: Sie wird überwiegend zu Wärme.",
+          ],
+        },
+        {
+          id: "electrical-basics-overload-heat",
+          heading: "Warum hoher Strom meist Hitze erzeugt",
+          paragraphs: [
+            "Leitungen, Widerstände, Transistoren und Kontakte besitzen immer einen elektrischen Widerstand. Fließt Strom durch ihn, entsteht Verlustleistung und damit Wärme. Bei einem Widerstand gilt P = I² × R: Verdoppelt sich der Strom, vervierfacht sich diese Erwärmung. Deshalb kann eine scheinbar kleine Überlast sehr schnell kritisch werden.",
+            "Ein Bauteil kann durch seinen eigenen Strom heiß werden, aber auch durch eine warme Umgebung oder schlechte Kühlung. Wird die zulässige Sperrschicht-, Gehäuse- oder Löttemperatur überschritten, altert es schneller, arbeitet unzuverlässig oder wird dauerhaft zerstört. Ein Datenblattwert für Strom ist daher immer zusammen mit Kühlung, Einschaltdauer und Temperatur zu lesen.",
+          ],
+        },
+        {
+          id: "electrical-basics-voltage-damage",
+          heading: "Zu hohe Spannung: Durchbruch statt normaler Funktion",
+          paragraphs: [
+            "Auch zu hohe Spannung kann ein Bauteil zerstören. Sie kann Isolationsschichten, Transistorstrukturen oder Eingänge überlasten. Ab einer Grenze kommt es zum Durchbruch: Der Strom steigt dann stark an, obwohl der Stromkreis ihn nicht sinnvoll nutzen kann. Oft folgt daraus wiederum Hitze und ein bleibender Schaden.",
+            "Spannung erzeugt also nicht automatisch Wärme. Gefährlich wird sie, wenn sie einen unzulässigen Strom, einen Durchbruch oder eine zu hohe Verlustleistung verursacht. Deshalb schützen Spannungsteiler, Zener- oder TVS-Dioden, passende Pegelwandler und ausreichend spannungsfeste Bauteile den Eingang – sie müssen zur Anwendung berechnet sein.",
+          ],
+        },
+        {
+          id: "electrical-basics-short-cross-fault",
+          heading: "Kurzschluss und Querschluss sind nicht dasselbe",
+          paragraphs: [
+            "Ein Kurzschluss ist eine Verbindung mit sehr kleinem Widerstand zwischen Punkten mit unterschiedlicher Spannung, zum Beispiel direkt zwischen Plus und Minus einer Versorgung. Die Last wird dabei umgangen; der Strom kann sehr groß werden. Leitungen, Akku oder Netzteil werden dann gefährlich heiß, wenn keine Sicherung oder Strombegrenzung eingreift.",
+            "Ein Querschluss ist allgemeiner: Zwei Leitungen oder Kontakte berühren sich ungewollt, obwohl sie getrennt sein sollten. Ein Tropfen Wasser, eine Lötbrücke oder ein gequetschtes Kabel kann einen Querschluss verursachen. Berührt ein Signalkabel die Versorgung, entstehen vielleicht falsche Messwerte oder ein beschädigter Eingang; berühren sich Plus und Minus, ist dieser Querschluss zugleich ein Kurzschluss.",
+          ],
+        },
+        {
+          id: "electrical-basics-protection",
+          heading: "Bauteile schützen: Belastung begrenzen und Fehler beherrschen",
+          paragraphs: [
+            "Bauteilschutz beginnt mit der Frage: Welche Spannung, welcher Strom, welche Temperatur und welche Verlustleistung sind im schlechtesten vorhersehbaren Fall möglich? Danach werden Datenblattgrenzen nicht ausgereizt, sondern mit Reserve geplant. Die Recommended Operating Conditions sind der Arbeitsbereich; Absolute Maximum Ratings sind keine Zielwerte, sondern Schadensgrenzen.",
+          ],
+          list: [
+            "Sicherung, rückstellbare PTC-Sicherung oder elektronische Sicherung begrenzen Folgen eines Kurzschlusses.",
+            "Widerstand, Konstantstromquelle oder ein geeigneter Treiber begrenzen Strom, etwa bei LEDs, Motoren und GPIO-Ausgängen.",
+            "Passende Leiterquerschnitte, Steckverbinder und Kühlung verhindern, dass Strompfade selbst zur heißen Schwachstelle werden.",
+            "TVS-Dioden, Sicherungen und ausreichend spannungsfeste Bauteile helfen gegen Überspannung; sie ersetzen keine korrekte Spannungsversorgung.",
+            "Ein Mikrocontroller-Pin steuert größere Lasten über Transistor, MOSFET oder Treiber-IC statt sie direkt zu versorgen.",
+          ],
+        },
+      ],
+      relatedTopics: ["physical-limits", "embedded-safety", "actuators", "microcontroller-gpio"],
+    },
+    "digital-signals-data-and-protocols": {
+      title: "Digitale Signale, Daten und Protokolle",
+      summary: "Wie Bits über Kabel und Funk übertragen werden, wie daraus Nachrichten entstehen – und warum Mobilfunk mit QAM mehrere Bits pro Funksymbol senden kann.",
+      sections: [
+        {
+          id: "protocols-digital-signals",
+          heading: "Binäre Übertragung: 0 und 1 auf einer Leitung",
+          paragraphs: [
+            "Das Kapitel Sensoren zeigt, wie ein kontinuierliches Messsignal durch Abtastung und Quantisierung zu einer Zahlenfolge wird. Die binäre Übertragung ist davon ein besonders einfacher Spezialfall: Statt vieler Zahlenstufen werden nur zwei zuverlässige Zustände unterschieden.",
+            "Ein Computer verarbeitet digitale Daten als Bits: 0 oder 1. Damit ein Bit über eine Leitung wandern kann, muss der Sender es physisch darstellen. Bei einer einfachen 3,3-V-Digitalverbindung kann zum Beispiel vereinbart sein: Alles unter 0,5 V steht für logisch 0, alles über 3 V für logisch 1. Der Empfänger erkennt an der Spannung, welches Bit gesendet wurde.",
+            "Dazwischen liegt ein unsicherer Bereich, in dem die Schaltung keinen eindeutigen Wert verspricht. Ein Pegel ist dabei der Spannungsbereich, der für einen logischen Zustand – 0 oder 1 – vereinbart ist. Bei einer standardisierten Schnittstelle legt die Protokoll- oder Schnittstellenspezifikation fest, welche Pegel und welches Zeitverhalten Sender und Empfänger einhalten müssen. Ein protokollkonformer Chip ist dafür ausgelegt; sein Datenblatt nennt die konkreten garantierten Grenzwerte und Betriebsbedingungen. Dieselbe Grundidee funktioniert auch mit Licht in einer Glasfaser oder mit einer veränderten Funkwelle: Ein physisches Signal trägt eine vereinbarte Folge von Bits.",
+            "Der Übergang von einem Pegel zum anderen heißt Flanke: Eine steigende Flanke führt von 0 zu 1, eine fallende von 1 zu 0. Manche Eingänge reagieren gezielt auf eine solche Flanke, zum Beispiel mit einem Interrupt. Bei einer Datenübertragung wird der Pegel dagegen meist zu festgelegten Zeitpunkten abgetastet. SPI und I²C übertragen dafür ein Taktsignal; UART leitet die Abtastzeit aus der Startflanke und der vereinbarten Baudrate ab. Die Flanke zeigt also den Wechsel an, während der Abtastzeitpunkt entscheidet, welcher Bitwert gelesen wird.",
+            "Die Vereinbarung gilt selbstverständlich nur innerhalb der zulässigen Betriebsgrenzen. 10.000 V wären nach der einfachen Regel zwar größer als 3 V und damit auf dem Papier eine 1 – in Wirklichkeit wäre das kein besonders starkes Digitalsignal, sondern sehr wahrscheinlich der Zustand „Eingang kaputt“. Ein 5-V-Signal an einem nicht 5-V-toleranten 3,3-V-Eingang kann bereits denselben Fehler verursachen.",
+          ],
+          illustration: {
+            src: "/assets/digital-signal-voltage-thresholds.svg",
+            alt: "Zeitdiagramm eines digitalen Spannungssignals mit mehreren Sprüngen zwischen logisch 0 und logisch 1 sowie gestrichelten Grenzen bei 0,5 und 3,0 Volt",
+            caption: "Beispielhafte 3,3-V-Übertragung: Nur Spannungen bis 0,5 V beziehungsweise ab 3,0 V sind hier eindeutig. Der Bereich dazwischen ist nicht definiert.",
+          },
+        },
+        {
+          id: "protocols-manchester-coding",
+          heading: "Manchester-Codierung: Takt im Signal",
+          expertKnowledge: "Für GerNetiX normalerweise nicht selbst umzusetzen: Funkchip und Übertragungsstandard übernehmen Leitungscodierung und Taktrückgewinnung. Das Prinzip erklärt, wie ein Empfänger ohne separate Taktleitung im richtigen Rhythmus bleibt.",
+          paragraphs: [
+            "Bei der Manchester-Codierung besitzt jedes Bit in der Mitte seiner Bitzeit einen definierten Flankenwechsel. Die Richtung dieses Wechsels steht – abhängig von der vereinbarten Variante – für 0 oder 1. Weil in jeder Bitzeit sicher eine Flanke vorkommt, kann der Empfänger daraus den Takt zurückgewinnen. Zusätzliche Flanken an der Grenze zwischen zwei Bits sind möglich.",
+            "Der Vorteil ist ein selbsttaktendes Signal ohne separate Taktleitung. Der Nachteil ist, dass für dieselbe Nutzdatenrate mehr Signalwechsel und damit mehr Bandbreite benötigt werden. Das kann für einfache physische Übertragungen nützlich sein, ist aber nicht automatisch die beste Funkcodierung.",
+            "GerNetiX nutzt WLAN, Bluetooth, Zigbee, LoRa und NFC über dafür vorgesehene Funkchips und Protokollstacks. Deren physische Übertragung kümmert sich bereits um Codierung, Synchronisation und Fehlererkennung. Eine eigene Manchester-Codierung wäre erst bei einer selbst entwickelten Rohdaten-Funkstrecke oder in einem gezielten Lernversuch erforderlich.",
+          ],
+        },
+        {
+          id: "protocols-qam-outlook",
+          heading: "QAM: mehrere Bits pro Funksymbol",
+          expertKnowledge: "Für GerNetiX nicht auf Anwendungsebene umzusetzen: Modem, Funkchip und Mobilfunknetz wählen Modulation und robuste Übertragungsparameter. Das Wissen erklärt, warum Datenrate und Störfestigkeit voneinander abhängen.",
+          paragraphs: [
+            "Die bisherige Erklärung nutzt einen einfachen Fall: Pro Übertragungstakt wird eine 0 oder eine 1 übertragen. Funk kann auch mehrere unterscheidbare Signalzustände verwenden. Bei der Quadraturamplitudenmodulation, kurz QAM, steht ein Funksymbol dann für mehrere Bits – bei 16-QAM zum Beispiel für vier Bits zugleich.",
+            "LTE/4G und 5G NR nutzen solche Verfahren bei guter Funkverbindung, um mehr Daten zu übertragen. Liegen die Zustände zu dicht beieinander, werden sie bei Rauschen oder schwachem Empfang leichter verwechselt; das Netz wählt dann automatisch eine robustere Übertragung. Für die meisten Anwenderinnen und Anwender ist das nur ein interessanter Hintergrundfakt: Die Funktechnik wählt die passende Signalform und schützt Daten gegen Übertragungsfehler. QAM ist kein Anwendungsprotokoll wie MQTT oder HTTP, sondern Teil der physischen Funkübertragung.",
+          ],
+        },
+        {
+          id: "protocols-bits-to-data",
+          heading: "Von Bits zu Daten",
+          paragraphs: [
+            "Ein Bit kann nur zwei Zustände darstellen. Acht Bits werden oft als Byte zusammengefasst. Erst eine gemeinsame Bedeutung macht daraus eine Zahl, einen Buchstaben, eine Temperatur oder einen Befehl. Dieselbe Bitfolge kann ohne diese Vereinbarung völlig unterschiedlich interpretiert werden.",
+            "Beispiel: Ein Sensor sendet die Bytes 0x00 und 0xFA. Das kann die Zahl 250 bedeuten, 25,0 °C mit einer fest vereinbarten Skalierung oder Teil eines längeren Textes. Sender und Empfänger müssen deshalb nicht nur dieselben Bits übertragen, sondern auch Datenformat, Einheit und Reihenfolge kennen.",
+          ],
+        },
+        {
+          id: "protocols-what-is-a-protocol",
+          heading: "Was ein Protokoll vereinbart",
+          paragraphs: [
+            "Ein Protokoll ist eine genaue Absprache für Kommunikation. Es legt fest, wer wann senden darf, wie eine Nachricht beginnt und endet, wie ein Empfänger erkannt wird, was der Inhalt bedeutet und wie Fehler behandelt werden. Ohne Protokoll wären zwar elektrische Impulse vorhanden, aber keine verlässliche Nachricht.",
+          ],
+          table: {
+            headers: ["Baustein", "Beispiel", "Warum er nötig ist"],
+            rows: [
+              ["Adresse oder Ziel", "I²C-Adresse, IP-Adresse, MQTT-Topic", "Die Nachricht erreicht den vorgesehenen Empfänger."],
+              ["Rahmen", "Start, Länge, Nutzdaten, Ende", "Der Empfänger weiß, welche Bits zu einer Nachricht gehören."],
+              ["Bedeutung", "Temperatur in Zehntelgrad, JSON-Feld, Öffnungsbefehl", "Die Daten werden richtig interpretiert."],
+              ["Fehlerbehandlung", "Prüfsumme, Quittung, Wiederholung", "Übertragungsfehler bleiben erkennbar oder korrigierbar."],
+            ],
+          },
+        },
+        {
+          id: "protocols-four-layers",
+          heading: "Eine einfache Schichtenlandkarte",
+          paragraphs: [
+            "Damit verschiedene Aufgaben nicht durcheinandergeraten, werden Protokolle in Schichten betrachtet. Das ist eine vereinfachte Landkarte des TCP/IP- und OSI-Gedankens, kein Modell zum Auswendiglernen. Sie hilft vor allem beim Verstehen und bei der Fehlersuche.",
+          ],
+          table: {
+            headers: ["Schicht", "Frage", "Typische Beispiele"],
+            rows: [
+              ["Physische Übertragung", "Wie kommt ein Signal überhaupt von A nach B?", "Spannung auf Leitung, Ethernet-Kabel, WLAN-Funk"],
+              ["Lokale Verbindung", "Wie sprechen direkt verbundene Geräte?", "UART, I²C, SPI, Ethernet, WLAN"],
+              ["Weg durchs Netzwerk", "Wie findet eine Nachricht das Ziel und kommt zuverlässig an?", "IP, TCP, UDP"],
+              ["Anwendungssprache", "Was soll die Nachricht fachlich bedeuten?", "HTTP/REST, MQTT, DNS, TLS-geschützte Verbindung"],
+            ],
+          },
+        },
+        {
+          id: "protocols-where-to-learn-more",
+          heading: "Vertiefung dort, wo sie gebraucht wird",
+          paragraphs: [
+            "Dieses Kapitel liefert die gemeinsame Grundlage. Ein ESP32-Projekt vertieft danach UART, I²C oder SPI bei Bussystemen: Dort zählen Takt, Leitungen, Pull-up-Widerstände und konkrete Bausteine. In verteilten Systemen werden IP, TCP und HTTP/REST erklärt. MQTT gehört zur IoT-Kommunikation: Topics, Publisher, Subscriber und Zustellqualität sind seine eigene Anwendungssprache. TLS und Zertifikate gehören zusätzlich zur Security, weil sie Verbindungen schützen und Gegenstellen überprüfbar machen.",
+            "Ein Backend arbeitet normalerweise nicht mehr direkt mit 3,3-V-Pegeln; Betriebssystem und Netzwerkkarte übernehmen die physische Übertragung. Trotzdem verarbeitet es weiter Protokolle: HTTP-Anfragen, JSON, Datenbankverbindungen, MQTT-Nachrichten oder TLS. Die gemeinsame Idee bleibt daher vom Pin bis zum Server dieselbe.",
+          ],
+        },
+      ],
+      relatedTopics: ["bus-systems", "communication-basics", "security-basics", "microcontroller-basics"],
+    },
     "physical-limits": {
       title: "Grenzen der Physik",
       summary: "Datenblattwerte sind keine Wunschliste. Strom, Spannung, Temperatur und Geschwindigkeit haben Grenzen, die für jedes einzelne Bauteil und für das gesamte System gelten.",
@@ -2714,6 +2888,25 @@ const KnowledgeContent = (() => {
       summary: "Sensoren übersetzen Eigenschaften der realen Welt in elektrische Signale. Erst die passende Messschaltung und Auswertung machen daraus einen verlässlichen Messwert.",
       access: "premium",
       sections: [
+        {
+          id: "sensor-from-analog-to-digital",
+          heading: "Wie ein kontinuierliches Sensorsignal digital wird",
+          paragraphs: [
+            "Viele Messgrößen der realen Welt sind kontinuierlich: Die Temperatur kann sich jederzeit ändern und zwischen 20 °C und 21 °C jeden Zwischenwert annehmen. Liefert ein Sensor dazu beispielsweise eine Spannung, ist auch dieses analoge Signal zeitkontinuierlich und wertkontinuierlich: Es existiert jederzeit und kann innerhalb seines Bereichs jeden Zwischenwert annehmen.",
+            "Ein Mikrocontroller kann ein solches Signal nicht ununterbrochen speichern und rechnen. Sein Analog-Digital-Wandler (ADC) misst deshalb nur zu einzelnen Zeitpunkten – etwa alle 10 Millisekunden. Das heißt Abtastung: Aus dem zeitkontinuierlichen Signal wird eine Folge von Messzeitpunkten, also ein zeitdiskretes Signal.",
+            "An jedem Messzeitpunkt ordnet der ADC die gemessene Spannung einer von endlich vielen Zahlenstufen zu. Das heißt Quantisierung. Ein 12-Bit-ADC unterscheidet zum Beispiel 4096 Stufen, von 0 bis 4095. Danach ist der Messwert nicht nur zeitdiskret, sondern auch wertdiskret: Der Computer arbeitet mit einer zeit- und wertdiskreten Zahlenfolge. Wie oft abgetastet werden muss und warum zu seltenes Abtasten täuschen kann, behandelt das Kapitel Abtastrate und Shannon-Theorem.",
+            "Bei einer einfachen Ja-Nein-Frage genügt häufig ein digitaler Eingang oder ein Komparator. Er vergleicht die Spannung mit einer Schaltschwelle und erzeugt daraus nur zwei Zustände: logisch 0 oder logisch 1. Ein Taster, ein Endschalter oder ein digitaler Näherungssensor kann so ohne ADC abgefragt werden. Für eine Temperatur von 23,4 °C braucht man dagegen mehrere Zahlenstufen und damit eine Messung mit ADC oder einen Sensor, der den Messwert bereits digital liefert.",
+          ],
+          table: {
+            headers: ["Schritt", "Beispiel Temperatursensor", "Ergebnis"],
+            rows: [
+              ["Reale Größe", "Temperatur verändert sich fortlaufend.", "zeit- und wertkontinuierlich"],
+              ["Sensorsignal", "Der Sensor erzeugt dazu eine passende Spannung.", "zeit- und wertkontinuierlich"],
+              ["Abtastung", "Der ADC misst etwa alle 10 Millisekunden.", "zeitdiskrete Messzeitpunkte"],
+              ["Quantisierung", "Jede Messung wird einer ADC-Zahl, zum Beispiel 0 bis 4095, zugeordnet.", "zeit- und wertdiskrete Zahlenfolge"],
+            ],
+          },
+        },
         {
           id: "sensor-types",
           heading: "Sensoren nach Messgröße und Wirkprinzip ordnen",
@@ -3487,12 +3680,12 @@ const KnowledgeContent = (() => {
           heading: "Der Anfang: Strom erzeugt ein Magnetfeld",
           illustration: {
             src: "/assets/motor-learning-current-magnetic-field.svg",
-            alt: "Ein gerader stromdurchflossener Draht mit kreisförmigen Magnetfeldlinien und daneben eine Drahtspule um einen Eisenkern mit gebündeltem Magnetfeld.",
-            caption: "Um jeden stromdurchflossenen Draht entsteht ein Magnetfeld. Viele Windungen addieren ihre Wirkung; ein Eisenkern bündelt das Feld zusätzlich.",
+            alt: "Ein gerader stromdurchflossener Draht mit kreisförmigen Magnetfeldlinien und daneben eine Drahtspule um einen magnetischen Kern mit gebündeltem Magnetfeld.",
+            caption: "Um jeden stromdurchflossenen Draht entsteht ein Magnetfeld. Viele Windungen addieren ihre Wirkung; ein geeigneter weichmagnetischer Kern bündelt das Feld zusätzlich.",
           },
           paragraphs: [
             "Ein elektrischer Strom ist bewegte elektrische Ladung. Wo Strom durch einen Draht fließt, entsteht um den Draht ein Magnetfeld. Es ist nicht erst ein fertiger Motor nötig: Schon ein gerader Leiter kann eine Kompassnadel ablenken. Wird die Stromrichtung vertauscht, kehrt sich auch die Richtung des Magnetfelds um.",
-            "Wickelt man isolierten Draht zu einer Spule, wirken die Magnetfelder der einzelnen Windungen zusammen. Die Spule besitzt dann eine Nord- und eine Südseite. Ein Eisenkern im Inneren wird magnetisiert und verstärkt das nutzbare Feld. Wird der Strom abgeschaltet, verschwindet der größte Teil dieser magnetischen Wirkung wieder: Die Anordnung ist ein Elektromagnet.",
+            "Wickelt man isolierten Draht zu einer Spule, wirken die Magnetfelder der einzelnen Windungen zusammen. Die Spule besitzt dann eine Nord- und eine Südseite. Ein geeigneter weichmagnetischer Kern im Inneren wird magnetisiert und bündelt das nutzbare Feld. Dafür kommen je nach Frequenz, gewünschter Flussdichte und Verlusten beispielsweise weichmagnetische Eisenwerkstoffe oder Ferrite infrage. Wird der Strom abgeschaltet, verschwindet der größte Teil dieser magnetischen Wirkung wieder: Die Anordnung ist ein Elektromagnet.",
             "Ein sicher aufgebauter erster Versuch verwendet eine für die Spannungsquelle ausgelegte Spule oder einen fertigen Kleinspannungs-Elektromagneten. Ein Taster schaltet nur für kurze Zeit ein; eine Strombegrenzung verhindert eine überlastete Wicklung. Draht, Spule und Spannungsquelle müssen so gewählt werden, dass der zulässige Strom nicht überschritten wird.",
           ],
           table: {
@@ -3514,7 +3707,7 @@ const KnowledgeContent = (() => {
                 "Die Magnetfelder der Windungen addieren sich.",
               ],
               [
-                "Eisenkern in der Spule",
+                "Weichmagnetischer Kern in der Spule",
                 "Der magnetische Fluss wird gebündelt und verstärkt.",
               ],
             ],
@@ -3523,18 +3716,38 @@ const KnowledgeContent = (() => {
             {
               model: "Nachbauprojekt",
               title: "Einfache Elektromotoren bauen",
-              description: "Beginne mit einem strombegrenzten Elektromagneten und beobachte, wie Strom, Windungszahl und Eisenkern das Magnetfeld verändern.",
+              description: "Beginne mit einem strombegrenzten Elektromagneten und beobachte, wie Strom, Windungszahl und Kernmaterial das Magnetfeld verändern.",
               href: "/nachbauprojekte/einfache-elektromotoren/#elektromagnet",
             },
           ],
+        },
+        {
+          id: "actuator-magnetic-core",
+          heading: "Was ein magnetischer Kern ist",
+          expertKnowledge: "Für den Einstieg genügt: Ein geeigneter Kern bündelt das Magnetfeld einer Spule. Die folgenden Materialeigenschaften werden erst wichtig, wenn ein Kern gezielt ausgelegt oder ausgewählt werden soll.",
+          paragraphs: [
+            "Der Kern ist ein Bauteil aus einem dafür geeigneten Material, zum Beispiel Ferrit, im oder um das Magnetfeld einer Spule. Er ist kein Dauermagnet und erzeugt keine Energie. Die Spule erzeugt durch ihre Stromstärke und Windungszahl die magnetische Feldstärke H. Der Kern bündelt und führt den magnetischen Fluss gezielter als Luft und erhöht dadurch im nutzbaren Bereich die magnetische Flussdichte B.",
+            "Die entscheidende physikalische Eigenschaft heißt magnetische Permeabilität μ. Sie beschreibt, wie gut sich in einem Material unter einem angelegten Magnetfeld magnetischer Fluss ausbildet. Vereinfacht gilt B = μ × H. Häufig wird die relative Permeabilität μr angegeben: Luft liegt ungefähr bei 1, geeignete weichmagnetische Werkstoffe können deutlich darüber liegen. Deshalb kann dieselbe Spule mit einem passenden Kern wesentlich mehr Fluss durch einen gewünschten Querschnitt führen als ohne Kern.",
+            "Der Fachbegriff für das gewünschte Verhalten lautet weichmagnetisch: Das Material führt das angelegte Magnetfeld gut, soll nach dem Abschalten aber möglichst wenig Magnetisierung behalten. Seine Remanenz und Koerzitivfeldstärke sollen für diese Aufgabe also niedrig sein. Das unterscheidet es von hartmagnetischen Werkstoffen für Dauermagnete, die ihre Magnetisierung bewusst behalten sollen. Weichmagnetische Eisenwerkstoffe sind bei niedrigen Frequenzen verbreitet; Ferrite sind keramische ferrimagnetische Werkstoffe mit hohem elektrischem Widerstand und deshalb häufig bei höheren Frequenzen vorteilhaft.",
+            "Ein Kern funktioniert nur innerhalb seiner Materialgrenzen. Bei magnetischer Sättigung steigt der Fluss trotz mehr Strom kaum noch an; die Wicklung kann sich dann vor allem stärker erwärmen. Hystereseverluste entstehen beim ständigen Ummagnetisieren. Elektrisch leitfähige Kerne können außerdem Wirbelströme bilden und dadurch warm werden. Material, Form, Luftspalt, Frequenz und zulässige Flussdichte müssen deshalb zur Anwendung passen.",
+          ],
+          table: {
+            headers: ["Physikalische Eigenschaft", "Bedeutung für den Kern"],
+            rows: [
+              ["Magnetische Permeabilität μ", "Bestimmt, wie leicht sich magnetischer Fluss im Material ausbildet."],
+              ["Sättigungsflussdichte", "Begrenzt den maximal sinnvoll erreichbaren magnetischen Fluss."],
+              ["Koerzitivfeldstärke und Hysterese", "Bestimmen, wie leicht der Kern ummagnetisiert wird und wie viel Energie dabei verloren geht."],
+              ["Elektrischer Widerstand", "Ein hoher Widerstand verringert Wirbelströme; das ist ein Vorteil vieler Ferrite bei höheren Frequenzen."],
+            ],
+          },
         },
         {
           id: "actuator-current-force",
           heading: "Ein Magnetfeld kann einen stromdurchflossenen Draht bewegen",
           illustration: {
             src: "/assets/motor-learning-current-force.svg",
-            alt: "Ein stromdurchflossener Leiter liegt zwischen dem Nord- und Südpol eines Permanentmagneten. Pfeile zeigen Magnetfeld, Stromrichtung und die seitlich wirkende Kraft.",
-            caption: "Stromrichtung und Magnetfeldrichtung bestimmen gemeinsam, in welche Richtung die Kraft auf den Leiter wirkt.",
+            alt: "Dreidimensionale Darstellung eines zusammenhängenden Hufeisenmagneten mit Batterie und einem geraden Kupferleiter. Der Leiter verläuft berührungslos in der Mitte des Luftspalts von vorn nach hinten. Strom, Magnetfeld und Kraft stehen jeweils senkrecht zueinander.",
+            caption: "Der Leiter sitzt mittig im Luftspalt und berührt keinen Magnetpol. Der Strom fließt in die Bildtiefe, das Magnetfeld vom Nord- zum Südpol nach oben; daraus folgt die Kraft nach rechts.",
           },
           paragraphs: [
             "Ein Permanentmagnet erzeugt bereits ein Magnetfeld. Legt man einen stromdurchflossenen Draht in dieses Feld, wirken beide Magnetfelder zusammen. Auf den Draht entsteht eine Kraft quer zur Stromrichtung und quer zur Feldrichtung. Kehrt man den Strom oder die Magnetpole um, kehrt sich die Kraftrichtung um.",
@@ -3551,28 +3764,30 @@ const KnowledgeContent = (() => {
         },
         {
           id: "actuator-simple-coil-motor",
-          heading: "Der einfache Spulenmotor: Aus zwei Kräften wird ein Drehmoment",
+          heading: "Der einfache Spulenmotor: Ein Kräftepaar erzeugt ein Drehmoment",
           illustration: {
-            src: "/assets/motor-learning-simple-coil.svg",
-            alt: "Querschnitt eines einfachen Spulenmotors: Zwei feste Magnetpole stehen links und rechts einer drehbaren rechteckigen Drahtspule. Entgegengesetzte Kraftpfeile erzeugen eine Drehung.",
-            caption: "Die festen Permanentmagnete erzeugen das äußere Feld. Die stromdurchflossene Spule ist der Rotor; zwei entgegengesetzte Kräfte drehen sie um ihre Achse.",
+            src: "/assets/motor-learning-simple-coil-force-pair.png",
+            alt: "Dreidimensionale Darstellung eines einfachen Spulenmotors: Ein einziger durchgehender Hufeisen-Permanentmagnet hat links sein rotes Nordpol-Ende und rechts sein blaues Südpol-Ende. Im Luftspalt dreht sich eine Kupferspule auf einer senkrechten Welle. Türkise Pfeile zeigen das Magnetfeld, orange Pfeile den Strom in den Leiterseiten, grüne Pfeile die entgegengesetzten Kräfte und ein violetter Pfeil das Drehmoment.",
+            caption: "N und S sind die beiden Enden desselben Hufeisenmagneten. Türkis: Magnetfeld B im Luftspalt von N nach S. Orange: entgegengesetzte Stromrichtungen I in den beiden Leiterseiten. Grün: die daraus entstehenden Kräfte in entgegengesetzte Bildtiefe. Violett: das daraus entstehende Drehmoment M um die Welle.",
           },
           paragraphs: [
-            "Eine rechteckige Drahtspule hat im Magnetfeld zwei wirksame Leiterseiten. In der einen fließt der Strom aus der Bildebene heraus, in der anderen hinein. Deshalb zeigen die beiden Kräfte in entgegengesetzte Richtungen. Weil sie auf verschiedenen Seiten der Achse angreifen, bilden sie gemeinsam ein Drehmoment.",
-            "Beim einfachen Experiment dienen die beiden geraden Drahtenden der Spule zugleich als Achse und elektrische Kontakte. Wird die Lackisolierung nur auf einer Hälfte dieser Achsenden entfernt, fließt Strom nur während der günstigen Hälfte einer Umdrehung. Während der stromlosen Hälfte trägt die Trägheit die Spule über die ungünstige Stellung. Diese halb abisolierten Kontakte sind eine sehr einfache Form der Kommutierung.",
-            "Der Versuch zeigt das Prinzip, ist aber noch kein leistungsfähiger Motor. Ein realer Bürstenmotor verwendet einen laminierten Rotor, mehrere Wicklungen, viele Kommutatorsegmente und feste Bürsten. Dadurch entsteht häufiger und gleichmäßiger Drehmoment.",
+            "Der Hufeisenmagnet ist ein einziger magnetischer Körper: Nord- und Südpol sind seine beiden Enden, keine getrennten Einzelpole. Zwischen ihnen verläuft das äußere Magnetfeld B. Von einer rechteckigen Drahtspule sind vor allem die beiden langen Leiterseiten wirksam: Sie stehen senkrecht zum Feld. In der 3D-Ansicht fließt der Strom in der linken Leiterseite nach oben und in der rechten nach unten. Daraus entstehen zwei gleich große Kräfte in entgegengesetzte Bildtiefe: eine bewegt sich von dir weg, die andere zu dir hin. Die kurzen Verbindungsstücke der Spule verlaufen näherungsweise parallel zum Feld und tragen in diesem vereinfachten Bild nicht zum Drehmoment bei.",
+            "Die beiden Kräfte heben sich als seitliche Gesamtbewegung auf, weil sie gleich groß und entgegengesetzt sind. Sie greifen aber auf verschiedenen Seiten der Achse an. Genau diese Anordnung heißt Kräftepaar: Ihre Drehwirkungen addieren sich zum Drehmoment. Je weiter die Kräfte von der Achse entfernt angreifen, desto größer ist bei gleicher Kraft das Drehmoment.",
+            "Beim einfachen Experiment dienen die beiden geraden Drahtenden der Spule zugleich als Achse und elektrische Kontakte. Wird die Lackisolierung nur auf einer Hälfte dieser Achsenden entfernt, unterbrechen sie den Strom nahe der ungünstigen Stellung; sie kehren die Stromrichtung nicht um. Während der stromlosen Hälfte trägt die Trägheit die Spule weiter. Diese halb abisolierten Achsenden sind eine sehr einfache, aber unvollständige Form der Kommutierung.",
+            "Der Versuch zeigt das Prinzip, ist aber noch kein leistungsfähiger Motor. Ein realer Bürstenmotor verwendet einen laminierten Rotor, mehrere Wicklungen, viele Kommutatorsegmente und feste Bürsten. Der Kommutator kehrt die Stromrichtung in einer passenden Rotorwicklung gezielt um, damit das Drehmoment möglichst gleichgerichtet und gleichmäßig bleibt.",
           ],
           list: [
-            "Feste Teile: Permanentmagnete und Lagerkontakte.",
-            "Drehender Teil: Drahtspule mit ihrer Achse.",
-            "Umschaltung: halb abisolierte Achsenden.",
-            "Lernziel: Kraftpaar, Drehmoment und mechanische Kommutierung unterscheiden.",
+            "Stator: der feste, durchgehende Hufeisenmagnet mit seinen N- und S-Enden.",
+            "Rotor: Drahtspule mit ihrer Achse.",
+            "Kräftepaar: zwei gleich große Gegenkräfte an verschiedenen Seiten der Achse.",
+            "Einfache Umschaltung: halb abisolierte Achsenden unterbrechen den Strom in der ungünstigen Stellung.",
+            "Lernziel: Einzelkraft, Kräftepaar, Drehmoment und Kommutierung unterscheiden.",
           ],
           rebuildProjects: [
             {
               model: "Nachbauprojekt",
               title: "Motor 1 · Einfacher Spulenmotor",
-              description: "Wickle einen frei drehenden Rotor und erzeuge die Kommutierung mit halb abisolierten Achsenden.",
+              description: "Wickle einen frei drehenden Rotor und beobachte, wie ein Kräftepaar durch halb abisolierte Achsenden in Drehbewegung übergeht.",
               href: "/nachbauprojekte/einfache-elektromotoren/#spulenmotor",
             },
           ],
@@ -3655,9 +3870,35 @@ const KnowledgeContent = (() => {
           id: "actuator-synchronous-machines",
           heading: "Synchronmaschinen: mit einem drehenden Magnetfeld mitlaufen",
           paragraphs: [
-            "Stell dir einen Stabmagneten auf einem kleinen Drehteller vor. Wenn du außen herum ein Magnetfeld langsam im Kreis wandern lässt, versucht der Magnet, diesem Feld zu folgen. Genau dieses Grundprinzip ist bei einer Synchronmaschine leicht zu sehen: Im festen äußeren Teil, dem Stator, erzeugen Spulen ein wanderndes Magnetfeld. Im drehbaren inneren Teil, dem Rotor, sitzt ein Magnet oder ein elektromagnetisch erzeugtes Magnetfeld.",
+            "Stell dir einen Stabmagneten auf einem kleinen Drehteller vor. Wenn du außen herum ein Magnetfeld langsam im Kreis wandern lässt, versucht der Magnet, diesem Feld zu folgen. Genau dieses Grundprinzip ist bei einer Synchronmaschine leicht zu sehen: In dieser Bildserie erzeugen Spulen im festen äußeren Teil, dem Stator, ein wanderndes Magnetfeld. Im drehbaren inneren Teil, dem Rotor, sitzt ein Magnet oder ein elektromagnetisch erzeugtes Magnetfeld.",
+            "Rotor und Stator werden nicht über innen oder außen definiert, sondern über die Bewegung: Der Rotor dreht sich, der Stator bleibt stehen. Die Bildserie zeigt einen Innenläufer, bei dem der Rotor innen liegt. Bei einem Außenläufer – etwa bei vielen Drohnen- und Modellbaumotoren – dreht sich dagegen der äußere Becher mit den Magneten; der innere Teil mit den Spulen kann der feststehende Stator sein.",
+            "Der Begriff Anker ist kein allgemeines Synonym für Rotor. Bei klassischen Bürsten-Gleichstrommotoren meint er meist die drehende, bestromte Wicklung mit Kommutator und ist daher Teil des Rotors. Bei vielen großen Synchronmaschinen liegt die Arbeits- oder Ankerwicklung dagegen im Stator; auf dem Rotor sitzt die Erregung. Bei Relais oder Hubmagneten kann ein Anker sogar ein geradlinig bewegtes Eisenteil sein. Deshalb verwenden wir hier für die Bewegung bewusst die eindeutigen Begriffe Rotor und Stator.",
             "Das wandernde Feld zieht den Rotor immer weiter mit. Dreht sich das Feld einmal pro Sekunde, dreht sich der Rotor – solange er nicht überlastet ist – ebenfalls einmal pro Sekunde. Deshalb heißt diese Maschine synchron: Rotor und Magnetfeld laufen im gleichen Takt. Die Spulen des Stators werden dafür in einer passenden Reihenfolge bestromt. Bei großen Maschinen kommt die Reihenfolge meist aus dem Stromnetz oder einem Frequenzumrichter, bei kleinen bürstenlosen Motoren aus einer Elektronik.",
+            "Die Bildserie zeigt das Prinzip bewusst als drei einzeln weitergeschaltete Spulenpaare der Phasen A, B und C. Jedes Spulenpaar wirkt auf zwei gegenüberliegende Statorpole; die drei gerichteten Feldachsen liegen jeweils 120 Grad auseinander. Wird zum nächsten Spulenpaar weitergeschaltet, dreht sich die bevorzugte Feldrichtung weiter und der Dauermagnet-Rotor folgt.",
+            "Ein realer dreiphasiger Synchronmotor schaltet normalerweise nicht nur ein Polpaar hart ein und die anderen vollständig aus. Die Ströme der drei Phasen überlagern sich zeitlich und bilden dadurch ein gleichmäßiger rotierendes Magnetfeld. Die vier Bilder sind deshalb ein anschauliches Schrittmodell für das Grundprinzip, kein vollständiges Strom- oder Regelungsdiagramm.",
             "Das Bild hilft auch bei der Auswahl: Eine Synchronmaschine ist besonders gut, wenn die Elektronik das Drehfeld gezielt formen und die Bewegung effizient oder genau steuern soll. Viele BLDC- und PMSM-Motoren gehören in diese Familie. Wie die Elektronik erkennt, wo der Rotor gerade steht, und die Spulen weiterschaltet, folgt später beim BLDC.",
+          ],
+          illustrationSeries: [
+            {
+              src: "/assets/synchronous-motor-step-0-unpowered.svg",
+              alt: "Unbestromter Synchronmotor mit drei gegenüberliegenden Spulenpaaren der Phasen A, B und C sowie einem frei drehbaren Dauermagnet-Rotor",
+              caption: "Stromlos: Kein Statorpol erzeugt ein gerichtetes Magnetfeld. Im idealisierten Lernmodell lässt sich der Rotor frei drehen.",
+            },
+            {
+              src: "/assets/synchronous-motor-step-1-phase-a.svg",
+              alt: "Polpaar A ist bestromt und richtet den Dauermagnet-Rotor horizontal aus",
+              caption: "Spulenpaar A: Der Rotor richtet sich an der ersten Feldrichtung aus.",
+            },
+            {
+              src: "/assets/synchronous-motor-step-2-phase-b.svg",
+              alt: "Polpaar B ist bestromt: Nord und Süd stehen direkt in den beiden aktiven Statorpolen. Der Dauermagnet-Rotor folgt der um 120 Grad weitergewanderten Feldrichtung.",
+              caption: "Spulenpaar B: N und S markieren die beiden aktiven Statorpole; die Feldrichtung wandert um 120 Grad weiter.",
+            },
+            {
+              src: "/assets/synchronous-motor-step-3-phase-c.svg",
+              alt: "Polpaar C ist bestromt: Nord und Süd stehen direkt in den beiden aktiven Statorpolen. Der Dauermagnet-Rotor folgt erneut um 120 Grad.",
+              caption: "Spulenpaar C: N und S markieren die beiden aktiven Statorpole. Danach beginnt die Folge wieder bei A.",
+            },
           ],
           table: {
             headers: [
@@ -3674,6 +3915,14 @@ const KnowledgeContent = (() => {
                 "dreht sich und folgt diesem Magnetfeld",
               ],
               [
+                "Innen- oder Außenläufer",
+                "beschreibt nur die Bauform: Der Rotor kann innen liegen oder als äußerer Becher umlaufen",
+              ],
+              [
+                "Anker",
+                "Fachbegriff für einen funktionalen Maschinenteil, nicht pauschal für den Rotor",
+              ],
+              [
                 "Elektronik oder Netz",
                 "bestromt die Spulen in der richtigen Reihenfolge",
               ],
@@ -3681,6 +3930,49 @@ const KnowledgeContent = (() => {
                 "Synchron",
                 "Rotor und Magnetfeld drehen sich im gleichen Takt",
               ],
+            ],
+          },
+        },
+        {
+          id: "actuator-synchronous-back-emf",
+          heading: "Drei Phasen, Gegen-EMK und Kurzschlussbremsung",
+          expertKnowledge: "Die Gegen-EMK ist die vom drehenden Permanentmagnet-Rotor in den Statorwicklungen induzierte Spannung. Sie wächst näherungsweise mit der Drehzahl. Beim Kurzschluss der Phasen treibt diese Spannung Strom; dessen Magnetfeld erzeugt gemäß der Lenz'schen Regel ein Bremsmoment entgegen der Bewegung. Das ist eine generatorische Bremse, kein zusätzliches Antriebsmoment.",
+          illustration: {
+            src: "/assets/synchronous-motor-three-phase-back-emf.svg",
+            alt: "Zweiteilige Darstellung einer permanent erregten Synchronmaschine: Oben erzeugen drei geregelte Phasenströme ein resultierendes Drehfeld und Drehmoment. Unten erzeugt der drehende Rotor Gegen-EMK; kurzgeschlossene Statorphasen führen Strom und erzeugen ein Bremsmoment entgegen der Drehung.",
+            caption: "Drei geregelte Phasen erzeugen im Antrieb ein gleichmäßigeres Drehfeld. Ein Phasenkurzschluss ist ein anderer Betriebsfall: Die Gegen-EMK treibt Strom und bremst den Rotor.",
+          },
+          paragraphs: [
+            "Die Bildserie davor schaltet die Phasen A, B und C nacheinander, damit das wandernde Feld leicht zu sehen ist. Im realen PMSM- oder BLDC-Antrieb werden die drei Phasen jedoch vom Wechselrichter geregelt und zeitversetzt bestromt. Ihre Feldanteile überlagern sich zu einem resultierenden Statorfeld. Das erzeugt ein deutlich gleichmäßigeres Drehmoment als das harte Ein-Phasen-Schrittmodell. Wie groß das Drehmoment wird, hängt von Strom, Rotorfluss, Winkel und Motorgeometrie ab – nicht allein davon, dass drei Phasen vorhanden sind.",
+            "Gegen-EMK bedeutet Gegen-Elektromotorische-Kraft: Dreht sich der Permanentmagnet-Rotor, ändert sich der magnetische Fluss durch die Statorwicklungen und induziert dort eine Spannung. In der Motorbetriebsart wirkt sie der angelegten Spannung entgegen und begrenzt bei höherer Drehzahl den Strom. Sie entsteht auch dann, wenn keine Phase kurzgeschlossen ist; bei Stillstand ist sie praktisch null.",
+            "Werden die drei Statorphasen tatsächlich kurzgeschlossen oder über einen kleinen Bremswiderstand verbunden, treibt die Gegen-EMK einen Strom durch die Wicklungen. Dieser Strom erzeugt ein Magnetfeld, das der Bewegung entgegenwirkt. Das resultierende Moment ist ein Bremsmoment. Die Bewegungsenergie des Rotors wird dabei überwiegend in Wärme in Wicklungen, Widerstand und Leistungselektronik umgesetzt. Ein Kurzschluss ist daher keine Methode, das Antriebsmoment zu erhöhen.",
+          ],
+          table: {
+            headers: ["Betriebsfall", "Elektrische Wirkung", "Mechanische Wirkung"],
+            rows: [
+              ["Antrieb", "Wechselrichter regelt iA, iB und iC", "Resultierendes Drehfeld erzeugt Antriebsmoment"],
+              ["Rotor dreht, Phasen offen", "Gegen-EMK vorhanden, kaum Strom", "Keine gezielte elektrische Bremsung"],
+              ["Phasen kurzgeschlossen", "Gegen-EMK treibt Kurzschlussstrom", "Bremsmoment entgegen der Drehung"],
+            ],
+          },
+        },
+        {
+          id: "actuator-electrical-mechanical-angle",
+          heading: "Elektrische und mechanische Drehung",
+          expertKnowledge: "Für die erste Motoransteuerung meist nicht zu berechnen, weil Motortreiber und Regelung die Kommutierung übernehmen. Für Drehzahl, Rotorlage, Encoderauflösung und die Auswahl eines Frequenzumrichters ist die Polpaarzahl jedoch entscheidend.",
+          paragraphs: [
+            "Eine mechanische Drehung beschreibt die wirkliche Bewegung der Welle: 360 mechanische Grad sind genau eine vollständige Rotorumdrehung. Eine elektrische Drehung beschreibt dagegen einen vollständigen Zyklus des magnetischen Feldes beziehungsweise der Phasenströme: 360 elektrische Grad reichen von einer Feldlage bis zur elektrisch gleichen Feldlage.",
+            "Wie beide Winkel zusammenhängen, bestimmt die Polpaarzahl p. Ein Polpaar besteht aus einem magnetischen Nord- und einem Südpol. Es gilt: elektrischer Winkel = Polpaarzahl × mechanischer Winkel. Bei p = 1 entsprechen 360 elektrische Grad einer ganzen mechanischen Umdrehung. Bei p = 3 entsprechen 360 elektrische Grad nur 120 mechanischen Grad; während einer mechanischen Umdrehung durchläuft das elektrische System drei vollständige Zyklen.",
+            "Die drei Phasen A, B und C sind nicht dasselbe wie drei Polpaare. Ein dreiphasiger Motor kann eine, zwei, drei oder mehr Polpaarzahlen besitzen. Die Bildserie darüber zeigt drei Spulenpaare beziehungsweise Phasenachsen und einen zweipoligen Stabmagnet-Rotor; ihr vereinfachtes Drehfeld besitzt ein magnetisches Polpaar. Ein tatsächlicher Motor mit drei Polpaaren hätte ein sechspoliges Feld und einen dazu passenden Rotor mit insgesamt drei Nord-Süd-Paaren statt nur eines einfachen Stabmagneten.",
+            "Auch die synchrone Drehzahl folgt daraus: Bei gleicher elektrischer Frequenz dreht ein Motor mit mehr Polpaaren mechanisch langsamer. Vereinfacht gilt n = 60 × f ÷ p, wobei n die synchrone Drehzahl in Umdrehungen pro Minute und f die elektrische Frequenz in Hertz ist.",
+          ],
+          table: {
+            headers: ["Polpaarzahl p", "360° elektrisch entsprechen", "Elektrische Zyklen pro mechanischer Umdrehung"],
+            rows: [
+              ["1", "360° mechanisch", "1"],
+              ["2", "180° mechanisch", "2"],
+              ["3", "120° mechanisch", "3"],
+              ["4", "90° mechanisch", "4"],
             ],
           },
         },

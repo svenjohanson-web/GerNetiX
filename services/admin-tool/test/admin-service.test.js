@@ -227,6 +227,58 @@ test("system event severity is normalized", async () => {
   assert.equal(event.severity, "info");
 });
 
+test("link inventory and authenticated check results are summarized centrally", async () => {
+  const service = createDefaultAdminTool();
+  await service.registerLinkInventory({
+    source_service: "identity-server",
+    generated_at: "2026-07-30T12:00:00.000Z",
+    targets: [{
+      reference_id: "identity.dashboard",
+      target_url: "/app/dashboard/",
+      link_type: "internal",
+      owner_domain: "Identity",
+      access_scope: "authenticated",
+    }, {
+      reference_id: "identity.docs",
+      target_url: "https://example.test/docs",
+      link_type: "external",
+      owner_domain: "Identity",
+      access_scope: "public",
+    }],
+    occurrences: [{
+      occurrence_id: "occurrence-dashboard",
+      reference_id: "identity.dashboard",
+      source_location: "public/app/index.html",
+      source_route: "/app/",
+    }],
+  });
+  await service.recordLinkChecks({ checks: [{
+    check_id: "check-dashboard",
+    reference_id: "identity.dashboard",
+    checked_at: "2026-07-30T12:01:00.000Z",
+    status: "healthy",
+    http_status: 200,
+    access_profile: "authenticated",
+  }] });
+
+  const result = await service.linkIntegrity(adminContext());
+  assert.equal(result.summary.total_targets, 2);
+  assert.equal(result.summary.authenticated, 1);
+  assert.equal(result.summary.healthy, 1);
+  assert.equal(result.summary.not_checked, 1);
+  assert.equal(result.items.find((item) => item.reference_id === "identity.dashboard").occurrence_count, 1);
+});
+
+test("support without link-integrity capability cannot read the central register", async () => {
+  const service = createDefaultAdminTool();
+  await assert.rejects(
+    () => service.linkIntegrity(adminContext({
+      actor: { actor_id: "support-1", role: "support", capabilities: [] },
+    })),
+    /Link-Integrität darf nicht verwaltet werden/,
+  );
+});
+
 test("system events remain available after reopening the Admin Tool SQLite", async () => {
   const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-admin-events-"));
   const sqlitePath = path.join(tempDir, "admin.sqlite");

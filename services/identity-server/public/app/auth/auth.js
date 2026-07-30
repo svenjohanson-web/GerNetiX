@@ -83,7 +83,7 @@ loginForm.addEventListener("submit", async (event) => {
     window.location.href = result.next || "/app/dashboard/";
   } catch (error) {
     if (browserPasskeyRequest) await reportPasskeyBrowserError("authentication", error);
-    statusElement.textContent = localizedErrorMessage(error, "auth.status.passkey.login_failed", "Passkey-Login fehlgeschlagen.");
+    statusElement.textContent = passkeyLoginFailureMessage(error);
   }
 });
 
@@ -204,6 +204,25 @@ function registrationFailureMessage(error) {
     NotSupportedError: tr("auth.error.not_supported", "Passkeys werden in diesem Browser nicht unterstützt."),
   }[error?.name] || localizedErrorMessage(error, "auth.error.registration_failed", "Die Passkey-Erstellung konnte nicht abgeschlossen werden.");
   return tr("auth.error.registration_reason", "Konto wurde nicht angelegt. Grund: {reason}", { reason });
+}
+
+function passkeyLoginFailureMessage(error) {
+  const keyByReason = {
+    invalid_credentials: "auth.error.login.account_not_found",
+    account_not_found: "auth.error.login.account_not_found",
+    passkey_not_configured: "auth.error.login.passkey_not_configured",
+    account_disabled: "auth.error.login.account_disabled",
+    account_not_verified: "auth.error.login.account_not_verified",
+    guest_expired: "auth.error.login.guest_expired",
+    NotAllowedError: "auth.error.login.not_allowed",
+    SecurityError: "auth.error.security",
+    NotSupportedError: "auth.error.not_supported",
+  };
+  const reason = error?.code || error?.name;
+  const translationKey = keyByReason[reason];
+  return translationKey
+    ? tr(translationKey, error.message || "Passkey-Login fehlgeschlagen.")
+    : tr("auth.status.passkey.login_failed", "Passkey-Login fehlgeschlagen.");
 }
 
 function localizedErrorMessage(error, fallbackKey, fallbackText) {

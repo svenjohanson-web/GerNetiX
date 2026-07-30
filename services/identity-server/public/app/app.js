@@ -34,6 +34,7 @@ const state = {
   builds: [],
   billing: null,
   community: { questions: [], activeQuestionId: "", answers: [] },
+  messages: { folder: "inbox", threads: [], activeThreadId: "", activeThread: null },
   communitySummary: { available: false, total: 0, public: { open: 0, closed: 0 }, private: { open: 0, closed: 0 } },
   knowledgeUpdates: [],
   knowledgeHistory: [],
@@ -84,6 +85,7 @@ const routeMap = {
   shop: "shopView",
   billing: "billingView",
   community: "communityView",
+  messages: "messagesView",
   help: "informationView",
   knowledge: "informationView",
   "account-setup": "accountSetupView",
@@ -264,6 +266,27 @@ document.querySelector("#communityRefreshButton")?.addEventListener("click", loa
 document.querySelector("#communityRequestForm")?.addEventListener("submit", submitCommunityRequest);
 document.querySelector("#communityQuestionList")?.addEventListener("click", (event) => { const button = event.target.closest("[data-community-question]"); if (button) openCommunityQuestion(button.dataset.communityQuestion); });
 document.querySelector("#communityThread")?.addEventListener("submit", submitCommunityAnswer);
+document.querySelector("#communityThread")?.addEventListener("click", (event) => { const button = event.target.closest("[data-copy-community-link]"); if (button) copyCommunityQuestionLink(button.dataset.copyCommunityLink); });
+document.querySelector("#messageFolders")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-message-folder]");
+  if (!button) return;
+  state.messages.folder = button.dataset.messageFolder;
+  state.messages.activeThreadId = "";
+  document.querySelector("#messageReadingPane").innerHTML = `<div class="message-empty-state"><strong>Wähle eine Nachricht</strong><p>Die Unterhaltung wird hier geöffnet.</p></div>`;
+  loadMessages();
+});
+document.querySelector("#messageThreadList")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-message-thread]");
+  if (button) openMessageThread(button.dataset.messageThread);
+});
+document.querySelector("#messageReadingPane")?.addEventListener("submit", submitMessageReply);
+document.querySelector("#messageReadingPane")?.addEventListener("click", (event) => { if (event.target.closest("[data-message-archive]")) toggleMessageArchive(); });
+document.querySelector("#messageRefreshButton")?.addEventListener("click", loadMessages);
+document.querySelector("#messageComposeButton")?.addEventListener("click", () => document.querySelector("#messageComposeDialog").showModal());
+document.querySelector("#messageComposeForm")?.addEventListener("submit", submitNewMessage);
+document.querySelector("#messageComposeDialog")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget || event.target.closest("[data-close-message-compose]")) event.currentTarget.close();
+});
 document.querySelector("#flashboxDeviceSelect").addEventListener("change", () => {
   state.activeFlashboxDeviceId = document.querySelector("#flashboxDeviceSelect").value;
 });
@@ -277,8 +300,14 @@ document.querySelector("#clearIdeTerminalButton").addEventListener("click", clea
 document.querySelector("#showIdeTerminalButton").addEventListener("click", () => setIdeConsoleView("terminal"));
 document.querySelector("#showIdeProjectInformationButton").addEventListener("click", () => setIdeConsoleView("project-information"));
 document.querySelector("#showIdeBuildResultsButton").addEventListener("click", () => setIdeConsoleView("build-results"));
+document.querySelector("#buildList")?.addEventListener("click", (event) => { const button = event.target.closest("[data-project-version-action]"); if (button) handleProjectVersionAction(button); });
+document.querySelector("#projectVersionForm")?.addEventListener("submit", submitProjectVersion);
+document.querySelector("#projectVersionDialog")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget || event.target.closest("[data-close-project-version]")) event.currentTarget.close();
+});
 document.querySelector("#showIdeProjectHintsButton").addEventListener("click", () => setIdeConsoleView("hints"));
 document.querySelector("#sourceEditor").addEventListener("input", () => markIdeSourceDirty());
+initializeIdeWorkspaceResize();
 document.addEventListener("keydown", (event) => {
   if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "s") return;
   if (document.querySelector("#ideView")?.classList.contains("hidden") || !state.activeProjectId) return;
@@ -539,6 +568,7 @@ function renderRoute() {
   if (route === "device-provisioning") loadDevicePageTools();
   if (route === "downloads") renderDownloads();
   if (route === "community") loadCommunity();
+  if (route === "messages") loadMessages();
   if (["help", "knowledge"].includes(route)) renderInformationTopic();
   lastRenderedRoute = route;
 }
@@ -692,6 +722,10 @@ function currentLocationTrail(route) {
     community: [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Community & Begleitung", route: "" },
+    ],
+    messages: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Nachrichten", route: "" },
     ],
     knowledge: [
       { label: "Wissensportal", route: "/wissen/" },
@@ -1035,6 +1069,7 @@ async function loadCommunity() {
   const target = document.querySelector("#communityQuestionList");
   if (!target) return;
   target.innerHTML = `<p class="helper-text">Anfragen werden geladen ...</p>`;
+  configureSupportRequestMode();
   try {
     const response = await getJson("/api/community/questions");
     state.community.questions = response.items || [];
@@ -1049,10 +1084,151 @@ function renderCommunity() {
   target.innerHTML = state.community.questions.length ? state.community.questions.map((question) => `<button class="community-question-card ${question.question_id === state.community.activeQuestionId ? "active" : ""}" type="button" data-community-question="${escapeAttribute(question.question_id)}"><span>${question.visibility === "private" ? "Privat" : "Öffentlich"} · ${escapeHtml(question.status)}</span><strong>${escapeHtml(question.title)}</strong><small>${question.answer_count || 0} Antworten</small></button>`).join("") : `<p class="helper-text">Noch keine Anfragen. Starte gern mit deiner Projektidee.</p>`;
 }
 
+const messageFolderLabels = {
+  inbox: "Posteingang", outbox: "Postausgang", sent: "Gesendet", support: "Support", archive: "Archiv",
+};
+
+async function loadMessages() {
+  const list = document.querySelector("#messageThreadList");
+  if (!list) return;
+  list.innerHTML = `<p class="helper-text">Nachrichten werden geladen …</p>`;
+  const archived = state.messages.folder === "archive";
+  try {
+    const payload = await getJson(`/api/community/message-threads${archived ? "?folder=archived" : ""}`);
+    const currentUserId = state.account?.user_id || state.account?.id || "";
+    let threads = payload.items || [];
+    if (state.messages.folder === "inbox") threads = threads.filter((item) => item.mailbox_kind !== "support" && (item.state === "unread" || item.latest_message?.author_user_id !== currentUserId));
+    if (state.messages.folder === "sent") threads = threads.filter((item) => item.latest_message?.author_user_id === currentUserId);
+    if (state.messages.folder === "support") threads = threads.filter((item) => item.mailbox_kind === "support");
+    if (state.messages.folder === "outbox") threads = [];
+    state.messages.threads = threads;
+    document.querySelector("#messageUnreadCount").textContent = String(payload.unread_count || 0);
+    renderMessageList();
+  } catch (error) {
+    list.innerHTML = `<p class="helper-text error-text">${escapeHtml(error.message || "Nachrichten konnten nicht geladen werden.")}</p>`;
+  }
+}
+
+function renderMessageList() {
+  document.querySelector("#messageFolderTitle").textContent = messageFolderLabels[state.messages.folder];
+  document.querySelectorAll("[data-message-folder]").forEach((button) => button.classList.toggle("active", button.dataset.messageFolder === state.messages.folder));
+  const list = document.querySelector("#messageThreadList");
+  if (!state.messages.threads.length) {
+    const text = state.messages.folder === "outbox"
+      ? "Keine wartenden Nachrichten. Nachrichten werden derzeit sofort zugestellt."
+      : "Dieser Ordner ist leer.";
+    list.innerHTML = `<div class="message-list-empty"><strong>Keine Nachrichten</strong><p>${text}</p></div>`;
+    return;
+  }
+  list.innerHTML = state.messages.threads.map((thread) => `
+    <button class="message-thread-row ${thread.state === "unread" ? "unread" : ""} ${thread.thread_id === state.messages.activeThreadId ? "active" : ""}" type="button" data-message-thread="${escapeAttribute(thread.thread_id)}">
+      <span class="message-thread-avatar">${thread.mailbox_kind === "support" ? "S" : "N"}</span>
+      <span class="message-thread-copy"><strong>${escapeHtml(thread.subject || "Ohne Betreff")}</strong><small>${escapeHtml(thread.latest_message?.author_label || "GerNetiX Mitglied")}</small><span>${escapeHtml((thread.latest_message?.body || "").slice(0, 90))}</span></span>
+      <time>${formatMessageDate(thread.updated_at)}</time>
+    </button>
+  `).join("");
+}
+
+async function openMessageThread(threadId) {
+  const pane = document.querySelector("#messageReadingPane");
+  pane.innerHTML = `<p class="helper-text">Unterhaltung wird geladen …</p>`;
+  try {
+    const thread = await getJson(`/api/community/message-threads/${encodeURIComponent(threadId)}`);
+    state.messages.activeThreadId = threadId;
+    state.messages.activeThread = thread;
+    await postJson(`/api/community/message-threads/${encodeURIComponent(threadId)}/read`, {});
+    renderMessageList();
+    pane.innerHTML = `
+      <header class="message-reading-header"><div><p class="eyebrow">${thread.mailbox_kind === "support" ? "Support" : "Unterhaltung"}</p><h2>${escapeHtml(thread.subject || "Ohne Betreff")}</h2></div>
+        <button type="button" data-message-archive>${state.messages.folder === "archive" ? "Wiederherstellen" : "Archivieren"}</button></header>
+      <div class="message-conversation">${(thread.messages || []).map((message) => `
+        <article class="message-bubble ${message.author_user_id === (state.account?.user_id || state.account?.id) ? "own" : ""}">
+          <header><strong>${escapeHtml(message.author_label || "Mitglied")}</strong><time>${formatMessageDate(message.created_at)}</time></header>
+          <p>${escapeHtml(message.body)}</p>
+        </article>`).join("")}</div>
+      <form id="messageReplyForm" class="message-reply-form"><label>Antwort<textarea name="body" required maxlength="8000" rows="4" placeholder="Antwort schreiben …"></textarea></label><div><span id="messageReplyStatus" class="helper-text"></span><button class="primary" type="submit">Senden</button></div></form>`;
+  } catch (error) {
+    pane.innerHTML = `<p class="helper-text error-text">${escapeHtml(error.message || "Unterhaltung konnte nicht geöffnet werden.")}</p>`;
+  }
+}
+
+async function submitMessageReply(event) {
+  if (!event.target.matches("#messageReplyForm")) return;
+  event.preventDefault();
+  const status = document.querySelector("#messageReplyStatus");
+  try {
+    const body = new FormData(event.target).get("body");
+    await postJson(`/api/community/message-threads/${encodeURIComponent(state.messages.activeThreadId)}/messages`, { body });
+    await openMessageThread(state.messages.activeThreadId);
+    await loadMessages();
+  } catch (error) { status.textContent = error.message || "Antwort konnte nicht gesendet werden."; }
+}
+
+async function submitNewMessage(event) {
+  event.preventDefault();
+  const status = document.querySelector("#messageComposeStatus");
+  status.textContent = "Nachricht wird gesendet …";
+  try {
+    const data = Object.fromEntries(new FormData(event.target).entries());
+    const thread = await postJson("/api/community/message-threads", data);
+    event.target.reset();
+    document.querySelector("#messageComposeDialog").close();
+    state.messages.folder = "sent";
+    await loadMessages();
+    await openMessageThread(thread.thread_id);
+  } catch (error) { status.textContent = error.message || "Nachricht konnte nicht gesendet werden."; }
+}
+
+async function toggleMessageArchive() {
+  const threadId = state.messages.activeThreadId;
+  if (!threadId) return;
+  if (state.messages.folder === "archive") await deleteJson(`/api/community/message-threads/${encodeURIComponent(threadId)}/archive`);
+  else await postJson(`/api/community/message-threads/${encodeURIComponent(threadId)}/archive`, {});
+  state.messages.activeThreadId = "";
+  state.messages.activeThread = null;
+  document.querySelector("#messageReadingPane").innerHTML = `<div class="message-empty-state"><strong>Wähle eine Nachricht</strong><p>Die Unterhaltung wird hier geöffnet.</p></div>`;
+  await loadMessages();
+}
+
+function formatMessageDate(value) {
+  if (!value) return "";
+  return new Intl.DateTimeFormat("de-DE", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }).format(new Date(value));
+}
+
 async function submitCommunityRequest(event) {
   event.preventDefault(); const form = event.currentTarget; const status = document.querySelector("#communityRequestStatus");
   status.textContent = "Anfrage wird gesendet ...";
-  try { const question = await postJson("/api/community/questions", Object.fromEntries(new FormData(form).entries())); form.reset(); status.textContent = "Anfrage wurde gesendet."; await loadCommunity(); await openCommunityQuestion(question.question_id); } catch (error) { status.textContent = error.message || "Anfrage konnte nicht gesendet werden."; }
+  try {
+    const data = Object.fromEntries(new FormData(form).entries());
+    if (isSupportRequestMode()) {
+      await postJson("/api/community/support-requests", { subject: data.title, body: data.body });
+      form.reset();
+      status.textContent = "Deine private Supportanfrage wurde an das Support-Postfach gesendet.";
+      return;
+    }
+    if (data.attach_project_snapshot === "true" && !data.project_id) throw new Error("Wähle zuerst das Projekt aus, dessen Stand du anhängen möchtest.");
+    const question = await postJson("/api/community/questions", data);
+    form.reset(); status.textContent = "Anfrage wurde gesendet. Den Link kannst du jetzt in der Anfrage kopieren.";
+    await loadCommunity(); await openCommunityQuestion(question.question_id);
+  } catch (error) { status.textContent = error.message || "Anfrage konnte nicht gesendet werden."; }
+}
+
+function isSupportRequestMode() {
+  return new URLSearchParams(window.location.search).get("support") === "1";
+}
+
+function configureSupportRequestMode() {
+  if (!isSupportRequestMode()) return;
+  const form = document.querySelector("#communityRequestForm");
+  if (!form) return;
+  form.querySelector("h2").textContent = "Neue Supportanfrage";
+  form.querySelector("h2 + p").textContent = "Deine Anfrage wird privat an das GerNetiX-Support-Postfach gesendet.";
+  form.querySelector('select[name="tags"]')?.closest("label")?.classList.add("hidden");
+  form.querySelector("#communityProjectSelect")?.closest("label")?.classList.add("hidden");
+  form.querySelector("#communityAttachProjectSnapshot")?.closest("label")?.classList.add("hidden");
+  form.querySelector("fieldset")?.classList.add("hidden");
+  const button = form.querySelector('button[type="submit"]');
+  if (button) button.textContent = "Privat an Support senden";
 }
 
 async function openCommunityQuestion(questionId) {
@@ -1060,8 +1236,20 @@ async function openCommunityQuestion(questionId) {
     const [question, answers] = await Promise.all([getJson(`/api/community/questions/${encodeURIComponent(questionId)}`), getJson(`/api/community/questions/${encodeURIComponent(questionId)}/answers`)]);
     state.community.activeQuestionId = questionId; state.community.answers = answers.items || []; renderCommunity();
     const target = document.querySelector("#communityThread"); target.classList.remove("hidden");
-    target.innerHTML = `<header><div><p class="eyebrow">${question.visibility === "private" ? "Private Begleitung" : "Öffentliche Community-Anfrage"}</p><h2>${escapeHtml(question.title)}</h2></div><span>${escapeHtml(question.status)}</span></header><p class="community-question-body">${escapeHtml(question.body)}</p><div class="community-answers">${state.community.answers.map((answer) => `<article><strong>${escapeHtml(answer.author_label)}</strong><p>${escapeHtml(answer.body)}</p></article>`).join("") || `<p class="helper-text">Noch keine Antwort. GerNetiX meldet sich hier.</p>`}</div><form class="community-answer-form"><label>Ergänzung oder Rückfrage<textarea name="body" required rows="3"></textarea></label><input type="hidden" name="question_id" value="${escapeAttribute(question.question_id)}" /><button type="submit">Antwort senden</button></form>`;
+    target.innerHTML = `<header><div><p class="eyebrow">${question.visibility === "private" ? "Private Begleitung" : "Öffentliche Community-Anfrage"}</p><h2>${escapeHtml(question.title)}</h2></div><span>${escapeHtml(question.status)}</span></header><p class="community-question-body">${escapeHtml(question.body)}</p><p><button type="button" data-copy-community-link="${escapeAttribute(question.question_id)}">Link zur Anfrage kopieren</button></p>${renderCommunityProjectSnapshot(question.project_snapshot)}<div class="community-answers">${state.community.answers.map((answer) => `<article><strong>${escapeHtml(answer.author_label)}</strong><p>${escapeHtml(answer.body)}</p></article>`).join("") || `<p class="helper-text">Noch keine Antwort. GerNetiX meldet sich hier.</p>`}</div><form class="community-answer-form"><label>Ergänzung oder Rückfrage<textarea name="body" required rows="3"></textarea></label><input type="hidden" name="question_id" value="${escapeAttribute(question.question_id)}" /><button type="submit">Antwort senden</button></form>`;
   } catch (error) { window.alert(error.message || "Anfrage konnte nicht geöffnet werden."); }
+}
+
+function renderCommunityProjectSnapshot(snapshot) {
+  if (!snapshot) return "";
+  const sources = snapshot.sources || [];
+  return `<details class="community-project-snapshot"><summary>Projektkopie: ${escapeHtml(snapshot.project_title)} · ${sources.length} Dateien</summary><p class="helper-text">Schreibgeschützter Stand vom ${escapeHtml(new Date(snapshot.captured_at).toLocaleString())}. Er enthält keine Binärdateien.</p>${sources.map((source) => `<details><summary><code>${escapeHtml(source.path)}</code></summary><pre><code>${escapeHtml(source.content)}</code></pre></details>`).join("")}</details>`;
+}
+
+async function copyCommunityQuestionLink(questionId) {
+  const link = `${window.location.origin}/community/questions/${encodeURIComponent(questionId)}/`;
+  try { await navigator.clipboard.writeText(link); window.alert("Der Link zur Community-Anfrage wurde kopiert."); }
+  catch { window.prompt("Kopiere diesen Link:", link); }
 }
 
 async function submitCommunityAnswer(event) {
@@ -1264,6 +1452,7 @@ function learningTagLabel(tag) {
     "topic:firmware": "Firmware",
     "topic:home-automation": "Hausautomation",
     "topic:modeling": "Modellierung",
+    "topic:privacy": "Datenschutz",
     "topic:programming": "Programmierung",
     "topic:radar": "Radar",
     "topic:radio": "Funk",
@@ -1276,13 +1465,13 @@ function learningTagLabel(tag) {
     en: {
       "client:mobile": "Mobile", "level:beginner": "Beginner", "topic:actuators": "Actuators", "topic:ai": "AI",
       "topic:automation": "Automation", "topic:home-automation": "Home automation", "topic:modeling": "Modelling",
-      "topic:programming": "Programming", "topic:radio": "Radio", "topic:sensors": "Sensors", "topic:data": "Data", "topic:databases": "Databases",
+      "topic:privacy": "Privacy", "topic:programming": "Programming", "topic:radio": "Radio", "topic:sensors": "Sensors", "topic:data": "Data", "topic:databases": "Databases",
       "topic:storage": "Storage",
     },
     nl: {
       "client:mobile": "Mobiel", "level:beginner": "Beginner", "topic:actuators": "Actuatoren", "topic:ai": "AI",
       "topic:automation": "Automatisering", "topic:home-automation": "Domotica", "topic:modeling": "Modellering",
-      "topic:programming": "Programmeren", "topic:radio": "Radio", "topic:sensors": "Sensoren", "topic:data": "Gegevens", "topic:databases": "Databases",
+      "topic:privacy": "Privacy", "topic:programming": "Programmeren", "topic:radio": "Radio", "topic:sensors": "Sensoren", "topic:data": "Gegevens", "topic:databases": "Databases",
       "topic:storage": "Opslag",
     },
   };
@@ -1515,7 +1704,9 @@ function setupIdeLayoutPersistence() {
   try { stored = JSON.parse(localStorage.getItem(ideLayoutStorageKey()) || "{}"); } catch {}
   if (Number(stored.projectBrowserWidth) > 0) elements.projectBrowserWidth.style.width = `${stored.projectBrowserWidth}px`;
   if (Number(stored.assistantWidth) > 0) elements.assistantWidth.style.width = `${stored.assistantWidth}px`;
-  if (Number(stored.buildHeight) > 0) elements.buildHeight.style.height = `${stored.buildHeight}px`;
+  if (Number(stored.buildHeight) > 0) {
+    document.querySelector(".ide-workbench")?.style.setProperty("--ide-console-height", `${stored.buildHeight}px`);
+  }
   const observer = new ResizeObserver(() => {
     const chatInput = document.querySelector("[data-code-explorer-chat] textarea");
     const layout = {
@@ -1730,6 +1921,64 @@ function setIdeConsoleView(view) {
   hintsButton.classList.toggle("active", showHints);
   hintsButton.setAttribute("aria-selected", String(showHints));
   if (showBuildResults) renderBuilds();
+}
+
+function initializeIdeWorkspaceResize() {
+  const handle = document.querySelector("#ideWorkspaceResizeHandle");
+  if (!handle) return;
+  handle.addEventListener("pointerdown", (event) => {
+    if (event.button !== 0) return;
+    const consolePanel = document.querySelector("#ideBuildConsole");
+    if (!consolePanel) return;
+    event.preventDefault();
+    const startY = event.clientY;
+    const startHeight = consolePanel.getBoundingClientRect().height;
+    handle.classList.add("active");
+    handle.setPointerCapture?.(event.pointerId);
+    const move = (moveEvent) => {
+      setIdeConsoleHeight(startHeight - (moveEvent.clientY - startY));
+    };
+    const stop = () => {
+      handle.classList.remove("active");
+      handle.removeEventListener("pointermove", move);
+      handle.removeEventListener("pointerup", stop);
+      handle.removeEventListener("pointercancel", stop);
+    };
+    handle.addEventListener("pointermove", move);
+    handle.addEventListener("pointerup", stop);
+    handle.addEventListener("pointercancel", stop);
+  });
+  handle.addEventListener("keydown", (event) => {
+    if (!["ArrowUp", "ArrowDown", "Home"].includes(event.key)) return;
+    event.preventDefault();
+    if (event.key === "Home") {
+      resetIdeConsoleHeight();
+      return;
+    }
+    const currentHeight = document.querySelector("#ideBuildConsole")?.getBoundingClientRect().height || 260;
+    setIdeConsoleHeight(currentHeight + (event.key === "ArrowUp" ? 24 : -24));
+  });
+  handle.addEventListener("dblclick", resetIdeConsoleHeight);
+}
+
+function setIdeConsoleHeight(requestedHeight) {
+  const handle = document.querySelector("#ideWorkspaceResizeHandle");
+  const workbench = handle?.closest(".ide-workbench");
+  if (!handle || !workbench) return;
+  const minimum = 140;
+  const maximum = Math.max(minimum, workbench.getBoundingClientRect().height - 180);
+  const height = Math.round(Math.min(maximum, Math.max(minimum, requestedHeight)));
+  workbench.style.setProperty("--ide-console-height", `${height}px`);
+  handle.setAttribute("aria-valuenow", String(height));
+  handle.setAttribute("aria-valuemax", String(Math.round(maximum)));
+}
+
+function resetIdeConsoleHeight() {
+  const handle = document.querySelector("#ideWorkspaceResizeHandle");
+  const workbench = handle?.closest(".ide-workbench");
+  workbench?.style.removeProperty("--ide-console-height");
+  handle?.removeAttribute("aria-valuenow");
+  handle?.removeAttribute("aria-valuemax");
 }
 
 function ideActionUnavailableReason(project, allocated) {
@@ -2892,7 +3141,9 @@ async function flashBuildViaSerialService(build, device) {
 
 async function waitForCompletedBuild(build) {
   let current = build;
+  const seenProgress = new Set();
   for (let attempt = 0; attempt < 600; attempt += 1) {
+    appendBuildProgress(current.progress, seenProgress);
     const otaComplete = build.mode !== "build_and_flash"
       || ["rebooting", "confirmed", "delivered", "succeeded", "failed"].includes(current.flash_status);
     if (["failed", "replaced"].includes(current.status) || (current.status === "succeeded" && otaComplete)) return { ...build, ...current };
@@ -2907,6 +3158,16 @@ async function waitForCompletedBuild(build) {
     current = await getJson(`/api/user-ide/build-jobs/${encodeURIComponent(build.build_deploy_job_id || build.build_job_id)}/status`);
   }
   throw new Error("PlatformIO-Build hat das Zeitlimit überschritten.");
+}
+
+function appendBuildProgress(progress, seenProgress) {
+  for (const entry of Array.isArray(progress) ? progress : []) {
+    const key = String(entry?.sequence || `${entry?.at || ""}:${entry?.message || ""}`);
+    if (seenProgress.has(key)) continue;
+    seenProgress.add(key);
+    const kind = entry?.phase === "failed" ? "error" : "running";
+    appendIdeTerminal(kind, entry?.message || "");
+  }
 }
 
 function appendBuildFailureLog(buildLog) {
@@ -3446,24 +3707,122 @@ function renderBuilds() {
     return;
   }
   const projectBuilds = state.builds.filter((build) => build.project_server_id === project.id);
-  target.innerHTML = projectBuilds.length ? projectBuilds.map((build) => `
+  target.innerHTML = `<section class="project-version-actions"><div><p class="eyebrow">Git Light · Premium</p><h3>Projektverlauf</h3><p class="helper-text">Unveränderliche Projektstände speichern und jederzeit als neuen Restore-Stand wiederherstellen.</p></div><button type="button" data-project-version-action="save">Neue Version</button></section><section id="projectVersionList" class="build-list"><p class="helper-text">Versionen werden geladen …</p></section>${projectBuilds.length ? projectBuilds.map((build, index) => `
     <article class="build-row">
       <div>
-        <h3>${escapeHtml(buildArtifactVersionLabel(build))}</h3>
-        <p>${escapeHtml(build.device_label)} · ${escapeHtml(build.mode)} · ${escapeHtml(formatBuildDate(build.created_at))}</p>
+        <h3>Build ${projectBuilds.length - index} · ${escapeHtml(buildArtifactVersionLabel(build))}</h3>
+        <p>${escapeHtml(formatBuildDate(build.finished_at || build.created_at))} · ${escapeHtml(buildModeLabel(build.mode))}</p>
+        <dl class="build-summary-list">
+          ${meta("Ziel", buildTargetLabel(build, project))}
+          ${meta("Basissoftware", buildBasisLabel(build, project))}
+          ${meta("Dauer", buildDurationLabel(build))}
+          ${meta("Gerät", build.device_label || "nicht zugeordnet")}
+        </dl>
         ${renderBuildArtifacts(build)}
       </div>
       <dl class="meta-list">
-        ${meta("Status", build.status)}
-        ${meta("BuildJob", build.build_job_id)}
-        ${meta("Flash", build.flash_status || "nicht angefordert")}
+        ${meta("Ergebnis", buildArtifactVersionLabel(build))}
+        ${meta("Flash", buildFlashLabel(build.flash_status))}
+        <details class="build-technical-details"><summary>Technische Kennung</summary><code>${escapeHtml(build.build_job_id)}</code></details>
       </dl>
     </article>
-  `).join("") : `<p class="empty">Für dieses Projekt wurden noch keine Builds gestartet.</p>`;
+  `).join("") : `<p class="empty">Für dieses Projekt wurden noch keine Builds gestartet.</p>`}`;
+  loadProjectVersions(project.id);
+}
+
+async function loadProjectVersions(projectId) {
+  const target = document.querySelector("#projectVersionList");
+  if (!target) return;
+  try {
+    const payload = await getJson(`/api/platform/projects/${encodeURIComponent(projectId)}/versions`);
+    const versions = payload.items || [];
+    target.innerHTML = versions.length ? versions.map((version, index) => `<article class="build-row project-version-row"><div><p class="eyebrow">${version.commit_kind === "restore" ? "Wiederherstellung" : `Version ${versions.length - index}`}</p><h3>${escapeHtml(version.message || "Projektversion")}</h3><p>${escapeHtml(formatBuildDate(version.created_at))} · ${version.sources?.length || 0} Dateien · ${version.includes_binary ? "mit Binary" : "ohne Binary"}</p><code title="SHA-256 des Projektstands">${escapeHtml((version.snapshot_sha256 || "").slice(0, 16))}${version.snapshot_sha256 ? "…" : ""}</code></div><button type="button" data-project-version-action="restore" data-version-id="${escapeAttribute(version.version_id)}">Wiederherstellen</button></article>`).join("") : `<p class="helper-text">Noch keine gespeicherte Projektversion.</p>`;
+  } catch (error) {
+    target.innerHTML = `<p class="helper-text ${error.status === 403 ? "" : "error-text"}">${error.status === 403 ? "Git Light ist eine Premium-Funktion." : "Versionen konnten nicht geladen werden."}</p>`;
+  }
+}
+
+async function handleProjectVersionAction(button) {
+  const projectId = state.activeProjectId;
+  if (!projectId) return;
+  if (button.dataset.projectVersionAction === "save") {
+    document.querySelector("#projectVersionDialog").showModal();
+    return;
+  } else if (button.dataset.projectVersionAction === "restore") {
+    if (!window.confirm("Diesen Projektstand wiederherstellen? Der aktuelle Stand bleibt als neue Version erhalten.")) return;
+    await postJson(`/api/platform/projects/${encodeURIComponent(projectId)}/versions/${encodeURIComponent(button.dataset.versionId)}/restore`, {});
+    await loadIdeProject();
+  }
+  renderBuilds();
+}
+
+async function submitProjectVersion(event) {
+  event.preventDefault();
+  const project = projectById(state.activeProjectId);
+  const status = document.querySelector("#projectVersionStatus");
+  const data = new FormData(event.target);
+  const includeBinary = data.get("version_mode") === "binary";
+  status.textContent = includeBinary ? "Projektstand wird eingefroren und frisch gebaut …" : "Projektversion wird gespeichert …";
+  try {
+    await persistCurrentSource(project);
+    let buildJobId = null;
+    if (includeBinary) {
+      const device = allocatedIdeDevice(project);
+      const build = await postJson("/api/user-ide/build-jobs", {
+        project_slug: project.slug, device_id: device?.device_id || "", mode: "build",
+      });
+      const completed = await waitForCompletedBuild(build);
+      state.builds.unshift(completed);
+      if (completed.status !== "succeeded") throw new Error(`Build fehlgeschlagen: ${completed.error || "Unbekannter Buildfehler."}`);
+      buildJobId = completed.build_job_id;
+    }
+    await postJson(`/api/platform/projects/${encodeURIComponent(project.id)}/versions`, {
+      message: String(data.get("message") || "Projektstand gespeichert"),
+      include_binary: includeBinary,
+      build_job_id: buildJobId,
+    });
+    event.target.reset();
+    document.querySelector("#projectVersionDialog").close();
+    setFlashStatus("ok", includeBinary ? "Git-Light-Version mit Binary gespeichert." : "Git-Light-Version gespeichert.");
+    renderBuilds();
+  } catch (error) {
+    status.textContent = error.message || "Projektversion konnte nicht gespeichert werden.";
+  }
 }
 
 function buildArtifactVersionLabel(build) {
-  return build.status === "succeeded" ? "Erfolgreiches Build-Ergebnis" : `Build ${build.status || "ohne Status"}`;
+  if (build.status === "succeeded") return "erfolgreich";
+  if (build.status === "failed") return "fehlgeschlagen";
+  if (build.status === "queued") return "wartet";
+  if (build.status === "running") return "läuft";
+  return build.status || "ohne Ergebnis";
+}
+
+function buildModeLabel(mode) {
+  return ({ build: "Build", build_and_usb_flash: "Build + USB-Flash", build_and_flash: "Build + OTA", prebuild: "Vorab-Build" })[mode] || mode || "Build";
+}
+
+function buildTargetLabel(build, project) {
+  const config = build.build_config || project.buildConfig || {};
+  return [config.environment || config.board, config.framework].filter(Boolean).join(" · ") || "nicht dokumentiert";
+}
+
+function buildBasisLabel(build, project) {
+  const config = build.build_config || project.buildConfig || {};
+  if (!config.firmware_basis_id) return "keine GerNetiX-Basissoftware";
+  return [config.firmware_basis_id, config.firmware_basis_variant, config.firmware_basis_version].filter(Boolean).join(" · ");
+}
+
+function buildDurationLabel(build) {
+  const start = Date.parse(build.created_at || "");
+  const end = Date.parse(build.finished_at || "");
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) return "nicht erfasst";
+  const seconds = Math.max(1, Math.round((end - start) / 1000));
+  return seconds < 60 ? `${seconds} s` : `${Math.floor(seconds / 60)} min ${seconds % 60} s`;
+}
+
+function buildFlashLabel(status) {
+  return ({ succeeded: "erfolgreich geflasht", confirmed: "vom Board bestätigt", delivered: "bereitgestellt", not_requested: "nicht angefordert", "nicht angefordert": "nicht angefordert" })[status] || status || "nicht angefordert";
 }
 
 function formatBuildDate(value) {

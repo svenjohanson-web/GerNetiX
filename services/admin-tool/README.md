@@ -56,6 +56,7 @@ Konfiguration:
 - `OPERATIONS_POSTGRES_*`: Verbindung zur fuehrenden Operations-PostgreSQL-Datenbank
 - `PERSISTENCE_SQLITE_PATH`: ausschliesslich Legacy-/Testpfad fuer die einmalige Altuebernahme
 - `SYSTEM_EVENT_INGEST_TOKEN`: eigener Dienst-zu-Dienst-Token fuer den internen System-Event-Eingang; im VPS-Betrieb identisch in Admin Tool und meldenden Diensten setzen
+- `LINK_INTEGRITY_INGEST_TOKEN`: davon getrennter Dienst-zu-Dienst-Token fuer Linkinventar und Prüfergebnisse; ausschließlich in Admin Tool und Identity setzen
 - `LLM_CONFIG_PATH`: Legacy-Pfad zur alten lokalen LLM-JSON-Konfiguration; fachliche LLM-Routing-Persistenz muss gemaess Architekturentscheidung in SQLite liegen.
 - `AI_CONTEXT_BASE_URL`: AI-Context-Server fuer LLM-Datenfreigaben, Standard `http://127.0.0.1:5500`
 - `HARDWARE_CATALOG_BASE_URL`: Hardware Catalog fuer fachliche KI-Kontextinhalte wie Boards und Capabilities, Standard `http://127.0.0.1:4910`

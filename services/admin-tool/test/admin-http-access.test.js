@@ -84,3 +84,34 @@ test("interner Schnittstellen-Eingang verwendet denselben geschuetzten Ingest-Ka
     assert.equal(recorded[0].target_service, "project-server");
   });
 });
+
+test("Linkinventar und Prüfergebnisse verwenden einen getrennten Ingest-Token", async () => {
+  const received = [];
+  const service = {
+    serviceClients: { linkIntegrityIngestToken: "link-ingest-token" },
+    async registerLinkInventory(value) { received.push(["inventory", value]); return { targets: 1 }; },
+    async recordLinkChecks(value) { received.push(["checks", value]); return { accepted: 1 }; },
+  };
+  const app = createHttpApp({ service });
+  await withServer(app, async (baseUrl) => {
+    const denied = await fetch(`${baseUrl}/api/internal/link-integrity/inventory`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ source_service: "identity-server" }),
+    });
+    assert.equal(denied.status, 403);
+
+    for (const [resource, payload] of [
+      ["inventory", { source_service: "identity-server", targets: [{}] }],
+      ["checks", { checks: [{}] }],
+    ]) {
+      const allowed = await fetch(`${baseUrl}/api/internal/link-integrity/${resource}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-GerNetiX-Link-Integrity-Token": "link-ingest-token" },
+        body: JSON.stringify(payload),
+      });
+      assert.equal(allowed.status, 202);
+    }
+    assert.deepEqual(received.map(([kind]) => kind), ["inventory", "checks"]);
+  });
+});

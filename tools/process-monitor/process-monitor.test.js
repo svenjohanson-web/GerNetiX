@@ -10,7 +10,7 @@ const client = fs.readFileSync(path.join(__dirname, "public/desktop-app.js"), "u
 const desktopMain = fs.readFileSync(path.join(__dirname, "desktop-main.js"), "utf8");
 const desktopPreload = fs.readFileSync(path.join(__dirname, "desktop-preload.js"), "utf8");
 
-test("monitor exposes every backend service and keeps optional tools out of bulk start", () => {
+test("monitor knows every backend service but treats only Identity as local", async () => {
   assert.equal(control.services.find((item) => item.id === "identity-server").port, 4300);
   assert.equal(control.services.find((item) => item.id === "admin-tool").port, 4600);
   assert.equal(control.services.find((item) => item.id === "community-platform").port, 5200);
@@ -22,7 +22,10 @@ test("monitor exposes every backend service and keeps optional tools out of bulk
   assert.equal(control.services.find((item) => item.id === "recovery-tool").port, 5100);
   assert.equal(control.services.find((item) => item.id === "admin-access-server").port, 4610);
   assert.equal(control.services.length, 17);
-  assert.equal(control.services.filter((item) => item.autoStart).length, 10);
+  assert.deepEqual(control.services.filter((item) => item.local).map((item) => item.id), ["identity-server"]);
+  assert.deepEqual(control.services.filter((item) => item.autoStart).map((item) => item.id), ["identity-server"]);
+  const states = await control.processStates();
+  assert.deepEqual(states.map((item) => item.id), ["identity-server"]);
 });
 
 test("desktop monitor reports Community SQLite counts without reading content", () => {
@@ -57,11 +60,11 @@ test("desktop monitor reports Community SQLite counts without reading content", 
   }
 });
 
-test("desktop app uses isolated IPC and has no admin tool dependency", () => {
+test("desktop app uses isolated IPC and keeps admin access outside the renderer", () => {
   assert.match(desktopMain, /new BrowserWindow/);
   assert.match(desktopMain, /contextIsolation: true/);
   assert.match(desktopPreload, /contextBridge\.exposeInMainWorld/);
-  assert.doesNotMatch(desktopMain, /4600|admin-tool/);
+  assert.doesNotMatch(client, /fetch\(|ADMIN_TOOL_ACCESS_TOKEN|OPERATIONS_POSTGRES/);
   assert.doesNotMatch(fs.readFileSync(path.join(__dirname, "desktop-process-control.js"), "utf8"), /require\("\.\.\/staging-deploy"\)/);
 });
 
@@ -77,6 +80,10 @@ test("monitor UI displays life status and start stop controls", () => {
   assert.match(client, /data-action="stop"/);
   assert.match(client, /setInterval\(\(\)=>load\(false\),10000\)/);
   assert.match(client, /Community-Speicher/);
+  assert.match(html, /Nur der Identity Server läuft lokal/);
+  assert.match(html, />Identity starten<\/button>/);
+  assert.match(html, /Backend und Infrastruktur/);
+  assert.match(client, /identity\?\.healthy\?"Läuft auf diesem Mac":"Gestoppt"/);
 });
 
 test("monitor reads VPS compose state through the established staging SSH configuration", async () => {
@@ -90,8 +97,19 @@ test("monitor reads VPS compose state through the established staging SSH config
   assert.equal(rows[1].healthy, false);
   assert.match(desktopPreload, /listVps/);
   assert.match(desktopMain, /processes:list-vps/);
-  assert.match(html, /Container und OTA-Infrastruktur/);
+  assert.match(html, /Backend und Infrastruktur/);
   assert.match(client, /renderVps/);
+  let remoteCommand = "";
+  const remote = await control.remoteProcessStates({
+    config:{ GERNETIX_STAGING_SSH:"root@gernetix-vps", GERNETIX_STAGING_DIR:"/opt/gernetix" },
+    execFileAsync:async(_file,args)=>{remoteCommand=args.at(-1);return { stdout:[
+      JSON.stringify({ Service:"identity-server", Name:"identity", State:"running", Health:"healthy" }),
+      JSON.stringify({ Service:"project-postgres-migration", Name:"migration", State:"exited", Health:"" }),
+      JSON.stringify({ Service:"project-server", Name:"project", State:"running", Health:"healthy" }),
+    ].join("\n"), stderr:"" }}
+  });
+  assert.match(remoteCommand, /docker compose --env-file \.env\.vps -f compose\.vps\.yaml ps --format json/);
+  assert.deepEqual(remote.items.map((item)=>item.id), ["project-server"]);
 });
 
 test("monitor displays persisted external interface call statistics", () => {
@@ -106,13 +124,52 @@ test("monitor displays persisted external interface call statistics", () => {
   assert.equal(typeof statistics.summary.calls, "number");
 });
 
+test("monitor reads link integrity through the fixed Admin Tool diagnostic command", async () => {
+  assert.match(html, /data-view="linksView">Links/);
+  assert.match(html, /Operations-PostgreSQL/);
+  assert.match(client, /renderLinkIntegrity/);
+  assert.match(desktopPreload, /link-integrity:status/);
+  assert.match(desktopMain, /link-integrity:status/);
+  let remoteCommand = "";
+  const result = await control.remoteLinkIntegrity({
+    force:true,
+    config:{ GERNETIX_STAGING_SSH:"root@gernetix-vps", GERNETIX_STAGING_DIR:"/opt/gernetix" },
+    execFileAsync:async(_file,args)=>{
+      remoteCommand=args.at(-1);
+      return {stdout:JSON.stringify({
+        access:{audit_event_id:"not-for-renderer"},
+        summary:{total_targets:2,authenticated:1,healthy:1,broken:1},
+        items:[
+          {reference_id:"identity.home",target_url:"/",link_type:"internal",owner_domain:"Identity",access_scope:"public",occurrence_count:2,latest_check:{status:"healthy",http_status:200,checked_at:"2026-07-30T10:00:00.000Z",raw_secret:"hidden"}},
+          {reference_id:"identity.dashboard",target_url:"/app/dashboard/",link_type:"internal",owner_domain:"Identity",access_scope:"authenticated",occurrence_count:1,latest_check:{status:"broken",http_status:404,checked_at:"2026-07-30T10:00:00.000Z"}},
+        ],
+      }),stderr:""};
+    },
+  });
+  assert.match(remoteCommand, /docker compose --env-file \.env\.vps -f compose\.vps\.yaml exec -T admin-tool node \/app\/services\/admin-tool\/scripts\/read-link-integrity\.js/);
+  assert.doesNotMatch(remoteCommand, /ADMIN_TOOL_ACCESS_TOKEN|postgres|password/i);
+  assert.equal(result.summary.broken,1);
+  assert.equal(result.items[1].access_scope,"authenticated");
+  assert.equal(result.items[0].latest_check.raw_secret,undefined);
+  assert.equal(result.access,undefined);
+});
+
 test("desktop monitor uses the same operator navigation terminology", () => {
   assert.match(html, /Operator Console/);
   assert.match(html, /Desktop · lokale Steuerung/);
   assert.match(html, />Übersicht<\/button>/);
   assert.match(html, />Betrieb<\/button>/);
+  assert.match(html, />Links<\/button>/);
   assert.match(html, />Sicherheit<\/button>/);
   assert.match(client, /classList\.toggle\("is-active",active\)/);
+});
+
+test("closing the desktop window exits the macOS app instead of leaving it windowless", () => {
+  assert.match(desktopMain, /let mainWindow = null/);
+  assert.match(desktopMain, /mainWindow\.show\(\)/);
+  assert.match(desktopMain, /app\.on\("activate", createWindow\)/);
+  assert.match(desktopMain, /app\.on\("window-all-closed", \(\) => \{[\s\S]*app\.quit\(\)/);
+  assert.doesNotMatch(desktopMain, /process\.platform !== "darwin"/);
 });
 
 test("monitor controls only the configured GerNetiX WireGuard tunnel", async () => {
@@ -250,19 +307,19 @@ test("monitor shows all VPS protection rules with status and recommended action"
   assert.ok(result.items.every((item)=>item.recommendation));
 });
 
-test("all local services start in order and retain individual failures", async () => {
+test("bulk start controls only the local Identity process", async () => {
   const calls = [];
   const autoStartServices = control.services.filter((service) => service.autoStart);
   const result = await control.startAllServices({ startService: async (id) => {
     calls.push(id);
-    if (id === "hardware-shop") throw new Error("Start fehlgeschlagen");
-    return { id, healthy:true };
+    return { id, healthy:false, error:"Start fehlgeschlagen" };
   }});
   assert.deepEqual(calls, autoStartServices.map((service) => service.id));
-  assert.equal(result.items.length, autoStartServices.length);
-  assert.equal(result.healthy, autoStartServices.length - 1);
+  assert.deepEqual(calls, ["identity-server"]);
+  assert.equal(result.items.length, 1);
+  assert.equal(result.healthy, 0);
   assert.equal(result.failed, 1);
-  assert.equal(result.items.find((item) => item.id === "hardware-shop").error, "Start fehlgeschlagen");
+  assert.equal(result.items[0].error, "Start fehlgeschlagen");
   assert.match(desktopPreload, /processes:start-all/);
   assert.match(desktopMain, /processes:start-all/);
   assert.match(html, /id="startAllLocal"/);

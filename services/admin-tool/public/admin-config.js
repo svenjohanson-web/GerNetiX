@@ -17,6 +17,8 @@ const state = {
   monitoringLoading: false,
   systemEvents: null,
   systemEventsLoading: false,
+  linkIntegrity: null,
+  linkIntegrityLoading: false,
   resources: null,
   componentMetamodel: null,
   currentView: "statistics",
@@ -46,6 +48,8 @@ document.querySelector("#refreshLocalLlmModelsButton").addEventListener("click",
 document.querySelector("#refreshApiLlmModelsButton").addEventListener("click", loadApiModels);
 document.querySelector("#refreshMonitoringButton").addEventListener("click", () => loadMonitoring(true));
 document.querySelector("#refreshSystemEventsButton").addEventListener("click", () => loadSystemEvents(true));
+document.querySelector("#refreshLinkIntegrityButton").addEventListener("click", () => loadLinkIntegrity(true));
+document.querySelector("#syncLinkIntegrityButton").addEventListener("click", synchronizeLinkIntegrity);
 document.querySelector("#refreshResourcesButton").addEventListener("click", () => loadResources(true));
 document.querySelector("#resourcePolicyRows").addEventListener("click", saveResourcePolicy);
 document.querySelector("#refreshAiClarificationsButton").addEventListener("click", () => loadAiClarifications(true));
@@ -185,6 +189,7 @@ function render() {
   renderStatistics();
   renderMonitoring();
   renderSystemEvents();
+  renderLinkIntegrity();
   renderAccounts();
   renderResources();
   renderComponentMetamodel();
@@ -203,6 +208,7 @@ function setView(view) {
   renderNavigation();
   if (state.currentView === "monitoring") loadMonitoring(false);
   if (state.currentView === "system-events") loadSystemEvents(false);
+  if (state.currentView === "link-integrity") loadLinkIntegrity(false);
   if (state.currentView === "ai-clarifications") loadAiClarifications(false);
   if (state.currentView === "ai-help-knowledge") loadAiHelpKnowledge(false);
   if (state.currentView === "email-config") loadEmailConfig().then(renderEmailConfig);
@@ -236,6 +242,7 @@ function viewId(view) {
     statistics: "statisticsView",
     monitoring: "monitoringView",
     "system-events": "systemEventsView",
+    "link-integrity": "linkIntegrityView",
     accounts: "accountsView",
     resources: "resourcesView",
     "component-metamodel": "componentMetamodelView",
@@ -246,6 +253,84 @@ function viewId(view) {
     "email-config": "emailConfigView",
     "llm-config": "llmConfigView",
   }[view] || "statisticsView";
+}
+
+async function loadLinkIntegrity(force) {
+  if (state.linkIntegrityLoading || (state.linkIntegrity && !force)) return;
+  state.linkIntegrityLoading = true;
+  renderLinkIntegrity();
+  try {
+    state.linkIntegrity = await getJson("/api/admin/link-integrity");
+  } catch (error) {
+    state.linkIntegrity = { summary: {}, items: [], error: error.message };
+  } finally {
+    state.linkIntegrityLoading = false;
+    renderLinkIntegrity();
+  }
+}
+
+async function synchronizeLinkIntegrity() {
+  const button = document.querySelector("#syncLinkIntegrityButton");
+  const status = document.querySelector("#linkIntegrityStatus");
+  button.disabled = true;
+  status.className = "flash-status running";
+  status.textContent = "Identity-Inventar wird synchronisiert …";
+  try {
+    const result = await postJson("/api/admin/link-integrity/sync", {});
+    state.linkIntegrity = null;
+    await loadLinkIntegrity(true);
+    status.className = "flash-status ok";
+    status.textContent = `${formatNumber(result.targets)} Ziele und ${formatNumber(result.occurrences)} Fundstellen synchronisiert.`;
+  } catch (error) {
+    status.className = "flash-status error";
+    status.textContent = error.message;
+  } finally {
+    button.disabled = false;
+  }
+}
+
+function renderLinkIntegrity() {
+  const summary = state.linkIntegrity?.summary || {};
+  const items = state.linkIntegrity?.items || [];
+  const metrics = document.querySelector("#linkIntegrityMetrics");
+  const rows = document.querySelector("#linkIntegrityRows");
+  if (!metrics || !rows) return;
+  metrics.innerHTML = [
+    metricCard("Aktive Ziele", formatNumber(summary.total_targets || 0), `${formatNumber(summary.internal || 0)} intern · ${formatNumber(summary.external || 0)} extern`),
+    metricCard("Angemeldet", formatNumber(summary.authenticated || 0), "mit technischem Testkonto"),
+    metricCard("Fehler", formatNumber((summary.broken || 0) + (summary.unreachable || 0)), `${formatNumber(summary.redirected || 0)} Weiterleitungen`),
+    metricCard("Noch ungeprüft", formatNumber(summary.not_checked || 0), "Inventar vorhanden, Lauf ausstehend"),
+  ].join("");
+  if (state.linkIntegrityLoading) {
+    rows.innerHTML = `<tr><td colspan="5" class="empty-cell">Linkregister wird geladen …</td></tr>`;
+    return;
+  }
+  if (state.linkIntegrity?.error) {
+    rows.innerHTML = `<tr><td colspan="5" class="empty-cell">${escapeHtml(state.linkIntegrity.error)}</td></tr>`;
+    return;
+  }
+  rows.innerHTML = items.length ? items.map((item) => {
+    const check = item.latest_check;
+    const status = check?.status || "not_checked";
+    return `<tr>
+      <td><strong>${escapeHtml(item.target_url)}</strong><span>${escapeHtml(item.reference_id)}</span></td>
+      <td><strong>${escapeHtml(item.link_type)}</strong><span>${escapeHtml(item.access_scope)}</span></td>
+      <td>${escapeHtml(item.owner_domain || "-")}</td>
+      <td>${formatNumber(item.occurrence_count || 0)}</td>
+      <td><strong class="link-status ${escapeHtml(status)}">${escapeHtml(linkStatusLabel(status))}</strong><span>${check ? `${escapeHtml(formatDateTime(check.checked_at))}${check.http_status ? ` · HTTP ${formatNumber(check.http_status)}` : ""}` : "kein Prüflauf"}</span></td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="5" class="empty-cell">Noch kein Linkinventar synchronisiert.</td></tr>`;
+}
+
+function linkStatusLabel(status) {
+  return ({
+    healthy: "in Ordnung",
+    redirected: "weitergeleitet",
+    restricted: "Zugriff beschränkt",
+    broken: "defekt",
+    unreachable: "nicht erreichbar",
+    not_checked: "ungeprüft",
+  })[status] || status;
 }
 
 function renderComponentMetamodel() {

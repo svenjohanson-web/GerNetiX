@@ -18,6 +18,9 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
         auditEvents: [],
         adminActions: [],
         systemEvents: [],
+        linkTargets: [],
+        linkOccurrences: [],
+        linkChecks: [],
       },
       collectionMap: {
         devices: "devices",
@@ -27,6 +30,9 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
         auditEvents: "audit_events",
         adminActions: "admin_actions",
         systemEvents: "system_events",
+        linkTargets: "link_targets",
+        linkOccurrences: "link_occurrences",
+        linkChecks: "link_checks",
       },
     }));
   }
@@ -61,6 +67,18 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
     return result;
   }
 
+  replaceLinkInventory(sourceService, inventory) {
+    const result = super.replaceLinkInventory(sourceService, inventory);
+    this.persist();
+    return result;
+  }
+
+  addLinkChecks(checks) {
+    const result = super.addLinkChecks(checks);
+    this.persist();
+    return result;
+  }
+
   persist() {
     const state = {
       devices: Array.from(this.devices.values()),
@@ -70,6 +88,9 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
       auditEvents: this.auditEvents,
       adminActions: this.adminActions,
       systemEvents: this.systemEvents,
+      linkTargets: Array.from(this.linkTargets.values()),
+      linkOccurrences: Array.from(this.linkOccurrences.values()),
+      linkChecks: this.linkChecks,
     };
     this.store.save(state);
     this.store.replaceCollection?.("devices", state.devices, "device_id");
@@ -79,6 +100,9 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
     this.store.replaceCollection?.("audit_events", state.auditEvents, "audit_event_id");
     this.store.replaceCollection?.("admin_actions", state.adminActions, "action_id");
     this.store.replaceCollection?.("system_events", state.systemEvents, "event_id");
+    this.store.replaceCollection?.("link_targets", state.linkTargets, "reference_id");
+    this.store.replaceCollection?.("link_occurrences", state.linkOccurrences, "occurrence_id");
+    this.store.replaceCollection?.("link_checks", state.linkChecks, "check_id");
     if (typeof this.store.replaceTable === "function") {
       this.store.replaceTable("admin_tool_devices", state.devices, deviceColumns());
       this.store.replaceTable("admin_tool_feedback", state.feedback, feedbackColumns());
@@ -87,6 +111,9 @@ class SqliteBackedAdminRepository extends InMemoryAdminRepository {
       this.store.replaceTable("admin_tool_audit_events", state.auditEvents, auditColumns());
       this.store.replaceTable("admin_tool_admin_actions", state.adminActions, actionColumns());
       this.store.replaceTable("admin_tool_system_events", state.systemEvents, systemEventColumns());
+      this.store.replaceTable("admin_tool_link_targets", state.linkTargets, linkTargetColumns());
+      this.store.replaceTable("admin_tool_link_occurrences", state.linkOccurrences, linkOccurrenceColumns());
+      this.store.replaceTable("admin_tool_link_checks", state.linkChecks, linkCheckColumns());
     }
   }
 }
@@ -100,6 +127,9 @@ function adminSchema() {
     `CREATE TABLE IF NOT EXISTS admin_tool_audit_events (audit_event_id TEXT PRIMARY KEY, occurred_at TEXT, account_id TEXT, actor_id TEXT, actor_role TEXT, accessed_data_model_id TEXT, purpose TEXT, access_decision TEXT, reason TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_admin_actions (action_id TEXT PRIMARY KEY, occurred_at TEXT, actor_id TEXT, actor_role TEXT, action_type TEXT, account_id TEXT, reason TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS admin_tool_system_events (event_id TEXT PRIMARY KEY, occurred_at TEXT, severity TEXT, source_service TEXT, target_service TEXT, category TEXT, event_type TEXT, message TEXT, impact TEXT, account_id TEXT, route TEXT, correlation_id TEXT, details_json TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS admin_tool_link_targets (reference_id TEXT PRIMARY KEY, target_url TEXT, link_type TEXT, owner_domain TEXT, access_scope TEXT, source_service TEXT, active INTEGER, updated_at TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS admin_tool_link_occurrences (occurrence_id TEXT PRIMARY KEY, reference_id TEXT, source_service TEXT, source_location TEXT, source_route TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS admin_tool_link_checks (check_id TEXT PRIMARY KEY, reference_id TEXT, checked_at TEXT, status TEXT, http_status INTEGER, access_profile TEXT, final_url TEXT, error_code TEXT, raw_json TEXT NOT NULL);`,
   ];
 }
 
@@ -129,6 +159,18 @@ function actionColumns() {
 
 function systemEventColumns() {
   return { ...columns(["event_id", "occurred_at", "severity", "source_service", "target_service", "category", "event_type", "message", "impact", "account_id", "route", "correlation_id"]), details_json: jsonColumn("details"), raw_json: jsonColumn((row) => row) };
+}
+
+function linkTargetColumns() {
+  return { ...columns(["reference_id", "target_url", "link_type", "owner_domain", "access_scope", "source_service", "active", "updated_at"]), raw_json: jsonColumn((row) => row) };
+}
+
+function linkOccurrenceColumns() {
+  return { ...columns(["occurrence_id", "reference_id", "source_service", "source_location", "source_route"]), raw_json: jsonColumn((row) => row) };
+}
+
+function linkCheckColumns() {
+  return { ...columns(["check_id", "reference_id", "checked_at", "status", "http_status", "access_profile", "final_url", "error_code"]), raw_json: jsonColumn((row) => row) };
 }
 
 module.exports = { SqliteBackedAdminRepository };

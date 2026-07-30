@@ -216,6 +216,10 @@ td span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px;
 }
 .provider-status-link:hover { text-decoration: underline; }
 .empty-cell { color: var(--muted); text-align: center; }
+.link-status.healthy { color: #166534; }
+.link-status.redirected, .link-status.restricted { color: #92400e; }
+.link-status.broken, .link-status.unreachable { color: #991b1b; }
+.link-status.not_checked { color: var(--muted); }
 .form-grid { display: grid; gap: 12px; align-content: start; }
 .form-grid label { display: grid; gap: 6px; color: var(--muted); font-weight: 700; }
 .form-grid input,

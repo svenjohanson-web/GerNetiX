@@ -68,7 +68,7 @@ fordert dafuer das gemeinsame Zertifikat
 Let's-Encrypt-Verzeichnis read-only ein, damit Zertifikatserneuerungen sichtbar
 bleiben. Nach einer Erneuerung wird nur der Broker neu geladen:
 
-Fuer persistente Identity-Systemereignisse muss in `.env.vps` ein eigener langer Zufallswert als `SYSTEM_EVENT_INGEST_TOKEN` gesetzt sein. Compose uebergibt denselben Wert ausschliesslich an Identity Server und Admin Tool.
+Fuer persistente Identity-Systemereignisse muss in `.env.vps` ein eigener langer Zufallswert als `SYSTEM_EVENT_INGEST_TOKEN` gesetzt sein. Compose uebergibt denselben Wert ausschliesslich an Identity Server und Admin Tool. Das Linkinventar und die Prüfergebnisse verwenden davon getrennt `LINK_INTEGRITY_INGEST_TOKEN`; auch dieser Wert wird ausschließlich an Identity Server und Admin Tool übergeben.
 
 ```bash
 docker compose --env-file .env.vps -f compose.vps.yaml kill -s HUP mqtt-broker

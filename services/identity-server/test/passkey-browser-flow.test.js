@@ -31,6 +31,15 @@ test("Passkey registration reports an explicit persisted success or a failure wi
   assert.match(serverSource, /Konto wurde nicht angelegt\. Grund: Passkey konnte nicht verifiziert werden/);
 });
 
+test("Passkey login translates known account and browser failures into an actionable reason", () => {
+  assert.match(authSource, /statusElement\.textContent = passkeyLoginFailureMessage\(error\)/);
+  assert.match(authSource, /invalid_credentials: "auth\.error\.login\.account_not_found"/);
+  assert.match(authSource, /passkey_not_configured: "auth\.error\.login\.passkey_not_configured"/);
+  assert.match(authSource, /account_disabled: "auth\.error\.login\.account_disabled"/);
+  assert.match(authSource, /account_not_verified: "auth\.error\.login\.account_not_verified"/);
+  assert.match(authSource, /NotAllowedError: "auth\.error\.login\.not_allowed"/);
+});
+
 test("offline recovery is wired as a token-bound passkey registration flow", () => {
   assert.match(authSource, /\/api\/recovery\/offline\/start/);
   assert.match(authSource, /\/api\/recovery\/offline\/passkey\/options/);

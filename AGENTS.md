@@ -53,6 +53,10 @@ Diese Datei ist die kurze Start-Erinnerung fuer neue Codex-Chats im GerNetiX-Pro
 - Abschlussnachweis kurz halten: geaenderte Bereiche, Tests, Graph-Status, offene Punkte.
 - Abschlussnachweis nicht kuenstlich verlaengern: keine Runtime-, Graph- oder Live-Daten-Schritte ergaenzen, wenn sie fuer die konkrete Aenderung nicht erforderlich sind.
 
+## UI-Praeferenz
+
+- Ueberschriften und Hero-Bereiche kompakt halten, besonders auf iPad-Breite. Keine sehr fetten oder bildschirmfuellenden Titel; kleinere Schriftgrade, moderates Gewicht und kurze vertikale Abstaende bevorzugen.
+
 ## Abschlussregel
 
 Eine Umsetzung gilt erst als fertig, wenn Code, Tests und relevante Dokumentation zusammenpassen. Wenn sich Architektur, Abhaengigkeiten, Persistenz, Login-/App-Struktur oder Projektmodell aendern, muss die entsprechende Graph-/Diagramm-Sicht mitgezogen werden.

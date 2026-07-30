@@ -16,6 +16,8 @@ const helpContent = `${normalizedHelpContent}\n${normalizedKnowledgeContent}`;
 const informationView = fs.readFileSync(path.join(appRoot, "information-view.js"), "utf8");
 const helpChatService = fs.readFileSync(path.join(appRoot, "help-chat-service.js"), "utf8");
 const webshopAccountSeparationDoc = fs.readFileSync(path.join(__dirname, "..", "..", "..", "docs", "webshop-account-separation.md"), "utf8");
+const synchronousMotorPhaseB = fs.readFileSync(path.join(__dirname, "..", "public", "assets", "synchronous-motor-step-2-phase-b.svg"), "utf8");
+const synchronousMotorPhaseC = fs.readFileSync(path.join(__dirname, "..", "public", "assets", "synchronous-motor-step-3-phase-c.svg"), "utf8");
 
 test("keeps Help reachable through the main menu and renders it as a dedicated view", () => {
   assert.match(html, /href="\/hilfe\/">Hilfe<\/a>/);
@@ -58,13 +60,15 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(helpContent, /title: "Ingenieursmäßig denken"[\s\S]*title: "Elektrotechnik"[\s\S]*title: "Sensorik und Aktorik"[\s\S]*title: "Mikrocontroller und Embedded"[\s\S]*title: "Informatik und Software"[\s\S]*title: "Verteilte Systeme"[\s\S]*title: "Die Künstliche Intelligenz"/);
   assert.match(helpContent, /title: "Informatik und Software"[\s\S]*"software-basics-introduction"[\s\S]*"workers-and-queues"/);
   assert.match(helpContent, /title: "Lexikon"[\s\S]*"glossary-basics"/);
-  assert.match(helpContent, /title: "Elektrotechnik"[\s\S]*"physical-limits"[\s\S]*"sampling-rate"[\s\S]*"embedded-safety"[\s\S]*title: "Sensorik und Aktorik"[\s\S]*"sensors"[\s\S]*"actuators"/);
+  assert.match(helpContent, /title: "Elektrotechnik"[\s\S]*"electrical-basics-and-component-protection"[\s\S]*"digital-signals-data-and-protocols"[\s\S]*"physical-limits"[\s\S]*"sampling-rate"[\s\S]*"embedded-safety"[\s\S]*title: "Sensorik und Aktorik"[\s\S]*"sensors"[\s\S]*"actuators"/);
   assert.match(helpContent, /title: "Mikrocontroller und Embedded"[\s\S]*"hardware-landscape"[\s\S]*"processor-overview"[\s\S]*"microcontroller-basics"[\s\S]*"bus-systems"[\s\S]*"embedded-measurement-debugging"/);
   assert.match(helpContent, /"processor-overview"[\s\S]*"microcontroller-basics"[\s\S]*"microcontroller-flashing"[\s\S]*"microcontroller-pwm"[\s\S]*"embedded-measurement-debugging"/);
   assert.match(helpContent, /"microcontroller-basics": \{[\s\S]*Wie Software in einen Mikrocontroller kommt[\s\S]*Speicherorganisation[\s\S]*Register[\s\S]*GPIO[\s\S]*ADC[\s\S]*Timer[\s\S]*PWM/);
   assert.match(helpContent, /Der Name kommt vom Flash-Speicher selbst[\s\S]*älteren, einzeln löschbaren EEPROMs/);
   assert.match(helpContent, /Aus Quelltext wird eine Firmware-Datei[\s\S]*Der Bootloader öffnet den Programmierweg[\s\S]*Löschen, schreiben und prüfen[\s\S]*Start nach dem Flashen/);
   assert.match(helpContent, /"physical-limits": \{[\s\S]*Absolute Maximum Ratings[\s\S]*absolute Grenzwerte[\s\S]*Strom pro Pin und Gesamtstrom[\s\S]*Maximale Frequenz und Prozessortakt/);
+  assert.match(helpContent, /"electrical-basics-and-component-protection": \{[\s\S]*Spannung und Strom: Antrieb und Bewegung[\s\S]*Leistung, Energie und Arbeit[\s\S]*P = U × I[\s\S]*P = I² × R[\s\S]*Kurzschluss und Querschluss sind nicht dasselbe[\s\S]*Bauteile schützen/);
+  assert.match(helpContent, /"digital-signals-data-and-protocols": \{[\s\S]*Binäre Übertragung: 0 und 1 auf einer Leitung[\s\S]*besonders einfacher Spezialfall[\s\S]*Manchester-Codierung: Takt im Signal[\s\S]*expertKnowledge[\s\S]*QAM: mehrere Bits pro Funksymbol[\s\S]*16-QAM[\s\S]*LTE\/4G und 5G NR[\s\S]*Die Funktechnik wählt die passende Signalform[\s\S]*Von Bits zu Daten[\s\S]*Was ein Protokoll vereinbart[\s\S]*Eine einfache Schichtenlandkarte[\s\S]*HTTP\/REST, MQTT, DNS/);
   assert.match(helpContent, /"sampling-rate": \{[\s\S]*Nyquist-Shannon-Abtasttheorem[\s\S]*Aliasing[\s\S]*Abtastrate praktisch wählen/);
   assert.match(helpContent, /"sensors": \{[\s\S]*Sensoren nach Messgröße und Wirkprinzip ordnen[\s\S]*I²C[\s\S]*Messschaltungen[\s\S]*Spannungsteiler/);
   assert.match(helpContent, /"actuators": \{[\s\S]*Zwei Motorfamilien: Wechselstrom und Gleichstrom[\s\S]*Synchronmaschinen: mit einem drehenden Magnetfeld mitlaufen[\s\S]*Gleichstrommotoren: Reihenschluss, Nebenschluss und permanent erregt[\s\S]*Motoransteuerung: Leistungsteil und Firmware[\s\S]*MOSFETs[\s\S]*Freilaufdiode/);
@@ -335,11 +339,34 @@ test("offers security as a separate cross-cutting topic with network fundamental
 
 test("keeps sensors and actuators as a cross-cutting system topic and connects motor control to a learning project", () => {
   assert.match(helpContent, /id: "sensors-and-actuators",[\s\S]*title: "Sensorik und Aktorik"[\s\S]*id: "sensors"[\s\S]*id: "actuators"/);
+  assert.match(helpContent, /"sensors": \{[\s\S]*Wie ein kontinuierliches Sensorsignal digital wird[\s\S]*zeitkontinuierlich und wertkontinuierlich[\s\S]*Abtastung[\s\S]*Quantisierung[\s\S]*zeit- und wertdiskreten Zahlenfolge[\s\S]*logisch 0 oder logisch 1/);
   assert.match(helpContent, /id: "actuator-current-magnetic-field"[\s\S]*id: "actuator-current-force"[\s\S]*id: "actuator-simple-coil-motor"[\s\S]*id: "actuator-reed-motor"[\s\S]*id: "actuator-transistor-motor"[\s\S]*id: "actuator-homopolar-motor"[\s\S]*id: "actuator-motor-theory"/);
   assert.match(helpContent, /Strom erzeugt ein Magnetfeld[\s\S]*Auf den Draht entsteht eine Kraft[\s\S]*Drehmoment[\s\S]*Reedkontakt[\s\S]*Hall-Sensor[\s\S]*verblüffender Sonderfall/);
-  assert.match(helpContent, /motor-learning-current-magnetic-field\.svg[\s\S]*motor-learning-current-force\.svg[\s\S]*motor-learning-simple-coil\.svg[\s\S]*motor-learning-reed-switch\.svg[\s\S]*motor-learning-transistor-switch\.svg[\s\S]*motor-learning-homopolar\.svg/);
+  assert.match(helpContent, /Der einfache Spulenmotor: Ein Kräftepaar erzeugt ein Drehmoment[\s\S]*Die beiden Kräfte heben sich als seitliche Gesamtbewegung auf[\s\S]*Genau diese Anordnung heißt Kräftepaar[\s\S]*kehren die Stromrichtung nicht um/);
+  assert.match(helpContent, /Dreidimensionale Darstellung eines einfachen Spulenmotors[\s\S]*einziger durchgehender Hufeisen-Permanentmagnet[\s\S]*N und S sind die beiden Enden desselben Hufeisenmagneten[\s\S]*entstehenden Kräfte in entgegengesetzte Bildtiefe[\s\S]*Drehmoment M um die Welle/);
+  assert.match(helpContent, /motor-learning-current-magnetic-field\.svg[\s\S]*motor-learning-current-force\.svg[\s\S]*motor-learning-simple-coil-force-pair\.png[\s\S]*motor-learning-reed-switch\.svg[\s\S]*motor-learning-transistor-switch\.svg[\s\S]*motor-learning-homopolar\.svg/);
+  assert.match(helpContent, /geeigneter weichmagnetischer Kern[\s\S]*weichmagnetische Eisenwerkstoffe oder Ferrite[\s\S]*Kernmaterial das Magnetfeld verändern/);
+  assert.match(helpContent, /id: "actuator-magnetic-core"[\s\S]*expertKnowledge: "Für den Einstieg genügt: Ein geeigneter Kern bündelt das Magnetfeld einer Spule[\s\S]*Er ist kein Dauermagnet[\s\S]*magnetische Permeabilität μ[\s\S]*B = μ × H[\s\S]*Fachbegriff für das gewünschte Verhalten lautet weichmagnetisch[\s\S]*Remanenz und Koerzitivfeldstärke[\s\S]*hartmagnetischen Werkstoffen[\s\S]*Sättigung[\s\S]*Hystereseverluste[\s\S]*Wirbelströme/);
+  assert.match(helpContent, /synchronous-motor-step-0-unpowered\.svg[\s\S]*synchronous-motor-step-1-phase-a\.svg[\s\S]*synchronous-motor-step-2-phase-b\.svg[\s\S]*synchronous-motor-step-3-phase-c\.svg/);
+  assert.match(helpContent, /Die Bildserie zeigt das Prinzip bewusst als drei einzeln weitergeschaltete Spulenpaare der Phasen A, B und C[\s\S]*realer dreiphasiger Synchronmotor[\s\S]*Ströme der drei Phasen überlagern sich/);
+  assert.match(helpContent, /Rotor und Stator werden nicht über innen oder außen definiert, sondern über die Bewegung[\s\S]*Außenläufer[\s\S]*Der Begriff Anker ist kein allgemeines Synonym für Rotor[\s\S]*Arbeits- oder Ankerwicklung dagegen im Stator/);
+  assert.match(helpContent, /id: "actuator-synchronous-back-emf", heading: "Drei Phasen, Gegen-EMK und Kurzschlussbremsung"[\s\S]*Drei geregelte Phasen erzeugen im Antrieb ein gleichmäßigeres Drehfeld[\s\S]*Gegen-EMK bedeutet Gegen-Elektromotorische-Kraft[\s\S]*Ein Kurzschluss ist daher keine Methode, das Antriebsmoment zu erhöhen/);
+  assert.match(helpContent, /synchronous-motor-three-phase-back-emf\.svg/);
+  assert.match(synchronousMotorPhaseB, />N<\/text>[\s\S]*>S<\/text>/);
+  assert.match(synchronousMotorPhaseC, />S<\/text>[\s\S]*>N<\/text>/);
+  assert.doesNotMatch(synchronousMotorPhaseB, /B · [NS]/);
+  assert.doesNotMatch(synchronousMotorPhaseC, /C · [NS]/);
+  assert.match(informationView, /section\.illustrationSeries[\s\S]*knowledge-illustration-series[\s\S]*Schritt \$\{illustrationIndex \+ 1\} von \$\{section\.illustrationSeries\.length\}/);
+  assert.match(css, /\.knowledge-illustration-series[\s\S]*grid-template-columns: repeat\(2,[\s\S]*@media \(max-width: 640px\)[\s\S]*\.knowledge-illustration-series \{ grid-template-columns: 1fr/);
+  assert.match(helpContent, /id: "actuator-electrical-mechanical-angle"[\s\S]*expertKnowledge:[\s\S]*elektrischer Winkel = Polpaarzahl × mechanischer Winkel[\s\S]*drei Phasen A, B und C sind nicht dasselbe wie drei Polpaare[\s\S]*n = 60 × f ÷ p/);
+  assert.match(helpContent, /digital-signal-voltage-thresholds\.svg/);
+  assert.match(helpContent, /Der Übergang von einem Pegel zum anderen heißt Flanke:[\s\S]*SPI und I²C übertragen dafür ein Taktsignal; UART leitet die Abtastzeit aus der Startflanke/);
+  assert.match(helpContent, /protocols-manchester-coding[\s\S]*expertKnowledge:[\s\S]*Manchester-Codierung/);
+  assert.match(helpContent, /protocols-qam-outlook[\s\S]*heading: "QAM: mehrere Bits pro Funksymbol"[\s\S]*expertKnowledge:/);
+  assert.match(informationView, /function renderExpertKnowledge[\s\S]*knowledge-expert-note[\s\S]*Expertenwissen[\s\S]*Technischer Hintergrund/);
+  assert.match(css, /\.knowledge-expert-note[\s\S]*#8b5cf6/);
   assert.match(informationView, /section\.illustration[\s\S]*knowledge-section-illustration[\s\S]*loading="lazy" decoding="async"/);
-  assert.match(css, /\.knowledge-section-illustration/);
+  assert.match(css, /\.knowledge-section-illustration \{[\s\S]*background: #0b1018[\s\S]*\.knowledge-section-illustration figcaption \{[\s\S]*background: #0f172a; color: #cbd5e1/);
   assert.match(helpContent, /id: "actuator-motors-and-drives", heading: "Motoren und Antriebe auswählen"[\s\S]*id: "actuator-motor-control", heading: "Motoransteuerung: Leistungsteil und Firmware"[\s\S]*id: "actuator-safe-motion", heading: "Sicher bewegen: Rückmeldung und Fehlerfälle"/);
   assert.match(helpContent, /id: "actuator-motor-theory", heading: "Zwei Motorfamilien: Wechselstrom und Gleichstrom"[\s\S]*id: "actuator-synchronous-machines", heading: "Synchronmaschinen: mit einem drehenden Magnetfeld mitlaufen"[\s\S]*id: "actuator-asynchronous-machines"[\s\S]*id: "actuator-dc-motors", heading: "Gleichstrommotoren: Reihenschluss, Nebenschluss und permanent erregt"[\s\S]*id: "actuator-bldc-basics"[\s\S]*B6-Brücke[\s\S]*sinusförmige Phasenströme/);
   assert.match(helpContent, /\/app\/learn\/\?catalog=motor-control-basics/);
@@ -563,7 +590,7 @@ test("keeps engineering thinking public and gates the remaining knowledge chapte
   vm.runInContext(`${knowledgeContent};this.content = KnowledgeContent;`, context);
   const chapters = context.content.topics.flatMap((topic) => topic.children || []);
 
-  assert.equal(chapters.length, 29);
+  assert.equal(chapters.length, 31);
   assert.equal(context.content.articles["from-problem-to-system"].access, "public");
   assert.ok(chapters
     .filter((chapter) => chapter.id !== "from-problem-to-system")
@@ -611,11 +638,20 @@ test("derives every knowledge navigation topic from the rendered article section
   }
 
   const motorChapter = chapters.find((chapter) => chapter.id === "actuators");
-  assert.equal(motorChapter.subchapters.length, 15);
+  assert.equal(motorChapter.subchapters.length, 18);
   assert.deepEqual(
-    JSON.parse(JSON.stringify(motorChapter.subchapters.slice(0, 2))),
+    JSON.parse(JSON.stringify(motorChapter.subchapters.slice(8, 11))),
+    [
+      { id: "actuator-synchronous-machines", title: "Synchronmaschinen: mit einem drehenden Magnetfeld mitlaufen" },
+      { id: "actuator-synchronous-back-emf", title: "Drei Phasen, Gegen-EMK und Kurzschlussbremsung" },
+      { id: "actuator-electrical-mechanical-angle", title: "Elektrische und mechanische Drehung" },
+    ],
+  );
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(motorChapter.subchapters.slice(0, 3))),
     [
       { id: "actuator-current-magnetic-field", title: "Der Anfang: Strom erzeugt ein Magnetfeld" },
+      { id: "actuator-magnetic-core", title: "Was ein magnetischer Kern ist" },
       { id: "actuator-current-force", title: "Ein Magnetfeld kann einen stromdurchflossenen Draht bewegen" },
     ],
   );

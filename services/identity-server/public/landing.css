@@ -508,6 +508,9 @@ h2 { font-size: clamp(22px, 2.6vw, 30px); }
 .maker-release-process article, .maker-release-process a, .maker-project-grid article { padding: 18px; border: 1px solid #334155; border-radius: 9px; background: var(--panel-soft); }.maker-release-process a { color: inherit; text-decoration: none; transition: border-color .16s ease, transform .16s ease, background .16s ease; }.maker-release-process a:hover, .maker-release-process a:focus-visible { border-color: #67e8f9; background: #162235; transform: translateY(-2px); outline: none; }.maker-release-process h3, .maker-release-process p, .maker-section-intro h2, .maker-section-intro p, .maker-release-card p, .maker-project-grid h3, .maker-project-grid p, .maker-project-note { margin: 0; }
 .maker-release-layout { display: grid; grid-template-columns: minmax(240px, .8fr) minmax(0, 1.2fr); gap: 12px; }.maker-section-intro { align-content: center; padding: clamp(8px, 2vw, 22px); }.maker-release-card { border-color: #0891b2; background: linear-gradient(135deg, #0e7490, #172131); }.maker-release-head { display: grid; gap: 6px; }.maker-release-head strong { font-size: clamp(20px, 2.4vw, 28px); }.maker-release-card dl { display: grid; gap: 10px; margin: 0; }.maker-release-card dl div { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; padding-top: 10px; border-top: 1px solid rgba(226, 232, 240, .25); }.maker-release-card dt { color: #ecfeff; font-weight: 800; }.maker-release-card dd { margin: 0; color: #cbd5e1; line-height: 1.5; }.maker-release-card button { width: fit-content; border: 1px solid #94a3b8; border-radius: 7px; padding: 11px 15px; background: rgba(7, 11, 18, .35); color: #cbd5e1; font: inherit; font-weight: 800; }
 .maker-release-single { grid-template-columns: minmax(0, 860px); justify-content: center; }
+.maker-project-categories, .maker-project-category { display: grid; gap: 14px; }
+.maker-project-categories { gap: 24px; }
+.maker-project-category > h2 { margin: 0; padding-inline: 4px; font-size: clamp(20px, 2.3vw, 26px); }
 .maker-project-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .maker-project-tile {
   display: grid;
@@ -520,9 +523,11 @@ h2 { font-size: clamp(22px, 2.6vw, 30px); }
   transition: border-color .16s ease, background .16s ease;
 }
 .maker-project-tile:hover, .maker-project-tile:focus-visible { border-color: #67e8f9; background: #162235; outline: none; }
-.maker-project-tile h2, .maker-project-tile p { margin: 0; }
-.maker-project-tile h2 { font-size: clamp(18px, 2vw, 22px); }
+.maker-project-tile h3, .maker-project-tile p { margin: 0; }
+.maker-project-tile h3 { font-size: clamp(18px, 2vw, 22px); }
 .maker-project-tile p { color: var(--muted); line-height: 1.5; }
+.maker-project-series-tile { border-color: #0e7490; background: radial-gradient(circle at 100% 0%, rgba(34, 211, 238, .13), transparent 15rem), var(--panel); }
+.maker-project-series-label { color: #67e8f9; font-size: 11px; font-weight: 850; letter-spacing: .07em; text-transform: uppercase; }
 .project-breadcrumb { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 4px; color: var(--muted); font-size: 13px; }
 .project-breadcrumb a { color: #67e8f9; font-weight: 800; }
 .project-breadcrumb a:hover { color: #ecfeff; }
@@ -567,8 +572,57 @@ h2 { font-size: clamp(22px, 2.6vw, 30px); }
 .motor-comparison th, .motor-comparison td { min-width: 170px; border: 1px solid #334155; padding: 12px; text-align: left; vertical-align: top; line-height: 1.45; }
 .motor-comparison th { background: #172033; color: #ecfeff; }
 .motor-comparison td { color: #cbd5e1; }
+.printed-motor-series-page { max-width: 1240px; }
+.printed-motor-hero h1 { max-width: 880px; }
+.printed-motor-platform > p:not(.eyebrow) { max-width: 900px; color: var(--muted); line-height: 1.65; }
+.printed-motor-roadmap, .printed-motor-workflow { display: grid; gap: 20px; }
+.printed-motor-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: printed-motor;
+}
+.printed-motor-grid li { display: grid; align-content: start; gap: 9px; min-height: 190px; padding: 18px; border: 1px solid #334155; border-radius: 9px; background: var(--panel-soft); }
+.printed-motor-grid span { color: #67e8f9; font-size: 11px; font-weight: 850; letter-spacing: .06em; text-transform: uppercase; }
+.printed-motor-grid h3, .printed-motor-grid p, .printed-motor-workflow h2 { margin: 0; }
+.printed-motor-grid p { color: var(--muted); line-height: 1.55; }
+.printed-motor-material-first, .printed-motor-downloads, .printed-motor-projects, .printed-motor-project, .printed-motor-project > header, .printed-motor-project-explanation { display: grid; gap: 18px; }
+.printed-motor-warning { margin: 0; border-left: 4px solid #f59e0b; border-radius: 0 8px 8px 0; padding: 14px 16px; background: rgba(120, 53, 15, .28); color: #fde68a !important; }
+.printed-motor-matrix { width: 100%; border-collapse: collapse; }
+.printed-motor-matrix th, .printed-motor-matrix td { min-width: 138px; border: 1px solid #334155; padding: 10px; color: #cbd5e1; line-height: 1.4; text-align: left; vertical-align: top; }
+.printed-motor-matrix th { background: #172033; color: #ecfeff; }
+.printed-motor-matrix td:first-child { color: #ecfeff; font-weight: 800; }
+.printed-motor-power { display: grid; gap: 8px; border: 1px solid #155e75; border-radius: 9px; padding: 17px; background: rgba(14, 116, 144, .12); }
+.printed-motor-power p { color: #cbd5e1; line-height: 1.6; }
+.printed-motor-projects { gap: 16px; }
+.printed-motor-projects-intro { border-color: #155e75; }
+.printed-motor-project { scroll-margin-top: 96px; }
+.printed-motor-project > header { gap: 8px; }
+.printed-motor-project > header > p:not(.eyebrow), .printed-motor-project-explanation p { color: var(--muted); line-height: 1.6; }
+.printed-motor-project-download { border-left: 4px solid #0891b2; border-radius: 0 8px 8px 0; padding: 13px 15px; background: rgba(14, 116, 144, .13); color: #cbd5e1; line-height: 1.5; }
+.printed-motor-project-explanation { gap: 7px; border-top: 1px solid #334155; padding-top: 17px; }
+.compact-motor-series .printed-motor-hero { grid-template-columns: 1fr; }
+.compact-motor-series .printed-motor-hero h1 { max-width: 980px; }
+.compact-motor-series .panel { padding: clamp(18px, 2.5vw, 28px); }
+.compact-motor-series h1 { font-size: clamp(23px, 2.7vw, 30px); font-weight: 720; line-height: 1.16; }
+.compact-motor-series h2 { font-size: clamp(19px, 2.1vw, 24px); font-weight: 720; line-height: 1.18; }
+.compact-motor-series h3 { font-size: clamp(16px, 1.7vw, 19px); font-weight: 720; line-height: 1.22; }
+.compact-motor-material, .compact-motor-projects { display: grid; gap: 14px; }
+.compact-motor-material h2, .compact-motor-material p, .compact-motor-projects h2 { margin: 0; }
+.compact-motor-note { color: var(--muted); line-height: 1.55; }
+.compact-motor-project-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.compact-motor-project-grid article { display: grid; align-content: start; gap: 8px; min-height: 220px; border: 1px solid #334155; border-radius: 9px; padding: 17px; background: var(--panel-soft); scroll-margin-top: 96px; }
+.compact-motor-project-grid span { color: #67e8f9; font-size: 12px; font-weight: 900; }
+.compact-motor-project-grid h3, .compact-motor-project-grid p, .compact-motor-project-grid small { margin: 0; }
+.compact-motor-project-grid p { color: var(--muted); line-height: 1.5; }
+.compact-motor-project-grid small { margin-top: auto; color: #cbd5e1; line-height: 1.5; }
 @media (max-width: 1040px) {
   .product-learning-path { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .printed-motor-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .compact-motor-project-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 footer {
   display: flex;
@@ -608,6 +662,7 @@ footer {
   .maker-download-hero, .maker-release-process > div, .maker-release-layout, .maker-project-grid, .maker-project-list { grid-template-columns: 1fr; }
   .maker-release-card dl div { grid-template-columns: 1fr; gap: 3px; }
   .motor-safety, .motor-parts-grid, .motor-build-step { grid-template-columns: 1fr; }
+  .printed-motor-grid, .compact-motor-project-grid { grid-template-columns: 1fr; }
   .motor-build-step.reverse .motor-build-visual { order: 0; }
   .motor-build-visual { position: static; }
   .product-learning-path,

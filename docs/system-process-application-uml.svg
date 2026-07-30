@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1680" height="980" viewBox="0 0 1680 980" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Remote-first Architektur: Alle dauerhaften GerNetiX-Laufzeitdaten liegen in einer zentralen PostgreSQL-17/pgvector-Datenbank gernetix_runtime auf dem privaten VPS. Domaenen sind durch Tabellenpraefixe und Service-APIs getrennt. Alte SQLite-Dateien sind nur read-only Migrationsquellen. Ein lokaler Identity Server auf Port 4300 verwendet die zentrale Datenbank und VPS-Dienste per SSH-Tunnel.</desc>
+  <desc id="desc">Remote-first Architektur: Alle dauerhaften GerNetiX-Laufzeitdaten liegen in einer zentralen PostgreSQL-17/pgvector-Datenbank gernetix_runtime auf dem privaten VPS. Domaenen sind durch Tabellenpraefixe und Service-APIs getrennt. Identity erzeugt ein token-geschuetztes Linkinventar; Operations persistiert Ziele, Fundstellen und Prüfhistorie für das Admin Tool und die read-only Desktop-Sicht. Alte SQLite-Dateien sind nur read-only Migrationsquellen.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -78,7 +78,7 @@
 
     <rect class="node edge" x="635" y="150" width="220" height="58" rx="10"/>
     <text class="titleText" x="745" y="176" text-anchor="middle">Identity Server</text>
-    <text class="smallText" x="745" y="196" text-anchor="middle">:4300</text>
+    <text class="smallText" x="745" y="196" text-anchor="middle">Route Registry + Linkinventar · :4300</text>
 
     <rect class="node edge" x="635" y="230" width="220" height="58" rx="10"/>
     <text class="titleText" x="745" y="256" text-anchor="middle">Admin Access Server</text>
@@ -86,7 +86,7 @@
 
     <rect class="node edge" x="635" y="310" width="220" height="58" rx="10"/>
     <text class="titleText" x="745" y="336" text-anchor="middle">Admin Tool</text>
-    <text class="smallText" x="745" y="356" text-anchor="middle">interner Proxy :4600</text>
+    <text class="smallText" x="745" y="356" text-anchor="middle">Link Integrity + interner Proxy :4600</text>
 
     <rect class="node edge" x="635" y="390" width="220" height="40" rx="10"/>
     <text class="titleText" x="745" y="415" text-anchor="middle">Context Manager :5050</text>
@@ -134,7 +134,7 @@
 
     <rect class="node domain" x="965" y="405" width="180" height="54" rx="10"/>
     <text class="titleText" x="1055" y="429" text-anchor="middle">Community Platform</text>
-    <text class="smallText" x="1055" y="448" text-anchor="middle">Private Threads + Public Community :5200</text>
+    <text class="smallText" x="1055" y="448" text-anchor="middle">Messages + Public Community :5200</text>
 
     <rect class="node domain" x="1170" y="405" width="190" height="54" rx="10"/>
     <text class="titleText" x="1265" y="429" text-anchor="middle">Community AI</text>
@@ -159,7 +159,7 @@
     <text class="titleText" x="464" y="608" text-anchor="middle">YAML Graph</text>
     <text class="smallText" x="464" y="627" text-anchor="middle">Importer</text>
     <rect class="node tool" x="265" y="648" width="260" height="30" rx="10"/>
-    <text class="titleText" x="395" y="668" text-anchor="middle">Prozess-Monitor + VPN-Schalter</text>
+    <text class="titleText" x="395" y="668" text-anchor="middle">Prozess-Monitor · VPN · Linkstatus</text>
     <rect class="node tool" x="265" y="686" width="260" height="24" rx="10"/>
     <text class="smallText" x="395" y="703" text-anchor="middle">Architektur-Dokumentation · offline</text>
   </g>
@@ -194,11 +194,11 @@
 
     <rect class="node store" x="875" y="785" width="235" height="58" rx="10"/>
     <text class="titleText" x="992" y="807" text-anchor="middle">Dasselbe PostgreSQL / Project + Build</text>
-    <text class="smallText" x="992" y="826" text-anchor="middle">Projekte · Lernfortschritt · Build-Artefakte</text>
+    <text class="smallText" x="992" y="826" text-anchor="middle">Projekte · Git-Light-Versionen · Build-Artefakte</text>
 
     <rect class="node store" x="1125" y="785" width="250" height="58" rx="10"/>
     <text class="titleText" x="1250" y="807" text-anchor="middle">Weitere Domaenen-PostgreSQL</text>
-    <text class="smallText" x="1250" y="826" text-anchor="middle">Telemetry · Community · Device · Usage · Catalog · Shop · Ops</text>
+    <text class="smallText" x="1250" y="826" text-anchor="middle">Telemetry · Community · Device · Catalog · Ops + Linkprüfhistorie</text>
 
     <rect class="node store" x="625" y="858" width="235" height="52" rx="10"/>
     <text class="titleText" x="742" y="880" text-anchor="middle">Dasselbe PostgreSQL / Demos</text>
@@ -244,6 +244,8 @@
   <path class="line" d="M 855 179 L 1445 869"/>
   <path class="line" d="M 855 179 L 1445 914"/>
   <path class="line" d="M 855 259 L 635 339"/>
+  <path class="line dashed" d="M 525 663 C 575 610, 590 420, 635 339"/>
+  <text class="label" x="536" y="568">read-only Linkstatus via SSH + Admin API</text>
   <path class="line" d="M 855 339 L 1385 177"/>
   <path class="line" d="M 855 339 L 965 177"/>
   <path class="line" d="M 855 339 L 1385 432"/>

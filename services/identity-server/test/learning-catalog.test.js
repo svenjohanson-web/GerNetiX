@@ -263,6 +263,8 @@ test("catalog includes a distinct sensor-learning project for home automation", 
   assert.equal(course.project.title, "Sensorik für deine Hausautomation");
   assert.equal(course.project.learning_category, "embedded");
   assert.ok(course.project.tags.includes("topic:home-automation"));
+  assert.ok(course.project.tags.includes("topic:privacy"));
+  assert.match(server, /"topic:privacy"/);
   assert.match(course.view_manifest.views.find((view) => view.id === "signal-state-event").payload.cards.map((card) => card.title).join(" "), /Messwert.*Zustand.*Ereignis/);
   assert.match(course.sources.find((source) => source.path.endsWith("hausautomation-sensorplan.md")).content, /Wer darf Status sehen und wer darf die Regel ändern/);
   assert.equal(model.createHomeAutomationSensorsCourseModel().slug, "home-automation-sensors");
@@ -277,6 +279,7 @@ test("catalog includes a motor-control project that joins actuator electronics a
   assert.equal(course.project.learning_category, "embedded");
   assert.ok(course.project.tags.includes("topic:actuators"));
   assert.ok(course.project.tags.includes("topic:motor-control"));
+  assert.match(server, /"topic:motor-control"/);
   assert.equal(course.project.steps.length, 9);
   assert.deepEqual(course.view_manifest.views.map((view) => view.id), [
     "gpio-output",

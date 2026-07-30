@@ -12,6 +12,7 @@ const REMOTE_DEV_SERVICE_FORWARDS = [[4400,4400],[4700,4700],[4800,4800],[4900,4
 const SECURITY_CACHE_MS = 60000;
 let workspaceRoot = process.env.GERNETIX_WORKSPACE || path.resolve(__dirname, "../..");
 let securityCache = null;
+let linkIntegrityCache = null;
 let stagingTunnel = null;
 let stagingTunnelError = "";
 const services = [
@@ -20,7 +21,7 @@ const services = [
   service("hardware-shop", "Hardware Shop", 4900, {PERSISTENCE_BACKEND:"memory"}), service("ai-usage-server", "AI Usage Server", 5000, {PERSISTENCE_BACKEND:"memory"}),
   service("ai-context-server", "AI Context Server", 5500), service("admin-tool", "Admin Tool", 4600, {PERSISTENCE_BACKEND:"memory"}),
   service("community-platform", "Community Platform", 5200),
-  service("identity-server", "Identity Server", 4300),
+  service("identity-server", "Identity Server", 4300, {}, {local:true}),
   service("admin-access-server", "Admin Access Server", 4610, {}, {autoStart:false}),
   service("telemetry-server", "Telemetry Server", 5600, {}, {autoStart:false}),
   service("public-demo-server", "Öffentlicher Demo-Katalog", 4920, {}, {autoStart:false}),
@@ -30,7 +31,7 @@ const services = [
   service("recovery-tool", "Recovery Tool Server", 5100, {}, {autoStart:false})
 ];
 
-function service(id, name, port, environment={}, options={}) { return { id, name, port, cwd:path.join(workspaceRoot,"services",id), healthUrl:`http://127.0.0.1:${port}/health`, environment, autoStart:options.autoStart!==false }; }
+function service(id, name, port, environment={}, options={}) { const local=options.local===true; return { id, name, port, cwd:path.join(workspaceRoot,"services",id), healthUrl:`http://127.0.0.1:${port}/health`, environment, local, autoStart:local&&options.autoStart!==false }; }
 function configureWorkspace(root) { workspaceRoot=path.resolve(root); for(const item of services)item.cwd=path.join(workspaceRoot,"services",item.id); }
 function byId(id) { const item=services.find((entry)=>entry.id===id); if(!item) throw new Error("Unbekannter GerNetiX-Dienst."); return item; }
 
@@ -39,7 +40,7 @@ async function check(item) {
   try { const statusCode=await health(item.healthUrl); return {...item,healthy:statusCode>=200&&statusCode<300,statusCode,pid:await pidForPort(item.port),error:"",...(communityStorage?{communityStorage}:{})}; }
   catch(error){ return {...item,healthy:false,statusCode:0,pid:await pidForPort(item.port),error:error.message,...(communityStorage?{communityStorage}:{})}; }
 }
-async function processStates(){ return Promise.all(services.map(check)); }
+async function processStates(){ return Promise.all(services.filter((item)=>item.local).map(check)); }
 function communityStorageSummary(root=workspaceRoot){
   const dbPath=path.join(root,".runtime","gernetix-community.sqlite");
   const visiblePath=path.relative(root,dbPath)||path.basename(dbPath);
@@ -119,19 +120,75 @@ function runtimeAlerts(hours=24,limit=20){
 }
 function alertKey(targetService,route){return `${String(targetService||"").replace(/-/g,"_")}|${String(route||"")}`;}
 async function remoteProcessStates(options={}) {
-  const config=loadStagingConfig();
+  const config=options.config||loadStagingConfig();
   if(!config.GERNETIX_STAGING_SSH)return {configured:false,items:[],error:"VPS nicht konfiguriert: .env.staging.local fehlt oder enthält kein GERNETIX_STAGING_SSH."};
   const host=assertSafeSshTarget(config.GERNETIX_STAGING_SSH);
   const remoteDir=String(config.GERNETIX_STAGING_DIR||"/opt/gernetix");
   if(!remoteDir.startsWith("/")||/[\r\n]/.test(remoteDir))throw new Error("Ungültiges GERNETIX_STAGING_DIR.");
   const run=options.execFileAsync||execFileAsync;
-  const command=`cd ${shellQuote(remoteDir)} && docker compose -f compose.vps.yaml ps --format json`;
+  const command=`cd ${shellQuote(remoteDir)} && docker compose --env-file .env.vps -f compose.vps.yaml ps --format json`;
   try {
     const {stdout}=await run("ssh",["-o","BatchMode=yes","-o","ConnectTimeout=5",host,command],{windowsHide:true,timeout:12000,maxBuffer:2*1024*1024});
-    return {configured:true,host,items:parseComposePs(stdout),error:""};
+    return {configured:true,host,items:parseComposePs(stdout).filter(isVisibleVpsService),error:""};
   } catch(error) {
     return {configured:true,host,items:[],error:remoteError(error)};
   }
+}
+
+function isVisibleVpsService(item) {
+  return item.id !== "identity-server" && !item.id.endsWith("-migration");
+}
+
+async function remoteLinkIntegrity(options={}) {
+  if (!options.force && !options.execFileAsync && linkIntegrityCache?.expiresAt > Date.now()) return linkIntegrityCache.value;
+  const config=options.config||loadStagingConfig();
+  if(!config.GERNETIX_STAGING_SSH)return {
+    configured:false,
+    summary:emptyLinkIntegritySummary(),
+    items:[],
+    error:"Link-Integrität nicht konfiguriert: GERNETIX_STAGING_SSH fehlt.",
+  };
+  const host=assertSafeSshTarget(config.GERNETIX_STAGING_SSH);
+  const remoteDir=String(config.GERNETIX_STAGING_DIR||"/opt/gernetix");
+  if(!remoteDir.startsWith("/")||/[\r\n]/.test(remoteDir))throw new Error("Ungültiges GERNETIX_STAGING_DIR.");
+  const run=options.execFileAsync||execFileAsync;
+  const command=`cd ${shellQuote(remoteDir)} && docker compose --env-file .env.vps -f compose.vps.yaml exec -T admin-tool node /app/services/admin-tool/scripts/read-link-integrity.js`;
+  let value;
+  try {
+    const {stdout}=await run("ssh",["-o","BatchMode=yes","-o","ConnectTimeout=5",host,command],{windowsHide:true,timeout:20000,maxBuffer:5*1024*1024});
+    value=presentLinkIntegrity(JSON.parse(String(stdout||"{}")),host);
+  } catch(error) {
+    const message=String(error.stderr||error.message||error).trim().split(/\r?\n/).slice(-1)[0];
+    const detail=error instanceof SyntaxError?"Die Link-Integritätsantwort des VPS ist ungültig.":`Link-Integrität nicht lesbar: ${message}`;
+    value={configured:true,host,summary:emptyLinkIntegritySummary(),items:[],error:detail};
+  }
+  if(!options.execFileAsync)linkIntegrityCache={expiresAt:Date.now()+SECURITY_CACHE_MS,value};
+  return value;
+}
+
+function emptyLinkIntegritySummary(){
+  return {total_targets:0,internal:0,external:0,authenticated:0,healthy:0,redirected:0,restricted:0,broken:0,unreachable:0,not_checked:0};
+}
+
+function presentLinkIntegrity(payload,host){
+  const summary={...emptyLinkIntegritySummary(),...(payload?.summary||{})};
+  const items=(Array.isArray(payload?.items)?payload.items:[]).map((item)=>({
+    reference_id:String(item.reference_id||""),
+    target_url:String(item.target_url||""),
+    link_type:String(item.link_type||""),
+    owner_domain:String(item.owner_domain||""),
+    access_scope:String(item.access_scope||""),
+    source_service:String(item.source_service||""),
+    occurrence_count:Number(item.occurrence_count||0),
+    updated_at:item.updated_at||null,
+    latest_check:item.latest_check?{
+      status:String(item.latest_check.status||"not_checked"),
+      http_status:Number(item.latest_check.http_status||0),
+      access_profile:String(item.latest_check.access_profile||""),
+      checked_at:item.latest_check.checked_at||null,
+    }:null,
+  }));
+  return {configured:true,host,checkedAt:new Date().toISOString(),summary,items,error:""};
 }
 
 function parsePort(value, label) {
@@ -341,9 +398,9 @@ async function startIdentityRemoteDev(options={}){
   const detail=recentServiceLog(item.id);
   throw new Error(`Identity Remote-Dev wurde nicht gestartet.${detail?` Letzte Logzeilen: ${detail}`:""}`);
 }
-async function startService(id,options={}){ if(id==="identity-server")return startIdentityRemoteDev(options); const item=byId(id); const checkService=options.checkService||check; const current=await checkService(item); if(current.healthy)return current; const child=launchLoggedService(item,{...process.env,...item.environment,ELECTRON_RUN_AS_NODE:"1",PORT:String(item.port)}); child.unref(); for(let i=0;i<40;i+=1){await delay(250);const state=await checkService(item);if(state.healthy)return state;} throw new Error(`${item.name} konnte nicht gestartet werden.${recentServiceLog(item.id)?` Letzte Logzeilen: ${recentServiceLog(item.id)}`:""}`); }
+async function startService(id,options={}){ const item=byId(id); if(!item.local)throw new Error(`${item.name} läuft auf dem VPS und kann hier nicht lokal gestartet werden.`); if(id==="identity-server")return startIdentityRemoteDev(options); const checkService=options.checkService||check; const current=await checkService(item); if(current.healthy)return current; const child=launchLoggedService(item,{...process.env,...item.environment,ELECTRON_RUN_AS_NODE:"1",PORT:String(item.port)}); child.unref(); for(let i=0;i<40;i+=1){await delay(250);const state=await checkService(item);if(state.healthy)return state;} throw new Error(`${item.name} konnte nicht gestartet werden.${recentServiceLog(item.id)?` Letzte Logzeilen: ${recentServiceLog(item.id)}`:""}`); }
 async function startAllServices(options={}){const start=options.startService||startService;const items=[];for(const item of services.filter((entry)=>entry.autoStart)){try{items.push(await start(item.id));}catch(error){items.push({...item,healthy:false,statusCode:0,pid:null,error:error.message});}}return{items,healthy:items.filter((item)=>item.healthy).length,failed:items.filter((item)=>!item.healthy).length};}
-async function stopService(id){ const item=byId(id); const pid=await pidForPort(item.port); if(!pid)return check(item); if(process.platform==="win32")await execFileAsync("taskkill",["/PID",String(pid),"/T","/F"],{windowsHide:true});else process.kill(pid,"SIGTERM"); for(let i=0;i<20;i+=1){await delay(150);const state=await check(item);if(!state.healthy)return state;} throw new Error(`${item.name} konnte nicht beendet werden.`); }
+async function stopService(id){ const item=byId(id); if(!item.local)throw new Error(`${item.name} läuft auf dem VPS und kann hier nicht lokal gestoppt werden.`); const pid=await pidForPort(item.port); if(!pid)return check(item); if(process.platform==="win32")await execFileAsync("taskkill",["/PID",String(pid),"/T","/F"],{windowsHide:true});else process.kill(pid,"SIGTERM"); for(let i=0;i<20;i+=1){await delay(150);const state=await check(item);if(!state.healthy)return state;} throw new Error(`${item.name} konnte nicht beendet werden.`); }
 function pidFromWindowsNetstat(output,port){
   const line=String(output||"").split(/\r?\n/).find((row)=>{
     const columns=row.trim().split(/\s+/);
@@ -473,4 +530,4 @@ async function setVpnConnected(connected, options = {}) {
   throw new Error(`Der VPN-Tunnel wurde nicht rechtzeitig ${desired ? "verbunden" : "getrennt"}.`);
 }
 
-module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,processStates,remoteProcessStates,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startStagingTunnel,stopStagingTunnel,remoteIdentityEnvironment,startIdentityRemoteDev,setVpnConnected,startAllServices,startService,stopService,vpnState};
+module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startStagingTunnel,stopStagingTunnel,remoteIdentityEnvironment,startIdentityRemoteDev,setVpnConnected,startAllServices,startService,stopService,vpnState};

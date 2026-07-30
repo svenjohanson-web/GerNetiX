@@ -19,6 +19,7 @@ const { passkeyBrowserFailureEvent, passkeyLoginFailureEvent } = require("./serv
 const { createSystemEventReporter } = require("./services/system-event-reporter");
 const { createPrivateCommunityNotifier } = require("./services/private-community-notifier");
 const { createRuntimeStreamHub } = require("./runtime-stream-hub");
+const { createIdentityLinkInventory } = require("./link-integrity/identity-link-inventory");
 const { createAccountTransparencyFactory } = require("./dev/account-transparency");
 const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
@@ -456,6 +457,35 @@ async function routeRequest(req, res) {
     const session = await readSession(req);
     if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
     const body = ["POST", "PATCH"].includes(req.method) ? await readJsonBody(req) : undefined;
+    if (req.method === "POST" && ["/api/community/inbox/direct", "/api/community/message-threads"].includes(url.pathname)) {
+      const recipient = await auth.repository.findUserByUsername(String(body?.recipient_username || "").trim());
+      if (!recipient || recipient.account_type === "guest") { sendJson(res, 404, { error: "inbox_recipient_not_found", message: "Dieser registrierte Nickname wurde nicht gefunden." }); return; }
+      body.recipient_user_id = recipient.id;
+      body.sender_label = session.account.username || "Mitglied";
+      delete body.recipient_username;
+    }
+    if (req.method === "POST" && url.pathname === "/api/community/support-requests") {
+      body.sender_label = session.account.username || "Mitglied";
+    }
+    if (req.method === "POST" && url.pathname === "/api/community/questions" && body?.attach_project_snapshot === "true") {
+      let capabilities;
+      try {
+        capabilities = await communityJson("/api/community/capabilities");
+      } catch {
+        const error = new Error("Der Community-Service ist noch nicht auf dem Stand für Projektkopien. Die Anfrage wurde nicht gespeichert.");
+        error.status = 503;
+        throw error;
+      }
+      if (!capabilities.project_snapshot_attachment) {
+        const error = new Error("Der Community-Service unterstützt Projektkopien noch nicht. Die Anfrage wurde nicht gespeichert.");
+        error.status = 503;
+        throw error;
+      }
+      const snapshot = await createCommunityProjectSnapshot(session, body.project_id);
+      body.project_snapshot = snapshot;
+      // Die Community kennt nur die bewusst erzeugte Kopie, niemals die interne Projektkennung.
+      body.project_id = "";
+    }
     const payload = await communityJson(`${url.pathname}${url.search}`, {
       method: req.method,
       body,
@@ -500,6 +530,12 @@ async function routeRequest(req, res) {
       return;
     }
     sendJson(res, 405, { error: "method_not_allowed" });
+    return;
+  }
+
+  if (url.pathname === "/api/internal/link-integrity/inventory" && req.method === "GET") {
+    requireInternalAdmin(req);
+    sendJson(res, 200, createIdentityLinkInventory({ publicDir }));
     return;
   }
 
@@ -1221,6 +1257,34 @@ async function routeRequest(req, res) {
   const platformSource = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/sources\/(.+)$/);
   const platformSources = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/sources$/);
   const platformSourceSearch = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/source-search$/);
+  const platformVersions = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/versions$/);
+  const platformVersionRestore = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/versions\/([^/]+)\/restore$/);
+  if (platformVersions && ["GET", "POST"].includes(req.method)) {
+    const session = await readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    if (!requireEntitlement(res, session, "project_history")) return;
+    const project = await requireSessionProject(session, decodeURIComponent(platformVersions[1]));
+    if (req.method === "GET") {
+      sendJson(res, 200, await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/versions`));
+      return;
+    }
+    const body = await readJsonBody(req);
+    sendJson(res, 201, await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/versions`, {
+      method: "POST", body: { ...body, user_id: projectServerUserId(session) },
+    }));
+    return;
+  }
+  if (platformVersionRestore && req.method === "POST") {
+    const session = await readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    if (!requireEntitlement(res, session, "project_history")) return;
+    const project = await requireSessionProject(session, decodeURIComponent(platformVersionRestore[1]));
+    const body = await readJsonBody(req);
+    sendJson(res, 201, await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/versions/${encodeURIComponent(platformVersionRestore[2])}/restore`, {
+      method: "POST", body: { ...body, user_id: projectServerUserId(session) },
+    }));
+    return;
+  }
   if (platformSourceSearch && req.method === "GET") {
     const session = await readSession(req);
     if (!session) {
@@ -1375,6 +1439,7 @@ async function routeRequest(req, res) {
       flash_manifest: browserFlashManifest(jobId, job),
       error: job.error?.message || "",
       build_log: job.error?.details?.build_log || job.result?.build?.log || "",
+      progress: Array.isArray(job.progress) ? job.progress : [],
     });
     return;
   }
@@ -1549,6 +1614,16 @@ async function routeRequest(req, res) {
 
   if (url.pathname === "/nachbauprojekte/einfache-elektromotoren/") {
     serveStatic(res, publicDir, "/nachbauprojekte/einfache-elektromotoren/index.html");
+    return;
+  }
+
+  if (url.pathname === "/nachbauprojekte/druckmotoren") {
+    redirect(res, "/nachbauprojekte/druckmotoren/");
+    return;
+  }
+
+  if (url.pathname === "/nachbauprojekte/druckmotoren/") {
+    serveStatic(res, publicDir, "/nachbauprojekte/druckmotoren/index.html");
     return;
   }
 
@@ -2214,6 +2289,57 @@ async function handlePlatformSourceWrite(req, res, session, projectId, sourcePat
   });
   touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
   sendJson(res, 200, source);
+}
+
+async function createCommunityProjectSnapshot(session, projectId) {
+  const project = await requireSessionProject(session, String(projectId || ""));
+  const [storedProject, sourcePayload] = await Promise.all([
+    projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`),
+    projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`),
+  ]);
+  const safeSources = [];
+  let totalBytes = 0;
+  for (const sourceInfo of (sourcePayload.items || []).slice(0, 60)) {
+    if (isCommunityExcludedSource(sourceInfo)) continue;
+    const source = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources/${encodeURIComponent(sourceInfo.path)}`);
+    if (isCommunityExcludedSource(source)) continue;
+    const content = redactCommunitySource(String(source.content || "")).slice(0, 48 * 1024);
+    const nextBytes = Buffer.byteLength(content, "utf8");
+    if (totalBytes + nextBytes > 180 * 1024 || safeSources.length >= 60) break;
+    totalBytes += nextBytes;
+    safeSources.push({
+      path: source.path,
+      content,
+      content_type: source.content_type || "text/plain",
+      content_sha256: source.content_sha256 || crypto.createHash("sha256").update(content).digest("hex"),
+    });
+  }
+  if (!safeSources.length) {
+    const error = new Error("Aus diesem Projekt kann kein sicherer Community-Projektstand erstellt werden.");
+    error.status = 400;
+    error.code = "community_snapshot_empty";
+    throw error;
+  }
+  return {
+    snapshot_id: `community_snapshot_${crypto.randomUUID()}`,
+    project_title: String(storedProject.title || project.title || "Projekt").slice(0, 120),
+    captured_at: new Date().toISOString(),
+    source_count: safeSources.length,
+    sources: safeSources,
+  };
+}
+
+function isCommunityExcludedSource(source = {}) {
+  const path = String(source.path || "").toLowerCase();
+  const type = String(source.content_type || "").toLowerCase();
+  return /(^|\/)(\.env|.*\.(pem|key|p12|pfx)|.*(secret|credential|password).*)($|\/|\.)/.test(path)
+    || /^(image|audio|video|application\/octet-stream)/.test(type);
+}
+
+function redactCommunitySource(content) {
+  return content
+    .replace(/-----BEGIN [^-]*(PRIVATE KEY|CERTIFICATE)[\s\S]*?-----END [^-]*(PRIVATE KEY|CERTIFICATE)-----/gi, "[ENTFERNT: kryptografisches Material]")
+    .replace(/((?:password|passwort|ssid|token|api[_-]?key|secret|private[_-]?key)\s*[:=]\s*["']?)[^"'\s,;]+/gi, "$1[ENTFERNT]");
 }
 
 async function handleDevelopmentProjectCreate(req, res, session) {
@@ -3560,6 +3686,7 @@ async function loadProjectBuilds(projects, session) {
         flash_status: job.result?.build?.usb_flash?.status || job.result?.deploy?.status || "nicht angefordert",
         created_at: job.created_at,
         finished_at: job.finished_at,
+        build_config: job.build_config || project.build_config || null,
         artifacts,
         build_package_contract: "Project Server BuildPackage",
       });
@@ -3771,7 +3898,7 @@ function accountSubscription(session) {
   return {
     plan: premium ? "Premium" : "Kostenlos",
     entitlements: premium
-      ? ["learn_guided_projects", "ide_edit_code", "build_and_flash", "ai_assistant", "web_push"]
+      ? ["learn_guided_projects", "ide_edit_code", "build_and_flash", "ai_assistant", "web_push", "project_history"]
       : ["ide_edit_code", "build_and_flash"],
   };
 }
@@ -4195,6 +4322,8 @@ function normalizeLearningProjectTags(value) {
     "topic:firmware",
     "topic:home-automation",
     "topic:modeling",
+    "topic:motor-control",
+    "topic:privacy",
     "topic:programming",
     "topic:radar",
     "topic:radio",

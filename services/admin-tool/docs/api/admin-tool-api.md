@@ -32,6 +32,21 @@ Liefert den Betriebsstatus der konfigurierten lokalen Dienste fuer das Admin Too
 
 Der Endpunkt ist rein lesend und persistiert keine Monitoring-Daten.
 
+## Link-Integrität
+
+```text
+GET  /api/admin/link-integrity
+POST /api/admin/link-integrity/sync
+POST /api/internal/link-integrity/inventory
+POST /api/internal/link-integrity/checks
+```
+
+`GET /api/admin/link-integrity` liefert aktive Ziele, Fundstellenanzahl und den letzten technischen Prüflauf. Der Zugriff benötigt `admin_link_integrity`.
+
+`POST /api/admin/link-integrity/sync` liest das token-geschützte Identity-Inventar und ersetzt ausschließlich den aktuellen Identity-Inventarstand. Historische Prüfläufe bleiben erhalten.
+
+Die internen Ingest-Endpunkte verlangen `X-GerNetiX-Link-Integrity-Token`. Sie speichern keine Testkonto-Credentials, Cookies oder gelesenen Seiteninhalte. Das Inventar umfasst Referenz-ID, Ziel, Linktyp, Owner, Zugriffsklasse und Fundstellen; ein Prüfergebnis umfasst Status, HTTP-Status, Endziel, Dauer und technischen Fehlercode.
+
 ## Auffaelligkeiten / System Events
 
 ```text

@@ -8,6 +8,7 @@ class InMemoryProjectRepository {
     this.consents = new Map((seed.consents || []).map((item) => [item.consent_id, clone(item)]));
     this.learningProgress = new Map((seed.learningProgress || []).map((item) => [item.project_id, clone(item)]));
     this.resourcePolicies = new Map((seed.resourcePolicies || []).map((item) => [item.plan_id, clone(item)]));
+    this.versions = new Map((seed.versions || []).map((item) => [item.version_id, clone(item)]));
   }
 
   saveProject(project) {
@@ -40,6 +41,8 @@ class InMemoryProjectRepository {
       .sort((left, right) => left.path.localeCompare(right.path))
       .map(clone);
   }
+
+  deleteSource(projectId, sourcePath) { return this.sources.delete(key(projectId, sourcePath)); }
 
   saveBuildJob(job) {
     this.buildJobs.set(job.build_job_id, clone(job));
@@ -120,8 +123,20 @@ class InMemoryProjectRepository {
     return clone(policy);
   }
 
+  saveVersion(version) {
+    if (this.versions.has(version.version_id)) throw new Error("PROJECT_VERSION_IMMUTABLE");
+    this.versions.set(version.version_id, clone(version));
+    return clone(version);
+  }
+  findVersion(versionId) { return clone(this.versions.get(versionId)); }
+  listVersions(filter = {}) {
+    return Array.from(this.versions.values())
+      .filter((item) => !filter.project_id || item.project_id === filter.project_id)
+      .sort((left, right) => right.created_at.localeCompare(left.created_at)).map(clone);
+  }
+
   deleteProject(projectId) {
-    const deleted = { sources: 0, build_jobs: 0, artifacts: 0, feedback: 0, consents: 0, learning_progress: 0 };
+    const deleted = { sources: 0, build_jobs: 0, artifacts: 0, feedback: 0, consents: 0, learning_progress: 0, versions: 0 };
     for (const [id, source] of this.sources) if (source.project_id === projectId) { this.sources.delete(id); deleted.sources += 1; }
     for (const [id, job] of this.buildJobs) if (job.project_id === projectId) { this.buildJobs.delete(id); deleted.build_jobs += 1; }
     for (const [id, artifact] of this.artifacts) if (artifact.project_id === projectId) { this.artifacts.delete(id); deleted.artifacts += 1; }
@@ -129,6 +144,7 @@ class InMemoryProjectRepository {
     for (const [id, feedback] of this.feedback) if (feedback.project_id === projectId) { feedbackIds.add(feedback.feedback_id); this.feedback.delete(id); deleted.feedback += 1; }
     for (const [id, consent] of this.consents) if (feedbackIds.has(consent.feedback_id)) { this.consents.delete(id); deleted.consents += 1; }
     if (this.learningProgress.delete(projectId)) deleted.learning_progress += 1;
+    for (const [id, version] of this.versions) if (version.project_id === projectId) { this.versions.delete(id); deleted.versions += 1; }
     this.projects.delete(projectId);
     return deleted;
   }

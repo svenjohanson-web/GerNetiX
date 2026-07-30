@@ -41,6 +41,13 @@ test("starts with visible large project choices without restoring a diagram", ()
   assert.match(publicCss, /development-project-start-step \.development-project-choice \{[\s\S]*min-height: 132px/);
 });
 
+test("keeps the project choice surface consistent with the dark workspace", () => {
+  const choiceSurfaceRule = publicCss.match(/\.development-project-header > \.development-project-choice-panel:not\(\.hidden\),[\s\S]*?\{([^}]*)\}/)?.[1] || "";
+  assert.match(choiceSurfaceRule, /background: #111827/);
+  assert.doesNotMatch(choiceSurfaceRule, /background: #fff/);
+  assert.match(publicHtml, /app\.css\?v=20260730-ide-splitter-1/);
+});
+
 test("separates the architecture discovery step from the active project", () => {
   assert.match(publicHtml, /Architektur-Discovery[\s\S]*id="developmentProjectName"/);
   const sectionHead = publicHtml.match(/<div class="section-head">[\s\S]*?<\/div>\s*<section class="development-platform-layout">/)?.[0] || "";
@@ -104,7 +111,7 @@ test("persists architecture derivation metadata in the project view manifest", (
 
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260717-04/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260730-game-assistant-3/);
   assert.match(publicHtml, /development-chat-input-box[\s\S]*developmentQuickPrompts[\s\S]*developmentChatInput[\s\S]*developmentChatSubmit/);
   assert.match(publicHtml, /development-send-button/);
   assert.match(publicHtml, /aria-label="Nachricht senden"/);
@@ -216,10 +223,13 @@ test("opens every selected template directly in component configuration", () => 
   assert.match(publicController, /Konfiguration ist geoeffnet/);
 });
 
-test("configures a touchscreen game collection through pattern, games, board and inventory", () => {
+test("configures a touchscreen game collection through games, board and inventory", () => {
   assert.match(publicHtml, /id="touchscreenGameAssistant"/);
-  assert.match(publicHtml, /Touchscreen Game Loop/);
+  assert.doesNotMatch(publicHtml, /Spiel-Pattern|Pattern waehlen|Touchscreen Game Loop/);
   assert.match(publicHtml, /Passendes Board im Inventar/);
+  assert.match(publicHtml, /aria-label="Hinweis zum Touch-Display-Board"[\s\S]*Dieses Board wird als Kompilierungsparameter verwendet/);
+  assert.match(publicHtml, /aria-label="Hinweis zum Inventar-Board"[\s\S]*für OTA-Updates und den Kompatibilitätscheck relevant/);
+  assert.match(publicCss, /\.home-automation-label-title \{[\s\S]*inline-flex/);
   assert.match(publicController, /function renderTouchscreenGameAssistant/);
   assert.match(publicController, /Nibbles/);
   assert.match(publicController, /Snake/);

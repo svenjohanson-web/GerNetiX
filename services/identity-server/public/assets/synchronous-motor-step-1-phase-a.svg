@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 720" role="img" aria-labelledby="title desc">
+  <title id="title">Synchronmotor mit bestromtem Spulenpaar A</title>
+  <desc id="desc">Das horizontale Spulenpaar der Phase A ist bestromt. Sein linker Pol ist Nord, sein rechter Pol Süd. Der Dauermagnet-Rotor richtet seinen Nordpol nach rechts aus.</desc>
+  <defs>
+    <g id="pole"><rect x="538" y="322" width="94" height="76" rx="13"/></g>
+  </defs>
+  <rect width="720" height="720" rx="24" fill="#f8fafc"/>
+  <text x="42" y="52" font-family="system-ui,sans-serif" font-size="18" font-weight="800" fill="#0891b2">SCHRITT 2 · SPULENPAAR A</text>
+  <text x="42" y="86" font-family="system-ui,sans-serif" font-size="27" font-weight="850" fill="#0f172a">Das erste Magnetfeld richtet den Rotor aus</text>
+
+  <circle cx="360" cy="360" r="236" fill="#e2e8f0" stroke="#64748b" stroke-width="5"/>
+  <circle cx="360" cy="360" r="168" fill="#fff" stroke="#94a3b8" stroke-width="3"/>
+  <g fill="#cbd5e1" stroke="#64748b" stroke-width="3">
+    <use href="#pole" transform="rotate(60 360 360)"/><use href="#pole" transform="rotate(120 360 360)"/>
+    <use href="#pole" transform="rotate(240 360 360)"/><use href="#pole" transform="rotate(300 360 360)"/>
+  </g>
+  <use href="#pole" fill="#2563eb" stroke="#1d4ed8" stroke-width="4"/>
+  <use href="#pole" transform="rotate(180 360 360)" fill="#dc2626" stroke="#b91c1c" stroke-width="4"/>
+  <text x="585" y="369" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="900" fill="#fff">S</text>
+  <text x="135" y="369" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="900" fill="#fff">N</text>
+  <g font-family="system-ui,sans-serif" font-size="17" font-weight="850" text-anchor="middle">
+    <text x="655" y="366" fill="#0891b2">A</text><text x="65" y="366" fill="#0891b2">A</text>
+    <text x="500" y="112" fill="#7c3aed">B</text><text x="220" y="618" fill="#7c3aed">B</text>
+    <text x="220" y="112" fill="#d97706">C</text><text x="500" y="618" fill="#d97706">C</text>
+  </g>
+
+  <g>
+    <rect x="280" y="326" width="80" height="68" rx="32" fill="#2563eb"/>
+    <rect x="360" y="326" width="80" height="68" rx="32" fill="#dc2626"/>
+    <text x="320" y="368" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="900" fill="#fff">S</text>
+    <text x="400" y="368" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="900" fill="#fff">N</text>
+  </g>
+  <circle cx="360" cy="360" r="12" fill="#0f172a"/>
+  <path d="M168 360 H272 M448 360 H552" stroke="#0891b2" stroke-width="5" stroke-dasharray="10 8"/>
+  <text x="360" y="646" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="750" fill="#0f766e">Rotor-Nordpol wird vom Stator-Südpol angezogen</text>
+  <text x="360" y="688" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" fill="#475569">Nur Spulenpaar A ist in dieser vereinfachten Momentaufnahme bestromt</text>
+</svg>

@@ -13,6 +13,7 @@ function createConfig(env = process.env) {
     identityAdminToken: env.IDENTITY_ADMIN_TOKEN || "",
     adminToolAccessToken: env.ADMIN_TOOL_ACCESS_TOKEN || "",
     systemEventIngestToken: env.SYSTEM_EVENT_INGEST_TOKEN || "",
+    linkIntegrityIngestToken: env.LINK_INTEGRITY_INGEST_TOKEN || "",
     securityMonitorToken: env.SECURITY_MONITOR_TOKEN || "",
     buildDeployBaseUrl: env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400",
     projectServerBaseUrl: env.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800",

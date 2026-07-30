@@ -4,8 +4,14 @@ const path = require("node:path");
 const control = require("./desktop-process-control");
 
 app.setName("GerNetiX Prozess-Monitor");
+let mainWindow = null;
 
 function createWindow() {
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.show();
+    mainWindow.focus();
+    return mainWindow;
+  }
   const window = new BrowserWindow({
     width: 1120,
     height: 760,
@@ -20,8 +26,11 @@ function createWindow() {
       sandbox: false
     }
   });
+  mainWindow = window;
+  window.on("closed", () => { mainWindow = null; });
   window.setMenuBarVisibility(false);
   window.loadFile(path.join(__dirname, "public", "desktop.html"));
+  return window;
 }
 
 ipcMain.handle("processes:list", () => control.processStates());
@@ -29,6 +38,7 @@ ipcMain.handle("processes:list-vps", () => control.remoteProcessStates());
 ipcMain.handle("interfaces:statistics", (_event, hours) => control.interfaceStatistics(hours));
 ipcMain.handle("runtime:alerts", (_event, hours) => control.runtimeAlerts(hours));
 ipcMain.handle("security:rules", (_event, force) => control.securityRuleStates({ force:Boolean(force) }));
+ipcMain.handle("link-integrity:status", (_event, force) => control.remoteLinkIntegrity({ force:Boolean(force) }));
 ipcMain.handle("processes:start-all", () => control.startAllServices());
 ipcMain.handle("processes:start", (_event, id) => control.startService(id));
 ipcMain.handle("processes:stop", (_event, id) => control.stopService(id));
@@ -44,7 +54,7 @@ app.whenReady().then(() => {
   if (!workspace) return;
   control.configureWorkspace(workspace);
   createWindow();
-  app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
+  app.on("activate", createWindow);
 });
 
 function resolveWorkspace() {
@@ -69,5 +79,5 @@ function readStoredWorkspace(settingsPath) {
 
 app.on("window-all-closed", () => {
   control.stopStagingTunnel().catch(()=>{});
-  if (process.platform !== "darwin") app.quit();
+  app.quit();
 });

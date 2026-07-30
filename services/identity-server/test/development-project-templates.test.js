@@ -85,7 +85,13 @@ test("provides a buildable touchscreen game collection with separated user sourc
   assert.doesNotMatch(source, /Startbildschirm|Spielauswahl|Game Loop|Beispielspiele|Nibbles|-->/);
   assert.equal(templateHardwareProfileId(template), "hardware.processor_board.generic_esp32_s3_touch_display");
   assert.equal(templateBuildConfig(template).board, "esp32-s3-devkitc-1");
-  assert.match(files.find((file) => file.path.endsWith("user_main.cpp")).content, /GameApplication/);
+  const userMain = files.find((file) => file.path.endsWith("user_main.cpp")).content;
+  assert.match(userMain, /Alle Spiele werden hier, in der Kunden-Main/);
+  assert.match(userMain, /#include "user_project\/games\/nibbles\.h"/);
+  assert.match(userMain, /#if GNX_GAME_NIBBLES_ENABLED/);
+  assert.match(userMain, /registerCustomerGames/);
+  assert.equal(files.some((file) => file.path.endsWith("game_application.h")), false);
+  assert.equal(files.some((file) => file.path.endsWith("game_catalog.h")), false);
   assert.match(files.find((file) => file.path.endsWith("view\/start_screen.h")).content, /class StartScreen/);
   for (const game of ["nibbles", "snake", "frogger", "tic_tac_toe", "pong", "breakout", "memory"]) {
     assert.equal(files.some((file) => file.path.endsWith(`games/${game}.h`)), true);

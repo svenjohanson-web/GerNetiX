@@ -8,6 +8,13 @@ test("creates separated Community tables with cascading private content", async 
   assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS community_questions/);
   assert.match(pool.calls[0].text, /REFERENCES community_questions\(question_id\) ON DELETE CASCADE/);
   assert.match(pool.calls[0].text, /community_migrations/);
+  assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS community_message_threads/);
+  assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS community_message_thread_members/);
+  assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS community_messages/);
+  assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS community_inbox_entries/);
+  assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS community_broadcasts/);
+  assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS community_message_blocks/);
+  assert.match(pool.calls[0].text, /CREATE TABLE IF NOT EXISTS community_message_reports/);
 });
 
 test("stores queryable Community ownership and visibility", async () => {

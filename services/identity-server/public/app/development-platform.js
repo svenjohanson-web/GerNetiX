@@ -34,6 +34,8 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#openDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("open"));
       document.querySelector("#manageDevelopmentProjectsButton").addEventListener("click", () => showProjectPanel("manage"));
       document.querySelector("#developmentProjectOverview").addEventListener("click", handleProjectOverviewClick);
+      document.querySelector("#developmentPlatformView").addEventListener("click", handleInlineHelpClick);
+      document.querySelector("#developmentPlatformView").addEventListener("keydown", handleInlineHelpKeydown);
       document.querySelector("#newEmptyDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("new-empty"));
       document.querySelector("#newTemplateDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("new-template"));
       document.querySelector("#openDevelopmentTemplateHelpButton").addEventListener("click", openDevelopmentTemplateHelp);
@@ -103,6 +105,35 @@ const DevelopmentPlatform = (() => {
         : "<p class=\"empty\">Die Projekttemplates werden geladen.</p>";
       const dialog = document.querySelector("#developmentTemplateHelpDialog");
       if (!dialog.open) dialog.showModal();
+    }
+
+    function closeInlineHelp() {
+      document.querySelectorAll(".hardware-inline-help-wrap.is-open").forEach((wrapper) => {
+        wrapper.classList.remove("is-open");
+        wrapper.querySelector("[data-inline-help]")?.setAttribute("aria-expanded", "false");
+      });
+    }
+
+    function handleInlineHelpClick(event) {
+      const button = event.target.closest("[data-inline-help]");
+      if (!button) {
+        closeInlineHelp();
+        return;
+      }
+      event.preventDefault();
+      event.stopPropagation();
+      const wrapper = button.closest(".hardware-inline-help-wrap");
+      const shouldOpen = !wrapper?.classList.contains("is-open");
+      closeInlineHelp();
+      if (!wrapper || !shouldOpen) return;
+      wrapper.classList.add("is-open");
+      button.setAttribute("aria-expanded", "true");
+    }
+
+    function handleInlineHelpKeydown(event) {
+      if (event.key !== "Escape") return;
+      closeInlineHelp();
+      event.target.closest("[data-inline-help]")?.focus();
     }
 
     function templateEntitlementLabel(entitlement) {
@@ -664,6 +695,8 @@ const DevelopmentPlatform = (() => {
       const visible = state.developmentPlatform.workflowStep === "configuration"
         && currentProjectTemplateId() === "touchscreen_game_collection";
       section.classList.toggle("hidden", !visible);
+      document.querySelector("#saveDevelopmentArchitectureButton")?.classList.toggle("hidden", visible);
+      document.querySelector("#acceptDevelopmentArchitectureButton")?.classList.toggle("hidden", visible);
       if (!visible) return;
       const configuration = normalizeTouchscreenGameConfiguration(state.developmentPlatform.gameConfiguration);
       state.developmentPlatform.gameConfiguration = configuration;
@@ -683,7 +716,6 @@ const DevelopmentPlatform = (() => {
       inventorySelect.value = inventory.some((device) => device.device_id === configuration.inventory_device_id)
         ? configuration.inventory_device_id
         : "";
-      form.querySelector('[data-game-field="pattern_id"]').value = configuration.pattern_id;
       document.querySelector("#touchscreenGameChoices").innerHTML = [
         "<legend>Beispielspiele im Startbildschirm</legend>",
         ...touchscreenGameOptions().map((game) => `<label><input type="checkbox" data-game-id="${escapeAttribute(game.id)}" ${configuration.selected_game_ids.includes(game.id) ? "checked" : ""}> ${escapeHtml(game.label)}</label>`),
@@ -699,8 +731,7 @@ const DevelopmentPlatform = (() => {
       } else {
         match.innerHTML = "<strong>Kein passendes Inventar-Board</strong><span>Das benoetigte Board kann spaeter inventarisiert werden.</span>";
       }
-      form.querySelector("[data-game-save]").disabled = !configuration.pattern_id
-        || !configuration.board_profile_id
+      form.querySelector("[data-game-save]").disabled = !configuration.board_profile_id
         || !configuration.selected_game_ids.length;
       synchronizeConfigurationArchitecture();
     }
@@ -765,7 +796,7 @@ const DevelopmentPlatform = (() => {
     function collectTouchscreenGameConfiguration() {
       const form = document.querySelector("#touchscreenGameForm");
       return normalizeTouchscreenGameConfiguration({
-        pattern_id: form.querySelector('[data-game-field="pattern_id"]').value,
+        ...state.developmentPlatform.gameConfiguration,
         board_profile_id: form.querySelector('[data-game-field="board_profile_id"]').value,
         inventory_device_id: form.querySelector('[data-game-field="inventory_device_id"]').value,
         selected_game_ids: Array.from(form.querySelectorAll("[data-game-id]:checked"), (input) => input.dataset.gameId),
@@ -788,13 +819,30 @@ const DevelopmentPlatform = (() => {
     }
 
     async function saveTouchscreenGameConfiguration() {
+      const saveButton = document.querySelector("[data-game-save]");
+      if (saveButton) saveButton.disabled = true;
       state.developmentPlatform.gameConfiguration = collectTouchscreenGameConfiguration();
       synchronizeConfigurationArchitecture();
-      setTouchscreenGameStatus("Pattern, Spiele, Board und User-Quellen werden gespeichert...");
+      setTouchscreenGameStatus("Spiele, Board und User-Quellen werden gespeichert...");
       const saved = await persistDevelopmentDialog();
-      setTouchscreenGameStatus(saved
-        ? "Spielprojekt gespeichert. Startbildschirm und Spiele liegen getrennt im User-Bereich."
-        : "Spielprojekt konnte nicht gespeichert werden.");
+      if (!saved) {
+        setTouchscreenGameStatus("Spielprojekt konnte nicht gespeichert werden.");
+        if (saveButton) saveButton.disabled = false;
+        return;
+      }
+      const projectId = activeProjectId();
+      if (!projectId) {
+        setTouchscreenGameStatus("Spielprojekt wurde gespeichert, konnte aber nicht geöffnet werden.");
+        if (saveButton) saveButton.disabled = false;
+        return;
+      }
+      setTouchscreenGameStatus("Spielprojekt gespeichert. IDE wird geöffnet...");
+      try {
+        await openProjectInIde(projectId);
+      } catch (error) {
+        setTouchscreenGameStatus(`Spielprojekt wurde gespeichert, konnte aber nicht geöffnet werden: ${error.message}`);
+        if (saveButton) saveButton.disabled = false;
+      }
     }
 
     function setTouchscreenGameStatus(text) {

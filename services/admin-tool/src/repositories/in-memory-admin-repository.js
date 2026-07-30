@@ -10,6 +10,9 @@ class InMemoryAdminRepository {
     this.adminActions = (seed.adminActions || []).map(clone);
     this.systemEvents = (seed.systemEvents || []).map(clone);
     this.interfaceCalls = (seed.interfaceCalls || []).map(clone);
+    this.linkTargets = new Map((seed.linkTargets || []).map((item) => [item.reference_id, clone(item)]));
+    this.linkOccurrences = new Map((seed.linkOccurrences || []).map((item) => [item.occurrence_id, clone(item)]));
+    this.linkChecks = (seed.linkChecks || []).map(clone);
   }
 
   listDevices() {
@@ -135,6 +138,51 @@ class InMemoryAdminRepository {
     this.interfaceCalls.push(clone(input));
     return clone(input);
   }
+
+  replaceLinkInventory(sourceService, inventory) {
+    const generatedAt = inventory.generated_at || new Date().toISOString();
+    const activeIds = new Set((inventory.targets || []).map((item) => item.reference_id));
+    for (const [referenceId, current] of this.linkTargets) {
+      if (current.source_service === sourceService && !activeIds.has(referenceId)) {
+        this.linkTargets.set(referenceId, { ...current, active: false, updated_at: generatedAt });
+      }
+    }
+    for (const target of inventory.targets || []) {
+      this.linkTargets.set(target.reference_id, clone({
+        ...target,
+        source_service: sourceService,
+        active: target.active !== false,
+        updated_at: generatedAt,
+      }));
+    }
+    for (const [occurrenceId, current] of this.linkOccurrences) {
+      if (current.source_service === sourceService) this.linkOccurrences.delete(occurrenceId);
+    }
+    for (const occurrence of inventory.occurrences || []) {
+      this.linkOccurrences.set(occurrence.occurrence_id, clone({
+        ...occurrence,
+        source_service: sourceService,
+      }));
+    }
+    return { targets: activeIds.size, occurrences: (inventory.occurrences || []).length, generated_at: generatedAt };
+  }
+
+  addLinkChecks(checks) {
+    const knownChecks = new Set(this.linkChecks.map((item) => item.check_id));
+    for (const check of checks || []) {
+      if (!knownChecks.has(check.check_id)) this.linkChecks.push(clone(check));
+    }
+    return { accepted: (checks || []).length };
+  }
+
+  listLinkTargets() { return [...this.linkTargets.values()].map(clone); }
+  listLinkOccurrences() { return [...this.linkOccurrences.values()].map(clone); }
+  listLinkChecks() {
+    return this.linkChecks
+      .slice()
+      .sort((left, right) => String(right.checked_at).localeCompare(String(left.checked_at)))
+      .map(clone);
+  }
 }
 
 function defaultSeed() {
@@ -256,6 +304,9 @@ function defaultSeed() {
     consents: [],
     auditEvents: [],
     systemEvents: [],
+    linkTargets: [],
+    linkOccurrences: [],
+    linkChecks: [],
   };
 }
 

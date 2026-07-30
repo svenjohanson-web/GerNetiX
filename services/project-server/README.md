@@ -17,6 +17,7 @@ Fuer den projektgebundenen Entwicklungs-KI-Chat stellt er eine bedarfsgesteuerte
 - BuildJobs erzeugen
 - vollstaendige BuildPackages als Projektsnapshot erzeugen
 - Build-, Flash- und Deploy-Historie nachvollziehbar speichern
+- unveraenderliche Git-Light-Projektversionen mit Elternbezug und Inhalts-Hash speichern
 - Firmware-Artefakte und Logs dem Projektkontext zuordnen
 - Step- und Projektfeedback im Learning-/Projektkontext speichern
 - aktuelle Lesson, aktuellen Step und abgeschlossene Steps je Lesson dauerhaft speichern
@@ -126,6 +127,12 @@ API-Prefix:
 ```
 
 Umgesetzt sind Projektanlage, Projektquellen, ProjectViewManifest, projektgebundener Lesson-/Step-Fortschritt, BuildJob-Erzeugung, reproduzierbare BuildPackages, BuildResult-Rueckmeldung, Firmware-Artefaktreferenzen, Build-Historie und Learning-Feedback inklusive Kontakt-Consent und Anonymisierung.
+
+## Git Light
+
+Git Light speichert Premium-Nutzern einen unveraenderlichen Projektstand mit Beschreibung, Elternversion, Ersteller und SHA-256-Inhalts-Hash. Das Wiederherstellen veraendert keinen alten Stand. Weicht der aktuelle Projektinhalt von der letzten Version ab, wird zuerst automatisch ein Sicherheitsstand gespeichert. Danach setzt der Service Projektquellen und Projektkonfiguration auf den gewaehlten Inhalt zurueck und erzeugt einen neuen Restore-Eintrag.
+
+Eine Version ohne Binary wird unmittelbar aus dem aktuellen Projektstand gespeichert. Bei „mit Binary“ erzeugt die IDE zuerst einen frischen Build. Der Project Server friert Projekt und Quellen bereits beim Erstellen des BuildPackage ein; nur ein erfolgreicher Build mit mindestens einem Artefakt darf genau diesen eingefrorenen Stand als Version referenzieren. Ein fehlgeschlagener Build erzeugt keine Projektversion. Binary-Artefakte bleiben in der Build-Artefakt-Persistenz und werden von der Version nur mit Kennung, Pruefsumme und Groesse referenziert.
 
 Konfiguration:
 

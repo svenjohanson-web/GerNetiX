@@ -207,8 +207,10 @@ const InformationView = (() => {
       ${article.sections.map((section, sectionIndex) => `<section${section.id ? ` id="${escapeHtml(section.id)}"` : ""} class="help-article-section">
         ${chapterNumber && section.id ? `<p class="knowledge-subchapter-number">${chapterNumber}.${sectionIndex + 1}</p>` : ""}
         <h3>${escapeHtml(section.heading)}</h3>
+        ${renderExpertKnowledge(section.expertKnowledge)}
         ${section.tamagotchiIllustration ? '<figure class="tamagotchi-learning-illustration"><img src="/assets/tamagotchi-learning-journey.png" alt="Fröhliches digitales Haustier auf einem vernetzten Taschen-Gerät"><figcaption>Ein kleines Projekt, das mit deinen Ideen wachsen kann.</figcaption></figure>' : ""}
         ${section.illustration ? `<figure class="knowledge-section-illustration"><img src="${escapeHtml(section.illustration.src)}" alt="${escapeHtml(section.illustration.alt)}" loading="lazy" decoding="async"><figcaption>${escapeHtml(section.illustration.caption)}</figcaption></figure>` : ""}
+        ${section.illustrationSeries ? `<div class="knowledge-illustration-series" aria-label="Bildserie: ${escapeHtml(section.heading)}">${section.illustrationSeries.map((illustration, illustrationIndex) => `<figure><div><span>Schritt ${illustrationIndex + 1} von ${section.illustrationSeries.length}</span></div><img src="${escapeHtml(illustration.src)}" alt="${escapeHtml(illustration.alt)}" loading="lazy" decoding="async"><figcaption>${escapeHtml(illustration.caption)}</figcaption></figure>`).join("")}</div>` : ""}
         ${section.embeddingVisual ? renderEmbeddingVisuals() : ""}
         ${(section.paragraphs || []).map((paragraph, paragraphIndex) => `<p>${escapeHtml(paragraph)}</p>${section.aiIllustrationAfterParagraph === paragraphIndex ? '<figure class="tamagotchi-learning-illustration tamagotchi-ai-illustration"><img src="/assets/tamagotchi-ai-architecture.png" alt="Digitales Haustier mit leuchtender KI- und Verhaltensmodell-Verbindung"><figcaption>KI kann eine Fähigkeit ermöglichen – die technische Umsetzung bleibt eine bewusste Entscheidung.</figcaption></figure>' : ""}${section.securityDoorIllustrations?.filter((illustration) => illustration.afterParagraph === paragraphIndex).map((illustration) => `<div class="security-door-illustrations"><figure><div class="security-door-illustration-label"><strong>${escapeHtml(illustration.title)}</strong></div><img src="${escapeHtml(illustration.src)}" alt="${escapeHtml(illustration.alt)}" loading="lazy"><figcaption>${escapeHtml(illustration.caption)}</figcaption></figure></div>`).join("") || ""}`).join("")}
         ${section.developmentPhases ? renderDevelopmentPhases() : ""}
@@ -233,6 +235,14 @@ const InformationView = (() => {
       ${article.actions?.length ? `<div class="button-row help-next-actions">${article.actions.map((action) => `<button type="button" data-help-route="${escapeHtml(action.route)}">${escapeHtml(action.label)}</button>`).join("")}</div>` : ""}
       ${chapterNumber ? renderPracticeLessonLink(topic.id, article.title, "chapter") : ""}
       ${showRelated && article.relatedTopics?.length ? `<section class="help-related"><h3>Weiterführende Artikel</h3>${article.relatedTopics.map(renderRelatedTopic).join("")}</section>` : ""}`;
+  }
+
+  function renderExpertKnowledge(description) {
+    if (!description) return "";
+    return `<aside class="knowledge-expert-note" aria-label="Expertenwissen">
+      <span>Expertenwissen</span>
+      <div><strong>Technischer Hintergrund</strong><p>${escapeHtml(description)}</p></div>
+    </aside>`;
   }
 
   function renderPracticeLessonLink(knowledgeTopicId, title, kind = "section") {

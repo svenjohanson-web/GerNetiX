@@ -24,3 +24,11 @@ test("offers persisted firmware artifacts as authenticated project downloads", (
   assert.match(server, /Content-Disposition/);
   assert.match(server, /function buildArtifactDownloads\(jobId, completedJob\)/);
 });
+
+test("explains each saved build with a stable configuration snapshot and readable result", () => {
+  assert.match(app, /function buildTargetLabel\(build, project\)/);
+  assert.match(app, /function buildBasisLabel\(build, project\)/);
+  assert.match(app, /function buildDurationLabel\(build\)/);
+  assert.match(app, /Technische Kennung/);
+  assert.match(server, /build_config: job\.build_config \|\| project\.build_config \|\| null/);
+});

@@ -36,7 +36,8 @@ const domains = [
   ]],
   ["operations", [
     "operations_system_events", "operations_interface_calls", "operations_admin_actions",
-    "operations_audit_events", "operations_consents", "operations_legacy_snapshots", "operations_migrations",
+    "operations_audit_events", "operations_consents", "operations_link_targets",
+    "operations_link_occurrences", "operations_link_checks", "operations_legacy_snapshots", "operations_migrations",
   ]],
   ["ai_context", [
     "ai_context_policy", "ai_context_sources", "ai_context_prompt_foundations",

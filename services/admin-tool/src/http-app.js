@@ -69,6 +69,16 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && url.pathname === "/api/admin/link-integrity") {
+      sendJson(res, 200, await service.linkIntegrity(readContext(url, {}, req)));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/admin/link-integrity/sync") {
+      sendJson(res, 200, await service.synchronizeIdentityLinkInventory(readContext(url, {}, req)));
+      return;
+    }
+
     if (req.method === "POST" && url.pathname === "/api/admin/system-events") {
       sendJson(res, 201, { event: await service.recordSystemEvent(await readJsonBody(req)) });
       return;
@@ -156,6 +166,22 @@ function createHttpApp(options) {
         sendJson(res, 403, { error: "interface_call_ingest_access_denied" }); return;
       }
       sendJson(res, 202, await service.recordInterfaceCall(await readJsonBody(req)));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/internal/link-integrity/inventory") {
+      if (!service.serviceClients?.linkIntegrityIngestToken || req.headers["x-gernetix-link-integrity-token"] !== service.serviceClients.linkIntegrityIngestToken) {
+        sendJson(res, 403, { error: "link_integrity_ingest_access_denied" }); return;
+      }
+      sendJson(res, 202, await service.registerLinkInventory(await readJsonBody(req)));
+      return;
+    }
+
+    if (req.method === "POST" && url.pathname === "/api/internal/link-integrity/checks") {
+      if (!service.serviceClients?.linkIntegrityIngestToken || req.headers["x-gernetix-link-integrity-token"] !== service.serviceClients.linkIntegrityIngestToken) {
+        sendJson(res, 403, { error: "link_integrity_ingest_access_denied" }); return;
+      }
+      sendJson(res, 202, await service.recordLinkChecks(await readJsonBody(req)));
       return;
     }
 

@@ -10,6 +10,9 @@ test("creates Operations tables for audit and interface telemetry", async () => 
   assert.match(pool.calls[0].text, /operations_system_events/);
   assert.match(pool.calls[0].text, /operations_audit_events/);
   assert.match(pool.calls[0].text, /operations_interface_calls/);
+  assert.match(pool.calls[0].text, /operations_link_targets/);
+  assert.match(pool.calls[0].text, /operations_link_occurrences/);
+  assert.match(pool.calls[0].text, /operations_link_checks/);
   assert.match(pool.calls[0].text, /operations_migrations/);
 });
 

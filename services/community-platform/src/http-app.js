@@ -28,6 +28,11 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "GET" && path === `${prefix}/capabilities`) {
+      sendJson(res, 200, { project_snapshot_attachment: true });
+      return;
+    }
+
     if (req.method === "GET" && path === `${prefix}/questions`) {
       sendJson(res, 200, await service.listQuestions(Object.fromEntries(url.searchParams.entries()), actor));
       return;
@@ -79,6 +84,101 @@ function createHttpApp(options) {
 
     if (req.method === "GET" && path === `${prefix}/knowledge-documents`) {
       sendJson(res, 200, await service.listKnowledgeDocuments(Object.fromEntries(url.searchParams.entries()), actor));
+      return;
+    }
+
+    if (req.method === "GET" && path === `${prefix}/inbox`) {
+      sendJson(res, 200, await service.listInbox(actor));
+      return;
+    }
+    if (req.method === "GET" && path === `${prefix}/message-threads`) {
+      sendJson(res, 200, await service.listMessageThreads(actor, Object.fromEntries(url.searchParams.entries())));
+      return;
+    }
+    if (req.method === "POST" && path === `${prefix}/message-threads`) {
+      sendJson(res, 201, await service.createDirectThread(await readJsonBody(req), actor));
+      return;
+    }
+    if (req.method === "POST" && path === `${prefix}/support-requests`) {
+      sendJson(res, 201, await service.createSupportRequest(await readJsonBody(req), actor));
+      return;
+    }
+    if (req.method === "GET" && path === `${prefix}/message-blocks`) {
+      sendJson(res, 200, await service.listMessageBlocks(actor));
+      return;
+    }
+    if (req.method === "POST" && path === `${prefix}/message-blocks`) {
+      sendJson(res, 201, await service.blockMessageUser(await readJsonBody(req), actor));
+      return;
+    }
+    const messageBlock = path.match(new RegExp(`^${prefix}/message-blocks/([^/]+)$`));
+    if (req.method === "DELETE" && messageBlock) {
+      sendJson(res, 200, await service.unblockMessageUser(decodeURIComponent(messageBlock[1]), actor));
+      return;
+    }
+    const messageThread = path.match(new RegExp(`^${prefix}/message-threads/([^/]+)$`));
+    if (req.method === "GET" && messageThread) {
+      sendJson(res, 200, await service.getMessageThread(decodeURIComponent(messageThread[1]), actor));
+      return;
+    }
+    const threadMessages = path.match(new RegExp(`^${prefix}/message-threads/([^/]+)/messages$`));
+    if (req.method === "POST" && threadMessages) {
+      sendJson(res, 201, await service.appendThreadMessage(decodeURIComponent(threadMessages[1]), await readJsonBody(req), actor));
+      return;
+    }
+    const messageReport = path.match(new RegExp(`^${prefix}/message-threads/([^/]+)/messages/([^/]+)/report$`));
+    if (req.method === "POST" && messageReport) {
+      sendJson(res, 201, await service.reportMessage(
+        decodeURIComponent(messageReport[1]),
+        decodeURIComponent(messageReport[2]),
+        await readJsonBody(req),
+        actor,
+      ));
+      return;
+    }
+    const threadRead = path.match(new RegExp(`^${prefix}/message-threads/([^/]+)/read$`));
+    if (req.method === "POST" && threadRead) {
+      sendJson(res, 200, await service.markThreadRead(decodeURIComponent(threadRead[1]), actor));
+      return;
+    }
+    const threadArchive = path.match(new RegExp(`^${prefix}/message-threads/([^/]+)/archive$`));
+    if (req.method === "POST" && threadArchive) {
+      sendJson(res, 200, await service.archiveMessageThread(decodeURIComponent(threadArchive[1]), actor));
+      return;
+    }
+    if (req.method === "DELETE" && threadArchive) {
+      sendJson(res, 200, await service.restoreMessageThread(decodeURIComponent(threadArchive[1]), actor));
+      return;
+    }
+    const threadMessageDelete = path.match(new RegExp(`^${prefix}/message-threads/([^/]+)/messages/([^/]+)$`));
+    if (req.method === "DELETE" && threadMessageDelete) {
+      sendJson(res, 200, await service.deleteThreadMessage(decodeURIComponent(threadMessageDelete[1]), decodeURIComponent(threadMessageDelete[2]), actor));
+      return;
+    }
+    if (req.method === "GET" && path === `${prefix}/message-reports`) {
+      sendJson(res, 200, await service.listMessageReports(Object.fromEntries(url.searchParams.entries()), actor));
+      return;
+    }
+    const messageReportResolution = path.match(new RegExp(`^${prefix}/message-reports/([^/]+)/resolve$`));
+    if (req.method === "POST" && messageReportResolution) {
+      sendJson(res, 200, await service.resolveMessageReport(decodeURIComponent(messageReportResolution[1]), await readJsonBody(req), actor));
+      return;
+    }
+    if (req.method === "POST" && path === `${prefix}/inbox/direct`) {
+      sendJson(res, 201, await service.sendDirectMessage(await readJsonBody(req), actor));
+      return;
+    }
+    if (req.method === "POST" && path === `${prefix}/inbox/broadcasts`) {
+      sendJson(res, 201, { items: await service.createBroadcast(await readJsonBody(req), actor) });
+      return;
+    }
+    if (req.method === "POST" && path === `${prefix}/inbox/project-invitations`) {
+      sendJson(res, 201, await service.createProjectInvitation(await readJsonBody(req), actor));
+      return;
+    }
+    const inboxRead = path.match(new RegExp(`^${prefix}/inbox/([^/]+)/read$`));
+    if (req.method === "POST" && inboxRead) {
+      sendJson(res, 200, await service.markInboxRead(decodeURIComponent(inboxRead[1]), actor));
       return;
     }
 

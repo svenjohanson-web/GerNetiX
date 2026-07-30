@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 500" role="img" aria-labelledby="title desc">
+  <title id="title">Digitales Spannungssignal mit Grenzen für logisch 0 und logisch 1</title>
+  <desc id="desc">Ein Signal springt mehrfach zwischen ungefähr 0,2 Volt und 3,2 Volt. Gestrichelte Linien markieren 0,5 Volt als obere Grenze für logisch 0 und 3,0 Volt als untere Grenze für logisch 1. Dazwischen liegt der unsichere Bereich.</desc>
+  <rect width="960" height="500" rx="24" fill="#f8fafc"/>
+
+  <text x="58" y="38" font-family="system-ui,sans-serif" font-size="18" font-weight="750" fill="#0f172a">Spannung U</text>
+  <text x="862" y="454" font-family="system-ui,sans-serif" font-size="18" font-weight="750" fill="#0f172a">Zeit t</text>
+
+  <rect x="110" y="108" width="770" height="235" fill="#fef3c7" opacity=".72"/>
+  <rect x="110" y="58" width="770" height="50" fill="#dcfce7" opacity=".9"/>
+  <rect x="110" y="343" width="770" height="57" fill="#dbeafe" opacity=".95"/>
+
+  <g stroke="#cbd5e1" stroke-width="1">
+    <line x1="110" y1="58" x2="880" y2="58"/>
+    <line x1="110" y1="400" x2="880" y2="400"/>
+  </g>
+  <g stroke="#334155" stroke-width="2.5">
+    <line x1="110" y1="58" x2="110" y2="420"/>
+    <line x1="110" y1="400" x2="900" y2="400"/>
+  </g>
+
+  <g font-family="system-ui,sans-serif" font-size="16" fill="#475569" text-anchor="end">
+    <text x="96" y="64">3,3 V</text>
+    <text x="96" y="114">3,0 V</text>
+    <text x="96" y="349">0,5 V</text>
+    <text x="96" y="406">0 V</text>
+  </g>
+
+  <g fill="none" stroke-width="3" stroke-dasharray="11 9">
+    <line x1="110" y1="108" x2="880" y2="108" stroke="#15803d"/>
+    <line x1="110" y1="343" x2="880" y2="343" stroke="#2563eb"/>
+  </g>
+  <g font-family="system-ui,sans-serif" font-size="17" font-weight="750">
+    <text x="862" y="94" text-anchor="end" fill="#166534">ab hier sicher logisch 1</text>
+    <text x="862" y="367" text-anchor="end" fill="#1d4ed8">bis hier sicher logisch 0</text>
+    <text x="495" y="230" text-anchor="middle" fill="#92400e">unsicherer Bereich</text>
+  </g>
+
+  <path d="M110 382
+           L196 382 L208 373 L216 92
+           L335 92 L346 101 L354 373
+           L452 373 L464 365 L472 86
+           L602 86 L614 98 L622 378
+           L716 378 L728 369 L736 94
+           L820 94 L832 104 L840 380
+           L880 380"
+        fill="none" stroke="#0891b2" stroke-width="7" stroke-linejoin="round" stroke-linecap="round"/>
+
+  <g font-family="system-ui,sans-serif" font-size="14" font-weight="750" fill="#0f766e">
+    <path d="M170 270 H203" fill="none" stroke="#0f766e" stroke-width="2"/>
+    <text x="166" y="265" text-anchor="end">steigende Flanke</text>
+    <path d="M360 270 H393" fill="none" stroke="#0f766e" stroke-width="2"/>
+    <text x="397" y="265">fallende Flanke</text>
+  </g>
+
+  <g font-family="system-ui,sans-serif" font-size="18" font-weight="800" text-anchor="middle">
+    <text x="160" y="440" fill="#1d4ed8">0</text>
+    <text x="278" y="440" fill="#166534">1</text>
+    <text x="408" y="440" fill="#1d4ed8">0</text>
+    <text x="546" y="440" fill="#166534">1</text>
+    <text x="676" y="440" fill="#1d4ed8">0</text>
+    <text x="778" y="440" fill="#166534">1</text>
+    <text x="860" y="440" fill="#1d4ed8">0</text>
+  </g>
+
+  <text x="495" y="478" text-anchor="middle" font-family="system-ui,sans-serif" font-size="15" fill="#64748b">Flanken markieren den Wechsel; der Empfänger liest den Pegel zu einem festgelegten Zeitpunkt.</text>
+</svg>

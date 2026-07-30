@@ -57,7 +57,7 @@ mehr.
 | Hardware-Catalog-Altbestand | fruehere `/var/lib/gernetix/services/gernetix-services.sqlite` | `service_state` | einmalige, transaktionale read-only Altuebernahme; danach nicht mehr fuehrend |
 | Hardware Shop | PostgreSQL `gernetix_runtime`, Tabellen `hardware_shop_*` | `runtime_postgres_data` | Angebote, Warenkoerbe, Bestellungen und Purchase Contexts |
 | Hardware-Shop-Altbestand | fruehere `/var/lib/gernetix/services/gernetix-services.sqlite` | `service_state` | einmalige, transaktionale read-only Altuebernahme; danach nicht mehr fuehrend |
-| Operations und Admin-Zugang | PostgreSQL `gernetix_runtime`, Tabellen `operations_*` und `admin_access_*` | `runtime_postgres_data` | Admin-Consents, Audit, Systemereignisse, Schnittstellenstatistik, Admin-Konten und Sessions |
+| Operations und Admin-Zugang | PostgreSQL `gernetix_runtime`, Tabellen `operations_*` und `admin_access_*` | `runtime_postgres_data` | Admin-Consents, Audit, Systemereignisse, Schnittstellenstatistik, Linkziele, Linkfundstellen, Linkprüfhistorie, Admin-Konten und Sessions |
 | Operations-Altbestand | fruehere `/var/lib/gernetix/services/gernetix-services.sqlite` | `service_state` | einmalige, transaktionale read-only Altuebernahme; danach nur Rueckfallkopie |
 | Oeffentliche Demos | PostgreSQL `gernetix_runtime`, Tabellen `public_demo_*` | `runtime_postgres_data` | redaktionell freigegebene Demos und Firmware-BLOBs |
 | AI Context | PostgreSQL `gernetix_runtime`, Tabellen `ai_context_*` plus pgvector | `runtime_postgres_data` | Kontext, Grants, Policy, Audit und Vektoren |

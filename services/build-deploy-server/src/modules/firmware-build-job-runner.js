@@ -11,13 +11,14 @@ class FirmwareBuildJobRunner {
     this.allowMockRunner = options.allowMockRunner === true;
   }
 
-  async run(job, packageDir) {
+  async run(job, packageDir, options = {}) {
     if (this.runner === "platformio") {
       return runPlatformioBuild({
         command: this.platformioCommand,
         packageDir,
         cacheDir: this.cacheDir,
         browserFlashRequested: job.mode === "build_and_usb_flash",
+        onProgress: options.onProgress,
       });
     }
 
@@ -71,6 +72,7 @@ async function runPlatformioBuild(options) {
   const result = await spawnAndCapture(options.command, ["run"], {
     cwd: options.packageDir,
     env,
+    onOutput: options.onProgress,
   });
   let output = result.output;
 
@@ -103,10 +105,22 @@ function spawnAndCapture(command, args, options) {
   return new Promise((resolve, reject) => {
     const child = spawn(command, args, options);
     let output = "";
-    child.stdout.on("data", (chunk) => { output += chunk; });
-    child.stderr.on("data", (chunk) => { output += chunk; });
+    let pendingLine = "";
+    const report = (chunk) => {
+      output += chunk;
+      if (typeof options.onOutput !== "function") return;
+      pendingLine += chunk;
+      const lines = pendingLine.split(/\r?\n/);
+      pendingLine = lines.pop() || "";
+      for (const line of lines) options.onOutput(line);
+    };
+    child.stdout.on("data", (chunk) => { report(String(chunk)); });
+    child.stderr.on("data", (chunk) => { report(String(chunk)); });
     child.on("error", reject);
-    child.on("close", (exitCode) => resolve({ exitCode, output }));
+    child.on("close", (exitCode) => {
+      if (pendingLine && typeof options.onOutput === "function") options.onOutput(pendingLine);
+      resolve({ exitCode, output });
+    });
   });
 }
 

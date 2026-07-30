@@ -48,6 +48,27 @@ class PostgresAdminRepository {
       );
       CREATE INDEX IF NOT EXISTS idx_operations_interface_calls_time
         ON operations_interface_calls (occurred_at DESC);
+      CREATE TABLE IF NOT EXISTS operations_link_targets (
+        reference_id text PRIMARY KEY, target_url text NOT NULL, link_type text NOT NULL,
+        owner_domain text NOT NULL, access_scope text NOT NULL, source_service text NOT NULL,
+        active boolean NOT NULL DEFAULT true, updated_at timestamptz NOT NULL, raw_json jsonb NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_operations_link_targets_status
+        ON operations_link_targets (active, link_type, access_scope);
+      CREATE TABLE IF NOT EXISTS operations_link_occurrences (
+        occurrence_id text PRIMARY KEY, reference_id text NOT NULL REFERENCES operations_link_targets(reference_id),
+        source_service text NOT NULL, source_location text NOT NULL, source_route text,
+        raw_json jsonb NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_operations_link_occurrences_reference
+        ON operations_link_occurrences (reference_id);
+      CREATE TABLE IF NOT EXISTS operations_link_checks (
+        check_id text PRIMARY KEY, reference_id text NOT NULL REFERENCES operations_link_targets(reference_id),
+        checked_at timestamptz NOT NULL, status text NOT NULL, http_status integer,
+        access_profile text NOT NULL, raw_json jsonb NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_operations_link_checks_latest
+        ON operations_link_checks (reference_id, checked_at DESC);
       CREATE TABLE IF NOT EXISTS operations_legacy_snapshots (
         snapshot_type text NOT NULL, snapshot_id text NOT NULL, raw_json jsonb NOT NULL,
         PRIMARY KEY (snapshot_type, snapshot_id)
@@ -206,6 +227,98 @@ class PostgresAdminRepository {
       Number(input.duration_ms || 0), Boolean(input.succeeded)]);
   }
 
+  async replaceLinkInventory(sourceService, inventory) {
+    const client = typeof this.pool.connect === "function" ? await this.pool.connect() : this.pool;
+    const generatedAt = inventory.generated_at || new Date().toISOString();
+    try {
+      await client.query("BEGIN");
+      await client.query(
+        "UPDATE operations_link_targets SET active=false, updated_at=$2 WHERE source_service=$1",
+        [sourceService, generatedAt],
+      );
+      for (const target of inventory.targets || []) {
+        const value = {
+          ...target,
+          source_service: sourceService,
+          active: target.active !== false,
+          updated_at: generatedAt,
+        };
+        await client.query(`
+          INSERT INTO operations_link_targets
+            (reference_id, target_url, link_type, owner_domain, access_scope,
+             source_service, active, updated_at, raw_json)
+          VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+          ON CONFLICT (reference_id) DO UPDATE SET
+            target_url=EXCLUDED.target_url, link_type=EXCLUDED.link_type,
+            owner_domain=EXCLUDED.owner_domain, access_scope=EXCLUDED.access_scope,
+            source_service=EXCLUDED.source_service, active=EXCLUDED.active,
+            updated_at=EXCLUDED.updated_at, raw_json=EXCLUDED.raw_json
+        `, [value.reference_id, value.target_url, value.link_type, value.owner_domain,
+          value.access_scope, sourceService, value.active, generatedAt, value]);
+      }
+      await client.query("DELETE FROM operations_link_occurrences WHERE source_service=$1", [sourceService]);
+      for (const occurrence of inventory.occurrences || []) {
+        const value = { ...occurrence, source_service: sourceService };
+        await client.query(`
+          INSERT INTO operations_link_occurrences
+            (occurrence_id, reference_id, source_service, source_location, source_route, raw_json)
+          VALUES ($1,$2,$3,$4,$5,$6)
+          ON CONFLICT (occurrence_id) DO UPDATE SET
+            reference_id=EXCLUDED.reference_id, source_service=EXCLUDED.source_service,
+            source_location=EXCLUDED.source_location, source_route=EXCLUDED.source_route,
+            raw_json=EXCLUDED.raw_json
+        `, [value.occurrence_id, value.reference_id, sourceService,
+          value.source_location, value.source_route || "", value]);
+      }
+      await client.query("COMMIT");
+      return {
+        targets: (inventory.targets || []).length,
+        occurrences: (inventory.occurrences || []).length,
+        generated_at: generatedAt,
+      };
+    } catch (error) {
+      await client.query("ROLLBACK");
+      throw error;
+    } finally {
+      if (client !== this.pool) client.release();
+    }
+  }
+
+  async addLinkChecks(checks) {
+    for (const check of checks || []) {
+      await this.pool.query(`
+        INSERT INTO operations_link_checks
+          (check_id, reference_id, checked_at, status, http_status, access_profile, raw_json)
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        ON CONFLICT (check_id) DO NOTHING
+      `, [check.check_id, check.reference_id, check.checked_at, check.status,
+        check.http_status || null, check.access_profile || "public", check]);
+    }
+    return { accepted: (checks || []).length };
+  }
+
+  async listLinkTargets() {
+    return rows(await this.pool.query(
+      `SELECT raw_json || jsonb_build_object(
+         'active', active,
+         'updated_at', to_char(updated_at AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"')
+       ) AS raw_json
+       FROM operations_link_targets ORDER BY active DESC, target_url`,
+    ));
+  }
+
+  async listLinkOccurrences() {
+    return rows(await this.pool.query(
+      "SELECT raw_json FROM operations_link_occurrences ORDER BY source_location",
+    ));
+  }
+
+  async listLinkChecks() {
+    return rows(await this.pool.query(
+      "SELECT raw_json FROM operations_link_checks ORDER BY checked_at DESC",
+    ));
+  }
+
   async saveSnapshot(type, id, value) {
     await this.pool.query(`
       INSERT INTO operations_legacy_snapshots (snapshot_type, snapshot_id, raw_json)
@@ -243,6 +356,9 @@ class PostgresAdminRepository {
           + (SELECT count(*) FROM operations_admin_actions)
           + (SELECT count(*) FROM operations_system_events)
           + (SELECT count(*) FROM operations_interface_calls)
+          + (SELECT count(*) FROM operations_link_targets)
+          + (SELECT count(*) FROM operations_link_occurrences)
+          + (SELECT count(*) FROM operations_link_checks)
           + (SELECT count(*) FROM operations_legacy_snapshots) AS count
       `);
       if (Number(occupied.rows[0]?.count || 0) > 0) throw new Error("Operations-PostgreSQL-Ziel ist belegt, aber der Migrationsmarker fehlt.");

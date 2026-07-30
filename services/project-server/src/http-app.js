@@ -57,6 +57,21 @@ function createHttpApp(options) {
       return;
     }
 
+    const versions = path.match(new RegExp(`^${prefix}/([^/]+)/versions$`));
+    if (req.method === "GET" && versions) {
+      sendJson(res, 200, { items: await service.listVersions(decodeURIComponent(versions[1])) });
+      return;
+    }
+    if (req.method === "POST" && versions) {
+      sendJson(res, 201, await service.createVersion(decodeURIComponent(versions[1]), await readJsonBody(req)));
+      return;
+    }
+    const restoreVersion = path.match(new RegExp(`^${prefix}/([^/]+)/versions/([^/]+)/restore$`));
+    if (req.method === "POST" && restoreVersion) {
+      sendJson(res, 201, await service.restoreVersion(decodeURIComponent(restoreVersion[1]), decodeURIComponent(restoreVersion[2]), await readJsonBody(req)));
+      return;
+    }
+
     const learningProgress = path.match(new RegExp(`^${prefix}/([^/]+)/learning-progress$`));
     if (req.method === "GET" && learningProgress) {
       sendJson(res, 200, await service.getLearningProgress(

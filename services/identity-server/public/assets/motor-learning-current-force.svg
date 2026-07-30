@@ -1,26 +1,91 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
-  <title id="title">Kraft auf einen stromdurchflossenen Leiter</title>
-  <desc id="desc">Zwischen Nord- und Südpol verläuft ein Magnetfeld. Fließt Strom aus der Bildebene heraus, wirkt eine seitliche Kraft auf den Leiter.</desc>
+  <title id="title">Kraft auf einen stromdurchflossenen Leiter im Luftspalt</title>
+  <desc id="desc">Eine dreidimensionale Darstellung eines zusammenhängenden Hufeisenmagneten. Der Nordpol liegt unten, der Südpol oben. Ein gerader Kupferleiter steht mittig und berührungslos im Luftspalt und verläuft von vorn nach hinten in die Bildtiefe. Der technische Strom fließt in die Tiefe, das Magnetfeld vom Nordpol zum Südpol nach oben und die Kraft nach rechts.</desc>
   <defs>
-    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0L9 3L0 6Z" fill="#2563eb"/></marker>
-    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0L9 3L0 6Z" fill="#16a34a"/></marker>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#07111f"/><stop offset="1" stop-color="#111827"/></linearGradient>
+    <linearGradient id="steelFront" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#67758a"/><stop offset=".48" stop-color="#374151"/><stop offset="1" stop-color="#1f2937"/></linearGradient>
+    <linearGradient id="steelDepth" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#94a3b8"/><stop offset=".4" stop-color="#475569"/><stop offset="1" stop-color="#1e293b"/></linearGradient>
+    <linearGradient id="north" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fb7185"/><stop offset=".55" stop-color="#dc2626"/><stop offset="1" stop-color="#7f1d1d"/></linearGradient>
+    <linearGradient id="south" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#67e8f9"/><stop offset=".55" stop-color="#0891b2"/><stop offset="1" stop-color="#164e63"/></linearGradient>
+    <linearGradient id="copper" x1="0" y1="0" x2="1" y2=".25"><stop stop-color="#7c2d12"/><stop offset=".34" stop-color="#fb923c"/><stop offset=".58" stop-color="#fed7aa"/><stop offset="1" stop-color="#9a3412"/></linearGradient>
+    <linearGradient id="battery" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#b45309"/><stop offset=".18" stop-color="#fbbf24"/><stop offset=".28" stop-color="#111827"/><stop offset=".78" stop-color="#020617"/><stop offset="1" stop-color="#94a3b8"/></linearGradient>
+    <marker id="fieldArrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L12 6L0 12Z" fill="#38bdf8"/></marker>
+    <marker id="currentArrow" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L12 6L0 12Z" fill="#fbbf24"/></marker>
+    <marker id="forceArrow" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto" markerUnits="userSpaceOnUse"><path d="M0 0L14 7L0 14Z" fill="#4ade80"/></marker>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="7" stdDeviation="8" flood-color="#020617" flood-opacity=".75"/></filter>
+    <filter id="textShadow" x="-20%" y="-30%" width="140%" height="160%"><feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#020617" flood-opacity=".9"/></filter>
   </defs>
-  <rect width="960" height="540" rx="24" fill="#f8fafc"/>
-  <rect x="92" y="72" width="776" height="116" rx="18" fill="#dc2626"/>
-  <rect x="92" y="352" width="776" height="116" rx="18" fill="#2563eb"/>
-  <text x="480" y="143" text-anchor="middle" font-family="system-ui,sans-serif" font-size="44" font-weight="800" fill="#fff">N</text>
-  <text x="480" y="423" text-anchor="middle" font-family="system-ui,sans-serif" font-size="44" font-weight="800" fill="#fff">S</text>
-  <g stroke="#2563eb" stroke-width="4" marker-end="url(#arrowBlue)">
-    <line x1="230" y1="205" x2="230" y2="330"/>
-    <line x1="355" y1="205" x2="355" y2="330"/>
-    <line x1="605" y1="205" x2="605" y2="330"/>
-    <line x1="730" y1="205" x2="730" y2="330"/>
+
+  <rect width="960" height="540" rx="28" fill="url(#bg)"/>
+  <text x="480" y="39" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="850" fill="#f8fafc">Leiter im Luftspalt eines Hufeisenmagneten</text>
+
+  <!-- Batterie -->
+  <g filter="url(#shadow)">
+    <rect x="354" y="74" width="260" height="68" rx="34" fill="url(#battery)" stroke="#cbd5e1" stroke-width="2"/>
+    <ellipse cx="354" cy="108" rx="17" ry="34" fill="#d97706" stroke="#fed7aa" stroke-width="3"/>
+    <ellipse cx="615" cy="108" rx="16" ry="33" fill="#94a3b8" stroke="#e2e8f0" stroke-width="3"/>
+    <rect x="328" y="98" width="30" height="20" rx="6" fill="#d1d5db" stroke="#475569" stroke-width="3"/>
+    <text x="338" y="94" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="900" fill="#f8fafc">+</text>
+    <text x="630" y="94" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="900" fill="#f8fafc">−</text>
   </g>
-  <text x="755" y="278" font-family="system-ui,sans-serif" font-size="21" fill="#1e40af">Magnetfeld B</text>
-  <circle cx="480" cy="270" r="54" fill="#fff" stroke="#b45309" stroke-width="12"/>
-  <circle cx="480" cy="270" r="13" fill="#b45309"/>
-  <text x="480" y="337" text-anchor="middle" font-family="system-ui,sans-serif" font-size="19" fill="#92400e">Strom kommt aus dem Bild</text>
-  <line x1="486" y1="270" x2="660" y2="270" stroke="#16a34a" stroke-width="12" marker-end="url(#arrowGreen)"/>
-  <text x="573" y="244" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#166534">Kraft F</text>
-  <text x="480" y="510" text-anchor="middle" font-family="system-ui,sans-serif" font-size="21" fill="#334155">Wird die Stromrichtung umgekehrt, zeigt die Kraft in die Gegenrichtung.</text>
+  <!-- Die Minusleitung läuft räumlich hinter dem Magneten und taucht erst am hinteren Leiterende wieder auf. -->
+  <g fill="none" stroke-linecap="round" filter="url(#shadow)">
+    <path d="M616 120C689 151 720 212 688 258C650 310 552 312 471 300" stroke="#0f172a" stroke-width="19"/>
+    <path d="M616 120C689 151 720 212 688 258C650 310 552 312 471 300" stroke="#e2e8f0" stroke-width="11"/>
+    <path d="M616 120C689 151 720 212 688 258C650 310 552 312 471 300" stroke="#64748b" stroke-width="5"/>
+  </g>
+  <text x="485" y="164" text-anchor="middle" font-family="system-ui,sans-serif" font-size="14" font-weight="750" fill="#cbd5e1">Batterie</text>
+
+  <!-- Räumlicher, zusammenhängender Hufeisenmagnet: zuerst die nach hinten versetzte Fläche, dann die Vorderseite. -->
+  <g filter="url(#shadow)">
+    <path d="M261 174H691C789 174 844 228 844 300C844 372 789 426 691 426H261V344H682C723 344 746 328 746 300C746 272 723 256 682 256H261Z" fill="url(#steelDepth)" transform="translate(42 -28)"/>
+    <path d="M261 174H691C789 174 844 228 844 300C844 372 789 426 691 426H261V344H682C723 344 746 328 746 300C746 272 723 256 682 256H261Z" fill="url(#steelFront)" stroke="#94a3b8" stroke-width="3"/>
+    <path d="M261 174H324V256H261Z" fill="url(#south)" stroke="#67e8f9" stroke-width="2"/>
+    <path d="M261 344H324V426H261Z" fill="url(#north)" stroke="#fb7185" stroke-width="2"/>
+    <path d="M261 174L303 146H366L324 174Z" fill="#22d3ee" fill-opacity=".5"/>
+    <path d="M261 344L303 316H366L324 344Z" fill="#ef4444" fill-opacity=".42"/>
+  </g>
+
+  <g font-family="system-ui,sans-serif" font-size="25" font-weight="900" text-anchor="middle" filter="url(#textShadow)">
+    <text x="292" y="224" fill="#ecfeff">S</text>
+    <text x="292" y="395" fill="#fff1f2">N</text>
+  </g>
+
+  <!-- Helle Anschlussleitungen: vom Plus- bzw. Minuspol direkt zu den Enden des Leiters. -->
+  <g fill="none" stroke-linecap="round" filter="url(#shadow)">
+    <path d="M344 120C281 152 218 220 220 287C221 315 254 327 292 320" stroke="#0f172a" stroke-width="19"/>
+    <path d="M344 120C281 152 218 220 220 287C221 315 254 327 292 320" stroke="#e2e8f0" stroke-width="11"/>
+    <path d="M344 120C281 152 218 220 220 287C221 315 254 327 292 320" stroke="#64748b" stroke-width="5"/>
+  </g>
+
+  <!-- Homogene Feldlinien im Luftspalt, vom N- zum S-Pol. -->
+  <g fill="none" stroke="#38bdf8" stroke-width="4" stroke-linecap="round" marker-end="url(#fieldArrow)">
+    <path d="M386 337V267"/>
+    <path d="M432 337V267"/>
+    <path d="M478 337V267"/>
+    <path d="M524 337V267"/>
+  </g>
+  <g font-family="system-ui,sans-serif" font-weight="850" fill="#bae6fd" filter="url(#textShadow)">
+    <text x="595" y="236" font-size="16">Magnetfeld B</text>
+    <path d="M583 242L544 266" fill="none" stroke="#38bdf8" stroke-width="3" marker-end="url(#fieldArrow)"/>
+  </g>
+
+  <!-- Der Leiter ist weder am N- noch am S-Pol: seine Achse läuft ausschließlich durch die Luftspaltmitte in die Tiefe. -->
+  <g filter="url(#shadow)">
+    <path d="M292 320H303" fill="none" stroke="#475569" stroke-width="13" stroke-linecap="round"/>
+    <path d="M526 298C507 300 490 301 471 302" fill="none" stroke="#475569" stroke-width="13" stroke-linecap="round"/>
+    <path d="M302 323L471 302" fill="none" stroke="#7c2d12" stroke-width="25" stroke-linecap="round"/>
+    <path d="M302 319L471 298" fill="none" stroke="url(#copper)" stroke-width="19" stroke-linecap="round"/>
+    <ellipse cx="303" cy="320" rx="10" ry="12" fill="#fed7aa" stroke="#7c2d12" stroke-width="3"/>
+    <ellipse cx="471" cy="299" rx="7" ry="9" fill="#7c2d12" stroke="#fed7aa" stroke-width="2"/>
+  </g>
+
+  <!-- Technische Stromrichtung: vom vorderen Ende in die Bildtiefe zum hinteren Ende. -->
+  <path d="M329 317L442 303" fill="none" stroke="#fbbf24" stroke-width="5" stroke-linecap="round" marker-end="url(#currentArrow)"/>
+  <text x="210" y="292" font-family="system-ui,sans-serif" font-size="16" font-weight="850" fill="#fde68a" filter="url(#textShadow)">Strom I</text>
+  <path d="M264 294L330 310" fill="none" stroke="#fbbf24" stroke-width="3" marker-end="url(#currentArrow)"/>
+
+  <!-- I × B: Kraft nach rechts. -->
+  <path d="M387 315H700" fill="none" stroke="#4ade80" stroke-width="9" stroke-linecap="round" marker-end="url(#forceArrow)"/>
+  <text x="635" y="296" text-anchor="middle" font-family="system-ui,sans-serif" font-size="17" font-weight="900" fill="#86efac" filter="url(#textShadow)">Kraft F</text>
 </svg>

@@ -98,6 +98,89 @@ class AdminService {
     };
   }
 
+  async synchronizeIdentityLinkInventory(context) {
+    const access = await this.requireLinkIntegrityAccess(context, "link_inventory_sync");
+    if (!this.serviceClients?.identityBaseUrl || !this.serviceClients.identityAdminToken) {
+      throw new AdminToolError("identity_link_inventory_unavailable", "Die interne Identity-Verbindung ist nicht konfiguriert.", 503);
+    }
+    const inventory = await this.httpJson(
+      this.serviceClients.identityBaseUrl,
+      "/api/internal/link-integrity/inventory",
+      { headers: { "x-gernetix-admin-token": this.serviceClients.identityAdminToken } },
+    );
+    const result = await this.registerLinkInventory(inventory);
+    return { access, source_service: inventory.source_service, ...result };
+  }
+
+  async registerLinkInventory(input) {
+    validateLinkInventory(input);
+    return this.repository.replaceLinkInventory(String(input.source_service), {
+      generated_at: input.generated_at || new Date().toISOString(),
+      targets: input.targets,
+      occurrences: input.occurrences,
+    });
+  }
+
+  async recordLinkChecks(input) {
+    const checks = Array.isArray(input?.checks) ? input.checks : [];
+    if (!checks.length || checks.length > 10000) {
+      throw new AdminToolError("invalid_link_checks", "Es werden 1 bis 10000 Link-Prüfergebnisse erwartet.", 400);
+    }
+    const knownTargets = new Set((await this.repository.listLinkTargets()).map((item) => item.reference_id));
+    for (const check of checks) {
+      validateRequired(check, ["check_id", "reference_id", "checked_at", "status", "access_profile"]);
+      if (!knownTargets.has(check.reference_id)) {
+        throw new AdminToolError("unknown_link_reference", `Unbekannte Linkreferenz: ${check.reference_id}`, 409);
+      }
+      if (!["healthy", "redirected", "restricted", "broken", "unreachable", "not_checked"].includes(check.status)) {
+        throw new AdminToolError("invalid_link_check_status", `Ungültiger Linkstatus: ${check.status}`, 400);
+      }
+    }
+    return this.repository.addLinkChecks(checks);
+  }
+
+  async linkIntegrity(context) {
+    const access = await this.requireLinkIntegrityAccess(context, "link_integrity_read");
+    const [targets, occurrences, checks] = await Promise.all([
+      this.repository.listLinkTargets(),
+      this.repository.listLinkOccurrences(),
+      this.repository.listLinkChecks(),
+    ]);
+    const latestByReference = new Map();
+    for (const check of checks) {
+      if (!latestByReference.has(check.reference_id)) latestByReference.set(check.reference_id, check);
+    }
+    const occurrenceCount = new Map();
+    for (const occurrence of occurrences) {
+      occurrenceCount.set(occurrence.reference_id, (occurrenceCount.get(occurrence.reference_id) || 0) + 1);
+    }
+    const items = targets
+      .filter((target) => target.active !== false)
+      .map((target) => ({
+        ...target,
+        occurrence_count: occurrenceCount.get(target.reference_id) || 0,
+        latest_check: latestByReference.get(target.reference_id) || null,
+      }));
+    return {
+      access,
+      summary: summarizeLinkIntegrity(items),
+      items,
+    };
+  }
+
+  async requireLinkIntegrityAccess(context, purpose) {
+    const access = await this.accessPolicy.decideAdminCapability({
+      actor: context.actor,
+      capability: "admin_link_integrity",
+      purpose,
+      dataModelId: "data_model.operations_link_integrity",
+    });
+    if (access.decision === "denied") {
+      throw new AdminToolError("access_denied", "Link-Integrität darf nicht verwaltet werden.", 403, access);
+    }
+    return access;
+  }
+
   async recordInterfaceCall(input) {
     validateRequired(input, ["source_service", "target_service", "method", "route"]);
     await this.repository.addInterfaceCall({
@@ -880,6 +963,23 @@ function summarizeSystemEvents(items) {
     warnings: bySeverity.get("warning") || 0,
     by_severity: mapCounts(bySeverity),
     by_source: mapCounts(bySource),
+  };
+}
+
+function summarizeLinkIntegrity(items) {
+  const statuses = new Map();
+  for (const item of items) increment(statuses, item.latest_check?.status || "not_checked");
+  return {
+    total_targets: items.length,
+    internal: items.filter((item) => item.link_type === "internal").length,
+    external: items.filter((item) => item.link_type === "external").length,
+    authenticated: items.filter((item) => item.access_scope !== "public").length,
+    healthy: statuses.get("healthy") || 0,
+    redirected: statuses.get("redirected") || 0,
+    restricted: statuses.get("restricted") || 0,
+    broken: statuses.get("broken") || 0,
+    unreachable: statuses.get("unreachable") || 0,
+    not_checked: statuses.get("not_checked") || 0,
   };
 }
 
@@ -1667,6 +1767,32 @@ function validateRequired(input, fields) {
   for (const field of fields) {
     if (!String(input[field] || "").trim()) {
       throw new AdminToolError("missing_required_field", `Pflichtfeld fehlt: ${field}`);
+    }
+  }
+}
+
+function validateLinkInventory(input) {
+  validateRequired(input || {}, ["source_service"]);
+  const targets = Array.isArray(input.targets) ? input.targets : [];
+  const occurrences = Array.isArray(input.occurrences) ? input.occurrences : [];
+  if (!targets.length || targets.length > 20000 || occurrences.length > 100000) {
+    throw new AdminToolError("invalid_link_inventory", "Das Linkinventar überschreitet die erlaubte Größe oder ist leer.", 400);
+  }
+  const targetIds = new Set();
+  for (const target of targets) {
+    validateRequired(target, ["reference_id", "target_url", "link_type", "owner_domain", "access_scope"]);
+    if (targetIds.has(target.reference_id)) {
+      throw new AdminToolError("duplicate_link_reference", `Doppelte Linkreferenz: ${target.reference_id}`, 400);
+    }
+    if (String(target.target_url).length > 2048) {
+      throw new AdminToolError("link_target_too_long", `Linkziel ist zu lang: ${target.reference_id}`, 400);
+    }
+    targetIds.add(target.reference_id);
+  }
+  for (const occurrence of occurrences) {
+    validateRequired(occurrence, ["occurrence_id", "reference_id", "source_location"]);
+    if (!targetIds.has(occurrence.reference_id)) {
+      throw new AdminToolError("unknown_link_occurrence_reference", `Fundstelle verweist auf unbekanntes Ziel: ${occurrence.reference_id}`, 400);
     }
   }
 }

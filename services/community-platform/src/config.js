@@ -6,6 +6,9 @@ function createConfig(env = process.env) {
     port: Number(env.PORT || 5200),
     triageSlaHours: Number(env.COMMUNITY_TRIAGE_SLA_HOURS || 24),
     internalToken: env.COMMUNITY_INTERNAL_TOKEN || "",
+    messageRateLimit: Number(env.COMMUNITY_MESSAGE_RATE_LIMIT || 20),
+    messageRateWindowSeconds: Number(env.COMMUNITY_MESSAGE_RATE_WINDOW_SECONDS || 600),
+    supportUserIds: String(env.COMMUNITY_SUPPORT_USER_IDS || env.COMMUNITY_OPERATOR_USER_IDS || "support").split(",").map((item) => item.trim()).filter(Boolean),
     // Community data has its own database. In-memory mode remains useful for isolated tests only.
     persistenceBackend: env.PERSISTENCE_BACKEND || env.COMMUNITY_PERSISTENCE_BACKEND || "sqlite",
     sqlitePath: env.PERSISTENCE_SQLITE_PATH || env.COMMUNITY_SQLITE_PATH

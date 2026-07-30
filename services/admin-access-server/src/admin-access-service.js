@@ -1,7 +1,7 @@
 const { normalizeUsername, verifyPassword } = require("./admin-access-repository");
 
 const ROLE_CAPABILITIES = {
-  administrator: ["admin_device_management", "admin_ai_usage_monitoring", "admin_ai_cost_controls", "admin_identity_configuration", "admin_learning"],
+  administrator: ["admin_device_management", "admin_ai_usage_monitoring", "admin_ai_cost_controls", "admin_identity_configuration", "admin_link_integrity", "admin_learning"],
 };
 
 class AdminAccessService {

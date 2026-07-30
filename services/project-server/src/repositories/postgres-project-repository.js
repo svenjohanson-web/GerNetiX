@@ -100,6 +100,28 @@ class PostgresProjectRepository {
         updated_at timestamptz NOT NULL
       );
 
+      CREATE TABLE IF NOT EXISTS project_versions (
+        version_id text PRIMARY KEY,
+        project_id text NOT NULL REFERENCES project_projects(project_id) ON DELETE CASCADE,
+        parent_version_id text,
+        created_by_user_id text,
+        state text NOT NULL,
+        snapshot_sha256 text,
+        includes_binary boolean NOT NULL DEFAULT false,
+        created_at timestamptz NOT NULL,
+        raw_json jsonb NOT NULL
+      );
+      ALTER TABLE project_versions ADD COLUMN IF NOT EXISTS parent_version_id text;
+      ALTER TABLE project_versions ADD COLUMN IF NOT EXISTS created_by_user_id text;
+      ALTER TABLE project_versions ADD COLUMN IF NOT EXISTS snapshot_sha256 text;
+      ALTER TABLE project_versions ADD COLUMN IF NOT EXISTS includes_binary boolean NOT NULL DEFAULT false;
+      CREATE INDEX IF NOT EXISTS idx_project_versions_project
+        ON project_versions (project_id, created_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_project_versions_parent
+        ON project_versions (parent_version_id);
+      CREATE INDEX IF NOT EXISTS idx_project_versions_snapshot
+        ON project_versions (project_id, snapshot_sha256);
+
       CREATE TABLE IF NOT EXISTS project_migrations (
         migration_id text PRIMARY KEY,
         applied_at timestamptz NOT NULL DEFAULT now()
@@ -162,6 +184,10 @@ class PostgresProjectRepository {
     ));
   }
 
+  async deleteSource(projectId, sourcePath) {
+    return (await this.pool.query("DELETE FROM project_sources WHERE project_id=$1 AND path=$2", [projectId, sourcePath])).rowCount > 0;
+  }
+
   async saveBuildJob(job) {
     await this.pool.query(`
       INSERT INTO project_build_jobs
@@ -216,6 +242,39 @@ class PostgresProjectRepository {
       artifact.created_at,
     ]);
     return clone(artifact);
+  }
+
+  async saveVersion(version) {
+    const result = await this.pool.query(`
+      INSERT INTO project_versions
+        (version_id, project_id, parent_version_id, created_by_user_id, state,
+         snapshot_sha256, includes_binary, created_at, raw_json)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+      ON CONFLICT (version_id) DO NOTHING
+    `, [
+      version.version_id,
+      version.project_id,
+      version.parent_version_id,
+      version.created_by_user_id,
+      version.state,
+      version.snapshot_sha256,
+      version.includes_binary === true,
+      version.created_at,
+      version,
+    ]);
+    if (!result.rowCount) throw new Error("PROJECT_VERSION_IMMUTABLE");
+    return clone(version);
+  }
+
+  async findVersion(versionId) {
+    return first(await this.pool.query("SELECT raw_json FROM project_versions WHERE version_id=$1", [versionId]));
+  }
+
+  async listVersions(filter = {}) {
+    const query = filter.project_id
+      ? await this.pool.query("SELECT raw_json FROM project_versions WHERE project_id=$1 ORDER BY created_at DESC", [filter.project_id])
+      : await this.pool.query("SELECT raw_json FROM project_versions ORDER BY created_at DESC");
+    return rows(query);
   }
 
   async listArtifacts(filter = {}) {

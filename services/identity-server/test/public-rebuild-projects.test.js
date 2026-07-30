@@ -6,6 +6,10 @@ const test = require("node:test");
 const root = path.join(__dirname, "..");
 const page = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "index.html"), "utf8");
 const motorProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "einfache-elektromotoren", "index.html"), "utf8");
+const printedMotorSeries = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "druckmotoren", "index.html"), "utf8");
+const motorFieldIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-current-magnetic-field.svg"), "utf8");
+const motorForceIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-current-force.svg"), "utf8");
+const motorCoilIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-simple-coil-force-pair.png"));
 const knowledgeContent = fs.readFileSync(path.join(root, "public", "app", "knowledge-content.js"), "utf8");
 const informationView = fs.readFileSync(path.join(root, "public", "app", "information-view.js"), "utf8");
 const server = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
@@ -29,6 +33,7 @@ test("publishes a stepwise motor rebuild project in the public catalog", () => {
   assert.match(server, /url\.pathname === "\/nachbauprojekte\/einfache-elektromotoren\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/einfache-elektromotoren\/index\.html"\)/);
   assert.match(page, /Einfache Elektromotoren bauen/);
   assert.match(page, /href="\/nachbauprojekte\/einfache-elektromotoren\/"/);
+  assert.match(page, /id="electronics-ten-minutes-title">Elektronik in 10 Minuten<\/h2>[\s\S]*href="\/nachbauprojekte\/einfache-elektromotoren\/"/);
   assert.match(page, /class="panel maker-project-tile"/);
   assert.doesNotMatch(page, /maker-release-card|<dl>|maker-project-note/);
   assert.match(motorProject, /Strom → Magnetfeld → Kraft → Drehmoment → Kommutierung/);
@@ -38,13 +43,67 @@ test("publishes a stepwise motor rebuild project in the public catalog", () => {
   assert.match(motorProject, /Motor 3 · Elektronische Kommutierung/);
 });
 
+test("publishes a modular 3D-printed motor rebuild series", () => {
+  assert.match(server, /url\.pathname === "\/nachbauprojekte\/druckmotoren"[\s\S]*redirect\(res, "\/nachbauprojekte\/druckmotoren\/"\)/);
+  assert.match(server, /url\.pathname === "\/nachbauprojekte\/druckmotoren\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/druckmotoren\/index\.html"\)/);
+  assert.match(page, /id="printed-motors-title">Motoren aus dem 3D-Drucker<\/h2>/);
+  assert.match(page, /href="\/nachbauprojekte\/druckmotoren\/"/);
+  assert.match(page, /Fünf Druckmotor-Stufen/);
+  assert.match(printedMotorSeries, /Von der Lorentzkraft bis zum axialen Luftspulen-BLDC/);
+  assert.match(printedMotorSeries, /Grobe Ausstattung/);
+  assert.match(printedMotorSeries, /Kupferdraht, kleine Magnete und später eine Metallwelle mit Kugellagern/);
+  assert.match(printedMotorSeries, /3D-Drucker und einfaches Lötwerkzeug/);
+  assert.match(printedMotorSeries, /Multimeter und Tischnetzgerät sind hilfreich/);
+  assert.match(printedMotorSeries, /Lorentzkraft sichtbar machen[\s\S]*Reed-Impulsmotor[\s\S]*Mehrspuliger DC-Impulsmotor[\s\S]*Elektronisch kommutierter Motor[\s\S]*Dreiphasiger axialer Luftspulen-BLDC/);
+  assert.doesNotMatch(printedMotorSeries, /printed-motor-matrix|printed-motor-project-explanation|Was wird sichtbar\?|Was kommt hinzu\?|Was wird verbessert\?|Was wird elektronisch\?|Was macht ihn zum BLDC\?/);
+});
+
+test("keeps the printed motor series compact and material-first", () => {
+  assert.ok(printedMotorSeries.indexOf('id="serienmaterial"') < printedMotorSeries.indexOf('id="projekte"'));
+  for (let motorNumber = 1; motorNumber <= 5; motorNumber += 1) {
+    const start = printedMotorSeries.indexOf(`id="motor-${motorNumber}"`);
+    const end = motorNumber < 5 ? printedMotorSeries.indexOf(`id="motor-${motorNumber + 1}"`) : printedMotorSeries.indexOf("</section>", start);
+    const project = printedMotorSeries.slice(start, end);
+    assert.ok(start >= 0);
+    assert.match(project, /<h3>/);
+    assert.match(project, /<strong>Drucken:<\/strong>/);
+    assert.match(project, /<strong>Zukauf:<\/strong>/);
+  }
+  assert.doesNotMatch(printedMotorSeries, /<table|motor-comparison-table-wrap|id="downloads"|printed-motor-download-grid|download-status|printed-motor-material-grid|material-badge/);
+  assert.doesNotMatch(printedMotorSeries, /Sicher testen|compact-motor-safety/);
+});
+
 test("uses the motor diagrams at the matching build stages", () => {
   assert.match(motorProject, /motor-learning-current-magnetic-field\.svg/);
   assert.match(motorProject, /motor-learning-current-force\.svg/);
-  assert.match(motorProject, /motor-learning-simple-coil\.svg/);
+  assert.match(motorProject, /motor-learning-simple-coil-force-pair\.png/);
+  assert.equal(motorCoilIllustration.subarray(0, 8).toString("hex"), "89504e470d0a1a0a");
+  assert.ok(motorCoilIllustration.length > 100_000);
   assert.match(motorProject, /motor-learning-reed-switch\.svg/);
   assert.match(motorProject, /motor-learning-transistor-switch\.svg/);
   assert.match(motorProject, /motor-learning-homopolar\.svg/);
+});
+
+test("explains current, field and winding without ambiguous loose conductors", () => {
+  assert.match(motorFieldIllustration, /Stromrichtung I/);
+  assert.match(motorFieldIllustration, /Magnetfeld B/);
+  assert.match(motorFieldIllustration, /Kupferleiter/);
+  assert.match(motorFieldIllustration, /Kupferwicklung/);
+  assert.match(motorFieldIllustration, /Gebündeltes Magnetfeld B/);
+  assert.doesNotMatch(motorFieldIllustration, /stroke="#fff"/);
+  assert.match(motorProject, /mehrere Wicklungsschleifen bündeln das Magnetfeld in einem weichmagnetischen Kern/);
+});
+
+test("shows the force experiment as one physically consistent three-dimensional setup", () => {
+  assert.match(motorForceIllustration, /dreidimensionale Darstellung eines zusammenhängenden Hufeisenmagneten/);
+  assert.match(motorForceIllustration, /Kupferleiter/);
+  assert.match(motorForceIllustration, /Batterie/);
+  assert.match(motorForceIllustration, /mittig und berührungslos im Luftspalt/);
+  assert.match(motorForceIllustration, /Strom I/);
+  assert.match(motorForceIllustration, /Magnetfeld B/);
+  assert.match(motorForceIllustration, /Kraft F/);
+  assert.match(motorForceIllustration, /<rect width="960" height="540" rx="28" fill="url\(#bg\)"\/>/);
+  assert.match(motorProject, /Dreidimensionale Darstellung eines zusammenhängenden Hufeisenmagneten/);
 });
 
 test("links every motor build stage to knowledge and knowledge back to the project", () => {

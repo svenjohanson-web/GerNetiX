@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260728-security-illustration-layout-2" />
+    <link rel="stylesheet" href="/app/app.css?v=20260730-ide-splitter-1" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -54,6 +54,7 @@
           <div>
             <a href="/app/learn/" data-route="learn" data-i18n="platform.nav.learning">Lernplattform</a>
             <a href="/app/development-platform/" data-route="development-platform" data-i18n="platform.nav.development">Entwicklungsplattform</a>
+            <a class="utility" href="/app/quiz/" data-route="quiz" data-i18n="platform.nav.quiz">Quiz</a>
             <a class="utility public-information-link" href="/wissen/"><span data-i18n="platform.nav.knowledge_store">Wissensspeicher</span> <span id="knowledgeUpdateMenuBadge" class="knowledge-update-count" hidden></span></a>
             <a href="/app/community/" data-route="community" data-i18n="platform.nav.community">Community</a>
             <a class="utility public-information-link" href="/nachbauprojekte/">Nachbauprojekte</a>
@@ -63,7 +64,6 @@
           <summary data-i18n="platform.menu.boards_tools">Boards &amp; Werkzeuge</summary>
           <div>
             <a href="/app/device-management/" data-route="device-management" data-i18n="platform.nav.devices">Geräte</a>
-            <a class="utility" href="/app/quiz/" data-route="quiz" data-i18n="platform.nav.quiz">Quiz</a>
             <a class="utility" href="/app/downloads/" data-route="downloads" data-i18n="platform.nav.downloads">Downloads</a>
             <a class="utility public-information-link" href="/flashbox-einrichten/">FlashBox einrichten</a>
           </div>
@@ -71,6 +71,7 @@
         <details class="app-menu-group">
           <summary data-i18n="platform.menu.service_shop">Service &amp; Shop</summary>
           <div>
+            <a href="/app/messages/" data-route="messages">Nachrichten</a>
             <a class="utility public-information-link" href="/support/">Support</a>
             <a class="utility public-information-link" href="/shop/">Webshop</a>
           </div>
@@ -442,6 +443,7 @@
               <section id="idePwaDashboardView" class="ide-pwa-dashboard-view hidden"></section>
             </article>
             <aside id="ideCodeAssistant" class="panel ide-code-assistant"></aside>
+            <div id="ideWorkspaceResizeHandle" class="ide-workspace-resize-handle" role="separator" aria-label="Größe von Codebereich und Terminal ändern" aria-orientation="horizontal" aria-valuemin="140" tabindex="0"><span aria-hidden="true"></span></div>
             <section id="ideBuildConsole" class="ide-build-console">
               <div id="ideDeviceTools" class="ide-build-actions">
                 <span class="ide-build-actions-label">Build &amp; Flash</span>
@@ -785,27 +787,19 @@
                     <p class="eyebrow">Konfigurationsassistent</p>
                     <h3 id="touchscreenGameAssistantTitle">Touchscreen-Spielesammlung</h3>
                   </div>
-                  <small>Pattern und Spiele waehlen, danach Board und Inventar direkt abgleichen.</small>
+                  <small>Spiele und Board auswählen, danach das Inventar direkt abgleichen.</small>
                 </header>
                 <form id="touchscreenGameForm">
                   <div class="home-automation-basics">
-                    <label>Spiel-Pattern
-                      <select data-game-field="pattern_id">
-                        <option value="">Pattern waehlen</option>
-                        <option value="touchscreen_game_loop">Touchscreen Game Loop</option>
-                        <option value="event_driven_scene_loop">Ereignisgesteuerter Scene Loop</option>
-                        <option value="turn_based_state_machine">Rundenbasierte State Machine</option>
-                      </select>
-                    </label>
-                    <label>Touch-Display-Board<select data-game-field="board_profile_id"></select></label>
-                    <label>Passendes Board im Inventar<select data-game-field="inventory_device_id"></select></label>
+                    <label><span class="home-automation-label-title">Touch-Display-Board <span class="hardware-inline-help-wrap"><button type="button" class="hardware-inline-help" data-inline-help aria-label="Hinweis zum Touch-Display-Board" aria-expanded="false" aria-controls="touchscreenBoardHelp">?</button><span id="touchscreenBoardHelp" class="hardware-inline-help-popover" role="tooltip">Dieses Board wird als Kompilierungsparameter verwendet. Es bestimmt unter anderem Zielprozessor sowie Display- und Touch-Anbindung; es muss nicht im Inventar hinterlegt sein.</span></span></span><select data-game-field="board_profile_id"></select></label>
+                    <label><span class="home-automation-label-title">Passendes Board im Inventar <span class="hardware-inline-help-wrap"><button type="button" class="hardware-inline-help" data-inline-help aria-label="Hinweis zum Inventar-Board" aria-expanded="false" aria-controls="touchscreenInventoryHelp">?</button><span id="touchscreenInventoryHelp" class="hardware-inline-help-popover" role="tooltip">Das Inventar-Board ist für OTA-Updates und den Kompatibilitätscheck relevant. Es ist nicht der Kompilierungsparameter.</span></span></span><select data-game-field="inventory_device_id"></select></label>
                   </div>
                   <fieldset id="touchscreenGameChoices" class="home-automation-state-model touchscreen-game-choices">
                     <legend>Beispielspiele im Startbildschirm</legend>
                   </fieldset>
                   <div id="touchscreenGameInventoryMatch" class="touchscreen-game-inventory-match"></div>
                   <div class="button-row home-automation-actions">
-                    <button type="button" data-game-save>Spielprojekt speichern</button>
+                    <button type="button" data-game-save>Spielprojekt speichern und öffnen</button>
                   </div>
                   <p id="touchscreenGameStatus" class="helper-text" aria-live="polite"></p>
                 </form>
@@ -1142,10 +1136,55 @@
       <section id="communityView" class="view hidden">
         <section class="panel community-hero"><p class="eyebrow">Interner Kontobereich</p><h1>Community &amp; Projektbegleitung</h1><p>Nur angemeldete Mitglieder können Anfragen erstellen und antworten. Du entscheidest beim Absenden: öffentlich für die Community oder privat nur zwischen dir und GerNetiX.</p></section>
         <section class="community-layout">
-          <form id="communityRequestForm" class="panel community-request-form"><h2>Neue Community-Anfrage</h2><p class="helper-text">Die Sichtbarkeit wird zusammen mit deiner Anfrage im Community Service gespeichert.</p><label>Titel<input name="title" required maxlength="160" placeholder="Worum geht es?" /></label><label>Deine Anfrage<textarea name="body" required maxlength="8000" rows="6" placeholder="Beschreibe dein Projekt und wobei du Unterstützung möchtest."></textarea></label><label>Kategorie<select name="tags" required><option value="">Kategorie wählen</option><option value="hardware">Hardware &amp; Elektronik</option><option value="firmware">Firmware &amp; ESP32</option><option value="software">Software &amp; Apps</option><option value="project">Projektentwicklung</option><option value="learning">Lernen &amp; Einstieg</option></select></label><label>Projekt (optional)<select id="communityProjectSelect" name="project_id"><option value="">Keinem Projekt zuordnen</option></select></label><fieldset><legend>Sichtbarkeit</legend><label><input type="radio" name="visibility" value="public" checked /> Öffentlich – alle können nach Veröffentlichung mitlesen.</label><label><input type="radio" name="visibility" value="private" /> Privat – nur du und GerNetiX können die Anfrage lesen.</label></fieldset><button class="primary" type="submit">Anfrage senden</button><p id="communityRequestStatus" class="helper-text" aria-live="polite"></p></form>
+          <form id="communityRequestForm" class="panel community-request-form"><h2>Neue Community-Anfrage</h2><p class="helper-text">Die Sichtbarkeit wird zusammen mit deiner Anfrage im Community Service gespeichert.</p><label>Titel<input name="title" required maxlength="160" placeholder="Worum geht es?" /></label><label>Deine Anfrage<textarea name="body" required maxlength="8000" rows="6" placeholder="Beschreibe dein Projekt und wobei du Unterstützung möchtest."></textarea></label><label>Kategorie<select name="tags" required><option value="">Kategorie wählen</option><option value="hardware">Hardware &amp; Elektronik</option><option value="firmware">Firmware &amp; ESP32</option><option value="software">Software &amp; Apps</option><option value="project">Projektentwicklung</option><option value="learning">Lernen &amp; Einstieg</option></select></label><label>Projekt (optional)<select id="communityProjectSelect" name="project_id"><option value="">Keinem Projekt zuordnen</option></select></label><label><input id="communityAttachProjectSnapshot" name="attach_project_snapshot" type="checkbox" value="true" /> Aktuellen Projektstand als schreibgeschützte Community-Kopie anhängen</label><p class="helper-text">Zugangsdaten, Schlüsseldateien und Binärdateien werden nicht übernommen. Nach dem Absenden kannst du den Link zur Anfrage kopieren.</p><fieldset><legend>Sichtbarkeit</legend><label><input type="radio" name="visibility" value="public" checked /> Öffentlich – alle können nach Veröffentlichung mitlesen.</label><label><input type="radio" name="visibility" value="private" /> Privat – nur du und GerNetiX können die Anfrage lesen.</label></fieldset><button class="primary" type="submit">Anfrage senden</button><p id="communityRequestStatus" class="helper-text" aria-live="polite"></p></form>
           <section class="panel community-list-panel"><div class="section-head"><div><p class="eyebrow">Dein Community-Bereich</p><h2>Eigene und öffentliche Anfragen</h2></div><button id="communityRefreshButton" type="button">Aktualisieren</button></div><div id="communityQuestionList" class="community-question-list"></div></section>
         </section><section id="communityThread" class="panel community-thread hidden"></section>
       </section>
+      <section id="messagesView" class="view hidden">
+        <header class="messages-header">
+          <div><p class="eyebrow">Interne Nachrichten</p><h1>Nachrichten</h1></div>
+          <button id="messageComposeButton" class="primary" type="button">Neue Nachricht</button>
+        </header>
+        <section class="messages-shell">
+          <nav id="messageFolders" class="message-folders" aria-label="Nachrichtenordner">
+            <button type="button" data-message-folder="inbox" class="active"><span>Posteingang</span><strong id="messageUnreadCount">0</strong></button>
+            <button type="button" data-message-folder="outbox"><span>Postausgang</span><strong>0</strong></button>
+            <button type="button" data-message-folder="sent"><span>Gesendet</span></button>
+            <button type="button" data-message-folder="support"><span>Support</span></button>
+            <button type="button" data-message-folder="archive"><span>Archiv</span></button>
+          </nav>
+          <section class="message-list-column">
+            <header><h2 id="messageFolderTitle">Posteingang</h2><button id="messageRefreshButton" type="button">Aktualisieren</button></header>
+            <div id="messageThreadList" class="message-thread-list"><p class="helper-text">Nachrichten werden geladen …</p></div>
+          </section>
+          <section id="messageReadingPane" class="message-reading-pane">
+            <div class="message-empty-state"><strong>Wähle eine Nachricht</strong><p>Die Unterhaltung wird hier geöffnet.</p></div>
+          </section>
+        </section>
+        <dialog id="messageComposeDialog" class="message-compose-dialog">
+          <form id="messageComposeForm" method="dialog">
+            <header><div><p class="eyebrow">Neue Unterhaltung</p><h2>Nachricht verfassen</h2></div><button type="button" data-close-message-compose>Schließen</button></header>
+            <label>Nickname des Empfängers<input name="recipient_username" required maxlength="80" autocomplete="off" /></label>
+            <label>Betreff<input name="subject" required maxlength="160" /></label>
+            <label>Nachricht<textarea name="body" required maxlength="8000" rows="9"></textarea></label>
+            <p id="messageComposeStatus" class="helper-text" aria-live="polite"></p>
+            <footer><button class="primary" type="submit">Senden</button></footer>
+          </form>
+        </dialog>
+      </section>
+      <dialog id="projectVersionDialog" class="project-version-dialog">
+        <form id="projectVersionForm" method="dialog">
+          <header><div><p class="eyebrow">Git Light</p><h2>Projektversion speichern</h2></div><button type="button" data-close-project-version>Schließen</button></header>
+          <label>Beschreibung<input name="message" required maxlength="240" value="Projektstand gespeichert" /></label>
+          <fieldset><legend>Inhalt der Version</legend>
+            <label><input type="radio" name="version_mode" value="sources" checked /> Ohne Binary sofort speichern</label>
+            <label><input type="radio" name="version_mode" value="binary" /> Projekt frisch bauen und nur bei Erfolg mit Binary speichern</label>
+          </fieldset>
+          <p class="helper-text">Git Light speichert den vollständigen Projektstand unveränderlich. Wiederherstellen erzeugt eine neue Version und überschreibt die Historie nicht.</p>
+          <p id="projectVersionStatus" class="helper-text" aria-live="polite"></p>
+          <footer><button class="primary" type="submit">Version speichern</button></footer>
+        </form>
+      </dialog>
       <footer class="platform-footer">
         <span>© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
         <nav aria-label="Weiterführende Informationen"><a href="/">Startseite</a><a href="/#motivation">Warum GerNetiX?</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav>
@@ -1164,13 +1203,13 @@
     <script src="/app/learning-project-locales.js?v=20260728-02"></script>
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
     <script src="/app/development-component-metamodel.js?v=20260716-01"></script>
-    <script src="/app/development-platform.js?v=20260717-04"></script>
+    <script src="/app/development-platform.js?v=20260730-game-assistant-3"></script>
     <script src="/app/help-content.js?v=20260730-content-separation-1"></script>
-    <script src="/app/knowledge-content.js?v=20260730-content-separation-1"></script>
+    <script src="/app/knowledge-content.js?v=20260730-protocols-basics-3"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
     <script src="/app/information-view.js?v=20260730-content-separation-1"></script>
     <script src="/app/quiz-data.js?v=20260726-01"></script>
     <script src="/app/quiz.js?v=20260726-01"></script>
-    <script src="/app/app.js?v=20260729-ai-credit-packages-1"></script>
+    <script src="/app/app.js?v=20260730-platform-bundle-1"></script>
   </body>
 </html>

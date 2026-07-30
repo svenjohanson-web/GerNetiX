@@ -40,11 +40,48 @@ test("build job produces required artifacts and removes temporary project worksp
   assert.ok(job.result.build.artifacts["firmware.bin"].sha256);
   assert.ok(job.result.build.artifacts["firmware.elf"].size_bytes > 0);
   assert.equal(job.result.deploy.status, "not_requested");
+  assert.deepEqual(job.progress.map((entry) => entry.phase), ["preparing", "packaging", "compiling", "artifacts", "completed"]);
 
   await assert.rejects(
     fs.access(path.join(config.tempDir, "job-1")),
     /ENOENT/,
   );
+});
+
+test("build job exposes runner output as ordered progress lines", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-build-progress-"));
+  const service = createDefaultBuildDeployService(createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  }));
+  service.runner.run = async (_job, packageDir, options) => {
+    options.onProgress("CMake konfiguriert das Projekt.");
+    options.onProgress("Kompiliere user_main.cpp.");
+    const artifactDir = path.join(packageDir, ".test-artifacts");
+    await fs.mkdir(artifactDir, { recursive: true });
+    const artifacts = Object.fromEntries(await Promise.all(["firmware.bin", "firmware.elf", "build.log"].map(async (name) => {
+      const file = path.join(artifactDir, name);
+      await fs.writeFile(file, name);
+      return [name, file];
+    })));
+    return { status: "succeeded", artifacts };
+  };
+
+  await service.submitJob({
+    job_id: "progress-lines",
+    mode: "build",
+    build_package: { files: { "platformio.ini": "[env:test]\n", "src/main.cpp": "void setup() {}" } },
+  });
+  await service.jobs.get("progress-lines").promise;
+
+  const job = service.getJob("progress-lines");
+  assert.deepEqual(job.progress.filter((entry) => entry.phase === "compiling").map((entry) => entry.message), [
+    "PlatformIO startet die Kompilierung.",
+    "CMake konfiguriert das Projekt.",
+    "Kompiliere user_main.cpp.",
+  ]);
+  assert.deepEqual(job.progress.map((entry) => entry.sequence), job.progress.map((_entry, index) => index + 1));
 });
 
 test("build job can return avr hex firmware as primary artifact", async () => {

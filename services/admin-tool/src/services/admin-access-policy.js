@@ -4,6 +4,7 @@ const ROLE_CAPABILITIES = {
     "admin_ai_usage_monitoring",
     "admin_ai_cost_controls",
     "admin_identity_configuration",
+    "admin_link_integrity",
     "admin_learning",
   ],
   support: [

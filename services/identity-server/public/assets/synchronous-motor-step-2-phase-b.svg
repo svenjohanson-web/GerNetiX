@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 720" role="img" aria-labelledby="title desc">
+  <title id="title">Synchronmotor nach dem Weiterschalten auf Spulenpaar B</title>
+  <desc id="desc">Das Magnetfeld ist um 120 Grad zum Spulenpaar der Phase B weitergewandert. Der obere rechte Statorpol ist Nord, der gegenüberliegende untere linke Statorpol Süd. Eine gestrichelte Rotorlage zeigt die vorherige Ausrichtung. Der Dauermagnet-Rotor folgt dem neuen Feld.</desc>
+  <defs>
+    <g id="pole"><rect x="538" y="322" width="94" height="76" rx="13"/></g>
+    <marker id="turnArrow" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0L9 3L0 6Z" fill="#7c3aed"/></marker>
+  </defs>
+  <rect width="720" height="720" rx="24" fill="#f8fafc"/>
+  <text x="42" y="52" font-family="system-ui,sans-serif" font-size="18" font-weight="800" fill="#7c3aed">SCHRITT 3 · SPULENPAAR B</text>
+  <text x="42" y="86" font-family="system-ui,sans-serif" font-size="27" font-weight="850" fill="#0f172a">Das Feld wandert weiter – der Rotor folgt</text>
+
+  <circle cx="360" cy="360" r="236" fill="#e2e8f0" stroke="#64748b" stroke-width="5"/>
+  <circle cx="360" cy="360" r="168" fill="#fff" stroke="#94a3b8" stroke-width="3"/>
+  <g fill="#cbd5e1" stroke="#64748b" stroke-width="3">
+    <use href="#pole"/><use href="#pole" transform="rotate(60 360 360)"/>
+    <use href="#pole" transform="rotate(180 360 360)"/><use href="#pole" transform="rotate(240 360 360)"/>
+  </g>
+  <use href="#pole" transform="rotate(120 360 360)" fill="#2563eb" stroke="#1d4ed8" stroke-width="4"/>
+  <use href="#pole" transform="rotate(300 360 360)" fill="#dc2626" stroke="#b91c1c" stroke-width="4"/>
+  <g font-family="system-ui,sans-serif" font-size="17" font-weight="850" text-anchor="middle">
+    <text x="655" y="366" fill="#0891b2">A</text><text x="65" y="366" fill="#0891b2">A</text>
+    <text x="500" y="112" fill="#7c3aed">B</text><text x="220" y="618" fill="#7c3aed">B</text>
+    <text x="220" y="112" fill="#d97706">C</text><text x="500" y="618" fill="#d97706">C</text>
+  </g>
+  <g font-family="system-ui,sans-serif" font-size="24" font-weight="900" text-anchor="middle">
+    <text x="473" y="173" fill="#fff">N</text>
+    <text x="247" y="563" fill="#fff">S</text>
+  </g>
+
+  <g opacity=".22" stroke="#64748b" stroke-width="3" stroke-dasharray="7 6" fill="none">
+    <rect x="280" y="326" width="160" height="68" rx="32"/>
+  </g>
+  <path d="M445 309 A100 100 0 0 1 319 453" fill="none" stroke="#7c3aed" stroke-width="6" marker-end="url(#turnArrow)"/>
+  <g transform="rotate(120 360 360)">
+    <rect x="280" y="326" width="80" height="68" rx="32" fill="#2563eb"/>
+    <rect x="360" y="326" width="80" height="68" rx="32" fill="#dc2626"/>
+    <text x="320" y="368" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="900" fill="#fff">S</text>
+    <text x="400" y="368" text-anchor="middle" font-family="system-ui,sans-serif" font-size="24" font-weight="900" fill="#fff">N</text>
+  </g>
+  <circle cx="360" cy="360" r="12" fill="#0f172a"/>
+  <text x="360" y="646" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="750" fill="#7c3aed">neue Feldrichtung: 120° weiter</text>
+  <text x="360" y="688" text-anchor="middle" font-family="system-ui,sans-serif" font-size="16" fill="#475569">Die gestrichelte Kontur zeigt die vorherige Rotorlage</text>
+</svg>

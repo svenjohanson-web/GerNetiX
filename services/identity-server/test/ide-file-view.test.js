@@ -71,7 +71,7 @@ test("IDE fits into viewport height and scrolls only inside its panes", () => {
 
 test("project tree stays top-aligned and build console keeps useful history visible", () => {
   assert.match(css, /\.ide-project-browser \{[\s\S]*align-content: start;[\s\S]*grid-auto-rows: max-content/);
-  assert.match(css, /height: clamp\(260px, 32vh, 360px\)/);
+  assert.match(css, /var\(--ide-console-height, clamp\(260px, 32vh, 360px\)\)/);
   assert.match(css, /\.ide-build-actions \{[\s\S]*flex-wrap: nowrap/);
 });
 
@@ -79,8 +79,9 @@ test("workspace panes and chat input can be resized by the user", () => {
   assert.match(css, /\.ide-workspace-active \.ide-project-browser-panel \{[\s\S]*resize: horizontal/);
   assert.match(css, /\.ide-workspace-active \.ide-code-assistant \{[\s\S]*resize: horizontal/);
   assert.match(css, /\.ide-workspace-active \.ide-code-assistant \{[\s\S]*max-width: 50vw;[\s\S]*direction: rtl;[\s\S]*grid-row: 1 \/ -1;/);
-  assert.match(css, /\.ide-workspace-active \.ide-build-console \{[\s\S]*grid-column: 1;[\s\S]*grid-row: 2;/);
-  assert.match(css, /\.ide-workspace-active \.ide-build-console \{[\s\S]*resize: vertical/);
+  assert.match(css, /\.ide-workspace-active \.ide-workspace-resize-handle \{[\s\S]*grid-row: 2;[\s\S]*cursor: row-resize/);
+  assert.match(css, /\.ide-workspace-active \.ide-build-console \{[\s\S]*grid-column: 1;[\s\S]*grid-row: 3;/);
+  assert.match(css, /\.ide-workspace-active \.ide-build-console \{[\s\S]*resize: none/);
   assert.match(css, /\.code-explorer-chat textarea \{[\s\S]*min-height: 72px;[\s\S]*resize: vertical/);
 });
 
@@ -91,6 +92,7 @@ test("workspace sizes persist locally per account without backend storage", () =
   assert.match(app, /projectBrowserWidth/);
   assert.match(app, /assistantWidth/);
   assert.match(app, /buildHeight/);
+  assert.match(app, /style\.setProperty\("--ide-console-height", `\$\{stored\.buildHeight\}px`\)/);
   assert.match(app, /chatInputHeight/);
   assert.doesNotMatch(app, /postJson\([^\n]*ideLayoutStorageKey/);
 });

@@ -30,7 +30,7 @@ test("groups the main destinations under clear user-facing headings", () => {
   assert.match(css, /body:not\(\.public-information-anonymous\) #mainMenu #loginMenuLink/);
 });
 
-test("puts learning, development, knowledge, community and rebuild projects in one group", () => {
+test("puts learning, development, quiz, knowledge, community and rebuild projects in one group", () => {
   const menu = html.slice(html.indexOf('<nav id="mainMenu"'), html.indexOf("</nav>", html.indexOf('<nav id="mainMenu"')));
   const groupStart = menu.indexOf('platform.menu.learn_develop');
   const groupEnd = menu.indexOf("</details>", groupStart);
@@ -38,12 +38,16 @@ test("puts learning, development, knowledge, community and rebuild projects in o
   const destinations = [
     "/app/learn/",
     "/app/development-platform/",
+    "/app/quiz/",
     "/wissen/",
     "/app/community/",
     "/nachbauprojekte/",
   ];
   destinations.forEach((destination) => assert.match(group, new RegExp(`href="${destination.replaceAll("/", "\\/")}"`)));
   assert.match(group, /Wissensspeicher/);
+  const toolsStart = menu.indexOf('platform.menu.boards_tools');
+  const toolsEnd = menu.indexOf("</details>", toolsStart);
+  assert.doesNotMatch(menu.slice(toolsStart, toolsEnd), /href="\/app\/quiz\/"/);
 });
 
 test("keeps Help and the session action permanently outside collapsible hamburger groups", () => {

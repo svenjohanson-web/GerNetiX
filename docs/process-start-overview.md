@@ -26,7 +26,7 @@ Auf macOS kann alternativ `tools/GerNetiX-Check-und-Start.command` per Doppelkli
 
 ## Grafischer Prozess-Monitor
 
-Die eigenstaendige Desktop-App zeigt alle 17 Backend-Dienste mit Port, HTTP-Status, PID und Lebensstatus. Jeder Dienst kann einzeln gestartet oder gestoppt werden. `Alle lokalen Prozesse starten` bleibt bewusst auf die zehn Kernprozesse des minimalen Plattform-Stacks begrenzt; Admin Access, Telemetry, Public Demo, Community AI, Persistence, Provisioning und Recovery werden angezeigt, aber nur einzeln bei Bedarf gestartet. Die Ansicht aktualisiert sich alle zehn Sekunden und benoetigt weder Admin Tool noch Monitor-Webserver.
+Die eigenstaendige Desktop-App bildet den normalen Remote-Dev-Betrieb ab: Auf dem Mac zeigt und steuert sie ausschliesslich den lokalen Identity Server. Die uebrigen Backend- und Infrastrukturprozesse erscheinen read-only aus dem Docker-Compose-Status des VPS. Lokale Start-/Stop-Aktionen werden nicht mehr fuer VPS-Dienste angeboten. Die kompakte Uebersicht trennt sicheren VPS-Zugang, Mac-Runtime und VPS-Runtime und aktualisiert sich alle zehn Sekunden. Fuer einen vollstaendigen isolierten Lokal-Stack bleiben die Kommandozeilenwerkzeuge und gezielten Service-Starts verfuegbar.
 
 - macOS-App: `tools/process-monitor/GerNetiX Prozess-Monitor.app`
 - macOS-Entwicklung: `tools/process-monitor/GerNetiX-Prozess-Monitor.command`
@@ -35,13 +35,15 @@ Die eigenstaendige Desktop-App zeigt alle 17 Backend-Dienste mit Port, HTTP-Stat
 
 Der Desktop-Prozessmonitor besitzt neben der Prozesssicht eine persistierte `Schnittstellen-Statistik`. Der Identity Server protokolliert seine ausgehenden GerNetiX-Serviceaufrufe sowie OpenAI-/Claude-/Ollama-Aufrufe in `gernetix_external_interface_calls` innerhalb der gemeinsamen Runtime-SQLite. Der Build-&-Deploy-Server erfasst dort zusaetzlich MQTT `PUBLISH`, `SUBSCRIBE` und empfangene Nachrichten; Device-Kennungen werden im Topic vor dem Speichern durch `{device}` ersetzt. Die Ansicht aggregiert fuer die letzten 24 Stunden Aufrufe, Fehler, mittlere/maximale Dauer und den letzten Aufruf je Quelle-Ziel-Verbindung. Monitor-Healthchecks werden nicht mitgezaehlt. Das Schema ist dienstuebergreifend, sodass weitere Services dieselbe Telemetrie spaeter ebenfalls schreiben koennen.
 
-Für die Community Platform zeigt die lokale Prozesskarte zusätzlich den read-only Zustand von `.runtime/gernetix-community.sqlite`: relativer Pfad, Dateigröße sowie aggregierte Zahlen für öffentliche, private und offene Fragen, Antworten und Wissensdokumente. Inhalte und Account-/Projektkennungen werden nicht gelesen oder dargestellt. Das Web-Admin-Tool bezieht dieselben fachlichen Zähler über den internen token-geschützten Community-Betriebsendpunkt.
+Die read-only Sicht `Links` zeigt zusätzlich das zentrale Operations-Inventar und den letzten Link-Prüfnachweis. Der Monitor greift nicht direkt auf PostgreSQL zu. Sein Main-Prozess führt über den festen SSH-/WireGuard-Diagnoseweg ein versioniertes Leseskript im Admin-Tool-Container aus; dieses ruft die autorisierte Admin-Tool-API auf. Das Admin-Token bleibt im Container und der isolierte Renderer erhält ausschließlich die benötigten Statusfelder.
+
+Die Community Platform wird im normalen Remote-Dev-Betrieb ausschliesslich als VPS-Dienst dargestellt. Der Desktop-Monitor liest deshalb keine lokale Community-SQLite als aktuellen Betriebszustand. Isolierte lokale Community-Tests und ihre SQLite-Hilfsdaten bleiben ausserhalb dieser Standarduebersicht moeglich.
 - macOS-Build: `pnpm run dist:mac`
 - Windows-Build auf Windows: `pnpm run dist:win`
 
 Auf macOS steuert der Monitor ausschliesslich den vorhandenen WireGuard-Netzwerkdienst `gernetix-vps-mac`. Nach erfolgreicher VPN-Verbindung kann derselbe Monitor den festen SSH-Diagnosetunnel fuer Admin (`127.0.0.1:14600`), Plattform (`127.0.0.1:14300`), Identity-PostgreSQL und die fest definierten Domaenendienste starten. Der Identity-Start verwendet ausschliesslich den Remote-Dev-Modus mit PostgreSQL; ohne vollständigen Tunnel wird er abgewiesen und der Monitor zeigt die letzten Startlogzeilen an. Der Renderer kann dabei weder SSH-Ziele noch beliebige Portweiterleitungen eingeben.
 
-Die App oeffnet keinen eigenen HTTP-Port. Stop-Aktionen ermitteln ausschliesslich den Listener auf dem fest definierten Port des ausgewaehlten GerNetiX-Dienstes.
+Die App oeffnet keinen eigenen HTTP-Port. Die lokale Stop-Aktion ermittelt ausschliesslich den Listener des Identity Servers auf Port 4300. Das Schliessen des letzten Monitorfensters beendet auch den Desktop-Monitor; die separat gestarteten Backend-Prozesse bleiben davon unberuehrt.
 
 ```powershell
 netstat -ano | findstr :4300

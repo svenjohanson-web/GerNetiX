@@ -17,9 +17,10 @@ test("serves Support as a dedicated public page", () => {
   assert.match(page, /href="\/community\/"/);
 });
 
-test("sends own public or private requests through authenticated Community", () => {
-  assert.match(page, /Öffentlich oder privat anfragen/);
-  assert.match(page, /href="\/app\/auth\/\?next=%2Fapp%2Fcommunity%2F"/);
+test("sends private support requests into the authenticated support mailbox flow", () => {
+  assert.match(page, /Supportanfrage senden/);
+  assert.match(page, /href="\/app\/auth\/\?next=%2Fapp%2Fcommunity%2F%3Fsupport%3D1"/);
+  assert.match(page, /private GerNetiX-Support-Postfach/);
   assert.match(page, /keinen 24\/7-Notfall-Support/);
 });
 

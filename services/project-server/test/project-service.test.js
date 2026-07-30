@@ -69,6 +69,75 @@ test("creates project with default source and lists it by user", async () => {
   assert.equal((await service.listProjects({ user_id: "user-1" })).length, 1);
 });
 
+test("stores an immutable project version and restores it through a new history entry", async () => {
+  const service = createMemoryProjectServer();
+  const project = await createDemoProject(service);
+  await service.upsertSource(project.project_id, { path: "src/main.cpp", content: "int value = 1;" });
+  const saved = await service.createVersion(project.project_id, {
+    user_id: "user-1",
+    message: "Vor Änderung",
+    parent_version_id: "vom-client-erfunden",
+    commit_kind: "restore",
+    restored_from_version_id: "vom-client-erfunden",
+  });
+  await service.upsertSource(project.project_id, { path: "src/main.cpp", content: "int value = 2;" });
+  await service.upsertSource(project.project_id, { path: "src/temporär.cpp", content: "int temporary = 1;" });
+
+  const restored = await service.restoreVersion(project.project_id, saved.version_id, { user_id: "user-1" });
+  const source = await service.getSource(project.project_id, "src/main.cpp");
+
+  assert.equal(source.content, "int value = 1;");
+  await assert.rejects(service.getSource(project.project_id, "src/temporär.cpp"), /nicht gefunden/);
+  const versions = await service.listVersions(project.project_id);
+  const preserved = versions.find((version) => version.version_id === restored.preserved_before_restore_version_id);
+  assert.equal(restored.parent_version_id, preserved.version_id);
+  assert.equal(versions.length, 3);
+  assert.equal(preserved.message, "Stand vor Wiederherstellung");
+  assert.equal(preserved.sources.find((source) => source.path === "src/main.cpp").content, "int value = 2;");
+  assert.match(saved.snapshot_sha256, /^[a-f0-9]{64}$/);
+  assert.equal(saved.parent_version_id, null);
+  assert.equal(saved.commit_kind, "snapshot");
+  assert.equal(saved.restored_from_version_id, null);
+  assert.equal(restored.commit_kind, "restore");
+  assert.equal(restored.restored_from_version_id, saved.version_id);
+  assert.equal(restored.snapshot_sha256, saved.snapshot_sha256);
+});
+
+test("creates a binary version only from the exact successful build snapshot", async () => {
+  const service = createMemoryProjectServer();
+  const project = await createDemoProject(service);
+  await service.upsertSource(project.project_id, { path: "src/main.cpp", content: "int frozen = 1;" });
+  const job = await service.createBuildJob(project.project_id, { mode: "build" });
+  await service.createBuildPackage(job.build_job_id);
+  await service.upsertSource(project.project_id, { path: "src/main.cpp", content: "int changed = 2;" });
+  await service.recordBuildResult(job.build_job_id, {
+    status: "succeeded",
+    artifacts: [{ name: "firmware.bin", sha256: "abc123", size: 42, url: "/artifact/firmware.bin" }],
+  });
+
+  const version = await service.createVersion(project.project_id, {
+    user_id: "user-1", message: "Mit Firmware", include_binary: true, build_job_id: job.build_job_id,
+  });
+
+  assert.equal(version.includes_binary, true);
+  assert.equal(version.sources.find((source) => source.path === "src/main.cpp").content, "int frozen = 1;");
+  assert.deepEqual(version.binary_artifacts.map((artifact) => artifact.file_name), ["firmware.bin"]);
+});
+
+test("does not create a binary version for a failed build", async () => {
+  const service = createMemoryProjectServer();
+  const project = await createDemoProject(service);
+  const job = await service.createBuildJob(project.project_id, { mode: "build" });
+  await service.createBuildPackage(job.build_job_id);
+  await service.recordBuildResult(job.build_job_id, { status: "failed", error: "Compilerfehler" });
+
+  await assert.rejects(
+    service.createVersion(project.project_id, { user_id: "user-1", include_binary: true, build_job_id: job.build_job_id }),
+    /erfolgreichen Build/,
+  );
+  assert.equal((await service.listVersions(project.project_id)).length, 0);
+});
+
 test("persists the exact lesson and step position for a learning project", async () => {
   const repository = new InMemoryProjectRepository();
   const service = new ProjectService({ repository });

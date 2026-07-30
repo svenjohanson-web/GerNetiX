@@ -7,6 +7,9 @@ class CommunityService {
     this.triageSlaHours = options.triageSlaHours || 24;
     this.internalToken = options.internalToken || "";
     this.persistenceBackend = options.persistenceBackend || "unknown";
+    this.messageRateLimit = options.messageRateLimit || 20;
+    this.messageRateWindowSeconds = options.messageRateWindowSeconds || 600;
+    this.supportUserIds = options.supportUserIds?.length ? options.supportUserIds : ["support"];
   }
 
   async operationsSummary() {
@@ -48,6 +51,7 @@ class CommunityService {
       body: required(input.body, "body"),
       author_user_id: required(actor.user_id, "actor_user_id"),
       project_id: input.project_id || "",
+      project_snapshot: normalizeProjectSnapshot(input.project_snapshot),
       visibility: input.visibility === "private" ? "private" : "public",
       tags: normalizeList(input.tags),
       status: "open",
@@ -192,6 +196,322 @@ class CommunityService {
     return { items: (await this.visibleKnowledgeDocuments(actor)).filter((document) => (!query.source_type || document.source_type === query.source_type) && (!query.verification_state || document.verification_state === query.verification_state)) };
   }
 
+  async createDirectThread(input = {}, actor = {}) {
+    const senderUserId = required(actor.user_id, "actor_user_id");
+    const recipientUserId = required(input.recipient_user_id, "recipient_user_id");
+    if (senderUserId === recipientUserId) {
+      throw new CommunityPlatformError("message_recipient_invalid", "Eine Unterhaltung mit dir selbst ist nicht möglich.", 400);
+    }
+    await this.requireMessagingAllowed(senderUserId, recipientUserId);
+    await this.requireMessageRate(senderUserId);
+    const now = new Date().toISOString();
+    const thread = {
+      thread_id: createId("thread"),
+      thread_kind: "direct",
+      subject: String(input.subject || "Direktnachricht").trim().slice(0, 160),
+      created_by_user_id: senderUserId,
+      created_at: now,
+      updated_at: now,
+      archived_at: null,
+    };
+    const message = {
+      message_id: createId("message"),
+      thread_id: thread.thread_id,
+      author_user_id: senderUserId,
+      author_label: String(input.sender_label || "Mitglied").slice(0, 80),
+      body: required(input.body, "body").slice(0, 8000),
+      created_at: now,
+      edited_at: null,
+      deleted_at: null,
+    };
+    const members = [{
+      thread_id: thread.thread_id, user_id: senderUserId, member_role: "owner",
+      joined_at: now, left_at: null, last_read_message_id: message.message_id,
+    }, {
+      thread_id: thread.thread_id, user_id: recipientUserId, member_role: "member",
+      joined_at: now, left_at: null, last_read_message_id: null,
+    }];
+    const inboxEntries = [{
+      inbox_entry_id: createId("inbox_entry"), recipient_user_id: recipientUserId,
+      entry_kind: "thread", thread_id: thread.thread_id, state: "unread",
+      created_at: now, read_at: null, latest_message_id: message.message_id,
+    }];
+    await this.repository.createMessageThreadBundle({ thread, members, message, inboxEntries });
+    return { ...thread, members: [senderUserId, recipientUserId], latest_message: message };
+  }
+
+  async createSupportRequest(input = {}, actor = {}) {
+    const senderUserId = required(actor.user_id, "actor_user_id");
+    await this.requireMessageRate(senderUserId);
+    const recipients = [...new Set(this.supportUserIds)].filter((userId) => userId !== senderUserId);
+    if (!recipients.length) throw new CommunityPlatformError("support_mailbox_unavailable", "Das Support-Postfach ist nicht konfiguriert.", 503);
+    const now = new Date().toISOString();
+    const thread = {
+      thread_id: createId("thread"), thread_kind: "system",
+      subject: required(input.subject || input.title, "subject").slice(0, 160),
+      created_by_user_id: senderUserId, mailbox_kind: "support",
+      created_at: now, updated_at: now, archived_at: null,
+    };
+    const message = {
+      message_id: createId("message"), thread_id: thread.thread_id,
+      author_user_id: senderUserId, author_label: String(input.sender_label || "Mitglied").slice(0, 80),
+      body: required(input.body, "body").slice(0, 8000), created_at: now, edited_at: null, deleted_at: null,
+    };
+    const members = [
+      { thread_id: thread.thread_id, user_id: senderUserId, member_role: "owner", joined_at: now, left_at: null, last_read_message_id: message.message_id },
+      ...recipients.map((userId) => ({ thread_id: thread.thread_id, user_id: userId, member_role: "member", joined_at: now, left_at: null, last_read_message_id: null })),
+    ];
+    const inboxEntries = recipients.map((userId) => ({
+      inbox_entry_id: createId("inbox_entry"), recipient_user_id: userId,
+      entry_kind: "thread", type: "support_request", thread_id: thread.thread_id,
+      state: "unread", created_at: now, read_at: null, latest_message_id: message.message_id,
+    }));
+    await this.repository.createMessageThreadBundle({ thread, members, message, inboxEntries });
+    return { ...thread, members: members.map((item) => item.user_id), latest_message: message };
+  }
+
+  async listMessageThreads(actor = {}, query = {}) {
+    const userId = required(actor.user_id, "actor_user_id");
+    const entries = await this.repository.listInboxEntries(userId);
+    const stateByThread = new Map();
+    for (const entry of entries.filter((item) => item.thread_id)) {
+      const current = stateByThread.get(entry.thread_id);
+      if (!current || entry.state === "unread") stateByThread.set(entry.thread_id, entry);
+    }
+    const items = await Promise.all((await this.repository.listMessageThreadsForUser(userId, { archived: query.folder === "archived" })).map(async (thread) => {
+      const messages = await this.repository.listMessages(thread.thread_id);
+      const members = await this.repository.listThreadMembers(thread.thread_id);
+      return {
+        ...thread,
+        members: members.map((member) => ({ user_id: member.user_id, member_role: member.member_role })),
+        latest_message: messages.at(-1) || null,
+        message_count: messages.length,
+        state: stateByThread.get(thread.thread_id)?.state || "read",
+      };
+    }));
+    return { items, unread_count: items.filter((item) => item.state === "unread").length };
+  }
+
+  async getMessageThread(threadId, actor = {}) {
+    await this.requireThreadMember(threadId, actor.user_id);
+    const thread = await this.repository.findMessageThread(threadId);
+    if (!thread) throw new CommunityPlatformError("message_thread_not_found", "Unterhaltung wurde nicht gefunden.", 404);
+    return {
+      ...thread,
+      members: await this.repository.listThreadMembers(threadId),
+      messages: await this.repository.listMessages(threadId),
+    };
+  }
+
+  async appendThreadMessage(threadId, input = {}, actor = {}) {
+    const member = await this.requireThreadMember(threadId, actor.user_id);
+    const thread = await this.repository.findMessageThread(threadId);
+    if (!thread || thread.archived_at) throw new CommunityPlatformError("message_thread_closed", "Diese Unterhaltung ist geschlossen.", 409);
+    await this.requireMessageRate(actor.user_id);
+    for (const recipient of await this.repository.listThreadMembers(threadId)) {
+      if (recipient.user_id !== actor.user_id) await this.requireMessagingAllowed(actor.user_id, recipient.user_id);
+    }
+    const now = new Date().toISOString();
+    const message = {
+      message_id: createId("message"), thread_id: threadId,
+      author_user_id: actor.user_id, author_label: String(input.sender_label || "Mitglied").slice(0, 80),
+      body: required(input.body, "body").slice(0, 8000), created_at: now,
+      edited_at: null, deleted_at: null,
+    };
+    const inboxEntries = [];
+    for (const recipient of await this.repository.listThreadMembers(threadId)) {
+      if (recipient.user_id === actor.user_id) continue;
+      inboxEntries.push({
+        inbox_entry_id: createId("inbox_entry"), recipient_user_id: recipient.user_id,
+        entry_kind: "thread", thread_id: threadId, state: "unread",
+        created_at: now, read_at: null, latest_message_id: message.message_id,
+      });
+    }
+    await this.repository.appendMessageBundle({
+      thread: { ...thread, updated_at: now },
+      authorMember: { ...member, last_read_message_id: message.message_id },
+      message,
+      inboxEntries,
+    });
+    return message;
+  }
+
+  async markThreadRead(threadId, actor = {}) {
+    const member = await this.requireThreadMember(threadId, actor.user_id);
+    const messages = await this.repository.listMessages(threadId);
+    const latest = messages.at(-1);
+    await this.repository.saveThreadMember({ ...member, last_read_message_id: latest?.message_id || null });
+    const entries = await this.repository.listInboxEntries(actor.user_id);
+    for (const entry of entries.filter((item) => item.thread_id === threadId && item.state === "unread")) {
+      await this.repository.saveInboxEntry({ ...entry, state: "read", read_at: new Date().toISOString() });
+    }
+    return { thread_id: threadId, state: "read", last_read_message_id: latest?.message_id || null };
+  }
+
+  async archiveMessageThread(threadId, actor = {}) {
+    const member = await this.requireThreadMember(threadId, actor.user_id);
+    await this.repository.saveThreadMember({ ...member, archived_at: new Date().toISOString() });
+    return { thread_id: threadId, state: "archived" };
+  }
+
+  async restoreMessageThread(threadId, actor = {}) {
+    const member = await this.requireThreadMember(threadId, actor.user_id);
+    await this.repository.saveThreadMember({ ...member, archived_at: null });
+    return { thread_id: threadId, state: "active" };
+  }
+
+  async deleteThreadMessage(threadId, messageId, actor = {}) {
+    await this.requireThreadMember(threadId, actor.user_id);
+    const message = await this.repository.findMessage(messageId);
+    if (!message || message.thread_id !== threadId) throw new CommunityPlatformError("message_not_found", "Nachricht wurde nicht gefunden.", 404);
+    if (!actor.is_operator && message.author_user_id !== actor.user_id) throw new CommunityPlatformError("message_delete_denied", "Diese Nachricht darfst du nicht löschen.", 403);
+    return this.repository.saveMessage({ ...message, body: "", deleted_at: new Date().toISOString() });
+  }
+
+  async requireThreadMember(threadId, userId) {
+    const member = await this.repository.findThreadMember(threadId, required(userId, "actor_user_id"));
+    if (!member || member.left_at) throw new CommunityPlatformError("message_thread_access_denied", "Diese Unterhaltung ist nicht zugreifbar.", 403);
+    return member;
+  }
+
+  async blockMessageUser(input = {}, actor = {}) {
+    const blockerUserId = required(actor.user_id, "actor_user_id");
+    const blockedUserId = required(input.blocked_user_id, "blocked_user_id");
+    if (blockerUserId === blockedUserId) throw new CommunityPlatformError("message_block_invalid", "Du kannst dich nicht selbst blockieren.", 400);
+    return this.repository.saveMessageBlock({ blocker_user_id: blockerUserId, blocked_user_id: blockedUserId, created_at: new Date().toISOString() });
+  }
+
+  async unblockMessageUser(blockedUserId, actor = {}) {
+    await this.repository.deleteMessageBlock(required(actor.user_id, "actor_user_id"), required(blockedUserId, "blocked_user_id"));
+    return { blocked_user_id: blockedUserId, state: "unblocked" };
+  }
+
+  async listMessageBlocks(actor = {}) {
+    return { items: await this.repository.listMessageBlocks(required(actor.user_id, "actor_user_id")) };
+  }
+
+  async reportMessage(threadId, messageId, input = {}, actor = {}) {
+    await this.requireThreadMember(threadId, actor.user_id);
+    const message = await this.repository.findMessage(messageId);
+    if (!message || message.thread_id !== threadId) throw new CommunityPlatformError("message_not_found", "Nachricht wurde nicht gefunden.", 404);
+    return this.repository.saveMessageReport({
+      report_id: createId("message_report"), reporter_user_id: actor.user_id,
+      thread_id: threadId, message_id: messageId,
+      reason: required(input.reason, "reason").slice(0, 500), status: "open",
+      created_at: new Date().toISOString(),
+    });
+  }
+
+  async listMessageReports(query = {}, actor = {}) {
+    requireOperator(actor);
+    return { items: await this.repository.listMessageReports({ status: query.status || "open" }) };
+  }
+
+  async resolveMessageReport(reportId, input = {}, actor = {}) {
+    requireOperator(actor);
+    const report = await this.repository.findMessageReport(reportId);
+    if (!report) throw new CommunityPlatformError("message_report_not_found", "Meldung wurde nicht gefunden.", 404);
+    return this.repository.saveMessageReport({
+      ...report, status: input.status === "dismissed" ? "dismissed" : "resolved",
+      resolution_note: String(input.resolution_note || "").slice(0, 1000),
+      resolved_by_user_id: actor.user_id, resolved_at: new Date().toISOString(),
+    });
+  }
+
+  async requireMessagingAllowed(senderUserId, recipientUserId) {
+    if (await this.repository.findMessageBlock(recipientUserId, senderUserId)
+      || await this.repository.findMessageBlock(senderUserId, recipientUserId)) {
+      throw new CommunityPlatformError("message_delivery_blocked", "Zwischen diesen Konten können keine Nachrichten zugestellt werden.", 403);
+    }
+  }
+
+  async requireMessageRate(userId) {
+    const since = new Date(Date.now() - this.messageRateWindowSeconds * 1000).toISOString();
+    if (await this.repository.countMessagesByAuthorSince(userId, since) >= this.messageRateLimit) {
+      throw new CommunityPlatformError("message_rate_limited", "Zu viele Nachrichten. Bitte warte einen Moment.", 429);
+    }
+  }
+
+  async sendDirectMessage(input = {}, actor = {}) {
+    const recipient = required(input.recipient_user_id, "recipient_user_id");
+    const sender = required(actor.user_id, "actor_user_id");
+    if (recipient === sender) throw new CommunityPlatformError("inbox_recipient_invalid", "Eine Nachricht an dich selbst ist nicht sinnvoll.", 400);
+    const now = new Date().toISOString();
+    return this.repository.saveInboxItem({
+      inbox_item_id: createId("inbox"), type: "direct_message", recipient_user_id: recipient,
+      sender_user_id: sender, sender_label: String(input.sender_label || "Mitglied").slice(0, 80),
+      subject: String(input.subject || "Direktnachricht").slice(0, 160), body: required(input.body, "body").slice(0, 8000),
+      state: "unread", created_at: now, read_at: null,
+    });
+  }
+
+  async listInbox(actor = {}) {
+    const userId = required(actor.user_id, "actor_user_id");
+    const items = [
+      ...await this.repository.listInboxItems({ user_id: userId }),
+      ...await this.repository.listInboxEntries(userId),
+    ].sort((left, right) => right.created_at.localeCompare(left.created_at));
+    return { items, unread_count: items.filter((item) => item.state === "unread").length };
+  }
+
+  async markInboxRead(itemId, actor = {}) {
+    const item = await this.repository.findInboxItem(itemId)
+      || await this.repository.findInboxEntry(itemId);
+    if (!item || item.recipient_user_id !== actor.user_id) throw new CommunityPlatformError("inbox_access_denied", "Diese Nachricht ist nicht zugreifbar.", 403);
+    if (item.state === "read") return item;
+    const updated = { ...item, state: "read", read_at: new Date().toISOString() };
+    return item.inbox_entry_id
+      ? this.repository.saveInboxEntry(updated)
+      : this.repository.saveInboxItem(updated);
+  }
+
+  async createBroadcast(input = {}, actor = {}) {
+    requireOperator(actor);
+    const recipients = [...new Set(Array.isArray(input.recipient_user_ids) ? input.recipient_user_ids.map(String).filter(Boolean) : [])];
+    if (!recipients.length) throw new CommunityPlatformError("broadcast_recipients_required", "Ein Broadcast benötigt mindestens ein Empfängerkonto.", 400);
+    const now = new Date().toISOString();
+    const subject = required(input.subject, "subject").slice(0, 160);
+    const body = required(input.body, "body").slice(0, 8000);
+    const broadcast = {
+      broadcast_id: createId("broadcast"),
+      created_by_user_id: actor.user_id,
+      subject,
+      body,
+      audience_kind: "selected_accounts",
+      state: "sent",
+      created_at: now,
+      sent_at: now,
+    };
+    const inboxEntries = recipients.map((recipientUserId) => ({
+      inbox_entry_id: createId("inbox_entry"),
+      recipient_user_id: recipientUserId,
+      entry_kind: "broadcast",
+      type: "broadcast",
+      thread_id: null,
+      broadcast_id: broadcast.broadcast_id,
+      sender_label: "GerNetiX",
+      subject,
+      body,
+      state: "unread",
+      created_at: now,
+      read_at: null,
+      latest_message_id: null,
+    }));
+    await this.repository.saveBroadcastBundle({ broadcast, inboxEntries });
+    return inboxEntries;
+  }
+
+  async createProjectInvitation(input = {}, actor = {}) {
+    const recipient = required(input.recipient_user_id, "recipient_user_id");
+    const now = new Date().toISOString();
+    return this.repository.saveInboxEntry({
+      inbox_entry_id: createId("inbox_entry"), entry_kind: "project_invitation", type: "project_invitation", recipient_user_id: recipient,
+      sender_user_id: required(actor.user_id, "actor_user_id"), sender_label: String(input.sender_label || "Mitglied").slice(0, 80),
+      subject: "Projekteinladung", body: "", thread_id: null, state: "unread", created_at: now, read_at: null, latest_message_id: null,
+      action: { project_id: required(input.project_id, "project_id"), role: input.role === "collaborate" ? "collaborate" : "read", status: "pending" },
+    });
+  }
+
   async publishKnowledgeDocument(question, answer) {
     if (answer.verification_state !== "verified") return null;
     const document = {
@@ -274,6 +594,35 @@ async function seedKnowledge(service) {
 function normalizeList(value) {
   if (Array.isArray(value)) return value.filter(Boolean);
   return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function normalizeProjectSnapshot(value) {
+  if (!value || typeof value !== "object") return null;
+  const sources = Array.isArray(value.sources) ? value.sources : [];
+  const safeSources = [];
+  let totalBytes = 0;
+  for (const source of sources.slice(0, 60)) {
+    const path = String(source?.path || "").trim().slice(0, 300);
+    const content = String(source?.content || "").slice(0, 48 * 1024);
+    if (!path || !content) continue;
+    const bytes = Buffer.byteLength(content, "utf8");
+    if (totalBytes + bytes > 180 * 1024) break;
+    totalBytes += bytes;
+    safeSources.push({
+      path,
+      content,
+      content_type: String(source.content_type || "text/plain").slice(0, 120),
+      content_sha256: String(source.content_sha256 || "").slice(0, 128),
+    });
+  }
+  if (!safeSources.length) return null;
+  return {
+    snapshot_id: String(value.snapshot_id || createId("community_snapshot")).slice(0, 160),
+    project_title: String(value.project_title || "Projekt").slice(0, 120),
+    captured_at: String(value.captured_at || new Date().toISOString()).slice(0, 64),
+    source_count: safeSources.length,
+    sources: safeSources,
+  };
 }
 
 function matches(item, term) {

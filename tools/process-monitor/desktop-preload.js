@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld("gernetixProcesses", {
   interfaceStatistics: (hours) => ipcRenderer.invoke("interfaces:statistics", hours),
   runtimeAlerts: (hours) => ipcRenderer.invoke("runtime:alerts", hours),
   securityRules: (force) => ipcRenderer.invoke("security:rules", force),
+  linkIntegrity: (force) => ipcRenderer.invoke("link-integrity:status", force),
   startAll: () => ipcRenderer.invoke("processes:start-all"),
   start: (id) => ipcRenderer.invoke("processes:start", id),
   stop: (id) => ipcRenderer.invoke("processes:stop", id),

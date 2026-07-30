@@ -11,6 +11,9 @@ async function createDefaultCommunityPlatform(config = createConfig()) {
     triageSlaHours: config.triageSlaHours,
     internalToken: config.internalToken,
     persistenceBackend: config.persistenceBackend,
+    messageRateLimit: config.messageRateLimit,
+    messageRateWindowSeconds: config.messageRateWindowSeconds,
+    supportUserIds: config.supportUserIds,
   });
   await seedKnowledge(service);
   return service;

@@ -8,7 +8,7 @@
   <link rel="shortcut icon" href="/gernetix-gx-browser.ico" type="image/x-icon" />
   <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
   <title>Öffentliche Nachbauprojekte · GerNetiX</title>
-  <link rel="stylesheet" href="/landing.css?v=20260730-compact-projects-1" />
+  <link rel="stylesheet" href="/landing.css?v=20260730-project-categories-1" />
 </head>
 <body>
   <header class="site-header">
@@ -34,16 +34,38 @@
       </div>
     </section>
 
-    <section class="maker-project-list" aria-label="Verfügbare Nachbauprojekte">
-      <a class="panel maker-project-tile" href="/nachbauprojekte/einfache-elektromotoren/">
-        <h2>Einfache Elektromotoren bauen</h2>
-        <p>Baue verschiedene Kleinspannungsmotoren und entdecke Schritt für Schritt, wie aus Strom eine Drehbewegung entsteht.</p>
-      </a>
-      <a class="panel maker-project-tile" href="/s3-touch-spielesammlung/">
-        <h2>ESP32-S3 Touch Game Collection</h2>
-        <p>Baue einen kleinen Touch-Handheld und installiere die Spielesammlung per WebSerial; Gehäuse und Teileliste findest du bei MakerWorld.</p>
-      </a>
-    </section>
+    <div class="maker-project-categories">
+      <section class="maker-project-category" aria-labelledby="electronics-ten-minutes-title">
+        <h2 id="electronics-ten-minutes-title">Elektronik in 10 Minuten</h2>
+        <div class="maker-project-list">
+          <a class="panel maker-project-tile" href="/nachbauprojekte/einfache-elektromotoren/">
+            <h3>Einfache Elektromotoren bauen</h3>
+            <p>Baue verschiedene Kleinspannungsmotoren und entdecke Schritt für Schritt, wie aus Strom eine Drehbewegung entsteht.</p>
+          </a>
+        </div>
+      </section>
+
+      <section class="maker-project-category" aria-labelledby="printed-motors-title">
+        <h2 id="printed-motors-title">Motoren aus dem 3D-Drucker</h2>
+        <div class="maker-project-list">
+          <a class="panel maker-project-tile maker-project-series-tile" href="/nachbauprojekte/druckmotoren/">
+            <span class="maker-project-series-label">Neue Nachbauserie</span>
+            <h3>Fünf Druckmotor-Stufen</h3>
+            <p>Baue von der sichtbaren Lorentzkraft über Reed- und Hall-Kommutierung bis zum dreiphasigen axialen Luftspulen-BLDC – mit Material und Downloads immer zuerst.</p>
+          </a>
+        </div>
+      </section>
+
+      <section class="maker-project-category" aria-labelledby="more-projects-title">
+        <h2 id="more-projects-title">Weitere Nachbauprojekte</h2>
+        <div class="maker-project-list">
+          <a class="panel maker-project-tile" href="/s3-touch-spielesammlung/">
+            <h3>ESP32-S3 Touch Game Collection</h3>
+            <p>Baue einen kleinen Touch-Handheld und installiere die Spielesammlung per WebSerial; Gehäuse und Teileliste findest du bei MakerWorld.</p>
+          </a>
+        </div>
+      </section>
+    </div>
 
     <section class="panel product-cta maker-download-cta">
       <div>

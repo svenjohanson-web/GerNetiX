@@ -29,6 +29,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
     this.persist();
     return result;
   }
+  deleteSource(projectId, sourcePath) { const result = super.deleteSource(projectId, sourcePath); this.persist(); return result; }
 
   saveBuildJob(job) {
     const result = super.saveBuildJob(job);
@@ -65,6 +66,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
     this.persist();
     return result;
   }
+  saveVersion(version) { const result = super.saveVersion(version); this.persist(); return result; }
 
   deleteProject(projectId) {
     const result = super.deleteProject(projectId);
@@ -82,6 +84,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
       consents: Array.from(this.consents.values()),
       learningProgress: Array.from(this.learningProgress.values()),
       resourcePolicies: Array.from(this.resourcePolicies.values()),
+      versions: Array.from(this.versions.values()),
     };
     this.store.save(state);
     if (typeof this.store.replaceCollection === "function") {
@@ -93,6 +96,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
       this.store.replaceCollection("consents", state.consents, "consent_id");
       this.store.replaceCollection("learningProgress", state.learningProgress, "project_id");
       this.store.replaceCollection("resourcePolicies", state.resourcePolicies, "plan_id");
+      this.store.replaceCollection("versions", state.versions, "version_id");
     }
     if (typeof this.store.replaceTable === "function") {
       this.store.replaceTable("project_server_projects", state.projects, projectColumns());
@@ -103,6 +107,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
       this.store.replaceTable("project_server_consents", state.consents, consentColumns());
       this.store.replaceTable("project_server_learning_progress", state.learningProgress, learningProgressColumns());
       this.store.replaceTable("project_server_resource_policies", state.resourcePolicies, resourcePolicyColumns());
+      this.store.replaceTable("project_server_versions", state.versions, versionColumns());
     }
   }
 
@@ -256,7 +261,15 @@ function projectServerSchema() {
       plan_id TEXT PRIMARY KEY, max_projects INTEGER, max_storage_bytes INTEGER,
       max_monthly_traffic_bytes INTEGER, updated_at TEXT, raw_json TEXT NOT NULL
     );`,
+    `CREATE TABLE IF NOT EXISTS project_server_versions (
+      version_id TEXT PRIMARY KEY, project_id TEXT, parent_version_id TEXT, created_by_user_id TEXT,
+      message TEXT, state TEXT, build_job_id TEXT, created_at TEXT, raw_json TEXT NOT NULL
+    );`,
   ];
+}
+
+function versionColumns() {
+  return { version_id: "version_id", project_id: "project_id", parent_version_id: "parent_version_id", created_by_user_id: "created_by_user_id", message: "message", state: "state", build_job_id: "build_job_id", created_at: "created_at", raw_json: jsonColumn((row) => row) };
 }
 
 function projectColumns() {
@@ -386,6 +399,7 @@ function emptyState() {
     consents: [],
     learningProgress: [],
     resourcePolicies: [],
+    versions: [],
   };
 }
 

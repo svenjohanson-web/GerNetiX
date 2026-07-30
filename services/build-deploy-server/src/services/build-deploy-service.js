@@ -59,10 +59,12 @@ class BuildDeployService {
   startJob(job) {
     job.status = "running";
     job.started_at = new Date().toISOString();
+    this.reportProgress(job, "preparing", "Build-Paket wird vorbereitet.");
     this.persistJobs();
     this.deviceJobLock.markActive(job);
     job.promise = this.runJob(job)
       .catch((error) => {
+        this.reportProgress(job, "failed", error.message || "Build fehlgeschlagen.");
         job.status = "failed";
         job.error = serializeError(error);
         this.persistJobs();
@@ -84,9 +86,14 @@ class BuildDeployService {
 
   async runJob(job) {
     await this.cache.ensureReady();
+    this.reportProgress(job, "packaging", "Build-Paket wird in den Build-Workspace übernommen.");
     const workspace = await this.packageStore.materialize(job);
     try {
-      const buildOutput = await this.runner.run(job, workspace.packageDir);
+      this.reportProgress(job, "compiling", "PlatformIO startet die Kompilierung.");
+      const buildOutput = await this.runner.run(job, workspace.packageDir, {
+        onProgress: (line) => this.reportProgress(job, "compiling", line),
+      });
+      this.reportProgress(job, "artifacts", "Firmware-Artefakte werden gesichert.");
       await this.packageStore.preserveIncrementalCache(job, workspace.packageDir);
       const artifacts = await this.artifactStore.saveBuildArtifacts(job.job_id, buildOutput);
       const buildResult = {
@@ -98,6 +105,7 @@ class BuildDeployService {
       };
       const deployResult = await this.deployOrchestrator.maybeCreateDeploy(job, buildResult);
       const flashboxResult = await this.deployOrchestrator.maybeCreateFlashboxDelivery(job, buildResult);
+      this.reportProgress(job, "completed", "Build erfolgreich abgeschlossen.");
       job.status = "succeeded";
       job.result = {
         job_id: job.job_id,
@@ -122,6 +130,17 @@ class BuildDeployService {
     this.stateStore.save({ jobs });
     this.stateStore.replaceCollection?.("jobs", jobs, "job_id");
     this.stateStore.replaceTable?.("build_deploy_jobs", jobs, buildJobColumns());
+  }
+
+  reportProgress(job, phase, message) {
+    const text = String(message || "").replace(/\x1b\[[0-9;]*m/g, "").trim();
+    if (!text) return;
+    const sequence = Number(job.progress_sequence || 0) + 1;
+    job.progress_sequence = sequence;
+    job.progress = Array.isArray(job.progress) ? job.progress : [];
+    job.progress.push({ sequence, phase, message: text.slice(0, 1000), at: new Date().toISOString() });
+    if (job.progress.length > 240) job.progress.splice(0, job.progress.length - 240);
+    this.persistJobs();
   }
 }
 
@@ -200,6 +219,7 @@ function summarizeJob(job) {
     finished_at: job.finished_at,
     result: job.result,
     error: job.error,
+    progress: Array.isArray(job.progress) ? job.progress : [],
   };
 }
 

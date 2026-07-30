@@ -31,10 +31,10 @@ flowchart LR
   end
 
   subgraph edgeServices["User- und Admin-nahe Serverprozesse"]
-    identity["Identity Server<br/>:4300"]
+    identity["Identity Server<br/>Route Registry + Linkinventar<br/>:4300"]
     usbSerialHelper["GerNetiX Serial Service<br/>nativer Swift-Hintergrunddienst<br/>TLS-Loopback :43123"]
     adminAccess["Admin Access Server + Admin Console PWA<br/>eigene Admin-Konten, Sitzungen, Rollen<br/>privat :4610"]
-    adminTool["Admin Tool API<br/>nur interner Proxyzugriff<br/>Account-Blatt + LLM-/SMTP-Konfig<br/>VPS-Loopback :4600"]
+    adminTool["Admin Tool API<br/>nur interner Proxyzugriff<br/>Account-Blatt + Link Integrity + LLM-/SMTP-Konfig<br/>VPS-Loopback :4600"]
     contextManager["Context Manager<br/>:5050"]
   end
 
@@ -70,7 +70,7 @@ flowchart LR
   subgraph localTools["Lokale Tools / Build-Artefakte"]
     e2e["E2E Demo Flow<br/>CLI"]
     yamlGraph["YAML Graph SQLite Importer<br/>CLI"]
-    processMonitor["GerNetiX Prozess-Monitor<br/>Desktop-App + VPN-Schalter<br/>read-only VPS-Schutzregeln"]
+    processMonitor["GerNetiX Prozess-Monitor<br/>Desktop-App + VPN-Schalter<br/>read-only VPS-Schutzregeln + Link Integrity"]
     architectureDocs["Architektur-Dokumentation<br/>Offline Browser + Builder<br/>kein Serverprozess"]
   end
 
@@ -89,7 +89,7 @@ flowchart LR
     aiUsageDb[("AI Usage PostgreSQL<br/>Credits, Ledger, Usage, Policy, Audit")]
     hardwareCatalogDb[("Hardware Catalog PostgreSQL<br/>Capabilities, Boards, Sensoren, Flashbox-Klassen")]
     hardwareShopDb[("Hardware Shop PostgreSQL<br/>Angebote, Warenkoerbe, Bestellungen, Purchase Contexts")]
-    operationsDb[("Operations PostgreSQL<br/>Consents, Audit, Systemereignisse, Schnittstellenstatistik")]
+    operationsDb[("Operations PostgreSQL<br/>Consents, Audit, Systemereignisse,<br/>Schnittstellenstatistik + Linkprüfhistorie")]
     communityLegacyDb[("Community Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     publicDemoDb[("Öffentliche Demo SQLite<br/>gernetix-public-demos.sqlite")]
     runtimeDb[("Legacy Runtime SQLite<br/>gernetix-services.sqlite<br/>nur read-only Altuebernahme")]
@@ -135,6 +135,7 @@ flowchart LR
   identity --> localOllama
   identity -->|"SMTP/TLS"| ionosMail["IONOS Mail"]
   identity -->|"token-geschuetzte Auth-/Runtime-Ereignisse"| adminTool
+  identity -->|"token-geschuetztes Linkinventar"| adminTool
   identity --> externalLlm
   platformUi -->|"Origin-gebundene lokale Sitzung<br/>kein Wechsel der Oberfläche"| usbSerialHelper
   usbSerialHelper -. "USB-Erkennung, Flash und lokale Provisionierung" .-> esp32Basis
@@ -208,6 +209,7 @@ flowchart LR
   graphDb --> architectureDocs
   repoFiles --> architectureDocs
   processMonitor -. "WireGuard verbinden / trennen" .-> adminTool
+  processMonitor -. "fester SSH-Diagnosebefehl:<br/>autorisierter read-only Linkstatus" .-> adminTool
   processMonitor -. "feste read-only Sicherheitspruefungen ueber WireGuard/SSH" .-> mqttBroker
 ```
 
@@ -230,7 +232,7 @@ flowchart LR
 | AI Usage Server | 5000 | `http://127.0.0.1:5000/` | Credits, Quellenrating je Account, Preflight, Usage Events, Cost Controls |
 | Context Manager | 5050 | `http://127.0.0.1:5050/context-manager/` | Projektkontext, Vorschlaege, Context Packs |
 | Recovery Tool Server | 5100 | `http://127.0.0.1:5100/` | eigenstaendige Nutzer-/Support-HMI, Recovery-Sessions, Credential-Erneuerung, Connectivity-Recovery |
-| Community Platform | 5200 | intern im Docker-Netz | Öffentliche Community-Anfragen sowie private, account- und operatorgebundene Projektbegleitung; eigener Tabellenbereich `community_*` in `gernetix_runtime` |
+| Community Platform | 5200 | intern im Docker-Netz | Öffentliche Community-Anfragen, private Projektbegleitung und interne Nachrichten mit Direktunterhaltungen, Projekteinladungen und Operator-Broadcasts; eigener Tabellenbereich `community_*` in `gernetix_runtime` |
 | Community AI Assistant | 5300 | `http://127.0.0.1:5300/` | KI-gestuetzte Community-Antworten |
 | Persistence Server | 5400 | `http://127.0.0.1:5400/` | HTTP-Zugriff auf generische SQLite-State-Dokumente |
 | AI Context Server | 5500 | `http://127.0.0.1:5500/` | Kontext-Grants, Prompt-Grundlagen, Architektur-, Intent- und lokales Help-Wissen, Access Policy, Preflight und Audit fuer KI-Datenzugriff |
@@ -257,6 +259,7 @@ flowchart LR
 | GerNetiX Plattform UI / Identity Server | Telemetry Server | PWA liest, konfiguriert Aufbewahrung oder loescht ausschliesslich Telemetrie des sessiongebundenen Projekts |
 | GerNetiX Plattform UI / Identity Server | AI Usage Server | Credit-Anzeige, AI-Preflight, Abschluss-/Fehlerbuchung echter Chat-Aufrufe |
 | Identity Server | Admin Tool | Allowlist-validierte browserseitige WebAuthn-Fehler, fehlgeschlagene serverseitige Passkey-Loginphasen und weitere auffaellige Runtime-Vorgaenge ueber einen eigenen token-geschuetzten Ingest als persistente Systemereignisse |
+| Identity Server / Link-Prüf-CLI | Admin Tool | Liefert token-geschützt deduplizierte Linkziele, vollständige Fundstellen und Prüfergebnisse; authentifizierte Ziele werden mit einem technischen Testkonto geprüft, dessen Credentials nicht persistiert werden |
 | GerNetiX Plattform UI / Identity Server | AI Context Server | Laedt zentrale KI-Prompt-Grundlagen und Architektur-Bausteine, sucht fuer GerNetiX Help ausschliesslich lokales Help-Wissen und prueft KI-Kontext-Preflights vor Zugriff auf Projekt-, Graph-, Device- oder Kundendaten |
 | GerNetiX Plattform UI / Identity Server | Lokaler Ollama LLM | Dev-PoC fuer Architektur-Discovery, wenn Admin-Routing auf lokalen Provider zeigt |
 | GerNetiX Plattform UI / Identity Server | IONOS Mail | Sendet Verifizierungs- und Passwort-Reset-E-Mails ueber SMTP/TLS; IONOS bleibt Mailserver und speichert keine GerNetiX-Anwendungsdaten |
@@ -274,6 +277,7 @@ flowchart LR
 | Telemetry Server | Identity Server | Uebergibt Runtime-Zeilen erst nach serverseitiger Ownership-Pruefung und mit internem Admin-Token; Identity liefert sie nur an offene SSE-Streams desselben Kontos und Projekts |
 | ESP32 Basissoftware | Build & Deploy Server | Firmware-Artefakte per HTTP/HTTPS laden |
 | GerNetiX Prozess-Monitor | VPS-Host, Nginx und MQTT Broker | Liest feste Schutzregeln und ihren Nachweisstatus ueber den konfigurierten WireGuard-/SSH-Zugang; stellt keinen generischen Shellzugriff im Renderer bereit |
+| GerNetiX Prozess-Monitor | Admin Tool | Liest das zentrale Linkinventar über einen festen SSH-Diagnosebefehl und die autorisierte Admin-Tool-API. Das Admin-Token bleibt im Container; über Electron-IPC werden nur Statusfelder an den Renderer gegeben. |
 | Recovery Tool HMI | Recovery Tool Server | Nutzer-/Support-Flow zum Retten von ProcessorBoards |
 | Provisioning Tool HMI | Provisioning Tool Server | Factory-Provisioning per USB ohne IDE-/Plattform-Umweg |
 | Admin Tool API | Device Management Server | Device-/Support-/Consent-Sichten |
@@ -330,6 +334,7 @@ flowchart LR
 - Die ESP32-Basissoftware bleibt ein stabiler, eigenstaendiger Runtime-Kern. Projekt- und kundenspezifische Erweiterungen duerfen weder Basissoftware-Schnittstellen noch Provisioning-, WLAN-/SSID-Setup- oder Sicherheitsablaeufe veraendern und keinen Projekt-Webserver in das Basissoftware-Setup-Portal einbringen. Erweiterungen sind ausschliesslich ueber klar abgegrenzte Schnittstellen anzubinden.
 - Provisioning speichert nach der Boardausstattung ein Update- und Speicherprofil an der Device-Instanz. `FULL` nutzt A/B-Rollback, `MEDIUM` einen vor der einzelnen grossen Hauptfirmware startenden Recovery-Bootstrap und `LOW` einen USB-only-Einzel-App-Slot. MEDIUM signalisiert beim Start ein fuenfsekundiges Recovery-Fenster per schneller LED, bleibt bei einem danach gedrueckten `BOOT`-Taster oder fehlender gueltiger Hauptfirmware im Bootstrap und startet eine vorhandene gueltige Hauptfirmware auch ohne erreichbaren Server. `BOOT` bereits waehrend Reset bleibt der ESP-ROM-/USB-Fallback. Die Oberflaeche erklaert Ausfallverhalten und typische 4/8/16-MB-Anwendungen, beruecksichtigt Display und Sound in der Empfehlung und weist darauf hin, dass SD-Karten nur Ressourcen auslagern. Ein spaeterer Profilwechsel bleibt erlaubt, setzt wegen der geaenderten Partitionstabelle aber einen einmaligen USB-Neu-Flash voraus.
 - Der Project Server persistiert die Komponenteneigenschaften eines Entwicklungsprojekts. Die User IDE stellt Basissoftware-Funktionen als geschuetzte, nicht abwaehlbare Eigenschaften und Projekterweiterungen als konfigurierbare Eigenschaften dar. Der lokale Device-Webserver kann in der IDE eingebettet betrachtet werden; seine Netzwerkadresse bleibt lokaler Browserzustand und ist keine fachliche Persistenz.
+- Git Light ist eine Premium-Funktion der gemeinsamen User IDE und gilt fuer alle accountgebundenen Entwicklungsprojekte. Der Project Server speichert unveraenderliche Projektversionen mit Elternbezug und Inhalts-Hash in PostgreSQL. Eine Version ohne Binary entsteht direkt; eine Version mit Binary erst nach einem frischen erfolgreichen Build und referenziert exakt dessen beim BuildPackage eingefrorenen Projektstand sowie dessen Artefakte. Vor dem Wiederherstellen wird ein vom letzten Commit abweichender aktueller Inhalt automatisch als Sicherheitsversion gespeichert; danach schreibt der Service den gewaehlten Inhalt in das aktuelle Projekt und erzeugt einen neuen Restore-Eintrag, ohne eine bestehende Version zu veraendern. Ctrl+Z bleibt davon getrennt und wirkt nur auf die laufende Editor-Sitzung.
 - Das Provisioning Tool laesst pro ESP32 entweder den VPS-Broker (`mqtts://`, standardmaessig `mqtt.gernetix.com:8883`) oder einen lokalen privaten IPv4-Broker auswaehlen. Der ESP32 erzeugt seinen P-256-Privatschluessel selbst; das Tool zertifiziert nur den Public Key. Extern authentifiziert sich das Board per mTLS und abonniert `gernetix/devices/<device_id>/ota` mit QoS 1. MQTT transportiert nur den Deploy-Auftrag; ECDSA-Autorisierung, Ablaufzeit, Replay-Schutz, HTTPS-Download, Hash-Pruefung und Rollback bleiben im OTA-Modul. Der Gesamt-Preflight prueft HTTPS-Artefaktadresse, MQTT-Publisher, konfigurierten OTA-Signer und Device-Rueckmeldung. Der Build-&-Deploy-Server signiert kanonische Auftraege mit einem separaten OTA-Private-Key, publiziert intern mit QoS 1 und Retain und persistiert Acknowledgements. Plattform, Device Management und Broker speichern keinen privaten Device-Schluessel.
 - Der Nutzer vergibt beim Onboarding einen kurzen Board-Namen. Daraus entsteht der `gernetix-*` Node-/SSID-/Hostname. Die Seriennummer wird vom System erzeugt und dauerhaft am Device/Inventory gespeichert; Spezialhardware und Verdrahtung werden als Instanz-Konfiguration am Account-Device gefuehrt.
 - Das Recovery Tool ist ein eigenstaendiges Nutzer-/Support-Tool am Port 5100, mit dem ProcessorBoards per USB erkannt, repariert, neu registriert oder mit neuen Credentials versorgt werden koennen.
@@ -343,6 +348,9 @@ flowchart LR
 - Die lokale Dev-Infrastruktur fuer den MQTT Broker liegt unter `infra/dev/docker-compose.yml` und bleibt auf Loopback ohne TLS. Der VPS-Broker behaelt `1883` und `9001` ausschliesslich im internen Docker-Netz und bindet den Device-Port `8883` nur an die WireGuard-Adresse. Server-TLS, verpflichtendes Device-Client-Zertifikat, Device-CA und `%u`-basierte ACL begrenzen jedes Device auf sein eigenes OTA-/Status-Topic. Ein ESP32 ohne eigenen WireGuard-Client erreicht die private Instanz nur ueber einen kontrollierten WireGuard-faehigen Gateway oder eine spaeter getrennt entworfene Device-Edge.
 - Der Context Manager ist kein Ersatz fuer die Graph-Dokumentation. Er liest Projektwissen, erstellt Vorschlaege und erzeugt bestaetigte Context Packs fuer Codex-Workflows.
 - Community und Projektbegleitung laufen ausschliesslich über die angemeldete Plattform. Der Nutzer wählt beim Erstellen zwischen `public` (für weitere angemeldete Mitglieder sichtbar) und `private` (nur anfragendes Konto plus konfigurierte GerNetiX-Operatoren). Der Community-Service ist nicht am Edge veröffentlicht, akzeptiert nur den token-geschützten Identity-Proxy und persistiert seine Inhalte getrennt in PostgreSQL. Private Threads werden weder in öffentlichen Listen noch in der Wissensbasis oder KI-Suche verwendet.
+- Die interne Nachrichtenplattform liegt ebenfalls in der Community Platform. Identity löst beim Beginn einer Direktunterhaltung nur einen exakt eingegebenen registrierten Nicknamen auf; eine öffentliche Kontosuche entsteht dadurch nicht. Community persistiert Unterhaltung, Teilnehmer, einzelne Nachrichten, empfängerbezogene Inbox-Einträge und Lesestände in `community_*`. Zugriff auf einen Thread setzt eine aktive Teilnahme voraus. Operator-Broadcasts bleiben operatorgebunden; Projekteinladungen sind strukturierte Inbox-Einträge und keine E-Mails.
+- Der öffentliche Support-Einstieg führt nach der Anmeldung nicht mehr in eine beliebige öffentliche Community-Anfrage, sondern eröffnet einen privaten System-Thread im internen Support-Postfach. Empfänger sind die explizit konfigurierten Supportkonten oder ersatzweise die Community-Operator-Konten. Supportantworten bleiben im selben teilnehmergeschützten Thread; E-Mail-Adressen werden dafür nicht benötigt.
+- Die angemeldete Plattform stellt Nachrichten unter `/app/messages/` als dreigeteilte Inbox bereit: Ordnernavigation, serverseitige Threadliste und Lesebereich. Posteingang, Gesendet, Support und persönliches Archiv werden aus den Community-Verträgen abgeleitet. Der Postausgang bleibt leer, solange Nachrichten synchron zugestellt werden; Entwürfe werden erst mit eigener SQL-Persistenz angeboten.
 - Öffentliche Projektbeispiele werden als Herkunfts- und Vertrauensinformation getrennt von der persönlichen Projektkopie behandelt. Eine Übernahme erzeugt immer ein neues, konto- und projektgebundenes Projekt im Project Server. `verified` ist ausschließlich eine explizite GerNetiX-Freigabe; nicht verifizierte Community-Projekte dürfen sichtbar und kopierbar sein, aber niemals als vertrauenswürdige oder empfohlene Vorlage erscheinen. Build und Flash setzen weiterhin die bewusste Auswahl eines kompatiblen eigenen Boards und einen bestehenden autorisierten Build-/Flash-Ablauf voraus.
 - Nach erfolgreicher Speicherung einer privaten Anfrage meldet Identity dem Betreiber den Eingang über eine konfigurierte E-Mail-Adresse, Web-Push an die konfigurierten Operator-Konten und ein persistentes Systemereignis im Admin Tool. Jede dieser Benachrichtigungen ist absichtlich generisch und enthält weder Anfrage-, Account- noch Projektinhalt; die Details bleiben ausschliesslich in der autorisierten Community-Ansicht.
 - Das Web-Admin-Tool prüft die Community Platform über Healthcheck und einen internen token-geschützten Betriebsendpunkt. Die Desktop-App ergänzt lokal den read-only SQLite-Dateistatus. Beide Operator-Sichten zeigen nur aggregierte Zähler und Speichertechnik, niemals Titel, Texte, Account- oder Projektkennungen.

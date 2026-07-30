@@ -24,6 +24,10 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
   assert.equal(files.some((file) => file.path === "partitions_medium_8mb.csv"), true);
   assert.equal(files.some((file) => file.path === "dependencies.lock"), true);
   assert.equal(files.some((file) => file.path === "src/idf_component.yml"), true);
+  assert.equal(files.some((file) => file.path === "lib/gernetix-runtime-core/src/runtime_core.cpp"), true);
+  assert.equal(files.some((file) => file.path === "lib/gernetix-runtime-core/include/gernetix/runtime_core.h"), true);
+  assert.match(files.find((file) => file.path === "src/CMakeLists.txt").content, /\.\.\/lib\/gernetix-runtime-core\/src\/runtime_core\.cpp/);
+  assert.doesNotMatch(files.find((file) => file.path === "src/CMakeLists.txt").content, /\.\.\/\.\.\/\.\.\/firmware\/shared/);
   assert.equal(files.some((file) => file.path === "managed_components/espressif__mqtt/mqtt_client.c"), true);
   assert.equal(files.some((file) => file.path === "managed_components/espressif__mqtt/include/mqtt_client.h"), true);
   assert.equal(files.some((file) => file.path.startsWith("managed_components/espressif__mqtt/examples/")), false);

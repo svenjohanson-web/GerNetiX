@@ -149,6 +149,7 @@ class ProjectService {
       updated_at: now,
       submitted_at: null,
       finished_at: null,
+      build_config: project.build_config ? { ...project.build_config } : null,
       result: null,
       error: null,
     };
@@ -175,6 +176,15 @@ class ProjectService {
     const job = await this.getBuildJob(jobId);
     const project = await this.requireProject(job.project_id);
     const sources = await this.repository.listSources(project.project_id);
+    const projectSnapshot = sanitizeProject(project);
+    const snapshotHash = projectVersionHash(projectSnapshot, sources);
+    await this.repository.saveBuildJob({
+      ...job,
+      project_snapshot: projectSnapshot,
+      source_snapshot: sources,
+      snapshot_sha256: snapshotHash,
+      updated_at: new Date().toISOString(),
+    });
     const firmwareSources = project.build_config?.firmware_basis_id === "gernetix-runtime-basissoftware"
       ? composeEsp32BasissoftwarePackage({
           basisFiles: this.loadEsp32BasissoftwareFiles(),
@@ -263,6 +273,106 @@ class ProjectService {
       project_id: query.project_id || query.projectId || "",
       build_job_id: query.build_job_id || query.buildJobId || "",
     });
+  }
+
+  async createVersion(projectId, input = {}) {
+    return this.createVersionRecord(projectId, input);
+  }
+
+  async createVersionRecord(projectId, input = {}, internal = {}) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    const versions = await this.repository.listVersions({ project_id: projectId });
+    const now = new Date().toISOString();
+    let projectSnapshot = sanitizeProject(project);
+    let sources = await this.repository.listSources(project.project_id);
+    let buildJob = null;
+    let binaryArtifacts = [];
+    if (input.include_binary === true) {
+      buildJob = await this.repository.findBuildJob(required(input.build_job_id, "build_job_id"));
+      if (!buildJob || buildJob.project_id !== projectId || buildJob.status !== "succeeded") {
+        throw new ProjectServerError("version_binary_build_required", "Die Binary-Version benötigt einen erfolgreichen Build dieses Projekts.", 409);
+      }
+      binaryArtifacts = await this.repository.listArtifacts({ build_job_id: buildJob.build_job_id });
+      if (!binaryArtifacts.length) throw new ProjectServerError("version_binary_artifact_missing", "Der erfolgreiche Build enthält kein speicherbares Binary.", 409);
+      projectSnapshot = buildJob.project_snapshot;
+      sources = buildJob.source_snapshot;
+      if (!projectSnapshot || !sources) throw new ProjectServerError("version_build_snapshot_missing", "Der eingefrorene Build-Stand fehlt.", 409);
+    }
+    const snapshotSha256 = projectVersionHash(projectSnapshot, sources);
+    const version = {
+      version_id: createId("project_version"),
+      project_id: project.project_id,
+      parent_version_id: internal.parent_version_id || versions[0]?.version_id || null,
+      created_by_user_id: required(input.user_id, "user_id"),
+      message: String(input.message || "Projektstand gespeichert").trim().slice(0, 240),
+      commit_kind: internal.commit_kind || "snapshot",
+      restored_from_version_id: internal.restored_from_version_id || null,
+      preserved_before_restore_version_id: internal.preserved_before_restore_version_id || null,
+      state: "saved",
+      includes_binary: input.include_binary === true,
+      build_job_id: buildJob?.build_job_id || null,
+      binary_artifacts: binaryArtifacts.map((artifact) => ({
+        artifact_id: artifact.artifact_id, file_name: artifact.file_name,
+        sha256: artifact.sha256, size_bytes: artifact.size_bytes, url: artifact.url,
+      })),
+      snapshot_sha256: snapshotSha256,
+      project_snapshot: projectSnapshot,
+      sources,
+      created_at: now,
+    };
+    return this.repository.saveVersion(version);
+  }
+
+  async listVersions(projectId) {
+    await this.ready;
+    await this.requireProject(projectId);
+    return this.repository.listVersions({ project_id: projectId });
+  }
+
+  async restoreVersion(projectId, versionId, input = {}) {
+    await this.ready;
+    const project = await this.requireProject(projectId);
+    const version = await this.repository.findVersion(versionId);
+    if (!version || version.project_id !== project.project_id) throw new ProjectServerError("project_version_not_found", "Projektversion wurde nicht gefunden.", 404);
+    let versions = await this.repository.listVersions({ project_id: projectId });
+    const currentSources = await this.repository.listSources(project.project_id);
+    const currentHash = projectVersionHash(sanitizeProject(project), currentSources);
+    let preservedVersion = null;
+    if (versions[0]?.snapshot_sha256 !== currentHash) {
+      preservedVersion = await this.createVersionRecord(projectId, {
+        user_id: required(input.user_id, "user_id"),
+        message: input.preserve_message || "Stand vor Wiederherstellung",
+      });
+      versions = await this.repository.listVersions({ project_id: projectId });
+    }
+    const versionPaths = new Set((version.sources || []).map((source) => source.path));
+    for (const source of currentSources) {
+      if (!versionPaths.has(source.path)) await this.repository.deleteSource(project.project_id, source.path);
+    }
+    for (const source of version.sources || []) await this.repository.saveSource({ ...source, project_id: project.project_id, updated_at: new Date().toISOString() });
+    const snapshot = version.project_snapshot || {};
+    await this.repository.saveProject({
+      ...project,
+      title: snapshot.title || project.title,
+      description: snapshot.description ?? project.description,
+      hardware_profile_id: snapshot.hardware_profile_id ?? project.hardware_profile_id,
+      device_id: snapshot.device_id ?? project.device_id,
+      build_config: snapshot.build_config ?? project.build_config,
+      view_manifest: snapshot.view_manifest ?? project.view_manifest,
+      status: snapshot.status || project.status,
+      updated_at: new Date().toISOString(),
+    });
+    const restored = await this.createVersionRecord(projectId, {
+      user_id: required(input.user_id, "user_id"),
+      message: input.message || `Wiederhergestellt aus ${version.message || version.version_id}`,
+    }, {
+      parent_version_id: versions[0]?.version_id || null,
+      commit_kind: "restore",
+      restored_from_version_id: versionId,
+      preserved_before_restore_version_id: preservedVersion?.version_id || null,
+    });
+    return restored;
   }
 
   async createFeedback(input = {}) {
@@ -794,6 +904,25 @@ function sanitizeProject(project) {
     created_at: project.created_at,
     updated_at: project.updated_at,
   };
+}
+
+function projectVersionHash(projectSnapshot, sources) {
+  const canonical = {
+    project: {
+      title: projectSnapshot.title,
+      description: projectSnapshot.description,
+      learning_project_id: projectSnapshot.learning_project_id,
+      hardware_profile_id: projectSnapshot.hardware_profile_id,
+      device_id: projectSnapshot.device_id,
+      build_config: projectSnapshot.build_config,
+      view_manifest: projectSnapshot.view_manifest,
+      status: projectSnapshot.status,
+    },
+    sources: [...(sources || [])]
+      .sort((left, right) => left.path.localeCompare(right.path))
+      .map(({ path, content, content_type, role }) => ({ path, content, content_type, role })),
+  };
+  return crypto.createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
 }
 
 function maskSourceContent(source) {

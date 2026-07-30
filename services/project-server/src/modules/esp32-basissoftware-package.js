@@ -2,6 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 
 const DEFAULT_BASIS_ROOT = path.resolve(__dirname, "../../../..", "basissoftware", "esp32");
+const DEFAULT_RUNTIME_CORE_ROOT = path.resolve(__dirname, "../../../..", "firmware", "shared", "gernetix-runtime-core");
 const INCLUDED_ROOT_FILES = new Set(["CMakeLists.txt", "dependencies.lock", "platformio.ini", "sdkconfig.esp32dev", "partitions_ota_4mb.csv"]);
 const PROFILE_PARTITION_FILE = /^partitions_(full|medium|low)_(4|8|16)mb\.csv$/;
 
@@ -26,6 +27,8 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
     throw new Error(`Projektquelle fuer User-Main fehlt: ${userSourcePath}`);
   }
   const byPath = new Map(basisFiles.map((file) => [file.path, { ...file }]));
+  addRuntimeCore(byPath);
+  rewriteRuntimeCorePaths(byPath);
   applyBasissoftwareProfile(byPath, buildConfig);
   byPath.set(userTargetPath, {
     path: userTargetPath,
@@ -46,6 +49,31 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
     });
   }
   return Array.from(byPath.values()).sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function addRuntimeCore(byPath, root = process.env.GERNETIX_RUNTIME_CORE_ROOT || DEFAULT_RUNTIME_CORE_ROOT) {
+  if (!fs.existsSync(root)) {
+    throw new Error(`GerNetiX Runtime Core wurde nicht gefunden: ${root}`);
+  }
+  for (const filePath of walk(root)) {
+    const relative = relativePath(root, filePath);
+    if (relative !== "library.json" && !relative.startsWith("include/") && !relative.startsWith("src/")) continue;
+    const targetPath = `lib/gernetix-runtime-core/${relative}`;
+    byPath.set(targetPath, {
+      path: targetPath,
+      content: fs.readFileSync(filePath, "utf8"),
+      content_type: contentType(filePath),
+    });
+  }
+}
+
+function rewriteRuntimeCorePaths(byPath) {
+  const cmake = byPath.get("src/CMakeLists.txt");
+  if (!cmake) return;
+  cmake.content = cmake.content.replaceAll(
+    "../../../firmware/shared/gernetix-runtime-core/",
+    "../lib/gernetix-runtime-core/",
+  );
 }
 
 function walk(root) {
