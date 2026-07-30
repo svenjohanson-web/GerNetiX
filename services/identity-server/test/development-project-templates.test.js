@@ -4,6 +4,7 @@ const {
   developmentProjectTemplate,
   developmentProjectTemplateCatalog,
   developmentProjectTemplatePreviews,
+  mergeSelectedGamesHeader,
   templateArchitecturePlantUml,
   templateBuildConfig,
   templateFirmwareSources,
@@ -93,6 +94,21 @@ test("provides a buildable touchscreen game collection with separated user sourc
   assert.match(selectedGames, /GNX_GAME_NIBBLES_ENABLED 1/);
   assert.match(selectedGames, /GNX_GAME_FROGGER_ENABLED 1/);
   assert.match(selectedGames, /GNX_GAME_SNAKE_ENABLED 0/);
+});
+
+test("keeps confirmed custom games when the built-in game form is saved again", () => {
+  const existing = `${mergeSelectedGamesHeader(["nibbles"], "")}
+#define GNX_GAME_ASTEROIDS_ENABLED 1
+#define GNX_GAME_ASTEROIDS_ENABLED 0
+#define GNX_GAME_BREAKOUT_ENABLED 1
+`;
+  const merged = mergeSelectedGamesHeader(["frogger"], existing);
+
+  assert.match(merged, /GNX_GAME_NIBBLES_ENABLED 0/);
+  assert.match(merged, /GNX_GAME_FROGGER_ENABLED 1/);
+  assert.match(merged, /GNX_GAME_ASTEROIDS_ENABLED 1/);
+  assert.equal((merged.match(/GNX_GAME_ASTEROIDS_ENABLED/g) || []).length, 1);
+  assert.equal((merged.match(/GNX_GAME_BREAKOUT_ENABLED/g) || []).length, 1);
 });
 
 test("provides IoT device project templates with distinct start architectures", () => {

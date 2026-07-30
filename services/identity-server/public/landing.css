@@ -112,7 +112,6 @@ a { color: inherit; text-decoration: none; }
 .site-menu a:hover { border-color: var(--accent); background: #273244; color: #ecfeff; }
 .site-menu a[href="/app/auth/"] { border-color: #0891b2; background: #164e63; color: #cffafe; }
 .site-menu a[href="/app/auth/"]:hover, .site-menu a[href="/app/auth/"]:focus-visible { border-color: #67e8f9; background: #155e75; color: #ecfeff; }
-.site-menu-discover, .site-menu-subitems { display: grid; gap: 4px; }.site-menu-subitems { padding-left: 13px; }.site-menu-subitems a { min-height: 31px; padding-block: 6px; border-color: transparent; color: #94a3b8; font-size: 12px; }.site-menu-subitems a::before { content: "↳ "; color: #67e8f9; }.site-menu-subitems a:hover, .site-menu-subitems a:focus-visible { border-color: #3c4a5d; }
 main { display: grid; gap: 16px; width: calc(100% - 32px); margin: 18px auto 0; }
 .panel {
   padding: clamp(22px, 4vw, 42px);
@@ -509,6 +508,65 @@ h2 { font-size: clamp(22px, 2.6vw, 30px); }
 .maker-release-process article, .maker-release-process a, .maker-project-grid article { padding: 18px; border: 1px solid #334155; border-radius: 9px; background: var(--panel-soft); }.maker-release-process a { color: inherit; text-decoration: none; transition: border-color .16s ease, transform .16s ease, background .16s ease; }.maker-release-process a:hover, .maker-release-process a:focus-visible { border-color: #67e8f9; background: #162235; transform: translateY(-2px); outline: none; }.maker-release-process h3, .maker-release-process p, .maker-section-intro h2, .maker-section-intro p, .maker-release-card p, .maker-project-grid h3, .maker-project-grid p, .maker-project-note { margin: 0; }
 .maker-release-layout { display: grid; grid-template-columns: minmax(240px, .8fr) minmax(0, 1.2fr); gap: 12px; }.maker-section-intro { align-content: center; padding: clamp(8px, 2vw, 22px); }.maker-release-card { border-color: #0891b2; background: linear-gradient(135deg, #0e7490, #172131); }.maker-release-head { display: grid; gap: 6px; }.maker-release-head strong { font-size: clamp(20px, 2.4vw, 28px); }.maker-release-card dl { display: grid; gap: 10px; margin: 0; }.maker-release-card dl div { display: grid; grid-template-columns: 140px minmax(0, 1fr); gap: 12px; padding-top: 10px; border-top: 1px solid rgba(226, 232, 240, .25); }.maker-release-card dt { color: #ecfeff; font-weight: 800; }.maker-release-card dd { margin: 0; color: #cbd5e1; line-height: 1.5; }.maker-release-card button { width: fit-content; border: 1px solid #94a3b8; border-radius: 7px; padding: 11px 15px; background: rgba(7, 11, 18, .35); color: #cbd5e1; font: inherit; font-weight: 800; }
 .maker-release-single { grid-template-columns: minmax(0, 860px); justify-content: center; }
+.maker-project-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.maker-project-tile {
+  display: grid;
+  align-content: start;
+  gap: 7px;
+  min-height: 0;
+  padding: 18px 20px;
+  color: inherit;
+  text-decoration: none;
+  transition: border-color .16s ease, background .16s ease;
+}
+.maker-project-tile:hover, .maker-project-tile:focus-visible { border-color: #67e8f9; background: #162235; outline: none; }
+.maker-project-tile h2, .maker-project-tile p { margin: 0; }
+.maker-project-tile h2 { font-size: clamp(18px, 2vw, 22px); }
+.maker-project-tile p { color: var(--muted); line-height: 1.5; }
+.project-breadcrumb { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 2px 4px; color: var(--muted); font-size: 13px; }
+.project-breadcrumb a { color: #67e8f9; font-weight: 800; }
+.project-breadcrumb a:hover { color: #ecfeff; }
+.motor-project-page { max-width: 1240px; }
+.motor-project-hero h1 { max-width: 820px; }
+.motor-project-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.secondary-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  min-height: 42px;
+  border: 1px solid #475569;
+  border-radius: 7px;
+  padding: 10px 15px;
+  background: rgba(15, 23, 42, .55);
+  color: #dbeafe;
+  font-weight: 800;
+}
+.secondary-action:hover { border-color: #67e8f9; color: #ecfeff; }
+.motor-safety { display: grid; grid-template-columns: minmax(220px, .7fr) minmax(0, 1.3fr); gap: 28px; border-color: #b45309; background: linear-gradient(135deg, rgba(120, 53, 15, .32), var(--panel)); }
+.motor-safety h2, .motor-safety p, .motor-project-overview h2, .motor-project-overview p, .motor-build-copy h2, .motor-build-copy p, .motor-comparison h2 { margin: 0; }
+.motor-safety ul, .motor-parts-grid ul, .motor-build-copy ol { display: grid; gap: 9px; margin: 0; padding-left: 22px; color: #cbd5e1; line-height: 1.55; }
+.motor-project-overview { display: grid; gap: 16px; }
+.motor-parts-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.motor-parts-grid article { padding: 18px; border: 1px solid #334155; border-radius: 9px; background: var(--panel-soft); }
+.motor-parts-grid h3 { margin: 0 0 12px; }
+.motor-build-step { display: grid; grid-template-columns: minmax(300px, .9fr) minmax(0, 1.1fr); gap: clamp(24px, 4vw, 52px); align-items: start; scroll-margin-top: 96px; }
+.motor-build-step.reverse .motor-build-visual { order: 2; }
+.motor-build-visual { position: sticky; top: 96px; overflow: hidden; border: 1px solid #334155; border-radius: 10px; background: #f8fafc; }
+.motor-build-visual img { display: block; width: 100%; height: auto; }
+.motor-build-copy { display: grid; gap: 16px; }
+.motor-build-copy h2 { font-size: clamp(23px, 3vw, 34px); }
+.motor-observation { padding: 14px 16px; border-left: 4px solid #22d3ee; border-radius: 0 8px 8px 0; background: #172033; color: #cbd5e1; line-height: 1.55; }
+.knowledge-back-link { width: fit-content; color: #67e8f9; font-weight: 850; line-height: 1.4; }
+.knowledge-back-link:hover { color: #ecfeff; }
+.motor-special-step { border-color: #b45309; }
+.motor-special-step .motor-observation { border-left-color: #f59e0b; }
+.motor-comparison { display: grid; gap: 16px; scroll-margin-top: 96px; }
+.motor-comparison-table-wrap { overflow-x: auto; }
+.motor-comparison table { width: 100%; border-collapse: collapse; }
+.motor-comparison th, .motor-comparison td { min-width: 170px; border: 1px solid #334155; padding: 12px; text-align: left; vertical-align: top; line-height: 1.45; }
+.motor-comparison th { background: #172033; color: #ecfeff; }
+.motor-comparison td { color: #cbd5e1; }
 @media (max-width: 1040px) {
   .product-learning-path { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
@@ -547,8 +605,11 @@ footer {
   .product-split-grid,
   .product-decision-map ol,
   .product-delivery-grid { grid-template-columns: 1fr; }
-  .maker-download-hero, .maker-release-process > div, .maker-release-layout, .maker-project-grid { grid-template-columns: 1fr; }
+  .maker-download-hero, .maker-release-process > div, .maker-release-layout, .maker-project-grid, .maker-project-list { grid-template-columns: 1fr; }
   .maker-release-card dl div { grid-template-columns: 1fr; gap: 3px; }
+  .motor-safety, .motor-parts-grid, .motor-build-step { grid-template-columns: 1fr; }
+  .motor-build-step.reverse .motor-build-visual { order: 0; }
+  .motor-build-visual { position: static; }
   .product-learning-path,
   .product-special-tools,
   .product-choice-grid,

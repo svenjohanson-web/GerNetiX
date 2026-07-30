@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Homopolarmotor als Sonderexperiment</title>
+  <desc id="desc">Eine Batterie steht auf einem Scheibenmagneten. Ein gebogener Kupferdraht berührt oben den Batteriepol und unten den Magnetrand. Strom und Magnetfeld erzeugen eine tangentiale Kraft.</desc>
+  <defs>
+    <marker id="arrowRed" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0L9 3L0 6Z" fill="#dc2626"/></marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0L9 3L0 6Z" fill="#16a34a"/></marker>
+  </defs>
+  <rect width="960" height="540" rx="24" fill="#f8fafc"/>
+  <rect x="410" y="90" width="140" height="300" rx="36" fill="#e2e8f0" stroke="#64748b" stroke-width="5"/>
+  <rect x="445" y="68" width="70" height="28" rx="9" fill="#94a3b8"/>
+  <text x="480" y="150" text-anchor="middle" font-family="system-ui,sans-serif" font-size="36" font-weight="800" fill="#dc2626">+</text>
+  <text x="480" y="348" text-anchor="middle" font-family="system-ui,sans-serif" font-size="36" font-weight="800" fill="#2563eb">−</text>
+  <ellipse cx="480" cy="412" rx="126" ry="46" fill="#2563eb"/>
+  <rect x="354" y="382" width="252" height="34" fill="#dc2626"/>
+  <ellipse cx="480" cy="382" rx="126" ry="46" fill="#dc2626"/>
+  <text x="480" y="420" text-anchor="middle" font-family="system-ui,sans-serif" font-size="18" font-weight="700" fill="#fff">Scheibenmagnet</text>
+  <path d="M480 79C318 102 290 235 322 365C330 397 354 402 378 398" fill="none" stroke="#b45309" stroke-width="12" stroke-linecap="round"/>
+  <path d="M480 79C642 102 670 235 638 365C630 397 606 402 582 398" fill="none" stroke="#b45309" stroke-width="12" stroke-linecap="round"/>
+  <path d="M480 102C370 136 346 250 365 365" fill="none" stroke="#dc2626" stroke-width="6" marker-end="url(#arrowRed)"/>
+  <path d="M480 102C590 136 614 250 595 365" fill="none" stroke="#dc2626" stroke-width="6" marker-end="url(#arrowRed)"/>
+  <path d="M294 436A205 76 0 0 0 670 443" fill="none" stroke="#16a34a" stroke-width="9" marker-end="url(#arrowGreen)"/>
+  <text x="480" y="505" text-anchor="middle" font-family="system-ui,sans-serif" font-size="20" fill="#334155">Ein auffälliger Sonderfall – aber kein verkleinerter normaler Bürstenmotor.</text>
+</svg>

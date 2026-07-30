@@ -18,8 +18,9 @@ test("serves a public Flashbox setup without account or build-job APIs", () => {
   assert.match(server, /url\.pathname === "\/api\/public\/flashbox\/initial-firmware\/content" && req\.method === "GET"/);
   assert.match(server, /currentFlashboxInitialFirmware\(\)/);
   assert.match(page, /class="site-header"/);
-  assert.match(page, /href="\/entdecken\/">GerNetiX entdecken/);
-  assert.match(page, /href="\/flashbox-einrichten\/" aria-current="page">USB Helper/);
+  assert.doesNotMatch(page, /href="\/entdecken\/"|GerNetiX entdecken/);
+  assert.match(page, /href="\/flashbox-einrichten\/" aria-current="page">FlashBox einrichten/);
+  assert.match(page, /href="\/nachbauprojekte\/">Projekte zum Nachbauen/);
   assert.match(page, /src="\/landing\.js/);
   assert.doesNotMatch(page, /account_id|claim_code|build_job|project_id/i);
 });

@@ -84,8 +84,8 @@ const routeMap = {
   shop: "shopView",
   billing: "billingView",
   community: "communityView",
-  help: "helpView",
-  knowledge: "helpView",
+  help: "informationView",
+  knowledge: "informationView",
   "account-setup": "accountSetupView",
   auth: "dashboardView",
 };
@@ -121,7 +121,7 @@ function deviceOnboarding() {
       renderIdeShell,
       escapeHtml,
       meta,
-      openHelpTopic: HelpView.openDialog,
+      openHelpTopic: InformationView.openDialog,
       showSerialServiceChoiceDialog,
     });
   }
@@ -139,7 +139,7 @@ function guidedProjectView() {
       escapeHtml,
       escapeAttribute,
       meta,
-      openHelpTopic: HelpView.openDialog,
+      openHelpTopic: InformationView.openDialog,
     });
   }
   return guidedProjectViewController;
@@ -539,7 +539,7 @@ function renderRoute() {
   if (route === "device-provisioning") loadDevicePageTools();
   if (route === "downloads") renderDownloads();
   if (route === "community") loadCommunity();
-  if (["help", "knowledge"].includes(route)) renderHelpTopic();
+  if (["help", "knowledge"].includes(route)) renderInformationTopic();
   lastRenderedRoute = route;
 }
 
@@ -572,8 +572,8 @@ function quiz() {
   return quizController;
 }
 
-function renderHelpTopic() {
-  HelpView.render({
+function renderInformationTopic() {
+  InformationView.render({
     hasAccount: Boolean(state.account),
     premium: Boolean(state.billing?.entitlements?.includes("learn_guided_projects")),
     newChapterIds: state.knowledgeUpdates.map((update) => update.chapter_id),
@@ -965,27 +965,48 @@ function renderDashboard() {
 }
 
 function renderKnowledgeUpdates() {
-  const panel = document.querySelector("#dashboardKnowledgeUpdates");
-  const target = document.querySelector("#dashboardKnowledgeUpdateList");
   const menuBadge = document.querySelector("#knowledgeUpdateMenuBadge");
   const updates = state.knowledgeUpdates || [];
   if (menuBadge) {
     menuBadge.hidden = updates.length === 0;
-    menuBadge.textContent = updates.length ? String(updates.length) : "";
+    const badgeKey = updates.length === 1 ? "platform.nav.new" : "platform.nav.new_count";
+    const badgeFallback = updates.length === 1 ? "Neu" : `Neu · ${updates.length}`;
+    menuBadge.textContent = updates.length
+      ? (platformI18n?.t(badgeKey, { count: updates.length }, badgeFallback) || badgeFallback)
+      : "";
   }
-  if (!panel || !target) return;
-  panel.hidden = updates.length === 0;
-  const latest = updates[0];
-  target.innerHTML = updates.length ? `
-    <a class="dashboard-knowledge-update-card" href="/wissen/?ansicht=historie">
-      <span>${updates.length === 1 ? "Ein neuer Eintrag" : `${updates.length} neue Einträge`}</span>
-      <strong>${escapeHtml(latest.title)}</strong>
-      <p>${updates.length === 1
-        ? "In der Historie des Wissensspeichers findest du Veröffentlichung, Version und Lesestatus."
-        : `Zuletzt veröffentlicht und ${updates.length - 1} weitere neue Einträge.`}</p>
-      <small>Historie des Wissensspeichers öffnen →</small>
+  renderDashboardNews();
+}
+
+function dashboardNewsItems() {
+  const translate = (key, variables, fallback) => platformI18n?.t(key, variables, fallback) || fallback;
+  return (state.knowledgeUpdates || []).map((update) => ({
+    id: `knowledge:${update.chapter_id}:${update.version}`,
+    category: translate("dashboard.news.knowledge.category", {}, "Wissensspeicher"),
+    title: update.title,
+    text: translate("dashboard.news.knowledge.version", { version: update.version }, `Neue Version ${update.version} wurde veröffentlicht.`),
+    href: "/wissen/?ansicht=historie",
+    action: translate("dashboard.news.knowledge.action", {}, "Historie des Wissensspeichers öffnen →"),
+  }));
+}
+
+function renderDashboardNews() {
+  const target = document.querySelector("#dashboardNewsList");
+  if (!target) return;
+  const emptyText = platformI18n?.t(
+    "dashboard.news.empty",
+    {},
+    "Aktuell gibt es keine ungelesenen Neuigkeiten. Neue Veröffentlichungen erscheinen künftig an dieser Stelle.",
+  ) || "Aktuell gibt es keine ungelesenen Neuigkeiten. Neue Veröffentlichungen erscheinen künftig an dieser Stelle.";
+  const items = dashboardNewsItems().slice(0, 6);
+  target.innerHTML = items.length ? items.map((item) => `
+    <a class="dashboard-news-card" href="${escapeAttribute(item.href)}" data-news-id="${escapeAttribute(item.id)}">
+      <span>${escapeHtml(item.category)}</span>
+      <strong>${escapeHtml(item.title)}</strong>
+      <p>${escapeHtml(item.text)}</p>
+      <small>${escapeHtml(item.action)}</small>
     </a>
-  ` : "";
+  `).join("") : `<p class="dashboard-news-empty">${escapeHtml(emptyText)}</p>`;
 }
 
 function renderDashboardCommunitySummary() {
@@ -1245,6 +1266,7 @@ function learningTagLabel(tag) {
     "topic:modeling": "Modellierung",
     "topic:programming": "Programmierung",
     "topic:radar": "Radar",
+    "topic:radio": "Funk",
     "topic:sensors": "Sensoren",
     "topic:data": "Daten",
     "topic:databases": "Datenbanken",
@@ -1254,13 +1276,13 @@ function learningTagLabel(tag) {
     en: {
       "client:mobile": "Mobile", "level:beginner": "Beginner", "topic:actuators": "Actuators", "topic:ai": "AI",
       "topic:automation": "Automation", "topic:home-automation": "Home automation", "topic:modeling": "Modelling",
-      "topic:programming": "Programming", "topic:sensors": "Sensors", "topic:data": "Data", "topic:databases": "Databases",
+      "topic:programming": "Programming", "topic:radio": "Radio", "topic:sensors": "Sensors", "topic:data": "Data", "topic:databases": "Databases",
       "topic:storage": "Storage",
     },
     nl: {
       "client:mobile": "Mobiel", "level:beginner": "Beginner", "topic:actuators": "Actuatoren", "topic:ai": "AI",
       "topic:automation": "Automatisering", "topic:home-automation": "Domotica", "topic:modeling": "Modellering",
-      "topic:programming": "Programmeren", "topic:sensors": "Sensoren", "topic:data": "Gegevens", "topic:databases": "Databases",
+      "topic:programming": "Programmeren", "topic:radio": "Radio", "topic:sensors": "Sensoren", "topic:data": "Gegevens", "topic:databases": "Databases",
       "topic:storage": "Opslag",
     },
   };

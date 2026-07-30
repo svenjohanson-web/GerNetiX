@@ -10,7 +10,6 @@ const pages = [
   "app/index.html",
   "app/auth/index.html",
   "community/index.html",
-  "downloads/index.html",
   "flashbox-einrichten/index.html",
   "nachbauprojekte/index.html",
   "shop/index.html",

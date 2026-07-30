@@ -1,6 +1,6 @@
 const { DEVELOPMENT_PROJECT_TEMPLATE_MODELS } = require("./development-project-template-models");
 const { templateArchitecturePlantUml } = require("./development-project-template-views");
-const { selectedGamesHeader, templateFirmwareSources } = require("./development-project-template-sources");
+const { mergeSelectedGamesHeader, selectedGamesHeader, templateFirmwareSources } = require("./development-project-template-sources");
 
 function developmentProjectTemplate(templateId) {
   return DEVELOPMENT_PROJECT_TEMPLATE_MODELS[String(templateId || "empty")]
@@ -48,5 +48,6 @@ module.exports = {
   templateBuildConfig,
   templateFirmwareSources,
   templateHardwareProfileId,
+  mergeSelectedGamesHeader,
   selectedGamesHeader,
 };

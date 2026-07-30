@@ -10,11 +10,19 @@ const client = fs.readFileSync(path.join(__dirname, "public/desktop-app.js"), "u
 const desktopMain = fs.readFileSync(path.join(__dirname, "desktop-main.js"), "utf8");
 const desktopPreload = fs.readFileSync(path.join(__dirname, "desktop-preload.js"), "utf8");
 
-test("monitor exposes every managed platform service", () => {
+test("monitor exposes every backend service and keeps optional tools out of bulk start", () => {
   assert.equal(control.services.find((item) => item.id === "identity-server").port, 4300);
   assert.equal(control.services.find((item) => item.id === "admin-tool").port, 4600);
   assert.equal(control.services.find((item) => item.id === "community-platform").port, 5200);
-  assert.equal(control.services.length, 10);
+  assert.equal(control.services.find((item) => item.id === "telemetry-server").port, 5600);
+  assert.equal(control.services.find((item) => item.id === "public-demo-server").port, 4920);
+  assert.equal(control.services.find((item) => item.id === "community-ai-assistant").port, 5300);
+  assert.equal(control.services.find((item) => item.id === "persistence-server").port, 5400);
+  assert.equal(control.services.find((item) => item.id === "provisioning-tool").port, 4500);
+  assert.equal(control.services.find((item) => item.id === "recovery-tool").port, 5100);
+  assert.equal(control.services.find((item) => item.id === "admin-access-server").port, 4610);
+  assert.equal(control.services.length, 17);
+  assert.equal(control.services.filter((item) => item.autoStart).length, 10);
 });
 
 test("desktop monitor reports Community SQLite counts without reading content", () => {
@@ -244,14 +252,15 @@ test("monitor shows all VPS protection rules with status and recommended action"
 
 test("all local services start in order and retain individual failures", async () => {
   const calls = [];
+  const autoStartServices = control.services.filter((service) => service.autoStart);
   const result = await control.startAllServices({ startService: async (id) => {
     calls.push(id);
     if (id === "hardware-shop") throw new Error("Start fehlgeschlagen");
     return { id, healthy:true };
   }});
-  assert.deepEqual(calls, control.services.map((service) => service.id));
-  assert.equal(result.items.length, control.services.length);
-  assert.equal(result.healthy, control.services.length - 1);
+  assert.deepEqual(calls, autoStartServices.map((service) => service.id));
+  assert.equal(result.items.length, autoStartServices.length);
+  assert.equal(result.healthy, autoStartServices.length - 1);
   assert.equal(result.failed, 1);
   assert.equal(result.items.find((item) => item.id === "hardware-shop").error, "Start fehlgeschlagen");
   assert.match(desktopPreload, /processes:start-all/);

@@ -172,6 +172,25 @@ function selectedGamesHeader(selectedGameIds) {
   ].join("\n");
 }
 
+function mergeSelectedGamesHeader(selectedGameIds, existingContent = "") {
+  const builtInMacros = new Set(["nibbles", "snake", "frogger", "tic_tac_toe", "pong", "breakout", "memory"]
+    .map((id) => `GNX_GAME_${id.toUpperCase()}_ENABLED`));
+  const customDefinitions = [...String(existingContent).matchAll(/^#define\s+(GNX_GAME_[A-Z][A-Z0-9_]{0,48}_ENABLED)\s+([01])\s*$/gm)]
+    .map((match) => ({ macro: match[1], enabled: match[2] }))
+    .filter((definition) => !builtInMacros.has(definition.macro))
+    .filter((definition, index, items) => items.findIndex((item) => item.macro === definition.macro) === index)
+    .slice(0, 24);
+  const builtIns = selectedGamesHeader(selectedGameIds).trimEnd();
+  if (!customDefinitions.length) return `${builtIns}\n`;
+  return [
+    builtIns,
+    "",
+    "// Benutzerdefinierte Spiele werden vom bestaetigten IDE-KI-Workflow gepflegt.",
+    ...customDefinitions.map((definition) => `#define ${definition.macro} ${definition.enabled}`),
+    "",
+  ].join("\n");
+}
+
 function source(path, content) {
   return { path, role: "user_code", content_type: "text/x-c++src", content };
 }
@@ -180,4 +199,4 @@ function header(path, content) {
   return { path, role: "user_code", content_type: "text/x-c++hdr", content };
 }
 
-module.exports = { selectedGamesHeader, templateFirmwareSources };
+module.exports = { mergeSelectedGamesHeader, selectedGamesHeader, templateFirmwareSources };

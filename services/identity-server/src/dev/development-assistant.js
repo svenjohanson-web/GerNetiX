@@ -1,6 +1,18 @@
 const PROVIDER_TIMEOUT_MS = 180000;
 const CODE_EXPLORER_FILE_CONTEXT_CHARS = 24000;
 
+function isTouchscreenGameCollectionProject(project) {
+  const manifest = project?.view_manifest || project?.viewManifest || {};
+  return manifest.template_id === "touchscreen_game_collection"
+    || manifest.templateId === "touchscreen_game_collection";
+}
+
+function isAllowedNewCodeExplorerPath(project, pathValue) {
+  if (!isTouchscreenGameCollectionProject(project)) return false;
+  const normalized = String(pathValue || "").replaceAll("\\", "/");
+  return /^Komponenten\/IoT-Device 1\/src\/games\/[a-z][a-z0-9_]{0,48}\.h$/.test(normalized);
+}
+
 function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalogJson, interfaceTelemetry, llmConfigStore, projectServerJson, projectServerUserId, readJsonBody, requireProjectAccess, sendJson }) {
   const responseFileContext = new Map();
   async function handleChat(req, res, session) {
@@ -93,7 +105,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       const context = codeExplorerMode ? { messages: [], sources: [] } : await architectureContext(session, activeConfig, projectId);
       const codeContext = codeExplorerMode ? normalizeCodeContext(body.codeContext) : null;
       const messages = [
-        ...(!previousResponseId || !codeExplorerMode ? [{ role: "system", content: codeExplorerMode ? await codeExplorerSystemPrompt(session, codeContext) : await systemPrompt(session, requestProfile) }] : []),
+        ...(!previousResponseId || !codeExplorerMode ? [{ role: "system", content: codeExplorerMode ? await codeExplorerSystemPrompt(session, codeContext, project) : await systemPrompt(session, requestProfile) }] : []),
         ...(functionMode ? [{ role: "system", content: functionClarificationPrompt(body.architectureDiagram) }] : []),
         ...(effectChainMode ? [{ role: "system", content: effectChainPrompt(body.architectureDiagram) }] : []),
         ...(body.homeAutomationConfiguration || body.home_automation_configuration ? [{ role: "system", content: homeAutomationConfigurationPrompt(body.homeAutomationConfiguration || body.home_automation_configuration) }] : []),
@@ -126,7 +138,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       if (!rawAssistantContent) throw new Error("Der konfigurierte KI-Provider hat keine Antwort geliefert.");
       const latestUserRequest = [...userMessages].reverse().find((message) => message.role === "user")?.content || "";
       const effectiveCodeContext = response.toolFiles?.length ? { ...codeContext, files: response.toolFiles } : codeContext;
-      const codeResult = codeExplorerMode ? parseCodeExplorerResult(rawAssistantContent, effectiveCodeContext, latestUserRequest) : { content: rawAssistantContent, fileEdits: [] };
+      const codeResult = codeExplorerMode ? parseCodeExplorerResult(rawAssistantContent, effectiveCodeContext, latestUserRequest, project) : { content: rawAssistantContent, fileEdits: [] };
       const assistantContent = codeResult.content;
       sendJson(res, 200, {
         config: config({ contextSources: context.sources, requestProfile }),
@@ -268,8 +280,9 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     ].join("\n");
   }
 
-  async function codeExplorerSystemPrompt(session, rawContext = {}) {
+  async function codeExplorerSystemPrompt(session, rawContext = {}, project = null) {
     const context = rawContext.files ? rawContext : normalizeCodeContext(rawContext);
+    const touchscreenGameProject = isTouchscreenGameCollectionProject(project);
     return [
       await promptFoundation("general_chat"),
       `Aktueller Nutzer: ${projectServerUserId(session)}.`,
@@ -278,10 +291,13 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       context.editTargetPath ? `Verbindliches Aenderungsziel: ${context.editTargetPath}. Andere Dateien duerfen fuer diese Aufgabe nur gelesen, nicht bearbeitet werden.` : "",
       context.focusLines.length ? `Fokuszeilen: ${context.focusLines.join(", ")}` : "",
       context.questions.length ? `Leitfragen des Schritts: ${context.questions.join(" | ")}` : "",
-      "Bei Aenderungen: nutze find_and_read_project_sources; bearbeite nur einen dadurch gelesenen Pfad.",
+      "Bei Aenderungen: nutze find_and_read_project_sources; bearbeite nur dadurch gelesene Pfade.",
+      touchscreenGameProject
+        ? "Dieses Projekt ist eine Touchscreen-Spielesammlung. Bei einem ausdruecklichen Auftrag fuer ein neues Spiel darfst du zusaetzlich genau einen neuen Header unter Komponenten/IoT-Device 1/src/games/<spiel_id>.h vorschlagen. Verwende eine kleingeschriebene stabile spiel_id aus Buchstaben, Ziffern und Unterstrichen. Lies und aktualisiere zugleich game/game_catalog.h und config/selected_games.h, damit das Spiel registriert und aktiviert ist. Aendere keine Basissoftware und keine Boardadapter."
+        : "",
       "Waehle source_kind=architecture fuer Komponenten, Boards, Module, Beziehungen oder Diagramme; source_kind=code nur fuer ausdrueckliche Implementierungs-, Funktions-, Klassen- oder Quellcodeauftraege.",
       "Kurze Folgenachrichten verfeinern die offene Aufgabe. Fuer Architektur genuegen Typ, Name und bekannte Eigenschaften; fehlende GPIO-/Schaltungsdetails bleiben offen.",
-      "Aenderungsantwort: ein kurzer Satz plus exakt <gernetix-file-edits>[{\"path\":\"pfad\",\"content\":\"vollstaendiger Inhalt\"}]</gernetix-file-edits>. Kein doppelter Markdown-Code. Ohne Aenderungswunsch kein Edit-Block.",
+      "Aenderungsantwort: ein kurzer Satz plus exakt <gernetix-file-edits>[{\"path\":\"pfad\",\"content\":\"vollstaendiger Inhalt\"}]</gernetix-file-edits>. Jede geaenderte oder erlaubte neue Datei braucht einen Eintrag mit ihrem vollstaendigen Inhalt. Kein doppelter Markdown-Code. Ohne Aenderungswunsch kein Edit-Block.",
     ].filter(Boolean).join("\n");
   }
 
@@ -309,7 +325,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     };
   }
 
-  function parseCodeExplorerResult(content, context, latestUserRequest = "") {
+  function parseCodeExplorerResult(content, context, latestUserRequest = "", project = null) {
     const marker = /<gernetix-file-edits>([\s\S]*?)<\/gernetix-file-edits>/i;
     const rawContent = String(content || "");
     const match = rawContent.match(marker);
@@ -323,11 +339,22 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
     } catch {
       parsed = [];
     }
-    const fileEdits = (Array.isArray(parsed) ? parsed : []).map((edit) => ({
+    const candidates = (Array.isArray(parsed) ? parsed : []).slice(0, 8).map((edit) => ({
       path: String(edit.path || "").trim(),
       content: String(edit.content || "").slice(0, 120000),
-    })).filter((edit) => allowedPaths.has(edit.path) && edit.content)
-      .map((edit) => describeCodeExplorerEdit(edit, context));
+    })).filter((edit) => edit.path && edit.content);
+    const newGameCandidates = candidates.filter((edit) => !allowedPaths.has(edit.path)
+      && isAllowedNewCodeExplorerPath(project, edit.path));
+    if (newGameCandidates.length > 1) {
+      return { content: "Die KI darf pro Auftrag nur eine neue Spieldatei vorschlagen; es wurde nichts verändert.", fileEdits: [] };
+    }
+    const allowNewGameFile = newGameCandidates.length === 1 && isExplicitNewGameRequest(latestUserRequest);
+    const fileEdits = candidates
+      .filter((edit) => allowedPaths.has(edit.path) || (allowNewGameFile && isAllowedNewCodeExplorerPath(project, edit.path)))
+      .map((edit) => describeCodeExplorerEdit({
+        ...edit,
+        isNewFile: !allowedPaths.has(edit.path),
+      }, context));
     const responseText = removeRepeatedEditCode(rawContent.replace(marker, "").trim(), fileEdits);
     if (isExplicitCodeEditRequest(latestUserRequest) && !fileEdits.length) {
       return { content: "Die vorgeschlagene Änderung hat die serverseitige Dateiprüfung nicht bestanden; es wurde nichts verändert.", fileEdits: [] };
@@ -357,6 +384,11 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
 
   function isExplicitCodeEditRequest(value) {
     return /\b(f(?:ue|ü)ge|ein(?:fue|fü)ge|erg(?:ae|ä)nze|(?:ae|ä)ndere|entferne|l(?:oe|ö)sche|implementiere|erstelle|schreibe|ersetze|passe|übernehme)\b/i.test(String(value || ""));
+  }
+
+  function isExplicitNewGameRequest(value) {
+    const text = String(value || "");
+    return isExplicitCodeEditRequest(text) && /\b(spiel|game)\b/i.test(text);
   }
 
   function describeCodeExplorerEdit(edit, context) {
@@ -1764,4 +1796,10 @@ function cleanAssistantMode(value) {
   return ["function_clarification", "effect_chain_derivation", "code_explorer"].includes(mode) ? mode : "architecture_structure";
 }
 
-module.exports = { createDevelopmentAssistant, buildArchitectureDiagram, plantUmlFunctionCoverage, architectureIntentContext };
+module.exports = {
+  createDevelopmentAssistant,
+  buildArchitectureDiagram,
+  plantUmlFunctionCoverage,
+  architectureIntentContext,
+  isAllowedNewCodeExplorerPath,
+};

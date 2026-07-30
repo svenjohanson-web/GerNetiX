@@ -1,0 +1,252 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Baue mehrere einfache Elektromotoren und verstehe Schritt für Schritt, wie aus Strom, Magnetfeld und Kommutierung eine Drehbewegung entsteht." />
+  <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
+  <link rel="shortcut icon" href="/gernetix-gx-browser.ico" type="image/x-icon" />
+  <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
+  <title>Einfache Elektromotoren bauen · GerNetiX</title>
+  <link rel="stylesheet" href="/landing.css?v=20260730-motor-rebuild-1" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="GerNetiX Startseite"><img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" /></a>
+    <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="publicMenu"><span></span><span></span><span></span></button>
+    <nav id="publicMenu" class="site-menu" aria-label="Öffentliche Bereiche" hidden>
+      <a href="/">Startseite</a>
+      <a href="/nachbauprojekte/" aria-current="page">Projekte zum Nachbauen</a>
+      <a href="/flashbox-einrichten/">FlashBox einrichten</a>
+      <a href="/wissen/">Wissensportal</a>
+      <a href="/hilfe/">Hilfe</a>
+      <a href="/support/">Support</a>
+      <a href="/shop/">Webshop</a>
+      <a href="/app/auth/">Anmelden</a>
+    </nav>
+  </header>
+
+  <main class="motor-project-page">
+    <nav class="project-breadcrumb" aria-label="Brotkrümelnavigation">
+      <a href="/nachbauprojekte/">Nachbauprojekte</a><span aria-hidden="true">›</span><span>Einfache Elektromotoren bauen</span>
+    </nav>
+
+    <section class="panel maker-download-hero motor-project-hero" aria-labelledby="motor-project-title">
+      <div>
+        <p class="eyebrow">Nachbauprojekt · Sensorik &amp; Aktorik</p>
+        <h1 id="motor-project-title">Einfache Elektromotoren bauen – vom Magnetfeld zur Drehbewegung.</h1>
+        <p class="lead">Du baust nicht sofort einen schwer verständlichen „fertigen Motor“. Zuerst erzeugst du ein Magnetfeld, dann eine einzelne Kraft und schließlich drei unterschiedliche Motoren. Jeder Aufbau beantwortet genau eine neue Frage.</p>
+        <div class="motor-project-actions">
+          <a class="primary-action" href="#vorbereitung">Mit der Vorbereitung beginnen</a>
+          <a class="secondary-action" href="/wissen/#actuator-current-magnetic-field">Grundlagen im Wissensspeicher lesen</a>
+        </div>
+      </div>
+      <aside class="maker-download-promise">
+        <span>Der Lernweg</span>
+        <strong>Strom → Magnetfeld → Kraft → Drehmoment → Kommutierung</strong>
+        <small>Drei reguläre Motoraufbauten, zwei Grundlagenversuche und ein klar abgegrenzter Sonderversuch.</small>
+      </aside>
+    </section>
+
+    <section class="panel motor-safety" aria-labelledby="motor-safety-title">
+      <div>
+        <p class="eyebrow">Vor dem Bauen</p>
+        <h2 id="motor-safety-title">Nur sichere Kleinspannung und begrenzter Strom.</h2>
+      </div>
+      <ul>
+        <li>Keine Netzspannung und keine offenen Lithium-Akkus verwenden.</li>
+        <li>Am besten ein Labornetzteil mit Strombegrenzung verwenden. Alternativ nur einen passenden Batteriehalter mit Sicherung oder berechnetem Serienwiderstand einsetzen.</li>
+        <li>Vor dem Einschalten den Widerstand jeder Spule messen und den erwarteten Strom berechnen: <strong>I = U / R</strong>.</li>
+        <li>Mit kleiner Spannung und niedriger Stromgrenze beginnen. Sofort abschalten, wenn Draht, Batterie, Magnet, Schalter oder Transistor warm werden.</li>
+        <li>Neodym-Magnete können Finger einklemmen, splittern und Datenträger oder medizinische Geräte beeinflussen. Schutzbrille tragen und Magnete kontrolliert handhaben.</li>
+      </ul>
+    </section>
+
+    <section id="vorbereitung" class="panel motor-project-overview" aria-labelledby="motor-overview-title">
+      <p class="eyebrow">Vorbereitung</p>
+      <h2 id="motor-overview-title">Material und Werkzeug</h2>
+      <div class="motor-parts-grid">
+        <article>
+          <h3>Für alle Aufbauten</h3>
+          <ul>
+            <li>Strombegrenztes Netzteil, 0–5 V</li>
+            <li>Multimeter mit Widerstands- und Strommessung</li>
+            <li>Kupferlackdraht, etwa 0,3–0,5 mm</li>
+            <li>Kleine Permanentmagnete</li>
+            <li>Nichtleitende Grundplatte, Klebeband und Kabel</li>
+            <li>Taster oder Schalter und Schutzbrille</li>
+          </ul>
+        </article>
+        <article>
+          <h3>Für Motor 1 und 2</h3>
+          <ul>
+            <li>Zwei stabile Lagerkontakte, beispielsweise passend gebogene Büroklammern</li>
+            <li>Leichter Rotorträger aus Holz, Karton oder Kunststoff</li>
+            <li>Reedkontakt mit bekanntem Schaltstrom</li>
+            <li>Freilaufdiode passend zum Spulenstrom</li>
+          </ul>
+        </article>
+        <article>
+          <h3>Für Motor 3</h3>
+          <ul>
+            <li>Digitaler Hall-Sensor mit Datenblatt</li>
+            <li>Logic-Level-N-Kanal-MOSFET</li>
+            <li>Gate-Widerstand, Gate-Pulldown und gegebenenfalls Sensor-Pull-up</li>
+            <li>Freilaufdiode und Steckbrett</li>
+          </ul>
+        </article>
+      </div>
+      <p class="maker-project-note">Bauteilwerte hängen von Drahtlänge, Spulenwiderstand, Versorgung und Sensor ab. Deshalb sind Messen und Strombegrenzung Teil des Projekts – keine lästige Zusatzaufgabe.</p>
+    </section>
+
+    <section id="elektromagnet" class="panel motor-build-step" aria-labelledby="electromagnet-title">
+      <div class="motor-build-visual">
+        <img src="/assets/motor-learning-current-magnetic-field.svg" alt="Ein stromdurchflossener Draht und eine Spule mit Eisenkern erzeugen jeweils ein Magnetfeld." />
+      </div>
+      <div class="motor-build-copy">
+        <p class="eyebrow">Grundlagenversuch 1</p>
+        <h2 id="electromagnet-title">Baue zuerst einen Elektromagneten.</h2>
+        <ol>
+          <li>Wickle 80 bis 150 Windungen Kupferlackdraht gleichmäßig auf einen nicht magnetischen Spulenkörper. Lasse beide Enden frei.</li>
+          <li>Entferne den Lack nur an den Anschlussenden. Miss den Spulenwiderstand.</li>
+          <li>Stelle am Netzteil zunächst 1 V und eine Stromgrenze von höchstens 0,2 A ein. Verbinde die Spule nur über einen Taster.</li>
+          <li>Beobachte die Wirkung auf eine Kompassnadel oder leichte Stahlklammer. Schiebe danach einen weichen Eisenkern in die Spule und vergleiche.</li>
+          <li>Vertausche Plus und Minus. Die magnetische Polung kehrt sich um.</li>
+        </ol>
+        <div class="motor-observation"><strong>Du solltest verstehen:</strong> Die Spule ist nur bei Stromfluss magnetisch. Windungen und Eisenkern verstärken das Feld, ersetzen aber keine Strombegrenzung.</div>
+        <a class="knowledge-back-link" href="/wissen/#actuator-current-magnetic-field">Warum das funktioniert: Strom erzeugt ein Magnetfeld →</a>
+      </div>
+    </section>
+
+    <section id="kraftversuch" class="panel motor-build-step reverse" aria-labelledby="force-title">
+      <div class="motor-build-visual">
+        <img src="/assets/motor-learning-current-force.svg" alt="Ein Leiter zwischen Nord- und Südpol wird bei Stromfluss seitlich bewegt." />
+      </div>
+      <div class="motor-build-copy">
+        <p class="eyebrow">Grundlagenversuch 2</p>
+        <h2 id="force-title">Erzeuge erst eine Bewegung ohne Rotor.</h2>
+        <ol>
+          <li>Spanne einen dünnen, beweglichen Leiter locker in den Luftspalt zwischen zwei befestigten Magnetpolen.</li>
+          <li>Schließe ihn über Taster und Strombegrenzung kurzzeitig an.</li>
+          <li>Beobachte die seitliche Auslenkung. Vertausche danach Stromrichtung oder Magnetpole – aber nicht beides gleichzeitig.</li>
+          <li>Notiere, wann sich die Bewegungsrichtung umkehrt.</li>
+        </ol>
+        <div class="motor-observation"><strong>Du solltest verstehen:</strong> Erst wenn die Kraft mit Abstand zu einer Achse angreift, entsteht daraus ein Drehmoment.</div>
+        <a class="knowledge-back-link" href="/wissen/#actuator-current-force">Die Kraftrichtung im Wissensspeicher nachvollziehen →</a>
+      </div>
+    </section>
+
+    <section id="spulenmotor" class="panel motor-build-step" aria-labelledby="coil-motor-title">
+      <div class="motor-build-visual">
+        <img src="/assets/motor-learning-simple-coil.svg" alt="Ein einfacher Spulenmotor mit festen Magneten und einer drehbaren Drahtspule." />
+      </div>
+      <div class="motor-build-copy">
+        <p class="eyebrow">Motor 1 · Mechanische Kommutierung</p>
+        <h2 id="coil-motor-title">Ein frei drehender Spulenmotor.</h2>
+        <ol>
+          <li>Wickle 25 bis 35 Windungen um eine runde Form von ungefähr 25 mm Durchmesser. Fixiere die Wicklung und forme zwei gerade, fluchtende Achsenden.</li>
+          <li>Entferne an beiden Achsenden den Lack nur auf derselben Hälfte. Diese Kontaktflächen schalten den Strom während der günstigen halben Umdrehung ein.</li>
+          <li>Lagere die Achse leichtgängig in zwei Kontakten. Richte zwei feste Magnetpole links und rechts der Spule aufeinander aus.</li>
+          <li>Miss den Rotorwiderstand. Starte mit höchstens 2 V und 0,2 A Stromgrenze.</li>
+          <li>Gib der Spule einen kleinen Startimpuls. Läuft sie nur ruckartig, prüfe Lagerreibung, Kontaktflächen, Magnetabstand und die gleiche Lage der beiden halb abisolierten Flächen.</li>
+        </ol>
+        <div class="motor-observation"><strong>Du solltest verstehen:</strong> Die Magnete stehen fest, die Spule dreht sich. Die halb abisolierten Achsen sind der einfachste Kommutator.</div>
+        <a class="knowledge-back-link" href="/wissen/#actuator-simple-coil-motor">Spulenmotor, Drehmoment und Kommutierung nachlesen →</a>
+      </div>
+    </section>
+
+    <section id="reedmotor" class="panel motor-build-step reverse" aria-labelledby="reed-motor-title">
+      <div class="motor-build-visual">
+        <img src="/assets/motor-learning-reed-switch.svg" alt="Ein Magnetrotor schaltet über einen Reedkontakt eine feststehende Spule ein." />
+      </div>
+      <div class="motor-build-copy">
+        <p class="eyebrow">Motor 2 · Lageabhängiger Impuls</p>
+        <h2 id="reed-motor-title">Ein Reedkontakt-Impulsmotor.</h2>
+        <ol>
+          <li>Baue einen leichtgängigen Rotor mit einem sicher befestigten Magneten und einem gleich schweren Gegengewicht.</li>
+          <li>Montiere die Elektromagnetspule so, dass sie den Magneten kurz vor der nächsten stabilen Stellung anzieht oder abstößt.</li>
+          <li>Positioniere den Reedkontakt so, dass der Rotormagnet ihn vor diesem Punkt schließt und kurz danach wieder freigibt.</li>
+          <li>Schalte eine Freilaufdiode antiparallel zur Spule. Verwende den Reedkontakt direkt nur, wenn gemessener Spulenstrom und Abschaltbelastung sicher innerhalb seines Datenblatts liegen.</li>
+          <li>Beginne mit 1 V und höchstens 0,1 A. Verschiebe den Reedkontakt in kleinen Schritten, bis der Rotor nach einem Anschub weiterläuft.</li>
+        </ol>
+        <div class="motor-observation"><strong>Du solltest verstehen:</strong> Der Rotor trägt den Magneten, der Reedkontakt erkennt seine Lage und die feststehende Spule gibt nur im richtigen Winkel einen Impuls.</div>
+        <a class="knowledge-back-link" href="/wissen/#actuator-reed-motor">Reedkontakt-Motor und Schaltzeitpunkt nachlesen →</a>
+      </div>
+    </section>
+
+    <section id="hallmotor" class="panel motor-build-step" aria-labelledby="hall-motor-title">
+      <div class="motor-build-visual">
+        <img src="/assets/motor-learning-transistor-switch.svg" alt="Ein Hall-Sensor erkennt den Rotor und ein MOSFET schaltet den Strom der feststehenden Spule." />
+      </div>
+      <div class="motor-build-copy">
+        <p class="eyebrow">Motor 3 · Elektronische Kommutierung</p>
+        <h2 id="hall-motor-title">Hall-Sensor und Transistor statt Leistung am Kontakt.</h2>
+        <ol>
+          <li>Übernimm Rotor und Spule aus dem Reedmotor, entferne aber den Reedkontakt aus dem Spulenstromkreis.</li>
+          <li>Verbinde die Spule als Last eines Logic-Level-N-MOSFETs auf der Masseseite. Lege eine Freilaufdiode direkt über die Spule: Kathode an Plus, Anode an die MOSFET-Seite.</li>
+          <li>Verbinde den Hall-Sensor entsprechend seinem Datenblatt. Ein Open-Collector-Ausgang benötigt einen Pull-up; am MOSFET-Gate gehören ein kleiner Serienwiderstand und ein Pulldown.</li>
+          <li>Prüfe zuerst ohne Spulenstrom mit Multimeter oder LED, bei welcher Rotorlage der Sensor schaltet.</li>
+          <li>Aktiviere danach die strombegrenzte Spulenversorgung und verschiebe den Sensor, bis der Impuls vor dem magnetischen Totpunkt endet.</li>
+        </ol>
+        <div class="motor-observation"><strong>Du solltest verstehen:</strong> Der Sensor misst nur die Rotorlage. Der MOSFET trägt den Spulenstrom. Genau diese Trennung ist der Einstieg in elektronische Kommutierung.</div>
+        <a class="knowledge-back-link" href="/wissen/#actuator-transistor-motor">Sensor, Leistungsschalter und BLDC-Grundidee nachlesen →</a>
+      </div>
+    </section>
+
+    <section id="homopolarmotor" class="panel motor-build-step motor-special-step reverse" aria-labelledby="homopolar-title">
+      <div class="motor-build-visual">
+        <img src="/assets/motor-learning-homopolar.svg" alt="Ein strombegrenzter Homopolarmotor mit Magnet, Spannungsquelle und gebogenem Kupferdraht." />
+      </div>
+      <div class="motor-build-copy">
+        <p class="eyebrow">Sonderversuch · Kein regulärer Motoraufbau</p>
+        <h2 id="homopolar-title">Homopolarmotor nur mit echter Strombegrenzung.</h2>
+        <p>Der klassische Batterie-Magnet-Draht-Aufbau besitzt einen sehr kleinen Widerstand und ähnelt elektrisch einem Kurzschluss. Er gehört deshalb nicht in die reguläre Baureihe.</p>
+        <ol>
+          <li>Verwende ausschließlich eine galvanisch getrennte 1,5-V-Versorgung mit einstellbarer Strombegrenzung – keinen Akku.</li>
+          <li>Begrenze zunächst auf höchstens 0,3 A und stelle den Kontakt nur für ein bis zwei Sekunden her.</li>
+          <li>Beobachte die Drehrichtung und vertausche danach entweder Magnetpolung oder Stromrichtung.</li>
+          <li>Wenn keine Bewegung entsteht, erhöhe nicht blind den Strom. Verringere zuerst Reibung und richte den Draht symmetrisch aus.</li>
+        </ol>
+        <div class="motor-observation"><strong>Wichtig:</strong> Dieser Sonderfall zeigt die Leiterkraft sehr direkt, erklärt aber weder einen normalen Bürstenmotor noch einen BLDC-Motor.</div>
+        <a class="knowledge-back-link" href="/wissen/#actuator-homopolar-motor">Homopolarmotor und seine Grenzen nachlesen →</a>
+      </div>
+    </section>
+
+    <section class="panel motor-comparison" aria-labelledby="comparison-title">
+      <p class="eyebrow">Am Ende vergleichen</p>
+      <h2 id="comparison-title">Was wurde von Aufbau zu Aufbau ergänzt?</h2>
+      <div class="motor-comparison-table-wrap">
+        <table>
+          <thead><tr><th>Aufbau</th><th>Was dreht sich?</th><th>Wie wird geschaltet?</th><th>Was lernst du?</th></tr></thead>
+          <tbody>
+            <tr><td>Spulenmotor</td><td>stromdurchflossene Spule</td><td>halb abisolierte Achskontakte</td><td>Kraftpaar, Drehmoment, mechanische Kommutierung</td></tr>
+            <tr><td>Reedmotor</td><td>Permanentmagnet-Rotor</td><td>magnetisch betätigter Reedkontakt</td><td>Rotorlage und richtiger Einschaltwinkel</td></tr>
+            <tr><td>Hall-MOSFET-Motor</td><td>Permanentmagnet-Rotor</td><td>Sensor und elektronischer Leistungsschalter</td><td>Trennung von Messen, Entscheiden und Schalten</td></tr>
+            <tr><td>Homopolarmotor</td><td>Kontaktbügel oder Leiter</td><td>keine Kommutierung</td><td>Sonderfall der Kraft auf einen Leiter</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel product-cta maker-download-cta">
+      <div>
+        <p class="eyebrow">Weiter verstehen</p>
+        <h2>Vom selbstgebauten Experiment zum realen Motor.</h2>
+        <p>Im Wissensspeicher folgen Bürstenmotor, Synchron- und Asynchronmaschine, BLDC sowie sichere Motoransteuerung.</p>
+      </div>
+      <a class="primary-action" href="/wissen/#actuator-motor-theory">Motorfamilien im Wissensspeicher →</a>
+    </section>
+  </main>
+
+  <footer>
+    <span>&copy; 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
+    <nav class="site-footer-links" aria-label="Weiterführende Informationen">
+      <a href="/">Startseite</a>
+      <a href="/nachbauprojekte/">Projekte zum Nachbauen</a>
+      <a href="/wissen/">Wissensportal</a>
+      <a href="/hilfe/">Hilfe</a>
+    </nav>
+  </footer>
+  <script src="/landing.js?v=20260726-i18n-2"></script>
+</body>
+</html>

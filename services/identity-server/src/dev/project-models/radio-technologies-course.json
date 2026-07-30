@@ -1,0 +1,215 @@
+{
+  "slug": "radio-technologies",
+  "project": {
+    "slug": "radio-technologies",
+    "title": "Funktechnologien verstehen",
+    "area": "Funk und drahtlose Kommunikation",
+    "summary": "Vergleiche Bluetooth, WLAN, LoRa, Zigbee, NFC und RC-Funksysteme und lerne, Reichweite, Datenrate, Energiebedarf, Netzstruktur und Störbarkeit richtig einzuordnen.",
+    "learning_category": "distributed_system",
+    "tags": ["runtime:browser", "topic:radio", "level:beginner"],
+    "steps": [
+      {
+        "title": "Funksysteme grundsätzlich verstehen",
+        "text": "Ordne Sender, Empfänger, Frequenz, Kanal, Antenne, Modulation und Protokoll als Teile einer Funkverbindung ein.",
+        "insight": "Funk ist kein unsichtbares Kabel, sondern die gemeinsame Nutzung eines physikalischen Mediums."
+      },
+      {
+        "title": "Störungen und Sicherheitsgrenzen erkennen",
+        "text": "Unterscheide unbeabsichtigte Störungen, Abschattung, Überlagerung und absichtliches Jamming.",
+        "insight": "Verschlüsselung schützt Inhalte, verhindert aber nicht, dass ein Funksignal blockiert wird."
+      },
+      {
+        "title": "Bluetooth einordnen",
+        "text": "Bewerte Bluetooth Classic und Bluetooth Low Energy für kurze Reichweiten, mobile Geräte und sparsame Sensoren.",
+        "insight": "Bluetooth ist stark bei direkter Gerätenähe, aber kein allgemeiner Ersatz für ein Netzwerk."
+      },
+      {
+        "title": "WLAN einordnen",
+        "text": "Bewerte WLAN für hohe Datenraten, IP-Netze und direkten Internetzugang bei höherem Energiebedarf.",
+        "insight": "WLAN bietet viel Durchsatz, benötigt aber eine passende Infrastruktur und sorgfältige Funkplanung."
+      },
+      {
+        "title": "LoRa einordnen",
+        "text": "Bewerte LoRa und LoRaWAN für kleine Datenmengen über große Entfernungen.",
+        "insight": "Große Reichweite wird mit geringer Datenrate, längeren Sendezeiten und regulatorischen Grenzen bezahlt."
+      },
+      {
+        "title": "Zigbee einordnen",
+        "text": "Bewerte Zigbee für sparsame Sensor-Aktor-Netze mit Koordinator und optionalem Mesh.",
+        "insight": "Ein Mesh kann die Flächenabdeckung verbessern, erhöht aber Planung und Diagnoseaufwand."
+      },
+      {
+        "title": "NFC einordnen",
+        "text": "Bewerte NFC für bewusste Interaktionen auf wenigen Zentimetern, Identifikation und den Austausch kleiner Datenmengen.",
+        "insight": "Die sehr kurze Reichweite ist oft eine gewünschte Bedien- und Sicherheitsgrenze."
+      },
+      {
+        "title": "RC-Modellbau und Auswahl",
+        "text": "Untersuche moderne 2,4-GHz-Fernsteuerungen, Telemetrie, Failsafe und Speziallösungen und wähle anschließend eine Technik anhand der Anwendung.",
+        "insight": "Im RC-Modellbau gehören Funkstrecke, Reaktionszeit, Antenneneinbau, Failsafe und sicherer Zustand immer zusammen."
+      }
+    ],
+    "hardware_profile_id": "runtime.browser_text",
+    "default_device_id": "",
+    "required_capability_ids": [],
+    "access_model": "free",
+    "source_files": [
+      { "path": "funkvergleich.md", "role": "learning_guide" }
+    ]
+  },
+  "view_manifest": {
+    "schema_version": 1,
+    "title": "Funktechnologien verstehen",
+    "summary": "Von den gemeinsamen Funkgrundlagen bis zur begründeten Auswahl für IoT, Smartphone, Hausautomation und RC-Modellbau.",
+    "primary_source_path": "funkvergleich.md",
+    "hide_source_editor": true,
+    "mode": "guided_ide",
+    "views": [
+      {
+        "id": "radio-foundations",
+        "type": "story_slide",
+        "title": "Funk ist ein gemeinsam genutztes Medium",
+        "summary": "Ein Sender prägt Information auf elektromagnetische Wellen; ein Empfänger versucht sie trotz Dämpfung und anderer Signale wiederzugewinnen.",
+        "completion": { "type": "acknowledge", "label": "Grundprinzip verstanden" },
+        "payload": {
+          "model_lines": [
+            { "label": "Frequenz und Kanal", "text": "Legen den genutzten Bereich des Spektrums fest. Mehrere Systeme können sich denselben Bereich teilen." },
+            { "label": "Antenne und Umgebung", "text": "Ausrichtung, Gehäuse, Menschen, Mauern, Metall und Wasser beeinflussen Reichweite und Zuverlässigkeit." },
+            { "label": "Modulation und Protokoll", "text": "Die Modulation transportiert Bits; das Protokoll regelt Adressen, Zeitabläufe, Wiederholungen und Sicherheit." },
+            { "label": "Zielkonflikt", "text": "Reichweite, Datenrate, Energiebedarf, Latenz und Robustheit lassen sich nicht gleichzeitig maximieren." }
+          ]
+        }
+      },
+      {
+        "id": "radio-interference-and-safety",
+        "type": "story_slide",
+        "title": "Jede Funkübertragung kann gestört werden",
+        "summary": "Störungen können zufällig entstehen oder absichtlich erzeugt werden. Eine Funkstrecke allein darf deshalb kein einzelner gefährlicher Ausfallpunkt sein.",
+        "completion": { "type": "acknowledge", "label": "Sicherheitsgrenze verstanden" },
+        "payload": {
+          "note": "Verschlüsselung und Authentifizierung schützen Vertraulichkeit und Echtheit, aber nicht die physikalische Verfügbarkeit des Funkkanals.",
+          "model_lines": [
+            { "label": "Unbeabsichtigt", "text": "Andere Sender, überfüllte Kanäle, defekte Geräte, Abschattung oder Mehrwegeausbreitung verschlechtern die Verbindung." },
+            { "label": "Absichtlich", "text": "Jamming überlagert oder belegt den Funkkanal. Frequenzwechsel und Redundanz erhöhen den Aufwand eines Angriffs, garantieren aber keine Verfügbarkeit." },
+            { "label": "Sicherer Entwurf", "text": "Ein System erkennt Verbindungsverlust, wechselt in einen sicheren Zustand und nutzt bei hohem Risiko unabhängige Rückfallebenen." },
+            { "label": "Zivile Luftfahrt", "text": "Ein ziviles Passagierflugzeug darf nicht ausschließlich von einer externen Funksteuerung abhängen. Besatzung, Bordautonomie, zertifizierte Systeme und Redundanz erhalten Handlungsfähigkeit auch bei gestörter Außenverbindung; die Besatzung an Bord hat darüber hinaus rechtliche und operative Gründe." }
+          ]
+        }
+      },
+      {
+        "id": "bluetooth",
+        "type": "explanation",
+        "title": "Bluetooth",
+        "summary": "Bluetooth verbindet Geräte im persönlichen Nahbereich; Bluetooth Low Energy ist besonders für sparsame Sensoren, Beacons und Smartphone-Zubehör ausgelegt.",
+        "completion": { "type": "acknowledge", "label": "Bluetooth eingeordnet" },
+        "payload": {
+          "cards": [
+            { "title": "Eigenschaften", "text": "2,4-GHz-Band, direkte Verbindungen und bei BLE auch Broadcast; Reichweite und Datenrate hängen stark von Klasse, PHY, Sendeleistung und Umgebung ab." },
+            { "title": "Vorteile", "text": "Breite Smartphone-Unterstützung, geringer Energiebedarf mit BLE, standardisierte Profile und unkomplizierte Gerätenähe." },
+            { "title": "Nachteile", "text": "Geteiltes 2,4-GHz-Band, begrenzter Durchsatz gegenüber WLAN, Pairing- und Kompatibilitätsdetails sowie keine garantierte Verfügbarkeit." },
+            { "title": "Typische Nutzung", "text": "Kopfhörer, Tastaturen, Wearables, Konfiguration eines Geräts, Sensoren und kurze lokale Datenübertragung." }
+          ]
+        }
+      },
+      {
+        "id": "wifi",
+        "type": "explanation",
+        "title": "WLAN",
+        "summary": "WLAN bindet Geräte mit hoher Datenrate direkt in ein lokales IP-Netz ein und kann darüber Internetdienste erreichen.",
+        "completion": { "type": "acknowledge", "label": "WLAN eingeordnet" },
+        "payload": {
+          "cards": [
+            { "title": "Eigenschaften", "text": "Infrastruktur meist mit Access Point; je nach Standard verschiedene Frequenzbänder, Kanalbreiten, Datenraten und Reichweiten." },
+            { "title": "Vorteile", "text": "Hoher Durchsatz, direkte IP-Kommunikation, vorhandene Heim- und Firmennetze sowie gute Eignung für Weboberflächen und Updates." },
+            { "title": "Nachteile", "text": "Relativ hoher Energiebedarf, Kanalüberlastung und Abschattung; Einrichtung, Zugangsdaten und sichere Netzkonfiguration sind notwendig." },
+            { "title": "Typische Nutzung", "text": "Computer, Kameras, lokale Webserver, größere Datenmengen, OTA-Updates und netzversorgte IoT-Geräte." }
+          ]
+        }
+      },
+      {
+        "id": "lora",
+        "type": "explanation",
+        "title": "LoRa und LoRaWAN",
+        "summary": "LoRa ist eine robuste Funkmodulation für kleine Datenmengen über große Entfernungen; LoRaWAN ergänzt darauf ein Netzwerkprotokoll mit Gateways und Servern.",
+        "completion": { "type": "acknowledge", "label": "LoRa eingeordnet" },
+        "payload": {
+          "cards": [
+            { "title": "Eigenschaften", "text": "Sub-GHz-Bänder, kleine Nutzdaten, geringe Datenrate und je nach Einstellung lange Sendezeit; regionale Frequenz- und Sendezeitregeln beachten." },
+            { "title": "Vorteile", "text": "Große Reichweite bei niedriger mittlerer Leistungsaufnahme, gute Gebäudedurchdringung und einfache Sensor-Telegramme." },
+            { "title": "Nachteile", "text": "Nicht für Audio, Video oder häufige große Updates; höhere Latenz, begrenzte Kanalkapazität und oft asymmetrischer Downlink." },
+            { "title": "Typische Nutzung", "text": "Entfernte Zähler, Umweltmessung, Landwirtschaft und selten sendende Sensoren mit Gateway oder privater Punkt-zu-Punkt-Verbindung." }
+          ]
+        }
+      },
+      {
+        "id": "zigbee",
+        "type": "explanation",
+        "title": "Zigbee",
+        "summary": "Zigbee ist ein stromsparendes Funkprotokoll für Sensoren und Aktoren, häufig mit Koordinator, Routern und schlafenden Endgeräten.",
+        "completion": { "type": "acknowledge", "label": "Zigbee eingeordnet" },
+        "payload": {
+          "cards": [
+            { "title": "Eigenschaften", "text": "Auf IEEE 802.15.4 aufgebaut; Stern- und Mesh-Strukturen, kleine Datenmengen und Rollen für Koordinator, Router und Endgeräte." },
+            { "title": "Vorteile", "text": "Sparsame Endgeräte, viele Smart-Home-Geräte, Mesh-Erweiterung über netzversorgte Router und lokale Netze ohne Cloud-Zwang." },
+            { "title": "Nachteile", "text": "Koordinator oder Bridge erforderlich, Herstellerbesonderheiten, Mesh-Diagnose und mögliche Überschneidung mit WLAN im 2,4-GHz-Band." },
+            { "title": "Typische Nutzung", "text": "Lampen, Taster, Temperatur- und Kontaktsensoren sowie verteilte Hausautomatisierung." }
+          ]
+        }
+      },
+      {
+        "id": "nfc",
+        "type": "explanation",
+        "title": "NFC",
+        "summary": "NFC arbeitet über magnetische Nahfeldkopplung bei 13,56 MHz und ist für eine bewusste Interaktion über wenige Zentimeter gedacht.",
+        "completion": { "type": "acknowledge", "label": "NFC eingeordnet" },
+        "payload": {
+          "cards": [
+            { "title": "Eigenschaften", "text": "Sehr kurze Reichweite, kleine Datenmengen und je nach Betriebsart aktive Geräte oder passive, vom Lesefeld versorgte Tags." },
+            { "title": "Vorteile", "text": "Bewusste Nähe als Bediengeste, preiswerte passive Tags, kein Akku im Tag und breite Smartphone-Unterstützung." },
+            { "title": "Nachteile", "text": "Keine Fernkommunikation, Ausrichtung und Metall beeinflussen die Kopplung; Nähe allein ersetzt keine kryptografische Berechtigungsprüfung." },
+            { "title": "Typische Nutzung", "text": "Zugangskarten, Bezahlen, Geräte-Pairing, Produktinformationen, Inventarkennzeichnung und Konfigurationsübergabe." }
+          ]
+        }
+      },
+      {
+        "id": "rc-radio",
+        "type": "explanation",
+        "title": "Speziallösungen im RC-Modellbau",
+        "summary": "RC-Funksysteme priorisieren kurze und gleichmäßige Reaktionszeiten, robuste Steuerkanäle, Telemetrie und definiertes Verhalten bei Verbindungsverlust.",
+        "completion": { "type": "acknowledge", "label": "RC-Funk eingeordnet" },
+        "payload": {
+          "cards": [
+            { "title": "Eigenschaften", "text": "Heute meist digitale 2,4-GHz-Systeme mit herstellerspezifischem Protokoll, Frequenzwechsel oder Spreizverfahren, gebundenem Empfänger und optionaler Telemetrie; für Sonderreichweiten existieren regionale Sub-GHz-Lösungen." },
+            { "title": "Vorteile", "text": "Geringe Latenz, viele Steuerkanäle, störungsärmerer Parallelbetrieb als bei alten festen Kanälen und Rückmeldung von Akku oder Empfang." },
+            { "title": "Nachteile", "text": "Herstellerbindung, Antenneneinbau und Abschattung sind kritisch; legale Frequenzen, Sendeleistung und zulässige Nutzung unterscheiden sich regional." },
+            { "title": "Sicherheitsprinzip", "text": "Reichweitentest, korrekt gesetzter Failsafe, Empfänger- oder Antennendiversität bei Bedarf und ein ungefährlicher Zustand bei Signalverlust. Funk bleibt trotzdem störbar." }
+          ]
+        }
+      },
+      {
+        "id": "radio-selection",
+        "type": "story_slide",
+        "title": "Die Funktechnik aus der Aufgabe ableiten",
+        "summary": "Die beste Funktechnik ist diejenige, deren Grenzen zur Anwendung passen und deren Ausfall beherrscht wird.",
+        "completion": { "type": "acknowledge", "label": "Auswahl begründet" },
+        "payload": {
+          "model_lines": [
+            { "label": "Nähe und Smartphone", "text": "Bluetooth oder NFC prüfen." },
+            { "label": "Hohe Datenrate und IP", "text": "WLAN prüfen." },
+            { "label": "Viele sparsame Hausgeräte", "text": "Zigbee prüfen." },
+            { "label": "Weite Strecke, wenige Daten", "text": "LoRa oder LoRaWAN prüfen." },
+            { "label": "Direkte Modellsteuerung", "text": "Ein zugelassenes RC-System mit passendem Failsafe und sorgfältigem Reichweitentest verwenden." },
+            { "label": "Sicherheitskritisch", "text": "Keinen gefährlichen Vorgang ausschließlich von einer Funkstrecke abhängig machen; sicheren Zustand und unabhängige Rückfallebene planen." }
+          ]
+        }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "funkvergleich.md",
+      "role": "learning_guide",
+      "content": "# Funktechnologien verstehen\n\nFunk ist ein gemeinsam genutztes physikalisches Medium. Reichweite, Datenrate, Energiebedarf, Latenz und Robustheit stehen in Zielkonflikten.\n\n## Vergleichsfragen\n\n- Wie weit müssen die Geräte voneinander entfernt sein?\n- Wie viele Daten und welche Reaktionszeit werden benötigt?\n- Wie lange muss ein Gerät mit Akku oder Batterie arbeiten?\n- Gibt es einen Access Point, Koordinator oder Gateway?\n- Welche regionalen Frequenz- und Sendevorschriften gelten?\n- Was geschieht bei Störung oder vollständigem Verbindungsverlust?\n\n## Sicherheitsregel\n\nJede Funkverbindung kann unbeabsichtigt oder absichtlich gestört werden. Verschlüsselung schützt Inhalte, garantiert aber keinen freien Funkkanal. Eine sicherheitskritische Funktion benötigt daher einen sicheren Zustand und – abhängig vom Risiko – unabhängige Rückfallebenen.\n"
+    }
+  ]
+}

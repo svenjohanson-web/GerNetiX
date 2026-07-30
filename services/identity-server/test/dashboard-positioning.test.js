@@ -21,6 +21,22 @@ test("uses the existing GerNetiX design tokens for the dashboard", () => {
   assert.doesNotMatch(css, /\.homepage-copy-box/);
 });
 
+test("groups dashboard destinations into scannable categories with at most three cards per row", () => {
+  assert.match(html, /Entwickeln &amp; verwalten[\s\S]*\/app\/development-platform\/[\s\S]*\/app\/device-management\//);
+  assert.match(html, /Lernen &amp; verstehen[\s\S]*\/app\/learn\/[\s\S]*\/wissen\/[\s\S]*\/app\/quiz\//);
+  assert.doesNotMatch(html, /id="workspaceCommunityTitle"/);
+  assert.match(css, /\.workspace-categories \{ display: grid; gap: 22px; \}/);
+  assert.match(css, /\.workspace-grid \{ grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+});
+
+test("places an extensible news category below the workspace categories", () => {
+  assert.match(html, /class="workspace-categories"[\s\S]*id="dashboardNews"/);
+  assert.match(html, /Was gibt es Neues\?/);
+  assert.match(html, /Templates, Projekte, Nachbauprojekte, Hardware, Wissensinhalte und Beiträge aus der Community/);
+  assert.match(html, /class="dashboard-news-community-link"[\s\S]*data-open-route="\/app\/community\/"/);
+  assert.match(css, /\.dashboard-news-list \{ display: grid; grid-template-columns: repeat\(3, minmax\(0, 1fr\)\);/);
+});
+
 test("never serves the dashboard route without an authenticated session", () => {
   assert.match(server, /const dashboardRoute = url\.pathname === "\/app\/dashboard" \|\| url\.pathname\.startsWith\("\/app\/dashboard\/"\);/);
   assert.match(server, /if \(dashboardRoute\) \{[\s\S]*?if \(!await readSession\(req\)\) \{[\s\S]*?redirect\(res, authRoute\(url\.pathname \+ url\.search\)\);[\s\S]*?serveStatic\(res, appDir, "\/index\.html"\);/);

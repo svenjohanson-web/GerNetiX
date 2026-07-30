@@ -32,7 +32,7 @@ const {
   templateBuildConfig,
   templateFirmwareSources,
   templateHardwareProfileId,
-  selectedGamesHeader,
+  mergeSelectedGamesHeader,
 } = require("./dev/development-project-templates");
 const { createDevHardwareUtils } = require("./dev/hardware-utils");
 const { createLlmConfigStore } = require("../../shared/llm-config");
@@ -64,6 +64,7 @@ const { createProgrammingFundamentalsCourseModel } = require("./dev/project-mode
 const { createUmlFundamentalsCourseModel } = require("./dev/project-models/uml-fundamentals-course");
 const { createYamlFundamentalsCourseModel } = require("./dev/project-models/yaml-fundamentals-course");
 const { createStorageLearningStoryCourseModel } = require("./dev/project-models/storage-learning-story-course");
+const { createRadioTechnologiesCourseModel } = require("./dev/project-models/radio-technologies-course");
 const {
   canReadKnowledgeChapter,
   findKnowledgeChapterRelease,
@@ -242,6 +243,7 @@ const programmingFundamentalsCourseModel = createProgrammingFundamentalsCourseMo
 const umlFundamentalsCourseModel = createUmlFundamentalsCourseModel();
 const yamlFundamentalsCourseModel = createYamlFundamentalsCourseModel();
 const storageLearningStoryCourseModel = createStorageLearningStoryCourseModel();
+const radioTechnologiesCourseModel = createRadioTechnologiesCourseModel();
 const llmConfigStore = createLlmConfigStore({
   configPath: path.join(workspaceRoot, ".runtime", "identity-llm-config.json"),
   stateStore: identityLlmStateStore,
@@ -1526,17 +1528,27 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/entdecken" || url.pathname === "/entdecken/") {
-    serveStatic(res, publicDir, "/downloads/index.html");
+    redirect(res, "/nachbauprojekte/");
     return;
   }
 
   if (url.pathname === "/downloads" || url.pathname === "/downloads/") {
-    redirect(res, "/entdecken/");
+    redirect(res, "/nachbauprojekte/");
     return;
   }
 
   if (url.pathname === "/nachbauprojekte" || url.pathname === "/nachbauprojekte/") {
     serveStatic(res, publicDir, "/nachbauprojekte/index.html");
+    return;
+  }
+
+  if (url.pathname === "/nachbauprojekte/einfache-elektromotoren") {
+    redirect(res, "/nachbauprojekte/einfache-elektromotoren/");
+    return;
+  }
+
+  if (url.pathname === "/nachbauprojekte/einfache-elektromotoren/") {
+    serveStatic(res, publicDir, "/nachbauprojekte/einfache-elektromotoren/index.html");
     return;
   }
 
@@ -2500,13 +2512,17 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
         }] : [],
       };
     }
+    const selectedGamesPath = "Komponenten/IoT-Device 1/src/config/selected_games.h";
+    const existingSelectedGames = await projectServerJson(
+      `/api/projects/${encodeURIComponent(project.project_server_id)}/sources/${encodeURIComponent(selectedGamesPath)}`,
+    ).catch(() => null);
     await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
       method: "PUT",
       body: {
-        path: "Komponenten/IoT-Device 1/src/config/selected_games.h",
+        path: selectedGamesPath,
         role: "user_code",
         content_type: "text/x-c++hdr",
-        content: selectedGamesHeader(gameConfiguration.selected_game_ids),
+        content: mergeSelectedGamesHeader(gameConfiguration.selected_game_ids, existingSelectedGames?.content),
       },
     });
   }
@@ -4070,6 +4086,7 @@ function createUserIdeState() {
     umlFundamentalsCourseModel.createProject(project, step),
     yamlFundamentalsCourseModel.createProject(project, step),
     storageLearningStoryCourseModel.createProject(project, step),
+    radioTechnologiesCourseModel.createProject(project, step),
     project("plant-watering-control", "Pflanzenbewaesserung", "Sensor und Aktor", "Feuchtigkeit messen und eine Pumpe kontrolliert schalten.", [
       step("Nutzen und Risiko", "Die Pflanze soll Wasser bekommen, ohne Ueberschwemmung.", "Automatisierung braucht Grenzen."),
       step("Sensor lesen", "Bodenfeuchte wird zur Eingangsseite der Steuerung.", "Ein Sensor liefert Hinweise, keine fertige Entscheidung."),
@@ -4180,6 +4197,7 @@ function normalizeLearningProjectTags(value) {
     "topic:modeling",
     "topic:programming",
     "topic:radar",
+    "topic:radio",
     "topic:sensors",
     "topic:data",
     "topic:databases",
@@ -4287,6 +4305,12 @@ function projectViewManifest(project, options = {}) {
   if (project.slug === storageLearningStoryCourseModel.slug) {
     return storageLearningStoryCourseModel.createViewManifest(project, {
       lessonId: options.lessonId || "",
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === radioTechnologiesCourseModel.slug) {
+    return radioTechnologiesCourseModel.createViewManifest(project, {
       override,
       primarySourcePath,
     });
@@ -4964,6 +4988,9 @@ function demoProjectSources(project, options = {}) {
   }
   if (project.slug === storageLearningStoryCourseModel.slug) {
     return storageLearningStoryCourseModel.createSources({ lessonId: options.lessonId || "" });
+  }
+  if (project.slug === radioTechnologiesCourseModel.slug) {
+    return radioTechnologiesCourseModel.createSources();
   }
 
   if (project.slug === "arduino-atmel-bare-metal") {

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 540" role="img" aria-labelledby="title desc">
+  <title id="title">Kraft auf einen stromdurchflossenen Leiter</title>
+  <desc id="desc">Zwischen Nord- und Südpol verläuft ein Magnetfeld. Fließt Strom aus der Bildebene heraus, wirkt eine seitliche Kraft auf den Leiter.</desc>
+  <defs>
+    <marker id="arrowBlue" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0L9 3L0 6Z" fill="#2563eb"/></marker>
+    <marker id="arrowGreen" markerWidth="10" markerHeight="10" refX="8" refY="3" orient="auto"><path d="M0 0L9 3L0 6Z" fill="#16a34a"/></marker>
+  </defs>
+  <rect width="960" height="540" rx="24" fill="#f8fafc"/>
+  <rect x="92" y="72" width="776" height="116" rx="18" fill="#dc2626"/>
+  <rect x="92" y="352" width="776" height="116" rx="18" fill="#2563eb"/>
+  <text x="480" y="143" text-anchor="middle" font-family="system-ui,sans-serif" font-size="44" font-weight="800" fill="#fff">N</text>
+  <text x="480" y="423" text-anchor="middle" font-family="system-ui,sans-serif" font-size="44" font-weight="800" fill="#fff">S</text>
+  <g stroke="#2563eb" stroke-width="4" marker-end="url(#arrowBlue)">
+    <line x1="230" y1="205" x2="230" y2="330"/>
+    <line x1="355" y1="205" x2="355" y2="330"/>
+    <line x1="605" y1="205" x2="605" y2="330"/>
+    <line x1="730" y1="205" x2="730" y2="330"/>
+  </g>
+  <text x="755" y="278" font-family="system-ui,sans-serif" font-size="21" fill="#1e40af">Magnetfeld B</text>
+  <circle cx="480" cy="270" r="54" fill="#fff" stroke="#b45309" stroke-width="12"/>
+  <circle cx="480" cy="270" r="13" fill="#b45309"/>
+  <text x="480" y="337" text-anchor="middle" font-family="system-ui,sans-serif" font-size="19" fill="#92400e">Strom kommt aus dem Bild</text>
+  <line x1="486" y1="270" x2="660" y2="270" stroke="#16a34a" stroke-width="12" marker-end="url(#arrowGreen)"/>
+  <text x="573" y="244" text-anchor="middle" font-family="system-ui,sans-serif" font-size="22" font-weight="700" fill="#166534">Kraft F</text>
+  <text x="480" y="510" text-anchor="middle" font-family="system-ui,sans-serif" font-size="21" fill="#334155">Wird die Stromrichtung umgekehrt, zeigt die Kraft in die Gegenrichtung.</text>
+</svg>

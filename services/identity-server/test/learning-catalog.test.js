@@ -105,6 +105,27 @@ test("catalog includes a free browser-based YAML fundamentals project", () => {
   assert.match(server, /"topic:yaml"/);
 });
 
+test("catalog includes the free browser-based radio technologies project", () => {
+  const course = require("../src/dev/project-models/radio-technologies-course.json");
+  const model = require("../src/dev/project-models/radio-technologies-course");
+  assert.equal(course.project.slug, "radio-technologies");
+  assert.equal(course.project.hardware_profile_id, "runtime.browser_text");
+  assert.deepEqual(course.project.required_capability_ids, []);
+  assert.equal(course.project.access_model, "free");
+  assert.ok(course.project.tags.includes("topic:radio"));
+  assert.deepEqual(
+    course.view_manifest.views
+      .filter((view) => ["bluetooth", "wifi", "lora", "zigbee", "nfc", "rc-radio"].includes(view.id))
+      .map((view) => view.id),
+    ["bluetooth", "wifi", "lora", "zigbee", "nfc", "rc-radio"],
+  );
+  assert.match(JSON.stringify(course.view_manifest), /Jede Funkübertragung kann gestört werden/);
+  assert.match(JSON.stringify(course.view_manifest), /ziviles Passagierflugzeug/);
+  assert.equal(typeof model.createRadioTechnologiesCourseModel, "function");
+  assert.match(server, /createRadioTechnologiesCourseModel/);
+  assert.match(server, /radioTechnologiesCourseModel\.createProject/);
+});
+
 test("button-to-smartphone course starts with a simulated button and serial-monitor lab", () => {
   const course = require("../src/dev/project-models/button-to-smartphone-notification-course.json");
   const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");

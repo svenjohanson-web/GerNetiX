@@ -8,7 +8,7 @@ const html = fs.readFileSync(path.join(__dirname, "..", "public", "app", "index.
 const onboarding = fs.readFileSync(path.join(__dirname, "..", "public", "app", "device-onboarding-controller.js"), "utf8");
 
 test("dashboard offers direct access to device management", () => {
-  const dashboard = html.slice(html.indexOf('<section id="dashboardView"'), html.indexOf('<section id="helpView"'));
+  const dashboard = html.slice(html.indexOf('<section id="dashboardView"'), html.indexOf('<section id="informationView"'));
   assert.match(dashboard, /data-open-route="\/app\/device-management\/"/);
   assert.match(dashboard, /Vorhandene Hardware[\s\S]*Boards verwalten/);
 });

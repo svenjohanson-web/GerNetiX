@@ -124,16 +124,23 @@ const GuidedProjectView = (() => {
       return view?.type === "source_analysis" || view?.payload?.artifact?.type === "code";
     }
 
+    function isTouchscreenGameProject(project) {
+      const manifest = project?.viewManifest || project?.view_manifest || {};
+      return manifest.template_id === "touchscreen_game_collection"
+        || manifest.templateId === "touchscreen_game_collection";
+    }
+
     function renderCodeExplorerChat(project, view) {
       if (!isCodeExplorerView(view)) return "";
       const messages = codeChatMessages(project, view);
       const waiting = messages.some((message) => message.pending);
       const hasPremiumAi = Boolean(state.billing?.entitlements?.includes("ai_assistant"));
+      const gameProject = isTouchscreenGameProject(project);
       return `
         <section class="code-explorer-chat">
           <div class="code-explorer-chat-head">
             <p class="eyebrow">KI-Chat</p>
-            <strong>Code gemeinsam verstehen</strong>
+            <strong>${gameProject ? "Spielesammlung per KI erweitern" : "Code gemeinsam verstehen"}</strong>
             ${renderCodeExplorerUsage()}
           </div>
           <p class="code-explorer-chat-section-label">Verlauf</p>
@@ -146,20 +153,20 @@ const GuidedProjectView = (() => {
                   : `<p>${escapeHtml(message.content)}</p>`}
                 ${message.role === "assistant" && !message.pending ? renderCodeExplorerResponseMeta(message.responseMeta) : ""}
                 ${message.fileEdits?.length ? `<div class="code-explorer-edits">
-                  ${message.fileEdits.map((edit, editIndex) => `<div class="code-explorer-edit-actions"><button type="button" data-edit-message="${messages.indexOf(message)}" data-show-code-edit="${editIndex}">Änderung anzeigen</button><button type="button" data-edit-message="${messages.indexOf(message)}" data-apply-code-edit="${editIndex}" ${edit.applied ? "disabled" : ""}>${edit.applied ? "Übernommen" : "Übernehmen"}</button><span>${escapeHtml(edit.path)}</span></div>`).join("")}
+                  ${message.fileEdits.map((edit, editIndex) => `<div class="code-explorer-edit-actions"><button type="button" data-edit-message="${messages.indexOf(message)}" data-show-code-edit="${editIndex}">Änderung anzeigen</button><button type="button" data-edit-message="${messages.indexOf(message)}" data-apply-code-edit="${editIndex}" ${edit.applied ? "disabled" : ""}>${edit.applied ? "Übernommen" : "Übernehmen"}</button><span>${edit.isNewFile ? "Neue Datei · " : ""}${escapeHtml(edit.path)}</span></div>`).join("")}
                   <section class="code-explorer-change-summary" aria-label="Zusammenfassung der Dateiänderungen">
                     <strong>Zusammenfassung</strong>
-                    <ul>${message.fileEdits.map((edit) => `<li><code>${escapeHtml(edit.path)}</code><span>Zeile ${edit.lineStart || 1}${edit.lineEnd && edit.lineEnd !== edit.lineStart ? `–${edit.lineEnd}` : ""}: ${escapeHtml(edit.changeSummary || "Inhalt geaendert")}${edit.applied ? " · übernommen" : " · geplant"}</span></li>`).join("")}</ul>
+                    <ul>${message.fileEdits.map((edit) => `<li><code>${escapeHtml(edit.path)}</code><span>${edit.isNewFile ? "Neue Datei, " : ""}Zeile ${edit.lineStart || 1}${edit.lineEnd && edit.lineEnd !== edit.lineStart ? `–${edit.lineEnd}` : ""}: ${escapeHtml(edit.changeSummary || "Inhalt geaendert")}${edit.applied ? " · übernommen" : " · geplant"}</span></li>`).join("")}</ul>
                   </section>
                 </div>` : ""}
               </article>
-            `).join("") : `<p class="helper-text">Frage die KI zum sichtbaren Code, zu einzelnen Zeilen oder zum Verhalten.</p>`}
+            `).join("") : `<p class="helper-text">${gameProject ? "Beschreibe ein neues Spiel. Die KI liest Katalog und Auswahl, bereitet die neue Spieldatei vor und zeigt jede Änderung vor der Übernahme." : "Frage die KI zum sichtbaren Code, zu einzelnen Zeilen oder zum Verhalten."}</p>`}
           </div>
           <form data-code-explorer-chat>
             <p class="code-explorer-chat-section-label">Eingabe</p>
             <label class="code-explorer-chat-input"><span>Frage zum Code</span>
               <span class="code-explorer-chat-input-box">
-                <textarea rows="3" name="message" placeholder="${hasPremiumAi ? "Was passiert in dieser Funktion?" : "KI-Unterstuetzung ist mit Premium verfuegbar."}" ${hasPremiumAi ? "" : "disabled"}></textarea>
+                <textarea rows="3" name="message" placeholder="${hasPremiumAi ? (gameProject ? "Erstelle ein neues Spiel …" : "Was passiert in dieser Funktion?") : "KI-Unterstuetzung ist mit Premium verfuegbar."}" ${hasPremiumAi ? "" : "disabled"}></textarea>
                 <button class="code-explorer-send-button" type="submit" aria-label="Frage senden" title="Frage senden" ${waiting || !hasPremiumAi ? "disabled" : ""}>&uarr;</button>
               </span>
             </label>
@@ -349,7 +356,9 @@ const GuidedProjectView = (() => {
       const message = codeChatMessages(project, view)[Number(messageIndex)];
       const edit = message?.fileEdits?.[editIndex];
       if (!edit) return;
-      const source = await getJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(edit.path)}`);
+      const source = edit.isNewFile
+        ? { content: "" }
+        : await getJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(edit.path)}`);
       const diff = buildCodeExplorerDiff(source.content || "", edit.content || "");
       const overlay = document.createElement("div");
       overlay.className = "runtime-modal code-diff-modal";

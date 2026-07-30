@@ -23,6 +23,14 @@ const releases = Object.freeze([
     published_at: "2026-07-28T19:00:00.000Z",
     required_entitlements: Object.freeze(["learn_guided_projects"]),
   }),
+  Object.freeze({
+    chapter_id: "radio-technologies-understand",
+    version: "2026-07-30.1",
+    title: "Funktechnologien verstehen",
+    summary: "Bluetooth, WLAN, LoRa, Zigbee, NFC und RC-Funksysteme anhand ihrer Eigenschaften, Vor- und Nachteile sowie ihrer Störbarkeit vergleichen.",
+    published_at: "2026-07-30T12:00:00.000Z",
+    required_entitlements: Object.freeze(["learn_guided_projects"]),
+  }),
 ]);
 
 function knowledgeChapterReleases() {

@@ -6,10 +6,11 @@ const test = require("node:test");
 const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
 const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const publicApp = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
-const helpView = fs.readFileSync(path.resolve(__dirname, "../public/app/help-view.js"), "utf8");
+const informationView = fs.readFileSync(path.resolve(__dirname, "../public/app/information-view.js"), "utf8");
 const apiClient = fs.readFileSync(path.resolve(__dirname, "../public/app/api-client.js"), "utf8");
 const assistant = fs.readFileSync(path.resolve(__dirname, "../src/dev/development-assistant.js"), "utf8");
 const devServer = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
+const { isAllowedNewCodeExplorerPath } = require("../src/dev/development-assistant");
 
 test("shows a contextual AI chat only for code explorer views", () => {
   assert.match(guidedView, /view\?\.type === "source_analysis"/);
@@ -17,6 +18,8 @@ test("shows a contextual AI chat only for code explorer views", () => {
   assert.match(guidedView, /Code gemeinsam verstehen/);
   assert.match(guidedView, /assistantMode: "code_explorer"/);
   assert.match(guidedView, /content: ""/);
+  assert.match(guidedView, /Spielesammlung per KI erweitern/);
+  assert.match(guidedView, /Erstelle ein neues Spiel/);
 });
 
 test("renders the project assistant in the visible IDE workbench", () => {
@@ -64,8 +67,8 @@ test("directs exhausted AI chats to the credit purchase dialog", () => {
   assert.match(guidedView, /rejection_reason === "insufficient_credits"/);
   assert.match(guidedView, /Bitte Tokens kaufen/);
   assert.match(guidedView, /ai-credit-purchase-required/);
-  assert.match(helpView, /rejection_reason === "insufficient_credits"/);
-  assert.match(helpView, /Bitte Tokens kaufen/);
+  assert.match(informationView, /rejection_reason === "insufficient_credits"/);
+  assert.match(informationView, /Bitte Tokens kaufen/);
   assert.match(publicApp, /function openAiCreditPurchaseDialog/);
   assert.match(publicApp, /Bitte Tokens kaufen/);
   assert.match(publicApp, /Mehr KI-Credits kaufen/);
@@ -89,6 +92,10 @@ test("routes code explorer questions through agentic project tools", () => {
   assert.match(assistant, /find_and_read_project_sources/);
   assert.match(assistant, /source_kind=architecture fuer Komponenten, Boards, Module, Beziehungen oder Diagramme/);
   assert.match(assistant, /projectSourceMatchesKind\(item\.path, sourceKind\)/);
+  assert.match(assistant, /Dieses Projekt ist eine Touchscreen-Spielesammlung/);
+  assert.match(assistant, /isAllowedNewCodeExplorerPath\(project, edit\.path\)/);
+  assert.match(assistant, /newGameCandidates\.length > 1/);
+  assert.match(assistant, /isExplicitNewGameRequest\(latestUserRequest\)/);
   assert.match(assistant, /Architektur\\\/\|\\\.\(\?:puml\|plantuml\)/);
   assert.doesNotMatch(assistant, /name: "read_project_source"/);
   assert.match(assistant, /"code_explorer_assistance"/);
@@ -157,7 +164,7 @@ test("adds a deterministic file and line summary to proposed AI edits", () => {
 
 test("turns explicit file changes into concise confirmable edits even when a local model ignores the marker", () => {
   assert.match(assistant, /Kein doppelter Markdown-Code/);
-  assert.match(assistant, /parseCodeExplorerResult\(rawAssistantContent, effectiveCodeContext, latestUserRequest\)/);
+  assert.match(assistant, /parseCodeExplorerResult\(rawAssistantContent, effectiveCodeContext, latestUserRequest, project\)/);
   assert.match(assistant, /recoverCodeExplorerEdit/);
   assert.match(assistant, /@startuml\[\\s\\S\]\*@enduml/);
   assert.match(assistant, /resolveCodeExplorerFile\(context, currentPath\)/);
@@ -168,10 +175,30 @@ test("turns explicit file changes into concise confirmable edits even when a loc
 test("lets the coding agent discover structural targets instead of hard-coded component routing", () => {
   assert.doesNotMatch(guidedView, /function codeExplorerTargetPath/);
   assert.doesNotMatch(guidedView, /genericElementMutation/);
-  assert.match(assistant, /bearbeite nur einen dadurch gelesenen Pfad/);
+  assert.match(assistant, /bearbeite nur dadurch gelesene Pfade/);
   assert.match(assistant, /toolFiles\.set\(item\.path/);
   assert.match(assistant, /allowedPaths\.has\(edit\.path\)/);
   assert.match(assistant, /loadResponseFileContext\(responseFileContext, options\.previousResponseId\)/);
   assert.match(assistant, /rememberResponseFileContext\(responseFileContext, payload\.id, toolFiles\)/);
   assert.match(assistant, /Die KI hat keine übernehmbare Dateiänderung geliefert; es wurde nichts verändert/);
+});
+
+test("previews and applies a validated new touchscreen game file only after confirmation", () => {
+  assert.match(assistant, /src\\\/games\\\/\[a-z\]\[a-z0-9_\]\{0,48\}\\\.h/);
+  assert.match(assistant, /isNewFile: !allowedPaths\.has\(edit\.path\)/);
+  assert.match(guidedView, /edit\.isNewFile \? "Neue Datei/);
+  assert.match(guidedView, /const source = edit\.isNewFile[\s\S]*\{ content: "" \}/);
+  assert.match(guidedView, /await putJson\(`\/api\/platform\/projects/);
+});
+
+test("allows new AI-created files only in the game folder of the touchscreen template", () => {
+  const gameProject = { view_manifest: { template_id: "touchscreen_game_collection" } };
+  const otherProject = { view_manifest: { template_id: "esp32_device_only" } };
+  const validPath = "Komponenten/IoT-Device 1/src/games/asteroids_2.h";
+
+  assert.equal(isAllowedNewCodeExplorerPath(gameProject, validPath), true);
+  assert.equal(isAllowedNewCodeExplorerPath(otherProject, validPath), false);
+  assert.equal(isAllowedNewCodeExplorerPath(gameProject, "Komponenten/IoT-Device 1/src/game/game_catalog.h"), false);
+  assert.equal(isAllowedNewCodeExplorerPath(gameProject, "Komponenten/IoT-Device 1/src/games/../board_adapter.h"), false);
+  assert.equal(isAllowedNewCodeExplorerPath(gameProject, "Komponenten/IoT-Device 1/src/games/Asteroids.h"), false);
 });

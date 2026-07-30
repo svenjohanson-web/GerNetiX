@@ -8,39 +8,45 @@ const appRoot = path.join(__dirname, "..", "public", "app");
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
 const app = fs.readFileSync(path.join(appRoot, "app.js"), "utf8");
 const css = fs.readFileSync(path.join(appRoot, "app.css"), "utf8");
-const helpContent = fs.readFileSync(path.join(appRoot, "help-content.js"), "utf8");
-const helpView = fs.readFileSync(path.join(appRoot, "help-view.js"), "utf8");
+const helpOnlyContent = fs.readFileSync(path.join(appRoot, "help-content.js"), "utf8");
+const knowledgeContent = fs.readFileSync(path.join(appRoot, "knowledge-content.js"), "utf8");
+const normalizedHelpContent = helpOnlyContent.replace(/,\n\s*/g, ", ");
+const normalizedKnowledgeContent = knowledgeContent.replace(/,\n\s*/g, ", ");
+const helpContent = `${normalizedHelpContent}\n${normalizedKnowledgeContent}`;
+const informationView = fs.readFileSync(path.join(appRoot, "information-view.js"), "utf8");
 const helpChatService = fs.readFileSync(path.join(appRoot, "help-chat-service.js"), "utf8");
 const webshopAccountSeparationDoc = fs.readFileSync(path.join(__dirname, "..", "..", "..", "docs", "webshop-account-separation.md"), "utf8");
 
 test("keeps Help reachable through the main menu and renders it as a dedicated view", () => {
   assert.match(html, /href="\/hilfe\/">Hilfe<\/a>/);
+  assert.match(html, /id="helpMenuLink" class="utility public-information-link menu-fixed-action" href="\/hilfe\/">Hilfe<\/a>/);
   assert.doesNotMatch(html, /class="utility public-information-link" href="\/">Startseite<\/a>/);
   assert.match(html, /class="public-header-brand" href="\/" aria-label="GerNetiX Startseite"/);
   assert.match(html, /class="public-header-brand"[\s\S]*src="\/gernetix-wordmark\.png"/);
   assert.doesNotMatch(html, /href="\/produkte\/"/);
-  assert.match(html, /class="utility public-information-link" href="\/community\/">Community<\/a>/);
-  assert.match(html, /class="utility public-information-link" href="\/app\/auth\/">Anmelden<\/a>/);
+  assert.match(html, /href="\/app\/community\/" data-route="community" data-i18n="platform\.nav\.community">Community<\/a>/);
+  assert.match(html, /id="loginMenuLink" class="utility public-information-link menu-session-action" href="\/app\/auth\/">Anmelden<\/a>/);
   assert.match(html, /data-open-route="\/wissen\/"[\s\S]*Wissensportal/);
-  assert.match(html, /id="helpView"/);
-  assert.match(html, /id="helpMount"/);
+  assert.match(html, /id="informationView"/);
+  assert.match(html, /id="informationMount"/);
   assert.match(html, /class="platform-footer"[\s\S]*Startseite[\s\S]*Warum GerNetiX\?[\s\S]*Hilfe/);
   assert.doesNotMatch(html.match(/class="platform-footer"[\s\S]*/)?.[0] || "", /href="\/app\/vision\/"/);
-  assert.match(app, /help: "helpView"/);
-  assert.match(app, /knowledge: "helpView"/);
+  assert.match(app, /help: "informationView"/);
+  assert.match(app, /knowledge: "informationView"/);
   assert.match(app, /label: "Hilfe", route: "\/hilfe\/"/);
-  assert.match(app, /function renderHelpTopic\(\)/);
-  assert.match(app, /HelpView\.render\(\{/);
+  assert.match(app, /function renderInformationTopic\(\)/);
+  assert.match(app, /InformationView\.render\(\{/);
   assert.match(css, /\.help-layout \{/);
   assert.match(css, /\.help-topic-navigation \{/);
   assert.match(css, /@media \(max-width: 760px\)/);
 });
 
 test("keeps help content, navigation and assistant integration independently extensible", () => {
-  assert.match(html, /id="helpMount"/);
+  assert.match(html, /id="informationMount"/);
   assert.match(html, /help-content\.js/);
+  assert.match(html, /knowledge-content\.js/);
   assert.match(html, /help-chat-service\.js/);
-  assert.match(html, /help-view\.js/);
+  assert.match(html, /information-view\.js/);
   assert.match(helpContent, /const topics = \[/);
   assert.match(helpContent, /"provision-new-board"[\s\S]*Neues Board in Betrieb nehmen/);
   assert.match(helpContent, /"usb-wifi-setup"/);
@@ -66,27 +72,27 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(helpContent, /title: "Querschnittsthemen"[\s\S]*"privacy-basics", title: "Datenschutz in vernetzten Projekten"/);
   assert.match(helpContent, /title: "Verteilte Systeme"[\s\S]*"distributed-systems-introduction"[\s\S]*"communication-basics"[\s\S]*"local-servers"[\s\S]*"internet-vps"[\s\S]*"cloud-services"[\s\S]*"choosing-servers"/);
   assert.doesNotMatch(helpContent, /title: "Öffentliche Informationen"/);
-  assert.match(helpContent, /children: \[\s*\{ id: "registration-login-recovery", title: "Einloggen und Konto anlegen"[\s\S]*\{ id: "create-account", title: "Konto anlegen"[\s\S]*\{ id: "quick-start", title: "So startest du"/);
+  assert.match(helpContent, /children: \[\s*\{\s*id: "registration-login-recovery", title: "Einloggen und Konto anlegen"[\s\S]*\{\s*id: "create-account", title: "Konto anlegen"[\s\S]*\{\s*id: "quick-start", title: "So startest du"/);
   assert.match(helpContent, /"quick-start": \{[\s\S]*title: "So startest du"[\s\S]*Dein erstes Projekt[\s\S]*Wie geht es weiter\?/);
   assert.match(helpContent, /"create-account": \{[\s\S]*title: "Konto anlegen"[\s\S]*heading: "Registrierung"/);
   assert.match(helpContent, /"create-account"[\s\S]*"account-types"[\s\S]*"plan-comparison"/);
   assert.match(helpContent, /"provision-new-board"[\s\S]*"event-worker-rules"[\s\S]*"event-dispatcher"/);
   assert.match(helpContent, /"quick-start"[\s\S]*"supported-devices"/);
   assert.match(helpContent, /"update-profiles"[\s\S]*Wann wählt man was\?/);
-  assert.match(helpView, /help-article-table/);
-  assert.match(helpView, /function openDialog\(topicId\)/);
-  assert.match(helpView, /help-topic-dialog-close/);
-  assert.match(helpView, /Ask GerNetiX Help/);
-  assert.match(helpView, /data-help-topic/);
-  assert.match(helpView, /relatedTopics/);
+  assert.match(informationView, /help-article-table/);
+  assert.match(informationView, /function openDialog\(topicId\)/);
+  assert.match(informationView, /help-topic-dialog-close/);
+  assert.match(informationView, /Ask GerNetiX Help/);
+  assert.match(informationView, /data-help-topic/);
+  assert.match(informationView, /relatedTopics/);
   assert.match(helpChatService, /help-assistant\/chat/);
   assert.match(helpChatService, /relatedTopics/);
   assert.match(css, /\.help-chat \{/);
   assert.match(css, /\.help-topic-group \{/);
   assert.match(helpContent, /"ai-premium"/);
   assert.match(helpContent, /externe KI-Anbieter/);
-  assert.match(helpView, /lokale Hilfe-Modell und ist für angemeldete Konten kostenlos/);
-  assert.match(helpView, /access\.hasAccount/);
+  assert.match(informationView, /lokale Hilfe-Modell und ist für angemeldete Konten kostenlos/);
+  assert.match(informationView, /access\.hasAccount/);
 });
 
 test("shows compatible hardware from the catalog and explains USB provisioning limits", () => {
@@ -95,9 +101,9 @@ test("shows compatible hardware from the catalog and explains USB provisioning l
   assert.match(helpContent, /GerNetiX Serial Service[\s\S]*Alle Schritte bleiben in der GerNetiX-Oberfläche/);
   assert.match(helpContent, /Android eignen sich für mobile Bedienung, aber nicht als verlässlicher USB-Host/);
   assert.match(helpContent, /GerNetiX-Webshop[\s\S]*geeigneten Basissoftware/);
-  assert.match(helpView, /api\/platform\/hardware\/processor-boards/);
-  assert.match(helpView, /function renderHardwareCard/);
-  assert.match(helpView, /compatibleHardwareCatalog/);
+  assert.match(informationView, /api\/platform\/hardware\/processor-boards/);
+  assert.match(informationView, /function renderHardwareCard/);
+  assert.match(informationView, /compatibleHardwareCatalog/);
   assert.match(css, /\.help-hardware-card/);
 });
 
@@ -112,7 +118,7 @@ test("groups supported boards into one help topic instead of individual board to
 });
 
 test("keeps a public processor-family overview separate from concrete supported boards", () => {
-  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  const navigation = normalizedKnowledgeContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
   assert.match(navigation, /title: "Mikrocontroller und Embedded"/);
   assert.match(navigation, /"processor-overview", title: "ESP32-Prozessorfamilien im Vergleich"/);
   assert.match(helpContent, /"processor-overview": \{/);
@@ -128,20 +134,20 @@ test("keeps a public processor-family overview separate from concrete supported 
 
 test("keeps the hardware landscape as a public page in the common help model", () => {
   assert.match(helpContent, /"hardware-landscape", title: "Hardware-Landkarte: vom Akku bis Edge AI"[\s\S]*"distributed-systems-introduction", title: "Wenn zwei Welten zusammenarbeiten"[\s\S]*"server-systems", title: "Systemlandschaften und Server"/);
-  assert.match(helpContent, /"hardware-landscape": \{[\s\S]*access: "public"/);
+  assert.match(helpContent, /"hardware-landscape": \{/);
   assert.match(helpContent, /Raspberry Pi Pico/);
   assert.match(helpContent, /Raspberry Pi Zero 2 W/);
   assert.match(helpContent, /GPU-Edge-Computing/);
-  assert.match(helpView, /function renderHardwareVisual/);
-  assert.match(helpView, /function renderSystemLandscapeVisual/);
-  assert.match(helpView, /function renderServerTypesVisual/);
+  assert.match(informationView, /function renderHardwareVisual/);
+  assert.match(informationView, /function renderSystemLandscapeVisual/);
+  assert.match(informationView, /function renderServerTypesVisual/);
   assert.match(helpContent, /id: "distributed-systems"[\s\S]*serverLandscape: true/);
-  assert.match(helpView, /topic\.serverLandscape \? renderServerTypesVisual\(\) : ""/);
-  assert.match(helpView, /server-types-root[\s\S]*Server[\s\S]*server-types-list/);
-  assert.match(helpView, /IoT-Geräte[\s\S]*Server[\s\S]*Apps/);
-  assert.match(helpView, /Lokal · Internet\/VPS · Cloud/);
-  assert.match(helpView, /Mobil · PC\/Mac · Web/);
-  assert.match(helpView, /help-hardware-landscape knowledge-system-landscape/);
+  assert.match(informationView, /topic\.serverLandscape \? renderServerTypesVisual\(\) : ""/);
+  assert.match(informationView, /server-types-root[\s\S]*Server[\s\S]*server-types-list/);
+  assert.match(informationView, /IoT-Geräte[\s\S]*Server[\s\S]*Apps/);
+  assert.match(informationView, /Lokal · Internet\/VPS · Cloud/);
+  assert.match(informationView, /Mobil · PC\/Mac · Web/);
+  assert.match(informationView, /help-hardware-landscape knowledge-system-landscape/);
   assert.match(helpContent, /systemLandscape: true/);
   assert.match(css, /\.knowledge-system-landscape/);
   assert.match(css, /\.server-types-landscape/);
@@ -150,7 +156,7 @@ test("keeps the hardware landscape as a public page in the common help model", (
 });
 
 test("opens the knowledge portal with engineering thinking and the Tamagotchi learning journey", () => {
-  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  const navigation = normalizedKnowledgeContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
   assert.match(navigation, /id: "engineering-thinking"[\s\S]*title: "Ingenieursmäßig denken"[\s\S]*"from-problem-to-system"/);
   assert.match(navigation, /id: "from-problem-to-system"[\s\S]*access: "public"/);
   assert.match(helpContent, /"from-problem-to-system": \{[\s\S]*Nicht Technologie, sondern Problem[\s\S]*Wissen, Analyse und KI/);
@@ -171,9 +177,9 @@ test("opens the knowledge portal with engineering thinking and the Tamagotchi le
 });
 
 test("explains what software is from source code to embedded, backend and apps", () => {
-  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  const navigation = normalizedKnowledgeContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
   assert.match(navigation, /id: "software-basics"[\s\S]*title: "Informatik und Software"[\s\S]*"software-basics-introduction"/);
-  assert.match(helpContent, /"software-basics-introduction": \{[\s\S]*access: "public"/);
+  assert.match(helpContent, /"software-basics-introduction": \{/);
   assert.match(helpContent, /Warum gibt es Software\?[\s\S]*Kompilieren: in Maschinencode übersetzen/);
   assert.match(helpContent, /Bibliotheken: bewährte Bausteine nutzen[\s\S]*Skripte, Interpreter und Laufzeitumgebungen/);
   assert.match(helpContent, /Firmware auf Mikrocontrollern: klein, schnell und berechenbar[\s\S]*MicroPython/);
@@ -182,9 +188,9 @@ test("explains what software is from source code to embedded, backend and apps",
 });
 
 test("teaches YAML fundamentals and points to the matching learning project", () => {
-  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  const navigation = normalizedKnowledgeContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
   assert.match(navigation, /title: "Informatik und Software"[\s\S]*"yaml-basics", title: "YAML: strukturierte Daten lesbar beschreiben"/);
-  assert.match(navigation, /yaml-purpose[\s\S]*yaml-scalars[\s\S]*yaml-indentation[\s\S]*yaml-lists[\s\S]*yaml-text[\s\S]*yaml-errors[\s\S]*yaml-learning-project/);
+  assert.match(helpContent, /yaml-purpose[\s\S]*yaml-scalars[\s\S]*yaml-indentation[\s\S]*yaml-lists[\s\S]*yaml-text[\s\S]*yaml-errors[\s\S]*yaml-learning-project/);
   assert.match(helpContent, /"yaml-basics": \{[\s\S]*YAML ist keine Programmiersprache/);
   assert.match(helpContent, /Schlüssel und einfache Werte[\s\S]*Wahrheitswerte[\s\S]*null/);
   assert.match(helpContent, /Einrückung und Verschachtelung[\s\S]*keine Tabs/);
@@ -195,9 +201,9 @@ test("teaches YAML fundamentals and points to the matching learning project", ()
 });
 
 test("distinguishes microcontroller storage, databases and file servers in Software", () => {
-  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  const navigation = normalizedKnowledgeContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
   assert.match(navigation, /title: "Informatik und Software"[\s\S]*"databases-and-storage", title: "Datenbanken, Speicher und Dateiserver"/);
-  assert.match(navigation, /storage-is-not-always-a-database[\s\S]*microcontroller-storage[\s\S]*sql-and-sqlite[\s\S]*database-families[\s\S]*file-and-object-storage[\s\S]*choosing-data-storage[\s\S]*storage-learning-path/);
+  assert.match(helpContent, /storage-is-not-always-a-database[\s\S]*microcontroller-storage[\s\S]*sql-and-sqlite[\s\S]*database-families[\s\S]*file-and-object-storage[\s\S]*choosing-data-storage[\s\S]*storage-learning-path/);
   assert.match(helpContent, /"databases-and-storage": \{[\s\S]*Speicher ist nicht automatisch eine Datenbank/);
   assert.match(helpContent, /Speicher ist nicht automatisch eine Datenbank[\s\S]*SQL ist dabei keine Datenbank, sondern eine Sprache/);
   assert.match(helpContent, /Was Mikrocontroller lokal speichern können[\s\S]*NVS[\s\S]*EEPROM[\s\S]*LittleFS[\s\S]*FatFS[\s\S]*Ringpuffer/);
@@ -212,9 +218,9 @@ test("distinguishes microcontroller storage, databases and file servers in Softw
 });
 
 test("explains embedded measurement technology and approachable debugging", () => {
-  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  const navigation = normalizedKnowledgeContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
   assert.match(navigation, /"embedded-measurement-debugging", title: "Embedded-Systeme: Messtechnik und Debugging"/);
-  assert.match(helpContent, /"embedded-measurement-debugging": \{[\s\S]*access: "public"/);
+  assert.match(helpContent, /"embedded-measurement-debugging": \{/);
   assert.match(helpContent, /Software trifft Elektronik/);
   assert.match(helpContent, /löten/);
   assert.match(helpContent, /Messmittel/);
@@ -224,8 +230,8 @@ test("explains embedded measurement technology and approachable debugging", () =
 });
 
 test("compares door position sensors through the chicken-door engineering task", () => {
-  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
-  assert.match(navigation, /id: "sensors"[\s\S]*sensor-reed-contact[\s\S]*sensor-photoelectric[\s\S]*sensor-limit-switch[\s\S]*sensor-contact-bridge[\s\S]*sensor-chicken-door-task[\s\S]*sensor-selection-games[\s\S]*sensor-application-map/);
+  const navigation = normalizedKnowledgeContent.match(/"sensors": \{[\s\S]*?"actuators": \{/)?.[0] || "";
+  assert.match(navigation, /"sensors": \{[\s\S]*sensor-reed-contact[\s\S]*sensor-photoelectric[\s\S]*sensor-limit-switch[\s\S]*sensor-contact-bridge[\s\S]*sensor-chicken-door-task[\s\S]*sensor-selection-games[\s\S]*sensor-application-map/);
   assert.match(helpContent, /Reed-Kontakt: Schalten mit einem Magneten[\s\S]*Vorteile[\s\S]*Nachteile/);
   assert.match(helpContent, /Lichtschranke: Eine unterbrochene Lichtstrecke erkennen[\s\S]*Staub, Federn, Spinnweben/);
   assert.match(helpContent, /mechanischer Endschalter oder Positionsschalter[\s\S]*Mikroschalter[\s\S]*Rollenhebel/);
@@ -242,12 +248,12 @@ test("offers interactive sensor selection games with scenario-specific reasoning
   assert.match(helpContent, /Förderband: Werkstücke zählen[\s\S]*answer: "photoelectric"/);
   assert.match(helpContent, /Außentor: Endlage mit Schlamm und Regen[\s\S]*Gekapselter induktiver Näherungssensor/);
   assert.match(helpContent, /Welcher Sensor passt wohin\?[\s\S]*Sicherheitskritische Schutztür[\s\S]*Zertifizierter Sicherheitssensor/);
-  assert.match(helpView, /renderKnowledgeQuizzes[\s\S]*data-knowledge-quiz-check[\s\S]*Wähle zuerst eine Antwort aus\.[\s\S]*selected\.value === quiz\.dataset\.answer/);
+  assert.match(informationView, /renderKnowledgeQuizzes[\s\S]*data-knowledge-quiz-check[\s\S]*Wähle zuerst eine Antwort aus\.[\s\S]*selected\.value === quiz\.dataset\.answer/);
   assert.match(css, /\.knowledge-quiz-list[\s\S]*\.knowledge-quiz-feedback\.correct[\s\S]*\.knowledge-quiz-feedback\.wrong/);
 });
 
 test("organizes sensor families by measured quantity and physical principle", () => {
-  const navigation = helpContent.match(/id: "sensors", title: "Sensoren"[\s\S]*?\]\s*\},/)?.[0] || "";
+  const navigation = normalizedKnowledgeContent.match(/"sensors": \{[\s\S]*?"actuators": \{/)?.[0] || "";
   assert.match(navigation, /sensor-position-presence[\s\S]*sensor-distance-proximity[\s\S]*sensor-temperature[\s\S]*sensor-light-radiation/);
   assert.match(navigation, /sensor-motion-orientation[\s\S]*sensor-force-pressure[\s\S]*sensor-environment-chemical[\s\S]*sensor-level-flow[\s\S]*sensor-electrical/);
   assert.match(helpContent, /Messgröße sagt, was erfasst wird[\s\S]*Wirkprinzip sagt, wie daraus ein elektrisches Signal entsteht/);
@@ -263,7 +269,7 @@ test("organizes sensor families by measured quantity and physical principle", ()
 });
 
 test("explains FMCW radar and links it to the first proximity-sensor project stage", () => {
-  const navigation = helpContent.match(/id: "sensors", title: "Sensoren"[\s\S]*?\]\s*\},/)?.[0] || "";
+  const navigation = normalizedKnowledgeContent.match(/"sensors": \{[\s\S]*?"actuators": \{/)?.[0] || "";
   assert.match(navigation, /sensor-distance-proximity[\s\S]*sensor-fmcw-radar[\s\S]*sensor-temperature/);
   assert.match(helpContent, /FMCW-Radar: Entfernung und Bewegung aus Chirps/);
   assert.match(helpContent, /Beat-Frequenz[\s\S]*Relativgeschwindigkeit[\s\S]*mehreren Empfangskanälen/);
@@ -272,9 +278,9 @@ test("explains FMCW radar and links it to the first proximity-sensor project sta
 });
 
 test("explains electrical and functional safety without normalizing vehicle modifications", () => {
-  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  const navigation = normalizedKnowledgeContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
   assert.match(navigation, /"embedded-safety", title: "Elektrische und funktionale Sicherheit"/);
-  assert.match(helpContent, /"embedded-safety": \{[\s\S]*access: "public"/);
+  assert.match(helpContent, /"embedded-safety": \{/);
   assert.match(helpContent, /Strom durch den Körper ist entscheidend/);
   assert.match(helpContent, /50 V Wechselspannung und 120 V Gleichspannung/);
   assert.match(helpContent, /Funktionale Sicherheit: Wenn korrektes Funktionieren Leben schützt/);
@@ -284,9 +290,9 @@ test("explains electrical and functional safety without normalizing vehicle modi
 });
 
 test("explains privacy as data minimization, transparency and protection", () => {
-  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  const navigation = normalizedKnowledgeContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
   assert.match(navigation, /"privacy-basics", title: "Datenschutz in vernetzten Projekten"/);
-  assert.match(helpContent, /"privacy-basics": \{[\s\S]*access: "public"/);
+  assert.match(helpContent, /"privacy-basics": \{/);
   assert.match(helpContent, /Was personenbezogene Daten sein können/);
   assert.match(helpContent, /Daten minimieren/);
   assert.match(helpContent, /Lokal verarbeiten, wenn möglich/);
@@ -294,9 +300,10 @@ test("explains privacy as data minimization, transparency and protection", () =>
 });
 
 test("offers security as a separate cross-cutting topic with network fundamentals", () => {
-  const navigation = helpContent.match(/id: "cross-cutting-topics"[\s\S]*?\n    \},\n    \{/)?.[0] || "";
+  const navigation = normalizedKnowledgeContent.match(/id: "cross-cutting-topics"[\s\S]*?id: "glossary"/)?.[0] || "";
   assert.match(navigation, /"privacy-basics", title: "Datenschutz in vernetzten Projekten"/);
-  assert.match(navigation, /"security-basics", title: "Security in vernetzten Projekten"[\s\S]*security-network-technologies/);
+  assert.match(navigation, /"security-basics", title: "Security in vernetzten Projekten"/);
+  assert.match(helpContent, /security-network-technologies/);
   assert.match(helpContent, /"security-basics": \{[\s\S]*Identifikation, Authentifizierung und Autorisierung/);
   assert.match(helpContent, /Risikoanalyse: Was müssen wir schützen[\s\S]*Wie halten wir Angreifer ab[\s\S]*Wie erkennen wir Angreifer[\s\S]*Wie begrenzen wir den Schaden/);
   assert.match(helpContent, /Updates, sichere Konfiguration, Eingabeprüfung und Rate Limits[\s\S]*Monitoring fasst sie zusammen[\s\S]*getrennte Netze oder VLANs[\s\S]*Getestete Backups/);
@@ -312,7 +319,7 @@ test("offers security as a separate cross-cutting topic with network fundamental
   assert.doesNotMatch(helpContent, /security-smart-door-security-goals\.png/);
   assert.match(helpContent, /Vertraulichkeit bedeutet[\s\S]*Integrität bedeutet[\s\S]*Verfügbarkeit bedeutet[\s\S]*Nachvollziehbarkeit bedeutet/);
   assert.match(helpContent, /afterParagraph: 0[\s\S]*afterParagraph: 1[\s\S]*afterParagraph: 2[\s\S]*afterParagraph: 3/);
-  assert.match(helpView, /securityDoorIllustrations\?\.filter\(\(illustration\) => illustration\.afterParagraph === paragraphIndex\)[\s\S]*security-door-illustration-label/);
+  assert.match(informationView, /securityDoorIllustrations\?\.filter\(\(illustration\) => illustration\.afterParagraph === paragraphIndex\)[\s\S]*security-door-illustration-label/);
   assert.match(css, /\.security-door-illustrations \{[\s\S]*grid-template-columns: minmax\(0, 760px\)[\s\S]*height: auto; object-fit: contain/);
   assert.match(helpContent, /Sessions, Tokens und Rechte[\s\S]*geschütztes Session-Cookie[\s\S]*Ablaufzeit/);
   assert.match(helpContent, /Verschlüsselung, Zertifikate und Certificate Authorities[\s\S]*privaten Schlüssel[\s\S]*Certificate Authority \(CA\)/);
@@ -328,17 +335,21 @@ test("offers security as a separate cross-cutting topic with network fundamental
 
 test("keeps sensors and actuators as a cross-cutting system topic and connects motor control to a learning project", () => {
   assert.match(helpContent, /id: "sensors-and-actuators",[\s\S]*title: "Sensorik und Aktorik"[\s\S]*id: "sensors"[\s\S]*id: "actuators"/);
-  assert.match(helpContent, /id: "actuators", title: "Aktoren", articleId: "actuators", subchapters: \[\s*\{ id: "actuator-motor-theory", title: "Motoren und Antriebe" \},?\s*\]/);
+  assert.match(helpContent, /id: "actuator-current-magnetic-field"[\s\S]*id: "actuator-current-force"[\s\S]*id: "actuator-simple-coil-motor"[\s\S]*id: "actuator-reed-motor"[\s\S]*id: "actuator-transistor-motor"[\s\S]*id: "actuator-homopolar-motor"[\s\S]*id: "actuator-motor-theory"/);
+  assert.match(helpContent, /Strom erzeugt ein Magnetfeld[\s\S]*Auf den Draht entsteht eine Kraft[\s\S]*Drehmoment[\s\S]*Reedkontakt[\s\S]*Hall-Sensor[\s\S]*verblüffender Sonderfall/);
+  assert.match(helpContent, /motor-learning-current-magnetic-field\.svg[\s\S]*motor-learning-current-force\.svg[\s\S]*motor-learning-simple-coil\.svg[\s\S]*motor-learning-reed-switch\.svg[\s\S]*motor-learning-transistor-switch\.svg[\s\S]*motor-learning-homopolar\.svg/);
+  assert.match(informationView, /section\.illustration[\s\S]*knowledge-section-illustration[\s\S]*loading="lazy" decoding="async"/);
+  assert.match(css, /\.knowledge-section-illustration/);
   assert.match(helpContent, /id: "actuator-motors-and-drives", heading: "Motoren und Antriebe auswählen"[\s\S]*id: "actuator-motor-control", heading: "Motoransteuerung: Leistungsteil und Firmware"[\s\S]*id: "actuator-safe-motion", heading: "Sicher bewegen: Rückmeldung und Fehlerfälle"/);
   assert.match(helpContent, /id: "actuator-motor-theory", heading: "Zwei Motorfamilien: Wechselstrom und Gleichstrom"[\s\S]*id: "actuator-synchronous-machines", heading: "Synchronmaschinen: mit einem drehenden Magnetfeld mitlaufen"[\s\S]*id: "actuator-asynchronous-machines"[\s\S]*id: "actuator-dc-motors", heading: "Gleichstrommotoren: Reihenschluss, Nebenschluss und permanent erregt"[\s\S]*id: "actuator-bldc-basics"[\s\S]*B6-Brücke[\s\S]*sinusförmige Phasenströme/);
   assert.match(helpContent, /\/app\/learn\/\?catalog=motor-control-basics/);
 });
 
 test("explains optional embedded, local, global and iPhone system landscapes in public help", () => {
-  const navigation = helpContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
+  const navigation = normalizedKnowledgeContent.match(/const topics = \[[\s\S]*?const articles/)?.[0] || "";
   assert.match(navigation, /id: "distributed-systems"[\s\S]*"server-systems", title: "Systemlandschaften und Server"/);
   assert.match(helpContent, /"distributed-systems-introduction": \{[\s\S]*Ein verteiltes System verbindet die physische Welt mit Software[\s\S]*Die Rollen sind verschieden/);
-  assert.match(helpContent, /"server-systems": \{[\s\S]*access: "public"/);
+  assert.match(helpContent, /"server-systems": \{/);
   assert.match(helpContent, /Vom IoT-Device-Bus zur App[\s\S]*IoT-Geräte[\s\S]*Server: Lokal[\s\S]*Server: Internet\/VPS[\s\S]*Server: Cloud[\s\S]*Apps: Mobil[\s\S]*Apps: PC\/Mac und Web/);
   assert.match(helpContent, /Nicht jedes Projekt braucht alles/);
   assert.match(helpContent, /Die Kostenfalle Cloud-Computing/);
@@ -379,9 +390,9 @@ test("offers event worker rule help as a central account help topic", () => {
   assert.match(helpContent, /So wird das Diagramm als Variablenmodell abgebildet/);
   assert.match(helpContent, /state\.life_state/);
   assert.doesNotMatch(helpContent, /state\.mode/);
-  assert.match(helpView, /function renderStateChart/);
+  assert.match(informationView, /function renderStateChart/);
   assert.match(css, /\.help-state-chart \{/);
-  assert.match(helpView, /function renderTamagotchiUmlStateChart/);
+  assert.match(informationView, /function renderTamagotchiUmlStateChart/);
   assert.match(helpContent, /UML-Statechart lesen/);
   assert.match(helpContent, /Der ausgefüllte Punkt ist der Start/);
   assert.match(css, /\.help-uml-state-chart \{/);
@@ -445,19 +456,41 @@ test("links account setup to the personal offline recovery set", () => {
   assert.match(app, /Recovery-Set erstellen/);
 });
 
-test("separates the knowledge portal from platform help while reusing one surface", () => {
+test("keeps help and knowledge models physically disjoint", () => {
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(`${helpOnlyContent};${knowledgeContent};this.help = HelpContent;this.knowledge = KnowledgeContent;`, context);
+  const helpTopicIds = new Set(context.help.topics.map((topic) => topic.id));
+  const helpArticleIds = new Set(Object.keys(context.help.articles));
+
+  assert.equal(context.help.topics.length, 3);
+  assert.equal(context.knowledge.topics.length, 10);
+  assert.ok(context.knowledge.topics.every((topic) => !helpTopicIds.has(topic.id)));
+  assert.ok(Object.keys(context.knowledge.articles).every((articleId) => !helpArticleIds.has(articleId)));
+  assert.ok(context.help.findTopic("quick-start"));
+  assert.equal(context.help.findTopic("actuators"), null);
+  assert.ok(context.knowledge.findTopic("actuators"));
+  assert.equal(context.knowledge.findTopic("quick-start"), null);
+});
+
+test("separates the knowledge portal from platform help while reusing a neutral view", () => {
   const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
-  assert.match(helpContent, /const articleAccess =/);
-  assert.match(helpContent, /"first-project": "premium"/);
-  assert.match(helpContent, /"register-device": "account"/);
-  assert.match(helpContent, /\.filter\(\(topic\) => topic\.surface === "knowledge"\)/);
-  assert.match(helpContent, /articles\[chapter\.articleId\]\.access = chapter\.access \|\| "premium"/);
-  assert.match(helpView, /function renderPaywall/);
-  assert.match(helpView, /Premium-Inhalt/);
-  assert.match(helpView, /Dieses Kapitel mit Premium weiterlesen/);
-  assert.match(helpView, /Du kannst jederzeit eine andere Kapitelvorschau öffnen/);
-  assert.match(helpView, /help-access-badge/);
-  const knowledgeBookView = helpView.match(/function renderKnowledgeBook[\s\S]*?function activateKnowledgeBook/)?.[0] || "";
+  assert.match(helpOnlyContent, /const HelpContent =/);
+  assert.match(knowledgeContent, /const KnowledgeContent =/);
+  assert.match(helpOnlyContent, /const articleAccess =/);
+  assert.match(helpOnlyContent, /"first-project": "premium"/);
+  assert.match(helpOnlyContent, /"register-device": "account"/);
+  assert.doesNotMatch(helpOnlyContent, /"workers-and-queues"/);
+  assert.doesNotMatch(knowledgeContent, /"register-device": \{/);
+  assert.match(knowledgeContent, /article\.access = chapter\.access \|\| "premium"/);
+  assert.doesNotMatch(helpOnlyContent, /surface: "knowledge"/);
+  assert.doesNotMatch(knowledgeContent, /surface: "help"/);
+  assert.match(informationView, /function renderPaywall/);
+  assert.match(informationView, /Premium-Inhalt/);
+  assert.match(informationView, /Dieses Kapitel mit Premium weiterlesen/);
+  assert.match(informationView, /Du kannst jederzeit eine andere Kapitelvorschau öffnen/);
+  assert.match(informationView, /help-access-badge/);
+  const knowledgeBookView = informationView.match(/function renderKnowledgeBook[\s\S]*?function activateKnowledgeBook/)?.[0] || "";
   assert.doesNotMatch(knowledgeBookView, /accessBadge/);
   assert.match(knowledgeBookView, /renderPaywall|renderArticle/);
   assert.match(css, /\.help-paywall/);
@@ -471,43 +504,42 @@ test("separates the knowledge portal from platform help while reusing one surfac
   assert.match(app, /document\.body\.classList\.toggle\("public-information-anonymous", !state\.account\)/);
   assert.match(app, /public-information-anonymous/);
   assert.match(app, /getJson\("\/api\/platform\/summary"\)/);
-  assert.match(helpContent, /surface: "knowledge"/);
-  assert.match(helpContent, /surface: "help"/);
-  assert.match(helpContent, /"workers-and-queues"/);
-  assert.match(helpView, /Wissensportal/);
-  assert.match(helpView, /findParentTopic/);
-  assert.match(helpView, /"\/wissen\/"/);
-  assert.match(helpView, /function renderKnowledgeBook/);
-  assert.match(helpView, /Hauptkapitel \$\{index \+ 1\}/);
-  assert.match(helpView, /const chapterNumber = `\$\{index \+ 1\}\.\$\{childIndex \+ 1\}`/);
-  assert.match(helpView, /knowledge-chapter-number/);
-  assert.match(helpView, /knowledge-subchapter-link/);
-  assert.match(helpView, /knowledge-subchapter-number/);
-  assert.match(helpView, /data-knowledge-subchapter/);
-  assert.match(helpView, /<details class="knowledge-part-toc" open>/);
-  assert.match(helpView, /<details class="knowledge-chapter-toc">/);
-  assert.match(helpView, /function renderKnowledgeChapterToc/);
-  assert.match(helpView, /knowledge-chapter-title-link/);
-  assert.doesNotMatch(helpView, /Leseprobe öffnen|Kapitel öffnen/);
-  assert.doesNotMatch(helpView, /knowledge-chapter-link[^>]*>[\s\S]*?→/);
-  assert.match(helpView, /knowledge-subchapter-link is-locked/);
-  assert.doesNotMatch(helpView, /knowledge-subchapter-link is-locked[^>]*>[^<]*<small>Premium<\/small>/);
-  assert.doesNotMatch(helpView, /Kapitel lesen|Unterkapitel/);
+  assert.match(knowledgeContent, /"workers-and-queues"/);
+  assert.match(informationView, /Wissensportal/);
+  assert.match(informationView, /contentForSurface/);
+  assert.match(informationView, /findContentForTopic/);
+  assert.match(informationView, /"\/wissen\/"/);
+  assert.match(informationView, /function renderKnowledgeBook/);
+  assert.match(informationView, /Hauptkapitel \$\{index \+ 1\}/);
+  assert.match(informationView, /const chapterNumber = `\$\{index \+ 1\}\.\$\{childIndex \+ 1\}`/);
+  assert.match(informationView, /knowledge-chapter-number/);
+  assert.match(informationView, /knowledge-subchapter-link/);
+  assert.match(informationView, /knowledge-subchapter-number/);
+  assert.match(informationView, /data-knowledge-subchapter/);
+  assert.match(informationView, /<details class="knowledge-part-toc" open>/);
+  assert.match(informationView, /<details class="knowledge-chapter-toc">/);
+  assert.match(informationView, /function renderKnowledgeChapterToc/);
+  assert.match(informationView, /knowledge-chapter-title-link/);
+  assert.doesNotMatch(informationView, /Leseprobe öffnen|Kapitel öffnen/);
+  assert.doesNotMatch(informationView, /knowledge-chapter-link[^>]*>[\s\S]*?→/);
+  assert.match(informationView, /knowledge-subchapter-link is-locked/);
+  assert.doesNotMatch(informationView, /knowledge-subchapter-link is-locked[^>]*>[^<]*<small>Premium<\/small>/);
+  assert.doesNotMatch(informationView, /Kapitel lesen|Unterkapitel/);
   assert.match(css, /\.knowledge-part-toc > summary/);
-  assert.doesNotMatch(helpView, /Kapitelübersicht öffnen oder schließen/);
-  assert.match(helpView, /function renderPracticeLessonLink/);
-  assert.match(helpView, /knowledge-topic=/);
-  assert.match(helpView, /if \(!access\.hasAccount\)/);
-  assert.match(helpView, /Anmeldung erforderlich · Demo-Link/);
-  assert.match(helpView, /Demo-Link · Zuordnung zu einer Lesson folgt/);
-  assert.match(helpView, /data-knowledge-chapter/);
-  assert.match(helpView, /renderArticle\(chapter, child, \{ showRelated: false, chapterNumber \}\)/);
-  assert.match(helpView, /knowledge-part-link/);
-  assert.match(helpView, /data-knowledge-part/);
-  assert.match(helpView, /event\.stopPropagation\(\)/);
-  assert.match(helpView, /scrollIntoView\(\{ behavior: "smooth", block: "start" \}\)/);
-  assert.match(helpView, /const syncChapterWithScroll/);
-  assert.match(helpView, /window\.addEventListener\("scroll", knowledgeScrollHandler/);
+  assert.doesNotMatch(informationView, /Kapitelübersicht öffnen oder schließen/);
+  assert.match(informationView, /function renderPracticeLessonLink/);
+  assert.match(informationView, /knowledge-topic=/);
+  assert.match(informationView, /if \(!access\.hasAccount\)/);
+  assert.match(informationView, /Anmeldung erforderlich · Demo-Link/);
+  assert.match(informationView, /Demo-Link · Zuordnung zu einer Lesson folgt/);
+  assert.match(informationView, /data-knowledge-chapter/);
+  assert.match(informationView, /renderArticle\(chapter, child, \{ showRelated: false, chapterNumber \}\)/);
+  assert.match(informationView, /knowledge-part-link/);
+  assert.match(informationView, /data-knowledge-part/);
+  assert.match(informationView, /event\.stopPropagation\(\)/);
+  assert.match(informationView, /scrollIntoView\(\{ behavior: "smooth", block: "start" \}\)/);
+  assert.match(informationView, /const syncChapterWithScroll/);
+  assert.match(informationView, /window\.addEventListener\("scroll", knowledgeScrollHandler/);
   assert.match(css, /\.knowledge-book-navigation/);
   assert.doesNotMatch(css, /\.knowledge-book-toc\s/);
   assert.match(css, /\.knowledge-part-link/);
@@ -528,16 +560,63 @@ test("separates the knowledge portal from platform help while reusing one surfac
 test("keeps engineering thinking public and gates the remaining knowledge chapters independently", () => {
   const context = {};
   vm.createContext(context);
-  vm.runInContext(`${helpContent};this.content = HelpContent;`, context);
-  const chapters = context.content.topics
-    .filter((topic) => topic.surface === "knowledge")
-    .flatMap((topic) => topic.children || []);
+  vm.runInContext(`${knowledgeContent};this.content = KnowledgeContent;`, context);
+  const chapters = context.content.topics.flatMap((topic) => topic.children || []);
 
-  assert.equal(chapters.length, 28);
+  assert.equal(chapters.length, 29);
   assert.equal(context.content.articles["from-problem-to-system"].access, "public");
   assert.ok(chapters
     .filter((chapter) => chapter.id !== "from-problem-to-system")
     .every((chapter) => context.content.articles[chapter.articleId]?.access === "premium"));
-  assert.match(helpView, /article\.sections\.slice\(0, 1\)/);
-  assert.match(helpView, /knowledge-chapter-preview/);
+  assert.match(informationView, /article\.sections\.slice\(0, 1\)/);
+  assert.match(informationView, /knowledge-chapter-preview/);
+});
+
+test("publishes radio technologies with foundations, trade-offs and a careful safety boundary", () => {
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(`${knowledgeContent};this.content = KnowledgeContent;`, context);
+  const article = context.content.articles["radio-technologies-understand"];
+
+  assert.equal(article.sections.length, 10);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(article.sections.slice(2, 8).map((section) => section.id))),
+    ["radio-bluetooth", "radio-wifi", "radio-lora", "radio-zigbee", "radio-nfc", "radio-rc-model"],
+  );
+  assert.ok(article.sections.slice(2, 8).every((section) => section.table?.headers?.join("|") === "Eigenschaften|Vorteile|Nachteile"));
+  assert.match(JSON.stringify(article.sections[0]), /Funk ist kein unsichtbares Kabel/);
+  assert.match(JSON.stringify(article.sections[1]), /Jede Funkübertragung kann gestört werden/);
+  assert.match(JSON.stringify(article.sections[1]), /nicht als alleinige Grundlage für eine sicherheitskritische Funktion/);
+  assert.match(JSON.stringify(article.sections[1]), /ziviles Passagierflugzeug/);
+  assert.match(JSON.stringify(article.sections[9]), /Lernprojekt „Funktechnologien verstehen“/);
+});
+
+test("derives every knowledge navigation topic from the rendered article sections", () => {
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(`${knowledgeContent};this.content = KnowledgeContent;`, context);
+  const chapters = context.content.topics.flatMap((topic) => topic.children || []);
+
+  for (const chapter of chapters) {
+    const articleSections = JSON.parse(JSON.stringify(
+      (context.content.articles[chapter.articleId]?.sections || [])
+        .filter((section) => section.id)
+        .map((section) => ({ id: section.id, title: section.heading })),
+    ));
+    assert.deepEqual(
+      JSON.parse(JSON.stringify(chapter.subchapters)),
+      articleSections,
+      `navigation for ${chapter.id} must match its rendered sections`,
+    );
+  }
+
+  const motorChapter = chapters.find((chapter) => chapter.id === "actuators");
+  assert.equal(motorChapter.subchapters.length, 15);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(motorChapter.subchapters.slice(0, 2))),
+    [
+      { id: "actuator-current-magnetic-field", title: "Der Anfang: Strom erzeugt ein Magnetfeld" },
+      { id: "actuator-current-force", title: "Ein Magnetfeld kann einen stromdurchflossenen Draht bewegen" },
+    ],
+  );
 });

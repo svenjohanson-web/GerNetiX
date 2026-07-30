@@ -15,11 +15,11 @@ test("main menu uses the shared dark typography and states", () => {
   assert.match(css, /\.app-menu \.menu-logout[\s\S]*?color: #fca5a5/);
 });
 
-test("authenticated menu groups detailed destinations under five visible choices", () => {
+test("groups the main destinations under clear user-facing headings", () => {
   assert.match(html, /data-route="dashboard"[^>]*>Übersicht/);
-  assert.match(html, /<summary data-i18n="platform\.menu\.work">Arbeiten<\/summary>/);
-  assert.match(html, /<summary data-i18n="platform\.menu\.knowledge_tools">Wissen &amp; Werkzeuge<\/summary>/);
-  assert.match(html, /<summary data-i18n="platform\.menu\.gernetix">GerNetiX<\/summary>/);
+  assert.match(html, /<summary data-i18n="platform\.menu\.learn_develop">Lernen &amp; Entwickeln<\/summary>/);
+  assert.match(html, /<summary data-i18n="platform\.menu\.boards_tools">Boards &amp; Werkzeuge<\/summary>/);
+  assert.match(html, /<summary data-i18n="platform\.menu\.service_shop">Service &amp; Shop<\/summary>/);
   assert.match(html, /<summary data-i18n="platform\.menu\.account">Konto<\/summary>/);
   assert.equal((html.match(/class="app-menu-group/g) || []).length, 4);
   assert.doesNotMatch(html, /<a class="utility public-information-link" href="\/">Startseite<\/a>/);
@@ -27,7 +27,40 @@ test("authenticated menu groups detailed destinations under five visible choices
   assert.match(css, /body\.public-information-anonymous #mainMenu \.app-menu-group-private/);
   assert.doesNotMatch(css, /body\.public-help-page #mainMenu \.app-menu-group-private/);
   assert.doesNotMatch(css, /body\.public-help-page #mainMenu a:not\(\.public-information-link\)/);
-  assert.match(css, /body:not\(\.public-information-anonymous\) #mainMenu a\[href="\/app\/auth\/"\]/);
+  assert.match(css, /body:not\(\.public-information-anonymous\) #mainMenu #loginMenuLink/);
+});
+
+test("puts learning, development, knowledge, community and rebuild projects in one group", () => {
+  const menu = html.slice(html.indexOf('<nav id="mainMenu"'), html.indexOf("</nav>", html.indexOf('<nav id="mainMenu"')));
+  const groupStart = menu.indexOf('platform.menu.learn_develop');
+  const groupEnd = menu.indexOf("</details>", groupStart);
+  const group = menu.slice(groupStart, groupEnd);
+  const destinations = [
+    "/app/learn/",
+    "/app/development-platform/",
+    "/wissen/",
+    "/app/community/",
+    "/nachbauprojekte/",
+  ];
+  destinations.forEach((destination) => assert.match(group, new RegExp(`href="${destination.replaceAll("/", "\\/")}"`)));
+  assert.match(group, /Wissensspeicher/);
+});
+
+test("keeps Help and the session action permanently outside collapsible hamburger groups", () => {
+  const menu = html.slice(html.indexOf('<nav id="mainMenu"'), html.indexOf("</nav>", html.indexOf('<nav id="mainMenu"')));
+  const accountGroupEnd = menu.indexOf("</details>", menu.indexOf('platform.menu.account'));
+  const helpIndex = menu.indexOf('id="helpMenuLink"');
+  const loginIndex = menu.indexOf('id="loginMenuLink"');
+  const logoutIndex = menu.indexOf('id="logoutButton"');
+  assert.ok(helpIndex > accountGroupEnd);
+  assert.ok(helpIndex < loginIndex);
+  assert.ok(loginIndex > accountGroupEnd);
+  assert.ok(logoutIndex > accountGroupEnd);
+  assert.equal((menu.match(/href="\/hilfe\/"/g) || []).length, 1);
+  assert.match(menu, /id="helpMenuLink" class="utility public-information-link menu-fixed-action"/);
+  assert.match(css, /\.app-menu \.menu-fixed-action/);
+  assert.match(menu, /menu-session-action/);
+  assert.match(css, /\.app-menu \.menu-session-action/);
 });
 
 test("platform uses the shared operator shell without claiming PWA delivery", () => {

@@ -1,4 +1,4 @@
-const HelpView = (() => {
+const InformationView = (() => {
   let selectedTopicId = "quick-start";
   let messages = [];
   let bound = false;
@@ -16,14 +16,15 @@ const HelpView = (() => {
   function render(nextAccess = access) {
     access = { ...access, ...nextAccess };
     surface = nextAccess.surface || surface;
-    const mount = document.querySelector("#helpMount");
+    const mount = document.querySelector("#informationMount");
     if (!mount) return;
-    const visibleTopics = HelpContent.topics.filter((topic) => (topic.surface || "help") === surface);
+    const content = contentForSurface(surface);
+    const visibleTopics = content.topics;
     const requested = window.location.hash.replace(/^#/, "");
     if (requested && visibleTopics.some((topic) => topic.children?.some((child) => child.id === requested))) selectedTopicId = requested;
     if (!visibleTopics.some((topic) => topic.children?.some((child) => child.id === selectedTopicId))) selectedTopicId = visibleTopics[0]?.children?.[0]?.id || "quick-start";
-    const selected = HelpContent.findTopic(selectedTopicId);
-    const article = HelpContent.articles[selected.articleId];
+    const selected = content.findTopic(selectedTopicId);
+    const article = content.articles[selected.articleId];
     const portal = surface === "knowledge";
     mount.innerHTML = `
       <header class="section-head help-page-head">
@@ -112,7 +113,7 @@ const HelpView = (() => {
       </nav>
       <main class="knowledge-book-content" aria-label="Wissensportal-Lektüre">
         ${topics.map((topic, index) => `<section id="knowledge-part-${escapeHtml(topic.id)}" class="knowledge-book-part" data-knowledge-part="${escapeHtml(topic.id)}"><header><p class="eyebrow">Hauptkapitel ${index + 1}</p><h2>${index + 1}. ${escapeHtml(topic.title)}</h2>${topic.description ? `<p>${escapeHtml(topic.description)}</p>` : ""}${topic.serverLandscape ? renderServerTypesVisual() : ""}</header>${(topic.children || []).map((child, childIndex) => {
-          const chapter = HelpContent.articles[child.articleId];
+          const chapter = KnowledgeContent.articles[child.articleId];
           const chapterNumber = `${index + 1}.${childIndex + 1}`;
           return `<article id="${escapeHtml(child.id)}" class="panel help-article knowledge-book-chapter" data-knowledge-chapter="${escapeHtml(child.id)}"><div class="knowledge-chapter-meta"><p class="knowledge-chapter-number">${chapterNumber}</p>${renderNewChapterBadge(child.id)}</div>${renderArticle(chapter, child, { showRelated: false, chapterNumber })}</article>`;
         }).join("")}</section>`).join("")}
@@ -122,7 +123,7 @@ const HelpView = (() => {
 
   function renderKnowledgeChapterToc(chapter, topicIndex, chapterIndex) {
     const chapterNumber = `${topicIndex + 1}.${chapterIndex + 1}`;
-    const level = HelpContent.articles[chapter.articleId]?.access || "public";
+    const level = KnowledgeContent.articles[chapter.articleId]?.access || "public";
     const previewOnly = !canAccess(level);
     const subchapters = (chapter.subchapters || []).map((subchapter, subchapterIndex) => {
       if (!previewOnly || subchapterIndex === 0) {
@@ -190,7 +191,7 @@ const HelpView = (() => {
     return `<details class="help-topic-group" ${hasSelectedChild ? "open" : ""}>
       <summary><span><strong>${escapeHtml(topic.title)}</strong><small>${escapeHtml(topic.description || "")}</small></span>${accessBadge(topic.access)}</summary>
       <div>${(topic.children || []).map((child) => child.articleId
-        ? `<button class="help-topic-link ${child.id === selectedTopicId ? "active" : ""}" type="button" data-help-topic="${escapeHtml(child.id)}" ${child.id === selectedTopicId ? 'aria-current="page"' : ""}>${escapeHtml(child.title)}${accessBadge(HelpContent.articles[child.articleId]?.access)}</button>`
+        ? `<button class="help-topic-link ${child.id === selectedTopicId ? "active" : ""}" type="button" data-help-topic="${escapeHtml(child.id)}" ${child.id === selectedTopicId ? 'aria-current="page"' : ""}>${escapeHtml(child.title)}${accessBadge(contentForSurface(surface).articles[child.articleId]?.access)}</button>`
         : `<span class="help-topic-placeholder">${escapeHtml(child.title)}<small>Coming soon</small></span>`).join("")}</div>
     </details>`;
   }
@@ -199,7 +200,7 @@ const HelpView = (() => {
     if (!canAccess(article.access)) {
       const preview = article.access === "premium" ? article.sections.slice(0, 1) : [];
       return `<header class="help-article-head"><p class="eyebrow">${escapeHtml(parentTitle(topic.id))}</p><h2>${escapeHtml(article.title)}</h2><p>${escapeHtml(article.summary)}</p></header>
-        ${preview.map((section, sectionIndex) => `<section${section.id ? ` id="${escapeHtml(section.id)}"` : ""} class="help-article-section knowledge-chapter-preview">${chapterNumber && section.id ? `<p class="knowledge-subchapter-number">${chapterNumber}.${sectionIndex + 1}</p>` : ""}<h3>${escapeHtml(section.heading)}</h3>${(section.paragraphs || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}${section.list ? `<ul>${section.list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}</section>`).join("")}
+        ${preview.map((section, sectionIndex) => `<section${section.id ? ` id="${escapeHtml(section.id)}"` : ""} class="help-article-section knowledge-chapter-preview">${chapterNumber && section.id ? `<p class="knowledge-subchapter-number">${chapterNumber}.${sectionIndex + 1}</p>` : ""}<h3>${escapeHtml(section.heading)}</h3>${(section.paragraphs || []).map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("")}${section.list ? `<ul>${section.list.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>` : ""}${renderRebuildProjects(section)}</section>`).join("")}
         ${renderPaywall(article.access, { knowledgeChapter: Boolean(chapterNumber) })}`;
     }
     return `<header class="help-article-head"><p class="eyebrow">${escapeHtml(parentTitle(topic.id))}</p><h2>${escapeHtml(article.title)}</h2><p>${escapeHtml(article.summary)}</p></header>
@@ -207,6 +208,7 @@ const HelpView = (() => {
         ${chapterNumber && section.id ? `<p class="knowledge-subchapter-number">${chapterNumber}.${sectionIndex + 1}</p>` : ""}
         <h3>${escapeHtml(section.heading)}</h3>
         ${section.tamagotchiIllustration ? '<figure class="tamagotchi-learning-illustration"><img src="/assets/tamagotchi-learning-journey.png" alt="Fröhliches digitales Haustier auf einem vernetzten Taschen-Gerät"><figcaption>Ein kleines Projekt, das mit deinen Ideen wachsen kann.</figcaption></figure>' : ""}
+        ${section.illustration ? `<figure class="knowledge-section-illustration"><img src="${escapeHtml(section.illustration.src)}" alt="${escapeHtml(section.illustration.alt)}" loading="lazy" decoding="async"><figcaption>${escapeHtml(section.illustration.caption)}</figcaption></figure>` : ""}
         ${section.embeddingVisual ? renderEmbeddingVisuals() : ""}
         ${(section.paragraphs || []).map((paragraph, paragraphIndex) => `<p>${escapeHtml(paragraph)}</p>${section.aiIllustrationAfterParagraph === paragraphIndex ? '<figure class="tamagotchi-learning-illustration tamagotchi-ai-illustration"><img src="/assets/tamagotchi-ai-architecture.png" alt="Digitales Haustier mit leuchtender KI- und Verhaltensmodell-Verbindung"><figcaption>KI kann eine Fähigkeit ermöglichen – die technische Umsetzung bleibt eine bewusste Entscheidung.</figcaption></figure>' : ""}${section.securityDoorIllustrations?.filter((illustration) => illustration.afterParagraph === paragraphIndex).map((illustration) => `<div class="security-door-illustrations"><figure><div class="security-door-illustration-label"><strong>${escapeHtml(illustration.title)}</strong></div><img src="${escapeHtml(illustration.src)}" alt="${escapeHtml(illustration.alt)}" loading="lazy"><figcaption>${escapeHtml(illustration.caption)}</figcaption></figure></div>`).join("") || ""}`).join("")}
         ${section.developmentPhases ? renderDevelopmentPhases() : ""}
@@ -224,6 +226,7 @@ const HelpView = (() => {
         ${section.code ? `<pre><code>${escapeHtml(section.code)}</code></pre>` : ""}
         ${section.links ? `<p class="help-inline-links">${section.links.map((link) => `<button type="button" data-help-topic="${escapeHtml(link.topicId)}">${escapeHtml(link.label)}</button>`).join("")}</p>` : ""}
         ${section.learningProjects ? `<div class="engineering-project-links">${section.learningProjects.map((project) => `<a href="${escapeHtml(project.href)}"><span>${escapeHtml(project.model)}</span><strong>${escapeHtml(project.title)}</strong><small>${escapeHtml(project.description)}</small><b>Lernprojekt ansehen <em>→</em></b></a>`).join("")}</div>` : ""}
+        ${renderRebuildProjects(section)}
         ${chapterNumber && section.id ? renderPracticeLessonLink(section.id, section.heading) : ""}
       </section>`).join("")}
       ${article.hardwareCatalog ? '<section id="compatibleHardwareCatalog" class="help-hardware-catalog"><p class="helper-text">Hardware Catalog wird geladen …</p></section>' : ""}
@@ -238,6 +241,12 @@ const HelpView = (() => {
     const className = `help-practice-lesson ${kind === "chapter" ? "chapter" : ""}`;
     if (!access.hasAccount) return `<div class="${className} is-disabled" aria-disabled="true"><span>${label}</span><small>Anmeldung erforderlich · Demo-Link</small><b aria-hidden="true">→</b></div>`;
     return `<a class="${className}" href="${route}" data-practice-lesson="${escapeHtml(knowledgeTopicId)}" aria-label="${escapeHtml(`${label}: ${title}`)}"><span>${label}</span><small>Demo-Link · Zuordnung zu einer Lesson folgt</small><b aria-hidden="true">→</b></a>`;
+  }
+
+  function renderRebuildProjects(section) {
+    return section.rebuildProjects
+      ? `<div class="engineering-project-links rebuild-project-links">${section.rebuildProjects.map((project) => `<a href="${escapeHtml(project.href)}"><span>${escapeHtml(project.model || "Nachbauprojekt")}</span><strong>${escapeHtml(project.title)}</strong><small>${escapeHtml(project.description)}</small><b>Nachbauprojekt ansehen <em>→</em></b></a>`).join("")}</div>`
+      : "";
   }
 
   function renderKnowledgeQuizzes(quizzes) {
@@ -407,13 +416,13 @@ const HelpView = (() => {
   }
 
   function renderRelatedTopic(topicId) {
-    const topic = HelpContent.findTopic(topicId);
+    const topic = findInformationTopic(topicId);
     if (!topic) return "";
     return `<button type="button" data-help-topic="${escapeHtml(topic.id)}">${escapeHtml(topic.title)}</button>`;
   }
 
   function parentTitle(topicId) {
-    return HelpContent.topics.find((topic) => topic.children?.some((child) => child.id === topicId))?.title || "Help";
+    return findContentForTopic(topicId)?.findParentTopic(topicId)?.title || "Information";
   }
 
   function bind(mount) {
@@ -504,9 +513,10 @@ const HelpView = (() => {
   }
 
   function selectTopic(topicId) {
-    const topic = HelpContent.findTopic(topicId);
+    const targetContent = findContentForTopic(topicId);
+    const topic = targetContent?.findTopic(topicId);
     if (!topic?.articleId) return;
-    const targetSurface = HelpContent.findParentTopic(topicId)?.surface || "help";
+    const targetSurface = targetContent === KnowledgeContent ? "knowledge" : "help";
     if (targetSurface !== surface) {
       window.navigate(`${targetSurface === "knowledge" ? "/wissen/" : "/hilfe/"}#${topicId}`);
       return;
@@ -517,8 +527,9 @@ const HelpView = (() => {
   }
 
   function openDialog(topicId) {
-    const topic = HelpContent.findTopic(topicId);
-    const article = topic?.articleId ? HelpContent.articles[topic.articleId] : null;
+    const content = findContentForTopic(topicId);
+    const topic = content?.findTopic(topicId);
+    const article = topic?.articleId ? content.articles[topic.articleId] : null;
     if (!article) return;
     let dialog = document.querySelector("#helpTopicDialog");
     if (!dialog) {
@@ -549,6 +560,20 @@ const HelpView = (() => {
 
   function escapeHtml(value) {
     return DomUtils.escapeHtml(value);
+  }
+
+  function contentForSurface(nextSurface) {
+    return nextSurface === "knowledge" ? KnowledgeContent : HelpContent;
+  }
+
+  function findContentForTopic(topicId) {
+    if (HelpContent.findTopic(topicId)) return HelpContent;
+    if (KnowledgeContent.findTopic(topicId)) return KnowledgeContent;
+    return null;
+  }
+
+  function findInformationTopic(topicId) {
+    return findContentForTopic(topicId)?.findTopic(topicId) || null;
   }
 
   return { render, selectTopic, openDialog };

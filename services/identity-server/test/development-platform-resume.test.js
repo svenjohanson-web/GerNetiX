@@ -232,7 +232,7 @@ test("configures a touchscreen game collection through pattern, games, board and
   assert.match(publicController, /gameConfiguration: state\.developmentPlatform\.gameConfiguration/);
   assert.match(publicApp, /route === "development-platform"\) loadProcessorBoardCatalog/);
   assert.match(devServer, /normalizeTouchscreenGameConfiguration/);
-  assert.match(devServer, /selectedGamesHeader\(gameConfiguration\.selected_game_ids\)/);
+  assert.match(devServer, /mergeSelectedGamesHeader\(gameConfiguration\.selected_game_ids, existingSelectedGames\?\.content\)/);
   assert.match(devServer, /game_inventory_device_not_compatible/);
 });
 
@@ -292,7 +292,7 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(publicController, /processor\.variant === "ESP32" \? "ESP32 \(klassisch\)" : processor\.variant/);
   assert.match(publicController, /data-hardware-processor-help/);
   assert.match(publicController, /openHelpTopic\?\.\("supported-devices"\)/);
-  assert.match(publicApp, /openHelpTopic: HelpView\.openDialog/);
+  assert.match(publicApp, /openHelpTopic: InformationView\.openDialog/);
   assert.match(hardwareCatalogSeed, /PT1000 Widerstandsthermometer/);
   assert.match(publicController, /Konstantstromquelle \/ Messbruecke/);
   assert.match(publicController, /DC-Motorsteuerung/);

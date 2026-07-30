@@ -49,34 +49,30 @@
 
       <nav id="mainMenu" class="tabs app-menu hidden" aria-label="Plattformbereiche">
         <a href="/app/dashboard/" data-route="dashboard" data-i18n="platform.nav.dashboard">Übersicht</a>
-        <details class="app-menu-group app-menu-group-private">
-          <summary data-i18n="platform.menu.work">Arbeiten</summary>
-          <div>
-            <a href="/app/development-platform/" data-route="development-platform" data-i18n="platform.nav.development">Entwicklungsplattform</a>
-            <a href="/app/learn/" data-route="learn" data-i18n="platform.nav.learning">Lernplattform</a>
-            <a href="/app/device-management/" data-route="device-management" data-i18n="platform.nav.devices">Geräte</a>
-            <a href="/app/community/" data-route="community" data-i18n="platform.nav.community">Community &amp; Begleitung</a>
-          </div>
-        </details>
         <details class="app-menu-group">
-          <summary data-i18n="platform.menu.knowledge_tools">Wissen &amp; Werkzeuge</summary>
+          <summary data-i18n="platform.menu.learn_develop">Lernen &amp; Entwickeln</summary>
           <div>
-            <a class="utility public-information-link" href="/wissen/">Wissensportal <span id="knowledgeUpdateMenuBadge" class="knowledge-update-count" hidden></span></a>
-            <a class="utility" href="/app/quiz/" data-route="quiz" data-i18n="platform.nav.quiz">Quiz</a>
-            <a class="utility" href="/app/downloads/" data-route="downloads" data-i18n="platform.nav.downloads">Downloads</a>
-            <a class="utility public-information-link" href="/flashbox-einrichten/">USB Helper</a>
+            <a href="/app/learn/" data-route="learn" data-i18n="platform.nav.learning">Lernplattform</a>
+            <a href="/app/development-platform/" data-route="development-platform" data-i18n="platform.nav.development">Entwicklungsplattform</a>
+            <a class="utility public-information-link" href="/wissen/"><span data-i18n="platform.nav.knowledge_store">Wissensspeicher</span> <span id="knowledgeUpdateMenuBadge" class="knowledge-update-count" hidden></span></a>
+            <a href="/app/community/" data-route="community" data-i18n="platform.nav.community">Community</a>
             <a class="utility public-information-link" href="/nachbauprojekte/">Nachbauprojekte</a>
           </div>
         </details>
         <details class="app-menu-group">
-          <summary data-i18n="platform.menu.gernetix">GerNetiX</summary>
+          <summary data-i18n="platform.menu.boards_tools">Boards &amp; Werkzeuge</summary>
           <div>
-            <a class="utility public-information-link" href="/entdecken/">GerNetiX entdecken</a>
-            <a class="utility public-information-link" href="/community/">Community</a>
-            <a class="utility public-information-link" href="/hilfe/">Hilfe</a>
+            <a href="/app/device-management/" data-route="device-management" data-i18n="platform.nav.devices">Geräte</a>
+            <a class="utility" href="/app/quiz/" data-route="quiz" data-i18n="platform.nav.quiz">Quiz</a>
+            <a class="utility" href="/app/downloads/" data-route="downloads" data-i18n="platform.nav.downloads">Downloads</a>
+            <a class="utility public-information-link" href="/flashbox-einrichten/">FlashBox einrichten</a>
+          </div>
+        </details>
+        <details class="app-menu-group">
+          <summary data-i18n="platform.menu.service_shop">Service &amp; Shop</summary>
+          <div>
             <a class="utility public-information-link" href="/support/">Support</a>
             <a class="utility public-information-link" href="/shop/">Webshop</a>
-            <a class="utility public-information-link" href="/app/auth/">Anmelden</a>
           </div>
         </details>
         <details class="app-menu-group app-menu-group-private">
@@ -84,9 +80,11 @@
           <div>
             <a class="utility" href="/app/account-setup/" data-route="account-setup" data-i18n="profile.menu">Profil</a>
             <a class="utility" href="/app/billing/" data-route="billing" data-i18n="platform.nav.billing">Billing</a>
-            <button id="logoutButton" class="menu-logout" type="button" data-i18n="platform.nav.logout">Abmelden</button>
           </div>
         </details>
+        <a id="helpMenuLink" class="utility public-information-link menu-fixed-action" href="/hilfe/">Hilfe</a>
+        <a id="loginMenuLink" class="utility public-information-link menu-session-action" href="/app/auth/">Anmelden</a>
+        <button id="logoutButton" class="menu-logout menu-session-action" type="button" data-i18n="platform.nav.logout">Abmelden</button>
       </nav>
 
       <section id="dashboardView" class="view">
@@ -107,24 +105,35 @@
 
         <section class="dashboard-section" aria-labelledby="workspaceTitle">
           <div class="section-head"><div><p class="eyebrow" data-i18n="dashboard.workspaces.eyebrow">Arbeitsbereiche</p><h2 id="workspaceTitle" data-i18n="dashboard.workspaces.title">Was möchtest du tun?</h2></div></div>
-          <div class="dashboard-grid workspace-grid">
-            <button class="entry-card" type="button" data-open-route="/app/development-platform/"><span data-i18n="dashboard.development.label">Eigene Idee</span><strong data-i18n="dashboard.development.title">Entwicklungsbereich</strong><p data-i18n="dashboard.development.text">Vom Ziel zur begründeten Lösung.</p></button>
-            <button class="entry-card" type="button" data-open-route="/app/learn/"><span data-i18n="dashboard.learning.label">Geführt lernen</span><strong data-i18n="dashboard.learning.title">Lernbereich</strong><p data-i18n="dashboard.learning.text">Verstehen, entscheiden, ausprobieren.</p></button>
-            <button class="entry-card" type="button" data-open-route="/wissen/"><span data-i18n="dashboard.knowledge.label">Zusammenhängend lesen</span><strong data-i18n="dashboard.knowledge.title">Wissensportal</strong><p data-i18n="dashboard.knowledge.text">Grundlagen, Fachbegriffe und Systemzusammenhänge als Lektüre.</p></button>
-            <button class="entry-card" type="button" data-open-route="/app/quiz/"><span data-i18n="dashboard.quiz.label">Wissen prüfen</span><strong data-i18n="dashboard.quiz.title">Quiz</strong><p data-i18n="dashboard.quiz.text">Fragen beantworten und die technische Begründung verstehen.</p></button>
-            <button class="entry-card" type="button" data-open-route="/app/device-management/"><span data-i18n="dashboard.devices.label">Vorhandene Hardware</span><strong data-i18n="dashboard.devices.title">Boards verwalten</strong><p data-i18n="dashboard.devices.text">Boards verbinden und verwalten.</p></button>
-            <button class="entry-card" type="button" data-open-route="/app/community/"><span data-i18n="dashboard.community.label">Austausch &amp; Hilfe</span><strong data-i18n="dashboard.community.title">Community &amp; Begleitung</strong><p data-i18n="dashboard.community.text">Fragen stellen oder persönliche Projektbegleitung anfragen.</p></button>
+          <div class="workspace-categories">
+            <section class="workspace-category" aria-labelledby="workspaceDevelopTitle">
+              <div class="workspace-category-header"><h3 id="workspaceDevelopTitle" data-i18n="dashboard.workspaces.develop">Entwickeln &amp; verwalten</h3></div>
+              <div class="dashboard-grid workspace-grid">
+                <button class="entry-card" type="button" data-open-route="/app/development-platform/"><span data-i18n="dashboard.development.label">Eigene Idee</span><strong data-i18n="dashboard.development.title">Entwicklungsbereich</strong><p data-i18n="dashboard.development.text">Vom Ziel zur begründeten Lösung.</p></button>
+                <button class="entry-card" type="button" data-open-route="/app/device-management/"><span data-i18n="dashboard.devices.label">Vorhandene Hardware</span><strong data-i18n="dashboard.devices.title">Boards verwalten</strong><p data-i18n="dashboard.devices.text">Boards verbinden und verwalten.</p></button>
+              </div>
+            </section>
+            <section class="workspace-category" aria-labelledby="workspaceLearnTitle">
+              <div class="workspace-category-header"><h3 id="workspaceLearnTitle" data-i18n="dashboard.workspaces.learn">Lernen &amp; verstehen</h3></div>
+              <div class="dashboard-grid workspace-grid">
+                <button class="entry-card" type="button" data-open-route="/app/learn/"><span data-i18n="dashboard.learning.label">Geführt lernen</span><strong data-i18n="dashboard.learning.title">Lernbereich</strong><p data-i18n="dashboard.learning.text">Verstehen, entscheiden, ausprobieren.</p></button>
+                <button class="entry-card" type="button" data-open-route="/wissen/"><span data-i18n="dashboard.knowledge.label">Zusammenhängend lesen</span><strong data-i18n="dashboard.knowledge.title">Wissensportal</strong><p data-i18n="dashboard.knowledge.text">Grundlagen, Fachbegriffe und Systemzusammenhänge als Lektüre.</p></button>
+                <button class="entry-card" type="button" data-open-route="/app/quiz/"><span data-i18n="dashboard.quiz.label">Wissen prüfen</span><strong data-i18n="dashboard.quiz.title">Quiz</strong><p data-i18n="dashboard.quiz.text">Fragen beantworten und die technische Begründung verstehen.</p></button>
+              </div>
+            </section>
           </div>
         </section>
 
-        <section id="dashboardKnowledgeUpdates" class="panel dashboard-knowledge-updates" aria-labelledby="dashboardKnowledgeUpdatesTitle" hidden>
+        <section id="dashboardNews" class="panel dashboard-news" aria-labelledby="dashboardNewsTitle">
           <div class="section-head">
             <div>
-              <p class="eyebrow">Neu im Wissensportal</p>
-              <h2 id="dashboardKnowledgeUpdatesTitle">Der Wissensspeicher wurde erweitert</h2>
+              <p class="eyebrow" data-i18n="dashboard.news.eyebrow">Neu bei GerNetiX</p>
+              <h2 id="dashboardNewsTitle" data-i18n="dashboard.news.title">Was gibt es Neues?</h2>
+              <p class="dashboard-news-intro" data-i18n="dashboard.news.intro">Hier findest du neue Templates, Projekte, Nachbauprojekte, Hardware, Wissensinhalte und Beiträge aus der Community.</p>
             </div>
+            <button class="dashboard-news-community-link" type="button" data-open-route="/app/community/" data-i18n="dashboard.news.community.action">Community &amp; Begleitung öffnen →</button>
           </div>
-          <div id="dashboardKnowledgeUpdateList" class="dashboard-knowledge-update-list"></div>
+          <div id="dashboardNewsList" class="dashboard-news-list"></div>
         </section>
 
         <section class="panel dashboard-status">
@@ -208,8 +217,8 @@
         <p id="serialServiceChoiceStatus" class="helper-text" aria-live="polite"></p>
       </dialog>
 
-      <section id="helpView" class="view hidden">
-        <div id="helpMount"></div>
+      <section id="informationView" class="view hidden">
+        <div id="informationMount"></div>
         <template id="legacyHelpMarkup">
           <div>
             <p class="eyebrow">Hilfe</p>
@@ -1156,9 +1165,10 @@
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
     <script src="/app/development-component-metamodel.js?v=20260716-01"></script>
     <script src="/app/development-platform.js?v=20260717-04"></script>
-    <script src="/app/help-content.js?v=20260729-ac-dc-motor-foundations-1"></script>
+    <script src="/app/help-content.js?v=20260730-content-separation-1"></script>
+    <script src="/app/knowledge-content.js?v=20260730-content-separation-1"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
-    <script src="/app/help-view.js?v=20260729-ai-credit-purchase-1"></script>
+    <script src="/app/information-view.js?v=20260730-content-separation-1"></script>
     <script src="/app/quiz-data.js?v=20260726-01"></script>
     <script src="/app/quiz.js?v=20260726-01"></script>
     <script src="/app/app.js?v=20260729-ai-credit-packages-1"></script>

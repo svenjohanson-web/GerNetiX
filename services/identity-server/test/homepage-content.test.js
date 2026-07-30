@@ -93,9 +93,9 @@ test("offers a hamburger menu with the public webshop entry only", () => {
   assert.match(html, /id="publicMenuButton"[\s\S]*aria-expanded="false"/);
   assert.match(menu, /href="\/">Startseite/);
   assert.match(menu, /href="\/hilfe\/">Hilfe/);
-  assert.match(menu, /href="\/entdecken\/">GerNetiX entdecken/);
-  assert.match(menu, /href="\/flashbox-einrichten\/">USB Helper/);
-  assert.match(menu, /href="\/nachbauprojekte\/">Nachbauprojekte/);
+  assert.doesNotMatch(menu, /href="\/entdecken\/"|GerNetiX entdecken/);
+  assert.match(menu, /href="\/nachbauprojekte\/">Projekte zum Nachbauen/);
+  assert.match(menu, /href="\/flashbox-einrichten\/">FlashBox einrichten/);
   assert.match(menu, /href="\/shop\/">Webshop/);
   assert.match(menu, /href="\/app\/auth\/">Anmelden/);
   assert.doesNotMatch(menu, /Dashboard|Geräte|Billing|Entwicklungsplattform/);

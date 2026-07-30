@@ -7,7 +7,13 @@ const HelpChatService = (() => {
     });
     return {
       ...response,
-      relatedTopics: (response.relatedTopics || []).map((topic) => ({ ...topic, title: HelpContent.findTopic(topic.topicId)?.title || topic.title || topic.topicId })),
+      relatedTopics: (response.relatedTopics || []).map((topic) => ({
+        ...topic,
+        title: HelpContent.findTopic(topic.topicId)?.title
+          || KnowledgeContent.findTopic(topic.topicId)?.title
+          || topic.title
+          || topic.topicId,
+      })),
     };
   }
 

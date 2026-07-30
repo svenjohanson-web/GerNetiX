@@ -20,10 +20,17 @@ const services = [
   service("hardware-shop", "Hardware Shop", 4900, {PERSISTENCE_BACKEND:"memory"}), service("ai-usage-server", "AI Usage Server", 5000, {PERSISTENCE_BACKEND:"memory"}),
   service("ai-context-server", "AI Context Server", 5500), service("admin-tool", "Admin Tool", 4600, {PERSISTENCE_BACKEND:"memory"}),
   service("community-platform", "Community Platform", 5200),
-  service("identity-server", "Identity Server", 4300)
+  service("identity-server", "Identity Server", 4300),
+  service("admin-access-server", "Admin Access Server", 4610, {}, {autoStart:false}),
+  service("telemetry-server", "Telemetry Server", 5600, {}, {autoStart:false}),
+  service("public-demo-server", "Öffentlicher Demo-Katalog", 4920, {}, {autoStart:false}),
+  service("community-ai-assistant", "Community AI Assistant", 5300, {}, {autoStart:false}),
+  service("persistence-server", "Persistence Server", 5400, {}, {autoStart:false}),
+  service("provisioning-tool", "Provisioning Tool Server", 4500, {}, {autoStart:false}),
+  service("recovery-tool", "Recovery Tool Server", 5100, {}, {autoStart:false})
 ];
 
-function service(id, name, port, environment={}) { return { id, name, port, cwd:path.join(workspaceRoot,"services",id), healthUrl:`http://127.0.0.1:${port}/health`, environment }; }
+function service(id, name, port, environment={}, options={}) { return { id, name, port, cwd:path.join(workspaceRoot,"services",id), healthUrl:`http://127.0.0.1:${port}/health`, environment, autoStart:options.autoStart!==false }; }
 function configureWorkspace(root) { workspaceRoot=path.resolve(root); for(const item of services)item.cwd=path.join(workspaceRoot,"services",item.id); }
 function byId(id) { const item=services.find((entry)=>entry.id===id); if(!item) throw new Error("Unbekannter GerNetiX-Dienst."); return item; }
 
@@ -335,7 +342,7 @@ async function startIdentityRemoteDev(options={}){
   throw new Error(`Identity Remote-Dev wurde nicht gestartet.${detail?` Letzte Logzeilen: ${detail}`:""}`);
 }
 async function startService(id,options={}){ if(id==="identity-server")return startIdentityRemoteDev(options); const item=byId(id); const checkService=options.checkService||check; const current=await checkService(item); if(current.healthy)return current; const child=launchLoggedService(item,{...process.env,...item.environment,ELECTRON_RUN_AS_NODE:"1",PORT:String(item.port)}); child.unref(); for(let i=0;i<40;i+=1){await delay(250);const state=await checkService(item);if(state.healthy)return state;} throw new Error(`${item.name} konnte nicht gestartet werden.${recentServiceLog(item.id)?` Letzte Logzeilen: ${recentServiceLog(item.id)}`:""}`); }
-async function startAllServices(options={}){const start=options.startService||startService;const items=[];for(const item of services){try{items.push(await start(item.id));}catch(error){items.push({...item,healthy:false,statusCode:0,pid:null,error:error.message});}}return{items,healthy:items.filter((item)=>item.healthy).length,failed:items.filter((item)=>!item.healthy).length};}
+async function startAllServices(options={}){const start=options.startService||startService;const items=[];for(const item of services.filter((entry)=>entry.autoStart)){try{items.push(await start(item.id));}catch(error){items.push({...item,healthy:false,statusCode:0,pid:null,error:error.message});}}return{items,healthy:items.filter((item)=>item.healthy).length,failed:items.filter((item)=>!item.healthy).length};}
 async function stopService(id){ const item=byId(id); const pid=await pidForPort(item.port); if(!pid)return check(item); if(process.platform==="win32")await execFileAsync("taskkill",["/PID",String(pid),"/T","/F"],{windowsHide:true});else process.kill(pid,"SIGTERM"); for(let i=0;i<20;i+=1){await delay(150);const state=await check(item);if(!state.healthy)return state;} throw new Error(`${item.name} konnte nicht beendet werden.`); }
 function pidFromWindowsNetstat(output,port){
   const line=String(output||"").split(/\r?\n/).find((row)=>{

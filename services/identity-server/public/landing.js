@@ -56,8 +56,6 @@ function addPublicLanguageSwitcher() {
 function decoratePublicNavigation() {
   const keysByPath = {
     "/": "nav.home",
-    "/entdecken/": "nav.discover",
-    "/downloads/": "nav.discover",
     "/flashbox-einrichten/": "nav.usb_helper",
     "/nachbauprojekte/": "nav.rebuild_projects",
     "/wissen/": "nav.knowledge",

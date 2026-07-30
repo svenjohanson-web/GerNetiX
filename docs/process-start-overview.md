@@ -26,7 +26,7 @@ Auf macOS kann alternativ `tools/GerNetiX-Check-und-Start.command` per Doppelkli
 
 ## Grafischer Prozess-Monitor
 
-Die eigenstaendige Desktop-App zeigt alle zehn Plattformdienste mit Port, HTTP-Status, PID und Lebensstatus. Jeder Dienst kann einzeln gestartet oder gestoppt werden. Die Ansicht aktualisiert sich alle fuenf Sekunden und benoetigt weder Admin Tool noch Monitor-Webserver.
+Die eigenstaendige Desktop-App zeigt alle 17 Backend-Dienste mit Port, HTTP-Status, PID und Lebensstatus. Jeder Dienst kann einzeln gestartet oder gestoppt werden. `Alle lokalen Prozesse starten` bleibt bewusst auf die zehn Kernprozesse des minimalen Plattform-Stacks begrenzt; Admin Access, Telemetry, Public Demo, Community AI, Persistence, Provisioning und Recovery werden angezeigt, aber nur einzeln bei Bedarf gestartet. Die Ansicht aktualisiert sich alle zehn Sekunden und benoetigt weder Admin Tool noch Monitor-Webserver.
 
 - macOS-App: `tools/process-monitor/GerNetiX Prozess-Monitor.app`
 - macOS-Entwicklung: `tools/process-monitor/GerNetiX-Prozess-Monitor.command`
