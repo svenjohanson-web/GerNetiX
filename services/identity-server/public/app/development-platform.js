@@ -33,6 +33,7 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#continueDevelopmentProjectButton").addEventListener("click", continueLastProject);
       document.querySelector("#openDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("open"));
       document.querySelector("#manageDevelopmentProjectsButton").addEventListener("click", () => showProjectPanel("manage"));
+      document.querySelector(".development-project-header").addEventListener("click", handleProjectPanelNavigation);
       document.querySelector("#developmentProjectOverview").addEventListener("click", handleProjectOverviewClick);
       document.querySelector("#developmentPlatformView").addEventListener("click", handleInlineHelpClick);
       document.querySelector("#developmentPlatformView").addEventListener("keydown", handleInlineHelpKeydown);
@@ -160,6 +161,20 @@ const DevelopmentPlatform = (() => {
       if (configureButton) { activateProject(configureButton.dataset.configureDevelopmentProject); return; }
       const deleteButton = event.target.closest("[data-delete-development-project]");
       if (deleteButton) deleteDevelopmentProject(deleteButton.dataset.deleteDevelopmentProject);
+    }
+
+    function handleProjectPanelNavigation(event) {
+      if (event.target.closest("[data-development-project-back]")) {
+        showProjectPanel("choice");
+        return;
+      }
+      if (event.target.closest("[data-development-project-new-empty]")) {
+        showProjectPanel("new-empty");
+        return;
+      }
+      if (event.target.closest("[data-development-project-new-template]")) {
+        showProjectPanel("new-template");
+      }
     }
 
     async function deleteDevelopmentProject(projectId) {
@@ -304,10 +319,15 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#continueDevelopmentProjectButton").classList.toggle("hidden", !lastProject);
       document.querySelector("#continueDevelopmentProjectName").textContent = lastProject?.name || "";
       document.querySelector("#developmentProjectOpenPanel").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "open");
+      document.querySelector("#developmentProjectOpenSelection").classList.toggle("hidden", projects.length === 0);
+      document.querySelector("#developmentProjectOpenEmpty").classList.toggle("hidden", projects.length > 0);
       const overview = document.querySelector("#developmentProjectOverview");
       overview.classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "manage");
       if (state.developmentPlatform.projectPanelMode === "manage") {
-        overview.innerHTML = projects.length ? `<header><p class="eyebrow">Meine Projekte</p><h3>Entwicklungsprojekte</h3></header>${projects.map((project) => `<article class="project-card"><div><strong>${escapeHtml(project.name)}</strong><p>${escapeHtml(project.description || "Keine Beschreibung.")}</p></div><div class="button-row"><button type="button" data-open-development-project="${escapeAttribute(project.id)}">In IDE oeffnen</button><button type="button" data-configure-development-project="${escapeAttribute(project.id)}">Konfiguration</button><button type="button" data-delete-development-project="${escapeAttribute(project.id)}">Loeschen</button></div></article>`).join("")}` : `<p class="empty">Noch keine eigenen Entwicklungsprojekte vorhanden.</p>`;
+        const content = projects.length
+          ? projects.map((project) => `<article class="project-card"><div><strong>${escapeHtml(project.name)}</strong><p>${escapeHtml(project.description || "Keine Beschreibung.")}</p></div><div class="button-row"><button type="button" data-open-development-project="${escapeAttribute(project.id)}">In IDE oeffnen</button><button type="button" data-configure-development-project="${escapeAttribute(project.id)}">Konfiguration</button><button type="button" data-delete-development-project="${escapeAttribute(project.id)}">Loeschen</button></div></article>`).join("")
+          : `<div class="development-project-empty"><strong>Noch keine eigenen Entwicklungsprojekte vorhanden</strong><p>Lege ein neues Projekt an oder kehre zur Startauswahl zurück.</p><div class="button-row"><button type="button" data-development-project-new-empty>Leer beginnen</button><button type="button" data-development-project-new-template>Aus Template</button></div></div>`;
+        overview.innerHTML = `<header><p class="eyebrow">Meine Projekte</p><h3>Entwicklungsprojekte</h3></header>${content}<div class="button-row"><button type="button" data-development-project-back>Zurück zur Auswahl</button></div>`;
       }
       const isNewProject = state.developmentPlatform.projectPanelMode === "new-empty" || state.developmentPlatform.projectPanelMode === "new-template";
       document.querySelector("#developmentProjectForm").classList.toggle("hidden", !isNewProject);
@@ -322,7 +342,9 @@ const DevelopmentPlatform = (() => {
       if (selectButton) selectButton.disabled = !select.value;
       setProjectStatus(activeProject
         ? ""
-        : "Bitte waehle, wie du im Entwicklungsbereich starten moechtest.");
+        : projects.length
+          ? "Bitte waehle, wie du im Entwicklungsbereich starten moechtest."
+          : "Noch kein Entwicklungsprojekt vorhanden. Du kannst ein neues Projekt anlegen oder zurück zur Auswahl.");
     }
 
     function enterProjectStart() {

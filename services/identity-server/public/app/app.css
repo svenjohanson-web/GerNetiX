@@ -2564,6 +2564,17 @@ button.danger:hover {
   display: grid;
   gap: 8px;
 }
+.development-project-empty {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px dashed var(--line);
+  border-radius: 9px;
+}
+.development-project-empty p {
+  margin: 0;
+  color: var(--muted);
+}
 .development-project-summary {
   display: flex;
   align-items: baseline;
