@@ -58,8 +58,9 @@ test("build terminal keeps progress and error output compact", () => {
 test("build terminal always appends a persistent Flash and RAM summary", () => {
   assert.match(app, /\["succeeded", "failed", "replaced"\]\.includes\(current\.status\)/);
   assert.match(app, /appendBuildMemorySummary\(current\)/);
-  assert.match(app, /Speicherbelegung · Flash:/);
+  assert.match(app, /Speicherbelegung · Firmware-Partition \(Flash\):/);
   assert.match(app, /RAM: \$\{formatPlatformioMemoryUsage\(ram\)\}/);
+  assert.match(app, /Flash-Wert = App-Slot, nicht gesamter Gerätespeicher/);
   assert.match(app, /if \(!usage\) return "nicht ermittelt"/);
   assert.match(css, /\.terminal-summary \{[\s\S]*font-weight: 700/);
 });

@@ -3173,7 +3173,7 @@ function appendBuildMemorySummary(build) {
   ].join("\n");
   const flash = parsePlatformioMemoryUsage(output, "Flash");
   const ram = parsePlatformioMemoryUsage(output, "RAM");
-  appendIdeTerminal("summary", `Speicherbelegung · Flash: ${formatPlatformioMemoryUsage(flash)} · RAM: ${formatPlatformioMemoryUsage(ram)}`);
+  appendIdeTerminal("summary", `Speicherbelegung · Firmware-Partition (Flash): ${formatPlatformioMemoryUsage(flash)} · RAM: ${formatPlatformioMemoryUsage(ram)} · Flash-Wert = App-Slot, nicht gesamter Gerätespeicher`);
 }
 
 function parsePlatformioMemoryUsage(output, label) {
