@@ -226,6 +226,11 @@ document.querySelector("#ideProjectBrowser").addEventListener("click", (event) =
     openBoardProperties(boardPropertiesButton.dataset.boardProperties);
     return;
   }
+  const deviceConfigurationButton = event.target.closest("[data-device-configuration]");
+  if (deviceConfigurationButton) {
+    openDeviceConfiguration(deviceConfigurationButton.dataset.deviceConfiguration);
+    return;
+  }
   const hardwareConfigurationButton = event.target.closest("[data-hardware-configuration]");
   if (hardwareConfigurationButton) {
     navigate(`/app/development-platform/hardware/?project=${encodeURIComponent(state.activeProjectId)}`);
@@ -333,6 +338,11 @@ document.querySelector("#pwaDashboardDialog").addEventListener("click", (event) 
   }
 });
 document.querySelector("#ideBoardPropertiesView").addEventListener("click", (event) => {
+  const configurationTarget = event.target.closest("[data-device-configuration-target]")?.dataset.deviceConfigurationTarget;
+  if (configurationTarget) {
+    openDeviceConfigurationTarget(configurationTarget);
+    return;
+  }
   if (event.target.closest("[data-open-hardware-configuration]")) {
     navigate(`/app/development-platform/hardware/?project=${encodeURIComponent(state.activeProjectId)}`);
   }
@@ -2085,19 +2095,27 @@ function renderIdeProjectBrowser(project, sources) {
 }
 
 function projectBrowserSources(project, sources) {
-  const mappings = projectHardwareComponents(project)
+  const hardwareMappings = projectHardwareComponents(project)
     .filter((component) => component.abstract_type === "iot_device" && component.component_path)
     .map((component) => ({
       sourcePrefix: String(component.component_path).replace(/\/$/, ""),
       treePrefix: `Komponenten/${componentTreeLabel(component)}`,
     }))
     .sort((left, right) => right.sourcePrefix.length - left.sourcePrefix.length);
+  const primaryPath = primaryComponentPath(project);
+  const mappings = hardwareMappings.length || !projectNeedsHardwareTools(project) || !primaryPath
+    ? hardwareMappings
+    : [{ sourcePrefix: String(primaryPath).replace(/\/$/, ""), treePrefix: `Komponenten/${String(primaryPath).split("/").at(-1) || "IoT-Device"}` }];
   const mappedSources = !mappings.length ? sources : sources.map((source) => {
     const mapping = mappings.find((item) => source.path === item.sourcePrefix || source.path.startsWith(`${item.sourcePrefix}/`));
     if (!mapping) return source;
     let relativePath = source.path.slice(mapping.sourcePrefix.length).replace(/^\//, "");
     if (/^Konfiguration\//.test(relativePath) && !/^Konfiguration\/(Hardware|Software)\//.test(relativePath)) {
       relativePath = relativePath.replace(/^Konfiguration\//, "Konfiguration/Hardware/");
+    }
+    if (relativePath === "Konfiguration/Hardware/Board/board.md") relativePath = "Dokumentation/Hardware/Board.md";
+    if (relativePath.startsWith("Konfiguration/Hardware/Schaltungen/")) {
+      relativePath = relativePath.replace(/^Konfiguration\/Hardware\//, "Dokumentation/Hardware/");
     }
     return { ...source, treePath: [mapping.treePrefix, relativePath].filter(Boolean).join("/") };
   });
@@ -2107,23 +2125,29 @@ function projectBrowserSources(project, sources) {
 
 function projectVirtualTreeEntries(project) {
   const entries = [];
-  const hardwareComponents = projectHardwareComponents(project);
-  if (projectNeedsHardwareTools(project)) {
-    const primaryPath = primaryComponentPath(project);
-    const primaryDevice = hardwareComponents.find((component) => component.abstract_type === "iot_device" && component.component_path === primaryPath);
-    const component = primaryDevice ? `Komponenten/${componentTreeLabel(primaryDevice)}` : (primaryPath || "Komponenten/IoT-Device 1");
+  const configurationDevices = ideDeviceConfigurationComponents(project);
+  const primaryPath = primaryComponentPath(project);
+  const primaryDevice = configurationDevices.find((component) => component.component_path === primaryPath) || configurationDevices[0];
+  if (projectNeedsHardwareTools(project) && primaryDevice) {
+    const component = `Komponenten/${componentTreeLabel(primaryDevice)}`;
     entries.push(
-      { path: `${component}/Konfiguration/Software/Eigenschaften`, role: "", virtualAction: "component-features" },
-      { path: `${component}/Konfiguration/Software/Treiber/Verwaltung`, role: "", virtualAction: "driver-management" },
+      { path: `${component}/Konfiguration/Software/Funktionen`, role: "", virtualAction: "component-features" },
+      { path: `${component}/Konfiguration/Software/Treiberverwaltung`, role: "", virtualAction: "driver-management" },
       { path: `${component}/Konfiguration/Software/Webserver/Konfiguration`, role: "", virtualAction: "webserver-configuration" },
       { path: `${component}/Konfiguration/Software/Webserver/Vorschau`, role: "", virtualAction: "device-web" },
     );
   }
-  hardwareComponents.forEach((component) => {
+  configurationDevices.forEach((component) => {
     const label = componentTreeLabel(component);
     if (component.abstract_type === "iot_device") {
       entries.push({
-        path: `Komponenten/${label}/Konfiguration/Hardware/Board/Boardeigenschaften`,
+        path: `Komponenten/${label}/Konfiguration/Übersicht`,
+        role: "",
+        virtualAction: "device-configuration",
+        componentId: component.component_id,
+      });
+      entries.push({
+        path: `Komponenten/${label}/Konfiguration/Hardware/Boardkonfiguration`,
         role: "",
         virtualAction: "board-properties",
         componentId: component.component_id,
@@ -2164,6 +2188,23 @@ function projectVirtualTreeEntries(project) {
     });
   }
   return entries;
+}
+
+function ideDeviceConfigurationComponents(project) {
+  const devices = projectHardwareComponents(project).filter((component) => component.abstract_type === "iot_device");
+  if (devices.length || !projectNeedsHardwareTools(project)) return devices;
+  const componentPath = primaryComponentPath(project) || "Komponenten/IoT-Device 1";
+  return [{
+    component_id: "primary-iot-device",
+    component_path: componentPath,
+    label: String(componentPath).split("/").at(-1) || "IoT-Device",
+    abstract_type: "iot_device",
+    board_profile_id: project?.buildConfig?.board_configuration?.base_board_profile_id
+      || project?.hardwareProfileId
+      || project?.hardware_profile_id
+      || "",
+    board_configuration: project?.buildConfig?.board_configuration || null,
+  }];
 }
 
 function isPwaDashboardProject(project) {
@@ -2234,6 +2275,8 @@ function renderSourceTree(node, depth = 0, openFolders = new Set()) {
               ? "data-pwa-dashboard"
             : file.virtualAction === "board-properties"
               ? `data-board-properties="${escapeAttribute(file.componentId || "")}"`
+            : file.virtualAction === "device-configuration"
+              ? `data-device-configuration="${escapeAttribute(file.componentId || "")}"`
             : file.virtualAction === "hardware-configuration"
               ? "data-hardware-configuration"
             : file.virtualAction === "worker-dispatcher-configuration"
@@ -2268,9 +2311,59 @@ function treeContainsSource(node, sourcePath) {
 function openComponentFeatures() {
   state.ideViewMode = "component-features";
   const project = projectById(state.activeProjectId);
-  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Software/Eigenschaften`;
+  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Software/Funktionen`;
   renderComponentFeatures(project);
   renderIdeViewMode(project);
+}
+
+function openDeviceConfiguration(componentId) {
+  state.ideViewMode = "device-configuration";
+  state.activeIdeComponentId = String(componentId || "");
+  const project = projectById(state.activeProjectId);
+  const component = ideDeviceConfigurationComponents(project).find((item) => item.component_id === state.activeIdeComponentId)
+    || ideDeviceConfigurationComponents(project)[0];
+  document.querySelector("#ideActiveSourceLabel").textContent = `Komponenten/${componentTreeLabel(component)}/Konfiguration/Übersicht`;
+  renderDeviceConfigurationOverview(project, component);
+  renderIdeViewMode(project);
+}
+
+function openDeviceConfigurationTarget(target) {
+  if (target === "hardware") {
+    navigate(`/app/development-platform/hardware/?project=${encodeURIComponent(state.activeProjectId)}`);
+    return;
+  }
+  if (target === "board") return openBoardProperties(state.activeIdeComponentId);
+  if (target === "connections") return openDeviceConnections(state.activeIdeComponentId);
+  if (target === "features") return openComponentFeatures();
+  if (target === "drivers") return openDriverManagement();
+  if (target === "webserver") return openWebserverConfiguration();
+  if (target === "preview") return openDeviceWebView();
+}
+
+function renderDeviceConfigurationOverview(project, component) {
+  const target = document.querySelector("#ideBoardPropertiesView");
+  if (!target) return;
+  const boardConfiguration = component?.board_configuration || project?.buildConfig?.board_configuration || null;
+  const boardLabel = boardConfiguration?.name || component?.board_profile_id || "noch nicht ausgewählt";
+  target.innerHTML = `<div class="device-configuration-overview">
+    <header><div><p class="eyebrow">IoT-Device · Konfiguration</p><h3>${escapeHtml(component?.label || "IoT-Device")}</h3></div>
+      <button type="button" data-device-configuration-target="hardware">Hardware und Board bearbeiten</button></header>
+    <p class="helper-text">Alle Einstellungen dieses IoT-Devices liegen in dieser gemeinsamen Struktur. Hardware beschreibt die reale Ausführung; Software beschreibt die Funktionen auf dem Board.</p>
+    <section class="device-configuration-group"><header><div><p class="eyebrow">Hardware</p><h4>Board und angeschlossene Komponenten</h4></div><span>${escapeHtml(boardLabel)}</span></header>
+      <div class="device-configuration-cards">
+        <button type="button" data-device-configuration-target="board"><strong>Boardkonfiguration</strong><small>Boardversion, Ausstattung, Pins und verwendete MCU-Ressourcen</small></button>
+        <button type="button" data-device-configuration-target="connections"><strong>Angeschlossene Komponenten</strong><small>Sensoren, Aktoren, Anschlüsse und Funktionen</small></button>
+      </div>
+    </section>
+    <section class="device-configuration-group"><header><div><p class="eyebrow">Software</p><h4>Funktionen und Laufzeit</h4></div></header>
+      <div class="device-configuration-cards">
+        <button type="button" data-device-configuration-target="features"><strong>Funktionen</strong><small>Basissoftware und projektspezifische Erweiterungen</small></button>
+        <button type="button" data-device-configuration-target="drivers"><strong>Treiberverwaltung</strong><small>Verwaltete und projektspezifische Gerätetreiber</small></button>
+        <button type="button" data-device-configuration-target="webserver"><strong>Webserver-Konfiguration</strong><small>Lokale Darstellung und Messwertanzeige</small></button>
+        <button type="button" data-device-configuration-target="preview"><strong>Webserver-Vorschau</strong><small>Ausgabe des laufenden IoT-Devices prüfen</small></button>
+      </div>
+    </section>
+  </div>`;
 }
 
 function openWorkerDispatcherConfiguration(kind) {
@@ -2358,7 +2451,7 @@ async function saveEventConfiguration(event) {
 async function openDriverManagement() {
   state.ideViewMode = "driver-management";
   const project = projectById(state.activeProjectId);
-  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Software/Treiber/Verwaltung`;
+  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Software/Treiberverwaltung`;
   await loadProcessorBoardCatalog();
   renderDriverManagement(project);
   document.querySelector("#ideCodeAssistant").classList.remove("hidden");
@@ -2445,8 +2538,9 @@ async function openBoardProperties(componentId) {
   state.ideViewMode = "board-properties";
   state.activeIdeComponentId = String(componentId || "");
   const project = projectById(state.activeProjectId);
-  const component = projectHardwareComponents(project).find((item) => item.component_id === state.activeIdeComponentId);
-  document.querySelector("#ideActiveSourceLabel").textContent = `Komponenten/${component?.label || "IoT-Device"}/Konfiguration/Hardware/Board/Boardeigenschaften`;
+  const component = ideDeviceConfigurationComponents(project).find((item) => item.component_id === state.activeIdeComponentId)
+    || ideDeviceConfigurationComponents(project)[0];
+  document.querySelector("#ideActiveSourceLabel").textContent = `Komponenten/${component?.label || "IoT-Device"}/Konfiguration/Hardware/Boardkonfiguration`;
   await loadProcessorBoardCatalog();
   renderBoardProperties(project);
   renderIdeViewMode(project);
@@ -2517,7 +2611,8 @@ function openDeviceConnections(componentId) {
   state.ideViewMode = "device-connections";
   state.activeIdeComponentId = String(componentId || "");
   const project = projectById(state.activeProjectId);
-  const component = projectHardwareComponents(project).find((item) => item.component_id === state.activeIdeComponentId && item.abstract_type === "iot_device");
+  const component = ideDeviceConfigurationComponents(project).find((item) => item.component_id === state.activeIdeComponentId)
+    || ideDeviceConfigurationComponents(project)[0];
   document.querySelector("#ideActiveSourceLabel").textContent = `Komponenten/${component?.label || "IoT-Device"}/Konfiguration/Hardware/Angeschlossene Komponenten`;
   renderDeviceConnections(project);
   renderIdeViewMode(project);
@@ -2527,11 +2622,9 @@ function renderDeviceConnections(project) {
   const target = document.querySelector("#ideDeviceConnectionsView");
   if (!target || !project) return;
   const components = projectHardwareComponents(project);
-  const device = components.find((item) => item.component_id === state.activeIdeComponentId && item.abstract_type === "iot_device");
-  if (!device) {
-    target.innerHTML = '<div class="device-connections-empty"><h3>IoT-Device nicht gefunden</h3><p>Die Komponente ist nicht mehr Teil der gespeicherten Hardware-Konfiguration.</p></div>';
-    return;
-  }
+  const device = ideDeviceConfigurationComponents(project).find((item) => item.component_id === state.activeIdeComponentId)
+    || ideDeviceConfigurationComponents(project)[0];
+  if (!device) return;
   const connected = components.filter((item) => ["sensor", "actuator"].includes(item.abstract_type) && item.target_device_id === device.component_id);
   target.innerHTML = `<div class="device-connections-workspace">
     <header><div><p class="eyebrow">Hardware · IoT-Device</p><h3>${escapeHtml(device.label)}</h3></div><button type="button" data-open-hardware-configuration>Anschlüsse bearbeiten</button></header>
@@ -2593,6 +2686,7 @@ function renderIdeViewMode(project) {
   const sourcePath = state.sourcePath || "";
   const source = document.querySelector("#sourceEditor").value;
   const componentFeatures = state.ideViewMode === "component-features";
+  const deviceConfiguration = state.ideViewMode === "device-configuration";
   const webserverConfiguration = state.ideViewMode === "webserver-configuration";
   const boardProperties = state.ideViewMode === "board-properties";
   const sensorProperties = state.ideViewMode === "sensor-properties";
@@ -2600,18 +2694,18 @@ function renderIdeViewMode(project) {
   const driverManagement = state.ideViewMode === "driver-management";
   const deviceWeb = state.ideViewMode === "device-web";
   const pwaDashboard = state.ideViewMode === "pwa-dashboard";
-  const virtualView = componentFeatures || webserverConfiguration || boardProperties || sensorProperties || deviceConnections || driverManagement || deviceWeb || pwaDashboard;
+  const virtualView = componentFeatures || deviceConfiguration || webserverConfiguration || boardProperties || sensorProperties || deviceConnections || driverManagement || deviceWeb || pwaDashboard;
   const plantUml = /\.(puml|plantuml)$/i.test(sourcePath) && /@startuml/i.test(source);
   const image = /\.(svg|png|jpe?g|gif|webp)$/i.test(sourcePath);
   const architectureBaseline = isArchitectureBaselinePath(sourcePath);
   document.querySelector("#sourceEditor").readOnly = !ideSourceIsEditable(project, sourcePath);
   document.querySelector("#ideViewerPanel").classList.toggle("plantuml-split", plantUml && !virtualView);
-  document.querySelector("#ideViewerModeLabel").textContent = componentFeatures ? "Softwareeigenschaften" : webserverConfiguration ? "Webserver-Konfiguration" : boardProperties ? "Boardeigenschaften" : sensorProperties ? "Sensorkonfiguration" : deviceConnections ? "Angeschlossene Komponenten" : driverManagement ? "Treiberverwaltung" : deviceWeb ? "Webserver-Vorschau" : pwaDashboard ? "PWA-Dashboard" : architectureBaseline ? "Freigegebene Architektur-Baseline · schreibgeschützt" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
+  document.querySelector("#ideViewerModeLabel").textContent = deviceConfiguration ? "IoT-Device-Konfiguration" : componentFeatures ? "Softwarefunktionen" : webserverConfiguration ? "Webserver-Konfiguration" : boardProperties ? "Boardkonfiguration" : sensorProperties ? "Sensorkonfiguration" : deviceConnections ? "Angeschlossene Komponenten" : driverManagement ? "Treiberverwaltung" : deviceWeb ? "Webserver-Vorschau" : pwaDashboard ? "PWA-Dashboard" : architectureBaseline ? "Freigegebene Architektur-Baseline · schreibgeschützt" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
   document.querySelector("#sourcePanel").classList.toggle("hidden", virtualView || image);
   document.querySelector("#ideImageView").classList.toggle("hidden", virtualView || (!plantUml && !image));
   document.querySelector("#ideModelView").classList.add("hidden");
   document.querySelector("#ideComponentFeaturesView").classList.toggle("hidden", !componentFeatures && !webserverConfiguration);
-  document.querySelector("#ideBoardPropertiesView").classList.toggle("hidden", !boardProperties);
+  document.querySelector("#ideBoardPropertiesView").classList.toggle("hidden", !boardProperties && !deviceConfiguration);
   document.querySelector("#ideSensorPropertiesView").classList.toggle("hidden", !sensorProperties);
   document.querySelector("#ideDeviceConnectionsView").classList.toggle("hidden", !deviceConnections);
   document.querySelector("#ideDriverManagementView").classList.toggle("hidden", !driverManagement);
@@ -2774,19 +2868,23 @@ function renderWebserverConfiguration(project) {
 function renderBoardProperties(project) {
   const target = document.querySelector("#ideBoardPropertiesView");
   if (!target) return;
-  const deviceComponent = projectHardwareComponents(project)
-    .find((component) => component.abstract_type === "iot_device" && component.component_id === state.activeIdeComponentId);
+  const deviceComponent = ideDeviceConfigurationComponents(project)
+    .find((component) => component.component_id === state.activeIdeComponentId) || ideDeviceConfigurationComponents(project)[0];
   if (!deviceComponent) {
-    target.innerHTML = '<div class="board-properties-empty"><h3>IoT-Device nicht gefunden</h3><p>Waehle die Boardeigenschaften direkt unter einer IoT-Device-Komponente im Projektbrowser.</p></div>';
+    target.innerHTML = '<div class="board-properties-empty"><h3>IoT-Device nicht gefunden</h3><p>Wähle die Boardkonfiguration direkt unter einer IoT-Device-Komponente im Projektbrowser.</p></div>';
     return;
   }
   const allocated = allocatedIdeDevice(project);
-  const boardProfileId = deviceComponent?.board_profile_id || allocated?.hardware_profile_id || "";
+  const boardConfiguration = deviceComponent?.board_configuration || project?.buildConfig?.board_configuration || null;
+  const boardSelectionId = boardConfiguration?.account_board_id
+    ? `account_board:${boardConfiguration.account_board_id}:v${boardConfiguration.account_board_version}`
+    : "";
+  const boardProfileId = boardSelectionId || deviceComponent?.board_profile_id || allocated?.hardware_profile_id || boardConfiguration?.base_board_profile_id || "";
   const board = state.processorBoards.find((item) => [item.hardware_item_id, item.hardware_profile_id, item.id]
     .filter(Boolean).some((id) => String(id) === String(boardProfileId)));
   if (!board) {
     target.innerHTML = `<div class="board-properties-empty">
-      <h3>Boardeigenschaften noch nicht verfügbar</h3>
+      <h3>Boardkonfiguration noch nicht verfügbar</h3>
       <p>Wähle zuerst ein reales Board in der Hardware-Konfiguration. Danach werden GPIO-, ADC-, PWM- und I²C-Ressourcen hier angezeigt.</p>
       <button type="button" data-open-hardware-configuration>Board zuordnen</button>
     </div>`;
@@ -2806,15 +2904,23 @@ function renderBoardProperties(project) {
   const drivers = Array.isArray(peripheralProfile.drivers) ? peripheralProfile.drivers : [];
   const peripheralUsage = effectiveBoardPeripheralUsage(project, deviceComponent.component_id);
   const configurablePeripherals = resources.filter((resource) => resource.configurable);
+  const persistedDeviceComponent = projectHardwareComponents(project)
+    .some((component) => component.abstract_type === "iot_device" && component.component_id === deviceComponent.component_id);
+  const configuredBoardFeatures = Object.entries(boardConfiguration?.board_features || board.default_instance_configuration?.board_features || {});
   target.innerHTML = `<div class="board-properties-workspace">
-    <header><div><p class="eyebrow">Hardware · Board</p><h3>${escapeHtml(board.title || deviceComponent?.label || "Boardeigenschaften")}</h3></div>
-      <button type="button" data-open-hardware-configuration>Belegung konfigurieren</button></header>
-    <p class="helper-text">Diese Ressourcen werden vom gewählten Board bereitgestellt. Die konkrete Belegung erfolgt bei den Sensoren und Aktoren in der Hardware-Konfiguration.</p>
+    <header><div><p class="eyebrow">Hardware · Boardkonfiguration</p><h3>${escapeHtml(boardConfiguration?.name || board.title || deviceComponent?.label || "Boardkonfiguration")}</h3></div>
+      <button type="button" data-open-hardware-configuration>Boardkonfiguration bearbeiten</button></header>
+    <p class="helper-text">Der Projektstand verwendet einen festen Snapshot dieser Boardkonfiguration. Eine spätere Account-Boardversion verändert dieses Projekt nicht automatisch.</p>
     <dl class="board-properties-meta">
+      <div><dt>Quelle</dt><dd>${escapeHtml(boardConfiguration?.source === "account" ? `Eigenes Account-Board · Version ${boardConfiguration.account_board_version || 1}` : "GerNetiX-Board")}</dd></div>
+      <div><dt>Basisprofil</dt><dd>${escapeHtml(boardConfiguration?.base_board_profile_id || board.base_board_profile_id || board.hardware_item_id || "nicht angegeben")}</dd></div>
       <div><dt>Prozessorfamilie</dt><dd>${escapeHtml(board.processor_family || deviceComponent?.processor_family || "nicht angegeben")}</dd></div>
       <div><dt>MCU</dt><dd>${escapeHtml(board.mcu_variant || deviceComponent?.processor_variant || "nicht angegeben")}</dd></div>
     </dl>
-    <form class="board-peripheral-usage-form" data-component-id="${escapeAttribute(deviceComponent.component_id)}">
+    <section class="board-configuration-snapshot"><header><div><p class="eyebrow">Gespeicherter Projektsnapshot</p><h4>Ausstattung und Pinbelegung</h4></div><span>${configuredBoardFeatures.length} Einträge</span></header>
+      ${configuredBoardFeatures.length ? `<div class="board-configuration-snapshot-table"><table><thead><tr><th>Komponente</th><th>Status</th><th>Hardware / Treiber</th><th>Anschluss</th><th>Pins</th><th>Wert</th></tr></thead><tbody>${configuredBoardFeatures.map(([featureId, feature]) => `<tr><th>${escapeHtml(featureId)}</th><td>${feature?.enabled === false ? "Aus" : "Aktiv"}</td><td>${escapeHtml([feature?.hardware, feature?.driver].filter(Boolean).join(" · ") || "–")}</td><td>${escapeHtml(feature?.connection || "–")}</td><td>${escapeHtml(Object.entries(feature?.pins || {}).map(([signal, pin]) => `${signal}=${pin}`).join(", ") || "–")}</td><td>${escapeHtml(feature?.value || "–")}</td></tr>`).join("")}</tbody></table></div>` : '<p class="empty">Für diesen Projektstand sind noch keine einzelnen Boardmerkmale gespeichert.</p>'}
+    </section>
+    ${persistedDeviceComponent ? `<form class="board-peripheral-usage-form" data-component-id="${escapeAttribute(deviceComponent.component_id)}">
       <header><div><p class="eyebrow">IoT-Device-Konfiguration</p><h4>Verwendete Boardfunktionen</h4></div></header>
       <div class="board-peripheral-options">${configurablePeripherals.map((resource) => {
         const supported = boardPeripheralSupported(resource, profile);
@@ -2825,7 +2931,7 @@ function renderBoardProperties(project) {
         </label>`;
       }).join("")}</div>
       <footer><button type="submit">Boardfunktionen speichern</button><span data-board-peripheral-status></span></footer>
-    </form>
+    </form>` : '<aside class="board-properties-empty"><strong>Hardware-Realisierung noch nicht abgeschlossen</strong><p>Lege das IoT-Device im Hardware-Schritt fest, bevor einzelne MCU-Ressourcen projektgebunden aktiviert werden.</p></aside>'}
     <section class="board-capability-hierarchy" aria-label="Hierarchie der Boardfunktionen">
       ${boardCapabilityLayer("Treiber und Steuerungen", "Anwendungsebene", drivers, resources, abstractions, profile, "driver")}
       <div class="board-capability-connector"><span>nutzt</span><b>↓</b></div>
