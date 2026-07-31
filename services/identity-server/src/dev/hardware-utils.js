@@ -1,5 +1,6 @@
 const crypto = require("node:crypto");
 const fs = require("node:fs");
+const { renderPlatformioIni } = require("../../../shared/platformio-config");
 
 function createDevHardwareUtils({
   execFileAsync,
@@ -219,19 +220,6 @@ function createDevHardwareUtils({
     return device?.hardware_class === "flashbox"
       || device?.instance_configuration?.role === "flashbox"
       || String(device?.hardware_profile_id || "").includes(".flashbox.");
-  }
-
-  function renderPlatformioIni(config) {
-    const lines = [
-      `[env:${config.environment}]`,
-      `platform = ${config.platform}`,
-      `board = ${config.board}`,
-      `monitor_speed = ${config.monitorSpeed || "115200"}`,
-    ];
-    if (config.framework) lines.splice(3, 0, `framework = ${config.framework}`);
-    if (config.uploadSpeed) lines.push(`upload_speed = ${config.uploadSpeed}`);
-    lines.push("");
-    return lines.join("\n");
   }
 
   return {

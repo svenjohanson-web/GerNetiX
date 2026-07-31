@@ -15,12 +15,7 @@ async function main() {
     title: "GerNetiX Flashbox Build Verification",
     description: "Headless verification project for the containerized Flashbox build pipeline.",
     hardware_profile_id: "hardware.flashbox.esp32_s3_usb_helper",
-    build_config: {
-      platform: "espressif32",
-      board: "esp32-s3-devkitc-1",
-      framework: "arduino",
-      environment: "esp32_s3_usb_helper_flashbox",
-    },
+    build_config: flashboxBuildConfig(),
     sources: flashboxBuildSources(root),
   });
   const buildJobId = `flashbox-build-${Date.now()}`;
@@ -66,6 +61,31 @@ function flashboxBuildSources(workspaceRoot) {
     content: file.content,
   }));
   return [...flashboxSources, ...runtimeCoreSources];
+}
+
+function flashboxBuildConfig() {
+  return {
+    platform: "espressif32",
+    board: "esp32-s3-devkitc-1",
+    framework: "arduino, espidf",
+    environment: "esp32_s3_usb_helper_flashbox",
+    monitor_speed: 115200,
+    flash_size_mb: 16,
+    partition_file: "partitions_16mb_flashbox.csv",
+    build_flags: [
+      '-DGERNETIX_FLASHBOX_FIRMWARE_VERSION="0.1.0-dev"',
+      '-DGERNETIX_FLASHBOX_HARDWARE_PROFILE_ID="hardware.flashbox.esp32_s3_usb_helper"',
+      "-DGERNETIX_FLASHBOX_DISPLAY_ENABLED=0",
+      "-DGERNETIX_FLASHBOX_DISPLAY_DRIVER_ILI9341=0",
+      "-DGERNETIX_FLASHBOX_USB_OTG_DETECTION_ENABLED=1",
+      "-DBOARD_HAS_PSRAM",
+    ],
+    platformio_options: {
+      lib_ldf_mode: "deep+",
+      "board_build.cmake_extra_args": "-DIDF_COMPONENT_MANAGER=1",
+      lib_extra_dirs: "lib",
+    },
+  };
 }
 
 function rewriteFlashboxPlatformioIni(content) {
@@ -145,4 +165,4 @@ if (require.main === module) main().catch((error) => {
   process.exitCode = 1;
 });
 
-module.exports = { flashboxBuildSources, rewriteFlashboxPlatformioIni, toBuildDeployPackage, toProjectBuildResult };
+module.exports = { flashboxBuildConfig, flashboxBuildSources, rewriteFlashboxPlatformioIni, toBuildDeployPackage, toProjectBuildResult };

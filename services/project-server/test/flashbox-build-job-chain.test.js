@@ -5,7 +5,7 @@ const test = require("node:test");
 
 const { createHttpApp: createProjectHttpApp, InMemoryProjectRepository, ProjectService } = require("../src");
 const { createConfig, createDefaultBuildDeployService, createHttpApp: createBuildHttpApp } = require("../../build-deploy-server/src");
-const { flashboxBuildSources, toBuildDeployPackage } = require("../../../tools/submit-flashbox-build-job");
+const { flashboxBuildConfig, flashboxBuildSources, toBuildDeployPackage } = require("../../../tools/submit-flashbox-build-job");
 
 test("executes the headless Flashbox build-job chain from Project Server package to persisted build result", async (t) => {
   const projectService = new ProjectService({ repository: new InMemoryProjectRepository() });
@@ -25,12 +25,7 @@ test("executes the headless Flashbox build-job chain from Project Server package
     user_id: "firmware-release",
     title: "GerNetiX Flashbox Firmware",
     hardware_profile_id: "hardware.flashbox.esp32_s3_usb_helper",
-    build_config: {
-      platform: "espressif32",
-      board: "esp32-s3-devkitc-1",
-      framework: "arduino",
-      environment: "esp32_s3_usb_helper_flashbox",
-    },
+    build_config: flashboxBuildConfig(),
     sources: flashboxBuildSources(path.join(__dirname, "..", "..", "..")),
   });
 

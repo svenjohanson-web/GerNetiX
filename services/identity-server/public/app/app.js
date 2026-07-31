@@ -1864,9 +1864,17 @@ function renderIdeProjectInformation(project) {
     account: "Account-Board",
     project: "Projekt-Snapshot",
   }[boardConfiguration.source] || boardConfiguration.source || "nicht angegeben";
-  const flashLabel = buildConfig.flash_size_mb
-    ? `${buildConfig.flash_size_mb} MB physischer Board-Flash${buildConfig.partition_profile_id ? ` · Partition ${buildConfig.partition_profile_id}` : ""}`
-    : "nicht konfiguriert";
+  const flashFeatureValue = boardConfiguration.board_features?.flash?.value || "";
+  const ramFeatureValue = boardConfiguration.board_features?.ram?.value || "";
+  const psramFeatureValue = boardConfiguration.board_features?.psram?.value || "";
+  const flashLabel = buildConfig.maximum_program_size_bytes
+    ? `${buildConfig.maximum_program_size_bytes} Byte nutzbarer Programmspeicher${flashFeatureValue ? ` · ${formatBoardMemoryValue(flashFeatureValue)} physisch` : ""}`
+    : buildConfig.flash_size_mb
+      ? `${buildConfig.flash_size_mb} MB physischer Board-Flash${buildConfig.partition_profile_id ? ` · Partition ${buildConfig.partition_profile_id}` : ""}`
+      : flashFeatureValue ? formatBoardMemoryValue(flashFeatureValue) : "nicht konfiguriert";
+  const ramLabel = buildConfig.maximum_ram_size_bytes
+    ? `${buildConfig.maximum_ram_size_bytes} Byte SRAM`
+    : [ramFeatureValue && `RAM ${formatBoardMemoryValue(ramFeatureValue)}`, psramFeatureValue && `PSRAM ${formatBoardMemoryValue(psramFeatureValue)}`].filter(Boolean).join(" · ") || "Boardstandard";
   const firmwareSource = buildConfig.firmware_basis_id
     ? `Basissoftware ${buildConfig.firmware_basis_id}${buildConfig.firmware_basis_variant ? ` · ${buildConfig.firmware_basis_variant}` : ""}`
     : "Projektquellen direkt (keine Basissoftware)";
@@ -1889,6 +1897,7 @@ function renderIdeProjectInformation(project) {
     ["Compiler-Board", buildConfig.board || "nicht konfiguriert"],
     ["Framework", buildConfig.framework || "nicht konfiguriert"],
     ["Flash", flashLabel],
+    ["RAM", ramLabel],
     ["Firmwarequelle", firmwareSource],
     ["Template", templateLabel],
     ["Aktive Datei", state.sourcePath || "keine Datei gewaehlt"],
@@ -1908,6 +1917,13 @@ function renderIdeProjectInformation(project) {
   noticeTarget.innerHTML = items.length
     ? items.map((notice) => `<li class="${escapeHtml(notice.level || "warn")}">${escapeHtml(notice.text)}</li>`).join("")
     : '<li class="ok">Keine offenen Hinweise fuer dieses Projekt.</li>';
+}
+
+function formatBoardMemoryValue(value) {
+  return String(value || "")
+    .replace(/^(\d+)_mb$/i, "$1 MB")
+    .replace(/^(\d+)_kb$/i, "$1 KB")
+    .replace(/^(\d+)_bytes?$/i, "$1 Byte");
 }
 
 function ideProjectHealthNotices(project) {
@@ -2291,7 +2307,9 @@ function isArchitectureBaselinePath(sourcePath) {
 }
 
 function ideSourceIsEditable(project, sourcePath) {
-  return projectNeedsSourceEditing(project) && !isArchitectureBaselinePath(sourcePath);
+  return projectNeedsSourceEditing(project)
+    && !isArchitectureBaselinePath(sourcePath)
+    && String(sourcePath || "").replace(/\\/g, "/") !== "platformio.ini";
 }
 
 function sourceTree(projectName, sources) {

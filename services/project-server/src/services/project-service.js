@@ -1,6 +1,13 @@
 const crypto = require("node:crypto");
 const { ProjectServerError } = require("../errors");
 const { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles } = require("../modules/esp32-basissoftware-package");
+const { renderPlatformioIni } = require("../../../shared/platformio-config");
+
+const RESERVED_PLATFORMIO_OPTIONS = new Set([
+  "platform", "board", "framework", "monitor_speed", "upload_protocol", "upload_speed",
+  "board_build.flash_size", "board_upload.flash_size", "board_upload.maximum_size",
+  "board_upload.maximum_ram_size", "board_build.partitions", "lib_deps", "build_flags",
+]);
 
 class ProjectService {
   constructor(options) {
@@ -45,6 +52,7 @@ class ProjectService {
         await this.repository.saveSource({ project_id: project.project_id, path: sourcePath, content, content_sha256: sha256(content), content_type: source.content_type || contentType(sourcePath), role: source.role || inferSourceRole(sourcePath), updated_at: now });
       } else await this.upsertSource(project.project_id, source);
     }
+    if (project.status !== "template" && project.build_config) await this.syncPlatformioSource(project);
     return this.projectWithSummary(project);
   }
 
@@ -86,7 +94,23 @@ class ProjectService {
       status: input.status || project.status,
       updated_at: new Date().toISOString(),
     };
-    return this.projectWithSummary(await this.repository.saveProject(next));
+    const saved = await this.repository.saveProject(next);
+    if (saved.build_config) await this.syncPlatformioSource(saved);
+    return this.projectWithSummary(saved);
+  }
+
+  async syncPlatformioSource(project) {
+    const content = renderPlatformioIni(project.build_config);
+    const now = new Date().toISOString();
+    await this.repository.saveSource({
+      project_id: project.project_id,
+      path: "platformio.ini",
+      content,
+      content_sha256: sha256(content),
+      content_type: "text/plain",
+      role: "build_config",
+      updated_at: now,
+    });
   }
 
   async listSources(projectId) {
@@ -208,7 +232,7 @@ class ProjectService {
           buildConfig: project.build_config,
         })
       : sources;
-    const platformioIni = firmwareSources.find((source) => source.path === "platformio.ini")?.content || renderPlatformioIni(project);
+    const platformioIni = renderPlatformioIni(project.build_config);
     const buildJob = {
       job_id: job.build_job_id,
       project_id: project.project_id,
@@ -226,10 +250,8 @@ class ProjectService {
       files: [
         { path: "build-job.json", content: JSON.stringify(buildJob, null, 2), content_type: "application/json" },
         { path: "project-view-manifest.json", content: JSON.stringify(effectiveViewManifest(project), null, 2), content_type: "application/json" },
-        ...(project.build_config?.firmware_basis_id || firmwareSources.some((source) => source.path === "platformio.ini")
-          ? []
-          : [{ path: "platformio.ini", content: renderPlatformioIni(project), content_type: "text/plain" }]),
-        ...firmwareSources.map((source) => ({
+        { path: "platformio.ini", content: platformioIni, content_type: "text/plain" },
+        ...firmwareSources.filter((source) => source.path !== "platformio.ini").map((source) => ({
           path: source.path,
           content: source.content,
           content_type: source.content_type,
@@ -711,17 +733,26 @@ function boundedIndex(value, length) {
 function normalizeBuildConfig(input = {}) {
   if (!input || typeof input !== "object") return null;
   const firmwareBasisId = input.firmware_basis_id || "";
+  const platform = input.platform || "espressif32";
   return {
-    platform: input.platform || "espressif32",
+    platform,
     framework: input.framework === undefined ? "arduino" : input.framework,
     board: input.board || "esp32dev",
     environment: input.environment || "esp32dev",
     libraries: input.libraries || [],
+    monitor_speed: positiveInteger(input.monitor_speed ?? input.monitorSpeed) || 115200,
+    upload_speed: positiveInteger(input.upload_speed ?? input.uploadSpeed),
+    upload_protocol: safeSingleLine(input.upload_protocol ?? input.uploadProtocol),
+    build_flags: safeStringList(input.build_flags),
+    maximum_program_size_bytes: positiveInteger(input.maximum_program_size_bytes),
+    maximum_ram_size_bytes: positiveInteger(input.maximum_ram_size_bytes),
+    partition_file: safeSingleLine(input.partition_file),
+    platformio_options: normalizePlatformioOptions(input.platformio_options),
     firmware_basis_id: firmwareBasisId,
     firmware_basis_version: input.firmware_basis_version || "",
     firmware_basis_variant: input.firmware_basis_variant === "comfort" ? "full" : input.firmware_basis_variant || (firmwareBasisId ? "full" : ""),
     partition_profile_id: input.partition_profile_id || "",
-    flash_size_mb: [4, 8, 16].includes(Number(input.flash_size_mb)) ? Number(input.flash_size_mb) : 4,
+    flash_size_mb: positiveInteger(input.flash_size_mb) || (/^espressif(32|8266)$/i.test(platform) ? 4 : 0),
     user_source_path: input.user_source_path || "",
     user_target_path: input.user_target_path || "",
     component_device_allocations: Array.isArray(input.component_device_allocations)
@@ -733,6 +764,32 @@ function normalizeBuildConfig(input = {}) {
       : {},
     board_configuration: normalizeBoardConfiguration(input.board_configuration),
   };
+}
+
+function positiveInteger(value) {
+  const normalized = Number(value);
+  return Number.isInteger(normalized) && normalized > 0 ? normalized : 0;
+}
+
+function safeSingleLine(value) {
+  const normalized = String(value || "").trim();
+  return /[\r\n]/.test(normalized) ? "" : normalized.slice(0, 240);
+}
+
+function safeStringList(values) {
+  return Array.from(new Set((Array.isArray(values) ? values : [])
+    .map(safeSingleLine)
+    .filter(Boolean)))
+    .slice(0, 100);
+}
+
+function normalizePlatformioOptions(input) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  return Object.fromEntries(Object.entries(input).slice(0, 30)
+    .map(([key, value]) => [String(key).trim(), safeSingleLine(value)])
+    .filter(([key, value]) => /^[a-z][a-z0-9_.-]{0,79}$/i.test(key)
+      && !RESERVED_PLATFORMIO_OPTIONS.has(key.toLowerCase())
+      && value));
 }
 
 function normalizeBoardConfiguration(input = null) {
@@ -932,18 +989,6 @@ function defaultSources(project, sources) {
       "",
     ].join("\n"),
   }];
-}
-
-function renderPlatformioIni(project) {
-  const config = normalizeBuildConfig(project.build_config);
-  const lines = [
-    `[env:${config.environment}]`,
-    `platform = ${config.platform}`,
-    `board = ${config.board}`,
-  ];
-  if (config.framework) lines.push(`framework = ${config.framework}`);
-  if (config.libraries.length) lines.push(`lib_deps = ${config.libraries.join(", ")}`);
-  return `${lines.join("\n")}\n`;
 }
 
 function sanitizeProject(project) {

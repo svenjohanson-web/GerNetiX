@@ -592,6 +592,7 @@ const HelpContent = (() => {
           paragraphs: [
             "Bei der Boardauswahl löst GerNetiX alle gültigen Werte auf und speichert sie als unveränderlichen Projektsnapshot. Das Projekt merkt sich außerdem Herkunft und Version des GerNetiX- oder Account-Boards.",
             "Eine spätere Änderung der Quelle verändert bestehende Projekte niemals automatisch. Dadurch bleiben Pinbelegung, Speicheraufteilung, Build und Hardwaredokumentation nachvollziehbar.",
+            "Das Boardprofil enthält außerdem das Compiler-Ziel. Beim Speichern erzeugt der Project Server daraus die sichtbare platformio.ini mit Plattform, Environment, Compiler-Board, Framework, Speicherwerten, Partitionierung, Bibliotheken und Build-Flags. Dieselbe erzeugte Datei wird beim Build verwendet – für ESP32, ESP8266 und AVR nach demselben Vertrag.",
           ],
         },
         {

@@ -88,6 +88,20 @@ const BoardConfigurationPlugin = (() => {
     </table></div>`;
   }
 
+  function renderCompilerProjection(board, selections = {}) {
+    const config = board?.platformio_build || {};
+    if (!config.platform || !config.board) return "";
+    const flashValue = selections?.flash?.value || board?.default_instance_configuration?.board_features?.flash?.value || (config.flash_size_mb ? `${config.flash_size_mb}_mb` : "Boardstandard");
+    const values = [
+      ["Plattform", config.platform],
+      ["Environment", config.environment || config.board],
+      ["Compiler-Board", config.board],
+      ["Framework", config.framework || "ohne Framework"],
+      ["Flash", String(flashValue).replace("_mb", " MB").replace("_kb", " KB")],
+    ];
+    return `<section class="board-configuration-compiler-projection"><header><div><span>Compiler-Ausgabe</span><small>GerNetiX erzeugt daraus beim Speichern die platformio.ini des Projekts.</small></div><code>platformio.ini</code></header><dl>${values.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("")}</dl></section>`;
+  }
+
   function render(instance) {
     const { root, options, model } = instance;
     const board = options.boards.find((item) => boardId(item) === model.boardId) || null;
@@ -98,6 +112,7 @@ const BoardConfigurationPlugin = (() => {
       <label class="board-configuration-plugin-selector">Board<select data-board-configuration-board><option value="">Board auswählen…</option>${options.boards.map((item) => `<option value="${escapeHtml(boardId(item))}" ${boardId(item) === model.boardId ? "selected" : ""}>${escapeHtml(item.title || boardId(item))}</option>`).join("")}</select></label>`}
       ${board ? `<div class="board-configuration-plugin-board"><strong>${escapeHtml(board.title || model.boardId)}</strong><small>${escapeHtml(board.processor_family || "")} · ${escapeHtml(board.mcu_variant || "")}</small></div>` : ""}
       ${options.status ? `<p class="hardware-catalog-hint ${options.status.state === "error" ? "is-error" : ""}">${escapeHtml(options.status.message || "")}</p>` : ""}
+      ${board ? renderCompilerProjection(board, model.selections) : ""}
       ${board && options.features.length ? renderFeatureTable(options.features, model.selections, defaults) : board ? '<p class="empty">Ausstattungsoptionen werden geladen…</p>' : `<p class="empty">${escapeHtml(options.emptyText || "Wähle ein GerNetiX-Board oder ein eigenes Account-Board aus.")}</p>`}
       ${board && modified && options.allowAccountSave ? `<footer class="board-configuration-plugin-save"><label>Name des eigenen Boards<input type="text" maxlength="120" data-board-configuration-name value="${escapeHtml(model.name)}" placeholder="z. B. Mein Board mit eigener Pinbelegung"></label><p>Geänderte Katalogwerte werden als unveränderliche Version im Account gespeichert.</p></footer>` : ""}
     </section>`;
@@ -192,5 +207,5 @@ const BoardConfigurationPlugin = (() => {
     return { boardId: instance.model.boardId, board, selections: structuredClone(instance.model.selections), name: instance.model.name, modified: Boolean(board) && selectionsDiffer(instance.model.selections, defaults) };
   }
 
-  return { boardId, defaultsForBoard, formatPins, mount, normalizeSelections, renderFeatureTable, selectionsDiffer, value };
+  return { boardId, defaultsForBoard, formatPins, mount, normalizeSelections, renderCompilerProjection, renderFeatureTable, selectionsDiffer, value };
 })();

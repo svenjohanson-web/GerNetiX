@@ -479,12 +479,30 @@ function avrBoard(input) {
       pwm_pins: ["D3", "D5", "D6", "D9", "D10", "D11"],
       i2c: ["SDA A4 + SCL A5"],
     },
-    default_instance_configuration: {},
+    platformio_build: {
+      platform: "atmelavr",
+      board: "nanoatmega328",
+      environment: "nanoatmega328",
+      framework: "arduino",
+      supported_frameworks: ["arduino", ""],
+      monitor_speed: 9600,
+      upload_protocol: "arduino",
+      maximum_program_size_bytes: 30720,
+      maximum_ram_size_bytes: 2048,
+      firmware_basis_id: "",
+    },
+    default_instance_configuration: {
+      board_features: {
+        flash: { enabled: true, hardware: "internal_flash", value: "32_kb" },
+        ram: { enabled: true, hardware: "internal_sram", value: "2_kb" },
+      },
+    },
     status: "active",
   };
 }
 
 function esp8266Board(input) {
+  const isD1Mini = input.hardware_item_id === "hardware.processor_board.wemos_d1_mini_esp12f";
   return networkBoard({
     ...input,
     processor_family: "esp8266",
@@ -493,6 +511,24 @@ function esp8266Board(input) {
     basissoftware_profile_id: "basissoftware.profile.esp8266_factory",
     provisioning_profile_id: "provisioning_profile.esp8266_basissoftware",
     min_basissoftware_version: "0.1.0",
+    platformio_build: {
+      platform: "espressif8266",
+      board: isD1Mini ? "d1_mini" : "esp12e",
+      environment: isD1Mini ? "d1_mini" : "esp12e",
+      framework: "arduino",
+      supported_frameworks: ["arduino"],
+      monitor_speed: 115200,
+      upload_protocol: "esptool",
+      flash_size_mb: 4,
+      firmware_basis_id: "",
+    },
+    default_instance_configuration: {
+      board_features: {
+        flash: { enabled: true, hardware: "qspi_flash", value: "4_mb" },
+        ram: { enabled: true, hardware: "internal_sram", value: "80_kb" },
+        wifi: { enabled: true, hardware: "2_4_ghz", driver: "arduino_wifi" },
+      },
+    },
     pin_profile: {
       analog_inputs: ["A0"],
       digital_pins: ["D1 / GPIO5", "D2 / GPIO4", "D5 / GPIO14", "D6 / GPIO12", "D7 / GPIO13"],
@@ -503,6 +539,11 @@ function esp8266Board(input) {
 }
 
 function esp32Board(input) {
+  const itemId = input.hardware_item_id;
+  const isEs3c28p = itemId === "hardware.processor_board.esp32_s3_es3c28p";
+  const isCamera = itemId === "hardware.processor_board.ai_thinker_esp32_cam";
+  const isNanoEsp32 = itemId === "hardware.processor_board.arduino_nano_esp32";
+  const isS3 = /esp32_s3|esp32-s3/.test(itemId) || String(input.mcu_variant || "").includes("S3");
   return networkBoard({
     ...input,
     processor_family: "esp32",
@@ -520,6 +561,26 @@ function esp32Board(input) {
     verification_status: input.verification_status,
     evidence: input.evidence,
     peripheral_profile: esp32PeripheralProfile(input.mcu_variant),
+    platformio_build: isEs3c28p ? {
+      platform: "espressif32", board: "esp32-s3-devkitc-1", environment: "es3c28p", framework: "arduino",
+      monitor_speed: 115200, upload_protocol: "esptool", flash_size_mb: 16,
+      supported_frameworks: ["arduino"],
+      libraries: ["lovyan03/LovyanGFX@^1.2.7"], build_flags: ["-D ARDUINO_USB_MODE=1", "-D ARDUINO_USB_CDC_ON_BOOT=1"],
+      firmware_basis_id: "",
+    } : isCamera ? {
+      platform: "espressif32", board: "esp32cam", environment: "esp32cam", framework: "arduino",
+      monitor_speed: 115200, upload_protocol: "esptool", flash_size_mb: 4, firmware_basis_id: "",
+      supported_frameworks: ["arduino"],
+    } : isNanoEsp32 ? {
+      platform: "espressif32", board: "arduino_nano_esp32", environment: "arduino_nano_esp32", framework: "arduino",
+      monitor_speed: 115200, upload_protocol: "esptool", flash_size_mb: 16, firmware_basis_id: "",
+      supported_frameworks: ["arduino"],
+    } : {
+      platform: "espressif32", board: isS3 ? "esp32-s3-devkitc-1" : "esp32dev", environment: isS3 ? "esp32-s3-devkitc-1" : "esp32dev",
+      framework: "espidf", monitor_speed: 115200, upload_protocol: "esptool", flash_size_mb: 4,
+      supported_frameworks: ["espidf", "arduino"],
+      firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: "workspace", firmware_basis_variant: "full",
+    },
     factory_firmware_artifact: {
       artifact_id: "firmware_artifact.esp32_basissoftware_factory.latest",
       source: "sqlite",
@@ -631,6 +692,7 @@ function networkBoard(input) {
     firmware_build_target_id: input.firmware_build_target_id
       || (input.mcu_variant === "ESP32" ? "firmware_build_target.esp32_classic_qspi_4mb" : "")
       || (input.mcu_variant === "ESP32-C6" ? "firmware_build_target.esp32_c6_qspi_4mb" : ""),
+    platformio_build: input.platformio_build || {},
     vendor: input.vendor || "Generic",
     form_factor: input.form_factor || "",
     capability_ids: input.capability_ids,

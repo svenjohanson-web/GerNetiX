@@ -35,6 +35,10 @@ test("project tree shows file names without role or content-type subtitles", () 
   assert.match(app, /<span>\$\{escapeHtml\(file\.name\)\}<\/span>/);
 });
 
+test("generated platformio.ini is edited through graphical board configuration", () => {
+  assert.match(app, /String\(sourcePath \|\| ""\)\.replace\(\/\\\\\/g, "\/"\) !== "platformio\.ini"/);
+});
+
 test("Ctrl or Command S saves and build or flash persists first", () => {
   assert.match(app, /event\.ctrlKey \|\| event\.metaKey/);
   assert.match(app, /event\.key\.toLowerCase\(\) !== "s"/);

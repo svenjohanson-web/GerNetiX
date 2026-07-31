@@ -1,5 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { renderPlatformioIni } = require("../../../shared/platformio-config");
 
 const DEFAULT_BASIS_ROOT = path.resolve(__dirname, "../../../..", "basissoftware", "esp32");
 const DEFAULT_RUNTIME_CORE_ROOT = path.resolve(__dirname, "../../../..", "firmware", "shared", "gernetix-runtime-core");
@@ -20,8 +21,19 @@ function loadEsp32BasissoftwareFiles(root = process.env.GERNETIX_ESP32_BASISSOFT
 }
 
 function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildConfig }) {
-  const userSourcePath = buildConfig.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp";
-  const userTargetPath = buildConfig.user_target_path || "src/user/user_app.cpp";
+  const effectiveBuildConfig = {
+    platform: "espressif32",
+    board: "esp32dev",
+    environment: "esp32dev",
+    framework: "espidf",
+    monitor_speed: 115200,
+    firmware_basis_id: "gernetix-runtime-basissoftware",
+    firmware_basis_variant: "full",
+    flash_size_mb: 4,
+    ...(buildConfig || {}),
+  };
+  const userSourcePath = effectiveBuildConfig.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp";
+  const userTargetPath = effectiveBuildConfig.user_target_path || "src/user/user_app.cpp";
   const userSource = projectSources.find((source) => source.path === userSourcePath);
   if (!userSource) {
     throw new Error(`Projektquelle fuer User-Main fehlt: ${userSourcePath}`);
@@ -29,8 +41,13 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
   const byPath = new Map(basisFiles.map((file) => [file.path, { ...file }]));
   addRuntimeCore(byPath);
   rewriteRuntimeCorePaths(byPath);
-  applyBasissoftwareProfile(byPath, buildConfig);
-  applyBoardConfiguration(byPath, buildConfig.board_configuration);
+  applyBasissoftwareProfile(byPath, effectiveBuildConfig);
+  applyBoardConfiguration(byPath, effectiveBuildConfig.board_configuration);
+  byPath.set("platformio.ini", {
+    path: "platformio.ini",
+    content: renderPlatformioIni(effectiveBuildConfig),
+    content_type: "text/plain",
+  });
   byPath.set(userTargetPath, {
     path: userTargetPath,
     content: userSource.content,
@@ -59,16 +76,6 @@ function applyBoardConfiguration(byPath, configuration) {
     content: renderBoardConfigurationHeader(configuration),
     content_type: "text/x-c++hdr",
   });
-  const platformioFile = byPath.get("platformio.ini");
-  if (!platformioFile) return;
-  if (/^build_flags\s*=/m.test(platformioFile.content)) {
-    platformioFile.content = platformioFile.content.replace(
-      /^build_flags\s*=\s*(.*)$/m,
-      (_line, flags) => `build_flags = ${flags} -include include/gernetix_board_configuration.h`,
-    );
-  } else {
-    platformioFile.content += "\nbuild_flags = -include include/gernetix_board_configuration.h\n";
-  }
 }
 
 function renderBoardConfigurationHeader(configuration) {

@@ -112,6 +112,12 @@ function mergeCatalogState(loaded = {}) {
 
 function migrateLoadedCatalog(seed, loaded = {}) {
   const migrated = clone(loaded) || {};
+  for (const loadedItem of migrated.hardwareItems || []) {
+    const seededItem = (seed.hardwareItems || []).find((item) => item.hardware_item_id === loadedItem.hardware_item_id);
+    if (seededItem?.platformio_build && !loadedItem.platformio_build) {
+      loadedItem.platformio_build = clone(seededItem.platformio_build);
+    }
+  }
   const itemId = "hardware.processor_board.esp32_s3_es3c28p";
   const seededBoard = (seed.hardwareItems || []).find((item) => item.hardware_item_id === itemId);
   const loadedBoard = (migrated.hardwareItems || []).find((item) => item.hardware_item_id === itemId);

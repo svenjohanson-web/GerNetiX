@@ -2678,7 +2678,7 @@ async function handleLearningProjectDeviceAssign(req, res, session, projectId) {
     : null;
   if (boardProfileId && !selectedBoard) { sendJson(res, 404, { error: "board_configuration_not_found", message: "Die gewaehlte GerNetiX- oder Account-Boardkonfiguration wurde nicht gefunden." }); return; }
   const baseBoardId = selectedBoard?.base_board_profile_id || device?.hardware_profile_id || project.hardware_profile_id;
-  let buildConfig = buildConfigForBoard(baseBoardId, project.build_config);
+  let buildConfig = buildConfigForBoard(selectedBoard || baseBoardId, project.build_config);
   if (buildConfig && selectedBoard) buildConfig = {
     ...buildConfig,
     board_configuration: compilerBoardConfiguration(null, selectedBoard),
@@ -2749,7 +2749,7 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
       return;
     }
     if (selectedBoard) {
-      buildConfig = buildConfigForBoard(selectedBoard.base_board_profile_id || selectedBoard.hardware_item_id, buildConfig);
+      buildConfig = buildConfigForBoard(selectedBoard, buildConfig);
       const configuredFlashValue = gameConfiguration.board_configuration?.board_features?.flash?.value || "";
       const configuredFlashSizeMb = Number(String(configuredFlashValue).match(/^(\d+)_mb$/)?.[1] || 0);
       if (buildConfig) {
@@ -2856,7 +2856,7 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
     || boardComponent?.board_profile_id
     || "";
   const baseBuildConfig = boardComponent
-    ? buildConfigForBoard(selectedBaseBoardId, project.build_config)
+    ? buildConfigForBoard(selectedBoard || selectedBaseBoardId, project.build_config)
     : project.build_config;
   const inventoryDevices = await loadUserIdeDevices(session);
   const allocations = [];
@@ -5402,8 +5402,44 @@ function slugifyHardwareFolder(value) {
     .replace(/^-+|-+$/g, "") || "Hardware";
 }
 
-function buildConfigForBoard(boardProfileId, existing = null) {
-  const common = { ...(existing || {}), libraries: existing?.libraries || [] };
+function buildConfigForBoard(boardOrProfileId, existing = null) {
+  const boardDefinition = boardOrProfileId && typeof boardOrProfileId === "object" ? boardOrProfileId : null;
+  const boardProfileId = String(boardDefinition?.base_board_profile_id || boardDefinition?.hardware_item_id || boardOrProfileId || "");
+  const catalogBuild = boardDefinition?.platformio_build;
+  const sameCompilerTarget = Boolean(catalogBuild
+    && existing?.platform === catalogBuild.platform
+    && existing?.board === catalogBuild.board);
+  const common = {
+    ...(existing || {}),
+    libraries: existing?.libraries || [],
+    ...(!sameCompilerTarget ? {
+      build_flags: [],
+      partition_file: "",
+      platformio_options: {},
+      upload_speed: 0,
+      maximum_program_size_bytes: 0,
+      maximum_ram_size_bytes: 0,
+    } : {}),
+  };
+  if (catalogBuild && typeof catalogBuild === "object" && catalogBuild.platform && catalogBuild.board) {
+    const supportedFrameworks = Array.isArray(catalogBuild.supported_frameworks) ? catalogBuild.supported_frameworks : [catalogBuild.framework];
+    const keepsFramework = existing?.platform === catalogBuild.platform && supportedFrameworks.includes(existing?.framework);
+    const framework = keepsFramework ? existing.framework : catalogBuild.framework;
+    const usesBasissoftware = framework === "espidf" && Boolean(catalogBuild.firmware_basis_id);
+    const result = {
+      ...common,
+      ...catalogBuild,
+      framework,
+      libraries: Array.from(new Set([...(catalogBuild.libraries || []), ...(common.libraries || [])])),
+      firmware_basis_id: usesBasissoftware ? catalogBuild.firmware_basis_id : "",
+      firmware_basis_version: usesBasissoftware ? catalogBuild.firmware_basis_version || "workspace" : "",
+      firmware_basis_variant: usesBasissoftware ? existing?.firmware_basis_variant || catalogBuild.firmware_basis_variant || "full" : "",
+      user_source_path: usesBasissoftware ? existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp" : existing?.user_source_path || "src/main.cpp",
+      user_target_path: usesBasissoftware ? existing?.user_target_path || "src/user/user_app.cpp" : existing?.user_target_path || "src/main.cpp",
+    };
+    delete result.supported_frameworks;
+    return result;
+  }
   if (/arduino_nano_r3_atmega328p/.test(boardProfileId)) return { ...common, platform: "atmelavr", framework: "arduino", board: "nanoatmega328", environment: "nanoatmega328", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
   if (/esp8266|d1_mini/.test(boardProfileId)) return { ...common, platform: "espressif8266", framework: "arduino", board: "d1_mini", environment: "d1_mini", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
   if (/ai_thinker_esp32_cam/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: "arduino", board: "esp32cam", environment: "esp32cam", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "", user_source_path: existing?.user_source_path || "src/main.cpp", user_target_path: existing?.user_target_path || "src/main.cpp" };

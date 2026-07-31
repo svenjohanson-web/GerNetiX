@@ -18,6 +18,7 @@ const features = [{
 
 const board = {
   hardware_item_id: "board-1",
+  platformio_build: { platform: "espressif32", environment: "esp32dev", board: "esp32dev", framework: "arduino", flash_size_mb: 4 },
   default_instance_configuration: {
     board_features: {
       display: { enabled: true, hardware: "lcd", driver: "lvgl", connection: "spi", pins: { cs: 10 }, value: "320x240" },
@@ -31,6 +32,15 @@ test("board configuration plugin normalizes provisioning defaults and detects mo
   assert.equal(defaults.display.pins.cs, 10);
   assert.equal(plugin.selectionsDiffer(defaults, defaults), false);
   assert.equal(plugin.selectionsDiffer({ ...defaults, display: { ...defaults.display, driver: "custom" } }, defaults), true);
+});
+
+test("board configuration plugin previews the generated PlatformIO target", () => {
+  const defaults = plugin.defaultsForBoard(board, features);
+  const html = plugin.renderCompilerProjection(board, defaults);
+  assert.match(html, /Compiler-Ausgabe/);
+  assert.match(html, /platformio\.ini/);
+  assert.match(html, /espressif32/);
+  assert.match(html, /esp32dev/);
 });
 
 test("board configuration plugin renders the shared provisioning table with pin editing", () => {

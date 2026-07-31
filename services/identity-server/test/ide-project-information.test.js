@@ -23,6 +23,8 @@ test("IDE collects project information and action hints in a switchable terminal
   assert.match(app, /Compiler-Plattform/);
   assert.match(app, /PlatformIO-Umgebung/);
   assert.match(app, /physischer Board-Flash/);
+  assert.match(app, /nutzbarer Programmspeicher/);
+  assert.match(app, /function formatBoardMemoryValue/);
   assert.match(app, /Projektquellen direkt \(keine Basissoftware\)/);
   assert.match(app, /Keine offenen Hinweise fuer dieses Projekt/);
   assert.match(app, /function setIdeConsoleView\(view\)/);
