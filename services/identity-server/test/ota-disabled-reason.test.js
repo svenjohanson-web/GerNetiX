@@ -45,6 +45,8 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /!ideSourceIsEditable\(project, state\.sourcePath\)/);
   assert.match(app, /component_device_allocations/);
   assert.match(app, /function appendIdeTerminal/);
+  assert.match(app, /setUsbFlashSuccess\(`USB-Flash erfolgreich: \$\{flashResult\.chipName\}`\)/);
+  assert.match(app, /function setUsbFlashSuccess\(text\)[\s\S]*status\.className = "flash-status hidden";[\s\S]*appendIdeTerminal\("ok", text\)/);
   assert.match(html, /id="flashboxDeviceSelect"/);
   assert.match(app, /activeFlashboxDeviceId/);
   assert.match(app, /Waehle zuerst eine verfuegbare FlashBox/);

@@ -3321,7 +3321,7 @@ async function startUsbFlash() {
       logs: flashResult.logs,
     });
     activeBuild.flash_status = "succeeded";
-    setFlashStatus("ok", `USB-Flash erfolgreich: ${flashResult.chipName}`);
+    setUsbFlashSuccess(`USB-Flash erfolgreich: ${flashResult.chipName}`);
     renderBuilds();
   } catch (error) {
     if (activeBuild?.build_job_id) {
@@ -4244,6 +4244,13 @@ function setFlashStatus(kind, text) {
   status.className = `flash-status ${kind}`;
   status.textContent = text;
   appendIdeTerminal(kind, text);
+}
+
+function setUsbFlashSuccess(text) {
+  const status = document.querySelector("#flashStatus");
+  status.className = "flash-status hidden";
+  status.textContent = "";
+  appendIdeTerminal("ok", text);
 }
 
 function appendIdeTerminal(kind, text) {
