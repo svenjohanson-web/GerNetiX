@@ -639,6 +639,13 @@ test("publishes radio technologies with foundations, trade-offs and a careful sa
   );
   assert.ok(article.sections.slice(8, 14).every((section) => section.table?.headers?.join("|") === "Eigenschaften|Vorteile|Nachteile"));
   assert.match(JSON.stringify(article.sections[0]), /Funk ist kein unsichtbares Kabel/);
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(article.sections[0].table.headers)),
+    ["Vergleichsgröße", "Was wird tatsächlich verglichen?", "Wichtige Randbedingungen"],
+  );
+  assert.match(JSON.stringify(article.sections[0]), /Satellitenverbindung.*sehr große Entfernung.*hohe Datenrate/);
+  assert.match(JSON.stringify(article.sections[0]), /Zuverlässigkeit und Fehlertoleranz/);
+  assert.match(JSON.stringify(article.sections[0]), /Prüfsummen.*Wiederholungen.*Fehlerkorrektur/);
   assert.match(JSON.stringify(article.sections[1]), /Warum Funk eine Frequenz braucht/);
   assert.match(JSON.stringify(article.sections[1]), /Denke an ein gewöhnliches Radio/);
   assert.equal(article.sections[1].illustration.src, "/assets/radio-frequency-and-spectrum.png");
