@@ -641,7 +641,7 @@ test("publishes radio technologies with foundations, trade-offs and a careful sa
   assert.match(JSON.stringify(article.sections[0]), /Funk ist kein unsichtbares Kabel/);
   assert.deepEqual(
     JSON.parse(JSON.stringify(article.sections[0].table.headers)),
-    ["Vergleichsgröße", "Was wird tatsächlich verglichen?", "Wichtige Randbedingungen"],
+    ["Vergleichsgröße", "Was bedeutet dieser Begriff?", "Wichtige Randbedingungen"],
   );
   assert.match(JSON.stringify(article.sections[0]), /Satellitenverbindung.*sehr große Entfernung.*hohe Datenrate/);
   assert.match(JSON.stringify(article.sections[0]), /Zuverlässigkeit und Fehlertoleranz/);

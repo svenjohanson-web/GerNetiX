@@ -571,48 +571,48 @@ const KnowledgeContent = (() => {
           table: {
             headers: [
               "Vergleichsgröße",
-              "Was wird tatsächlich verglichen?",
+              "Was bedeutet dieser Begriff?",
               "Wichtige Randbedingungen",
             ],
             rows: [
               [
                 "Reichweite und Abdeckung",
-                "Die größte Entfernung beziehungsweise Fläche, in der die geforderte Verbindungsqualität noch erreicht wird.",
+                "Die Reichweite ist die überbrückbare Entfernung zwischen Sender und Empfänger. Die Abdeckung beschreibt den räumlichen Bereich, in dem eine Verbindung möglich ist.",
                 "Freie Sicht oder Gebäude, Sendeleistung, Antennen, Höhe, Wetter, Frequenz sowie direkte Verbindung oder Infrastruktur.",
               ],
               [
                 "Nutzdatenrate",
-                "Wie viele tatsächlich nutzbare Anwendungsdaten pro Sekunde ankommen – nach Protokollanteilen, Fehlerkorrektur und Wiederholungen.",
+                "Die Menge der tatsächlich nutzbaren Anwendungsdaten, die pro Sekunde ankommt. Protokollinformationen, Fehlerkorrektur und Wiederholungen zählen nicht zu den Nutzdaten.",
                 "Richtung, Entfernung, Kanalbandbreite, Signalqualität, Teilnehmerzahl und betrachtete Paketgröße.",
               ],
               [
                 "Latenz und Schwankung",
-                "Wie lange eine Übertragung in eine Richtung oder für Hin- und Rückweg benötigt und wie stark diese Zeit schwankt.",
+                "Die Latenz ist die Zeit zwischen dem Absenden und dem Eintreffen einer Information. Ihre Schwankung beschreibt, wie unterschiedlich diese Übertragungszeit von Nachricht zu Nachricht ausfällt.",
                 "Schlafmodus, Kanalzugriff, Netzlast, Weiterleitungen, Entfernung und Angabe als Einwegzeit oder Round Trip Time.",
               ],
               [
                 "Zuverlässigkeit und Fehlertoleranz",
-                "Welcher Anteil der Nachrichten rechtzeitig und fehlerfrei ankommt und wie die Technik auf Störungen oder ausgefallene Übertragungswege reagiert.",
+                "Zuverlässigkeit beschreibt, mit welcher Wahrscheinlichkeit Nachrichten rechtzeitig und fehlerfrei ankommen. Fehlertoleranz bezeichnet die Fähigkeit, trotz Störungen, Übertragungsfehlern oder ausgefallenen Wegen weiterzuarbeiten.",
                 "Störpegel, Abschattung, Bewegung, Paketverlustrate sowie Verfahren wie Prüfsummen, Wiederholungen, Fehlerkorrektur, Frequenzwechsel, Diversity oder alternative Routen.",
               ],
               [
                 "Infrastrukturabhängigkeit und Verfügbarkeit",
-                "Ob die Verbindung direkt arbeitet oder Access Point, Basisstation, Gateway, Betreiberkernnetz oder Satellit benötigt und welche Ausfälle sie unterbrechen.",
+                "Infrastrukturabhängigkeit bedeutet, dass zusätzliche Einrichtungen wie Access Point, Basisstation, Gateway, Betreiberkernnetz oder Satellit benötigt werden. Verfügbarkeit beschreibt, wie häufig die Verbindung tatsächlich nutzbar ist.",
                 "Lokale Abdeckung, Internet- beziehungsweise Betreiberabhängigkeit, Sicht zum Himmel, Redundanz und Verhalten bei Ausfall einer Zwischenstation.",
               ],
               [
                 "Energiebedarf",
-                "Wie viel Energie Senden, Empfangen, Bereitschaft und Aufwachen benötigen – sinnvoll angegeben pro Nachricht, pro Nutzbit oder über einen typischen Betriebszyklus.",
+                "Die elektrische Energie, die für Senden, Empfangen, Bereitschaft und Aufwachen benötigt wird. Sie kann pro Nachricht, pro Nutzbit oder für einen vollständigen Betriebszyklus angegeben werden.",
                 "Sendeintervall, Empfangsbereitschaft, Verbindungsaufbau, Wiederholungen, Sendeleistung und Stromversorgung des konkreten Geräts.",
               ],
               [
                 "Kapazität und Koexistenz",
-                "Wie viele Geräte und gleichzeitige Übertragungen ein Gebiet verträgt und wie gut die Technik mit anderen Funknutzern zusammenarbeitet.",
+                "Die Kapazität beschreibt, wie viele Geräte oder gleichzeitige Übertragungen ein Funkbereich verkraftet. Koexistenz ist die Fähigkeit verschiedener Funknutzer, denselben räumlichen und spektralen Bereich möglichst störungsarm zu teilen.",
                 "Verfügbare Kanäle, Kanalbreite, Zugriffsverfahren, Duty Cycle, räumliche Wiederverwendung, Störer und gewünschte Datenrate je Teilnehmer.",
               ],
               [
                 "Mobilität und Netzstruktur",
-                "Ob bewegte Teilnehmer, Übergaben zwischen Funkzellen, Direktverbindungen, Sternnetze oder vermaschte Wege unterstützt werden.",
+                "Mobilität beschreibt den Betrieb während sich Teilnehmer bewegen oder zwischen Funkzellen wechseln. Die Netzstruktur legt fest, ob Geräte direkt, über eine zentrale Station oder über mehrere vermaschte Zwischenstationen kommunizieren.",
                 "Geschwindigkeit, Übergabezeit, Zahl der Zwischenstationen, Routing und Verhalten beim Verlassen der Abdeckung.",
               ],
             ],
