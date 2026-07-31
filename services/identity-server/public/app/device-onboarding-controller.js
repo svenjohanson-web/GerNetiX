@@ -642,54 +642,29 @@ const DeviceOnboardingController = (() => {
         return;
       }
       const selections = state.provisioningFeatureSelections || {};
-      target.innerHTML = renderBoardFeatureTable(state.boardFeatureCatalog, selections);
-      const featureHeader = target.querySelector(".board-feature-table thead tr");
-      if (featureHeader) {
-        featureHeader.children[5].textContent = "Pin-Zuordnung";
-        featureHeader.insertAdjacentHTML("beforeend", "<th>Größe / Wert</th>");
-      }
-      document.querySelector("#provisioningDatasheetUrl").value = state.provisioningDatasheetUrl || "";
-      target.querySelectorAll("[data-board-feature-enabled]").forEach((checkbox) => {
-        checkbox.addEventListener("change", () => updateBoardFeatureSelection(checkbox.dataset.boardFeatureEnabled));
-      });
-      target.querySelectorAll("[data-board-feature-field]").forEach((field) => {
-        const update = () => updateBoardFeatureSelection(field.closest("[data-board-feature-row]").dataset.boardFeatureRow);
-        field.addEventListener("change", update);
-        field.addEventListener("input", update);
-      });
-      target.querySelectorAll("[data-edit-board-feature-pins]").forEach((button) => {
-        button.addEventListener("click", () => openBoardFeaturePinEditor(button.dataset.editBoardFeaturePins));
-      });
-      document.querySelector("#provisioningDatasheetUrl").oninput = (event) => {
-        state.provisioningDatasheetUrl = event.target.value.trim();
+      const selectedBoard = selectedProvisioningBoard();
+      const pluginBoard = selectedBoard || {
+        hardware_item_id: "manual-provisioning-board",
+        title: "Manuelle Boardausstattung",
+        processor_family: "Espressif",
+        mcu_variant: processorVariantForDetectedProfile(state.discoveredDevices.find((item) => item.bootloader_type)?.hardware_profile_id),
+        pin_profile: { digital_pins: availableProvisioningPins(null) },
+        default_instance_configuration: { board_features: selections },
       };
-      renderUpdateProfileChooser();
-      return;
-      target.innerHTML = state.boardFeatureCatalog.map((feature) => {
-        const selected = selections[feature.feature_id] || {};
-        return `<article class="board-feature-row" data-board-feature-row="${escapeHtml(feature.feature_id)}">
-          <label class="board-feature-toggle">
-            <input type="checkbox" data-board-feature-enabled="${escapeHtml(feature.feature_id)}" ${selected.enabled ? "checked" : ""} />
-            <span>${escapeHtml(feature.title)}</span>
-          </label>
-          <div class="board-feature-fields ${selected.enabled ? "" : "hidden"}">
-            ${featureSelect("Art", "hardware", feature.hardware_options, selected.hardware)}
-            ${featureSelect("Treiber", "driver", feature.driver_options, selected.driver)}
-            ${featureSelect("Anschluss", "connection", feature.connection_options, selected.connection)}
-            ${featureSelect("Größe / Wert", "value", feature.value_options, selected.value)}
-          </div>
-          <p class="board-feature-datasheet"><strong>Datenblatt:</strong> ${escapeHtml(feature.datasheet_hint || "Exakte Boardbezeichnung und Schaltplan prüfen.")}</p>
-        </article>`;
-      }).join("");
+      BoardConfigurationPlugin.mount(target, {
+        showSelector: false,
+        boards: selectedBoard ? state.processorBoards || [] : [pluginBoard],
+        selectedBoardId: selectedBoard ? boardId(selectedBoard) : boardId(pluginBoard),
+        features: state.boardFeatureCatalog,
+        selections,
+        status: catalogStatus,
+        onChange(value) {
+          state.provisioningFeatureSelections = value.selections;
+          renderUpdateProfileChooser();
+          updateProvisioningUsbFlashButton();
+        },
+      });
       document.querySelector("#provisioningDatasheetUrl").value = state.provisioningDatasheetUrl || "";
-      target.querySelectorAll("[data-board-feature-enabled]").forEach((checkbox) => {
-        checkbox.addEventListener("change", () => updateBoardFeatureSelection(checkbox.dataset.boardFeatureEnabled));
-      });
-      target.querySelectorAll("[data-board-feature-field]").forEach((field) => {
-        const update = () => updateBoardFeatureSelection(field.closest("[data-board-feature-row]").dataset.boardFeatureRow);
-        field.addEventListener("change", update);
-        field.addEventListener("input", update);
-      });
       document.querySelector("#provisioningDatasheetUrl").oninput = (event) => {
         state.provisioningDatasheetUrl = event.target.value.trim();
       };
@@ -697,22 +672,7 @@ const DeviceOnboardingController = (() => {
     }
 
     function renderBoardFeatureTable(features, selections) {
-      return `<div class="board-feature-table-scroll"><table class="board-feature-table">
-        <thead><tr><th aria-label="Aktiv"></th><th>Komponente</th><th>Art</th><th>Treiber</th><th>Anschluss</th><th>Größe / Wert</th></tr></thead>
-        <tbody>${features.map((feature) => {
-          const selected = selections[feature.feature_id] || {};
-          const disabled = selected.enabled ? "" : "disabled";
-          return `<tr class="board-feature-row ${selected.enabled ? "" : "is-disabled"}" data-board-feature-row="${escapeHtml(feature.feature_id)}">
-            <td class="board-feature-toggle"><input type="checkbox" aria-label="${escapeHtml(feature.title)} aktivieren" data-board-feature-enabled="${escapeHtml(feature.feature_id)}" ${selected.enabled ? "checked" : ""} /></td>
-            <td><strong>${escapeHtml(feature.title)}</strong></td>
-            <td>${boardFeatureTableSelect("hardware", feature.hardware_options, selected.hardware, `${feature.title}: Art`, disabled)}</td>
-            <td>${boardFeatureTableSelect("driver", feature.driver_options, selected.driver, `${feature.title}: Treiber`, disabled)}</td>
-            <td>${boardFeatureTableSelect("connection", feature.connection_options, selected.connection, `${feature.title}: Anschluss`, disabled)}</td>
-            <td>${boardFeaturePinEditorButton(feature, selected.pins, disabled)}</td>
-            <td>${boardFeatureTableSelect("value", feature.value_options, selected.value, `${feature.title}: Größe oder Wert`, disabled)}</td>
-          </tr>`;
-        }).join("")}</tbody>
-      </table></div>`;
+      return BoardConfigurationPlugin.renderFeatureTable(features, selections, selections);
     }
 
     function boardFeatureTableSelect(field, options, selected, ariaLabel, disabled) {

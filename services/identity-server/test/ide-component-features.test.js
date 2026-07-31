@@ -5,6 +5,7 @@ const test = require("node:test");
 
 const app = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
+const boardPlugin = fs.readFileSync(path.resolve(__dirname, "../public/app/board-configuration-plugin.js"), "utf8");
 const server = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
 const guidedProjectView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
 
@@ -99,6 +100,18 @@ test("project browser provides one coherent IoT device configuration hierarchy",
   assert.match(server, /component_hardware_features:/);
   assert.match(server, /resource\.pin_profile_key/);
   assert.match(server, /board_peripheral_not_supported/);
+});
+
+test("IDE embeds the same board configuration plugin used by provisioning", () => {
+  assert.match(html, /board-configuration-plugin\.js/);
+  assert.match(app, /BoardConfigurationPlugin\.mount\(pluginRoot/);
+  assert.match(app, /Dies ist dieselbe Boardauswahl wie im Provisioning/);
+  assert.match(app, /data-save-ide-board-configuration="project"/);
+  assert.match(app, /async function saveIdeBoardConfiguration\(saveAsAccount\)/);
+  assert.match(app, /account-board-configurations/);
+  assert.match(app, /development-projects\/\$\{encodeURIComponent\(project\.id\)\}\/hardware-configuration/);
+  assert.match(boardPlugin, /function renderFeatureTable/);
+  assert.match(boardPlugin, /function openPinEditor/);
 });
 
 test("basis features are visibly immutable and project web extensions remain configurable", () => {

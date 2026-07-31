@@ -338,6 +338,11 @@ document.querySelector("#pwaDashboardDialog").addEventListener("click", (event) 
   }
 });
 document.querySelector("#ideBoardPropertiesView").addEventListener("click", (event) => {
+  const saveBoardButton = event.target.closest("[data-save-ide-board-configuration]");
+  if (saveBoardButton) {
+    void saveIdeBoardConfiguration(saveBoardButton.dataset.saveIdeBoardConfiguration === "account");
+    return;
+  }
   const configurationTarget = event.target.closest("[data-device-configuration-target]")?.dataset.deviceConfigurationTarget;
   if (configurationTarget) {
     openDeviceConfigurationTarget(configurationTarget);
@@ -2223,6 +2228,13 @@ function projectHardwareComponents(project) {
     : [];
 }
 
+function projectHardwareConfiguration(project) {
+  const view = (project?.viewManifest?.views || []).find((item) => item.id === "hardware-configuration");
+  return view?.payload && typeof view.payload === "object"
+    ? structuredClone(view.payload)
+    : { schema_version: 5, components: [], updated_at: "" };
+}
+
 function isArchitectureBaselinePath(sourcePath) {
   const path = String(sourcePath || "").replace(/\\/g, "/");
   return path.startsWith("Architektur/") || path === "docs/architecture.puml";
@@ -2541,7 +2553,7 @@ async function openBoardProperties(componentId) {
   const component = ideDeviceConfigurationComponents(project).find((item) => item.component_id === state.activeIdeComponentId)
     || ideDeviceConfigurationComponents(project)[0];
   document.querySelector("#ideActiveSourceLabel").textContent = `Komponenten/${component?.label || "IoT-Device"}/Konfiguration/Hardware/Boardkonfiguration`;
-  await loadProcessorBoardCatalog();
+  await Promise.all([loadProcessorBoardCatalog(), loadBoardFeatureCatalog()]);
   renderBoardProperties(project);
   renderIdeViewMode(project);
 }
@@ -2882,16 +2894,8 @@ function renderBoardProperties(project) {
   const boardProfileId = boardSelectionId || deviceComponent?.board_profile_id || allocated?.hardware_profile_id || boardConfiguration?.base_board_profile_id || "";
   const board = state.processorBoards.find((item) => [item.hardware_item_id, item.hardware_profile_id, item.id]
     .filter(Boolean).some((id) => String(id) === String(boardProfileId)));
-  if (!board) {
-    target.innerHTML = `<div class="board-properties-empty">
-      <h3>Boardkonfiguration noch nicht verfügbar</h3>
-      <p>Wähle zuerst ein reales Board in der Hardware-Konfiguration. Danach werden GPIO-, ADC-, PWM- und I²C-Ressourcen hier angezeigt.</p>
-      <button type="button" data-open-hardware-configuration>Board zuordnen</button>
-    </div>`;
-    return;
-  }
-  const profile = board.pin_profile || {};
-  const peripheralProfile = board.peripheral_profile || {};
+  const profile = board?.pin_profile || {};
+  const peripheralProfile = board?.peripheral_profile || {};
   const resources = Array.isArray(peripheralProfile.resources) && peripheralProfile.resources.length
     ? peripheralProfile.resources
     : [
@@ -2906,21 +2910,25 @@ function renderBoardProperties(project) {
   const configurablePeripherals = resources.filter((resource) => resource.configurable);
   const persistedDeviceComponent = projectHardwareComponents(project)
     .some((component) => component.abstract_type === "iot_device" && component.component_id === deviceComponent.component_id);
-  const configuredBoardFeatures = Object.entries(boardConfiguration?.board_features || board.default_instance_configuration?.board_features || {});
   target.innerHTML = `<div class="board-properties-workspace">
-    <header><div><p class="eyebrow">Hardware · Boardkonfiguration</p><h3>${escapeHtml(boardConfiguration?.name || board.title || deviceComponent?.label || "Boardkonfiguration")}</h3></div>
-      <button type="button" data-open-hardware-configuration>Boardkonfiguration bearbeiten</button></header>
-    <p class="helper-text">Der Projektstand verwendet einen festen Snapshot dieser Boardkonfiguration. Eine spätere Account-Boardversion verändert dieses Projekt nicht automatisch.</p>
-    <dl class="board-properties-meta">
+    <header><div><p class="eyebrow">Hardware · Boardkonfiguration</p><h3>${escapeHtml(deviceComponent?.label || "IoT-Device")}</h3></div>
+      <button type="button" data-open-hardware-configuration>Vollständige Hardware-Zuordnung</button></header>
+    <p class="helper-text">Dies ist dieselbe Boardauswahl wie im Provisioning. GerNetiX-Boards und eigene Account-Boards können hier gewählt, geprüft und direkt als fester Projektsnapshot übernommen werden.</p>
+    <section class="ide-board-configuration-plugin-panel">
+      <div data-ide-board-configuration-plugin></div>
+      <footer class="ide-board-configuration-plugin-actions">
+        <button type="button" class="primary" data-save-ide-board-configuration="project" ${board ? "" : "disabled"}>Board im Projekt verwenden</button>
+        <button type="button" data-save-ide-board-configuration="account" class="hidden">Als eigenes Board speichern und verwenden</button>
+        <span data-ide-board-configuration-status></span>
+      </footer>
+    </section>
+    ${board ? `<dl class="board-properties-meta">
       <div><dt>Quelle</dt><dd>${escapeHtml(boardConfiguration?.source === "account" ? `Eigenes Account-Board · Version ${boardConfiguration.account_board_version || 1}` : "GerNetiX-Board")}</dd></div>
       <div><dt>Basisprofil</dt><dd>${escapeHtml(boardConfiguration?.base_board_profile_id || board.base_board_profile_id || board.hardware_item_id || "nicht angegeben")}</dd></div>
       <div><dt>Prozessorfamilie</dt><dd>${escapeHtml(board.processor_family || deviceComponent?.processor_family || "nicht angegeben")}</dd></div>
       <div><dt>MCU</dt><dd>${escapeHtml(board.mcu_variant || deviceComponent?.processor_variant || "nicht angegeben")}</dd></div>
-    </dl>
-    <section class="board-configuration-snapshot"><header><div><p class="eyebrow">Gespeicherter Projektsnapshot</p><h4>Ausstattung und Pinbelegung</h4></div><span>${configuredBoardFeatures.length} Einträge</span></header>
-      ${configuredBoardFeatures.length ? `<div class="board-configuration-snapshot-table"><table><thead><tr><th>Komponente</th><th>Status</th><th>Hardware / Treiber</th><th>Anschluss</th><th>Pins</th><th>Wert</th></tr></thead><tbody>${configuredBoardFeatures.map(([featureId, feature]) => `<tr><th>${escapeHtml(featureId)}</th><td>${feature?.enabled === false ? "Aus" : "Aktiv"}</td><td>${escapeHtml([feature?.hardware, feature?.driver].filter(Boolean).join(" · ") || "–")}</td><td>${escapeHtml(feature?.connection || "–")}</td><td>${escapeHtml(Object.entries(feature?.pins || {}).map(([signal, pin]) => `${signal}=${pin}`).join(", ") || "–")}</td><td>${escapeHtml(feature?.value || "–")}</td></tr>`).join("")}</tbody></table></div>` : '<p class="empty">Für diesen Projektstand sind noch keine einzelnen Boardmerkmale gespeichert.</p>'}
-    </section>
-    ${persistedDeviceComponent ? `<form class="board-peripheral-usage-form" data-component-id="${escapeAttribute(deviceComponent.component_id)}">
+    </dl>` : ""}
+    ${board && persistedDeviceComponent ? `<form class="board-peripheral-usage-form" data-component-id="${escapeAttribute(deviceComponent.component_id)}">
       <header><div><p class="eyebrow">IoT-Device-Konfiguration</p><h4>Verwendete Boardfunktionen</h4></div></header>
       <div class="board-peripheral-options">${configurablePeripherals.map((resource) => {
         const supported = boardPeripheralSupported(resource, profile);
@@ -2931,15 +2939,122 @@ function renderBoardProperties(project) {
         </label>`;
       }).join("")}</div>
       <footer><button type="submit">Boardfunktionen speichern</button><span data-board-peripheral-status></span></footer>
-    </form>` : '<aside class="board-properties-empty"><strong>Hardware-Realisierung noch nicht abgeschlossen</strong><p>Lege das IoT-Device im Hardware-Schritt fest, bevor einzelne MCU-Ressourcen projektgebunden aktiviert werden.</p></aside>'}
-    <section class="board-capability-hierarchy" aria-label="Hierarchie der Boardfunktionen">
+    </form>` : ""}
+    ${board ? `<section class="board-capability-hierarchy" aria-label="Hierarchie der Boardfunktionen">
       ${boardCapabilityLayer("Treiber und Steuerungen", "Anwendungsebene", drivers, resources, abstractions, profile, "driver")}
       <div class="board-capability-connector"><span>nutzt</span><b>↓</b></div>
       ${boardCapabilityLayer("Runtime-Abstraktionen", "Basissoftware / OS", abstractions, resources, abstractions, profile, "runtime")}
       <div class="board-capability-connector"><span>abstrahiert</span><b>↓</b></div>
       ${boardCapabilityLayer("MCU-Peripherie", "ESP32-Ressourcen", resources, resources, abstractions, profile, "resource")}
-    </section>
+    </section>` : ""}
   </div>`;
+  const pluginRoot = target.querySelector("[data-ide-board-configuration-plugin]");
+  state.ideBoardConfigurationDraft = null;
+  BoardConfigurationPlugin.mount(pluginRoot, {
+    boards: state.processorBoards,
+    selectedBoardId: boardProfileId,
+    features: state.boardFeatureCatalog,
+    selections: boardConfiguration?.board_features || board?.default_instance_configuration?.board_features || {},
+    name: boardConfiguration?.name || "",
+    title: "Board auswählen und konfigurieren",
+    allowAccountSave: true,
+    status: state.processorBoardCatalogStatus.state === "error" ? state.processorBoardCatalogStatus : state.boardFeatureCatalogStatus,
+    onChange(value) {
+      state.ideBoardConfigurationDraft = value;
+      syncIdeBoardConfigurationActions(target, value);
+    },
+  });
+  const initialValue = BoardConfigurationPlugin.value(pluginRoot);
+  state.ideBoardConfigurationDraft = initialValue;
+  syncIdeBoardConfigurationActions(target, initialValue);
+}
+
+function syncIdeBoardConfigurationActions(target, value) {
+  const projectButton = target.querySelector('[data-save-ide-board-configuration="project"]');
+  const accountButton = target.querySelector('[data-save-ide-board-configuration="account"]');
+  if (projectButton) projectButton.disabled = !value?.board || value.modified;
+  accountButton?.classList.toggle("hidden", !value?.board || !value.modified);
+}
+
+async function saveIdeBoardConfiguration(saveAsAccount) {
+  const project = projectById(state.activeProjectId);
+  const target = document.querySelector("#ideBoardPropertiesView");
+  const pluginRoot = target?.querySelector("[data-ide-board-configuration-plugin]");
+  const value = BoardConfigurationPlugin.value(pluginRoot);
+  const status = target?.querySelector("[data-ide-board-configuration-status]");
+  if (!project || !value?.board || !status) return;
+  if (value.modified && !saveAsAccount) {
+    status.textContent = "Geänderte Boardwerte müssen als eigenes Account-Board gespeichert werden.";
+    return;
+  }
+  if (saveAsAccount && !value.name) {
+    status.textContent = "Gib deinem geänderten Board zuerst einen Namen.";
+    pluginRoot.querySelector("[data-board-configuration-name]")?.focus();
+    return;
+  }
+  status.textContent = saveAsAccount ? "Eigenes Board wird gespeichert…" : "Board wird dem Projekt zugeordnet…";
+  try {
+    const board = value.board;
+    let boardConfiguration = {
+      schema_version: 1,
+      source: board.configuration_scope === "account" ? "account" : "catalog",
+      name: board.configuration_scope === "account" ? String(board.title || "").replace(/ · Mein Board$/, "") : "",
+      base_board_profile_id: board.base_board_profile_id || BoardConfigurationPlugin.boardId(board),
+      account_board_id: board.account_board_id || "",
+      account_board_version: board.account_board_version || 0,
+      board_features: value.selections,
+      saved_at: board.configuration_scope === "account" ? new Date().toISOString() : "",
+    };
+    if (saveAsAccount) {
+      boardConfiguration = { ...boardConfiguration, source: "custom", name: value.name };
+      const endpoint = board.account_board_id
+        ? `/api/platform/account-board-configurations/${encodeURIComponent(board.account_board_id)}/versions`
+        : "/api/platform/account-board-configurations";
+      const savedBoard = await postJson(endpoint, boardConfiguration);
+      boardConfiguration = {
+        ...boardConfiguration,
+        source: "account",
+        base_board_profile_id: savedBoard.base_board_profile_id,
+        account_board_id: savedBoard.account_board_id,
+        account_board_version: savedBoard.version,
+        saved_at: savedBoard.created_at,
+      };
+    }
+    const hardwareConfiguration = projectHardwareConfiguration(project);
+    let component = hardwareConfiguration.components.find((item) => item.abstract_type === "iot_device" && item.component_id === state.activeIdeComponentId)
+      || hardwareConfiguration.components.find((item) => item.abstract_type === "iot_device");
+    if (!component) {
+      component = {
+        component_id: state.activeIdeComponentId || "iot_device_1",
+        label: ideDeviceConfigurationComponents(project)[0]?.label || "IoT-Device 1",
+        plantuml_type: "component",
+        abstract_type: "iot_device",
+        concrete_type: "processor_board",
+        properties: {},
+      };
+      hardwareConfiguration.components.push(component);
+    }
+    Object.assign(component, {
+      processor_family: String(board.processor_family || "").toLowerCase(),
+      processor_variant: board.mcu_variant || "",
+      board_profile_id: saveAsAccount
+        ? `account_board:${boardConfiguration.account_board_id}:v${boardConfiguration.account_board_version}`
+        : BoardConfigurationPlugin.boardId(board),
+      board_configuration: boardConfiguration,
+    });
+    const response = await postJson(`/api/platform/development-projects/${encodeURIComponent(project.id)}/hardware-configuration`, { hardware_configuration: hardwareConfiguration });
+    if (response.project) state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    if (saveAsAccount) await loadProcessorBoardCatalog({ force: true });
+    const savedProject = response.project || project;
+    const savedDevice = projectHardwareComponents(savedProject).find((item) => item.abstract_type === "iot_device");
+    if (savedDevice) state.activeIdeComponentId = savedDevice.component_id;
+    renderBoardProperties(savedProject);
+    target.querySelector("[data-ide-board-configuration-status]").textContent = saveAsAccount
+      ? "Eigenes Account-Board und Projektsnapshot gespeichert."
+      : "Board als fester Projektsnapshot gespeichert.";
+  } catch (error) {
+    status.textContent = error.message || "Boardkonfiguration konnte nicht gespeichert werden.";
+  }
 }
 
 function boardPeripheralSupported(resource, pinProfile) {
