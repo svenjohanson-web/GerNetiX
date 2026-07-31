@@ -26,3 +26,9 @@ test("IDE clean action clears all target caches without clearing source files", 
   assert.match(app, /Der nächste Gesamtbuild wird vollständig neu aufgebaut\./);
   assert.match(server, /buildDeployJson\("\/api\/build-cache\/clean"/);
 });
+
+test("IDE terminal keeps linker causes in the compact failure diagnosis", () => {
+  assert.match(app, /undefined reference/);
+  assert.match(app, /multiple definition/);
+  assert.match(app, /cannot find/);
+});

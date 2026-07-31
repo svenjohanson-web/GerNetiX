@@ -77,7 +77,8 @@ class BuildPackageStore {
 
   incrementalProjectCacheDir(job) {
     if (!this.incrementalCacheDir || !job.project_id) return null;
-    const targetKey = [job.project_id, job.software_unit_id, job.device_id || "default"]
+    const softwareUnitId = job.software_unit_id || buildPackageSoftwareUnitId(job.build_package);
+    const targetKey = [job.project_id, softwareUnitId, job.device_id || "default"]
       .filter(Boolean)
       .join("--");
     return path.join(this.incrementalCacheDir, sanitizeName(targetKey));
@@ -98,6 +99,16 @@ class BuildPackageStore {
   async cleanup(workspace) {
     const normalized = typeof workspace === "string" ? { jobDir: workspace, persistent: false } : workspace;
     if (!normalized?.persistent) await fs.rm(normalized.jobDir, { recursive: true, force: true });
+  }
+}
+
+function buildPackageSoftwareUnitId(buildPackage) {
+  const raw = buildPackage?.files?.["build-job.json"];
+  if (typeof raw !== "string") return "";
+  try {
+    return String(JSON.parse(raw)?.software_unit_id || "").trim();
+  } catch {
+    return "";
   }
 }
 

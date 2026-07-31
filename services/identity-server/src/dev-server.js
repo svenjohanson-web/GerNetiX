@@ -2765,9 +2765,81 @@ async function loadUserIdeProjects(session) {
       : null;
     const needsLearningViewSync = Number(canonicalManifest?.schema_version || 0)
       > Number(project.view_manifest?.schema_version || 0);
-    return needsLearningViewSync ? synchronizeLearningProjectStructure(project, definition) : project;
+    if (needsLearningViewSync) return synchronizeLearningProjectStructure(project, definition);
+    return synchronizeDevelopmentTemplateRuntimeModel(project);
   }));
   return mapUserIdeProjects(session, new Map(synchronizedItems.map((item) => [item.project_id, item])));
+}
+
+async function synchronizeDevelopmentTemplateRuntimeModel(project) {
+  const templateId = String(project.view_manifest?.template_id || "");
+  if (project.learning_project_id !== "development_project" || templateId !== "esp32_camera_to_touch_display") return project;
+  const template = developmentProjectTemplate(templateId);
+  const targetVersion = Number(template.schemaVersion || 1);
+  const templateRef = project.view_manifest?.template_ref || {};
+  const currentVersion = Math.max(
+    Number(templateRef.model_schema_version || 0),
+    Number(templateRef.runtime_model_version || 0),
+  );
+  if (currentVersion >= targetVersion) return project;
+
+  const canonicalUnits = templateSoftwareUnits(template);
+  const existingUnits = platformSoftwareUnits(project);
+  const hardwareConfiguration = hardwareConfigurationFromManifest(project.view_manifest);
+  const hardwareDevices = (hardwareConfiguration?.components || [])
+    .filter((component) => component.abstract_type === "iot_device");
+  const softwareUnits = canonicalUnits.map((canonical, index) => {
+    const existing = existingUnits[index] || {};
+    const hardware = hardwareDevices[index] || {};
+    const existingBuild = existing.build_config || {};
+    const preservedBuildValues = {};
+    for (const key of ["board_configuration", "component_device_allocations", "component_features", "component_hardware_features"]) {
+      if (existingBuild[key] !== undefined) preservedBuildValues[key] = structuredClone(existingBuild[key]);
+    }
+    return {
+      ...canonical,
+      software_unit_id: existing.software_unit_id || canonical.software_unit_id,
+      title: existing.title || canonical.title,
+      source_root: `Komponenten/IoT-Device ${index + 1}`,
+      device_id: existing.device_id || hardware.inventory_device_id || "",
+      build_config: {
+        ...existingBuild,
+        ...canonical.build_config,
+        ...preservedBuildValues,
+      },
+    };
+  });
+  const nextHardwareConfiguration = hardwareConfiguration ? {
+    ...hardwareConfiguration,
+    components: (hardwareConfiguration.components || []).map((component) => {
+      if (component.abstract_type !== "iot_device") return component;
+      const index = hardwareDevices.findIndex((device) => device.component_id === component.component_id);
+      return { ...component, component_path: `Komponenten/IoT-Device ${index + 1}` };
+    }),
+  } : null;
+  const nextManifest = {
+    ...project.view_manifest,
+    template_ref: {
+      ...templateRef,
+      runtime_model_version: targetVersion,
+    },
+    views: (project.view_manifest?.views || []).map((view) => (
+      view.id === "hardware-configuration" && nextHardwareConfiguration
+        ? { ...view, payload: nextHardwareConfiguration }
+        : view
+    )),
+  };
+  return projectServerJson(`/api/projects/${encodeURIComponent(project.project_id)}`, {
+    method: "PATCH",
+    body: {
+      build_config: softwareUnits[0]?.build_config || null,
+      software_units: softwareUnits,
+      active_software_unit_id: softwareUnits.some((unit) => unit.software_unit_id === project.active_software_unit_id)
+        ? project.active_software_unit_id
+        : softwareUnits[0]?.software_unit_id || "",
+      view_manifest: nextManifest,
+    },
+  });
 }
 
 function mapUserIdeProjects(session, projectsById) {
@@ -4235,8 +4307,7 @@ function normalizeHardwareConfiguration(input = {}, project = {}) {
           && unit.source_root === component.component_path)
         || embeddedUnits.find((unit) => !usedEmbeddedUnitIds.has(unit.software_unit_id));
       if (matchingUnit) usedEmbeddedUnitIds.add(matchingUnit.software_unit_id);
-      normalized.component_path = matchingUnit?.source_root
-        || (deviceIndex === 0 ? primaryProjectComponentPath(project) : `Komponenten/${slugifyHardwareFolder(normalized.label)}-${deviceIndex + 1}`);
+      normalized.component_path = `Komponenten/IoT-Device ${deviceIndex + 1}`;
       deviceIndex += 1;
     }
     return normalized;
@@ -4629,7 +4700,7 @@ function developmentSoftwareUnits(project = {}, diagram = {}, hardwareConfigurat
     }
     const softwareUnitId = existing?.software_unit_id || expectedId;
     usedExistingIds.add(softwareUnitId);
-    const sourceRoot = existing ? existing.source_root : (hardware?.component_path || `Komponenten/${component.label}`);
+    const sourceRoot = hardware?.component_path || existing?.source_root || `Komponenten/${component.label}`;
     if (component.abstract_type === "iot_device") {
       const board = boards.find((item) => [item.hardware_item_id, item.hardware_profile_id, item.id]
         .filter(Boolean).some((id) => String(id) === String(hardware?.board_profile_id || "")));

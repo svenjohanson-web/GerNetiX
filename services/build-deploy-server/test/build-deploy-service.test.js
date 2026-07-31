@@ -278,6 +278,42 @@ test("parallel software units use isolated PlatformIO incremental workspaces", a
   ));
 });
 
+test("build package target keeps legacy submissions in isolated incremental workspaces", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-package-target-cache-"));
+  const config = createConfig({ BUILD_DEPLOY_RUNTIME_DIR: runtimeDir, BUILD_RUNNER: "mock", NODE_ENV: "test" });
+  const service = createDefaultBuildDeployService(config);
+  const workspaces = new Map();
+  service.runner.run = async (job, packageDir) => {
+    const target = JSON.parse(job.build_package.files["build-job.json"]).software_unit_id;
+    workspaces.set(target, packageDir);
+    const outputDir = path.join(packageDir, ".test-artifacts");
+    await fs.mkdir(outputDir, { recursive: true });
+    const artifacts = Object.fromEntries(["firmware.bin", "firmware.elf", "build.log"]
+      .map((name) => [name, path.join(outputDir, name)]));
+    await Promise.all(Object.values(artifacts).map((file) => fs.writeFile(file, "artifact")));
+    return { status: "succeeded", artifacts };
+  };
+
+  for (const target of ["camera_sender", "display_receiver"]) {
+    const jobId = `legacy-${target}`;
+    await service.submitJob({
+      job_id: jobId,
+      project_id: "legacy-distributed-project",
+      mode: "build",
+      build_package: { files: {
+        "build-job.json": JSON.stringify({ software_unit_id: target }),
+        "platformio.ini": `[env:${target}]\n`,
+      } },
+    });
+  }
+  await Promise.all(["camera_sender", "display_receiver"]
+    .map((target) => service.jobs.get(`legacy-${target}`).promise));
+
+  assert.notEqual(workspaces.get("camera_sender"), workspaces.get("display_receiver"));
+  assert.match(workspaces.get("camera_sender"), /legacy-distributed-project--camera_sender--default/);
+  assert.match(workspaces.get("display_receiver"), /legacy-distributed-project--display_receiver--default/);
+});
+
 test("incremental builds preserve generated ESP-IDF components and remove only stale package files", async () => {
   const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-managed-components-"));
   const config = createConfig({

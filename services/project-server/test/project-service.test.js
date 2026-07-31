@@ -222,6 +222,35 @@ test("clones every firmware target of an immutable distributed project template"
   assert.equal((await service.createBuildPackage(displayJob.build_job_id)).files.some((file) => file.content === "// camera"), false);
 });
 
+test("repairs malformed IoT target roots and never leaks another component into a build package", async () => {
+  const repository = new InMemoryProjectRepository({
+    projects: [{
+      project_id: "malformed-distributed-roots", user_id: "account-camera", plan_id: "free", title: "Kamera",
+      status: "active", active_software_unit_id: "camera", view_manifest: {},
+      build_config: { platform: "espressif32", board: "esp32-s3-devkitc-1", environment: "camera" },
+      software_units: [
+        { software_unit_id: "camera", title: "IoT-Device 1", software_kind: "embedded_firmware", build_system: "platformio", source_root: "Komponenten/IoT-Device 1", build_config: { platform: "espressif32", board: "esp32-s3-devkitc-1", environment: "camera" } },
+        { software_unit_id: "display", title: "IoT-Device 2", software_kind: "embedded_firmware", build_system: "platformio", source_root: "Komponenten/IoT-Device-2-2", build_config: { platform: "espressif32", board: "esp32-s3-devkitc-1", environment: "display" } },
+      ],
+      created_at: "2026-07-31T00:00:00.000Z", updated_at: "2026-07-31T00:00:00.000Z",
+    }],
+    sources: [
+      { project_id: "malformed-distributed-roots", path: "Komponenten/IoT-Device 1/src/main.cpp", content: "// camera-only" },
+      { project_id: "malformed-distributed-roots", path: "Komponenten/IoT-Device 2/src/main.cpp", content: "// display-only" },
+      { project_id: "malformed-distributed-roots", path: "src/main.cpp", content: "// forbidden-root-fallback" },
+    ],
+  });
+  const service = new ProjectService({ repository });
+  const project = await service.getProject("malformed-distributed-roots");
+  assert.deepEqual(project.software_units.map((unit) => unit.source_root), ["Komponenten/IoT-Device 1", "Komponenten/IoT-Device 2"]);
+
+  const cameraJob = await service.createBuildJob(project.project_id, { software_unit_id: "camera" });
+  const cameraPackage = await service.createBuildPackage(cameraJob.build_job_id);
+  assert.equal(cameraPackage.files.some((file) => file.content === "// camera-only"), true);
+  assert.equal(cameraPackage.files.some((file) => file.content === "// display-only"), false);
+  assert.equal(cameraPackage.files.some((file) => file.content === "// forbidden-root-fallback"), false);
+});
+
 test("regenerates the visible platformio.ini whenever graphical build configuration is saved", async () => {
   const service = createMemoryProjectServer();
   const project = await service.createProject({

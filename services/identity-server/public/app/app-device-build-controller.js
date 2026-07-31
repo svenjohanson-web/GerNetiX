@@ -308,7 +308,7 @@ function appendBuildProgress(progress, seenProgress, options = {}) {
 
 function appendBuildFailureLog(buildLog, fallbackMessage = "") {
   const lines = String(buildLog || "").split(/\r?\n/).filter(Boolean);
-  const relevant = lines.filter((line) => /fatal error:|error:|\*\*\*|\[FAILED\]/i.test(line));
+  const relevant = lines.filter((line) => /fatal error:|error:|undefined reference|multiple definition|cannot find|region [`'"].*overflowed|\*\*\*|\[FAILED\]/i.test(line));
   const diagnosticLines = (relevant.length ? relevant : lines.slice(-6)).slice(-8);
   if (diagnosticLines.length > 0) {
     diagnosticLines.forEach((line) => appendIdeTerminal("error", line));

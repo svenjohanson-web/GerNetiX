@@ -33,7 +33,7 @@ test("development platform builds all software units and uses target selection o
   assert.match(server, /unit\.hardware_profile_id === hardware\.board_profile_id/);
   assert.match(server, /unit\.source_root === hardware\?\.component_path/);
   assert.match(server, /!derivedSoftwareUnitIds\.has\(unit\.software_unit_id\)/);
-  assert.match(server, /matchingUnit\?\.source_root/);
+  assert.match(server, /normalized\.component_path = `Komponenten\/IoT-Device \$\{deviceIndex \+ 1\}`/);
   assert.match(server, /const firmwareBasisId = catalogBuild\.firmware_basis_id \|\| existing\?\.firmware_basis_id \|\| ""/);
   assert.match(server, /framework === "espidf" && Boolean\(firmwareBasisId\)/);
   assert.match(server, /runner_status: "not_connected"/);

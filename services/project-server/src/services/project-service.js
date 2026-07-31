@@ -944,9 +944,12 @@ function normalizeSoftwareUnits(input, fallbackBuildConfig = null) {
 }
 
 function componentSoftwareRoot(unit, index, previousSourceRoot = "") {
-  const existingComponent = String(previousSourceRoot).match(/^(Komponenten\/[^/]+)/)?.[1];
-  if (existingComponent) return existingComponent;
   const embedded = String(unit?.software_kind || "") === "embedded_firmware" || String(unit?.build_system || "") === "platformio";
+  const existingComponent = String(previousSourceRoot).match(/^(Komponenten\/[^/]+)/)?.[1];
+  if (embedded && (!existingComponent || /^Komponenten\/IoT-Device(?:[ -]|$)/i.test(existingComponent))) {
+    return `Komponenten/IoT-Device ${index}`;
+  }
+  if (existingComponent) return existingComponent;
   if (embedded) return `Komponenten/IoT-Device ${index}`;
   const label = String(unit?.title || unit?.software_unit_id || `Software ${index}`)
     .trim().replace(/[^A-Za-z0-9ÄÖÜäöüß._ -]+/g, "-").replace(/\s+/g, " ").slice(0, 100) || `Software ${index}`;
@@ -1043,6 +1046,9 @@ function sourcesForSoftwareUnit(sources, selectedUnit, softwareUnits) {
       .map((root) => `${root}/`);
     const sharedBuildSupport = sources.filter((source) => (
       !componentPrefixes.some((componentPrefix) => source.path.startsWith(componentPrefix))
+      && !source.path.startsWith("Komponenten/")
+      && !source.path.startsWith("src/")
+      && source.path !== "platformio.ini"
       && !/^(?:Architektur|docs)\//i.test(source.path)
     ));
     return [...scoped, ...sharedBuildSupport];

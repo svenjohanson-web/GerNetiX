@@ -14,6 +14,15 @@ test("persists the camera and display template boards as its initial hardware re
   assert.match(server, /hardwareConfiguration = normalizeHardwareConfiguration\(hardwareConfiguration/);
 });
 
+test("repairs the runtime contract of account projects created from older camera templates", () => {
+  const server = fs.readFileSync(path.join(root, "src/dev-server.js"), "utf8");
+
+  assert.match(server, /synchronizeDevelopmentTemplateRuntimeModel\(project\)/);
+  assert.match(server, /runtime_model_version: targetVersion/);
+  assert.match(server, /source_root: `Komponenten\/IoT-Device \$\{index \+ 1\}`/);
+  assert.match(server, /\.\.\.canonical\.build_config/);
+});
+
 test("shows the catalog camera while keeping its board-supplied connection", () => {
   const platform = fs.readFileSync(path.join(root, "public/app/development-platform.js"), "utf8");
   const server = fs.readFileSync(path.join(root, "src/dev-server.js"), "utf8");
