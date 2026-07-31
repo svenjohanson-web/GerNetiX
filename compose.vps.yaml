@@ -600,6 +600,7 @@ services:
       GERNETIX_SERVICE: identity-server
       HOST: 0.0.0.0
       PORT: 4300
+      IDENTITY_RUNTIME_LOCATION: server
       IDENTITY_PERSISTENCE_BACKEND: postgres
       IDENTITY_POSTGRES_HOST: runtime-postgres
       IDENTITY_POSTGRES_PORT: 5432

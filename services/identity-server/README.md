@@ -53,7 +53,7 @@ Die installierbare Plattform-PWA kann pro iPhone eine Web-Push-Subscription an e
 Board-Ereignisse werden nicht direkt vom Board an einen Web-Push-Provider gesendet. Ein mTLS-/MQTT-authentifizierter Serveradapter ruft intern `POST /api/internal/push/device-event` mit `X-GerNetiX-Admin-Token`, serverseitig abgeleiteten `account_id`, `project_id`, `device_id`, Titel und Meldung auf. Identity stellt nur an Subscriptions derselben Konto-/Projektpartition zu. Die interne Route akzeptiert nur relative `/app/`-Deep-Links.
 
 VPS-Sicherheitsalarme verwenden dieselbe Technik, aber eine getrennte, explizite Empfaengergruppe aus `WEB_PUSH_SECURITY_ALERT_ACCOUNT_IDS`. Ohne diese Konfiguration gibt es bewusst keinen Broadcast an normale Nutzer-Subscriptions.
-Der Dev-Server speichert Identity-Accounts standardmaessig in `.runtime/gernetix-identity.sqlite`. Damit bleiben lokal angelegte Accounts und Identity-Sessions ueber Identity-Neustarts erhalten; der Prozessspeicher ist nur noch ein schneller Session-Cache.
+Die Identity-Runtime laeuft ausschliesslich als kanonischer Serverdienst und verwendet die zentrale PostgreSQL-Datenbank `gernetix_runtime`. Der VPS-Compose-Service setzt dafuer `IDENTITY_RUNTIME_LOCATION=server`. Direkte lokale Starts und das fruehere Remote-Dev-Identity-Werkzeug werden abgewiesen. `IDENTITY_PERSISTENCE_BACKEND=sqlite` wird von der Runtime ebenfalls ausdruecklich abgewiesen. SQLite bleibt nur innerhalb isolierter Repository-Tests und fuer bewusst ausgefuehrte Legacy-Migrationswerkzeuge zulaessig; eine lokale SQLite darf niemals wieder als Account- oder Session-Wahrheit gestartet werden.
 
 ## USB-Provisioning
 

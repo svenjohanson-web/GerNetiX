@@ -75,6 +75,7 @@ const {
   unreadKnowledgeChapterReleases,
 } = require("./knowledge/knowledge-chapter-releases");
 const { getFirmwareBuildTarget, getFactoryFirmwareRelease } = require("../../../basissoftware/esp32/firmware-build-targets");
+const { resolveIdentityRuntimePersistence } = require("./runtime-persistence-policy");
 const {
   generateRegistrationOptions,
   verifyRegistrationResponse,
@@ -92,18 +93,14 @@ const provisioningFirmwareRoot = process.env.PROVISIONING_FIRMWARE_ROOT
   : path.join(workspaceRoot, ".runtime", "server-firmware", "esp32-basissoftware");
 const usbSerialHelperDistDir = path.join(workspaceRoot, "tools", "usb-serial-helper", "dist");
 const usbSerialHelperManifest = require(path.join(workspaceRoot, "tools", "usb-serial-helper", "package.json"));
-const identityPersistenceBackend = process.env.IDENTITY_PERSISTENCE_BACKEND || "sqlite";
-const identitySqlitePath = process.env.IDENTITY_SQLITE_PATH || path.join(workspaceRoot, ".runtime", "gernetix-identity.sqlite");
-const identityRemoteDev = process.env.IDENTITY_REMOTE_DEV === "1";
-const identityAuxiliarySqlitePath = identityRemoteDev ? ":memory:" : identitySqlitePath;
-const platformDownloadSqlitePath = process.env.PLATFORM_DOWNLOAD_SQLITE_PATH
-  || path.join(path.dirname(identitySqlitePath), "gernetix-platform-downloads.sqlite");
-let platformDownloadRepository = identityRemoteDev || identityPersistenceBackend === "postgres"
+const identityPersistenceBackend = resolveIdentityRuntimePersistence(process.env);
+const identityAuxiliarySqlitePath = ":memory:";
+const platformDownloadSqlitePath = process.env.PLATFORM_DOWNLOAD_SQLITE_PATH || ":memory:";
+let platformDownloadRepository = identityPersistenceBackend === "postgres"
   ? null
   : new SqlitePlatformDownloadRepository(platformDownloadSqlitePath);
-const accountAssetSqlitePath = process.env.ACCOUNT_ASSET_SQLITE_PATH
-  || path.join(path.dirname(identitySqlitePath), "gernetix-account-assets.sqlite");
-let accountAssetRepository = identityRemoteDev || identityPersistenceBackend === "postgres"
+const accountAssetSqlitePath = process.env.ACCOUNT_ASSET_SQLITE_PATH || ":memory:";
+let accountAssetRepository = identityPersistenceBackend === "postgres"
   ? null
   : new SqliteAccountAssetRepository(accountAssetSqlitePath);
 const identityPostgres = {
@@ -168,14 +165,12 @@ const ollamaModel = process.env.OLLAMA_MODEL || "llama3.2:3b";
 const deviceDiscoveryUrls = process.env.GERNETIX_DEVICE_DISCOVERY_URLS || process.env.DEVICE_DISCOVERY_URLS || "";
 const gernetixNodeHostnamePrefix = "gernetix-";
 const execFileAsync = promisify(execFile);
-const interfaceTelemetry = identityRemoteDev
-  ? { record() {} }
-  : createInterfaceCallTelemetry({
-      dbPath: process.env.INTERFACE_TELEMETRY_SQLITE_PATH || process.env.PERSISTENCE_SQLITE_PATH,
-      endpoint: process.env.INTERFACE_TELEMETRY_ENDPOINT,
-      token: process.env.INTERFACE_TELEMETRY_TOKEN,
-      sourceService: "identity-server",
-    });
+const interfaceTelemetry = createInterfaceCallTelemetry({
+  dbPath: process.env.INTERFACE_TELEMETRY_SQLITE_PATH || process.env.PERSISTENCE_SQLITE_PATH,
+  endpoint: process.env.INTERFACE_TELEMETRY_ENDPOINT,
+  token: process.env.INTERFACE_TELEMETRY_TOKEN,
+  sourceService: "identity-server",
+});
 const {
   aiContextJson,
   aiUsageJson,
@@ -311,7 +306,6 @@ async function bootstrap() {
   auth = await createDefaultIdentityModule({
     emailService,
     persistenceBackend: identityPersistenceBackend,
-    sqlitePath: identitySqlitePath,
     postgres: identityPostgres,
     appBaseUrl: identityAppBaseUrl || `http://${host}:${port}`,
   });
@@ -531,7 +525,7 @@ async function routeRequest(req, res) {
       status: "ok",
       service: "identity-server",
       persistence_backend: identityPersistenceBackend,
-      remote_dev: identityRemoteDev,
+      runtime_location: "server",
     });
     return;
   }

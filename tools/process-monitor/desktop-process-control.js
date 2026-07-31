@@ -21,7 +21,7 @@ const services = [
   service("hardware-shop", "Hardware Shop", 4900, {PERSISTENCE_BACKEND:"memory"}), service("ai-usage-server", "AI Usage Server", 5000, {PERSISTENCE_BACKEND:"memory"}),
   service("ai-context-server", "AI Context Server", 5500), service("admin-tool", "Admin Tool", 4600, {PERSISTENCE_BACKEND:"memory"}),
   service("community-platform", "Community Platform", 5200),
-  service("identity-server", "Identity Server", 4300, {}, {local:true}),
+  service("identity-server", "Identity Server", 4300, {}, {autoStart:false}),
   service("admin-access-server", "Admin Access Server", 4610, {}, {autoStart:false}),
   service("telemetry-server", "Telemetry Server", 5600, {}, {autoStart:false}),
   service("public-demo-server", "Öffentlicher Demo-Katalog", 4920, {}, {autoStart:false}),
@@ -34,17 +34,14 @@ const services = [
 function service(id, name, port, environment={}, options={}) { const local=options.local===true; return { id, name, port, cwd:path.join(workspaceRoot,"services",id), healthUrl:`http://127.0.0.1:${port}/health`, environment, local, autoStart:local&&options.autoStart!==false }; }
 function configureWorkspace(root) { workspaceRoot=path.resolve(root); for(const item of services)item.cwd=path.join(workspaceRoot,"services",item.id); }
 function byId(id) { const item=services.find((entry)=>entry.id===id); if(!item) throw new Error("Unbekannter GerNetiX-Dienst."); return item; }
-function isIdentityRemoteDevHealth(body){return body?.service==="identity-server"&&body?.persistence_backend==="postgres"&&body?.remote_dev===true;}
-
 async function check(item) {
   const communityStorage=item.id==="community-platform"?communityStorageSummary():null;
   try {
     const response=await health(item.healthUrl),statusCode=response.statusCode,pid=await pidForPort(item.port);
     const statusHealthy=statusCode>=200&&statusCode<300;
-    const identityModeMismatch=item.id==="identity-server"&&statusHealthy&&!isIdentityRemoteDevHealth(response.body);
-    return {...item,healthy:statusHealthy&&!identityModeMismatch,statusCode,pid,
+    return {...item,healthy:statusHealthy,statusCode,pid,
       persistenceBackend:response.body?.persistence_backend||"",remoteDev:response.body?.remote_dev===true,
-      identityModeMismatch,error:identityModeMismatch?"Falscher Identity-Modus: Port 4300 verwendet nicht Remote-Dev mit PostgreSQL.":"",
+      error:"",
       ...(communityStorage?{communityStorage}:{})};
   }
   catch(error){ return {...item,healthy:false,statusCode:0,pid:await pidForPort(item.port),error:error.message,...(communityStorage?{communityStorage}:{})}; }
@@ -145,7 +142,7 @@ async function remoteProcessStates(options={}) {
 }
 
 function isVisibleVpsService(item) {
-  return item.id !== "identity-server" && !item.id.endsWith("-migration");
+  return !item.id.endsWith("-migration");
 }
 
 async function remoteLinkIntegrity(options={}) {
@@ -386,34 +383,7 @@ function launchLoggedService(item, env){
   try{return spawn(process.execPath,["src/dev-server.js"],{cwd:item.cwd,detached:true,windowsHide:true,env,stdio:["ignore",output,output]});}
   finally{fs.closeSync(output);}
 }
-function remoteIdentityEnvironment(){
-  const remoteStarter=path.join(workspaceRoot,"tools","start-identity-remote-dev.js");
-  if(!fs.existsSync(remoteStarter))throw new Error("Der Remote-Dev-Starter tools/start-identity-remote-dev.js fehlt.");
-  const {loadRemoteDevConfig}=require(remoteStarter);
-  return {...loadRemoteDevConfig(process.env),ELECTRON_RUN_AS_NODE:"1"};
-}
-async function startIdentityRemoteDev(options={}){
-  const item=byId("identity-server");
-  const checkService=options.checkService||check;
-  const current=await checkService(item);
-  if(current.healthy)return current;
-  if(current.identityModeMismatch&&current.pid){
-    const stop=options.stopService||stopService;
-    await stop(item.id);
-  }
-  const tunnel=await stagingTunnelState(options);
-  if(!tunnel.active)throw new Error("Identity benötigt den verbundenen VPS SSH-Tunnel einschließlich Identity-PostgreSQL.");
-  let env;
-  try{env=(options.remoteIdentityEnvironment||remoteIdentityEnvironment)();}catch(error){throw new Error(`Identity Remote-Dev kann nicht starten: ${error.message}`);}
-  const launch=options.launchLoggedService||launchLoggedService;
-  const child=launch(item,env);
-  child.unref?.();
-  const wait=options.delay||delay;
-  for(let i=0;i<40;i+=1){const state=await checkService(item);if(state.healthy)return state;if(child.exitCode!==null)break;await wait(250);}
-  const detail=recentServiceLog(item.id);
-  throw new Error(`Identity Remote-Dev wurde nicht gestartet.${detail?` Letzte Logzeilen: ${detail}`:""}`);
-}
-async function startService(id,options={}){ const item=byId(id); if(!item.local)throw new Error(`${item.name} läuft auf dem VPS und kann hier nicht lokal gestartet werden.`); if(id==="identity-server")return startIdentityRemoteDev(options); const checkService=options.checkService||check; const current=await checkService(item); if(current.healthy)return current; const child=launchLoggedService(item,{...process.env,...item.environment,ELECTRON_RUN_AS_NODE:"1",PORT:String(item.port)}); child.unref(); for(let i=0;i<40;i+=1){await delay(250);const state=await checkService(item);if(state.healthy)return state;} throw new Error(`${item.name} konnte nicht gestartet werden.${recentServiceLog(item.id)?` Letzte Logzeilen: ${recentServiceLog(item.id)}`:""}`); }
+async function startService(id,options={}){ const item=byId(id); if(!item.local)throw new Error(`${item.name} läuft auf dem VPS und kann hier nicht lokal gestartet werden.`); const checkService=options.checkService||check; const current=await checkService(item); if(current.healthy)return current; const child=launchLoggedService(item,{...process.env,...item.environment,ELECTRON_RUN_AS_NODE:"1",PORT:String(item.port)}); child.unref(); for(let i=0;i<40;i+=1){await delay(250);const state=await checkService(item);if(state.healthy)return state;} throw new Error(`${item.name} konnte nicht gestartet werden.${recentServiceLog(item.id)?` Letzte Logzeilen: ${recentServiceLog(item.id)}`:""}`); }
 async function startAllServices(options={}){const start=options.startService||startService;const items=[];for(const item of services.filter((entry)=>entry.autoStart)){try{items.push(await start(item.id));}catch(error){items.push({...item,healthy:false,statusCode:0,pid:null,error:error.message});}}return{items,healthy:items.filter((item)=>item.healthy).length,failed:items.filter((item)=>!item.healthy).length};}
 async function stopService(id){ const item=byId(id); if(!item.local)throw new Error(`${item.name} läuft auf dem VPS und kann hier nicht lokal gestoppt werden.`); const pid=await pidForPort(item.port); if(!pid)return check(item); if(process.platform==="win32")await execFileAsync("taskkill",["/PID",String(pid),"/T","/F"],{windowsHide:true});else process.kill(pid,"SIGTERM"); for(let i=0;i<20;i+=1){await delay(150);const state=await check(item);if(!state.healthy)return state;} throw new Error(`${item.name} konnte nicht beendet werden.`); }
 function pidFromWindowsNetstat(output,port){
@@ -545,4 +515,4 @@ async function setVpnConnected(connected, options = {}) {
   throw new Error(`Der VPN-Tunnel wurde nicht rechtzeitig ${desired ? "verbunden" : "getrennt"}.`);
 }
 
-module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,isIdentityRemoteDevHealth,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startStagingTunnel,stopStagingTunnel,remoteIdentityEnvironment,startIdentityRemoteDev,setVpnConnected,startAllServices,startService,stopService,vpnState};
+module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};

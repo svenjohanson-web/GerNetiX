@@ -66,40 +66,11 @@ Hardware Catalog:   http://10.77.0.1:4910/api/hardware-catalog/
 ```
 
 Das Terminal bleibt fuer die Dauer des SSH-Tunnels geoeffnet. `Strg+C` beendet die Verbindung. Der SSH-Tunnel laeuft innerhalb des WireGuard-VPN; der VPS benoetigt keinen Browser, und weder SSH noch der Admin-Port werden oeffentlich freigegeben.
-Der Hardware Catalog bleibt ebenfalls privat: Identity auf dem Entwicklungsrechner nutzt ihn direkt ueber die feste WireGuard-Adresse `10.77.0.1:4910`; ein lokaler Hardware-Catalog-Prozess und ein SSH-Tunnel dafuer sind nicht erforderlich.
+Der Hardware Catalog bleibt ebenfalls privat und ist ueber die feste WireGuard-Adresse `10.77.0.1:4910` erreichbar; ein lokaler Hardware-Catalog-Prozess und ein SSH-Tunnel fuer den Katalog sind nicht erforderlich.
 
-## Lokalen Port 4300 ohne Staging verwenden
+## Keine lokale Identity-Runtime
 
-Fuer haeufige Arbeiten am Identity Server und an der Plattform-UI kann Port `4300` lokal laufen, waehrend der gemeinsame Entwicklungsdatenstand auf dem VPS bleibt.
-
-Einmalig:
-
-```bash
-cp .env.remote-dev.example .env.remote-dev.local
-```
-
-In `.env.remote-dev.local` muss mindestens `IDENTITY_POSTGRES_PASSWORD` fuer die gemeinsame Entwicklungsdatenbank gesetzt werden. Danach in zwei Terminals:
-
-```text
-node tools/connect-staging.js
-node tools/start-identity-remote-dev.js
-```
-
-Der erste Prozess stellt innerhalb von WireGuard die SSH-Weiterleitungen bereit. Der zweite startet nur Identity auf `127.0.0.1:4300`, verwendet `gernetix_runtime` und ruft Project, Build, Device, Shop, Usage, AI Context, Community und Telemetrie ueber deren getunnelte VPS-Dienste auf. Auf macOS wird AI Usage lokal auf `5001` weitergereicht, weil Port `5000` durch das System belegt sein kann.
-
-Alle lokalen Tunnelenden sind ausdrücklich an IPv4-Loopback `127.0.0.1`
-gebunden. Ist einer der Remote-Dev-Ports bereits durch einen lokalen Dienst
-belegt, muss der Tunnel vollständig und sichtbar abbrechen. Ein gemischter
-Betrieb, bei dem Identity einzelne Domaenen versehentlich lokal und andere auf
-Staging anspricht, ist unzulässig; insbesondere dürfen Projekte dadurch nicht
-unbemerkt in einer lokalen SQLite statt im zentralen Project-PostgreSQL landen.
-
-Im Remote-Dev-Modus legt Identity keine lokalen SQLite-Dateien an. Releases,
-Account-Assets, Push-, SMTP- und LLM-State verwenden ihre zentralen Tabellen in
-`gernetix_runtime`. Schreibende Tests wirken deshalb auf den gemeinsamen
-Entwicklungsstand und duerfen niemals gegen Produktion laufen.
-
-Lokale Codeaenderungen an `4300` benoetigen dadurch weder Commit noch Staging-Deployment. Der gemeinsame Datenstand ist aber real: Tests und manuelle Aenderungen koennen andere Entwicklungsrechner beeinflussen. Diese Betriebsart darf deshalb nur eine getrennte Entwicklungs-/Staging-Datenbank verwenden, niemals die Produktionsdatenbank.
+Identity laeuft ausschliesslich als kanonischer Dienst auf dem VPS und verwendet dort `gernetix_runtime` in PostgreSQL. `tools/start-identity-remote-dev.js` ist stillgelegt. Lokale Browser und Werkzeuge greifen ueber die private PWA oder die beschriebenen Diagnose-Tunnel auf den Server zu; sie starten weder einen zweiten Identity-Prozess noch eine lokale Account-/Session-Persistenz.
 
 ## Remote-first statt geteilter SQLite-Datei
 
@@ -113,9 +84,7 @@ ueber SMB, NFS oder SSHFS.
 - Ein lokal gestarteter kompletter Service-Stack ist eine isolierte
   Testumgebung mit eigener Testpersistenz; AI Usage, Hardware Catalog und
   Hardware Shop werden dabei explizit fluechtig im In-Memory-Modus gestartet.
-- Ein lokaler Identity Server darf im beschriebenen Remote-Dev-Modus direkt
-  die zentralen Identity-Tabellen in `gernetix_runtime` verwenden. Er schreibt niemals in
-  eine entfernte SQLite-Datei.
+- Ein lokaler Identity Server ist nicht zulaessig. Die kanonische Server-Identity ist der einzige Schreiber der Identity-Tabellen in `gernetix_runtime`.
 - Die Domaenentunnel transportieren HTTP-Anfragen. Nur der dedizierte
   Runtime-PostgreSQL-Port wird als Datenbankverbindung weitergereicht.
 - Das bisherige Identity-SQLite wird beim VPS-Upgrade einmalig und idempotent
@@ -165,7 +134,7 @@ accountgebundenen Lesestaenden in Identity-PostgreSQL:
 - Erst beim ausdruecklichen Oeffnen eines Kapitels aus Historie oder Inhaltsverzeichnis speichert Identity dessen aktuelle Version als gesehen.
 - Eine spaetere neue Inhaltsversion wird im Manifest ergaenzt statt der frueheren Version ersetzt. So bleibt sie in der Historie erhalten und kann denselben Account erneut informieren.
 - Staging- und Produktionsdatenbanken besitzen getrennte Lesestaende. Ein Staging-Test nimmt daher keinen Produktionshinweis vorweg.
-- Der lokale Remote-Dev-Modus schreibt absichtlich in die gemeinsame Staging-Datenbank. Fuer wiederholbare Tests ist ein dafuer bestimmtes Staging-Konto oder eine isolierte lokale SQLite zu verwenden.
+- Servernahe Tests verwenden die private Staging-PWA. Isolierte Repository-Tests duerfen temporaere SQLite-Dateien verwenden, starten daraus aber niemals die Identity-Runtime.
 
 Ein neues Kapitel gilt erst als veroeffentlicht, wenn Inhalt und Release-Manifest
 im selben sauberen, gepushten Commit liegen. Ein Staging-Test erfolgt danach ueber

@@ -77,7 +77,7 @@ Plattform-URL nach dem Start:
 http://127.0.0.1:4300/app/dashboard/
 ```
 
-## Gemeinsamen privaten VPS-Datenstand verwenden
+## Kanonische private VPS-Plattform verwenden
 
 Wer auf mehreren Rechnern oder dem iPad mit demselben fachlichen Datenstand
 arbeitet, startet nicht vorsorglich den kompletten lokalen Plattform-Stack.
@@ -87,24 +87,7 @@ Nach aktiviertem WireGuard ist die kanonische Adresse:
 https://pwa.gernetix.com/app/dashboard/
 ```
 
-Fuer die haeufige lokale Arbeit an Port `4300` werden nur zwei Prozesse
-benoetigt:
-
-```text
-node tools/connect-staging.js
-node tools/start-identity-remote-dev.js
-```
-
-Der lokale Identity Server verwendet die zentrale PostgreSQL-Datenbank
-`gernetix_runtime` ueber den SSH-Tunnel. Projekte, Telemetrie, Community,
-Device Management, AI Usage, Hardware Catalog und Hardware Shop verwenden
-dieselbe Datenbank auf dem VPS, werden lokal aber ausschliesslich ueber ihre
-getunnelten Dienst-APIs angesprochen. Ein lokaler PostgreSQL-, AI-Context- oder
-sonstiger SQL-Prozess ist dafuer nicht erforderlich.
-
-Der bisherige vollstaendige lokale Start bleibt fuer isolierte Tests verfuegbar.
-Aktiv-aktive Schreibzugriffe auf eine entfernte SQLite-Datei sind weiterhin
-nicht zulaessig.
+Identity wird nicht lokal gestartet. Browser und Desktop-Werkzeuge verwenden die private PWA beziehungsweise den Diagnose-Tunnel zum laufenden VPS-Dienst. Der Identity Server ist dort der einzige Runtime-Prozess fuer Accounts und Sessions und persistiert ausschliesslich in `gernetix_runtime` auf PostgreSQL. Lokale SQLite-Repositories duerfen nur in isolierten Tests oder expliziten Legacy-Migrationen verwendet werden und sind keine startbare Identity-Runtime.
 
 ## Device-, OTA- und Factory-Flows
 

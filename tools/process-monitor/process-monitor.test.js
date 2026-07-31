@@ -10,7 +10,7 @@ const client = fs.readFileSync(path.join(__dirname, "public/desktop-app.js"), "u
 const desktopMain = fs.readFileSync(path.join(__dirname, "desktop-main.js"), "utf8");
 const desktopPreload = fs.readFileSync(path.join(__dirname, "desktop-preload.js"), "utf8");
 
-test("monitor knows every backend service but treats only Identity as local", async () => {
+test("monitor treats every backend including Identity as a VPS service", async () => {
   assert.equal(control.services.find((item) => item.id === "identity-server").port, 4300);
   assert.equal(control.services.find((item) => item.id === "admin-tool").port, 4600);
   assert.equal(control.services.find((item) => item.id === "community-platform").port, 5200);
@@ -22,10 +22,10 @@ test("monitor knows every backend service but treats only Identity as local", as
   assert.equal(control.services.find((item) => item.id === "recovery-tool").port, 5100);
   assert.equal(control.services.find((item) => item.id === "admin-access-server").port, 4610);
   assert.equal(control.services.length, 17);
-  assert.deepEqual(control.services.filter((item) => item.local).map((item) => item.id), ["identity-server"]);
-  assert.deepEqual(control.services.filter((item) => item.autoStart).map((item) => item.id), ["identity-server"]);
+  assert.deepEqual(control.services.filter((item) => item.local).map((item) => item.id), []);
+  assert.deepEqual(control.services.filter((item) => item.autoStart).map((item) => item.id), []);
   const states = await control.processStates();
-  assert.deepEqual(states.map((item) => item.id), ["identity-server"]);
+  assert.deepEqual(states, []);
 });
 
 test("desktop monitor reports Community SQLite counts without reading content", () => {
@@ -109,7 +109,7 @@ test("monitor reads VPS compose state through the established staging SSH config
     ].join("\n"), stderr:"" }}
   });
   assert.match(remoteCommand, /docker compose --env-file \.env\.vps -f compose\.vps\.yaml ps --format json/);
-  assert.deepEqual(remote.items.map((item)=>item.id), ["project-server"]);
+  assert.deepEqual(remote.items.map((item)=>item.id), ["identity-server", "project-server"]);
 });
 
 test("monitor displays persisted external interface call statistics", () => {
@@ -253,57 +253,11 @@ test("monitor rejects a partial SSH tunnel mixed with local domain services", as
   assert.match(state.error,/Portkonflikte/);
 });
 
-test("Identity starts only in remote-dev mode after the complete VPS tunnel is available", async () => {
-  const config={
-    GERNETIX_STAGING_SSH:"root@gernetix-vps",
-    GERNETIX_STAGING_LOCAL_ADMIN_PORT:"14600",
-    GERNETIX_STAGING_REMOTE_ADMIN_PORT:"4610",
-    GERNETIX_STAGING_LOCAL_PLATFORM_PORT:"14300",
-    GERNETIX_STAGING_REMOTE_PLATFORM_PORT:"8080",
-    GERNETIX_STAGING_LOCAL_IDENTITY_DB_PORT:"25432",
-    GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT:"25432"
-  };
-  let checks=0;
-  let launched=null;
-  const result=await control.startIdentityRemoteDev({
-    config,
-    pidForPort:async()=>123,
-    checkService:async(item)=>({ ...item, healthy:++checks>1 }),
-    remoteIdentityEnvironment:()=>({IDENTITY_REMOTE_DEV:"1",IDENTITY_PERSISTENCE_BACKEND:"postgres",ELECTRON_RUN_AS_NODE:"1"}),
-    launchLoggedService:(item,env)=>{launched={item,env};return {exitCode:null,unref(){}};},
-    delay:async()=>{}
-  });
-  assert.equal(result.healthy,true);
-  assert.equal(launched.item.id,"identity-server");
-  assert.equal(launched.env.IDENTITY_REMOTE_DEV,"1");
-  assert.equal(launched.env.IDENTITY_PERSISTENCE_BACKEND,"postgres");
-  assert.match(fs.readFileSync(path.join(__dirname,"desktop-process-control.js"),"utf8"),/Identity benötigt den verbundenen VPS SSH-Tunnel/);
-});
-
-test("Identity health distinguishes central PostgreSQL from an accidental local SQLite process", () => {
-  assert.equal(control.isIdentityRemoteDevHealth({service:"identity-server",persistence_backend:"postgres",remote_dev:true}),true);
-  assert.equal(control.isIdentityRemoteDevHealth({service:"identity-server",persistence_backend:"sqlite",remote_dev:false}),false);
-  assert.equal(control.isIdentityRemoteDevHealth({status:"ok",service:"identity-server"}),false);
-});
-
-test("Identity remote-dev start replaces a healthy SQLite listener on port 4300", async () => {
-  let stopped="";
-  let launched=null;
-  let checks=0;
-  const result=await control.startIdentityRemoteDev({
-    config:{GERNETIX_STAGING_SSH:"root@gernetix-vps"},
-    pidForPort:async()=>123,
-    checkService:async(item)=>checks++===0
-      ? {...item,healthy:false,statusCode:200,pid:987,identityModeMismatch:true}
-      : {...item,healthy:true,statusCode:200,pid:654,persistenceBackend:"postgres",remoteDev:true},
-    stopService:async(id)=>{stopped=id;},
-    remoteIdentityEnvironment:()=>({IDENTITY_REMOTE_DEV:"1",IDENTITY_PERSISTENCE_BACKEND:"postgres"}),
-    launchLoggedService:(item,env)=>{launched={item,env};return {exitCode:null,unref(){}};},
-    delay:async()=>{}
-  });
-  assert.equal(stopped,"identity-server");
-  assert.equal(launched.env.IDENTITY_PERSISTENCE_BACKEND,"postgres");
-  assert.equal(result.healthy,true);
+test("Identity cannot be started as a local desktop process", async () => {
+  await assert.rejects(
+    () => control.startService("identity-server"),
+    /läuft auf dem VPS und kann hier nicht lokal gestartet werden/,
+  );
 });
 
 test("detects Windows listener PIDs independently of the localized state label", () => {
@@ -350,7 +304,7 @@ test("monitor shows all VPS protection rules with status and recommended action"
   assert.ok(result.items.every((item)=>item.recommendation));
 });
 
-test("bulk start controls only the local Identity process", async () => {
+test("bulk start has no local backend process to launch", async () => {
   const calls = [];
   const autoStartServices = control.services.filter((service) => service.autoStart);
   const result = await control.startAllServices({ startService: async (id) => {
@@ -358,11 +312,10 @@ test("bulk start controls only the local Identity process", async () => {
     return { id, healthy:false, error:"Start fehlgeschlagen" };
   }});
   assert.deepEqual(calls, autoStartServices.map((service) => service.id));
-  assert.deepEqual(calls, ["identity-server"]);
-  assert.equal(result.items.length, 1);
+  assert.deepEqual(calls, []);
+  assert.equal(result.items.length, 0);
   assert.equal(result.healthy, 0);
-  assert.equal(result.failed, 1);
-  assert.equal(result.items[0].error, "Start fehlgeschlagen");
+  assert.equal(result.failed, 0);
   assert.match(desktopPreload, /processes:start-all/);
   assert.match(desktopMain, /processes:start-all/);
   assert.match(html, /id="startAllLocal"/);

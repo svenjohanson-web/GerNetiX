@@ -66,18 +66,9 @@ mehr.
 
 Die frueheren Plattform-Release-, Account-Asset- und Build-Artefakt-SQLite-Dateien werden ausschliesslich read-only migriert. Danach liegen Metadaten und BLOBs in ihren praefixierten Tabellen der zentralen Datenbank.
 
-## Lokaler Port 4300 mit zentralem Datenstand
+## Keine lokale Identity-Persistenz oder Identity-Runtime
 
-Der Identity Server darf auf einem Entwicklungsrechner lokal auf Port `4300` laufen, damit UI- und Servercode ohne Staging-Schritt geaendert werden koennen. Dabei gilt:
-
-1. `tools/connect-staging.js` stellt innerhalb von WireGuard einen SSH-Tunnel zur zentralen PostgreSQL-Datenbank und zu den loopback-gebundenen Domaenendiensten auf dem VPS her.
-2. `tools/start-identity-remote-dev.js` startet ausschliesslich den lokalen Identity Server auf `127.0.0.1:4300`, erzwingt `IDENTITY_PERSISTENCE_BACKEND=postgres` und verwendet die getunnelten Dienst-URLs.
-3. Das Passwort liegt nur in `.env.remote-dev.local`; die Datei ist nicht versioniert.
-4. Diese Betriebsart ist fuer einen gemeinsamen Entwicklungs-/Staging-Datenstand vorgesehen, nicht fuer die Produktionsdatenbank. Schemaaenderungen muessen rueckwaertskompatibel und vor dem gemeinsamen Einsatz getestet sein.
-5. Alle Domaenendaten liegen in `gernetix_runtime`; der lokale Identity-Prozess greift ausser auf seine eigenen Identity-Tabellen auf alle Domaenen nur ueber deren HTTP-Dienste zu.
-6. Der Remote-Dev-Starter setzt `IDENTITY_REMOTE_DEV=1`. Dadurch werden lokal keine Laufzeit-SQLite-Dateien angelegt. Releases, Account-Assets, Push-, SMTP- und LLM-Konfiguration verwenden die zentrale Runtime-Persistenz; schreibende Tests veraendern daher den gemeinsamen Entwicklungsstand.
-
-Damit laufen auf dem MacBook fuer die normale Plattformarbeit nur der SSH-Tunnel und der lokale Prozess `4300`. PostgreSQL, AI Context und die anderen SQL-Dienste laufen auf dem VPS.
+Der Identity Server laeuft ausschliesslich als kanonischer VPS-Dienst. Der Compose-Vertrag setzt `IDENTITY_RUNTIME_LOCATION=server` und `IDENTITY_PERSISTENCE_BACKEND=postgres`; Accounts, Credentials und Sessions liegen in `gernetix_runtime`. Lokale Browser und Desktop-Werkzeuge verwenden die private PWA oder Diagnose-Tunnel, starten aber weder Port `4300` noch einen zweiten Identity-Schreiber. Temporaere SQLite-Dateien bleiben auf isolierte Repository-Tests beschraenkt; Legacy-SQLite wird nur ueber die expliziten read-only Migrationswerkzeuge verarbeitet.
 
 ## Dateien ohne fachliche Persistenzrolle
 
