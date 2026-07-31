@@ -404,8 +404,8 @@ const DevelopmentPlatform = (() => {
       const componentRows = configurableComponents.length
         ? configurableComponents.map((component) => `
           <li class="${connectionCoverage.missing.includes(component.component_id) ? "has-connection-hint" : ""}">
-            <strong>${escapeHtml(component.label)}</strong>
-            <small>${escapeHtml(templateComponentTypeLabel(component.abstract_type))}</small>
+            <span><strong>${escapeHtml(component.label)}</strong><small>${escapeHtml(templateComponentTypeLabel(component.abstract_type))}</small></span>
+            <button type="button" class="template-component-remove" data-template-component-remove="${escapeAttribute(component.component_id)}" aria-label="${escapeAttribute(`${component.label} entfernen`)}">Entfernen</button>
           </li>`).join("")
         : "<li class=\"empty\">Noch keine Komponenten vorhanden.</li>";
       const connectionHints = disconnectedComponents.length || invalidRelations.length
@@ -492,6 +492,11 @@ const DevelopmentPlatform = (() => {
     }
 
     function handleTemplateComponentConfigurationClick(event) {
+      const removeButton = event.target.closest("[data-template-component-remove]");
+      if (removeButton) {
+        removeTemplateComponent(removeButton.dataset.templateComponentRemove);
+        return;
+      }
       if (!event.target.closest("[data-template-component-add]")) return;
       const section = document.querySelector("#templateComponentConfiguration");
       const type = section?.querySelector("[data-template-component-type]")?.value || "structural";
@@ -547,6 +552,28 @@ const DevelopmentPlatform = (() => {
         ? diagram.source.replace(/@enduml\s*$/i, `${additions}\n@enduml`)
         : `${diagram.source}\n${additions}`;
       state.developmentPlatform.architectureDiagram = { ...diagram, source, derived_from: diagram.derived_from || "project_template" };
+    }
+
+    function removeTemplateComponent(componentId) {
+      const diagram = state.developmentPlatform.architectureDiagram || architectureDiagramForProject(currentProject());
+      const component = abstractArchitectureComponents(diagram?.source || "")
+        .find((item) => item.component_id === componentId && isUserConfigurableComponent(item));
+      if (!diagram?.source || !component) return;
+      const source = diagram.source.split(/\r?\n/).filter((line) => {
+        const declaration = line.match(/^\s*(?:actor|node|component|rectangle|database|cloud|queue|artifact)\s+"[^"]+"\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\b/i);
+        if (declaration?.[1] === componentId) return false;
+        const relation = line.match(/\b([A-Za-z_][A-Za-z0-9_]*)\s+[-.]+>\s+([A-Za-z_][A-Za-z0-9_]*)\b/);
+        return !relation || (relation[1] !== componentId && relation[2] !== componentId);
+      }).join("\n").replace(/\n{3,}/g, "\n\n");
+      state.developmentPlatform.architectureDiagram = { ...diagram, source };
+      if (state.developmentPlatform.hardwareConfiguration?.components) {
+        state.developmentPlatform.hardwareConfiguration.components = state.developmentPlatform.hardwareConfiguration.components
+          .filter((item) => item.component_id !== componentId && item.target_device_id !== componentId);
+      }
+      renderTemplateComponentConfiguration();
+      renderArchitectureDiagram();
+      syncChatAvailability();
+      setActionStatus(`${component.label} wurde mit seinen Verbindungen entfernt. Speichere die Konfiguration, um die Änderung zu übernehmen.`);
     }
 
     function renderRequirementsText() {

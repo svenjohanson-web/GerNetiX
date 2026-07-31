@@ -187,11 +187,16 @@ test("uses one component configuration for every template except the game collec
   assert.match(publicController, /functionCoverage\.complete/);
   assert.match(publicController, /relationshipRule\.source_type === type/);
   assert.match(publicController, /function appendTemplateComponent/);
+  assert.match(publicController, /data-template-component-remove/);
+  assert.match(publicController, /function removeTemplateComponent\(componentId\)/);
+  assert.match(publicController, /relation\[1\] !== componentId && relation\[2\] !== componentId/);
+  assert.match(publicController, /item\.component_id !== componentId && item\.target_device_id !== componentId/);
   assert.match(publicController, /function toggleDevelopmentAssistant/);
   assert.match(publicController, /assistantOpen: false/);
   assert.match(publicCss, /\.template-component-configuration \{/);
   assert.match(publicCss, /\.template-component-layout \{/);
   assert.match(publicCss, /\.template-component-connection-hints \{/);
+  assert.match(publicCss, /\.template-component-remove \{/);
 });
 
 test("keeps the selected component type when a custom label does not describe it", () => {

@@ -5112,6 +5112,7 @@ textarea,
 .template-component-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .template-component-list li {
   display: flex;
+  align-items: center;
   justify-content: space-between;
   gap: 10px;
   padding: 7px 9px;
@@ -5119,7 +5120,18 @@ textarea,
   border-radius: 6px;
   background: rgba(30, 41, 59, .75);
 }
+.template-component-list li > span { display: grid; min-width: 0; gap: 2px; }
 .template-component-list small { color: #93c5fd; }
+.template-component-remove {
+  flex: 0 0 auto;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-color: rgba(248, 113, 113, .55);
+  color: #fecaca;
+  background: rgba(127, 29, 29, .22);
+  font-size: 11px;
+}
+.template-component-remove:hover { border-color: #f87171; background: rgba(153, 27, 27, .4); }
 .template-component-list li.has-connection-hint { border-color: #d97706; }
 .template-component-list li.has-connection-hint small { color: #fde68a; }
 .template-component-connection-hints {
