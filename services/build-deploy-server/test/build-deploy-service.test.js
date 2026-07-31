@@ -211,6 +211,105 @@ test("successive project builds restore and update the PlatformIO incremental ca
   assert.equal(await fs.readFile(path.join(observedWorkspaces[1], "src", "main.cpp"), "utf8"), "void setup() {}\nvoid loop() {}\n");
 });
 
+test("incremental builds preserve generated ESP-IDF components and remove only stale package files", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-managed-components-"));
+  const config = createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  });
+  const service = createDefaultBuildDeployService(config);
+  const observedGeneratedComponent = [];
+  service.runner.run = async (job, packageDir) => {
+    const generatedHeader = path.join(packageDir, "managed_components", "espressif__mqtt", "include", "mqtt_client.h");
+    observedGeneratedComponent.push(await fs.readFile(generatedHeader, "utf8").catch(() => "missing"));
+    if (job.job_id === "managed-components-1") {
+      await fs.mkdir(path.dirname(generatedHeader), { recursive: true });
+      await fs.writeFile(generatedHeader, "generated mqtt header");
+      await fs.writeFile(path.join(packageDir, "dependencies.lock"), "dependencies:\n  espressif/mqtt: 1.0.0\n");
+    }
+    const outputDir = path.join(packageDir, ".test-artifacts");
+    await fs.mkdir(outputDir, { recursive: true });
+    const artifacts = {
+      "firmware.bin": path.join(outputDir, "firmware.bin"),
+      "firmware.elf": path.join(outputDir, "firmware.elf"),
+      "build.log": path.join(outputDir, "build.log"),
+    };
+    await Promise.all(Object.values(artifacts).map((file) => fs.writeFile(file, "artifact")));
+    return { status: "succeeded", artifacts };
+  };
+
+  await service.submitJob({
+    job_id: "managed-components-1",
+    project_id: "project-managed",
+    mode: "build",
+    build_package: { files: {
+      "platformio.ini": "[env:test]\n",
+      "src/main.cpp": "void setup() {}\n",
+      "src/removed.cpp": "void removed() {}\n",
+    } },
+  });
+  await service.jobs.get("managed-components-1").promise;
+  await service.submitJob({
+    job_id: "managed-components-2",
+    project_id: "project-managed",
+    mode: "build",
+    build_package: { files: {
+      "platformio.ini": "[env:test]\n",
+      "src/main.cpp": "void setup() {}\n",
+    } },
+  });
+  await service.jobs.get("managed-components-2").promise;
+
+  const workspace = path.join(config.incrementalCacheDir, "project-managed--default", "workspace");
+  assert.deepEqual(observedGeneratedComponent, ["missing", "generated mqtt header"]);
+  assert.equal(await fs.readFile(path.join(workspace, "managed_components", "espressif__mqtt", "include", "mqtt_client.h"), "utf8"), "generated mqtt header");
+  await assert.rejects(fs.access(path.join(workspace, "src", "removed.cpp")), /ENOENT/);
+});
+
+test("incremental build repairs a PlatformIO cache that references missing managed components", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-corrupt-managed-components-"));
+  const config = createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  });
+  const service = createDefaultBuildDeployService(config);
+  let runCount = 0;
+  service.runner.run = async (_job, packageDir) => {
+    runCount += 1;
+    const platformioState = path.join(packageDir, ".pio", "build", "esp32dev");
+    if (runCount === 1) {
+      await fs.mkdir(platformioState, { recursive: true });
+      await fs.writeFile(path.join(platformioState, "build.ninja"), "build mqtt: cc managed_components/espressif__mqtt/mqtt_client.c\n");
+      await fs.writeFile(path.join(packageDir, "dependencies.lock"), "dependencies:\n  espressif/mqtt: 1.0.0\n");
+    } else {
+      assert.equal(await fs.readFile(path.join(platformioState, "build.ninja"), "utf8").catch(() => "missing"), "missing");
+      assert.equal(await fs.readFile(path.join(packageDir, "dependencies.lock"), "utf8").catch(() => "missing"), "missing");
+    }
+    const outputDir = path.join(packageDir, `.test-artifacts-${runCount}`);
+    await fs.mkdir(outputDir, { recursive: true });
+    const artifacts = {
+      "firmware.bin": path.join(outputDir, "firmware.bin"),
+      "firmware.elf": path.join(outputDir, "firmware.elf"),
+      "build.log": path.join(outputDir, "build.log"),
+    };
+    await Promise.all(Object.values(artifacts).map((file) => fs.writeFile(file, "artifact")));
+    return { status: "succeeded", artifacts };
+  };
+
+  for (const jobId of ["corrupt-cache-1", "corrupt-cache-2"]) {
+    await service.submitJob({
+      job_id: jobId,
+      project_id: "project-corrupt",
+      mode: "build",
+      build_package: { files: { "platformio.ini": "[env:test]\n", "src/main.cpp": "void setup() {}\n" } },
+    });
+    await service.jobs.get(jobId).promise;
+    assert.equal(service.getJob(jobId).status, "succeeded");
+  }
+});
+
 test("prebuild cannot trigger deploy", async () => {
   const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-build-deploy-"));
   const service = createDefaultBuildDeployService(createConfig({

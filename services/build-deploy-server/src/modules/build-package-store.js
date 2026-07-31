@@ -20,6 +20,7 @@ class BuildPackageStore {
     const persistentCacheDir = this.incrementalProjectCacheDir(job);
     const jobDir = persistentCacheDir || path.join(this.tempDir, sanitizeName(job.job_id));
     const packageDir = persistentCacheDir ? path.join(jobDir, "workspace") : path.join(jobDir, "build-package");
+    const packageManifestPath = path.join(jobDir, ".gernetix-package-files.json");
     if (!persistentCacheDir) await fs.rm(jobDir, { recursive: true, force: true });
     await fs.mkdir(packageDir, { recursive: true });
 
@@ -29,12 +30,15 @@ class BuildPackageStore {
         const targetPath = resolveInside(packageDir, relativePath);
         expectedPaths.add(path.relative(packageDir, targetPath));
       }
-      await removeStalePackageFiles(packageDir, expectedPaths);
+      const previousPackagePaths = await readPackageManifest(packageManifestPath);
+      await removeStalePackageFiles(packageDir, expectedPaths, previousPackagePaths);
       for (const [relativePath, content] of Object.entries(files)) {
         const targetPath = resolveInside(packageDir, relativePath);
         await fs.mkdir(path.dirname(targetPath), { recursive: true });
         await writeFileIfChanged(targetPath, normalizeContent(content));
       }
+      await fs.writeFile(packageManifestPath, JSON.stringify(Array.from(expectedPaths).sort(), null, 2));
+      await repairIncompleteEspIdfCache(packageDir);
     } catch (error) {
       if (!persistentCacheDir) await this.cleanup({ jobDir, persistent: false });
       throw error;
@@ -85,26 +89,51 @@ async function writeFileIfChanged(filePath, content) {
   return true;
 }
 
-async function removeStalePackageFiles(packageDir, expectedPaths) {
-  const existing = await listFiles(packageDir, { skipPlatformio: true });
-  await Promise.all(existing
+async function readPackageManifest(manifestPath) {
+  try {
+    const paths = JSON.parse(await fs.readFile(manifestPath, "utf8"));
+    return Array.isArray(paths) ? paths.map((value) => String(value)) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function removeStalePackageFiles(packageDir, expectedPaths, previousPackagePaths) {
+  await Promise.all(previousPackagePaths
     .filter((relativePath) => !expectedPaths.has(relativePath))
-    .map((relativePath) => fs.rm(path.join(packageDir, relativePath), { force: true })));
+    .map((relativePath) => fs.rm(resolveInside(packageDir, relativePath), { force: true })));
 }
 
-async function listFiles(rootDir, options = {}) {
-  const result = [];
-  await walkFiles(rootDir, rootDir, result, options);
-  return result;
+async function repairIncompleteEspIdfCache(packageDir) {
+  const managedComponentsDir = path.join(packageDir, "managed_components");
+  if (await pathExists(managedComponentsDir)) return false;
+
+  const platformioBuildDir = path.join(packageDir, ".pio", "build");
+  let environments;
+  try {
+    environments = await fs.readdir(platformioBuildDir, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+
+  for (const environment of environments.filter((entry) => entry.isDirectory())) {
+    const ninjaFile = path.join(platformioBuildDir, environment.name, "build.ninja");
+    const ninja = await fs.readFile(ninjaFile, "utf8").catch(() => "");
+    if (!/managed_components[\\/]/.test(ninja)) continue;
+    await fs.rm(path.join(packageDir, ".pio"), { recursive: true, force: true });
+    await Promise.all(["dependencies.lock", "sdkconfig", "sdkconfig.old"]
+      .map((fileName) => fs.rm(path.join(packageDir, fileName), { force: true })));
+    return true;
+  }
+  return false;
 }
 
-async function walkFiles(rootDir, currentDir, result, options) {
-  const entries = await fs.readdir(currentDir, { withFileTypes: true });
-  for (const entry of entries) {
-    if (options.skipPlatformio && currentDir === rootDir && entry.name === ".pio") continue;
-    const fullPath = path.join(currentDir, entry.name);
-    if (entry.isDirectory()) await walkFiles(rootDir, fullPath, result, options);
-    else result.push(path.relative(rootDir, fullPath));
+async function pathExists(filePath) {
+  try {
+    await fs.access(filePath);
+    return true;
+  } catch {
+    return false;
   }
 }
 
