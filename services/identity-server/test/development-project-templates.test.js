@@ -105,8 +105,8 @@ test("provides a two-target camera-to-display template with isolated build roots
   const files = templateFirmwareSources(template, template.title);
 
   assert.match(architecture, /rectangle "Kamera" as camera/);
-  assert.match(architecture, /IoT-Device 1\\nKameraeinheit/);
-  assert.match(architecture, /IoT-Device 2\\nAnzeigeeinheit/);
+  assert.match(architecture, /rectangle "IoT-Device 1" as camera_device/);
+  assert.match(architecture, /rectangle "IoT-Device 2" as display_device/);
   assert.match(architecture, /rectangle "Display" as display/);
   assert.match(architecture, /camera --> camera_device : liefert Bilddaten/);
   assert.match(architecture, /camera_device --> display_device : uebertraegt Bilddaten/);

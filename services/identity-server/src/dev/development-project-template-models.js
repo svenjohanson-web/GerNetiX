@@ -102,8 +102,8 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
     architecture: {
       elements: [
         element("camera", "Kamera", "sensor"),
-        element("camera_device", "IoT-Device 1\nKameraeinheit", "iot_device"),
-        element("display_device", "IoT-Device 2\nAnzeigeeinheit", "iot_device"),
+        element("camera_device", "IoT-Device 1", "iot_device"),
+        element("display_device", "IoT-Device 2", "iot_device"),
         element("display", "Display", "actuator"),
         element("user", "Nutzer", "actor"),
       ],
@@ -129,14 +129,14 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
           },
           {
             component_id: "camera_device",
-            label: "IoT-Device 1 Kameraeinheit",
+            label: "IoT-Device 1",
             plantuml_type: "rectangle",
             abstract_type: "iot_device",
             board_profile_id: "hardware.processor_board.waveshare_esp32_s3_cam_ov3660",
           },
           {
             component_id: "display_device",
-            label: "IoT-Device 2 Anzeigeeinheit",
+            label: "IoT-Device 2",
             plantuml_type: "rectangle",
             abstract_type: "iot_device",
             board_profile_id: "hardware.processor_board.esp32_s3_es3c28p",
