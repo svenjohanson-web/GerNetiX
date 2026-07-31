@@ -524,7 +524,12 @@ async function routeRequest(req, res) {
   }
 
   if (url.pathname === "/health") {
-    sendJson(res, 200, { status: "ok", service: "identity-server" });
+    sendJson(res, 200, {
+      status: "ok",
+      service: "identity-server",
+      persistence_backend: identityPersistenceBackend,
+      remote_dev: identityRemoteDev,
+    });
     return;
   }
   if (url.pathname === "/app/manifest.webmanifest") { serveStatic(res, appDir, "/manifest.webmanifest"); return; }

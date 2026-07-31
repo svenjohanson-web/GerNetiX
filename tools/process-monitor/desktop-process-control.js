@@ -34,10 +34,19 @@ const services = [
 function service(id, name, port, environment={}, options={}) { const local=options.local===true; return { id, name, port, cwd:path.join(workspaceRoot,"services",id), healthUrl:`http://127.0.0.1:${port}/health`, environment, local, autoStart:local&&options.autoStart!==false }; }
 function configureWorkspace(root) { workspaceRoot=path.resolve(root); for(const item of services)item.cwd=path.join(workspaceRoot,"services",item.id); }
 function byId(id) { const item=services.find((entry)=>entry.id===id); if(!item) throw new Error("Unbekannter GerNetiX-Dienst."); return item; }
+function isIdentityRemoteDevHealth(body){return body?.service==="identity-server"&&body?.persistence_backend==="postgres"&&body?.remote_dev===true;}
 
 async function check(item) {
   const communityStorage=item.id==="community-platform"?communityStorageSummary():null;
-  try { const statusCode=await health(item.healthUrl); return {...item,healthy:statusCode>=200&&statusCode<300,statusCode,pid:await pidForPort(item.port),error:"",...(communityStorage?{communityStorage}:{})}; }
+  try {
+    const response=await health(item.healthUrl),statusCode=response.statusCode,pid=await pidForPort(item.port);
+    const statusHealthy=statusCode>=200&&statusCode<300;
+    const identityModeMismatch=item.id==="identity-server"&&statusHealthy&&!isIdentityRemoteDevHealth(response.body);
+    return {...item,healthy:statusHealthy&&!identityModeMismatch,statusCode,pid,
+      persistenceBackend:response.body?.persistence_backend||"",remoteDev:response.body?.remote_dev===true,
+      identityModeMismatch,error:identityModeMismatch?"Falscher Identity-Modus: Port 4300 verwendet nicht Remote-Dev mit PostgreSQL.":"",
+      ...(communityStorage?{communityStorage}:{})};
+  }
   catch(error){ return {...item,healthy:false,statusCode:0,pid:await pidForPort(item.port),error:error.message,...(communityStorage?{communityStorage}:{})}; }
 }
 async function processStates(){ return Promise.all(services.filter((item)=>item.local).map(check)); }
@@ -388,6 +397,10 @@ async function startIdentityRemoteDev(options={}){
   const checkService=options.checkService||check;
   const current=await checkService(item);
   if(current.healthy)return current;
+  if(current.identityModeMismatch&&current.pid){
+    const stop=options.stopService||stopService;
+    await stop(item.id);
+  }
   const tunnel=await stagingTunnelState(options);
   if(!tunnel.active)throw new Error("Identity benötigt den verbundenen VPS SSH-Tunnel einschließlich Identity-PostgreSQL.");
   let env;
@@ -414,7 +427,7 @@ function pidFromWindowsNetstat(output,port){
   return Number(line?.trim().split(/\s+/).at(-1))||null;
 }
 async function pidForPort(port){try{if(process.platform==="win32"){const{stdout}=await execFileAsync("netstat",["-ano","-p","tcp"],{windowsHide:true});return pidFromWindowsNetstat(stdout,port);}const{stdout}=await execFileAsync("lsof",["-nP",`-iTCP:${port}`,"-sTCP:LISTEN","-t"]);return Number(stdout.trim().split(/\s+/)[0])||null;}catch{return null;}}
-function health(url){return new Promise((resolve,reject)=>{const req=http.get(url,(res)=>{res.resume();res.on("end",()=>resolve(res.statusCode||0));});req.setTimeout(1200,()=>req.destroy(new Error("Timeout")));req.on("error",reject);});}
+function health(url){return new Promise((resolve,reject)=>{const req=http.get(url,(res)=>{let raw="";res.setEncoding("utf8");res.on("data",(chunk)=>{if(raw.length<16384)raw+=chunk;});res.on("end",()=>{let body=null;try{body=raw?JSON.parse(raw):null;}catch{}resolve({statusCode:res.statusCode||0,body});});});req.setTimeout(1200,()=>req.destroy(new Error("Timeout")));req.on("error",reject);});}
 function delay(ms){return new Promise((resolve)=>setTimeout(resolve,ms));}
 function loadStagingConfig(){const file=path.join(workspaceRoot,".env.staging.local");return {...(fs.existsSync(file)?parseEnvFile(fs.readFileSync(file,"utf8")):{}),...process.env};}
 function parseEnvFile(content){const values={};for(const raw of String(content).split(/\r?\n/)){const line=raw.trim();if(!line||line.startsWith("#"))continue;const separator=line.indexOf("=");if(separator<1)throw new Error(`Ungültige Konfigurationszeile: ${raw}`);const key=line.slice(0,separator).trim();let value=line.slice(separator+1).trim();if((value.startsWith('"')&&value.endsWith('"'))||(value.startsWith("'")&&value.endsWith("'")))value=value.slice(1,-1);values[key]=value;}return values;}
@@ -532,4 +545,4 @@ async function setVpnConnected(connected, options = {}) {
   throw new Error(`Der VPN-Tunnel wurde nicht rechtzeitig ${desired ? "verbunden" : "getrennt"}.`);
 }
 
-module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startStagingTunnel,stopStagingTunnel,remoteIdentityEnvironment,startIdentityRemoteDev,setVpnConnected,startAllServices,startService,stopService,vpnState};
+module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,isIdentityRemoteDevHealth,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startStagingTunnel,stopStagingTunnel,remoteIdentityEnvironment,startIdentityRemoteDev,setVpnConnected,startAllServices,startService,stopService,vpnState};

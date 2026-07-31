@@ -280,6 +280,32 @@ test("Identity starts only in remote-dev mode after the complete VPS tunnel is a
   assert.match(fs.readFileSync(path.join(__dirname,"desktop-process-control.js"),"utf8"),/Identity benötigt den verbundenen VPS SSH-Tunnel/);
 });
 
+test("Identity health distinguishes central PostgreSQL from an accidental local SQLite process", () => {
+  assert.equal(control.isIdentityRemoteDevHealth({service:"identity-server",persistence_backend:"postgres",remote_dev:true}),true);
+  assert.equal(control.isIdentityRemoteDevHealth({service:"identity-server",persistence_backend:"sqlite",remote_dev:false}),false);
+  assert.equal(control.isIdentityRemoteDevHealth({status:"ok",service:"identity-server"}),false);
+});
+
+test("Identity remote-dev start replaces a healthy SQLite listener on port 4300", async () => {
+  let stopped="";
+  let launched=null;
+  let checks=0;
+  const result=await control.startIdentityRemoteDev({
+    config:{GERNETIX_STAGING_SSH:"root@gernetix-vps"},
+    pidForPort:async()=>123,
+    checkService:async(item)=>checks++===0
+      ? {...item,healthy:false,statusCode:200,pid:987,identityModeMismatch:true}
+      : {...item,healthy:true,statusCode:200,pid:654,persistenceBackend:"postgres",remoteDev:true},
+    stopService:async(id)=>{stopped=id;},
+    remoteIdentityEnvironment:()=>({IDENTITY_REMOTE_DEV:"1",IDENTITY_PERSISTENCE_BACKEND:"postgres"}),
+    launchLoggedService:(item,env)=>{launched={item,env};return {exitCode:null,unref(){}};},
+    delay:async()=>{}
+  });
+  assert.equal(stopped,"identity-server");
+  assert.equal(launched.env.IDENTITY_PERSISTENCE_BACKEND,"postgres");
+  assert.equal(result.healthy,true);
+});
+
 test("detects Windows listener PIDs independently of the localized state label", () => {
   assert.equal(control.pidFromWindowsNetstat("  TCP    127.0.0.1:4300    0.0.0.0:0    ABHÖREN    29384", 4300), 29384);
   assert.equal(control.pidFromWindowsNetstat("  TCP    127.0.0.1:4800    0.0.0.0:0    LISTENING    26300", 4800), 26300);
