@@ -60,6 +60,7 @@ const GuidedProjectView = (() => {
         saveGuidedWebserverConfiguration(event, project, activeView, targetSelector);
       });
       target.querySelector("[data-guided-lab-device]")?.addEventListener("change", (event) => assignGuidedLabDevice(project, activeView, event.target.value, targetSelector));
+      target.querySelector("[data-guided-board-configuration]")?.addEventListener("change", (event) => assignGuidedBoardConfiguration(project, activeView, event.target.value, targetSelector));
       bindCodeExplorerChat(target, project, activeView);
       renderGuidedPlantUml(target);
     }
@@ -559,7 +560,9 @@ const GuidedProjectView = (() => {
             <p>In den folgenden Schritten arbeitet dein ESP-Board mit der GerNetiX-Infrastruktur zusammen. Deshalb muss es bereits in deinem Inventar angelegt und OTA-faehig sein.</p>
           </header>
           <section class="guided-device-selection guided-first-step-selection">
-            <p class="guided-lab-step">Schritt 1: ESP-Board auswählen</p>
+            <p class="guided-lab-step">Schritt 1: Boardkonfiguration auswählen</p>
+            ${renderLearningBoardConfigurationSelection(project)}
+            <p class="guided-lab-step">Schritt 2: Physisches Board zuordnen</p>
             <label for="guidedLabDevice">Bitte wähle jetzt dein ESP-Board aus, mit dem du arbeiten möchtest.</label>
             <select id="guidedLabDevice" data-guided-lab-device>
               <option value="">OTA-fähiges ESP-Board auswählen</option>
@@ -589,7 +592,9 @@ const GuidedProjectView = (() => {
           </header>
           <div class="guided-device-lab-body">
             <section class="guided-device-selection">
-              <p class="guided-lab-step">1. Board auswählen</p>
+              <p class="guided-lab-step">1. Boardkonfiguration auswählen</p>
+              ${renderLearningBoardConfigurationSelection(project)}
+              <p class="guided-lab-step">2. Physisches Board zuordnen</p>
               <label for="guidedLabDevice">Bitte wähle dein ESP-Board aus deinem Inventar. Mit welchem möchtest du arbeiten?</label>
               <select id="guidedLabDevice" data-guided-lab-device>
                 <option value="">ESP-Board auswählen</option>
@@ -1032,6 +1037,38 @@ if (digitalRead(BUTTON_PIN) == LOW) {
         lab.lines = [`[Inventar] ${response.device?.display_name || deviceId} ist diesem Lernprojekt zugeordnet.`, "[MQTT] Board-ID und Projektzuordnung werden vor jeder Runtime-Meldung serverseitig geprueft."];
       } catch (error) {
         lab.lines = [`[Inventar] Zuordnung fehlgeschlagen: ${error.message}`];
+      }
+      renderProjectViewManifest(project, targetSelector);
+    }
+
+    function renderLearningBoardConfigurationSelection(project) {
+      const current = project.buildConfig?.board_configuration || project.build_config?.board_configuration || {};
+      const selectedId = current.account_board_id
+        ? `account_board:${current.account_board_id}:v${current.account_board_version}`
+        : current.base_board_profile_id || project.hardwareProfileId || project.hardware_profile_id || "";
+      return `<label>GerNetiX- oder eigenes Account-Board
+        <select data-guided-board-configuration>
+          <option value="">Boardkonfiguration auswählen</option>
+          ${(state.processorBoards || []).map((board) => {
+            const id = board.hardware_item_id || board.hardware_profile_id || board.id;
+            return `<option value="${escapeAttribute(id)}" ${id === selectedId ? "selected" : ""}>${escapeHtml(board.title || id)}</option>`;
+          }).join("")}
+        </select>
+      </label>`;
+    }
+
+    async function assignGuidedBoardConfiguration(project, view, boardProfileId, targetSelector) {
+      if (!boardProfileId) return;
+      const lab = projectLabState(view);
+      lab.lines = ["[Board] Konfiguration wird als Projektsnapshot gespeichert ..."];
+      renderProjectViewManifest(project, targetSelector);
+      try {
+        const response = await postJson(`/api/platform/learning-projects/${encodeURIComponent(project.id)}/device`, { board_profile_id: boardProfileId });
+        Object.assign(project, response.project);
+        state.projects = state.projects.map((item) => item.id === project.id ? response.project : item);
+        lab.lines = [`[Board] ${response.board?.title || boardProfileId} wurde als fester Projektsnapshot übernommen.`];
+      } catch (error) {
+        lab.lines = [`[Board] Auswahl fehlgeschlagen: ${error.message}`];
       }
       renderProjectViewManifest(project, targetSelector);
     }

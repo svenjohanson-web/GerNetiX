@@ -4,7 +4,7 @@ const DevelopmentPlatform = (() => {
   let projectTemplateCatalog = [];
   let projectTemplatePreviews = {};
 
-  function create({ state, postJson, deleteJson, openProjectInIde, navigate, escapeHtml, escapeAttribute, openHelpTopic }) {
+  function create({ state, postJson, deleteJson, loadProcessorBoardCatalog, openProjectInIde, navigate, escapeHtml, escapeAttribute, openHelpTopic }) {
     if (!state.developmentPlatform) {
       state.developmentPlatform = {
         assistant: null,
@@ -802,8 +802,10 @@ const DevelopmentPlatform = (() => {
 
     function touchscreenGameInventoryMatches(boardProfileId, device) {
       const inventoryProfile = String(device?.hardware_profile_id || "");
-      return inventoryProfile === boardProfileId
-        || (boardProfileId === "hardware.processor_board.generic_esp32_s3_touch_display" && /touch|display/i.test(inventoryProfile));
+      const selectedBoard = touchscreenGameBoards().find((board) => DevelopmentHardwareModel.boardIdentifier(board) === boardProfileId);
+      const physicalProfileId = selectedBoard?.base_board_profile_id || boardProfileId;
+      return inventoryProfile === physicalProfileId
+        || (physicalProfileId === "hardware.processor_board.generic_esp32_s3_touch_display" && /touch|display/i.test(inventoryProfile));
     }
 
     function normalizeTouchscreenGameConfiguration(value = {}) {
@@ -869,14 +871,22 @@ const DevelopmentPlatform = (() => {
         setTouchscreenGameStatus("Bitte gib deinem eigenen Board zuerst einen Namen.");
         return;
       }
-      configuration.board_configuration.source = "custom";
-      configuration.board_configuration.saved_at = new Date().toISOString();
+      const endpoint = configuration.board_configuration.account_board_id
+        ? `/api/platform/account-board-configurations/${encodeURIComponent(configuration.board_configuration.account_board_id)}/versions`
+        : "/api/platform/account-board-configurations";
+      const savedBoard = await postJson(endpoint, configuration.board_configuration);
+      configuration.board_configuration.source = "account";
+      configuration.board_configuration.account_board_id = savedBoard.account_board_id;
+      configuration.board_configuration.account_board_version = savedBoard.version;
+      configuration.board_configuration.base_board_profile_id = savedBoard.base_board_profile_id;
+      configuration.board_configuration.saved_at = savedBoard.created_at;
       state.developmentPlatform.gameConfiguration = configuration;
       synchronizeConfigurationArchitecture();
       renderTouchscreenGameAssistant();
-      setTouchscreenGameStatus("Eigenes Board wird im Projekt gespeichert...");
+      setTouchscreenGameStatus("Account-Board und Projektsnapshot werden gespeichert...");
       const saved = await persistDevelopmentDialog();
-      setTouchscreenGameStatus(saved ? "Eigenes Board ist im Projekt gespeichert." : "Eigenes Board konnte nicht gespeichert werden.");
+      await loadProcessorBoardCatalog({ force: true });
+      setTouchscreenGameStatus(saved ? "Account-Board und Projektsnapshot sind gespeichert." : "Account-Board wurde gespeichert, der Projektsnapshot jedoch nicht.");
     }
 
     async function saveTouchscreenGameConfiguration() {
@@ -2041,7 +2051,7 @@ const DevelopmentPlatform = (() => {
       const defaults = catalogBoardFeatureSelections(board);
       const featureCatalog = Array.isArray(state.boardFeatureCatalog) ? state.boardFeatureCatalog : [];
       const changed = boardFeaturesDiffer(configuration.board_features, defaults);
-      const savedCustom = changed && configuration.source === "custom" && Boolean(configuration.saved_at);
+      const savedCustom = changed && ["account", "custom"].includes(configuration.source) && Boolean(configuration.saved_at);
       const catalogStatus = state.boardFeatureCatalogStatus || { state: "idle", message: "" };
       if (!featureCatalog.length) {
         return `<section class="development-board-configuration" data-development-board-configuration data-board-profile-id="${escapeAttribute(boardId)}"><p class="hardware-catalog-hint ${catalogStatus.state === "error" ? "is-error" : ""}">${escapeHtml(catalogStatus.message || "Boardeinstellungen werden geladen.")}</p></section>`;
@@ -2058,7 +2068,7 @@ const DevelopmentPlatform = (() => {
         <footer class="development-custom-board-save ${changed ? "" : "hidden"}">
           <label>Name des eigenen Boards<input type="text" maxlength="120" data-custom-board-name value="${escapeAttribute(configuration.name || "")}" placeholder="z. B. Mein ES3C28P mit anderer Pinbelegung"></label>
           <button type="button" data-save-custom-board="${escapeAttribute(component.component_id)}" ${savedCustom ? "disabled" : ""}>${savedCustom ? "Eigenes Board gespeichert" : "Als eigenes Board speichern"}</button>
-          <small>Das Katalogboard bleibt unverändert. Gespeichert wird diese projektgebundene Boardkonfiguration.</small>
+          <small>Das GerNetiX-Board bleibt unverändert. Gespeichert wird eine versionierte Boardkonfiguration in deinem Account und ein fester Snapshot im Projekt.</small>
         </footer>
       </section>`;
     }
@@ -2091,14 +2101,20 @@ const DevelopmentPlatform = (() => {
     function developmentBoardConfiguration(component, board) {
       const boardId = DevelopmentHardwareModel.boardIdentifier(board);
       const stored = component.board_configuration;
-      if (stored?.base_board_profile_id === boardId) return stored;
+      const storedMatchesAccountBoard = board?.configuration_scope === "account"
+        && stored?.account_board_id === board.account_board_id
+        && Number(stored?.account_board_version || 0) === Number(board.account_board_version || 0);
+      if (storedMatchesAccountBoard || stored?.base_board_profile_id === boardId) return stored;
+      const accountSource = board?.configuration_scope === "account";
       return {
         schema_version: 1,
-        source: "catalog",
-        name: "",
-        base_board_profile_id: boardId,
+        source: accountSource ? "account" : "catalog",
+        name: accountSource ? String(board.title || "").replace(/ · Mein Board$/, "") : "",
+        base_board_profile_id: board.base_board_profile_id || boardId,
+        account_board_id: board.account_board_id || "",
+        account_board_version: board.account_board_version || 0,
         board_features: catalogBoardFeatureSelections(board),
-        saved_at: "",
+        saved_at: accountSource ? new Date().toISOString() : "",
       };
     }
 
@@ -2445,7 +2461,7 @@ const DevelopmentPlatform = (() => {
       const defaults = catalogBoardFeatureSelections(board);
       const panel = row.querySelector("[data-development-board-configuration]");
       if (!panel || panel.dataset.boardProfileId !== boardId) {
-        return { schema_version: 1, source: "catalog", name: "", base_board_profile_id: boardId, board_features: defaults, saved_at: "" };
+        return { schema_version: 1, source: board.configuration_scope === "account" ? "account" : "catalog", name: board.configuration_scope === "account" ? String(board.title || "").replace(/ · Mein Board$/, "") : "", base_board_profile_id: board.base_board_profile_id || boardId, account_board_id: board.account_board_id || "", account_board_version: board.account_board_version || 0, board_features: defaults, saved_at: board.configuration_scope === "account" ? new Date().toISOString() : "" };
       }
       const boardFeatures = {};
       panel.querySelectorAll("[data-development-board-feature]").forEach((featureRow) => {
@@ -2461,15 +2477,21 @@ const DevelopmentPlatform = (() => {
         };
       });
       const name = panel.querySelector("[data-custom-board-name]")?.value.trim() || "";
-      const previousMatches = previous?.base_board_profile_id === boardId
+      const previousBoardMatches = previous?.base_board_profile_id === boardId
+        || (board.configuration_scope === "account"
+          && previous?.account_board_id === board.account_board_id
+          && Number(previous?.account_board_version || 0) === Number(board.account_board_version || 0));
+      const previousMatches = previousBoardMatches
         && previous.name === name
         && !boardFeaturesDiffer(previous.board_features, boardFeatures);
       const changed = boardFeaturesDiffer(boardFeatures, defaults);
       return {
         schema_version: 1,
-        source: changed ? (previousMatches && previous.source === "custom" ? "custom" : "custom_draft") : "catalog",
+        source: changed ? (previousMatches && ["account", "custom"].includes(previous.source) ? previous.source : "custom_draft") : (board.configuration_scope === "account" ? "account" : "catalog"),
         name: changed ? name : "",
-        base_board_profile_id: boardId,
+        base_board_profile_id: board.base_board_profile_id || boardId,
+        account_board_id: previous?.account_board_id || board.account_board_id || "",
+        account_board_version: previous?.account_board_version || board.account_board_version || 0,
         board_features: boardFeatures,
         saved_at: changed && previousMatches ? previous.saved_at || "" : "",
       };
@@ -2491,12 +2513,20 @@ const DevelopmentPlatform = (() => {
         setHardwareStatus("Bitte gib deinem eigenen Board zuerst einen Namen.");
         return;
       }
-      component.board_configuration.source = "custom";
-      component.board_configuration.saved_at = new Date().toISOString();
+      const endpoint = component.board_configuration.account_board_id
+        ? `/api/platform/account-board-configurations/${encodeURIComponent(component.board_configuration.account_board_id)}/versions`
+        : "/api/platform/account-board-configurations";
+      const savedBoard = await postJson(endpoint, component.board_configuration);
+      component.board_configuration.source = "account";
+      component.board_configuration.account_board_id = savedBoard.account_board_id;
+      component.board_configuration.account_board_version = savedBoard.version;
+      component.board_configuration.base_board_profile_id = savedBoard.base_board_profile_id;
+      component.board_configuration.saved_at = savedBoard.created_at;
       state.developmentPlatform.hardwareConfiguration = configuration;
       renderHardwareComponentTable(configuration);
       syncHardwareActions(configuration);
       await saveHardwareConfiguration(false);
+      await loadProcessorBoardCatalog({ force: true });
     }
 
     function circuitFor(component) {

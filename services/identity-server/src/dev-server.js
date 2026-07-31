@@ -1009,7 +1009,7 @@ async function routeRequest(req, res) {
       return;
     }
     try {
-      sendJson(res, 200, { items: await loadProcessorBoards() });
+      sendJson(res, 200, { items: await loadAvailableProcessorBoards(session) });
     } catch {
       sendJson(res, 502, {
         error: "hardware_catalog_unreachable",
@@ -1018,6 +1018,37 @@ async function routeRequest(req, res) {
       });
     }
     return;
+  }
+
+  if (url.pathname === "/api/platform/account-board-configurations") {
+    const session = await readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    const accountId = projectServerUserId(session);
+    if (req.method === "GET") {
+      sendJson(res, 200, { items: await loadAccountBoardConfigurations(session) });
+      return;
+    }
+    if (req.method === "POST") {
+      sendJson(res, 201, await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/board-configurations`, {
+        method: "POST", body: await readJsonBody(req),
+      }));
+      return;
+    }
+  }
+
+  const accountBoardVersions = url.pathname.match(/^\/api\/platform\/account-board-configurations\/([^/]+)\/versions$/);
+  if (accountBoardVersions) {
+    const session = await readSession(req);
+    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
+    const path = `/api/device-management/accounts/${encodeURIComponent(projectServerUserId(session))}/board-configurations/${encodeURIComponent(decodeURIComponent(accountBoardVersions[1]))}/versions`;
+    if (req.method === "GET") {
+      sendJson(res, 200, await deviceManagementJson(path));
+      return;
+    }
+    if (req.method === "POST") {
+      sendJson(res, 201, await deviceManagementJson(path, { method: "POST", body: await readJsonBody(req) }));
+      return;
+    }
   }
 
   const projectPwaDashboard = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/pwa-dashboard$/);
@@ -2565,14 +2596,31 @@ async function handleLearningProjectDeviceAssign(req, res, session, projectId) {
     sendJson(res, 409, { error: "learning_project_required", message: "Ein Board kann hier nur einem eigenen Lernprojekt zugeordnet werden." });
     return;
   }
-  const deviceId = String((await readJsonBody(req)).device_id || "").trim();
-  const device = (await loadUserIdeDevices(session)).find((item) => item.device_id === deviceId);
-  if (!device) { sendJson(res, 404, { error: "inventory_device_not_found", message: "Das gewaehlte Board ist nicht in deinem Inventar." }); return; }
+  const body = await readJsonBody(req);
+  const deviceId = String(body.device_id || "").trim();
+  const boardProfileId = String(body.board_profile_id || "").trim();
+  const device = deviceId ? (await loadUserIdeDevices(session)).find((item) => item.device_id === deviceId) : null;
+  if (deviceId && !device) { sendJson(res, 404, { error: "inventory_device_not_found", message: "Das gewaehlte Board ist nicht in deinem Inventar." }); return; }
+  const availableBoards = await loadAvailableProcessorBoards(session);
+  const selectedBoard = boardProfileId
+    ? availableBoards.find((board) => [board.hardware_item_id, board.hardware_profile_id, board.id].filter(Boolean).includes(boardProfileId))
+    : null;
+  if (boardProfileId && !selectedBoard) { sendJson(res, 404, { error: "board_configuration_not_found", message: "Die gewaehlte GerNetiX- oder Account-Boardkonfiguration wurde nicht gefunden." }); return; }
+  const baseBoardId = selectedBoard?.base_board_profile_id || device?.hardware_profile_id || project.hardware_profile_id;
+  let buildConfig = buildConfigForBoard(baseBoardId, project.build_config);
+  if (buildConfig && selectedBoard) buildConfig = {
+    ...buildConfig,
+    board_configuration: compilerBoardConfiguration(null, selectedBoard),
+  };
   const updated = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
-    body: { device_id: device.device_id },
+    body: {
+      device_id: device?.device_id || project.device_id || "",
+      hardware_profile_id: baseBoardId,
+      build_config: buildConfig,
+    },
   });
-  sendJson(res, 200, { project: toPlatformProject(mapProjectServerProject(session, updated)), device });
+  sendJson(res, 200, { project: toPlatformProject(mapProjectServerProject(session, updated)), device, board: selectedBoard });
 }
 
 async function handlePlatformProjectDelete(res, session, projectId) {
@@ -2619,7 +2667,7 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
   let selectedBoard = null;
   let selectedInventoryDevice = null;
   if (existingManifest.template_id === "touchscreen_game_collection" && gameConfiguration) {
-    const boards = await loadProcessorBoards();
+    const boards = await loadAvailableProcessorBoards(session);
     selectedBoard = boards.find((board) => board.hardware_item_id === gameConfiguration.board_profile_id) || null;
     if (gameConfiguration.board_profile_id && !selectedBoard) {
       sendJson(res, 409, { error: "game_board_not_found", message: "Das gewaehlte Touch-Display-Board ist nicht mehr im Hardware-Katalog vorhanden." });
@@ -2630,10 +2678,13 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
       return;
     }
     if (selectedBoard) {
-      buildConfig = buildConfigForBoard(selectedBoard.hardware_item_id, buildConfig);
+      buildConfig = buildConfigForBoard(selectedBoard.base_board_profile_id || selectedBoard.hardware_item_id, buildConfig);
       const configuredFlashValue = gameConfiguration.board_configuration?.board_features?.flash?.value || "";
       const configuredFlashSizeMb = Number(String(configuredFlashValue).match(/^(\d+)_mb$/)?.[1] || 0);
-      if (buildConfig && [4, 8, 16].includes(configuredFlashSizeMb)) buildConfig.flash_size_mb = configuredFlashSizeMb;
+      if (buildConfig) {
+        buildConfig.board_configuration = compilerBoardConfiguration(gameConfiguration.board_configuration, selectedBoard);
+        if ([4, 8, 16].includes(configuredFlashSizeMb)) buildConfig.flash_size_mb = configuredFlashSizeMb;
+      }
     }
     if (gameConfiguration.inventory_device_id) {
       const inventoryDevices = await loadUserIdeDevices(session);
@@ -2642,7 +2693,8 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
         sendJson(res, 404, { error: "game_inventory_device_not_found", message: "Das gewaehlte Inventar-Board wurde nicht gefunden." });
         return;
       }
-      if (gameConfiguration.board_profile_id && !touchscreenGameInventoryMatches(gameConfiguration.board_profile_id, selectedInventoryDevice)) {
+      const physicalBoardProfileId = selectedBoard?.base_board_profile_id || gameConfiguration.board_profile_id;
+      if (physicalBoardProfileId && !touchscreenGameInventoryMatches(physicalBoardProfileId, selectedInventoryDevice)) {
         sendJson(res, 409, { error: "game_inventory_device_not_compatible", message: "Das Inventar-Board entspricht nicht dem gewaehlten Touch-Display-Board." });
         return;
       }
@@ -2674,7 +2726,7 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
   await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
-      ...(selectedBoard ? { hardware_profile_id: selectedBoard.hardware_item_id } : {}),
+      ...(selectedBoard ? { hardware_profile_id: selectedBoard.base_board_profile_id || selectedBoard.hardware_item_id } : {}),
       device_id: selectedInventoryDevice?.device_id || project.device_id || "",
       view_manifest: {
         ...existingManifest,
@@ -2713,7 +2765,7 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
   }
   const boardComponent = hardwareConfiguration.components.find((component) => component.abstract_type === "iot_device" && component.board_profile_id);
   const baseBuildConfig = boardComponent
-    ? buildConfigForBoard(boardComponent.board_profile_id, project.build_config)
+    ? buildConfigForBoard(boardComponent.board_configuration?.base_board_profile_id || boardComponent.board_profile_id, project.build_config)
     : project.build_config;
   const inventoryDevices = await loadUserIdeDevices(session);
   const allocations = [];
@@ -2727,7 +2779,8 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
       sendJson(res, 404, { error: "device_not_found", message: `Das Inventar-Device fuer ${component.label} wurde nicht gefunden.` });
       return;
     }
-    if (component.board_profile_id && inventoryDevice.hardware_profile_id !== component.board_profile_id) {
+    const physicalBoardProfileId = component.board_configuration?.base_board_profile_id || component.board_profile_id;
+    if (physicalBoardProfileId && inventoryDevice.hardware_profile_id !== physicalBoardProfileId) {
       sendJson(res, 409, { error: "device_not_compatible", message: `Das Inventar-Device fuer ${component.label} entspricht nicht dem gewaehlten Board.` });
       return;
     }
@@ -2746,6 +2799,7 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
   const configuredFlashSizeMb = Number(String(configuredFlashValue).match(/^(\d+)_mb$/)?.[1] || 0);
   const buildConfig = baseBuildConfig ? {
     ...baseBuildConfig,
+    board_configuration: compilerBoardConfiguration(boardComponent?.board_configuration, null),
     component_device_allocations: allocations,
     ...(allocatedBasissoftwareProfile ? {
       firmware_basis_variant: allocatedBasissoftwareProfile.class,
@@ -2762,7 +2816,7 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
   await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
-      hardware_profile_id: boardComponent?.board_profile_id || project.hardware_profile_id,
+      hardware_profile_id: boardComponent?.board_configuration?.base_board_profile_id || boardComponent?.board_profile_id || project.hardware_profile_id,
       device_id: primaryInventoryDevice?.device_id || "",
       build_config: buildConfig || null,
       view_manifest: developmentProjectViewManifest({
@@ -2849,8 +2903,9 @@ async function handleProjectComponentHardwareFeatures(req, res, session, project
     return;
   }
   const boards = await loadProcessorBoards();
+  const effectiveBoardId = component.board_configuration?.base_board_profile_id || component.board_profile_id;
   const board = boards.find((item) => [item.hardware_item_id, item.hardware_profile_id, item.id]
-    .filter(Boolean).some((id) => String(id) === String(component.board_profile_id)));
+    .filter(Boolean).some((id) => String(id) === String(effectiveBoardId)));
   if (!board) {
     sendJson(res, 409, { error: "processor_board_not_found", message: "Das reale Board der IoT-Device-Komponente wurde im Hardware Catalog nicht gefunden." });
     return;
@@ -3985,6 +4040,43 @@ async function loadUserIdeDevices(session) {
   return (response.items || []).map(decorateUserIdeDevice);
 }
 
+async function loadAccountBoardConfigurations(session) {
+  const accountId = projectServerUserId(session);
+  const response = await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/board-configurations`);
+  return response.items || [];
+}
+
+async function loadAvailableProcessorBoards(session) {
+  const systemBoards = await loadProcessorBoards();
+  const accountBoards = await loadAccountBoardConfigurations(session);
+  return [
+    ...systemBoards.map((board) => ({ ...board, configuration_scope: "gernetix", base_board_profile_id: board.hardware_item_id })),
+    ...accountBoards.map((board) => accountBoardAsProcessorBoard(board, systemBoards)).filter(Boolean),
+  ];
+}
+
+function accountBoardAsProcessorBoard(accountBoard, systemBoards) {
+  const base = systemBoards.find((board) => [board.hardware_item_id, board.hardware_profile_id, board.id]
+    .filter(Boolean).some((id) => String(id) === String(accountBoard.base_board_profile_id)));
+  if (!base) return null;
+  const selectionId = `account_board:${accountBoard.account_board_id}:v${accountBoard.version}`;
+  return {
+    ...base,
+    hardware_item_id: selectionId,
+    hardware_profile_id: selectionId,
+    id: selectionId,
+    title: `${accountBoard.name} · Mein Board`,
+    configuration_scope: "account",
+    account_board_id: accountBoard.account_board_id,
+    account_board_version: accountBoard.version,
+    base_board_profile_id: accountBoard.base_board_profile_id,
+    default_instance_configuration: {
+      ...(base.default_instance_configuration || {}),
+      board_features: accountBoard.board_features || {},
+    },
+  };
+}
+
 function decorateUserIdeDevice(device) {
   return {
     device_id: device.device_id,
@@ -4908,7 +5000,7 @@ function normalizeHardwareConfiguration(input = {}, project = {}) {
 
 function normalizeDevelopmentBoardConfiguration(input, boardProfileId) {
   if (!boardProfileId || !input || typeof input !== "object") return null;
-  const source = ["catalog", "custom", "custom_draft"].includes(input.source) ? input.source : "catalog";
+  const source = ["catalog", "account", "project", "custom", "custom_draft"].includes(input.source) ? input.source : "catalog";
   const boardFeatures = {};
   const rawFeatures = input.board_features && typeof input.board_features === "object" && !Array.isArray(input.board_features)
     ? input.board_features
@@ -4936,9 +5028,25 @@ function normalizeDevelopmentBoardConfiguration(input, boardProfileId) {
     schema_version: 1,
     source,
     name: source === "catalog" ? "" : String(input.name || "").trim().slice(0, 120),
-    base_board_profile_id: String(boardProfileId).slice(0, 180),
+    base_board_profile_id: String(input.base_board_profile_id || boardProfileId).slice(0, 180),
     board_features: boardFeatures,
-    saved_at: source === "custom" ? String(input.saved_at || "").slice(0, 40) : "",
+    saved_at: ["account", "project", "custom"].includes(source) ? String(input.saved_at || "").slice(0, 40) : "",
+    account_board_id: String(input.account_board_id || "").slice(0, 180),
+    account_board_version: Number.isInteger(Number(input.account_board_version)) ? Number(input.account_board_version) : 0,
+  };
+}
+
+function compilerBoardConfiguration(configuration, board = null) {
+  if (!configuration && !board) return null;
+  return {
+    schema_version: 1,
+    source: configuration?.account_board_id ? "account" : configuration?.source === "catalog" ? "catalog" : "project",
+    name: configuration?.name || board?.title || "",
+    base_board_profile_id: configuration?.base_board_profile_id || board?.base_board_profile_id || board?.hardware_item_id || "",
+    account_board_id: configuration?.account_board_id || board?.account_board_id || "",
+    account_board_version: configuration?.account_board_version || board?.account_board_version || 0,
+    board_features: configuration?.board_features || board?.default_instance_configuration?.board_features || {},
+    snapshot_at: new Date().toISOString(),
   };
 }
 

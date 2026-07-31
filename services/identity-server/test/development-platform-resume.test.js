@@ -258,8 +258,9 @@ test("configures a touchscreen game collection through games, board and inventor
   assert.match(publicController, /data-game-board-configuration-host/);
   assert.match(publicController, /renderDevelopmentBoardConfiguration\(\{[\s\S]*component_id: "touchscreen-game-board"/);
   assert.match(publicController, /function saveTouchscreenGameBoardConfiguration/);
-  assert.match(publicController, /Eigenes Board ist im Projekt gespeichert/);
+  assert.match(publicController, /Account-Board und Projektsnapshot sind gespeichert/);
   assert.match(publicController, /gameConfiguration\.board_configuration\?\.source === "custom_draft"/);
+  assert.match(publicController, /component\.board_configuration\.account_board_id = savedBoard\.account_board_id/);
   assert.match(publicController, /Nibbles/);
   assert.match(publicController, /Snake/);
   assert.match(publicController, /Frogger/);
@@ -427,10 +428,11 @@ test("selected catalog boards expose editable defaults and require an explicitly
   assert.match(publicController, /Geändert · Speichern erforderlich/);
   assert.match(publicController, /data-custom-board-name/);
   assert.match(publicController, /data-save-custom-board/);
-  assert.match(publicController, /Das Katalogboard bleibt unverändert\. Gespeichert wird diese projektgebundene Boardkonfiguration/);
-  assert.match(publicController, /source: changed \? \(previousMatches && previous\.source === "custom" \? "custom" : "custom_draft"\) : "catalog"/);
-  assert.match(publicController, /component\.board_configuration\.source = "custom"/);
-  assert.match(publicController, /component\.board_configuration\.saved_at = new Date\(\)\.toISOString\(\)/);
+  assert.match(publicController, /versionierte Boardkonfiguration in deinem Account und ein fester Snapshot im Projekt/);
+  assert.match(publicController, /\["account", "custom"\]\.includes\(previous\.source\)/);
+  assert.match(publicController, /\/api\/platform\/account-board-configurations/);
+  assert.match(publicController, /component\.board_configuration\.source = "account"/);
+  assert.match(publicController, /component\.board_configuration\.account_board_version = savedBoard\.version/);
   assert.match(publicController, /await saveHardwareConfiguration\(false\)/);
   assert.match(publicController, /geänderte Boardkonfiguration als eigenes Board speichern/);
   assert.match(publicCss, /\.development-board-configuration\.has-modifications \{ border-color: #f59e0b/);
@@ -438,7 +440,8 @@ test("selected catalog boards expose editable defaults and require an explicitly
   assert.match(devServer, /error: "custom_board_not_saved"/);
   assert.match(devServer, /board_configuration: abstractType === "iot_device" \? normalizeDevelopmentBoardConfiguration/);
   assert.match(devServer, /schema_version: 5,[\s\S]*components/);
-  assert.match(devServer, /source === "custom" \? String\(input\.saved_at/);
+  assert.match(devServer, /\["account", "project", "custom"\]\.includes\(source\)/);
+  assert.match(devServer, /compilerBoardConfiguration/);
   assert.match(devServer, /configuredFlashValue = boardComponent\?\.board_configuration\?\.board_features\?\.flash\?\.value/);
   assert.match(devServer, /\[4, 8, 16\]\.includes\(configuredFlashSizeMb\)/);
 });

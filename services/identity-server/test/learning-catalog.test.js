@@ -138,7 +138,9 @@ test("button-to-smartphone course starts with a simulated button and serial-moni
   assert.match(guidedView, /Per OTA flashen/);
   assert.match(guidedView, /Serial Monitor/);
   assert.match(guidedView, /Bitte wähle jetzt dein ESP-Board/);
-  assert.match(guidedView, /Schritt 1: ESP-Board auswählen/);
+  assert.match(guidedView, /Schritt 1: Boardkonfiguration auswählen/);
+  assert.match(guidedView, /GerNetiX- oder eigenes Account-Board/);
+  assert.match(guidedView, /board_profile_id: boardProfileId/);
   assert.match(guidedView, /learning-projects\/\$\{encodeURIComponent\(project\.id\)\}\/device/);
   assert.match(server, /handleLearningProjectDeviceAssign/);
 });

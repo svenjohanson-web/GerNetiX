@@ -112,8 +112,8 @@ test("USB provisioning offers a compatible known board and applies its catalog d
   assert.match(html, /id="provisioningBoardDefinitionHelp"/);
   assert.match(onboarding, /openHelpTopic\("board-definition"\)/);
   assert.doesNotMatch(html, /id="provisioningManualBoardButton"/);
-  assert.match(onboarding, /<option value="__manual__"[\s\S]*Manuell konfigurieren/);
-  assert.match(onboarding, /hardwareProfileId === "__manual__"/);
+  assert.doesNotMatch(onboarding, /<option value="__manual__"[\s\S]*Manuell konfigurieren/);
+  assert.doesNotMatch(onboarding, /hardwareProfileId === "__manual__"/);
   assert.match(html, /id="provisioningBoardConfigurationDetails" class="provisioning-board-configuration-details hidden"/);
   assert.match(html, /id="provisioningUpdateProfileChooser"/);
   assert.match(onboarding, /Varianten der Komfort- und Sicherheitsoptionen/);
@@ -147,7 +147,7 @@ test("USB provisioning offers a compatible known board and applies its catalog d
   assert.match(onboarding, /partition\.profile\.esp32\.single_app_usb/);
   assert.match(onboarding, /!device\.bootloader_type \|\| new Set\(\["catalog", "manual"\]\)/);
   assert.match(onboarding, /!device\.bootloader_type \|\| new Set\(\["full", "medium", "low"\]\)/);
-  assert.match(onboarding, /board_profile_source: state\.provisioningKnownBoardId \? "hardware_catalog"/);
+  assert.match(onboarding, /board_profile_source: selectedProvisioningBoard\(\)\?\.configuration_scope === "account" \? "account_board" : "hardware_catalog"/);
   assert.doesNotMatch(onboarding, /provisioningKnownBoardId = "hardware\.processor_board\.esp32_s3_es3c28p"/);
 });
 
@@ -175,7 +175,7 @@ test("USB provisioning flashes the basis software before registration and pairin
   assert.match(onboarding, /nach dem Reset nicht neu geöffnet werden/);
   assert.match(onboarding, /provisioningUsbFlashSucceeded = true/);
   assert.match(onboarding, /Noch erforderlich:.*reasons\.join/);
-  assert.match(onboarding, /Boardmodell waehlen oder Ausstattung manuell festlegen/);
+  assert.match(onboarding, /GerNetiX- oder Account-Board waehlen/);
   assert.match(onboarding, /Update- und Speicherprofil waehlen/);
   assert.match(onboarding, /href="\/hilfe\/#update-profiles"/);
   assert.match(onboarding, /openHelpTopic\("update-profiles"\)/);

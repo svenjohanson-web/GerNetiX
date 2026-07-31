@@ -199,6 +199,83 @@ class DeviceManagementService {
     return await this.repository.listAccountDevices(accountId);
   }
 
+  async createAccountBoard(accountId, input = {}) {
+    const accountBoardId = input.account_board_id || createId("account_board");
+    if (await this.repository.findAccountBoardVersion(accountId, accountBoardId)) {
+      throw new DeviceManagementError("account_board_exists", "Dieses Account-Board ist bereits vorhanden.", 409);
+    }
+    return await this.saveAccountBoardVersion(accountId, accountBoardId, 1, input);
+  }
+
+  async createAccountBoardVersion(accountId, accountBoardId, input = {}) {
+    const current = await this.repository.findAccountBoardVersion(accountId, accountBoardId);
+    if (!current) throw new DeviceManagementError("account_board_not_found", "Account-Board wurde nicht gefunden.", 404);
+    return await this.saveAccountBoardVersion(accountId, accountBoardId, current.version + 1, {
+      ...input,
+      name: input.name || current.name,
+      base_board_profile_id: input.base_board_profile_id || current.base_board_profile_id,
+    });
+  }
+
+  async saveAccountBoardVersion(accountId, accountBoardId, version, input) {
+    const now = new Date().toISOString();
+    const value = {
+      account_board_version_id: `${accountBoardId}:v${version}`,
+      account_board_id: accountBoardId,
+      account_id: required(accountId, "account_id"),
+      version,
+      name: required(input.name, "name").slice(0, 120),
+      base_board_profile_id: required(input.base_board_profile_id, "base_board_profile_id").slice(0, 180),
+      board_features: normalizeBoardFeatures(input.board_features),
+      datasheet_url: String(input.datasheet_url || "").slice(0, 1000),
+      created_at: now,
+    };
+    try {
+      await this.repository.saveAccountBoardVersion(value);
+    } catch (error) {
+      if (error?.code === "23505" || /already exists|unique/i.test(String(error?.message || ""))) {
+        throw new DeviceManagementError(
+          "account_board_version_conflict",
+          "Die Account-Boardkonfiguration wurde gleichzeitig geaendert. Bitte lade den aktuellen Stand und speichere erneut.",
+          409,
+        );
+      }
+      throw error;
+    }
+    await this.repository.addAuditEvent({
+      audit_event_id: createId("audit"),
+      account_id: accountId,
+      accessed_by_user_id: accountId,
+      accessed_by_role: "account_owner",
+      accessed_data_model_id: "AccountBoardVersion",
+      purpose: version === 1 ? "create_account_board" : "version_account_board",
+      access_decision: "saved",
+      rejection_reason: "",
+    });
+    return value;
+  }
+
+  async listAccountBoards(accountId) {
+    const versions = await this.repository.listAccountBoardVersions(accountId);
+    const latest = new Map();
+    for (const version of versions) {
+      const current = latest.get(version.account_board_id);
+      if (!current || current.version < version.version) latest.set(version.account_board_id, version);
+    }
+    return Array.from(latest.values()).sort((left, right) => left.name.localeCompare(right.name, "de"));
+  }
+
+  async getAccountBoard(accountId, accountBoardId, version = null) {
+    const board = await this.repository.findAccountBoardVersion(accountId, accountBoardId, version ? Number(version) : null);
+    if (!board) throw new DeviceManagementError("account_board_not_found", "Account-Board wurde nicht gefunden.", 404);
+    return board;
+  }
+
+  async listAccountBoardVersions(accountId, accountBoardId) {
+    await this.getAccountBoard(accountId, accountBoardId);
+    return await this.repository.listAccountBoardVersions(accountId, accountBoardId);
+  }
+
   async createProvisioningToken(input = {}) {
     const now = new Date();
     const token = crypto.randomBytes(32).toString("base64url");
@@ -740,6 +817,31 @@ async function findPurchaseContextForDevice(repository, accountId, device) {
 function parseCapabilities(value) {
   if (Array.isArray(value)) return value;
   return String(value || "").split(",").map((item) => item.trim()).filter(Boolean);
+}
+
+function normalizeBoardFeatures(input = {}) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return {};
+  const result = {};
+  for (const [featureId, raw] of Object.entries(input).slice(0, 40)) {
+    const id = String(featureId).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 60);
+    if (!id || !raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const pins = {};
+    if (raw.pins && typeof raw.pins === "object" && !Array.isArray(raw.pins)) {
+      for (const [signal, pin] of Object.entries(raw.pins).slice(0, 40)) {
+        const normalizedSignal = String(signal).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 60);
+        if (normalizedSignal && Number.isInteger(pin) && pin >= -1 && pin <= 255) pins[normalizedSignal] = pin;
+      }
+    }
+    result[id] = {
+      enabled: raw.enabled === true,
+      hardware: String(raw.hardware || "").slice(0, 100),
+      driver: String(raw.driver || "").slice(0, 100),
+      connection: String(raw.connection || "").slice(0, 100),
+      pins,
+      value: String(raw.value || "").slice(0, 100),
+    };
+  }
+  return result;
 }
 
 function normalizeClaimableHardwareUnits(units, context) {

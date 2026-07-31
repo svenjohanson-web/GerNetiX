@@ -6,6 +6,7 @@ class InMemoryDeviceManagementRepository {
     this.pairingSessions = new Map((seed.pairingSessions || []).map((item) => [item.pairing_session_id, clone(item)]));
     this.provisioningTokens = new Map((seed.provisioningTokens || []).map((item) => [item.provisioning_token_id, clone(item)]));
     this.accountDevices = groupedMap(seed.accountDevices || [], "account_id");
+    this.accountBoardVersions = groupedMap(seed.accountBoardVersions || [], "account_id");
     this.purchaseContexts = groupedMap(seed.purchaseContexts || [], "account_id");
     this.consents = new Map((seed.consents || []).map((item) => [item.consent_id, clone(item)]));
     this.auditEvents = (seed.auditEvents || []).map(clone);
@@ -108,6 +109,30 @@ class InMemoryDeviceManagementRepository {
     if (!existing) return null;
     this.accountDevices.set(accountId, items.filter((item) => item.account_device_id !== accountDeviceId));
     return clone(existing);
+  }
+
+  saveAccountBoardVersion(version) {
+    const items = this.accountBoardVersions.get(version.account_id) || [];
+    if (items.some((item) => item.account_board_id === version.account_board_id && item.version === version.version)) {
+      throw new Error("Account board version already exists");
+    }
+    items.push(clone(version));
+    this.accountBoardVersions.set(version.account_id, items);
+    return clone(version);
+  }
+
+  listAccountBoardVersions(accountId, accountBoardId = "") {
+    return (this.accountBoardVersions.get(accountId) || [])
+      .filter((item) => !accountBoardId || item.account_board_id === accountBoardId)
+      .sort((left, right) => left.account_board_id.localeCompare(right.account_board_id) || left.version - right.version)
+      .map(clone);
+  }
+
+  findAccountBoardVersion(accountId, accountBoardId, version = null) {
+    const matches = (this.accountBoardVersions.get(accountId) || [])
+      .filter((item) => item.account_board_id === accountBoardId && (!version || item.version === version))
+      .sort((left, right) => right.version - left.version);
+    return clone(matches[0]);
   }
 
   savePurchaseContext(accountId, purchaseContext) {

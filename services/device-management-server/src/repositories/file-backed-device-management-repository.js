@@ -83,6 +83,12 @@ class FileBackedDeviceManagementRepository extends InMemoryDeviceManagementRepos
     return result;
   }
 
+  saveAccountBoardVersion(version) {
+    const result = super.saveAccountBoardVersion(version);
+    this.persist();
+    return result;
+  }
+
   savePurchaseContext(accountId, purchaseContext) {
     const result = super.savePurchaseContext(accountId, purchaseContext);
     this.persist();
@@ -115,6 +121,7 @@ class FileBackedDeviceManagementRepository extends InMemoryDeviceManagementRepos
       pairingSessions: Array.from(this.pairingSessions.values()),
       provisioningTokens: Array.from(this.provisioningTokens.values()),
       accountDevices: Array.from(this.accountDevices.values()).flat(),
+      accountBoardVersions: Array.from(this.accountBoardVersions.values()).flat(),
       purchaseContexts: Array.from(this.purchaseContexts.values()).flat(),
       consents: Array.from(this.consents.values()),
       auditEvents: this.auditEvents,
@@ -127,6 +134,7 @@ class FileBackedDeviceManagementRepository extends InMemoryDeviceManagementRepos
       this.store.replaceCollection("pairing_sessions", state.pairingSessions, "pairing_session_id");
       this.store.replaceCollection("provisioning_tokens", state.provisioningTokens, "provisioning_token_id");
       this.store.replaceCollection("account_devices", state.accountDevices, "account_device_id");
+      this.store.replaceCollection("account_board_versions", state.accountBoardVersions, "account_board_version_id");
       this.store.replaceCollection("purchase_contexts", state.purchaseContexts, "purchase_context_id");
       this.store.replaceCollection("consents", state.consents, "consent_id");
       this.store.replaceCollection("audit_events", state.auditEvents, "audit_event_id");
@@ -138,6 +146,7 @@ class FileBackedDeviceManagementRepository extends InMemoryDeviceManagementRepos
       this.store.replaceTable("device_management_pairing_sessions", state.pairingSessions, pairingSessionColumns());
       this.store.replaceTable("device_management_provisioning_tokens", state.provisioningTokens, provisioningTokenColumns());
       this.store.replaceTable("device_management_account_devices", state.accountDevices, accountDeviceColumns());
+      this.store.replaceTable("device_management_account_board_versions", state.accountBoardVersions, accountBoardVersionColumns());
       this.store.replaceTable("device_management_purchase_contexts", state.purchaseContexts, purchaseContextColumns());
       this.store.replaceTable("device_management_consents", state.consents, consentColumns());
       this.store.replaceTable("device_management_audit_events", state.auditEvents, auditEventColumns());
@@ -228,6 +237,17 @@ function deviceManagementSchema() {
       ownership_status TEXT,
       paired_at TEXT,
       raw_json TEXT NOT NULL
+    );`,
+    `CREATE TABLE IF NOT EXISTS device_management_account_board_versions (
+      account_board_version_id TEXT PRIMARY KEY,
+      account_board_id TEXT NOT NULL,
+      account_id TEXT NOT NULL,
+      version INTEGER NOT NULL,
+      name TEXT NOT NULL,
+      base_board_profile_id TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      raw_json TEXT NOT NULL,
+      UNIQUE(account_id, account_board_id, version)
     );`,
     `CREATE TABLE IF NOT EXISTS device_management_purchase_contexts (
       purchase_context_id TEXT PRIMARY KEY,
@@ -404,6 +424,19 @@ function accountDeviceColumns() {
   };
 }
 
+function accountBoardVersionColumns() {
+  return {
+    account_board_version_id: "account_board_version_id",
+    account_board_id: "account_board_id",
+    account_id: "account_id",
+    version: "version",
+    name: "name",
+    base_board_profile_id: "base_board_profile_id",
+    created_at: "created_at",
+    raw_json: jsonColumn((row) => row),
+  };
+}
+
 function purchaseContextColumns() {
   return {
     purchase_context_id: "purchase_context_id",
@@ -459,6 +492,7 @@ function emptyState() {
     pairingSessions: [],
     provisioningTokens: [],
     accountDevices: [],
+    accountBoardVersions: [],
     purchaseContexts: [],
     consents: [],
     auditEvents: [],

@@ -102,6 +102,36 @@ test("sqlite repository persists only the provisioning token hash", async () => 
   })).account_id, "acct-1");
 });
 
+test("stores account boards as immutable account-scoped versions in sqlite", async () => {
+  const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-account-board-")), "state.sqlite");
+  const service = new DeviceManagementService({
+    repository: SqliteBackedDeviceManagementRepository.create(dbPath),
+  });
+  const first = await service.createAccountBoard("acct-1", {
+    name: "Werkstatt-Display",
+    base_board_profile_id: "hardware.processor_board.generic_esp32_s3_touch_display",
+    board_features: { display: { enabled: true, driver: "st7789", pins: { cs: 5 } } },
+  });
+  const second = await service.createAccountBoardVersion("acct-1", first.account_board_id, {
+    name: "Werkstatt-Display",
+    board_features: { display: { enabled: true, driver: "st7789", pins: { cs: 12 } } },
+  });
+
+  assert.equal(first.version, 1);
+  assert.equal(second.version, 2);
+  assert.equal((await service.listAccountBoards("acct-1"))[0].version, 2);
+  assert.equal((await service.getAccountBoard("acct-1", first.account_board_id, 1)).board_features.display.pins.cs, 5);
+  await assert.rejects(service.getAccountBoard("acct-2", first.account_board_id), /nicht gefunden/);
+
+  const reloaded = new DeviceManagementService({
+    repository: SqliteBackedDeviceManagementRepository.create(dbPath),
+  });
+  assert.equal((await reloaded.getAccountBoard("acct-1", first.account_board_id)).board_features.display.pins.cs, 12);
+  const database = new DatabaseSync(dbPath);
+  assert.equal(database.prepare("SELECT count(*) AS amount FROM device_management_account_board_versions").get().amount, 2);
+  database.close();
+});
+
 test("rejects a challenge signature from another device key", async () => {
   const service = await createDefaultDeviceManagementServer();
   const device = await registerVerified(service);

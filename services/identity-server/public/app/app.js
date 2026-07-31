@@ -114,6 +114,7 @@ function deviceOnboarding() {
       model: DeviceOnboardingModel,
       getJson,
       postJson,
+      loadProcessorBoardCatalog,
       deleteJson,
       delay,
       loadIdeEsptoolModule,
@@ -560,6 +561,7 @@ function renderRoute() {
   }
   if (route === "ide") loadIdeProject();
   if (route === "learn") {
+    loadProcessorBoardCatalog();
     renderProjects();
     renderLearn();
   }
@@ -950,6 +952,10 @@ async function loadProcessorBoardCatalog({ force = false } = {}) {
       renderNetworkDiscovery();
       if (routeName() === "development-platform") developmentPlatform().render();
       if (routeName() === "development-hardware") developmentPlatform().renderHardwareConfiguration();
+      if (["learn", "learning-project"].includes(routeName())) {
+        renderLearn();
+        if (routeName() === "learning-project") learningProject().render();
+      }
     })
     .catch((error) => {
       state.processorBoards = [];

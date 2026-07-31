@@ -57,6 +57,33 @@ test("selects profile and flash-specific build configuration", () => {
   assert.match(sdkconfig, /CONFIG_PARTITION_TABLE_FILENAME="partitions_medium_8mb\.csv"/);
 });
 
+test("forces the immutable project board snapshot into every compiler unit", () => {
+  const files = composeEsp32BasissoftwarePackage({
+    basisFiles: loadEsp32BasissoftwareFiles(),
+    projectSources: [{ path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: "void userMain() {}" }],
+    buildConfig: {
+      user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp",
+      board_configuration: {
+        source: "account",
+        name: "Mein Touchboard",
+        base_board_profile_id: "hardware.processor_board.generic_esp32_s3_touch_display",
+        account_board_id: "account_board-1",
+        account_board_version: 3,
+        board_features: {
+          display: { enabled: true, driver: "st7789", connection: "spi", pins: { cs: 12, dc: 11 } },
+        },
+      },
+    },
+  });
+  const header = files.find((file) => file.path === "include/gernetix_board_configuration.h").content;
+  const platformio = files.find((file) => file.path === "platformio.ini").content;
+
+  assert.match(platformio, /-include include\/gernetix_board_configuration\.h/);
+  assert.match(header, /GERNETIX_ACCOUNT_BOARD_VERSION 3/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_DISPLAY_DRIVER "st7789"/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_DISPLAY_PIN_CS 12/);
+});
+
 test("copies separated project user headers into the protected build package", () => {
   const files = composeEsp32BasissoftwarePackage({
     basisFiles: [],

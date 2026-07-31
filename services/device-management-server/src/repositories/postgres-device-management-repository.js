@@ -77,6 +77,20 @@ class PostgresDeviceManagementRepository {
       CREATE INDEX IF NOT EXISTS idx_device_management_account_devices_device
         ON device_management_account_devices (device_id);
 
+      CREATE TABLE IF NOT EXISTS device_management_account_board_versions (
+        account_board_version_id text PRIMARY KEY,
+        account_board_id text NOT NULL,
+        account_id text NOT NULL,
+        version integer NOT NULL CHECK (version > 0),
+        name text NOT NULL,
+        base_board_profile_id text NOT NULL,
+        raw_json jsonb NOT NULL,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE (account_id, account_board_id, version)
+      );
+      CREATE INDEX IF NOT EXISTS idx_device_management_account_boards_account
+        ON device_management_account_board_versions (account_id, account_board_id, version DESC);
+
       CREATE TABLE IF NOT EXISTS device_management_purchase_contexts (
         purchase_context_id text PRIMARY KEY,
         account_id text NOT NULL,
@@ -274,6 +288,42 @@ class PostgresDeviceManagementRepository {
     `, [accountId, accountDeviceId]));
   }
 
+  async saveAccountBoardVersion(version) {
+    await this.pool.query(`
+      INSERT INTO device_management_account_board_versions
+        (account_board_version_id, account_board_id, account_id, version, name, base_board_profile_id, raw_json, created_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+    `, [version.account_board_version_id, version.account_board_id, version.account_id, version.version,
+      version.name, version.base_board_profile_id, version, version.created_at]);
+    return clone(version);
+  }
+
+  async listAccountBoardVersions(accountId, accountBoardId = "") {
+    if (accountBoardId) {
+      return rows(await this.pool.query(`
+        SELECT raw_json FROM device_management_account_board_versions
+        WHERE account_id=$1 AND account_board_id=$2 ORDER BY version
+      `, [accountId, accountBoardId]));
+    }
+    return rows(await this.pool.query(`
+      SELECT raw_json FROM device_management_account_board_versions
+      WHERE account_id=$1 ORDER BY account_board_id, version
+    `, [accountId]));
+  }
+
+  async findAccountBoardVersion(accountId, accountBoardId, version = null) {
+    if (version) {
+      return first(await this.pool.query(`
+        SELECT raw_json FROM device_management_account_board_versions
+        WHERE account_id=$1 AND account_board_id=$2 AND version=$3
+      `, [accountId, accountBoardId, version]));
+    }
+    return first(await this.pool.query(`
+      SELECT raw_json FROM device_management_account_board_versions
+      WHERE account_id=$1 AND account_board_id=$2 ORDER BY version DESC LIMIT 1
+    `, [accountId, accountBoardId]));
+  }
+
   async savePurchaseContext(accountId, context) {
     const value = { ...context, account_id: accountId };
     await this.pool.query(`
@@ -381,6 +431,7 @@ class PostgresDeviceManagementRepository {
           + (SELECT count(*) FROM device_management_pairing_sessions)
           + (SELECT count(*) FROM device_management_provisioning_tokens)
           + (SELECT count(*) FROM device_management_account_devices)
+          + (SELECT count(*) FROM device_management_account_board_versions)
           + (SELECT count(*) FROM device_management_purchase_contexts)
           + (SELECT count(*) FROM device_management_consents)
           + (SELECT count(*) FROM device_management_audit_events) AS count
@@ -395,6 +446,7 @@ class PostgresDeviceManagementRepository {
       for (const item of state.pairingSessions || []) await repository.savePairingSession(item);
       for (const item of state.provisioningTokens || []) await repository.saveProvisioningToken(item);
       for (const item of state.accountDevices || []) await repository.saveAccountDevice(item);
+      for (const item of state.accountBoardVersions || []) await repository.saveAccountBoardVersion(item);
       for (const item of state.purchaseContexts || []) await repository.savePurchaseContext(item.account_id, item);
       for (const item of state.consents || []) await repository.createConsent(item);
       for (const item of state.auditEvents || []) await repository.addAuditEvent(item);

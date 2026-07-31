@@ -102,6 +102,38 @@ function createHttpApp(options) {
       sendJson(res, 200, { items: await service.listAccountDevices(decodeURIComponent(accountDevices[1])) });
       return;
     }
+
+    const accountBoards = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/board-configurations$`));
+    if (req.method === "GET" && accountBoards) {
+      sendJson(res, 200, { items: await service.listAccountBoards(decodeURIComponent(accountBoards[1])) });
+      return;
+    }
+    if (req.method === "POST" && accountBoards) {
+      sendJson(res, 201, await service.createAccountBoard(decodeURIComponent(accountBoards[1]), await readJsonBody(req)));
+      return;
+    }
+
+    const accountBoard = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/board-configurations/([^/]+)$`));
+    if (req.method === "GET" && accountBoard) {
+      sendJson(res, 200, await service.getAccountBoard(
+        decodeURIComponent(accountBoard[1]), decodeURIComponent(accountBoard[2]), url.searchParams.get("version"),
+      ));
+      return;
+    }
+
+    const accountBoardVersions = path.match(new RegExp(`^${prefix}/accounts/([^/]+)/board-configurations/([^/]+)/versions$`));
+    if (req.method === "GET" && accountBoardVersions) {
+      sendJson(res, 200, { items: await service.listAccountBoardVersions(
+        decodeURIComponent(accountBoardVersions[1]), decodeURIComponent(accountBoardVersions[2]),
+      ) });
+      return;
+    }
+    if (req.method === "POST" && accountBoardVersions) {
+      sendJson(res, 201, await service.createAccountBoardVersion(
+        decodeURIComponent(accountBoardVersions[1]), decodeURIComponent(accountBoardVersions[2]), await readJsonBody(req),
+      ));
+      return;
+    }
     if (req.method === "POST" && accountDevices) {
       sendJson(res, 201, await service.addAccountDevice(decodeURIComponent(accountDevices[1]), await readJsonBody(req)));
       return;

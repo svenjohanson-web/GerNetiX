@@ -69,6 +69,29 @@ test("creates project with default source and lists it by user", async () => {
   assert.equal((await service.listProjects({ user_id: "user-1" })).length, 1);
 });
 
+test("preserves the immutable board configuration in project and build snapshots", async () => {
+  const service = createMemoryProjectServer();
+  const project = await service.createProject({
+    user_id: "user-board",
+    title: "Account-Board-Projekt",
+    build_config: {
+      firmware_basis_id: "gernetix.esp32",
+      board_configuration: {
+        source: "account",
+        name: "Mein Display",
+        base_board_profile_id: "hardware.processor_board.generic_esp32_s3_touch_display",
+        account_board_id: "account-board-1",
+        account_board_version: 4,
+        board_features: { display: { enabled: true, pins: { cs: 12 } } },
+      },
+    },
+  });
+  const job = await service.createBuildJob(project.project_id);
+
+  assert.equal(project.build_config.board_configuration.account_board_version, 4);
+  assert.equal(job.build_config.board_configuration.board_features.display.pins.cs, 12);
+});
+
 test("stores an immutable project version and restores it through a new history entry", async () => {
   const service = createMemoryProjectServer();
   const project = await createDemoProject(service);

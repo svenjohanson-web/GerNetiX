@@ -817,7 +817,6 @@ const DeviceOnboardingController = (() => {
       const candidates = compatibleProcessorBoards(detectedBoard);
       select.innerHTML = [
         `<option value="" ${state.provisioningBoardConfigurationMode ? "" : "selected"} disabled hidden>Board auswählen...</option>`,
-        `<option value="__manual__" ${state.provisioningBoardConfigurationMode === "manual" ? "selected" : ""}>Manuell konfigurieren</option>`,
         ...candidates.map((board) => `<option value="${escapeHtml(boardId(board))}" ${boardId(board) === state.provisioningKnownBoardId ? "selected" : ""}>${escapeHtml(board.title)}</option>`),
       ].join("");
       select.onchange = selectKnownProvisioningBoard;
@@ -859,18 +858,15 @@ const DeviceOnboardingController = (() => {
 
     function selectKnownProvisioningBoard(event) {
       const hardwareProfileId = event.target.value;
-      if (hardwareProfileId === "__manual__") {
-        activateManualBoardConfiguration();
-        return;
-      }
       const device = state.discoveredDevices.find((item) => item.bootloader_type);
       if (!device) return;
+      const selectedBoard = catalogBoardForProfile(hardwareProfileId);
       state.provisioningKnownBoardId = hardwareProfileId;
       state.provisioningBoardConfigurationMode = hardwareProfileId ? "catalog" : "";
       state.provisioningUpdateProfile = "";
       resetProvisioningUsbFlash();
-      device.hardware_profile_id = hardwareProfileId || device.detected_hardware_profile_id || device.hardware_profile_id;
-      applyKnownBoardDefaults(catalogBoardForProfile(hardwareProfileId));
+      device.hardware_profile_id = selectedBoard?.base_board_profile_id || hardwareProfileId || device.detected_hardware_profile_id || device.hardware_profile_id;
+      applyKnownBoardDefaults(selectedBoard);
       renderNetworkDiscovery();
     }
 
@@ -1049,7 +1045,9 @@ const DeviceOnboardingController = (() => {
       return {
         board_features: selected,
         datasheet_url: state.provisioningDatasheetUrl || "",
-        board_profile_source: state.provisioningKnownBoardId ? "hardware_catalog" : "manual_confirmation",
+        board_profile_source: selectedProvisioningBoard()?.configuration_scope === "account" ? "account_board" : "hardware_catalog",
+        account_board_id: selectedProvisioningBoard()?.account_board_id || "",
+        account_board_version: selectedProvisioningBoard()?.account_board_version || 0,
         basissoftware_profile: selectedUpdateProfileConfiguration(),
       };
     }
@@ -1506,7 +1504,7 @@ const DeviceOnboardingController = (() => {
       if (!state.provisioningSerialPort) reasons.push("seriellen Port auswaehlen");
       if (!state.discoveredDevices.some((device) => device.bootloader_type === "espressif_rom")) reasons.push("kompatiblen ESP32-Bootloader erkennen");
       if (!state.discoveredDevices.some((device) => device.bootloader_type && selectedProvisioningDiscoveryIds().has(device.discovery_id))) reasons.push("dieses Board fuer die Account-Verbindung auswaehlen");
-      if (!new Set(["catalog", "manual"]).has(state.provisioningBoardConfigurationMode)) reasons.push("Boardmodell waehlen oder Ausstattung manuell festlegen");
+      if (state.provisioningBoardConfigurationMode !== "catalog") reasons.push("GerNetiX- oder Account-Board waehlen");
       if (!new Set(["full", "medium", "low"]).has(state.provisioningUpdateProfile)) reasons.push("Update- und Speicherprofil waehlen");
       const firmwareRequest = provisioningFirmwareRequestDetails();
       const availability = state.provisioningFirmwareAvailability || {};
@@ -1519,7 +1517,7 @@ const DeviceOnboardingController = (() => {
     function provisioningFirmwareRequestDetails() {
       const device = state.discoveredDevices.find((item) => item.bootloader_type && selectedProvisioningDiscoveryIds().has(item.discovery_id));
       const boardConfiguration = selectedBoardFeatureConfiguration();
-      const hardwareProfileId = state.provisioningKnownBoardId || device?.hardware_profile_id || "";
+      const hardwareProfileId = selectedProvisioningBoard()?.base_board_profile_id || state.provisioningKnownBoardId || device?.hardware_profile_id || "";
       const flashSizeMb = Number(String(boardConfiguration.board_features?.flash?.value || "").match(/^(\d+)_mb$/)?.[1] || 0);
       const profile = state.provisioningUpdateProfile;
       if (!device || !hardwareProfileId || ![4, 8, 16].includes(flashSizeMb) || !new Set(["full", "medium", "low"]).has(profile)) return null;

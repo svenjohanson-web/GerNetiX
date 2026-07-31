@@ -710,6 +710,40 @@ function normalizeBuildConfig(input = {}) {
       ? input.component_device_allocations.map((item) => ({ ...item })).filter((item) => item.component_path && item.device_id)
       : [],
     component_features: normalizeComponentFeatures(input.component_features, input.firmware_basis_variant === "comfort" ? "full" : input.firmware_basis_variant || (firmwareBasisId ? "full" : "")),
+    component_hardware_features: input.component_hardware_features && typeof input.component_hardware_features === "object"
+      ? JSON.parse(JSON.stringify(input.component_hardware_features))
+      : {},
+    board_configuration: normalizeBoardConfiguration(input.board_configuration),
+  };
+}
+
+function normalizeBoardConfiguration(input = null) {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return null;
+  const features = {};
+  for (const [featureId, raw] of Object.entries(input.board_features || {}).slice(0, 40)) {
+    const id = String(featureId).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 60);
+    if (!id || !raw || typeof raw !== "object" || Array.isArray(raw)) continue;
+    const pins = Object.fromEntries(Object.entries(raw.pins || {}).slice(0, 40)
+      .map(([signal, pin]) => [String(signal).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 60), Number(pin)])
+      .filter(([signal, pin]) => signal && Number.isInteger(pin) && pin >= -1 && pin <= 255));
+    features[id] = {
+      enabled: raw.enabled === true,
+      hardware: String(raw.hardware || "").slice(0, 100),
+      driver: String(raw.driver || "").slice(0, 100),
+      connection: String(raw.connection || "").slice(0, 100),
+      pins,
+      value: String(raw.value || "").slice(0, 100),
+    };
+  }
+  return {
+    schema_version: 1,
+    source: ["catalog", "account", "project"].includes(input.source) ? input.source : "project",
+    name: String(input.name || "").slice(0, 120),
+    base_board_profile_id: String(input.base_board_profile_id || "").slice(0, 180),
+    account_board_id: String(input.account_board_id || "").slice(0, 180),
+    account_board_version: Number.isInteger(Number(input.account_board_version)) ? Number(input.account_board_version) : 0,
+    board_features: features,
+    snapshot_at: String(input.snapshot_at || input.saved_at || "").slice(0, 40),
   };
 }
 

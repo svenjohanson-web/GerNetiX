@@ -10,6 +10,7 @@ test("creates normalized Device Management PostgreSQL tables", async () => {
   await repository.ensureSchema();
   assert.match(pool.calls[0].text, /device_management_devices/);
   assert.match(pool.calls[0].text, /device_management_account_devices/);
+  assert.match(pool.calls[0].text, /device_management_account_board_versions/);
   assert.match(pool.calls[0].text, /device_management_provisioning_tokens/);
   assert.match(pool.calls[0].text, /device_management_audit_events/);
   assert.match(pool.calls[0].text, /device_management_migrations/);

@@ -30,6 +30,7 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
   addRuntimeCore(byPath);
   rewriteRuntimeCorePaths(byPath);
   applyBasissoftwareProfile(byPath, buildConfig);
+  applyBoardConfiguration(byPath, buildConfig.board_configuration);
   byPath.set(userTargetPath, {
     path: userTargetPath,
     content: userSource.content,
@@ -49,6 +50,58 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
     });
   }
   return Array.from(byPath.values()).sort((left, right) => left.path.localeCompare(right.path));
+}
+
+function applyBoardConfiguration(byPath, configuration) {
+  if (!configuration) return;
+  byPath.set("include/gernetix_board_configuration.h", {
+    path: "include/gernetix_board_configuration.h",
+    content: renderBoardConfigurationHeader(configuration),
+    content_type: "text/x-c++hdr",
+  });
+  const platformioFile = byPath.get("platformio.ini");
+  if (!platformioFile) return;
+  if (/^build_flags\s*=/m.test(platformioFile.content)) {
+    platformioFile.content = platformioFile.content.replace(
+      /^build_flags\s*=\s*(.*)$/m,
+      (_line, flags) => `build_flags = ${flags} -include include/gernetix_board_configuration.h`,
+    );
+  } else {
+    platformioFile.content += "\nbuild_flags = -include include/gernetix_board_configuration.h\n";
+  }
+}
+
+function renderBoardConfigurationHeader(configuration) {
+  const lines = [
+    "#pragma once",
+    "// Generated from the immutable GerNetiX project board snapshot.",
+    "#define GERNETIX_BOARD_CONFIGURATION_SCHEMA_VERSION 1",
+    `#define GERNETIX_BOARD_CONFIGURATION_SOURCE ${cppString(configuration.source || "project")}`,
+    `#define GERNETIX_BOARD_CONFIGURATION_NAME ${cppString(configuration.name || "")}`,
+    `#define GERNETIX_BOARD_BASE_PROFILE_ID ${cppString(configuration.base_board_profile_id || "")}`,
+    `#define GERNETIX_ACCOUNT_BOARD_ID ${cppString(configuration.account_board_id || "")}`,
+    `#define GERNETIX_ACCOUNT_BOARD_VERSION ${Number(configuration.account_board_version) || 0}`,
+  ];
+  for (const [featureId, feature] of Object.entries(configuration.board_features || {}).sort(([a], [b]) => a.localeCompare(b))) {
+    const prefix = `GERNETIX_BOARD_FEATURE_${macroName(featureId)}`;
+    lines.push(`#define ${prefix}_ENABLED ${feature.enabled === true ? 1 : 0}`);
+    lines.push(`#define ${prefix}_HARDWARE ${cppString(feature.hardware || "")}`);
+    lines.push(`#define ${prefix}_DRIVER ${cppString(feature.driver || "")}`);
+    lines.push(`#define ${prefix}_CONNECTION ${cppString(feature.connection || "")}`);
+    lines.push(`#define ${prefix}_VALUE ${cppString(feature.value || "")}`);
+    for (const [signal, pin] of Object.entries(feature.pins || {}).sort(([a], [b]) => a.localeCompare(b))) {
+      lines.push(`#define ${prefix}_PIN_${macroName(signal)} ${Number(pin)}`);
+    }
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+function macroName(value) {
+  return String(value || "UNKNOWN").toUpperCase().replace(/[^A-Z0-9]+/g, "_").replace(/^_+|_+$/g, "") || "UNKNOWN";
+}
+
+function cppString(value) {
+  return JSON.stringify(String(value || ""));
 }
 
 function addRuntimeCore(byPath, root = process.env.GERNETIX_RUNTIME_CORE_ROOT || DEFAULT_RUNTIME_CORE_ROOT) {
@@ -152,4 +205,4 @@ function contentType(filePath) {
   return "text/plain";
 }
 
-module.exports = { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles };
+module.exports = { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles, renderBoardConfigurationHeader };
