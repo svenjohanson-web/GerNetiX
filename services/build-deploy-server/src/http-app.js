@@ -88,7 +88,16 @@ function sendJson(res, status, payload) {
 }
 
 function sanitizeArtifactName(value) {
-  return ["firmware.bin", "firmware.elf", "firmware.hex", "firmware.map", "build.log"].includes(value) ? value : "";
+  return [
+    "bootloader.bin",
+    "partitions.bin",
+    "boot_app0.bin",
+    "firmware.bin",
+    "firmware.elf",
+    "firmware.hex",
+    "firmware.map",
+    "build.log",
+  ].includes(value) ? value : "";
 }
 
 module.exports = { createHttpApp, sendJson };
