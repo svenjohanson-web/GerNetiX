@@ -156,7 +156,7 @@ final class SerialService {
             if request.method == "GET" && request.path == "/v1/status" {
                 return jsonResponse(200, [
                     "service": "gernetix-serial-service",
-                    "version": "0.3.4",
+                    "version": "0.3.5",
                     "protocolVersion": 1,
                     "runtime": "native-swift",
                     "capabilities": ["ports", "probe", "flash", "serial_provisioning"],
@@ -685,8 +685,12 @@ func tlsOptions(_ config: ServiceConfig) throws -> NWProtocolTLS.Options {
     let data = try Data(contentsOf: URL(fileURLWithPath: config.pkcs12Path))
     let password = try String(contentsOfFile: config.pkcs12PasswordPath, encoding: .utf8)
         .trimmingCharacters(in: .whitespacesAndNewlines)
+    var importOptions: [String: Any] = [kSecImportExportPassphrase as String: password]
+    if #available(macOS 15.0, *) {
+        importOptions[kSecImportToMemoryOnly as String] = true
+    }
     var imported: CFArray?
-    let result = SecPKCS12Import(data as CFData, [kSecImportExportPassphrase as String: password] as CFDictionary, &imported)
+    let result = SecPKCS12Import(data as CFData, importOptions as CFDictionary, &imported)
     guard result == errSecSuccess,
           let item = (imported as? [[String: Any]])?.first,
           let identity = item[kSecImportItemIdentity as String] as! SecIdentity?,

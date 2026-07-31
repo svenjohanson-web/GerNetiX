@@ -25,6 +25,11 @@ freigegebene GerNetiX-Origins, prüft den Host-Header und verlangt nach einem
 Origin-gebundenen Handshake für alle USB-Aktionen. Kurzlebige Firmwaredateien
 bleiben im Arbeitsspeicher des Dienstes.
 
+Auf macOS 15 und neuer lädt der Dienst seine PKCS#12-TLS-Identität ausschließlich
+in den Prozessspeicher. Der private localhost-Schlüssel wird nicht in den
+persönlichen Login-Schlüsselbund importiert und erzeugt deshalb keine
+Schlüsselbund-Zugriffsabfrage.
+
 Die feste Origin-Liste deckt die produktiven GerNetiX-Domains, die lokale
 Entwicklung auf Port `4300` und den dokumentierten VPS-Staging-Tunnel auf Port
 `14300` ab. Weitere Entwicklungs-Origins koennen beim manuellen Start ueber
@@ -88,7 +93,7 @@ Lokale Veröffentlichung zum Prüfen:
 node tools/publish-platform-download.js \
   --file tools/usb-serial-helper/dist/GerNetiX-Serial-Service-mac-arm64.pkg \
   --id serial-service \
-  --version 0.3.4 \
+  --version 0.3.5 \
   --platform macos \
   --architecture arm64 \
   --label "Für macOS" \
