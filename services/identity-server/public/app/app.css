@@ -2088,10 +2088,10 @@ button.danger:hover {
   display: inline-block;
   margin: 3px 0;
   padding: 3px 7px;
-  border-left: 3px solid #fbbf24;
+  border-left: 3px solid #22c55e;
   border-radius: 3px;
-  background: #1f2937;
-  color: #fde68a;
+  background: rgba(22, 101, 52, .18);
+  color: #86efac;
   font-weight: 700;
 }
 

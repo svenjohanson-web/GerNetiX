@@ -62,7 +62,10 @@ test("build terminal always appends a persistent Flash and RAM summary", () => {
   assert.match(app, /RAM: \$\{formatPlatformioMemoryUsage\(ram\)\}/);
   assert.match(app, /Flash-Wert = App-Slot, nicht gesamter Gerätespeicher/);
   assert.match(app, /if \(!usage\) return "nicht ermittelt"/);
-  assert.match(css, /\.terminal-summary \{[\s\S]*font-weight: 700/);
+  const memorySummaryStyle = css.match(/\.terminal-summary \{[\s\S]*?\n\}/)?.[0] || "";
+  assert.match(memorySummaryStyle, /border-left: 3px solid #22c55e/);
+  assert.match(memorySummaryStyle, /color: #86efac/);
+  assert.doesNotMatch(memorySummaryStyle, /#fbbf24|#fde68a/);
 });
 
 test("IDE responds to available container width and browser sidebars", () => {
