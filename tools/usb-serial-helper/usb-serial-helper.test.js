@@ -14,7 +14,7 @@ test("webhelper is a native UI-less service without Electron or Chromium", () =>
   const swift = fs.readFileSync(path.join(root, "native", "main.swift"), "utf8");
   const launchAgent = fs.readFileSync(path.join(root, "install", "macos", "com.gernetix.serial-service.plist"), "utf8");
 
-  assert.equal(manifest.version, "0.3.5");
+  assert.equal(manifest.version, "0.3.6");
   assert.equal(manifest.dependencies, undefined);
   assert.equal(manifest.devDependencies, undefined);
   assert.doesNotMatch(JSON.stringify(manifest), /electron|chromium/i);
@@ -63,6 +63,8 @@ test("installer creates a trusted per-installation TLS identity and starts the L
   assert.match(packageBuilder, /Developer ID signiert/);
   assert.match(packageBuilder, /productbuild/);
   assert.match(packageBuilder, /installerResources/);
+  assert.match(packageBuilder, /const packageRoot = path\.join\(buildWorkspace, "payload"\)/);
+  assert.match(packageBuilder, /const componentPackages = path\.join\(buildWorkspace, "component-packages"\)/);
   assert.match(packageBuilder, /--component-plist/);
   assert.match(component, /<key>BundleIsRelocatable<\/key>\s*<false\/>/);
   const distribution = fs.readFileSync(path.join(root, "install", "macos", "distribution.xml"), "utf8");

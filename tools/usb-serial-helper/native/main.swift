@@ -156,7 +156,7 @@ final class SerialService {
             if request.method == "GET" && request.path == "/v1/status" {
                 return jsonResponse(200, [
                     "service": "gernetix-serial-service",
-                    "version": "0.3.5",
+                    "version": "0.3.6",
                     "protocolVersion": 1,
                     "runtime": "native-swift",
                     "capabilities": ["ports", "probe", "flash", "serial_provisioning"],

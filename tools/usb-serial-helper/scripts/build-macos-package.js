@@ -10,7 +10,8 @@ if (process.platform !== "darwin") throw new Error("Das macOS-Paket kann nur auf
 
 const root = path.resolve(__dirname, "..");
 const dist = path.join(root, "dist");
-const packageRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-serial-service-pkg-"));
+const buildWorkspace = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-serial-service-pkg-"));
+const packageRoot = path.join(buildWorkspace, "payload");
 const packageScripts = path.join(root, "install", "macos", "pkg-scripts");
 const installerResources = path.join(root, "install", "macos", "resources");
 const appTarget = path.join(packageRoot, "Applications", "GerNetiX Serial Service.app");
@@ -18,9 +19,9 @@ const launchAgentTarget = path.join(packageRoot, "Library", "LaunchAgents", "com
 const output = path.join(dist, "GerNetiX-Serial-Service-mac-arm64.pkg");
 const manifest = require(path.join(root, "package.json"));
 const versionedOutput = path.join(dist, `GerNetiX-Serial-Service-${manifest.version}-mac-arm64.pkg`);
-const componentPackages = path.join(packageRoot, "component-packages");
+const componentPackages = path.join(buildWorkspace, "component-packages");
 const componentPackage = path.join(componentPackages, "GerNetiXSerialService.pkg");
-const distribution = path.join(packageRoot, "distribution.xml");
+const distribution = path.join(buildWorkspace, "distribution.xml");
 
 if (process.env.GERNETIX_RELEASE_BUILD === "1"
   && (!process.env.CSC_NAME || !process.env.GERNETIX_MAC_INSTALLER_IDENTITY)) {
@@ -66,7 +67,7 @@ if (process.env.GERNETIX_MAC_INSTALLER_IDENTITY) productArgs.push("--sign", proc
 productArgs.push(output);
 execFileSync("productbuild", productArgs, { cwd: root, stdio: "inherit" });
 try {
-  fs.rmSync(packageRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
+  fs.rmSync(buildWorkspace, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 } catch (error) {
   console.warn(`Temporärer Paketordner konnte nicht entfernt werden: ${error.message}`);
 }

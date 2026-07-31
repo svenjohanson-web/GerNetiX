@@ -1,6 +1,6 @@
 {
   "name": "gernetix-usb-serial-helper",
-  "version": "0.3.5",
+  "version": "0.3.6",
   "private": true,
   "packageManager": "pnpm@11.9.0",
   "description": "Nativer UI-loser GerNetiX Serial- und Flash-Dienst",
