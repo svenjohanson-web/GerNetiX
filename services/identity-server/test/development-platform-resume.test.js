@@ -45,7 +45,7 @@ test("keeps the project choice surface consistent with the dark workspace", () =
   const choiceSurfaceRule = publicCss.match(/\.development-project-header > \.development-project-choice-panel:not\(\.hidden\),[\s\S]*?\{([^}]*)\}/)?.[1] || "";
   assert.match(choiceSurfaceRule, /background: #111827/);
   assert.doesNotMatch(choiceSurfaceRule, /background: #fff/);
-  assert.match(publicHtml, /app\.css\?v=20260731-platformio-projection-1/);
+  assert.match(publicHtml, /app\.css\?v=20260731-software-units-1/);
 });
 
 test("separates the architecture discovery step from the active project", () => {
@@ -86,7 +86,7 @@ test("never traps an account without development projects in the open or manage 
   assert.match(publicController, /developmentProjectOpenSelection"\)\.classList\.toggle\("hidden", projects\.length === 0\)/);
   assert.match(publicController, /developmentProjectOpenEmpty"\)\.classList\.toggle\("hidden", projects\.length > 0\)/);
   assert.match(publicController, /Noch keine eigenen Entwicklungsprojekte vorhanden/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260730-empty-project-navigation-1/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260731-software-units-1/);
 });
 
 test("loads the development template catalog from the server model registry", () => {
@@ -135,7 +135,7 @@ test("persists architecture derivation metadata in the project view manifest", (
 
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260730-empty-project-navigation-1/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260731-software-units-1/);
   assert.match(publicHtml, /development-chat-input-box[\s\S]*developmentQuickPrompts[\s\S]*developmentChatInput[\s\S]*developmentChatSubmit/);
   assert.match(publicHtml, /development-send-button/);
   assert.match(publicHtml, /aria-label="Nachricht senden"/);

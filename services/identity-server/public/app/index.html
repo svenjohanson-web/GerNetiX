@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260731-platformio-projection-1" />
+    <link rel="stylesheet" href="/app/app.css?v=20260731-software-units-1" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -446,6 +446,9 @@
             <section id="ideBuildConsole" class="ide-build-console">
               <div id="ideDeviceTools" class="ide-build-actions">
                 <span class="ide-build-actions-label">Build &amp; Flash</span>
+                <label id="ideSoftwareUnitControl" class="ide-software-unit-control hidden">Software
+                  <select id="ideSoftwareUnitSelect" aria-label="Software-Einheit fuer den Build"></select>
+                </label>
                 <select id="ideDeviceSelect" class="hidden" aria-label="Zugeordnetes Geraet"></select>
                 <select id="flashboxDeviceSelect" class="hidden" aria-label="Ausgewaehlte FlashBox"></select>
                 <select id="usbPortSelect" class="hidden" aria-label="USB-Port"></select>
@@ -1205,19 +1208,19 @@
     <script src="/app/device-onboarding-model.js"></script>
     <script src="/app/board-configuration-plugin.js?v=20260731-platformio-projection-1"></script>
     <script src="/app/device-onboarding-controller.js?v=20260719-04"></script>
-    <script src="/app/guided-project-view.js?v=20260729-ai-credit-purchase-1"></script>
+    <script src="/app/guided-project-view.js?v=20260731-software-units-1"></script>
     <script src="/app/learning-project-view.js?v=20260728-i18n-1"></script>
     <script src="/app/learning-project-controller.js?v=20260728-i18n-1"></script>
     <script src="/app/learning-project-locales.js?v=20260728-02"></script>
     <script src="/app/development-hardware-model.js?v=20260713-03"></script>
-    <script src="/app/development-component-metamodel.js?v=20260716-01"></script>
-    <script src="/app/development-platform.js?v=20260730-empty-project-navigation-1"></script>
+    <script src="/app/development-component-metamodel.js?v=20260731-software-units-1"></script>
+    <script src="/app/development-platform.js?v=20260731-software-units-1"></script>
     <script src="/app/help-content.js?v=20260730-content-separation-1"></script>
     <script src="/app/knowledge-content.js?v=20260731-development-processes-1"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
     <script src="/app/information-view.js?v=20260730-content-separation-1"></script>
     <script src="/app/quiz-data.js?v=20260726-01"></script>
     <script src="/app/quiz.js?v=20260726-01"></script>
-    <script src="/app/app.js?v=20260731-platformio-projection-1"></script>
+    <script src="/app/app.js?v=20260731-software-units-1"></script>
   </body>
 </html>

@@ -6,6 +6,7 @@ const DevelopmentComponentMetamodel = (() => {
     actuator: { label: "Aktor", allocation: "iot_device" },
     smartphone_app: { label: "Smartphone-App / PWA", allocation: "none" },
     browser_app: { label: "Browser-App", allocation: "none" },
+    desktop_app: { label: "Desktop-App", allocation: "none" },
     server_api: { label: "Server / API", allocation: "none" },
     // Diese Bausteine werden nur von GerNetiX-Vorlagen bereitgestellt. Sie sind
     // sichtbare fachliche Grenzen, aber keine vom Kunden anzulegenden Services.
@@ -21,6 +22,7 @@ const DevelopmentComponentMetamodel = (() => {
     rule("uses_local_interface", "actor", "iot_device", "bedient lokal"),
     rule("uses_mobile_app", "actor", "smartphone_app", "nutzt"),
     rule("uses_browser_app", "actor", "browser_app", "nutzt"),
+    rule("uses_desktop_app", "actor", "desktop_app", "nutzt"),
     rule("uses_service", "actor", "server_api", "nutzt"),
     rule("measures_for", "sensor", "iot_device", "liefert Messwerte an", "0..*", "1"),
     rule("controls", "iot_device", "actuator", "steuert", "0..*", "1"),
@@ -42,6 +44,7 @@ const DevelopmentComponentMetamodel = (() => {
     rule("dispatches_project_push", "event_dispatcher", "notification_service", "loest optional Projekt-Push aus"),
     rule("uses_api_mobile", "smartphone_app", "server_api", "nutzt API"),
     rule("uses_api_browser", "browser_app", "server_api", "nutzt API"),
+    rule("uses_api_desktop", "desktop_app", "server_api", "nutzt API"),
     rule("pushes_to_mobile", "server_api", "smartphone_app", "sendet Push an"),
     rule("commands_device", "server_api", "iot_device", "sendet Befehle an"),
   ]);

@@ -119,6 +119,68 @@ test("regenerates the visible platformio.ini whenever graphical build configurat
   assert.doesNotMatch(ini, /framework = arduino/);
 });
 
+test("stores multiple learning-project software units and builds only the selected target", async () => {
+  const service = createMemoryProjectServer();
+  const project = await service.createProject({
+    user_id: "learner-multi-target",
+    title: "Mehrziel-Lernprojekt",
+    learning_project_id: "learning_project.multi_target",
+    build_config: null,
+    software_units: [
+      {
+        software_unit_id: "esp8266_firmware",
+        title: "ESP8266-Firmware",
+        software_kind: "embedded_firmware",
+        build_system: "platformio",
+        source_root: "Software/ESP8266",
+        build_config: { platform: "espressif8266", board: "d1_mini", environment: "d1_mini", framework: "arduino", flash_size_mb: 4 },
+      },
+      {
+        software_unit_id: "avr_firmware",
+        title: "AVR-Firmware",
+        software_kind: "embedded_firmware",
+        build_system: "platformio",
+        source_root: "Software/AVR",
+        build_config: { platform: "atmelavr", board: "nanoatmega328", environment: "nanoatmega328", framework: "arduino", maximum_program_size_bytes: 30720 },
+      },
+      {
+        software_unit_id: "desktop_app",
+        title: "Desktop-App",
+        software_kind: "desktop_application",
+        build_system: "npm",
+        source_root: "Software/Desktop",
+        build_configuration: { script: "build" },
+      },
+    ],
+    active_software_unit_id: "esp8266_firmware",
+    sources: [
+      { path: "Software/ESP8266/src/main.cpp", content: "// esp8266" },
+      { path: "Software/AVR/src/main.cpp", content: "// avr" },
+      { path: "Software/Desktop/src/main.js", content: "// desktop" },
+    ],
+  });
+
+  assert.equal(project.software_units.length, 3);
+  assert.equal(project.active_software_unit_id, "esp8266_firmware");
+  assert.match((await service.getSource(project.project_id, "Software/AVR/platformio.ini")).content, /platform = atmelavr/);
+
+  const job = await service.createBuildJob(project.project_id, { software_unit_id: "avr_firmware" });
+  const buildPackage = await service.createBuildPackage(job.build_job_id);
+  assert.equal(job.software_unit_id, "avr_firmware");
+  assert.match(buildPackage.platformio_ini, /platform = atmelavr/);
+  assert.equal(buildPackage.files.some((file) => file.path === "src/main.cpp" && file.content === "// avr"), true);
+  assert.equal(buildPackage.files.some((file) => file.content === "// esp8266"), false);
+  await assert.rejects(
+    () => service.createBuildJob(project.project_id, { software_unit_id: "desktop_app" }),
+    /noch nicht an einen Build-Runner angebunden/,
+  );
+
+  const version = await service.createVersion(project.project_id, { user_id: "learner-multi-target", message: "Mehrzielstand" });
+  await service.updateProject(project.project_id, { active_software_unit_id: "avr_firmware" });
+  await service.restoreVersion(project.project_id, version.version_id, { user_id: "learner-multi-target" });
+  assert.equal((await service.getProject(project.project_id)).active_software_unit_id, "esp8266_firmware");
+});
+
 test("preserves the immutable board configuration in project and build snapshots", async () => {
   const service = createMemoryProjectServer();
   const project = await service.createProject({

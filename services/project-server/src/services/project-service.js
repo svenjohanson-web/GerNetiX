@@ -25,6 +25,17 @@ class ProjectService {
     const templateSources = template ? await this.repository.listSources(template.project_id) : [];
     const templateHash = template ? projectVersionHash(sanitizeProject(template), templateSources) : "";
     const inheritedManifest = template ? structuredClone(template.view_manifest || {}) : {};
+    const inheritedBuildConfig = Object.hasOwn(input, "build_config") ? input.build_config : template ? template.build_config : undefined;
+    const normalizedBuildConfig = normalizeBuildConfig(inheritedBuildConfig);
+    const softwareUnits = normalizeSoftwareUnits(
+      Object.hasOwn(input, "software_units") ? input.software_units : template?.software_units,
+      normalizedBuildConfig,
+    );
+    const activeSoftwareUnitId = activeSoftwareUnitIdFor(
+      input.active_software_unit_id || template?.active_software_unit_id,
+      softwareUnits,
+    );
+    const activeSoftwareUnit = softwareUnits.find((unit) => unit.software_unit_id === activeSoftwareUnitId) || null;
     const project = {
       project_id: input.project_id || createId("project"),
       user_id: required(input.user_id, "user_id"),
@@ -34,7 +45,9 @@ class ProjectService {
       learning_project_id: input.learning_project_id || "",
       hardware_profile_id: input.hardware_profile_id || "hardware.processor_board.generic_esp_wroom32",
       device_id: input.device_id || null,
-      build_config: normalizeBuildConfig(Object.hasOwn(input, "build_config") ? input.build_config : template ? template.build_config : undefined),
+      build_config: activeSoftwareUnit?.build_config || normalizedBuildConfig,
+      software_units: softwareUnits,
+      active_software_unit_id: activeSoftwareUnitId,
       view_manifest: normalizeViewManifest({
         ...inheritedManifest,
         ...(input.view_manifest || input.project_view_manifest || {}),
@@ -52,7 +65,7 @@ class ProjectService {
         await this.repository.saveSource({ project_id: project.project_id, path: sourcePath, content, content_sha256: sha256(content), content_type: source.content_type || contentType(sourcePath), role: source.role || inferSourceRole(sourcePath), updated_at: now });
       } else await this.upsertSource(project.project_id, source);
     }
-    if (project.status !== "template" && project.build_config) await this.syncPlatformioSource(project);
+    if (project.status !== "template") await this.syncPlatformioSources(project);
     return this.projectWithSummary(project);
   }
 
@@ -79,15 +92,35 @@ class ProjectService {
     await this.ready;
     const project = await this.requireProject(projectId);
     if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Projekt-Templates dürfen nicht verändert werden.", 409);
+    let softwareUnits = normalizeSoftwareUnits(project.software_units, project.build_config);
+    let activeSoftwareUnitId = activeSoftwareUnitIdFor(
+      input.active_software_unit_id || project.active_software_unit_id,
+      softwareUnits,
+    );
+    if (Object.hasOwn(input, "software_units")) {
+      softwareUnits = normalizeSoftwareUnits(input.software_units, null);
+      activeSoftwareUnitId = activeSoftwareUnitIdFor(input.active_software_unit_id || activeSoftwareUnitId, softwareUnits);
+    }
+    let buildConfig = Object.hasOwn(input, "build_config")
+      ? normalizeBuildConfig(input.build_config ? { ...(project.build_config || {}), ...input.build_config } : null)
+      : softwareUnits.find((unit) => unit.software_unit_id === activeSoftwareUnitId)?.build_config || project.build_config;
+    if (Object.hasOwn(input, "build_config") && softwareUnits.length) {
+      softwareUnits = softwareUnits.map((unit) => unit.software_unit_id === activeSoftwareUnitId
+        ? { ...unit, build_config: buildConfig }
+        : unit);
+    }
+    if (Object.hasOwn(input, "software_units") || Object.hasOwn(input, "active_software_unit_id")) {
+      buildConfig = softwareUnits.find((unit) => unit.software_unit_id === activeSoftwareUnitId)?.build_config || null;
+    }
     const next = {
       ...project,
       title: input.title || project.title,
       description: input.description === undefined ? project.description : input.description,
       hardware_profile_id: input.hardware_profile_id || project.hardware_profile_id,
       device_id: input.device_id === undefined ? project.device_id : input.device_id,
-      build_config: Object.hasOwn(input, "build_config")
-        ? normalizeBuildConfig(input.build_config ? { ...(project.build_config || {}), ...input.build_config } : null)
-        : project.build_config,
+      build_config: buildConfig,
+      software_units: softwareUnits,
+      active_software_unit_id: activeSoftwareUnitId,
       view_manifest: input.view_manifest || input.project_view_manifest
         ? normalizeViewManifest(input.view_manifest || input.project_view_manifest)
         : project.view_manifest,
@@ -95,22 +128,25 @@ class ProjectService {
       updated_at: new Date().toISOString(),
     };
     const saved = await this.repository.saveProject(next);
-    if (saved.build_config) await this.syncPlatformioSource(saved);
+    await this.syncPlatformioSources(saved);
     return this.projectWithSummary(saved);
   }
 
-  async syncPlatformioSource(project) {
-    const content = renderPlatformioIni(project.build_config);
-    const now = new Date().toISOString();
-    await this.repository.saveSource({
-      project_id: project.project_id,
-      path: "platformio.ini",
-      content,
-      content_sha256: sha256(content),
-      content_type: "text/plain",
-      role: "build_config",
-      updated_at: now,
-    });
+  async syncPlatformioSources(project) {
+    for (const unit of softwareUnitsForProject(project).filter(isPlatformioSoftwareUnit)) {
+      const content = renderPlatformioIni(unit.build_config);
+      const now = new Date().toISOString();
+      const sourcePath = [unit.source_root, "platformio.ini"].filter(Boolean).join("/");
+      await this.repository.saveSource({
+        project_id: project.project_id,
+        path: sourcePath,
+        content,
+        content_sha256: sha256(content),
+        content_type: "text/plain",
+        role: "build_config",
+        updated_at: now,
+      });
+    }
   }
 
   async listSources(projectId) {
@@ -174,7 +210,18 @@ class ProjectService {
     if (!["build", "build_and_flash", "build_and_usb_flash", "prebuild"].includes(mode)) {
       throw new ProjectServerError("invalid_build_mode", "Build-Modus muss build, build_and_flash, build_and_usb_flash oder prebuild sein.");
     }
-    if (!project.build_config) {
+    const softwareUnits = softwareUnitsForProject(project);
+    const requestedSoftwareUnitId = String(input.software_unit_id || project.active_software_unit_id || "").trim();
+    const softwareUnit = softwareUnits.find((unit) => unit.software_unit_id === requestedSoftwareUnitId)
+      || (!requestedSoftwareUnitId ? softwareUnits[0] : null);
+    if (requestedSoftwareUnitId && !softwareUnit) {
+      throw new ProjectServerError("software_unit_not_found", "Die gewählte Softwareeinheit gehört nicht zu diesem Projekt.", 404);
+    }
+    if (softwareUnit && !isPlatformioSoftwareUnit(softwareUnit)) {
+      throw new ProjectServerError("software_unit_builder_not_supported", `Das Build-System ${softwareUnit.build_system} ist noch nicht an einen Build-Runner angebunden.`, 409);
+    }
+    const buildConfig = softwareUnit?.build_config || project.build_config;
+    if (!buildConfig) {
       throw new ProjectServerError("project_not_buildable", "Projekt besitzt keine Build-Konfiguration und kann nicht gebaut werden.", 400);
     }
     const job = {
@@ -184,12 +231,14 @@ class ProjectService {
       mode,
       status: "created",
       build_deploy_job_id: null,
-      device_id: input.device_id || project.device_id || null,
+      device_id: input.device_id || softwareUnit?.device_id || project.device_id || null,
+      software_unit_id: softwareUnit?.software_unit_id || "",
+      software_unit: softwareUnit ? structuredClone(softwareUnit) : null,
       created_at: now,
       updated_at: now,
       submitted_at: null,
       finished_at: null,
-      build_config: project.build_config ? { ...project.build_config } : null,
+      build_config: { ...buildConfig },
       result: null,
       error: null,
     };
@@ -215,7 +264,14 @@ class ProjectService {
     await this.ready;
     const job = await this.getBuildJob(jobId);
     const project = await this.requireProject(job.project_id);
-    const sources = await this.repository.listSources(project.project_id);
+    const softwareUnits = softwareUnitsForProject(project);
+    const softwareUnit = job.software_unit
+      || softwareUnits.find((unit) => unit.software_unit_id === job.software_unit_id)
+      || softwareUnits[0]
+      || null;
+    const allSources = await this.repository.listSources(project.project_id);
+    const sources = sourcesForSoftwareUnit(allSources, softwareUnit, softwareUnits);
+    const buildConfig = job.build_config || softwareUnit?.build_config || project.build_config;
     const projectSnapshot = sanitizeProject(project);
     const snapshotHash = projectVersionHash(projectSnapshot, sources);
     await this.repository.saveBuildJob({
@@ -225,21 +281,23 @@ class ProjectService {
       snapshot_sha256: snapshotHash,
       updated_at: new Date().toISOString(),
     });
-    const firmwareSources = project.build_config?.firmware_basis_id === "gernetix-runtime-basissoftware"
+    const firmwareSources = buildConfig?.firmware_basis_id === "gernetix-runtime-basissoftware"
       ? composeEsp32BasissoftwarePackage({
           basisFiles: this.loadEsp32BasissoftwareFiles(),
           projectSources: sources,
-          buildConfig: project.build_config,
+          buildConfig,
         })
       : sources;
-    const platformioIni = renderPlatformioIni(project.build_config);
+    const platformioIni = renderPlatformioIni(buildConfig);
     const buildJob = {
       job_id: job.build_job_id,
       project_id: project.project_id,
       user_id: project.user_id,
       mode: job.mode,
       device_id: job.device_id,
-      build_config: project.build_config,
+      software_unit_id: softwareUnit?.software_unit_id || "",
+      software_unit_title: softwareUnit?.title || "Firmware",
+      build_config: buildConfig,
       created_at: new Date().toISOString(),
     };
     return {
@@ -399,6 +457,8 @@ class ProjectService {
       hardware_profile_id: snapshot.hardware_profile_id ?? project.hardware_profile_id,
       device_id: snapshot.device_id ?? project.device_id,
       build_config: snapshot.build_config ?? project.build_config,
+      software_units: snapshot.software_units ?? project.software_units,
+      active_software_unit_id: snapshot.active_software_unit_id ?? project.active_software_unit_id,
       view_manifest: snapshot.view_manifest ?? project.view_manifest,
       status: snapshot.status || project.status,
       updated_at: new Date().toISOString(),
@@ -766,6 +826,75 @@ function normalizeBuildConfig(input = {}) {
   };
 }
 
+function normalizeSoftwareUnits(input, fallbackBuildConfig = null) {
+  const rawUnits = Array.isArray(input) ? input : [];
+  if (!rawUnits.length) {
+    return fallbackBuildConfig ? [{
+      software_unit_id: "firmware",
+      title: "Firmware",
+      software_kind: "embedded_firmware",
+      build_system: "platformio",
+      source_root: "",
+      device_id: "",
+      build_config: fallbackBuildConfig,
+    }] : [];
+  }
+  const seen = new Set();
+  return rawUnits.slice(0, 40).map((unit, index) => {
+    const candidate = String(unit?.software_unit_id || unit?.id || `software_${index + 1}`)
+      .trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 80) || `software_${index + 1}`;
+    let softwareUnitId = candidate;
+    for (let suffix = 2; seen.has(softwareUnitId); suffix += 1) softwareUnitId = `${candidate}_${suffix}`.slice(0, 80);
+    seen.add(softwareUnitId);
+    const buildSystem = String(unit?.build_system || (unit?.build_config ? "platformio" : "none")).trim().toLowerCase().slice(0, 40);
+    const sourceRoot = normalizeOptionalSourcePath(unit?.source_root || "").replace(/\/$/, "");
+    return {
+      software_unit_id: softwareUnitId,
+      title: String(unit?.title || `Software ${index + 1}`).trim().slice(0, 120),
+      software_kind: String(unit?.software_kind || "software").trim().toLowerCase().slice(0, 60),
+      build_system: buildSystem,
+      source_root: sourceRoot,
+      entrypoint: normalizeOptionalSourcePath(unit?.entrypoint || ""),
+      device_id: String(unit?.device_id || "").trim().slice(0, 180),
+      build_config: buildSystem === "platformio" && unit?.build_config ? normalizeBuildConfig(unit.build_config) : null,
+      build_configuration: buildSystem === "platformio" || !unit?.build_configuration
+        ? null
+        : JSON.parse(JSON.stringify(unit.build_configuration)),
+    };
+  });
+}
+
+function activeSoftwareUnitIdFor(requestedId, softwareUnits) {
+  const requested = String(requestedId || "").trim();
+  return softwareUnits.some((unit) => unit.software_unit_id === requested)
+    ? requested
+    : softwareUnits[0]?.software_unit_id || "";
+}
+
+function softwareUnitsForProject(project = {}) {
+  return normalizeSoftwareUnits(project.software_units, project.build_config || null);
+}
+
+function isPlatformioSoftwareUnit(unit) {
+  return unit?.build_system === "platformio" && Boolean(unit.build_config);
+}
+
+function sourcesForSoftwareUnit(sources, selectedUnit, softwareUnits) {
+  if (!selectedUnit) return sources;
+  const sourceRoot = String(selectedUnit.source_root || "").replace(/\/$/, "");
+  if (sourceRoot) {
+    const prefix = `${sourceRoot}/`;
+    return sources.filter((source) => source.path.startsWith(prefix)).map((source) => ({
+      ...source,
+      path: source.path.slice(prefix.length),
+    }));
+  }
+  const otherRoots = softwareUnits
+    .filter((unit) => unit.software_unit_id !== selectedUnit.software_unit_id && unit.source_root)
+    .map((unit) => `${String(unit.source_root).replace(/\/$/, "")}/`);
+  return sources.filter((source) => !otherRoots.some((prefix) => source.path.startsWith(prefix)));
+}
+
 function positiveInteger(value) {
   const normalized = Number(value);
   return Number.isInteger(normalized) && normalized > 0 ? normalized : 0;
@@ -992,6 +1121,7 @@ function defaultSources(project, sources) {
 }
 
 function sanitizeProject(project) {
+  const softwareUnits = softwareUnitsForProject(project);
   return {
     project_id: project.project_id,
     user_id: project.user_id,
@@ -1001,6 +1131,8 @@ function sanitizeProject(project) {
     hardware_profile_id: project.hardware_profile_id,
     device_id: project.device_id,
     build_config: project.build_config,
+    software_units: softwareUnits,
+    active_software_unit_id: activeSoftwareUnitIdFor(project.active_software_unit_id, softwareUnits),
     view_manifest: effectiveViewManifest(project),
     status: project.status,
     created_at: project.created_at,
@@ -1017,6 +1149,8 @@ function projectVersionHash(projectSnapshot, sources) {
       hardware_profile_id: projectSnapshot.hardware_profile_id,
       device_id: projectSnapshot.device_id,
       build_config: projectSnapshot.build_config,
+      software_units: projectSnapshot.software_units,
+      active_software_unit_id: projectSnapshot.active_software_unit_id,
       view_manifest: projectSnapshot.view_manifest,
       status: projectSnapshot.status,
     },

@@ -66,6 +66,11 @@ const HelpContent = (() => {
           articleId: "board-configuration-levels",
         },
         {
+          id: "software-units-and-build-targets",
+          title: "Software-Einheiten und Build-Ziele",
+          articleId: "software-units-and-build-targets",
+        },
+        {
           id: "register-device",
           title: "Board registrieren",
           articleId: "register-device",
@@ -643,6 +648,35 @@ const HelpContent = (() => {
         "supported-devices",
         "provision-new-board",
       ],
+    },
+    "software-units-and-build-targets": {
+      title: "Software-Einheiten und Build-Ziele",
+      summary: "So verwaltet ein Projekt Firmware, Web-App, Desktop-App und Backend getrennt und baut immer nur das gewählte Ziel.",
+      sections: [
+        {
+          heading: "Ein Projekt kann mehrere Programme enthalten",
+          paragraphs: [
+            "Ein Lern- oder Entwicklungsprojekt ist nicht automatisch eine einzelne Firmware. Es kann mehrere Mikrocontroller-Programme, eine Browser- oder Smartphone-App, Desktop-Software und einen Server enthalten.",
+            "GerNetiX speichert jedes ausführbare Teil als eigene Software-Einheit. Jede Einheit besitzt eine eigene Quellwurzel, ein Buildsystem und eine Zielkonfiguration. Sensoren und Aktoren ohne eigenen Programmcode bleiben Hardwarekomponenten und erscheinen nicht als Build-Ziel.",
+          ],
+        },
+        {
+          heading: "Das Ziel vor dem Build auswählen",
+          list: [
+            "Öffne das Projekt in der IDE.",
+            "Wähle im Bereich Build & Flash die gewünschte Software-Einheit.",
+            "Bei einer PlatformIO-Firmware stammen Board, Framework, Speicher und weitere Compilerwerte aus deren gespeicherter Boardkonfiguration.",
+            "Der Build enthält nur die Quellen der gewählten Einheit; andere Programme im selben Projekt werden nicht versehentlich mitgebaut.",
+          ],
+        },
+        {
+          heading: "Noch nicht angeschlossene Buildsysteme",
+          paragraphs: [
+            "ESP32-, ESP8266- und AVR-Ziele können über den angeschlossenen PlatformIO-Runner gebaut werden. Web-, Smartphone-, Desktop- und Server-Einheiten sind bereits speicher- und auswählbar. Solange ihr jeweiliger Runner noch nicht angeschlossen ist, zeigt GerNetiX das ausdrücklich an und startet keinen vorgetäuschten Build.",
+          ],
+        },
+      ],
+      relatedTopics: ["board-configuration-levels"],
     },
     "register-device": {
       title: "Register a device",

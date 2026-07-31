@@ -43,6 +43,7 @@ const state = {
   workspace: null,
   serviceStatus: {},
   activeProjectId: "",
+  activeSoftwareUnitIds: {},
   activeDeviceId: "",
   activeFlashboxDeviceId: "",
   activeRecoveryDeviceId: "",
@@ -140,6 +141,7 @@ function guidedProjectView() {
       getJson,
       postJson,
       putJson,
+      waitForCompletedBuild,
       progressFor,
       escapeHtml,
       escapeAttribute,
@@ -293,6 +295,11 @@ document.querySelector("#usbPortSelect").addEventListener("change", (event) => {
   if (event.target.value) setFlashStatus("ok", `USB-Port ausgewählt: ${event.target.value}`);
 });
 document.querySelector("#buildButton").addEventListener("click", startBuild);
+document.querySelector("#ideSoftwareUnitSelect").addEventListener("change", (event) => {
+  if (!state.activeProjectId) return;
+  state.activeSoftwareUnitIds[state.activeProjectId] = event.target.value;
+  updateIdeProjectTools(projectById(state.activeProjectId));
+});
 document.querySelector("#usbFlashButton").addEventListener("click", startUsbFlash);
 document.querySelector("#otaFlashButton").addEventListener("click", startOtaFlash);
 document.querySelector("#flashBoxFlashButton").addEventListener("click", startFlashBoxFlash);
@@ -1696,6 +1703,7 @@ async function loadIdeProject() {
     renderIdeEmptyState();
     return;
   }
+  state.activeSoftwareUnitIds[project.id] ||= project.activeSoftwareUnitId || project.softwareUnits?.[0]?.software_unit_id || "";
   state.activeDeviceId = state.devices.some((device) => device.device_id === project.linkedDeviceId)
     ? project.linkedDeviceId
     : "";
@@ -1816,8 +1824,10 @@ function renderIdeEmptyState() {
 
 function updateIdeProjectTools(project) {
   const hardwareTools = projectNeedsHardwareTools(project);
+  renderIdeSoftwareUnitSelection(project);
+  const softwareUnit = activeIdeSoftwareUnit(project);
   const sourceEditing = ideSourceIsEditable(project, state.sourcePath);
-  document.querySelector("#ideDeviceTools").classList.toggle("hidden", !hardwareTools);
+  document.querySelector("#ideDeviceTools").classList.remove("hidden");
   const allocated = allocatedIdeDevice(project);
   const actionReason = ideActionUnavailableReason(project, allocated);
   const buildButton = document.querySelector("#buildButton");
@@ -1826,6 +1836,8 @@ function updateIdeProjectTools(project) {
   const flashBoxButton = document.querySelector("#flashBoxFlashButton");
   const flashboxSelect = document.querySelector("#flashboxDeviceSelect");
   const flashboxes = inventoryFlashboxes();
+  [usbButton, otaButton, flashBoxButton, document.querySelector("#checkOtaConnectivityButton")]
+    .forEach((element) => element?.classList.toggle("hidden", !hardwareTools));
   const otaReason = !allocated
     ? "OTA nicht verfügbar: Kein Device zugeordnet."
     : allocated.connectivity_status !== "online"
@@ -1833,13 +1845,16 @@ function updateIdeProjectTools(project) {
       : allocated.ota_status !== "ready"
         ? `OTA nicht verfügbar: Das Device meldet den OTA-Status ${allocated.ota_status || "unknown"}.`
         : "";
-  buildButton.disabled = false;
-  usbButton.disabled = false;
+  const supportedBuild = !softwareUnit || softwareUnit.build_system === "platformio";
+  buildButton.disabled = !supportedBuild;
+  usbButton.disabled = !supportedBuild;
   otaButton.disabled = !allocated || allocated.ota_status !== "ready" || allocated.connectivity_status !== "online";
   flashBoxButton.disabled = !flashboxes.length;
   flashboxSelect.classList.toggle("hidden", !flashboxes.length);
   flashboxSelect.disabled = !flashboxes.length;
-  buildButton.title = "Build verwendet die gespeicherte Projekt-Boardkonfiguration.";
+  buildButton.title = supportedBuild
+    ? "Build verwendet die gespeicherte Konfiguration der ausgewaehlten Software-Einheit."
+    : `Fuer ${softwareUnit.title || softwareUnit.software_unit_id} ist der Build-Runner ${softwareUnit.build_system || "noch nicht"} nicht angeschlossen.`;
   usbButton.title = "Direkter USB-Flash verwendet die Projekt-Boardkonfiguration und das angeschlossene USB-Gerät.";
   otaButton.title = actionReason || otaReason;
   flashBoxButton.title = actionReason || (!flashboxes.length
@@ -1849,12 +1864,29 @@ function updateIdeProjectTools(project) {
   document.querySelector("#sourceEditor").readOnly = !sourceEditing;
 }
 
+function activeIdeSoftwareUnit(project = projectById(state.activeProjectId)) {
+  const units = project?.softwareUnits || [];
+  const selectedId = state.activeSoftwareUnitIds[project?.id] || project?.activeSoftwareUnitId;
+  return units.find((unit) => unit.software_unit_id === selectedId) || units[0] || null;
+}
+
+function renderIdeSoftwareUnitSelection(project) {
+  const control = document.querySelector("#ideSoftwareUnitControl");
+  const select = document.querySelector("#ideSoftwareUnitSelect");
+  if (!control || !select) return;
+  const units = project?.softwareUnits || [];
+  control.classList.toggle("hidden", units.length < 2);
+  select.innerHTML = units.map((unit) => `<option value="${escapeAttribute(unit.software_unit_id)}">${escapeHtml(unit.title)} · ${escapeHtml(unit.build_system || "ohne Runner")}</option>`).join("");
+  select.value = activeIdeSoftwareUnit(project)?.software_unit_id || "";
+}
+
 function renderIdeProjectInformation(project) {
   const target = document.querySelector("#ideProjectInformation");
   const noticeTarget = document.querySelector("#ideActionReason");
   if (!target || !noticeTarget || !project) return;
   const allocated = allocatedIdeDevice(project);
-  const buildConfig = project.buildConfig || {};
+  const softwareUnit = activeIdeSoftwareUnit(project);
+  const buildConfig = softwareUnit?.build_config || project.buildConfig || {};
   const boardConfiguration = buildConfig.board_configuration || {};
   const boardConfigurationLabel = boardConfiguration.name
     ? `${boardConfiguration.name} · ${boardConfiguration.base_board_profile_id || "Profil nicht gesetzt"}`
@@ -1889,6 +1921,9 @@ function renderIdeProjectInformation(project) {
   target.innerHTML = [
     ["Projekt", project.name || project.id],
     ["Projektart", project.type || "Entwicklungsprojekt"],
+    ["Software-Einheit", softwareUnit?.title || "Projektstandard"],
+    ["Buildsystem", softwareUnit?.build_system || "nicht festgelegt"],
+    ["Quellwurzel", softwareUnit?.source_root || "Projektwurzel"],
     ["Zielsystem", targetSystem],
     ["Board-Konfiguration", boardConfigurationLabel],
     ["Board-Quelle", boardConfigurationSource],
@@ -1907,7 +1942,8 @@ function renderIdeProjectInformation(project) {
   const healthNotices = ideProjectHealthNotices(project);
   const actionReason = ideActionUnavailableReason(project, allocated);
   if (actionReason) notices.push(actionReason);
-  if (!project.buildConfig) notices.push("Fuer dieses Projekt ist noch kein Build-Profil hinterlegt.");
+  if (softwareUnit && softwareUnit.build_system !== "platformio") notices.push(`Der Build-Runner ${softwareUnit.build_system || "fuer diese Einheit"} ist noch nicht an den Build-Service angeschlossen.`);
+  if ((!softwareUnit || softwareUnit.build_system === "platformio") && !Object.keys(buildConfig).length) notices.push("Fuer diese Software-Einheit ist noch kein Build-Profil hinterlegt.");
   if (allocated && allocated.connectivity_status !== "online") notices.push(`Das Device ist nicht online (${allocated.connectivity_status || "unknown"}).`);
   if (allocated && allocated.ota_status !== "ready") notices.push(`OTA ist noch nicht bereit (${allocated.ota_status || "unknown"}).`);
   const items = [
@@ -2095,7 +2131,7 @@ function renderIdeDeviceAllocation(project) {
 }
 
 function deviceCompatibleWithProject(project, device) {
-  const projectPlatform = String(project?.buildConfig?.platform || "").toLowerCase();
+  const projectPlatform = String(activeIdeSoftwareUnit(project)?.build_config?.platform || project?.buildConfig?.platform || "").toLowerCase();
   const devicePlatform = String(device?.build_config?.platform || "").toLowerCase();
   if (projectPlatform && devicePlatform) return projectPlatform === devicePlatform;
   return String(project?.targetRuntime || "").toLowerCase().includes("esp")
@@ -2103,8 +2139,9 @@ function deviceCompatibleWithProject(project, device) {
 }
 
 function componentDeviceAllocations(project) {
-  const configured = Array.isArray(project?.buildConfig?.component_device_allocations)
-    ? project.buildConfig.component_device_allocations
+  const buildConfig = activeIdeSoftwareUnit(project)?.build_config || project?.buildConfig;
+  const configured = Array.isArray(buildConfig?.component_device_allocations)
+    ? buildConfig.component_device_allocations
     : [];
   if (configured.length) return configured;
   const primary = primaryComponentPath(project);
@@ -2112,6 +2149,8 @@ function componentDeviceAllocations(project) {
 }
 
 function allocatedIdeDevice(project = projectById(state.activeProjectId), componentPath = primaryComponentPath(project)) {
+  const unitDeviceId = activeIdeSoftwareUnit(project)?.device_id;
+  if (unitDeviceId) return state.devices.find((device) => device.device_id === unitDeviceId) || null;
   const allocation = componentDeviceAllocations(project).find((item) => item.component_path === componentPath);
   if (!allocation?.device_id) return null;
   return state.devices.find((device) => device.device_id === allocation.device_id) || null;
@@ -2119,6 +2158,8 @@ function allocatedIdeDevice(project = projectById(state.activeProjectId), compon
 
 function projectNeedsHardwareTools(project) {
   const capabilities = projectCapabilityIds(project);
+  const softwareUnit = activeIdeSoftwareUnit(project);
+  if (softwareUnit) return softwareUnit.build_system === "platformio";
   return Boolean(project?.buildConfig)
     || capabilities.some((capability) => ["flash_firmware", "ota", "ide_flash_usb", "ide_flash_ota", "cloud_flash"].includes(capability));
 }
@@ -3291,6 +3332,7 @@ async function persistCurrentSource(project = projectById(state.activeProjectId)
 
 async function startBuild() {
   const project = projectById(state.activeProjectId);
+  const softwareUnit = activeIdeSoftwareUnit(project);
   const device = allocatedIdeDevice(project);
   if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
   setFlashStatus("running", "Build laeuft...");
@@ -3298,6 +3340,7 @@ async function startBuild() {
     await persistCurrentSource(project);
     const build = await postJson("/api/user-ide/build-jobs", {
       project_slug: project.slug,
+      software_unit_id: softwareUnit?.software_unit_id || "",
       device_id: device?.device_id || "",
       mode: "build",
     });
@@ -3316,6 +3359,7 @@ async function startBuild() {
 
 async function startUsbFlash() {
   const project = projectById(state.activeProjectId);
+  const softwareUnit = activeIdeSoftwareUnit(project);
   const device = allocatedIdeDevice(project);
   if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
   const serialServiceAvailable = await state.serialService.available();
@@ -3343,6 +3387,7 @@ async function startUsbFlash() {
     await persistCurrentSource(project);
     const build = await postJson("/api/user-ide/build-jobs", {
       project_slug: project.slug,
+      software_unit_id: softwareUnit?.software_unit_id || "",
       device_id: device?.device_id || "",
       mode: "build_and_usb_flash",
     });
@@ -3552,6 +3597,7 @@ async function loadIdeEsptoolModule() {
 
 async function startOtaFlash() {
   const project = projectById(state.activeProjectId);
+  const softwareUnit = activeIdeSoftwareUnit(project);
   const device = allocatedIdeDevice(project);
   if (!project || !device) return setFlashStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
   if (device.connectivity_status !== "online") return setFlashStatus("error", `Das zugeordnete Device ist nicht online (${device.connectivity_status || "unknown"}).`);
@@ -3561,6 +3607,7 @@ async function startOtaFlash() {
     await persistCurrentSource(project);
     const build = await postJson("/api/user-ide/build-jobs", {
       project_slug: project.slug,
+      software_unit_id: softwareUnit?.software_unit_id || "",
       device_id: device.device_id,
       mode: "build_and_flash",
     });
@@ -3591,6 +3638,7 @@ function inventoryFlashboxes() {
 
 async function startFlashBoxFlash() {
   const project = projectById(state.activeProjectId);
+  const softwareUnit = activeIdeSoftwareUnit(project);
   const device = allocatedIdeDevice(project);
   if (!project || !device) return setFlashStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
   const flashboxes = inventoryFlashboxes();
@@ -3606,6 +3654,7 @@ async function startFlashBoxFlash() {
     await persistCurrentSource(project);
     const build = await postJson("/api/user-ide/build-jobs", {
       project_slug: project.slug,
+      software_unit_id: softwareUnit?.software_unit_id || "",
       device_id: device.device_id,
       mode: "build",
       flash_transport: "flashbox",

@@ -5,6 +5,7 @@ const GuidedProjectView = (() => {
       getJson,
       postJson,
       putJson,
+      waitForCompletedBuild,
       progressFor,
       escapeHtml,
       escapeAttribute,
@@ -28,6 +29,7 @@ const GuidedProjectView = (() => {
           <p class="eyebrow">Projektansicht</p>
           <h3>${escapeHtml(manifest.title || "IDE Ansicht")}</h3>
           <p>${escapeHtml(manifest.summary || "")}</p>
+          ${renderLearningSoftwareTargetPanel(project)}
         </div>
         <div class="guided-runner">
           <section class="guided-step-panel">
@@ -61,6 +63,10 @@ const GuidedProjectView = (() => {
       });
       target.querySelector("[data-guided-lab-device]")?.addEventListener("change", (event) => assignGuidedLabDevice(project, activeView, event.target.value, targetSelector));
       target.querySelector("[data-guided-board-configuration]")?.addEventListener("change", (event) => assignGuidedBoardConfiguration(project, activeView, event.target.value, targetSelector));
+      target.querySelector("[data-learning-software-unit]")?.addEventListener("change", (event) => selectLearningSoftwareUnit(project, event.target.value, targetSelector));
+      target.querySelector("[data-learning-target-board]")?.addEventListener("change", (event) => assignGuidedBoardConfiguration(project, activeView, event.target.value, targetSelector));
+      target.querySelector("[data-learning-target-device]")?.addEventListener("change", (event) => assignGuidedLabDevice(project, activeView, event.target.value, targetSelector));
+      target.querySelector("[data-build-learning-software-unit]")?.addEventListener("click", () => buildGuidedSoftwareUnit(project, activeView, targetSelector));
       bindCodeExplorerChat(target, project, activeView);
       renderGuidedPlantUml(target);
     }
@@ -541,6 +547,58 @@ const GuidedProjectView = (() => {
       `;
     }
 
+    function learningSoftwareUnits(project) {
+      if (Array.isArray(project?.softwareUnits) && project.softwareUnits.length) return project.softwareUnits;
+      if (!project?.buildConfig) return [];
+      return [{
+        software_unit_id: "firmware",
+        title: "Firmware",
+        software_kind: "embedded_firmware",
+        build_system: "platformio",
+        source_root: "",
+        device_id: project.linkedDeviceId || "",
+        build_config: project.buildConfig,
+      }];
+    }
+
+    function selectedLearningSoftwareUnit(project) {
+      state.guidedSoftwareUnitByProject ||= {};
+      const units = learningSoftwareUnits(project);
+      const selectedId = state.guidedSoftwareUnitByProject[project.id] || project.activeSoftwareUnitId || units[0]?.software_unit_id || "";
+      return units.find((unit) => unit.software_unit_id === selectedId) || units[0] || null;
+    }
+
+    function selectLearningSoftwareUnit(project, softwareUnitId, targetSelector) {
+      state.guidedSoftwareUnitByProject ||= {};
+      state.guidedSoftwareUnitByProject[project.id] = softwareUnitId;
+      renderProjectViewManifest(project, targetSelector);
+    }
+
+    function renderLearningSoftwareTargetPanel(project) {
+      const units = learningSoftwareUnits(project);
+      if (!units.length || project.projectOrigin !== "account_project") return "";
+      const selectedUnit = selectedLearningSoftwareUnit(project);
+      const config = selectedUnit?.build_config || {};
+      const selectedBoardId = config.board_configuration?.account_board_id
+        ? `account_board:${config.board_configuration.account_board_id}:v${config.board_configuration.account_board_version}`
+        : config.board_configuration?.base_board_profile_id || "";
+      const selectedDeviceId = selectedUnit?.device_id || "";
+      const platformio = selectedUnit?.build_system === "platformio";
+      const compatibleDevices = (state.devices || []).filter((device) => !selectedBoardId || String(device.hardware_profile_id) === String(config.board_configuration?.base_board_profile_id));
+      return `<section class="learning-software-target-panel">
+        <header><div><p class="eyebrow">Software und Build-Ziel</p><strong>${escapeHtml(selectedUnit?.title || "Softwareeinheit")}</strong></div><span>${escapeHtml(selectedUnit?.build_system || "nicht konfiguriert")}</span></header>
+        <div class="learning-software-target-grid">
+          <label>Softwareeinheit<select data-learning-software-unit>${units.map((unit) => `<option value="${escapeAttribute(unit.software_unit_id)}" ${unit.software_unit_id === selectedUnit?.software_unit_id ? "selected" : ""}>${escapeHtml(unit.title)} · ${escapeHtml(unit.software_kind)}</option>`).join("")}</select></label>
+          ${platformio ? `<label>Zielboard<select data-learning-target-board><option value="">Zielboard auswählen</option>${(state.processorBoards || []).map((board) => {
+            const id = board.hardware_item_id || board.hardware_profile_id || board.id;
+            return `<option value="${escapeAttribute(id)}" ${id === selectedBoardId ? "selected" : ""}>${escapeHtml(board.title || id)}</option>`;
+          }).join("")}</select></label>
+          <label>Oder Inventar-Device<select data-learning-target-device><option value="">Nur für das gewählte Board bauen</option>${compatibleDevices.map((device) => `<option value="${escapeAttribute(device.device_id)}" ${device.device_id === selectedDeviceId ? "selected" : ""}>${escapeHtml(device.display_name || device.device_id)}</option>`).join("")}</select></label>` : `<p class="helper-text">Diese Einheit kann bereits mit Quellen und Build-System gespeichert werden. Für ${escapeHtml(selectedUnit?.build_system || "dieses Build-System")} fehlt noch ein ausführender Runner.</p>`}
+        </div>
+        <footer><span>${platformio && selectedBoardId ? `${escapeHtml(config.platform || "PlatformIO")} · ${escapeHtml(config.board || "Boardziel")} · ${escapeHtml(config.framework || "ohne Framework")}` : "Wähle ein Build-Ziel für diese Softwareeinheit."}</span><button type="button" data-build-learning-software-unit ${platformio && selectedBoardId ? "" : "disabled"}>Ausgewähltes Target bauen</button></footer>
+      </section>`;
+    }
+
     function projectLabState(view) {
       state.guidedLabs ||= {};
       const key = view.id || "lab";
@@ -549,7 +607,7 @@ const GuidedProjectView = (() => {
     }
 
     function renderInventoryBoardSelection(project) {
-      const selectedDeviceId = project.linkedDeviceId || "";
+      const selectedDeviceId = selectedLearningSoftwareUnit(project)?.device_id || project.linkedDeviceId || "";
       const selectedDevice = state.devices.find((device) => device.device_id === selectedDeviceId) || null;
       const otaReadyDevices = state.devices.filter((device) => device.ota_status === "ready");
       return `
@@ -580,8 +638,10 @@ const GuidedProjectView = (() => {
 
     function renderButtonInputLab(project, lab) {
       const serialLines = lab.lines.length ? lab.lines : ["Warte auf Firmware-Flash."];
-      const selectedDeviceId = project.linkedDeviceId || "";
+      const selectedSoftwareUnit = selectedLearningSoftwareUnit(project);
+      const selectedDeviceId = selectedSoftwareUnit?.device_id || project.linkedDeviceId || "";
       const selectedDevice = state.devices.find((device) => device.device_id === selectedDeviceId) || null;
+      const buildTargetReady = Boolean(selectedSoftwareUnit?.build_config?.board_configuration?.base_board_profile_id);
       const ready = lab.flashed && Boolean(selectedDevice);
       return `
         <section class="guided-device-lab">
@@ -603,18 +663,18 @@ const GuidedProjectView = (() => {
               <p>${selectedDevice ? `Dieses Lernprojekt ist mit <strong>${escapeHtml(selectedDevice.display_name || selectedDevice.device_id)}</strong> verbunden. Der MQTT-Broker akzeptiert nur das Zertifikat und die Device-Topics dieses Boards.` : "Waehle ein provisioniertes Board. Erst dessen technische Device-ID und Zertifikat machen die MQTT-Verbindung eindeutig."}</p>
             </section>
             <section class="guided-firmware-card">
-              <strong>2. Taster-Firmware bauen (Simulation)</strong>
+              <strong>2. Taster-Firmware für das gewählte Target bauen</strong>
               <pre><code>pinMode(BUTTON_PIN, INPUT_PULLUP);
 if (digitalRead(BUTTON_PIN) == LOW) {
   publishEvent("taste_gedrueckt");
   Serial.println("taste_gedrueckt");
 }</code></pre>
               <div class="guided-lab-actions">
-                <button type="button" data-guided-lab-action="build" ${selectedDevice ? "" : "disabled"}>Firmware bauen</button>
+                <button type="button" data-guided-lab-action="build" ${buildTargetReady ? "" : "disabled"}>Firmware bauen</button>
                 <button type="button" data-guided-lab-action="flash_usb" ${lab.built ? "" : "disabled"}>Per USB flashen</button>
                 <button type="button" data-guided-lab-action="flash_ota" ${lab.built ? "" : "disabled"}>Per OTA flashen</button>
               </div>
-              <p class="helper-text">Build und Flash sind in diesem Lernschritt simuliert. Die echten Build- und Flashdienste werden anschliessend angeschlossen.</p>
+              <p class="helper-text">Der Build verwendet ausschließlich die gespeicherte Softwareeinheit und deren Board-Target. Flash benötigt zusätzlich ein physisches Device.</p>
             </section>
             <section class="guided-serial-monitor" aria-live="polite">
               <div><strong>Serial Monitor</strong><span>${ready ? `${escapeHtml(lab.streamStatus)} · ${escapeHtml(lab.transport)}` : "noch nicht verbunden"}</span></div>
@@ -969,11 +1029,11 @@ if (digitalRead(BUTTON_PIN) == LOW) {
       return undefined;
     }
 
-    function handleGuidedLabAction(project, view, action, targetSelector) {
+    async function handleGuidedLabAction(project, view, action, targetSelector) {
       const lab = projectLabState(view);
       if (action === "build") {
-        lab.built = true;
-        lab.lines = ["[Build] Starte ESP32-Firmware-Build (Simulation) ...", "[Build] Erfolgreich: firmware.bin bereit."];
+        await buildGuidedSoftwareUnit(project, view, targetSelector);
+        return;
       }
       if (action === "flash_usb" || action === "flash_ota") {
         const ota = action === "flash_ota";
@@ -1027,11 +1087,12 @@ if (digitalRead(BUTTON_PIN) == LOW) {
 
     async function assignGuidedLabDevice(project, view, deviceId, targetSelector) {
       if (!deviceId) return;
+      const softwareUnit = selectedLearningSoftwareUnit(project);
       const lab = projectLabState(view);
       lab.lines = ["[Inventar] Board wird dem Lernprojekt zugeordnet ..."];
       renderProjectViewManifest(project, targetSelector);
       try {
-        const response = await postJson(`/api/platform/learning-projects/${encodeURIComponent(project.id)}/device`, { device_id: deviceId });
+        const response = await postJson(`/api/platform/learning-projects/${encodeURIComponent(project.id)}/device`, { device_id: deviceId, software_unit_id: softwareUnit?.software_unit_id || "" });
         Object.assign(project, response.project);
         state.projects = state.projects.map((item) => item.id === project.id ? response.project : item);
         lab.lines = [`[Inventar] ${response.device?.display_name || deviceId} ist diesem Lernprojekt zugeordnet.`, "[MQTT] Board-ID und Projektzuordnung werden vor jeder Runtime-Meldung serverseitig geprueft."];
@@ -1042,7 +1103,7 @@ if (digitalRead(BUTTON_PIN) == LOW) {
     }
 
     function renderLearningBoardConfigurationSelection(project) {
-      const current = project.buildConfig?.board_configuration || project.build_config?.board_configuration || {};
+      const current = selectedLearningSoftwareUnit(project)?.build_config?.board_configuration || project.buildConfig?.board_configuration || project.build_config?.board_configuration || {};
       const selectedId = current.account_board_id
         ? `account_board:${current.account_board_id}:v${current.account_board_version}`
         : current.base_board_profile_id || project.hardwareProfileId || project.hardware_profile_id || "";
@@ -1059,16 +1120,44 @@ if (digitalRead(BUTTON_PIN) == LOW) {
 
     async function assignGuidedBoardConfiguration(project, view, boardProfileId, targetSelector) {
       if (!boardProfileId) return;
+      const softwareUnit = selectedLearningSoftwareUnit(project);
       const lab = projectLabState(view);
       lab.lines = ["[Board] Konfiguration wird als Projektsnapshot gespeichert ..."];
       renderProjectViewManifest(project, targetSelector);
       try {
-        const response = await postJson(`/api/platform/learning-projects/${encodeURIComponent(project.id)}/device`, { board_profile_id: boardProfileId });
+        const response = await postJson(`/api/platform/learning-projects/${encodeURIComponent(project.id)}/device`, { board_profile_id: boardProfileId, software_unit_id: softwareUnit?.software_unit_id || "" });
         Object.assign(project, response.project);
         state.projects = state.projects.map((item) => item.id === project.id ? response.project : item);
         lab.lines = [`[Board] ${response.board?.title || boardProfileId} wurde als fester Projektsnapshot übernommen.`];
       } catch (error) {
         lab.lines = [`[Board] Auswahl fehlgeschlagen: ${error.message}`];
+      }
+      renderProjectViewManifest(project, targetSelector);
+    }
+
+    async function buildGuidedSoftwareUnit(project, view, targetSelector) {
+      const softwareUnit = selectedLearningSoftwareUnit(project);
+      if (!softwareUnit || softwareUnit.build_system !== "platformio") return;
+      const lab = projectLabState(view);
+      lab.lines = [`[Build] ${softwareUnit.title} wird für das gespeicherte Target gebaut ...`];
+      renderProjectViewManifest(project, targetSelector);
+      try {
+        const build = await postJson("/api/user-ide/build-jobs", {
+          project_slug: project.slug,
+          software_unit_id: softwareUnit.software_unit_id,
+          device_id: softwareUnit.device_id || "",
+          mode: "build",
+        });
+        const completed = typeof waitForCompletedBuild === "function" ? await waitForCompletedBuild(build) : build;
+        state.builds ||= [];
+        state.builds.unshift(completed);
+        lab.built = completed.status === "succeeded";
+        lab.lines = completed.status === "succeeded"
+          ? [`[Build] ${softwareUnit.title} erfolgreich gebaut.`, `[Target] ${softwareUnit.build_config?.platform || "PlatformIO"} · ${softwareUnit.build_config?.board || "Board"}`]
+          : [`[Build] Fehlgeschlagen: ${completed.error || completed.status || "unbekannter Fehler"}`];
+      } catch (error) {
+        lab.built = false;
+        lab.lines = [`[Build] Fehlgeschlagen: ${error.message}`];
       }
       renderProjectViewManifest(project, targetSelector);
     }

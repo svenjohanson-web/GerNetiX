@@ -423,6 +423,7 @@ const DevelopmentPlatform = (() => {
                 <option value="actuator" ${selected(draftType, "actuator")}>Aktor</option>
                 <option value="smartphone_app" ${selected(draftType, "smartphone_app")}>Smartphone-App</option>
                 <option value="browser_app" ${selected(draftType, "browser_app")}>Browser-App</option>
+                <option value="desktop_app" ${selected(draftType, "desktop_app")}>Desktop-App</option>
                 <option value="server_api" ${selected(draftType, "server_api")}>Server / API</option>
               </select>
             </label>
@@ -431,7 +432,25 @@ const DevelopmentPlatform = (() => {
             <button type="button" class="secondary" data-template-component-add ${!connectionOptions.length ? "disabled" : ""}>+ Komponente</button>
           </form>
         </div>
+        ${renderSoftwareUnitPreview(components)}
       `;
+    }
+
+    function renderSoftwareUnitPreview(components) {
+      const software = (components || []).filter((component) => ["iot_device", "smartphone_app", "browser_app", "desktop_app", "server_api"].includes(component.abstract_type));
+      if (!software.length) return "";
+      const buildSystems = {
+        iot_device: "PlatformIO",
+        smartphone_app: "App-/Web-Build",
+        browser_app: "Web-Build",
+        desktop_app: "Desktop-Build",
+        server_api: "Server-Build",
+      };
+      return `<aside class="template-software-units">
+        <div><p class="eyebrow">Software-Einheiten</p><h4>Getrennte Quellen und Build-Ziele</h4></div>
+        <ul>${software.map((component) => `<li><strong>${escapeHtml(component.label)}</strong><span>${escapeHtml(buildSystems[component.abstract_type])}</span><small>Komponenten/${escapeHtml(component.label)}</small></li>`).join("")}</ul>
+        <p>Jede Einheit wird im Projekt separat gespeichert. In der IDE waehlt man vor dem Build die auszufuehrende Einheit und ihr Ziel.</p>
+      </aside>`;
     }
 
     function templateComponentTypeLabel(type) {
@@ -494,12 +513,12 @@ const DevelopmentPlatform = (() => {
       const diagram = state.developmentPlatform.architectureDiagram || architectureDiagramForProject(currentProject());
       if (!diagram?.source) return;
       const safeLabel = String(label).replace(/["\\\\]/g, " ").replace(/\s+/g, " ").trim();
-      const aliasBase = ({ iot_device: "iot_device", sensor: "sensor", actuator: "actuator", smartphone_app: "smartphone_app", browser_app: "browser_app", server_api: "server_api" })[type] || "component";
+      const aliasBase = ({ iot_device: "iot_device", sensor: "sensor", actuator: "actuator", smartphone_app: "smartphone_app", browser_app: "browser_app", desktop_app: "desktop_app", server_api: "server_api" })[type] || "component";
       const aliases = new Set(abstractArchitectureComponents(diagram.source).map((component) => component.component_id));
       let suffix = 1;
       while (aliases.has(`${aliasBase}_${suffix}`)) suffix += 1;
       const alias = `${aliasBase}_${suffix}`;
-      const plantUmlType = ({ iot_device: "node", smartphone_app: "component", server_api: "node" })[type] || "component";
+      const plantUmlType = ({ iot_device: "node", smartphone_app: "component", desktop_app: "component", server_api: "node" })[type] || "component";
       const declaration = `${plantUmlType} "${safeLabel}" as ${alias}`;
       const relationshipRule = globalThis.DevelopmentComponentMetamodel?.relationshipRules.find((item) => item.id === relationshipRuleId);
       if (!relationshipRule) return;
@@ -1979,6 +1998,7 @@ const DevelopmentPlatform = (() => {
       if (/aktor|motor|relais|ventil|servo|summer|buzzer|led/.test(text)) return "actuator";
       if (/pwa|iphone|smartphone|mobile app/.test(text)) return "smartphone_app";
       if (/browser|dashboard/.test(text)) return "browser_app";
+      if (/desktop|windows app|mac(?:os)? app|linux app/.test(text)) return "desktop_app";
       if (/server|api|vps|koordination|webserver/.test(text)) return "server_api";
       return "structural";
     }

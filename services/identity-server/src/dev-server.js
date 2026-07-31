@@ -2673,25 +2673,44 @@ async function handleLearningProjectDeviceAssign(req, res, session, projectId) {
   const device = deviceId ? (await loadUserIdeDevices(session)).find((item) => item.device_id === deviceId) : null;
   if (deviceId && !device) { sendJson(res, 404, { error: "inventory_device_not_found", message: "Das gewaehlte Board ist nicht in deinem Inventar." }); return; }
   const availableBoards = await loadAvailableProcessorBoards(session);
-  const selectedBoard = boardProfileId
+  let selectedBoard = boardProfileId
     ? availableBoards.find((board) => [board.hardware_item_id, board.hardware_profile_id, board.id].filter(Boolean).includes(boardProfileId))
     : null;
   if (boardProfileId && !selectedBoard) { sendJson(res, 404, { error: "board_configuration_not_found", message: "Die gewaehlte GerNetiX- oder Account-Boardkonfiguration wurde nicht gefunden." }); return; }
-  const baseBoardId = selectedBoard?.base_board_profile_id || device?.hardware_profile_id || project.hardware_profile_id;
-  let buildConfig = buildConfigForBoard(selectedBoard || baseBoardId, project.build_config);
+  if (!selectedBoard && device) {
+    selectedBoard = availableBoards.find((board) => String(board.base_board_profile_id || board.hardware_item_id) === String(device.hardware_profile_id)) || null;
+  }
+  if (selectedBoard && device && String(selectedBoard.base_board_profile_id || selectedBoard.hardware_item_id) !== String(device.hardware_profile_id)) {
+    sendJson(res, 409, { error: "inventory_board_target_mismatch", message: "Inventar-Device und gewähltes Compiler-Board verwenden nicht dasselbe physische Boardprofil." });
+    return;
+  }
+  const softwareUnits = platformSoftwareUnits(project);
+  const softwareUnitId = String(body.software_unit_id || project.active_software_unit_id || softwareUnits[0]?.software_unit_id || "").trim();
+  const softwareUnit = softwareUnits.find((unit) => unit.software_unit_id === softwareUnitId) || null;
+  if (!softwareUnit) { sendJson(res, 404, { error: "software_unit_not_found", message: "Die gewählte Softwareeinheit gehört nicht zu diesem Lernprojekt." }); return; }
+  if (softwareUnit.build_system !== "platformio") { sendJson(res, 409, { error: "software_unit_target_not_board", message: "Diese Softwareeinheit besitzt kein PlatformIO-Boardziel." }); return; }
+  const baseBoardId = selectedBoard?.base_board_profile_id || device?.hardware_profile_id || softwareUnit.build_config?.board_configuration?.base_board_profile_id || project.hardware_profile_id;
+  let buildConfig = buildConfigForBoard(selectedBoard || baseBoardId, softwareUnit.build_config || project.build_config);
   if (buildConfig && selectedBoard) buildConfig = {
     ...buildConfig,
     board_configuration: compilerBoardConfiguration(null, selectedBoard),
   };
+  const nextSoftwareUnits = softwareUnits.map((unit) => unit.software_unit_id === softwareUnitId ? {
+    ...unit,
+    device_id: deviceId || unit.device_id || "",
+    build_config: buildConfig,
+  } : unit);
   const updated = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
       device_id: device?.device_id || project.device_id || "",
       hardware_profile_id: baseBoardId,
       build_config: buildConfig,
+      software_units: nextSoftwareUnits,
+      active_software_unit_id: softwareUnitId,
     },
   });
-  sendJson(res, 200, { project: toPlatformProject(mapProjectServerProject(session, updated)), device, board: selectedBoard });
+  sendJson(res, 200, { project: toPlatformProject(mapProjectServerProject(session, updated)), device, board: selectedBoard, software_unit_id: softwareUnitId });
 }
 
 async function handlePlatformProjectDelete(res, session, projectId) {
@@ -2794,6 +2813,12 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
       },
     });
   }
+  const softwareUnits = developmentSoftwareUnits(project, diagram, hardwareConfigurationFromManifest(existingManifest), {
+    primaryBuildConfig: buildConfig,
+  });
+  const activeSoftwareUnitId = softwareUnits.some((unit) => unit.software_unit_id === project.active_software_unit_id)
+    ? project.active_software_unit_id
+    : softwareUnits[0]?.software_unit_id || "";
   await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
@@ -2806,6 +2831,8 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
         ...(gameConfiguration ? { game_configuration: gameConfiguration } : {}),
       },
       build_config: buildConfig,
+      software_units: softwareUnits,
+      active_software_unit_id: activeSoftwareUnitId,
     },
   });
   touchWorkspace(session, project.project_server_id, "development-platform", "/app/development-platform/");
@@ -2899,6 +2926,13 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
     } : {}),
     ...(!allocatedBasissoftwareProfile && [4, 8, 16].includes(configuredFlashSizeMb) ? { flash_size_mb: configuredFlashSizeMb } : {}),
   } : null;
+  const softwareUnits = developmentSoftwareUnits(project, diagram, hardwareConfiguration, {
+    primaryBuildConfig: buildConfig,
+    boards: availableBoards,
+  });
+  const activeSoftwareUnitId = softwareUnits.some((unit) => unit.software_unit_id === project.active_software_unit_id)
+    ? project.active_software_unit_id
+    : softwareUnits[0]?.software_unit_id || "";
   const gameConfiguration = existingManifest.template_id === "touchscreen_game_collection"
     ? normalizeTouchscreenGameConfiguration({
         ...(existingManifest.game_configuration || defaultTouchscreenGameConfiguration()),
@@ -2918,6 +2952,8 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
       hardware_profile_id: selectedBaseBoardId || project.hardware_profile_id,
       device_id: primaryInventoryDevice?.device_id || "",
       build_config: buildConfig || null,
+      software_units: softwareUnits,
+      active_software_unit_id: activeSoftwareUnitId,
       view_manifest: developmentProjectViewManifest({
         title: project.title,
         description: project.summary,
@@ -3381,7 +3417,7 @@ async function handleUserIdeBuildJob(req, res) {
   const projects = await loadUserIdeProjects(session);
   const devices = await loadUserIdeDevices(session);
   const project = projects.find((item) => item.slug === body.project_slug);
-  const device = devices.find((item) => item.device_id === body.device_id || item.account_device_id === body.device_id) || null;
+  let device = devices.find((item) => item.device_id === body.device_id || item.account_device_id === body.device_id) || null;
   const mode = body.mode || "build";
   const flashTransportRequested = body.flash_transport === "flashbox";
   const flashbox = flashTransportRequested
@@ -3392,7 +3428,21 @@ async function handleUserIdeBuildJob(req, res) {
     sendJson(res, 404, { error: "project_not_found", message: "Projekt wurde nicht gefunden." });
     return;
   }
-  const resolvedBuildConfig = resolveBuildConfig(project, device || {});
+  const softwareUnits = platformSoftwareUnits(project);
+  const softwareUnitId = String(body.software_unit_id || project.active_software_unit_id || softwareUnits[0]?.software_unit_id || "").trim();
+  const softwareUnit = softwareUnits.find((unit) => unit.software_unit_id === softwareUnitId) || null;
+  if (softwareUnitId && !softwareUnit) {
+    sendJson(res, 404, { error: "software_unit_not_found", message: "Die gewählte Softwareeinheit gehört nicht zu diesem Projekt." });
+    return;
+  }
+  if (softwareUnit && softwareUnit.build_system !== "platformio") {
+    sendJson(res, 409, { error: "software_unit_builder_not_supported", message: `Das Build-System ${softwareUnit.build_system} ist noch nicht an einen Build-Runner angebunden.` });
+    return;
+  }
+  if (!device && softwareUnit?.device_id) {
+    device = devices.find((item) => item.device_id === softwareUnit.device_id || item.account_device_id === softwareUnit.device_id) || null;
+  }
+  const resolvedBuildConfig = softwareUnit?.build_config || resolveBuildConfig(project, device || {});
   if (project.view_manifest?.template_id === "touchscreen_game_collection") {
     const problems = touchscreenGameBuildConfigurationProblems(project, resolvedBuildConfig);
     const sourcePayload = problems.length
@@ -3472,6 +3522,7 @@ async function handleUserIdeBuildJob(req, res) {
     body: {
       mode,
       device_id: device?.device_id || null,
+      software_unit_id: softwareUnit?.software_unit_id || "",
       build_config: resolvedBuildConfig,
     },
   });
@@ -3521,6 +3572,8 @@ async function handleUserIdeBuildJob(req, res) {
     project_server_id: project.project_server_id,
     project_slug: project.slug,
     project_title: project.title,
+    software_unit_id: softwareUnit?.software_unit_id || "",
+    software_unit_title: softwareUnit?.title || "Firmware",
     device_id: device?.device_id || null,
     device_label: device?.display_name || "kein Device erforderlich",
     flashbox_device_id: flashbox?.device_id || null,
@@ -3766,6 +3819,8 @@ function mapProjectServerProject(session, project) {
       owner_user_id: project.user_id || userId,
       hardware_profile_id: project.hardware_profile_id || learningDefinition.hardware_profile_id,
       build_config: project.build_config || learningDefinition.build_config,
+      software_units: platformSoftwareUnits(project, learningDefinition.build_config),
+      active_software_unit_id: platformActiveSoftwareUnitId(project),
       linked_device_id: project.device_id || "",
       status: project.status || "active",
       last_build_status: latestBuildStatus(project),
@@ -3801,6 +3856,8 @@ function mapProjectServerProject(session, project) {
     owner_user_id: project.user_id || userId,
     hardware_profile_id: project.hardware_profile_id || "architecture.discovery",
     build_config: project.build_config || null,
+    software_units: platformSoftwareUnits(project),
+    active_software_unit_id: platformActiveSoftwareUnitId(project),
     linked_device_id: project.device_id || "",
     status: project.status || "active",
     last_build_status: latestBuildStatus(project),
@@ -3899,6 +3956,8 @@ async function loadProjectBuilds(projects, session) {
         project_server_id: job.project_id,
         project_slug: project.slug,
         project_title: project.title,
+        software_unit_id: job.software_unit_id || "",
+        software_unit_title: job.software_unit?.title || "Firmware",
         device_id: job.device_id,
         device_label: device ? device.display_name : job.device_id || "kein Device",
         mode: job.mode,
@@ -3940,6 +3999,8 @@ function toPlatformProject(project) {
     requiredCapabilityIds: project.required_capability_ids,
     accessModel: project.access_model || "subscription",
     buildConfig: project.build_config,
+    softwareUnits: platformSoftwareUnits(project),
+    activeSoftwareUnitId: platformActiveSoftwareUnitId(project),
     status: project.status,
     sourceCount: project.source_count,
     buildCount: project.build_count,
@@ -5447,6 +5508,115 @@ function buildConfigForBoard(boardOrProfileId, existing = null) {
   if (/esp32_s3|esp32-s3/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: existing?.framework || "espidf", board: "esp32-s3-devkitc-1", environment: "esp32-s3-devkitc-1", firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: existing?.firmware_basis_version || "workspace", firmware_basis_variant: existing?.firmware_basis_variant || "comfort", user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/user/user_app.cpp" };
   if (/esp32|wroom32|nano_esp32/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: existing?.framework || "espidf", board: "esp32dev", environment: "esp32dev", firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: existing?.firmware_basis_version || "workspace", firmware_basis_variant: existing?.firmware_basis_variant || "comfort", user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/user/user_app.cpp" };
   return existing;
+}
+
+function platformSoftwareUnits(project = {}, fallbackBuildConfig = null) {
+  if (Array.isArray(project.software_units) && project.software_units.length) {
+    return project.software_units.map((unit) => structuredClone(unit));
+  }
+  const buildConfig = project.build_config || fallbackBuildConfig;
+  return buildConfig ? [{
+    software_unit_id: "firmware",
+    title: "Firmware",
+    software_kind: "embedded_firmware",
+    build_system: "platformio",
+    source_root: "",
+    entrypoint: buildConfig.user_source_path || "",
+    device_id: project.device_id || "",
+    build_config: structuredClone(buildConfig),
+    build_configuration: null,
+  }] : [];
+}
+
+function platformActiveSoftwareUnitId(project = {}) {
+  const units = platformSoftwareUnits(project);
+  return units.some((unit) => unit.software_unit_id === project.active_software_unit_id)
+    ? project.active_software_unit_id
+    : units[0]?.software_unit_id || "";
+}
+
+function developmentSoftwareUnits(project = {}, diagram = {}, hardwareConfiguration = null, options = {}) {
+  const existingUnits = platformSoftwareUnits(project);
+  const components = developmentArchitectureSoftwareComponents(diagram?.source || "");
+  const hardwareComponents = new Map((hardwareConfiguration?.components || []).map((component) => [component.component_id, component]));
+  const boards = options.boards || [];
+  let embeddedIndex = 0;
+  const usedExistingIds = new Set();
+  const units = components.map((component) => {
+    const hardware = hardwareComponents.get(component.component_id) || null;
+    const expectedId = `software_${component.component_id}`.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120);
+    let existing = existingUnits.find((unit) => unit.software_unit_id === expectedId)
+      || existingUnits.find((unit) => unit.title === component.label);
+    if (!existing && component.abstract_type === "iot_device" && embeddedIndex === 0) {
+      existing = existingUnits.find((unit) => unit.software_kind === "embedded_firmware") || null;
+    }
+    const softwareUnitId = existing?.software_unit_id || expectedId;
+    usedExistingIds.add(softwareUnitId);
+    const sourceRoot = existing ? existing.source_root : (hardware?.component_path || `Komponenten/${component.label}`);
+    if (component.abstract_type === "iot_device") {
+      const board = boards.find((item) => [item.hardware_item_id, item.hardware_profile_id, item.id]
+        .filter(Boolean).some((id) => String(id) === String(hardware?.board_profile_id || "")));
+      const buildConfig = embeddedIndex === 0 && options.primaryBuildConfig
+        ? options.primaryBuildConfig
+        : buildConfigForBoard(board || hardware?.board_profile_id || "", existing?.build_config || null);
+      embeddedIndex += 1;
+      return {
+        software_unit_id: softwareUnitId,
+        title: component.label,
+        software_kind: "embedded_firmware",
+        build_system: "platformio",
+        source_root: sourceRoot,
+        entrypoint: buildConfig?.user_source_path || existing?.entrypoint || "src/main.cpp",
+        device_id: hardware?.inventory_device_id || existing?.device_id || "",
+        build_config: buildConfig || existing?.build_config || null,
+        build_configuration: null,
+      };
+    }
+    const kind = {
+      smartphone_app: "mobile_application",
+      browser_app: "web_application",
+      desktop_app: "desktop_application",
+      server_api: "server_application",
+    }[component.abstract_type] || "application";
+    return {
+      software_unit_id: softwareUnitId,
+      title: component.label,
+      software_kind: kind,
+      build_system: existing?.build_system || "npm",
+      source_root: sourceRoot,
+      entrypoint: existing?.entrypoint || "package.json",
+      device_id: "",
+      build_config: null,
+      build_configuration: existing?.build_configuration || {
+        install_command: "npm install",
+        build_command: "npm run build",
+        runner_status: "not_connected",
+      },
+    };
+  });
+  existingUnits.forEach((unit) => {
+    if (!usedExistingIds.has(unit.software_unit_id)) units.push(unit);
+  });
+  return units;
+}
+
+function developmentArchitectureSoftwareComponents(source) {
+  const result = [];
+  String(source || "").split(/\r?\n/).forEach((line) => {
+    const match = line.match(/^\s*(?:actor|node|component|rectangle|database|cloud|queue|artifact)\s+"([^"]+)"\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\b/i);
+    if (!match) return;
+    const label = match[1].replace(/\\n/g, " ").trim();
+    const alias = match[2];
+    const signature = `${alias} ${label}`.toLowerCase();
+    let abstractType = "";
+    if (/^iot_device|iot.?device|esp32|esp8266|arduino|raspberry/.test(signature)) abstractType = "iot_device";
+    else if (/^smartphone_app|smartphone|mobile app|\bpwa\b/.test(signature)) abstractType = "smartphone_app";
+    else if (/^browser_app|browser|dashboard/.test(signature)) abstractType = "browser_app";
+    else if (/^desktop_app|desktop|windows app|mac(?:os)? app|linux app/.test(signature)) abstractType = "desktop_app";
+    else if (/^server_api|server|\bapi\b|backend|webserver|\bvps\b/.test(signature)) abstractType = "server_api";
+    if (abstractType) result.push({ component_id: alias, label, abstract_type: abstractType });
+  });
+  return result;
 }
 
 function normalizeArchitectureDialog(input = {}, diagram = null) {

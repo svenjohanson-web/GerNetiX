@@ -9,6 +9,9 @@ test("allows only defined architecture relationships and derives sensor and actu
   assert.equal(metamodel.validatesRelation("iot_device", "telemetry_api"), true);
   assert.equal(metamodel.validatesRelation("telemetry_api", "project_storage"), true);
   assert.equal(metamodel.validatesRelation("notification_service", "smartphone_app"), true);
+  assert.equal(metamodel.validatesRelation("actor", "desktop_app"), true);
+  assert.equal(metamodel.validatesRelation("desktop_app", "server_api"), true);
+  assert.equal(metamodel.componentTypes.desktop_app.label, "Desktop-App");
   assert.equal(metamodel.componentTypes.telemetry_api.user_configurable, false);
   assert.equal(metamodel.componentTypes.project_storage.user_configurable, false);
   assert.equal(metamodel.componentTypes.notification_service.user_configurable, false);

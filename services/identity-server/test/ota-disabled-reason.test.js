@@ -22,8 +22,8 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /Für OTA ist kein kompatibles Board im Inventar/);
   assert.match(app, /Build und direkter USB-Flash funktionieren auch ohne diese Zuordnung/);
   assert.match(app, /meldet den OTA-Status/);
-  assert.match(app, /buildButton\.disabled = false/);
-  assert.match(app, /usbButton\.disabled = false/);
+  assert.match(app, /buildButton\.disabled = !supportedBuild/);
+  assert.match(app, /usbButton\.disabled = !supportedBuild/);
   assert.match(app, /otaButton\.disabled = !allocated/);
   assert.match(html, /id="checkOtaConnectivityButton"/);
   assert.match(app, /Direkter USB-Flash verwendet die Projekt-Boardkonfiguration/);
@@ -60,7 +60,7 @@ test("plain project build and direct USB flash do not require an inventory devic
 
   assert.match(app, /device_id: device\?\.device_id \|\| ""/);
   assert.match(server, /if \(!device && !\["build", "build_and_usb_flash"\]\.includes\(mode\)\)/);
-  assert.match(server, /const resolvedBuildConfig = resolveBuildConfig\(project, device \|\| \{\}\)/);
+  assert.match(server, /const resolvedBuildConfig = softwareUnit\?\.build_config \|\| resolveBuildConfig\(project, device \|\| \{\}\)/);
   assert.match(server, /build_config: resolvedBuildConfig/);
   assert.match(app, /async function startUsbFlash\(\)[\s\S]*if \(!project\) return setFlashStatus\("error", "Bitte zuerst ein Projekt öffnen\."\)/);
   assert.match(server, /body\.upload_port \|\| device\?\.upload_port/);
