@@ -418,11 +418,11 @@ async function bootstrap() {
     return;
   }
   developmentPlatform().init();
-  await refresh();
+  await refreshBootstrap();
   await initializePlatformI18n();
-  await loadPlatformDownloads();
   renderAll();
   renderRoute();
+  void hydratePlatformState();
 }
 
 async function initializePlatformI18n() {
@@ -524,6 +524,33 @@ async function refresh() {
   state.activeProjectId = new URLSearchParams(window.location.search).get("project") || state.workspace.lastProjectId || state.projects[0]?.id || "";
   state.activeDeviceId = state.devices.find((device) => device.usb_flash_supported)?.device_id || state.devices[0]?.device_id || "";
   state.activeRecoveryDeviceId = state.activeRecoveryDeviceId || state.activeDeviceId;
+}
+
+async function refreshBootstrap() {
+  const summary = await getJson("/api/platform/bootstrap");
+  state.account = summary.account;
+  state.projects = summary.projects || [];
+  state.workspace = summary.workspace_state || {};
+  state.billing = summary.billing || null;
+  state.devices = [];
+  state.builds = [];
+  state.progress = [];
+  state.activeProjectId = new URLSearchParams(window.location.search).get("project") || state.workspace.lastProjectId || state.projects[0]?.id || "";
+  developmentPlatform().setAssistantConfig(summary.development_assistant || null, state.billing);
+  developmentPlatform().setProjectTemplates(
+    summary.development_project_templates || [],
+    summary.development_project_template_previews || [],
+  );
+}
+
+async function hydratePlatformState() {
+  await Promise.all([
+    loadPlatformDownloads(),
+    refresh().then(() => {
+      renderAll();
+      renderRoute();
+    }),
+  ]).catch(() => {});
 }
 
 function renderAll() {

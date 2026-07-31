@@ -296,6 +296,8 @@ const notifyPrivateCommunityRequest = createPrivateCommunityNotifier({
 let auth;
 const sessions = new Map();
 const userIdeState = createUserIdeState();
+const projectServerSeededUsers = new Set();
+const projectServerSeedPromises = new Map();
 
 async function bootstrap() {
   if (identityPushStateStore) await identityPushStateStore.initialize();
@@ -878,6 +880,16 @@ async function routeRequest(req, res) {
       return;
     }
     await handlePlatformSummary(res, session);
+    return;
+  }
+
+  if (url.pathname === "/api/platform/bootstrap") {
+    const session = await readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handlePlatformBootstrap(res, session);
     return;
   }
 
@@ -2209,6 +2221,36 @@ async function handlePlatformSummary(res, session) {
     billing: await loadBillingSummary(session, aiUsage),
     ai_usage: aiUsage,
     service_status: serviceStatus,
+  });
+}
+
+async function handlePlatformBootstrap(res, session) {
+  const startedAt = Date.now();
+  const projects = await loadUserIdeProjects(session);
+  const userId = projectServerUserId(session);
+  const subscription = accountSubscription(session);
+  sendJson(res, 200, {
+    account: {
+      username: session.account.username || "",
+      user_id: userId,
+      plan: subscription.plan,
+      capabilities: ["ide_flash_usb", "ide_flash_ota", "cloud_flash"],
+    },
+    workspace_state: getWorkspaceState(userId),
+    development_assistant: developmentAssistant.config(),
+    development_project_templates: developmentProjectTemplateCatalog().map((template) => ({
+      ...template,
+      available: hasEntitlements(session, template.required_entitlements),
+    })),
+    development_project_template_previews: developmentProjectTemplatePreviews(),
+    projects: projects.map(toPlatformProject),
+    billing: {
+      plan: subscription.plan,
+      entitlements: subscription.entitlements,
+      ai_credits: { monthly_available_credits: 0, purchased_available_credits: 0, consumed_credits: 0 },
+      ai_credit_packages: [],
+    },
+    bootstrap_duration_ms: Date.now() - startedAt,
   });
 }
 
@@ -3571,7 +3613,7 @@ function recoveryCheckItem(checkId, ok, message) {
 
 async function loadUserIdeProjects(session) {
   const userId = projectServerUserId(session);
-  await ensureProjectServerDemoProjects(session);
+  scheduleProjectServerDemoProjects(session);
   const response = await projectServerJson(`/api/projects?user_id=${encodeURIComponent(userId)}`);
   const synchronizedItems = await Promise.all(response.items.map(async (project) => {
     const definition = userIdeState.projectDefinitions
@@ -3696,9 +3738,24 @@ function mapProjectServerProject(session, project) {
   };
 }
 
-async function ensureProjectServerDemoProjects(session) {
-  if (userIdeState.projectServerSeeded) return;
+function scheduleProjectServerDemoProjects(session) {
+  void ensureProjectServerDemoProjects(session).catch((error) => {
+    console.warn(`Project-Server-Katalogsynchronisierung fehlgeschlagen: ${error.message || error}`);
+  });
+}
+
+function ensureProjectServerDemoProjects(session) {
   const userId = projectServerUserId(session);
+  if (projectServerSeededUsers.has(userId)) return Promise.resolve();
+  if (projectServerSeedPromises.has(userId)) return projectServerSeedPromises.get(userId);
+  const promise = seedProjectServerDemoProjects(session, userId)
+    .then(() => { projectServerSeededUsers.add(userId); })
+    .finally(() => { projectServerSeedPromises.delete(userId); });
+  projectServerSeedPromises.set(userId, promise);
+  return promise;
+}
+
+async function seedProjectServerDemoProjects(session, userId) {
   for (const definition of userIdeState.projectDefinitions) {
     await projectServerJson("/api/projects", {
       method: "POST",
@@ -3737,7 +3794,6 @@ async function ensureProjectServerDemoProjects(session) {
       });
     }
   }
-  userIdeState.projectServerSeeded = true;
 }
 
 async function loadProjectBuilds(projects, session) {
@@ -4350,7 +4406,6 @@ function createUserIdeState() {
 
   return {
     projectDefinitions: projects,
-    projectServerSeeded: false,
     lessonManifestOverrides: new Map(),
     workspaceStates: new Map(),
     devices: [
