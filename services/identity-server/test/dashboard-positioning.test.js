@@ -40,8 +40,14 @@ test("places an extensible news category below the workspace categories", () => 
 test("never serves the dashboard route without an authenticated session", () => {
   assert.match(server, /const dashboardRoute = url\.pathname === "\/app\/dashboard" \|\| url\.pathname\.startsWith\("\/app\/dashboard\/"\);/);
   assert.match(server, /if \(dashboardRoute\) \{[\s\S]*?if \(!await readSession\(req\)\) \{[\s\S]*?redirect\(res, authRoute\(url\.pathname \+ url\.search\)\);[\s\S]*?serveStatic\(res, appDir, "\/index\.html"\);/);
+  assert.match(app, /const isServerAuthenticatedAppShell = \/\^\\\/app\\\/\(\?!auth/);
   assert.match(app, /const protectedAppRoute =/);
-  assert.match(app, /if \(protectedAppRoute && !state\.account\) \{[\s\S]*?window\.location\.assign\(`\/app\/auth\/\?next=\$\{encodeURIComponent\(target\.pathname \+ target\.search\)\}`\)/);
+  assert.match(app, /if \(protectedAppRoute && !isServerAuthenticatedAppShell && !state\.account\) \{[\s\S]*?window\.location\.assign\(`\/app\/auth\/\?next=\$\{encodeURIComponent\(target\.pathname \+ target\.search\)\}`\)/);
+});
+
+test("does not mistake an early dashboard click for an anonymous session", () => {
+  assert.match(app, /const isServerAuthenticatedAppShell = \/\^\\\/app\\\/\(\?!auth/);
+  assert.match(app, /protectedAppRoute && !isServerAuthenticatedAppShell && !state\.account/);
 });
 
 test("sends standalone authentication routes to the login page instead of the dashboard view", () => {

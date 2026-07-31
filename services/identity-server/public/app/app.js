@@ -94,6 +94,7 @@ const routeMap = {
 const isPublicHelpPage = /^\/hilfe\/?$/.test(window.location.pathname);
 const isPublicKnowledgePage = /^\/wissen\/?$/.test(window.location.pathname);
 const isPublicInformationPage = isPublicHelpPage || isPublicKnowledgePage;
+const isServerAuthenticatedAppShell = /^\/app\/(?!auth(?:\/|$))/.test(window.location.pathname);
 if (isPublicInformationPage) document.body.classList.add("public-help-page");
 
 let deviceOnboardingController = null;
@@ -781,7 +782,7 @@ function navigate(route) {
     return;
   }
   const protectedAppRoute = /^\/app\/(?!auth(?:\/|$))/.test(target.pathname);
-  if (protectedAppRoute && !state.account) {
+  if (protectedAppRoute && !isServerAuthenticatedAppShell && !state.account) {
     window.location.assign(`/app/auth/?next=${encodeURIComponent(target.pathname + target.search)}`);
     return;
   }
