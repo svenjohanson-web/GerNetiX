@@ -139,7 +139,18 @@ class ProjectService {
   }
 
   async syncPlatformioSources(project) {
-    for (const unit of softwareUnitsForProject(project).filter(isPlatformioSoftwareUnit)) {
+    const units = softwareUnitsForProject(project).filter(isPlatformioSoftwareUnit);
+    const expectedPaths = new Set(units.map((unit) => [unit.source_root, "platformio.ini"].filter(Boolean).join("/")));
+    const activeRoots = units.map((unit) => String(unit.source_root || "").replace(/\/$/, "")).filter(Boolean);
+    const generatedRoles = new Set(["build_config", "device_board_config", "device_sensor_input_config", "device_actuator_output_config", "device_measurement_circuit_config"]);
+    const existingSources = await this.repository.listSources(project.project_id);
+    for (const source of existingSources) {
+      const belongsToActiveRoot = activeRoots.some((root) => source.path === root || source.path.startsWith(`${root}/`));
+      const stalePlatformio = source.role === "build_config" && /(^|\/)platformio\.ini$/.test(source.path) && !expectedPaths.has(source.path);
+      const staleGeneratedComponentSource = generatedRoles.has(source.role) && source.path.startsWith("Komponenten/") && !belongsToActiveRoot;
+      if (stalePlatformio || staleGeneratedComponentSource) await this.repository.deleteSource(project.project_id, source.path);
+    }
+    for (const unit of units) {
       const content = renderPlatformioIni(unit.build_config);
       const now = new Date().toISOString();
       const sourcePath = [unit.source_root, "platformio.ini"].filter(Boolean).join("/");

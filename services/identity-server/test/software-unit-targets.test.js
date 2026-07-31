@@ -22,5 +22,9 @@ test("development platform builds all software units and uses target selection o
   assert.match(app, /Gesamtbuild nicht gestartet\. Für folgende Software-Einheiten fehlt ein Build-Runner/);
   assert.match(app, /function prepareFlashTarget\(project, action, targetConfirmed = false\)/);
   assert.match(server, /function developmentSoftwareUnits/);
+  assert.match(server, /unit\.hardware_profile_id === hardware\.board_profile_id/);
+  assert.match(server, /unit\.source_root === hardware\?\.component_path/);
+  assert.match(server, /!derivedSoftwareUnitIds\.has\(unit\.software_unit_id\)/);
+  assert.match(server, /matchingUnit\?\.source_root/);
   assert.match(server, /runner_status: "not_connected"/);
 });

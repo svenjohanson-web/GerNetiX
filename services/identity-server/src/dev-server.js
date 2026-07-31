@@ -5280,6 +5280,8 @@ function hardwareConfigurationFromManifest(manifest = {}) {
 function normalizeHardwareConfiguration(input = {}, project = {}) {
   const raw = input && typeof input === "object" ? input : {};
   const rawComponents = Array.isArray(raw.components) ? raw.components.slice(0, 100) : [];
+  const embeddedUnits = platformSoftwareUnits(project).filter((unit) => unit.software_kind === "embedded_firmware");
+  const usedEmbeddedUnitIds = new Set();
   let deviceIndex = 0;
   const components = rawComponents.map((component) => {
     const abstractType = ["iot_device", "sensor", "actuator", "actor", "structural"].includes(component.abstract_type)
@@ -5307,9 +5309,14 @@ function normalizeHardwareConfiguration(input = {}, project = {}) {
       circuit: hardwareCircuitFor(concreteType, component.properties),
     };
     if (abstractType === "iot_device") {
-      normalized.component_path = deviceIndex === 0
-        ? primaryProjectComponentPath(project)
-        : `Komponenten/${slugifyHardwareFolder(normalized.label)}-${deviceIndex + 1}`;
+      const matchingUnit = embeddedUnits.find((unit) => !usedEmbeddedUnitIds.has(unit.software_unit_id)
+        && unit.hardware_profile_id && unit.hardware_profile_id === normalized.board_profile_id)
+        || embeddedUnits.find((unit) => !usedEmbeddedUnitIds.has(unit.software_unit_id)
+          && unit.source_root === component.component_path)
+        || embeddedUnits.find((unit) => !usedEmbeddedUnitIds.has(unit.software_unit_id));
+      if (matchingUnit) usedEmbeddedUnitIds.add(matchingUnit.software_unit_id);
+      normalized.component_path = matchingUnit?.source_root
+        || (deviceIndex === 0 ? primaryProjectComponentPath(project) : `Komponenten/${slugifyHardwareFolder(normalized.label)}-${deviceIndex + 1}`);
       deviceIndex += 1;
     }
     return normalized;
@@ -5663,10 +5670,14 @@ function developmentSoftwareUnits(project = {}, diagram = {}, hardwareConfigurat
   const boards = options.boards || [];
   let embeddedIndex = 0;
   const usedExistingIds = new Set();
+  const derivedSoftwareUnitIds = new Set(components.map((component) => `software_${component.component_id}`.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120)));
   const units = components.map((component) => {
     const hardware = hardwareComponents.get(component.component_id) || null;
     const expectedId = `software_${component.component_id}`.replace(/[^a-zA-Z0-9._-]+/g, "_").slice(0, 120);
-    let existing = existingUnits.find((unit) => unit.software_unit_id === expectedId)
+    let existing = existingUnits.find((unit) => !usedExistingIds.has(unit.software_unit_id)
+      && hardware?.board_profile_id && unit.hardware_profile_id === hardware.board_profile_id)
+      || existingUnits.find((unit) => !usedExistingIds.has(unit.software_unit_id) && unit.source_root === hardware?.component_path)
+      || existingUnits.find((unit) => !usedExistingIds.has(unit.software_unit_id) && unit.software_unit_id === expectedId)
       || existingUnits.find((unit) => unit.title === component.label);
     if (!existing && component.abstract_type === "iot_device" && embeddedIndex === 0) {
       existing = existingUnits.find((unit) => unit.software_kind === "embedded_firmware") || null;
@@ -5716,7 +5727,7 @@ function developmentSoftwareUnits(project = {}, diagram = {}, hardwareConfigurat
     };
   });
   existingUnits.forEach((unit) => {
-    if (!usedExistingIds.has(unit.software_unit_id)) units.push(unit);
+    if (!usedExistingIds.has(unit.software_unit_id) && !derivedSoftwareUnitIds.has(unit.software_unit_id)) units.push(unit);
   });
   return units;
 }

@@ -248,6 +248,42 @@ test("regenerates the visible platformio.ini whenever graphical build configurat
   assert.doesNotMatch(ini, /framework = arduino/);
 });
 
+test("removes generated sources of a superseded software-unit path", async () => {
+  const repository = new InMemoryProjectRepository();
+  const service = new ProjectService({ repository });
+  const project = await service.createProject({
+    project_id: "project_stale_software_unit",
+    user_id: "user-1",
+    title: "Distributed firmware",
+    software_units: [{
+      software_unit_id: "camera_sender",
+      title: "Camera sender",
+      software_kind: "embedded_firmware",
+      build_system: "platformio",
+      source_root: "Komponenten/IoT-Device 1",
+      entrypoint: "src/user_main.cpp",
+      build_config: { platform: "espressif32", board: "esp32-s3-devkitc-1", environment: "camera" },
+    }],
+  });
+  await service.upsertSource(project.project_id, {
+    path: "Komponenten/IoT-Device-2-2/platformio.ini",
+    role: "build_config",
+    content: "[env:stale]",
+  });
+  await service.upsertSource(project.project_id, {
+    path: "Komponenten/IoT-Device-2-2/Konfiguration/Hardware/Board/board.md",
+    role: "device_board_config",
+    content: "stale",
+  });
+
+  await service.updateProject(project.project_id, { software_units: project.software_units });
+
+  const paths = (await service.listSources(project.project_id)).map((source) => source.path);
+  assert.equal(paths.includes("Komponenten/IoT-Device-2-2/platformio.ini"), false);
+  assert.equal(paths.includes("Komponenten/IoT-Device-2-2/Konfiguration/Hardware/Board/board.md"), false);
+  assert.equal(paths.includes("Komponenten/IoT-Device 1/platformio.ini"), true);
+});
+
 test("stores multiple learning-project software units and builds only the selected target", async () => {
   const service = createMemoryProjectServer();
   const project = await service.createProject({
