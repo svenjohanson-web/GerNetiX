@@ -988,6 +988,15 @@ async function routeRequest(req, res) {
   }
 
   const developmentProjectHardware = url.pathname.match(/^\/api\/platform\/development-projects\/([^/]+)\/hardware-configuration$/);
+  if (req.method === "GET" && developmentProjectHardware) {
+    const session = await readSession(req);
+    if (!session) {
+      sendJson(res, 401, { error: "not_authenticated" });
+      return;
+    }
+    await handleDevelopmentProjectHardwareLoad(res, session, decodeURIComponent(developmentProjectHardware[1]));
+    return;
+  }
   if (req.method === "POST" && developmentProjectHardware) {
     const session = await readSession(req);
     if (!session) {
@@ -2894,6 +2903,24 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
   const projects = await loadUserIdeProjects(session);
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   sendJson(res, 200, { project: toPlatformProject(updated), saved_at: new Date().toISOString() });
+}
+
+async function handleDevelopmentProjectHardwareLoad(res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  const storedConfiguration = hardwareConfigurationFromManifest(project.view_manifest);
+  if (!storedConfiguration) {
+    sendJson(res, 404, { error: "hardware_configuration_not_found", message: "Das Projekt besitzt noch keine Hardwarekonfiguration." });
+    return;
+  }
+  const hardwareConfiguration = normalizeHardwareConfiguration(storedConfiguration, project);
+  sendJson(res, 200, {
+    hardware_configuration: hardwareConfiguration,
+    hardware_architecture: {
+      source: hardwareWiringPlantUml(hardwareConfiguration, project.title),
+      title: "Hardware-Architektur",
+      summary: "Vollstaendige Hardware-Realisierung des Projekts.",
+    },
+  });
 }
 
 async function handleDevelopmentProjectHardwareSave(req, res, session, projectId) {

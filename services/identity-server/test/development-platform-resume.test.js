@@ -438,6 +438,14 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(publicCss, /\.hardware-guidance-panel \{[\s\S]*background: #0d1520/);
 });
 
+test("loads hardware architecture from the persisted configuration without requiring a source file", () => {
+  const loadFunction = publicController.match(/async function renderPersistedHardwareArchitecture[\s\S]*?\n    }/)?.[0] || "";
+  assert.match(loadFunction, /\/api\/platform\/development-projects\/\$\{encodeURIComponent\(project\.id\)\}\/hardware-configuration/);
+  assert.doesNotMatch(loadFunction, /Architektur\/verdrahtung\/hardware\.puml/);
+  assert.match(devServer, /req\.method === "GET" && developmentProjectHardware/);
+  assert.match(devServer, /hardwareWiringPlantUml\(hardwareConfiguration, project\.title\)/);
+});
+
 test("selected catalog boards expose editable defaults and require an explicitly saved custom board", () => {
   assert.match(publicApp, /if \(route === "development-hardware"\) \{[\s\S]*loadBoardFeatureCatalog\(\)/);
   assert.match(publicApp, /routeName\(\) === "development-hardware"\) developmentPlatform\(\)\.renderHardwareConfiguration\(\)/);

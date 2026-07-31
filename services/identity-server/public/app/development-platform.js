@@ -1876,13 +1876,11 @@ const DevelopmentPlatform = (() => {
     async function renderPersistedHardwareArchitecture(project) {
       if (!projectHardwareConfiguration(project)) return;
       try {
-        const source = await getJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent("Architektur/verdrahtung/hardware.puml")}`);
+        const response = await getJson(`/api/platform/development-projects/${encodeURIComponent(project.id)}/hardware-configuration`);
         if (currentProject()?.id !== project.id) return;
-        if (source?.content) {
+        if (response?.hardware_architecture?.source) {
           renderPlantUmlInto(document.querySelector("#developmentHardwareArchitecture"), {
-            source: source.content,
-            title: "Hardware-Architektur",
-            summary: "Vollstaendige Hardware-Realisierung des Projekts.",
+            ...response.hardware_architecture,
           });
         }
       } catch (error) {
