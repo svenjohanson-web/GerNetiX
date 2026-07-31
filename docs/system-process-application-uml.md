@@ -218,7 +218,7 @@ flowchart LR
 
 | Prozess | Port | Lokale URL / Zugriff | Rolle |
 | --- | ---: | --- | --- |
-| Identity Server | 4300 | `http://127.0.0.1:4300/app/dashboard/` | Login, Session, gemeinsame Plattform-UI, entitlement-gefilterte Wissenskapitel-Hinweise und Adapter zu Domaenenservices |
+| Identity Server | VPS-intern 4300 | `https://pwa.gernetix.com/app/dashboard/` | Login, Session, gemeinsame Plattform-UI, entitlement-gefilterte Wissenskapitel-Hinweise und Adapter zu Domaenenservices |
 | SQLite Graph Explorer | 4318 | `http://127.0.0.1:4318/` | Read-only Weboberflaeche auf den kanonischen Graphen |
 | Build & Deploy Server | 4400 | `http://127.0.0.1:4400/` | Echte PlatformIO-Builds, Build-Pakete und Firmware-Artefakte; kein serverseitiger USB-Flash |
 | Provisioning Tool Server | 4500 | `http://127.0.0.1:4500/` | eigenstaendige Factory-HMI, Provisioning-Sessions, USB-Factory-Flash, Device-Registrierung |

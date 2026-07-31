@@ -400,6 +400,14 @@ async function pidForPort(port){try{if(process.platform==="win32"){const{stdout}
 function health(url){return new Promise((resolve,reject)=>{const req=http.get(url,(res)=>{let raw="";res.setEncoding("utf8");res.on("data",(chunk)=>{if(raw.length<16384)raw+=chunk;});res.on("end",()=>{let body=null;try{body=raw?JSON.parse(raw):null;}catch{}resolve({statusCode:res.statusCode||0,body});});});req.setTimeout(1200,()=>req.destroy(new Error("Timeout")));req.on("error",reject);});}
 function delay(ms){return new Promise((resolve)=>setTimeout(resolve,ms));}
 function loadStagingConfig(){const file=path.join(workspaceRoot,".env.staging.local");return {...(fs.existsSync(file)?parseEnvFile(fs.readFileSync(file,"utf8")):{}),...process.env};}
+function platformEntryUrl(options={}){
+  const config=options.config||loadStagingConfig();
+  const value=String(config.GERNETIX_PRIVATE_PWA_URL||"https://pwa.gernetix.com/app/dashboard/").trim();
+  let url;
+  try{url=new URL(value);}catch{throw new Error("Die konfigurierte GerNetiX-Plattform-URL ist ungültig.");}
+  if(url.protocol!=="https:")throw new Error("Die GerNetiX-Plattform darf nur über HTTPS geöffnet werden.");
+  return url.toString();
+}
 function parseEnvFile(content){const values={};for(const raw of String(content).split(/\r?\n/)){const line=raw.trim();if(!line||line.startsWith("#"))continue;const separator=line.indexOf("=");if(separator<1)throw new Error(`Ungültige Konfigurationszeile: ${raw}`);const key=line.slice(0,separator).trim();let value=line.slice(separator+1).trim();if((value.startsWith('"')&&value.endsWith('"'))||(value.startsWith("'")&&value.endsWith("'")))value=value.slice(1,-1);values[key]=value;}return values;}
 function assertSafeSshTarget(value){if(!/^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+$/.test(value))throw new Error("Ungültiges SSH-Ziel in .env.staging.local.");return value;}
 function shellQuote(value){return `'${String(value).replace(/'/g, `'"'"'`)}'`;}
@@ -515,4 +523,4 @@ async function setVpnConnected(connected, options = {}) {
   throw new Error(`Der VPN-Tunnel wurde nicht rechtzeitig ${desired ? "verbunden" : "getrennt"}.`);
 }
 
-module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};
+module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,platformEntryUrl,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};

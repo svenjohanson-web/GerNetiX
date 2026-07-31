@@ -1,4 +1,4 @@
-const { app, BrowserWindow, dialog, ipcMain } = require("electron");
+const { app, BrowserWindow, dialog, ipcMain, shell } = require("electron");
 const fs = require("node:fs");
 const path = require("node:path");
 const control = require("./desktop-process-control");
@@ -39,9 +39,11 @@ ipcMain.handle("interfaces:statistics", (_event, hours) => control.interfaceStat
 ipcMain.handle("runtime:alerts", (_event, hours) => control.runtimeAlerts(hours));
 ipcMain.handle("security:rules", (_event, force) => control.securityRuleStates({ force:Boolean(force) }));
 ipcMain.handle("link-integrity:status", (_event, force) => control.remoteLinkIntegrity({ force:Boolean(force) }));
-ipcMain.handle("processes:start-all", () => control.startAllServices());
-ipcMain.handle("processes:start", (_event, id) => control.startService(id));
-ipcMain.handle("processes:stop", (_event, id) => control.stopService(id));
+ipcMain.handle("platform:open", async () => {
+  const url = control.platformEntryUrl();
+  await shell.openExternal(url);
+  return { url };
+});
 ipcMain.handle("vpn:status", () => control.vpnState());
 ipcMain.handle("vpn:connect", () => control.setVpnConnected(true));
 ipcMain.handle("vpn:disconnect", () => control.setVpnConnected(false));

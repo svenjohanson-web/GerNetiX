@@ -73,17 +73,19 @@ test("packaged Electron runtime starts services in Node mode", () => {
   assert.match(source, /ELECTRON_RUN_AS_NODE:"1"/);
 });
 
-test("monitor UI displays life status and start stop controls", () => {
+test("monitor opens the canonical server platform instead of starting a local Identity", () => {
   assert.match(html, /Prozess-Monitor/);
-  assert.match(client, /item\.healthy\?"Läuft":"Gestoppt"/);
-  assert.match(client, /data-action="start"/);
-  assert.match(client, /data-action="stop"/);
   assert.match(client, /setInterval\(\(\)=>load\(false\),10000\)/);
-  assert.match(client, /Community-Speicher/);
-  assert.match(html, /Nur der Identity Server läuft lokal/);
-  assert.match(html, />Identity starten<\/button>/);
+  assert.match(html, /Die Plattform verwendet die einzige Identity auf dem VPS/);
+  assert.match(html, />Plattform öffnen<\/button>/);
   assert.match(html, /Backend und Infrastruktur/);
-  assert.match(client, /identity\?\.healthy\?"Läuft auf diesem Mac":"Gestoppt"/);
+  assert.match(client, /identity\?\.healthy\?"Server-Identity ist gesund"/);
+  assert.match(desktopPreload, /openPlatform/);
+  assert.match(desktopMain, /platform:open/);
+  assert.doesNotMatch(html, /Identity starten|läuft lokal/);
+  assert.doesNotMatch(client, /startAllLocal|data-action="start"|data-action="stop"/);
+  assert.equal(control.platformEntryUrl({config:{GERNETIX_PRIVATE_PWA_URL:"https://pwa.gernetix.com/app/dashboard/"}}), "https://pwa.gernetix.com/app/dashboard/");
+  assert.throws(() => control.platformEntryUrl({config:{GERNETIX_PRIVATE_PWA_URL:"http://127.0.0.1:4300/app/dashboard/"}}), /nur über HTTPS/);
 });
 
 test("monitor reads VPS compose state through the established staging SSH configuration", async () => {
@@ -156,7 +158,7 @@ test("monitor reads link integrity through the fixed Admin Tool diagnostic comma
 
 test("desktop monitor uses the same operator navigation terminology", () => {
   assert.match(html, /Operator Console/);
-  assert.match(html, /Desktop · lokale Steuerung/);
+  assert.match(html, /Desktop · Serverbetrieb/);
   assert.match(html, />Übersicht<\/button>/);
   assert.match(html, />Betrieb<\/button>/);
   assert.match(html, />Links<\/button>/);
@@ -304,7 +306,7 @@ test("monitor shows all VPS protection rules with status and recommended action"
   assert.ok(result.items.every((item)=>item.recommendation));
 });
 
-test("bulk start has no local backend process to launch", async () => {
+test("desktop renderer exposes no local backend start path", async () => {
   const calls = [];
   const autoStartServices = control.services.filter((service) => service.autoStart);
   const result = await control.startAllServices({ startService: async (id) => {
@@ -316,8 +318,8 @@ test("bulk start has no local backend process to launch", async () => {
   assert.equal(result.items.length, 0);
   assert.equal(result.healthy, 0);
   assert.equal(result.failed, 0);
-  assert.match(desktopPreload, /processes:start-all/);
-  assert.match(desktopMain, /processes:start-all/);
-  assert.match(html, /id="startAllLocal"/);
-  assert.match(client, /gernetixProcesses\.startAll/);
+  assert.doesNotMatch(desktopPreload, /processes:start-all|processes:start|processes:stop/);
+  assert.doesNotMatch(desktopMain, /processes:start-all|processes:start|processes:stop/);
+  assert.doesNotMatch(html, /id="startAllLocal"/);
+  assert.doesNotMatch(client, /gernetixProcesses\.startAll/);
 });

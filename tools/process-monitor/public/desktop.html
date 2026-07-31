@@ -9,7 +9,7 @@
 <body class="operator-surface">
   <main>
     <header class="operator-header">
-      <div class="operator-brand"><div class="operator-brand-copy"><p class="operator-eyebrow">GerNetiX</p><h1 class="operator-brand-name">Operator Console</h1><span class="operator-surface-badge">Desktop · lokale Steuerung</span></div></div>
+      <div class="operator-brand"><div class="operator-brand-copy"><p class="operator-eyebrow">GerNetiX</p><h1 class="operator-brand-name">Operator Console</h1><span class="operator-surface-badge">Desktop · Serverbetrieb</span></div></div>
       <div class="toolbar"><button id="refresh">Aktualisieren</button></div>
     </header>
     <nav class="view-tabs operator-nav">
@@ -45,21 +45,21 @@
               </label>
             </div>
           </div>
-          <p class="vpn-description">Verbindet Identity auf dem Mac mit den privaten VPS-Diensten.</p>
+          <p class="vpn-description">Stellt bei Bedarf private Diagnosezugänge zum VPS bereit.</p>
           <p id="tunnelMessage" class="group-error"></p>
         </section>
       </div>
       <div class="runtime-overview-grid">
         <section class="monitor-group local-runtime-group">
           <div class="group-head">
-            <div><p>MAC</p><h2>Identity</h2></div>
+            <div><p>SERVER</p><h2>GerNetiX Plattform</h2></div>
             <div class="group-actions">
-              <span id="summary">Prüfe Identity ...</span>
-              <button id="startAllLocal" class="primary" title="Identity Server auf dem Mac starten">Identity starten</button>
+              <span id="summary">Prüfe Server-Identity ...</span>
+              <button id="openPlatform" class="primary" title="Private GerNetiX Plattform im Browser öffnen">Plattform öffnen</button>
             </div>
           </div>
-          <p class="runtime-description">Nur der Identity Server läuft lokal. Er verwendet die Dienste und PostgreSQL-Daten auf dem VPS.</p>
-          <section id="processes" class="process-grid" aria-live="polite"></section>
+          <p class="runtime-description">Die Plattform verwendet die einzige Identity auf dem VPS. Accounts und Sitzungen liegen ausschließlich in PostgreSQL.</p>
+          <p id="platformMessage" class="group-error"></p>
         </section>
         <section class="monitor-group vps-runtime-group">
           <div class="group-head">
@@ -130,7 +130,7 @@
         <p id="linkIntegrityError" class="group-error"></p>
       </section>
     </div>
-    <footer>Eigenständige Desktop-App · lokale Identity direkt steuern · VPS-Status sicher über den konfigurierten SSH-Zugang lesen</footer>
+    <footer>Eigenständige Desktop-App · kanonische Server-Plattform öffnen · VPS-Status sicher lesen</footer>
   </main>
   <script src="desktop-app.js"></script>
 </body>

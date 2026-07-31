@@ -26,7 +26,7 @@ Auf macOS kann alternativ `tools/GerNetiX-Check-und-Start.command` per Doppelkli
 
 ## Grafischer Prozess-Monitor
 
-Die eigenstaendige Desktop-App bildet den normalen Remote-Dev-Betrieb ab: Auf dem Mac zeigt und steuert sie ausschliesslich den lokalen Identity Server. Die uebrigen Backend- und Infrastrukturprozesse erscheinen read-only aus dem Docker-Compose-Status des VPS. Lokale Start-/Stop-Aktionen werden nicht mehr fuer VPS-Dienste angeboten. Die kompakte Uebersicht trennt sicheren VPS-Zugang, Mac-Runtime und VPS-Runtime und aktualisiert sich alle zehn Sekunden. Fuer einen vollstaendigen isolierten Lokal-Stack bleiben die Kommandozeilenwerkzeuge und gezielten Service-Starts verfuegbar.
+Die eigenstaendige Desktop-App bildet den normalen Serverbetrieb ab. Sie startet keine lokale Identity, sondern oeffnet ueber `Plattform oeffnen` die private PWA der einzigen Identity auf dem VPS. Identity sowie die uebrigen Backend- und Infrastrukturprozesse erscheinen read-only aus dem Docker-Compose-Status des VPS. Die kompakte Uebersicht trennt Plattformzugang, sicheren Diagnosezugang und VPS-Runtime und aktualisiert sich alle zehn Sekunden.
 
 - macOS-App: `tools/process-monitor/GerNetiX Prozess-Monitor.app`
 - macOS-Entwicklung: `tools/process-monitor/GerNetiX-Prozess-Monitor.command`
@@ -41,9 +41,9 @@ Die Community Platform wird im normalen Remote-Dev-Betrieb ausschliesslich als V
 - macOS-Build: `pnpm run dist:mac`
 - Windows-Build auf Windows: `pnpm run dist:win`
 
-Auf macOS steuert der Monitor ausschliesslich den vorhandenen WireGuard-Netzwerkdienst `gernetix-vps-mac`. Nach erfolgreicher VPN-Verbindung kann derselbe Monitor den festen SSH-Diagnosetunnel fuer Admin (`127.0.0.1:14600`), Plattform (`127.0.0.1:14300`), Identity-PostgreSQL und die fest definierten Domaenendienste starten. Der Identity-Start verwendet ausschliesslich den Remote-Dev-Modus mit PostgreSQL; ohne vollständigen Tunnel wird er abgewiesen und der Monitor zeigt die letzten Startlogzeilen an. Der Renderer kann dabei weder SSH-Ziele noch beliebige Portweiterleitungen eingeben.
+Auf macOS steuert der Monitor ausschliesslich den vorhandenen WireGuard-Netzwerkdienst `gernetix-vps-mac`. Nach erfolgreicher VPN-Verbindung kann derselbe Monitor den festen SSH-Diagnosetunnel fuer Admin (`127.0.0.1:14600`), Plattformdiagnose (`127.0.0.1:14300`), Identity-PostgreSQL und die fest definierten Domaenendienste starten. Dieser Tunnel startet keine Identity; er stellt nur Diagnosezugriffe auf den laufenden VPS bereit. Der Renderer kann dabei weder SSH-Ziele noch beliebige Portweiterleitungen eingeben.
 
-Die App oeffnet keinen eigenen HTTP-Port. Die lokale Stop-Aktion ermittelt ausschliesslich den Listener des Identity Servers auf Port 4300. Das Schliessen des letzten Monitorfensters beendet auch den Desktop-Monitor; die separat gestarteten Backend-Prozesse bleiben davon unberuehrt.
+Die App oeffnet keinen eigenen HTTP-Port und bietet keine lokale Start-/Stop-Aktion fuer Identity an. Das Schliessen des letzten Monitorfensters beendet auch den Desktop-Monitor; die VPS-Prozesse bleiben davon unberuehrt.
 
 ```powershell
 netstat -ano | findstr :4300
@@ -69,12 +69,12 @@ Diese Gruppe reicht fuer Login, Dashboard, Entwicklungsplattform, User IDE, Proj
 | 8 | AI Context Server | 5500 | `services/ai-context-server` | `$env:PORT="5500"; $env:AI_CONTEXT_PERSISTENCE_BACKEND="postgres"; npm run dev` |
 | 9 | Admin Tool API | 4600 | `services/admin-tool` | `$env:PORT="4600"; npm run dev` |
 | 10 | Community Platform | 5200 | `services/community-platform` | `$env:PORT="5200"; $env:COMMUNITY_PERSISTENCE_BACKEND="sqlite"; npm run dev` |
-| 11 | Identity Server / Plattform UI | 4300 | `services/identity-server` | `$env:PORT="4300"; npm run dev` |
+| 11 | Identity Server / Plattform UI | VPS-intern 4300 | `services/identity-server` | Kein lokaler Start; kanonischer VPS-Compose-Dienst |
 
 Plattform-URL nach dem Start:
 
 ```text
-http://127.0.0.1:4300/app/dashboard/
+https://pwa.gernetix.com/app/dashboard/
 ```
 
 ## Kanonische private VPS-Plattform verwenden
