@@ -289,6 +289,9 @@ document.querySelector("#flashboxDeviceSelect").addEventListener("change", () =>
   state.activeFlashboxDeviceId = document.querySelector("#flashboxDeviceSelect").value;
 });
 document.querySelector("#refreshUsbPortsButton").addEventListener("click", refreshUsbPorts);
+document.querySelector("#usbPortSelect").addEventListener("change", (event) => {
+  if (event.target.value) setFlashStatus("ok", `USB-Port ausgewählt: ${event.target.value}`);
+});
 document.querySelector("#buildButton").addEventListener("click", startBuild);
 document.querySelector("#usbFlashButton").addEventListener("click", startUsbFlash);
 document.querySelector("#otaFlashButton").addEventListener("click", startOtaFlash);
@@ -3277,6 +3280,19 @@ async function startUsbFlash() {
     showSerialServiceChoiceDialog();
     return;
   }
+  if (serialServiceAvailable) {
+    await refreshUsbPorts(false);
+    const resolvedPort = selectedUsbPort()
+      || bestUsbPortForDevice(device)?.port
+      || (state.usbPorts.length === 1 ? state.usbPorts[0].port : "");
+    if (!resolvedPort && state.usbPorts.length > 1) {
+      const select = document.querySelector("#usbPortSelect");
+      select.classList.remove("hidden");
+      select.focus();
+      setFlashStatus("error", "Mehrere USB-Geräte sind verbunden. Wähle oben den USB-Port und starte USB erneut.");
+      return;
+    }
+  }
   setFlashStatus("running", "Echter PlatformIO-Build wird gestartet...");
   let activeBuild = null;
   try {
@@ -4154,7 +4170,7 @@ function renderUsbPortOptions() {
   if (!select) return;
   const current = select.value;
   const detected = state.usbPorts.map((port) => `
-    <option value="${escapeHtml(port.port)}">${escapeHtml(port.port)} - ${escapeHtml(port.name || port.manufacturer || "USB Serial")}</option>
+    <option value="${escapeHtml(port.port)}">${escapeHtml(usbPortOptionLabel(port))}</option>
   `).join("");
   const automaticLabel = state.usbPorts.length
     ? "Automatisch ermitteln"
@@ -4164,6 +4180,14 @@ function renderUsbPortOptions() {
     ? "Nur fuer USB-Flash: Port automatisch ermitteln oder einen erkannten Port auswaehlen."
     : "Nur fuer USB-Flash: Momentan wurde kein USB-Serial-Port erkannt.";
   if (current && Array.from(select.options).some((option) => option.value === current)) select.value = current;
+  select.classList.toggle("hidden", state.usbPorts.length < 2);
+  document.querySelector("#refreshUsbPortsButton")?.classList.toggle("hidden", state.usbPorts.length < 2);
+}
+
+function usbPortOptionLabel(port) {
+  const path = String(port.port || "");
+  const description = String(port.name || port.manufacturer || "").trim();
+  return !description || description === path ? path : `${path} · ${description}`;
 }
 
 function selectedUsbPort() {
@@ -4179,12 +4203,10 @@ function bestUsbPortForDevice(device) {
     haystack: `${port.name || ""} ${port.device_id || ""} ${port.manufacturer || ""}`.toLowerCase(),
   }));
   if (profile.includes("esp32") || label.includes("esp32")) {
-    return candidates.find((port) => /cp210|ch340|ch341|usb-serial|usb serial|silicon labs|wch|uart|esp32/.test(port.haystack))
-      || (candidates.length === 1 ? candidates[0] : null);
+    return uniqueUsbPortMatch(candidates, /cp210|ch340|ch341|usb-serial|usb serial|silicon labs|wch|uart|esp32/);
   }
   if (profile.includes("arduino_nano") || label.includes("arduino")) {
-    return candidates.find((port) => /arduino|ch340|ch341|usb-serial|usb serial|wch/.test(port.haystack))
-      || (candidates.length === 1 ? candidates[0] : null);
+    return uniqueUsbPortMatch(candidates, /arduino|ch340|ch341|usb-serial|usb serial|wch/);
   }
   return candidates.length === 1 ? candidates[0] : null;
 }
@@ -4196,14 +4218,18 @@ function bestUsbPortForHardwareType(type) {
     haystack: `${port.name || ""} ${port.device_id || ""} ${port.manufacturer || ""}`.toLowerCase(),
   }));
   if (type === "esp32") {
-    return candidates.find((port) => /cp210|ch340|ch341|usb-serial|usb serial|silicon labs|wch|uart|esp32/.test(port.haystack))
-      || (candidates.length === 1 ? candidates[0] : null);
+    return uniqueUsbPortMatch(candidates, /cp210|ch340|ch341|usb-serial|usb serial|silicon labs|wch|uart|esp32/);
   }
   if (type === "arduino_nano") {
-    return candidates.find((port) => /arduino|ch340|ch341|usb-serial|usb serial|wch/.test(port.haystack))
-      || (candidates.length === 1 ? candidates[0] : null);
+    return uniqueUsbPortMatch(candidates, /arduino|ch340|ch341|usb-serial|usb serial|wch/);
   }
   return candidates.length === 1 ? candidates[0] : null;
+}
+
+function uniqueUsbPortMatch(candidates, pattern) {
+  if (candidates.length === 1) return candidates[0];
+  const matches = candidates.filter((port) => pattern.test(port.haystack));
+  return matches.length === 1 ? matches[0] : null;
 }
 
 function usbFlashLabel(device) {
