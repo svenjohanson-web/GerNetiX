@@ -46,9 +46,6 @@ function registerProjectRoutes(dependencies) {
   registerProjectPattern("POST", /^\/api\/platform\/development-projects\/([^/]+)\/dialog$/, ({ req, res, match, session }) => (
     dependencies.handleDevelopmentProjectDialogSave(req, res, session, decodeURIComponent(match[1]))
   ));
-  registerProjectPattern("GET", /^\/api\/platform\/development-projects\/([^/]+)\/hardware-configuration$/, ({ res, match, session }) => (
-    dependencies.handleDevelopmentProjectHardwareLoad(res, session, decodeURIComponent(match[1]))
-  ));
   registerProjectPattern("POST", /^\/api\/platform\/development-projects\/([^/]+)\/hardware-configuration$/, ({ req, res, match, session }) => (
     dependencies.handleDevelopmentProjectHardwareSave(req, res, session, decodeURIComponent(match[1]))
   ));

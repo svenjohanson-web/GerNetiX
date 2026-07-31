@@ -1,7 +1,7 @@
 function templateArchitecturePlantUml(template, title) {
   const architecture = template?.architecture;
   if (!architecture?.elements?.length) return "";
-  const elements = architecture.elements.map(renderElement);
+  const elements = renderElements(architecture.elements);
   const relations = (architecture.relations || []).map(renderRelation);
   return [
     "@startuml",
@@ -13,9 +13,32 @@ function templateArchitecturePlantUml(template, title) {
   ].join("\n");
 }
 
-function renderElement(element) {
+function renderElements(elements) {
+  const elementIds = new Set(elements.map((element) => element.id));
+  const childrenByParent = new Map();
+  for (const element of elements) {
+    if (!element.parentId || !elementIds.has(element.parentId)) continue;
+    const children = childrenByParent.get(element.parentId) || [];
+    children.push(element);
+    childrenByParent.set(element.parentId, children);
+  }
+  return elements
+    .filter((element) => !element.parentId || !elementIds.has(element.parentId))
+    .flatMap((element) => renderElement(element, childrenByParent, 0));
+}
+
+function renderElement(element, childrenByParent, depth) {
+  const children = childrenByParent.get(element.id) || [];
+  const indent = "  ".repeat(depth);
   const notation = element.kind === "actor" ? "actor" : "rectangle";
-  return `${notation} "${plantUmlText(element.label)}" as ${plantUmlId(element.id)}`;
+  const stereotype = element.stereotype ? ` <<${plantUmlText(element.stereotype)}>>` : "";
+  const declaration = `${indent}${notation} "${plantUmlText(element.label)}" as ${plantUmlId(element.id)}${stereotype}`;
+  if (!children.length) return [declaration];
+  return [
+    `${declaration} {`,
+    ...children.flatMap((child) => renderElement(child, childrenByParent, depth + 1)),
+    `${indent}}`,
+  ];
 }
 
 function renderRelation(relation) {

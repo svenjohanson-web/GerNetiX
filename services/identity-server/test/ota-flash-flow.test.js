@@ -32,7 +32,7 @@ test("IDE can actively probe the allocated board and refresh OTA readiness", () 
 });
 
 test("OTA button requires an online and ready device", () => {
-  assert.match(app, /otaButton\.disabled = !allocated \|\| allocated\.ota_status !== "ready" \|\| allocated\.connectivity_status !== "online"/);
+  assert.match(app, /otaButton\.disabled = !supportedFlashTarget \|\| !allocated \|\| allocated\.ota_status !== "ready" \|\| allocated\.connectivity_status !== "online"/);
   assert.match(app, /Das zugeordnete Device ist nicht online/);
   assert.match(server, /mode === "build_and_flash" && device\.connectivity_status !== "online"/);
   assert.match(server, /error: "device_not_online"/);

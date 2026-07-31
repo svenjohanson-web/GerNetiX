@@ -440,7 +440,6 @@ registerProjectRoutes({
   handleLearningProjectDeviceAssign,
   handlePlatformProjectDelete,
   handleDevelopmentProjectDialogSave,
-  handleDevelopmentProjectHardwareLoad,
   handleDevelopmentProjectHardwareSave,
   handleProjectComponentFeatures,
   handleProjectComponentHardwareFeatures,
@@ -1835,24 +1834,6 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
   sendJson(res, 200, { project: toPlatformProject(updated), saved_at: new Date().toISOString() });
 }
 
-async function handleDevelopmentProjectHardwareLoad(res, session, projectId) {
-  const project = await requireSessionProject(session, projectId);
-  const storedConfiguration = hardwareConfigurationFromManifest(project.view_manifest);
-  if (!storedConfiguration) {
-    sendJson(res, 404, { error: "hardware_configuration_not_found", message: "Das Projekt besitzt noch keine Hardwarekonfiguration." });
-    return;
-  }
-  const hardwareConfiguration = normalizeHardwareConfiguration(storedConfiguration, project);
-  sendJson(res, 200, {
-    hardware_configuration: hardwareConfiguration,
-    hardware_architecture: {
-      source: hardwareWiringPlantUml(hardwareConfiguration, project.title),
-      title: "Hardware-Architektur",
-      summary: "Vollstaendige Hardware-Realisierung des Projekts.",
-    },
-  });
-}
-
 async function handleDevelopmentProjectHardwareSave(req, res, session, projectId) {
   const project = await requireSessionProject(session, projectId);
   if (!["development_project", "custom_project"].includes(project.area)) {
@@ -3003,6 +2984,10 @@ async function loadProjectBuilds(projects, session) {
 }
 
 function toPlatformProject(project) {
+  const storedHardwareConfiguration = hardwareConfigurationFromManifest(project.view_manifest);
+  const hardwareConfiguration = storedHardwareConfiguration
+    ? normalizeHardwareConfiguration(storedHardwareConfiguration, project)
+    : null;
   const platformProject = {
     id: project.project_server_id,
     ownerUserId: project.owner_user_id || "",
@@ -3033,6 +3018,11 @@ function toPlatformProject(project) {
     sourceCount: project.source_count,
     buildCount: project.build_count,
     viewManifest: project.view_manifest,
+    hardwareArchitecture: hardwareConfiguration ? {
+      source: hardwareWiringPlantUml(hardwareConfiguration, project.title),
+      title: "Hardware-Architektur",
+      summary: "Vollstaendige Hardware-Realisierung des Projekts.",
+    } : null,
     steps: project.steps,
   };
   if (project.project_origin === "catalog" || project.learning_project_id?.startsWith("learning_project.")) {

@@ -95,22 +95,27 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
   }),
   esp32_camera_to_touch_display: templateModel({
     id: "esp32_camera_to_touch_display",
-    schemaVersion: 5,
+    schemaVersion: 7,
     title: "ESP32-Kamera auf Touchdisplay",
     description: "Zwei ESP32-S3 starten mit der GerNetiX-Basissoftware: Das Waveshare-Kameraboard ist als kuenftiger Bild-Host vorbereitet, das ES3C28P als kuenftiger Display-Client. Kameraaufnahme, Bildformat und Transport werden danach schrittweise entwickelt.",
     hint: "Vorkonfiguriertes Basissoftware-Projekt mit zwei Firmware-Zielen: Kamera-Host und Display-Client.",
     architecture: {
       elements: [
-        element("camera", "Kamera", "sensor"),
         element("camera_device", "IoT-Device 1", "iot_device"),
+        element("camera", "Kamera", "sensor", { parentId: "camera_device" }),
+        element("camera_app", "Kamera-Host", "application", { parentId: "camera_device", stereotype: "Software" }),
         element("display_device", "IoT-Device 2", "iot_device"),
-        element("display", "Display", "actuator"),
+        element("display_app", "Display-Client", "application", { parentId: "display_device", stereotype: "Software" }),
+        element("display", "Display", "actuator", { parentId: "display_device" }),
+        element("touch", "Touch", "sensor", { parentId: "display_device" }),
+        element("speaker", "Lautsprecher", "actuator", { parentId: "display_device" }),
         element("user", "Nutzer", "actor"),
       ],
       relations: [
-        relation("camera", "camera_device", "liefert Bilddaten"),
-        relation("camera_device", "display_device", "uebertraegt Bilddaten"),
-        relation("display_device", "display", "zeigt Kamerabild"),
+        relation("camera", "camera_app", "liefert Bilddaten"),
+        relation("camera_app", "display_app", "uebertraegt Bilddaten"),
+        relation("display_app", "display", "zeigt Kamerabild"),
+        relation("touch", "display_app", "liefert Bedienung"),
         relation("user", "display", "betrachtet Kamerabild"),
       ],
     },
@@ -149,6 +154,24 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
             plantuml_type: "rectangle",
             abstract_type: "actuator",
             concrete_type: "integrated_display",
+            target_device_id: "display_device",
+          },
+          {
+            component_id: "touch",
+            label: "Touch",
+            plantuml_type: "rectangle",
+            abstract_type: "sensor",
+            concrete_type: "integrated_touchscreen",
+            sensor_category: "touch_input",
+            signal_type: "i2c",
+            target_device_id: "display_device",
+          },
+          {
+            component_id: "speaker",
+            label: "Lautsprecher",
+            plantuml_type: "rectangle",
+            abstract_type: "actuator",
+            concrete_type: "integrated_speaker",
             target_device_id: "display_device",
           },
           {
@@ -313,8 +336,8 @@ function templateModel(input) {
   });
 }
 
-function element(id, label, kind) {
-  return Object.freeze({ id, label, kind });
+function element(id, label, kind, options = {}) {
+  return Object.freeze({ id, label, kind, ...options });
 }
 
 function relation(source, target, label = "") {

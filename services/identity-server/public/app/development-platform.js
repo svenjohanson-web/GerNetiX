@@ -1340,10 +1340,13 @@ const DevelopmentPlatform = (() => {
     }
 
     function refreshProjectTemplateDiagram(diagram, templateId) {
-      if (!diagram?.source || !["event_driven_project_application", "iot_datalogger_web_push_pwa"].includes(templateId)) return diagram;
+      if (!diagram?.source || !["event_driven_project_application", "iot_datalogger_web_push_pwa", "esp32_camera_to_touch_display"].includes(templateId)) return diagram;
       const containsLegacyInfrastructure = templateId === "event_driven_project_application"
         ? /\bas\s+(?:telemetry|runtime|push)\b/i.test(diagram.source)
-        : /\bas\s+(?:telemetry|storage|push)\b/i.test(diagram.source);
+        : templateId === "iot_datalogger_web_push_pwa"
+          ? /\bas\s+(?:telemetry|storage|push)\b/i.test(diagram.source)
+          : diagram.derived_from === "project_template"
+            && (!/as camera_app <<Software>>/i.test(diagram.source) || /as (?:camera|display)_board/i.test(diagram.source));
       const refreshedSource = projectTemplatePreviews[templateId]?.source;
       if (!containsLegacyInfrastructure || !refreshedSource) return diagram;
       return {
@@ -1903,28 +1906,15 @@ const DevelopmentPlatform = (() => {
       }
       const diagram = architectureDiagramForProject(project) || state.developmentPlatform.architectureDiagram;
       state.developmentPlatform.architectureDiagram = diagram;
-      renderPlantUmlInto(document.querySelector("#developmentHardwareArchitecture"), diagram);
-      void renderPersistedHardwareArchitecture(project);
+      const persistedConfiguration = projectHardwareConfiguration(project);
+      renderPlantUmlInto(
+        document.querySelector("#developmentHardwareArchitecture"),
+        persistedConfiguration ? project.hardwareArchitecture : diagram,
+      );
       const configuration = reconcileHardwareConfiguration(projectHardwareConfiguration(project), diagram?.source || "", project);
       state.developmentPlatform.hardwareConfiguration = configuration;
       renderHardwareComponentTable(configuration);
       syncHardwareActions(configuration);
-    }
-
-    async function renderPersistedHardwareArchitecture(project) {
-      if (!projectHardwareConfiguration(project)) return;
-      try {
-        const response = await getJson(`/api/platform/development-projects/${encodeURIComponent(project.id)}/hardware-configuration`);
-        if (currentProject()?.id !== project.id) return;
-        if (response?.hardware_architecture?.source) {
-          renderPlantUmlInto(document.querySelector("#developmentHardwareArchitecture"), {
-            ...response.hardware_architecture,
-          });
-        }
-      } catch (error) {
-        if (currentProject()?.id !== project.id) return;
-        document.querySelector("#developmentHardwareArchitecture").innerHTML = `<p class="error">Hardware-Architektur konnte nicht geladen werden: ${escapeHtml(error.message)}</p>`;
-      }
     }
 
     function renderPlantUmlInto(target, diagram) {

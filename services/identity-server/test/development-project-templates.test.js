@@ -104,16 +104,17 @@ test("provides a two-target camera-to-display template with isolated build roots
   const units = templateSoftwareUnits(template);
   const files = templateFirmwareSources(template, template.title);
 
-  assert.match(architecture, /rectangle "Kamera" as camera/);
-  assert.match(architecture, /rectangle "IoT-Device 1" as camera_device/);
-  assert.match(architecture, /rectangle "IoT-Device 2" as display_device/);
-  assert.match(architecture, /rectangle "Display" as display/);
-  assert.match(architecture, /camera --> camera_device : liefert Bilddaten/);
-  assert.match(architecture, /camera_device --> display_device : uebertraegt Bilddaten/);
+  assert.match(architecture, /rectangle "IoT-Device 1" as camera_device \{[\s\S]*rectangle "Kamera" as camera[\s\S]*rectangle "Kamera-Host" as camera_app <<Software>>/);
+  assert.match(architecture, /rectangle "IoT-Device 2" as display_device \{[\s\S]*rectangle "Display-Client" as display_app <<Software>>[\s\S]*rectangle "Display" as display[\s\S]*rectangle "Touch" as touch[\s\S]*rectangle "Lautsprecher" as speaker/);
+  assert.doesNotMatch(architecture, /camera_board|display_board|<<Onboard>>|rectangle "Board"/);
+  assert.match(architecture, /camera --> camera_app : liefert Bilddaten/);
+  assert.match(architecture, /camera_app --> display_app : uebertraegt Bilddaten/);
+  assert.match(architecture, /display_app --> display : zeigt Kamerabild/);
+  assert.match(architecture, /touch --> display_app : liefert Bedienung/);
   assert.match(architecture, /user --> display : betrachtet Kamerabild/);
   assert.doesNotMatch(architecture, /user --> display_device/);
   assert.doesNotMatch(architecture, /Waveshare|ES3C28P/);
-  assert.equal(template.schemaVersion, 5);
+  assert.equal(template.schemaVersion, 7);
   const hardware = templateHardwareConfiguration(template);
   assert.equal(hardware.components.find((component) => component.component_id === "camera_device").board_profile_id, "hardware.processor_board.waveshare_esp32_s3_cam_ov3660");
   assert.equal(hardware.components.find((component) => component.component_id === "display_device").board_profile_id, "hardware.processor_board.esp32_s3_es3c28p");
@@ -121,6 +122,10 @@ test("provides a two-target camera-to-display template with isolated build roots
   assert.equal(hardware.components.find((component) => component.component_id === "camera").concrete_type, "ov3660");
   assert.equal(hardware.components.find((component) => component.component_id === "camera").sensor_category, "image");
   assert.equal(hardware.components.find((component) => component.component_id === "display").target_device_id, "display_device");
+  assert.equal(hardware.components.find((component) => component.component_id === "touch").concrete_type, "integrated_touchscreen");
+  assert.equal(hardware.components.find((component) => component.component_id === "touch").target_device_id, "display_device");
+  assert.equal(hardware.components.find((component) => component.component_id === "speaker").concrete_type, "integrated_speaker");
+  assert.equal(hardware.components.find((component) => component.component_id === "speaker").target_device_id, "display_device");
   assert.equal(templateHardwareProfileId(template), "hardware.processor_board.waveshare_esp32_s3_cam_ov3660");
   assert.equal(units.length, 2);
   assert.equal(units[0].software_unit_id, "camera_sender");

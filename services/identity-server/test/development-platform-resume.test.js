@@ -147,6 +147,14 @@ test("persists architecture derivation metadata in the project view manifest", (
   assert.match(devServer, /diagram\?\.function_coverage/);
 });
 
+test("refreshes legacy camera template architecture to IoT-device aggregates without board boundaries", () => {
+  assert.match(publicController, /"esp32_camera_to_touch_display"/);
+  assert.match(publicController, /diagram\.derived_from === "project_template"/);
+  assert.match(publicController, /!\/as camera_app <<Software>>\/i\.test\(diagram\.source\)/);
+  assert.match(publicController, /\/as \(\?:camera\|display\)_board\/i\.test\(diagram\.source\)/);
+  assert.match(publicController, /projectTemplatePreviews\[templateId\]\?\.source/);
+});
+
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
   assert.match(publicHtml, /development-platform\.js\?v=20260731-project-delete-1/);
@@ -459,11 +467,12 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(publicCss, /\.hardware-guidance-panel \{[\s\S]*background: #0d1520/);
 });
 
-test("loads hardware architecture from the persisted configuration without requiring a source file", () => {
-  const loadFunction = publicController.match(/async function renderPersistedHardwareArchitecture[\s\S]*?\n    }/)?.[0] || "";
-  assert.match(loadFunction, /\/api\/platform\/development-projects\/\$\{encodeURIComponent\(project\.id\)\}\/hardware-configuration/);
-  assert.doesNotMatch(loadFunction, /Architektur\/verdrahtung\/hardware\.puml/);
-  assert.match(devServer, /registerProjectPattern\("GET", \/\^\\\/api\\\/platform\\\/development-projects/);
+test("delivers hardware architecture atomically with the persisted project", () => {
+  assert.match(publicController, /persistedConfiguration \? project\.hardwareArchitecture : diagram/);
+  assert.doesNotMatch(publicController, /renderPersistedHardwareArchitecture/);
+  assert.doesNotMatch(publicController, /Hardware-Architektur konnte nicht geladen werden/);
+  assert.doesNotMatch(devServer, /registerProjectPattern\("GET", \/\^\\\/api\\\/platform\\\/development-projects/);
+  assert.match(devServer, /hardwareArchitecture: hardwareConfiguration \? \{/);
   assert.match(devServer, /hardwareWiringPlantUml\(hardwareConfiguration, project\.title\)/);
 });
 
