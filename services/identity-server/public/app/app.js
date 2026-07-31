@@ -3143,8 +3143,13 @@ async function flashBuildViaSerialService(build, device) {
 async function waitForCompletedBuild(build) {
   let current = build;
   const seenProgress = new Set();
+  let memorySummaryShown = false;
   for (let attempt = 0; attempt < 600; attempt += 1) {
     appendBuildProgress(current.progress, seenProgress);
+    if (!memorySummaryShown && ["succeeded", "failed", "replaced"].includes(current.status)) {
+      appendBuildMemorySummary(current);
+      memorySummaryShown = true;
+    }
     const otaComplete = build.mode !== "build_and_flash"
       || ["rebooting", "confirmed", "delivered", "succeeded", "failed"].includes(current.flash_status);
     if (["failed", "replaced"].includes(current.status) || (current.status === "succeeded" && otaComplete)) return { ...build, ...current };
@@ -3159,6 +3164,42 @@ async function waitForCompletedBuild(build) {
     current = await getJson(`/api/user-ide/build-jobs/${encodeURIComponent(build.build_deploy_job_id || build.build_job_id)}/status`);
   }
   throw new Error("PlatformIO-Build hat das Zeitlimit überschritten.");
+}
+
+function appendBuildMemorySummary(build) {
+  const output = [
+    ...(Array.isArray(build?.progress) ? build.progress.map((entry) => entry?.message || "") : []),
+    build?.build_log || "",
+  ].join("\n");
+  const flash = parsePlatformioMemoryUsage(output, "Flash");
+  const ram = parsePlatformioMemoryUsage(output, "RAM");
+  appendIdeTerminal("summary", `Speicherbelegung · Flash: ${formatPlatformioMemoryUsage(flash)} · RAM: ${formatPlatformioMemoryUsage(ram)}`);
+}
+
+function parsePlatformioMemoryUsage(output, label) {
+  const pattern = new RegExp(`^\\s*${label}:.*?(\\d+(?:[.,]\\d+)?)%\\s*\\(used\\s+(\\d+)\\s+bytes\\s+from\\s+(\\d+)\\s+bytes\\)`, "gim");
+  let usage = null;
+  for (const match of String(output || "").matchAll(pattern)) {
+    usage = {
+      percent: Number(match[1].replace(",", ".")),
+      usedBytes: Number(match[2]),
+      totalBytes: Number(match[3]),
+    };
+  }
+  return usage;
+}
+
+function formatPlatformioMemoryUsage(usage) {
+  if (!usage) return "nicht ermittelt";
+  const percent = usage.percent.toLocaleString("de-DE", { maximumFractionDigits: 1 });
+  return `${percent} % (${formatMemoryBytes(usage.usedBytes)} / ${formatMemoryBytes(usage.totalBytes)})`;
+}
+
+function formatMemoryBytes(bytes) {
+  const value = Number(bytes || 0);
+  if (value >= 1024 * 1024) return `${(value / (1024 * 1024)).toLocaleString("de-DE", { maximumFractionDigits: 2 })} MB`;
+  if (value >= 1024) return `${(value / 1024).toLocaleString("de-DE", { maximumFractionDigits: 1 })} KB`;
+  return `${value.toLocaleString("de-DE")} B`;
 }
 
 function appendBuildProgress(progress, seenProgress) {

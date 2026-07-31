@@ -2034,6 +2034,16 @@ button.danger:hover {
 .terminal-running { color: #67e8f9; }
 .terminal-ok { color: #86efac; }
 .terminal-error { color: #fca5a5; }
+.terminal-summary {
+  display: inline-block;
+  margin: 3px 0;
+  padding: 3px 7px;
+  border-left: 3px solid #fbbf24;
+  border-radius: 3px;
+  background: #1f2937;
+  color: #fde68a;
+  font-weight: 700;
+}
 
 /* Die freie IDE verwendet durchgaengig dieselbe visuelle Sprache wie Build & Flash. */
 #ideView {

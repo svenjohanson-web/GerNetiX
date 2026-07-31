@@ -55,6 +55,15 @@ test("build terminal keeps progress and error output compact", () => {
   assert.match(app, /replace\(\/\\x1b/);
 });
 
+test("build terminal always appends a persistent Flash and RAM summary", () => {
+  assert.match(app, /\["succeeded", "failed", "replaced"\]\.includes\(current\.status\)/);
+  assert.match(app, /appendBuildMemorySummary\(current\)/);
+  assert.match(app, /Speicherbelegung · Flash:/);
+  assert.match(app, /RAM: \$\{formatPlatformioMemoryUsage\(ram\)\}/);
+  assert.match(app, /if \(!usage\) return "nicht ermittelt"/);
+  assert.match(css, /\.terminal-summary \{[\s\S]*font-weight: 700/);
+});
+
 test("IDE responds to available container width and browser sidebars", () => {
   assert.match(css, /\.app-shell \{[^}]*width: 100%;[^}]*max-width: none/);
   assert.match(css, /#ideView \{\s*container-type: inline-size/);
