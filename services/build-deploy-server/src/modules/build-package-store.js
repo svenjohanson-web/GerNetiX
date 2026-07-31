@@ -106,8 +106,6 @@ async function removeStalePackageFiles(packageDir, expectedPaths, previousPackag
 
 async function repairIncompleteEspIdfCache(packageDir) {
   const managedComponentsDir = path.join(packageDir, "managed_components");
-  if (await pathExists(managedComponentsDir)) return false;
-
   const platformioBuildDir = path.join(packageDir, ".pio", "build");
   let environments;
   try {
@@ -120,12 +118,46 @@ async function repairIncompleteEspIdfCache(packageDir) {
     const ninjaFile = path.join(platformioBuildDir, environment.name, "build.ninja");
     const ninja = await fs.readFile(ninjaFile, "utf8").catch(() => "");
     if (!/managed_components[\\/]/.test(ninja)) continue;
+    if (await managedComponentsAreComplete(packageDir, managedComponentsDir, ninja)) continue;
+
     await fs.rm(path.join(packageDir, ".pio"), { recursive: true, force: true });
+    await fs.rm(managedComponentsDir, { recursive: true, force: true });
     await Promise.all(["dependencies.lock", "sdkconfig", "sdkconfig.old"]
       .map((fileName) => fs.rm(path.join(packageDir, fileName), { force: true })));
     return true;
   }
   return false;
+}
+
+async function managedComponentsAreComplete(packageDir, managedComponentsDir, ninja) {
+  let componentEntries;
+  try {
+    componentEntries = await fs.readdir(managedComponentsDir, { withFileTypes: true });
+  } catch {
+    return false;
+  }
+
+  const componentDirs = componentEntries.filter((entry) => entry.isDirectory());
+  if (componentDirs.length === 0) return false;
+  for (const component of componentDirs) {
+    if (!await pathExists(path.join(managedComponentsDir, component.name, "CMakeLists.txt"))) return false;
+  }
+
+  const referencedSources = ninja
+    .split(/\r?\n/)
+    .filter((line) => line.startsWith("build "))
+    .flatMap((line) => line.split(/\s+/))
+    .filter((token) => /managed_components[\\/].*\.(?:c|cc|cpp|cxx|s|S)$/.test(token));
+  for (const referencedSource of referencedSources) {
+    const sourcePath = path.isAbsolute(referencedSource)
+      ? path.normalize(referencedSource)
+      : path.resolve(packageDir, referencedSource);
+    const relativeSource = path.relative(packageDir, sourcePath);
+    if (relativeSource.startsWith("..") || path.isAbsolute(relativeSource)) continue;
+    if (!await pathExists(sourcePath)) return false;
+  }
+
+  return true;
 }
 
 async function pathExists(filePath) {

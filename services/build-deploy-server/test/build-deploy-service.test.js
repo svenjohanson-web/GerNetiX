@@ -222,11 +222,17 @@ test("incremental builds preserve generated ESP-IDF components and remove only s
   const observedGeneratedComponent = [];
   service.runner.run = async (job, packageDir) => {
     const generatedHeader = path.join(packageDir, "managed_components", "espressif__mqtt", "include", "mqtt_client.h");
+    const generatedSource = path.join(packageDir, "managed_components", "espressif__mqtt", "mqtt_client.c");
     observedGeneratedComponent.push(await fs.readFile(generatedHeader, "utf8").catch(() => "missing"));
     if (job.job_id === "managed-components-1") {
       await fs.mkdir(path.dirname(generatedHeader), { recursive: true });
       await fs.writeFile(generatedHeader, "generated mqtt header");
+      await fs.writeFile(generatedSource, "generated mqtt source");
+      await fs.writeFile(path.join(packageDir, "managed_components", "espressif__mqtt", "CMakeLists.txt"), "idf_component_register()");
       await fs.writeFile(path.join(packageDir, "dependencies.lock"), "dependencies:\n  espressif/mqtt: 1.0.0\n");
+      const platformioState = path.join(packageDir, ".pio", "build", "esp32dev");
+      await fs.mkdir(platformioState, { recursive: true });
+      await fs.writeFile(path.join(platformioState, "build.ninja"), `build mqtt: cc ${generatedSource}\n`);
     }
     const outputDir = path.join(packageDir, ".test-artifacts");
     await fs.mkdir(outputDir, { recursive: true });
@@ -264,10 +270,11 @@ test("incremental builds preserve generated ESP-IDF components and remove only s
   const workspace = path.join(config.incrementalCacheDir, "project-managed--default", "workspace");
   assert.deepEqual(observedGeneratedComponent, ["missing", "generated mqtt header"]);
   assert.equal(await fs.readFile(path.join(workspace, "managed_components", "espressif__mqtt", "include", "mqtt_client.h"), "utf8"), "generated mqtt header");
+  assert.equal(await fs.readFile(path.join(workspace, "managed_components", "espressif__mqtt", "mqtt_client.c"), "utf8"), "generated mqtt source");
   await assert.rejects(fs.access(path.join(workspace, "src", "removed.cpp")), /ENOENT/);
 });
 
-test("incremental build repairs a PlatformIO cache that references missing managed components", async () => {
+test("incremental build repairs a PlatformIO cache with partial managed components", async () => {
   const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-corrupt-managed-components-"));
   const config = createConfig({
     BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
@@ -281,10 +288,14 @@ test("incremental build repairs a PlatformIO cache that references missing manag
     const platformioState = path.join(packageDir, ".pio", "build", "esp32dev");
     if (runCount === 1) {
       await fs.mkdir(platformioState, { recursive: true });
-      await fs.writeFile(path.join(platformioState, "build.ninja"), "build mqtt: cc managed_components/espressif__mqtt/mqtt_client.c\n");
+      const missingSource = path.join(packageDir, "managed_components", "espressif__mqtt", "mqtt_client.c");
+      await fs.writeFile(path.join(platformioState, "build.ninja"), `build mqtt: cc ${missingSource}\n`);
+      await fs.mkdir(path.join(packageDir, "managed_components", "espressif__mqtt", "include"), { recursive: true });
+      await fs.writeFile(path.join(packageDir, "managed_components", "espressif__mqtt", "remaining.txt"), "partial component");
       await fs.writeFile(path.join(packageDir, "dependencies.lock"), "dependencies:\n  espressif/mqtt: 1.0.0\n");
     } else {
       assert.equal(await fs.readFile(path.join(platformioState, "build.ninja"), "utf8").catch(() => "missing"), "missing");
+      assert.equal(await fs.readFile(path.join(packageDir, "managed_components", "espressif__mqtt", "remaining.txt"), "utf8").catch(() => "missing"), "missing");
       assert.equal(await fs.readFile(path.join(packageDir, "dependencies.lock"), "utf8").catch(() => "missing"), "missing");
     }
     const outputDir = path.join(packageDir, `.test-artifacts-${runCount}`);

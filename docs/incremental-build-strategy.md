@@ -19,7 +19,7 @@ Ein reiner Build aus der Entwicklungsplattform benoetigt kein Inventar-Device. E
 - Der Build-Server verwendet pro Projekt und Zielgeraet einen stabilen technischen Build-Workspace. Dadurch bleiben absolute Buildpfade und Zeitstempel unveraenderter Basissoftwaredateien stabil.
 - Bei einem neuen BuildPackage werden nur inhaltlich geaenderte Dateien neu geschrieben und nicht mehr enthaltene Dateien entfernt. `.pio` bleibt als jederzeit neu erzeugbarer technischer Cache bestehen.
 - Der Workspace-Abgleich verfolgt die vom BuildPackage gelieferten Pfade in einem technischen Manifest. Von PlatformIO oder ESP-IDF erzeugte Dateien wie `managed_components`, `dependencies.lock` und `sdkconfig` werden nicht als veraltete Projektquellen geloescht.
-- Verweist ein vorhandener `.pio`-Zustand auf nicht mehr vorhandene ESP-IDF-`managed_components`, verwirft der Build-Server ausschließlich diesen inkonsistenten technischen Cache und erzeugt ihn beim naechsten Build neu.
+- Verweist ein vorhandener `.pio`-Zustand auf fehlende oder unvollstaendige ESP-IDF-`managed_components`, verwirft der Build-Server ausschließlich diesen inkonsistenten technischen Cache einschließlich der Komponentenauflösung und erzeugt ihn beim naechsten Build neu.
 - Der persistente Build-Workspace ist keine fachliche Quelle der Wahrheit. Sein Inhalt wird bei jedem Auftrag mit dem vollstaendigen BuildPackage abgeglichen und darf jederzeit geloescht werden.
 - Der Compiler-Cache bleibt zwischen Builds erhalten.
 - PlatformIO-, ESP-IDF-, CMake- und Ninja-Caches werden nicht nach jedem Build geloescht.
