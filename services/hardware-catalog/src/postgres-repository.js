@@ -1,6 +1,7 @@
 "use strict";
 
 const { defaultCatalogSeed } = require("./seed");
+const { synchronizeBoardFeaturePins } = require("./board-configuration");
 
 class PostgresHardwareCatalogRepository {
   constructor(pool) {
@@ -54,6 +55,15 @@ class PostgresHardwareCatalogRepository {
     }
     for (const item of seed.hardwareItems || []) {
       await this.saveHardwareItem(item, { insertOnly: true });
+    }
+    await this.synchronizeBoardPins();
+  }
+
+  async synchronizeBoardPins() {
+    const items = await this.listHardwareItems({ item_type: "processor_board" });
+    for (const item of items) {
+      const synchronized = synchronizeBoardFeaturePins(item);
+      if (JSON.stringify(synchronized) !== JSON.stringify(item)) await this.saveHardwareItem(synchronized);
     }
   }
 

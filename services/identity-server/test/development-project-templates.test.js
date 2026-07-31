@@ -9,7 +9,9 @@ const {
   templateBuildConfig,
   templateFirmwareSources,
   templateHardwareProfileId,
+  templateSoftwareUnits,
 } = require("../src/dev/development-project-templates");
+const { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles } = require("../../project-server/src/modules/esp32-basissoftware-package");
 
 test("separates semantic template models from rendered views", () => {
   const template = developmentProjectTemplate("esp32_datalogger_local_web");
@@ -26,7 +28,7 @@ test("separates semantic template models from rendered views", () => {
 
 test("exposes one UI catalog without architecture or realization internals", () => {
   const catalog = developmentProjectTemplateCatalog();
-  assert.equal(catalog.length, 9);
+  assert.equal(catalog.length, 10);
   assert.equal(catalog.find((template) => template.id === "empty").default_title, "");
   assert.deepEqual(catalog.find((template) => template.id === "sensor_actuator_control"), {
     id: "sensor_actuator_control",
@@ -92,6 +94,68 @@ test("provides the complete ES3C28P touchscreen example as versioned template so
   assert.match(files.find((file) => file.path === "src/main.cpp").content, /void setup\(\)/);
   for (const game of ["nibbles", "frogger", "arkanoid", "space_invaders"]) {
     assert.equal(files.some((file) => file.path === `src/${game}.cpp`), true);
+  }
+});
+
+test("provides a two-target camera-to-display template with isolated build roots", () => {
+  const template = developmentProjectTemplate("esp32_camera_to_touch_display");
+  const architecture = templateArchitecturePlantUml(template, template.title);
+  const units = templateSoftwareUnits(template);
+  const files = templateFirmwareSources(template, template.title);
+
+  assert.match(architecture, /Waveshare ESP32-S3-CAM\\nOV3660/);
+  assert.match(architecture, /ESP32-S3 ES3C28P\\nDisplay-Client/);
+  assert.match(architecture, /geplanter Bildtransport/);
+  assert.equal(template.schemaVersion, 2);
+  assert.equal(templateHardwareProfileId(template), "hardware.processor_board.waveshare_esp32_s3_cam_ov3660");
+  assert.equal(units.length, 2);
+  assert.equal(units[0].software_unit_id, "camera_sender");
+  assert.equal(units[0].title, "Kamera-Host");
+  assert.equal(units[0].source_root, "Software/Kamera-Host");
+  assert.equal(units[0].hardware_profile_id, "hardware.processor_board.waveshare_esp32_s3_cam_ov3660");
+  assert.equal(units[0].build_config.framework, "espidf");
+  assert.equal(units[0].build_config.board, "4d_systems_esp32s3_gen4_r8n16");
+  assert.equal(units[0].build_config.firmware_basis_id, "gernetix-runtime-basissoftware");
+  assert.equal(units[0].build_config.firmware_basis_variant, "full");
+  assert.equal(units[1].software_unit_id, "display_receiver");
+  assert.equal(units[1].title, "Display-Client");
+  assert.equal(units[1].source_root, "Software/Display-Client");
+  assert.equal(units[1].hardware_profile_id, "hardware.processor_board.esp32_s3_es3c28p");
+  assert.equal(units[1].build_config.framework, "espidf");
+  assert.equal(units[1].build_config.board, "4d_systems_esp32s3_gen4_r8n16");
+  assert.equal(units[1].build_config.firmware_basis_id, "gernetix-runtime-basissoftware");
+  assert.match(files.find((file) => file.path === "Software/Kamera-Host/Komponenten/IoT-Device 1/src/user_main.cpp").content, /camera_driver_pending/);
+  assert.match(files.find((file) => file.path === "Software/Kamera-Host/Komponenten/IoT-Device 1/src/user_main.cpp").content, /GERNETIX_BOARD_FEATURE_CAMERA/);
+  assert.match(files.find((file) => file.path === "Software/Display-Client/Komponenten/IoT-Device 1/src/user_main.cpp").content, /display_driver_pending/);
+  assert.doesNotMatch(files.find((file) => file.path === "Software/Kamera-Host/Komponenten/IoT-Device 1/src/user_main.cpp").content, /esp_camera_init|GET \/capture/);
+  assert.doesNotMatch(files.find((file) => file.path === "Software/Display-Client/Komponenten/IoT-Device 1/src/user_main.cpp").content, /drawJpg/);
+  assert.match(files.find((file) => file.path === "Software/Kamera-Host/platformio.ini").content, /framework = espidf/);
+  assert.match(files.find((file) => file.path === "Software/Kamera-Host/platformio.ini").content, /partitions_full_16mb\.csv/);
+  assert.match(files.find((file) => file.path === "Software/Display-Client/platformio.ini").content, /GERNETIX_BASISSOFTWARE_PROFILE_FULL/);
+  assert.equal(files.some((file) => file.path === "Docs/Kamera-zu-Display.md"), true);
+
+  for (const unit of units) {
+    const prefix = `${unit.source_root}/`;
+    const projectSources = files.filter((file) => file.path.startsWith(prefix)).map((file) => ({ ...file, path: file.path.slice(prefix.length) }));
+    const boardConfiguration = {
+      source: "system_catalog",
+      name: unit.title,
+      base_board_profile_id: unit.hardware_profile_id,
+      board_features: unit.software_unit_id === "camera_sender"
+        ? { camera: { enabled: true, hardware: "ov3660", driver: "espressif_esp32_camera", connection: "parallel_dvp_sccb", pins: { xclk: 38 } } }
+        : { display: { enabled: true, hardware: "tft_lcd", driver: "ili9341", connection: "spi", pins: { mosi: 11 } } },
+    };
+    const composed = composeEsp32BasissoftwarePackage({
+      basisFiles: loadEsp32BasissoftwareFiles(),
+      projectSources,
+      buildConfig: { ...unit.build_config, board_configuration: boardConfiguration },
+    });
+    assert.equal(composed.some((file) => file.path === "src/main.cpp"), true);
+    assert.equal(composed.some((file) => file.path === "src/user/user_app.cpp"), true);
+    assert.equal(composed.some((file) => file.path === "include/gernetix_board_configuration.h"), true);
+    assert.equal(composed.some((file) => file.path === "sdkconfig.esp32-s3-n16r8"), true);
+    assert.match(composed.find((file) => file.path === "platformio.ini").content, /partitions_full_16mb\.csv/);
+    assert.match(composed.find((file) => file.path === "platformio.ini").content, /4d_systems_esp32s3_gen4_r8n16/);
   }
 });
 

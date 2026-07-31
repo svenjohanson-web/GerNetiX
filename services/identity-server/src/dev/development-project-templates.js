@@ -40,6 +40,20 @@ function templateHardwareProfileId(template) {
   return template?.realization?.hardwareProfileId || "architecture.discovery";
 }
 
+function templateSoftwareUnits(template) {
+  return (template?.realization?.softwareUnits || []).map((unit) => ({
+    software_unit_id: unit.software_unit_id,
+    title: unit.title,
+    software_kind: unit.software_kind,
+    build_system: unit.build_system,
+    source_root: unit.source_root,
+    entrypoint: unit.entrypoint,
+    device_id: "",
+    hardware_profile_id: unit.hardwareProfileId,
+    build_config: structuredClone(unit.buildConfig),
+  }));
+}
+
 module.exports = {
   developmentProjectTemplate,
   developmentProjectTemplateCatalog,
@@ -48,6 +62,7 @@ module.exports = {
   templateBuildConfig,
   templateFirmwareSources,
   templateHardwareProfileId,
+  templateSoftwareUnits,
   mergeSelectedGamesHeader,
   selectedGamesHeader,
 };

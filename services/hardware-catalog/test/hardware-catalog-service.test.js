@@ -4,6 +4,7 @@ const test = require("node:test");
 const { createDefaultHardwareCatalog } = require("../src");
 const { SqliteBackedHardwareCatalogRepository } = require("../src/repositories");
 const { defaultCatalogSeed } = require("../src/seed");
+const { renderPlatformioIni } = require("../../shared/platformio-config");
 
 test("lists catalog capabilities and processor boards from catalog", async () => {
   const service = await createDefaultHardwareCatalog({ persistenceBackend: "memory" });
@@ -19,9 +20,37 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   assert.ok(touchBoard.capability_ids.includes("capability.touchscreen_input"));
   const es3c28p = await service.getHardwareItem("hardware.processor_board.esp32_s3_es3c28p");
   const cameraBoard = await service.getHardwareItem("hardware.processor_board.ai_thinker_esp32_cam");
+  const waveshareCamera = await service.getHardwareItem("hardware.processor_board.waveshare_esp32_s3_cam_ov3660");
   assert.ok(cameraBoard.capability_ids.includes("capability.camera_input"));
   assert.equal(cameraBoard.default_instance_configuration.board_features.camera.hardware, "ov2640");
   assert.equal(cameraBoard.pin_profile.assigned_pins.camera_parallel.xclk, 0);
+  assert.equal(waveshareCamera.title, "Waveshare ESP32-S3-CAM-OV3660");
+  assert.equal(waveshareCamera.vendor, "Waveshare");
+  assert.equal(waveshareCamera.module_memory_variant, "N16R8");
+  assert.equal(waveshareCamera.verification_status, "vendor_reference");
+  assert.ok(waveshareCamera.capability_ids.includes("capability.camera_input"));
+  assert.ok(waveshareCamera.capability_ids.includes("capability.removable_storage"));
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.camera.hardware, "ov3660");
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.camera.maximum_resolution, "2048x1536");
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.camera.pins.xclk, 38);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.camera.pins.d0, 45);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.microphone.driver, "es7210");
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.microphone.pins.data_in, 13);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.speaker.driver, "es8311");
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.storage.pins.clk, 16);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.psram.value, "8_mb");
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.flash.value, "16_mb");
+  assert.equal(waveshareCamera.platformio_build.board, "esp32-s3-devkitc-1");
+  assert.equal(waveshareCamera.platformio_build.environment, "waveshare_esp32_s3_cam_ov3660");
+  assert.equal(waveshareCamera.platformio_build.flash_size_mb, 16);
+  assert.equal(waveshareCamera.platformio_build.platformio_options["board_build.arduino.memory_type"], "qio_opi");
+  assert.ok(waveshareCamera.platformio_build.build_flags.includes("-D CAMERA_MODEL_ESP_EYE"));
+  const wavesharePlatformio = renderPlatformioIni(waveshareCamera.platformio_build);
+  assert.match(wavesharePlatformio, /\[env:waveshare_esp32_s3_cam_ov3660\]/);
+  assert.match(wavesharePlatformio, /board = esp32-s3-devkitc-1/);
+  assert.match(wavesharePlatformio, /board_build\.flash_size = 16MB/);
+  assert.match(wavesharePlatformio, /board_build\.arduino\.memory_type = qio_opi/);
+  assert.match(wavesharePlatformio, /-D CAMERA_MODEL_ESP_EYE/);
   assert.equal(es3c28p.mcu_variant, "ESP32-S3");
   assert.equal(es3c28p.module_name, "ESP32-S3-WROOM-1");
   assert.equal(es3c28p.module_memory_variant, "N16R8");
@@ -29,6 +58,7 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   assert.equal(es3c28p.verification_status, "locally_verified");
   assert.equal(es3c28p.default_instance_configuration.board_features.display.driver, "ili9341");
   assert.equal(es3c28p.default_instance_configuration.board_features.display.pins.backlight, 45);
+  assert.equal(es3c28p.default_instance_configuration.board_features.display.pin_assignment_group, "display_spi");
   assert.equal(es3c28p.default_instance_configuration.board_features.touch.driver, "ft6336g");
   assert.equal(es3c28p.default_instance_configuration.board_features.touch.pins.sda, 16);
   assert.equal(es3c28p.default_instance_configuration.board_features.speaker.pins.data_out, 8);
@@ -71,7 +101,7 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   const boardFeatures = await service.listBoardFeatureOptions();
   const display = boardFeatures.find((item) => item.feature_id === "display");
   const memory = boardFeatures.find((item) => item.feature_id === "ram");
-  assert.equal(boardFeatures.length, 10);
+  assert.equal(boardFeatures.length, 11);
   assert.equal(boardFeatures.find((item) => item.feature_id === "camera").driver_options[0].title, "Espressif esp32-camera");
   assert.equal(display.driver_options.some((item) => item.title === "ST7789"), true);
   assert.equal(display.connection_options.some((item) => item.title === "SPI"), true);
@@ -81,6 +111,7 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   assert.equal(memory.value_options.some((item) => item.title === "512 KB"), true);
   assert.equal(memory.driver_options.some((item) => item.title === "ESP-IDF Heap"), true);
   assert.equal(psram.driver_options.some((item) => item.title === "ESP-IDF Heap/PSRAM"), true);
+  assert.equal(boardFeatures.find((item) => item.feature_id === "storage").driver_options.some((item) => item.title === "SD_MMC"), true);
   assert.match(display.datasheet_hint, /Datenblatt/);
 });
 
@@ -93,6 +124,7 @@ test("sqlite catalog migration enriches an existing ES3C28P board with known mem
   delete board.module_memory_variant;
   delete board.firmware_build_target_id;
   delete board.platformio_build;
+  delete board.default_instance_configuration.board_features.display.pins;
   board.default_instance_configuration.board_features.flash.value = "custom_confirmed_value";
   let persisted;
   const repository = new SqliteBackedHardwareCatalogRepository({
@@ -109,6 +141,7 @@ test("sqlite catalog migration enriches an existing ES3C28P board with known mem
   assert.equal(migrated.firmware_build_target_id, "firmware_build_target.esp32_s3_opi_n16r8");
   assert.equal(migrated.platformio_build.environment, "es3c28p");
   assert.equal(migrated.default_instance_configuration.board_features.flash.value, "custom_confirmed_value");
+  assert.equal(migrated.default_instance_configuration.board_features.display.pins.dc, 46);
   assert.equal(persisted.hardwareItems.find((item) => item.hardware_item_id === board.hardware_item_id)
     .default_instance_configuration.board_features.ram.hardware, "interner_sram");
 });

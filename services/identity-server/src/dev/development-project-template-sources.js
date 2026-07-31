@@ -1,7 +1,9 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { renderPlatformioIni } = require("../../../shared/platformio-config");
 
 function templateFirmwareSources(template, title) {
+  if (template?.id === "esp32_camera_to_touch_display") return cameraToTouchDisplaySources(template);
   if (!template?.realization?.buildConfig) return [];
   if (template.id === "touchscreen_game_collection") return touchscreenDemoSources();
   return [{
@@ -21,6 +23,134 @@ function templateFirmwareSources(template, title) {
       "",
     ].join("\n"),
   }];
+}
+
+function cameraToTouchDisplaySources(template) {
+  const units = template.realization.softwareUnits;
+  const camera = units.find((unit) => unit.software_unit_id === "camera_sender");
+  const display = units.find((unit) => unit.software_unit_id === "display_receiver");
+  const cameraRoot = camera.source_root;
+  const displayRoot = display.source_root;
+  return [
+    plain(`${cameraRoot}/platformio.ini`, renderPlatformioIni(camera.buildConfig), "build_config"),
+    header(`${cameraRoot}/Komponenten/IoT-Device 1/src/camera_host_state.h`, cameraHostStateHeader()),
+    source(`${cameraRoot}/Komponenten/IoT-Device 1/src/user_main.cpp`, cameraHostMain()),
+    plain(`${displayRoot}/platformio.ini`, renderPlatformioIni(display.buildConfig), "build_config"),
+    header(`${displayRoot}/Komponenten/IoT-Device 1/src/display_client_state.h`, displayClientStateHeader()),
+    source(`${displayRoot}/Komponenten/IoT-Device 1/src/user_main.cpp`, displayClientMain()),
+    plain("Docs/Kamera-zu-Display.md", cameraDisplayReadme()),
+  ];
+}
+
+function cameraHostStateHeader() {
+  return [
+    "#pragma once",
+    "",
+    "enum class CameraHostStage {",
+    "  basissoftware_ready,",
+    "  camera_driver_pending,",
+    "  frame_format_pending,",
+    "  transport_pending,",
+    "  ready,",
+    "};",
+    "",
+    "struct CameraHostState {",
+    "  CameraHostStage stage = CameraHostStage::basissoftware_ready;",
+    "  bool board_configuration_available = true;",
+    "};",
+    "",
+  ].join("\n");
+}
+
+function cameraHostMain() {
+  return [
+    '#include "user/user_app.h"',
+    '#include "gernetix_board_configuration.h"',
+    '#include "user_project/camera_host_state.h"',
+    "",
+    "namespace {",
+    "CameraHostState state;",
+    "}  // namespace",
+    "",
+    'extern "C" void userMain() {',
+    "  // Die GerNetiX-Basissoftware hat WLAN, Provisioning, Status, OTA und Runtime gestartet.",
+    "  // Naechster Schritt: OV3660 anhand der generierten GERNETIX_BOARD_FEATURE_CAMERA_* Werte initialisieren.",
+    "  state.stage = CameraHostStage::camera_driver_pending;",
+    "}",
+    "",
+    'extern "C" void userTick() {',
+    "  // Spaetere Pipeline: Frame erfassen -> Format/Codec waehlen -> Transport an den Display-Client.",
+    "  (void)state;",
+    "}",
+    "",
+  ].join("\n");
+}
+
+function displayClientStateHeader() {
+  return [
+    "#pragma once",
+    "",
+    "enum class DisplayClientStage {",
+    "  basissoftware_ready,",
+    "  display_driver_pending,",
+    "  transport_pending,",
+    "  decoder_pending,",
+    "  ready,",
+    "};",
+    "",
+    "struct DisplayClientState {",
+    "  DisplayClientStage stage = DisplayClientStage::basissoftware_ready;",
+    "  bool board_configuration_available = true;",
+    "};",
+    "",
+  ].join("\n");
+}
+
+function displayClientMain() {
+  return [
+    '#include "user/user_app.h"',
+    '#include "gernetix_board_configuration.h"',
+    '#include "user_project/display_client_state.h"',
+    "",
+    "namespace {",
+    "DisplayClientState state;",
+    "}  // namespace",
+    "",
+    'extern "C" void userMain() {',
+    "  // Die GerNetiX-Basissoftware hat WLAN, Provisioning, Status, OTA und Runtime gestartet.",
+    "  // Naechster Schritt: ILI9341 anhand der generierten GERNETIX_BOARD_FEATURE_DISPLAY_* Werte initialisieren.",
+    "  state.stage = DisplayClientStage::display_driver_pending;",
+    "}",
+    "",
+    'extern "C" void userTick() {',
+    "  // Spaetere Pipeline: Bild empfangen -> Format dekodieren -> Frame auf dem Display ausgeben.",
+    "  (void)state;",
+    "}",
+    "",
+  ].join("\n");
+}
+
+function cameraDisplayReadme() {
+  return [
+    "# ESP32-Kamera auf Touchdisplay",
+    "",
+    "Das Projekt besitzt zwei unabhaengige Firmware-Ziele und baut deshalb immer beide Einheiten:",
+    "",
+    "1. `Software/Kamera-Host`: Waveshare ESP32-S3-CAM-OV3660 als kuenftiger Bild-Host.",
+    "2. `Software/Display-Client`: ESP32-S3 ES3C28P als kuenftiger Display-Client.",
+    "",
+    "Beide Ziele beginnen mit der vollstaendigen GerNetiX-Basissoftware. Damit sind Provisioning, WLAN-Verwaltung, lokaler Status, Runtime, Diagnose und OTA bereits vorhanden. Die Hardwarekonfiguration jedes Boards wird beim Anlegen aus dem Hardware Catalog als Projektsnapshot uebernommen.",
+    "",
+    "## Geplante Ausbauschritte",
+    "",
+    "1. OV3660 initialisieren und ein einzelnes Rohbild erfassen.",
+    "2. Ein geeignetes Bildformat beziehungsweise einen Codec festlegen.",
+    "3. Den Bild-Host mit einem ersten lokalen Transport-Endpunkt erweitern.",
+    "4. Den Display-Client verbinden und genau ein Bild empfangen.",
+    "5. ILI9341 initialisieren und das empfangene Bild darstellen.",
+    "6. Aus Einzelbildern eine stabile Bildfolge mit messbarer Bildrate machen.",
+    "",
+  ].join("\n");
 }
 
 function touchscreenDemoSources() {
@@ -208,6 +338,10 @@ function source(path, content) {
 
 function header(path, content) {
   return { path, role: "user_code", content_type: "text/x-c++hdr", content };
+}
+
+function plain(path, content, role = "documentation") {
+  return { path, role, content_type: "text/plain", content };
 }
 
 module.exports = { mergeSelectedGamesHeader, selectedGamesHeader, templateFirmwareSources };

@@ -2,6 +2,8 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 
 const { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles } = require("../src/modules/esp32-basissoftware-package");
+const { defaultCatalogSeed } = require("../../hardware-catalog/src/seed");
+const { synchronizeBoardFeaturePins } = require("../../hardware-catalog/src/board-configuration");
 
 test("loads the protected ESP32 basis and overlays only the project user main", () => {
   const basisFiles = loadEsp32BasissoftwareFiles();
@@ -21,6 +23,7 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
   assert.equal(files.some((file) => file.path === "src/main.cpp"), true);
   assert.equal(files.some((file) => file.path === "src/functions/initWifi.cpp"), true);
   assert.equal(files.some((file) => file.path === "partitions_full_4mb.csv"), true);
+  assert.equal(files.some((file) => file.path === "sdkconfig.esp32-s3-n16r8"), true);
   assert.equal(files.some((file) => file.path === "partitions_medium_8mb.csv"), true);
   assert.equal(files.some((file) => file.path === "dependencies.lock"), true);
   assert.equal(files.some((file) => file.path === "src/idf_component.yml"), true);
@@ -82,6 +85,30 @@ test("forces the immutable project board snapshot into every compiler unit", () 
   assert.match(header, /GERNETIX_ACCOUNT_BOARD_VERSION 3/);
   assert.match(header, /GERNETIX_BOARD_FEATURE_DISPLAY_DRIVER "st7789"/);
   assert.match(header, /GERNETIX_BOARD_FEATURE_DISPLAY_PIN_CS 12/);
+});
+
+test("carries the Hardware Catalog display bus pins unchanged into the compiler header", () => {
+  const catalogBoard = synchronizeBoardFeaturePins(defaultCatalogSeed().hardwareItems
+    .find((item) => item.hardware_item_id === "hardware.processor_board.esp32_s3_es3c28p"));
+  const files = composeEsp32BasissoftwarePackage({
+    basisFiles: loadEsp32BasissoftwareFiles(),
+    projectSources: [{ path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: "void userMain() {}" }],
+    buildConfig: {
+      user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp",
+      board_configuration: {
+        source: "catalog",
+        base_board_profile_id: catalogBoard.hardware_item_id,
+        board_features: catalogBoard.default_instance_configuration.board_features,
+      },
+    },
+  });
+  const header = files.find((file) => file.path === "include/gernetix_board_configuration.h").content;
+  assert.match(header, /GERNETIX_BOARD_FEATURE_DISPLAY_CONNECTION "spi"/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_DISPLAY_PIN_SCLK 12/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_DISPLAY_PIN_MOSI 11/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_DISPLAY_PIN_CS 10/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_DISPLAY_PIN_DC 46/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_DISPLAY_PIN_BACKLIGHT 45/);
 });
 
 test("copies separated project user headers into the protected build package", () => {

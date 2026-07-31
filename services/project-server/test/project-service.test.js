@@ -93,6 +93,51 @@ test("clones an immutable system template into an account-owned project", async 
   assert.match(buildPackage.platformio_ini, /env:es3c28p/);
 });
 
+test("clones every firmware target of an immutable distributed project template", async () => {
+  const service = createMemoryProjectServer();
+  const cameraBuild = { platform: "espressif32", board: "esp32-s3-devkitc-1", environment: "waveshare_camera", framework: "arduino", flash_size_mb: 16 };
+  const displayBuild = { platform: "espressif32", board: "esp32-s3-devkitc-1", environment: "es3c28p", framework: "arduino", flash_size_mb: 16 };
+  await service.createProject({
+    project_id: "system_template_camera_display_v1",
+    user_id: "system",
+    status: "template",
+    title: "Kamera auf Display",
+    build_config: cameraBuild,
+    software_units: [
+      {
+        software_unit_id: "camera_sender", title: "Kamera-Sender", software_kind: "embedded_firmware",
+        build_system: "platformio", source_root: "Software/Kamera-Sender",
+        hardware_profile_id: "hardware.processor_board.waveshare_esp32_s3_cam_ov3660", build_config: cameraBuild,
+      },
+      {
+        software_unit_id: "display_receiver", title: "Display-Empfaenger", software_kind: "embedded_firmware",
+        build_system: "platformio", source_root: "Software/Display-Empfaenger",
+        hardware_profile_id: "hardware.processor_board.esp32_s3_es3c28p", build_config: displayBuild,
+      },
+    ],
+    active_software_unit_id: "camera_sender",
+    sources: [
+      { path: "Software/Kamera-Sender/src/main.cpp", content: "// camera" },
+      { path: "Software/Display-Empfaenger/src/main.cpp", content: "// display" },
+    ],
+  });
+
+  const copy = await service.createProject({
+    template_project_id: "system_template_camera_display_v1",
+    user_id: "account-camera",
+    title: "Meine Kamera",
+  });
+  assert.equal(copy.software_units.length, 2);
+  assert.equal(copy.software_units[0].hardware_profile_id, "hardware.processor_board.waveshare_esp32_s3_cam_ov3660");
+  assert.equal(copy.software_units[1].hardware_profile_id, "hardware.processor_board.esp32_s3_es3c28p");
+  assert.match((await service.getSource(copy.project_id, "Software/Kamera-Sender/platformio.ini")).content, /waveshare_camera/);
+  assert.match((await service.getSource(copy.project_id, "Software/Display-Empfaenger/platformio.ini")).content, /es3c28p/);
+  const cameraJob = await service.createBuildJob(copy.project_id, { software_unit_id: "camera_sender" });
+  const displayJob = await service.createBuildJob(copy.project_id, { software_unit_id: "display_receiver" });
+  assert.equal((await service.createBuildPackage(cameraJob.build_job_id)).files.some((file) => file.content === "// display"), false);
+  assert.equal((await service.createBuildPackage(displayJob.build_job_id)).files.some((file) => file.content === "// camera"), false);
+});
+
 test("regenerates the visible platformio.ini whenever graphical build configuration is saved", async () => {
   const service = createMemoryProjectServer();
   const project = await service.createProject({

@@ -856,6 +856,7 @@ function normalizeSoftwareUnits(input, fallbackBuildConfig = null) {
       source_root: sourceRoot,
       entrypoint: normalizeOptionalSourcePath(unit?.entrypoint || ""),
       device_id: String(unit?.device_id || "").trim().slice(0, 180),
+      hardware_profile_id: String(unit?.hardware_profile_id || "").trim().slice(0, 180),
       build_config: buildSystem === "platformio" && unit?.build_config ? normalizeBuildConfig(unit.build_config) : null,
       build_configuration: buildSystem === "platformio" || !unit?.build_configuration
         ? null

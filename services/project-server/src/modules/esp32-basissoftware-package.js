@@ -4,7 +4,10 @@ const { renderPlatformioIni } = require("../../../shared/platformio-config");
 
 const DEFAULT_BASIS_ROOT = path.resolve(__dirname, "../../../..", "basissoftware", "esp32");
 const DEFAULT_RUNTIME_CORE_ROOT = path.resolve(__dirname, "../../../..", "firmware", "shared", "gernetix-runtime-core");
-const INCLUDED_ROOT_FILES = new Set(["CMakeLists.txt", "dependencies.lock", "platformio.ini", "sdkconfig.esp32dev", "partitions_ota_4mb.csv"]);
+const INCLUDED_ROOT_FILES = new Set([
+  "CMakeLists.txt", "dependencies.lock", "platformio.ini", "sdkconfig.esp32dev",
+  "sdkconfig.esp32-s3-n16r8", "partitions_ota_4mb.csv",
+]);
 const PROFILE_PARTITION_FILE = /^partitions_(full|medium|low)_(4|8|16)mb\.csv$/;
 
 function loadEsp32BasissoftwareFiles(root = process.env.GERNETIX_ESP32_BASISSOFTWARE_ROOT || DEFAULT_BASIS_ROOT) {

@@ -1,10 +1,11 @@
 const { SqliteStateStore, jsonColumn } = require("../../shared");
 const { defaultCatalogSeed } = require("./seed");
+const { synchronizeBoardFeaturePins } = require("./board-configuration");
 
 class InMemoryHardwareCatalogRepository {
   constructor(seed = defaultCatalogSeed()) {
     this.capabilities = new Map((seed.capabilities || []).map((item) => [item.capability_id, clone(item)]));
-    this.hardwareItems = new Map((seed.hardwareItems || []).map((item) => [item.hardware_item_id, clone(item)]));
+    this.hardwareItems = new Map((seed.hardwareItems || []).map((item) => [item.hardware_item_id, synchronizeBoardFeaturePins(item)]));
   }
 
   listCapabilities() {
@@ -117,6 +118,8 @@ function migrateLoadedCatalog(seed, loaded = {}) {
     if (seededItem?.platformio_build && !loadedItem.platformio_build) {
       loadedItem.platformio_build = clone(seededItem.platformio_build);
     }
+    const synchronized = synchronizeBoardFeaturePins(loadedItem);
+    Object.assign(loadedItem, synchronized);
   }
   const itemId = "hardware.processor_board.esp32_s3_es3c28p";
   const seededBoard = (seed.hardwareItems || []).find((item) => item.hardware_item_id === itemId);

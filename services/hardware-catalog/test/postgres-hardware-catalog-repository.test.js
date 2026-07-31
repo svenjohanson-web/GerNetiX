@@ -32,6 +32,23 @@ test("queries hardware items by type and status in PostgreSQL", async () => {
   assert.match(pool.calls[0].text, /item_type=\$1 AND status=\$2/);
 });
 
+test("reconciles PostgreSQL board feature pins with the catalog pin profile", async () => {
+  const item = {
+    hardware_item_id: "hardware.board",
+    sku: "BOARD",
+    item_type: "processor_board",
+    pin_profile: { assigned_pins: { display_spi: { sclk: 12, cs: 10 } } },
+    default_instance_configuration: { board_features: { display: { enabled: true, connection: "spi" } } },
+  };
+  const pool = new RecordingPool([{ raw_json: item }]);
+  const repository = new PostgresHardwareCatalogRepository(pool);
+  await repository.synchronizeBoardPins();
+  const update = pool.calls.find((call) => /INSERT INTO hardware_catalog_items/.test(call.text));
+  assert.ok(update);
+  assert.deepEqual(update.values[4].default_instance_configuration.board_features.display.pins, { sclk: 12, cs: 10 });
+  assert.equal(update.values[4].default_instance_configuration.board_features.display.pin_assignment_group, "display_spi");
+});
+
 class RecordingPool {
   constructor(rows = []) {
     this.rows = rows;

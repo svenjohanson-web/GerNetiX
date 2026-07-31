@@ -33,6 +33,7 @@ const {
   templateBuildConfig,
   templateFirmwareSources,
   templateHardwareProfileId,
+  templateSoftwareUnits,
   mergeSelectedGamesHeader,
 } = require("./dev/development-project-templates");
 const { createDevHardwareUtils } = require("./dev/hardware-utils");
@@ -2440,6 +2441,43 @@ async function handleDevelopmentProjectCreate(req, res, session) {
   const title = requiredField(body.title || template.title || "Neues Entwicklungsprojekt", "title").slice(0, 120);
   const description = String(body.description || template.description || "Architektur-Discovery-Projekt").trim().slice(0, 1000);
   let buildConfig = templateBuildConfig(template);
+  let softwareUnits = templateSoftwareUnits(template);
+  if (softwareUnits.length) {
+    const boards = await loadAvailableProcessorBoards(session);
+    const missingBoard = softwareUnits.find((unit) => !boards.some((board) => board.hardware_item_id === unit.hardware_profile_id));
+    if (missingBoard) {
+      sendJson(res, 409, {
+        error: "project_template_board_missing",
+        message: `Das Boardprofil ${missingBoard.hardware_profile_id} fuer ${missingBoard.title} ist nicht verfügbar.`,
+      });
+      return;
+    }
+    softwareUnits = softwareUnits.map((unit) => {
+      const board = boards.find((item) => item.hardware_item_id === unit.hardware_profile_id);
+      const catalogBuild = board.platformio_build || {};
+      return {
+        ...unit,
+        build_config: {
+          ...unit.build_config,
+          ...catalogBuild,
+          board: unit.build_config.board || catalogBuild.board,
+          framework: unit.build_config.framework || catalogBuild.framework,
+          environment: unit.build_config.environment || catalogBuild.environment,
+          libraries: unit.build_config.libraries || [],
+          build_flags: unit.build_config.build_flags || [],
+          platformio_options: unit.build_config.platformio_options || {},
+          firmware_basis_id: unit.build_config.firmware_basis_id || "",
+          firmware_basis_version: unit.build_config.firmware_basis_version || "",
+          firmware_basis_variant: unit.build_config.firmware_basis_variant || "",
+          partition_profile_id: unit.build_config.partition_profile_id || "",
+          user_source_path: unit.build_config.user_source_path,
+          user_target_path: unit.build_config.user_target_path,
+          board_configuration: compilerBoardConfiguration(null, board),
+        },
+      };
+    });
+    buildConfig = softwareUnits[0].build_config;
+  }
   if (template.id === "touchscreen_game_collection") {
     const boards = await loadAvailableProcessorBoards(session);
     const board = boards.find((item) => item.hardware_item_id === "hardware.processor_board.esp32_s3_es3c28p");
@@ -2461,6 +2499,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
       body: {
         project_id: templateProjectId, user_id: "system", title: template.title, description: template.description,
         learning_project_id: "system_template", hardware_profile_id: templateHardwareProfileId(template), build_config: buildConfig,
+        ...(softwareUnits.length ? { software_units: softwareUnits, active_software_unit_id: softwareUnits[0].software_unit_id } : {}),
         status: "template", view_manifest: { template_id: template.id, template_ref: { version: template.schemaVersion } }, sources,
       },
     });
