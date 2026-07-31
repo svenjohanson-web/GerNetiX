@@ -32,6 +32,7 @@ const {
   templateArchitecturePlantUml,
   templateBuildConfig,
   templateFirmwareSources,
+  templateHardwareConfiguration,
   templateHardwareProfileId,
   templateSoftwareUnits,
   mergeSelectedGamesHeader,
@@ -2438,6 +2439,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
   const title = requiredField(body.title || template.title || "Neues Entwicklungsprojekt", "title").slice(0, 120);
   const description = String(body.description || template.description || "Architektur-Discovery-Projekt").trim().slice(0, 1000);
   let buildConfig = templateBuildConfig(template);
+  let hardwareConfiguration = templateHardwareConfiguration(template);
   let softwareUnits = templateSoftwareUnits(template);
   if (softwareUnits.length) {
     const boards = await loadAvailableProcessorBoards(session);
@@ -2473,6 +2475,16 @@ async function handleDevelopmentProjectCreate(req, res, session) {
         },
       };
     });
+    if (hardwareConfiguration) {
+      hardwareConfiguration.components = hardwareConfiguration.components.map((component) => {
+        if (component.abstract_type !== "iot_device" || !component.board_profile_id) return component;
+        const board = boards.find((item) => item.hardware_item_id === component.board_profile_id);
+        return {
+          ...component,
+          board_configuration: compilerBoardConfiguration(null, board),
+        };
+      });
+    }
     buildConfig = softwareUnits[0].build_config;
   }
   if (template.id === "touchscreen_game_collection") {
@@ -2521,6 +2533,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
         buildConfig,
         templateId: template.id,
         templateModelVersion: template.schemaVersion,
+        hardwareConfiguration,
         homeAutomationConfiguration: template.id === "distributed_home_automation"
           ? defaultHomeAutomationConfiguration()
           : null,

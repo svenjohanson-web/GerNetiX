@@ -1915,7 +1915,9 @@ const DevelopmentPlatform = (() => {
           const processorKey = DevelopmentHardwareModel.selectionForComponent(merged, boards);
           return DevelopmentHardwareModel.applyProcessorSelection(merged, processorKey, boards);
         }
-        if (merged.abstract_type === "sensor") return DevelopmentHardwareModel.reconcileSensor(merged, availableSensors());
+        if (merged.abstract_type === "sensor" && merged.concrete_type !== "integrated_camera") {
+          return DevelopmentHardwareModel.reconcileSensor(merged, availableSensors());
+        }
         return merged;
       });
       return {
@@ -1991,8 +1993,8 @@ const DevelopmentPlatform = (() => {
       if (/ereignis.dispatcher/.test(text)) return "event_dispatcher";
       if (/projekt.push.versand|benachrichtigungsdienst/.test(text)) return "notification_service";
       if (/iot.?device|iot.?zielger(?:ae|ä)t|esp32|esp8266|arduino|raspberry|processor.?board|datenlogger/.test(text)) return "iot_device";
-      if (/sensor|fuehler|fuhler|temperatur|feuchte|helligkeit|wasserstand|ntc|ptc|pt1000/.test(text)) return "sensor";
-      if (/aktor|motor|relais|ventil|servo|summer|buzzer|led/.test(text)) return "actuator";
+      if (/sensor|kamera|camera|fuehler|fuhler|temperatur|feuchte|helligkeit|wasserstand|ntc|ptc|pt1000/.test(text)) return "sensor";
+      if (/aktor|display|bildschirm|anzeige|motor|relais|ventil|servo|summer|buzzer|led/.test(text)) return "actuator";
       if (/pwa|iphone|smartphone|mobile app/.test(text)) return "smartphone_app";
       if (/browser|dashboard/.test(text)) return "browser_app";
       if (/desktop|windows app|mac(?:os)? app|linux app/.test(text)) return "desktop_app";
@@ -2032,6 +2034,12 @@ const DevelopmentPlatform = (() => {
     }
 
     function hardwareRealizationControl(component) {
+      if (component.concrete_type === "integrated_camera") {
+        return `<span class="hardware-not-applicable">Kamera ist Bestandteil der gewählten Boardkonfiguration.</span>`;
+      }
+      if (component.concrete_type === "integrated_display") {
+        return `<span class="hardware-not-applicable">Display ist Bestandteil der gewählten Boardkonfiguration.</span>`;
+      }
       if (component.abstract_type === "iot_device") {
         const boards = availableProcessorBoards();
         const inventoryDevice = (state.devices || []).find((device) => device.device_id === component.inventory_device_id);
@@ -2194,6 +2202,9 @@ const DevelopmentPlatform = (() => {
     }
 
     function sensorRealizationControls(component) {
+      if (component.concrete_type === "integrated_camera") {
+        return `<span class="hardware-not-applicable">Kamera ist Bestandteil der gewählten Boardkonfiguration.</span>`;
+      }
       const sensors = availableSensors();
       const catalogStatus = state.sensorCatalogStatus || { state: "idle", message: "" };
       const catalogUnavailable = catalogStatus.state === "error";
@@ -2291,6 +2302,7 @@ const DevelopmentPlatform = (() => {
         return `<span class="hardware-not-applicable">Board über Inventar oder Katalog wählen.</span>`;
       }
       if (component.abstract_type === "sensor") {
+        if (component.concrete_type === "integrated_camera") return `<span class="hardware-not-applicable">Eigenschaften und Pins kommen aus dem Kameraboard.</span>`;
         const electrical = component.concrete_type === "pt1000" ? `
           <label>R0<input data-hardware-property="nominal_resistance_ohm" type="number" min="100" value="${escapeAttribute(properties.nominal_resistance_ohm || 1000)}"><small>Ohm bei 0 Grad C</small></label>
           <label>Leiter<select data-hardware-property="wire_count">${[2, 3, 4].map((count) => `<option value="${count}" ${selected(properties.wire_count || 2, count)}>${count}-Leiter</option>`).join("")}</select></label>`
@@ -2298,6 +2310,7 @@ const DevelopmentPlatform = (() => {
           <label>Nennwiderstand<input data-hardware-property="nominal_resistance_ohm" type="number" min="100" value="${escapeAttribute(properties.nominal_resistance_ohm || 10000)}"><small>Ohm</small></label>` : "";
         return `${electrical}${measurementAcquisitionControls(component)}`;
       }
+      if (component.concrete_type === "integrated_display") return `<span class="hardware-not-applicable">Eigenschaften und Pins kommen aus dem Displayboard.</span>`;
       if (motorDriverTypes(component.concrete_type).length) return '<span class="hardware-not-applicable">Motor- und Pinbelegung werden anschließend in der IDE-Treiberverwaltung konfiguriert.</span>';
       if (component.abstract_type === "actuator") return `<label>Beschreibung<input data-hardware-property="description" value="${escapeAttribute(properties.description || "")}" placeholder="Bauart oder wichtige Kenndaten"></label>`;
       return `<span class="hardware-not-applicable">-</span>`;
@@ -2319,6 +2332,9 @@ const DevelopmentPlatform = (() => {
     function hardwareConnectionControls(component, devices) {
       if (!["sensor", "actuator"].includes(component.abstract_type)) return `<span class="hardware-not-applicable">-</span>`;
       const targetDevice = devices.find((device) => device.component_id === component.target_device_id) || devices[0];
+      if (["integrated_camera", "integrated_display"].includes(component.concrete_type)) {
+        return `<span class="hardware-not-applicable">Angeschlossen an ${escapeHtml(targetDevice?.label || "das zugeordnete IoT-Device")} gemäß Boardkonfiguration.</span>`;
+      }
       const motorDriverSpecific = motorDriverTypes(component.concrete_type).length > 0;
       const pinOptions = boardPins(targetDevice?.board_profile_id, component);
       return `

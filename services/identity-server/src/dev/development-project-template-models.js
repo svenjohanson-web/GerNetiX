@@ -95,23 +95,68 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
   }),
   esp32_camera_to_touch_display: templateModel({
     id: "esp32_camera_to_touch_display",
-    schemaVersion: 2,
+    schemaVersion: 3,
     title: "ESP32-Kamera auf Touchdisplay",
     description: "Zwei ESP32-S3 starten mit der GerNetiX-Basissoftware: Das Waveshare-Kameraboard ist als kuenftiger Bild-Host vorbereitet, das ES3C28P als kuenftiger Display-Client. Kameraaufnahme, Bildformat und Transport werden danach schrittweise entwickelt.",
     hint: "Vorkonfiguriertes Basissoftware-Projekt mit zwei Firmware-Zielen: Kamera-Host und Display-Client.",
     architecture: {
       elements: [
-        element("camera", "Waveshare ESP32-S3-CAM\nOV3660 · Bild-Host", "iot_device"),
-        element("display", "ESP32-S3 ES3C28P\nDisplay-Client", "iot_device"),
+        element("camera", "Kamera", "sensor"),
+        element("camera_device", "IoT-Device 1\nKameraeinheit", "iot_device"),
+        element("display_device", "IoT-Device 2\nAnzeigeeinheit", "iot_device"),
+        element("display", "Display", "actuator"),
         element("user", "Nutzer", "actor"),
       ],
       relations: [
-        relation("camera", "display", "geplanter Bildtransport"),
-        relation("user", "display", "betrachtet spaeter das Kamerabild"),
+        relation("camera", "camera_device", "liefert Bilddaten"),
+        relation("camera_device", "display_device", "uebertraegt Bilddaten"),
+        relation("display_device", "display", "zeigt Kamerabild"),
+        relation("user", "display_device", "betrachtet Kamerabild"),
       ],
     },
     realization: {
       hardwareProfileId: "hardware.processor_board.waveshare_esp32_s3_cam_ov3660",
+      hardwareConfiguration: {
+        schema_version: 5,
+        components: [
+          {
+            component_id: "camera",
+            label: "Kamera",
+            plantuml_type: "rectangle",
+            abstract_type: "sensor",
+            concrete_type: "integrated_camera",
+            target_device_id: "camera_device",
+          },
+          {
+            component_id: "camera_device",
+            label: "IoT-Device 1 Kameraeinheit",
+            plantuml_type: "rectangle",
+            abstract_type: "iot_device",
+            board_profile_id: "hardware.processor_board.waveshare_esp32_s3_cam_ov3660",
+          },
+          {
+            component_id: "display_device",
+            label: "IoT-Device 2 Anzeigeeinheit",
+            plantuml_type: "rectangle",
+            abstract_type: "iot_device",
+            board_profile_id: "hardware.processor_board.esp32_s3_es3c28p",
+          },
+          {
+            component_id: "display",
+            label: "Display",
+            plantuml_type: "rectangle",
+            abstract_type: "actuator",
+            concrete_type: "integrated_display",
+            target_device_id: "display_device",
+          },
+          {
+            component_id: "user",
+            label: "Nutzer",
+            plantuml_type: "actor",
+            abstract_type: "actor",
+          },
+        ],
+      },
       softwareUnits: [
         {
           software_unit_id: "camera_sender",

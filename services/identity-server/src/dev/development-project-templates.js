@@ -40,6 +40,12 @@ function templateHardwareProfileId(template) {
   return template?.realization?.hardwareProfileId || "architecture.discovery";
 }
 
+function templateHardwareConfiguration(template) {
+  return template?.realization?.hardwareConfiguration
+    ? structuredClone(template.realization.hardwareConfiguration)
+    : null;
+}
+
 function templateSoftwareUnits(template) {
   return (template?.realization?.softwareUnits || []).map((unit) => ({
     software_unit_id: unit.software_unit_id,
@@ -61,6 +67,7 @@ module.exports = {
   templateArchitecturePlantUml,
   templateBuildConfig,
   templateFirmwareSources,
+  templateHardwareConfiguration,
   templateHardwareProfileId,
   templateSoftwareUnits,
   mergeSelectedGamesHeader,
