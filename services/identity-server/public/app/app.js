@@ -1809,8 +1809,8 @@ function updateIdeProjectTools(project) {
   flashBoxButton.disabled = !flashboxes.length;
   flashboxSelect.classList.toggle("hidden", !flashboxes.length);
   flashboxSelect.disabled = !flashboxes.length;
-  buildButton.title = actionReason;
-  usbButton.title = actionReason || (!allocated?.usb_flash_supported ? "Das zugeordnete Device unterstuetzt keinen USB-Flash." : "");
+  buildButton.title = "Build verwendet die gespeicherte Projekt-Boardkonfiguration.";
+  usbButton.title = "Direkter USB-Flash verwendet die Projekt-Boardkonfiguration und das angeschlossene USB-Gerät.";
   otaButton.title = actionReason || otaReason;
   flashBoxButton.title = actionReason || (!flashboxes.length
     ? "Keine FlashBox im Inventar verfügbar."
@@ -1843,7 +1843,6 @@ function renderIdeProjectInformation(project) {
   const actionReason = ideActionUnavailableReason(project, allocated);
   if (actionReason) notices.push(actionReason);
   if (!project.buildConfig) notices.push("Fuer dieses Projekt ist noch kein Build-Profil hinterlegt.");
-  if (allocated && !allocated.usb_flash_supported) notices.push("Das zugeordnete Device unterstuetzt keinen USB-Flash.");
   if (allocated && allocated.connectivity_status !== "online") notices.push(`Das Device ist nicht online (${allocated.connectivity_status || "unknown"}).`);
   if (allocated && allocated.ota_status !== "ready") notices.push(`OTA ist noch nicht bereit (${allocated.ota_status || "unknown"}).`);
   const items = [
@@ -2013,8 +2012,8 @@ function ideActionUnavailableReason(project, allocated) {
   if (!allocated) {
     const compatible = state.devices.filter((device) => deviceCompatibleWithProject(project, device));
     return compatible.length
-      ? "Vor Build oder Flash: Ordne der IoT-Device-Komponente zuerst ein Inventar-Device zu."
-      : "Vor Build oder Flash: Kein kompatibles Board im Inventar. Fuege das Board zum Inventar hinzu und ordne es dem Projekt zu.";
+      ? "Für OTA: Ordne der IoT-Device-Komponente ein Inventar-Device zu. Build und direkter USB-Flash funktionieren auch ohne diese Zuordnung."
+      : "Für OTA ist kein kompatibles Board im Inventar. Build und direkter USB-Flash verwenden die Projekt-Boardkonfiguration.";
   }
   return "";
 }
@@ -3244,8 +3243,7 @@ async function startBuild() {
 async function startUsbFlash() {
   const project = projectById(state.activeProjectId);
   const device = allocatedIdeDevice(project);
-  if (!project || !device) return setFlashStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
-  if (!device.usb_flash_supported) return setFlashStatus("error", "Das zugeordnete Device unterstuetzt keinen USB-Flash.");
+  if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
   const serialServiceAvailable = await state.serialService.available();
   if (!serialServiceAvailable && !navigator.serial) {
     setFlashStatus("error", "Für USB wird Web Serial oder der GerNetiX WebHelper benötigt.");
@@ -3258,7 +3256,7 @@ async function startUsbFlash() {
     await persistCurrentSource(project);
     const build = await postJson("/api/user-ide/build-jobs", {
       project_slug: project.slug,
-      device_id: device.device_id,
+      device_id: device?.device_id || "",
       mode: "build_and_usb_flash",
     });
     activeBuild = await waitForCompletedBuild(build);

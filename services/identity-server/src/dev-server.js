@@ -3295,7 +3295,7 @@ async function handleUserIdeBuildJob(req, res) {
     sendJson(res, 404, { error: "project_not_found", message: "Projekt wurde nicht gefunden." });
     return;
   }
-  if (!device && mode !== "build") {
+  if (!device && !["build", "build_and_usb_flash"].includes(mode)) {
     sendJson(res, 404, { error: "device_not_found", message: "Device wurde nicht gefunden." });
     return;
   }
@@ -3340,11 +3340,6 @@ async function handleUserIdeBuildJob(req, res) {
       return;
     }
   }
-  if (mode === "build_and_usb_flash" && !device.usb_flash_supported) {
-    sendJson(res, 409, { error: "device_not_usb_flash_ready", message: "Das ausgewaehlte Device ist nicht fuer USB-Flash konfiguriert." });
-    return;
-  }
-
   const projectServerJob = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/build-jobs`, {
     method: "POST",
     body: {
@@ -3364,7 +3359,7 @@ async function handleUserIdeBuildJob(req, res) {
       device_id: device?.device_id || null,
       build_package: toBuildDeployPackage(buildPackage, device || {}, project),
       usb_flash: mode === "build_and_usb_flash" ? {
-        upload_port: String(body.upload_port || device.upload_port || "").trim(),
+        upload_port: String(body.upload_port || device?.upload_port || "").trim(),
       } : null,
       deploy: mode === "build_and_flash" ? {
         requested: true,
