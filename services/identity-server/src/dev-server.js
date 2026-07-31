@@ -2439,15 +2439,37 @@ async function handleDevelopmentProjectCreate(req, res, session) {
   if (!requireEntitlements(res, session, template.requiredEntitlements || [])) return;
   const title = requiredField(body.title || template.title || "Neues Entwicklungsprojekt", "title").slice(0, 120);
   const description = String(body.description || template.description || "Architektur-Discovery-Projekt").trim().slice(0, 1000);
-  const buildConfig = templateBuildConfig(template);
+  let buildConfig = templateBuildConfig(template);
+  if (template.id === "touchscreen_game_collection") {
+    const boards = await loadAvailableProcessorBoards(session);
+    const board = boards.find((item) => item.hardware_item_id === "hardware.processor_board.esp32_s3_es3c28p");
+    if (!board) {
+      sendJson(res, 409, { error: "game_template_board_missing", message: "Das ES3C28P-Boardprofil für die Spielesammlung ist nicht verfügbar." });
+      return;
+    }
+    buildConfig = { ...buildConfig, flash_size_mb: 16, board_configuration: compilerBoardConfiguration(null, board) };
+  }
   const projectId = `dev_project_${slugifyProjectId(title)}_${Date.now().toString(36)}`;
   const initialSource = template.id === "empty" ? "" : templateArchitecturePlantUml(template, title);
   const sources = developmentProjectSources({ title, description, architectureSource: initialSource })
     .concat(templateFirmwareSources(template, title));
+  const templateProjectId = `system_template_${template.id}_v${template.schemaVersion}`;
+  if (template.id !== "empty") {
+    const existingTemplate = await projectServerJson(`/api/projects/${encodeURIComponent(templateProjectId)}`).catch((error) => error.status === 404 ? null : Promise.reject(error));
+    if (!existingTemplate) await projectServerJson("/api/projects", {
+      method: "POST",
+      body: {
+        project_id: templateProjectId, user_id: "system", title: template.title, description: template.description,
+        learning_project_id: "system_template", hardware_profile_id: templateHardwareProfileId(template), build_config: buildConfig,
+        status: "template", view_manifest: { template_id: template.id, template_ref: { version: template.schemaVersion } }, sources,
+      },
+    });
+  }
   const project = await projectServerJson("/api/projects", {
     method: "POST",
     body: {
       project_id: projectId,
+      ...(template.id !== "empty" ? { template_project_id: templateProjectId } : {}),
       user_id: userId,
       plan_id: accountSubscription(session).plan_id,
       title,
@@ -2471,7 +2493,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
           : null,
         dataLoggerConfiguration: template.dataLogger,
       }),
-      sources,
+      ...(template.id === "empty" ? { sources } : {}),
     },
   });
   touchWorkspace(session, project.project_id, "development-platform", "/app/development-platform/");
@@ -4890,7 +4912,7 @@ function defaultTouchscreenGameConfiguration() {
   return normalizeTouchscreenGameConfiguration({
     pattern_id: "",
     selected_game_ids: ["nibbles", "frogger"],
-    board_profile_id: "hardware.processor_board.generic_esp32_s3_touch_display",
+    board_profile_id: "hardware.processor_board.esp32_s3_es3c28p",
     inventory_device_id: "",
   });
 }

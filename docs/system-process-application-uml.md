@@ -79,7 +79,7 @@ flowchart LR
     identityLegacyDb[("Identity Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     releaseDb[("Plattform-Releases SQLite<br/>public / authenticated / entitled / internal")]
     accountAssetDb[("Account-Assets SQLite<br/>owner_only QR, Bilder, Bildstile")]
-    projectDb[("Project PostgreSQL<br/>Projekte, Quellen, Lesson-/Step-Fortschritt,<br/>Build-Metadaten, Feedback")]
+    projectDb[("Project PostgreSQL<br/>unveränderliche Systemvorlagen + Accountkopien,<br/>Quellen, Herkunfts-Hash, Build-Metadaten, Fortschritt")]
     projectLegacyDb[("Projekt Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     buildArtifactDb[("Build-Artefakte SQLite<br/>Firmware, ELF, HEX, Map, Log")]
     telemetryDb[("Telemetry PostgreSQL<br/>Messwerte, Ereignisse, Retention")]
@@ -226,7 +226,7 @@ flowchart LR
 | Admin Tool API | 4600 | nur intern durch Admin Access Server | Account-Blatt, Community-Arbeitskorb für Support/Fragen/Meldungen, KI Usage, zentrale Ressourcenlimits pro Nutzerprofil, Consent-/Audit-nahe API und LLM-Routing |
 | Device Management Server | 4700 | `http://127.0.0.1:4700/` | Devices, Ownership, unveraenderliche Account-Boardversionen, Purchase Contexts, Support-Status |
 | Telemetry Server | 5600 | nur intern im Docker-Netz | Nimmt bereits authentifizierte Board-Telemetrie an, prueft Board-/Projektbesitz, persistiert Messwerte und Ereignisse konto- und projektpartitioniert in `telemetry_*` mit Retention, kann gezielten Projekt-Push ausloesen und leitet kurzlebige Runtime-Zeilen an Identity weiter |
-| Project Server | 4800 | `http://127.0.0.1:4800/` | Projekte, Quellen, aufgeloeste Boardkonfigurations-Snapshots, accountgebundener Lesson-/Step-Fortschritt, Build-Jobs, Learning Feedback sowie PostgreSQL-persistierte Ressourcenlimits und Nutzungswerte im Project-Tabellenbereich |
+| Project Server | 4800 | `http://127.0.0.1:4800/` | Unveränderliche versionierte Systemvorlagen, daraus erzeugte Accountkopien mit Herkunfts-Hash, Quellen, aufgeloeste Boardkonfigurations-Snapshots, Fortschritt und Build-Jobs |
 | Hardware Shop | 4900 | `http://127.0.0.1:4900/` | PostgreSQL-persistente Angebote, Warenkoerbe, Bestellungen und Purchase Contexts; liest Hardwaredaten als Client des Hardware Catalog |
 | Hardware Catalog | 4910 | VPS-intern sowie ausschliesslich am WireGuard-Interface `http://10.77.0.1:4910/`; kein oeffentlicher Listener | Bekannte HardwareItems, ProcessorBoards und TechnicalCapabilities als PostgreSQL-persistente Quelle |
 | Öffentlicher Demo-Katalog | 4920 | nur lesbarer öffentlicher Katalog-Endpunkt | Redaktionell veröffentlichte Board-Demos und immutable `firmware.bin`-Releases in eigener SQLite; keine Projekte, Konten, Inventar oder OTA |

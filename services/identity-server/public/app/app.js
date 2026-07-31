@@ -4180,8 +4180,8 @@ function renderUsbPortOptions() {
     ? "Nur fuer USB-Flash: Port automatisch ermitteln oder einen erkannten Port auswaehlen."
     : "Nur fuer USB-Flash: Momentan wurde kein USB-Serial-Port erkannt.";
   if (current && Array.from(select.options).some((option) => option.value === current)) select.value = current;
-  select.classList.toggle("hidden", state.usbPorts.length < 2);
-  document.querySelector("#refreshUsbPortsButton")?.classList.toggle("hidden", state.usbPorts.length < 2);
+  select.classList.remove("hidden");
+  document.querySelector("#refreshUsbPortsButton")?.classList.remove("hidden");
 }
 
 function usbPortOptionLabel(port) {

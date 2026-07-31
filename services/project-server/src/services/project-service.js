@@ -11,8 +11,13 @@ class ProjectService {
 
   async createProject(input = {}) {
     await this.ready;
-    await this.assertProjectQuota(input.user_id, input.plan_id || input.plan || "free");
+    const template = input.template_project_id ? await this.requireProject(input.template_project_id) : null;
+    if (template && template.status !== "template") throw new ProjectServerError("project_template_required", "Die Projektquelle ist kein unveränderliches Template.", 409);
+    if (input.status !== "template") await this.assertProjectQuota(input.user_id, input.plan_id || input.plan || "free");
     const now = new Date().toISOString();
+    const templateSources = template ? await this.repository.listSources(template.project_id) : [];
+    const templateHash = template ? projectVersionHash(sanitizeProject(template), templateSources) : "";
+    const inheritedManifest = template ? structuredClone(template.view_manifest || {}) : {};
     const project = {
       project_id: input.project_id || createId("project"),
       user_id: required(input.user_id, "user_id"),
@@ -22,15 +27,23 @@ class ProjectService {
       learning_project_id: input.learning_project_id || "",
       hardware_profile_id: input.hardware_profile_id || "hardware.processor_board.generic_esp_wroom32",
       device_id: input.device_id || null,
-      build_config: normalizeBuildConfig(input.build_config),
-      view_manifest: normalizeViewManifest(input.view_manifest || input.project_view_manifest || {}),
+      build_config: normalizeBuildConfig(Object.hasOwn(input, "build_config") ? input.build_config : template ? template.build_config : undefined),
+      view_manifest: normalizeViewManifest({
+        ...inheritedManifest,
+        ...(input.view_manifest || input.project_view_manifest || {}),
+        ...(template ? { template_ref: { project_id: template.project_id, version: template.view_manifest?.template_ref?.version || 1, source_sha256: templateHash } } : {}),
+      }),
       status: input.status || "active",
       created_at: now,
       updated_at: now,
     };
     await this.repository.saveProject(project);
-    for (const source of defaultSources(project, input.sources || [])) {
-      await this.upsertSource(project.project_id, source);
+    for (const source of defaultSources(project, input.sources?.length ? input.sources : templateSources)) {
+      if (project.status === "template") {
+        const sourcePath = normalizeSourcePath(required(source.path, "path"));
+        const content = String(source.content || "");
+        await this.repository.saveSource({ project_id: project.project_id, path: sourcePath, content, content_sha256: sha256(content), content_type: source.content_type || contentType(sourcePath), role: source.role || inferSourceRole(sourcePath), updated_at: now });
+      } else await this.upsertSource(project.project_id, source);
     }
     return this.projectWithSummary(project);
   }
@@ -43,6 +56,7 @@ class ProjectService {
   async deleteProject(projectId) {
     await this.ready;
     const project = await this.requireProject(projectId);
+    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Projekt-Templates dürfen nicht gelöscht werden.", 409);
     const deleted = await this.repository.deleteProject(projectId);
     return { project_id: project.project_id, deleted };
   }
@@ -56,6 +70,7 @@ class ProjectService {
   async updateProject(projectId, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
+    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Projekt-Templates dürfen nicht verändert werden.", 409);
     const next = {
       ...project,
       title: input.title || project.title,
@@ -109,6 +124,7 @@ class ProjectService {
   async upsertSource(projectId, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
+    if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Template-Quellen dürfen nicht verändert werden.", 409);
     const path = normalizeSourcePath(required(input.path, "path"));
     const now = new Date().toISOString();
     const content = String(input.content || "");
@@ -210,7 +226,9 @@ class ProjectService {
       files: [
         { path: "build-job.json", content: JSON.stringify(buildJob, null, 2), content_type: "application/json" },
         { path: "project-view-manifest.json", content: JSON.stringify(effectiveViewManifest(project), null, 2), content_type: "application/json" },
-        ...(project.build_config?.firmware_basis_id ? [] : [{ path: "platformio.ini", content: renderPlatformioIni(project), content_type: "text/plain" }]),
+        ...(project.build_config?.firmware_basis_id || firmwareSources.some((source) => source.path === "platformio.ini")
+          ? []
+          : [{ path: "platformio.ini", content: renderPlatformioIni(project), content_type: "text/plain" }]),
         ...firmwareSources.map((source) => ({
           path: source.path,
           content: source.content,
@@ -367,7 +385,7 @@ class ProjectService {
       user_id: required(input.user_id, "user_id"),
       message: input.message || `Wiederhergestellt aus ${version.message || version.version_id}`,
     }, {
-      parent_version_id: versions[0]?.version_id || null,
+      parent_version_id: preservedVersion?.version_id || versions[0]?.version_id || null,
       commit_kind: "restore",
       restored_from_version_id: versionId,
       preserved_before_restore_version_id: preservedVersion?.version_id || null,
@@ -783,6 +801,9 @@ function normalizeViewManifest(input = {}) {
       template_ref: {
         template_id: String(templateRef.template_id || templateRef.templateId || templateId),
         model_schema_version: Number(templateRef.model_schema_version || templateRef.modelSchemaVersion || 1),
+        ...(templateRef.project_id ? { project_id: String(templateRef.project_id) } : {}),
+        ...(templateRef.version ? { version: Number(templateRef.version) } : {}),
+        ...(templateRef.source_sha256 ? { source_sha256: String(templateRef.source_sha256) } : {}),
       },
     } : {}),
     ...(architectureDialog && typeof architectureDialog === "object" ? { architecture_dialog: architectureDialog } : {}),
@@ -886,7 +907,9 @@ function defaultViewManifest(project) {
 
 function effectiveViewManifest(project) {
   const manifest = project.view_manifest || {};
-  return Array.isArray(manifest.views) && manifest.views.length ? manifest : defaultViewManifest(project);
+  if (Array.isArray(manifest.views) && manifest.views.length) return manifest;
+  const fallback = defaultViewManifest(project);
+  return { ...fallback, ...manifest, views: fallback.views };
 }
 
 function defaultSources(project, sources) {

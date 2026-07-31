@@ -75,7 +75,7 @@ test("provides a sensor-actuator control template as one logical effect chain", 
   assert.equal(templateBuildConfig(template), null);
 });
 
-test("provides a buildable touchscreen game collection with separated user sources", () => {
+test("provides the complete ES3C28P touchscreen example as versioned template sources", () => {
   const template = developmentProjectTemplate("touchscreen_game_collection");
   const source = templateArchitecturePlantUml(template, template.title);
   const files = templateFirmwareSources(template, "Meine Spiele");
@@ -83,23 +83,16 @@ test("provides a buildable touchscreen game collection with separated user sourc
   assert.match(source, /actor "Nutzer" as user/);
   assert.match(source, /rectangle "Board mit Touchdisplay" as device/);
   assert.doesNotMatch(source, /Startbildschirm|Spielauswahl|Game Loop|Beispielspiele|Nibbles|-->/);
-  assert.equal(templateHardwareProfileId(template), "hardware.processor_board.generic_esp32_s3_touch_display");
+  assert.equal(templateHardwareProfileId(template), "hardware.processor_board.esp32_s3_es3c28p");
   assert.equal(templateBuildConfig(template).board, "esp32-s3-devkitc-1");
-  const userMain = files.find((file) => file.path.endsWith("user_main.cpp")).content;
-  assert.match(userMain, /Alle Spiele werden hier, in der Kunden-Main/);
-  assert.match(userMain, /#include "user_project\/games\/nibbles\.h"/);
-  assert.match(userMain, /#if GNX_GAME_NIBBLES_ENABLED/);
-  assert.match(userMain, /registerCustomerGames/);
-  assert.equal(files.some((file) => file.path.endsWith("game_application.h")), false);
-  assert.equal(files.some((file) => file.path.endsWith("game_catalog.h")), false);
-  assert.match(files.find((file) => file.path.endsWith("view\/start_screen.h")).content, /class StartScreen/);
-  for (const game of ["nibbles", "snake", "frogger", "tic_tac_toe", "pong", "breakout", "memory"]) {
-    assert.equal(files.some((file) => file.path.endsWith(`games/${game}.h`)), true);
+  assert.equal(templateBuildConfig(template).framework, "arduino");
+  assert.equal(templateBuildConfig(template).flash_size_mb, 16);
+  assert.match(files.find((file) => file.path === "platformio.ini").content, /LovyanGFX/);
+  assert.match(files.find((file) => file.path === "src/board_adapter.cpp").content, /Es3c28pDisplay/);
+  assert.match(files.find((file) => file.path === "src/main.cpp").content, /void setup\(\)/);
+  for (const game of ["nibbles", "frogger", "arkanoid", "space_invaders"]) {
+    assert.equal(files.some((file) => file.path === `src/${game}.cpp`), true);
   }
-  const selectedGames = files.find((file) => file.path.endsWith("config/selected_games.h")).content;
-  assert.match(selectedGames, /GNX_GAME_NIBBLES_ENABLED 1/);
-  assert.match(selectedGames, /GNX_GAME_FROGGER_ENABLED 1/);
-  assert.match(selectedGames, /GNX_GAME_SNAKE_ENABLED 0/);
 });
 
 test("keeps confirmed custom games when the built-in game form is saved again", () => {

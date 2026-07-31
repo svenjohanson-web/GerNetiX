@@ -34,7 +34,8 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /browser-usb-flash-result/);
   assert.match(app, /Automatisch \(kein USB-Port erkannt\)/);
   assert.match(app, /if \(!resolvedPort && state\.usbPorts\.length > 1\)/);
-  assert.match(app, /select\.classList\.toggle\("hidden", state\.usbPorts\.length < 2\)/);
+  assert.match(app, /select\.classList\.remove\("hidden"\)/);
+  assert.match(app, /refreshUsbPortsButton"\)\?\.classList\.remove\("hidden"\)/);
   assert.match(app, /Mehrere USB-Geräte sind verbunden\. Wähle oben den USB-Port und starte USB erneut\./);
   assert.doesNotMatch(app, /<details class="ide-tree-folder"[^>]* open>/);
   assert.doesNotMatch(app, /function projectRealizationsTreeEntry/);

@@ -1,6 +1,9 @@
+const fs = require("node:fs");
+const path = require("node:path");
+
 function templateFirmwareSources(template, title) {
   if (!template?.realization?.buildConfig) return [];
-  if (template.id === "touchscreen_game_collection") return touchscreenGameSources(title || template.title);
+  if (template.id === "touchscreen_game_collection") return touchscreenDemoSources();
   return [{
     path: "Komponenten/IoT-Device 1/src/user_main.cpp",
     role: "user_code",
@@ -18,6 +21,17 @@ function templateFirmwareSources(template, title) {
       "",
     ].join("\n"),
   }];
+}
+
+function touchscreenDemoSources() {
+  const root = path.resolve(__dirname, "../../../../Demoanwendungen/Boards/hardware.processor_board.esp32_s3_es3c28p/touch-spielesammlung/firmware");
+  const files = ["platformio.ini", ...fs.readdirSync(path.join(root, "src")).sort().map((name) => `src/${name}`)];
+  return files.map((relativePath) => ({
+    path: relativePath,
+    role: "user_code",
+    content_type: relativePath.endsWith(".h") ? "text/x-c++hdr" : relativePath.endsWith(".ini") ? "text/plain" : "text/x-c++src",
+    content: fs.readFileSync(path.join(root, relativePath), "utf8"),
+  }));
 }
 
 function touchscreenGameSources(title) {

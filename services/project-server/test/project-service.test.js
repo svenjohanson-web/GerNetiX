@@ -69,6 +69,29 @@ test("creates project with default source and lists it by user", async () => {
   assert.equal((await service.listProjects({ user_id: "user-1" })).length, 1);
 });
 
+test("clones an immutable system template into an account-owned project", async () => {
+  const service = createMemoryProjectServer();
+  await service.createProject({
+    project_id: "system_template_games_v2", user_id: "system", status: "template",
+    title: "Spiele", build_config: { platform: "espressif32", board: "esp32-s3-devkitc-1", framework: "arduino" },
+    view_manifest: { template_id: "touchscreen_game_collection", template_ref: { version: 2 } },
+    sources: [{ path: "platformio.ini", content: "[env:es3c28p]\nboard = esp32-s3-devkitc-1\n" }, { path: "src/main.cpp", content: "void setup() {}" }],
+  });
+  const copy = await service.createProject({ template_project_id: "system_template_games_v2", user_id: "account-2", title: "Meine Spiele" });
+  assert.equal(copy.user_id, "account-2");
+  assert.equal(copy.status, "active");
+  assert.equal((await service.getSource(copy.project_id, "src/main.cpp")).content, "void setup() {}");
+  assert.equal(copy.view_manifest.template_ref.project_id, "system_template_games_v2");
+  assert.match(copy.view_manifest.template_ref.source_sha256, /^[a-f0-9]{64}$/);
+  await assert.rejects(() => service.updateProject("system_template_games_v2", { title: "Neu" }), /dürfen nicht verändert/);
+  await service.upsertSource(copy.project_id, { path: "src/main.cpp", content: "void setup() { int changed = 1; }" });
+  assert.equal((await service.getSource("system_template_games_v2", "src/main.cpp")).content, "void setup() {}");
+  const job = await service.createBuildJob(copy.project_id);
+  const buildPackage = await service.createBuildPackage(job.build_job_id);
+  assert.equal(buildPackage.files.filter((file) => file.path === "platformio.ini").length, 1);
+  assert.match(buildPackage.platformio_ini, /env:es3c28p/);
+});
+
 test("preserves the immutable board configuration in project and build snapshots", async () => {
   const service = createMemoryProjectServer();
   const project = await service.createProject({
