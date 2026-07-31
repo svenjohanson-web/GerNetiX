@@ -9,8 +9,8 @@ const app = fs.readFileSync(path.join(appRoot, "app.js"), "utf8");
 
 test("IDE exposes one accessible splitter for editor frame and terminal", () => {
   assert.match(html, /id="ideWorkspaceResizeHandle"[\s\S]*role="separator"[\s\S]*aria-orientation="horizontal"/);
-  assert.match(html, /app\.css\?v=20260730-empty-project-navigation-1/);
-  assert.match(html, /app\.js\?v=20260731-session-navigation-1/);
+  assert.match(html, /app\.css\?v=20260731-web-interface-1/);
+  assert.match(html, /app\.js\?v=20260731-web-interface-1/);
   assert.match(app, /function initializeIdeWorkspaceResize\(\)/);
   assert.match(app, /startHeight - \(moveEvent\.clientY - startY\)/);
   assert.match(app, /workbench\.style\.setProperty\("--ide-console-height"/);

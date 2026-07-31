@@ -9,14 +9,16 @@ const boardPlugin = fs.readFileSync(path.resolve(__dirname, "../public/app/board
 const server = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
 const guidedProjectView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
 
-test("IDE exposes component properties and an embedded device webserver view", () => {
+test("IDE exposes component properties and an embedded web interface workspace", () => {
   assert.match(html, /id="ideComponentFeaturesView"/);
   assert.match(html, /id="ideBoardPropertiesView"/);
   assert.match(html, /id="ideSensorPropertiesView"/);
   assert.match(html, /id="ideDeviceConnectionsView"/);
-  assert.match(html, /id="ideDeviceWebView"/);
-  assert.match(app, /Webserver des Entwicklungsprojekts/);
+  assert.doesNotMatch(html, /id="ideDeviceWebView"/);
+  assert.match(app, /Weboberfläche des Entwicklungsprojekts/);
   assert.match(app, /<iframe title="Device-Webserver"/);
+  assert.match(app, /data-web-interface-tab="configuration"/);
+  assert.match(app, /data-web-interface-tab="preview"/);
   assert.doesNotMatch(app, /renderProjectRealizations\(/);
   assert.match(app, /async function loadIdeProject[\s\S]*renderIdeCodeAssistant\(project\);[\s\S]*if \(projectNeedsHardwareTools\(project\)\) await refreshUsbPorts\(false\);/);
 });
@@ -24,10 +26,10 @@ test("IDE exposes component properties and an embedded device webserver view", (
 test("software views are direct entries in the component configuration folder", () => {
   assert.match(app, /`\$\{component\}\/Konfiguration\/Funktionen`/);
   assert.match(app, /`\$\{component\}\/Konfiguration\/Treiber`/);
-  assert.match(app, /`\$\{component\}\/Konfiguration\/Webserver`/);
-  assert.match(app, /`\$\{component\}\/Konfiguration\/Webserver-Vorschau`/);
+  assert.match(app, /`\$\{component\}\/Konfiguration\/Weboberfläche`/);
+  assert.doesNotMatch(app, /`\$\{component\}\/Konfiguration\/Webserver(?:-Vorschau)?`/);
   assert.doesNotMatch(app, /`\$\{component\}\/Konfiguration\/Software\//);
-  assert.match(app, /function renderWebserverConfiguration\(project\)/);
+  assert.match(app, /function renderWebInterface\(project\)/);
   assert.match(app, /webserver-configuration-form/);
   assert.doesNotMatch(app, /role: "Live-Ansicht"/);
   assert.doesNotMatch(app, /file\.role \|\| file\.content_type \? `<small>/);

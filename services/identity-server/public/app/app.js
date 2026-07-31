@@ -59,6 +59,7 @@ const state = {
   projectSourcesByProjectId: {},
   ideDirtySources: {},
   ideViewMode: "file",
+  webInterfaceTab: "configuration",
   activeIdeComponentId: "",
   flashboxMockOrder: null,
   developmentPlatform: null,
@@ -241,14 +242,9 @@ document.querySelector("#ideProjectBrowser").addEventListener("click", (event) =
     openWorkerDispatcherConfiguration(workerDispatcherButton.dataset.workerDispatcherConfiguration);
     return;
   }
-  const webserverConfigurationButton = event.target.closest("[data-webserver-configuration]");
-  if (webserverConfigurationButton) {
-    openWebserverConfiguration();
-    return;
-  }
-  const deviceWebButton = event.target.closest("[data-device-web]");
-  if (deviceWebButton) {
-    openDeviceWebView();
+  const webInterfaceButton = event.target.closest("[data-web-interface]");
+  if (webInterfaceButton) {
+    openWebInterface();
     return;
   }
   const pwaDashboardButton = event.target.closest("[data-pwa-dashboard]");
@@ -317,11 +313,21 @@ document.addEventListener("keydown", (event) => {
   saveSource();
 });
 document.querySelector("#ideComponentFeaturesView").addEventListener("submit", (event) => {
+  if (event.target.matches(".device-web-toolbar")) {
+    loadDeviceWebPreview(event);
+    return;
+  }
   if (event.target.matches("[data-event-configuration-form]")) {
     saveEventConfiguration(event);
     return;
   }
   saveComponentFeatures(event);
+});
+document.querySelector("#ideComponentFeaturesView").addEventListener("click", (event) => {
+  const tab = event.target.closest("[data-web-interface-tab]");
+  if (!tab) return;
+  state.webInterfaceTab = tab.dataset.webInterfaceTab;
+  renderWebInterface(projectById(state.activeProjectId));
 });
 document.querySelector("#idePwaDashboardView").addEventListener("click", (event) => {
   if (event.target.closest("[data-open-pwa-dashboard-editor]")) openPwaDashboardEditor();
@@ -350,7 +356,6 @@ document.querySelector("#ideDeviceConnectionsView").addEventListener("click", (e
 });
 document.querySelector("#ideDriverManagementView").addEventListener("click", handleDriverManagementClick);
 document.querySelector("#ideDriverManagementView").addEventListener("submit", saveMotorDriverAssignment);
-document.querySelector("#ideDeviceWebView").addEventListener("submit", loadDeviceWebPreview);
 document.querySelector("#recoveryDeviceSelect").addEventListener("change", () => {
   state.activeRecoveryDeviceId = document.querySelector("#recoveryDeviceSelect").value;
   state.recoveryCheckResult = null;
@@ -1678,7 +1683,6 @@ async function loadIdeProject() {
   renderIdeDeviceAllocation(project);
   renderIdeProjectBrowser(project, sources);
   renderComponentFeatures(project);
-  renderDeviceWebView(project);
   document.querySelector("#ideActiveSourceLabel").textContent = state.sourcePath;
   setupIdeLayoutPersistence();
   const metaItems = [
@@ -2136,8 +2140,7 @@ function projectVirtualTreeEntries(project) {
     entries.push(
       { path: `${component}/Konfiguration/Funktionen`, role: "", virtualAction: "component-features" },
       { path: `${component}/Konfiguration/Treiber`, role: "", virtualAction: "driver-management" },
-      { path: `${component}/Konfiguration/Webserver`, role: "", virtualAction: "webserver-configuration" },
-      { path: `${component}/Konfiguration/Webserver-Vorschau`, role: "", virtualAction: "device-web" },
+      { path: `${component}/Konfiguration/Weboberfläche`, role: "", virtualAction: "web-interface" },
     );
   }
   configurationDevices.forEach((component) => {
@@ -2271,10 +2274,8 @@ function renderSourceTree(node, depth = 0, openFolders = new Set()) {
             ? `data-sensor-properties="${escapeAttribute(file.componentId || "")}"`
           : file.virtualAction === "device-connections"
             ? `data-device-connections="${escapeAttribute(file.componentId || "")}"`
-          : file.virtualAction === "webserver-configuration"
-            ? "data-webserver-configuration"
-          : file.virtualAction === "device-web"
-            ? "data-device-web"
+          : file.virtualAction === "web-interface"
+            ? "data-web-interface"
             : file.virtualAction === "pwa-dashboard"
               ? "data-pwa-dashboard"
             : file.virtualAction === "board-properties"
@@ -2596,11 +2597,12 @@ async function saveMotorDriverAssignment(event) {
   }
 }
 
-function openWebserverConfiguration() {
-  state.ideViewMode = "webserver-configuration";
+function openWebInterface() {
+  state.ideViewMode = "web-interface";
+  state.webInterfaceTab = "configuration";
   const project = projectById(state.activeProjectId);
-  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Webserver`;
-  renderWebserverConfiguration(project);
+  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Weboberfläche`;
+  renderWebInterface(project);
   renderIdeViewMode(project);
 }
 
@@ -2713,14 +2715,6 @@ function renderDeviceConnections(project) {
   </div>`;
 }
 
-function openDeviceWebView() {
-  state.ideViewMode = "device-web";
-  const project = projectById(state.activeProjectId);
-  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Webserver-Vorschau`;
-  renderDeviceWebView(project);
-  renderIdeViewMode(project);
-}
-
 function openPwaDashboardView() {
   state.ideViewMode = "pwa-dashboard";
   const project = projectById(state.activeProjectId);
@@ -2756,29 +2750,27 @@ function renderIdeViewMode(project) {
   const sourcePath = state.sourcePath || "";
   const source = document.querySelector("#sourceEditor").value;
   const componentFeatures = state.ideViewMode === "component-features";
-  const webserverConfiguration = state.ideViewMode === "webserver-configuration";
+  const webInterface = state.ideViewMode === "web-interface";
   const boardProperties = state.ideViewMode === "board-properties";
   const sensorProperties = state.ideViewMode === "sensor-properties";
   const deviceConnections = state.ideViewMode === "device-connections";
   const driverManagement = state.ideViewMode === "driver-management";
-  const deviceWeb = state.ideViewMode === "device-web";
   const pwaDashboard = state.ideViewMode === "pwa-dashboard";
-  const virtualView = componentFeatures || webserverConfiguration || boardProperties || sensorProperties || deviceConnections || driverManagement || deviceWeb || pwaDashboard;
+  const virtualView = componentFeatures || webInterface || boardProperties || sensorProperties || deviceConnections || driverManagement || pwaDashboard;
   const plantUml = /\.(puml|plantuml)$/i.test(sourcePath) && /@startuml/i.test(source);
   const image = /\.(svg|png|jpe?g|gif|webp)$/i.test(sourcePath);
   const architectureBaseline = isArchitectureBaselinePath(sourcePath);
   document.querySelector("#sourceEditor").readOnly = !ideSourceIsEditable(project, sourcePath);
   document.querySelector("#ideViewerPanel").classList.toggle("plantuml-split", plantUml && !virtualView);
-  document.querySelector("#ideViewerModeLabel").textContent = componentFeatures ? "Softwarefunktionen" : webserverConfiguration ? "Webserver-Konfiguration" : boardProperties ? "Boardkonfiguration" : sensorProperties ? "Sensorkonfiguration" : deviceConnections ? "Angeschlossene Komponenten" : driverManagement ? "Treiberverwaltung" : deviceWeb ? "Webserver-Vorschau" : pwaDashboard ? "PWA-Dashboard" : architectureBaseline ? "Freigegebene Architektur-Baseline · schreibgeschützt" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
+  document.querySelector("#ideViewerModeLabel").textContent = componentFeatures ? "Softwarefunktionen" : webInterface ? "Weboberfläche" : boardProperties ? "Boardkonfiguration" : sensorProperties ? "Sensorkonfiguration" : deviceConnections ? "Angeschlossene Komponenten" : driverManagement ? "Treiberverwaltung" : pwaDashboard ? "PWA-Dashboard" : architectureBaseline ? "Freigegebene Architektur-Baseline · schreibgeschützt" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
   document.querySelector("#sourcePanel").classList.toggle("hidden", virtualView || image);
   document.querySelector("#ideImageView").classList.toggle("hidden", virtualView || (!plantUml && !image));
   document.querySelector("#ideModelView").classList.add("hidden");
-  document.querySelector("#ideComponentFeaturesView").classList.toggle("hidden", !componentFeatures && !webserverConfiguration);
+  document.querySelector("#ideComponentFeaturesView").classList.toggle("hidden", !componentFeatures && !webInterface);
   document.querySelector("#ideBoardPropertiesView").classList.toggle("hidden", !boardProperties);
   document.querySelector("#ideSensorPropertiesView").classList.toggle("hidden", !sensorProperties);
   document.querySelector("#ideDeviceConnectionsView").classList.toggle("hidden", !deviceConnections);
   document.querySelector("#ideDriverManagementView").classList.toggle("hidden", !driverManagement);
-  document.querySelector("#ideDeviceWebView").classList.toggle("hidden", !deviceWeb);
   document.querySelector("#idePwaDashboardView").classList.toggle("hidden", !pwaDashboard);
   if (!virtualView && (plantUml || image)) renderIdeImageView(sourcePath, source);
 }
@@ -2907,31 +2899,44 @@ function renderComponentFeatures(project) {
   target.querySelector(".webserver-settings")?.remove();
 }
 
-function renderWebserverConfiguration(project) {
+function renderWebInterface(project) {
   const target = document.querySelector("#ideComponentFeaturesView");
   if (!target || !project?.buildConfig) {
-    if (target) target.innerHTML = `<p class="empty">Keine Webserver-Konfiguration vorhanden.</p>`;
+    if (target) target.innerHTML = `<p class="empty">Keine Weboberflächen-Konfiguration vorhanden.</p>`;
     return;
   }
   const config = effectiveComponentFeatures(project);
-  target.innerHTML = `<form class="component-features-form webserver-configuration-form">
-    <header><div><p class="eyebrow">Software · Webserver</p><h3>Konfiguration</h3></div>
+  const activeTab = state.webInterfaceTab === "preview" ? "preview" : "configuration";
+  const stored = localStorage.getItem(deviceWebStorageKey(project)) || "";
+  const url = stored || suggestedDeviceWebUrl(project);
+  target.innerHTML = `<div class="web-interface-workspace">
+    <header><div><p class="eyebrow">Software · IoT-Device</p><h3>Weboberfläche</h3></div>
       <span class="basis-variant-badge">Basis: ${escapeHtml(config.basisVariant || "ohne Variante")}</span></header>
-    <p class="helper-text">Hier konfigurierst du die projektspezifische Weboberfläche. Die laufende Ansicht findest du direkt daneben unter Vorschau.</p>
-    <div class="component-feature-grid">
-      <label class="component-feature-card">
-        <input type="checkbox" name="measurement_chart" ${config.webserver.measurement_chart ? "checked" : ""}>
-        <span><strong>Messwertdiagramm</strong><small>Letzte Messwerte auf der lokalen Board-Seite darstellen</small></span>
-        <em>Projekt</em>
-      </label>
+    <div class="web-interface-tabs" role="tablist" aria-label="Weboberfläche">
+      <button type="button" role="tab" data-web-interface-tab="configuration" aria-selected="${activeTab === "configuration"}" class="${activeTab === "configuration" ? "active" : ""}">Konfiguration</button>
+      <button type="button" role="tab" data-web-interface-tab="preview" aria-selected="${activeTab === "preview"}" class="${activeTab === "preview" ? "active" : ""}">Vorschau</button>
     </div>
-    <fieldset class="webserver-settings"><legend>Darstellung</legend>
-      <label>Titel<input name="webserver_title" value="${escapeAttribute(config.webserver.title || "GerNetiX Device")}"></label>
-      <label>Messwert<input name="measurement_label" value="${escapeAttribute(config.webserver.measurement_label || "Messwert")}"></label>
-      <label>Einheit<input name="measurement_unit" value="${escapeAttribute(config.webserver.measurement_unit || "")}" placeholder="z. B. °C"></label>
-    </fieldset>
-    <footer><button type="submit">Webserver-Konfiguration speichern</button><span data-component-feature-status></span></footer>
-  </form>`;
+    ${activeTab === "configuration" ? `<form class="component-features-form webserver-configuration-form">
+      <p class="helper-text">Lege fest, welche Inhalte die lokale Weboberfläche des Boards zeigt.</p>
+      <div class="component-feature-grid">
+        <label class="component-feature-card">
+          <input type="checkbox" name="measurement_chart" ${config.webserver.measurement_chart ? "checked" : ""}>
+          <span><strong>Messwertdiagramm</strong><small>Letzte Messwerte auf der lokalen Board-Seite darstellen</small></span>
+          <em>Projekt</em>
+        </label>
+      </div>
+      <fieldset class="webserver-settings"><legend>Darstellung</legend>
+        <label>Titel<input name="webserver_title" value="${escapeAttribute(config.webserver.title || "GerNetiX Device")}"></label>
+        <label>Messwert<input name="measurement_label" value="${escapeAttribute(config.webserver.measurement_label || "Messwert")}"></label>
+        <label>Einheit<input name="measurement_unit" value="${escapeAttribute(config.webserver.measurement_unit || "")}" placeholder="z. B. °C"></label>
+      </fieldset>
+      <footer><button type="submit">Weboberfläche speichern</button><span data-component-feature-status></span></footer>
+    </form>` : `<div class="device-web-workspace">
+      <form class="device-web-toolbar"><label>Board-Adresse<input name="device_web_url" value="${escapeAttribute(url)}" placeholder="http://gernetix-board.local/"></label><button type="submit">Anzeigen</button>${url ? `<a href="${escapeAttribute(url)}" target="_blank" rel="noreferrer">Im Browser öffnen</a>` : ""}</form>
+      <div class="device-web-info"><strong>Weboberfläche des Entwicklungsprojekts</strong><span>${config.webserver.measurement_chart ? "Messwertdiagramm konfiguriert" : "Statusseite der Basissoftware"}</span></div>
+      ${url ? `<iframe title="Device-Webserver" src="${escapeAttribute(url)}"></iframe>` : `<div class="device-web-empty"><strong>Noch keine Board-Adresse bekannt</strong><p>Ordne ein Device zu oder trage seine lokale Adresse ein.</p></div>`}
+    </div>`}
+  </div>`;
 }
 
 function renderBoardProperties(project) {
@@ -3111,7 +3116,7 @@ async function saveComponentFeatures(event) {
       },
     });
     state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
-    if (webserverOnly) renderWebserverConfiguration(response.project);
+    if (webserverOnly) renderWebInterface(response.project);
     else renderComponentFeatures(response.project);
     document.querySelector("[data-component-feature-status]").textContent = "Gespeichert.";
   } catch (error) {
@@ -3129,19 +3134,6 @@ function suggestedDeviceWebUrl(project) {
   return hostname ? `http://${hostname}.local/` : "";
 }
 
-function renderDeviceWebView(project) {
-  const target = document.querySelector("#ideDeviceWebView");
-  if (!target) return;
-  const stored = localStorage.getItem(deviceWebStorageKey(project)) || "";
-  const url = stored || suggestedDeviceWebUrl(project);
-  const features = effectiveComponentFeatures(project);
-  target.innerHTML = `<div class="device-web-workspace">
-    <form class="device-web-toolbar"><label>Board-Adresse<input name="device_web_url" value="${escapeAttribute(url)}" placeholder="http://gernetix-board.local/"></label><button type="submit">Anzeigen</button>${url ? `<a href="${escapeAttribute(url)}" target="_blank" rel="noreferrer">Im Browser öffnen</a>` : ""}</form>
-    <div class="device-web-info"><strong>Webserver des Entwicklungsprojekts</strong><span>${features.webserver.measurement_chart ? "Messwertdiagramm konfiguriert" : "Statusseite der Basissoftware"}</span></div>
-    ${url ? `<iframe title="Device-Webserver" src="${escapeAttribute(url)}"></iframe>` : `<div class="device-web-empty"><strong>Noch keine Board-Adresse bekannt</strong><p>Ordne ein Device zu oder trage seine lokale Adresse ein.</p></div>`}
-  </div>`;
-}
-
 function loadDeviceWebPreview(event) {
   if (!event.target.matches(".device-web-toolbar")) return;
   event.preventDefault();
@@ -3150,7 +3142,7 @@ function loadDeviceWebPreview(event) {
   let url = String(data.get("device_web_url") || "").trim();
   if (url && !/^https?:\/\//i.test(url)) url = `http://${url}`;
   localStorage.setItem(deviceWebStorageKey(project), url);
-  renderDeviceWebView(project);
+  renderWebInterface(project);
 }
 
 function renderModelContext(project, sourcePath) {

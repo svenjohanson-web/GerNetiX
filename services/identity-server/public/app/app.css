@@ -1580,7 +1580,6 @@ button.danger:hover {
 .ide-sensor-properties-view,
 .ide-device-connections-view,
 .ide-driver-management-view,
-.ide-device-web-view,
 .ide-pwa-dashboard-view {
   min-height: 0;
   height: 100%;
@@ -1660,6 +1659,12 @@ button.danger:hover {
 .board-property-card small { color: #64748b; }
 .board-properties-empty { display: grid; place-content: center; justify-items: start; gap: 10px; min-height: 280px; color: #cbd5e1; }
 .board-properties-empty p { max-width: 620px; margin: 0; color: #94a3b8; line-height: 1.5; }
+.web-interface-workspace { display: grid; grid-template-rows: auto auto minmax(0, 1fr); gap: 12px; height: 100%; min-height: 0; }
+.web-interface-workspace > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.web-interface-workspace > header h3 { margin: 2px 0 0; }
+.web-interface-tabs { display: flex; gap: 4px; padding: 3px; width: fit-content; border: 1px solid #334155; border-radius: 7px; background: #0b1018; }
+.web-interface-tabs button { padding: 6px 11px; border: 0; border-radius: 4px; background: transparent; color: #94a3b8; }
+.web-interface-tabs button.active { background: #164e63; color: #cffafe; }
 .device-web-workspace { display: grid; grid-template-rows: auto auto minmax(320px, 1fr); gap: 8px; height: 100%; min-height: 0; }
 .device-web-toolbar { justify-content: flex-start; }
 .device-web-toolbar label { display: flex; flex: 1; align-items: center; gap: 8px; color: #94a3b8; }
