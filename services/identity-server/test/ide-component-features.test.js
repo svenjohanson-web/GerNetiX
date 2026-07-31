@@ -21,11 +21,12 @@ test("IDE exposes component properties and an embedded device webserver view", (
   assert.match(app, /async function loadIdeProject[\s\S]*renderIdeCodeAssistant\(project\);[\s\S]*if \(projectNeedsHardwareTools\(project\)\) await refreshUsbPorts\(false\);/);
 });
 
-test("software groups functions drivers webserver configuration and preview", () => {
-  assert.match(app, /`\$\{component\}\/Konfiguration\/Software\/Funktionen`/);
-  assert.match(app, /`\$\{component\}\/Konfiguration\/Software\/Treiberverwaltung`/);
-  assert.match(app, /`\$\{component\}\/Konfiguration\/Software\/Webserver\/Konfiguration`/);
-  assert.match(app, /`\$\{component\}\/Konfiguration\/Software\/Webserver\/Vorschau`/);
+test("software views are direct entries in the component configuration folder", () => {
+  assert.match(app, /`\$\{component\}\/Konfiguration\/Funktionen`/);
+  assert.match(app, /`\$\{component\}\/Konfiguration\/Treiber`/);
+  assert.match(app, /`\$\{component\}\/Konfiguration\/Webserver`/);
+  assert.match(app, /`\$\{component\}\/Konfiguration\/Webserver-Vorschau`/);
+  assert.doesNotMatch(app, /`\$\{component\}\/Konfiguration\/Software\//);
   assert.match(app, /function renderWebserverConfiguration\(project\)/);
   assert.match(app, /webserver-configuration-form/);
   assert.doesNotMatch(app, /role: "Live-Ansicht"/);
@@ -48,22 +49,19 @@ test("event workers and dispatchers are not routed into hardware configuration",
   assert.match(server, /event_configuration:/);
 });
 
-test("project browser provides one coherent IoT device configuration hierarchy", () => {
+test("project browser keeps one flat IoT device configuration folder", () => {
   assert.match(app, /function projectBrowserSources\(project, sources\)/);
   assert.match(app, /sourcePrefix: String\(component\.component_path\)/);
   assert.match(app, /treePrefix: `Komponenten\/\$\{componentTreeLabel\(component\)\}`/);
   assert.match(app, /treePath: \[mapping\.treePrefix, relativePath\]\.filter\(Boolean\)\.join\("\/"\)/);
   assert.match(app, /relativePath = relativePath\.replace\(\/\^Konfiguration/);
   assert.match(app, /source\.treePath \|\| source\.path/);
-  assert.match(app, /`Komponenten\/\$\{label\}\/Konfiguration\/Übersicht`/);
-  assert.match(app, /`Komponenten\/\$\{label\}\/Konfiguration\/Hardware\/Boardkonfiguration`/);
+  assert.match(app, /`Komponenten\/\$\{label\}\/Konfiguration\/Board`/);
+  assert.match(app, /`Komponenten\/\$\{label\}\/Konfiguration\/Anschlüsse`/);
+  assert.doesNotMatch(app, /Konfiguration\/Übersicht|Konfiguration\/Hardware\/Boardkonfiguration/);
   assert.match(app, /function ideDeviceConfigurationComponents\(project\)/);
   assert.match(app, /component_id: "primary-iot-device"/);
-  assert.match(app, /data-device-configuration="\$\{escapeAttribute\(file\.componentId \|\| ""\)\}"/);
-  assert.match(app, /function renderDeviceConfigurationOverview\(project, component\)/);
-  assert.match(app, /Alle Einstellungen dieses IoT-Devices liegen in dieser gemeinsamen Struktur/);
-  assert.match(app, /Hardware und Board bearbeiten/);
-  assert.match(app, /Boardkonfiguration[\s\S]*Angeschlossene Komponenten[\s\S]*Funktionen[\s\S]*Treiberverwaltung[\s\S]*Webserver-Konfiguration/);
+  assert.doesNotMatch(app, /data-device-configuration=|renderDeviceConfigurationOverview|device-configuration-overview/);
   assert.match(app, /data-board-properties="\$\{escapeAttribute\(file\.componentId \|\| ""\)\}"/);
   assert.match(app, /data-sensor-properties="\$\{escapeAttribute\(file\.componentId \|\| ""\)\}"/);
   assert.match(app, /function renderSensorProperties/);
@@ -76,10 +74,11 @@ test("project browser provides one coherent IoT device configuration hierarchy",
   assert.match(app, /device-connections-table/);
   assert.match(app, /device_sensor_input_config/);
   assert.match(app, /device_actuator_output_config/);
+  assert.match(app, /component_data[\s\S]*component_relations[\s\S]*device_board_config/);
   assert.doesNotMatch(app, /MCU-Peripherie|Runtime-Abstraktionen|Verwendete Boardfunktionen|Boardfunktionen speichern/);
   assert.doesNotMatch(app, /saveBoardPeripheralUsage|board-capability-hierarchy/);
   assert.match(html, /id="ideDriverManagementView"/);
-  assert.match(app, /Konfiguration\/Software\/Treiberverwaltung/);
+  assert.match(app, /Konfiguration\/Treiber/);
   assert.match(app, /function renderDriverManagement/);
   assert.match(app, /openDriverManagement\(\)[\s\S]*ideCodeAssistant[\s\S]*renderIdeCodeAssistant\(project\)/);
   assert.match(app, /Wiederverwendbare Treiber/);

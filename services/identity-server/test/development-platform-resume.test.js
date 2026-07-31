@@ -45,7 +45,7 @@ test("keeps the project choice surface consistent with the dark workspace", () =
   const choiceSurfaceRule = publicCss.match(/\.development-project-header > \.development-project-choice-panel:not\(\.hidden\),[\s\S]*?\{([^}]*)\}/)?.[1] || "";
   assert.match(choiceSurfaceRule, /background: #111827/);
   assert.doesNotMatch(choiceSurfaceRule, /background: #fff/);
-  assert.match(publicHtml, /app\.css\?v=20260731-board-view-cleanup-1/);
+  assert.match(publicHtml, /app\.css\?v=20260731-flat-component-tree-1/);
 });
 
 test("separates the architecture discovery step from the active project", () => {

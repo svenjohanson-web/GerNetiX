@@ -1634,18 +1634,6 @@ button.danger:hover {
 .board-configuration-plugin-save p { margin: 0; color: #fcd34d; font-size: .82rem; }
 .board-configuration-plugin .board-feature-row.is-modified { background: color-mix(in srgb, #f59e0b 9%, transparent); }
 @media (max-width: 760px) { .board-configuration-plugin-save { grid-template-columns: 1fr; } }
-.device-configuration-overview { display: grid; align-content: start; gap: 16px; }
-.device-configuration-overview > header,
-.device-configuration-group > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.device-configuration-overview h3,
-.device-configuration-overview h4 { margin: 0; }
-.device-configuration-group { display: grid; gap: 10px; padding: 14px; border: 1px solid #253244; border-radius: 10px; background: #0d1520; }
-.device-configuration-group > header > span { color: #93c5fd; font-size: .82rem; }
-.device-configuration-cards { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
-.device-configuration-cards button { min-height: 86px; display: grid; align-content: start; gap: 6px; padding: 12px; text-align: left; border: 1px solid #334155; border-radius: 8px; background: #111827; color: #e5e7eb; }
-.device-configuration-cards button:hover,
-.device-configuration-cards button:focus-visible { border-color: #38bdf8; background: #142235; }
-.device-configuration-cards button small { color: #94a3b8; line-height: 1.4; }
 .board-configuration-snapshot { display: grid; gap: 10px; padding: 14px; border: 1px solid #253244; border-radius: 10px; background: #0d1520; }
 .board-configuration-snapshot > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .board-configuration-snapshot h4 { margin: 0; }
@@ -1655,7 +1643,6 @@ button.danger:hover {
 .board-configuration-snapshot th,
 .board-configuration-snapshot td { padding: 9px 10px; border-bottom: 1px solid #253244; text-align: left; vertical-align: top; }
 .board-configuration-snapshot thead th { color: #94a3b8; font-size: .76rem; text-transform: uppercase; letter-spacing: .04em; }
-@media (max-width: 760px) { .device-configuration-cards { grid-template-columns: 1fr; } }
 .board-properties-workspace > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .board-properties-workspace h3,
 .board-properties-empty h3 { margin: 2px 0 0; }
