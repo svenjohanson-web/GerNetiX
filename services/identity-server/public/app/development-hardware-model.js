@@ -68,6 +68,7 @@ const DevelopmentHardwareModel = (() => {
     voltage: "Spannung",
     weight: "Gewicht",
     force: "Kraft",
+    image: "Kamera / Bild",
   };
 
   const SIGNAL_TYPE_LABELS = {
@@ -79,6 +80,7 @@ const DevelopmentHardwareModel = (() => {
     spi: "SPI",
     one_wire: "1-Wire",
     uart: "UART",
+    parallel_dvp_sccb: "Parallel DVP + SCCB",
   };
 
   function sensorCategoryOptions(sensors) {

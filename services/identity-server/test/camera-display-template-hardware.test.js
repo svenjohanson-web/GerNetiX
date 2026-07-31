@@ -13,11 +13,16 @@ test("persists the camera and display template boards as its initial hardware re
   assert.match(server, /templateModelVersion: template\.schemaVersion,\s+hardwareConfiguration,/);
 });
 
-test("keeps integrated camera and display configuration in their selected boards", () => {
+test("shows the catalog camera while keeping its board-supplied connection", () => {
   const platform = fs.readFileSync(path.join(root, "public/app/development-platform.js"), "utf8");
 
   assert.match(platform, /merged\.concrete_type !== "integrated_camera"/);
   assert.match(platform, /Kamera ist Bestandteil der gewählten Boardkonfiguration/);
   assert.match(platform, /Display ist Bestandteil der gewählten Boardkonfiguration/);
   assert.match(platform, /Angeschlossen an .* gemäß Boardkonfiguration/);
+  assert.match(platform, /Vom gewählten Boardprofil vorgegeben; Anschluss und Pins werden automatisch übernommen/);
+  assert.match(platform, /Extern oder ausgetauscht; Anschluss und Mehrfach-Pinbelegung/);
+  assert.match(platform, /components: synchronizeCameraComponents\(components, boards\)/);
+  assert.match(platform, /camera\.concrete_type = catalogCamera\.sensor_type_id/);
+  assert.match(platform, /device\.board_configuration\.board_features\.camera =/);
 });

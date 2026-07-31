@@ -1909,6 +1909,9 @@ const DevelopmentPlatform = (() => {
         if (["sensor", "actuator"].includes(merged.abstract_type) && !merged.target_device_id && controlAssignments.get(merged.component_id)) {
           merged.target_device_id = controlAssignments.get(merged.component_id);
         }
+        if (merged.abstract_type === "sensor" && /kamera|camera/i.test(merged.label) && !merged.sensor_category) {
+          merged.sensor_category = "image";
+        }
         if (merged.abstract_type === "iot_device") {
           if (!merged.inventory_device_id) merged.inventory_device_id = legacyAllocations[deviceIndex]?.device_id || "";
           deviceIndex += 1;
@@ -1922,7 +1925,7 @@ const DevelopmentPlatform = (() => {
       });
       return {
         schema_version: 4,
-        components,
+        components: synchronizeCameraComponents(components, boards),
         updated_at: persisted?.updated_at || "",
       };
     }
@@ -2232,6 +2235,39 @@ const DevelopmentPlatform = (() => {
       return Array.isArray(state.sensorCatalog) ? state.sensorCatalog : [];
     }
 
+    function synchronizeCameraComponents(components, boards) {
+      const result = components.map((component) => ({
+        ...component,
+        board_configuration: component.board_configuration ? structuredClone(component.board_configuration) : null,
+      }));
+      const byId = new Map(result.map((component) => [component.component_id, component]));
+      for (const camera of result.filter((component) => component.abstract_type === "sensor" && component.sensor_category === "image")) {
+        const device = byId.get(camera.target_device_id);
+        if (!device) continue;
+        const board = boards.find((item) => DevelopmentHardwareModel.boardIdentifier(item) === device.board_profile_id);
+        const configuredFeature = device.board_configuration?.board_features?.camera;
+        const defaultFeature = board?.default_instance_configuration?.board_features?.camera;
+        const feature = configuredFeature || defaultFeature;
+        if (!camera.concrete_type && feature?.enabled && feature.hardware) {
+          const catalogCamera = availableSensors().find((sensor) => sensor.sensor_type_id === feature.hardware);
+          if (catalogCamera) {
+            camera.concrete_type = catalogCamera.sensor_type_id;
+            camera.signal_type = catalogCamera.signal_type;
+          }
+        }
+        if (!camera.concrete_type || !device.board_configuration?.board_features) continue;
+        const catalogCamera = availableSensors().find((sensor) => sensor.sensor_type_id === camera.concrete_type);
+        device.board_configuration.board_features.camera = {
+          ...(configuredFeature || defaultFeature || {}),
+          enabled: true,
+          hardware: camera.concrete_type,
+          driver: catalogCamera?.driver_id || feature?.driver || "",
+          connection: catalogCamera?.interface || camera.signal_type || feature?.connection || "",
+        };
+      }
+      return result;
+    }
+
     function actuatorTypes() {
       return [
         { id: "dc_motor", label: "DC-Motor" },
@@ -2303,6 +2339,12 @@ const DevelopmentPlatform = (() => {
       }
       if (component.abstract_type === "sensor") {
         if (component.concrete_type === "integrated_camera") return `<span class="hardware-not-applicable">Eigenschaften und Pins kommen aus dem Kameraboard.</span>`;
+        if (component.sensor_category === "image") {
+          const camera = availableSensors().find((sensor) => sensor.sensor_type_id === component.concrete_type);
+          return camera
+            ? `<span class="hardware-not-applicable">${escapeHtml(camera.maximum_resolution || "Auflösung laut Sensordatenblatt")} · ${escapeHtml(camera.driver_id || "Kameratreiber wird noch festgelegt")}</span>`
+            : `<span class="hardware-not-applicable">Bitte Kamerasensor auswählen.</span>`;
+        }
         const electrical = component.concrete_type === "pt1000" ? `
           <label>R0<input data-hardware-property="nominal_resistance_ohm" type="number" min="100" value="${escapeAttribute(properties.nominal_resistance_ohm || 1000)}"><small>Ohm bei 0 Grad C</small></label>
           <label>Leiter<select data-hardware-property="wire_count">${[2, 3, 4].map((count) => `<option value="${count}" ${selected(properties.wire_count || 2, count)}>${count}-Leiter</option>`).join("")}</select></label>`
@@ -2334,6 +2376,20 @@ const DevelopmentPlatform = (() => {
       const targetDevice = devices.find((device) => device.component_id === component.target_device_id) || devices[0];
       if (["integrated_camera", "integrated_display"].includes(component.concrete_type)) {
         return `<span class="hardware-not-applicable">Angeschlossen an ${escapeHtml(targetDevice?.label || "das zugeordnete IoT-Device")} gemäß Boardkonfiguration.</span>`;
+      }
+      if (component.sensor_category === "image") {
+        const board = availableProcessorBoards().find((item) => DevelopmentHardwareModel.boardIdentifier(item) === targetDevice?.board_profile_id);
+        const defaultCamera = board?.default_instance_configuration?.board_features?.camera;
+        const suppliedByBoard = Boolean(defaultCamera?.enabled && defaultCamera.hardware === component.concrete_type);
+        return `
+          <label>IoT-Device<select data-hardware-field="target_device_id">
+            <option value="">Device waehlen</option>
+            ${devices.map((device) => `<option value="${escapeAttribute(device.component_id)}" ${selected(component.target_device_id, device.component_id)}>${escapeHtml(device.label)}</option>`).join("")}
+          </select></label>
+          <span class="hardware-not-applicable">${suppliedByBoard
+            ? "Vom gewählten Boardprofil vorgegeben; Anschluss und Pins werden automatisch übernommen."
+            : "Extern oder ausgetauscht; Anschluss und Mehrfach-Pinbelegung werden in der Projekt-Boardkonfiguration festgelegt."}</span>
+        `;
       }
       const motorDriverSpecific = motorDriverTypes(component.concrete_type).length > 0;
       const pinOptions = boardPins(targetDevice?.board_profile_id, component);
@@ -2461,7 +2517,7 @@ const DevelopmentPlatform = (() => {
         next.circuit = circuitFor(next);
         return next;
       });
-      return { schema_version: 5, components, updated_at: current.updated_at || "" };
+      return { schema_version: 5, components: synchronizeCameraComponents(components, boards), updated_at: current.updated_at || "" };
     }
 
     function collectDevelopmentBoardConfiguration(row, component, board, previous) {

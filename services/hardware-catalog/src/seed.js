@@ -474,6 +474,11 @@ function defaultCatalogSeed() {
       sensor({ id: "voltage_divider", title: "Spannungsteiler-Messung", measurements: ["voltage"], signal: "analog", capabilities: ["capability.analog_input"] }),
       sensor({ id: "bmp280", title: "BMP280 Drucksensor", measurements: ["pressure"], signal: "i2c", capabilities: ["capability.i2c"] }),
       sensor({ id: "load_cell_hx711", title: "Waegezelle mit HX711", measurements: ["weight", "force"], signal: "digital", capabilities: ["capability.digital_input"] }),
+      cameraSensor({ id: "ov2640", title: "OV2640 Kamerasensor", maximumResolution: "1600x1200", colorType: "color", outputFormats: ["JPEG", "YUV422", "RGB565"] }),
+      cameraSensor({ id: "ov3660", title: "OV3660 Kamerasensor", maximumResolution: "2048x1536", colorType: "color", outputFormats: ["JPEG", "YUV422", "RGB565"] }),
+      cameraSensor({ id: "ov5640", title: "OV5640 Kamerasensor", maximumResolution: "2592x1944", colorType: "color", outputFormats: ["JPEG", "YUV422", "RGB565"] }),
+      cameraSensor({ id: "gc2145", title: "GC2145 Kamerasensor", maximumResolution: "1600x1200", colorType: "color", outputFormats: ["YUV422", "RAW Bayer", "RGB565"] }),
+      cameraSensor({ id: "gc0308", title: "GC0308 Kamerasensor", maximumResolution: "640x480", colorType: "color", outputFormats: ["YUV422", "RAW Bayer", "RGB565", "Grayscale"] }),
       esp32Board({
         hardware_item_id: "hardware.processor_board.espressif_esp32_c6_devkitc_1",
         sku: "GNX-ESP32-C6-DEVKITC-1",
@@ -940,11 +945,30 @@ function sensor(input) {
     summary: input.summary || input.title,
     measurement_kinds: input.measurements,
     signal_type: input.signal,
+    component_class: input.componentClass || "measurement_sensor",
+    interface: input.interface || input.signal,
+    driver_id: input.driverId || "",
+    maximum_resolution: input.maximumResolution || "",
+    color_type: input.colorType || "",
+    output_formats: input.outputFormats || [],
     capability_ids: input.capabilities,
     support_policy: "component_support",
     provisioning_profile_id: "",
     status: "active",
   };
+}
+
+function cameraSensor(input) {
+  return sensor({
+    ...input,
+    measurements: ["image"],
+    signal: "parallel_dvp_sccb",
+    capabilities: ["capability.camera_input"],
+    componentClass: "camera_sensor",
+    interface: "parallel_dvp_sccb",
+    driverId: "espressif_esp32_camera",
+    summary: `${input.title}, unterstützt durch den Espressif-Treiber esp32-camera.`,
+  });
 }
 
 module.exports = { defaultCatalogSeed };

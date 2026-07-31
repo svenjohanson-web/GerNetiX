@@ -98,6 +98,15 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   assert.equal(sensors.some((item) => item.sensor_type_id === "reed_contact" && item.measurement_kinds.includes("contact")), true);
   assert.equal(sensors.some((item) => item.sensor_type_id === "adxl335" && item.measurement_kinds.includes("acceleration") && item.signal_type === "analog"), true);
   assert.equal(sensors.some((item) => item.sensor_type_id === "adxl345" && item.measurement_kinds.includes("acceleration") && item.signal_type === "i2c"), true);
+  const ov3660 = sensors.find((item) => item.sensor_type_id === "ov3660");
+  assert.equal(ov3660.component_class, "camera_sensor");
+  assert.equal(ov3660.signal_type, "parallel_dvp_sccb");
+  assert.equal(ov3660.maximum_resolution, "2048x1536");
+  assert.equal(ov3660.driver_id, "espressif_esp32_camera");
+  assert.deepEqual(
+    ["ov2640", "ov3660", "ov5640", "gc2145", "gc0308"].filter((id) => sensors.some((item) => item.sensor_type_id === id)),
+    ["ov2640", "ov3660", "ov5640", "gc2145", "gc0308"],
+  );
   const boardFeatures = await service.listBoardFeatureOptions();
   const display = boardFeatures.find((item) => item.feature_id === "display");
   const memory = boardFeatures.find((item) => item.feature_id === "ram");

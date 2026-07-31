@@ -47,6 +47,7 @@ const sensors = [
   { sensor_type_id: "incremental_encoder_ab", title: "Encoder A/B", measurement_kinds: ["position", "rotation"], signal_type: "incremental_ab" },
   { sensor_type_id: "adxl335", title: "ADXL335", measurement_kinds: ["acceleration"], signal_type: "analog" },
   { sensor_type_id: "adxl345", title: "ADXL345", measurement_kinds: ["acceleration"], signal_type: "i2c" },
+  { sensor_type_id: "ov3660", title: "OV3660", measurement_kinds: ["image"], signal_type: "parallel_dvp_sccb" },
 ];
 
 test("offers measurement kind before signal type and concrete sensor", () => {
@@ -64,6 +65,12 @@ test("offers analog and I2C acquisition for acceleration", () => {
   assert.deepEqual(model.signalTypeOptions(sensors, "acceleration").map((item) => item.id), ["analog", "i2c"]);
   assert.deepEqual(model.sensorTypesFor(sensors, "acceleration", "analog").map((item) => item.sensor_type_id), ["adxl335"]);
   assert.deepEqual(model.sensorTypesFor(sensors, "acceleration", "i2c").map((item) => item.sensor_type_id), ["adxl345"]);
+});
+
+test("offers camera sensors as image sources with their multi-signal interface", () => {
+  assert.deepEqual(model.sensorCategoryOptions(sensors).find((item) => item.id === "image"), { id: "image", label: "Kamera / Bild" });
+  assert.deepEqual(model.signalTypeOptions(sensors, "image"), [{ id: "parallel_dvp_sccb", label: "Parallel DVP + SCCB" }]);
+  assert.deepEqual(model.sensorTypesFor(sensors, "image", "parallel_dvp_sccb").map((item) => item.sensor_type_id), ["ov3660"]);
 });
 
 test("migrates an existing concrete sensor to category and signal type", () => {
