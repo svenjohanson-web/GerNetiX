@@ -205,7 +205,21 @@ Das Tool bricht ab, wenn:
 
 ## Serverseitiger Ablauf
 
-Nach erfolgreicher Vorpruefung geschieht auf Staging automatisch:
+Nach erfolgreicher Vorpruefung vergleicht der Server den bisher deployten Commit
+mit dem neuen Ziel-Commit und waehlt den kleinsten sicheren Ablauf:
+
+- Reine Doku-, Modell-, Graph- oder Testaenderungen erfordern keinen
+  Container-Neustart.
+- Aenderungen innerhalb eines oder mehrerer Domaenendienste bauen das gemeinsame
+  Node-Image genau einmal, erstellen nur die betroffenen Container neu und
+  pruefen nur deren direkten Healthcheck. Bei Identity-Aenderungen werden
+  zusaetzlich Nginx neu gebunden und der private PWA-Endpunkt geprueft.
+- Infrastruktur-, Compose-, Dockerfile-, Migrations- oder nicht eindeutig
+  zuordenbare Aenderungen verwenden immer den vollstaendigen Sicherheitslauf.
+- Fehlt der vorherige Commit oder ist die Commit-Historie nicht linear, gilt
+  ebenfalls der vollstaendige Lauf als sicherer Rueckfall.
+
+Der vollstaendige Ablauf fuehrt weiterhin automatisch aus:
 
 1. aktuellen Branch von `origin` abrufen,
 2. exakt auf die lokale Commit-ID wechseln,
@@ -218,6 +232,8 @@ Nach erfolgreicher Vorpruefung geschieht auf Staging automatisch:
 9. Containerstatus ausgeben.
 
 Persistente Docker-Volumes und `.env.vps` werden nicht geloescht oder ueberschrieben.
+Die paketabhaengigen Docker-Layer liegen vor den Quellcode-Layern. Ein normaler
+Codewechsel fuehrt deshalb nicht erneut alle `npm ci`-Installationen aus.
 
 ## Regeln fuer Codex
 

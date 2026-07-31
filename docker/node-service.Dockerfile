@@ -10,6 +10,34 @@ RUN apt-get update \
   && /opt/platformio/bin/pip install --no-cache-dir platformio==6.1.18 \
   && rm -rf /var/lib/apt/lists/*
 
+COPY --chown=node:node services/ai-context-server/package.json services/ai-context-server/package-lock.json ./services/ai-context-server/
+COPY --chown=node:node services/identity-server/package.json services/identity-server/package-lock.json ./services/identity-server/
+COPY --chown=node:node services/project-server/package.json services/project-server/package-lock.json ./services/project-server/
+COPY --chown=node:node services/telemetry-server/package.json services/telemetry-server/package-lock.json ./services/telemetry-server/
+COPY --chown=node:node services/community-platform/package.json services/community-platform/package-lock.json ./services/community-platform/
+COPY --chown=node:node services/device-management-server/package.json services/device-management-server/package-lock.json ./services/device-management-server/
+COPY --chown=node:node services/ai-usage-server/package.json services/ai-usage-server/package-lock.json ./services/ai-usage-server/
+COPY --chown=node:node services/hardware-catalog/package.json services/hardware-catalog/package-lock.json ./services/hardware-catalog/
+COPY --chown=node:node services/hardware-shop/package.json services/hardware-shop/package-lock.json ./services/hardware-shop/
+COPY --chown=node:node services/admin-tool/package.json services/admin-tool/package-lock.json ./services/admin-tool/
+COPY --chown=node:node services/admin-access-server/package.json services/admin-access-server/package-lock.json ./services/admin-access-server/
+COPY --chown=node:node services/build-deploy-server/package.json services/build-deploy-server/package-lock.json ./services/build-deploy-server/
+COPY --chown=node:node services/public-demo-server/package.json services/public-demo-server/package-lock.json ./services/public-demo-server/
+
+RUN npm ci --omit=dev --prefix services/ai-context-server
+RUN npm ci --omit=dev --prefix services/identity-server
+RUN npm ci --omit=dev --prefix services/project-server
+RUN npm ci --omit=dev --prefix services/telemetry-server
+RUN npm ci --omit=dev --prefix services/community-platform
+RUN npm ci --omit=dev --prefix services/device-management-server
+RUN npm ci --omit=dev --prefix services/ai-usage-server
+RUN npm ci --omit=dev --prefix services/hardware-catalog
+RUN npm ci --omit=dev --prefix services/hardware-shop
+RUN npm ci --omit=dev --prefix services/admin-tool
+RUN npm ci --omit=dev --prefix services/admin-access-server
+RUN npm ci --omit=dev --prefix services/build-deploy-server
+RUN npm ci --omit=dev --prefix services/public-demo-server
+
 COPY --chown=node:node services ./services
 COPY --chown=node:node basissoftware ./basissoftware
 COPY --chown=node:node firmware/gernetix-flashbox ./firmware/gernetix-flashbox
@@ -33,19 +61,6 @@ COPY --chown=node:node tools/usb-serial-helper ./tools/usb-serial-helper
 COPY --chown=node:node Demoanwendungen/Boards/hardware.processor_board.esp32_s3_es3c28p/touch-spielesammlung ./Demoanwendungen/Boards/hardware.processor_board.esp32_s3_es3c28p/touch-spielesammlung
 COPY --chown=node:node docker/healthcheck.js ./docker/healthcheck.js
 
-RUN npm ci --omit=dev --prefix services/ai-context-server
-RUN npm ci --omit=dev --prefix services/identity-server
-RUN npm ci --omit=dev --prefix services/project-server
-RUN npm ci --omit=dev --prefix services/telemetry-server
-RUN npm ci --omit=dev --prefix services/community-platform
-RUN npm ci --omit=dev --prefix services/device-management-server
-RUN npm ci --omit=dev --prefix services/ai-usage-server
-RUN npm ci --omit=dev --prefix services/hardware-catalog
-RUN npm ci --omit=dev --prefix services/hardware-shop
-RUN npm ci --omit=dev --prefix services/admin-tool
-RUN npm ci --omit=dev --prefix services/admin-access-server
-RUN npm ci --omit=dev --prefix services/build-deploy-server
-RUN npm ci --omit=dev --prefix services/public-demo-server
 RUN npm run verify:runtime-deps --prefix services/identity-server
 
 RUN mkdir -p /var/lib/gernetix/services /var/lib/gernetix/identity /var/lib/gernetix/projects /var/lib/gernetix/telemetry /var/lib/gernetix/ai-context /var/lib/gernetix/build /var/lib/gernetix/admin-access /var/lib/gernetix/public-demos /var/lib/gernetix/community \

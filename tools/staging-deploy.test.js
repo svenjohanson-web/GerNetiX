@@ -41,6 +41,7 @@ test("quotes remote values and deploys an exact commit", () => {
     remoteDir: "/opt/gernetix",
   });
   assert.match(command, /git fetch origin 'agent\/staging'/);
+  assert.match(command, /previous_commit=\$\(git rev-parse HEAD\)/);
   assert.match(command, /git switch --detach '0123456789abcdef'/);
-  assert.match(command, /remote-deploy\.sh/);
+  assert.match(command, /remote-deploy\.sh "\$previous_commit"/);
 });

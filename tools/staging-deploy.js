@@ -62,9 +62,10 @@ function remoteDeployCommand({ branch, commit, remoteDir, publicDemo = false }) 
   return [
     `cd ${shellQuote(remoteDir)}`,
     "test -z \"$(git status --porcelain --untracked-files=no)\"",
+    "previous_commit=$(git rev-parse HEAD)",
     `git fetch origin ${shellQuote(branch)}`,
     `git switch --detach ${shellQuote(commit)}`,
-    publicDemo ? "./scripts/staging/remote-deploy-public-demo.sh" : "./scripts/staging/remote-deploy.sh",
+    publicDemo ? "./scripts/staging/remote-deploy-public-demo.sh" : './scripts/staging/remote-deploy.sh "$previous_commit"',
   ].join(" && ");
 }
 
