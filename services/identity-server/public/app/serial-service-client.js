@@ -8,7 +8,7 @@ const GerNetiXSerialService = (() => {
     let baseUrl = baseUrls[0];
     let session = "";
 
-    async function request(path, init = {}, authenticated = true, requestBaseUrl = baseUrl) {
+    async function request(path, init = {}, authenticated = true, requestBaseUrl = baseUrl, retryInvalidSession = true) {
       if (authenticated && !session) await connect();
       const headers = {
         "Content-Type": "application/json",
@@ -23,7 +23,13 @@ const GerNetiXSerialService = (() => {
       });
       const payload = response.status === 204 ? null : await response.json().catch(() => ({}));
       if (!response.ok) {
-        if (response.status === 401 && authenticated) session = "";
+        if (response.status === 401 && authenticated) {
+          session = "";
+          if (payload?.error === "serial_session_invalid" && retryInvalidSession) {
+            await connect();
+            return request(path, init, true, baseUrl, false);
+          }
+        }
         const error = new Error(payload?.message || `Der lokale GerNetiX Serial Service antwortet mit Status ${response.status}.`);
         error.code = payload?.error || "serial_service_request_failed";
         error.status = response.status;
