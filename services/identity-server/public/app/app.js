@@ -352,7 +352,6 @@ document.querySelector("#ideBoardPropertiesView").addEventListener("click", (eve
     navigate(`/app/development-platform/hardware/?project=${encodeURIComponent(state.activeProjectId)}`);
   }
 });
-document.querySelector("#ideBoardPropertiesView").addEventListener("submit", saveBoardPeripheralUsage);
 document.querySelector("#ideSensorPropertiesView").addEventListener("click", (event) => {
   if (event.target.closest("[data-open-hardware-configuration]")) navigate(`/app/development-platform/hardware/?project=${encodeURIComponent(state.activeProjectId)}`);
 });
@@ -3016,21 +3015,6 @@ function renderBoardProperties(project) {
   const boardProfileId = boardSelectionId || deviceComponent?.board_profile_id || allocated?.hardware_profile_id || boardConfiguration?.base_board_profile_id || "";
   const board = state.processorBoards.find((item) => [item.hardware_item_id, item.hardware_profile_id, item.id]
     .filter(Boolean).some((id) => String(id) === String(boardProfileId)));
-  const profile = board?.pin_profile || {};
-  const peripheralProfile = board?.peripheral_profile || {};
-  const resources = Array.isArray(peripheralProfile.resources) && peripheralProfile.resources.length
-    ? peripheralProfile.resources
-    : [
-      { id: "gpio", title: "GPIO", description: "Digitale Ein- und Ausgänge", configurable: true, pin_profile_key: "digital_pins" },
-      { id: "adc", title: "ADC", description: "Analoge Eingänge", configurable: true, pin_profile_key: "analog_inputs" },
-      { id: "pwm", title: "PWM", description: "Pulsweitenmodulation", configurable: true, pin_profile_key: "pwm_pins" },
-      { id: "i2c", title: "I²C", description: "Bus-Anschlüsse", configurable: true, pin_profile_key: "i2c" },
-    ];
-  const abstractions = Array.isArray(peripheralProfile.abstractions) ? peripheralProfile.abstractions : [];
-  const peripheralUsage = effectiveBoardPeripheralUsage(project, deviceComponent.component_id);
-  const configurablePeripherals = resources.filter((resource) => resource.configurable);
-  const persistedDeviceComponent = projectHardwareComponents(project)
-    .some((component) => component.abstract_type === "iot_device" && component.component_id === deviceComponent.component_id);
   target.innerHTML = `<div class="board-properties-workspace">
     <header><div><p class="eyebrow">Hardware · Boardkonfiguration</p><h3>${escapeHtml(deviceComponent?.label || "IoT-Device")}</h3></div>
       <button type="button" data-open-hardware-configuration>Vollständige Hardware-Zuordnung</button></header>
@@ -3049,23 +3033,6 @@ function renderBoardProperties(project) {
       <div><dt>Prozessorfamilie</dt><dd>${escapeHtml(board.processor_family || deviceComponent?.processor_family || "nicht angegeben")}</dd></div>
       <div><dt>MCU</dt><dd>${escapeHtml(board.mcu_variant || deviceComponent?.processor_variant || "nicht angegeben")}</dd></div>
     </dl>` : ""}
-    ${board && persistedDeviceComponent ? `<form class="board-peripheral-usage-form" data-component-id="${escapeAttribute(deviceComponent.component_id)}">
-      <header><div><p class="eyebrow">IoT-Device-Konfiguration</p><h4>Verwendete Boardfunktionen</h4></div></header>
-      <div class="board-peripheral-options">${configurablePeripherals.map((resource) => {
-        const supported = boardPeripheralSupported(resource, profile);
-        return `<label class="component-feature-card ${supported ? "" : "locked"}">
-          <input type="checkbox" name="peripheral" value="${escapeAttribute(resource.id)}" ${peripheralUsage.has(resource.id) ? "checked" : ""} ${supported ? "" : "disabled"}>
-          <span><strong>${escapeHtml(resource.title)} verwenden</strong><small>${escapeHtml(resource.description)}</small></span>
-          <em>${escapeHtml(boardPeripheralAvailability(resource, profile))}</em>
-        </label>`;
-      }).join("")}</div>
-      <footer><button type="submit">Boardfunktionen speichern</button><span data-board-peripheral-status></span></footer>
-    </form>` : ""}
-    ${board ? `<section class="board-capability-hierarchy" aria-label="Hierarchie der Boardfunktionen">
-      ${boardCapabilityLayer("Runtime-Abstraktionen", "Basissoftware / OS", abstractions, resources, abstractions, profile, "runtime")}
-      <div class="board-capability-connector"><span>abstrahiert</span><b>↓</b></div>
-      ${boardCapabilityLayer("MCU-Peripherie", "ESP32-Ressourcen", resources, resources, abstractions, profile, "resource")}
-    </section>` : ""}
   </div>`;
   const pluginRoot = target.querySelector("[data-ide-board-configuration-plugin]");
   state.ideBoardConfigurationDraft = null;
@@ -3173,66 +3140,6 @@ async function saveIdeBoardConfiguration(saveAsAccount) {
       : "Board als fester Projektsnapshot gespeichert.";
   } catch (error) {
     status.textContent = error.message || "Boardkonfiguration konnte nicht gespeichert werden.";
-  }
-}
-
-function boardPeripheralSupported(resource, pinProfile) {
-  if (resource.supported === false) return false;
-  if (!resource.pin_profile_key) return true;
-  return Array.isArray(pinProfile?.[resource.pin_profile_key]) && pinProfile[resource.pin_profile_key].length > 0;
-}
-
-function boardPeripheralAvailability(resource, pinProfile) {
-  if (!boardPeripheralSupported(resource, pinProfile)) return "Vom Board nicht bereitgestellt";
-  const pins = resource.pin_profile_key ? pinProfile?.[resource.pin_profile_key] : null;
-  if (Array.isArray(pins)) return `${pins.length} Anschlüsse verfügbar`;
-  if (resource.managed_by) return "Durch Runtime verwaltet";
-  return "Vom Board bereitgestellt";
-}
-
-function boardCapabilityLayer(title, subtitle, items, resources, abstractions, pinProfile, layerType) {
-  const labels = new Map([...resources, ...abstractions, ...items].map((item) => [item.id, item.title]));
-  return `<section class="board-capability-layer">
-    <header><div><strong>${escapeHtml(title)}</strong><small>${escapeHtml(subtitle)}</small></div><span>${items.length}</span></header>
-    <div>${items.map((item) => {
-      const dependencies = Array.isArray(item.depends_on) ? item.depends_on : [];
-      const sensorFunction = item.configures === "sensor";
-      const availability = layerType === "driver"
-        ? sensorFunction ? "Bei einer Sensor-Komponente konfigurierbar" : "Beim Motor-Aktor auswählbar"
-        : layerType === "runtime" ? "Durch Runtime verwaltet" : boardPeripheralAvailability(item, pinProfile);
-      return `<article class="board-capability-node ${item.managed_by ? "managed" : ""}">
-        <header><strong>${escapeHtml(item.title)}</strong><small>${escapeHtml(availability)}</small></header>
-        <p>${escapeHtml(item.description || "")}</p>
-        ${dependencies.length ? `<div>${dependencies.map((id) => `<code>${escapeHtml(labels.get(id) || id)}</code>`).join("")}</div>` : ""}
-        ${layerType === "driver" ? `<button type="button" data-open-hardware-configuration>${sensorFunction ? "Beim Sensor konfigurieren" : "Beim Aktor auswählen"}</button>` : ""}
-      </article>`;
-    }).join("")}</div>
-  </section>`;
-}
-
-function effectiveBoardPeripheralUsage(project, componentId) {
-  const configured = project?.buildConfig?.component_hardware_features?.[componentId]?.enabled;
-  return new Set(Array.isArray(configured) ? configured : []);
-}
-
-async function saveBoardPeripheralUsage(event) {
-  if (!event.target.matches(".board-peripheral-usage-form")) return;
-  event.preventDefault();
-  const project = projectById(state.activeProjectId);
-  const componentId = event.target.dataset.componentId || "";
-  const status = event.target.querySelector("[data-board-peripheral-status]");
-  const enabled = new FormData(event.target).getAll("peripheral").map(String);
-  status.textContent = "Wird gespeichert...";
-  try {
-    const response = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/component-hardware-features`, {
-      component_id: componentId,
-      enabled,
-    });
-    state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
-    renderBoardProperties(response.project);
-    document.querySelector("[data-board-peripheral-status]").textContent = "Gespeichert.";
-  } catch (error) {
-    status.textContent = error.message;
   }
 }
 

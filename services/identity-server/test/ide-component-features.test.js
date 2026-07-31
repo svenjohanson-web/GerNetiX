@@ -76,10 +76,8 @@ test("project browser provides one coherent IoT device configuration hierarchy",
   assert.match(app, /device-connections-table/);
   assert.match(app, /device_sensor_input_config/);
   assert.match(app, /device_actuator_output_config/);
-  assert.match(app, /peripheralProfile\.resources/);
-  assert.doesNotMatch(app, /boardCapabilityLayer\("Treiber und Steuerungen"/);
-  assert.match(app, /boardCapabilityLayer\("Runtime-Abstraktionen"/);
-  assert.match(app, /boardCapabilityLayer\("MCU-Peripherie"/);
+  assert.doesNotMatch(app, /MCU-Peripherie|Runtime-Abstraktionen|Verwendete Boardfunktionen|Boardfunktionen speichern/);
+  assert.doesNotMatch(app, /saveBoardPeripheralUsage|board-capability-hierarchy/);
   assert.match(html, /id="ideDriverManagementView"/);
   assert.match(app, /Konfiguration\/Software\/Treiberverwaltung/);
   assert.match(app, /function renderDriverManagement/);
@@ -94,10 +92,6 @@ test("project browser provides one coherent IoT device configuration hierarchy",
   assert.match(app, /data-motor-driver-component/);
   assert.match(guidedProjectView, /"ai_generated_driver"/);
   assert.match(guidedProjectView, /state\.ideViewMode === "driver-management"/);
-  assert.match(app, /Durch Runtime verwaltet/);
-  assert.match(app, /Beim Aktor auswählen/);
-  assert.match(app, /component_hardware_features/);
-  assert.match(app, /component-hardware-features/);
   assert.match(server, /handleProjectComponentHardwareFeatures/);
   assert.match(server, /board\.peripheral_profile\?\.resources/);
   assert.match(server, /resources\.filter\(\(item\) => item\.configurable\)/);
