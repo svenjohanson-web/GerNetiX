@@ -156,7 +156,7 @@ final class SerialService {
             if request.method == "GET" && request.path == "/v1/status" {
                 return jsonResponse(200, [
                     "service": "gernetix-serial-service",
-                    "version": "0.3.3",
+                    "version": "0.3.4",
                     "protocolVersion": 1,
                     "runtime": "native-swift",
                     "capabilities": ["ports", "probe", "flash", "serial_provisioning"],
@@ -271,6 +271,7 @@ final class SerialService {
             try merged.data.write(to: image, options: .atomic)
             let result = try runEspflash(command: "write-bin", port: port, extraArguments: [
                 "--baud", "460800",
+                "--after", "watchdog-reset",
                 String(format: "0x%x", merged.address),
                 image.path,
             ], job: job)

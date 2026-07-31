@@ -14,7 +14,7 @@ test("webhelper is a native UI-less service without Electron or Chromium", () =>
   const swift = fs.readFileSync(path.join(root, "native", "main.swift"), "utf8");
   const launchAgent = fs.readFileSync(path.join(root, "install", "macos", "com.gernetix.serial-service.plist"), "utf8");
 
-  assert.equal(manifest.version, "0.3.3");
+  assert.equal(manifest.version, "0.3.4");
   assert.equal(manifest.dependencies, undefined);
   assert.equal(manifest.devDependencies, undefined);
   assert.doesNotMatch(JSON.stringify(manifest), /electron|chromium/i);
@@ -22,6 +22,7 @@ test("webhelper is a native UI-less service without Electron or Chromium", () =>
   assert.match(swift, /NWListener/);
   assert.match(swift, /SecPKCS12Import/);
   assert.match(swift, /espflash/);
+  assert.match(swift, /"--after", "watchdog-reset"/);
   assert.match(launchAgent, /RunAtLoad/);
   assert.match(launchAgent, /GERNETIX_SERIAL_TLS_PKCS12/);
   assert.match(
