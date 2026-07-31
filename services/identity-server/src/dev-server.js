@@ -94,6 +94,8 @@ const provisioningFirmwareRoot = process.env.PROVISIONING_FIRMWARE_ROOT
 const usbSerialHelperDistDir = path.join(workspaceRoot, "tools", "usb-serial-helper", "dist");
 const usbSerialHelperManifest = require(path.join(workspaceRoot, "tools", "usb-serial-helper", "package.json"));
 const identityPersistenceBackend = resolveIdentityRuntimePersistence(process.env);
+const identityRuntimeLocation = String(process.env.IDENTITY_RUNTIME_LOCATION || "server").trim().toLowerCase();
+const identityRemoteDev = identityRuntimeLocation === "local-development" && process.env.IDENTITY_REMOTE_DEV === "1";
 const identityAuxiliarySqlitePath = ":memory:";
 const platformDownloadSqlitePath = process.env.PLATFORM_DOWNLOAD_SQLITE_PATH || ":memory:";
 let platformDownloadRepository = identityPersistenceBackend === "postgres"
@@ -332,7 +334,7 @@ async function bootstrap() {
   console.log(`Device Management adapter: ${deviceManagementBaseUrl}`);
   console.log(`AI Usage adapter: ${aiUsageBaseUrl}`);
   console.log(`AI Context adapter: ${aiContextBaseUrl}`);
-  console.log(`Identity persistence: ${identityPersistenceBackend}${identityPersistenceBackend === "sqlite" ? ` (${identitySqlitePath})` : ""}`);
+  console.log(`Identity persistence: ${identityPersistenceBackend} (${identityRuntimeLocation})`);
   const llmConfig = llmConfigStore.publicConfig();
   console.log(`Development Platform LLM: ${llmConfig.baseUrl} (${llmConfig.model})`);
   });
@@ -525,7 +527,8 @@ async function routeRequest(req, res) {
       status: "ok",
       service: "identity-server",
       persistence_backend: identityPersistenceBackend,
-      runtime_location: "server",
+      runtime_location: identityRuntimeLocation,
+      remote_dev: identityRemoteDev,
     });
     return;
   }

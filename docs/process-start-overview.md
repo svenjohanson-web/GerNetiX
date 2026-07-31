@@ -26,7 +26,7 @@ Auf macOS kann alternativ `tools/GerNetiX-Check-und-Start.command` per Doppelkli
 
 ## Grafischer Prozess-Monitor
 
-Die eigenstaendige Desktop-App bildet den normalen Serverbetrieb ab. Sie startet keine lokale Identity, sondern oeffnet ueber `Plattform oeffnen` die private PWA der einzigen Identity auf dem VPS. Identity sowie die uebrigen Backend- und Infrastrukturprozesse erscheinen read-only aus dem Docker-Compose-Status des VPS. Die kompakte Uebersicht trennt Plattformzugang, sicheren Diagnosezugang und VPS-Runtime und aktualisiert sich alle zehn Sekunden.
+Die eigenstaendige Desktop-App bildet den normalen Remote-Dev-Betrieb ab. Sie startet und stoppt ausschliesslich den lokalen Identity-Prozess auf Port `4300`; dieser Prozess muss im kontrollierten Remote-Dev-Modus laufen und verwendet ausschliesslich PostgreSQL auf dem VPS. Die uebrigen Backend- und Infrastrukturprozesse erscheinen read-only aus dem Docker-Compose-Status des VPS. Der Monitor erkennt eine Identity mit falschem Persistenzmodus und behandelt sie nicht als gesund.
 
 - macOS-App: `tools/process-monitor/GerNetiX Prozess-Monitor.app`
 - macOS-Entwicklung: `tools/process-monitor/GerNetiX-Prozess-Monitor.command`
@@ -43,7 +43,7 @@ Die Community Platform wird im normalen Remote-Dev-Betrieb ausschliesslich als V
 
 Auf macOS steuert der Monitor ausschliesslich den vorhandenen WireGuard-Netzwerkdienst `gernetix-vps-mac`. Nach erfolgreicher VPN-Verbindung kann derselbe Monitor den festen SSH-Diagnosetunnel fuer Admin (`127.0.0.1:14600`), Plattformdiagnose (`127.0.0.1:14300`), Identity-PostgreSQL und die fest definierten Domaenendienste starten. Dieser Tunnel startet keine Identity; er stellt nur Diagnosezugriffe auf den laufenden VPS bereit. Der Renderer kann dabei weder SSH-Ziele noch beliebige Portweiterleitungen eingeben.
 
-Die App oeffnet keinen eigenen HTTP-Port und bietet keine lokale Start-/Stop-Aktion fuer Identity an. Das Schliessen des letzten Monitorfensters beendet auch den Desktop-Monitor; die VPS-Prozesse bleiben davon unberuehrt.
+Die App selbst oeffnet keinen HTTP-Port. Ihre Start-/Stop-Aktion steuert ausschliesslich den lokalen Identity-Listener auf Port `4300`; PostgreSQL und die Domaenendienste bleiben auf dem VPS. Das Schliessen des letzten Monitorfensters beendet auch den Desktop-Monitor; ein separat gestarteter lokaler Identity-Prozess und die VPS-Prozesse bleiben davon unberuehrt.
 
 ```powershell
 netstat -ano | findstr :4300
@@ -69,12 +69,12 @@ Diese Gruppe reicht fuer Login, Dashboard, Entwicklungsplattform, User IDE, Proj
 | 8 | AI Context Server | 5500 | `services/ai-context-server` | `$env:PORT="5500"; $env:AI_CONTEXT_PERSISTENCE_BACKEND="postgres"; npm run dev` |
 | 9 | Admin Tool API | 4600 | `services/admin-tool` | `$env:PORT="4600"; npm run dev` |
 | 10 | Community Platform | 5200 | `services/community-platform` | `$env:PORT="5200"; $env:COMMUNITY_PERSISTENCE_BACKEND="sqlite"; npm run dev` |
-| 11 | Identity Server / Plattform UI | VPS-intern 4300 | `services/identity-server` | Kein lokaler Start; kanonischer VPS-Compose-Dienst |
+| 11 | Identity Server / Plattform UI | lokal 4300 | `services/identity-server` | `node tools/start-identity-remote-dev.js` nach Aufbau des SSH-/WireGuard-Tunnels |
 
 Plattform-URL nach dem Start:
 
 ```text
-https://pwa.gernetix.com/app/dashboard/
+http://127.0.0.1:4300/app/dashboard/
 ```
 
 ## Kanonische private VPS-Plattform verwenden
@@ -87,7 +87,7 @@ Nach aktiviertem WireGuard ist die kanonische Adresse:
 https://pwa.gernetix.com/app/dashboard/
 ```
 
-Identity wird nicht lokal gestartet. Browser und Desktop-Werkzeuge verwenden die private PWA beziehungsweise den Diagnose-Tunnel zum laufenden VPS-Dienst. Der Identity Server ist dort der einzige Runtime-Prozess fuer Accounts und Sessions und persistiert ausschliesslich in `gernetix_runtime` auf PostgreSQL. Lokale SQLite-Repositories duerfen nur in isolierten Tests oder expliziten Legacy-Migrationen verwendet werden und sind keine startbare Identity-Runtime.
+Identity darf fuer Entwicklung lokal auf Port `4300` gestartet werden, verwendet dabei aber dieselben PostgreSQL-Daten in `gernetix_runtime` wie die Server-Runtime. Das Desktop-Werkzeug startet sie nur bei aktivem vollständigem Tunnel und nur mit `Remote-Dev + PostgreSQL`. Lokale SQLite-Repositories duerfen nur in isolierten Tests oder expliziten Legacy-Migrationen verwendet werden und sind keine startbare Identity-Persistenz.
 
 ## Device-, OTA- und Factory-Flows
 

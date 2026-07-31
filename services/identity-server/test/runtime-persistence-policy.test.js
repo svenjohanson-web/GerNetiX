@@ -26,9 +26,28 @@ test("rejects SQLite for every Identity runtime start", () => {
   );
 });
 
-test("rejects a local Identity process even when it targets PostgreSQL", () => {
+test("accepts the controlled local Remote-Dev Identity with PostgreSQL", () => {
+  assert.equal(resolveIdentityRuntimePersistence({
+    IDENTITY_RUNTIME_LOCATION: "local-development",
+    IDENTITY_REMOTE_DEV: "1",
+    IDENTITY_PERSISTENCE_BACKEND: "postgres",
+  }), "postgres");
+});
+
+test("rejects an uncontrolled local Identity process even when it targets PostgreSQL", () => {
   assert.throws(
     () => resolveIdentityRuntimePersistence({ IDENTITY_PERSISTENCE_BACKEND: "postgres" }),
-    /nur als kanonischer Serverdienst/,
+    /kontrollierter lokaler Remote-Dev-Prozess/,
+  );
+});
+
+test("rejects SQLite for the local Remote-Dev Identity", () => {
+  assert.throws(
+    () => resolveIdentityRuntimePersistence({
+      IDENTITY_RUNTIME_LOCATION: "local-development",
+      IDENTITY_REMOTE_DEV: "1",
+      IDENTITY_PERSISTENCE_BACKEND: "sqlite",
+    }),
+    /ausschliesslich PostgreSQL/,
   );
 });

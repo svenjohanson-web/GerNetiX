@@ -9,7 +9,7 @@
 <body class="operator-surface">
   <main>
     <header class="operator-header">
-      <div class="operator-brand"><div class="operator-brand-copy"><p class="operator-eyebrow">GerNetiX</p><h1 class="operator-brand-name">Operator Console</h1><span class="operator-surface-badge">Desktop · Serverbetrieb</span></div></div>
+      <div class="operator-brand"><div class="operator-brand-copy"><p class="operator-eyebrow">GerNetiX</p><h1 class="operator-brand-name">Operator Console</h1><span class="operator-surface-badge">Desktop · lokale Entwicklung</span></div></div>
       <div class="toolbar"><button id="refresh">Aktualisieren</button></div>
     </header>
     <nav class="view-tabs operator-nav">
@@ -45,21 +45,21 @@
               </label>
             </div>
           </div>
-          <p class="vpn-description">Stellt bei Bedarf private Diagnosezugänge zum VPS bereit.</p>
+          <p class="vpn-description">Verbindet die lokale Identity sicher mit PostgreSQL und den Diensten auf dem VPS.</p>
           <p id="tunnelMessage" class="group-error"></p>
         </section>
       </div>
       <div class="runtime-overview-grid">
         <section class="monitor-group local-runtime-group">
           <div class="group-head">
-            <div><p>SERVER</p><h2>GerNetiX Plattform</h2></div>
+            <div><p>MAC</p><h2>Identity</h2></div>
             <div class="group-actions">
-              <span id="summary">Prüfe Server-Identity ...</span>
-              <button id="openPlatform" class="primary" title="Private GerNetiX Plattform im Browser öffnen">Plattform öffnen</button>
+              <span id="summary">Prüfe Identity ...</span>
+              <button id="startAllLocal" class="primary" title="Identity lokal mit Server-PostgreSQL starten">Identity starten</button>
             </div>
           </div>
-          <p class="runtime-description">Die Plattform verwendet die einzige Identity auf dem VPS. Accounts und Sitzungen liegen ausschließlich in PostgreSQL.</p>
-          <p id="platformMessage" class="group-error"></p>
+          <p class="runtime-description">Der Identity-Prozess läuft lokal auf Port 4300. Sämtliche Identity-Daten bleiben in PostgreSQL auf dem VPS; eine lokale Identity-SQLite wird nicht verwendet.</p>
+          <section id="processes" class="process-grid" aria-live="polite"></section>
         </section>
         <section class="monitor-group vps-runtime-group">
           <div class="group-head">
@@ -130,7 +130,7 @@
         <p id="linkIntegrityError" class="group-error"></p>
       </section>
     </div>
-    <footer>Eigenständige Desktop-App · kanonische Server-Plattform öffnen · VPS-Status sicher lesen</footer>
+    <footer>Eigenständige Desktop-App · lokale Identity auf Port 4300 · zentrale PostgreSQL-Daten auf dem VPS</footer>
   </main>
   <script src="desktop-app.js"></script>
 </body>

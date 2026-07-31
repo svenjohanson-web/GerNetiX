@@ -2,9 +2,10 @@
 
 function resolveIdentityRuntimePersistence(environment = process.env) {
   const runtimeLocation = String(environment.IDENTITY_RUNTIME_LOCATION || "").trim().toLowerCase();
-  if (runtimeLocation !== "server") {
+  const remoteDevelopment = environment.IDENTITY_REMOTE_DEV === "1";
+  if (runtimeLocation !== "server" && !(runtimeLocation === "local-development" && remoteDevelopment)) {
     throw new Error(
-      "Identity Runtime darf nur als kanonischer Serverdienst gestartet werden. Lokale Identity-Prozesse sind deaktiviert.",
+      "Identity Runtime darf nur auf dem Server oder als kontrollierter lokaler Remote-Dev-Prozess gestartet werden.",
     );
   }
   const backend = String(environment.IDENTITY_PERSISTENCE_BACKEND || "postgres").trim().toLowerCase();

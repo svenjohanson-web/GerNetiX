@@ -66,9 +66,9 @@ mehr.
 
 Die frueheren Plattform-Release-, Account-Asset- und Build-Artefakt-SQLite-Dateien werden ausschliesslich read-only migriert. Danach liegen Metadaten und BLOBs in ihren praefixierten Tabellen der zentralen Datenbank.
 
-## Keine lokale Identity-Persistenz oder Identity-Runtime
+## Lokale Identity-Runtime ohne lokale Identity-Persistenz
 
-Der Identity Server laeuft ausschliesslich als kanonischer VPS-Dienst. Der Compose-Vertrag setzt `IDENTITY_RUNTIME_LOCATION=server` und `IDENTITY_PERSISTENCE_BACKEND=postgres`; Accounts, Credentials und Sessions liegen in `gernetix_runtime`. Lokale Browser und Desktop-Werkzeuge verwenden die private PWA oder Diagnose-Tunnel, starten aber weder Port `4300` noch einen zweiten Identity-Schreiber. Temporaere SQLite-Dateien bleiben auf isolierte Repository-Tests beschraenkt; Legacy-SQLite wird nur ueber die expliziten read-only Migrationswerkzeuge verarbeitet.
+Accounts, Credentials und Sessions liegen ausschliesslich in `gernetix_runtime` auf PostgreSQL. Der Compose-Vertrag setzt auf dem VPS `IDENTITY_RUNTIME_LOCATION=server`; der kontrollierte lokale Entwicklungsstart setzt `IDENTITY_RUNTIME_LOCATION=local-development`, `IDENTITY_REMOTE_DEV=1` und bindet Port `4300` nur an Loopback. Beide Laufarten verwenden PostgreSQL. Temporaere SQLite-Dateien bleiben auf isolierte Repository-Tests beschraenkt; Legacy-SQLite wird nur ueber die expliziten read-only Migrationswerkzeuge verarbeitet.
 
 ## Dateien ohne fachliche Persistenzrolle
 

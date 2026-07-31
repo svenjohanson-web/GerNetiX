@@ -68,9 +68,9 @@ Hardware Catalog:   http://10.77.0.1:4910/api/hardware-catalog/
 Das Terminal bleibt fuer die Dauer des SSH-Tunnels geoeffnet. `Strg+C` beendet die Verbindung. Der SSH-Tunnel laeuft innerhalb des WireGuard-VPN; der VPS benoetigt keinen Browser, und weder SSH noch der Admin-Port werden oeffentlich freigegeben.
 Der Hardware Catalog bleibt ebenfalls privat und ist ueber die feste WireGuard-Adresse `10.77.0.1:4910` erreichbar; ein lokaler Hardware-Catalog-Prozess und ein SSH-Tunnel fuer den Katalog sind nicht erforderlich.
 
-## Keine lokale Identity-Runtime
+## Lokale Identity-Runtime ohne lokale Persistenz
 
-Identity laeuft ausschliesslich als kanonischer Dienst auf dem VPS und verwendet dort `gernetix_runtime` in PostgreSQL. `tools/start-identity-remote-dev.js` ist stillgelegt. Lokale Browser und Werkzeuge greifen ueber die private PWA oder die beschriebenen Diagnose-Tunnel auf den Server zu; sie starten weder einen zweiten Identity-Prozess noch eine lokale Account-/Session-Persistenz.
+Die kanonischen Identity-Daten liegen ausschliesslich in `gernetix_runtime` auf PostgreSQL. Fuer schnelle Entwicklungszyklen darf Identity lokal auf `127.0.0.1:4300` laufen. `tools/start-identity-remote-dev.js` erzwingt dabei PostgreSQL und verbindet die Datenbank sowie die Domaenendienste ueber den beschriebenen SSH-/WireGuard-Tunnel. Eine lokale Identity-SQLite oder lokale Account-/Session-Persistenz ist nicht zulaessig.
 
 ## Remote-first statt geteilter SQLite-Datei
 

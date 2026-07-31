@@ -10,7 +10,7 @@ const client = fs.readFileSync(path.join(__dirname, "public/desktop-app.js"), "u
 const desktopMain = fs.readFileSync(path.join(__dirname, "desktop-main.js"), "utf8");
 const desktopPreload = fs.readFileSync(path.join(__dirname, "desktop-preload.js"), "utf8");
 
-test("monitor treats every backend including Identity as a VPS service", async () => {
+test("monitor runs only Identity locally and keeps every persisted backend on the VPS", async () => {
   assert.equal(control.services.find((item) => item.id === "identity-server").port, 4300);
   assert.equal(control.services.find((item) => item.id === "admin-tool").port, 4600);
   assert.equal(control.services.find((item) => item.id === "community-platform").port, 5200);
@@ -22,10 +22,11 @@ test("monitor treats every backend including Identity as a VPS service", async (
   assert.equal(control.services.find((item) => item.id === "recovery-tool").port, 5100);
   assert.equal(control.services.find((item) => item.id === "admin-access-server").port, 4610);
   assert.equal(control.services.length, 17);
-  assert.deepEqual(control.services.filter((item) => item.local).map((item) => item.id), []);
-  assert.deepEqual(control.services.filter((item) => item.autoStart).map((item) => item.id), []);
+  assert.deepEqual(control.services.filter((item) => item.local).map((item) => item.id), ["identity-server"]);
+  assert.deepEqual(control.services.filter((item) => item.autoStart).map((item) => item.id), ["identity-server"]);
   const states = await control.processStates();
-  assert.deepEqual(states, []);
+  assert.equal(states.length, 1);
+  assert.equal(states[0].id, "identity-server");
 });
 
 test("desktop monitor reports Community SQLite counts without reading content", () => {
@@ -73,19 +74,17 @@ test("packaged Electron runtime starts services in Node mode", () => {
   assert.match(source, /ELECTRON_RUN_AS_NODE:"1"/);
 });
 
-test("monitor opens the canonical server platform instead of starting a local Identity", () => {
+test("monitor starts local Identity only in PostgreSQL Remote-Dev mode", () => {
   assert.match(html, /Prozess-Monitor/);
   assert.match(client, /setInterval\(\(\)=>load\(false\),10000\)/);
-  assert.match(html, /Die Plattform verwendet die einzige Identity auf dem VPS/);
-  assert.match(html, />Plattform öffnen<\/button>/);
+  assert.match(html, /Identity-Prozess läuft lokal auf Port 4300/);
+  assert.match(html, /eine lokale Identity-SQLite wird nicht verwendet/);
+  assert.match(html, />Identity starten<\/button>/);
   assert.match(html, /Backend und Infrastruktur/);
-  assert.match(client, /identity\?\.healthy\?"Server-Identity ist gesund"/);
-  assert.match(desktopPreload, /openPlatform/);
-  assert.match(desktopMain, /platform:open/);
-  assert.doesNotMatch(html, /Identity starten|läuft lokal/);
-  assert.doesNotMatch(client, /startAllLocal|data-action="start"|data-action="stop"/);
-  assert.equal(control.platformEntryUrl({config:{GERNETIX_PRIVATE_PWA_URL:"https://pwa.gernetix.com/app/dashboard/"}}), "https://pwa.gernetix.com/app/dashboard/");
-  assert.throws(() => control.platformEntryUrl({config:{GERNETIX_PRIVATE_PWA_URL:"http://127.0.0.1:4300/app/dashboard/"}}), /nur über HTTPS/);
+  assert.match(client, /Läuft lokal mit PostgreSQL/);
+  assert.match(desktopPreload, /processes:start-all/);
+  assert.match(desktopMain, /processes:start-all/);
+  assert.doesNotMatch(html, /Plattform öffnen/);
 });
 
 test("monitor reads VPS compose state through the established staging SSH configuration", async () => {
@@ -158,7 +157,7 @@ test("monitor reads link integrity through the fixed Admin Tool diagnostic comma
 
 test("desktop monitor uses the same operator navigation terminology", () => {
   assert.match(html, /Operator Console/);
-  assert.match(html, /Desktop · Serverbetrieb/);
+  assert.match(html, /Desktop · lokale Entwicklung/);
   assert.match(html, />Übersicht<\/button>/);
   assert.match(html, />Betrieb<\/button>/);
   assert.match(html, />Links<\/button>/);
@@ -255,11 +254,30 @@ test("monitor rejects a partial SSH tunnel mixed with local domain services", as
   assert.match(state.error,/Portkonflikte/);
 });
 
-test("Identity cannot be started as a local desktop process", async () => {
-  await assert.rejects(
-    () => control.startService("identity-server"),
-    /läuft auf dem VPS und kann hier nicht lokal gestartet werden/,
-  );
+test("Identity starts locally only after the PostgreSQL tunnel is available", async () => {
+  let checks=0;
+  let launchedEnvironment=null;
+  const result=await control.startService("identity-server",{
+    checkService:async()=>checks++===0
+      ? {id:"identity-server",healthy:false,pid:null,identityModeMismatch:false}
+      : {id:"identity-server",healthy:true,pid:123,persistenceBackend:"postgres",remoteDev:true},
+    config:{
+      GERNETIX_STAGING_SSH:"root@gernetix-vps",
+      GERNETIX_STAGING_LOCAL_ADMIN_PORT:"14600",
+      GERNETIX_STAGING_REMOTE_ADMIN_PORT:"4610",
+      GERNETIX_STAGING_LOCAL_PLATFORM_PORT:"14300",
+      GERNETIX_STAGING_REMOTE_PLATFORM_PORT:"8080",
+      GERNETIX_STAGING_LOCAL_IDENTITY_DB_PORT:"25432",
+      GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT:"25432",
+    },
+    pidForPort:async()=>111,
+    remoteIdentityEnvironment:()=>({IDENTITY_RUNTIME_LOCATION:"local-development",IDENTITY_REMOTE_DEV:"1",IDENTITY_PERSISTENCE_BACKEND:"postgres"}),
+    launchLoggedService:(_item,environment)=>{launchedEnvironment=environment;return {exitCode:null,unref(){}};},
+    delay:async()=>{},
+  });
+  assert.equal(result.healthy,true);
+  assert.equal(launchedEnvironment.IDENTITY_PERSISTENCE_BACKEND,"postgres");
+  assert.equal(launchedEnvironment.IDENTITY_RUNTIME_LOCATION,"local-development");
 });
 
 test("detects Windows listener PIDs independently of the localized state label", () => {
@@ -306,20 +324,20 @@ test("monitor shows all VPS protection rules with status and recommended action"
   assert.ok(result.items.every((item)=>item.recommendation));
 });
 
-test("desktop renderer exposes no local backend start path", async () => {
+test("bulk start launches only the local PostgreSQL-backed Identity", async () => {
   const calls = [];
   const autoStartServices = control.services.filter((service) => service.autoStart);
   const result = await control.startAllServices({ startService: async (id) => {
     calls.push(id);
-    return { id, healthy:false, error:"Start fehlgeschlagen" };
+    return { id, healthy:true };
   }});
   assert.deepEqual(calls, autoStartServices.map((service) => service.id));
-  assert.deepEqual(calls, []);
-  assert.equal(result.items.length, 0);
-  assert.equal(result.healthy, 0);
+  assert.deepEqual(calls, ["identity-server"]);
+  assert.equal(result.items.length, 1);
+  assert.equal(result.healthy, 1);
   assert.equal(result.failed, 0);
-  assert.doesNotMatch(desktopPreload, /processes:start-all|processes:start|processes:stop/);
-  assert.doesNotMatch(desktopMain, /processes:start-all|processes:start|processes:stop/);
-  assert.doesNotMatch(html, /id="startAllLocal"/);
-  assert.doesNotMatch(client, /gernetixProcesses\.startAll/);
+  assert.match(desktopPreload, /processes:start-all/);
+  assert.match(desktopMain, /processes:start-all/);
+  assert.match(html, /id="startAllLocal"/);
+  assert.match(client, /gernetixProcesses\.startAll/);
 });
