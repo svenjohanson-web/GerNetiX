@@ -16,6 +16,20 @@ const KnowledgeContent = (() => {
       ],
     },
     {
+      id: "development-processes",
+      title: "Entwicklungsprozesse",
+      description: "Entwicklungsphasen und Vorgehensmodelle passend zu Klarheit, Risiko und Veränderung auswählen.",
+      access: "public",
+      children: [
+        {
+          id: "development-processes-overview",
+          title: "Phasen und Vorgehensmodelle",
+          articleId: "development-processes-overview",
+          access: "public",
+        },
+      ],
+    },
+    {
       id: "electrical-engineering",
       title: "Elektrotechnik",
       description: "Physikalische Grundlagen, Messschaltungen sowie Ein- und Ausgangsbeschaltungen verstehen.",
@@ -289,6 +303,58 @@ const KnowledgeContent = (() => {
           ],
         },
         {
+          id: "engineering-thinking-craft",
+          heading: "Planung, Ausführung und Nachweis",
+          paragraphs: [
+            "Ingenieurmäßiges Denken endet nicht bei der Frage, ob eine Lösung grundsätzlich funktioniert. Es prüft, ob sie für die konkrete Aufgabe geeignet, sicher, wirtschaftlich und mit den geltenden Regeln und Normen vereinbar ist. Ebenso wichtig ist der nachvollziehbare Nachweis, dass die geplante Lösung korrekt umgesetzt wurde.",
+            "Daraus entstehen gelegentlich Missverständnisse zwischen Ingenieuren und Handwerkern: Das Handwerk konzentriert sich häufig auf die fachgerechte praktische Ausführung, während die ingenieurmäßige Aufgabe Anforderungen klärt, Lösungswege bewertet, Risiken beherrscht und Ergebnisse überprüfbar macht. Das ist jedoch keine starre Trennung. Ingenieure bauen Prototypen, messen, testen und arbeiten praktisch; Handwerker lösen technische Probleme, beurteilen Randbedingungen und bringen wertvolles Erfahrungswissen in die Planung ein. Beides gehört zusammen.",
+            "Ein Studium vermittelt dafür wichtige Grundlagen, Modelle und mathematische Werkzeuge. Viele Übungsaufgaben sind bewusst klar abgegrenzt: Die benötigten Größen sind bekannt, eine passende Formel kann angewendet werden und mit dem Ergebnis ist die Aufgabe abgeschlossen. Im Berufsleben ist die Problemstellung dagegen oft noch unvollständig. Materialien verhalten sich nicht ideal, Anforderungen widersprechen sich, Bauteile haben Toleranzen und eine rechnerisch richtige Lösung muss sich erst in der Praxis bewähren.",
+            "Dieses praktische Wissen entsteht nicht allein am Schreibtisch. Basteln bedeutet in diesem Zusammenhang nicht, planlos irgendetwas zusammenzubauen. Es bedeutet, eine Idee greifbar zu machen, Bauteile und Software wirklich zu verstehen, einen eigenen Entwurf auszuprobieren, Fehler zu beobachten und die Lösung zu verbessern. So wird aus theoretischem Wissen belastbare Erfahrung: verstehen, entwickeln, erschaffen.",
+          ],
+        },
+        {
+          id: "engineering-thinking-industry",
+          heading: "Was das mit Industrie zu tun hat",
+          paragraphs: [
+            "Auch in der Industrie wird meist nicht die Welt neu erfunden. Vorhandene Technologien werden so kombiniert, dass ein Ziel mit vertretbarem Risiko, nachvollziehbaren Kosten und passendem Aufwand erreicht wird. Forschung ist wichtig, aber sie ist nicht jede Aufgabe.",
+            "Die beste technische Lösung ist nicht die größte oder modernste. Warum sollte jedes Auto einen KI-Supercomputer erhalten, wenn ein kleiner Mikrocontroller die Aufgabe sicherer, sparsamer und zuverlässiger erledigt? Die richtige Frage lautet: Welche Fähigkeit wird wirklich gebraucht, und welche Technik erfüllt sie mit möglichst wenig unnötiger Komplexität?",
+            "Genau diese Denkweise übst du in GerNetiX. Du lernst Technologien nicht als Sammlung von Schlagwörtern kennen, sondern weil dein Projekt sie an einer bestimmten Stelle wirklich braucht.",
+          ],
+        },
+        {
+          id: "engineering-thinking-foundations",
+          heading: "Welche Grundlagen verteilte Systeme brauchen",
+          paragraphs: [
+            "Ingenieursmäßiges Denken sagt noch nicht, wie ein Sensor misst, ein Widerstand eine Spannung begrenzt oder ein Mikrocontroller ein Programm ausführt. Um ein verteiltes System wirklich zu begreifen, brauchen wir deshalb Grundlagen aus zwei Welten: Elektrotechnik und Informatik.",
+            "Die Elektrotechnik erklärt, was Hardware physikalisch kann und welche Grenzen sie hat. Ein Widerstand, Kondensator, Transistor oder fest verdrahtetes Logikgatter folgt Material, Schaltung und elektrischen Gesetzen. Diese Bauteile werden nicht durch Software neu beschrieben.",
+            "Die Informatik erklärt, wie Software Regeln, Daten und Abläufe beschreibt. Ein Mikrocontroller ist Hardware mit einem Prozessor; auf ihm läuft Firmware – also Software, die die vorhandene Hardware innerhalb ihrer physikalischen Grenzen steuert. Sie entscheidet zum Beispiel, wann ein Sensor gelesen, ein Signal ausgewertet oder ein Ausgang geschaltet wird.",
+            "Erst danach kommt das Zusammenspiel: Wenn Geräte, ihre Firmware, Netzwerke, Server und Anwendungen Informationen austauschen, entsteht ein verteiltes System. Die folgenden Kapitel bauen genau in dieser Reihenfolge auf: zuerst Elektrotechnik, dann Mikrocontroller und Embedded, danach Informatik und Software – und schließlich verteilte Systeme.",
+            "Du musst dafür nicht von Anfang an alles können. Je nach Problemstellung braucht ein Projekt mehr Elektrotechnik, mehr Informatik oder nur ein grundlegendes Verständnis von einem Bereich. Manche Menschen starten lieber mit Schaltungen und Messungen, andere mit Programmierung, Daten oder Bedienoberflächen. Konzentriere dich zunächst auf deine Stärken und die nächste sinnvolle Aufgabe. Wenn dich der Ehrgeiz packt, kannst du dich Schritt für Schritt in das andere Fachgebiet einarbeiten – genau dafür ist dieses Wissensportal da.",
+          ],
+        },
+      ],
+      relatedTopics: [
+        "development-processes-overview",
+        "software-basics",
+        "microcontroller-basics",
+        "server-systems",
+      ],
+      access: "public",
+    },
+    "development-processes-overview": {
+      title: "Entwicklungsprozesse: vom Plan zur Rückkopplung",
+      summary: "Entwicklungsprozesse verbinden Anforderungen, Entwurf, Umsetzung, Prüfung und Betrieb. Ingenieurmäßiges Denken wählt das Vorgehen nach Klarheit, Risiko, Änderungsdynamik und notwendigem Nachweis.",
+      sections: [
+        {
+          id: "development-processes-dimensions",
+          heading: "Die Prozessdimensionen einer Entwicklungsaufgabe",
+          paragraphs: [
+            "Ein Entwicklungsprozess ist kein Selbstzweck und keine starre Schablone. Er macht ingenieurmäßiges Denken wiederholbar: Das Problem wird geklärt, Entscheidungen werden begründet, Risiken werden früh sichtbar und Ergebnisse werden gegen die Anforderungen geprüft.",
+            "Für die Auswahl des Vorgehens sind mehrere Dimensionen wichtig: Wie klar und stabil sind die Anforderungen? Wie hoch sind Sicherheits-, Qualitäts- und Kostenrisiken? Wie schnell und günstig kann Rückmeldung eingeholt werden? Wie teuer sind späte Änderungen? Wie viel Nachvollziehbarkeit oder formaler Nachweis ist erforderlich? Und wie viele Menschen, Fachgebiete und Systemteile müssen koordiniert werden?",
+            "Diese Dimensionen führen selten alle zum gleichen Modell. Ein Projekt kann beispielsweise eine agile Bedienoberfläche mit kurzen Nutzerzyklen entwickeln, während die sicherheitsrelevante Gerätesteuerung nach einem stärker dokumentierten V-Modell abgesichert wird. Ein bewusst begründetes hybrides Vorgehen ist deshalb oft sinnvoller als ein Methodenetikett für das gesamte Projekt.",
+          ],
+        },
+        {
           id: "engineering-thinking-models",
           heading: "Vorgehensmodelle: Struktur für unterschiedliche Aufgaben",
           paragraphs: [
@@ -330,37 +396,7 @@ const KnowledgeContent = (() => {
           engineeringModels: true,
         },
         {
-          id: "engineering-thinking-craft",
-          heading: "Planung, Ausführung und Nachweis",
-          paragraphs: [
-            "Ingenieurmäßiges Denken endet nicht bei der Frage, ob eine Lösung grundsätzlich funktioniert. Es prüft, ob sie für die konkrete Aufgabe geeignet, sicher, wirtschaftlich und mit den geltenden Regeln und Normen vereinbar ist. Ebenso wichtig ist der nachvollziehbare Nachweis, dass die geplante Lösung korrekt umgesetzt wurde.",
-            "Daraus entstehen gelegentlich Missverständnisse zwischen Ingenieuren und Handwerkern: Das Handwerk konzentriert sich häufig auf die fachgerechte praktische Ausführung, während die ingenieurmäßige Aufgabe Anforderungen klärt, Lösungswege bewertet, Risiken beherrscht und Ergebnisse überprüfbar macht. Das ist jedoch keine starre Trennung. Ingenieure bauen Prototypen, messen, testen und arbeiten praktisch; Handwerker lösen technische Probleme, beurteilen Randbedingungen und bringen wertvolles Erfahrungswissen in die Planung ein. Beides gehört zusammen.",
-            "Ein Studium vermittelt dafür wichtige Grundlagen, Modelle und mathematische Werkzeuge. Viele Übungsaufgaben sind bewusst klar abgegrenzt: Die benötigten Größen sind bekannt, eine passende Formel kann angewendet werden und mit dem Ergebnis ist die Aufgabe abgeschlossen. Im Berufsleben ist die Problemstellung dagegen oft noch unvollständig. Materialien verhalten sich nicht ideal, Anforderungen widersprechen sich, Bauteile haben Toleranzen und eine rechnerisch richtige Lösung muss sich erst in der Praxis bewähren.",
-            "Dieses praktische Wissen entsteht nicht allein am Schreibtisch. Basteln bedeutet in diesem Zusammenhang nicht, planlos irgendetwas zusammenzubauen. Es bedeutet, eine Idee greifbar zu machen, Bauteile und Software wirklich zu verstehen, einen eigenen Entwurf auszuprobieren, Fehler zu beobachten und die Lösung zu verbessern. So wird aus theoretischem Wissen belastbare Erfahrung: verstehen, entwickeln, erschaffen.",
-          ],
-        },
-        {
-          id: "engineering-thinking-industry",
-          heading: "Was das mit Industrie zu tun hat",
-          paragraphs: [
-            "Auch in der Industrie wird meist nicht die Welt neu erfunden. Vorhandene Technologien werden so kombiniert, dass ein Ziel mit vertretbarem Risiko, nachvollziehbaren Kosten und passendem Aufwand erreicht wird. Forschung ist wichtig, aber sie ist nicht jede Aufgabe.",
-            "Die beste technische Lösung ist nicht die größte oder modernste. Warum sollte jedes Auto einen KI-Supercomputer erhalten, wenn ein kleiner Mikrocontroller die Aufgabe sicherer, sparsamer und zuverlässiger erledigt? Die richtige Frage lautet: Welche Fähigkeit wird wirklich gebraucht, und welche Technik erfüllt sie mit möglichst wenig unnötiger Komplexität?",
-            "Genau diese Denkweise übst du in GerNetiX. Du lernst Technologien nicht als Sammlung von Schlagwörtern kennen, sondern weil dein Projekt sie an einer bestimmten Stelle wirklich braucht.",
-          ],
-        },
-        {
-          id: "engineering-thinking-foundations",
-          heading: "Welche Grundlagen verteilte Systeme brauchen",
-          paragraphs: [
-            "Ingenieursmäßiges Denken sagt noch nicht, wie ein Sensor misst, ein Widerstand eine Spannung begrenzt oder ein Mikrocontroller ein Programm ausführt. Um ein verteiltes System wirklich zu begreifen, brauchen wir deshalb Grundlagen aus zwei Welten: Elektrotechnik und Informatik.",
-            "Die Elektrotechnik erklärt, was Hardware physikalisch kann und welche Grenzen sie hat. Ein Widerstand, Kondensator, Transistor oder fest verdrahtetes Logikgatter folgt Material, Schaltung und elektrischen Gesetzen. Diese Bauteile werden nicht durch Software neu beschrieben.",
-            "Die Informatik erklärt, wie Software Regeln, Daten und Abläufe beschreibt. Ein Mikrocontroller ist Hardware mit einem Prozessor; auf ihm läuft Firmware – also Software, die die vorhandene Hardware innerhalb ihrer physikalischen Grenzen steuert. Sie entscheidet zum Beispiel, wann ein Sensor gelesen, ein Signal ausgewertet oder ein Ausgang geschaltet wird.",
-            "Erst danach kommt das Zusammenspiel: Wenn Geräte, ihre Firmware, Netzwerke, Server und Anwendungen Informationen austauschen, entsteht ein verteiltes System. Die folgenden Kapitel bauen genau in dieser Reihenfolge auf: zuerst Elektrotechnik, dann Mikrocontroller und Embedded, danach Informatik und Software – und schließlich verteilte Systeme.",
-            "Du musst dafür nicht von Anfang an alles können. Je nach Problemstellung braucht ein Projekt mehr Elektrotechnik, mehr Informatik oder nur ein grundlegendes Verständnis von einem Bereich. Manche Menschen starten lieber mit Schaltungen und Messungen, andere mit Programmierung, Daten oder Bedienoberflächen. Konzentriere dich zunächst auf deine Stärken und die nächste sinnvolle Aufgabe. Wenn dich der Ehrgeiz packt, kannst du dich Schritt für Schritt in das andere Fachgebiet einarbeiten – genau dafür ist dieses Wissensportal da.",
-          ],
-        },
-        {
-          id: "engineering-thinking-next-steps",
+          id: "development-processes-next-steps",
           heading: "Mit Beispielen weiterlernen",
           paragraphs: [
             "Du hast noch nicht alles verstanden? Kein Problem. Vorgehensmodelle, Tests und Rückkopplungen lernt man nicht durch einen kurzen Text. Sie werden greifbar, wenn du sie in einem konkreten Projekt anwendest, Entscheidungen triffst und die Folgen davon siehst.",
@@ -389,9 +425,9 @@ const KnowledgeContent = (() => {
         },
       ],
       relatedTopics: [
+        "from-problem-to-system",
         "software-basics",
-        "microcontroller-basics",
-        "server-systems",
+        "embedded-safety",
       ],
       access: "public",
     },
@@ -527,7 +563,7 @@ const KnowledgeContent = (() => {
           id: "radio-systems-introduction",
           heading: "Generelle Einleitung zu Funksystemen",
           paragraphs: [
-            "Bei einer Funkübertragung wandelt ein Sender Daten in ein hochfrequentes elektrisches Signal um und strahlt es über eine Antenne als elektromagnetische Welle ab. Ein Empfänger nimmt nur einen sehr kleinen Teil dieser Energie auf und versucht, daraus die gesendete Information zurückzugewinnen. Frequenzbereich, Kanal, Bandbreite, Modulation, Sendeleistung, Antenne und Protokoll bestimmen gemeinsam, wie die Verbindung arbeitet.",
+            "Bei einer Funkübertragung überträgt ein Sender die Daten auf ein schnell schwingendes elektrisches Signal. Die Antenne strahlt daraus eine elektromagnetische Welle ab. Ein Empfänger nimmt nur einen sehr kleinen Teil dieser Energie auf und gewinnt daraus die gesendete Information zurück. Frequenz, Frequenzband, Kanal, Bandbreite, Modulation, Sendeleistung, Antenne und Protokoll bestimmen gemeinsam, wie die Verbindung arbeitet.",
             "Funk ist kein unsichtbares Kabel. Alle Teilnehmer teilen sich das Spektrum mit anderen Sendern und mit physikalischen Störungen. Mauern, Metall, Wasser, Menschen, die Lage der Antenne und Reflexionen verändern das Signal. Reichweite ist deshalb keine feste Produkteigenschaft, sondern das Ergebnis aus Sender, Empfänger, Antennen, Umgebung, Datenrate und geforderter Zuverlässigkeit.",
             "Jede Technik setzt andere Schwerpunkte. Eine hohe Datenrate benötigt meist mehr Bandbreite und Energie. Eine große Reichweite wird häufig mit geringer Datenrate und längerer Übertragungszeit erreicht. Kurze Latenz, lange Batterielaufzeit, hohe Teilnehmerzahl und große Reichweite lassen sich nicht gleichzeitig maximieren.",
           ],
@@ -560,6 +596,63 @@ const KnowledgeContent = (() => {
               [
                 "Regulierung",
                 "Frequenz, Sendeleistung, Kanalnutzung und zulässiger Einsatzzweck richten sich nach Region und Anwendung.",
+              ],
+            ],
+          },
+        },
+        {
+          id: "radio-basic-terms",
+          heading: "Frequenz, Bandbreite und weitere Grundbegriffe",
+          paragraphs: [
+            "Warum braucht Funk überhaupt eine Frequenz? Eine Funkwelle schwingt regelmäßig. Die Frequenz gibt an, wie oft sie pro Sekunde schwingt, und wird in Hertz gemessen. Sie legt damit den Platz des Signals im Funkspektrum fest. Der Empfänger muss diesen Platz kennen, damit er gezielt auf das gewünschte Signal „hören“ kann und nicht alle Funkübertragungen gleichzeitig verarbeiten muss.",
+            "Für unterschiedliche Anwendungen werden zusammenhängende Teile des Funkspektrums als Frequenzbänder festgelegt, zum Beispiel das 2,4-Gigahertz-Band. Innerhalb eines solchen Bandes liegen einzelne Kanäle. Die Bandbreite beschreibt dagegen, wie breit ein Kanal oder ein konkretes Signal im Spektrum ist. Frequenzband und Bandbreite meinen daher nicht dasselbe.",
+          ],
+          table: {
+            headers: [
+              "Begriff",
+              "Einfach erklärt",
+              "Warum er wichtig ist",
+            ],
+            rows: [
+              [
+                "Frequenz",
+                "Anzahl der Schwingungen pro Sekunde, gemessen in Hertz. 2,4 Gigahertz bedeutet 2,4 Milliarden Schwingungen pro Sekunde.",
+                "Sie bestimmt, an welcher Stelle im Funkspektrum Sender und Empfänger arbeiten.",
+              ],
+              [
+                "Frequenzband",
+                "Ein zusammenhängender Frequenzbereich, der für bestimmte Funkanwendungen vorgesehen ist, etwa das 2,4-Gigahertz-Band.",
+                "Es legt den groben Arbeitsbereich fest und unterliegt regionalen Regeln.",
+              ],
+              [
+                "Kanal",
+                "Ein festgelegter Teil innerhalb eines Frequenzbandes – vergleichbar mit einer Fahrspur auf einer mehrspurigen Straße.",
+                "Geräte auf unterschiedlichen Kanälen können sich besser ausweichen; überlappende Kanäle können sich stören.",
+              ],
+              [
+                "Bandbreite",
+                "Die Breite des Frequenzbereichs, den ein Kanal oder Signal belegt, zum Beispiel 20 Megahertz.",
+                "Mehr Bandbreite ermöglicht meist eine höhere Datenrate, belegt aber auch mehr Platz im Funkspektrum.",
+              ],
+              [
+                "Modulation",
+                "Die Art, wie Daten auf die Funkwelle übertragen werden, etwa durch gezielte Änderungen ihrer Stärke, Frequenz oder Phasenlage.",
+                "Sie beeinflusst Datenrate, Reichweite und Robustheit gegenüber Störungen.",
+              ],
+              [
+                "Sendeleistung",
+                "Die elektrische Leistung, mit der das Funksignal abgestrahlt wird.",
+                "Mehr Leistung kann den Empfang verbessern, benötigt aber mehr Energie und ist gesetzlich begrenzt.",
+              ],
+              [
+                "Antenne",
+                "Sie wandelt das elektrische Signal in eine elektromagnetische Welle um – und beim Empfang wieder zurück.",
+                "Bauform, Ausrichtung, Einbauort und Abstimmung auf die Frequenz beeinflussen die Verbindung stark.",
+              ],
+              [
+                "Protokoll",
+                "Gemeinsame Regeln für Aufbau, Reihenfolge, Adressen, Bestätigungen und Fehlerbehandlung der übertragenen Nachrichten.",
+                "Nur wenn Sender und Empfänger dieselben Regeln verwenden, können sie die Daten richtig verstehen.",
               ],
             ],
           },

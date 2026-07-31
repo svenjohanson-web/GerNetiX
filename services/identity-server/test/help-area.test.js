@@ -483,6 +483,32 @@ test("links account setup to the personal offline recovery set", () => {
   assert.match(app, /Recovery-Set erstellen/);
 });
 
+test("keeps development processes in a dedicated public knowledge chapter", () => {
+  const context = {};
+  vm.createContext(context);
+  vm.runInContext(`${knowledgeContent};this.content = KnowledgeContent;`, context);
+
+  const processTopic = context.content.topics.find((topic) => topic.id === "development-processes");
+  const processArticle = context.content.articles["development-processes-overview"];
+  const engineeringArticle = context.content.articles["from-problem-to-system"];
+
+  assert.equal(processTopic.title, "Entwicklungsprozesse");
+  assert.equal(processTopic.access, "public");
+  assert.equal(processTopic.children[0].articleId, "development-processes-overview");
+  assert.equal(processArticle.access, "public");
+  assert.deepEqual(
+    JSON.parse(JSON.stringify(processArticle.sections.map((section) => section.id))),
+    ["development-processes-dimensions", "engineering-thinking-models", "development-processes-next-steps"],
+  );
+  assert.match(JSON.stringify(processArticle), /Klarheit, Risiko, Änderungsdynamik und notwendigem Nachweis/);
+  assert.match(JSON.stringify(processArticle), /Wasserfallmodell/);
+  assert.match(JSON.stringify(processArticle), /V-Modell/);
+  assert.match(JSON.stringify(processArticle), /Agiles Arbeiten/);
+  assert.match(JSON.stringify(processArticle), /hybrides Vorgehen/);
+  assert.ok(engineeringArticle.relatedTopics.includes("development-processes-overview"));
+  assert.ok(!engineeringArticle.sections.some((section) => section.id === "engineering-thinking-models"));
+});
+
 test("keeps help and knowledge models physically disjoint", () => {
   const context = {};
   vm.createContext(context);
@@ -491,7 +517,7 @@ test("keeps help and knowledge models physically disjoint", () => {
   const helpArticleIds = new Set(Object.keys(context.help.articles));
 
   assert.equal(context.help.topics.length, 3);
-  assert.equal(context.knowledge.topics.length, 10);
+  assert.equal(context.knowledge.topics.length, 11);
   assert.ok(context.knowledge.topics.every((topic) => !helpTopicIds.has(topic.id)));
   assert.ok(Object.keys(context.knowledge.articles).every((articleId) => !helpArticleIds.has(articleId)));
   assert.ok(context.help.findTopic("quick-start"));
@@ -584,16 +610,17 @@ test("separates the knowledge portal from platform help while reusing a neutral 
   assert.match(css, /body\.public-information-anonymous #mainMenu a:not\(\.public-information-link\)/);
 });
 
-test("keeps engineering thinking public and gates the remaining knowledge chapters independently", () => {
+test("keeps the introductory engineering and development-process chapters public and gates the remaining knowledge chapters independently", () => {
   const context = {};
   vm.createContext(context);
   vm.runInContext(`${knowledgeContent};this.content = KnowledgeContent;`, context);
   const chapters = context.content.topics.flatMap((topic) => topic.children || []);
 
-  assert.equal(chapters.length, 31);
+  assert.equal(chapters.length, 32);
   assert.equal(context.content.articles["from-problem-to-system"].access, "public");
+  assert.equal(context.content.articles["development-processes-overview"].access, "public");
   assert.ok(chapters
-    .filter((chapter) => chapter.id !== "from-problem-to-system")
+    .filter((chapter) => !["from-problem-to-system", "development-processes-overview"].includes(chapter.id))
     .every((chapter) => context.content.articles[chapter.articleId]?.access === "premium"));
   assert.match(informationView, /article\.sections\.slice\(0, 1\)/);
   assert.match(informationView, /knowledge-chapter-preview/);
@@ -605,17 +632,19 @@ test("publishes radio technologies with foundations, trade-offs and a careful sa
   vm.runInContext(`${knowledgeContent};this.content = KnowledgeContent;`, context);
   const article = context.content.articles["radio-technologies-understand"];
 
-  assert.equal(article.sections.length, 10);
+  assert.equal(article.sections.length, 11);
   assert.deepEqual(
-    JSON.parse(JSON.stringify(article.sections.slice(2, 8).map((section) => section.id))),
+    JSON.parse(JSON.stringify(article.sections.slice(3, 9).map((section) => section.id))),
     ["radio-bluetooth", "radio-wifi", "radio-lora", "radio-zigbee", "radio-nfc", "radio-rc-model"],
   );
-  assert.ok(article.sections.slice(2, 8).every((section) => section.table?.headers?.join("|") === "Eigenschaften|Vorteile|Nachteile"));
+  assert.ok(article.sections.slice(3, 9).every((section) => section.table?.headers?.join("|") === "Eigenschaften|Vorteile|Nachteile"));
   assert.match(JSON.stringify(article.sections[0]), /Funk ist kein unsichtbares Kabel/);
-  assert.match(JSON.stringify(article.sections[1]), /Jede Funkübertragung kann gestört werden/);
-  assert.match(JSON.stringify(article.sections[1]), /nicht als alleinige Grundlage für eine sicherheitskritische Funktion/);
-  assert.match(JSON.stringify(article.sections[1]), /ziviles Passagierflugzeug/);
-  assert.match(JSON.stringify(article.sections[9]), /Lernprojekt „Funktechnologien verstehen“/);
+  assert.match(JSON.stringify(article.sections[1]), /Warum braucht Funk überhaupt eine Frequenz/);
+  assert.match(JSON.stringify(article.sections[1]), /Frequenzband und Bandbreite meinen daher nicht dasselbe/);
+  assert.match(JSON.stringify(article.sections[2]), /Jede Funkübertragung kann gestört werden/);
+  assert.match(JSON.stringify(article.sections[2]), /nicht als alleinige Grundlage für eine sicherheitskritische Funktion/);
+  assert.match(JSON.stringify(article.sections[2]), /ziviles Passagierflugzeug/);
+  assert.match(JSON.stringify(article.sections[10]), /Lernprojekt „Funktechnologien verstehen“/);
 });
 
 test("derives every knowledge navigation topic from the rendered article sections", () => {
