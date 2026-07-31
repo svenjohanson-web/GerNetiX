@@ -2091,7 +2091,7 @@ const DevelopmentPlatform = (() => {
         </header>
         <div class="development-board-feature-table-scroll"><table class="development-board-feature-table">
           <thead><tr><th>Aktiv</th><th>Komponente</th><th>Art</th><th>Treiber</th><th>Anschluss</th><th>Pin-Zuordnung</th><th>Größe / Wert</th></tr></thead>
-          <tbody>${featureCatalog.map((feature) => renderDevelopmentBoardFeatureRow(feature, configuration.board_features?.[feature.feature_id] || {}, defaults[feature.feature_id] || {})).join("")}</tbody>
+          <tbody>${featureCatalog.map((feature) => renderDevelopmentBoardFeatureRow(feature, configuration.board_features?.[feature.feature_id] || defaults[feature.feature_id] || {}, defaults[feature.feature_id] || {})).join("")}</tbody>
         </table></div>
         <footer class="development-custom-board-save ${changed ? "" : "hidden"}">
           <label>Name des eigenen Boards<input type="text" maxlength="120" data-custom-board-name value="${escapeAttribute(configuration.name || "")}" placeholder="z. B. Mein ES3C28P mit anderer Pinbelegung"></label>
@@ -2163,13 +2163,11 @@ const DevelopmentPlatform = (() => {
     }
 
     function boardFeaturesDiffer(current = {}, defaults = {}) {
-      const featureIds = new Set([...Object.keys(current || {}), ...Object.keys(defaults || {})]);
-      return [...featureIds].some((featureId) => boardFeatureDiffers(current?.[featureId] || {}, defaults?.[featureId] || {}));
+      return DevelopmentHardwareModel.boardFeaturesDiffer(current, defaults);
     }
 
     function boardFeatureDiffers(current = {}, defaults = {}) {
-      return ["enabled", "hardware", "driver", "connection", "pins", "value"]
-        .some((field) => boardSettingChanged(current?.[field], defaults?.[field]));
+      return DevelopmentHardwareModel.boardFeatureDiffers(current, defaults);
     }
 
     function boardSettingChanged(current, defaultValue) {

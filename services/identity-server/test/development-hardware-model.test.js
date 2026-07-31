@@ -2,6 +2,16 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const model = require("../public/app/development-hardware-model");
 
+test("missing board feature profiles inherit catalog defaults without becoming edits", () => {
+  const defaults = {
+    camera: { enabled: true, hardware: "ov3660", driver: "esp32_camera", pins: { xclk: 15 } },
+    display: { enabled: false, hardware: "", driver: "", pins: {} },
+  };
+
+  assert.equal(model.boardFeaturesDiffer({ camera: { enabled: true, hardware: "ov3660", driver: "esp32_camera", pins: { xclk: 15 } } }, defaults), false);
+  assert.equal(model.boardFeaturesDiffer({ camera: { enabled: false, hardware: "ov3660", driver: "esp32_camera", pins: { xclk: 15 } } }, defaults), true);
+});
+
 const boards = [
   { hardware_item_id: "esp32-devkit", processor_family: "esp32", mcu_variant: "ESP32", title: "ESP32 DevKit" },
   { hardware_item_id: "esp32-s3-devkit", processor_family: "esp32", mcu_variant: "ESP32-S3", title: "ESP32-S3 DevKit" },

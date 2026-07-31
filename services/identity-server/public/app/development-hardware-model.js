@@ -49,6 +49,24 @@ const DevelopmentHardwareModel = (() => {
     return String(board?.hardware_item_id || board?.hardware_profile_id || "");
   }
 
+  function boardFeaturesDiffer(current = {}, defaults = {}) {
+    const featureIds = new Set([...Object.keys(current || {}), ...Object.keys(defaults || {})]);
+    return [...featureIds].some((featureId) => {
+      if (!Object.prototype.hasOwnProperty.call(current || {}, featureId)) return false;
+      return boardFeatureDiffers(current[featureId], defaults?.[featureId]);
+    });
+  }
+
+  function boardFeatureDiffers(current = {}, defaults = {}) {
+    const fields = ["enabled", "hardware", "driver", "connection", "pins", "value"];
+    return fields.some((field) => {
+      const inherited = Object.prototype.hasOwnProperty.call(current || {}, field)
+        ? current[field]
+        : defaults?.[field];
+      return JSON.stringify(inherited ?? "") !== JSON.stringify(defaults?.[field] ?? "");
+    });
+  }
+
   const SENSOR_CATEGORY_LABELS = {
     temperature: "Temperatur",
     humidity: "Luftfeuchtigkeit",
@@ -131,6 +149,8 @@ const DevelopmentHardwareModel = (() => {
     applyProcessorSelection,
     applySensorCategory,
     applySignalType,
+    boardFeatureDiffers,
+    boardFeaturesDiffer,
     boardIdentifier,
     boardsForProcessor,
     processorKey,
