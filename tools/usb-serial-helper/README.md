@@ -68,6 +68,11 @@ aktuell angemeldeten Benutzer unmittelbar. Das native Testpaket ist etwa
 `7,5 MiB` groß; seine Größe hängt geringfügig von der eingebetteten
 `espflash`-Version ab.
 
+Der äußere Produkt-Installer wird mit `productbuild` aus einer eigenen
+Distribution erzeugt. Heller und dunkler Darstellungsmodus verwenden jeweils
+einen blauen GerNetiX-Hintergrund; Willkommens- und Abschlussseite erklären den
+lokalen, UI-losen Dienst, ohne die macOS-Schrittleiste zu überdecken.
+
 Ein Release-Build wird mit `GERNETIX_RELEASE_BUILD=1` ausgeführt. Die
 `Developer ID Application`-Identitaet fuer die Anwendung muss im macOS-Keychain
 verfuegbar und ueber `CSC_NAME` benannt sein;

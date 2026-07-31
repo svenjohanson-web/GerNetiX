@@ -12,11 +12,15 @@ const root = path.resolve(__dirname, "..");
 const dist = path.join(root, "dist");
 const packageRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-serial-service-pkg-"));
 const packageScripts = path.join(root, "install", "macos", "pkg-scripts");
+const installerResources = path.join(root, "install", "macos", "resources");
 const appTarget = path.join(packageRoot, "Applications", "GerNetiX Serial Service.app");
 const launchAgentTarget = path.join(packageRoot, "Library", "LaunchAgents", "com.gernetix.serial-service.plist");
 const output = path.join(dist, "GerNetiX-Serial-Service-mac-arm64.pkg");
 const manifest = require(path.join(root, "package.json"));
 const versionedOutput = path.join(dist, `GerNetiX-Serial-Service-${manifest.version}-mac-arm64.pkg`);
+const componentPackages = path.join(packageRoot, "component-packages");
+const componentPackage = path.join(componentPackages, "GerNetiXSerialService.pkg");
+const distribution = path.join(packageRoot, "distribution.xml");
 
 if (process.env.GERNETIX_RELEASE_BUILD === "1"
   && (!process.env.CSC_NAME || !process.env.GERNETIX_MAC_INSTALLER_IDENTITY)) {
@@ -30,8 +34,11 @@ if (process.env.GERNETIX_NOTARY_PROFILE
 const native = buildNativeService();
 fs.mkdirSync(path.dirname(appTarget), { recursive: true });
 fs.mkdirSync(path.dirname(launchAgentTarget), { recursive: true });
+fs.mkdirSync(componentPackages, { recursive: true });
 fs.cpSync(native.app, appTarget, { recursive: true });
 fs.copyFileSync(path.join(root, "install", "macos", "com.gernetix.serial-service.plist"), launchAgentTarget);
+fs.writeFileSync(distribution, fs.readFileSync(path.join(root, "install", "macos", "distribution.xml"), "utf8")
+  .replaceAll("__VERSION__", manifest.version));
 execFileSync("xattr", ["-cr", packageRoot], { cwd: root, stdio: "inherit" });
 
 const args = [
@@ -42,14 +49,22 @@ const args = [
   "--component-plist", path.join(root, "install", "macos", "component.plist"),
   "--scripts", packageScripts,
 ];
-if (process.env.GERNETIX_MAC_INSTALLER_IDENTITY) args.push("--sign", process.env.GERNETIX_MAC_INSTALLER_IDENTITY);
-args.push(output);
+args.push(componentPackage);
 
 execFileSync("pkgbuild", args, {
   cwd: root,
   env: { ...process.env, COPYFILE_DISABLE: "1" },
   stdio: "inherit",
 });
+
+const productArgs = [
+  "--distribution", distribution,
+  "--resources", installerResources,
+  "--package-path", componentPackages,
+];
+if (process.env.GERNETIX_MAC_INSTALLER_IDENTITY) productArgs.push("--sign", process.env.GERNETIX_MAC_INSTALLER_IDENTITY);
+productArgs.push(output);
+execFileSync("productbuild", productArgs, { cwd: root, stdio: "inherit" });
 try {
   fs.rmSync(packageRoot, { recursive: true, force: true, maxRetries: 3, retryDelay: 100 });
 } catch (error) {

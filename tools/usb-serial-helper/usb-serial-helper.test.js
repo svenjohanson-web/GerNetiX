@@ -61,8 +61,14 @@ test("installer creates a trusted per-installation TLS identity and starts the L
   assert.match(postinstall, /launchctl bootstrap/);
   assert.match(packageBuilder, /GERNETIX_MAC_INSTALLER_IDENTITY/);
   assert.match(packageBuilder, /Developer ID signiert/);
+  assert.match(packageBuilder, /productbuild/);
+  assert.match(packageBuilder, /installerResources/);
   assert.match(packageBuilder, /--component-plist/);
   assert.match(component, /<key>BundleIsRelocatable<\/key>\s*<false\/>/);
+  const distribution = fs.readFileSync(path.join(root, "install", "macos", "distribution.xml"), "utf8");
+  assert.match(distribution, /<background file="installer-background\.png"/);
+  assert.match(distribution, /<background-darkAqua file="installer-background-dark\.png"/);
+  assert.match(distribution, /<welcome file="welcome\.html"/);
   assert.match(packageBuilder, /notarytool/);
   assert.match(packageBuilder, /stapler/);
 });

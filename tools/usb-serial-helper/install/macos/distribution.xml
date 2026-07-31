@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+  <title>GerNetiX Serial Service</title>
+  <options customize="never" require-scripts="false" hostArchitectures="arm64"/>
+  <domains enable_localSystem="true"/>
+  <background file="installer-background.png" alignment="topleft" scaling="none"/>
+  <background-darkAqua file="installer-background-dark.png" alignment="topleft" scaling="none"/>
+  <welcome file="welcome.html" mime-type="text/html"/>
+  <conclusion file="conclusion.html" mime-type="text/html"/>
+  <choices-outline>
+    <line choice="default"/>
+  </choices-outline>
+  <choice id="default" visible="false">
+    <pkg-ref id="com.gernetix.serial-service"/>
+  </choice>
+  <pkg-ref id="com.gernetix.serial-service" version="__VERSION__" auth="Root">GerNetiXSerialService.pkg</pkg-ref>
+</installer-gui-script>
