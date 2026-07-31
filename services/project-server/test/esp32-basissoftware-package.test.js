@@ -21,6 +21,7 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
   });
 
   assert.equal(files.some((file) => file.path === "src/main.cpp"), true);
+  assert.equal(files.some((file) => file.path === "include/user/user_app.h"), true);
   assert.equal(files.some((file) => file.path === "src/functions/initWifi.cpp"), true);
   assert.equal(files.some((file) => file.path === "partitions_full_4mb.csv"), true);
   assert.equal(files.some((file) => file.path === "sdkconfig.esp32-s3-n16r8"), true);

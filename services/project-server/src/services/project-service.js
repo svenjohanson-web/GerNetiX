@@ -2,6 +2,7 @@ const crypto = require("node:crypto");
 const { ProjectServerError } = require("../errors");
 const { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles } = require("../modules/esp32-basissoftware-package");
 const { renderPlatformioIni } = require("../../../shared/platformio-config");
+const { filterSoftwareUnitsForArchitecture } = require("../../../shared/project-software-ownership");
 
 const RESERVED_PLATFORMIO_OPTIONS = new Set([
   "platform", "board", "framework", "monitor_speed", "upload_protocol", "upload_speed",
@@ -27,10 +28,15 @@ class ProjectService {
     const inheritedManifest = template ? structuredClone(template.view_manifest || {}) : {};
     const inheritedBuildConfig = Object.hasOwn(input, "build_config") ? input.build_config : template ? template.build_config : undefined;
     const normalizedBuildConfig = normalizeBuildConfig(inheritedBuildConfig);
-    const softwareUnits = normalizeSoftwareUnits(
+    const normalizedManifest = normalizeViewManifest({
+      ...inheritedManifest,
+      ...(input.view_manifest || input.project_view_manifest || {}),
+      ...(template ? { template_ref: { project_id: template.project_id, version: template.view_manifest?.template_ref?.version || 1, source_sha256: templateHash } } : {}),
+    });
+    const softwareUnits = filterSoftwareUnitsForArchitecture(normalizeSoftwareUnits(
       Object.hasOwn(input, "software_units") ? input.software_units : template?.software_units,
       normalizedBuildConfig,
-    );
+    ), normalizedManifest);
     const sourceLayoutMappings = softwareLayoutMappings(
       Object.hasOwn(input, "software_units") ? input.software_units || [] : template?.software_units || [],
       softwareUnits,
@@ -52,11 +58,7 @@ class ProjectService {
       build_config: activeSoftwareUnit?.build_config || normalizedBuildConfig,
       software_units: softwareUnits,
       active_software_unit_id: activeSoftwareUnitId,
-      view_manifest: remapSoftwarePathValues(normalizeViewManifest({
-        ...inheritedManifest,
-        ...(input.view_manifest || input.project_view_manifest || {}),
-        ...(template ? { template_ref: { project_id: template.project_id, version: template.view_manifest?.template_ref?.version || 1, source_sha256: templateHash } } : {}),
-      }), sourceLayoutMappings),
+      view_manifest: remapSoftwarePathValues(normalizedManifest, sourceLayoutMappings),
       status: input.status || "active",
       created_at: now,
       updated_at: now,
@@ -98,13 +100,19 @@ class ProjectService {
     await this.ready;
     const project = await this.requireProject(projectId);
     if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Projekt-Templates dürfen nicht verändert werden.", 409);
-    let softwareUnits = normalizeSoftwareUnits(project.software_units, project.build_config);
+    const nextViewManifest = input.view_manifest || input.project_view_manifest
+      ? normalizeViewManifest(input.view_manifest || input.project_view_manifest)
+      : project.view_manifest;
+    let softwareUnits = filterSoftwareUnitsForArchitecture(
+      normalizeSoftwareUnits(project.software_units, project.build_config),
+      nextViewManifest,
+    );
     let activeSoftwareUnitId = activeSoftwareUnitIdFor(
       input.active_software_unit_id || project.active_software_unit_id,
       softwareUnits,
     );
     if (Object.hasOwn(input, "software_units")) {
-      softwareUnits = normalizeSoftwareUnits(input.software_units, null);
+      softwareUnits = filterSoftwareUnitsForArchitecture(normalizeSoftwareUnits(input.software_units, null), nextViewManifest);
       activeSoftwareUnitId = activeSoftwareUnitIdFor(input.active_software_unit_id || activeSoftwareUnitId, softwareUnits);
     }
     let buildConfig = Object.hasOwn(input, "build_config")
@@ -127,9 +135,7 @@ class ProjectService {
       build_config: buildConfig,
       software_units: softwareUnits,
       active_software_unit_id: activeSoftwareUnitId,
-      view_manifest: input.view_manifest || input.project_view_manifest
-        ? normalizeViewManifest(input.view_manifest || input.project_view_manifest)
-        : project.view_manifest,
+      view_manifest: nextViewManifest,
       status: input.status || project.status,
       updated_at: new Date().toISOString(),
     };
@@ -1012,7 +1018,10 @@ function activeSoftwareUnitIdFor(requestedId, softwareUnits) {
 }
 
 function softwareUnitsForProject(project = {}) {
-  return normalizeSoftwareUnits(project.software_units, project.build_config || null);
+  return filterSoftwareUnitsForArchitecture(
+    normalizeSoftwareUnits(project.software_units, project.build_config || null),
+    project.view_manifest,
+  );
 }
 
 function isPlatformioSoftwareUnit(unit) {

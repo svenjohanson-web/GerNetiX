@@ -284,6 +284,50 @@ test("removes generated sources of a superseded software-unit path", async () =>
   assert.equal(paths.includes("Komponenten/IoT-Device 1/platformio.ini"), true);
 });
 
+test("never persists sensors or actuators as separately buildable software units", async () => {
+  const service = createMemoryProjectServer();
+  const viewManifest = {
+    views: [{
+      id: "hardware-configuration",
+      type: "hardware_configuration",
+      payload: {
+        components: [
+          { component_id: "device", label: "IoT-Device 1", abstract_type: "iot_device", component_path: "Komponenten/IoT-Device 1" },
+          { component_id: "temperature", label: "Temperatursensor", abstract_type: "sensor", target_device_id: "device" },
+          { component_id: "relay", label: "Relais", abstract_type: "actuator", target_device_id: "device" },
+        ],
+      },
+    }],
+  };
+  const buildConfig = { platform: "espressif32", board: "esp32dev", environment: "device" };
+  const requestedUnits = [
+    { software_unit_id: "device_firmware", title: "IoT-Device 1", software_kind: "embedded_firmware", build_system: "platformio", source_root: "Komponenten/IoT-Device 1", build_config: buildConfig },
+    { software_unit_id: "software_temperature", title: "Temperatursensor", software_kind: "embedded_firmware", build_system: "platformio", source_root: "Komponenten/Temperatursensor", build_config: buildConfig },
+    { software_unit_id: "software_relay", title: "Relais", software_kind: "embedded_firmware", build_system: "platformio", source_root: "Komponenten/Relais", build_config: buildConfig },
+  ];
+
+  const project = await service.createProject({
+    user_id: "user-passive-hardware",
+    title: "Sensor und Aktor am ESP32",
+    view_manifest: viewManifest,
+    software_units: requestedUnits,
+    active_software_unit_id: "software_temperature",
+  });
+  assert.deepEqual(project.software_units.map((unit) => unit.software_unit_id), ["device_firmware"]);
+  assert.equal(project.active_software_unit_id, "device_firmware");
+
+  const updated = await service.updateProject(project.project_id, {
+    software_units: requestedUnits,
+    active_software_unit_id: "software_relay",
+  });
+  assert.deepEqual(updated.software_units.map((unit) => unit.software_unit_id), ["device_firmware"]);
+  assert.equal(updated.active_software_unit_id, "device_firmware");
+  assert.deepEqual(
+    (await service.listSources(project.project_id)).filter((source) => source.path.endsWith("platformio.ini")).map((source) => source.path),
+    ["Komponenten/IoT-Device 1/platformio.ini"],
+  );
+});
+
 test("stores multiple learning-project software units and builds only the selected target", async () => {
   const service = createMemoryProjectServer();
   const project = await service.createProject({

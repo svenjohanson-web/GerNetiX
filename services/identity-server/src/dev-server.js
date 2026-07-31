@@ -63,6 +63,7 @@ const { createHomeAutomationNetworkCourseModel } = require("./dev/project-models
 const { createHomeAutomationSensorsCourseModel } = require("./dev/project-models/home-automation-sensors-course");
 const { createMotorControlBasicsCourseModel } = require("./dev/project-models/motor-control-basics-course");
 const { createProximitySensorRadarCourseModel } = require("./dev/project-models/proximity-sensor-radar-course");
+const { filterSoftwareUnitsForArchitecture, softwareArchitectureComponents } = require("../../shared/project-software-ownership");
 const { createProgrammingFundamentalsCourseModel } = require("./dev/project-models/programming-fundamentals-course");
 const { createUmlFundamentalsCourseModel } = require("./dev/project-models/uml-fundamentals-course");
 const { createYamlFundamentalsCourseModel } = require("./dev/project-models/yaml-fundamentals-course");
@@ -5614,14 +5615,15 @@ function buildConfigForBoard(boardOrProfileId, existing = null) {
     const supportedFrameworks = Array.isArray(catalogBuild.supported_frameworks) ? catalogBuild.supported_frameworks : [catalogBuild.framework];
     const keepsFramework = existing?.platform === catalogBuild.platform && supportedFrameworks.includes(existing?.framework);
     const framework = keepsFramework ? existing.framework : catalogBuild.framework;
-    const usesBasissoftware = framework === "espidf" && Boolean(catalogBuild.firmware_basis_id);
+    const firmwareBasisId = catalogBuild.firmware_basis_id || existing?.firmware_basis_id || "";
+    const usesBasissoftware = framework === "espidf" && Boolean(firmwareBasisId);
     const result = {
       ...common,
       ...catalogBuild,
       framework,
       libraries: Array.from(new Set([...(catalogBuild.libraries || []), ...(common.libraries || [])])),
-      firmware_basis_id: usesBasissoftware ? catalogBuild.firmware_basis_id : "",
-      firmware_basis_version: usesBasissoftware ? catalogBuild.firmware_basis_version || "workspace" : "",
+      firmware_basis_id: usesBasissoftware ? firmwareBasisId : "",
+      firmware_basis_version: usesBasissoftware ? catalogBuild.firmware_basis_version || existing?.firmware_basis_version || "workspace" : "",
       firmware_basis_variant: usesBasissoftware ? existing?.firmware_basis_variant || catalogBuild.firmware_basis_variant || "full" : "",
       user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp",
       user_target_path: usesBasissoftware ? existing?.user_target_path || "src/user/user_app.cpp" : existing?.user_target_path || "src/main.cpp",
@@ -5664,8 +5666,11 @@ function platformActiveSoftwareUnitId(project = {}) {
 }
 
 function developmentSoftwareUnits(project = {}, diagram = {}, hardwareConfiguration = null, options = {}) {
-  const existingUnits = platformSoftwareUnits(project);
-  const components = developmentArchitectureSoftwareComponents(diagram?.source || "");
+  const existingUnits = filterSoftwareUnitsForArchitecture(platformSoftwareUnits(project), hardwareConfiguration);
+  const components = softwareArchitectureComponents(
+    developmentArchitectureSoftwareComponents(diagram?.source || ""),
+    hardwareConfiguration,
+  );
   const hardwareComponents = new Map((hardwareConfiguration?.components || []).map((component) => [component.component_id, component]));
   const boards = options.boards || [];
   let embeddedIndex = 0;
