@@ -76,6 +76,22 @@ test("does not retry an invalid serial session indefinitely", async () => {
   assert.equal(portRequests, 2);
 });
 
+test("treats macOS tty and cu paths as one device and prefers cu", () => {
+  const window = { location: { protocol: "https:" } };
+  const context = vm.createContext({ window, Uint8Array, btoa, crypto, setTimeout, fetch: async () => jsonResponse(500, {}) });
+  vm.runInContext(clientSource, context);
+
+  const ports = window.GerNetiXSerialService.preferredPorts([
+    { path: "/dev/tty.usbmodem101", label: "TTY" },
+    { path: "/dev/cu.usbmodem101", label: "CU" },
+    { path: "/dev/cu.usbserial-210", label: "zweites Gerät" },
+  ]);
+
+  assert.equal(ports.length, 2);
+  assert.equal(ports[0].path, "/dev/cu.usbmodem101");
+  assert.equal(ports[1].path, "/dev/cu.usbserial-210");
+});
+
 function jsonResponse(status, payload) {
   return {
     status,

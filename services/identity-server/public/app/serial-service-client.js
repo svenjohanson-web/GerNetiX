@@ -69,7 +69,7 @@ const GerNetiXSerialService = (() => {
     }
 
     async function ports() {
-      return (await request("/v1/ports", { method: "GET" })).items || [];
+      return preferredPorts((await request("/v1/ports", { method: "GET" })).items || []);
     }
 
     async function probe(port) {
@@ -131,11 +131,27 @@ const GerNetiXSerialService = (() => {
     return btoa(chunks.join(""));
   }
 
+  function preferredPorts(ports) {
+    const selectedByDevice = new Map();
+    for (const port of Array.isArray(ports) ? ports : []) {
+      const path = String(port?.path || port?.port || "");
+      const match = path.match(/^\/dev\/(tty|cu)\.(.+)$/i);
+      if (!match) {
+        selectedByDevice.set(path || `unknown-${selectedByDevice.size}`, port);
+        continue;
+      }
+      const deviceKey = match[2].toLowerCase();
+      const selected = selectedByDevice.get(deviceKey);
+      if (!selected || match[1].toLowerCase() === "cu") selectedByDevice.set(deviceKey, port);
+    }
+    return [...selectedByDevice.values()];
+  }
+
   function delay(milliseconds) {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
   }
 
-  return { create };
+  return { create, preferredPorts };
 })();
 
 window.GerNetiXSerialService = GerNetiXSerialService;
