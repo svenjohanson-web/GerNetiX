@@ -110,8 +110,10 @@ test("provides a two-target camera-to-display template with isolated build roots
   assert.match(architecture, /rectangle "Display" as display/);
   assert.match(architecture, /camera --> camera_device : liefert Bilddaten/);
   assert.match(architecture, /camera_device --> display_device : uebertraegt Bilddaten/);
+  assert.match(architecture, /user --> display : betrachtet Kamerabild/);
+  assert.doesNotMatch(architecture, /user --> display_device/);
   assert.doesNotMatch(architecture, /Waveshare|ES3C28P/);
-  assert.equal(template.schemaVersion, 4);
+  assert.equal(template.schemaVersion, 5);
   const hardware = templateHardwareConfiguration(template);
   assert.equal(hardware.components.find((component) => component.component_id === "camera_device").board_profile_id, "hardware.processor_board.waveshare_esp32_s3_cam_ov3660");
   assert.equal(hardware.components.find((component) => component.component_id === "display_device").board_profile_id, "hardware.processor_board.esp32_s3_es3c28p");

@@ -20,6 +20,7 @@ const DevelopmentComponentMetamodel = (() => {
 
   const relationshipRules = Object.freeze([
     rule("uses_local_interface", "actor", "iot_device", "bedient lokal"),
+    rule("observes_actuator", "actor", "actuator", "betrachtet / beobachtet"),
     rule("uses_mobile_app", "actor", "smartphone_app", "nutzt"),
     rule("uses_browser_app", "actor", "browser_app", "nutzt"),
     rule("uses_desktop_app", "actor", "desktop_app", "nutzt"),
