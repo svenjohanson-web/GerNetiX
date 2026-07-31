@@ -595,6 +595,21 @@ const HelpContent = (() => {
           ],
         },
         {
+          heading: "Wo welche Boards auswählbar sind",
+          paragraphs: [
+            "Boardquellen werden nur dort angeboten, wo ihre Wiederverwendung fachlich sinnvoll ist. Eine Projektkonfiguration gehört ausschließlich zu ihrem eigenen Entwicklungsprojekt und wird niemals beim Provisioning oder als Vorlage für ein Lernprojekt angeboten.",
+            "Auch ein Lernprojekt speichert nach der Auswahl einen festen Projektsnapshot. Dieser Snapshot dient der Reproduzierbarkeit des Lernprojekts, ist aber keine zusätzliche auswählbare Boardquelle.",
+          ],
+          table: {
+            headers: ["Bereich", "GerNetiX-Systemboards", "Eigene Account-Boards", "Projektkonfigurationen"],
+            rows: [
+              ["Provisioning", "Ja", "Ja", "Nein"],
+              ["Lernprojekte", "Ja", "Ja", "Nein"],
+              ["Freie Entwicklungsprojekte", "Ja", "Ja", "Nur die Konfiguration des aktuellen Projekts"],
+            ],
+          },
+        },
+        {
           heading: "Wenn sich ein eigenes Board ändert",
           list: [
             "Die bisherige Account-Boardversion bleibt erhalten.",

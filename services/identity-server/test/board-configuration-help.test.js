@@ -24,6 +24,11 @@ test("explains GerNetiX, account and project board configuration levels", () => 
   assert.match(serialized, /neue Version deines Boards/);
   assert.match(serialized, /nur für dieses Projekt gelten/);
   assert.match(serialized, /physisch vorhandene Platine/);
+  assert.match(serialized, /Wo welche Boards auswählbar sind/);
+  assert.match(serialized, /Provisioning.*Ja.*Ja.*Nein/);
+  assert.match(serialized, /Lernprojekte.*Ja.*Ja.*Nein/);
+  assert.match(serialized, /Nur die Konfiguration des aktuellen Projekts/);
+  assert.match(serialized, /keine zusätzliche auswählbare Boardquelle/);
   assert.ok(article.relatedTopics.includes("board-definition"));
   assert.ok(article.relatedTopics.includes("supported-devices"));
 });
