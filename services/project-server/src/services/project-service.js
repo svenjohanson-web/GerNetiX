@@ -31,6 +31,10 @@ class ProjectService {
       Object.hasOwn(input, "software_units") ? input.software_units : template?.software_units,
       normalizedBuildConfig,
     );
+    const sourceLayoutMappings = softwareLayoutMappings(
+      Object.hasOwn(input, "software_units") ? input.software_units || [] : template?.software_units || [],
+      softwareUnits,
+    );
     const activeSoftwareUnitId = activeSoftwareUnitIdFor(
       input.active_software_unit_id || template?.active_software_unit_id,
       softwareUnits,
@@ -48,17 +52,19 @@ class ProjectService {
       build_config: activeSoftwareUnit?.build_config || normalizedBuildConfig,
       software_units: softwareUnits,
       active_software_unit_id: activeSoftwareUnitId,
-      view_manifest: normalizeViewManifest({
+      view_manifest: remapSoftwarePathValues(normalizeViewManifest({
         ...inheritedManifest,
         ...(input.view_manifest || input.project_view_manifest || {}),
         ...(template ? { template_ref: { project_id: template.project_id, version: template.view_manifest?.template_ref?.version || 1, source_sha256: templateHash } } : {}),
-      }),
+      }), sourceLayoutMappings),
       status: input.status || "active",
       created_at: now,
       updated_at: now,
     };
     await this.repository.saveProject(project);
-    for (const source of defaultSources(project, input.sources?.length ? input.sources : templateSources)) {
+    const initialSources = (input.sources?.length ? input.sources : templateSources)
+      .map((source) => ({ ...source, path: remapSoftwareSourcePath(source.path, sourceLayoutMappings) }));
+    for (const source of defaultSources(project, initialSources)) {
       if (project.status === "template") {
         const sourcePath = normalizeSourcePath(required(source.path, "path"));
         const content = String(source.content || "");
@@ -185,7 +191,8 @@ class ProjectService {
     await this.ready;
     const project = await this.requireProject(projectId);
     if (project.status === "template") throw new ProjectServerError("project_template_immutable", "Template-Quellen dürfen nicht verändert werden.", 409);
-    const path = normalizeSourcePath(required(input.path, "path"));
+    const requestedPath = normalizeSourcePath(required(input.path, "path"));
+    const path = remapSoftwareSourcePath(requestedPath, softwareLayoutMappings([], project.software_units || []));
     const now = new Date().toISOString();
     const content = String(input.content || "");
     const source = {
@@ -708,9 +715,41 @@ class ProjectService {
   }
 
   async requireProject(projectId) {
-    const project = await this.repository.findProject(projectId);
+    let project = await this.repository.findProject(projectId);
     if (!project) throw new ProjectServerError("project_not_found", "Projekt wurde nicht gefunden.", 404);
+    project = await this.ensureComponentSoftwareLayout(project);
     return project;
+  }
+
+  async ensureComponentSoftwareLayout(project) {
+    const previousUnits = Array.isArray(project.software_units) ? project.software_units : [];
+    const softwareUnits = normalizeSoftwareUnits(previousUnits, project.build_config || null);
+    const activeSoftwareUnitId = activeSoftwareUnitIdFor(project.active_software_unit_id, softwareUnits);
+    const buildConfig = softwareUnits.find((unit) => unit.software_unit_id === activeSoftwareUnitId)?.build_config || project.build_config || null;
+    const mappings = softwareLayoutMappings(previousUnits, softwareUnits);
+    const changed = JSON.stringify(previousUnits) !== JSON.stringify(softwareUnits)
+      || JSON.stringify(project.build_config || null) !== JSON.stringify(buildConfig);
+    if (!changed && !mappings.length) return project;
+
+    const sources = await this.repository.listSources(project.project_id);
+    const existingPaths = new Set(sources.map((source) => source.path));
+    for (const source of sources) {
+      const targetPath = remapSoftwareSourcePath(source.path, mappings);
+      if (!targetPath || targetPath === source.path) continue;
+      if (!existingPaths.has(targetPath)) {
+        await this.repository.saveSource({ ...source, path: targetPath });
+        existingPaths.add(targetPath);
+      }
+      await this.repository.deleteSource(project.project_id, source.path);
+    }
+    const migrated = {
+      ...project,
+      software_units: softwareUnits,
+      active_software_unit_id: activeSoftwareUnitId,
+      build_config: buildConfig,
+      view_manifest: remapSoftwarePathValues(project.view_manifest || {}, mappings),
+    };
+    return this.repository.saveProject(migrated);
   }
 
   async requireOwnedProject(projectId, userId) {
@@ -834,12 +873,14 @@ function normalizeSoftwareUnits(input, fallbackBuildConfig = null) {
       title: "Firmware",
       software_kind: "embedded_firmware",
       build_system: "platformio",
-      source_root: "",
+      source_root: "Komponenten/IoT-Device 1",
+      entrypoint: componentRelativeSourcePath(fallbackBuildConfig.user_source_path || "src/user_main.cpp", "", "Komponenten/IoT-Device 1"),
       device_id: "",
-      build_config: fallbackBuildConfig,
+      build_config: normalizeSoftwareUnitBuildConfig(fallbackBuildConfig, "", "Komponenten/IoT-Device 1"),
     }] : [];
   }
   const seen = new Set();
+  let embeddedIndex = 0;
   return rawUnits.slice(0, 40).map((unit, index) => {
     const candidate = String(unit?.software_unit_id || unit?.id || `software_${index + 1}`)
       .trim().toLowerCase().replace(/[^a-z0-9_-]+/g, "_").replace(/^_+|_+$/g, "").slice(0, 80) || `software_${index + 1}`;
@@ -847,22 +888,81 @@ function normalizeSoftwareUnits(input, fallbackBuildConfig = null) {
     for (let suffix = 2; seen.has(softwareUnitId); suffix += 1) softwareUnitId = `${candidate}_${suffix}`.slice(0, 80);
     seen.add(softwareUnitId);
     const buildSystem = String(unit?.build_system || (unit?.build_config ? "platformio" : "none")).trim().toLowerCase().slice(0, 40);
-    const sourceRoot = normalizeOptionalSourcePath(unit?.source_root || "").replace(/\/$/, "");
+    const previousSourceRoot = normalizeOptionalSourcePath(unit?.source_root || "").replace(/\/$/, "");
+    const embedded = String(unit?.software_kind || "") === "embedded_firmware" || buildSystem === "platformio";
+    if (embedded) embeddedIndex += 1;
+    const sourceRoot = componentSoftwareRoot(unit, embedded ? embeddedIndex : index + 1, previousSourceRoot);
     return {
       software_unit_id: softwareUnitId,
       title: String(unit?.title || `Software ${index + 1}`).trim().slice(0, 120),
       software_kind: String(unit?.software_kind || "software").trim().toLowerCase().slice(0, 60),
       build_system: buildSystem,
       source_root: sourceRoot,
-      entrypoint: normalizeOptionalSourcePath(unit?.entrypoint || ""),
+      entrypoint: componentRelativeSourcePath(unit?.entrypoint || unit?.build_config?.user_source_path || "", previousSourceRoot, sourceRoot),
       device_id: String(unit?.device_id || "").trim().slice(0, 180),
       hardware_profile_id: String(unit?.hardware_profile_id || "").trim().slice(0, 180),
-      build_config: buildSystem === "platformio" && unit?.build_config ? normalizeBuildConfig(unit.build_config) : null,
+      build_config: buildSystem === "platformio" && unit?.build_config
+        ? normalizeSoftwareUnitBuildConfig(unit.build_config, previousSourceRoot, sourceRoot)
+        : null,
       build_configuration: buildSystem === "platformio" || !unit?.build_configuration
         ? null
         : JSON.parse(JSON.stringify(unit.build_configuration)),
     };
   });
+}
+
+function componentSoftwareRoot(unit, index, previousSourceRoot = "") {
+  const existingComponent = String(previousSourceRoot).match(/^(Komponenten\/[^/]+)/)?.[1];
+  if (existingComponent) return existingComponent;
+  const embedded = String(unit?.software_kind || "") === "embedded_firmware" || String(unit?.build_system || "") === "platformio";
+  if (embedded) return `Komponenten/IoT-Device ${index}`;
+  const label = String(unit?.title || unit?.software_unit_id || `Software ${index}`)
+    .trim().replace(/[^A-Za-z0-9ÄÖÜäöüß._ -]+/g, "-").replace(/\s+/g, " ").slice(0, 100) || `Software ${index}`;
+  return `Komponenten/${label}`;
+}
+
+function componentRelativeSourcePath(value, previousSourceRoot, componentRoot) {
+  let sourcePath = normalizeOptionalSourcePath(value || "");
+  for (const prefix of [previousSourceRoot, componentRoot].filter(Boolean)) {
+    if (sourcePath.startsWith(`${prefix}/`)) sourcePath = sourcePath.slice(prefix.length + 1);
+  }
+  sourcePath = sourcePath.replace(/^Komponenten\/[^/]+\//, "");
+  return sourcePath;
+}
+
+function normalizeSoftwareUnitBuildConfig(input, previousSourceRoot, componentRoot) {
+  const buildConfig = normalizeBuildConfig(input);
+  if (!buildConfig) return null;
+  return {
+    ...buildConfig,
+    user_source_path: componentRelativeSourcePath(buildConfig.user_source_path || "src/user_main.cpp", previousSourceRoot, componentRoot),
+  };
+}
+
+function softwareLayoutMappings(previousUnits, softwareUnits) {
+  return softwareUnits.map((unit, index) => ({
+    from: normalizeOptionalSourcePath(previousUnits[index]?.source_root || "").replace(/\/$/, ""),
+    to: unit.source_root,
+  })).filter((mapping) => mapping.from !== mapping.to);
+}
+
+function remapSoftwareSourcePath(sourcePath, mappings) {
+  for (const mapping of mappings) {
+    if (!mapping.from && sourcePath !== "platformio.ini" && !sourcePath.startsWith("src/")) continue;
+    if (mapping.from && sourcePath !== mapping.from && !sourcePath.startsWith(`${mapping.from}/`)) continue;
+    let relative = mapping.from ? sourcePath.slice(mapping.from.length).replace(/^\//, "") : sourcePath;
+    relative = relative.replace(/^Komponenten\/[^/]+\//, "");
+    return `${mapping.to}/${relative}`;
+  }
+  return sourcePath;
+}
+
+function remapSoftwarePathValues(value, mappings) {
+  if (Array.isArray(value)) return value.map((item) => remapSoftwarePathValues(item, mappings));
+  if (value && typeof value === "object") {
+    return Object.fromEntries(Object.entries(value).map(([key, item]) => [key, remapSoftwarePathValues(item, mappings)]));
+  }
+  return typeof value === "string" ? remapSoftwareSourcePath(value, mappings) : value;
 }
 
 function activeSoftwareUnitIdFor(requestedId, softwareUnits) {
@@ -885,10 +985,19 @@ function sourcesForSoftwareUnit(sources, selectedUnit, softwareUnits) {
   const sourceRoot = String(selectedUnit.source_root || "").replace(/\/$/, "");
   if (sourceRoot) {
     const prefix = `${sourceRoot}/`;
-    return sources.filter((source) => source.path.startsWith(prefix)).map((source) => ({
+    const scoped = sources.filter((source) => source.path.startsWith(prefix)).map((source) => ({
       ...source,
       path: source.path.slice(prefix.length),
     }));
+    const componentPrefixes = softwareUnits
+      .map((unit) => String(unit.source_root || "").replace(/\/$/, ""))
+      .filter(Boolean)
+      .map((root) => `${root}/`);
+    const sharedBuildSupport = sources.filter((source) => (
+      !componentPrefixes.some((componentPrefix) => source.path.startsWith(componentPrefix))
+      && !/^(?:Architektur|docs)\//i.test(source.path)
+    ));
+    return [...scoped, ...sharedBuildSupport];
   }
   const otherRoots = softwareUnits
     .filter((unit) => unit.software_unit_id !== selectedUnit.software_unit_id && unit.source_root)

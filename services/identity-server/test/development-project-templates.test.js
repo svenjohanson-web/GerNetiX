@@ -125,7 +125,8 @@ test("provides a two-target camera-to-display template with isolated build roots
   assert.equal(units.length, 2);
   assert.equal(units[0].software_unit_id, "camera_sender");
   assert.equal(units[0].title, "Kamera-Host");
-  assert.equal(units[0].source_root, "Software/Kamera-Host");
+  assert.equal(units[0].source_root, "Komponenten/IoT-Device 1");
+  assert.equal(units[0].entrypoint, "src/user_main.cpp");
   assert.equal(units[0].hardware_profile_id, "hardware.processor_board.waveshare_esp32_s3_cam_ov3660");
   assert.equal(units[0].build_config.framework, "espidf");
   assert.equal(units[0].build_config.board, "4d_systems_esp32s3_gen4_r8n16");
@@ -133,20 +134,23 @@ test("provides a two-target camera-to-display template with isolated build roots
   assert.equal(units[0].build_config.firmware_basis_variant, "full");
   assert.equal(units[1].software_unit_id, "display_receiver");
   assert.equal(units[1].title, "Display-Client");
-  assert.equal(units[1].source_root, "Software/Display-Client");
+  assert.equal(units[1].source_root, "Komponenten/IoT-Device 2");
+  assert.equal(units[1].entrypoint, "src/user_main.cpp");
   assert.equal(units[1].hardware_profile_id, "hardware.processor_board.esp32_s3_es3c28p");
   assert.equal(units[1].build_config.framework, "espidf");
   assert.equal(units[1].build_config.board, "4d_systems_esp32s3_gen4_r8n16");
   assert.equal(units[1].build_config.firmware_basis_id, "gernetix-runtime-basissoftware");
-  assert.match(files.find((file) => file.path === "Software/Kamera-Host/Komponenten/IoT-Device 1/src/user_main.cpp").content, /camera_driver_pending/);
-  assert.match(files.find((file) => file.path === "Software/Kamera-Host/Komponenten/IoT-Device 1/src/user_main.cpp").content, /GERNETIX_BOARD_FEATURE_CAMERA/);
-  assert.match(files.find((file) => file.path === "Software/Display-Client/Komponenten/IoT-Device 1/src/user_main.cpp").content, /display_driver_pending/);
-  assert.doesNotMatch(files.find((file) => file.path === "Software/Kamera-Host/Komponenten/IoT-Device 1/src/user_main.cpp").content, /esp_camera_init|GET \/capture/);
-  assert.doesNotMatch(files.find((file) => file.path === "Software/Display-Client/Komponenten/IoT-Device 1/src/user_main.cpp").content, /drawJpg/);
-  assert.match(files.find((file) => file.path === "Software/Kamera-Host/platformio.ini").content, /framework = espidf/);
-  assert.match(files.find((file) => file.path === "Software/Kamera-Host/platformio.ini").content, /partitions_full_16mb\.csv/);
-  assert.match(files.find((file) => file.path === "Software/Display-Client/platformio.ini").content, /GERNETIX_BASISSOFTWARE_PROFILE_FULL/);
-  assert.equal(files.some((file) => file.path === "Docs/Kamera-zu-Display.md"), true);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /camera_driver_pending/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /GERNETIX_BOARD_FEATURE_CAMERA/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /display_driver_pending/);
+  assert.doesNotMatch(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /esp_camera_init|GET \/capture/);
+  assert.doesNotMatch(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /drawJpg/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/platformio.ini").content, /framework = espidf/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/platformio.ini").content, /partitions_full_16mb\.csv/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/platformio.ini").content, /GERNETIX_BASISSOFTWARE_PROFILE_FULL/);
+  assert.equal(files.some((file) => file.path === "Architektur/Kamera-zu-Display.md"), true);
+  assert.equal(files.some((file) => file.path.startsWith("Software/")), false);
+  assert.equal(files.some((file) => file.path.startsWith("Docs/")), false);
 
   for (const unit of units) {
     const prefix = `${unit.source_root}/`;

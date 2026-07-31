@@ -84,11 +84,12 @@ Komponenten/
         Sensoren/
         Aktoren/
       Software/
+    src/
     Daten/
     Beziehungen/
 ```
 
-Jede erkannte Komponente bekommt einen eigenen Ordner. Komponenten tragen ihre Hardware- und Softwarekonfiguration, provided/required Schnittstellen, Verhalten, Daten und Beziehungen selbst. Hardwarekonfiguration umfasst Board, Sensoren und Aktoren; Softwarekonfiguration umfasst Runtime-Funktionen und Dienste wie MQTT, HTTP und Webserver. Provided und required Schnittstellen werden bewusst getrennt gespeichert, weil benoetigte Schnittstellen genauso wichtig sind wie angebotene Schnittstellen. Verhalten trennt Modell und Code, damit KI-Ableitungen spaeter gezielt geprueft und umgesetzt werden koennen.
+Jede erkannte Komponente bekommt einen eigenen Ordner. Der ausfuehrbare Quellcode dieser Komponente liegt immer direkt in ihrem Unterordner `src/`; einen parallelen Projektordner `Software/` gibt es nicht. Komponenten tragen daneben ihre Hardware- und Softwarekonfiguration, provided/required Schnittstellen, Verhalten, Daten und Beziehungen selbst. Hardwarekonfiguration umfasst Board, Sensoren und Aktoren; Softwarekonfiguration umfasst Runtime-Funktionen und Dienste wie MQTT, HTTP und Webserver. Provided und required Schnittstellen werden bewusst getrennt gespeichert, weil benoetigte Schnittstellen genauso wichtig sind wie angebotene Schnittstellen. Verhalten trennt Modell und Code, damit KI-Ableitungen spaeter gezielt geprueft und umgesetzt werden koennen.
 
 Architektur besteht generisch aus statischer Architektur, Informationsfluss und Systemverhalten. Systemverhalten beschreibt komponentenuebergreifende Ablaeufe, Zustaende, Regeln, Ereignisse, Fehlerfaelle und Reaktionen des Gesamtsystems. Die KI kann bestaetigtes Systemverhalten spaeter in komponentenspezifisches Verhalten, Schnittstellenanforderungen, Datenfluesse, Code und Konfiguration dekomponieren.
 

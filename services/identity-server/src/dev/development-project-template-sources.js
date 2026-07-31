@@ -33,12 +33,12 @@ function cameraToTouchDisplaySources(template) {
   const displayRoot = display.source_root;
   return [
     plain(`${cameraRoot}/platformio.ini`, renderPlatformioIni(camera.buildConfig), "build_config"),
-    header(`${cameraRoot}/Komponenten/IoT-Device 1/src/camera_host_state.h`, cameraHostStateHeader()),
-    source(`${cameraRoot}/Komponenten/IoT-Device 1/src/user_main.cpp`, cameraHostMain()),
+    header(`${cameraRoot}/src/camera_host_state.h`, cameraHostStateHeader()),
+    source(`${cameraRoot}/src/user_main.cpp`, cameraHostMain()),
     plain(`${displayRoot}/platformio.ini`, renderPlatformioIni(display.buildConfig), "build_config"),
-    header(`${displayRoot}/Komponenten/IoT-Device 1/src/display_client_state.h`, displayClientStateHeader()),
-    source(`${displayRoot}/Komponenten/IoT-Device 1/src/user_main.cpp`, displayClientMain()),
-    plain("Docs/Kamera-zu-Display.md", cameraDisplayReadme()),
+    header(`${displayRoot}/src/display_client_state.h`, displayClientStateHeader()),
+    source(`${displayRoot}/src/user_main.cpp`, displayClientMain()),
+    plain("Architektur/Kamera-zu-Display.md", cameraDisplayReadme()),
   ];
 }
 
@@ -136,8 +136,8 @@ function cameraDisplayReadme() {
     "",
     "Das Projekt besitzt zwei unabhaengige Firmware-Ziele und baut deshalb immer beide Einheiten:",
     "",
-    "1. `Software/Kamera-Host`: Waveshare ESP32-S3-CAM-OV3660 als kuenftiger Bild-Host.",
-    "2. `Software/Display-Client`: ESP32-S3 ES3C28P als kuenftiger Display-Client.",
+    "1. `Komponenten/IoT-Device 1/src`: Software des Waveshare ESP32-S3-CAM-OV3660 als kuenftiger Bild-Host.",
+    "2. `Komponenten/IoT-Device 2/src`: Software des ESP32-S3 ES3C28P als kuenftiger Display-Client.",
     "",
     "Beide Ziele beginnen mit der vollstaendigen GerNetiX-Basissoftware. Damit sind Provisioning, WLAN-Verwaltung, lokaler Status, Runtime, Diagnose und OTA bereits vorhanden. Die Hardwarekonfiguration jedes Boards wird beim Anlegen aus dem Hardware Catalog als Projektsnapshot uebernommen.",
     "",
