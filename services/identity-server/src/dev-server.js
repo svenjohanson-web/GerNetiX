@@ -2835,8 +2835,28 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
     return;
   }
   const boardComponent = hardwareConfiguration.components.find((component) => component.abstract_type === "iot_device" && component.board_profile_id);
+  const availableBoards = boardComponent ? await loadAvailableProcessorBoards(session) : [];
+  const selectedBoard = boardComponent
+    ? availableBoards.find((board) => [board.hardware_item_id, board.hardware_profile_id, board.id]
+      .filter(Boolean).some((id) => String(id) === String(boardComponent.board_profile_id))) || null
+    : null;
+  if (boardComponent && !selectedBoard) {
+    sendJson(res, 409, { error: "project_board_not_found", message: "Das gewaehlte Board ist nicht mehr im Hardware-Katalog oder in deinen Account-Boards vorhanden." });
+    return;
+  }
+  if (existingManifest.template_id === "touchscreen_game_collection" && selectedBoard && !isTouchscreenGameBoard(selectedBoard)) {
+    sendJson(res, 409, { error: "game_board_not_touchscreen", message: "Die Spielesammlung benoetigt ein Board mit integriertem Touchscreen." });
+    return;
+  }
+  const selectedBoardConfiguration = boardComponent
+    ? compilerBoardConfiguration(boardComponent.board_configuration, selectedBoard)
+    : null;
+  const selectedBaseBoardId = selectedBoardConfiguration?.base_board_profile_id
+    || selectedBoard?.base_board_profile_id
+    || boardComponent?.board_profile_id
+    || "";
   const baseBuildConfig = boardComponent
-    ? buildConfigForBoard(boardComponent.board_configuration?.base_board_profile_id || boardComponent.board_profile_id, project.build_config)
+    ? buildConfigForBoard(selectedBaseBoardId, project.build_config)
     : project.build_config;
   const inventoryDevices = await loadUserIdeDevices(session);
   const allocations = [];
@@ -2866,11 +2886,11 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
   const allocatedBasissoftwareProfile = primaryInventoryDevice?.instance_configuration?.basissoftware_profile || null;
   const allocatedFlashValue = primaryInventoryDevice?.instance_configuration?.board_features?.flash?.value || "";
   const allocatedFlashSizeMb = Number(String(allocatedFlashValue).match(/^(\d+)_mb$/)?.[1] || 0);
-  const configuredFlashValue = boardComponent?.board_configuration?.board_features?.flash?.value || "";
+  const configuredFlashValue = selectedBoardConfiguration?.board_features?.flash?.value || "";
   const configuredFlashSizeMb = Number(String(configuredFlashValue).match(/^(\d+)_mb$/)?.[1] || 0);
   const buildConfig = baseBuildConfig ? {
     ...baseBuildConfig,
-    board_configuration: compilerBoardConfiguration(boardComponent?.board_configuration, null),
+    board_configuration: selectedBoardConfiguration,
     component_device_allocations: allocations,
     ...(allocatedBasissoftwareProfile ? {
       firmware_basis_variant: allocatedBasissoftwareProfile.class,
@@ -2879,6 +2899,14 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
     } : {}),
     ...(!allocatedBasissoftwareProfile && [4, 8, 16].includes(configuredFlashSizeMb) ? { flash_size_mb: configuredFlashSizeMb } : {}),
   } : null;
+  const gameConfiguration = existingManifest.template_id === "touchscreen_game_collection"
+    ? normalizeTouchscreenGameConfiguration({
+        ...(existingManifest.game_configuration || defaultTouchscreenGameConfiguration()),
+        board_profile_id: selectedBoard?.hardware_item_id || boardComponent?.board_profile_id || "",
+        board_configuration: selectedBoardConfiguration,
+        inventory_device_id: primaryInventoryDevice?.device_id || "",
+      })
+    : existingManifest.game_configuration;
   const sources = hardwareConfigurationSources(hardwareConfiguration, project.title);
   await Promise.all(sources.map((source) => projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
     method: "PUT",
@@ -2887,7 +2915,7 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
   await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
-      hardware_profile_id: boardComponent?.board_configuration?.base_board_profile_id || boardComponent?.board_profile_id || project.hardware_profile_id,
+      hardware_profile_id: selectedBaseBoardId || project.hardware_profile_id,
       device_id: primaryInventoryDevice?.device_id || "",
       build_config: buildConfig || null,
       view_manifest: developmentProjectViewManifest({
@@ -2901,7 +2929,7 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
         templateModelVersion: existingManifest.template_ref?.model_schema_version,
         hardwareConfiguration,
         homeAutomationConfiguration: existingManifest.home_automation_configuration,
-        gameConfiguration: existingManifest.game_configuration,
+        gameConfiguration,
         pwaDashboardConfiguration: existingManifest.pwa_dashboard,
         dataLoggerConfiguration: existingManifest.data_logger,
         eventConfiguration: existingManifest.event_configuration,
@@ -3364,6 +3392,36 @@ async function handleUserIdeBuildJob(req, res) {
     sendJson(res, 404, { error: "project_not_found", message: "Projekt wurde nicht gefunden." });
     return;
   }
+  const resolvedBuildConfig = resolveBuildConfig(project, device || {});
+  if (project.view_manifest?.template_id === "touchscreen_game_collection") {
+    const problems = touchscreenGameBuildConfigurationProblems(project, resolvedBuildConfig);
+    const sourcePayload = problems.length
+      ? { items: [] }
+      : await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`);
+    const sourcePaths = new Set((sourcePayload.items || []).map((source) => String(source.path || "")));
+    for (const requiredPath of ["platformio.ini", "src/main.cpp", "src/board_adapter.cpp"]) {
+      if (!sourcePaths.has(requiredPath)) problems.push(`Quelldatei ${requiredPath} fehlt`);
+    }
+    if (!problems.length) {
+      const platformioSource = await projectServerJson(
+        `/api/projects/${encodeURIComponent(project.project_server_id)}/sources/${encodeURIComponent("platformio.ini")}`,
+      );
+      const platformioIni = String(platformioSource.content || "");
+      if (!/^\s*\[env:es3c28p\]\s*$/m.test(platformioIni)) problems.push("platformio.ini enthaelt die Umgebung es3c28p nicht");
+      if (!/^\s*framework\s*=\s*arduino\s*$/m.test(platformioIni)) problems.push("platformio.ini verwendet nicht Arduino");
+      if (!/^\s*board_build\.flash_size\s*=\s*16MB\s*$/mi.test(platformioIni)) problems.push("platformio.ini verwendet nicht 16 MB Flash");
+      if (!/LovyanGFX/i.test(platformioIni)) problems.push("platformio.ini enthaelt LovyanGFX nicht");
+      if (!/ARDUINO_USB_MODE=1/.test(platformioIni)) problems.push("platformio.ini enthaelt die ES3C28P-USB-Flags nicht");
+    }
+    if (problems.length) {
+      sendJson(res, 409, {
+        error: "touchscreen_game_build_configuration_invalid",
+        message: `Build gesperrt: Die wirksame Konfiguration der Touchscreen-Spielesammlung ist widerspruechlich (${problems.join("; ")}). Erwartet werden ES3C28P, Arduino, Umgebung es3c28p, 16 MB Flash und die vollstaendigen Beispielquellen.`,
+        problems,
+      });
+      return;
+    }
+  }
   if (!device && !["build", "build_and_usb_flash"].includes(mode)) {
     sendJson(res, 404, { error: "device_not_found", message: "Device wurde nicht gefunden." });
     return;
@@ -3414,7 +3472,7 @@ async function handleUserIdeBuildJob(req, res) {
     body: {
       mode,
       device_id: device?.device_id || null,
-      build_config: resolveBuildConfig(project, device || {}),
+      build_config: resolvedBuildConfig,
     },
   });
   const buildPackage = await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/build-package`);
@@ -4303,7 +4361,9 @@ async function loadBuildDeployJob(jobId) {
 function toBuildDeployPackage(buildPackage, device = {}, project = {}) {
   const files = Object.fromEntries((buildPackage.files || []).map((file) => [file.path, file.content]));
   const buildConfig = resolveBuildConfig(project, device);
-  if (buildConfig && !buildConfig.firmware_basis_id) files["platformio.ini"] = renderPlatformioIni(buildConfig);
+  if (buildConfig && !buildConfig.firmware_basis_id && !files["platformio.ini"]) {
+    files["platformio.ini"] = renderPlatformioIni(buildConfig);
+  }
   return {
     package_id: buildPackage.package_id,
     files,
@@ -4311,6 +4371,7 @@ function toBuildDeployPackage(buildPackage, device = {}, project = {}) {
 }
 
 function resolveBuildConfig(project = {}, device = {}) {
+  if (project.view_manifest?.template_id === "touchscreen_game_collection") return project.build_config || null;
   if (project.slug === "arduino-atmel-bare-metal" && project.build_config) return project.build_config;
   if (project.build_config?.firmware_basis_id) {
     return {
@@ -4321,6 +4382,19 @@ function resolveBuildConfig(project = {}, device = {}) {
     };
   }
   return device.build_config || project.build_config || null;
+}
+
+function touchscreenGameBuildConfigurationProblems(project = {}, buildConfig = {}) {
+  const problems = [];
+  const baseBoardProfileId = String(buildConfig?.board_configuration?.base_board_profile_id || project.hardware_profile_id || "");
+  if (baseBoardProfileId !== "hardware.processor_board.esp32_s3_es3c28p") problems.push(`Board ${baseBoardProfileId || "nicht gesetzt"}`);
+  if (buildConfig?.platform !== "espressif32") problems.push(`Plattform ${buildConfig?.platform || "nicht gesetzt"}`);
+  if (buildConfig?.framework !== "arduino") problems.push(`Framework ${buildConfig?.framework || "nicht gesetzt"}`);
+  if (buildConfig?.environment !== "es3c28p") problems.push(`Umgebung ${buildConfig?.environment || "nicht gesetzt"}`);
+  if (Number(buildConfig?.flash_size_mb) !== 16) problems.push(`Flash ${buildConfig?.flash_size_mb || "nicht gesetzt"} MB`);
+  if (buildConfig?.firmware_basis_id) problems.push(`unerwartete Basissoftware ${buildConfig.firmware_basis_id}`);
+  if (buildConfig?.user_source_path !== "src/main.cpp") problems.push(`Einstieg ${buildConfig?.user_source_path || "nicht gesetzt"}`);
+  return problems;
 }
 
 function toProjectBuildResult(buildDeployJob) {
@@ -5128,9 +5202,14 @@ function normalizeDevelopmentBoardConfiguration(input, boardProfileId) {
 
 function compilerBoardConfiguration(configuration, board = null) {
   if (!configuration && !board) return null;
+  const source = configuration?.account_board_id || board?.account_board_id || board?.configuration_scope === "account"
+    ? "account"
+    : configuration?.source === "catalog" || board?.configuration_scope === "gernetix"
+      ? "catalog"
+      : "project";
   return {
     schema_version: 1,
-    source: configuration?.account_board_id ? "account" : configuration?.source === "catalog" ? "catalog" : "project",
+    source,
     name: configuration?.name || board?.title || "",
     base_board_profile_id: configuration?.base_board_profile_id || board?.base_board_profile_id || board?.hardware_item_id || "",
     account_board_id: configuration?.account_board_id || board?.account_board_id || "",
@@ -5328,6 +5407,7 @@ function buildConfigForBoard(boardProfileId, existing = null) {
   if (/arduino_nano_r3_atmega328p/.test(boardProfileId)) return { ...common, platform: "atmelavr", framework: "arduino", board: "nanoatmega328", environment: "nanoatmega328", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
   if (/esp8266|d1_mini/.test(boardProfileId)) return { ...common, platform: "espressif8266", framework: "arduino", board: "d1_mini", environment: "d1_mini", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
   if (/ai_thinker_esp32_cam/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: "arduino", board: "esp32cam", environment: "esp32cam", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "", user_source_path: existing?.user_source_path || "src/main.cpp", user_target_path: existing?.user_target_path || "src/main.cpp" };
+  if (/esp32_s3_es3c28p|es3c28p/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: "arduino", board: "esp32-s3-devkitc-1", environment: "es3c28p", flash_size_mb: 16, firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "", user_source_path: "src/main.cpp", user_target_path: "src/main.cpp", libraries: common.libraries.length ? common.libraries : ["lovyan03/LovyanGFX@^1.2.7"] };
   if (/esp32_s3|esp32-s3/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: existing?.framework || "espidf", board: "esp32-s3-devkitc-1", environment: "esp32-s3-devkitc-1", firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: existing?.firmware_basis_version || "workspace", firmware_basis_variant: existing?.firmware_basis_variant || "comfort", user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/user/user_app.cpp" };
   if (/esp32|wroom32|nano_esp32/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: existing?.framework || "espidf", board: "esp32dev", environment: "esp32dev", firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: existing?.firmware_basis_version || "workspace", firmware_basis_variant: existing?.firmware_basis_variant || "comfort", user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/user/user_app.cpp" };
   return existing;

@@ -19,7 +19,11 @@ test("IDE collects project information and action hints in a switchable terminal
   assert.match(html, /id="ideBuildResultsPanel" class="ide-build-results"/);
   assert.match(html, /id="buildList" class="build-list"/);
   assert.match(app, /function renderIdeProjectInformation\(project\)/);
-  assert.match(app, /Build-Profil/);
+  assert.match(app, /Board-Konfiguration/);
+  assert.match(app, /Compiler-Plattform/);
+  assert.match(app, /PlatformIO-Umgebung/);
+  assert.match(app, /physischer Board-Flash/);
+  assert.match(app, /Projektquellen direkt \(keine Basissoftware\)/);
   assert.match(app, /Keine offenen Hinweise fuer dieses Projekt/);
   assert.match(app, /function setIdeConsoleView\(view\)/);
   assert.match(css, /\.ide-console-workspace\.show-project-information \.ide-terminal \{ display: none; \}/);

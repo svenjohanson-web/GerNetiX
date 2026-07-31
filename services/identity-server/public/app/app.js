@@ -1855,7 +1855,25 @@ function renderIdeProjectInformation(project) {
   if (!target || !noticeTarget || !project) return;
   const allocated = allocatedIdeDevice(project);
   const buildConfig = project.buildConfig || {};
-  const buildProfile = [buildConfig.environment, buildConfig.board, buildConfig.framework].filter(Boolean).join(" · ") || "nicht konfiguriert";
+  const boardConfiguration = buildConfig.board_configuration || {};
+  const boardConfigurationLabel = boardConfiguration.name
+    ? `${boardConfiguration.name} · ${boardConfiguration.base_board_profile_id || "Profil nicht gesetzt"}`
+    : boardConfiguration.base_board_profile_id || "nicht konfiguriert";
+  const boardConfigurationSource = {
+    catalog: "GerNetiX-Systemboard",
+    account: "Account-Board",
+    project: "Projekt-Snapshot",
+  }[boardConfiguration.source] || boardConfiguration.source || "nicht angegeben";
+  const flashLabel = buildConfig.flash_size_mb
+    ? `${buildConfig.flash_size_mb} MB physischer Board-Flash${buildConfig.partition_profile_id ? ` · Partition ${buildConfig.partition_profile_id}` : ""}`
+    : "nicht konfiguriert";
+  const firmwareSource = buildConfig.firmware_basis_id
+    ? `Basissoftware ${buildConfig.firmware_basis_id}${buildConfig.firmware_basis_variant ? ` · ${buildConfig.firmware_basis_variant}` : ""}`
+    : "Projektquellen direkt (keine Basissoftware)";
+  const templateRef = project.viewManifest?.template_ref || {};
+  const templateLabel = project.viewManifest?.template_id
+    ? `${project.viewManifest.template_id} · Modell v${templateRef.model_schema_version || templateRef.version || "?"}`
+    : "kein Template-Verweis";
   const targetSystem = project.targetRuntime || buildConfig.platform || "noch nicht festgelegt";
   const deviceLabel = allocated
     ? `${allocated.display_name || allocated.device_id} · ${allocated.connectivity_status || "Status unbekannt"}`
@@ -1864,7 +1882,15 @@ function renderIdeProjectInformation(project) {
     ["Projekt", project.name || project.id],
     ["Projektart", project.type || "Entwicklungsprojekt"],
     ["Zielsystem", targetSystem],
-    ["Build-Profil", buildProfile],
+    ["Board-Konfiguration", boardConfigurationLabel],
+    ["Board-Quelle", boardConfigurationSource],
+    ["Compiler-Plattform", buildConfig.platform || "nicht konfiguriert"],
+    ["PlatformIO-Umgebung", buildConfig.environment || "nicht konfiguriert"],
+    ["Compiler-Board", buildConfig.board || "nicht konfiguriert"],
+    ["Framework", buildConfig.framework || "nicht konfiguriert"],
+    ["Flash", flashLabel],
+    ["Firmwarequelle", firmwareSource],
+    ["Template", templateLabel],
     ["Aktive Datei", state.sourcePath || "keine Datei gewaehlt"],
     ["Device", deviceLabel],
   ].map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(value)}</dd></div>`).join("");

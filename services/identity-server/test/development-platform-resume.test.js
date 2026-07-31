@@ -442,8 +442,23 @@ test("selected catalog boards expose editable defaults and require an explicitly
   assert.match(devServer, /schema_version: 5,[\s\S]*components/);
   assert.match(devServer, /\["account", "project", "custom"\]\.includes\(source\)/);
   assert.match(devServer, /compilerBoardConfiguration/);
-  assert.match(devServer, /configuredFlashValue = boardComponent\?\.board_configuration\?\.board_features\?\.flash\?\.value/);
+  assert.match(devServer, /configuredFlashValue = selectedBoardConfiguration\?\.board_features\?\.flash\?\.value/);
   assert.match(devServer, /\[4, 8, 16\]\.includes\(configuredFlashSizeMb\)/);
+  assert.match(devServer, /gameConfiguration = existingManifest\.template_id === "touchscreen_game_collection"/);
+  assert.match(devServer, /board_profile_id: selectedBoard\?\.hardware_item_id/);
+});
+
+test("keeps the effective ES3C28P compiler configuration coupled to the selected board", () => {
+  assert.match(devServer, /esp32_s3_es3c28p\|es3c28p/);
+  assert.match(devServer, /environment: "es3c28p", flash_size_mb: 16/);
+  assert.match(devServer, /firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: ""/);
+  assert.match(devServer, /touchscreenGameBuildConfigurationProblems/);
+  assert.match(devServer, /error: "touchscreen_game_build_configuration_invalid"/);
+  assert.match(devServer, /for \(const requiredPath of \["platformio\.ini", "src\/main\.cpp", "src\/board_adapter\.cpp"\]\)/);
+  assert.match(devServer, /board_build\\\.flash_size/);
+  assert.match(devServer, /ARDUINO_USB_MODE=1/);
+  assert.match(devServer, /template_id === "touchscreen_game_collection"\) return project\.build_config/);
+  assert.match(devServer, /!buildConfig\.firmware_basis_id && !files\["platformio\.ini"\]/);
 });
 
 test("motor actuators defer their board-pin specialization to the separate IDE driver view", () => {

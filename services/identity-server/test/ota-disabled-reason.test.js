@@ -60,7 +60,8 @@ test("plain project build and direct USB flash do not require an inventory devic
 
   assert.match(app, /device_id: device\?\.device_id \|\| ""/);
   assert.match(server, /if \(!device && !\["build", "build_and_usb_flash"\]\.includes\(mode\)\)/);
-  assert.match(server, /build_config: resolveBuildConfig\(project, device \|\| \{\}\)/);
+  assert.match(server, /const resolvedBuildConfig = resolveBuildConfig\(project, device \|\| \{\}\)/);
+  assert.match(server, /build_config: resolvedBuildConfig/);
   assert.match(app, /async function startUsbFlash\(\)[\s\S]*if \(!project\) return setFlashStatus\("error", "Bitte zuerst ein Projekt öffnen\."\)/);
   assert.match(server, /body\.upload_port \|\| device\?\.upload_port/);
   assert.doesNotMatch(server, /mode === "build_and_usb_flash" && !device\.usb_flash_supported/);
