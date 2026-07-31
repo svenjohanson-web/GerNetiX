@@ -721,6 +721,17 @@ const DevelopmentPlatform = (() => {
         ...boards.map((board) => `<option value="${escapeAttribute(board.hardware_item_id)}">${escapeHtml(processorBoardLabel(board))}</option>`),
       ].join("");
       boardSelect.value = configuration.board_profile_id;
+      form.querySelector("[data-game-board-configuration-host]")?.remove();
+      const selectedBoard = boards.find((board) => DevelopmentHardwareModel.boardIdentifier(board) === configuration.board_profile_id);
+      if (selectedBoard) {
+        const host = document.createElement("div");
+        host.dataset.gameBoardConfigurationHost = "";
+        host.innerHTML = renderDevelopmentBoardConfiguration({
+          component_id: "touchscreen-game-board",
+          board_configuration: configuration.board_configuration,
+        }, selectedBoard);
+        form.querySelector(".home-automation-basics")?.insertAdjacentElement("afterend", host);
+      }
       const inventorySelect = form.querySelector('[data-game-field="inventory_device_id"]');
       const inventory = touchscreenGameInventory(configuration.board_profile_id);
       inventorySelect.innerHTML = [
@@ -798,23 +809,32 @@ const DevelopmentPlatform = (() => {
     function normalizeTouchscreenGameConfiguration(value = {}) {
       const patterns = new Set(["", "touchscreen_game_loop", "event_driven_scene_loop", "turn_based_state_machine"]);
       const games = new Set(touchscreenGameOptions().map((game) => game.id));
+      const boardProfileId = String(value?.board_profile_id || "hardware.processor_board.generic_esp32_s3_touch_display");
+      const board = touchscreenGameBoards().find((item) => DevelopmentHardwareModel.boardIdentifier(item) === boardProfileId);
       return {
-        schema_version: 1,
+        schema_version: 2,
         pattern_id: patterns.has(value?.pattern_id) ? value.pattern_id : "",
         selected_game_ids: Array.from(new Set(Array.isArray(value?.selected_game_ids) ? value.selected_game_ids : ["nibbles", "snake", "frogger", "tic_tac_toe"])).filter((id) => games.has(id)),
-        board_profile_id: String(value?.board_profile_id || "hardware.processor_board.generic_esp32_s3_touch_display"),
+        board_profile_id: boardProfileId,
+        board_configuration: board ? developmentBoardConfiguration({ board_configuration: value?.board_configuration }, board) : null,
         inventory_device_id: String(value?.inventory_device_id || ""),
       };
     }
 
     function collectTouchscreenGameConfiguration() {
       const form = document.querySelector("#touchscreenGameForm");
-      return normalizeTouchscreenGameConfiguration({
+      const previous = state.developmentPlatform.gameConfiguration;
+      const configuration = normalizeTouchscreenGameConfiguration({
         ...state.developmentPlatform.gameConfiguration,
         board_profile_id: form.querySelector('[data-game-field="board_profile_id"]').value,
         inventory_device_id: form.querySelector('[data-game-field="inventory_device_id"]').value,
         selected_game_ids: Array.from(form.querySelectorAll("[data-game-id]:checked"), (input) => input.dataset.gameId),
       });
+      const board = touchscreenGameBoards().find((item) => DevelopmentHardwareModel.boardIdentifier(item) === configuration.board_profile_id);
+      configuration.board_configuration = board
+        ? collectDevelopmentBoardConfiguration(form, { board_configuration: previous?.board_configuration }, board, previous?.board_configuration)
+        : null;
+      return configuration;
     }
 
     function handleTouchscreenGameChange(event) {
@@ -822,6 +842,7 @@ const DevelopmentPlatform = (() => {
       if (event.target?.dataset.gameField === "board_profile_id") {
         state.developmentPlatform.gameConfiguration.inventory_device_id = "";
       }
+      if (event.target?.matches("[data-custom-board-name]")) return;
       synchronizeConfigurationArchitecture();
       renderArchitectureDiagram();
       renderTouchscreenGameAssistant();
@@ -829,13 +850,44 @@ const DevelopmentPlatform = (() => {
     }
 
     function handleTouchscreenGameClick(event) {
+      if (event.target.closest('[data-save-custom-board="touchscreen-game-board"]')) {
+        saveTouchscreenGameBoardConfiguration();
+        return;
+      }
       if (event.target.closest("[data-game-save]")) saveTouchscreenGameConfiguration();
+    }
+
+    async function saveTouchscreenGameBoardConfiguration() {
+      const configuration = collectTouchscreenGameConfiguration();
+      const board = touchscreenGameBoards().find((item) => DevelopmentHardwareModel.boardIdentifier(item) === configuration.board_profile_id);
+      if (!board || !boardFeaturesDiffer(configuration.board_configuration?.board_features, catalogBoardFeatureSelections(board))) {
+        setTouchscreenGameStatus("Die Boardkonfiguration entspricht noch vollständig dem Katalogstandard.");
+        return;
+      }
+      if (!configuration.board_configuration?.name) {
+        state.developmentPlatform.gameConfiguration = configuration;
+        setTouchscreenGameStatus("Bitte gib deinem eigenen Board zuerst einen Namen.");
+        return;
+      }
+      configuration.board_configuration.source = "custom";
+      configuration.board_configuration.saved_at = new Date().toISOString();
+      state.developmentPlatform.gameConfiguration = configuration;
+      synchronizeConfigurationArchitecture();
+      renderTouchscreenGameAssistant();
+      setTouchscreenGameStatus("Eigenes Board wird im Projekt gespeichert...");
+      const saved = await persistDevelopmentDialog();
+      setTouchscreenGameStatus(saved ? "Eigenes Board ist im Projekt gespeichert." : "Eigenes Board konnte nicht gespeichert werden.");
     }
 
     async function saveTouchscreenGameConfiguration() {
       const saveButton = document.querySelector("[data-game-save]");
       if (saveButton) saveButton.disabled = true;
       state.developmentPlatform.gameConfiguration = collectTouchscreenGameConfiguration();
+      if (state.developmentPlatform.gameConfiguration.board_configuration?.source === "custom_draft") {
+        setTouchscreenGameStatus("Geänderte Katalogwerte müssen zuerst als eigenes Board gespeichert werden.");
+        if (saveButton) saveButton.disabled = false;
+        return;
+      }
       synchronizeConfigurationArchitecture();
       setTouchscreenGameStatus("Spiele, Board und User-Quellen werden gespeichert...");
       const saved = await persistDevelopmentDialog();
@@ -1959,6 +2011,7 @@ const DevelopmentPlatform = (() => {
         const inventoryBoard = boards.find((board) => DevelopmentHardwareModel.boardIdentifier(board) === inventoryDevice?.hardware_profile_id);
         const processorKey = inventoryBoard ? DevelopmentHardwareModel.processorKey(inventoryBoard) : DevelopmentHardwareModel.selectionForComponent(component, boards);
         const compatibleBoards = DevelopmentHardwareModel.boardsForProcessor(boards, processorKey);
+        const selectedBoard = inventoryBoard || boards.find((board) => DevelopmentHardwareModel.boardIdentifier(board) === component.board_profile_id);
         const useInventory = Boolean(inventoryDevice);
         return `<div class="hardware-board-selection">
           <fieldset class="hardware-choice"><legend>Board aus Inventar verwenden? <button type="button" class="hardware-inline-help" data-hardware-inventory-help title="Ohne Inventar-Board kann die Zuordnung später nachgeholt werden.">?</button></legend>
@@ -1974,11 +2027,130 @@ const DevelopmentPlatform = (() => {
             <option value="">${processorKey ? "Board waehlen" : "Zuerst Prozessor waehlen"}</option>
             ${compatibleBoards.map((board) => `<option value="${escapeAttribute(DevelopmentHardwareModel.boardIdentifier(board))}" ${selected(component.board_profile_id, DevelopmentHardwareModel.boardIdentifier(board))}>${escapeHtml(processorBoardLabel(board))}</option>`).join("")}
           </select></label>`}
+          ${selectedBoard ? renderDevelopmentBoardConfiguration(component, selectedBoard) : ""}
         </div>`;
       }
       if (component.abstract_type === "sensor") return sensorRealizationControls(component);
       if (component.abstract_type === "actuator") return hardwareTypeSelect(component, actuatorTypes());
       return `<span class="hardware-not-applicable">Keine Hardware-Zuordnung</span>`;
+    }
+
+    function renderDevelopmentBoardConfiguration(component, board) {
+      const boardId = DevelopmentHardwareModel.boardIdentifier(board);
+      const configuration = developmentBoardConfiguration(component, board);
+      const defaults = catalogBoardFeatureSelections(board);
+      const featureCatalog = Array.isArray(state.boardFeatureCatalog) ? state.boardFeatureCatalog : [];
+      const changed = boardFeaturesDiffer(configuration.board_features, defaults);
+      const savedCustom = changed && configuration.source === "custom" && Boolean(configuration.saved_at);
+      const catalogStatus = state.boardFeatureCatalogStatus || { state: "idle", message: "" };
+      if (!featureCatalog.length) {
+        return `<section class="development-board-configuration" data-development-board-configuration data-board-profile-id="${escapeAttribute(boardId)}"><p class="hardware-catalog-hint ${catalogStatus.state === "error" ? "is-error" : ""}">${escapeHtml(catalogStatus.message || "Boardeinstellungen werden geladen.")}</p></section>`;
+      }
+      return `<section class="development-board-configuration ${changed ? "has-modifications" : ""}" data-development-board-configuration data-board-profile-id="${escapeAttribute(boardId)}">
+        <header>
+          <div><span>Boardkonfiguration</span><strong>${escapeHtml(board.title || boardId)}</strong><small>Katalogwerte sind die unveränderte Ausgangskonfiguration.</small></div>
+          <span class="development-board-configuration-state ${changed ? "is-modified" : "is-catalog"}">${changed ? (savedCustom ? "Eigenes Board gespeichert" : "Geändert · Speichern erforderlich") : "Katalogstandard"}</span>
+        </header>
+        <div class="development-board-feature-table-scroll"><table class="development-board-feature-table">
+          <thead><tr><th>Aktiv</th><th>Komponente</th><th>Art</th><th>Treiber</th><th>Anschluss</th><th>Pin-Zuordnung</th><th>Größe / Wert</th></tr></thead>
+          <tbody>${featureCatalog.map((feature) => renderDevelopmentBoardFeatureRow(feature, configuration.board_features?.[feature.feature_id] || {}, defaults[feature.feature_id] || {})).join("")}</tbody>
+        </table></div>
+        <footer class="development-custom-board-save ${changed ? "" : "hidden"}">
+          <label>Name des eigenen Boards<input type="text" maxlength="120" data-custom-board-name value="${escapeAttribute(configuration.name || "")}" placeholder="z. B. Mein ES3C28P mit anderer Pinbelegung"></label>
+          <button type="button" data-save-custom-board="${escapeAttribute(component.component_id)}" ${savedCustom ? "disabled" : ""}>${savedCustom ? "Eigenes Board gespeichert" : "Als eigenes Board speichern"}</button>
+          <small>Das Katalogboard bleibt unverändert. Gespeichert wird diese projektgebundene Boardkonfiguration.</small>
+        </footer>
+      </section>`;
+    }
+
+    function renderDevelopmentBoardFeatureRow(feature, current, defaults) {
+      const enabled = current.enabled === true;
+      const changed = boardFeatureDiffers(current, defaults);
+      return `<tr class="${changed ? "is-modified" : ""}" data-development-board-feature="${escapeAttribute(feature.feature_id)}">
+        <td><input type="checkbox" data-development-board-enabled ${enabled ? "checked" : ""} aria-label="${escapeAttribute(feature.title)} aktivieren"></td>
+        <td><strong>${escapeHtml(feature.title)}</strong></td>
+        <td>${developmentBoardFeatureSelect("hardware", feature.hardware_options, current.hardware, defaults.hardware, enabled)}</td>
+        <td>${developmentBoardFeatureSelect("driver", feature.driver_options, current.driver, defaults.driver, enabled)}</td>
+        <td>${developmentBoardFeatureSelect("connection", feature.connection_options, current.connection, defaults.connection, enabled)}</td>
+        <td><input class="${boardSettingChanged(current.pins, defaults.pins) ? "is-modified" : ""}" type="text" data-development-board-field="pins" value="${escapeAttribute(formatDevelopmentBoardPins(current.pins))}" placeholder="SDA=GPIO16, SCL=GPIO15" ${enabled ? "" : "disabled"}></td>
+        <td>${developmentBoardFeatureSelect("value", feature.value_options, current.value, defaults.value, enabled)}</td>
+      </tr>`;
+    }
+
+    function developmentBoardFeatureSelect(field, options, current, defaultValue, enabled) {
+      const items = Array.isArray(options) ? options : [];
+      if (!items.length) return "";
+      const known = !current || items.some((option) => option.id === current);
+      return `<select class="${boardSettingChanged(current, defaultValue) ? "is-modified" : ""}" data-development-board-field="${field}" ${enabled ? "" : "disabled"}>
+        <option value="">Bitte wählen</option>
+        ${known ? "" : `<option value="${escapeAttribute(current)}" selected>${escapeHtml(current)} (Boardprofil)</option>`}
+        ${items.map((option) => `<option value="${escapeAttribute(option.id)}" ${selected(current, option.id)}>${escapeHtml(option.title)}</option>`).join("")}
+      </select>`;
+    }
+
+    function developmentBoardConfiguration(component, board) {
+      const boardId = DevelopmentHardwareModel.boardIdentifier(board);
+      const stored = component.board_configuration;
+      if (stored?.base_board_profile_id === boardId) return stored;
+      return {
+        schema_version: 1,
+        source: "catalog",
+        name: "",
+        base_board_profile_id: boardId,
+        board_features: catalogBoardFeatureSelections(board),
+        saved_at: "",
+      };
+    }
+
+    function catalogBoardFeatureSelections(board) {
+      const defaults = board?.default_instance_configuration?.board_features || {};
+      const catalog = Array.isArray(state.boardFeatureCatalog) ? state.boardFeatureCatalog : [];
+      return Object.fromEntries(catalog.map((feature) => {
+        const selectedFeature = defaults[feature.feature_id] || {};
+        return [feature.feature_id, {
+          enabled: selectedFeature.enabled === true,
+          hardware: String(selectedFeature.hardware || ""),
+          driver: String(selectedFeature.driver || ""),
+          connection: String(selectedFeature.connection || ""),
+          pins: normalizeDevelopmentBoardPins(selectedFeature.pins),
+          value: String(selectedFeature.value || ""),
+        }];
+      }));
+    }
+
+    function boardFeaturesDiffer(current = {}, defaults = {}) {
+      const featureIds = new Set([...Object.keys(current || {}), ...Object.keys(defaults || {})]);
+      return [...featureIds].some((featureId) => boardFeatureDiffers(current?.[featureId] || {}, defaults?.[featureId] || {}));
+    }
+
+    function boardFeatureDiffers(current = {}, defaults = {}) {
+      return ["enabled", "hardware", "driver", "connection", "pins", "value"]
+        .some((field) => boardSettingChanged(current?.[field], defaults?.[field]));
+    }
+
+    function boardSettingChanged(current, defaultValue) {
+      return JSON.stringify(current ?? "") !== JSON.stringify(defaultValue ?? "");
+    }
+
+    function formatDevelopmentBoardPins(pins) {
+      return Object.entries(normalizeDevelopmentBoardPins(pins))
+        .map(([signal, pin]) => `${signal.toUpperCase()}=${pin === -1 ? "nicht verbunden" : `GPIO${pin}`}`)
+        .join(", ");
+    }
+
+    function parseDevelopmentBoardPins(value) {
+      const result = {};
+      String(value || "").split(/[,;]+/).map((item) => item.trim()).filter(Boolean).forEach((entry) => {
+        const match = entry.match(/^([a-z0-9_ -]+)\s*[=:]\s*(?:(?:gpio)?\s*(-?\d+)|nicht verbunden)$/i);
+        if (!match) return;
+        result[match[1].trim().toLowerCase().replace(/\s+/g, "_")] = /nicht verbunden/i.test(entry) ? -1 : Number(match[2]);
+      });
+      return result;
+    }
+
+    function normalizeDevelopmentBoardPins(pins) {
+      if (!pins || typeof pins !== "object" || Array.isArray(pins)) return {};
+      return Object.fromEntries(Object.entries(pins).filter(([, pin]) => Number.isInteger(pin)).map(([signal, pin]) => [String(signal), pin]));
     }
 
     function hardwareTypeSelect(component, options) {
@@ -2199,13 +2371,19 @@ const DevelopmentPlatform = (() => {
       return digital;
     }
 
-    function handleHardwareConfigurationChange() {
+    function handleHardwareConfigurationChange(event) {
+      if (event?.target?.matches("[data-custom-board-name]")) return;
       state.developmentPlatform.hardwareConfiguration = collectHardwareConfiguration();
       renderHardwareComponentTable(state.developmentPlatform.hardwareConfiguration);
       syncHardwareActions(state.developmentPlatform.hardwareConfiguration);
     }
 
-    function handleHardwareHelpClick(event) {
+    async function handleHardwareHelpClick(event) {
+      const saveCustomBoardButton = event.target.closest("[data-save-custom-board]");
+      if (saveCustomBoardButton) {
+        await saveCustomBoardConfiguration(saveCustomBoardButton.dataset.saveCustomBoard);
+        return;
+      }
       if (event.target.closest("[data-hardware-inventory-help]")) {
         setActionStatus("Kein Inventar-Board zu wählen ist erlaubt. Die konkrete Gerätezuordnung kann später nachgeholt werden; Flash und Online-Prüfung sind dann bis zur Zuordnung nicht verfügbar.");
         return;
@@ -2215,7 +2393,7 @@ const DevelopmentPlatform = (() => {
     }
 
     function collectHardwareConfiguration() {
-      const current = state.developmentPlatform.hardwareConfiguration || { schema_version: 4, components: [] };
+      const current = state.developmentPlatform.hardwareConfiguration || { schema_version: 5, components: [] };
       const boards = availableProcessorBoards();
       const components = current.components.map((component) => {
         const row = document.querySelector(`[data-hardware-component="${CSS.escape(component.component_id)}"]`);
@@ -2234,6 +2412,12 @@ const DevelopmentPlatform = (() => {
           ? DevelopmentHardwareModel.applyProcessorSelection({ ...next, board_profile_id: DevelopmentHardwareModel.boardIdentifier(inventoryBoard) }, DevelopmentHardwareModel.processorKey(inventoryBoard), boards)
           : processorInput ? DevelopmentHardwareModel.applyProcessorSelection(next, processorInput.value, boards) : next;
         Object.assign(next, processorSelection);
+        if (next.abstract_type === "iot_device") {
+          const selectedBoard = boards.find((board) => DevelopmentHardwareModel.boardIdentifier(board) === next.board_profile_id);
+          next.board_configuration = selectedBoard
+            ? collectDevelopmentBoardConfiguration(row, next, selectedBoard, component.board_configuration)
+            : null;
+        }
         if (next.inventory_device_id && !inventoryBoard) {
           next.inventory_device_id = "";
         }
@@ -2253,7 +2437,66 @@ const DevelopmentPlatform = (() => {
         next.circuit = circuitFor(next);
         return next;
       });
-      return { schema_version: 4, components, updated_at: current.updated_at || "" };
+      return { schema_version: 5, components, updated_at: current.updated_at || "" };
+    }
+
+    function collectDevelopmentBoardConfiguration(row, component, board, previous) {
+      const boardId = DevelopmentHardwareModel.boardIdentifier(board);
+      const defaults = catalogBoardFeatureSelections(board);
+      const panel = row.querySelector("[data-development-board-configuration]");
+      if (!panel || panel.dataset.boardProfileId !== boardId) {
+        return { schema_version: 1, source: "catalog", name: "", base_board_profile_id: boardId, board_features: defaults, saved_at: "" };
+      }
+      const boardFeatures = {};
+      panel.querySelectorAll("[data-development-board-feature]").forEach((featureRow) => {
+        const featureId = featureRow.dataset.developmentBoardFeature;
+        const read = (field) => featureRow.querySelector(`[data-development-board-field="${field}"]`)?.value || "";
+        boardFeatures[featureId] = {
+          enabled: Boolean(featureRow.querySelector("[data-development-board-enabled]")?.checked),
+          hardware: read("hardware"),
+          driver: read("driver"),
+          connection: read("connection"),
+          pins: parseDevelopmentBoardPins(read("pins")),
+          value: read("value"),
+        };
+      });
+      const name = panel.querySelector("[data-custom-board-name]")?.value.trim() || "";
+      const previousMatches = previous?.base_board_profile_id === boardId
+        && previous.name === name
+        && !boardFeaturesDiffer(previous.board_features, boardFeatures);
+      const changed = boardFeaturesDiffer(boardFeatures, defaults);
+      return {
+        schema_version: 1,
+        source: changed ? (previousMatches && previous.source === "custom" ? "custom" : "custom_draft") : "catalog",
+        name: changed ? name : "",
+        base_board_profile_id: boardId,
+        board_features: boardFeatures,
+        saved_at: changed && previousMatches ? previous.saved_at || "" : "",
+      };
+    }
+
+    async function saveCustomBoardConfiguration(componentId) {
+      const configuration = collectHardwareConfiguration();
+      const component = configuration.components.find((item) => item.component_id === componentId && item.abstract_type === "iot_device");
+      const board = availableProcessorBoards().find((item) => DevelopmentHardwareModel.boardIdentifier(item) === component?.board_profile_id);
+      if (!component || !board) return;
+      if (!boardFeaturesDiffer(component.board_configuration?.board_features, catalogBoardFeatureSelections(board))) {
+        setHardwareStatus("Die Boardkonfiguration entspricht noch vollständig dem Katalogstandard.");
+        return;
+      }
+      if (!component.board_configuration?.name) {
+        state.developmentPlatform.hardwareConfiguration = configuration;
+        renderHardwareComponentTable(configuration);
+        syncHardwareActions(configuration);
+        setHardwareStatus("Bitte gib deinem eigenen Board zuerst einen Namen.");
+        return;
+      }
+      component.board_configuration.source = "custom";
+      component.board_configuration.saved_at = new Date().toISOString();
+      state.developmentPlatform.hardwareConfiguration = configuration;
+      renderHardwareComponentTable(configuration);
+      syncHardwareActions(configuration);
+      await saveHardwareConfiguration(false);
     }
 
     function circuitFor(component) {
@@ -2272,6 +2515,7 @@ const DevelopmentPlatform = (() => {
       configuration.components.forEach((component) => {
         if (component.abstract_type === "iot_device" && (!component.processor_family || !component.processor_variant)) missing.push(`${component.label}: Prozessor`);
         if (component.abstract_type === "iot_device" && !component.board_profile_id) missing.push(`${component.label}: reales Board`);
+        if (component.abstract_type === "iot_device" && component.board_configuration?.source === "custom_draft") missing.push(`${component.label}: geänderte Boardkonfiguration als eigenes Board speichern`);
         if (component.abstract_type === "sensor") {
           if (!component.sensor_category) missing.push(`${component.label}: Sensorart`);
           if (!component.signal_type) missing.push(`${component.label}: Erfassung`);
@@ -2352,6 +2596,7 @@ const DevelopmentPlatform = (() => {
       if (/Kanal B/.test(detail)) return "Wähle einen zweiten freien Pin für Kanal B.";
       if (/Prozessor/.test(detail)) return "Wähle Prozessorfamilie und Prozessorvariante für dieses IoT-Device.";
       if (/reales Board/.test(detail)) return "Wähle ein zum Prozessor passendes reales Board aus dem Hardware-Katalog.";
+      if (/geänderte Boardkonfiguration/.test(detail)) return "Gib dem geänderten Boardprofil einen Namen und wähle „Als eigenes Board speichern“; das Katalogboard bleibt unverändert.";
       if (/Sensorart/.test(detail)) return "Wähle die Sensorart beziehungsweise Messgröße.";
       if (/Erfassung/.test(detail)) return "Wähle die passende Erfassungs- oder Signalart.";
       if (/Messintervall/.test(detail)) return "Gib ein positives Intervall für die zyklische Messung an.";
@@ -2374,6 +2619,12 @@ const DevelopmentPlatform = (() => {
       if (!project) return;
       const configuration = collectHardwareConfiguration();
       const validation = hardwareConfigurationValidation(configuration);
+      const unsavedBoardConfiguration = validation.missing.some((item) => /geänderte Boardkonfiguration/.test(item));
+      if (unsavedBoardConfiguration) {
+        renderHardwareHints(configuration, validation);
+        setHardwareStatus("Geänderte Katalogwerte müssen zuerst als eigenes Board gespeichert werden.");
+        return;
+      }
       if (continueToIde && !validation.complete) {
         renderHardwareHints(configuration, validation);
         setHardwareStatus("Bitte klaere zuerst die offenen Punkte in der Hinweisbox.");

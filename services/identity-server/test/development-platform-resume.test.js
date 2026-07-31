@@ -255,6 +255,11 @@ test("configures a touchscreen game collection through games, board and inventor
   assert.match(publicHtml, /aria-label="Hinweis zum Inventar-Board"[\s\S]*für OTA-Updates und den Kompatibilitätscheck relevant/);
   assert.match(publicCss, /\.home-automation-label-title \{[\s\S]*inline-flex/);
   assert.match(publicController, /function renderTouchscreenGameAssistant/);
+  assert.match(publicController, /data-game-board-configuration-host/);
+  assert.match(publicController, /renderDevelopmentBoardConfiguration\(\{[\s\S]*component_id: "touchscreen-game-board"/);
+  assert.match(publicController, /function saveTouchscreenGameBoardConfiguration/);
+  assert.match(publicController, /Eigenes Board ist im Projekt gespeichert/);
+  assert.match(publicController, /gameConfiguration\.board_configuration\?\.source === "custom_draft"/);
   assert.match(publicController, /Nibbles/);
   assert.match(publicController, /Snake/);
   assert.match(publicController, /Frogger/);
@@ -264,8 +269,10 @@ test("configures a touchscreen game collection through games, board and inventor
   assert.match(publicController, /rectangle "Board mit Touchdisplay" as device/);
   assert.doesNotMatch(publicController, /rectangle "Startbildschirm\\nSpielauswahl" as start_screen/);
   assert.match(publicController, /gameConfiguration: state\.developmentPlatform\.gameConfiguration/);
-  assert.match(publicApp, /route === "development-platform"\) loadProcessorBoardCatalog/);
+  assert.match(publicApp, /route === "development-platform"\) \{[\s\S]*loadProcessorBoardCatalog\(\);[\s\S]*loadBoardFeatureCatalog\(\)/);
   assert.match(devServer, /normalizeTouchscreenGameConfiguration/);
+  assert.match(devServer, /gameConfiguration\?\.board_configuration\?\.source === "custom_draft"/);
+  assert.match(devServer, /board_configuration: normalizeDevelopmentBoardConfiguration\(input\.board_configuration, input\.board_profile_id\)/);
   assert.match(devServer, /mergeSelectedGamesHeader\(gameConfiguration\.selected_game_ids, existingSelectedGames\?\.content\)/);
   assert.match(devServer, /game_inventory_device_not_compatible/);
 });
@@ -407,6 +414,33 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(publicCss, /\.hardware-page-actions \{[\s\S]*background: rgba\(11, 16, 24, \.96\)/);
   assert.match(publicCss, /\.hardware-overview \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) minmax\(280px, 360px\)/);
   assert.match(publicCss, /\.hardware-guidance-panel \{[\s\S]*background: #0d1520/);
+});
+
+test("selected catalog boards expose editable defaults and require an explicitly saved custom board", () => {
+  assert.match(publicApp, /if \(route === "development-hardware"\) \{[\s\S]*loadBoardFeatureCatalog\(\)/);
+  assert.match(publicApp, /routeName\(\) === "development-hardware"\) developmentPlatform\(\)\.renderHardwareConfiguration\(\)/);
+  assert.match(publicController, /selectedBoard \? renderDevelopmentBoardConfiguration\(component, selectedBoard\) : ""/);
+  assert.match(publicController, /function renderDevelopmentBoardConfiguration/);
+  assert.match(publicController, /board\?\.default_instance_configuration\?\.board_features/);
+  assert.match(publicController, /Katalogwerte sind die unveränderte Ausgangskonfiguration/);
+  assert.match(publicController, /Aktiv[\s\S]*Komponente[\s\S]*Art[\s\S]*Treiber[\s\S]*Anschluss[\s\S]*Pin-Zuordnung[\s\S]*Größe \/ Wert/);
+  assert.match(publicController, /Geändert · Speichern erforderlich/);
+  assert.match(publicController, /data-custom-board-name/);
+  assert.match(publicController, /data-save-custom-board/);
+  assert.match(publicController, /Das Katalogboard bleibt unverändert\. Gespeichert wird diese projektgebundene Boardkonfiguration/);
+  assert.match(publicController, /source: changed \? \(previousMatches && previous\.source === "custom" \? "custom" : "custom_draft"\) : "catalog"/);
+  assert.match(publicController, /component\.board_configuration\.source = "custom"/);
+  assert.match(publicController, /component\.board_configuration\.saved_at = new Date\(\)\.toISOString\(\)/);
+  assert.match(publicController, /await saveHardwareConfiguration\(false\)/);
+  assert.match(publicController, /geänderte Boardkonfiguration als eigenes Board speichern/);
+  assert.match(publicCss, /\.development-board-configuration\.has-modifications \{ border-color: #f59e0b/);
+  assert.match(publicCss, /\.development-board-feature-table tr\.is-modified \{ background: rgba\(245, 158, 11, \.08\)/);
+  assert.match(devServer, /error: "custom_board_not_saved"/);
+  assert.match(devServer, /board_configuration: abstractType === "iot_device" \? normalizeDevelopmentBoardConfiguration/);
+  assert.match(devServer, /schema_version: 5,[\s\S]*components/);
+  assert.match(devServer, /source === "custom" \? String\(input\.saved_at/);
+  assert.match(devServer, /configuredFlashValue = boardComponent\?\.board_configuration\?\.board_features\?\.flash\?\.value/);
+  assert.match(devServer, /\[4, 8, 16\]\.includes\(configuredFlashSizeMb\)/);
 });
 
 test("motor actuators expose a concrete motor controller selection", () => {

@@ -2611,6 +2611,10 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
   const gameConfiguration = normalizeTouchscreenGameConfiguration(
     body.gameConfiguration || body.game_configuration || existingManifest.game_configuration,
   );
+  if (gameConfiguration?.board_configuration?.source === "custom_draft") {
+    sendJson(res, 409, { error: "custom_board_not_saved", message: "Die geänderte Touch-Display-Boardkonfiguration muss zuerst als eigenes Board gespeichert werden." });
+    return;
+  }
   let buildConfig = project.build_config || null;
   let selectedBoard = null;
   let selectedInventoryDevice = null;
@@ -2625,7 +2629,12 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
       sendJson(res, 409, { error: "game_board_not_touchscreen", message: "Das gewaehlte Board besitzt laut Hardware-Katalog keinen integrierten Touchscreen." });
       return;
     }
-    if (selectedBoard) buildConfig = buildConfigForBoard(selectedBoard.hardware_item_id, buildConfig);
+    if (selectedBoard) {
+      buildConfig = buildConfigForBoard(selectedBoard.hardware_item_id, buildConfig);
+      const configuredFlashValue = gameConfiguration.board_configuration?.board_features?.flash?.value || "";
+      const configuredFlashSizeMb = Number(String(configuredFlashValue).match(/^(\d+)_mb$/)?.[1] || 0);
+      if (buildConfig && [4, 8, 16].includes(configuredFlashSizeMb)) buildConfig.flash_size_mb = configuredFlashSizeMb;
+    }
     if (gameConfiguration.inventory_device_id) {
       const inventoryDevices = await loadUserIdeDevices(session);
       selectedInventoryDevice = inventoryDevices.find((device) => device.device_id === gameConfiguration.inventory_device_id) || null;
@@ -2697,6 +2706,11 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
   });
   const diagram = architectureDiagramFromManifest(existingManifest);
   const hardwareConfiguration = normalizeHardwareConfiguration(body.hardware_configuration || body.hardwareConfiguration, project);
+  const unsavedBoard = hardwareConfiguration.components.find((component) => component.abstract_type === "iot_device" && component.board_configuration?.source === "custom_draft");
+  if (unsavedBoard) {
+    sendJson(res, 409, { error: "custom_board_not_saved", message: `Die geänderte Boardkonfiguration für ${unsavedBoard.label} muss zuerst als eigenes Board gespeichert werden.` });
+    return;
+  }
   const boardComponent = hardwareConfiguration.components.find((component) => component.abstract_type === "iot_device" && component.board_profile_id);
   const baseBuildConfig = boardComponent
     ? buildConfigForBoard(boardComponent.board_profile_id, project.build_config)
@@ -2728,6 +2742,8 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
   const allocatedBasissoftwareProfile = primaryInventoryDevice?.instance_configuration?.basissoftware_profile || null;
   const allocatedFlashValue = primaryInventoryDevice?.instance_configuration?.board_features?.flash?.value || "";
   const allocatedFlashSizeMb = Number(String(allocatedFlashValue).match(/^(\d+)_mb$/)?.[1] || 0);
+  const configuredFlashValue = boardComponent?.board_configuration?.board_features?.flash?.value || "";
+  const configuredFlashSizeMb = Number(String(configuredFlashValue).match(/^(\d+)_mb$/)?.[1] || 0);
   const buildConfig = baseBuildConfig ? {
     ...baseBuildConfig,
     component_device_allocations: allocations,
@@ -2736,6 +2752,7 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
       partition_profile_id: allocatedBasissoftwareProfile.partition_profile_id,
       flash_size_mb: allocatedFlashSizeMb || undefined,
     } : {}),
+    ...(!allocatedBasissoftwareProfile && [4, 8, 16].includes(configuredFlashSizeMb) ? { flash_size_mb: configuredFlashSizeMb } : {}),
   } : null;
   const sources = hardwareConfigurationSources(hardwareConfiguration, project.title);
   await Promise.all(sources.map((source) => projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
@@ -4726,10 +4743,11 @@ function normalizeTouchscreenGameConfiguration(input) {
     .filter((id) => games.has(id))
     .slice(0, 7);
   return {
-    schema_version: 1,
+    schema_version: 2,
     pattern_id: patterns.has(input.pattern_id) ? input.pattern_id : "",
     selected_game_ids: selectedGameIds,
     board_profile_id: String(input.board_profile_id || "").slice(0, 180),
+    board_configuration: normalizeDevelopmentBoardConfiguration(input.board_configuration, input.board_profile_id),
     inventory_device_id: String(input.inventory_device_id || "").slice(0, 180),
     updated_at: new Date().toISOString(),
   };
@@ -4864,6 +4882,7 @@ function normalizeHardwareConfiguration(input = {}, project = {}) {
       processor_family: String(component.processor_family || "").trim().toLowerCase().slice(0, 80),
       processor_variant: String(component.processor_variant || "").trim().slice(0, 120),
       board_profile_id: String(component.board_profile_id || "").slice(0, 180),
+      board_configuration: abstractType === "iot_device" ? normalizeDevelopmentBoardConfiguration(component.board_configuration, component.board_profile_id) : null,
       inventory_device_id: String(component.inventory_device_id || "").slice(0, 180),
       inventory_device_label: String(component.inventory_device_label || "").slice(0, 180),
       target_device_id: String(component.target_device_id || "").replace(/[^A-Za-z0-9_]/g, "_").slice(0, 80),
@@ -4881,9 +4900,45 @@ function normalizeHardwareConfiguration(input = {}, project = {}) {
     return normalized;
   });
   return {
-    schema_version: 4,
+    schema_version: 5,
     components,
     updated_at: new Date().toISOString(),
+  };
+}
+
+function normalizeDevelopmentBoardConfiguration(input, boardProfileId) {
+  if (!boardProfileId || !input || typeof input !== "object") return null;
+  const source = ["catalog", "custom", "custom_draft"].includes(input.source) ? input.source : "catalog";
+  const boardFeatures = {};
+  const rawFeatures = input.board_features && typeof input.board_features === "object" && !Array.isArray(input.board_features)
+    ? input.board_features
+    : {};
+  for (const [featureId, value] of Object.entries(rawFeatures).slice(0, 30)) {
+    const normalizedId = String(featureId).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 60);
+    if (!normalizedId || !value || typeof value !== "object" || Array.isArray(value)) continue;
+    const pins = {};
+    if (value.pins && typeof value.pins === "object" && !Array.isArray(value.pins)) {
+      for (const [signal, pin] of Object.entries(value.pins).slice(0, 30)) {
+        const normalizedSignal = String(signal).replace(/[^A-Za-z0-9_-]/g, "").slice(0, 60);
+        if (normalizedSignal && Number.isInteger(pin) && pin >= -1 && pin <= 255) pins[normalizedSignal] = pin;
+      }
+    }
+    boardFeatures[normalizedId] = {
+      enabled: value.enabled === true,
+      hardware: String(value.hardware || "").slice(0, 100),
+      driver: String(value.driver || "").slice(0, 100),
+      connection: String(value.connection || "").slice(0, 100),
+      pins,
+      value: String(value.value || "").slice(0, 100),
+    };
+  }
+  return {
+    schema_version: 1,
+    source,
+    name: source === "catalog" ? "" : String(input.name || "").trim().slice(0, 120),
+    base_board_profile_id: String(boardProfileId).slice(0, 180),
+    board_features: boardFeatures,
+    saved_at: source === "custom" ? String(input.saved_at || "").slice(0, 40) : "",
   };
 }
 
@@ -4959,17 +5014,27 @@ function primaryHardwareComponentPath(devices) {
 }
 
 function hardwareBoardMarkdown(device) {
-  return [
+  const boardConfiguration = device.board_configuration || null;
+  const lines = [
     `# Board-Konfiguration: ${device.label}`,
     "",
     `- Prozessorfamilie: ${device.processor_family || "noch nicht gewaehlt"}`,
     `- Prozessor: ${device.processor_variant || "noch nicht gewaehlt"}`,
     `- Board-Profil: ${device.board_profile_id || "noch nicht gewaehlt"}`,
+    `- Konfiguration: ${boardConfiguration?.source === "custom" ? `Eigenes Board „${boardConfiguration.name}“` : "Katalogstandard"}`,
     `- Abstrakte Komponente: ${device.component_id}`,
+  ];
+  for (const [featureId, feature] of Object.entries(boardConfiguration?.board_features || {})) {
+    if (!feature.enabled) continue;
+    const pins = Object.entries(feature.pins || {}).map(([signal, pin]) => `${signal}=GPIO${pin}`).join(", ");
+    lines.push(`- ${featureId}: ${[feature.hardware, feature.driver, feature.connection, feature.value, pins].filter(Boolean).join(" · ")}`);
+  }
+  lines.push(
     "",
     "Diese Auswahl konkretisiert das abstrakte IoT-Device. Sensoren, Aktoren und Pins bleiben in den zugehoerigen Hardware-Sichten getrennt.",
     "",
-  ].join("\n");
+  );
+  return lines.join("\n");
 }
 
 function hardwareIoMarkdown(kind, device, components) {
@@ -5011,7 +5076,8 @@ function hardwareWiringPlantUml(configuration, title) {
       device.label,
       `Prozessorfamilie: ${device.processor_family || "offen"}`,
       `Prozessor: ${device.processor_variant || "offen"}`,
-      `Board: ${device.board_profile_id || "offen"}`,
+      `Board: ${device.board_configuration?.source === "custom" ? device.board_configuration.name : device.board_profile_id || "offen"}`,
+      ...(device.board_configuration?.source === "custom" ? [`Basisprofil: ${device.board_profile_id}`] : []),
       ...hardwarePropertyLines(device.properties),
     ]);
     lines.push(`node "${deviceLabel}" as hw_${device.component_id}`);

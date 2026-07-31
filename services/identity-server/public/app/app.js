@@ -548,9 +548,13 @@ function renderRoute() {
   });
   if (enteringDevelopmentPlatform) developmentPlatform().enterProjectStart();
   else if (route === "development-platform") developmentPlatform().render();
-  if (route === "development-platform") loadProcessorBoardCatalog();
+  if (route === "development-platform") {
+    loadProcessorBoardCatalog();
+    loadBoardFeatureCatalog();
+  }
   if (route === "development-hardware") {
     loadProcessorBoardCatalog();
+    loadBoardFeatureCatalog();
     loadSensorCatalog();
     developmentPlatform().renderHardwareConfiguration();
   }
@@ -911,6 +915,8 @@ async function loadBoardFeatureCatalog({ force = false } = {}) {
         message: state.boardFeatureCatalog.length ? "" : "Der Hardware Catalog enthält keine Ausstattungsoptionen.",
       };
       renderNetworkDiscovery();
+      if (routeName() === "development-hardware") developmentPlatform().renderHardwareConfiguration();
+      if (routeName() === "development-platform") developmentPlatform().render();
     })
     .catch((error) => {
       state.boardFeatureCatalog = [];
@@ -919,6 +925,8 @@ async function loadBoardFeatureCatalog({ force = false } = {}) {
         message: error.message || "Hardware-Katalog nicht erreichbar.",
       };
       renderNetworkDiscovery();
+      if (routeName() === "development-hardware") developmentPlatform().renderHardwareConfiguration();
+      if (routeName() === "development-platform") developmentPlatform().render();
     })
     .finally(() => {
       boardFeatureCatalogLoadPromise = null;
