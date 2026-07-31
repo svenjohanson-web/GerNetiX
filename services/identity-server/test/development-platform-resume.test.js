@@ -194,8 +194,14 @@ test("uses one component configuration for every template except the game collec
   assert.match(publicCss, /\.template-component-connection-hints \{/);
 });
 
+test("keeps the selected component type when a custom label does not describe it", () => {
+  assert.match(publicController, /hardwareComponentType\(label, match\[1\], match\[3\]\)/);
+  assert.match(publicController, /\["iot_device", "sensor", "actuator", "smartphone_app", "browser_app", "desktop_app", "server_api"\]/);
+  assert.match(publicController, /alias === type \|\| alias\.startsWith\(`\$\{type\}_`\)/);
+});
+
 test("preserves managed event-application component types when PlantUML is reopened", () => {
-  assert.match(publicController, /function hardwareComponentType\(label, plantUmlType\)/);
+  assert.match(publicController, /function hardwareComponentType\(label, plantUmlType, componentId = ""\)/);
   assert.match(publicController, /projekt\.runtime\.daten.*return "project_runtime_data"/);
   assert.match(publicController, /ereignis\.worker.*return "event_worker"/);
   assert.match(publicController, /ereignis\.dispatcher.*return "event_dispatcher"/);

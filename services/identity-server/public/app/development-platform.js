@@ -1958,7 +1958,7 @@ const DevelopmentPlatform = (() => {
           component_id: match[3],
           label,
           plantuml_type: match[1].toLowerCase(),
-          abstract_type: hardwareComponentType(label, match[1]),
+          abstract_type: hardwareComponentType(label, match[1], match[3]),
           concrete_type: "",
           sensor_category: "",
           signal_type: "",
@@ -2001,9 +2001,13 @@ const DevelopmentPlatform = (() => {
       return assignments;
     }
 
-    function hardwareComponentType(label, plantUmlType) {
+    function hardwareComponentType(label, plantUmlType, componentId = "") {
       const text = String(label || "").toLowerCase();
       if (String(plantUmlType).toLowerCase() === "actor") return "actor";
+      const alias = String(componentId || "").toLowerCase();
+      const explicitType = ["iot_device", "sensor", "actuator", "smartphone_app", "browser_app", "desktop_app", "server_api"]
+        .find((type) => alias === type || alias.startsWith(`${type}_`));
+      if (explicitType) return explicitType;
       // The start architecture is persisted as PlantUML.  Preserve the semantic
       // component types of managed project services when it is read back into
       // the editor; otherwise they would all fall through to "structural".
