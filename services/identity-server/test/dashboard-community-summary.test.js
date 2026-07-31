@@ -1,3 +1,4 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -5,7 +6,7 @@ const test = require("node:test");
 
 const { summarizeCommunityQuestions } = require("../src/dev/community-summary");
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
-const app = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
+const app = readPlatformAppSource();
 const server = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
 
 test("summarizes own community requests by visibility and lifecycle", () => {

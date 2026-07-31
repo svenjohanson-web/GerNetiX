@@ -1,19 +1,22 @@
 "use strict";
 
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
+
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
 const root = path.join(__dirname, "..");
-const server = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
+const server = [path.join(root, "src", "dev-server.js"), path.join(root, "src", "dev", "server", "project-routes.js")]
+  .map((file) => fs.readFileSync(file, "utf8")).join("\n");
 const html = fs.readFileSync(path.join(root, "public", "app", "index.html"), "utf8");
-const client = fs.readFileSync(path.join(root, "public", "app", "app.js"), "utf8");
+const client = readPlatformAppSource();
 
 test("protects Git Light with the Premium project-history entitlement", () => {
   assert.match(server, /"project_history"/);
-  assert.match(server, /platformVersions[\s\S]*requireEntitlement\(res, session, "project_history"\)/);
-  assert.match(server, /platformVersionRestore[\s\S]*requireEntitlement\(res, session, "project_history"\)/);
+  assert.match(server, /projects\\\/\(\[\^\/\]\+\)\\\/versions[\s\S]*requireEntitlement\(res, session, "project_history"\)/);
+  assert.match(server, /versions\\\/\(\[\^\/\]\+\)\\\/restore[\s\S]*requireEntitlement\(res, session, "project_history"\)/);
 });
 
 test("offers versions with or without a freshly built binary", () => {

@@ -158,7 +158,7 @@ test("build job persists a certificate-authenticated FlashBox delivery for one h
   assert.equal(published.length, 1);
 });
 
-test("successive project builds restore and update the PlatformIO incremental cache", async () => {
+test("successive project builds reuse PlatformIO cache until compiler configuration changes", async () => {
   const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-incremental-build-"));
   const config = createConfig({
     BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
@@ -167,15 +167,20 @@ test("successive project builds restore and update the PlatformIO incremental ca
   });
   const service = createDefaultBuildDeployService(config);
   const observedCacheStates = [];
+  const observedManagedComponentStates = [];
   const observedWorkspaces = [];
   const sourceModifiedTimes = [];
   service.runner.run = async (job, packageDir) => {
     observedWorkspaces.push(packageDir);
     sourceModifiedTimes.push((await fs.stat(path.join(packageDir, "src", "main.cpp"))).mtimeMs);
     const marker = path.join(packageDir, ".pio", "build", "cache-marker.txt");
+    const managedComponentMarker = path.join(packageDir, "managed_components", "cache-marker.txt");
     observedCacheStates.push(await fs.readFile(marker, "utf8").catch(() => "missing"));
+    observedManagedComponentStates.push(await fs.readFile(managedComponentMarker, "utf8").catch(() => "missing"));
     await fs.mkdir(path.dirname(marker), { recursive: true });
+    await fs.mkdir(path.dirname(managedComponentMarker), { recursive: true });
     await fs.writeFile(marker, job.job_id);
+    await fs.writeFile(managedComponentMarker, job.job_id);
     const outputDir = path.join(packageDir, ".test-artifacts");
     await fs.mkdir(outputDir, { recursive: true });
     const artifacts = {
@@ -187,26 +192,33 @@ test("successive project builds restore and update the PlatformIO incremental ca
     return { status: "succeeded", artifacts };
   };
 
-  for (const jobId of ["incremental-1", "incremental-2"]) {
+  for (const [jobId, platformioIni] of [
+    ["incremental-1", "[env:test]\nplatform = espressif32\n"],
+    ["incremental-2", "[env:test]\nplatform = espressif32\n"],
+    ["incremental-3", "[env:test]\nplatform = espressif32@6.11.0\n"],
+  ]) {
     await service.submitJob({
       job_id: jobId,
       project_id: "project-1",
       device_id: "device-1",
       mode: "build",
       build_package: { files: {
-        "platformio.ini": "[env:test]\n",
+        "platformio.ini": platformioIni,
         "src/main.cpp": "void setup() {}\nvoid loop() {}\n",
       } },
     });
     await service.jobs.get(jobId).promise;
   }
 
-  assert.deepEqual(observedCacheStates, ["missing", "incremental-1"]);
+  assert.deepEqual(observedCacheStates, ["missing", "incremental-1", "missing"]);
+  assert.deepEqual(observedManagedComponentStates, ["missing", "incremental-1", "missing"]);
   assert.equal(observedWorkspaces[0], observedWorkspaces[1]);
+  assert.equal(observedWorkspaces[1], observedWorkspaces[2]);
   assert.equal(sourceModifiedTimes[0], sourceModifiedTimes[1]);
+  assert.equal(sourceModifiedTimes[1], sourceModifiedTimes[2]);
   assert.equal(
     await fs.readFile(path.join(config.incrementalCacheDir, "project-1--device-1", "workspace", ".pio", "build", "cache-marker.txt"), "utf8"),
-    "incremental-2",
+    "incremental-3",
   );
   assert.equal(await fs.readFile(path.join(observedWorkspaces[1], "src", "main.cpp"), "utf8"), "void setup() {}\nvoid loop() {}\n");
 });
@@ -374,6 +386,48 @@ test("incremental build repairs a PlatformIO cache with partial managed componen
     await service.jobs.get(jobId).promise;
     assert.equal(service.getJob(jobId).status, "succeeded");
   }
+});
+
+test("project clean removes every target cache and preserves other projects", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-project-clean-"));
+  const config = createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  });
+  const service = createDefaultBuildDeployService(config);
+  const cameraCache = path.join(config.incrementalCacheDir, "project-clean--camera_sender--default");
+  const displayCache = path.join(config.incrementalCacheDir, "project-clean--display_receiver--default");
+  const unrelatedCache = path.join(config.incrementalCacheDir, "other-project--camera_sender--default");
+  await Promise.all([cameraCache, displayCache, unrelatedCache].map((cacheDir) => fs.mkdir(cacheDir, { recursive: true })));
+
+  const result = await service.cleanProjectCache({ project_id: "project-clean" });
+
+  assert.deepEqual(result, { project_id: "project-clean", removed_cache_count: 2, status: "clean" });
+  await assert.rejects(fs.access(cameraCache), /ENOENT/);
+  await assert.rejects(fs.access(displayCache), /ENOENT/);
+  await fs.access(unrelatedCache);
+});
+
+test("project clean is rejected while a project build is running", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-project-clean-running-"));
+  const service = createDefaultBuildDeployService(createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  }));
+  service.runner.run = async () => new Promise(() => {});
+  await service.submitJob({
+    job_id: "active-project-build",
+    project_id: "project-active",
+    mode: "build",
+    build_package: { files: { "platformio.ini": "[env:test]\nplatform = espressif32\n" } },
+  });
+
+  await assert.rejects(
+    service.cleanProjectCache({ project_id: "project-active" }),
+    (error) => error.code === "build_in_progress" && error.status === 409,
+  );
 });
 
 test("prebuild cannot trigger deploy", async () => {

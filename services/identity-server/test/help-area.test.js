@@ -1,3 +1,4 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -6,10 +7,27 @@ const vm = require("node:vm");
 
 const appRoot = path.join(__dirname, "..", "public", "app");
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
-const app = fs.readFileSync(path.join(appRoot, "app.js"), "utf8");
+const app = readPlatformAppSource();
 const css = fs.readFileSync(path.join(appRoot, "app.css"), "utf8");
 const helpOnlyContent = fs.readFileSync(path.join(appRoot, "help-content.js"), "utf8");
-const knowledgeContent = fs.readFileSync(path.join(appRoot, "knowledge-content.js"), "utf8");
+const knowledgeArticleFiles = [
+  "knowledge-articles-engineering.js",
+  "knowledge-articles-electrical-engineering.js",
+  "knowledge-articles-sensors-actuators.js",
+  "knowledge-articles-embedded.js",
+  "knowledge-articles-radio.js",
+  "knowledge-articles-software.js",
+  "knowledge-articles-distributed-systems.js",
+  "knowledge-articles-ai.js",
+  "knowledge-articles-cross-cutting.js",
+  "knowledge-articles-glossary.js",
+];
+const knowledgeCatalogContent = fs.readFileSync(path.join(appRoot, "knowledge-content.js"), "utf8");
+const distributedKnowledgeContent = fs.readFileSync(path.join(appRoot, "knowledge-articles-distributed-systems.js"), "utf8");
+const knowledgeContent = [
+  ...knowledgeArticleFiles.map((file) => fs.readFileSync(path.join(appRoot, file), "utf8")),
+  knowledgeCatalogContent,
+].join("\n");
 const normalizedHelpContent = helpOnlyContent.replace(/,\n\s*/g, ", ");
 const normalizedKnowledgeContent = knowledgeContent.replace(/,\n\s*/g, ", ");
 const helpContent = `${normalizedHelpContent}\n${normalizedKnowledgeContent}`;
@@ -47,6 +65,7 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(html, /id="informationMount"/);
   assert.match(html, /help-content\.js/);
   assert.match(html, /knowledge-content\.js/);
+  assert.ok(knowledgeArticleFiles.every((file) => html.includes(`/app/${file}`)));
   assert.match(html, /help-chat-service\.js/);
   assert.match(html, /information-view\.js/);
   assert.match(helpContent, /const topics = \[/);
@@ -97,6 +116,14 @@ test("keeps help content, navigation and assistant integration independently ext
   assert.match(helpContent, /externe KI-Anbieter/);
   assert.match(informationView, /lokale Hilfe-Modell und ist für angemeldete Konten kostenlos/);
   assert.match(informationView, /access\.hasAccount/);
+});
+
+test("keeps knowledge articles in focused topic modules", () => {
+  assert.ok(Buffer.byteLength(knowledgeCatalogContent, "utf8") < 15000);
+  assert.match(knowledgeCatalogContent, /const articles = Object\.assign/);
+  assert.doesNotMatch(knowledgeCatalogContent, /"radio-technologies-understand": \{/);
+  assert.match(fs.readFileSync(path.join(appRoot, "knowledge-articles-radio.js"), "utf8"), /"radio-technologies-understand": \{/);
+  assert.match(fs.readFileSync(path.join(appRoot, "knowledge-articles-sensors-actuators.js"), "utf8"), /"sensors": \{[\s\S]*"actuators": \{/);
 });
 
 test("shows compatible hardware from the catalog and explains USB provisioning limits", () => {
@@ -393,9 +420,9 @@ test("explains optional embedded, local, global and iPhone system landscapes in 
   assert.match(helpContent, /Cloud ist nicht einfach ein fremder Server/);
   assert.match(helpContent, /bei mehr Anfragen mehr parallel ausgeführt; sinkt die Last, werden Ressourcen wieder reduziert/);
   assert.match(helpContent, /"choosing-servers": \{[\s\S]*Wie du auswählst[\s\S]*Mit kleinster sinnvoller Architektur beginnen/);
-  const cloudChapter = helpContent.match(/"cloud-services": \{[\s\S]*?"workers-and-queues": \{/s)?.[0] || "";
+  const cloudChapter = distributedKnowledgeContent.match(/"cloud-services": \{[\s\S]*?"choosing-servers": \{/s)?.[0] || "";
   assert.match(cloudChapter, /Die Kostenfalle Cloud-Computing[\s\S]*Typische Ursachen[\s\S]*Jede Ausführung muss begrenzt sein/);
-  const internetVpsChapter = helpContent.match(/"internet-vps": \{[\s\S]*?"cloud-services": \{/s)?.[0] || "";
+  const internetVpsChapter = distributedKnowledgeContent.match(/"internet-vps": \{[\s\S]*?"home-server-internet-security": \{/s)?.[0] || "";
   assert.match(internetVpsChapter, /Auswirkungen im Alltag[\s\S]*Performance[\s\S]*Sicherheit[\s\S]*Skalierbarkeit[\s\S]*Betriebsaufwand/);
   assert.match(helpContent, /Sicherheit eines lokalen Servers[\s\S]*Verwaltungsoberflächen[\s\S]*VPN/);
   assert.match(internetVpsChapter, /Sicherheitsverantwortung: dedizierter Server und VPS[\s\S]*Virtualisierungsplattform[\s\S]*Mehrfaktor-Authentisierung/);
@@ -527,7 +554,11 @@ test("keeps help and knowledge models physically disjoint", () => {
 });
 
 test("separates the knowledge portal from platform help while reusing a neutral view", () => {
-  const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
+  const server = [
+    "dev-server.js",
+    path.join("dev", "server", "knowledge-routes.js"),
+    path.join("dev", "server", "web-routes.js"),
+  ].map((file) => fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8")).join("\n");
   assert.match(helpOnlyContent, /const HelpContent =/);
   assert.match(knowledgeContent, /const KnowledgeContent =/);
   assert.match(helpOnlyContent, /const articleAccess =/);
@@ -547,7 +578,7 @@ test("separates the knowledge portal from platform help while reusing a neutral 
   assert.doesNotMatch(knowledgeBookView, /accessBadge/);
   assert.match(knowledgeBookView, /renderPaywall|renderArticle/);
   assert.match(css, /\.help-paywall/);
-  assert.match(server, /\["\/hilfe", "\/hilfe\/", "\/wissen", "\/wissen\/"\]\.includes\(url\.pathname\)[\s\S]*serveStatic\(res, appDir, "\/index\.html"\)/);
+  assert.match(server, /\["\/hilfe", "\/hilfe\/", "\/wissen", "\/wissen\/"\][\s\S]*serveStatic\(res, appDir, "\/index\.html"\)/);
   assert.doesNotMatch(server, /url\.pathname === "\/app\/help"/);
   assert.match(app, /const isPublicHelpPage/);
   assert.match(app, /const isPublicKnowledgePage/);

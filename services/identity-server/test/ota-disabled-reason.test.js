@@ -1,3 +1,4 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -5,7 +6,7 @@ const test = require("node:test");
 
 const publicRoot = path.resolve(__dirname, "../public/app");
 const html = fs.readFileSync(path.join(publicRoot, "index.html"), "utf8");
-const app = fs.readFileSync(path.join(publicRoot, "app.js"), "utf8");
+const app = readPlatformAppSource();
 const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
 
 test("build and flash actions expose their concrete prerequisite without becoming inert", () => {
@@ -78,7 +79,7 @@ test("build and flash actions expose their concrete prerequisite without becomin
 });
 
 test("plain project build and direct USB flash do not require an inventory device", () => {
-  const app = fs.readFileSync(path.join(__dirname, "..", "public", "app", "app.js"), "utf8");
+  const app = readPlatformAppSource();
 
   assert.match(app, /device_id: device\?\.device_id \|\| ""/);
   assert.match(server, /if \(!device && !\["build", "build_and_usb_flash"\]\.includes\(mode\)\)/);

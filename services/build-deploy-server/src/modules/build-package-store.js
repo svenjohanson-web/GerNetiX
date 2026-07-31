@@ -1,5 +1,6 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
+const crypto = require("node:crypto");
 const { BuildDeployError } = require("../errors");
 
 class BuildPackageStore {
@@ -21,10 +22,18 @@ class BuildPackageStore {
     const jobDir = persistentCacheDir || path.join(this.tempDir, sanitizeName(job.job_id));
     const packageDir = persistentCacheDir ? path.join(jobDir, "workspace") : path.join(jobDir, "build-package");
     const packageManifestPath = path.join(jobDir, ".gernetix-package-files.json");
+    const platformioConfigHashPath = path.join(jobDir, ".gernetix-platformio-config.sha256");
     if (!persistentCacheDir) await fs.rm(jobDir, { recursive: true, force: true });
     await fs.mkdir(packageDir, { recursive: true });
 
     try {
+      const platformioConfigHash = persistentCacheDir
+        ? await invalidatePlatformioCacheForChangedConfiguration(
+          packageDir,
+          platformioConfigHashPath,
+          files["platformio.ini"],
+        )
+        : "";
       const expectedPaths = new Set();
       for (const [relativePath, content] of Object.entries(files)) {
         const targetPath = resolveInside(packageDir, relativePath);
@@ -39,6 +48,7 @@ class BuildPackageStore {
       }
       await fs.writeFile(packageManifestPath, JSON.stringify(Array.from(expectedPaths).sort(), null, 2));
       await repairIncompleteEspIdfCache(packageDir);
+      if (platformioConfigHash) await fs.writeFile(platformioConfigHashPath, `${platformioConfigHash}\n`);
     } catch (error) {
       if (!persistentCacheDir) await this.cleanup({ jobDir, persistent: false });
       throw error;
@@ -73,10 +83,39 @@ class BuildPackageStore {
     return path.join(this.incrementalCacheDir, sanitizeName(targetKey));
   }
 
+  async cleanIncrementalProjectCache(projectId) {
+    if (!this.incrementalCacheDir) return 0;
+    const projectKey = sanitizeName(projectId);
+    if (!projectKey) return 0;
+    const entries = await fs.readdir(this.incrementalCacheDir, { withFileTypes: true }).catch(() => []);
+    const cacheDirectories = entries
+      .filter((entry) => entry.isDirectory() && entry.name.startsWith(`${projectKey}--`))
+      .map((entry) => path.join(this.incrementalCacheDir, entry.name));
+    await Promise.all(cacheDirectories.map((cacheDir) => fs.rm(cacheDir, { recursive: true, force: true })));
+    return cacheDirectories.length;
+  }
+
   async cleanup(workspace) {
     const normalized = typeof workspace === "string" ? { jobDir: workspace, persistent: false } : workspace;
     if (!normalized?.persistent) await fs.rm(normalized.jobDir, { recursive: true, force: true });
   }
+}
+
+async function invalidatePlatformioCacheForChangedConfiguration(packageDir, hashPath, content) {
+  if (content === undefined) return "";
+  const normalized = normalizeContent(content);
+  const hash = crypto.createHash("sha256").update(normalized).digest("hex");
+  const previousHash = await fs.readFile(hashPath, "utf8").then((value) => value.trim()).catch(() => "");
+  if (previousHash !== hash) {
+    await Promise.all([
+      fs.rm(path.join(packageDir, ".pio"), { recursive: true, force: true }),
+      fs.rm(path.join(packageDir, "managed_components"), { recursive: true, force: true }),
+      fs.rm(path.join(packageDir, "dependencies.lock"), { force: true }),
+      fs.rm(path.join(packageDir, "sdkconfig"), { force: true }),
+      fs.rm(path.join(packageDir, "sdkconfig.old"), { force: true }),
+    ]);
+  }
+  return hash;
 }
 
 async function writeFileIfChanged(filePath, content) {

@@ -1,9 +1,10 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
-const app = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
+const app = readPlatformAppSource();
 const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
 

@@ -1,13 +1,16 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 const vm = require("node:vm");
 
-const app = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
+const app = readPlatformAppSource();
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
 const boardPlugin = fs.readFileSync(path.resolve(__dirname, "../public/app/board-configuration-plugin.js"), "utf8");
-const server = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
+const server = ["dev-server.js", path.join("dev", "server", "project-routes.js")]
+  .map((file) => fs.readFileSync(path.resolve(__dirname, "../src", file), "utf8"))
+  .join("\n");
 const guidedProjectView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
 
 test("IDE exposes component properties and an embedded web interface workspace", () => {
@@ -63,7 +66,7 @@ test("project browser keeps one flat IoT device configuration folder", () => {
   assert.match(app, /relativePath = relativePath\.replace\(\/\^Konfiguration/);
   assert.match(app, /source\.treePath \|\| source\.path/);
   assert.match(app, /`Komponenten\/\$\{label\}\/Konfiguration\/Board`/);
-  assert.match(app, /`Komponenten\/\$\{label\}\/Konfiguration\/Anschlüsse`/);
+  assert.match(app, /`Komponenten\/\$\{label\}\/Konfiguration\/Boardexterne Anschlüsse`/);
   assert.doesNotMatch(app, /Konfiguration\/Übersicht|Konfiguration\/Hardware\/Boardkonfiguration/);
   assert.match(app, /function ideDeviceConfigurationComponents\(project\)/);
   assert.match(app, /component_id: "primary-iot-device"/);
@@ -76,7 +79,10 @@ test("project browser keeps one flat IoT device configuration folder", () => {
   assert.match(app, /sensor-connection-summary/);
   assert.match(app, /data-device-connections="\$\{escapeAttribute\(file\.componentId \|\| ""\)\}"/);
   assert.match(app, /function renderDeviceConnections/);
-  assert.match(app, /Alle direkt mit diesem IoT-Device verbundenen Sensoren und Aktoren/);
+  assert.match(app, /Hier erscheinen ausschließlich zusätzlich am Board angeschlossene Sensoren und Aktoren/);
+  assert.match(app, /function isBoardIntegratedHardwareComponent/);
+  assert.match(app, /item\.target_device_id === device\.component_id && !isBoardIntegratedHardwareComponent\(item, device\)/);
+  assert.match(app, /Integrierte Ausstattung findest du unter Board/);
   assert.match(app, /device-connections-table/);
   assert.match(app, /device_sensor_input_config/);
   assert.match(app, /device_actuator_output_config/);

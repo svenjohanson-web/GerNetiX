@@ -1,3 +1,4 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -6,10 +7,14 @@ const test = require("node:test");
 const publicController = fs.readFileSync(path.resolve(__dirname, "../public/app/development-platform.js"), "utf8");
 const publicCss = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const publicHtml = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
-const publicApp = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
+const publicApp = readPlatformAppSource();
 const deviceOnboardingModel = fs.readFileSync(path.resolve(__dirname, "../public/app/device-onboarding-model.js"), "utf8");
 const developmentHardwareModel = fs.readFileSync(path.resolve(__dirname, "../public/app/development-hardware-model.js"), "utf8");
-const devServer = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
+const devServer = [
+  "../src/dev/server/project-routes.js",
+  "../src/dev/server/hardware-routes.js",
+  "../src/dev-server.js",
+].map((file) => fs.readFileSync(path.resolve(__dirname, file), "utf8")).join("\n");
 const hardwareCatalogSeed = fs.readFileSync(path.resolve(__dirname, "../../hardware-catalog/src/seed.js"), "utf8");
 
 test("wires all development platform controller dependencies", () => {
@@ -115,7 +120,7 @@ test("loads the development template catalog from the server model registry", ()
 });
 
 test("persists architecture derivation metadata in the project view manifest", () => {
-  assert.match(devServer, /developmentProjectDialog/);
+  assert.match(devServer, /development-projects\\\/\(\[\^\/\]\+\)\\\/dialog/);
   assert.match(devServer, /handleDevelopmentProjectDialogSave/);
   assert.match(devServer, /architecture_dialog: architectureDialog/);
   assert.match(devServer, /function normalizeArchitectureDialog/);
@@ -458,7 +463,7 @@ test("loads hardware architecture from the persisted configuration without requi
   const loadFunction = publicController.match(/async function renderPersistedHardwareArchitecture[\s\S]*?\n    }/)?.[0] || "";
   assert.match(loadFunction, /\/api\/platform\/development-projects\/\$\{encodeURIComponent\(project\.id\)\}\/hardware-configuration/);
   assert.doesNotMatch(loadFunction, /Architektur\/verdrahtung\/hardware\.puml/);
-  assert.match(devServer, /req\.method === "GET" && developmentProjectHardware/);
+  assert.match(devServer, /registerProjectPattern\("GET", \/\^\\\/api\\\/platform\\\/development-projects/);
   assert.match(devServer, /hardwareWiringPlantUml\(hardwareConfiguration, project\.title\)/);
 });
 
@@ -484,7 +489,9 @@ test("selected catalog boards expose editable defaults and require an explicitly
   assert.match(publicCss, /\.development-board-feature-table tr\.is-modified \{ background: rgba\(245, 158, 11, \.08\)/);
   assert.match(devServer, /error: "custom_board_not_saved"/);
   assert.match(devServer, /board_configuration: abstractType === "iot_device" \? normalizeDevelopmentBoardConfiguration/);
-  assert.match(devServer, /schema_version: 5,[\s\S]*components/);
+  assert.match(devServer, /schema_version: 6,[\s\S]*components/);
+  assert.match(devServer, /component\.hardware_scope = boardFeatureId \? "board_integrated" : "board_external"/);
+  assert.match(devServer, /component\.board_feature_id = boardFeatureId/);
   assert.match(devServer, /\["account", "project", "custom"\]\.includes\(source\)/);
   assert.match(devServer, /compilerBoardConfiguration/);
   assert.match(devServer, /configuredFlashValue = selectedBoardConfiguration\?\.board_features\?\.flash\?\.value/);

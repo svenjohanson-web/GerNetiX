@@ -7,16 +7,19 @@ const test = require("node:test");
 
 const root = path.join(__dirname, "..");
 const server = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
+const webRoutes = fs.readFileSync(path.join(root, "src", "dev", "server", "web-routes.js"), "utf8");
+const downloadRoutes = fs.readFileSync(path.join(root, "src", "dev", "server", "download-routes.js"), "utf8");
 const page = fs.readFileSync(path.join(root, "public", "flashbox-einrichten", "index.html"), "utf8");
 const app = fs.readFileSync(path.join(root, "public", "flashbox-einrichten", "app.js"), "utf8");
 const internalAppPage = fs.readFileSync(path.join(root, "public", "app", "index.html"), "utf8");
 const publisher = fs.readFileSync(path.join(root, "..", "..", "tools", "publish-flashbox-initial-release.js"), "utf8");
 
 test("serves a public Flashbox setup without account or build-job APIs", () => {
-  assert.match(server, /url\.pathname === "\/flashbox-einrichten"[\s\S]*serveStatic\(res, publicDir, "\/flashbox-einrichten\/index\.html"\)/);
-  assert.match(server, /url\.pathname === "\/api\/public\/flashbox\/initial-firmware" && req\.method === "GET"/);
-  assert.match(server, /url\.pathname === "\/api\/public\/flashbox\/initial-firmware\/content" && req\.method === "GET"/);
-  assert.match(server, /currentFlashboxInitialFirmware\(\)/);
+  assert.match(server, /registerWebRoutes/);
+  assert.match(webRoutes, /\["\/flashbox-einrichten", "\/flashbox-einrichten\/"\][\s\S]*serveStatic\(res, publicDir, "\/flashbox-einrichten\/index\.html"\)/);
+  assert.match(downloadRoutes, /path: "\/api\/public\/flashbox\/initial-firmware"/);
+  assert.match(downloadRoutes, /path: "\/api\/public\/flashbox\/initial-firmware\/content"/);
+  assert.match(downloadRoutes, /currentFlashboxInitialFirmware\(\)/);
   assert.match(page, /class="site-header"/);
   assert.doesNotMatch(page, /href="\/entdecken\/"|GerNetiX entdecken/);
   assert.match(page, /href="\/flashbox-einrichten\/" aria-current="page">FlashBox einrichten/);

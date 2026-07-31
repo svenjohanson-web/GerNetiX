@@ -7,10 +7,12 @@ const test = require("node:test");
 
 const root = path.join(__dirname, "..");
 const page = fs.readFileSync(path.join(root, "public", "support", "index.html"), "utf8");
-const server = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
+const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
+  .map((file) => fs.readFileSync(path.join(root, "src", file), "utf8"))
+  .join("\n");
 
 test("serves Support as a dedicated public page", () => {
-  assert.match(server, /url\.pathname === "\/support"[\s\S]*serveStatic\(res, publicDir, "\/support\/index\.html"\)/);
+  assert.match(server, /\["\/support", "\/support\/"\][\s\S]*serveStatic\(res, publicDir, "\/support\/index\.html"\)/);
   assert.match(page, /GerNetiX Support/);
   assert.match(page, /href="\/support\/" aria-current="page">Support/);
   assert.match(page, /href="\/hilfe\/"/);

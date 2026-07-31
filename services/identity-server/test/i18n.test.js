@@ -1,3 +1,4 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -6,7 +7,7 @@ const test = require("node:test");
 const publicRoot = path.join(__dirname, "..", "public");
 const i18nSource = fs.readFileSync(path.join(publicRoot, "app", "i18n", "i18n.js"), "utf8");
 const platformHtml = fs.readFileSync(path.join(publicRoot, "app", "index.html"), "utf8");
-const platformSource = fs.readFileSync(path.join(publicRoot, "app", "app.js"), "utf8");
+const platformSource = readPlatformAppSource();
 const apiClientSource = fs.readFileSync(path.join(publicRoot, "app", "api-client.js"), "utf8");
 const landingHtml = fs.readFileSync(path.join(publicRoot, "index.html"), "utf8");
 const landingSource = fs.readFileSync(path.join(publicRoot, "landing.js"), "utf8");

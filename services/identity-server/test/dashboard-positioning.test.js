@@ -1,3 +1,4 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -7,7 +8,8 @@ const appRoot = path.join(__dirname, "..", "public", "app");
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(appRoot, "app.css"), "utf8");
 const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
-const app = fs.readFileSync(path.join(appRoot, "app.js"), "utf8");
+const webRoutes = fs.readFileSync(path.join(__dirname, "..", "src", "dev", "server", "web-routes.js"), "utf8");
+const app = readPlatformAppSource();
 
 test("keeps the authenticated dashboard focused on continuing work", () => {
   assert.match(html, /Verstehen\. Entwickeln\. Erschaffen\./);
@@ -38,8 +40,9 @@ test("places an extensible news category below the workspace categories", () => 
 });
 
 test("never serves the dashboard route without an authenticated session", () => {
-  assert.match(server, /const dashboardRoute = url\.pathname === "\/app\/dashboard" \|\| url\.pathname\.startsWith\("\/app\/dashboard\/"\);/);
-  assert.match(server, /if \(dashboardRoute\) \{[\s\S]*?if \(!await readSession\(req\)\) \{[\s\S]*?redirect\(res, authRoute\(url\.pathname \+ url\.search\)\);[\s\S]*?serveStatic\(res, appDir, "\/index\.html"\);/);
+  assert.match(server, /registerWebRoutes/);
+  assert.match(webRoutes, /app\\\/dashboard/);
+  assert.match(webRoutes, /if \(!await requireSession\(req, null\)\)[\s\S]*redirect\(res, authRoute\(url\.pathname \+ url\.search\)\)[\s\S]*serveStatic\(res, appDir, "\/index\.html"\)/);
   assert.match(app, /const isServerAuthenticatedAppShell = \/\^\\\/app\\\/\(\?!auth/);
   assert.match(app, /const protectedAppRoute =/);
   assert.match(app, /if \(protectedAppRoute && !isServerAuthenticatedAppShell && !state\.account\) \{[\s\S]*?window\.location\.assign\(`\/app\/auth\/\?next=\$\{encodeURIComponent\(target\.pathname \+ target\.search\)\}`\)/);

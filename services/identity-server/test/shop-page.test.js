@@ -1,3 +1,4 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -9,10 +10,14 @@ const appRoot = path.join(__dirname, "..", "public", "app");
 const publicRoot = path.join(__dirname, "..", "public");
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
 const publicShopHtml = fs.readFileSync(path.join(publicRoot, "shop", "index.html"), "utf8");
-const app = fs.readFileSync(path.join(appRoot, "app.js"), "utf8");
+const app = readPlatformAppSource();
 const css = fs.readFileSync(path.join(appRoot, "app.css"), "utf8");
 const landingCss = fs.readFileSync(path.join(publicRoot, "landing.css"), "utf8");
-const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
+const server = [
+  "dev-server.js",
+  path.join("dev", "server", "web-routes.js"),
+  path.join("dev", "server", "device-routes.js"),
+].map((file) => fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8")).join("\n");
 
 test("adds the GerNetiX webshop as an Identity platform area", () => {
   assert.equal(normalizeAppPath("/app/shop/"), "/index.html");
@@ -23,9 +28,9 @@ test("adds the GerNetiX webshop as an Identity platform area", () => {
 });
 
 test("serves the webshop as a public page before login", () => {
-  assert.match(server, /url\.pathname === "\/shop" \|\| url\.pathname === "\/shop\/"/);
+  assert.match(server, /\["\/shop", "\/shop\/"\]/);
   assert.match(server, /serveStatic\(res, publicDir, "\/shop\/index\.html"\)/);
-  assert.doesNotMatch(server, /url\.pathname === "\/shop"[\s\S]*authRoute/);
+  assert.doesNotMatch(server, /path: "\/shop"[\s\S]*authRoute/);
   assert.match(publicShopHtml, /href="\/shop\/" aria-current="page">Webshop/);
   assert.match(publicShopHtml, /href="\/app\/auth\/">Anmelden/);
 });
@@ -52,7 +57,7 @@ test("adds Flashbox claim path to Identity inventory", () => {
   assert.match(inventory, /FlashBox zuordnen/);
   assert.match(app, /function claimFlashboxFromCode/);
   assert.match(app, /\/api\/platform\/flashbox\/claim/);
-  assert.match(server, /url\.pathname === "\/api\/platform\/flashbox\/claim"/);
+  assert.match(server, /path: "\/api\/platform\/flashbox\/claim"/);
 });
 
 test("shows dummy Home Server software licenses, bundles and entitlement states", () => {

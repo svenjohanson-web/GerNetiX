@@ -11,6 +11,7 @@ test("persists the camera and display template boards as its initial hardware re
   assert.match(server, /let hardwareConfiguration = templateHardwareConfiguration\(template\)/);
   assert.match(server, /board_configuration: compilerBoardConfiguration\(null, board\)/);
   assert.match(server, /templateModelVersion: template\.schemaVersion,\s+hardwareConfiguration,/);
+  assert.match(server, /hardwareConfiguration = normalizeHardwareConfiguration\(hardwareConfiguration/);
 });
 
 test("shows the catalog camera while keeping its board-supplied connection", () => {
@@ -30,4 +31,6 @@ test("shows the catalog camera while keeping its board-supplied connection", () 
   assert.match(platform, /!driverSpecific && !boardSuppliedPins && !component\.pin/);
   assert.match(server, /Pin-Zuordnung: .*\(Boardkonfiguration\)/);
   assert.match(server, /Board-Pins:/);
+  assert.match(server, /component\.hardware_scope = boardFeatureId \? "board_integrated" : "board_external"/);
+  assert.match(server, /component\.hardware_scope !== "board_integrated"/);
 });

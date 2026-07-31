@@ -1,3 +1,4 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -7,8 +8,10 @@ const root = path.join(__dirname, "..");
 const publicAbout = fs.readFileSync(path.join(root, "public", "ueber-uns", "index.html"), "utf8");
 const landing = fs.readFileSync(path.join(root, "public", "index.html"), "utf8");
 const appHtml = fs.readFileSync(path.join(root, "public", "app", "index.html"), "utf8");
-const appJs = fs.readFileSync(path.join(root, "public", "app", "app.js"), "utf8");
-const server = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
+const appJs = readPlatformAppSource();
+const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
+  .map((file) => fs.readFileSync(path.join(root, "src", file), "utf8"))
+  .join("\n");
 const httpUtils = fs.readFileSync(path.join(root, "src", "dev", "http-utils.js"), "utf8");
 
 test("serves a dedicated public About us chapter", () => {

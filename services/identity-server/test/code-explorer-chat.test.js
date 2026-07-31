@@ -1,3 +1,4 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -5,7 +6,7 @@ const test = require("node:test");
 
 const guidedView = fs.readFileSync(path.resolve(__dirname, "../public/app/guided-project-view.js"), "utf8");
 const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
-const publicApp = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
+const publicApp = readPlatformAppSource();
 const informationView = fs.readFileSync(path.resolve(__dirname, "../public/app/information-view.js"), "utf8");
 const apiClient = fs.readFileSync(path.resolve(__dirname, "../public/app/api-client.js"), "utf8");
 const assistant = fs.readFileSync(path.resolve(__dirname, "../src/dev/development-assistant.js"), "utf8");

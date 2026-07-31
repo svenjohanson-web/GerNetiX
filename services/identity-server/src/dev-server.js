@@ -54,6 +54,22 @@ const {
 } = require("./dev/http-utils");
 const { createDevServiceClients } = require("./dev/service-clients");
 const { summarizeCommunityQuestions } = require("./dev/community-summary");
+const { createRouteRegistry } = require("./dev/server/route-registry");
+const { createSessionAccess } = require("./dev/server/session-access");
+const { createRequestHandler } = require("./dev/server/request-handler");
+const { registerKnowledgeRoutes } = require("./dev/server/knowledge-routes");
+const { registerPlatformRoutes } = require("./dev/server/platform-routes");
+const { registerAuthRoutes } = require("./dev/server/auth-routes");
+const { registerAccountRoutes } = require("./dev/server/account-routes");
+const { registerHardwareRoutes } = require("./dev/server/hardware-routes");
+const { registerDeviceRoutes } = require("./dev/server/device-routes");
+const { registerCommunityRoutes } = require("./dev/server/community-routes");
+const { registerBuildRoutes } = require("./dev/server/build-routes");
+const { registerProjectRoutes } = require("./dev/server/project-routes");
+const { registerSystemRoutes } = require("./dev/server/system-routes");
+const { registerDownloadRoutes } = require("./dev/server/download-routes");
+const { registerPlatformExtraRoutes } = require("./dev/server/platform-extra-routes");
+const { registerWebRoutes } = require("./dev/server/web-routes");
 const { createInterfaceCallTelemetry } = require("../../shared/persistence/interface-call-telemetry");
 const { PostgresStateStore } = require("../../shared/persistence/postgres-state-store");
 const { createTamagotchiEntryCourseModel } = require("./dev/project-models/tamagotchi-entry-course");
@@ -298,6 +314,201 @@ const sessions = new Map();
 const userIdeState = createUserIdeState();
 const projectServerSeededUsers = new Set();
 const projectServerSeedPromises = new Map();
+const routeRegistry = createRouteRegistry();
+const sessionAccess = createSessionAccess({ resolveSession: readSession, sendJson });
+
+registerKnowledgeRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  markChapterRead: handleKnowledgeChapterRead,
+});
+registerPlatformRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  readJsonBody,
+  sendJson,
+  handleSummary: handlePlatformSummary,
+  handleBootstrap: handlePlatformBootstrap,
+  updateWorkspaceState,
+  updateLearningProgress,
+});
+registerAuthRoutes({
+  registry: routeRegistry,
+  readJsonBody,
+  sendJson,
+  redirect,
+  recordSystemEvent,
+  passkeyBrowserFailureEvent,
+  auth: () => auth,
+  handleLogin,
+  handleRegister,
+  handlePasskeyRegistrationOptions,
+  handlePasskeyRegistrationVerify,
+  handlePasskeyAuthenticationOptions,
+  handlePasskeyAuthenticationVerify,
+  handleExternalLogin,
+  handleLogout,
+  handleSession,
+  handleOfflineRecoveryStart,
+  handleOfflineRecoveryPasskeyOptions,
+  handleOfflineRecoveryPasskeyVerify,
+});
+registerAccountRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  readJsonBody,
+  sendJson,
+  auth: () => auth,
+  sessions,
+  setSessionCookie,
+  sanitizeNextPath,
+  updateCachedSessionAccount,
+  accountAssetRepository: () => accountAssetRepository,
+  createAccountTransparency,
+});
+registerHardwareRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  readJsonBody,
+  sendJson,
+  loadAvailableProcessorBoards,
+  projectServerUserId,
+  loadAccountBoardConfigurations,
+  deviceManagementJson,
+  hardwareCatalogJson,
+  loadSensors,
+  recordSystemEvent,
+});
+registerDeviceRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  sendJson,
+  discoverNetworkDevices,
+  handleDeviceConnectivityCheck,
+  listUsbSerialPorts,
+  handlePlatformDiscoveredDeviceClaim,
+  handlePlatformDeviceCreate,
+  handlePlatformDeviceBasissoftwareProfileUpdate,
+  handlePlatformDeviceRemove,
+  handlePlatformProvisioningSession,
+  handlePlatformProvisioningComplete,
+  loadUserIdeDevices,
+  handleDeviceRecoveryFirmwareCheck,
+  handlePlatformFlashboxClaim,
+});
+registerCommunityRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  readJsonBody,
+  sendJson,
+  communityJson,
+  auth: () => auth,
+  createCommunityProjectSnapshot,
+  notifyPrivateCommunityRequest,
+});
+registerBuildRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  readJsonBody,
+  sendJson,
+  handleUserIdeBuildJob,
+  loadUserIdeProjects,
+  buildDeployJson,
+  projectServerJson,
+  loadBuildDeployJob,
+  recordCompletedBuildJob,
+  browserFlashManifest,
+  projectServerUserId,
+  proxyBuildArtifact,
+});
+registerProjectRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  readJsonBody,
+  sendJson,
+  requireEntitlement,
+  requireSessionProject,
+  projectServerJson,
+  projectServerUserId,
+  developmentAssistant,
+  helpAssistant,
+  handleUserIdeSummary,
+  handleDevelopmentProjectCreate,
+  handleDevelopmentProjectArchitectureSave,
+  handleLearningProjectStart,
+  handleDevelopmentLessonStart,
+  handleLearningProjectDeviceAssign,
+  handlePlatformProjectDelete,
+  handleDevelopmentProjectDialogSave,
+  handleDevelopmentProjectHardwareLoad,
+  handleDevelopmentProjectHardwareSave,
+  handleProjectComponentFeatures,
+  handleProjectComponentHardwareFeatures,
+  handleProjectPwaDashboard,
+  handleProjectEventConfiguration,
+  handlePlatformSourceSearch,
+  handlePlatformSourceList,
+  handlePlatformSourceRead,
+  handlePlatformSourceWrite,
+  loadUserIdeProjects,
+});
+registerSystemRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  readJsonBody,
+  sendJson,
+  sendDevJson,
+  requireInternalAdmin,
+  handleDevLessonPreviewMigration,
+  identityPersistenceBackend,
+  identityRuntimeLocation,
+  identityRemoteDev,
+  smtpConfigStore,
+  smtpEmailService,
+  createIdentityLinkInventory,
+  publicDir,
+  webPushService,
+  securityAlertPushAccountIds,
+  requireSessionProject,
+  projectServerUserId,
+  handleInternalDevicePushEvent,
+  handleInternalDeviceRuntimeEvent,
+  handleProjectRuntimeStream,
+  telemetryJson,
+});
+registerDownloadRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  sendJson,
+  currentFlashboxInitialFirmware,
+  publicFlashboxFirmwareMetadata,
+  servePublicFlashboxFirmware,
+  usbSerialHelperDownloads,
+  serveUsbSerialHelperDownload,
+  provisioningFirmwareRequest,
+  resolveProvisioningFirmwareArtifact,
+});
+registerPlatformExtraRoutes({
+  registry: routeRegistry,
+  requireSession: sessionAccess.requireSession,
+  sendJson,
+  loadHardwareShopSummary,
+  loadAiUsageSummary,
+  handleHardwareShopOrder,
+});
+registerWebRoutes({
+  registry: routeRegistry,
+  requireSession: (req, res) => res ? sessionAccess.requireSession(req, res) : readSession(req),
+  redirect,
+  authRoute,
+  serveStatic,
+  normalizeAppPath,
+  appDir,
+  operatorShellDir,
+  publicDir,
+  serveVendorEsptool,
+  proxyPublicDemo,
+});
 
 async function bootstrap() {
   if (identityPushStateStore) await identityPushStateStore.initialize();
@@ -315,15 +526,14 @@ async function bootstrap() {
   });
   await seedDemoAccount();
 
-  const server = http.createServer((req, res) => {
-    routeRequest(req, res).catch((error) => {
-      console.error(error);
-      sendJson(res, error.status || 500, {
-        error: error.code || "internal_server_error",
-        message: error.message || "Interner Serverfehler.",
-      });
-    });
+  const requestHandler = createRequestHandler({
+    routeRequest,
+    sendJson,
+    reportError: (error) => console.error(error),
+    reportSlowRequest: (measurement) => console.warn(`[identity-http] slow request ${JSON.stringify(measurement)}`),
+    slowRequestMs: Number(process.env.IDENTITY_SLOW_REQUEST_MS || 1500),
   });
+  const server = http.createServer(requestHandler);
 
   server.listen(port, host, () => {
   console.log(`Identity login UI: http://${host}:${port}/app/auth/`);
@@ -438,1296 +648,9 @@ async function routeRequest(req, res) {
   }
   const url = new URL(req.url, `http://${req.headers.host}`);
 
-  if (url.pathname === "/api/public/community/questions" && req.method === "GET") {
-    const tag = String(url.searchParams.get("tag") || "").trim();
-    const payload = await communityJson(`/api/community/questions${tag ? `?tag=${encodeURIComponent(tag)}` : ""}`, {
-      headers: { "X-GerNetiX-Community-Actor": "", "X-GerNetiX-Community-Operator": "false" },
-    });
-    sendJson(res, 200, payload);
-    return;
-  }
+  if (await routeRegistry.dispatch({ req, res, url })) return;
 
-  const publicCommunityQuestion = url.pathname.match(/^\/api\/public\/community\/questions\/([^/]+)$/);
-  if (publicCommunityQuestion && req.method === "GET") {
-    const payload = await communityJson(`/api/community/questions/${encodeURIComponent(decodeURIComponent(publicCommunityQuestion[1]))}`, {
-      headers: { "X-GerNetiX-Community-Actor": "", "X-GerNetiX-Community-Operator": "false" },
-    });
-    sendJson(res, 200, payload);
-    return;
-  }
-
-  const publicCommunityAnswers = url.pathname.match(/^\/api\/public\/community\/questions\/([^/]+)\/answers$/);
-  if (publicCommunityAnswers && req.method === "GET") {
-    const questionId = encodeURIComponent(decodeURIComponent(publicCommunityAnswers[1]));
-    const payload = await communityJson(`/api/community/questions/${questionId}/answers`, {
-      headers: { "X-GerNetiX-Community-Actor": "", "X-GerNetiX-Community-Operator": "false" },
-    });
-    sendJson(res, 200, payload);
-    return;
-  }
-
-  if (url.pathname.startsWith("/api/community")) {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    const body = ["POST", "PATCH"].includes(req.method) ? await readJsonBody(req) : undefined;
-    if (req.method === "POST" && ["/api/community/inbox/direct", "/api/community/message-threads"].includes(url.pathname)) {
-      const recipient = await auth.repository.findUserByUsername(String(body?.recipient_username || "").trim());
-      if (!recipient || recipient.account_type === "guest") { sendJson(res, 404, { error: "inbox_recipient_not_found", message: "Dieser registrierte Nickname wurde nicht gefunden." }); return; }
-      body.recipient_user_id = recipient.id;
-      body.sender_label = session.account.username || "Mitglied";
-      delete body.recipient_username;
-    }
-    if (req.method === "POST" && url.pathname === "/api/community/support-requests") {
-      body.sender_label = session.account.username || "Mitglied";
-    }
-    if (req.method === "POST" && url.pathname === "/api/community/questions" && body?.attach_project_snapshot === "true") {
-      let capabilities;
-      try {
-        capabilities = await communityJson("/api/community/capabilities");
-      } catch {
-        const error = new Error("Der Community-Service ist noch nicht auf dem Stand für Projektkopien. Die Anfrage wurde nicht gespeichert.");
-        error.status = 503;
-        throw error;
-      }
-      if (!capabilities.project_snapshot_attachment) {
-        const error = new Error("Der Community-Service unterstützt Projektkopien noch nicht. Die Anfrage wurde nicht gespeichert.");
-        error.status = 503;
-        throw error;
-      }
-      const snapshot = await createCommunityProjectSnapshot(session, body.project_id);
-      body.project_snapshot = snapshot;
-      // Die Community kennt nur die bewusst erzeugte Kopie, niemals die interne Projektkennung.
-      body.project_id = "";
-    }
-    const payload = await communityJson(`${url.pathname}${url.search}`, {
-      method: req.method,
-      body,
-      headers: {
-        "X-GerNetiX-Community-Actor": session.account.user_id,
-        "X-GerNetiX-Community-Operator": "false",
-      },
-    });
-    if (req.method === "POST" && url.pathname === "/api/community/questions" && body?.visibility === "private") {
-      await notifyPrivateCommunityRequest({ questionId: payload.question_id });
-    }
-    sendJson(res, req.method === "POST" ? 201 : 200, payload);
-    return;
-  }
-
-  if (url.pathname === "/api/dev/lesson-preview-migration" && req.method === "OPTIONS") {
-    sendDevJson(res, 204, {});
-    return;
-  }
-
-  if (url.pathname === "/api/dev/lesson-preview-migration" && req.method === "POST") {
-    await handleDevLessonPreviewMigration(req, res);
-    return;
-  }
-
-  if (url.pathname === "/health") {
-    sendJson(res, 200, {
-      status: "ok",
-      service: "identity-server",
-      persistence_backend: identityPersistenceBackend,
-      runtime_location: identityRuntimeLocation,
-      remote_dev: identityRemoteDev,
-    });
-    return;
-  }
-  if (url.pathname === "/app/manifest.webmanifest") { serveStatic(res, appDir, "/manifest.webmanifest"); return; }
-  if (url.pathname === "/app/push-sw.js") { serveStatic(res, appDir, "/push-sw.js"); return; }
-  if (url.pathname === "/app/operator-shell.css") { serveStatic(res, operatorShellDir, "/operator-shell.css"); return; }
-
-  if (url.pathname === "/api/internal/email-config") {
-    requireInternalAdmin(req);
-    if (req.method === "GET") {
-      sendJson(res, 200, { config: smtpConfigStore.publicConfig() });
-      return;
-    }
-    if (req.method === "PUT") {
-      sendJson(res, 200, { config: await smtpConfigStore.update(await readJsonBody(req)) });
-      return;
-    }
-    sendJson(res, 405, { error: "method_not_allowed" });
-    return;
-  }
-
-  if (url.pathname === "/api/internal/link-integrity/inventory" && req.method === "GET") {
-    requireInternalAdmin(req);
-    sendJson(res, 200, createIdentityLinkInventory({ publicDir }));
-    return;
-  }
-
-  if (url.pathname === "/api/internal/email-config/test" && req.method === "POST") {
-    requireInternalAdmin(req);
-    await smtpEmailService.testConnection();
-    sendJson(res, 200, { ok: true, config: smtpConfigStore.publicConfig() });
-    return;
-  }
-
-  if (url.pathname === "/api/internal/security-alert" && req.method === "POST") {
-    requireInternalAdmin(req);
-    const alert = await readJsonBody(req);
-    const config = smtpConfigStore.deliveryConfig();
-    const recipient = config?.security_alert_recipient || config?.reply_to || config?.from_address;
-    if (!recipient) { sendJson(res, 409, { error: "security_alert_recipient_missing" }); return; }
-    await smtpEmailService.send(recipient, `GerNetiX Sicherheitsalarm: ${String(alert.severity || "warning").toUpperCase()}`, String(alert.message || "Sicherheitsereignis erkannt."));
-    const push = await webPushService.notifyAccounts(securityAlertPushAccountIds, { title: "GerNetiX Sicherheitsalarm", body: String(alert.message || "Sicherheitsereignis erkannt."), url: "/app/dashboard/" });
-    sendJson(res, 202, { accepted: true, recipient, push });
-    return;
-  }
-
-  if (url.pathname === "/api/push/public-key" && req.method === "GET") { sendJson(res, 200, { enabled: webPushService.enabled, public_key: webPushService.publicKey || "" }); return; }
-  const pushProjectRoute = url.pathname.match(/^\/api\/push\/projects\/([^/]+)\/(subscribe|test)$/);
-  if (pushProjectRoute && req.method === "POST") { const session = await readSession(req); if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; } const projectId = decodeURIComponent(pushProjectRoute[1]); await requireSessionProject(session, projectId); if (pushProjectRoute[2] === "subscribe") { if (!webPushService.enabled) { sendJson(res, 503, { error: "push_not_configured" }); return; } await webPushService.subscribeProject(projectServerUserId(session), projectId, await readJsonBody(req)); sendJson(res, 201, { subscribed: true, project_id: projectId }); return; } const push = await webPushService.notifyProject(projectServerUserId(session), projectId, { title: "GerNetiX Testnachricht", body: "Hallo Welt – dein privater Projekt-Push-Kanal ist aktiv.", url: `/app/ide/?project=${encodeURIComponent(projectId)}` }); sendJson(res, 202, { accepted: true, project_id: projectId, push }); return; }
-  if (url.pathname === "/api/internal/push/device-event" && req.method === "POST") { await handleInternalDevicePushEvent(req, res); return; }
-  if (url.pathname === "/api/internal/runtime/device-event" && req.method === "POST") { await handleInternalDeviceRuntimeEvent(req, res); return; }
-
-  const runtimeStreamRoute = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/runtime-stream$/);
-  if (runtimeStreamRoute && req.method === "GET") {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    await handleProjectRuntimeStream(req, res, session, decodeURIComponent(runtimeStreamRoute[1]));
-    return;
-  }
-
-  const telemetryProjectRoute = url.pathname.match(/^\/api\/platform\/telemetry\/projects\/([^/]+)\/(measurements|events|retention|data)$/);
-  if (telemetryProjectRoute) {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    const projectId = decodeURIComponent(telemetryProjectRoute[1]);
-    const resource = telemetryProjectRoute[2];
-    await requireSessionProject(session, projectId);
-    const accountId = projectServerUserId(session);
-    const query = url.search || "";
-    const telemetryPath = `/api/telemetry/internal/accounts/${encodeURIComponent(accountId)}/projects/${encodeURIComponent(projectId)}/${resource}${query}`;
-    if (req.method === "GET" && resource !== "data") { sendJson(res, 200, await telemetryJson(telemetryPath)); return; }
-    if (req.method === "PUT" && resource === "retention") { sendJson(res, 200, await telemetryJson(telemetryPath, { method: "PUT", body: await readJsonBody(req) })); return; }
-    if (req.method === "DELETE" && resource === "data") { sendJson(res, 200, await telemetryJson(telemetryPath, { method: "DELETE" })); return; }
-    sendJson(res, 405, { error: "method_not_allowed" }); return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/login") {
-    await handleLogin(req, res);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/register") {
-    await handleRegister(req, res);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/passkeys/registration/options") {
-    await handlePasskeyRegistrationOptions(req, res);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/passkeys/registration/verify") {
-    await handlePasskeyRegistrationVerify(req, res);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/passkeys/authentication/options") {
-    await handlePasskeyAuthenticationOptions(req, res);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/passkeys/authentication/verify") {
-    await handlePasskeyAuthenticationVerify(req, res);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/passkeys/client-error") {
-    await recordSystemEvent(passkeyBrowserFailureEvent(await readJsonBody(req)));
-    sendJson(res, 202, { accepted: true });
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/account/guest") {
-    const body = await readJsonBody(req);
-    const guest = await auth.create_guest({ preferredLocale: body.locale });
-    sessions.set(guest.session.token, { account: guest.account, expiresAt: guest.session.expires_at });
-    setSessionCookie(res, guest.session.token, guest.session.expires_at);
-    sendJson(res, 201, { account: guest.account, next: sanitizeNextPath(body.next) || "/app/dashboard/" });
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname === "/api/account/access-profile") {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    sendJson(res, 200, { account: session.account });
-    return;
-  }
-
-  if (url.pathname === "/api/account/preferences" && ["GET", "PATCH"].includes(req.method)) {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    if (req.method === "GET") {
-      sendJson(res, 200, { preferred_locale: session.account.preferred_locale || "de" });
-      return;
-    }
-    try {
-      const body = await readJsonBody(req);
-      const account = await auth.update_preferred_locale(session.account.user_id, body.preferred_locale);
-      updateCachedSessionAccount(req, account);
-      sendJson(res, 200, { preferred_locale: account.preferred_locale, account });
-    } catch (error) {
-      sendJson(res, error.status || 400, { error: error.code || "invalid_locale" });
-    }
-    return;
-  }
-
-  if (url.pathname === "/api/account/assets" && ["GET", "POST"].includes(req.method)) {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    if (!accountAssetRepository) { sendJson(res, 503, { error: "account_asset_store_unavailable" }); return; }
-    if (req.method === "GET") {
-      sendJson(res, 200, { items: await accountAssetRepository.list(session.account.user_id) });
-      return;
-    }
-    const asset = await accountAssetRepository.create(
-      session.account.user_id,
-      await readJsonBody(req, 24 * 1024 * 1024),
-    );
-    sendJson(res, 201, asset);
-    return;
-  }
-
-  const accountAssetRoute = url.pathname.match(/^\/api\/account\/assets\/([^/]+)$/);
-  if (accountAssetRoute && req.method === "DELETE") {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    if (!accountAssetRepository) { sendJson(res, 503, { error: "account_asset_store_unavailable" }); return; }
-    sendJson(res, 200, await accountAssetRepository.delete(session.account.user_id, decodeURIComponent(accountAssetRoute[1])));
-    return;
-  }
-
-  const accountAssetContentRoute = url.pathname.match(/^\/api\/account\/assets\/([^/]+)\/content$/);
-  if (accountAssetContentRoute && req.method === "GET") {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    if (!accountAssetRepository) { sendJson(res, 503, { error: "account_asset_store_unavailable" }); return; }
-    const asset = await accountAssetRepository.get(session.account.user_id, decodeURIComponent(accountAssetContentRoute[1]));
-    res.writeHead(200, {
-      "Content-Type": asset.content_type,
-      "Content-Length": asset.size_bytes,
-      "X-Content-SHA256": asset.sha256 || "",
-      "Cache-Control": "private, no-store",
-      "X-Content-Type-Options": "nosniff",
-      "Content-Security-Policy": "sandbox; default-src 'none'",
-    });
-    res.end(asset.content_blob);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/account/upgrade-guest") {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    const body = await readJsonBody(req);
-      const result = await auth.upgrade_guest_to_base(session.account.user_id, body.username, body.password, body.accepted_terms === true, body.passkey_credential_id, body.offline_recovery_set_confirmed === true, body.offline_recovery_set);
-    updateCachedSessionAccount(req, result.account);
-    sendJson(res, 200, result);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/account/offline-recovery-set") {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    const result = await auth.create_offline_recovery_set(session.account.user_id);
-    updateCachedSessionAccount(req, result.account);
-    sendJson(res, 201, result);
-    return;
-  }
-
-  const recoveryBoardRoute = url.pathname.match(/^\/api\/account\/recovery-boards\/([^/]+)$/);
-  if (recoveryBoardRoute && ["POST", "DELETE"].includes(req.method)) {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    const boardId = decodeURIComponent(recoveryBoardRoute[1]);
-    const result = req.method === "POST"
-      ? await auth.add_esp32_recovery_token(session.account.user_id, boardId)
-      : await auth.remove_esp32_recovery_token(session.account.user_id, boardId);
-    updateCachedSessionAccount(req, result.account);
-    sendJson(res, 200, result);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/password-reset/request") {
-    const body = await readJsonBody(req);
-    sendJson(res, 202, await auth.request_password_reset(body.email));
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/password-reset/complete") {
-    const body = await readJsonBody(req);
-    sendJson(res, 200, await auth.reset_password(body.token, body.password));
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname === "/verify-email") {
-    try {
-      await auth.verify_email(url.searchParams.get("token") || "");
-      redirect(res, "/app/auth/?verification=success");
-    } catch {
-      redirect(res, "/app/auth/?verification=invalid");
-    }
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname === "/reset-password") {
-    redirect(res, `/app/auth/?mode=reset&token=${encodeURIComponent(url.searchParams.get("token") || "")}`);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/login/external") {
-    await handleExternalLogin(req, res);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/logout") {
-    await handleLogout(req, res);
-    return;
-  }
-
-  if (url.pathname === "/api/session") {
-    await handleSession(req, res);
-    return;
-  }
-
-  // This endpoint deliberately remains outside the account area.  It exposes
-  // only one account-neutral, immutable initial Flashbox release; it never
-  // creates a device, a credential, or an ownership relation.
-  if (url.pathname === "/api/public/flashbox/initial-firmware" && req.method === "GET") {
-    const release = await currentFlashboxInitialFirmware();
-    if (!release) {
-      sendJson(res, 404, { error: "flashbox_initial_firmware_not_published", message: "Es ist noch kein Flashbox-Initialimage freigegeben." });
-      return;
-    }
-    sendJson(res, 200, publicFlashboxFirmwareMetadata(release));
-    return;
-  }
-
-  if (url.pathname === "/api/public/flashbox/initial-firmware/content" && req.method === "GET") {
-    const release = await currentFlashboxInitialFirmware();
-    if (!release) {
-      sendJson(res, 404, { error: "flashbox_initial_firmware_not_published", message: "Es ist noch kein Flashbox-Initialimage freigegeben." });
-      return;
-    }
-    await servePublicFlashboxFirmware(res, release);
-    return;
-  }
-
-  if (url.pathname === "/api/platform/downloads" && req.method === "GET") {
-    if (!await readSession(req)) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    sendJson(res, 200, { downloads: await usbSerialHelperDownloads() });
-    return;
-  }
-
-  if (url.pathname.startsWith("/downloads/usb-serial-helper/") && req.method === "GET") {
-    if (!await readSession(req)) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await serveUsbSerialHelperDownload(res, path.basename(url.pathname));
-    return;
-  }
-
-  if (["/api/account/me/transparency", "/account/me/transparency"].includes(url.pathname)) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    if (!["GET", "POST"].includes(req.method)) {
-      sendJson(res, 405, { error: "method_not_allowed" });
-      return;
-    }
-    sendJson(res, 200, await createAccountTransparency(session, { refresh: req.method === "POST" }));
-    return;
-  }
-
-  if (["/api/account/me/transparency/refresh", "/account/me/transparency/refresh"].includes(url.pathname)) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    if (req.method !== "POST") {
-      sendJson(res, 405, { error: "method_not_allowed" });
-      return;
-    }
-    sendJson(res, 200, await createAccountTransparency(session, { refresh: true }));
-    return;
-  }
-
-  if (url.pathname === "/api/user-ide/summary") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleUserIdeSummary(res, session);
-    return;
-  }
-
-  if (url.pathname === "/api/platform/summary") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handlePlatformSummary(res, session);
-    return;
-  }
-
-  if (url.pathname === "/api/platform/bootstrap") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handlePlatformBootstrap(res, session);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/platform/workspace-state") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    sendJson(res, 200, updateWorkspaceState(session, await readJsonBody(req)));
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/platform/learning-progress") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    sendJson(res, 200, await updateLearningProgress(session, await readJsonBody(req)));
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/platform/development-projects") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleDevelopmentProjectCreate(req, res, session);
-    return;
-  }
-
-  const developmentProjectArchitecture = url.pathname.match(/^\/api\/platform\/development-projects\/([^/]+)\/architecture$/);
-  if (req.method === "POST" && developmentProjectArchitecture) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleDevelopmentProjectArchitectureSave(req, res, session, decodeURIComponent(developmentProjectArchitecture[1]));
-    return;
-  }
-
-  const learningProjectStart = url.pathname.match(/^\/api\/platform\/learning-projects\/([^/]+)\/start$/);
-  if (req.method === "POST" && learningProjectStart) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleLearningProjectStart(res, session, decodeURIComponent(learningProjectStart[1]));
-    return;
-  }
-
-  const developmentLessonStart = url.pathname.match(/^\/api\/platform\/learning-projects\/([^/]+)\/lessons\/([^/]+)\/start$/);
-  if (req.method === "POST" && developmentLessonStart) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleDevelopmentLessonStart(
-      res,
-      session,
-      decodeURIComponent(developmentLessonStart[1]),
-      decodeURIComponent(developmentLessonStart[2]),
-    );
-    return;
-  }
-
-  const learningProjectDevice = url.pathname.match(/^\/api\/platform\/learning-projects\/([^/]+)\/device$/);
-  if (req.method === "POST" && learningProjectDevice) {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    await handleLearningProjectDeviceAssign(req, res, session, decodeURIComponent(learningProjectDevice[1]));
-    return;
-  }
-
-  const platformProject = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)$/);
-  if (req.method === "DELETE" && platformProject) {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    await handlePlatformProjectDelete(res, session, decodeURIComponent(platformProject[1]));
-    return;
-  }
-
-  const developmentProjectDialog = url.pathname.match(/^\/api\/platform\/development-projects\/([^/]+)\/dialog$/);
-  if (req.method === "POST" && developmentProjectDialog) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleDevelopmentProjectDialogSave(req, res, session, decodeURIComponent(developmentProjectDialog[1]));
-    return;
-  }
-
-  const developmentProjectHardware = url.pathname.match(/^\/api\/platform\/development-projects\/([^/]+)\/hardware-configuration$/);
-  if (req.method === "GET" && developmentProjectHardware) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleDevelopmentProjectHardwareLoad(res, session, decodeURIComponent(developmentProjectHardware[1]));
-    return;
-  }
-  if (req.method === "POST" && developmentProjectHardware) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleDevelopmentProjectHardwareSave(req, res, session, decodeURIComponent(developmentProjectHardware[1]));
-    return;
-  }
-
-  const projectComponentFeatures = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/component-features$/);
-  if (req.method === "POST" && projectComponentFeatures) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleProjectComponentFeatures(req, res, session, decodeURIComponent(projectComponentFeatures[1]));
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/platform/development-assistant/chat") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    if (!requireEntitlement(res, session, "ai_assistant")) return;
-    await developmentAssistant.handleChat(req, res, session);
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname === "/api/platform/hardware/processor-boards") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    try {
-      sendJson(res, 200, { items: await loadAvailableProcessorBoards(session) });
-    } catch {
-      sendJson(res, 502, {
-        error: "hardware_catalog_unreachable",
-        dependency: "hardware_catalog",
-        message: "Hardware-Katalog nicht erreichbar.",
-      });
-    }
-    return;
-  }
-
-  if (url.pathname === "/api/platform/account-board-configurations") {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    const accountId = projectServerUserId(session);
-    if (req.method === "GET") {
-      sendJson(res, 200, { items: await loadAccountBoardConfigurations(session) });
-      return;
-    }
-    if (req.method === "POST") {
-      sendJson(res, 201, await deviceManagementJson(`/api/device-management/accounts/${encodeURIComponent(accountId)}/board-configurations`, {
-        method: "POST", body: await readJsonBody(req),
-      }));
-      return;
-    }
-  }
-
-  const accountBoardVersions = url.pathname.match(/^\/api\/platform\/account-board-configurations\/([^/]+)\/versions$/);
-  if (accountBoardVersions) {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    const path = `/api/device-management/accounts/${encodeURIComponent(projectServerUserId(session))}/board-configurations/${encodeURIComponent(decodeURIComponent(accountBoardVersions[1]))}/versions`;
-    if (req.method === "GET") {
-      sendJson(res, 200, await deviceManagementJson(path));
-      return;
-    }
-    if (req.method === "POST") {
-      sendJson(res, 201, await deviceManagementJson(path, { method: "POST", body: await readJsonBody(req) }));
-      return;
-    }
-  }
-
-  const projectPwaDashboard = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/pwa-dashboard$/);
-  if (req.method === "POST" && projectPwaDashboard) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleProjectPwaDashboard(req, res, session, decodeURIComponent(projectPwaDashboard[1]));
-    return;
-  }
-
-  const projectEventConfiguration = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/event-configuration$/);
-  if (req.method === "POST" && projectEventConfiguration) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleProjectEventConfiguration(req, res, session, decodeURIComponent(projectEventConfiguration[1]));
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/platform/help-assistant/chat") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await helpAssistant.handleChat(req, res);
-    return;
-  }
-
-  const knowledgeChapterRead = url.pathname.match(/^\/api\/platform\/knowledge\/chapters\/([^/]+)\/read$/);
-  if (req.method === "POST" && knowledgeChapterRead) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleKnowledgeChapterRead(res, session, decodeURIComponent(knowledgeChapterRead[1]));
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname === "/api/platform/hardware/board-feature-options") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    try {
-      sendJson(res, 200, await hardwareCatalogJson("/api/hardware-catalog/board-feature-options"));
-    } catch (error) {
-      sendJson(res, 502, {
-        error: "hardware_catalog_unreachable",
-        dependency: "hardware_catalog",
-        message: "Die Boardausstattung konnte nicht aus dem Hardware Catalog geladen werden.",
-      });
-    }
-    return;
-  }
-
-  const projectComponentHardwareFeatures = url.pathname.match(/^\/api\/user-ide\/projects\/([^/]+)\/component-hardware-features$/);
-  if (req.method === "POST" && projectComponentHardwareFeatures) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleProjectComponentHardwareFeatures(req, res, session, decodeURIComponent(projectComponentHardwareFeatures[1]));
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname === "/api/platform/hardware/sensors") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    try {
-      const items = await loadSensors();
-      sendJson(res, 200, { items, catalog_status: items.length ? "available" : "empty" });
-    } catch (error) {
-      recordSystemEvent({
-        severity: "error",
-        source_service: "identity_server",
-        target_service: "hardware_catalog",
-        category: "dependency",
-        event_type: "dependency_unreachable",
-        message: "Sensorarten konnten nicht aus dem Hardware Catalog geladen werden.",
-        impact: "Die Sensor-Hardware-Zuordnung ist blockiert.",
-        account_id: projectServerUserId(session),
-        route: "/api/hardware-catalog/sensors",
-        details: { error: error.message || String(error) },
-      });
-      sendJson(res, 502, {
-        error: "hardware_catalog_unreachable",
-        dependency: "hardware_catalog",
-        message: "Der zugehoerige Service Hardware Catalog ist nicht erreichbar.",
-      });
-    }
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname === "/api/platform/devices/discover") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    sendJson(res, 200, await discoverNetworkDevices(session, Object.fromEntries(url.searchParams.entries())));
-    return;
-  }
-
-  const connectivityCheck = url.pathname.match(/^\/api\/user-ide\/devices\/([^/]+)\/connectivity-check$/);
-  if (req.method === "POST" && connectivityCheck) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleDeviceConnectivityCheck(res, session, decodeURIComponent(connectivityCheck[1]));
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname === "/api/platform/usb-serial/ports") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    sendJson(res, 200, { items: await listUsbSerialPorts() });
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/platform/devices/from-discovery") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handlePlatformDiscoveredDeviceClaim(req, res, session);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/platform/devices") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handlePlatformDeviceCreate(req, res, session);
-    return;
-  }
-
-  const platformDevice = url.pathname.match(/^\/api\/platform\/devices\/([^/]+)$/);
-  if (req.method === "PUT" && platformDevice) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handlePlatformDeviceBasissoftwareProfileUpdate(req, res, session, decodeURIComponent(platformDevice[1]));
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/platform/provisioning/session") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handlePlatformProvisioningSession(req, res, session);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/platform/provisioning/complete") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handlePlatformProvisioningComplete(req, res, session);
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname === "/api/platform/provisioning-firmware") {
-    if (!await readSession(req)) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    const request = provisioningFirmwareRequest(url.searchParams);
-    const artifact = await resolveProvisioningFirmwareArtifact(request);
-    if (!fs.existsSync(artifact.path)) {
-      sendJson(res, 503, {
-        error: "provisioning_firmware_unavailable",
-        message: `Die Factory-Basissoftware fuer ${artifact.label} ist auf diesem Server noch nicht bereitgestellt.`,
-      });
-      return;
-    }
-    sendJson(res, 200, {
-      artifact_id: artifact.id,
-      profile: request.profile,
-      hardware_profile_id: request.hardwareProfileId,
-      firmware_build_target_id: artifact.firmwareBuildTargetId,
-      version: artifact.version,
-      flash_size_mb: request.flashSizeMb,
-      flash_mode: artifact.flashMode,
-      flash_freq: artifact.flashFreq,
-      flash_size: artifact.flashSize,
-      flash_offset: 0,
-      content_url: `/api/platform/provisioning-firmware/content?profile=${encodeURIComponent(request.profile)}&hardware_profile_id=${encodeURIComponent(request.hardwareProfileId)}&flash_size_mb=${request.flashSizeMb}`,
-    });
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname === "/api/platform/provisioning-firmware/content") {
-    if (!await readSession(req)) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    const request = provisioningFirmwareRequest(url.searchParams);
-    const artifact = await resolveProvisioningFirmwareArtifact(request);
-    if (!fs.existsSync(artifact.path)) {
-      sendJson(res, 503, { error: "provisioning_firmware_unavailable", message: `Die Factory-Basissoftware fuer ${artifact.label} ist auf diesem Server noch nicht bereitgestellt.` });
-      return;
-    }
-    res.writeHead(200, {
-      "Content-Type": "application/octet-stream",
-      "Content-Disposition": `attachment; filename=${artifact.fileName}`,
-      "Cache-Control": "no-store",
-    });
-    fs.createReadStream(artifact.path).pipe(res);
-    return;
-  }
-  if (req.method === "DELETE" && platformDevice) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handlePlatformDeviceRemove(res, session, decodeURIComponent(platformDevice[1]));
-    return;
-  }
-
-  const platformSource = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/sources\/(.+)$/);
-  const platformSources = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/sources$/);
-  const platformSourceSearch = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/source-search$/);
-  const platformVersions = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/versions$/);
-  const platformVersionRestore = url.pathname.match(/^\/api\/platform\/projects\/([^/]+)\/versions\/([^/]+)\/restore$/);
-  if (platformVersions && ["GET", "POST"].includes(req.method)) {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    if (!requireEntitlement(res, session, "project_history")) return;
-    const project = await requireSessionProject(session, decodeURIComponent(platformVersions[1]));
-    if (req.method === "GET") {
-      sendJson(res, 200, await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/versions`));
-      return;
-    }
-    const body = await readJsonBody(req);
-    sendJson(res, 201, await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/versions`, {
-      method: "POST", body: { ...body, user_id: projectServerUserId(session) },
-    }));
-    return;
-  }
-  if (platformVersionRestore && req.method === "POST") {
-    const session = await readSession(req);
-    if (!session) { sendJson(res, 401, { error: "not_authenticated" }); return; }
-    if (!requireEntitlement(res, session, "project_history")) return;
-    const project = await requireSessionProject(session, decodeURIComponent(platformVersionRestore[1]));
-    const body = await readJsonBody(req);
-    sendJson(res, 201, await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/versions/${encodeURIComponent(platformVersionRestore[2])}/restore`, {
-      method: "POST", body: { ...body, user_id: projectServerUserId(session) },
-    }));
-    return;
-  }
-  if (platformSourceSearch && req.method === "GET") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handlePlatformSourceSearch(res, session, decodeURIComponent(platformSourceSearch[1]), url.searchParams);
-    return;
-  }
-  if (platformSources && req.method === "GET") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handlePlatformSourceList(res, session, decodeURIComponent(platformSources[1]));
-    return;
-  }
-
-  if (platformSource && ["GET", "PUT"].includes(req.method)) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    if (req.method === "GET") {
-      await handlePlatformSourceRead(res, session, decodeURIComponent(platformSource[1]), decodeURIComponent(platformSource[2]));
-      return;
-    }
-    await handlePlatformSourceWrite(req, res, session, decodeURIComponent(platformSource[1]), decodeURIComponent(platformSource[2]));
-    return;
-  }
-
-  if (url.pathname === "/api/user-ide/projects") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    sendJson(res, 200, { items: await loadUserIdeProjects(session) });
-    return;
-  }
-
-  if (url.pathname === "/api/user-ide/devices") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    sendJson(res, 200, { items: await loadUserIdeDevices(session) });
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/user-ide/device-recovery/check-firmware") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleDeviceRecoveryFirmwareCheck(req, res, session);
-    return;
-  }
-
-  if (url.pathname === "/api/user-ide/hardware-shop") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    sendJson(res, 200, await loadHardwareShopSummary(session));
-    return;
-  }
-
-  if (url.pathname === "/api/user-ide/ai-usage") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    sendJson(res, 200, await loadAiUsageSummary(session));
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/user-ide/hardware-shop/orders") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleHardwareShopOrder(req, res, session);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/user-ide/build-jobs") {
-    if (!await readSession(req)) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handleUserIdeBuildJob(req, res);
-    return;
-  }
-
-  const browserFlashResult = url.pathname.match(/^\/api\/user-ide\/build-jobs\/([^/]+)\/browser-usb-flash-result$/);
-  if (req.method === "POST" && browserFlashResult) {
-    if (!await readSession(req)) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    const jobId = decodeURIComponent(browserFlashResult[1]);
-    const body = await readJsonBody(req);
-    const existing = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`);
-    const updated = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}/result`, {
-      method: "POST",
-      body: {
-        status: body.status === "succeeded" ? "succeeded" : "failed",
-        build: {
-          ...(existing.result?.build || {}),
-          usb_flash: {
-            requested: true,
-            status: body.status === "succeeded" ? "succeeded" : "failed",
-            runner: "web_serial",
-            transport: "web_serial",
-            chip_name: body.chip_name || "",
-            error: body.error || "",
-          },
-        },
-        deploy: existing.result?.deploy || null,
-        logs: body.logs || [],
-        error: body.status === "succeeded" ? null : { message: body.error || "Browser Web-Serial-Flash fehlgeschlagen." },
-      },
-    });
-    sendJson(res, 200, updated);
-    return;
-  }
-
-  const buildJobStatus = url.pathname.match(/^\/api\/user-ide\/build-jobs\/([^/]+)\/status$/);
-  if (req.method === "GET" && buildJobStatus) {
-    if (!await readSession(req)) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    const jobId = decodeURIComponent(buildJobStatus[1]);
-    const job = await loadBuildDeployJob(jobId);
-    const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
-    if (["succeeded", "failed"].includes(job.status)) await recordCompletedBuildJob(jobId, job);
-    sendJson(res, 200, {
-      build_job_id: jobId,
-      build_deploy_job_id: jobId,
-      status: job.status,
-      flash_status: job.mode === "build_and_flash"
-        ? (job.result?.deploy?.status || "nicht angefordert")
-        : (job.result?.build?.usb_flash?.status || "nicht angefordert"),
-      flash_manifest: browserFlashManifest(jobId, job, projectJob?.build_config || {}),
-      error: job.error?.message || "",
-      build_log: job.error?.details?.build_log || job.result?.build?.log || "",
-      progress: Array.isArray(job.progress) ? job.progress : [],
-    });
-    return;
-  }
-
-  const buildArtifact = url.pathname.match(/^\/api\/user-ide\/build-artifacts\/([^/]+)\/([^/]+)$/);
-  if (req.method === "GET" && buildArtifact) {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    const jobId = decodeURIComponent(buildArtifact[1]);
-    const job = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
-    if (!job || job.user_id !== projectServerUserId(session)) {
-      sendJson(res, 404, { error: "build_artifact_not_found" });
-      return;
-    }
-    await proxyBuildArtifact(res, jobId, decodeURIComponent(buildArtifact[2]));
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname.startsWith("/vendor/esptool-js/")) {
-    serveVendorEsptool(res, url.pathname);
-    return;
-  }
-
-  if (url.pathname === "/s3-touch-spielesammlung") {
-    redirect(res, "/s3-touch-spielesammlung/");
-    return;
-  }
-
-  if (req.method === "GET" && url.pathname.startsWith("/s3-touch-spielesammlung/")) {
-    await proxyPublicDemo(res, `${url.pathname.slice("/s3-touch-spielesammlung".length)}${url.search}`);
-    return;
-  }
-
-  if (url.pathname === "/demos" || url.pathname.startsWith("/demos/")) {
-    redirect(res, `/s3-touch-spielesammlung/${url.pathname.slice("/demos/".length)}${url.search}`);
-    return;
-  }
-
-
-  if (url.pathname === "/demo" || url.pathname === "/demo/" || url.pathname === "/projects" || url.pathname === "/projects/") {
-    redirect(res, "/app/dashboard/");
-    return;
-  }
-
-  if (url.pathname === "/app" || url.pathname === "/app/") {
-    if (!await readSession(req)) {
-      redirect(res, authRoute("/app/dashboard/"));
-      return;
-    }
-    redirect(res, "/app/dashboard/");
-    return;
-  }
-
-  if (url.pathname === "/login.html" || url.pathname === "/login.js" || url.pathname === "/styles.css") {
-    redirect(res, authRoute(url.searchParams.get("next") || "/app/dashboard/"));
-    return;
-  }
-
-  if (url.pathname === "/app/auth" || url.pathname.startsWith("/app/auth/")) {
-    serveStatic(res, appDir, normalizeAppPath(url.pathname));
-    return;
-  }
-
-  if (["/hilfe", "/hilfe/", "/wissen", "/wissen/"].includes(url.pathname)) {
-    serveStatic(res, appDir, "/index.html");
-    return;
-  }
-
-  if (["/ueber-uns", "/ueber-uns/"].includes(url.pathname)) {
-    serveStatic(res, path.join(publicDir, "ueber-uns"), "/index.html");
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/platform/flashbox/claim") {
-    const session = await readSession(req);
-    if (!session) {
-      sendJson(res, 401, { error: "not_authenticated" });
-      return;
-    }
-    await handlePlatformFlashboxClaim(req, res, session);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/recovery/offline/start") {
-    await handleOfflineRecoveryStart(req, res);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/recovery/offline/passkey/options") {
-    await handleOfflineRecoveryPasskeyOptions(req, res);
-    return;
-  }
-
-  if (req.method === "POST" && url.pathname === "/api/recovery/offline/passkey/verify") {
-    await handleOfflineRecoveryPasskeyVerify(req, res);
-    return;
-  }
-
-  const dashboardRoute = url.pathname === "/app/dashboard" || url.pathname.startsWith("/app/dashboard/");
-  if (dashboardRoute) {
-    if (!await readSession(req)) {
-      redirect(res, authRoute(url.pathname + url.search));
-      return;
-    }
-    serveStatic(res, appDir, "/index.html");
-    return;
-  }
-
-  if (url.pathname.startsWith("/app/") && path.extname(url.pathname)) {
-    serveStatic(res, appDir, normalizeAppPath(url.pathname));
-    return;
-  }
-
-  if (url.pathname.startsWith("/app/")) {
-    if (!await readSession(req)) {
-      redirect(res, authRoute(url.pathname + url.search));
-      return;
-    }
-    serveStatic(res, appDir, normalizeAppPath(url.pathname));
-    return;
-  }
-
-  if (url.pathname.startsWith("/projects/")) {
-    if (!await readSession(req)) {
-      redirect(res, authRoute(url.pathname + url.search));
-      return;
-    }
-    redirect(res, "/app/dashboard/");
-    return;
-  }
-
-  if (url.pathname === "/dev/projects" || url.pathname === "/dev/projects/") {
-    if (!await readSession(req)) {
-      redirect(res, authRoute("/app/learn/"));
-      return;
-    }
-    redirect(res, "/app/learn/");
-    return;
-  }
-
-  if (url.pathname.startsWith("/dev/projects/")) {
-    if (!await readSession(req)) {
-      redirect(res, authRoute("/app/learn/"));
-      return;
-    }
-    redirect(res, "/app/learn/");
-    return;
-  }
-
-  if (url.pathname === "/shop" || url.pathname === "/shop/") {
-    serveStatic(res, publicDir, "/shop/index.html");
-    return;
-  }
-
-  if (url.pathname === "/entdecken" || url.pathname === "/entdecken/") {
-    redirect(res, "/nachbauprojekte/");
-    return;
-  }
-
-  if (url.pathname === "/downloads" || url.pathname === "/downloads/") {
-    redirect(res, "/nachbauprojekte/");
-    return;
-  }
-
-  if (url.pathname === "/nachbauprojekte" || url.pathname === "/nachbauprojekte/") {
-    serveStatic(res, publicDir, "/nachbauprojekte/index.html");
-    return;
-  }
-
-  if (url.pathname === "/nachbauprojekte/einfache-elektromotoren") {
-    redirect(res, "/nachbauprojekte/einfache-elektromotoren/");
-    return;
-  }
-
-  if (url.pathname === "/nachbauprojekte/einfache-elektromotoren/") {
-    serveStatic(res, publicDir, "/nachbauprojekte/einfache-elektromotoren/index.html");
-    return;
-  }
-
-  if (url.pathname === "/nachbauprojekte/druckmotoren") {
-    redirect(res, "/nachbauprojekte/druckmotoren/");
-    return;
-  }
-
-  if (url.pathname === "/nachbauprojekte/druckmotoren/") {
-    serveStatic(res, publicDir, "/nachbauprojekte/druckmotoren/index.html");
-    return;
-  }
-
-  if (url.pathname === "/community" || url.pathname === "/community/") {
-    serveStatic(res, publicDir, "/community/index.html");
-    return;
-  }
-
-  if (url.pathname === "/support" || url.pathname === "/support/") {
-    serveStatic(res, publicDir, "/support/index.html");
-    return;
-  }
-
-  if (/^\/community\/questions\/[^/]+\/?$/.test(url.pathname)) {
-    serveStatic(res, publicDir, "/community/question.html");
-    return;
-  }
-
-  if (url.pathname === "/flashbox-einrichten" || url.pathname === "/flashbox-einrichten/") {
-    serveStatic(res, publicDir, "/flashbox-einrichten/index.html");
-    return;
-  }
-
-  if (url.pathname === "/") {
-    serveStatic(res, publicDir, "/index.html");
-    return;
-  }
-
-  serveStatic(res, publicDir, url.pathname);
+  sendJson(res, 404, { error: "route_not_found" });
 }
 
 function passkeyConfiguration(req) {
@@ -2511,6 +1434,12 @@ async function handleDevelopmentProjectCreate(req, res, session) {
       return;
     }
     buildConfig = { ...buildConfig, flash_size_mb: 16, board_configuration: compilerBoardConfiguration(null, board) };
+  }
+  if (hardwareConfiguration) {
+    hardwareConfiguration = normalizeHardwareConfiguration(hardwareConfiguration, {
+      software_units: softwareUnits,
+      build_config: buildConfig,
+    });
   }
   const projectId = `dev_project_${slugifyProjectId(title)}_${Date.now().toString(36)}`;
   const initialSource = template.id === "empty" ? "" : templateArchitecturePlantUml(template, title);
@@ -5322,8 +4251,16 @@ function normalizeHardwareConfiguration(input = {}, project = {}) {
     }
     return normalized;
   });
+  const devicesById = new Map(components
+    .filter((component) => component.abstract_type === "iot_device")
+    .map((component) => [component.component_id, component]));
+  for (const component of components.filter((item) => ["sensor", "actuator"].includes(item.abstract_type))) {
+    const boardFeatureId = boardFeatureIdForHardwareComponent(component, devicesById.get(component.target_device_id));
+    component.hardware_scope = boardFeatureId ? "board_integrated" : "board_external";
+    component.board_feature_id = boardFeatureId;
+  }
   return {
-    schema_version: 5,
+    schema_version: 6,
     components,
     updated_at: new Date().toISOString(),
   };
@@ -5421,8 +4358,10 @@ function hardwareConfigurationSources(configuration, title) {
   }];
   for (const device of devices) {
     const folder = device.component_path;
-    const sensors = configuration.components.filter((component) => component.abstract_type === "sensor" && component.target_device_id === device.component_id);
-    const actuators = configuration.components.filter((component) => component.abstract_type === "actuator" && component.target_device_id === device.component_id);
+    const sensors = configuration.components.filter((component) => component.abstract_type === "sensor"
+      && component.target_device_id === device.component_id && component.hardware_scope !== "board_integrated");
+    const actuators = configuration.components.filter((component) => component.abstract_type === "actuator"
+      && component.target_device_id === device.component_id && component.hardware_scope !== "board_integrated");
     sources.push({
       path: `${folder}/Konfiguration/Hardware/Board/board.md`,
       role: "device_board_config",
@@ -5558,15 +4497,26 @@ function hardwareWiringPlantUml(configuration, title) {
 
 function boardFeatureForHardwareComponent(component, device) {
   if (!device) return null;
-  const featureId = component.abstract_type === "sensor" && component.sensor_category === "image"
-    ? "camera"
-    : component.abstract_type === "actuator" && component.concrete_type === "integrated_display"
-      ? "display"
-      : "";
+  const featureId = boardFeatureIdForHardwareComponent(component, device);
   const feature = featureId ? device.board_configuration?.board_features?.[featureId] : null;
   if (!feature?.enabled || !Object.keys(feature.pins || {}).length) return null;
-  if (featureId === "camera" && component.concrete_type && feature.hardware && component.concrete_type !== feature.hardware) return null;
   return feature;
+}
+
+function boardFeatureIdForHardwareComponent(component, device) {
+  if (!device) return "";
+  const features = device.board_configuration?.board_features || {};
+  let featureId = "";
+  if (component.abstract_type === "sensor" && component.sensor_category === "image") featureId = "camera";
+  else if (component.abstract_type === "actuator" && component.concrete_type === "integrated_display") featureId = "display";
+  else if (/^integrated_/.test(component.concrete_type || "")) {
+    const candidate = String(component.concrete_type).replace(/^integrated_/, "");
+    featureId = ({ touchscreen: "touch", touchscreen_controller: "touch", audio: "speaker" })[candidate] || candidate;
+  }
+  const feature = featureId ? features[featureId] : null;
+  if (!feature?.enabled) return "";
+  if (featureId === "camera" && component.concrete_type && feature.hardware && component.concrete_type !== "integrated_camera" && component.concrete_type !== feature.hardware) return "";
+  return featureId;
 }
 
 function formatHardwarePins(pins = {}) {

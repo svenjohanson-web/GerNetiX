@@ -1,3 +1,4 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -5,8 +6,10 @@ const test = require("node:test");
 
 const css = fs.readFileSync(path.join(__dirname, "..", "public", "app", "app.css"), "utf8");
 const html = fs.readFileSync(path.join(__dirname, "..", "public", "app", "index.html"), "utf8");
-const source = fs.readFileSync(path.join(__dirname, "..", "public", "app", "app.js"), "utf8");
-const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
+const source = readPlatformAppSource();
+const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
+  .map((file) => fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8"))
+  .join("\n");
 
 test("main menu uses the shared dark typography and states", () => {
   assert.match(css, /\.app-menu\s*\{[\s\S]*?background: #111827/);

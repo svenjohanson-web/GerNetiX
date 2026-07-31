@@ -24,6 +24,12 @@ function createHttpApp(options) {
       return;
     }
 
+    if (req.method === "POST" && url.pathname === "/api/build-cache/clean") {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await service.cleanProjectCache(body));
+      return;
+    }
+
     const jobMatch = url.pathname.match(/^\/api\/build-jobs\/([^/]+)$/);
     if (req.method === "GET" && jobMatch) {
       sendJson(res, 200, service.getJob(decodeURIComponent(jobMatch[1])));

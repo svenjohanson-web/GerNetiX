@@ -1,10 +1,12 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
 
 const devServer = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
-const app = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
+const app = readPlatformAppSource();
+const platformRoutes = fs.readFileSync(path.resolve(__dirname, "../src/dev/server/platform-routes.js"), "utf8");
 const platformSummary = devServer.match(/async function handlePlatformSummary[\s\S]*?\r?\n}\r?\n\r?\nfunction externalLoginMessage/)?.[0] || "";
 const platformBootstrap = devServer.match(/async function handlePlatformBootstrap[\s\S]*?\r?\n}\r?\n\r?\nasync function loadKnowledgeState/)?.[0] || "";
 const projectLoader = devServer.match(/async function loadUserIdeProjects[\s\S]*?\r?\n}\r?\n\r?\nfunction mapUserIdeProjects/)?.[0] || "";
@@ -22,7 +24,8 @@ test("loads independent platform summary dependencies concurrently", () => {
 });
 
 test("renders development projects from a critical bootstrap before loading secondary platform data", () => {
-  assert.match(devServer, /url\.pathname === "\/api\/platform\/bootstrap"/);
+  assert.match(devServer, /registerPlatformRoutes/);
+  assert.match(platformRoutes, /path: "\/api\/platform\/bootstrap"/);
   assert.match(platformBootstrap, /const projects = await loadUserIdeProjects\(session\)/);
   assert.match(platformBootstrap, /projects: projects\.map\(toPlatformProject\)/);
   assert.match(platformBootstrap, /bootstrap_duration_ms/);

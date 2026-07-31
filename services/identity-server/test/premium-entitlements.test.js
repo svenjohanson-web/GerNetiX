@@ -4,7 +4,12 @@ const path = require("node:path");
 const test = require("node:test");
 
 const root = path.join(__dirname, "..");
-const server = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
+const server = [
+  "dev-server.js",
+  path.join("dev", "server", "platform-routes.js"),
+  path.join("dev", "server", "project-routes.js"),
+  path.join("dev", "server", "system-routes.js"),
+].map((file) => fs.readFileSync(path.join(root, "src", file), "utf8")).join("\n");
 const platform = fs.readFileSync(path.join(root, "public", "app", "development-platform.js"), "utf8");
 const guidedProject = fs.readFileSync(path.join(root, "public", "app", "guided-project-view.js"), "utf8");
 

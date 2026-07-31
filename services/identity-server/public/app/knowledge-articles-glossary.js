@@ -1,0 +1,123 @@
+// Wissensspeicher: Technisches Lexikon.
+const KnowledgeArticlesGlossary = {
+    "glossary-basics": {
+      title: "Fachbegriffe einfach erklärt",
+      summary: "Dieses Lexikon erklärt häufige Begriffe aus modernen Systemlandschaften kurz, ohne vorauszusetzen, dass du sie bereits kennst.",
+      access: "premium",
+      sections: [
+        {
+          heading: "Systeme und Vernetzung",
+          table: {
+            headers: [
+              "Begriff",
+              "Bedeutung",
+              "Praktisches Beispiel",
+            ],
+            rows: [
+              [
+                "Edge Computing",
+                "Rechenarbeit findet nahe an der Datenquelle statt, also auf dem Gerät oder im lokalen Netzwerk – nicht erst in einem weit entfernten Rechenzentrum.",
+                "Eine Kamera erkennt ein fehlerhaftes Teil direkt am lokalen Industrie-PC. Nur das Ergebnis oder ein Alarm wird weitergegeben.",
+              ],
+              [
+                "Gateway",
+                "Ein Vermittler zwischen Geräten, Netzen oder Protokollen. Es sammelt, übersetzt oder schützt den Weg zu anderen Systemen.",
+                "Ein Raspberry Pi nimmt Werte von ESP32-Geräten entgegen und gibt sie gesammelt an einen Server weiter.",
+              ],
+              [
+                "Latenz",
+                "Die Zeit vom Senden einer Anfrage bis zur Reaktion. Kurze Latenz ist für direkte Bedienung und Steuerung wichtig.",
+                "Ein Not-Aus oder ein Lichtschalter darf nicht von einer langsamen Internetverbindung abhängen.",
+              ],
+              [
+                "API",
+                "Eine klar definierte Schnittstelle, über die Programme Daten oder Funktionen anfordern können. Menschen nutzen meist eine App, Programme eine API.",
+                "Die iPhone-App fragt über eine API den aktuellen Temperaturwert ab oder sendet einen Schaltbefehl.",
+              ],
+              [
+                "Offline-first",
+                "Die Kernfunktion funktioniert auch ohne Internet. Eine spätere Verbindung synchronisiert Daten oder erweitert Funktionen.",
+                "Die Bewässerung läuft nach lokalen Regeln weiter; Messwerte werden übertragen, sobald die Verbindung zurück ist.",
+              ],
+            ],
+          },
+        },
+        {
+          heading: "Server und Betrieb",
+          table: {
+            headers: [
+              "Begriff",
+              "Bedeutung",
+              "Praktisches Beispiel",
+            ],
+            rows: [
+              [
+                "Container",
+                "Eine abgegrenzte Laufzeitumgebung für eine Anwendung und ihre Abhängigkeiten. Mehrere Container können auf einem VPS laufen.",
+                "Web-App, Datenbank und Hintergrunddienst laufen getrennt, lassen sich aber gemeinsam betreiben und aktualisieren.",
+              ],
+              [
+                "Cloud Computing",
+                "Rechenleistung, Speicher oder fertige Plattformdienste werden über das Internet nach Bedarf bezogen.",
+                "Ein verwalteter Speicher bewahrt Bilder auf, ohne dass ein eigener Dateiserver betrieben werden muss.",
+              ],
+              [
+                "VPS",
+                "Ein Virtual Private Server ist ein virtueller Server im Rechenzentrum. Er verhält sich für dich wie ein eigener Server, teilt aber die physische Hardware mit anderen Instanzen.",
+                "Eine kleine Plattform mit API, Website und Datenbank läuft kostengünstig auf einem VPS.",
+              ],
+              [
+                "Worker",
+                "Ein Hintergrunddienst, der einzelne Aufgaben abarbeitet, ohne dass eine App darauf warten muss.",
+                "Nach dem Upload eines Bildes erzeugt ein Worker eine kleinere Vorschau.",
+              ],
+              [
+                "Queue",
+                "Eine Warteschlange für Aufgaben oder Ereignisse. Sie verteilt Arbeit kontrolliert an Worker.",
+                "Viele Messwerte warten geordnet, bis ein Worker sie speichert oder auswertet.",
+              ],
+            ],
+          },
+        },
+        {
+          heading: "Embedded und Entwicklung",
+          table: {
+            headers: [
+              "Begriff",
+              "Bedeutung",
+              "Praktisches Beispiel",
+            ],
+            rows: [
+              [
+                "Firmware",
+                "Software, die direkt auf einem eingebetteten Gerät läuft und seine Hardware steuert.",
+                "Die Firmware eines ESP32 liest einen Temperatursensor und schaltet bei Bedarf ein Relais.",
+              ],
+              [
+                "JTAG",
+                "Eine Schnittstelle, über die Entwicklungswerkzeuge ein eingebettetes System gezielt prüfen und debuggen können.",
+                "Ein Debugger hält die Firmware an und zeigt, welche Variable gerade einen unerwarteten Wert hat.",
+              ],
+              [
+                "Funktionale Sicherheit",
+                "Die Eigenschaft eines Systems, bei Fehlern oder Fehlbedienung keine unvertretbare Gefahr zu verursachen.",
+                "Eine Maschine stoppt sicher, wenn ein Sensor ausfällt, statt unkontrolliert weiterzulaufen.",
+              ],
+            ],
+          },
+        },
+        {
+          heading: "Begriffe im Zusammenhang lesen",
+          paragraphs: [
+            "Ein Fachbegriff beschreibt selten allein eine gute oder schlechte Lösung. Edge Computing kann Latenz senken, ersetzt aber keine sichere Software. Ein VPS kann einfach zu betreiben sein, braucht aber weiterhin Updates und Backups. Nutze das Lexikon zum Nachschlagen und lies für Entscheidungen anschließend das passende Kapitel im Wissensportal.",
+          ],
+        },
+      ],
+      relatedTopics: [
+        "server-systems",
+        "local-servers",
+        "software-basics",
+        "embedded-measurement-debugging",
+      ],
+    },
+};

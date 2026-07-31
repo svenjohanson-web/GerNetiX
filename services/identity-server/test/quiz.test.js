@@ -1,3 +1,4 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -6,7 +7,7 @@ const vm = require("node:vm");
 
 const appRoot = path.join(__dirname, "..", "public", "app");
 const html = fs.readFileSync(path.join(appRoot, "index.html"), "utf8");
-const app = fs.readFileSync(path.join(appRoot, "app.js"), "utf8");
+const app = readPlatformAppSource();
 const css = fs.readFileSync(path.join(appRoot, "app.css"), "utf8");
 const dataSource = fs.readFileSync(path.join(appRoot, "quiz-data.js"), "utf8");
 const quizSource = fs.readFileSync(path.join(appRoot, "quiz.js"), "utf8");

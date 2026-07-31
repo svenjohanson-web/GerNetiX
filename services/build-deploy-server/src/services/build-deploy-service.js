@@ -52,6 +52,24 @@ class BuildDeployService {
     return summarizeJob(job);
   }
 
+  async cleanProjectCache(input = {}) {
+    const projectId = String(input.project_id || "").trim();
+    if (!projectId) {
+      throw new BuildDeployError("missing_project_id", "Zum Bereinigen des Build-Caches fehlt die Projekt-ID.");
+    }
+    const activeJob = Array.from(this.jobs.values()).find((job) => job.project_id === projectId
+      && ["accepted", "queued", "running"].includes(job.status));
+    if (activeJob) {
+      throw new BuildDeployError(
+        "build_in_progress",
+        "Der Build-Cache kann nicht bereinigt werden, solange ein Build dieses Projekts läuft.",
+        409,
+      );
+    }
+    const removedCacheCount = await this.packageStore.cleanIncrementalProjectCache(projectId);
+    return { project_id: projectId, removed_cache_count: removedCacheCount, status: "clean" };
+  }
+
   otaPreflight() {
     return this.deployOrchestrator.preflight();
   }

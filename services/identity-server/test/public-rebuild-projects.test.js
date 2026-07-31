@@ -13,14 +13,21 @@ const motorCoilIllustration = fs.readFileSync(path.join(root, "public", "assets"
 const motorReedBeforeIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-reed-timing-before.svg"), "utf8");
 const motorReedOnIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-reed-timing-on.svg"), "utf8");
 const motorReedAfterIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-reed-timing-after.svg"), "utf8");
-const knowledgeContent = fs.readFileSync(path.join(root, "public", "app", "knowledge-content.js"), "utf8");
+const knowledgeAppRoot = path.join(root, "public", "app");
+const knowledgeContent = fs.readdirSync(knowledgeAppRoot)
+  .filter((file) => /^knowledge-articles-.*\.js$/.test(file))
+  .sort()
+  .map((file) => fs.readFileSync(path.join(knowledgeAppRoot, file), "utf8"))
+  .join("\n");
 const informationView = fs.readFileSync(path.join(root, "public", "app", "information-view.js"), "utf8");
-const server = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
+const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
+  .map((file) => fs.readFileSync(path.join(root, "src", file), "utf8"))
+  .join("\n");
 
 test("serves the public project catalog and links directly to the available project", () => {
-  assert.match(server, /url\.pathname === "\/nachbauprojekte"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/index\.html"\)/);
-  assert.match(server, /url\.pathname === "\/s3-touch-spielesammlung"[\s\S]*proxyPublicDemo/);
-  assert.match(server, /url\.pathname === "\/demos"[\s\S]*redirect\(res, `\/s3-touch-spielesammlung\//);
+  assert.match(server, /\["\/nachbauprojekte", "\/nachbauprojekte\/"\][\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/index\.html"\)/);
+  assert.match(server, /path: "\/s3-touch-spielesammlung"[\s\S]*proxyPublicDemo/);
+  assert.match(server, /pattern: \/\^\\\/demos[\s\S]*redirect\(res, `\/s3-touch-spielesammlung\//);
   assert.match(page, /ESP32-S3 Touch Game Collection/);
   assert.match(page, /MakerWorld/);
   assert.match(page, /href="\/s3-touch-spielesammlung\/"/);
@@ -32,8 +39,8 @@ test("serves the public project catalog and links directly to the available proj
 });
 
 test("publishes a stepwise motor rebuild project in the public catalog", () => {
-  assert.match(server, /url\.pathname === "\/nachbauprojekte\/einfache-elektromotoren"[\s\S]*redirect\(res, "\/nachbauprojekte\/einfache-elektromotoren\/"\)/);
-  assert.match(server, /url\.pathname === "\/nachbauprojekte\/einfache-elektromotoren\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/einfache-elektromotoren\/index\.html"\)/);
+  assert.match(server, /path: "\/nachbauprojekte\/einfache-elektromotoren"[\s\S]*redirect\(res, "\/nachbauprojekte\/einfache-elektromotoren\/"\)/);
+  assert.match(server, /path: "\/nachbauprojekte\/einfache-elektromotoren\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/einfache-elektromotoren\/index\.html"\)/);
   assert.match(page, /Einfache Elektromotoren bauen/);
   assert.match(page, /href="\/nachbauprojekte\/einfache-elektromotoren\/"/);
   assert.match(page, /id="electronics-ten-minutes-title">Elektronik in 10 Minuten<\/h2>[\s\S]*href="\/nachbauprojekte\/einfache-elektromotoren\/"/);
@@ -47,8 +54,8 @@ test("publishes a stepwise motor rebuild project in the public catalog", () => {
 });
 
 test("publishes a modular 3D-printed motor rebuild series", () => {
-  assert.match(server, /url\.pathname === "\/nachbauprojekte\/druckmotoren"[\s\S]*redirect\(res, "\/nachbauprojekte\/druckmotoren\/"\)/);
-  assert.match(server, /url\.pathname === "\/nachbauprojekte\/druckmotoren\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/druckmotoren\/index\.html"\)/);
+  assert.match(server, /path: "\/nachbauprojekte\/druckmotoren"[\s\S]*redirect\(res, "\/nachbauprojekte\/druckmotoren\/"\)/);
+  assert.match(server, /path: "\/nachbauprojekte\/druckmotoren\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/druckmotoren\/index\.html"\)/);
   assert.match(page, /id="printed-motors-title">Motoren aus dem 3D-Drucker<\/h2>/);
   assert.match(page, /href="\/nachbauprojekte\/druckmotoren\/"/);
   assert.match(page, /Fünf Druckmotor-Stufen/);

@@ -1,3 +1,4 @@
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -13,10 +14,11 @@ const { InMemoryIdentityRepository } = require("../src/repositories/in-memory-id
 const { SqliteBackedIdentityRepository } = require("../src/repositories/sqlite-backed-identity-repository");
 
 const server = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
-const app = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
+const app = readPlatformAppSource();
 const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
 const informationView = fs.readFileSync(path.resolve(__dirname, "../public/app/information-view.js"), "utf8");
+const knowledgeRoutes = fs.readFileSync(path.resolve(__dirname, "../src/dev/server/knowledge-routes.js"), "utf8");
 
 test("offers a chapter update only to accounts that may read the chapter", () => {
   const release = findKnowledgeChapterRelease("yaml-basics");
@@ -121,9 +123,9 @@ test("exposes entitlement-filtered updates and an authenticated read endpoint", 
   assert.match(server, /knowledge_history: knowledgeState\.history/);
   assert.match(server, /unreadKnowledgeChapterReleases\(reads, entitlements\)/);
   assert.match(server, /knowledgeChapterHistory\(reads, entitlements\)/);
-  assert.match(server, /knowledgeChapterRead = url\.pathname\.match/);
-  assert.match(server, /api\\\/platform\\\/knowledge\\\/chapters/);
-  assert.match(server, /if \(!session\)[\s\S]*not_authenticated/);
+  assert.match(server, /registerKnowledgeRoutes/);
+  assert.match(knowledgeRoutes, /api\\\/platform\\\/knowledge\\\/chapters/);
+  assert.match(knowledgeRoutes, /requireSession\(req, res\)/);
   assert.match(server, /canReadKnowledgeChapter\(release, accountSubscription\(session\)\.entitlements\)/);
   assert.match(server, /mark_knowledge_chapter_read/);
 });

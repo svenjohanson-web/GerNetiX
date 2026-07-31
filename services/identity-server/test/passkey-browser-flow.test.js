@@ -4,7 +4,10 @@ const path = require("node:path");
 const test = require("node:test");
 
 const authSource = fs.readFileSync(path.join(__dirname, "..", "public", "app", "auth", "auth.js"), "utf8");
-const serverSource = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
+const serverSource = [
+  "dev-server.js",
+  path.join("dev", "server", "auth-routes.js"),
+].map((file) => fs.readFileSync(path.join(__dirname, "..", "src", file), "utf8")).join("\n");
 
 test("browser-side WebAuthn failures are reported without sending their message or credential", () => {
   const reporterSource = authSource.slice(
@@ -19,7 +22,7 @@ test("browser-side WebAuthn failures are reported without sending their message 
 
 test("Identity wires the browser error endpoint to the configured system-event reporter", () => {
   assert.match(serverSource, /const recordSystemEvent = createSystemEventReporter/);
-  assert.match(serverSource, /url\.pathname === "\/api\/passkeys\/client-error"/);
+  assert.match(serverSource, /path: "\/api\/passkeys\/client-error"/);
   assert.match(serverSource, /recordSystemEvent\(passkeyBrowserFailureEvent/);
 });
 

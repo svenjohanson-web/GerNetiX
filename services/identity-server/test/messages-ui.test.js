@@ -1,5 +1,7 @@
 "use strict";
 
+const { readPlatformAppSource } = require("../test-support/platform-app-source");
+
 const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
@@ -7,7 +9,7 @@ const test = require("node:test");
 
 const root = path.join(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "public", "app", "index.html"), "utf8");
-const client = fs.readFileSync(path.join(root, "public", "app", "app.js"), "utf8");
+const client = readPlatformAppSource();
 const css = fs.readFileSync(path.join(root, "public", "app", "app.css"), "utf8");
 
 test("keeps Messages permanently visible outside the authenticated hamburger groups", () => {

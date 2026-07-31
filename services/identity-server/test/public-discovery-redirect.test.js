@@ -4,10 +4,11 @@ const path = require("node:path");
 const test = require("node:test");
 
 const root = path.join(__dirname, "..");
-const server = fs.readFileSync(path.join(root, "src", "dev-server.js"), "utf8");
+const server = ["dev-server.js", path.join("dev", "server", "web-routes.js")]
+  .map((file) => fs.readFileSync(path.join(root, "src", file), "utf8"))
+  .join("\n");
 
 test("redirects legacy discovery routes to the public project catalog", () => {
-  assert.match(server, /url\.pathname === "\/entdecken"[\s\S]*redirect\(res, "\/nachbauprojekte\/"\)/);
-  assert.match(server, /url\.pathname === "\/downloads"[\s\S]*redirect\(res, "\/nachbauprojekte\/"\)/);
+  assert.match(server, /\["\/entdecken", "\/entdecken\/", "\/downloads", "\/downloads\/"\][\s\S]*redirect\(res, "\/nachbauprojekte\/"\)/);
   assert.equal(fs.existsSync(path.join(root, "public", "downloads", "index.html")), false);
 });
