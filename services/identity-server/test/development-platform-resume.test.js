@@ -403,11 +403,14 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(devServer, /zweiter Pin:/);
   assert.match(devServer, /Konfiguration\/Hardware\/Schaltungen/);
   assert.match(devServer, /PT1000-Messschaltung/);
-  assert.match(publicCss, /\.hardware-component-table \{[\s\S]*min-width: 1380px/);
-  assert.match(publicCss, /\.hardware-board-selection \{[\s\S]*grid-template-columns: repeat\(3, minmax\(190px, 1fr\)\)/);
+  assert.match(publicCss, /\.hardware-board-selection \{[\s\S]*grid-template-columns: repeat\(auto-fit, minmax\(min\(190px, 100%\), 1fr\)\)/);
   assert.match(publicCss, /\.hardware-sensor-selection \{[\s\S]*display: contents/);
-  assert.match(publicCss, /\.hardware-table-row\.hardware-sensor-row \{[\s\S]*grid-template-columns: minmax\(160px, \.55fr\) minmax\(920px, 3\.45fr\)/);
-  assert.match(publicCss, /\.hardware-inline-assignment \{[\s\S]*grid-auto-flow: column/);
+  assert.match(publicCss, /\.hardware-component-table \{[\s\S]*width: 100%;[\s\S]*min-width: 0;[\s\S]*max-width: 100%/);
+  assert.match(publicCss, /\.hardware-table-row\.hardware-sensor-row \{[\s\S]*grid-template-columns: minmax\(140px, \.55fr\) minmax\(0, 3\.45fr\)/);
+  assert.match(publicCss, /@media \(max-width: 1180px\) \{[\s\S]*\.hardware-table-row,[\s\S]*grid-template-columns: minmax\(140px, \.65fr\) minmax\(0, 1\.35fr\)/);
+  assert.match(publicCss, /@media \(max-width: 720px\) \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.doesNotMatch(publicCss, /\.hardware-component-table \{[\s\S]{0,160}min-width: 1380px/);
+  assert.match(publicCss, /\.hardware-inline-assignment \{[\s\S]*grid-template-columns: repeat\(auto-fit, minmax\(min\(170px, 100%\), 1fr\)\)/);
   assert.doesNotMatch(publicCss, /\.hardware-signal-chain/);
   assert.match(publicCss, /Hardware-Realisierung folgt derselben dunklen Workspace-Sprache/);
   assert.match(publicCss, /\.hardware-table-row \{[\s\S]*background: #111827;[\s\S]*color: #e5e7eb/);

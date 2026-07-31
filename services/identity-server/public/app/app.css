@@ -2887,22 +2887,27 @@ button.danger:hover {
 .hardware-component-section {
   display: grid;
   gap: 10px;
+  min-width: 0;
+  max-width: 100%;
   border-top: 1px solid var(--line);
   padding-top: 14px;
 }
 .hardware-component-table {
   display: grid;
-  min-width: 1380px;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
 }
 #developmentHardwareForm {
-  overflow: auto;
+  min-width: 0;
+  max-width: 100%;
 }
 .hardware-table-row {
   display: grid;
-  grid-template-columns: minmax(180px, .7fr) minmax(680px, 2.4fr) minmax(220px, .8fr) minmax(260px, 1fr);
+  grid-template-columns: minmax(140px, .7fr) minmax(0, 2.4fr) minmax(140px, .8fr) minmax(170px, 1fr);
   gap: 12px;
   align-items: start;
   padding: 10px 12px;
@@ -2943,7 +2948,7 @@ button.danger:hover {
 }
 .hardware-board-selection {
   display: grid;
-  grid-template-columns: repeat(3, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(190px, 100%), 1fr));
   gap: 10px;
   align-items: end;
 }
@@ -2990,16 +2995,27 @@ button.danger:hover {
   display: contents;
 }
 .hardware-table-row.hardware-sensor-row {
-  grid-template-columns: minmax(160px, .55fr) minmax(920px, 3.45fr);
+  grid-template-columns: minmax(140px, .55fr) minmax(0, 3.45fr);
   align-items: end;
 }
 .hardware-inline-assignment {
   display: grid;
-  grid-auto-columns: minmax(170px, 1fr);
-  grid-auto-flow: column;
+  grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr));
   gap: 10px;
   align-items: end;
   min-width: 0;
+}
+@media (max-width: 1180px) {
+  .hardware-table-row,
+  .hardware-table-row.hardware-sensor-row {
+    grid-template-columns: minmax(140px, .65fr) minmax(0, 1.35fr);
+  }
+}
+@media (max-width: 720px) {
+  .hardware-table-row,
+  .hardware-table-row.hardware-sensor-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .hardware-table-row select,
 .hardware-table-row input {
