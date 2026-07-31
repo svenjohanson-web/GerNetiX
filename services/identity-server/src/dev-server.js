@@ -66,6 +66,7 @@ const { createUmlFundamentalsCourseModel } = require("./dev/project-models/uml-f
 const { createYamlFundamentalsCourseModel } = require("./dev/project-models/yaml-fundamentals-course");
 const { createStorageLearningStoryCourseModel } = require("./dev/project-models/storage-learning-story-course");
 const { createRadioTechnologiesCourseModel } = require("./dev/project-models/radio-technologies-course");
+const { createEsp32CameraStreamingCourseModel } = require("./dev/project-models/esp32-camera-streaming-course");
 const {
   canReadKnowledgeChapter,
   findKnowledgeChapterRelease,
@@ -247,6 +248,7 @@ const umlFundamentalsCourseModel = createUmlFundamentalsCourseModel();
 const yamlFundamentalsCourseModel = createYamlFundamentalsCourseModel();
 const storageLearningStoryCourseModel = createStorageLearningStoryCourseModel();
 const radioTechnologiesCourseModel = createRadioTechnologiesCourseModel();
+const esp32CameraStreamingCourseModel = createEsp32CameraStreamingCourseModel();
 const llmConfigStore = createLlmConfigStore({
   configPath: path.join(workspaceRoot, ".runtime", "identity-llm-config.json"),
   stateStore: identityLlmStateStore,
@@ -4334,6 +4336,7 @@ function createUserIdeState() {
     yamlFundamentalsCourseModel.createProject(project, step),
     storageLearningStoryCourseModel.createProject(project, step),
     radioTechnologiesCourseModel.createProject(project, step),
+    esp32CameraStreamingCourseModel.createProject(project, step),
     project("plant-watering-control", "Pflanzenbewaesserung", "Sensor und Aktor", "Feuchtigkeit messen und eine Pumpe kontrolliert schalten.", [
       step("Nutzen und Risiko", "Die Pflanze soll Wasser bekommen, ohne Ueberschwemmung.", "Automatisierung braucht Grenzen."),
       step("Sensor lesen", "Bodenfeuchte wird zur Eingangsseite der Steuerung.", "Ein Sensor liefert Hinweise, keine fertige Entscheidung."),
@@ -4447,10 +4450,13 @@ function normalizeLearningProjectTags(value) {
     "topic:programming",
     "topic:radar",
     "topic:radio",
+    "topic:camera",
+    "topic:networking",
     "topic:sensors",
     "topic:data",
     "topic:databases",
     "topic:storage",
+    "topic:video",
     "topic:web-push",
     "topic:yaml",
   ];
@@ -4560,6 +4566,13 @@ function projectViewManifest(project, options = {}) {
   }
   if (project.slug === radioTechnologiesCourseModel.slug) {
     return radioTechnologiesCourseModel.createViewManifest(project, {
+      override,
+      primarySourcePath,
+    });
+  }
+  if (project.slug === esp32CameraStreamingCourseModel.slug) {
+    return esp32CameraStreamingCourseModel.createViewManifest(project, {
+      lessonId: options.lessonId || "",
       override,
       primarySourcePath,
     });
@@ -5237,6 +5250,7 @@ function buildConfigForBoard(boardProfileId, existing = null) {
   const common = { ...(existing || {}), libraries: existing?.libraries || [] };
   if (/arduino_nano_r3_atmega328p/.test(boardProfileId)) return { ...common, platform: "atmelavr", framework: "arduino", board: "nanoatmega328", environment: "nanoatmega328", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
   if (/esp8266|d1_mini/.test(boardProfileId)) return { ...common, platform: "espressif8266", framework: "arduino", board: "d1_mini", environment: "d1_mini", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
+  if (/ai_thinker_esp32_cam/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: "arduino", board: "esp32cam", environment: "esp32cam", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "", user_source_path: existing?.user_source_path || "src/main.cpp", user_target_path: existing?.user_target_path || "src/main.cpp" };
   if (/esp32_s3|esp32-s3/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: existing?.framework || "espidf", board: "esp32-s3-devkitc-1", environment: "esp32-s3-devkitc-1", firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: existing?.firmware_basis_version || "workspace", firmware_basis_variant: existing?.firmware_basis_variant || "comfort", user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/user/user_app.cpp" };
   if (/esp32|wroom32|nano_esp32/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: existing?.framework || "espidf", board: "esp32dev", environment: "esp32dev", firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: existing?.firmware_basis_version || "workspace", firmware_basis_variant: existing?.firmware_basis_variant || "comfort", user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/user/user_app.cpp" };
   return existing;
@@ -5305,6 +5319,9 @@ function demoProjectSources(project, options = {}) {
   }
   if (project.slug === radioTechnologiesCourseModel.slug) {
     return radioTechnologiesCourseModel.createSources();
+  }
+  if (project.slug === esp32CameraStreamingCourseModel.slug) {
+    return esp32CameraStreamingCourseModel.createSources({ lessonId: options.lessonId || "" });
   }
 
   if (project.slug === "arduino-atmel-bare-metal") {

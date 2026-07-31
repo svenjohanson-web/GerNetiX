@@ -1,0 +1,215 @@
+{
+  "slug": "esp32-camera-streaming",
+  "project_story": {
+    "kind": "development_project",
+    "title": "Vom Kamerasensor zum sicheren Fernzugriff",
+    "problem": "Ein ESP32 soll ein Kamerabild zuerst erfassen, dann ohne vorhandenes WLAN direkt auf einem Smartphone anzeigen und später kontrolliert über das Internet erreichbar machen.",
+    "learning_goal": "Du verstehst Sensor, JPEG-Frames und Bildpuffer, baust einen lokalen MJPEG-Stream im Access-Point-Modus und entwirfst anschließend einen authentifizierten, vom Gerät ausgehenden VPS-Relay.",
+    "working_method": "Drei Lessons übernehmen jeweils den geprüften Stand der vorherigen Lesson. Die ersten beiden arbeiten mit einem ESP32-CAM und OV2640; die dritte trennt Gerätefirmware, Relay und geschützte Browseransicht.",
+    "result": "Am Ende kannst du erklären, warum Kamera-Pins boardabhängig sind, einen Stream im lokalen Netz öffnen und einen Fernzugriff ohne Portfreigabe zum ESP32 sicher planen.",
+    "continuation_rule": "Jede Lesson übernimmt das Ergebnis der vorherigen und verändert nur die nächste Systemgrenze.",
+    "standalone_rule": "Jede Lesson besitzt einen vorbereiteten Startstand und kann einzeln geöffnet werden."
+  },
+  "project": {
+    "slug": "esp32-camera-streaming",
+    "title": "ESP32-Kamera – vom ersten Bild zum sicheren Videostream",
+    "area": "Embedded, WLAN und Videostreaming",
+    "summary": "Richte eine ESP32-Kamera ein, streame das Bild direkt auf dein Smartphone und plane danach einen geschützten Fernzugriff über einen VPS.",
+    "learning_category": "distributed_system",
+    "access_model": "subscription",
+    "hardware_profile_id": "hardware.processor_board.ai_thinker_esp32_cam",
+    "default_device_id": "",
+    "required_capability_ids": ["capability.processor_esp32", "capability.wifi", "capability.camera_input"],
+    "tags": ["platform:esp32", "client:mobile", "topic:camera", "topic:networking", "topic:privacy", "topic:video", "level:beginner"],
+    "build_config": {
+      "platform": "espressif32",
+      "framework": "arduino",
+      "board": "esp32cam",
+      "environment": "esp32cam",
+      "flash_size_mb": 4,
+      "user_source_path": "src/main.cpp",
+      "user_target_path": "src/main.cpp"
+    },
+    "source_files": [
+      { "path": "src/main.cpp", "role": "user_code" },
+      { "path": "docs/fernzugriff.md", "role": "architecture_model" },
+      { "path": "docs/projektstory.md", "role": "decision_record" },
+      { "path": "docs/quellen.md", "role": "reference" }
+    ],
+    "steps": [
+      { "title": "Kamera einrichten und verstehen", "text": "Ordne Pins, Sensor, JPEG-Format, PSRAM und Framebuffer ein und erfasse ein erstes Bild.", "insight": "Die Kamera ist kein einzelner Eingangspin, sondern ein zeitkritisches Parallelinterface mit eigenem Bildpuffer." },
+      { "title": "Direkt auf das Smartphone streamen", "text": "Der ESP32 eröffnet ein geschütztes WLAN und liefert einen MJPEG-Stream an den Browser des Smartphones.", "insight": "Im SoftAP-Modus funktioniert die Verbindung lokal und ohne Router oder Internet." },
+      { "title": "Sicher über einen VPS erreichbar machen", "text": "Der ESP32 wechselt in den Station-Modus und sendet Bilder über eine ausgehende, authentifizierte TLS-Verbindung an einen Relay.", "insight": "Der Fernzugriff endet am geschützten VPS-Gateway; der ESP32 erhält keinen öffentlichen Port." }
+    ]
+  },
+  "development_lessons": [
+    {
+      "id": "development_lesson.camera.sensor_basics",
+      "title": "Kamera einrichten und verstehen",
+      "summary": "Initialisiere den OV2640, erfasse JPEG-Frames und gib den Puffer immer korrekt zurück.",
+      "order_index": 1,
+      "prerequisite_lesson_ids": [],
+      "step_ids": ["camera-interface", "camera-framebuffer", "camera-first-frame"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.camera.sensor_basics.ai_thinker",
+        "runtime": "esp32",
+        "hardware_required": true,
+        "primary_source_path": "src/main.cpp",
+        "source_paths": ["src/main.cpp", "docs/projektstory.md", "docs/quellen.md"]
+      }
+    },
+    {
+      "id": "development_lesson.camera.phone_access_point",
+      "title": "Kamerabild direkt auf dem Smartphone",
+      "summary": "Starte einen WPA2-geschützten ESP32-Access-Point und öffne den MJPEG-Stream im Handy-Browser.",
+      "order_index": 2,
+      "prerequisite_lesson_ids": ["development_lesson.camera.sensor_basics"],
+      "step_ids": ["ap-network", "mjpeg-stream", "phone-test"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.camera.phone_access_point.with_camera",
+        "runtime": "esp32",
+        "hardware_required": true,
+        "primary_source_path": "src/main.cpp",
+        "source_paths": ["src/main.cpp", "docs/projektstory.md", "docs/quellen.md"]
+      }
+    },
+    {
+      "id": "development_lesson.camera.secure_vps_relay",
+      "title": "Geschützter Fernzugriff über einen VPS",
+      "summary": "Verbinde das Gerät mit einem vorhandenen WLAN und entwirf einen ausgehenden, authentifizierten Video-Relay.",
+      "order_index": 3,
+      "prerequisite_lesson_ids": ["development_lesson.camera.phone_access_point"],
+      "step_ids": ["remote-boundary", "relay-contract", "privacy-operations"],
+      "standalone_start": {
+        "snapshot_id": "snapshot.camera.secure_vps_relay.with_local_stream",
+        "runtime": "distributed_system",
+        "hardware_required": true,
+        "primary_source_path": "docs/fernzugriff.md",
+        "source_paths": ["docs/fernzugriff.md", "docs/projektstory.md", "docs/quellen.md"]
+      }
+    }
+  ],
+  "view_manifest": {
+    "schema_version": 6,
+    "title": "ESP32-Kamera: drei kontrollierte Reichweiten",
+    "summary": "Neun Lernschritte führen vom lokalen Bildpuffer über das Handy-WLAN bis zur sicheren Internet-Systemgrenze.",
+    "mode": "guided_ide",
+    "primary_source_path": "src/main.cpp",
+    "views": [
+      {
+        "id": "camera-interface", "lesson_id": "development_lesson.camera.sensor_basics", "type": "explanation",
+        "title": "Sensor, Takt und Pins", "summary": "Verstehe, warum das konkrete Kameraboard die Pinbelegung vorgibt.",
+        "completion": { "type": "acknowledge", "label": "Kameraschnittstelle verstanden" },
+        "payload": {
+          "learning_text": ["Der OV2640 liefert Pixeldaten über acht Datenleitungen sowie PCLK, VSYNC und HREF. SCCB konfiguriert den Sensor; XCLK liefert seinen Arbeitstakt.", "Beim AI-Thinker ESP32-CAM sind diese Signale fest verdrahtet. Eine Pinliste eines anderen Kameraboards kann die Initialisierung scheitern lassen."],
+          "task": "Finde im Quelltext die acht Datenpins, die drei Synchronisationssignale und die beiden SCCB-Leitungen. Ordne jedem Signal seine Aufgabe zu.",
+          "expected_result": "Du kannst Datenbus, Takt/Synchronisation und Sensorkonfiguration voneinander unterscheiden und begründen, warum zuerst das Boardprofil gewählt wird.",
+          "why": "Ein Kameratreiber kann nur arbeiten, wenn Softwarekonfiguration und reale Boardverdrahtung exakt übereinstimmen."
+        }
+      },
+      {
+        "id": "camera-framebuffer", "lesson_id": "development_lesson.camera.sensor_basics", "type": "source_analysis", "source_path": "src/main.cpp",
+        "title": "JPEG und Framebuffer", "summary": "Lies Initialisierung, Aufnahme und Rückgabe eines Frames.",
+        "payload": {
+          "learning_text": ["PIXFORMAT_JPEG reduziert Speicherbedarf und Datenmenge. Mit PSRAM können zwei Framebuffer einen flüssigeren Stream ermöglichen.", "esp_camera_fb_get() leiht einen Puffer aus. Nach der Verarbeitung muss derselbe Puffer mit esp_camera_fb_return() zurückgegeben werden."],
+          "task": "Markiere im Code Pixelformat, Auflösung, JPEG-Qualität und die beiden Stellen, an denen ein Frame angefordert und zurückgegeben wird.",
+          "expected_result": "Du kannst den Lebenszyklus eines Frames erklären und erkennst, dass ein vergessener Rückgabeschritt den Stream nach wenigen Bildern blockieren kann.",
+          "why": "Der ESP32 hat begrenzten Speicher; Framebuffer sind wiederverwendete Ressourcen und keine beliebig wachsende Bildliste."
+        }
+      },
+      {
+        "id": "camera-first-frame", "lesson_id": "development_lesson.camera.sensor_basics", "type": "device_lab",
+        "title": "Das erste Bild prüfen", "summary": "Baue und flashe das Projekt und kontrolliere Sensor sowie Bildgröße im seriellen Monitor.",
+        "completion": { "type": "acknowledge", "label": "Erstes Bild erfasst" },
+        "payload": {
+          "artifact": { "type": "inventory_board_selection" },
+          "learning_text": ["Verwende eine stabile 5-V-Versorgung und wähle das AI-Thinker ESP32-CAM-Profil. Der erste erfolgreiche Frame beweist Sensorinitialisierung, Pinbelegung und Bildpuffer gemeinsam."],
+          "task": "Baue und flashe die Firmware. Prüfe im seriellen Monitor, dass die Kamera startet und ein JPEG-Frame mit plausibler Bytezahl erfasst wird.",
+          "expected_result": "Die Initialisierung endet ohne Fehler, und die gemeldete Framegröße ist größer als null.",
+          "why": "Vor dem Netzwerk wird zuerst die kleinste überprüfbare Kamerafunktion isoliert."
+        }
+      },
+      {
+        "id": "ap-network", "lesson_id": "development_lesson.camera.phone_access_point", "type": "source_analysis", "source_path": "src/main.cpp",
+        "title": "Der ESP32 als Access Point", "summary": "Unterscheide lokales Kamera-WLAN und vorhandenes Heimnetz.",
+        "payload": {
+          "learning_text": ["WiFi.softAP() eröffnet ein eigenes WLAN. Das Smartphone verbindet sich direkt mit dem ESP32 und erhält über DHCP eine lokale Adresse.", "Das Lern-WLAN verwendet ein Passwort. Es bietet lokale Zugangskontrolle, ersetzt aber keine Internet-Authentifizierung."],
+          "task": "Finde SSID, Passwort und die ausgegebene AP-IP-Adresse. Erkläre, warum der Stream auch ohne Router funktioniert.",
+          "expected_result": "Du kannst den Datenweg Smartphone → ESP32-Access-Point → lokaler HTTP-Server vollständig beschreiben.",
+          "why": "Diese Systemgrenze lässt Kamera und Browser testen, ohne Heimnetz, DNS oder VPS als weitere Fehlerquellen einzuführen."
+        }
+      },
+      {
+        "id": "mjpeg-stream", "lesson_id": "development_lesson.camera.phone_access_point", "type": "source_analysis", "source_path": "src/main.cpp",
+        "title": "Viele JPEGs werden zum MJPEG-Stream", "summary": "Analysiere Multipart-Grenzen und kontinuierliche Frameausgabe.",
+        "payload": {
+          "learning_text": ["MJPEG ist eine Folge einzelner JPEG-Bilder in einer HTTP-Antwort. Jeder Teil besitzt Content-Type und Content-Length und wird durch eine Boundary getrennt.", "Die HTML-Seite benötigt nur ein img-Element, dessen Quelle auf den Stream-Endpunkt zeigt."],
+          "task": "Verfolge einen Frame vom Kamerapuffer über den Multipart-Header bis httpd_resp_send_chunk(). Finde danach die Rückgabe des Puffers.",
+          "expected_result": "Du kannst erklären, wie der Browser fortlaufend neue JPEGs rendert und an welcher Stelle ein Verbindungsabbruch die Schleife beendet.",
+          "why": "Das einfache Verfahren ist auf kleinen Geräten gut nachvollziehbar, aber weniger bandbreiteneffizient als moderne Videocodecs."
+        }
+      },
+      {
+        "id": "phone-test", "lesson_id": "development_lesson.camera.phone_access_point", "type": "device_lab",
+        "title": "Stream auf dem Smartphone öffnen", "summary": "Verbinde das Handy mit dem Kamera-WLAN und prüfe die lokale Browseransicht.",
+        "completion": { "type": "acknowledge", "label": "Handy-Stream getestet" },
+        "payload": {
+          "artifact": { "type": "inventory_board_selection" },
+          "learning_text": ["Nach dem Flashen verbindet sich das Smartphone mit GerNetiX-Camera. Die Browseradresse steht im seriellen Monitor und liegt standardmäßig im lokalen AP-Netz."],
+          "task": "Öffne die angezeigte Adresse. Prüfe Bild, Verzögerung und Verhalten beim Verlassen der WLAN-Reichweite. Ändere das Beispielpasswort vor einem echten Einsatz.",
+          "expected_result": "Das Livebild erscheint im Browser und bricht nachvollziehbar ab, sobald die direkte WLAN-Verbindung fehlt.",
+          "why": "Ein lokaler Ende-zu-Ende-Test bestätigt Kamera, WLAN, HTTP-Server und Smartphone gemeinsam."
+        }
+      },
+      {
+        "id": "remote-boundary", "lesson_id": "development_lesson.camera.secure_vps_relay", "type": "source_analysis", "source_path": "docs/fernzugriff.md",
+        "title": "Kein öffentlicher Port am ESP32", "summary": "Lege die sichere Internet-Systemgrenze fest.",
+        "payload": {
+          "learning_text": ["Für Fernzugriff verbindet sich der ESP32 als Station mit einem vorhandenen WLAN. Er baut selbst eine ausgehende TLS-Verbindung zum VPS auf.", "Der Browser authentifiziert sich am VPS. Weder Router-Portweiterleitung noch eine öffentliche ESP32-Adresse gehören zur Lösung."],
+          "task": "Zeichne den Datenweg mit den drei Vertrauensgrenzen Gerät, VPS-Relay und angemeldeter Browser. Markiere, wo TLS und Authentifizierung geprüft werden.",
+          "expected_result": "Der einzige öffentliche Endpunkt ist das VPS-Gateway; Verbindungen zu Gerät und Browser sind getrennt authentifiziert.",
+          "why": "Mikrocontroller und Heimnetz werden nicht als öffentlich gehärtete Webserver behandelt."
+        }
+      },
+      {
+        "id": "relay-contract", "lesson_id": "development_lesson.camera.secure_vps_relay", "type": "implementation_plan",
+        "title": "Vertrag zwischen Gerät und Relay", "summary": "Definiere Identität, Bildgrenzen und Fehlerverhalten vor der Implementierung.",
+        "payload": {
+          "learning_text": ["Das Gerät sendet nur für ein gebundenes Projekt und mit kurzlebiger Geräteberechtigung. Der Relay begrenzt Bildgröße, Bildrate, Parallelzugriffe und Leerlaufzeit.", "Die Browserfreigabe ist account- und projektgebunden. Ein Geräte-Token wird nie an den Browser ausgegeben."],
+          "task": "Formuliere Request-Metadaten für project_id, device_id, Sequenz, Zeitstempel, JPEG-Typ und Länge. Ergänze Reaktionen auf abgelaufenes Token, zu großes Bild und getrennten Browser.",
+          "expected_result": "Es gibt einen prüfbaren Relay-Vertrag mit Größen-/Ratenlimits, getrennter Geräte- und Nutzerberechtigung und einem definierten Abbruchverhalten.",
+          "why": "Ohne festen Vertrag werden Sicherheit, Ressourcenverbrauch und Fehlersuche erst während des Betriebs improvisiert."
+        }
+      },
+      {
+        "id": "privacy-operations", "lesson_id": "development_lesson.camera.secure_vps_relay", "type": "explanation",
+        "title": "Privatsphäre und Betrieb", "summary": "Behandle Kamerabilder als sensible, kurzlebige Daten.",
+        "completion": { "type": "acknowledge", "label": "Betriebsgrenzen festgelegt" },
+        "payload": {
+          "learning_text": ["Der Relay speichert standardmäßig keine Bilder. Logs enthalten Status, Mengen und Fehler, aber keine Frames, WLAN-Passwörter oder Zugriffstoken.", "Eine sichtbare Kameraaktivität, bewusste Freigabe, Widerruf, Rate-Limits und kurze Sitzungen gehören zum Lernziel."],
+          "task": "Lege Aufbewahrung, Auditdaten, Widerruf und eine sichtbare Betriebsanzeige fest. Entscheide außerdem, wann der Stream automatisch endet.",
+          "expected_result": "Frames sind flüchtig, Zugriffe nachvollziehbar und widerrufbar, Geheimnisse fehlen in Logs und eine Sitzung endet bei Inaktivität oder Berechtigungsentzug.",
+          "why": "Ein technisch erreichbarer Stream ist erst professionell, wenn Zugriff und Datenlebenszyklus kontrolliert sind."
+        }
+      }
+    ]
+  },
+  "sources": [
+    {
+      "path": "src/main.cpp", "role": "user_code", "content_type": "text/x-c++src",
+      "content": "#include <Arduino.h>\n#include <WiFi.h>\n#include \"esp_camera.h\"\n#include \"esp_http_server.h\"\n\nnamespace {\nconstexpr char AP_SSID[] = \"GerNetiX-Camera\";\nconstexpr char AP_PASSWORD[] = \"camera-demo-2026\"; // Vor echtem Einsatz ändern.\n\nconstexpr int CAM_PIN_PWDN = 32;\nconstexpr int CAM_PIN_RESET = -1;\nconstexpr int CAM_PIN_XCLK = 0;\nconstexpr int CAM_PIN_SIOD = 26;\nconstexpr int CAM_PIN_SIOC = 27;\nconstexpr int CAM_PIN_D7 = 35;\nconstexpr int CAM_PIN_D6 = 34;\nconstexpr int CAM_PIN_D5 = 39;\nconstexpr int CAM_PIN_D4 = 36;\nconstexpr int CAM_PIN_D3 = 21;\nconstexpr int CAM_PIN_D2 = 19;\nconstexpr int CAM_PIN_D1 = 18;\nconstexpr int CAM_PIN_D0 = 5;\nconstexpr int CAM_PIN_VSYNC = 25;\nconstexpr int CAM_PIN_HREF = 23;\nconstexpr int CAM_PIN_PCLK = 22;\n\nconstexpr char STREAM_TYPE[] = \"multipart/x-mixed-replace;boundary=frame\";\nconstexpr char STREAM_BOUNDARY[] = \"\\r\\n--frame\\r\\n\";\nconstexpr char STREAM_PART[] = \"Content-Type: image/jpeg\\r\\nContent-Length: %u\\r\\n\\r\\n\";\n\nhttpd_handle_t pageServer = nullptr;\nhttpd_handle_t streamServer = nullptr;\n\nesp_err_t pageHandler(httpd_req_t *request) {\n  const char page[] = \"<!doctype html><meta name='viewport' content='width=device-width'><title>GerNetiX Camera</title><style>body{font-family:sans-serif;background:#111;color:#eee;text-align:center}img{max-width:100%;height:auto}</style><h1>ESP32-Kamera</h1><img src='http://192.168.4.1:81/stream' alt='Kamerastream'>\";\n  httpd_resp_set_type(request, \"text/html; charset=utf-8\");\n  return httpd_resp_send(request, page, HTTPD_RESP_USE_STRLEN);\n}\n\nesp_err_t streamHandler(httpd_req_t *request) {\n  esp_err_t result = httpd_resp_set_type(request, STREAM_TYPE);\n  char header[96];\n  while (result == ESP_OK) {\n    camera_fb_t *frame = esp_camera_fb_get();\n    if (!frame) return ESP_FAIL;\n    const size_t headerLength = snprintf(header, sizeof(header), STREAM_PART, frame->len);\n    result = httpd_resp_send_chunk(request, STREAM_BOUNDARY, strlen(STREAM_BOUNDARY));\n    if (result == ESP_OK) result = httpd_resp_send_chunk(request, header, headerLength);\n    if (result == ESP_OK) result = httpd_resp_send_chunk(request, reinterpret_cast<const char *>(frame->buf), frame->len);\n    esp_camera_fb_return(frame);\n  }\n  return result;\n}\n\nbool startCamera() {\n  camera_config_t config = {};\n  config.ledc_channel = LEDC_CHANNEL_0;\n  config.ledc_timer = LEDC_TIMER_0;\n  config.pin_d0 = CAM_PIN_D0; config.pin_d1 = CAM_PIN_D1;\n  config.pin_d2 = CAM_PIN_D2; config.pin_d3 = CAM_PIN_D3;\n  config.pin_d4 = CAM_PIN_D4; config.pin_d5 = CAM_PIN_D5;\n  config.pin_d6 = CAM_PIN_D6; config.pin_d7 = CAM_PIN_D7;\n  config.pin_xclk = CAM_PIN_XCLK; config.pin_pclk = CAM_PIN_PCLK;\n  config.pin_vsync = CAM_PIN_VSYNC; config.pin_href = CAM_PIN_HREF;\n  config.pin_sccb_sda = CAM_PIN_SIOD; config.pin_sccb_scl = CAM_PIN_SIOC;\n  config.pin_pwdn = CAM_PIN_PWDN; config.pin_reset = CAM_PIN_RESET;\n  config.xclk_freq_hz = 20000000;\n  config.pixel_format = PIXFORMAT_JPEG;\n  config.frame_size = psramFound() ? FRAMESIZE_VGA : FRAMESIZE_QVGA;\n  config.jpeg_quality = 12;\n  config.fb_count = psramFound() ? 2 : 1;\n  config.grab_mode = CAMERA_GRAB_LATEST;\n  config.fb_location = psramFound() ? CAMERA_FB_IN_PSRAM : CAMERA_FB_IN_DRAM;\n  return esp_camera_init(&config) == ESP_OK;\n}\n\nvoid startServers() {\n  httpd_config_t pageConfig = HTTPD_DEFAULT_CONFIG();\n  httpd_start(&pageServer, &pageConfig);\n  const httpd_uri_t pageUri = { .uri = \"/\", .method = HTTP_GET, .handler = pageHandler, .user_ctx = nullptr };\n  httpd_register_uri_handler(pageServer, &pageUri);\n\n  httpd_config_t streamConfig = HTTPD_DEFAULT_CONFIG();\n  streamConfig.server_port = 81;\n  streamConfig.ctrl_port = 32769;\n  httpd_start(&streamServer, &streamConfig);\n  const httpd_uri_t streamUri = { .uri = \"/stream\", .method = HTTP_GET, .handler = streamHandler, .user_ctx = nullptr };\n  httpd_register_uri_handler(streamServer, &streamUri);\n}\n}\n\nvoid setup() {\n  Serial.begin(115200);\n  if (!startCamera()) { Serial.println(\"Kamera konnte nicht initialisiert werden.\"); return; }\n  camera_fb_t *firstFrame = esp_camera_fb_get();\n  if (firstFrame) {\n    Serial.printf(\"Erster JPEG-Frame: %u Byte\\n\", static_cast<unsigned>(firstFrame->len));\n    esp_camera_fb_return(firstFrame);\n  }\n  WiFi.mode(WIFI_AP);\n  if (!WiFi.softAP(AP_SSID, AP_PASSWORD)) { Serial.println(\"Access Point konnte nicht gestartet werden.\"); return; }\n  startServers();\n  Serial.printf(\"Öffne http://%s/ im Smartphone-Browser.\\n\", WiFi.softAPIP().toString().c_str());\n}\n\nvoid loop() { delay(1000); }\n"
+    },
+    {
+      "path": "docs/fernzugriff.md", "role": "architecture_model", "content_type": "text/markdown",
+      "content": "# Sicherer Fernzugriff über einen VPS\n\n## Zielbild\n\n```text\nESP32-CAM -- ausgehend: TLS + Geräteberechtigung --> Video-Relay auf dem VPS\nSmartphone -- HTTPS + Account-/Projektberechtigung --> geschützte Viewer-Route\n```\n\nDer ESP32 läuft im WLAN-Station-Modus. Es gibt keine Router-Portweiterleitung, keinen öffentlichen Geräteport und kein Geräte-Token im Browser. Der Relay prüft Geräte- und Projektbindung, JPEG-Typ, maximale Framegröße, Bildrate, Sitzungsdauer und Zahl paralleler Viewer.\n\n## Minimaler Relay-Vertrag\n\nJeder Frame trägt `project_id`, `device_id`, `sequence`, `captured_at`, `content_type=image/jpeg` und `content_length`. Geräteberechtigungen sind kurzlebig und widerrufbar. Der Viewer erhält eine eigene, accountgebundene Sitzung.\n\n## Datenschutz und Betrieb\n\nFrames bleiben standardmäßig flüchtig. Logs enthalten nur technische Metadaten und niemals Frames, WLAN-Zugangsdaten oder Tokens. Der Stream endet bei Token-Widerruf, Inaktivität, Geräteabbruch oder überschrittenem Limit. Eine spätere Aufzeichnung ist eine eigene, zustimmungspflichtige Funktion und nicht Teil dieser Lesson.\n\n## Wichtige Grenze\n\nDiese Lesson definiert Architektur und Vertrag. Ein produktiver GerNetiX-Video-Relay muss als eigener, gehärteter VPS-Dienst mit TLS, Identity-Integration, Rate-Limits, Audit und Monitoring umgesetzt und betrieben werden; die Lesson simuliert nicht, dass dieser Dienst bereits existiert.\n"
+    },
+    {
+      "path": "docs/projektstory.md", "role": "decision_record", "content_type": "text/markdown",
+      "content": "# Projektstory\n\nDas Projekt erweitert die Reichweite kontrolliert: zuerst nur Sensor und Speicher, dann ein direktes lokales WLAN, danach ein geschützter VPS-Endpunkt. Jede neue Systemgrenze kommt erst hinzu, wenn die vorherige geprüft ist.\n\nDer lokale Stream verwendet MJPEG, weil einzelne JPEG-Frames auf dem ESP32 nachvollziehbar bleiben. Für Fernzugriff wird der ESP32 nicht öffentlich freigegeben. Das Gerät baut selbst eine ausgehende Verbindung zum Relay auf; der Smartphone-Browser greift getrennt authentifiziert auf den VPS zu.\n"
+    },
+    {
+      "path": "docs/quellen.md", "role": "reference", "content_type": "text/markdown",
+      "content": "# Technische Primärquellen\n\n- Espressif ESP32 Camera Driver: https://github.com/espressif/esp32-camera\n- Espressif CameraWebServer-Beispiel: https://github.com/espressif/arduino-esp32/tree/master/libraries/ESP32/examples/Camera/CameraWebServer\n- ESP-IDF Wi-Fi-Übersicht: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-guides/wifi-driver/overview.html\n- ESP-IDF HTTP Server: https://docs.espressif.com/projects/esp-idf/en/latest/esp32/api-reference/protocols/esp_http_server.html\n"
+    }
+  ]
+}

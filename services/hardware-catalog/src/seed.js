@@ -22,6 +22,7 @@ function defaultCatalogSeed() {
       capability("capability.touchscreen_input", "Touchscreen-Eingabe"),
       capability("capability.audio_output", "Audio-Ausgabe"),
       capability("capability.audio_input", "Audio-Eingabe"),
+      capability("capability.camera_input", "Kamera-Eingabe"),
       capability("capability.bluetooth", "Bluetooth"),
       capability("capability.external_ram", "Externer RAM / PSRAM"),
       capability("capability.flash_storage", "Flash-Speicher"),
@@ -83,6 +84,56 @@ function defaultCatalogSeed() {
         vendor: "Espressif",
         module_name: "ESP-WROOM-32",
         mcu_variant: "ESP32",
+      }),
+      esp32Board({
+        hardware_item_id: "hardware.processor_board.ai_thinker_esp32_cam",
+        sku: "GNX-ESP32-CAM-AI-THINKER-OV2640",
+        title: "AI-Thinker ESP32-CAM mit OV2640",
+        summary: "Verbreitetes ESP32-Kameraboard mit OV2640, 4 MB Flash und PSRAM für JPEG-Aufnahme und lokale MJPEG-Lernprojekte.",
+        vendor: "AI-Thinker",
+        form_factor: "integrated_camera",
+        module_name: "ESP32-S",
+        mcu_variant: "ESP32",
+        extra_capability_ids: ["capability.camera_input", "capability.external_ram"],
+        pin_profile: {
+          assigned_pins: {
+            camera_parallel: {
+              pwdn: 32, reset: -1, xclk: 0, sccb_sda: 26, sccb_scl: 27,
+              d0: 5, d1: 18, d2: 19, d3: 21, d4: 36, d5: 39, d6: 34, d7: 35,
+              vsync: 25, href: 23, pclk: 22,
+            },
+          },
+          diagnostic_output_allowlist: ["GPIO4"],
+          diagnostic_note: "Die Kamerasignale sind fest verdrahtet. GPIO4 ist häufig zugleich Blitz-LED bzw. microSD-Datenleitung und daher nur kontextabhängig frei.",
+        },
+        default_instance_configuration: {
+          board_model: "AI-Thinker ESP32-CAM",
+          verification_status: "vendor_reference",
+          board_features: {
+            camera: {
+              enabled: true,
+              hardware: "ov2640",
+              driver: "espressif_esp32_camera",
+              connection: "parallel_dvp_sccb",
+              pixel_format: "jpeg",
+              verification_status: "vendor_reference",
+            },
+            psram: {
+              enabled: true,
+              hardware: "qspi_psram",
+              driver: "esp_idf_heap_psram",
+              value: "4_mb",
+              verification_status: "vendor_reference",
+            },
+            flash: {
+              enabled: true,
+              hardware: "qspi_flash",
+              driver: "esp_idf_partition_table",
+              value: "4_mb",
+              verification_status: "vendor_reference",
+            },
+          },
+        },
       }),
       esp32Board({
         hardware_item_id: "hardware.processor_board.arduino_nano_esp32",
@@ -317,6 +368,12 @@ function defaultCatalogSeed() {
 
 function boardFeatureOptions() {
   return [
+    boardFeature("camera", "Kamera", "capability.camera_input", {
+      hardware_options: options(["OV2640", "OV3660", "OV5640", "GC0308"]),
+      driver_options: options(["Espressif esp32-camera"]),
+      connection_options: options(["Parallel DVP + SCCB"]),
+      datasheet_hint: "Sensor, Board-Pinbelegung, XCLK, PSRAM und unterstütztes Pixelformat gemeinsam prüfen.",
+    }),
     boardFeature("display", "Display", "capability.display_output", {
       hardware_options: options(["TFT-LCD", "IPS-LCD", "OLED", "E-Paper"]),
       driver_options: options(["ST7789", "ILI9341", "ILI9488", "ST7735", "GC9A01", "SSD1306", "SH1106"]),

@@ -11,12 +11,17 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   assert.equal((await service.listCapabilities()).some((item) => item.capability_id === "capability.processor_esp32"), true);
   assert.equal((await service.listCapabilities()).some((item) => item.capability_id === "capability.processor_esp8266"), true);
   assert.equal((await service.listCapabilities()).some((item) => item.capability_id === "capability.touchscreen_input"), true);
+  assert.equal((await service.listCapabilities()).some((item) => item.capability_id === "capability.camera_input"), true);
   assert.equal((await service.listProcessorBoards()).some((item) => item.hardware_item_id === "hardware.processor_board.generic_esp_wroom32"), true);
   assert.equal((await service.listProcessorBoards()).some((item) => item.hardware_item_id === "hardware.processor_board.espressif_esp32_s3_devkitc_1"), true);
   const touchBoard = await service.getHardwareItem("hardware.processor_board.generic_esp32_s3_touch_display");
   assert.ok(touchBoard.capability_ids.includes("capability.display_output"));
   assert.ok(touchBoard.capability_ids.includes("capability.touchscreen_input"));
   const es3c28p = await service.getHardwareItem("hardware.processor_board.esp32_s3_es3c28p");
+  const cameraBoard = await service.getHardwareItem("hardware.processor_board.ai_thinker_esp32_cam");
+  assert.ok(cameraBoard.capability_ids.includes("capability.camera_input"));
+  assert.equal(cameraBoard.default_instance_configuration.board_features.camera.hardware, "ov2640");
+  assert.equal(cameraBoard.pin_profile.assigned_pins.camera_parallel.xclk, 0);
   assert.equal(es3c28p.mcu_variant, "ESP32-S3");
   assert.equal(es3c28p.module_name, "ESP32-S3-WROOM-1");
   assert.equal(es3c28p.module_memory_variant, "N16R8");
@@ -58,7 +63,8 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   const boardFeatures = await service.listBoardFeatureOptions();
   const display = boardFeatures.find((item) => item.feature_id === "display");
   const memory = boardFeatures.find((item) => item.feature_id === "ram");
-  assert.equal(boardFeatures.length, 9);
+  assert.equal(boardFeatures.length, 10);
+  assert.equal(boardFeatures.find((item) => item.feature_id === "camera").driver_options[0].title, "Espressif esp32-camera");
   assert.equal(display.driver_options.some((item) => item.title === "ST7789"), true);
   assert.equal(display.connection_options.some((item) => item.title === "SPI"), true);
   assert.equal(boardFeatures.find((item) => item.feature_id === "touch").driver_options.some((item) => item.title === "FT6336G"), true);

@@ -449,6 +449,43 @@ test("models the storage story as one development project with reusable standalo
   assert.match(guidedView, /noch keine konkrete Aufgabe oder sichtbare Arbeitsgrundlage/);
 });
 
+test("models ESP32 camera streaming as three progressive and standalone lessons", () => {
+  const course = require("../src/dev/project-models/esp32-camera-streaming-course.json");
+  const { createEsp32CameraStreamingCourseModel } = require("../src/dev/project-models/esp32-camera-streaming-course");
+
+  assert.equal(course.project.slug, "esp32-camera-streaming");
+  assert.equal(course.project.hardware_profile_id, "hardware.processor_board.ai_thinker_esp32_cam");
+  assert.equal(course.project.build_config.board, "esp32cam");
+  assert.deepEqual(course.development_lessons.map((lesson) => lesson.order_index), [1, 2, 3]);
+  assert.deepEqual(course.development_lessons.map((lesson) => lesson.step_ids.length), [3, 3, 3]);
+  assert.deepEqual(course.development_lessons[2].prerequisite_lesson_ids, ["development_lesson.camera.phone_access_point"]);
+  assert.ok(course.project.tags.includes("topic:camera"));
+  assert.ok(course.project.tags.includes("topic:networking"));
+  assert.ok(course.project.tags.includes("topic:video"));
+  assert.match(JSON.stringify(course.view_manifest), /Weder Router-Portweiterleitung|Kein öffentlicher Port/);
+  const cameraSource = course.sources.find((source) => source.path === "src/main.cpp").content;
+  assert.match(cameraSource, /WiFi\.softAP/);
+  assert.match(cameraSource, /multipart\/x-mixed-replace/);
+  assert.match(course.sources.find((source) => source.path === "docs\/fernzugriff.md").content, /TLS.*Geräteberechtigung[\s\S]*Account-\/Projektberechtigung/);
+
+  const model = createEsp32CameraStreamingCourseModel();
+  const standalone = model.createViewManifest(
+    { learning_project_id: "learning_project.esp32_camera_streaming" },
+    { lessonId: "development_lesson.camera.phone_access_point", primarySourcePath: () => "unused" },
+  );
+  assert.equal(standalone.entry_mode, "standalone_lesson");
+  assert.deepEqual(standalone.views.map((view) => view.id), ["ap-network", "mjpeg-stream", "phone-test"]);
+  assert.deepEqual(model.createSources({ lessonId: "development_lesson.camera.secure_vps_relay" }).map((source) => source.path), [
+    "docs/fernzugriff.md",
+    "docs/projektstory.md",
+    "docs/quellen.md",
+  ]);
+  assert.match(server, /createEsp32CameraStreamingCourseModel/);
+  assert.match(server, /esp32CameraStreamingCourseModel\.createProject/);
+  assert.match(server, /ai_thinker_esp32_cam[\s\S]*framework: "arduino"[\s\S]*board: "esp32cam"/);
+  assert.match(app, /"topic:camera": "Kamera"/);
+});
+
 test("catalog exposes the UML fundamentals course", () => {
   const course = require("../src/dev/project-models/uml-fundamentals-course.json");
   const model = require("../src/dev/project-models/uml-fundamentals-course");
