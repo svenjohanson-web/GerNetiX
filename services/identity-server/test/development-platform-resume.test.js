@@ -446,14 +446,16 @@ test("selected catalog boards expose editable defaults and require an explicitly
   assert.match(devServer, /\[4, 8, 16\]\.includes\(configuredFlashSizeMb\)/);
 });
 
-test("motor actuators expose a concrete motor controller selection", () => {
+test("motor actuators defer their board-pin specialization to the separate IDE driver view", () => {
   assert.match(publicController, /Synchronmotor \/ BLDC \/ PMSM/);
-  assert.match(publicController, /Motorsteuerung<select data-hardware-property="motor_driver_type"/);
-  assert.match(publicController, /three_phase_foc/);
-  assert.match(publicController, /three_phase_six_step/);
-  assert.match(publicController, /Phase V<select data-hardware-property="phase_v_pin"/);
-  assert.match(publicController, /Phase W<select data-hardware-property="phase_w_pin"/);
-  assert.match(publicController, /Motorsteuerung`/);
+  assert.match(publicController, /Motor- und Pinbelegung werden anschließend in der IDE-Treiberverwaltung konfiguriert/);
+  assert.match(publicController, /Die konkreten Boardpins hängen vom gewählten Motortreiber ab/);
+  assert.doesNotMatch(publicController, /Motorsteuerung<select data-hardware-property="motor_driver_type"/);
+  assert.match(publicApp, /three_phase_foc/);
+  assert.match(publicApp, /three_phase_six_step/);
+  assert.match(publicApp, /PWM Phase V/);
+  assert.match(publicApp, /PWM Phase W/);
+  assert.match(publicApp, /motor_driver_type/);
   assert.match(devServer, /synchronous_motor_driver/);
 });
 

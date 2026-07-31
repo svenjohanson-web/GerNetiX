@@ -360,6 +360,7 @@ document.querySelector("#ideDeviceConnectionsView").addEventListener("click", (e
   if (event.target.closest("[data-open-hardware-configuration]")) navigate(`/app/development-platform/hardware/?project=${encodeURIComponent(state.activeProjectId)}`);
 });
 document.querySelector("#ideDriverManagementView").addEventListener("click", handleDriverManagementClick);
+document.querySelector("#ideDriverManagementView").addEventListener("submit", saveMotorDriverAssignment);
 document.querySelector("#ideDeviceWebView").addEventListener("submit", loadDeviceWebPreview);
 document.querySelector("#recoveryDeviceSelect").addEventListener("change", () => {
   state.activeRecoveryDeviceId = document.querySelector("#recoveryDeviceSelect").value;
@@ -2493,6 +2494,86 @@ function driverSourceOrigin(source) {
   return { className: "", label: "Projekt" };
 }
 
+function ideMotorDriverOptions(concreteType) {
+  return ({
+    dc_motor: [
+      { id: "h_bridge", label: "H-Brücke", resources: "PWM + Richtungspins" },
+      { id: "low_side_mosfet", label: "MOSFET-Treiber", resources: "PWM + Freigabepin" },
+    ],
+    servo: [{ id: "servo_pwm", label: "Servo-PWM-Treiber", resources: "PWM-Ausgang" }],
+    stepper_motor: [
+      { id: "step_dir", label: "STEP/DIR-Treiber", resources: "STEP + DIR" },
+      { id: "four_phase", label: "4-Phasen-Treiber", resources: "vier Digitalausgänge" },
+    ],
+    synchronous_motor: [
+      { id: "three_phase_foc", label: "3-Phasen-Treiber mit FOC", resources: "PWM U/V/W + ADC" },
+      { id: "three_phase_six_step", label: "3-Phasen-Treiber mit 6-Step", resources: "PWM U/V/W" },
+    ],
+  })[concreteType] || [];
+}
+
+function ideBoardForDevice(device) {
+  const configuration = device?.board_configuration || {};
+  const selectionId = configuration.account_board_id
+    ? `account_board:${configuration.account_board_id}:v${configuration.account_board_version}`
+    : device?.board_profile_id || configuration.base_board_profile_id || "";
+  return state.processorBoards.find((board) => [board.hardware_item_id, board.hardware_profile_id, board.id]
+    .filter(Boolean).some((id) => String(id) === String(selectionId))) || null;
+}
+
+function idePinIdentity(pin) {
+  const match = String(pin ?? "").toUpperCase().match(/(?:GPIO|D|A)?\s*(-?\d+)/);
+  return match ? match[1] : String(pin ?? "").toUpperCase().replace(/\s+/g, "");
+}
+
+function ideConfiguredBoardPins(device) {
+  const features = device?.board_configuration?.board_features || {};
+  return new Set(Object.values(features).flatMap((feature) => Object.values(feature?.pins || {})).map(idePinIdentity));
+}
+
+function ideDriverPins(board, kind, device, currentPins = []) {
+  const profile = board?.pin_profile || {};
+  const pins = kind === "analog" ? profile.analog_inputs : kind === "pwm" ? profile.pwm_pins : profile.digital_pins;
+  const occupied = ideConfiguredBoardPins(device);
+  const retained = new Set(currentPins.filter(Boolean).map(idePinIdentity));
+  return (Array.isArray(pins) ? pins : []).filter((pin) => !occupied.has(idePinIdentity(pin)) || retained.has(idePinIdentity(pin)));
+}
+
+function ideDriverPinSelect(name, label, pins, current, required = true) {
+  return `<label>${escapeHtml(label)}<select name="${escapeAttribute(name)}" ${required ? "required" : ""}><option value="">${required ? "Pin wählen" : "Nicht verwendet"}</option>${pins.map((pin) => `<option value="${escapeAttribute(pin)}" ${String(pin) === String(current || "") ? "selected" : ""}>${escapeHtml(pin)}</option>`).join("")}</select></label>`;
+}
+
+function renderMotorDriverAssignments(project) {
+  const components = projectHardwareComponents(project);
+  const devices = components.filter((component) => component.abstract_type === "iot_device");
+  const motors = components.filter((component) => component.abstract_type === "actuator" && ideMotorDriverOptions(component.concrete_type).length);
+  if (!motors.length) return '<p class="driver-empty-state">Dieses Projekt enthält noch keinen Motor-Aktor. Die Treiberkonfiguration erscheint, sobald ein Motor einem IoT-Device zugeordnet ist.</p>';
+  return `<div class="motor-driver-assignment-list">${motors.map((motor) => {
+    const device = devices.find((item) => item.component_id === motor.target_device_id) || devices[0];
+    const board = ideBoardForDevice(device);
+    const currentPins = [motor.pin, motor.secondary_pin, motor.properties?.phase_v_pin, motor.properties?.phase_w_pin, motor.properties?.current_sense_pin];
+    const pwmPins = ideDriverPins(board, "pwm", device, currentPins);
+    const digitalPins = ideDriverPins(board, "digital", device, currentPins);
+    const analogPins = ideDriverPins(board, "analog", device, currentPins);
+    const options = ideMotorDriverOptions(motor.concrete_type);
+    const properties = motor.properties || {};
+    const selectedDriver = options.find((item) => item.id === properties.motor_driver_type);
+    return `<form class="motor-driver-assignment" data-motor-driver-component="${escapeAttribute(motor.component_id)}">
+      <header><div><p class="eyebrow">${escapeHtml(motor.label)}</p><h4>${escapeHtml(motor.concrete_type)}</h4></div><span>${escapeHtml(device?.label || "Kein IoT-Device")}</span></header>
+      <p class="helper-text">Boardquelle: <strong>${escapeHtml(board?.title || "Noch keine Boardkonfiguration")}</strong>. Die Treiberkonfiguration verwendet nur Pins und Ressourcen dieses Projektsnapshots.</p>
+      <div class="motor-driver-fields">
+        <label>Motorsteuerung<select name="motor_driver_type" required><option value="">Treiber wählen</option>${options.map((item) => `<option value="${escapeAttribute(item.id)}" ${item.id === properties.motor_driver_type ? "selected" : ""}>${escapeHtml(item.label)} · ${escapeHtml(item.resources)}</option>`).join("")}</select></label>
+        ${ideDriverPinSelect("pin", motor.concrete_type === "stepper_motor" ? "STEP-Pin" : motor.concrete_type === "synchronous_motor" ? "PWM Phase U" : "PWM-Pin", pwmPins, motor.pin)}
+        ${["dc_motor", "stepper_motor"].includes(motor.concrete_type) ? ideDriverPinSelect("secondary_pin", "Richtungs-/DIR-Pin", digitalPins, motor.secondary_pin) : ""}
+        ${motor.concrete_type === "synchronous_motor" ? `${ideDriverPinSelect("phase_v_pin", "PWM Phase V", pwmPins, properties.phase_v_pin)}${ideDriverPinSelect("phase_w_pin", "PWM Phase W", pwmPins, properties.phase_w_pin)}${ideDriverPinSelect("current_sense_pin", "Strommessung", analogPins, properties.current_sense_pin, false)}` : ""}
+        <label>Nennspannung<input name="nominal_voltage_v" type="number" min="1" step="0.1" value="${escapeAttribute(properties.nominal_voltage_v || 5)}"></label>
+        <label>Maximalstrom<input name="max_current_a" type="number" min="0.01" step="0.01" value="${escapeAttribute(properties.max_current_a || 0.5)}"></label>
+      </div>
+      <footer><button type="submit" ${board && pwmPins.length ? "" : "disabled"}>Treiberkonfiguration speichern</button><span data-motor-driver-status>${selectedDriver ? escapeHtml(selectedDriver.resources) : ""}</span></footer>
+    </form>`;
+  }).join("")}</div>`;
+}
+
 function renderDriverManagement(project) {
   const target = document.querySelector("#ideDriverManagementView");
   if (!target || !project) return;
@@ -2500,7 +2581,8 @@ function renderDriverManagement(project) {
   const projectDrivers = projectDriverSources(project);
   target.innerHTML = `<div class="driver-management-workspace">
     <header><div><p class="eyebrow">Software · Wiederverwendung</p><h3>Treiberverwaltung</h3></div><span class="driver-origin-badge combined">Bibliothek + KI</span></header>
-    <p class="helper-text">Beide Arbeitsweisen erzeugen normale Projekttreiber. Die Herkunft bleibt sichtbar; übernommene KI-Treiber können anschließend genauso geprüft, versioniert und wiederverwendet werden wie bewusst ausgewählte Bibliothekstreiber.</p>
+    <p class="helper-text">Die Boardkonfiguration beschreibt verfügbare Ressourcen. Hier wird der konkrete Treiber ausgewählt und belegt diese Ressourcen spezieller, beispielsweise PWM-, Richtungs- oder Phasenpins für einen Motor.</p>
+    <section class="motor-driver-configuration"><header><div><p class="eyebrow">Projektkonfiguration</p><h4>Motor- und Gerätetreiber</h4></div><span>nutzt Boardkonfiguration</span></header>${renderMotorDriverAssignments(project)}</section>
     <section class="driver-workflow-grid">
       <article class="driver-workflow-card managed"><span class="driver-origin-badge managed">Verwaltet</span><h4>Treiber gezielt auswählen</h4><p>Geeignet, wenn der passende Treiber bekannt ist. Abhängigkeiten und unterstützte Boardfunktionen stammen aus dem Hardware Catalog.</p></article>
       <article class="driver-workflow-card ai"><span class="driver-origin-badge ai">KI erkannt</span><h4>Aus einer Funktion ableiten</h4><p>Geeignet, wenn zuerst das gewünschte Verhalten beschrieben oder implementiert wird. Die KI erkennt die wiederverwendbare Treibergrenze und schlägt die Auslagerung vor.</p><button type="button" data-driver-ai-prompt>Aktuelle Funktion mit KI prüfen</button></article>
@@ -2536,6 +2618,43 @@ function handleDriverManagementClick(event) {
   if (!input) return;
   input.value = "Analysiere die aktuell geöffnete Funktion und den relevanten Projektkontext. Erkenne, ob darin ein wiederverwendbarer Hardware- oder Gerätetreiber steckt. Wenn ja, erkläre zuerst die Treibergrenze, Abhängigkeiten und öffentliche Schnittstelle. Schlage danach eine Auslagerung unter dem Komponentenordner in Treiber/ vor und kennzeichne den Treiber als KI-abgeleitet, bis ich ihn geprüft habe.";
   input.focus();
+}
+
+async function saveMotorDriverAssignment(event) {
+  if (!event.target.matches(".motor-driver-assignment")) return;
+  event.preventDefault();
+  const project = projectById(state.activeProjectId);
+  const form = event.target;
+  const status = form.querySelector("[data-motor-driver-status]");
+  const data = new FormData(form);
+  const configuration = projectHardwareConfiguration(project);
+  const component = configuration.components.find((item) => item.component_id === form.dataset.motorDriverComponent && item.abstract_type === "actuator");
+  if (!component) return;
+  const pins = [data.get("pin"), data.get("secondary_pin"), data.get("phase_v_pin"), data.get("phase_w_pin")].filter(Boolean);
+  if (new Set(pins).size !== pins.length) {
+    status.textContent = "Jeder Treiberanschluss benötigt einen eigenen Boardpin.";
+    return;
+  }
+  component.pin = String(data.get("pin") || "");
+  component.secondary_pin = String(data.get("secondary_pin") || "");
+  component.properties = {
+    ...(component.properties || {}),
+    motor_driver_type: String(data.get("motor_driver_type") || ""),
+    phase_v_pin: String(data.get("phase_v_pin") || ""),
+    phase_w_pin: String(data.get("phase_w_pin") || ""),
+    current_sense_pin: String(data.get("current_sense_pin") || ""),
+    nominal_voltage_v: String(data.get("nominal_voltage_v") || ""),
+    max_current_a: String(data.get("max_current_a") || ""),
+  };
+  status.textContent = "Treiberkonfiguration wird gespeichert…";
+  try {
+    const response = await postJson(`/api/platform/development-projects/${encodeURIComponent(project.id)}/hardware-configuration`, { hardware_configuration: configuration });
+    if (response.project) state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    renderDriverManagement(response.project || project);
+    document.querySelector(`[data-motor-driver-component="${CSS.escape(component.component_id)}"] [data-motor-driver-status]`).textContent = "Gespeichert.";
+  } catch (error) {
+    status.textContent = error.message || "Treiberkonfiguration konnte nicht gespeichert werden.";
+  }
 }
 
 function openWebserverConfiguration() {
@@ -2905,7 +3024,6 @@ function renderBoardProperties(project) {
       { id: "i2c", title: "I²C", description: "Bus-Anschlüsse", configurable: true, pin_profile_key: "i2c" },
     ];
   const abstractions = Array.isArray(peripheralProfile.abstractions) ? peripheralProfile.abstractions : [];
-  const drivers = Array.isArray(peripheralProfile.drivers) ? peripheralProfile.drivers : [];
   const peripheralUsage = effectiveBoardPeripheralUsage(project, deviceComponent.component_id);
   const configurablePeripherals = resources.filter((resource) => resource.configurable);
   const persistedDeviceComponent = projectHardwareComponents(project)
@@ -2941,8 +3059,6 @@ function renderBoardProperties(project) {
       <footer><button type="submit">Boardfunktionen speichern</button><span data-board-peripheral-status></span></footer>
     </form>` : ""}
     ${board ? `<section class="board-capability-hierarchy" aria-label="Hierarchie der Boardfunktionen">
-      ${boardCapabilityLayer("Treiber und Steuerungen", "Anwendungsebene", drivers, resources, abstractions, profile, "driver")}
-      <div class="board-capability-connector"><span>nutzt</span><b>↓</b></div>
       ${boardCapabilityLayer("Runtime-Abstraktionen", "Basissoftware / OS", abstractions, resources, abstractions, profile, "runtime")}
       <div class="board-capability-connector"><span>abstrahiert</span><b>↓</b></div>
       ${boardCapabilityLayer("MCU-Peripherie", "ESP32-Ressourcen", resources, resources, abstractions, profile, "resource")}

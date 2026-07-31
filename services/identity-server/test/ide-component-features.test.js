@@ -77,7 +77,7 @@ test("project browser provides one coherent IoT device configuration hierarchy",
   assert.match(app, /device_sensor_input_config/);
   assert.match(app, /device_actuator_output_config/);
   assert.match(app, /peripheralProfile\.resources/);
-  assert.match(app, /boardCapabilityLayer\("Treiber und Steuerungen"/);
+  assert.doesNotMatch(app, /boardCapabilityLayer\("Treiber und Steuerungen"/);
   assert.match(app, /boardCapabilityLayer\("Runtime-Abstraktionen"/);
   assert.match(app, /boardCapabilityLayer\("MCU-Peripherie"/);
   assert.match(html, /id="ideDriverManagementView"/);
@@ -88,6 +88,10 @@ test("project browser provides one coherent IoT device configuration hierarchy",
   assert.match(app, /Aus einer Funktion ableiten/);
   assert.match(app, /Aktuelle Funktion mit KI prüfen/);
   assert.match(app, /data-driver-ai-prompt/);
+  assert.match(app, /function renderMotorDriverAssignments\(project\)/);
+  assert.match(app, /Die Treiberkonfiguration verwendet nur Pins und Ressourcen dieses Projektsnapshots/);
+  assert.match(app, /function saveMotorDriverAssignment\(event\)/);
+  assert.match(app, /data-motor-driver-component/);
   assert.match(guidedProjectView, /"ai_generated_driver"/);
   assert.match(guidedProjectView, /state\.ideViewMode === "driver-management"/);
   assert.match(app, /Durch Runtime verwaltet/);

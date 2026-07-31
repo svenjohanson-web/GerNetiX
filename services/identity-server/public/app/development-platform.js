@@ -2237,17 +2237,6 @@ const DevelopmentPlatform = (() => {
       return drivers[concreteType] || [];
     }
 
-    function motorDriverControls(component) {
-      const properties = component.properties || {};
-      const drivers = motorDriverTypes(component.concrete_type);
-      if (!drivers.length) return "";
-      const selectedDriver = drivers.find((driver) => driver.id === properties.motor_driver_type);
-      return `<label>Motorsteuerung<select data-hardware-property="motor_driver_type">
-        <option value="">Motorsteuerung waehlen</option>
-        ${drivers.map((driver) => `<option value="${escapeAttribute(driver.id)}" ${selected(properties.motor_driver_type, driver.id)}>${escapeHtml(driver.label)}</option>`).join("")}
-      </select><small>${escapeHtml(selectedDriver?.resources || "Die benötigten Boardressourcen werden aus der Motorsteuerung abgeleitet.")}</small></label>`;
-    }
-
     function measurementAcquisitionControls(component) {
       if (!component.concrete_type) return "";
       const properties = component.properties || {};
@@ -2292,10 +2281,7 @@ const DevelopmentPlatform = (() => {
           <label>Nennwiderstand<input data-hardware-property="nominal_resistance_ohm" type="number" min="100" value="${escapeAttribute(properties.nominal_resistance_ohm || 10000)}"><small>Ohm</small></label>` : "";
         return `${electrical}${measurementAcquisitionControls(component)}`;
       }
-      if (motorDriverTypes(component.concrete_type).length) return `
-        ${motorDriverControls(component)}
-        <label>Nennspannung<input data-hardware-property="nominal_voltage_v" type="number" min="1" step="0.1" value="${escapeAttribute(properties.nominal_voltage_v || 5)}"><small>Volt</small></label>
-        <label>Maximalstrom<input data-hardware-property="max_current_a" type="number" min="0.01" step="0.01" value="${escapeAttribute(properties.max_current_a || 0.5)}"><small>Ampere</small></label>`;
+      if (motorDriverTypes(component.concrete_type).length) return '<span class="hardware-not-applicable">Motor- und Pinbelegung werden anschließend in der IDE-Treiberverwaltung konfiguriert.</span>';
       if (component.abstract_type === "actuator") return `<label>Beschreibung<input data-hardware-property="description" value="${escapeAttribute(properties.description || "")}" placeholder="Bauart oder wichtige Kenndaten"></label>`;
       return `<span class="hardware-not-applicable">-</span>`;
     }
@@ -2316,31 +2302,20 @@ const DevelopmentPlatform = (() => {
     function hardwareConnectionControls(component, devices) {
       if (!["sensor", "actuator"].includes(component.abstract_type)) return `<span class="hardware-not-applicable">-</span>`;
       const targetDevice = devices.find((device) => device.component_id === component.target_device_id) || devices[0];
+      const motorDriverSpecific = motorDriverTypes(component.concrete_type).length > 0;
       const pinOptions = boardPins(targetDevice?.board_profile_id, component);
       return `
         <label>IoT-Device<select data-hardware-field="target_device_id">
           <option value="">Device waehlen</option>
           ${devices.map((device) => `<option value="${escapeAttribute(device.component_id)}" ${selected(component.target_device_id || (devices.length === 1 ? devices[0].component_id : ""), device.component_id)}>${escapeHtml(device.label)}</option>`).join("")}
         </select></label>
+        ${motorDriverSpecific ? '<span class="hardware-not-applicable">Die konkreten Boardpins hängen vom gewählten Motortreiber ab.</span>' : `
         <label>${pinLabel(component)}<select data-hardware-field="pin">
           <option value="">Pin waehlen</option>
           ${pinOptions.map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(component.pin, pin)}>${escapeHtml(pin)}</option>`).join("")}
         </select></label>
-        ${["dc_motor", "stepper_motor"].includes(component.concrete_type) ? `<label>Richtungspin<select data-hardware-field="secondary_pin"><option value="">Pin waehlen</option>${boardPins(targetDevice?.board_profile_id, "digital_output").map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(component.secondary_pin, pin)}>${escapeHtml(pin)}</option>`).join("")}</select></label>` : ""}
-        ${component.concrete_type === "synchronous_motor" ? synchronousMotorConnectionControls(component, targetDevice) : ""}
-        ${component.signal_type === "incremental_ab" ? `<label>Kanal B<select data-hardware-field="secondary_pin"><option value="">Pin waehlen</option>${pinOptions.filter((pin) => pin !== component.pin || pin === component.secondary_pin).map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(component.secondary_pin, pin)}>${escapeHtml(pin)}</option>`).join("")}</select></label>` : ""}
+        ${component.signal_type === "incremental_ab" ? `<label>Kanal B<select data-hardware-field="secondary_pin"><option value="">Pin waehlen</option>${pinOptions.filter((pin) => pin !== component.pin || pin === component.secondary_pin).map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(component.secondary_pin, pin)}>${escapeHtml(pin)}</option>`).join("")}</select></label>` : ""}`}
       `;
-    }
-
-    function synchronousMotorConnectionControls(component, targetDevice) {
-      const properties = component.properties || {};
-      const phasePins = boardPins(targetDevice?.board_profile_id, component);
-      const analogPins = boardPins(targetDevice?.board_profile_id, "analog_sensor");
-      return `
-        <label>Phase V<select data-hardware-property="phase_v_pin"><option value="">PWM-Pin waehlen</option>${phasePins.map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(properties.phase_v_pin, pin)}>${escapeHtml(pin)}</option>`).join("")}</select></label>
-        <label>Phase W<select data-hardware-property="phase_w_pin"><option value="">PWM-Pin waehlen</option>${phasePins.map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(properties.phase_w_pin, pin)}>${escapeHtml(pin)}</option>`).join("")}</select></label>
-        <label>Strommessung (optional)<select data-hardware-property="current_sense_pin"><option value="">Keine / extern</option>${analogPins.map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(properties.current_sense_pin, pin)}>${escapeHtml(pin)}</option>`).join("")}</select></label>
-        <label>Rotorlage<select data-hardware-property="rotor_feedback"><option value="">Ohne Sensor / sensorlos</option><option value="hall" ${selected(properties.rotor_feedback, "hall")}>Hall-Sensoren</option><option value="encoder" ${selected(properties.rotor_feedback, "encoder")}>Encoder</option></select></label>`;
     }
 
     function selected(left, right) {
@@ -2557,17 +2532,10 @@ const DevelopmentPlatform = (() => {
           }
         }
         if (["sensor", "actuator"].includes(component.abstract_type)) {
+          const driverSpecific = component.abstract_type === "actuator" && motorDriverTypes(component.concrete_type).length > 0;
           if (!component.concrete_type) missing.push(`${component.label}: konkreter Typ`);
           if (!component.target_device_id) missing.push(`${component.label}: IoT-Device`);
-          if (!component.pin) missing.push(`${component.label}: Pin`);
-          if (motorDriverTypes(component.concrete_type).length && !component.properties?.motor_driver_type) missing.push(`${component.label}: Motorsteuerung`);
-          if (["dc_motor", "stepper_motor"].includes(component.concrete_type) && !component.secondary_pin) missing.push(`${component.label}: Richtungspin`);
-          if (component.concrete_type === "synchronous_motor") {
-            if (!component.properties?.phase_v_pin) missing.push(`${component.label}: Phase V`);
-            if (!component.properties?.phase_w_pin) missing.push(`${component.label}: Phase W`);
-            const phasePins = [component.pin, component.properties?.phase_v_pin, component.properties?.phase_w_pin].filter(Boolean);
-            if (new Set(phasePins).size !== phasePins.length) missing.push(`${component.label}: Phasenpins muessen verschieden sein`);
-          }
+          if (!driverSpecific && !component.pin) missing.push(`${component.label}: Pin`);
           if (component.signal_type === "incremental_ab" && !component.secondary_pin) missing.push(`${component.label}: Kanal B`);
           if (component.signal_type === "incremental_ab" && component.pin && component.secondary_pin === component.pin) missing.push(`${component.label}: Kanal A und B muessen verschieden sein`);
         }
