@@ -376,9 +376,6 @@ const DevelopmentPlatform = (() => {
       const components = abstractArchitectureComponents(diagram?.source || "");
       const configurableComponents = components.filter(isUserConfigurableComponent);
       const componentById = new Map(components.map((component) => [component.component_id, component]));
-      const controlAssignments = controlUnitAssignments(diagram?.source || "");
-      const connections = new Map([...componentConnectionAssignments(diagram?.source || "")]
-        .filter(([, targetId]) => isUserConfigurableComponent(componentById.get(targetId))));
       const connectionCoverage = plantUmlFunctionCoverage(diagram?.source || "");
       const disconnectedComponents = connectionCoverage.missing
         .map((componentId) => componentById.get(componentId) || { component_id: componentId, label: componentId })
@@ -388,7 +385,7 @@ const DevelopmentPlatform = (() => {
         ? configurableComponents.map((component) => `
           <li class="${connectionCoverage.missing.includes(component.component_id) ? "has-connection-hint" : ""}">
             <strong>${escapeHtml(component.label)}</strong>
-            <small>${escapeHtml(templateComponentTypeLabel(component.abstract_type))}${connections.get(component.component_id) || controlAssignments.get(component.component_id) ? ` · ${controlAssignments.get(component.component_id) ? "Steuereinheit" : "Verbunden mit"}: ${escapeHtml(componentById.get(connections.get(component.component_id) || controlAssignments.get(component.component_id))?.label || connections.get(component.component_id) || controlAssignments.get(component.component_id))}` : ""}</small>
+            <small>${escapeHtml(templateComponentTypeLabel(component.abstract_type))}</small>
           </li>`).join("")
         : "<li class=\"empty\">Noch keine Komponenten vorhanden.</li>";
       const connectionHints = disconnectedComponents.length || invalidRelations.length
