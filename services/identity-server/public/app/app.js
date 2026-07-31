@@ -582,6 +582,8 @@ function renderAll() {
 function renderRoute() {
   const route = routeName();
   const enteringDevelopmentPlatform = route === "development-platform" && lastRenderedRoute !== "development-platform";
+  const routeQuery = new URLSearchParams(window.location.search);
+  const requestedArchitectureProjectId = routeQuery.get("view") === "architecture" ? routeQuery.get("project") || "" : "";
   document.body.classList.toggle("ide-workspace-active", route === "ide");
   document.body.classList.toggle("development-workspace-active", route === "development-platform");
   document.body.classList.toggle("development-hardware-active", route === "development-hardware");
@@ -594,7 +596,8 @@ function renderRoute() {
   document.querySelectorAll("[data-device-management-route]").forEach((button) => {
     button.classList.toggle("active", deviceManagementRouteFor(route) === button.dataset.deviceManagementRoute);
   });
-  if (enteringDevelopmentPlatform) developmentPlatform().enterProjectStart();
+  if (route === "development-platform" && requestedArchitectureProjectId) developmentPlatform().openArchitecture(requestedArchitectureProjectId);
+  else if (enteringDevelopmentPlatform) developmentPlatform().enterProjectStart();
   else if (route === "development-platform") developmentPlatform().render();
   if (route === "development-platform") {
     loadProcessorBoardCatalog();

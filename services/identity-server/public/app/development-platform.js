@@ -56,7 +56,12 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#templateComponentConfiguration").addEventListener("change", handleTemplateComponentConfigurationChange);
       document.querySelector("#developmentHardwareForm").addEventListener("change", handleHardwareConfigurationChange);
       document.querySelector("#developmentHardwareForm").addEventListener("click", handleHardwareHelpClick);
-      document.querySelector("#backToDevelopmentArchitectureButton").addEventListener("click", () => navigate("/app/development-platform/"));
+      document.querySelector("#backToDevelopmentArchitectureButton").addEventListener("click", () => {
+        const projectId = activeProjectId();
+        navigate(projectId
+          ? `/app/development-platform/?project=${encodeURIComponent(projectId)}&view=architecture`
+          : "/app/development-platform/");
+      });
       document.querySelector("#saveDevelopmentHardwareButton").addEventListener("click", () => saveHardwareConfiguration(false));
       document.querySelector("#continueDevelopmentHardwareButton").addEventListener("click", () => saveHardwareConfiguration(true));
       document.querySelector("#touchscreenGameForm").addEventListener("change", handleTouchscreenGameChange);
@@ -349,6 +354,21 @@ const DevelopmentPlatform = (() => {
       state.developmentPlatform.assistantOpen = false;
       state.developmentPlatform.chat = [];
       state.developmentPlatform.lastRouting = null;
+      setActionStatus("");
+      render();
+    }
+
+    function openArchitecture(projectId) {
+      const project = developmentProjects().find((item) => item.id === projectId);
+      if (!project) {
+        enterProjectStart();
+        return;
+      }
+      state.developmentPlatform.activeProjectId = project.id;
+      storeActiveProjectId(project.id);
+      state.developmentPlatform.projectPanelMode = "closed";
+      state.developmentPlatform.workflowStep = "configuration";
+      restoreDevelopmentDialog(project);
       setActionStatus("");
       render();
     }
@@ -2879,6 +2899,7 @@ const DevelopmentPlatform = (() => {
       setAssistantConfig,
       setProjectTemplates,
       enterProjectStart,
+      openArchitecture,
     };
   }
 
