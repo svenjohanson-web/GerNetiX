@@ -2680,14 +2680,29 @@ const DevelopmentPlatform = (() => {
         }
         if (["sensor", "actuator"].includes(component.abstract_type)) {
           const driverSpecific = component.abstract_type === "actuator" && motorDriverTypes(component.concrete_type).length > 0;
+          const boardSuppliedPins = boardFeatureForHardwareComponent(component, configuration);
           if (!component.concrete_type) missing.push(`${component.label}: konkreter Typ`);
           if (!component.target_device_id) missing.push(`${component.label}: IoT-Device`);
-          if (!driverSpecific && !component.pin) missing.push(`${component.label}: Pin`);
+          if (!driverSpecific && !boardSuppliedPins && !component.pin) missing.push(`${component.label}: Pin`);
           if (component.signal_type === "incremental_ab" && !component.secondary_pin) missing.push(`${component.label}: Kanal B`);
           if (component.signal_type === "incremental_ab" && component.pin && component.secondary_pin === component.pin) missing.push(`${component.label}: Kanal A und B muessen verschieden sein`);
         }
       });
       return { complete: missing.length === 0, missing };
+    }
+
+    function boardFeatureForHardwareComponent(component, configuration) {
+      const device = configuration.components.find((item) => item.abstract_type === "iot_device" && item.component_id === component.target_device_id);
+      if (!device) return null;
+      const featureId = component.abstract_type === "sensor" && component.sensor_category === "image"
+        ? "camera"
+        : component.abstract_type === "actuator" && component.concrete_type === "integrated_display"
+          ? "display"
+          : "";
+      const feature = featureId ? device.board_configuration?.board_features?.[featureId] : null;
+      if (!feature?.enabled || !Object.keys(feature.pins || {}).length) return null;
+      if (featureId === "camera" && component.concrete_type && feature.hardware && component.concrete_type !== feature.hardware) return null;
+      return feature;
     }
 
     function syncHardwareActions(configuration) {

@@ -5483,7 +5483,10 @@ function hardwareIoMarkdown(kind, device, components) {
     if (component.abstract_type === "sensor") lines.push(`- Sensorart: ${component.sensor_category || "offen"}`);
     if (component.abstract_type === "sensor") lines.push(`- Erfassung: ${component.signal_type || "offen"}`);
     lines.push(`- Konkreter Typ: ${component.concrete_type || "offen"}`);
-    lines.push(`- Pin: ${component.pin || "offen"}`);
+    const boardFeature = boardFeatureForHardwareComponent(component, device);
+    lines.push(boardFeature
+      ? `- Pin-Zuordnung: ${formatHardwarePins(boardFeature.pins)} (Boardkonfiguration)`
+      : `- Pin: ${component.pin || "offen"}`);
     if (component.secondary_pin) lines.push(`- Zweiter Pin: ${component.secondary_pin}`);
     if (component.circuit) lines.push(`- Vorschaltung: ${component.circuit.label}`);
     for (const [key, value] of Object.entries(component.properties || {})) lines.push(`- ${key}: ${value}`);
@@ -5531,7 +5534,8 @@ function hardwareWiringPlantUml(configuration, title) {
       ? [component.label, `Sensorart: ${component.sensor_category || "offen"}`, `Erfassung: ${component.signal_type || "offen"}`, `Sensor: ${component.concrete_type || "offen"}`]
       : [component.label, `Aktor: ${component.concrete_type || "offen"}`];
     lines.push(`component "${plantUmlLabel([...detailLines, ...hardwarePropertyLines(component.properties)])}" as ${alias}`);
-    const pinLabel = [component.pin || "Pin offen", component.secondary_pin ? `zweiter Pin: ${component.secondary_pin}` : ""].filter(Boolean).join(" / ");
+    const boardFeature = boardFeatureForHardwareComponent(component, devices.get(component.target_device_id));
+    const pinLabel = [boardFeature ? `Board-Pins: ${formatHardwarePins(boardFeature.pins)}` : component.pin || "Pin offen", component.secondary_pin ? `zweiter Pin: ${component.secondary_pin}` : ""].filter(Boolean).join(" / ");
     if (component.circuit) {
       lines.push(`component "${plantUmlLabel([component.circuit.label, ...component.circuit.stages])}" as ${alias}_circuit`);
       lines.push(`${alias} --> ${alias}_circuit`);
@@ -5542,6 +5546,23 @@ function hardwareWiringPlantUml(configuration, title) {
   }
   lines.push("@enduml");
   return lines.join("\n");
+}
+
+function boardFeatureForHardwareComponent(component, device) {
+  if (!device) return null;
+  const featureId = component.abstract_type === "sensor" && component.sensor_category === "image"
+    ? "camera"
+    : component.abstract_type === "actuator" && component.concrete_type === "integrated_display"
+      ? "display"
+      : "";
+  const feature = featureId ? device.board_configuration?.board_features?.[featureId] : null;
+  if (!feature?.enabled || !Object.keys(feature.pins || {}).length) return null;
+  if (featureId === "camera" && component.concrete_type && feature.hardware && component.concrete_type !== feature.hardware) return null;
+  return feature;
+}
+
+function formatHardwarePins(pins = {}) {
+  return Object.entries(pins).map(([signal, pin]) => `${signal.toUpperCase()}=${pin === -1 ? "nicht verbunden" : `GPIO${pin}`}`).join(", ");
 }
 
 function plantUmlLabel(lines) {

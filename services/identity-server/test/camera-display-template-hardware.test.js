@@ -15,6 +15,7 @@ test("persists the camera and display template boards as its initial hardware re
 
 test("shows the catalog camera while keeping its board-supplied connection", () => {
   const platform = fs.readFileSync(path.join(root, "public/app/development-platform.js"), "utf8");
+  const server = fs.readFileSync(path.join(root, "src/dev-server.js"), "utf8");
 
   assert.match(platform, /merged\.concrete_type !== "integrated_camera"/);
   assert.match(platform, /Kamera ist Bestandteil der gewählten Boardkonfiguration/);
@@ -25,4 +26,8 @@ test("shows the catalog camera while keeping its board-supplied connection", () 
   assert.match(platform, /components: synchronizeCameraComponents\(components, boards\)/);
   assert.match(platform, /camera\.concrete_type = catalogCamera\.sensor_type_id/);
   assert.match(platform, /device\.board_configuration\.board_features\.camera =/);
+  assert.match(platform, /function boardFeatureForHardwareComponent\(component, configuration\)/);
+  assert.match(platform, /!driverSpecific && !boardSuppliedPins && !component\.pin/);
+  assert.match(server, /Pin-Zuordnung: .*\(Boardkonfiguration\)/);
+  assert.match(server, /Board-Pins:/);
 });
