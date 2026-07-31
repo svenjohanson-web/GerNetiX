@@ -44,6 +44,8 @@ const state = {
   serviceStatus: {},
   activeProjectId: "",
   activeSoftwareUnitIds: {},
+  pendingFlashAction: "",
+  pendingUsbFlash: null,
   activeDeviceId: "",
   activeFlashboxDeviceId: "",
   activeRecoveryDeviceId: "",
@@ -72,6 +74,7 @@ const state = {
 
 const routeMap = {
   dashboard: "dashboardView",
+  about: "aboutView",
   "development-platform": "developmentPlatformView",
   "development-hardware": "developmentHardwareView",
   learn: "learnView",
@@ -157,11 +160,13 @@ function developmentPlatform() {
     developmentPlatformController = DevelopmentPlatform.create({
       state,
       postJson,
+      deleteJson,
+      loadProcessorBoardCatalog,
       openProjectInIde,
       navigate,
       escapeHtml,
       escapeAttribute,
-      meta,
+      openHelpTopic: InformationView.openDialog,
     });
   }
   return developmentPlatformController;
@@ -290,19 +295,37 @@ document.querySelector("#messageComposeDialog")?.addEventListener("click", (even
 document.querySelector("#flashboxDeviceSelect").addEventListener("change", () => {
   state.activeFlashboxDeviceId = document.querySelector("#flashboxDeviceSelect").value;
 });
-document.querySelector("#refreshUsbPortsButton").addEventListener("click", refreshUsbPorts);
+document.querySelector("#usbPortMissingDialog")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget || event.target.closest("[data-close-usb-port-missing]")) event.currentTarget.close();
+});
+document.querySelector("#retryUsbPortSearchButton")?.addEventListener("click", retryUsbPortSearch);
+document.querySelector("#usbPortChoiceDialog")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget || event.target.closest("[data-close-usb-port-choice]")) event.currentTarget.close();
+});
+document.querySelector("#confirmUsbPortButton")?.addEventListener("click", () => {
+  if (!selectedUsbPort()) return;
+  document.querySelector("#usbPortChoiceDialog")?.close();
+  startUsbFlash(true);
+});
 document.querySelector("#usbPortSelect").addEventListener("change", (event) => {
-  if (event.target.value) setFlashStatus("ok", `USB-Port ausgewählt: ${event.target.value}`);
+  document.querySelector("#confirmUsbPortButton").disabled = !event.target.value;
 });
 document.querySelector("#buildButton").addEventListener("click", startBuild);
+document.querySelector("#flashTargetChoiceDialog")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget || event.target.closest("[data-close-flash-target-choice]")) {
+    state.pendingFlashAction = "";
+    event.currentTarget.close();
+  }
+});
+document.querySelector("#confirmFlashTargetButton")?.addEventListener("click", confirmFlashTargetChoice);
 document.querySelector("#ideSoftwareUnitSelect").addEventListener("change", (event) => {
   if (!state.activeProjectId) return;
   state.activeSoftwareUnitIds[state.activeProjectId] = event.target.value;
   updateIdeProjectTools(projectById(state.activeProjectId));
 });
-document.querySelector("#usbFlashButton").addEventListener("click", startUsbFlash);
-document.querySelector("#otaFlashButton").addEventListener("click", startOtaFlash);
-document.querySelector("#flashBoxFlashButton").addEventListener("click", startFlashBoxFlash);
+document.querySelector("#usbFlashButton").addEventListener("click", () => startUsbFlash());
+document.querySelector("#otaFlashButton").addEventListener("click", () => startOtaFlash());
+document.querySelector("#flashBoxFlashButton").addEventListener("click", () => startFlashBoxFlash());
 document.querySelector("#checkOtaConnectivityButton").addEventListener("click", checkAllocatedDeviceConnectivity);
 document.querySelector("#clearIdeTerminalButton").addEventListener("click", clearIdeTerminal);
 document.querySelector("#showIdeTerminalButton").addEventListener("click", () => setIdeConsoleView("terminal"));
@@ -709,6 +732,10 @@ function currentLocationTrail(route) {
   const project = projectById(state.activeProjectId);
   const locations = {
     dashboard: [{ label: "Plattform", route: "/app/dashboard/" }],
+    about: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Über uns", route: "" },
+    ],
     "development-platform": [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Entwicklungsplattform", route: "/app/development-platform/" },
@@ -1829,6 +1856,7 @@ function updateIdeProjectTools(project) {
   const hardwareTools = projectNeedsHardwareTools(project);
   renderIdeSoftwareUnitSelection(project);
   const softwareUnit = activeIdeSoftwareUnit(project);
+  const flashableUnits = projectSoftwareUnits(project).filter((unit) => unit.build_system === "platformio");
   const sourceEditing = ideSourceIsEditable(project, state.sourcePath);
   document.querySelector("#ideDeviceTools").classList.remove("hidden");
   const allocated = allocatedIdeDevice(project);
@@ -1848,19 +1876,21 @@ function updateIdeProjectTools(project) {
       : allocated.ota_status !== "ready"
         ? `OTA nicht verfügbar: Das Device meldet den OTA-Status ${allocated.ota_status || "unknown"}.`
         : "";
-  const supportedBuild = !softwareUnit || softwareUnit.build_system === "platformio";
-  buildButton.disabled = !supportedBuild;
-  usbButton.disabled = !supportedBuild;
-  otaButton.disabled = !allocated || allocated.ota_status !== "ready" || allocated.connectivity_status !== "online";
-  flashBoxButton.disabled = !flashboxes.length;
+  const supportedFlashTarget = !softwareUnit || flashableUnits.length > 0;
+  const unsupportedProjectUnits = projectSoftwareUnits(project).filter((unit) => unit.build_system !== "platformio");
+  const flashTargetReason = supportedFlashTarget ? "" : "Flash nicht verfügbar: Das Projekt besitzt keine Software-Einheit mit angeschlossenem Firmware-Runner.";
+  buildButton.disabled = false;
+  usbButton.disabled = !supportedFlashTarget;
+  otaButton.disabled = !supportedFlashTarget || !allocated || allocated.ota_status !== "ready" || allocated.connectivity_status !== "online";
+  flashBoxButton.disabled = !supportedFlashTarget || !flashboxes.length;
   flashboxSelect.classList.toggle("hidden", !flashboxes.length);
   flashboxSelect.disabled = !flashboxes.length;
-  buildButton.title = supportedBuild
-    ? "Build verwendet die gespeicherte Konfiguration der ausgewaehlten Software-Einheit."
-    : `Fuer ${softwareUnit.title || softwareUnit.software_unit_id} ist der Build-Runner ${softwareUnit.build_system || "noch nicht"} nicht angeschlossen.`;
-  usbButton.title = "Direkter USB-Flash verwendet die Projekt-Boardkonfiguration und das angeschlossene USB-Gerät.";
-  otaButton.title = actionReason || otaReason;
-  flashBoxButton.title = actionReason || (!flashboxes.length
+  buildButton.title = unsupportedProjectUnits.length
+    ? `Gesamtbuild nicht möglich: ${unsupportedProjectUnits.length} Software-Einheit${unsupportedProjectUnits.length === 1 ? " besitzt" : "en besitzen"} noch keinen angeschlossenen Runner.`
+    : "Baut alle Software-Einheiten des Projekts als gemeinsamen Gesamtbuild.";
+  usbButton.title = flashTargetReason || "Direkter USB-Flash verwendet die Projekt-Boardkonfiguration und das angeschlossene USB-Gerät.";
+  otaButton.title = flashTargetReason || actionReason || otaReason;
+  flashBoxButton.title = flashTargetReason || actionReason || (!flashboxes.length
     ? "Keine FlashBox im Inventar verfügbar."
     : "FlashBox: Der WLAN-zu-USB-Helper flasht das angeschlossene Zielgerät.");
   renderIdeProjectInformation(project);
@@ -1873,14 +1903,21 @@ function activeIdeSoftwareUnit(project = projectById(state.activeProjectId)) {
   return units.find((unit) => unit.software_unit_id === selectedId) || units[0] || null;
 }
 
+function projectSoftwareUnits(project = projectById(state.activeProjectId)) {
+  return Array.isArray(project?.softwareUnits) ? project.softwareUnits : [];
+}
+
 function renderIdeSoftwareUnitSelection(project) {
   const control = document.querySelector("#ideSoftwareUnitControl");
   const select = document.querySelector("#ideSoftwareUnitSelect");
   if (!control || !select) return;
-  const units = project?.softwareUnits || [];
-  control.classList.toggle("hidden", units.length < 2);
+  const units = projectSoftwareUnits(project).filter((unit) => unit.build_system === "platformio");
+  control.classList.remove("hidden");
   select.innerHTML = units.map((unit) => `<option value="${escapeAttribute(unit.software_unit_id)}">${escapeHtml(unit.title)} · ${escapeHtml(unit.build_system || "ohne Runner")}</option>`).join("");
-  select.value = activeIdeSoftwareUnit(project)?.software_unit_id || "";
+  const active = activeIdeSoftwareUnit(project);
+  select.value = units.some((unit) => unit.software_unit_id === active?.software_unit_id)
+    ? active.software_unit_id
+    : units[0]?.software_unit_id || "";
 }
 
 function renderIdeProjectInformation(project) {
@@ -2223,10 +2260,17 @@ function projectBrowserSources(project, sources) {
   const mappings = hardwareMappings.length || !projectNeedsHardwareTools(project) || !primaryPath
     ? hardwareMappings
     : [{ sourcePrefix: String(primaryPath).replace(/\/$/, ""), treePrefix: `Komponenten/${String(primaryPath).split("/").at(-1) || "IoT-Device"}` }];
+  const primaryMapping = mappings.find((mapping) => mapping.sourcePrefix === String(primaryPath || "").replace(/\/$/, "")) || mappings[0];
   const mappedSources = !mappings.length ? sources : sources.map((source) => {
     const mapping = mappings.find((item) => source.path === item.sourcePrefix || source.path.startsWith(`${item.sourcePrefix}/`));
-    if (!mapping) return source;
+    if (!mapping) {
+      const rootSource = String(source.path || "").match(/^(?:src|source)\/(.+)$/i);
+      return rootSource && primaryMapping
+        ? { ...source, treePath: `${primaryMapping.treePrefix}/Source/${rootSource[1]}` }
+        : source;
+    }
     let relativePath = source.path.slice(mapping.sourcePrefix.length).replace(/^\//, "");
+    relativePath = relativePath.replace(/^(?:src|source)(?=\/|$)/i, "Source");
     if (/^Konfiguration\//.test(relativePath) && !/^Konfiguration\/(Hardware|Software)\//.test(relativePath)) {
       relativePath = relativePath.replace(/^Konfiguration\//, "Konfiguration/Hardware/");
     }
@@ -3073,20 +3117,41 @@ function renderBoardProperties(project) {
   const boardProfileId = boardSelectionId || deviceComponent?.board_profile_id || allocated?.hardware_profile_id || boardConfiguration?.base_board_profile_id || "";
   const board = state.processorBoards.find((item) => [item.hardware_item_id, item.hardware_profile_id, item.id]
     .filter(Boolean).some((id) => String(id) === String(boardProfileId)));
+  const projectBoardId = boardConfiguration?.source === "project" && board
+    ? `project_board:${project.id}:${deviceComponent.component_id}`
+    : "";
+  const projectBoard = projectBoardId ? {
+    ...board,
+    hardware_item_id: projectBoardId,
+    hardware_profile_id: projectBoardId,
+    id: projectBoardId,
+    title: `${boardConfiguration.name || board.title || "Board"} · Projektanpassung`,
+    configuration_scope: "project",
+    project_base_selection_id: boardProfileId,
+    base_board_profile_id: boardConfiguration.base_board_profile_id || board.base_board_profile_id || BoardConfigurationPlugin.boardId(board),
+    account_board_id: boardConfiguration.account_board_id || "",
+    account_board_version: boardConfiguration.account_board_version || 0,
+    default_instance_configuration: {
+      ...(board.default_instance_configuration || {}),
+      board_features: boardConfiguration.board_features || {},
+    },
+  } : null;
+  const selectableBoards = projectBoard ? [...state.processorBoards, projectBoard] : state.processorBoards;
+  const selectedBoardId = projectBoardId || boardProfileId;
   target.innerHTML = `<div class="board-properties-workspace">
     <header><div><p class="eyebrow">Hardware · Boardkonfiguration</p><h3>${escapeHtml(deviceComponent?.label || "IoT-Device")}</h3></div>
       <button type="button" data-open-hardware-configuration>Vollständige Hardware-Zuordnung</button></header>
-    <p class="helper-text">Dies ist dieselbe Boardauswahl wie im Provisioning. GerNetiX-Boards und eigene Account-Boards können hier gewählt, geprüft und direkt als fester Projektsnapshot übernommen werden.</p>
+    <p class="helper-text">GerNetiX-Boards und eigene Account-Boards stammen aus dem Hardware-Katalog. Änderungen werden als eigener, vollständiger Projektsnapshot gespeichert und erscheinen danach unter „Projektanpassungen“.</p>
     <section class="ide-board-configuration-plugin-panel">
       <div data-ide-board-configuration-plugin></div>
       <footer class="ide-board-configuration-plugin-actions">
-        <button type="button" class="primary" data-save-ide-board-configuration="project" ${board ? "" : "disabled"}>Board im Projekt verwenden</button>
+        <button type="button" class="primary" data-save-ide-board-configuration="project" ${board ? "" : "disabled"}>Boardkonfiguration im Projekt speichern</button>
         <button type="button" data-save-ide-board-configuration="account" class="hidden">Als eigenes Board speichern und verwenden</button>
         <span data-ide-board-configuration-status></span>
       </footer>
     </section>
     ${board ? `<dl class="board-properties-meta">
-      <div><dt>Quelle</dt><dd>${escapeHtml(boardConfiguration?.source === "account" ? `Eigenes Account-Board · Version ${boardConfiguration.account_board_version || 1}` : "GerNetiX-Board")}</dd></div>
+      <div><dt>Quelle</dt><dd>${escapeHtml(boardConfiguration?.source === "project" ? "Projektanpassung" : boardConfiguration?.source === "account" ? `Eigenes Account-Board · Version ${boardConfiguration.account_board_version || 1}` : "GerNetiX-Board")}</dd></div>
       <div><dt>Basisprofil</dt><dd>${escapeHtml(boardConfiguration?.base_board_profile_id || board.base_board_profile_id || board.hardware_item_id || "nicht angegeben")}</dd></div>
       <div><dt>Prozessorfamilie</dt><dd>${escapeHtml(board.processor_family || deviceComponent?.processor_family || "nicht angegeben")}</dd></div>
       <div><dt>MCU</dt><dd>${escapeHtml(board.mcu_variant || deviceComponent?.processor_variant || "nicht angegeben")}</dd></div>
@@ -3095,8 +3160,8 @@ function renderBoardProperties(project) {
   const pluginRoot = target.querySelector("[data-ide-board-configuration-plugin]");
   state.ideBoardConfigurationDraft = null;
   BoardConfigurationPlugin.mount(pluginRoot, {
-    boards: state.processorBoards,
-    selectedBoardId: boardProfileId,
+    boards: selectableBoards,
+    selectedBoardId,
     features: state.boardFeatureCatalog,
     selections: boardConfiguration?.board_features || board?.default_instance_configuration?.board_features || {},
     name: boardConfiguration?.name || "",
@@ -3116,7 +3181,7 @@ function renderBoardProperties(project) {
 function syncIdeBoardConfigurationActions(target, value) {
   const projectButton = target.querySelector('[data-save-ide-board-configuration="project"]');
   const accountButton = target.querySelector('[data-save-ide-board-configuration="account"]');
-  if (projectButton) projectButton.disabled = !value?.board || value.modified;
+  if (projectButton) projectButton.disabled = !value?.board;
   accountButton?.classList.toggle("hidden", !value?.board || !value.modified);
 }
 
@@ -3127,10 +3192,6 @@ async function saveIdeBoardConfiguration(saveAsAccount) {
   const value = BoardConfigurationPlugin.value(pluginRoot);
   const status = target?.querySelector("[data-ide-board-configuration-status]");
   if (!project || !value?.board || !status) return;
-  if (value.modified && !saveAsAccount) {
-    status.textContent = "Geänderte Boardwerte müssen als eigenes Account-Board gespeichert werden.";
-    return;
-  }
   if (saveAsAccount && !value.name) {
     status.textContent = "Gib deinem geänderten Board zuerst einen Namen.";
     pluginRoot.querySelector("[data-board-configuration-name]")?.focus();
@@ -3139,10 +3200,13 @@ async function saveIdeBoardConfiguration(saveAsAccount) {
   status.textContent = saveAsAccount ? "Eigenes Board wird gespeichert…" : "Board wird dem Projekt zugeordnet…";
   try {
     const board = value.board;
+    const projectSpecific = !saveAsAccount && (value.modified || board.configuration_scope === "project");
     let boardConfiguration = {
       schema_version: 1,
-      source: board.configuration_scope === "account" ? "account" : "catalog",
-      name: board.configuration_scope === "account" ? String(board.title || "").replace(/ · Mein Board$/, "") : "",
+      source: projectSpecific ? "project" : board.configuration_scope === "account" ? "account" : "catalog",
+      name: projectSpecific
+        ? String(board.title || "").replace(/ · Projektanpassung$/, "")
+        : board.configuration_scope === "account" ? String(board.title || "").replace(/ · Mein Board$/, "") : "",
       base_board_profile_id: board.base_board_profile_id || BoardConfigurationPlugin.boardId(board),
       account_board_id: board.account_board_id || "",
       account_board_version: board.account_board_version || 0,
@@ -3183,7 +3247,7 @@ async function saveIdeBoardConfiguration(saveAsAccount) {
       processor_variant: board.mcu_variant || "",
       board_profile_id: saveAsAccount
         ? `account_board:${boardConfiguration.account_board_id}:v${boardConfiguration.account_board_version}`
-        : BoardConfigurationPlugin.boardId(board),
+        : board.project_base_selection_id || BoardConfigurationPlugin.boardId(board),
       board_configuration: boardConfiguration,
     });
     const response = await postJson(`/api/platform/development-projects/${encodeURIComponent(project.id)}/hardware-configuration`, { hardware_configuration: hardwareConfiguration });
@@ -3333,38 +3397,93 @@ async function persistCurrentSource(project = projectById(state.activeProjectId)
   renderIdeProjectInformation(project);
 }
 
+function prepareFlashTarget(project, action, targetConfirmed = false) {
+  const allUnits = projectSoftwareUnits(project);
+  const flashableUnits = allUnits.filter((unit) => unit.build_system === "platformio");
+  if (!allUnits.length) return true;
+  if (!flashableUnits.length) {
+    setFlashStatus("error", "Dieses Projekt besitzt keine Software-Einheit mit angeschlossenem Firmware-Runner.");
+    return false;
+  }
+  if (flashableUnits.length === 1) {
+    state.activeSoftwareUnitIds[project.id] = flashableUnits[0].software_unit_id;
+    return true;
+  }
+  if (targetConfirmed && flashableUnits.some((unit) => unit.software_unit_id === state.activeSoftwareUnitIds[project.id])) return true;
+  state.pendingFlashAction = action;
+  renderIdeSoftwareUnitSelection(project);
+  const select = document.querySelector("#ideSoftwareUnitSelect");
+  if (select?.value) state.activeSoftwareUnitIds[project.id] = select.value;
+  const dialog = document.querySelector("#flashTargetChoiceDialog");
+  if (dialog && !dialog.open) dialog.showModal();
+  return false;
+}
+
+function confirmFlashTargetChoice() {
+  const project = projectById(state.activeProjectId);
+  const select = document.querySelector("#ideSoftwareUnitSelect");
+  const action = state.pendingFlashAction;
+  if (!project || !select?.value || !action) return;
+  state.activeSoftwareUnitIds[project.id] = select.value;
+  state.pendingFlashAction = "";
+  document.querySelector("#flashTargetChoiceDialog")?.close();
+  updateIdeProjectTools(project);
+  if (action === "usb") startUsbFlash(true);
+  if (action === "ota") startOtaFlash(true);
+  if (action === "flashbox") startFlashBoxFlash(true);
+}
+
 async function startBuild() {
   const project = projectById(state.activeProjectId);
-  const softwareUnit = activeIdeSoftwareUnit(project);
   const device = allocatedIdeDevice(project);
   if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
-  setFlashStatus("running", "Build laeuft...");
+  const softwareUnits = projectSoftwareUnits(project);
+  const buildTargets = softwareUnits.length ? softwareUnits : [null];
+  const unsupportedUnits = softwareUnits.filter((unit) => unit.build_system !== "platformio");
+  if (unsupportedUnits.length) {
+    const details = unsupportedUnits
+      .map((unit) => `${unit.title || unit.software_unit_id} (${unit.build_system || "kein Buildsystem"})`)
+      .join(", ");
+    return setFlashStatus("error", `Gesamtbuild nicht gestartet. Für folgende Software-Einheiten fehlt ein Build-Runner: ${details}.`);
+  }
+  setFlashStatus("running", `Gesamtbuild läuft: ${buildTargets.length} Software-Einheit${buildTargets.length === 1 ? "" : "en"}...`);
   try {
     await persistCurrentSource(project);
-    const build = await postJson("/api/user-ide/build-jobs", {
+    const submissions = await Promise.allSettled(buildTargets.map((softwareUnit) => postJson("/api/user-ide/build-jobs", {
       project_slug: project.slug,
       software_unit_id: softwareUnit?.software_unit_id || "",
       device_id: device?.device_id || "",
       mode: "build",
-    });
-    const completed = await waitForCompletedBuild(build);
-    state.builds.unshift(completed);
+    })));
+    const acceptedBuilds = submissions.filter((result) => result.status === "fulfilled").map((result) => result.value);
+    const rejectedSubmissions = submissions.filter((result) => result.status === "rejected");
+    const completionResults = await Promise.allSettled(acceptedBuilds.map((build) => waitForCompletedBuild(build, {
+      appendMemorySummary: false,
+    })));
+    const completed = completionResults.filter((result) => result.status === "fulfilled").map((result) => result.value);
+    const rejectedCompletions = completionResults.filter((result) => result.status === "rejected");
+    state.builds.unshift(...completed);
     renderIdeProjectInformation(project);
-    if (completed.status !== "succeeded") appendBuildFailureLog(completed.build_log);
-    setFlashStatus(completed.status === "succeeded" ? "ok" : "error", completed.status === "succeeded"
-      ? "Build erfolgreich abgeschlossen."
-      : `Build fehlgeschlagen: ${completed.error || "Unbekannter Buildfehler."}`);
+    completed.filter((build) => build.status !== "succeeded").forEach((build) => appendBuildFailureLog(build.build_log));
+    rejectedSubmissions.forEach((result) => appendIdeTerminal("error", `Build-Auftrag konnte nicht angelegt werden: ${result.reason?.message || "Unbekannter Fehler."}`));
+    rejectedCompletions.forEach((result) => appendIdeTerminal("error", `Build-Ergebnis konnte nicht abgerufen werden: ${result.reason?.message || "Unbekannter Fehler."}`));
+    const succeeded = completed.filter((build) => build.status === "succeeded").length;
+    const failed = completed.length - succeeded + rejectedSubmissions.length + rejectedCompletions.length;
+    if (!failed) completed.forEach(appendBuildMemorySummary);
+    const summary = `Gesamtbuild: ${succeeded} von ${buildTargets.length} Software-Einheiten erfolgreich.`;
+    setFlashStatus(failed ? "error" : "ok", failed ? `${summary} ${failed} fehlgeschlagen.` : summary);
     renderBuilds();
   } catch (error) {
     setFlashStatus("error", error.message);
   }
 }
 
-async function startUsbFlash() {
+async function startUsbFlash(targetConfirmed = false) {
   const project = projectById(state.activeProjectId);
+  if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
+  if (!prepareFlashTarget(project, "usb", targetConfirmed)) return;
   const softwareUnit = activeIdeSoftwareUnit(project);
   const device = allocatedIdeDevice(project);
-  if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
   const serialServiceAvailable = await state.serialService.available();
   if (!serialServiceAvailable && !navigator.serial) {
     setFlashStatus("error", "Für USB wird Web Serial oder der GerNetiX WebHelper benötigt.");
@@ -3373,14 +3492,16 @@ async function startUsbFlash() {
   }
   if (serialServiceAvailable) {
     await refreshUsbPorts(false);
+    if (!state.usbPorts.length) {
+      state.pendingUsbFlash = { mode: "start", projectId: project.id };
+      showUsbPortMissingGuidance();
+      return;
+    }
     const resolvedPort = selectedUsbPort()
       || bestUsbPortForDevice(device)?.port
       || (state.usbPorts.length === 1 ? state.usbPorts[0].port : "");
     if (!resolvedPort && state.usbPorts.length > 1) {
-      const select = document.querySelector("#usbPortSelect");
-      select.classList.remove("hidden");
-      select.focus();
-      setFlashStatus("error", "Mehrere USB-Geräte sind verbunden. Wähle oben den USB-Port und starte USB erneut.");
+      showUsbPortChoiceDialog();
       return;
     }
   }
@@ -3416,6 +3537,13 @@ async function startUsbFlash() {
     setUsbFlashSuccess(`USB-Flash erfolgreich: ${flashResult.chipName}`);
     renderBuilds();
   } catch (error) {
+    if (isUsbPortMissingError(error)) {
+      state.pendingUsbFlash = activeBuild?.build_job_id
+        ? { mode: "flash", projectId: project.id, build: activeBuild, deviceId: device?.device_id || "" }
+        : { mode: "start", projectId: project.id };
+      showUsbPortMissingGuidance();
+      return;
+    }
     if (activeBuild?.build_job_id) {
       await postJson(`/api/user-ide/build-jobs/${encodeURIComponent(activeBuild.build_job_id)}/browser-usb-flash-result`, {
         status: "failed",
@@ -3440,6 +3568,7 @@ async function flashBuildViaSerialService(build, device) {
   const ports = await state.serialService.ports();
   state.usbPorts = ports.map((port) => ({ ...port, port: port.path, name: port.label }));
   renderUsbPortOptions();
+  if (!ports.length) throw usbPortMissingError();
   const port = selectedUsbPort() || bestUsbPortForDevice(device)?.port || (ports.length === 1 ? ports[0].path : "");
   if (!port) throw new Error("Mehrere USB-Geräte sind verbunden. Wähle in GerNetiX den passenden USB-Port.");
   const probe = await state.serialService.probe(port);
@@ -3462,13 +3591,13 @@ async function flashBuildViaSerialService(build, device) {
   return { chipName: probe.chipName || result.chipName || "ESP32", logs: result.logs || [] };
 }
 
-async function waitForCompletedBuild(build) {
+async function waitForCompletedBuild(build, options = {}) {
   let current = build;
   const seenProgress = new Set();
   let memorySummaryShown = false;
   for (let attempt = 0; attempt < 600; attempt += 1) {
     appendBuildProgress(current.progress, seenProgress);
-    if (!memorySummaryShown && ["succeeded", "failed", "replaced"].includes(current.status)) {
+    if (options.appendMemorySummary !== false && !memorySummaryShown && current.status === "succeeded") {
       appendBuildMemorySummary(current);
       memorySummaryShown = true;
     }
@@ -3598,11 +3727,12 @@ async function loadIdeEsptoolModule() {
   return state.esptoolModule;
 }
 
-async function startOtaFlash() {
+async function startOtaFlash(targetConfirmed = false) {
   const project = projectById(state.activeProjectId);
-  const softwareUnit = activeIdeSoftwareUnit(project);
   const device = allocatedIdeDevice(project);
   if (!project || !device) return setFlashStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
+  if (!prepareFlashTarget(project, "ota", targetConfirmed)) return;
+  const softwareUnit = activeIdeSoftwareUnit(project);
   if (device.connectivity_status !== "online") return setFlashStatus("error", `Das zugeordnete Device ist nicht online (${device.connectivity_status || "unknown"}).`);
   if (device.ota_status !== "ready") return setFlashStatus("error", "Das zugeordnete Device ist nicht OTA-ready.");
   setFlashStatus("running", "Build und OTA-Flash laufen...");
@@ -3639,11 +3769,12 @@ function inventoryFlashboxes() {
   });
 }
 
-async function startFlashBoxFlash() {
+async function startFlashBoxFlash(targetConfirmed = false) {
   const project = projectById(state.activeProjectId);
-  const softwareUnit = activeIdeSoftwareUnit(project);
   const device = allocatedIdeDevice(project);
   if (!project || !device) return setFlashStatus("error", "Bitte zuerst der IoT-Device-Komponente ein Inventar-Device zuordnen.");
+  if (!prepareFlashTarget(project, "flashbox", targetConfirmed)) return;
+  const softwareUnit = activeIdeSoftwareUnit(project);
   const flashboxes = inventoryFlashboxes();
   if (!flashboxes.length) {
     return setFlashStatus("error", "Keine GerNetiX FlashBox im Inventar. Kaufe oder uebernimm zuerst eine FlashBox im Webshop/Inventar.");
@@ -4276,8 +4407,8 @@ function renderUsbPortOptions() {
     ? "Nur fuer USB-Flash: Port automatisch ermitteln oder einen erkannten Port auswaehlen."
     : "Nur fuer USB-Flash: Momentan wurde kein USB-Serial-Port erkannt.";
   if (current && Array.from(select.options).some((option) => option.value === current)) select.value = current;
-  select.classList.remove("hidden");
-  document.querySelector("#refreshUsbPortsButton")?.classList.remove("hidden");
+  const confirm = document.querySelector("#confirmUsbPortButton");
+  if (confirm) confirm.disabled = !select.value;
 }
 
 function usbPortOptionLabel(port) {
@@ -4288,6 +4419,92 @@ function usbPortOptionLabel(port) {
 
 function selectedUsbPort() {
   return document.querySelector("#usbPortSelect")?.value || "";
+}
+
+function usbPortMissingError(message = "Kein USB-Port gefunden.") {
+  const error = new Error(message);
+  error.code = "usb_port_not_found";
+  return error;
+}
+
+function isUsbPortMissingError(error) {
+  return error?.code === "usb_port_not_found"
+    || /no such file or directory|serial_port_not_available|kein usb.port|port ist nicht verf(?:ü|ue)gbar/i.test(String(error?.message || ""));
+}
+
+function showUsbPortMissingGuidance() {
+  const dialog = document.querySelector("#usbPortMissingDialog");
+  const checkedAt = document.querySelector("#usbPortMissingCheckedAt");
+  const status = document.querySelector("#flashStatus");
+  if (!dialog) return;
+  if (status) {
+    status.className = "flash-status hidden";
+    status.textContent = "";
+  }
+  if (checkedAt) checkedAt.textContent = `Automatische Suche um ${new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date())}: kein Port erkannt.`;
+  if (!dialog.open) dialog.showModal();
+  appendIdeTerminal("error", "Kein USB-Port gefunden. Prüfe Kabel, USB-Hub, laufende Firmware, Download-Modus, andere serielle Programme und den GerNetiX Serial Service.");
+}
+
+function showUsbPortChoiceDialog() {
+  const dialog = document.querySelector("#usbPortChoiceDialog");
+  const select = document.querySelector("#usbPortSelect");
+  if (!dialog || !select) return;
+  const status = document.querySelector("#flashStatus");
+  if (status) {
+    status.className = "flash-status hidden";
+    status.textContent = "";
+  }
+  if (!dialog.open) dialog.showModal();
+  select.focus();
+}
+
+async function retryUsbPortSearch() {
+  const button = document.querySelector("#retryUsbPortSearchButton");
+  if (button) button.disabled = true;
+  await refreshUsbPorts(false);
+  if (button) button.disabled = false;
+  if (state.usbPorts.length) {
+    document.querySelector("#usbPortMissingDialog")?.close();
+    const pending = state.pendingUsbFlash;
+    state.pendingUsbFlash = null;
+    setFlashStatus("running", `${state.usbPorts.length} USB-Serial-Port${state.usbPorts.length === 1 ? "" : "s"} gefunden. Flash-Vorgang wird fortgesetzt...`);
+    if (pending?.mode === "flash" && pending.build) {
+      await resumeUsbFlashWithCompletedBuild(pending);
+    } else {
+      await startUsbFlash(true);
+    }
+    return;
+  }
+  const checkedAt = document.querySelector("#usbPortMissingCheckedAt");
+  if (checkedAt) checkedAt.textContent = `Erneute Suche um ${new Intl.DateTimeFormat("de-DE", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date())}: weiterhin kein Port erkannt.`;
+}
+
+async function resumeUsbFlashWithCompletedBuild(pending) {
+  const build = pending.build;
+  const device = state.devices.find((item) => item.device_id === pending.deviceId) || allocatedIdeDevice(projectById(pending.projectId));
+  try {
+    const flashResult = await flashBuildViaSerialService(build, device);
+    await postJson(`/api/user-ide/build-jobs/${encodeURIComponent(build.build_job_id)}/browser-usb-flash-result`, {
+      status: "succeeded",
+      chip_name: flashResult.chipName,
+      logs: flashResult.logs,
+    });
+    build.flash_status = "succeeded";
+    setUsbFlashSuccess(`USB-Flash erfolgreich: ${flashResult.chipName}`);
+    renderBuilds();
+  } catch (error) {
+    if (isUsbPortMissingError(error)) {
+      state.pendingUsbFlash = pending;
+      showUsbPortMissingGuidance();
+      return;
+    }
+    await postJson(`/api/user-ide/build-jobs/${encodeURIComponent(build.build_job_id)}/browser-usb-flash-result`, {
+      status: "failed",
+      error: error.message,
+    }).catch(() => {});
+    setFlashStatus("error", error.message);
+  }
 }
 
 function bestUsbPortForDevice(device) {

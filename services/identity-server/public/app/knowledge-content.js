@@ -602,10 +602,29 @@ const KnowledgeContent = (() => {
         },
         {
           id: "radio-basic-terms",
-          heading: "Frequenz, Bandbreite und weitere Grundbegriffe",
+          heading: "Warum Funk eine Frequenz braucht",
+          illustration: {
+            src: "/assets/radio-frequency-and-spectrum.png",
+            alt: "Oben eine Sinusschwingung über der Zeit mit markierter Periodendauer, unten dieselbe Schwingung als einzelner Strich bei ihrer Frequenz im Frequenzspektrum",
+            caption: "Dieselbe reine Sinusschwingung in zwei Darstellungen: über der Zeit und als einzelner Strich im Frequenzspektrum.",
+          },
           paragraphs: [
-            "Warum braucht Funk überhaupt eine Frequenz? Eine Funkwelle schwingt regelmäßig. Die Frequenz gibt an, wie oft sie pro Sekunde schwingt, und wird in Hertz gemessen. Sie legt damit den Platz des Signals im Funkspektrum fest. Der Empfänger muss diesen Platz kennen, damit er gezielt auf das gewünschte Signal „hören“ kann und nicht alle Funkübertragungen gleichzeitig verarbeiten muss.",
-            "Für unterschiedliche Anwendungen werden zusammenhängende Teile des Funkspektrums als Frequenzbänder festgelegt, zum Beispiel das 2,4-Gigahertz-Band. Innerhalb eines solchen Bandes liegen einzelne Kanäle. Die Bandbreite beschreibt dagegen, wie breit ein Kanal oder ein konkretes Signal im Spektrum ist. Frequenzband und Bandbreite meinen daher nicht dasselbe.",
+            "Stell dir regelmäßige Wellen auf einer Wasseroberfläche vor. An einer festen Stelle kommt ein Wellenberg nach dem anderen vorbei. Die Frequenz sagt, wie viele vollständige Wellen dort pro Sekunde vorbeikommen. Bei Funkwellen bewegt sich zwar kein Wasser, aber auch sie wiederholen sich regelmäßig. Eine vollständige Wiederholung pro Sekunde heißt ein Hertz. Eine Million Wiederholungen pro Sekunde heißt ein Megahertz.",
+            "Warum ist das nützlich? Denke an ein gewöhnliches Radio: Mehrere Sender senden gleichzeitig, aber auf unterschiedlichen Frequenzen. Wenn du eine Frequenz einstellst, wählt das Radio den passenden Sender aus und blendet die anderen weitgehend aus. Digitale Funktechniken stimmen ebenfalls ab, welche Frequenzen oder Kanäle sie nach welchen Regeln verwenden. So kann ein Empfänger die für ihn bestimmte Übertragung erkennen.",
+          ],
+        },
+        {
+          id: "radio-modulation-bandwidth",
+          heading: "Wie aus dem Spektralstrich eine Signalbandbreite wird",
+          illustration: {
+            src: "/assets/radio-modulation-bandwidth.png",
+            alt: "Ein einzelner Spektralstrich wird durch Modulation zu einem Signal mit belegter Bandbreite; darunter liegen Signalbandbreite und Kanal innerhalb eines vorgegebenen Frequenzbands",
+            caption: "Modulation erzeugt zusätzliche Frequenzanteile. Das dadurch breitere Signal liegt in einem Kanal, der wiederum Teil eines vorgegebenen Frequenzbands ist.",
+          },
+          paragraphs: [
+            "Die erste Grafik zeigt einen idealen Sonderfall: eine reine Sinusschwingung, die unverändert und ohne Anfang oder Ende weiterläuft. Im hier gezeigten Frequenzspektrum erscheint sie als genau ein Strich bei ihrer Frequenz. Weil sich an dieser Schwingung nichts ändert, überträgt sie allein noch keine Folge unterschiedlicher Daten.",
+            "Um Daten zu übertragen, verändert der Sender die Schwingung gezielt. Er verändert zum Beispiel ihre Stärke, ihre Frequenz oder ihre Phasenlage. Das heißt Modulation. Dadurch besteht das gesendete Signal nicht mehr nur aus der einen Trägerfrequenz f₀. Im Spektrum entstehen zusätzliche Frequenzanteile um f₀. Der Abstand von der niedrigsten bis zur höchsten belegten Frequenz ist die belegte Signalbandbreite.",
+            "Die Modulation erzeugt also kein Frequenzband. Ein Frequenzband wird unabhängig vom einzelnen Signal durch Regulierung und technische Festlegungen vorgegeben, zum Beispiel ein ISM-Band. Eine Funktechnik legt darin Kanäle fest. Jeder Kanal stellt einen begrenzten Frequenzbereich für eine Übertragung bereit. Das modulierte Signal muss mit seiner belegten Signalbandbreite in den vorgesehenen Kanal passen.",
           ],
           table: {
             headers: [
@@ -616,28 +635,28 @@ const KnowledgeContent = (() => {
             rows: [
               [
                 "Frequenz",
-                "Anzahl der Schwingungen pro Sekunde, gemessen in Hertz. 2,4 Gigahertz bedeutet 2,4 Milliarden Schwingungen pro Sekunde.",
-                "Sie bestimmt, an welcher Stelle im Funkspektrum Sender und Empfänger arbeiten.",
+                "Sie sagt, wie schnell eine Funkwelle hin und her schwingt. Gemessen wird sie in Hertz.",
+                "Eine reine, unveränderte Sinusschwingung erscheint im einseitigen Spektrum als ein Strich bei dieser Frequenz.",
               ],
               [
                 "Frequenzband",
-                "Ein zusammenhängender Frequenzbereich, der für bestimmte Funkanwendungen vorgesehen ist, etwa das 2,4-Gigahertz-Band.",
-                "Es legt den groben Arbeitsbereich fest und unterliegt regionalen Regeln.",
+                "Ein vorgegebener Frequenzbereich, der für bestimmte Nutzungen vorgesehen ist, zum Beispiel ein ISM-Band.",
+                "Das Frequenzband existiert unabhängig von einem einzelnen Signal und enthält meist mehrere Kanäle.",
               ],
               [
                 "Kanal",
-                "Ein festgelegter Teil innerhalb eines Frequenzbandes – vergleichbar mit einer Fahrspur auf einer mehrspurigen Straße.",
-                "Geräte auf unterschiedlichen Kanälen können sich besser ausweichen; überlappende Kanäle können sich stören.",
+                "Ein durch die Funktechnik definierter Teil innerhalb eines Frequenzbands.",
+                "Er gibt einer Übertragung einen begrenzten Platz und hilft, mehrere Übertragungen voneinander zu trennen.",
               ],
               [
                 "Bandbreite",
-                "Die Breite des Frequenzbereichs, den ein Kanal oder Signal belegt, zum Beispiel 20 Megahertz.",
-                "Mehr Bandbreite ermöglicht meist eine höhere Datenrate, belegt aber auch mehr Platz im Funkspektrum.",
+                "Ein Maß für die Breite eines Frequenzbereichs. Gemeint sein kann die belegte Breite eines Signals oder die bereitgestellte Breite eines Kanals.",
+                "Darum sollte immer dazugesagt werden, ob von Signalbandbreite oder Kanalbandbreite die Rede ist.",
               ],
               [
                 "Modulation",
                 "Die Art, wie Daten auf die Funkwelle übertragen werden, etwa durch gezielte Änderungen ihrer Stärke, Frequenz oder Phasenlage.",
-                "Sie beeinflusst Datenrate, Reichweite und Robustheit gegenüber Störungen.",
+                "Sie erzeugt zusätzliche Frequenzanteile und bestimmt dadurch mit, welche Signalbandbreite benötigt wird.",
               ],
               [
                 "Sendeleistung",
@@ -656,6 +675,150 @@ const KnowledgeContent = (() => {
               ],
             ],
           },
+        },
+        {
+          id: "radio-ask-ook-example",
+          heading: "Beispiel: 100 Prozent ASK – Träger an und aus",
+          illustration: {
+            src: "/assets/radio-ask-ook-spectrum.png",
+            alt: "Ein Träger wird durch ein rechteckiges Ein-Aus-Signal geschaltet; die Spektren zeigen Seitenlinien im Abstand von 1 Hertz und 1 Kilohertz um die Trägerfrequenz",
+            caption: "Bei periodischem Ein- und Ausschalten entstehen symmetrische Seitenlinien um die Trägerfrequenz. Schnelleres Schalten vergrößert ihre Abstände.",
+          },
+          paragraphs: [
+            "Ein besonders anschauliches Beispiel ist Amplitude Shift Keying, kurz ASK. Dabei verändert der Sender die Stärke des Trägers. Im einfachsten Grenzfall gibt es nur zwei Zustände: volle Stärke bedeutet „an“, null bedeutet „aus“. Diese 100-Prozent-ASK wird auch On-Off Keying, kurz OOK, genannt.",
+            "Für die Schaltfrequenz zählt eine vollständige Wiederholung. Ein Zyklus besteht hier aus einer An-Zeit und einer Aus-Zeit. Dauert beides zusammen eine Sekunde, beträgt die Schaltfrequenz 1 Hertz. Wird dagegen nur einmal pro Sekunde zwischen an und aus umgeschaltet, dauert ein vollständiger Zyklus zwei Sekunden und die Schaltfrequenz beträgt 0,5 Hertz.",
+            "Beim Schalten mit einem vollständigen Zyklus pro Sekunde entsteht keine neue Funklinie bei absolut 1 Hertz. Die Trägerlinie bei f₀ bleibt erhalten. Zusätzlich entstehen Seitenlinien im Abstand von 1 Hertz um den Träger, also zunächst bei f₀ minus 1 Hertz und f₀ plus 1 Hertz. Weil hartes Ein- und Ausschalten eine Rechteckform besitzt, kommen weitere, schwächere Seitenlinien bei f₀ plus oder minus 3 Hertz, 5 Hertz und weiteren ungeraden Vielfachen hinzu.",
+            "Bei 1000 vollständigen Ein-/Aus-Zyklen pro Sekunde beträgt der erste Abstand 1 Kilohertz; weitere Seitenlinien folgen bei 3 Kilohertz, 5 Kilohertz und so weiter. Das Spektrum wird dadurch weiter auseinandergezogen. Ein ideal scharfes Rechteck hätte unendlich viele immer schwächere Seitenlinien. Reale Sender begrenzen sie durch endliche Schaltzeiten und Filter. Bei einer unregelmäßigen Datenfolge sind außerdem keine einzelnen, gleichmäßig angeordneten Linien mehr zu sehen; es entsteht ein zusammenhängenderes Spektrum. Datenrate und Signalformung bestimmen dann wesentlich die belegte Signalbandbreite.",
+          ],
+        },
+        {
+          id: "radio-data-rate-limits",
+          heading: "Warum die Datenrate nicht unendlich sein kann",
+          paragraphs: [
+            "Je mehr Daten pro Sekunde übertragen werden sollen, desto schneller muss sich das Signal ändern. Schnellere Signaländerungen benötigen höhere Frequenzanteile und damit mehr Bandbreite. Unendlich viele Daten in beliebig kurzer Zeit würden deshalb unendlich schnelle Änderungen und beliebig hohe Frequenzanteile verlangen.",
+            "Das ist mit realer Schaltungstechnik nicht möglich. Transistoren, Verstärker, Wandler, Leiterbahnen, Steckverbinder, Filter und Antennen können nur einen begrenzten Frequenzbereich verarbeiten. Parasitäre Kapazitäten und Induktivitäten, endliche Schaltzeiten und zunehmende Verluste dämpfen hohe Frequenzanteile und verhindern unendlich steile Signalflanken.",
+            "Auch der Funkweg stellt keinen unbegrenzten Frequenzbereich bereit. Bei gleicher Entfernung und gleichbleibenden Antennengewinnen steigt die Freifelddämpfung mit der Frequenz. Luft, Regen, Wände und andere Materialien dämpfen oder absorbieren bestimmte hohe Frequenzbereiche zusätzlich. Sehr hochfrequente elektromagnetische Wellen existieren zwar weiterhin – bis hin zu Infrarot und Licht –, sie lassen sich aber nicht mit derselben Funktechnik beliebig erzeugen, abstrahlen und empfangen.",
+            "Damit ist bereits die grundlegende Grenze erreicht: Weder Schaltung noch Antenne noch Übertragungsweg unterstützen beliebig hohe Frequenzen oder unendlich große Bandbreiten. Weitere praktische Grenzen wie Rauschen, Störungen, erlaubte Sendeleistung und gemeinsam genutzte Kanäle verringern die tatsächlich erreichbare Datenrate zusätzlich.",
+          ],
+          table: {
+            headers: [
+              "Größe",
+              "Was sie tatsächlich begrenzt",
+            ],
+            rows: [
+              [
+                "Mehr Daten pro Sekunde",
+                "Erfordern schnellere Signaländerungen und dadurch höhere Frequenzanteile.",
+              ],
+              [
+                "Schaltungstechnik",
+                "Kann wegen endlicher Schaltzeiten, parasitärer Bauteile und Verlusten nicht beliebig hohe Frequenzen verarbeiten.",
+              ],
+              [
+                "Funkweg",
+                "Freifelddämpfung und frequenzabhängige Absorption erschweren die Übertragung bei hohen Frequenzen.",
+              ],
+              [
+                "Ergebnis",
+                "Der nutzbare Frequenzbereich und die Bandbreite bleiben endlich – und damit auch die Datenrate.",
+              ],
+            ],
+          },
+        },
+        {
+          id: "radio-electromagnetic-spectrum",
+          heading: "Wo im elektromagnetischen Spektrum gefunkt wird",
+          illustration: {
+            src: "/assets/electromagnetic-spectrum-radio-applications.png",
+            alt: "Das elektromagnetische Spektrum von Funk über Infrarot und sichtbares Licht bis Gammastrahlung sowie eine Übersicht der Funkbereiche VLF bis EHF mit typischen Anwendungen",
+            caption: "Schematische, nicht maßstäbliche Übersicht: Mit steigender Frequenz ändern sich Wellenlänge, Ausbreitung, mögliche Bandbreite und typische Anwendung.",
+          },
+          paragraphs: [
+            "Funkwellen, Infrarot, sichtbares Licht, Ultraviolett-, Röntgen- und Gammastrahlung gehören zum selben elektromagnetischen Spektrum. Nach rechts steigt in der Grafik die Frequenz, während die Wellenlänge kleiner wird. Für Funk werden die klassischen Bereiche von VLF bis EHF verwendet. Weil jeder Bereich den zehnfachen Frequenzumfang des vorherigen umfasst, wird ein vollständiges Frequenzspektrum normalerweise auf einer logarithmischen Achse dargestellt. Die gleich breiten Felder der Grafik dienen nur der gut lesbaren Übersicht.",
+            "Niedrige Funkfrequenzen besitzen große Wellenlängen. Sie können Hindernisse besser umgehen, sich teilweise entlang der Erdoberfläche ausbreiten oder – im Kurzwellenbereich – über die Ionosphäre große Entfernungen überbrücken. Dafür werden große Antennen benötigt und es steht meist nur wenig Bandbreite für Daten zur Verfügung.",
+            "Mit steigender Frequenz werden Antennen kleiner und häufig größere Kanalbandbreiten möglich. Dadurch eignen sich höhere Bereiche gut für Mobilfunk, WLAN, Richtfunk, Satellitenverbindungen und Radar. Gleichzeitig werden Sichtverbindung, genaue Antennenausrichtung und freie Ausbreitungswege wichtiger. Wände, Regen und atmosphärische Absorption können hohe Frequenzen stärker beeinträchtigen.",
+            "Die genannten Anwendungen sind Beispiele und keine vollständige Frequenzzuweisung. Welche Teilbereiche tatsächlich verwendet werden dürfen, mit welcher Leistung und unter welchen Bedingungen, wird regional festgelegt. In Deutschland ist dafür der Frequenzplan der Bundesnetzagentur maßgeblich; Funkstandards teilen geeignete Bereiche anschließend in konkrete Kanäle auf.",
+          ],
+          table: {
+            headers: [
+              "Funkbereich",
+              "Typische Eigenschaften",
+              "Typische Anwendungen",
+            ],
+            rows: [
+              [
+                "VLF / LF – 3 bis 300 kHz",
+                "Sehr große Wellenlängen und Reichweiten, große Antennen, geringe Datenrate",
+                "Zeitzeichen, Navigation und spezialisierte Langstreckenkommunikation",
+              ],
+              [
+                "MF / HF – 0,3 bis 30 MHz",
+                "Bodenwelle oder große Reichweite über die Ionosphäre, begrenzte Bandbreite",
+                "Mittel- und Kurzwelle, CB-, Amateur-, See- und internationaler Funk",
+              ],
+              [
+                "VHF – 30 bis 300 MHz",
+                "Gute regionale Ausbreitung mit noch handlichen Antennen",
+                "UKW-Radio, DAB+, Flugfunk und Seefunk",
+              ],
+              [
+                "UHF – 0,3 bis 3 GHz",
+                "Kompakte Antennen und guter Kompromiss aus Reichweite und Datenrate",
+                "Mobilfunk, GNSS, 433-/868-MHz-Kurzstreckenfunk sowie WLAN und Bluetooth bei 2,4 GHz",
+              ],
+              [
+                "SHF – 3 bis 30 GHz",
+                "Mehr verfügbare Bandbreite, stärker gerichtete Ausbreitung und häufiger Sichtverbindung",
+                "WLAN bei 5 und 6 GHz, Richtfunk, Satellitenfunk und Radar",
+              ],
+              [
+                "EHF – 30 bis 300 GHz",
+                "Sehr kleine Wellenlängen, hohe mögliche Bandbreite, kurze oder stark gerichtete Funkwege",
+                "60-/77-GHz-Radar und Millimeterwellen-Richtfunk",
+              ],
+            ],
+          },
+        },
+        {
+          id: "radio-frequency-allocation-ism",
+          heading: "Warum nicht jeder beliebig funken darf",
+          paragraphs: [
+            "Das nutzbare Funkspektrum ist eine gemeinsam verwendete und begrenzte Ressource. Wenn mehrere starke Sender gleichzeitig denselben Frequenzbereich belegen, überdecken sich ihre Signale. Ein Empfänger kann die gewünschte Nachricht dann möglicherweise nicht mehr erkennen. Ohne gemeinsame Regeln würden immer mehr Sender Leistung und Bandbreite beanspruchen, bis zuverlässiger Funk für alle Beteiligten kaum noch möglich wäre.",
+            "Deshalb benötigt jede Frequenznutzung in Deutschland eine Frequenzzuteilung. Dafür gibt es zwei grundlegende Wege. Bei einer Einzelzuteilung beantragt ein Nutzer bestimmte Frequenzen für einen vorgesehenen Zweck. Die Bundesnetzagentur kann Frequenz, Standort und technische Bedingungen koordinieren, damit beispielsweise Mobilfunk, Rundfunk, Betriebsfunk, Richtfunk oder sicherheitsrelevante Dienste geschützt betrieben werden können. Bei einer Allgemeinzuteilung gibt die Bundesnetzagentur einen Frequenzbereich für die Allgemeinheit oder eine festgelegte Gerätegruppe frei. Ein einzelner Antrag ist dann nicht nötig, alle veröffentlichten Nutzungsbedingungen gelten aber trotzdem.",
+            "Der Begriff ISM-Band wird dabei häufig missverstanden. ISM steht für industrielle, wissenschaftliche und medizinische Anwendungen, die Hochfrequenzenergie lokal nutzen, etwa zum Erwärmen, Messen oder Behandeln. Ein ISM-Band ist nicht automatisch ein rechtsfreier Funkbereich. Dass WLAN, Bluetooth oder Kurzstreckengeräte Teile solcher Bereiche ohne Einzelantrag verwenden dürfen, beruht auf passenden Allgemeinzuteilungen und den darin festgelegten Bedingungen.",
+            "Eine Allgemeinzuteilung kann unter anderem den erlaubten Frequenzbereich, den Verwendungszweck, die maximale Sendeleistung oder Leistungsdichte, die belegte Bandbreite, den Kanalabstand, die zulässige Sendezeit und Verfahren für Kanalzugang oder Störungsminderung festlegen. Auch unerwünschte Aussendungen, Antennennutzung sowie Innen- oder Außeneinsatz können begrenzt sein. Modulation und Kodierung sind nicht in jedem Bereich vollständig vorgeschrieben. Sie dürfen aber nur so gewählt werden, dass sämtliche Vorgaben der Zuteilung, des verwendeten Funkstandards und der Gerätekonformität eingehalten werden.",
+            "Allgemein zugeteilte Frequenzen ermöglichen preiswerte und unkomplizierte Anwendungen wie WLAN, Bluetooth, Sensoren, Fernbedienungen und viele IoT-Geräte. Dafür werden sie gemeinsam, nicht exklusiv und häufig ohne Anspruch auf störungsfreien Betrieb genutzt. Wer dort sendet, muss Störungen durch andere zulässige Nutzer hinnehmen und darf selbst keine schädlichen Störungen verursachen. Genau dieser Kompromiss ermöglicht offene Nutzung, ohne das gemeinsame Spektrum vollständig dem stärksten oder rücksichtslosesten Sender zu überlassen.",
+          ],
+          table: {
+            headers: [
+              "Zugangsweg",
+              "Was er bedeutet",
+              "Typische Folge",
+            ],
+            rows: [
+              [
+                "Allgemeinzuteilung",
+                "Nutzung ohne individuellen Antrag, aber nur für die festgelegten Geräte, Zwecke und technischen Bedingungen",
+                "Einfache Nutzung durch viele Teilnehmer; Frequenzen werden geteilt und sind häufig nicht gegen Störungen geschützt",
+              ],
+              [
+                "Einzelzuteilung",
+                "Frequenzen werden auf Antrag für einen bestimmten Nutzer, Dienst, Ort oder Zeitraum koordiniert",
+                "Mehr Planbarkeit und Schutz, aber Antrag, Bedingungen und gegebenenfalls Gebühren oder Beiträge",
+              ],
+              [
+                "ISM-Band",
+                "Bezeichnung bestimmter Bereiche für industrielle, wissenschaftliche und medizinische Hochfrequenzanwendungen",
+                "Keine automatische Erlaubnis für beliebigen Datenfunk; hierfür ist zusätzlich die passende Zuteilung maßgeblich",
+              ],
+            ],
+          },
+          list: [
+            "Vor dem Senden prüfen, ob für Frequenz und Anwendung eine gültige Allgemeinzuteilung besteht oder eine Einzelzuteilung nötig ist.",
+            "Nur Funkgeräte einsetzen, die für den vorgesehenen Einsatz und Frequenzbereich konform sind.",
+            "Grenzen für Sendeleistung, Bandbreite, Sendezeit, Kanalzugang und Einsatzort einhalten.",
+            "Eine Allgemeinzuteilung niemals mit garantierter Störungsfreiheit oder beliebiger technischer Freiheit verwechseln.",
+          ],
         },
         {
           id: "radio-interference-safety",

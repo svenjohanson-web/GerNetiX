@@ -19,7 +19,17 @@ const BoardConfigurationPlugin = (() => {
     return Object.fromEntries(Object.entries(pins).filter(([, pin]) => Number.isInteger(Number(pin))).map(([signal, pin]) => [signal, Number(pin)]));
   }
 
-  function normalizeSelections(features, selections = {}) {
+  function assignedPinsForFeature(board, feature, selected = {}) {
+    if (Object.prototype.hasOwnProperty.call(selected, "pins")) return selected.pins;
+    const assigned = board?.pin_profile?.assigned_pins || {};
+    const exactIds = [feature.feature_id, `${feature.feature_id}_${selected.connection || ""}`].filter(Boolean);
+    const exact = exactIds.map((id) => assigned[id]).find((pins) => pins && typeof pins === "object");
+    if (exact) return exact;
+    const matches = Object.entries(assigned).filter(([id, pins]) => id.startsWith(`${feature.feature_id}_`) && pins && typeof pins === "object");
+    return matches.length === 1 ? matches[0][1] : {};
+  }
+
+  function normalizeSelections(features, selections = {}, board = null) {
     return Object.fromEntries((features || []).map((feature) => {
       const selected = selections?.[feature.feature_id] || {};
       return [feature.feature_id, {
@@ -27,14 +37,41 @@ const BoardConfigurationPlugin = (() => {
         hardware: String(selected.hardware || ""),
         driver: String(selected.driver || ""),
         connection: String(selected.connection || ""),
-        pins: normalizePins(selected.pins),
+        pins: normalizePins(assignedPinsForFeature(board, feature, selected)),
         value: String(selected.value || ""),
       }];
     }));
   }
 
   function defaultsForBoard(board, features) {
-    return normalizeSelections(features, board?.default_instance_configuration?.board_features || {});
+    return normalizeSelections(features, board?.default_instance_configuration?.board_features || {}, board);
+  }
+
+  function boardScope(board) {
+    if (board?.configuration_scope === "project") return "project";
+    if (board?.configuration_scope === "account") return "account";
+    return "gernetix";
+  }
+
+  function boardScopeLabel(board) {
+    return boardScope(board) === "project"
+      ? "Projektanpassung"
+      : boardScope(board) === "account"
+        ? "Eigenes Account-Board"
+        : "GerNetiX-Board";
+  }
+
+  function renderBoardOptions(boards, selectedBoardId) {
+    const groups = [
+      ["gernetix", "──────── GerNetiX-Boards ────────"],
+      ["account", "──────── Meine Boards ────────"],
+      ["project", "──────── Projektanpassungen ────────"],
+    ];
+    return groups.map(([scope, label]) => {
+      const items = boards.filter((board) => boardScope(board) === scope);
+      if (!items.length) return "";
+      return `<optgroup label="${escapeHtml(label)}">${items.map((item) => `<option value="${escapeHtml(boardId(item))}" ${boardId(item) === selectedBoardId ? "selected" : ""}>${escapeHtml(item.title || boardId(item))}</option>`).join("")}</optgroup>`;
+    }).join("");
   }
 
   function settingChanged(current, defaults) {
@@ -108,8 +145,8 @@ const BoardConfigurationPlugin = (() => {
     const defaults = board ? defaultsForBoard(board, options.features) : {};
     const modified = board ? selectionsDiffer(model.selections, defaults) : false;
     root.innerHTML = `<section class="board-configuration-plugin ${modified ? "has-modifications" : ""}" data-board-configuration-plugin>
-      ${options.showSelector === false ? "" : `<header><div><p class="eyebrow">Boardauswahl</p><h4>${escapeHtml(options.title || "Board auswählen und konfigurieren")}</h4></div><span class="board-configuration-plugin-state ${modified ? "is-modified" : ""}">${board ? (modified ? "Geändert" : board.configuration_scope === "account" ? "Eigenes Account-Board" : "GerNetiX-Standard") : "Noch kein Board"}</span></header>
-      <label class="board-configuration-plugin-selector">Board<select data-board-configuration-board><option value="">Board auswählen…</option>${options.boards.map((item) => `<option value="${escapeHtml(boardId(item))}" ${boardId(item) === model.boardId ? "selected" : ""}>${escapeHtml(item.title || boardId(item))}</option>`).join("")}</select></label>`}
+      ${options.showSelector === false ? "" : `<header><div><p class="eyebrow">Boardauswahl</p><h4>${escapeHtml(options.title || "Board auswählen und konfigurieren")}</h4></div><span class="board-configuration-plugin-state ${modified ? "is-modified" : ""}">${board ? (modified ? "Projektbezogen geändert" : boardScopeLabel(board)) : "Noch kein Board"}</span></header>
+      <label class="board-configuration-plugin-selector">Board<select data-board-configuration-board><option value="">Board auswählen…</option>${renderBoardOptions(options.boards, model.boardId)}</select></label>`}
       ${board ? `<div class="board-configuration-plugin-board"><strong>${escapeHtml(board.title || model.boardId)}</strong><small>${escapeHtml(board.processor_family || "")} · ${escapeHtml(board.mcu_variant || "")}</small></div>` : ""}
       ${options.status ? `<p class="hardware-catalog-hint ${options.status.state === "error" ? "is-error" : ""}">${escapeHtml(options.status.message || "")}</p>` : ""}
       ${board ? renderCompilerProjection(board, model.selections) : ""}
@@ -151,7 +188,11 @@ const BoardConfigurationPlugin = (() => {
   }
 
   function availablePins(board) {
-    return [...new Set((board?.pin_profile?.digital_pins || []).map((pin) => Number(String(pin).match(/-?\d+/)?.[0])).filter(Number.isInteger))].sort((a, b) => a - b);
+    const declared = (board?.pin_profile?.digital_pins || [])
+      .map((pin) => Number(String(pin).match(/-?\d+/)?.[0]));
+    const assigned = Object.values(board?.pin_profile?.assigned_pins || {})
+      .flatMap((group) => Object.values(group || {}).map(Number));
+    return [...new Set([...declared, ...assigned].filter((pin) => Number.isInteger(pin) && pin >= 0))].sort((a, b) => a - b);
   }
 
   function openPinEditor(instance, featureId) {
@@ -190,7 +231,7 @@ const BoardConfigurationPlugin = (() => {
       options: { ...options, features, boards },
       model: {
         boardId: String(options.selectedBoardId || ""),
-        selections: normalizeSelections(features, options.selections || selectedBoard?.default_instance_configuration?.board_features || {}),
+        selections: normalizeSelections(features, options.selections || selectedBoard?.default_instance_configuration?.board_features || {}, selectedBoard),
         name: String(options.name || ""),
       },
     };
@@ -207,5 +248,5 @@ const BoardConfigurationPlugin = (() => {
     return { boardId: instance.model.boardId, board, selections: structuredClone(instance.model.selections), name: instance.model.name, modified: Boolean(board) && selectionsDiffer(instance.model.selections, defaults) };
   }
 
-  return { boardId, defaultsForBoard, formatPins, mount, normalizeSelections, renderCompilerProjection, renderFeatureTable, selectionsDiffer, value };
+  return { availablePins, boardId, boardScope, defaultsForBoard, formatPins, mount, normalizeSelections, renderBoardOptions, renderCompilerProjection, renderFeatureTable, selectionsDiffer, value };
 })();

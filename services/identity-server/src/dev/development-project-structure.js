@@ -30,30 +30,32 @@ function developmentProjectSources({ title, description = "", diagram = null, ar
 
   for (const component of components) {
     const folder = `Komponenten/${component.folder}`;
-    sources.push({
-      path: `${folder}/Schnittstellen/provided.md`,
-      role: "provided_interface",
-      content_type: "text/markdown",
-      content: interfaceReadme(component, "provided"),
-    });
-    sources.push({
-      path: `${folder}/Schnittstellen/required.md`,
-      role: "required_interface",
-      content_type: "text/markdown",
-      content: interfaceReadme(component, "required"),
-    });
-    sources.push({
-      path: `${folder}/Verhalten/Modell/modell.md`,
-      role: "component_verhalten_modell",
-      content_type: "text/markdown",
-      content: verhaltenReadme(component, "Modell"),
-    });
-    sources.push({
-      path: `${folder}/Verhalten/Code/code.md`,
-      role: "component_verhalten_code",
-      content_type: "text/markdown",
-      content: verhaltenReadme(component, "Code"),
-    });
+    if (!isDeviceComponent(component)) {
+      sources.push({
+        path: `${folder}/Schnittstellen/provided.md`,
+        role: "provided_interface",
+        content_type: "text/markdown",
+        content: interfaceReadme(component, "provided"),
+      });
+      sources.push({
+        path: `${folder}/Schnittstellen/required.md`,
+        role: "required_interface",
+        content_type: "text/markdown",
+        content: interfaceReadme(component, "required"),
+      });
+      sources.push({
+        path: `${folder}/Verhalten/Modell/modell.md`,
+        role: "component_verhalten_modell",
+        content_type: "text/markdown",
+        content: verhaltenReadme(component, "Modell"),
+      });
+      sources.push({
+        path: `${folder}/Verhalten/Code/code.md`,
+        role: "component_verhalten_code",
+        content_type: "text/markdown",
+        content: verhaltenReadme(component, "Code"),
+      });
+    }
     sources.push({
       path: `${folder}/Konfiguration/Software/software.md`,
       role: "component_software_config",
@@ -211,7 +213,9 @@ function informationFlowReadme({ title, components }) {
     "Diese Sicht sammelt Nachrichten, Datenfluesse, Befehle und Ereignisse zwischen den Komponenten.",
     "",
     "## Startpunkte",
-    ...components.map((component) => `- ${component.name}: provided und required Schnittstellen unter \`Komponenten/${component.folder}/Schnittstellen/\`.`),
+    ...components.map((component) => isDeviceComponent(component)
+      ? `- ${component.name}: Kommunikationsbeziehungen unter \`Komponenten/${component.folder}/Beziehungen/\` und Nutzdaten unter \`Komponenten/${component.folder}/Daten/\`.`
+      : `- ${component.name}: provided und required Schnittstellen unter \`Komponenten/${component.folder}/Schnittstellen/\`.`),
     "",
     "Required Interfaces werden bewusst genauso sichtbar gemacht wie provided Interfaces.",
     "",
@@ -227,7 +231,9 @@ function systemVerhaltenReadme({ title, components }) {
     "Die KI kann bestaetigtes Systemverhalten spaeter auf Komponentenverhalten, required/provided Schnittstellen, Datenfluesse, Code und Konfiguration dekomponieren.",
     "",
     "## Dekompositionsziele",
-    ...components.map((component) => `- ${component.name}: relevante Anteile des Systemverhaltens unter \`Komponenten/${component.folder}/Verhalten/\` ausarbeiten.`),
+    ...components.map((component) => isDeviceComponent(component)
+      ? `- ${component.name}: ausführbares Verhalten direkt unter \`Komponenten/${component.folder}/src/\` ausarbeiten.`
+      : `- ${component.name}: relevante Anteile des Systemverhaltens unter \`Komponenten/${component.folder}/Verhalten/\` ausarbeiten.`),
     "",
   ].join("\n");
 }

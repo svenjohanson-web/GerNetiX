@@ -6,6 +6,7 @@ const path = require("node:path");
 
 const identityRoutes = [
   route("identity.home", "/", "public", "Identity"),
+  route("identity.about", "/ueber-uns/", "public", "Business"),
   route("identity.rebuild_projects", "/nachbauprojekte/", "public", "Learning"),
   route("identity.motor_rebuild", "/nachbauprojekte/einfache-elektromotoren/", "public", "Learning"),
   route("identity.printed_motor_series", "/nachbauprojekte/druckmotoren/", "public", "Learning"),
@@ -17,6 +18,7 @@ const identityRoutes = [
   route("identity.shop", "/shop/", "public", "Business"),
   route("identity.auth", "/app/auth/", "public", "Identity"),
   route("identity.dashboard", "/app/dashboard/", "authenticated", "Identity"),
+  route("identity.internal_about", "/app/about/", "authenticated", "Business"),
   route("identity.learning", "/app/learn/", "authenticated", "Learning"),
   route("identity.development", "/app/development-platform/", "authenticated", "IDE"),
   route("identity.development_hardware", "/app/development-platform/hardware/", "authenticated", "Hardware"),

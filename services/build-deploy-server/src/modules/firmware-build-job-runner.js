@@ -90,9 +90,9 @@ async function runPlatformioBuild(options) {
 
   await fs.writeFile(logPath, output);
   const buildDir = path.join(options.packageDir, ".pio", "build");
-  const artifactPaths = await findPlatformioArtifacts(buildDir);
+  const { artifacts: artifactPaths, flashManifest } = await findPlatformioArtifacts(buildDir);
   artifactPaths["build.log"] = logPath;
-  return { status: "succeeded", artifacts: artifactPaths, usb_flash: usbFlash };
+  return { status: "succeeded", artifacts: artifactPaths, flash_manifest: flashManifest, usb_flash: usbFlash };
 }
 
 function createPlatformioEnv(cacheDir) {
@@ -138,10 +138,35 @@ async function findPlatformioArtifacts(buildDir) {
       "firmware.hex": path.join(root, "firmware.hex"),
     };
     const existingArtifacts = await filterExistingFiles(artifacts);
-    if (existingArtifacts["firmware.elf"] && hasFirmwareImage(existingArtifacts)) return existingArtifacts;
+    if (existingArtifacts["firmware.elf"] && hasFirmwareImage(existingArtifacts)) {
+      return {
+        artifacts: existingArtifacts,
+        flashManifest: await readPlatformioFlashManifest(root, existingArtifacts),
+      };
+    }
   }
 
   throw new BuildDeployError("missing_build_artifacts", "PlatformIO hat keine nutzbaren Firmware-Artefakte erzeugt.", 422);
+}
+
+async function readPlatformioFlashManifest(root, artifacts) {
+  let content = "";
+  try {
+    content = await fs.readFile(path.join(root, "flash_args"), "utf8");
+  } catch {
+    return [];
+  }
+  const allowed = new Set(Object.keys(artifacts));
+  const tokens = content.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
+  const manifest = [];
+  for (let index = 0; index < tokens.length - 1; index += 1) {
+    if (!/^0x[0-9a-f]+$/i.test(tokens[index])) continue;
+    const name = path.basename(tokens[index + 1].replace(/^['"]|['"]$/g, ""));
+    if (!allowed.has(name)) continue;
+    manifest.push({ name, address: Number.parseInt(tokens[index], 16) });
+    index += 1;
+  }
+  return manifest;
 }
 
 function hasFirmwareImage(artifacts) {
@@ -179,4 +204,4 @@ async function walk(rootDir, currentDir, result) {
   }
 }
 
-module.exports = { FirmwareBuildJobRunner };
+module.exports = { FirmwareBuildJobRunner, readPlatformioFlashManifest };

@@ -211,6 +211,61 @@ test("successive project builds restore and update the PlatformIO incremental ca
   assert.equal(await fs.readFile(path.join(observedWorkspaces[1], "src", "main.cpp"), "utf8"), "void setup() {}\nvoid loop() {}\n");
 });
 
+test("parallel software units use isolated PlatformIO incremental workspaces", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-software-unit-cache-"));
+  const config = createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  });
+  const service = createDefaultBuildDeployService(config);
+  const workspaces = new Map();
+  service.runner.run = async (job, packageDir) => {
+    workspaces.set(job.software_unit_id, packageDir);
+    const environmentDir = path.join(packageDir, ".pio", "build", job.software_unit_id);
+    await fs.mkdir(environmentDir, { recursive: true });
+    await fs.writeFile(path.join(environmentDir, "marker.txt"), job.job_id);
+    const outputDir = path.join(packageDir, ".test-artifacts");
+    await fs.mkdir(outputDir, { recursive: true });
+    const artifacts = {
+      "firmware.bin": path.join(outputDir, "firmware.bin"),
+      "firmware.elf": path.join(outputDir, "firmware.elf"),
+      "build.log": path.join(outputDir, "build.log"),
+    };
+    await Promise.all(Object.values(artifacts).map((file) => fs.writeFile(file, "artifact")));
+    return { status: "succeeded", artifacts };
+  };
+
+  for (const softwareUnitId of ["camera_sender", "display_receiver"]) {
+    await service.submitJob({
+      job_id: `parallel-${softwareUnitId}`,
+      project_id: "distributed-project",
+      software_unit_id: softwareUnitId,
+      mode: "build",
+      build_package: { files: {
+        "platformio.ini": `[env:${softwareUnitId}]\n`,
+        "src/main.cpp": "void setup() {}\nvoid loop() {}\n",
+      } },
+    });
+  }
+  await Promise.all(["camera_sender", "display_receiver"]
+    .map((softwareUnitId) => service.jobs.get(`parallel-${softwareUnitId}`).promise));
+
+  assert.equal(service.getJob("parallel-camera_sender").status, "succeeded");
+  assert.equal(service.getJob("parallel-display_receiver").status, "succeeded");
+  assert.notEqual(workspaces.get("camera_sender"), workspaces.get("display_receiver"));
+  assert.equal(workspaces.get("camera_sender"), path.join(
+    config.incrementalCacheDir,
+    "distributed-project--camera_sender--default",
+    "workspace",
+  ));
+  assert.equal(workspaces.get("display_receiver"), path.join(
+    config.incrementalCacheDir,
+    "distributed-project--display_receiver--default",
+    "workspace",
+  ));
+});
+
 test("incremental builds preserve generated ESP-IDF components and remove only stale package files", async () => {
   const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-managed-components-"));
   const config = createConfig({

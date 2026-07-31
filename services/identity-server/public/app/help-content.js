@@ -651,7 +651,7 @@ const HelpContent = (() => {
     },
     "software-units-and-build-targets": {
       title: "Software-Einheiten und Build-Ziele",
-      summary: "So verwaltet ein Projekt Firmware, Web-App, Desktop-App und Backend getrennt und baut immer nur das gewählte Ziel.",
+      summary: "So verwaltet ein Projekt Firmware, Web-App, Desktop-App und Backend getrennt und baut sie gemeinsam als verteiltes System.",
       sections: [
         {
           heading: "Ein Projekt kann mehrere Programme enthalten",
@@ -661,12 +661,13 @@ const HelpContent = (() => {
           ],
         },
         {
-          heading: "Das Ziel vor dem Build auswählen",
+          heading: "Ein Gesamtbuild für das Projekt",
           list: [
             "Öffne das Projekt in der IDE.",
-            "Wähle im Bereich Build & Flash die gewünschte Software-Einheit.",
+            "Build startet alle Software-Einheiten des Projekts und fasst ihr Ergebnis zusammen.",
             "Bei einer PlatformIO-Firmware stammen Board, Framework, Speicher und weitere Compilerwerte aus deren gespeicherter Boardkonfiguration.",
-            "Der Build enthält nur die Quellen der gewählten Einheit; andere Programme im selben Projekt werden nicht versehentlich mitgebaut.",
+            "Die Auswahl Flash-Ziel ist nur für USB, OTA oder FlashBox relevant; sie schränkt den normalen Build nicht ein.",
+            "Fehlt für eine Einheit noch ein Build-Runner, startet GerNetiX keinen Teilbuild und nennt zuerst alle fehlenden Runner.",
           ],
         },
         {

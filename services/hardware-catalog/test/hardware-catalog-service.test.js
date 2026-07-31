@@ -28,8 +28,13 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   assert.equal(waveshareCamera.vendor, "Waveshare");
   assert.equal(waveshareCamera.module_memory_variant, "N16R8");
   assert.equal(waveshareCamera.verification_status, "vendor_reference");
+  assert.equal(waveshareCamera.default_instance_configuration.product_family, "Waveshare ESP32-S3-CAM-OVxxxx");
+  assert.ok(waveshareCamera.default_instance_configuration.available_camera_variants.includes("GC2145"));
   assert.ok(waveshareCamera.capability_ids.includes("capability.camera_input"));
   assert.ok(waveshareCamera.capability_ids.includes("capability.removable_storage"));
+  assert.equal(waveshareCamera.capability_ids.includes("capability.display_output"), false);
+  assert.equal(waveshareCamera.capability_ids.includes("capability.touchscreen_input"), false);
+  assert.ok(waveshareCamera.capability_ids.includes("capability.uart"));
   assert.equal(waveshareCamera.default_instance_configuration.board_features.camera.hardware, "ov3660");
   assert.equal(waveshareCamera.default_instance_configuration.board_features.camera.maximum_resolution, "2048x1536");
   assert.equal(waveshareCamera.default_instance_configuration.board_features.camera.pins.xclk, 38);
@@ -38,6 +43,22 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   assert.equal(waveshareCamera.default_instance_configuration.board_features.microphone.pins.data_in, 13);
   assert.equal(waveshareCamera.default_instance_configuration.board_features.speaker.driver, "es8311");
   assert.equal(waveshareCamera.default_instance_configuration.board_features.storage.pins.clk, 16);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.display.enabled, false);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.display.included, false);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.display.pins.cs, 6);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.display.pins.mosi_sda0, 1);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.touch.enabled, false);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.touch.included, false);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.touch.pins.interrupt, 9);
+  assert.equal(waveshareCamera.default_instance_configuration.io_expander.lines.exio2, "tf_card_detect");
+  assert.equal(waveshareCamera.default_instance_configuration.io_expander.lines.exio3, "camera_power_down");
+  assert.equal(waveshareCamera.default_instance_configuration.io_expander.lines.exio_pwm, "display_backlight_pwm");
+  assert.equal(waveshareCamera.default_instance_configuration.external_connectors.uart.pins.tx, 43);
+  assert.equal(waveshareCamera.default_instance_configuration.external_connectors.battery.nominal_voltage_v, 3.7);
+  assert.equal(waveshareCamera.default_instance_configuration.mechanical.width_mm, 37);
+  assert.equal(waveshareCamera.default_instance_configuration.mechanical.mounting_hole_center_spacing_x_mm, 32.6);
+  assert.equal(waveshareCamera.default_instance_configuration.mechanical.mounting_hole_radius_mm, 2.25);
+  assert.match(waveshareCamera.pin_profile.shared_pin_notes.join(" "), /GPIO43\/GPIO44/);
   assert.equal(waveshareCamera.default_instance_configuration.board_features.psram.value, "8_mb");
   assert.equal(waveshareCamera.default_instance_configuration.board_features.flash.value, "16_mb");
   assert.equal(waveshareCamera.platformio_build.board, "esp32-s3-devkitc-1");
@@ -112,6 +133,7 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   const memory = boardFeatures.find((item) => item.feature_id === "ram");
   assert.equal(boardFeatures.length, 11);
   assert.equal(boardFeatures.find((item) => item.feature_id === "camera").driver_options[0].title, "Espressif esp32-camera");
+  assert.equal(boardFeatures.find((item) => item.feature_id === "camera").hardware_options.some((item) => item.title === "GC2145"), true);
   assert.equal(display.driver_options.some((item) => item.title === "ST7789"), true);
   assert.equal(display.connection_options.some((item) => item.title === "SPI"), true);
   assert.equal(boardFeatures.find((item) => item.feature_id === "touch").driver_options.some((item) => item.title === "FT6336G"), true);
@@ -122,6 +144,45 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   assert.equal(psram.driver_options.some((item) => item.title === "ESP-IDF Heap/PSRAM"), true);
   assert.equal(boardFeatures.find((item) => item.feature_id === "storage").driver_options.some((item) => item.title === "SD_MMC"), true);
   assert.match(display.datasheet_hint, /Datenblatt/);
+});
+
+test("sqlite catalog migration additively enriches an existing Waveshare camera board", () => {
+  const loaded = defaultCatalogSeed();
+  const itemId = "hardware.processor_board.waveshare_esp32_s3_cam_ov3660";
+  const board = loaded.hardwareItems.find((item) => item.hardware_item_id === itemId);
+  board.capability_ids = board.capability_ids.filter((item) => ![
+    "capability.uart",
+  ].includes(item));
+  delete board.pin_profile.assigned_pins.display_spi_qspi;
+  delete board.pin_profile.assigned_pins.touch_i2c;
+  delete board.pin_profile.shared_pin_notes;
+  delete board.default_instance_configuration.board_features.display;
+  delete board.default_instance_configuration.board_features.touch;
+  delete board.default_instance_configuration.io_expander.lines;
+  delete board.default_instance_configuration.external_connectors;
+  delete board.default_instance_configuration.mechanical;
+  board.default_instance_configuration.board_features.camera.hardware = "custom_confirmed_camera";
+  let persisted;
+
+  const repository = new SqliteBackedHardwareCatalogRepository({
+    load: () => loaded,
+    ensureSchema: () => {},
+    save: (state) => { persisted = state; },
+  });
+
+  const migrated = repository.findHardwareItem(itemId);
+  assert.equal(migrated.default_instance_configuration.board_features.camera.hardware, "custom_confirmed_camera");
+  assert.equal(migrated.default_instance_configuration.board_features.display.pins.cs, 6);
+  assert.equal(migrated.default_instance_configuration.board_features.touch.pins.interrupt, 9);
+  assert.equal(migrated.default_instance_configuration.io_expander.lines.exio4, "audio_amplifier_enable");
+  assert.equal(migrated.default_instance_configuration.mechanical.height_mm, 37);
+  assert.equal(migrated.default_instance_configuration.board_features.display.enabled, false);
+  assert.equal(migrated.default_instance_configuration.board_features.touch.enabled, false);
+  assert.equal(migrated.capability_ids.includes("capability.display_output"), false);
+  assert.equal(migrated.capability_ids.includes("capability.touchscreen_input"), false);
+  assert.ok(migrated.capability_ids.includes("capability.uart"));
+  assert.equal(persisted.hardwareItems.find((item) => item.hardware_item_id === itemId)
+    .default_instance_configuration.external_connectors.i2c.pins.sda, 8);
 });
 
 test("sqlite catalog migration enriches an existing ES3C28P board with known memory", async () => {

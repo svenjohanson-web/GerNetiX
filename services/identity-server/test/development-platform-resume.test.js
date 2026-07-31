@@ -12,6 +12,15 @@ const developmentHardwareModel = fs.readFileSync(path.resolve(__dirname, "../pub
 const devServer = fs.readFileSync(path.resolve(__dirname, "../src/dev-server.js"), "utf8");
 const hardwareCatalogSeed = fs.readFileSync(path.resolve(__dirname, "../../hardware-catalog/src/seed.js"), "utf8");
 
+test("wires all development platform controller dependencies", () => {
+  const controllerCreation = publicApp.match(/DevelopmentPlatform\.create\(\{[\s\S]*?\n    \}\)/)?.[0] || "";
+  assert.match(controllerCreation, /postJson,/);
+  assert.match(controllerCreation, /deleteJson,/);
+  assert.match(controllerCreation, /loadProcessorBoardCatalog,/);
+  assert.match(controllerCreation, /openHelpTopic: InformationView\.openDialog/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260731-project-delete-1/);
+});
+
 test("restores persisted PlantUML when an existing development project is activated", () => {
   const activateProjectBody = publicController.match(/function activateProject[\s\S]*?\n    }\n\n    function architectureDiagramForProject/)?.[0] || "";
   assert.match(publicController, /function restoreDevelopmentDialog/);
@@ -45,7 +54,7 @@ test("keeps the project choice surface consistent with the dark workspace", () =
   const choiceSurfaceRule = publicCss.match(/\.development-project-header > \.development-project-choice-panel:not\(\.hidden\),[\s\S]*?\{([^}]*)\}/)?.[1] || "";
   assert.match(choiceSurfaceRule, /background: #111827/);
   assert.doesNotMatch(choiceSurfaceRule, /background: #fff/);
-  assert.match(publicHtml, /app\.css\?v=20260731-software-units-1/);
+  assert.match(publicHtml, /app\.css\?v=20260731-build-memory-summary-1/);
 });
 
 test("separates the architecture discovery step from the active project", () => {
@@ -86,7 +95,7 @@ test("never traps an account without development projects in the open or manage 
   assert.match(publicController, /developmentProjectOpenSelection"\)\.classList\.toggle\("hidden", projects\.length === 0\)/);
   assert.match(publicController, /developmentProjectOpenEmpty"\)\.classList\.toggle\("hidden", projects\.length > 0\)/);
   assert.match(publicController, /Noch keine eigenen Entwicklungsprojekte vorhanden/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260731-architecture-back-1/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260731-project-delete-1/);
 });
 
 test("loads the development template catalog from the server model registry", () => {
@@ -135,7 +144,7 @@ test("persists architecture derivation metadata in the project view manifest", (
 
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260731-architecture-back-1/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260731-project-delete-1/);
   assert.match(publicHtml, /development-chat-input-box[\s\S]*developmentQuickPrompts[\s\S]*developmentChatInput[\s\S]*developmentChatSubmit/);
   assert.match(publicHtml, /development-send-button/);
   assert.match(publicHtml, /aria-label="Nachricht senden"/);
@@ -238,6 +247,10 @@ test("requires an explicit template choice before entering project details", () 
   assert.match(publicController, /button\.disabled = choosingTemplate && !templateSelected/);
   assert.match(publicController, /projectPanelMode === "new-template" && !selectedTemplateId/);
   assert.match(publicController, /Bitte waehle zuerst ein Projekttemplate/);
+  const projectForm = publicHtml.match(/<form id="developmentProjectForm"[\s\S]*?<\/form>/)?.[0] || "";
+  const projectDetails = projectForm.match(/<div id="developmentProjectDetails">[\s\S]*?<\/div>/)?.[0] || "";
+  assert.match(projectForm, /class="button-row development-project-form-actions"[\s\S]*data-development-project-back/);
+  assert.doesNotMatch(projectDetails, /data-development-project-back/);
 });
 
 test("opens every selected template directly in component configuration", () => {
@@ -282,6 +295,8 @@ test("development platform scales like a compact workspace", () => {
   assert.match(publicApp, /development-workspace-active", route === "development-platform"/);
   assert.match(publicCss, /\.development-workspace-active \{[\s\S]*min-height: 100dvh;[\s\S]*overflow: auto/);
   assert.match(publicCss, /\.development-workspace-active \.app-shell \{[\s\S]*padding: 4px 8px 8px/);
+  assert.match(publicCss, /\.development-workspace-active \.topbar \{[\s\S]*position: sticky;[\s\S]*top: 4px;[\s\S]*z-index: 40/);
+  assert.match(publicCss, /\.development-workspace-active \.app-menu \{[\s\S]*position: fixed;[\s\S]*top: 54px;[\s\S]*z-index: 50/);
   assert.match(publicCss, /\.development-workspace-active #developmentPlatformView \{[\s\S]*flex: 1 1 auto;[\s\S]*overflow: visible/);
   assert.match(publicCss, /\.development-workspace-active \.development-platform-layout,[\s\S]*\.development-workspace-active \.development-workspace-panel \{[\s\S]*overflow: visible/);
   assert.match(publicCss, /\.development-workspace-active \.development-workspace-panel \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) clamp\(300px, 26vw, 360px\)/);
@@ -457,6 +472,7 @@ test("selected catalog boards expose editable defaults and require an explicitly
 test("keeps the effective ES3C28P compiler configuration coupled to the selected board", () => {
   assert.match(devServer, /esp32_s3_es3c28p\|es3c28p/);
   assert.match(devServer, /environment: "es3c28p", flash_size_mb: 16/);
+  assert.match(devServer, /user_source_path: existing\?\.user_source_path \|\| "Komponenten\/IoT-Device 1\/src\/user_main\.cpp"/);
   assert.match(devServer, /firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: ""/);
   assert.match(devServer, /touchscreenGameBuildConfigurationProblems/);
   assert.match(devServer, /error: "touchscreen_game_build_configuration_invalid"/);

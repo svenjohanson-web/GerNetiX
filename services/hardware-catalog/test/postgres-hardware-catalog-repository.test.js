@@ -49,6 +49,39 @@ test("reconciles PostgreSQL board feature pins with the catalog pin profile", as
   assert.equal(update.values[4].default_instance_configuration.board_features.display.pin_assignment_group, "display_spi");
 });
 
+test("additively enriches an existing Waveshare PostgreSQL catalog item", async () => {
+  const item = {
+    hardware_item_id: "hardware.processor_board.waveshare_esp32_s3_cam_ov3660",
+    sku: "CUSTOM-WAVESHARE",
+    item_type: "processor_board",
+    status: "active",
+    capability_ids: ["capability.camera_input"],
+    pin_profile: { assigned_pins: {} },
+    default_instance_configuration: {
+      board_features: { camera: { hardware: "custom_confirmed_camera" } },
+      io_expander: { hardware: "CH32V003F4U6", roles: ["custom_role"] },
+    },
+  };
+  const pool = new RecordingPool([{ raw_json: item }]);
+  const repository = new PostgresHardwareCatalogRepository(pool);
+
+  await repository.enrichSeedDefaults();
+
+  const update = pool.calls.find((call) => /INSERT INTO hardware_catalog_items/.test(call.text));
+  assert.ok(update);
+  const enriched = update.values[4];
+  assert.equal(enriched.sku, "CUSTOM-WAVESHARE");
+  assert.equal(enriched.default_instance_configuration.board_features.camera.hardware, "custom_confirmed_camera");
+  assert.equal(enriched.pin_profile.assigned_pins.display_spi_qspi.cs, 6);
+  assert.equal(enriched.default_instance_configuration.io_expander.lines.exio0, "touch_reset");
+  assert.equal(enriched.default_instance_configuration.mechanical.width_mm, 37);
+  assert.equal(enriched.capability_ids.includes("capability.display_output"), false);
+  assert.equal(enriched.default_instance_configuration.board_features.display.enabled, false);
+  assert.equal(enriched.default_instance_configuration.board_features.touch.enabled, false);
+  assert.ok(enriched.default_instance_configuration.io_expander.roles.includes("custom_role"));
+  assert.ok(enriched.default_instance_configuration.io_expander.roles.includes("tf_card_detect"));
+});
+
 class RecordingPool {
   constructor(rows = []) {
     this.rows = rows;

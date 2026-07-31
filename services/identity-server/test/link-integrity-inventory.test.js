@@ -28,8 +28,14 @@ test("Identity link inventory combines registered authenticated routes and disco
     });
 
     const dashboard = inventory.targets.find((item) => item.reference_id === "identity.dashboard");
+    const publicAbout = inventory.targets.find((item) => item.reference_id === "identity.about");
+    const internalAbout = inventory.targets.find((item) => item.reference_id === "identity.internal_about");
     const external = inventory.targets.find((item) => item.target_url === "https://example.test/docs");
     assert.equal(dashboard.access_scope, "authenticated");
+    assert.equal(publicAbout.target_url, "/ueber-uns/");
+    assert.equal(publicAbout.access_scope, "public");
+    assert.equal(internalAbout.target_url, "/app/about/");
+    assert.equal(internalAbout.access_scope, "authenticated");
     assert.equal(external.link_type, "external");
     assert.ok(inventory.occurrences.some((item) => item.reference_id === dashboard.reference_id && item.source_location === "index.html"));
     assert.equal(new Set(inventory.targets.map((item) => item.reference_id)).size, inventory.targets.length);

@@ -1,6 +1,7 @@
 const { SqliteStateStore, jsonColumn } = require("../../shared");
 const { defaultCatalogSeed } = require("./seed");
 const { synchronizeBoardFeaturePins } = require("./board-configuration");
+const { enrichKnownHardwareItem } = require("./catalog-enrichment");
 
 class InMemoryHardwareCatalogRepository {
   constructor(seed = defaultCatalogSeed()) {
@@ -118,6 +119,7 @@ function migrateLoadedCatalog(seed, loaded = {}) {
     if (seededItem?.platformio_build && !loadedItem.platformio_build) {
       loadedItem.platformio_build = clone(seededItem.platformio_build);
     }
+    Object.assign(loadedItem, enrichKnownHardwareItem(loadedItem, seededItem));
     const synchronized = synchronizeBoardFeaturePins(loadedItem);
     Object.assign(loadedItem, synchronized);
   }

@@ -67,7 +67,9 @@ class BuildPackageStore {
 
   incrementalProjectCacheDir(job) {
     if (!this.incrementalCacheDir || !job.project_id) return null;
-    const targetKey = `${job.project_id}--${job.device_id || "default"}`;
+    const targetKey = [job.project_id, job.software_unit_id, job.device_id || "default"]
+      .filter(Boolean)
+      .join("--");
     return path.join(this.incrementalCacheDir, sanitizeName(targetKey));
   }
 

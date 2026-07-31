@@ -2,6 +2,7 @@ const assert = require("node:assert/strict");
 const fs = require("node:fs");
 const path = require("node:path");
 const test = require("node:test");
+const vm = require("node:vm");
 
 const app = fs.readFileSync(path.resolve(__dirname, "../public/app/app.js"), "utf8");
 const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
@@ -56,6 +57,9 @@ test("project browser keeps one flat IoT device configuration folder", () => {
   assert.match(app, /sourcePrefix: String\(component\.component_path\)/);
   assert.match(app, /treePrefix: `Komponenten\/\$\{componentTreeLabel\(component\)\}`/);
   assert.match(app, /treePath: \[mapping\.treePrefix, relativePath\]\.filter\(Boolean\)\.join\("\/"\)/);
+  assert.match(app, /rootSource && primaryMapping/);
+  assert.match(app, /primaryMapping\.treePrefix\}\/Source\/\$\{rootSource\[1\]\}/);
+  assert.match(app, /relativePath = relativePath\.replace\([^\n]+, "Source"\)/);
   assert.match(app, /relativePath = relativePath\.replace\(\/\^Konfiguration/);
   assert.match(app, /source\.treePath \|\| source\.path/);
   assert.match(app, /`Komponenten\/\$\{label\}\/Konfiguration\/Board`/);
@@ -101,10 +105,27 @@ test("project browser keeps one flat IoT device configuration folder", () => {
   assert.match(server, /board_peripheral_not_supported/);
 });
 
+test("project browser places root and component code in one component Source folder", () => {
+  const functionSource = app.slice(app.indexOf("function projectBrowserSources"), app.indexOf("function projectVirtualTreeEntries"));
+  const projectBrowserSources = vm.runInNewContext(`${functionSource}\nprojectBrowserSources;`, {
+    projectHardwareComponents: () => [{ abstract_type: "iot_device", component_path: "Komponenten/IoT-Device 1", label: "IoT-Device 1" }],
+    projectNeedsHardwareTools: () => true,
+    primaryComponentPath: () => "Komponenten/IoT-Device 1",
+    componentTreeLabel: (component) => component.label,
+  });
+  const result = projectBrowserSources({}, [
+    { path: "src/main.cpp", role: "user_code" },
+    { path: "Komponenten/IoT-Device 1/src/user_main.cpp", role: "user_code" },
+  ]);
+  assert.equal(result[0].treePath, "Komponenten/IoT-Device 1/Source/main.cpp");
+  assert.equal(result[1].treePath, "Komponenten/IoT-Device 1/Source/user_main.cpp");
+});
+
 test("IDE embeds the same board configuration plugin used by provisioning", () => {
   assert.match(html, /board-configuration-plugin\.js/);
   assert.match(app, /BoardConfigurationPlugin\.mount\(pluginRoot/);
-  assert.match(app, /Dies ist dieselbe Boardauswahl wie im Provisioning/);
+  assert.match(app, /Änderungen werden als eigener, vollständiger Projektsnapshot gespeichert/);
+  assert.match(app, /configuration_scope: "project"/);
   assert.match(app, /data-save-ide-board-configuration="project"/);
   assert.match(app, /async function saveIdeBoardConfiguration\(saveAsAccount\)/);
   assert.match(app, /account-board-configurations/);

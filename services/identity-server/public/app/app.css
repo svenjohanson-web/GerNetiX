@@ -275,6 +275,19 @@ button.danger:hover {
 .dashboard-hero h1 { margin: 4px 0 8px; }
 .dashboard-hero-intro { max-width: 720px; margin: 0; color: var(--muted); line-height: 1.55; }
 .dashboard-next { margin: 0 0 28px; }
+.about-view { display: grid; gap: 16px; }
+.about-view-hero { display: grid; gap: 10px; }
+.about-view-hero h1 { max-width: 760px; margin: 0; font-size: clamp(25px, 3vw, 34px); font-weight: 720; line-height: 1.16; }
+.about-view-lead { max-width: 920px; margin: 0; color: #dbeafe; font-size: clamp(16px, 1.7vw, 19px); line-height: 1.65; }
+.about-view-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.about-view-card, .about-view-principle { display: grid; align-content: start; gap: 10px; }
+.about-view-card h2, .about-view-card p, .about-view-principle h2, .about-view-principle p { margin: 0; }
+.about-view-card h2, .about-view-principle h2 { font-size: clamp(18px, 2vw, 23px); font-weight: 720; line-height: 1.22; }
+.about-view-card > p:last-child, .about-view-principle > p:not(.eyebrow):not(.about-view-conclusion) { color: var(--muted); line-height: 1.65; }
+.about-view-conclusion { border-left: 3px solid var(--accent); padding-left: 14px; color: #ecfeff; font-weight: 760; line-height: 1.55; }
+@media (max-width: 760px) {
+  .about-view-grid { grid-template-columns: 1fr; }
+}
 .dashboard-next-card { min-height: 190px; padding: 24px; border-color: var(--accent); }
 .dashboard-next-card p { max-width: 620px; margin: 10px 0 0; color: rgba(255, 255, 255, .9); line-height: 1.45; }
 .dashboard-next-card small { margin-top: 16px; color: #fff; font-weight: 700; }
@@ -1426,11 +1439,20 @@ button.danger:hover {
   overflow: visible;
 }
 .development-workspace-active .topbar {
+  position: sticky;
+  top: 4px;
+  z-index: 40;
   flex: 0 0 auto;
   min-height: 44px;
   margin-bottom: 6px;
   padding: 5px 8px;
   border-radius: 7px;
+}
+.development-workspace-active .app-menu {
+  position: fixed;
+  top: 54px;
+  right: 8px;
+  z-index: 50;
 }
 .development-workspace-active .top-navigation-context {
   display: flex;
@@ -2068,10 +2090,10 @@ button.danger:hover {
   display: inline-block;
   margin: 3px 0;
   padding: 3px 7px;
-  border-left: 3px solid #22c55e;
+  border-left: 3px solid #22d3ee;
   border-radius: 3px;
-  background: rgba(22, 101, 52, .18);
-  color: #86efac;
+  background: rgba(8, 145, 178, .16);
+  color: #67e8f9;
   font-weight: 700;
 }
 
@@ -4067,6 +4089,110 @@ textarea:read-only {
 }
 .serial-service-choice-dialog::backdrop {
   background: rgba(15, 23, 42, 0.58);
+}
+.usb-port-missing-dialog {
+  width: min(510px, calc(100vw - 28px));
+  padding: 15px;
+  border-color: #38bdf8;
+  background: linear-gradient(145deg, #102f4d, #0b2038);
+  color: #e0f2fe;
+  box-shadow: 0 18px 48px rgba(2, 8, 23, .48);
+}
+.usb-port-missing-dialog .runtime-dialog-header h2 {
+  margin: 2px 0 0;
+  color: #f0f9ff;
+  font-size: 21px;
+}
+.usb-port-missing-dialog .eyebrow {
+  color: #7dd3fc;
+}
+.usb-port-missing-dialog .runtime-dialog-header button,
+.usb-port-missing-dialog .usb-port-missing-actions button:not(.primary) {
+  border-color: rgba(186, 230, 253, .45);
+  background: rgba(15, 52, 82, .72);
+  color: #e0f2fe;
+}
+.usb-port-missing-dialog .usb-port-missing-actions .primary {
+  border-color: #38bdf8;
+  background: #0284c7;
+  color: #fff;
+}
+.usb-port-choice-dialog {
+  width: min(560px, calc(100vw - 32px));
+}
+.flash-target-choice-dialog {
+  width: min(620px, calc(100vw - 32px));
+}
+.usb-port-missing-dialog::backdrop,
+.usb-port-choice-dialog::backdrop,
+.flash-target-choice-dialog::backdrop {
+  background: rgba(15, 23, 42, 0.58);
+}
+.usb-port-missing-dialog ul {
+  margin: 8px 0;
+  padding-left: 1.25rem;
+  color: #dbeafe;
+  font-size: 14px;
+  line-height: 1.35;
+}
+.usb-port-missing-dialog li + li {
+  margin-top: 3px;
+}
+.usb-port-missing-current {
+  margin: 10px 0 8px;
+  padding: 7px 9px;
+  border: 1px solid rgba(125, 211, 252, .55);
+  border-radius: 7px;
+  background: rgba(2, 132, 199, .16);
+  color: #bae6fd;
+  font-size: 13px;
+  font-weight: 700;
+}
+.usb-port-missing-intro {
+  margin: 7px 0;
+  font-size: 14px;
+  line-height: 1.4;
+}
+.usb-port-recovery-sequence {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(125, 211, 252, .45);
+  border-radius: 8px;
+  background: rgba(2, 132, 199, .12);
+  color: #bae6fd;
+}
+.usb-port-recovery-sequence > strong {
+  color: #e0f2fe;
+}
+.usb-port-recovery-sequence p {
+  margin: 6px 0;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.usb-port-recovery-sequence ol {
+  margin: 7px 0;
+  padding-left: 1.35rem;
+  color: #dbeafe;
+  font-size: 13px;
+  line-height: 1.4;
+}
+.usb-port-recovery-sequence li + li {
+  margin-top: 3px;
+}
+.usb-port-missing-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 12px;
+}
+.usb-port-choice-field {
+  display: grid;
+  gap: 6px;
+  margin-top: 16px;
+  font-weight: 700;
+}
+.usb-port-choice-field select {
+  width: 100%;
 }
 .serial-service-choice-grid {
   display: grid;

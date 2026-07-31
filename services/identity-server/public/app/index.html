@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260731-software-units-1" />
+    <link rel="stylesheet" href="/app/app.css?v=20260731-build-memory-summary-1" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -71,6 +71,7 @@
         <details class="app-menu-group">
           <summary data-i18n="platform.menu.service_shop">Service &amp; Shop</summary>
           <div>
+            <a class="utility" href="/app/about/" data-route="about" data-i18n="footer.about">Über uns</a>
             <a class="utility public-information-link" href="/support/">Support</a>
             <a class="utility public-information-link" href="/shop/">Webshop</a>
           </div>
@@ -167,6 +168,33 @@
         </section>
       </section>
 
+      <section id="aboutView" class="view hidden about-view">
+        <section class="panel about-view-hero" aria-labelledby="internalAboutTitle">
+          <p class="eyebrow" data-i18n="about.eyebrow">Über uns</p>
+          <h1 id="internalAboutTitle" data-i18n="about.title">Pädagogik trifft Elektrotechnik.</h1>
+          <p class="about-view-lead" data-i18n="about.intro">Wir sind ein Ehepaar. Eine Hälfte bringt Lehramt und pädagogische Erfahrung ein, die andere ist Diplom-Ingenieur der Elektrotechnik. GerNetiX verbindet beides: Wissen so zu vermitteln, dass technische Tiefe verständlich und praktisch nutzbar wird.</p>
+        </section>
+        <section class="about-view-grid" aria-label="Unser gemeinsamer Ansatz" data-i18n-aria-label="about.approach_label">
+          <article class="panel about-view-card">
+            <p class="eyebrow" data-i18n="about.education.eyebrow">Die pädagogische Seite</p>
+            <h2 data-i18n="about.education.title">Menschen lernen unterschiedlich.</h2>
+            <p data-i18n="about.education.text">Manche brauchen zuerst ein Beispiel, andere möchten die Theorie verstehen oder eine Frage im Gespräch klären. Deshalb verbindet GerNetiX verständliche Lektüre, kleine Schritte, praktische Projekte und menschliche Begleitung.</p>
+          </article>
+          <article class="panel about-view-card">
+            <p class="eyebrow" data-i18n="about.engineering.eyebrow">Die technische Seite</p>
+            <h2 data-i18n="about.engineering.title">Gute Lösungen beginnen mit den richtigen Fragen.</h2>
+            <p data-i18n="about.engineering.text">Elektrotechnik, Embedded-Software, Netzwerke, Apps und Server werden nicht als einzelne Inseln betrachtet. Wir zeigen, wie Anforderungen, Grenzen und Entscheidungen ein vollständiges System formen.</p>
+          </article>
+        </section>
+        <section class="panel about-view-principle" aria-labelledby="internalAboutPrincipleTitle">
+          <p class="eyebrow" data-i18n="about.principle.eyebrow">Unsere Überzeugung</p>
+          <h2 id="internalAboutPrincipleTitle" data-i18n="about.principle.title">Die KI nimmt Arbeit ab – aber nicht das Denken.</h2>
+          <p data-i18n="about.principle.text1">KI kann Quellcode erzeugen, Beispiele erklären und Entwürfe beschleunigen. Ob eine Lösung zur Aufgabe passt, sicher ist und ihre technischen Grenzen einhält, muss jedoch ein Mensch beurteilen.</p>
+          <p data-i18n="about.principle.text2">Darum vermittelt GerNetiX keine starren Kochrezepte. Du lernst, Anforderungen zu klären, Möglichkeiten abzuwägen, Entscheidungen zu begründen und Ergebnisse zu kontrollieren.</p>
+          <p class="about-view-conclusion" data-i18n="about.conclusion">Denn wer versteht, kann entwickeln. Und wer entwickeln kann, kann erschaffen.</p>
+        </section>
+      </section>
+
       <section id="accountSetupView" class="view hidden">
         <section class="panel">
           <div class="section-head">
@@ -216,6 +244,76 @@
           </article>
         </section>
         <p id="serialServiceChoiceStatus" class="helper-text" aria-live="polite"></p>
+      </dialog>
+
+      <dialog id="usbPortMissingDialog" class="runtime-dialog usb-port-missing-dialog" aria-labelledby="usbPortMissingTitle">
+        <div class="runtime-dialog-header">
+          <div>
+            <p class="eyebrow">USB-Verbindung</p>
+            <h2 id="usbPortMissingTitle">Kein USB-Port gefunden</h2>
+          </div>
+          <button type="button" data-close-usb-port-missing aria-label="Schließen">Schließen</button>
+        </div>
+        <p id="usbPortMissingCheckedAt" class="usb-port-missing-current" aria-live="polite"></p>
+        <p class="usb-port-missing-intro">Mögliche Ursachen:</p>
+        <ul>
+          <li>Kabel, Verbindung oder USB-Hub funktionieren nicht richtig.</li>
+          <li>Die Firmware startet USB/Serial nicht oder hängt beim Neustart.</li>
+          <li>Das Board benötigt einen Reset oder macOS richtet den Port gerade neu ein.</li>
+          <li>Ein anderes Programm hält den Port geöffnet.</li>
+          <li>Serial Service, Treiber oder Berechtigung verhindern den Zugriff.</li>
+        </ul>
+        <section class="usb-port-recovery-sequence" aria-labelledby="usbPortRecoveryTitle">
+          <strong id="usbPortRecoveryTitle">ESP32 sicher in den Download-Modus versetzen</strong>
+          <p>USB-Stecker und Stromversorgung angeschlossen lassen. Reines Aus- und Einschalten, Abziehen und erneutes Einstecken oder nur RESET startet normalerweise wieder dieselbe fehlerhafte Firmware. Dadurch muss der USB-Port nicht zurückkommen.</p>
+          <ol>
+            <li><strong>BOOT gedrückt halten.</strong></li>
+            <li><strong>RESET zusätzlich drücken</strong>, sodass beide Tasten gedrückt sind.</li>
+            <li><strong>RESET zuerst loslassen</strong> und BOOT noch gedrückt halten.</li>
+            <li><strong>BOOT danach loslassen.</strong> Der ESP32 befindet sich nun im ROM-Download-Modus und führt die Projektfirmware nicht aus.</li>
+          </ol>
+          <p>Danach „Suchen und Flash fortsetzen“ wählen. Falls der Port noch fehlt, USB-Kabel und Verbindung prüfen und die Sequenz erneut ausführen.</p>
+        </section>
+        <div class="usb-port-missing-actions">
+          <button type="button" data-close-usb-port-missing>Schließen</button>
+          <button id="retryUsbPortSearchButton" class="primary" type="button">Suchen und Flash fortsetzen</button>
+        </div>
+      </dialog>
+
+      <dialog id="usbPortChoiceDialog" class="runtime-dialog usb-port-choice-dialog" aria-labelledby="usbPortChoiceTitle">
+        <div class="runtime-dialog-header">
+          <div>
+            <p class="eyebrow">USB-Verbindung</p>
+            <h2 id="usbPortChoiceTitle">USB-Gerät auswählen</h2>
+          </div>
+          <button type="button" data-close-usb-port-choice aria-label="Schließen">Schließen</button>
+        </div>
+        <p>GerNetiX hat mehrere USB-Geräte gefunden und kann das Ziel nicht eindeutig bestimmen.</p>
+        <label class="usb-port-choice-field">USB-Port
+          <select id="usbPortSelect" aria-label="USB-Port"></select>
+        </label>
+        <div class="usb-port-missing-actions">
+          <button type="button" data-close-usb-port-choice>Abbrechen</button>
+          <button id="confirmUsbPortButton" class="primary" type="button">Auswählen und fortfahren</button>
+        </div>
+      </dialog>
+
+      <dialog id="flashTargetChoiceDialog" class="runtime-dialog flash-target-choice-dialog" aria-labelledby="flashTargetChoiceTitle">
+        <div class="runtime-dialog-header">
+          <div>
+            <p class="eyebrow">Gerichtetes Flashen</p>
+            <h2 id="flashTargetChoiceTitle">Software-Ziel auswählen</h2>
+          </div>
+          <button type="button" data-close-flash-target-choice aria-label="Schließen">Schließen</button>
+        </div>
+        <p>Der normale Build baut immer das vollständige Projekt. Nur für diesen Flash-Vorgang muss GerNetiX wissen, welche Firmware übertragen werden soll.</p>
+        <label id="ideSoftwareUnitControl" class="usb-port-choice-field">Flash-Ziel
+          <select id="ideSoftwareUnitSelect" aria-label="Software-Einheit für USB-, OTA- oder FlashBox-Flash"></select>
+        </label>
+        <div class="usb-port-missing-actions">
+          <button type="button" data-close-flash-target-choice>Abbrechen</button>
+          <button id="confirmFlashTargetButton" class="primary" type="button">Auswählen und fortfahren</button>
+        </div>
       </dialog>
 
       <section id="informationView" class="view hidden">
@@ -446,13 +544,8 @@
             <section id="ideBuildConsole" class="ide-build-console">
               <div id="ideDeviceTools" class="ide-build-actions">
                 <span class="ide-build-actions-label">Build &amp; Flash</span>
-                <label id="ideSoftwareUnitControl" class="ide-software-unit-control hidden">Software
-                  <select id="ideSoftwareUnitSelect" aria-label="Software-Einheit fuer den Build"></select>
-                </label>
                 <select id="ideDeviceSelect" class="hidden" aria-label="Zugeordnetes Geraet"></select>
                 <select id="flashboxDeviceSelect" class="hidden" aria-label="Ausgewaehlte FlashBox"></select>
-                <select id="usbPortSelect" class="hidden" aria-label="USB-Port"></select>
-                <button id="refreshUsbPortsButton" class="hidden" type="button">USB suchen</button>
                 <button id="buildButton" type="button">Build</button>
                 <button id="usbFlashButton" type="button">USB</button>
                 <button id="otaFlashButton" type="button" aria-describedby="ideActionReason">OTA</button>
@@ -778,10 +871,10 @@
                 <div id="developmentProjectDetails">
                   <label>Name<input id="developmentProjectTitle" type="text" maxlength="120" placeholder="z. B. Pflanzenwaechter" /></label>
                   <label>Beschreibung<textarea id="developmentProjectDescription" rows="3" placeholder="Kurz beschreiben, was entstehen soll."></textarea></label>
-                  <div class="button-row">
-                    <button type="button" data-development-project-back>Zurück zur Auswahl</button>
-                    <button type="submit" class="primary">Projekt anlegen</button>
-                  </div>
+                </div>
+                <div class="button-row development-project-form-actions">
+                  <button type="button" data-development-project-back>Zurück zur Auswahl</button>
+                  <button type="submit" class="primary">Projekt anlegen</button>
                 </div>
               </form>
               <p id="developmentProjectStatus" class="helper-text">Bitte Projekt oeffnen, leer anlegen oder aus einem Template starten.</p>
@@ -1197,7 +1290,7 @@
       </dialog>
       <footer class="platform-footer">
         <span>© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
-        <nav aria-label="Weiterführende Informationen"><a href="/">Startseite</a><a href="/#motivation">Warum GerNetiX?</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav>
+        <nav aria-label="Weiterführende Informationen"><a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/#motivation">Warum GerNetiX?</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav>
       </footer>
     </main>
 
@@ -1206,21 +1299,21 @@
     <script src="/app/dom-utils.js"></script>
     <script src="/app/serial-service-client.js?v=20260731-macos-port-dedupe-1"></script>
     <script src="/app/device-onboarding-model.js"></script>
-    <script src="/app/board-configuration-plugin.js?v=20260731-platformio-projection-1"></script>
+    <script src="/app/board-configuration-plugin.js?v=20260731-board-source-groups-1"></script>
     <script src="/app/device-onboarding-controller.js?v=20260719-04"></script>
-    <script src="/app/guided-project-view.js?v=20260731-software-units-1"></script>
+    <script src="/app/guided-project-view.js?v=20260731-board-source-groups-1"></script>
     <script src="/app/learning-project-view.js?v=20260728-i18n-1"></script>
     <script src="/app/learning-project-controller.js?v=20260728-i18n-1"></script>
     <script src="/app/learning-project-locales.js?v=20260728-02"></script>
     <script src="/app/development-hardware-model.js?v=20260731-profile-inheritance-1"></script>
     <script src="/app/development-component-metamodel.js?v=20260731-software-units-1"></script>
-    <script src="/app/development-platform.js?v=20260731-architecture-back-1"></script>
+    <script src="/app/development-platform.js?v=20260731-project-delete-1"></script>
     <script src="/app/help-content.js?v=20260730-content-separation-1"></script>
     <script src="/app/knowledge-content.js?v=20260731-development-processes-1"></script>
     <script src="/app/help-chat-service.js?v=20260715-01"></script>
     <script src="/app/information-view.js?v=20260730-content-separation-1"></script>
     <script src="/app/quiz-data.js?v=20260726-01"></script>
     <script src="/app/quiz.js?v=20260726-01"></script>
-    <script src="/app/app.js?v=20260731-software-units-1"></script>
+    <script src="/app/app.js?v=20260731-build-memory-summary-1"></script>
   </body>
 </html>

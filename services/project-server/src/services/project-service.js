@@ -729,12 +729,26 @@ class ProjectService {
     const mappings = softwareLayoutMappings(previousUnits, softwareUnits);
     const changed = JSON.stringify(previousUnits) !== JSON.stringify(softwareUnits)
       || JSON.stringify(project.build_config || null) !== JSON.stringify(buildConfig);
-    if (!changed && !mappings.length) return project;
-
     const sources = await this.repository.listSources(project.project_id);
+    const obsoletePaths = obsoleteIotComponentPlaceholderPaths(softwareUnits);
+    const hasObsoleteSources = sources.some((source) => {
+      const targetPath = remapSoftwareSourcePath(source.path, mappings);
+      return obsoletePaths.has(source.path) || obsoletePaths.has(targetPath);
+    });
+    if (!changed && !mappings.length && !hasObsoleteSources) return project;
+
     const existingPaths = new Set(sources.map((source) => source.path));
     for (const source of sources) {
       const targetPath = remapSoftwareSourcePath(source.path, mappings);
+      if (obsoletePaths.has(source.path) || obsoletePaths.has(targetPath)) {
+        await this.repository.deleteSource(project.project_id, source.path);
+        existingPaths.delete(source.path);
+        if (targetPath !== source.path && existingPaths.has(targetPath)) {
+          await this.repository.deleteSource(project.project_id, targetPath);
+          existingPaths.delete(targetPath);
+        }
+        continue;
+      }
       if (!targetPath || targetPath === source.path) continue;
       if (!existingPaths.has(targetPath)) {
         await this.repository.saveSource({ ...source, path: targetPath });
@@ -742,6 +756,7 @@ class ProjectService {
       }
       await this.repository.deleteSource(project.project_id, source.path);
     }
+    if (!changed && !mappings.length) return project;
     const migrated = {
       ...project,
       software_units: softwareUnits,
@@ -944,6 +959,19 @@ function softwareLayoutMappings(previousUnits, softwareUnits) {
     from: normalizeOptionalSourcePath(previousUnits[index]?.source_root || "").replace(/\/$/, ""),
     to: unit.source_root,
   })).filter((mapping) => mapping.from !== mapping.to);
+}
+
+function obsoleteIotComponentPlaceholderPaths(softwareUnits) {
+  const relativePaths = [
+    "Schnittstellen/provided.md",
+    "Schnittstellen/required.md",
+    "Verhalten/Modell/modell.md",
+    "Verhalten/Code/code.md",
+  ];
+  return new Set(softwareUnits
+    .map((unit) => String(unit.source_root || "").replace(/\/$/, ""))
+    .filter((root) => /^Komponenten\/IoT-Device \d+$/.test(root))
+    .flatMap((root) => relativePaths.map((relativePath) => `${root}/${relativePath}`)));
 }
 
 function remapSoftwareSourcePath(sourcePath, mappings) {

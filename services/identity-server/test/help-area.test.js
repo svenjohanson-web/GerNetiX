@@ -632,19 +632,39 @@ test("publishes radio technologies with foundations, trade-offs and a careful sa
   vm.runInContext(`${knowledgeContent};this.content = KnowledgeContent;`, context);
   const article = context.content.articles["radio-technologies-understand"];
 
-  assert.equal(article.sections.length, 11);
+  assert.equal(article.sections.length, 16);
   assert.deepEqual(
-    JSON.parse(JSON.stringify(article.sections.slice(3, 9).map((section) => section.id))),
+    JSON.parse(JSON.stringify(article.sections.slice(8, 14).map((section) => section.id))),
     ["radio-bluetooth", "radio-wifi", "radio-lora", "radio-zigbee", "radio-nfc", "radio-rc-model"],
   );
-  assert.ok(article.sections.slice(3, 9).every((section) => section.table?.headers?.join("|") === "Eigenschaften|Vorteile|Nachteile"));
+  assert.ok(article.sections.slice(8, 14).every((section) => section.table?.headers?.join("|") === "Eigenschaften|Vorteile|Nachteile"));
   assert.match(JSON.stringify(article.sections[0]), /Funk ist kein unsichtbares Kabel/);
-  assert.match(JSON.stringify(article.sections[1]), /Warum braucht Funk überhaupt eine Frequenz/);
-  assert.match(JSON.stringify(article.sections[1]), /Frequenzband und Bandbreite meinen daher nicht dasselbe/);
-  assert.match(JSON.stringify(article.sections[2]), /Jede Funkübertragung kann gestört werden/);
-  assert.match(JSON.stringify(article.sections[2]), /nicht als alleinige Grundlage für eine sicherheitskritische Funktion/);
-  assert.match(JSON.stringify(article.sections[2]), /ziviles Passagierflugzeug/);
-  assert.match(JSON.stringify(article.sections[10]), /Lernprojekt „Funktechnologien verstehen“/);
+  assert.match(JSON.stringify(article.sections[1]), /Warum Funk eine Frequenz braucht/);
+  assert.match(JSON.stringify(article.sections[1]), /Denke an ein gewöhnliches Radio/);
+  assert.equal(article.sections[1].illustration.src, "/assets/radio-frequency-and-spectrum.png");
+  assert.match(JSON.stringify(article.sections[2]), /Die Modulation erzeugt also kein Frequenzband/);
+  assert.match(JSON.stringify(article.sections[2]), /Signalbandbreite oder Kanalbandbreite/);
+  assert.equal(article.sections[2].illustration.src, "/assets/radio-modulation-bandwidth.png");
+  assert.match(JSON.stringify(article.sections[3]), /keine neue Funklinie bei absolut 1 Hertz/);
+  assert.match(JSON.stringify(article.sections[3]), /f₀ plus oder minus 3 Hertz, 5 Hertz/);
+  assert.match(JSON.stringify(article.sections[3]), /Schaltfrequenz beträgt 0,5 Hertz/);
+  assert.equal(article.sections[3].illustration.src, "/assets/radio-ask-ook-spectrum.png");
+  assert.match(JSON.stringify(article.sections[4]), /Warum die Datenrate nicht unendlich sein kann/);
+  assert.match(JSON.stringify(article.sections[4]), /Je mehr Daten pro Sekunde.*höhere Frequenzanteile/);
+  assert.match(JSON.stringify(article.sections[4]), /Freifelddämpfung mit der Frequenz/);
+  assert.match(JSON.stringify(article.sections[4]), /bis hin zu Infrarot und Licht/);
+  assert.match(JSON.stringify(article.sections[5]), /Wo im elektromagnetischen Spektrum gefunkt wird/);
+  assert.match(JSON.stringify(article.sections[5]), /logarithmischen Achse/);
+  assert.match(JSON.stringify(article.sections[5]), /Frequenzplan der Bundesnetzagentur/);
+  assert.equal(article.sections[5].illustration.src, "/assets/electromagnetic-spectrum-radio-applications.png");
+  assert.match(JSON.stringify(article.sections[6]), /Warum nicht jeder beliebig funken darf/);
+  assert.match(JSON.stringify(article.sections[6]), /Einzelzuteilung.*Allgemeinzuteilung/);
+  assert.match(JSON.stringify(article.sections[6]), /ISM-Band ist nicht automatisch ein rechtsfreier Funkbereich/);
+  assert.match(JSON.stringify(article.sections[6]), /Modulation und Kodierung sind nicht in jedem Bereich vollständig vorgeschrieben/);
+  assert.match(JSON.stringify(article.sections[7]), /Jede Funkübertragung kann gestört werden/);
+  assert.match(JSON.stringify(article.sections[7]), /nicht als alleinige Grundlage für eine sicherheitskritische Funktion/);
+  assert.match(JSON.stringify(article.sections[7]), /ziviles Passagierflugzeug/);
+  assert.match(JSON.stringify(article.sections[15]), /Lernprojekt „Funktechnologien verstehen“/);
 });
 
 test("derives every knowledge navigation topic from the rendered article sections", () => {

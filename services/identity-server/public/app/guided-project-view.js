@@ -589,10 +589,7 @@ const GuidedProjectView = (() => {
         <header><div><p class="eyebrow">Software und Build-Ziel</p><strong>${escapeHtml(selectedUnit?.title || "Softwareeinheit")}</strong></div><span>${escapeHtml(selectedUnit?.build_system || "nicht konfiguriert")}</span></header>
         <div class="learning-software-target-grid">
           <label>Softwareeinheit<select data-learning-software-unit>${units.map((unit) => `<option value="${escapeAttribute(unit.software_unit_id)}" ${unit.software_unit_id === selectedUnit?.software_unit_id ? "selected" : ""}>${escapeHtml(unit.title)} · ${escapeHtml(unit.software_kind)}</option>`).join("")}</select></label>
-          ${platformio ? `<label>Zielboard<select data-learning-target-board><option value="">Zielboard auswählen</option>${(state.processorBoards || []).map((board) => {
-            const id = board.hardware_item_id || board.hardware_profile_id || board.id;
-            return `<option value="${escapeAttribute(id)}" ${id === selectedBoardId ? "selected" : ""}>${escapeHtml(board.title || id)}</option>`;
-          }).join("")}</select></label>
+          ${platformio ? `<label>Zielboard<select data-learning-target-board><option value="">Zielboard auswählen</option>${BoardConfigurationPlugin.renderBoardOptions(state.processorBoards || [], selectedBoardId)}</select></label>
           <label>Oder Inventar-Device<select data-learning-target-device><option value="">Nur für das gewählte Board bauen</option>${compatibleDevices.map((device) => `<option value="${escapeAttribute(device.device_id)}" ${device.device_id === selectedDeviceId ? "selected" : ""}>${escapeHtml(device.display_name || device.device_id)}</option>`).join("")}</select></label>` : `<p class="helper-text">Diese Einheit kann bereits mit Quellen und Build-System gespeichert werden. Für ${escapeHtml(selectedUnit?.build_system || "dieses Build-System")} fehlt noch ein ausführender Runner.</p>`}
         </div>
         <footer><span>${platformio && selectedBoardId ? `${escapeHtml(config.platform || "PlatformIO")} · ${escapeHtml(config.board || "Boardziel")} · ${escapeHtml(config.framework || "ohne Framework")}` : "Wähle ein Build-Ziel für diese Softwareeinheit."}</span><button type="button" data-build-learning-software-unit ${platformio && selectedBoardId ? "" : "disabled"}>Ausgewähltes Target bauen</button></footer>
@@ -1110,10 +1107,7 @@ if (digitalRead(BUTTON_PIN) == LOW) {
       return `<label>GerNetiX- oder eigenes Account-Board
         <select data-guided-board-configuration>
           <option value="">Boardkonfiguration auswählen</option>
-          ${(state.processorBoards || []).map((board) => {
-            const id = board.hardware_item_id || board.hardware_profile_id || board.id;
-            return `<option value="${escapeAttribute(id)}" ${id === selectedId ? "selected" : ""}>${escapeHtml(board.title || id)}</option>`;
-          }).join("")}
+          ${BoardConfigurationPlugin.renderBoardOptions(state.processorBoards || [], selectedId)}
         </select>
       </label>`;
     }

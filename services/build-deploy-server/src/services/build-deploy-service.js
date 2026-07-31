@@ -99,6 +99,7 @@ class BuildDeployService {
       const buildResult = {
         status: buildOutput.status,
         artifacts,
+        flash_manifest: Array.isArray(buildOutput.flash_manifest) ? buildOutput.flash_manifest : [],
         primary_firmware: selectPrimaryFirmware(artifacts),
         build_log: artifacts["build.log"],
         usb_flash: buildOutput.usb_flash || { requested: false, status: "not_requested" },
@@ -198,6 +199,7 @@ function normalizeJob(input = {}) {
     mode,
     device_id: input.device_id || (input.deploy && input.deploy.device_id) || null,
     project_id: input.project_id || null,
+    software_unit_id: String(input.software_unit_id || "").trim(),
     build_package: input.build_package,
     deploy: input.deploy || null,
     usb_flash: input.usb_flash || null,

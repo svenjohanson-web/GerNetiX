@@ -50,6 +50,53 @@ test("migrates legacy Software roots into the src folder of their components", a
   assert.equal((await service.getSource(project.project_id, "Komponenten/IoT-Device 1/src/user_main.cpp")).content, "// existing target");
 });
 
+test("removes obsolete interface and behavior placeholders from IoT component folders", async () => {
+  const project = {
+    project_id: "obsolete-iot-placeholders",
+    user_id: "user-layout",
+    plan_id: "free",
+    title: "Kamera und Display",
+    status: "active",
+    build_config: { platform: "espressif32", board: "esp32-s3-devkitc-1" },
+    software_units: [
+      { software_unit_id: "camera", title: "Kamera", software_kind: "embedded_firmware", build_system: "platformio", source_root: "Komponenten/IoT-Device 1", entrypoint: "src/user_main.cpp", build_config: { platform: "espressif32", board: "esp32-s3-devkitc-1" } },
+      { software_unit_id: "display", title: "Display", software_kind: "embedded_firmware", build_system: "platformio", source_root: "Komponenten/IoT-Device 2", entrypoint: "src/user_main.cpp", build_config: { platform: "espressif32", board: "esp32-s3-devkitc-1" } },
+    ],
+    active_software_unit_id: "camera",
+    view_manifest: {},
+    created_at: "2026-07-31T00:00:00.000Z",
+    updated_at: "2026-07-31T00:00:00.000Z",
+  };
+  const placeholderPaths = [
+    "Schnittstellen/provided.md",
+    "Schnittstellen/required.md",
+    "Verhalten/Modell/modell.md",
+    "Verhalten/Code/code.md",
+  ];
+  const repository = new InMemoryProjectRepository({
+    projects: [project],
+    sources: [
+      ...["Komponenten/IoT-Device 1", "Komponenten/IoT-Device 2"].flatMap((root) => placeholderPaths.map((relativePath) => ({
+        project_id: project.project_id,
+        path: `${root}/${relativePath}`,
+        content: "generischer Platzhalter",
+      }))),
+      { project_id: project.project_id, path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: "// camera" },
+      { project_id: project.project_id, path: "Komponenten/IoT-Device 2/src/user_main.cpp", content: "// display" },
+      { project_id: project.project_id, path: "Komponenten/IoT-Device 1/Konfiguration/Hardware/Board/board.md", content: "# Board" },
+    ],
+  });
+  const service = new ProjectService({ repository });
+
+  await service.getProject(project.project_id);
+  const remainingPaths = (await service.listSources(project.project_id)).map((source) => source.path);
+  assert.deepEqual(remainingPaths, [
+    "Komponenten/IoT-Device 1/Konfiguration/Hardware/Board/board.md",
+    "Komponenten/IoT-Device 1/src/user_main.cpp",
+    "Komponenten/IoT-Device 2/src/user_main.cpp",
+  ]);
+});
+
 async function createDemoProject(service) {
   return await service.createProject({
     user_id: "user-1",

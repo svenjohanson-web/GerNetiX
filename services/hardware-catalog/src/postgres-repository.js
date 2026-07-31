@@ -2,6 +2,7 @@
 
 const { defaultCatalogSeed } = require("./seed");
 const { synchronizeBoardFeaturePins } = require("./board-configuration");
+const { enrichKnownHardwareItem, isAdditivelyEnrichedHardwareItem } = require("./catalog-enrichment");
 
 class PostgresHardwareCatalogRepository {
   constructor(pool) {
@@ -56,7 +57,18 @@ class PostgresHardwareCatalogRepository {
     for (const item of seed.hardwareItems || []) {
       await this.saveHardwareItem(item, { insertOnly: true });
     }
+    await this.enrichSeedDefaults(seed);
     await this.synchronizeBoardPins();
+  }
+
+  async enrichSeedDefaults(seed = defaultCatalogSeed()) {
+    for (const seededItem of seed.hardwareItems || []) {
+      if (!isAdditivelyEnrichedHardwareItem(seededItem.hardware_item_id)) continue;
+      const existing = await this.findHardwareItem(seededItem.hardware_item_id);
+      if (!existing) continue;
+      const enriched = enrichKnownHardwareItem(existing, seededItem);
+      if (JSON.stringify(enriched) !== JSON.stringify(existing)) await this.saveHardwareItem(enriched);
+    }
   }
 
   async synchronizeBoardPins() {

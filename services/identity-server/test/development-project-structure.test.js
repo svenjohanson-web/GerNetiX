@@ -2,7 +2,7 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { developmentProjectSources } = require("../src/dev/development-project-structure");
 
-test("creates architecture folders and component interface folders from AI architecture", () => {
+test("keeps generic interface and behavior folders out of IoT device components", () => {
   const sources = developmentProjectSources({
     title: "ESP32 MQTT Projekt",
     description: "ESP32 sendet Daten per MQTT an einen Server.",
@@ -25,10 +25,8 @@ test("creates architecture folders and component interface folders from AI archi
   assert.ok(paths.includes("Architektur/informationsfluss/informationsfluss.md"));
   assert.ok(paths.includes("Architektur/systemverhalten/systemverhalten.md"));
   assert.equal(paths.some((path) => path.includes("/Eigenschaften/")), false);
-  assert.ok(paths.includes("Komponenten/IoT-Device 1/Schnittstellen/provided.md"));
-  assert.ok(paths.includes("Komponenten/IoT-Device 1/Schnittstellen/required.md"));
-  assert.ok(paths.includes("Komponenten/IoT-Device 1/Verhalten/Modell/modell.md"));
-  assert.ok(paths.includes("Komponenten/IoT-Device 1/Verhalten/Code/code.md"));
+  assert.equal(paths.some((path) => path.startsWith("Komponenten/IoT-Device 1/Schnittstellen/")), false);
+  assert.equal(paths.some((path) => path.startsWith("Komponenten/IoT-Device 1/Verhalten/")), false);
   assert.ok(paths.includes("Komponenten/IoT-Device 1/Konfiguration/Software/software.md"));
   assert.ok(paths.includes("Komponenten/IoT-Device 1/Konfiguration/Hardware/Board/board.md"));
   assert.ok(paths.includes("Komponenten/IoT-Device 1/Konfiguration/Hardware/Sensoren/in.md"));
@@ -56,7 +54,7 @@ test("creates architecture folders and component interface folders from AI archi
   assert.match(systemVerhalten.content, /dekomponieren/);
 });
 
-test("keeps required interfaces visible for minimal ESP32 projects", () => {
+test("keeps configuration and data without generic interface placeholders for minimal ESP32 projects", () => {
   const sources = developmentProjectSources({
     title: "Minimal ESP32",
     diagram: {
@@ -69,20 +67,18 @@ test("keeps required interfaces visible for minimal ESP32 projects", () => {
     },
   });
 
-  const required = sources.find((source) => source.path === "Komponenten/IoT-Device 1/Schnittstellen/required.md");
   const data = sources.find((source) => source.path === "Komponenten/IoT-Device 1/Daten/daten.md");
   const software = sources.find((source) => source.path === "Komponenten/IoT-Device 1/Konfiguration/Software/software.md");
   const board = sources.find((source) => source.path === "Komponenten/IoT-Device 1/Konfiguration/Hardware/Board/board.md");
   const sensorIn = sources.find((source) => source.path === "Komponenten/IoT-Device 1/Konfiguration/Hardware/Sensoren/in.md");
   const actuatorOut = sources.find((source) => source.path === "Komponenten/IoT-Device 1/Konfiguration/Hardware/Aktoren/out.md");
-  assert.ok(required);
+  assert.equal(sources.some((source) => source.path.startsWith("Komponenten/IoT-Device 1/Schnittstellen/")), false);
+  assert.equal(sources.some((source) => source.path.startsWith("Komponenten/IoT-Device 1/Verhalten/")), false);
   assert.ok(data);
   assert.ok(software);
   assert.ok(board);
   assert.ok(sensorIn);
   assert.ok(actuatorOut);
-  assert.match(required.content, /Required Interfaces/);
-  assert.match(required.content, /Stromversorgung/);
   assert.match(data.content, /Messwerte/);
   assert.match(software.content, /Software-Konfiguration/);
   assert.match(board.content, /Board-Profil/);

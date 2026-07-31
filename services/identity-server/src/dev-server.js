@@ -1487,6 +1487,7 @@ async function routeRequest(req, res) {
     }
     const jobId = decodeURIComponent(buildJobStatus[1]);
     const job = await loadBuildDeployJob(jobId);
+    const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
     if (["succeeded", "failed"].includes(job.status)) await recordCompletedBuildJob(jobId, job);
     sendJson(res, 200, {
       build_job_id: jobId,
@@ -1495,7 +1496,7 @@ async function routeRequest(req, res) {
       flash_status: job.mode === "build_and_flash"
         ? (job.result?.deploy?.status || "nicht angefordert")
         : (job.result?.build?.usb_flash?.status || "nicht angefordert"),
-      flash_manifest: browserFlashManifest(jobId, job),
+      flash_manifest: browserFlashManifest(jobId, job, projectJob?.build_config || {}),
       error: job.error?.message || "",
       build_log: job.error?.details?.build_log || job.result?.build?.log || "",
       progress: Array.isArray(job.progress) ? job.progress : [],
@@ -1567,6 +1568,11 @@ async function routeRequest(req, res) {
 
   if (["/hilfe", "/hilfe/", "/wissen", "/wissen/"].includes(url.pathname)) {
     serveStatic(res, appDir, "/index.html");
+    return;
+  }
+
+  if (["/ueber-uns", "/ueber-uns/"].includes(url.pathname)) {
+    serveStatic(res, path.join(publicDir, "ueber-uns"), "/index.html");
     return;
   }
 
@@ -3583,6 +3589,7 @@ async function handleUserIdeBuildJob(req, res) {
       job_id: projectServerJob.build_job_id,
       mode,
       project_id: project.project_server_id,
+      software_unit_id: softwareUnit?.software_unit_id || "",
       device_id: device?.device_id || null,
       build_package: toBuildDeployPackage(buildPackage, device || {}, project),
       usb_flash: mode === "build_and_usb_flash" ? {
@@ -3639,7 +3646,7 @@ async function handleUserIdeBuildJob(req, res) {
     flash_status: completedBuildDeployJob?.result?.build?.usb_flash?.status
       || completedBuildDeployJob?.result?.deploy?.status
       || "nicht angefordert",
-    flash_manifest: browserFlashManifest(projectServerJob.build_job_id, completedBuildDeployJob),
+    flash_manifest: browserFlashManifest(projectServerJob.build_job_id, completedBuildDeployJob, resolvedBuildConfig),
   };
   userIdeState.builds.unshift(build);
   touchWorkspace(session, project.project_server_id, body.mode === "learn" ? "learn" : "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
@@ -3653,21 +3660,36 @@ async function recordCompletedBuildJob(jobId, completedJob) {
   });
 }
 
-function browserFlashManifest(jobId, completedJob) {
+function browserFlashManifest(jobId, completedJob, buildConfig = {}) {
   const artifacts = completedJob?.result?.build?.artifacts || {};
-  const definitions = [
-    ["bootloader.bin", 0x1000],
+  const runnerManifest = Array.isArray(completedJob?.result?.build?.flash_manifest)
+    ? completedJob.result.build.flash_manifest
+    : [];
+  const fallbackDefinitions = [
+    ["bootloader.bin", esp32BootloaderAddress(buildConfig)],
     ["partitions.bin", 0x8000],
     ["boot_app0.bin", 0xe000],
     ["firmware.bin", 0x10000],
   ];
-  return definitions.filter(([name]) => artifacts[name]).map(([name, address]) => ({
+  const definitions = runnerManifest.length
+    ? runnerManifest.map((item) => [item.name, Number(item.address)])
+    : fallbackDefinitions;
+  return definitions.filter(([name, address]) => artifacts[name] && Number.isInteger(address) && address >= 0).map(([name, address]) => ({
     name,
     address,
     url: `/api/user-ide/build-artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(name)}`,
     size_bytes: artifacts[name].size_bytes,
     sha256: artifacts[name].sha256,
   }));
+}
+
+function esp32BootloaderAddress(buildConfig = {}) {
+  const target = [
+    buildConfig.board,
+    buildConfig.environment,
+    buildConfig.board_configuration?.base_board_profile_id,
+  ].filter(Boolean).join(" ").toLowerCase();
+  return /esp32[-_]?s3|es3c28p/.test(target) ? 0x0000 : 0x1000;
 }
 
 function buildArtifactDownloads(jobId, completedJob) {
@@ -5312,7 +5334,9 @@ function normalizeDevelopmentBoardConfiguration(input, boardProfileId) {
 
 function compilerBoardConfiguration(configuration, board = null) {
   if (!configuration && !board) return null;
-  const source = configuration?.account_board_id || board?.account_board_id || board?.configuration_scope === "account"
+  const source = configuration?.source === "project" || board?.configuration_scope === "project"
+    ? "project"
+    : configuration?.account_board_id || board?.account_board_id || board?.configuration_scope === "account"
     ? "account"
     : configuration?.source === "catalog" || board?.configuration_scope === "gernetix"
       ? "catalog"
@@ -5544,7 +5568,7 @@ function buildConfigForBoard(boardOrProfileId, existing = null) {
       firmware_basis_id: usesBasissoftware ? catalogBuild.firmware_basis_id : "",
       firmware_basis_version: usesBasissoftware ? catalogBuild.firmware_basis_version || "workspace" : "",
       firmware_basis_variant: usesBasissoftware ? existing?.firmware_basis_variant || catalogBuild.firmware_basis_variant || "full" : "",
-      user_source_path: usesBasissoftware ? existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp" : existing?.user_source_path || "src/main.cpp",
+      user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp",
       user_target_path: usesBasissoftware ? existing?.user_target_path || "src/user/user_app.cpp" : existing?.user_target_path || "src/main.cpp",
     };
     delete result.supported_frameworks;
@@ -5553,7 +5577,7 @@ function buildConfigForBoard(boardOrProfileId, existing = null) {
   if (/arduino_nano_r3_atmega328p/.test(boardProfileId)) return { ...common, platform: "atmelavr", framework: "arduino", board: "nanoatmega328", environment: "nanoatmega328", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
   if (/esp8266|d1_mini/.test(boardProfileId)) return { ...common, platform: "espressif8266", framework: "arduino", board: "d1_mini", environment: "d1_mini", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "" };
   if (/ai_thinker_esp32_cam/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: "arduino", board: "esp32cam", environment: "esp32cam", firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "", user_source_path: existing?.user_source_path || "src/main.cpp", user_target_path: existing?.user_target_path || "src/main.cpp" };
-  if (/esp32_s3_es3c28p|es3c28p/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: "arduino", board: "esp32-s3-devkitc-1", environment: "es3c28p", flash_size_mb: 16, firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "", user_source_path: "src/main.cpp", user_target_path: "src/main.cpp", libraries: common.libraries.length ? common.libraries : ["lovyan03/LovyanGFX@^1.2.7"] };
+  if (/esp32_s3_es3c28p|es3c28p/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: "arduino", board: "esp32-s3-devkitc-1", environment: "es3c28p", flash_size_mb: 16, firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: "", user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/main.cpp", libraries: common.libraries.length ? common.libraries : ["lovyan03/LovyanGFX@^1.2.7"] };
   if (/esp32_s3|esp32-s3/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: existing?.framework || "espidf", board: "esp32-s3-devkitc-1", environment: "esp32-s3-devkitc-1", firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: existing?.firmware_basis_version || "workspace", firmware_basis_variant: existing?.firmware_basis_variant || "comfort", user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/user/user_app.cpp" };
   if (/esp32|wroom32|nano_esp32/.test(boardProfileId)) return { ...common, platform: "espressif32", framework: existing?.framework || "espidf", board: "esp32dev", environment: "esp32dev", firmware_basis_id: "gernetix-runtime-basissoftware", firmware_basis_version: existing?.firmware_basis_version || "workspace", firmware_basis_variant: existing?.firmware_basis_variant || "comfort", user_source_path: existing?.user_source_path || "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: existing?.user_target_path || "src/user/user_app.cpp" };
   return existing;

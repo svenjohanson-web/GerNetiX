@@ -59,17 +59,21 @@ test("build terminal keeps progress and error output compact", () => {
   assert.match(app, /replace\(\/\\x1b/);
 });
 
-test("build terminal always appends a persistent Flash and RAM summary", () => {
-  assert.match(app, /\["succeeded", "failed", "replaced"\]\.includes\(current\.status\)/);
+test("build terminal appends the Flash and RAM summary only for successful builds", () => {
+  assert.match(app, /options\.appendMemorySummary !== false && !memorySummaryShown && current\.status === "succeeded"/);
+  assert.doesNotMatch(app, /\["succeeded", "failed", "replaced"\]\.includes\(current\.status\)/);
   assert.match(app, /appendBuildMemorySummary\(current\)/);
+  assert.match(app, /waitForCompletedBuild\(build, \{[\s\S]*appendMemorySummary: false/);
+  assert.match(app, /if \(!failed\) completed\.forEach\(appendBuildMemorySummary\)/);
   assert.match(app, /Speicherbelegung · Firmware-Partition \(Flash\):/);
   assert.match(app, /RAM: \$\{formatPlatformioMemoryUsage\(ram\)\}/);
   assert.match(app, /Flash-Wert = App-Slot, nicht gesamter Gerätespeicher/);
   assert.match(app, /if \(!usage\) return "nicht ermittelt"/);
   const memorySummaryStyle = css.match(/\.terminal-summary \{[\s\S]*?\n\}/)?.[0] || "";
-  assert.match(memorySummaryStyle, /border-left: 3px solid #22c55e/);
-  assert.match(memorySummaryStyle, /color: #86efac/);
-  assert.doesNotMatch(memorySummaryStyle, /#fbbf24|#fde68a/);
+  assert.match(memorySummaryStyle, /border-left: 3px solid #22d3ee/);
+  assert.match(memorySummaryStyle, /background: rgba\(8, 145, 178, \.16\)/);
+  assert.match(memorySummaryStyle, /color: #67e8f9/);
+  assert.doesNotMatch(memorySummaryStyle, /#22c55e|#86efac|#fbbf24|#fde68a/);
 });
 
 test("IDE responds to available container width and browser sidebars", () => {

@@ -51,4 +51,32 @@ test("board configuration plugin renders the shared provisioning table with pin 
   assert.match(html, /Treiber/);
   assert.match(html, /Pin-Zuordnung/);
   assert.match(html, /data-edit-board-feature-pins="display"/);
+  assert.match(html, /CS=GPIO10/);
+});
+
+test("board configuration plugin derives fixed feature pins from the hardware catalog pin profile", () => {
+  const catalogBoard = {
+    ...board,
+    pin_profile: { assigned_pins: { display_spi: { sclk: 12, mosi: 11, cs: 10, dc: 46, backlight: 45 } } },
+    default_instance_configuration: {
+      board_features: { display: { enabled: true, hardware: "lcd", driver: "lvgl", connection: "spi", value: "320x240" } },
+    },
+  };
+  const defaults = plugin.defaultsForBoard(catalogBoard, features);
+  assert.equal(defaults.display.pins.sclk, 12);
+  assert.equal(defaults.display.pins.backlight, 45);
+  assert.deepEqual(Array.from(plugin.availablePins(catalogBoard)), [10, 11, 12, 45, 46]);
+  assert.match(plugin.renderFeatureTable(features, defaults, defaults), /BACKLIGHT=GPIO45/);
+});
+
+test("board selector separates GerNetiX, account and project configurations", () => {
+  const html = plugin.renderBoardOptions([
+    { ...board, configuration_scope: "gernetix" },
+    { ...board, hardware_item_id: "board-account", title: "Mein Display", configuration_scope: "account" },
+    { ...board, hardware_item_id: "board-project", title: "Projektprofil", configuration_scope: "project" },
+  ], "board-project");
+  assert.match(html, /GerNetiX-Boards/);
+  assert.match(html, /Meine Boards/);
+  assert.match(html, /Projektanpassungen/);
+  assert.match(html, /value="board-project" selected/);
 });

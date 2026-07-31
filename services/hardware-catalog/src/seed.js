@@ -302,7 +302,7 @@ function defaultCatalogSeed() {
         extra_capability_ids: [
           "capability.camera_input", "capability.external_ram", "capability.audio_input",
           "capability.audio_output", "capability.removable_storage", "capability.bluetooth",
-          "capability.i2c", "capability.spi",
+          "capability.i2c", "capability.spi", "capability.uart",
         ],
         pin_profile: {
           assigned_pins: {
@@ -314,16 +314,26 @@ function defaultCatalogSeed() {
             microphone_i2s: { mclk: 10, bclk: 11, lrclk: 12, data_in: 13, data_out: 14, sda: 8, scl: 7 },
             speaker_i2s: { mclk: 10, bclk: 11, lrclk: 12, data_in: 13, data_out: 14, sda: 8, scl: 7 },
             storage_sdmmc: { clk: 16, cmd: 43, d0: 44 },
+            display_spi_qspi: { cs: 6, sclk: 5, sda3: 4, dc_sda2: 3, miso_sda1: 2, mosi_sda0: 1 },
+            touch_i2c: { scl: 7, sda: 8, interrupt: 9 },
+            header_i2c: { scl: 7, sda: 8 },
+            header_uart: { tx: 43, rx: 44 },
           },
           diagnostic_output_allowlist: [],
-          diagnostic_note: "Kamera, Audio, TF-Karte und der CH32V003-I/O-Expander belegen einen grossen Teil der GPIOs. Keine undokumentierten Pins als generischen Testausgang verwenden.",
+          shared_pin_notes: [
+            "GPIO7/GPIO8 werden fuer Kamera-SCCB, Audio-I2C, Touch-I2C und den externen I2C-Anschluss gemeinsam genutzt.",
+            "GPIO43/GPIO44 werden sowohl fuer SDMMC als auch am UART-Anschluss verwendet und duerfen nicht konfliktfrei gleichzeitig vorausgesetzt werden.",
+          ],
+          diagnostic_note: "Kamera, Audio, TF-Karte, LCD/Touch-Anschluss und der CH32V003-I/O-Expander belegen einen grossen Teil der GPIOs. Keine undokumentierten Pins als generischen Testausgang verwenden.",
         },
         default_instance_configuration: {
           board_model: "Waveshare ESP32-S3-CAM-OV3660",
+          product_family: "Waveshare ESP32-S3-CAM-OVxxxx",
+          available_camera_variants: ["OV5640", "OV3660", "GC2145", "GC0308"],
           verification_status: "vendor_reference",
           evidence: {
             source_type: "manufacturer_documentation_and_examples",
-            product_url: "https://www.waveshare.com/product/esp32-s3-cam-ov5640.htm",
+            product_url: "https://www.waveshare.com/esp32-s3-cam-ov5640.htm",
             documentation_url: "https://docs.waveshare.com/ESP32-S3-CAM-OVxxxx/Instructions-For-Use",
             example_repository_url: "https://github.com/waveshareteam/ESP32-S3-CAM-OVxxxx",
             schematic_url: "https://files.waveshare.com/wiki/ESP32-S3-CAM-OVxxxx/ESP32-S3-CAM-XXXX-schematic.pdf",
@@ -361,6 +371,27 @@ function defaultCatalogSeed() {
               driver: "sd_mmc",
               connection: "sdmmc",
               bus_width: 1,
+              verification_status: "vendor_reference",
+            },
+            display: {
+              enabled: false,
+              included: false,
+              optional_external_hardware: true,
+              hardware: "external_spi_qspi_lcd",
+              driver: "depends_on_attached_display",
+              connection: "spi_qspi",
+              connector: "18_pin_fpc",
+              supported_display_sizes_inch: [1.83, 2.0, 2.8, 3.5],
+              verification_status: "vendor_reference",
+            },
+            touch: {
+              enabled: false,
+              included: false,
+              optional_external_hardware: true,
+              hardware: "external_touch_controller",
+              driver: "depends_on_attached_display",
+              connection: "i2c",
+              connector: "shared_18_pin_lcd_fpc",
               verification_status: "vendor_reference",
             },
             bluetooth: {
@@ -404,7 +435,37 @@ function defaultCatalogSeed() {
           },
           io_expander: {
             hardware: "CH32V003F4U6",
-            roles: ["camera_power", "display_reset", "backlight", "audio_amplifier_enable", "tf_card_power"],
+            roles: ["camera_power_down", "display_reset", "touch_reset", "backlight", "audio_amplifier_enable", "tf_card_detect"],
+            lines: {
+              exio0: "touch_reset",
+              exio1: "display_reset",
+              exio2: "tf_card_detect",
+              exio3: "camera_power_down",
+              exio4: "audio_amplifier_enable",
+              exio_pwm: "display_backlight_pwm",
+            },
+            verification_status: "vendor_reference",
+          },
+          external_connectors: {
+            camera: { type: "24_pin_fpc", interface: "parallel_dvp_sccb" },
+            display: { type: "18_pin_fpc", interfaces: ["spi", "qspi"], includes_touch_signals: true },
+            i2c: { pins: { gnd: "GND", power: "3V3", sda: 8, scl: 7 } },
+            uart: { pins: { gnd: "GND", power: "3V3", tx: 43, rx: 44 } },
+            speaker: { type: "2_pin_header", interface: "amplified_analog_audio" },
+            battery: {
+              type: "2_pin_1_25_mm_connector",
+              battery_type: "single_cell_lithium",
+              nominal_voltage_v: 3.7,
+              charging_supported: true,
+            },
+          },
+          mechanical: {
+            width_mm: 37.0,
+            height_mm: 37.0,
+            mounting_hole_center_spacing_x_mm: 32.6,
+            mounting_hole_center_spacing_y_mm: 32.6,
+            mounting_hole_radius_mm: 2.25,
+            mounting_hole_center_to_edge_mm: 2.2,
             verification_status: "vendor_reference",
           },
         },
@@ -517,7 +578,7 @@ function defaultCatalogSeed() {
 function boardFeatureOptions() {
   return [
     boardFeature("camera", "Kamera", "capability.camera_input", {
-      hardware_options: options(["OV2640", "OV3660", "OV5640", "GC0308"]),
+      hardware_options: options(["OV2640", "OV3660", "OV5640", "GC2145", "GC0308"]),
       driver_options: options(["Espressif esp32-camera"]),
       connection_options: options(["Parallel DVP + SCCB"]),
       datasheet_hint: "Sensor, Board-Pinbelegung, XCLK, PSRAM und unterstütztes Pixelformat gemeinsam prüfen.",
