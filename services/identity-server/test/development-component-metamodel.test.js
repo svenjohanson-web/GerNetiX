@@ -34,3 +34,10 @@ test("offers only legal targets when a component is added", () => {
   assert.deepEqual(sensorOptions.map((option) => option.target.component_id), ["device"]);
   assert.deepEqual(sensorOptions.map((option) => option.rule.id), ["measures_for"]);
 });
+
+test("offers each same-type IoT relationship only once", () => {
+  const options = metamodel.optionsForNewComponent("iot_device", [
+    { component_id: "device_1", abstract_type: "iot_device", label: "IoT-Device 1" },
+  ]);
+  assert.deepEqual(options.map((option) => `${option.rule.id}|${option.target.component_id}`), ["synchronizes|device_1"]);
+});

@@ -63,12 +63,19 @@ const DevelopmentComponentMetamodel = (() => {
   }
 
   function optionsForNewComponent(type, existingComponents) {
-    return (existingComponents || []).flatMap((component) => {
+    const options = (existingComponents || []).flatMap((component) => {
       const outgoing = rulesBetween(type, component.abstract_type)
         .map((item) => ({ rule: item, target: component, direction: "outgoing" }));
       const incoming = rulesBetween(component.abstract_type, type)
         .map((item) => ({ rule: item, target: component, direction: "incoming" }));
       return [...outgoing, ...incoming];
+    });
+    const seen = new Set();
+    return options.filter((option) => {
+      const key = `${option.rule.id}|${option.target.component_id}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
     });
   }
 

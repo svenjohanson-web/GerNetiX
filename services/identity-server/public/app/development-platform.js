@@ -481,14 +481,17 @@ const DevelopmentPlatform = (() => {
     function componentConnectionSelection(type, options) {
       const requiresControlUnit = ["sensor", "actuator"].includes(type);
       if (!options.length) return `<p class="template-component-hint">${requiresControlUnit ? "Lege zuerst ein IoT-Device als Steuereinheit an." : "Es gibt noch keine Komponente mit einer zulaessigen Beziehung."}</p>`;
-      const label = requiresControlUnit ? "Steuereinheit" : "Zulaessige Beziehung";
-      const prompt = requiresControlUnit ? "IoT-Device waehlen" : "Beziehung waehlen";
-      return `<label>${label}
+      if (requiresControlUnit) return `<label>Steuereinheit
         <select data-template-connection-target>
-          <option value="">${prompt}</option>
+          <option value="">IoT-Device waehlen</option>
           ${options.map((option) => `<option value="${escapeAttribute(`${option.rule.id}|${option.target.component_id}`)}">${escapeHtml(`${option.rule.label}: ${option.target.label}`)}</option>`).join("")}
         </select>
       </label>`;
+      return `<fieldset class="template-component-connections">
+        <legend>Zulaessige Beziehungen</legend>
+        <small>Eine oder mehrere Beziehungen auswählen.</small>
+        ${options.map((option) => `<label><input type="checkbox" data-template-connection-option value="${escapeAttribute(`${option.rule.id}|${option.target.component_id}`)}"><span>${escapeHtml(`${option.rule.label}: ${option.target.label}`)}</span></label>`).join("")}
+      </fieldset>`;
     }
 
     function handleTemplateComponentConfigurationClick(event) {
@@ -502,15 +505,20 @@ const DevelopmentPlatform = (() => {
       const type = section?.querySelector("[data-template-component-type]")?.value || "structural";
       const labelInput = section?.querySelector("[data-template-component-label]");
       const label = String(labelInput?.value || "").trim() || templateComponentDefaultLabel(type);
-      const connectionSelection = section?.querySelector("[data-template-connection-target]")?.value || "";
-      const [relationshipRuleId, connectionTargetId] = connectionSelection.split("|");
-      if (!relationshipRuleId || !connectionTargetId) {
+      const connectionSelections = ["sensor", "actuator"].includes(type)
+        ? [section?.querySelector("[data-template-connection-target]")?.value || ""]
+        : Array.from(section?.querySelectorAll("[data-template-connection-option]:checked") || []).map((input) => input.value);
+      const connections = connectionSelections.map((selection) => {
+        const [relationshipRuleId, connectionTargetId] = selection.split("|");
+        return { relationshipRuleId, connectionTargetId };
+      }).filter((connection) => connection.relationshipRuleId && connection.connectionTargetId);
+      if (!connections.length) {
         setActionStatus(["sensor", "actuator"].includes(type)
           ? "Bitte waehle die IoT-Steuereinheit fuer diese Komponente."
-          : "Bitte waehle eine zulaessige Beziehung fuer diese Komponente.");
+          : "Bitte waehle mindestens eine zulaessige Beziehung fuer diese Komponente.");
         return;
       }
-      appendTemplateComponent(type, label, connectionTargetId, relationshipRuleId);
+      appendTemplateComponent(type, label, connections);
       if (labelInput) labelInput.value = "";
       renderTemplateComponentConfiguration();
       renderArchitectureDiagram();
@@ -531,7 +539,7 @@ const DevelopmentPlatform = (() => {
       return globalThis.DevelopmentComponentMetamodel?.componentTypes?.[component?.abstract_type]?.user_configurable !== false;
     }
 
-    function appendTemplateComponent(type, label, connectionTargetId = "", relationshipRuleId = "") {
+    function appendTemplateComponent(type, label, connections = []) {
       const diagram = state.developmentPlatform.architectureDiagram || architectureDiagramForProject(currentProject());
       if (!diagram?.source) return;
       const safeLabel = String(label).replace(/["\\\\]/g, " ").replace(/\s+/g, " ").trim();
@@ -542,12 +550,15 @@ const DevelopmentPlatform = (() => {
       const alias = `${aliasBase}_${suffix}`;
       const plantUmlType = ({ iot_device: "node", smartphone_app: "component", desktop_app: "component", server_api: "node" })[type] || "component";
       const declaration = `${plantUmlType} "${safeLabel}" as ${alias}`;
-      const relationshipRule = globalThis.DevelopmentComponentMetamodel?.relationshipRules.find((item) => item.id === relationshipRuleId);
-      if (!relationshipRule) return;
-      const relation = relationshipRule.source_type === type
-        ? `${alias} --> ${connectionTargetId} : ${relationshipRule.label}`
-        : `${connectionTargetId} --> ${alias} : ${relationshipRule.label}`;
-      const additions = `${declaration}\n${relation}`;
+      const relations = connections.map(({ relationshipRuleId, connectionTargetId }) => {
+        const relationshipRule = globalThis.DevelopmentComponentMetamodel?.relationshipRules.find((item) => item.id === relationshipRuleId);
+        if (!relationshipRule) return "";
+        return relationshipRule.source_type === type
+          ? `${alias} --> ${connectionTargetId} : ${relationshipRule.label}`
+          : `${connectionTargetId} --> ${alias} : ${relationshipRule.label}`;
+      }).filter(Boolean);
+      if (!relations.length) return;
+      const additions = `${declaration}\n${relations.join("\n")}`;
       const source = /@enduml\s*$/i.test(diagram.source)
         ? diagram.source.replace(/@enduml\s*$/i, `${additions}\n@enduml`)
         : `${diagram.source}\n${additions}`;

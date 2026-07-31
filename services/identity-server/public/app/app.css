@@ -5148,6 +5148,18 @@ textarea,
 .template-component-add label { display: grid; gap: 4px; color: #cbd5e1; font-size: 12px; }
 .template-component-add select,
 .template-component-add input { min-width: 0; border: 1px solid #475569; border-radius: 5px; padding: 7px; color: #0f172a; background: #f8fafc; }
+.template-component-connections {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 8px;
+  border: 1px solid #475569;
+  border-radius: 6px;
+}
+.template-component-connections legend { padding: 0 4px; color: #cbd5e1; font-size: 12px; }
+.template-component-connections > small { color: #93c5fd; }
+.template-component-connections label { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 7px; }
+.template-component-connections input { margin-top: 2px; padding: 0; }
 .template-component-hint { margin: 0; color: #fde68a; font-size: 12px; line-height: 1.4; }
 .hardware-inline-help {
   display: inline-grid;

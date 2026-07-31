@@ -177,8 +177,12 @@ test("uses one component configuration for every template except the game collec
   assert.match(publicController, /data-template-component-type/);
   assert.match(publicController, /data-template-component-add/);
   assert.match(publicController, /data-template-connection-target/);
+  assert.match(publicController, /data-template-connection-option/);
+  assert.match(publicController, /querySelectorAll\("\[data-template-connection-option\]:checked"\)/);
+  assert.match(publicController, /Bitte waehle mindestens eine zulaessige Beziehung/);
+  assert.match(publicController, /relations\.join\("\\n"\)/);
   assert.match(publicController, /Bitte waehle die IoT-Steuereinheit/);
-  assert.match(publicController, /Bitte waehle eine zulaessige Beziehung fuer diese Komponente/);
+  assert.match(publicController, /Bitte waehle mindestens eine zulaessige Beziehung fuer diese Komponente/);
   assert.match(publicController, /template-component-connection-hints/);
   assert.match(publicController, /Diese Komponenten haben noch keine zulaessige Verbindung/);
   assert.match(publicController, /DevelopmentComponentMetamodel/);
@@ -196,6 +200,7 @@ test("uses one component configuration for every template except the game collec
   assert.match(publicCss, /\.template-component-configuration \{/);
   assert.match(publicCss, /\.template-component-layout \{/);
   assert.match(publicCss, /\.template-component-connection-hints \{/);
+  assert.match(publicCss, /\.template-component-connections \{/);
   assert.match(publicCss, /\.template-component-remove \{/);
 });
 
