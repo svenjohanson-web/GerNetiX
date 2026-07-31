@@ -61,6 +61,11 @@ const HelpContent = (() => {
           articleId: "board-definition",
         },
         {
+          id: "board-configuration-levels",
+          title: "GerNetiX-, Account- und Projektboards",
+          articleId: "board-configuration-levels",
+        },
+        {
           id: "register-device",
           title: "Board registrieren",
           articleId: "register-device",
@@ -562,6 +567,65 @@ const HelpContent = (() => {
       relatedTopics: [
         "supported-devices",
         "update-profiles",
+      ],
+    },
+    "board-configuration-levels": {
+      title: "GerNetiX-, Account- und Projektboards",
+      summary: "So bleiben geprüfte Katalogboards, deine eigenen Boardvarianten und reproduzierbare Projektstände sauber getrennt.",
+      sections: [
+        {
+          heading: "Drei Ebenen, drei Aufgaben",
+          paragraphs: [
+            "GerNetiX unterscheidet eine geprüfte Systemkonfiguration, deine accountgebundenen eigenen Boards und die tatsächlich in einem Projekt verwendete Konfiguration. Dadurch kannst du ein bekanntes Board übernehmen, dauerhaft an deine Hardware anpassen und trotzdem ältere Projekte unverändert erneut bauen.",
+          ],
+          table: {
+            headers: ["Ebene", "Zweck", "Wer darf ändern?"],
+            rows: [
+              ["GerNetiX-Systemboard", "Geprüfte Ausgangskonfiguration aus dem Hardware Catalog", "GerNetiX veröffentlicht eine neue Katalogversion"],
+              ["Mein Board", "Private, in mehreren Projekten wiederverwendbare Account-Konfiguration", "Du speicherst Änderungen als neue Version"],
+              ["Projektkonfiguration", "Der für genau dieses Projekt eingefrorene Stand", "Du übernimmst Änderungen ausdrücklich in das Projekt"],
+            ],
+          },
+        },
+        {
+          heading: "Ein Projekt speichert immer einen festen Stand",
+          paragraphs: [
+            "Bei der Boardauswahl löst GerNetiX alle gültigen Werte auf und speichert sie als unveränderlichen Projektsnapshot. Das Projekt merkt sich außerdem Herkunft und Version des GerNetiX- oder Account-Boards.",
+            "Eine spätere Änderung der Quelle verändert bestehende Projekte niemals automatisch. Dadurch bleiben Pinbelegung, Speicheraufteilung, Build und Hardwaredokumentation nachvollziehbar.",
+          ],
+        },
+        {
+          heading: "Wenn sich ein eigenes Board ändert",
+          list: [
+            "Die bisherige Account-Boardversion bleibt erhalten.",
+            "Die geänderte Ausstattung wird als neue Version deines Boards gespeichert.",
+            "Projekte bleiben auf ihrer bisher gewählten Version und zeigen lediglich an, dass eine neuere Version verfügbar ist.",
+            "Vor einer Projektaktualisierung zeigt GerNetiX die Unterschiede. Erst deine Bestätigung übernimmt die neue Version und macht gegebenenfalls einen neuen Build erforderlich.",
+          ],
+        },
+        {
+          heading: "Änderungen direkt im Projekt",
+          paragraphs: [
+            "Änderst du im Projekt einen Katalogwert, wird die Abweichung hervorgehoben. Danach entscheidest du, ob die Änderung nur für dieses Projekt gelten oder als neue eigene Boardkonfiguration in deinem Account wiederverwendbar werden soll.",
+            "Ein GerNetiX-Systemboard wird dabei nie überschrieben. Auch ein vorhandenes Account-Board erhält bei einer Änderung eine neue Version statt einer stillen Änderung an allen Projekten.",
+          ],
+        },
+        {
+          heading: "Projektstand und physisches Inventar-Board",
+          paragraphs: [
+            "Ein Inventar-Board beschreibt die aktuell physisch vorhandene Platine. Weicht seine aktuelle Boardversion von der im Projekt eingefrorenen Version ab, warnt GerNetiX vor Build oder Flash.",
+          ],
+          list: [
+            "Aktualisiere das Projekt nach Prüfung auf die neue Boardversion.",
+            "Ordne dem Projekt ein anderes, zur Projektversion passendes Inventar-Board zu.",
+            "Oder stelle die frühere physische Konfiguration wieder her.",
+          ],
+        },
+      ],
+      relatedTopics: [
+        "board-definition",
+        "supported-devices",
+        "provision-new-board",
       ],
     },
     "register-device": {
@@ -1295,6 +1359,7 @@ const HelpContent = (() => {
     "update-profiles": "premium",
     "provision-new-board": "account",
     "board-definition": "account",
+    "board-configuration-levels": "account",
     "register-device": "account",
     "pair-device": "account",
     "flash-device": "account",
