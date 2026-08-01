@@ -34,7 +34,8 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /flashBuildViaSerialService/);
   assert.match(app, /state\.serialService\.flash/);
   assert.match(server, /function browserFlashManifest\(jobId, completedJob, buildConfig = \{\}\)/);
-  assert.match(server, /completeBrowserFlashDefinitions\(runnerManifest, fallbackDefinitions\)/);
+  assert.match(server, /completeBrowserFlashDefinitions\(runnerManifest, fallbackDefinitions, \{/);
+  assert.match(server, /authoritativeFallbackNames: usesGerNetixOtaAppLayout\(buildConfig\)/);
   assert.match(server, /function esp32BootloaderAddress\(buildConfig = \{\}\)[\s\S]*esp32\[-_\]\?s3\|es3c28p[\s\S]*\? 0x0000 : 0x1000/);
   assert.match(app, /loadIdeEsptoolModule/);
   assert.match(app, /browser-usb-flash-result/);

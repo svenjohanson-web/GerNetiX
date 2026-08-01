@@ -12,7 +12,8 @@ in der GerNetiX-Weboberfläche.
 - nativer, UI-loser Swift-Dienst auf Basis der macOS-Systemframeworks
 - serieller Zugriff direkt über die macOS-POSIX-Schnittstelle
 - Board-Erkennung und ESP32-Flash über das mitgelieferte native `espflash`
-- expliziter Watchdog-Neustart des ESP32 nach erfolgreich geschriebenem Flash-Abbild
+- vollständiges Rücklesen und bytegenauer SHA-256-Abgleich nach jedem Schreibvorgang
+- expliziter Watchdog-Neustart des ESP32 erst nach erfolgreicher Flash-Verifikation
 - keine Electron-, Chromium-, Node.js- oder Browser-Laufzeit im Kundenpaket
 - keine dauerhafte Ablage von Firmware, WLAN-Zugangsdaten oder Projektdaten
 
@@ -98,7 +99,7 @@ Lokale Veröffentlichung zum Prüfen:
 node tools/publish-platform-download.js \
   --file tools/usb-serial-helper/dist/GerNetiX-Serial-Service-mac-arm64.pkg \
   --id serial-service \
-  --version 0.3.7 \
+  --version 0.3.9 \
   --platform macos \
   --architecture arm64 \
   --label "Für macOS" \

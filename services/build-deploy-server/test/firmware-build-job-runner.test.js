@@ -48,6 +48,35 @@ test("reads target-specific PlatformIO flash offsets instead of assuming classic
   ]);
 });
 
+test("uses the generated ESP32 partition table as the authoritative firmware address", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-partition-address-"));
+  const partitionFile = path.join(root, "partitions.bin");
+  const partitionTable = Buffer.alloc(32, 0xff);
+  partitionTable.writeUInt16LE(0x50aa, 0);
+  partitionTable[2] = 0x00;
+  partitionTable[3] = 0x10;
+  partitionTable.writeUInt32LE(0x20000, 4);
+  partitionTable.writeUInt32LE(0x600000, 8);
+  await fs.writeFile(partitionFile, partitionTable);
+  await fs.writeFile(path.join(root, "flash_args"), [
+    "0x0000 bootloader.bin",
+    "0x8000 partitions.bin",
+    "0x10000 firmware.bin",
+  ].join("\n"));
+
+  const manifest = await readPlatformioFlashManifest(root, {
+    "bootloader.bin": path.join(root, "bootloader.bin"),
+    "partitions.bin": partitionFile,
+    "firmware.bin": path.join(root, "firmware.bin"),
+  });
+
+  assert.deepEqual(manifest, [
+    { name: "bootloader.bin", address: 0x0000 },
+    { name: "partitions.bin", address: 0x8000 },
+    { name: "firmware.bin", address: 0x20000 },
+  ]);
+});
+
 test("collects nested ESP-IDF bootloader and partition artifacts as one browser flash package", async () => {
   const buildDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-nested-flash-package-"));
   const root = path.join(buildDir, "esp32s3");

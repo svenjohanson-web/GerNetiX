@@ -29,7 +29,7 @@ const {
   migrateCameraTemplateDisplayGpioTypes,
   migrateCameraTemplateWifiArchitecture,
 } = require("./dev/development-project-template-migrations");
-const { completeBrowserFlashDefinitions, esp32FirmwareAddress } = require("./dev/browser-flash-manifest");
+const { completeBrowserFlashDefinitions, esp32FirmwareAddress, usesGerNetixOtaAppLayout } = require("./dev/browser-flash-manifest");
 const { mergeBoardFeatures } = require("./dev/board-configuration-merge");
 const {
   developmentProjectTemplate,
@@ -2703,7 +2703,9 @@ function browserFlashManifest(jobId, completedJob, buildConfig = {}) {
     ["boot_app0.bin", 0xe000],
     ["firmware.bin", esp32FirmwareAddress(buildConfig)],
   ];
-  const definitions = completeBrowserFlashDefinitions(runnerManifest, fallbackDefinitions);
+  const definitions = completeBrowserFlashDefinitions(runnerManifest, fallbackDefinitions, {
+    authoritativeFallbackNames: usesGerNetixOtaAppLayout(buildConfig) ? ["firmware.bin"] : [],
+  });
   return definitions.filter(([name, address]) => artifacts[name] && Number.isInteger(address) && address >= 0).map(([name, address]) => ({
     name,
     address,

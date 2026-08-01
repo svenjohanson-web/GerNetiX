@@ -282,7 +282,26 @@ async function readPlatformioFlashManifest(root, artifacts) {
     if (!allowed.has(name)) continue;
     manifest.push({ name, address: item.address });
   }
+  const appAddress = await firstEsp32AppPartitionOffset(artifacts["partitions.bin"]);
+  const firmware = manifest.find((item) => item.name === "firmware.bin");
+  if (firmware && Number.isInteger(appAddress)) firmware.address = appAddress;
   return manifest;
+}
+
+async function firstEsp32AppPartitionOffset(partitionFile) {
+  if (!partitionFile) return null;
+  let table;
+  try {
+    table = await fs.readFile(partitionFile);
+  } catch {
+    return null;
+  }
+  const offsets = [];
+  for (let position = 0; position + 32 <= table.length; position += 32) {
+    if (table.readUInt16LE(position) !== 0x50aa) break;
+    if (table[position + 2] === 0x00) offsets.push(table.readUInt32LE(position + 4));
+  }
+  return offsets.length ? Math.min(...offsets) : null;
 }
 
 async function readPlatformioFlashArgumentEntries(root) {

@@ -1,6 +1,7 @@
 import Foundation
 import Network
 import Security
+import CryptoKit
 import Darwin
 
 typealias JSONObject = [String: Any]
@@ -156,7 +157,7 @@ final class SerialService {
             if request.method == "GET" && request.path == "/v1/status" {
                 return jsonResponse(200, [
                     "service": "gernetix-serial-service",
-                    "version": "0.3.7",
+                    "version": "0.3.9",
                     "protocolVersion": 1,
                     "runtime": "native-swift",
                     "capabilities": ["ports", "probe", "flash", "serial_provisioning", "local_device_diagnostics"],
@@ -273,21 +274,43 @@ final class SerialService {
         defer { try? FileManager.default.removeItem(at: directory) }
         do {
             try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try validateEsp32FlashPackage(files)
             let merged = try mergeFlashFiles(files)
             let image = directory.appendingPathComponent("firmware.bin")
+            let verificationImage = directory.appendingPathComponent("firmware-readback.bin")
             try merged.data.write(to: image, options: .atomic)
-            let result = try runEspflash(command: "write-bin", port: port, extraArguments: [
+            lock.withLock {
+                appendJobLog(job, "Flashpaket: \(files.count) Dateien, \(merged.data.count) Byte, Adressbereich \(hexAddress(merged.address))-\(hexAddress(merged.address + merged.data.count)).")
+                appendJobLog(job, "Schreibvorgang gestartet. Erfolg wird erst nach vollständigem Rücklesen und SHA-256-Vergleich gemeldet.")
+            }
+            let writeResult = try runEspflash(command: "write-bin", port: port, extraArguments: [
                 "--baud", "460800",
-                "--after", "watchdog-reset",
+                "--after", "no-reset-no-stub",
                 String(format: "0x%x", merged.address),
                 image.path,
             ], job: job)
-            let output = stripANSI(result.output)
+            let readResult = try runEspflash(command: "read-flash", port: port, extraArguments: [
+                "--baud", "460800",
+                "--after", "watchdog-reset",
+                String(format: "0x%x", merged.address),
+                String(merged.data.count),
+                verificationImage.path,
+            ], job: job)
+            let writtenData = try Data(contentsOf: verificationImage)
+            guard writtenData == merged.data else {
+                throw ServiceError(
+                    "flash_verification_failed",
+                    "Der zurückgelesene Flashinhalt stimmt nicht mit dem Firmwarepaket überein."
+                )
+            }
+            let output = [writeResult.output, readResult.output].map(stripANSI).joined(separator: "\n")
+            let verifiedHash = sha256Hex(merged.data)
             lock.withLock {
                 appendJobLog(job, output)
                 if job.status != "cancelled" {
                     job.status = "succeeded"
-                    job.logs.append("Firmware wurde erfolgreich geschrieben.")
+                    job.logs.append("Flash verifiziert: \(merged.data.count) Byte, SHA-256 \(verifiedHash).")
+                    job.logs.append("Firmware wurde vollständig geschrieben, zurückgelesen und verifiziert.")
                 }
             }
         } catch {
@@ -351,6 +374,7 @@ final class SerialService {
 }
 
 struct FlashFile {
+    let name: String
     let address: Int
     let data: Data
 }
@@ -703,7 +727,7 @@ func flashFiles(_ value: Any?) throws -> [FlashFile] {
         guard total <= 64 * 1024 * 1024 else {
             throw ServiceError("invalid_flash_request", "Der Flash-Auftrag ist zu groß.")
         }
-        return FlashFile(address: address, data: data)
+        return FlashFile(name: String(file["name"] as? String ?? "firmware.bin"), address: address, data: data)
     }
 }
 
@@ -720,6 +744,49 @@ func mergeFlashFiles(_ files: [FlashFile]) throws -> (address: Int, data: Data) 
         merged.replaceSubrange(range, with: file.data)
     }
     return (minimum, merged)
+}
+
+func validateEsp32FlashPackage(_ files: [FlashFile]) throws {
+    guard let partitionFile = files.first(where: { $0.name == "partitions.bin" }),
+          let firmwareFile = files.first(where: { $0.name == "firmware.bin" }) else { return }
+    guard firmwareFile.data.first == 0xE9 else {
+        throw ServiceError("flash_package_firmware_invalid", "firmware.bin ist kein gültiges ESP32-App-Image.")
+    }
+    guard let appAddress = firstEsp32AppPartitionOffset(partitionFile.data) else {
+        throw ServiceError("flash_package_partition_invalid", "partitions.bin enthält keine ESP32-App-Partition.")
+    }
+    guard firmwareFile.address == appAddress else {
+        throw ServiceError(
+            "flash_package_app_address_mismatch",
+            "Das Flashpaket ist widersprüchlich: firmware.bin soll nach \(hexAddress(firmwareFile.address)) geschrieben werden, die erste App-Partition beginnt aber bei \(hexAddress(appAddress))."
+        )
+    }
+}
+
+func firstEsp32AppPartitionOffset(_ data: Data) -> Int? {
+    var offsets: [Int] = []
+    var position = 0
+    while position + 32 <= data.count {
+        let magic = Int(data[position]) | (Int(data[position + 1]) << 8)
+        if magic != 0x50AA { break }
+        if data[position + 2] == 0x00 {
+            let offset = Int(data[position + 4])
+                | (Int(data[position + 5]) << 8)
+                | (Int(data[position + 6]) << 16)
+                | (Int(data[position + 7]) << 24)
+            offsets.append(offset)
+        }
+        position += 32
+    }
+    return offsets.min()
+}
+
+func sha256Hex(_ data: Data) -> String {
+    SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined()
+}
+
+func hexAddress(_ value: Int) -> String {
+    String(format: "0x%x", value)
 }
 
 func flashAddress(_ value: Any?) throws -> Int {
@@ -938,11 +1005,36 @@ func runSelfTests() throws {
         throw ServiceError("self_test_failed", "Die Prüfung der lokalen Diagnose-Zielgrenzen ist fehlgeschlagen.")
     }
     let merged = try mergeFlashFiles([
-        FlashFile(address: 0, data: Data([1, 2])),
-        FlashFile(address: 4, data: Data([3])),
+        FlashFile(name: "first.bin", address: 0, data: Data([1, 2])),
+        FlashFile(name: "second.bin", address: 4, data: Data([3])),
     ])
     guard merged.address == 0, merged.data == Data([1, 2, 0xFF, 0xFF, 3]) else {
         throw ServiceError("self_test_failed", "Die Prüfung des zusammengeführten Flash-Abbilds ist fehlgeschlagen.")
+    }
+    guard sha256Hex(Data("GerNetiX".utf8)) == "c0161bd7c4a12fea1230292553327ae5126ef584902fa945b35cd45b04404fb6" else {
+        throw ServiceError("self_test_failed", "Die Prüfung des Flash-SHA-256 ist fehlgeschlagen.")
+    }
+    var partitionTable = Data(repeating: 0xFF, count: 32)
+    partitionTable[0] = 0xAA
+    partitionTable[1] = 0x50
+    partitionTable[2] = 0x00
+    partitionTable[3] = 0x10
+    partitionTable[4] = 0x00
+    partitionTable[5] = 0x00
+    partitionTable[6] = 0x02
+    partitionTable[7] = 0x00
+    try validateEsp32FlashPackage([
+        FlashFile(name: "partitions.bin", address: 0x8000, data: partitionTable),
+        FlashFile(name: "firmware.bin", address: 0x20000, data: Data([0xE9, 0x01])),
+    ])
+    do {
+        try validateEsp32FlashPackage([
+            FlashFile(name: "partitions.bin", address: 0x8000, data: partitionTable),
+            FlashFile(name: "firmware.bin", address: 0x10000, data: Data([0xE9, 0x01])),
+        ])
+        throw ServiceError("self_test_failed", "Ein widersprüchliches Flashpaket wurde nicht abgelehnt.")
+    } catch let error as ServiceError where error.code == "flash_package_app_address_mismatch" {
+        // Erwarteter Vertragsschutz.
     }
     let raw = Data("POST /v1/sessions HTTP/1.1\r\nHost: localhost:43123\r\nOrigin: https://gernetix.com\r\nContent-Length: 2\r\n\r\n{}".utf8)
     guard let request = try parseHTTPRequest(raw, maximumBodyBytes: 1024),

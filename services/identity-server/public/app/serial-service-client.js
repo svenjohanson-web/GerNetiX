@@ -1,4 +1,5 @@
 const GerNetiXSerialService = (() => {
+  const MINIMUM_VERIFIED_FLASH_VERSION = "0.3.9";
   const DEFAULT_BASE_URLS = window.location.protocol === "https:"
     ? ["https://localhost:43123"]
     : ["https://localhost:43123", "http://127.0.0.1:43123"];
@@ -77,6 +78,15 @@ const GerNetiXSerialService = (() => {
     }
 
     async function flash({ port, files, ...options }) {
+      const serviceStatus = await status();
+      if (compareVersions(serviceStatus?.version, MINIMUM_VERIFIED_FLASH_VERSION) < 0) {
+        const installedVersion = String(serviceStatus?.version || "unbekannt");
+        const error = new Error(
+          `GerNetiX Serial Service ${MINIMUM_VERIFIED_FLASH_VERSION} oder neuer ist fuer einen verifizierten USB-Flash erforderlich. Installiert ist ${installedVersion}. Bitte aktualisiere den lokalen Helper.`,
+        );
+        error.code = "serial_service_update_required";
+        throw error;
+      }
       const encodedFiles = files.map((file) => ({
         name: file.name || "firmware.bin",
         address: Number(file.address || 0),
@@ -158,7 +168,18 @@ const GerNetiXSerialService = (() => {
     return new Promise((resolve) => setTimeout(resolve, milliseconds));
   }
 
-  return { create, preferredPorts };
+  function compareVersions(left, right) {
+    const leftParts = String(left || "0").split(".").map((part) => Number.parseInt(part, 10) || 0);
+    const rightParts = String(right || "0").split(".").map((part) => Number.parseInt(part, 10) || 0);
+    const length = Math.max(leftParts.length, rightParts.length);
+    for (let index = 0; index < length; index += 1) {
+      const difference = (leftParts[index] || 0) - (rightParts[index] || 0);
+      if (difference !== 0) return difference;
+    }
+    return 0;
+  }
+
+  return { compareVersions, create, preferredPorts };
 })();
 
 window.GerNetiXSerialService = GerNetiXSerialService;
