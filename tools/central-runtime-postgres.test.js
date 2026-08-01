@@ -39,6 +39,8 @@ test("Build workers coordinate jobs and target locks through central PostgreSQL"
   assert.match(compose, /RUNTIME_POSTGRES_BIND_ADDRESS:-127\.0\.0\.1/);
   assert.match(envExample, /^BUILD_WORKER_UPSTREAMS=$/m);
   assert.match(compose, /^  build-worker-postgres-access:$/m);
+  assert.match(compose, /profiles: \["build-worker-provisioning"\]/);
+  assert.match(remoteDeploy, /--profile build-worker-provisioning[\s\\]+\n\s*run --rm build-worker-postgres-access/);
   assert.match(compose, /provision-build-worker-postgres\.js/);
   assert.match(envExample, /^BUILD_WORKER_POSTGRES_PASSWORD=$/m);
 });

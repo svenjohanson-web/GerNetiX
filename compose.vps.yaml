@@ -362,6 +362,7 @@ services:
 
   build-worker-postgres-access:
     <<: *node-service
+    profiles: ["build-worker-provisioning"]
     restart: "no"
     healthcheck:
       disable: true

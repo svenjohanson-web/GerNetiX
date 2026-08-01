@@ -196,6 +196,10 @@ docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --forc
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --force-recreate runtime-postgres
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --wait --wait-timeout "$wait_timeout"
 
+echo "==> PostgreSQL-Zugriff fuer externe Build-Worker provisionieren"
+docker compose --env-file "$env_file" -f compose.vps.yaml --profile build-worker-provisioning \
+  run --rm build-worker-postgres-access
+
 echo "==> Vorhandene PostgreSQL-Domaenendaten einmalig zentral konsolidieren"
 docker compose --env-file "$env_file" -f compose.vps.yaml --profile postgres-consolidation \
   run --rm --no-deps postgres-consolidation-migration
