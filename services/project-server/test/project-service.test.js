@@ -567,6 +567,39 @@ test("does not invalidate firmware when only board snapshot timestamps are refre
   assert.equal((await service.buildReuseStatus(job.build_job_id)).reusable, false);
 });
 
+test("does not invalidate firmware when PostgreSQL returns JSON object keys in another order", async () => {
+  const repository = new InMemoryProjectRepository();
+  const service = new ProjectService({ repository });
+  const project = await service.createProject({
+    user_id: "user-1",
+    title: "Kameraprojekt",
+    build_config: {
+      platform: "espressif32",
+      framework: "espidf",
+      board: "esp32-s3-devkitc-1",
+      environment: "camera",
+    },
+  });
+  const job = await service.createBuildJob(project.project_id, { mode: "build" });
+  await service.createBuildPackage(job.build_job_id);
+  await service.recordBuildResult(job.build_job_id, { status: "succeeded" });
+
+  const stored = await repository.findProject(project.project_id);
+  await repository.saveProject({
+    ...stored,
+    build_config: {
+      environment: stored.build_config.environment,
+      board: stored.build_config.board,
+      framework: stored.build_config.framework,
+      platform: stored.build_config.platform,
+      ...Object.fromEntries(Object.entries(stored.build_config)
+        .filter(([key]) => !["environment", "board", "framework", "platform"].includes(key))),
+    },
+  });
+
+  assert.equal((await service.buildReuseStatus(job.build_job_id)).reusable, true);
+});
+
 test("persists the exact lesson and step position for a learning project", async () => {
   const repository = new InMemoryProjectRepository();
   const service = new ProjectService({ repository });
