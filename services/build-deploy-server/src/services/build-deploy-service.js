@@ -9,6 +9,7 @@ class BuildDeployService {
     this.artifactStore = options.artifactStore;
     this.deployOrchestrator = options.deployOrchestrator;
     this.deviceJobLock = options.deviceJobLock;
+    this.buildTargetLock = options.buildTargetLock;
     this.stateStore = options.stateStore || null;
     this.stateStore?.ensureSchema?.(buildDeploySchema());
     this.jobs = new Map(((this.stateStore && this.stateStore.load().jobs) || []).map((job) => [job.job_id, job]));
@@ -104,6 +105,14 @@ class BuildDeployService {
 
   async runJob(job) {
     await this.cache.ensureReady();
+    return this.buildTargetLock.runExclusive(
+      job,
+      () => this.runBuildTargetJob(job),
+      () => this.reportProgress(job, "waiting", "Ein Build desselben Projektziels läuft bereits. Dieser Auftrag wartet auf dessen Abschluss."),
+    );
+  }
+
+  async runBuildTargetJob(job) {
     this.reportProgress(job, "packaging", "Build-Paket wird in den Build-Workspace übernommen.");
     const workspace = await this.packageStore.materialize(job);
     try {

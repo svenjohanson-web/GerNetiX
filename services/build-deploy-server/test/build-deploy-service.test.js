@@ -278,6 +278,109 @@ test("parallel software units use isolated PlatformIO incremental workspaces", a
   ));
 });
 
+test("concurrent builds of the same software target are executed exclusively", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-target-lock-"));
+  const service = createDefaultBuildDeployService(createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  }));
+  let releaseFirst;
+  const firstGate = new Promise((resolve) => { releaseFirst = resolve; });
+  let firstStarted;
+  const started = new Promise((resolve) => { firstStarted = resolve; });
+  let active = 0;
+  let maximumActive = 0;
+  service.runner.run = async (job, packageDir) => {
+    active += 1;
+    maximumActive = Math.max(maximumActive, active);
+    if (job.job_id === "exclusive-1") {
+      firstStarted();
+      await firstGate;
+    }
+    const artifacts = await createTestArtifacts(packageDir, job.job_id);
+    active -= 1;
+    return { status: "succeeded", artifacts };
+  };
+
+  await service.submitJob(buildTargetJob("exclusive-1", "shared-unit"));
+  await started;
+  await service.submitJob(buildTargetJob("exclusive-2", "shared-unit"));
+  await waitFor(() => service.getJob("exclusive-2").progress.some((entry) => entry.phase === "waiting"));
+
+  assert.equal(maximumActive, 1);
+  assert.equal(service.getJob("exclusive-2").progress.at(-1).phase, "waiting");
+  releaseFirst();
+  await Promise.all([
+    service.jobs.get("exclusive-1").promise,
+    service.jobs.get("exclusive-2").promise,
+  ]);
+  assert.equal(maximumActive, 1);
+  assert.equal(service.getJob("exclusive-1").status, "succeeded");
+  assert.equal(service.getJob("exclusive-2").status, "succeeded");
+});
+
+test("concurrent builds of different software targets remain parallel", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-target-parallel-"));
+  const service = createDefaultBuildDeployService(createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  }));
+  let releaseBoth;
+  const gate = new Promise((resolve) => { releaseBoth = resolve; });
+  let active = 0;
+  let maximumActive = 0;
+  service.runner.run = async (job, packageDir) => {
+    active += 1;
+    maximumActive = Math.max(maximumActive, active);
+    if (active === 2) releaseBoth();
+    await gate;
+    const artifacts = await createTestArtifacts(packageDir, job.job_id);
+    active -= 1;
+    return { status: "succeeded", artifacts };
+  };
+
+  await service.submitJob(buildTargetJob("parallel-target-1", "camera"));
+  await service.submitJob(buildTargetJob("parallel-target-2", "display"));
+  await Promise.all([
+    service.jobs.get("parallel-target-1").promise,
+    service.jobs.get("parallel-target-2").promise,
+  ]);
+
+  assert.equal(maximumActive, 2);
+});
+
+function buildTargetJob(jobId, softwareUnitId) {
+  return {
+    job_id: jobId,
+    project_id: "shared-project",
+    software_unit_id: softwareUnitId,
+    mode: "build",
+    build_package: { files: {
+      "platformio.ini": `[env:${softwareUnitId}]\n`,
+      "src/main.cpp": "void setup() {}\nvoid loop() {}\n",
+    } },
+  };
+}
+
+async function createTestArtifacts(packageDir, content) {
+  const outputDir = path.join(packageDir, ".test-artifacts");
+  await fs.mkdir(outputDir, { recursive: true });
+  const artifacts = Object.fromEntries(["firmware.bin", "firmware.elf", "build.log"]
+    .map((name) => [name, path.join(outputDir, name)]));
+  await Promise.all(Object.values(artifacts).map((file) => fs.writeFile(file, content)));
+  return artifacts;
+}
+
+async function waitFor(predicate) {
+  for (let attempt = 0; attempt < 100; attempt += 1) {
+    if (predicate()) return;
+    await new Promise((resolve) => setImmediate(resolve));
+  }
+  assert.fail("Erwarteter asynchroner Zustand wurde nicht erreicht.");
+}
+
 test("build package target keeps legacy submissions in isolated incremental workspaces", async () => {
   const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-package-target-cache-"));
   const config = createConfig({ BUILD_DEPLOY_RUNTIME_DIR: runtimeDir, BUILD_RUNNER: "mock", NODE_ENV: "test" });

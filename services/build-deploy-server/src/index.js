@@ -7,6 +7,7 @@ const { DeployJobOrchestrator } = require("./modules/deploy-job-orchestrator");
 const { MqttTransport } = require("./modules/mqtt-transport");
 const { PemOtaCommandSigner, SqliteOtaAcknowledgementStore, PostgresOtaAcknowledgementStore } = require("./modules/ota-security");
 const { DeviceJobLock } = require("./modules/device-job-lock");
+const { BuildTargetLock } = require("./modules/build-target-lock");
 const { BuildDeployService } = require("./services/build-deploy-service");
 const { createConfig } = require("./config");
 const { createHttpApp } = require("./http-app");
@@ -51,6 +52,7 @@ function createBuildDeployService(config, { acknowledgementStore, artifactStore 
       acknowledgementStore,
     }),
     deviceJobLock: new DeviceJobLock(),
+    buildTargetLock: new BuildTargetLock(),
     stateStore: config.persistenceBackend === "sqlite"
       ? new SqliteStateStore(config.sqlitePath, "build-deploy-server", {
         defaultState: { jobs: [] },

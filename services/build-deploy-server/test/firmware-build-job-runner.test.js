@@ -6,6 +6,7 @@ const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
 const {
+  FirmwareBuildJobRunner,
   createPlatformioEnv,
   readPlatformioFlashManifest,
 } = require("../src/modules/firmware-build-job-runner");
@@ -62,4 +63,40 @@ test("ESP-IDF component caches are isolated per software target workspace", () =
     path.join(cacheRoot, "project--display--default", "idf-component-cache"),
   );
   assert.notEqual(cameraEnv.IDF_COMPONENT_CACHE_PATH, displayEnv.IDF_COMPONENT_CACHE_PATH);
+});
+
+test("a corrupted ESP-IDF component cache is repaired and retried exactly once", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-idf-retry-"));
+  const packageDir = path.join(root, "workspace");
+  await fs.mkdir(path.join(root, "idf-component-cache", "broken"), { recursive: true });
+  await fs.mkdir(path.join(packageDir, "managed_components", "broken"), { recursive: true });
+  await fs.writeFile(path.join(packageDir, "dependencies.lock"), "broken");
+  await fs.writeFile(path.join(packageDir, "run"), `
+    const fs = require("node:fs");
+    if (!fs.existsSync("retry.marker")) {
+      fs.writeFileSync("retry.marker", "first");
+      console.error('ERROR: The downloaded component "espressif/mqtt" is corrupted.');
+      process.exit(1);
+    }
+    fs.mkdirSync(".pio/build/test", { recursive: true });
+    fs.writeFileSync(".pio/build/test/firmware.bin", "firmware");
+    fs.writeFileSync(".pio/build/test/firmware.elf", "elf");
+    console.log("retry succeeded");
+  `);
+  const progress = [];
+  const runner = new FirmwareBuildJobRunner({
+    runner: "platformio",
+    platformioCommand: process.execPath,
+  });
+
+  const result = await runner.run({ mode: "build" }, packageDir, {
+    onProgress: (line) => progress.push(line),
+  });
+
+  assert.equal(result.status, "succeeded");
+  assert.equal(await fs.readFile(path.join(packageDir, "retry.marker"), "utf8"), "first");
+  assert.equal(await fs.access(path.join(root, "idf-component-cache")).then(() => true).catch(() => false), false);
+  assert.equal(await fs.access(path.join(packageDir, "managed_components")).then(() => true).catch(() => false), false);
+  assert.equal(progress.filter((line) => line.includes("versucht den Build einmal erneut")).length, 1);
+  assert.match(await fs.readFile(path.join(packageDir, "build.log"), "utf8"), /retry succeeded/);
 });

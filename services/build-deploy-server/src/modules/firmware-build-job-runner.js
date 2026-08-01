@@ -69,12 +69,21 @@ async function runMockBuild(job, packageDir) {
 async function runPlatformioBuild(options) {
   const logPath = path.join(options.packageDir, "build.log");
   const env = createPlatformioEnv(options.cacheDir, options.packageDir);
-  const result = await spawnAndCapture(options.command, ["run"], {
+  const spawnOptions = {
     cwd: options.packageDir,
     env,
     onOutput: options.onProgress,
-  });
+  };
+  let result = await spawnAndCapture(options.command, ["run"], spawnOptions);
   let output = result.output;
+
+  if (result.exitCode !== 0 && isCorruptedEspIdfComponentCache(output)) {
+    const retryMessage = "ESP-IDF-Abhängigkeitscache beschädigt. GerNetiX bereinigt nur dieses Build-Ziel und versucht den Build einmal erneut.";
+    if (typeof options.onProgress === "function") options.onProgress(retryMessage);
+    await clearEspIdfTargetCache(options.packageDir);
+    result = await spawnAndCapture(options.command, ["run"], spawnOptions);
+    output = `${output}\n${retryMessage}\n${result.output}`;
+  }
 
   if (result.exitCode !== 0) {
     await fs.writeFile(logPath, output);
@@ -105,6 +114,22 @@ function createPlatformioEnv(cacheDir, packageDir) {
     env.IDF_COMPONENT_CACHE_PATH = path.resolve(packageDir, "..", "idf-component-cache");
   }
   return env;
+}
+
+function isCorruptedEspIdfComponentCache(output) {
+  const text = String(output || "");
+  if (/downloaded component ["'].+["'] is corrupted/i.test(text)) return true;
+  return /directory not empty/i.test(text)
+    && /(?:Espressif[\\/]ComponentManager|managed_components|espressif__)/i.test(text);
+}
+
+async function clearEspIdfTargetCache(packageDir) {
+  await Promise.all([
+    fs.rm(path.resolve(packageDir, "..", "idf-component-cache"), { recursive: true, force: true }),
+    fs.rm(path.join(packageDir, ".pio"), { recursive: true, force: true }),
+    fs.rm(path.join(packageDir, "managed_components"), { recursive: true, force: true }),
+    fs.rm(path.join(packageDir, "dependencies.lock"), { force: true }),
+  ]);
 }
 
 function spawnAndCapture(command, args, options) {
@@ -210,4 +235,10 @@ async function walk(rootDir, currentDir, result) {
   }
 }
 
-module.exports = { FirmwareBuildJobRunner, createPlatformioEnv, readPlatformioFlashManifest };
+module.exports = {
+  FirmwareBuildJobRunner,
+  clearEspIdfTargetCache,
+  createPlatformioEnv,
+  isCorruptedEspIdfComponentCache,
+  readPlatformioFlashManifest,
+};

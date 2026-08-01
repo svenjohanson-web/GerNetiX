@@ -25,6 +25,9 @@ Ein reiner Build aus der Entwicklungsplattform benoetigt kein Inventar-Device. E
 - PlatformIO-, ESP-IDF-, CMake- und Ninja-Caches werden nicht nach jedem Build geloescht.
 - Basissoftware-Artefakte werden ueber Basissoftware-Version, Toolchain-Version, Board und Build-Konfiguration adressiert.
 - Projekt- und Generated-Artefakte werden separat pro Projekt, Nutzer oder Build-ID erzeugt.
+- Der ESP-IDF-Komponenten-Downloadcache liegt getrennt pro Projekt, Software-Einheit und Zielgeraet. Unterschiedliche Build-Ziele duerfen diesen mutierbaren Cache nie gemeinsam verwenden.
+- Auftraege fuer dasselbe Projekt, dieselbe Software-Einheit und dasselbe Zielgeraet werden serverseitig exklusiv und geordnet ausgefuehrt. Auftraege fuer unterschiedliche Ziele bleiben parallel.
+- Erkennt der Runner einen beschaedigten ESP-IDF-Komponentencache, verwirft er ausschliesslich den technischen Cache dieses Ziels und wiederholt den Build genau einmal. Ein erneuter Fehler wird mit dem vollstaendigen Build-Log gemeldet.
 
 ## Abhaengigkeitsregeln
 
@@ -46,4 +49,4 @@ Danach werden alle Objektdateien gelinkt, signiert und als OTA-Image bereitgeste
 
 ## Skalierung
 
-Mehrere gleichzeitige Nutzer verwenden dieselbe gecachte Core-Basis. Nur ihre jeweiligen Projekt- und Generated-Komponenten werden neu gebaut. Dadurch sinken CPU-Last, Speicherbedarf und Buildzeit pro Nutzer.
+Mehrere gleichzeitige Nutzer verwenden dieselbe gecachte Core-Basis. Ihre mutierbaren Projekt- und ESP-IDF-Komponentencaches bleiben jedoch pro Build-Ziel getrennt. Gleichzeitige Auftraege desselben Ziels werden geordnet, unterschiedliche Ziele parallel gebaut. Dadurch bleiben Cache-Korrektheit und inkrementelle Buildzeit auch bei paralleler Nutzung erhalten.

@@ -153,6 +153,8 @@ HTTPS dient fuer:
 
 ## Nebenlaeufigkeit
 
+- pro Projekt, Software-Einheit und Zielgeraet maximal ein aktiver Build; weitere Auftraege desselben Build-Ziels warten geordnet
+- unterschiedliche Build-Ziele bleiben parallel ausfuehrbar
 - pro Device maximal ein aktiver Build-/Deploy-Job
 - optional genau ein wartender Job pro Device
 - neue wartende Jobs ersetzen aeltere wartende Jobs
@@ -164,6 +166,7 @@ HTTPS dient fuer:
 - `prebuild-scheduler`: Prebuild der Projekthuelle
 - `deploy-job-orchestrator`: OTA-/Deploy-Auftraege
 - `device-job-lock`: Nebenlaeufigkeit pro Device
+- `build-target-lock`: exklusiver Zugriff auf den inkrementellen Workspace und ESP-IDF-Komponentencache eines Build-Ziels
 
 ## Nicht-Ziele fuer diesen Stand
 
