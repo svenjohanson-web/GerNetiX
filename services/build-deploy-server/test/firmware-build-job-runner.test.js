@@ -5,8 +5,10 @@ const fs = require("node:fs/promises");
 const os = require("node:os");
 const path = require("node:path");
 const test = require("node:test");
-
-const { readPlatformioFlashManifest } = require("../src/modules/firmware-build-job-runner");
+const {
+  createPlatformioEnv,
+  readPlatformioFlashManifest,
+} = require("../src/modules/firmware-build-job-runner");
 
 test("reads target-specific PlatformIO flash offsets instead of assuming classic ESP32 addresses", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-flash-args-"));
@@ -40,4 +42,24 @@ test("ignores unknown files from PlatformIO flash arguments", async () => {
   assert.deepEqual(await readPlatformioFlashManifest(root, {
     "bootloader.bin": "/build/bootloader.bin",
   }), [{ name: "bootloader.bin", address: 0x0000 }]);
+});
+
+test("ESP-IDF component caches are isolated per software target workspace", () => {
+  const cacheRoot = path.join(path.sep, "runtime", "incremental-build-cache");
+  const cameraWorkspace = path.join(cacheRoot, "project--camera--default", "workspace");
+  const displayWorkspace = path.join(cacheRoot, "project--display--default", "workspace");
+
+  const cameraEnv = createPlatformioEnv("/platformio", cameraWorkspace);
+  const displayEnv = createPlatformioEnv("/platformio", displayWorkspace);
+
+  assert.equal(cameraEnv.PLATFORMIO_CORE_DIR, "/platformio");
+  assert.equal(
+    cameraEnv.IDF_COMPONENT_CACHE_PATH,
+    path.join(cacheRoot, "project--camera--default", "idf-component-cache"),
+  );
+  assert.equal(
+    displayEnv.IDF_COMPONENT_CACHE_PATH,
+    path.join(cacheRoot, "project--display--default", "idf-component-cache"),
+  );
+  assert.notEqual(cameraEnv.IDF_COMPONENT_CACHE_PATH, displayEnv.IDF_COMPONENT_CACHE_PATH);
 });

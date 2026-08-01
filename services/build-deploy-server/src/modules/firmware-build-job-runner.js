@@ -68,7 +68,7 @@ async function runMockBuild(job, packageDir) {
 
 async function runPlatformioBuild(options) {
   const logPath = path.join(options.packageDir, "build.log");
-  const env = createPlatformioEnv(options.cacheDir);
+  const env = createPlatformioEnv(options.cacheDir, options.packageDir);
   const result = await spawnAndCapture(options.command, ["run"], {
     cwd: options.packageDir,
     env,
@@ -95,9 +95,15 @@ async function runPlatformioBuild(options) {
   return { status: "succeeded", artifacts: artifactPaths, flash_manifest: flashManifest, usb_flash: usbFlash };
 }
 
-function createPlatformioEnv(cacheDir) {
+function createPlatformioEnv(cacheDir, packageDir) {
   const env = { ...process.env };
   if (cacheDir) env.PLATFORMIO_CORE_DIR = cacheDir;
+  if (packageDir) {
+    // The ESP-IDF Component Manager otherwise uses one process-global download
+    // cache. Parallel software targets can then delete/unpack the same component
+    // concurrently and leave both builds with a corrupted dependency.
+    env.IDF_COMPONENT_CACHE_PATH = path.resolve(packageDir, "..", "idf-component-cache");
+  }
   return env;
 }
 
@@ -204,4 +210,4 @@ async function walk(rootDir, currentDir, result) {
   }
 }
 
-module.exports = { FirmwareBuildJobRunner, readPlatformioFlashManifest };
+module.exports = { FirmwareBuildJobRunner, createPlatformioEnv, readPlatformioFlashManifest };
