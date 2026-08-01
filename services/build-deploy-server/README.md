@@ -155,6 +155,7 @@ HTTPS dient fuer:
 
 - pro Projekt, Software-Einheit und Zielgeraet maximal ein aktiver Build; weitere Auftraege desselben Build-Ziels warten geordnet
 - unterschiedliche Build-Ziele bleiben parallel ausfuehrbar
+- jeder BuildJob schreibt Firmware- und Linker-Ausgaben in einen ausschließlich über seine eindeutige BuildJob-ID adressierten Ordner
 - pro Device maximal ein aktiver Build-/Deploy-Job
 - optional genau ein wartender Job pro Device
 - neue wartende Jobs ersetzen aeltere wartende Jobs

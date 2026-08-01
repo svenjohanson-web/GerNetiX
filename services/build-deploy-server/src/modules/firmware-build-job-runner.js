@@ -18,6 +18,7 @@ class FirmwareBuildJobRunner {
         packageDir,
         cacheDir: this.cacheDir,
         browserFlashRequested: job.mode === "build_and_usb_flash",
+        buildDir: options.buildDir,
         onProgress: options.onProgress,
       });
     }
@@ -25,12 +26,12 @@ class FirmwareBuildJobRunner {
     if (this.runner !== "mock" || !this.allowMockRunner) {
       throw new BuildDeployError("invalid_build_runner", "Nur der echte PlatformIO-Build-Runner ist ausserhalb von Tests erlaubt.", 500);
     }
-    return runMockBuild(job, packageDir);
+    return runMockBuild(job, packageDir, options.buildDir);
   }
 }
 
-async function runMockBuild(job, packageDir) {
-  const outputDir = path.join(packageDir, ".gernetix-build");
+async function runMockBuild(job, packageDir, buildDir) {
+  const outputDir = buildDir || path.join(packageDir, ".gernetix-build");
   await fs.mkdir(outputDir, { recursive: true });
 
   const metadata = {
@@ -67,8 +68,9 @@ async function runMockBuild(job, packageDir) {
 }
 
 async function runPlatformioBuild(options) {
-  const logPath = path.join(options.packageDir, "build.log");
-  const env = createPlatformioEnv(options.cacheDir, options.packageDir);
+  const buildDir = options.buildDir || path.join(options.packageDir, ".pio", "build");
+  const logPath = path.join(buildDir, "build.log");
+  const env = createPlatformioEnv(options.cacheDir, options.packageDir, buildDir);
   const spawnOptions = {
     cwd: options.packageDir,
     env,
@@ -80,12 +82,13 @@ async function runPlatformioBuild(options) {
   if (result.exitCode !== 0 && isCorruptedEspIdfComponentCache(output)) {
     const retryMessage = "ESP-IDF-Abhängigkeitscache beschädigt. GerNetiX bereinigt nur dieses Build-Ziel und versucht den Build einmal erneut.";
     if (typeof options.onProgress === "function") options.onProgress(retryMessage);
-    await clearEspIdfTargetCache(options.packageDir);
+    await clearEspIdfTargetCache(options.packageDir, buildDir);
     result = await spawnAndCapture(options.command, ["run"], spawnOptions);
     output = `${output}\n${retryMessage}\n${result.output}`;
   }
 
   if (result.exitCode !== 0) {
+    await fs.mkdir(buildDir, { recursive: true });
     await fs.writeFile(logPath, output);
     throw new BuildDeployError("build_failed", "PlatformIO-Build fehlgeschlagen.", 422, {
       exit_code: result.exitCode,
@@ -97,14 +100,14 @@ async function runPlatformioBuild(options) {
     ? { requested: true, status: "browser_required", runner: "web_serial", transport: "web_serial" }
     : { requested: false, status: "not_requested" };
 
+  await fs.mkdir(buildDir, { recursive: true });
   await fs.writeFile(logPath, output);
-  const buildDir = path.join(options.packageDir, ".pio", "build");
   const { artifacts: artifactPaths, flashManifest } = await findPlatformioArtifacts(buildDir);
   artifactPaths["build.log"] = logPath;
   return { status: "succeeded", artifacts: artifactPaths, flash_manifest: flashManifest, usb_flash: usbFlash };
 }
 
-function createPlatformioEnv(cacheDir, packageDir) {
+function createPlatformioEnv(cacheDir, packageDir, buildDir) {
   const env = { ...process.env };
   if (cacheDir) env.PLATFORMIO_CORE_DIR = cacheDir;
   if (packageDir) {
@@ -112,7 +115,9 @@ function createPlatformioEnv(cacheDir, packageDir) {
     // cache. Parallel software targets can then delete/unpack the same component
     // concurrently and leave both builds with a corrupted dependency.
     env.IDF_COMPONENT_CACHE_PATH = path.resolve(packageDir, "..", "idf-component-cache");
+    env.PLATFORMIO_BUILD_CACHE_DIR = path.resolve(packageDir, "..", "platformio-object-cache");
   }
+  if (buildDir) env.PLATFORMIO_BUILD_DIR = path.resolve(buildDir);
   return env;
 }
 
@@ -123,10 +128,11 @@ function isCorruptedEspIdfComponentCache(output) {
     && /(?:Espressif[\\/]ComponentManager|managed_components|espressif__)/i.test(text);
 }
 
-async function clearEspIdfTargetCache(packageDir) {
+async function clearEspIdfTargetCache(packageDir, buildDir = path.join(packageDir, ".pio", "build")) {
   await Promise.all([
     fs.rm(path.resolve(packageDir, "..", "idf-component-cache"), { recursive: true, force: true }),
-    fs.rm(path.join(packageDir, ".pio"), { recursive: true, force: true }),
+    fs.rm(path.resolve(packageDir, "..", "platformio-object-cache"), { recursive: true, force: true }),
+    fs.rm(buildDir, { recursive: true, force: true }),
     fs.rm(path.join(packageDir, "managed_components"), { recursive: true, force: true }),
     fs.rm(path.join(packageDir, "dependencies.lock"), { force: true }),
   ]);

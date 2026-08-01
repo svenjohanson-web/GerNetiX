@@ -50,8 +50,10 @@ test("ESP-IDF component caches are isolated per software target workspace", () =
   const cameraWorkspace = path.join(cacheRoot, "project--camera--default", "workspace");
   const displayWorkspace = path.join(cacheRoot, "project--display--default", "workspace");
 
-  const cameraEnv = createPlatformioEnv("/platformio", cameraWorkspace);
-  const displayEnv = createPlatformioEnv("/platformio", displayWorkspace);
+  const cameraBuildDir = path.join(cacheRoot, "project--camera--default", "build-jobs", "job-1");
+  const displayBuildDir = path.join(cacheRoot, "project--display--default", "build-jobs", "job-2");
+  const cameraEnv = createPlatformioEnv("/platformio", cameraWorkspace, cameraBuildDir);
+  const displayEnv = createPlatformioEnv("/platformio", displayWorkspace, displayBuildDir);
 
   assert.equal(cameraEnv.PLATFORMIO_CORE_DIR, "/platformio");
   assert.equal(
@@ -63,11 +65,19 @@ test("ESP-IDF component caches are isolated per software target workspace", () =
     path.join(cacheRoot, "project--display--default", "idf-component-cache"),
   );
   assert.notEqual(cameraEnv.IDF_COMPONENT_CACHE_PATH, displayEnv.IDF_COMPONENT_CACHE_PATH);
+  assert.equal(cameraEnv.PLATFORMIO_BUILD_DIR, cameraBuildDir);
+  assert.equal(displayEnv.PLATFORMIO_BUILD_DIR, displayBuildDir);
+  assert.notEqual(cameraEnv.PLATFORMIO_BUILD_DIR, displayEnv.PLATFORMIO_BUILD_DIR);
+  assert.equal(
+    cameraEnv.PLATFORMIO_BUILD_CACHE_DIR,
+    path.join(cacheRoot, "project--camera--default", "platformio-object-cache"),
+  );
 });
 
 test("a corrupted ESP-IDF component cache is repaired and retried exactly once", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-idf-retry-"));
   const packageDir = path.join(root, "workspace");
+  const buildDir = path.join(root, "build-jobs", "retry-job");
   await fs.mkdir(path.join(root, "idf-component-cache", "broken"), { recursive: true });
   await fs.mkdir(path.join(packageDir, "managed_components", "broken"), { recursive: true });
   await fs.writeFile(path.join(packageDir, "dependencies.lock"), "broken");
@@ -78,9 +88,11 @@ test("a corrupted ESP-IDF component cache is repaired and retried exactly once",
       console.error('ERROR: The downloaded component "espressif/mqtt" is corrupted.');
       process.exit(1);
     }
-    fs.mkdirSync(".pio/build/test", { recursive: true });
-    fs.writeFileSync(".pio/build/test/firmware.bin", "firmware");
-    fs.writeFileSync(".pio/build/test/firmware.elf", "elf");
+    const path = require("node:path");
+    const output = path.join(process.env.PLATFORMIO_BUILD_DIR, "test");
+    fs.mkdirSync(output, { recursive: true });
+    fs.writeFileSync(path.join(output, "firmware.bin"), "firmware");
+    fs.writeFileSync(path.join(output, "firmware.elf"), "elf");
     console.log("retry succeeded");
   `);
   const progress = [];
@@ -90,6 +102,7 @@ test("a corrupted ESP-IDF component cache is repaired and retried exactly once",
   });
 
   const result = await runner.run({ mode: "build" }, packageDir, {
+    buildDir,
     onProgress: (line) => progress.push(line),
   });
 
@@ -98,5 +111,5 @@ test("a corrupted ESP-IDF component cache is repaired and retried exactly once",
   assert.equal(await fs.access(path.join(root, "idf-component-cache")).then(() => true).catch(() => false), false);
   assert.equal(await fs.access(path.join(packageDir, "managed_components")).then(() => true).catch(() => false), false);
   assert.equal(progress.filter((line) => line.includes("versucht den Build einmal erneut")).length, 1);
-  assert.match(await fs.readFile(path.join(packageDir, "build.log"), "utf8"), /retry succeeded/);
+  assert.match(await fs.readFile(path.join(buildDir, "build.log"), "utf8"), /retry succeeded/);
 });

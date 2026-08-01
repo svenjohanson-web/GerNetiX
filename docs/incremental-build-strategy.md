@@ -27,6 +27,8 @@ Ein reiner Build aus der Entwicklungsplattform benoetigt kein Inventar-Device. E
 - Projekt- und Generated-Artefakte werden separat pro Projekt, Nutzer oder Build-ID erzeugt.
 - Der ESP-IDF-Komponenten-Downloadcache liegt getrennt pro Projekt, Software-Einheit und Zielgeraet. Unterschiedliche Build-Ziele duerfen diesen mutierbaren Cache nie gemeinsam verwenden.
 - Auftraege fuer dasselbe Projekt, dieselbe Software-Einheit und dasselbe Zielgeraet werden serverseitig exklusiv und geordnet ausgefuehrt. Auftraege fuer unterschiedliche Ziele bleiben parallel.
+- Jeder Auftrag erhaelt ueber seine eindeutige BuildJob-ID einen eigenen beschreibbaren PlatformIO-Buildordner. Firmware, ELF, Map, Build-Log und weitere Ausgaben zweier Jobs duerfen niemals denselben Ausgabepfad verwenden.
+- Wiederverwendbare Objekt- und Abhaengigkeitscaches werden ueber den stabilen Build-Zielschluessel adressiert; schreibbare Ergebnisordner werden ueber die BuildJob-ID adressiert. Build-Ziel-ID und BuildJob-ID duerfen nicht vermischt werden.
 - Erkennt der Runner einen beschaedigten ESP-IDF-Komponentencache, verwirft er ausschliesslich den technischen Cache dieses Ziels und wiederholt den Build genau einmal. Ein erneuter Fehler wird mit dem vollstaendigen Build-Log gemeldet.
 
 ## Abhaengigkeitsregeln

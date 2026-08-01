@@ -291,7 +291,9 @@ test("concurrent builds of the same software target are executed exclusively", a
   const started = new Promise((resolve) => { firstStarted = resolve; });
   let active = 0;
   let maximumActive = 0;
-  service.runner.run = async (job, packageDir) => {
+  const buildDirs = new Map();
+  service.runner.run = async (job, packageDir, options) => {
+    buildDirs.set(job.job_id, options.buildDir);
     active += 1;
     maximumActive = Math.max(maximumActive, active);
     if (job.job_id === "exclusive-1") {
@@ -318,6 +320,26 @@ test("concurrent builds of the same software target are executed exclusively", a
   assert.equal(maximumActive, 1);
   assert.equal(service.getJob("exclusive-1").status, "succeeded");
   assert.equal(service.getJob("exclusive-2").status, "succeeded");
+  assert.notEqual(buildDirs.get("exclusive-1"), buildDirs.get("exclusive-2"));
+  assert.match(buildDirs.get("exclusive-1"), /build-jobs/);
+  assert.equal(await fs.access(buildDirs.get("exclusive-1")).then(() => true).catch(() => false), false);
+  assert.equal(await fs.access(buildDirs.get("exclusive-2")).then(() => true).catch(() => false), false);
+});
+
+test("a BuildJob id can never address a second output directory", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-duplicate-job-"));
+  const service = createDefaultBuildDeployService(createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  }));
+
+  await service.submitJob(buildTargetJob("unique-job", "camera"));
+  await assert.rejects(
+    service.submitJob(buildTargetJob("unique-job", "display")),
+    (error) => error.code === "duplicate_job_id" && error.status === 409,
+  );
+  await service.jobs.get("unique-job").promise;
 });
 
 test("concurrent builds of different software targets remain parallel", async () => {

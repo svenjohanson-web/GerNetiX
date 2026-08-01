@@ -21,9 +21,11 @@ class BuildPackageStore {
     const persistentCacheDir = this.incrementalProjectCacheDir(job);
     const jobDir = persistentCacheDir || path.join(this.tempDir, sanitizeName(job.job_id));
     const packageDir = persistentCacheDir ? path.join(jobDir, "workspace") : path.join(jobDir, "build-package");
+    const buildDir = path.join(jobDir, "build-jobs", jobStorageKey(job.job_id));
     const packageManifestPath = path.join(jobDir, ".gernetix-package-files.json");
     const platformioConfigHashPath = path.join(jobDir, ".gernetix-platformio-config.sha256");
     if (!persistentCacheDir) await fs.rm(jobDir, { recursive: true, force: true });
+    else await fs.rm(buildDir, { recursive: true, force: true });
     await fs.mkdir(packageDir, { recursive: true });
 
     try {
@@ -54,7 +56,7 @@ class BuildPackageStore {
       throw error;
     }
 
-    return { jobDir, packageDir, persistent: Boolean(persistentCacheDir) };
+    return { jobDir, packageDir, buildDir, persistent: Boolean(persistentCacheDir) };
   }
 
   async preserveIncrementalCache(job, packageDir) {
@@ -98,8 +100,19 @@ class BuildPackageStore {
 
   async cleanup(workspace) {
     const normalized = typeof workspace === "string" ? { jobDir: workspace, persistent: false } : workspace;
-    if (!normalized?.persistent) await fs.rm(normalized.jobDir, { recursive: true, force: true });
+    if (!normalized?.persistent) {
+      await fs.rm(normalized.jobDir, { recursive: true, force: true });
+      return;
+    }
+    if (normalized.buildDir) await fs.rm(normalized.buildDir, { recursive: true, force: true });
   }
+}
+
+function jobStorageKey(jobId) {
+  const value = String(jobId || "job");
+  const prefix = sanitizeName(value).slice(0, 48) || "job";
+  const digest = crypto.createHash("sha256").update(value).digest("hex").slice(0, 16);
+  return `${prefix}--${digest}`;
 }
 
 function buildPackageSoftwareUnitId(buildPackage) {

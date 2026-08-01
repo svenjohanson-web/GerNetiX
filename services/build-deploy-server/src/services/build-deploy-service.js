@@ -17,6 +17,9 @@ class BuildDeployService {
 
   async submitJob(input) {
     const job = normalizeJob(input);
+    if (this.jobs.has(job.job_id)) {
+      throw new BuildDeployError("duplicate_job_id", "Diese BuildJob-ID wurde bereits verwendet.", 409);
+    }
     this.jobs.set(job.job_id, job);
     this.persistJobs();
 
@@ -118,6 +121,7 @@ class BuildDeployService {
     try {
       this.reportProgress(job, "compiling", "PlatformIO startet die Kompilierung.");
       const buildOutput = await this.runner.run(job, workspace.packageDir, {
+        buildDir: workspace.buildDir,
         onProgress: (line) => this.reportProgress(job, "compiling", line),
       });
       this.reportProgress(job, "artifacts", "Firmware-Artefakte werden gesichert.");
