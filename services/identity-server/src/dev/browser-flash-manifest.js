@@ -15,4 +15,12 @@ function completeBrowserFlashDefinitions(runnerManifest = [], fallbackDefinition
   return [...definitions.entries()].sort((left, right) => left[1] - right[1]);
 }
 
-module.exports = { completeBrowserFlashDefinitions };
+function esp32FirmwareAddress(buildConfig = {}) {
+  const basisId = String(buildConfig.firmware_basis_id || "").trim();
+  const variant = String(buildConfig.firmware_basis_variant || "full").trim().toLowerCase();
+  return basisId === "gernetix-runtime-basissoftware" && variant !== "low"
+    ? 0x20000
+    : 0x10000;
+}
+
+module.exports = { completeBrowserFlashDefinitions, esp32FirmwareAddress };

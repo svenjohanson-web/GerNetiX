@@ -29,7 +29,7 @@ const {
   migrateCameraTemplateDisplayGpioTypes,
   migrateCameraTemplateWifiArchitecture,
 } = require("./dev/development-project-template-migrations");
-const { completeBrowserFlashDefinitions } = require("./dev/browser-flash-manifest");
+const { completeBrowserFlashDefinitions, esp32FirmwareAddress } = require("./dev/browser-flash-manifest");
 const { mergeBoardFeatures } = require("./dev/board-configuration-merge");
 const {
   developmentProjectTemplate,
@@ -2701,7 +2701,7 @@ function browserFlashManifest(jobId, completedJob, buildConfig = {}) {
     ["bootloader.bin", esp32BootloaderAddress(buildConfig)],
     ["partitions.bin", 0x8000],
     ["boot_app0.bin", 0xe000],
-    ["firmware.bin", 0x10000],
+    ["firmware.bin", esp32FirmwareAddress(buildConfig)],
   ];
   const definitions = completeBrowserFlashDefinitions(runnerManifest, fallbackDefinitions);
   return definitions.filter(([name, address]) => artifacts[name] && Number.isInteger(address) && address >= 0).map(([name, address]) => ({

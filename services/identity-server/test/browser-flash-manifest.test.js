@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { completeBrowserFlashDefinitions } = require("../src/dev/browser-flash-manifest");
+const { completeBrowserFlashDefinitions, esp32FirmwareAddress } = require("../src/dev/browser-flash-manifest");
 
 test("completes a partial ESP32 runner manifest without replacing known target addresses", () => {
   const definitions = completeBrowserFlashDefinitions([
@@ -19,4 +19,20 @@ test("completes a partial ESP32 runner manifest without replacing known target a
     ["boot_app0.bin", 0xe000],
     ["firmware.bin", 0x10000],
   ]);
+});
+
+test("uses the first real app partition of the GerNetiX basissoftware as firmware fallback", () => {
+  assert.equal(esp32FirmwareAddress({
+    firmware_basis_id: "gernetix-runtime-basissoftware",
+    firmware_basis_variant: "full",
+  }), 0x20000);
+  assert.equal(esp32FirmwareAddress({
+    firmware_basis_id: "gernetix-runtime-basissoftware",
+    firmware_basis_variant: "medium",
+  }), 0x20000);
+  assert.equal(esp32FirmwareAddress({
+    firmware_basis_id: "gernetix-runtime-basissoftware",
+    firmware_basis_variant: "low",
+  }), 0x10000);
+  assert.equal(esp32FirmwareAddress({ framework: "espidf" }), 0x10000);
 });
