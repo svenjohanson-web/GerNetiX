@@ -293,9 +293,12 @@ class ProjectService {
     const allSources = await this.repository.listSources(project.project_id);
     const sources = sourcesForSoftwareUnit(allSources, softwareUnit, softwareUnits);
     const currentSnapshotSha256 = projectVersionHash(sanitizeProject(project), sources);
+    const normalizedBuildSnapshotSha256 = job.project_snapshot && Array.isArray(job.source_snapshot)
+      ? projectVersionHash(job.project_snapshot, job.source_snapshot)
+      : job.snapshot_sha256;
     const reusable = job.status === "succeeded"
-      && Boolean(job.snapshot_sha256)
-      && job.snapshot_sha256 === currentSnapshotSha256;
+      && Boolean(normalizedBuildSnapshotSha256)
+      && normalizedBuildSnapshotSha256 === currentSnapshotSha256;
     return {
       build_job_id: job.build_job_id,
       project_id: job.project_id,
@@ -307,7 +310,7 @@ class ProjectService {
         : job.status !== "succeeded"
           ? "build_not_successful"
           : "project_snapshot_changed",
-      build_snapshot_sha256: job.snapshot_sha256 || "",
+      build_snapshot_sha256: normalizedBuildSnapshotSha256 || "",
       current_snapshot_sha256: currentSnapshotSha256,
     };
   }

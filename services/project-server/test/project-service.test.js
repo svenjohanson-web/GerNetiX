@@ -534,7 +534,8 @@ test("reuses a successful firmware build only while its exact project snapshot i
 });
 
 test("does not invalidate firmware when only board snapshot timestamps are refreshed", async () => {
-  const service = createMemoryProjectServer();
+  const repository = new InMemoryProjectRepository();
+  const service = new ProjectService({ repository });
   const boardConfiguration = {
     source: "catalog",
     snapshot_at: "2026-08-01T20:00:00.000Z",
@@ -548,6 +549,8 @@ test("does not invalidate firmware when only board snapshot timestamps are refre
   const job = await service.createBuildJob(project.project_id, { mode: "build" });
   await service.createBuildPackage(job.build_job_id);
   await service.recordBuildResult(job.build_job_id, { status: "succeeded" });
+  const completedJob = await service.getBuildJob(job.build_job_id);
+  await repository.saveBuildJob({ ...completedJob, snapshot_sha256: "legacy-hash-with-volatile-timestamps" });
 
   await service.updateProject(project.project_id, {
     build_config: { board_configuration: { ...boardConfiguration, snapshot_at: "2026-08-01T20:01:00.000Z" } },
