@@ -40,3 +40,7 @@ test("a project AP client joins the derived camera WLAN without overwriting save
   assert.match(clientMode, /connectWifiStation\(projectCredentials/);
   assert.doesNotMatch(clientMode.slice(0, clientMode.indexOf("#endif")), /saveWifiStationCredentials/);
 });
+
+test("the access-point DHCP lease is configured on the access-point network interface", () => {
+  assert.match(source, /esp_netif_dhcps_option\(\s*accessPointNetif,\s*ESP_NETIF_OP_SET,\s*ESP_NETIF_REQUESTED_IP_ADDRESS/);
+});

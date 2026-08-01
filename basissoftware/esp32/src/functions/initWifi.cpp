@@ -227,6 +227,7 @@ void configureAccessPointIpv4() {
   lease.start_ip.addr = inet_addr(GERNETIX_ACCESS_POINT_DHCP_START);
   lease.end_ip.addr = inet_addr(GERNETIX_ACCESS_POINT_DHCP_END);
   ESP_ERROR_CHECK(esp_netif_dhcps_option(
+      accessPointNetif,
       ESP_NETIF_OP_SET,
       ESP_NETIF_REQUESTED_IP_ADDRESS,
       &lease,
