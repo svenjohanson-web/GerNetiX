@@ -25,6 +25,7 @@ test("uses targeted health checks for incremental changes and keeps the full saf
   assert.match(remoteDeploy, /nft -c -f infra\/vps\/security\/firewall\.nft/);
   assert.match(remoteDeploy, /up -d --wait --wait-timeout "\$wait_timeout"/);
   assert.match(remoteDeploy, /postgres-consolidation-migration/);
+  assert.match(remoteDeploy, /--force-recreate build-router nginx/);
 });
 
 test("keeps npm installs cached when only service source files change", () => {

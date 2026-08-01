@@ -207,8 +207,9 @@ docker compose --env-file "$env_file" -f compose.vps.yaml --profile postgres-con
 echo "==> Alte PostgreSQL-Container erst nach erfolgreicher Konsolidierung entfernen"
 docker compose --env-file "$env_file" -f compose.vps.yaml up -d --remove-orphans
 
-echo "==> Nginx an aktuelle Upstreams und Bind-Mounts binden"
-docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --force-recreate nginx
+echo "==> Build-Router und Nginx an aktuelle Upstreams und Bind-Mounts binden"
+docker compose --env-file "$env_file" -f compose.vps.yaml up -d --no-deps --wait \
+  --wait-timeout "$wait_timeout" --force-recreate build-router nginx
 
 echo "==> HTTPS-Zertifikat fuer die oeffentlichen GerNetiX-Domains bereitstellen"
 docker compose --env-file "$env_file" -f compose.vps.yaml --profile tls run --rm --entrypoint certbot certbot \
