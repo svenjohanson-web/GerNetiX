@@ -567,6 +567,31 @@ test("does not invalidate firmware when only board snapshot timestamps are refre
   assert.equal((await service.buildReuseStatus(job.build_job_id)).reusable, false);
 });
 
+test("does not invalidate firmware when only template runtime migration bookkeeping changes", async () => {
+  const service = createMemoryProjectServer();
+  const project = await service.createProject({
+    user_id: "user-1",
+    title: "Kameraprojekt",
+    build_config: { platform: "espressif32", board: "esp32-s3-devkitc-1", framework: "espidf" },
+    view_manifest: {
+      template_id: "esp32_camera_to_touch_display",
+      template_ref: { template_id: "esp32_camera_to_touch_display", model_schema_version: 1 },
+    },
+  });
+  const job = await service.createBuildJob(project.project_id, { mode: "build" });
+  await service.createBuildPackage(job.build_job_id);
+  await service.recordBuildResult(job.build_job_id, { status: "succeeded" });
+
+  await service.updateProject(project.project_id, {
+    view_manifest: {
+      ...project.view_manifest,
+      template_ref: { ...project.view_manifest.template_ref, runtime_model_version: 19 },
+    },
+  });
+
+  assert.equal((await service.buildReuseStatus(job.build_job_id)).reusable, true);
+});
+
 test("does not invalidate firmware when PostgreSQL returns JSON object keys in another order", async () => {
   const repository = new InMemoryProjectRepository();
   const service = new ProjectService({ repository });

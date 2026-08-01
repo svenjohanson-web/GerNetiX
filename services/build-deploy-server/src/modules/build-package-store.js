@@ -39,11 +39,18 @@ class BuildPackageStore {
     const persistentCacheDir = this.incrementalProjectCacheDir(job);
     const jobDir = persistentCacheDir || path.join(this.tempDir, sanitizeName(job.job_id));
     const packageDir = persistentCacheDir ? path.join(jobDir, "workspace") : path.join(jobDir, "build-package");
-    const buildDir = path.join(jobDir, "build-jobs", jobStorageKey(job.job_id));
+    // PlatformIO/CMake records absolute paths in its intermediate files. A new
+    // job directory therefore cannot be copied into the next job reliably and
+    // turned every project build into a full build. Project targets are already
+    // protected by the distributed target lock, so their intermediate build
+    // directory can safely stay stable. Final artifacts remain job-scoped in
+    // ArtifactStore and are never read from this technical cache.
+    const buildDir = persistentCacheDir
+      ? path.join(packageDir, ".pio", "build")
+      : path.join(jobDir, "build-jobs", jobStorageKey(job.job_id));
     const packageManifestPath = path.join(jobDir, ".gernetix-package-files.json");
     const platformioConfigHashPath = path.join(jobDir, ".gernetix-platformio-config.sha256");
     if (!persistentCacheDir) await fs.rm(jobDir, { recursive: true, force: true });
-    else await fs.rm(buildDir, { recursive: true, force: true });
     await fs.mkdir(packageDir, { recursive: true });
 
     try {
@@ -77,24 +84,6 @@ class BuildPackageStore {
     return { jobDir, packageDir, buildDir, persistent: Boolean(persistentCacheDir) };
   }
 
-  async preserveIncrementalCache(job, packageDir) {
-    if (job.project_id) return;
-    const cacheDir = this.incrementalProjectCacheDir(job);
-    if (!cacheDir) return;
-    const platformioBuildDir = path.join(packageDir, ".pio");
-    try {
-      await fs.access(platformioBuildDir);
-    } catch {
-      return;
-    }
-    const nextCacheDir = `${cacheDir}.next`;
-    await fs.rm(nextCacheDir, { recursive: true, force: true });
-    await fs.mkdir(path.dirname(cacheDir), { recursive: true });
-    await fs.cp(platformioBuildDir, nextCacheDir, { recursive: true });
-    await fs.rm(cacheDir, { recursive: true, force: true });
-    await fs.rename(nextCacheDir, cacheDir);
-  }
-
   incrementalProjectCacheDir(job) {
     if (!this.incrementalCacheDir || !job.project_id) return null;
     const softwareUnitId = job.software_unit_id || buildPackageSoftwareUnitId(job.build_package);
@@ -120,9 +109,7 @@ class BuildPackageStore {
     const normalized = typeof workspace === "string" ? { jobDir: workspace, persistent: false } : workspace;
     if (!normalized?.persistent) {
       await fs.rm(normalized.jobDir, { recursive: true, force: true });
-      return;
     }
-    if (normalized.buildDir) await fs.rm(normalized.buildDir, { recursive: true, force: true });
   }
 }
 

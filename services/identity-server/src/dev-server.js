@@ -2869,7 +2869,11 @@ async function synchronizeDevelopmentTemplateRuntimeModel(project, session) {
   const templateId = String(project.view_manifest?.template_id || "");
   if (project.learning_project_id !== "development_project" || templateId !== "esp32_camera_to_touch_display") return project;
   const template = developmentProjectTemplate(templateId);
-  const targetVersion = Number(template.schemaVersion || 1);
+  // This is the migration level of the persisted runtime model, not the
+  // public template schema version.  Reusing schemaVersion (currently 1)
+  // kept every project below migrations 16-19 and rewrote catalog snapshots
+  // plus platformio.ini on every load, invalidating otherwise reusable builds.
+  const targetVersion = 19;
   const templateRef = project.view_manifest?.template_ref || {};
   const currentVersion = Math.max(
     Number(templateRef.model_schema_version || 0),

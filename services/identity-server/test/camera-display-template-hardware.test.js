@@ -22,6 +22,8 @@ test("repairs the runtime contract of account projects created from older camera
   const server = fs.readFileSync(path.join(root, "src/dev-server.js"), "utf8");
 
   assert.match(server, /synchronizeDevelopmentTemplateRuntimeModel\(project, session\)/);
+  assert.match(server, /const targetVersion = 19/);
+  assert.doesNotMatch(server, /const targetVersion = Number\(template\.schemaVersion/);
   assert.match(server, /refreshCatalogBoardConfigurations = currentVersion < 19/);
   assert.match(server, /currentVersion >= targetVersion && !missingBoardConfiguration[\s\S]*!refreshCatalogBoardConfigurations/);
   assert.match(server, /missingCommunicationSetup/);

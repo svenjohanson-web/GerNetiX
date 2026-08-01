@@ -278,7 +278,6 @@ class BuildDeployService {
       });
       throwIfCancelled(job);
       this.reportProgress(job, "artifacts", "Firmware-Artefakte werden gesichert.");
-      await this.packageStore.preserveIncrementalCache(job, workspace.packageDir);
       const artifacts = await this.artifactStore.saveBuildArtifacts(job.job_id, buildOutput);
       throwIfCancelled(job);
       const buildResult = {

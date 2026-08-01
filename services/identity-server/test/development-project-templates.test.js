@@ -208,7 +208,11 @@ test("provides a two-target camera-to-display template with isolated build roots
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /esp_camera_init/);
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /GERNETIX_BOARD_FEATURE_CAMERA/);
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_OUTPUT/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /i2c_master_write_to_device/);
+  const cameraSource = files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content;
+  assert.match(cameraSource, /#include "driver\/i2c_master\.h"/);
+  assert.match(cameraSource, /i2c_new_master_bus/);
+  assert.match(cameraSource, /i2c_master_transmit/);
+  assert.doesNotMatch(cameraSource, /#include "driver\/i2c\.h"|i2c_driver_install|i2c_master_write_to_device/);
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /multipart\/x-mixed-replace/);
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /fmt2rgb888/);
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /esp_lcd_panel_io_tx_color/);

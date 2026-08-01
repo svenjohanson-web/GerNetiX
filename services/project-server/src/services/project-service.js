@@ -1398,7 +1398,7 @@ function withoutVolatileSnapshotMetadata(value) {
   if (Array.isArray(value)) return value.map(withoutVolatileSnapshotMetadata);
   if (!value || typeof value !== "object") return value;
   return Object.fromEntries(Object.entries(value)
-    .filter(([key]) => !["snapshot_at", "saved_at", "updated_at"].includes(key))
+    .filter(([key]) => !["snapshot_at", "saved_at", "updated_at", "runtime_model_version"].includes(key))
     .sort(([left], [right]) => left.localeCompare(right))
     .map(([key, entry]) => [key, withoutVolatileSnapshotMetadata(entry)]));
 }

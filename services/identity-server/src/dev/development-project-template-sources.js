@@ -83,7 +83,7 @@ function cameraHostMain() {
 #include <cstdio>
 #include <cstring>
 
-#include "driver/i2c.h"
+#include "driver/i2c_master.h"
 #include "esp_camera.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
@@ -141,43 +141,37 @@ esp_err_t streamHandler(httpd_req_t *request) {
 }
 
 bool enableIntegratedCamera() {
-  constexpr i2c_port_t port = I2C_NUM_0;
-  i2c_config_t bus = {};
-  bus.mode = I2C_MODE_MASTER;
-  bus.sda_io_num = static_cast<gpio_num_t>(GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_SDA);
-  bus.scl_io_num = static_cast<gpio_num_t>(GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_SCL);
-  bus.sda_pullup_en = GPIO_PULLUP_ENABLE;
-  bus.scl_pullup_en = GPIO_PULLUP_ENABLE;
-  bus.master.clk_speed = 400000;
+  i2c_master_bus_config_t busConfig = {};
+  busConfig.i2c_port = I2C_NUM_0;
+  busConfig.sda_io_num = static_cast<gpio_num_t>(GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_SDA);
+  busConfig.scl_io_num = static_cast<gpio_num_t>(GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_SCL);
+  busConfig.clk_source = I2C_CLK_SRC_DEFAULT;
+  busConfig.glitch_ignore_cnt = 7;
+  busConfig.flags.enable_internal_pullup = true;
 
-  esp_err_t result = i2c_param_config(port, &bus);
-  bool driverInstalled = false;
+  i2c_master_bus_handle_t bus = nullptr;
+  i2c_master_dev_handle_t cameraPower = nullptr;
+  esp_err_t result = i2c_new_master_bus(&busConfig, &bus);
   if (result == ESP_OK) {
-    result = i2c_driver_install(port, bus.mode, 0, 0, 0);
-    driverInstalled = result == ESP_OK;
+    i2c_device_config_t deviceConfig = {};
+    deviceConfig.dev_addr_length = I2C_ADDR_BIT_LEN_7;
+    deviceConfig.device_address = GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_ADDRESS;
+    deviceConfig.scl_speed_hz = 400000;
+    result = i2c_master_bus_add_device(bus, &deviceConfig, &cameraPower);
   }
   if (result == ESP_OK) {
     const uint8_t mode[] = { 0x02, 0xFF };
-    result = i2c_master_write_to_device(
-        port,
-        GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_ADDRESS,
-        mode,
-        sizeof(mode),
-        pdMS_TO_TICKS(100));
+    result = i2c_master_transmit(cameraPower, mode, sizeof(mode), 100);
   }
   if (result == ESP_OK) {
     const uint8_t output[] = {
       0x03,
       static_cast<uint8_t>(1U << GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_OUTPUT),
     };
-    result = i2c_master_write_to_device(
-        port,
-        GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_ADDRESS,
-        output,
-        sizeof(output),
-        pdMS_TO_TICKS(100));
+    result = i2c_master_transmit(cameraPower, output, sizeof(output), 100);
   }
-  if (driverInstalled) i2c_driver_delete(port);
+  if (cameraPower != nullptr) i2c_master_bus_rm_device(cameraPower);
+  if (bus != nullptr) i2c_del_master_bus(bus);
   state.last_error = result;
   if (result != ESP_OK) {
     ESP_LOGE(TAG, "CH32V003-Kameraausgang konnte nicht aktiviert werden: %d", result);

@@ -233,10 +233,12 @@ test("successive project builds reuse PlatformIO cache until compiler configurat
   const observedManagedComponentStates = [];
   const observedWorkspaces = [];
   const sourceModifiedTimes = [];
-  service.runner.run = async (job, packageDir) => {
+  const observedBuildDirs = [];
+  service.runner.run = async (job, packageDir, options) => {
     observedWorkspaces.push(packageDir);
+    observedBuildDirs.push(options.buildDir);
     sourceModifiedTimes.push((await fs.stat(path.join(packageDir, "src", "main.cpp"))).mtimeMs);
-    const marker = path.join(packageDir, ".pio", "build", "cache-marker.txt");
+    const marker = path.join(options.buildDir, "cache-marker.txt");
     const managedComponentMarker = path.join(packageDir, "managed_components", "cache-marker.txt");
     observedCacheStates.push(await fs.readFile(marker, "utf8").catch(() => "missing"));
     observedManagedComponentStates.push(await fs.readFile(managedComponentMarker, "utf8").catch(() => "missing"));
@@ -277,6 +279,9 @@ test("successive project builds reuse PlatformIO cache until compiler configurat
   assert.deepEqual(observedManagedComponentStates, ["missing", "incremental-1", "missing"]);
   assert.equal(observedWorkspaces[0], observedWorkspaces[1]);
   assert.equal(observedWorkspaces[1], observedWorkspaces[2]);
+  assert.equal(observedBuildDirs[0], observedBuildDirs[1]);
+  assert.equal(observedBuildDirs[1], observedBuildDirs[2]);
+  assert.equal(observedBuildDirs[0], path.join(observedWorkspaces[0], ".pio", "build"));
   assert.equal(sourceModifiedTimes[0], sourceModifiedTimes[1]);
   assert.equal(sourceModifiedTimes[1], sourceModifiedTimes[2]);
   assert.equal(
@@ -357,6 +362,8 @@ test("concurrent builds of the same software target are executed exclusively", a
   const buildDirs = new Map();
   service.runner.run = async (job, packageDir, options) => {
     buildDirs.set(job.job_id, options.buildDir);
+    await fs.mkdir(options.buildDir, { recursive: true });
+    await fs.writeFile(path.join(options.buildDir, "intermediate-marker.txt"), job.job_id);
     active += 1;
     maximumActive = Math.max(maximumActive, active);
     if (job.job_id === "exclusive-1") {
@@ -383,10 +390,9 @@ test("concurrent builds of the same software target are executed exclusively", a
   assert.equal(maximumActive, 1);
   assert.equal(service.getJob("exclusive-1").status, "succeeded");
   assert.equal(service.getJob("exclusive-2").status, "succeeded");
-  assert.notEqual(buildDirs.get("exclusive-1"), buildDirs.get("exclusive-2"));
-  assert.match(buildDirs.get("exclusive-1"), /build-jobs/);
-  assert.equal(await fs.access(buildDirs.get("exclusive-1")).then(() => true).catch(() => false), false);
-  assert.equal(await fs.access(buildDirs.get("exclusive-2")).then(() => true).catch(() => false), false);
+  assert.equal(buildDirs.get("exclusive-1"), buildDirs.get("exclusive-2"));
+  assert.match(buildDirs.get("exclusive-1"), /workspace\/.pio\/build$/);
+  assert.equal(await fs.access(buildDirs.get("exclusive-1")).then(() => true).catch(() => false), true);
 });
 
 test("a BuildJob id can never address a second output directory", async () => {
