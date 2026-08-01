@@ -25,6 +25,7 @@ const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
 const { createHelpAssistant } = require("./dev/help-assistant");
 const { developmentProjectSources } = require("./dev/development-project-structure");
+const { completeBrowserFlashDefinitions } = require("./dev/browser-flash-manifest");
 const {
   developmentProjectTemplate,
   developmentProjectTemplateCatalog,
@@ -2697,9 +2698,7 @@ function browserFlashManifest(jobId, completedJob, buildConfig = {}) {
     ["boot_app0.bin", 0xe000],
     ["firmware.bin", 0x10000],
   ];
-  const definitions = runnerManifest.length
-    ? runnerManifest.map((item) => [item.name, Number(item.address)])
-    : fallbackDefinitions;
+  const definitions = completeBrowserFlashDefinitions(runnerManifest, fallbackDefinitions);
   return definitions.filter(([name, address]) => artifacts[name] && Number.isInteger(address) && address >= 0).map(([name, address]) => ({
     name,
     address,
