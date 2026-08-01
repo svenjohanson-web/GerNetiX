@@ -351,7 +351,7 @@ services:
       - /var/cache/nginx
       - /tmp
     healthcheck:
-      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:4400/health"]
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:4400/router-health"]
       interval: 15s
       timeout: 4s
       retries: 5

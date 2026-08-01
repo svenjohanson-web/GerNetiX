@@ -12,6 +12,8 @@ const compose = fs.readFileSync(path.resolve(__dirname, "../../..", "compose.vps
 test("build router keeps the central worker and adds only configured private peers", () => {
   assert.match(config, /least_conn;/);
   assert.match(config, /include \/var\/run\/gernetix\/build-workers\.inc/);
+  assert.match(config, /location = \/router-health/);
+  assert.match(compose, /http:\/\/127\.0\.0\.1:4400\/router-health/);
   assert.match(entrypoint, /server build-deploy-server:4400 max_fails=2 fail_timeout=15s/);
   assert.match(entrypoint, /BUILD_WORKER_UPSTREAMS/);
   assert.match(entrypoint, /Build-Worker braucht Host und Port/);
