@@ -39,8 +39,12 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   assert.equal(waveshareCamera.default_instance_configuration.board_features.camera.maximum_resolution, "2048x1536");
   assert.equal(waveshareCamera.default_instance_configuration.board_features.camera.pins.xclk, 38);
   assert.equal(waveshareCamera.default_instance_configuration.board_features.camera.pins.d0, 45);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.camera_power.hardware, "CH32V003F4U6");
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.camera_power.pins.address, 0x24);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.camera_power.pins.output, 6);
   assert.equal(waveshareCamera.default_instance_configuration.board_features.microphone.driver, "es7210");
   assert.equal(waveshareCamera.default_instance_configuration.board_features.microphone.pins.data_in, 13);
+  assert.equal(waveshareCamera.default_instance_configuration.board_features.speaker.pins.data_out, 14);
   assert.equal(waveshareCamera.default_instance_configuration.board_features.speaker.driver, "es8311");
   assert.equal(waveshareCamera.default_instance_configuration.board_features.storage.pins.clk, 16);
   assert.equal(waveshareCamera.default_instance_configuration.board_features.display.enabled, false);
@@ -50,8 +54,9 @@ test("lists catalog capabilities and processor boards from catalog", async () =>
   assert.equal(waveshareCamera.default_instance_configuration.board_features.touch.enabled, false);
   assert.equal(waveshareCamera.default_instance_configuration.board_features.touch.included, false);
   assert.equal(waveshareCamera.default_instance_configuration.board_features.touch.pins.interrupt, 9);
-  assert.equal(waveshareCamera.default_instance_configuration.io_expander.lines.exio2, "tf_card_detect");
-  assert.equal(waveshareCamera.default_instance_configuration.io_expander.lines.exio3, "camera_power_down");
+  assert.equal(waveshareCamera.default_instance_configuration.io_expander.lines.exio2, "display_backlight");
+  assert.equal(waveshareCamera.default_instance_configuration.io_expander.lines.exio3, "display_reset");
+  assert.equal(waveshareCamera.default_instance_configuration.io_expander.lines.exio6, "camera_enable");
   assert.equal(waveshareCamera.default_instance_configuration.io_expander.lines.exio_pwm, "display_backlight_pwm");
   assert.equal(waveshareCamera.default_instance_configuration.external_connectors.uart.pins.tx, 43);
   assert.equal(waveshareCamera.default_instance_configuration.external_connectors.battery.nominal_voltage_v, 3.7);
@@ -174,7 +179,9 @@ test("sqlite catalog migration additively enriches an existing Waveshare camera 
   assert.equal(migrated.default_instance_configuration.board_features.camera.hardware, "custom_confirmed_camera");
   assert.equal(migrated.default_instance_configuration.board_features.display.pins.cs, 6);
   assert.equal(migrated.default_instance_configuration.board_features.touch.pins.interrupt, 9);
-  assert.equal(migrated.default_instance_configuration.io_expander.lines.exio4, "audio_amplifier_enable");
+  assert.equal(migrated.default_instance_configuration.io_expander.lines.exio4, "tf_card_chip_select");
+  assert.equal(migrated.default_instance_configuration.io_expander.lines.exio6, "camera_enable");
+  assert.equal(migrated.default_instance_configuration.board_features.camera_power.pins.output, 6);
   assert.equal(migrated.default_instance_configuration.mechanical.height_mm, 37);
   assert.equal(migrated.default_instance_configuration.board_features.display.enabled, false);
   assert.equal(migrated.default_instance_configuration.board_features.touch.enabled, false);

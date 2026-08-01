@@ -41,3 +41,15 @@ test("offers each same-type IoT relationship only once", () => {
   ]);
   assert.deepEqual(options.map((option) => `${option.rule.id}|${option.target.component_id}`), ["synchronizes|device_1"]);
 });
+
+test("restores integrated audio and touch hardware types from PlantUML", () => {
+  assert.equal(metamodel.componentTypeForPlantUml("Beobachtete Umgebung", "actor", "environment"), "actor");
+  assert.equal(metamodel.componentTypeForPlantUml("Mikrofon links", "rectangle", "microphone_left"), "sensor");
+  assert.equal(metamodel.componentTypeForPlantUml("Touch", "rectangle", "touch"), "sensor");
+  assert.equal(metamodel.componentTypeForPlantUml("ES7210 Audio-ADC-IC", "rectangle", "microphone_adc_ic"), "hardware_ic");
+  assert.equal(metamodel.componentTypeForPlantUml("Lautsprecher", "rectangle", "speaker"), "actuator");
+  assert.equal(metamodel.validatesRelation("actor", "sensor"), true);
+  assert.equal(metamodel.validatesRelation("sensor", "hardware_ic"), true);
+  assert.equal(metamodel.validatesRelation("hardware_ic", "actuator"), true);
+  assert.equal(metamodel.validatesRelation("actuator", "actor"), true);
+});

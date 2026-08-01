@@ -11,6 +11,8 @@ class BuildDeployService {
     this.deviceJobLock = options.deviceJobLock;
     this.buildTargetLock = options.buildTargetLock;
     this.buildCoordination = options.buildCoordination || null;
+    this.workerRole = options.workerRole || "full";
+    this.cancellationPollMs = Number(options.cancellationPollMs || 500);
     this.sharedPersistLatest = new Map();
     this.sharedPersistRunning = new Map();
     this.stateStore = options.stateStore || null;
@@ -20,6 +22,17 @@ class BuildDeployService {
 
   async submitJob(input) {
     const job = normalizeJob(input);
+    if (this.workerRole === "build_only" && (
+      !["build", "prebuild"].includes(job.mode)
+      || job.deploy?.requested
+      || job.flashbox?.requested
+    )) {
+      throw new BuildDeployError(
+        "worker_job_not_allowed",
+        "Dieser Build-Worker verarbeitet ausschliesslich Build- und Prebuild-Auftraege ohne Flash oder Deployment.",
+        409,
+      );
+    }
     job.worker_id = this.buildCoordination?.workerId || null;
     if (this.jobs.has(job.job_id)) {
       throw new BuildDeployError("duplicate_job_id", "Diese BuildJob-ID wurde bereits verwendet.", 409);
@@ -35,6 +48,7 @@ class BuildDeployService {
       if (replacedJobId) {
         const replaced = this.jobs.get(replacedJobId);
         if (replaced && replaced.status === "queued") {
+          replaced.queuedCancellationStop?.();
           replaced.status = "replaced";
           replaced.finished_at = new Date().toISOString();
           this.persistJobs(replaced);
@@ -42,6 +56,7 @@ class BuildDeployService {
       }
       job.status = "queued";
       this.persistJobs(job);
+      this.startQueuedCancellationMonitor(job);
     }
 
     return summarizeJob(job);
@@ -68,8 +83,29 @@ class BuildDeployService {
     throw new BuildDeployError("job_not_found", "BuildJob wurde nicht gefunden.", 404);
   }
 
+  async cancelJob(jobId) {
+    const normalizedJobId = String(jobId || "").trim();
+    const localJob = this.jobs.get(normalizedJobId) || null;
+    const shared = this.buildCoordination
+      ? await this.buildCoordination.requestCancellation(normalizedJobId)
+      : localJob && summarizeJob(localJob);
+    if (!shared) throw new BuildDeployError("job_not_found", "BuildJob wurde nicht gefunden.", 404);
+    if (["succeeded", "failed", "replaced", "cancelled"].includes(shared.status)) return shared;
+    if (!localJob) return shared;
+
+    if (localJob.status === "queued") {
+      return this.cancelQueuedJob(localJob);
+    }
+
+    localJob.status = "cancelling";
+    this.reportProgress(localJob, "cancelling", "Build-Abbruch wurde angefordert.");
+    this.persistJobs(localJob);
+    localJob.abortController?.abort();
+    return summarizeJob(localJob);
+  }
+
   coordinationHealth() {
-    return this.buildCoordination?.health?.() || { backend: "memory", distributed: false };
+    return { ...(this.buildCoordination?.health?.() || { backend: "memory", distributed: false }), role: this.workerRole };
   }
 
   async cleanProjectCache(input = {}) {
@@ -78,7 +114,7 @@ class BuildDeployService {
       throw new BuildDeployError("missing_project_id", "Zum Bereinigen des Build-Caches fehlt die Projekt-ID.");
     }
     const activeJob = Array.from(this.jobs.values()).find((job) => job.project_id === projectId
-      && ["accepted", "queued", "running"].includes(job.status));
+      && ["accepted", "queued", "running", "cancelling"].includes(job.status));
     if (activeJob) {
       throw new BuildDeployError(
         "build_in_progress",
@@ -103,19 +139,29 @@ class BuildDeployService {
   }
 
   startJob(job) {
+    job.queuedCancellationStop?.();
+    Object.defineProperty(job, "abortController", {
+      value: new AbortController(),
+      configurable: true,
+      enumerable: false,
+    });
     job.status = "running";
     job.started_at = new Date().toISOString();
     this.reportProgress(job, "preparing", "Build-Paket wird vorbereitet.");
     this.persistJobs(job);
     this.deviceJobLock.markActive(job);
+    const stopCancellationMonitor = this.startCancellationMonitor(job);
     job.promise = this.runJob(job)
       .catch((error) => {
-        this.reportProgress(job, "failed", error.message || "Build fehlgeschlagen.");
-        job.status = "failed";
-        job.error = serializeError(error);
+        const cancelled = error.code === "build_cancelled" || job.abortController?.signal.aborted;
+        this.reportProgress(job, cancelled ? "cancelled" : "failed", cancelled ? "Build wurde abgebrochen." : (error.message || "Build fehlgeschlagen."));
+        job.status = cancelled ? "cancelled" : "failed";
+        job.error = cancelled ? cancellationError(error.details) : serializeError(error);
         this.persistJobs(job);
       })
       .finally(async () => {
+        stopCancellationMonitor();
+        await this.applyLateCancellation(job);
         job.finished_at = new Date().toISOString();
         this.deviceJobLock.release(job);
         this.persistJobs(job);
@@ -135,6 +181,72 @@ class BuildDeployService {
       });
   }
 
+  startQueuedCancellationMonitor(job) {
+    if (!this.buildCoordination?.isCancellationRequested) return;
+    let checking = false;
+    const timer = setInterval(async () => {
+      if (checking || job.status !== "queued") return;
+      checking = true;
+      try {
+        if (await this.buildCoordination.isCancellationRequested(job.job_id)) await this.cancelQueuedJob(job);
+      } catch (error) {
+        console.error(`Abbruchstatus des wartenden BuildJobs konnte nicht gelesen werden: ${error.message}`);
+      } finally {
+        checking = false;
+      }
+    }, this.cancellationPollMs);
+    timer.unref?.();
+    Object.defineProperty(job, "queuedCancellationStop", {
+      value: () => clearInterval(timer),
+      configurable: true,
+      enumerable: false,
+    });
+  }
+
+  async cancelQueuedJob(job) {
+    if (job.status !== "queued") return summarizeJob(job);
+    job.queuedCancellationStop?.();
+    this.deviceJobLock.cancelWaiting(job);
+    job.status = "cancelled";
+    job.finished_at = new Date().toISOString();
+    job.error = cancellationError();
+    this.reportProgress(job, "cancelled", "Build wurde vor dem Start abgebrochen.");
+    this.persistJobs(job);
+    await this.flushSharedJob(job);
+    return summarizeJob(job);
+  }
+
+  async applyLateCancellation(job) {
+    if (job.status !== "succeeded" || !this.buildCoordination?.isCancellationRequested) return;
+    try {
+      if (!await this.buildCoordination.isCancellationRequested(job.job_id)) return;
+      job.status = "cancelled";
+      job.result = null;
+      job.error = cancellationError();
+      this.reportProgress(job, "cancelled", "Build wurde beim Abschluss abgebrochen.");
+    } catch (error) {
+      console.error(`Abbruchstatus beim Build-Abschluss konnte nicht gelesen werden: ${error.message}`);
+    }
+  }
+
+  startCancellationMonitor(job) {
+    if (!this.buildCoordination?.isCancellationRequested) return () => {};
+    let checking = false;
+    const timer = setInterval(async () => {
+      if (checking || job.abortController?.signal.aborted) return;
+      checking = true;
+      try {
+        if (await this.buildCoordination.isCancellationRequested(job.job_id)) job.abortController.abort();
+      } catch (error) {
+        console.error(`Build-Abbruchstatus konnte nicht gelesen werden: ${error.message}`);
+      } finally {
+        checking = false;
+      }
+    }, this.cancellationPollMs);
+    timer.unref?.();
+    return () => clearInterval(timer);
+  }
+
   startWaitingJob(deviceId) {
     const nextJobId = this.deviceJobLock.takeWaiting(deviceId);
     if (!nextJobId) return;
@@ -143,6 +255,7 @@ class BuildDeployService {
   }
 
   async runJob(job) {
+    throwIfCancelled(job);
     await this.cache.ensureReady();
     job.cache_generation = await this.buildCoordination?.getProjectCacheEpoch(job.project_id) || 0;
     return this.buildTargetLock.runExclusive(
@@ -153,6 +266,7 @@ class BuildDeployService {
   }
 
   async runBuildTargetJob(job) {
+    throwIfCancelled(job);
     this.reportProgress(job, "packaging", "Build-Paket wird in den Build-Workspace übernommen.");
     const workspace = await this.packageStore.materialize(job);
     try {
@@ -160,10 +274,13 @@ class BuildDeployService {
       const buildOutput = await this.runner.run(job, workspace.packageDir, {
         buildDir: workspace.buildDir,
         onProgress: (line) => this.reportProgress(job, "compiling", line),
+        signal: job.abortController?.signal,
       });
+      throwIfCancelled(job);
       this.reportProgress(job, "artifacts", "Firmware-Artefakte werden gesichert.");
       await this.packageStore.preserveIncrementalCache(job, workspace.packageDir);
       const artifacts = await this.artifactStore.saveBuildArtifacts(job.job_id, buildOutput);
+      throwIfCancelled(job);
       const buildResult = {
         status: buildOutput.status,
         artifacts,
@@ -174,6 +291,7 @@ class BuildDeployService {
       };
       const deployResult = await this.deployOrchestrator.maybeCreateDeploy(job, buildResult);
       const flashboxResult = await this.deployOrchestrator.maybeCreateFlashboxDelivery(job, buildResult);
+      throwIfCancelled(job);
       this.reportProgress(job, "completed", "Build erfolgreich abgeschlossen.");
       job.status = "succeeded";
       job.result = {
@@ -344,6 +462,20 @@ function serializeError(error) {
     message: error.message || "Interner Fehler.",
     details: error.details || {},
   };
+}
+
+function cancellationError(details = {}) {
+  return {
+    code: "build_cancelled",
+    message: "Build wurde abgebrochen.",
+    details: details || {},
+  };
+}
+
+function throwIfCancelled(job) {
+  if (job.abortController?.signal.aborted) {
+    throw new BuildDeployError("build_cancelled", "Build wurde abgebrochen.", 409);
+  }
 }
 
 function selectPrimaryFirmware(artifacts) {

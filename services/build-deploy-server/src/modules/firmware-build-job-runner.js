@@ -20,17 +20,19 @@ class FirmwareBuildJobRunner {
         browserFlashRequested: job.mode === "build_and_usb_flash",
         buildDir: options.buildDir,
         onProgress: options.onProgress,
+        signal: options.signal,
       });
     }
 
     if (this.runner !== "mock" || !this.allowMockRunner) {
       throw new BuildDeployError("invalid_build_runner", "Nur der echte PlatformIO-Build-Runner ist ausserhalb von Tests erlaubt.", 500);
     }
-    return runMockBuild(job, packageDir, options.buildDir);
+    return runMockBuild(job, packageDir, options.buildDir, options.signal);
   }
 }
 
-async function runMockBuild(job, packageDir, buildDir) {
+async function runMockBuild(job, packageDir, buildDir, signal) {
+  throwIfAborted(signal);
   const outputDir = buildDir || path.join(packageDir, ".gernetix-build");
   await fs.mkdir(outputDir, { recursive: true });
 
@@ -57,6 +59,7 @@ async function runMockBuild(job, packageDir, buildDir) {
     ? `Mock USB flash completed for ${job.usb_flash?.upload_port || "auto"}\n`
     : "";
   await fs.writeFile(artifacts["build.log"], `Mock build completed for ${job.job_id}\n${flashLine}`);
+  throwIfAborted(signal);
 
   return {
     status: "succeeded",
@@ -75,6 +78,7 @@ async function runPlatformioBuild(options) {
     cwd: options.packageDir,
     env,
     onOutput: options.onProgress,
+    signal: options.signal,
   };
   let result = await spawnAndCapture(options.command, ["run"], spawnOptions);
   let output = result.output;
@@ -102,7 +106,9 @@ async function runPlatformioBuild(options) {
 
   await fs.mkdir(buildDir, { recursive: true });
   await fs.writeFile(logPath, output);
-  const { artifacts: artifactPaths, flashManifest } = await findPlatformioArtifacts(buildDir);
+  const { artifacts: artifactPaths, flashManifest } = await findPlatformioArtifacts(buildDir, {
+    requireBrowserFlashPackage: options.browserFlashRequested,
+  });
   artifactPaths["build.log"] = logPath;
   return { status: "succeeded", artifacts: artifactPaths, flash_manifest: flashManifest, usb_flash: usbFlash };
 }
@@ -140,9 +146,38 @@ async function clearEspIdfTargetCache(packageDir, buildDir = path.join(packageDi
 
 function spawnAndCapture(command, args, options) {
   return new Promise((resolve, reject) => {
-    const child = spawn(command, args, options);
+    if (options.signal?.aborted) {
+      reject(cancelledError());
+      return;
+    }
+    const detached = process.platform !== "win32";
+    const child = spawn(command, args, { ...options, signal: undefined, detached });
     let output = "";
     let pendingLine = "";
+    let forceKillTimer = null;
+    let settled = false;
+    const finish = (callback, value) => {
+      if (settled) return;
+      settled = true;
+      if (forceKillTimer) clearTimeout(forceKillTimer);
+      options.signal?.removeEventListener("abort", abort);
+      callback(value);
+    };
+    const kill = (signal) => {
+      try {
+        if (detached && child.pid) process.kill(-child.pid, signal);
+        else child.kill(signal);
+      } catch (error) {
+        if (error.code !== "ESRCH") throw error;
+      }
+    };
+    const abort = () => {
+      try { kill("SIGTERM"); } catch {}
+      forceKillTimer = setTimeout(() => {
+        try { kill("SIGKILL"); } catch {}
+      }, 3000);
+      forceKillTimer.unref?.();
+    };
     const report = (chunk) => {
       output += chunk;
       if (typeof options.onOutput !== "function") return;
@@ -153,29 +188,53 @@ function spawnAndCapture(command, args, options) {
     };
     child.stdout.on("data", (chunk) => { report(String(chunk)); });
     child.stderr.on("data", (chunk) => { report(String(chunk)); });
-    child.on("error", reject);
+    options.signal?.addEventListener("abort", abort, { once: true });
+    child.on("error", (error) => finish(reject, error));
     child.on("close", (exitCode) => {
       if (pendingLine && typeof options.onOutput === "function") options.onOutput(pendingLine);
-      resolve({ exitCode, output });
+      if (options.signal?.aborted) finish(reject, cancelledError(output));
+      else finish(resolve, { exitCode, output });
     });
   });
 }
 
-async function findPlatformioArtifacts(buildDir) {
+function throwIfAborted(signal) {
+  if (signal?.aborted) throw cancelledError();
+}
+
+function cancelledError(buildLog = "") {
+  return new BuildDeployError("build_cancelled", "Build wurde abgebrochen.", 409, {
+    ...(buildLog ? { build_log: buildLog } : {}),
+  });
+}
+
+async function findPlatformioArtifacts(buildDir, options = {}) {
   const envDirs = await fs.readdir(buildDir, { withFileTypes: true });
+  let incompleteFlashPackage = false;
   for (const envDir of envDirs.filter((entry) => entry.isDirectory())) {
     const root = path.join(buildDir, envDir.name);
-    const artifacts = {
-      "firmware.bin": path.join(root, "firmware.bin"),
-      "bootloader.bin": path.join(root, "bootloader.bin"),
-      "partitions.bin": path.join(root, "partitions.bin"),
-      "boot_app0.bin": path.join(root, "boot_app0.bin"),
+    const flashArgumentArtifacts = await platformioFlashArgumentArtifacts(root);
+    const artifactCandidates = {
+      "firmware.bin": [flashArgumentArtifacts["firmware.bin"], path.join(root, "firmware.bin")],
+      "bootloader.bin": [flashArgumentArtifacts["bootloader.bin"], path.join(root, "bootloader.bin"), path.join(root, "bootloader", "bootloader.bin")],
+      "partitions.bin": [flashArgumentArtifacts["partitions.bin"], path.join(root, "partitions.bin"), path.join(root, "partition_table", "partition-table.bin")],
+      "boot_app0.bin": [flashArgumentArtifacts["boot_app0.bin"], path.join(root, "boot_app0.bin")],
       "firmware.elf": path.join(root, "firmware.elf"),
       "firmware.map": path.join(root, "firmware.map"),
       "firmware.hex": path.join(root, "firmware.hex"),
     };
+    const artifacts = {};
+    for (const [name, candidates] of Object.entries(artifactCandidates)) {
+      artifacts[name] = Array.isArray(candidates) ? await firstExistingFile(candidates) : candidates;
+    }
     const existingArtifacts = await filterExistingFiles(artifacts);
     if (existingArtifacts["firmware.elf"] && hasFirmwareImage(existingArtifacts)) {
+      const completeBrowserFlashPackage = ["bootloader.bin", "partitions.bin", "firmware.bin"]
+        .every((name) => existingArtifacts[name]);
+      if (options.requireBrowserFlashPackage && !completeBrowserFlashPackage) {
+        incompleteFlashPackage = true;
+        continue;
+      }
       return {
         artifacts: existingArtifacts,
         flashManifest: await readPlatformioFlashManifest(root, existingArtifacts),
@@ -183,27 +242,74 @@ async function findPlatformioArtifacts(buildDir) {
     }
   }
 
+  if (incompleteFlashPackage) {
+    throw new BuildDeployError(
+      "incomplete_usb_flash_package",
+      "PlatformIO hat die Firmware gebaut, aber Bootloader oder Partitionstabelle fuer den USB-Flash fehlen.",
+      422,
+    );
+  }
   throw new BuildDeployError("missing_build_artifacts", "PlatformIO hat keine nutzbaren Firmware-Artefakte erzeugt.", 422);
 }
 
+async function platformioFlashArgumentArtifacts(root) {
+  const result = {};
+  for (const item of await readPlatformioFlashArgumentEntries(root)) {
+    const name = canonicalFlashArtifactName(item.file);
+    if (!name || result[name]) continue;
+    const resolved = path.resolve(root, item.file);
+    if (resolved !== root && !resolved.startsWith(`${root}${path.sep}`)) continue;
+    result[name] = resolved;
+  }
+  return result;
+}
+
+async function firstExistingFile(candidates) {
+  for (const candidate of candidates.filter(Boolean)) {
+    try {
+      await fs.access(candidate);
+      return candidate;
+    } catch {}
+  }
+  return "";
+}
+
 async function readPlatformioFlashManifest(root, artifacts) {
+  const allowed = new Set(Object.keys(artifacts));
+  const manifest = [];
+  for (const item of await readPlatformioFlashArgumentEntries(root)) {
+    const name = canonicalFlashArtifactName(item.file);
+    if (!allowed.has(name)) continue;
+    manifest.push({ name, address: item.address });
+  }
+  return manifest;
+}
+
+async function readPlatformioFlashArgumentEntries(root) {
   let content = "";
   try {
     content = await fs.readFile(path.join(root, "flash_args"), "utf8");
   } catch {
     return [];
   }
-  const allowed = new Set(Object.keys(artifacts));
   const tokens = content.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || [];
-  const manifest = [];
+  const entries = [];
   for (let index = 0; index < tokens.length - 1; index += 1) {
     if (!/^0x[0-9a-f]+$/i.test(tokens[index])) continue;
-    const name = path.basename(tokens[index + 1].replace(/^['"]|['"]$/g, ""));
-    if (!allowed.has(name)) continue;
-    manifest.push({ name, address: Number.parseInt(tokens[index], 16) });
+    entries.push({
+      address: Number.parseInt(tokens[index], 16),
+      file: tokens[index + 1].replace(/^['"]|['"]$/g, "").replace(/\\/g, "/"),
+    });
     index += 1;
   }
-  return manifest;
+  return entries;
+}
+
+function canonicalFlashArtifactName(fileName) {
+  const baseName = path.posix.basename(String(fileName || "").replace(/\\/g, "/")).toLowerCase();
+  if (baseName === "partition-table.bin" || baseName === "partitions.bin") return "partitions.bin";
+  if (["bootloader.bin", "boot_app0.bin", "firmware.bin"].includes(baseName)) return baseName;
+  return "";
 }
 
 function hasFirmwareImage(artifacts) {
@@ -245,6 +351,8 @@ module.exports = {
   FirmwareBuildJobRunner,
   clearEspIdfTargetCache,
   createPlatformioEnv,
+  findPlatformioArtifacts,
   isCorruptedEspIdfComponentCache,
   readPlatformioFlashManifest,
+  spawnAndCapture,
 };

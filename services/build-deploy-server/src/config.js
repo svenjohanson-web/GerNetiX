@@ -37,9 +37,12 @@ function createConfig(env = process.env) {
     coordinationBackend: env.BUILD_COORDINATION_BACKEND
       || ((env.BUILD_ARTIFACT_PERSISTENCE_BACKEND || "sqlite") === "postgres" ? "postgres" : "memory"),
     workerId: env.BUILD_WORKER_ID || os.hostname(),
+    workerRole: env.BUILD_WORKER_ROLE === "build_only" ? "build_only" : "full",
     coordinationPoolMax: Number(env.BUILD_COORDINATION_POOL_MAX || 20),
     workerHeartbeatMs: Number(env.BUILD_WORKER_HEARTBEAT_MS || 15000),
     workerStaleMs: Number(env.BUILD_WORKER_STALE_MS || 120000),
+    cancellationPollMs: Number(env.BUILD_CANCELLATION_POLL_MS || 500),
+    databaseSchemaManagement: env.BUILD_DATABASE_SCHEMA_MANAGEMENT !== "disabled",
     postgres: {
       connectionString: env.BUILD_POSTGRES_URL || "",
       host: env.BUILD_POSTGRES_HOST || "127.0.0.1",

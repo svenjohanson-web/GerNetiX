@@ -46,3 +46,13 @@ test("does not let additional PlatformIO options override the graphical compiler
   assert.doesNotMatch(ini, /framework = espidf/);
   assert.match(ini, /lib_extra_dirs = lib/);
 });
+
+test("preincludes project basissoftware configuration only for basissoftware builds", () => {
+  const basis = renderPlatformioIni({
+    platform: "espressif32", board: "esp32dev", firmware_basis_id: "gernetix-runtime-basissoftware",
+    basissoftware_configuration: { wifi: { enabled: true } },
+  });
+  const plain = renderPlatformioIni({ platform: "espressif32", board: "esp32dev" });
+  assert.match(basis, /-include include\/gernetix_basissoftware_configuration\.h/);
+  assert.doesNotMatch(plain, /gernetix_basissoftware_configuration/);
+});

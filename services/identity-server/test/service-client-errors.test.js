@@ -26,3 +26,29 @@ test("upstream disconnects become readable gateway errors", async () => {
     global.fetch = originalFetch;
   }
 });
+
+test("build worker pool uses a separate endpoint from central deploy execution", async () => {
+  const originalFetch = global.fetch;
+  const calls = [];
+  global.fetch = async (url) => {
+    calls.push(url);
+    return { ok: true, status: 200, json: async () => ({ status: "ok" }) };
+  };
+  try {
+    const clients = createDevServiceClients({
+      aiContextBaseUrl: "http://context",
+      aiUsageBaseUrl: "http://usage",
+      buildDeployBaseUrl: "http://central-build",
+      buildWorkerPoolBaseUrl: "http://build-pool",
+      deviceManagementBaseUrl: "http://devices",
+      hardwareCatalogBaseUrl: "http://catalog",
+      hardwareShopBaseUrl: "http://shop",
+      projectServerBaseUrl: "http://projects",
+    });
+    await clients.buildDeployJson("/api/ota/preflight");
+    await clients.buildWorkerPoolJson("/api/build-jobs");
+    assert.deepEqual(calls, ["http://central-build/api/ota/preflight", "http://build-pool/api/build-jobs"]);
+  } finally {
+    global.fetch = originalFetch;
+  }
+});

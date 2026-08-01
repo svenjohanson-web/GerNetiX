@@ -39,6 +39,12 @@ const {
 } = require("./dev/development-project-templates");
 const { createDevHardwareUtils } = require("./dev/hardware-utils");
 const { createLlmConfigStore } = require("../../shared/llm-config");
+const { normalizeBasissoftwareConfiguration } = require("../../shared/basissoftware-configuration");
+const {
+  applyProjectCommunicationSetup,
+  defaultProjectCommunicationSetup,
+  normalizeProjectCommunicationSetup,
+} = require("../../shared/project-communication-setup");
 const {
   authRoute,
   clearSessionCookie,
@@ -164,6 +170,7 @@ const projectServerBaseUrl = process.env.PROJECT_SERVER_BASE_URL || "http://127.
 const telemetryServerBaseUrl = process.env.TELEMETRY_SERVER_BASE_URL || "http://127.0.0.1:5600";
 const telemetryInternalToken = process.env.TELEMETRY_INTERNAL_TOKEN || "";
 const buildDeployBaseUrl = process.env.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400";
+const buildWorkerPoolBaseUrl = process.env.BUILD_WORKER_POOL_BASE_URL || buildDeployBaseUrl;
 const publicDemoBaseUrl = process.env.PUBLIC_DEMO_BASE_URL || "http://127.0.0.1:4920";
 const communityPlatformBaseUrl = process.env.COMMUNITY_PLATFORM_BASE_URL || "http://127.0.0.1:5200";
 const communityInternalToken = process.env.COMMUNITY_INTERNAL_TOKEN || "";
@@ -195,6 +202,7 @@ const {
   aiContextJson,
   aiUsageJson,
   buildDeployJson,
+  buildWorkerPoolJson,
   communityJson,
   deviceManagementJson,
   hardwareCatalogJson,
@@ -205,6 +213,7 @@ const {
   aiContextBaseUrl,
   aiUsageBaseUrl,
   buildDeployBaseUrl,
+  buildWorkerPoolBaseUrl,
   communityPlatformBaseUrl,
   communityInternalToken,
   deviceManagementBaseUrl,
@@ -442,6 +451,8 @@ registerProjectRoutes({
   handleDevelopmentProjectDialogSave,
   handleDevelopmentProjectHardwareSave,
   handleProjectComponentFeatures,
+  handleProjectBasissoftwareConfiguration,
+  handleProjectCommunicationSetup,
   handleProjectComponentHardwareFeatures,
   handleProjectPwaDashboard,
   handleProjectEventConfiguration,
@@ -539,6 +550,7 @@ async function bootstrap() {
   console.log(`GerNetiX Dashboard+: http://${host}:${port}/app/dashboard/`);
   console.log(`Project Server adapter: ${projectServerBaseUrl}`);
   console.log(`Build & Deploy adapter: ${buildDeployBaseUrl}`);
+  console.log(`Build Worker Pool adapter: ${buildWorkerPoolBaseUrl}`);
   console.log(`OTA Build & Deploy adapter: ${otaBuildDeployBaseUrl}`);
   console.log(`Hardware Shop adapter: ${hardwareShopBaseUrl}`);
   console.log(`Hardware Catalog adapter: ${hardwareCatalogBaseUrl}`);
@@ -1440,6 +1452,17 @@ async function handleDevelopmentProjectCreate(req, res, session) {
       build_config: buildConfig,
     });
   }
+  let communicationSetup = null;
+  if (template.id === "esp32_camera_to_touch_display") {
+    const defaultCommunication = defaultProjectCommunicationSetup(softwareUnits);
+    const derivedCommunication = applyProjectCommunicationSetup(softwareUnits, {
+      ...defaultCommunication,
+      mode: "device_access_point",
+    });
+    communicationSetup = derivedCommunication.setup;
+    softwareUnits = derivedCommunication.software_units;
+    buildConfig = softwareUnits[0]?.build_config || buildConfig;
+  }
   const projectId = `dev_project_${slugifyProjectId(title)}_${Date.now().toString(36)}`;
   const initialSource = template.id === "empty" ? "" : templateArchitecturePlantUml(template, title);
   const sources = developmentProjectSources({ title, description, architectureSource: initialSource })
@@ -1470,6 +1493,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
       hardware_profile_id: templateHardwareProfileId(template),
       device_id: null,
       build_config: buildConfig,
+      ...(softwareUnits.length ? { software_units: softwareUnits, active_software_unit_id: softwareUnits[0].software_unit_id } : {}),
       view_manifest: developmentProjectViewManifest({
         title,
         description,
@@ -1478,6 +1502,7 @@ async function handleDevelopmentProjectCreate(req, res, session) {
         templateId: template.id,
         templateModelVersion: template.schemaVersion,
         hardwareConfiguration,
+        communicationSetup,
         homeAutomationConfiguration: template.id === "distributed_home_automation"
           ? defaultHomeAutomationConfiguration()
           : null,
@@ -1532,6 +1557,7 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
         pwaDashboardConfiguration: project.view_manifest?.pwa_dashboard,
         dataLoggerConfiguration: project.view_manifest?.data_logger,
         eventConfiguration: project.view_manifest?.event_configuration,
+        communicationSetup: project.view_manifest?.communication_setup,
       }),
       build_config: project.build_config || null,
     },
@@ -1792,7 +1818,7 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
         }] : [],
       };
     }
-    const selectedGamesPath = "Komponenten/IoT-Device 1/src/config/selected_games.h";
+    const selectedGamesPath = "Komponenten/IoT-Device 1/include/config/selected_games.h";
     const existingSelectedGames = await projectServerJson(
       `/api/projects/${encodeURIComponent(project.project_server_id)}/sources/${encodeURIComponent(selectedGamesPath)}`,
     ).catch(() => null);
@@ -1806,9 +1832,12 @@ async function handleDevelopmentProjectDialogSave(req, res, session, projectId) 
       },
     });
   }
-  const softwareUnits = developmentSoftwareUnits(project, diagram, hardwareConfigurationFromManifest(existingManifest), {
+  let softwareUnits = developmentSoftwareUnits(project, diagram, hardwareConfigurationFromManifest(existingManifest), {
     primaryBuildConfig: buildConfig,
   });
+  if (existingManifest.communication_setup) {
+    softwareUnits = applyProjectCommunicationSetup(softwareUnits, existingManifest.communication_setup).software_units;
+  }
   const activeSoftwareUnitId = softwareUnits.some((unit) => unit.software_unit_id === project.active_software_unit_id)
     ? project.active_software_unit_id
     : softwareUnits[0]?.software_unit_id || "";
@@ -1919,10 +1948,13 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
     } : {}),
     ...(!allocatedBasissoftwareProfile && [4, 8, 16].includes(configuredFlashSizeMb) ? { flash_size_mb: configuredFlashSizeMb } : {}),
   } : null;
-  const softwareUnits = developmentSoftwareUnits(project, diagram, hardwareConfiguration, {
+  let softwareUnits = developmentSoftwareUnits(project, diagram, hardwareConfiguration, {
     primaryBuildConfig: buildConfig,
     boards: availableBoards,
   });
+  if (existingManifest.communication_setup) {
+    softwareUnits = applyProjectCommunicationSetup(softwareUnits, existingManifest.communication_setup).software_units;
+  }
   const activeSoftwareUnitId = softwareUnits.some((unit) => unit.software_unit_id === project.active_software_unit_id)
     ? project.active_software_unit_id
     : softwareUnits[0]?.software_unit_id || "";
@@ -1957,6 +1989,7 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
         templateId: existingManifest.template_id,
         templateModelVersion: existingManifest.template_ref?.model_schema_version,
         hardwareConfiguration,
+        communicationSetup: existingManifest.communication_setup,
         homeAutomationConfiguration: existingManifest.home_automation_configuration,
         gameConfiguration,
         pwaDashboardConfiguration: existingManifest.pwa_dashboard,
@@ -2014,6 +2047,57 @@ async function handleProjectComponentFeatures(req, res, session, projectId) {
   const updated = projects.find((item) => item.project_server_id === project.project_server_id);
   touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
   sendJson(res, 200, { project: toPlatformProject(updated) });
+}
+
+async function handleProjectBasissoftwareConfiguration(req, res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  const body = await readJsonBody(req);
+  const softwareUnitId = String(body.software_unit_id || "").trim();
+  const softwareUnits = Array.isArray(project.software_units) ? project.software_units : [];
+  const softwareUnit = softwareUnits.find((unit) => unit.software_unit_id === softwareUnitId);
+  if (!softwareUnit?.build_config?.firmware_basis_id) {
+    sendJson(res, 409, { error: "basissoftware_unit_not_found", message: "Die gewählte Software-Einheit besitzt keine konfigurierbare GerNetiX-Basissoftware." });
+    return;
+  }
+  const basissoftwareConfiguration = normalizeBasissoftwareConfiguration(body.configuration);
+  let updatedUnits = softwareUnits.map((unit) => unit.software_unit_id === softwareUnitId
+    ? { ...unit, build_config: { ...unit.build_config, basissoftware_configuration: basissoftwareConfiguration } }
+    : unit);
+  if (project.view_manifest?.communication_setup) {
+    updatedUnits = applyProjectCommunicationSetup(updatedUnits, project.view_manifest.communication_setup).software_units;
+  }
+  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+    method: "PATCH",
+    body: { software_units: updatedUnits, active_software_unit_id: softwareUnitId },
+  });
+  const projects = await loadUserIdeProjects(session);
+  const updated = projects.find((item) => item.project_server_id === project.project_server_id);
+  touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
+  sendJson(res, 200, { project: toPlatformProject(updated), software_unit_id: softwareUnitId, configuration: basissoftwareConfiguration });
+}
+
+async function handleProjectCommunicationSetup(req, res, session, projectId) {
+  const project = await requireSessionProject(session, projectId);
+  const softwareUnits = platformSoftwareUnits(project);
+  const embeddedUnits = softwareUnits.filter((unit) => unit.build_system === "platformio" || unit.software_kind === "embedded_firmware");
+  if (embeddedUnits.length < 2) {
+    sendJson(res, 409, { error: "communication_setup_requires_multiple_devices", message: "Ein geräteübergreifendes Kommunikationssetup benötigt mindestens zwei IoT-Firmware-Ziele." });
+    return;
+  }
+  const setup = normalizeProjectCommunicationSetup(await readJsonBody(req), softwareUnits);
+  const derived = applyProjectCommunicationSetup(softwareUnits, setup);
+  await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
+    method: "PATCH",
+    body: {
+      view_manifest: { ...project.view_manifest, communication_setup: derived.setup },
+      software_units: derived.software_units,
+      active_software_unit_id: project.active_software_unit_id || derived.software_units[0]?.software_unit_id || "",
+    },
+  });
+  const projects = await loadUserIdeProjects(session);
+  const updated = projects.find((item) => item.project_server_id === project.project_server_id);
+  touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
+  sendJson(res, 200, { project: toPlatformProject(updated), communication_setup: derived.setup });
 }
 
 async function handleProjectComponentHardwareFeatures(req, res, session, projectId) {
@@ -2520,7 +2604,9 @@ async function handleUserIdeBuildJob(req, res) {
     },
   });
   const buildPackage = await projectServerJson(`/api/build-jobs/${encodeURIComponent(projectServerJob.build_job_id)}/build-package`);
-  const buildDeployClient = mode === "build_and_flash" ? otaBuildDeployJson : buildDeployJson;
+  const buildDeployClient = mode === "build_and_flash"
+    ? otaBuildDeployJson
+    : (["build", "prebuild"].includes(mode) && !flashTransportRequested ? buildWorkerPoolJson : buildDeployJson);
   const buildDeployJob = await buildDeployClient("/api/build-jobs", {
     method: "POST",
     body: {
@@ -2555,8 +2641,10 @@ async function handleUserIdeBuildJob(req, res) {
       build_deploy_job_id: buildDeployJob.job_id,
     },
   });
-  const completedBuildDeployJob = await waitForBuildDeployJob(buildDeployJob.job_id, buildDeployClient);
-  if (completedBuildDeployJob && ["succeeded", "failed"].includes(completedBuildDeployJob.status)) {
+  // Return the accepted job immediately so the browser can expose cancellation
+  // while the worker compiles. Completion is synchronized by the status route.
+  const completedBuildDeployJob = buildDeployJob;
+  if (completedBuildDeployJob && ["succeeded", "failed", "cancelled"].includes(completedBuildDeployJob.status)) {
     await recordCompletedBuildJob(projectServerJob.build_job_id, completedBuildDeployJob);
   }
 
@@ -2766,12 +2854,12 @@ async function loadUserIdeProjects(session) {
     const needsLearningViewSync = Number(canonicalManifest?.schema_version || 0)
       > Number(project.view_manifest?.schema_version || 0);
     if (needsLearningViewSync) return synchronizeLearningProjectStructure(project, definition);
-    return synchronizeDevelopmentTemplateRuntimeModel(project);
+    return synchronizeDevelopmentTemplateRuntimeModel(project, session);
   }));
   return mapUserIdeProjects(session, new Map(synchronizedItems.map((item) => [item.project_id, item])));
 }
 
-async function synchronizeDevelopmentTemplateRuntimeModel(project) {
+async function synchronizeDevelopmentTemplateRuntimeModel(project, session) {
   const templateId = String(project.view_manifest?.template_id || "");
   if (project.learning_project_id !== "development_project" || templateId !== "esp32_camera_to_touch_display") return project;
   const template = developmentProjectTemplate(templateId);
@@ -2781,20 +2869,38 @@ async function synchronizeDevelopmentTemplateRuntimeModel(project) {
     Number(templateRef.model_schema_version || 0),
     Number(templateRef.runtime_model_version || 0),
   );
-  if (currentVersion >= targetVersion) return project;
-
   const canonicalUnits = templateSoftwareUnits(template);
   const existingUnits = platformSoftwareUnits(project);
   const hardwareConfiguration = hardwareConfigurationFromManifest(project.view_manifest);
   const hardwareDevices = (hardwareConfiguration?.components || [])
     .filter((component) => component.abstract_type === "iot_device");
-  const softwareUnits = canonicalUnits.map((canonical, index) => {
+  const missingBoardConfiguration = canonicalUnits.some((_canonical, index) => (
+    !existingUnits[index]?.build_config?.board_configuration
+  ));
+  const missingCommunicationSetup = !project.view_manifest?.communication_setup;
+  if (currentVersion >= targetVersion && !missingBoardConfiguration && !missingCommunicationSetup) return project;
+  const availableBoards = missingBoardConfiguration ? await loadAvailableProcessorBoards(session) : [];
+  let softwareUnits = canonicalUnits.map((canonical, index) => {
     const existing = existingUnits[index] || {};
     const hardware = hardwareDevices[index] || {};
     const existingBuild = existing.build_config || {};
     const preservedBuildValues = {};
-    for (const key of ["board_configuration", "component_device_allocations", "component_features", "component_hardware_features"]) {
+    for (const key of ["board_configuration", "component_device_allocations", "component_features", "component_hardware_features", "basissoftware_configuration"]) {
       if (existingBuild[key] !== undefined) preservedBuildValues[key] = structuredClone(existingBuild[key]);
+    }
+    if (!preservedBuildValues.board_configuration) {
+      const catalogBoard = availableBoards.find((board) => board.hardware_item_id === canonical.hardware_profile_id);
+      const resolvedBoardConfiguration = hardware.board_configuration
+        || (catalogBoard ? compilerBoardConfiguration(null, catalogBoard) : null);
+      if (resolvedBoardConfiguration) preservedBuildValues.board_configuration = structuredClone(resolvedBoardConfiguration);
+    }
+    // Template copies own their source code.  An older account project must
+    // therefore not receive the v16 camera/display component dependencies
+    // unless it was created with the matching v16 sources.
+    if (currentVersion < 16) {
+      preservedBuildValues.platformio_options = existingBuild.platformio_options || {
+        "board_build.cmake_extra_args": "-DSDKCONFIG_DEFAULTS=\"sdkconfig.esp32-s3-n16r8\"",
+      };
     }
     return {
       ...canonical,
@@ -2809,6 +2915,11 @@ async function synchronizeDevelopmentTemplateRuntimeModel(project) {
       },
     };
   });
+  const communicationSetup = normalizeProjectCommunicationSetup(
+    project.view_manifest?.communication_setup || defaultProjectCommunicationSetup(softwareUnits),
+    softwareUnits,
+  );
+  softwareUnits = applyProjectCommunicationSetup(softwareUnits, communicationSetup).software_units;
   const nextHardwareConfiguration = hardwareConfiguration ? {
     ...hardwareConfiguration,
     components: (hardwareConfiguration.components || []).map((component) => {
@@ -2823,6 +2934,7 @@ async function synchronizeDevelopmentTemplateRuntimeModel(project) {
       ...templateRef,
       runtime_model_version: targetVersion,
     },
+    communication_setup: communicationSetup,
     views: (project.view_manifest?.views || []).map((view) => (
       view.id === "hardware-configuration" && nextHardwareConfiguration
         ? { ...view, payload: nextHardwareConfiguration }
@@ -3494,15 +3606,6 @@ function latestBuildStatus(project) {
   return project && project.build_count > 0 ? `${project.build_count} BuildJob(s)` : "";
 }
 
-async function waitForBuildDeployJob(jobId, client = buildDeployJson) {
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    const job = await client(`/api/build-jobs/${encodeURIComponent(jobId)}`);
-    if (["succeeded", "failed", "replaced"].includes(job.status)) return job;
-    await delay(1000);
-  }
-  return null;
-}
-
 async function loadBuildDeployJob(jobId) {
   const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
   const client = projectJob?.mode === "build_and_flash" ? otaBuildDeployJson : buildDeployJson;
@@ -3517,6 +3620,7 @@ function toBuildDeployPackage(buildPackage, device = {}, project = {}) {
   }
   return {
     package_id: buildPackage.package_id,
+    contract: buildPackage.contract,
     files,
   };
 }
@@ -3907,7 +4011,7 @@ function projectViewManifest(project, options = {}) {
   };
 }
 
-function developmentProjectViewManifest({ title, description = "", source = "", diagram = null, buildConfig = null, architectureDialog = null, templateId = "", templateModelVersion = 1, hardwareConfiguration = null, homeAutomationConfiguration = null, gameConfiguration = null, pwaDashboardConfiguration = null, dataLoggerConfiguration = null, eventConfiguration = null }) {
+function developmentProjectViewManifest({ title, description = "", source = "", diagram = null, buildConfig = null, architectureDialog = null, templateId = "", templateModelVersion = 1, hardwareConfiguration = null, communicationSetup = null, homeAutomationConfiguration = null, gameConfiguration = null, pwaDashboardConfiguration = null, dataLoggerConfiguration = null, eventConfiguration = null }) {
   const buildable = Boolean(buildConfig);
   const usesProjectTemplate = Boolean(templateId && templateId !== "empty");
   const derivedFrom = diagram?.derived_from || (usesProjectTemplate || buildable ? "project_template" : "persisted_project");
@@ -3922,6 +4026,7 @@ function developmentProjectViewManifest({ title, description = "", source = "", 
     hide_source_editor: !buildable,
     mode: "architecture_discovery",
     ...(architectureDialog ? { architecture_dialog: normalizeArchitectureDialog(architectureDialog, diagram || { source: plantUmlSource }) } : {}),
+    ...(communicationSetup ? { communication_setup: normalizeProjectCommunicationSetup(communicationSetup) } : {}),
     ...(homeAutomationConfiguration ? { home_automation_configuration: normalizeHomeAutomationConfiguration(homeAutomationConfiguration) } : {}),
     ...(gameConfiguration ? { game_configuration: normalizeTouchscreenGameConfiguration(gameConfiguration) } : {}),
     ...(pwaDashboardConfiguration ? { pwa_dashboard: normalizePwaDashboardConfiguration(pwaDashboardConfiguration) } : {}),
@@ -4298,7 +4403,7 @@ function normalizeHardwareConfiguration(input = {}, project = {}) {
       pin: String(component.pin || "").slice(0, 80),
       secondary_pin: String(component.secondary_pin || "").slice(0, 80),
       properties: normalizeHardwareProperties(component.properties),
-      circuit: hardwareCircuitFor(concreteType, component.properties),
+      circuit: hardwareCircuitFor(concreteType, component.properties, abstractType, component.label),
     };
     if (abstractType === "iot_device") {
       const matchingUnit = embeddedUnits.find((unit) => !usedEmbeddedUnitIds.has(unit.software_unit_id)
@@ -4397,7 +4502,7 @@ function normalizeHardwareProperties(input = {}) {
   return result;
 }
 
-function hardwareCircuitFor(concreteType, properties = {}) {
+function hardwareCircuitFor(concreteType, properties = {}, abstractType = "", componentLabel = "Komponente") {
   if (concreteType === "pt1000") return { type: "pt1000_measurement", label: "PT1000-Messschaltung", stages: ["PT1000", "Konstantstromquelle / Messbruecke", "Messverstaerker", "ADC"] };
   if (["ntc", "ptc"].includes(concreteType)) return { type: "resistive_divider", label: "Widerstands-Messschaltung", stages: [concreteType.toUpperCase(), "Spannungsteiler", "ADC"] };
   const driver = String(properties?.motor_driver_type || "");
@@ -4405,6 +4510,12 @@ function hardwareCircuitFor(concreteType, properties = {}) {
   if (concreteType === "servo") return { type: "servo_driver", label: "Servo-Steuerung", stages: ["Zeitgeber", "Servo-PWM", "Servo"] };
   if (concreteType === "stepper_motor") return { type: "stepper_driver", label: "Schrittmotor-Steuerung", stages: ["Zeitgeber / RMT", driver === "four_phase" ? "4-Phasen-Treiber" : "STEP/DIR-Treiber", "Schrittmotor"] };
   if (concreteType === "synchronous_motor") return { type: "synchronous_motor_driver", label: "Synchronmotor-Steuerung", stages: [driver === "three_phase_six_step" ? "6-Step-Kommutierung" : "FOC", "Motor-PWM / ADC / Rotorlage", "3-Phasen-Leistungstreiber", "BLDC / PMSM"] };
+  if (properties?.connection_mode === "additional_circuit") {
+    const label = String(properties?.circuit_label || (abstractType === "actuator" ? "Treiber- / Leistungsschaltung" : "Signalaufbereitung / Schutzschaltung"));
+    return abstractType === "actuator"
+      ? { type: "actuator_interface_circuit", label, stages: ["Prozessorausgang", label, componentLabel] }
+      : { type: "sensor_interface_circuit", label, stages: [componentLabel, label, "Prozessoreingang"] };
+  }
   return null;
 }
 
@@ -4491,6 +4602,7 @@ function hardwareIoMarkdown(kind, device, components) {
     if (component.abstract_type === "sensor") lines.push(`- Sensorart: ${component.sensor_category || "offen"}`);
     if (component.abstract_type === "sensor") lines.push(`- Erfassung: ${component.signal_type || "offen"}`);
     lines.push(`- Konkreter Typ: ${component.concrete_type || "offen"}`);
+    lines.push(`- Anschlussweg: ${component.properties?.connection_mode === "additional_circuit" ? "ueber zusaetzliche Schaltung" : "direkt am Prozessor / Board"}`);
     const boardFeature = boardFeatureForHardwareComponent(component, device);
     lines.push(boardFeature
       ? `- Pin-Zuordnung: ${formatHardwarePins(boardFeature.pins)} (Boardkonfiguration)`
@@ -4704,9 +4816,14 @@ function developmentSoftwareUnits(project = {}, diagram = {}, hardwareConfigurat
     if (component.abstract_type === "iot_device") {
       const board = boards.find((item) => [item.hardware_item_id, item.hardware_profile_id, item.id]
         .filter(Boolean).some((id) => String(id) === String(hardware?.board_profile_id || "")));
-      const buildConfig = embeddedIndex === 0 && options.primaryBuildConfig
+      const baseBuildConfig = embeddedIndex === 0 && options.primaryBuildConfig
         ? options.primaryBuildConfig
         : buildConfigForBoard(board || hardware?.board_profile_id || "", existing?.build_config || null);
+      const resolvedBoardConfiguration = hardware?.board_configuration
+        || (board ? compilerBoardConfiguration(null, board) : null);
+      const buildConfig = baseBuildConfig && resolvedBoardConfiguration
+        ? { ...baseBuildConfig, board_configuration: compilerBoardConfiguration(resolvedBoardConfiguration, board) }
+        : baseBuildConfig;
       embeddedIndex += 1;
       return {
         software_unit_id: softwareUnitId,

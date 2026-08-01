@@ -100,6 +100,23 @@ test("jobs from a stale build worker are failed instead of remaining running", a
   );
 });
 
+test("a cancellation request is visible to the worker that owns the job", async () => {
+  const shared = fakePostgresState();
+  const workerA = new PostgresBuildCoordination(new FakePool(shared), { workerId: "worker-a" });
+  const workerB = new PostgresBuildCoordination(new FakePool(shared), { workerId: "worker-b" });
+  const job = buildJob("cancel-distributed-job");
+  await workerA.registerJob(job, { job_id: job.job_id, status: "running" });
+  shared.jobs.get(job.job_id).status = "running";
+
+  const requested = await workerB.requestCancellation(job.job_id);
+
+  assert.equal(requested.status, "cancelling");
+  assert.equal(await workerA.isCancellationRequested(job.job_id), true);
+  job.status = "cancelled";
+  await workerA.saveJob(job, { job_id: job.job_id, status: "cancelled" });
+  assert.equal((await workerB.getJob(job.job_id)).status, "cancelled");
+});
+
 function buildJob(jobId) {
   return {
     job_id: jobId,
@@ -136,7 +153,7 @@ class FakePool {
     }
     if (normalized.startsWith("update build_execution_jobs as jobs")) {
       for (const row of this.state.jobs.values()) {
-        if (!["accepted", "queued", "running"].includes(row.status)) continue;
+        if (!["accepted", "queued", "running", "cancelling"].includes(row.status)) continue;
         if (!this.state.workers.get(row.workerId)?.stale) continue;
         row.status = "failed";
         row.state = {
@@ -154,9 +171,24 @@ class FakePool {
     if (normalized.startsWith("update build_execution_jobs")) {
       const row = this.state.jobs.get(params[0]);
       if (!row) return { rowCount: 0, rows: [] };
+      if (normalized.includes("status = 'cancelling'")) {
+        if (!["accepted", "queued", "running", "cancelling"].includes(row.status)) return { rowCount: 0, rows: [] };
+        row.status = "cancelling";
+        row.state = { ...row.state, status: "cancelling" };
+        return { rowCount: 1, rows: [{ state_json: row.state, worker_id: row.workerId }] };
+      }
       if (row.status === "failed" && row.state.error?.code === "worker_lost") return { rowCount: 0, rows: [] };
+      if (["cancelling", "cancelled"].includes(row.status) && !["cancelled", "failed"].includes(params[2])) return { rowCount: 0, rows: [] };
       Object.assign(row, { workerId: params[1], status: params[2], state: JSON.parse(params[3]) });
       return { rowCount: 1, rows: [] };
+    }
+    if (normalized.startsWith("select status from build_execution_jobs")) {
+      const row = this.state.jobs.get(params[0]);
+      return { rowCount: row ? 1 : 0, rows: row ? [{ status: row.status }] : [] };
+    }
+    if (normalized.startsWith("select status in ('cancelling', 'cancelled')")) {
+      const row = this.state.jobs.get(params[0]);
+      return { rowCount: row ? 1 : 0, rows: row ? [{ requested: ["cancelling", "cancelled"].includes(row.status) }] : [] };
     }
     if (normalized.startsWith("select state_json")) {
       const row = this.state.jobs.get(params[0]);
@@ -164,7 +196,7 @@ class FakePool {
     }
     if (normalized.includes("select exists") && normalized.includes("build_execution_jobs")) {
       const active = Array.from(this.state.jobs.values())
-        .some((row) => row.projectId === params[0] && ["accepted", "queued", "running"].includes(row.status));
+        .some((row) => row.projectId === params[0] && ["accepted", "queued", "running", "cancelling"].includes(row.status));
       return { rowCount: 1, rows: [{ active }] };
     }
     if (normalized.startsWith("select generation::bigint")) {

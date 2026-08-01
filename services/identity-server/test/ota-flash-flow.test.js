@@ -47,7 +47,7 @@ test("OTA checks the complete server pipeline and reports deploy status instead 
   assert.match(server, /error: "ota_pipeline_not_ready"/);
   assert.match(server, /job\.mode === "build_and_flash"[\s\S]*?job\.result\?\.deploy\?\.status/);
   assert.match(server, /OTA_BUILD_DEPLOY_BASE_URL \|\| "https:\/\/build\.gernetix\.com"/);
-  assert.match(server, /mode === "build_and_flash" \? otaBuildDeployJson : buildDeployJson/);
+  assert.match(server, /mode === "build_and_flash"[\s\S]*?\["build", "prebuild"\]\.includes\(mode\)[\s\S]*?buildWorkerPoolJson/);
   assert.match(server, /projectJob\?\.mode === "build_and_flash" \? otaBuildDeployJson : buildDeployJson/);
   assert.match(app, /Build fertig\. OTA-Auftrag ist/);
   assert.match(app, /warte auf das Board/);

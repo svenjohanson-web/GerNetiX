@@ -8,8 +8,20 @@ const test = require("node:test");
 const {
   FirmwareBuildJobRunner,
   createPlatformioEnv,
+  findPlatformioArtifacts,
   readPlatformioFlashManifest,
+  spawnAndCapture,
 } = require("../src/modules/firmware-build-job-runner");
+
+test("aborting a build terminates the compiler process group", async () => {
+  const controller = new AbortController();
+  const running = spawnAndCapture(process.execPath, ["-e", "setInterval(() => {}, 1000)"], {
+    signal: controller.signal,
+  });
+  setTimeout(() => controller.abort(), 25);
+
+  await assert.rejects(running, (error) => error.code === "build_cancelled");
+});
 
 test("reads target-specific PlatformIO flash offsets instead of assuming classic ESP32 addresses", async () => {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-flash-args-"));
@@ -34,6 +46,45 @@ test("reads target-specific PlatformIO flash offsets instead of assuming classic
     { name: "boot_app0.bin", address: 0xe000 },
     { name: "firmware.bin", address: 0x10000 },
   ]);
+});
+
+test("collects nested ESP-IDF bootloader and partition artifacts as one browser flash package", async () => {
+  const buildDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-nested-flash-package-"));
+  const root = path.join(buildDir, "esp32s3");
+  await fs.mkdir(path.join(root, "bootloader"), { recursive: true });
+  await fs.mkdir(path.join(root, "partition_table"), { recursive: true });
+  await fs.writeFile(path.join(root, "firmware.elf"), "elf");
+  await fs.writeFile(path.join(root, "firmware.bin"), "firmware");
+  await fs.writeFile(path.join(root, "bootloader", "bootloader.bin"), "bootloader");
+  await fs.writeFile(path.join(root, "partition_table", "partition-table.bin"), "partitions");
+  await fs.writeFile(path.join(root, "flash_args"), [
+    "0x0000 bootloader/bootloader.bin",
+    "0x8000 partition_table/partition-table.bin",
+    "0x10000 firmware.bin",
+  ].join("\n"));
+
+  const result = await findPlatformioArtifacts(buildDir, { requireBrowserFlashPackage: true });
+
+  assert.equal(result.artifacts["bootloader.bin"], path.join(root, "bootloader", "bootloader.bin"));
+  assert.equal(result.artifacts["partitions.bin"], path.join(root, "partition_table", "partition-table.bin"));
+  assert.deepEqual(result.flashManifest, [
+    { name: "bootloader.bin", address: 0x0000 },
+    { name: "partitions.bin", address: 0x8000 },
+    { name: "firmware.bin", address: 0x10000 },
+  ]);
+});
+
+test("rejects a browser USB build before success when its flash package is incomplete", async () => {
+  const buildDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-incomplete-flash-package-"));
+  const root = path.join(buildDir, "esp32s3");
+  await fs.mkdir(root, { recursive: true });
+  await fs.writeFile(path.join(root, "firmware.elf"), "elf");
+  await fs.writeFile(path.join(root, "firmware.bin"), "firmware");
+
+  await assert.rejects(
+    findPlatformioArtifacts(buildDir, { requireBrowserFlashPackage: true }),
+    (error) => error.code === "incomplete_usb_flash_package",
+  );
 });
 
 test("ignores unknown files from PlatformIO flash arguments", async () => {

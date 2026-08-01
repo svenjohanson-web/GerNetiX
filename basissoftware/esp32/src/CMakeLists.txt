@@ -1,4 +1,8 @@
 set(GERNETIX_PROJECT_SOURCES)
+set(GERNETIX_PROJECT_REQUIRES)
+if(GERNETIX_CAMERA_DISPLAY_SLICE)
+  list(APPEND GERNETIX_PROJECT_REQUIRES esp32-camera esp_http_client esp_lcd esp_driver_i2c esp_driver_spi mdns)
+endif()
 if(DEFINED GERNETIX_PROJECT_SOURCE_DIR)
   # The build package passes one selected project source directory.  The
   # project stays outside the basissoftware tree, but is compiled into the
@@ -52,5 +56,6 @@ idf_component_register(
     lwip
     mbedtls
     mqtt
+    ${GERNETIX_PROJECT_REQUIRES}
     nvs_flash
 )

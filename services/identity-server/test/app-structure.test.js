@@ -23,7 +23,7 @@ test("platform app keeps state composition separate from domain behavior and sta
 
   let previousIndex = -1;
   for (const file of platformAppFiles) {
-    const currentIndex = html.indexOf(`/app/${file}?v=20260801-app-modules-1`);
+    const currentIndex = html.indexOf(`/app/${file}?v=`);
     assert.ok(currentIndex > previousIndex, `${file} must be loaded in module order`);
     previousIndex = currentIndex;
   }

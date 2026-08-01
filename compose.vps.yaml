@@ -30,7 +30,7 @@ services:
       POSTGRES_PASSWORD: ${RUNTIME_POSTGRES_PASSWORD:?RUNTIME_POSTGRES_PASSWORD muss gesetzt sein}
     expose: ["5432"]
     ports:
-      - "127.0.0.1:${RUNTIME_POSTGRES_HOST_PORT:-25432}:5432"
+      - "${RUNTIME_POSTGRES_BIND_ADDRESS:-127.0.0.1}:${RUNTIME_POSTGRES_HOST_PORT:-25432}:5432"
     networks:
       - backend
       - runtime-postgres-access
@@ -300,6 +300,7 @@ services:
       BUILD_COORDINATION_POOL_MAX: 20
       BUILD_WORKER_HEARTBEAT_MS: 15000
       BUILD_WORKER_STALE_MS: 120000
+      BUILD_CANCELLATION_POLL_MS: 500
       BUILD_POSTGRES_HOST: runtime-postgres
       BUILD_POSTGRES_PORT: 5432
       BUILD_POSTGRES_DATABASE: gernetix_runtime
@@ -326,6 +327,54 @@ services:
       runtime-postgres-migration:
         condition: service_completed_successfully
       mqtt-broker:
+        condition: service_healthy
+
+  build-router:
+    image: nginx:1.28-alpine
+    init: true
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    entrypoint: ["/opt/gernetix/build-router-entrypoint.sh"]
+    environment:
+      BUILD_WORKER_UPSTREAMS: ${BUILD_WORKER_UPSTREAMS:-}
+    expose: ["4400"]
+    networks:
+      - backend
+      - worker-access
+    volumes:
+      - ./infra/vps/nginx/build-router.conf:/etc/nginx/build-router.conf:ro
+      - ./infra/vps/nginx/build-router-entrypoint.sh:/opt/gernetix/build-router-entrypoint.sh:ro
+    tmpfs:
+      - /var/run/gernetix
+      - /var/cache/nginx
+      - /tmp
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:4400/health"]
+      interval: 15s
+      timeout: 4s
+      retries: 5
+      start_period: 5s
+    depends_on:
+      build-deploy-server:
+        condition: service_healthy
+
+  build-worker-postgres-access:
+    <<: *node-service
+    restart: "no"
+    healthcheck:
+      disable: true
+    command: ["node", "/app/tools/provision-build-worker-postgres.js"]
+    environment:
+      RUNTIME_POSTGRES_HOST: runtime-postgres
+      RUNTIME_POSTGRES_PORT: 5432
+      RUNTIME_POSTGRES_DATABASE: gernetix_runtime
+      RUNTIME_POSTGRES_USER: gernetix_runtime
+      RUNTIME_POSTGRES_PASSWORD: ${RUNTIME_POSTGRES_PASSWORD:?RUNTIME_POSTGRES_PASSWORD muss gesetzt sein}
+      BUILD_WORKER_POSTGRES_PASSWORD: ${BUILD_WORKER_POSTGRES_PASSWORD:-}
+    depends_on:
+      build-deploy-server:
         condition: service_healthy
 
   public-demo-server:
@@ -630,6 +679,7 @@ services:
       TELEMETRY_SERVER_BASE_URL: http://telemetry-server:5600
       TELEMETRY_INTERNAL_TOKEN: ${TELEMETRY_INTERNAL_TOKEN:?TELEMETRY_INTERNAL_TOKEN muss gesetzt sein}
       BUILD_DEPLOY_BASE_URL: http://build-deploy-server:4400
+      BUILD_WORKER_POOL_BASE_URL: http://build-router:4400
       OTA_BUILD_DEPLOY_BASE_URL: http://build-deploy-server:4400
       DEVICE_MANAGEMENT_BASE_URL: http://device-management-server:4700
       HARDWARE_CATALOG_BASE_URL: http://hardware-catalog:4910
@@ -652,6 +702,7 @@ services:
       project-server: { condition: service_healthy }
       telemetry-server: { condition: service_healthy }
       build-deploy-server: { condition: service_healthy }
+      build-router: { condition: service_healthy }
       device-management-server: { condition: service_healthy }
       hardware-catalog: { condition: service_healthy }
       hardware-shop: { condition: service_healthy }
@@ -758,6 +809,7 @@ networks:
     internal: true
   loopback-access:
   runtime-postgres-access:
+  worker-access:
 
 volumes:
   identity_state:

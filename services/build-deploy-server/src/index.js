@@ -55,6 +55,8 @@ function createBuildDeployService(config, { acknowledgementStore, artifactStore,
     deviceJobLock: new DeviceJobLock(),
     buildTargetLock: buildCoordination || new BuildTargetLock(),
     buildCoordination,
+    workerRole: config.workerRole,
+    cancellationPollMs: config.cancellationPollMs,
     stateStore: config.persistenceBackend === "sqlite"
       ? new SqliteStateStore(config.sqlitePath, "build-deploy-server", {
         defaultState: { jobs: [] },
@@ -72,8 +74,8 @@ function createDefaultBuildDeployService(config = createConfig()) {
       : config.postgres;
     const runtimePool = new Pool(poolOptions);
     return Promise.all([
-      PostgresOtaAcknowledgementStore.create(runtimePool),
-      PostgresArtifactStore.create({ poolOptions, publicBaseUrl: config.publicBaseUrl }),
+      PostgresOtaAcknowledgementStore.create(runtimePool, { manageSchema: config.databaseSchemaManagement }),
+      PostgresArtifactStore.create({ poolOptions, publicBaseUrl: config.publicBaseUrl, manageSchema: config.databaseSchemaManagement }),
       config.coordinationBackend === "postgres"
         ? PostgresBuildCoordination.create({
           poolOptions,
@@ -81,6 +83,7 @@ function createDefaultBuildDeployService(config = createConfig()) {
           workerId: config.workerId,
           heartbeatMs: config.workerHeartbeatMs,
           staleMs: config.workerStaleMs,
+          manageSchema: config.databaseSchemaManagement,
         })
         : null,
     ]).then(([acknowledgementStore, artifactStore, buildCoordination]) => createBuildDeployService(config, {

@@ -65,9 +65,9 @@ class SqliteOtaAcknowledgementStore {
 }
 
 class PostgresOtaAcknowledgementStore {
-  static async create(pool) {
+  static async create(pool, options = {}) {
     const store = new PostgresOtaAcknowledgementStore(pool);
-    await pool.query(`CREATE TABLE IF NOT EXISTS build_deploy_ota_acknowledgements (
+    if (options.manageSchema !== false) await pool.query(`CREATE TABLE IF NOT EXISTS build_deploy_ota_acknowledgements (
       deploy_id TEXT PRIMARY KEY, device_id TEXT NOT NULL, status TEXT NOT NULL,
       published_at TIMESTAMPTZ, acknowledged_at TIMESTAMPTZ, detail_json JSONB NOT NULL
     )`);

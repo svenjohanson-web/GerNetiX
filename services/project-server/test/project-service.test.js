@@ -662,6 +662,10 @@ test("creates reproducible build package for build deploy server", async () => {
   const buildPackage = await service.createBuildPackage(job.build_job_id);
 
   assert.equal(buildPackage.build_job.mode, "build_and_flash");
+  assert.equal(buildPackage.contract.kind, "gernetix_firmware_build_package");
+  assert.equal(buildPackage.contract.schema_version, 1);
+  assert.equal(buildPackage.contract.software_unit_id, project.active_software_unit_id);
+  assert.equal(buildPackage.contract.package_entrypoint, "src/main.cpp");
   assert.equal(buildPackage.files.some((file) => file.path === "platformio.ini"), true);
   assert.equal(buildPackage.files.some((file) => file.path === "src/app.cpp"), true);
 });

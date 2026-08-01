@@ -1210,6 +1210,7 @@ body {
   margin: 0;
   padding: 16px;
   overflow: auto;
+  background: #111827;
 }
 
 .plantuml-diagram {
@@ -1219,7 +1220,7 @@ body {
   object-fit: contain;
   border: 1px solid var(--line);
   border-radius: 8px;
-  background: #fff;
+  background: #111827;
 }
 
 .plantuml-diagram:not(.loaded) {

@@ -36,6 +36,12 @@ function createHttpApp(options) {
       return;
     }
 
+    const cancelJobMatch = url.pathname.match(/^\/api\/build-jobs\/([^/]+)\/cancel$/);
+    if (req.method === "POST" && cancelJobMatch) {
+      sendJson(res, 202, await service.cancelJob(decodeURIComponent(cancelJobMatch[1])));
+      return;
+    }
+
     const artifactMatch = url.pathname.match(/^\/artifacts\/([^/]+)\/([^/]+)$/);
     if (req.method === "GET" && artifactMatch) {
       await serveArtifact(res, artifactStore, decodeURIComponent(artifactMatch[1]), decodeURIComponent(artifactMatch[2]));

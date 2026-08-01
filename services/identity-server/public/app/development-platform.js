@@ -19,6 +19,7 @@ const DevelopmentPlatform = (() => {
         gameConfiguration: null,
         assistantOpen: false,
         componentDraftType: "iot_device",
+        componentDraftConnectionMode: "direct",
         workflowStep: "project_start",
       };
     }
@@ -27,6 +28,7 @@ const DevelopmentPlatform = (() => {
     if (!state.developmentPlatform.workflowStep) state.developmentPlatform.workflowStep = "project_start";
     if (typeof state.developmentPlatform.assistantOpen !== "boolean") state.developmentPlatform.assistantOpen = false;
     if (!state.developmentPlatform.componentDraftType) state.developmentPlatform.componentDraftType = "iot_device";
+    if (!state.developmentPlatform.componentDraftConnectionMode) state.developmentPlatform.componentDraftConnectionMode = "direct";
 
     function init() {
       document.querySelector("#developmentChatForm").addEventListener("submit", sendChatMessage);
@@ -56,12 +58,8 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#templateComponentConfiguration").addEventListener("change", handleTemplateComponentConfigurationChange);
       document.querySelector("#developmentHardwareForm").addEventListener("change", handleHardwareConfigurationChange);
       document.querySelector("#developmentHardwareForm").addEventListener("click", handleHardwareHelpClick);
-      document.querySelector("#backToDevelopmentArchitectureButton").addEventListener("click", () => {
-        const projectId = activeProjectId();
-        navigate(projectId
-          ? `/app/development-platform/?project=${encodeURIComponent(projectId)}&view=architecture`
-          : "/app/development-platform/");
-      });
+      document.querySelector("#backToDevelopmentArchitectureButton").addEventListener("click", openDevelopmentArchitectureFromHardware);
+      document.querySelector("#editExternalHardwareArchitectureButton").addEventListener("click", openDevelopmentArchitectureFromHardware);
       document.querySelector("#saveDevelopmentHardwareButton").addEventListener("click", () => saveHardwareConfiguration(false));
       document.querySelector("#continueDevelopmentHardwareButton").addEventListener("click", () => saveHardwareConfiguration(true));
       document.querySelector("#touchscreenGameForm").addEventListener("change", handleTouchscreenGameChange);
@@ -311,7 +309,9 @@ const DevelopmentPlatform = (() => {
       const storedProjectExists = projects.some((project) => project.id === storedProjectId);
       let activeProject = currentProject();
       const lastProject = storedProjectExists ? projects.find((project) => project.id === storedProjectId) : null;
-      document.querySelector("#developmentProjectName").textContent = activeProject?.name || "Kein Projekt geoeffnet";
+      const projectName = document.querySelector("#developmentProjectName");
+      projectName.textContent = activeProject?.name || "";
+      projectName.closest(".development-current-project")?.classList.toggle("hidden", !activeProject);
       document.querySelector("#developmentProjectChoicePanel").classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "choice");
       document.querySelector("#continueDevelopmentProjectButton").classList.toggle("hidden", !lastProject);
       document.querySelector("#continueDevelopmentProjectName").textContent = lastProject?.name || "";
@@ -322,9 +322,9 @@ const DevelopmentPlatform = (() => {
       overview.classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "manage");
       if (state.developmentPlatform.projectPanelMode === "manage") {
         const content = projects.length
-          ? projects.map((project) => `<article class="project-card"><div><strong>${escapeHtml(project.name)}</strong><p>${escapeHtml(project.description || "Keine Beschreibung.")}</p></div><div class="button-row"><button type="button" data-open-development-project="${escapeAttribute(project.id)}">In IDE oeffnen</button><button type="button" data-configure-development-project="${escapeAttribute(project.id)}">Konfiguration</button><button type="button" data-delete-development-project="${escapeAttribute(project.id)}">Loeschen</button></div></article>`).join("")
+          ? projects.map((project) => `<article class="project-card"><div><strong>${escapeHtml(project.name)}</strong><p>Erstellt: <time datetime="${escapeAttribute(project.createdAt || "")}">${escapeHtml(formatDevelopmentProjectDate(project.createdAt))}</time> · Zuletzt bearbeitet: <time datetime="${escapeAttribute(project.updatedAt || "")}">${escapeHtml(formatDevelopmentProjectDate(project.updatedAt))}</time></p></div><div class="button-row"><button type="button" data-open-development-project="${escapeAttribute(project.id)}">In IDE oeffnen</button><button type="button" data-configure-development-project="${escapeAttribute(project.id)}">Konfiguration</button><button type="button" data-delete-development-project="${escapeAttribute(project.id)}">Loeschen</button></div></article>`).join("")
           : `<div class="development-project-empty"><strong>Noch keine eigenen Entwicklungsprojekte vorhanden</strong><p>Kehre zur Auswahl zurück, um einen anderen Einstieg zu wählen.</p></div>`;
-        overview.innerHTML = `<header><p class="eyebrow">Meine Projekte</p><h3>Entwicklungsprojekte</h3></header>${content}<div class="button-row"><button type="button" data-development-project-back>Zurück zur Auswahl</button></div>`;
+        overview.innerHTML = `<header><p class="eyebrow">Meine Projekte</p><h3>Entwicklungsprojekte verwalten</h3></header>${content}<div class="button-row"><button type="button" data-development-project-back>Zurück zur Auswahl</button></div>`;
       }
       const isNewProject = state.developmentPlatform.projectPanelMode === "new-empty" || state.developmentPlatform.projectPanelMode === "new-template";
       document.querySelector("#developmentProjectForm").classList.toggle("hidden", !isNewProject);
@@ -337,11 +337,9 @@ const DevelopmentPlatform = (() => {
       select.value = state.developmentPlatform.activeProjectId || "";
       const selectButton = document.querySelector("#selectDevelopmentProjectButton");
       if (selectButton) selectButton.disabled = !select.value;
-      setProjectStatus(activeProject
+      setProjectStatus(activeProject || projects.length
         ? ""
-        : projects.length
-          ? "Bitte waehle, wie du im Entwicklungsbereich starten moechtest."
-          : "Noch kein Entwicklungsprojekt vorhanden. Bitte kehre zur Auswahl zurück.");
+        : "Noch kein Entwicklungsprojekt vorhanden. Bitte kehre zur Auswahl zurück.");
     }
 
     function enterProjectStart() {
@@ -371,6 +369,13 @@ const DevelopmentPlatform = (() => {
       restoreDevelopmentDialog(project);
       setActionStatus("");
       render();
+    }
+
+    function openDevelopmentArchitectureFromHardware() {
+      const projectId = activeProjectId();
+      navigate(projectId
+        ? `/app/development-platform/?project=${encodeURIComponent(projectId)}&view=architecture`
+        : "/app/development-platform/");
     }
 
     function usesTemplateComponentConfiguration(project = currentProject()) {
@@ -416,6 +421,7 @@ const DevelopmentPlatform = (() => {
           </aside>`
         : "";
       const draftType = state.developmentPlatform.componentDraftType || "iot_device";
+      const draftConnectionMode = state.developmentPlatform.componentDraftConnectionMode || "direct";
       const connectionOptions = componentConnectionOptions(draftType, components);
       section.innerHTML = `
         <header>
@@ -432,42 +438,25 @@ const DevelopmentPlatform = (() => {
             ${connectionHints}
           </section>
           <form class="template-component-add" onsubmit="return false">
-            <h4>Komponente hinzufuegen</h4>
+            <h4>Komponente oder Anschluss hinzufuegen</h4>
             <label>Art
               <select data-template-component-type>
                 <option value="iot_device" ${selected(draftType, "iot_device")}>IoT-Device</option>
-                <option value="sensor" ${selected(draftType, "sensor")}>Sensor</option>
-                <option value="actuator" ${selected(draftType, "actuator")}>Aktor</option>
+                <option value="sensor" ${selected(draftType, "sensor")}>Sensor anschliessen</option>
+                <option value="actuator" ${selected(draftType, "actuator")}>Aktor anschliessen</option>
                 <option value="smartphone_app" ${selected(draftType, "smartphone_app")}>Smartphone-App</option>
                 <option value="browser_app" ${selected(draftType, "browser_app")}>Browser-App</option>
                 <option value="desktop_app" ${selected(draftType, "desktop_app")}>Desktop-App</option>
                 <option value="server_api" ${selected(draftType, "server_api")}>Server / API</option>
               </select>
             </label>
+            ${componentConnectionModeSelection(draftType, draftConnectionMode)}
             <label>Bezeichnung (optional)<input data-template-component-label maxlength="80" placeholder="z. B. Sensor Kueche"></label>
             ${componentConnectionSelection(draftType, connectionOptions)}
             <button type="button" class="secondary" data-template-component-add ${!connectionOptions.length ? "disabled" : ""}>+ Komponente</button>
           </form>
         </div>
-        ${renderSoftwareUnitPreview(components)}
       `;
-    }
-
-    function renderSoftwareUnitPreview(components) {
-      const software = (components || []).filter((component) => ["iot_device", "smartphone_app", "browser_app", "desktop_app", "server_api"].includes(component.abstract_type));
-      if (!software.length) return "";
-      const buildSystems = {
-        iot_device: "PlatformIO",
-        smartphone_app: "App-/Web-Build",
-        browser_app: "Web-Build",
-        desktop_app: "Desktop-Build",
-        server_api: "Server-Build",
-      };
-      return `<aside class="template-software-units">
-        <div><p class="eyebrow">Software-Einheiten</p><h4>Getrennte Quellen und Build-Ziele</h4></div>
-        <ul>${software.map((component) => `<li><strong>${escapeHtml(component.label)}</strong><span>${escapeHtml(buildSystems[component.abstract_type])}</span><small>Komponenten/${escapeHtml(component.label)}</small></li>`).join("")}</ul>
-        <p>Jede Einheit wird im Projekt separat gespeichert. In der IDE waehlt man vor dem Build die auszufuehrende Einheit und ihr Ziel.</p>
-      </aside>`;
     }
 
     function templateComponentTypeLabel(type) {
@@ -476,6 +465,17 @@ const DevelopmentPlatform = (() => {
 
     function componentConnectionOptions(type, components) {
       return globalThis.DevelopmentComponentMetamodel?.optionsForNewComponent(type, components) || [];
+    }
+
+    function componentConnectionModeSelection(type, mode) {
+      if (!["sensor", "actuator"].includes(type)) return "";
+      return `<label>Anschlussweg zum Prozessor / Board
+        <select data-template-component-connection-mode>
+          <option value="direct" ${selected(mode, "direct")}>Direkt anschliessen</option>
+          <option value="additional_circuit" ${selected(mode, "additional_circuit")}>Ueber eine zusaetzliche Schaltung</option>
+        </select>
+        <small>Die konkrete Schaltung, Schnittstelle und Pinbelegung werden im Hardware-Schritt festgelegt.</small>
+      </label>`;
     }
 
     function componentConnectionSelection(type, options) {
@@ -505,6 +505,7 @@ const DevelopmentPlatform = (() => {
       const type = section?.querySelector("[data-template-component-type]")?.value || "structural";
       const labelInput = section?.querySelector("[data-template-component-label]");
       const label = String(labelInput?.value || "").trim() || templateComponentDefaultLabel(type);
+      const connectionMode = section?.querySelector("[data-template-component-connection-mode]")?.value || "direct";
       const connectionSelections = ["sensor", "actuator"].includes(type)
         ? [section?.querySelector("[data-template-connection-target]")?.value || ""]
         : Array.from(section?.querySelectorAll("[data-template-connection-option]:checked") || []).map((input) => input.value);
@@ -518,7 +519,7 @@ const DevelopmentPlatform = (() => {
           : "Bitte waehle mindestens eine zulaessige Beziehung fuer diese Komponente.");
         return;
       }
-      appendTemplateComponent(type, label, connections);
+      appendTemplateComponent(type, label, connections, connectionMode);
       if (labelInput) labelInput.value = "";
       renderTemplateComponentConfiguration();
       renderArchitectureDiagram();
@@ -526,9 +527,14 @@ const DevelopmentPlatform = (() => {
     }
 
     function handleTemplateComponentConfigurationChange(event) {
-      if (!event.target.matches("[data-template-component-type]")) return;
-      state.developmentPlatform.componentDraftType = event.target.value;
-      renderTemplateComponentConfiguration();
+      if (event.target.matches("[data-template-component-type]")) {
+        state.developmentPlatform.componentDraftType = event.target.value;
+        renderTemplateComponentConfiguration();
+      } else if (event.target.matches("[data-template-component-connection-mode]")) {
+        state.developmentPlatform.componentDraftConnectionMode = event.target.value;
+      } else {
+        return;
+      }
     }
 
     function templateComponentDefaultLabel(type) {
@@ -539,7 +545,7 @@ const DevelopmentPlatform = (() => {
       return globalThis.DevelopmentComponentMetamodel?.componentTypes?.[component?.abstract_type]?.user_configurable !== false;
     }
 
-    function appendTemplateComponent(type, label, connections = []) {
+    function appendTemplateComponent(type, label, connections = [], connectionMode = "direct") {
       const diagram = state.developmentPlatform.architectureDiagram || architectureDiagramForProject(currentProject());
       if (!diagram?.source) return;
       const safeLabel = String(label).replace(/["\\\\]/g, " ").replace(/\s+/g, " ").trim();
@@ -553,9 +559,12 @@ const DevelopmentPlatform = (() => {
       const relations = connections.map(({ relationshipRuleId, connectionTargetId }) => {
         const relationshipRule = globalThis.DevelopmentComponentMetamodel?.relationshipRules.find((item) => item.id === relationshipRuleId);
         if (!relationshipRule) return "";
+        const relationLabel = ["sensor", "actuator"].includes(type)
+          ? `${relationshipRule.label} (${connectionMode === "additional_circuit" ? "ueber Zusatzschaltung" : "direkt"})`
+          : relationshipRule.label;
         return relationshipRule.source_type === type
-          ? `${alias} --> ${connectionTargetId} : ${relationshipRule.label}`
-          : `${connectionTargetId} --> ${alias} : ${relationshipRule.label}`;
+          ? `${alias} --> ${connectionTargetId} : ${relationLabel}`
+          : `${connectionTargetId} --> ${alias} : ${relationLabel}`;
       }).filter(Boolean);
       if (!relations.length) return;
       const additions = `${declaration}\n${relations.join("\n")}`;
@@ -1184,6 +1193,13 @@ const DevelopmentPlatform = (() => {
       return (state.projects || []).filter((project) => project.type === "development_project" || project.type === "custom_project");
     }
 
+    function formatDevelopmentProjectDate(value) {
+      const date = new Date(value || "");
+      return Number.isNaN(date.getTime())
+        ? "nicht erfasst"
+        : new Intl.DateTimeFormat("de-DE", { dateStyle: "medium", timeStyle: "short" }).format(date);
+    }
+
     function activeProjectId() {
       return state.developmentPlatform.activeProjectId || "";
     }
@@ -1345,8 +1361,15 @@ const DevelopmentPlatform = (() => {
         ? /\bas\s+(?:telemetry|runtime|push)\b/i.test(diagram.source)
         : templateId === "iot_datalogger_web_push_pwa"
           ? /\bas\s+(?:telemetry|storage|push)\b/i.test(diagram.source)
-          : diagram.derived_from === "project_template"
-            && (!/as camera_app <<Software>>/i.test(diagram.source) || /as (?:camera|display)_board/i.test(diagram.source));
+          : /^project_template/.test(diagram.derived_from || "")
+            && (/\bas\s+(?:camera_app|display_app|camera_board|display_board)\b/i.test(diagram.source)
+              || !/\bas\s+display_processor\b/i.test(diagram.source)
+              || !/\bas\s+touch_controller_ic\b/i.test(diagram.source)
+              || !/\bas\s+audio_codec_ic\b/i.test(diagram.source)
+              || !/\bas\s+microphone_left\b/i.test(diagram.source)
+              || !/\bas\s+microphone_right\b/i.test(diagram.source)
+              || !/\benvironment\s+[-.]+>\s+camera\b/i.test(diagram.source)
+              || !/\buser\s+[-.]+>\s+touch\b/i.test(diagram.source));
       const refreshedSource = projectTemplatePreviews[templateId]?.source;
       if (!containsLegacyInfrastructure || !refreshedSource) return diagram;
       return {
@@ -1943,6 +1966,7 @@ const DevelopmentPlatform = (() => {
         ? project.buildConfig.component_device_allocations
         : [];
       const controlAssignments = controlUnitAssignments(source);
+      const connectionModeAssignments = componentConnectionModeAssignments(source);
       const boards = availableProcessorBoards();
       let deviceIndex = 0;
       const components = abstractArchitectureComponents(source).map((component) => {
@@ -1955,6 +1979,12 @@ const DevelopmentPlatform = (() => {
         if (["sensor", "actuator"].includes(merged.abstract_type) && !merged.target_device_id && controlAssignments.get(merged.component_id)) {
           merged.target_device_id = controlAssignments.get(merged.component_id);
         }
+        if (["sensor", "actuator"].includes(merged.abstract_type) && !merged.properties?.connection_mode) {
+          merged.properties = {
+            ...(merged.properties || {}),
+            connection_mode: connectionModeAssignments.get(merged.component_id) || "direct",
+          };
+        }
         if (merged.abstract_type === "sensor" && /kamera|camera/i.test(merged.label) && !merged.sensor_category) {
           merged.sensor_category = "image";
         }
@@ -1964,7 +1994,7 @@ const DevelopmentPlatform = (() => {
           const processorKey = DevelopmentHardwareModel.selectionForComponent(merged, boards);
           return DevelopmentHardwareModel.applyProcessorSelection(merged, processorKey, boards);
         }
-        if (merged.abstract_type === "sensor" && merged.concrete_type !== "integrated_camera") {
+        if (merged.abstract_type === "sensor" && !String(merged.concrete_type || "").startsWith("integrated_")) {
           return DevelopmentHardwareModel.reconcileSensor(merged, availableSensors());
         }
         return merged;
@@ -2029,41 +2059,45 @@ const DevelopmentPlatform = (() => {
       return assignments;
     }
 
+    function componentConnectionModeAssignments(source) {
+      const components = abstractArchitectureComponents(source);
+      const byId = new Map(components.map((component) => [component.component_id, component]));
+      const assignments = new Map();
+      String(source || "").split(/\r?\n/).forEach((line) => {
+        const relation = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s+[-.]+>\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?::\s*(.*))?$/);
+        if (!relation) return;
+        const mode = /ueber Zusatzschaltung/i.test(relation[3] || "") ? "additional_circuit"
+          : /\bdirekt\b/i.test(relation[3] || "") ? "direct" : "";
+        if (!mode) return;
+        if (byId.get(relation[1])?.abstract_type === "sensor") assignments.set(relation[1], mode);
+        if (byId.get(relation[2])?.abstract_type === "actuator") assignments.set(relation[2], mode);
+      });
+      return assignments;
+    }
+
     function hardwareComponentType(label, plantUmlType, componentId = "") {
-      const text = String(label || "").toLowerCase();
-      if (String(plantUmlType).toLowerCase() === "actor") return "actor";
-      const alias = String(componentId || "").toLowerCase();
-      const explicitType = ["iot_device", "sensor", "actuator", "smartphone_app", "browser_app", "desktop_app", "server_api"]
-        .find((type) => alias === type || alias.startsWith(`${type}_`));
-      if (explicitType) return explicitType;
-      // The start architecture is persisted as PlantUML.  Preserve the semantic
-      // component types of managed project services when it is read back into
-      // the editor; otherwise they would all fall through to "structural".
-      if (/telemetrie.api/.test(text)) return "telemetry_api";
-      if (/projekt.speicher/.test(text)) return "project_storage";
-      if (/projekt.runtime.daten/.test(text)) return "project_runtime_data";
-      if (/ereignis.worker/.test(text)) return "event_worker";
-      if (/ereignis.dispatcher/.test(text)) return "event_dispatcher";
-      if (/projekt.push.versand|benachrichtigungsdienst/.test(text)) return "notification_service";
-      if (/iot.?device|iot.?zielger(?:ae|ä)t|esp32|esp8266|arduino|raspberry|processor.?board|datenlogger/.test(text)) return "iot_device";
-      if (/sensor|kamera|camera|fuehler|fuhler|temperatur|feuchte|helligkeit|wasserstand|ntc|ptc|pt1000/.test(text)) return "sensor";
-      if (/aktor|display|bildschirm|anzeige|motor|relais|ventil|servo|summer|buzzer|led/.test(text)) return "actuator";
-      if (/pwa|iphone|smartphone|mobile app/.test(text)) return "smartphone_app";
-      if (/browser|dashboard/.test(text)) return "browser_app";
-      if (/desktop|windows app|mac(?:os)? app|linux app/.test(text)) return "desktop_app";
-      if (/server|api|vps|koordination|webserver/.test(text)) return "server_api";
-      return "structural";
+      return globalThis.DevelopmentComponentMetamodel?.componentTypeForPlantUml(label, plantUmlType, componentId) || "structural";
     }
 
     function renderHardwareComponentTable(configuration) {
       const target = document.querySelector("#developmentHardwareComponents");
       if (!target) return;
       const devices = configuration.components.filter((component) => component.abstract_type === "iot_device");
-      target.innerHTML = configuration.components.map((component) => hardwareComponentRow(component, devices)).join("");
+      target.innerHTML = configuration.components
+        .filter((component) => !["processor", "hardware_ic"].includes(component.abstract_type))
+        .map((component) => hardwareComponentRow(component, devices)).join("");
     }
 
     function hardwareComponentRow(component, devices) {
       const typeLabel = ({ iot_device: "IoT-Device", sensor: "Sensor/in", actuator: "Aktor/out", actor: "Akteur", structural: "Strukturelement" })[component.abstract_type] || component.abstract_type;
+      if (component.abstract_type === "iot_device") {
+        return `
+          <div class="hardware-table-row hardware-iot-row" role="row" data-hardware-component="${escapeAttribute(component.component_id)}">
+            <div class="hardware-component-identity"><strong>${escapeHtml(component.label)}</strong><small>${escapeHtml(typeLabel)}</small></div>
+            <div class="hardware-iot-realization">${hardwareRealizationControl(component)}</div>
+          </div>
+        `;
+      }
       if (component.abstract_type === "sensor") {
         return `
           <div class="hardware-table-row hardware-sensor-row" role="row" data-hardware-component="${escapeAttribute(component.component_id)}">
@@ -2092,6 +2126,9 @@ const DevelopmentPlatform = (() => {
       }
       if (component.concrete_type === "integrated_display") {
         return `<span class="hardware-not-applicable">Display ist Bestandteil der gewählten Boardkonfiguration.</span>`;
+      }
+      if (String(component.concrete_type || "").startsWith("integrated_")) {
+        return `<span class="hardware-not-applicable">${escapeHtml(component.label)} ist Bestandteil der gewählten Boardkonfiguration.</span>`;
       }
       if (component.abstract_type === "iot_device") {
         const boards = availableProcessorBoards();
@@ -2253,8 +2290,8 @@ const DevelopmentPlatform = (() => {
     }
 
     function sensorRealizationControls(component) {
-      if (component.concrete_type === "integrated_camera") {
-        return `<span class="hardware-not-applicable">Kamera ist Bestandteil der gewählten Boardkonfiguration.</span>`;
+      if (String(component.concrete_type || "").startsWith("integrated_")) {
+        return `<span class="hardware-not-applicable">${escapeHtml(component.label)} ist Bestandteil der gewählten Boardkonfiguration.</span>`;
       }
       const sensors = availableSensors();
       const catalogStatus = state.sensorCatalogStatus || { state: "idle", message: "" };
@@ -2400,7 +2437,7 @@ const DevelopmentPlatform = (() => {
           <label>Nennwiderstand<input data-hardware-property="nominal_resistance_ohm" type="number" min="100" value="${escapeAttribute(properties.nominal_resistance_ohm || 10000)}"><small>Ohm</small></label>` : "";
         return `${electrical}${measurementAcquisitionControls(component)}`;
       }
-      if (component.concrete_type === "integrated_display") return `<span class="hardware-not-applicable">Eigenschaften und Pins kommen aus dem Displayboard.</span>`;
+      if (String(component.concrete_type || "").startsWith("integrated_")) return `<span class="hardware-not-applicable">Eigenschaften und Pins kommen aus der Boardkonfiguration.</span>`;
       if (motorDriverTypes(component.concrete_type).length) return '<span class="hardware-not-applicable">Motor- und Pinbelegung werden anschließend in der IDE-Treiberverwaltung konfiguriert.</span>';
       if (component.abstract_type === "actuator") return `<label>Beschreibung<input data-hardware-property="description" value="${escapeAttribute(properties.description || "")}" placeholder="Bauart oder wichtige Kenndaten"></label>`;
       return `<span class="hardware-not-applicable">-</span>`;
@@ -2422,7 +2459,7 @@ const DevelopmentPlatform = (() => {
     function hardwareConnectionControls(component, devices) {
       if (!["sensor", "actuator"].includes(component.abstract_type)) return `<span class="hardware-not-applicable">-</span>`;
       const targetDevice = devices.find((device) => device.component_id === component.target_device_id) || devices[0];
-      if (["integrated_camera", "integrated_display"].includes(component.concrete_type)) {
+      if (String(component.concrete_type || "").startsWith("integrated_")) {
         return `<span class="hardware-not-applicable">Angeschlossen an ${escapeHtml(targetDevice?.label || "das zugeordnete IoT-Device")} gemäß Boardkonfiguration.</span>`;
       }
       if (component.sensor_category === "image") {
@@ -2434,6 +2471,7 @@ const DevelopmentPlatform = (() => {
             <option value="">Device waehlen</option>
             ${devices.map((device) => `<option value="${escapeAttribute(device.component_id)}" ${selected(component.target_device_id, device.component_id)}>${escapeHtml(device.label)}</option>`).join("")}
           </select></label>
+          ${suppliedByBoard ? "" : hardwareConnectionModeControls(component, targetDevice)}
           <span class="hardware-not-applicable">${suppliedByBoard
             ? "Vom gewählten Boardprofil vorgegeben; Anschluss und Pins werden automatisch übernommen."
             : "Extern oder ausgetauscht; Anschluss und Mehrfach-Pinbelegung werden in der Projekt-Boardkonfiguration festgelegt."}</span>
@@ -2446,6 +2484,7 @@ const DevelopmentPlatform = (() => {
           <option value="">Device waehlen</option>
           ${devices.map((device) => `<option value="${escapeAttribute(device.component_id)}" ${selected(component.target_device_id || (devices.length === 1 ? devices[0].component_id : ""), device.component_id)}>${escapeHtml(device.label)}</option>`).join("")}
         </select></label>
+        ${hardwareConnectionModeControls(component, targetDevice)}
         ${motorDriverSpecific ? '<span class="hardware-not-applicable">Die konkreten Boardpins hängen vom gewählten Motortreiber ab.</span>' : `
         <label>${pinLabel(component)}<select data-hardware-field="pin">
           <option value="">Pin waehlen</option>
@@ -2453,6 +2492,35 @@ const DevelopmentPlatform = (() => {
         </select></label>
         ${component.signal_type === "incremental_ab" ? `<label>Kanal B<select data-hardware-field="secondary_pin"><option value="">Pin waehlen</option>${pinOptions.filter((pin) => pin !== component.pin || pin === component.secondary_pin).map((pin) => `<option value="${escapeAttribute(pin)}" ${selected(component.secondary_pin, pin)}>${escapeHtml(pin)}</option>`).join("")}</select></label>` : ""}`}
       `;
+    }
+
+    function hardwareConnectionModeControls(component, targetDevice) {
+      const required = requiresAdditionalCircuit(component);
+      const mode = required ? "additional_circuit" : component.properties?.connection_mode || "direct";
+      const defaultLabel = component.abstract_type === "sensor" ? "Signalaufbereitung / Schutzschaltung" : "Treiber- / Leistungsschaltung";
+      const assessment = hardwareConnectionPathAssessment(component, targetDevice, mode);
+      return `<label>Anschlussweg zum Prozessor / Board
+        <select data-hardware-property="connection_mode">
+          ${required ? "" : `<option value="direct" ${selected(mode, "direct")}>Direkt anschliessen</option>`}
+          <option value="additional_circuit" ${selected(mode, "additional_circuit")}>Ueber eine zusaetzliche Schaltung</option>
+        </select>
+        <small>${escapeHtml(assessment)}</small>
+      </label>
+      ${mode === "additional_circuit" ? `<label>Zusatzschaltung<input data-hardware-property="circuit_label" value="${escapeAttribute(component.properties?.circuit_label || "")}" placeholder="${escapeAttribute(defaultLabel)}"><small>Bezeichnung der Signalaufbereitung, Schutz- oder Treiberschaltung</small></label>` : ""}`;
+    }
+
+    function requiresAdditionalCircuit(component) {
+      return ["pt1000", "ntc", "ptc", "dc_motor", "servo", "stepper_motor", "synchronous_motor"].includes(component.concrete_type);
+    }
+
+    function hardwareConnectionPathAssessment(component, targetDevice, mode) {
+      if (requiresAdditionalCircuit(component)) return "Dieser konkrete Typ benoetigt eine zusaetzliche Mess-, Treiber- oder Leistungsschaltung.";
+      if (mode === "additional_circuit") return "Die Zusatzschaltung wird als eigener Teil der Signalkette gespeichert und im Verdrahtungsdiagramm dargestellt.";
+      if (!component.concrete_type || !targetDevice?.board_profile_id) return "Nach Auswahl von konkretem Bauteil und Board prueft GerNetiX die verfuegbare Prozessorschnittstelle.";
+      const compatiblePins = boardPins(targetDevice.board_profile_id, component);
+      return compatiblePins.length
+        ? "Eine grundsaetzlich passende Prozessorschnittstelle ist vorhanden. Signalpegel, Strombedarf und Schutzbeschaltung muessen trotzdem zu den Datenblaettern passen."
+        : "Am gewaehlten Board wurde keine passende Prozessorschnittstelle gefunden. Waehle eine Zusatzschaltung oder ein anderes Board.";
     }
 
     function selected(left, right) {
@@ -2649,36 +2717,52 @@ const DevelopmentPlatform = (() => {
       if (component.concrete_type === "servo") return { type: "servo_driver", label: "Servo-Steuerung", stages: ["Zeitgeber", "Servo-PWM", "Servo"] };
       if (component.concrete_type === "stepper_motor") return { type: "stepper_driver", label: "Schrittmotor-Steuerung", stages: ["Zeitgeber / RMT", driver === "four_phase" ? "4-Phasen-Treiber" : "STEP/DIR-Treiber", "Schrittmotor"] };
       if (component.concrete_type === "synchronous_motor") return { type: "synchronous_motor_driver", label: "Synchronmotor-Steuerung", stages: [driver === "three_phase_six_step" ? "6-Step-Kommutierung" : "FOC", "Motor-PWM / ADC / Rotorlage", "3-Phasen-Leistungstreiber", "BLDC / PMSM"] };
+      if (component.properties?.connection_mode === "additional_circuit") {
+        const label = component.properties?.circuit_label
+          || (component.abstract_type === "actuator" ? "Treiber- / Leistungsschaltung" : "Signalaufbereitung / Schutzschaltung");
+        return component.abstract_type === "actuator"
+          ? { type: "actuator_interface_circuit", label, stages: ["Prozessorausgang", label, component.label] }
+          : { type: "sensor_interface_circuit", label, stages: [component.label, label, "Prozessoreingang"] };
+      }
       return null;
     }
 
     function hardwareConfigurationValidation(configuration) {
       const missing = [];
+      const issues = [];
+      const addIssue = (component, field, detail) => {
+        const message = `${component.label}: ${detail}`;
+        missing.push(message);
+        issues.push({ componentId: component.component_id, field, message });
+      };
       configuration.components.forEach((component) => {
-        if (component.abstract_type === "iot_device" && (!component.processor_family || !component.processor_variant)) missing.push(`${component.label}: Prozessor`);
-        if (component.abstract_type === "iot_device" && !component.board_profile_id) missing.push(`${component.label}: reales Board`);
-        if (component.abstract_type === "iot_device" && component.board_configuration?.source === "custom_draft") missing.push(`${component.label}: geänderte Boardkonfiguration als eigenes Board speichern`);
+        if (component.abstract_type === "iot_device" && (!component.processor_family || !component.processor_variant)) addIssue(component, "processor", "Prozessor");
+        if (component.abstract_type === "iot_device" && !component.board_profile_id) addIssue(component, "board_profile_id", "reales Board");
+        if (component.abstract_type === "iot_device" && component.board_configuration?.source === "custom_draft") addIssue(component, "board_configuration", "geänderte Boardkonfiguration als eigenes Board speichern");
         if (component.abstract_type === "sensor") {
-          if (!component.sensor_category) missing.push(`${component.label}: Sensorart`);
-          if (!component.signal_type) missing.push(`${component.label}: Erfassung`);
+          if (!component.sensor_category) addIssue(component, "sensor_category", "Sensorart");
+          if (!component.signal_type) addIssue(component, "signal_type", "Erfassung");
           if (component.properties?.measurement_mode === "periodic_log") {
-            if (!(Number(component.properties?.sampling_interval_value) > 0)) missing.push(`${component.label}: Messintervall`);
-            if (!(Number(component.properties?.samples_per_record) >= 1)) missing.push(`${component.label}: Werte pro Datensatz`);
-            if (!component.properties?.aggregation) missing.push(`${component.label}: Auswertung`);
-            if (!component.properties?.storage_mode) missing.push(`${component.label}: Speicherziel`);
+            if (!(Number(component.properties?.sampling_interval_value) > 0)) addIssue(component, "sampling_interval_value", "Messintervall");
+            if (!(Number(component.properties?.samples_per_record) >= 1)) addIssue(component, "samples_per_record", "Werte pro Datensatz");
+            if (!component.properties?.aggregation) addIssue(component, "aggregation", "Auswertung");
+            if (!component.properties?.storage_mode) addIssue(component, "storage_mode", "Speicherziel");
           }
         }
         if (["sensor", "actuator"].includes(component.abstract_type)) {
           const driverSpecific = component.abstract_type === "actuator" && motorDriverTypes(component.concrete_type).length > 0;
+          const boardIntegrated = String(component.concrete_type || "").startsWith("integrated_");
           const boardSuppliedPins = boardFeatureForHardwareComponent(component, configuration);
-          if (!component.concrete_type) missing.push(`${component.label}: konkreter Typ`);
-          if (!component.target_device_id) missing.push(`${component.label}: IoT-Device`);
-          if (!driverSpecific && !boardSuppliedPins && !component.pin) missing.push(`${component.label}: Pin`);
-          if (component.signal_type === "incremental_ab" && !component.secondary_pin) missing.push(`${component.label}: Kanal B`);
-          if (component.signal_type === "incremental_ab" && component.pin && component.secondary_pin === component.pin) missing.push(`${component.label}: Kanal A und B muessen verschieden sein`);
+          if (!component.concrete_type) addIssue(component, "concrete_type", "konkreter Typ");
+          if (!component.target_device_id) addIssue(component, "target_device_id", "IoT-Device");
+          if (!boardIntegrated && !driverSpecific && !boardSuppliedPins && !component.pin) addIssue(component, "pin", "Pin");
+          if (component.signal_type === "incremental_ab" && !component.secondary_pin) addIssue(component, "secondary_pin", "Kanal B");
+          if (component.signal_type === "incremental_ab" && component.pin && component.secondary_pin === component.pin) {
+            addIssue(component, "pin_pair", "Kanal A und B muessen verschieden sein");
+          }
         }
       });
-      return { complete: missing.length === 0, missing };
+      return { complete: missing.length === 0, missing, issues };
     }
 
     function boardFeatureForHardwareComponent(component, configuration) {
@@ -2686,8 +2770,12 @@ const DevelopmentPlatform = (() => {
       if (!device) return null;
       const featureId = component.abstract_type === "sensor" && component.sensor_category === "image"
         ? "camera"
+        : component.abstract_type === "sensor" && component.sensor_category === "audio_input"
+          ? "microphone"
         : component.abstract_type === "actuator" && component.concrete_type === "integrated_display"
           ? "display"
+          : component.abstract_type === "actuator" && component.concrete_type === "integrated_speaker"
+            ? "speaker"
           : "";
       const feature = featureId ? device.board_configuration?.board_features?.[featureId] : null;
       if (!feature?.enabled || !Object.keys(feature.pins || {}).length) return null;
@@ -2698,9 +2786,60 @@ const DevelopmentPlatform = (() => {
     function syncHardwareActions(configuration) {
       const validation = hardwareConfigurationValidation(configuration);
       const continueButton = document.querySelector("#continueDevelopmentHardwareButton");
-      if (continueButton) continueButton.disabled = !validation.complete;
+      if (continueButton) {
+        continueButton.disabled = !validation.complete;
+        continueButton.setAttribute("aria-disabled", String(!validation.complete));
+        continueButton.title = validation.complete ? "Hardware-Zuordnung abschließen und die IDE öffnen." : `${validation.missing.length} Pflichtangabe${validation.missing.length === 1 ? " fehlt" : "n fehlen"}.`;
+      }
+      highlightHardwareValidationIssues(validation);
+      renderHardwareValidationSummary(configuration, validation);
       renderHardwareHints(configuration, validation);
       setHardwareStatus("");
+    }
+
+    function hardwareValidationTargets(row, field) {
+      const selectors = {
+        processor: "[data-hardware-processor]",
+        board_profile_id: '[data-hardware-field="board_profile_id"], [data-hardware-field="inventory_device_id"]',
+        board_configuration: "[data-development-board-configuration]",
+        sensor_category: "[data-hardware-sensor-category]",
+        signal_type: "[data-hardware-signal-type]",
+        concrete_type: '[data-hardware-field="concrete_type"]',
+        target_device_id: '[data-hardware-field="target_device_id"]',
+        pin: '[data-hardware-field="pin"]',
+        secondary_pin: '[data-hardware-field="secondary_pin"]',
+        pin_pair: '[data-hardware-field="pin"], [data-hardware-field="secondary_pin"]',
+        sampling_interval_value: '[data-hardware-property="sampling_interval_value"]',
+        samples_per_record: '[data-hardware-property="samples_per_record"]',
+        aggregation: '[data-hardware-property="aggregation"]',
+        storage_mode: '[data-hardware-property="storage_mode"]',
+      };
+      return selectors[field] ? [...row.querySelectorAll(selectors[field])] : [];
+    }
+
+    function highlightHardwareValidationIssues(validation) {
+      document.querySelectorAll("#developmentHardwareComponents .hardware-required-field").forEach((element) => element.classList.remove("hardware-required-field"));
+      document.querySelectorAll('#developmentHardwareComponents [aria-invalid="true"]').forEach((element) => element.removeAttribute("aria-invalid"));
+      document.querySelectorAll("#developmentHardwareComponents .has-validation-error").forEach((element) => element.classList.remove("has-validation-error"));
+      validation.issues.forEach((issue) => {
+        const row = document.querySelector(`[data-hardware-component="${CSS.escape(issue.componentId)}"]`);
+        if (!row) return;
+        row.classList.add("has-validation-error");
+        hardwareValidationTargets(row, issue.field).forEach((target) => {
+          target.setAttribute("aria-invalid", "true");
+          (target.closest("label") || target).classList.add("hardware-required-field");
+        });
+      });
+    }
+
+    function renderHardwareValidationSummary(configuration, validation) {
+      const target = document.querySelector("#developmentHardwareValidationSummary");
+      if (!target) return;
+      const optionalCount = configuration.components.filter((component) => component.abstract_type === "iot_device" && !component.inventory_device_id).length;
+      target.className = `hardware-validation-summary ${validation.complete ? "is-complete" : "is-blocked"}`;
+      target.innerHTML = validation.complete
+        ? `<strong>Bereit für die IDE</strong><span>Alle Pflichtangaben sind vollständig.${optionalCount ? ` ${optionalCount} optionale${optionalCount === 1 ? "r Inventarhinweis blockiert" : " Inventarhinweise blockieren"} nicht.` : ""}</span>`
+        : `<strong>${validation.missing.length} Pflichtangabe${validation.missing.length === 1 ? " fehlt" : "n fehlen"}</strong><span>${validation.missing.map((item) => escapeHtml(item)).join(" · ")}</span>`;
     }
 
     function renderHardwareHints(configuration, validation = hardwareConfigurationValidation(configuration)) {
@@ -2852,6 +2991,10 @@ const DevelopmentPlatform = (() => {
       const connected = new Set();
       const invalid = [];
       const lines = String(source || "").split(/\r?\n/);
+      const containerIds = new Set(lines.flatMap((line) => {
+        const container = line.match(/^\s*(?:actor|node|component|rectangle|database|cloud|queue|artifact)\s+"[^"]+"\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\b[^\n]*\{\s*$/i);
+        return container ? [container[1]] : [];
+      }));
       lines.forEach((line) => {
         const arrow = line.match(/\b([A-Za-z_][A-Za-z0-9_]*)\s+[-.]+>\s+([A-Za-z_][A-Za-z0-9_]*)\b/);
         if (!arrow) return;
@@ -2865,7 +3008,7 @@ const DevelopmentPlatform = (() => {
         connected.add(arrow[1]);
         connected.add(arrow[2]);
       });
-      const elements = components.map((component) => component.component_id);
+      const elements = components.filter((component) => !containerIds.has(component.component_id)).map((component) => component.component_id);
       const missing = elements.filter((alias) => !connected.has(alias));
       return {
         element_count: elements.length,
@@ -2894,7 +3037,7 @@ const DevelopmentPlatform = (() => {
     }
 
     async function createPlantUmlSvgUrl(source) {
-      const bytes = new TextEncoder().encode(source);
+      const bytes = new TextEncoder().encode(themedPlantUmlSource(source));
       const compressed = await deflateForPlantUml(bytes);
       return `https://www.plantuml.com/plantuml/svg/${encodePlantUmlBytes(compressed)}`;
     }

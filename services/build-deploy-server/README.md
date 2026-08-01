@@ -58,6 +58,7 @@ Konfiguration erfolgt ueber Umgebungsvariablen:
 - `BUILD_ARTIFACT_DIR`: optionales temporaeres Artefakt-Verzeichnis
 - `BUILD_ARTIFACT_SQLITE_PATH`: fuehrende SQLite fuer Firmware-, ELF-, HEX-, Map- und Log-BLOBs; auf dem VPS `/var/lib/gernetix/build/gernetix-build-artifacts.sqlite`
 - `MQTT_BROKER_URL`: MQTT-Broker-URL fuer OTA-Deploy-Commands und Status, lokal z. B. `mqtt://127.0.0.1:1883`
+- `BUILD_CANCELLATION_POLL_MS`: Intervall, in dem ein Worker zentrale Abbruchanforderungen prueft; Standard `500`
 
 Der `mock` Runner erzeugt reproduzierbare Test-Artefakte ohne Toolchain. Fuer echte Firmware-Builds wird `BUILD_RUNNER=platformio` verwendet; dann kompiliert der Worker im uebergebenen BuildPackage per `platformio run`. Je nach Target kann das primaere Firmware-Artefakt `firmware.bin` (z. B. ESP32) oder `firmware.hex` (z. B. AVR/Arduino Uno) sein.
 
@@ -159,6 +160,8 @@ HTTPS dient fuer:
 - pro Device maximal ein aktiver Build-/Deploy-Job
 - optional genau ein wartender Job pro Device
 - neue wartende Jobs ersetzen aeltere wartende Jobs
+- `POST /api/build-jobs/{job_id}/cancel` setzt einen aktiven Auftrag zentral auf `cancelling`; der zustaendige Worker beendet den Compiler-Prozessbaum und persistiert danach `cancelled`
+- der Endpunkt ist idempotent fuer bereits abgeschlossene Auftraege und funktioniert ueber die gemeinsame PostgreSQL-Koordination auch workeruebergreifend
 
 ## Module
 
@@ -168,11 +171,13 @@ HTTPS dient fuer:
 - `deploy-job-orchestrator`: OTA-/Deploy-Auftraege
 - `device-job-lock`: Nebenlaeufigkeit pro Device
 - `build-target-lock`: exklusiver Zugriff auf den inkrementellen Workspace und ESP-IDF-Komponentencache eines Build-Ziels
-- `postgres-build-coordination`: rechneruebergreifende Job-Eindeutigkeit, Statussicht, Advisory Locks, Worker-Identitaet und Cache-Generationen
+- `postgres-build-coordination`: rechneruebergreifende Job-Eindeutigkeit, Statussicht, Abbruchanforderungen, Advisory Locks, Worker-Identitaet und Cache-Generationen
 
 Im VPS- und Mehrrechnerbetrieb ist `BUILD_COORDINATION_BACKEND=postgres` verbindlich. `BUILD_WORKER_ID` kann fuer einen Rechner stabil gesetzt werden; ohne Vorgabe wird der Hostname verwendet. Der Memory-Modus ist ausschliesslich fuer Tests und eine einzelne lokale Entwicklungsinstanz vorgesehen.
 
 Worker senden standardmaessig alle 15 Sekunden einen Heartbeat. Nach zwei Minuten ohne Heartbeat gelten noch aktive Jobs dieses Workers als `failed/worker_lost`. Beide Intervalle sind ueber `BUILD_WORKER_HEARTBEAT_MS` und `BUILD_WORKER_STALE_MS` konfigurierbar.
+
+Ein installationsfaehiger, bewusst auf reine Builds begrenzter Linux-Worker liegt in `compose.build-worker.yaml`. Einrichtung, WireGuard-Grenzen und Bedienbefehle beschreibt [Linux Build-Worker](../../docs/linux-build-worker.md). Der interne VPS-Build-Router verteilt nur `build` und `prebuild`; OTA, FlashBox und USB bleiben direkt auf dem zentralen Worker.
 
 ## Nicht-Ziele fuer diesen Stand
 

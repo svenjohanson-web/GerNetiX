@@ -10,7 +10,7 @@ table inet gernetix_host {
     ip6 nexthdr ipv6-icmp accept
 
     udp dport { 68, 546, 51820 } accept
-    iifname "wg0" tcp dport { 22, 443, 4910, 8883 } accept
+    iifname "wg0" tcp dport { 22, 443, 4910, 8883, 25432 } accept
     tcp dport 80 accept
   }
 

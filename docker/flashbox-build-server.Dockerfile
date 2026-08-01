@@ -11,6 +11,8 @@ RUN apt-get update \
   && rm -rf /var/lib/apt/lists/*
 
 COPY --chown=node:node services/shared ./services/shared
+COPY --chown=node:node services/build-deploy-server/package.json services/build-deploy-server/package-lock.json ./services/build-deploy-server/
+RUN npm ci --omit=dev --prefix services/build-deploy-server
 COPY --chown=node:node services/build-deploy-server ./services/build-deploy-server
 COPY --chown=node:node docker/healthcheck.js ./docker/healthcheck.js
 

@@ -5,6 +5,7 @@ const test = require("node:test");
 
 const basisRoot = path.resolve(__dirname, "..");
 const source = fs.readFileSync(path.join(basisRoot, "src/functions/mqtt_ota.cpp"), "utf8");
+const main = fs.readFileSync(path.join(basisRoot, "src/main.cpp"), "utf8");
 
 test("MQTT OTA subscriber uses mTLS device certificates and QoS 1", () => {
   assert.match(source, /"mqtts:\/\/"/);
@@ -36,4 +37,11 @@ test("MQTT notifications use a device topic and the authenticated OTA path", () 
 test("MQTT task has enough stack for TLS and authenticated OTA processing", () => {
   assert.match(source, /MQTT_TASK_STACK_SIZE = 12 \* 1024/);
   assert.match(source, /mqttConfig\.task\.stack_size = MQTT_TASK_STACK_SIZE/);
+});
+
+test("the protected OTA control channel remains independent from optional project MQTT", () => {
+  const start = main.indexOf("confirmRunningOtaImage();");
+  const startup = main.slice(start, main.indexOf("startRuntimeTasks();", start));
+  assert.match(startup, /startMqttOtaSubscriber\(\)/);
+  assert.doesNotMatch(startup, /GERNETIX_MQTT_ENABLED/);
 });

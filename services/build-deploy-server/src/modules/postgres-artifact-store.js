@@ -5,7 +5,7 @@ class PostgresArtifactStore {
   static async create(options = {}) {
     const { Pool } = require("pg");
     const store = new PostgresArtifactStore(options.pool || new Pool(options.poolOptions), options);
-    await store.migrate();
+    if (options.manageSchema !== false) await store.migrate();
     return store;
   }
   constructor(pool, options = {}) {

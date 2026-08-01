@@ -73,13 +73,15 @@ test("additively enriches an existing Waveshare PostgreSQL catalog item", async 
   assert.equal(enriched.sku, "CUSTOM-WAVESHARE");
   assert.equal(enriched.default_instance_configuration.board_features.camera.hardware, "custom_confirmed_camera");
   assert.equal(enriched.pin_profile.assigned_pins.display_spi_qspi.cs, 6);
-  assert.equal(enriched.default_instance_configuration.io_expander.lines.exio0, "touch_reset");
+  assert.equal(enriched.default_instance_configuration.io_expander.lines.exio3, "display_reset");
+  assert.equal(enriched.default_instance_configuration.io_expander.lines.exio6, "camera_enable");
   assert.equal(enriched.default_instance_configuration.mechanical.width_mm, 37);
   assert.equal(enriched.capability_ids.includes("capability.display_output"), false);
   assert.equal(enriched.default_instance_configuration.board_features.display.enabled, false);
   assert.equal(enriched.default_instance_configuration.board_features.touch.enabled, false);
   assert.ok(enriched.default_instance_configuration.io_expander.roles.includes("custom_role"));
-  assert.ok(enriched.default_instance_configuration.io_expander.roles.includes("tf_card_detect"));
+  assert.ok(enriched.default_instance_configuration.io_expander.roles.includes("tf_card_chip_select"));
+  assert.equal(enriched.default_instance_configuration.io_expander.roles.includes("camera_power_down"), false);
 });
 
 class RecordingPool {

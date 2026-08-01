@@ -185,7 +185,7 @@ test("lets the coding agent discover structural targets instead of hard-coded co
 });
 
 test("previews and applies a validated new touchscreen game file only after confirmation", () => {
-  assert.match(assistant, /src\\\/games\\\/\[a-z\]\[a-z0-9_\]\{0,48\}\\\.h/);
+  assert.match(assistant, /include\\\/games\\\/\[a-z\]\[a-z0-9_\]\{0,48\}\\\.h/);
   assert.match(assistant, /isNewFile: !allowedPaths\.has\(edit\.path\)/);
   assert.match(guidedView, /edit\.isNewFile \? "Neue Datei/);
   assert.match(guidedView, /const source = edit\.isNewFile[\s\S]*\{ content: "" \}/);
@@ -195,11 +195,11 @@ test("previews and applies a validated new touchscreen game file only after conf
 test("allows new AI-created files only in the game folder of the touchscreen template", () => {
   const gameProject = { view_manifest: { template_id: "touchscreen_game_collection" } };
   const otherProject = { view_manifest: { template_id: "esp32_device_only" } };
-  const validPath = "Komponenten/IoT-Device 1/src/games/asteroids_2.h";
+  const validPath = "Komponenten/IoT-Device 1/include/games/asteroids_2.h";
 
   assert.equal(isAllowedNewCodeExplorerPath(gameProject, validPath), true);
   assert.equal(isAllowedNewCodeExplorerPath(otherProject, validPath), false);
-  assert.equal(isAllowedNewCodeExplorerPath(gameProject, "Komponenten/IoT-Device 1/src/game/game_catalog.h"), false);
-  assert.equal(isAllowedNewCodeExplorerPath(gameProject, "Komponenten/IoT-Device 1/src/games/../board_adapter.h"), false);
-  assert.equal(isAllowedNewCodeExplorerPath(gameProject, "Komponenten/IoT-Device 1/src/games/Asteroids.h"), false);
+  assert.equal(isAllowedNewCodeExplorerPath(gameProject, "Komponenten/IoT-Device 1/include/game/game_catalog.h"), false);
+  assert.equal(isAllowedNewCodeExplorerPath(gameProject, "Komponenten/IoT-Device 1/include/games/../board_adapter.h"), false);
+  assert.equal(isAllowedNewCodeExplorerPath(gameProject, "Komponenten/IoT-Device 1/include/games/Asteroids.h"), false);
 });

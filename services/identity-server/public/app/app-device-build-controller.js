@@ -1,4 +1,11 @@
 // GerNetiX platform module extracted from app.js.
+const activeBuildJobIds = new Set();
+let buildSubmissionPending = false;
+let buildCancellationRequested = false;
+const usbFirmwarePortAssignments = new Map();
+let usbFlashAssignmentBatch = null;
+let usbFlashPortDetector = null;
+let usbFlashPortIdentification = null;
 function prepareFlashTarget(project, action, targetConfirmed = false) {
   const allUnits = projectSoftwareUnits(project);
   const flashableUnits = allUnits.filter((unit) => unit.build_system === "platformio");
@@ -11,6 +18,7 @@ function prepareFlashTarget(project, action, targetConfirmed = false) {
     state.activeSoftwareUnitIds[project.id] = flashableUnits[0].software_unit_id;
     return true;
   }
+  if (action === "usb") return true;
   if (targetConfirmed && flashableUnits.some((unit) => unit.software_unit_id === state.activeSoftwareUnitIds[project.id])) return true;
   state.pendingFlashAction = action;
   renderIdeSoftwareUnitSelection(project);
@@ -35,6 +43,10 @@ function confirmFlashTargetChoice() {
   if (action === "flashbox") startFlashBoxFlash(true);
 }
 
+function usbFirmwareUnits(project) {
+  return projectSoftwareUnits(project).filter((unit) => unit.build_system === "platformio");
+}
+
 async function startBuild() {
   const project = projectById(state.activeProjectId);
   const device = allocatedIdeDevice(project);
@@ -48,6 +60,9 @@ async function startBuild() {
       .join(", ");
     return setFlashStatus("error", `Gesamtbuild nicht gestartet. Für folgende Software-Einheiten fehlt ein Build-Runner: ${details}.`);
   }
+  if (buildSubmissionPending || activeBuildJobIds.size > 0) return;
+  buildSubmissionPending = true;
+  updateBuildActionButton();
   setFlashStatus("running", `Gesamtbuild läuft: ${buildTargets.length} Software-Einheit${buildTargets.length === 1 ? "" : "en"}...`);
   try {
     await persistCurrentSource(project);
@@ -63,22 +78,27 @@ async function startBuild() {
     const rejectedSubmissions = submissions.flatMap((result, index) => result.status === "rejected"
       ? [{ reason: result.reason, softwareUnit: buildTargets[index] }]
       : []);
-    const completionResults = await Promise.allSettled(acceptedBuilds.map(({ build, softwareUnit }) => waitForCompletedBuild(build, {
+    const completionPromises = acceptedBuilds.map(({ build, softwareUnit }) => waitForCompletedBuild(build, {
       appendMemorySummary: false,
       suppressTerminalBuildResult: true,
       targetLabel: softwareUnit?.title || softwareUnit?.software_unit_id || "Firmware",
-    })));
+    }));
+    buildSubmissionPending = false;
+    updateBuildActionButton();
+    const completionResults = await Promise.allSettled(completionPromises);
     const completed = completionResults.filter((result) => result.status === "fulfilled").map((result) => result.value);
     const rejectedCompletions = completionResults.filter((result) => result.status === "rejected");
     state.builds.unshift(...completed);
     renderIdeProjectInformation(project);
-    completed.filter((build) => build.status !== "succeeded").forEach((build) => appendBuildFailureLog(build.build_log, build.error));
+    completed.filter((build) => !["succeeded", "cancelled"].includes(build.status)).forEach((build) => appendBuildFailureLog(build.build_log, build.error));
     completionResults.forEach((result, index) => {
       const label = acceptedBuilds[index].softwareUnit?.title || acceptedBuilds[index].softwareUnit?.software_unit_id || "Firmware";
       if (result.status === "rejected") {
         appendIdeTerminal("error", `Build-Ziel „${label}“: Ergebnis konnte nicht abgerufen werden – ${result.reason?.message || "unbekannter Fehler"}.`);
       } else if (result.value.status === "succeeded") {
         appendIdeTerminal("ok", `Build-Ziel „${label}“: erfolgreich.`);
+      } else if (result.value.status === "cancelled") {
+        appendIdeTerminal("running", `Build-Ziel „${label}“: abgebrochen.`);
       } else {
         appendIdeTerminal("error", `Build-Ziel „${label}“: fehlgeschlagen.`);
       }
@@ -88,16 +108,21 @@ async function startBuild() {
       appendIdeTerminal("error", `Build-Ziel „${label}“: Auftrag konnte nicht angelegt werden – ${reason?.message || "unbekannter Fehler"}.`);
     });
     const succeeded = completed.filter((build) => build.status === "succeeded").length;
-    const failed = completed.length - succeeded + rejectedSubmissions.length + rejectedCompletions.length;
-    if (!failed) completed.forEach(appendBuildMemorySummary);
+    const cancelled = completed.filter((build) => build.status === "cancelled").length;
+    const failed = completed.length - succeeded - cancelled + rejectedSubmissions.length + rejectedCompletions.length;
+    if (!failed && !cancelled) completed.forEach(appendBuildMemorySummary);
     const summary = `${succeeded} von ${buildTargets.length} Software-Einheiten erfolgreich`;
-    setFlashStatus(
+    if (cancelled && !failed) setFlashStatus("running", `Gesamtbuild abgebrochen: ${cancelled} Software-Einheit${cancelled === 1 ? "" : "en"} abgebrochen.`);
+    else setFlashStatus(
       failed ? "error" : "ok",
-      failed ? `Gesamtbuild fehlgeschlagen: ${summary}, ${failed} fehlgeschlagen.` : `Gesamtbuild erfolgreich: ${summary}.`,
+      failed ? `Gesamtbuild fehlgeschlagen: ${summary}, ${failed} fehlgeschlagen${cancelled ? `, ${cancelled} abgebrochen` : ""}.` : `Gesamtbuild erfolgreich: ${summary}.`,
     );
     renderBuilds();
   } catch (error) {
     setFlashStatus("error", error.message);
+  } finally {
+    buildSubmissionPending = false;
+    updateBuildActionButton();
   }
 }
 
@@ -119,32 +144,136 @@ async function cleanProjectBuildCache() {
   }
 }
 
-async function startUsbFlash(targetConfirmed = false) {
+async function cancelActiveBuilds() {
+  const jobIds = [...activeBuildJobIds];
+  if (!jobIds.length || buildCancellationRequested) return;
+  buildCancellationRequested = true;
+  updateBuildActionButton();
+  const results = await Promise.allSettled(jobIds.map((jobId) => postJson(
+    `/api/user-ide/build-jobs/${encodeURIComponent(jobId)}/cancel`,
+  )));
+  const rejected = results.filter((result) => result.status === "rejected");
+  if (rejected.length) {
+    buildCancellationRequested = false;
+    setFlashStatus("error", `Build-Abbruch konnte für ${rejected.length} Auftrag${rejected.length === 1 ? "" : "e"} nicht angefordert werden.`);
+  } else {
+    setFlashStatus("running", `Build-Abbruch angefordert: ${jobIds.length} laufende${jobIds.length === 1 ? "r Auftrag" : " Aufträge"}.`);
+  }
+  updateBuildActionButton();
+}
+
+function handleBuildButtonAction() {
+  if (activeBuildJobIds.size > 0) {
+    showCancelBuildConfirmation();
+    return;
+  }
+  if (!buildSubmissionPending) startBuild();
+}
+
+function showCancelBuildConfirmation() {
+  const count = activeBuildJobIds.size;
+  if (!count || buildCancellationRequested) return;
+  const dialog = document.querySelector("#cancelBuildConfirmDialog");
+  const text = document.querySelector("#cancelBuildConfirmText");
+  if (text) text.textContent = count === 1
+    ? "Der laufende Build-Auftrag wird beendet. Bereits erzeugte Zwischenergebnisse werden nicht als fertiger Build übernommen."
+    : `Alle ${count} laufenden Build-Aufträge werden beendet. Bereits erzeugte Zwischenergebnisse werden nicht als fertiger Gesamtbuild übernommen.`;
+  if (dialog && !dialog.open) dialog.showModal();
+}
+
+async function confirmCancelActiveBuilds() {
+  document.querySelector("#cancelBuildConfirmDialog")?.close();
+  await cancelActiveBuilds();
+}
+
+function updateBuildActionButton() {
+  const button = document.querySelector("#buildButton");
+  if (!button) return;
+  const activeCount = activeBuildJobIds.size;
+  if (!activeCount) buildCancellationRequested = false;
+  button.classList.toggle("build-cancel-active", activeCount > 0);
+  if (activeCount > 0) {
+    button.disabled = buildCancellationRequested;
+    button.textContent = buildCancellationRequested
+      ? "Abbruch läuft…"
+      : activeCount > 1 ? `Alle Builds abbrechen (${activeCount})` : "Build abbrechen";
+    button.title = buildCancellationRequested
+      ? "Der Abbruch der laufenden Build-Aufträge wurde angefordert."
+      : "Öffnet die Bestätigung zum Abbrechen des laufenden Gesamtbuilds.";
+  } else if (buildSubmissionPending) {
+    button.disabled = true;
+    button.textContent = "Build startet…";
+    button.title = "Die Build-Aufträge werden angelegt.";
+  } else {
+    button.disabled = false;
+    button.textContent = "Build";
+    button.title = button.dataset.idleTitle || "Baut alle Software-Einheiten des Projekts als gemeinsamen Gesamtbuild.";
+  }
+}
+
+async function startUsbFlash(targetConfirmed = false, inventoryCheckConfirmed = false, usbMappingConfirmed = false) {
   const project = projectById(state.activeProjectId);
   if (!project) return setFlashStatus("error", "Bitte zuerst ein Projekt öffnen.");
   if (!prepareFlashTarget(project, "usb", targetConfirmed)) return;
-  const softwareUnit = activeIdeSoftwareUnit(project);
-  const device = allocatedIdeDevice(project);
+  const firmwareUnits = usbFirmwareUnits(project);
   const serialServiceAvailable = await state.serialService.available();
   if (!serialServiceAvailable && !navigator.serial) {
     setFlashStatus("error", "Für USB wird Web Serial oder der GerNetiX WebHelper benötigt.");
     showSerialServiceChoiceDialog();
     return;
   }
+  if (!serialServiceAvailable && firmwareUnits.length > 1 && !targetConfirmed) {
+    state.pendingFlashAction = "usb";
+    renderIdeSoftwareUnitSelection(project);
+    const dialog = document.querySelector("#flashTargetChoiceDialog");
+    if (dialog && !dialog.open) dialog.showModal();
+    return;
+  }
+  let resolvedPort = "";
   if (serialServiceAvailable) {
+    const confirmedUsbPort = usbMappingConfirmed ? selectedUsbPort() : "";
     await refreshUsbPorts(false);
+    if (confirmedUsbPort && state.usbPorts.some((port) => port.port === confirmedUsbPort)) {
+      const portSelect = document.querySelector("#usbPortSelect");
+      if (portSelect) portSelect.value = confirmedUsbPort;
+    }
     if (!state.usbPorts.length) {
       state.pendingUsbFlash = { mode: "start", projectId: project.id };
       showUsbPortMissingGuidance();
       return;
     }
-    const resolvedPort = selectedUsbPort()
-      || bestUsbPortForDevice(device)?.port
-      || (state.usbPorts.length === 1 ? state.usbPorts[0].port : "");
-    if (!resolvedPort && state.usbPorts.length > 1) {
-      showUsbPortChoiceDialog();
+    const usbSelectionMode = UsbFlashTargetModel.selectionMode(firmwareUnits.length, state.usbPorts.length);
+    if (usbSelectionMode === "single-device-port-conflict") {
+      showUsbPortChoiceDialog(project, "single-device-conflict");
       return;
     }
+    if (usbSelectionMode === "firmware-port-mapping" && !usbMappingConfirmed) {
+      showUsbPortChoiceDialog(project, "firmware-port-mapping");
+      return;
+    }
+    if (usbSelectionMode === "firmware-port-mapping") {
+      const selectedUnitId = document.querySelector("#usbFirmwareTargetSelect")?.value || "";
+      if (!firmwareUnits.some((unit) => unit.software_unit_id === selectedUnitId)) {
+        showUsbPortChoiceDialog(project, "firmware-port-mapping");
+        return;
+      }
+      state.activeSoftwareUnitIds[project.id] = selectedUnitId;
+      resolvedPort = selectedUsbPort();
+      if (!resolvedPort || !state.usbPorts.some((port) => port.port === resolvedPort)) {
+        showUsbPortChoiceDialog(project, "firmware-port-mapping");
+        return;
+      }
+    } else {
+      resolvedPort = state.usbPorts[0].port;
+      const portSelect = document.querySelector("#usbPortSelect");
+      if (portSelect) portSelect.value = resolvedPort;
+    }
+  }
+  const softwareUnit = activeIdeSoftwareUnit(project);
+  const device = allocatedIdeDevice(project);
+  if (!inventoryCheckConfirmed && !usbInventoryWarningDismissed() && !inventoryDeviceForUsbFlash(device, resolvedPort)) {
+    showUsbInventoryUnknownDialog(resolvedPort);
+    return;
   }
   setFlashStatus("running", "Echter PlatformIO-Build wird gestartet...");
   let activeBuild = null;
@@ -177,10 +306,11 @@ async function startUsbFlash(targetConfirmed = false) {
     activeBuild.flash_status = "succeeded";
     setUsbFlashSuccess(`USB-Flash erfolgreich: ${flashResult.chipName}`);
     renderBuilds();
+    await finishUsbFlashAssignmentBatch(project.id, softwareUnit?.software_unit_id || "");
   } catch (error) {
     if (isUsbPortMissingError(error)) {
       state.pendingUsbFlash = activeBuild?.build_job_id
-        ? { mode: "flash", projectId: project.id, build: activeBuild, deviceId: device?.device_id || "" }
+        ? { mode: "flash", projectId: project.id, build: activeBuild, deviceId: device?.device_id || "", port: resolvedPort, softwareUnitId: softwareUnit?.software_unit_id || "" }
         : { mode: "start", projectId: project.id };
       showUsbPortMissingGuidance();
       return;
@@ -191,6 +321,7 @@ async function startUsbFlash(targetConfirmed = false) {
         error: error.message,
       }).catch(() => {});
     }
+    usbFlashAssignmentBatch = null;
     setFlashStatus("error", error.message);
   }
 }
@@ -236,26 +367,40 @@ async function waitForCompletedBuild(build, options = {}) {
   let current = build;
   const seenProgress = new Set();
   let memorySummaryShown = false;
-  for (let attempt = 0; attempt < 600; attempt += 1) {
-    appendBuildProgress(current.progress, seenProgress, options);
-    if (options.appendMemorySummary !== false && !memorySummaryShown && current.status === "succeeded") {
-      appendBuildMemorySummary(current);
-      memorySummaryShown = true;
+  const jobId = build.build_deploy_job_id || build.build_job_id;
+  if (jobId) activeBuildJobIds.add(jobId);
+  updateBuildActionButton();
+  try {
+    for (let attempt = 0; attempt < 600; attempt += 1) {
+      appendBuildProgress(current.progress, seenProgress, options);
+      if (current.status === "succeeded" && jobId) {
+        activeBuildJobIds.delete(jobId);
+        updateBuildActionButton();
+      }
+      if (options.appendMemorySummary !== false && !memorySummaryShown && current.status === "succeeded") {
+        appendBuildMemorySummary(current);
+        memorySummaryShown = true;
+      }
+      const otaComplete = build.mode !== "build_and_flash"
+        || ["rebooting", "confirmed", "delivered", "succeeded", "failed"].includes(current.flash_status);
+      if (["failed", "replaced", "cancelled"].includes(current.status) || (current.status === "succeeded" && otaComplete)) return { ...build, ...current };
+      if (attempt % 5 === 0) {
+        const waitingForBoard = build.mode === "build_and_flash" && current.status === "succeeded";
+        const message = current.status === "cancelling"
+          ? "Build wird abgebrochen…"
+          : waitingForBoard
+            ? `Build fertig. OTA-Auftrag ist ${current.flash_status || "veröffentlicht"}; warte auf das Board... ${attempt}s`
+            : `PlatformIO-Build läuft... ${attempt}s`;
+        setFlashStatus("running", message);
+      }
+      await delay(1000);
+      current = await getJson(`/api/user-ide/build-jobs/${encodeURIComponent(jobId)}/status`);
     }
-    const otaComplete = build.mode !== "build_and_flash"
-      || ["rebooting", "confirmed", "delivered", "succeeded", "failed"].includes(current.flash_status);
-    if (["failed", "replaced"].includes(current.status) || (current.status === "succeeded" && otaComplete)) return { ...build, ...current };
-    if (attempt % 5 === 0) {
-      const waitingForBoard = build.mode === "build_and_flash" && current.status === "succeeded";
-      const message = waitingForBoard
-        ? `Build fertig. OTA-Auftrag ist ${current.flash_status || "veröffentlicht"}; warte auf das Board... ${attempt}s`
-        : `PlatformIO-Build läuft... ${attempt}s`;
-      setFlashStatus("running", message);
-    }
-    await delay(1000);
-    current = await getJson(`/api/user-ide/build-jobs/${encodeURIComponent(build.build_deploy_job_id || build.build_job_id)}/status`);
+    throw new Error("PlatformIO-Build hat das Zeitlimit überschritten.");
+  } finally {
+    if (jobId) activeBuildJobIds.delete(jobId);
+    updateBuildActionButton();
   }
-  throw new Error("PlatformIO-Build hat das Zeitlimit überschritten.");
 }
 
 function appendBuildMemorySummary(build) {
@@ -944,6 +1089,8 @@ async function submitProjectVersion(event) {
 function buildArtifactVersionLabel(build) {
   if (build.status === "succeeded") return "erfolgreich";
   if (build.status === "failed") return "fehlgeschlagen";
+  if (build.status === "cancelled") return "abgebrochen";
+  if (build.status === "cancelling") return "wird abgebrochen";
   if (build.status === "queued") return "wartet";
   if (build.status === "running") return "läuft";
   return build.status || "ohne Ergebnis";
@@ -1059,8 +1206,7 @@ function renderUsbPortOptions() {
     ? "Nur fuer USB-Flash: Port automatisch ermitteln oder einen erkannten Port auswaehlen."
     : "Nur fuer USB-Flash: Momentan wurde kein USB-Serial-Port erkannt.";
   if (current && Array.from(select.options).some((option) => option.value === current)) select.value = current;
-  const confirm = document.querySelector("#confirmUsbPortButton");
-  if (confirm) confirm.disabled = !select.value;
+  renderUsbPortMappingConfirmationState();
 }
 
 function usbPortOptionLabel(port) {
@@ -1087,8 +1233,13 @@ function isUsbPortMissingError(error) {
 function showUsbPortMissingGuidance() {
   const dialog = document.querySelector("#usbPortMissingDialog");
   const checkedAt = document.querySelector("#usbPortMissingCheckedAt");
+  const macosSecurityHint = document.querySelector("#usbPortMacosSecurityHint");
   const status = document.querySelector("#flashStatus");
   if (!dialog) return;
+  if (macosSecurityHint) {
+    const clientPlatform = String(navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || "");
+    macosSecurityHint.classList.toggle("hidden", !/mac/i.test(clientPlatform));
+  }
   if (status) {
     status.className = "flash-status hidden";
     status.textContent = "";
@@ -1098,17 +1249,398 @@ function showUsbPortMissingGuidance() {
   appendIdeTerminal("error", "Kein USB-Port gefunden. Prüfe Kabel, USB-Hub, laufende Firmware, Download-Modus, andere serielle Programme und den GerNetiX Serial Service.");
 }
 
-function showUsbPortChoiceDialog() {
+function showUsbPortChoiceDialog(project, mode = "firmware-port-mapping") {
   const dialog = document.querySelector("#usbPortChoiceDialog");
   const select = document.querySelector("#usbPortSelect");
+  const title = document.querySelector("#usbPortChoiceTitle");
+  const intro = document.querySelector("#usbPortChoiceIntro");
+  const warning = document.querySelector("#usbPortIdentityWarning");
+  const firmwareSelect = document.querySelector("#usbFirmwareTargetSelect");
+  const assignmentGrid = document.querySelector("#usbAssignmentGrid");
+  const detected = document.querySelector("#usbPortDetectedList");
+  const confirm = document.querySelector("#confirmUsbPortButton");
   if (!dialog || !select) return;
+  stopUsbFlashPortIdentification();
+  dialog.dataset.usbChoiceMode = mode;
   const status = document.querySelector("#flashStatus");
   if (status) {
     status.className = "flash-status hidden";
     status.textContent = "";
   }
+  if (mode === "single-device-conflict") {
+    if (title) title.textContent = "Nur ein USB-Gerät anschließen";
+    if (intro) intro.textContent = "Dieses Projekt besitzt exakt ein IoT-Device. Für den eindeutigen USB-Flash darf deshalb nur ein USB-Gerät angeschlossen sein.";
+    if (warning) warning.textContent = "Trenne alle anderen USB-Serial-Geräte und lasse nur das Zielboard verbunden. Ohne vorherige Provisionierung kann GerNetiX das konkrete Board nicht eindeutig identifizieren.";
+    assignmentGrid?.classList.add("hidden");
+    document.querySelector("#usbFlashPortIdentification")?.classList.add("hidden");
+    if (detected) {
+      detected.classList.remove("hidden");
+      detected.innerHTML = `<strong>Momentan erkannt:</strong><ul>${state.usbPorts.map((port) => `<li>${escapeHtml(usbPortOptionLabel(port))}</li>`).join("")}</ul>`;
+    }
+    if (confirm) {
+      confirm.disabled = false;
+      confirm.textContent = "Erneut prüfen";
+    }
+  } else {
+    const units = usbFirmwareUnits(project);
+    if (title) title.textContent = "Firmware und USB-Ports zuordnen";
+    if (intro) intro.textContent = "Dieses Projekt besitzt mehrere IoT-Devices. Ordne nur den Firmwares einen USB-Port zu, die du jetzt flashen möchtest. Zugeordnete Zeilen werden nacheinander geflasht; nicht zugeordnete Zeilen bleiben unverändert.";
+    if (warning) warning.textContent = "Ohne vorherige Provisionierung kann GerNetiX nicht eindeutig erkennen, welches konkrete Board hinter einem USB-Port steckt. Prüfe die Port-Zuordnung deshalb sorgfältig.";
+    assignmentGrid?.classList.remove("hidden");
+    renderUsbFlashPortIdentification();
+    detected?.classList.add("hidden");
+    if (firmwareSelect) {
+      firmwareSelect.innerHTML = units.map((unit) => `<option value="${escapeAttribute(unit.software_unit_id)}">${escapeHtml(usbFirmwareTargetLabel(unit))}</option>`).join("");
+      const activeId = state.activeSoftwareUnitIds[project?.id] || "";
+      firmwareSelect.value = units.some((unit) => unit.software_unit_id === activeId) ? activeId : units[0]?.software_unit_id || "";
+    }
+    if (confirm) {
+      const selectedCount = selectedUsbFirmwarePortAssignments(project).length;
+      confirm.disabled = selectedCount === 0;
+      confirm.textContent = selectedCount === 1 ? "1 Zuordnung flashen" : `${selectedCount} Zuordnungen flashen`;
+    }
+    renderUsbFlashAssignmentLists(project);
+  }
   if (!dialog.open) dialog.showModal();
-  select.focus();
+  (mode === "single-device-conflict"
+    ? confirm
+    : document.querySelector("[data-usb-firmware-port-select]"))?.focus();
+}
+
+function renderUsbPortMappingConfirmationState() {
+  const dialog = document.querySelector("#usbPortChoiceDialog");
+  const confirm = document.querySelector("#confirmUsbPortButton");
+  if (!confirm || dialog?.dataset.usbChoiceMode === "single-device-conflict") return;
+  const project = projectById(state.activeProjectId);
+  renderUsbFlashAssignmentLists(project);
+  const selectedCount = selectedUsbFirmwarePortAssignments(project).length;
+  confirm.disabled = selectedCount === 0;
+  confirm.textContent = selectedCount === 1 ? "1 Zuordnung flashen" : `${selectedCount} Zuordnungen flashen`;
+}
+
+function usbFirmwareTargetLabel(unit) {
+  const configuration = unit?.build_config?.board_configuration || {};
+  const board = configuration.name || configuration.base_board_profile_id || unit?.build_config?.environment || unit?.build_config?.board || "Board nicht konfiguriert";
+  return `${unit?.title || unit?.software_unit_id || "Firmware"} → ${board}`;
+}
+
+function usbFirmwarePortAssignmentsForProject(project) {
+  if (!project?.id) return new Map();
+  if (!usbFirmwarePortAssignments.has(project.id)) usbFirmwarePortAssignments.set(project.id, new Map());
+  return usbFirmwarePortAssignments.get(project.id);
+}
+
+function setUsbFlashPortIdentificationStatus(kind, message) {
+  const status = document.querySelector("#usbFlashPortIdentificationStatus");
+  if (!status) return;
+  status.className = message ? kind : "hidden";
+  status.textContent = message || "";
+}
+
+function renderUsbPortIdentificationDialog(kind, { firmwareLabel = "", message = "", inferOther = false } = {}) {
+  const dialog = document.querySelector("#usbPortIdentificationDialog");
+  const title = document.querySelector("#usbPortIdentificationDialogTitle");
+  const status = document.querySelector("#usbPortIdentificationDialogStatus");
+  const cancel = dialog?.querySelector("[data-cancel-usb-port-identification]");
+  const finish = document.querySelector("#finishUsbPortIdentificationButton");
+  if (!dialog || !title || !status) return;
+  const target = firmwareLabel ? `„${firmwareLabel}“` : "diese Firmware";
+  if (kind === "waiting") {
+    title.textContent = `Bitte jetzt das Board für ${target} abziehen.`;
+    status.textContent = inferOther ? "Das andere Board wird automatisch zugeordnet." : "Warte auf Portänderung …";
+  } else if (kind === "detected") {
+    title.textContent = `Bitte das Board für ${target} wieder einstecken.`;
+    status.textContent = "Board erkannt.";
+  } else if (kind === "identified") {
+    title.textContent = `Board für ${target} zugeordnet.`;
+    status.textContent = message;
+  } else {
+    title.textContent = "Port-Erkennung fehlgeschlagen.";
+    status.textContent = message;
+  }
+  status.className = kind;
+  cancel?.classList.toggle("hidden", kind === "identified");
+  finish?.classList.toggle("hidden", !["identified", "error"].includes(kind));
+  if (!dialog.open) dialog.showModal();
+}
+
+function closeUsbPortIdentificationDialog({ cancelDetection = false } = {}) {
+  if (cancelDetection && usbFlashPortIdentification?.active) stopUsbFlashPortIdentification({ clearResult: false });
+  document.querySelector("#usbPortIdentificationDialog")?.close();
+}
+
+function renderUsbFlashPortIdentification() {
+  const panel = document.querySelector("#usbFlashPortIdentification");
+  const dialog = document.querySelector("#usbPortChoiceDialog");
+  if (!panel) return;
+  const visible = dialog?.dataset.usbChoiceMode === "firmware-port-mapping"
+    && (state.usbPorts.length > 1 || usbFlashPortIdentification?.resultVisible);
+  panel.classList.toggle("hidden", !visible);
+}
+
+async function listUsbFlashIdentificationPorts() {
+  const daemonAvailable = await state.serialService.available();
+  const items = daemonAvailable
+    ? await state.serialService.ports()
+    : (await getJson("/api/platform/usb-serial/ports")).items || [];
+  return items.map((port) => ({
+    ...port,
+    port: port.port || port.path,
+    name: port.name || port.label || port.manufacturer,
+  }));
+}
+
+function ensureUsbFlashPortDetector() {
+  if (usbFlashPortDetector || !window.GerNetiXUsbPortDisconnectDetector) return usbFlashPortDetector;
+  usbFlashPortDetector = window.GerNetiXUsbPortDisconnectDetector.create({
+    listPorts: listUsbFlashIdentificationPorts,
+    pathOf: (port) => String(port?.port || port?.path || ""),
+    labelOf: usbPortOptionLabel,
+    onPorts: (ports) => {
+      state.usbPorts = ports;
+      renderUsbPortOptions();
+      renderUsbFlashAssignmentLists(projectById(state.activeProjectId));
+      renderUsbFlashPortIdentification();
+    },
+    onState: (event) => {
+      const project = projectById(state.activeProjectId);
+      if (event.type === "waiting") {
+        usbFlashPortIdentification = { active: true, softwareUnitId: event.context?.softwareUnitId || "", resultVisible: true };
+        setUsbFlashPortIdentificationStatus("waiting", `Ziehe jetzt das Board für „${event.context?.firmwareLabel || "die gewählte Firmware"}“ ab …`);
+        const project = projectById(state.activeProjectId);
+        renderUsbPortIdentificationDialog("waiting", {
+          firmwareLabel: event.context?.firmwareLabel || "",
+          inferOther: usbFirmwareUnits(project).length === 2 && state.usbPorts.length === 2,
+        });
+      } else if (event.type === "removed") {
+        setUsbFlashPortIdentificationStatus("detected", `Erkannt: ${event.label} ist verschwunden. Stecke dieses Board jetzt wieder ein.`);
+        renderUsbPortIdentificationDialog("detected", { firmwareLabel: event.context?.firmwareLabel || "", message: `${event.label} wurde abgezogen.` });
+      } else if (event.type === "identified") {
+        usbFlashPortIdentification = { active: false, softwareUnitId: event.context?.softwareUnitId || "", identifiedPort: event.path, resultVisible: true };
+        let inferredAssignment = null;
+        if (project && event.context?.softwareUnitId) {
+          const assignments = usbFirmwarePortAssignmentsForProject(project);
+          assignments.set(event.context.softwareUnitId, event.path);
+          const units = usbFirmwareUnits(project);
+          if (units.length === 2 && state.usbPorts.length === 2) {
+            const remainingUnit = units.find((unit) => unit.software_unit_id !== event.context.softwareUnitId);
+            const remainingPort = state.usbPorts.find((port) => port.port !== event.path);
+            if (remainingUnit && remainingPort) {
+              assignments.set(remainingUnit.software_unit_id, remainingPort.port);
+              inferredAssignment = { unit: remainingUnit, port: remainingPort.port };
+            }
+          }
+        }
+        setUsbFlashPortIdentificationStatus("identified", inferredAssignment
+          ? `Eindeutig zugeordnet: ${event.path} erhält „${event.context?.firmwareLabel || "die gewählte Firmware"}“. Damit erhält ${inferredAssignment.port} automatisch „${inferredAssignment.unit.title || inferredAssignment.unit.software_unit_id}“.`
+          : `Zugeordnet: ${event.path} erhält „${event.context?.firmwareLabel || "die gewählte Firmware"}“.`);
+        renderUsbPortIdentificationDialog("identified", {
+          firmwareLabel: event.context?.firmwareLabel || "",
+          message: inferredAssignment
+            ? `${event.path} wurde erkannt. Die zweite Zuordnung wurde automatisch ergänzt.`
+            : `${event.path} wurde erkannt und zugeordnet.`,
+        });
+      } else if (event.type === "error") {
+        usbFlashPortIdentification = { active: false, resultVisible: true };
+        setUsbFlashPortIdentificationStatus("error", event.message);
+        renderUsbPortIdentificationDialog("error", { firmwareLabel: event.context?.firmwareLabel || "", message: event.message });
+      }
+      renderUsbFlashAssignmentLists(project);
+      renderUsbFlashPortIdentification();
+      renderUsbPortMappingConfirmationState();
+    },
+  });
+  return usbFlashPortDetector;
+}
+
+function stopUsbFlashPortIdentification({ clearResult = true } = {}) {
+  usbFlashPortDetector?.stop();
+  if (clearResult) {
+    usbFlashPortIdentification = null;
+    setUsbFlashPortIdentificationStatus("", "");
+    if (document.querySelector("#usbPortIdentificationDialog")?.open) document.querySelector("#usbPortIdentificationDialog").close();
+  } else if (usbFlashPortIdentification) {
+    usbFlashPortIdentification.active = false;
+  }
+  renderUsbFlashPortIdentification();
+  const project = projectById(state.activeProjectId);
+  renderUsbFlashAssignmentLists(project);
+  renderUsbPortMappingConfirmationState();
+}
+
+function identifyUsbFlashPortForFirmware(project, softwareUnitId) {
+  const unit = usbFirmwareUnits(project).find((candidate) => candidate.software_unit_id === softwareUnitId);
+  if (!unit || state.usbPorts.length < 2 || usbFlashPortIdentification?.active) return;
+  const detector = ensureUsbFlashPortDetector();
+  if (!detector) {
+    setUsbFlashPortIdentificationStatus("error", "Die USB-Port-Erkennung ist nicht verfügbar. Lade die Seite neu und versuche es erneut.");
+    return;
+  }
+  detector.start(state.usbPorts, {
+    softwareUnitId,
+    firmwareLabel: unit.title || unit.software_unit_id,
+  });
+}
+
+function latestBuildForUsbFirmware(project, softwareUnitId) {
+  const projectIds = new Set([project?.id, project?.slug, project?.project_server_id].filter(Boolean).map(String));
+  return state.builds
+    .filter((build) => projectIds.has(String(build.project_server_id || build.project_id || build.project_slug || ""))
+      && String(build.software_unit_id || "") === String(softwareUnitId || ""))
+    .sort((left, right) => Date.parse(right.finished_at || right.created_at || 0) - Date.parse(left.finished_at || left.created_at || 0))[0] || null;
+}
+
+function renderUsbFlashAssignmentLists(project = projectById(state.activeProjectId)) {
+  const target = document.querySelector("#usbFirmwarePortRows");
+  if (!target) return;
+  const units = usbFirmwareUnits(project);
+  const assignments = usbFirmwarePortAssignmentsForProject(project);
+  const validUnitIds = new Set(units.map((unit) => unit.software_unit_id));
+  for (const unitId of assignments.keys()) if (!validUnitIds.has(unitId)) assignments.delete(unitId);
+  const availablePorts = new Set(state.usbPorts.map((port) => port.port));
+  for (const [unitId, port] of assignments) if (!availablePorts.has(port)) assignments.delete(unitId);
+  const usedPorts = new Map([...assignments].map(([unitId, port]) => [port, unitId]));
+
+  target.innerHTML = units.length ? units.map((unit) => {
+    const config = unit.build_config || {};
+    const boardConfiguration = config.board_configuration || {};
+    const boardProfile = boardConfiguration.name
+      || boardConfiguration.base_board_profile_id
+      || unit.hardware_profile_id
+      || unit.hardwareProfileId
+      || "Keine Boardkonfiguration hinterlegt";
+    const latestBuild = latestBuildForUsbFirmware(project, unit.software_unit_id);
+    const buildStatus = latestBuild ? buildArtifactVersionLabel(latestBuild) : "noch nicht gebaut";
+    const buildTime = latestBuild ? formatBuildDate(latestBuild.finished_at || latestBuild.created_at) : "";
+    const selectedPort = assignments.get(unit.software_unit_id) || "";
+    const identifyingThisUnit = usbFlashPortIdentification?.active && usbFlashPortIdentification.softwareUnitId === unit.software_unit_id;
+    const identifyingAnotherUnit = usbFlashPortIdentification?.active && !identifyingThisUnit;
+    const portOptions = state.usbPorts.map((port) => {
+      const assignedToOther = usedPorts.has(port.port) && usedPorts.get(port.port) !== unit.software_unit_id;
+      return `<option value="${escapeAttribute(port.port)}"${port.port === selectedPort ? " selected" : ""}${assignedToOther ? " disabled" : ""}>${escapeHtml(usbPortOptionLabel(port))}</option>`;
+    }).join("");
+    return `<div class="usb-flash-assignment-row" role="row">
+      <div class="usb-flash-firmware-cell" role="cell">
+        <strong>${escapeHtml(unit.title || unit.software_unit_id)}</strong>
+        <div class="usb-flash-firmware-meta">
+          <span><b>Board:</b> ${escapeHtml(boardProfile)}</span>
+          <span class="usb-flash-build-state ${escapeAttribute(latestBuild?.status || "missing")}"><b>Letzter Build:</b> ${escapeHtml(buildStatus)}${buildTime ? ` · ${escapeHtml(buildTime)}` : ""}</span>
+        </div>
+      </div>
+      <label class="usb-flash-port-cell" role="cell">
+        <span class="sr-only">USB-Port für ${escapeHtml(unit.title || unit.software_unit_id)}</span>
+        <select data-usb-firmware-port-select="${escapeAttribute(unit.software_unit_id)}" aria-label="USB-Port für ${escapeAttribute(unit.title || unit.software_unit_id)}"${usbFlashPortIdentification?.active ? " disabled" : ""}>
+          <option value="">USB-Port wählen</option>${portOptions}
+        </select>
+        <button class="usb-flash-identify-port-button" type="button" data-identify-usb-flash-port="${escapeAttribute(unit.software_unit_id)}"${state.usbPorts.length < 2 || identifyingAnotherUnit || identifyingThisUnit ? " disabled" : ""}>${identifyingThisUnit ? "Board jetzt abziehen …" : "Port durch Abziehen zuordnen"}</button>
+        <small>${selectedPort ? "Dieser Port erhält genau diese Firmware." : "Nicht ausgewählt – diese Firmware wird nicht geflasht."}</small>
+      </label>
+    </div>`;
+  }).join("") : '<p class="usb-flash-assignment-empty">Dieses Projekt enthält keine PlatformIO-Firmware.</p>';
+}
+
+function updateUsbFirmwarePortAssignment(project, softwareUnitId, port) {
+  const assignments = usbFirmwarePortAssignmentsForProject(project);
+  if (port) assignments.set(softwareUnitId, port);
+  else assignments.delete(softwareUnitId);
+  renderUsbPortMappingConfirmationState();
+}
+
+function selectedUsbFirmwarePortAssignments(project) {
+  if (usbFlashPortIdentification?.active) return [];
+  const units = usbFirmwareUnits(project);
+  const assignments = usbFirmwarePortAssignmentsForProject(project);
+  const selected = UsbFlashTargetModel.selectedAssignments(
+    units.map((unit) => unit.software_unit_id),
+    state.usbPorts.map((port) => port.port),
+    Object.fromEntries(assignments),
+  );
+  return selected.map((assignment) => ({
+    softwareUnitId: assignment.firmwareId,
+    port: assignment.port,
+  }));
+}
+
+async function startUsbFlashAssignmentBatch(project) {
+  const selectedAssignments = selectedUsbFirmwarePortAssignments(project);
+  if (!selectedAssignments.length) return;
+  usbFlashAssignmentBatch = {
+    projectId: project.id,
+    inventoryCheckConfirmed: false,
+    remaining: selectedAssignments,
+  };
+  document.querySelector("#usbPortChoiceDialog")?.close();
+  await continueUsbFlashAssignmentBatch();
+}
+
+async function continueUsbFlashAssignmentBatch() {
+  const next = usbFlashAssignmentBatch?.remaining?.[0];
+  const project = projectById(usbFlashAssignmentBatch?.projectId);
+  if (!next || !project) {
+    usbFlashAssignmentBatch = null;
+    return;
+  }
+  state.activeSoftwareUnitIds[project.id] = next.softwareUnitId;
+  const firmwareSelect = document.querySelector("#usbFirmwareTargetSelect");
+  const portSelect = document.querySelector("#usbPortSelect");
+  if (firmwareSelect) firmwareSelect.value = next.softwareUnitId;
+  if (portSelect) portSelect.value = next.port;
+  await startUsbFlash(true, Boolean(usbFlashAssignmentBatch.inventoryCheckConfirmed), true);
+}
+
+async function finishUsbFlashAssignmentBatch(projectId, softwareUnitId) {
+  if (usbFlashAssignmentBatch?.projectId !== projectId || usbFlashAssignmentBatch.remaining?.[0]?.softwareUnitId !== softwareUnitId) return;
+  usbFlashAssignmentBatch.remaining.shift();
+  if (!usbFlashAssignmentBatch.remaining.length) {
+    usbFlashAssignmentBatch = null;
+    appendIdeTerminal("ok", "Alle zugeordneten Firmware-Einheiten wurden per USB geflasht.");
+    return;
+  }
+  await continueUsbFlashAssignmentBatch();
+}
+
+function inventoryDeviceForUsbFlash(allocatedDevice, port) {
+  if (allocatedDevice) return allocatedDevice;
+  const normalizedPort = String(port || "").trim().toLowerCase();
+  if (!normalizedPort) return null;
+  return state.devices.find((device) => String(device.upload_port || "").trim().toLowerCase() === normalizedPort) || null;
+}
+
+function usbInventoryWarningStorageKey() {
+  const accountId = state.account?.user_id || state.account?.username || "local";
+  return `gernetix.usb.inventory-warning.dismissed.v1:${accountId}`;
+}
+
+function usbInventoryWarningDismissed() {
+  try {
+    return localStorage.getItem(usbInventoryWarningStorageKey()) === "true";
+  } catch {
+    return false;
+  }
+}
+
+function persistUsbInventoryWarningPreference() {
+  const checkbox = document.querySelector("#dismissUsbInventoryWarningCheckbox");
+  if (!checkbox?.checked) return;
+  try {
+    localStorage.setItem(usbInventoryWarningStorageKey(), "true");
+  } catch {
+    // Die Praeferenz ist optional; USB-Flash darf nicht an Browser-Speicher scheitern.
+  }
+}
+
+function showUsbInventoryUnknownDialog(port) {
+  const dialog = document.querySelector("#usbInventoryUnknownDialog");
+  const portHint = document.querySelector("#usbInventoryUnknownPort");
+  const checkbox = document.querySelector("#dismissUsbInventoryWarningCheckbox");
+  if (!dialog) return;
+  if (checkbox) checkbox.checked = false;
+  if (portHint) {
+    portHint.textContent = port
+      ? `Erkanntes USB-Ziel: ${port}`
+      : "Das USB-Ziel wird gleich über die Geräteauswahl des Browsers bestimmt.";
+  }
+  if (!dialog.open) dialog.showModal();
 }
 
 async function retryUsbPortSearch() {
@@ -1120,6 +1652,19 @@ async function retryUsbPortSearch() {
     document.querySelector("#usbPortMissingDialog")?.close();
     const pending = state.pendingUsbFlash;
     state.pendingUsbFlash = null;
+    const pendingProject = projectById(pending?.projectId);
+    const pendingSelectionMode = pendingProject
+      ? UsbFlashTargetModel.selectionMode(usbFirmwareUnits(pendingProject).length, state.usbPorts.length)
+      : "";
+    if (pending?.mode === "flash" && pendingSelectionMode === "single-device-port-conflict") {
+      state.pendingUsbFlash = pending;
+      showUsbPortChoiceDialog(pendingProject, "single-device-conflict");
+      return;
+    }
+    if (pending?.mode === "flash" && pending.port && state.usbPorts.some((port) => port.port === pending.port)) {
+      const portSelect = document.querySelector("#usbPortSelect");
+      if (portSelect) portSelect.value = pending.port;
+    }
     setFlashStatus("running", `${state.usbPorts.length} USB-Serial-Port${state.usbPorts.length === 1 ? "" : "s"} gefunden. Flash-Vorgang wird fortgesetzt...`);
     if (pending?.mode === "flash" && pending.build) {
       await resumeUsbFlashWithCompletedBuild(pending);
@@ -1145,6 +1690,7 @@ async function resumeUsbFlashWithCompletedBuild(pending) {
     build.flash_status = "succeeded";
     setUsbFlashSuccess(`USB-Flash erfolgreich: ${flashResult.chipName}`);
     renderBuilds();
+    await finishUsbFlashAssignmentBatch(pending.projectId, pending.softwareUnitId || "");
   } catch (error) {
     if (isUsbPortMissingError(error)) {
       state.pendingUsbFlash = pending;
@@ -1155,6 +1701,7 @@ async function resumeUsbFlashWithCompletedBuild(pending) {
       status: "failed",
       error: error.message,
     }).catch(() => {});
+    usbFlashAssignmentBatch = null;
     setFlashStatus("error", error.message);
   }
 }

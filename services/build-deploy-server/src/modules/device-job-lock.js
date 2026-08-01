@@ -30,6 +30,12 @@ class DeviceJobLock {
     if (jobId) this.waitingByDevice.delete(deviceId);
     return jobId || null;
   }
+
+  cancelWaiting(job) {
+    if (!job.device_id || this.waitingByDevice.get(job.device_id) !== job.job_id) return false;
+    this.waitingByDevice.delete(job.device_id);
+    return true;
+  }
 }
 
 module.exports = { DeviceJobLock };

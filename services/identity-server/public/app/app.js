@@ -59,6 +59,7 @@ const state = {
   activeIdeStep: 0,
   guidedCodeChats: {},
   sourcePath: "src/main.cpp",
+  ideTreeSelectionPath: "",
   projectSourcesByProjectId: {},
   ideDirtySources: {},
   ideViewMode: "file",

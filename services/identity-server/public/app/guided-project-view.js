@@ -1286,7 +1286,7 @@ if (digitalRead(BUTTON_PIN) == LOW) {
     }
 
     async function createPlantUmlSvgUrl(source) {
-      const bytes = new TextEncoder().encode(source);
+      const bytes = new TextEncoder().encode(themedPlantUmlSource(source));
       const compressed = await deflateForPlantUml(bytes);
       return `https://www.plantuml.com/plantuml/svg/${encodePlantUmlBytes(compressed)}`;
     }

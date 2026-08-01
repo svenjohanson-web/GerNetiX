@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260731-build-memory-summary-1" />
+    <link rel="stylesheet" href="/app/app.css?v=20260801-hardware-validation-4" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -64,6 +64,7 @@
           <summary data-i18n="platform.menu.boards_tools">Boards &amp; Werkzeuge</summary>
           <div>
             <a href="/app/device-management/" data-route="device-management" data-i18n="platform.nav.devices">Geräte</a>
+            <button id="deviceWifiSetupMenuButton" class="utility menu-tool-action" type="button">Device-WLAN-Setup</button>
             <a class="utility" href="/app/downloads/" data-route="downloads" data-i18n="platform.nav.downloads">Downloads</a>
             <a class="utility public-information-link" href="/flashbox-einrichten/">FlashBox einrichten</a>
           </div>
@@ -263,6 +264,16 @@
           <li>Ein anderes Programm hält den Port geöffnet.</li>
           <li>Serial Service, Treiber oder Berechtigung verhindern den Zugriff.</li>
         </ul>
+        <section id="usbPortMacosSecurityHint" class="usb-port-macos-security-hint hidden" aria-labelledby="usbPortMacosSecurityTitle">
+          <strong id="usbPortMacosSecurityTitle">macOS: USB-Gerät sichtbar, aber kein Serial-Port</strong>
+          <p>macOS kann das USB-Gerät bereits erkennen, den Datenzugriff und damit die serielle Schnittstelle aber noch blockieren.</p>
+          <ol>
+            <li>Mac entsperren und das Board einmal abziehen und wieder einstecken.</li>
+            <li>Die macOS-Frage zur Verbindung des USB-Zubehörs mit <strong>„Erlauben“</strong> bestätigen.</li>
+            <li>Falls keine Frage erscheint: <strong>Systemeinstellungen → Datenschutz &amp; Sicherheit → Verbinden von Zubehör erlauben</strong> öffnen und mindestens <strong>„Automatisch, wenn entsperrt“</strong> oder <strong>„Immer“</strong> wählen.</li>
+            <li>Falls das Board einen zusätzlichen Herstellertreiber benötigt, unter <strong>Datenschutz &amp; Sicherheit</strong> auch blockierte Systemsoftware erlauben und einen von macOS verlangten Neustart durchführen.</li>
+          </ol>
+        </section>
         <section class="usb-port-recovery-sequence" aria-labelledby="usbPortRecoveryTitle">
           <strong id="usbPortRecoveryTitle">ESP32 sicher in den Download-Modus versetzen</strong>
           <p>USB-Stecker und Stromversorgung angeschlossen lassen. Reines Aus- und Einschalten, Abziehen und erneutes Einstecken oder nur RESET startet normalerweise wieder dieselbe fehlerhafte Firmware. Dadurch muss der USB-Port nicht zurückkommen.</p>
@@ -288,13 +299,51 @@
           </div>
           <button type="button" data-close-usb-port-choice aria-label="Schließen">Schließen</button>
         </div>
-        <p>GerNetiX hat mehrere USB-Geräte gefunden und kann das Ziel nicht eindeutig bestimmen.</p>
-        <label class="usb-port-choice-field">USB-Port
-          <select id="usbPortSelect" aria-label="USB-Port"></select>
-        </label>
+        <p id="usbPortChoiceIntro">GerNetiX benötigt eine eindeutige USB-Zuordnung.</p>
+        <p id="usbPortIdentityWarning" class="usb-port-identity-warning"></p>
+        <div id="usbPortDetectedList" class="usb-port-detected-list hidden"></div>
+        <div id="usbAssignmentGrid" class="usb-flash-assignment-table" role="table" aria-label="Firmware- und USB-Port-Zuordnung">
+          <div class="usb-flash-assignment-table-head" role="row">
+            <strong role="columnheader">Firmware aus dem Projekt</strong>
+            <strong role="columnheader">COM-/USB-Port für diese Firmware</strong>
+          </div>
+          <div id="usbFirmwarePortRows" class="usb-flash-assignment-table-body" role="rowgroup" aria-live="polite"></div>
+          <select id="usbFirmwareTargetSelect" class="hidden" tabindex="-1" aria-hidden="true" aria-label="Firmware für den USB-Flash"></select>
+          <select id="usbPortSelect" class="hidden" tabindex="-1" aria-hidden="true" aria-label="USB-Port"></select>
+        </div>
         <div class="usb-port-missing-actions">
           <button type="button" data-close-usb-port-choice>Abbrechen</button>
           <button id="confirmUsbPortButton" class="primary" type="button">Auswählen und fortfahren</button>
+        </div>
+      </dialog>
+
+      <dialog id="usbPortIdentificationDialog" class="usb-port-identification-dialog" aria-labelledby="usbPortIdentificationDialogTitle">
+        <h2 id="usbPortIdentificationDialogTitle">Bitte jetzt das zugehörige Board abziehen.</h2>
+        <p id="usbPortIdentificationDialogStatus" class="waiting" aria-live="assertive">Warte auf Portänderung …</p>
+        <div class="usb-port-identification-dialog-actions">
+          <button type="button" data-cancel-usb-port-identification>Erkennung abbrechen</button>
+          <button id="finishUsbPortIdentificationButton" class="primary hidden" type="button" data-finish-usb-port-identification>Fertig</button>
+        </div>
+      </dialog>
+
+      <dialog id="usbInventoryUnknownDialog" class="runtime-dialog usb-inventory-unknown-dialog" aria-labelledby="usbInventoryUnknownTitle">
+        <div class="runtime-dialog-header">
+          <div>
+            <p class="eyebrow">USB-Gerät</p>
+            <h2 id="usbInventoryUnknownTitle">Board noch nicht im Inventar</h2>
+          </div>
+          <button type="button" data-close-usb-inventory-unknown aria-label="Schließen">Schließen</button>
+        </div>
+        <p>GerNetiX konnte das angeschlossene Board keinem Device in deinem Inventar zuordnen.</p>
+        <p id="usbInventoryUnknownPort" class="usb-inventory-unknown-port"></p>
+        <p>Du kannst es trotzdem direkt per USB flashen. Arbeitsweisen wie <strong>OTA-Updates</strong>, Online-Status und die eindeutige gerätebezogene Zuordnung funktionieren erst, nachdem das Board in dein Inventar aufgenommen wurde.</p>
+        <label class="usb-inventory-warning-preference">
+          <input id="dismissUsbInventoryWarningCheckbox" type="checkbox" />
+          <span>Diesen Hinweis künftig nicht mehr anzeigen</span>
+        </label>
+        <div class="usb-port-missing-actions">
+          <button id="continueUnknownInventoryUsbFlashButton" type="button">Trotzdem per USB flashen</button>
+          <button id="addUnknownUsbDeviceToInventoryButton" class="primary" type="button">Zum Inventar hinzufügen</button>
         </div>
       </dialog>
 
@@ -313,6 +362,21 @@
         <div class="usb-port-missing-actions">
           <button type="button" data-close-flash-target-choice>Abbrechen</button>
           <button id="confirmFlashTargetButton" class="primary" type="button">Auswählen und fortfahren</button>
+        </div>
+      </dialog>
+
+      <dialog id="cancelBuildConfirmDialog" class="runtime-dialog cancel-build-confirm-dialog" aria-labelledby="cancelBuildConfirmTitle">
+        <div class="runtime-dialog-header">
+          <div>
+            <p class="eyebrow">Laufender Gesamtbuild</p>
+            <h2 id="cancelBuildConfirmTitle">Build wirklich abbrechen?</h2>
+          </div>
+          <button type="button" data-close-cancel-build aria-label="Schließen">Schließen</button>
+        </div>
+        <p id="cancelBuildConfirmText">Der laufende Build wird beendet. Bereits erzeugte Zwischenergebnisse dieses Auftrags werden nicht als fertiger Build übernommen.</p>
+        <div class="usb-port-missing-actions">
+          <button type="button" data-close-cancel-build>Weiterbauen</button>
+          <button id="confirmCancelBuildButton" class="danger cancel-build-confirm-button" type="button">Build abbrechen</button>
         </div>
       </dialog>
 
@@ -813,9 +877,9 @@
         <div class="section-head">
           <div>
             <p class="eyebrow">Architektur-Discovery</p>
-            <div class="development-current-project">
+            <div class="development-current-project hidden">
               <span>Projekt</span>
-              <strong id="developmentProjectName">Kein Projekt geoeffnet</strong>
+              <strong id="developmentProjectName"></strong>
             </div>
           </div>
         </div>
@@ -975,23 +1039,35 @@
               <h2>Statische Architektur</h2>
               <div id="developmentHardwareArchitecture" class="architecture-diagram-panel hardware-architecture-preview"></div>
             </div>
-            <aside class="hardware-guidance-panel" aria-labelledby="developmentHardwareHintsTitle">
-              <header class="hardware-guidance-terminal-head">
-                <strong id="developmentHardwareHintsTitle">HINWEISE</strong>
-                <span>Hardware-Prüfung</span>
-              </header>
-              <div id="developmentHardwareHints" class="hardware-hint-terminal" role="log" aria-live="polite" tabindex="0"></div>
-            </aside>
           </section>
           <section class="hardware-component-section">
+            <header class="hardware-component-section-head">
+              <div>
+                <h2>Hardware konkretisieren und anschließen</h2>
+                <p>Neue externe Sensoren und Aktoren werden zuerst in der Architektur ergänzt und verbunden. Danach legst du hier konkreten Typ, Zusatzschaltung und Boardanschlüsse fest.</p>
+              </div>
+              <button id="editExternalHardwareArchitectureButton" type="button">Externe Hardware in der Architektur bearbeiten</button>
+            </header>
             <form id="developmentHardwareForm">
               <div id="developmentHardwareComponents" class="hardware-component-table"></div>
             </form>
           </section>
+          <aside class="hardware-guidance-panel hardware-guidance-bottom" aria-labelledby="developmentHardwareHintsTitle">
+            <header class="hardware-guidance-terminal-head">
+              <strong id="developmentHardwareHintsTitle">HARDWARE-PRÜFUNG</strong>
+              <span>Pflichtangaben und optionale Hinweise</span>
+            </header>
+            <div id="developmentHardwareHints" class="hardware-hint-terminal" role="log" aria-live="polite" tabindex="0"></div>
+          </aside>
           <div class="button-row development-page-actions hardware-page-actions">
-            <button id="backToDevelopmentArchitectureButton" type="button">Zurueck zur Architektur</button>
-            <button id="saveDevelopmentHardwareButton" type="button">Hardware speichern</button>
-            <button id="continueDevelopmentHardwareButton" class="primary" type="button">Weiter zur IDE</button>
+            <div class="hardware-secondary-actions">
+              <button id="backToDevelopmentArchitectureButton" type="button">Zurueck zur Architektur</button>
+              <button id="saveDevelopmentHardwareButton" type="button">Hardware speichern</button>
+            </div>
+            <div class="hardware-continue-area">
+              <div id="developmentHardwareValidationSummary" class="hardware-validation-summary is-blocked" role="status" aria-live="polite"></div>
+              <button id="continueDevelopmentHardwareButton" class="primary" type="button">Weiter zur IDE</button>
+            </div>
           </div>
           <p id="developmentHardwareStatus" class="helper-text development-action-status" aria-live="polite"></p>
         </article>
@@ -1289,6 +1365,61 @@
           <footer><button class="primary" type="submit">Version speichern</button></footer>
         </form>
       </dialog>
+      <dialog id="deviceWifiSetupDialog" class="device-wifi-setup-dialog" aria-labelledby="deviceWifiSetupTitle">
+        <form id="deviceWifiSetupForm" method="dialog">
+          <header>
+            <div>
+              <p class="eyebrow">Gerät · lokale Einrichtung</p>
+              <h2 id="deviceWifiSetupTitle">Device-WLAN-Setup</h2>
+            </div>
+            <button type="button" data-close-device-wifi-setup>Schließen</button>
+          </header>
+          <p class="device-wifi-setup-intro">Das angeschlossene Gerät sucht WLANs selbst. SSID und Passwort werden nur lokal über USB übertragen und weder an GerNetiX gesendet noch im Browser gespeichert.</p>
+          <p id="deviceWifiSetupContext" class="device-wifi-setup-context hidden"></p>
+          <section class="device-wifi-setup-step" aria-labelledby="deviceWifiSetupUsbTitle">
+            <div>
+              <span class="device-wifi-setup-step-number">1</span>
+              <div><strong id="deviceWifiSetupUsbTitle">USB-Gerät auswählen</strong><small>Das Gerät muss die GerNetiX-Basissoftware mit WLAN-Setup unterstützen.</small></div>
+            </div>
+            <div class="device-wifi-setup-control-row">
+              <label for="deviceWifiSetupPort">USB-Port</label>
+              <select id="deviceWifiSetupPort"><option value="">USB-Geräte werden gesucht …</option></select>
+              <button id="refreshDeviceWifiPortsButton" type="button">Aktualisieren</button>
+            </div>
+            <section id="deviceWifiPortIdentification" class="device-wifi-port-identification hidden" aria-labelledby="deviceWifiPortIdentificationTitle">
+              <div>
+                <strong id="deviceWifiPortIdentificationTitle">Welcher Port gehört zu welchem Board?</strong>
+                <small>GerNetiX beobachtet die Portliste. Ziehe genau ein Board kurz ab und stecke es danach wieder ein.</small>
+              </div>
+              <button id="identifyDeviceWifiPortButton" type="button">Durch Abziehen erkennen</button>
+              <p id="deviceWifiPortIdentificationStatus" class="hidden" role="status" aria-live="polite"></p>
+            </section>
+          </section>
+          <section class="device-wifi-setup-step" aria-labelledby="deviceWifiSetupNetworkTitle">
+            <div>
+              <span class="device-wifi-setup-step-number">2</span>
+              <div><strong id="deviceWifiSetupNetworkTitle">WLAN auswählen</strong><small>Der Scan läuft auf dem ausgewählten Gerät, nicht auf diesem Rechner.</small></div>
+            </div>
+            <button id="scanDeviceWifiNetworksButton" class="primary" type="button" disabled>WLANs suchen</button>
+            <div id="deviceWifiSetupNetworkFields" class="device-wifi-setup-network-fields hidden">
+              <label>Gefundenes WLAN
+                <select id="deviceWifiSetupSsid"><option value="">WLAN auswählen …</option></select>
+              </label>
+              <label id="deviceWifiSetupManualSsidLabel" class="hidden">SSID
+                <input id="deviceWifiSetupManualSsid" type="text" maxlength="32" autocomplete="off" />
+              </label>
+              <label>WLAN-Passwort
+                <input id="deviceWifiSetupPassword" type="password" maxlength="64" autocomplete="new-password" />
+              </label>
+            </div>
+          </section>
+          <p id="deviceWifiSetupStatus" class="flash-status hidden" role="status" aria-live="polite"></p>
+          <footer>
+            <button type="button" data-close-device-wifi-setup>Abbrechen</button>
+            <button id="connectDeviceWifiButton" class="primary" type="button" disabled>Mit WLAN verbinden</button>
+          </footer>
+        </form>
+      </dialog>
       <footer class="platform-footer">
         <span>© 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span>
         <nav aria-label="Weiterführende Informationen"><a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/#motivation">Warum GerNetiX?</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a></nav>
@@ -1299,16 +1430,17 @@
     <script src="/app/api-client.js"></script>
     <script src="/app/dom-utils.js"></script>
     <script src="/app/serial-service-client.js?v=20260731-macos-port-dedupe-1"></script>
+    <script src="/app/usb-port-disconnect-detector.js?v=20260801-shared-1"></script>
     <script src="/app/device-onboarding-model.js"></script>
     <script src="/app/board-configuration-plugin.js?v=20260731-board-source-groups-1"></script>
     <script src="/app/device-onboarding-controller.js?v=20260719-04"></script>
-    <script src="/app/guided-project-view.js?v=20260731-board-source-groups-1"></script>
+    <script src="/app/guided-project-view.js?v=20260801-dark-plantuml"></script>
     <script src="/app/learning-project-view.js?v=20260728-i18n-1"></script>
     <script src="/app/learning-project-controller.js?v=20260728-i18n-1"></script>
     <script src="/app/learning-project-locales.js?v=20260728-02"></script>
     <script src="/app/development-hardware-model.js?v=20260731-profile-inheritance-1"></script>
-    <script src="/app/development-component-metamodel.js?v=20260731-software-units-1"></script>
-    <script src="/app/development-platform.js?v=20260731-project-delete-1"></script>
+    <script src="/app/development-component-metamodel.js?v=20260801-hardware-connection-types"></script>
+    <script src="/app/development-platform.js?v=20260801-hardware-validation-4"></script>
     <script src="/app/help-content.js?v=20260730-content-separation-1"></script>
     <script src="/app/knowledge-articles-engineering.js?v=20260731-modular-1"></script>
     <script src="/app/knowledge-articles-electrical-engineering.js?v=20260731-modular-1"></script>
@@ -1330,12 +1462,14 @@
     <script src="/app/app-community-controller.js?v=20260801-app-modules-1"></script>
     <script src="/app/app-account-controller.js?v=20260801-app-modules-1"></script>
     <script src="/app/app-project-controller.js?v=20260801-app-modules-1"></script>
-    <script src="/app/app-ide-controller.js?v=20260801-app-modules-1"></script>
-    <script src="/app/app-device-build-controller.js?v=20260801-app-modules-1"></script>
+    <script src="/app/app-ide-controller.js?v=20260801-source-language-folders"></script>
+    <script src="/app/usb-flash-target-model.js?v=20260801-partial-usb-flash"></script>
+    <script src="/app/app-device-build-controller.js?v=20260801-partial-usb-flash"></script>
     <script src="/app/app-billing-controller.js?v=20260801-app-modules-1"></script>
-    <script src="/app/app-runtime-utils.js?v=20260801-app-modules-1"></script>
+    <script src="/app/app-runtime-utils.js?v=20260801-plantuml-contrast"></script>
     <script src="/app/app-push-controller.js?v=20260801-app-modules-1"></script>
-    <script src="/app/app.js?v=20260801-app-modules-1"></script>
-    <script src="/app/app-event-bindings.js?v=20260801-app-modules-1"></script>
+    <script src="/app/app.js?v=20260801-tree-selection"></script>
+    <script src="/app/device-wifi-setup-dialog.js?v=20260801-shared-port-identification"></script>
+    <script src="/app/app-event-bindings.js?v=20260801-tree-selection"></script>
   </body>
 </html>

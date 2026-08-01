@@ -13,6 +13,7 @@ const {
   templateSoftwareUnits,
 } = require("../src/dev/development-project-templates");
 const { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles } = require("../../project-server/src/modules/esp32-basissoftware-package");
+const developmentComponentMetamodel = require("../public/app/development-component-metamodel");
 
 test("separates semantic template models from rendered views", () => {
   const template = developmentProjectTemplate("esp32_datalogger_local_web");
@@ -90,11 +91,12 @@ test("provides the complete ES3C28P touchscreen example as versioned template so
   assert.equal(templateBuildConfig(template).board, "esp32-s3-devkitc-1");
   assert.equal(templateBuildConfig(template).framework, "arduino");
   assert.equal(templateBuildConfig(template).flash_size_mb, 16);
-  assert.match(files.find((file) => file.path === "platformio.ini").content, /LovyanGFX/);
-  assert.match(files.find((file) => file.path === "src/board_adapter.cpp").content, /Es3c28pDisplay/);
-  assert.match(files.find((file) => file.path === "src/main.cpp").content, /void setup\(\)/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/platformio.ini").content, /LovyanGFX/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/board_adapter.cpp").content, /Es3c28pDisplay/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/main.cpp").content, /void setup\(\)/);
+  assert.equal(files.some((file) => file.path === "Komponenten/IoT-Device 1/include/board_adapter.h"), true);
   for (const game of ["nibbles", "frogger", "arkanoid", "space_invaders"]) {
-    assert.equal(files.some((file) => file.path === `src/${game}.cpp`), true);
+    assert.equal(files.some((file) => file.path === `Komponenten/IoT-Device 1/src/${game}.cpp`), true);
   }
 });
 
@@ -104,23 +106,76 @@ test("provides a two-target camera-to-display template with isolated build roots
   const units = templateSoftwareUnits(template);
   const files = templateFirmwareSources(template, template.title);
 
-  assert.match(architecture, /rectangle "IoT-Device 1" as camera_device \{[\s\S]*rectangle "Kamera" as camera[\s\S]*rectangle "Kamera-Host" as camera_app <<Software>>/);
-  assert.match(architecture, /rectangle "IoT-Device 2" as display_device \{[\s\S]*rectangle "Display-Client" as display_app <<Software>>[\s\S]*rectangle "Display" as display[\s\S]*rectangle "Touch" as touch[\s\S]*rectangle "Lautsprecher" as speaker/);
+  assert.match(architecture, /rectangle "IoT-Device 1" as camera_device \{[\s\S]*rectangle "ESP32-S3 Prozessor" as camera_processor[\s\S]*rectangle "Kamera" as camera/);
+  assert.match(architecture, /rectangle "IoT-Device 2" as display_device \{[\s\S]*rectangle "ESP32-S3 Prozessor" as display_processor[\s\S]*rectangle "ILI9341V Display-Controller-IC" as display_controller_ic[\s\S]*rectangle "FT6336G Touch-Controller-IC" as touch_controller_ic[\s\S]*rectangle "ES8311 Audio-Codec-IC" as audio_codec_ic[\s\S]*rectangle "NS8002E Audio-Verstärker-IC" as audio_amplifier_ic[\s\S]*rectangle "Display" as display[\s\S]*rectangle "Touch" as touch[\s\S]*rectangle "Lautsprecher" as speaker/);
   assert.doesNotMatch(architecture, /camera_board|display_board|<<Onboard>>|rectangle "Board"/);
-  assert.match(architecture, /camera --> camera_app : liefert Bilddaten/);
-  assert.match(architecture, /camera_app --> display_app : uebertraegt Bilddaten/);
-  assert.match(architecture, /display_app --> display : zeigt Kamerabild/);
-  assert.match(architecture, /touch --> display_app : liefert Bedienung/);
-  assert.match(architecture, /user --> display : betrachtet Kamerabild/);
+  assert.doesNotMatch(architecture, /camera_app|display_app/);
+  assert.match(architecture, /actor "Beobachtete Umgebung" as environment <<physical environment>>/);
+  assert.match(architecture, /environment --> camera : liefert Bildinhalt/);
+  assert.match(architecture, /rectangle "Mikrofon links" as microphone_left/);
+  assert.match(architecture, /rectangle "Mikrofon rechts" as microphone_right/);
+  assert.match(architecture, /rectangle "ES7210 Audio-ADC-IC" as microphone_adc_ic/);
+  assert.match(architecture, /rectangle "ES8311 Audio-Codec-IC" as camera_audio_codec_ic/);
+  assert.match(architecture, /rectangle "NS4150B Audio-Verstärker-IC" as camera_audio_amplifier_ic/);
+  assert.match(architecture, /rectangle "Lautsprecher" as camera_speaker/);
+  assert.match(architecture, /environment --> microphone_left : erzeugt Schall/);
+  assert.match(architecture, /environment --> microphone_right : erzeugt Schall/);
+  assert.match(architecture, /microphone_left --> microphone_adc_ic : liefert Audiosignal/);
+  assert.match(architecture, /microphone_right --> microphone_adc_ic : liefert Audiosignal/);
+  assert.match(architecture, /microphone_adc_ic --> camera_processor : liefert Audiodaten/);
+  assert.match(architecture, /camera_processor --> camera_audio_codec_ic : liefert Audiodaten/);
+  assert.match(architecture, /camera_audio_codec_ic --> camera_audio_amplifier_ic : liefert Audiosignal/);
+  assert.match(architecture, /camera_audio_amplifier_ic --> camera_speaker : treibt Lautsprecher/);
+  assert.match(architecture, /camera_speaker --> environment : gibt Ton aus/);
+  assert.match(architecture, /camera --> camera_processor : liefert Bilddaten/);
+  assert.match(architecture, /camera_processor --> display_processor : uebertraegt Bilddaten/);
+  assert.match(architecture, /user --> touch : bedient Touch/);
+  assert.match(architecture, /touch --> touch_controller_ic : liefert Beruehrungssignal/);
+  assert.match(architecture, /touch_controller_ic --> display_processor : liefert Touchdaten/);
+  assert.match(architecture, /display_processor --> display_controller_ic : steuert Anzeige/);
+  assert.match(architecture, /display_controller_ic --> display : treibt Display/);
+  assert.match(architecture, /display --> user : zeigt Kamerabild/);
+  assert.match(architecture, /display_processor --> audio_codec_ic : liefert Audiodaten/);
+  assert.match(architecture, /audio_codec_ic --> audio_amplifier_ic : liefert Audiosignal/);
+  assert.match(architecture, /audio_amplifier_ic --> speaker : treibt Lautsprecher/);
+  assert.match(architecture, /speaker --> user : gibt Ton aus/);
   assert.doesNotMatch(architecture, /user --> display_device/);
   assert.doesNotMatch(architecture, /Waveshare|ES3C28P/);
-  assert.equal(template.schemaVersion, 7);
+  assert.equal(template.schemaVersion, 17);
+  const architectureElements = new Map(template.architecture.elements.map((element) => [element.id, element]));
+  template.architecture.relations.forEach((relation) => {
+    assert.equal(
+      developmentComponentMetamodel.validatesRelation(architectureElements.get(relation.source)?.kind, architectureElements.get(relation.target)?.kind),
+      true,
+      `${relation.source} -> ${relation.target} must be a valid component relation`,
+    );
+  });
+  const restoredTypes = new Map();
+  architecture.split(/\r?\n/).forEach((line) => {
+    const component = line.match(/^\s*(actor|rectangle)\s+"([^"]+)"\s+as\s+([A-Za-z_][A-Za-z0-9_]*)\b/i);
+    if (component) restoredTypes.set(component[3], developmentComponentMetamodel.componentTypeForPlantUml(component[2], component[1], component[3]));
+  });
+  architecture.split(/\r?\n/).forEach((line) => {
+    const relation = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s+[-.]+>\s+([A-Za-z_][A-Za-z0-9_]*)\b/);
+    if (!relation || !restoredTypes.has(relation[1]) || !restoredTypes.has(relation[2])) return;
+    assert.equal(
+      developmentComponentMetamodel.validatesRelation(restoredTypes.get(relation[1]), restoredTypes.get(relation[2])),
+      true,
+      `${relation[1]} -> ${relation[2]} must remain valid after PlantUML restoration`,
+    );
+  });
   const hardware = templateHardwareConfiguration(template);
   assert.equal(hardware.components.find((component) => component.component_id === "camera_device").board_profile_id, "hardware.processor_board.waveshare_esp32_s3_cam_ov3660");
   assert.equal(hardware.components.find((component) => component.component_id === "display_device").board_profile_id, "hardware.processor_board.esp32_s3_es3c28p");
   assert.equal(hardware.components.find((component) => component.component_id === "camera").target_device_id, "camera_device");
   assert.equal(hardware.components.find((component) => component.component_id === "camera").concrete_type, "ov3660");
   assert.equal(hardware.components.find((component) => component.component_id === "camera").sensor_category, "image");
+  assert.equal(hardware.components.find((component) => component.component_id === "microphone_left").concrete_type, "integrated_microphone");
+  assert.equal(hardware.components.find((component) => component.component_id === "microphone_left").target_device_id, "camera_device");
+  assert.equal(hardware.components.find((component) => component.component_id === "microphone_right").concrete_type, "integrated_microphone");
+  assert.equal(hardware.components.find((component) => component.component_id === "microphone_right").target_device_id, "camera_device");
+  assert.equal(hardware.components.find((component) => component.component_id === "camera_speaker").concrete_type, "integrated_speaker");
+  assert.equal(hardware.components.find((component) => component.component_id === "camera_speaker").target_device_id, "camera_device");
   assert.equal(hardware.components.find((component) => component.component_id === "display").target_device_id, "display_device");
   assert.equal(hardware.components.find((component) => component.component_id === "touch").concrete_type, "integrated_touchscreen");
   assert.equal(hardware.components.find((component) => component.component_id === "touch").target_device_id, "display_device");
@@ -145,11 +200,20 @@ test("provides a two-target camera-to-display template with isolated build roots
   assert.equal(units[1].build_config.framework, "espidf");
   assert.equal(units[1].build_config.board, "4d_systems_esp32s3_gen4_r8n16");
   assert.equal(units[1].build_config.firmware_basis_id, "gernetix-runtime-basissoftware");
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /camera_driver_pending/);
+  assert.equal(files.some((file) => file.path === "Komponenten/IoT-Device 1/include/camera_host_state.h"), true);
+  assert.equal(files.some((file) => file.path === "Komponenten/IoT-Device 2/include/display_client_state.h"), true);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /esp_camera_init/);
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /GERNETIX_BOARD_FEATURE_CAMERA/);
-  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /display_driver_pending/);
-  assert.doesNotMatch(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /esp_camera_init|GET \/capture/);
-  assert.doesNotMatch(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /drawJpg/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_OUTPUT/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /i2c_master_write_to_device/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /multipart\/x-mixed-replace/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /fmt2rgb888/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /esp_lcd_panel_io_tx_color/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /MALLOC_CAP_DMA/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /io\.pclk_hz = 27000000/);
+  assert.doesNotMatch(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /uint16_t line\[DISPLAY_WIDTH\]/);
+  assert.equal(files.filter((file) => file.path.endsWith("src/idf_component.yml")).length, 2);
+  assert.doesNotMatch(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /mqtt/i);
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/platformio.ini").content, /framework = espidf/);
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/platformio.ini").content, /partitions_full_16mb\.csv/);
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/platformio.ini").content, /GERNETIX_BASISSOFTWARE_PROFILE_FULL/);
@@ -176,6 +240,7 @@ test("provides a two-target camera-to-display template with isolated build roots
     assert.equal(composed.some((file) => file.path === "src/main.cpp"), true);
     assert.equal(composed.some((file) => file.path === "src/user/user_app.cpp"), true);
     assert.equal(composed.some((file) => file.path === "include/gernetix_board_configuration.h"), true);
+    assert.match(composed.find((file) => file.path === "src/idf_component.yml").content, /esp32-camera/);
     assert.equal(composed.some((file) => file.path === "sdkconfig.esp32-s3-n16r8"), true);
     assert.match(composed.find((file) => file.path === "platformio.ini").content, /partitions_full_16mb\.csv/);
     assert.match(composed.find((file) => file.path === "platformio.ini").content, /4d_systems_esp32s3_gen4_r8n16/);

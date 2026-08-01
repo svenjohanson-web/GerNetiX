@@ -5,11 +5,13 @@ const path = require("node:path");
 const test = require("node:test");
 
 const publicController = fs.readFileSync(path.resolve(__dirname, "../public/app/development-platform.js"), "utf8");
+const publicRuntimeUtils = fs.readFileSync(path.resolve(__dirname, "../public/app/app-runtime-utils.js"), "utf8");
 const publicCss = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const publicHtml = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html"), "utf8");
 const publicApp = readPlatformAppSource();
 const deviceOnboardingModel = fs.readFileSync(path.resolve(__dirname, "../public/app/device-onboarding-model.js"), "utf8");
 const developmentHardwareModel = fs.readFileSync(path.resolve(__dirname, "../public/app/development-hardware-model.js"), "utf8");
+const developmentComponentMetamodel = fs.readFileSync(path.resolve(__dirname, "../public/app/development-component-metamodel.js"), "utf8");
 const devServer = [
   "../src/dev/server/project-routes.js",
   "../src/dev/server/hardware-routes.js",
@@ -23,7 +25,7 @@ test("wires all development platform controller dependencies", () => {
   assert.match(controllerCreation, /deleteJson,/);
   assert.match(controllerCreation, /loadProcessorBoardCatalog,/);
   assert.match(controllerCreation, /openHelpTopic: InformationView\.openDialog/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260731-project-delete-1/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260801-hardware-validation-4/);
 });
 
 test("restores persisted PlantUML when an existing development project is activated", () => {
@@ -59,13 +61,14 @@ test("keeps the project choice surface consistent with the dark workspace", () =
   const choiceSurfaceRule = publicCss.match(/\.development-project-header > \.development-project-choice-panel:not\(\.hidden\),[\s\S]*?\{([^}]*)\}/)?.[1] || "";
   assert.match(choiceSurfaceRule, /background: #111827/);
   assert.doesNotMatch(choiceSurfaceRule, /background: #fff/);
-  assert.match(publicHtml, /app\.css\?v=20260731-build-memory-summary-1/);
+  assert.match(publicHtml, /app\.css\?v=20260801-hardware-validation-4/);
 });
 
 test("separates the architecture discovery step from the active project", () => {
   assert.match(publicHtml, /Architektur-Discovery[\s\S]*id="developmentProjectName"/);
   const sectionHead = publicHtml.match(/<div class="section-head">[\s\S]*?<\/div>\s*<section class="development-platform-layout">/)?.[0] || "";
-  assert.match(sectionHead, /Projekt[\s\S]*id="developmentProjectName"/);
+  assert.match(sectionHead, /development-current-project hidden[\s\S]*id="developmentProjectName"><\/strong>/);
+  assert.match(publicController, /closest\("\.development-current-project"\)\?\.classList\.toggle\("hidden", !activeProject\)/);
   assert.doesNotMatch(sectionHead, /chooseDevelopmentProjectButton/);
   assert.doesNotMatch(sectionHead, /clearDevelopmentChatButton|Dialog leeren/);
   assert.doesNotMatch(publicHtml, /development-project-summary/);
@@ -100,7 +103,13 @@ test("never traps an account without development projects in the open or manage 
   assert.match(publicController, /developmentProjectOpenSelection"\)\.classList\.toggle\("hidden", projects\.length === 0\)/);
   assert.match(publicController, /developmentProjectOpenEmpty"\)\.classList\.toggle\("hidden", projects\.length > 0\)/);
   assert.match(publicController, /Noch keine eigenen Entwicklungsprojekte vorhanden/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260731-project-delete-1/);
+  assert.match(publicController, /<h3>Entwicklungsprojekte verwalten<\/h3>/);
+  assert.match(publicController, /Erstellt: <time datetime=/);
+  assert.match(publicController, /Zuletzt bearbeitet: <time datetime=/);
+  assert.match(publicController, /formatDevelopmentProjectDate\(project\.createdAt\)/);
+  assert.match(publicController, /formatDevelopmentProjectDate\(project\.updatedAt\)/);
+  assert.doesNotMatch(publicController, /project\.description \|\| "Keine Beschreibung\."/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260801-hardware-validation-4/);
 });
 
 test("loads the development template catalog from the server model registry", () => {
@@ -149,15 +158,14 @@ test("persists architecture derivation metadata in the project view manifest", (
 
 test("refreshes legacy camera template architecture to IoT-device aggregates without board boundaries", () => {
   assert.match(publicController, /"esp32_camera_to_touch_display"/);
-  assert.match(publicController, /diagram\.derived_from === "project_template"/);
-  assert.match(publicController, /!\/as camera_app <<Software>>\/i\.test\(diagram\.source\)/);
-  assert.match(publicController, /\/as \(\?:camera\|display\)_board\/i\.test\(diagram\.source\)/);
+  assert.match(publicController, /\/\^project_template\/\.test\(diagram\.derived_from \|\| ""\)/);
+  assert.match(publicController, /camera_app\|display_app\|camera_board\|display_board/);
   assert.match(publicController, /projectTemplatePreviews\[templateId\]\?\.source/);
 });
 
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260731-project-delete-1/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260801-hardware-validation-4/);
   assert.match(publicHtml, /development-chat-input-box[\s\S]*developmentQuickPrompts[\s\S]*developmentChatInput[\s\S]*developmentChatSubmit/);
   assert.match(publicHtml, /development-send-button/);
   assert.match(publicHtml, /aria-label="Nachricht senden"/);
@@ -188,6 +196,14 @@ test("uses one component configuration for every template except the game collec
   assert.match(publicController, /templateId !== "touchscreen_game_collection"/);
   assert.match(publicController, /function renderTemplateComponentConfiguration/);
   assert.match(publicController, /data-template-component-type/);
+  assert.match(publicController, />Sensor anschliessen</);
+  assert.match(publicController, />Aktor anschliessen</);
+  assert.match(publicController, /Anschlussweg zum Prozessor \/ Board/);
+  assert.match(publicController, /Direkt anschliessen/);
+  assert.match(publicController, /Ueber eine zusaetzliche Schaltung/);
+  assert.match(publicController, /data-template-component-connection-mode/);
+  assert.match(publicController, /ueber Zusatzschaltung/);
+  assert.match(publicController, /function componentConnectionModeAssignments/);
   assert.match(publicController, /data-template-component-add/);
   assert.match(publicController, /data-template-connection-target/);
   assert.match(publicController, /data-template-connection-option/);
@@ -198,6 +214,7 @@ test("uses one component configuration for every template except the game collec
   assert.match(publicController, /Bitte waehle mindestens eine zulaessige Beziehung fuer diese Komponente/);
   assert.match(publicController, /template-component-connection-hints/);
   assert.match(publicController, /Diese Komponenten haben noch keine zulaessige Verbindung/);
+  assert.match(publicController, /componentTypeForPlantUml\(label, plantUmlType, componentId\)/);
   assert.match(publicController, /DevelopmentComponentMetamodel/);
   assert.match(publicController, /function controlUnitAssignments/);
   assert.match(publicController, /function componentConnectionAssignments/);
@@ -219,17 +236,17 @@ test("uses one component configuration for every template except the game collec
 
 test("keeps the selected component type when a custom label does not describe it", () => {
   assert.match(publicController, /hardwareComponentType\(label, match\[1\], match\[3\]\)/);
-  assert.match(publicController, /\["iot_device", "sensor", "actuator", "smartphone_app", "browser_app", "desktop_app", "server_api"\]/);
-  assert.match(publicController, /alias === type \|\| alias\.startsWith\(`\$\{type\}_`\)/);
+  assert.match(developmentComponentMetamodel, /\["iot_device", "sensor", "actuator", "smartphone_app", "browser_app", "desktop_app", "server_api"\]/);
+  assert.match(developmentComponentMetamodel, /alias === type \|\| alias\.startsWith\(`\$\{type\}_`\)/);
 });
 
 test("preserves managed event-application component types when PlantUML is reopened", () => {
   assert.match(publicController, /function hardwareComponentType\(label, plantUmlType, componentId = ""\)/);
-  assert.match(publicController, /projekt\.runtime\.daten.*return "project_runtime_data"/);
-  assert.match(publicController, /ereignis\.worker.*return "event_worker"/);
-  assert.match(publicController, /ereignis\.dispatcher.*return "event_dispatcher"/);
-  assert.match(publicController, /projekt\.push\.versand.*return "notification_service"/);
-  assert.match(publicController, /iot\.\?zielger\(\?:ae\|ä\)t.*return "iot_device"/);
+  assert.match(developmentComponentMetamodel, /projekt\.runtime\.daten.*return "project_runtime_data"/);
+  assert.match(developmentComponentMetamodel, /ereignis\.worker.*return "event_worker"/);
+  assert.match(developmentComponentMetamodel, /ereignis\.dispatcher.*return "event_dispatcher"/);
+  assert.match(developmentComponentMetamodel, /projekt\.push\.versand.*return "notification_service"/);
+  assert.match(developmentComponentMetamodel, /iot\.\?zielger\(\?:ae\|ä\)t.*return "iot_device"/);
 });
 
 test("keeps managed services out of the user component configuration", () => {
@@ -332,8 +349,14 @@ test("development platform scales like a compact workspace", () => {
   assert.match(publicCss, /\.development-workspace-active \.development-chat-form textarea \{[\s\S]*font-size: 13px/);
   assert.match(publicCss, /\.development-workspace-active \.development-main-workspace \{[\s\S]*minmax\(34px, auto\)/);
   assert.match(publicCss, /\.development-workspace-active \.architecture-diagram-panel \{[\s\S]*overflow: auto/);
-  assert.match(publicCss, /\.development-workspace-active \.architecture-diagram-panel \.plantuml-viewer \{[\s\S]*max-height: 58vh/);
+  assert.match(publicCss, /\.development-workspace-active \.architecture-diagram-panel \.plantuml-viewer \{[\s\S]*height: 100%;[\s\S]*max-height: none/);
   assert.match(publicCss, /\.development-workspace-active \.architecture-diagram-panel \.plantuml-diagram \{[\s\S]*height: 100%;[\s\S]*object-fit: contain/);
+  assert.match(publicController, /themedPlantUmlSource\(source\)/);
+  assert.match(publicRuntimeUtils, /function themedPlantUmlSource/);
+  assert.match(publicRuntimeUtils, /skinparam backgroundColor transparent/);
+  assert.match(publicRuntimeUtils, /skinparam rectangleBackgroundColor #1E3A5F/);
+  assert.match(publicRuntimeUtils, /skinparam rectangleBorderColor #67E8F9/);
+  assert.match(publicHtml, /app\.css\?v=20260801-hardware-validation-4/);
   assert.match(publicCss, /\.development-workspace-active \.development-page-actions button \{[\s\S]*font-size: 12px/);
 });
 
@@ -366,15 +389,19 @@ test("development platform places requirements and architecture centrally with c
 });
 
 test("hardware allocation is a persisted intermediate view with boards, circuits and pins", () => {
-  assert.match(publicController, /backToDevelopmentArchitectureButton[\s\S]*view=architecture/);
+  assert.match(publicController, /backToDevelopmentArchitectureButton[\s\S]*openDevelopmentArchitectureFromHardware/);
+  assert.match(publicController, /editExternalHardwareArchitectureButton[\s\S]*openDevelopmentArchitectureFromHardware/);
+  assert.match(publicController, /function openDevelopmentArchitectureFromHardware\(\)[\s\S]*view=architecture/);
   assert.match(publicController, /function openArchitecture\(projectId\)[\s\S]*workflowStep = "configuration"[\s\S]*restoreDevelopmentDialog\(project\)/);
   assert.match(publicApp, /requestedArchitectureProjectId[\s\S]*developmentPlatform\(\)\.openArchitecture\(requestedArchitectureProjectId\)/);
   assert.match(publicHtml, /id="developmentHardwareView"[\s\S]*developmentHardwareArchitecture[\s\S]*developmentHardwareComponents/);
-  assert.match(publicHtml, /hardware-overview[\s\S]*developmentHardwareArchitecture[\s\S]*developmentHardwareHints/);
+  assert.match(publicHtml, /hardware-overview[\s\S]*developmentHardwareArchitecture[\s\S]*developmentHardwareComponents[\s\S]*developmentHardwareHints[\s\S]*developmentHardwareValidationSummary[\s\S]*continueDevelopmentHardwareButton/);
   assert.doesNotMatch(publicHtml, /developmentHardwareWiring/);
   assert.doesNotMatch(publicHtml, /Konkretisierung|Abstrakte Komponenten zuordnen|Boards, Sensoren und Aktoren werden konkretisiert/);
   assert.match(publicHtml, /Hardware speichern/);
   assert.match(publicHtml, /Weiter zur IDE/);
+  assert.match(publicHtml, /Externe Hardware in der Architektur bearbeiten/);
+  assert.match(publicHtml, /Neue externe Sensoren und Aktoren werden zuerst in der Architektur ergänzt und verbunden/);
   assert.match(publicApp, /"development-hardware": "developmentHardwareView"/);
   assert.match(publicApp, /development-platform\\\/hardware/);
   assert.match(publicController, /function renderHardwareConfiguration/);
@@ -388,6 +415,9 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(publicController, /function boardPins/);
   assert.match(publicController, /data-hardware-processor/);
   assert.match(publicController, /class="hardware-board-selection"/);
+  assert.match(publicController, /class="hardware-table-row hardware-iot-row"/);
+  assert.match(publicController, /startsWith\("integrated_"\)[\s\S]*Bestandteil der gewählten Boardkonfiguration/);
+  assert.match(publicController, /Eigenschaften und Pins kommen aus der Boardkonfiguration/);
   assert.match(publicController, /class="hardware-sensor-selection"/);
   assert.match(publicController, /class="hardware-table-row hardware-sensor-row"/);
   assert.match(publicController, /class="hardware-inline-assignment"/);
@@ -406,6 +436,15 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(publicController, /data-hardware-property="samples_per_record"/);
   assert.match(publicController, /Effektivwert \(RMS\)/);
   assert.match(publicController, /Lokale Messwerthistorie/);
+  assert.match(publicController, /data-hardware-property="connection_mode"/);
+  assert.match(publicController, /data-hardware-property="circuit_label"/);
+  assert.match(publicController, /function requiresAdditionalCircuit/);
+  assert.match(publicController, /function hardwareConnectionPathAssessment/);
+  assert.match(publicController, /Eine grundsaetzlich passende Prozessorschnittstelle ist vorhanden/);
+  assert.match(publicController, /keine passende Prozessorschnittstelle gefunden/);
+  assert.match(publicController, /sensor_interface_circuit/);
+  assert.match(devServer, /properties\?\.connection_mode === "additional_circuit"/);
+  assert.match(devServer, /actuator_interface_circuit/);
   assert.doesNotMatch(publicController, /\["sensor", "actuator"\]\.includes\(component\.abstract_type\).*Beschreibung/);
   assert.match(publicController, /next\.abstract_type === "sensor"\) delete next\.properties\.description/);
   assert.match(publicController, /incremental_ab/);
@@ -424,11 +463,17 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(publicController, /Board und Prozessor werden übernommen\./);
   assert.match(publicController, /inventoryBoard\s*\r?\n\s*\?\s*DevelopmentHardwareModel\.applyProcessorSelection/);
   assert.match(publicController, /function renderHardwareHints/);
+  assert.match(publicController, /function renderHardwareValidationSummary/);
+  assert.match(publicController, /function highlightHardwareValidationIssues/);
+  assert.match(publicController, /continueButton\.disabled = !validation\.complete/);
+  assert.match(publicController, /hardware-required-field/);
   assert.match(publicController, /<h3>Offene Punkte<\/h3>/);
   assert.doesNotMatch(publicController, /<strong>Offen<\/strong>/);
   assert.match(publicController, /function recommendedHardwareAction/);
   assert.match(publicController, /Empfohlene Maßnahme:/);
   assert.match(publicCss, /\.hardware-hint-terminal \{[\s\S]*max-height:[\s\S]*overflow-y: auto/);
+  assert.match(publicCss, /\.hardware-validation-summary \{/);
+  assert.match(publicCss, /\.hardware-required-field select/);
   assert.match(publicController, /Die Zuordnung kann bis dahin nachgeholt werden/);
   assert.match(publicController, /Bitte klaere zuerst die offenen Punkte in der Hinweisbox/);
   assert.match(devServer, /component_device_allocations: allocations/);
@@ -454,16 +499,19 @@ test("hardware allocation is a persisted intermediate view with boards, circuits
   assert.match(publicCss, /\.hardware-sensor-selection \{[\s\S]*display: contents/);
   assert.match(publicCss, /\.hardware-component-table \{[\s\S]*width: 100%;[\s\S]*min-width: 0;[\s\S]*max-width: 100%/);
   assert.match(publicCss, /\.hardware-table-row\.hardware-sensor-row \{[\s\S]*grid-template-columns: minmax\(140px, \.55fr\) minmax\(0, 3\.45fr\)/);
+  assert.match(publicCss, /\.hardware-table-row\.hardware-iot-row \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
+  assert.match(publicCss, /\.hardware-iot-row \.hardware-component-identity \{[\s\S]*display: flex/);
   assert.match(publicCss, /@media \(max-width: 1180px\) \{[\s\S]*\.hardware-table-row,[\s\S]*grid-template-columns: minmax\(140px, \.65fr\) minmax\(0, 1\.35fr\)/);
   assert.match(publicCss, /@media \(max-width: 720px\) \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.doesNotMatch(publicCss, /\.hardware-component-table \{[\s\S]{0,160}min-width: 1380px/);
   assert.match(publicCss, /\.hardware-inline-assignment \{[\s\S]*grid-template-columns: repeat\(auto-fit, minmax\(min\(170px, 100%\), 1fr\)\)/);
+  assert.match(publicCss, /\.hardware-component-section-head \{[\s\S]*justify-content: space-between/);
   assert.doesNotMatch(publicCss, /\.hardware-signal-chain/);
   assert.match(publicCss, /Hardware-Realisierung folgt derselben dunklen Workspace-Sprache/);
   assert.match(publicCss, /\.hardware-table-row \{[\s\S]*background: #111827;[\s\S]*color: #e5e7eb/);
   assert.match(publicCss, /\.hardware-table-row select,[\s\S]*background: #0b1018;[\s\S]*color: #e5e7eb/);
   assert.match(publicCss, /\.hardware-page-actions \{[\s\S]*background: rgba\(11, 16, 24, \.96\)/);
-  assert.match(publicCss, /\.hardware-overview \{[\s\S]*grid-template-columns: minmax\(0, 1fr\) minmax\(280px, 360px\)/);
+  assert.match(publicCss, /\.hardware-overview \{[\s\S]*grid-template-columns: minmax\(0, 1fr\)/);
   assert.match(publicCss, /\.hardware-guidance-panel \{[\s\S]*background: #0d1520/);
 });
 

@@ -42,6 +42,7 @@ async function loadIdeProject() {
   if (projectNeedsHardwareTools(project)) await refreshUsbPorts(false);
   const sources = await loadProjectSources(project);
   state.sourcePath = selectedIdeSourcePath(project, sources);
+  state.ideTreeSelectionPath = state.sourcePath;
   state.activeIdeStep = Math.min(progressFor(project.id).currentStep || 0, Math.max(0, guidedViews(project).length - 1));
   updateIdeProjectTools(project);
   renderIdeDeviceAllocation(project);
@@ -176,16 +177,16 @@ function updateIdeProjectTools(project) {
   const supportedFlashTarget = !softwareUnit || flashableUnits.length > 0;
   const unsupportedProjectUnits = projectSoftwareUnits(project).filter((unit) => unit.build_system !== "platformio");
   const flashTargetReason = supportedFlashTarget ? "" : "Flash nicht verfügbar: Das Projekt besitzt keine Software-Einheit mit angeschlossenem Firmware-Runner.";
-  buildButton.disabled = false;
   cleanBuildButton.disabled = false;
   usbButton.disabled = !supportedFlashTarget;
   otaButton.disabled = !supportedFlashTarget || !allocated || allocated.ota_status !== "ready" || allocated.connectivity_status !== "online";
   flashBoxButton.disabled = !supportedFlashTarget || !flashboxes.length;
   flashboxSelect.classList.toggle("hidden", !flashboxes.length);
   flashboxSelect.disabled = !flashboxes.length;
-  buildButton.title = unsupportedProjectUnits.length
+  buildButton.dataset.idleTitle = unsupportedProjectUnits.length
     ? `Gesamtbuild nicht möglich: ${unsupportedProjectUnits.length} Software-Einheit${unsupportedProjectUnits.length === 1 ? " besitzt" : "en besitzen"} noch keinen angeschlossenen Runner.`
     : "Baut alle Software-Einheiten des Projekts als gemeinsamen Gesamtbuild.";
+  updateBuildActionButton();
   cleanBuildButton.title = "Löscht die inkrementellen Build-Zustände aller Software-Einheiten dieses Projekts.";
   usbButton.title = flashTargetReason || "Direkter USB-Flash verwendet die Projekt-Boardkonfiguration und das angeschlossene USB-Gerät.";
   otaButton.title = flashTargetReason || actionReason || otaReason;
@@ -563,13 +564,13 @@ function projectBrowserSources(project, sources) {
   const mappedSources = !mappings.length ? sources : sources.map((source) => {
     const mapping = mappings.find((item) => source.path === item.sourcePrefix || source.path.startsWith(`${item.sourcePrefix}/`));
     if (!mapping) {
-      const rootSource = String(source.path || "").match(/^(?:src|source)\/(.+)$/i);
+      const rootSource = String(source.path || "").match(/^(?:src|source|include)\/(.+)$/i);
       return rootSource && primaryMapping
-        ? { ...source, treePath: `${primaryMapping.treePrefix}/Source/${rootSource[1]}` }
+        ? { ...source, treePath: `${primaryMapping.treePrefix}/${sourceTreeRelativePath(source.path)}` }
         : source;
     }
     let relativePath = source.path.slice(mapping.sourcePrefix.length).replace(/^\//, "");
-    relativePath = relativePath.replace(/^(?:src|source)(?=\/|$)/i, "Source");
+    relativePath = sourceTreeRelativePath(relativePath);
     if (/^Konfiguration\//.test(relativePath) && !/^Konfiguration\/(Hardware|Software)\//.test(relativePath)) {
       relativePath = relativePath.replace(/^Konfiguration\//, "Konfiguration/Hardware/");
     }
@@ -588,15 +589,50 @@ function projectBrowserSources(project, sources) {
     && !/\/Konfiguration\/Hardware\/(Sensoren\/in|Aktoren\/out)\.md$/i.test(String(source.treePath || source.path || "")));
 }
 
+function sourceTreeRelativePath(value) {
+  const normalized = String(value || "").replace(/\\/g, "/").replace(/^\/+/, "");
+  const sourceRoot = normalized.match(/^(src|source|include)(?:\/(.*))?$/i);
+  if (!sourceRoot) return normalized;
+  const rootName = sourceRoot[1].toLowerCase();
+  const remainder = String(sourceRoot[2] || "").replace(/^\/+/, "");
+  const cleanRemainder = remainder.replace(/^(?:src|include)\//i, "");
+  if (rootName === "include" || /\.(?:h|hh|hpp|hxx|inc|inl|ipp|tpp|cuh)$/i.test(remainder)) {
+    return ["Source", "include", cleanRemainder].filter(Boolean).join("/");
+  }
+  if (/\.(?:c|cc|cpp|cxx|m|mm|ino|cu)$/i.test(remainder)) {
+    return ["Source", "src", cleanRemainder].filter(Boolean).join("/");
+  }
+  return ["Source", remainder].filter(Boolean).join("/");
+}
+
 function projectVirtualTreeEntries(project) {
   const entries = [];
+  const hardwareComponents = projectHardwareComponents(project);
+  projectSoftwareUnits(project).filter((unit) => /\.(?:c|cc|cpp|cxx|m|mm|ino|cu)$/i.test(
+    unit.entrypoint || unit.build_config?.user_source_path || "",
+  )).forEach((unit) => {
+    const sourceRoot = String(unit.source_root || "").replace(/\/$/, "");
+    const component = hardwareComponents.find((item) => String(item.component_path || "").replace(/\/$/, "") === sourceRoot);
+    const label = component ? componentTreeLabel(component) : sourceRoot.split("/").at(-1);
+    if (!label) return;
+    entries.push(
+      { path: `Komponenten/${label}/Source/include`, directoryOnly: true },
+      { path: `Komponenten/${label}/Source/src`, directoryOnly: true },
+    );
+  });
+  const communicationUnits = projectSoftwareUnits(project)
+    .filter((unit) => unit.build_system === "platformio" || unit.software_kind === "embedded_firmware");
+  if (communicationUnits.length > 1) entries.push({
+    path: "Konfiguration/Kommunikationssetup",
+    role: "",
+    virtualAction: "communication-setup",
+  });
   const configurationDevices = ideDeviceConfigurationComponents(project);
   const primaryPath = primaryComponentPath(project);
   const primaryDevice = configurationDevices.find((component) => component.component_path === primaryPath) || configurationDevices[0];
   if (projectNeedsHardwareTools(project) && primaryDevice) {
     const component = `Komponenten/${componentTreeLabel(primaryDevice)}`;
     entries.push(
-      { path: `${component}/Konfiguration/Funktionen`, role: "", virtualAction: "component-features" },
       { path: `${component}/Konfiguration/Treiber`, role: "", virtualAction: "driver-management" },
       { path: `${component}/Konfiguration/Weboberfläche`, role: "", virtualAction: "web-interface" },
     );
@@ -604,6 +640,14 @@ function projectVirtualTreeEntries(project) {
   configurationDevices.forEach((component) => {
     const label = componentTreeLabel(component);
     if (component.abstract_type === "iot_device") {
+      const softwareUnit = softwareUnitForIdeComponent(project, component);
+      if (softwareUnit?.build_config?.firmware_basis_id) entries.push({
+        path: `Komponenten/${label}/Konfiguration/Basissoftware`,
+        role: "",
+        virtualAction: "component-features",
+        componentId: component.component_id,
+        softwareUnitId: softwareUnit.software_unit_id,
+      });
       entries.push({
         path: `Komponenten/${label}/Konfiguration/Board`,
         role: "",
@@ -646,6 +690,16 @@ function projectVirtualTreeEntries(project) {
     });
   }
   return entries;
+}
+
+function softwareUnitForIdeComponent(project, component) {
+  const units = projectSoftwareUnits(project);
+  const componentPath = String(component?.component_path || "").replace(/\/$/, "");
+  const exact = units.find((unit) => String(unit.source_root || "").replace(/\/$/, "") === componentPath);
+  if (exact) return exact;
+  const devices = ideDeviceConfigurationComponents(project).filter((item) => item.abstract_type === "iot_device");
+  const index = devices.findIndex((item) => item.component_id === component?.component_id);
+  return units.filter((unit) => unit.build_system === "platformio")[index] || null;
 }
 
 function ideDeviceConfigurationComponents(project) {
@@ -715,6 +769,18 @@ function sourceTree(projectName, sources) {
       }
       cursor = cursor.folders.get(part);
     }
+    if (source.directoryOnly) {
+      const directoryName = parts.at(-1);
+      if (directoryName && !cursor.folders.has(directoryName)) {
+        cursor.folders.set(directoryName, {
+          name: directoryName,
+          path: [cursor.path, directoryName].filter(Boolean).join("/"),
+          folders: new Map(),
+          files: [],
+        });
+      }
+      continue;
+    }
     cursor.files.push({ ...source, name: parts.at(-1) || source.path });
   }
   return root;
@@ -726,8 +792,10 @@ function renderSourceTree(node, depth = 0, openFolders = new Set()) {
   const children = [
     ...folders.map((folder) => renderSourceTree(folder, depth + 1, openFolders)),
     ...files.map((file) => `
-      <button class="${file.path === state.sourcePath ? "active" : ""}" type="button" ${file.virtualAction === "component-features"
-          ? "data-component-features"
+      <button class="${file.path === (state.ideTreeSelectionPath || state.sourcePath) ? "active" : ""}" type="button" data-ide-tree-path="${escapeAttribute(file.path)}" ${file.virtualAction === "component-features"
+          ? `data-component-features="${escapeAttribute(file.softwareUnitId || "")}" data-component-id="${escapeAttribute(file.componentId || "")}"`
+          : file.virtualAction === "communication-setup"
+            ? "data-communication-setup"
           : file.virtualAction === "driver-management"
             ? "data-driver-management"
           : file.virtualAction === "sensor-properties"
@@ -757,7 +825,7 @@ function renderSourceTree(node, depth = 0, openFolders = new Set()) {
       </div>
     `;
   }
-  const containsActiveSource = treeContainsSource(node, state.sourcePath);
+  const containsActiveSource = treeContainsSource(node, state.ideTreeSelectionPath || state.sourcePath);
   return `
     <details class="ide-tree-folder" data-tree-path="${escapeAttribute(node.path)}" style="--depth:${depth}" ${openFolders.has(node.path) || containsActiveSource ? "open" : ""}>
       <summary>${escapeHtml(node.name)}</summary>
@@ -771,11 +839,31 @@ function treeContainsSource(node, sourcePath) {
   return Array.from(node.folders.values()).some((folder) => treeContainsSource(folder, sourcePath));
 }
 
-function openComponentFeatures() {
+function selectIdeTreePath(path) {
+  state.ideTreeSelectionPath = String(path || "");
+  document.querySelectorAll("#ideProjectBrowser [data-ide-tree-path]").forEach((button) => {
+    button.classList.toggle("active", button.dataset.ideTreePath === state.ideTreeSelectionPath);
+  });
+}
+
+function openComponentFeatures(softwareUnitId = "", componentId = "") {
   state.ideViewMode = "component-features";
   const project = projectById(state.activeProjectId);
-  document.querySelector("#ideActiveSourceLabel").textContent = `${primaryComponentPath(project)}/Konfiguration/Funktionen`;
+  if (softwareUnitId && projectSoftwareUnits(project).some((unit) => unit.software_unit_id === softwareUnitId)) {
+    state.activeSoftwareUnitIds[project.id] = softwareUnitId;
+  }
+  if (componentId) state.activeIdeComponentId = componentId;
+  const unit = activeIdeSoftwareUnit(project);
+  document.querySelector("#ideActiveSourceLabel").textContent = `${unit?.source_root || primaryComponentPath(project)}/Konfiguration/Basissoftware`;
   renderComponentFeatures(project);
+  renderIdeViewMode(project);
+}
+
+function openCommunicationSetup() {
+  state.ideViewMode = "component-features";
+  const project = projectById(state.activeProjectId);
+  document.querySelector("#ideActiveSourceLabel").textContent = "Konfiguration/Kommunikationssetup";
+  renderCommunicationSetup(project);
   renderIdeViewMode(project);
 }
 
@@ -1206,6 +1294,7 @@ async function openIdeSource(sourcePath) {
   if (!project || !sourcePath) return;
   state.ideViewMode = "file";
   state.sourcePath = sourcePath;
+  state.ideTreeSelectionPath = sourcePath;
   document.querySelector("#ideActiveSourceLabel").textContent = state.sourcePath;
   await loadIdeSourceContent(project, sourcePath);
   renderIdeProjectBrowser(project, state.projectSourcesByProjectId[project.id] || []);
@@ -1335,9 +1424,10 @@ const componentFeatureDefinitions = [
 ];
 
 function effectiveComponentFeatures(project) {
-  const configured = project?.buildConfig?.component_features || {};
-  const basisId = project?.buildConfig?.firmware_basis_id || "";
-  const basisVariant = project?.buildConfig?.firmware_basis_variant || (basisId === "gernetix-runtime-basissoftware" ? "comfort" : "");
+  const buildConfig = activeIdeSoftwareUnit(project)?.build_config || project?.buildConfig || {};
+  const configured = buildConfig.component_features || {};
+  const basisId = buildConfig.firmware_basis_id || "";
+  const basisVariant = buildConfig.firmware_basis_variant || (basisId === "gernetix-runtime-basissoftware" ? "comfort" : "");
   const basisLocks = basisId === "gernetix-runtime-basissoftware" && basisVariant === "comfort"
     ? ["wifi", "mqtt", "ota", "http", "webserver"]
     : [];
@@ -1348,33 +1438,212 @@ function effectiveComponentFeatures(project) {
   return { enabled, immutable, webserver: configured.webserver || {}, basisVariant };
 }
 
-function renderComponentFeatures(project) {
+function effectiveProjectCommunicationSetup(project) {
+  const units = projectSoftwareUnits(project)
+    .filter((unit) => unit.build_system === "platformio" || unit.software_kind === "embedded_firmware");
+  const source = project?.viewManifest?.communication_setup || {};
+  const hostId = units.some((unit) => unit.software_unit_id === source.host_software_unit_id)
+    ? source.host_software_unit_id
+    : units[0]?.software_unit_id || "";
+  const mode = ["infrastructure_wifi", "device_access_point", "ble_peer"].includes(source.mode)
+    ? source.mode
+    : "infrastructure_wifi";
+  return {
+    mode,
+    host_software_unit_id: hostId,
+    client_software_unit_ids: units.filter((unit) => unit.software_unit_id !== hostId).map((unit) => unit.software_unit_id),
+    stream: {
+      transport: mode === "ble_peer" ? "ble_gatt" : "http_stream",
+      port: Number(source.stream?.port || 8080),
+      path: source.stream?.path || "/camera/stream",
+    },
+    access_point: {
+      ipv4_address: source.access_point?.ipv4_address || "192.168.50.1",
+      subnet_mask: "255.255.255.0",
+      dhcp_start: source.access_point?.dhcp_start || "192.168.50.100",
+      dhcp_end: source.access_point?.dhcp_end || "192.168.50.199",
+    },
+    units,
+  };
+}
+
+function communicationModePresentation(mode) {
+  if (mode === "device_access_point") return {
+    title: "Eigenes Geräte-WLAN",
+    summary: "Der Bild-Host eröffnet einen Access Point; die übrigen Firmware-Ziele verbinden sich als Clients.",
+    internet: "Nein",
+    ota: "Nicht über den GerNetiX-Server",
+    observer: "Ja, ein Smartphone kann dem Geräte-WLAN beitreten",
+  };
+  if (mode === "ble_peer") return {
+    title: "BLE-Direktverbindung",
+    summary: "Die beiden ESP32 kommunizieren in der ersten Ausbaustufe direkt über einen BLE-GATT-Kanal.",
+    internet: "Nein",
+    ota: "Nein",
+    observer: "Nein, kein zusätzlicher passiver Smartphone-Empfänger",
+  };
+  return {
+    title: "Gemeinsames Haus-WLAN",
+    summary: "Alle Firmware-Ziele sind Clients desselben vorhandenen WLANs und können sich über IP erreichen.",
+    internet: "Ja, sofern das Haus-WLAN Internetzugang hat",
+    ota: "Ja, nach Provisionierung und Inventarzuordnung",
+    observer: "Ja, ein Smartphone im selben WLAN kann zugreifen",
+  };
+}
+
+function communicationImpactMarkup(mode) {
+  const presentation = communicationModePresentation(mode);
+  return `<h4>Auswirkungen von „${presentation.title}“</h4><dl><div><dt>Internet</dt><dd>${presentation.internet}</dd></div><div><dt>OTA</dt><dd>${presentation.ota}</dd></div><div><dt>Smartphone / weitere Empfänger</dt><dd>${presentation.observer}</dd></div><div><dt>Transport</dt><dd>${mode === "ble_peer" ? "BLE GATT" : "HTTP-Stream über IP"}</dd></div></dl>
+    <p>OTA bleibt zusätzlich davon abhängig, dass das konkrete Board provisioniert und dem Nutzerinventar zugeordnet wurde.</p>`;
+}
+
+function refreshCommunicationSetupPreview(form) {
+  if (!form) return;
+  const mode = form.querySelector('[name="mode"]:checked')?.value || "infrastructure_wifi";
+  const hostId = form.querySelector('[name="host_software_unit_id"]')?.value || "";
+  const impact = form.querySelector(".communication-impact");
+  if (impact) impact.innerHTML = communicationImpactMarkup(mode);
+  form.querySelectorAll("[data-ip-stream-field]").forEach((field) => field.classList.toggle("hidden", mode === "ble_peer"));
+  form.querySelector("[data-access-point-network]")?.classList.toggle("hidden", mode !== "device_access_point");
+  form.querySelectorAll("[data-communication-unit]").forEach((unit) => {
+    unit.querySelector("span").textContent = unit.dataset.communicationUnit === hostId
+      ? "Host · sendet Bilddaten"
+      : "Client · empfängt Bilddaten";
+  });
+}
+
+function renderCommunicationSetup(project) {
   const target = document.querySelector("#ideComponentFeaturesView");
-  if (!target || !project?.buildConfig) {
-    if (target) target.innerHTML = `<p class="empty">Keine Firmware-Komponente konfigurierbar.</p>`;
+  if (!target) return;
+  const setup = effectiveProjectCommunicationSetup(project);
+  if (setup.units.length < 2) {
+    target.innerHTML = '<p class="empty">Ein Kommunikationssetup wird ab zwei IoT-Firmware-Zielen benötigt.</p>';
     return;
   }
-  const config = effectiveComponentFeatures(project);
-  target.innerHTML = `<form class="component-features-form">
-    <header><div><p class="eyebrow">${escapeHtml(primaryComponentPath(project) || "Komponente")}</p><h3>Eigenschaften</h3></div>
-      <span class="basis-variant-badge">Basis: ${escapeHtml(config.basisVariant || "ohne Variante")}</span></header>
-    <p class="helper-text">Funktionen der Basissoftware sind geschützt und bleiben beim Build erhalten. Projekterweiterungen kannst du hier zuschalten.</p>
-    <div class="component-feature-grid">${componentFeatureDefinitions.map(([id, title, description]) => {
-      const locked = config.immutable.has(id);
-      return `<label class="component-feature-card ${locked ? "locked" : ""}">
-        <input type="checkbox" name="feature" value="${id}" ${config.enabled.has(id) ? "checked" : ""} ${locked ? "disabled" : ""}>
-        <span><strong>${title}</strong><small>${description}</small></span>
-        <em>${locked ? "Basissoftware · unveränderlich" : "Projekt"}</em>
-      </label>`;
-    }).join("")}</div>
-    <fieldset class="webserver-settings"><legend>Webserver erweitern</legend>
-      <label>Titel<input name="webserver_title" value="${escapeAttribute(config.webserver.title || "GerNetiX Device")}"></label>
-      <label>Messwert<input name="measurement_label" value="${escapeAttribute(config.webserver.measurement_label || "Messwert")}"></label>
-      <label>Einheit<input name="measurement_unit" value="${escapeAttribute(config.webserver.measurement_unit || "")}" placeholder="z. B. °C"></label>
-    </fieldset>
-    <footer><button type="submit">Eigenschaften speichern</button><span data-component-feature-status></span></footer>
+  const modes = ["infrastructure_wifi", "device_access_point", "ble_peer"];
+  target.innerHTML = `<form class="component-features-form communication-setup-form" data-communication-setup-form>
+    <header><div><p class="eyebrow">Projektweite Konfiguration</p><h3>Wie kommunizieren die IoT-Devices?</h3></div><span class="basis-variant-badge">${setup.units.length} Firmware-Ziele</span></header>
+    <p class="helper-text">Dieses Setup ist die gemeinsame Wahrheit. Daraus leitet GerNetiX WLAN-Rolle, Transport, Erreichbarkeit und OTA-Hinweise jeder Basissoftware ab.</p>
+    <fieldset class="communication-mode-grid"><legend class="sr-only">Kommunikationsart</legend>${modes.map((mode) => {
+      const presentation = communicationModePresentation(mode);
+      return `<label class="communication-mode-card ${setup.mode === mode ? "selected" : ""}"><input type="radio" name="mode" value="${mode}" ${setup.mode === mode ? "checked" : ""}><span><strong>${presentation.title}</strong><small>${presentation.summary}</small></span></label>`;
+    }).join("")}</fieldset>
+    <section class="communication-role-section"><h4>Rollen und Datenweg</h4>
+      <div class="basissoftware-field-grid">
+        <label>Bild-Host<select name="host_software_unit_id">${setup.units.map((unit) => `<option value="${escapeAttribute(unit.software_unit_id)}" ${unit.software_unit_id === setup.host_software_unit_id ? "selected" : ""}>${escapeHtml(unit.title || unit.software_unit_id)}</option>`).join("")}</select></label>
+        <label data-ip-stream-field class="${setup.mode === "ble_peer" ? "hidden" : ""}">Stream-Port<input type="number" name="stream_port" min="1" max="65535" value="${setup.stream.port}"></label>
+        <label data-ip-stream-field class="${setup.mode === "ble_peer" ? "hidden" : ""}">Stream-Pfad<input name="stream_path" value="${escapeAttribute(setup.stream.path)}" placeholder="/camera/stream"></label>
+      </div>
+      <div class="communication-route">${setup.units.map((unit) => `<article data-communication-unit="${escapeAttribute(unit.software_unit_id)}"><strong>${escapeHtml(unit.title || unit.software_unit_id)}</strong><span>${unit.software_unit_id === setup.host_software_unit_id ? "Host · sendet Bilddaten" : "Client · empfängt Bilddaten"}</span></article>`).join('<span aria-hidden="true">→</span>')}</div>
+    </section>
+    <section class="communication-role-section access-point-network ${setup.mode === "device_access_point" ? "" : "hidden"}" data-access-point-network><h4>IPv4-Netz des Access Points</h4>
+      <p class="helper-text">Wähle ein privates <code>/24</code>-Netz, das nicht dem Heim-WLAN entspricht. Der Standard <code>192.168.50.0/24</code> kann geändert werden, falls dein Router dieses Netz bereits verwendet.</p>
+      <div class="basissoftware-field-grid">
+        <label>IP-Adresse des Kamera-Hosts<input name="ap_ipv4_address" inputmode="decimal" value="${escapeAttribute(setup.access_point.ipv4_address)}" placeholder="192.168.50.1"></label>
+        <label>Subnetzmaske<input value="${setup.access_point.subnet_mask}" disabled></label>
+        <label>DHCP-Bereich von<input name="ap_dhcp_start" inputmode="decimal" value="${escapeAttribute(setup.access_point.dhcp_start)}" placeholder="192.168.50.100"></label>
+        <label>DHCP-Bereich bis<input name="ap_dhcp_end" inputmode="decimal" value="${escapeAttribute(setup.access_point.dhcp_end)}" placeholder="192.168.50.199"></label>
+      </div>
+      <p class="basissoftware-security-note">Erlaubt sind private IPv4-Netze aus <code>10.0.0.0/8</code>, <code>172.16.0.0/12</code> oder <code>192.168.0.0/16</code>. AP-IP und DHCP-Adressen müssen im selben /24-Netz liegen; die AP-IP darf nicht im DHCP-Bereich liegen.</p>
+    </section>
+    <section class="communication-impact">${communicationImpactMarkup(setup.mode)}</section>
+    <footer><button type="submit" class="primary">Kommunikationssetup speichern und Firmware ableiten</button><span data-communication-setup-status></span></footer>
   </form>`;
-  target.querySelector(".webserver-settings")?.remove();
+}
+
+function effectiveBasissoftwareConfiguration(softwareUnit) {
+  const source = softwareUnit?.build_config?.basissoftware_configuration || {};
+  const wifi = source.wifi || {};
+  const mqtt = source.mqtt || {};
+  const power = source.power_manager || {};
+  const states = power.states || {};
+  const stateDefaults = {
+    active: { enabled: true, enter_after_seconds: 0, wake_sources: [] },
+    modem_sleep: { enabled: true, enter_after_seconds: 30, wake_sources: ["network"] },
+    light_sleep: { enabled: false, enter_after_seconds: 120, wake_sources: ["timer", "gpio", "touch"] },
+    deep_sleep: { enabled: false, enter_after_seconds: 900, wake_sources: ["timer", "gpio", "touch"] },
+  };
+  return {
+    wifi: { enabled: wifi.enabled !== false, mode: wifi.mode || "station", auto_reconnect: wifi.auto_reconnect !== false },
+    mqtt: {
+      enabled: mqtt.enabled === true,
+      broker_url: mqtt.broker_url || "",
+      port: Number(mqtt.port || (mqtt.tls === false ? 1883 : 8883)),
+      tls: mqtt.tls !== false,
+      client_id_template: mqtt.client_id_template || "gernetix-{device}",
+      publish_topics: Array.isArray(mqtt.publish_topics) ? mqtt.publish_topics : [],
+      subscriptions: Array.isArray(mqtt.subscriptions) ? mqtt.subscriptions : [],
+      qos: [0, 1, 2].includes(Number(mqtt.qos)) ? Number(mqtt.qos) : 1,
+    },
+    power_manager: {
+      enabled: power.enabled === true,
+      default_state: power.default_state || "active",
+      states: Object.fromEntries(Object.entries(stateDefaults).map(([id, defaults]) => [id, { ...defaults, ...(states[id] || {}), wake_sources: Array.isArray(states[id]?.wake_sources) ? states[id].wake_sources : defaults.wake_sources }])),
+    },
+    communication: source.communication || {},
+  };
+}
+
+function renderComponentFeatures(project) {
+  const target = document.querySelector("#ideComponentFeaturesView");
+  const softwareUnit = activeIdeSoftwareUnit(project);
+  const buildConfig = softwareUnit?.build_config || {};
+  if (!target || !buildConfig.firmware_basis_id) {
+    if (target) target.innerHTML = `<p class="empty">Diese Software-Einheit verwendet keine konfigurierbare GerNetiX-Basissoftware.</p>`;
+    return;
+  }
+  const config = effectiveBasissoftwareConfiguration(softwareUnit);
+  const communicationManaged = config.communication.managed_by_project === true;
+  const powerStates = [
+    ["active", "Aktiv", "CPU, Netzwerk und Projektlogik verfügbar"],
+    ["modem_sleep", "Modem-Sleep", "CPU aktiv, Funkmodem zeitweise energiesparend"],
+    ["light_sleep", "Light-Sleep", "CPU pausiert, schneller Rückweg über Wake-Quelle"],
+    ["deep_sleep", "Deep-Sleep", "Minimalverbrauch, Neustart nach dem Aufwachen"],
+  ];
+  target.innerHTML = `<form class="component-features-form basissoftware-configuration-form" data-basissoftware-configuration-form data-software-unit-id="${escapeAttribute(softwareUnit.software_unit_id)}">
+    <header><div><p class="eyebrow">${escapeHtml(softwareUnit.source_root || "Firmware-Komponente")}</p><h3>Basissoftware konfigurieren</h3></div>
+      <span class="basis-variant-badge">Geschützt · ${escapeHtml(buildConfig.firmware_basis_variant || "full")}</span></header>
+    <p class="helper-text">Der Quellcode der GerNetiX-Basissoftware bleibt unveränderbar. Diese Einstellungen gehören ausschließlich zu <strong>${escapeHtml(softwareUnit.title || softwareUnit.software_unit_id)}</strong> und werden beim Build als Konfigurationsheader erzeugt.</p>
+    ${communicationManaged ? `<p class="basissoftware-derived-note">WLAN-Rolle und Gerätekommunikation werden zentral aus dem <strong>Kommunikationssetup</strong> abgeleitet: ${escapeHtml(config.communication.role || "Teilnehmer")} · ${escapeHtml(config.communication.topology || "Projektsetup")} · ${config.communication.ota_available ? "OTA möglich" : "kein Server-OTA in dieser Topologie"}.</p>` : ""}
+    <section class="basissoftware-config-section">
+      <header><div><h4>WLAN</h4><p>Netzwerkverhalten der Firmware</p></div><label class="basissoftware-switch"><input type="checkbox" name="wifi_enabled" ${config.wifi.enabled ? "checked" : ""} ${communicationManaged ? "disabled" : ""}><span>Aktiv</span></label></header>
+      <div class="basissoftware-field-grid">
+        <label>Betriebsart<select name="wifi_mode" ${communicationManaged ? "disabled" : ""}><option value="station" ${config.wifi.mode === "station" ? "selected" : ""}>WLAN-Client</option><option value="access_point" ${config.wifi.mode === "access_point" ? "selected" : ""}>Access Point</option><option value="station_and_access_point" ${config.wifi.mode === "station_and_access_point" ? "selected" : ""}>Client und Access Point</option></select></label>
+        <label class="basissoftware-check"><input type="checkbox" name="wifi_auto_reconnect" ${config.wifi.auto_reconnect ? "checked" : ""} ${communicationManaged ? "disabled" : ""}> Automatisch wiederverbinden</label>
+      </div>
+      <p class="basissoftware-security-note">SSID und Kennwort werden nicht im Projekt gespeichert, sondern später über Provisionierung beziehungsweise Secrets bereitgestellt.</p>
+    </section>
+    <section class="basissoftware-config-section">
+      <header><div><h4>MQTT</h4><p>Optional: nur für Projekte mit Broker, Veröffentlichungen oder Abonnements aktivieren</p></div><label class="basissoftware-switch"><input type="checkbox" name="mqtt_enabled" ${config.mqtt.enabled ? "checked" : ""}><span>Aktiv</span></label></header>
+      <div class="basissoftware-field-grid mqtt-settings-grid">
+        <label>Broker-URL<input name="mqtt_broker_url" value="${escapeAttribute(config.mqtt.broker_url)}" placeholder="mqtts://broker.example"></label>
+        <label>Port<input name="mqtt_port" type="number" min="1" max="65535" value="${config.mqtt.port}"></label>
+        <label>Client-ID-Vorlage<input name="mqtt_client_id_template" value="${escapeAttribute(config.mqtt.client_id_template)}"></label>
+        <label>QoS<select name="mqtt_qos">${[0, 1, 2].map((qos) => `<option value="${qos}" ${config.mqtt.qos === qos ? "selected" : ""}>${qos}</option>`).join("")}</select></label>
+        <label class="basissoftware-check"><input type="checkbox" name="mqtt_tls" ${config.mqtt.tls ? "checked" : ""}> TLS verwenden</label>
+      </div>
+      <div class="basissoftware-topic-grid">
+        <label>Publish-Topics <small>Ein Topic pro Zeile</small><textarea name="mqtt_publish_topics" rows="5" placeholder="gernetix/{device}/status">${escapeHtml(config.mqtt.publish_topics.join("\n"))}</textarea></label>
+        <label>Subscriptions <small>Ein Topic pro Zeile; MQTT-Wildcards sind erlaubt</small><textarea name="mqtt_subscriptions" rows="5" placeholder="gernetix/{device}/commands/#">${escapeHtml(config.mqtt.subscriptions.join("\n"))}</textarea></label>
+      </div>
+    </section>
+    <section class="basissoftware-config-section power-manager-section">
+      <header><div><h4>Power-Manager</h4><p>Energiesparzustände und Aufwachwege dieser Firmware</p></div><label class="basissoftware-switch"><input type="checkbox" name="power_manager_enabled" ${config.power_manager.enabled ? "checked" : ""}><span>Aktiv</span></label></header>
+      <label class="power-default-state">Startzustand<select name="power_default_state">${powerStates.map(([id, title]) => `<option value="${id}" ${config.power_manager.default_state === id ? "selected" : ""}>${title}</option>`).join("")}</select></label>
+      <div class="power-state-flow">${powerStates.map(([id, title, description], index) => {
+        const stateConfig = config.power_manager.states[id];
+        const active = id === "active" || stateConfig.enabled;
+        return `${index ? '<span class="power-state-arrow" aria-hidden="true">→</span>' : ""}<article class="power-state-card ${active ? "enabled" : "disabled"}">
+          <header><strong>${title}</strong>${id === "active" ? '<span class="power-state-fixed">immer vorhanden</span>' : `<label><input type="checkbox" name="power_state_${id}_enabled" ${stateConfig.enabled ? "checked" : ""}> verwenden</label>`}</header>
+          <p>${description}</p>
+          ${id === "active" ? "" : `<label>nach Sekunden<input type="number" min="0" max="86400" name="power_state_${id}_after" value="${Number(stateConfig.enter_after_seconds || 0)}"></label>
+          <fieldset><legend>Aufwachen durch</legend>${[["timer", "Timer"], ["gpio", "GPIO"], ["touch", "Touch"], ["network", "Netzwerk"]].map(([wakeId, wakeTitle]) => `<label><input type="checkbox" name="power_state_${id}_wake" value="${wakeId}" ${stateConfig.wake_sources.includes(wakeId) ? "checked" : ""}>${wakeTitle}</label>`).join("")}</fieldset>`}
+        </article>`;
+      }).join("")}</div>
+      ${config.mqtt.enabled && config.power_manager.states.deep_sleep.enabled ? '<p class="basissoftware-compatibility-warning">MQTT ist während Deep-Sleep nicht verbunden. Nach dem Aufwachen muss die Basissoftware WLAN und MQTT neu verbinden.</p>' : ""}
+    </section>
+    <footer><button type="submit" class="primary">Basissoftware-Konfiguration speichern</button><span data-basissoftware-configuration-status></span></footer>
+  </form>`;
 }
 
 function renderWebInterface(project) {
@@ -1519,7 +1788,7 @@ async function saveIdeBoardConfiguration(saveAsAccount) {
     const board = value.board;
     const projectSpecific = !saveAsAccount && (value.modified || board.configuration_scope === "project");
     let boardConfiguration = {
-      schema_version: 1,
+      schema_version: 2,
       source: projectSpecific ? "project" : board.configuration_scope === "account" ? "account" : "catalog",
       name: projectSpecific
         ? String(board.title || "").replace(/ · Projektanpassung$/, "")
@@ -1583,6 +1852,14 @@ async function saveIdeBoardConfiguration(saveAsAccount) {
 }
 
 async function saveComponentFeatures(event) {
+  if (event.target.matches("[data-communication-setup-form]")) {
+    await saveCommunicationSetup(event);
+    return;
+  }
+  if (event.target.matches("[data-basissoftware-configuration-form]")) {
+    await saveBasissoftwareConfiguration(event);
+    return;
+  }
   if (!event.target.matches(".component-features-form")) return;
   event.preventDefault();
   const project = projectById(state.activeProjectId);
@@ -1617,6 +1894,94 @@ async function saveComponentFeatures(event) {
     if (webserverOnly) renderWebInterface(response.project);
     else renderComponentFeatures(response.project);
     document.querySelector("[data-component-feature-status]").textContent = "Gespeichert.";
+  } catch (error) {
+    status.textContent = error.message;
+  }
+}
+
+async function saveCommunicationSetup(event) {
+  event.preventDefault();
+  const project = projectById(state.activeProjectId);
+  const form = event.target;
+  const status = form.querySelector("[data-communication-setup-status]");
+  if (!project || !status) return;
+  const data = new FormData(form);
+  const hostId = String(data.get("host_software_unit_id") || "");
+  const clients = projectSoftwareUnits(project)
+    .filter((unit) => (unit.build_system === "platformio" || unit.software_kind === "embedded_firmware") && unit.software_unit_id !== hostId)
+    .map((unit) => unit.software_unit_id);
+  status.textContent = "Setup und Firmware-Konfigurationen werden gespeichert…";
+  try {
+    const response = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/communication-setup`, {
+      schema_version: 1,
+      mode: String(data.get("mode") || "infrastructure_wifi"),
+      host_software_unit_id: hostId,
+      client_software_unit_ids: clients,
+      stream: {
+        port: Number(data.get("stream_port") || 8080),
+        path: String(data.get("stream_path") || "/camera/stream"),
+      },
+      access_point: {
+        ipv4_address: String(data.get("ap_ipv4_address") || "192.168.50.1"),
+        subnet_mask: "255.255.255.0",
+        dhcp_start: String(data.get("ap_dhcp_start") || "192.168.50.100"),
+        dhcp_end: String(data.get("ap_dhcp_end") || "192.168.50.199"),
+      },
+    });
+    state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    renderCommunicationSetup(response.project);
+    document.querySelector("[data-communication-setup-status]").textContent = "Gespeichert. Die Basissoftware-Konfigurationen wurden neu abgeleitet.";
+  } catch (error) {
+    status.textContent = error.message;
+  }
+}
+
+async function saveBasissoftwareConfiguration(event) {
+  event.preventDefault();
+  const project = projectById(state.activeProjectId);
+  const form = event.target;
+  const status = form.querySelector("[data-basissoftware-configuration-status]");
+  const softwareUnitId = form.dataset.softwareUnitId || "";
+  if (!project || !softwareUnitId || !status) return;
+  const data = new FormData(form);
+  const lines = (name) => String(data.get(name) || "").split(/\r?\n/).map((value) => value.trim()).filter(Boolean);
+  const powerStates = Object.fromEntries(["active", "modem_sleep", "light_sleep", "deep_sleep"].map((stateId) => [stateId, {
+    enabled: stateId === "active" || Boolean(data.get(`power_state_${stateId}_enabled`)),
+    enter_after_seconds: stateId === "active" ? 0 : Number(data.get(`power_state_${stateId}_after`) || 0),
+    wake_sources: stateId === "active" ? [] : data.getAll(`power_state_${stateId}_wake`).map(String),
+  }]));
+  status.textContent = "Wird gespeichert…";
+  try {
+    const response = await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/basissoftware-configuration`, {
+      software_unit_id: softwareUnitId,
+      configuration: {
+        schema_version: 1,
+        wifi: {
+          enabled: Boolean(data.get("wifi_enabled")),
+          mode: String(data.get("wifi_mode") || "station"),
+          auto_reconnect: Boolean(data.get("wifi_auto_reconnect")),
+        },
+        mqtt: {
+          enabled: Boolean(data.get("mqtt_enabled")),
+          broker_url: String(data.get("mqtt_broker_url") || ""),
+          port: Number(data.get("mqtt_port") || 0),
+          tls: Boolean(data.get("mqtt_tls")),
+          client_id_template: String(data.get("mqtt_client_id_template") || "gernetix-{device}"),
+          publish_topics: lines("mqtt_publish_topics"),
+          subscriptions: lines("mqtt_subscriptions"),
+          qos: Number(data.get("mqtt_qos") || 1),
+        },
+        power_manager: {
+          enabled: Boolean(data.get("power_manager_enabled")),
+          default_state: String(data.get("power_default_state") || "active"),
+          states: powerStates,
+        },
+      },
+    });
+    state.projects = state.projects.filter((item) => item.id !== response.project.id).concat(response.project);
+    state.activeSoftwareUnitIds[response.project.id] = softwareUnitId;
+    renderComponentFeatures(response.project);
+    document.querySelector("[data-basissoftware-configuration-status]").textContent = "Gespeichert und für den nächsten Build übernommen.";
   } catch (error) {
     status.textContent = error.message;
   }

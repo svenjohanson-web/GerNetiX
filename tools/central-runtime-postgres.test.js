@@ -33,6 +33,14 @@ test("Build workers coordinate jobs and target locks through central PostgreSQL"
   assert.match(compose, /BUILD_COORDINATION_POOL_MAX: 20/);
   assert.match(compose, /BUILD_WORKER_HEARTBEAT_MS: 15000/);
   assert.match(compose, /BUILD_WORKER_STALE_MS: 120000/);
+  assert.match(compose, /BUILD_WORKER_POOL_BASE_URL: http:\/\/build-router:4400/);
+  assert.match(compose, /^  build-router:$/m);
+  assert.match(compose, /BUILD_WORKER_UPSTREAMS: \$\{BUILD_WORKER_UPSTREAMS:-\}/);
+  assert.match(compose, /RUNTIME_POSTGRES_BIND_ADDRESS:-127\.0\.0\.1/);
+  assert.match(envExample, /^BUILD_WORKER_UPSTREAMS=$/m);
+  assert.match(compose, /^  build-worker-postgres-access:$/m);
+  assert.match(compose, /provision-build-worker-postgres\.js/);
+  assert.match(envExample, /^BUILD_WORKER_POSTGRES_PASSWORD=$/m);
 });
 
 test("Community administration uses a dedicated token instead of Identity operator accounts", () => {

@@ -49,6 +49,7 @@ const curatedDocuments = {
   "docs/firmware-project-structure.md": { category: "development", status: "maintained", order: 3 },
   "docs/incremental-build-strategy.md": { category: "development", status: "maintained", order: 4 },
   "docs/fast-embedded-firmware-feedback.md": { category: "development", status: "maintained", order: 5 },
+  "docs/embedded-device-debug-concept.md": { category: "development", status: "maintained", order: 6 },
 
   "docs/audit-security-legal-views.md": { category: "operations", status: "maintained", order: 1 },
   "docs/security-posture.md": { category: "operations", status: "maintained", order: 2 },

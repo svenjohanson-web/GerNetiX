@@ -42,6 +42,22 @@ function registerBuildRoutes({
   });
   registry.register({
     method: "POST",
+    pattern: /^\/api\/user-ide\/build-jobs\/([^/]+)\/cancel$/,
+    async handler({ req, res, match }) {
+      const session = await requireSession(req, res);
+      if (!session) return;
+      const jobId = decodeURIComponent(match[1]);
+      const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
+      if (!projectJob || projectJob.user_id !== projectServerUserId(session)) {
+        sendJson(res, 404, { error: "build_job_not_found", message: "BuildJob wurde nicht gefunden." });
+        return;
+      }
+      const result = await buildDeployJson(`/api/build-jobs/${encodeURIComponent(jobId)}/cancel`, { method: "POST" });
+      sendJson(res, 202, result);
+    },
+  });
+  registry.register({
+    method: "POST",
     pattern: /^\/api\/user-ide\/build-jobs\/([^/]+)\/browser-usb-flash-result$/,
     async handler({ req, res, match }) {
       if (!await requireSession(req, res)) return;
@@ -79,7 +95,7 @@ function registerBuildRoutes({
       const jobId = decodeURIComponent(match[1]);
       const job = await loadBuildDeployJob(jobId);
       const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
-      if (["succeeded", "failed"].includes(job.status)) await recordCompletedBuildJob(jobId, job);
+      if (["succeeded", "failed", "cancelled"].includes(job.status)) await recordCompletedBuildJob(jobId, job);
       sendJson(res, 200, {
         build_job_id: jobId,
         build_deploy_job_id: jobId,

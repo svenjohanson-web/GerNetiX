@@ -33,3 +33,10 @@ test("provisioned boards stay in station mode when the first connection times ou
 test("comfort runtime disables WiFi power save for stable HTTP and MQTT reachability", () => {
   assert.match(source, /esp_wifi_set_ps\(WIFI_PS_NONE\)/);
 });
+
+test("a project AP client joins the derived camera WLAN without overwriting saved home credentials", () => {
+  const clientMode = source.slice(source.indexOf("Project communication selects camera access-point client mode"));
+  assert.match(clientMode, /GERNETIX_PROJECT_AP_SSID/);
+  assert.match(clientMode, /connectWifiStation\(projectCredentials/);
+  assert.doesNotMatch(clientMode.slice(0, clientMode.indexOf("#endif")), /saveWifiStationCredentials/);
+});

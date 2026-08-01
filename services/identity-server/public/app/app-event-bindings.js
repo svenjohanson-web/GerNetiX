@@ -41,6 +41,13 @@ document.querySelector("#enablePushButton")?.addEventListener("click", enablePus
 document.querySelector("#sendPushTestButton")?.addEventListener("click", sendPushTestNotification);
 document.querySelector("#pushProjectSelect")?.addEventListener("change", (event) => { state.activeProjectId = event.target.value; });
 document.querySelector("#ideProjectBrowser").addEventListener("click", (event) => {
+  const selectedTreeEntry = event.target.closest("[data-ide-tree-path]");
+  if (selectedTreeEntry) selectIdeTreePath(selectedTreeEntry.dataset.ideTreePath);
+  const communicationSetupButton = event.target.closest("[data-communication-setup]");
+  if (communicationSetupButton) {
+    openCommunicationSetup();
+    return;
+  }
   const deviceConnectionsButton = event.target.closest("[data-device-connections]");
   if (deviceConnectionsButton) {
     openDeviceConnections(deviceConnectionsButton.dataset.deviceConnections);
@@ -68,7 +75,7 @@ document.querySelector("#ideProjectBrowser").addEventListener("click", (event) =
   }
   const componentFeaturesButton = event.target.closest("[data-component-features]");
   if (componentFeaturesButton) {
-    openComponentFeatures();
+    openComponentFeatures(componentFeaturesButton.dataset.componentFeatures, componentFeaturesButton.dataset.componentId);
     return;
   }
   const workerDispatcherButton = event.target.closest("[data-worker-dispatcher-configuration]");
@@ -127,17 +134,64 @@ document.querySelector("#usbPortMissingDialog")?.addEventListener("click", (even
 });
 document.querySelector("#retryUsbPortSearchButton")?.addEventListener("click", retryUsbPortSearch);
 document.querySelector("#usbPortChoiceDialog")?.addEventListener("click", (event) => {
-  if (event.target === event.currentTarget || event.target.closest("[data-close-usb-port-choice]")) event.currentTarget.close();
+  const identifyButton = event.target.closest("[data-identify-usb-flash-port]");
+  if (identifyButton) {
+    identifyUsbFlashPortForFirmware(projectById(state.activeProjectId), identifyButton.dataset.identifyUsbFlashPort);
+    return;
+  }
+  if (event.target === event.currentTarget || event.target.closest("[data-close-usb-port-choice]")) {
+    stopUsbFlashPortIdentification();
+    event.currentTarget.close();
+  }
+});
+document.querySelector("#usbPortChoiceDialog")?.addEventListener("close", () => stopUsbFlashPortIdentification());
+document.querySelector("#usbPortIdentificationDialog")?.addEventListener("click", (event) => {
+  if (event.target.closest("[data-cancel-usb-port-identification]")) closeUsbPortIdentificationDialog({ cancelDetection: true });
+  if (event.target.closest("[data-finish-usb-port-identification]")) closeUsbPortIdentificationDialog();
+});
+document.querySelector("#usbPortIdentificationDialog")?.addEventListener("cancel", (event) => {
+  event.preventDefault();
+  closeUsbPortIdentificationDialog({ cancelDetection: true });
+});
+document.querySelector("#usbPortChoiceDialog")?.addEventListener("change", (event) => {
+  const select = event.target.closest("[data-usb-firmware-port-select]");
+  if (!select) return;
+  updateUsbFirmwarePortAssignment(projectById(state.activeProjectId), select.dataset.usbFirmwarePortSelect, select.value);
 });
 document.querySelector("#confirmUsbPortButton")?.addEventListener("click", () => {
-  if (!selectedUsbPort()) return;
-  document.querySelector("#usbPortChoiceDialog")?.close();
-  startUsbFlash(true);
+  const dialog = document.querySelector("#usbPortChoiceDialog");
+  if (dialog?.dataset.usbChoiceMode === "single-device-conflict") {
+    dialog.close();
+    if (state.pendingUsbFlash?.mode === "flash") retryUsbPortSearch();
+    else startUsbFlash(true);
+    return;
+  }
+  const project = projectById(state.activeProjectId);
+  if (!project) return;
+  startUsbFlashAssignmentBatch(project);
 });
-document.querySelector("#usbPortSelect").addEventListener("change", (event) => {
-  document.querySelector("#confirmUsbPortButton").disabled = !event.target.value;
+document.querySelector("#usbFirmwareTargetSelect")?.addEventListener("change", renderUsbPortMappingConfirmationState);
+document.querySelector("#usbPortSelect")?.addEventListener("change", renderUsbPortMappingConfirmationState);
+document.querySelector("#usbInventoryUnknownDialog")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget || event.target.closest("[data-close-usb-inventory-unknown]")) event.currentTarget.close();
 });
-document.querySelector("#buildButton").addEventListener("click", startBuild);
+document.querySelector("#usbInventoryUnknownDialog")?.addEventListener("close", persistUsbInventoryWarningPreference);
+document.querySelector("#continueUnknownInventoryUsbFlashButton")?.addEventListener("click", () => {
+  persistUsbInventoryWarningPreference();
+  if (usbFlashAssignmentBatch) usbFlashAssignmentBatch.inventoryCheckConfirmed = true;
+  document.querySelector("#usbInventoryUnknownDialog")?.close();
+  startUsbFlash(true, true, true);
+});
+document.querySelector("#addUnknownUsbDeviceToInventoryButton")?.addEventListener("click", () => {
+  persistUsbInventoryWarningPreference();
+  document.querySelector("#usbInventoryUnknownDialog")?.close();
+  navigate("/app/device-management/provisioning/");
+});
+document.querySelector("#buildButton").addEventListener("click", handleBuildButtonAction);
+document.querySelector("#cancelBuildConfirmDialog")?.addEventListener("click", (event) => {
+  if (event.target === event.currentTarget || event.target.closest("[data-close-cancel-build]")) event.currentTarget.close();
+});
+document.querySelector("#confirmCancelBuildButton")?.addEventListener("click", confirmCancelActiveBuilds);
 document.querySelector("#cleanBuildButton").addEventListener("click", cleanProjectBuildCache);
 document.querySelector("#flashTargetChoiceDialog")?.addEventListener("click", (event) => {
   if (event.target === event.currentTarget || event.target.closest("[data-close-flash-target-choice]")) {
@@ -189,6 +243,10 @@ document.querySelector("#ideComponentFeaturesView").addEventListener("click", (e
   if (!tab) return;
   state.webInterfaceTab = tab.dataset.webInterfaceTab;
   renderWebInterface(projectById(state.activeProjectId));
+});
+document.querySelector("#ideComponentFeaturesView").addEventListener("change", (event) => {
+  const form = event.target.closest("[data-communication-setup-form]");
+  if (form) refreshCommunicationSetupPreview(form);
 });
 document.querySelector("#idePwaDashboardView").addEventListener("click", (event) => {
   if (event.target.closest("[data-open-pwa-dashboard-editor]")) openPwaDashboardEditor();

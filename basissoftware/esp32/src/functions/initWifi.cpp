@@ -8,11 +8,13 @@
 #include "esp_event.h"
 #include "esp_netif.h"
 #include "esp_wifi.h"
+#include "dhcpserver/dhcpserver.h"
 #include "freertos/FreeRTOS.h"
 #include "freertos/event_groups.h"
 #include "freertos/task.h"
 #include "nvs.h"
 #include "nvs_flash.h"
+#include "lwip/inet.h"
 
 #include "basissoftware/config.h"
 #include "basissoftware/feedback.h"
@@ -48,6 +50,7 @@ int lastDisconnectReason = 0;
 int lastConnectStatus = ESP_OK;
 unsigned wifiConnectRetryCount = 0;
 esp_netif_t *stationNetif = nullptr;
+esp_netif_t *accessPointNetif = nullptr;
 
 struct WifiCredentials {
   char ssid[33];
@@ -187,20 +190,53 @@ void wifiEventHandler(void *, esp_event_base_t eventBase, int32_t eventId, void 
 }
 
 void configureSetupAp() {
+  const char *apSsid = WIFI_SETUP_AP_SSID;
+  const char *apPassword = WIFI_SETUP_AP_PASSWORD;
+#if defined(GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT) && GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT == 1 \
+    && defined(GERNETIX_COMMUNICATION_ROLE_HOST) && GERNETIX_COMMUNICATION_ROLE_HOST == 1
+  apSsid = GERNETIX_PROJECT_AP_SSID;
+  apPassword = GERNETIX_PROJECT_AP_PASSWORD;
+#endif
   wifi_config_t apConfig = {};
-  copyWifiString(apConfig.ap.ssid, sizeof(apConfig.ap.ssid), WIFI_SETUP_AP_SSID);
-  apConfig.ap.ssid_len = std::strlen(WIFI_SETUP_AP_SSID);
+  copyWifiString(apConfig.ap.ssid, sizeof(apConfig.ap.ssid), apSsid);
+  apConfig.ap.ssid_len = std::strlen(apSsid);
   apConfig.ap.channel = WIFI_SETUP_AP_CHANNEL;
   apConfig.ap.max_connection = WIFI_SETUP_AP_MAX_CONNECTIONS;
   apConfig.ap.ssid_hidden = 0;
   apConfig.ap.authmode = WIFI_AUTH_OPEN;
 
-  if (std::strlen(WIFI_SETUP_AP_PASSWORD) > 0) {
-    copyWifiString(apConfig.ap.password, sizeof(apConfig.ap.password), WIFI_SETUP_AP_PASSWORD);
+  if (std::strlen(apPassword) > 0) {
+    copyWifiString(apConfig.ap.password, sizeof(apConfig.ap.password), apPassword);
     apConfig.ap.authmode = WIFI_AUTH_WPA2_PSK;
   }
 
   ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &apConfig));
+}
+
+void configureAccessPointIpv4() {
+  if (accessPointNetif == nullptr) return;
+  esp_netif_ip_info_t ipInfo = {};
+  ipInfo.ip.addr = inet_addr(GERNETIX_ACCESS_POINT_IPV4_ADDRESS);
+  ipInfo.gw.addr = ipInfo.ip.addr;
+  ipInfo.netmask.addr = inet_addr(GERNETIX_ACCESS_POINT_SUBNET_MASK);
+  ESP_ERROR_CHECK(esp_netif_dhcps_stop(accessPointNetif));
+  ESP_ERROR_CHECK(esp_netif_set_ip_info(accessPointNetif, &ipInfo));
+
+  dhcps_lease_t lease = {};
+  lease.enable = true;
+  lease.start_ip.addr = inet_addr(GERNETIX_ACCESS_POINT_DHCP_START);
+  lease.end_ip.addr = inet_addr(GERNETIX_ACCESS_POINT_DHCP_END);
+  ESP_ERROR_CHECK(esp_netif_dhcps_option(
+      ESP_NETIF_OP_SET,
+      ESP_NETIF_REQUESTED_IP_ADDRESS,
+      &lease,
+      sizeof(lease)));
+  ESP_ERROR_CHECK(esp_netif_dhcps_start(accessPointNetif));
+  feedbackInfo(TAG, "WiFi AP IPv4 configured: ip=%s mask=%s dhcp=%s-%s",
+               GERNETIX_ACCESS_POINT_IPV4_ADDRESS,
+               GERNETIX_ACCESS_POINT_SUBNET_MASK,
+               GERNETIX_ACCESS_POINT_DHCP_START,
+               GERNETIX_ACCESS_POINT_DHCP_END);
 }
 
 esp_err_t setWifiMode(wifi_mode_t mode) {
@@ -263,6 +299,8 @@ void wifiConnectTask(void *) {
   vTaskDelete(nullptr);
 }
 }
+
+esp_err_t connectWifiStation(const WifiCredentials &credentials, uint32_t timeoutMs);
 
 const char *wifiRuntimeModeName() {
   if (setupPortalActive) {
@@ -334,6 +372,10 @@ esp_err_t connectWifiStationFromSavedCredentials(uint32_t timeoutMs) {
     return ESP_ERR_NOT_FOUND;
   }
 
+  return connectWifiStation(credentials, timeoutMs);
+}
+
+esp_err_t connectWifiStation(const WifiCredentials &credentials, uint32_t timeoutMs) {
   wifi_config_t staConfig = {};
   copyWifiString(staConfig.sta.ssid, sizeof(staConfig.sta.ssid), credentials.ssid);
   copyWifiString(staConfig.sta.password, sizeof(staConfig.sta.password), credentials.password);
@@ -371,7 +413,7 @@ esp_err_t connectWifiStationFromSavedCredentials(uint32_t timeoutMs) {
     wifiStarted = true;
   }
 
-  feedbackInfo(TAG, "Connecting WiFi station using locally stored credentials");
+  feedbackInfo(TAG, "Connecting WiFi station");
   status = esp_wifi_connect();
   if (status != ESP_OK) {
     feedbackError(TAG, "esp_wifi_connect failed: %d", status);
@@ -509,7 +551,12 @@ void startWifiSetupPortal() {
 
   startCaptiveDnsServer();
   startDeviceWebServerForRuntime();
+#if defined(GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT) && GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT == 1 \
+    && defined(GERNETIX_COMMUNICATION_ROLE_HOST) && GERNETIX_COMMUNICATION_ROLE_HOST == 1
+  feedbackInfo(TAG, "Project AP started: ssid=%s channel=%u ip=%s", GERNETIX_PROJECT_AP_SSID, WIFI_SETUP_AP_CHANNEL, CAPTIVE_PORTAL_AP_IP);
+#else
   feedbackInfo(TAG, "WiFi setup AP started: ssid=%s channel=%u captive=%s", WIFI_SETUP_AP_SSID, WIFI_SETUP_AP_CHANNEL, CAPTIVE_PORTAL_AP_IP);
+#endif
 }
 
 void initWifi() {
@@ -521,8 +568,9 @@ void initWifi() {
   wifiEvents = xEventGroupCreate();
   ESP_ERROR_CHECK(esp_netif_init());
   ESP_ERROR_CHECK(esp_event_loop_create_default());
-  esp_netif_create_default_wifi_ap();
+  accessPointNetif = esp_netif_create_default_wifi_ap();
   stationNetif = esp_netif_create_default_wifi_sta();
+  configureAccessPointIpv4();
   char stationHostname[32] = {};
 #if defined(GERNETIX_DIAGNOSTIC_DISABLE_PROVISIONING_NVS)
   // Preserve the separately stored WiFi credentials, but do not touch the
@@ -540,6 +588,24 @@ void initWifi() {
   feedbackInfo(TAG, "WiFi power save disabled for responsive comfort runtime");
   ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, WIFI_EVENT_STA_DISCONNECTED, wifiEventHandler, nullptr, nullptr));
   ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT, IP_EVENT_STA_GOT_IP, wifiEventHandler, nullptr, nullptr));
+
+#if defined(GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT) && GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT == 1 \
+    && defined(GERNETIX_COMMUNICATION_ROLE_HOST) && GERNETIX_COMMUNICATION_ROLE_HOST == 1
+  feedbackInfo(TAG, "Project communication selects persistent access-point host mode");
+  startWifiSetupPortal();
+  return;
+#endif
+
+#if defined(GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT) && GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT == 1 \
+    && defined(GERNETIX_COMMUNICATION_ROLE_HOST) && GERNETIX_COMMUNICATION_ROLE_HOST == 0
+  feedbackInfo(TAG, "Project communication selects camera access-point client mode");
+  WifiCredentials projectCredentials = {};
+  std::snprintf(projectCredentials.ssid, sizeof(projectCredentials.ssid), "%s", GERNETIX_PROJECT_AP_SSID);
+  std::snprintf(projectCredentials.password, sizeof(projectCredentials.password), "%s", GERNETIX_PROJECT_AP_PASSWORD);
+  const esp_err_t projectConnectStatus = connectWifiStation(projectCredentials, WIFI_CONNECT_TIMEOUT_MS);
+  if (projectConnectStatus != ESP_OK) scheduleWifiReconnect();
+  return;
+#endif
 
   const esp_err_t connectStatus = connectWifiStationFromSavedCredentials(WIFI_CONNECT_TIMEOUT_MS);
   if (connectStatus == ESP_ERR_NOT_FOUND) {

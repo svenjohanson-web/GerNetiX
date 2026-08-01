@@ -10,7 +10,7 @@ function isTouchscreenGameCollectionProject(project) {
 function isAllowedNewCodeExplorerPath(project, pathValue) {
   if (!isTouchscreenGameCollectionProject(project)) return false;
   const normalized = String(pathValue || "").replaceAll("\\", "/");
-  return /^Komponenten\/IoT-Device 1\/src\/games\/[a-z][a-z0-9_]{0,48}\.h$/.test(normalized);
+  return /^Komponenten\/IoT-Device 1\/include\/games\/[a-z][a-z0-9_]{0,48}\.h$/.test(normalized);
 }
 
 function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalogJson, interfaceTelemetry, llmConfigStore, projectServerJson, projectServerUserId, readJsonBody, requireProjectAccess, sendJson }) {
@@ -293,7 +293,7 @@ function createDevelopmentAssistant({ aiContextJson, aiUsageJson, hardwareCatalo
       context.questions.length ? `Leitfragen des Schritts: ${context.questions.join(" | ")}` : "",
       "Bei Aenderungen: nutze find_and_read_project_sources; bearbeite nur dadurch gelesene Pfade.",
       touchscreenGameProject
-        ? "Dieses Projekt ist eine Touchscreen-Spielesammlung. Bei einem ausdruecklichen Auftrag fuer ein neues Spiel darfst du zusaetzlich genau einen neuen Header unter Komponenten/IoT-Device 1/src/games/<spiel_id>.h vorschlagen. Verwende eine kleingeschriebene stabile spiel_id aus Buchstaben, Ziffern und Unterstrichen. Lies und aktualisiere zugleich game/game_catalog.h und config/selected_games.h, damit das Spiel registriert und aktiviert ist. Aendere keine Basissoftware und keine Boardadapter."
+        ? "Dieses Projekt ist eine Touchscreen-Spielesammlung. Bei einem ausdruecklichen Auftrag fuer ein neues Spiel darfst du zusaetzlich genau einen neuen Header unter Komponenten/IoT-Device 1/include/games/<spiel_id>.h vorschlagen. Verwende eine kleingeschriebene stabile spiel_id aus Buchstaben, Ziffern und Unterstrichen. Lies und aktualisiere zugleich include/game/game_catalog.h und include/config/selected_games.h, damit das Spiel registriert und aktiviert ist. Aendere keine Basissoftware und keine Boardadapter."
         : "",
       "Waehle source_kind=architecture fuer Komponenten, Boards, Module, Beziehungen oder Diagramme; source_kind=code nur fuer ausdrueckliche Implementierungs-, Funktions-, Klassen- oder Quellcodeauftraege.",
       "Kurze Folgenachrichten verfeinern die offene Aufgabe. Fuer Architektur genuegen Typ, Name und bekannte Eigenschaften; fehlende GPIO-/Schaltungsdetails bleiben offen.",

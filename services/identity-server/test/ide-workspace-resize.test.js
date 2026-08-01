@@ -10,10 +10,10 @@ const app = readPlatformAppSource();
 
 test("IDE exposes one accessible splitter for editor frame and terminal", () => {
   assert.match(html, /id="ideWorkspaceResizeHandle"[\s\S]*role="separator"[\s\S]*aria-orientation="horizontal"/);
-  assert.match(html, /app\.css\?v=20260731-build-memory-summary-1/);
-  assert.match(html, /app\.js\?v=20260801-app-modules-1/);
-  assert.match(html, /app-ide-controller\.js\?v=20260801-app-modules-1/);
-  assert.match(html, /app-event-bindings\.js\?v=20260801-app-modules-1/);
+  assert.match(html, /app\.css\?v=20260801-hardware-validation-4/);
+  assert.match(html, /app\.js\?v=20260801-tree-selection/);
+  assert.match(html, /app-ide-controller\.js\?v=20260801-source-language-folders/);
+  assert.match(html, /app-event-bindings\.js\?v=20260801-tree-selection/);
   assert.match(app, /function initializeIdeWorkspaceResize\(\)/);
   assert.match(app, /startHeight - \(moveEvent\.clientY - startY\)/);
   assert.match(app, /workbench\.style\.setProperty\("--ide-console-height"/);

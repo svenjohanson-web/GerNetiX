@@ -2,6 +2,7 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const crypto = require("node:crypto");
 const { BuildDeployError } = require("../errors");
+const { firmwareBuildPackageProblems } = require("../../../shared/firmware-project-contract");
 
 class BuildPackageStore {
   constructor(options) {
@@ -16,6 +17,23 @@ class BuildPackageStore {
         "invalid_build_package",
         "BuildPackage muss als build_package.files Objekt uebergeben werden.",
       );
+    }
+    if (job.build_package.contract) {
+      const contractProblems = firmwareBuildPackageProblems(job.build_package.contract, files);
+      if (contractProblems.length) {
+        throw new BuildDeployError(
+          "invalid_firmware_build_package_contract",
+          `BuildPackage verletzt den Firmware-Vertrag: ${contractProblems.join("; ")}`,
+          422,
+        );
+      }
+      if (job.software_unit_id && job.software_unit_id !== job.build_package.contract.software_unit_id) {
+        throw new BuildDeployError(
+          "firmware_build_target_mismatch",
+          "BuildJob und BuildPackage verweisen auf unterschiedliche Software-Einheiten.",
+          422,
+        );
+      }
     }
 
     const persistentCacheDir = this.incrementalProjectCacheDir(job);

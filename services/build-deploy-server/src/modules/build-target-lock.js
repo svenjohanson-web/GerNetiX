@@ -1,3 +1,5 @@
+const { BuildDeployError } = require("../errors");
+
 class BuildTargetLock {
   constructor() {
     this.tails = new Map();
@@ -17,11 +19,18 @@ class BuildTargetLock {
 
     await previous;
     try {
+      throwIfCancelled(job);
       return await task();
     } finally {
       release();
       if (this.tails.get(key) === tail) this.tails.delete(key);
     }
+  }
+}
+
+function throwIfCancelled(job) {
+  if (job.abortController?.signal.aborted) {
+    throw new BuildDeployError("build_cancelled", "Build wurde abgebrochen.", 409);
   }
 }
 

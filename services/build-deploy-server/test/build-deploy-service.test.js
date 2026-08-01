@@ -48,6 +48,31 @@ test("build job produces required artifacts and removes temporary project worksp
   );
 });
 
+test("build-only worker rejects USB, OTA and FlashBox execution but accepts normal builds", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-build-only-worker-"));
+  const service = await createDefaultBuildDeployService(createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    BUILD_WORKER_ROLE: "build_only",
+    NODE_ENV: "test",
+  }));
+  const buildPackage = { files: { "platformio.ini": "[env:test]\n", "src/main.cpp": "void setup() {}" } };
+
+  await assert.rejects(
+    service.submitJob({ job_id: "usb-on-remote", mode: "build_and_usb_flash", build_package: buildPackage }),
+    (error) => error.code === "worker_job_not_allowed" && error.status === 409,
+  );
+  await assert.rejects(
+    service.submitJob({ job_id: "flashbox-on-remote", mode: "build", build_package: buildPackage, flashbox: { requested: true, flashbox_device_id: "fb-1" } }),
+    (error) => error.code === "worker_job_not_allowed",
+  );
+  const accepted = await service.submitJob({ job_id: "build-on-remote", mode: "build", build_package: buildPackage });
+  assert.equal(accepted.status, "running");
+  await service.jobs.get("build-on-remote").promise;
+  assert.equal(service.getJob("build-on-remote").status, "succeeded");
+  assert.equal(service.coordinationHealth().role, "build_only");
+});
+
 test("build job exposes runner output as ordered progress lines", async () => {
   const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-build-progress-"));
   const service = createDefaultBuildDeployService(createConfig({
@@ -82,6 +107,44 @@ test("build job exposes runner output as ordered progress lines", async () => {
     "Kompiliere user_main.cpp.",
   ]);
   assert.deepEqual(job.progress.map((entry) => entry.sequence), job.progress.map((_entry, index) => index + 1));
+});
+
+test("a running build can be cancelled and releases its workspace", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-build-cancel-"));
+  const config = createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  });
+  const service = createDefaultBuildDeployService(config);
+  let runnerStarted;
+  const started = new Promise((resolve) => { runnerStarted = resolve; });
+  service.runner.run = async (_job, _packageDir, options) => new Promise((resolve, reject) => {
+    runnerStarted();
+    options.signal.addEventListener("abort", () => {
+      const error = new Error("Build wurde abgebrochen.");
+      error.code = "build_cancelled";
+      reject(error);
+    }, { once: true });
+  });
+
+  await service.submitJob({
+    job_id: "cancel-running",
+    project_id: "project-cancel",
+    mode: "build",
+    build_package: { files: { "platformio.ini": "[env:test]\n", "src/main.cpp": "void setup() {}" } },
+  });
+  await started;
+
+  const cancelling = await service.cancelJob("cancel-running");
+  assert.equal(cancelling.status, "cancelling");
+  await service.jobs.get("cancel-running").promise;
+
+  const cancelled = service.getJob("cancel-running");
+  assert.equal(cancelled.status, "cancelled");
+  assert.equal(cancelled.error.code, "build_cancelled");
+  assert.match(cancelled.progress.at(-1).message, /abgebrochen/i);
+  await assert.rejects(fs.access(path.join(config.tempDir, "cancel-running")), /ENOENT/);
 });
 
 test("build job can return avr hex firmware as primary artifact", async () => {
@@ -666,7 +729,7 @@ test("unsafe build package paths fail and leave no temporary workspace", async (
   );
 });
 
-test("waiting device job is replaced by newer waiting job", async () => {
+test("waiting device jobs can be replaced and cancelled before compilation", async () => {
   const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-build-deploy-"));
   const service = createDefaultBuildDeployService(createConfig({
     BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
@@ -698,4 +761,42 @@ test("waiting device job is replaced by newer waiting job", async () => {
   assert.equal(service.getJob("active").status, "running");
   assert.equal(service.getJob("waiting-old").status, "replaced");
   assert.equal(service.getJob("waiting-new").status, "queued");
+  assert.equal((await service.cancelJob("waiting-new")).status, "cancelled");
+  assert.equal(service.deviceJobLock.takeWaiting("device-1"), null);
 });
+
+test("a queued job observes cancellation requested through another build server", async () => {
+  const runtimeDir = await fs.mkdtemp(path.join(os.tmpdir(), "gernetix-queued-cancel-"));
+  const service = createDefaultBuildDeployService(createConfig({
+    BUILD_DEPLOY_RUNTIME_DIR: runtimeDir,
+    BUILD_RUNNER: "mock",
+    NODE_ENV: "test",
+  }));
+  const cancelled = new Set();
+  service.cancellationPollMs = 5;
+  service.buildCoordination = {
+    workerId: "worker-a",
+    async registerJob() {},
+    async saveJob() {},
+    async getProjectCacheEpoch() { return 0; },
+    async isCancellationRequested(jobId) { return cancelled.has(jobId); },
+  };
+  service.runner.run = async () => new Promise(() => {});
+  const buildPackage = { files: { "build-job.json": "{}" } };
+  await service.submitJob({ job_id: "queued-cancel-active", mode: "build", device_id: "device-queued", build_package: buildPackage });
+  await service.submitJob({ job_id: "queued-cancel-waiting", mode: "build", device_id: "device-queued", build_package: buildPackage });
+
+  cancelled.add("queued-cancel-waiting");
+  await waitUntil(() => service.getJob("queued-cancel-waiting").status === "cancelled");
+
+  assert.equal(service.deviceJobLock.takeWaiting("device-queued"), null);
+});
+
+async function waitUntil(predicate, timeoutMs = 500) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (predicate()) return;
+    await new Promise((resolve) => setTimeout(resolve, 5));
+  }
+  assert.fail("Zustand wurde nicht rechtzeitig erreicht.");
+}

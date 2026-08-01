@@ -887,7 +887,9 @@ const HelpContent = (() => {
         {
           heading: "So funktioniert es",
           list: [
-            "Wähle in der Provisionierung WLANs suchen. Das Board sucht die sichtbaren Netzwerke selbst.",
+            "Öffne im Hamburger-Menü unter Geräte das Device-WLAN-Setup. Derselbe Assistent kann nach einem Flash oder aus anderen Geräteabläufen automatisch geöffnet werden.",
+            "Wähle das per USB angeschlossene Gerät und starte WLANs suchen. Das Board sucht die sichtbaren Netzwerke selbst.",
+            "Wenn mehrere USB-Geräte verbunden sind, starte Durch Abziehen erkennen. Ziehe genau ein Board kurz ab; GerNetiX erkennt den verschwundenen Port und wählt ihn nach dem Wiedereinstecken automatisch aus.",
             "Wähle dein WLAN aus oder gib ein verborgenes Netzwerk manuell ein.",
             "Gib das Passwort ein und bestätige. Das Board speichert die Daten lokal und verbindet sich.",
           ],
@@ -907,8 +909,8 @@ const HelpContent = (() => {
       ],
       actions: [
         {
-          label: "Provisionierung öffnen",
-          route: "/app/device-management/provisioning/",
+          label: "Geräte öffnen",
+          route: "/app/device-management/",
         },
       ],
       relatedTopics: [

@@ -1561,8 +1561,8 @@ button.danger:hover {
 }
 .development-workspace-active .architecture-diagram-panel .plantuml-viewer {
   min-height: 260px;
-  height: min(100%, 58vh);
-  max-height: 58vh;
+  height: 100%;
+  max-height: none;
 }
 .development-workspace-active .architecture-diagram-panel .plantuml-diagram {
   width: 100%;
@@ -1636,6 +1636,230 @@ button.danger:hover {
 .component-feature-card span { display: grid; align-content: start; gap: 3px; }
 .component-feature-card small { color: #94a3b8; }
 .component-feature-card em { grid-column: 2; color: #67e8f9; font-size: 10px; font-style: normal; }
+.basissoftware-configuration-form { align-content: start; }
+.basissoftware-config-section {
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid #334155;
+  border-radius: 9px;
+  background: #0b1018;
+}
+.basissoftware-config-section > header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.basissoftware-config-section h4,
+.basissoftware-config-section p { margin: 0; }
+.basissoftware-config-section h4 { color: #f8fafc; }
+.basissoftware-config-section header p { margin-top: 3px; color: #94a3b8; font-size: .78rem; }
+.basissoftware-switch,
+.basissoftware-check {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #cbd5e1;
+}
+.basissoftware-switch {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 1px solid #155e75;
+  border-radius: 999px;
+  background: #0f2530;
+  color: #a5f3fc;
+  font-size: .76rem;
+  font-weight: 750;
+}
+.basissoftware-field-grid,
+.basissoftware-topic-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.mqtt-settings-grid { grid-template-columns: minmax(210px, 2fr) minmax(90px, .5fr) minmax(180px, 1fr) minmax(80px, .45fr); }
+.basissoftware-field-grid > label:not(.basissoftware-check),
+.basissoftware-topic-grid > label,
+.power-default-state {
+  display: grid;
+  gap: 5px;
+  color: #94a3b8;
+  font-size: .76rem;
+  font-weight: 700;
+}
+.basissoftware-topic-grid label small { color: #64748b; font-weight: 500; }
+.basissoftware-topic-grid textarea {
+  min-height: 112px;
+  margin: 0;
+  padding: 9px 10px;
+  font-size: .78rem;
+}
+.basissoftware-security-note,
+.basissoftware-compatibility-warning {
+  padding: 9px 10px;
+  border-radius: 7px;
+  font-size: .78rem;
+  line-height: 1.4;
+}
+
+.basissoftware-derived-note {
+  margin: 0;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid rgba(91, 209, 238, 0.42);
+  border-radius: 0.65rem;
+  background: rgba(20, 119, 153, 0.17);
+  color: var(--text);
+}
+
+.communication-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.8rem;
+  padding: 0;
+  border: 0;
+}
+
+.communication-mode-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.65rem;
+  align-items: start;
+  min-height: 7.2rem;
+  padding: 0.9rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: rgba(8, 20, 37, 0.72);
+  cursor: pointer;
+}
+
+.communication-mode-card.selected,
+.communication-mode-card:has(input:checked) {
+  border-color: #5bd1ee;
+  background: rgba(21, 118, 151, 0.2);
+  box-shadow: inset 0 0 0 1px rgba(91, 209, 238, 0.18);
+}
+
+.communication-mode-card span {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.communication-mode-card small {
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.communication-role-section,
+.communication-impact {
+  display: grid;
+  gap: 0.85rem;
+  padding: 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: rgba(8, 20, 37, 0.52);
+}
+
+.communication-role-section h4,
+.communication-impact h4 {
+  margin: 0;
+}
+
+.communication-route {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  overflow-x: auto;
+}
+
+.communication-route article {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 13rem;
+  padding: 0.75rem;
+  border: 1px solid rgba(91, 209, 238, 0.32);
+  border-radius: 0.6rem;
+  background: rgba(17, 41, 67, 0.82);
+}
+
+.communication-route article span,
+.communication-impact p {
+  color: var(--muted);
+}
+
+.communication-impact dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+  margin: 0;
+}
+
+.communication-impact dl div {
+  padding: 0.7rem;
+  border-radius: 0.55rem;
+  background: rgba(17, 41, 67, 0.68);
+}
+
+.communication-impact dt {
+  color: var(--muted);
+  font-size: 0.78rem;
+  text-transform: uppercase;
+}
+
+.communication-impact dd {
+  margin: 0.25rem 0 0;
+}
+
+@media (max-width: 900px) {
+  .communication-mode-grid,
+  .communication-impact dl {
+    grid-template-columns: 1fr;
+  }
+}
+.basissoftware-security-note { border: 1px solid #155e75; background: #0f2530; color: #bae6fd; }
+.basissoftware-compatibility-warning { border: 1px solid #a16207; background: #2a1d08; color: #fde68a; }
+.power-default-state { max-width: 320px; }
+.power-state-flow {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+.power-state-arrow {
+  display: grid;
+  place-items: center;
+  flex: 0 0 20px;
+  color: #67e8f9;
+  font-size: 1.2rem;
+}
+.power-state-card {
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  flex: 1 0 190px;
+  min-width: 190px;
+  padding: 11px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #111827;
+}
+.power-state-card.enabled { border-color: #0e7490; background: #0f2530; }
+.power-state-card.disabled { opacity: .7; }
+.power-state-card > header { display: grid; gap: 4px; }
+.power-state-card > header strong { color: #f8fafc; }
+.power-state-card > header label,
+.power-state-fixed { color: #67e8f9; font-size: .7rem; }
+.power-state-card > p { min-height: 44px; color: #94a3b8; font-size: .74rem; line-height: 1.35; }
+.power-state-card > label { display: grid; gap: 4px; color: #94a3b8; font-size: .72rem; }
+.power-state-card fieldset { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; padding: 7px; border-color: #334155; }
+.power-state-card legend { color: #94a3b8; font-size: .68rem; }
+.power-state-card fieldset label { display: flex; align-items: center; gap: 4px; color: #cbd5e1; font-size: .68rem; }
+@media (max-width: 900px) {
+  .mqtt-settings-grid,
+  .basissoftware-field-grid,
+  .basissoftware-topic-grid { grid-template-columns: 1fr; }
+}
 .webserver-settings { display: grid; grid-template-columns: 2fr 1.5fr .7fr; gap: 10px; border-color: #334155; }
 .webserver-settings label { display: grid; gap: 4px; color: #94a3b8; font-size: 11px; }
 .board-properties-workspace { display: grid; align-content: start; gap: 14px; }
@@ -2806,7 +3030,7 @@ button.danger:hover {
 }
 .hardware-overview {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  grid-template-columns: minmax(0, 1fr);
   gap: 14px;
   align-items: stretch;
 }
@@ -2837,8 +3061,8 @@ button.danger:hover {
   font-weight: 500;
 }
 .hardware-hint-terminal {
-  min-height: 220px;
-  max-height: min(42vh, 440px);
+  min-height: 110px;
+  max-height: min(30vh, 300px);
   overflow-y: auto;
   padding: 12px;
   scrollbar-gutter: stable;
@@ -2914,6 +3138,36 @@ button.danger:hover {
   border-top: 1px solid var(--line);
   padding-top: 14px;
 }
+.hardware-component-section-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 18px;
+}
+.hardware-component-section-head > div {
+  display: grid;
+  gap: 4px;
+}
+.hardware-component-section-head h2,
+.hardware-component-section-head p {
+  margin: 0;
+}
+.hardware-component-section-head p {
+  max-width: 920px;
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.hardware-component-section-head button {
+  flex: none;
+  min-height: 40px;
+}
+@media (max-width: 900px) {
+  .hardware-component-section-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
 .hardware-component-table {
   display: grid;
   width: 100%;
@@ -2932,7 +3186,7 @@ button.danger:hover {
   grid-template-columns: minmax(140px, .7fr) minmax(0, 2.4fr) minmax(140px, .8fr) minmax(170px, 1fr);
   gap: 12px;
   align-items: start;
-  padding: 10px 12px;
+  padding: 16px;
   border-top: 1px solid var(--line);
   background: #fff;
 }
@@ -2965,7 +3219,7 @@ button.danger:hover {
   display: grid;
   gap: 4px;
   color: var(--muted);
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 750;
 }
 .hardware-board-selection {
@@ -2998,13 +3252,13 @@ button.danger:hover {
 .development-board-configuration-state.is-catalog { background: #12352d; color: #86efac; }
 .development-board-configuration-state.is-modified { background: #422006; color: #fde68a; }
 .development-board-feature-table-scroll { overflow-x: auto; }
-.development-board-feature-table { width: 100%; min-width: 980px; border-collapse: collapse; font-size: 11px; }
+.development-board-feature-table { width: 100%; min-width: 1180px; border-collapse: collapse; font-size: 13px; }
 .development-board-feature-table th,
-.development-board-feature-table td { padding: 5px; border: 1px solid #263241; text-align: left; vertical-align: middle; }
+.development-board-feature-table td { padding: 9px; border: 1px solid #263241; text-align: left; vertical-align: middle; }
 .development-board-feature-table th { color: #94a3b8; background: #111827; }
 .development-board-feature-table tr.is-modified { background: rgba(245, 158, 11, .08); }
 .development-board-feature-table select,
-.development-board-feature-table input[type="text"] { min-width: 120px; min-height: 30px; padding: 4px 6px; }
+.development-board-feature-table input[type="text"] { min-width: 150px; min-height: 40px; padding: 7px 9px; }
 .development-board-feature-table input[type="checkbox"] { width: 16px; min-width: 16px; min-height: 16px; }
 .development-board-feature-table .is-modified { border-color: #f59e0b; background: #2b1d0a; box-shadow: 0 0 0 1px rgba(245, 158, 11, .3); }
 .development-custom-board-save { display: grid; grid-template-columns: minmax(260px, 1fr) auto; gap: 8px 12px; align-items: end; padding-top: 2px; }
@@ -3019,6 +3273,21 @@ button.danger:hover {
 .hardware-table-row.hardware-sensor-row {
   grid-template-columns: minmax(140px, .55fr) minmax(0, 3.45fr);
   align-items: end;
+}
+.hardware-table-row.hardware-iot-row {
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+}
+.hardware-iot-row .hardware-component-identity {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  padding-bottom: 4px;
+}
+.hardware-iot-realization,
+.hardware-iot-realization .hardware-board-selection {
+  width: 100%;
+  min-width: 0;
 }
 .hardware-inline-assignment {
   display: grid;
@@ -3035,14 +3304,15 @@ button.danger:hover {
 }
 @media (max-width: 720px) {
   .hardware-table-row,
-  .hardware-table-row.hardware-sensor-row {
+  .hardware-table-row.hardware-sensor-row,
+  .hardware-table-row.hardware-iot-row {
     grid-template-columns: minmax(0, 1fr);
   }
 }
 .hardware-table-row select,
 .hardware-table-row input {
   width: 100%;
-  min-height: 34px;
+  min-height: 44px;
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 6px 8px;
@@ -3057,6 +3327,70 @@ button.danger:hover {
   margin: 0 -16px -16px;
   padding: 10px 16px;
   background: rgba(255, 255, 255, .96);
+}
+.hardware-guidance-bottom {
+  margin-top: 2px;
+}
+.hardware-page-actions {
+  display: grid;
+  grid-template-columns: auto minmax(360px, 1fr);
+  align-items: center;
+}
+.hardware-secondary-actions,
+.hardware-continue-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.hardware-continue-area {
+  justify-content: flex-end;
+}
+.hardware-validation-summary {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  max-width: 760px;
+  padding: 8px 11px;
+  border-left: 4px solid #f59e0b;
+  border-radius: 6px;
+  background: #241a0b;
+  text-align: left;
+}
+.hardware-validation-summary strong {
+  color: #fde68a;
+  font-size: 13px;
+}
+.hardware-validation-summary span {
+  overflow-wrap: anywhere;
+  color: #f8fafc;
+  font-size: 12px;
+  line-height: 1.35;
+}
+.hardware-validation-summary.is-complete {
+  border-left-color: #22c55e;
+  background: #0d2419;
+}
+.hardware-validation-summary.is-complete strong { color: #86efac; }
+.hardware-table-row.has-validation-error {
+  box-shadow: inset 4px 0 0 #f59e0b;
+}
+.hardware-required-field {
+  color: #fde68a !important;
+}
+.hardware-required-field select,
+.hardware-required-field input,
+select.hardware-required-field,
+input.hardware-required-field,
+.hardware-required-field[data-development-board-configuration] {
+  border-color: #f59e0b !important;
+  background: #2b1d0a !important;
+  box-shadow: 0 0 0 2px rgba(245, 158, 11, .22) !important;
+}
+@media (max-width: 900px) {
+  .hardware-page-actions { grid-template-columns: 1fr; }
+  .hardware-secondary-actions,
+  .hardware-continue-area { justify-content: stretch; flex-wrap: wrap; }
+  .hardware-validation-summary { max-width: none; flex: 1 1 100%; }
 }
 .development-project-form label,
 .development-project-field {
@@ -3983,14 +4317,14 @@ textarea:read-only {
   border: 1px solid var(--line);
   border-radius: 8px;
   overflow: hidden;
-  background: #fff;
+  background: #111827;
 }
 .plantuml-diagram {
   display: block;
   width: 100%;
   min-height: 120px;
   object-fit: contain;
-  background: #fff;
+  background: #111827;
 }
 .plantuml-status {
   border-top: 1px solid var(--line);
@@ -4118,14 +4452,185 @@ textarea:read-only {
   color: #fff;
 }
 .usb-port-choice-dialog {
+  width: min(1120px, calc(100vw - 32px));
+  max-height: min(820px, calc(100vh - 32px));
+  overflow: auto;
+  border-color: #38bdf8;
+  background: linear-gradient(145deg, #102f4d, #0b2038);
+  color: #e0f2fe;
+  box-shadow: 0 22px 64px rgba(2, 8, 23, .62);
+}
+.usb-port-choice-dialog .runtime-dialog-header h2 {
+  margin: 2px 0 0;
+  color: #f0f9ff;
+  font-size: 21px;
+}
+.usb-port-choice-dialog .eyebrow {
+  color: #67e8f9;
+}
+.usb-port-choice-dialog > p:not(.usb-port-identity-warning) {
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+.usb-port-choice-dialog .runtime-dialog-header button,
+.usb-port-choice-dialog .usb-port-missing-actions button:not(.primary) {
+  border-color: rgba(186, 230, 253, .4);
+  background: rgba(15, 52, 82, .78);
+  color: #e0f2fe;
+}
+.usb-port-choice-dialog .usb-port-missing-actions .primary {
+  border-color: #38bdf8;
+  background: #0284c7;
+  color: #fff;
+}
+.usb-port-choice-dialog .usb-port-missing-actions .primary:disabled {
+  border-color: #334155;
+  background: #1e293b;
+  color: #64748b;
+}
+.usb-port-identity-warning,
+.usb-port-detected-list {
+  border: 1px solid rgba(56, 189, 248, .42);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(14, 116, 144, .14);
+  color: #e0f2fe;
+  line-height: 1.45;
+}
+.usb-port-detected-list ul {
+  margin: 7px 0 0;
+  padding-left: 20px;
+}
+.usb-port-identification {
+  display: grid;
+  gap: 9px;
+  margin-top: 12px;
+  border: 1px solid rgba(56, 189, 248, .38);
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: rgba(14, 116, 144, .12);
+}
+.usb-port-identification > div {
+  display: grid;
+  gap: 3px;
+  color: #cbd5e1;
+  font-size: .8rem;
+  line-height: 1.4;
+}
+.usb-port-identification > div strong { color: #f0f9ff; font-size: .86rem; }
+.usb-port-identification > p { margin: 0; border-radius: 6px; padding: 8px 10px; line-height: 1.4; }
+.usb-port-identification > p.waiting { color: #bae6fd; background: rgba(15, 23, 42, .48); }
+.usb-port-identification > p.detected { border: 1px solid #f59e0b; color: #fef3c7; background: rgba(146, 64, 14, .2); }
+.usb-port-identification > p.identified { border: 1px solid #22c55e; color: #dcfce7; background: rgba(21, 128, 61, .18); }
+.usb-port-identification > p.error { border: 1px solid #ef4444; color: #fee2e2; background: rgba(153, 27, 27, .2); }
+.usb-port-identification-dialog {
+  width: min(460px, calc(100vw - 36px));
+  border: 1px solid #38bdf8;
+  border-radius: 10px;
+  padding: 18px;
+  background: linear-gradient(145deg, #123554, #081b31);
+  color: #e0f2fe;
+  box-shadow: 0 26px 80px rgba(2, 8, 23, .82), 0 0 0 5px rgba(56, 189, 248, .12);
+  text-align: left;
+}
+.usb-port-identification-dialog::backdrop { background: rgba(2, 8, 23, .68); backdrop-filter: blur(2px); }
+.usb-port-identification-dialog h2 { margin: 0; color: #fff; font-size: 1.15rem; line-height: 1.4; }
+.usb-port-identification-dialog #usbPortIdentificationDialogStatus {
+  margin: 12px 0 0;
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: rgba(15, 23, 42, .58);
+  line-height: 1.4;
+}
+.usb-port-identification-dialog #usbPortIdentificationDialogStatus.waiting { color: #bae6fd; }
+.usb-port-identification-dialog #usbPortIdentificationDialogStatus.detected { border: 1px solid #f59e0b; color: #fef3c7; background: rgba(146, 64, 14, .22); }
+.usb-port-identification-dialog #usbPortIdentificationDialogStatus.identified { border: 1px solid #22c55e; color: #dcfce7; background: rgba(21, 128, 61, .2); }
+.usb-port-identification-dialog #usbPortIdentificationDialogStatus.error { border: 1px solid #ef4444; color: #fee2e2; background: rgba(153, 27, 27, .22); }
+.usb-port-identification-dialog-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 14px; }
+.usb-port-identification-dialog-actions button { border-color: rgba(186, 230, 253, .45); background: rgba(15, 52, 82, .78); color: #e0f2fe; }
+.usb-port-identification-dialog-actions .primary { border-color: #38bdf8; background: #0284c7; color: #fff; }
+.usb-inventory-unknown-dialog {
   width: min(560px, calc(100vw - 32px));
+  border-color: #38bdf8;
+  background: #0b2038;
+  color: #e0f2fe;
+  box-shadow: 0 18px 48px rgba(2, 8, 23, .48);
+}
+.usb-inventory-unknown-dialog h2 { color: #f0f9ff; }
+.usb-inventory-unknown-dialog .eyebrow { color: #7dd3fc; }
+.usb-inventory-unknown-dialog .runtime-dialog-header button,
+.usb-inventory-unknown-dialog .usb-port-missing-actions button:not(.primary) {
+  border-color: rgba(186, 230, 253, .45);
+  background: rgba(15, 52, 82, .72);
+  color: #e0f2fe;
+}
+.usb-inventory-unknown-dialog .usb-port-missing-actions .primary {
+  border-color: #38bdf8;
+  background: #0284c7;
+  color: #fff;
+}
+.usb-inventory-unknown-port {
+  border: 1px solid rgba(125, 211, 252, .35);
+  border-radius: 7px;
+  padding: 8px 10px;
+  background: rgba(15, 52, 82, .58);
+  color: #bae6fd;
+  font-size: .88rem;
+}
+.usb-inventory-warning-preference {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin: 14px 0;
+  color: #dbeafe;
+  font-size: .9rem;
+  cursor: pointer;
+}
+.usb-inventory-warning-preference input {
+  width: 18px;
+  height: 18px;
+  margin: 0;
+  accent-color: #0ea5e9;
 }
 .flash-target-choice-dialog {
   width: min(620px, calc(100vw - 32px));
 }
+.cancel-build-confirm-dialog {
+  width: min(500px, calc(100vw - 28px));
+  border-color: #ef4444;
+  background: #111827;
+  color: #e5e7eb;
+  box-shadow: 0 22px 64px rgba(2, 6, 23, .68);
+}
+.cancel-build-confirm-dialog h2 {
+  color: #fff;
+  font-size: 21px;
+}
+.cancel-build-confirm-dialog > p {
+  color: #cbd5e1;
+  line-height: 1.5;
+}
+.cancel-build-confirm-dialog .runtime-dialog-header button,
+.cancel-build-confirm-dialog .usb-port-missing-actions button:not(.cancel-build-confirm-button) {
+  border-color: #475569;
+  background: #1e293b;
+  color: #e2e8f0;
+}
+.cancel-build-confirm-dialog .cancel-build-confirm-button {
+  border-color: #ef4444;
+  background: #b91c1c;
+  color: #fff;
+  font-weight: 750;
+}
+.cancel-build-confirm-dialog .cancel-build-confirm-button:hover {
+  border-color: #f87171;
+  background: #dc2626;
+}
 .usb-port-missing-dialog::backdrop,
 .usb-port-choice-dialog::backdrop,
-.flash-target-choice-dialog::backdrop {
+.usb-inventory-unknown-dialog::backdrop,
+.flash-target-choice-dialog::backdrop,
+.cancel-build-confirm-dialog::backdrop {
   background: rgba(15, 23, 42, 0.58);
 }
 .usb-port-missing-dialog ul {
@@ -4179,20 +4684,133 @@ textarea:read-only {
 .usb-port-recovery-sequence li + li {
   margin-top: 3px;
 }
+.usb-port-macos-security-hint {
+  margin-top: 12px;
+  border: 1px solid rgba(56, 189, 248, .45);
+  border-radius: 8px;
+  padding: 11px 12px;
+  background: rgba(14, 116, 144, .14);
+  color: #e0f2fe;
+}
+.usb-port-macos-security-hint > strong { color: #f0f9ff; }
+.usb-port-macos-security-hint p { margin: 7px 0; line-height: 1.45; }
+.usb-port-macos-security-hint ol { margin: 7px 0 0; padding-left: 22px; }
+.usb-port-macos-security-hint li + li { margin-top: 4px; }
 .usb-port-missing-actions {
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 12px;
 }
-.usb-port-choice-field {
+.usb-flash-assignment-table {
+  margin-top: 14px;
+  border: 1px solid rgba(125, 211, 252, .25);
+  border-radius: 9px;
+  background: rgba(2, 8, 23, .24);
+  overflow: hidden;
+}
+.usb-flash-assignment-table-head,
+.usb-flash-assignment-row {
   display: grid;
-  gap: 6px;
-  margin-top: 16px;
+  grid-template-columns: minmax(0, 1.45fr) minmax(260px, .55fr);
+  gap: 16px;
+  align-items: stretch;
+}
+.usb-flash-assignment-table-head {
+  padding: 10px 12px;
+  border-bottom: 1px solid rgba(125, 211, 252, .28);
+  background: rgba(14, 116, 144, .14);
+}
+.usb-flash-assignment-table-head strong {
+  color: #f0f9ff;
+  font-size: .82rem;
   font-weight: 700;
 }
-.usb-port-choice-field select {
+.usb-flash-assignment-row {
+  padding: 12px;
+  border-bottom: 1px solid rgba(71, 85, 105, .55);
+}
+.usb-flash-assignment-row:last-child {
+  border-bottom: 0;
+}
+.usb-flash-firmware-cell,
+.usb-flash-port-cell {
+  min-width: 0;
+}
+.usb-flash-firmware-cell > strong {
+  display: block;
+  margin-bottom: 7px;
+  color: #f8fafc;
+  font-size: .92rem;
+}
+.usb-flash-firmware-meta {
+  display: grid;
+  gap: 5px;
+}
+.usb-flash-firmware-meta span {
+  min-width: 0;
+  color: #cbd5e1;
+  font-size: .75rem;
+  overflow-wrap: anywhere;
+}
+.usb-flash-firmware-meta b {
+  color: #7dd3fc;
+  font-weight: 750;
+}
+.usb-flash-build-state.succeeded { color: #86efac; }
+.usb-flash-build-state.failed,
+.usb-flash-build-state.cancelled { color: #fca5a5; }
+.usb-flash-build-state.running,
+.usb-flash-build-state.queued { color: #bae6fd; }
+.usb-flash-port-cell {
+  display: grid;
+  align-content: center;
+  gap: 7px;
+}
+.usb-flash-port-cell select {
   width: 100%;
+  min-height: 42px;
+  border-color: #475569;
+  background: #0b1018;
+  color: #f8fafc;
+}
+.usb-flash-identify-port-button {
+  min-height: 36px;
+  border: 1px solid rgba(56, 189, 248, .55);
+  border-radius: 7px;
+  background: rgba(14, 116, 144, .22);
+  color: #e0f2fe;
+  font-size: .76rem;
+  font-weight: 700;
+}
+.usb-flash-identify-port-button:hover:not(:disabled) { background: rgba(14, 116, 144, .38); }
+.usb-flash-identify-port-button:disabled { border-color: #334155; background: #172033; color: #64748b; }
+.usb-flash-port-cell small {
+  color: #94a3b8;
+  font-size: .72rem;
+  line-height: 1.35;
+}
+.usb-flash-assignment-empty {
+  margin: 0;
+  padding: 16px 12px;
+  border: 1px dashed #475569;
+  border-radius: 8px;
+  color: #94a3b8;
+  text-align: center;
+}
+@media (max-width: 820px) {
+  .usb-flash-assignment-table-head,
+  .usb-flash-assignment-row {
+    grid-template-columns: 1fr;
+  }
+  .usb-flash-assignment-table-head strong:last-child {
+    display: none;
+  }
+}
+@media (max-width: 560px) {
+  .usb-flash-firmware-meta {
+    grid-template-columns: 1fr;
+  }
 }
 .serial-service-choice-grid {
   display: grid;
@@ -4697,6 +5315,23 @@ button.primary,
 #usbFlashButton,
 #openIdeButton,
 #lessonNextButton { border-color: #0891b2; background: #0e7490; color: #ecfeff; }
+#buildButton.build-cancel-active {
+  border-color: #ef4444;
+  background: #b91c1c;
+  color: #fff;
+  box-shadow: 0 0 0 1px rgba(248, 113, 113, .3), 0 5px 16px rgba(127, 29, 29, .34);
+  font-weight: 750;
+}
+#buildButton.build-cancel-active:hover:not(:disabled) {
+  border-color: #f87171;
+  background: #dc2626;
+}
+#buildButton.build-cancel-active:disabled {
+  border-color: #7f1d1d;
+  background: #450a0a;
+  color: #fca5a5;
+  box-shadow: none;
+}
 button.active-method { border-color: #22d3ee; background: #164e63; color: #cffafe; }
 /* Keep the selected Device Management area legible without a bright white fill. */
 .device-management-tabs button.active { border-color: #0891b2; background: #164e63; color: #cffafe; }
@@ -4752,9 +5387,11 @@ textarea,
 .app-menu-group > summary:focus-visible { border-color: #22d3ee; background: #203047; outline: none; }
 .app-menu-group > div { display: grid; gap: 6px; padding-left: 10px; }
 .app-menu-group > div a,
-.app-menu-group > div .menu-logout { min-height: 38px; padding: 8px 10px; font-size: 14px; }
+.app-menu-group > div .menu-logout,
+.app-menu-group > div .menu-tool-action { min-height: 38px; padding: 8px 10px; font-size: 14px; }
 .app-menu a,
-.app-menu .menu-logout {
+.app-menu .menu-logout,
+.app-menu .menu-tool-action {
   display: flex;
   align-items: center;
   min-height: 42px;
@@ -4770,9 +5407,11 @@ textarea,
   text-align: left;
 }
 .app-menu a.utility { background: #182230; color: #a8b6ca; }
+.app-menu .menu-tool-action { width: 100%; background: #182230; color: #a8b6ca; }
 .app-menu a[href="/app/auth/"] { border-color: #0891b2; background: #164e63; color: #cffafe; }
 .app-menu a:hover,
-.app-menu .menu-logout:hover {
+.app-menu .menu-logout:hover,
+.app-menu .menu-tool-action:hover {
   border-color: #22d3ee;
   background: #273244;
   color: #ecfeff;
@@ -4795,12 +5434,61 @@ textarea,
 .app-menu .menu-fixed-action,
 .app-menu .menu-session-action { margin-top: 4px; }
 .app-menu a:focus-visible,
-.app-menu .menu-logout:focus-visible {
+.app-menu .menu-logout:focus-visible,
+.app-menu .menu-tool-action:focus-visible {
   outline: 2px solid #22d3ee;
   outline-offset: 2px;
 }
+.device-wifi-setup-dialog {
+  width: min(720px, calc(100vw - 28px));
+  max-height: calc(100vh - 28px);
+  overflow: auto;
+  border: 1px solid #38bdf8;
+  border-radius: 12px;
+  padding: 0;
+  background: #0b1728;
+  color: #e2e8f0;
+  box-shadow: 0 26px 78px rgba(2, 8, 23, .7);
+}
+.device-wifi-setup-dialog::backdrop { background: rgba(2, 8, 23, .75); backdrop-filter: blur(3px); }
+.device-wifi-setup-dialog form { display: grid; gap: 16px; padding: 22px; }
+.device-wifi-setup-dialog header { display: flex; justify-content: space-between; gap: 18px; align-items: flex-start; }
+.device-wifi-setup-dialog h2, .device-wifi-setup-dialog p { margin: 0; }
+.device-wifi-setup-dialog h2 { color: #f8fafc; font-size: 22px; }
+.device-wifi-setup-dialog .eyebrow { color: #67e8f9; }
+.device-wifi-setup-dialog header button,
+.device-wifi-setup-dialog footer button:not(.primary),
+.device-wifi-setup-dialog .device-wifi-setup-step button:not(.primary) { border-color: #475569; background: #1e293b; color: #e2e8f0; }
+.device-wifi-setup-intro { color: #cbd5e1; line-height: 1.5; }
+.device-wifi-setup-context { border-left: 3px solid #22d3ee; padding: 8px 11px; background: rgba(34, 211, 238, .08); color: #cffafe; }
+.device-wifi-setup-step { display: grid; gap: 13px; border: 1px solid #334155; border-radius: 10px; padding: 15px; background: #111e30; }
+.device-wifi-setup-step > div:first-child { display: flex; gap: 11px; align-items: flex-start; }
+.device-wifi-setup-step > div:first-child div { display: grid; gap: 3px; }
+.device-wifi-setup-step small { color: #94a3b8; line-height: 1.4; }
+.device-wifi-setup-step-number { display: grid; place-items: center; flex: 0 0 27px; height: 27px; border-radius: 50%; background: #0891b2; color: #ecfeff; font-weight: 850; }
+.device-wifi-setup-control-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 9px; align-items: center; }
+.device-wifi-port-identification { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px 14px; align-items: center; border: 1px solid rgba(56, 189, 248, .32); border-radius: 8px; padding: 11px 12px; background: rgba(14, 116, 144, .1); }
+.device-wifi-port-identification > div { display: grid; gap: 3px; }
+.device-wifi-port-identification > p { grid-column: 1 / -1; margin: 0; border-radius: 6px; padding: 8px 10px; color: #dbeafe; background: rgba(15, 23, 42, .48); line-height: 1.4; }
+.device-wifi-port-identification > p.waiting { color: #bae6fd; }
+.device-wifi-port-identification > p.detected { border: 1px solid #f59e0b; color: #fef3c7; background: rgba(146, 64, 14, .2); }
+.device-wifi-port-identification > p.identified { border: 1px solid #22c55e; color: #dcfce7; background: rgba(21, 128, 61, .18); }
+.device-wifi-port-identification > p.error { border: 1px solid #ef4444; color: #fee2e2; background: rgba(153, 27, 27, .2); }
+.device-wifi-setup-step label, .device-wifi-setup-network-fields label { display: grid; gap: 6px; color: #cbd5e1; font-size: .88rem; font-weight: 750; }
+.device-wifi-setup-step select, .device-wifi-setup-step input { width: 100%; border-color: #475569; background: #07101d; color: #e2e8f0; }
+.device-wifi-setup-network-fields { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 11px; }
+.device-wifi-setup-network-fields > label:first-child { grid-column: 1 / -1; }
+.device-wifi-setup-dialog .flash-status { margin: 0; }
+.device-wifi-setup-dialog footer { display: flex; justify-content: flex-end; gap: 10px; }
+@media (max-width: 620px) {
+  .device-wifi-setup-dialog form { padding: 16px; }
+  .device-wifi-setup-control-row, .device-wifi-setup-network-fields { grid-template-columns: 1fr; }
+  .device-wifi-port-identification { grid-template-columns: 1fr; }
+  .device-wifi-port-identification > p { grid-column: 1; }
+  .device-wifi-setup-control-row label { display: none; }
+}
 .plantuml-viewer,
-.plantuml-diagram { background: #fff; }
+.plantuml-diagram { background: #111827; }
 .guided-code-viewer,
 .guided-visual-stage,
 .guided-plantuml-workspace,
@@ -5495,34 +6183,6 @@ body.public-help-page .app-menu { position: fixed; top: 80px; right: 22px; z-ind
 }
 @media (max-width: 680px) { .provisioning-pin-editor-content { grid-template-columns: 1fr; } .provisioning-pin-editor-content aside { border-left: 0; border-top: 1px solid var(--line); padding: 14px 0 0; } .provisioning-pin-fields { grid-template-columns: 1fr; } }
 @media (max-width: 900px) { .learning-software-target-grid { grid-template-columns: 1fr; } .learning-software-target-panel > footer { align-items: stretch; flex-direction: column; } }
-.template-software-units {
-  margin-top: 1rem;
-  padding: 1rem;
-  border: 1px solid color-mix(in srgb, var(--accent) 24%, var(--line));
-  border-radius: 14px;
-  background: color-mix(in srgb, var(--accent) 5%, var(--panel));
-}
-
-.template-software-units h4,
-.template-software-units p { margin: .2rem 0; }
-.template-software-units ul {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: .55rem;
-  margin: .8rem 0;
-  padding: 0;
-  list-style: none;
-}
-.template-software-units li {
-  display: grid;
-  gap: .16rem;
-  padding: .65rem;
-  border-radius: 10px;
-  background: var(--panel);
-}
-.template-software-units li span { color: var(--accent); }
-.template-software-units li small { overflow-wrap: anywhere; }
-
 .ide-software-unit-control {
   display: inline-flex;
   align-items: center;

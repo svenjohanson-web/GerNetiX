@@ -54,6 +54,7 @@ COPY --chown=node:node tools/migrate-hardware-shop-sqlite-to-postgres.js ./tools
 COPY --chown=node:node tools/migrate-operations-sqlite-to-postgres.js ./tools/migrate-operations-sqlite-to-postgres.js
 COPY --chown=node:node tools/migrate-runtime-sqlite-to-postgres.js ./tools/migrate-runtime-sqlite-to-postgres.js
 COPY --chown=node:node tools/migrate-postgres-domains-to-runtime.js ./tools/migrate-postgres-domains-to-runtime.js
+COPY --chown=node:node tools/provision-build-worker-postgres.js ./tools/provision-build-worker-postgres.js
 COPY --chown=node:node tools/submit-flashbox-build-job.js ./tools/submit-flashbox-build-job.js
 COPY --chown=node:node tools/publish-touch-demo-release.js ./tools/publish-touch-demo-release.js
 COPY --chown=node:node tools/publish-platform-download.js ./tools/publish-platform-download.js

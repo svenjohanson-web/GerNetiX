@@ -10,3 +10,4 @@ services/*/.runtime/
 .env.vps
 .env.staging.local
 .env.remote-dev.local
+.env.build-worker.local

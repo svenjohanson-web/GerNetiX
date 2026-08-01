@@ -3,6 +3,13 @@
 const ADDITIVELY_ENRICHED_ITEM_IDS = new Set([
   "hardware.processor_board.waveshare_esp32_s3_cam_ov3660",
 ]);
+const WAVESHARE_CAMERA_ITEM_ID = "hardware.processor_board.waveshare_esp32_s3_cam_ov3660";
+const OBSOLETE_WAVESHARE_EXPANDER_ROLES = new Set([
+  "camera_power_down",
+  "backlight",
+  "audio_amplifier_enable",
+  "tf_card_detect",
+]);
 
 function enrichKnownHardwareItem(item, seededItem) {
   const enriched = clone(item);
@@ -18,7 +25,17 @@ function enrichKnownHardwareItem(item, seededItem) {
   const enrichedRoles = enriched.default_instance_configuration?.io_expander?.roles;
   const seededRoles = seededItem.default_instance_configuration?.io_expander?.roles;
   if (enrichedRoles || seededRoles) {
-    enriched.default_instance_configuration.io_expander.roles = union(enrichedRoles, seededRoles);
+    enriched.default_instance_configuration.io_expander.roles = union(enrichedRoles, seededRoles)
+      .filter((role) => !OBSOLETE_WAVESHARE_EXPANDER_ROLES.has(role));
+  }
+  if (enriched.hardware_item_id === WAVESHARE_CAMERA_ITEM_ID) {
+    // Die bisherige Seed-Belegung ordnete Kamera-Power irrtuemlich EXIO3 zu.
+    // Waveshares Referenztreiber aktiviert die integrierte Kamera ueber IO6.
+    // Diese Herstellerbelegung ist keine additive Nutzeranpassung und ersetzt
+    // deshalb auch in einem bereits persistierten System-Katalog die Altwerte.
+    enriched.default_instance_configuration.io_expander.lines = clone(
+      seededItem.default_instance_configuration.io_expander.lines,
+    );
   }
   return enriched;
 }

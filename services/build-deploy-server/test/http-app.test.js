@@ -44,6 +44,22 @@ test("job status can be returned by a worker that did not execute the job", asyn
   });
 });
 
+test("cancellation is forwarded to the worker coordination service", async () => {
+  const app = createHttpApp({
+    service: {
+      async cancelJob(jobId) {
+        return { job_id: jobId, status: "cancelling" };
+      },
+    },
+  });
+  const response = createResponseRecorder();
+
+  await app({ method: "POST", url: "/api/build-jobs/job%2042/cancel", headers: { host: "127.0.0.1" } }, response);
+
+  assert.equal(response.status, 202);
+  assert.deepEqual(JSON.parse(response.body.toString()), { job_id: "job 42", status: "cancelling" });
+});
+
 test("serves every ESP32 browser flash artifact", async () => {
   const requested = [];
   const app = createHttpApp({

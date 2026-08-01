@@ -34,6 +34,9 @@ extern "C" void app_main() {
 #if !defined(GERNETIX_BASISSOFTWARE_PROFILE_MEDIUM) && !defined(GERNETIX_BASISSOFTWARE_PROFILE_LOW)
   confirmRunningOtaImage();
 #if !defined(GERNETIX_DIAGNOSTIC_DISABLE_PROVISIONING_NVS)
+  // Der geschuetzte GerNetiX-OTA-Steuerkanal ist Infrastruktur und nicht das
+  // optionale, vom Projekt konfigurierte MQTT.  Ein Projekt ohne MQTT muss
+  // deshalb weiterhin signierte OTA-Auftraege empfangen koennen.
   startMqttOtaSubscriber();
 #endif
 #endif

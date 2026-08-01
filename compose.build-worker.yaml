@@ -1,0 +1,49 @@
+name: gernetix-build-worker
+
+services:
+  build-worker:
+    build:
+      context: .
+      dockerfile: docker/flashbox-build-server.Dockerfile
+    image: gernetix/build-worker:${GERNETIX_BUILD_WORKER_IMAGE_TAG:-local}
+    init: true
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      GERNETIX_SERVICE: build-deploy-server
+      HOST: 0.0.0.0
+      PORT: 4400
+      PERSISTENCE_BACKEND: memory
+      BUILD_ARTIFACT_PERSISTENCE_BACKEND: postgres
+      BUILD_COORDINATION_BACKEND: postgres
+      BUILD_WORKER_ROLE: build_only
+      BUILD_COORDINATION_POOL_MAX: ${BUILD_COORDINATION_POOL_MAX:-20}
+      BUILD_WORKER_ID: ${BUILD_WORKER_ID:?BUILD_WORKER_ID muss gesetzt sein}
+      BUILD_WORKER_HEARTBEAT_MS: ${BUILD_WORKER_HEARTBEAT_MS:-15000}
+      BUILD_WORKER_STALE_MS: ${BUILD_WORKER_STALE_MS:-120000}
+      BUILD_CANCELLATION_POLL_MS: ${BUILD_CANCELLATION_POLL_MS:-500}
+      BUILD_POSTGRES_HOST: ${BUILD_POSTGRES_HOST:?BUILD_POSTGRES_HOST muss gesetzt sein}
+      BUILD_POSTGRES_PORT: ${BUILD_POSTGRES_PORT:-25432}
+      BUILD_POSTGRES_DATABASE: ${BUILD_POSTGRES_DATABASE:-gernetix_runtime}
+      BUILD_POSTGRES_USER: ${BUILD_POSTGRES_USER:-gernetix_build_worker}
+      BUILD_POSTGRES_PASSWORD: ${BUILD_POSTGRES_PASSWORD:?BUILD_POSTGRES_PASSWORD muss gesetzt sein}
+      BUILD_DATABASE_SCHEMA_MANAGEMENT: disabled
+      BUILD_DEPLOY_RUNTIME_DIR: /var/lib/gernetix/build
+      BUILD_RUNNER: platformio
+      PLATFORMIO_COMMAND: /opt/platformio/bin/platformio
+      PUBLIC_BASE_URL: ${BUILD_PUBLIC_BASE_URL:-https://build.gernetix.com}
+      MQTT_BROKER_URL: ""
+    ports:
+      - "${BUILD_WORKER_BIND_ADDRESS:?BUILD_WORKER_BIND_ADDRESS muss die private WireGuard-Adresse sein}:${BUILD_WORKER_PORT:-4400}:4400"
+    volumes:
+      - build_worker_state:/var/lib/gernetix/build
+    healthcheck:
+      test: ["CMD", "node", "/app/docker/healthcheck.js"]
+      interval: 15s
+      timeout: 4s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  build_worker_state:

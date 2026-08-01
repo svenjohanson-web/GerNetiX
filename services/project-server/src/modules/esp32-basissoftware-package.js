@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { renderPlatformioIni } = require("../../../shared/platformio-config");
+const { normalizeBasissoftwareConfiguration, POWER_STATE_IDS } = require("../../../shared/basissoftware-configuration");
 
 const DEFAULT_BASIS_ROOT = path.resolve(__dirname, "../../../..", "basissoftware", "esp32");
 const DEFAULT_RUNTIME_CORE_ROOT = path.resolve(__dirname, "../../../..", "firmware", "shared", "gernetix-runtime-core");
@@ -41,11 +42,15 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
   if (!userSource) {
     throw new Error(`Projektquelle fuer User-Main fehlt: ${userSourcePath}`);
   }
+  if (/gernetix_board_configuration\.h/.test(userSource.content) && !effectiveBuildConfig.board_configuration) {
+    throw new Error(`Boardkonfiguration fuer ${userSourcePath} fehlt im Build-Snapshot.`);
+  }
   const byPath = new Map(basisFiles.map((file) => [file.path, { ...file }]));
   addRuntimeCore(byPath);
   rewriteRuntimeCorePaths(byPath);
   applyBasissoftwareProfile(byPath, effectiveBuildConfig);
   applyBoardConfiguration(byPath, effectiveBuildConfig.board_configuration);
+  applyBasissoftwareConfiguration(byPath, effectiveBuildConfig.basissoftware_configuration);
   byPath.set("platformio.ini", {
     path: "platformio.ini",
     content: renderPlatformioIni(effectiveBuildConfig),
@@ -57,11 +62,29 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
     content_type: userSource.content_type || "text/x-c++src",
     source_project_path: userSourcePath,
   });
-  const componentSourceRoot = userSourcePath.replace(/\/user_main\.cpp$/, "/");
+  const sourceSegmentIndex = userSourcePath.lastIndexOf("/src/");
+  const componentRoot = sourceSegmentIndex >= 0
+    ? userSourcePath.slice(0, sourceSegmentIndex)
+    : userSourcePath.startsWith("src/") ? "" : userSourcePath.replace(/\/[^/]+$/, "");
+  const componentPrefix = componentRoot ? `${componentRoot}/` : "";
+  const implementationRoot = `${componentPrefix}src/`;
+  const includeRoot = `${componentPrefix}include/`;
   for (const projectSource of projectSources) {
-    if (projectSource.path === userSourcePath || !projectSource.path.startsWith(componentSourceRoot)) continue;
-    const relative = projectSource.path.slice(componentSourceRoot.length);
-    if (!/\.(h|hpp)$/i.test(relative) || relative.includes("..")) continue;
+    if (projectSource.path === userSourcePath) continue;
+    const isImplementationFile = projectSource.path.startsWith(implementationRoot);
+    const isPublicHeader = projectSource.path.startsWith(includeRoot);
+    if (!isImplementationFile && !isPublicHeader) continue;
+    const relative = projectSource.path.slice((isPublicHeader ? includeRoot : implementationRoot).length);
+    if (isImplementationFile && relative === "idf_component.yml") {
+      byPath.set("src/idf_component.yml", {
+        path: "src/idf_component.yml",
+        content: projectSource.content,
+        content_type: "text/plain",
+        source_project_path: projectSource.path,
+      });
+      continue;
+    }
+    if (!/\.(h|hh|hpp|hxx|inc|inl|ipp|tpp|cuh)$/i.test(relative) || relative.includes("..")) continue;
     byPath.set(`include/user_project/${relative}`, {
       path: `include/user_project/${relative}`,
       content: projectSource.content,
@@ -79,6 +102,70 @@ function applyBoardConfiguration(byPath, configuration) {
     content: renderBoardConfigurationHeader(configuration),
     content_type: "text/x-c++hdr",
   });
+}
+
+function applyBasissoftwareConfiguration(byPath, configuration) {
+  const normalized = normalizeBasissoftwareConfiguration(configuration);
+  byPath.set("include/gernetix_basissoftware_configuration.h", {
+    path: "include/gernetix_basissoftware_configuration.h",
+    content: renderBasissoftwareConfigurationHeader(normalized),
+    content_type: "text/x-c++hdr",
+  });
+}
+
+function renderBasissoftwareConfigurationHeader(configuration) {
+  const config = normalizeBasissoftwareConfiguration(configuration);
+  const lines = [
+    "#pragma once",
+    "// Generated from the protected, project-owned GerNetiX basissoftware configuration.",
+    "#define GERNETIX_BASISSOFTWARE_CONFIGURATION_SCHEMA_VERSION 1",
+    `#define GERNETIX_WIFI_ENABLED ${config.wifi.enabled ? 1 : 0}`,
+    `#define GERNETIX_WIFI_MODE ${cppString(config.wifi.mode)}`,
+    `#define GERNETIX_WIFI_AUTO_RECONNECT ${config.wifi.auto_reconnect ? 1 : 0}`,
+    `#define GERNETIX_COMMUNICATION_MANAGED_BY_PROJECT ${config.communication.managed_by_project ? 1 : 0}`,
+    `#define GERNETIX_COMMUNICATION_TOPOLOGY ${cppString(config.communication.topology)}`,
+    `#define GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT ${config.communication.topology === "device_access_point" ? 1 : 0}`,
+    `#define GERNETIX_COMMUNICATION_ROLE ${cppString(config.communication.role)}`,
+    `#define GERNETIX_COMMUNICATION_ROLE_HOST ${config.communication.role === "host" ? 1 : 0}`,
+    `#define GERNETIX_COMMUNICATION_TRANSPORT ${cppString(config.communication.transport)}`,
+    `#define GERNETIX_COMMUNICATION_INTERNET_ACCESS ${config.communication.internet_access ? 1 : 0}`,
+    `#define GERNETIX_COMMUNICATION_OTA_AVAILABLE ${config.communication.ota_available ? 1 : 0}`,
+    `#define GERNETIX_COMMUNICATION_OBSERVER_ACCESS ${config.communication.observer_access ? 1 : 0}`,
+    `#define GERNETIX_COMMUNICATION_ENDPOINT_PORT ${config.communication.endpoint_port}`,
+    `#define GERNETIX_COMMUNICATION_ENDPOINT_PATH ${cppString(config.communication.endpoint_path)}`,
+    `#define GERNETIX_COMMUNICATION_LOCAL_HOSTNAME ${cppString(config.communication.local_hostname)}`,
+    `#define GERNETIX_COMMUNICATION_PEER_HOSTNAME ${cppString(config.communication.peer_hostname)}`,
+    `#define GERNETIX_PROJECT_AP_SSID ${cppString(config.communication.access_point_ssid)}`,
+    `#define GERNETIX_PROJECT_AP_PASSWORD ${cppString(config.communication.access_point_password)}`,
+    `#define GERNETIX_ACCESS_POINT_IPV4_ADDRESS ${cppString(config.communication.access_point_ipv4_address || "192.168.4.1")}`,
+    `#define GERNETIX_ACCESS_POINT_SUBNET_MASK ${cppString(config.communication.access_point_subnet_mask || "255.255.255.0")}`,
+    `#define GERNETIX_ACCESS_POINT_DHCP_START ${cppString(config.communication.access_point_dhcp_start || "192.168.4.100")}`,
+    `#define GERNETIX_ACCESS_POINT_DHCP_END ${cppString(config.communication.access_point_dhcp_end || "192.168.4.199")}`,
+    `#define GERNETIX_COMMUNICATION_PEER_COUNT ${config.communication.peer_software_unit_ids.length}`,
+    ...config.communication.peer_software_unit_ids.map((peer, index) => `#define GERNETIX_COMMUNICATION_PEER_${index} ${cppString(peer)}`),
+    `#define GERNETIX_MQTT_ENABLED ${config.mqtt.enabled ? 1 : 0}`,
+    `#define GERNETIX_MQTT_BROKER_URL ${cppString(config.mqtt.broker_url)}`,
+    `#define GERNETIX_MQTT_PORT ${config.mqtt.port}`,
+    `#define GERNETIX_MQTT_TLS ${config.mqtt.tls ? 1 : 0}`,
+    `#define GERNETIX_MQTT_CLIENT_ID_TEMPLATE ${cppString(config.mqtt.client_id_template)}`,
+    `#define GERNETIX_MQTT_QOS ${config.mqtt.qos}`,
+    `#define GERNETIX_MQTT_PUBLISH_TOPIC_COUNT ${config.mqtt.publish_topics.length}`,
+    `#define GERNETIX_MQTT_SUBSCRIPTION_COUNT ${config.mqtt.subscriptions.length}`,
+  ];
+  config.mqtt.publish_topics.forEach((topic, index) => lines.push(`#define GERNETIX_MQTT_PUBLISH_TOPIC_${index} ${cppString(topic)}`));
+  config.mqtt.subscriptions.forEach((topic, index) => lines.push(`#define GERNETIX_MQTT_SUBSCRIPTION_${index} ${cppString(topic)}`));
+  lines.push(
+    `#define GERNETIX_POWER_MANAGER_ENABLED ${config.power_manager.enabled ? 1 : 0}`,
+    `#define GERNETIX_POWER_DEFAULT_STATE ${cppString(config.power_manager.default_state)}`,
+  );
+  for (const stateId of POWER_STATE_IDS) {
+    const state = config.power_manager.states[stateId];
+    const prefix = `GERNETIX_POWER_STATE_${macroName(stateId)}`;
+    lines.push(`#define ${prefix}_ENABLED ${state.enabled ? 1 : 0}`);
+    lines.push(`#define ${prefix}_ENTER_AFTER_SECONDS ${state.enter_after_seconds}`);
+    lines.push(`#define ${prefix}_WAKE_SOURCES ${cppString(state.wake_sources.join(","))}`);
+  }
+  return `${lines.join("\n")}\n`;
 }
 
 function renderBoardConfigurationHeader(configuration) {
@@ -215,4 +302,4 @@ function contentType(filePath) {
   return "text/plain";
 }
 
-module.exports = { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles, renderBoardConfigurationHeader };
+module.exports = { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles, renderBoardConfigurationHeader, renderBasissoftwareConfigurationHeader };

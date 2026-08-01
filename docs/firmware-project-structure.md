@@ -202,14 +202,59 @@ Die Variante wird explizit im Projektmodell oder BuildPackage gewaehlt. Sie darf
 
 Ein Build darf immer nur fuer ein Projektprofil laufen. Der Build-Prozess kopiert oder generiert daraus die freigegebenen Konfigurationsdateien in den temporaeren Build-Kontext.
 
+Fuer Sprachen mit getrennten Header- und Implementierungsdateien gilt innerhalb jeder Komponente die uebliche Build-Werkzeug-Konvention:
+
+- `Komponenten/<Komponente>/src/`: kompilierbare Implementierungen wie `.c`, `.cpp`, `.m`, `.mm` und `.ino`
+- `Komponenten/<Komponente>/include/`: Header und eingebundene Deklarationen wie `.h`, `.hpp`, `.inc`, `.ipp` und `.tpp`
+
+Im IDE-Projektbaum erscheinen beide als `Source/src` und `Source/include`. Bestehende Header unter einem frueher verwendeten `src`-Pfad bleiben kompatibel und werden im Baum unter `Source/include` eingeordnet; neue Templates verwenden den getrennten `include`-Pfad.
+
+### Verbindlicher Firmware-Projektvertrag
+
+Alle PlatformIO-Templates und daraus erzeugten Projekte verwenden denselben versionierten Vertrag aus `services/shared/firmware-project-contract.js`:
+
+- `source_root` ist genau `Komponenten/<Komponente>`.
+- `entrypoint` und `build_config.user_source_path` sind derselbe komponentenrelative Pfad.
+- Eigenstaendige Firmware startet standardmaessig unter `src/main.*`; Firmware mit GerNetiX-Basissoftware unter `src/user_main.cpp`.
+- Header neuer Templates liegen ausschliesslich unter `include`; Implementierungen unter `src`.
+- Das Template wird bereits beim Laden gegen seine tatsaechlich gelieferten Quellen validiert.
+- Der Project Server validiert die ausgewaehlte Software-Einheit erneut, bevor er ein BuildPackage erzeugt.
+- Das BuildPackage traegt Vertragsversion, Software-Einheit, Plattform, Board, Environment, Paket-Einstieg und Dateianzahl mit.
+- Der Build-Server prueft diesen Vertrag vor dem Materialisieren und lehnt Zielabweichungen oder fehlende Dateien vor dem Compilerstart ab.
+- Ein abweichendes Layout besitzt keinen stillen Fallback. Es erfordert eine bewusste Aenderung des zentralen Vertrags und damit eine ausdrueckliche Architekturentscheidung.
+
 Fuer accountgebundene IoT-Device-Entwicklungsprojekte gilt im ersten IDE-Durchstich:
 
-- Jede Architekturkomponente besitzt ihren eigenen Source-Bereich. Fuer die logische Komponente `IoT-Device 1` speichert der Project Server als sichtbare und editierbare Projektquelle nur `Komponenten/IoT-Device 1/src/user_main.cpp`; ein projektweiter `src/`-Ordner ist nicht zulaessig. Ein konkreter ESP32 ist eine spaetere Boardrealisierung und niemals der logische Komponentenname.
+- Jede Architekturkomponente besitzt ihren eigenen Source-Bereich. Fuer die logische Komponente `IoT-Device 1` speichert der Project Server Implementierungen unter `Komponenten/IoT-Device 1/src` und Header unter `Komponenten/IoT-Device 1/include`; projektweite parallele Source-Wurzeln sind nicht zulaessig. Ein konkreter ESP32 ist eine spaetere Boardrealisierung und niemals der logische Komponentenname.
 - Diese User-Main gehoert fachlich zum Account-Projekt und wird nicht in `basissoftware/esp32` persistiert.
 - Beim Erzeugen des vollstaendigen BuildPackage legt der Project Server die User-Main auf `src/user/user_app.cpp` der versionierten ESP32-Basissoftware.
+- Projekt-Header aus dem Komponentenordner `include` werden im BuildPackage unter `include/user_project` bereitgestellt. Der bisherige Header-Pfad unter dem Komponentenordner `src` bleibt als Legacy-Eingang zulaessig.
 - `src/main.cpp`, Runtime, Connectivity, Schutzmechanismen und spaetere OTA-Implementierung kommen ausschliesslich aus der Basissoftware-Version des BuildPackage.
 - Die IDE zeigt die Basissoftware nicht als editierbaren Projektinhalt an.
-- Die IDE zeigt pro Firmware-Komponente eine Eigenschaftensicht. Sie trennt unveraenderliche, durch die Basissoftware-Variante gelieferte Funktionen von zuschaltbaren Projekterweiterungen. In der ESP32-Variante `comfort` sind WLAN, MQTT, OTA, HTTP und der lokale Webserver sichtbar, aber nicht abwaehlbar.
+- Die IDE zeigt unter jeder passenden IoT-Device-Komponente eine geschuetzte Basissoftware-Konfiguration. Die von einer Basissoftware-Variante gelieferten Faehigkeiten bleiben unveraenderlich Bestandteil des BuildPackage; das Projekt darf jedoch ihr freigegebenes Laufzeitverhalten aktivieren, deaktivieren und parametrisieren.
+- Die Konfiguration wird pro Software-Einheit im `build_config.basissoftware_configuration` des Project Servers gespeichert. Dadurch besitzen Kamera-Host und Display-Client auch innerhalb desselben verteilten Projekts getrennte Einstellungen.
+- Der erste Konfigurationsvertrag umfasst WLAN-Modus und automatische Wiederverbindung, MQTT-Endpunkt, Client-ID-Vorlage, Publish-Topics, Subscriptions, QoS und TLS sowie einen grafischen Power-Manager mit Active-, Modem-Sleep-, Light-Sleep- und Deep-Sleep-Zustaenden, Eintrittszeiten und Wake-Quellen. Noch nicht von der Runtime ausgewertete Werte duerfen bereits gespeichert werden, bleiben aber als vorbereiteter Vertrag gekennzeichnet.
+- MQTT darf als vorbereitetes Modul Teil der kompilierten Basissoftware bleiben, ist in neuen Basissoftware-Konfigurationen jedoch standardmaessig deaktiviert. Erst eine ausdrueckliche Projektkonfiguration aktiviert die MQTT-Laufzeitfunktion; vorhandene explizite Aktivierungen werden nicht ueberschrieben.
+- WLAN-Passwoerter, MQTT-Passwoerter, private Schluessel und vergleichbare Secrets gehoeren nicht in die Projektkonfiguration. Sie werden spaeter ueber Provisioning beziehungsweise einen dafuer vorgesehenen Secret-Kanal an das konkrete Inventar-Device gebunden.
+- Beim Build erzeugt der Project Server daraus `include/gernetix_basissoftware_configuration.h` und bindet den Header nur bei Builds mit geschuetzter Basissoftware automatisch ein. Projektcode erhaelt dadurch keine Schreibmoeglichkeit auf die Basissoftware-Quellen.
+
+### Projektweites Kommunikationssetup
+
+Sobald ein Projekt mehrere IoT-Firmware-Ziele enthaelt, liegt die Netzwerktopologie nicht in einer einzelnen Firmware. Der Project Server speichert deshalb eine gemeinsame `view_manifest.communication_setup` als Quelle der Wahrheit. Die IDE zeigt sie unter `Konfiguration/Kommunikationssetup`. Beim Speichern werden Rolle, WLAN-Modus, Transport und Erreichbarkeitsmerkmale fuer jede betroffene `basissoftware_configuration.communication` neu abgeleitet.
+
+Der erste Vertrag unterscheidet:
+
+| Setup | Firmware-Ableitung | Internet und OTA | Weitere Empfaenger |
+| --- | --- | --- | --- |
+| Gemeinsames Haus-WLAN | alle Boards als WLAN-Clients; Kamera-Firmware als Bild-Host, Display-Firmware als Client; HTTP-Stream ueber IP | Server-OTA ist moeglich, wenn das WLAN Internetzugang besitzt und jedes konkrete Board provisioniert sowie dem Inventar zugeordnet ist | Smartphone oder Browser im selben WLAN kann zusaetzlich zugreifen |
+| Eigenes Geraete-WLAN | Bild-Host als Access Point, andere Firmware-Ziele als WLAN-Clients; HTTP-Stream ueber das lokale IP-Netz; eigenes privates IPv4-/24-Netz mit konfigurierbarer AP-IP und DHCP-Range | kein GerNetiX-Server-OTA ohne Internet-Uplink | Smartphone kann als weiterer Client dem Geraete-WLAN beitreten |
+| BLE-Direktverbindung | Host und Client ueber einen vorbereiteten BLE-GATT-Kanal; WLAN fuer diesen initialen Betriebsmodus deaktiviert | kein Server-OTA in diesem Betriebsmodus | initial genau die projektierte Punkt-zu-Punkt-Verbindung, kein passiver Smartphone-Mitempfaenger |
+
+Das Kommunikationssetup enthaelt keine SSID, WLAN-Kennwoerter, Zertifikate oder privaten Schluessel. Die Aussage `ota_available` beschreibt nur die Topologie. Provisionierung, Inventarbindung, Signaturpruefung und der autorisierte OTA-Pfad bleiben unabhaengige Voraussetzungen.
+
+Beim Waveshare ESP32-S3-CAM-OVxxxx gehoert auch die Kameraversorgung zur eingefrorenen Boardkonfiguration: Der integrierte CH32V003-I/O-Expander wird ueber I2C-Adresse `0x24` angesprochen und sein Ausgang IO6 vor `esp_camera_init()` aktiviert. Adresse, I2C-Pins und Ausgangsnummer werden aus `build_config.board_configuration.board_features.camera_power` in den Compilerheader projiziert und duerfen nicht als abweichende Projektkonstante gepflegt werden. Der ES3C28P-Display-Client verwendet fuer asynchrone SPI-/DMA-Uebertragungen einen dauerhaft gueltigen internen DMA-Puffer; ein lokaler Stackpuffer darf nicht an `esp_lcd_panel_io_tx_color()` uebergeben werden.
+
+Fuer den Access-Point-Modus wird initial `192.168.50.0/24` mit Hostadresse `192.168.50.1` und DHCP-Bereich `192.168.50.100` bis `192.168.50.199` vorgeschlagen. Der Nutzer kann ein anderes privates `/24`-Netz waehlen, wenn dieses mit dem Heim-WLAN kollidiert. Der Server validiert, dass AP-IP und DHCP-Grenzen im selben Netz liegen und die AP-IP nicht innerhalb des DHCP-Bereichs liegt. Nur die Host-Firmware erhaelt diese Werte im generierten Basissoftware-Header. Die ESP32-Basissoftware setzt damit vor dem Start des SoftAP die IP-, Gateway-, Netzmasken- und DHCP-Server-Konfiguration; der Captive-DNS-Server antwortet mit derselben AP-Adresse.
 - Der lokale Device-Webserver kann direkt im Entwicklungsprojekt als Live-Ansicht geoeffnet werden. Projektspezifische Web-Erweiterungen wie ein Diagramm der letzten Messwerte werden in der Komponentenkonfiguration gespeichert; die zuletzt verwendete lokale Board-Adresse bleibt reine Browser-Ansichtseinstellung.
 - Die Basissoftware besitzt eine schmale Projekt-Dashboard-Schnittstelle: Projektcode publiziert benannte aktuelle Werte und kurze Projekt-Logzeilen, ohne eigene HTTP-Routen zu registrieren. Der lokale Webserver liefert diese unter einer projektspezifischen Ansicht aus; technische Basisrouten wie Status, WLAN-Setup und Feedback bleiben getrennt. Das erste Integrationsprojekt `projects/demo-web-dashboard/` publiziert alle fuenf Sekunden einen Zaehler von 0 bis 10 sowie einen begrenzten lokalen Verlauf. Es ist keine Telemetrie und schreibt keine Daten in ein Backend.
 - Der aktuelle Basisstand enthaelt den authentifizierten HTTPS-/MQTT-OTA-Pfad und ein aktiviertes A/B-Partitionslayout. Bei der USB-Migration vom bisherigen Single-App-Layout bleibt dessen NVS-Bereich `0x9000` bis `0xEFFF` vollstaendig erhalten; die OTA-App-Slots beginnen deshalb bei `0x20000`.

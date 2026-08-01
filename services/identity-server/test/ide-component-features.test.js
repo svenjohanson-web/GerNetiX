@@ -27,8 +27,8 @@ test("IDE exposes component properties and an embedded web interface workspace",
   assert.match(app, /async function loadIdeProject[\s\S]*renderIdeCodeAssistant\(project\);[\s\S]*if \(projectNeedsHardwareTools\(project\)\) await refreshUsbPorts\(false\);/);
 });
 
-test("software views are direct entries in the component configuration folder", () => {
-  assert.match(app, /`\$\{component\}\/Konfiguration\/Funktionen`/);
+test("software configuration views are direct entries in the component configuration folder", () => {
+  assert.doesNotMatch(app, /`\$\{component\}\/Konfiguration\/Funktionen`/);
   assert.match(app, /`\$\{component\}\/Konfiguration\/Treiber`/);
   assert.match(app, /`\$\{component\}\/Konfiguration\/Weboberfläche`/);
   assert.doesNotMatch(app, /`\$\{component\}\/Konfiguration\/Webserver(?:-Vorschau)?`/);
@@ -61,10 +61,18 @@ test("project browser keeps one flat IoT device configuration folder", () => {
   assert.match(app, /treePrefix: `Komponenten\/\$\{componentTreeLabel\(component\)\}`/);
   assert.match(app, /treePath: \[mapping\.treePrefix, relativePath\]\.filter\(Boolean\)\.join\("\/"\)/);
   assert.match(app, /rootSource && primaryMapping/);
-  assert.match(app, /primaryMapping\.treePrefix\}\/Source\/\$\{rootSource\[1\]\}/);
-  assert.match(app, /relativePath = relativePath\.replace\([^\n]+, "Source"\)/);
+  assert.match(app, /function sourceTreeRelativePath\(value\)/);
+  assert.match(app, /Source\/include`, directoryOnly: true/);
+  assert.match(app, /Source\/src`, directoryOnly: true/);
+  assert.match(app, /if \(source\.directoryOnly\)/);
+  assert.match(app, /primaryMapping\.treePrefix\}\/\$\{sourceTreeRelativePath\(source\.path\)\}/);
+  assert.match(app, /relativePath = sourceTreeRelativePath\(relativePath\)/);
   assert.match(app, /relativePath = relativePath\.replace\(\/\^Konfiguration/);
   assert.match(app, /source\.treePath \|\| source\.path/);
+  assert.match(app, /data-ide-tree-path="\$\{escapeAttribute\(file\.path\)\}"/);
+  assert.match(app, /function selectIdeTreePath\(path\)/);
+  assert.match(app, /state\.ideTreeSelectionPath \|\| state\.sourcePath/);
+  assert.match(app, /selectIdeTreePath\(selectedTreeEntry\.dataset\.ideTreePath\)/);
   assert.match(app, /`Komponenten\/\$\{label\}\/Konfiguration\/Board`/);
   assert.match(app, /`Komponenten\/\$\{label\}\/Konfiguration\/Boardexterne Anschlüsse`/);
   assert.doesNotMatch(app, /Konfiguration\/Übersicht|Konfiguration\/Hardware\/Boardkonfiguration/);
@@ -111,7 +119,7 @@ test("project browser keeps one flat IoT device configuration folder", () => {
   assert.match(server, /board_peripheral_not_supported/);
 });
 
-test("project browser places root and component code in one component Source folder", () => {
+test("project browser separates implementation and header files below the component Source folder", () => {
   const functionSource = app.slice(app.indexOf("function projectBrowserSources"), app.indexOf("function projectVirtualTreeEntries"));
   const projectBrowserSources = vm.runInNewContext(`${functionSource}\nprojectBrowserSources;`, {
     projectHardwareComponents: () => [{ abstract_type: "iot_device", component_path: "Komponenten/IoT-Device 1", label: "IoT-Device 1" }],
@@ -122,9 +130,13 @@ test("project browser places root and component code in one component Source fol
   const result = projectBrowserSources({}, [
     { path: "src/main.cpp", role: "user_code" },
     { path: "Komponenten/IoT-Device 1/src/user_main.cpp", role: "user_code" },
+    { path: "Komponenten/IoT-Device 1/include/camera_state.hpp", role: "header" },
+    { path: "Komponenten/IoT-Device 1/src/legacy_state.h", role: "header" },
   ]);
-  assert.equal(result[0].treePath, "Komponenten/IoT-Device 1/Source/main.cpp");
-  assert.equal(result[1].treePath, "Komponenten/IoT-Device 1/Source/user_main.cpp");
+  assert.equal(result[0].treePath, "Komponenten/IoT-Device 1/Source/src/main.cpp");
+  assert.equal(result[1].treePath, "Komponenten/IoT-Device 1/Source/src/user_main.cpp");
+  assert.equal(result[2].treePath, "Komponenten/IoT-Device 1/Source/include/camera_state.hpp");
+  assert.equal(result[3].treePath, "Komponenten/IoT-Device 1/Source/include/legacy_state.h");
 });
 
 test("IDE embeds the same board configuration plugin used by provisioning", () => {
@@ -144,7 +156,7 @@ test("basis features are visibly immutable and project web extensions remain con
   assert.match(app, /\["wifi", "mqtt", "ota", "http", "webserver"\]/);
   assert.match(app, /basisId === "gernetix-runtime-basissoftware"/);
   assert.match(app, /firmware_basis_variant \|\| \(basisId === "gernetix-runtime-basissoftware" \? "comfort" : ""\)/);
-  assert.match(app, /Basissoftware · unveränderlich/);
+  assert.match(app, /Der Quellcode der GerNetiX-Basissoftware bleibt unveränderbar/);
   assert.match(app, /Messwertdiagramm/);
   assert.match(server, /component-features/);
   assert.match(server, /handleProjectComponentFeatures/);

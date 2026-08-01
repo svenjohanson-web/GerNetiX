@@ -11,7 +11,7 @@ class PostgresBuildCoordination {
       metadataPool,
       { ...options, lockPool },
     );
-    await coordination.migrate();
+    if (options.manageSchema !== false) await coordination.migrate();
     await coordination.failJobsFromStaleWorkers();
     await coordination.registerWorker();
     coordination.startHeartbeat();
@@ -102,7 +102,7 @@ class PostgresBuildCoordination {
         finished_at = NOW()
       FROM build_workers AS workers
       WHERE jobs.worker_id = workers.worker_id
-        AND jobs.status IN ('accepted', 'queued', 'running')
+        AND jobs.status IN ('accepted', 'queued', 'running', 'cancelling')
         AND workers.heartbeat_at < NOW() - ($1::bigint * INTERVAL '1 millisecond')
     `, [this.staleMs]);
   }
@@ -136,14 +136,21 @@ class PostgresBuildCoordination {
         status = $3,
         state_json = $4::jsonb,
         updated_at = NOW(),
-        finished_at = CASE WHEN $3 IN ('succeeded', 'failed', 'replaced') THEN NOW() ELSE NULL END
+        finished_at = CASE WHEN $3 IN ('succeeded', 'failed', 'replaced', 'cancelled') THEN NOW() ELSE NULL END
       WHERE job_id = $1
         AND NOT (
           status = 'failed'
           AND state_json->'error'->>'code' = 'worker_lost'
         )
+        AND NOT (
+          status IN ('cancelling', 'cancelled')
+          AND $3 NOT IN ('cancelled', 'failed')
+        )
     `, [job.job_id, this.workerId, job.status, JSON.stringify(state)]);
     if (result.rowCount !== 1) {
+      const current = await this.pool.query("SELECT status FROM build_execution_jobs WHERE job_id = $1", [job.job_id]);
+      if (["cancelling", "cancelled"].includes(current.rows[0]?.status)
+        && !["cancelled", "failed"].includes(job.status)) return;
       throw new BuildDeployError("job_not_registered", "Der zentral registrierte BuildJob wurde nicht gefunden.", 500);
     }
     await this.pool.query("UPDATE build_workers SET heartbeat_at = NOW() WHERE worker_id = $1", [this.workerId]);
@@ -158,11 +165,35 @@ class PostgresBuildCoordination {
     return row ? { ...row.state_json, worker_id: row.worker_id } : null;
   }
 
+  async requestCancellation(jobId) {
+    const result = await this.pool.query(`
+      UPDATE build_execution_jobs SET
+        status = 'cancelling',
+        state_json = jsonb_set(state_json, '{status}', '"cancelling"'::jsonb, true),
+        updated_at = NOW()
+      WHERE job_id = $1
+        AND status IN ('accepted', 'queued', 'running', 'cancelling')
+      RETURNING state_json, worker_id
+    `, [String(jobId || "")]);
+    if (result.rows[0]) return { ...result.rows[0].state_json, worker_id: result.rows[0].worker_id };
+    const existing = await this.getJob(jobId);
+    if (existing) return existing;
+    throw new BuildDeployError("job_not_found", "BuildJob wurde nicht gefunden.", 404);
+  }
+
+  async isCancellationRequested(jobId) {
+    const result = await this.pool.query(
+      "SELECT status IN ('cancelling', 'cancelled') AS requested FROM build_execution_jobs WHERE job_id = $1",
+      [String(jobId || "")],
+    );
+    return result.rows[0]?.requested === true;
+  }
+
   async hasActiveProjectJob(projectId) {
     const result = await this.pool.query(`
       SELECT EXISTS (
         SELECT 1 FROM build_execution_jobs
-        WHERE project_id = $1 AND status IN ('accepted', 'queued', 'running')
+        WHERE project_id = $1 AND status IN ('accepted', 'queued', 'running', 'cancelling')
       ) AS active
     `, [String(projectId || "")]);
     return result.rows[0]?.active === true;
@@ -200,7 +231,17 @@ class PostgresBuildCoordination {
       );
       if (!attempt.rows[0]?.acquired) {
         if (typeof onWait === "function") onWait(key);
-        await client.query("SELECT pg_advisory_lock(hashtextextended($1, 0))", [key]);
+        while (!attempt.rows[0]?.acquired) {
+          if (job.abortController?.signal.aborted) {
+            throw new BuildDeployError("build_cancelled", "Build wurde abgebrochen.", 409);
+          }
+          await delay(250);
+          const retry = await client.query(
+            "SELECT pg_try_advisory_lock(hashtextextended($1, 0)) AS acquired",
+            [key],
+          );
+          attempt.rows[0] = retry.rows[0];
+        }
       }
       return await task();
     } finally {
@@ -218,6 +259,10 @@ class PostgresBuildCoordination {
     await this.pool.end();
     if (this.lockPool !== this.pool) await this.lockPool.end();
   }
+}
+
+function delay(milliseconds) {
+  return new Promise((resolve) => setTimeout(resolve, milliseconds));
 }
 
 module.exports = { PostgresBuildCoordination };

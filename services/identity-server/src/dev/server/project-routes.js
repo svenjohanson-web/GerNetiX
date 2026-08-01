@@ -52,6 +52,12 @@ function registerProjectRoutes(dependencies) {
   registerProjectPattern("POST", /^\/api\/user-ide\/projects\/([^/]+)\/component-features$/, ({ req, res, match, session }) => (
     dependencies.handleProjectComponentFeatures(req, res, session, decodeURIComponent(match[1]))
   ));
+  registerProjectPattern("POST", /^\/api\/user-ide\/projects\/([^/]+)\/basissoftware-configuration$/, ({ req, res, match, session }) => (
+    dependencies.handleProjectBasissoftwareConfiguration(req, res, session, decodeURIComponent(match[1]))
+  ));
+  registerProjectPattern("POST", /^\/api\/user-ide\/projects\/([^/]+)\/communication-setup$/, ({ req, res, match, session }) => (
+    dependencies.handleProjectCommunicationSetup(req, res, session, decodeURIComponent(match[1]))
+  ));
   registerProjectPattern("POST", /^\/api\/user-ide\/projects\/([^/]+)\/component-hardware-features$/, ({ req, res, match, session }) => (
     dependencies.handleProjectComponentHardwareFeatures(req, res, session, decodeURIComponent(match[1]))
   ));

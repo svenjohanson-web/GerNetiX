@@ -232,6 +232,38 @@ test("build artifact routes retain account ownership checks", async () => {
   assert.deepEqual(responses, [[404, { error: "build_artifact_not_found" }]]);
 });
 
+test("build cancellation keeps account ownership and targets the central coordinator", async () => {
+  const registry = createRouteRegistry();
+  const responses = [];
+  const forwarded = [];
+  registerBuildRoutes({
+    registry,
+    requireSession: async () => ({ account: { user_id: "user-1" } }),
+    readJsonBody: async () => ({}),
+    sendJson: (res, status, body) => responses.push([status, body]),
+    handleUserIdeBuildJob: async () => {},
+    loadUserIdeProjects: async () => [],
+    buildDeployJson: async (path, options) => {
+      forwarded.push([path, options]);
+      return { job_id: "job 42", status: "cancelling" };
+    },
+    projectServerJson: async () => ({ user_id: "user-1" }),
+    loadBuildDeployJob: async () => ({}),
+    recordCompletedBuildJob: async () => {},
+    browserFlashManifest: () => ({}),
+    projectServerUserId: () => "user-1",
+    proxyBuildArtifact: async () => {},
+  });
+
+  assert.equal(await registry.dispatch({
+    req: { method: "POST" },
+    res: {},
+    url: new URL("http://localhost/api/user-ide/build-jobs/job%2042/cancel"),
+  }), true);
+  assert.deepEqual(forwarded, [["/api/build-jobs/job%2042/cancel", { method: "POST" }]]);
+  assert.deepEqual(responses, [[202, { job_id: "job 42", status: "cancelling" }]]);
+});
+
 test("project routes decode project ids before invoking domain handlers", async () => {
   const registry = createRouteRegistry();
   const calls = [];

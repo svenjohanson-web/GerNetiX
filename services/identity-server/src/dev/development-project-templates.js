@@ -1,6 +1,7 @@
 const { DEVELOPMENT_PROJECT_TEMPLATE_MODELS } = require("./development-project-template-models");
 const { templateArchitecturePlantUml } = require("./development-project-template-views");
 const { mergeSelectedGamesHeader, selectedGamesHeader, templateFirmwareSources } = require("./development-project-template-sources");
+const { firmwareSoftwareUnitProblems } = require("../../../shared/firmware-project-contract");
 
 function developmentProjectTemplate(templateId) {
   return DEVELOPMENT_PROJECT_TEMPLATE_MODELS[String(templateId || "empty")]
@@ -33,7 +34,7 @@ function developmentProjectTemplatePreviews() {
 }
 
 function templateBuildConfig(template) {
-  return template?.realization?.buildConfig || null;
+  return template?.realization?.buildConfig || template?.realization?.softwareUnits?.[0]?.buildConfig || null;
 }
 
 function templateHardwareProfileId(template) {
@@ -60,6 +61,20 @@ function templateSoftwareUnits(template) {
   }));
 }
 
+function assertDevelopmentProjectTemplateContract(template) {
+  const units = templateSoftwareUnits(template);
+  if (!units.length) return;
+  const sourcePaths = templateFirmwareSources(template, template.title).map((source) => source.path);
+  for (const unit of units) {
+    const problems = firmwareSoftwareUnitProblems(unit, sourcePaths, { requireEntrypointSource: true });
+    if (problems.length) {
+      throw new Error(`Template ${template.id} verletzt den Firmware-Projektvertrag: ${problems.join("; ")}`);
+    }
+  }
+}
+
+Object.values(DEVELOPMENT_PROJECT_TEMPLATE_MODELS).forEach(assertDevelopmentProjectTemplateContract);
+
 module.exports = {
   developmentProjectTemplate,
   developmentProjectTemplateCatalog,
@@ -70,6 +85,7 @@ module.exports = {
   templateHardwareConfiguration,
   templateHardwareProfileId,
   templateSoftwareUnits,
+  assertDevelopmentProjectTemplateContract,
   mergeSelectedGamesHeader,
   selectedGamesHeader,
 };

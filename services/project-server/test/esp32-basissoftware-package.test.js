@@ -22,7 +22,14 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
 
   assert.equal(files.some((file) => file.path === "src/main.cpp"), true);
   assert.equal(files.some((file) => file.path === "include/user/user_app.h"), true);
+  assert.equal(files.some((file) => file.path === "include/gernetix_basissoftware_configuration.h"), true);
+  assert.match(files.find((file) => file.path === "include/gernetix_basissoftware_configuration.h").content, /GERNETIX_MQTT_ENABLED 0/);
   assert.equal(files.some((file) => file.path === "src/functions/initWifi.cpp"), true);
+  const wifiRuntime = files.find((file) => file.path === "src/functions/initWifi.cpp").content;
+  assert.match(wifiRuntime, /configureAccessPointIpv4/);
+  assert.match(wifiRuntime, /esp_netif_set_ip_info/);
+  assert.match(wifiRuntime, /ESP_NETIF_REQUESTED_IP_ADDRESS/);
+  assert.match(wifiRuntime, /GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT/);
   assert.equal(files.some((file) => file.path === "partitions_full_4mb.csv"), true);
   assert.equal(files.some((file) => file.path === "sdkconfig.esp32-s3-n16r8"), true);
   assert.equal(files.some((file) => file.path === "partitions_medium_8mb.csv"), true);
@@ -40,6 +47,38 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
   assert.match(files.find((file) => file.path === "src/user/user_app.cpp").content, /void userMain/);
   assert.equal(files.some((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp"), false);
   assert.equal(files.some((file) => file.path.startsWith(".vscode/")), false);
+});
+
+test("projects WLAN, MQTT topics and power states into the protected compiler header", () => {
+  const files = composeEsp32BasissoftwarePackage({
+    basisFiles: loadEsp32BasissoftwareFiles(),
+    projectSources: [{ path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: "void userMain() {}" }],
+    buildConfig: {
+      firmware_basis_id: "gernetix-runtime-basissoftware",
+      user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp",
+      basissoftware_configuration: {
+        wifi: { enabled: false, mode: "access_point" },
+        mqtt: { enabled: true, broker_url: "mqtts://broker.example", publish_topics: ["devices/{device}/status"], subscriptions: ["devices/{device}/commands/#"], qos: 2 },
+        power_manager: { enabled: true, default_state: "light_sleep", states: { light_sleep: { enabled: true, enter_after_seconds: 60, wake_sources: ["timer", "touch"] }, deep_sleep: { enabled: true, enter_after_seconds: 900, wake_sources: ["timer"] } } },
+        communication: { managed_by_project: true, topology: "device_access_point", role: "host", transport: "http_stream", peer_software_unit_ids: ["display_receiver"], ota_available: false, observer_access: true, endpoint_port: 8080, endpoint_path: "/camera/stream", access_point_ipv4_address: "10.42.7.1", access_point_subnet_mask: "255.255.255.0", access_point_dhcp_start: "10.42.7.40", access_point_dhcp_end: "10.42.7.90" },
+      },
+    },
+  });
+  const header = files.find((file) => file.path === "include/gernetix_basissoftware_configuration.h").content;
+  const platformio = files.find((file) => file.path === "platformio.ini").content;
+  assert.match(header, /GERNETIX_WIFI_ENABLED 0/);
+  assert.match(header, /GERNETIX_WIFI_MODE "access_point"/);
+  assert.match(header, /GERNETIX_COMMUNICATION_TOPOLOGY "device_access_point"/);
+  assert.match(header, /GERNETIX_COMMUNICATION_PEER_0 "display_receiver"/);
+  assert.match(header, /GERNETIX_COMMUNICATION_OTA_AVAILABLE 0/);
+  assert.match(header, /GERNETIX_ACCESS_POINT_IPV4_ADDRESS "10\.42\.7\.1"/);
+  assert.match(header, /GERNETIX_ACCESS_POINT_DHCP_START "10\.42\.7\.40"/);
+  assert.match(header, /GERNETIX_MQTT_PUBLISH_TOPIC_0 "devices\/\{device\}\/status"/);
+  assert.match(header, /GERNETIX_MQTT_ENABLED 1/);
+  assert.match(header, /GERNETIX_MQTT_SUBSCRIPTION_0 "devices\/\{device\}\/commands\/#"/);
+  assert.match(header, /GERNETIX_POWER_STATE_LIGHT_SLEEP_ENTER_AFTER_SECONDS 60/);
+  assert.match(header, /GERNETIX_POWER_STATE_LIGHT_SLEEP_WAKE_SOURCES "timer,touch"/);
+  assert.match(platformio, /-include include\/gernetix_basissoftware_configuration\.h/);
 });
 
 test("selects profile and flash-specific build configuration", () => {
@@ -88,6 +127,19 @@ test("forces the immutable project board snapshot into every compiler unit", () 
   assert.match(header, /GERNETIX_BOARD_FEATURE_DISPLAY_PIN_CS 12/);
 });
 
+test("rejects a user source that references a missing board snapshot before compilation", () => {
+  assert.throws(() => composeEsp32BasissoftwarePackage({
+    basisFiles: loadEsp32BasissoftwareFiles(),
+    projectSources: [{
+      path: "Komponenten/IoT-Device 2/src/user_main.cpp",
+      content: '#include "gernetix_board_configuration.h"\nvoid userMain() {}',
+    }],
+    buildConfig: {
+      user_source_path: "Komponenten/IoT-Device 2/src/user_main.cpp",
+    },
+  }), /Boardkonfiguration .* fehlt im Build-Snapshot/);
+});
+
 test("carries the Hardware Catalog display bus pins unchanged into the compiler header", () => {
   const catalogBoard = synchronizeBoardFeaturePins(defaultCatalogSeed().hardwareItems
     .find((item) => item.hardware_item_id === "hardware.processor_board.esp32_s3_es3c28p"));
@@ -112,17 +164,61 @@ test("carries the Hardware Catalog display bus pins unchanged into the compiler 
   assert.match(header, /GERNETIX_BOARD_FEATURE_DISPLAY_PIN_BACKLIGHT 45/);
 });
 
+test("carries every Waveshare OV3660 signal from the catalog snapshot into the compiler header", () => {
+  const catalogBoard = synchronizeBoardFeaturePins(defaultCatalogSeed().hardwareItems
+    .find((item) => item.hardware_item_id === "hardware.processor_board.waveshare_esp32_s3_cam_ov3660"));
+  const files = composeEsp32BasissoftwarePackage({
+    basisFiles: loadEsp32BasissoftwareFiles(),
+    projectSources: [{ path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: "void userMain() {}" }],
+    buildConfig: {
+      user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp",
+      board_configuration: {
+        source: "catalog",
+        base_board_profile_id: catalogBoard.hardware_item_id,
+        board_features: catalogBoard.default_instance_configuration.board_features,
+      },
+    },
+  });
+  const header = files.find((file) => file.path === "include/gernetix_board_configuration.h").content;
+  for (const [signal, pin] of Object.entries(catalogBoard.default_instance_configuration.board_features.camera.pins)) {
+    assert.match(header, new RegExp(`GERNETIX_BOARD_FEATURE_CAMERA_PIN_${signal.toUpperCase()} ${pin}`));
+  }
+  assert.match(header, /GERNETIX_BOARD_FEATURE_CAMERA_POWER_HARDWARE "CH32V003F4U6"/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_ADDRESS 36/);
+  assert.match(header, /GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_OUTPUT 6/);
+});
+
 test("copies separated project user headers into the protected build package", () => {
   const files = composeEsp32BasissoftwarePackage({
     basisFiles: [],
     projectSources: [
       { path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: '#include "user_project/view/start_screen.h"', content_type: "text/x-c++src" },
-      { path: "Komponenten/IoT-Device 1/src/view/start_screen.h", content: "class StartScreen {};", content_type: "text/x-c++hdr" },
+      { path: "Komponenten/IoT-Device 1/include/view/start_screen.h", content: "class StartScreen {};", content_type: "text/x-c++hdr" },
       { path: "Komponenten/IoT-Device 1/src/games/snake.h", content: "namespace snake {}", content_type: "text/x-c++hdr" },
     ],
     buildConfig: { user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: "src/user/user_app.cpp" },
   });
 
-  assert.equal(files.find((file) => file.path === "include/user_project/view/start_screen.h").source_project_path, "Komponenten/IoT-Device 1/src/view/start_screen.h");
+  assert.equal(files.find((file) => file.path === "include/user_project/view/start_screen.h").source_project_path, "Komponenten/IoT-Device 1/include/view/start_screen.h");
   assert.equal(files.some((file) => file.path === "include/user_project/games/snake.h"), true);
+});
+
+test("copies a project-specific ESP-IDF dependency manifest only into that build package", () => {
+  const files = composeEsp32BasissoftwarePackage({
+    basisFiles: [],
+    projectSources: [
+      { path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: "void userMain() {}", content_type: "text/x-c++src" },
+      { path: "Komponenten/IoT-Device 1/src/idf_component.yml", content: "dependencies:\n  espressif/esp32-camera: \"2.1.7\"\n", content_type: "text/plain" },
+    ],
+    buildConfig: { user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp", user_target_path: "src/user/user_app.cpp" },
+  });
+
+  assert.equal(files.find((file) => file.path === "src/idf_component.yml").source_project_path, "Komponenten/IoT-Device 1/src/idf_component.yml");
+  assert.match(files.find((file) => file.path === "src/idf_component.yml").content, /esp32-camera/);
+});
+
+test("camera-display build slice links the ESP-IDF I2C and SPI drivers", () => {
+  const cmake = loadEsp32BasissoftwareFiles()
+    .find((file) => file.path === "src/CMakeLists.txt").content;
+  assert.match(cmake, /GERNETIX_CAMERA_DISPLAY_SLICE[\s\S]*esp_driver_i2c[\s\S]*esp_driver_spi/);
 });

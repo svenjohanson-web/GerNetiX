@@ -15,13 +15,13 @@ test("development platform builds all software units and uses target selection o
   assert.match(html, /id="flashTargetChoiceDialog"[\s\S]*>Flash-Ziel\s*</);
   assert.doesNotMatch(html, /id="ideDeviceTools"[\s\S]*id="ideSoftwareUnitSelect"/);
   assert.match(development, /value="desktop_app"/);
-  assert.match(development, /Getrennte Quellen und Build-Ziele/);
+  assert.doesNotMatch(development, /Getrennte Quellen und Build-Ziele|template-software-units|renderSoftwareUnitPreview/);
   assert.match(app, /async function startBuild\(\)[\s\S]*const buildTargets = softwareUnits\.length \? softwareUnits : \[null\]/);
   assert.match(app, /Promise\.allSettled\(buildTargets\.map/);
   assert.match(server, /software_unit_id: softwareUnit\?\.software_unit_id \|\| ""/);
   assert.match(app, /Build-Ziel „\$\{label\}“: erfolgreich\./);
   assert.match(app, /Build-Ziel „\$\{label\}“: fehlgeschlagen\./);
-  assert.match(app, /Gesamtbuild fehlgeschlagen: \$\{summary\}, \$\{failed\} fehlgeschlagen\./);
+  assert.match(app, /Gesamtbuild fehlgeschlagen: \$\{summary\}, \$\{failed\} fehlgeschlagen\$\{cancelled \?/);
   assert.match(app, /Gesamtbuild erfolgreich: \$\{summary\}\./);
   assert.match(app, /suppressTerminalBuildResult: true/);
   assert.match(app, /Build erfolgreich abgeschlossen\\\.\?/);

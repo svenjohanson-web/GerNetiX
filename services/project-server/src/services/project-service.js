@@ -1,8 +1,11 @@
 const crypto = require("node:crypto");
 const { ProjectServerError } = require("../errors");
 const { composeEsp32BasissoftwarePackage, loadEsp32BasissoftwareFiles } = require("../modules/esp32-basissoftware-package");
+const { normalizeBasissoftwareConfiguration } = require("../../../shared/basissoftware-configuration");
+const { normalizeProjectCommunicationSetup } = require("../../../shared/project-communication-setup");
 const { renderPlatformioIni } = require("../../../shared/platformio-config");
 const { filterSoftwareUnitsForArchitecture } = require("../../../shared/project-software-ownership");
+const { createFirmwareBuildPackageContract, firmwareSoftwareUnitProblems } = require("../../../shared/firmware-project-contract");
 
 const RESERVED_PLATFORMIO_OPTIONS = new Set([
   "platform", "board", "framework", "monitor_speed", "upload_protocol", "upload_speed",
@@ -27,7 +30,11 @@ class ProjectService {
     const templateHash = template ? projectVersionHash(sanitizeProject(template), templateSources) : "";
     const inheritedManifest = template ? structuredClone(template.view_manifest || {}) : {};
     const inheritedBuildConfig = Object.hasOwn(input, "build_config") ? input.build_config : template ? template.build_config : undefined;
-    const normalizedBuildConfig = normalizeBuildConfig(inheritedBuildConfig);
+    const initialInputSources = input.sources?.length ? input.sources : templateSources;
+    const inferredEntrypoint = inferFirmwareEntrypoint(initialInputSources);
+    const normalizedBuildConfig = normalizeBuildConfig(inheritedBuildConfig && inferredEntrypoint && !inheritedBuildConfig.user_source_path
+      ? { ...inheritedBuildConfig, user_source_path: inferredEntrypoint }
+      : inheritedBuildConfig);
     const normalizedManifest = normalizeViewManifest({
       ...inheritedManifest,
       ...(input.view_manifest || input.project_view_manifest || {}),
@@ -296,6 +303,17 @@ class ProjectService {
     const allSources = await this.repository.listSources(project.project_id);
     const sources = sourcesForSoftwareUnit(allSources, softwareUnit, softwareUnits);
     const buildConfig = job.build_config || softwareUnit?.build_config || project.build_config;
+    const contractProblems = firmwareSoftwareUnitProblems(softwareUnit, sources.map((source) => source.path), {
+      pathsAreScoped: true,
+      requireEntrypointSource: true,
+      allowLegacyHeaders: true,
+    });
+    if (contractProblems.length) {
+      throw new ProjectServerError(
+        "invalid_firmware_project_contract",
+        `Firmware-Projektstruktur ist nicht buildfaehig: ${contractProblems.join("; ")}`,
+      );
+    }
     const projectSnapshot = sanitizeProject(project);
     const snapshotHash = projectVersionHash(projectSnapshot, sources);
     await this.repository.saveBuildJob({
@@ -324,22 +342,24 @@ class ProjectService {
       build_config: buildConfig,
       created_at: new Date().toISOString(),
     };
+    const packageFiles = [
+      { path: "build-job.json", content: JSON.stringify(buildJob, null, 2), content_type: "application/json" },
+      { path: "project-view-manifest.json", content: JSON.stringify(effectiveViewManifest(project), null, 2), content_type: "application/json" },
+      { path: "platformio.ini", content: platformioIni, content_type: "text/plain" },
+      ...firmwareSources.filter((source) => source.path !== "platformio.ini").map((source) => ({
+        path: source.path,
+        content: source.content,
+        content_type: source.content_type,
+        sha256: source.content_sha256,
+      })),
+    ];
     return {
       package_id: `pkg_${job.build_job_id}`,
       project: sanitizeProject(project),
       build_job: buildJob,
       platformio_ini: platformioIni,
-      files: [
-        { path: "build-job.json", content: JSON.stringify(buildJob, null, 2), content_type: "application/json" },
-        { path: "project-view-manifest.json", content: JSON.stringify(effectiveViewManifest(project), null, 2), content_type: "application/json" },
-        { path: "platformio.ini", content: platformioIni, content_type: "text/plain" },
-        ...firmwareSources.filter((source) => source.path !== "platformio.ini").map((source) => ({
-          path: source.path,
-          content: source.content,
-          content_type: source.content_type,
-          sha256: source.content_sha256,
-        })),
-      ],
+      contract: createFirmwareBuildPackageContract({ softwareUnit, buildConfig, packageFiles: packageFiles.map((file) => file.path) }),
+      files: packageFiles,
     };
   }
 
@@ -890,6 +910,7 @@ function normalizeBuildConfig(input = {}) {
       ? input.component_device_allocations.map((item) => ({ ...item })).filter((item) => item.component_path && item.device_id)
       : [],
     component_features: normalizeComponentFeatures(input.component_features, input.firmware_basis_variant === "comfort" ? "full" : input.firmware_basis_variant || (firmwareBasisId ? "full" : "")),
+    basissoftware_configuration: firmwareBasisId ? normalizeBasissoftwareConfiguration(input.basissoftware_configuration) : null,
     component_hardware_features: input.component_hardware_features && typeof input.component_hardware_features === "object"
       ? JSON.parse(JSON.stringify(input.component_hardware_features))
       : {},
@@ -906,7 +927,7 @@ function normalizeSoftwareUnits(input, fallbackBuildConfig = null) {
       software_kind: "embedded_firmware",
       build_system: "platformio",
       source_root: "Komponenten/IoT-Device 1",
-      entrypoint: componentRelativeSourcePath(fallbackBuildConfig.user_source_path || "src/user_main.cpp", "", "Komponenten/IoT-Device 1"),
+      entrypoint: componentRelativeSourcePath(defaultUserSourcePath(fallbackBuildConfig), "", "Komponenten/IoT-Device 1"),
       device_id: "",
       build_config: normalizeSoftwareUnitBuildConfig(fallbackBuildConfig, "", "Komponenten/IoT-Device 1"),
     }] : [];
@@ -930,7 +951,7 @@ function normalizeSoftwareUnits(input, fallbackBuildConfig = null) {
       software_kind: String(unit?.software_kind || "software").trim().toLowerCase().slice(0, 60),
       build_system: buildSystem,
       source_root: sourceRoot,
-      entrypoint: componentRelativeSourcePath(unit?.entrypoint || unit?.build_config?.user_source_path || "", previousSourceRoot, sourceRoot),
+      entrypoint: componentRelativeSourcePath(unit?.entrypoint || defaultUserSourcePath(unit?.build_config), previousSourceRoot, sourceRoot),
       device_id: String(unit?.device_id || "").trim().slice(0, 180),
       hardware_profile_id: String(unit?.hardware_profile_id || "").trim().slice(0, 180),
       build_config: buildSystem === "platformio" && unit?.build_config
@@ -970,8 +991,20 @@ function normalizeSoftwareUnitBuildConfig(input, previousSourceRoot, componentRo
   if (!buildConfig) return null;
   return {
     ...buildConfig,
-    user_source_path: componentRelativeSourcePath(buildConfig.user_source_path || "src/user_main.cpp", previousSourceRoot, componentRoot),
+    user_source_path: componentRelativeSourcePath(defaultUserSourcePath(buildConfig), previousSourceRoot, componentRoot),
   };
+}
+
+function defaultUserSourcePath(buildConfig = {}) {
+  return buildConfig.user_source_path || (buildConfig.firmware_basis_id ? "src/user_main.cpp" : "src/main.cpp");
+}
+
+function inferFirmwareEntrypoint(sources = []) {
+  const candidates = sources.map((source) => normalizeOptionalSourcePath(source?.path || ""));
+  const preferred = candidates.find((sourcePath) => /(?:^|\/)src\/(?:user_)?main\.(?:c|cc|cpp|cxx|m|mm|ino|cu)$/i.test(sourcePath));
+  if (!preferred) return "";
+  const componentRelative = preferred.match(/^(?:Komponenten\/[^/]+\/)?(src\/.+)$/i);
+  return componentRelative?.[1] || "";
 }
 
 function softwareLayoutMappings(previousUnits, softwareUnits) {
@@ -1142,6 +1175,7 @@ function normalizeViewManifest(input = {}) {
   const homeAutomationConfiguration = manifest.home_automation_configuration || manifest.homeAutomationConfiguration;
   const gameConfiguration = manifest.game_configuration || manifest.gameConfiguration;
   const pwaDashboard = manifest.pwa_dashboard || manifest.pwaDashboard;
+  const communicationSetup = manifest.communication_setup || manifest.communicationSetup;
   return {
     schema_version: Number(manifest.schema_version || manifest.schemaVersion || 1),
     title: manifest.title || "",
@@ -1165,6 +1199,9 @@ function normalizeViewManifest(input = {}) {
       : {}),
     ...(pwaDashboard && typeof pwaDashboard === "object"
       ? { pwa_dashboard: normalizePwaDashboard(pwaDashboard) }
+      : {}),
+    ...(communicationSetup && typeof communicationSetup === "object"
+      ? { communication_setup: normalizeProjectCommunicationSetup(communicationSetup) }
       : {}),
     primary_source_path: normalizeOptionalSourcePath(manifest.primary_source_path || manifest.primarySourcePath || ""),
     hide_source_editor: Boolean(manifest.hide_source_editor || manifest.hideSourceEditor),
@@ -1385,14 +1422,14 @@ function normalizeOptionalSourcePath(value) {
 
 function contentType(sourcePath) {
   if (sourcePath.endsWith(".json")) return "application/json";
-  if (sourcePath.endsWith(".h")) return "text/x-c++hdr";
-  if (sourcePath.endsWith(".cpp") || sourcePath.endsWith(".ino")) return "text/x-c++src";
+  if (/\.(?:h|hh|hpp|hxx|inc|inl|ipp|tpp|cuh)$/i.test(sourcePath)) return "text/x-c++hdr";
+  if (/\.(?:c|cc|cpp|cxx|m|mm|ino|cu)$/i.test(sourcePath)) return "text/x-c++src";
   return "text/plain";
 }
 
 function inferSourceRole(sourcePath) {
   if (sourcePath === "platformio.ini") return "build_config";
-  if (sourcePath.startsWith("include/")) return "header";
+  if (/(?:^|\/)include\//i.test(sourcePath) || /\.(?:h|hh|hpp|hxx|inc|inl|ipp|tpp|cuh)$/i.test(sourcePath)) return "header";
   if (sourcePath.startsWith("lib/")) return "library";
   if (sourcePath.startsWith("assets/")) return "asset";
   return "user_code";

@@ -1,8 +1,70 @@
 // GerNetiX platform module extracted from app.js.
 async function createPlantUmlSvgUrl(source) {
-  const bytes = new TextEncoder().encode(source);
+  const bytes = new TextEncoder().encode(themedPlantUmlSource(source));
   const compressed = await deflateForPlantUml(bytes);
   return `https://www.plantuml.com/plantuml/svg/${encodePlantUmlBytes(compressed)}`;
+}
+
+function themedPlantUmlSource(source) {
+  const theme = [
+    "skinparam backgroundColor transparent",
+    "skinparam shadowing false",
+    "skinparam defaultFontColor #F8FAFC",
+    "skinparam defaultFontSize 15",
+    "skinparam stereotypeFontColor #E2E8F0",
+    "skinparam TitleFontColor #F8FAFC",
+    "skinparam TitleFontSize 18",
+    "skinparam ArrowColor #F8FAFC",
+    "skinparam ArrowFontColor #F8FAFC",
+    "skinparam ArrowThickness 2",
+    "skinparam rectangleBackgroundColor #1E3A5F",
+    "skinparam rectangleBorderColor #67E8F9",
+    "skinparam rectangleFontColor #FFFFFF",
+    "skinparam actorBackgroundColor #1E3A5F",
+    "skinparam actorBorderColor #67E8F9",
+    "skinparam actorFontColor #FFFFFF",
+    "skinparam componentBackgroundColor #1E3A5F",
+    "skinparam componentBorderColor #67E8F9",
+    "skinparam componentFontColor #FFFFFF",
+    "skinparam nodeBackgroundColor #1E3A5F",
+    "skinparam nodeBorderColor #67E8F9",
+    "skinparam nodeFontColor #FFFFFF",
+    "skinparam databaseBackgroundColor #1E3A5F",
+    "skinparam databaseBorderColor #67E8F9",
+    "skinparam databaseFontColor #FFFFFF",
+    "skinparam packageBackgroundColor #172554",
+    "skinparam packageBorderColor #67E8F9",
+    "skinparam packageFontColor #FFFFFF",
+    "skinparam classBackgroundColor #1E3A5F",
+    "skinparam classBorderColor #67E8F9",
+    "skinparam classFontColor #FFFFFF",
+    "skinparam noteBackgroundColor #334155",
+    "skinparam noteBorderColor #FACC15",
+    "skinparam noteFontColor #FFFFFF",
+    "skinparam participantBackgroundColor #1E3A5F",
+    "skinparam participantBorderColor #67E8F9",
+    "skinparam participantFontColor #FFFFFF",
+    "skinparam sequenceLifeLineBorderColor #E2E8F0",
+    "skinparam sequenceDividerBackgroundColor #334155",
+    "skinparam sequenceDividerBorderColor #67E8F9",
+    "skinparam sequenceDividerFontColor #FFFFFF",
+    "skinparam activityBackgroundColor #1E3A5F",
+    "skinparam activityBorderColor #67E8F9",
+    "skinparam activityFontColor #FFFFFF",
+    "skinparam stateBackgroundColor #1E3A5F",
+    "skinparam stateBorderColor #67E8F9",
+    "skinparam stateFontColor #FFFFFF",
+    "skinparam usecaseBackgroundColor #1E3A5F",
+    "skinparam usecaseBorderColor #67E8F9",
+    "skinparam usecaseFontColor #FFFFFF",
+    "skinparam objectBackgroundColor #1E3A5F",
+    "skinparam objectBorderColor #67E8F9",
+    "skinparam objectFontColor #FFFFFF",
+  ].join("\n");
+  const text = String(source || "");
+  return /^\s*@startuml[^\r\n]*/im.test(text)
+    ? text.replace(/^(\s*@startuml[^\r\n]*)/im, `$1\n${theme}`)
+    : `${theme}\n${text}`;
 }
 
 async function deflateForPlantUml(bytes) {

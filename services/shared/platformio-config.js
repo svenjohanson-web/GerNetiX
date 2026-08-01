@@ -71,6 +71,7 @@ function effectiveBuildFlags(config = {}) {
       : String(config.firmware_basis_variant || "full").toLowerCase();
     flags.push(`-D GERNETIX_BASISSOFTWARE_PROFILE_${profile.toUpperCase()}=1`);
     if (config.board_configuration) flags.push("-include include/gernetix_board_configuration.h");
+    if (config.basissoftware_configuration) flags.push("-include include/gernetix_basissoftware_configuration.h");
   }
   return Array.from(new Set(flags));
 }

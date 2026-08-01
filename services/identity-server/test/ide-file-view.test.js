@@ -27,7 +27,7 @@ test("opening a source returns to file mode and preserves expanded project folde
   assert.match(app, /async function openIdeSource\(sourcePath\)[\s\S]*state\.ideViewMode = "file"/);
   assert.match(app, /details\[data-tree-path\]\[open\]/);
   assert.match(app, /openFolders\.has\(node\.path\) \|\| containsActiveSource/);
-  assert.match(app, /treeContainsSource\(node, state\.sourcePath\)/);
+  assert.match(app, /treeContainsSource\(node, state\.ideTreeSelectionPath \|\| state\.sourcePath\)/);
   assert.match(app, /data-tree-path=/);
 });
 
@@ -67,7 +67,7 @@ test("build terminal appends the Flash and RAM summary only for successful build
   assert.doesNotMatch(app, /\["succeeded", "failed", "replaced"\]\.includes\(current\.status\)/);
   assert.match(app, /appendBuildMemorySummary\(current\)/);
   assert.match(app, /waitForCompletedBuild\(build, \{[\s\S]*appendMemorySummary: false/);
-  assert.match(app, /if \(!failed\) completed\.forEach\(appendBuildMemorySummary\)/);
+  assert.match(app, /if \(!failed && !cancelled\) completed\.forEach\(appendBuildMemorySummary\)/);
   assert.match(app, /Speicherbelegung · Firmware-Partition \(Flash\):/);
   assert.match(app, /RAM: \$\{formatPlatformioMemoryUsage\(ram\)\}/);
   assert.match(app, /Flash-Wert = App-Slot, nicht gesamter Gerätespeicher/);
@@ -77,6 +77,25 @@ test("build terminal appends the Flash and RAM summary only for successful build
   assert.match(memorySummaryStyle, /background: rgba\(8, 145, 178, \.16\)/);
   assert.match(memorySummaryStyle, /color: #67e8f9/);
   assert.doesNotMatch(memorySummaryStyle, /#22c55e|#86efac|#fbbf24|#fde68a/);
+});
+
+test("IDE can cancel every active software-unit build", () => {
+  assert.match(html, /id="buildButton"[^>]*>Build<\/button>/);
+  assert.doesNotMatch(html, /id="cancelBuildButton"/);
+  assert.match(html, /id="cancelBuildConfirmDialog"/);
+  assert.match(html, /id="confirmCancelBuildButton"[^>]*>Build abbrechen<\/button>/);
+  assert.match(app, /const activeBuildJobIds = new Set\(\)/);
+  assert.match(app, /async function cancelActiveBuilds\(\)/);
+  assert.match(app, /function handleBuildButtonAction\(\)/);
+  assert.match(app, /showCancelBuildConfirmation\(\)/);
+  assert.match(app, /activeCount > 1 \? `Alle Builds abbrechen \(\$\{activeCount\}\)` : "Build abbrechen"/);
+  assert.match(app, /buildSubmissionPending = true/);
+  assert.match(app, /\/api\/user-ide\/build-jobs\/\$\{encodeURIComponent\(jobId\)\}\/cancel/);
+  assert.match(app, /\["failed", "replaced", "cancelled"\]\.includes\(current\.status\)/);
+  assert.match(app, /current\.status === "cancelling"/);
+  assert.match(app, /activeBuildJobIds\.delete\(jobId\)/);
+  assert.match(css, /#buildButton\.build-cancel-active \{/);
+  assert.match(css, /background: #b91c1c/);
 });
 
 test("IDE responds to available container width and browser sidebars", () => {
