@@ -67,6 +67,36 @@ const DevelopmentHardwareModel = (() => {
     });
   }
 
+  function catalogBoardFeatureSelections(board = {}, catalog = []) {
+    const defaults = board?.default_instance_configuration?.board_features || {};
+    const featureIds = new Set([
+      ...(Array.isArray(catalog) ? catalog : []).map((feature) => feature.feature_id),
+      ...Object.keys(defaults),
+    ]);
+    return Object.fromEntries([...featureIds].map((featureId) => {
+      const selected = defaults[featureId] || {};
+      const pins = selected.pins && typeof selected.pins === "object" && !Array.isArray(selected.pins)
+        ? Object.fromEntries(Object.entries(selected.pins).filter(([, pin]) => Number.isInteger(pin)))
+        : {};
+      return [featureId, {
+        enabled: selected.enabled === true,
+        hardware: String(selected.hardware || ""),
+        driver: String(selected.driver || ""),
+        connection: String(selected.connection || ""),
+        pins,
+        value: String(selected.value || ""),
+      }];
+    }));
+  }
+
+  function hiddenBoardFeatureSelections(previous = {}, defaults = {}, visibleFeatureIds = []) {
+    const visible = new Set(visibleFeatureIds);
+    const source = Object.keys(previous || {}).length ? previous : defaults;
+    return Object.fromEntries(Object.entries(source || {})
+      .filter(([featureId]) => !visible.has(featureId))
+      .map(([featureId, feature]) => [featureId, structuredClone(feature)]));
+  }
+
   const SENSOR_CATEGORY_LABELS = {
     temperature: "Temperatur",
     humidity: "Luftfeuchtigkeit",
@@ -153,6 +183,8 @@ const DevelopmentHardwareModel = (() => {
     boardFeaturesDiffer,
     boardIdentifier,
     boardsForProcessor,
+    catalogBoardFeatureSelections,
+    hiddenBoardFeatureSelections,
     processorKey,
     processorOptions,
     reconcileSensor,

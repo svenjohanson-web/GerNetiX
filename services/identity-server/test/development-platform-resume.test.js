@@ -25,7 +25,7 @@ test("wires all development platform controller dependencies", () => {
   assert.match(controllerCreation, /deleteJson,/);
   assert.match(controllerCreation, /loadProcessorBoardCatalog,/);
   assert.match(controllerCreation, /openHelpTopic: InformationView\.openDialog/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260801-hardware-validation-4/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260801-board-hidden-features/);
 });
 
 test("restores persisted PlantUML when an existing development project is activated", () => {
@@ -109,7 +109,7 @@ test("never traps an account without development projects in the open or manage 
   assert.match(publicController, /formatDevelopmentProjectDate\(project\.createdAt\)/);
   assert.match(publicController, /formatDevelopmentProjectDate\(project\.updatedAt\)/);
   assert.doesNotMatch(publicController, /project\.description \|\| "Keine Beschreibung\."/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260801-hardware-validation-4/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260801-board-hidden-features/);
 });
 
 test("loads the development template catalog from the server model registry", () => {
@@ -165,7 +165,7 @@ test("refreshes legacy camera template architecture to IoT-device aggregates wit
 
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260801-hardware-validation-4/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260801-board-hidden-features/);
   assert.match(publicHtml, /development-chat-input-box[\s\S]*developmentQuickPrompts[\s\S]*developmentChatInput[\s\S]*developmentChatSubmit/);
   assert.match(publicHtml, /development-send-button/);
   assert.match(publicHtml, /aria-label="Nachricht senden"/);

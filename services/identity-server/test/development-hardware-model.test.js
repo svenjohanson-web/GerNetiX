@@ -12,6 +12,23 @@ test("missing board feature profiles inherit catalog defaults without becoming e
   assert.equal(model.boardFeaturesDiffer({ camera: { enabled: false, hardware: "ov3660", driver: "esp32_camera", pins: { xclk: 15 } } }, defaults), true);
 });
 
+test("keeps hidden compiler features in catalog defaults and project snapshots", () => {
+  const board = { default_instance_configuration: { board_features: {
+    camera: { enabled: true, hardware: "ov3660", pins: { xclk: 38 } },
+    camera_power: { enabled: true, hardware: "CH32V003F4U6", pins: { output: 6 } },
+  } } };
+  const visibleCatalog = [{ feature_id: "camera" }];
+  const defaults = model.catalogBoardFeatureSelections(board, visibleCatalog);
+
+  assert.equal(defaults.camera_power.enabled, true);
+  assert.deepEqual(defaults.camera_power.pins, { output: 6 });
+  assert.equal(model.boardFeaturesDiffer(defaults, defaults), false);
+  assert.deepEqual(
+    model.hiddenBoardFeatureSelections(defaults, defaults, ["camera"]),
+    { camera_power: defaults.camera_power },
+  );
+});
+
 const boards = [
   { hardware_item_id: "esp32-devkit", processor_family: "esp32", mcu_variant: "ESP32", title: "ESP32 DevKit" },
   { hardware_item_id: "esp32-s3-devkit", processor_family: "esp32", mcu_variant: "ESP32-S3", title: "ESP32-S3 DevKit" },

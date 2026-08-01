@@ -59,3 +59,10 @@ test("shows the catalog camera while keeping its board-supplied connection", () 
   assert.match(server, /component\.hardware_scope = boardFeatureId \? "board_integrated" : "board_external"/);
   assert.match(server, /component\.hardware_scope !== "board_integrated"/);
 });
+
+test("keeps non-editable catalog features in the board snapshot without false modification warnings", () => {
+  const platform = fs.readFileSync(path.join(root, "public/app/development-platform.js"), "utf8");
+
+  assert.match(platform, /DevelopmentHardwareModel\.catalogBoardFeatureSelections\(board, catalog\)/);
+  assert.match(platform, /DevelopmentHardwareModel\.hiddenBoardFeatureSelections\([\s\S]*previous\?\.board_features,[\s\S]*defaults,[\s\S]*visibleFeatureIds/);
+});

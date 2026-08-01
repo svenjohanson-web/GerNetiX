@@ -533,6 +533,37 @@ test("reuses a successful firmware build only while its exact project snapshot i
   assert.equal(changed.reason, "project_snapshot_changed");
 });
 
+test("does not invalidate firmware when only board snapshot timestamps are refreshed", async () => {
+  const service = createMemoryProjectServer();
+  const boardConfiguration = {
+    source: "catalog",
+    snapshot_at: "2026-08-01T20:00:00.000Z",
+    board_features: { camera: { enabled: true, hardware: "ov3660", pins: { xclk: 38 } } },
+  };
+  const project = await service.createProject({
+    user_id: "user-1",
+    title: "Kameraprojekt",
+    build_config: { platform: "espressif32", board: "esp32-s3-devkitc-1", framework: "espidf", board_configuration: boardConfiguration },
+  });
+  const job = await service.createBuildJob(project.project_id, { mode: "build" });
+  await service.createBuildPackage(job.build_job_id);
+  await service.recordBuildResult(job.build_job_id, { status: "succeeded" });
+
+  await service.updateProject(project.project_id, {
+    build_config: { board_configuration: { ...boardConfiguration, snapshot_at: "2026-08-01T20:01:00.000Z" } },
+  });
+  assert.equal((await service.buildReuseStatus(job.build_job_id)).reusable, true);
+
+  await service.updateProject(project.project_id, {
+    build_config: { board_configuration: {
+      ...boardConfiguration,
+      snapshot_at: "2026-08-01T20:02:00.000Z",
+      board_features: { camera: { enabled: false, hardware: "ov3660", pins: { xclk: 38 } } },
+    } },
+  });
+  assert.equal((await service.buildReuseStatus(job.build_job_id)).reusable, false);
+});
+
 test("persists the exact lesson and step position for a learning project", async () => {
   const repository = new InMemoryProjectRepository();
   const service = new ProjectService({ repository });

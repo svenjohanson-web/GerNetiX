@@ -1372,7 +1372,7 @@ function sanitizeProject(project) {
 
 function projectVersionHash(projectSnapshot, sources) {
   const canonical = {
-    project: {
+    project: withoutVolatileSnapshotMetadata({
       title: projectSnapshot.title,
       description: projectSnapshot.description,
       learning_project_id: projectSnapshot.learning_project_id,
@@ -1383,12 +1383,20 @@ function projectVersionHash(projectSnapshot, sources) {
       active_software_unit_id: projectSnapshot.active_software_unit_id,
       view_manifest: projectSnapshot.view_manifest,
       status: projectSnapshot.status,
-    },
+    }),
     sources: [...(sources || [])]
       .sort((left, right) => left.path.localeCompare(right.path))
       .map(({ path, content, content_type, role }) => ({ path, content, content_type, role })),
   };
   return crypto.createHash("sha256").update(JSON.stringify(canonical)).digest("hex");
+}
+
+function withoutVolatileSnapshotMetadata(value) {
+  if (Array.isArray(value)) return value.map(withoutVolatileSnapshotMetadata);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(Object.entries(value)
+    .filter(([key]) => !["snapshot_at", "saved_at", "updated_at"].includes(key))
+    .map(([key, entry]) => [key, withoutVolatileSnapshotMetadata(entry)]));
 }
 
 function maskSourceContent(source) {

@@ -2234,19 +2234,8 @@ const DevelopmentPlatform = (() => {
     }
 
     function catalogBoardFeatureSelections(board) {
-      const defaults = board?.default_instance_configuration?.board_features || {};
       const catalog = Array.isArray(state.boardFeatureCatalog) ? state.boardFeatureCatalog : [];
-      return Object.fromEntries(catalog.map((feature) => {
-        const selectedFeature = defaults[feature.feature_id] || {};
-        return [feature.feature_id, {
-          enabled: selectedFeature.enabled === true,
-          hardware: String(selectedFeature.hardware || ""),
-          driver: String(selectedFeature.driver || ""),
-          connection: String(selectedFeature.connection || ""),
-          pins: normalizeDevelopmentBoardPins(selectedFeature.pins),
-          value: String(selectedFeature.value || ""),
-        }];
-      }));
+      return DevelopmentHardwareModel.catalogBoardFeatureSelections(board, catalog);
     }
 
     function boardFeaturesDiffer(current = {}, defaults = {}) {
@@ -2643,7 +2632,12 @@ const DevelopmentPlatform = (() => {
       if (!panel || panel.dataset.boardProfileId !== boardId) {
         return { schema_version: 1, source: board.configuration_scope === "account" ? "account" : "catalog", name: board.configuration_scope === "account" ? String(board.title || "").replace(/ · Mein Board$/, "") : "", base_board_profile_id: board.base_board_profile_id || boardId, account_board_id: board.account_board_id || "", account_board_version: board.account_board_version || 0, board_features: defaults, saved_at: board.configuration_scope === "account" ? new Date().toISOString() : "" };
       }
-      const boardFeatures = {};
+      const visibleFeatureIds = new Set((state.boardFeatureCatalog || []).map((feature) => feature.feature_id));
+      const boardFeatures = DevelopmentHardwareModel.hiddenBoardFeatureSelections(
+        previous?.board_features,
+        defaults,
+        visibleFeatureIds,
+      );
       panel.querySelectorAll("[data-development-board-feature]").forEach((featureRow) => {
         const featureId = featureRow.dataset.developmentBoardFeature;
         const read = (field) => featureRow.querySelector(`[data-development-board-field="${field}"]`)?.value || "";
