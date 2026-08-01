@@ -400,7 +400,18 @@ async function startIdentityRemoteDev(options={}){
     const stop=options.stopService||stopService;
     await stop(item.id);
   }
-  const tunnel=await stagingTunnelState(options);
+  let tunnel=await stagingTunnelState(options);
+  if(!tunnel.active){
+    const readVpn=options.vpnState||vpnState;
+    const vpn=await readVpn(options);
+    if(vpn.supported&&!vpn.configured)throw new Error(vpn.error||"Der GerNetiX-VPN ist nicht eingerichtet.");
+    if(vpn.supported&&!vpn.connected){
+      const connectVpn=options.setVpnConnected||setVpnConnected;
+      await connectVpn(true,options);
+    }
+    const connectTunnel=options.startStagingTunnel||startStagingTunnel;
+    tunnel=await connectTunnel(options);
+  }
   if(!tunnel.active)throw new Error("Identity benötigt den verbundenen VPS SSH-Tunnel einschließlich Identity-PostgreSQL.");
   let env;
   try{env=(options.remoteIdentityEnvironment||remoteIdentityEnvironment)();}catch(error){throw new Error(`Identity Remote-Dev kann nicht starten: ${error.message}`);}
@@ -410,6 +421,7 @@ async function startIdentityRemoteDev(options={}){
   const wait=options.delay||delay;
   for(let i=0;i<40;i+=1){const state=await checkService(item);if(state.healthy)return state;if(child.exitCode!==null)break;await wait(250);}
   const detail=recentServiceLog(item.id);
+  if(child.exitCode===null&&!child.killed)child.kill?.("SIGTERM");
   throw new Error(`Identity Remote-Dev wurde nicht gestartet.${detail?` Letzte Logzeilen: ${detail}`:""}`);
 }
 async function startService(id,options={}){ const item=byId(id); if(!item.local)throw new Error(`${item.name} läuft auf dem VPS und kann hier nicht lokal gestartet werden.`); if(id==="identity-server")return startIdentityRemoteDev(options); const checkService=options.checkService||check; const current=await checkService(item); if(current.healthy)return current; const child=launchLoggedService(item,{...process.env,...item.environment,ELECTRON_RUN_AS_NODE:"1",PORT:String(item.port)}); child.unref(); for(let i=0;i<40;i+=1){await delay(250);const state=await checkService(item);if(state.healthy)return state;} throw new Error(`${item.name} konnte nicht gestartet werden.${recentServiceLog(item.id)?` Letzte Logzeilen: ${recentServiceLog(item.id)}`:""}`); }

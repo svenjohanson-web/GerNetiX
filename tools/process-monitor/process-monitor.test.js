@@ -280,6 +280,39 @@ test("Identity starts locally only after the PostgreSQL tunnel is available", as
   assert.equal(launchedEnvironment.IDENTITY_RUNTIME_LOCATION,"local-development");
 });
 
+test("Identity start restores VPN and PostgreSQL tunnel automatically", async () => {
+  let checks=0;
+  const actions=[];
+  const result=await control.startService("identity-server",{
+    checkService:async()=>checks++===0
+      ? {id:"identity-server",healthy:false,pid:null,identityModeMismatch:false}
+      : {id:"identity-server",healthy:true,pid:321,persistenceBackend:"postgres",remoteDev:true},
+    config:{GERNETIX_STAGING_SSH:"root@gernetix-vps"},
+    pidForPort:async()=>null,
+    vpnState:async()=>({supported:true,configured:true,connected:false}),
+    setVpnConnected:async()=>{actions.push("vpn");return {connected:true};},
+    startStagingTunnel:async()=>{actions.push("tunnel");return {active:true};},
+    remoteIdentityEnvironment:()=>({IDENTITY_RUNTIME_LOCATION:"local-development",IDENTITY_REMOTE_DEV:"1",IDENTITY_PERSISTENCE_BACKEND:"postgres"}),
+    launchLoggedService:()=>({exitCode:null,unref(){}}),
+    delay:async()=>{},
+  });
+  assert.equal(result.healthy,true);
+  assert.deepEqual(actions,["vpn","tunnel"]);
+});
+
+test("failed Identity start does not leave an orphan process", async () => {
+  let killed=false;
+  await assert.rejects(control.startService("identity-server",{
+    checkService:async()=>({id:"identity-server",healthy:false,pid:null,identityModeMismatch:false}),
+    config:{GERNETIX_STAGING_SSH:"root@gernetix-vps"},
+    pidForPort:async()=>111,
+    remoteIdentityEnvironment:()=>({IDENTITY_PERSISTENCE_BACKEND:"postgres"}),
+    launchLoggedService:()=>({exitCode:null,killed:false,unref(){},kill(){killed=true;}}),
+    delay:async()=>{},
+  }),/wurde nicht gestartet/);
+  assert.equal(killed,true);
+});
+
 test("detects Windows listener PIDs independently of the localized state label", () => {
   assert.equal(control.pidFromWindowsNetstat("  TCP    127.0.0.1:4300    0.0.0.0:0    ABHÖREN    29384", 4300), 29384);
   assert.equal(control.pidFromWindowsNetstat("  TCP    127.0.0.1:4800    0.0.0.0:0    LISTENING    26300", 4800), 26300);
