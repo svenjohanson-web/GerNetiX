@@ -400,15 +400,15 @@ async function startIdentityRemoteDev(options={}){
     const stop=options.stopService||stopService;
     await stop(item.id);
   }
+  const readVpn=options.vpnState||vpnState;
+  const vpn=await readVpn(options);
+  if(vpn.supported&&!vpn.configured)throw new Error(vpn.error||"Der GerNetiX-VPN ist nicht eingerichtet.");
+  if(vpn.supported&&!vpn.connected){
+    const connectVpn=options.setVpnConnected||setVpnConnected;
+    await connectVpn(true,options);
+  }
   let tunnel=await stagingTunnelState(options);
   if(!tunnel.active){
-    const readVpn=options.vpnState||vpnState;
-    const vpn=await readVpn(options);
-    if(vpn.supported&&!vpn.configured)throw new Error(vpn.error||"Der GerNetiX-VPN ist nicht eingerichtet.");
-    if(vpn.supported&&!vpn.connected){
-      const connectVpn=options.setVpnConnected||setVpnConnected;
-      await connectVpn(true,options);
-    }
     const connectTunnel=options.startStagingTunnel||startStagingTunnel;
     tunnel=await connectTunnel(options);
   }

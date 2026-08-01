@@ -271,6 +271,7 @@ test("Identity starts locally only after the PostgreSQL tunnel is available", as
       GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT:"25432",
     },
     pidForPort:async()=>111,
+    vpnState:async()=>({supported:true,configured:true,connected:true}),
     remoteIdentityEnvironment:()=>({IDENTITY_RUNTIME_LOCATION:"local-development",IDENTITY_REMOTE_DEV:"1",IDENTITY_PERSISTENCE_BACKEND:"postgres"}),
     launchLoggedService:(_item,environment)=>{launchedEnvironment=environment;return {exitCode:null,unref(){}};},
     delay:async()=>{},
@@ -306,6 +307,7 @@ test("failed Identity start does not leave an orphan process", async () => {
     checkService:async()=>({id:"identity-server",healthy:false,pid:null,identityModeMismatch:false}),
     config:{GERNETIX_STAGING_SSH:"root@gernetix-vps"},
     pidForPort:async()=>111,
+    vpnState:async()=>({supported:true,configured:true,connected:true}),
     remoteIdentityEnvironment:()=>({IDENTITY_PERSISTENCE_BACKEND:"postgres"}),
     launchLoggedService:()=>({exitCode:null,killed:false,unref(){},kill(){killed=true;}}),
     delay:async()=>{},
@@ -373,4 +375,5 @@ test("bulk start launches only the local PostgreSQL-backed Identity", async () =
   assert.match(desktopMain, /processes:start-all/);
   assert.match(html, /id="startAllLocal"/);
   assert.match(client, /gernetixProcesses\.startAll/);
+  assert.match(client, /setInterval\(\(\)=>loadAccessState\(\),2000\)/);
 });
