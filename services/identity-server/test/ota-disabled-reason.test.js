@@ -34,6 +34,7 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /flashBuildViaSerialService/);
   assert.match(app, /state\.serialService\.flash/);
   assert.match(server, /function browserFlashManifest\(jobId, completedJob, buildConfig = \{\}\)/);
+  assert.match(server, /completeBrowserFlashDefinitions\(runnerManifest, fallbackDefinitions\)/);
   assert.match(server, /function esp32BootloaderAddress\(buildConfig = \{\}\)[\s\S]*esp32\[-_\]\?s3\|es3c28p[\s\S]*\? 0x0000 : 0x1000/);
   assert.match(app, /loadIdeEsptoolModule/);
   assert.match(app, /browser-usb-flash-result/);
@@ -71,6 +72,10 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /Firmware und USB-Ports zuordnen/);
   assert.match(app, /function renderUsbFlashAssignmentLists/);
   assert.match(app, /function latestBuildForUsbFirmware/);
+  assert.match(app, /async function reusableBuildForUsbFlash/);
+  assert.match(app, /reuse-usb-flash/);
+  assert.match(app, /Vorhandener Build für/);
+  assert.match(app, /Inkrementeller PlatformIO-Build wird gestartet/);
   assert.match(app, /<b>Letzter Build:<\/b>/);
   assert.doesNotMatch(app, /<span><b>Compiler:<\/b>/);
   assert.doesNotMatch(app, /<span><b>Einstieg:<\/b>/);

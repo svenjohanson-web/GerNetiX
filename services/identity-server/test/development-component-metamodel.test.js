@@ -16,10 +16,16 @@ test("allows only defined architecture relationships and derives sensor and actu
   assert.equal(metamodel.componentTypes.telemetry_api.user_configurable, false);
   assert.equal(metamodel.componentTypes.project_storage.user_configurable, false);
   assert.equal(metamodel.componentTypes.notification_service.user_configurable, false);
+  assert.equal(metamodel.componentTypes.network_interface.label, "Netzwerkschnittstelle");
+  assert.equal(metamodel.componentTypes.network_interface.user_configurable, false);
   assert.equal(metamodel.componentTypes.network, undefined);
   assert.equal(metamodel.componentTypes.message_broker, undefined);
   assert.equal(metamodel.componentTypes.data_store, undefined);
   assert.equal(metamodel.relationshipRules.some((item) => item.source_type === "network" || item.target_type === "network"), false);
+  assert.equal(metamodel.validatesRelation("processor", "processor"), false);
+  assert.equal(metamodel.validatesRelation("processor", "network_interface"), true);
+  assert.equal(metamodel.validatesRelation("network_interface", "network_interface"), true);
+  assert.equal(metamodel.validatesRelation("network_interface", "processor"), true);
   assert.equal(metamodel.controlUnitForRelation("sensor", "iot_device"), "target");
   assert.equal(metamodel.controlUnitForRelation("iot_device", "actuator"), "source");
   assert.deepEqual(metamodel.relationshipRules.find((item) => item.id === "measures_for").target_cardinality, "1");
@@ -48,6 +54,7 @@ test("restores integrated audio and touch hardware types from PlantUML", () => {
   assert.equal(metamodel.componentTypeForPlantUml("Touch", "rectangle", "touch"), "sensor");
   assert.equal(metamodel.componentTypeForPlantUml("ES7210 Audio-ADC-IC", "rectangle", "microphone_adc_ic"), "hardware_ic");
   assert.equal(metamodel.componentTypeForPlantUml("Lautsprecher", "rectangle", "speaker"), "actuator");
+  assert.equal(metamodel.componentTypeForPlantUml("WLAN-/WiFi-Schnittstelle", "rectangle", "camera_wifi"), "network_interface");
   assert.equal(metamodel.validatesRelation("actor", "sensor"), true);
   assert.equal(metamodel.validatesRelation("sensor", "hardware_ic"), true);
   assert.equal(metamodel.validatesRelation("hardware_ic", "actuator"), true);

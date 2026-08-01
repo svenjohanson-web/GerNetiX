@@ -5,6 +5,7 @@
 #include <cstring>
 
 #include "esp_http_server.h"
+#include "esp_system.h"
 #include "esp_timer.h"
 
 #include "basissoftware/config.h"
@@ -19,6 +20,23 @@ constexpr const char *TAG = "deviceWeb";
 constexpr size_t LOG_RESPONSE_SIZE = 2304;
 constexpr size_t WIFI_SCAN_RESPONSE_SIZE = 2048;
 httpd_handle_t server = nullptr;
+
+const char *resetReasonName(esp_reset_reason_t reason) {
+  switch (reason) {
+    case ESP_RST_POWERON: return "power_on";
+    case ESP_RST_EXT: return "external_reset";
+    case ESP_RST_SW: return "software_reset";
+    case ESP_RST_PANIC: return "panic";
+    case ESP_RST_INT_WDT: return "interrupt_watchdog";
+    case ESP_RST_TASK_WDT: return "task_watchdog";
+    case ESP_RST_WDT: return "watchdog";
+    case ESP_RST_DEEPSLEEP: return "deep_sleep";
+    case ESP_RST_BROWNOUT: return "brownout";
+    case ESP_RST_SDIO: return "sdio";
+    case ESP_RST_UNKNOWN:
+    default: return "unknown";
+  }
+}
 
 esp_err_t sendPortalPage(httpd_req_t *request) {
   constexpr const char *body =
@@ -150,6 +168,9 @@ esp_err_t statusHandler(httpd_req_t *request) {
       "\"wifiLastConnectStatus\":%d,"
       "\"wifiLastDisconnectReason\":%d,"
       "\"uptimeMs\":%lld,"
+      "\"reset_reason\":\"%s\","
+      "\"free_heap_bytes\":%u,"
+      "\"minimum_free_heap_bytes\":%u,"
       "%s,"
       "%s,"
       "%s"
@@ -166,10 +187,14 @@ esp_err_t statusHandler(httpd_req_t *request) {
       wifiLastConnectStatus(),
       wifiLastDisconnectReason(),
       uptimeMs,
+      resetReasonName(esp_reset_reason()),
+      static_cast<unsigned>(esp_get_free_heap_size()),
+      static_cast<unsigned>(esp_get_minimum_free_heap_size()),
       provisioningJson,
       otaJson,
       mqttJson);
 
+  httpd_resp_set_hdr(request, "Cache-Control", "no-store");
   httpd_resp_set_type(request, "application/json");
   const esp_err_t status = httpd_resp_send(request, body, HTTPD_RESP_USE_STRLEN);
   std::free(provisioningJson);
@@ -382,6 +407,7 @@ esp_err_t logsHandler(httpd_req_t *request) {
   }
   copyFeedbackLog(body, LOG_RESPONSE_SIZE);
 
+  httpd_resp_set_hdr(request, "Cache-Control", "no-store");
   httpd_resp_set_type(request, "text/plain; charset=utf-8");
   const esp_err_t status = httpd_resp_send(request, body, HTTPD_RESP_USE_STRLEN);
   std::free(body);

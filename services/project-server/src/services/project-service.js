@@ -283,6 +283,35 @@ class ProjectService {
     return job;
   }
 
+  async buildReuseStatus(jobId) {
+    await this.ready;
+    const job = await this.getBuildJob(jobId);
+    const project = await this.requireProject(job.project_id);
+    const softwareUnits = softwareUnitsForProject(project);
+    const softwareUnit = softwareUnits.find((unit) => unit.software_unit_id === job.software_unit_id)
+      || (!job.software_unit_id ? softwareUnits[0] : null);
+    const allSources = await this.repository.listSources(project.project_id);
+    const sources = sourcesForSoftwareUnit(allSources, softwareUnit, softwareUnits);
+    const currentSnapshotSha256 = projectVersionHash(sanitizeProject(project), sources);
+    const reusable = job.status === "succeeded"
+      && Boolean(job.snapshot_sha256)
+      && job.snapshot_sha256 === currentSnapshotSha256;
+    return {
+      build_job_id: job.build_job_id,
+      project_id: job.project_id,
+      software_unit_id: job.software_unit_id || "",
+      build_status: job.status,
+      reusable,
+      reason: reusable
+        ? "build_snapshot_matches"
+        : job.status !== "succeeded"
+          ? "build_not_successful"
+          : "project_snapshot_changed",
+      build_snapshot_sha256: job.snapshot_sha256 || "",
+      current_snapshot_sha256: currentSnapshotSha256,
+    };
+  }
+
   async listBuildJobs(query = {}) {
     await this.ready;
     return this.repository.listBuildJobs({

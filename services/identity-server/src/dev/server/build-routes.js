@@ -58,6 +58,57 @@ function registerBuildRoutes({
   });
   registry.register({
     method: "POST",
+    pattern: /^\/api\/user-ide\/build-jobs\/([^/]+)\/reuse-usb-flash$/,
+    async handler({ req, res, match }) {
+      const session = await requireSession(req, res);
+      if (!session) return;
+      const jobId = decodeURIComponent(match[1]);
+      const body = await readJsonBody(req);
+      const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
+      if (!projectJob || projectJob.user_id !== projectServerUserId(session)) {
+        sendJson(res, 404, { error: "build_job_not_found", message: "BuildJob wurde nicht gefunden." });
+        return;
+      }
+      if (body.software_unit_id && body.software_unit_id !== projectJob.software_unit_id) {
+        sendJson(res, 409, { error: "build_target_mismatch", message: "Der Build gehört zu einer anderen Firmware-Einheit." });
+        return;
+      }
+      const reuse = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}/reuse-status`);
+      if (!reuse.reusable) {
+        sendJson(res, 409, {
+          error: "build_not_reusable",
+          message: "Projektquellen oder Build-Konfiguration wurden seit diesem Build geändert.",
+          reason: reuse.reason,
+        });
+        return;
+      }
+      const completedJob = { status: projectJob.status, result: projectJob.result || {} };
+      const flashManifest = browserFlashManifest(jobId, completedJob, projectJob.build_config || {});
+      const requiredArtifacts = ["bootloader.bin", "partitions.bin", "firmware.bin"];
+      if (!requiredArtifacts.every((name) => flashManifest.some((item) => item.name === name))) {
+        sendJson(res, 409, {
+          error: "build_flash_package_incomplete",
+          message: "Der vorhandene Build enthält kein vollständiges ESP32-USB-Flashpaket.",
+        });
+        return;
+      }
+      sendJson(res, 200, {
+        build_job_id: projectJob.build_job_id,
+        build_deploy_job_id: projectJob.build_deploy_job_id || projectJob.build_job_id,
+        project_server_id: projectJob.project_id,
+        software_unit_id: projectJob.software_unit_id || "",
+        mode: projectJob.mode,
+        status: "succeeded",
+        created_at: projectJob.created_at,
+        finished_at: projectJob.finished_at,
+        flash_status: projectJob.result?.build?.usb_flash?.status || "nicht angefordert",
+        flash_manifest: flashManifest,
+        reused_for_usb_flash: true,
+      });
+    },
+  });
+  registry.register({
+    method: "POST",
     pattern: /^\/api\/user-ide\/build-jobs\/([^/]+)\/browser-usb-flash-result$/,
     async handler({ req, res, match }) {
       if (!await requireSession(req, res)) return;

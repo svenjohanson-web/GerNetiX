@@ -11,16 +11,59 @@
 #endif
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
+#include "esp_system.h"
+#include "esp_timer.h"
 
 #include "basissoftware/config.h"
 #include "basissoftware/feedback.h"
 #include "basissoftware/wifi_manager.h"
+#include "gernetix/runtime_core.h"
 
 namespace {
 constexpr const char *TAG = "serialProvisioning";
 constexpr const char *PROTOCOL_TYPE = "gernetix.serial_provisioning";
 constexpr size_t COMMAND_MAX_BYTES = 384;
 constexpr size_t WIFI_SCAN_RESPONSE_BYTES = 4096;
+constexpr size_t DIAGNOSTICS_LOG_BYTES = 2304;
+constexpr size_t DIAGNOSTICS_RESPONSE_BYTES = 3072;
+
+const char *resetReasonName(esp_reset_reason_t reason) {
+  switch (reason) {
+    case ESP_RST_POWERON: return "power_on";
+    case ESP_RST_EXT: return "external_reset";
+    case ESP_RST_SW: return "software_reset";
+    case ESP_RST_PANIC: return "panic";
+    case ESP_RST_INT_WDT: return "interrupt_watchdog";
+    case ESP_RST_TASK_WDT: return "task_watchdog";
+    case ESP_RST_WDT: return "watchdog";
+    case ESP_RST_DEEPSLEEP: return "deep_sleep";
+    case ESP_RST_BROWNOUT: return "brownout";
+    case ESP_RST_SDIO: return "sdio";
+    case ESP_RST_UNKNOWN:
+    default: return "unknown";
+  }
+}
+
+void writeDiagnosticsStatusJson(char *target, size_t targetSize) {
+  char uptime[32] = {};
+  char freeHeap[24] = {};
+  char minimumHeap[24] = {};
+  std::snprintf(uptime, sizeof(uptime), "%lld", static_cast<long long>(esp_timer_get_time() / 1000));
+  std::snprintf(freeHeap, sizeof(freeHeap), "%u", static_cast<unsigned>(esp_get_free_heap_size()));
+  std::snprintf(minimumHeap, sizeof(minimumHeap), "%u", static_cast<unsigned>(esp_get_minimum_free_heap_size()));
+  gernetix::runtime::JsonWriter writer{target, targetSize, 0, false};
+  target[0] = '\0';
+  gernetix::runtime::jsonBegin(writer);
+  gernetix::runtime::jsonAppendString(writer, "firmware_version", GERNETIX_RUNTIME_VERSION);
+  gernetix::runtime::jsonAppendString(writer, "basissoftware_version", GERNETIX_BASISSOFTWARE_VERSION);
+  gernetix::runtime::jsonAppendString(writer, "basissoftware_variant", GERNETIX_BASISSOFTWARE_VARIANT);
+  gernetix::runtime::jsonAppendRaw(writer, "uptime_ms", uptime);
+  gernetix::runtime::jsonAppendString(writer, "reset_reason", resetReasonName(esp_reset_reason()));
+  gernetix::runtime::jsonAppendRaw(writer, "free_heap_bytes", freeHeap);
+  gernetix::runtime::jsonAppendRaw(writer, "minimum_free_heap_bytes", minimumHeap);
+  gernetix::runtime::jsonAppendString(writer, "wifi_state", wifiStationStateName());
+  gernetix::runtime::jsonEnd(writer);
+}
 
 int serialProvisioningRead(uint8_t *buffer, size_t length, TickType_t timeout) {
 #if SOC_USB_SERIAL_JTAG_SUPPORTED
@@ -174,6 +217,33 @@ void handleCommand(const char *command) {
         wifiLastDisconnectReason(),
         wifiLastConnectStatus());
     sendJson(requestId, "wifi_status", payload);
+    return;
+  }
+
+  if (std::strcmp(action, "diagnostics_status") == 0) {
+    char payload[512] = {};
+    writeDiagnosticsStatusJson(payload, sizeof(payload));
+    sendJson(requestId, "diagnostics_status", payload);
+    return;
+  }
+
+  if (std::strcmp(action, "diagnostics_logs") == 0) {
+    char *log = static_cast<char *>(std::calloc(DIAGNOSTICS_LOG_BYTES, 1));
+    char *payload = static_cast<char *>(std::calloc(DIAGNOSTICS_RESPONSE_BYTES, 1));
+    if (log == nullptr || payload == nullptr) {
+      std::free(log);
+      std::free(payload);
+      sendError(requestId, "diagnostics_out_of_memory");
+      return;
+    }
+    copyFeedbackLog(log, DIAGNOSTICS_LOG_BYTES);
+    gernetix::runtime::JsonWriter writer{payload, DIAGNOSTICS_RESPONSE_BYTES, 0, false};
+    gernetix::runtime::jsonBegin(writer);
+    gernetix::runtime::jsonAppendString(writer, "text", log);
+    gernetix::runtime::jsonEnd(writer);
+    sendJson(requestId, "diagnostics_logs", payload);
+    std::free(log);
+    std::free(payload);
     return;
   }
 

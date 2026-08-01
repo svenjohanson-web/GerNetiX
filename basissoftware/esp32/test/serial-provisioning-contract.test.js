@@ -14,6 +14,12 @@ test("serial provisioning scans and stores WiFi credentials only on the device",
   assert.match(source, /saveWifiStationCredentials/);
   assert.match(source, /wifi_status/);
   assert.match(source, /stored_only_on_device/);
+  assert.match(source, /diagnostics_status/);
+  assert.match(source, /diagnostics_logs/);
+  assert.match(source, /esp_reset_reason\(\)/);
+  assert.match(source, /esp_get_minimum_free_heap_size\(\)/);
+  assert.match(source, /copyFeedbackLog\(log, DIAGNOSTICS_LOG_BYTES\)/);
+  assert.match(source, /jsonAppendString\(writer, "text", log\)/);
   assert.match(source, /usb_serial_jtag_read_bytes/);
   assert.match(source, /usb_serial_jtag_write_bytes/);
   assert.match(source, /responsePayload\[responsePayloadLength - 1\] == '\\n'/);

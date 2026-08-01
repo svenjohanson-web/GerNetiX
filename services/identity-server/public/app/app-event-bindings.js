@@ -53,6 +53,11 @@ document.querySelector("#ideProjectBrowser").addEventListener("click", (event) =
     openDeviceConnections(deviceConnectionsButton.dataset.deviceConnections);
     return;
   }
+  const deviceDebugButton = event.target.closest("[data-device-debug]");
+  if (deviceDebugButton) {
+    openIdeDeviceDebug(deviceDebugButton.dataset.deviceDebug, deviceDebugButton.dataset.deviceDebugUnit);
+    return;
+  }
   const sensorPropertiesButton = event.target.closest("[data-sensor-properties]");
   if (sensorPropertiesButton) {
     openSensorProperties(sensorPropertiesButton.dataset.sensorProperties);

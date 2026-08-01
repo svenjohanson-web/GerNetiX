@@ -15,6 +15,7 @@ const platformAppFiles = [
   "app-runtime-utils.js",
   "app-push-controller.js",
   "app.js",
+  "device-debug-controller.js",
   "app-event-bindings.js",
 ];
 

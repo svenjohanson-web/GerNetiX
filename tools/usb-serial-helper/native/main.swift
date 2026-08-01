@@ -156,10 +156,10 @@ final class SerialService {
             if request.method == "GET" && request.path == "/v1/status" {
                 return jsonResponse(200, [
                     "service": "gernetix-serial-service",
-                    "version": "0.3.6",
+                    "version": "0.3.7",
                     "protocolVersion": 1,
                     "runtime": "native-swift",
-                    "capabilities": ["ports", "probe", "flash", "serial_provisioning"],
+                    "capabilities": ["ports", "probe", "flash", "serial_provisioning", "local_device_diagnostics"],
                 ], cors)
             }
             if request.method == "POST" && request.path == "/v1/sessions" {
@@ -222,6 +222,13 @@ final class SerialService {
                     timeoutMilliseconds: timeout
                 )
                 return jsonResponse(200, ["ready": true, "line": line], cors)
+            }
+            if request.method == "POST" && request.path == "/v1/device-http/diagnostics" {
+                let body = try decodeObject(request.body)
+                guard let baseURL = body["baseUrl"] as? String else {
+                    throw ServiceError("device_diagnostics_url_missing", "Die lokale Geräteadresse fehlt.")
+                }
+                return jsonResponse(200, try localDeviceDiagnostics(baseURL), cors)
             }
             return jsonResponse(404, ["error": "not_found"], cors)
         } catch let error as ServiceError {
@@ -544,6 +551,104 @@ func waitForSerialLine(port: String, patterns: [String], timeoutMilliseconds: In
     throw ServiceError("serial_ready_timeout", "Das Board wurde nicht rechtzeitig als gestartet erkannt.", status: 504)
 }
 
+final class LocalDiagnosticsRedirectDelegate: NSObject, URLSessionTaskDelegate {
+    func urlSession(
+        _ session: URLSession,
+        task: URLSessionTask,
+        willPerformHTTPRedirection response: HTTPURLResponse,
+        newRequest request: URLRequest,
+        completionHandler: @escaping (URLRequest?) -> Void
+    ) {
+        completionHandler(nil)
+    }
+}
+
+func localDeviceDiagnostics(_ rawBaseURL: String) throws -> JSONObject {
+    let baseURL = try validatedLocalDeviceBaseURL(rawBaseURL)
+    let statusData = try localDeviceGET(baseURL.appendingPathComponent("status"), maximumBytes: 16 * 1024)
+    let logsData = try localDeviceGET(baseURL.appendingPathComponent("logs"), maximumBytes: 64 * 1024)
+    guard let status = try JSONSerialization.jsonObject(with: statusData) as? JSONObject else {
+        throw ServiceError("device_diagnostics_status_invalid", "Der Geräte-Status ist kein gültiges JSON.", status: 502)
+    }
+    guard let logs = String(data: logsData, encoding: .utf8) else {
+        throw ServiceError("device_diagnostics_logs_invalid", "Das Geräte-Log ist nicht als UTF-8 lesbar.", status: 502)
+    }
+    return ["baseUrl": baseURL.absoluteString, "status": status, "logs": logs]
+}
+
+func validatedLocalDeviceBaseURL(_ value: String) throws -> URL {
+    let normalized = value.contains("://") ? value : "http://\(value)"
+    guard let components = URLComponents(string: normalized),
+          components.scheme?.lowercased() == "http",
+          components.user == nil,
+          components.password == nil,
+          components.query == nil,
+          components.fragment == nil,
+          components.port == nil || components.port == 80,
+          let host = components.host?.lowercased(),
+          isAllowedLocalDeviceHost(host),
+          components.path.isEmpty || components.path == "/" else {
+        throw ServiceError("device_diagnostics_url_invalid", "Erlaubt sind nur lokale HTTP-Geräteadressen ohne Pfad, Zugangsdaten oder Sonderport.")
+    }
+    guard let url = URL(string: "http://\(host)/") else {
+        throw ServiceError("device_diagnostics_url_invalid", "Die lokale Geräteadresse ist ungültig.")
+    }
+    return url
+}
+
+func isAllowedLocalDeviceHost(_ host: String) -> Bool {
+    if host.range(of: #"^gernetix-[a-z0-9-]+\.local$"#, options: .regularExpression) != nil { return true }
+    let octets = host.split(separator: ".").compactMap { Int($0) }
+    guard octets.count == 4, octets.allSatisfy({ (0...255).contains($0) }) else { return false }
+    if octets[0] == 10 { return true }
+    if octets[0] == 192 && octets[1] == 168 { return true }
+    if octets[0] == 172 && (16...31).contains(octets[1]) { return true }
+    return octets[0] == 169 && octets[1] == 254
+}
+
+func localDeviceGET(_ url: URL, maximumBytes: Int) throws -> Data {
+    let configuration = URLSessionConfiguration.ephemeral
+    configuration.timeoutIntervalForRequest = 3
+    configuration.timeoutIntervalForResource = 4
+    configuration.httpCookieStorage = nil
+    let delegate = LocalDiagnosticsRedirectDelegate()
+    let session = URLSession(configuration: configuration, delegate: delegate, delegateQueue: nil)
+    let semaphore = DispatchSemaphore(value: 0)
+    var receivedData: Data?
+    var receivedResponse: URLResponse?
+    var receivedError: Error?
+    var request = URLRequest(url: url)
+    request.httpMethod = "GET"
+    request.cachePolicy = .reloadIgnoringLocalAndRemoteCacheData
+    request.setValue("no-store", forHTTPHeaderField: "Cache-Control")
+    let task = session.dataTask(with: request) { data, response, error in
+        receivedData = data
+        receivedResponse = response
+        receivedError = error
+        semaphore.signal()
+    }
+    task.resume()
+    if semaphore.wait(timeout: .now() + 5) == .timedOut {
+        task.cancel()
+        session.invalidateAndCancel()
+        throw ServiceError("device_diagnostics_timeout", "Das lokale Gerät hat nicht rechtzeitig geantwortet.", status: 504)
+    }
+    session.finishTasksAndInvalidate()
+    if let receivedError {
+        throw ServiceError("device_diagnostics_unreachable", "Das lokale Gerät ist nicht erreichbar: \(receivedError.localizedDescription)", status: 502)
+    }
+    guard let response = receivedResponse as? HTTPURLResponse,
+          response.statusCode == 200,
+          response.url?.host?.lowercased() == url.host?.lowercased(),
+          let data = receivedData else {
+        throw ServiceError("device_diagnostics_response_invalid", "Das lokale Gerät hat keine gültige Diagnoseantwort geliefert.", status: 502)
+    }
+    guard data.count <= maximumBytes else {
+        throw ServiceError("device_diagnostics_response_too_large", "Die lokale Diagnoseantwort überschreitet die erlaubte Größe.", status: 502)
+    }
+    return data
+}
+
 func readLine(_ descriptor: Int32, pending: inout Data, deadline: Int64) throws -> Data? {
     while nowMilliseconds() < deadline {
         if let newline = pending.firstIndex(of: 0x0A) {
@@ -797,6 +902,7 @@ func statusText(_ status: Int) -> String {
         409: "Conflict",
         413: "Payload Too Large",
         500: "Internal Server Error",
+        502: "Bad Gateway",
         504: "Gateway Timeout",
     ][status] ?? "Response"
 }
@@ -824,6 +930,12 @@ func runSelfTests() throws {
     }
     guard try flashAddress("0x20000") == 0x20000 else {
         throw ServiceError("self_test_failed", "Die Prüfung der Flash-Adresse ist fehlgeschlagen.")
+    }
+    guard isAllowedLocalDeviceHost("gernetix-esp32.local"),
+          isAllowedLocalDeviceHost("192.168.4.1"),
+          !isAllowedLocalDeviceHost("127.0.0.1"),
+          !isAllowedLocalDeviceHost("example.com") else {
+        throw ServiceError("self_test_failed", "Die Prüfung der lokalen Diagnose-Zielgrenzen ist fehlgeschlagen.")
     }
     let merged = try mergeFlashFiles([
         FlashFile(address: 0, data: Data([1, 2])),

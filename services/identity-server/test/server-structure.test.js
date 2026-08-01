@@ -264,6 +264,43 @@ test("build cancellation keeps account ownership and targets the central coordin
   assert.deepEqual(responses, [[202, { job_id: "job 42", status: "cancelling" }]]);
 });
 
+test("USB flash reuses an owned successful build only after the Project Server confirms its snapshot", async () => {
+  const registry = createRouteRegistry();
+  const responses = [];
+  registerBuildRoutes({
+    registry,
+    requireSession: async () => ({ account: { user_id: "user-1" } }),
+    readJsonBody: async () => ({ software_unit_id: "camera" }),
+    sendJson: (res, status, body) => responses.push([status, body]),
+    handleUserIdeBuildJob: async () => {},
+    loadUserIdeProjects: async () => [],
+    buildDeployJson: async () => ({}),
+    projectServerJson: async (path) => path.endsWith("/reuse-status")
+      ? { reusable: true, reason: "build_snapshot_matches" }
+      : {
+          build_job_id: "job-1", build_deploy_job_id: "job-1", project_id: "project-1",
+          user_id: "user-1", software_unit_id: "camera", mode: "build", status: "succeeded",
+          build_config: {}, result: { build: { artifacts: {} } },
+        },
+    loadBuildDeployJob: async () => ({}),
+    recordCompletedBuildJob: async () => {},
+    browserFlashManifest: () => [
+      { name: "bootloader.bin" }, { name: "partitions.bin" }, { name: "firmware.bin" },
+    ],
+    projectServerUserId: () => "user-1",
+    proxyBuildArtifact: async () => {},
+  });
+
+  assert.equal(await registry.dispatch({
+    req: { method: "POST" },
+    res: {},
+    url: new URL("http://localhost/api/user-ide/build-jobs/job-1/reuse-usb-flash"),
+  }), true);
+  assert.equal(responses[0][0], 200);
+  assert.equal(responses[0][1].reused_for_usb_flash, true);
+  assert.equal(responses[0][1].build_job_id, "job-1");
+});
+
 test("project routes decode project ids before invoking domain handlers", async () => {
   const registry = createRouteRegistry();
   const calls = [];

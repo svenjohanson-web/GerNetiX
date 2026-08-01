@@ -660,6 +660,13 @@ function projectVirtualTreeEntries(project) {
         virtualAction: "device-connections",
         componentId: component.component_id,
       });
+      entries.push({
+        path: `Komponenten/${label}/Debug & Diagnose`,
+        role: "",
+        virtualAction: "device-debug",
+        componentId: component.component_id,
+        softwareUnitId: softwareUnit?.software_unit_id || "",
+      });
       return;
     }
     if (["event_worker", "event_dispatcher"].includes(component.abstract_type)
@@ -802,6 +809,8 @@ function renderSourceTree(node, depth = 0, openFolders = new Set()) {
             ? `data-sensor-properties="${escapeAttribute(file.componentId || "")}"`
           : file.virtualAction === "device-connections"
             ? `data-device-connections="${escapeAttribute(file.componentId || "")}"`
+          : file.virtualAction === "device-debug"
+            ? `data-device-debug="${escapeAttribute(file.componentId || "")}" data-device-debug-unit="${escapeAttribute(file.softwareUnitId || "")}"`
           : file.virtualAction === "web-interface"
             ? "data-web-interface"
             : file.virtualAction === "pwa-dashboard"
@@ -1323,13 +1332,14 @@ function renderIdeViewMode(project) {
   const deviceConnections = state.ideViewMode === "device-connections";
   const driverManagement = state.ideViewMode === "driver-management";
   const pwaDashboard = state.ideViewMode === "pwa-dashboard";
-  const virtualView = componentFeatures || webInterface || boardProperties || sensorProperties || deviceConnections || driverManagement || pwaDashboard;
+  const deviceDebug = state.ideViewMode === "device-debug";
+  const virtualView = componentFeatures || webInterface || boardProperties || sensorProperties || deviceConnections || driverManagement || pwaDashboard || deviceDebug;
   const plantUml = /\.(puml|plantuml)$/i.test(sourcePath) && /@startuml/i.test(source);
   const image = /\.(svg|png|jpe?g|gif|webp)$/i.test(sourcePath);
   const architectureBaseline = isArchitectureBaselinePath(sourcePath);
   document.querySelector("#sourceEditor").readOnly = !ideSourceIsEditable(project, sourcePath);
   document.querySelector("#ideViewerPanel").classList.toggle("plantuml-split", plantUml && !virtualView);
-  document.querySelector("#ideViewerModeLabel").textContent = componentFeatures ? "Softwarefunktionen" : webInterface ? "Weboberfläche" : boardProperties ? "Boardkonfiguration" : sensorProperties ? "Sensorkonfiguration" : deviceConnections ? "Angeschlossene Komponenten" : driverManagement ? "Treiberverwaltung" : pwaDashboard ? "PWA-Dashboard" : architectureBaseline ? "Freigegebene Architektur-Baseline · schreibgeschützt" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
+  document.querySelector("#ideViewerModeLabel").textContent = componentFeatures ? "Softwarefunktionen" : webInterface ? "Weboberfläche" : boardProperties ? "Boardkonfiguration" : sensorProperties ? "Sensorkonfiguration" : deviceConnections ? "Angeschlossene Komponenten" : driverManagement ? "Treiberverwaltung" : pwaDashboard ? "PWA-Dashboard" : deviceDebug ? "Debug & Diagnose" : architectureBaseline ? "Freigegebene Architektur-Baseline · schreibgeschützt" : plantUml ? "PlantUML · Quelle und Grafik" : image ? "Grafik" : "Datei";
   document.querySelector("#sourcePanel").classList.toggle("hidden", virtualView || image);
   document.querySelector("#ideImageView").classList.toggle("hidden", virtualView || (!plantUml && !image));
   document.querySelector("#ideModelView").classList.add("hidden");
@@ -1339,6 +1349,9 @@ function renderIdeViewMode(project) {
   document.querySelector("#ideDeviceConnectionsView").classList.toggle("hidden", !deviceConnections);
   document.querySelector("#ideDriverManagementView").classList.toggle("hidden", !driverManagement);
   document.querySelector("#idePwaDashboardView").classList.toggle("hidden", !pwaDashboard);
+  document.querySelector("#ideDeviceDebugView").classList.toggle("hidden", !deviceDebug);
+  if (deviceDebug) renderIdeDeviceDebug(project);
+  else stopIdeDeviceDebugPolling();
   if (!virtualView && (plantUml || image)) renderIdeImageView(sourcePath, source);
 }
 

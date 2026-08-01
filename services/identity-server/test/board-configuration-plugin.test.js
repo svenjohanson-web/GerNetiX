@@ -34,6 +34,36 @@ test("board configuration plugin normalizes provisioning defaults and detects mo
   assert.equal(plugin.selectionsDiffer({ ...defaults, display: { ...defaults.display, driver: "custom" } }, defaults), true);
 });
 
+test("board configuration plugin inherits catalog features missing from an older project snapshot", () => {
+  const enrichedBoard = {
+    ...board,
+    default_instance_configuration: {
+      board_features: {
+        ...board.default_instance_configuration.board_features,
+        camera_power: {
+          enabled: true,
+          hardware: "io_expander",
+          driver: "waveshare_io_extension",
+          connection: "i2c_io_expander",
+          pins: { sda: 8, scl: 7, output: 6 },
+          value: "0x24",
+        },
+      },
+    },
+  };
+
+  const olderProjectSnapshot = {
+    display: board.default_instance_configuration.board_features.display,
+  };
+  const normalized = plugin.normalizeSelections(features, olderProjectSnapshot, enrichedBoard);
+  const defaults = plugin.defaultsForBoard(enrichedBoard, features);
+
+  assert.equal(normalized.camera_power.enabled, true);
+  assert.equal(normalized.camera_power.driver, "waveshare_io_extension");
+  assert.equal(normalized.camera_power.pins.output, 6);
+  assert.equal(plugin.selectionsDiffer(normalized, defaults), false);
+});
+
 test("board configuration plugin previews the generated PlatformIO target", () => {
   const defaults = plugin.defaultsForBoard(board, features);
   const html = plugin.renderCompilerProjection(board, defaults);

@@ -511,6 +511,28 @@ test("does not create a binary version for a failed build", async () => {
   assert.equal((await service.listVersions(project.project_id)).length, 0);
 });
 
+test("reuses a successful firmware build only while its exact project snapshot is unchanged", async () => {
+  const service = createMemoryProjectServer();
+  const project = await createDemoProject(service);
+  await service.upsertSource(project.project_id, { path: "src/main.cpp", content: "int firmware = 1;" });
+  const job = await service.createBuildJob(project.project_id, { mode: "build" });
+  await service.createBuildPackage(job.build_job_id);
+  await service.recordBuildResult(job.build_job_id, { status: "succeeded" });
+
+  const unchanged = await service.buildReuseStatus(job.build_job_id);
+  assert.equal(unchanged.reusable, true);
+  assert.equal(unchanged.reason, "build_snapshot_matches");
+
+  await service.upsertSource(project.project_id, { path: "src/main.cpp", content: "int firmware = 1;" });
+  assert.equal((await service.buildReuseStatus(job.build_job_id)).reusable, true,
+    "erneutes Speichern desselben Inhalts darf den Build nicht entwerten");
+
+  await service.upsertSource(project.project_id, { path: "src/main.cpp", content: "int firmware = 2;" });
+  const changed = await service.buildReuseStatus(job.build_job_id);
+  assert.equal(changed.reusable, false);
+  assert.equal(changed.reason, "project_snapshot_changed");
+});
+
 test("persists the exact lesson and step position for a learning project", async () => {
   const repository = new InMemoryProjectRepository();
   const service = new ProjectService({ repository });

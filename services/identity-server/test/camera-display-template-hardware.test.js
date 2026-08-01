@@ -22,13 +22,19 @@ test("repairs the runtime contract of account projects created from older camera
   const server = fs.readFileSync(path.join(root, "src/dev-server.js"), "utf8");
 
   assert.match(server, /synchronizeDevelopmentTemplateRuntimeModel\(project, session\)/);
-  assert.match(server, /currentVersion >= targetVersion && !missingBoardConfiguration/);
+  assert.match(server, /refreshCatalogBoardConfigurations = currentVersion < 19/);
+  assert.match(server, /currentVersion >= targetVersion && !missingBoardConfiguration[\s\S]*!refreshCatalogBoardConfigurations/);
   assert.match(server, /missingCommunicationSetup/);
   assert.match(server, /communication_setup: communicationSetup/);
   assert.match(server, /applyProjectCommunicationSetup\(softwareUnits, communicationSetup\)/);
   assert.match(server, /hardware\.board_configuration[\s\S]*compilerBoardConfiguration\(null, catalogBoard\)/);
+  assert.match(server, /preservedBuildValues\.board_configuration = compilerBoardConfiguration\([\s\S]*catalogBoard/);
+  assert.match(server, /board_configuration: compilerBoardConfiguration\(component\.board_configuration, catalogBoard\)/);
   assert.match(server, /baseBuildConfig && resolvedBoardConfiguration[\s\S]*board_configuration: compilerBoardConfiguration\(resolvedBoardConfiguration, board\)/);
   assert.match(server, /runtime_model_version: targetVersion/);
+  assert.match(server, /migrateCameraTemplateWifiArchitectureSources\(project\.project_id\)/);
+  assert.match(server, /currentVersion < 19[\s\S]*migrateCameraTemplateDisplaySource\(project\.project_id\)/);
+  assert.match(server, /view\.id === "architecture-diagram" && migratedArchitectureSource/);
   assert.match(server, /source_root: `Komponenten\/IoT-Device \$\{index \+ 1\}`/);
   assert.match(server, /\.\.\.canonical\.build_config/);
   assert.match(server, /currentVersion < 16[\s\S]*preservedBuildValues\.platformio_options = existingBuild\.platformio_options/);

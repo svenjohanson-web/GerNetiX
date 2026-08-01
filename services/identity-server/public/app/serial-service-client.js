@@ -112,6 +112,13 @@ const GerNetiXSerialService = (() => {
       });
     }
 
+    async function deviceDiagnostics(baseUrl) {
+      return request("/v1/device-http/diagnostics", {
+        method: "POST",
+        body: JSON.stringify({ baseUrl }),
+      });
+    }
+
     async function waitReady(port, timeoutMs = 30000) {
       return request("/v1/serial/wait-ready", {
         method: "POST",
@@ -119,7 +126,7 @@ const GerNetiXSerialService = (() => {
       });
     }
 
-    return { available, connect, flash, ports, probe, serialRequest, status, waitReady };
+    return { available, connect, deviceDiagnostics, flash, ports, probe, serialRequest, status, waitReady };
   }
 
   function bytesToBase64(value) {

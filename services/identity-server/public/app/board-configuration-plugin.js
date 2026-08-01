@@ -30,9 +30,18 @@ const BoardConfigurationPlugin = (() => {
   }
 
   function normalizeSelections(features, selections = {}, board = null) {
-    return Object.fromEntries((features || []).map((feature) => {
-      const selected = selections?.[feature.feature_id] || {};
-      return [feature.feature_id, {
+    const boardDefaults = board?.default_instance_configuration?.board_features || {};
+    const featureIds = new Set([
+      ...(features || []).map((feature) => feature.feature_id),
+      ...Object.keys(boardDefaults),
+      ...Object.keys(selections || {}),
+    ]);
+    return Object.fromEntries([...featureIds].map((featureId) => {
+      const feature = (features || []).find((item) => item.feature_id === featureId) || { feature_id: featureId };
+      const selected = Object.prototype.hasOwnProperty.call(selections || {}, featureId)
+        ? selections[featureId] || {}
+        : boardDefaults[featureId] || {};
+      return [featureId, {
         enabled: selected.enabled === true,
         hardware: String(selected.hardware || ""),
         driver: String(selected.driver || ""),

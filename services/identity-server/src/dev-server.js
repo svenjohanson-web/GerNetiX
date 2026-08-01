@@ -25,7 +25,12 @@ const { createDeviceDiscoveryService } = require("./dev/device-discovery");
 const { createDevelopmentAssistant } = require("./dev/development-assistant");
 const { createHelpAssistant } = require("./dev/help-assistant");
 const { developmentProjectSources } = require("./dev/development-project-structure");
+const {
+  migrateCameraTemplateDisplayGpioTypes,
+  migrateCameraTemplateWifiArchitecture,
+} = require("./dev/development-project-template-migrations");
 const { completeBrowserFlashDefinitions } = require("./dev/browser-flash-manifest");
+const { mergeBoardFeatures } = require("./dev/board-configuration-merge");
 const {
   developmentProjectTemplate,
   developmentProjectTemplateCatalog,
@@ -2877,8 +2882,11 @@ async function synchronizeDevelopmentTemplateRuntimeModel(project, session) {
     !existingUnits[index]?.build_config?.board_configuration
   ));
   const missingCommunicationSetup = !project.view_manifest?.communication_setup;
-  if (currentVersion >= targetVersion && !missingBoardConfiguration && !missingCommunicationSetup) return project;
-  const availableBoards = missingBoardConfiguration ? await loadAvailableProcessorBoards(session) : [];
+  const refreshCatalogBoardConfigurations = currentVersion < 19;
+  if (currentVersion >= targetVersion && !missingBoardConfiguration && !missingCommunicationSetup && !refreshCatalogBoardConfigurations) return project;
+  const availableBoards = missingBoardConfiguration || refreshCatalogBoardConfigurations
+    ? await loadAvailableProcessorBoards(session)
+    : [];
   let softwareUnits = canonicalUnits.map((canonical, index) => {
     const existing = existingUnits[index] || {};
     const hardware = hardwareDevices[index] || {};
@@ -2887,8 +2895,14 @@ async function synchronizeDevelopmentTemplateRuntimeModel(project, session) {
     for (const key of ["board_configuration", "component_device_allocations", "component_features", "component_hardware_features", "basissoftware_configuration"]) {
       if (existingBuild[key] !== undefined) preservedBuildValues[key] = structuredClone(existingBuild[key]);
     }
+    const catalogBoard = availableBoards.find((board) => board.hardware_item_id === canonical.hardware_profile_id);
+    if (refreshCatalogBoardConfigurations && preservedBuildValues.board_configuration && catalogBoard) {
+      preservedBuildValues.board_configuration = compilerBoardConfiguration(
+        preservedBuildValues.board_configuration,
+        catalogBoard,
+      );
+    }
     if (!preservedBuildValues.board_configuration) {
-      const catalogBoard = availableBoards.find((board) => board.hardware_item_id === canonical.hardware_profile_id);
       const resolvedBoardConfiguration = hardware.board_configuration
         || (catalogBoard ? compilerBoardConfiguration(null, catalogBoard) : null);
       if (resolvedBoardConfiguration) preservedBuildValues.board_configuration = structuredClone(resolvedBoardConfiguration);
@@ -2919,12 +2933,23 @@ async function synchronizeDevelopmentTemplateRuntimeModel(project, session) {
     softwareUnits,
   );
   softwareUnits = applyProjectCommunicationSetup(softwareUnits, communicationSetup).software_units;
+  const migratedArchitectureSource = currentVersion < 18
+    ? await migrateCameraTemplateWifiArchitectureSources(project.project_id)
+    : "";
+  if (currentVersion < 19) await migrateCameraTemplateDisplaySource(project.project_id);
   const nextHardwareConfiguration = hardwareConfiguration ? {
     ...hardwareConfiguration,
     components: (hardwareConfiguration.components || []).map((component) => {
       if (component.abstract_type !== "iot_device") return component;
       const index = hardwareDevices.findIndex((device) => device.component_id === component.component_id);
-      return { ...component, component_path: `Komponenten/IoT-Device ${index + 1}` };
+      const catalogBoard = availableBoards.find((board) => board.hardware_item_id === component.board_profile_id);
+      return {
+        ...component,
+        component_path: `Komponenten/IoT-Device ${index + 1}`,
+        ...(refreshCatalogBoardConfigurations && catalogBoard ? {
+          board_configuration: compilerBoardConfiguration(component.board_configuration, catalogBoard),
+        } : {}),
+      };
     }),
   } : null;
   const nextManifest = {
@@ -2934,11 +2959,13 @@ async function synchronizeDevelopmentTemplateRuntimeModel(project, session) {
       runtime_model_version: targetVersion,
     },
     communication_setup: communicationSetup,
-    views: (project.view_manifest?.views || []).map((view) => (
-      view.id === "hardware-configuration" && nextHardwareConfiguration
-        ? { ...view, payload: nextHardwareConfiguration }
-        : view
-    )),
+    views: (project.view_manifest?.views || []).map((view) => {
+      if (view.id === "hardware-configuration" && nextHardwareConfiguration) return { ...view, payload: nextHardwareConfiguration };
+      if (view.id === "architecture-diagram" && migratedArchitectureSource) {
+        return { ...view, payload: { ...(view.payload || {}), source: migratedArchitectureSource } };
+      }
+      return view;
+    }),
   };
   return projectServerJson(`/api/projects/${encodeURIComponent(project.project_id)}`, {
     method: "PATCH",
@@ -2949,6 +2976,46 @@ async function synchronizeDevelopmentTemplateRuntimeModel(project, session) {
         ? project.active_software_unit_id
         : softwareUnits[0]?.software_unit_id || "",
       view_manifest: nextManifest,
+    },
+  });
+}
+
+async function migrateCameraTemplateWifiArchitectureSources(projectId) {
+  let primarySource = "";
+  for (const sourcePath of ["docs/architecture.puml", "Architektur/statische-architektur/architecture.puml"]) {
+    const source = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources/${encodeURIComponent(sourcePath)}`)
+      .catch((error) => error.status === 404 ? null : Promise.reject(error));
+    if (!source) continue;
+    const content = migrateCameraTemplateWifiArchitecture(source.content);
+    if (content === source.content) continue;
+    await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources`, {
+      method: "PUT",
+      body: {
+        path: sourcePath,
+        content,
+        content_type: source.content_type || "text/plain",
+        role: source.role || (sourcePath === "docs/architecture.puml" ? "architecture_model" : "architecture_static_view"),
+      },
+    });
+    if (sourcePath === "docs/architecture.puml") primarySource = content;
+  }
+  return primarySource;
+}
+
+async function migrateCameraTemplateDisplaySource(projectId) {
+  const sourcePath = "Komponenten/IoT-Device 2/src/user_main.cpp";
+  const source = await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources/${encodeURIComponent(sourcePath)}`)
+    .catch((error) => error.status === 404 ? null : Promise.reject(error));
+  if (!source) return;
+  const content = migrateCameraTemplateDisplayGpioTypes(source.content);
+  if (content === source.content) return;
+  await projectServerJson(`/api/projects/${encodeURIComponent(projectId)}/sources`, {
+    method: "PUT",
+    body: {
+      path: sourcePath,
+      content,
+      content_type: source.content_type || "text/x-c++src",
+      role: source.role || "firmware_source",
     },
   });
 }
@@ -3472,7 +3539,10 @@ function accountBoardAsProcessorBoard(accountBoard, systemBoards) {
     base_board_profile_id: accountBoard.base_board_profile_id,
     default_instance_configuration: {
       ...(base.default_instance_configuration || {}),
-      board_features: accountBoard.board_features || {},
+      board_features: mergeBoardFeatures(
+        base.default_instance_configuration?.board_features,
+        accountBoard.board_features,
+      ),
     },
   };
 }
@@ -4485,7 +4555,10 @@ function compilerBoardConfiguration(configuration, board = null) {
     base_board_profile_id: configuration?.base_board_profile_id || board?.base_board_profile_id || board?.hardware_item_id || "",
     account_board_id: configuration?.account_board_id || board?.account_board_id || "",
     account_board_version: configuration?.account_board_version || board?.account_board_version || 0,
-    board_features: configuration?.board_features || board?.default_instance_configuration?.board_features || {},
+    board_features: mergeBoardFeatures(
+      board?.default_instance_configuration?.board_features,
+      configuration?.board_features,
+    ),
     snapshot_at: new Date().toISOString(),
   };
 }

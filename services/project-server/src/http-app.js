@@ -132,6 +132,12 @@ function createHttpApp(options) {
       return;
     }
 
+    const buildReuseStatus = path.match(/^\/api\/build-jobs\/([^/]+)\/reuse-status$/);
+    if (req.method === "GET" && buildReuseStatus) {
+      sendJson(res, 200, await service.buildReuseStatus(decodeURIComponent(buildReuseStatus[1])));
+      return;
+    }
+
     const submit = path.match(/^\/api\/build-jobs\/([^/]+)\/submitted$/);
     if (req.method === "POST" && submit) {
       sendJson(res, 200, await service.markBuildSubmitted(decodeURIComponent(submit[1]), await readJsonBody(req)));

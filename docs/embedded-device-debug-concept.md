@@ -17,6 +17,19 @@ Es baut auf den bereits vorhandenen ESP32-Funktionen auf:
 
 Dieses Dokument beschreibt das Zielbild. Es schaltet keinen Debugzugang frei und fuehrt keinen neuen Serverprozess ein.
 
+## Aktueller Implementierungsstand
+
+Der erste lokale IDE-Durchstich ist teilweise umgesetzt:
+
+- Jede modellierte IoT-Device-Komponente besitzt im Projektbaum `Debug & Diagnose`.
+- Die IDE liest ueber den origin- und sitzungsgebundenen GerNetiX Serial Service die neuen, ausschliesslich lesenden Firmwareaktionen `diagnostics_status` und `diagnostics_logs`.
+- Fuer bereits im WLAN laufende Boards ruft der Serial Service die festen lokalen Pfade `/status` und `/logs` ab. Er akzeptiert dafuer nur `http`, Port 80, GerNetiX-`.local`-Namen oder private IPv4-Adressen, folgt keinen Redirects und begrenzt Timeout sowie Antwortgroesse.
+- Die IDE zeigt Firmware-/Basissoftwareversion, Variante, Uptime, Resetgrund, freien/minimalen Heap und WLAN-Zustand.
+- Feedbackzeilen werden nach Severity und Subsystem strukturiert, bei wiederholtem Lesen dedupliziert und auf 256 Eintraege im fluechtigen Browserzustand begrenzt.
+- Reproduktionsmarken, Filter und ein bewusster lokaler JSON-Export sind vorhanden. Es gibt keinen automatischen Upload und keine fachliche Persistenz.
+
+Noch offen sind eine dauerhaft verfuegbare USB-Diagnose nach abgeschlossenem WLAN-Setup, Build-ID/ELF-Symbolisierung, Remote-Runtime-Monitor, Supportfreigabe, Diagnoseaktionen und Labor-/JTAG-Integration. Firmware-Build und Hardware-End-to-End-Abnahme werden weiterhin ausschliesslich vom Nutzer ausgefuehrt.
+
 ## Leitentscheidungen
 
 1. **Diagnose ist standardmaessig vorhanden, Debugzugriff nicht.** Produktionsfirmware liefert begrenzte Zustandsdaten, Fehlercodes und Resetursachen. Schreibende Debugkommandos, Shells und beliebige Speicherzugriffe sind nicht Bestandteil der Produktionsschnittstelle.
@@ -210,6 +223,8 @@ Die IDE darf keine gruenen Pauschalaussagen wie "Device gesund" aus einzelnen Lo
 - `/status` um Build-ID, Resetursache, Heap-/Stack-Werte und Health-Meilenstein erweitern
 - Secret-/PII-Redaktion zentral in der Basissoftware testen
 - IDE-/Serial-Service-Liveansicht mit Filter, Pause und lokalem Export anbinden
+
+Stand: Der IDE-/Serial-Service-Durchstich, Statusgrunddaten, Logfilter, Reproduktionsmarke und lokaler Export sind umgesetzt und contract-getestet. Einheitliches Ereignisschema, Build-ID, Stack-Wasserzeichen, zentrale Redaktion sowie echte Hardware-Abnahme bleiben offen.
 
 ### Phase 2: Crash-Kurzbericht und Symbolisierung
 

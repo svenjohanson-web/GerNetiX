@@ -63,6 +63,7 @@ const state = {
   projectSourcesByProjectId: {},
   ideDirtySources: {},
   ideViewMode: "file",
+  ideDebugSessions: {},
   webInterfaceTab: "configuration",
   activeIdeComponentId: "",
   flashboxMockOrder: null,

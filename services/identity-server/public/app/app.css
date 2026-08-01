@@ -1921,6 +1921,58 @@ button.danger:hover {
 .web-interface-tabs { display: flex; gap: 4px; padding: 3px; width: fit-content; border: 1px solid #334155; border-radius: 7px; background: #0b1018; }
 .web-interface-tabs button { padding: 6px 11px; border: 0; border-radius: 4px; background: transparent; color: #94a3b8; }
 .web-interface-tabs button.active { background: #164e63; color: #cffafe; }
+
+.ide-device-debug-view { height: 100%; min-height: 0; overflow: auto; }
+.device-debug-workspace { display: grid; gap: 12px; min-height: 100%; align-content: start; }
+.device-debug-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+.device-debug-head h3 { margin: 2px 0 4px; font-size: 1.15rem; }
+.device-debug-head p { margin: 0; color: #94a3b8; }
+.device-debug-mode-badge { flex: 0 0 auto; border: 1px solid #0e7490; border-radius: 999px; padding: 5px 9px; background: #0c2530; color: #a5f3fc; font-size: .75rem; font-weight: 800; }
+.device-debug-connection { display: grid; grid-template-columns: minmax(150px, .7fr) minmax(220px, 1.3fr) auto; gap: 9px; align-items: end; padding: 11px; border: 1px solid #334155; border-radius: 8px; background: #0b1018; }
+.device-debug-connection label,
+.device-debug-filters label { display: grid; gap: 4px; color: #94a3b8; font-size: .76rem; font-weight: 800; }
+.device-debug-connection select,
+.device-debug-connection input,
+.device-debug-filters select { min-height: 34px; border: 1px solid #334155; border-radius: 5px; padding: 5px 8px; background: #111827; color: #e2e8f0; }
+.device-debug-connection-actions,
+.device-debug-log-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+.device-debug-message { margin: 0; border-left: 3px solid #64748b; padding: 7px 10px; background: #111827; color: #cbd5e1; font-size: .8rem; }
+.device-debug-message.ok { border-color: #0891b2; color: #cffafe; }
+.device-debug-message.warning { border-color: #d97706; color: #fde68a; }
+.device-debug-message.error { border-color: #dc2626; color: #fecaca; }
+.device-debug-message.running { border-color: #2563eb; color: #bfdbfe; }
+.device-debug-status-empty { border: 1px dashed #334155; border-radius: 8px; padding: 14px; color: #94a3b8; }
+.device-debug-status-empty p { margin: 4px 0 0; }
+.device-debug-status-grid { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 7px; margin: 0; }
+.device-debug-status-grid > div { min-width: 0; border: 1px solid #334155; border-radius: 7px; padding: 9px; background: #111827; }
+.device-debug-status-grid dt { color: #94a3b8; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.device-debug-status-grid dd { margin: 4px 0 0; overflow: hidden; color: #f8fafc; font-size: .88rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.device-debug-log-panel { display: grid; grid-template-rows: auto auto minmax(180px, 1fr); min-height: 320px; border: 1px solid #334155; border-radius: 8px; overflow: hidden; background: #070b11; }
+.device-debug-log-panel > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px; border-bottom: 1px solid #334155; background: #111827; }
+.device-debug-log-panel h4 { margin: 2px 0 0; }
+.device-debug-filters { display: flex; align-items: end; gap: 8px; padding: 7px 10px; border-bottom: 1px solid #1e293b; }
+.device-debug-filters span { margin-left: auto; color: #64748b; font-size: .75rem; }
+.device-debug-events { min-height: 0; max-height: 420px; margin: 0; padding: 0; overflow: auto; list-style: none; font: .78rem/1.45 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+.device-debug-event { display: grid; grid-template-columns: 76px 54px minmax(90px, 130px) minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 5px 10px; border-bottom: 1px solid rgba(51, 65, 85, .45); }
+.device-debug-event time { color: #64748b; }
+.device-debug-event code { overflow: hidden; color: #67e8f9; text-overflow: ellipsis; white-space: nowrap; }
+.device-debug-event p { margin: 0; color: #cbd5e1; overflow-wrap: anywhere; }
+.device-debug-event.warn { background: rgba(180, 83, 9, .08); }
+.device-debug-event.error,
+.device-debug-event.fatal { background: rgba(185, 28, 28, .1); }
+.device-debug-event.marker { border-top: 1px solid #0e7490; border-bottom-color: #0e7490; background: rgba(8, 145, 178, .13); }
+.device-debug-event.warn .device-debug-severity { color: #fbbf24; }
+.device-debug-event.error .device-debug-severity,
+.device-debug-event.fatal .device-debug-severity { color: #fca5a5; }
+.device-debug-event.marker .device-debug-severity { color: #67e8f9; }
+.device-debug-events .empty { padding: 22px; color: #64748b; text-align: center; }
+.device-debug-security-note { margin: 0; border: 1px solid #155e75; border-radius: 7px; padding: 9px 10px; background: #0f2530; color: #bae6fd; font-size: .78rem; }
+
+@container (max-width: 800px) {
+  .device-debug-connection { grid-template-columns: 1fr; }
+  .device-debug-status-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+  .device-debug-event { grid-template-columns: 68px 52px minmax(80px, 110px) minmax(0, 1fr); }
+}
 .device-web-workspace { display: grid; grid-template-rows: auto auto minmax(320px, 1fr); gap: 8px; height: 100%; min-height: 0; }
 .device-web-toolbar { justify-content: flex-start; }
 .device-web-toolbar label { display: flex; flex: 1; align-items: center; gap: 8px; color: #94a3b8; }

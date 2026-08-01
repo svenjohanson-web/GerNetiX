@@ -106,8 +106,8 @@ test("provides a two-target camera-to-display template with isolated build roots
   const units = templateSoftwareUnits(template);
   const files = templateFirmwareSources(template, template.title);
 
-  assert.match(architecture, /rectangle "IoT-Device 1" as camera_device \{[\s\S]*rectangle "ESP32-S3 Prozessor" as camera_processor[\s\S]*rectangle "Kamera" as camera/);
-  assert.match(architecture, /rectangle "IoT-Device 2" as display_device \{[\s\S]*rectangle "ESP32-S3 Prozessor" as display_processor[\s\S]*rectangle "ILI9341V Display-Controller-IC" as display_controller_ic[\s\S]*rectangle "FT6336G Touch-Controller-IC" as touch_controller_ic[\s\S]*rectangle "ES8311 Audio-Codec-IC" as audio_codec_ic[\s\S]*rectangle "NS8002E Audio-Verstärker-IC" as audio_amplifier_ic[\s\S]*rectangle "Display" as display[\s\S]*rectangle "Touch" as touch[\s\S]*rectangle "Lautsprecher" as speaker/);
+  assert.match(architecture, /rectangle "IoT-Device 1" as camera_device \{[\s\S]*rectangle "ESP32-S3 Prozessor" as camera_processor[\s\S]*rectangle "WLAN-\/WiFi-Schnittstelle" as camera_wifi[\s\S]*rectangle "Kamera" as camera/);
+  assert.match(architecture, /rectangle "IoT-Device 2" as display_device \{[\s\S]*rectangle "ESP32-S3 Prozessor" as display_processor[\s\S]*rectangle "WLAN-\/WiFi-Schnittstelle" as display_wifi[\s\S]*rectangle "ILI9341V Display-Controller-IC" as display_controller_ic[\s\S]*rectangle "FT6336G Touch-Controller-IC" as touch_controller_ic[\s\S]*rectangle "ES8311 Audio-Codec-IC" as audio_codec_ic[\s\S]*rectangle "NS8002E Audio-Verstärker-IC" as audio_amplifier_ic[\s\S]*rectangle "Display" as display[\s\S]*rectangle "Touch" as touch[\s\S]*rectangle "Lautsprecher" as speaker/);
   assert.doesNotMatch(architecture, /camera_board|display_board|<<Onboard>>|rectangle "Board"/);
   assert.doesNotMatch(architecture, /camera_app|display_app/);
   assert.match(architecture, /actor "Beobachtete Umgebung" as environment <<physical environment>>/);
@@ -128,7 +128,10 @@ test("provides a two-target camera-to-display template with isolated build roots
   assert.match(architecture, /camera_audio_amplifier_ic --> camera_speaker : treibt Lautsprecher/);
   assert.match(architecture, /camera_speaker --> environment : gibt Ton aus/);
   assert.match(architecture, /camera --> camera_processor : liefert Bilddaten/);
-  assert.match(architecture, /camera_processor --> display_processor : uebertraegt Bilddaten/);
+  assert.doesNotMatch(architecture, /camera_processor --> display_processor/);
+  assert.match(architecture, /camera_processor --> camera_wifi : uebergibt Bilddaten/);
+  assert.match(architecture, /camera_wifi --> display_wifi : uebertraegt Bilddaten per WLAN/);
+  assert.match(architecture, /display_wifi --> display_processor : liefert Bilddaten/);
   assert.match(architecture, /user --> touch : bedient Touch/);
   assert.match(architecture, /touch --> touch_controller_ic : liefert Beruehrungssignal/);
   assert.match(architecture, /touch_controller_ic --> display_processor : liefert Touchdaten/);
@@ -141,7 +144,7 @@ test("provides a two-target camera-to-display template with isolated build roots
   assert.match(architecture, /speaker --> user : gibt Ton aus/);
   assert.doesNotMatch(architecture, /user --> display_device/);
   assert.doesNotMatch(architecture, /Waveshare|ES3C28P/);
-  assert.equal(template.schemaVersion, 17);
+  assert.equal(template.schemaVersion, 19);
   const architectureElements = new Map(template.architecture.elements.map((element) => [element.id, element]));
   template.architecture.relations.forEach((relation) => {
     assert.equal(
@@ -211,6 +214,8 @@ test("provides a two-target camera-to-display template with isolated build roots
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /esp_lcd_panel_io_tx_color/);
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /MALLOC_CAP_DMA/);
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /io\.pclk_hz = 27000000/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /bus\.sclk_io_num = static_cast<gpio_num_t>\(GERNETIX_BOARD_FEATURE_DISPLAY_PIN_SCLK\)/);
+  assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /io\.cs_gpio_num = static_cast<gpio_num_t>\(GERNETIX_BOARD_FEATURE_DISPLAY_PIN_CS\)/);
   assert.doesNotMatch(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /uint16_t line\[DISPLAY_WIDTH\]/);
   assert.equal(files.filter((file) => file.path.endsWith("src/idf_component.yml")).length, 2);
   assert.doesNotMatch(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /mqtt/i);

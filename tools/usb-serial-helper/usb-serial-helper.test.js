@@ -14,11 +14,15 @@ test("webhelper is a native UI-less service without Electron or Chromium", () =>
   const swift = fs.readFileSync(path.join(root, "native", "main.swift"), "utf8");
   const launchAgent = fs.readFileSync(path.join(root, "install", "macos", "com.gernetix.serial-service.plist"), "utf8");
 
-  assert.equal(manifest.version, "0.3.6");
+  assert.equal(manifest.version, "0.3.7");
   assert.equal(manifest.dependencies, undefined);
   assert.equal(manifest.devDependencies, undefined);
   assert.doesNotMatch(JSON.stringify(manifest), /electron|chromium/i);
   assert.match(swift, /runtime": "native-swift"/);
+  assert.match(swift, /local_device_diagnostics/);
+  assert.match(swift, /validatedLocalDeviceBaseURL/);
+  assert.match(swift, /isAllowedLocalDeviceHost/);
+  assert.match(swift, /completionHandler\(nil\)/);
   assert.match(swift, /NWListener/);
   assert.match(swift, /SecPKCS12Import/);
   assert.match(swift, /espflash/);

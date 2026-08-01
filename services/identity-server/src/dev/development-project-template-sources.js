@@ -338,17 +338,17 @@ void command(uint8_t value, const void *data = nullptr, size_t length = 0) {
 
 bool startDisplay() {
   spi_bus_config_t bus = {};
-  bus.sclk_io_num = GERNETIX_BOARD_FEATURE_DISPLAY_PIN_SCLK;
-  bus.mosi_io_num = GERNETIX_BOARD_FEATURE_DISPLAY_PIN_MOSI;
-  bus.miso_io_num = GERNETIX_BOARD_FEATURE_DISPLAY_PIN_MISO;
+  bus.sclk_io_num = static_cast<gpio_num_t>(GERNETIX_BOARD_FEATURE_DISPLAY_PIN_SCLK);
+  bus.mosi_io_num = static_cast<gpio_num_t>(GERNETIX_BOARD_FEATURE_DISPLAY_PIN_MOSI);
+  bus.miso_io_num = static_cast<gpio_num_t>(GERNETIX_BOARD_FEATURE_DISPLAY_PIN_MISO);
   bus.quadwp_io_num = -1;
   bus.quadhd_io_num = -1;
   bus.max_transfer_sz = DISPLAY_WIDTH * 2;
   if (spi_bus_initialize(SPI2_HOST, &bus, SPI_DMA_CH_AUTO) != ESP_OK) return false;
 
   esp_lcd_panel_io_spi_config_t io = {};
-  io.cs_gpio_num = GERNETIX_BOARD_FEATURE_DISPLAY_PIN_CS;
-  io.dc_gpio_num = GERNETIX_BOARD_FEATURE_DISPLAY_PIN_DC;
+  io.cs_gpio_num = static_cast<gpio_num_t>(GERNETIX_BOARD_FEATURE_DISPLAY_PIN_CS);
+  io.dc_gpio_num = static_cast<gpio_num_t>(GERNETIX_BOARD_FEATURE_DISPLAY_PIN_DC);
   io.spi_mode = 0;
   io.pclk_hz = 27000000;
   io.trans_queue_depth = 2;

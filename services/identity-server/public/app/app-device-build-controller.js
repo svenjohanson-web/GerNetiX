@@ -275,19 +275,25 @@ async function startUsbFlash(targetConfirmed = false, inventoryCheckConfirmed = 
     showUsbInventoryUnknownDialog(resolvedPort);
     return;
   }
-  setFlashStatus("running", "Echter PlatformIO-Build wird gestartet...");
+  setFlashStatus("running", "Passender erfolgreicher Build wird geprüft...");
   let activeBuild = null;
   try {
     await persistCurrentSource(project);
-    const build = await postJson("/api/user-ide/build-jobs", {
-      project_slug: project.slug,
-      software_unit_id: softwareUnit?.software_unit_id || "",
-      device_id: device?.device_id || "",
-      mode: "build_and_usb_flash",
-    });
-    activeBuild = await waitForCompletedBuild(build);
-    state.builds.unshift(activeBuild);
-    renderIdeProjectInformation(project);
+    activeBuild = await reusableBuildForUsbFlash(project, softwareUnit);
+    if (activeBuild) {
+      appendIdeTerminal("ok", `Vorhandener Build für „${softwareUnit?.title || softwareUnit?.software_unit_id || "Firmware"}“ ist unverändert und wird direkt geflasht.`);
+    } else {
+      setFlashStatus("running", "Kein unveränderter vollständiger Build vorhanden. Inkrementeller PlatformIO-Build wird gestartet...");
+      const build = await postJson("/api/user-ide/build-jobs", {
+        project_slug: project.slug,
+        software_unit_id: softwareUnit?.software_unit_id || "",
+        device_id: device?.device_id || "",
+        mode: "build_and_usb_flash",
+      });
+      activeBuild = await waitForCompletedBuild(build);
+      state.builds.unshift(activeBuild);
+      renderIdeProjectInformation(project);
+    }
     if (activeBuild.status !== "succeeded") {
       appendBuildFailureLog(activeBuild.build_log, activeBuild.error);
       throw new Error(activeBuild.error || "PlatformIO-Build ist fehlgeschlagen.");
@@ -323,6 +329,24 @@ async function startUsbFlash(targetConfirmed = false, inventoryCheckConfirmed = 
     }
     usbFlashAssignmentBatch = null;
     setFlashStatus("error", error.message);
+  }
+}
+
+async function reusableBuildForUsbFlash(project, softwareUnit) {
+  const projectIds = new Set([project?.id, project?.slug, project?.project_server_id].filter(Boolean).map(String));
+  const latestBuild = state.builds
+    .filter((build) => build.status === "succeeded"
+      && projectIds.has(String(build.project_server_id || build.project_id || build.project_slug || ""))
+      && String(build.software_unit_id || "") === String(softwareUnit?.software_unit_id || ""))
+    .sort((left, right) => Date.parse(right.finished_at || right.created_at || 0) - Date.parse(left.finished_at || left.created_at || 0))[0] || null;
+  if (!latestBuild?.build_job_id) return null;
+  try {
+    return await postJson(`/api/user-ide/build-jobs/${encodeURIComponent(latestBuild.build_job_id)}/reuse-usb-flash`, {
+      software_unit_id: softwareUnit?.software_unit_id || "",
+    });
+  } catch (error) {
+    if (error.status === 409) return null;
+    throw error;
   }
 }
 

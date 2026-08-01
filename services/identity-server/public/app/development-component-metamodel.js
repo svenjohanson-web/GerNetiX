@@ -3,6 +3,7 @@ const DevelopmentComponentMetamodel = (() => {
     actor: { label: "Externer Akteur", allocation: "none" },
     iot_device: { label: "IoT-Device", allocation: "board" },
     processor: { label: "Prozessor", allocation: "board_configuration", user_configurable: false },
+    network_interface: { label: "Netzwerkschnittstelle", allocation: "board_configuration", user_configurable: false },
     hardware_ic: { label: "Hardware-IC", allocation: "board_configuration", user_configurable: false },
     sensor: { label: "Sensor", allocation: "iot_device" },
     actuator: { label: "Aktor", allocation: "iot_device" },
@@ -29,7 +30,9 @@ const DevelopmentComponentMetamodel = (() => {
     rule("uses_service", "actor", "server_api", "nutzt"),
     rule("interacts_with_sensor", "actor", "sensor", "wirkt auf / bedient"),
     rule("supplies_processor_input", "sensor", "processor", "liefert Eingangsdaten"),
-    rule("transfers_between_processors", "processor", "processor", "uebertraegt Daten"),
+    rule("sends_via_network_interface", "processor", "network_interface", "uebergibt Daten"),
+    rule("transmits_between_network_interfaces", "network_interface", "network_interface", "uebertraegt Daten"),
+    rule("receives_via_network_interface", "network_interface", "processor", "liefert Daten"),
     rule("controls_hardware_ic", "processor", "hardware_ic", "steuert"),
     rule("feeds_hardware_ic", "sensor", "hardware_ic", "liefert Signal an"),
     rule("hardware_ic_to_processor", "hardware_ic", "processor", "liefert Daten an"),
@@ -99,6 +102,7 @@ const DevelopmentComponentMetamodel = (() => {
     if (String(plantUmlType).toLowerCase() === "actor") return "actor";
     const alias = String(componentId || "").toLowerCase();
     if (alias === "processor" || alias.endsWith("_processor")) return "processor";
+    if (alias === "network_interface" || alias.endsWith("_network_interface") || alias.endsWith("_wifi") || alias.endsWith("_wlan")) return "network_interface";
     if (alias === "hardware_ic" || alias.endsWith("_ic")) return "hardware_ic";
     const explicitType = ["iot_device", "sensor", "actuator", "smartphone_app", "browser_app", "desktop_app", "server_api"]
       .find((type) => alias === type || alias.startsWith(`${type}_`));
