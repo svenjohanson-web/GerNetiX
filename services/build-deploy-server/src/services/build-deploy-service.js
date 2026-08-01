@@ -10,6 +10,9 @@ class BuildDeployService {
     this.deployOrchestrator = options.deployOrchestrator;
     this.deviceJobLock = options.deviceJobLock;
     this.buildTargetLock = options.buildTargetLock;
+    this.buildCoordination = options.buildCoordination || null;
+    this.sharedPersistLatest = new Map();
+    this.sharedPersistRunning = new Map();
     this.stateStore = options.stateStore || null;
     this.stateStore?.ensureSchema?.(buildDeploySchema());
     this.jobs = new Map(((this.stateStore && this.stateStore.load().jobs) || []).map((job) => [job.job_id, job]));
@@ -17,11 +20,13 @@ class BuildDeployService {
 
   async submitJob(input) {
     const job = normalizeJob(input);
+    job.worker_id = this.buildCoordination?.workerId || null;
     if (this.jobs.has(job.job_id)) {
       throw new BuildDeployError("duplicate_job_id", "Diese BuildJob-ID wurde bereits verwendet.", 409);
     }
+    await this.buildCoordination?.registerJob(job, summarizeJob(job));
     this.jobs.set(job.job_id, job);
-    this.persistJobs();
+    this.persistJobs(job);
 
     if (this.deviceJobLock.canStart(job)) {
       this.startJob(job);
@@ -32,11 +37,11 @@ class BuildDeployService {
         if (replaced && replaced.status === "queued") {
           replaced.status = "replaced";
           replaced.finished_at = new Date().toISOString();
-          this.persistJobs();
+          this.persistJobs(replaced);
         }
       }
       job.status = "queued";
-      this.persistJobs();
+      this.persistJobs(job);
     }
 
     return summarizeJob(job);
@@ -56,6 +61,17 @@ class BuildDeployService {
     return summarizeJob(job);
   }
 
+  async getSharedJob(jobId) {
+    if (this.jobs.has(jobId)) return this.getJob(jobId);
+    const shared = await this.buildCoordination?.getJob(jobId);
+    if (shared) return shared;
+    throw new BuildDeployError("job_not_found", "BuildJob wurde nicht gefunden.", 404);
+  }
+
+  coordinationHealth() {
+    return this.buildCoordination?.health?.() || { backend: "memory", distributed: false };
+  }
+
   async cleanProjectCache(input = {}) {
     const projectId = String(input.project_id || "").trim();
     if (!projectId) {
@@ -70,8 +86,16 @@ class BuildDeployService {
         409,
       );
     }
+    if (await this.buildCoordination?.hasActiveProjectJob(projectId)) {
+      throw new BuildDeployError(
+        "build_in_progress",
+        "Der Build-Cache kann nicht bereinigt werden, solange ein anderer Build-Rechner dieses Projekt baut.",
+        409,
+      );
+    }
+    const cacheGeneration = await this.buildCoordination?.bumpProjectCacheEpoch(projectId);
     const removedCacheCount = await this.packageStore.cleanIncrementalProjectCache(projectId);
-    return { project_id: projectId, removed_cache_count: removedCacheCount, status: "clean" };
+    return { project_id: projectId, removed_cache_count: removedCacheCount, cache_generation: cacheGeneration ?? 0, status: "clean" };
   }
 
   otaPreflight() {
@@ -82,20 +106,32 @@ class BuildDeployService {
     job.status = "running";
     job.started_at = new Date().toISOString();
     this.reportProgress(job, "preparing", "Build-Paket wird vorbereitet.");
-    this.persistJobs();
+    this.persistJobs(job);
     this.deviceJobLock.markActive(job);
     job.promise = this.runJob(job)
       .catch((error) => {
         this.reportProgress(job, "failed", error.message || "Build fehlgeschlagen.");
         job.status = "failed";
         job.error = serializeError(error);
-        this.persistJobs();
+        this.persistJobs(job);
       })
-      .finally(() => {
+      .finally(async () => {
         job.finished_at = new Date().toISOString();
         this.deviceJobLock.release(job);
-        this.persistJobs();
-        if (job.device_id) this.startWaitingJob(job.device_id);
+        this.persistJobs(job);
+        try {
+          await this.flushSharedJob(job);
+        } catch (error) {
+          job.status = "failed";
+          job.error = serializeError(new BuildDeployError(
+            "build_coordination_failed",
+            "Der Buildstatus konnte nicht zuverlässig zwischen den Build-Rechnern koordiniert werden.",
+            503,
+          ));
+          console.error(`Abschliessende BuildJob-Koordination fehlgeschlagen: ${error.message}`);
+        } finally {
+          if (job.device_id) this.startWaitingJob(job.device_id);
+        }
       });
   }
 
@@ -108,6 +144,7 @@ class BuildDeployService {
 
   async runJob(job) {
     await this.cache.ensureReady();
+    job.cache_generation = await this.buildCoordination?.getProjectCacheEpoch(job.project_id) || 0;
     return this.buildTargetLock.runExclusive(
       job,
       () => this.runBuildTargetJob(job),
@@ -147,21 +184,48 @@ class BuildDeployService {
         deploy: deployResult,
         flashbox: flashboxResult,
       };
-      this.persistJobs();
+      this.persistJobs(job);
     } finally {
       await this.packageStore.cleanup(workspace);
     }
   }
 
-  persistJobs() {
-    if (!this.stateStore) return;
-    const jobs = Array.from(this.jobs.values()).map((job) => {
-      const { promise, ...rest } = job;
-      return rest;
+  persistJobs(changedJob = null) {
+    if (this.stateStore) {
+      const jobs = Array.from(this.jobs.values()).map((job) => {
+        const { promise, ...rest } = job;
+        return rest;
+      });
+      this.stateStore.save({ jobs });
+      this.stateStore.replaceCollection?.("jobs", jobs, "job_id");
+      this.stateStore.replaceTable?.("build_deploy_jobs", jobs, buildJobColumns());
+    }
+    if (changedJob) this.scheduleSharedPersist(changedJob);
+  }
+
+  scheduleSharedPersist(job) {
+    if (!this.buildCoordination) return Promise.resolve();
+    this.sharedPersistLatest.set(job.job_id, { job, state: summarizeJob(job) });
+    const running = this.sharedPersistRunning.get(job.job_id);
+    if (running) return running;
+    const promise = (async () => {
+      while (this.sharedPersistLatest.has(job.job_id)) {
+        const next = this.sharedPersistLatest.get(job.job_id);
+        this.sharedPersistLatest.delete(job.job_id);
+        await this.buildCoordination.saveJob(next.job, next.state);
+      }
+    })().catch((error) => {
+      console.error(`BuildJob-Status konnte nicht zentral gespeichert werden: ${error.message}`);
+    }).finally(() => {
+      this.sharedPersistRunning.delete(job.job_id);
     });
-    this.stateStore.save({ jobs });
-    this.stateStore.replaceCollection?.("jobs", jobs, "job_id");
-    this.stateStore.replaceTable?.("build_deploy_jobs", jobs, buildJobColumns());
+    this.sharedPersistRunning.set(job.job_id, promise);
+    return promise;
+  }
+
+  async flushSharedJob(job) {
+    await this.scheduleSharedPersist(job);
+    if (this.buildCoordination) await this.buildCoordination.saveJob(job, summarizeJob(job));
   }
 
   reportProgress(job, phase, message) {
@@ -172,7 +236,7 @@ class BuildDeployService {
     job.progress = Array.isArray(job.progress) ? job.progress : [];
     job.progress.push({ sequence, phase, message: text.slice(0, 1000), at: new Date().toISOString() });
     if (job.progress.length > 240) job.progress.splice(0, job.progress.length - 240);
-    this.persistJobs();
+    this.persistJobs(job);
   }
 }
 
@@ -243,6 +307,7 @@ function normalizeJob(input = {}) {
 function summarizeJob(job) {
   return {
     job_id: job.job_id,
+    worker_id: job.worker_id || null,
     mode: job.mode,
     device_id: job.device_id,
     flashbox: job.flashbox,

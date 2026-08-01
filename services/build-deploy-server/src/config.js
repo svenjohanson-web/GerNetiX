@@ -1,4 +1,5 @@
 const path = require("node:path");
+const os = require("node:os");
 const workspaceRoot = path.resolve(__dirname, "..", "..", "..");
 
 function createConfig(env = process.env) {
@@ -33,6 +34,12 @@ function createConfig(env = process.env) {
         ? ":memory:"
         : path.join(runtimeRoot, "gernetix-build-artifacts.sqlite"),
     artifactPersistenceBackend: env.BUILD_ARTIFACT_PERSISTENCE_BACKEND || "sqlite",
+    coordinationBackend: env.BUILD_COORDINATION_BACKEND
+      || ((env.BUILD_ARTIFACT_PERSISTENCE_BACKEND || "sqlite") === "postgres" ? "postgres" : "memory"),
+    workerId: env.BUILD_WORKER_ID || os.hostname(),
+    coordinationPoolMax: Number(env.BUILD_COORDINATION_POOL_MAX || 20),
+    workerHeartbeatMs: Number(env.BUILD_WORKER_HEARTBEAT_MS || 15000),
+    workerStaleMs: Number(env.BUILD_WORKER_STALE_MS || 120000),
     postgres: {
       connectionString: env.BUILD_POSTGRES_URL || "",
       host: env.BUILD_POSTGRES_HOST || "127.0.0.1",

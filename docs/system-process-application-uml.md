@@ -40,7 +40,7 @@ flowchart LR
 
   subgraph domainServices["Domaenen-Serverprozesse"]
     projectServer["Project Server<br/>:4800"]
-    buildDeploy["Build & Deploy Server<br/>USB + authenticated HTTPS OTA<br/>:4400"]
+    buildDeploy["Build & Deploy Coordinator + Worker<br/>mehrere Build-Rechner moeglich<br/>:4400"]
     deviceManagement["Device Management Server<br/>:4700"]
     telemetryServer["Telemetry Server<br/>interner Ingress + SQL-Retention<br/>:5600"]
     provisioning["Provisioning Tool Server<br/>:4500"]
@@ -81,7 +81,7 @@ flowchart LR
     accountAssetDb[("Account-Assets SQLite<br/>owner_only QR, Bilder, Bildstile")]
     projectDb[("Project PostgreSQL<br/>unveränderliche Systemvorlagen + Accountkopien,<br/>Quellen, Herkunfts-Hash, Build-Metadaten, Fortschritt")]
     projectLegacyDb[("Projekt Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
-    buildArtifactDb[("Build-Artefakte SQLite<br/>Firmware, ELF, HEX, Map, Log")]
+    buildArtifactDb[("Build PostgreSQL<br/>Jobregister, Worker, Locks, Cache-Generationen,<br/>Firmware, ELF, HEX, Map, Log")]
     telemetryDb[("Telemetry PostgreSQL<br/>Messwerte, Ereignisse, Retention")]
     telemetryLegacyDb[("Telemetry Legacy SQLite<br/>einmaliger Import, nicht fuehrend")]
     communityDb[("Community PostgreSQL<br/>public / private Autor + getrennte Admin-Akteure")]
@@ -173,7 +173,8 @@ flowchart LR
   runtimePostgres --> projectDb
   projectServer -. "einmalige Altuebernahme" .-> projectLegacyDb
   publicDemo -. "veröffentlichte Metadaten + immutable firmware.bin" .-> publicDemoDb
-  buildDeploy -. "Firmware-, ELF-, HEX-, Map- und Log-BLOBs" .-> buildArtifactDb
+  buildDeploy --> runtimePostgres
+  runtimePostgres --> buildArtifactDb
   deviceManagement --> runtimePostgres
   runtimePostgres --> deviceManagementDb
   telemetryServer --> runtimePostgres
@@ -220,7 +221,7 @@ flowchart LR
 | --- | ---: | --- | --- |
 | Identity Server | VPS-intern 4300 / Remote-Dev lokal 4300 | `https://pwa.gernetix.com/app/dashboard/` oder `http://127.0.0.1:4300/app/dashboard/` | Login, Session, gemeinsame Plattform-UI, entitlement-gefilterte Wissenskapitel-Hinweise und Adapter zu Domaenenservices; Persistenz immer PostgreSQL |
 | SQLite Graph Explorer | 4318 | `http://127.0.0.1:4318/` | Read-only Weboberflaeche auf den kanonischen Graphen |
-| Build & Deploy Server | 4400 | `http://127.0.0.1:4400/` | Echte PlatformIO-Builds, Build-Pakete und Firmware-Artefakte; kein serverseitiger USB-Flash |
+| Build & Deploy Coordinator + Worker | 4400 | `http://127.0.0.1:4400/` | Echte PlatformIO-Builds mit eindeutiger Worker-ID; PostgreSQL koordiniert Jobregister, rechneruebergreifende Ziel-Locks, Statussicht, Cache-Generationen und Firmware-Artefakte; kein serverseitiger USB-Flash |
 | Provisioning Tool Server | 4500 | `http://127.0.0.1:4500/` | eigenstaendige Factory-HMI, Provisioning-Sessions, USB-Factory-Flash, Device-Registrierung |
 | Admin Access Server + Admin Console | 4610 | `http://127.0.0.1:4610/admin/` | Eigene Admin-Login-PWA, persistente Sitzungen und serverseitige Rollenpruefung; proxyed danach die Admin-Funktionen |
 | Admin Tool API | 4600 | nur intern durch Admin Access Server | Account-Blatt, Community-Arbeitskorb für Support/Fragen/Meldungen, KI Usage, zentrale Ressourcenlimits pro Nutzerprofil, Consent-/Audit-nahe API und LLM-Routing |
@@ -253,6 +254,7 @@ flowchart LR
 | GerNetiX Plattform UI / Identity Server | Project Server | Projekte, Quellen, agentische KI-Such-/Lesewerkzeuge statt pauschaler Dateiuebergabe, persistierte Project-Device-Allocation und Build-Jobs |
 | GerNetiX Plattform UI / Identity Server | Project Server | Aktuelle Lesson, aktueller Step und abgeschlossene Steps eines accountgebundenen Lernprojekts laden und speichern |
 | GerNetiX Plattform UI / Identity Server | Build & Deploy Server | Build-Ausfuehrung und Ergebnisabholung |
+| Build & Deploy Coordinator / Worker | Zentrales PostgreSQL | Systemweit eindeutige BuildJob-IDs, workerunabhaengige Statussicht, Advisory Locks je Build-Ziel, Cache-Generationen und unveraenderliche Artefakt-BLOBs |
 | GerNetiX Plattform UI / Identity Server | Hardware Catalog | ProcessorBoard-Auswahl fuer Inventarisierung sowie Aufloesung von Board zu freigegebenem Firmware-Build-Target beim Provisioning |
 | GerNetiX Plattform UI / Identity Server | Hardware Shop | Angebote, Matching, Bestellungen |
 | Hardware Shop | Hardware Catalog | Aufloesung von HardwareItem-IDs und Capabilities fuer Angebote |

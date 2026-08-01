@@ -80,7 +80,7 @@ class BuildPackageStore {
   incrementalProjectCacheDir(job) {
     if (!this.incrementalCacheDir || !job.project_id) return null;
     const softwareUnitId = job.software_unit_id || buildPackageSoftwareUnitId(job.build_package);
-    const targetKey = [job.project_id, softwareUnitId, job.device_id || "default"]
+    const targetKey = [job.project_id, softwareUnitId, job.device_id || "default", `g${Number(job.cache_generation || 0)}`]
       .filter(Boolean)
       .join("--");
     return path.join(this.incrementalCacheDir, sanitizeName(targetKey));

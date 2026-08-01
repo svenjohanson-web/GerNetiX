@@ -30,6 +30,10 @@ Ein reiner Build aus der Entwicklungsplattform benoetigt kein Inventar-Device. E
 - Jeder Auftrag erhaelt ueber seine eindeutige BuildJob-ID einen eigenen beschreibbaren PlatformIO-Buildordner. Firmware, ELF, Map, Build-Log und weitere Ausgaben zweier Jobs duerfen niemals denselben Ausgabepfad verwenden.
 - Wiederverwendbare Objekt- und Abhaengigkeitscaches werden ueber den stabilen Build-Zielschluessel adressiert; schreibbare Ergebnisordner werden ueber die BuildJob-ID adressiert. Build-Ziel-ID und BuildJob-ID duerfen nicht vermischt werden.
 - Erkennt der Runner einen beschaedigten ESP-IDF-Komponentencache, verwirft er ausschliesslich den technischen Cache dieses Ziels und wiederholt den Build genau einmal. Ein erneuter Fehler wird mit dem vollstaendigen Build-Log gemeldet.
+- Im Serverbetrieb registriert PostgreSQL jede BuildJob-ID genau einmal und speichert Worker-ID, Zielschluessel, Status, Fortschritt und Ergebnisreferenzen. Statusabfragen funktionieren dadurch unabhaengig davon, welcher Build-Rechner antwortet.
+- Mehrere Build-Rechner verwenden fuer denselben Zielschluessel einen PostgreSQL-Advisory-Lock. Der Lock ist an die Datenbankverbindung des Workers gebunden und wird bei einem Prozess- oder Verbindungsabbruch automatisch freigegeben.
+- Jeder Worker aktualisiert einen PostgreSQL-Heartbeat. Jobs eines nachweislich veralteten Workers wechseln von `accepted`, `queued` oder `running` auf `failed/worker_lost`, statt dauerhaft haengenzubleiben.
+- Ein projektweiter Clean erhoeht eine zentrale Cache-Generation. Jeder Build-Rechner adressiert danach einen neuen lokalen Zielcache; alte lokale Caches koennen nicht mehr fachlich wirksam werden und spaeter asynchron entfernt werden.
 
 ## Abhaengigkeitsregeln
 
@@ -51,4 +55,4 @@ Danach werden alle Objektdateien gelinkt, signiert und als OTA-Image bereitgeste
 
 ## Skalierung
 
-Mehrere gleichzeitige Nutzer verwenden dieselbe gecachte Core-Basis. Ihre mutierbaren Projekt- und ESP-IDF-Komponentencaches bleiben jedoch pro Build-Ziel getrennt. Gleichzeitige Auftraege desselben Ziels werden geordnet, unterschiedliche Ziele parallel gebaut. Dadurch bleiben Cache-Korrektheit und inkrementelle Buildzeit auch bei paralleler Nutzung erhalten.
+Mehrere gleichzeitige Nutzer und mehrere Build-Rechner verwenden je Rechner eine lokale gecachte Core-Basis. Ihre mutierbaren Projekt- und ESP-IDF-Komponentencaches bleiben pro Build-Ziel und Cache-Generation getrennt. PostgreSQL koordiniert eindeutige Jobs, Status, Ziel-Locks und globale Cache-Invalidierung. Gleichzeitige Auftraege desselben Ziels werden rechneruebergreifend geordnet, unterschiedliche Ziele parallel gebaut.

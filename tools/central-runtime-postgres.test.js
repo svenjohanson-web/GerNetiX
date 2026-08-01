@@ -27,6 +27,14 @@ test("productive runtime services do not select SQLite persistence", () => {
   assert.match(remoteDeploy, /up -d --remove-orphans/);
 });
 
+test("Build workers coordinate jobs and target locks through central PostgreSQL", () => {
+  assert.match(compose, /BUILD_ARTIFACT_PERSISTENCE_BACKEND: postgres/);
+  assert.match(compose, /BUILD_COORDINATION_BACKEND: postgres/);
+  assert.match(compose, /BUILD_COORDINATION_POOL_MAX: 20/);
+  assert.match(compose, /BUILD_WORKER_HEARTBEAT_MS: 15000/);
+  assert.match(compose, /BUILD_WORKER_STALE_MS: 120000/);
+});
+
 test("Community administration uses a dedicated token instead of Identity operator accounts", () => {
   assert.match(compose, /COMMUNITY_ADMIN_TOKEN: \$\{COMMUNITY_ADMIN_TOKEN:\?COMMUNITY_ADMIN_TOKEN muss gesetzt sein\}/);
   assert.doesNotMatch(compose, /COMMUNITY_OPERATOR_USER_IDS:/);

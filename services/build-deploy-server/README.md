@@ -168,6 +168,11 @@ HTTPS dient fuer:
 - `deploy-job-orchestrator`: OTA-/Deploy-Auftraege
 - `device-job-lock`: Nebenlaeufigkeit pro Device
 - `build-target-lock`: exklusiver Zugriff auf den inkrementellen Workspace und ESP-IDF-Komponentencache eines Build-Ziels
+- `postgres-build-coordination`: rechneruebergreifende Job-Eindeutigkeit, Statussicht, Advisory Locks, Worker-Identitaet und Cache-Generationen
+
+Im VPS- und Mehrrechnerbetrieb ist `BUILD_COORDINATION_BACKEND=postgres` verbindlich. `BUILD_WORKER_ID` kann fuer einen Rechner stabil gesetzt werden; ohne Vorgabe wird der Hostname verwendet. Der Memory-Modus ist ausschliesslich fuer Tests und eine einzelne lokale Entwicklungsinstanz vorgesehen.
+
+Worker senden standardmaessig alle 15 Sekunden einen Heartbeat. Nach zwei Minuten ohne Heartbeat gelten noch aktive Jobs dieses Workers als `failed/worker_lost`. Beide Intervalle sind ueber `BUILD_WORKER_HEARTBEAT_MS` und `BUILD_WORKER_STALE_MS` konfigurierbar.
 
 ## Nicht-Ziele fuer diesen Stand
 

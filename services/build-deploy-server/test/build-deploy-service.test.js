@@ -217,7 +217,7 @@ test("successive project builds reuse PlatformIO cache until compiler configurat
   assert.equal(sourceModifiedTimes[0], sourceModifiedTimes[1]);
   assert.equal(sourceModifiedTimes[1], sourceModifiedTimes[2]);
   assert.equal(
-    await fs.readFile(path.join(config.incrementalCacheDir, "project-1--device-1", "workspace", ".pio", "build", "cache-marker.txt"), "utf8"),
+    await fs.readFile(path.join(config.incrementalCacheDir, "project-1--device-1--g0", "workspace", ".pio", "build", "cache-marker.txt"), "utf8"),
     "incremental-3",
   );
   assert.equal(await fs.readFile(path.join(observedWorkspaces[1], "src", "main.cpp"), "utf8"), "void setup() {}\nvoid loop() {}\n");
@@ -268,12 +268,12 @@ test("parallel software units use isolated PlatformIO incremental workspaces", a
   assert.notEqual(workspaces.get("camera_sender"), workspaces.get("display_receiver"));
   assert.equal(workspaces.get("camera_sender"), path.join(
     config.incrementalCacheDir,
-    "distributed-project--camera_sender--default",
+    "distributed-project--camera_sender--default--g0",
     "workspace",
   ));
   assert.equal(workspaces.get("display_receiver"), path.join(
     config.incrementalCacheDir,
-    "distributed-project--display_receiver--default",
+    "distributed-project--display_receiver--default--g0",
     "workspace",
   ));
 });
@@ -495,7 +495,7 @@ test("incremental builds preserve generated ESP-IDF components and remove only s
   });
   await service.jobs.get("managed-components-2").promise;
 
-  const workspace = path.join(config.incrementalCacheDir, "project-managed--default", "workspace");
+  const workspace = path.join(config.incrementalCacheDir, "project-managed--default--g0", "workspace");
   assert.deepEqual(observedGeneratedComponent, ["missing", "generated mqtt header"]);
   assert.equal(await fs.readFile(path.join(workspace, "managed_components", "espressif__mqtt", "include", "mqtt_client.h"), "utf8"), "generated mqtt header");
   assert.equal(await fs.readFile(path.join(workspace, "managed_components", "espressif__mqtt", "mqtt_client.c"), "utf8"), "generated mqtt source");
@@ -564,7 +564,7 @@ test("project clean removes every target cache and preserves other projects", as
 
   const result = await service.cleanProjectCache({ project_id: "project-clean" });
 
-  assert.deepEqual(result, { project_id: "project-clean", removed_cache_count: 2, status: "clean" });
+  assert.deepEqual(result, { project_id: "project-clean", removed_cache_count: 2, cache_generation: 0, status: "clean" });
   await assert.rejects(fs.access(cameraCache), /ENOENT/);
   await assert.rejects(fs.access(displayCache), /ENOENT/);
   await fs.access(unrelatedCache);

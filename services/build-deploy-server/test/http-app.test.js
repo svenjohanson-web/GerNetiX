@@ -4,6 +4,46 @@ const assert = require("node:assert/strict");
 const test = require("node:test");
 const { createHttpApp } = require("../src/http-app");
 
+test("health exposes distributed build-worker coordination", async () => {
+  const app = createHttpApp({
+    service: {
+      coordinationHealth() {
+        return { backend: "postgres", worker_id: "worker-a", distributed: true };
+      },
+    },
+  });
+  const response = createResponseRecorder();
+
+  await app({ method: "GET", url: "/health", headers: { host: "127.0.0.1" } }, response);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(JSON.parse(response.body.toString()), {
+    status: "ok",
+    service: "build-deploy-server",
+    coordination: { backend: "postgres", worker_id: "worker-a", distributed: true },
+  });
+});
+
+test("job status can be returned by a worker that did not execute the job", async () => {
+  const app = createHttpApp({
+    service: {
+      async getSharedJob(jobId) {
+        return { job_id: jobId, status: "running", worker_id: "worker-b" };
+      },
+    },
+  });
+  const response = createResponseRecorder();
+
+  await app({ method: "GET", url: "/api/build-jobs/shared-job", headers: { host: "127.0.0.1" } }, response);
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(JSON.parse(response.body.toString()), {
+    job_id: "shared-job",
+    status: "running",
+    worker_id: "worker-b",
+  });
+});
+
 test("serves every ESP32 browser flash artifact", async () => {
   const requested = [];
   const app = createHttpApp({

@@ -8,13 +8,14 @@ const { MqttTransport } = require("./modules/mqtt-transport");
 const { PemOtaCommandSigner, SqliteOtaAcknowledgementStore, PostgresOtaAcknowledgementStore } = require("./modules/ota-security");
 const { DeviceJobLock } = require("./modules/device-job-lock");
 const { BuildTargetLock } = require("./modules/build-target-lock");
+const { PostgresBuildCoordination } = require("./modules/postgres-build-coordination");
 const { BuildDeployService } = require("./services/build-deploy-service");
 const { createConfig } = require("./config");
 const { createHttpApp } = require("./http-app");
 const { SqliteStateStore } = require("../../shared");
 const { createInterfaceCallTelemetry } = require("../../shared/persistence/interface-call-telemetry");
 
-function createBuildDeployService(config, { acknowledgementStore, artifactStore }) {
+function createBuildDeployService(config, { acknowledgementStore, artifactStore, buildCoordination = null }) {
   const authorizationSigner = new PemOtaCommandSigner({
     privateKeyPath: config.otaSigningPrivateKeyPath,
     keyId: config.otaSigningKeyId,
@@ -52,7 +53,8 @@ function createBuildDeployService(config, { acknowledgementStore, artifactStore 
       acknowledgementStore,
     }),
     deviceJobLock: new DeviceJobLock(),
-    buildTargetLock: new BuildTargetLock(),
+    buildTargetLock: buildCoordination || new BuildTargetLock(),
+    buildCoordination,
     stateStore: config.persistenceBackend === "sqlite"
       ? new SqliteStateStore(config.sqlitePath, "build-deploy-server", {
         defaultState: { jobs: [] },
@@ -72,9 +74,19 @@ function createDefaultBuildDeployService(config = createConfig()) {
     return Promise.all([
       PostgresOtaAcknowledgementStore.create(runtimePool),
       PostgresArtifactStore.create({ poolOptions, publicBaseUrl: config.publicBaseUrl }),
-    ]).then(([acknowledgementStore, artifactStore]) => createBuildDeployService(config, {
+      config.coordinationBackend === "postgres"
+        ? PostgresBuildCoordination.create({
+          poolOptions,
+          poolMax: config.coordinationPoolMax,
+          workerId: config.workerId,
+          heartbeatMs: config.workerHeartbeatMs,
+          staleMs: config.workerStaleMs,
+        })
+        : null,
+    ]).then(([acknowledgementStore, artifactStore, buildCoordination]) => createBuildDeployService(config, {
       acknowledgementStore,
       artifactStore,
+      buildCoordination,
     }));
   }
   return createBuildDeployService(config, {
@@ -100,6 +112,7 @@ module.exports = {
   PostgresOtaAcknowledgementStore,
   DeviceJobLock,
   BuildDeployService,
+  PostgresBuildCoordination,
   createConfig,
   createHttpApp,
   createDefaultBuildDeployService,

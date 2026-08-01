@@ -13,7 +13,12 @@ Antwort:
 ```json
 {
   "status": "ok",
-  "service": "build-deploy-server"
+  "service": "build-deploy-server",
+  "coordination": {
+    "backend": "postgres",
+    "worker_id": "build-worker-01",
+    "distributed": true
+  }
 }
 ```
 
@@ -58,7 +63,9 @@ Unterstuetzte Modi:
 GET /api/build-jobs/{job_id}
 ```
 
-Liefert Status, Ergebnis, Fehler und Artefaktmetadaten.
+Liefert Status, Ergebnis, Fehler und Artefaktmetadaten aus dem zentralen PostgreSQL-Jobregister. Die Antwort ist dadurch nicht an den Build-Rechner gebunden, der den Auftrag angenommen hat.
+
+Eine `job_id` darf systemweit nur einmal registriert werden. Ein zweiter Auftrag mit derselben ID wird mit HTTP 409 abgewiesen.
 
 ```text
 GET /artifacts/{job_id}/{file_name}

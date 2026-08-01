@@ -8,7 +8,7 @@ function createHttpApp(options) {
     const url = new URL(req.url, `http://${req.headers.host}`);
 
     if (req.method === "GET" && url.pathname === "/health") {
-      sendJson(res, 200, { status: "ok", service: "build-deploy-server" });
+      sendJson(res, 200, { status: "ok", service: "build-deploy-server", coordination: service.coordinationHealth() });
       return;
     }
 
@@ -32,7 +32,7 @@ function createHttpApp(options) {
 
     const jobMatch = url.pathname.match(/^\/api\/build-jobs\/([^/]+)$/);
     if (req.method === "GET" && jobMatch) {
-      sendJson(res, 200, service.getJob(decodeURIComponent(jobMatch[1])));
+      sendJson(res, 200, await service.getSharedJob(decodeURIComponent(jobMatch[1])));
       return;
     }
 
