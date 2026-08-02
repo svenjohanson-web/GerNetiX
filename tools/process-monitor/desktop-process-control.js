@@ -40,8 +40,7 @@ async function check(item) {
   const communityStorage=item.id==="community-platform"?communityStorageSummary():null;
   try {
     const workerConfig=item.kind==="docker-build-worker"?loadBuildWorkerConfig():null;
-    const healthUrl=workerConfig?`http://${workerConfig.BUILD_WORKER_BIND_ADDRESS}:${workerConfig.BUILD_WORKER_PORT||4400}/health`:item.healthUrl;
-    const response=await health(healthUrl),statusCode=response.statusCode,pid=item.kind==="docker-build-worker"?null:await pidForPort(item.port);
+    const response=workerConfig?await dockerBuildWorkerHealth():await health(item.healthUrl),statusCode=response.statusCode,pid=item.kind==="docker-build-worker"?null:await pidForPort(item.port);
     const statusHealthy=statusCode>=200&&statusCode<300;
     const identityModeMismatch=item.id==="identity-server"&&statusHealthy&&!isIdentityRemoteDevHealth(response.body);
     return {...item,healthy:statusHealthy&&!identityModeMismatch,statusCode,pid,
@@ -53,6 +52,13 @@ async function check(item) {
   catch(error){ return {...item,healthy:false,statusCode:0,pid:item.kind==="docker-build-worker"?null:await pidForPort(item.port),error:error.message,...(communityStorage?{communityStorage}:{})}; }
 }
 async function processStates(){ return Promise.all(services.filter((item)=>item.local).map(check)); }
+async function dockerBuildWorkerHealth(options={}){
+  const run=options.execFileAsync||execFileAsync;
+  const {stdout}=await run("docker",["inspect","--format","{{.State.Health.Status}}","gernetix-build-worker-build-worker-1"],{windowsHide:true,timeout:5000});
+  const state=String(stdout||"").trim();
+  if(state!=="healthy")throw new Error(state?`Docker-Healthstatus: ${state}`:"Build-Worker-Container wurde nicht gefunden.");
+  return {statusCode:200,body:{service:"build-deploy-server",coordination_backend:"postgres"}};
+}
 function communityStorageSummary(root=workspaceRoot){
   const dbPath=path.join(root,".runtime","gernetix-community.sqlite");
   const visiblePath=path.relative(root,dbPath)||path.basename(dbPath);
@@ -584,4 +590,4 @@ async function setVpnConnected(connected, options = {}) {
   throw new Error(`Der VPN-Tunnel wurde nicht rechtzeitig ${desired ? "verbunden" : "getrennt"}.`);
 }
 
-module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,loadBuildWorkerConfig,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runBuildWorkerAction,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startBuildWorker,startIdentityRemoteDev,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};
+module.exports={communityStorageSummary,configureWorkspace,dockerBuildWorkerHealth,interfaceStatistics,loadBuildWorkerConfig,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runBuildWorkerAction,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startBuildWorker,startIdentityRemoteDev,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};

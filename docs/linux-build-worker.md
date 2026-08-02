@@ -59,11 +59,19 @@ Das Startkommando baut das schlanke Linux-Worker-Image mit PlatformIO 6.1.18 und
 
 ## VPS einmalig fuer Worker freigeben
 
+Fuer den aktuellen Mac fuehrt das wiederholbare Einrichtungswerkzeug die folgenden Schritte aus, ohne das erzeugte Worker-Passwort auszugeben:
+
+```text
+node tools/register-build-worker.js
+```
+
+Danach kann der Worker mit `node tools/build-worker.js start` oder im Desktop-Prozessmonitor gestartet werden.
+
 In `.env.vps`:
 
 ```text
 RUNTIME_POSTGRES_BIND_ADDRESS=10.77.0.1
-BUILD_WORKER_UPSTREAMS=10.77.0.20:4400
+BUILD_WORKER_PRIMARY_UPSTREAMS=10.77.0.5:4400
 BUILD_WORKER_POSTGRES_PASSWORD=<langes eigenes Worker-Passwort>
 ```
 
@@ -71,7 +79,7 @@ Mehrere Worker werden kommasepariert eingetragen. Die Host-Firewall erlaubt Post
 
 Der VPS legt beziehungsweise aktualisiert daraus automatisch den Login `gernetix_build_worker`. Dieser besitzt ausschliesslich Lese-/Schreibrechte auf Build-Artefakte, Jobregister, Worker-Heartbeats und Cache-Generationen. Schemaaenderungen sowie Identity-, Projekt-, Telemetrie- und weitere Domaenentabellen bleiben gesperrt. Dasselbe Passwort wird auf dem Linux-Rechner als `BUILD_POSTGRES_PASSWORD` eingetragen; das allgemeine Runtime-PostgreSQL-Passwort verlaesst den VPS nicht.
 
-Nach einer Aenderung dieser VPS-Konfiguration wird der normale, kontrollierte Staging-/Server-Deploymentweg verwendet. Der interne Build-Router verteilt reine Builds mit `least_conn` auf den VPS-Worker und alle eingetragenen Linux-Worker. Fehlerhafte oder nicht erreichbare Worker werden temporaer aus der Auswahl genommen.
+Der interne Build-Router sendet reine Builds zuerst an konfigurierte Primaer-Worker. Mehrere Primaer-Worker werden mit `least_conn` verteilt. Der VPS-Worker und weitere normale Worker dienen als Rueckfall, wenn kein Primaer-Worker erreichbar ist.
 
 ## Sicherheitsgrenzen
 

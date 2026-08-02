@@ -90,6 +90,14 @@ test("desktop monitor starts the Docker build worker through the dedicated helpe
   assert.equal(invocation.options.env.ELECTRON_RUN_AS_NODE,"1");
 });
 
+test("desktop monitor reads the local worker from Docker health on macOS", async () => {
+  let invocation;
+  const result=await control.dockerBuildWorkerHealth({execFileAsync:async(file,args)=>{invocation={file,args};return {stdout:"healthy\n"};}});
+  assert.equal(result.statusCode,200);
+  assert.equal(invocation.file,"docker");
+  assert.deepEqual(invocation.args.slice(0,2),["inspect","--format"]);
+});
+
 test("monitor starts local Identity only in PostgreSQL Remote-Dev mode", () => {
   assert.match(html, /Prozess-Monitor/);
   assert.match(client, /setInterval\(\(\)=>load\(false\),10000\)/);

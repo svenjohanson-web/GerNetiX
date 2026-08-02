@@ -30,6 +30,7 @@ services:
       BUILD_POSTGRES_PASSWORD: ${BUILD_POSTGRES_PASSWORD:?BUILD_POSTGRES_PASSWORD muss gesetzt sein}
       BUILD_DATABASE_SCHEMA_MANAGEMENT: disabled
       BUILD_DEPLOY_RUNTIME_DIR: /var/lib/gernetix/build
+      INTERFACE_TELEMETRY_SQLITE_PATH: /var/lib/gernetix/build/interface-telemetry.sqlite
       BUILD_RUNNER: platformio
       PLATFORMIO_COMMAND: /opt/platformio/bin/platformio
       PUBLIC_BASE_URL: ${BUILD_PUBLIC_BASE_URL:-https://build.gernetix.com}

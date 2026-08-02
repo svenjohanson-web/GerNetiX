@@ -65,6 +65,7 @@ test("env parser supports comments and quoted values", () => {
 test("standalone worker is build-only, PostgreSQL-coordinated and WireGuard-bound", () => {
   const compose = fs.readFileSync(path.resolve(__dirname, "..", "compose.build-worker.yaml"), "utf8");
   assert.match(compose, /BUILD_WORKER_ROLE: build_only/);
+  assert.match(compose, /INTERFACE_TELEMETRY_SQLITE_PATH: \/var\/lib\/gernetix\/build\/interface-telemetry\.sqlite/);
   assert.match(compose, /BUILD_ARTIFACT_PERSISTENCE_BACKEND: postgres/);
   assert.match(compose, /BUILD_COORDINATION_BACKEND: postgres/);
   assert.match(compose, /BUILD_DATABASE_SCHEMA_MANAGEMENT: disabled/);
