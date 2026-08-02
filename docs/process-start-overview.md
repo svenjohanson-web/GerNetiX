@@ -26,7 +26,7 @@ Auf macOS kann alternativ `tools/GerNetiX-Check-und-Start.command` per Doppelkli
 
 ## Grafischer Prozess-Monitor
 
-Die eigenstaendige Desktop-App bildet den normalen Remote-Dev-Betrieb ab. Sie startet und stoppt ausschliesslich den lokalen Identity-Prozess auf Port `4300`; dieser Prozess muss im kontrollierten Remote-Dev-Modus laufen und verwendet ausschliesslich PostgreSQL auf dem VPS. Die uebrigen Backend- und Infrastrukturprozesse erscheinen read-only aus dem Docker-Compose-Status des VPS. Der Monitor erkennt eine Identity mit falschem Persistenzmodus und behandelt sie nicht als gesund.
+Die eigenstaendige Desktop-App bildet den normalen Remote-Dev-Betrieb ab. Sie startet und stoppt den lokalen Identity-Prozess auf Port `4300`; dieser Prozess muss im kontrollierten Remote-Dev-Modus laufen und verwendet ausschliesslich PostgreSQL auf dem VPS. Zusaetzlich kann sie den separat konfigurierten, build-only Docker-Worker auf dem Entwicklungsrechner starten und stoppen. Dieser Worker besitzt nur einen lokalen technischen Build-Cache; Buildjobs, Locks und Artefakte bleiben in PostgreSQL. Die uebrigen Backend- und Infrastrukturprozesse erscheinen read-only aus dem Docker-Compose-Status des VPS. Der Monitor erkennt eine Identity mit falschem Persistenzmodus und behandelt sie nicht als gesund.
 
 - macOS-App: `tools/process-monitor/GerNetiX Prozess-Monitor.app`
 - macOS-Entwicklung: `tools/process-monitor/GerNetiX-Prozess-Monitor.command`
@@ -43,7 +43,7 @@ Die Community Platform wird im normalen Remote-Dev-Betrieb ausschliesslich als V
 
 Auf macOS steuert der Monitor ausschliesslich den vorhandenen WireGuard-Netzwerkdienst `gernetix-vps-mac`. Nach erfolgreicher VPN-Verbindung kann derselbe Monitor den festen SSH-Diagnosetunnel fuer Admin (`127.0.0.1:14600`), Plattformdiagnose (`127.0.0.1:14300`), Identity-PostgreSQL und die fest definierten Domaenendienste starten. Dieser Tunnel startet keine Identity; er stellt nur Diagnosezugriffe auf den laufenden VPS bereit. Der Renderer kann dabei weder SSH-Ziele noch beliebige Portweiterleitungen eingeben.
 
-Die App selbst oeffnet keinen HTTP-Port. Ihre Start-/Stop-Aktion steuert ausschliesslich den lokalen Identity-Listener auf Port `4300`; PostgreSQL und die Domaenendienste bleiben auf dem VPS. Das Schliessen des letzten Monitorfensters beendet auch den Desktop-Monitor; ein separat gestarteter lokaler Identity-Prozess und die VPS-Prozesse bleiben davon unberuehrt.
+Die App selbst oeffnet keinen HTTP-Port. Ihre Start-/Stop-Aktionen steuern den lokalen Identity-Listener auf Port `4300` und getrennt davon den build-only Docker-Worker auf seiner privaten WireGuard-Adresse. PostgreSQL und die Domaenendienste bleiben auf dem VPS. Das Schliessen des letzten Monitorfensters beendet auch den Desktop-Monitor; separat gestartete lokale Prozesse und die VPS-Prozesse bleiben davon unberuehrt.
 
 ```powershell
 netstat -ano | findstr :4300

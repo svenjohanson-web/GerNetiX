@@ -58,6 +58,10 @@ function isPrivateIpv4(value) {
     || (parts[0] === 192 && parts[1] === 168);
 }
 
+function supportsWorkerHost(platform) {
+  return platform === "linux" || platform === "darwin";
+}
+
 function validateConfig(config) {
   const errors = [];
   const required = [
@@ -120,7 +124,7 @@ function checkTcp(host, port, timeoutMs = 3000) {
 }
 
 async function doctor({ envFile, skipNetwork = false, platform = process.platform } = {}) {
-  if (platform !== "linux") throw new Error("Das Build-Worker-Paket ist fuer Linux vorgesehen.");
+  if (!supportsWorkerHost(platform)) throw new Error("Das Build-Worker-Paket wird auf Linux und macOS mit Docker unterstuetzt.");
   if (!fs.existsSync(envFile)) {
     throw new Error(`Konfiguration fehlt: ${envFile}\nZuerst .env.build-worker.example nach .env.build-worker.local kopieren.`);
   }
@@ -129,6 +133,8 @@ async function doctor({ envFile, skipNetwork = false, platform = process.platfor
   if (errors.length) throw new Error(`Build-Worker-Konfiguration ungueltig:\n- ${errors.join("\n- ")}`);
   run("docker", ["--version"], { capture: true });
   run("docker", ["compose", "version"], { capture: true });
+  const dockerOsType = run("docker", ["info", "--format", "{{.OSType}}"], { capture: true });
+  if (dockerOsType !== "linux") throw new Error("Der Build-Worker benoetigt eine laufende Linux-Docker-Engine.");
   run("docker", composeArgs(envFile, ["config", "--quiet"]));
   if (!skipNetwork) {
     await checkTcp(config.BUILD_POSTGRES_HOST, config.BUILD_POSTGRES_PORT || 25432);
@@ -171,5 +177,6 @@ module.exports = {
   isPrivateIpv4,
   parseArgs,
   parseEnvFile,
+  supportsWorkerHost,
   validateConfig,
 };

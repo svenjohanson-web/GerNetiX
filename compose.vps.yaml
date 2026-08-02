@@ -338,6 +338,7 @@ services:
       - no-new-privileges:true
     entrypoint: ["/opt/gernetix/build-router-entrypoint.sh"]
     environment:
+      BUILD_WORKER_PRIMARY_UPSTREAMS: ${BUILD_WORKER_PRIMARY_UPSTREAMS:-}
       BUILD_WORKER_UPSTREAMS: ${BUILD_WORKER_UPSTREAMS:-}
     expose: ["4400"]
     networks:

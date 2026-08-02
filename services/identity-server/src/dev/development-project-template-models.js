@@ -104,7 +104,7 @@ const DEVELOPMENT_PROJECT_TEMPLATE_MODELS = Object.freeze({
   }),
   esp32_camera_to_touch_display: templateModel({
     id: "esp32_camera_to_touch_display",
-    schemaVersion: 19,
+    schemaVersion: 20,
     title: "ESP32-Kamera auf Touchdisplay",
     description: "Zwei ESP32-S3 starten mit der GerNetiX-Basissoftware: Das Waveshare-Kameraboard ist als kuenftiger Bild-Host vorbereitet, das ES3C28P als kuenftiger Display-Client. Kameraaufnahme, Bildformat und Transport werden danach schrittweise entwickelt.",
     hint: "Vorkonfiguriertes Basissoftware-Projekt mit zwei Firmware-Zielen: Kamera-Host und Display-Client.",

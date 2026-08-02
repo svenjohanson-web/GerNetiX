@@ -10,7 +10,7 @@ const client = fs.readFileSync(path.join(__dirname, "public/desktop-app.js"), "u
 const desktopMain = fs.readFileSync(path.join(__dirname, "desktop-main.js"), "utf8");
 const desktopPreload = fs.readFileSync(path.join(__dirname, "desktop-preload.js"), "utf8");
 
-test("monitor runs only Identity locally and keeps every persisted backend on the VPS", async () => {
+test("monitor controls Identity and the isolated build worker locally while persisted backends stay on the VPS", async () => {
   assert.equal(control.services.find((item) => item.id === "identity-server").port, 4300);
   assert.equal(control.services.find((item) => item.id === "admin-tool").port, 4600);
   assert.equal(control.services.find((item) => item.id === "community-platform").port, 5200);
@@ -21,12 +21,13 @@ test("monitor runs only Identity locally and keeps every persisted backend on th
   assert.equal(control.services.find((item) => item.id === "provisioning-tool").port, 4500);
   assert.equal(control.services.find((item) => item.id === "recovery-tool").port, 5100);
   assert.equal(control.services.find((item) => item.id === "admin-access-server").port, 4610);
-  assert.equal(control.services.length, 17);
-  assert.deepEqual(control.services.filter((item) => item.local).map((item) => item.id), ["identity-server"]);
+  assert.equal(control.services.find((item) => item.id === "build-worker").port, 4400);
+  assert.equal(control.services.length, 18);
+  assert.deepEqual(control.services.filter((item) => item.local).map((item) => item.id), ["identity-server", "build-worker"]);
   assert.deepEqual(control.services.filter((item) => item.autoStart).map((item) => item.id), ["identity-server"]);
   const states = await control.processStates();
-  assert.equal(states.length, 1);
-  assert.equal(states[0].id, "identity-server");
+  assert.equal(states.length, 2);
+  assert.deepEqual(states.map((item) => item.id), ["identity-server", "build-worker"]);
 });
 
 test("desktop monitor reports Community SQLite counts without reading content", () => {
@@ -74,10 +75,27 @@ test("packaged Electron runtime starts services in Node mode", () => {
   assert.match(source, /ELECTRON_RUN_AS_NODE:"1"/);
 });
 
+test("desktop monitor starts the Docker build worker through the dedicated helper", async () => {
+  let checkCount = 0;
+  let invocation = null;
+  const result = await control.startBuildWorker({
+    checkService:async(item) => ({...item, healthy:checkCount++ > 0}),
+    execFileAsync:async(file,args,options) => { invocation={file,args,options}; return {stdout:"",stderr:""}; },
+    delay:async()=>{},
+  });
+  assert.equal(result.healthy,true);
+  assert.equal(invocation.file,process.execPath);
+  assert.match(invocation.args[0],/tools\/build-worker\.js$/);
+  assert.equal(invocation.args[1],"start");
+  assert.equal(invocation.options.env.ELECTRON_RUN_AS_NODE,"1");
+});
+
 test("monitor starts local Identity only in PostgreSQL Remote-Dev mode", () => {
   assert.match(html, /Prozess-Monitor/);
   assert.match(client, /setInterval\(\(\)=>load\(false\),10000\)/);
   assert.match(html, /Identity-Prozess läuft lokal auf Port 4300/);
+  assert.match(html, /<h2>Lokale Prozesse<\/h2>/);
+  assert.match(html, /Build-Worker läuft bei Bedarf isoliert in Docker Desktop/);
   assert.match(html, /eine lokale Identity-SQLite wird nicht verwendet/);
   assert.match(html, />Identity starten<\/button>/);
   assert.match(html, /Backend und Infrastruktur/);

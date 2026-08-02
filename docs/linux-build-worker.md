@@ -1,14 +1,16 @@
-# GerNetiX Linux Build-Worker
+# GerNetiX Build-Worker auf Linux und macOS
 
 ## Ziel
 
-Ein zusaetzlicher Linux-Rechner kann reine Firmware-Builds und Prebuilds fuer GerNetiX uebernehmen. BuildJob-Status, Abbruchanforderungen, Artefakte, Ziel-Locks und Cache-Generationen liegen zentral in PostgreSQL. Der Rechner besitzt nur einen lokalen, jederzeit loeschbaren Build-Cache.
+Ein zusaetzlicher Linux-Rechner oder Mac kann reine Firmware-Builds und Prebuilds fuer GerNetiX uebernehmen. BuildJob-Status, Abbruchanforderungen, Artefakte, Ziel-Locks und Cache-Generationen liegen zentral in PostgreSQL. Der Rechner besitzt nur einen lokalen, jederzeit loeschbaren Build-Cache.
 
 OTA-, FlashBox- und USB-Auftraege werden bewusst nicht auf externe Worker verteilt. Sie bleiben auf dem zentralen Build-&-Deploy-Server, damit MQTT-Zugang und OTA-Signierschluessel nicht auf weitere Rechner kopiert werden muessen.
 
+Der Dispatcher kann schnelle Worker als Primaerziel fuehren. Solange ein solcher Worker gesund erreichbar ist, gehen Build-Auftraege dorthin. Der zentrale VPS-Builder und optionale weitere Worker bilden den automatischen Rueckfallpool. Fuer den aktuellen Mac wird auf dem VPS `BUILD_WORKER_PRIMARY_UPSTREAMS=10.77.0.5:4400` gesetzt.
+
 ## Voraussetzungen
 
-- 64-Bit-Linux
+- 64-Bit-Linux oder Apple-Silicon-/Intel-Mac mit Docker Desktop und Linux-Containern
 - Git
 - Node.js 18 oder neuer fuer das lokale Bedienwerkzeug
 - Docker Engine mit Docker Compose v2
@@ -53,7 +55,7 @@ node tools/build-worker.js logs
 node tools/build-worker.js stop
 ```
 
-Das Startkommando baut das schlanke Worker-Image mit PlatformIO 6.1.18 und startet genau einen `build_only`-Container. Die lokale Volume `build_worker_state` enthaelt nur temporaere Workspaces und technische Caches.
+Das Startkommando baut das schlanke Linux-Worker-Image mit PlatformIO 6.1.18 und startet genau einen `build_only`-Container. Auf macOS läuft derselbe Container in Docker Desktop; der fachliche Worker-Vertrag bleibt dadurch plattformidentisch. Die lokale Volume `build_worker_state` enthaelt nur temporaere Workspaces und technische Caches.
 
 ## VPS einmalig fuer Worker freigeben
 

@@ -18,7 +18,7 @@ test("OTA path downloads, verifies and activates through ESP-IDF", () => {
   assert.match(otaSource, /esp_partition_get_sha256/);
   assert.match(otaSource, /esp_https_ota_finish/);
   assert.match(webSource, /registerUri\("\/ota", HTTP_POST, otaHandler\)/);
-  assert.match(webSource, /config\.max_uri_handlers = 12/);
+  assert.match(webSource, /config\.max_uri_handlers = 18/);
 });
 
 test("OTA path verifies ECDSA signatures, expiry and replay sequences", () => {

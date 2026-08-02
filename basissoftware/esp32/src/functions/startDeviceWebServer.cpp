@@ -12,6 +12,7 @@
 #include "basissoftware/feedback.h"
 #include "basissoftware/mqtt_ota.h"
 #include "basissoftware/ota_update.h"
+#include "basissoftware/project_hooks.h"
 #include "basissoftware/provisioning_config.h"
 #include "basissoftware/wifi_manager.h"
 
@@ -120,6 +121,14 @@ esp_err_t sendPortalPage(httpd_req_t *request) {
 }
 
 esp_err_t rootHandler(httpd_req_t *request) {
+#if defined(GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT) && GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT == 1 \
+    && defined(GERNETIX_COMMUNICATION_ROLE_HOST) && GERNETIX_COMMUNICATION_ROLE_HOST == 1
+  if (const char *projectPage = projectRootPageHtml(); projectPage != nullptr) {
+    httpd_resp_set_hdr(request, "Cache-Control", "no-store");
+    httpd_resp_set_type(request, "text/html; charset=utf-8");
+    return httpd_resp_send(request, projectPage, HTTPD_RESP_USE_STRLEN);
+  }
+#endif
   return sendPortalPage(request);
 }
 
@@ -128,8 +137,49 @@ esp_err_t healthHandler(httpd_req_t *request) {
   return httpd_resp_sendstr(request, "ok\n");
 }
 
+esp_err_t projectStatusHandler(httpd_req_t *request) {
+  char body[512] = {};
+  if (!writeProjectStatusJson(body, sizeof(body))) {
+    std::snprintf(body, sizeof(body), "{\"available\":false}");
+  }
+  httpd_resp_set_hdr(request, "Cache-Control", "no-store");
+  httpd_resp_set_type(request, "application/json");
+  return httpd_resp_send(request, body, HTTPD_RESP_USE_STRLEN);
+}
+
 esp_err_t captivePortalHandler(httpd_req_t *request) {
   return sendPortalPage(request);
+}
+
+bool isPersistentProjectAccessPoint() {
+#if defined(GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT) && GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT == 1 \
+    && defined(GERNETIX_COMMUNICATION_ROLE_HOST) && GERNETIX_COMMUNICATION_ROLE_HOST == 1
+  return true;
+#else
+  return false;
+#endif
+}
+
+esp_err_t connectivityProbeHandler(httpd_req_t *request) {
+  if (!isPersistentProjectAccessPoint()) return sendPortalPage(request);
+
+  if (std::strcmp(request->uri, "/generate_204") == 0
+      || std::strcmp(request->uri, "/gen_204") == 0) {
+    httpd_resp_set_status(request, "204 No Content");
+    return httpd_resp_send(request, "", 0);
+  }
+  if (std::strcmp(request->uri, "/connecttest.txt") == 0) {
+    httpd_resp_set_type(request, "text/plain");
+    return httpd_resp_sendstr(request, "Microsoft Connect Test");
+  }
+  if (std::strcmp(request->uri, "/ncsi.txt") == 0) {
+    httpd_resp_set_type(request, "text/plain");
+    return httpd_resp_sendstr(request, "Microsoft NCSI");
+  }
+  httpd_resp_set_type(request, "text/html");
+  return httpd_resp_sendstr(
+      request,
+      "<HTML><HEAD><TITLE>Success</TITLE></HEAD><BODY>Success</BODY></HTML>");
 }
 
 esp_err_t statusHandler(httpd_req_t *request) {
@@ -448,7 +498,7 @@ void startDeviceWebServer() {
   // device UI independently on Core 1 instead of letting the HTTP task race
   // the WiFi startup on the same core.
   config.core_id = 1;
-  config.max_uri_handlers = 12;
+  config.max_uri_handlers = 18;
   config.lru_purge_enable = true;
   config.uri_match_fn = httpd_uri_match_wildcard;
 
@@ -456,6 +506,13 @@ void startDeviceWebServer() {
   ESP_ERROR_CHECK(httpd_start(&server, &config));
   feedbackInfo(TAG, "Device web server task started; registering routes");
   registerUri("/", HTTP_GET, rootHandler);
+  registerUri("/project/status", HTTP_GET, projectStatusHandler);
+  registerUri("/hotspot-detect.html", HTTP_GET, connectivityProbeHandler);
+  registerUri("/library/test/success.html", HTTP_GET, connectivityProbeHandler);
+  registerUri("/generate_204", HTTP_GET, connectivityProbeHandler);
+  registerUri("/gen_204", HTTP_GET, connectivityProbeHandler);
+  registerUri("/connecttest.txt", HTTP_GET, connectivityProbeHandler);
+  registerUri("/ncsi.txt", HTTP_GET, connectivityProbeHandler);
   registerUri("/status", HTTP_GET, statusHandler);
   registerUri("/logs", HTTP_GET, logsHandler);
   registerUri("/wifi/scan", HTTP_GET, wifiScanHandler);

@@ -9,6 +9,7 @@ const {
   isPrivateIpv4,
   parseArgs,
   parseEnvFile,
+  supportsWorkerHost,
   validateConfig,
 } = require("./build-worker");
 
@@ -17,6 +18,12 @@ test("parses the dedicated worker command without exposing secrets", () => {
   assert.equal(parsed.action, "start");
   assert.equal(parsed.envFile, path.resolve("./worker.env"));
   assert.equal(parsed.skipNetwork, true);
+});
+
+test("supports Linux hosts and Docker Desktop on macOS", () => {
+  assert.equal(supportsWorkerHost("linux"), true);
+  assert.equal(supportsWorkerHost("darwin"), true);
+  assert.equal(supportsWorkerHost("win32"), false);
 });
 
 test("accepts private WireGuard addresses and rejects public or wildcard binds", () => {

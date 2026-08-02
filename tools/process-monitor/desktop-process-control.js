@@ -22,6 +22,7 @@ const services = [
   service("ai-context-server", "AI Context Server", 5500), service("admin-tool", "Admin Tool", 4600, {PERSISTENCE_BACKEND:"memory"}),
   service("community-platform", "Community Platform", 5200),
   service("identity-server", "Identity Server", 4300, {}, {local:true}),
+  service("build-worker", "Lokaler Build-Worker", 4400, {}, {local:true,autoStart:false,kind:"docker-build-worker"}),
   service("admin-access-server", "Admin Access Server", 4610, {}, {autoStart:false}),
   service("telemetry-server", "Telemetry Server", 5600, {}, {autoStart:false}),
   service("public-demo-server", "Öffentlicher Demo-Katalog", 4920, {}, {autoStart:false}),
@@ -31,22 +32,25 @@ const services = [
   service("recovery-tool", "Recovery Tool Server", 5100, {}, {autoStart:false})
 ];
 
-function service(id, name, port, environment={}, options={}) { const local=options.local===true; return { id, name, port, cwd:path.join(workspaceRoot,"services",id), healthUrl:`http://127.0.0.1:${port}/health`, environment, local, autoStart:local&&options.autoStart!==false }; }
+function service(id, name, port, environment={}, options={}) { const local=options.local===true; return { id, name, port, cwd:path.join(workspaceRoot,"services",id), healthUrl:`http://127.0.0.1:${port}/health`, environment, local, autoStart:local&&options.autoStart!==false,kind:options.kind||"node-service" }; }
 function configureWorkspace(root) { workspaceRoot=path.resolve(root); for(const item of services)item.cwd=path.join(workspaceRoot,"services",item.id); }
 function byId(id) { const item=services.find((entry)=>entry.id===id); if(!item) throw new Error("Unbekannter GerNetiX-Dienst."); return item; }
 function isIdentityRemoteDevHealth(body){return body?.service==="identity-server"&&body?.persistence_backend==="postgres"&&body?.remote_dev===true;}
 async function check(item) {
   const communityStorage=item.id==="community-platform"?communityStorageSummary():null;
   try {
-    const response=await health(item.healthUrl),statusCode=response.statusCode,pid=await pidForPort(item.port);
+    const workerConfig=item.kind==="docker-build-worker"?loadBuildWorkerConfig():null;
+    const healthUrl=workerConfig?`http://${workerConfig.BUILD_WORKER_BIND_ADDRESS}:${workerConfig.BUILD_WORKER_PORT||4400}/health`:item.healthUrl;
+    const response=await health(healthUrl),statusCode=response.statusCode,pid=item.kind==="docker-build-worker"?null:await pidForPort(item.port);
     const statusHealthy=statusCode>=200&&statusCode<300;
     const identityModeMismatch=item.id==="identity-server"&&statusHealthy&&!isIdentityRemoteDevHealth(response.body);
     return {...item,healthy:statusHealthy&&!identityModeMismatch,statusCode,pid,
       persistenceBackend:response.body?.persistence_backend||"",remoteDev:response.body?.remote_dev===true,
       identityModeMismatch,error:identityModeMismatch?"Falscher Identity-Modus: Port 4300 verwendet nicht Remote-Dev mit PostgreSQL.":"",
+      ...(workerConfig?{workerId:workerConfig.BUILD_WORKER_ID,bindAddress:workerConfig.BUILD_WORKER_BIND_ADDRESS,coordinationBackend:response.body?.coordination?.backend||response.body?.coordination_backend||"postgres"}:{}),
       ...(communityStorage?{communityStorage}:{})};
   }
-  catch(error){ return {...item,healthy:false,statusCode:0,pid:await pidForPort(item.port),error:error.message,...(communityStorage?{communityStorage}:{})}; }
+  catch(error){ return {...item,healthy:false,statusCode:0,pid:item.kind==="docker-build-worker"?null:await pidForPort(item.port),error:error.message,...(communityStorage?{communityStorage}:{})}; }
 }
 async function processStates(){ return Promise.all(services.filter((item)=>item.local).map(check)); }
 function communityStorageSummary(root=workspaceRoot){
@@ -391,6 +395,30 @@ function remoteIdentityEnvironment(){
   const {loadRemoteDevConfig}=require(remoteStarter);
   return {...loadRemoteDevConfig(process.env),ELECTRON_RUN_AS_NODE:"1"};
 }
+
+function loadBuildWorkerConfig(){
+  const envFile=path.join(workspaceRoot,".env.build-worker.local");
+  if(!fs.existsSync(envFile))throw new Error("Build-Worker ist noch nicht eingerichtet: .env.build-worker.local fehlt.");
+  const config=parseEnvFile(fs.readFileSync(envFile,"utf8"));
+  if(!config.BUILD_WORKER_ID||!config.BUILD_WORKER_BIND_ADDRESS)throw new Error("Build-Worker-Konfiguration ist unvollstaendig.");
+  return config;
+}
+
+async function runBuildWorkerAction(action,options={}){
+  const tool=path.join(workspaceRoot,"tools","build-worker.js");
+  if(!fs.existsSync(tool))throw new Error("tools/build-worker.js fehlt.");
+  const run=options.execFileAsync||execFileAsync;
+  await run(process.execPath,[tool,action],{cwd:workspaceRoot,windowsHide:true,timeout:action==="start"?900000:120000,maxBuffer:5*1024*1024,env:{...process.env,ELECTRON_RUN_AS_NODE:"1"}});
+}
+
+async function startBuildWorker(options={}){
+  const item=byId("build-worker"),checkService=options.checkService||check;
+  const current=await checkService(item);if(current.healthy)return current;
+  await runBuildWorkerAction("start",options);
+  const wait=options.delay||delay;
+  for(let i=0;i<80;i+=1){const state=await checkService(item);if(state.healthy)return state;await wait(500);}
+  throw new Error("Lokaler Build-Worker wurde gestartet, meldet aber keinen gesunden Zustand.");
+}
 async function startIdentityRemoteDev(options={}){
   const item=byId("identity-server");
   const checkService=options.checkService||check;
@@ -424,9 +452,9 @@ async function startIdentityRemoteDev(options={}){
   if(child.exitCode===null&&!child.killed)child.kill?.("SIGTERM");
   throw new Error(`Identity Remote-Dev wurde nicht gestartet.${detail?` Letzte Logzeilen: ${detail}`:""}`);
 }
-async function startService(id,options={}){ const item=byId(id); if(!item.local)throw new Error(`${item.name} läuft auf dem VPS und kann hier nicht lokal gestartet werden.`); if(id==="identity-server")return startIdentityRemoteDev(options); const checkService=options.checkService||check; const current=await checkService(item); if(current.healthy)return current; const child=launchLoggedService(item,{...process.env,...item.environment,ELECTRON_RUN_AS_NODE:"1",PORT:String(item.port)}); child.unref(); for(let i=0;i<40;i+=1){await delay(250);const state=await checkService(item);if(state.healthy)return state;} throw new Error(`${item.name} konnte nicht gestartet werden.${recentServiceLog(item.id)?` Letzte Logzeilen: ${recentServiceLog(item.id)}`:""}`); }
+async function startService(id,options={}){ const item=byId(id); if(!item.local)throw new Error(`${item.name} läuft auf dem VPS und kann hier nicht lokal gestartet werden.`); if(id==="identity-server")return startIdentityRemoteDev(options);if(id==="build-worker")return startBuildWorker(options); const checkService=options.checkService||check; const current=await checkService(item); if(current.healthy)return current; const child=launchLoggedService(item,{...process.env,...item.environment,ELECTRON_RUN_AS_NODE:"1",PORT:String(item.port)}); child.unref(); for(let i=0;i<40;i+=1){await delay(250);const state=await checkService(item);if(state.healthy)return state;} throw new Error(`${item.name} konnte nicht gestartet werden.${recentServiceLog(item.id)?` Letzte Logzeilen: ${recentServiceLog(item.id)}`:""}`); }
 async function startAllServices(options={}){const start=options.startService||startService;const items=[];for(const item of services.filter((entry)=>entry.autoStart)){try{items.push(await start(item.id));}catch(error){items.push({...item,healthy:false,statusCode:0,pid:null,error:error.message});}}return{items,healthy:items.filter((item)=>item.healthy).length,failed:items.filter((item)=>!item.healthy).length};}
-async function stopService(id){ const item=byId(id); if(!item.local)throw new Error(`${item.name} läuft auf dem VPS und kann hier nicht lokal gestoppt werden.`); const pid=await pidForPort(item.port); if(!pid)return check(item); if(process.platform==="win32")await execFileAsync("taskkill",["/PID",String(pid),"/T","/F"],{windowsHide:true});else process.kill(pid,"SIGTERM"); for(let i=0;i<20;i+=1){await delay(150);const state=await check(item);if(!state.healthy)return state;} throw new Error(`${item.name} konnte nicht beendet werden.`); }
+async function stopService(id,options={}){ const item=byId(id); if(!item.local)throw new Error(`${item.name} läuft auf dem VPS und kann hier nicht lokal gestoppt werden.`);if(id==="build-worker"){await runBuildWorkerAction("stop",options);return check(item);} const pid=await pidForPort(item.port); if(!pid)return check(item); if(process.platform==="win32")await execFileAsync("taskkill",["/PID",String(pid),"/T","/F"],{windowsHide:true});else process.kill(pid,"SIGTERM"); for(let i=0;i<20;i+=1){await delay(150);const state=await check(item);if(!state.healthy)return state;} throw new Error(`${item.name} konnte nicht beendet werden.`); }
 function pidFromWindowsNetstat(output,port){
   const line=String(output||"").split(/\r?\n/).find((row)=>{
     const columns=row.trim().split(/\s+/);
@@ -556,4 +584,4 @@ async function setVpnConnected(connected, options = {}) {
   throw new Error(`Der VPN-Tunnel wurde nicht rechtzeitig ${desired ? "verbunden" : "getrennt"}.`);
 }
 
-module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startIdentityRemoteDev,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};
+module.exports={communityStorageSummary,configureWorkspace,interfaceStatistics,loadBuildWorkerConfig,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runBuildWorkerAction,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startBuildWorker,startIdentityRemoteDev,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};

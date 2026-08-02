@@ -67,6 +67,8 @@ function cameraHostStateHeader() {
     "",
     "struct CameraHostState {",
     "  CameraHostStage stage = CameraHostStage::basissoftware_ready;",
+    "  bool camera_present = false;",
+    "  bool stream_ready = false;",
     "  unsigned long frames_sent = 0;",
     "  int last_error = 0;",
     "};",
@@ -76,6 +78,7 @@ function cameraHostStateHeader() {
 
 function cameraHostMain() {
   return String.raw`#include "user/user_app.h"
+#include "basissoftware/project_hooks.h"
 #include "gernetix_basissoftware_configuration.h"
 #include "gernetix_board_configuration.h"
 #include "user_project/camera_host_state.h"
@@ -85,6 +88,7 @@ function cameraHostMain() {
 
 #include "driver/i2c_master.h"
 #include "esp_camera.h"
+#include "esp_err.h"
 #include "esp_http_server.h"
 #include "esp_log.h"
 #include "mdns.h"
@@ -101,6 +105,35 @@ constexpr char TAG[] = "camera-host";
 constexpr char STREAM_TYPE[] = "multipart/x-mixed-replace;boundary=frame";
 constexpr char STREAM_BOUNDARY[] = "--frame\r\n";
 constexpr char STREAM_HEADER[] = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
+constexpr char CAMERA_PAGE[] =
+    "<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">"
+    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+    "<title>GerNetiX Kamerastream</title><style>"
+    ":root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#0b1018;color:#e5e7eb;font:16px system-ui,sans-serif}"
+    "main{width:min(100%,64rem);margin:auto;padding:1rem}h1{font-size:1.35rem;margin:.2rem 0 1rem;color:#67e8f9}"
+    "img{display:block;width:100%;height:auto;border:1px solid #334155;border-radius:12px;background:#020617}"
+    "p{color:#94a3b8}</style></head><body><main><h1>GerNetiX Kamerastream</h1>"
+    "<img src=\"" GERNETIX_COMMUNICATION_ENDPOINT_PATH "\" alt=\"Livebild der OV3660-Kamera\">"
+    "<p>Livebild vom Waveshare ESP32-S3-CAM-OV3660</p></main></body></html>";
+constexpr char PROJECT_STATUS_PAGE[] =
+    "<!doctype html><html lang=\"de\"><head><meta charset=\"utf-8\">"
+    "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\">"
+    "<title>GerNetiX Kamera</title><style>:root{color-scheme:dark}*{box-sizing:border-box}"
+    "body{margin:0;background:#0b1018;color:#e5e7eb;font:16px system-ui,sans-serif}"
+    "main{width:min(100%,64rem);margin:auto;padding:1rem}h1{font-size:1.35rem;color:#67e8f9}"
+    "#camera-state{margin:1rem 0;border:1px solid #155e75;border-radius:10px;padding:.85rem;background:#0c2130;color:#cffafe}"
+    "img{display:none;width:100%;min-height:12rem;border:1px solid #334155;border-radius:12px;background:#020617}"
+    "a{color:#67e8f9}</style></head><body><main><h1>GerNetiX Kamerastream</h1>"
+    "<div id=\"camera-state\">Kamerastatus wird ermittelt …</div>"
+    "<img id=\"camera-image\" alt=\"Livebild der OV3660-Kamera\">"
+    "<p><a href=\"/status\">Gerätestatus</a> · <a href=\"/logs\">Diagnose-Logs</a></p>"
+    "</main><script>const box=document.getElementById('camera-state'),img=document.getElementById('camera-image');"
+    "function poll(){fetch('/project/status',{cache:'no-store'}).then(r=>r.json()).then(s=>{"
+    "if(s.streamReady){box.textContent='Kamera erkannt · Livestream läuft.';img.style.display='block';if(!img.src)img.src='http://'+location.hostname+':'+s.streamPort+s.streamPath;return;}"
+    "img.style.display='none';if(s.stage==='camera_not_found'){box.textContent='Kein Kameramodul gefunden. Das Board und das WLAN funktionieren.';return;}"
+    "if(s.stage==='camera_error'){box.textContent='Kameramodul konnte nicht initialisiert werden. Prüfe Anschluss, Versorgung und Flachbandkabel.';return;}"
+    "if(s.cameraPresent){box.textContent='Kamera erkannt, der Stream-Server startet noch …';}else{box.textContent='Kamera wird gesucht …';}setTimeout(poll,1000);"
+    "}).catch(()=>{box.textContent='Kamerastatus konnte nicht geladen werden.';setTimeout(poll,1500);});}poll();</script></body></html>";
 CameraHostState state;
 httpd_handle_t cameraServer = nullptr;
 
@@ -133,6 +166,12 @@ esp_err_t frameHandler(httpd_req_t *request) {
   return sendJpegFrame(request, false);
 }
 
+esp_err_t cameraPageHandler(httpd_req_t *request) {
+  httpd_resp_set_hdr(request, "Cache-Control", "no-store");
+  httpd_resp_set_type(request, "text/html; charset=utf-8");
+  return httpd_resp_send(request, CAMERA_PAGE, HTTPD_RESP_USE_STRLEN);
+}
+
 esp_err_t streamHandler(httpd_req_t *request) {
   esp_err_t result = httpd_resp_set_type(request, STREAM_TYPE);
   httpd_resp_set_hdr(request, "Cache-Control", "no-store");
@@ -156,7 +195,7 @@ bool enableIntegratedCamera() {
     i2c_device_config_t deviceConfig = {};
     deviceConfig.dev_addr_length = I2C_ADDR_BIT_LEN_7;
     deviceConfig.device_address = GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_ADDRESS;
-    deviceConfig.scl_speed_hz = 400000;
+    deviceConfig.scl_speed_hz = 100000;
     result = i2c_master_bus_add_device(bus, &deviceConfig, &cameraPower);
   }
   if (result == ESP_OK) {
@@ -164,11 +203,16 @@ bool enableIntegratedCamera() {
     result = i2c_master_transmit(cameraPower, mode, sizeof(mode), 100);
   }
   if (result == ESP_OK) {
-    const uint8_t output[] = {
+    const uint8_t powerOff[] = { 0x03, 0x00 };
+    result = i2c_master_transmit(cameraPower, powerOff, sizeof(powerOff), 100);
+  }
+  if (result == ESP_OK) {
+    vTaskDelay(pdMS_TO_TICKS(50));
+    const uint8_t powerOn[] = {
       0x03,
       static_cast<uint8_t>(1U << GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_OUTPUT),
     };
-    result = i2c_master_transmit(cameraPower, output, sizeof(output), 100);
+    result = i2c_master_transmit(cameraPower, powerOn, sizeof(powerOn), 100);
   }
   if (cameraPower != nullptr) i2c_master_bus_rm_device(cameraPower);
   if (bus != nullptr) i2c_del_master_bus(bus);
@@ -177,7 +221,9 @@ bool enableIntegratedCamera() {
     ESP_LOGE(TAG, "CH32V003-Kameraausgang konnte nicht aktiviert werden: %d", result);
     return false;
   }
-  vTaskDelay(pdMS_TO_TICKS(20));
+  vTaskDelay(pdMS_TO_TICKS(150));
+  ESP_LOGI(TAG, "Kameraversorgung über CH32V003 IO%u neu gestartet",
+           static_cast<unsigned>(GERNETIX_BOARD_FEATURE_CAMERA_POWER_PIN_OUTPUT));
   return true;
 }
 
@@ -210,19 +256,53 @@ bool startCamera() {
   config.fb_location = CAMERA_FB_IN_PSRAM;
   const esp_err_t result = esp_camera_init(&config);
   state.last_error = result;
-  if (result != ESP_OK) ESP_LOGE(TAG, "OV3660 konnte nicht initialisiert werden: %d", result);
-  return result == ESP_OK;
+  if (result != ESP_OK) {
+    if (result == ESP_ERR_NOT_SUPPORTED) {
+      ESP_LOGE(TAG, "Kein Kameramodul gefunden. Das Board und das WLAN funktionieren.");
+    } else {
+      ESP_LOGE(TAG, "Kameramodul konnte nicht initialisiert werden: %s (0x%x)", esp_err_to_name(result), result);
+    }
+    return false;
+  }
+  state.camera_present = true;
+
+  sensor_t *sensor = esp_camera_sensor_get();
+  if (sensor != nullptr && sensor->id.PID == OV3660_PID) {
+    sensor->set_vflip(sensor, 1);
+    sensor->set_brightness(sensor, 1);
+    sensor->set_saturation(sensor, -2);
+  }
+
+  camera_fb_t *testFrame = esp_camera_fb_get();
+  if (testFrame == nullptr || testFrame->format != PIXFORMAT_JPEG) {
+    if (testFrame != nullptr) esp_camera_fb_return(testFrame);
+    state.last_error = ESP_FAIL;
+    ESP_LOGE(TAG, "OV3660 liefert nach der Initialisierung kein JPEG-Bild");
+    esp_camera_deinit();
+    return false;
+  }
+  ESP_LOGI(
+      TAG,
+      "OV3660 bereit: %ux%u, erstes JPEG %u Bytes",
+      static_cast<unsigned>(testFrame->width),
+      static_cast<unsigned>(testFrame->height),
+      static_cast<unsigned>(testFrame->len));
+  esp_camera_fb_return(testFrame);
+  return true;
 }
 
 bool startHttpServer() {
   httpd_config_t config = HTTPD_DEFAULT_CONFIG();
   config.server_port = GERNETIX_COMMUNICATION_ENDPOINT_PORT;
   config.ctrl_port = 32770;
+  config.stack_size = 8192;
   config.max_uri_handlers = 4;
   if (httpd_start(&cameraServer, &config) != ESP_OK) return false;
+  const httpd_uri_t page = { .uri = "/", .method = HTTP_GET, .handler = cameraPageHandler, .user_ctx = nullptr };
   const httpd_uri_t stream = { .uri = GERNETIX_COMMUNICATION_ENDPOINT_PATH, .method = HTTP_GET, .handler = streamHandler, .user_ctx = nullptr };
   const httpd_uri_t frame = { .uri = "/camera/frame", .method = HTTP_GET, .handler = frameHandler, .user_ctx = nullptr };
-  return httpd_register_uri_handler(cameraServer, &stream) == ESP_OK
+  return httpd_register_uri_handler(cameraServer, &page) == ESP_OK
+      && httpd_register_uri_handler(cameraServer, &stream) == ESP_OK
       && httpd_register_uri_handler(cameraServer, &frame) == ESP_OK;
 }
 }  // namespace
@@ -240,11 +320,61 @@ extern "C" void userMain() {
     return;
   }
   state.stage = CameraHostStage::ready;
+  state.stream_ready = true;
   ESP_LOGI(TAG, "MJPEG bereit: Port %d, Pfad %s", GERNETIX_COMMUNICATION_ENDPOINT_PORT, GERNETIX_COMMUNICATION_ENDPOINT_PATH);
 }
 
 extern "C" void userTick() {
   // Der HTTP-Server und der Kameratreiber arbeiten in ihren ESP-IDF-Tasks.
+}
+
+extern "C" void onProjectInit() {
+  userMain();
+}
+
+extern "C" void onProjectTick() {
+  userTick();
+}
+
+extern "C" const char *projectRootPageHtml() {
+  return PROJECT_STATUS_PAGE;
+}
+
+extern "C" bool writeProjectStatusJson(char *target, std::size_t targetSize) {
+  if (target == nullptr || targetSize == 0) return false;
+  const char *stageName = "basissoftware_ready";
+  switch (state.stage) {
+    case CameraHostStage::starting_camera:
+      if (state.last_error == ESP_ERR_NOT_SUPPORTED) {
+        stageName = "camera_not_found";
+      } else if (state.last_error != ESP_OK) {
+        stageName = "camera_error";
+      } else {
+        stageName = "starting_camera";
+      }
+      break;
+    case CameraHostStage::starting_http_server:
+      stageName = "starting_http_server";
+      break;
+    case CameraHostStage::ready:
+      stageName = "ready";
+      break;
+    case CameraHostStage::basissoftware_ready:
+    default:
+      break;
+  }
+  const int written = std::snprintf(
+      target,
+      targetSize,
+      "{\"type\":\"camera_host\",\"stage\":\"%s\",\"cameraPresent\":%s,\"streamReady\":%s,\"streamPort\":%d,\"streamPath\":\"%s\",\"framesSent\":%lu,\"lastError\":%d}",
+      stageName,
+      state.camera_present ? "true" : "false",
+      state.stream_ready ? "true" : "false",
+      GERNETIX_COMMUNICATION_ENDPOINT_PORT,
+      GERNETIX_COMMUNICATION_ENDPOINT_PATH,
+      state.frames_sent,
+      state.last_error);
+  return written > 0 && static_cast<std::size_t>(written) < targetSize;
 }
 `;
 }

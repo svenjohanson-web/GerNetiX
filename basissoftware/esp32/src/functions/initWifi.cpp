@@ -203,6 +203,7 @@ void configureSetupAp() {
   apConfig.ap.channel = WIFI_SETUP_AP_CHANNEL;
   apConfig.ap.max_connection = WIFI_SETUP_AP_MAX_CONNECTIONS;
   apConfig.ap.ssid_hidden = 0;
+  apConfig.ap.beacon_interval = 100;
   apConfig.ap.authmode = WIFI_AUTH_OPEN;
 
   if (std::strlen(apPassword) > 0) {
@@ -543,12 +544,39 @@ esp_err_t scanWifiNetworksJson(char *target, size_t targetSize) {
 
 void startWifiSetupPortal() {
   setupPortalActive = true;
+#if defined(GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT) && GERNETIX_COMMUNICATION_DEVICE_ACCESS_POINT == 1 \
+    && defined(GERNETIX_COMMUNICATION_ROLE_HOST) && GERNETIX_COMMUNICATION_ROLE_HOST == 1
+  // Ein Projekt-Host ist ein dauerhafter Access Point und kein temporaeres
+  // Provisioning-Portal. Der reine AP-Modus vermeidet auf dem Waveshare-S3
+  // einen gestarteten, aber fuer Clients unsichtbaren AP.
+  ESP_ERROR_CHECK(setWifiMode(WIFI_MODE_AP));
+#else
   ESP_ERROR_CHECK(setWifiMode(WIFI_MODE_APSTA));
+#endif
   configureSetupAp();
   if (!wifiStarted) {
     ESP_ERROR_CHECK(esp_wifi_start());
     wifiStarted = true;
   }
+
+  ESP_ERROR_CHECK(esp_wifi_set_bandwidth(WIFI_IF_AP, WIFI_BW20));
+  ESP_ERROR_CHECK(esp_wifi_set_protocol(
+      WIFI_IF_AP,
+      WIFI_PROTOCOL_11B | WIFI_PROTOCOL_11G | WIFI_PROTOCOL_11N));
+  ESP_ERROR_CHECK(esp_wifi_set_max_tx_power(78));
+
+  wifi_config_t activeApConfig = {};
+  int8_t activeTxPower = 0;
+  ESP_ERROR_CHECK(esp_wifi_get_config(WIFI_IF_AP, &activeApConfig));
+  ESP_ERROR_CHECK(esp_wifi_get_max_tx_power(&activeTxPower));
+  feedbackInfo(
+      TAG,
+      "WiFi AP radio active: ssid=%s hidden=%u channel=%u beacon_ms=%u tx_power_qdbm=%d",
+      reinterpret_cast<const char *>(activeApConfig.ap.ssid),
+      activeApConfig.ap.ssid_hidden,
+      activeApConfig.ap.channel,
+      activeApConfig.ap.beacon_interval,
+      static_cast<int>(activeTxPower));
 
   startCaptiveDnsServer();
   startDeviceWebServerForRuntime();

@@ -144,7 +144,7 @@ test("provides a two-target camera-to-display template with isolated build roots
   assert.match(architecture, /speaker --> user : gibt Ton aus/);
   assert.doesNotMatch(architecture, /user --> display_device/);
   assert.doesNotMatch(architecture, /Waveshare|ES3C28P/);
-  assert.equal(template.schemaVersion, 19);
+  assert.equal(template.schemaVersion, 20);
   const architectureElements = new Map(template.architecture.elements.map((element) => [element.id, element]));
   template.architecture.relations.forEach((relation) => {
     assert.equal(
@@ -212,6 +212,16 @@ test("provides a two-target camera-to-display template with isolated build roots
   assert.match(cameraSource, /#include "driver\/i2c_master\.h"/);
   assert.match(cameraSource, /i2c_new_master_bus/);
   assert.match(cameraSource, /i2c_master_transmit/);
+  assert.match(cameraSource, /deviceConfig\.scl_speed_hz = 100000/);
+  assert.match(cameraSource, /const uint8_t powerOff\[\] = \{ 0x03, 0x00 \}/);
+  assert.match(cameraSource, /Kein Kameramodul gefunden/);
+  assert.match(cameraSource, /writeProjectStatusJson/);
+  assert.match(cameraSource, /projectRootPageHtml/);
+  assert.match(cameraSource, /camera_not_found/);
+  assert.match(cameraSource, /streamPort.*GERNETIX_COMMUNICATION_ENDPOINT_PORT/s);
+  assert.match(cameraSource, /config\.stack_size = 8192/);
+  assert.match(cameraSource, /httpd_register_uri_handler\(cameraServer, &page\)/);
+  assert.match(cameraSource, /extern "C" void onProjectInit/);
   assert.doesNotMatch(cameraSource, /#include "driver\/i2c\.h"|i2c_driver_install|i2c_master_write_to_device/);
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 1/src/user_main.cpp").content, /multipart\/x-mixed-replace/);
   assert.match(files.find((file) => file.path === "Komponenten/IoT-Device 2/src/user_main.cpp").content, /fmt2rgb888/);
