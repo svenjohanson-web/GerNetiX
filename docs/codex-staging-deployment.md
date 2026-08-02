@@ -201,7 +201,9 @@ Der vollstaendige Ablauf fuehrt weiterhin automatisch aus:
 8. Nginx/Identity, Admin Access Server und den internen Admin Tool Service pruefen,
 9. Containerstatus ausgeben.
 
-Persistente Docker-Volumes und `.env.vps` werden nicht geloescht oder ueberschrieben.
+Persistente Docker-Volumes und vorhandene Werte in `.env.vps` werden nicht geloescht
+oder ueberschrieben. Fehlende Compute-Secrets erzeugt der Staging-Ablauf einmalig
+direkt auf dem VPS, setzt die Env-Datei auf Modus `0600` und gibt die Werte nicht aus.
 Die paketabhaengigen Docker-Layer liegen vor den Quellcode-Layern. Ein normaler
 Codewechsel fuehrt deshalb nicht erneut alle `npm ci`-Installationen aus.
 

@@ -46,3 +46,15 @@ test("rejects a public wildcard binding for the Compute Worker Gateway", () => {
   assert.match(remoteDeploy, /compute_bind_address.*0\.0\.0\.0/);
   assert.match(remoteDeploy, /COMPUTE_BIND_ADDRESS darf keinen oeffentlichen Wildcard-Listener verwenden/);
 });
+
+test("provisions missing staging compute secrets without replacing existing values", () => {
+  assert.match(remoteDeploy, /grep -q "\^\$\{secret_name\}=\." "\$env_file"/);
+  assert.match(remoteDeploy, /openssl rand -hex 32/);
+  assert.match(remoteDeploy, /openssl rand -base64 32/);
+  assert.match(remoteDeploy, /ensure_staging_secret COMPUTE_INTERNAL_TOKEN hex/);
+  assert.match(remoteDeploy, /ensure_staging_secret COMPUTE_WORKER_BOOTSTRAP_TOKEN hex/);
+  assert.match(remoteDeploy, /ensure_staging_secret COMPUTE_WORKER_SIGNING_SECRET hex/);
+  assert.match(remoteDeploy, /ensure_staging_secret COMPUTE_PROJECT_GRANT_SIGNING_SECRET hex/);
+  assert.match(remoteDeploy, /ensure_staging_secret RUNTIME_STATE_ENCRYPTION_KEY base64/);
+  assert.match(remoteDeploy, /chmod 600 "\$env_file"/);
+});

@@ -12,6 +12,29 @@ if [ ! -f "$env_file" ]; then
   exit 1
 fi
 
+ensure_staging_secret() {
+  secret_name=$1
+  secret_encoding=$2
+  if grep -q "^${secret_name}=." "$env_file"; then
+    return
+  fi
+  case "$secret_encoding" in
+    hex) secret_value=$(openssl rand -hex 32) ;;
+    base64) secret_value=$(openssl rand -base64 32 | tr -d '\r\n') ;;
+    *) echo "Unbekannte Secret-Kodierung fuer $secret_name" >&2; exit 1 ;;
+  esac
+  printf '%s=%s\n' "$secret_name" "$secret_value" >> "$env_file"
+  echo "    $secret_name: fehlenden Staging-Wert sicher erzeugt"
+}
+
+echo "==> Fehlende Compute-Secrets fuer Staging provisionieren"
+chmod 600 "$env_file"
+ensure_staging_secret COMPUTE_INTERNAL_TOKEN hex
+ensure_staging_secret COMPUTE_WORKER_BOOTSTRAP_TOKEN hex
+ensure_staging_secret COMPUTE_WORKER_SIGNING_SECRET hex
+ensure_staging_secret COMPUTE_PROJECT_GRANT_SIGNING_SECRET hex
+ensure_staging_secret RUNTIME_STATE_ENCRYPTION_KEY base64
+
 compute_bind_address=$(awk -F= '$1 == "COMPUTE_BIND_ADDRESS" { print $2 }' "$env_file" | tail -n 1 | tr -d '\r')
 compute_bind_address=${compute_bind_address:-127.0.0.1}
 if [ "$compute_bind_address" = "0.0.0.0" ] || [ "$compute_bind_address" = "::" ]; then
