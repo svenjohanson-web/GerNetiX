@@ -19,6 +19,12 @@ basissoftware/esp32/
 
 Die Basissoftware ist von Projektanpassungen und generiertem Code getrennt. Sie enthaelt nur die stabile Runtime, Initialisierung, freigegebene Hooks und gemeinsame Hardwareabstraktion.
 
+Die generische Provisioning-Firmware wird deshalb nicht als nackte
+Basissoftware gebaut. Das interne Hintergrundprojekt unter
+`projects/provisioning/` liefert `userMain()` und `userTick()`. Die geschuetzten
+Hooks in der Basissoftware adaptieren diese Einstiegspunkte, genauso wie bei
+einem spaeteren accountgebundenen Nutzerprojekt.
+
 ## Abgrenzung von Projekterweiterungen
 
 Die Basissoftware ist ein stabiler, eigenstaendiger Runtime-Kern. Projekt- und kundenspezifische Erweiterungen duerfen weder die Basissoftware noch ihre Provisioning-, WLAN-/SSID-Setup- oder Sicherheitsablaeufe veraendern. Sie werden ausschliesslich ueber dokumentierte Erweiterungspunkte eingebunden und duerfen keinen eigenen Webserver in das Basissoftware-Setup-Portal einschleusen.
@@ -82,6 +88,12 @@ basissoftware/esp32/
 ```
 
 Jede Basissoftware-Funktion liegt in einer eigenen Datei. Projektlogik wird nicht direkt in die Basissoftware geschrieben, sondern spaeter ueber `projects/` oder `generated/` eingebunden.
+
+Ein direkter PlatformIO-Build verwendet standardmaessig das interne
+`projects/provisioning/` als konkrete Projektinstanz. Der Project Server setzt
+bei Nutzer-BuildPackages stattdessen die ausgewaehlte Projekt-User-Main auf den
+technischen Paketpfad `src/user/user_app.cpp`; der Lifecycle-Adapter bleibt in
+beiden Faellen Bestandteil der Basissoftware.
 
 ## Build
 

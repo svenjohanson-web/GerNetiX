@@ -57,6 +57,12 @@ GerNetiX/
       gernetix_avr_diagnostics.h
       gernetix_avr_diagnostics.c
   projects/
+    provisioning/
+      project.yaml
+      Komponenten/
+        Provisioning/
+          src/
+            user_main.cpp
     _template/
       project.yaml
       README.md
@@ -92,6 +98,22 @@ GerNetiX/
 Projektanpassungen liegen immer unter `projects/<projekt-id>/`. Fachliche Modelle liegen unter `model/<modell-id>/`. KI-generierte oder lernprojektbezogene Dateien liegen unter `generated/<runtime>/<projekt-id>/`.
 
 Die Basissoftware importiert niemals beliebige Projekt- oder Generated-Dateien direkt. Stattdessen wird beim Build genau ein Projektprofil ausgewaehlt und als zusaetzliche Komponente gelinkt.
+
+### Internes Provisioning-Hintergrundprojekt
+
+Auch die generische Factory-/Provisioning-Firmware ist kein nackter
+Basissoftware-Build. Sie verwendet das systemeigene, interne Projekt
+`projects/provisioning/`. Dort liegen die konkrete `user_main.cpp` sowie das
+Projektmanifest; die Basissoftware bleibt unveraendert unter
+`basissoftware/esp32/`.
+
+Der geschuetzte Basissoftware-Hook ruft `userMain()` und `userTick()` auf. Beim
+Factory-Build liefert das Provisioning-Projekt diese Einstiegspunkte, beim
+accountgebundenen Build das jeweilige Nutzerprojekt. Damit laufen beide Wege
+ueber denselben Erweiterungsvertrag, ohne User-Implementierungen in der
+Basissoftware abzulegen. Fehlende User-Funktionen koennen nicht mehr dadurch
+entstehen, dass ein BuildPackage die bisher kombinierte Adapter-/User-Datei
+ersetzt.
 
 Beispiel:
 

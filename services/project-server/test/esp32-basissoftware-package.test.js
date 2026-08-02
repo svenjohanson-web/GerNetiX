@@ -22,6 +22,8 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
 
   assert.equal(files.some((file) => file.path === "src/main.cpp"), true);
   assert.equal(files.some((file) => file.path === "include/user/user_app.h"), true);
+  assert.match(files.find((file) => file.path === "src/hooks/onProjectInit.cpp").content, /userMain\(\)/);
+  assert.match(files.find((file) => file.path === "src/hooks/onProjectTick.cpp").content, /userTick\(\)/);
   assert.equal(files.some((file) => file.path === "include/gernetix_basissoftware_configuration.h"), true);
   assert.match(files.find((file) => file.path === "include/gernetix_basissoftware_configuration.h").content, /GERNETIX_MQTT_ENABLED 0/);
   assert.equal(files.some((file) => file.path === "src/functions/initWifi.cpp"), true);

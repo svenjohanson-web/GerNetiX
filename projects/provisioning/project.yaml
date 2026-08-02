@@ -1,0 +1,23 @@
+project:
+  id: system-provisioning
+  name: Provisioning
+  ownership: system
+  visibility: internal
+  purpose: factory-provisioning-firmware
+
+software_unit:
+  id: provisioning
+  component: Provisioning
+  source_root: Komponenten/Provisioning
+  entrypoint: src/user_main.cpp
+
+build:
+  platform: espressif32
+  framework: espidf
+  firmware_basis_id: gernetix-runtime-basissoftware
+  user_source_path: Komponenten/Provisioning/src/user_main.cpp
+  user_target_path: src/user/user_app.cpp
+
+release:
+  channel: factory
+  signed_firmware_required: true

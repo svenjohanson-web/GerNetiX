@@ -1,6 +1,8 @@
 set(GERNETIX_PROJECT_SOURCES)
 set(GERNETIX_PROJECT_REQUIRES)
+file(GLOB GERNETIX_PACKAGED_USER_SOURCES "user/*.cpp")
 file(GLOB_RECURSE GERNETIX_PACKAGED_PROJECT_SOURCES "user_project/*.cpp")
+list(APPEND GERNETIX_PROJECT_SOURCES ${GERNETIX_PACKAGED_USER_SOURCES})
 list(APPEND GERNETIX_PROJECT_SOURCES ${GERNETIX_PACKAGED_PROJECT_SOURCES})
 if(GERNETIX_CAMERA_DISPLAY_SLICE)
   list(APPEND GERNETIX_PROJECT_REQUIRES esp32-camera esp_http_client esp_lcd esp_driver_i2c esp_driver_spi mdns)
@@ -38,7 +40,6 @@ idf_component_register(
     functions/updateActuators.cpp
     hooks/onProjectInit.cpp
     hooks/onProjectTick.cpp
-    user/user_app.cpp
     ${GERNETIX_PROJECT_SOURCES}
   INCLUDE_DIRS
     ../include
