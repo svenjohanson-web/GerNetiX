@@ -84,11 +84,14 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
       });
       continue;
     }
-    if (!/\.(h|hh|hpp|hxx|inc|inl|ipp|tpp|cuh)$/i.test(relative) || relative.includes("..")) continue;
-    byPath.set(`include/user_project/${relative}`, {
-      path: `include/user_project/${relative}`,
+    const isHeader = /\.(h|hh|hpp|hxx|inc|inl|ipp|tpp|cuh)$/i.test(relative);
+    const isCppSource = isImplementationFile && /\.(cc|cpp|cxx)$/i.test(relative);
+    if ((!isHeader && !isCppSource) || relative.includes("..")) continue;
+    const targetPath = isCppSource ? `src/user_project/${relative}` : `include/user_project/${relative}`;
+    byPath.set(targetPath, {
+      path: targetPath,
       content: projectSource.content,
-      content_type: projectSource.content_type || "text/x-c++hdr",
+      content_type: projectSource.content_type || (isCppSource ? "text/x-c++src" : "text/x-c++hdr"),
       source_project_path: projectSource.path,
     });
   }

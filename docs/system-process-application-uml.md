@@ -228,7 +228,7 @@ flowchart LR
 | Identity Server | VPS-intern 4300 / Remote-Dev lokal 4300 | `https://pwa.gernetix.com/app/dashboard/` oder `http://127.0.0.1:4300/app/dashboard/` | Login, Session, gemeinsame Plattform-UI, entitlement-gefilterte Wissenskapitel-Hinweise und Adapter zu Domaenenservices; Persistenz immer PostgreSQL |
 | SQLite Graph Explorer | 4318 | `http://127.0.0.1:4318/` | Read-only Weboberflaeche auf den kanonischen Graphen |
 | Zentraler Build & Deploy Worker | 4400 | `http://127.0.0.1:4400/` | Echte PlatformIO-Builds sowie zentrale OTA-/FlashBox-Auslieferung mit Signierschluessel und MQTT; PostgreSQL koordiniert Jobregister, workeruebergreifende Abbrueche, Ziel-Locks, Statussicht, Cache-Generationen und Firmware-Artefakte |
-| Build Worker Pool Router | VPS-intern 4400 | nur im Compose-Backend | Verteilt ausschliesslich `build` und `prebuild` nach `least_conn` auf den zentralen Worker und konfigurierte Linux-Worker; Deploy-, FlashBox- und USB-Auftraege umgehen den Pool |
+| Build Worker Pool Router | VPS-intern 4400; Remote-Dev-Tunnel 14400 | `http://127.0.0.1:14400/` nur ueber den SSH-/WireGuard-Tunnel | Verteilt ausschliesslich `build` und `prebuild` nach `least_conn` auf den zentralen Worker und konfigurierte Linux-Worker; Deploy-, FlashBox- und USB-Auftraege umgehen den Pool |
 | Externer Build-Worker | konfigurierbar, Standard 4400 | nur private WireGuard-Adresse | Eigenstaendiger Linux-Docker-Worker auf Linux oder macOS mit PlatformIO und lokalem Cache; Rolle `build_only`, kein MQTT und kein OTA-Signierschluessel |
 | Provisioning Tool Server | 4500 | `http://127.0.0.1:4500/` | eigenstaendige Factory-HMI, Provisioning-Sessions, USB-Factory-Flash, Device-Registrierung |
 | Admin Access Server + Admin Console | 4610 | `http://127.0.0.1:4610/admin/` | Eigene Admin-Login-PWA, persistente Sitzungen und serverseitige Rollenpruefung; proxyed danach die Admin-Funktionen |
@@ -272,6 +272,7 @@ flowchart LR
 | Hardware Shop | Hardware Catalog | Aufloesung von HardwareItem-IDs und Capabilities fuer Angebote |
 | GerNetiX Plattform UI / Identity Server | Device Management Server | eigene Devices, Registrierung, Inventarauswahl fuer IDE-Allocation, OTA-Status und Purchase Context |
 | GerNetiX Plattform UI / Identity Server | Device Management Server | eigene Account-Boardkonfigurationen accountisoliert auflisten und als unveraenderliche Versionen speichern |
+| GerNetiX Plattform UI / Identity Server | Build & Deploy Server | Crash-Adressen nach Account-/BuildJob-Ownership-Pruefung ausschliesslich mit dem gespeicherten ELF derselben SHA-256-Build-ID symbolisieren; falsches oder fehlendes ELF wird nicht geraten |
 | GerNetiX Plattform UI / Identity Server | Telemetry Server | PWA liest, konfiguriert Aufbewahrung oder loescht ausschliesslich Telemetrie des sessiongebundenen Projekts |
 | GerNetiX Plattform UI / Identity Server | AI Usage Server | Credit-Anzeige, AI-Preflight, Abschluss-/Fehlerbuchung echter Chat-Aufrufe |
 | Identity Server | Admin Tool | Allowlist-validierte browserseitige WebAuthn-Fehler, fehlgeschlagene serverseitige Passkey-Loginphasen und weitere auffaellige Runtime-Vorgaenge ueber einen eigenen token-geschuetzten Ingest als persistente Systemereignisse |

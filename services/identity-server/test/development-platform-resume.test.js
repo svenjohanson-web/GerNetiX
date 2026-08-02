@@ -561,12 +561,14 @@ test("keeps the effective ES3C28P compiler configuration coupled to the selected
   assert.match(devServer, /esp32_s3_es3c28p\|es3c28p/);
   assert.match(devServer, /environment: "es3c28p", flash_size_mb: 16/);
   assert.match(devServer, /user_source_path: existing\?\.user_source_path \|\| "Komponenten\/IoT-Device 1\/src\/user_main\.cpp"/);
-  assert.match(devServer, /firmware_basis_id: "", firmware_basis_version: "", firmware_basis_variant: ""/);
+  assert.match(devServer, /firmware_basis_id !== "gernetix-runtime-basissoftware"/);
+  assert.match(devServer, /existing\?\.firmware_basis_id === "gernetix-runtime-basissoftware"[\s\S]*board: "4d_systems_esp32s3_gen4_r8n16"[\s\S]*firmware_basis_variant: "full"/);
   assert.match(devServer, /touchscreenGameBuildConfigurationProblems/);
   assert.match(devServer, /error: "touchscreen_game_build_configuration_invalid"/);
-  assert.match(devServer, /for \(const requiredPath of \["platformio\.ini", "src\/main\.cpp", "src\/board_adapter\.cpp"\]\)/);
+  assert.match(devServer, /for \(const requiredPath of \["src\/user_main\.cpp", "src\/board_adapter\.cpp", "src\/game_application\.cpp"\]\)/);
   assert.match(devServer, /board_build\\\.flash_size/);
-  assert.match(devServer, /ARDUINO_USB_MODE=1/);
+  assert.match(devServer, /partitions_full_16mb\\\.csv/);
+  assert.match(devServer, /GERNETIX_BASISSOFTWARE_PROFILE_FULL=1/);
   assert.match(devServer, /template_id === "touchscreen_game_collection"\) return project\.build_config/);
   assert.match(devServer, /!buildConfig\.firmware_basis_id && !files\["platformio\.ini"\]/);
 });

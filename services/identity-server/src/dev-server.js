@@ -16,6 +16,7 @@ const { PostgresPlatformDownloadRepository } = require("./repositories/postgres-
 const { PostgresAccountAssetRepository } = require("./repositories/postgres-account-asset-repository");
 const { canonicalLocalPasskeyLocation } = require("./services/local-passkey-origin");
 const { passkeyBrowserFailureEvent, passkeyLoginFailureEvent } = require("./services/passkey-login-events");
+const { passkeyClientError } = require("./services/passkey-client-errors");
 const { createSystemEventReporter } = require("./services/system-event-reporter");
 const { createPrivateCommunityNotifier } = require("./services/private-community-notifier");
 const { createRuntimeStreamHub } = require("./runtime-stream-hub");
@@ -902,7 +903,8 @@ async function handlePasskeyAuthenticationOptions(req, res) {
     sendJson(res, 200, options);
   } catch (error) {
     await recordPasskeyLoginFailure("options", error, account);
-    sendJson(res, error.status || 400, { error: error.code || "passkey_authentication_unavailable", message: "Passkey-Login konnte nicht vorbereitet werden." });
+    const clientError = passkeyClientError("options", error);
+    sendJson(res, clientError.status, clientError);
   }
 }
 
@@ -934,7 +936,8 @@ async function handlePasskeyAuthenticationVerify(req, res) {
     sendJson(res, 200, { account: login.account, next: sanitizeNextPath(body.next) || "/app/dashboard/" });
   } catch (error) {
     await recordPasskeyLoginFailure("verification", error, account);
-    sendJson(res, error.status || 401, { error: error.code || "passkey_authentication_failed", message: "Passkey-Login fehlgeschlagen." });
+    const clientError = passkeyClientError("verification", error);
+    sendJson(res, clientError.status, clientError);
   }
 }
 
@@ -2531,25 +2534,28 @@ async function handleUserIdeBuildJob(req, res) {
     const sourcePayload = problems.length
       ? { items: [] }
       : await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`);
-    const sourcePaths = new Set((sourcePayload.items || []).map((source) => String(source.path || "")));
-    for (const requiredPath of ["platformio.ini", "src/main.cpp", "src/board_adapter.cpp"]) {
+    const sourceRoot = String(softwareUnit?.source_root || "").replace(/\/$/, "");
+    const sourcePrefix = sourceRoot ? `${sourceRoot}/` : "";
+    const sourcePaths = new Set((sourcePayload.items || []).map((source) => {
+      const sourcePath = String(source.path || "");
+      return sourcePrefix && sourcePath.startsWith(sourcePrefix) ? sourcePath.slice(sourcePrefix.length) : sourcePath;
+    }));
+    for (const requiredPath of ["src/user_main.cpp", "src/board_adapter.cpp", "src/game_application.cpp"]) {
       if (!sourcePaths.has(requiredPath)) problems.push(`Quelldatei ${requiredPath} fehlt`);
     }
     if (!problems.length) {
-      const platformioSource = await projectServerJson(
-        `/api/projects/${encodeURIComponent(project.project_server_id)}/sources/${encodeURIComponent("platformio.ini")}`,
-      );
-      const platformioIni = String(platformioSource.content || "");
+      const platformioIni = renderPlatformioIni(resolvedBuildConfig);
       if (!/^\s*\[env:es3c28p\]\s*$/m.test(platformioIni)) problems.push("platformio.ini enthaelt die Umgebung es3c28p nicht");
-      if (!/^\s*framework\s*=\s*arduino\s*$/m.test(platformioIni)) problems.push("platformio.ini verwendet nicht Arduino");
+      if (!/^\s*framework\s*=\s*espidf\s*$/m.test(platformioIni)) problems.push("platformio.ini verwendet nicht ESP-IDF");
       if (!/^\s*board_build\.flash_size\s*=\s*16MB\s*$/mi.test(platformioIni)) problems.push("platformio.ini verwendet nicht 16 MB Flash");
+      if (!/^\s*board_build\.partitions\s*=\s*partitions_full_16mb\.csv\s*$/mi.test(platformioIni)) problems.push("platformio.ini verwendet nicht das OTA-faehige Full-Partitionslayout");
       if (!/LovyanGFX/i.test(platformioIni)) problems.push("platformio.ini enthaelt LovyanGFX nicht");
-      if (!/ARDUINO_USB_MODE=1/.test(platformioIni)) problems.push("platformio.ini enthaelt die ES3C28P-USB-Flags nicht");
+      if (!/GERNETIX_BASISSOFTWARE_PROFILE_FULL=1/.test(platformioIni)) problems.push("platformio.ini aktiviert nicht das Full-Basisprofil");
     }
     if (problems.length) {
       sendJson(res, 409, {
         error: "touchscreen_game_build_configuration_invalid",
-        message: `Build gesperrt: Die wirksame Konfiguration der Touchscreen-Spielesammlung ist widerspruechlich (${problems.join("; ")}). Erwartet werden ES3C28P, Arduino, Umgebung es3c28p, 16 MB Flash und die vollstaendigen Beispielquellen.`,
+        message: `Build gesperrt: Die wirksame Konfiguration der Touchscreen-Spielesammlung ist widerspruechlich (${problems.join("; ")}). Erwartet werden ES3C28P, ESP-IDF, die vollstaendige GerNetiX-Basissoftware, Umgebung es3c28p, 16 MB Flash mit Full-A/B-Partitionen und die vollstaendigen Beispielquellen.`,
         problems,
       });
       return;
@@ -2674,6 +2680,7 @@ async function handleUserIdeBuildJob(req, res) {
       || completedBuildDeployJob?.result?.build?.artifacts?.["firmware.bin"]?.download_url
       || completedBuildDeployJob?.result?.build?.artifacts?.["firmware.hex"]?.download_url
       || "",
+    build_id: completedBuildDeployJob?.result?.build?.build_id || "",
     artifacts: buildArtifactDownloads(projectServerJob.build_job_id, completedBuildDeployJob),
     flash_status: completedBuildDeployJob?.result?.build?.usb_flash?.status
       || completedBuildDeployJob?.result?.deploy?.status
@@ -3232,6 +3239,7 @@ async function loadProjectBuilds(projects, session) {
         finished_at: job.finished_at,
         build_config: job.build_config || project.build_config || null,
         artifacts,
+        build_id: job.result?.build?.build_id || "",
         build_package_contract: "Project Server BuildPackage",
       });
     }
@@ -3719,11 +3727,14 @@ function touchscreenGameBuildConfigurationProblems(project = {}, buildConfig = {
   const baseBoardProfileId = String(buildConfig?.board_configuration?.base_board_profile_id || project.hardware_profile_id || "");
   if (baseBoardProfileId !== "hardware.processor_board.esp32_s3_es3c28p") problems.push(`Board ${baseBoardProfileId || "nicht gesetzt"}`);
   if (buildConfig?.platform !== "espressif32") problems.push(`Plattform ${buildConfig?.platform || "nicht gesetzt"}`);
-  if (buildConfig?.framework !== "arduino") problems.push(`Framework ${buildConfig?.framework || "nicht gesetzt"}`);
+  if (buildConfig?.framework !== "espidf") problems.push(`Framework ${buildConfig?.framework || "nicht gesetzt"}`);
+  if (buildConfig?.board !== "4d_systems_esp32s3_gen4_r8n16") problems.push(`Build-Board ${buildConfig?.board || "nicht gesetzt"}`);
   if (buildConfig?.environment !== "es3c28p") problems.push(`Umgebung ${buildConfig?.environment || "nicht gesetzt"}`);
   if (Number(buildConfig?.flash_size_mb) !== 16) problems.push(`Flash ${buildConfig?.flash_size_mb || "nicht gesetzt"} MB`);
-  if (buildConfig?.firmware_basis_id) problems.push(`unerwartete Basissoftware ${buildConfig.firmware_basis_id}`);
-  if (buildConfig?.user_source_path !== "src/main.cpp") problems.push(`Einstieg ${buildConfig?.user_source_path || "nicht gesetzt"}`);
+  if (buildConfig?.firmware_basis_id !== "gernetix-runtime-basissoftware") problems.push(`Basissoftware ${buildConfig?.firmware_basis_id || "nicht gesetzt"}`);
+  if (buildConfig?.firmware_basis_variant !== "full") problems.push(`Basisprofil ${buildConfig?.firmware_basis_variant || "nicht gesetzt"}`);
+  if (buildConfig?.user_source_path !== "src/user_main.cpp") problems.push(`Einstieg ${buildConfig?.user_source_path || "nicht gesetzt"}`);
+  if (buildConfig?.user_target_path !== "src/user/user_app.cpp") problems.push(`Basis-Einstieg ${buildConfig?.user_target_path || "nicht gesetzt"}`);
   return problems;
 }
 
@@ -4812,6 +4823,26 @@ function buildConfigForBoard(boardOrProfileId, existing = null) {
       maximum_ram_size_bytes: 0,
     } : {}),
   };
+  if (/esp32_s3_es3c28p|es3c28p/.test(boardProfileId)
+      && existing?.firmware_basis_id === "gernetix-runtime-basissoftware") {
+    return {
+      ...common,
+      platform: "espressif32",
+      framework: "espidf",
+      board: "4d_systems_esp32s3_gen4_r8n16",
+      environment: "es3c28p",
+      flash_size_mb: 16,
+      libraries: Array.from(new Set([...(catalogBuild?.libraries || []), ...(common.libraries || [])])),
+      build_flags: [],
+      platformio_options: { "board_build.cmake_extra_args": "-DSDKCONFIG_DEFAULTS=\"sdkconfig.esp32-s3-n16r8\"" },
+      firmware_basis_id: "gernetix-runtime-basissoftware",
+      firmware_basis_version: existing.firmware_basis_version || "workspace",
+      firmware_basis_variant: "full",
+      partition_profile_id: "full",
+      user_source_path: existing.user_source_path || "src/user_main.cpp",
+      user_target_path: "src/user/user_app.cpp",
+    };
+  }
   if (catalogBuild && typeof catalogBuild === "object" && catalogBuild.platform && catalogBuild.board) {
     const supportedFrameworks = Array.isArray(catalogBuild.supported_frameworks) ? catalogBuild.supported_frameworks : [catalogBuild.framework];
     const keepsFramework = existing?.platform === catalogBuild.platform && supportedFrameworks.includes(existing?.framework);

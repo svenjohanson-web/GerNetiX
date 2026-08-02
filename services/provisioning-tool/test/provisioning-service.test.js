@@ -409,6 +409,29 @@ test("parses esptool writing progress lines", () => {
   });
 });
 
+test("uses the artifact chip for an ESP8266 esptool invocation", async () => {
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-provisioning-esp8266-chip-"));
+  const firmwarePath = path.join(tempRoot, "firmware.bin");
+  fs.writeFileSync(firmwarePath, Buffer.from("esp8266 firmware"));
+  const runner = new UsbFlashRunner({
+    runner: "esptool",
+    allowRealUsbFlash: true,
+    esptoolExecutable: process.execPath,
+  });
+  const result = await runner.run({
+    runner: "esptool",
+    firmwareArtifact: {
+      artifact_id: "firmware_artifact.esp8266.test",
+      materialized_file_path: firmwarePath,
+      flash_offset: "0x0",
+      chip: "esp8266",
+    },
+  });
+
+  assert.equal(result.status, "failed");
+  assert.deepEqual(result.args.slice(0, 2), ["--chip", "esp8266"]);
+});
+
 test("starts USB flash as pollable job", async () => {
   const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-provisioning-flash-job-"));
   const headerPath = path.join(tempRoot, "include", "basissoftware", "generated_provisioning_payload.h");
@@ -539,6 +562,7 @@ test("persists registered firmware artifacts in sqlite", () => {
     artifact_id: "firmware_artifact.esp32_basissoftware_factory.latest",
     file_name: "merged-firmware.bin",
     content_base64: Buffer.from("persist me").toString("base64"),
+    chip: "esp8266",
   });
 
   const second = createDefaultProvisioningTool(createConfig({
@@ -555,6 +579,7 @@ test("persists registered firmware artifacts in sqlite", () => {
 
   assert.equal(artifacts.items.length, 1);
   assert.equal(artifacts.items[0].artifact_id, "firmware_artifact.esp32_basissoftware_factory.latest");
+  assert.equal(artifacts.items[0].chip, "esp8266");
   assert.equal(mode.artifact_ready, true);
   assert.equal(mode.modes.find((item) => item.id === "esptool").enabled, true);
 });

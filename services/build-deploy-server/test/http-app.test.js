@@ -60,6 +60,23 @@ test("cancellation is forwarded to the worker coordination service", async () =>
   assert.deepEqual(JSON.parse(response.body.toString()), { job_id: "job 42", status: "cancelling" });
 });
 
+test("crash addresses are sent to the exact-build ELF symbolizer", async () => {
+  const requests = [];
+  const app = createHttpApp({
+    service: {
+      async symbolizeCrash(jobId, body) {
+        requests.push({ jobId, body });
+        return { status: "symbolized", build_id: body.build_id, frames: [] };
+      },
+    },
+  });
+  const response = createResponseRecorder();
+  const body = JSON.stringify({ build_id: "a".repeat(64), addresses: ["0x40001234"] });
+  await app(createJsonRequest("POST", "/api/build-jobs/job-1/symbolize", body), response);
+  assert.equal(response.status, 200);
+  assert.deepEqual(requests, [{ jobId: "job-1", body: JSON.parse(body) }]);
+});
+
 test("serves every ESP32 browser flash artifact", async () => {
   const requested = [];
   const app = createHttpApp({
@@ -129,5 +146,25 @@ function createResponseRecorder() {
     end(body = "") {
       this.body = Buffer.isBuffer(body) ? body : Buffer.from(body);
     },
+  };
+}
+
+function createJsonRequest(method, url, body) {
+  const listeners = {};
+  return {
+    method,
+    url,
+    headers: { host: "127.0.0.1" },
+    on(event, listener) {
+      listeners[event] = listener;
+      if (event === "error") return;
+      if (event === "end") {
+        queueMicrotask(() => {
+          listeners.data?.(Buffer.from(body));
+          listener();
+        });
+      }
+    },
+    destroy() {},
   };
 }

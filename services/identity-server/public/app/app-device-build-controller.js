@@ -94,7 +94,7 @@ async function startBuild() {
     completionResults.forEach((result, index) => {
       const label = acceptedBuilds[index].softwareUnit?.title || acceptedBuilds[index].softwareUnit?.software_unit_id || "Firmware";
       if (result.status === "rejected") {
-        appendIdeTerminal("error", `Build-Ziel „${label}“: Ergebnis konnte nicht abgerufen werden – ${result.reason?.message || "unbekannter Fehler"}.`);
+        appendIdeTerminal("running", `Build-Ziel „${label}“: Status konnte vorläufig nicht abgerufen werden – ${result.reason?.message || "unbekannter Fehler"}. Der Build gilt dadurch nicht als fehlgeschlagen.`);
       } else if (result.value.status === "succeeded") {
         appendIdeTerminal("ok", `Build-Ziel „${label}“: erfolgreich.`);
       } else if (result.value.status === "cancelled") {
@@ -109,10 +109,12 @@ async function startBuild() {
     });
     const succeeded = completed.filter((build) => build.status === "succeeded").length;
     const cancelled = completed.filter((build) => build.status === "cancelled").length;
-    const failed = completed.length - succeeded - cancelled + rejectedSubmissions.length + rejectedCompletions.length;
-    if (!failed && !cancelled) completed.forEach(appendBuildMemorySummary);
+    const unavailable = rejectedCompletions.length;
+    const failed = completed.length - succeeded - cancelled + rejectedSubmissions.length;
+    if (!failed && !cancelled && !unavailable) completed.forEach(appendBuildMemorySummary);
     const summary = `${succeeded} von ${buildTargets.length} Software-Einheiten erfolgreich`;
-    if (cancelled && !failed) setFlashStatus("running", `Gesamtbuild abgebrochen: ${cancelled} Software-Einheit${cancelled === 1 ? "" : "en"} abgebrochen.`);
+    if (unavailable) setFlashStatus("running", `Gesamtbuild-Auswertung unterbrochen: ${unavailable} Statusabfrage${unavailable === 1 ? "" : "n"} nicht abgeschlossen. Diese Build-Ziele gelten nicht als fehlgeschlagen.`);
+    else if (cancelled && !failed) setFlashStatus("running", `Gesamtbuild abgebrochen: ${cancelled} Software-Einheit${cancelled === 1 ? "" : "en"} abgebrochen.`);
     else setFlashStatus(
       failed ? "error" : "ok",
       failed ? `Gesamtbuild fehlgeschlagen: ${summary}, ${failed} fehlgeschlagen${cancelled ? `, ${cancelled} abgebrochen` : ""}.` : `Gesamtbuild erfolgreich: ${summary}.`,
@@ -377,6 +379,7 @@ async function flashBuildViaSerialService(build, device) {
     flashFreq: "40m",
     flashSize: "keep",
     onProgress(job) {
+      GerNetiXFlashProgress.renderJob("#flashStatus", job, `${probe.chipName || "ESP32"}: Firmware wird geschrieben...`);
       for (const line of job.logs || []) {
         if (seenLogs.has(line)) continue;
         seenLogs.add(line);
@@ -391,6 +394,7 @@ async function waitForCompletedBuild(build, options = {}) {
   let current = build;
   const seenProgress = new Set();
   let memorySummaryShown = false;
+  let consecutiveStatusFailures = 0;
   const jobId = build.build_deploy_job_id || build.build_job_id;
   if (jobId) activeBuildJobIds.add(jobId);
   updateBuildActionButton();
@@ -418,13 +422,32 @@ async function waitForCompletedBuild(build, options = {}) {
         setFlashStatus("running", message);
       }
       await delay(1000);
-      current = await getJson(`/api/user-ide/build-jobs/${encodeURIComponent(jobId)}/status`);
+      try {
+        current = await getJson(`/api/user-ide/build-jobs/${encodeURIComponent(jobId)}/status`);
+        if (consecutiveStatusFailures > 0) {
+          appendIdeTerminal("running", `Verbindung zur Build-Auswertung für „${options.targetLabel || "Firmware"}“ wiederhergestellt.`);
+        }
+        consecutiveStatusFailures = 0;
+      } catch (error) {
+        if (!isTransientBuildStatusError(error)) throw error;
+        consecutiveStatusFailures += 1;
+        if (consecutiveStatusFailures === 1) {
+          appendIdeTerminal("running", `Verbindung zur Build-Auswertung für „${options.targetLabel || "Firmware"}“ unterbrochen. Der Build-Auftrag läuft serverseitig weiter; GerNetiX verbindet sich automatisch erneut.`);
+        }
+        if (consecutiveStatusFailures >= 60) {
+          throw new Error("Die Build-Auswertung war länger als eine Minute nicht erreichbar. Der Build-Auftrag kann serverseitig weiterhin laufen.");
+        }
+      }
     }
     throw new Error("PlatformIO-Build hat das Zeitlimit überschritten.");
   } finally {
     if (jobId) activeBuildJobIds.delete(jobId);
     updateBuildActionButton();
   }
+}
+
+function isTransientBuildStatusError(error) {
+  return error?.name === "TypeError" || [502, 503, 504].includes(Number(error?.status));
 }
 
 function appendBuildMemorySummary(build) {
@@ -501,6 +524,8 @@ async function flashBuildViaWebSerial(build) {
     if (!response.ok) throw new Error(`${item.name} konnte nicht geladen werden.`);
     return { data: new Uint8Array(await response.arrayBuffer()), address: Number(item.address) };
   }));
+  const totalBytes = fileArray.reduce((sum, file) => sum + file.data.byteLength, 0);
+  const precedingBytes = fileArray.map((_, index) => fileArray.slice(0, index).reduce((sum, file) => sum + file.data.byteLength, 0));
   const port = await navigator.serial.requestPort();
   const { ESPLoader, Transport } = await loadIdeEsptoolModule();
   const transport = new Transport(port, false);
@@ -527,8 +552,9 @@ async function flashBuildViaWebSerial(build) {
       flashSize: "keep",
       eraseAll: false,
       compress: true,
-      reportProgress: (_index, written, total) => {
-        const percent = Math.round((written / Math.max(total, 1)) * 100);
+      reportProgress: (index, written, total) => {
+        const percent = Math.min(100, Math.round(((precedingBytes[index] || 0) + Math.min(written, total)) / Math.max(totalBytes, 1) * 100));
+        GerNetiXFlashProgress.render("#flashStatus", "running", `${chipName || "ESP32"}: Firmware wird geschrieben`, percent);
         if (percent % 10 === 0) log(`Firmware schreiben: ${percent}%`);
       },
     });
@@ -1775,10 +1801,9 @@ function usbFlashLabel(device) {
   return "bereit (Port vor Flash erkennen)";
 }
 
-function setFlashStatus(kind, text) {
+function setFlashStatus(kind, text, percent = null) {
   const status = document.querySelector("#flashStatus");
-  status.className = `flash-status ${kind}`;
-  status.textContent = text;
+  GerNetiXFlashProgress.render(status, kind, text, percent);
   appendIdeTerminal(kind, text);
 }
 

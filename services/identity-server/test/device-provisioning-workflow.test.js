@@ -165,6 +165,8 @@ test("USB provisioning flashes the basis software before registration and pairin
   assert.match(html, /id="provisioningUsbFlashDisabledReason"/);
   assert.match(html, /id="provisioningFirmwareAvailability"/);
   assert.match(html, /id="provisioningUsbFlashStatus"/);
+  assert.match(onboarding, /GerNetiXFlashProgress\.renderJob\("#provisioningUsbFlashStatus"/);
+  assert.match(onboarding, /setProvisioningUsbFlashStatus\("running",[^\n]+percent\)/);
   assert.match(app, /#flashProvisioningBasissoftwareButton[^\n]+flashProvisioningBasissoftware/);
   assert.match(onboarding, /\/api\/platform\/provisioning-firmware\?profile=.*hardware_profile_id=.*flash_size_mb=/);
   assert.match(onboarding, /checkProvisioningFirmwareAvailability/);

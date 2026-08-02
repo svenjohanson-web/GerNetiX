@@ -102,7 +102,7 @@
 
     <rect class="node domain" x="1170" y="150" width="190" height="54" rx="10"/>
     <text class="titleText" x="1265" y="174" text-anchor="middle">Build Pool + zentraler Worker</text>
-    <text class="smallText" x="1265" y="193" text-anchor="middle">Linux-Worker via WireGuard :4400</text>
+    <text class="smallText" x="1265" y="193" text-anchor="middle">Worker-WireGuard :4400 · Remote-Dev-Pool :14400</text>
 
     <rect class="node domain" x="1385" y="150" width="190" height="54" rx="10"/>
     <text class="titleText" x="1480" y="174" text-anchor="middle">Device Management</text>

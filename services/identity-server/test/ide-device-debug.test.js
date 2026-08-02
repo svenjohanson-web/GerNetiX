@@ -33,7 +33,18 @@ test("local device debug uses read-only USB diagnostics and an explicit local ex
   assert.match(controllerSource, /Reproduktion beginnt hier/);
   assert.match(controllerSource, /credentials_included: false/);
   assert.match(controllerSource, /URL\.createObjectURL/);
-  assert.doesNotMatch(controllerSource, /localStorage|postJson\(|sendBeacon/);
+  assert.match(controllerSource, /\/symbolize/);
+  assert.doesNotMatch(controllerSource, /localStorage|sendBeacon|support.*upload/i);
+});
+
+test("crash reports require an exact build id before ELF symbolization", () => {
+  assert.match(controllerSource, /crash_report/);
+  assert.match(controllerSource, /backtrace_addresses/);
+  assert.match(controllerSource, /build_artifact_mismatch/);
+  assert.match(controllerSource, /firmware\.elf/);
+  assert.match(controllerSource, /data-debug-source/);
+  assert.match(css, /\.device-debug-crash/);
+  assert.match(css, /\.device-debug-stack/);
 });
 
 test("feedback text is normalized into severity, subsystem and monotonic uptime", () => {

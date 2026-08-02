@@ -1,5 +1,7 @@
 set(GERNETIX_PROJECT_SOURCES)
 set(GERNETIX_PROJECT_REQUIRES)
+file(GLOB_RECURSE GERNETIX_PACKAGED_PROJECT_SOURCES "user_project/*.cpp")
+list(APPEND GERNETIX_PROJECT_SOURCES ${GERNETIX_PACKAGED_PROJECT_SOURCES})
 if(GERNETIX_CAMERA_DISPLAY_SLICE)
   list(APPEND GERNETIX_PROJECT_REQUIRES esp32-camera esp_http_client esp_lcd esp_driver_i2c esp_driver_spi mdns)
 endif()
@@ -14,6 +16,7 @@ endif()
 idf_component_register(
   SRCS
     main.cpp
+    functions/crash_diagnostics.cpp
     functions/factory_provisioning.cpp
     functions/feedback.cpp
     functions/handleNetwork.cpp
@@ -39,9 +42,13 @@ idf_component_register(
     ${GERNETIX_PROJECT_SOURCES}
   INCLUDE_DIRS
     ../include
+    ../include/user_project
     ../../../firmware/shared/gernetix-runtime-core/include
   REQUIRES
     app_update
+    esp_app_format
+    espcoredump
+    driver
     esp_driver_gpio
     esp_driver_uart
     esp_driver_usb_serial_jtag

@@ -158,7 +158,38 @@ function registerBuildRoutes({
         error: job.error?.message || projectJob?.error?.message || "",
         build_log: job.error?.details?.build_log || projectJob?.error?.details?.build_log || job.result?.build?.log || "",
         progress: Array.isArray(job.progress) ? job.progress : [],
+        build_id: job.result?.build?.build_id || projectJob?.result?.build?.build_id || "",
+        artifacts: buildArtifactList(jobId, job.result?.build?.artifacts || projectJob?.result?.build?.artifacts || {}),
       });
+    },
+  });
+  registry.register({
+    method: "POST",
+    pattern: /^\/api\/user-ide\/build-jobs\/([^/]+)\/symbolize$/,
+    async handler({ req, res, match }) {
+      const session = await requireSession(req, res);
+      if (!session) return;
+      const jobId = decodeURIComponent(match[1]);
+      const body = await readJsonBody(req);
+      const projectJob = await projectServerJson(`/api/build-jobs/${encodeURIComponent(jobId)}`).catch(() => null);
+      if (!projectJob || projectJob.user_id !== projectServerUserId(session)) {
+        sendJson(res, 404, { error: "build_job_not_found", message: "BuildJob wurde nicht gefunden." });
+        return;
+      }
+      const expectedBuildId = String(projectJob.result?.build?.build_id || "").toLowerCase();
+      if (!expectedBuildId || expectedBuildId !== String(body.build_id || "").toLowerCase()) {
+        sendJson(res, 409, {
+          error: "build_artifact_mismatch",
+          message: "Crash-Bericht und accountgebundener Build besitzen unterschiedliche Build-IDs.",
+          expected_build_id: expectedBuildId,
+        });
+        return;
+      }
+      const result = await buildDeployJson(`/api/build-jobs/${encodeURIComponent(jobId)}/symbolize`, {
+        method: "POST",
+        body: { build_id: body.build_id, addresses: body.addresses },
+      });
+      sendJson(res, 200, result);
     },
   });
   registry.register({
@@ -176,6 +207,15 @@ function registerBuildRoutes({
       await proxyBuildArtifact(res, jobId, decodeURIComponent(match[2]));
     },
   });
+}
+
+function buildArtifactList(jobId, artifacts) {
+  return Object.values(artifacts || {}).filter((artifact) => artifact?.file_name).map((artifact) => ({
+    file_name: artifact.file_name,
+    size_bytes: artifact.size_bytes,
+    sha256: artifact.sha256,
+    download_url: `/api/user-ide/build-artifacts/${encodeURIComponent(jobId)}/${encodeURIComponent(artifact.file_name)}`,
+  }));
 }
 
 module.exports = { registerBuildRoutes };

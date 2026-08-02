@@ -122,6 +122,10 @@ function createPlatformioEnv(cacheDir, packageDir, buildDir) {
     // concurrently and leave both builds with a corrupted dependency.
     env.IDF_COMPONENT_CACHE_PATH = path.resolve(packageDir, "..", "idf-component-cache");
     env.PLATFORMIO_BUILD_CACHE_DIR = path.resolve(packageDir, "..", "platformio-object-cache");
+    // PlatformIO stores the ESP-IDF Python environment below PENV_DIR. A
+    // shared directory is not concurrency-safe during the first build: two
+    // software units can both create .espidf-* and leave it without pip.
+    env.PLATFORMIO_PENV_DIR = path.resolve(packageDir, "..", "platformio-penv");
   }
   if (buildDir) env.PLATFORMIO_BUILD_DIR = path.resolve(buildDir);
   return env;

@@ -14,7 +14,7 @@ test("webhelper is a native UI-less service without Electron or Chromium", () =>
   const swift = fs.readFileSync(path.join(root, "native", "main.swift"), "utf8");
   const launchAgent = fs.readFileSync(path.join(root, "install", "macos", "com.gernetix.serial-service.plist"), "utf8");
 
-  assert.equal(manifest.version, "0.3.9");
+  assert.equal(manifest.version, "0.3.10");
   assert.equal(manifest.dependencies, undefined);
   assert.equal(manifest.devDependencies, undefined);
   assert.doesNotMatch(JSON.stringify(manifest), /electron|chromium/i);
@@ -29,6 +29,10 @@ test("webhelper is a native UI-less service without Electron or Chromium", () =>
   assert.match(swift, /"--after", "no-reset-no-stub"/);
   assert.match(swift, /read-flash/);
   assert.match(swift, /Flash verifiziert/);
+  assert.match(swift, /"percent": percent/);
+  assert.match(swift, /outputHandle\.readabilityHandler/);
+  assert.match(swift, /recordEspflashProgress/);
+  assert.match(swift, /Geschriebene Firmware wird geprüft/);
   assert.match(swift, /flash_package_app_address_mismatch/);
   assert.match(swift, /#available\(macOS 15\.0, \*\)/);
   assert.match(swift, /kSecImportToMemoryOnly/);

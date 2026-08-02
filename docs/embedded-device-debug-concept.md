@@ -19,7 +19,7 @@ Dieses Dokument beschreibt das Zielbild. Es schaltet keinen Debugzugang frei und
 
 ## Aktueller Implementierungsstand
 
-Der erste lokale IDE-Durchstich ist teilweise umgesetzt:
+Der lokale IDE-Durchstich und die Softwareseite der Crash-Analyse sind umgesetzt:
 
 - Jede modellierte IoT-Device-Komponente besitzt im Projektbaum `Debug & Diagnose`.
 - Die IDE liest ueber den origin- und sitzungsgebundenen GerNetiX Serial Service die neuen, ausschliesslich lesenden Firmwareaktionen `diagnostics_status` und `diagnostics_logs`.
@@ -27,8 +27,12 @@ Der erste lokale IDE-Durchstich ist teilweise umgesetzt:
 - Die IDE zeigt Firmware-/Basissoftwareversion, Variante, Uptime, Resetgrund, freien/minimalen Heap und WLAN-Zustand.
 - Feedbackzeilen werden nach Severity und Subsystem strukturiert, bei wiederholtem Lesen dedupliziert und auf 256 Eintraege im fluechtigen Browserzustand begrenzt.
 - Reproduktionsmarken, Filter und ein bewusster lokaler JSON-Export sind vorhanden. Es gibt keinen automatischen Upload und keine fachliche Persistenz.
+- Der ESP32 haelt Uptime, Minimum-Heap, Stack-Wasserzeichen, Health-Meilenstein und Fehlstartzaehler in einem checksummengesicherten RTC-Snapshot. Der Bootloop-Zustand entsteht damit ohne NVS-/Flash-Schreibschleife.
+- Soweit das freigegebene Boardprofil ESP-IDF-Core-Dumps aktiviert, liest die Basissoftware beim Folgestart nur die begrenzte Summary mit Panic-Task, Programmzaehler und maximal 16 Backtrace-Adressen. Das rohe Core-Dump-Abbild wird ueber keinen Diagnoseendpunkt ausgegeben und nach zehn Minuten stabiler Laufzeit geloescht.
+- `BuildResult.build_id` ist der SHA-256 des gespeicherten `firmware.elf`. Die IDE symbolisiert ausschliesslich nach Account- und BuildJob-Ownership-Pruefung und nur bei exakter Uebereinstimmung dieser Build-ID; andernfalls zeigt sie `build_artifact_mismatch`.
+- Aufgeloeste Frames koennen die zugehoerige sichtbare Projektquelldatei in der IDE oeffnen und die ermittelte Zeile markieren.
 
-Noch offen sind eine dauerhaft verfuegbare USB-Diagnose nach abgeschlossenem WLAN-Setup, Build-ID/ELF-Symbolisierung, Remote-Runtime-Monitor, Supportfreigabe, Diagnoseaktionen und Labor-/JTAG-Integration. Firmware-Build und Hardware-End-to-End-Abnahme werden weiterhin ausschliesslich vom Nutzer ausgefuehrt.
+Noch offen sind eine dauerhaft verfuegbare USB-Diagnose nach abgeschlossenem WLAN-Setup, Remote-Runtime-Monitor, Supportfreigabe, Diagnoseaktionen und Labor-/JTAG-Integration. Panic-, Watchdog-, Brownout- und Bootloop-Szenarien sowie die Ressourcenbudgets muessen auf echter Hardware abgenommen werden; bei Profilen ohne aktivierte Core-Dump-Summary bleiben Task und Backtrace sichtbar als nicht erfasst.
 
 ## Leitentscheidungen
 
@@ -232,6 +236,8 @@ Stand: Der IDE-/Serial-Service-Durchstich, Statusgrunddaten, Logfilter, Reproduk
 - BuildResult um eindeutig referenzierbares ELF/Map und Build-ID-Vertrag ergaenzen
 - lokale beziehungsweise accountautorisierte Symbolisierung umsetzen
 - Panic-, Task-Watchdog-, Brownout-, Heap- und falsches-ELF-Szenarien testen
+
+Stand: Softwareseitig umgesetzt und contract-getestet. RTC-Bootsnapshot, Core-Dump-Summary, Bootloop-Schwelle, exakte ELF-SHA-256-Build-ID, accountgebundene Symbolisierungsroute, `build_artifact_mismatch` und IDE-Quellnavigation sind vorhanden. Die geforderten realen Panic-, Watchdog-, Brownout-, Heap- und Bootloop-Abnahmen bleiben Hardwaretests und sind keine durch Contract-Tests ersetzte Freigabe.
 
 ### Phase 3: Autorisierter Runtime-Monitor
 

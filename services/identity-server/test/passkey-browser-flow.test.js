@@ -41,6 +41,8 @@ test("Passkey login translates known account and browser failures into an action
   assert.match(authSource, /account_disabled: "auth\.error\.login\.account_disabled"/);
   assert.match(authSource, /account_not_verified: "auth\.error\.login\.account_not_verified"/);
   assert.match(authSource, /NotAllowedError: "auth\.error\.login\.not_allowed"/);
+  assert.match(authSource, /identity_persistence_unavailable: "auth\.error\.login\.persistence_unavailable"/);
+  assert.match(authSource, /passkey_verification_failed: "auth\.error\.login\.verification_failed"/);
 });
 
 test("offline recovery is wired as a token-bound passkey registration flow", () => {

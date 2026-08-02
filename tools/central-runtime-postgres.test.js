@@ -35,6 +35,7 @@ test("Build workers coordinate jobs and target locks through central PostgreSQL"
   assert.match(compose, /BUILD_WORKER_STALE_MS: 120000/);
   assert.match(compose, /BUILD_WORKER_POOL_BASE_URL: http:\/\/build-router:4400/);
   assert.match(compose, /^  build-router:$/m);
+  assert.match(compose, /127\.0\.0\.1:\$\{BUILD_ROUTER_REMOTE_DEV_PORT:-14400\}:4400/);
   assert.match(compose, /BUILD_WORKER_UPSTREAMS: \$\{BUILD_WORKER_UPSTREAMS:-\}/);
   assert.match(compose, /BUILD_WORKER_PRIMARY_UPSTREAMS: \$\{BUILD_WORKER_PRIMARY_UPSTREAMS:-\}/);
   assert.match(compose, /RUNTIME_POSTGRES_BIND_ADDRESS:-127\.0\.0\.1/);

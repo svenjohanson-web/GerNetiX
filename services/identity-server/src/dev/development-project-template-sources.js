@@ -615,13 +615,35 @@ function cameraDisplayReadme() {
 
 function touchscreenDemoSources() {
   const root = path.resolve(__dirname, "../../../../Demoanwendungen/Boards/hardware.processor_board.esp32_s3_es3c28p/touch-spielesammlung/firmware");
-  const files = ["platformio.ini", ...fs.readdirSync(path.join(root, "src")).sort().map((name) => `src/${name}`)];
+  const files = fs.readdirSync(path.join(root, "src")).sort().map((name) => `src/${name}`);
   return files.map((relativePath) => ({
-    path: `Komponenten/IoT-Device 1/${relativePath.endsWith(".h") ? relativePath.replace(/^src\//, "include/") : relativePath}`,
+    path: `Komponenten/IoT-Device 1/${relativePath === "src/main.cpp" ? "src/user_main.cpp" : relativePath.endsWith(".h") ? relativePath.replace(/^src\//, "include/") : relativePath}`,
     role: "user_code",
-    content_type: relativePath.endsWith(".h") ? "text/x-c++hdr" : relativePath.endsWith(".ini") ? "text/plain" : "text/x-c++src",
-    content: fs.readFileSync(path.join(root, relativePath), "utf8"),
+    content_type: relativePath.endsWith(".h") ? "text/x-c++hdr" : "text/x-c++src",
+    content: relativePath === "src/main.cpp"
+      ? touchscreenBasisEntrypoint()
+      : fs.readFileSync(path.join(root, relativePath), "utf8"),
   }));
+}
+
+function touchscreenBasisEntrypoint() {
+  return [
+    '#include "user/user_app.h"',
+    '#include "user_project/game_application.h"',
+    "",
+    "namespace {",
+    "GameApplication application;",
+    "}",
+    "",
+    'extern "C" void userMain() {',
+    "  application.begin();",
+    "}",
+    "",
+    'extern "C" void userTick() {',
+    "  application.tick();",
+    "}",
+    "",
+  ].join("\n");
 }
 
 function touchscreenGameSources(title) {

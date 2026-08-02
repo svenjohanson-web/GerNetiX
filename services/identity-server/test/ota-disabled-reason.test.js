@@ -8,12 +8,14 @@ const publicRoot = path.resolve(__dirname, "../public/app");
 const html = fs.readFileSync(path.join(publicRoot, "index.html"), "utf8");
 const css = fs.readFileSync(path.join(publicRoot, "app.css"), "utf8");
 const app = readPlatformAppSource();
+const flashProgress = fs.readFileSync(path.join(publicRoot, "flash-progress.js"), "utf8");
 const server = fs.readFileSync(path.join(__dirname, "..", "src", "dev-server.js"), "utf8");
 
 test("build and flash actions expose their concrete prerequisite without becoming inert", () => {
   assert.match(html, /id="ideActionReason"/);
   assert.equal((html.match(/aria-describedby="ideActionReason"/g) || []).length, 3);
   assert.match(html, /id="ideBuildConsole"/);
+  assert.match(html, /flash-progress\.js\?v=20260802-flash-progress/);
   assert.match(html, /id="ideTerminalOutput"/);
   assert.match(html, /id="clearIdeTerminalButton"/);
   assert.match(html, /id="usbFlashButton"[^>]*>USB</);
@@ -33,6 +35,10 @@ test("build and flash actions expose their concrete prerequisite without becomin
   assert.match(app, /navigator\.serial\.requestPort/);
   assert.match(app, /flashBuildViaSerialService/);
   assert.match(app, /state\.serialService\.flash/);
+  assert.match(app, /GerNetiXFlashProgress\.renderJob\("#flashStatus"/);
+  assert.match(app, /precedingBytes\[index\]/);
+  assert.match(flashProgress, /role", "progressbar"/);
+  assert.match(css, /\.flash-progress-track\.indeterminate/);
   assert.match(server, /function browserFlashManifest\(jobId, completedJob, buildConfig = \{\}\)/);
   assert.match(server, /completeBrowserFlashDefinitions\(runnerManifest, fallbackDefinitions, \{/);
   assert.match(server, /authoritativeFallbackNames: usesGerNetixOtaAppLayout\(buildConfig\)/);

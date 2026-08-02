@@ -25,7 +25,8 @@ function parseArgs(argv) {
     if (argument === "--dry-run") result.dryRun = true;
     else if ([
       "--host", "--local-port", "--remote-port", "--platform-port", "--remote-platform-port",
-      "--identity-db-port", "--remote-identity-db-port",
+      "--identity-db-port", "--remote-identity-db-port", "--remote-identity-db-host",
+      "--build-router-port", "--remote-build-router-host", "--remote-build-router-port",
     ].includes(argument)) {
       const value = argv[index + 1];
       if (!value) throw new Error(`${argument} benoetigt einen Wert.`);
@@ -44,6 +45,15 @@ function parsePort(value, label) {
   return port;
 }
 
+function parseForwardHost(value, label) {
+  const host = String(value || "").trim();
+  const parts = host.split(".").map(Number);
+  const privateIpv4 = parts.length === 4 && parts.every((part) => Number.isInteger(part) && part >= 0 && part <= 255)
+    && (parts[0] === 10 || (parts[0] === 172 && parts[1] >= 16 && parts[1] <= 31) || (parts[0] === 192 && parts[1] === 168));
+  if (host !== "127.0.0.1" && !privateIpv4) throw new Error(`${label} muss Loopback oder eine private IPv4-Adresse sein.`);
+  return host;
+}
+
 function loadConfig() {
   const localPath = path.join(repoRoot, ".env.staging.local");
   const fileValues = fs.existsSync(localPath) ? parseEnvFile(fs.readFileSync(localPath, "utf8")) : {};
@@ -52,7 +62,8 @@ function loadConfig() {
 
 function sshTunnelArgs({
   host, localPort, remotePort, platformPort, remotePlatformPort,
-  identityDbPort, remoteIdentityDbPort,
+  identityDbPort, remoteIdentityDbHost, remoteIdentityDbPort,
+  buildRouterPort, remoteBuildRouterHost, remoteBuildRouterPort,
 }) {
   const args = [
     "-N",
@@ -62,7 +73,8 @@ function sshTunnelArgs({
     "-o", "ServerAliveCountMax=3",
     "-L", `127.0.0.1:${platformPort}:127.0.0.1:${remotePlatformPort}`,
     "-L", `127.0.0.1:${localPort}:127.0.0.1:${remotePort}`,
-    "-L", `127.0.0.1:${identityDbPort}:127.0.0.1:${remoteIdentityDbPort}`,
+    "-L", `127.0.0.1:${identityDbPort}:${remoteIdentityDbHost}:${remoteIdentityDbPort}`,
+    "-L", `127.0.0.1:${buildRouterPort}:${remoteBuildRouterHost}:${remoteBuildRouterPort}`,
   ];
   for (const [localServicePort, remoteServicePort] of REMOTE_DEV_SERVICE_FORWARDS) {
     args.push("-L", `127.0.0.1:${localServicePort}:127.0.0.1:${remoteServicePort}`);
@@ -80,10 +92,15 @@ function main() {
   const platformPort = parsePort(args.platformPort || config.GERNETIX_STAGING_LOCAL_PLATFORM_PORT || 14300, "Lokaler Plattform-Port");
   const remotePlatformPort = parsePort(args.remotePlatformPort || config.GERNETIX_STAGING_REMOTE_PLATFORM_PORT || 8080, "Remote-Plattform-Port");
   const identityDbPort = parsePort(args.identityDbPort || config.GERNETIX_STAGING_LOCAL_IDENTITY_DB_PORT || 25432, "Lokaler Runtime-PostgreSQL-Port");
+  const remoteIdentityDbHost = parseForwardHost(args.remoteIdentityDbHost || config.GERNETIX_STAGING_REMOTE_IDENTITY_DB_HOST || "10.77.0.1", "Remote-Runtime-PostgreSQL-Host");
   const remoteIdentityDbPort = parsePort(args.remoteIdentityDbPort || config.GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT || 25432, "Remote-Runtime-PostgreSQL-Port");
+  const buildRouterPort = parsePort(args.buildRouterPort || config.GERNETIX_STAGING_LOCAL_BUILD_ROUTER_PORT || 14400, "Lokaler Build-Router-Port");
+  const remoteBuildRouterHost = parseForwardHost(args.remoteBuildRouterHost || config.GERNETIX_STAGING_REMOTE_BUILD_ROUTER_HOST || "127.0.0.1", "Remote-Build-Router-Host");
+  const remoteBuildRouterPort = parsePort(args.remoteBuildRouterPort || config.GERNETIX_STAGING_REMOTE_BUILD_ROUTER_PORT || 14400, "Remote-Build-Router-Port");
   const sshArgs = sshTunnelArgs({
     host, localPort, remotePort, platformPort, remotePlatformPort,
-    identityDbPort, remoteIdentityDbPort,
+    identityDbPort, remoteIdentityDbHost, remoteIdentityDbPort,
+    buildRouterPort, remoteBuildRouterHost, remoteBuildRouterPort,
   });
   const adminUrl = `http://127.0.0.1:${localPort}/admin/`;
   const platformUrl = `http://127.0.0.1:${platformPort}/app/dashboard/`;
@@ -93,6 +110,7 @@ function main() {
   process.stdout.write(`Lokaler Plattform-Diagnosetunnel: ${platformUrl}\n`);
   process.stdout.write(`Lokaler Admin-Diagnosetunnel: ${adminUrl}\n`);
   process.stdout.write(`Identity PostgreSQL fuer lokalen Port 4300: 127.0.0.1:${identityDbPort}\n`);
+  process.stdout.write(`Build-Worker-Pool fuer lokale IDE: 127.0.0.1:${buildRouterPort}\n`);
   process.stdout.write(`Remote-Dev-Dienste: ${REMOTE_DEV_SERVICE_FORWARDS.map(([local, remote]) => `${local}->${remote}`).join(", ")}\n`);
   process.stdout.write("Dieses Terminal offen lassen. Verbindung mit Strg+C beenden.\n");
   if (args.dryRun) {
@@ -116,4 +134,4 @@ if (require.main === module) {
   }
 }
 
-module.exports = { REMOTE_DEV_SERVICE_FORWARDS, parseArgs, parsePort, sshTunnelArgs };
+module.exports = { REMOTE_DEV_SERVICE_FORWARDS, parseArgs, parseForwardHost, parsePort, sshTunnelArgs };

@@ -17,6 +17,9 @@ function createConfig(env = process.env) {
     platformioCommand: env.PLATFORMIO_COMMAND || (env.HOME
       ? path.join(env.HOME, ".platformio", "penv", "bin", "platformio")
       : "platformio"),
+    addr2lineCommands: env.BUILD_ADDR2LINE_COMMANDS
+      ? String(env.BUILD_ADDR2LINE_COMMANDS).split(",").map((value) => value.trim()).filter(Boolean)
+      : defaultAddr2lineCommands(env),
     runtimeRoot,
     tempDir: path.join(runtimeRoot, "tmp"),
     incrementalCacheDir: path.join(runtimeRoot, "incremental-build-cache"),
@@ -61,6 +64,20 @@ function createConfig(env = process.env) {
     otaSigningPrivateKeyPath: env.OTA_SIGNING_PRIVATE_KEY_PATH ? path.resolve(env.OTA_SIGNING_PRIVATE_KEY_PATH) : "",
     otaSigningKeyId: env.OTA_SIGNING_KEY_ID || "",
   };
+}
+
+function defaultAddr2lineCommands(env) {
+  const commands = [];
+  if (env.HOME) {
+    commands.push(
+      path.join(env.HOME, ".platformio", "packages", "toolchain-xtensa-esp-elf", "bin", "xtensa-esp32s3-elf-addr2line"),
+      path.join(env.HOME, ".platformio", "packages", "toolchain-xtensa-esp32s3", "bin", "xtensa-esp32s3-elf-addr2line"),
+      path.join(env.HOME, ".platformio", "packages", "toolchain-xtensa-esp-elf", "bin", "xtensa-esp32-elf-addr2line"),
+      path.join(env.HOME, ".platformio", "packages", "toolchain-xtensa32", "bin", "xtensa-esp32-elf-addr2line"),
+      path.join(env.HOME, ".platformio", "packages", "toolchain-riscv32-esp", "bin", "riscv32-esp-elf-addr2line"),
+    );
+  }
+  return commands.concat(["xtensa-esp32s3-elf-addr2line", "xtensa-esp32-elf-addr2line", "riscv32-esp-elf-addr2line"]);
 }
 
 module.exports = { createConfig };

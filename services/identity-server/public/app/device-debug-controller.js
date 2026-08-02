@@ -22,6 +22,7 @@ const GerNetiXDeviceDebug = (() => {
         message: "Noch keine Diagnose gelesen.",
         messageKind: "idle",
         bootSequence: 1,
+        symbolization: null,
       };
     }
     return state.ideDebugSessions[key];
@@ -105,13 +106,14 @@ const GerNetiXDeviceDebug = (() => {
         </section>
         <p class="device-debug-message ${escapeAttribute(session.messageKind)}" role="status">${escapeHtml(session.message)}</p>
         ${renderStatus(session.status)}
+        ${renderCrashReport(session)}
         <section class="device-debug-log-panel">
           <header>
             <div><p class="eyebrow">Ereignisstrom</p><h4>Live-Logs</h4></div>
             <div class="device-debug-log-actions">
               <button type="button" data-device-debug-toggle-live>${session.running ? "Live-Ansicht stoppen" : "Live-Ansicht starten"}</button>
               <button type="button" data-device-debug-marker>Reproduktion markieren</button>
-              <button type="button" data-device-debug-export ${session.events.length ? "" : "disabled"}>JSON exportieren</button>
+              <button type="button" data-device-debug-export ${session.events.length || session.status ? "" : "disabled"}>JSON exportieren</button>
             </div>
           </header>
           <div class="device-debug-filters">
@@ -131,6 +133,7 @@ const GerNetiXDeviceDebug = (() => {
       ["Firmware", status.firmware_version || status.runtimeVersion || status.basissoftwareVersion || "unbekannt"],
       ["Basissoftware", status.basissoftware_version || status.basissoftwareVersion || "unbekannt"],
       ["Variante", status.basissoftware_variant || status.basissoftwareVariant || "unbekannt"],
+      ["Build-ID", shortBuildId(status.build_id)],
       ["Laufzeit", formatDuration(status.uptime_ms ?? status.uptimeMs)],
       ["Resetgrund", status.reset_reason || "nicht gemeldet"],
       ["Heap frei", formatBytes(status.free_heap_bytes)],
@@ -138,6 +141,48 @@ const GerNetiXDeviceDebug = (() => {
       ["WLAN", status.wifi_state || status.wifiStationState || "nicht gemeldet"],
     ];
     return `<dl class="device-debug-status-grid">${fields.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(String(value))}</dd></div>`).join("")}</dl>`;
+  }
+
+  function shortBuildId(value) {
+    const buildId = String(value || "");
+    return buildId ? `${buildId.slice(0, 12)}…` : "nicht gemeldet";
+  }
+
+  function renderCrashReport(session) {
+    const report = session.status?.crash_report;
+    if (!report) return "";
+    const symbolization = session.symbolization || { status: "idle" };
+    const stateLabel = report.bootloop_suspected
+      ? "Bootloop vermutet"
+      : report.available ? "Vorheriger Boot analysierbar" : "Kein vorheriger Crash gespeichert";
+    const frames = Array.isArray(symbolization.frames) ? symbolization.frames : [];
+    return `<section class="device-debug-crash ${report.bootloop_suspected ? "critical" : ""}">
+      <header><div><p class="eyebrow">Crash-Analyse</p><h4>Letzter Absturz</h4></div><span>${escapeHtml(stateLabel)}</span></header>
+      <dl>
+        <div><dt>Resetgrund</dt><dd>${escapeHtml(report.reset_reason || "unbekannt")}</dd></div>
+        <div><dt>Fehlstarts</dt><dd>${escapeHtml(String(report.failed_boot_count ?? 0))}</dd></div>
+        <div><dt>Uptime davor</dt><dd>${escapeHtml(formatDuration(report.uptime_before_reset_ms))}</dd></div>
+        <div><dt>Minimum-Heap</dt><dd>${escapeHtml(formatBytes(report.minimum_free_heap_bytes))}</dd></div>
+        <div><dt>Task</dt><dd>${escapeHtml(report.task_name || "nicht erfasst")}</dd></div>
+        <div><dt>Fehlercode</dt><dd>${escapeHtml(report.fault_code || "nicht erfasst")}</dd></div>
+        <div><dt>Build-ID</dt><dd title="${escapeAttribute(report.build_id || "")}">${escapeHtml(shortBuildId(report.build_id))}</dd></div>
+        <div><dt>Speicherweg</dt><dd>RTC · keine Flash-Schreibzyklen</dd></div>
+      </dl>
+      ${renderSymbolization(symbolization, frames)}
+    </section>`;
+  }
+
+  function renderSymbolization(symbolization, frames) {
+    const messages = {
+      idle: "Keine Crash-Adressen vorhanden.",
+      pending: "Passendes ELF wird geprüft und lokal symbolisiert…",
+      build_artifact_mismatch: "build_artifact_mismatch: Kein Build mit exakt passender Build-ID gefunden.",
+      build_elf_missing: "Der passende Build besitzt kein ELF-Artefakt.",
+      error: symbolization.message || "Symbolisierung ist fehlgeschlagen.",
+    };
+    if (!frames.length) return `<p class="device-debug-symbol-status ${escapeAttribute(symbolization.status || "idle")}">${escapeHtml(messages[symbolization.status] || messages.idle)}</p>`;
+    return `<div class="device-debug-stack"><strong>Symbolisierter Stack</strong><ol>${frames.map((frame) => `
+      <li class="${frame.resolved ? "resolved" : "unresolved"}"><code>${escapeHtml(frame.address)}</code><span>${escapeHtml(frame.resolved ? frame.function : "nicht aufgelöst")}</span><small>${escapeHtml(frame.resolved ? `${frame.file}:${frame.line}` : "Kein Symbol im passenden ELF")}</small>${frame.resolved ? `<button type="button" data-debug-source="${escapeAttribute(frame.file)}" data-debug-line="${escapeAttribute(String(frame.line))}">Stelle öffnen</button>` : ""}</li>`).join("")}</ol></div>`;
   }
 
   function renderEvent(event) {
@@ -232,6 +277,7 @@ const GerNetiXDeviceDebug = (() => {
       }
       session.status = result.status;
       appendEvents(session, normalizeLog(result.logs));
+      await symbolizeCrashIfPossible(project, session);
       session.message = `Diagnose gelesen · ${new Date().toLocaleTimeString()} · ${session.events.length} Ereignisse`;
       session.messageKind = "ok";
     } catch (error) {
@@ -242,6 +288,63 @@ const GerNetiXDeviceDebug = (() => {
       session.refreshing = false;
       render(project);
     }
+  }
+
+  async function symbolizeCrashIfPossible(project, session) {
+    const report = session.status?.crash_report;
+    const buildId = String(report?.build_id || "").toLowerCase();
+    const addresses = Array.isArray(report?.backtrace_addresses)
+      ? report.backtrace_addresses.filter((value) => /^0x[a-f0-9]{1,16}$/i.test(String(value))).slice(0, 32)
+      : [];
+    const key = `${buildId}|${addresses.join(",")}`;
+    if (session.symbolization?.key === key && session.symbolization.status !== "error") return;
+    if (!buildId || !addresses.length) {
+      session.symbolization = { key, status: "idle", frames: [] };
+      return;
+    }
+    const build = state.builds.find((item) => String(item.build_id || "").toLowerCase() === buildId);
+    if (!build) {
+      session.symbolization = { key, status: "build_artifact_mismatch", frames: [] };
+      return;
+    }
+    if (!Array.isArray(build.artifacts) || !build.artifacts.some((artifact) => artifact.file_name === "firmware.elf")) {
+      session.symbolization = { key, status: "build_elf_missing", frames: [] };
+      return;
+    }
+    session.symbolization = { key, status: "pending", frames: [] };
+    try {
+      const result = await postJson(`/api/user-ide/build-jobs/${encodeURIComponent(build.build_job_id)}/symbolize`, {
+        build_id: buildId,
+        addresses,
+      });
+      session.symbolization = { key, status: result.status || "symbolized", frames: result.frames || [] };
+    } catch (error) {
+      session.symbolization = {
+        key,
+        status: error?.payload?.error === "build_artifact_mismatch" ? "build_artifact_mismatch" : "error",
+        message: error.message,
+        frames: [],
+      };
+    }
+  }
+
+  async function openFrameSource(project, file, line) {
+    const sources = state.projectSourcesByProjectId[project.id] || [];
+    const normalizedFile = String(file || "").replace(/\\/g, "/");
+    const source = sources.find((item) => normalizedFile === item.path || normalizedFile.endsWith(`/${item.path}`));
+    if (!source) {
+      const session = activeSession(project);
+      session.message = `Die symbolisierte Datei ${normalizedFile} gehört nicht zu den sichtbaren Projektquellen.`;
+      session.messageKind = "warning";
+      render(project);
+      return;
+    }
+    await openIdeSource(source.path);
+    const editor = document.querySelector("#sourceEditor");
+    const targetLine = Math.max(1, Number(line) || 1);
+    const offset = String(editor.value || "").split(/\n/).slice(0, targetLine - 1).reduce((sum, value) => sum + value.length + 1, 0);
+    editor.setSelectionRange(offset, offset);
+    editor.focus();
   }
 
   async function readUsb(session) {
@@ -311,7 +414,7 @@ const GerNetiXDeviceDebug = (() => {
 
   function exportJson(project = projectById(state.activeProjectId)) {
     const session = activeSession(project);
-    if (!session.events.length) return;
+    if (!session.events.length && !session.status) return;
     const payload = {
       schema_version: 1,
       exported_at: new Date().toISOString(),
@@ -353,6 +456,10 @@ const GerNetiXDeviceDebug = (() => {
       else if (event.target.closest("[data-device-debug-toggle-live]")) toggleLive(project);
       else if (event.target.closest("[data-device-debug-marker]")) addMarker(project);
       else if (event.target.closest("[data-device-debug-export]")) exportJson(project);
+      else if (event.target.closest("[data-debug-source]")) {
+        const button = event.target.closest("[data-debug-source]");
+        void openFrameSource(project, button.dataset.debugSource, button.dataset.debugLine);
+      }
     });
   }
 

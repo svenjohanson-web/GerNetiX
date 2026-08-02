@@ -52,9 +52,18 @@ async function check(item) {
   catch(error){ return {...item,healthy:false,statusCode:0,pid:item.kind==="docker-build-worker"?null:await pidForPort(item.port),error:error.message,...(communityStorage?{communityStorage}:{})}; }
 }
 async function processStates(){ return Promise.all(services.filter((item)=>item.local).map(check)); }
+function dockerExecutable(options={}){
+  const env=options.env||process.env,platform=options.platform||process.platform,existsSync=options.existsSync||fs.existsSync;
+  if(String(env.GERNETIX_DOCKER_COMMAND||"").trim())return env.GERNETIX_DOCKER_COMMAND.trim();
+  if(platform==="darwin"){
+    const candidates=["/usr/local/bin/docker","/opt/homebrew/bin/docker","/Applications/Docker.app/Contents/Resources/bin/docker"];
+    return candidates.find((candidate)=>existsSync(candidate))||"docker";
+  }
+  return "docker";
+}
 async function dockerBuildWorkerHealth(options={}){
   const run=options.execFileAsync||execFileAsync;
-  const {stdout}=await run("docker",["inspect","--format","{{.State.Health.Status}}","gernetix-build-worker-build-worker-1"],{windowsHide:true,timeout:5000});
+  const {stdout}=await run(options.dockerCommand||dockerExecutable(options),["inspect","--format","{{.State.Health.Status}}","gernetix-build-worker-build-worker-1"],{windowsHide:true,timeout:5000});
   const state=String(stdout||"").trim();
   if(state!=="healthy")throw new Error(state?`Docker-Healthstatus: ${state}`:"Build-Worker-Container wurde nicht gefunden.");
   return {statusCode:200,body:{service:"build-deploy-server",coordination_backend:"postgres"}};
@@ -215,6 +224,14 @@ function parsePort(value, label) {
   return port;
 }
 
+function parseForwardHost(value,label){
+  const host=String(value||"").trim(),parts=host.split(".").map(Number);
+  const privateIpv4=parts.length===4&&parts.every((part)=>Number.isInteger(part)&&part>=0&&part<=255)
+    &&(parts[0]===10||(parts[0]===172&&parts[1]>=16&&parts[1]<=31)||(parts[0]===192&&parts[1]===168));
+  if(host!=="127.0.0.1"&&!privateIpv4)throw new Error(`${label} muss Loopback oder eine private IPv4-Adresse sein.`);
+  return host;
+}
+
 function stagingTunnelDefinition(config=loadStagingConfig()) {
   const host=assertSafeSshTarget(config.GERNETIX_STAGING_SSH||"");
   const adminPort=parsePort(config.GERNETIX_STAGING_LOCAL_ADMIN_PORT||14600,"Lokaler Admin-Port");
@@ -222,9 +239,13 @@ function stagingTunnelDefinition(config=loadStagingConfig()) {
   const platformPort=parsePort(config.GERNETIX_STAGING_LOCAL_PLATFORM_PORT||14300,"Lokaler Plattform-Port");
   const remotePlatformPort=parsePort(config.GERNETIX_STAGING_REMOTE_PLATFORM_PORT||8080,"Remote-Plattform-Port");
   const identityDbPort=parsePort(config.GERNETIX_STAGING_LOCAL_IDENTITY_DB_PORT||25432,"Lokaler Identity-PostgreSQL-Port");
+  const remoteIdentityDbHost=parseForwardHost(config.GERNETIX_STAGING_REMOTE_IDENTITY_DB_HOST||"10.77.0.1","Remote-Identity-PostgreSQL-Host");
   const remoteIdentityDbPort=parsePort(config.GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT||25432,"Remote-Identity-PostgreSQL-Port");
-  const forwards=[[platformPort,remotePlatformPort],[adminPort,remoteAdminPort],[identityDbPort,remoteIdentityDbPort],...REMOTE_DEV_SERVICE_FORWARDS];
-  return {host,adminPort,platformPort,identityDbPort,forwards,args:["-N","-o","BatchMode=yes","-o","ExitOnForwardFailure=yes","-o","ServerAliveInterval=30","-o","ServerAliveCountMax=3",...forwards.flatMap(([local,remote])=>["-L",`127.0.0.1:${local}:127.0.0.1:${remote}`]),host]};
+  const buildRouterPort=parsePort(config.GERNETIX_STAGING_LOCAL_BUILD_ROUTER_PORT||14400,"Lokaler Build-Router-Port");
+  const remoteBuildRouterHost=parseForwardHost(config.GERNETIX_STAGING_REMOTE_BUILD_ROUTER_HOST||"127.0.0.1","Remote-Build-Router-Host");
+  const remoteBuildRouterPort=parsePort(config.GERNETIX_STAGING_REMOTE_BUILD_ROUTER_PORT||14400,"Remote-Build-Router-Port");
+  const forwards=[[platformPort,remotePlatformPort,"127.0.0.1"],[adminPort,remoteAdminPort,"127.0.0.1"],[identityDbPort,remoteIdentityDbPort,remoteIdentityDbHost],[buildRouterPort,remoteBuildRouterPort,remoteBuildRouterHost],...REMOTE_DEV_SERVICE_FORWARDS.map(([local,remote])=>[local,remote,"127.0.0.1"])];
+  return {host,adminPort,platformPort,identityDbPort,remoteIdentityDbHost,forwards,args:["-N","-o","BatchMode=yes","-o","ExitOnForwardFailure=yes","-o","ServerAliveInterval=30","-o","ServerAliveCountMax=3",...forwards.flatMap(([local,remote,remoteHost])=>["-L",`127.0.0.1:${local}:${remoteHost}:${remote}`]),host]};
 }
 
 async function stagingTunnelState(options={}) {
@@ -233,7 +254,7 @@ async function stagingTunnelState(options={}) {
   let definition;
   try { definition=stagingTunnelDefinition(config); }
   catch(error) { return {configured:false,active:false,owned:false,error:error.message}; }
-  const findPid=options.pidForPort||pidForPort;
+  const findPid=options.pidForLoopbackPort||options.pidForPort||pidForLoopbackPort;
   const listenerPids=await Promise.all(definition.forwards.map(([localPort])=>findPid(localPort)));
   const distinctPids=new Set(listenerPids.filter(Boolean));
   const owned=Boolean(stagingTunnel&&!stagingTunnel.killed&&stagingTunnel.exitCode===null);
@@ -251,8 +272,9 @@ async function startStagingTunnel(options={}) {
   if(vpn.supported&&vpn.configured&&!vpn.connected)throw new Error("Der GerNetiX-VPN muss vor dem SSH-Diagnosetunnel verbunden sein.");
   const launch=options.spawn||spawn;
   stagingTunnelError="";
-  const child=launch("ssh",definition.args,{cwd:workspaceRoot,windowsHide:true,stdio:"ignore"});
+  const child=launch("ssh",definition.args,{cwd:workspaceRoot,detached:true,windowsHide:true,stdio:"ignore"});
   stagingTunnel=child;
+  child.unref?.();
   child.once("error",(error)=>{stagingTunnelError=`SSH-Diagnosetunnel konnte nicht gestartet werden: ${error.message}`;});
   child.once("exit",(code,signal)=>{if(stagingTunnel===child&&code!==0&&signal!=="SIGTERM")stagingTunnelError=`SSH-Diagnosetunnel wurde beendet (${code===null?signal:`Exit-Code ${code}`}).`;});
   const wait=options.delay||delay;
@@ -414,7 +436,8 @@ async function runBuildWorkerAction(action,options={}){
   const tool=path.join(workspaceRoot,"tools","build-worker.js");
   if(!fs.existsSync(tool))throw new Error("tools/build-worker.js fehlt.");
   const run=options.execFileAsync||execFileAsync;
-  await run(process.execPath,[tool,action],{cwd:workspaceRoot,windowsHide:true,timeout:action==="start"?900000:120000,maxBuffer:5*1024*1024,env:{...process.env,ELECTRON_RUN_AS_NODE:"1"}});
+  const dockerCommand=options.dockerCommand||dockerExecutable(options);
+  await run(process.execPath,[tool,action],{cwd:workspaceRoot,windowsHide:true,timeout:action==="start"?900000:120000,maxBuffer:5*1024*1024,env:{...process.env,ELECTRON_RUN_AS_NODE:"1",GERNETIX_DOCKER_COMMAND:dockerCommand}});
 }
 
 async function startBuildWorker(options={}){
@@ -461,17 +484,19 @@ async function startIdentityRemoteDev(options={}){
 async function startService(id,options={}){ const item=byId(id); if(!item.local)throw new Error(`${item.name} läuft auf dem VPS und kann hier nicht lokal gestartet werden.`); if(id==="identity-server")return startIdentityRemoteDev(options);if(id==="build-worker")return startBuildWorker(options); const checkService=options.checkService||check; const current=await checkService(item); if(current.healthy)return current; const child=launchLoggedService(item,{...process.env,...item.environment,ELECTRON_RUN_AS_NODE:"1",PORT:String(item.port)}); child.unref(); for(let i=0;i<40;i+=1){await delay(250);const state=await checkService(item);if(state.healthy)return state;} throw new Error(`${item.name} konnte nicht gestartet werden.${recentServiceLog(item.id)?` Letzte Logzeilen: ${recentServiceLog(item.id)}`:""}`); }
 async function startAllServices(options={}){const start=options.startService||startService;const items=[];for(const item of services.filter((entry)=>entry.autoStart)){try{items.push(await start(item.id));}catch(error){items.push({...item,healthy:false,statusCode:0,pid:null,error:error.message});}}return{items,healthy:items.filter((item)=>item.healthy).length,failed:items.filter((item)=>!item.healthy).length};}
 async function stopService(id,options={}){ const item=byId(id); if(!item.local)throw new Error(`${item.name} läuft auf dem VPS und kann hier nicht lokal gestoppt werden.`);if(id==="build-worker"){await runBuildWorkerAction("stop",options);return check(item);} const pid=await pidForPort(item.port); if(!pid)return check(item); if(process.platform==="win32")await execFileAsync("taskkill",["/PID",String(pid),"/T","/F"],{windowsHide:true});else process.kill(pid,"SIGTERM"); for(let i=0;i<20;i+=1){await delay(150);const state=await check(item);if(!state.healthy)return state;} throw new Error(`${item.name} konnte nicht beendet werden.`); }
-function pidFromWindowsNetstat(output,port){
+function pidFromWindowsNetstat(output,port,localAddress=""){
   const line=String(output||"").split(/\r?\n/).find((row)=>{
     const columns=row.trim().split(/\s+/);
     return columns[0]?.toUpperCase()==="TCP"
       && columns[1]?.endsWith(`:${port}`)
+      && (!localAddress||columns[1]?.startsWith(`${localAddress}:`))
       && columns[2]?.endsWith(":0")
       && Number(columns.at(-1))>0;
   });
   return Number(line?.trim().split(/\s+/).at(-1))||null;
 }
 async function pidForPort(port){try{if(process.platform==="win32"){const{stdout}=await execFileAsync("netstat",["-ano","-p","tcp"],{windowsHide:true});return pidFromWindowsNetstat(stdout,port);}const{stdout}=await execFileAsync("lsof",["-nP",`-iTCP:${port}`,"-sTCP:LISTEN","-t"]);return Number(stdout.trim().split(/\s+/)[0])||null;}catch{return null;}}
+async function pidForLoopbackPort(port){try{if(process.platform==="win32"){const{stdout}=await execFileAsync("netstat",["-ano","-p","tcp"],{windowsHide:true});return pidFromWindowsNetstat(stdout,port,"127.0.0.1");}const{stdout}=await execFileAsync("lsof",["-nP","-a",`-iTCP@127.0.0.1:${port}`,"-sTCP:LISTEN","-t"]);return Number(stdout.trim().split(/\s+/)[0])||null;}catch{return null;}}
 function health(url){return new Promise((resolve,reject)=>{const req=http.get(url,(res)=>{let raw="";res.setEncoding("utf8");res.on("data",(chunk)=>{if(raw.length<16384)raw+=chunk;});res.on("end",()=>{let body=null;try{body=raw?JSON.parse(raw):null;}catch{}resolve({statusCode:res.statusCode||0,body});});});req.setTimeout(1200,()=>req.destroy(new Error("Timeout")));req.on("error",reject);});}
 function delay(ms){return new Promise((resolve)=>setTimeout(resolve,ms));}
 function loadStagingConfig(){const file=path.join(workspaceRoot,".env.staging.local");return {...(fs.existsSync(file)?parseEnvFile(fs.readFileSync(file,"utf8")):{}),...process.env};}
@@ -590,4 +615,4 @@ async function setVpnConnected(connected, options = {}) {
   throw new Error(`Der VPN-Tunnel wurde nicht rechtzeitig ${desired ? "verbunden" : "getrennt"}.`);
 }
 
-module.exports={communityStorageSummary,configureWorkspace,dockerBuildWorkerHealth,interfaceStatistics,loadBuildWorkerConfig,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runBuildWorkerAction,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startBuildWorker,startIdentityRemoteDev,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};
+module.exports={communityStorageSummary,configureWorkspace,dockerBuildWorkerHealth,dockerExecutable,interfaceStatistics,loadBuildWorkerConfig,parseComposePs,parseMacVpnState,parseSecurityCheckOutput,parseWindowsServiceState,pidForLoopbackPort,pidFromWindowsNetstat,presentLinkIntegrity,processStates,remoteLinkIntegrity,remoteProcessStates,runBuildWorkerAction,runtimeAlerts,securityRuleStates,services,stagingTunnelDefinition,stagingTunnelState,startBuildWorker,startIdentityRemoteDev,startStagingTunnel,stopStagingTunnel,setVpnConnected,startAllServices,startService,stopService,vpnState};

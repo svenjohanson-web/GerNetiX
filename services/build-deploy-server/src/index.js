@@ -9,6 +9,7 @@ const { PemOtaCommandSigner, SqliteOtaAcknowledgementStore, PostgresOtaAcknowled
 const { DeviceJobLock } = require("./modules/device-job-lock");
 const { BuildTargetLock } = require("./modules/build-target-lock");
 const { PostgresBuildCoordination } = require("./modules/postgres-build-coordination");
+const { ElfSymbolizer } = require("./modules/elf-symbolizer");
 const { BuildDeployService } = require("./services/build-deploy-service");
 const { createConfig } = require("./config");
 const { createHttpApp } = require("./http-app");
@@ -46,6 +47,7 @@ function createBuildDeployService(config, { acknowledgementStore, artifactStore,
       allowMockRunner: config.allowMockRunner,
     }),
     artifactStore,
+    elfSymbolizer: new ElfSymbolizer({ commands: config.addr2lineCommands }),
     deployOrchestrator: new DeployJobOrchestrator({
       publicBaseUrl: config.publicBaseUrl,
       mqttPublisher: mqttTransport,
@@ -108,6 +110,7 @@ module.exports = {
   ArtifactStore,
   PostgresArtifactStore,
   FirmwareBuildJobRunner,
+  ElfSymbolizer,
   DeployJobOrchestrator,
   MqttTransport,
   PemOtaCommandSigner,

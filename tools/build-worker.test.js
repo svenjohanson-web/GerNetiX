@@ -6,12 +6,22 @@ const path = require("node:path");
 const test = require("node:test");
 const {
   composeArgs,
+  dockerExecutable,
   isPrivateIpv4,
   parseArgs,
   parseEnvFile,
   supportsWorkerHost,
   validateConfig,
 } = require("./build-worker");
+
+test("Docker Desktop is resolved independently of the macOS GUI PATH", () => {
+  const result = dockerExecutable({
+    env: { PATH: "/usr/bin:/bin" },
+    platform: "darwin",
+    existsSync: (candidate) => candidate === "/usr/local/bin/docker",
+  });
+  assert.equal(result, "/usr/local/bin/docker");
+});
 
 test("parses the dedicated worker command without exposing secrets", () => {
   const parsed = parseArgs(["start", "--env", "./worker.env", "--skip-network"]);

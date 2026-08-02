@@ -9,6 +9,7 @@
 #include "esp_timer.h"
 
 #include "basissoftware/config.h"
+#include "basissoftware/crash_diagnostics.h"
 #include "basissoftware/feedback.h"
 #include "basissoftware/mqtt_ota.h"
 #include "basissoftware/ota_update.h"
@@ -184,7 +185,7 @@ esp_err_t connectivityProbeHandler(httpd_req_t *request) {
 
 esp_err_t statusHandler(httpd_req_t *request) {
   char *provisioningJson = static_cast<char *>(std::calloc(4096, 1));
-  char *body = static_cast<char *>(std::calloc(6144, 1));
+  char *body = static_cast<char *>(std::calloc(8192, 1));
   if (provisioningJson == nullptr || body == nullptr) {
     std::free(provisioningJson);
     std::free(body);
@@ -198,19 +199,24 @@ esp_err_t statusHandler(httpd_req_t *request) {
   writeOtaStatusJson(otaJson, sizeof(otaJson));
   char mqttJson[256] = {};
   writeMqttOtaStatusJson(mqttJson, sizeof(mqttJson));
+  char buildId[65] = {};
+  char crashReport[1024] = {};
+  writeFirmwareBuildId(buildId, sizeof(buildId));
+  if (!writeCrashDiagnosticsJson(crashReport, sizeof(crashReport))) std::snprintf(crashReport, sizeof(crashReport), "null");
 
   const long long uptimeMs =
       static_cast<long long>(esp_timer_get_time() / 1000);
 
   std::snprintf(
       body,
-      6144,
+      8192,
       "{"
       "\"device\":\"%s\","
       "\"runtime\":\"%s\","
       "\"runtimeVersion\":\"%s\","
       "\"basissoftwareVersion\":\"%s\","
       "\"basissoftwareVariant\":\"%s\","
+      "\"build_id\":\"%s\","
       "\"wifiMode\":\"%s\","
       "\"setupApSsid\":\"%s\","
       "\"setupApChannel\":%u,"
@@ -221,6 +227,7 @@ esp_err_t statusHandler(httpd_req_t *request) {
       "\"reset_reason\":\"%s\","
       "\"free_heap_bytes\":%u,"
       "\"minimum_free_heap_bytes\":%u,"
+      "\"crash_report\":%s,"
       "%s,"
       "%s,"
       "%s"
@@ -230,6 +237,7 @@ esp_err_t statusHandler(httpd_req_t *request) {
       GERNETIX_RUNTIME_VERSION,
       GERNETIX_BASISSOFTWARE_VERSION,
       GERNETIX_BASISSOFTWARE_VARIANT,
+      buildId,
       wifiRuntimeModeName(),
       WIFI_SETUP_AP_SSID,
       WIFI_SETUP_AP_CHANNEL,
@@ -240,6 +248,7 @@ esp_err_t statusHandler(httpd_req_t *request) {
       resetReasonName(esp_reset_reason()),
       static_cast<unsigned>(esp_get_free_heap_size()),
       static_cast<unsigned>(esp_get_minimum_free_heap_size()),
+      crashReport,
       provisioningJson,
       otaJson,
       mqttJson);

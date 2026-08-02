@@ -1,9 +1,10 @@
 #include "sound_driver.h"
 
-#include <Arduino.h>
-#include <Wire.h>
+#include <driver/gpio.h>
+#include <driver/i2c.h>
 #include <driver/i2s.h>
 #include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 namespace {
 constexpr i2s_port_t audioPort = I2S_NUM_0;
@@ -14,6 +15,7 @@ constexpr int i2sBclkPin = 5;
 constexpr int i2sDataPin = 8;
 constexpr int i2sLrclkPin = 7;
 constexpr uint8_t codecAddress = 0x18;
+constexpr i2c_port_t i2cPort = I2C_NUM_0;
 constexpr int16_t volume = 24000;
 constexpr size_t framesPerBuffer = 96;
 
@@ -44,16 +46,17 @@ SoundSequence sequenceFor(SoundEffect effect) {
 }  // namespace
 
 bool SoundDriver::writeCodecRegister(uint8_t reg, uint8_t value) {
-  Wire.beginTransmission(codecAddress);
-  Wire.write(reg);
-  Wire.write(value);
-  return Wire.endTransmission() == 0;
+  const uint8_t payload[] = {reg, value};
+  return i2c_master_write_to_device(i2cPort, codecAddress, payload, sizeof(payload), pdMS_TO_TICKS(50)) == ESP_OK;
 }
 
 void SoundDriver::begin() {
-  pinMode(audioEnablePin, OUTPUT);
-  digitalWrite(audioEnablePin, LOW);
-  delay(20);
+  gpio_config_t enableConfig = {};
+  enableConfig.pin_bit_mask = 1ULL << audioEnablePin;
+  enableConfig.mode = GPIO_MODE_OUTPUT;
+  gpio_config(&enableConfig);
+  gpio_set_level(static_cast<gpio_num_t>(audioEnablePin), 0);
+  vTaskDelay(pdMS_TO_TICKS(20));
 
   i2s_config_t config = {};
   config.mode = static_cast<i2s_mode_t>(I2S_MODE_MASTER | I2S_MODE_TX);
@@ -91,7 +94,7 @@ void SoundDriver::begin() {
       writeCodecRegister(0x0B, 0x00) && writeCodecRegister(0x0C, 0x00) &&
       writeCodecRegister(0x10, 0x1F) && writeCodecRegister(0x11, 0x7F) &&
       writeCodecRegister(0x00, 0x80);
-  delay(10);
+  vTaskDelay(pdMS_TO_TICKS(10));
   codecReady = codecReady &&
       writeCodecRegister(0x01, 0x3F) && writeCodecRegister(0x02, 0x00) &&
       writeCodecRegister(0x05, 0x00) && writeCodecRegister(0x03, 0x10) &&

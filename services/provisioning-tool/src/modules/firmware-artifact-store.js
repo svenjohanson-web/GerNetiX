@@ -9,6 +9,10 @@ class FirmwareArtifactStore {
     this.runtimeRoot = options.runtimeRoot || path.join(__dirname, "..", ".runtime");
     this.stateStore = options.stateStore || null;
     this.stateStore?.ensureSchema?.(firmwareArtifactSchema());
+    this.stateStore?.ensureMigrations?.("provisioning-firmware-artifacts-normalized", [{
+      version: 1,
+      statements: ["ALTER TABLE provisioning_firmware_artifacts ADD COLUMN chip TEXT"],
+    }]);
     const loaded = this.stateStore ? this.stateStore.load().artifacts || [] : [];
     this.artifacts = new Map([...(options.artifacts || []), ...loaded].map((artifact) => [artifact.artifact_id, normalizeArtifact(artifact)]));
   }
@@ -74,6 +78,7 @@ class FirmwareArtifactStore {
       sha256: input.sha256 || "",
       flash_strategy: input.flash_strategy || "esp32_merged_bin",
       flash_offset: input.flash_offset || "0x0",
+      chip: input.chip || "esp32",
       created_at: input.created_at || new Date().toISOString(),
       updated_at: new Date().toISOString(),
     });
@@ -165,6 +170,7 @@ function artifactColumns() {
     size_bytes: "size_bytes",
     flash_strategy: "flash_strategy",
     flash_offset: "flash_offset",
+    chip: "chip",
     created_at: "created_at",
     updated_at: "updated_at",
     raw_json: jsonColumn((row) => row),
@@ -185,6 +191,7 @@ function normalizeArtifact(input = {}) {
     size_bytes: Number(input.size_bytes || 0),
     flash_strategy: input.flash_strategy || "esp32_merged_bin",
     flash_offset: input.flash_offset || "0x0",
+    chip: input.chip || "esp32",
     created_at: input.created_at || "",
     updated_at: input.updated_at || "",
   };
@@ -202,6 +209,7 @@ function redactArtifact(artifact) {
     size_bytes: artifact.size_bytes,
     flash_strategy: artifact.flash_strategy,
     flash_offset: artifact.flash_offset,
+    chip: artifact.chip,
     local_staging_path: artifact.local_staging_path || "",
     materialized_file_path: artifact.materialized_file_path || "",
   };

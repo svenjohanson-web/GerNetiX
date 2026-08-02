@@ -29,6 +29,9 @@ Der Buildserver liefert mindestens zurueck:
 - Build-Status
 - SHA-256
 - Dateigroesse
+- `build_id`: SHA-256 des exakt zugeordneten `firmware.elf`
+
+Die interne Symbolisierung akzeptiert hoechstens 32 hexadezimale Adressen und nur, wenn die gemeldete `build_id` exakt dem gespeicherten ELF entspricht. Der Identity-Server stellt diese Funktion der IDE erst nach Account- und BuildJob-Ownership-Pruefung bereit.
 
 ## MVP-Implementierung
 

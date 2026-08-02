@@ -49,6 +49,23 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
   assert.equal(files.some((file) => file.path.startsWith(".vscode/")), false);
 });
 
+test("packages additional project C++ implementations behind the protected basis entrypoint", () => {
+  const files = composeEsp32BasissoftwarePackage({
+    basisFiles: loadEsp32BasissoftwareFiles(),
+    projectSources: [
+      { path: "Komponenten/IoT-Device 1/src/user_main.cpp", content: 'extern "C" void userMain() {}\nextern "C" void userTick() {}\n' },
+      { path: "Komponenten/IoT-Device 1/src/game.cpp", content: "int gameScore() { return 7; }\n" },
+      { path: "Komponenten/IoT-Device 1/include/game.h", content: "#pragma once\nint gameScore();\n" },
+    ],
+    buildConfig: { user_source_path: "Komponenten/IoT-Device 1/src/user_main.cpp" },
+  });
+
+  assert.equal(files.find((file) => file.path === "src/user_project/game.cpp").content, "int gameScore() { return 7; }\n");
+  assert.equal(files.find((file) => file.path === "include/user_project/game.h").content, "#pragma once\nint gameScore();\n");
+  assert.match(files.find((file) => file.path === "src/CMakeLists.txt").content, /GLOB_RECURSE GERNETIX_PACKAGED_PROJECT_SOURCES/);
+  assert.match(files.find((file) => file.path === "src/CMakeLists.txt").content, /\.\.\/include\/user_project/);
+});
+
 test("projects WLAN, MQTT topics and power states into the protected compiler header", () => {
   const files = composeEsp32BasissoftwarePackage({
     basisFiles: loadEsp32BasissoftwareFiles(),

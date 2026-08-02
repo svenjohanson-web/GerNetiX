@@ -35,6 +35,7 @@ function loadRemoteDevConfig(environment = process.env, options = {}) {
     IDENTITY_POSTGRES_USER: config.IDENTITY_POSTGRES_USER || "gernetix_runtime",
     PROJECT_SERVER_BASE_URL: config.PROJECT_SERVER_BASE_URL || "http://127.0.0.1:4800",
     BUILD_DEPLOY_BASE_URL: config.BUILD_DEPLOY_BASE_URL || "http://127.0.0.1:4400",
+    BUILD_WORKER_POOL_BASE_URL: config.BUILD_WORKER_POOL_BASE_URL || "http://127.0.0.1:14400",
     DEVICE_MANAGEMENT_BASE_URL: config.DEVICE_MANAGEMENT_BASE_URL || "http://127.0.0.1:4700",
     HARDWARE_SHOP_BASE_URL: config.HARDWARE_SHOP_BASE_URL || "http://127.0.0.1:4900",
     HARDWARE_CATALOG_BASE_URL: config.HARDWARE_CATALOG_BASE_URL || "http://10.77.0.1:4910",

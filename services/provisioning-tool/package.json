@@ -7,6 +7,7 @@
     "dev": "node src/dev-server.js",
     "prepare:toolchain": "node scripts/prepare-provisioning-toolchain.js",
     "seed:esp32-firmware": "node scripts/seed-esp32-basissoftware-artifact.js",
+    "seed:esp8266-hw364a-firmware": "node scripts/seed-esp8266-hw364a-basissoftware-artifact.js",
     "test": "node --test",
     "check": "node --check src/index.js && node --check src/dev-server.js"
   },

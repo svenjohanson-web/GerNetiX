@@ -1947,6 +1947,22 @@ button.danger:hover {
 .device-debug-status-grid > div { min-width: 0; border: 1px solid #334155; border-radius: 7px; padding: 9px; background: #111827; }
 .device-debug-status-grid dt { color: #94a3b8; font-size: .7rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
 .device-debug-status-grid dd { margin: 4px 0 0; overflow: hidden; color: #f8fafc; font-size: .88rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+.device-debug-crash { display: grid; gap: 10px; border: 1px solid #475569; border-radius: 8px; padding: 11px; background: #0b1018; }
+.device-debug-crash.critical { border-color: #b91c1c; background: rgba(127, 29, 29, .12); }
+.device-debug-crash > header { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
+.device-debug-crash h4 { margin: 2px 0 0; }
+.device-debug-crash > header > span { border-radius: 999px; padding: 4px 8px; background: #1e293b; color: #cbd5e1; font-size: .72rem; font-weight: 800; }
+.device-debug-crash dl { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 7px; margin: 0; }
+.device-debug-crash dl > div { min-width: 0; padding: 7px; border: 1px solid #263241; border-radius: 6px; }
+.device-debug-crash dt { color: #64748b; font-size: .67rem; font-weight: 800; text-transform: uppercase; }
+.device-debug-crash dd { margin: 3px 0 0; overflow: hidden; color: #e2e8f0; font-size: .78rem; text-overflow: ellipsis; white-space: nowrap; }
+.device-debug-symbol-status { margin: 0; padding: 8px; border-left: 3px solid #64748b; background: #111827; color: #94a3b8; font-size: .77rem; }
+.device-debug-symbol-status.build_artifact_mismatch,
+.device-debug-symbol-status.error { border-color: #dc2626; color: #fecaca; }
+.device-debug-stack > strong { font-size: .78rem; }
+.device-debug-stack ol { display: grid; gap: 5px; margin: 7px 0 0; padding: 0; list-style: none; }
+.device-debug-stack li { display: grid; grid-template-columns: 110px minmax(140px, .7fr) minmax(180px, 1fr) auto; gap: 8px; align-items: center; padding: 6px 8px; border: 1px solid #263241; border-radius: 5px; background: #070b11; font-size: .73rem; }
+.device-debug-stack small { overflow: hidden; color: #94a3b8; text-overflow: ellipsis; white-space: nowrap; }
 .device-debug-log-panel { display: grid; grid-template-rows: auto auto minmax(180px, 1fr); min-height: 320px; border: 1px solid #334155; border-radius: 8px; overflow: hidden; background: #070b11; }
 .device-debug-log-panel > header { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px; border-bottom: 1px solid #334155; background: #111827; }
 .device-debug-log-panel h4 { margin: 2px 0 0; }
@@ -1971,6 +1987,8 @@ button.danger:hover {
 @container (max-width: 800px) {
   .device-debug-connection { grid-template-columns: 1fr; }
   .device-debug-status-grid { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+  .device-debug-crash dl { grid-template-columns: repeat(2, minmax(120px, 1fr)); }
+  .device-debug-stack li { grid-template-columns: 90px minmax(0, 1fr); }
   .device-debug-event { grid-template-columns: 68px 52px minmax(80px, 110px) minmax(0, 1fr); }
 }
 .device-web-workspace { display: grid; grid-template-rows: auto auto minmax(320px, 1fr); gap: 8px; height: 100%; min-height: 0; }
@@ -3643,6 +3661,40 @@ textarea:read-only {
 .flash-status.running { background: #eff6ff; border-color: #93c5fd; color: #1d4ed8; }
 .flash-status.ok { background: #ecfdf5; border-color: #86efac; color: #166534; }
 .flash-status.error { background: #fef2f2; border-color: #fca5a5; color: #991b1b; }
+.flash-progress-heading {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+.flash-progress-message { min-width: 0; overflow-wrap: anywhere; }
+.flash-progress-value { flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+.flash-progress-track {
+  height: 9px;
+  margin-top: 9px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(29, 78, 216, .16);
+}
+.flash-progress-track > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: #2563eb;
+  transition: width .18s ease-out;
+}
+.flash-progress-track.indeterminate > span {
+  width: 38%;
+  animation: flash-progress-indeterminate 1.15s ease-in-out infinite;
+}
+@keyframes flash-progress-indeterminate {
+  from { transform: translateX(-110%); }
+  to { transform: translateX(285%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .flash-progress-track > span { transition: none; }
+  .flash-progress-track.indeterminate > span { width: 100%; animation: none; opacity: .55; }
+}
 .project-view-manifest {
   display: grid;
   gap: 12px;

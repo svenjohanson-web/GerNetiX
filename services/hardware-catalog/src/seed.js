@@ -69,6 +69,75 @@ function defaultCatalogSeed() {
         vendor: "Generic",
         module_name: "ESP-12F",
       }),
+      esp8266Board({
+        hardware_item_id: "hardware.processor_board.diymore_hw_364a_esp8266_oled",
+        sku: "GNX-DIYMORE-HW-364A-ESP8266-OLED",
+        title: "diymore HW-364A ESP8266 mit 0,96-Zoll-OLED",
+        summary: "ESP8266-Entwicklungsboard HW-364A mit ESP-12F, integriertem 0,96-Zoll-SSD1306-OLED und USB-C-Anschluss.",
+        vendor: "diymore",
+        form_factor: "integrated_oled_display",
+        module_name: "ESP-12F",
+        usb_serial_chip: "CH340",
+        cpu_architecture: "Xtensa 32-bit RISC",
+        cpu_core: "Tensilica Xtensa LX106",
+        clock_hz: 80000000,
+        extra_capability_ids: ["capability.display_output", "capability.i2c"],
+        factory_firmware_artifact: {
+          artifact_id: "firmware_artifact.esp8266_diymore_hw364a_basissoftware_factory.latest",
+          source: "sqlite",
+          uri: "sqlite://provisioning_firmware_artifacts/firmware_artifact.esp8266_diymore_hw364a_basissoftware_factory.latest",
+          version: "0.1.0",
+          sha256: "",
+        },
+        platformio_build: {
+          platform: "espressif8266",
+          board: "nodemcuv2",
+          environment: "diymore_hw_364a",
+          framework: "arduino",
+          supported_frameworks: ["arduino"],
+          monitor_speed: 115200,
+          upload_protocol: "esptool",
+          flash_size_mb: 4,
+          libraries: ["olikraus/U8g2@^2.36.17"],
+          firmware_basis_id: "",
+        },
+        pin_profile: {
+          analog_inputs: ["A0"],
+          digital_pins: ["D0 / GPIO16", "D1 / GPIO5", "D2 / GPIO4", "D3 / GPIO0", "D4 / GPIO2", "D7 / GPIO13", "D8 / GPIO15", "RX / GPIO3", "TX / GPIO1"],
+          pwm_pins: ["D1 / GPIO5", "D2 / GPIO4", "D3 / GPIO0", "D4 / GPIO2", "D7 / GPIO13", "D8 / GPIO15"],
+          i2c: ["OLED: SDA D6 / GPIO14 + SCL D5 / GPIO12"],
+          assigned_pins: {
+            display_i2c: { sda: 14, scl: 12 },
+          },
+          diagnostic_output_allowlist: ["GPIO4", "GPIO5", "GPIO13"],
+          diagnostic_note: "GPIO12 und GPIO14 sind fest mit dem OLED verbunden. GPIO0, GPIO2 und GPIO15 beeinflussen den Bootmodus; GPIO1 und GPIO3 sind fuer UART belegt.",
+        },
+        default_instance_configuration: {
+          board_model: "HW-364A",
+          verification_status: "user_reference",
+          board_features: {
+            display: {
+              enabled: true,
+              hardware: "oled",
+              driver: "ssd1306",
+              connection: "i2c",
+              address: "0x3C",
+              diagonal_in: 0.96,
+              width: 128,
+              height: 64,
+              verification_status: "user_reference",
+            },
+            flash: { enabled: true, hardware: "qspi_flash", value: "4_mb" },
+            ram: { enabled: true, hardware: "internal_sram", value: "64_kb", verification_status: "user_confirmed" },
+            wifi: { enabled: true, hardware: "2_4_ghz", driver: "arduino_wifi" },
+          },
+        },
+        verification_status: "user_reference",
+        evidence: {
+          source_type: "user_supplied_product_pinout_and_specifications",
+          source_reference: "diymore HW-364A ESP8266 OLED pinout and confirmed hardware data",
+        },
+      }),
       esp32Board({
         hardware_item_id: "hardware.processor_board.generic_esp_wroom32",
         sku: "GNX-ESP32-WROOM32-GENERIC",
@@ -736,11 +805,11 @@ function esp8266Board(input) {
     ...input,
     processor_family: "esp8266",
     mcu_variant: input.mcu_variant || "ESP8266EX",
-    capability_ids: ["capability.processor_esp8266", "capability.wifi", "capability.device_http_status", "capability.captive_setup_supported", "capability.basissoftware_supported", "capability.usb_identification", "capability.flash_firmware", "capability.digital_input", "capability.digital_output"],
+    capability_ids: ["capability.processor_esp8266", "capability.wifi", "capability.device_http_status", "capability.captive_setup_supported", "capability.basissoftware_supported", "capability.usb_identification", "capability.flash_firmware", "capability.digital_input", "capability.digital_output", ...(input.extra_capability_ids || [])],
     basissoftware_profile_id: "basissoftware.profile.esp8266_factory",
     provisioning_profile_id: "provisioning_profile.esp8266_basissoftware",
     min_basissoftware_version: "0.1.0",
-    platformio_build: {
+    platformio_build: input.platformio_build || {
       platform: "espressif8266",
       board: isD1Mini ? "d1_mini" : "esp12e",
       environment: isD1Mini ? "d1_mini" : "esp12e",
@@ -751,19 +820,21 @@ function esp8266Board(input) {
       flash_size_mb: 4,
       firmware_basis_id: "",
     },
-    default_instance_configuration: {
+    default_instance_configuration: input.default_instance_configuration || {
       board_features: {
         flash: { enabled: true, hardware: "qspi_flash", value: "4_mb" },
         ram: { enabled: true, hardware: "internal_sram", value: "80_kb" },
         wifi: { enabled: true, hardware: "2_4_ghz", driver: "arduino_wifi" },
       },
     },
-    pin_profile: {
+    pin_profile: input.pin_profile || {
       analog_inputs: ["A0"],
       digital_pins: ["D1 / GPIO5", "D2 / GPIO4", "D5 / GPIO14", "D6 / GPIO12", "D7 / GPIO13"],
       pwm_pins: ["D1 / GPIO5", "D2 / GPIO4", "D5 / GPIO14", "D6 / GPIO12", "D7 / GPIO13"],
       i2c: ["SDA D2 / GPIO4 + SCL D1 / GPIO5"],
     },
+    verification_status: input.verification_status,
+    evidence: input.evidence,
   });
 }
 
@@ -793,7 +864,7 @@ function esp32Board(input) {
     platformio_build: input.platformio_build || (isEs3c28p ? {
       platform: "espressif32", board: "esp32-s3-devkitc-1", environment: "es3c28p", framework: "arduino",
       monitor_speed: 115200, upload_protocol: "esptool", flash_size_mb: 16,
-      supported_frameworks: ["arduino"],
+      supported_frameworks: ["arduino", "espidf"],
       libraries: ["lovyan03/LovyanGFX@^1.2.7"], build_flags: ["-D ARDUINO_USB_MODE=1", "-D ARDUINO_USB_CDC_ON_BOOT=1"],
       firmware_basis_id: "",
     } : isCamera ? {
@@ -918,6 +989,10 @@ function networkBoard(input) {
     mcu_variant: input.mcu_variant,
     module_name: input.module_name || "",
     module_memory_variant: input.module_memory_variant || "",
+    usb_serial_chip: input.usb_serial_chip || "",
+    cpu_architecture: input.cpu_architecture || "",
+    cpu_core: input.cpu_core || "",
+    clock_hz: Number(input.clock_hz) || 0,
     firmware_build_target_id: input.firmware_build_target_id
       || (input.mcu_variant === "ESP32" ? "firmware_build_target.esp32_classic_qspi_4mb" : "")
       || (input.mcu_variant === "ESP32-C6" ? "firmware_build_target.esp32_c6_qspi_4mb" : ""),

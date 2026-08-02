@@ -15,6 +15,7 @@
 #include "esp_timer.h"
 
 #include "basissoftware/config.h"
+#include "basissoftware/crash_diagnostics.h"
 #include "basissoftware/feedback.h"
 #include "basissoftware/wifi_manager.h"
 #include "gernetix/runtime_core.h"
@@ -45,23 +46,29 @@ const char *resetReasonName(esp_reset_reason_t reason) {
 }
 
 void writeDiagnosticsStatusJson(char *target, size_t targetSize) {
+  char buildId[65] = {};
+  char crashReport[1024] = {};
   char uptime[32] = {};
   char freeHeap[24] = {};
   char minimumHeap[24] = {};
   std::snprintf(uptime, sizeof(uptime), "%lld", static_cast<long long>(esp_timer_get_time() / 1000));
   std::snprintf(freeHeap, sizeof(freeHeap), "%u", static_cast<unsigned>(esp_get_free_heap_size()));
   std::snprintf(minimumHeap, sizeof(minimumHeap), "%u", static_cast<unsigned>(esp_get_minimum_free_heap_size()));
+  writeFirmwareBuildId(buildId, sizeof(buildId));
+  if (!writeCrashDiagnosticsJson(crashReport, sizeof(crashReport))) std::snprintf(crashReport, sizeof(crashReport), "null");
   gernetix::runtime::JsonWriter writer{target, targetSize, 0, false};
   target[0] = '\0';
   gernetix::runtime::jsonBegin(writer);
   gernetix::runtime::jsonAppendString(writer, "firmware_version", GERNETIX_RUNTIME_VERSION);
   gernetix::runtime::jsonAppendString(writer, "basissoftware_version", GERNETIX_BASISSOFTWARE_VERSION);
   gernetix::runtime::jsonAppendString(writer, "basissoftware_variant", GERNETIX_BASISSOFTWARE_VARIANT);
+  gernetix::runtime::jsonAppendString(writer, "build_id", buildId);
   gernetix::runtime::jsonAppendRaw(writer, "uptime_ms", uptime);
   gernetix::runtime::jsonAppendString(writer, "reset_reason", resetReasonName(esp_reset_reason()));
   gernetix::runtime::jsonAppendRaw(writer, "free_heap_bytes", freeHeap);
   gernetix::runtime::jsonAppendRaw(writer, "minimum_free_heap_bytes", minimumHeap);
   gernetix::runtime::jsonAppendString(writer, "wifi_state", wifiStationStateName());
+  gernetix::runtime::jsonAppendRaw(writer, "crash_report", crashReport);
   gernetix::runtime::jsonEnd(writer);
 }
 

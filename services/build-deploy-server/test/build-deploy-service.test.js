@@ -39,6 +39,7 @@ test("build job produces required artifacts and removes temporary project worksp
   assert.equal(job.result.build.primary_firmware.file_name, "firmware.bin");
   assert.ok(job.result.build.artifacts["firmware.bin"].sha256);
   assert.ok(job.result.build.artifacts["firmware.elf"].size_bytes > 0);
+  assert.equal(job.result.build.build_id, job.result.build.artifacts["firmware.elf"].sha256);
   assert.equal(job.result.deploy.status, "not_requested");
   assert.deepEqual(job.progress.map((entry) => entry.phase), ["preparing", "packaging", "compiling", "artifacts", "completed"]);
 

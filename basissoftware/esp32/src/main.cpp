@@ -7,6 +7,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "basissoftware/factory_provisioning.h"
+#include "basissoftware/crash_diagnostics.h"
 #include "basissoftware/serial_provisioning.h"
 #if !defined(GERNETIX_BASISSOFTWARE_PROFILE_MEDIUM) && !defined(GERNETIX_BASISSOFTWARE_PROFILE_LOW)
 #include "basissoftware/mqtt_ota.h"
@@ -16,6 +17,8 @@
 
 extern "C" void app_main() {
   initSerial();
+  initializeCrashDiagnostics();
+  startCrashDiagnosticsMonitor();
   initPins();
   initWifi();
 #if !defined(GERNETIX_DIAGNOSTIC_DISABLE_USB_PROVISIONING) && !defined(GERNETIX_DIAGNOSTIC_DISABLE_SERIAL_PROVISIONING_TASK)

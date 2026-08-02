@@ -7,6 +7,7 @@ class BuildDeployService {
     this.packageStore = options.packageStore;
     this.runner = options.runner;
     this.artifactStore = options.artifactStore;
+    this.elfSymbolizer = options.elfSymbolizer;
     this.deployOrchestrator = options.deployOrchestrator;
     this.deviceJobLock = options.deviceJobLock;
     this.buildTargetLock = options.buildTargetLock;
@@ -81,6 +82,29 @@ class BuildDeployService {
     const shared = await this.buildCoordination?.getJob(jobId);
     if (shared) return shared;
     throw new BuildDeployError("job_not_found", "BuildJob wurde nicht gefunden.", 404);
+  }
+
+  async symbolizeCrash(jobId, input = {}) {
+    const buildId = String(input.build_id || "").toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(buildId)) {
+      throw new BuildDeployError("invalid_build_id", "Build-ID muss ein SHA-256-Wert sein.", 400);
+    }
+    const addresses = Array.from(new Set(Array.isArray(input.addresses) ? input.addresses : []))
+      .map((value) => String(value || "").toLowerCase())
+      .filter((value) => /^0x[a-f0-9]{1,16}$/.test(value));
+    if (!addresses.length || addresses.length > 32) {
+      throw new BuildDeployError("invalid_crash_addresses", "Es werden 1 bis 32 hexadezimale Crash-Adressen benötigt.", 400);
+    }
+    const elf = await this.artifactStore.getArtifact(jobId, "firmware.elf");
+    if (!elf) throw new BuildDeployError("build_elf_missing", "Das ELF-Artefakt dieses Builds fehlt.", 404);
+    if (String(elf.sha256 || "").toLowerCase() !== buildId) {
+      throw new BuildDeployError("build_artifact_mismatch", "Crash-Bericht und ELF besitzen unterschiedliche Build-IDs.", 409, {
+        reported_build_id: buildId,
+        artifact_build_id: String(elf.sha256 || "").toLowerCase(),
+      });
+    }
+    const frames = await this.elfSymbolizer.symbolize(elf.content_blob, addresses);
+    return { status: "symbolized", build_id: buildId, artifact: "firmware.elf", frames };
   }
 
   async cancelJob(jobId) {
@@ -282,6 +306,7 @@ class BuildDeployService {
       throwIfCancelled(job);
       const buildResult = {
         status: buildOutput.status,
+        build_id: artifacts["firmware.elf"]?.sha256 || "",
         artifacts,
         flash_manifest: Array.isArray(buildOutput.flash_manifest) ? buildOutput.flash_manifest : [],
         primary_firmware: selectPrimaryFirmware(artifacts),

@@ -216,8 +216,8 @@ class ProvisioningService {
     return summarizeFirmwareArtifact(this.resolveFirmwareArtifact(processorBoard?.factory_firmware_artifact || this.firmwareArtifact));
   }
 
-  getFlashMode() {
-    return this.usbFlashRunner.mode({ artifact_ready: this.hasMaterializableArtifact() });
+  getFlashMode(artifactId = "") {
+    return this.usbFlashRunner.mode({ artifact_ready: this.hasMaterializableArtifact(artifactId) });
   }
 
   getFirmwareArtifactContent(artifactId) {
@@ -702,7 +702,8 @@ class ProvisioningService {
     return stored || artifact;
   }
 
-  hasMaterializableArtifact() {
+  hasMaterializableArtifact(requestedArtifactId = "") {
+    if (requestedArtifactId) return Boolean(this.firmwareArtifactStore.getArtifact(requestedArtifactId));
     const artifactId = this.firmwareArtifact?.artifact_id || "";
     if (artifactId && this.firmwareArtifactStore.getArtifact(artifactId)) return true;
     return this.firmwareArtifactStore.listArtifacts().length > 0;
@@ -995,6 +996,10 @@ function summarizeFirmwareArtifact(artifact) {
       uri: "",
       version: "",
       sha256: "",
+      file_name: "",
+      flash_strategy: "",
+      flash_offset: "",
+      chip: "",
     };
   }
   return {
@@ -1003,6 +1008,10 @@ function summarizeFirmwareArtifact(artifact) {
     uri: artifact.uri || "",
     version: artifact.version || "",
     sha256: artifact.sha256 || "",
+    file_name: artifact.file_name || "",
+    flash_strategy: artifact.flash_strategy || "",
+    flash_offset: artifact.flash_offset || "",
+    chip: artifact.chip || "",
   };
 }
 

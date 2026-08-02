@@ -110,6 +110,9 @@ final class FlashJob {
     var logs: [String] = []
     var error = ""
     var chipName = ""
+    var percent = 0
+    var phase = "preparing"
+    var message = "Flash wird vorbereitet."
     var process: Process?
 
     init() {
@@ -124,6 +127,9 @@ final class FlashJob {
             "logs": Array(logs.suffix(100)),
             "error": error,
             "chipName": chipName,
+            "percent": percent,
+            "phase": phase,
+            "message": message,
             "createdAt": createdAt,
         ]
     }
@@ -157,7 +163,7 @@ final class SerialService {
             if request.method == "GET" && request.path == "/v1/status" {
                 return jsonResponse(200, [
                     "service": "gernetix-serial-service",
-                    "version": "0.3.9",
+                    "version": "0.3.10",
                     "protocolVersion": 1,
                     "runtime": "native-swift",
                     "capabilities": ["ports", "probe", "flash", "serial_provisioning", "local_device_diagnostics"],
@@ -269,7 +275,12 @@ final class SerialService {
     }
 
     private func executeFlashJob(_ job: FlashJob, port: String, files: [FlashFile]) {
-        lock.withLock { job.status = "running" }
+        lock.withLock {
+            job.status = "running"
+            job.percent = 2
+            job.phase = "preparing"
+            job.message = "Flashpaket wird vorbereitet."
+        }
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent("gernetix-\(job.id)", isDirectory: true)
         defer { try? FileManager.default.removeItem(at: directory) }
         do {
@@ -289,6 +300,11 @@ final class SerialService {
                 String(format: "0x%x", merged.address),
                 image.path,
             ], job: job)
+            lock.withLock {
+                job.percent = max(job.percent, 75)
+                job.phase = "verifying"
+                job.message = "Geschriebene Firmware wird vollständig zurückgelesen und geprüft."
+            }
             let readResult = try runEspflash(command: "read-flash", port: port, extraArguments: [
                 "--baud", "460800",
                 "--after", "watchdog-reset",
@@ -309,6 +325,9 @@ final class SerialService {
                 appendJobLog(job, output)
                 if job.status != "cancelled" {
                     job.status = "succeeded"
+                    job.percent = 100
+                    job.phase = "completed"
+                    job.message = "Firmware wurde vollständig geschrieben und verifiziert."
                     job.logs.append("Flash verifiziert: \(merged.data.count) Byte, SHA-256 \(verifiedHash).")
                     job.logs.append("Firmware wurde vollständig geschrieben, zurückgelesen und verifiziert.")
                 }
@@ -352,16 +371,42 @@ final class SerialService {
             process.standardOutput = pipe
             process.standardError = pipe
             lock.withLock { job?.process = process }
+            var outputData = Data()
+            var pendingOutput = ""
+            let outputHandle = pipe.fileHandleForReading
+            let consumeOutput: (Data, Bool) -> Void = { [weak self, weak job] data, flush in
+                guard let self else { return }
+                self.lock.withLock {
+                    outputData.append(data)
+                    if !data.isEmpty {
+                        pendingOutput += (String(data: data, encoding: .utf8) ?? "").replacingOccurrences(of: "\r", with: "\n")
+                    }
+                    var lines = pendingOutput.components(separatedBy: "\n")
+                    pendingOutput = flush ? "" : (lines.popLast() ?? "")
+                    if flush, !pendingOutput.isEmpty { lines.append(pendingOutput) }
+                    guard let job else { return }
+                    for line in lines {
+                        self.recordEspflashProgress(job, command: command, line: line)
+                    }
+                }
+            }
+            outputHandle.readabilityHandler = { handle in
+                let data = handle.availableData
+                if !data.isEmpty { consumeOutput(data, false) }
+            }
             do {
                 try process.run()
                 process.waitUntilExit()
-                let output = String(data: pipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
+                outputHandle.readabilityHandler = nil
+                consumeOutput(outputHandle.readDataToEndOfFile(), true)
+                let output = lock.withLock { String(data: outputData, encoding: .utf8) ?? "" }
                 lock.withLock { job?.process = nil }
                 if process.terminationStatus == 0 {
                     return (output, process.terminationStatus)
                 }
                 lastError = ServiceError("espflash_failed", meaningfulEspflashError(output))
             } catch {
+                outputHandle.readabilityHandler = nil
                 lock.withLock { job?.process = nil }
                 lastError = error
             }
@@ -370,6 +415,24 @@ final class SerialService {
             }
         }
         throw lastError ?? ServiceError("espflash_failed", "Das Board konnte nicht angesprochen werden.")
+    }
+
+    private func recordEspflashProgress(_ job: FlashJob, command: String, line: String) {
+        let cleanLine = stripANSI(line).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !cleanLine.isEmpty else { return }
+        appendJobLog(job, cleanLine)
+        guard let rawPercent = firstMatch(cleanLine, patterns: [#"(\d{1,3})\s*%"#]),
+              let operationPercent = Int(rawPercent) else { return }
+        let bounded = max(0, min(100, operationPercent))
+        if command == "write-bin" {
+            job.percent = max(job.percent, 5 + Int(Double(bounded) * 0.70))
+            job.phase = "writing"
+            job.message = "Firmware wird geschrieben: \(bounded) %."
+        } else if command == "read-flash" {
+            job.percent = max(job.percent, 75 + Int(Double(bounded) * 0.24))
+            job.phase = "verifying"
+            job.message = "Geschriebene Firmware wird geprüft: \(bounded) %."
+        }
     }
 }
 

@@ -1,8 +1,11 @@
 #include "board_adapter.h"
 
-#include <Arduino.h>
 #include <LovyanGFX.hpp>
-#include <Wire.h>
+#include <algorithm>
+#include <driver/gpio.h>
+#include <driver/i2c.h>
+#include <freertos/FreeRTOS.h>
+#include <freertos/task.h>
 
 namespace {
 constexpr int pin_mosi = 11;
@@ -15,6 +18,7 @@ constexpr int pin_touch_sda = 16;
 constexpr int pin_touch_scl = 15;
 constexpr int pin_touch_reset = 18;
 constexpr uint8_t touch_address = 0x38;
+constexpr i2c_port_t i2c_port = I2C_NUM_0;
 
 class Es3c28pDisplay : public lgfx::LGFX_Device {
   lgfx::Panel_ILI9341 panel_;
@@ -75,22 +79,33 @@ lgfx::LGFX_Sprite frameBuffer(&display);
 bool frameBufferReady = false;
 
 uint8_t readTouchRegister(uint8_t reg) {
-  Wire.beginTransmission(touch_address);
-  Wire.write(reg);
-  if (Wire.endTransmission(false) != 0 || Wire.requestFrom(touch_address, static_cast<uint8_t>(1)) != 1) return 0;
-  return Wire.read();
+  uint8_t value = 0;
+  return i2c_master_write_read_device(i2c_port, touch_address, &reg, 1, &value, 1, pdMS_TO_TICKS(50)) == ESP_OK
+      ? value
+      : 0;
 }
 }  // namespace
 
 void BoardAdapter::begin() {
-  pinMode(pin_touch_reset, OUTPUT);
-  digitalWrite(pin_touch_reset, LOW);
-  delay(10);
-  digitalWrite(pin_touch_reset, HIGH);
-  delay(120);
-  Wire.begin(pin_touch_sda, pin_touch_scl);
-  Wire.setClock(400000);
-  Wire.setTimeOut(50);
+  gpio_config_t resetConfig = {};
+  resetConfig.pin_bit_mask = 1ULL << pin_touch_reset;
+  resetConfig.mode = GPIO_MODE_OUTPUT;
+  gpio_config(&resetConfig);
+  gpio_set_level(static_cast<gpio_num_t>(pin_touch_reset), 0);
+  vTaskDelay(pdMS_TO_TICKS(10));
+  gpio_set_level(static_cast<gpio_num_t>(pin_touch_reset), 1);
+  vTaskDelay(pdMS_TO_TICKS(120));
+
+  i2c_config_t i2cConfig = {};
+  i2cConfig.mode = I2C_MODE_MASTER;
+  i2cConfig.sda_io_num = static_cast<gpio_num_t>(pin_touch_sda);
+  i2cConfig.scl_io_num = static_cast<gpio_num_t>(pin_touch_scl);
+  i2cConfig.sda_pullup_en = GPIO_PULLUP_ENABLE;
+  i2cConfig.scl_pullup_en = GPIO_PULLUP_ENABLE;
+  i2cConfig.master.clk_speed = 400000;
+  i2c_param_config(i2c_port, &i2cConfig);
+  const esp_err_t installResult = i2c_driver_install(i2c_port, I2C_MODE_MASTER, 0, 0, 0);
+  if (installResult != ESP_OK && installResult != ESP_ERR_INVALID_STATE) return;
 
   display.init();
   display.setRotation(0);
@@ -112,8 +127,8 @@ TouchPoint BoardAdapter::readTouch() {
   const int rawX = ((readTouchRegister(0x03) & 0x0F) << 8) | readTouchRegister(0x04);
   const int rawY = ((readTouchRegister(0x05) & 0x0F) << 8) | readTouchRegister(0x06);
   // These axes are physically inverted on the ES3C28P touch overlay.
-  return {true, static_cast<int16_t>(constrain(width - 1 - rawX, 0, width - 1)),
-          static_cast<int16_t>(constrain(height - 1 - rawY, 0, height - 1))};
+  return {true, static_cast<int16_t>(std::clamp(width - 1 - rawX, 0, width - 1)),
+          static_cast<int16_t>(std::clamp(height - 1 - rawY, 0, height - 1))};
 }
 
 void BoardAdapter::clear(uint16_t color) {

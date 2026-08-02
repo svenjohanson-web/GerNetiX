@@ -68,7 +68,7 @@ async function createSession(event) {
     const manifest = await getJson(`/api/provisioning-sessions/${encodeURIComponent(session.session_id)}/manifest`);
     state.session = { ...session, manifest };
     saveBrowserSessionState(state.session);
-    state.flashMode = await getJson("/api/provisioning-flash-mode").catch(() => state.flashMode);
+    state.flashMode = await getJson(`/api/provisioning-flash-mode?artifact_id=${encodeURIComponent(state.firmwareArtifact?.artifact_id || "")}`).catch(() => state.flashMode);
     render();
     setStatus("flashStatus", "ok", "Session und USB-Factory-Header wurden vorbereitet. USB-Flash kann gestartet werden, sobald Firmware-Artefakt und USB-Geraet bereit sind.");
   } catch (error) {
@@ -139,7 +139,7 @@ async function selectHardwareTarget() {
   state.firmwareArtifact = hardwareClass === "processor_board"
     ? await getJson(`/api/provisioning-firmware-artifact?processor_board_id=${encodeURIComponent(target.hardware_item_id)}`).catch(() => target.factory_firmware_artifact || null)
     : target.factory_firmware_artifact || null;
-  state.flashMode = await getJson("/api/provisioning-flash-mode").catch(() => state.flashMode);
+  state.flashMode = await getJson(`/api/provisioning-flash-mode?artifact_id=${encodeURIComponent(state.firmwareArtifact?.artifact_id || "")}`).catch(() => state.flashMode);
   renderFlashMode();
   render();
 }
@@ -163,7 +163,7 @@ async function executeUsbFlash() {
     logs: [],
   });
   try {
-    const result = await flashEsp32InBrowser(operation);
+    const result = await flashEspressifInBrowser(operation);
     if (operation.canceled || state.flashOperation?.id !== operation.id) return;
     const updated = await postJson(`/api/provisioning-sessions/${encodeURIComponent(state.session.session_id)}/browser-usb-flash-result`, {
       status: "flashed",
@@ -217,7 +217,7 @@ async function completeSession() {
     completed_by: value("#actor"),
     quality_check_state: "passed",
     connectivity_status: "unknown",
-    ota_status: "ready",
+    ota_status: selectedCapabilities().includes("ota") ? "ready" : "not_supported",
   });
   const manifest = await getJson(`/api/provisioning-sessions/${encodeURIComponent(completed.session_id)}/manifest`);
   state.session = { ...completed, manifest };
@@ -401,7 +401,7 @@ function needsUsbTargetSelection() {
   return !state.serialPort;
 }
 
-async function flashEsp32InBrowser(operation) {
+async function flashEspressifInBrowser(operation) {
   const artifact = state.session?.manifest?.firmware?.artifact || state.firmwareArtifact;
   if (!artifact?.artifact_id) {
     throw new Error("Kein Firmware-Artefakt fuer den Browser-Flash vorhanden.");
@@ -453,7 +453,7 @@ async function flashEsp32InBrowser(operation) {
       port: selectedUsbPort(),
       percent: 10,
       phase: "connecting",
-      message: "ESP32 Bootloader wird verbunden...",
+      message: "Espressif-Bootloader wird verbunden...",
       logs: logLines.map((entry) => ({ line: entry })),
     });
     const loader = new ESPLoader({
@@ -616,7 +616,12 @@ function selectedCapabilities() {
       ? target.capabilities
       : ["flashbox.self_update", "flashbox.usb_otg_host", "flashbox.target_flash", "flashbox.signed_manifest_download"];
   }
-  return ["wifi", "ota", "mqtt", "flash_firmware"];
+  const target = selectedHardwareTarget();
+  const capabilityIds = Array.isArray(target?.capability_ids) ? target.capability_ids : [];
+  const capabilities = capabilityIds
+    .filter((capabilityId) => ["capability.wifi", "capability.ota", "capability.mqtt", "capability.flash_firmware"].includes(capabilityId))
+    .map((capabilityId) => capabilityId.replace(/^capability\./, ""));
+  return capabilities.length ? capabilities : ["wifi", "flash_firmware"];
 }
 
 function defaultSerialNumberFor(hardwareClass, current) {

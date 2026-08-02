@@ -41,7 +41,7 @@ Eigenstaendige Oberflaeche:
 http://127.0.0.1:4500/
 ```
 
-Das Provisioning Tool ist ein eigenstaendiges Factory-/Support-Werkzeug. Es bereitet Manifest und USB-Flash vor, laesst den ESP32 sein P-256-Schluesselpaar lokal erzeugen, stellt fuer dessen Public Key ein mTLS-Client-Zertifikat aus und prueft den Schluesselbesitz per signierter Challenge. Beim Abschluss registriert es nur Public Key und Zertifikatsmetadaten im Device Management Server.
+Das Provisioning Tool ist ein eigenstaendiges Factory-/Support-Werkzeug. Es bereitet Manifest und USB-Flash vor, laesst das Zielboard sein P-256-Schluesselpaar lokal erzeugen, stellt fuer dessen Public Key ein mTLS-Client-Zertifikat aus und prueft den Schluesselbesitz per signierter Challenge. Beim Abschluss registriert es nur Public Key und Zertifikatsmetadaten im Device Management Server.
 
 Das Provisioning Tool flasht die Basissoftware fuer die physische Erstinbetriebnahme ausschliesslich ueber USB. Die Board-spezifische Kennung wird danach ueber den lokalen Device-Endpunkt `/provisioning` in den NVS-Speicher der Basissoftware geschrieben. Dadurch kann ein generisches, serverseitiges Firmware-Artefakt fuer mehrere Boards verwendet werden, ohne fuer jede Seriennummer neu zu bauen. Die Basissoftware darf im Serverbetrieb nicht aus der lokalen Projektumgebung gelesen werden. Stattdessen referenziert das Tool ein versioniertes Firmware-Artefakt aus SQLite/Artifact Store, z. B.:
 
@@ -65,9 +65,9 @@ Nach dem Flash startet das Board den lokalen Device-Webserver. Die HMI sendet Id
 
 ## Flashbox-Register/Pairing im Tool
 
-Die HMI unterscheidet im ersten Schritt zwischen `ESP32 / Zielboard` und `GerNetiX Flashbox`.
+Die HMI unterscheidet im ersten Schritt zwischen `ProcessorBoard / Zielboard` und `GerNetiX Flashbox`.
 
-Bei `ESP32 / Zielboard` bleibt der bisherige Ablauf aktiv: ProcessorBoard waehlen, Firmware-Artefakt pruefen, per Browser-Web-Serial flashen, Kennung auf dem Board speichern und Session abschliessen.
+Bei `ProcessorBoard / Zielboard` bleibt der bisherige Ablauf aktiv: ProcessorBoard waehlen, Firmware-Artefakt pruefen, per Browser-Web-Serial flashen, Kennung auf dem Board speichern und Session abschliessen. Die Session uebernimmt nur die vom Hardware Catalog ausgewiesenen Runtime-Faehigkeiten; das ESP8266-Profil behauptet daher insbesondere keine OTA-Bereitschaft.
 
 Bei `GerNetiX Flashbox` wird eine konkrete Flashbox-Produktklasse aus dem Hardware Catalog gewaehlt. Die Session enthaelt `hardware_class = flashbox`, `flashbox_id`, Seriennummer, Purchase-/Inventory-Policy und Flashbox-Capabilities wie `flashbox.self_update`, `flashbox.usb_otg_host` und `flashbox.target_flash`. Die UI bietet keinen Weg an, eine selbst gebaute Flashbox als GerNetiX-Flashbox anzulegen. Ist der Flashbox-Modus gewaehlt, ist der Zielboard-Web-Serial-Flash deaktiviert; der Schritt dient zunaechst Register, Pairing und spaeterem Inventory-Claim.
 
@@ -118,6 +118,18 @@ firmware_artifact.esp32_basissoftware_factory.latest
 sqlite://provisioning_firmware_artifacts/firmware_artifact.esp32_basissoftware_factory.latest
 ```
 
+Fuer das diymore HW-364A wird zuerst die ESP8266-Basissoftware gebaut und anschließend das einzelne App-Binary bereitgestellt:
+
+```powershell
+cd basissoftware/esp8266
+platformio run -e diymore_hw_364a
+node build-factory-firmware.js
+cd ../../services/provisioning-tool
+npm run seed:esp8266-hw364a-firmware
+```
+
+Das Board referenziert danach `firmware_artifact.esp8266_diymore_hw364a_basissoftware_factory.latest` mit `chip = esp8266` und Flash-Offset `0x0`.
+
 Der Server muss fuer den Browser-USB-Flash mit SQLite-Persistenz und serverseitigem Firmware-Artefakt laufen, zum Beispiel:
 
 ```powershell
@@ -147,7 +159,7 @@ Konfiguration erfolgt ueber Umgebungsvariablen:
 
 ## Sicherheitsregeln
 
-- Private Device-Schluessel werden auf dem ESP32 erzeugt und verlassen das Board nicht.
+- Private Device-Schluessel werden auf dem Zielboard erzeugt und von der Basissoftware nicht exportiert. Beim ESP8266 besteht mangels Flash-Verschluesselung kein Schutz gegen physische Flash-Extraktion.
 - Die Factory-HMI bietet keinen Firmware-Dateiupload und keinen manuellen Artefakt-Registrierbutton.
 - Status- und Manifest-Endpunkte geben nur Credential-, Public-Key-Fingerprint- und Zertifikatsmetadaten aus.
 - USB-Flash-Paket und Factory-Header enthalten weder Shared Secret noch privaten Device- oder OTA-Schluessel.

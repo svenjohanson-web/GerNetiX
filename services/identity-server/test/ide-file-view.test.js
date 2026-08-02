@@ -67,7 +67,7 @@ test("build terminal appends the Flash and RAM summary only for successful build
   assert.doesNotMatch(app, /\["succeeded", "failed", "replaced"\]\.includes\(current\.status\)/);
   assert.match(app, /appendBuildMemorySummary\(current\)/);
   assert.match(app, /waitForCompletedBuild\(build, \{[\s\S]*appendMemorySummary: false/);
-  assert.match(app, /if \(!failed && !cancelled\) completed\.forEach\(appendBuildMemorySummary\)/);
+  assert.match(app, /if \(!failed && !cancelled && !unavailable\) completed\.forEach\(appendBuildMemorySummary\)/);
   assert.match(app, /Speicherbelegung · Firmware-Partition \(Flash\):/);
   assert.match(app, /RAM: \$\{formatPlatformioMemoryUsage\(ram\)\}/);
   assert.match(app, /Flash-Wert = App-Slot, nicht gesamter Gerätespeicher/);

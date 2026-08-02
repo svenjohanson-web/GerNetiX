@@ -67,6 +67,14 @@ Liefert Status, Ergebnis, Fehler und Artefaktmetadaten aus dem zentralen Postgre
 
 Eine `job_id` darf systemweit nur einmal registriert werden. Ein zweiter Auftrag mit derselben ID wird mit HTTP 409 abgewiesen.
 
+Ein erfolgreicher Firmware-Build liefert `build.build_id` als SHA-256 des gespeicherten `firmware.elf`.
+
+```text
+POST /api/build-jobs/{job_id}/symbolize
+```
+
+Der interne Endpunkt erwartet exakt diese `build_id` und 1 bis 32 hexadezimale Programm-/Backtrace-Adressen. Er verwendet `addr2line` ohne Shell und liefert nur Funktion, Datei und Zeile. Ein anderes ELF wird mit `build_artifact_mismatch` abgewiesen. Nutzerzugriff erfolgt nicht direkt, sondern ueber den account- und BuildJob-geprueften Identity-Server-Proxy.
+
 ```text
 GET /artifacts/{job_id}/{file_name}
 ```

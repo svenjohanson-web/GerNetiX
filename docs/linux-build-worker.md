@@ -57,6 +57,8 @@ node tools/build-worker.js stop
 
 Das Startkommando baut das schlanke Linux-Worker-Image mit PlatformIO 6.1.18 und startet genau einen `build_only`-Container. Auf macOS läuft derselbe Container in Docker Desktop; der fachliche Worker-Vertrag bleibt dadurch plattformidentisch. Die lokale Volume `build_worker_state` enthaelt nur temporaere Workspaces und technische Caches.
 
+Parallele Softwareziele teilen sich heruntergeladene PlatformIO-Toolchains, verwenden aber je Ziel getrennte ESP-IDF-Python-Umgebungen, Component-Caches und Objekt-Caches. Dadurch kann ein kalter Worker mehrere Firmwareziele aufbauen, ohne dass gleichzeitige ESP-IDF-Initialisierungen dieselbe virtuelle Umgebung beschädigen.
+
 ## VPS einmalig fuer Worker freigeben
 
 Fuer den aktuellen Mac fuehrt das wiederholbare Einrichtungswerkzeug die folgenden Schritte aus, ohne das erzeugte Worker-Passwort auszugeben:

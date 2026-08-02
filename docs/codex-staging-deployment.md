@@ -62,11 +62,12 @@ Danach sind lokal zusaetzlich erreichbar:
 Plattform-Diagnose: http://127.0.0.1:14300/app/dashboard/
 Admin-Diagnose:     http://127.0.0.1:14600/admin/
 Runtime PostgreSQL:  127.0.0.1:25432
+Build-Worker-Pool:   http://127.0.0.1:14400/health
 Hardware Catalog:   http://10.77.0.1:4910/api/hardware-catalog/
 ```
 
 Das Terminal bleibt fuer die Dauer des SSH-Tunnels geoeffnet. `Strg+C` beendet die Verbindung. Der SSH-Tunnel laeuft innerhalb des WireGuard-VPN; der VPS benoetigt keinen Browser, und weder SSH noch der Admin-Port werden oeffentlich freigegeben.
-Der Hardware Catalog bleibt ebenfalls privat und ist ueber die feste WireGuard-Adresse `10.77.0.1:4910` erreichbar; ein lokaler Hardware-Catalog-Prozess und ein SSH-Tunnel fuer den Katalog sind nicht erforderlich.
+Der lokale PostgreSQL-Port wird durch den SSH-Tunnel auf die WireGuard-gebundene VPS-Adresse `10.77.0.1:25432` weitergeleitet. Reine IDE-Builds verwenden getrennt davon `127.0.0.1:14400` und erreichen damit den VPS-internen Build-Worker-Pool; `127.0.0.1:4400` bleibt der zentrale Build-&-Deploy-Worker fuer OTA-, FlashBox- und USB-Auftraege. Der Hardware Catalog bleibt ebenfalls privat und ist ueber die feste WireGuard-Adresse `10.77.0.1:4910` erreichbar; ein lokaler Hardware-Catalog-Prozess und ein SSH-Tunnel fuer den Katalog sind nicht erforderlich.
 
 ## Lokale Identity-Runtime ohne lokale Persistenz
 

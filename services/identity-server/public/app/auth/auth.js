@@ -214,9 +214,14 @@ function passkeyLoginFailureMessage(error) {
     account_disabled: "auth.error.login.account_disabled",
     account_not_verified: "auth.error.login.account_not_verified",
     guest_expired: "auth.error.login.guest_expired",
+    identity_persistence_unavailable: "auth.error.login.persistence_unavailable",
+    passkey_authentication_unavailable: "auth.error.login.authentication_unavailable",
+    passkey_challenge_expired: "auth.error.login.challenge_expired",
+    passkey_verification_failed: "auth.error.login.verification_failed",
     NotAllowedError: "auth.error.login.not_allowed",
     SecurityError: "auth.error.security",
     NotSupportedError: "auth.error.not_supported",
+    TypeError: "auth.error.login.identity_unreachable",
   };
   const reason = error?.code || error?.name;
   const translationKey = keyByReason[reason];

@@ -28,7 +28,7 @@ function createHttpApp(options) {
     }
 
     if (req.method === "GET" && url.pathname === "/api/provisioning-flash-mode") {
-      sendJson(res, 200, service.getFlashMode());
+      sendJson(res, 200, service.getFlashMode(url.searchParams.get("artifact_id") || ""));
       return;
     }
 

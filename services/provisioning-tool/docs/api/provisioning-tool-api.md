@@ -110,7 +110,7 @@ POST /api/provisioning-firmware-artifacts
 
 Registriert ein serverseitiges Firmware-Artefakt im Provisioning Artifact Store. Dieser Schreibpfad ist kein Bedienerflow der Factory-HMI und ist standardmaessig gesperrt. Er darf nur fuer einen explizit freigeschalteten Build-/Admin-Prozess mit `ALLOW_FIRMWARE_ARTIFACT_ADMIN_WRITE=true` genutzt werden. Alternativ kann der Server beim Start ueber `PROVISIONING_FIRMWARE_FILE_PATH` ein vorbereitetes Firmware-Binary aus einem Server-Firmwareordner referenzieren.
 
-Die Factory-HMI selbst laedt keine Firmware-Dateien vom Bedienrechner hoch. Sie zeigt nur das fuer das ProcessorBoard bekannte Artefakt und dessen Bereitstellungsstatus an. Fuer ESP32 wird zunaechst ein zusammengefuehrtes Flash-Image erwartet, das im Browser per `esptool-js` und Web Serial ab Offset `0x0` geschrieben werden kann.
+Die Factory-HMI selbst laedt keine Firmware-Dateien vom Bedienrechner hoch. Sie zeigt nur das fuer das ProcessorBoard bekannte Artefakt und dessen Bereitstellungsstatus an. Das Artefakt benennt den esptool-Chip, die Flash-Strategie und den Offset. Fuer ESP32 wird ein zusammengefuehrtes Image verwendet; fuer das diymore HW-364A ein ESP8266-App-Binary ab Offset `0x0`. Beide werden im Browser per `esptool-js` und Web Serial geschrieben.
 
 Beispiel:
 

@@ -19,6 +19,19 @@ test("forwards live build progress into the IDE terminal", () => {
   assert.match(server, /projectJob\?\.error\?\.details\?\.build_log/);
 });
 
+test("temporary Identity interruptions do not turn a running build into a failed build", () => {
+  const buildWait = app.slice(app.indexOf("async function waitForCompletedBuild"), app.indexOf("function appendBuildFailureLog"));
+
+  assert.match(buildWait, /isTransientBuildStatusError\(error\)/);
+  assert.match(buildWait, /Der Build-Auftrag läuft serverseitig weiter/);
+  assert.match(buildWait, /Verbindung zur Build-Auswertung[\s\S]*wiederhergestellt/);
+  assert.match(buildWait, /consecutiveStatusFailures >= 60/);
+  assert.match(buildWait, /\[502, 503, 504\]/);
+  assert.match(app, /Diese Build-Ziele gelten nicht als fehlgeschlagen/);
+  assert.match(app, /const unavailable = rejectedCompletions\.length/);
+  assert.doesNotMatch(app, /rejectedSubmissions\.length \+ rejectedCompletions\.length/);
+});
+
 test("IDE clean action clears all target caches without clearing source files", () => {
   assert.match(html, /id="cleanBuildButton"[^>]*>Clean<\/button>/);
   assert.match(app, /cleanBuildButton"\)\.addEventListener\("click", cleanProjectBuildCache\)/);

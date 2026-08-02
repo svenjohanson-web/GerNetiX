@@ -152,6 +152,15 @@ test("ESP-IDF component caches are isolated per software target workspace", () =
     cameraEnv.PLATFORMIO_BUILD_CACHE_DIR,
     path.join(cacheRoot, "project--camera--default", "platformio-object-cache"),
   );
+  assert.equal(
+    cameraEnv.PLATFORMIO_PENV_DIR,
+    path.join(cacheRoot, "project--camera--default", "platformio-penv"),
+  );
+  assert.equal(
+    displayEnv.PLATFORMIO_PENV_DIR,
+    path.join(cacheRoot, "project--display--default", "platformio-penv"),
+  );
+  assert.notEqual(cameraEnv.PLATFORMIO_PENV_DIR, displayEnv.PLATFORMIO_PENV_DIR);
 });
 
 test("a corrupted ESP-IDF component cache is repaired and retried exactly once", async () => {

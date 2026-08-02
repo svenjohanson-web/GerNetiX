@@ -42,6 +42,13 @@ function createHttpApp(options) {
       return;
     }
 
+    const symbolizeMatch = url.pathname.match(/^\/api\/build-jobs\/([^/]+)\/symbolize$/);
+    if (req.method === "POST" && symbolizeMatch) {
+      const body = await readJsonBody(req);
+      sendJson(res, 200, await service.symbolizeCrash(decodeURIComponent(symbolizeMatch[1]), body));
+      return;
+    }
+
     const artifactMatch = url.pathname.match(/^\/artifacts\/([^/]+)\/([^/]+)$/);
     if (req.method === "GET" && artifactMatch) {
       await serveArtifact(res, artifactStore, decodeURIComponent(artifactMatch[1]), decodeURIComponent(artifactMatch[2]));

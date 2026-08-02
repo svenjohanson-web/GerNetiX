@@ -102,7 +102,7 @@ test("blocks USB flashing when the helper cannot verify the written flash", asyn
     crypto,
     setTimeout,
     fetch: async (url) => {
-      if (url.endsWith("/v1/status")) return jsonResponse(200, { version: "0.3.7" });
+      if (url.endsWith("/v1/status")) return jsonResponse(200, { version: "0.3.9" });
       if (url.endsWith("/v1/flash-jobs")) flashRequests += 1;
       return jsonResponse(500, { error: "unexpected_request" });
     },
@@ -114,7 +114,7 @@ test("blocks USB flashing when the helper cannot verify the written flash", asyn
       port: "/dev/cu.usbmodem1",
       files: [{ name: "firmware.bin", address: 0x20000, data: new Uint8Array([1, 2, 3]) }],
     }),
-    (error) => error.code === "serial_service_update_required" && /0\.3\.9/.test(error.message),
+    (error) => error.code === "serial_service_update_required" && /0\.3\.10/.test(error.message),
   );
   assert.equal(flashRequests, 0);
 });
@@ -124,9 +124,9 @@ test("compares helper versions numerically", () => {
   const context = vm.createContext({ window, Uint8Array, btoa, crypto, setTimeout, fetch: async () => jsonResponse(500, {}) });
   vm.runInContext(clientSource, context);
 
-  assert.equal(window.GerNetiXSerialService.compareVersions("0.3.9", "0.3.9"), 0);
-  assert.equal(window.GerNetiXSerialService.compareVersions("0.3.10", "0.3.9") > 0, true);
-  assert.equal(window.GerNetiXSerialService.compareVersions("0.3.8", "0.3.9") < 0, true);
+  assert.equal(window.GerNetiXSerialService.compareVersions("0.3.10", "0.3.10"), 0);
+  assert.equal(window.GerNetiXSerialService.compareVersions("0.3.11", "0.3.10") > 0, true);
+  assert.equal(window.GerNetiXSerialService.compareVersions("0.3.9", "0.3.10") < 0, true);
 });
 
 function jsonResponse(status, payload) {

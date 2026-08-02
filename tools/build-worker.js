@@ -62,6 +62,19 @@ function supportsWorkerHost(platform) {
   return platform === "linux" || platform === "darwin";
 }
 
+function dockerExecutable({ env = process.env, platform = process.platform, existsSync = fs.existsSync } = {}) {
+  if (String(env.GERNETIX_DOCKER_COMMAND || "").trim()) return env.GERNETIX_DOCKER_COMMAND.trim();
+  if (platform === "darwin") {
+    const candidates = [
+      "/usr/local/bin/docker",
+      "/opt/homebrew/bin/docker",
+      "/Applications/Docker.app/Contents/Resources/bin/docker",
+    ];
+    return candidates.find((candidate) => existsSync(candidate)) || "docker";
+  }
+  return "docker";
+}
+
 function validateConfig(config) {
   const errors = [];
   const required = [
@@ -131,11 +144,12 @@ async function doctor({ envFile, skipNetwork = false, platform = process.platfor
   const config = parseEnvFile(fs.readFileSync(envFile, "utf8"));
   const errors = validateConfig(config);
   if (errors.length) throw new Error(`Build-Worker-Konfiguration ungueltig:\n- ${errors.join("\n- ")}`);
-  run("docker", ["--version"], { capture: true });
-  run("docker", ["compose", "version"], { capture: true });
-  const dockerOsType = run("docker", ["info", "--format", "{{.OSType}}"], { capture: true });
+  const docker = dockerExecutable({ platform });
+  run(docker, ["--version"], { capture: true });
+  run(docker, ["compose", "version"], { capture: true });
+  const dockerOsType = run(docker, ["info", "--format", "{{.OSType}}"], { capture: true });
   if (dockerOsType !== "linux") throw new Error("Der Build-Worker benoetigt eine laufende Linux-Docker-Engine.");
-  run("docker", composeArgs(envFile, ["config", "--quiet"]));
+  run(docker, composeArgs(envFile, ["config", "--quiet"]));
   if (!skipNetwork) {
     await checkTcp(config.BUILD_POSTGRES_HOST, config.BUILD_POSTGRES_PORT || 25432);
   }
@@ -149,19 +163,20 @@ async function doctor({ envFile, skipNetwork = false, platform = process.platfor
 
 async function main() {
   const args = parseArgs(process.argv.slice(2));
+  const docker = dockerExecutable();
   if (["doctor", "start"].includes(args.action)) {
     const result = await doctor(args);
     process.stdout.write(`Build-Worker-Pruefung erfolgreich: ${result.workerId} auf ${result.bindAddress}\n`);
   }
   if (args.action === "start") {
-    run("docker", composeArgs(args.envFile, ["up", "-d", "--build", "--wait"]));
+    run(docker, composeArgs(args.envFile, ["up", "-d", "--build", "--wait"]));
     process.stdout.write("GerNetiX Build-Worker ist gestartet.\n");
   } else if (args.action === "stop") {
-    run("docker", composeArgs(args.envFile, ["down"]));
+    run(docker, composeArgs(args.envFile, ["down"]));
   } else if (args.action === "status") {
-    run("docker", composeArgs(args.envFile, ["ps"]));
+    run(docker, composeArgs(args.envFile, ["ps"]));
   } else if (args.action === "logs") {
-    run("docker", composeArgs(args.envFile, ["logs", "--tail", "200", "build-worker"]));
+    run(docker, composeArgs(args.envFile, ["logs", "--tail", "200", "build-worker"]));
   }
 }
 
@@ -174,6 +189,7 @@ if (require.main === module) {
 
 module.exports = {
   composeArgs,
+  dockerExecutable,
   isPrivateIpv4,
   parseArgs,
   parseEnvFile,

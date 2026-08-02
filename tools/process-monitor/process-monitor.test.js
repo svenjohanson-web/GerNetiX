@@ -88,14 +88,24 @@ test("desktop monitor starts the Docker build worker through the dedicated helpe
   assert.match(invocation.args[0],/tools\/build-worker\.js$/);
   assert.equal(invocation.args[1],"start");
   assert.equal(invocation.options.env.ELECTRON_RUN_AS_NODE,"1");
+  assert.ok(invocation.options.env.GERNETIX_DOCKER_COMMAND);
 });
 
 test("desktop monitor reads the local worker from Docker health on macOS", async () => {
   let invocation;
-  const result=await control.dockerBuildWorkerHealth({execFileAsync:async(file,args)=>{invocation={file,args};return {stdout:"healthy\n"};}});
+  const result=await control.dockerBuildWorkerHealth({dockerCommand:"/usr/local/bin/docker",execFileAsync:async(file,args)=>{invocation={file,args};return {stdout:"healthy\n"};}});
   assert.equal(result.statusCode,200);
-  assert.equal(invocation.file,"docker");
+  assert.equal(invocation.file,"/usr/local/bin/docker");
   assert.deepEqual(invocation.args.slice(0,2),["inspect","--format"]);
+});
+
+test("desktop monitor resolves Docker Desktop even with a restricted GUI PATH", () => {
+  const result=control.dockerExecutable({
+    env:{PATH:"/usr/bin:/bin"},
+    platform:"darwin",
+    existsSync:(candidate)=>candidate==="/Applications/Docker.app/Contents/Resources/bin/docker",
+  });
+  assert.equal(result,"/Applications/Docker.app/Contents/Resources/bin/docker");
 });
 
 test("monitor starts local Identity only in PostgreSQL Remote-Dev mode", () => {
@@ -250,17 +260,37 @@ test("monitor defines a fixed SSH diagnostic tunnel from the staging configurati
     GERNETIX_STAGING_LOCAL_PLATFORM_PORT:"14300",
     GERNETIX_STAGING_REMOTE_PLATFORM_PORT:"8080",
     GERNETIX_STAGING_LOCAL_IDENTITY_DB_PORT:"25432",
+    GERNETIX_STAGING_REMOTE_IDENTITY_DB_HOST:"10.77.0.1",
     GERNETIX_STAGING_REMOTE_IDENTITY_DB_PORT:"25432"
   });
   assert.deepEqual(definition.args.slice(0,7),["-N","-o","BatchMode=yes","-o","ExitOnForwardFailure=yes","-o","ServerAliveInterval=30"]);
   assert.ok(definition.args.includes("127.0.0.1:14600:127.0.0.1:4610"));
   assert.ok(definition.args.includes("127.0.0.1:14300:127.0.0.1:8080"));
-  assert.ok(definition.args.includes("127.0.0.1:25432:127.0.0.1:25432"));
+  assert.ok(definition.args.includes("127.0.0.1:14400:127.0.0.1:14400"));
+  assert.ok(definition.args.includes("127.0.0.1:25432:10.77.0.1:25432"));
   assert.equal(definition.args.at(-1),"root@gernetix-vps");
   assert.match(desktopPreload,/tunnelStart/);
   assert.match(desktopMain,/tunnel:start/);
   assert.match(html,/VPS SSH-Tunnel/);
   assert.match(client,/renderTunnel/);
+});
+
+test("monitor detaches the SSH tunnel so it survives the desktop starter", async () => {
+  let launchOptions=null;
+  let unrefCalled=false;
+  const child={exitCode:null,killed:false,once(){},unref(){unrefCalled=true;}};
+  let checks=0;
+  const result=await control.startStagingTunnel({
+    config:{GERNETIX_STAGING_SSH:"root@gernetix-vps"},
+    platform:"linux",
+    pidForLoopbackPort:async()=>checks++>10?95959:null,
+    spawn:(_command,_args,options)=>{launchOptions=options;return child;},
+    delay:async()=>{},
+    maxAttempts:4,
+  });
+  assert.equal(result.active,true);
+  assert.equal(launchOptions.detached,true);
+  assert.equal(unrefCalled,true);
 });
 
 test("monitor rejects a partial SSH tunnel mixed with local domain services", async () => {
@@ -278,6 +308,15 @@ test("monitor rejects a partial SSH tunnel mixed with local domain services", as
   });
   assert.equal(state.active,false);
   assert.match(state.error,/Portkonflikte/);
+});
+
+test("tunnel state ignores a worker on the same port outside loopback", async () => {
+  const state=await control.stagingTunnelState({
+    config:{GERNETIX_STAGING_SSH:"root@gernetix-vps"},
+    pidForLoopbackPort:async()=>95959,
+  });
+  assert.equal(state.active,true);
+  assert.equal(state.error,"");
 });
 
 test("Identity starts locally only after the PostgreSQL tunnel is available", async () => {
@@ -345,6 +384,7 @@ test("detects Windows listener PIDs independently of the localized state label",
   assert.equal(control.pidFromWindowsNetstat("  TCP    127.0.0.1:4300    0.0.0.0:0    ABHÖREN    29384", 4300), 29384);
   assert.equal(control.pidFromWindowsNetstat("  TCP    127.0.0.1:4800    0.0.0.0:0    LISTENING    26300", 4800), 26300);
   assert.equal(control.pidFromWindowsNetstat("  TCP    127.0.0.1:4300    127.0.0.1:51000    ESTABLISHED    999", 4300), null);
+  assert.equal(control.pidFromWindowsNetstat("  TCP    10.77.0.5:4400    0.0.0.0:0    LISTENING    100\n  TCP    127.0.0.1:4400    0.0.0.0:0    LISTENING    200",4400,"127.0.0.1"),200);
 });
 
 test("monitor shows runtime alerts from persisted system and interface failures", () => {

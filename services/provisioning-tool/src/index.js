@@ -77,6 +77,7 @@ function seedServerFirmwareArtifact(store, config) {
     sha256: artifact.sha256 || "",
     flash_strategy: artifact.flash_strategy || "esp32_merged_bin",
     flash_offset: artifact.flash_offset || "0x0",
+    chip: artifact.chip || "esp32",
   });
 }
 

@@ -264,6 +264,39 @@ test("build cancellation keeps account ownership and targets the central coordin
   assert.deepEqual(responses, [[202, { job_id: "job 42", status: "cancelling" }]]);
 });
 
+test("crash symbolization is account-bound and requires the exact persisted build id", async () => {
+  const registry = createRouteRegistry();
+  const responses = [];
+  const forwarded = [];
+  const buildId = "a".repeat(64);
+  registerBuildRoutes({
+    registry,
+    requireSession: async () => ({ account: { user_id: "user-1" } }),
+    readJsonBody: async () => ({ build_id: buildId, addresses: ["0x40001234"] }),
+    sendJson: (res, status, body) => responses.push([status, body]),
+    handleUserIdeBuildJob: async () => {},
+    loadUserIdeProjects: async () => [],
+    buildDeployJson: async (path, options) => {
+      forwarded.push([path, options]);
+      return { status: "symbolized", build_id: buildId, frames: [] };
+    },
+    projectServerJson: async () => ({ user_id: "user-1", result: { build: { build_id: buildId } } }),
+    loadBuildDeployJob: async () => ({}),
+    recordCompletedBuildJob: async () => {},
+    browserFlashManifest: () => [],
+    projectServerUserId: () => "user-1",
+    proxyBuildArtifact: async () => {},
+  });
+  assert.equal(await registry.dispatch({
+    req: { method: "POST" }, res: {},
+    url: new URL("http://localhost/api/user-ide/build-jobs/job-1/symbolize"),
+  }), true);
+  assert.deepEqual(forwarded, [["/api/build-jobs/job-1/symbolize", {
+    method: "POST", body: { build_id: buildId, addresses: ["0x40001234"] },
+  }]]);
+  assert.deepEqual(responses, [[200, { status: "symbolized", build_id: buildId, frames: [] }]]);
+});
+
 test("USB flash reuses an owned successful build only after the Project Server confirms its snapshot", async () => {
   const registry = createRouteRegistry();
   const responses = [];

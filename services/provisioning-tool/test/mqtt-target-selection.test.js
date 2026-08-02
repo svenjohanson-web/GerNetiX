@@ -22,6 +22,8 @@ test("provisioning UI offers VPS and local MQTT targets", () => {
   assert.match(html, /value="flashbox"/);
   assert.match(app, /mqtt_broker: selectedMqttBrokerUrl\(\)/);
   assert.match(app, /capabilities: selectedCapabilities\(\)/);
-  assert.match(app, /return \["wifi", "ota", "mqtt", "flash_firmware"\]/);
+  assert.match(app, /Array\.isArray\(target\?\.capability_ids\)/);
+  assert.match(app, /return capabilities\.length \? capabilities : \["wifi", "flash_firmware"\]/);
+  assert.match(app, /ota_status: selectedCapabilities\(\)\.includes\("ota"\) \? "ready" : "not_supported"/);
   assert.match(app, /"flashbox\.target_flash"/);
 });

@@ -99,7 +99,7 @@ Lokale Veröffentlichung zum Prüfen:
 node tools/publish-platform-download.js \
   --file tools/usb-serial-helper/dist/GerNetiX-Serial-Service-mac-arm64.pkg \
   --id serial-service \
-  --version 0.3.9 \
+  --version 0.3.10 \
   --platform macos \
   --architecture arm64 \
   --label "Für macOS" \

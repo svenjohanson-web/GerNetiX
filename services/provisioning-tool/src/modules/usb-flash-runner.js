@@ -129,7 +129,7 @@ class UsbFlashRunner {
       esptoolExecutable: this.esptoolExecutable,
       esptoolPythonExecutable: this.esptoolPythonExecutable,
     });
-    const args = invocation.args.concat(["--chip", "esp32"]);
+    const args = invocation.args.concat(["--chip", firmwareArtifact.chip || "esp32"]);
     if (port) args.push("--port", port);
     args.push("write_flash", firmwareArtifact.flash_offset || "0x0", firmwareArtifact.materialized_file_path);
     const startedAt = new Date().toISOString();
@@ -338,6 +338,7 @@ function summarizeArtifact(artifact) {
     file_name: artifact.file_name || "",
     flash_strategy: artifact.flash_strategy || "",
     flash_offset: artifact.flash_offset || "",
+    chip: artifact.chip || "esp32",
   };
 }
 

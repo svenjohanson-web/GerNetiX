@@ -1548,11 +1548,10 @@ const DeviceOnboardingController = (() => {
       updateProvisioningUsbFlashButton();
     }
 
-    function setProvisioningUsbFlashStatus(kind, message) {
+    function setProvisioningUsbFlashStatus(kind, message, percent = null) {
       const status = document.querySelector("#provisioningUsbFlashStatus");
       if (!status) return;
-      status.className = `flash-status ${kind}`;
-      status.textContent = message;
+      GerNetiXFlashProgress.render(status, kind, message, percent);
     }
 
     async function flashProvisioningBasissoftware() {
@@ -1589,8 +1588,7 @@ const DeviceOnboardingController = (() => {
             flashFreq: artifact.flash_freq || "40m",
             flashSize: artifact.flash_size || "keep",
             onProgress(job) {
-              const progressLine = [...(job.logs || [])].reverse().find((line) => /Writing at|%|Hash of data verified/i.test(line));
-              setProvisioningUsbFlashStatus("running", progressLine || `${probe.chipName || "ESP32"}: Basissoftware wird geschrieben...`);
+              GerNetiXFlashProgress.renderJob("#provisioningUsbFlashStatus", job, `${probe.chipName || "ESP32"}: Basissoftware wird geschrieben...`);
             },
           });
           if (result.status !== "succeeded") throw new Error(result.error || "USB-Flash fehlgeschlagen.");
@@ -1624,7 +1622,7 @@ const DeviceOnboardingController = (() => {
           compress: true,
           reportProgress: (_index, written, total) => {
             const percent = Math.min(100, Math.round((written / Math.max(total, 1)) * 100));
-            setProvisioningUsbFlashStatus("running", `${chipName || "ESP32"}: Basissoftware${artifact.version ? ` ${artifact.version}` : ""} schreiben ${percent} %`);
+            setProvisioningUsbFlashStatus("running", `${chipName || "ESP32"}: Basissoftware${artifact.version ? ` ${artifact.version}` : ""} wird geschrieben`, percent);
           },
         });
         setProvisioningUsbFlashStatus("running", "Firmware geschrieben. Board wird neu gestartet...");

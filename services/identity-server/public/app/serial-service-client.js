@@ -1,5 +1,5 @@
 const GerNetiXSerialService = (() => {
-  const MINIMUM_VERIFIED_FLASH_VERSION = "0.3.9";
+  const MINIMUM_VERIFIED_FLASH_VERSION = "0.3.10";
   const DEFAULT_BASE_URLS = window.location.protocol === "https:"
     ? ["https://localhost:43123"]
     : ["https://localhost:43123", "http://127.0.0.1:43123"];
