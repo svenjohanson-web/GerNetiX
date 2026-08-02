@@ -160,9 +160,9 @@ WireGuard-gebundener Worker `mac-worker-01` geprueft. Zwei identische reine
 ESP32-Arduino-Builds liefen erfolgreich; Deploy, OTA, USB und FlashBox waren
 jeweils nicht angefordert:
 
-| Lauf | Job-ID | PlatformIO-Kompilierung | Gesamtbeobachtung | Ergebnis |
+| Lauf | Job-ID | PlatformIO-Lauf | Gesamtbeobachtung | Ergebnis |
 | --- | --- | ---: | ---: | --- |
-| kalter Cache | `mac-arm64-smoke-20260802-01` | 191,14 s | kalter Toolchain-/Cache-Aufbau | erfolgreich |
+| kalter Cache | `mac-arm64-smoke-20260802-01` | 191,14 s | Bootstrap inklusive Toolchain- und Framework-Downloads; kein CPU-Benchmark | erfolgreich |
 | warmer Cache | `mac-arm64-smoke-20260802-02` | 0,55 s | ca. 15,14 s | erfolgreich |
 
 Beide Laeufe erzeugten dieselbe reproduzierbare Build-ID
@@ -173,3 +173,34 @@ Artefakt-Persistierung ueber WireGuard. Fuer warme Builds ist im aktuellen
 Pfad folglich der Artefakttransport und nicht die CPU der erste gemessene
 Engpass. Dieser Messwert begruendet einen spaeteren gestreamten ArtifactStore;
 er ersetzt noch keinen Zwei-Rechner- oder Dauerlastnachweis.
+
+### Basissoftware-Benchmark
+
+Anschliessend wurde die reale GerNetiX-FULL-Basissoftware fuer `esp32dev` mit
+ESP-IDF gebaut. Globale Toolchains blieben vorhanden; vor dem Vollbuild wurde
+nur der projektbezogene Zwischenbuild-Cache geleert. Das BuildPackage wurde
+mit dem produktionsnahen `composeEsp32BasissoftwarePackage` erzeugt und
+enthielt einen minimalen Projekt-Hook. Alle erfolgreichen Laeufe erzeugten die
+identische ELF-Build-ID
+`caacd3a37eede73eb41f59815501f9230c6f7a2af8223e52baf6b1428441720d`.
+
+| Lauf | Job-ID | PlatformIO | zentrale Artefaktphase | Gesamtjob |
+| --- | --- | ---: | ---: | ---: |
+| sauberer Vollbuild | `mac-basissoftware-esp32dev-clean-20260802-03` | 33,95 s | 13,43 s | 48,28 s |
+| warm 1 | `mac-basissoftware-esp32dev-warm-20260802-01` | 7,29 s | 22,50 s | 30,76 s |
+| warm 2 | `mac-basissoftware-esp32dev-warm-20260802-02` | 6,67 s | 17,88 s | 25,54 s |
+| warm 3 | `mac-basissoftware-esp32dev-warm-20260802-03` | 6,57 s | 13,42 s | 20,59 s |
+
+Der Warm-Median liegt bei 6,67 Sekunden fuer PlatformIO, 17,88 Sekunden fuer
+die zentrale Artefaktphase und 25,54 Sekunden fuer den Gesamtjob. Pro Warmjob
+wurden 11.736.440 Bytes in fuenf Artefakten persistiert; der saubere Lauf
+erzeugte wegen des groesseren Build-Logs 11.816.877 Bytes. Die Messung trennt
+die Artefaktphase zeitlich, aber noch nicht Dateilesen, Hashing,
+WireGuard-Transport und sequentielle PostgreSQL-Inserts voneinander.
+
+Der erste Benchmarkversuch deckte ausserdem eine reale BuildPackage-Luecke
+auf: Projekte ohne zusaetzliche oeffentliche Header erzeugten kein
+`include/user_project`, obwohl CMake dieses Include-Verzeichnis verlangt. Der
+Paketierer legt in diesem Fall nun eine neutrale `.gernetix-keep`-Datei an; der
+zugehoerige Contract-Test ist bestanden. Zwei vor der Reparatur fehlgeschlagene
+technische Benchmarkjobs bleiben als Fehlernachweis erhalten.
