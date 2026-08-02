@@ -13,6 +13,7 @@ test("classifies service-only changes for a targeted staging deployment", () => 
   assert.match(remoteDeploy, /git diff --name-only "\$previous_commit" HEAD/);
   assert.match(remoteDeploy, /services\/identity-server\/\*\) add_incremental_service identity-server/);
   assert.match(remoteDeploy, /services\/project-server\/\*\) add_incremental_service project-server/);
+  assert.match(remoteDeploy, /services\/compute-control-plane\/\*\) add_incremental_service compute-control-plane/);
   assert.match(remoteDeploy, /\*\) deploy_mode=full; break/);
   assert.match(remoteDeploy, /compose build "\$build_service"/);
   assert.match(remoteDeploy, /compose up -d --no-deps --force-recreate \$incremental_services/);
@@ -38,4 +39,10 @@ test("keeps npm installs cached when only service source files change", () => {
   assert.ok(dependencyManifest < dependencyInstall);
   assert.ok(dependencyInstall < serviceSources);
   assert.ok(serviceSources < runtimeVerification);
+});
+
+test("rejects a public wildcard binding for the Compute Worker Gateway", () => {
+  assert.match(remoteDeploy, /COMPUTE_BIND_ADDRESS/);
+  assert.match(remoteDeploy, /compute_bind_address.*0\.0\.0\.0/);
+  assert.match(remoteDeploy, /COMPUTE_BIND_ADDRESS darf keinen oeffentlichen Wildcard-Listener verwenden/);
 });

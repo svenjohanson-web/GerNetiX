@@ -7,8 +7,9 @@ const DevelopmentComponentMetamodel = (() => {
     hardware_ic: { label: "Hardware-IC", allocation: "board_configuration", user_configurable: false },
     sensor: { label: "Sensor", allocation: "iot_device" },
     actuator: { label: "Aktor", allocation: "iot_device" },
-    smartphone_app: { label: "Smartphone-App / PWA", allocation: "none" },
-    browser_app: { label: "Browser-App", allocation: "none" },
+    mobile_app: { label: "Mobile App (iOS & Android)", allocation: "none", platforms: ["ios", "android"] },
+    smartphone_app: { label: "Browser-App mit PWA-Modus (Bestand)", allocation: "none", legacy: true },
+    browser_app: { label: "Browser-App (optional als PWA)", allocation: "none", pwa_capable: true },
     desktop_app: { label: "Desktop-App", allocation: "none" },
     server_api: { label: "Server / API", allocation: "none" },
     // Diese Bausteine werden nur von GerNetiX-Vorlagen bereitgestellt. Sie sind
@@ -24,6 +25,7 @@ const DevelopmentComponentMetamodel = (() => {
   const relationshipRules = Object.freeze([
     rule("uses_local_interface", "actor", "iot_device", "bedient lokal"),
     rule("observes_actuator", "actor", "actuator", "betrachtet / beobachtet"),
+    rule("uses_native_mobile_app", "actor", "mobile_app", "nutzt"),
     rule("uses_mobile_app", "actor", "smartphone_app", "nutzt"),
     rule("uses_browser_app", "actor", "browser_app", "nutzt"),
     rule("uses_desktop_app", "actor", "desktop_app", "nutzt"),
@@ -44,11 +46,20 @@ const DevelopmentComponentMetamodel = (() => {
     rule("synchronizes", "iot_device", "iot_device", "synchronisiert mit"),
     rule("sends_telemetry", "iot_device", "server_api", "sendet Telemetrie an"),
     rule("sends_telemetry", "iot_device", "telemetry_api", "sendet Telemetrie an"),
+    rule("loads_from_device_webserver", "browser_app", "iot_device", "wird vom Device-Webserver ausgeliefert"),
+    rule("loads_from_server_webserver", "browser_app", "server_api", "wird vom Webserver ausgeliefert"),
+    rule("shows_iot_project_status", "mobile_app", "iot_device", "zeigt Projektstatus von"),
     rule("persists_project_data", "telemetry_api", "project_storage", "speichert projektbezogen"),
     rule("triggers_notification", "telemetry_api", "notification_service", "loest optional Benachrichtigung aus"),
     rule("uses_project_storage_mobile", "smartphone_app", "project_storage", "liest und konfiguriert Projektdaten"),
+    rule("uses_project_storage_native_mobile", "mobile_app", "project_storage", "liest und konfiguriert Projektdaten"),
+    rule("uses_project_storage_browser", "browser_app", "project_storage", "liest und konfiguriert Projektdaten"),
     rule("subscribes_project_push", "smartphone_app", "notification_service", "abonniert optional Projekt-Push"),
+    rule("subscribes_project_push_native_mobile", "mobile_app", "notification_service", "abonniert optional Projekt-Push"),
+    rule("subscribes_project_push_browser", "browser_app", "notification_service", "abonniert optional Projekt-Push im PWA-Modus"),
     rule("pushes_to_project_mobile", "notification_service", "smartphone_app", "sendet optional Projekt-Push an"),
+    rule("pushes_to_project_native_mobile", "notification_service", "mobile_app", "sendet optional Projekt-Push an"),
+    rule("pushes_to_project_browser", "notification_service", "browser_app", "sendet optional Projekt-Push an"),
     rule("persists_runtime_event", "telemetry_api", "project_runtime_data", "speichert Ereignis in Runtime-Daten"),
     rule("triggers_event_worker", "iot_device", "event_worker", "loest Ereignisverarbeitung aus"),
     rule("triggers_event_worker", "project_runtime_data", "event_worker", "loest Ereignisverarbeitung aus"),
@@ -58,9 +69,12 @@ const DevelopmentComponentMetamodel = (() => {
     rule("dispatches_mqtt_action", "event_dispatcher", "iot_device", "stellt MQTT-Aktion zu"),
     rule("dispatches_project_push", "event_dispatcher", "notification_service", "loest optional Projekt-Push aus"),
     rule("uses_api_mobile", "smartphone_app", "server_api", "nutzt API"),
+    rule("uses_api_native_mobile", "mobile_app", "server_api", "nutzt API"),
     rule("uses_api_browser", "browser_app", "server_api", "nutzt API"),
     rule("uses_api_desktop", "desktop_app", "server_api", "nutzt API"),
     rule("pushes_to_mobile", "server_api", "smartphone_app", "sendet Push an"),
+    rule("pushes_to_native_mobile", "server_api", "mobile_app", "sendet Push an"),
+    rule("pushes_to_browser", "server_api", "browser_app", "sendet optional Web Push an"),
     rule("commands_device", "server_api", "iot_device", "sendet Befehle an"),
   ]);
 
@@ -104,7 +118,7 @@ const DevelopmentComponentMetamodel = (() => {
     if (alias === "processor" || alias.endsWith("_processor")) return "processor";
     if (alias === "network_interface" || alias.endsWith("_network_interface") || alias.endsWith("_wifi") || alias.endsWith("_wlan")) return "network_interface";
     if (alias === "hardware_ic" || alias.endsWith("_ic")) return "hardware_ic";
-    const explicitType = ["iot_device", "sensor", "actuator", "smartphone_app", "browser_app", "desktop_app", "server_api"]
+    const explicitType = ["iot_device", "sensor", "actuator", "mobile_app", "smartphone_app", "browser_app", "desktop_app", "server_api"]
       .find((type) => alias === type || alias.startsWith(`${type}_`));
     if (explicitType) return explicitType;
     if (/telemetrie.api/.test(text)) return "telemetry_api";
@@ -116,7 +130,8 @@ const DevelopmentComponentMetamodel = (() => {
     if (/iot.?device|iot.?zielger(?:ae|ä)t|esp32|esp8266|arduino|raspberry|processor.?board|datenlogger/.test(text)) return "iot_device";
     if (/sensor|kamera|camera|mikrofon|microphone|touch|fuehler|fuhler|temperatur|feuchte|helligkeit|wasserstand|ntc|ptc|pt1000/.test(text)) return "sensor";
     if (/aktor|display|bildschirm|anzeige|lautsprecher|speaker|motor|relais|ventil|servo|summer|buzzer|led/.test(text)) return "actuator";
-    if (/pwa|iphone|smartphone|mobile app/.test(text)) return "smartphone_app";
+    if (/ios|iphone|ipad|android|native mobile|mobile app/.test(text)) return "mobile_app";
+    if (/pwa|smartphone.web|mobile web/.test(text)) return "smartphone_app";
     if (/browser|dashboard/.test(text)) return "browser_app";
     if (/desktop|windows app|mac(?:os)? app|linux app/.test(text)) return "desktop_app";
     if (/server|api|vps|koordination|webserver/.test(text)) return "server_api";

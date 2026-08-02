@@ -8,7 +8,7 @@
     <link rel="apple-touch-icon" href="/gernetix-gx-apple-touch.png" sizes="180x180" />
     <title>GerNetiX Plattform</title>
     <link rel="manifest" href="/app/manifest.webmanifest" />
-    <link rel="stylesheet" href="/app/app.css?v=20260801-hardware-validation-4" />
+    <link rel="stylesheet" href="/app/app.css?v=20260802-debug-workspace-feedback-rating" />
     <link rel="stylesheet" href="/app/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -589,7 +589,13 @@
                   <p class="eyebrow" id="ideViewerModeLabel">Datei</p>
                   <h3 id="ideProjectTitle"></h3>
                 </div>
-                <span id="ideActiveSourceLabel" class="project-context-label"></span>
+                <div class="ide-viewer-context-actions">
+                  <span id="ideActiveSourceLabel" class="project-context-label"></span>
+                  <nav class="project-workspace-modes" aria-label="Projektarbeitsbereich wechseln">
+                    <span class="active" aria-current="page">Entwicklung</span>
+                    <button id="openProjectDebugButton" type="button">Debug &amp; Diagnose</button>
+                  </nav>
+                </div>
               </div>
               <section id="sourcePanel" class="ide-source-workspace">
                 <textarea id="sourceEditor" spellcheck="false"></textarea>
@@ -602,7 +608,6 @@
               <section id="ideDeviceConnectionsView" class="ide-device-connections-view hidden"></section>
               <section id="ideDriverManagementView" class="ide-driver-management-view hidden"></section>
               <section id="idePwaDashboardView" class="ide-pwa-dashboard-view hidden"></section>
-              <section id="ideDeviceDebugView" class="ide-device-debug-view hidden"></section>
             </article>
             <aside id="ideCodeAssistant" class="panel ide-code-assistant"></aside>
             <div id="ideWorkspaceResizeHandle" class="ide-workspace-resize-handle" role="separator" aria-label="Größe von Codebereich und Terminal ändern" aria-orientation="horizontal" aria-valuemin="140" tabindex="0"><span aria-hidden="true"></span></div>
@@ -657,6 +662,28 @@
         </section>
       </section>
 
+      <section id="debugView" class="view hidden">
+        <section class="debug-workspace-shell">
+          <header class="panel debug-workspace-toolbar">
+            <div>
+              <p class="eyebrow">Projektarbeitsbereich</p>
+              <h2 id="debugProjectTitle">Debug &amp; Diagnose</h2>
+            </div>
+            <nav class="project-workspace-modes" aria-label="Projektarbeitsbereich wechseln">
+              <a id="debugOpenIdeLink" class="button-link" href="/app/ide/">Entwicklung</a>
+              <span class="active" aria-current="page">Debug &amp; Diagnose</span>
+            </nav>
+          </header>
+          <div class="debug-workspace-layout">
+            <aside class="panel debug-device-list-panel">
+              <p class="eyebrow">Projektgeräte</p>
+              <h3 id="debugDeviceListTitle">IoT-Devices</h3>
+              <nav id="debugDeviceList" class="debug-device-list" aria-label="IoT-Device für Diagnose wählen"></nav>
+            </aside>
+            <main id="debugDeviceView" class="panel debug-device-view"></main>
+          </div>
+        </section>
+      </section>
 
       <section id="deviceManagementView" class="view hidden">
         <div class="section-head">
@@ -932,6 +959,7 @@
                     <select id="developmentProjectTemplate"></select>
                   </label>
                   <button id="openDevelopmentTemplateHelpButton" class="development-template-help-button" type="button" aria-label="Hilfe zu Projekttemplates" aria-haspopup="dialog" title="Verfügbare Projekttemplates erklären">?</button>
+                  <button id="rateDevelopmentTemplateButton" class="secondary hidden" type="button">Template bewerten</button>
                 </div>
                 <p id="developmentProjectTemplateHint" class="development-template-hint">Architektur und Anforderungen gemeinsam von Grund auf klaeren.</p>
                 <div id="developmentProjectDetails">
@@ -1303,6 +1331,21 @@
             </article>
           </section>
         </section>
+        <section id="communityMarketplace" class="panel community-marketplace" aria-labelledby="communityMarketplaceTitle">
+          <div class="section-head"><div><p class="eyebrow">Community-Marketplace</p><h2 id="communityMarketplaceTitle">Gebrauchte Elektronik</h2><p class="helper-text">Private Kleinanzeigen für Boards, Sensoren, Displays, Bauteile und Werkzeug aus der Community. GerNetiX prüft die Ware nicht und wickelt keine Zahlung ab.</p></div><button id="refreshCommunityMarketplaceButton" type="button">Aktualisieren</button></div>
+          <div id="communityMarketplaceListings" class="community-marketplace-grid"></div>
+          <details class="marketplace-publish-panel"><summary>Gebrauchte Elektronik anbieten</summary><form id="communityMarketplaceForm">
+            <label>Artikel<input name="title" required maxlength="120" placeholder="z. B. ESP32-S3-Board"></label>
+            <label>Preis in Euro<input name="price" required type="number" min="0" max="50000" step="0.01" inputmode="decimal"></label>
+            <label class="marketplace-description">Beschreibung<textarea name="description" required maxlength="1200" rows="3" placeholder="Lieferumfang, Alter, bekannte Mängel …"></textarea></label>
+            <label>Kategorie<select name="category"><option value="boards">Boards &amp; Mikrocontroller</option><option value="sensors">Sensoren</option><option value="displays">Displays</option><option value="components">Bauteile</option><option value="tools">Werkzeuge</option><option value="bundles">Konvolute</option><option value="other">Sonstiges</option></select></label>
+            <label>Zustand<select name="condition" required><option value="like_new">Wie neu</option><option value="very_good">Sehr gut</option><option value="good">Gut</option><option value="acceptable">Gebraucht</option><option value="for_parts">Defekt / Ersatzteile</option></select></label>
+            <label>Ort/Region<input name="pickup_location" maxlength="80" placeholder="Keine genaue Adresse"></label>
+            <label class="marketplace-checkbox"><input name="shipping_available" type="checkbox"> Versand möglich</label>
+            <label>Tags, kommagetrennt<input name="tags" maxlength="300" placeholder="ESP32, I²C, 3,3 V"></label>
+            <p class="helper-text">Veröffentliche keine Adresse, Telefonnummer oder Zahlungsdaten. Interessenten melden sich über die privaten Community-Nachrichten.</p><div class="button-row"><button class="primary" type="submit">Inserat veröffentlichen</button><span id="communityMarketplaceStatus" aria-live="polite"></span></div>
+          </form></details>
+        </section>
       </section>
 
       <section id="billingView" class="view hidden">
@@ -1315,8 +1358,30 @@
         <section id="billingSummary" class="summary-grid"></section>
       </section>
       <section id="communityView" class="view hidden">
-        <section class="panel community-hero"><p class="eyebrow">Interner Kontobereich</p><h1>Community &amp; Projektbegleitung</h1><p>Nur angemeldete Mitglieder können Anfragen erstellen und antworten. Du entscheidest beim Absenden: öffentlich für die Community oder privat nur zwischen dir und GerNetiX.</p></section>
-        <section class="community-layout">
+        <section class="panel community-hero"><p class="eyebrow">GerNetiX Community</p><h1>Entdecken, austauschen und gemeinsam bauen</h1><p>Finde Hilfe, stelle eine Idee vor, zeige ein fertiges Projekt oder gib gebrauchte Elektronik weiter.</p><label class="community-portal-search">Community durchsuchen<input id="communityPortalSearch" type="search" placeholder="Ideen, Projekte, Diskussionen oder Hardware"></label></section>
+        <section id="communityPortalNav" class="community-portal-nav" aria-label="Community-Bereiche">
+          <button class="community-portal-card" type="button" data-community-target="communityForumSection"><span>Forum &amp; Hilfe</span><strong>Fragen stellen und Erfahrungen austauschen</strong><small data-community-count="forum">Wird geladen …</small></button>
+          <button class="community-portal-card" type="button" data-community-target="projectIdeasWorkshop"><span>Ideenwerkstatt</span><strong>Ideen vorstellen und Mitstreiter finden</strong><small data-community-count="ideas">Wird geladen …</small></button>
+          <button class="community-portal-card" type="button" data-community-target="projectShowcase"><span>Projekt-Showcase</span><strong>Fertige Projekte präsentieren und entdecken</strong><small data-community-count="showcases">Wird geladen …</small></button>
+          <button class="community-portal-card" type="button" data-open-community-marketplace><span>Elektronik-Marktplatz</span><strong>Gebrauchte Hardware anbieten oder finden</strong><small data-community-count="marketplace">Wird geladen …</small></button>
+        </section>
+        <section class="community-portal-overview"><article class="panel"><div class="section-head"><div><p class="eyebrow">Gerade aktiv</p><h2>Neues aus der Community</h2></div></div><div id="communityActivityList" class="community-activity-list"></div></article><article class="panel"><div class="section-head"><div><p class="eyebrow">Für dich</p><h2>Mein Community-Bereich</h2></div></div><div id="communityPersonalOverview" class="community-personal-overview"></div></article></section>
+        <section class="panel community-challenge"><div><p class="eyebrow">Community-Challenge</p><h2>Aus Alt wird Neu</h2><p>Entwickle eine Projektidee mit vorhandener oder gebrauchter Elektronik. Stelle zuerst deine Idee vor und zeige später das fertige Ergebnis im Showcase.</p></div><div class="button-row"><button type="button" data-community-target="projectIdeasWorkshop">Idee vorstellen</button><button class="primary" type="button" data-community-target="projectShowcase">Ergebnis zeigen</button></div></section>
+        <section id="projectShowcase" class="panel project-showcase" aria-labelledby="projectShowcaseTitle"><div class="section-head"><div><p class="eyebrow">Projekt-Showcase</p><h2 id="projectShowcaseTitle">Projekte aus der Community</h2><p class="helper-text">Zeige ein fertiges oder weit entwickeltes Projekt mit Geschichte, Hardwareliste und einer sicheren schreibgeschützten Projektkopie.</p></div><button id="projectShowcaseRefreshButton" type="button">Aktualisieren</button></div><div class="project-showcase-layout"><details class="project-showcase-create"><summary>Eigenes Projekt präsentieren</summary><form id="projectShowcaseForm"><label>Projekt<select id="projectShowcaseProjectSelect" name="project_id" required></select></label><label>Titel<input name="title" required maxlength="140"></label><label>Kurzbeschreibung<textarea name="summary" required maxlength="420" rows="3"></textarea></label><label>Projektgeschichte<textarea name="story" required maxlength="5000" rows="6" placeholder="Was war die Idee, was hast du gelernt und was funktioniert bereits?"></textarea></label><label>Hardware, eine Position pro Zeile<textarea name="hardware_items" maxlength="2400" rows="4" placeholder="ESP32-S3&#10;2,8-Zoll-Display&#10;Temperatursensor"></textarea></label><label>Tags, kommagetrennt<input name="tags" maxlength="300" placeholder="ESP32, Display, Sensorik"></label><p class="helper-text">Secrets und Binärdateien werden ausgeschlossen; Quelltexte werden begrenzt und redigiert. Der Beitrag wird als Community-Projekt und nicht als GerNetiX-Empfehlung gekennzeichnet.</p><div class="button-row"><button class="primary" type="submit">Projekt veröffentlichen</button><span id="projectShowcaseStatus" aria-live="polite"></span></div></form></details><div id="projectShowcaseList" class="project-showcase-list"></div></div></section>
+        <section id="projectIdeasWorkshop" class="panel project-ideas-workshop" aria-labelledby="projectIdeasTitle">
+          <div class="section-head"><div><p class="eyebrow">Ideenwerkstatt</p><h2 id="projectIdeasTitle">Projektideen vorstellen</h2><p class="helper-text">Zeige deine Idee, erkläre den Nutzen und finde Feedback oder Mitstreiter. Hier wird nichts verkauft.</p></div><button id="projectIdeaRefreshButton" type="button">Aktualisieren</button></div>
+          <div class="project-ideas-layout"><details class="project-idea-create"><summary>Neue Idee vorstellen</summary><form id="projectIdeaForm">
+            <label>Titel<input name="title" required maxlength="140" placeholder="z. B. Energieanzeige für Balkonkraftwerke"></label>
+            <label>Kurzidee<textarea name="pitch" required maxlength="320" rows="2" placeholder="Die Idee in zwei oder drei Sätzen"></textarea></label>
+            <label>Ausführliche Vorstellung<textarea name="description" required maxlength="5000" rows="6" placeholder="Was soll entstehen, für wen und wie könnte es funktionieren?"></textarea></label>
+            <label>Warum ist dir die Idee wichtig? <textarea name="motivation" maxlength="1600" rows="3"></textarea></label>
+            <label>Stand<select name="stage"><option value="rough_idea">Erste Idee</option><option value="concept">Konzept</option><option value="prototype">Prototyp vorhanden</option><option value="seeking_collaborators">Suche Mitstreiter</option></select></label>
+            <fieldset><legend>Gesucht</legend><label><input type="checkbox" name="looking_for" value="feedback"> Feedback</label><label><input type="checkbox" name="looking_for" value="collaborators"> Mitstreiter</label><label><input type="checkbox" name="looking_for" value="hardware"> Hardwarewissen</label><label><input type="checkbox" name="looking_for" value="software"> Softwarewissen</label><label><input type="checkbox" name="looking_for" value="testing"> Tester</label></fieldset>
+            <label>Tags, kommagetrennt<input name="tags" maxlength="300" placeholder="Energie, ESP32, Display"></label>
+            <p class="helper-text">Die Vorstellung und Diskussion sind für angemeldete Community-Mitglieder sichtbar. Veröffentliche keine vertraulichen Daten.</p><div class="button-row"><button class="primary" type="submit">Idee veröffentlichen</button><span id="projectIdeaStatus" aria-live="polite"></span></div>
+          </form></details><div id="projectIdeaList" class="project-idea-list"></div></div>
+        </section>
+        <section id="communityForumSection" class="community-layout">
           <form id="communityRequestForm" class="panel community-request-form"><h2>Neue Community-Anfrage</h2><p class="helper-text">Die Sichtbarkeit wird zusammen mit deiner Anfrage im Community Service gespeichert.</p><label>Titel<input name="title" required maxlength="160" placeholder="Worum geht es?" /></label><label>Deine Anfrage<textarea name="body" required maxlength="8000" rows="6" placeholder="Beschreibe dein Projekt und wobei du Unterstützung möchtest."></textarea></label><label>Kategorie<select name="tags" required><option value="">Kategorie wählen</option><option value="hardware">Hardware &amp; Elektronik</option><option value="firmware">Firmware &amp; ESP32</option><option value="software">Software &amp; Apps</option><option value="project">Projektentwicklung</option><option value="learning">Lernen &amp; Einstieg</option></select></label><label>Projekt (optional)<select id="communityProjectSelect" name="project_id"><option value="">Keinem Projekt zuordnen</option></select></label><label><input id="communityAttachProjectSnapshot" name="attach_project_snapshot" type="checkbox" value="true" /> Aktuellen Projektstand als schreibgeschützte Community-Kopie anhängen</label><p class="helper-text">Zugangsdaten, Schlüsseldateien und Binärdateien werden nicht übernommen. Nach dem Absenden kannst du den Link zur Anfrage kopieren.</p><fieldset><legend>Sichtbarkeit</legend><label><input type="radio" name="visibility" value="public" checked /> Öffentlich – alle können nach Veröffentlichung mitlesen.</label><label><input type="radio" name="visibility" value="private" /> Privat – nur du und GerNetiX können die Anfrage lesen.</label></fieldset><button class="primary" type="submit">Anfrage senden</button><p id="communityRequestStatus" class="helper-text" aria-live="polite"></p></form>
           <section class="panel community-list-panel"><div class="section-head"><div><p class="eyebrow">Dein Community-Bereich</p><h2>Eigene und öffentliche Anfragen</h2></div><button id="communityRefreshButton" type="button">Aktualisieren</button></div><div id="communityQuestionList" class="community-question-list"></div></section>
         </section><section id="communityThread" class="panel community-thread hidden"></section>
@@ -1437,12 +1502,13 @@
     <script src="/app/board-configuration-plugin.js?v=20260731-board-source-groups-1"></script>
     <script src="/app/device-onboarding-controller.js?v=20260719-04"></script>
     <script src="/app/guided-project-view.js?v=20260801-dark-plantuml"></script>
-    <script src="/app/learning-project-view.js?v=20260728-i18n-1"></script>
-    <script src="/app/learning-project-controller.js?v=20260728-i18n-1"></script>
+    <script src="/app/learning-project-view.js?v=20260802-feedback-rating"></script>
+    <script src="/app/learning-project-controller.js?v=20260802-feedback-rating"></script>
     <script src="/app/learning-project-locales.js?v=20260728-02"></script>
     <script src="/app/development-hardware-model.js?v=20260731-profile-inheritance-1"></script>
     <script src="/app/development-component-metamodel.js?v=20260801-hardware-connection-types"></script>
-    <script src="/app/development-platform.js?v=20260801-board-hidden-features"></script>
+    <script src="/app/project-feedback-ui.js?v=20260802-project-feedback"></script>
+    <script src="/app/development-platform.js?v=20260802-project-feedback"></script>
     <script src="/app/help-content.js?v=20260730-content-separation-1"></script>
     <script src="/app/knowledge-articles-engineering.js?v=20260731-modular-1"></script>
     <script src="/app/knowledge-articles-electrical-engineering.js?v=20260731-modular-1"></script>
@@ -1459,20 +1525,23 @@
     <script src="/app/information-view.js?v=20260730-content-separation-1"></script>
     <script src="/app/quiz-data.js?v=20260726-01"></script>
     <script src="/app/quiz.js?v=20260726-01"></script>
-    <script src="/app/app-shell-controller.js?v=20260801-app-modules-1"></script>
+    <script src="/app/app-shell-controller.js?v=20260802-debug-workspace"></script>
     <script src="/app/app-dashboard-controller.js?v=20260801-app-modules-1"></script>
     <script src="/app/app-community-controller.js?v=20260801-app-modules-1"></script>
+    <script src="/app/community-marketplace-controller.js?v=20260802-used-electronics-marketplace"></script>
+    <script src="/app/community-ideas-controller.js?v=20260802-project-ideas"></script>
+    <script src="/app/community-portal-controller.js?v=20260802-community-portal"></script>
     <script src="/app/app-account-controller.js?v=20260801-app-modules-1"></script>
     <script src="/app/app-project-controller.js?v=20260801-app-modules-1"></script>
-    <script src="/app/app-ide-controller.js?v=20260801-source-language-folders"></script>
+    <script src="/app/app-ide-controller.js?v=20260802-debug-workspace"></script>
     <script src="/app/usb-flash-target-model.js?v=20260801-partial-usb-flash"></script>
     <script src="/app/app-device-build-controller.js?v=20260801-partial-usb-flash"></script>
     <script src="/app/app-billing-controller.js?v=20260801-app-modules-1"></script>
     <script src="/app/app-runtime-utils.js?v=20260801-plantuml-contrast"></script>
     <script src="/app/app-push-controller.js?v=20260801-app-modules-1"></script>
-    <script src="/app/app.js?v=20260801-tree-selection"></script>
-    <script src="/app/device-debug-controller.js?v=20260801-local-debug-slice-1"></script>
+    <script src="/app/app.js?v=20260802-debug-workspace"></script>
+    <script src="/app/device-debug-controller.js?v=20260802-debug-workspace"></script>
     <script src="/app/device-wifi-setup-dialog.js?v=20260801-shared-port-identification"></script>
-    <script src="/app/app-event-bindings.js?v=20260801-tree-selection"></script>
+    <script src="/app/app-event-bindings.js?v=20260802-debug-workspace"></script>
   </body>
 </html>

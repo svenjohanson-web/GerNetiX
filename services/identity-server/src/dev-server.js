@@ -446,8 +446,10 @@ registerProjectRoutes({
   requireSessionProject,
   projectServerJson,
   projectServerUserId,
+  developmentProjectTemplateCatalog,
   developmentAssistant,
   helpAssistant,
+  recordSystemEvent,
   handleUserIdeSummary,
   handleDevelopmentProjectCreate,
   handleDevelopmentProjectArchitectureSave,
@@ -1359,7 +1361,7 @@ async function createCommunityProjectSnapshot(session, projectId) {
       path: source.path,
       content,
       content_type: source.content_type || "text/plain",
-      content_sha256: source.content_sha256 || crypto.createHash("sha256").update(content).digest("hex"),
+      content_sha256: crypto.createHash("sha256").update(content).digest("hex"),
     });
   }
   if (!safeSources.length) {
@@ -4947,6 +4949,7 @@ function developmentSoftwareUnits(project = {}, diagram = {}, hardwareConfigurat
       };
     }
     const kind = {
+      mobile_app: "mobile_application",
       smartphone_app: "mobile_application",
       browser_app: "web_application",
       desktop_app: "desktop_application",
@@ -4984,7 +4987,8 @@ function developmentArchitectureSoftwareComponents(source) {
     const signature = `${alias} ${label}`.toLowerCase();
     let abstractType = "";
     if (/^iot_device|iot.?device|esp32|esp8266|arduino|raspberry/.test(signature)) abstractType = "iot_device";
-    else if (/^smartphone_app|smartphone|mobile app|\bpwa\b/.test(signature)) abstractType = "smartphone_app";
+    else if (/^mobile_app|mobile app|ios|iphone|ipad|android/.test(signature)) abstractType = "mobile_app";
+    else if (/^smartphone_app|smartphone.pwa|\bpwa\b/.test(signature)) abstractType = "smartphone_app";
     else if (/^browser_app|browser|dashboard/.test(signature)) abstractType = "browser_app";
     else if (/^desktop_app|desktop|windows app|mac(?:os)? app|linux app/.test(signature)) abstractType = "desktop_app";
     else if (/^server_api|server|\bapi\b|backend|webserver|\bvps\b/.test(signature)) abstractType = "server_api";

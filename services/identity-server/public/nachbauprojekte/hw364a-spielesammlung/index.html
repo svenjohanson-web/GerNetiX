@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="description" content="Cat Jump und Cave Bat als Ein-Tasten-Spielesammlung für das diymore HW-364A ESP8266-OLED-Board nachbauen." />
+  <link rel="icon" href="/gernetix-gx-browser-32.png" type="image/png" sizes="32x32" />
+  <title>HW-364A Spielesammlung nachbauen · GerNetiX</title>
+  <link rel="stylesheet" href="/landing.css?v=20260802-hw364a-games-1" />
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="GerNetiX Startseite"><img src="/gernetix-wordmark.png" width="1920" height="350" alt="GerNetiX" /></a>
+    <button id="publicMenuButton" class="menu-button" type="button" aria-label="Menü öffnen" aria-expanded="false" aria-controls="publicMenu"><span></span><span></span><span></span></button>
+    <nav id="publicMenu" class="site-menu" aria-label="Öffentliche Bereiche" hidden>
+      <a href="/">Startseite</a><a href="/ueber-uns/">Über uns</a><a href="/nachbauprojekte/" aria-current="page">Projekte zum Nachbauen</a><a href="/wissen/">Wissensportal</a><a href="/hilfe/">Hilfe</a><a href="/shop/">Webshop</a><a href="/app/auth/">Anmelden</a>
+    </nav>
+  </header>
+  <main>
+    <nav class="project-breadcrumb" aria-label="Brotkrumen">
+      <a href="/nachbauprojekte/">Nachbauprojekte</a><span aria-hidden="true">›</span><span>HW-364A Spielesammlung</span>
+    </nav>
+
+    <section class="panel maker-download-hero product-hero-compact" aria-labelledby="project-title">
+      <div>
+        <p class="eyebrow">Nachbauprojekt · ESP8266 &amp; Spiele</p>
+        <h1 id="project-title">Cat Jump und Cave Bat auf einem winzigen OLED.</h1>
+        <p class="lead">Das diymore HW-364A wird mit seinem eingebauten Display und genau einem Taster zur kleinen Spielkonsole. Zusätzliche Bauteile sind nicht nötig.</p>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="equipment-title">
+      <p class="eyebrow">Was du brauchst</p>
+      <h2 id="equipment-title">Ein Board, ein Datenkabel, zwei Spiele.</h2>
+      <ul>
+        <li>diymore HW-364A mit ESP8266 und integriertem 0,96-Zoll-SSD1306-OLED</li>
+        <li>USB-Datenkabel und einen Computer für den späteren USB-Flash</li>
+        <li>Den vorhandenen <strong>FLASH-Taster an GPIO0</strong> als einzige Spieleingabe</li>
+      </ul>
+      <p><strong>Keine zusätzliche Verdrahtung:</strong> Das OLED ist bereits mit SDA GPIO14 und SCL GPIO12 verbunden und wird unter der I²C-Adresse <code>0x3C</code> angesprochen.</p>
+    </section>
+
+    <section class="maker-project-categories" aria-labelledby="games-title">
+      <h2 id="games-title">Die zwei Spiele</h2>
+      <div class="maker-project-list">
+        <article class="panel maker-project-tile">
+          <h3>Cat Jump</h3>
+          <p>Die Katze läuft automatisch. Ein kurzer Druck lässt sie über den entgegenkommenden Hund springen. Mit jedem geschafften Hindernis steigt der Punktestand und das Tempo.</p>
+        </article>
+        <article class="panel maker-project-tile">
+          <h3>Cave Bat</h3>
+          <p>Solange du drückst, steigt die Fledermaus. Lässt du los, sinkt sie. Führe sie durch die Lücken zwischen Stalaktiten und Stalagmiten.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="panel" aria-labelledby="controls-title">
+      <p class="eyebrow">Ein-Tasten-Bedienung</p>
+      <h2 id="controls-title">Kurz auswählen, lang starten.</h2>
+      <ol>
+        <li>Im Menü wechselt ein kurzer Druck zwischen Cat Jump und Cave Bat.</li>
+        <li>Halte FLASH etwa 0,7 Sekunden gedrückt, um das ausgewählte Spiel zu starten.</li>
+        <li>Nach einer Kollision startet ein kurzer Druck erneut; ein langer Druck führt zurück ins Menü.</li>
+      </ol>
+      <p><strong>Achtung:</strong> FLASH beim Einschalten oder Reset nicht gedrückt halten. GPIO0 aktiviert sonst den ESP8266-Bootloader.</p>
+    </section>
+
+    <section class="panel" aria-labelledby="software-title">
+      <p class="eyebrow">Softwarestand</p>
+      <h2 id="software-title">Build geprüft, Hardware-Abnahme noch offen.</h2>
+      <p>Das PlatformIO-Projekt ist für das exakte Hardwareprofil gebaut. Es belegt rund 46&nbsp;% RAM und 38&nbsp;% Flash. WLAN-Provisioning und Geräteidentität der GerNetiX-Basissoftware bleiben erhalten.</p>
+      <p>Ein öffentlicher WebSerial-Download wird hier ergänzt, sobald Spielgefühl, Taster und Display auf einem realen HW-364A geprüft und der unveränderliche Release freigegeben wurden.</p>
+    </section>
+
+    <section class="panel product-cta maker-download-cta">
+      <div><p class="eyebrow">Weiterstöbern</p><h2>Noch mehr Projekte entdecken.</h2><p>Zurück zur Übersicht mit allen öffentlichen Nachbauprojekten.</p></div>
+      <a class="primary-action" href="/nachbauprojekte/">Alle Nachbauprojekte →</a>
+    </section>
+  </main>
+  <footer><span>&copy; 2026 GerNetiX · Verstehen. Entwickeln. Erschaffen.</span></footer>
+  <script src="/landing.js?v=20260731-about-us-1"></script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+{
+  "name": "GerNetiX AVR Diagnostics",
+  "version": "0.1.0",
+  "build": { "srcDir": "src" },
+  "frameworks": "*",
+  "platforms": "atmelavr"
+}

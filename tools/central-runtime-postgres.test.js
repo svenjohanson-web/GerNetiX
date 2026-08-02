@@ -48,6 +48,18 @@ test("Build workers coordinate jobs and target locks through central PostgreSQL"
   assert.match(envExample, /^BUILD_WORKER_POSTGRES_PASSWORD=$/m);
 });
 
+test("elastic workers use the Compute Gateway instead of PostgreSQL credentials", () => {
+  assert.match(compose, /^  compute-control-plane:$/m);
+  assert.match(compose, /COMPUTE_PERSISTENCE_BACKEND: postgres/);
+  assert.match(compose, /COMPUTE_INTERNAL_TOKEN: \$\{COMPUTE_INTERNAL_TOKEN:/);
+  assert.match(compose, /COMPUTE_WORKER_BOOTSTRAP_TOKEN: \$\{COMPUTE_WORKER_BOOTSTRAP_TOKEN:/);
+  assert.match(compose, /COMPUTE_WORKER_SIGNING_SECRET: \$\{COMPUTE_WORKER_SIGNING_SECRET:/);
+  assert.match(compose, /COMPUTE_PROJECT_GRANT_SIGNING_SECRET: \$\{COMPUTE_PROJECT_GRANT_SIGNING_SECRET:/);
+  assert.match(compose, /\$\{COMPUTE_BIND_ADDRESS:-127\.0\.0\.1\}:\$\{COMPUTE_PORT:-5700\}:5700/);
+  assert.match(envExample, /^COMPUTE_BIND_ADDRESS=127\.0\.0\.1$/m);
+  assert.doesNotMatch(compose, /COMPUTE_WORKER_POSTGRES_PASSWORD/);
+});
+
 test("Community administration uses a dedicated token instead of Identity operator accounts", () => {
   assert.match(compose, /COMMUNITY_ADMIN_TOKEN: \$\{COMMUNITY_ADMIN_TOKEN:\?COMMUNITY_ADMIN_TOKEN muss gesetzt sein\}/);
   assert.doesNotMatch(compose, /COMMUNITY_OPERATOR_USER_IDS:/);

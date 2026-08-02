@@ -2,9 +2,16 @@
 
 ## Status und Zweck
 
-**Status: vorgeschlagen.** Der Background Worker ist ein verwalteter GerNetiX-Ausfuehrungsdienst fuer projektgebundene, kurz laufende Zustandsaktualisierungen. Er dient beispielsweise Tamagotchi-Zustaenden, Lernfortschrittsberechnung oder anderen regelbasierten Projektautomationen. Er ist keine allgemeine Code-Hosting- oder Datenbank-Schnittstelle.
+**Status: vorgeschlagene Runtime-Spezifikation innerhalb der genehmigten Zielarchitektur.** Der Background Worker ist ein verwalteter GerNetiX-Ausfuehrungsdienst fuer projektgebundene, kurz laufende Zustandsaktualisierungen. Er dient beispielsweise Tamagotchi-Zustaenden, Lernfortschrittsberechnung oder anderen regelbasierten Projektautomationen. Er ist keine allgemeine Code-Hosting- oder Datenbank-Schnittstelle.
 
 Ein Worker-Job arbeitet ausschliesslich im Scope eines Accounts und eines Projekts. Er erhaelt einen begrenzten Daten-Snapshot, fuehrt ein Benutzer-Regelskript aus und schreibt ausschliesslich einen validierten Patch in die zuvor erlaubten Datenbereiche zurueck.
+
+Der Projekt-Background-Worker verwendet Scheduling, Leases, Messung und
+Capacity-Provider der gemeinsamen
+[elastischen Worker- und Kapazitaetsarchitektur](elastic-worker-capacity-architecture.md),
+laeuft dort aber ausschliesslich in der Ausfuehrungsklasse
+`isolated_project_rule`. Er teilt keine Images, Secrets oder Datenrechte mit
+Build-, KI-, Wartungs- oder anderen vertrauenswuerdigen System-Workern.
 
 ```text
 Scheduler oder Ereignis
@@ -25,6 +32,8 @@ Scheduler oder Ereignis
 | PreScript | GerNetiX-gepflegte, nicht einsehbare Plattformlogik; loest den Grant ein und befuellt die erlaubten Variablen mit einem Snapshot. |
 | User-Regelskript | Projektartefakt in einer begrenzten, validierten Regelsprache; berechnet nur Werte innerhalb der bereitgestellten Variablen. |
 | PostScript | GerNetiX-gepflegte, nicht einsehbare Plattformlogik; validiert Output, Invarianten und Version, schreibt den Patch atomar und erzeugt Audit-Metadaten. |
+| Worker Gateway API | Vergibt die Lease und begrenzte Referenzen; der Worker erhaelt weder Datenbankadresse noch allgemeine Service-Credentials. |
+| Capacity Controller | Misst Grundlast und Spitzen, wahrt Quoten und stellt bei freigegebener Policy passende private oder Cloud-Kapazitaet bereit. |
 
 PreScript und PostScript sind keine konfigurierbaren Projektquellen. Sie enthalten weder Nutzeridentitaeten noch Klartext-Credentials in der Skriptumgebung und werden nicht in Projekt- oder KI-Kontexten ausgegeben.
 
@@ -44,7 +53,14 @@ PreScript und PostScript sind keine konfigurierbaren Projektquellen. Sie enthalt
     "write_paths": ["runtime.tamagotchi"],
     "max_snapshot_bytes": 16384
   },
-  "limits": { "max_ast_nodes": 250, "max_expression_depth": 20, "max_runtime_ms": 50 }
+  "limits": {
+    "max_ast_nodes": 250,
+    "max_expression_depth": 20,
+    "max_runtime_ms": 50,
+    "max_parallel_jobs": 1,
+    "max_output_bytes": 16384,
+    "monthly_execution_units": 10000
+  }
 }
 ```
 
@@ -94,6 +110,9 @@ Bei Versionskonflikt wird nichts teilweise gespeichert. Der Job wird – falls s
 - Die Semantik ist **at-least-once**; PostScript und Datenmodell muessen deshalb idempotente oder Compare-and-Swap-gesicherte Zustandsuebergaenge verwenden.
 - Ein Job darf erst nach erfolgreichem atomaren Speichern als abgeschlossen gelten.
 - Wiederholungen, Laufzeit, Konflikte und Fehler werden je `job_type` gezählt, nicht mit Snapshot- oder Nutzdaten geloggt.
+- Zeitplaene erhalten deterministischen Jitter, damit viele gleich konfigurierte Projekte nicht gleichzeitig eine Lastspitze ausloesen.
+- Der Coordinator verteilt Jobs account- und projektbezogen fair. Ein Tenant kann den gemeinsamen Pool nicht vollstaendig belegen.
+- Bei fehlender Kapazitaet oder erreichter Quote entsteht Backpressure mit stabilem Status; es werden nicht unbegrenzt neue Versuche erzeugt.
 
 ## Sicherheitsgrenzen
 
@@ -102,6 +121,28 @@ Bei Versionskonflikt wird nichts teilweise gespeichert. Der Job wird – falls s
 - Der Worker besitzt keinen ausgehenden Netzwerkzugriff und keine direkte Zugriffsmöglichkeit auf Projektquellen.
 - Der User kann innerhalb der erlaubten eigenen Daten falsche Fachwerte erzeugen; das PostScript begrenzt dies durch Schema, Wertebereiche und projektspezifische Invarianten.
 - Kundenansichten und Push-Nachrichten lesen nur explizit freigegebene, abgeleitete Daten. Der Worker veroeffentlicht keine Rohdaten automatisch.
+- Kunden-Worker laufen nie mit Build-, OTA-, MQTT-, KI-Provider-, Backup- oder Operator-Credentials.
+- Cloud- und Kubernetes-Instanzen erhalten denselben kurzlebigen Gateway-Vertrag wie private Worker und keinen direkten PostgreSQL-Zugang.
+
+## Nutzung, Quoten und Last
+
+Jeder Lauf erzeugt payload-freie Usage-Metadaten fuer Account, Projekt, Jobtyp,
+Tarif, Queue-Wartezeit, Laufzeit, Retry, CPU-/Speicherklasse sowie Input- und
+Outputgroesse. Daraus werden Grundlast, Burst, Tarifgrenzen und Kapazitaetsbedarf
+ermittelt. Inhaltliche Snapshotfelder, Regelwerte und Patches werden nicht in
+Operations-Metriken kopiert.
+
+Limits gelten mindestens fuer:
+
+- minimale Ausfuehrungsfrequenz und maximal geplante Laeufe,
+- gleichzeitige Jobs je Account und Projekt,
+- Laufzeit, AST-Komplexitaet, Snapshot und Output,
+- monatliche Execution Units und Traffic,
+- Retry-Anzahl und maximale Queue-Verzoegerung.
+
+Ein Testlauf mit synthetischem Snapshot wird getrennt budgetiert und besitzt
+keinen Schreib-Grant. Aktivierung und jede Aenderung an Trigger, Datenpfad,
+Regelrevision oder Limit werden auditiert.
 
 ## Standard-Jobtypen
 

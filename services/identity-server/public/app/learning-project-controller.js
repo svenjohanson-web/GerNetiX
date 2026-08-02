@@ -31,6 +31,7 @@ const LearningProjectController = (() => {
       const rendered = LearningProjectView.render({ target, project: localizedProject, escapeHtml, learningText });
       if (!target || !project || !rendered) return;
       renderGuidedProject(localizedProject);
+      target.querySelector("[data-learning-rating-form]")?.addEventListener("submit", (event) => submitRating(event, project));
     }
 
     async function open(projectId) {
@@ -78,6 +79,32 @@ const LearningProjectController = (() => {
       state.progress = state.progress.filter((item) => item.projectId !== project.id).concat(progress);
       state.workspace = { ...state.workspace, lastProjectId: project.id, lastMode: "learn", lastRoute: `/app/learning-project/?project=${encodeURIComponent(project.id)}` };
       if (shouldRender) { render(); renderDashboard(); }
+    }
+
+    async function submitRating(event, project) {
+      event.preventDefault();
+      const form = event.currentTarget;
+      const button = form.querySelector("button[type=submit]");
+      const status = form.querySelector("[data-learning-rating-status]");
+      const values = new FormData(form);
+      button.disabled = true;
+      status.textContent = "Wird gesendet …";
+      try {
+        const progress = progressFor(project.id);
+        const currentStep = Number(progress.currentStep || 0);
+        await postJson("/api/platform/learning-feedback", {
+          projectId: project.id,
+          learningStepId: project.viewManifest?.views?.[currentStep]?.id || "",
+          ratings: Object.fromEntries(["clarity", "fun", "difficulty", "completeness"].map((key) => [key, Number(values.get(key))])),
+          message: String(values.get("message") || ""),
+        });
+        form.reset();
+        status.textContent = "Danke – deine Bewertung wurde gespeichert.";
+      } catch (error) {
+        status.textContent = error?.message || "Die Bewertung konnte nicht gespeichert werden.";
+      } finally {
+        button.disabled = false;
+      }
     }
 
     function showError(error) {

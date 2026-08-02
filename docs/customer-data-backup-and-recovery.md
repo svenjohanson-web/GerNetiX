@@ -10,6 +10,12 @@ Domaenentabellen, Runtime-Konfigurationen und BYTEA-Artefakte.
 
 Ein persistentes Docker-Volume allein ist keine Datensicherung. Es schuetzt vor einem normalen Container-Austausch, aber nicht vor logischem Loeschen, `down -v`, defekten Volumes, Fehlbedienung, kompromittierten Zugangsdaten oder dem Ausfall des VPS.
 
+Die Sicherung ist unabhaengig von der
+[elastischen Worker- und Kapazitaetsarchitektur](elastic-worker-capacity-architecture.md).
+Ein Compute- oder Kubernetes-Provider ist niemals Backup-Owner und darf weder
+Retention noch bestehende Sicherungssaetze loeschen. Private und kurzlebige
+Worker-Caches werden nicht gesichert.
+
 ## Verbindliche Schutzziele
 
 - RPO: Hoechstens eine Stunde bestaetigter Kundendaten darf im Katastrophenfall fehlen.
@@ -39,6 +45,13 @@ Jeder neue Service mit dauerhafter SQL-Persistenz muss vor Produktivsetzung entw
 5. Vor einem Deployment mit Persistenzmigration oder erhoehtem Datenrisiko wird ein frischer, erfolgreich gepruefter Wiederherstellungspunkt verlangt. Das Deployment darf keine Volumes loeschen oder neu initialisieren.
 6. Aufbewahrungsloeschungen erfolgen ausschliesslich ueber die definierte Retention. Ein kompromittierter Service- oder Deployment-Zugang darf vorhandene Sicherungen nicht unmittelbar entfernen koennen.
 7. Datenschutzrechtliche Loeschpflichten werden durch eine dokumentierte Backup-Retention und kontrollierte Wiederherstellung beruecksichtigt. Ein Restore darf bereits wirksam geloeschte Datensaetze nicht unkontrolliert wieder produktiv sichtbar machen.
+8. Das Backup-Ziel wird ueber einen providerneutralen, versionierten Vertrag
+   angesprochen. Ein S3-kompatibles Ziel ist zulaessig, sofern Verschluesselung,
+   getrennte Credentials, Retention beziehungsweise Object Lock, Pruefsummen
+   und ein getesteter vollstaendiger Restore nachgewiesen sind.
+9. Cloud-Burst-, Worker- und Deployment-Credentials erhalten keine Loesch- oder
+   Retention-Rechte auf dem Backup-Ziel. Der Capacity Controller kann
+   Backup-Alarme lesen, aber keine Sicherungen administrieren.
 
 ## Wiederherstellungsablauf
 
@@ -72,5 +85,7 @@ Diese Datei definiert die verbindliche fachliche und betriebliche Zielsetzung. B
 - Retention, Pruefsummen, Backup-Alter und Fehler alarmieren
 - isolierte Restore-Automation und fachliche Contract-Checks fuer Accounts, Projekte und Hardware-Inventar implementieren
 - ersten vollstaendigen Restore-Test innerhalb von RPO und RTO protokollieren
+- providerneutralen Backup-Adapter und getrennte, nicht von Workern oder
+  Deployment nutzbare Credentials nachweisen
 
 Der offene Punkt ist erst geschlossen, wenn ein vollstaendiger Verlust der produktiven Volumes aus einer externen Sicherung erfolgreich wiederhergestellt und fachlich geprueft wurde.

@@ -42,12 +42,12 @@ mehr.
 |---|---|---|---|
 | Identity | PostgreSQL `gernetix_runtime`, Tabellen `identity_*` | `runtime_postgres_data` | Accounts einschliesslich bevorzugter Oberflaechensprache, Credentials, Passkeys, Recovery-Transaktionen, Sessions, Push-/SMTP-State, Plattform-Releases, Account-Assets und Wissenskapitel-Lesestaende |
 | Identity-Altbestand | `/var/lib/gernetix/identity/gernetix-identity.sqlite` | `identity_state` | einmalige, idempotente Altuebernahme; nach erfolgreicher Migration nicht mehr fuehrend |
-| Projekte | PostgreSQL `gernetix_runtime`, Tabellen `project_*`, insbesondere `project_learning_progress` | `runtime_postgres_data` | Projekte, Quellen, Build-Jobs, aktuelle Lesson und aktueller Step, abgeschlossene Steps je Lesson, Feedback und Ressourcenprofile |
+| Projekte | PostgreSQL `gernetix_runtime`, Tabellen `project_*`, insbesondere `project_learning_progress`, `project_learning_feedback` und `project_template_feedback` | `runtime_postgres_data` | Projekte, Quellen, Build-Jobs, aktuelle Lesson und aktueller Step, abgeschlossene Steps je Lesson, Projekt-/Template-Feedback und Ressourcenprofile |
 | Projekt-Altbestand | `/var/lib/gernetix/projects/gernetix-projects.sqlite` beziehungsweise fruehere `gernetix-services.sqlite` | `project_state` / `service_state` | einmalige, read-only Altuebernahme; nach erfolgreicher Migration nicht mehr fuehrend |
 | Build und OTA | PostgreSQL `gernetix_runtime`, Tabellen `build_*` | `runtime_postgres_data` | Firmware-, ELF-, HEX-, Map- und Log-BLOBs sowie OTA-Bestaetigungen |
 | Telemetrie | PostgreSQL `gernetix_runtime`, Tabellen `telemetry_*` | `runtime_postgres_data` | partitionierte Messwerte, Ereignisse und Retention |
 | Telemetrie-Altbestand | `/var/lib/gernetix/telemetry/gernetix-telemetry.sqlite` beziehungsweise fruehere `gernetix-services.sqlite` | `telemetry_state` / `service_state` | einmalige, read-only Altuebernahme; danach nicht mehr fuehrend |
-| Community | PostgreSQL `gernetix_runtime`, Tabellen `community_*` | `runtime_postgres_data` | Fragen, Antworten, private Begleitung und Knowledge-Dokumente |
+| Community | PostgreSQL `gernetix_runtime`, Tabellen `community_*`, insbesondere `community_marketplace_listings`, `community_project_ideas`, `community_project_idea_comments` und `community_project_showcases` | `runtime_postgres_data` | Fragen, Antworten, private Begleitung, Projektideen mit Diskussion, Showcase-Projekte mit begrenzter Projektkopie, Kleinanzeigen fuer gebrauchte Elektronik und Knowledge-Dokumente |
 | Community-Altbestand | `/var/lib/gernetix/community/gernetix-community.sqlite` | `community_state` | einmalige, read-only Altuebernahme; danach nicht mehr fuehrend |
 | Device Management | PostgreSQL `gernetix_runtime`, Tabellen `device_management_*` | `runtime_postgres_data` | Devices, Credentials, Pairing, Account-Inventar, Purchase Contexts, Consents und Audit |
 | Device-Management-Altbestand | fruehere `/var/lib/gernetix/services/gernetix-services.sqlite` | `service_state` | einmalige, read-only Altuebernahme; danach nicht mehr fuehrend |
@@ -80,6 +80,35 @@ Accounts, Credentials und Sessions liegen ausschliesslich in `gernetix_runtime` 
 | fuer Flashwerkzeuge materialisierte Firmware | Provisioning-Runtimepfad | temporaere Ableitung eines SQL-BLOBs |
 | generierte Architektursicht | `tools/architecture-docs/dist/` | reproduzierbare Leseansicht |
 | Browser-/PWA-State | IndexedDB, Cache Storage, Local Storage | UI-/Offline-Hilfe, niemals Besitz- oder Berechtigungsquelle |
+
+## Speichergrenze der elastischen Worker-Plattform
+
+Die [elastische Worker- und Kapazitaetsarchitektur](elastic-worker-capacity-architecture.md)
+fuehrt keine zweite fachliche Persistenz ein. Jobdefinitionen, Leases,
+Worker-Registrierungen, Quoten, Usage-Metadaten, Audit und dauerhafte Ergebnisse
+liegen im jeweils verantwortlichen Tabellenbereich von `gernetix_runtime`.
+
+Neue Worker verwenden folgende Grenze:
+
+- Ein Worker besitzt keinen fachlichen lokalen Zustand. Workspace, Toolchain-,
+  Objekt- und Modellcache sind jederzeit loeschbar.
+- Kurzlebige Cloud-, Kubernetes- und Kunden-Worker greifen nicht direkt auf
+  PostgreSQL zu. Sie beziehen Lease und Input ueber das Worker Gateway und geben
+  Ergebnisse dort zurueck.
+- Der heutige Build-Worker-PostgreSQL-Vertrag bleibt als eingeschraenkter
+  Bestandsadapter ueber WireGuard zulaessig, bis Build-Jobs auf das Gateway
+  migriert sind.
+- Ein interner `ArtifactStore`-Vertrag kapselt Metadaten, BLOB, Hash,
+  Schutzklasse und Streaming. Seine aktuelle Primaerimplementierung bleibt
+  PostgreSQL-BYTEA.
+- S3-kompatibler Primaerspeicher ist vorbereitet, aber nicht freigegeben. Seine
+  Einfuehrung verlangt eine eigene Architekturentscheidung, transaktionale
+  Referenzregeln, Migration, Backup-Erweiterung und Restore-Nachweis.
+
+Operations-Metriken speichern nur technische Dimensionen wie Jobtyp,
+Ausfuehrungsklasse, Tarif, Provider, Laufzeit, Ressourcenklasse, Bytes und
+Status. Projektpayloads, Snapshots, Patches und Kundenskripte werden nicht in
+die Kapazitaetsmessung kopiert.
 
 ## Abgrenzung Community und Account
 

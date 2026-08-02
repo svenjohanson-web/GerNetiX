@@ -285,6 +285,36 @@ services:
     depends_on:
       project-postgres-migration: { condition: service_completed_successfully }
 
+  compute-control-plane:
+    <<: *node-service
+    networks:
+      - backend
+      - worker-access
+    environment:
+      GERNETIX_SERVICE: compute-control-plane
+      HOST: 0.0.0.0
+      PORT: 5700
+      COMPUTE_PERSISTENCE_BACKEND: postgres
+      COMPUTE_POSTGRES_HOST: runtime-postgres
+      COMPUTE_POSTGRES_PORT: 5432
+      COMPUTE_POSTGRES_DATABASE: gernetix_runtime
+      COMPUTE_POSTGRES_USER: gernetix_runtime
+      COMPUTE_POSTGRES_PASSWORD: ${RUNTIME_POSTGRES_PASSWORD:?RUNTIME_POSTGRES_PASSWORD muss gesetzt sein}
+      COMPUTE_INTERNAL_TOKEN: ${COMPUTE_INTERNAL_TOKEN:?COMPUTE_INTERNAL_TOKEN muss gesetzt sein}
+      COMPUTE_WORKER_BOOTSTRAP_TOKEN: ${COMPUTE_WORKER_BOOTSTRAP_TOKEN:?COMPUTE_WORKER_BOOTSTRAP_TOKEN muss gesetzt sein}
+      COMPUTE_WORKER_SIGNING_SECRET: ${COMPUTE_WORKER_SIGNING_SECRET:?COMPUTE_WORKER_SIGNING_SECRET muss gesetzt sein}
+      COMPUTE_PROJECT_GRANT_SIGNING_SECRET: ${COMPUTE_PROJECT_GRANT_SIGNING_SECRET:?COMPUTE_PROJECT_GRANT_SIGNING_SECRET muss gesetzt sein}
+      COMPUTE_WORKER_TOKEN_TTL_SECONDS: ${COMPUTE_WORKER_TOKEN_TTL_SECONDS:-900}
+      COMPUTE_LEASE_TTL_MS: ${COMPUTE_LEASE_TTL_MS:-60000}
+    expose: ["5700"]
+    ports:
+      - "${COMPUTE_BIND_ADDRESS:-127.0.0.1}:${COMPUTE_PORT:-5700}:5700"
+    depends_on:
+      runtime-postgres:
+        condition: service_healthy
+      runtime-postgres-migration:
+        condition: service_completed_successfully
+
   build-deploy-server:
     <<: *node-service
     networks:
@@ -606,6 +636,8 @@ services:
       HARDWARE_SHOP_BASE_URL: http://hardware-shop:4900
       AI_USAGE_BASE_URL: http://ai-usage-server:5000
       AI_CONTEXT_BASE_URL: http://ai-context-server:5500
+      COMPUTE_CONTROL_PLANE_BASE_URL: http://compute-control-plane:5700
+      COMPUTE_INTERNAL_TOKEN: ${COMPUTE_INTERNAL_TOKEN:?COMPUTE_INTERNAL_TOKEN muss gesetzt sein}
       COMMUNITY_PLATFORM_BASE_URL: http://community-platform:5200
       COMMUNITY_INTERNAL_TOKEN: ${COMMUNITY_INTERNAL_TOKEN:?COMMUNITY_INTERNAL_TOKEN muss gesetzt sein}
       COMMUNITY_ADMIN_TOKEN: ${COMMUNITY_ADMIN_TOKEN:?COMMUNITY_ADMIN_TOKEN muss gesetzt sein}
@@ -622,6 +654,7 @@ services:
       community-platform: { condition: service_healthy }
       ai-usage-server: { condition: service_healthy }
       ai-context-server: { condition: service_healthy }
+      compute-control-plane: { condition: service_healthy }
 
   admin-access-server:
     <<: *node-service

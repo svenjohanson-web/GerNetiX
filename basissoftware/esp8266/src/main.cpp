@@ -9,6 +9,13 @@
 #include <bearssl/bearssl.h>
 #include <osapi.h>
 
+#ifdef GERNETIX_USER_APPLICATION_HEADER
+#include GERNETIX_USER_APPLICATION_HEADER
+#else
+inline void gernetixUserApplicationBegin(U8G2 &) {}
+inline void gernetixUserApplicationTick(U8G2 &, uint32_t) {}
+#endif
+
 namespace {
 constexpr uint8_t OLED_SCL = 12;
 constexpr uint8_t OLED_SDA = 14;
@@ -393,11 +400,13 @@ void setup() {
 
   showDisplay("GerNetiX ESP8266", "Provisioning bereit", setupSsid, WiFi.softAPIP().toString());
   Serial.printf("GerNetiX ESP8266 Basissoftware %s bereit\n", GERNETIX_BASISSOFTWARE_VERSION);
+  gernetixUserApplicationBegin(display);
 }
 
 void loop() {
   dns.processNextRequest();
   server.handleClient();
   readSerialCommands();
+  gernetixUserApplicationTick(display, millis());
   delay(2);
 }

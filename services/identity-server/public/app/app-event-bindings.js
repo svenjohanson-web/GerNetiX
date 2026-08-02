@@ -53,11 +53,6 @@ document.querySelector("#ideProjectBrowser").addEventListener("click", (event) =
     openDeviceConnections(deviceConnectionsButton.dataset.deviceConnections);
     return;
   }
-  const deviceDebugButton = event.target.closest("[data-device-debug]");
-  if (deviceDebugButton) {
-    openIdeDeviceDebug(deviceDebugButton.dataset.deviceDebug, deviceDebugButton.dataset.deviceDebugUnit);
-    return;
-  }
   const sensorPropertiesButton = event.target.closest("[data-sensor-properties]");
   if (sensorPropertiesButton) {
     openSensorProperties(sensorPropertiesButton.dataset.sensorProperties);
@@ -106,11 +101,38 @@ document.querySelector("#ideDeviceSelect").addEventListener("change", () => {
   syncSelectedDevicePort();
   loadIdeProject();
 });
+document.querySelector("#openProjectDebugButton")?.addEventListener("click", () => {
+  if (!state.activeProjectId) return;
+  navigate(`/app/debug/?project=${encodeURIComponent(state.activeProjectId)}`);
+});
 document.querySelector("#communityRefreshButton")?.addEventListener("click", loadCommunity);
 document.querySelector("#communityRequestForm")?.addEventListener("submit", submitCommunityRequest);
 document.querySelector("#communityQuestionList")?.addEventListener("click", (event) => { const button = event.target.closest("[data-community-question]"); if (button) openCommunityQuestion(button.dataset.communityQuestion); });
 document.querySelector("#communityThread")?.addEventListener("submit", submitCommunityAnswer);
 document.querySelector("#communityThread")?.addEventListener("click", (event) => { const button = event.target.closest("[data-copy-community-link]"); if (button) copyCommunityQuestionLink(button.dataset.copyCommunityLink); });
+document.querySelector("#projectIdeaForm")?.addEventListener("submit", submitProjectIdea);
+document.querySelector("#projectIdeaRefreshButton")?.addEventListener("click", () => loadProjectIdeas(true));
+document.querySelector("#projectIdeaList")?.addEventListener("click", (event) => { const button = event.target.closest("[data-project-idea]"); if (button) openProjectIdea(button.dataset.projectIdea); });
+document.querySelector("#communityPortalSearch")?.addEventListener("input", renderCommunityPortal);
+document.querySelector("#communityActivityList")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-community-activity]");
+  if (!button) return;
+  if (button.dataset.communityActivity === "idea") openProjectIdea(button.dataset.communityActivityId);
+  if (button.dataset.communityActivity === "showcase") openProjectShowcase(button.dataset.communityActivityId);
+  if (button.dataset.communityActivity === "question") openCommunityQuestion(button.dataset.communityActivityId);
+});
+document.querySelector("#communityPortalNav")?.addEventListener("click", (event) => { const button = event.target.closest("[data-community-target]"); if (button) document.querySelector(`#${button.dataset.communityTarget}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
+document.querySelector(".community-challenge")?.addEventListener("click", (event) => { const button = event.target.closest("[data-community-target]"); if (button) document.querySelector(`#${button.dataset.communityTarget}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
+document.querySelector("[data-open-community-marketplace]")?.addEventListener("click", () => {
+  navigate("/app/shop/");
+  window.setTimeout(() => document.querySelector("#communityMarketplace")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+});
+document.querySelector("#projectShowcaseForm")?.addEventListener("submit", submitProjectShowcase);
+document.querySelector("#projectShowcaseRefreshButton")?.addEventListener("click", () => loadCommunityPortal(true));
+document.querySelector("#projectShowcaseList")?.addEventListener("click", (event) => { const button = event.target.closest("[data-project-showcase]"); if (button) openProjectShowcase(button.dataset.projectShowcase); });
+document.querySelector("#refreshCommunityMarketplaceButton")?.addEventListener("click", () => loadCommunityMarketplace(true));
+document.querySelector("#communityMarketplaceForm")?.addEventListener("submit", submitCommunityMarketplaceListing);
+document.querySelector("#communityMarketplaceListings")?.addEventListener("click", (event) => { const button = event.target.closest("[data-marketplace-listing]"); if (button) openCommunityMarketplaceListing(button.dataset.marketplaceListing); });
 document.querySelector("#messageFolders")?.addEventListener("click", (event) => {
   const button = event.target.closest("[data-message-folder]");
   if (!button) return;

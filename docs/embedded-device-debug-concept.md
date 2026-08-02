@@ -4,7 +4,7 @@
 
 GerNetiX-Devices sollen vom ersten lokalen Lernprojekt bis zum gepairten IoT-Geraet nachvollziehbar diagnostizierbar sein, ohne Produktionsfirmware dauerhaft zu oeffnen, Secrets zu protokollieren oder fachliche Telemetrie mit technischen Debugdaten zu vermischen.
 
-Das Konzept gilt fuer die geschuetzte Basissoftware und ihre freigegebenen Projekt-Hooks. ESP32 ist die erste Referenzplattform. ESP8266 und AVR verwenden denselben Ereignisvertrag, soweit Speicher, Netzwerk und Hardwaredebugger dies erlauben.
+Das Konzept gilt fuer die geschuetzte Basissoftware und ihre freigegebenen Projekt-Hooks. ESP32 ist die erste Referenzplattform. Alle Controllerfamilien verwenden denselben faehigkeitsbasierten Diagnosevertrag; eine Plattform meldet darin nur Messwerte, die sie tatsaechlich ermitteln kann.
 
 Es baut auf den bereits vorhandenen ESP32-Funktionen auf:
 
@@ -21,25 +21,52 @@ Dieses Dokument beschreibt das Zielbild. Es schaltet keinen Debugzugang frei und
 
 Der lokale IDE-Durchstich und die Softwareseite der Crash-Analyse sind umgesetzt:
 
-- Jede modellierte IoT-Device-Komponente besitzt im Projektbaum `Debug & Diagnose`.
+- Jedes Entwicklungsprojekt mit modellierten IoT-Devices besitzt den eigenen Arbeitsbereich `Debug & Diagnose`. Er listet alle Projektgeraete und bleibt ueber die Projekt-ID mit der Entwicklungssicht verbunden. Debug-Eintraege sind weder Bestandteil des Komponentenbaums noch des Templates oder der gespeicherten Projektstruktur.
 - Die IDE liest ueber den origin- und sitzungsgebundenen GerNetiX Serial Service die neuen, ausschliesslich lesenden Firmwareaktionen `diagnostics_status` und `diagnostics_logs`.
 - Fuer bereits im WLAN laufende Boards ruft der Serial Service die festen lokalen Pfade `/status` und `/logs` ab. Er akzeptiert dafuer nur `http`, Port 80, GerNetiX-`.local`-Namen oder private IPv4-Adressen, folgt keinen Redirects und begrenzt Timeout sowie Antwortgroesse.
 - Die IDE zeigt Firmware-/Basissoftwareversion, Variante, Uptime, Resetgrund, freien/minimalen Heap und WLAN-Zustand.
+- Der produktive Diagnosevertrag listet den kleinsten freien Stack jedes laufenden FreeRTOS-Tasks. Die Debug-Sicht bewertet Heap und Task-Stacks mit sichtbaren Warn-/Kritisch-Grenzen und kennzeichnet die Verantwortung als Basissoftware, gemeinsame Runtime, ESP-IDF/FreeRTOS oder Projekt/Bibliothek. Zusaetzlich zeigt sie Task-Zustand, Core-Affinitaet, aktuelle und Basisprioritaet, groessten freien Heap-Block, Fragmentierung, internen RAM und PSRAM getrennt sowie ESP-IDF-, Chip-, Revisions- und Kerninformationen.
+- Ein eindeutig kritischer Basissoftware-Task oder ein Crash in einem eindeutig zugeordneten Basissoftware-Task erzeugt beim bewussten Lesen der Diagnose eine minimale `critical`-Meldung im vorhandenen zentralen Systemereignispfad zum Admin Tool. Uebertragen werden nur Projekt-/Komponenten-/Buildbezug, Basissoftwareversion und normalisierte Fehlerwerte; keine Rohlogs, Credentials oder Netzwerkpayloads. Das Admin Tool loest zusaetzlich den konfigurierten Betreiber-E-Mail-/Push-Kanal aus und unterdrueckt gleiche Alarme fuer 30 Minuten. Ein gemeinsamer `runtime`-Task oder global knapper Heap wird nicht automatisch der Basissoftware angelastet.
 - Feedbackzeilen werden nach Severity und Subsystem strukturiert, bei wiederholtem Lesen dedupliziert und auf 256 Eintraege im fluechtigen Browserzustand begrenzt.
-- Reproduktionsmarken, Filter und ein bewusster lokaler JSON-Export sind vorhanden. Es gibt keinen automatischen Upload und keine fachliche Persistenz.
+- Reproduktionsmarken, Filter und ein bewusster lokaler JSON-Export sind vorhanden. Es gibt keinen automatischen Support-Upload und keine fachliche Persistenz. Die eng begrenzte kritische Betreiber-Meldung fuer einen eindeutig zugeordneten Defekt der geschuetzten Basissoftware ist davon getrennt und wird als Operations-Systemereignis gespeichert.
 - Der ESP32 haelt Uptime, Minimum-Heap, Stack-Wasserzeichen, Health-Meilenstein und Fehlstartzaehler in einem checksummengesicherten RTC-Snapshot. Der Bootloop-Zustand entsteht damit ohne NVS-/Flash-Schreibschleife.
 - Soweit das freigegebene Boardprofil ESP-IDF-Core-Dumps aktiviert, liest die Basissoftware beim Folgestart nur die begrenzte Summary mit Panic-Task, Programmzaehler und maximal 16 Backtrace-Adressen. Das rohe Core-Dump-Abbild wird ueber keinen Diagnoseendpunkt ausgegeben und nach zehn Minuten stabiler Laufzeit geloescht.
 - `BuildResult.build_id` ist der SHA-256 des gespeicherten `firmware.elf`. Die IDE symbolisiert ausschliesslich nach Account- und BuildJob-Ownership-Pruefung und nur bei exakter Uebereinstimmung dieser Build-ID; andernfalls zeigt sie `build_artifact_mismatch`.
 - Aufgeloeste Frames koennen die zugehoerige sichtbare Projektquelldatei in der IDE oeffnen und die ermittelte Zeile markieren.
+- Der Diagnosevertrag besitzt `schema_version: 2`, eine explizite `capabilities`-Liste, Plattformdaten und getrennte `sections`. Die IDE rendert nur gemeldete Faehigkeiten und leitet aus fehlenden Feldern keine erfundenen Werte ab.
+- Die beiden vorhandenen AVR-Basisvarianten verwenden einen gemeinsamen, kleinen Diagnosekern: Arduino-Framework meldet System, SRAM-Reserve, Resetursache, Uptime und Loop-Laufzeit; die direkte AVR-/Atmel-Variante meldet System, SRAM-Reserve und Resetursache. Beide melden ausdruecklich `rtos: none` und erzeugen keine FreeRTOS-Tasks, PSRAM- oder CPU-Prozentwerte.
 
 Noch offen sind eine dauerhaft verfuegbare USB-Diagnose nach abgeschlossenem WLAN-Setup, Remote-Runtime-Monitor, Supportfreigabe, Diagnoseaktionen und Labor-/JTAG-Integration. Panic-, Watchdog-, Brownout- und Bootloop-Szenarien sowie die Ressourcenbudgets muessen auf echter Hardware abgenommen werden; bei Profilen ohne aktivierte Core-Dump-Summary bleiben Task und Backtrace sichtbar als nicht erfasst.
+
+## Faehigkeitsbasierter Diagnosevertrag
+
+Die Oberflaeche darf Betriebssystem- oder Controllerdetails nicht pauschal voraussetzen. Jede Firmware liefert deshalb nur die von ihrem Adapter unterstuetzten Sektionen:
+
+| Capability | Inhalt | Beispiele |
+| --- | --- | --- |
+| `system` | Controller-, SDK- und Kerninformationen | ESP32, AVR |
+| `memory` | tatsaechlich messbare Speicherregionen und Minima | ESP32-Heap/PSRAM oder AVR-SRAM-Abstand |
+| `rtos_tasks` | Taskzustand, Prioritaet und Stack-Wasserzeichen | nur Plattformen mit unterstuetztem RTOS-Adapter |
+| `reset` | Resetursache und rohe, plattformspezifische Flags | AVR `MCUSR`, spaeter weitere Controller |
+| `timing` | Uptime und messbare Zyklus-/Loop-Zeiten | Arduino-AVR, Plattformen mit monotonem Zeitgeber |
+| `network`, `firmware_update`, `logging`, `crash` | optionale, getrennte Laufzeitsektionen | nur wenn die Basissoftware den jeweiligen Dienst besitzt |
+
+Aktuelle Adaptermatrix:
+
+| Plattformadapter | Implementierte Capabilities | Bewusst nicht angezeigt |
+| --- | --- | --- |
+| ESP32 / ESP-IDF / FreeRTOS | `system`, `memory`, `rtos_tasks`; bestehende WLAN-, OTA-, Log- und Crash-Grunddaten | CPU-Prozent ohne echte Laufzeitmessung |
+| AVR mit Arduino-Framework | `system`, `memory`, `reset`, `timing` | RTOS-Tasks, PSRAM, CPU-Prozent |
+| AVR direkt mit avr-libc | `system`, `memory`, `reset` | RTOS-Tasks, PSRAM, Uptime ohne konfigurierten Zeitgeber, CPU-Prozent |
+
+Die Diagnose bleibt damit fachlich ein Vertrag, waehrend ESP-IDF, Arduino und avr-libc nur Adapter sind. Ein neues Board erhaelt niemals automatisch ESP-spezifische Felder.
 
 ## Leitentscheidungen
 
 1. **Diagnose ist standardmaessig vorhanden, Debugzugriff nicht.** Produktionsfirmware liefert begrenzte Zustandsdaten, Fehlercodes und Resetursachen. Schreibende Debugkommandos, Shells und beliebige Speicherzugriffe sind nicht Bestandteil der Produktionsschnittstelle.
 2. **Lokal vor remote.** USB/Serial und das lokale Device-Webinterface sind der erste Diagnoseweg. Remote-Live-Diagnose wird nur fuer ein gepairtes, autorisiertes Device und eine aktive Nutzersitzung verwendet.
 3. **Debugdaten sind keine Telemetrie.** Technische Laufzeitzeilen gehen nicht in `TelemetryMeasurement` oder `TelemetryEvent`. Fachliche Messwerte und Alarme bleiben im Telemetry Server; kurzlebige Debugzeilen bleiben im Runtime-Monitor.
-4. **Kein automatischer Support-Upload.** Ein Diagnosepaket wird nur nach sichtbarer Aktion und expliziter Zustimmung erzeugt und uebertragen. Standardmaessig bleibt es lokal.
+4. **Kein automatischer Support-Upload.** Ein Diagnosepaket wird nur nach sichtbarer Aktion und expliziter Zustimmung erzeugt und uebertragen. Standardmaessig bleibt es lokal. Davon ausgenommen ist ausschliesslich eine minimale, normalisierte `critical`-Betreibermeldung, wenn die bewusst gelesene Diagnose einen eindeutig der nicht durch Nutzer aenderbaren Basissoftware zugeordneten Defekt nachweist. Sie enthaelt keine Rohlogs oder Secrets.
 5. **Exakte Build-Zuordnung.** Crash-Adressen werden nur gegen das exakt passende ELF-/Map-Artefakt derselben Build-ID symbolisiert. Firmware-Version allein ist dafuer nicht eindeutig genug.
 6. **Basissoftware behaelt die Kontrolle.** Projektcode darf strukturierte Ereignisse und Metriken publizieren, aber keine eigenen Debugports, HTTP-Diagnoserouten, MQTT-Debugtopics oder JTAG-Freigaben registrieren.
 7. **Fehlerdiagnose darf das Geraet nicht destabilisieren.** Logging ist begrenzt, nicht blockierend und besitzt feste Speicher-, Frequenz- und Transportbudgets.
@@ -56,6 +83,7 @@ flowchart LR
     MQTT["Devicegebundenes MQTT-Runtime-Topic"]
     Identity["Identity Ownership-Pruefung\nkurzlebiger SSE-Stream"]
     IDE["IDE Device Monitor"]
+    Admin["Admin Tool\nkritisches Systemereignis"]
     Report["Redigiertes Diagnosepaket\nexpliziter Export"]
     Telemetry["Telemetry Server\nfachliche Messwerte/Ereignisse"]
 
@@ -66,6 +94,7 @@ flowchart LR
     Ring --> MQTT
     MQTT --> Identity
     Identity --> IDE
+    IDE -. "nur eindeutig kritischer\nBasissoftwaredefekt" .-> Admin
     Ring --> Report
     Status --> Report
     Device -. "getrennter Vertrag" .-> Telemetry
@@ -79,6 +108,7 @@ Die drei Ausgabepfade zeigen denselben normalisierten Ereignisstrom, jedoch mit 
 | Lokales Web | Inbetriebnahme und Diagnose im lokalen Geraetenetz | RAM-Ringpuffer auf dem Device | lokales Netz; keine oeffentliche Weiterleitung |
 | Runtime-Monitor | kurze Live-Beobachtung eines gepairten Devices | fluechtiger Stream, keine Telemetrie-Persistenz | aktive Account-Sitzung, Project- und Device-Ownership |
 | Diagnosepaket | reproduzierbarer Supportfall | lokal erzeugt; serverseitig nur nach Zustimmung und mit Retention | Nutzerfreigabe, Zweckbindung und Audit |
+| Basissoftware-Incident | Betreiber muss einen nicht durch Nutzer behebbaren Defekt korrigieren | minimales kritisches Operations-Systemereignis | bewusster Diagnoselesevorgang, Projektrecht, eindeutige Basissoftware-Zuordnung |
 
 ## Die vier Debugmodi
 
@@ -92,6 +122,10 @@ Dieser Modus ist in jedem freigegebenen Build aktiv. Er enthaelt nur lesende, re
 - Uptime, Resetursache, Bootzaehler der aktuellen Fehlerfolge und aktiver Partitionsslot
 - WLAN-/MQTT-/OTA-Zustand als normalisierte Statuscodes
 - freier Heap, minimal beobachteter Heap, Task-/Stack-Wasserzeichen und Watchdog-Kurzinfo, soweit die Plattform dies liefert
+- fuer ESP32 eine laufende Task-Tabelle mit Zustand, Core, aktueller/Basisprioritaet, kleinstem freien Stack seit Task-Start, Grenzwertstatus und Verantwortungsbereich
+- groesster allokierbarer Heap-Block und daraus abgeleitete Fragmentierung sowie getrennte Werte fuer internen RAM und PSRAM
+- ESP-IDF-Version, Chipziel, Chiprevision und Zahl der CPU-Kerne; CPU-Prozentwerte nur bei aktivierter echter Laufzeitmessung
+- OTA-Zustand, letzter WLAN-Verbindungsstatus und Trennungsgrund sowie Belegung und verworfene Bytes des begrenzten Diagnose-Ringpuffers
 - Rate-Limit und Zusammenfassung wiederholter identischer Ereignisse
 
 Es gibt keine Remote-Shell, keinen generischen Speicherleser, keine Laufzeitaktivierung beliebiger Logkategorien und keine Ausgabe von Credentials oder Payload-Rohdaten.
@@ -206,6 +240,8 @@ Die konkreten Grenzwerte werden je Hardwareklasse im Hardware Catalog festgelegt
 
 Als Startwerte fuer ESP32 werden im ersten Spike 128 Ereignisse, maximal 256 Byte pro normalisiertem Ereignis und hoechstens 10 Remote-Ereignisse pro Sekunde vermessen. Diese Werte sind keine Freigabe, sondern muessen durch Heap-, Last- und Fehlersturmtests bestaetigt oder angepasst werden.
 
+Fuer die erste ESP32-Ressourcenbewertung gelten bewusst konservative Startgrenzen: Minimum-Heap unter 32 KiB ist eine Warnung und unter 16 KiB kritisch; Heap-Fragmentierung ab 50 Prozent ist eine Warnung und ab 70 Prozent kritisch; die kleinste freie Task-Stack-Reserve unter 1024 Byte ist eine Warnung und unter 512 Byte kritisch. Diese Grenzwerte sind Teil des Diagnosevertrags, aber noch keine boarduebergreifende Freigabe. Sie muessen spaeter pro Hardwareklasse im Hardware Catalog versioniert werden.
+
 ## Bedienablauf in der IDE
 
 1. Nutzer waehlt Projekt und konkretes Device.
@@ -228,7 +264,18 @@ Die IDE darf keine gruenen Pauschalaussagen wie "Device gesund" aus einzelnen Lo
 - Secret-/PII-Redaktion zentral in der Basissoftware testen
 - IDE-/Serial-Service-Liveansicht mit Filter, Pause und lokalem Export anbinden
 
-Stand: Der IDE-/Serial-Service-Durchstich, Statusgrunddaten, Logfilter, Reproduktionsmarke und lokaler Export sind umgesetzt und contract-getestet. Einheitliches Ereignisschema, Build-ID, Stack-Wasserzeichen, zentrale Redaktion sowie echte Hardware-Abnahme bleiben offen.
+Stand: Der IDE-/Serial-Service-Durchstich, Statusgrunddaten, Logfilter, Reproduktionsmarke, lokaler Export sowie globale Heap- und taskbezogene Stack-Wasserzeichen sind umgesetzt und contract-getestet. Die eindeutige Basissoftware-Klassifikation wird ueber den zentralen Admin-Systemereignispfad eskaliert. Einheitliches Ereignisschema, kataloggebundene Grenzwerte, zentrale Redaktion sowie echte Hardware-Abnahme bleiben offen.
+
+### Arbeitspaket: weitere Plattformadapter und Hardwarefreigabe
+
+- ESP8266, ARM-Cortex-/STM32-, RP2040- und weitere Controlleradapter auf demselben Capability-Vertrag ergaenzen
+- RTOS-Daten nur fuer Plattformen mit belastbarer Runtime-API anbieten; Bare-Metal-Adapter bleiben bei SRAM, Resetursache, Zeitgeber und Watchdogstatus
+- Grenzwerte und Messbudgets pro Hardwareklasse im Hardware Catalog versionieren statt ESP32-Werte zu verallgemeinern
+- kleinen SRAM-Verbrauch, UART-Backpressure und Verhalten bei vollem Eingabepuffer fuer AVR vermessen
+- Arduino-AVR und direkte avr-libc-Variante auf realer Hardware gegen Power-on-, externen, Brownout- und Watchdog-Reset abnehmen
+- Netzwerk-, Firmwareupdate-, Logging- und Crash-Grunddaten schrittweise in optionale Capability-Sektionen ueberfuehren
+
+Stand: Der generische Vertrag, der ESP32-/FreeRTOS-Adapter und die beiden ersten AVR-Adapter sind implementiert und contract-getestet. Reale AVR-Hardwareabnahme sowie weitere Controllerfamilien bleiben Teil dieses Arbeitspakets.
 
 ### Phase 2: Crash-Kurzbericht und Symbolisierung
 
@@ -264,6 +311,7 @@ Das Konzept gilt erst als umgesetzt, wenn mindestens folgende Nachweise vorliege
 - Crash-Adressen werden nur mit exakt passender Build-ID symbolisiert.
 - Fehlendes Netz verhindert lokale USB-/Webdiagnose nicht; fehlender Server verhindert den normalen Device-Start nicht.
 - Runtime-Debugdaten landen nicht in fachlichen Telemetrietabellen.
+- Kritische Basissoftware-Incidents enthalten keine Rohlogs oder Secrets, werden nicht aus gemeinsam verantworteten Tasks abgeleitet und erreichen den zentralen Admin-Systemereignispfad mit Severity `critical`.
 - Produktionsimages enthalten keine Laborendpunkte, Debugzertifikate oder aktivierbare Remote-Shell.
 - Watchdog, Panic, Brownout, Bootloop, OTA-Rollback und Recovery wurden auf echter Hardware nachvollzogen.
 - RAM-, Flash-, CPU- und Netzwerkbudgets sind fuer jede freigegebene Hardwareklasse dokumentiert.

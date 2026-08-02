@@ -1,0 +1,19 @@
+{
+  "expo": {
+    "name": "GerNetiX Demo",
+    "slug": "gernetix-mobile-demo",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gernetix.mobile.demo"
+    },
+    "android": {
+      "package": "com.gernetix.mobile.demo",
+      "adaptiveIcon": {
+        "backgroundColor": "#07110F"
+      }
+    }
+  }
+}

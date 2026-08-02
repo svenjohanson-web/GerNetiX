@@ -8,11 +8,18 @@ Diese Basissoftware ist fuer Arduino-kompatible AVR-Boards gedacht, wenn ein Pro
 - keine Arduino-Laufzeit und keine `setup()`-/`loop()`-Abhaengigkeit
 - direkter Einstieg in Register, `avr/io.h` und `avr-libc`
 - klare Trennung zwischen geschuetzter Basis und User-Artefakten
+- gemeinsamer faehigkeitsbasierter AVR-Diagnosevertrag ohne Betriebssystemannahme
 
 ## Geschuetzte Basis
 
 - `src/main.c`
 - `platformio.ini`
+- `../arduino-avr-shared/` als gemeinsam versionierter Diagnosekern
+
+Die lokale Debug-Sicht kann ueber den direkten UART SRAM-Reserve, Minimum,
+Stack-/Heap-Abstand und Resetursache lesen. Diese Bare-Metal-Variante meldet keine
+FreeRTOS-Tasks, keine PSRAM-Werte und ohne eigenen Zeitgeber auch keine Uptime oder
+CPU-Prozentwerte.
 
 ## User-Artefakte
 

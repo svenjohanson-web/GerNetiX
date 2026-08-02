@@ -561,7 +561,9 @@ class ProjectService {
       user_id: input.user_id || project.user_id,
       learning_step_id: input.learning_step_id || "",
       category: input.category || "project_feedback",
-      message: required(input.message, "message"),
+      ratings: normalizeLearningRatings(input.ratings, input.category || "project_feedback"),
+      message: String(input.message || "").trim().slice(0, 2000),
+      status: "new",
       contact_mode: input.contact_mode || "no_contact",
       contact_email: input.contact_email || "",
       anonymize_after: input.anonymize_after || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
@@ -571,13 +573,46 @@ class ProjectService {
     return redactFeedback(await this.repository.saveFeedback(feedback));
   }
 
+  async createTemplateFeedback(input = {}) {
+    await this.ready;
+    const category = input.category === "template_improvement_suggestion"
+      ? "template_improvement_suggestion"
+      : "template_experience_rating";
+    const message = String(input.message || "").trim().slice(0, 2000);
+    if (category === "template_improvement_suggestion" && !message) {
+      throw new ProjectServerError("missing_required_field", "Pflichtfeld fehlt: message");
+    }
+    const now = new Date().toISOString();
+    const feedback = {
+      feedback_id: input.feedback_id || createId("template_feedback"),
+      subject_type: "project_template",
+      subject_id: required(input.template_id || input.subject_id, "template_id"),
+      template_id: required(input.template_id || input.subject_id, "template_id"),
+      user_id: required(input.user_id, "user_id"),
+      category,
+      ratings: normalizeLearningRatings(input.ratings, category),
+      message,
+      status: "new",
+      contact_mode: "no_contact",
+      contact_email: "",
+      anonymize_after: input.anonymize_after || new Date(Date.now() + 60 * 24 * 60 * 60 * 1000).toISOString(),
+      anonymized_at: null,
+      created_at: now,
+    };
+    return redactFeedback(await this.repository.saveTemplateFeedback(feedback));
+  }
+
   async listFeedback(query = {}) {
     await this.ready;
     const feedbackItems = await this.repository.listFeedback({
       project_id: query.project_id || query.projectId || "",
       user_id: query.user_id || query.userId || "",
     });
-    return Promise.all(feedbackItems.map(async (feedback) =>
+    const templateItems = await this.repository.listTemplateFeedback?.({
+      template_id: query.template_id || query.templateId || "",
+      user_id: query.user_id || query.userId || "",
+    }) || [];
+    return Promise.all([...feedbackItems, ...templateItems].map(async (feedback) =>
       redactFeedback(feedback, await this.repository.findFeedbackConsent(feedback.feedback_id))));
   }
 
@@ -689,7 +724,9 @@ class ProjectService {
   async anonymizeExpiredFeedback(at = new Date()) {
     await this.ready;
     const updated = [];
-    for (const feedback of await this.repository.listFeedback()) {
+    const projectFeedback = await this.repository.listFeedback();
+    const templateFeedback = await this.repository.listTemplateFeedback?.() || [];
+    for (const feedback of [...projectFeedback, ...templateFeedback]) {
       if (feedback.anonymized_at || new Date(feedback.anonymize_after).getTime() > at.getTime()) continue;
       const anonymized = {
         ...feedback,
@@ -698,7 +735,10 @@ class ProjectService {
         contact_mode: "no_contact",
         anonymized_at: at.toISOString(),
       };
-      updated.push(redactFeedback(await this.repository.saveFeedback(anonymized)));
+      const saved = feedback.subject_type === "project_template"
+        ? await this.repository.saveTemplateFeedback(anonymized)
+        : await this.repository.saveFeedback(anonymized);
+      updated.push(redactFeedback(saved));
     }
     return updated;
   }
@@ -1446,6 +1486,24 @@ function redactFeedback(feedback, consent = null) {
     contact_email: consent ? feedback.contact_email : "",
     has_contact_consent: Boolean(consent),
   };
+}
+
+function normalizeLearningRatings(input, category) {
+  const ratingCategories = new Set(["learning_experience_rating", "development_project_rating", "template_experience_rating"]);
+  if ((!input || typeof input !== "object") && !ratingCategories.has(category)) return {};
+  const ratings = input && typeof input === "object" ? input : {};
+  const normalized = {};
+  for (const criterion of ["clarity", "fun", "difficulty", "completeness"]) {
+    const value = Number(ratings[criterion]);
+    if (!Number.isInteger(value) || value < 1 || value > 5) {
+      throw new ProjectServerError(
+        "invalid_feedback_rating",
+        `Bewertung ${criterion} muss eine ganze Zahl von 1 bis 5 sein.`,
+      );
+    }
+    normalized[criterion] = value;
+  }
+  return normalized;
 }
 
 function normalizeSourcePath(value) {

@@ -9,6 +9,7 @@ Damit entsteht eine klare Trennung:
 - `basissoftware/esp32/`: stabile Basis-Firmware, Schutzmechanismen, Update-Logik, Runtime und gemeinsame Hardwareabstraktion.
 - `basissoftware/arduino-framework/`: Basissoftware fuer Arduino-kompatible AVR-Boards mit Arduino-Framework.
 - `basissoftware/arduino-atmel/`: Basissoftware fuer Arduino-kompatible AVR-Boards ohne Arduino-Framework, direkt mit AVR-/Atmel-nahen APIs.
+- `basissoftware/arduino-avr-shared/`: gemeinsamer faehigkeitsbasierter AVR-Diagnosekern fuer beide Varianten; er enthaelt keine Arduino- oder RTOS-Abhaengigkeit.
 - `projects/`: projektspezifische Parameter, Pinbelegung, erlaubte Features, Branding, Sensor-/Aktor-Profile und optionale Hooks.
 - `model/`: runtime-neutrale fachliche Modelle, zum Beispiel das Tamagotchi-Modell.
 - `runtimes/`: technische Zielplattformen und Referenzanwendungen.
@@ -51,6 +52,10 @@ GerNetiX/
       main.c
       user/
         user_app.c
+  basissoftware/arduino-avr-shared/
+    src/
+      gernetix_avr_diagnostics.h
+      gernetix_avr_diagnostics.c
   projects/
     _template/
       project.yaml
@@ -164,6 +169,7 @@ Ein ESP32-Vollbuild wird erst danach gestartet, wenn die schnellen Checks erfolg
 - `basissoftware/esp32/` ist die stabile Basis-Firmware und wird als eigene ESP-IDF-Komponente gebaut.
 - `basissoftware/arduino-framework/` ist die Arduino-Framework-Basis fuer Arduino-kompatible AVR-Boards.
 - `basissoftware/arduino-atmel/` ist die direkte AVR-/Atmel-nahe Basis fuer dieselben Boardklassen ohne Arduino-Framework.
+- `basissoftware/arduino-avr-shared/` stellt beiden Varianten denselben USB-Diagnosevertrag fuer SRAM-Reserve und Resetursache bereit; nur die Arduino-Variante adaptiert zusaetzlich Uptime und Loop-Zeit. Fehlende RTOS-, PSRAM- oder CPU-Faehigkeiten werden nicht simuliert.
 - `projects/<projekt-id>/` enthaelt nur projektspezifische Konfiguration und freigegebene Hooks.
 - `generated/<projekt-id>/` enthaelt KI-generierte oder lernprojektbezogene Dateien.
 - Basissoftware-Code darf keine Header aus `projects/` oder `generated/` inkludieren.

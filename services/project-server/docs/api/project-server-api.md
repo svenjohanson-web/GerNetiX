@@ -55,14 +55,25 @@ SQL/SQLite wird nicht als eigener Komponentenordner modelliert. Es ist eine Soft
 
 Der Project Server kompiliert nicht selbst. `build-package` liefert einen reproduzierbaren Snapshot fuer den Build-&-Deploy-Server. Das Paket enthaelt neben `build-job.json`, `platformio.ini` und Projektquellen auch `project-view-manifest.json`.
 
-## Learning Feedback
+## Projekt- und Template-Feedback
 
 - `POST /api/learning-feedback`
-- `GET /api/learning-feedback?project_id=...`
+- `POST /api/template-feedback`
+- `GET /api/learning-feedback?project_id=...&template_id=...`
 - `POST /api/learning-feedback/{feedbackId}/contact-consent`
 - `POST /api/learning-feedback/anonymize-expired`
 
 Kontaktinformationen werden ohne Feedback-spezifischen Consent nicht ausgegeben.
+
+Fuer die Kategorien `learning_experience_rating`, `development_project_rating`
+und `template_experience_rating` ist `ratings` mit vier ganzzahligen
+Pflichtwerten von 1 bis 5 erforderlich: `clarity`, `fun`, `difficulty` und
+`completeness`. `project_improvement_suggestion` und
+`template_improvement_suggestion` verlangen stattdessen einen Freitext. Jede
+Nachricht ist auf 2.000 Zeichen begrenzt. Der Identity-Proxy setzt Projekt,
+Template und Account nach Sitzungs-, Besitz- beziehungsweise Katalogpruefung
+serverseitig. Der GET-Endpunkt fuehrt Projekt- und Template-Rueckmeldungen fuer
+die zentrale Admin-Sicht zusammen.
 
 ## Lernfortschritt
 

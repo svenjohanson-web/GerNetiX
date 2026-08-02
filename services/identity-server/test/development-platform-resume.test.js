@@ -25,7 +25,7 @@ test("wires all development platform controller dependencies", () => {
   assert.match(controllerCreation, /deleteJson,/);
   assert.match(controllerCreation, /loadProcessorBoardCatalog,/);
   assert.match(controllerCreation, /openHelpTopic: InformationView\.openDialog/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260801-board-hidden-features/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260802-project-feedback/);
 });
 
 test("restores persisted PlantUML when an existing development project is activated", () => {
@@ -61,7 +61,7 @@ test("keeps the project choice surface consistent with the dark workspace", () =
   const choiceSurfaceRule = publicCss.match(/\.development-project-header > \.development-project-choice-panel:not\(\.hidden\),[\s\S]*?\{([^}]*)\}/)?.[1] || "";
   assert.match(choiceSurfaceRule, /background: #111827/);
   assert.doesNotMatch(choiceSurfaceRule, /background: #fff/);
-  assert.match(publicHtml, /app\.css\?v=20260801-hardware-validation-4/);
+  assert.match(publicHtml, /app\.css\?v=20260802-debug-workspace-feedback-rating/);
 });
 
 test("separates the architecture discovery step from the active project", () => {
@@ -109,7 +109,7 @@ test("never traps an account without development projects in the open or manage 
   assert.match(publicController, /formatDevelopmentProjectDate\(project\.createdAt\)/);
   assert.match(publicController, /formatDevelopmentProjectDate\(project\.updatedAt\)/);
   assert.doesNotMatch(publicController, /project\.description \|\| "Keine Beschreibung\."/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260801-board-hidden-features/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260802-project-feedback/);
 });
 
 test("loads the development template catalog from the server model registry", () => {
@@ -165,7 +165,7 @@ test("refreshes legacy camera template architecture to IoT-device aggregates wit
 
 test("development chat uses a compact arrow send button inside the input", () => {
   assert.match(publicHtml, /development-chat-input-box/);
-  assert.match(publicHtml, /development-platform\.js\?v=20260801-board-hidden-features/);
+  assert.match(publicHtml, /development-platform\.js\?v=20260802-project-feedback/);
   assert.match(publicHtml, /development-chat-input-box[\s\S]*developmentQuickPrompts[\s\S]*developmentChatInput[\s\S]*developmentChatSubmit/);
   assert.match(publicHtml, /development-send-button/);
   assert.match(publicHtml, /aria-label="Nachricht senden"/);
@@ -236,7 +236,7 @@ test("uses one component configuration for every template except the game collec
 
 test("keeps the selected component type when a custom label does not describe it", () => {
   assert.match(publicController, /hardwareComponentType\(label, match\[1\], match\[3\]\)/);
-  assert.match(developmentComponentMetamodel, /\["iot_device", "sensor", "actuator", "smartphone_app", "browser_app", "desktop_app", "server_api"\]/);
+  assert.match(developmentComponentMetamodel, /\["iot_device", "sensor", "actuator", "mobile_app", "smartphone_app", "browser_app", "desktop_app", "server_api"\]/);
   assert.match(developmentComponentMetamodel, /alias === type \|\| alias\.startsWith\(`\$\{type\}_`\)/);
 });
 
@@ -356,7 +356,7 @@ test("development platform scales like a compact workspace", () => {
   assert.match(publicRuntimeUtils, /skinparam backgroundColor transparent/);
   assert.match(publicRuntimeUtils, /skinparam rectangleBackgroundColor #1E3A5F/);
   assert.match(publicRuntimeUtils, /skinparam rectangleBorderColor #67E8F9/);
-  assert.match(publicHtml, /app\.css\?v=20260801-hardware-validation-4/);
+  assert.match(publicHtml, /app\.css\?v=20260802-debug-workspace-feedback-rating/);
   assert.match(publicCss, /\.development-workspace-active \.development-page-actions button \{[\s\S]*font-size: 12px/);
 });
 

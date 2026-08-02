@@ -159,6 +159,10 @@ function createHttpApp(options) {
       sendJson(res, 201, await service.createFeedback(await readJsonBody(req)));
       return;
     }
+    if (req.method === "POST" && path === "/api/template-feedback") {
+      sendJson(res, 201, await service.createTemplateFeedback(await readJsonBody(req)));
+      return;
+    }
     if (req.method === "GET" && path === "/api/learning-feedback") {
       sendJson(res, 200, { items: await service.listFeedback(Object.fromEntries(url.searchParams.entries())) });
       return;

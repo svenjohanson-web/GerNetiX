@@ -19,7 +19,7 @@ Fuer den projektgebundenen Entwicklungs-KI-Chat stellt er eine bedarfsgesteuerte
 - Build-, Flash- und Deploy-Historie nachvollziehbar speichern
 - unveraenderliche Git-Light-Projektversionen mit Elternbezug und Inhalts-Hash speichern
 - Firmware-Artefakte und Logs dem Projektkontext zuordnen
-- Step- und Projektfeedback im Learning-/Projektkontext speichern
+- Bewertungen und Verbesserungsvorschlaege fuer Lernprojekte, Entwicklungsprojekte und Projekt-Templates speichern
 - aktuelle Lesson, aktuellen Step und abgeschlossene Steps je Lesson dauerhaft speichern
 
 ## Abgrenzung
@@ -102,7 +102,8 @@ Diese Struktur liegt als Project-Server-Quelle in PostgreSQL und ist keine lokal
 - `build-package-creator`: vollstaendige Build-Pakete aus Projekt, Basissoftware und Zielgeraet
 - `project-build-history`: Build-, Flash- und Deploy-Historie
 - `firmware-artifact-repository`: Firmware-Artefakte, Logs und Statusmetadaten
-- `learning-feedback-repository`: Step- und Projektfeedback inklusive Anonymisierung und Kontakt-Consent-Verknuepfung
+- `learning-feedback-repository`: Lern-/Entwicklungsprojektfeedback inklusive Anonymisierung und Kontakt-Consent-Verknuepfung
+- `template-feedback-repository`: Bewertungen und Verbesserungsvorschlaege zu unveraenderlichen Projektvorlagen
 - `learning-progress-repository`: account- und projektgebundener Wiedereinstieg in die letzte Lesson und den letzten Step
 
 ## MVP-Implementierung
@@ -127,7 +128,15 @@ API-Prefix:
 /api/projects
 ```
 
-Umgesetzt sind Projektanlage, Projektquellen, ProjectViewManifest, projektgebundener Lesson-/Step-Fortschritt, BuildJob-Erzeugung, reproduzierbare BuildPackages, BuildResult-Rueckmeldung, Firmware-Artefaktreferenzen, Build-Historie und Learning-Feedback inklusive Kontakt-Consent und Anonymisierung.
+Umgesetzt sind Projektanlage, Projektquellen, ProjectViewManifest, projektgebundener Lesson-/Step-Fortschritt, BuildJob-Erzeugung, reproduzierbare BuildPackages, BuildResult-Rueckmeldung, Firmware-Artefaktreferenzen, Build-Historie sowie Bewertungen und Verbesserungsvorschlaege fuer Lernprojekte, Entwicklungsprojekte und Projekt-Templates.
+
+Feedback-Endpunkte:
+
+```text
+POST /api/learning-feedback   # Lern-/Entwicklungsprojekt; Kategorie unterscheidet Bewertung und Vorschlag
+POST /api/template-feedback   # Katalog-Template; Kategorie unterscheidet Bewertung und Vorschlag
+GET  /api/learning-feedback   # gemeinsame berechtigte Admin-Sicht
+```
 
 ## Git Light
 

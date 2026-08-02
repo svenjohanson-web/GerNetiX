@@ -22,6 +22,7 @@ COPY --chown=node:node services/hardware-shop/package.json services/hardware-sho
 COPY --chown=node:node services/admin-tool/package.json services/admin-tool/package-lock.json ./services/admin-tool/
 COPY --chown=node:node services/admin-access-server/package.json services/admin-access-server/package-lock.json ./services/admin-access-server/
 COPY --chown=node:node services/build-deploy-server/package.json services/build-deploy-server/package-lock.json ./services/build-deploy-server/
+COPY --chown=node:node services/compute-control-plane/package.json services/compute-control-plane/package-lock.json ./services/compute-control-plane/
 COPY --chown=node:node services/public-demo-server/package.json services/public-demo-server/package-lock.json ./services/public-demo-server/
 
 RUN npm ci --omit=dev --prefix services/ai-context-server
@@ -36,6 +37,7 @@ RUN npm ci --omit=dev --prefix services/hardware-shop
 RUN npm ci --omit=dev --prefix services/admin-tool
 RUN npm ci --omit=dev --prefix services/admin-access-server
 RUN npm ci --omit=dev --prefix services/build-deploy-server
+RUN npm ci --omit=dev --prefix services/compute-control-plane
 RUN npm ci --omit=dev --prefix services/public-demo-server
 
 COPY --chown=node:node services ./services

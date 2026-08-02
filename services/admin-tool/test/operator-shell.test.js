@@ -13,6 +13,10 @@ test("admin uses the shared private operator shell without changing server autho
   assert.match(html, /Private Administration/);
   assert.match(html, />Übersicht<\/button>/);
   assert.match(html, />Sicherheit<\/button>/);
+  assert.match(html, />Bewertungen<\/button>/);
+  assert.match(html, /id="learningFeedbackView"/);
+  assert.match(client, /\/api\/admin\/learning-feedback\?purpose=feedback_review/);
+  assert.match(client, /Verständlichkeit/);
   assert.match(client, /classList\.toggle\("is-active", active\)/);
   assert.match(httpApp, /\/admin\/operator-shell\.css/);
   assert.match(shell, /Gemeinsame visuelle Sprache/);

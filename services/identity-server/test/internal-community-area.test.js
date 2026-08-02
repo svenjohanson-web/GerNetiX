@@ -19,7 +19,7 @@ test("keeps creation and replies inside the authenticated community area", () =>
   assert.match(webRoutes, /redirect\(res, authRoute\(url\.pathname \+ url\.search\)\)/);
   assert.match(communityRoutes, /pattern: \/\^\\\/api\\\/community/);
   assert.match(communityRoutes, /requireSession\(req, res\)/);
-  assert.match(internalHtml, /id="communityView"[\s\S]*Interner Kontobereich[\s\S]*id="communityRequestForm"/);
+  assert.match(internalHtml, /id="communityView"[\s\S]*GerNetiX Community[\s\S]*id="communityRequestForm"/);
   assert.match(internalHtml, /name="visibility" value="public"[\s\S]*name="visibility" value="private"/);
   assert.match(internalClient, /postJson\("\/api\/community\/questions"/);
   assert.match(internalClient, /postJson\(`\/api\/community\/questions\/\$\{encodeURIComponent\(questionId\)\}\/answers`/);

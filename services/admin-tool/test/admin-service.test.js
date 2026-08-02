@@ -592,6 +592,33 @@ test("security events are mailed once and then suppressed during cooldown", asyn
   assert.equal(calls, 1);
 });
 
+test("critical basissoftware events notify the operator once while every event remains persisted", async () => {
+  const service = createAdminServiceWithHttpJson({ "/api/internal/operator-alert": { accepted: true } });
+  const requests = [];
+  service.identityEmailConfigRequest = async (pathname, options) => { requests.push([pathname, options]); return { accepted: true }; };
+  const incident = {
+    severity: "critical",
+    category: "basissoftware_runtime",
+    source_service: "gernetix_basissoftware",
+    event_type: "basissoftware_runtime_defect_detected",
+    message: "Basissoftware-Stack ist kritisch.",
+    correlation_id: "build-1:crashDiag",
+  };
+  await service.recordSystemEvent(incident);
+  await service.recordSystemEvent(incident);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0][0], "/api/internal/operator-alert");
+  assert.equal((await service.systemEvents()).items.filter((item) => item.category === "basissoftware_runtime").length, 2);
+
+  await Promise.all([
+    service.recordSystemEvent({ ...incident, correlation_id: "build-2:wifi-connect" }),
+    service.recordSystemEvent({ ...incident, correlation_id: "build-2:wifi-connect" }),
+  ]);
+  await new Promise((resolve) => setImmediate(resolve));
+  assert.equal(requests.length, 2, "simultaneous duplicate reports must produce exactly one additional notification");
+});
+
 test("monitoring reads Community operational counts without exposing the internal token", async () => {
   const repository = new InMemoryAdminRepository();
   const service = new AdminService({

@@ -25,6 +25,7 @@ function build() {
   copy("index.html");
   copy("styles.css");
   copy("app.js");
+  for (const diagram of diagramDocuments) copyDiagram(diagram.sourcePath);
   const payload = { categories, statusDefinitions, documents };
   const json = JSON.stringify(payload).replace(/</g, "\\u003c");
   fs.writeFileSync(path.join(outputRoot, "content.js"), `window.ARCHITECTURE_DOCS = ${json};\n`, "utf8");
@@ -122,6 +123,12 @@ function compareDocuments(left, right) {
 
 function copy(fileName) {
   fs.copyFileSync(path.join(sourceRoot, fileName), path.join(outputRoot, fileName));
+}
+
+function copyDiagram(sourcePath) {
+  const source = path.join(repoRoot, sourcePath);
+  if (!fs.existsSync(source)) throw new Error(`Architecture diagram missing: ${sourcePath}`);
+  fs.copyFileSync(source, path.join(outputRoot, path.basename(sourcePath)));
 }
 
 if (require.main === module) {

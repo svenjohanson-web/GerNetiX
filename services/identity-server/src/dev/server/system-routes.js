@@ -63,6 +63,23 @@ function registerSystemRoutes({
     },
   });
   registry.register({
+    method: "POST",
+    path: "/api/internal/operator-alert",
+    async handler({ req, res }) {
+      requireInternalAdmin(req);
+      const alert = await readJsonBody(req);
+      const config = smtpConfigStore.deliveryConfig();
+      const recipient = config?.security_alert_recipient || config?.reply_to || config?.from_address;
+      if (!recipient) { sendJson(res, 409, { error: "operator_alert_recipient_missing" }); return; }
+      const message = String(alert.message || "Kritischer Plattformfehler erkannt.").slice(0, 500);
+      await smtpEmailService.send(recipient, `GerNetiX Betreiberhinweis: ${String(alert.severity || "critical").toUpperCase()}`, message);
+      const push = await webPushService.notifyAccounts(securityAlertPushAccountIds, {
+        title: "GerNetiX Basissoftwarefehler", body: message, url: "/app/dashboard/",
+      });
+      sendJson(res, 202, { accepted: true, recipient, push });
+    },
+  });
+  registry.register({
     method: "GET",
     path: "/api/push/public-key",
     handler: ({ res }) => sendJson(res, 200, { enabled: webPushService.enabled, public_key: webPushService.publicKey || "" }),

@@ -41,3 +41,27 @@ test("serial and local web status expose the same crash report", () => {
   assert.match(cmake, /esp_app_format/);
   assert.match(cmake, /espcoredump/);
 });
+
+test("runtime diagnostics expose bounded heap and every task stack without payload data", () => {
+  assert.match(crash, /writeRuntimeResourceDiagnosticsJson/);
+  assert.match(crash, /uxTaskGetSystemState/);
+  assert.match(crash, /minimum_free_stack_bytes/);
+  assert.match(crash, /HEAP_WARNING_BYTES = 32768/);
+  assert.match(crash, /STACK_CRITICAL_BYTES = 512/);
+  assert.match(crash, /heap_caps_get_largest_free_block/);
+  assert.match(crash, /MALLOC_CAP_INTERNAL/);
+  assert.match(crash, /MALLOC_CAP_SPIRAM/);
+  assert.match(crash, /fragmentation_percent/);
+  assert.match(crash, /esp_get_idf_version/);
+  assert.match(crash, /esp_chip_info/);
+  assert.match(crash, /taskStateName/);
+  assert.match(crash, /base_priority/);
+  assert.match(crash, /cpu_usage_status/);
+  assert.match(crash, /"basissoftware"/);
+  assert.match(serial, /jsonAppendRaw\(writer, "diagnostics",/);
+  assert.match(web, /"\\"diagnostics\\":%s,"/);
+  assert.ok(crash.includes('\\"capabilities\\"'));
+  assert.ok(crash.includes('\\"rtos_tasks\\"'));
+  assert.ok(crash.includes('\\"rtos\\":\\"freertos\\"'));
+  assert.doesNotMatch(crash, /password|credential|network_payload/i);
+});

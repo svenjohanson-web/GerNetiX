@@ -126,6 +126,19 @@ test("keeps knowledge articles in focused topic modules", () => {
   assert.match(fs.readFileSync(path.join(appRoot, "knowledge-articles-sensors-actuators.js"), "utf8"), /"sensors": \{[\s\S]*"actuators": \{/);
 });
 
+test("explains browser apps, PWA mode and native mobile apps at the component choice", () => {
+  assert.match(knowledgeCatalogContent, /id: "browser-pwa-mobile-app"[\s\S]*articleId: "browser-pwa-mobile-app"[\s\S]*access: "public"/);
+  assert.match(helpContent, /"browser-pwa-mobile-app": \{[\s\S]*Browser-App und PWA teilen dieselbe Grundlage[\s\S]*Vor- und Nachteile im Vergleich[\s\S]*Welche Komponente passt zum Projekt\?/);
+  assert.match(helpContent, /GerNetiX modelliert eine PWA deshalb als Betriebs- und Installationsoption einer Browser-App/);
+  assert.match(helpContent, /Sie braucht deshalb immer einen Webserver/);
+  assert.match(helpContent, /nur im lokalen Netzwerk beziehungsweise Intranet oder über das Internet erreichbar/);
+  assert.match(helpContent, /Die Internet-Auswahl veröffentlicht noch keinen Dienst/);
+  assert.match(helpContent, /Mobile App \(iOS & Android\)[\s\S]*Eigene Builds, Signierung, Store-Prozesse/);
+  const developmentPlatform = fs.readFileSync(path.join(appRoot, "development-platform.js"), "utf8");
+  assert.match(developmentPlatform, /data-component-type-help/);
+  assert.match(developmentPlatform, /openHelpTopic\?\.\("browser-pwa-mobile-app"\)/);
+});
+
 test("shows compatible hardware from the catalog and explains USB provisioning limits", () => {
   assert.match(helpContent, /"compatible-hardware"/);
   assert.match(helpContent, /iPhone und iPad/);
@@ -641,17 +654,18 @@ test("separates the knowledge portal from platform help while reusing a neutral 
   assert.match(css, /body\.public-information-anonymous #mainMenu a:not\(\.public-information-link\)/);
 });
 
-test("keeps the introductory engineering and development-process chapters public and gates the remaining knowledge chapters independently", () => {
+test("keeps explicitly public knowledge chapters open and gates the remaining chapters independently", () => {
   const context = {};
   vm.createContext(context);
   vm.runInContext(`${knowledgeContent};this.content = KnowledgeContent;`, context);
   const chapters = context.content.topics.flatMap((topic) => topic.children || []);
 
-  assert.equal(chapters.length, 32);
+  assert.equal(chapters.length, 33);
   assert.equal(context.content.articles["from-problem-to-system"].access, "public");
   assert.equal(context.content.articles["development-processes-overview"].access, "public");
+  assert.equal(context.content.articles["browser-pwa-mobile-app"].access, "public");
   assert.ok(chapters
-    .filter((chapter) => !["from-problem-to-system", "development-processes-overview"].includes(chapter.id))
+    .filter((chapter) => !["from-problem-to-system", "development-processes-overview", "browser-pwa-mobile-app"].includes(chapter.id))
     .every((chapter) => context.content.articles[chapter.articleId]?.access === "premium"));
   assert.match(informationView, /article\.sections\.slice\(0, 1\)/);
   assert.match(informationView, /knowledge-chapter-preview/);

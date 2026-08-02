@@ -30,10 +30,10 @@ test("parses the dedicated worker command without exposing secrets", () => {
   assert.equal(parsed.skipNetwork, true);
 });
 
-test("supports Linux hosts and Docker Desktop on macOS", () => {
+test("supports Linux hosts and Docker Desktop on macOS and Windows", () => {
   assert.equal(supportsWorkerHost("linux"), true);
   assert.equal(supportsWorkerHost("darwin"), true);
-  assert.equal(supportsWorkerHost("win32"), false);
+  assert.equal(supportsWorkerHost("win32"), true);
 });
 
 test("accepts private WireGuard addresses and rejects public or wildcard binds", () => {

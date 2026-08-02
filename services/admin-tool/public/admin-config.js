@@ -5,6 +5,8 @@ const state = {
   modelError: "",
   apiModelError: "",
   overview: null,
+  learningFeedback: null,
+  learningFeedbackLoading: false,
   accounts: [],
   aiUsage: null,
   aiContext: null,
@@ -68,6 +70,8 @@ document.querySelector("#aiHelpKnowledgeRows").addEventListener("click", editAiH
 document.querySelector("#adminEmailConfigForm").addEventListener("submit", saveEmailConfig);
 document.querySelector("#adminEmailTestButton").addEventListener("click", testEmailConfig);
 document.querySelector("#refreshCommunityButton")?.addEventListener("click", () => loadCommunity(true));
+document.querySelector("#refreshLearningFeedbackButton")?.addEventListener("click", () => loadLearningFeedback(true));
+document.querySelector("#learningFeedbackProjectFilter")?.addEventListener("change", renderLearningFeedback);
 document.querySelector("#communitySupportRows")?.addEventListener("click", handleCommunitySupportSelection);
 document.querySelector("#communityQuestionRows")?.addEventListener("click", handleCommunityQuestionSelection);
 document.querySelector("#communitySupportDetail")?.addEventListener("submit", handleCommunitySupportAction);
@@ -225,6 +229,7 @@ async function loadApiModels() {
 function render() {
   renderNavigation();
   renderStatistics();
+  renderLearningFeedback();
   renderMonitoring();
   renderSystemEvents();
   renderLinkIntegrity();
@@ -252,6 +257,7 @@ function setView(view) {
   if (state.currentView === "ai-help-knowledge") loadAiHelpKnowledge(false);
   if (state.currentView === "email-config") loadEmailConfig().then(renderEmailConfig);
   if (state.currentView === "community") loadCommunity(false);
+  if (state.currentView === "learning-feedback") loadLearningFeedback(false);
 }
 
 function renderNavigation() {
@@ -284,6 +290,7 @@ function isAiView(view) {
 function viewId(view) {
   return {
     statistics: "statisticsView",
+    "learning-feedback": "learningFeedbackView",
     monitoring: "monitoringView",
     "system-events": "systemEventsView",
     "link-integrity": "linkIntegrityView",
@@ -298,6 +305,61 @@ function viewId(view) {
     "email-config": "emailConfigView",
     "llm-config": "llmConfigView",
   }[view] || "statisticsView";
+}
+
+async function loadLearningFeedback(force) {
+  if (state.learningFeedbackLoading || (state.learningFeedback && !force)) return;
+  state.learningFeedbackLoading = true;
+  renderLearningFeedback();
+  try {
+    const result = await getJson("/api/admin/learning-feedback?purpose=feedback_review");
+    state.learningFeedback = { items: result.items || [] };
+  } catch (error) {
+    state.learningFeedback = { items: [], error: error.message || String(error) };
+  } finally {
+    state.learningFeedbackLoading = false;
+    renderLearningFeedback();
+  }
+}
+
+function renderLearningFeedback() {
+  const metrics = document.querySelector("#learningFeedbackMetrics");
+  const rows = document.querySelector("#learningFeedbackRows");
+  const filter = document.querySelector("#learningFeedbackProjectFilter");
+  if (!metrics || !rows || !filter) return;
+  const entries = (state.learningFeedback?.items || [])
+    .map((item) => item.feedback || item);
+  const subjectId = (item) => item.template_id || item.subject_id || item.project_id || "";
+  const subjects = Array.from(new Set(entries.map(subjectId).filter(Boolean))).sort();
+  const selectedProject = filter.value;
+  filter.innerHTML = `<option value="">Alle</option>${subjects.map((id) => `<option value="${escapeHtml(id)}"${id === selectedProject ? " selected" : ""}>${escapeHtml(id)}</option>`).join("")}`;
+  const visible = selectedProject ? entries.filter((item) => subjectId(item) === selectedProject) : entries;
+  const rated = visible.filter((item) => item.ratings && ["clarity", "fun", "difficulty", "completeness"].every((key) => Number.isFinite(Number(item.ratings[key]))));
+  const labels = { clarity: "Verständlichkeit", fun: "Spaß", difficulty: "Schwierigkeit", completeness: "Vollständigkeit" };
+  metrics.innerHTML = state.learningFeedbackLoading
+    ? metricCard("Bewertungen", "…", "werden geladen")
+    : Object.entries(labels).map(([key, label]) => metricCard(label, averageRating(rated, key), `${formatNumber(rated.length)} Bewertungen`)).join("");
+  rows.innerHTML = visible.length ? visible
+    .sort((left, right) => String(right.created_at || "").localeCompare(String(left.created_at || "")))
+    .map((item) => `<tr>
+      <td>${escapeHtml(formatDateTime(item.created_at))}</td>
+      <td><strong>${escapeHtml(subjectId(item) || "-")}</strong><br><small>${escapeHtml(item.category || item.learning_step_id || "Feedback")}</small></td>
+      ${["clarity", "fun", "difficulty", "completeness"].map((key) => `<td>${ratingValue(item.ratings?.[key])}</td>`).join("")}
+      <td>${escapeHtml(item.message || "-")}</td>
+    </tr>`).join("")
+    : `<tr><td colspan="7" class="empty-cell">${escapeHtml(state.learningFeedback?.error || "Noch keine Bewertungen vorhanden.")}</td></tr>`;
+}
+
+function averageRating(items, key) {
+  if (!items.length) return "–";
+  const average = items.reduce((sum, item) => sum + Number(item.ratings[key]), 0) / items.length;
+  return `${average.toLocaleString("de-DE", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} / 5`;
+}
+
+function ratingValue(value) {
+  if (!Number.isFinite(Number(value))) return "–";
+  const number = Math.max(1, Math.min(5, Number(value) || 1));
+  return `<span class="rating-value"><strong>${number}</strong><i style="--rating:${number}" aria-hidden="true"></i></span>`;
 }
 
 async function loadCommunity(force) {

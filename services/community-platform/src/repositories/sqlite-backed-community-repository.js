@@ -22,6 +22,10 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
         broadcasts: [],
         messageBlocks: [],
         messageReports: [],
+        marketplaceListings: [],
+        projectIdeas: [],
+        projectIdeaComments: [],
+        projectShowcases: [],
       },
       collectionMap: {
         questions: "questions",
@@ -35,6 +39,10 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
         broadcasts: "broadcasts",
         messageBlocks: "message_blocks",
         messageReports: "message_reports",
+        marketplaceListings: "marketplace_listings",
+        projectIdeas: "project_ideas",
+        projectIdeaComments: "project_idea_comments",
+        projectShowcases: "project_showcases",
       },
     }));
   }
@@ -66,6 +74,10 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
   saveMessageBlock(block) { return this.saveAndPersist(() => super.saveMessageBlock(block)); }
   deleteMessageBlock(blockerUserId, blockedUserId) { return this.saveAndPersist(() => super.deleteMessageBlock(blockerUserId, blockedUserId)); }
   saveMessageReport(report) { return this.saveAndPersist(() => super.saveMessageReport(report)); }
+  saveMarketplaceListing(listing) { return this.saveAndPersist(() => super.saveMarketplaceListing(listing)); }
+  saveProjectIdea(idea) { return this.saveAndPersist(() => super.saveProjectIdea(idea)); }
+  saveProjectIdeaComment(comment) { return this.saveAndPersist(() => super.saveProjectIdeaComment(comment)); }
+  saveProjectShowcase(showcase) { return this.saveAndPersist(() => super.saveProjectShowcase(showcase)); }
 
   createMessageThreadBundle({ thread, members, message, inboxEntries }) {
     InMemoryCommunityRepository.prototype.saveMessageThread.call(this, thread);
@@ -111,6 +123,10 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
       broadcasts: Array.from(this.broadcasts.values()),
       messageBlocks: Array.from(this.messageBlocks.values()),
       messageReports: Array.from(this.messageReports.values()),
+      marketplaceListings: Array.from(this.marketplaceListings.values()),
+      projectIdeas: Array.from(this.projectIdeas.values()),
+      projectIdeaComments: Array.from(this.projectIdeaComments.values()),
+      projectShowcases: Array.from(this.projectShowcases.values()),
     };
     this.store.save(state);
     this.store.replaceCollection?.("questions", state.questions, "question_id");
@@ -124,6 +140,10 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
     this.store.replaceCollection?.("broadcasts", state.broadcasts, "broadcast_id");
     this.store.replaceCollection?.("message_blocks", state.messageBlocks, (row) => `${row.blocker_user_id}:${row.blocked_user_id}`);
     this.store.replaceCollection?.("message_reports", state.messageReports, "report_id");
+    this.store.replaceCollection?.("marketplace_listings", state.marketplaceListings, "listing_id");
+    this.store.replaceCollection?.("project_ideas", state.projectIdeas, "idea_id");
+    this.store.replaceCollection?.("project_idea_comments", state.projectIdeaComments, "comment_id");
+    this.store.replaceCollection?.("project_showcases", state.projectShowcases, "showcase_id");
     if (typeof this.store.replaceTable === "function") {
       this.store.replaceTable("community_questions", state.questions, questionColumns());
       this.store.replaceTable("community_answers", state.answers, answerColumns());
@@ -136,6 +156,10 @@ class SqliteBackedCommunityRepository extends InMemoryCommunityRepository {
       this.store.replaceTable("community_broadcasts", state.broadcasts, broadcastColumns());
       this.store.replaceTable("community_message_blocks", state.messageBlocks, messageBlockColumns());
       this.store.replaceTable("community_message_reports", state.messageReports, messageReportColumns());
+      this.store.replaceTable("community_marketplace_listings", state.marketplaceListings, marketplaceListingColumns());
+      this.store.replaceTable("community_project_ideas", state.projectIdeas, projectIdeaColumns());
+      this.store.replaceTable("community_project_idea_comments", state.projectIdeaComments, projectIdeaCommentColumns());
+      this.store.replaceTable("community_project_showcases", state.projectShowcases, projectShowcaseColumns());
     }
   }
 }
@@ -153,11 +177,31 @@ function communitySchema() {
     `CREATE TABLE IF NOT EXISTS community_broadcasts (broadcast_id TEXT PRIMARY KEY, created_by_user_id TEXT, audience_kind TEXT, state TEXT, created_at TEXT, sent_at TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS community_message_blocks (block_key TEXT PRIMARY KEY, blocker_user_id TEXT, blocked_user_id TEXT, created_at TEXT, raw_json TEXT NOT NULL);`,
     `CREATE TABLE IF NOT EXISTS community_message_reports (report_id TEXT PRIMARY KEY, reporter_user_id TEXT, thread_id TEXT, message_id TEXT, status TEXT, created_at TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS community_marketplace_listings (listing_id TEXT PRIMARY KEY, author_user_id TEXT, state TEXT, title TEXT, category TEXT, created_at TEXT, updated_at TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS community_project_ideas (idea_id TEXT PRIMARY KEY, author_user_id TEXT, state TEXT, title TEXT, stage TEXT, created_at TEXT, updated_at TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS community_project_idea_comments (comment_id TEXT PRIMARY KEY, idea_id TEXT, author_user_id TEXT, created_at TEXT, raw_json TEXT NOT NULL);`,
+    `CREATE TABLE IF NOT EXISTS community_project_showcases (showcase_id TEXT PRIMARY KEY, author_user_id TEXT, state TEXT, title TEXT, created_at TEXT, updated_at TEXT, raw_json TEXT NOT NULL);`,
   ];
 }
 
 function questionColumns() {
   return { question_id: "question_id", account_id: "account_id", project_id: "project_id", title: "title", body: "body", visibility: "visibility", status: "status", triage_status: "triage_status", tags_json: jsonColumn("tags"), created_at: "created_at", updated_at: "updated_at", raw_json: jsonColumn((row) => row) };
+}
+
+function marketplaceListingColumns() {
+  return { listing_id: "listing_id", author_user_id: "author_user_id", state: "state", title: "title", category: "category", created_at: "created_at", updated_at: "updated_at", raw_json: jsonColumn((row) => row) };
+}
+
+function projectIdeaColumns() {
+  return { idea_id: "idea_id", author_user_id: "author_user_id", state: "state", title: "title", stage: "stage", created_at: "created_at", updated_at: "updated_at", raw_json: jsonColumn((row) => row) };
+}
+
+function projectIdeaCommentColumns() {
+  return { comment_id: "comment_id", idea_id: "idea_id", author_user_id: "author_user_id", created_at: "created_at", raw_json: jsonColumn((row) => row) };
+}
+
+function projectShowcaseColumns() {
+  return { showcase_id: "showcase_id", author_user_id: "author_user_id", state: "state", title: "title", created_at: "created_at", updated_at: "updated_at", raw_json: jsonColumn((row) => row) };
 }
 
 function answerColumns() {

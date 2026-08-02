@@ -59,7 +59,7 @@ function isPrivateIpv4(value) {
 }
 
 function supportsWorkerHost(platform) {
-  return platform === "linux" || platform === "darwin";
+  return platform === "linux" || platform === "darwin" || platform === "win32";
 }
 
 function dockerExecutable({ env = process.env, platform = process.platform, existsSync = fs.existsSync } = {}) {
@@ -137,7 +137,7 @@ function checkTcp(host, port, timeoutMs = 3000) {
 }
 
 async function doctor({ envFile, skipNetwork = false, platform = process.platform } = {}) {
-  if (!supportsWorkerHost(platform)) throw new Error("Das Build-Worker-Paket wird auf Linux und macOS mit Docker unterstuetzt.");
+  if (!supportsWorkerHost(platform)) throw new Error("Das Build-Worker-Paket wird auf Linux, macOS und Windows mit einer laufenden Linux-Docker-Engine unterstuetzt.");
   if (!fs.existsSync(envFile)) {
     throw new Error(`Konfiguration fehlt: ${envFile}\nZuerst .env.build-worker.example nach .env.build-worker.local kopieren.`);
   }

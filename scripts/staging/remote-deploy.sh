@@ -12,6 +12,13 @@ if [ ! -f "$env_file" ]; then
   exit 1
 fi
 
+compute_bind_address=$(awk -F= '$1 == "COMPUTE_BIND_ADDRESS" { print $2 }' "$env_file" | tail -n 1 | tr -d '\r')
+compute_bind_address=${compute_bind_address:-127.0.0.1}
+if [ "$compute_bind_address" = "0.0.0.0" ] || [ "$compute_bind_address" = "::" ]; then
+  echo "COMPUTE_BIND_ADDRESS darf keinen oeffentlichen Wildcard-Listener verwenden." >&2
+  exit 1
+fi
+
 compose() {
   docker compose --env-file "$env_file" -f compose.vps.yaml "$@"
 }
@@ -84,6 +91,7 @@ else
       services/identity-server/*) add_incremental_service identity-server ;;
       services/project-server/*) add_incremental_service project-server ;;
       services/build-deploy-server/*) add_incremental_service build-deploy-server ;;
+      services/compute-control-plane/*) add_incremental_service compute-control-plane ;;
       services/public-demo-server/*) add_incremental_service public-demo-server ;;
       services/device-management-server/*) add_incremental_service device-management-server ;;
       services/telemetry-server/*) add_incremental_service telemetry-server ;;

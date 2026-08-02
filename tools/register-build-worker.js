@@ -39,15 +39,42 @@ function workerEnv({ workerId, workerAddress, postgresAddress, password }) {
   ].join("\n");
 }
 
+function parseRegistrationArgs(argv = process.argv.slice(2)) {
+  const options = {};
+  const names = new Map([
+    ["--worker-id", "workerId"],
+    ["--worker-address", "workerAddress"],
+    ["--pool", "pool"],
+    ["--local-file", "localFile"],
+    ["--reuse-credentials-from", "reuseCredentialsFrom"],
+  ]);
+  for (let index = 0; index < argv.length; index += 1) {
+    const key = names.get(argv[index]);
+    if (!key || !argv[index + 1]) throw new Error(`Unbekanntes oder unvollstaendiges Argument: ${argv[index]}`);
+    options[key] = argv[index + 1];
+    index += 1;
+  }
+  return options;
+}
+
 function remoteUpdaterSource() {
   return `
 const fs=require("node:fs");
 const input=JSON.parse(fs.readFileSync(0,"utf8"));
 const file=".env.vps";
 const source=fs.readFileSync(file,"utf8");
+const upstreamKey=input.pool==="secondary"?"BUILD_WORKER_UPSTREAMS":"BUILD_WORKER_PRIMARY_UPSTREAMS";
+const current={};
+for(const line of source.split(/\\r?\\n/)){
+  const match=line.match(/^([A-Z0-9_]+)=(.*)$/);
+  if(match)current[match[1]]=match[2];
+}
+const endpoint=input.workerAddress+":"+input.workerPort;
+const upstreams=String(current[upstreamKey]||"").split(",").map((value)=>value.trim()).filter(Boolean);
+if(!upstreams.includes(endpoint))upstreams.push(endpoint);
 const updates={
   RUNTIME_POSTGRES_BIND_ADDRESS:input.postgresAddress,
-  BUILD_WORKER_PRIMARY_UPSTREAMS:input.workerAddress+":"+input.workerPort,
+  [upstreamKey]:upstreams.join(","),
   BUILD_WORKER_POSTGRES_PASSWORD:input.password,
 };
 const seen=new Set();
@@ -75,9 +102,19 @@ function registerWorker(options = {}) {
 
   const workerId = options.workerId || "mac-worker-01";
   const workerAddress = options.workerAddress || "10.77.0.5";
-  const postgresAddress = options.postgresAddress || "10.77.0.1";
-  const password = options.password || crypto.randomBytes(32).toString("base64url");
-  const payload = JSON.stringify({ workerAddress, workerPort:4400, postgresAddress, password });
+  const pool = options.pool || "primary";
+  if (!/^[a-z0-9._-]+$/.test(workerId)) throw new Error("Ungueltige Worker-ID.");
+  if (!/^(10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.)/.test(workerAddress)) throw new Error("Worker-Adresse muss eine private IPv4-Adresse sein.");
+  if (pool !== "primary" && pool !== "secondary") throw new Error("Worker-Pool muss primary oder secondary sein.");
+
+  let reused = {};
+  if (options.reuseCredentialsFrom) {
+    if (!fs.existsSync(options.reuseCredentialsFrom)) throw new Error("Datei fuer wiederverwendete Worker-Credentials fehlt.");
+    reused = parseEnvFile(fs.readFileSync(options.reuseCredentialsFrom, "utf8"));
+  }
+  const postgresAddress = options.postgresAddress || reused.BUILD_POSTGRES_HOST || "10.77.0.1";
+  const password = options.password || reused.BUILD_POSTGRES_PASSWORD || crypto.randomBytes(32).toString("base64url");
+  const payload = JSON.stringify({ workerAddress, workerPort:4400, postgresAddress, password, pool });
   const compose = "docker compose --env-file .env.vps -f compose.vps.yaml";
   const remoteCommand = [
     `cd ${shellQuote(remoteDir)}`,
@@ -102,17 +139,17 @@ function registerWorker(options = {}) {
   fs.writeFileSync(temporary, workerEnv({workerId,workerAddress,postgresAddress,password}), {mode:0o600});
   fs.renameSync(temporary, localFile);
   fs.chmodSync(localFile, 0o600);
-  return { workerId, workerAddress, postgresAddress, localFile };
+  return { workerId, workerAddress, postgresAddress, localFile, pool };
 }
 
 if (require.main === module) {
   try {
-    const result = registerWorker();
-    process.stdout.write(`Build-Worker registriert: ${result.workerId} auf ${result.workerAddress}\n`);
+    const result = registerWorker(parseRegistrationArgs());
+    process.stdout.write(`Build-Worker registriert: ${result.workerId} auf ${result.workerAddress} (${result.pool})\n`);
   } catch (error) {
     process.stderr.write(`Build-Worker-Registrierung fehlgeschlagen: ${error.message}\n`);
     process.exitCode = 1;
   }
 }
 
-module.exports = { parseEnvFile, registerWorker, remoteUpdaterSource, shellQuote, workerEnv };
+module.exports = { parseEnvFile, parseRegistrationArgs, registerWorker, remoteUpdaterSource, shellQuote, workerEnv };

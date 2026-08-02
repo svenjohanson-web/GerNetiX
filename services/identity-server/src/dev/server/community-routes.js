@@ -55,6 +55,15 @@ function registerCommunityRoutes({
         delete body.recipient_username;
       }
       if (req.method === "POST" && url.pathname === "/api/community/support-requests") body.sender_label = session.account.username || "Mitglied";
+      if (req.method === "POST" && url.pathname === "/api/community/marketplace/listings") body.author_label = session.account.username || "Community-Mitglied";
+      if (req.method === "POST" && (url.pathname === "/api/community/ideas" || /^\/api\/community\/ideas\/[^/]+\/comments$/.test(url.pathname))) {
+        body.author_label = session.account.username || "Community-Mitglied";
+      }
+      if (req.method === "POST" && url.pathname === "/api/community/showcases") {
+        body.project_snapshot = await createCommunityProjectSnapshot(session, body.project_id);
+        body.author_label = session.account.username || "Community-Mitglied";
+        delete body.project_id;
+      }
       if (req.method === "POST" && url.pathname === "/api/community/questions" && body?.attach_project_snapshot === "true") {
         let capabilities;
         try {

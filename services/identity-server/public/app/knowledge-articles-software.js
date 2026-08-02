@@ -82,6 +82,59 @@ const KnowledgeArticlesSoftware = {
         "communication-basics",
       ],
     },
+    "browser-pwa-mobile-app": {
+      title: "Browser-App, PWA oder Mobile App?",
+      summary: "Eine PWA ist eine erweiterte Browser-App. Eine native oder plattformübergreifend native Mobile App ist dagegen ein eigenes App-Buildziel für iOS und Android.",
+      access: "public",
+      sections: [
+        {
+          id: "same-foundation-different-delivery",
+          heading: "Browser-App und PWA teilen dieselbe Grundlage",
+          paragraphs: [
+            "Eine Browser-App wird über eine Webadresse geladen und im Browser ausgeführt. Sie braucht deshalb immer einen Webserver, der ihre Dateien ausliefert. Dieser Webserver kann auf einem VPS, einem HomeServer oder direkt auf einem IoT-Device laufen; auf dem Smartphone selbst muss er nicht laufen.",
+            "Im Entwicklungsprojekt werden der bereitstellende Webserver und seine Reichweite ausdrücklich festgelegt: nur im lokalen Netzwerk beziehungsweise Intranet oder über das Internet erreichbar. Die Internet-Auswahl veröffentlicht noch keinen Dienst; eine tatsächliche Veröffentlichung benötigt insbesondere TLS, Authentifizierung, Zugriffsschutz und eine Sicherheitsprüfung.",
+            "Eine Progressive Web App, kurz PWA, ist keine grundsätzlich andere Anwendungsart. Sie ist eine Browser-App mit zusätzlichen Web-Funktionen wie Web-App-Manifest, App-Icon, Start ohne sichtbare Browserleiste, Service Worker, Offline-Cache und – abhängig von Browser und Betriebssystem – Push-Benachrichtigungen. Der sichtbare Installationsschritt ist häufig tatsächlich nur „Zum Home-Bildschirm“.",
+            "Ein Offline-Cache kann eine bereits geladene PWA zeitweise ohne Netzwerk nutzbar machen. Er ersetzt den Webserver aber nicht: Erstinstallation, Aktualisierungen und alle nicht lokal gespeicherten Inhalte kommen weiterhin von dort.",
+            "GerNetiX modelliert eine PWA deshalb als Betriebs- und Installationsoption einer Browser-App, nicht als gleichrangige neue Architekturkomponente.",
+          ],
+        },
+        {
+          id: "native-mobile-app",
+          heading: "Was eine Mobile App unterscheidet",
+          paragraphs: [
+            "Eine Mobile App besitzt ein eigenes iOS- beziehungsweise Android-App-Paket. Sie wird für die Plattform gebaut, signiert und über TestFlight, App Store, Google-Play-Testkanäle oder eine verwaltete Geräteverteilung installiert.",
+            "Frameworks wie React Native oder Flutter erlauben eine gemeinsame Codebasis, erzeugen aber weiterhin echte App-Builds. Dadurch sind Systemintegration, sichere Schlüsselspeicherung, Widgets, Hintergrundaufgaben, Bluetooth, biometrische Anmeldung und native Benachrichtigungen meist umfassender und verlässlicher als in einer PWA.",
+            "Dafür entstehen zusätzlicher Build-, Signierungs-, Store-, Prüf- und Updateaufwand. Auch bei gemeinsamer Codebasis bleiben einige Funktionen für iOS und Android getrennt.",
+          ],
+        },
+        {
+          id: "advantages-and-disadvantages",
+          heading: "Vor- und Nachteile im Vergleich",
+          table: {
+            headers: ["Variante", "Vorteile", "Nachteile"],
+            rows: [
+              ["Browser-App", "Sofort per Link nutzbar; eine Bereitstellung für PC, Tablet und Smartphone; schnelle Updates", "Benötigt immer einen erreichbaren Webserver; Browseroberfläche sichtbar; eingeschränkte Systemintegration"],
+              ["Browser-App im PWA-Modus", "Home-Bildschirm-Icon; App-ähnlicher Start; Offline-Cache und teilweise Push; kein App-Store nötig", "Bleibt Browsertechnik; Funktionen unterscheiden sich je Plattform; Hintergrundarbeit, Widgets und Gerätezugriff sind eingeschränkter"],
+              ["Mobile App (iOS & Android)", "Stärkere Systemintegration; native Push-, Sicherheits- und Gerätefunktionen; hochwertiges App-Erlebnis", "Eigene Builds, Signierung, Store-Prozesse und plattformspezifische Pflege erforderlich"],
+            ],
+          },
+        },
+        {
+          id: "choosing-the-right-component",
+          heading: "Welche Komponente passt zum Projekt?",
+          paragraphs: [
+            "Wähle eine Browser-App, wenn ein Link, schnelle Bereitstellung und Nutzung auf vielen Geräten im Vordergrund stehen. Aktiviere später den PWA-Modus, wenn diese Browser-App zusätzlich installierbar, app-ähnlich oder begrenzt offline nutzbar sein soll.",
+            "Wähle eine Mobile App, wenn App-Store-Verteilung, zuverlässige Push-Mitteilungen, Widgets, Bluetooth, biometrische Anmeldung, Hintergrundfunktionen oder besonders tiefe iOS-/Android-Integration zum Ziel gehören.",
+            "Beide Varianten können dieselben GerNetiX-Server-APIs und dasselbe Konto verwenden. Die Wahl der Oberfläche ändert weder Projektbesitz noch die fachliche Quelle der Telemetriedaten.",
+          ],
+        },
+      ],
+      relatedTopics: [
+        "software-basics-introduction",
+        "communication-basics",
+        "server-systems",
+      ],
+    },
     "yaml-basics": {
       title: "YAML: strukturierte Daten lesbar beschreiben",
       summary: "YAML ist ein textbasiertes Datenformat für Konfigurationen und andere strukturierte Informationen. Seine wenigen Grundregeln sind schnell gelernt – die Einrückung muss jedoch stimmen.",

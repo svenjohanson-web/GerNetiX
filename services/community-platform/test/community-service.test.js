@@ -73,6 +73,80 @@ test("retains private message threads and read state after a SQLite restart", as
   }
 });
 
+test("retains community marketplace listings after a SQLite restart", async () => {
+  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-community-marketplace-"));
+  const sqlitePath = path.join(temporaryDirectory, "community.sqlite");
+  try {
+    const config = createConfig({ COMMUNITY_SQLITE_PATH: sqlitePath });
+    const firstService = await createDefaultCommunityPlatform(config);
+    const listing = await firstService.createMarketplaceListing({
+      title: "ESP32-S3-Board",
+      description: "Gebraucht, vollständig funktionsfähig.",
+      category: "boards",
+      condition: "good",
+      price_cents: 1800,
+      pickup_location: "Berlin",
+      shipping_available: true,
+    }, member);
+    firstService.repository.store.close();
+
+    const restartedService = await createDefaultCommunityPlatform(config);
+    const restored = await restartedService.getMarketplaceListing(listing.listing_id, member);
+    assert.equal(restored.title, "ESP32-S3-Board");
+    assert.equal(restored.price_cents, 1800);
+    assert.equal(restored.condition, "good");
+    restartedService.repository.store.close();
+  } finally {
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test("retains project ideas and their discussion after a SQLite restart", async () => {
+  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-community-ideas-"));
+  const sqlitePath = path.join(temporaryDirectory, "community.sqlite");
+  try {
+    const config = createConfig({ COMMUNITY_SQLITE_PATH: sqlitePath });
+    const firstService = await createDefaultCommunityPlatform(config);
+    const idea = await firstService.createProjectIdea({
+      title: "Modulare Pflanzenstation", pitch: "Eine offene Station für verschiedene Sensoren.",
+      description: "Module sollen ohne Löten austauschbar sein.", stage: "concept", looking_for: ["feedback", "hardware"],
+    }, member);
+    await firstService.createProjectIdeaComment(idea.idea_id, { body: "Ich könnte die Steckverbinder testen." }, { user_id: "user-2" });
+    firstService.repository.store.close();
+
+    const restartedService = await createDefaultCommunityPlatform(config);
+    const restored = await restartedService.getProjectIdea(idea.idea_id, member);
+    assert.equal(restored.title, "Modulare Pflanzenstation");
+    assert.equal(restored.comments[0].body, "Ich könnte die Steckverbinder testen.");
+    restartedService.repository.store.close();
+  } finally {
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
+test("retains community project showcases and immutable source copies after a SQLite restart", async () => {
+  const temporaryDirectory = fs.mkdtempSync(path.join(os.tmpdir(), "gernetix-community-showcase-"));
+  const sqlitePath = path.join(temporaryDirectory, "community.sqlite");
+  try {
+    const config = createConfig({ COMMUNITY_SQLITE_PATH: sqlitePath });
+    const firstService = await createDefaultCommunityPlatform(config);
+    const showcase = await firstService.createProjectShowcase({
+      title: "Wetteranzeige", summary: "Eine kompakte Anzeige für Innen- und Außentemperatur.",
+      story: "Das Projekt entstand aus einem alten Display.", hardware_items: ["ESP32", "I²C-Display"],
+      project_snapshot: { snapshot_id: "showcase-snapshot", project_title: "Wetteranzeige", sources: [{ path: "src/main.cpp", content: "void setup() {}" }] },
+    }, member);
+    firstService.repository.store.close();
+
+    const restartedService = await createDefaultCommunityPlatform(config);
+    const restored = await restartedService.getProjectShowcase(showcase.showcase_id, member);
+    assert.equal(restored.hardware_items[1], "I²C-Display");
+    assert.deepEqual(restored.project_snapshot.sources.map((source) => source.path), ["src/main.cpp"]);
+    restartedService.repository.store.close();
+  } finally {
+    fs.rmSync(temporaryDirectory, { recursive: true, force: true });
+  }
+});
+
 test("creates and triages community question with SLA metadata", async () => {
   const service = await createService();
   const question = await service.createQuestion({ title: "ESP32 startet nach Flash nicht", body: "Nach dem Flashen bleibt die serielle Ausgabe leer.", tags: ["esp32", "flash"] }, member);
@@ -123,6 +197,74 @@ test("keeps an explicitly attached project copy immutable and bounded for a publ
   assert.equal(visible.project_snapshot.project_title, "Taster");
   assert.deepEqual(visible.project_snapshot.sources.map((source) => source.path), ["src/main.cpp"]);
   assert.equal(visible.project_snapshot.sources[0].content, "const char* password = [ENTFERNT];");
+});
+
+test("publishes used electronics as an unverified community classified listing", async () => {
+  const service = await createService();
+  const listing = await service.createMarketplaceListing({
+    title: "ESP32 und Feuchtesensor",
+    description: "Gebrauchtes Set aus einem abgeschlossenen Projekt.",
+    category: "bundles",
+    condition: "very_good",
+    price_cents: 2450,
+    pickup_location: "Köln",
+    shipping_available: true,
+    tags: ["ESP32", "Sensor"],
+    author_label: "Ada",
+  }, member);
+
+  assert.equal(listing.verification_state, "community_unverified");
+  assert.equal(listing.sale_type, "used_electronics");
+  assert.equal(listing.price_cents, 2450);
+  assert.equal(listing.project_snapshot, undefined);
+  const publicItems = await service.listMarketplaceListings({}, { user_id: "user-2" });
+  assert.equal(publicItems.items[0].author_label, "Ada");
+  assert.equal(publicItems.items[0].pickup_location, "Köln");
+  await assert.rejects(
+    service.updateMarketplaceListing(listing.listing_id, { state: "sold" }, { user_id: "user-2" }),
+    /nicht gefunden/,
+  );
+  const sold = await service.updateMarketplaceListing(listing.listing_id, { state: "sold" }, member);
+  assert.equal(sold.state, "sold");
+  assert.equal((await service.listMarketplaceListings({}, { user_id: "user-2" })).items.length, 0);
+});
+
+test("publishes project ideas separately from sales and supports public discussion", async () => {
+  const service = await createService();
+  const idea = await service.createProjectIdea({
+    title: "Barrierefreier Löthelfer",
+    pitch: "Ein motorisierter Bauteilhalter für Menschen mit eingeschränkter Handbewegung.",
+    description: "Der Halter soll über große Tasten positioniert werden.",
+    motivation: "Elektronikprojekte sollen zugänglicher werden.",
+    stage: "rough_idea",
+    looking_for: ["feedback", "collaborators"],
+    tags: ["Barrierefreiheit", "Motorik"],
+    author_label: "Ada",
+  }, member);
+  const comment = await service.createProjectIdeaComment(idea.idea_id, { author_label: "Bob", body: "Ich helfe beim Gehäuse." }, { user_id: "user-2" });
+
+  assert.equal(idea.price_cents, undefined);
+  assert.equal(comment.author_user_id, undefined);
+  const detail = await service.getProjectIdea(idea.idea_id, { user_id: "user-3" });
+  assert.equal(detail.comment_count, 1);
+  assert.equal(detail.comments[0].author_label, "Bob");
+  assert.deepEqual(detail.looking_for, ["feedback", "collaborators"]);
+});
+
+test("publishes completed projects separately from ideas and hides the snapshot in lists", async () => {
+  const service = await createService();
+  const showcase = await service.createProjectShowcase({
+    title: "Lötstation-Timer", summary: "Warnt, wenn die Station zu lange eingeschaltet bleibt.",
+    story: "Nach mehreren vergessenen Abenden entstand der automatische Timer.",
+    hardware_items: ["ESP32-C3", "Relais"], tags: ["Sicherheit"], author_label: "Ada",
+    project_snapshot: { snapshot_id: "showcase-1", project_title: "Lötstation-Timer", sources: [{ path: "src/main.cpp", content: "void loop() {}" }] },
+  }, member);
+  assert.equal(showcase.project_snapshot, undefined);
+  assert.equal(showcase.verification_state, "community_unverified");
+  const list = await service.listProjectShowcases({}, { user_id: "user-2" });
+  assert.equal(list.items[0].source_count, 1);
+  const detail = await service.getProjectShowcase(showcase.showcase_id, { user_id: "user-2" });
+  assert.equal(detail.project_snapshot.sources[0].content, "void loop() {}");
 });
 
 test("lists only the requesting member's public and private questions when mine is requested", async () => {
@@ -341,7 +483,33 @@ test("advertises support for immutable project copies", async () => {
   const response = await requestJson(app, "/api/community/capabilities");
 
   assert.equal(response.status, 200);
-  assert.deepEqual(response.body, { project_snapshot_attachment: true });
+  assert.deepEqual(response.body, {
+    project_snapshot_attachment: true,
+    community_marketplace: true,
+  });
+});
+
+test("exposes used-electronics listings and owner-only sale status through HTTP", async () => {
+  const app = createHttpApp({ service: await createService() });
+  const ownerHeaders = { "x-gernetix-community-actor": "user-1" };
+  const created = await requestAppJson(app, "POST", "/api/community/marketplace/listings", {
+    headers: ownerHeaders,
+    body: { title: "I²C-Display", description: "Gebraucht und funktionsfähig.", category: "displays", condition: "good", price_cents: 900 },
+  });
+  assert.equal(created.status, 201);
+  assert.equal(created.body.sale_type, "used_electronics");
+
+  await assert.rejects(
+    requestAppJson(app, "PATCH", `/api/community/marketplace/listings/${created.body.listing_id}`, {
+      headers: { "x-gernetix-community-actor": "user-2" }, body: { state: "sold" },
+    }),
+    /nicht gefunden/,
+  );
+  const sold = await requestAppJson(app, "PATCH", `/api/community/marketplace/listings/${created.body.listing_id}`, {
+    headers: ownerHeaders, body: { state: "sold" },
+  });
+  assert.equal(sold.status, 200);
+  assert.equal(sold.body.state, "sold");
 });
 
 test("exposes thread creation, replies and read state through the Community HTTP contract", async () => {

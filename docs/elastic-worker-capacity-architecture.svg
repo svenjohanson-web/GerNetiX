@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1040" viewBox="0 0 1680 1040" role="img" aria-labelledby="title desc">
+  <title id="title">GerNetiX elastische Worker- und Kapazitaetsarchitektur</title>
+  <desc id="desc">Providerneutrale Zielarchitektur mit dauerhaftem Edge und Compute Control Plane, getrennten vertrauenswuerdigen System- und isolierten Kunden-Workern, austauschbaren VPS-, privaten, Cloud- und Kubernetes-Kapazitaeten sowie PostgreSQL, ArtifactStore, Cache und externem Backup.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <style>
+      .bg{fill:#f8fafc}.cluster{fill:#fff;stroke:#cbd5e1;stroke-width:1.5}.node{fill:#fff;stroke:#64748b;stroke-width:1.5}.edge{fill:#eff6ff;stroke:#2563eb}.control{fill:#ecfdf5;stroke:#0f766e}.provider{fill:#f5f3ff;stroke:#7c3aed}.system{fill:#fff7ed;stroke:#ea580c}.customer{fill:#fef2f2;stroke:#dc2626}.store{fill:#f1f5f9;stroke:#475569}.cache{fill:#fafafa;stroke:#94a3b8;stroke-dasharray:6 4}.title{fill:#0f172a;font:700 24px Segoe UI,Arial,sans-serif}.clusterTitle{fill:#0f766e;font:700 17px Segoe UI,Arial,sans-serif}.nodeTitle{fill:#0f172a;font:700 14px Segoe UI,Arial,sans-serif}.text{fill:#475569;font:12px Segoe UI,Arial,sans-serif}.small{fill:#475569;font:11px Segoe UI,Arial,sans-serif}.line{fill:none;stroke:#334155;stroke-width:1.5;marker-end:url(#arrow)}.dashed{stroke-dasharray:6 5}.label{fill:#334155;font:11px Segoe UI,Arial,sans-serif}
+    </style>
+  </defs>
+  <rect class="bg" width="1680" height="1040"/>
+  <text class="title" x="48" y="44">Elastische Worker- und Kapazitaetsarchitektur</text>
+  <text class="text" x="48" y="69">Ein dauerhafter Control Plane · austauschbare Compute-Provider · getrennte Vertrauensklassen · gemessene Grundlast und begrenzter Burst</text>
+
+  <g id="edge">
+    <rect class="cluster" x="45" y="105" width="270" height="390" rx="14"/>
+    <text class="clusterTitle" x="65" y="137">Edge und fachliche Services</text>
+    <rect class="node edge" x="70" y="170" width="220" height="62" rx="10"/>
+    <text class="nodeTitle" x="180" y="196" text-anchor="middle">Identity / Plattform</text>
+    <text class="text" x="180" y="216" text-anchor="middle">Session · Entitlement · API</text>
+    <rect class="node edge" x="70" y="258" width="220" height="72" rx="10"/>
+    <text class="nodeTitle" x="180" y="284" text-anchor="middle">Domaenenservices</text>
+    <text class="text" x="180" y="304" text-anchor="middle">Project · Telemetry</text>
+    <text class="text" x="180" y="321" text-anchor="middle">AI · Community · Operations</text>
+    <rect class="node edge" x="70" y="356" width="220" height="62" rx="10"/>
+    <text class="nodeTitle" x="180" y="382" text-anchor="middle">MQTT / OTA Edge</text>
+    <text class="text" x="180" y="402" text-anchor="middle">nicht elastischer Secret-Bereich</text>
+    <text class="small" x="70" y="462">Der VPS kann diese Ebene anfangs allein tragen.</text>
+    <text class="small" x="70" y="479">Ungueltige oder zu teure Arbeit wird frueh abgewiesen.</text>
+  </g>
+
+  <g id="control">
+    <rect class="cluster" x="350" y="105" width="520" height="570" rx="14"/>
+    <text class="clusterTitle" x="370" y="137">Compute Control Plane · dauerhaft</text>
+    <rect class="node control" x="380" y="170" width="210" height="72" rx="10"/>
+    <text class="nodeTitle" x="485" y="195" text-anchor="middle">Worker Gateway API</text>
+    <text class="text" x="485" y="215" text-anchor="middle">Identitaet · Pull-Lease</text>
+    <text class="text" x="485" y="232" text-anchor="middle">Input/Result-Vertrag</text>
+    <rect class="node control" x="620" y="170" width="220" height="72" rx="10"/>
+    <text class="nodeTitle" x="730" y="195" text-anchor="middle">Job Coordinator</text>
+    <text class="text" x="730" y="215" text-anchor="middle">Queues · Leases · Retry</text>
+    <text class="text" x="730" y="232" text-anchor="middle">Jitter · Drain · Dead Letter</text>
+    <rect class="node control" x="380" y="278" width="210" height="84" rx="10"/>
+    <text class="nodeTitle" x="485" y="303" text-anchor="middle">Admission und Fairness</text>
+    <text class="text" x="485" y="323" text-anchor="middle">Tarif · Tenant-Quote</text>
+    <text class="text" x="485" y="340" text-anchor="middle">Prioritaet · reservierte Slots</text>
+    <rect class="node control" x="620" y="278" width="220" height="84" rx="10"/>
+    <text class="nodeTitle" x="730" y="303" text-anchor="middle">Worker Registry</text>
+    <text class="text" x="730" y="323" text-anchor="middle">x86/ARM · RAM · Toolchain</text>
+    <text class="text" x="730" y="340" text-anchor="middle">GPU/NPU · Trust · Kosten</text>
+    <rect class="node control" x="380" y="398" width="460" height="104" rx="10"/>
+    <text class="nodeTitle" x="610" y="424" text-anchor="middle">Capacity Controller</text>
+    <text class="text" x="610" y="446" text-anchor="middle">Grundlast: rollierende p50/p95-Arbeit · Burst: aeltestes Jobalter und passende freie Slots</text>
+    <text class="text" x="610" y="466" text-anchor="middle">Backpressure bei Quoten-, Kosten- oder Kapazitaetsgrenze</text>
+    <text class="text" x="610" y="486" text-anchor="middle">Cloud-Kill-Switch · harte Instanz- und Tagesbudgets</text>
+    <rect class="node control" x="380" y="538" width="460" height="92" rx="10"/>
+    <text class="nodeTitle" x="610" y="564" text-anchor="middle">Operations-Messung</text>
+    <text class="text" x="610" y="585" text-anchor="middle">Queue-Alter · Laufzeit · CPU/RAM/GPU-Zeit · Retry · Lease-Verlust</text>
+    <text class="text" x="610" y="605" text-anchor="middle">Traffic · Speicher · Providerkosten · keine Projektpayloads</text>
+  </g>
+
+  <g id="providers">
+    <rect class="cluster" x="905" y="105" width="730" height="275" rx="14"/>
+    <text class="clusterTitle" x="925" y="137">Austauschbare Capacity-Provider</text>
+    <rect class="node provider" x="930" y="170" width="155" height="82" rx="10"/>
+    <text class="nodeTitle" x="1007" y="195" text-anchor="middle">VPS-Fallback</text>
+    <text class="text" x="1007" y="215" text-anchor="middle">immer verfuegbar</text>
+    <text class="text" x="1007" y="233" text-anchor="middle">kleine Grundlast</text>
+    <rect class="node provider" x="1100" y="170" width="155" height="82" rx="10"/>
+    <text class="nodeTitle" x="1177" y="195" text-anchor="middle">Private Worker</text>
+    <text class="text" x="1177" y="215" text-anchor="middle">Ryzen · ARM</text>
+    <text class="text" x="1177" y="233" text-anchor="middle">GPU/NPU · zeitweise</text>
+    <rect class="node provider" x="1270" y="170" width="155" height="82" rx="10"/>
+    <text class="nodeTitle" x="1347" y="195" text-anchor="middle">Cloud Burst</text>
+    <text class="text" x="1347" y="215" text-anchor="middle">AWS oder anderer</text>
+    <text class="text" x="1347" y="233" text-anchor="middle">Spot / On-Demand</text>
+    <rect class="node provider" x="1440" y="170" width="165" height="82" rx="10"/>
+    <text class="nodeTitle" x="1522" y="195" text-anchor="middle">Kubernetes</text>
+    <text class="text" x="1522" y="215" text-anchor="middle">Jobs / Replicas</text>
+    <text class="text" x="1522" y="233" text-anchor="middle">kein fachlicher Zwang</text>
+    <text class="small" x="930" y="300">Alle Provider starten denselben versionierten Worker-Vertrag.</text>
+    <text class="small" x="930" y="321">CPU-Architektur und Beschleuniger sind Scheduler-Faehigkeiten.</text>
+    <text class="small" x="930" y="342">Scale-down erfolgt ueber Drain; laufende Leases werden nicht hart abgeschnitten.</text>
+  </g>
+
+  <g id="execution">
+    <rect class="cluster" x="905" y="410" width="730" height="265" rx="14"/>
+    <text class="clusterTitle" x="925" y="442">Getrennte Ausfuehrungsklassen</text>
+    <rect class="node system" x="935" y="478" width="310" height="145" rx="10"/>
+    <text class="nodeTitle" x="1090" y="505" text-anchor="middle">Trusted System Jobs</text>
+    <text class="text" x="1090" y="529" text-anchor="middle">Build · Test · Symbolisierung · Index</text>
+    <text class="text" x="1090" y="549" text-anchor="middle">AI · Export · Release</text>
+    <text class="small" x="1090" y="579" text-anchor="middle">feste Images und explizite Service-Vertraege</text>
+    <text class="small" x="1090" y="598" text-anchor="middle">externe Build-Worker ohne OTA-/MQTT-Secrets</text>
+    <rect class="node customer" x="1280" y="478" width="325" height="145" rx="10"/>
+    <text class="nodeTitle" x="1442" y="505" text-anchor="middle">Isolated Project Rule Jobs</text>
+    <text class="text" x="1442" y="529" text-anchor="middle">kurzlebiger Projekt-Grant</text>
+    <text class="text" x="1442" y="549" text-anchor="middle">Snapshot · begrenzter AST · validierter Patch</text>
+    <text class="small" x="1442" y="579" text-anchor="middle">kein SQL · keine Shell · kein freies Netzwerk</text>
+    <text class="small" x="1442" y="598" text-anchor="middle">keine System-, Provider- oder Backup-Secrets</text>
+  </g>
+
+  <g id="data">
+    <rect class="cluster" x="45" y="720" width="1590" height="265" rx="14"/>
+    <text class="clusterTitle" x="65" y="752">Data Plane und Wiederherstellung</text>
+    <rect class="node store" x="75" y="790" width="330" height="116" rx="10"/>
+    <text class="nodeTitle" x="240" y="817" text-anchor="middle">PostgreSQL 17 + pgvector</text>
+    <text class="text" x="240" y="841" text-anchor="middle">fachliche Wahrheit</text>
+    <text class="text" x="240" y="861" text-anchor="middle">Jobs · Leases · Quoten · Usage · Audit</text>
+    <text class="small" x="240" y="887" text-anchor="middle">nur Control- und Domaenendienste schreiben fachlich</text>
+    <rect class="node store" x="445" y="790" width="330" height="116" rx="10"/>
+    <text class="nodeTitle" x="610" y="817" text-anchor="middle">ArtifactStore-Vertrag</text>
+    <text class="text" x="610" y="841" text-anchor="middle">aktuell PostgreSQL-BYTEA</text>
+    <text class="text" x="610" y="861" text-anchor="middle">Hash · Version · Schutzklasse</text>
+    <text class="small" x="610" y="887" text-anchor="middle">S3 erst nach eigener Architekturentscheidung</text>
+    <rect class="node cache" x="815" y="790" width="330" height="116" rx="10"/>
+    <text class="nodeTitle" x="980" y="817" text-anchor="middle">Worker-Caches</text>
+    <text class="text" x="980" y="841" text-anchor="middle">Toolchains · Modelle · Objekte</text>
+    <text class="text" x="980" y="861" text-anchor="middle">temporaere Workspaces</text>
+    <text class="small" x="980" y="887" text-anchor="middle">loeschbar · keine fachliche Wahrheit · kein Backup</text>
+    <rect class="node store" x="1185" y="790" width="410" height="116" rx="10"/>
+    <text class="nodeTitle" x="1390" y="817" text-anchor="middle">Externes verschluesseltes Backup</text>
+    <text class="text" x="1390" y="841" text-anchor="middle">ausserhalb VPS und Deployment-Lebenszyklus</text>
+    <text class="text" x="1390" y="861" text-anchor="middle">getrennte Credentials · Retention · Pruefsummen</text>
+    <text class="small" x="1390" y="887" text-anchor="middle">RPO 1 h · RTO 4 h · isolierter Restore-Nachweis</text>
+  </g>
+
+  <path class="line" d="M 290 200 L 620 200"/>
+  <path class="line" d="M 290 294 L 620 215"/>
+  <text class="label" x="382" y="188">typisierte Jobs</text>
+  <path class="line" d="M 620 320 L 590 320"/>
+  <path class="line" d="M 730 242 L 730 278"/>
+  <path class="line" d="M 610 362 L 610 398"/>
+  <path class="line" d="M 840 450 L 930 252"/>
+  <path class="line" d="M 840 450 L 1177 252"/>
+  <path class="line" d="M 840 450 L 1347 252"/>
+  <path class="line" d="M 840 450 L 1522 252"/>
+  <text class="label" x="913" y="390">geforderte Slots</text>
+  <path class="line" d="M 1007 252 L 1090 478"/>
+  <path class="line" d="M 1177 252 L 1090 478"/>
+  <path class="line" d="M 1347 252 L 1442 478"/>
+  <path class="line" d="M 1522 252 L 1442 478"/>
+  <path class="line dashed" d="M 1090 623 L 610 790"/>
+  <path class="line dashed" d="M 1442 623 L 240 790"/>
+  <text class="label" x="855" y="700">Ergebnisse nur ueber Gateway und Domaenen-API</text>
+  <path class="line" d="M 405 848 L 445 848"/>
+  <path class="line" d="M 775 848 L 815 848"/>
+  <path class="line" d="M 405 890 C 740 970, 1040 970, 1185 890"/>
+  <path class="line" d="M 775 890 C 930 940, 1080 940, 1185 880"/>
+  <text class="label" x="820" y="967">deployment-unabhaengige Sicherung; Caches ausgeschlossen</text>
+</svg>

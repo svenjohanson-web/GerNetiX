@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>GerNetiX Admin Tool</title>
-    <link rel="stylesheet" href="/admin/app.css?v=20260726-responsive-1" />
+    <link rel="stylesheet" href="/admin/app.css?v=20260802-learning-feedback" />
     <link rel="stylesheet" href="/admin/operator-shell.css?v=20260715-operator" />
   </head>
   <body class="operator-surface">
@@ -19,6 +19,7 @@
         </div>
         <nav class="admin-nav operator-nav" aria-label="Admin Navigation">
           <button type="button" data-admin-view="statistics">Übersicht</button>
+          <button type="button" data-admin-view="learning-feedback">Bewertungen</button>
           <button type="button" data-admin-view="monitoring">Betrieb</button>
           <button type="button" data-admin-view="link-integrity">Links</button>
           <button type="button" data-admin-view="system-events">Sicherheit</button>
@@ -132,6 +133,30 @@
             <h2>KI-Verbrauch</h2>
             <div id="statisticsAiUsage" class="summary-list"></div>
           </article>
+        </section>
+      </section>
+
+      <section id="learningFeedbackView" class="admin-view hidden">
+        <section class="section-head panel">
+          <div>
+            <p class="eyebrow">Lernerfahrung</p>
+            <h2>Nutzerbewertungen</h2>
+            <p class="helper-text">Zentrale Auswertung für Verständlichkeit, Spaß, Schwierigkeit und Vollständigkeit. Schwierigkeit: 1 = sehr leicht, 5 = sehr schwierig.</p>
+          </div>
+          <button id="refreshLearningFeedbackButton" type="button">Aktualisieren</button>
+        </section>
+        <section class="metrics-grid" id="learningFeedbackMetrics"></section>
+        <section class="panel">
+          <div class="section-head feedback-filter-head">
+            <div><p class="eyebrow">Einträge</p><h2>Bewertungen und Verbesserungsvorschläge</h2></div>
+            <label>Projekt oder Template <select id="learningFeedbackProjectFilter"><option value="">Alle</option></select></label>
+          </div>
+          <div class="table-wrap">
+            <table class="learning-feedback-table">
+              <thead><tr><th>Zeit</th><th>Projekt / Template</th><th>Verständlichkeit</th><th>Spaß</th><th>Schwierigkeit</th><th>Vollständigkeit</th><th>Kommentar / Vorschlag</th></tr></thead>
+              <tbody id="learningFeedbackRows"></tbody>
+            </table>
+          </div>
         </section>
       </section>
 
@@ -748,6 +773,6 @@
         </section>
       </section>
     </main>
-    <script src="/admin/admin-config.js"></script>
+    <script src="/admin/admin-config.js?v=20260802-learning-feedback"></script>
   </body>
 </html>

@@ -15,6 +15,16 @@ test("development platform builds all software units and uses target selection o
   assert.match(html, /id="flashTargetChoiceDialog"[\s\S]*>Flash-Ziel\s*</);
   assert.doesNotMatch(html, /id="ideDeviceTools"[\s\S]*id="ideSoftwareUnitSelect"/);
   assert.match(development, /value="desktop_app"/);
+  assert.match(development, /value="mobile_app"[\s\S]*Mobile App \(iOS &amp; Android\)/);
+  assert.match(development, /value="browser_app"[\s\S]*Browser-App \(optional als PWA\)/);
+  assert.doesNotMatch(development, /option value="smartphone_app"/);
+  assert.match(development, /data-component-type-help[\s\S]*browser-pwa-mobile-app/);
+  assert.match(development, /Bereitstellender Webserver/);
+  assert.match(development, /Nur lokales Netzwerk \/ Intranet/);
+  assert.match(development, /Ueber das Internet erreichbar/);
+  assert.match(development, /ueber Internet erreichbar/);
+  assert.match(development, /Weitere Beziehungen \(optional\)/);
+  assert.match(development, /type === "browser_app" && !browserWebserverSelection/);
   assert.doesNotMatch(development, /Getrennte Quellen und Build-Ziele|template-software-units|renderSoftwareUnitPreview/);
   assert.match(app, /async function startBuild\(\)[\s\S]*const buildTargets = softwareUnits\.length \? softwareUnits : \[null\]/);
   assert.match(app, /Promise\.allSettled\(buildTargets\.map/);
@@ -37,4 +47,6 @@ test("development platform builds all software units and uses target selection o
   assert.match(server, /const firmwareBasisId = catalogBuild\.firmware_basis_id \|\| existing\?\.firmware_basis_id \|\| ""/);
   assert.match(server, /framework === "espidf" && Boolean\(firmwareBasisId\)/);
   assert.match(server, /runner_status: "not_connected"/);
+  assert.match(server, /mobile_app: "mobile_application"/);
+  assert.match(server, /\^mobile_app\|mobile app\|ios\|iphone\|ipad\|android/);
 });

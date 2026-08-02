@@ -473,6 +473,11 @@ td span { display: block; margin-top: 3px; color: var(--muted); font-size: 12px;
   font: 12px/1.45 Consolas, "Courier New", monospace;
 }
 .helper-text { margin: 12px 0 0; color: var(--muted); line-height: 1.45; }
+.feedback-filter-head label { display: grid; gap: 6px; min-width: min(320px, 100%); color: var(--muted); font-weight: 700; }
+.learning-feedback-table small { color: var(--muted); }
+.learning-feedback-table td:last-child { min-width: 220px; max-width: 420px; white-space: normal; }
+.rating-value { display: grid; gap: 5px; min-width: 72px; }
+.rating-value i { display: block; width: 100%; height: 5px; border-radius: 9px; background: linear-gradient(90deg, #0f766e calc(var(--rating) * 20%), #dbe4e8 0); }
 .metamodel-diagram { margin-top: 16px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #f8fafc; }
 .metamodel-diagram svg { display: block; min-width: 900px; width: 100%; font: 14px/1.2 Consolas, "Courier New", monospace; }
 .metamodel-association-diagram svg { min-width: 1320px; }

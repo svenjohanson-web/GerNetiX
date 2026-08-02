@@ -10,6 +10,8 @@ const { DeviceJobLock } = require("./modules/device-job-lock");
 const { BuildTargetLock } = require("./modules/build-target-lock");
 const { PostgresBuildCoordination } = require("./modules/postgres-build-coordination");
 const { ElfSymbolizer } = require("./modules/elf-symbolizer");
+const { createFirmwareBuildComputeJob } = require("./modules/compute-build-contract");
+const { ComputeBuildPoolBridge } = require("./modules/compute-build-pool-bridge");
 const { BuildDeployService } = require("./services/build-deploy-service");
 const { createConfig } = require("./config");
 const { createHttpApp } = require("./http-app");
@@ -117,6 +119,8 @@ module.exports = {
   SqliteOtaAcknowledgementStore,
   PostgresOtaAcknowledgementStore,
   DeviceJobLock,
+  createFirmwareBuildComputeJob,
+  ComputeBuildPoolBridge,
   BuildDeployService,
   PostgresBuildCoordination,
   createConfig,

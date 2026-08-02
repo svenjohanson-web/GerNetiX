@@ -12,8 +12,8 @@ Die logische Projektarchitektur besteht aus fachlich typisierten Komponenten und
 | IoT-Device | Logische Steuer- oder Erfassungseinheit | Board und optional Inventar-Device |
 | Sensor | Messquelle | genau ein steuerndes IoT-Device |
 | Aktor | Physische Ausgabe | genau ein steuerndes IoT-Device |
-| Smartphone-App / PWA | Mobile Bedien- oder Anzeigeanwendung | keine |
-| Browser-App | Browser-Dashboard | keine |
+| Mobile App (iOS & Android) | Gemeinsame native Bedien- oder Anzeigeanwendung mit getrennten Plattform-Builds | keine |
+| Browser-App | Vom festgelegten Webserver ausgelieferte Browser-Anwendung; optional installierbar im PWA-Modus | keine |
 | Server / API | Zentrale Anwendung oder lokaler Webservice | keine |
 | Telemetrie-API | Verwaltet projektbezogenen Telemetrie-Ingress | GerNetiX-Infrastruktur, nicht vom Nutzer zu konfigurieren |
 | Projekt-Speicher | Konto- und projektpartitionierte dauerhafte Projektdaten | GerNetiX-Infrastruktur, keine Nutzerkonfiguration |
@@ -39,17 +39,20 @@ Web Push ist damit kein Pflichtbestandteil eines Datenlogger-Projekts. Ohne Erei
 | Quelle | Beziehung | Ziel |
 | --- | --- | --- |
 | Nutzer | bedient lokal | IoT-Device |
-| Nutzer | nutzt | Smartphone-App, Browser-App oder Server/API |
+| Nutzer | nutzt | Mobile App, Browser-App oder Server/API |
 | Sensor | liefert Messwerte an | IoT-Device |
 | IoT-Device | steuert | Aktor |
 | IoT-Device | sendet Telemetrie an | Server/API |
 | IoT-Device | sendet Telemetrie an | Telemetrie-API |
+| Browser-App | wird vom Device-Webserver ausgeliefert | IoT-Device |
+| Browser-App | wird vom Webserver ausgeliefert | Server/API |
 | IoT-Device | loest Ereignisverarbeitung aus | Ereignis-Worker |
 | Telemetrie-API | speichert projektbezogen | Projekt-Speicher |
 | Telemetrie-API | loest optional Benachrichtigung aus | Benachrichtigungsdienst |
-| Smartphone-App / PWA | liest und konfiguriert Projektdaten | Projekt-Speicher |
-| Smartphone-App / PWA | abonniert optional Projekt-Push | Benachrichtigungsdienst |
-| Benachrichtigungsdienst | sendet optional Projekt-Push an | Smartphone-App / PWA |
+| Mobile App (iOS & Android) | zeigt Projektstatus von | IoT-Device |
+| Mobile App oder Browser-App | liest und konfiguriert Projektdaten | Projekt-Speicher |
+| Mobile App oder Browser-App im PWA-Modus | abonniert optional Projekt-Push | Benachrichtigungsdienst |
+| Benachrichtigungsdienst | sendet optional Projekt-Push an | Mobile App oder Browser-App im PWA-Modus |
 | Telemetrie-API | speichert Ereignis in Runtime-Daten | Projekt-Runtime-Daten |
 | Projekt-Runtime-Daten | loest Ereignisverarbeitung aus | Ereignis-Worker |
 | Ereignis-Worker | schreibt Zustand oder Folgeereignis | Projekt-Runtime-Daten |
@@ -58,11 +61,39 @@ Web Push ist damit kein Pflichtbestandteil eines Datenlogger-Projekts. Ohne Erei
 | Ereignis-Dispatcher | stellt MQTT-Aktion zu | IoT-Device |
 | Ereignis-Dispatcher | loest optional Projekt-Push aus | Benachrichtigungsdienst |
 | Server/API | sendet Befehle an | IoT-Device |
-| Smartphone-App oder Browser-App | nutzt API | Server/API |
-| Server/API | sendet Push an | Smartphone-App / PWA |
+| Mobile App oder Browser-App | nutzt API | Server/API |
+| Server/API | sendet Push an | Mobile App oder Browser-App im PWA-Modus |
 | IoT-Device | synchronisiert mit | IoT-Device |
 
 Weitere Beziehungstypen werden erst als Metamodell-Erweiterung eingefuehrt, nicht als freier Pfeil im Projekteditor.
+
+Die Mobile App ist eine eigenstaendige ausfuehrbare Projektkomponente und wird
+als eine gemeinsame Software-Einheit mit den Zielplattformen iOS und Android
+modelliert. Der Project Server fuehrt sie als `mobile_application`; konkrete
+App-Store-Buildrunner sind noch nicht angeschlossen. Die Beziehung
+`zeigt Projektstatus von` ist eine fachliche Sichtbeziehung und kein direkter
+Netzwerkkanal zum IoT-Device. Datenzugriff und Anmeldung erfolgen spaeter ueber
+GerNetiX-Server-APIs mit demselben Account wie die Plattform.
+
+Ein nativer Frontend-Builder wird spaeter innerhalb der Mobile-App-Komponente
+angesiedelt. Er ist weder der bestehende PWA-Dashboard-Editor noch Teil dieses
+ersten Modellierungsschritts. Ein eigenes Mobile-App-Projekttemplate folgt
+ebenfalls erst als separater Schritt.
+
+Eine PWA ist keine eigene neue Architekturkomponente. Sie ist eine
+Bereitstellungsoption der Browser-App mit Web-App-Manifest, Service Worker,
+Home-Bildschirm-Installation und optionalem Web Push. Der historische interne
+Typ `smartphone_app` bleibt ausschliesslich erhalten, damit bestehende
+PWA-Projekte weiter gelesen und bearbeitet werden koennen; die
+Komponentenauswahl legt neue PWA-faehige Oberflaechen als `browser_app` an.
+
+Jede Browser-App benoetigt zwingend einen ausliefernden Webserver. Beim
+Hinzufuegen wird deshalb genau ein vorhandenes IoT-Device oder eine
+Server/API-Komponente als Webserver gewaehlt. Die Hosting-Beziehung speichert
+ausserdem verpflichtend die Reichweite `nur lokales Netzwerk / Intranet` oder
+`ueber Internet erreichbar`. Diese Architekturentscheidung exponiert noch
+keinen technischen Dienst. Fuer eine spaetere Internet-Veroeffentlichung sind
+TLS, Authentifizierung, Zugriffsschutz und ein Sicherheitsnachweis erforderlich.
 
 Die technische Vermittlung ueber MQTT, REST, Web Push, Topics, Subscriptions und API-Endpunkte ist keine Nutzerkomponente. GerNetiX leitet sie intern aus der fachlichen Beziehung ab und zeigt sie nur in technischen, schreibgeschuetzten Sichten.
 
@@ -79,7 +110,7 @@ Damit kann die Hardware-View Sensoren und Aktoren nur dem logisch passenden IoT-
 
 ## Validierung im Editor
 
-Beim Hinzufuegen zeigt der Editor nur erlaubte Beziehungsoptionen. Vor dem Wechsel zur Hardware prueft er, ob jede Komponente in mindestens einer erlaubten Beziehung vorkommt und ob keine unzulaessige Beziehung gespeichert ist. Befunde erscheinen als konkrete Hinweise mit Komponentenname und Beziehung.
+Beim Hinzufuegen zeigt der Editor nur erlaubte Beziehungsoptionen. Eine Browser-App verlangt dabei einen Webserver-Host und dessen Reichweite; Sensoren und Aktoren verlangen ihre Steuereinheit. Vor dem Wechsel zur Hardware prueft der Editor, ob jede Komponente in mindestens einer erlaubten Beziehung vorkommt und ob keine unzulaessige Beziehung gespeichert ist. Befunde erscheinen als konkrete Hinweise mit Komponentenname und Beziehung.
 
 ## Administrative Sicht
 

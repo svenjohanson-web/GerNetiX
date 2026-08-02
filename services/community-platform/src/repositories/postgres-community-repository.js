@@ -127,6 +127,35 @@ class PostgresCommunityRepository {
         message_id text NOT NULL REFERENCES community_messages(message_id) ON DELETE CASCADE,
         status text NOT NULL, created_at timestamptz NOT NULL, raw_json jsonb NOT NULL
       );
+      CREATE TABLE IF NOT EXISTS community_marketplace_listings (
+        listing_id text PRIMARY KEY,
+        author_user_id text NOT NULL,
+        state text NOT NULL CHECK (state IN ('published', 'reserved', 'sold', 'withdrawn')),
+        category text NOT NULL,
+        raw_json jsonb NOT NULL,
+        created_at timestamptz NOT NULL,
+        updated_at timestamptz NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_community_marketplace_state
+        ON community_marketplace_listings (state, updated_at DESC);
+      ALTER TABLE community_marketplace_listings DROP CONSTRAINT IF EXISTS community_marketplace_listings_state_check;
+      ALTER TABLE community_marketplace_listings ADD CONSTRAINT community_marketplace_listings_state_check CHECK (state IN ('published', 'reserved', 'sold', 'withdrawn'));
+      CREATE TABLE IF NOT EXISTS community_project_ideas (
+        idea_id text PRIMARY KEY, author_user_id text NOT NULL, state text NOT NULL,
+        stage text NOT NULL, raw_json jsonb NOT NULL, created_at timestamptz NOT NULL, updated_at timestamptz NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_community_project_ideas_state ON community_project_ideas (state, updated_at DESC);
+      CREATE TABLE IF NOT EXISTS community_project_idea_comments (
+        comment_id text PRIMARY KEY,
+        idea_id text NOT NULL REFERENCES community_project_ideas(idea_id) ON DELETE CASCADE,
+        author_user_id text NOT NULL, raw_json jsonb NOT NULL, created_at timestamptz NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_community_project_idea_comments_idea ON community_project_idea_comments (idea_id, created_at);
+      CREATE TABLE IF NOT EXISTS community_project_showcases (
+        showcase_id text PRIMARY KEY, author_user_id text NOT NULL, state text NOT NULL,
+        raw_json jsonb NOT NULL, created_at timestamptz NOT NULL, updated_at timestamptz NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_community_project_showcases_state ON community_project_showcases (state, updated_at DESC);
     `);
   }
 
@@ -406,6 +435,68 @@ class PostgresCommunityRepository {
   async countMessagesByAuthorSince(userId, since) {
     const result = await this.pool.query("SELECT count(*) AS count FROM community_messages WHERE author_user_id=$1 AND created_at >= $2", [userId, since]);
     return Number(result.rows[0]?.count || 0);
+  }
+
+  async saveMarketplaceListing(listing) {
+    await this.pool.query(`
+      INSERT INTO community_marketplace_listings (listing_id,author_user_id,state,category,raw_json,created_at,updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      ON CONFLICT (listing_id) DO UPDATE SET state=EXCLUDED.state, category=EXCLUDED.category, raw_json=EXCLUDED.raw_json, updated_at=EXCLUDED.updated_at
+    `, [listing.listing_id, listing.author_user_id, listing.state, listing.category, listing, listing.created_at, listing.updated_at]);
+    return clone(listing);
+  }
+  async findMarketplaceListing(listingId) {
+    return first(await this.pool.query("SELECT raw_json FROM community_marketplace_listings WHERE listing_id=$1", [listingId]));
+  }
+  async listMarketplaceListings(filter = {}) {
+    const conditions = [];
+    const values = [];
+    if (filter.state) { values.push(filter.state); conditions.push(`state=$${values.length}`); }
+    if (filter.author_user_id) { values.push(filter.author_user_id); conditions.push(`author_user_id=$${values.length}`); }
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    return rows(await this.pool.query(`SELECT raw_json FROM community_marketplace_listings ${where} ORDER BY updated_at DESC`, values));
+  }
+
+  async saveProjectIdea(idea) {
+    await this.pool.query(`
+      INSERT INTO community_project_ideas (idea_id,author_user_id,state,stage,raw_json,created_at,updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
+      ON CONFLICT (idea_id) DO UPDATE SET state=EXCLUDED.state, stage=EXCLUDED.stage, raw_json=EXCLUDED.raw_json, updated_at=EXCLUDED.updated_at
+    `, [idea.idea_id, idea.author_user_id, idea.state, idea.stage, idea, idea.created_at, idea.updated_at]);
+    return clone(idea);
+  }
+  async findProjectIdea(ideaId) { return first(await this.pool.query("SELECT raw_json FROM community_project_ideas WHERE idea_id=$1", [ideaId])); }
+  async listProjectIdeas(filter = {}) {
+    const conditions = [];
+    const values = [];
+    if (filter.state) { values.push(filter.state); conditions.push(`state=$${values.length}`); }
+    if (filter.author_user_id) { values.push(filter.author_user_id); conditions.push(`author_user_id=$${values.length}`); }
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    return rows(await this.pool.query(`SELECT raw_json FROM community_project_ideas ${where} ORDER BY updated_at DESC`, values));
+  }
+  async saveProjectIdeaComment(comment) {
+    await this.pool.query(`INSERT INTO community_project_idea_comments (comment_id,idea_id,author_user_id,raw_json,created_at) VALUES ($1,$2,$3,$4,$5)`, [comment.comment_id, comment.idea_id, comment.author_user_id, comment, comment.created_at]);
+    return clone(comment);
+  }
+  async listProjectIdeaComments(ideaId) {
+    return rows(await this.pool.query("SELECT raw_json FROM community_project_idea_comments WHERE idea_id=$1 ORDER BY created_at", [ideaId]));
+  }
+  async saveProjectShowcase(showcase) {
+    await this.pool.query(`
+      INSERT INTO community_project_showcases (showcase_id,author_user_id,state,raw_json,created_at,updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6)
+      ON CONFLICT (showcase_id) DO UPDATE SET state=EXCLUDED.state, raw_json=EXCLUDED.raw_json, updated_at=EXCLUDED.updated_at
+    `, [showcase.showcase_id, showcase.author_user_id, showcase.state, showcase, showcase.created_at, showcase.updated_at]);
+    return clone(showcase);
+  }
+  async findProjectShowcase(showcaseId) { return first(await this.pool.query("SELECT raw_json FROM community_project_showcases WHERE showcase_id=$1", [showcaseId])); }
+  async listProjectShowcases(filter = {}) {
+    const conditions = [];
+    const values = [];
+    if (filter.state) { values.push(filter.state); conditions.push(`state=$${values.length}`); }
+    if (filter.author_user_id) { values.push(filter.author_user_id); conditions.push(`author_user_id=$${values.length}`); }
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    return rows(await this.pool.query(`SELECT raw_json FROM community_project_showcases ${where} ORDER BY updated_at DESC`, values));
   }
 
   async createMessageThreadBundle({ thread, members, message, inboxEntries }) {

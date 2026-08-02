@@ -37,6 +37,7 @@ test("loads the protected ESP32 basis and overlays only the project user main", 
   assert.equal(files.some((file) => file.path === "src/idf_component.yml"), true);
   assert.equal(files.some((file) => file.path === "lib/gernetix-runtime-core/src/runtime_core.cpp"), true);
   assert.equal(files.some((file) => file.path === "lib/gernetix-runtime-core/include/gernetix/runtime_core.h"), true);
+  assert.equal(files.some((file) => file.path === "include/user_project/.gernetix-keep"), true);
   assert.match(files.find((file) => file.path === "src/CMakeLists.txt").content, /\.\.\/lib\/gernetix-runtime-core\/src\/runtime_core\.cpp/);
   assert.doesNotMatch(files.find((file) => file.path === "src/CMakeLists.txt").content, /\.\.\/\.\.\/\.\.\/firmware\/shared/);
   assert.equal(files.some((file) => file.path === "managed_components/espressif__mqtt/mqtt_client.c"), true);
@@ -62,6 +63,7 @@ test("packages additional project C++ implementations behind the protected basis
 
   assert.equal(files.find((file) => file.path === "src/user_project/game.cpp").content, "int gameScore() { return 7; }\n");
   assert.equal(files.find((file) => file.path === "include/user_project/game.h").content, "#pragma once\nint gameScore();\n");
+  assert.equal(files.some((file) => file.path === "include/user_project/.gernetix-keep"), false);
   assert.match(files.find((file) => file.path === "src/CMakeLists.txt").content, /GLOB_RECURSE GERNETIX_PACKAGED_PROJECT_SOURCES/);
   assert.match(files.find((file) => file.path === "src/CMakeLists.txt").content, /\.\.\/include\/user_project/);
 });

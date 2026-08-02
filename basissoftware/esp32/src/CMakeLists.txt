@@ -54,11 +54,13 @@ idf_component_register(
     esp_driver_usb_serial_jtag
     esp_event
     esp_http_server
+    esp_hw_support
     esp_https_ota
     esp_netif
     esp_timer
     esp_wifi
     freertos
+    heap
     log
     lwip
     mbedtls

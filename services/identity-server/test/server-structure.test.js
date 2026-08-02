@@ -210,6 +210,64 @@ test("community routes keep public reads separate from authenticated writes", as
   ]);
 });
 
+test("community marketplace forwards an electronics classified without a project snapshot", async () => {
+  const registry = createRouteRegistry();
+  let forwarded;
+  registerCommunityRoutes({
+    registry,
+    requireSession: async () => ({ account: { user_id: "user-1", username: "Ada" } }),
+    readJsonBody: async () => ({ title: "ESP32", condition: "good", price_cents: 1200 }),
+    sendJson: () => {},
+    communityJson: async (path, options) => { forwarded = { path, body: options.body }; return { listing_id: "listing-1" }; },
+    auth: () => ({}),
+    createCommunityProjectSnapshot: async () => { throw new Error("must not create project snapshot"); },
+    notifyPrivateCommunityRequest: async () => {},
+  });
+
+  assert.equal(await registry.dispatch({ req: { method: "POST" }, res: {}, url: new URL("http://localhost/api/community/marketplace/listings") }), true);
+  assert.equal(forwarded.path, "/api/community/marketplace/listings");
+  assert.equal(forwarded.body.author_label, "Ada");
+  assert.equal(forwarded.body.project_snapshot, undefined);
+});
+
+test("community ideas and discussion derive the author label from the session", async () => {
+  const registry = createRouteRegistry();
+  const forwarded = [];
+  registerCommunityRoutes({
+    registry,
+    requireSession: async () => ({ account: { user_id: "user-1", username: "Ada" } }),
+    readJsonBody: async () => ({ title: "Idee", body: "Feedback" }),
+    sendJson: () => {},
+    communityJson: async (path, options) => { forwarded.push([path, options.body]); return {}; },
+    auth: () => ({}), createCommunityProjectSnapshot: async () => ({}), notifyPrivateCommunityRequest: async () => {},
+  });
+
+  await registry.dispatch({ req: { method: "POST" }, res: {}, url: new URL("http://localhost/api/community/ideas") });
+  await registry.dispatch({ req: { method: "POST" }, res: {}, url: new URL("http://localhost/api/community/ideas/idea-1/comments") });
+  assert.deepEqual(forwarded.map((entry) => entry[1].author_label), ["Ada", "Ada"]);
+});
+
+test("community showcase derives ownership and creates a bounded project snapshot", async () => {
+  const registry = createRouteRegistry();
+  let forwarded;
+  registerCommunityRoutes({
+    registry,
+    requireSession: async () => ({ account: { user_id: "user-1", username: "Ada" } }),
+    readJsonBody: async () => ({ project_id: "project-1", title: "Showcase" }),
+    sendJson: () => {},
+    communityJson: async (path, options) => { forwarded = { path, body: options.body }; return {}; },
+    auth: () => ({}),
+    createCommunityProjectSnapshot: async (session, projectId) => ({ snapshot_id: `${session.account.user_id}:${projectId}`, sources: [{ path: "src/main.cpp", content: "safe" }] }),
+    notifyPrivateCommunityRequest: async () => {},
+  });
+
+  await registry.dispatch({ req: { method: "POST" }, res: {}, url: new URL("http://localhost/api/community/showcases") });
+  assert.equal(forwarded.path, "/api/community/showcases");
+  assert.equal(forwarded.body.author_label, "Ada");
+  assert.equal(forwarded.body.project_id, undefined);
+  assert.equal(forwarded.body.project_snapshot.snapshot_id, "user-1:project-1");
+});
+
 test("build artifact routes retain account ownership checks", async () => {
   const registry = createRouteRegistry();
   const responses = [];
@@ -368,6 +426,30 @@ test("system health exposes runtime identity without requiring a session", async
     runtime_location: "server",
     remote_dev: false,
   }]]);
+});
+
+test("the internal operator alert uses the configured operator mail and push channel", async () => {
+  const registry = createRouteRegistry();
+  const responses = [];
+  const emails = [];
+  const pushes = [];
+  registerSystemRoutes({
+    registry,
+    requireInternalAdmin: () => true,
+    readJsonBody: async () => ({ severity: "critical", message: "Basissoftware-Stack ist kritisch." }),
+    sendJson: (res, status, body) => responses.push([status, body]),
+    smtpConfigStore: { deliveryConfig: () => ({ security_alert_recipient: "operator@example.invalid" }) },
+    smtpEmailService: { send: async (...args) => emails.push(args) },
+    webPushService: { notifyAccounts: async (...args) => { pushes.push(args); return { sent: 1 }; } },
+    securityAlertPushAccountIds: ["operator-1"],
+  });
+  assert.equal(await registry.dispatch({
+    req: { method: "POST" }, res: {}, url: new URL("http://localhost/api/internal/operator-alert"),
+  }), true);
+  assert.equal(responses[0][0], 202);
+  assert.equal(emails[0][0], "operator@example.invalid");
+  assert.match(emails[0][1], /Betreiberhinweis: CRITICAL/);
+  assert.equal(pushes[0][1].title, "GerNetiX Basissoftwarefehler");
 });
 
 test("download and platform-extra routes keep their shared session boundary", async () => {

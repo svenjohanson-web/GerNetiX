@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "demo_id": "ein-tasten-spielesammlung",
+  "title": "Ein-Tasten-Spielesammlung: Cat Jump und Cave Bat",
+  "status": "build_verified",
+  "board_hardware_item_id": "hardware.processor_board.diymore_hw_364a_esp8266_oled",
+  "usb_flash_only": true,
+  "ota_supported": false,
+  "account_required": false,
+  "project_access": false,
+  "description": "Nachbaubares ESP8266-Projekt mit zwei monochromen Spielen, die nur den FLASH-Taster und das integrierte SSD1306-OLED verwenden.",
+  "required_board_features": ["capability.display_output", "capability.digital_input"],
+  "controls": {
+    "button": "FLASH / GPIO0 / active_low",
+    "menu_short_press": "Auswahl wechseln",
+    "menu_long_press": "Spiel starten"
+  },
+  "games": [
+    { "id": "cat_jump", "title": "Cat Jump", "description": "Eine Katze springt per Tastendruck über einen Hund." },
+    { "id": "cave_bat", "title": "Cave Bat", "description": "Gedrückt steigt die Fledermaus, losgelassen sinkt sie zwischen Höhlenspitzen." }
+  ],
+  "release": null
+}

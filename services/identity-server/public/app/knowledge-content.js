@@ -138,6 +138,12 @@ const KnowledgeContent = (() => {
           articleId: "software-basics-introduction",
         },
         {
+          id: "browser-pwa-mobile-app",
+          title: "Browser-App, PWA oder Mobile App?",
+          articleId: "browser-pwa-mobile-app",
+          access: "public",
+        },
+        {
           id: "yaml-basics",
           title: "YAML: strukturierte Daten lesbar beschreiben",
           articleId: "yaml-basics",

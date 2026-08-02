@@ -31,3 +31,8 @@ Die Ausgabe bietet:
 Fachliche Entscheidungen werden weiterhin im SQLite-Graphen gepflegt. Lesbare Konzepte werden in ihrem bestehenden Dokument aktualisiert. Nach Aenderungen wird die Offline-Sicht mit `npm run build` im Verzeichnis `tools/architecture-docs` neu erzeugt.
 
 Die Zuordnung von SQL-Datenbanken, Docker-Volumes, Downloadklassen, Firmware-BLOBs, Account-Assets, Community-Inhalten und technischen Caches steht im [Persistenz- und Asset-Speicherkonzept](persistence-and-asset-storage.md).
+
+Die providerneutrale Trennung von dauerhafter Control Plane, System- und
+Kunden-Workern, Grundlast-/Burst-Messung, privaten Rechnern, Cloud-Burst und
+Kubernetes steht in der
+[elastischen Worker- und Kapazitaetsarchitektur](elastic-worker-capacity-architecture.md).

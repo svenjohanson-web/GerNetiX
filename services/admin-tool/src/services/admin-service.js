@@ -75,7 +75,7 @@ class AdminService {
 
   async recordSystemEvent(input) {
     validateRequired(input, ["source_service", "event_type", "message"]);
-    return this.repository.addSystemEvent({
+    const event = await this.repository.addSystemEvent({
       severity: normalizeSystemEventSeverity(input.severity),
       source_service: String(input.source_service),
       target_service: input.target_service ? String(input.target_service) : "",
@@ -88,6 +88,44 @@ class AdminService {
       correlation_id: input.correlation_id ? String(input.correlation_id) : "",
       details: input.details && typeof input.details === "object" ? input.details : {},
     });
+    if (event.severity === "critical" && event.category === "basissoftware_runtime") {
+      // Persist/acknowledge the incident independently of SMTP or push
+      // latency. The notification path handles its own failures.
+      void this.notifyCriticalBasissoftwareEvent(event);
+    }
+    return event;
+  }
+
+  async notifyCriticalBasissoftwareEvent(event) {
+    const alertKey = String(event.correlation_id || `${event.source_service}:${event.event_type}`);
+    this.basissoftwareAlertCooldowns ||= new Map();
+    const now = Date.now();
+    const activeCooldown = this.basissoftwareAlertCooldowns.get(alertKey);
+    if (activeCooldown && now - activeCooldown < 30 * 60 * 1000) return "suppressed_duplicate";
+    // Claim before the first await so simultaneous ingests in this Admin Tool
+    // process cannot both pass the cooldown check.
+    this.basissoftwareAlertCooldowns.set(alertKey, now);
+    const eventTime = new Date(event.occurred_at).getTime();
+    const duplicate = (await this.repository.listSystemEvents()).some((item) => {
+      if (item.event_id === event.event_id || item.category !== "basissoftware_runtime"
+          || String(item.correlation_id || `${item.source_service}:${item.event_type}`) !== alertKey) return false;
+      const itemTime = new Date(item.occurred_at).getTime();
+      const isEarlier = itemTime < eventTime;
+      return isEarlier && eventTime - itemTime < 30 * 60 * 1000;
+    });
+    if (duplicate) return "suppressed_duplicate";
+    try {
+      await this.identityEmailConfigRequest("/api/internal/operator-alert", {
+        method: "POST",
+        body: { severity: event.severity, category: event.category, message: event.message },
+      });
+      return "sent";
+    } catch {
+      // The persisted critical event remains the source of truth even if the
+      // optional email/push delivery is temporarily unavailable.
+      if (this.basissoftwareAlertCooldowns.get(alertKey) === now) this.basissoftwareAlertCooldowns.delete(alertKey);
+      return "failed";
+    }
   }
 
   async systemEvents(filter = {}) {
@@ -1868,6 +1906,7 @@ function maskFeedback(feedback) {
     project_id: feedback.project_id,
     step_id: feedback.step_id,
     rating: feedback.rating,
+    ratings: feedback.ratings,
     status: feedback.status,
     feedback_text: feedback.feedback_text,
     account_id: "masked",
@@ -1879,8 +1918,14 @@ function maskProjectFeedback(feedback) {
   return {
     feedback_id: feedback.feedback_id,
     project_id: feedback.project_id,
+    subject_type: feedback.subject_type,
+    subject_id: feedback.subject_id,
+    template_id: feedback.template_id,
     learning_step_id: feedback.learning_step_id,
     category: feedback.category,
+    ratings: feedback.ratings,
+    status: feedback.status,
+    created_at: feedback.created_at,
     message: feedback.message,
     user_id: "masked",
     contact_email: "masked",

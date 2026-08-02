@@ -6,13 +6,26 @@ test("allows only defined architecture relationships and derives sensor and actu
   assert.equal(metamodel.validatesRelation("sensor", "iot_device"), true);
   assert.equal(metamodel.validatesRelation("iot_device", "actuator"), true);
   assert.equal(metamodel.validatesRelation("sensor", "smartphone_app"), false);
+  assert.equal(metamodel.validatesRelation("sensor", "mobile_app"), false);
+  assert.equal(metamodel.validatesRelation("mobile_app", "iot_device"), true);
+  assert.equal(metamodel.validatesRelation("mobile_app", "server_api"), true);
   assert.equal(metamodel.validatesRelation("iot_device", "telemetry_api"), true);
   assert.equal(metamodel.validatesRelation("telemetry_api", "project_storage"), true);
   assert.equal(metamodel.validatesRelation("notification_service", "smartphone_app"), true);
+  assert.equal(metamodel.validatesRelation("notification_service", "mobile_app"), true);
   assert.equal(metamodel.validatesRelation("actor", "desktop_app"), true);
   assert.equal(metamodel.validatesRelation("actor", "actuator"), true);
   assert.equal(metamodel.validatesRelation("desktop_app", "server_api"), true);
   assert.equal(metamodel.componentTypes.desktop_app.label, "Desktop-App");
+  assert.equal(metamodel.componentTypes.mobile_app.label, "Mobile App (iOS & Android)");
+  assert.deepEqual(metamodel.componentTypes.mobile_app.platforms, ["ios", "android"]);
+  assert.equal(metamodel.componentTypes.browser_app.pwa_capable, true);
+  assert.equal(metamodel.componentTypes.smartphone_app.legacy, true);
+  assert.equal(metamodel.validatesRelation("browser_app", "project_storage"), true);
+  assert.equal(metamodel.validatesRelation("browser_app", "notification_service"), true);
+  assert.equal(metamodel.validatesRelation("browser_app", "iot_device"), true);
+  assert.equal(metamodel.relationshipRules.some((item) => item.id === "loads_from_device_webserver"), true);
+  assert.equal(metamodel.relationshipRules.some((item) => item.id === "loads_from_server_webserver"), true);
   assert.equal(metamodel.componentTypes.telemetry_api.user_configurable, false);
   assert.equal(metamodel.componentTypes.project_storage.user_configurable, false);
   assert.equal(metamodel.componentTypes.notification_service.user_configurable, false);
@@ -41,11 +54,33 @@ test("offers only legal targets when a component is added", () => {
   assert.deepEqual(sensorOptions.map((option) => option.rule.id), ["measures_for"]);
 });
 
+test("offers both device and server webservers for a browser app", () => {
+  const targets = [
+    { component_id: "device", abstract_type: "iot_device", label: "Device-Webserver" },
+    { component_id: "server", abstract_type: "server_api", label: "VPS" },
+  ];
+  const hosting = metamodel.optionsForNewComponent("browser_app", targets)
+    .filter((option) => option.rule.id.startsWith("loads_from_"));
+  assert.deepEqual(hosting.map((option) => [option.rule.id, option.target.component_id]), [
+    ["loads_from_device_webserver", "device"],
+    ["loads_from_server_webserver", "server"],
+  ]);
+});
+
 test("offers each same-type IoT relationship only once", () => {
   const options = metamodel.optionsForNewComponent("iot_device", [
     { component_id: "device_1", abstract_type: "iot_device", label: "IoT-Device 1" },
   ]);
   assert.deepEqual(options.map((option) => `${option.rule.id}|${option.target.component_id}`), ["synchronizes|device_1"]);
+});
+
+test("models a native cross-platform app separately and keeps old PWA diagrams compatible", () => {
+  assert.equal(metamodel.componentTypeForPlantUml("GerNetiX Mobile App (iOS & Android)", "component", "mobile_app_1"), "mobile_app");
+  assert.equal(metamodel.componentTypeForPlantUml("Smartphone-PWA", "component", "smartphone_app_1"), "smartphone_app");
+  const options = metamodel.optionsForNewComponent("mobile_app", [
+    { component_id: "device", abstract_type: "iot_device", label: "IoT-Device 1" },
+  ]);
+  assert.deepEqual(options.map((option) => option.rule.id), ["shows_iot_project_status"]);
 });
 
 test("restores integrated audio and touch hardware types from PlantUML", () => {

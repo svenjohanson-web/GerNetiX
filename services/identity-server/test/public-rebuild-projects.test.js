@@ -7,6 +7,7 @@ const root = path.join(__dirname, "..");
 const page = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "index.html"), "utf8");
 const motorProject = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "einfache-elektromotoren", "index.html"), "utf8");
 const printedMotorSeries = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "druckmotoren", "index.html"), "utf8");
+const hw364aGames = fs.readFileSync(path.join(root, "public", "nachbauprojekte", "hw364a-spielesammlung", "index.html"), "utf8");
 const motorFieldIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-current-magnetic-field.svg"), "utf8");
 const motorForceIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-current-force.svg"), "utf8");
 const motorCoilIllustration = fs.readFileSync(path.join(root, "public", "assets", "motor-learning-simple-coil-force-pair-v2.png"));
@@ -66,6 +67,18 @@ test("publishes a modular 3D-printed motor rebuild series", () => {
   assert.match(printedMotorSeries, /Multimeter und Tischnetzgerät sind hilfreich/);
   assert.match(printedMotorSeries, /Lorentzkraft sichtbar machen[\s\S]*Reed-Impulsmotor[\s\S]*Mehrspuliger DC-Impulsmotor[\s\S]*Elektronisch kommutierter Motor[\s\S]*Dreiphasiger axialer Luftspulen-BLDC/);
   assert.doesNotMatch(printedMotorSeries, /printed-motor-matrix|printed-motor-project-explanation|Was wird sichtbar\?|Was kommt hinzu\?|Was wird verbessert\?|Was wird elektronisch\?|Was macht ihn zum BLDC\?/);
+});
+
+test("publishes the HW-364A one-button game collection as an additional rebuild project", () => {
+  assert.match(server, /path: "\/nachbauprojekte\/hw364a-spielesammlung"[\s\S]*redirect\(res, "\/nachbauprojekte\/hw364a-spielesammlung\/"\)/);
+  assert.match(server, /path: "\/nachbauprojekte\/hw364a-spielesammlung\/"[\s\S]*serveStatic\(res, publicDir, "\/nachbauprojekte\/hw364a-spielesammlung\/index\.html"\)/);
+  assert.match(page, /href="\/nachbauprojekte\/hw364a-spielesammlung\/"/);
+  assert.match(page, /HW-364A: Cat Jump &amp; Cave Bat/);
+  assert.match(hw364aGames, /Cat Jump und Cave Bat auf einem winzigen OLED/);
+  assert.match(hw364aGames, /FLASH-Taster an GPIO0/);
+  assert.match(hw364aGames, /SDA GPIO14 und SCL GPIO12/);
+  assert.match(hw364aGames, /Build geprüft, Hardware-Abnahme noch offen/);
+  assert.match(hw364aGames, /öffentlicher WebSerial-Download wird hier ergänzt/);
 });
 
 test("keeps the printed motor series compact and material-first", () => {

@@ -12,6 +12,8 @@ test("discovers maintained, generated and reconstructed documentation attempts",
   const documents = discoverMarkdownDocuments(repoRoot);
   assert.ok(documents.length >= 40);
   assert.ok(documents.some((item) => item.sourcePath === "docs/system-process-application-uml.md" && item.category === "system"));
+  assert.ok(documents.some((item) => item.sourcePath === "docs/elastic-worker-capacity-architecture.md" && item.category === "system" && item.status === "maintained"));
+  assert.ok(documents.some((item) => item.sourcePath === "docs/project-background-worker-specification.md" && item.category === "system" && item.status === "maintained"));
   assert.ok(documents.some((item) => item.sourcePath === "docs/generated/architecture-view.md" && item.status === "generated"));
   assert.ok(documents.some((item) => item.sourcePath === "docs/yaml-first-repository-structure.md" && item.status === "superseded"));
   assert.ok(documents.some((item) => item.sourcePath === "tools/sqlite-graph-explorer/README.md" && item.category === "model"));
@@ -29,9 +31,14 @@ test("builds a file-based offline browser without a server dependency", () => {
   for (const file of ["index.html", "styles.css", "app.js", "content.js"]) {
     assert.ok(fs.existsSync(path.join(result.outputRoot, file)), `${file} missing`);
   }
+  for (const file of ["system-process-application-uml.svg", "elastic-worker-capacity-architecture.svg"]) {
+    assert.ok(fs.existsSync(path.join(result.outputRoot, file)), `${file} missing`);
+  }
   const html = fs.readFileSync(path.join(result.outputRoot, "index.html"), "utf8");
   const content = fs.readFileSync(path.join(result.outputRoot, "content.js"), "utf8");
   assert.match(html, /Offline-Lesesicht/);
   assert.match(content, /graph-architecture-decisions/);
   assert.match(content, /Rekonstruktionsarchiv/);
+  assert.match(content, /Elastische Worker- und Kapazitaetsarchitektur/);
+  assert.match(content, /Compute Control Plane bleibt provider- und Kubernetes-neutral/);
 });

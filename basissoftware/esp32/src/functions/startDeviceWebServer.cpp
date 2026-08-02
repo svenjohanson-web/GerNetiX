@@ -185,9 +185,11 @@ esp_err_t connectivityProbeHandler(httpd_req_t *request) {
 
 esp_err_t statusHandler(httpd_req_t *request) {
   char *provisioningJson = static_cast<char *>(std::calloc(4096, 1));
-  char *body = static_cast<char *>(std::calloc(8192, 1));
-  if (provisioningJson == nullptr || body == nullptr) {
+  char *runtimeResources = static_cast<char *>(std::calloc(6144, 1));
+  char *body = static_cast<char *>(std::calloc(18432, 1));
+  if (provisioningJson == nullptr || runtimeResources == nullptr || body == nullptr) {
     std::free(provisioningJson);
+    std::free(runtimeResources);
     std::free(body);
     httpd_resp_set_status(request, "500 Internal Server Error");
     return httpd_resp_sendstr(request, "{\"error\":\"status_memory_allocation_failed\"}\n");
@@ -203,13 +205,14 @@ esp_err_t statusHandler(httpd_req_t *request) {
   char crashReport[1024] = {};
   writeFirmwareBuildId(buildId, sizeof(buildId));
   if (!writeCrashDiagnosticsJson(crashReport, sizeof(crashReport))) std::snprintf(crashReport, sizeof(crashReport), "null");
+  if (!writeRuntimeResourceDiagnosticsJson(runtimeResources, 6144)) std::snprintf(runtimeResources, 6144, "null");
 
   const long long uptimeMs =
       static_cast<long long>(esp_timer_get_time() / 1000);
 
   std::snprintf(
       body,
-      8192,
+      18432,
       "{"
       "\"device\":\"%s\","
       "\"runtime\":\"%s\","
@@ -228,6 +231,7 @@ esp_err_t statusHandler(httpd_req_t *request) {
       "\"free_heap_bytes\":%u,"
       "\"minimum_free_heap_bytes\":%u,"
       "\"crash_report\":%s,"
+      "\"diagnostics\":%s,"
       "%s,"
       "%s,"
       "%s"
@@ -249,6 +253,7 @@ esp_err_t statusHandler(httpd_req_t *request) {
       static_cast<unsigned>(esp_get_free_heap_size()),
       static_cast<unsigned>(esp_get_minimum_free_heap_size()),
       crashReport,
+      runtimeResources,
       provisioningJson,
       otaJson,
       mqttJson);
@@ -257,6 +262,7 @@ esp_err_t statusHandler(httpd_req_t *request) {
   httpd_resp_set_type(request, "application/json");
   const esp_err_t status = httpd_resp_send(request, body, HTTPD_RESP_USE_STRLEN);
   std::free(provisioningJson);
+  std::free(runtimeResources);
   std::free(body);
   return status;
 }

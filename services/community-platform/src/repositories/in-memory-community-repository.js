@@ -11,6 +11,10 @@ class InMemoryCommunityRepository {
     this.broadcasts = new Map((seed.broadcasts || []).map((item) => [item.broadcast_id, item]));
     this.messageBlocks = new Map((seed.messageBlocks || []).map((item) => [`${item.blocker_user_id}:${item.blocked_user_id}`, item]));
     this.messageReports = new Map((seed.messageReports || []).map((item) => [item.report_id, item]));
+    this.marketplaceListings = new Map((seed.marketplaceListings || []).map((item) => [item.listing_id, clone(item)]));
+    this.projectIdeas = new Map((seed.projectIdeas || []).map((item) => [item.idea_id, clone(item)]));
+    this.projectIdeaComments = new Map((seed.projectIdeaComments || []).map((item) => [item.comment_id, clone(item)]));
+    this.projectShowcases = new Map((seed.projectShowcases || []).map((item) => [item.showcase_id, clone(item)]));
   }
 
   saveQuestion(question) {
@@ -109,6 +113,35 @@ class InMemoryCommunityRepository {
   saveMessageReport(report) { this.messageReports.set(report.report_id, clone(report)); return clone(report); }
   findMessageReport(reportId) { return clone(this.messageReports.get(reportId)); }
   listMessageReports(filter = {}) { return Array.from(this.messageReports.values()).filter((item) => !filter.status || item.status === filter.status).map(clone); }
+  saveMarketplaceListing(listing) { this.marketplaceListings.set(listing.listing_id, clone(listing)); return clone(listing); }
+  findMarketplaceListing(listingId) { return clone(this.marketplaceListings.get(listingId)); }
+  listMarketplaceListings(filter = {}) {
+    return Array.from(this.marketplaceListings.values())
+      .filter((item) => !filter.state || item.state === filter.state)
+      .filter((item) => !filter.author_user_id || item.author_user_id === filter.author_user_id)
+      .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at))).map(clone);
+  }
+  saveProjectIdea(idea) { this.projectIdeas.set(idea.idea_id, clone(idea)); return clone(idea); }
+  findProjectIdea(ideaId) { return clone(this.projectIdeas.get(ideaId)); }
+  listProjectIdeas(filter = {}) {
+    return Array.from(this.projectIdeas.values())
+      .filter((item) => !filter.state || item.state === filter.state)
+      .filter((item) => !filter.author_user_id || item.author_user_id === filter.author_user_id)
+      .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at))).map(clone);
+  }
+  saveProjectIdeaComment(comment) { this.projectIdeaComments.set(comment.comment_id, clone(comment)); return clone(comment); }
+  listProjectIdeaComments(ideaId) {
+    return Array.from(this.projectIdeaComments.values()).filter((item) => item.idea_id === ideaId)
+      .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))).map(clone);
+  }
+  saveProjectShowcase(showcase) { this.projectShowcases.set(showcase.showcase_id, clone(showcase)); return clone(showcase); }
+  findProjectShowcase(showcaseId) { return clone(this.projectShowcases.get(showcaseId)); }
+  listProjectShowcases(filter = {}) {
+    return Array.from(this.projectShowcases.values())
+      .filter((item) => !filter.state || item.state === filter.state)
+      .filter((item) => !filter.author_user_id || item.author_user_id === filter.author_user_id)
+      .sort((a, b) => String(b.updated_at).localeCompare(String(a.updated_at))).map(clone);
+  }
   countMessagesByAuthorSince(userId, since) {
     return Array.from(this.messages.values()).filter((item) => item.author_user_id === userId && item.created_at >= since).length;
   }

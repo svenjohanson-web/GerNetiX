@@ -5,6 +5,7 @@ class InMemoryProjectRepository {
     this.buildJobs = new Map((seed.buildJobs || []).map((item) => [item.build_job_id, clone(item)]));
     this.artifacts = new Map((seed.artifacts || []).map((item) => [item.artifact_id, clone(item)]));
     this.feedback = new Map((seed.feedback || []).map((item) => [item.feedback_id, clone(item)]));
+    this.templateFeedback = new Map((seed.templateFeedback || []).map((item) => [item.feedback_id, clone(item)]));
     this.consents = new Map((seed.consents || []).map((item) => [item.consent_id, clone(item)]));
     this.learningProgress = new Map((seed.learningProgress || []).map((item) => [item.project_id, clone(item)]));
     this.resourcePolicies = new Map((seed.resourcePolicies || []).map((item) => [item.plan_id, clone(item)]));
@@ -85,6 +86,18 @@ class InMemoryProjectRepository {
   listFeedback(filter = {}) {
     return Array.from(this.feedback.values())
       .filter((item) => !filter.project_id || item.project_id === filter.project_id)
+      .filter((item) => !filter.user_id || item.user_id === filter.user_id)
+      .map(clone);
+  }
+
+  saveTemplateFeedback(feedback) {
+    this.templateFeedback.set(feedback.feedback_id, clone(feedback));
+    return clone(feedback);
+  }
+
+  listTemplateFeedback(filter = {}) {
+    return Array.from(this.templateFeedback.values())
+      .filter((item) => !filter.template_id || item.template_id === filter.template_id)
       .filter((item) => !filter.user_id || item.user_id === filter.user_id)
       .map(clone);
   }

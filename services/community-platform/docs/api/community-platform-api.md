@@ -1,6 +1,6 @@
 # Community Platform API
 
-MVP fuer Community-Fragen, persönliche Projektbegleitung, Triage, verifizierte Antworten und dauerhafte Wissensbasis.
+MVP fuer Community-Fragen, persönliche Projektbegleitung, Community-Marktplatz, Triage, verifizierte Antworten und dauerhafte Wissensbasis.
 
 Die API ist nicht öffentlich erreichbar. Der Identity Server ruft den regulären Bereich mit dem internen Community-Token auf und übergibt dabei ausschließlich den angemeldeten Account als Actor. Ein getrenntes Admin-Tool verwendet zusätzlich einen eigenen Admin-Token; Identity-Konten erhalten dabei keine Operatorrechte.
 
@@ -49,13 +49,45 @@ Verifizierte Antworten werden als indexierbare Knowledge Documents bereitgestell
 
 Private Anfragen dürfen weder durch Suche noch als Knowledge Document ausserhalb ihres privaten Begleitungsdialogs erscheinen.
 
+## Ideenwerkstatt
+
+```text
+GET  /ideas
+POST /ideas
+GET  /ideas/{ideaId}
+POST /ideas/{ideaId}/comments
+```
+
+Die Ideenwerkstatt speichert Projektvorstellungen getrennt von Fragen und Elektronik-Inseraten. Ideen enthalten Pitch, Beschreibung, Motivation, Reifegrad, gesuchte Unterstuetzung und Tags. Angemeldete Mitglieder koennen Feedback, Fragen oder Mitarbeitshinweise kommentieren. Identity setzt Autoren aus der Sitzung; technische Account-IDs werden nicht ausgegeben. Ideen enthalten weder Preis noch Verkaufslogik.
+
+## Projekt-Showcase
+
+```text
+GET  /showcases
+POST /showcases
+GET  /showcases/{showcaseId}
+```
+
+Der Showcase ist fuer fertige oder weit entwickelte Projekte. Identity prueft den Besitz des ausgewaehlten Entwicklungsprojekts und erstellt eine begrenzte, redigierte und unveraenderliche Projektkopie. Die Liste enthaelt nur Metadaten und Dateianzahl; erst die Detailansicht liefert die Projektkopie. Projektideen und Verkaufsangebote bleiben getrennt. Nicht redaktionell gepruefte Projekte tragen `community_unverified`.
+
+## Community-Marktplatz
+
+```text
+GET  /marketplace/listings
+POST /marketplace/listings
+GET  /marketplace/listings/{listingId}
+PATCH /marketplace/listings/{listingId}
+```
+
+Der Marketplace ist ein Kleinanzeigenbereich fuer gebrauchte Elektronik und kein Projektkatalog. Ein Inserat enthaelt Artikel, Beschreibung, Kategorie, Zustand, Preis, optionale Abholregion, Versandmoeglichkeit und Tags. Der Identity-Proxy setzt den Anzeigenamen aus der Sitzung; die technische Account-ID wird nicht ausgegeben. Der Anbieter kann den Status auf `reserved` oder `sold` setzen. Jeder Eintrag traegt `used_electronics` und `community_unverified`. Kontakt erfolgt ueber die vorhandenen privaten Community-Nachrichten; GerNetiX wickelt keine Zahlung ab.
+
 ## Betriebsstatus
 
 ```text
 GET /operations-summary
 ```
 
-Der interne, durch `COMMUNITY_INTERNAL_TOKEN` geschützte Endpunkt liefert ausschließlich aggregierte Zähler für Admin Tool und Betriebsmonitoring: Fragen nach Sichtbarkeit und Bearbeitungsstatus, Triage-Rückstand, Antworten nach Verifizierungsstatus, Wissensdokumente sowie das konfigurierte Persistenz-Backend. Titel, Texte, technische Account-/Projektkennungen und andere Community-Inhalte werden nicht ausgegeben.
+Der interne, durch `COMMUNITY_INTERNAL_TOKEN` geschützte Endpunkt liefert ausschließlich aggregierte Zähler für Admin Tool und Betriebsmonitoring: Fragen nach Sichtbarkeit und Bearbeitungsstatus, Triage-Rückstand, Antworten nach Verifizierungsstatus, Wissensdokumente, Ideen, Showcase-Projekte, Marketplace-Eintraege sowie das konfigurierte Persistenz-Backend. Titel, Texte, technische Account-/Projektkennungen und andere Community-Inhalte werden nicht ausgegeben.
 
 ## Getrennte Admin-Verwaltung
 

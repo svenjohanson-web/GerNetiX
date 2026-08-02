@@ -95,6 +95,16 @@ function composeEsp32BasissoftwarePackage({ basisFiles, projectSources, buildCon
       source_project_path: projectSource.path,
     });
   }
+  // ESP-IDF validates every INCLUDE_DIRS entry during CMake configuration.
+  // Projects without an additional public header would otherwise omit this
+  // directory from the file-only BuildPackage and fail before compilation.
+  if (![...byPath.keys()].some((filePath) => filePath.startsWith("include/user_project/"))) {
+    byPath.set("include/user_project/.gernetix-keep", {
+      path: "include/user_project/.gernetix-keep",
+      content: "",
+      content_type: "text/plain",
+    });
+  }
   return Array.from(byPath.values()).sort((left, right) => left.path.localeCompare(right.path));
 }
 

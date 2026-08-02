@@ -32,8 +32,10 @@ const curatedDocuments = {
   "docs/provisioning-process-sequence-uml.md": { category: "system", status: "maintained", order: 3 },
   "docs/ota-build-flash-sequence.md": { category: "system", status: "maintained", order: 4 },
   "docs/vps-docker-deployment.md": { category: "system", status: "maintained", order: 5 },
-  "docs/persistence-and-asset-storage.md": { category: "system", status: "maintained", order: 6 },
-  "docs/generated/architecture-view.md": { category: "system", status: "generated", order: 7 },
+  "docs/elastic-worker-capacity-architecture.md": { category: "system", status: "maintained", order: 6 },
+  "docs/project-background-worker-specification.md": { category: "system", status: "maintained", order: 7 },
+  "docs/persistence-and-asset-storage.md": { category: "system", status: "maintained", order: 8 },
+  "docs/generated/architecture-view.md": { category: "system", status: "generated", order: 9 },
 
   "docs/metamodel.md": { category: "model", status: "maintained", order: 1 },
   "docs/metamodel-learning-platform.md": { category: "model", status: "maintained", order: 2 },
@@ -79,6 +81,15 @@ const diagramDocuments = [
     order: 1,
     sourcePath: "docs/process-port-overview.svg",
     summary: "Portbelegung der lokalen GerNetiX-Prozesse.",
+  },
+  {
+    id: "diagram-elastic-worker-capacity",
+    title: "Elastische Worker- und Kapazitaetsarchitektur",
+    category: "system",
+    status: "maintained",
+    order: 1,
+    sourcePath: "docs/elastic-worker-capacity-architecture.svg",
+    summary: "Control Plane, getrennte Ausfuehrungsklassen, austauschbare Compute-Provider, Lastmessung und Datenebene.",
   },
   {
     id: "diagram-vps-topology",

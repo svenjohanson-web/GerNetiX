@@ -12,15 +12,23 @@ const html = fs.readFileSync(path.resolve(__dirname, "../public/app/index.html")
 const css = fs.readFileSync(path.resolve(__dirname, "../public/app/app.css"), "utf8");
 const controllerSource = fs.readFileSync(path.resolve(__dirname, "../public/app/device-debug-controller.js"), "utf8");
 
-test("IoT device components expose a local Debug & Diagnose workspace", () => {
-  assert.match(app, /`Komponenten\/\$\{label\}\/Debug & Diagnose`/);
-  assert.match(app, /virtualAction: "device-debug"/);
-  assert.match(app, /data-device-debug=/);
-  assert.match(app, /state\.ideViewMode = "device-debug"/);
-  assert.match(html, /id="ideDeviceDebugView"/);
+test("Debug & Diagnose is a separate project workspace and not a component-tree entry", () => {
+  assert.doesNotMatch(app, /`Komponenten\/\$\{label\}\/In Debug öffnen`/);
+  assert.doesNotMatch(app, /virtualAction: "device-debug"/);
+  assert.doesNotMatch(app, /data-device-debug=/);
+  assert.match(app, /debug: "debugView"/);
+  assert.match(app, /\/app\/debug\/\?project=/);
+  assert.match(app, /loadDeviceDebugWorkspace\(\)/);
+  assert.match(app, /data-debug-device=/);
+  assert.doesNotMatch(html, /id="ideDeviceDebugView"/);
+  assert.match(html, /id="debugView"/);
+  assert.match(html, /id="debugDeviceList"/);
+  assert.match(html, /id="debugDeviceView"/);
+  assert.match(html, /id="openProjectDebugButton"/);
   assert.match(html, /device-debug-controller\.js/);
   assert.match(css, /\.device-debug-workspace/);
   assert.match(css, /\.device-debug-events/);
+  assert.match(css, /\.debug-workspace-layout/);
 });
 
 test("local device debug uses read-only USB diagnostics and an explicit local export", () => {
@@ -47,6 +55,62 @@ test("crash reports require an exact build id before ELF symbolization", () => {
   assert.match(css, /\.device-debug-stack/);
 });
 
+test("capability-based runtime diagnostics classify only protected basissoftware failures for operator escalation", () => {
+  const context = {
+    document: { querySelector: () => null },
+    window: {},
+  };
+  const debug = vm.runInNewContext(`${controllerSource}\nGerNetiXDeviceDebug;`, context);
+  const incidents = debug.basissoftwareCriticalIncidents({
+    diagnostics: {
+      schema_version: 2,
+      capabilities: ["system", "memory", "rtos_tasks"],
+      platform: { family: "esp32", sdk: "esp-idf", rtos: "freertos" },
+      sections: { tasks: { items: [
+          { name: "crashDiag", owner: "basissoftware", status: "critical", minimum_free_stack_bytes: 240 },
+          { name: "runtime", owner: "shared_runtime", status: "critical", minimum_free_stack_bytes: 180 },
+        ] } },
+    },
+    crash_report: { available: true, fault_owner: "basissoftware", task_name: "wifi-connect", fault_code: "panic_core_dump" },
+  });
+  assert.deepEqual(JSON.parse(JSON.stringify(incidents)), [
+    { type: "task_stack_critical", task_name: "crashDiag", minimum_free_stack_bytes: 240 },
+    { type: "basissoftware_crash", task_name: "wifi-connect", fault_code: "panic_core_dump" },
+  ]);
+  assert.match(controllerSource, /capabilities\.has\("rtos_tasks"\)/);
+  assert.match(controllerSource, /Speicher und RTOS-Tasks/);
+  assert.match(controllerSource, /Speicher und Bare-Metal-Runtime/);
+  assert.match(controllerSource, /Größter Heap-Block/);
+  assert.match(controllerSource, /Interner RAM frei/);
+  assert.match(controllerSource, /PSRAM frei/);
+  assert.match(controllerSource, /CPU-Auslastung/);
+  assert.match(controllerSource, /Keine erfundene Prozentangabe/);
+  assert.match(controllerSource, /taskStateLabel/);
+  assert.match(controllerSource, /basissoftware-incidents/);
+});
+
+test("AVR diagnostics expose only their supported no-RTOS capabilities", () => {
+  const context = { document: { querySelector: () => null }, window: {} };
+  const debug = vm.runInNewContext(`${controllerSource}\nGerNetiXDeviceDebug;`, context);
+  const status = {
+    diagnostics: {
+      schema_version: 2,
+      capabilities: ["system", "memory", "reset", "timing"],
+      platform: { family: "avr_8bit", sdk: "arduino", rtos: "none" },
+      sections: {
+        memory: { sram: { total_bytes: 2048, free_estimate_bytes: 1100 } },
+        reset: { primary_reason: "power_on", raw_flags: 1 },
+        timing: { uptime_ms: 1234, maximum_loop_duration_us: 90 },
+      },
+    },
+  };
+  assert.deepEqual(JSON.parse(JSON.stringify(debug.diagnosticsForStatus(status).capabilities)), ["system", "memory", "reset", "timing"]);
+  assert.equal(debug.statusUptime(status), 1234);
+  assert.equal(debug.basissoftwareCriticalIncidents(status).length, 0);
+  assert.match(controllerSource, /if \(psram\.available\)/);
+  assert.doesNotMatch(JSON.stringify(status), /rtos_tasks|PSRAM|FreeRTOS/);
+});
+
 test("feedback text is normalized into severity, subsystem and monotonic uptime", () => {
   const context = {
     document: { querySelector: () => null },
@@ -69,6 +133,18 @@ test("feedback text is normalized into severity, subsystem and monotonic uptime"
   });
   assert.equal(events[1].severity, "warn");
   assert.equal(events[2].subsystem, "ota");
+});
+
+test("diagnostic log capacity and dropped bytes remain visible instead of being discarded with the header", () => {
+  const context = { document: { querySelector: () => null }, window: {} };
+  const debug = vm.runInNewContext(`${controllerSource}\nGerNetiXDeviceDebug;`, context);
+  assert.deepEqual(JSON.parse(JSON.stringify(debug.diagnosticLogStats(
+    "GerNetiX event log: capacity=2047 bytes used=1900 droppedBytes=388\n[10 ms] INFO boot: ready",
+  ))), { capacity_bytes: 2047, used_bytes: 1900, dropped_bytes: 388 });
+  assert.equal(debug.diagnosticLogStats("no header"), null);
+  assert.match(controllerSource, /WLAN-Verbindungsstatus/);
+  assert.match(controllerSource, /WLAN-Trennungsgrund/);
+  assert.match(controllerSource, /Verworfene Logbytes/);
 });
 
 test("the in-memory event list de-duplicates ring-buffer re-reads and stays bounded", () => {

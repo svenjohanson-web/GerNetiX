@@ -3,7 +3,8 @@
 function registerProjectRoutes(dependencies) {
   const {
     registry, requireSession, readJsonBody, sendJson, requireEntitlement, requireSessionProject,
-    projectServerJson, projectServerUserId, developmentAssistant, helpAssistant,
+    projectServerJson, projectServerUserId, developmentAssistant, helpAssistant, recordSystemEvent,
+    developmentProjectTemplateCatalog,
   } = dependencies;
 
   async function withSession(req, res, action) {
@@ -25,6 +26,56 @@ function registerProjectRoutes(dependencies) {
   });
   registry.register({
     method: "POST",
+    path: "/api/platform/template-feedback",
+    handler: ({ req, res }) => withSession(req, res, async (session) => {
+      const body = await readJsonBody(req);
+      const templateId = String(body.templateId || body.template_id || "");
+      const template = (developmentProjectTemplateCatalog?.() || []).find((item) => item.id === templateId && item.id !== "empty");
+      if (!template) {
+        sendJson(res, 404, { error: "project_template_not_found", message: "Dieses Projekttemplate ist nicht vorhanden." });
+        return;
+      }
+      const feedback = await projectServerJson("/api/template-feedback", {
+        method: "POST",
+        body: {
+          template_id: template.id,
+          user_id: projectServerUserId(session),
+          category: body.kind === "improvement" ? "template_improvement_suggestion" : "template_experience_rating",
+          ratings: body.ratings,
+          message: String(body.message || "").slice(0, 2000),
+        },
+      });
+      sendJson(res, 201, { feedback });
+    }),
+  });
+  registry.register({
+    method: "POST",
+    path: "/api/platform/project-feedback",
+    handler: ({ req, res }) => withSession(req, res, async (session) => {
+      const body = await readJsonBody(req);
+      const project = await requireSessionProject(session, String(body.projectId || body.project_id || ""));
+      const improvement = body.kind === "improvement";
+      const message = String(body.message || "").trim().slice(0, 2000);
+      if (improvement && !message) {
+        sendJson(res, 400, { error: "missing_required_field", message: "Bitte beschreibe deinen Verbesserungsvorschlag." });
+        return;
+      }
+      const feedback = await projectServerJson("/api/learning-feedback", {
+        method: "POST",
+        body: {
+          project_id: project.project_server_id,
+          user_id: projectServerUserId(session),
+          category: improvement ? "project_improvement_suggestion" : "development_project_rating",
+          ratings: body.ratings,
+          message,
+          contact_mode: "no_contact",
+        },
+      });
+      sendJson(res, 201, { feedback });
+    }),
+  });
+  registry.register({
+    method: "POST",
     path: "/api/platform/development-projects",
     handler: ({ req, res }) => withSession(req, res, (session) => dependencies.handleDevelopmentProjectCreate(req, res, session)),
   });
@@ -40,6 +91,27 @@ function registerProjectRoutes(dependencies) {
   registerProjectPattern("POST", /^\/api\/platform\/learning-projects\/([^/]+)\/device$/, ({ req, res, match, session }) => (
     dependencies.handleLearningProjectDeviceAssign(req, res, session, decodeURIComponent(match[1]))
   ));
+  registry.register({
+    method: "POST",
+    path: "/api/platform/learning-feedback",
+    handler: ({ req, res }) => withSession(req, res, async (session) => {
+      const body = await readJsonBody(req);
+      const project = await requireSessionProject(session, String(body.projectId || body.project_id || ""));
+      const feedback = await projectServerJson("/api/learning-feedback", {
+        method: "POST",
+        body: {
+          project_id: project.project_server_id,
+          user_id: projectServerUserId(session),
+          learning_step_id: String(body.learningStepId || body.learning_step_id || "").slice(0, 160),
+          category: "learning_experience_rating",
+          ratings: body.ratings,
+          message: String(body.message || "").slice(0, 2000),
+          contact_mode: "no_contact",
+        },
+      });
+      sendJson(res, 201, { feedback });
+    }),
+  });
   registerProjectPattern("DELETE", /^\/api\/platform\/projects\/([^/]+)$/, ({ res, match, session }) => (
     dependencies.handlePlatformProjectDelete(res, session, decodeURIComponent(match[1]))
   ));
@@ -67,6 +139,58 @@ function registerProjectRoutes(dependencies) {
   registerProjectPattern("POST", /^\/api\/user-ide\/projects\/([^/]+)\/event-configuration$/, ({ req, res, match, session }) => (
     dependencies.handleProjectEventConfiguration(req, res, session, decodeURIComponent(match[1]))
   ));
+  registerProjectPattern("POST", /^\/api\/user-ide\/projects\/([^/]+)\/basissoftware-incidents$/, async ({ req, res, match, session }) => {
+    const projectId = decodeURIComponent(match[1]);
+    const project = await requireSessionProject(session, projectId);
+    const body = await readJsonBody(req);
+    const incidents = Array.isArray(body.incidents) ? body.incidents.slice(0, 16) : [];
+    const safeIncidents = incidents.map((incident) => ({
+      type: ["task_stack_critical", "basissoftware_crash"].includes(incident?.type) ? incident.type : "invalid",
+      task_name: String(incident?.task_name || "unknown").replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 32),
+      minimum_free_stack_bytes: Number.isFinite(Number(incident?.minimum_free_stack_bytes))
+        ? Math.max(0, Math.round(Number(incident.minimum_free_stack_bytes))) : null,
+      fault_code: String(incident?.fault_code || "").replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 48),
+    })).filter((incident) => incident.type !== "invalid");
+    if (!safeIncidents.length || !recordSystemEvent) {
+      sendJson(res, 400, { error: "invalid_basissoftware_incident" });
+      return;
+    }
+    const buildId = String(body.build_id || "").toLowerCase();
+    if (buildId && !/^[a-f0-9]{64}$/.test(buildId)) {
+      sendJson(res, 400, { error: "invalid_build_id" });
+      return;
+    }
+    const componentId = String(body.component_id || "").replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 80);
+    const softwareUnitId = String(body.software_unit_id || "").replace(/[^a-zA-Z0-9_.-]/g, "_").slice(0, 80);
+    const delivered = await recordSystemEvent({
+      severity: "critical",
+      source_service: "gernetix_basissoftware",
+      target_service: "admin_tool",
+      category: "basissoftware_runtime",
+      event_type: "basissoftware_runtime_defect_detected",
+      message: `Kritischer Basissoftware-Laufzeitfehler in ${componentId || "einem IoT-Device"} erkannt.`,
+      impact: "Die geschützte Basissoftware kann nicht durch den Nutzer korrigiert werden und benötigt eine Betreiberprüfung.",
+      account_id: projectServerUserId(session),
+      route: `/app/debug/?project=${encodeURIComponent(projectId)}`,
+      correlation_id: `${buildId || "no-build"}:${componentId || "device"}:${safeIncidents.map((item) => `${item.type}:${item.task_name}`).join(",")}`.slice(0, 240),
+      details: {
+        project_id: projectId,
+        project_server_id: project.project_server_id,
+        component_id: componentId,
+        software_unit_id: softwareUnitId,
+        build_id: buildId,
+        basissoftware_version: String(body.basissoftware_version || "").slice(0, 48),
+        incidents: safeIncidents,
+        credentials_included: false,
+        raw_logs_included: false,
+      },
+    });
+    if (!delivered) {
+      sendJson(res, 502, { error: "operator_notification_failed", message: "Die kritische Meldung konnte das Admin-System nicht erreichen." });
+      return;
+    }
+    sendJson(res, 202, { reported: true, severity: "critical" });
+  });
 
   registry.register({
     method: "POST",

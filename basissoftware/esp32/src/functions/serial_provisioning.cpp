@@ -17,6 +17,7 @@
 #include "basissoftware/config.h"
 #include "basissoftware/crash_diagnostics.h"
 #include "basissoftware/feedback.h"
+#include "basissoftware/ota_update.h"
 #include "basissoftware/wifi_manager.h"
 #include "gernetix/runtime_core.h"
 
@@ -27,6 +28,7 @@ constexpr size_t COMMAND_MAX_BYTES = 384;
 constexpr size_t WIFI_SCAN_RESPONSE_BYTES = 4096;
 constexpr size_t DIAGNOSTICS_LOG_BYTES = 2304;
 constexpr size_t DIAGNOSTICS_RESPONSE_BYTES = 3072;
+constexpr size_t DIAGNOSTICS_STATUS_BYTES = 10240;
 
 const char *resetReasonName(esp_reset_reason_t reason) {
   switch (reason) {
@@ -48,14 +50,20 @@ const char *resetReasonName(esp_reset_reason_t reason) {
 void writeDiagnosticsStatusJson(char *target, size_t targetSize) {
   char buildId[65] = {};
   char crashReport[1024] = {};
+  char *runtimeResources = static_cast<char *>(std::calloc(6144, 1));
   char uptime[32] = {};
   char freeHeap[24] = {};
   char minimumHeap[24] = {};
+  char otaJson[256] = {};
   std::snprintf(uptime, sizeof(uptime), "%lld", static_cast<long long>(esp_timer_get_time() / 1000));
   std::snprintf(freeHeap, sizeof(freeHeap), "%u", static_cast<unsigned>(esp_get_free_heap_size()));
   std::snprintf(minimumHeap, sizeof(minimumHeap), "%u", static_cast<unsigned>(esp_get_minimum_free_heap_size()));
   writeFirmwareBuildId(buildId, sizeof(buildId));
+  writeOtaStatusJson(otaJson, sizeof(otaJson));
   if (!writeCrashDiagnosticsJson(crashReport, sizeof(crashReport))) std::snprintf(crashReport, sizeof(crashReport), "null");
+  if (runtimeResources == nullptr || !writeRuntimeResourceDiagnosticsJson(runtimeResources, 6144)) {
+    if (runtimeResources != nullptr) std::snprintf(runtimeResources, 6144, "null");
+  }
   gernetix::runtime::JsonWriter writer{target, targetSize, 0, false};
   target[0] = '\0';
   gernetix::runtime::jsonBegin(writer);
@@ -68,8 +76,18 @@ void writeDiagnosticsStatusJson(char *target, size_t targetSize) {
   gernetix::runtime::jsonAppendRaw(writer, "free_heap_bytes", freeHeap);
   gernetix::runtime::jsonAppendRaw(writer, "minimum_free_heap_bytes", minimumHeap);
   gernetix::runtime::jsonAppendString(writer, "wifi_state", wifiStationStateName());
+  char wifiConnectStatus[24] = {};
+  char wifiDisconnectReason[24] = {};
+  std::snprintf(wifiConnectStatus, sizeof(wifiConnectStatus), "%d", wifiLastConnectStatus());
+  std::snprintf(wifiDisconnectReason, sizeof(wifiDisconnectReason), "%d", wifiLastDisconnectReason());
+  gernetix::runtime::jsonAppendRaw(writer, "wifi_last_connect_status", wifiConnectStatus);
+  gernetix::runtime::jsonAppendRaw(writer, "wifi_last_disconnect_reason", wifiDisconnectReason);
+  const char *otaObject = std::strchr(otaJson, ':');
+  gernetix::runtime::jsonAppendRaw(writer, "ota", otaObject == nullptr ? "null" : otaObject + 1);
   gernetix::runtime::jsonAppendRaw(writer, "crash_report", crashReport);
+  gernetix::runtime::jsonAppendRaw(writer, "diagnostics", runtimeResources == nullptr ? "null" : runtimeResources);
   gernetix::runtime::jsonEnd(writer);
+  std::free(runtimeResources);
 }
 
 int serialProvisioningRead(uint8_t *buffer, size_t length, TickType_t timeout) {
@@ -228,9 +246,14 @@ void handleCommand(const char *command) {
   }
 
   if (std::strcmp(action, "diagnostics_status") == 0) {
-    char payload[512] = {};
-    writeDiagnosticsStatusJson(payload, sizeof(payload));
+    char *payload = static_cast<char *>(std::calloc(DIAGNOSTICS_STATUS_BYTES, 1));
+    if (payload == nullptr) {
+      sendError(requestId, "diagnostics_out_of_memory");
+      return;
+    }
+    writeDiagnosticsStatusJson(payload, DIAGNOSTICS_STATUS_BYTES);
     sendJson(requestId, "diagnostics_status", payload);
+    std::free(payload);
     return;
   }
 

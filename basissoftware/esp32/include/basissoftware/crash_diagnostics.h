@@ -14,6 +14,11 @@ void startCrashDiagnosticsMonitor();
 // Produces a bounded JSON object for /status and the serial diagnostics path.
 bool writeCrashDiagnosticsJson(char *target, size_t targetSize);
 
+// Reports global heap headroom and the minimum remaining stack of every
+// currently running FreeRTOS task. Task names and ownership are bounded,
+// credentials and application payloads are never included.
+bool writeRuntimeResourceDiagnosticsJson(char *target, size_t targetSize);
+
 // Exact SHA-256 of the ELF embedded by ESP-IDF, rendered as lowercase hex.
 void writeFirmwareBuildId(char *target, size_t targetSize);
 

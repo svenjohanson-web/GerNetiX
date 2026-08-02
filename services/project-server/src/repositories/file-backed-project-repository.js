@@ -48,6 +48,11 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
     this.persist();
     return result;
   }
+  saveTemplateFeedback(feedback) {
+    const result = super.saveTemplateFeedback(feedback);
+    this.persist();
+    return result;
+  }
 
   saveConsent(consent) {
     const result = super.saveConsent(consent);
@@ -81,6 +86,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
       buildJobs: Array.from(this.buildJobs.values()),
       artifacts: Array.from(this.artifacts.values()),
       feedback: Array.from(this.feedback.values()),
+      templateFeedback: Array.from(this.templateFeedback.values()),
       consents: Array.from(this.consents.values()),
       learningProgress: Array.from(this.learningProgress.values()),
       resourcePolicies: Array.from(this.resourcePolicies.values()),
@@ -93,6 +99,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
       this.store.replaceCollection("build_jobs", state.buildJobs, "build_job_id");
       this.store.replaceCollection("artifacts", state.artifacts, "artifact_id");
       this.store.replaceCollection("feedback", state.feedback, "feedback_id");
+      this.store.replaceCollection("template_feedback", state.templateFeedback, "feedback_id");
       this.store.replaceCollection("consents", state.consents, "consent_id");
       this.store.replaceCollection("learningProgress", state.learningProgress, "project_id");
       this.store.replaceCollection("resourcePolicies", state.resourcePolicies, "plan_id");
@@ -104,6 +111,7 @@ class FileBackedProjectRepository extends InMemoryProjectRepository {
       this.store.replaceTable("project_server_build_jobs", state.buildJobs, buildJobColumns());
       this.store.replaceTable("project_server_artifacts", state.artifacts, artifactColumns());
       this.store.replaceTable("project_server_feedback", state.feedback, feedbackColumns());
+      this.store.replaceTable("project_server_template_feedback", state.templateFeedback, templateFeedbackColumns());
       this.store.replaceTable("project_server_consents", state.consents, consentColumns());
       this.store.replaceTable("project_server_learning_progress", state.learningProgress, learningProgressColumns());
       this.store.replaceTable("project_server_resource_policies", state.resourcePolicies, resourcePolicyColumns());
@@ -231,6 +239,10 @@ function projectServerSchema() {
       created_at TEXT,
       raw_json TEXT NOT NULL
     );`,
+    `CREATE TABLE IF NOT EXISTS project_server_template_feedback (
+      feedback_id TEXT PRIMARY KEY, template_id TEXT, user_id TEXT, category TEXT,
+      message TEXT, created_at TEXT, raw_json TEXT NOT NULL
+    );`,
     `CREATE TABLE IF NOT EXISTS project_server_consents (
       consent_id TEXT PRIMARY KEY,
       feedback_id TEXT,
@@ -353,6 +365,10 @@ function feedbackColumns() {
   };
 }
 
+function templateFeedbackColumns() {
+  return { feedback_id: "feedback_id", template_id: "template_id", user_id: "user_id", category: "category", message: "message", created_at: "created_at", raw_json: jsonColumn((row) => row) };
+}
+
 function consentColumns() {
   return {
     consent_id: "consent_id",
@@ -396,6 +412,7 @@ function emptyState() {
     buildJobs: [],
     artifacts: [],
     feedback: [],
+    templateFeedback: [],
     consents: [],
     learningProgress: [],
     resourcePolicies: [],

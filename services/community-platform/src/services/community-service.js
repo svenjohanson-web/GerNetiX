@@ -17,6 +17,9 @@ class CommunityService {
     const questions = await this.repository.listQuestions({});
     const answers = await this.repository.listAllAnswers();
     const knowledgeDocuments = await this.repository.listKnowledgeDocuments({});
+    const marketplaceListings = await this.repository.listMarketplaceListings?.({}) || [];
+    const projectIdeas = await this.repository.listProjectIdeas?.({}) || [];
+    const projectShowcases = await this.repository.listProjectShowcases?.({}) || [];
     const now = Date.now();
     return {
       persistence_backend: this.persistenceBackend,
@@ -41,7 +44,172 @@ class CommunityService {
         total: knowledgeDocuments.length,
         verified: knowledgeDocuments.filter((document) => document.verification_state === "verified").length,
       },
+      marketplace: {
+        total: marketplaceListings.length,
+        published: marketplaceListings.filter((item) => item.state === "published").length,
+      },
+      project_ideas: {
+        total: projectIdeas.length,
+        published: projectIdeas.filter((item) => item.state === "published").length,
+      },
+      project_showcases: {
+        total: projectShowcases.length,
+        published: projectShowcases.filter((item) => item.state === "published").length,
+      },
     };
+  }
+
+  async createMarketplaceListing(input = {}, actor = {}) {
+    const priceCents = Number(input.price_cents);
+    if (!Number.isInteger(priceCents) || priceCents < 0 || priceCents > 5_000_000) {
+      throw new CommunityPlatformError("marketplace_price_invalid", "Der Preis muss zwischen 0 und 50.000 Euro liegen.", 400);
+    }
+    const condition = normalizeMarketplaceCondition(input.condition);
+    const now = new Date().toISOString();
+    const listing = {
+      listing_id: createId("marketplace"),
+      author_user_id: required(actor.user_id, "actor_user_id"),
+      author_label: String(input.author_label || "Community-Mitglied").trim().slice(0, 80),
+      title: required(input.title, "title").slice(0, 120),
+      description: required(input.description, "description").slice(0, 1200),
+      category: normalizeMarketplaceCategory(input.category),
+      condition,
+      tags: normalizeList(input.tags).slice(0, 12).map((item) => String(item).slice(0, 40)),
+      sale_type: "used_electronics",
+      price_cents: priceCents,
+      currency: "EUR",
+      pickup_location: String(input.pickup_location || "").trim().slice(0, 80),
+      shipping_available: input.shipping_available === true || input.shipping_available === "true",
+      verification_state: "community_unverified",
+      state: "published",
+      created_at: now,
+      updated_at: now,
+    };
+    return presentMarketplaceListing(await this.repository.saveMarketplaceListing(listing), actor);
+  }
+
+  async listMarketplaceListings(query = {}, actor = {}) {
+    const ownOnly = query.mine === "true";
+    const listings = await this.repository.listMarketplaceListings({
+      state: ownOnly ? "" : "published",
+      author_user_id: ownOnly ? actor.user_id : "",
+    });
+    const term = String(query.q || "").trim().toLowerCase();
+    const category = String(query.category || "").trim();
+    return { items: listings
+      .filter((item) => !term || matches(item, term))
+      .filter((item) => !category || item.category === category)
+      .map((item) => presentMarketplaceListing(item, actor)) };
+  }
+
+  async getMarketplaceListing(listingId, actor = {}) {
+    const listing = await this.repository.findMarketplaceListing(listingId);
+    if (!listing || (listing.state !== "published" && listing.author_user_id !== actor.user_id)) {
+      throw new CommunityPlatformError("marketplace_listing_not_found", "Dieser Marktplatz-Eintrag wurde nicht gefunden.", 404);
+    }
+    return presentMarketplaceListing(listing, actor);
+  }
+
+  async updateMarketplaceListing(listingId, input = {}, actor = {}) {
+    const listing = await this.repository.findMarketplaceListing(listingId);
+    if (!listing || listing.author_user_id !== actor.user_id) {
+      throw new CommunityPlatformError("marketplace_listing_not_found", "Dieser Marktplatz-Eintrag wurde nicht gefunden.", 404);
+    }
+    const state = String(input.state || "");
+    if (!["published", "reserved", "sold"].includes(state)) {
+      throw new CommunityPlatformError("marketplace_state_invalid", "Unbekannter Inseratsstatus.", 400);
+    }
+    return presentMarketplaceListing(await this.repository.saveMarketplaceListing({
+      ...listing,
+      state,
+      updated_at: new Date().toISOString(),
+    }), actor);
+  }
+
+  async createProjectIdea(input = {}, actor = {}) {
+    const now = new Date().toISOString();
+    const idea = {
+      idea_id: createId("idea"),
+      author_user_id: required(actor.user_id, "actor_user_id"),
+      author_label: String(input.author_label || "Community-Mitglied").trim().slice(0, 80),
+      title: required(input.title, "title").slice(0, 140),
+      pitch: required(input.pitch, "pitch").slice(0, 320),
+      description: required(input.description, "description").slice(0, 5000),
+      motivation: String(input.motivation || "").trim().slice(0, 1600),
+      stage: normalizeProjectIdeaStage(input.stage),
+      looking_for: normalizeList(input.looking_for).filter((item) => ["feedback", "collaborators", "hardware", "software", "testing"].includes(item)).slice(0, 5),
+      tags: normalizeList(input.tags).slice(0, 12).map((item) => String(item).slice(0, 40)),
+      state: "published",
+      created_at: now,
+      updated_at: now,
+    };
+    return presentProjectIdea(await this.repository.saveProjectIdea(idea), actor, 0);
+  }
+
+  async listProjectIdeas(query = {}, actor = {}) {
+    const ideas = await this.repository.listProjectIdeas({ state: "published" });
+    const term = String(query.q || "").trim().toLowerCase();
+    const stage = String(query.stage || "").trim();
+    return { items: await Promise.all(ideas
+      .filter((item) => !term || matches(item, term))
+      .filter((item) => !stage || item.stage === stage)
+      .map(async (item) => presentProjectIdea(item, actor, (await this.repository.listProjectIdeaComments(item.idea_id)).length))) };
+  }
+
+  async getProjectIdea(ideaId, actor = {}) {
+    const idea = await this.repository.findProjectIdea(ideaId);
+    if (!idea || idea.state !== "published") throw new CommunityPlatformError("project_idea_not_found", "Diese Projektidee wurde nicht gefunden.", 404);
+    const comments = await this.repository.listProjectIdeaComments(ideaId);
+    return { ...presentProjectIdea(idea, actor, comments.length), comments: comments.map(presentProjectIdeaComment) };
+  }
+
+  async createProjectIdeaComment(ideaId, input = {}, actor = {}) {
+    const idea = await this.repository.findProjectIdea(ideaId);
+    if (!idea || idea.state !== "published") throw new CommunityPlatformError("project_idea_not_found", "Diese Projektidee wurde nicht gefunden.", 404);
+    const comment = {
+      comment_id: createId("idea_comment"), idea_id: ideaId,
+      author_user_id: required(actor.user_id, "actor_user_id"),
+      author_label: String(input.author_label || "Community-Mitglied").trim().slice(0, 80),
+      body: required(input.body, "body").slice(0, 2500),
+      created_at: new Date().toISOString(),
+    };
+    await this.repository.saveProjectIdeaComment(comment);
+    await this.repository.saveProjectIdea({ ...idea, updated_at: comment.created_at });
+    return presentProjectIdeaComment(comment);
+  }
+
+  async createProjectShowcase(input = {}, actor = {}) {
+    const snapshot = normalizeProjectSnapshot(input.project_snapshot);
+    if (!snapshot) throw new CommunityPlatformError("showcase_project_snapshot_required", "Für den Projekt-Showcase ist eine sichere Projektkopie erforderlich.", 400);
+    const now = new Date().toISOString();
+    const showcase = {
+      showcase_id: createId("showcase"),
+      author_user_id: required(actor.user_id, "actor_user_id"),
+      author_label: String(input.author_label || "Community-Mitglied").trim().slice(0, 80),
+      title: required(input.title || snapshot.project_title, "title").slice(0, 140),
+      summary: required(input.summary, "summary").slice(0, 420),
+      story: required(input.story, "story").slice(0, 5000),
+      hardware_items: normalizeList(input.hardware_items).slice(0, 24).map((item) => String(item).slice(0, 100)),
+      tags: normalizeList(input.tags).slice(0, 12).map((item) => String(item).slice(0, 40)),
+      project_snapshot: snapshot,
+      verification_state: "community_unverified",
+      state: "published",
+      created_at: now,
+      updated_at: now,
+    };
+    return presentProjectShowcase(await this.repository.saveProjectShowcase(showcase), actor);
+  }
+
+  async listProjectShowcases(query = {}, actor = {}) {
+    const term = String(query.q || "").trim().toLowerCase();
+    const items = await this.repository.listProjectShowcases({ state: "published" });
+    return { items: items.filter((item) => !term || matches(item, term)).map((item) => presentProjectShowcase(item, actor)) };
+  }
+
+  async getProjectShowcase(showcaseId, actor = {}) {
+    const showcase = await this.repository.findProjectShowcase(showcaseId);
+    if (!showcase || showcase.state !== "published") throw new CommunityPlatformError("project_showcase_not_found", "Dieses Community-Projekt wurde nicht gefunden.", 404);
+    return presentProjectShowcase(showcase, actor, true);
   }
 
   async adminOverview(actor = {}) {
@@ -780,6 +948,53 @@ function normalizeProjectSnapshot(value) {
     captured_at: String(value.captured_at || new Date().toISOString()).slice(0, 64),
     source_count: safeSources.length,
     sources: safeSources,
+  };
+}
+
+function presentMarketplaceListing(listing, actor) {
+  const { author_user_id, ...visible } = listing;
+  return {
+    ...visible,
+    author_label: listing.author_label || "Community-Mitglied",
+    is_owner: Boolean(actor.user_id && author_user_id === actor.user_id),
+  };
+}
+
+function normalizeMarketplaceCategory(value) {
+  const category = String(value || "other").trim();
+  return ["boards", "sensors", "displays", "components", "tools", "bundles", "other"].includes(category) ? category : "other";
+}
+
+function normalizeMarketplaceCondition(value) {
+  const condition = String(value || "").trim();
+  if (!["like_new", "very_good", "good", "acceptable", "for_parts"].includes(condition)) {
+    throw new CommunityPlatformError("marketplace_condition_invalid", "Bitte gib einen gültigen Zustand an.", 400);
+  }
+  return condition;
+}
+
+function normalizeProjectIdeaStage(value) {
+  const stage = String(value || "rough_idea").trim();
+  return ["rough_idea", "concept", "prototype", "seeking_collaborators"].includes(stage) ? stage : "rough_idea";
+}
+
+function presentProjectIdea(idea, actor, commentCount) {
+  const { author_user_id, ...visible } = idea;
+  return { ...visible, is_owner: Boolean(actor.user_id && actor.user_id === author_user_id), comment_count: commentCount };
+}
+
+function presentProjectIdeaComment(comment) {
+  const { author_user_id, ...visible } = comment;
+  return visible;
+}
+
+function presentProjectShowcase(showcase, actor, includeSnapshot = false) {
+  const { author_user_id, project_snapshot, ...visible } = showcase;
+  return {
+    ...visible,
+    is_owner: Boolean(actor.user_id && actor.user_id === author_user_id),
+    source_count: project_snapshot?.source_count || 0,
+    ...(includeSnapshot ? { project_snapshot } : {}),
   };
 }
 

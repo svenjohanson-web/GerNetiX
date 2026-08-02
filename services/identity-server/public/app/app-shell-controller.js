@@ -172,10 +172,12 @@ function renderAll() {
 
 function renderRoute() {
   const route = routeName();
+  if (lastRenderedRoute === "debug" && route !== "debug") stopIdeDeviceDebugPolling();
   const enteringDevelopmentPlatform = route === "development-platform" && lastRenderedRoute !== "development-platform";
   const routeQuery = new URLSearchParams(window.location.search);
   const requestedArchitectureProjectId = routeQuery.get("view") === "architecture" ? routeQuery.get("project") || "" : "";
   document.body.classList.toggle("ide-workspace-active", route === "ide");
+  document.body.classList.toggle("debug-workspace-active", route === "debug");
   document.body.classList.toggle("development-workspace-active", route === "development-platform");
   document.body.classList.toggle("development-hardware-active", route === "development-hardware");
   renderBreadcrumb(route);
@@ -201,6 +203,7 @@ function renderRoute() {
     developmentPlatform().renderHardwareConfiguration();
   }
   if (route === "ide") loadIdeProject();
+  if (route === "debug") loadDeviceDebugWorkspace();
   if (route === "learn") {
     loadProcessorBoardCatalog();
     renderProjects();
@@ -215,7 +218,8 @@ function renderRoute() {
   }
   if (route === "device-provisioning") loadDevicePageTools();
   if (route === "downloads") renderDownloads();
-  if (route === "community") loadCommunity();
+  if (route === "shop") loadCommunityMarketplace();
+  if (route === "community") loadCommunityPortal();
   if (route === "messages") loadMessages();
   if (["help", "knowledge"].includes(route)) renderInformationTopic();
   lastRenderedRoute = route;
@@ -334,7 +338,14 @@ function currentLocationTrail(route) {
     ide: [
       { label: "Plattform", route: "/app/dashboard/" },
       { label: "Entwicklungsplattform", route: "/app/development-platform/" },
-      { label: project?.name || "Projekt", route: "" },
+      { label: project?.name || "Projekt", route: project ? `/app/ide/?project=${encodeURIComponent(project.id)}` : "" },
+      { label: "Entwicklung", route: "" },
+    ],
+    debug: [
+      { label: "Plattform", route: "/app/dashboard/" },
+      { label: "Entwicklungsplattform", route: "/app/development-platform/" },
+      { label: project?.name || "Projekt", route: project ? `/app/ide/?project=${encodeURIComponent(project.id)}` : "" },
+      { label: "Debug & Diagnose", route: "" },
     ],
     "device-management": [
       { label: "Plattform", route: "/app/dashboard/" },
@@ -414,7 +425,7 @@ function routeName() {
 function topLevelRouteName(route) {
   if (["learning-project-overview", "learning-project"].includes(route)) return "learn";
   if (["device-management", "device-provisioning", "device-inventory", "device-recovery"].includes(route)) return "device-management";
-  if (["ide", "development-hardware"].includes(route)) return "development-platform";
+  if (["ide", "debug", "development-hardware"].includes(route)) return "development-platform";
   return route;
 }
 

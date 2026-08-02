@@ -7,6 +7,7 @@ const {
   normalizeBasissoftwareProfile,
   profileChangeRequiresUsb,
 } = require("./basissoftware-profiles");
+const elasticComputeContract = require("./elastic-compute-contract");
 
 module.exports = {
   JsonFileStore,
@@ -17,4 +18,5 @@ module.exports = {
   applyProfileCapabilities,
   normalizeBasissoftwareProfile,
   profileChangeRequiresUsb,
+  ...elasticComputeContract,
 };

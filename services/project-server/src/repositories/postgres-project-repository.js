@@ -71,6 +71,17 @@ class PostgresProjectRepository {
       CREATE INDEX IF NOT EXISTS idx_project_feedback_user
         ON project_feedback (user_id);
 
+      CREATE TABLE IF NOT EXISTS project_template_feedback (
+        feedback_id text PRIMARY KEY,
+        template_id text NOT NULL,
+        user_id text NOT NULL,
+        category text NOT NULL,
+        raw_json jsonb NOT NULL,
+        created_at timestamptz NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_project_template_feedback_template
+        ON project_template_feedback (template_id, created_at DESC);
+
       CREATE TABLE IF NOT EXISTS project_consents (
         consent_id text PRIMARY KEY,
         feedback_id text NOT NULL REFERENCES project_feedback(feedback_id) ON DELETE CASCADE,
@@ -336,6 +347,24 @@ class PostgresProjectRepository {
       `SELECT raw_json FROM project_feedback ${where} ORDER BY created_at`,
       values,
     ));
+  }
+
+  async saveTemplateFeedback(feedback) {
+    await this.pool.query(`
+      INSERT INTO project_template_feedback (feedback_id, template_id, user_id, category, raw_json, created_at)
+      VALUES ($1,$2,$3,$4,$5,$6)
+      ON CONFLICT (feedback_id) DO UPDATE SET raw_json=EXCLUDED.raw_json
+    `, [feedback.feedback_id, feedback.template_id, feedback.user_id, feedback.category, feedback, feedback.created_at]);
+    return clone(feedback);
+  }
+
+  async listTemplateFeedback(filter = {}) {
+    const conditions = [];
+    const values = [];
+    if (filter.template_id) { values.push(filter.template_id); conditions.push(`template_id=$${values.length}`); }
+    if (filter.user_id) { values.push(filter.user_id); conditions.push(`user_id=$${values.length}`); }
+    const where = conditions.length ? `WHERE ${conditions.join(" AND ")}` : "";
+    return rows(await this.pool.query(`SELECT raw_json FROM project_template_feedback ${where} ORDER BY created_at`, values));
   }
 
   async saveConsent(consent) {

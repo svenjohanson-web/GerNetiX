@@ -127,6 +127,24 @@ Ablauf:
 3. Projekte ergaenzen.
 4. Capabilities pflegen.
 
+### CJ-012 - Benutzer automatisiert ein Projekt im Hintergrund
+
+Ablauf:
+
+1. Benutzer waehlt fuer sein Projekt einen angebotenen Background-Jobtyp.
+2. Er konfiguriert Trigger, erlaubte Projektdaten und eine begrenzte Regel.
+3. Ein synthetischer Testlauf zeigt Ergebnis, Ressourcenbedarf und Tarifgrenze,
+   ohne Projektdaten zu schreiben.
+4. Nach Aktivierung laeuft die Automation account- und projektisoliert, auch
+   wenn der Browser geschlossen ist.
+5. Der Benutzer sieht letzten Lauf, naechsten Termin, Verbrauch, Fehler,
+   Backpressure und kann die Automation pausieren.
+
+Die Journey verspricht keine bestimmte Server-, Cloud- oder
+Kubernetes-Technik. GerNetiX darf die Ausfuehrung zwischen VPS, privaten und
+freigegebenen Cloud-Ressourcen verschieben, ohne Projektvertrag oder
+Sicherheitsgrenze zu aendern.
+
 ## Ableitungsregel
 
 Fuer jede Customer Journey werden anschliessend abgeleitet:

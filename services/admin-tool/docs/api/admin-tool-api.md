@@ -90,13 +90,21 @@ GET  /api/admin/customer-data-access/audit-events
 
 Consents sind zweckgebunden, zeitlich begrenzt und widerrufbar.
 
-## Learning Feedback
+## Bewertungen und Verbesserungsvorschlaege
 
 ```text
 GET /api/admin/learning-feedback?actor_id=admin-1&role=administrator&purpose=feedback_review
 ```
 
 Identifizierende Daten werden nur bei erlaubtem Zugriff sichtbar.
+
+Die Operator Console zeigt fuer Lernprojekte, Entwicklungsprojekte und
+Projekt-Templates die Mittelwerte von Verstaendlichkeit, Spass, Schwierigkeit
+und Vollstaendigkeit, einen Projekt-/Templatefilter sowie einzelne Bewertungen,
+optionale Kommentare und getrennte Verbesserungsvorschlaege. Die Werte stammen
+live aus dem Project Server; das Admin Tool ist keine zweite fachliche
+Persistenz. Auch in der maskierten Sicht bleiben nicht-identifizierende
+Bewertungswerte und Vorschlagstexte auswertbar.
 
 ## AI Usage Monitoring
 

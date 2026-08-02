@@ -960,6 +960,48 @@ test("feedback hides contact data until explicit feedback consent exists", async
   assert.equal(visible.contact_email, "sven@example.test");
 });
 
+test("learning feedback stores all four bounded experience ratings", async () => {
+  const service = createMemoryProjectServer();
+  const project = await createDemoProject(service);
+  const feedback = await service.createFeedback({
+    project_id: project.project_id,
+    category: "learning_experience_rating",
+    learning_step_id: "step.ota",
+    ratings: { clarity: 5, fun: 4, difficulty: 3, completeness: 5 },
+    message: "Sehr hilfreich.",
+  });
+
+  assert.deepEqual(feedback.ratings, { clarity: 5, fun: 4, difficulty: 3, completeness: 5 });
+  assert.equal(feedback.status, "new");
+  assert.equal(feedback.learning_step_id, "step.ota");
+  await assert.rejects(
+    service.createFeedback({ project_id: project.project_id, category: "learning_experience_rating", ratings: { clarity: 6, fun: 4, difficulty: 3, completeness: 5 } }),
+    (error) => error.code === "invalid_feedback_rating",
+  );
+});
+
+test("template ratings and project improvement suggestions share the central feedback view", async () => {
+  const service = createMemoryProjectServer();
+  const project = await createDemoProject(service);
+  const template = await service.createTemplateFeedback({
+    template_id: "iot_datalogger_web_push_pwa",
+    user_id: "user-1",
+    ratings: { clarity: 4, fun: 5, difficulty: 3, completeness: 4 },
+    message: "Gute Vorlage.",
+  });
+  const suggestion = await service.createFeedback({
+    project_id: project.project_id,
+    category: "project_improvement_suggestion",
+    message: "Bitte eine MQTT-Diagnose ergänzen.",
+  });
+  const items = await service.listFeedback({ user_id: "user-1" });
+
+  assert.equal(template.subject_type, "project_template");
+  assert.equal(template.template_id, "iot_datalogger_web_push_pwa");
+  assert.equal(suggestion.ratings && Object.keys(suggestion.ratings).length, 0);
+  assert.deepEqual(new Set(items.map((item) => item.feedback_id)), new Set([template.feedback_id, suggestion.feedback_id]));
+});
+
 test("anonymizes expired feedback after maximum retention window", async () => {
   const service = createMemoryProjectServer();
   const project = await createDemoProject(service);
@@ -970,10 +1012,18 @@ test("anonymizes expired feedback after maximum retention window", async () => {
     contact_email: "sven@example.test",
     anonymize_after: "2020-01-01T00:00:00.000Z",
   });
+  await service.createTemplateFeedback({
+    template_id: "template.sensor",
+    user_id: "user-1",
+    category: "template_improvement_suggestion",
+    message: "Bitte ebenfalls anonymisieren.",
+    anonymize_after: "2020-01-01T00:00:00.000Z",
+  });
 
   const anonymized = await service.anonymizeExpiredFeedback(new Date("2026-01-01T00:00:00.000Z"));
-  assert.equal(anonymized[0].user_id, "anonymous");
-  assert.equal(anonymized[0].contact_email, "");
+  assert.equal(anonymized.length, 2);
+  assert.ok(anonymized.every((item) => item.user_id === "anonymous"));
+  assert.ok(anonymized.every((item) => item.contact_email === ""));
 });
 
 test("json repository persists projects, sources and build jobs across reload", async () => {
@@ -993,7 +1043,7 @@ test("json repository persists projects, sources and build jobs across reload", 
   assert.equal((await reloaded.getBuildJob(job.build_job_id)).mode, "prebuild");
 });
 
-test("sqlite repository persists projects, learning progress, sources and build jobs across reload", async () => {
+test("sqlite repository persists projects, template feedback, learning progress, sources and build jobs across reload", async () => {
   const dbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "gnx-project-server-sqlite-")), "state.sqlite");
   const service = new ProjectService({
     repository: SqliteBackedProjectRepository.create(dbPath),
@@ -1005,6 +1055,11 @@ test("sqlite repository persists projects, learning progress, sources and build 
     current_step_index: 0,
     completed_step_indexes: [0],
   });
+  await service.createTemplateFeedback({
+    template_id: "template.sensor",
+    user_id: "user-1",
+    ratings: { clarity: 5, fun: 4, difficulty: 2, completeness: 5 },
+  });
 
   const reloaded = new ProjectService({
     repository: SqliteBackedProjectRepository.create(dbPath),
@@ -1014,16 +1069,19 @@ test("sqlite repository persists projects, learning progress, sources and build 
   assert.equal((await reloaded.listSources(project.project_id)).length, 2);
   assert.equal((await reloaded.getBuildJob(job.build_job_id)).mode, "prebuild");
   assert.equal((await reloaded.getLearningProgress(project.project_id, "user-1")).status, "active");
+  assert.equal((await reloaded.listFeedback({ template_id: "template.sensor" })).length, 1);
 
   const db = new DatabaseSync(dbPath);
   assert.equal(collectionCount(db, "project-server", "projects"), 1);
   assert.equal(collectionCount(db, "project-server", "sources"), 2);
   assert.equal(collectionCount(db, "project-server", "build_jobs"), 1);
   assert.equal(collectionCount(db, "project-server", "learning_progress"), 1);
+  assert.equal(collectionCount(db, "project-server", "template_feedback"), 1);
   assert.equal(tableCount(db, "project_server_projects"), 1);
   assert.equal(tableCount(db, "project_server_sources"), 2);
   assert.equal(tableCount(db, "project_server_build_jobs"), 1);
   assert.equal(tableCount(db, "project_server_learning_progress"), 1);
+  assert.equal(tableCount(db, "project_server_template_feedback"), 1);
   assert.equal(
     db.prepare("SELECT title FROM project_server_projects WHERE project_id = ?").get(project.project_id).title,
     "ESP32 Lernprojekt",

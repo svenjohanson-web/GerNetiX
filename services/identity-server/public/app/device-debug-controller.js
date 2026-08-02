@@ -23,6 +23,8 @@ const GerNetiXDeviceDebug = (() => {
         messageKind: "idle",
         bootSequence: 1,
         symbolization: null,
+        reportedIncidentKeys: [],
+        operatorAlert: null,
       };
     }
     return state.ideDebugSessions[key];
@@ -32,20 +34,8 @@ const GerNetiXDeviceDebug = (() => {
     return sessionFor(project, state.activeIdeComponentId || "primary-iot-device");
   }
 
-  function open(componentId = "", softwareUnitId = "") {
-    const project = projectById(state.activeProjectId);
-    if (!project) return;
-    state.ideViewMode = "device-debug";
-    state.activeIdeComponentId = componentId || "primary-iot-device";
-    if (softwareUnitId && projectSoftwareUnits(project).some((unit) => unit.software_unit_id === softwareUnitId)) {
-      state.activeSoftwareUnitIds[project.id] = softwareUnitId;
-    }
-    const component = ideDeviceConfigurationComponents(project)
-      .find((item) => item.component_id === state.activeIdeComponentId);
-    document.querySelector("#ideActiveSourceLabel").textContent = `Komponenten/${componentTreeLabel(component)}/Debug & Diagnose`;
-    render(project);
-    renderIdeViewMode(project);
-    void refreshPorts(project);
+  function renderTarget() {
+    return document.querySelector("#debugDeviceView");
   }
 
   async function refreshPorts(project = projectById(state.activeProjectId)) {
@@ -75,7 +65,7 @@ const GerNetiXDeviceDebug = (() => {
   }
 
   function render(project = projectById(state.activeProjectId)) {
-    const target = document.querySelector("#ideDeviceDebugView");
+    const target = renderTarget();
     if (!target || !project) return;
     const session = activeSession(project);
     const component = ideDeviceConfigurationComponents(project)
@@ -106,6 +96,7 @@ const GerNetiXDeviceDebug = (() => {
         </section>
         <p class="device-debug-message ${escapeAttribute(session.messageKind)}" role="status">${escapeHtml(session.message)}</p>
         ${renderStatus(session.status)}
+        ${renderDiagnostics(session)}
         ${renderCrashReport(session)}
         <section class="device-debug-log-panel">
           <header>
@@ -129,23 +120,168 @@ const GerNetiXDeviceDebug = (() => {
 
   function renderStatus(status) {
     if (!status) return '<section class="device-debug-status-empty"><strong>Noch kein Status</strong><p>Verbinde ein Board und lies den aktuellen Diagnosezustand.</p></section>';
+    const diagnostics = diagnosticsForStatus(status);
+    const system = diagnostics?.sections?.system || {};
     const fields = [
       ["Firmware", status.firmware_version || status.runtimeVersion || status.basissoftwareVersion || "unbekannt"],
-      ["Basissoftware", status.basissoftware_version || status.basissoftwareVersion || "unbekannt"],
-      ["Variante", status.basissoftware_variant || status.basissoftwareVariant || "unbekannt"],
-      ["Build-ID", shortBuildId(status.build_id)],
-      ["Laufzeit", formatDuration(status.uptime_ms ?? status.uptimeMs)],
-      ["Resetgrund", status.reset_reason || "nicht gemeldet"],
-      ["Heap frei", formatBytes(status.free_heap_bytes)],
-      ["Heap-Minimum", formatBytes(status.minimum_free_heap_bytes)],
-      ["WLAN", status.wifi_state || status.wifiStationState || "nicht gemeldet"],
     ];
+    if (status.basissoftware_version || status.basissoftwareVersion) fields.push(["Basissoftware", status.basissoftware_version || status.basissoftwareVersion]);
+    if (status.basissoftware_variant || status.basissoftwareVariant) fields.push(["Variante", status.basissoftware_variant || status.basissoftwareVariant]);
+    if (status.build_id) fields.push(["Build-ID", shortBuildId(status.build_id)]);
+    if (status.uptime_ms !== undefined || status.uptimeMs !== undefined) fields.push(["Laufzeit", formatDuration(status.uptime_ms ?? status.uptimeMs)]);
+    if (status.reset_reason) fields.push(["Resetgrund", status.reset_reason]);
+    if (status.wifi_state || status.wifiStationState) {
+      fields.push(["WLAN", status.wifi_state || status.wifiStationState]);
+      fields.push(["WLAN-Verbindungsstatus", diagnosticCode(status.wifi_last_connect_status ?? status.wifiLastConnectStatus)]);
+      fields.push(["WLAN-Trennungsgrund", diagnosticCode(status.wifi_last_disconnect_reason ?? status.wifiLastDisconnectReason)]);
+    }
+    if (status.ota) fields.push(["OTA", status.ota.error ? `${status.ota.state || "Fehler"} · ${status.ota.error}` : status.ota.state || "bereit"]);
+    if (status.diagnostic_log) {
+      fields.push(["Diagnoselog", `${formatBytes(status.diagnostic_log.used_bytes)} / ${formatBytes(status.diagnostic_log.capacity_bytes)}`]);
+      fields.push(["Verworfene Logbytes", status.diagnostic_log.dropped_bytes]);
+    }
+    if (system.sdk_version || system.idf_version) fields.push([system.sdk || "SDK", system.sdk_version || system.idf_version]);
+    if (system.mcu || system.target) fields.push(["Controller", system.mcu || `${String(system.target).toUpperCase()} · Rev. ${system.chip_revision ?? "?"}`]);
+    if (system.cpu_cores !== undefined) fields.push(["CPU-Kerne", system.cpu_cores]);
     return `<dl class="device-debug-status-grid">${fields.map(([label, value]) => `<div><dt>${escapeHtml(label)}</dt><dd>${escapeHtml(String(value))}</dd></div>`).join("")}</dl>`;
+  }
+
+  function diagnosticsForStatus(status) {
+    if (status?.diagnostics?.schema_version >= 2) return status.diagnostics;
+    const legacy = status?.runtime_resources;
+    if (!legacy) return null;
+    return {
+      schema_version: 2,
+      capabilities: ["system", "memory", "rtos_tasks"],
+      platform: { family: "esp32", sdk: "esp-idf", rtos: "freertos" },
+      sections: {
+        system: legacy.system || {},
+        memory: { heap: legacy.heap || {}, regions: legacy.memory_regions || {}, stack_thresholds: legacy.stack_thresholds || {} },
+        tasks: { items: legacy.tasks || [], count_total: legacy.task_count_total, status: legacy.task_list_status },
+      },
+    };
+  }
+
+  function statusUptime(status) {
+    const value = status?.uptime_ms
+      ?? status?.uptimeMs
+      ?? diagnosticsForStatus(status)?.sections?.timing?.uptime_ms;
+    const uptime = Number(value);
+    return Number.isFinite(uptime) ? uptime : null;
   }
 
   function shortBuildId(value) {
     const buildId = String(value || "");
     return buildId ? `${buildId.slice(0, 12)}…` : "nicht gemeldet";
+  }
+
+  function basissoftwareCriticalIncidents(status) {
+    const tasks = diagnosticsForStatus(status)?.sections?.tasks?.items || [];
+    const incidents = tasks.filter((task) => task.owner === "basissoftware" && task.status === "critical").map((task) => ({
+      type: "task_stack_critical",
+      task_name: String(task.name || "unknown"),
+      minimum_free_stack_bytes: Number(task.minimum_free_stack_bytes),
+    }));
+    const crash = status?.crash_report;
+    if (crash?.available && crash.fault_owner === "basissoftware") {
+      incidents.push({
+        type: "basissoftware_crash",
+        task_name: String(crash.task_name || "unknown"),
+        fault_code: String(crash.fault_code || "unknown"),
+      });
+    }
+    return incidents;
+  }
+
+  function renderDiagnostics(session) {
+    const diagnostics = diagnosticsForStatus(session.status);
+    if (!diagnostics) return "";
+    const capabilities = new Set(Array.isArray(diagnostics.capabilities) ? diagnostics.capabilities : []);
+    const memory = diagnostics.sections?.memory;
+    const taskSection = diagnostics.sections?.tasks;
+    const timing = diagnostics.sections?.timing;
+    const reset = diagnostics.sections?.reset;
+    const tasks = Array.isArray(taskSection?.items) ? taskSection.items : [];
+    const problematic = tasks.filter((task) => task.status !== "ok");
+    const heap = memory?.heap || {};
+    const internal = memory?.regions?.internal || {};
+    const psram = memory?.regions?.psram || {};
+    const sram = memory?.sram || {};
+    const heapStatus = heap.status || "unknown";
+    const taskCount = Number(taskSection?.count_total) || tasks.length;
+    const memoryCards = [];
+    if (memory?.heap) {
+      memoryCards.push(`<div class="${escapeAttribute(heapStatus)}"><strong>Heap-Minimum</strong><span>${escapeHtml(formatBytes(heap.minimum_free_bytes))}</span><small>${escapeHtml(heapStatus === "ok" ? "ausreichende Reserve" : `${heapStatus.toUpperCase()} · Grenze ${formatBytes(heapStatus === "critical" ? heap.critical_below_bytes : heap.warning_below_bytes)}`)}</small></div>`);
+      memoryCards.push(`<div class="${escapeAttribute(fragmentationState(heap.fragmentation_percent))}"><strong>Größter Heap-Block</strong><span>${escapeHtml(formatBytes(heap.largest_free_block_bytes))}</span><small>${escapeHtml(formatPercent(heap.fragmentation_percent))} Fragmentierung</small></div>`);
+      memoryCards.push(`<div><strong>Interner RAM frei</strong><span>${escapeHtml(formatBytes(internal.free_bytes))}</span><small>Minimum ${escapeHtml(formatBytes(internal.minimum_free_bytes))} · größter Block ${escapeHtml(formatBytes(internal.largest_free_block_bytes))}</small></div>`);
+      if (psram.available) memoryCards.push(`<div><strong>PSRAM frei</strong><span>${escapeHtml(formatBytes(psram.free_bytes))}</span><small>Minimum ${escapeHtml(formatBytes(psram.minimum_free_bytes))} · größter Block ${escapeHtml(formatBytes(psram.largest_free_block_bytes))}</small></div>`);
+    }
+    if (memory?.sram) {
+      memoryCards.push(`<div><strong>SRAM frei geschätzt</strong><span>${escapeHtml(formatBytesExact(sram.free_estimate_bytes))}</span><small>Minimum ${escapeHtml(formatBytesExact(sram.minimum_free_estimate_bytes))} von ${escapeHtml(formatBytesExact(sram.total_bytes))}</small></div>`);
+      memoryCards.push(`<div><strong>Stack-/Heap-Abstand</strong><span>${escapeHtml(formatBytesExact(sram.stack_heap_gap_bytes))}</span><small>Heap belegt ${escapeHtml(formatBytesExact(sram.heap_used_bytes))}</small></div>`);
+    }
+    if (timing) memoryCards.push(`<div><strong>Loop-Laufzeit</strong><span>${escapeHtml(formatMicroseconds(timing.last_loop_duration_us))}</span><small>Maximum ${escapeHtml(formatMicroseconds(timing.maximum_loop_duration_us))}</small></div>`);
+    if (reset) memoryCards.push(`<div><strong>Letzter Reset</strong><span>${escapeHtml(reset.primary_reason || "unbekannt")}</span><small>MCUSR 0x${escapeHtml(Number(reset.raw_flags || 0).toString(16).padStart(2, "0"))}</small></div>`);
+    if (capabilities.has("rtos_tasks")) {
+      memoryCards.push(`<div><strong>Stack-Auffälligkeiten</strong><span>${problematic.length}</span><small>Minimum seit Task-Start</small></div>`);
+      memoryCards.push(`<div><strong>CPU-Auslastung</strong><span>nicht gemessen</span><small>Keine erfundene Prozentangabe aus einer Momentaufnahme</small></div>`);
+    }
+    return `<section class="device-debug-resources ${escapeAttribute(heapStatus)}">
+      <header><div><p class="eyebrow">Plattformdiagnose</p><h4>${capabilities.has("rtos_tasks") ? "Speicher und RTOS-Tasks" : "Speicher und Bare-Metal-Runtime"}</h4></div><span>${escapeHtml(diagnostics.platform?.family || "Embedded")}${capabilities.has("rtos_tasks") ? ` · ${taskCount} Tasks${taskSection?.status === "truncated" ? " · erste 32 gezeigt" : ""}` : " · kein RTOS"}</span></header>
+      ${memoryCards.length ? `<div class="device-debug-resource-summary">${memoryCards.join("")}</div>` : ""}
+      ${capabilities.has("rtos_tasks") ? `<div class="device-debug-task-table"><table><thead><tr><th>Task</th><th>Verantwortung</th><th>Zustand</th><th>Core</th><th>Priorität</th><th>Basis</th><th>kleinste Stack-Reserve</th><th>Status</th></tr></thead><tbody>
+        ${tasks.map((task) => `<tr class="${escapeAttribute(task.status || "unknown")}"><td>${escapeHtml(task.name || "unbekannt")}</td><td>${escapeHtml(taskOwnerLabel(task.owner))}</td><td>${escapeHtml(taskStateLabel(task.state))}</td><td>${escapeHtml(task.core === null || task.core === undefined ? "beliebig" : String(task.core))}</td><td>${escapeHtml(String(task.priority ?? "–"))}</td><td>${escapeHtml(String(task.base_priority ?? "–"))}</td><td>${escapeHtml(formatBytes(task.minimum_free_stack_bytes))}</td><td><span>${escapeHtml(String(task.status || "unknown").toUpperCase())}</span></td></tr>`).join("") || '<tr><td colspan="8">Task-Liste nicht verfügbar.</td></tr>'}
+      </tbody></table></div>` : ""}
+      ${session.operatorAlert ? `<p class="device-debug-operator-alert ${escapeAttribute(session.operatorAlert.kind)}">${escapeHtml(session.operatorAlert.message)}</p>` : ""}
+    </section>`;
+  }
+
+  function taskOwnerLabel(owner) {
+    return ({
+      basissoftware: "Basissoftware",
+      shared_runtime: "Basissoftware + Projekt",
+      platform_runtime: "Plattform / RTOS",
+      project_or_dependency: "Projekt / Bibliothek",
+    })[owner] || "nicht zugeordnet";
+  }
+
+  function taskStateLabel(taskState) {
+    return ({ running: "läuft", ready: "bereit", blocked: "wartet", suspended: "pausiert", deleted: "beendet" })[taskState] || "unbekannt";
+  }
+
+  function fragmentationState(value) {
+    const percent = Number(value);
+    if (!Number.isFinite(percent)) return "unknown";
+    if (percent >= 70) return "critical";
+    if (percent >= 50) return "warning";
+    return "ok";
+  }
+
+  function formatPercent(value) {
+    const percent = Number(value);
+    return Number.isFinite(percent) ? `${Math.round(percent)} %` : "nicht gemeldet";
+  }
+
+  async function reportBasissoftwareIncidents(project, session) {
+    const incidents = basissoftwareCriticalIncidents(session.status);
+    if (!incidents.length) return;
+    const buildId = String(session.status?.build_id || session.status?.crash_report?.build_id || "").toLowerCase();
+    const key = `${buildId}|${incidents.map((incident) => `${incident.type}:${incident.task_name}:${incident.minimum_free_stack_bytes ?? incident.fault_code}`).join("|")}`;
+    const reportedIncidentKeys = Array.isArray(session.reportedIncidentKeys) ? session.reportedIncidentKeys : [];
+    if (reportedIncidentKeys.includes(key)) return;
+    try {
+      await postJson(`/api/user-ide/projects/${encodeURIComponent(project.id)}/basissoftware-incidents`, {
+        component_id: session.componentId,
+        software_unit_id: state.activeSoftwareUnitIds[project.id] || "",
+        build_id: buildId,
+        basissoftware_version: session.status?.basissoftware_version || session.status?.basissoftwareVersion || "",
+        incidents,
+      });
+      session.reportedIncidentKeys = [...reportedIncidentKeys, key].slice(-32);
+      session.operatorAlert = { kind: "reported", message: "Kritischer Basissoftwarefehler wurde mit höchster Priorität an das Admin-System gemeldet." };
+    } catch (error) {
+      session.operatorAlert = { kind: "failed", message: `Kritischer Basissoftwarefehler erkannt, aber die Betreiber-Meldung ist fehlgeschlagen: ${error.message}` };
+    }
   }
 
   function renderCrashReport(session) {
@@ -208,6 +344,30 @@ const GerNetiXDeviceDebug = (() => {
     return `${Math.round(bytes / 1024)} KiB`;
   }
 
+  function formatBytesExact(value) {
+    const bytes = Number(value);
+    if (!Number.isFinite(bytes)) return "nicht gemeldet";
+    return bytes < 1024 ? `${Math.round(bytes)} Byte` : `${(bytes / 1024).toFixed(1)} KiB`;
+  }
+
+  function formatMicroseconds(value) {
+    const microseconds = Number(value);
+    if (!Number.isFinite(microseconds)) return "nicht gemessen";
+    return microseconds >= 1000 ? `${(microseconds / 1000).toFixed(2)} ms` : `${Math.round(microseconds)} µs`;
+  }
+
+  function diagnosticCode(value) {
+    const code = Number(value);
+    if (!Number.isFinite(code)) return "nicht gemeldet";
+    return code === 0 ? "kein Fehler gemeldet" : `Code ${code}`;
+  }
+
+  function diagnosticLogStats(text) {
+    const match = String(text || "").match(/^GerNetiX event log: capacity=(\d+) bytes used=(\d+) droppedBytes=(\d+)/m);
+    if (!match) return null;
+    return { capacity_bytes: Number(match[1]), used_bytes: Number(match[2]), dropped_bytes: Number(match[3]) };
+  }
+
   function filteredEvents(session) {
     return session.events.filter((event) => (session.severity === "all" || event.severity === session.severity)
       && (session.subsystem === "all" || event.subsystem === session.subsystem));
@@ -262,9 +422,9 @@ const GerNetiXDeviceDebug = (() => {
       const result = session.connection === "usb"
         ? await readUsb(session)
         : await readNetwork(session);
-      const previousUptime = Number(session.status?.uptime_ms ?? session.status?.uptimeMs);
-      const currentUptime = Number(result.status?.uptime_ms ?? result.status?.uptimeMs);
-      if (Number.isFinite(previousUptime) && Number.isFinite(currentUptime) && currentUptime < previousUptime) {
+      const previousUptime = statusUptime(session.status);
+      const currentUptime = statusUptime(result.status);
+      if (previousUptime !== null && currentUptime !== null && currentUptime < previousUptime) {
         session.bootSequence = (session.bootSequence || 1) + 1;
         session.events.push({
           severity: "marker",
@@ -275,9 +435,10 @@ const GerNetiXDeviceDebug = (() => {
           boot_sequence: session.bootSequence,
         });
       }
-      session.status = result.status;
+      session.status = { ...result.status, diagnostic_log: diagnosticLogStats(result.logs) };
       appendEvents(session, normalizeLog(result.logs));
       await symbolizeCrashIfPossible(project, session);
+      await reportBasissoftwareIncidents(project, session);
       session.message = `Diagnose gelesen · ${new Date().toLocaleTimeString()} · ${session.events.length} Ereignisse`;
       session.messageKind = "ok";
     } catch (error) {
@@ -339,12 +500,8 @@ const GerNetiXDeviceDebug = (() => {
       render(project);
       return;
     }
-    await openIdeSource(source.path);
-    const editor = document.querySelector("#sourceEditor");
     const targetLine = Math.max(1, Number(line) || 1);
-    const offset = String(editor.value || "").split(/\n/).slice(0, targetLine - 1).reduce((sum, value) => sum + value.length + 1, 0);
-    editor.setSelectionRange(offset, offset);
-    editor.focus();
+    navigate(`/app/ide/?project=${encodeURIComponent(project.id)}&source=${encodeURIComponent(source.path)}&line=${encodeURIComponent(String(targetLine))}`);
   }
 
   async function readUsb(session) {
@@ -433,8 +590,7 @@ const GerNetiXDeviceDebug = (() => {
     URL.revokeObjectURL(url);
   }
 
-  function bind() {
-    const target = document.querySelector("#ideDeviceDebugView");
+  function bindTarget(target) {
     if (!target) return;
     target.addEventListener("change", (event) => {
       const project = projectById(state.activeProjectId);
@@ -463,19 +619,85 @@ const GerNetiXDeviceDebug = (() => {
     });
   }
 
-  return { appendEvents, bind, normalizeLog, open, refresh, render, stopAllPolling };
+  function bind() {
+    bindTarget(document.querySelector("#debugDeviceView"));
+    document.querySelector("#debugOpenIdeLink")?.addEventListener("click", (event) => {
+      event.preventDefault();
+      navigate(event.currentTarget.getAttribute("href"));
+    });
+    document.querySelector("#debugDeviceList")?.addEventListener("click", (event) => {
+      const button = event.target.closest("[data-debug-device]");
+      if (!button) return;
+      const project = projectById(state.activeProjectId);
+      const previousSession = activeSession(project);
+      if (previousSession.running) stopPolling(project, previousSession);
+      state.activeIdeComponentId = button.dataset.debugDevice;
+      const softwareUnitId = button.dataset.debugSoftwareUnit || "";
+      if (softwareUnitId) state.activeSoftwareUnitIds[project.id] = softwareUnitId;
+      const url = new URL(window.location.href);
+      url.searchParams.set("device", state.activeIdeComponentId);
+      history.replaceState({}, "", `${url.pathname}${url.search}`);
+      renderWorkspace(project);
+      void refreshPorts(project);
+    });
+  }
+
+  function renderWorkspace(project) {
+    const devices = ideDeviceConfigurationComponents(project)
+      .filter((component) => component.abstract_type === "iot_device");
+    const list = document.querySelector("#debugDeviceList");
+    document.querySelector("#debugProjectTitle").textContent = project.name;
+    document.querySelector("#debugDeviceListTitle").textContent = `${devices.length} IoT-Device${devices.length === 1 ? "" : "s"}`;
+    document.querySelector("#debugOpenIdeLink").href = `/app/ide/?project=${encodeURIComponent(project.id)}`;
+    list.innerHTML = devices.map((component) => {
+      const softwareUnit = softwareUnitForIdeComponent(project, component);
+      const boardName = component.board_configuration?.name
+        || softwareUnit?.build_config?.board_configuration?.name
+        || component.board_profile_id
+        || "Board noch nicht zugeordnet";
+      return `<button type="button" class="${component.component_id === state.activeIdeComponentId ? "active" : ""}" data-debug-device="${escapeAttribute(component.component_id)}" data-debug-software-unit="${escapeAttribute(softwareUnit?.software_unit_id || "")}">
+        <strong>${escapeHtml(component.label || "IoT-Device")}</strong>
+        <span>${escapeHtml(softwareUnit?.title || "Firmware")}</span>
+        <small>${escapeHtml(boardName)}</small>
+      </button>`;
+    }).join("") || '<p class="empty">Dieses Projekt enthält kein modelliertes IoT-Device.</p>';
+    if (devices.length) render(project);
+    else document.querySelector("#debugDeviceView").innerHTML = '<div class="debug-workspace-empty"><strong>Keine IoT-Devices</strong><p>Dieses Projekt enthält keine Geräte, für die eine lokale Diagnose angeboten werden kann.</p><a class="button-link primary" href="/app/development-platform/">Zur Entwicklungsplattform</a></div>';
+  }
+
+  async function loadWorkspace() {
+    const query = new URLSearchParams(window.location.search);
+    const projectId = query.get("project") || "";
+    const project = state.projects.find((item) => item.id === projectId);
+    const target = document.querySelector("#debugDeviceView");
+    if (!project) {
+      if (target) target.innerHTML = '<div class="debug-workspace-empty"><strong>Projekt nicht gefunden</strong><p>Öffne zuerst ein Entwicklungsprojekt.</p><a class="button-link primary" href="/app/development-platform/">Entwicklungsprojekte verwalten</a></div>';
+      return;
+    }
+    state.activeProjectId = project.id;
+    const devices = ideDeviceConfigurationComponents(project)
+      .filter((component) => component.abstract_type === "iot_device");
+    if (devices.length) await loadProjectSources(project);
+    const requestedDeviceId = query.get("device") || "";
+    const selected = devices.find((component) => component.component_id === requestedDeviceId)
+      || devices.find((component) => component.component_id === state.activeIdeComponentId)
+      || devices[0];
+    state.activeIdeComponentId = selected?.component_id || "";
+    const softwareUnit = selected ? softwareUnitForIdeComponent(project, selected) : null;
+    if (softwareUnit) state.activeSoftwareUnitIds[project.id] = softwareUnit.software_unit_id;
+    renderWorkspace(project);
+    if (selected) await refreshPorts(project);
+  }
+
+  return { appendEvents, basissoftwareCriticalIncidents, bind, diagnosticLogStats, diagnosticsForStatus, loadWorkspace, normalizeLog, refresh, render, statusUptime, stopAllPolling };
 })();
-
-function openIdeDeviceDebug(componentId, softwareUnitId) {
-  GerNetiXDeviceDebug.open(componentId, softwareUnitId);
-}
-
-function renderIdeDeviceDebug(project) {
-  GerNetiXDeviceDebug.render(project);
-}
 
 function stopIdeDeviceDebugPolling() {
   GerNetiXDeviceDebug.stopAllPolling();
+}
+
+function loadDeviceDebugWorkspace() {
+  return GerNetiXDeviceDebug.loadWorkspace();
 }
 
 GerNetiXDeviceDebug.bind();

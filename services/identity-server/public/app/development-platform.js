@@ -20,6 +20,7 @@ const DevelopmentPlatform = (() => {
         assistantOpen: false,
         componentDraftType: "iot_device",
         componentDraftConnectionMode: "direct",
+        componentDraftBrowserAccessScope: "local_network",
         workflowStep: "project_start",
       };
     }
@@ -29,6 +30,7 @@ const DevelopmentPlatform = (() => {
     if (typeof state.developmentPlatform.assistantOpen !== "boolean") state.developmentPlatform.assistantOpen = false;
     if (!state.developmentPlatform.componentDraftType) state.developmentPlatform.componentDraftType = "iot_device";
     if (!state.developmentPlatform.componentDraftConnectionMode) state.developmentPlatform.componentDraftConnectionMode = "direct";
+    if (!state.developmentPlatform.componentDraftBrowserAccessScope) state.developmentPlatform.componentDraftBrowserAccessScope = "local_network";
 
     function init() {
       document.querySelector("#developmentChatForm").addEventListener("submit", sendChatMessage);
@@ -42,6 +44,8 @@ const DevelopmentPlatform = (() => {
       document.querySelector("#newEmptyDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("new-empty"));
       document.querySelector("#newTemplateDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("new-template"));
       document.querySelector("#openDevelopmentTemplateHelpButton").addEventListener("click", openDevelopmentTemplateHelp);
+      document.querySelector("#rateDevelopmentTemplateButton").addEventListener("click", rateSelectedTemplate);
+      document.querySelector("#developmentTemplateHelpContent").addEventListener("click", handleTemplateFeedbackClick);
       document.querySelector("#developmentTemplateHelpDialog").addEventListener("click", (event) => {
         if (event.target === event.currentTarget || event.target.closest("[data-close-development-template-help]")) event.currentTarget.close();
       });
@@ -104,11 +108,25 @@ const DevelopmentPlatform = (() => {
             <header><strong>${escapeHtml(template.title || template.id)}</strong><span>${escapeHtml(access)}</span></header>
             <p>${escapeHtml(template.description || template.hint || "Keine Beschreibung vorhanden.")}</p>
             ${template.hint ? `<small>${escapeHtml(template.hint)}</small>` : ""}
+            <div class="button-row"><button type="button" data-feedback-template="${escapeAttribute(template.id)}">Bewerten &amp; Feedback</button></div>
           </article>`;
         }).join("")
         : "<p class=\"empty\">Die Projekttemplates werden geladen.</p>";
       const dialog = document.querySelector("#developmentTemplateHelpDialog");
       if (!dialog.open) dialog.showModal();
+    }
+
+    function rateSelectedTemplate() {
+      const templateId = document.querySelector("#developmentProjectTemplate")?.value || "";
+      const template = projectTemplateCatalog.find((item) => item.id === templateId);
+      if (template) ProjectFeedbackUI.open({ subjectType: "template", subjectId: template.id, title: template.title, kind: "rating" });
+    }
+
+    function handleTemplateFeedbackClick(event) {
+      const button = event.target.closest("[data-feedback-template]");
+      if (!button) return;
+      const template = projectTemplateCatalog.find((item) => item.id === button.dataset.feedbackTemplate);
+      if (template) ProjectFeedbackUI.open({ subjectType: "template", subjectId: template.id, title: template.title, kind: "rating" });
     }
 
     function closeInlineHelp() {
@@ -162,8 +180,17 @@ const DevelopmentPlatform = (() => {
       if (openButton) { await openExistingDevelopmentProject(openButton.dataset.openDevelopmentProject); return; }
       const configureButton = event.target.closest("[data-configure-development-project]");
       if (configureButton) { activateProject(configureButton.dataset.configureDevelopmentProject); return; }
+      const rateButton = event.target.closest("[data-rate-development-project]");
+      if (rateButton) { openDevelopmentProjectFeedback(rateButton.dataset.rateDevelopmentProject, "rating"); return; }
+      const suggestButton = event.target.closest("[data-suggest-development-project]");
+      if (suggestButton) { openDevelopmentProjectFeedback(suggestButton.dataset.suggestDevelopmentProject, "improvement"); return; }
       const deleteButton = event.target.closest("[data-delete-development-project]");
       if (deleteButton) deleteDevelopmentProject(deleteButton.dataset.deleteDevelopmentProject);
+    }
+
+    function openDevelopmentProjectFeedback(projectId, kind) {
+      const project = developmentProjects().find((item) => item.id === projectId);
+      if (project) ProjectFeedbackUI.open({ subjectType: "project", subjectId: project.id, title: project.name, kind });
     }
 
     function handleProjectPanelNavigation(event) {
@@ -322,7 +349,7 @@ const DevelopmentPlatform = (() => {
       overview.classList.toggle("hidden", state.developmentPlatform.projectPanelMode !== "manage");
       if (state.developmentPlatform.projectPanelMode === "manage") {
         const content = projects.length
-          ? projects.map((project) => `<article class="project-card"><div><strong>${escapeHtml(project.name)}</strong><p>Erstellt: <time datetime="${escapeAttribute(project.createdAt || "")}">${escapeHtml(formatDevelopmentProjectDate(project.createdAt))}</time> · Zuletzt bearbeitet: <time datetime="${escapeAttribute(project.updatedAt || "")}">${escapeHtml(formatDevelopmentProjectDate(project.updatedAt))}</time></p></div><div class="button-row"><button type="button" data-open-development-project="${escapeAttribute(project.id)}">In IDE oeffnen</button><button type="button" data-configure-development-project="${escapeAttribute(project.id)}">Konfiguration</button><button type="button" data-delete-development-project="${escapeAttribute(project.id)}">Loeschen</button></div></article>`).join("")
+          ? projects.map((project) => `<article class="project-card"><div><strong>${escapeHtml(project.name)}</strong><p>Erstellt: <time datetime="${escapeAttribute(project.createdAt || "")}">${escapeHtml(formatDevelopmentProjectDate(project.createdAt))}</time> · Zuletzt bearbeitet: <time datetime="${escapeAttribute(project.updatedAt || "")}">${escapeHtml(formatDevelopmentProjectDate(project.updatedAt))}</time></p></div><div class="button-row"><button type="button" data-open-development-project="${escapeAttribute(project.id)}">In IDE oeffnen</button><button type="button" data-configure-development-project="${escapeAttribute(project.id)}">Konfiguration</button><button type="button" data-rate-development-project="${escapeAttribute(project.id)}">Bewerten</button><button type="button" data-suggest-development-project="${escapeAttribute(project.id)}">Verbesserung vorschlagen</button><button type="button" data-delete-development-project="${escapeAttribute(project.id)}">Loeschen</button></div></article>`).join("")
           : `<div class="development-project-empty"><strong>Noch keine eigenen Entwicklungsprojekte vorhanden</strong><p>Kehre zur Auswahl zurück, um einen anderen Einstieg zu wählen.</p></div>`;
         overview.innerHTML = `<header><p class="eyebrow">Meine Projekte</p><h3>Entwicklungsprojekte verwalten</h3></header>${content}<div class="button-row"><button type="button" data-development-project-back>Zurück zur Auswahl</button></div>`;
       }
@@ -422,7 +449,9 @@ const DevelopmentPlatform = (() => {
         : "";
       const draftType = state.developmentPlatform.componentDraftType || "iot_device";
       const draftConnectionMode = state.developmentPlatform.componentDraftConnectionMode || "direct";
+      const draftBrowserAccessScope = state.developmentPlatform.componentDraftBrowserAccessScope || "local_network";
       const connectionOptions = componentConnectionOptions(draftType, components);
+      const selectableConnectionOptions = draftType === "browser_app" ? browserWebserverConnectionOptions(connectionOptions) : connectionOptions;
       section.innerHTML = `
         <header>
           <div>
@@ -439,21 +468,22 @@ const DevelopmentPlatform = (() => {
           </section>
           <form class="template-component-add" onsubmit="return false">
             <h4>Komponente oder Anschluss hinzufuegen</h4>
-            <label>Art
+            <label><span class="template-component-type-label">Art <button type="button" class="hardware-inline-help" data-component-type-help aria-label="Unterschied zwischen Browser-App, PWA und Mobile App erklären" title="Browser-App, PWA oder Mobile App?">?</button></span>
               <select data-template-component-type>
                 <option value="iot_device" ${selected(draftType, "iot_device")}>IoT-Device</option>
                 <option value="sensor" ${selected(draftType, "sensor")}>Sensor anschliessen</option>
                 <option value="actuator" ${selected(draftType, "actuator")}>Aktor anschliessen</option>
-                <option value="smartphone_app" ${selected(draftType, "smartphone_app")}>Smartphone-App</option>
-                <option value="browser_app" ${selected(draftType, "browser_app")}>Browser-App</option>
+                <option value="mobile_app" ${selected(draftType, "mobile_app")}>Mobile App (iOS &amp; Android)</option>
+                <option value="browser_app" ${selected(draftType, "browser_app")}>Browser-App (optional als PWA)</option>
                 <option value="desktop_app" ${selected(draftType, "desktop_app")}>Desktop-App</option>
                 <option value="server_api" ${selected(draftType, "server_api")}>Server / API</option>
               </select>
             </label>
             ${componentConnectionModeSelection(draftType, draftConnectionMode)}
+            ${browserAccessScopeSelection(draftType, draftBrowserAccessScope)}
             <label>Bezeichnung (optional)<input data-template-component-label maxlength="80" placeholder="z. B. Sensor Kueche"></label>
             ${componentConnectionSelection(draftType, connectionOptions)}
-            <button type="button" class="secondary" data-template-component-add ${!connectionOptions.length ? "disabled" : ""}>+ Komponente</button>
+            <button type="button" class="secondary" data-template-component-add ${!selectableConnectionOptions.length ? "disabled" : ""}>+ Komponente</button>
           </form>
         </div>
       `;
@@ -478,8 +508,41 @@ const DevelopmentPlatform = (() => {
       </label>`;
     }
 
+    function browserWebserverConnectionOptions(options) {
+      const hostingRuleIds = new Set(["loads_from_device_webserver", "loads_from_server_webserver"]);
+      return (options || []).filter((option) => hostingRuleIds.has(option.rule.id));
+    }
+
+    function browserAccessScopeSelection(type, scope) {
+      if (type !== "browser_app") return "";
+      return `<label>Erreichbarkeit des Webservers
+        <select data-template-browser-access-scope>
+          <option value="local_network" ${selected(scope, "local_network")}>Nur lokales Netzwerk / Intranet</option>
+          <option value="internet" ${selected(scope, "internet")}>Ueber das Internet erreichbar</option>
+        </select>
+        <small>Jede Browser-App und damit auch jede PWA wird von einem Webserver ausgeliefert. Internet-Erreichbarkeit erfordert spaeter TLS, Authentifizierung und eine Sicherheitspruefung; diese Auswahl veroeffentlicht noch keinen Dienst.</small>
+      </label>`;
+    }
+
     function componentConnectionSelection(type, options) {
       const requiresControlUnit = ["sensor", "actuator"].includes(type);
+      if (type === "browser_app") {
+        const hostingOptions = browserWebserverConnectionOptions(options);
+        if (!hostingOptions.length) return `<p class="template-component-hint">Lege zuerst ein IoT-Device oder Server/API als Webserver an.</p>`;
+        const hostingRuleIds = new Set(hostingOptions.map((option) => option.rule.id));
+        const additionalOptions = options.filter((option) => !hostingRuleIds.has(option.rule.id));
+        return `<label>Bereitstellender Webserver
+          <select data-template-browser-webserver>
+            <option value="">Webserver waehlen</option>
+            ${hostingOptions.map((option) => `<option value="${escapeAttribute(`${option.rule.id}|${option.target.component_id}`)}">${escapeHtml(option.target.label)}</option>`).join("")}
+          </select>
+          <small>Der Webserver kann auf dem IoT-Device, einem lokalen Server oder einem VPS liegen.</small>
+        </label>
+        ${additionalOptions.length ? `<fieldset class="template-component-connections">
+          <legend>Weitere Beziehungen (optional)</legend>
+          ${additionalOptions.map((option) => `<label><input type="checkbox" data-template-connection-option value="${escapeAttribute(`${option.rule.id}|${option.target.component_id}`)}"><span>${escapeHtml(`${option.rule.label}: ${option.target.label}`)}</span></label>`).join("")}
+        </fieldset>` : ""}`;
+      }
       if (!options.length) return `<p class="template-component-hint">${requiresControlUnit ? "Lege zuerst ein IoT-Device als Steuereinheit an." : "Es gibt noch keine Komponente mit einer zulaessigen Beziehung."}</p>`;
       if (requiresControlUnit) return `<label>Steuereinheit
         <select data-template-connection-target>
@@ -495,6 +558,10 @@ const DevelopmentPlatform = (() => {
     }
 
     function handleTemplateComponentConfigurationClick(event) {
+      if (event.target.closest("[data-component-type-help]")) {
+        openHelpTopic?.("browser-pwa-mobile-app");
+        return;
+      }
       const removeButton = event.target.closest("[data-template-component-remove]");
       if (removeButton) {
         removeTemplateComponent(removeButton.dataset.templateComponentRemove);
@@ -506,20 +573,30 @@ const DevelopmentPlatform = (() => {
       const labelInput = section?.querySelector("[data-template-component-label]");
       const label = String(labelInput?.value || "").trim() || templateComponentDefaultLabel(type);
       const connectionMode = section?.querySelector("[data-template-component-connection-mode]")?.value || "direct";
-      const connectionSelections = ["sensor", "actuator"].includes(type)
+      const browserAccessScope = section?.querySelector("[data-template-browser-access-scope]")?.value || "local_network";
+      const browserWebserverSelection = section?.querySelector("[data-template-browser-webserver]")?.value || "";
+      const connectionSelections = type === "browser_app"
+        ? [browserWebserverSelection, ...Array.from(section?.querySelectorAll("[data-template-connection-option]:checked") || []).map((input) => input.value)]
+        : ["sensor", "actuator"].includes(type)
         ? [section?.querySelector("[data-template-connection-target]")?.value || ""]
         : Array.from(section?.querySelectorAll("[data-template-connection-option]:checked") || []).map((input) => input.value);
       const connections = connectionSelections.map((selection) => {
         const [relationshipRuleId, connectionTargetId] = selection.split("|");
         return { relationshipRuleId, connectionTargetId };
       }).filter((connection) => connection.relationshipRuleId && connection.connectionTargetId);
+      if (type === "browser_app" && !browserWebserverSelection) {
+        setActionStatus("Bitte waehle den Webserver, der die Browser-App ausliefert.");
+        return;
+      }
       if (!connections.length) {
-        setActionStatus(["sensor", "actuator"].includes(type)
+        setActionStatus(type === "browser_app"
+          ? "Bitte waehle den Webserver, der die Browser-App ausliefert."
+          : ["sensor", "actuator"].includes(type)
           ? "Bitte waehle die IoT-Steuereinheit fuer diese Komponente."
           : "Bitte waehle mindestens eine zulaessige Beziehung fuer diese Komponente.");
         return;
       }
-      appendTemplateComponent(type, label, connections, connectionMode);
+      appendTemplateComponent(type, label, connections, connectionMode, browserAccessScope);
       if (labelInput) labelInput.value = "";
       renderTemplateComponentConfiguration();
       renderArchitectureDiagram();
@@ -532,6 +609,8 @@ const DevelopmentPlatform = (() => {
         renderTemplateComponentConfiguration();
       } else if (event.target.matches("[data-template-component-connection-mode]")) {
         state.developmentPlatform.componentDraftConnectionMode = event.target.value;
+      } else if (event.target.matches("[data-template-browser-access-scope]")) {
+        state.developmentPlatform.componentDraftBrowserAccessScope = event.target.value;
       } else {
         return;
       }
@@ -545,22 +624,24 @@ const DevelopmentPlatform = (() => {
       return globalThis.DevelopmentComponentMetamodel?.componentTypes?.[component?.abstract_type]?.user_configurable !== false;
     }
 
-    function appendTemplateComponent(type, label, connections = [], connectionMode = "direct") {
+    function appendTemplateComponent(type, label, connections = [], connectionMode = "direct", browserAccessScope = "local_network") {
       const diagram = state.developmentPlatform.architectureDiagram || architectureDiagramForProject(currentProject());
       if (!diagram?.source) return;
       const safeLabel = String(label).replace(/["\\\\]/g, " ").replace(/\s+/g, " ").trim();
-      const aliasBase = ({ iot_device: "iot_device", sensor: "sensor", actuator: "actuator", smartphone_app: "smartphone_app", browser_app: "browser_app", desktop_app: "desktop_app", server_api: "server_api" })[type] || "component";
+      const aliasBase = ({ iot_device: "iot_device", sensor: "sensor", actuator: "actuator", mobile_app: "mobile_app", smartphone_app: "smartphone_app", browser_app: "browser_app", desktop_app: "desktop_app", server_api: "server_api" })[type] || "component";
       const aliases = new Set(abstractArchitectureComponents(diagram.source).map((component) => component.component_id));
       let suffix = 1;
       while (aliases.has(`${aliasBase}_${suffix}`)) suffix += 1;
       const alias = `${aliasBase}_${suffix}`;
-      const plantUmlType = ({ iot_device: "node", smartphone_app: "component", desktop_app: "component", server_api: "node" })[type] || "component";
+      const plantUmlType = ({ iot_device: "node", mobile_app: "component", smartphone_app: "component", desktop_app: "component", server_api: "node" })[type] || "component";
       const declaration = `${plantUmlType} "${safeLabel}" as ${alias}`;
       const relations = connections.map(({ relationshipRuleId, connectionTargetId }) => {
         const relationshipRule = globalThis.DevelopmentComponentMetamodel?.relationshipRules.find((item) => item.id === relationshipRuleId);
         if (!relationshipRule) return "";
         const relationLabel = ["sensor", "actuator"].includes(type)
           ? `${relationshipRule.label} (${connectionMode === "additional_circuit" ? "ueber Zusatzschaltung" : "direkt"})`
+          : type === "browser_app" && ["loads_from_device_webserver", "loads_from_server_webserver"].includes(relationshipRule.id)
+          ? `${relationshipRule.label} (${browserAccessScope === "internet" ? "ueber Internet erreichbar" : "nur lokales Netzwerk / Intranet"})`
           : relationshipRule.label;
         return relationshipRule.source_type === type
           ? `${alias} --> ${connectionTargetId} : ${relationLabel}`
@@ -1510,6 +1591,7 @@ const DevelopmentPlatform = (() => {
       const details = document.querySelector("#developmentProjectDetails");
       const choosingTemplate = state.developmentPlatform.projectPanelMode === "new-template";
       const templateSelected = Boolean(templateInput.value && templateInput.value !== "empty");
+      document.querySelector("#rateDevelopmentTemplateButton")?.classList.toggle("hidden", !templateSelected);
       details?.classList.toggle("hidden", choosingTemplate && !templateSelected);
       titleInput.disabled = choosingTemplate && !templateSelected;
       descriptionInput.disabled = choosingTemplate && !templateSelected;

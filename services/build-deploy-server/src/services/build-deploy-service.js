@@ -12,6 +12,7 @@ class BuildDeployService {
     this.deviceJobLock = options.deviceJobLock;
     this.buildTargetLock = options.buildTargetLock;
     this.buildCoordination = options.buildCoordination || null;
+    this.computeBuildPool = options.computeBuildPool || null;
     this.workerRole = options.workerRole || "full";
     this.cancellationPollMs = Number(options.cancellationPollMs || 500);
     this.sharedPersistLatest = new Map();
@@ -41,6 +42,12 @@ class BuildDeployService {
     await this.buildCoordination?.registerJob(job, summarizeJob(job));
     this.jobs.set(job.job_id, job);
     this.persistJobs(job);
+
+    if (this.computeBuildPool && ["build", "prebuild"].includes(job.mode)
+      && !job.deploy?.requested && !job.usb_flash?.requested && !job.flashbox?.requested) {
+      this.startComputeBuildJob(job);
+      return summarizeJob(job);
+    }
 
     if (this.deviceJobLock.canStart(job)) {
       this.startJob(job);
@@ -125,7 +132,37 @@ class BuildDeployService {
     this.reportProgress(localJob, "cancelling", "Build-Abbruch wurde angefordert.");
     this.persistJobs(localJob);
     localJob.abortController?.abort();
+    await this.computeBuildPool?.cancel?.(localJob.job_id);
     return summarizeJob(localJob);
+  }
+
+  startComputeBuildJob(job) {
+    Object.defineProperty(job, "abortController", {
+      value: new AbortController(), configurable: true, enumerable: false,
+    });
+    job.status = "running";
+    job.started_at = new Date().toISOString();
+    this.reportProgress(job, "compute_queued", "Build wurde an den elastischen Compute-Pool übergeben.");
+    this.persistJobs(job);
+    job.promise = this.computeBuildPool.dispatch(job, {
+      signal: job.abortController.signal,
+      onProgress: (message) => this.reportProgress(job, "compute", message),
+    }).then((result) => {
+      if (job.abortController.signal.aborted) throw cancellationError();
+      validateComputeBuildResult(result, job);
+      job.status = "succeeded";
+      job.result = result;
+      this.reportProgress(job, "completed", "Elastischer Build erfolgreich abgeschlossen.");
+    }).catch((error) => {
+      const cancelled = job.abortController.signal.aborted || error.code === "build_cancelled";
+      job.status = cancelled ? "cancelled" : "failed";
+      job.error = cancelled ? cancellationError(error.details) : serializeError(error);
+      this.reportProgress(job, cancelled ? "cancelled" : "failed", cancelled ? "Build wurde abgebrochen." : (error.message || "Elastischer Build fehlgeschlagen."));
+    }).finally(async () => {
+      job.finished_at = new Date().toISOString();
+      this.persistJobs(job);
+      await this.flushSharedJob(job);
+    });
   }
 
   coordinationHealth() {
@@ -436,6 +473,7 @@ function normalizeJob(input = {}) {
     mode,
     device_id: input.device_id || (input.deploy && input.deploy.device_id) || null,
     project_id: input.project_id || null,
+    account_id: input.account_id || null,
     software_unit_id: String(input.software_unit_id || "").trim(),
     build_package: input.build_package,
     deploy: input.deploy || null,
@@ -444,6 +482,21 @@ function normalizeJob(input = {}) {
     status: "accepted",
     created_at: new Date().toISOString(),
   };
+}
+
+function validateComputeBuildResult(result, job) {
+  if (!result || result.job_id !== job.job_id || result.mode !== job.mode || result.build?.status !== "succeeded") {
+    throw new BuildDeployError("invalid_compute_build_result", "Der Compute-Worker lieferte kein gültiges Build-Ergebnis.", 502);
+  }
+  if (result.deploy?.status && result.deploy.status !== "not_requested") {
+    throw new BuildDeployError("compute_deploy_boundary_violated", "Ein Compute-Worker darf kein Deployment ausführen.", 502);
+  }
+  if (result.flashbox?.status && result.flashbox.status !== "not_requested") {
+    throw new BuildDeployError("compute_flashbox_boundary_violated", "Ein Compute-Worker darf keine FlashBox-Auslieferung ausführen.", 502);
+  }
+  if (result.build?.usb_flash?.requested === true || (result.build?.usb_flash?.status && result.build.usb_flash.status !== "not_requested")) {
+    throw new BuildDeployError("compute_usb_boundary_violated", "Ein Compute-Worker darf keinen USB-Flash ausführen.", 502);
+  }
 }
 
 function summarizeJob(job) {

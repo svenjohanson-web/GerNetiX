@@ -40,7 +40,58 @@ function createHttpApp(options) {
     }
 
     if (req.method === "GET" && path === `${prefix}/capabilities`) {
-      sendJson(res, 200, { project_snapshot_attachment: true });
+      sendJson(res, 200, { project_snapshot_attachment: true, community_marketplace: true });
+      return;
+    }
+
+    if (req.method === "GET" && path === `${prefix}/marketplace/listings`) {
+      sendJson(res, 200, await service.listMarketplaceListings(Object.fromEntries(url.searchParams.entries()), actor));
+      return;
+    }
+    if (req.method === "POST" && path === `${prefix}/marketplace/listings`) {
+      sendJson(res, 201, await service.createMarketplaceListing(await readJsonBody(req), actor));
+      return;
+    }
+    const marketplaceListing = path.match(new RegExp(`^${prefix}/marketplace/listings/([^/]+)$`));
+    if (req.method === "GET" && marketplaceListing) {
+      sendJson(res, 200, await service.getMarketplaceListing(decodeURIComponent(marketplaceListing[1]), actor));
+      return;
+    }
+    if (req.method === "PATCH" && marketplaceListing) {
+      sendJson(res, 200, await service.updateMarketplaceListing(decodeURIComponent(marketplaceListing[1]), await readJsonBody(req), actor));
+      return;
+    }
+
+    if (req.method === "GET" && path === `${prefix}/ideas`) {
+      sendJson(res, 200, await service.listProjectIdeas(Object.fromEntries(url.searchParams.entries()), actor));
+      return;
+    }
+    if (req.method === "POST" && path === `${prefix}/ideas`) {
+      sendJson(res, 201, await service.createProjectIdea(await readJsonBody(req), actor));
+      return;
+    }
+    const projectIdea = path.match(new RegExp(`^${prefix}/ideas/([^/]+)$`));
+    if (req.method === "GET" && projectIdea) {
+      sendJson(res, 200, await service.getProjectIdea(decodeURIComponent(projectIdea[1]), actor));
+      return;
+    }
+    const projectIdeaComments = path.match(new RegExp(`^${prefix}/ideas/([^/]+)/comments$`));
+    if (req.method === "POST" && projectIdeaComments) {
+      sendJson(res, 201, await service.createProjectIdeaComment(decodeURIComponent(projectIdeaComments[1]), await readJsonBody(req), actor));
+      return;
+    }
+
+    if (req.method === "GET" && path === `${prefix}/showcases`) {
+      sendJson(res, 200, await service.listProjectShowcases(Object.fromEntries(url.searchParams.entries()), actor));
+      return;
+    }
+    if (req.method === "POST" && path === `${prefix}/showcases`) {
+      sendJson(res, 201, await service.createProjectShowcase(await readJsonBody(req), actor));
+      return;
+    }
+    const projectShowcase = path.match(new RegExp(`^${prefix}/showcases/([^/]+)$`));
+    if (req.method === "GET" && projectShowcase) {
+      sendJson(res, 200, await service.getProjectShowcase(decodeURIComponent(projectShowcase[1]), actor));
       return;
     }
 
