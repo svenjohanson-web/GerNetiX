@@ -26,17 +26,28 @@ test("summarizes own community requests by visibility and lifecycle", () => {
   });
 });
 
-test("shows the four personal request counters on the dashboard", () => {
-  assert.match(html, /id="dashboardCommunityTitle">Meine Anfragen/);
+test("shows all four community areas on the dashboard", () => {
+  assert.match(html, /id="dashboardCommunityTitle">Austauschen, vorstellen und weitergeben/);
   assert.match(html, /id="dashboardCommunitySummary"/);
-  assert.match(app, /\["Öffentlich", "Für alle lesbare Community-Anfragen", summary\.public\]/);
-  assert.match(app, /\["Privat", "Nur für dich und GerNetiX sichtbar", summary\.private\]/);
-  assert.match(app, /<span>Offen<\/span>/);
-  assert.match(app, /<span>Geschlossen<\/span>/);
+  assert.match(app, /label: "Forum & Hilfe"/);
+  assert.match(app, /label: "Ideenwerkstatt"/);
+  assert.match(app, /label: "Projekt-Showcase"/);
+  assert.match(app, /label: "Elektronik-Marktplatz"/);
+  assert.match(app, /summary\.public\?\.open/);
+  assert.match(app, /data-dashboard-community-target/);
 });
 
-test("loads only the authenticated account's requests for the dashboard summary", () => {
+test("shows the personal message overview on the dashboard", () => {
+  assert.match(app, /function renderDashboardMessageOverview/);
+  assert.match(app, /Dein Community-Postfach/);
+  assert.match(app, /summary\.messages\?\.unread/);
+  assert.match(app, /summary\.messages\?\.threads/);
+  assert.match(app, /data-dashboard-community-route="\/app\/messages\/"/);
+});
+
+test("loads only the authenticated account's requests and messages for the dashboard summary", () => {
   assert.match(server, /communityJson\("\/api\/community\/questions\?mine=true"/);
-  assert.match(server, /"X-GerNetiX-Community-Actor": session\.account\.user_id/);
+  assert.match(server, /communityJson\("\/api\/community\/message-threads"/);
+  assert.match(server, /const headers = \{[\s\S]*"X-GerNetiX-Community-Actor": session\.account\.user_id/);
   assert.match(server, /community_summary: communitySummary/);
 });

@@ -38,7 +38,7 @@ const state = {
   projectIdeas: { items: [], loading: false, loaded: false, error: "" },
   projectShowcases: { items: [], loading: false, loaded: false, error: "" },
   messages: { folder: "inbox", threads: [], activeThreadId: "", activeThread: null },
-  communitySummary: { available: false, total: 0, public: { open: 0, closed: 0 }, private: { open: 0, closed: 0 } },
+  communitySummary: { available: false, total: 0, public: { open: 0, closed: 0 }, private: { open: 0, closed: 0 }, messages: { unread: 0, threads: 0 } },
   knowledgeUpdates: [],
   knowledgeHistory: [],
   aiUsage: null,

@@ -1246,13 +1246,21 @@ async function handleKnowledgeChapterRead(res, session, chapterId) {
 }
 
 async function loadCommunityDashboardSummary(session) {
-  const payload = await communityJson("/api/community/questions?mine=true", {
-    headers: {
-      "X-GerNetiX-Community-Actor": session.account.user_id,
-      "X-GerNetiX-Community-Operator": "false",
+  const headers = {
+    "X-GerNetiX-Community-Actor": session.account.user_id,
+    "X-GerNetiX-Community-Operator": "false",
+  };
+  const [questions, messages] = await Promise.all([
+    communityJson("/api/community/questions?mine=true", { headers }),
+    communityJson("/api/community/message-threads", { headers }),
+  ]);
+  return {
+    ...summarizeCommunityQuestions(questions.items),
+    messages: {
+      unread: Number(messages.unread_count || 0),
+      threads: Array.isArray(messages.items) ? messages.items.length : 0,
     },
-  });
-  return summarizeCommunityQuestions(payload.items);
+  };
 }
 
 function externalLoginMessage(error) {

@@ -123,6 +123,14 @@ document.querySelector("#communityActivityList")?.addEventListener("click", (eve
 });
 document.querySelector("#communityPortalNav")?.addEventListener("click", (event) => { const button = event.target.closest("[data-community-target]"); if (button) document.querySelector(`#${button.dataset.communityTarget}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
 document.querySelector(".community-challenge")?.addEventListener("click", (event) => { const button = event.target.closest("[data-community-target]"); if (button) document.querySelector(`#${button.dataset.communityTarget}`)?.scrollIntoView({ behavior: "smooth", block: "start" }); });
+document.querySelector("#dashboardCommunitySummary")?.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-dashboard-community-route]");
+  if (!button) return;
+  navigate(button.dataset.dashboardCommunityRoute);
+  if (button.dataset.dashboardCommunityTarget) {
+    window.setTimeout(() => document.querySelector(`#${button.dataset.dashboardCommunityTarget}`)?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+  }
+});
 document.querySelector("[data-open-community-marketplace]")?.addEventListener("click", () => {
   navigate("/app/shop/");
   window.setTimeout(() => document.querySelector("#communityMarketplace")?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);

@@ -109,7 +109,7 @@ async function refresh() {
   state.projects = summary.projects;
   state.devices = summary.devices;
   state.builds = summary.builds;
-  state.communitySummary = summary.community_summary || { available: false, total: 0, public: { open: 0, closed: 0 }, private: { open: 0, closed: 0 } };
+  state.communitySummary = summary.community_summary || { available: false, total: 0, public: { open: 0, closed: 0 }, private: { open: 0, closed: 0 }, messages: { unread: 0, threads: 0 } };
   state.knowledgeUpdates = summary.knowledge_updates || [];
   state.knowledgeHistory = summary.knowledge_history || [];
   state.billing = summary.billing;

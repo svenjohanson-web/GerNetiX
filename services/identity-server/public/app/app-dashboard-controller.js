@@ -164,20 +164,72 @@ function renderDashboardCommunitySummary() {
   const target = document.querySelector("#dashboardCommunitySummary");
   if (!target) return;
   const summary = state.communitySummary;
-  if (!summary?.available) {
-    target.innerHTML = `<p class="helper-text error-text">Die Community ist gerade nicht erreichbar. Anfragen können erst wieder geladen oder gesendet werden, sobald der Dienst läuft.</p>`;
-    return;
-  }
-  target.innerHTML = [
-    ["Öffentlich", "Für alle lesbare Community-Anfragen", summary.public],
-    ["Privat", "Nur für dich und GerNetiX sichtbar", summary.private],
-  ].map(([label, description, counts]) => `
-    <section class="dashboard-community-group">
-      <header><div><h3>${escapeHtml(label)}</h3><p>${escapeHtml(description)}</p></div><strong>${Number(counts.open || 0) + Number(counts.closed || 0)}</strong></header>
-      <div class="dashboard-community-counts">
-        <a href="/app/community/"><span>Offen</span><strong>${Number(counts.open || 0)}</strong></a>
-        <a href="/app/community/"><span>Geschlossen</span><strong>${Number(counts.closed || 0)}</strong></a>
+  const openRequests = summary?.available
+    ? Number(summary.public?.open || 0) + Number(summary.private?.open || 0)
+    : null;
+  const areas = [
+    {
+      label: "Forum & Hilfe",
+      title: "Fragen stellen und Erfahrungen austauschen",
+      text: "Öffentlich diskutieren oder ein Projekt privat mit GerNetiX begleiten.",
+      meta: openRequests === null ? "Anfragestatus gerade nicht verfügbar" : `${openRequests} ${openRequests === 1 ? "offene eigene Anfrage" : "offene eigene Anfragen"}`,
+      route: "/app/community/",
+      target: "communityForumSection",
+    },
+    {
+      label: "Ideenwerkstatt",
+      title: "Projektideen vorstellen und weiterentwickeln",
+      text: "Feedback einholen, Fragen klären und Mitstreiter für eine Idee finden.",
+      meta: "Ideen werden vorgestellt, nicht verkauft",
+      route: "/app/community/",
+      target: "projectIdeasWorkshop",
+    },
+    {
+      label: "Projekt-Showcase",
+      title: "Fertige Projekte teilen und entdecken",
+      text: "Zeige, was du gebaut hast, und gib anderen einen sicheren Einblick.",
+      meta: "Mit schreibgeschützter Projektkopie",
+      route: "/app/community/",
+      target: "projectShowcase",
+    },
+    {
+      label: "Elektronik-Marktplatz",
+      title: "Gebrauchte Hardware weitergeben",
+      text: "Boards, Sensoren, Displays, Bauteile und Werkzeug privat anbieten oder finden.",
+      meta: "Kleinanzeigen · keine Zahlungsabwicklung",
+      route: "/app/shop/",
+      target: "communityMarketplace",
+    },
+  ];
+  target.innerHTML = areas.map((area) => `
+    <button class="dashboard-community-card" type="button" data-dashboard-community-route="${escapeAttribute(area.route)}" data-dashboard-community-target="${escapeAttribute(area.target)}">
+      <span>${escapeHtml(area.label)}</span>
+      <strong>${escapeHtml(area.title)}</strong>
+      <p>${escapeHtml(area.text)}</p>
+      <small>${escapeHtml(area.meta)} →</small>
+    </button>
+  `).join("") + renderDashboardMessageOverview(summary);
+}
+
+function renderDashboardMessageOverview(summary) {
+  const available = Boolean(summary?.available);
+  const unread = available ? Number(summary.messages?.unread || 0) : null;
+  const threads = available ? Number(summary.messages?.threads || 0) : null;
+  const open = available
+    ? Number(summary.public?.open || 0) + Number(summary.private?.open || 0)
+    : null;
+  return `
+    <section class="dashboard-community-personal" aria-label="Persönliche Community-Übersicht">
+      <div class="dashboard-community-personal-copy">
+        <span>Nachrichtensystem</span>
+        <h3>Dein Community-Postfach</h3>
+        <p>Private Unterhaltungen, Antworten und Support-Nachrichten an einem Ort.</p>
       </div>
-    </section>
-  `).join("");
+      <div class="dashboard-community-personal-stats">
+        <div><strong>${unread === null ? "–" : unread}</strong><span>ungelesen</span></div>
+        <div><strong>${threads === null ? "–" : threads}</strong><span>Unterhaltungen</span></div>
+        <div><strong>${open === null ? "–" : open}</strong><span>offene Anfragen</span></div>
+      </div>
+      <button type="button" data-dashboard-community-route="/app/messages/">Nachrichten öffnen →</button>
+    </section>`;
 }
