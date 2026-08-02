@@ -57,4 +57,7 @@ test("provisions missing staging compute secrets without replacing existing valu
   assert.match(remoteDeploy, /ensure_staging_secret COMPUTE_PROJECT_GRANT_SIGNING_SECRET hex/);
   assert.match(remoteDeploy, /ensure_staging_secret RUNTIME_STATE_ENCRYPTION_KEY base64/);
   assert.match(remoteDeploy, /chmod 600 "\$env_file"/);
+  assert.match(remoteDeploy, /tail -c 1 "\$env_file"/);
+  assert.match(remoteDeploy, /repair_concatenated_hex_secret COMPUTE_INTERNAL_TOKEN/);
+  assert.match(remoteDeploy, /length\(secret_value\) == 64/);
 });

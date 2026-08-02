@@ -18,6 +18,9 @@ ensure_staging_secret() {
   if grep -q "^${secret_name}=." "$env_file"; then
     return
   fi
+  if [ -s "$env_file" ] && [ -n "$(tail -c 1 "$env_file")" ]; then
+    printf '\n' >> "$env_file"
+  fi
   case "$secret_encoding" in
     hex) secret_value=$(openssl rand -hex 32) ;;
     base64) secret_value=$(openssl rand -base64 32 | tr -d '\r\n') ;;
@@ -27,8 +30,43 @@ ensure_staging_secret() {
   echo "    $secret_name: fehlenden Staging-Wert sicher erzeugt"
 }
 
+repair_concatenated_hex_secret() {
+  secret_name=$1
+  repair_file="${env_file}.repair.$$"
+  awk -v secret_name="$secret_name" '
+    {
+      marker = secret_name "="
+      marker_position = index($0, marker)
+      if (marker_position > 1) {
+        secret_value = substr($0, marker_position + length(marker))
+        if (length(secret_value) == 64 && secret_value ~ /^[0-9a-f]+$/) {
+          print substr($0, 1, marker_position - 1)
+          print substr($0, marker_position)
+          repaired = 1
+          next
+        }
+      }
+      print
+    }
+    END { exit repaired ? 0 : 3 }
+  ' "$env_file" > "$repair_file" || repair_status=$?
+  repair_status=${repair_status:-0}
+  if [ "$repair_status" -eq 0 ]; then
+    chmod 600 "$repair_file"
+    mv "$repair_file" "$env_file"
+    echo "    $secret_name: zusammengefuehrte Staging-Zeile repariert"
+  else
+    rm -f "$repair_file"
+    if [ "$repair_status" -ne 3 ]; then
+      echo "Staging-Env konnte fuer $secret_name nicht geprueft werden." >&2
+      exit "$repair_status"
+    fi
+  fi
+}
+
 echo "==> Fehlende Compute-Secrets fuer Staging provisionieren"
 chmod 600 "$env_file"
+repair_concatenated_hex_secret COMPUTE_INTERNAL_TOKEN
 ensure_staging_secret COMPUTE_INTERNAL_TOKEN hex
 ensure_staging_secret COMPUTE_WORKER_BOOTSTRAP_TOKEN hex
 ensure_staging_secret COMPUTE_WORKER_SIGNING_SECRET hex
