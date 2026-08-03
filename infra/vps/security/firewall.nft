@@ -10,7 +10,8 @@ table inet gernetix_host {
     ip6 nexthdr ipv6-icmp accept
 
     udp dport { 68, 546, 51820 } accept
-    iifname "wg0" tcp dport { 22, 443, 4910, 8883, 25432 } accept
+    iifname "wg0" udp dport 53 accept
+    iifname "wg0" tcp dport { 22, 53, 443, 4910, 8883, 25432 } accept
     tcp dport 80 accept
   }
 
@@ -19,7 +20,8 @@ table inet gernetix_host {
   chain forward {
     type filter hook forward priority filter - 1; policy accept;
 
-    ct status dnat tcp dport { 443, 8883 } iifname != "wg0" drop
+    ct status dnat udp dport 53 iifname != "wg0" drop
+    ct status dnat tcp dport { 53, 443, 8883 } iifname != "wg0" drop
     ct status dnat tcp dport 8883 meta nfproto ipv4 meter mqtt_tls_ipv4 { ip saddr limit rate over 60/minute burst 30 packets } drop
     ct status dnat tcp dport 8883 meta nfproto ipv6 meter mqtt_tls_ipv6 { ip6 saddr limit rate over 60/minute burst 30 packets } drop
   }

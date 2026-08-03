@@ -55,6 +55,7 @@ Fuer die private Instanz in `.env.vps` setzen:
 
 ```dotenv
 PRIVATE_VPS_BIND_ADDRESS=10.77.0.1
+PRIVATE_DNS_PORT=53
 PRIVATE_PLATFORM_TUNNEL_PORT=8080
 ACME_HTTP_BIND_ADDRESS=0.0.0.0
 ACME_HTTP_PORT=80
@@ -85,7 +86,11 @@ OPERATIONS_POSTGRES_PASSWORD=<weiterer-getrennter-langer-zufaelliger-wert>
 
 Vor dem Start muessen `build.gernetix.com`, `mqtt.gernetix.com` und
 `pwa.gernetix.com` fuer ACME auf den VPS zeigen. WireGuard-Clients muessen diese
-Namen beim eigentlichen Zugriff auf `10.77.0.1` aufloesen. Das Deployment
+Namen beim eigentlichen Zugriff auf `10.77.0.1` aufloesen. Dafuer bindet der
+Compose-Dienst `private-dns` CoreDNS ausschliesslich an `10.77.0.1:53` fuer
+UDP und TCP. Die Host-Firewall erlaubt den Zugriff nur ueber `wg0`; andere
+Namen werden an die Resolver des VPS weitergereicht. Jedes WireGuard-Clientprofil
+muss unter `[Interface]` den Eintrag `DNS = 10.77.0.1` enthalten. Das Deployment
 fordert dafuer das gemeinsame Zertifikat
 `/etc/letsencrypt/live/gernetix-services.com/` an. Mosquitto bindet das gesamte
 Let's-Encrypt-Verzeichnis read-only ein, damit Zertifikatserneuerungen sichtbar
@@ -150,6 +155,7 @@ Healthcheck auf dem VPS:
 
 ```bash
 curl http://127.0.0.1:8080/health
+dig +short A pwa.gernetix.com @10.77.0.1
 curl --resolve pwa.gernetix.com:443:10.77.0.1 https://pwa.gernetix.com/health
 docker compose --env-file .env.vps -f compose.vps.yaml ps forgejo
 ```

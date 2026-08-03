@@ -90,6 +90,7 @@ flowchart LR
 
   subgraph platformInfrastructure["Technische Infrastruktur"]
     privateVpsEdge["Privater VPS Edge<br/>PWA, Build, MQTT-TLS<br/>nur WireGuard 10.77.0.0/24"]
+    privateDns["Privater DNS Resolver<br/>CoreDNS :53 UDP/TCP<br/>nur WireGuard"]
     mqttBroker["MQTT Broker<br/>Mosquitto<br/>TLS :8883 / WS :9001"]
     localOllama["Lokaler Ollama LLM<br/>:11434"]
     runtimePostgres["Zentrales PostgreSQL 17 + pgvector<br/>gernetix_runtime · intern :5432<br/>SSH-Dev-Tunnel :25432"]
@@ -138,6 +139,8 @@ flowchart LR
     repoFiles[("Projektdateien<br/>README, data, services, tools, git<br/>keine Runtime-Persistenz")]
   end
 
+  user -->|"WireGuard DNS :53"| privateDns
+  privateDns -. "pwa/build/mqtt -> 10.77.0.1" .-> privateVpsEdge
   user -->|"WireGuard + HTTPS"| privateVpsEdge
   privateVpsEdge --> platformUi
   user --> recoveryHmi
@@ -277,6 +280,7 @@ flowchart LR
 
 | Prozess | Port | Lokale URL / Zugriff | Rolle |
 | --- | ---: | --- | --- |
+| Privater DNS Resolver | 53 UDP/TCP | `10.77.0.1`, ausschliesslich ueber WireGuard; Clientprofil `DNS = 10.77.0.1` | Loest die privaten PWA-, Build- und MQTT-Namen auf den WireGuard-Edge auf und leitet andere DNS-Anfragen weiter; der oeffentliche DNS bleibt fuer ACME unveraendert |
 | Identity Server | VPS-intern 4300 / Remote-Dev lokal 4300 | `https://pwa.gernetix.com/app/dashboard/` oder `http://127.0.0.1:4300/app/dashboard/` | Login, Session, gemeinsame Plattform-UI, entitlement-gefilterte Wissenskapitel-Hinweise und Adapter zu Domaenenservices; Persistenz immer PostgreSQL |
 | SQLite Graph Explorer | 4318 | `http://127.0.0.1:4318/` | Read-only Weboberflaeche auf den kanonischen Graphen |
 | Zentraler Build & Deploy Worker | 4400 | `http://127.0.0.1:4400/` | Echte PlatformIO-Builds sowie zentrale OTA-/FlashBox-Auslieferung mit Signierschluessel und MQTT; PostgreSQL koordiniert Jobregister, workeruebergreifende Abbrueche, Ziel-Locks, Statussicht, Cache-Generationen und Firmware-Artefakte |
@@ -379,6 +383,11 @@ flowchart LR
   und MQTT-TLS binden an `10.77.0.1`; die Host-Firewall akzeptiert diese Ports
   nur ueber `wg0`. Der oeffentliche HTTP-Listener dient ausschliesslich der
   ACME-Challenge und liefert fuer alle anderen Pfade 404.
+- Der private CoreDNS-Resolver bindet UDP/TCP 53 ausschliesslich an
+  `10.77.0.1` und ist ueber Firewall und Docker-Forward-Guard auf `wg0`
+  begrenzt. WireGuard-Clientprofile verwenden `DNS = 10.77.0.1`, damit die
+  privaten PWA-, Build- und MQTT-Namen auf den privaten Edge zeigen; der
+  oeffentliche A-Record bleibt fuer ACME bestehen.
 - VPS-SQLite-Dateien werden nie als Netzlaufwerk fuer lokale Prozesse
   freigegeben. Der jeweilige VPS-Service bleibt alleiniger Schreiber. Lokale
   Komplettstarts sind isolierte Testinstanzen; der SSH-Tunnel transportiert nur

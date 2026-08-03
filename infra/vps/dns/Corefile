@@ -1,0 +1,12 @@
+. {
+  errors
+
+  hosts {
+    10.77.0.1 pwa.gernetix.com build.gernetix.com mqtt.gernetix.com
+    ttl 60
+    fallthrough
+  }
+
+  forward . /etc/resolv.conf
+  cache 30
+}

@@ -46,6 +46,19 @@ Die normale Nutzung erfolgt nach aktiviertem WireGuard direkt ueber:
 https://pwa.gernetix.com/app/dashboard/
 ```
 
+Das WireGuard-Clientprofil muss dabei `10.77.0.1` als DNS-Server verwenden.
+Der private Resolver liefert `pwa.gernetix.com`, `build.gernetix.com` und
+`mqtt.gernetix.com` als `10.77.0.1` aus und leitet andere DNS-Anfragen weiter.
+Ohne diese Einstellung liefert der oeffentliche DNS absichtlich die
+oeffentliche ACME-Adresse, auf der kein privater HTTPS-Listener erreichbar ist.
+WireGuard uebertraegt diese Einstellung nicht serverseitig; sie muss in jedem
+Clientprofil gesetzt beziehungsweise beim Import enthalten sein:
+
+```ini
+[Interface]
+DNS = 10.77.0.1
+```
+
 Damit bleiben Origin, Secure Cookie und Passkey-Bindung auf allen Rechnern und
 dem iPad identisch. Der folgende SSH-Tunnel ist ein Diagnose- und
 Administrationsweg; er ist nicht die kanonische App-Adresse:

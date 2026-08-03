@@ -311,6 +311,12 @@ if [ "$private_vps_bind_address" = "0.0.0.0" ] || [ "$private_vps_bind_address" 
   echo "PRIVATE_VPS_BIND_ADDRESS darf keinen oeffentlichen Wildcard-Listener verwenden." >&2
   exit 1
 fi
+private_pwa_dns_answer=$(dig +short A pwa.gernetix.com "@${private_vps_bind_address}" | head -n 1)
+if [ "$private_pwa_dns_answer" != "$private_vps_bind_address" ]; then
+  echo "Private DNS-Aufloesung fuer pwa.gernetix.com ist fehlerhaft: ${private_pwa_dns_answer:-keine Antwort}" >&2
+  exit 1
+fi
+printf 'Private DNS-Aufloesung ok\n'
 curl --fail --silent --show-error --resolve "pwa.gernetix.com:443:${private_vps_bind_address}" "https://pwa.gernetix.com/health" >/dev/null
 printf 'Private PWA HTTPS ok\n'
 curl --fail --silent --show-error "http://127.0.0.1:${admin_port}/health"

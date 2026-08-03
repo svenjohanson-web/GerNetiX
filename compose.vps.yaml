@@ -865,6 +865,23 @@ services:
       retries: 5
       start_period: 5s
 
+  private-dns:
+    image: coredns/coredns:1.14.6
+    restart: unless-stopped
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    ports:
+      - "${PRIVATE_VPS_BIND_ADDRESS:-10.77.0.1}:${PRIVATE_DNS_PORT:-53}:53/udp"
+      - "${PRIVATE_VPS_BIND_ADDRESS:-10.77.0.1}:${PRIVATE_DNS_PORT:-53}:53/tcp"
+    networks:
+      - edge
+    command: ["-conf", "/etc/coredns/Corefile"]
+    volumes:
+      - ./infra/vps/dns/Corefile:/etc/coredns/Corefile:ro
+
   nginx:
     image: nginx:1.28-alpine
     restart: unless-stopped
