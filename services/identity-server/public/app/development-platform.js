@@ -4,7 +4,7 @@ const DevelopmentPlatform = (() => {
   let projectTemplateCatalog = [];
   let projectTemplatePreviews = {};
 
-  function create({ state, postJson, deleteJson, loadProcessorBoardCatalog, openProjectInIde, navigate, escapeHtml, escapeAttribute, openHelpTopic }) {
+  function create({ state, postJson, deleteJson, loadProcessorBoardCatalog, openProjectInIde, navigate, escapeHtml, escapeAttribute, openHelpTopic, repositoryCard }) {
     if (!state.developmentPlatform) {
       state.developmentPlatform = {
         assistant: null,
@@ -33,6 +33,7 @@ const DevelopmentPlatform = (() => {
     if (!state.developmentPlatform.componentDraftBrowserAccessScope) state.developmentPlatform.componentDraftBrowserAccessScope = "local_network";
 
     function init() {
+      repositoryCard?.init();
       document.querySelector("#developmentChatForm").addEventListener("submit", sendChatMessage);
       document.querySelector("#continueDevelopmentProjectButton").addEventListener("click", continueLastProject);
       document.querySelector("#openDevelopmentProjectButton").addEventListener("click", () => showProjectPanel("open"));
@@ -173,6 +174,7 @@ const DevelopmentPlatform = (() => {
       renderQuickPrompts();
       renderArchitectureDiagram();
       syncChatAvailability();
+      void repositoryCard?.render(currentProject());
     }
 
     async function handleProjectOverviewClick(event) {

@@ -4,7 +4,7 @@ function registerProjectRoutes(dependencies) {
   const {
     registry, requireSession, readJsonBody, sendJson, requireEntitlement, requireSessionProject,
     projectServerJson, projectServerUserId, developmentAssistant, helpAssistant, recordSystemEvent,
-    developmentProjectTemplateCatalog,
+    developmentProjectTemplateCatalog, projectRepositoryRead,
   } = dependencies;
 
   async function withSession(req, res, action) {
@@ -226,6 +226,30 @@ function registerProjectRoutes(dependencies) {
   registerProjectPattern("GET", /^\/api\/platform\/projects\/([^/]+)\/source-search$/, ({ res, match, url, session }) => (
     dependencies.handlePlatformSourceSearch(res, session, decodeURIComponent(match[1]), url.searchParams)
   ));
+  registerProjectPattern("GET", /^\/api\/platform\/projects\/([^/]+)\/repository$/, async ({ res, match, session }) => {
+    const project = await requireSessionProject(session, decodeURIComponent(match[1]));
+    sendJson(res, 200, await projectRepositoryRead.status(project));
+  });
+  registerProjectPattern("GET", /^\/api\/platform\/projects\/([^/]+)\/repository\/tree$/, async ({ res, match, url, session }) => {
+    const project = await requireSessionProject(session, decodeURIComponent(match[1]));
+    sendJson(res, 200, await projectRepositoryRead.tree(project, url.searchParams.get("commit_sha") || ""));
+  });
+  registerProjectPattern("GET", /^\/api\/platform\/projects\/([^/]+)\/repository\/history$/, async ({ res, match, session }) => {
+    const project = await requireSessionProject(session, decodeURIComponent(match[1]));
+    sendJson(res, 200, await projectRepositoryRead.history(project));
+  });
+  registerProjectPattern("GET", /^\/api\/platform\/projects\/([^/]+)\/repository\/commits\/([^/]+)\/diff$/, async ({ res, match, session }) => {
+    const project = await requireSessionProject(session, decodeURIComponent(match[1]));
+    sendJson(res, 200, await projectRepositoryRead.diff(project, decodeURIComponent(match[2])));
+  });
+  registerProjectPattern("GET", /^\/api\/platform\/projects\/([^/]+)\/repository\/files\/(.+)$/, async ({ res, match, url, session }) => {
+    const project = await requireSessionProject(session, decodeURIComponent(match[1]));
+    sendJson(res, 200, await projectRepositoryRead.file(
+      project,
+      decodeURIComponent(match[2]),
+      url.searchParams.get("commit_sha") || "",
+    ));
+  });
   registerProjectPattern("GET", /^\/api\/platform\/projects\/([^/]+)\/sources$/, ({ res, match, session }) => (
     dependencies.handlePlatformSourceList(res, session, decodeURIComponent(match[1]))
   ));

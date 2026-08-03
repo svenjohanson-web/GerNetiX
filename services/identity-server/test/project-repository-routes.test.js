@@ -1,0 +1,55 @@
+"use strict";
+
+const assert = require("node:assert/strict");
+const test = require("node:test");
+const { createRouteRegistry } = require("../src/dev/server/route-registry");
+const { registerProjectRoutes } = require("../src/dev/server/project-routes");
+
+function routeHarness({ requireSessionProject }) {
+  const registry = createRouteRegistry();
+  const calls = [];
+  const responses = [];
+  const projectRepositoryRead = Object.fromEntries(["status", "tree", "file", "history", "diff"].map((method) => [method, async (...args) => {
+    calls.push([method, ...args]);
+    return method === "tree" ? { commit_sha: "a".repeat(40), paths: [] } : { method };
+  }]));
+  registerProjectRoutes({
+    registry,
+    requireSession: async () => ({ account: { user_id: "account-1" } }),
+    requireSessionProject,
+    projectRepositoryRead,
+    sendJson: (_res, status, body) => responses.push([status, body]),
+  });
+  return { calls, registry, responses };
+}
+
+test("repository proxy authorizes the session project before invoking the read contract", async () => {
+  const authorized = [];
+  const harness = routeHarness({ requireSessionProject: async (session, projectId) => {
+    authorized.push([session.account.user_id, projectId]);
+    return { project_server_id: "stored-project-1" };
+  } });
+  await harness.registry.dispatch({
+    req: { method: "GET" }, res: {},
+    url: new URL(`http://localhost/api/platform/projects/ui-project-1/repository/tree?commit_sha=${"a".repeat(40)}`),
+  });
+  assert.deepEqual(authorized, [["account-1", "ui-project-1"]]);
+  assert.equal(harness.calls[0][0], "tree");
+  assert.equal(harness.calls[0][1].project_server_id, "stored-project-1");
+  assert.equal(harness.calls[0][2], "a".repeat(40));
+  assert.equal(harness.responses[0][0], 200);
+});
+
+test("foreign projects are denied before commit or file identifiers reach the contract", async () => {
+  const harness = routeHarness({ requireSessionProject: async () => {
+    const error = new Error("Projekt wurde nicht gefunden.");
+    error.status = 404;
+    throw error;
+  } });
+  await assert.rejects(harness.registry.dispatch({
+    req: { method: "GET" }, res: {},
+    url: new URL(`http://localhost/api/platform/projects/foreign/repository/commits/${"b".repeat(40)}/diff`),
+  }), { status: 404 });
+  assert.deepEqual(harness.calls, []);
+  assert.deepEqual(harness.responses, []);
+});
