@@ -260,10 +260,21 @@ Bytes. `deployable`, `symbols` und `diagnostic` werden 90, 30 beziehungsweise
 
 Der Betriebs-Rollback besteht ausschliesslich darin, auf dem betroffenen Worker
 `BUILD_ARTIFACT_PERSISTENCE_BACKEND=postgres` zu setzen; Koordination und
-oeffentliche Download-URLs aendern sich nicht. Der neue Pfad ist lokal durch
+oeffentliche Download-URLs aendern sich nicht. Der neue Pfad ist durch
 Streaming-, Kompressions-, Integritaets-, Authentifizierungs-, atomare
-Finalize- und Rollback-Tests abgenommen. Ein erneuter realer ARM-/VPS-Benchmark
-erfordert den separaten Staging-Rollout und steht noch aus.
+Finalize- und Rollback-Tests sowie einen realen Staging-Build abgenommen.
+
+Der Staging-Job `flashbox-build-1785781612460` baute die echte ESP32-S3-
+Flashbox-Firmware auf `mac-worker-01` in 32,224 Sekunden. Seine Build-ID lautet
+`98d6818d2471c4d87c8197b9a52415948bc27745c22bfdfcdfdb750b91cbde98`.
+Bootloader, Partitionen, Firmware-BIN, ELF und Build-Log wurden gemeinsam
+publiziert. Gzip reduzierte die 20.024.290 Originalbytes auf 8.418.175
+gespeicherte Bytes, rund 58 Prozent weniger Transfer und Speicher. Ein erneuter
+HTTPS-Download der 1.207.904-Byte-Firmware ergab exakt denselben SHA-256.
+Der vorangegangene reale Fehlversuch deckte unzureichend escaped String-Makros
+im Headless-Verifikationsauftrag auf; der korrigierte Contract-Test und der
+anschliessende reale Build sind erfolgreich. Netzabbruch und Backup/Restore
+bleiben als Betriebsnachweise offen.
 
 Die sichere Rollout-Reihenfolge ist zentral vor extern: Zuerst wird der zentrale
 Build-Service mit der rueckwaertskompatiblen PostgreSQL-Schemaerweiterung, dem
