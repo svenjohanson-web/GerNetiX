@@ -51,7 +51,7 @@ flowchart LR
 
   subgraph data["Data Plane"]
     postgres[("PostgreSQL 17 + pgvector\nfachliche Wahrheit + Jobmetadaten")]
-    artifacts["ArtifactStore-Vertrag\naktuell PostgreSQL-BYTEA"]
+    artifacts["ArtifactStore-Vertrag\nHTTPS-Streaming · PostgreSQL-BYTEA"]
     backup["Externes verschluesseltes Backup\ngetrennte Credentials + Restore-Test"]
     cache["Lokale, loeschbare Worker-Caches"]
   end
@@ -259,8 +259,10 @@ Compute-Pools.
 ## Speicher und Backup
 
 PostgreSQL bleibt die fachliche Wahrheit. Ein interner `ArtifactStore`-Vertrag
-trennt Services und Worker bereits jetzt von der physischen Ablage; die aktuelle
-Implementierung bleibt PostgreSQL-BYTEA. Ein spaeterer S3-kompatibler Primaerstore
+trennt Services und Worker von der physischen Ablage. Externe Build-Worker
+streamen komprimierte Artefakte authentifiziert zum zentralen Build-Service;
+dieser prueft Hash und Groesse und publiziert den vollstaendigen Satz atomar in
+der aktuellen PostgreSQL-BYTEA-Implementierung. Ein spaeterer S3-kompatibler Primaerstore
 waere eine eigene Architektur- und Migrationsentscheidung und wird durch dieses
 Dokument nicht stillschweigend eingefuehrt.
 
@@ -346,7 +348,7 @@ nicht freigegeben.
 | 7 | Dynamische private Worker | Referenzlaufzeit und privater ARM-Bestandspfad nachgewiesen | Der Worker-Agent registriert Faehigkeiten, meldet Slots, pullt und erneuert Leases, fuehrt nur registrierte Handler aus und drainiert. Der bestehende direkte Build-Pool-Pfad wurde auf einem privaten Apple-Silicon-Worker kalt und warm real gebaut; Windows-Unterstuetzung und ergaenzende Registrierung sind lokal getestet. Die produktive Gateway-Migration und ein realer Zwei-Rechner-Test stehen aus. |
 | 8 | Cloud-Burst-Provider | Planadapter umgesetzt | Region, Slotgrenze und Kosten-Guard werden in einem nicht mutierenden Plan abgebildet; AWS-/Provider-API, Tages-/Monatsledger und synthetischer Kostenlasttest stehen aus. |
 | 9 | Kubernetes-Provider | Planadapter umgesetzt | Ein eingeschraenkter Deployment-Plan ohne automatisch gemounteten Service-Account und mit Secret-Referenz wird erzeugt; Clusteranwendung und Runtime-Abnahme stehen aus. |
-| 10 | Streaming-ArtifactStore | vorgeschlagen und durch Messung priorisiert | BYTEA bleibt fuehrend; Hash, Schutzklasse und Streaming sind hinter einem Vertrag gekapselt. Die reale ESP-IDF-Basissoftware benoetigte auf dem privaten ARM-Worker 33,95 s als sauberer Vollbuild. Drei warme Laeufe lagen bei 6,57 bis 7,29 s PlatformIO, aber 13,42 bis 22,50 s zentraler Artefaktphase fuer jeweils rund 11,74 MB. Der heutige Lese-/Hash-/SQL-/WireGuard-Artefaktpfad ist damit als erster realer Warmbuild-Engpass gemessen. |
+| 10 | Streaming-ArtifactStore | lokal umgesetzt, Staging-Abnahme offen | BYTEA bleibt fuehrend. Externe Worker streamen `deployable`, `symbols` und `diagnostic` nach lokaler SHA-256-Berechnung wahlweise Gzip-komprimiert ueber einen Bearer-geschuetzten privaten HTTPS-Ingress. Der zentrale Dienst prueft komprimierte und originale Groesse sowie Hash, haelt Teiluploads unsichtbar und publiziert den exakten Satz in einer PostgreSQL-Transaktion. Downloads und Symbolisierung dekodieren transparent. Retention betraegt 90/30/14 Tage; abgelaufene Artefakte werden nicht ausgeliefert und beim Schreiben bereinigt. `BUILD_ARTIFACT_PERSISTENCE_BACKEND=postgres` bleibt der Rollback-Schalter. Ein reales lokales 10.661.536-Byte-ESP32-ELF wurde in 78,231 ms Median auf 4.207.847 Bytes komprimiert, 60,53 Prozent weniger Transferlast. Contract-, Integritaets-, Auth-, Rollback- und Kompressionstests sind lokal bestanden; realer Zwei-Rechner-Benchmark, Upload-Abbruch ueber das Netz, Staging-Rollout und Backup/Restore stehen aus. |
 | 11 | Lastprofil- und Chaos-Harness | lokal umgesetzt | Eine Million Jobs pro Tag bei 100 ms, 1 s und 10 s, Vierfach-Peak, Hot-Tenant, Tenant-Parallelitaet, Retry-Sturm bis Dead Letter sowie Worker-/Providerausfall mit Burst oder Backpressure sind reproduzierbar getestet. Reale verteilte Dauerlast steht aus. |
 
 ## Vorgesehene Abnahmetests

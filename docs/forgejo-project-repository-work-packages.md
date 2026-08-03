@@ -587,7 +587,11 @@ Status, Branch, Head, Baum, Datei, Historie und Diff. Aktive Forgejo-Projekte
 verwenden die echten Project-Server-Endpunkte; nur noch nicht migrierte
 Bestandsprojekte verwenden einen sichtbar gekennzeichneten Uebergangsvertrag.
 Autorisierung, Secret-Grenze sowie mobile und iPad-taugliche Darstellung sind
-durch Contract-Tests abgedeckt.
+durch Contract-Tests abgedeckt. Zusätzlich bedient ein isolierter Chromium die
+produktive Karte über die echten sessiongeschützten Identity-Routen, den
+Project-Server-HTTP-Vertrag und ein kurzlebiges echtes Forgejo-Repository. Der
+Browsernachweis umfasst Datei, Historie, Diff, mobile Darstellung sowie die
+Negativfälle für fehlende Sitzung, fremdes Projekt, Token und interne URL.
 
 Ziel:
 

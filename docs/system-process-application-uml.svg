@@ -1,6 +1,6 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1140" viewBox="0 0 1680 1140" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1290" viewBox="0 0 1680 1290" role="img" aria-labelledby="title desc">
   <title id="title">GerNetiX Serverprozesse und Applikationen</title>
-  <desc id="desc">Remote-first Architektur: Fachliche GerNetiX-Laufzeitdaten liegen in PostgreSQL, Projektdateien und Historie nach dem geplanten Cutover in privaten Forgejo-Git-Repositories. Nutzer sehen ihr gebundenes Repository ueber eine sessiongeschuetzte Karte im Entwicklungsbereich, ohne Forgejo-Token im Browser. Jede bestaetigte Konfigurations-Schablone materialisiert ihre Wirkung als deterministische Projektdatei-Aenderung im selben Commit. Eine providerneutrale Compute Control Plane trennt typisierte Jobs, Grundlast- und Burst-Steuerung von austauschbaren VPS-, privaten, Cloud- und Kubernetes-Workern. Vertrauenswuerdige System-Jobs und isolierte Kunden-Projektregeln besitzen getrennte Rechte und Ausfuehrungsgrenzen.</desc>
+  <desc id="desc">Remote-first Architektur: Fachliche GerNetiX-Laufzeitdaten liegen in PostgreSQL, Projektdateien und Historie nach dem geplanten Cutover in privaten Forgejo-Git-Repositories. Externe Build-Worker streamen gehashte und selektiv Gzip-komprimierte Artefakte authentifiziert zum zentralen Build-Service; nur dieser publiziert vollstaendige Artefaktsaetze in PostgreSQL. Nutzer sehen ihr gebundenes Repository ueber eine sessiongeschuetzte Karte im Entwicklungsbereich, ohne Forgejo-Token im Browser. Jede bestaetigte Konfigurations-Schablone materialisiert ihre Wirkung als deterministische Projektdatei-Aenderung im selben Commit. Eine providerneutrale Compute Control Plane trennt typisierte Jobs, Grundlast- und Burst-Steuerung von austauschbaren VPS-, privaten, Cloud- und Kubernetes-Workern. Vertrauenswuerdige System-Jobs und isolierte Kunden-Projektregeln besitzen getrennte Rechte und Ausfuehrungsgrenzen. Eine spaetere School-Installation bildet eine eigenstaendige lokale Deployment-Zelle ohne Laufzeitabhaengigkeit zum Haupt-VPS; externe KI ist dort standardmaessig aus und nur mit lokal verwaltetem BYOK der Schule zulaessig.</desc>
   <defs>
     <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
       <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
@@ -320,12 +320,25 @@
     <text class="smallText" x="570" y="1061" text-anchor="middle">austauschbare, faehigkeitsbasierte Capacity-Provider</text>
     <rect class="node domain" x="780" y="1020" width="320" height="54" rx="10"/>
     <text class="titleText" x="940" y="1042" text-anchor="middle">Trusted System Jobs</text>
-    <text class="smallText" x="940" y="1061" text-anchor="middle">Build · Test · AI · Index · Export</text>
+    <text class="smallText" x="940" y="1061" text-anchor="middle">Build · Gzip-Artifact-Stream · Test · AI · Export</text>
     <rect class="node" x="1145" y="1020" width="445" height="54" rx="10" style="fill:#fef2f2;stroke:#dc2626"/>
     <text class="titleText" x="1367" y="1042" text-anchor="middle">Isolated Project Rule Jobs</text>
     <text class="smallText" x="1367" y="1061" text-anchor="middle">Grant · Snapshot · begrenzter AST · Patch · kein SQL/Netz/Secrets</text>
     <path class="line" d="M 360 1047 L 405 1047"/>
     <path class="line" d="M 735 1047 L 780 1047"/>
     <path class="line" d="M 735 1047 C 900 1090, 1040 1090, 1145 1047"/>
+  </g>
+  <g id="schoolDeploymentBoundary">
+    <rect class="cluster" x="40" y="1120" width="1600" height="130" rx="14"/>
+    <text class="clusterTitle" x="60" y="1149">Spaetere School-Deploymentgrenze · heute nur Architekturleitplanke</text>
+    <rect class="node edge" x="75" y="1170" width="470" height="54" rx="10"/>
+    <text class="titleText" x="310" y="1192" text-anchor="middle">Eigenstaendige lokale Deployment-Zelle</text>
+    <text class="smallText" x="310" y="1211" text-anchor="middle">Identity · PostgreSQL · Forgejo · Artifacts · Compute · MQTT/OTA · eigene Keys</text>
+    <rect class="node tool" x="605" y="1170" width="430" height="54" rx="10"/>
+    <text class="titleText" x="820" y="1192" text-anchor="middle">Kein Haupt-VPS als Laufzeitvoraussetzung</text>
+    <text class="smallText" x="820" y="1211" text-anchor="middle">keine gemeinsame DB · Sessions · Secrets · automatische Synchronisation</text>
+    <rect class="node" x="1095" y="1170" width="495" height="54" rx="10" style="fill:#fefce8;stroke:#ca8a04"/>
+    <text class="titleText" x="1342" y="1192" text-anchor="middle">Externe KI standardmaessig aus</text>
+    <text class="smallText" x="1342" y="1211" text-anchor="middle">optional lokal · OpenAI/andere extern nur School-BYOK ohne GerNetiX-Proxy/Credits</text>
   </g>
 </svg>

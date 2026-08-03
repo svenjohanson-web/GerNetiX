@@ -52,6 +52,7 @@ test("validates the minimum safe worker configuration", () => {
     BUILD_POSTGRES_HOST: "10.77.0.1",
     BUILD_POSTGRES_PORT: "25432",
     BUILD_POSTGRES_PASSWORD: "a-long-real-password",
+    BUILD_ARTIFACT_UPLOAD_TOKEN: "a-separate-long-real-token-123456",
     BUILD_PUBLIC_BASE_URL: "https://build.gernetix.com",
   };
   assert.deepEqual(validateConfig(valid), []);
@@ -76,7 +77,8 @@ test("standalone worker is build-only, PostgreSQL-coordinated and WireGuard-boun
   const compose = fs.readFileSync(path.resolve(__dirname, "..", "compose.build-worker.yaml"), "utf8");
   assert.match(compose, /BUILD_WORKER_ROLE: build_only/);
   assert.match(compose, /INTERFACE_TELEMETRY_SQLITE_PATH: \/var\/lib\/gernetix\/build\/interface-telemetry\.sqlite/);
-  assert.match(compose, /BUILD_ARTIFACT_PERSISTENCE_BACKEND: postgres/);
+  assert.match(compose, /BUILD_ARTIFACT_PERSISTENCE_BACKEND: \$\{BUILD_ARTIFACT_PERSISTENCE_BACKEND:-http\}/);
+  assert.match(compose, /BUILD_ARTIFACT_UPLOAD_TOKEN:/);
   assert.match(compose, /BUILD_COORDINATION_BACKEND: postgres/);
   assert.match(compose, /BUILD_DATABASE_SCHEMA_MANAGEMENT: disabled/);
   assert.match(compose, /BUILD_POSTGRES_USER: \$\{BUILD_POSTGRES_USER:-gernetix_build_worker\}/);

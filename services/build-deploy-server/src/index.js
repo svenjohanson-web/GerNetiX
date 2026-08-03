@@ -2,6 +2,8 @@ const { BuildCache } = require("./modules/build-cache");
 const { BuildPackageStore } = require("./modules/build-package-store");
 const { ArtifactStore } = require("./modules/artifact-store");
 const { PostgresArtifactStore } = require("./modules/postgres-artifact-store");
+const { HttpArtifactStore } = require("./modules/http-artifact-store");
+const { ArtifactUploadIngress } = require("./modules/artifact-upload-ingress");
 const { FirmwareBuildJobRunner } = require("./modules/firmware-build-job-runner");
 const { DeployJobOrchestrator } = require("./modules/deploy-job-orchestrator");
 const { MqttTransport } = require("./modules/mqtt-transport");
@@ -71,20 +73,36 @@ function createBuildDeployService(config, { acknowledgementStore, artifactStore,
 }
 
 function createDefaultBuildDeployService(config = createConfig()) {
-  if (config.artifactPersistenceBackend === "postgres") {
+  if (config.artifactPersistenceBackend === "postgres" || config.coordinationBackend === "postgres") {
     const { Pool } = require("pg");
     const poolOptions = config.postgres.connectionString
       ? { connectionString: config.postgres.connectionString }
       : config.postgres;
     const runtimePool = new Pool(poolOptions);
-    return Promise.all([
-      PostgresOtaAcknowledgementStore.create(runtimePool, { manageSchema: config.databaseSchemaManagement }),
-      PostgresArtifactStore.create({
+    const artifactStorePromise = config.artifactPersistenceBackend === "postgres"
+      ? PostgresArtifactStore.create({
         poolOptions,
         publicBaseUrl: config.publicBaseUrl,
         manageSchema: config.databaseSchemaManagement,
         reportMetrics: (metrics) => console.log(`[artifact-store-metrics] ${JSON.stringify(metrics)}`),
-      }),
+      })
+      : config.artifactPersistenceBackend === "http"
+        ? Promise.resolve(new HttpArtifactStore({
+          baseUrl: config.artifactUploadBaseUrl,
+          token: config.artifactUploadToken,
+          publicBaseUrl: config.publicBaseUrl,
+          tempDir: config.tempDir,
+          timeoutMs: config.artifactUploadTimeoutMs,
+          reportMetrics: (metrics) => console.log(`[artifact-store-metrics] ${JSON.stringify(metrics)}`),
+        }))
+        : Promise.resolve(new ArtifactStore({
+          artifactDir: config.artifactDir,
+          sqlitePath: config.artifactSqlitePath,
+          publicBaseUrl: config.publicBaseUrl,
+        }));
+    return Promise.all([
+      PostgresOtaAcknowledgementStore.create(runtimePool, { manageSchema: config.databaseSchemaManagement }),
+      artifactStorePromise,
       config.coordinationBackend === "postgres"
         ? PostgresBuildCoordination.create({
           poolOptions,
@@ -95,11 +113,21 @@ function createDefaultBuildDeployService(config = createConfig()) {
           manageSchema: config.databaseSchemaManagement,
         })
         : null,
-    ]).then(([acknowledgementStore, artifactStore, buildCoordination]) => createBuildDeployService(config, {
-      acknowledgementStore,
-      artifactStore,
-      buildCoordination,
-    }));
+    ]).then(([acknowledgementStore, artifactStore, buildCoordination]) => {
+      const service = createBuildDeployService(config, { acknowledgementStore, artifactStore, buildCoordination });
+      if (config.artifactPersistenceBackend === "postgres" && config.artifactUploadToken) {
+        if (config.artifactUploadToken.length < 32) throw new Error("Artifact-Upload-Token muss mindestens 32 Zeichen lang sein.");
+        service.artifactUploadToken = config.artifactUploadToken;
+        service.artifactUploadIngress = new ArtifactUploadIngress({
+          artifactStore,
+          stagingDir: config.artifactUploadStagingDir,
+          maxStoredBytes: config.artifactUploadMaxStoredBytes,
+          maxOriginalBytes: config.artifactUploadMaxOriginalBytes,
+          staleMs: config.artifactUploadStaleMs,
+        });
+      }
+      return service;
+    });
   }
   return createBuildDeployService(config, {
     acknowledgementStore: new SqliteOtaAcknowledgementStore(config.sqlitePath),
@@ -116,6 +144,8 @@ module.exports = {
   BuildPackageStore,
   ArtifactStore,
   PostgresArtifactStore,
+  HttpArtifactStore,
+  ArtifactUploadIngress,
   FirmwareBuildJobRunner,
   ElfSymbolizer,
   DeployJobOrchestrator,

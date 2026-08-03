@@ -2,6 +2,7 @@
 
 const assert = require("node:assert/strict");
 const crypto = require("node:crypto");
+const zlib = require("node:zlib");
 const test = require("node:test");
 const { PostgresArtifactStore } = require("../src/modules/postgres-artifact-store");
 
@@ -39,14 +40,17 @@ test("reads each artifact once, batches PostgreSQL inserts and reports payload-f
   assert.equal(saved["firmware.bin"].sha256, crypto.createHash("sha256").update("firmware").digest("hex"));
   const inserts = queries.filter((entry) => /INSERT INTO build_artifacts/.test(entry.sql));
   assert.equal(inserts.length, 1);
-  assert.equal(inserts[0].values.length, 14);
+  assert.equal(inserts[0].values.length, 22);
   assert.equal(inserts[0].values[0], "job_with_spaces");
   assert.equal(inserts[0].values[1], "build.log");
   assert.equal(inserts[0].values[2], "text/plain; charset=utf-8");
   assert.ok(Buffer.isBuffer(inserts[0].values[3]));
-  assert.equal(inserts[0].values[8], "firmware.bin");
+  assert.equal(inserts[0].values[11], "job_with_spaces");
+  assert.equal(inserts[0].values[12], "firmware.bin");
+  assert.equal(inserts[0].values[18], "identity");
   assert.deepEqual(queries.map((entry) => entry.sql.trim().split(/\s+/).slice(0, 2).join(" ")), [
     "BEGIN",
+    "DELETE FROM",
     "DELETE FROM",
     "INSERT INTO",
     "COMMIT",
@@ -106,4 +110,45 @@ test("does not fail artifact persistence when the metrics reporter fails", async
   });
 
   assert.match(saved["firmware.bin"].sha256, /^[a-f0-9]{64}$/);
+});
+
+test("publishes staged encoded artifacts transactionally and decodes them for consumers", async () => {
+  const original = Buffer.from("ELF symbols\n".repeat(100));
+  const encoded = zlib.gzipSync(original);
+  const queries = [];
+  const client = {
+    async query(sql, values = []) { queries.push({ sql: String(sql), values }); return { rows: [] }; },
+    release() {},
+  };
+  const pool = {
+    async connect() { return client; },
+    async query() {
+      return { rows: [{
+        artifact_name: "firmware.elf",
+        content_type: "application/octet-stream",
+        content_blob: encoded,
+        size_bytes: String(original.length),
+        sha256: crypto.createHash("sha256").update(original).digest("hex"),
+        storage_encoding: "gzip",
+      }] };
+    },
+  };
+  const store = new PostgresArtifactStore(pool, { readFile: async () => encoded });
+  const metadata = {
+    artifactName: "firmware.elf",
+    payloadPath: "/staged/firmware.elf",
+    encoding: "gzip",
+    storedSizeBytes: encoded.length,
+    sizeBytes: original.length,
+    sha256: crypto.createHash("sha256").update(original).digest("hex"),
+    espImageSha256: null,
+    artifactClass: "symbols",
+    retentionDays: 30,
+  };
+  const published = await store.saveEncodedArtifacts("job-1", [metadata]);
+  assert.equal(published["firmware.elf"].size_bytes, original.length);
+  assert.equal(queries.filter((entry) => /INSERT INTO build_artifacts/.test(entry.sql)).length, 1);
+  assert.match(queries.at(-1).sql, /COMMIT/);
+  const artifact = await store.getArtifact("job-1", "firmware.elf");
+  assert.deepEqual(artifact.content_blob, original);
 });

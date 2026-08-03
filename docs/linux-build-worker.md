@@ -204,3 +204,75 @@ auf: Projekte ohne zusaetzliche oeffentliche Header erzeugten kein
 Paketierer legt in diesem Fall nun eine neutrale `.gernetix-keep`-Datei an; der
 zugehoerige Contract-Test ist bestanden. Zwei vor der Reparatur fehlgeschlagene
 technische Benchmarkjobs bleiben als Fehlernachweis erhalten.
+
+### ArtifactStore-Optimierungsbenchmark vom 3. August 2026
+
+Nach der Umstellung auf einmaliges Lesen und Hashing sowie einen gemeinsamen
+PostgreSQL-Insert wurde derselbe produktionsnahe Benchmark erneut auf
+`mac-worker-01` ausgefuehrt. Ein Aufwaermlauf und drei Messlaeufe verwendeten
+dasselbe Projekt- und Softwareziel, aber eindeutige Job-IDs. Alle vier Builds
+erzeugten dieselbe ELF-Build-ID
+`06682da27fd6a7a742a7ab6895c5fad689b5d1d01ba495bb61de1c19687d35f1`.
+
+| Lauf | PlatformIO und Paketphase | zentrale Artefaktphase | Gesamtjob | Artefakte |
+| --- | ---: | ---: | ---: | ---: |
+| warm 1 | 6,708 s | 11,074 s | 18,357 s | 11.737.248 Bytes |
+| warm 2 | 6,694 s | 11,848 s | 19,134 s | 11.737.248 Bytes |
+| warm 3 | 6,388 s | 12,041 s | 18,902 s | 11.737.248 Bytes |
+
+Der neue Median liegt bei 6,694 Sekunden fuer PlatformIO und Paketphase,
+11,848 Sekunden fuer die zentrale Artefaktphase und 18,902 Sekunden fuer den
+Gesamtjob. Gegenueber dem vorherigen Median sinkt die Artefaktphase damit um
+33,7 Prozent und der Gesamtjob um 26,0 Prozent. Die Kompilierzeit bleibt
+praktisch unveraendert.
+
+Die neue Phasenmessung lokalisiert den verbleibenden Engpass eindeutig: Lesen
+und SHA-256-Berechnung benoetigten im Warm-Median zusammen rund 9 Millisekunden,
+der gebuendelte PostgreSQL-Insert dagegen 11,705 Sekunden. Das Batching ist
+damit wirksam, beseitigt aber nicht die dominante Uebertragung des rund
+10,61-MiB-ELF ueber WireGuard. Der vorgeschlagene komprimierte beziehungsweise
+streamende ArtifactStore bleibt fachlich priorisiert.
+
+### Streaming-ArtifactStore ab 3. August 2026
+
+Der private Worker schreibt Artefakt-BLOBs standardmaessig nicht mehr direkt
+ueber den entfernten PostgreSQL-Port. `BUILD_ARTIFACT_PERSISTENCE_BACKEND=http`
+aktiviert den neuen Pfad: Der Worker berechnet SHA-256 und Originalgroesse beim
+einmaligen Lesen, komprimiert ELF, HEX, Map und Build-Log lokal mit Gzip und
+streamt jede Datei mit einem separaten Bearer-Secret ueber
+`BUILD_ARTIFACT_UPLOAD_BASE_URL` zum zentralen Build-Service. Binaries fuer
+Bootloader, Partitionen und Firmware bleiben unkomprimiert.
+
+Der zentrale Dienst nimmt Uploads nur fuer erlaubte Artefaktnamen an, begrenzt
+komprimierte und dekomprimierte Groesse, verifiziert Hash und Groesse und haelt
+Teiluploads im technischen Staging unsichtbar. Erst der abschliessende
+Finalize-Aufruf ersetzt den Artefaktsatz eines Jobs in einer gemeinsamen
+PostgreSQL-Transaktion. Staging-Reste werden nach einer Stunde entfernt.
+Downloads, OTA und ELF-Symbolisierung erhalten weiterhin die unveraenderten
+Bytes. `deployable`, `symbols` und `diagnostic` werden 90, 30 beziehungsweise
+14 Tage aufbewahrt.
+
+Der Betriebs-Rollback besteht ausschliesslich darin, auf dem betroffenen Worker
+`BUILD_ARTIFACT_PERSISTENCE_BACKEND=postgres` zu setzen; Koordination und
+oeffentliche Download-URLs aendern sich nicht. Der neue Pfad ist lokal durch
+Streaming-, Kompressions-, Integritaets-, Authentifizierungs-, atomare
+Finalize- und Rollback-Tests abgenommen. Ein erneuter realer ARM-/VPS-Benchmark
+erfordert den separaten Staging-Rollout und steht noch aus.
+
+Die sichere Rollout-Reihenfolge ist zentral vor extern: Zuerst wird der zentrale
+Build-Service mit der rueckwaertskompatiblen PostgreSQL-Schemaerweiterung, dem
+Upload-Secret und dem Ingress deployt. Danach wird der Worker erneut mit
+`node tools/register-build-worker.js` registriert; das Werkzeug uebernimmt das
+bereits auf dem VPS erzeugte Secret in die lokale, auf Modus `0600` begrenzte
+Worker-Env, ohne es in Kommandozeile oder Ausgabe zu schreiben. Erst danach wird
+der Worker mit Backend `http` neu erstellt. Alte Worker koennen waehrenddessen
+weiter den PostgreSQL-Pfad verwenden.
+
+Als lokaler Vorab-Benchmark diente das reale 10.661.536-Byte-ESP32-ELF aus
+dem inkrementellen Build-Cache. Nach einem Aufwaermlauf benoetigten fuenf
+Hash-/Gzip-Laeufe 79,441/78,253/77,641/77,384/78,231 Millisekunden; der Median
+lag bei 78,231 Millisekunden. Die gespeicherte und zu uebertragende Groesse
+sank reproduzierbar auf 4.207.847 Bytes, also um 60,53 Prozent. Das ist noch
+kein Netz- oder PostgreSQL-End-to-End-Nachweis, zeigt aber, dass die lokale
+Kompressionsarbeit gegenueber dem zuvor gemessenen 11,705-Sekunden-Remote-
+Insert klein ist und fuer das dominante ELF deutlich weniger Nutzlast erzeugt.

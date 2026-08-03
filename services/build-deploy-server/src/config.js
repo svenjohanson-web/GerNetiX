@@ -37,6 +37,15 @@ function createConfig(env = process.env) {
         ? ":memory:"
         : path.join(runtimeRoot, "gernetix-build-artifacts.sqlite"),
     artifactPersistenceBackend: env.BUILD_ARTIFACT_PERSISTENCE_BACKEND || "sqlite",
+    artifactUploadBaseUrl: env.BUILD_ARTIFACT_UPLOAD_BASE_URL || "",
+    artifactUploadToken: env.BUILD_ARTIFACT_UPLOAD_TOKEN || "",
+    artifactUploadTimeoutMs: Number(env.BUILD_ARTIFACT_UPLOAD_TIMEOUT_MS || 120000),
+    artifactUploadStagingDir: env.BUILD_ARTIFACT_UPLOAD_STAGING_DIR
+      ? path.resolve(env.BUILD_ARTIFACT_UPLOAD_STAGING_DIR)
+      : path.join(runtimeRoot, "artifact-upload-staging"),
+    artifactUploadMaxStoredBytes: Number(env.BUILD_ARTIFACT_UPLOAD_MAX_STORED_BYTES || 64 * 1024 * 1024),
+    artifactUploadMaxOriginalBytes: Number(env.BUILD_ARTIFACT_UPLOAD_MAX_ORIGINAL_BYTES || 128 * 1024 * 1024),
+    artifactUploadStaleMs: Number(env.BUILD_ARTIFACT_UPLOAD_STALE_MS || 60 * 60 * 1000),
     coordinationBackend: env.BUILD_COORDINATION_BACKEND
       || ((env.BUILD_ARTIFACT_PERSISTENCE_BACKEND || "sqlite") === "postgres" ? "postgres" : "memory"),
     workerId: env.BUILD_WORKER_ID || os.hostname(),

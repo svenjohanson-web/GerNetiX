@@ -1,0 +1,18 @@
+FROM mcr.microsoft.com/playwright:v1.62.0-noble
+
+WORKDIR /workspace
+
+COPY tools/forgejo-ui-e2e/package.json tools/forgejo-ui-e2e/package-lock.json ./tools/forgejo-ui-e2e/
+RUN cd tools/forgejo-ui-e2e && npm ci --ignore-scripts --no-audit --no-fund
+
+COPY services/project-server/src ./services/project-server/src
+COPY services/shared ./services/shared
+COPY services/identity-server/src/dev/project-repository-read.js ./services/identity-server/src/dev/project-repository-read.js
+COPY services/identity-server/src/dev/project-repository-contract-stub.js ./services/identity-server/src/dev/project-repository-contract-stub.js
+COPY services/identity-server/src/dev/server/project-routes.js ./services/identity-server/src/dev/server/project-routes.js
+COPY services/identity-server/src/dev/server/route-registry.js ./services/identity-server/src/dev/server/route-registry.js
+COPY services/identity-server/public/app/project-repository-card.js ./services/identity-server/public/app/project-repository-card.js
+COPY services/identity-server/public/app/app.css ./services/identity-server/public/app/app.css
+COPY tools/forgejo-ui-e2e/run-ui-e2e.js ./tools/forgejo-ui-e2e/run-ui-e2e.js
+
+CMD ["node", "tools/forgejo-ui-e2e/run-ui-e2e.js"]

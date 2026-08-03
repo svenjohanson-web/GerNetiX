@@ -12,6 +12,7 @@ const composeModels = [
   { file: "compose.flashbox-build-test.yaml" },
   { file: "infra/dev/docker-compose.yml" },
   { file: "tools/forgejo-integration/compose.yaml" },
+  { files: ["tools/forgejo-integration/compose.yaml", "tools/forgejo-ui-e2e/compose.yaml"] },
   { file: "tools/forgejo-backup-restore-test.compose.yaml" },
 ];
 
@@ -35,7 +36,8 @@ function exampleEnvironment(envFile) {
 }
 
 function validate(model) {
-  const source = fs.readFileSync(path.join(repoRoot, model.file), "utf8");
+  const files = model.files || [model.file];
+  const source = files.map((file) => fs.readFileSync(path.join(repoRoot, file), "utf8")).join("\n");
   const environment = { ...process.env };
   const examples = exampleEnvironment(model.envFile);
   for (const variable of requiredVariables(source)) {
@@ -46,7 +48,8 @@ function validate(model) {
 
   const args = ["compose"];
   if (model.envFile) args.push("--env-file", model.envFile);
-  args.push("-f", model.file, "config", "--quiet");
+  for (const file of files) args.push("-f", file);
+  args.push("config", "--quiet");
   const result = spawnSync("docker", args, {
     cwd: repoRoot,
     env: environment,
@@ -56,9 +59,9 @@ function validate(model) {
   if (result.status !== 0) {
     process.stderr.write(result.stdout || "");
     process.stderr.write(result.stderr || "");
-    throw new Error(`Compose validation failed for ${model.file}`);
+    throw new Error(`Compose validation failed for ${files.join(" + ")}`);
   }
-  console.log(`Compose model valid: ${model.file}`);
+  console.log(`Compose model valid: ${files.join(" + ")}`);
 }
 
 for (const model of composeModels) validate(model);

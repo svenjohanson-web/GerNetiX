@@ -71,6 +71,7 @@ ensure_staging_secret COMPUTE_INTERNAL_TOKEN hex
 ensure_staging_secret COMPUTE_WORKER_BOOTSTRAP_TOKEN hex
 ensure_staging_secret COMPUTE_WORKER_SIGNING_SECRET hex
 ensure_staging_secret COMPUTE_PROJECT_GRANT_SIGNING_SECRET hex
+ensure_staging_secret BUILD_ARTIFACT_UPLOAD_TOKEN hex
 ensure_staging_secret RUNTIME_STATE_ENCRYPTION_KEY base64
 
 compute_bind_address=$(awk -F= '$1 == "COMPUTE_BIND_ADDRESS" { print $2 }' "$env_file" | tail -n 1 | tr -d '\r')

@@ -54,6 +54,7 @@ test("private build and PWA hosts are WireGuard-only", () => {
   assert.match(tls, /live\/gernetix-services\.com\/fullchain\.pem/);
   assert.match(tls, /allow 10\.77\.0\.0\/24;[\s\S]*deny all;/);
   assert.match(deploy, /-d build\.gernetix\.com -d mqtt\.gernetix\.com -d pwa\.gernetix\.com/);
+  assert.match(tls, /server_name build\.gernetix\.com;[\s\S]*client_max_body_size 64m;[\s\S]*proxy_pass http:\/\/build-deploy-server:4400/);
 });
 
 test("compose binds application traffic to WireGuard and keeps ACME separate", () => {

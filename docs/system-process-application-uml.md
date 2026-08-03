@@ -10,11 +10,31 @@ Bildartefakt: [system-process-application-uml.svg](system-process-application-um
 
 Elastische Compute-Sicht: [elastic-worker-capacity-architecture.svg](elastic-worker-capacity-architecture.svg)
 
+School-Deploymentgrenze: [school-deployment-architecture.md](school-deployment-architecture.md)
+
 Port-Uebersicht: [process-port-overview.svg](process-port-overview.svg)
 
 VPS-Docker-Topologie: [vps-docker-topology.svg](vps-docker-topology.svg)
 
 Vollständige OTA-Wirkkette: [ota-build-flash-sequence.md](ota-build-flash-sequence.md)
+
+## Portabilitaetsgrenze fuer GerNetiX School
+
+Die aktuell gezeichnete Laufzeit ist die zentrale GerNetiX-Plattform. Eine
+spaetere School-Installation wird nicht an diese VPS-Laufzeit angehaengt,
+sondern als eigenstaendige lokale Deployment-Zelle mit eigener Identity,
+PostgreSQL-, Forgejo-, Artifact-, Compute-, MQTT-/OTA- und Schluesselgrenze
+betrieben. Derselbe fachliche Service- und BuildPackage-Vertrag soll durch
+Konfiguration in beiden Deploymentzellen verwendbar bleiben; Datenbanken,
+Sessions und private Schluessel werden nicht geteilt.
+
+Externe KI ist in School standardmaessig deaktiviert. OpenAI oder ein anderer
+freigegebener externer Provider ist nur als bewusst aktiviertes BYOK der Schule
+zulaessig. Der Schluessel bleibt als lokales School-Secret, Aufrufe gehen direkt
+zum Provider und verwenden weder GerNetiX-Credits noch einen GerNetiX-Proxy.
+Lokale AI-Context-Policy, Grants und Audit bleiben auch bei BYOK verbindlich.
+Ohne KI-Provider muessen Projekte, Builds, Lernen, Geraetebetrieb und lokales
+OTA voll funktionsfaehig bleiben.
 
 ## Komponentendiagramm
 
@@ -138,7 +158,8 @@ flowchart LR
   identity -->|"OTA/USB/FlashBox + Status"| buildDeploy
   buildRouter --> buildDeploy
   buildRouter -->|"WireGuard"| linuxBuildWorker
-  linuxBuildWorker -->|"WireGuard PostgreSQL :25432"| runtimePostgres
+  linuxBuildWorker -->|"WireGuard PostgreSQL :25432<br/>nur Bestandskoordination"| runtimePostgres
+  linuxBuildWorker -->|"authentifizierter Gzip-Artifact-Stream<br/>HTTPS ueber WireGuard"| buildDeploy
   workerCoordinator --> projectRuleRuntime
   workerCoordinator --> capacityController
   capacityController --> privateWorkerPool
@@ -252,7 +273,7 @@ flowchart LR
 | SQLite Graph Explorer | 4318 | `http://127.0.0.1:4318/` | Read-only Weboberflaeche auf den kanonischen Graphen |
 | Zentraler Build & Deploy Worker | 4400 | `http://127.0.0.1:4400/` | Echte PlatformIO-Builds sowie zentrale OTA-/FlashBox-Auslieferung mit Signierschluessel und MQTT; PostgreSQL koordiniert Jobregister, workeruebergreifende Abbrueche, Ziel-Locks, Statussicht, Cache-Generationen und Firmware-Artefakte |
 | Build Worker Pool Router | VPS-intern 4400; Remote-Dev-Tunnel 14400 | `http://127.0.0.1:14400/` nur ueber den SSH-/WireGuard-Tunnel | Verteilt ausschliesslich `build` und `prebuild` nach `least_conn` auf den zentralen Worker und konfigurierte Linux-Worker; Deploy-, FlashBox- und USB-Auftraege umgehen den Pool |
-| Externer Build-Worker | konfigurierbar, Standard 4400 | nur private WireGuard-Adresse | Eigenstaendiger Linux-Docker-Worker auf Linux oder macOS mit PlatformIO und lokalem Cache; Rolle `build_only`, kein MQTT und kein OTA-Signierschluessel |
+| Externer Build-Worker | konfigurierbar, Standard 4400 | nur private WireGuard-Adresse | Eigenstaendiger Linux-Docker-Worker auf Linux, macOS oder Windows mit PlatformIO und lokalem Cache; Rolle `build_only`, kein MQTT und kein OTA-Signierschluessel; streamt gehashte und selektiv Gzip-komprimierte Artefakte authentifiziert zum zentralen Build-Service |
 | Compute Control Plane | 5700, lokal umgesetzt / VPS-intern vorbereitet | standardmaessig `http://127.0.0.1:5700/`, private Worker nur ueber bewusst gesetzte WireGuard-Bindung | PostgreSQL-persistente typisierte Jobs, atomare Pull-Leases mit Fencing, Worker-Faehigkeiten, Mandantenfairness, Quoten, payload-freie Usage-Metriken und Capacity-Planadapter; keine direkte Kundenoberflaeche und kein Worker-SQL-Zugang |
 | Isolated Project Rule Runtime | Bibliothek und API-Grenze im Compute-Dienst, lokal umgesetzt | interne Grant-Ausgabe sowie worker-authentifizierte Patchannahme; fachliche Anwendung nur ueber injizierten Project-Patch-Writer | Fuehrt JSON-AST-Projektregeln mit signiertem Tenant-/Projekt-/Revisions-Grant, Snapshot, Knoten-/Tiefen-/Zeitlimit und validiertem Patch aus; produktiver Project-Writer und Container-Ressourcenabnahme stehen aus |
 | Capacity Controller | API im Compute-Dienst, lokal teilweise umgesetzt | nur token-geschuetzte interne Control- und Operations-Schnittstellen | Aggregiert Queue und passende Slots in PostgreSQL und erzeugt Scale-, Drain- oder Backpressure-Empfehlungen sowie payload-freie Alarme; private und Cloud-Adapter mutieren noch keine externe Infrastruktur, Kubernetes ist bewusst nicht abgenommen |
@@ -295,7 +316,8 @@ flowchart LR
 | GerNetiX Plattform UI / Identity Server | Build & Deploy Coordinator | Der sessiongebundene Abbruch eines eigenen BuildJobs wird zentral persistiert; der ausfuehrende Worker beendet den Compiler-Prozessbaum und meldet `cancelled` zurueck |
 | Identity Server | Build Worker Pool Router | Reine Builds und Prebuilds automatisch auf verfuegbare Worker verteilen; keine Rechnerauswahl in der IDE |
 | Build Worker Pool Router | Externer Build-Worker | Private HTTP-Verteilung ausschliesslich ueber WireGuard; schnelle Primaer-Worker werden bevorzugt, VPS und weitere Worker bilden den automatischen Rueckfallpool |
-| Externer Build-Worker | Zentrales PostgreSQL | BuildJob-Heartbeat, Ziel-Lock, zentrale Statussicht und Artefakt-BLOBs ueber den WireGuard-gebundenen PostgreSQL-Port |
+| Externer Build-Worker | Zentrales PostgreSQL | Nur Bestandskoordination fuer BuildJob-Heartbeat, Ziel-Lock und zentrale Statussicht ueber den WireGuard-gebundenen PostgreSQL-Port; keine direkten Artefakt-BLOB-Schreibvorgaenge |
+| Externer Build-Worker | Zentraler Build & Deploy Worker | Bearer-authentifizierter HTTPS-Stream fuer erlaubte, gehashte und selektiv Gzip-komprimierte Artefakte; der zentrale Dienst prueft und publiziert den vollstaendigen Satz atomar in PostgreSQL |
 | Fachliche Services | Compute Control Plane | Rechenintensive Arbeit als typisierte, idempotente oder atomar abgesicherte Jobs statt providergebundener Prozessaufrufe einreichen |
 | Compute Control Plane | Private-/Cloud-/Kubernetes-Worker | Faehigkeitsbasierte Pull-Leases ueber das Worker Gateway; Provider und CPU-Architektur aendern den fachlichen Jobvertrag nicht |
 | Isolated Project Rule Runtime | Project Runtime Data API | Nur kurzlebiger account-/projektgebundener Grant, versionsmarkierter Snapshot und validierter Patch; niemals direkter SQL-, Datei- oder allgemeiner Netzwerkzugriff |

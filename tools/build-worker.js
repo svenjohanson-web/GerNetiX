@@ -82,6 +82,7 @@ function validateConfig(config) {
     "BUILD_WORKER_BIND_ADDRESS",
     "BUILD_POSTGRES_HOST",
     "BUILD_POSTGRES_PASSWORD",
+    "BUILD_ARTIFACT_UPLOAD_TOKEN",
   ];
   for (const key of required) {
     if (!String(config[key] || "").trim()) errors.push(`${key} fehlt.`);
@@ -100,8 +101,16 @@ function validateConfig(config) {
   if (/replace-with|change-me/i.test(String(config.BUILD_POSTGRES_PASSWORD || ""))) {
     errors.push("BUILD_POSTGRES_PASSWORD enthaelt noch den Beispielwert.");
   }
+  if (/replace-with|change-me/i.test(String(config.BUILD_ARTIFACT_UPLOAD_TOKEN || ""))) {
+    errors.push("BUILD_ARTIFACT_UPLOAD_TOKEN enthaelt noch den Beispielwert.");
+  }
+  if (config.BUILD_ARTIFACT_UPLOAD_TOKEN && String(config.BUILD_ARTIFACT_UPLOAD_TOKEN).length < 32) {
+    errors.push("BUILD_ARTIFACT_UPLOAD_TOKEN muss mindestens 32 Zeichen lang sein.");
+  }
   const publicBaseUrl = config.BUILD_PUBLIC_BASE_URL || "https://build.gernetix.com";
   if (!/^https:\/\//i.test(publicBaseUrl)) errors.push("BUILD_PUBLIC_BASE_URL muss HTTPS verwenden.");
+  const artifactUploadBaseUrl = config.BUILD_ARTIFACT_UPLOAD_BASE_URL || "https://build.gernetix.com";
+  if (!/^https:\/\//i.test(artifactUploadBaseUrl)) errors.push("BUILD_ARTIFACT_UPLOAD_BASE_URL muss HTTPS verwenden.");
   return errors;
 }
 

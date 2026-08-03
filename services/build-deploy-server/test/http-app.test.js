@@ -134,6 +134,33 @@ test("continues to reject files outside the artifact allowlist", async () => {
   assert.deepEqual(JSON.parse(response.body.toString()), { error: "not_found" });
 });
 
+test("authenticates internal artifact finalization before publishing", async () => {
+  const finalized = [];
+  const app = createHttpApp({
+    service: {},
+    artifactUploadToken: "worker-secret",
+    artifactUploadIngress: {
+      async finalize(jobId, artifacts) {
+        finalized.push({ jobId, artifacts });
+        return { status: "published" };
+      },
+    },
+  });
+  const response = createResponseRecorder();
+  await app(createJsonRequest(
+    "POST",
+    "/api/internal/build-artifacts/job-1/finalize",
+    JSON.stringify({ artifacts: ["firmware.elf"] }),
+    { authorization: "Bearer worker-secret" },
+  ), response);
+  assert.equal(response.status, 201);
+  assert.deepEqual(finalized, [{ jobId: "job-1", artifacts: ["firmware.elf"] }]);
+  await assert.rejects(
+    app(createJsonRequest("POST", "/api/internal/build-artifacts/job-1/finalize", "{}"), createResponseRecorder()),
+    (error) => error.code === "artifact_upload_unauthorized" && error.status === 401,
+  );
+});
+
 function createResponseRecorder() {
   return {
     status: 0,
@@ -149,12 +176,12 @@ function createResponseRecorder() {
   };
 }
 
-function createJsonRequest(method, url, body) {
+function createJsonRequest(method, url, body, headers = {}) {
   const listeners = {};
   return {
     method,
     url,
-    headers: { host: "127.0.0.1" },
+    headers: { host: "127.0.0.1", ...headers },
     on(event, listener) {
       listeners[event] = listener;
       if (event === "error") return;

@@ -1,8 +1,12 @@
 const { BuildDeployError } = require("./errors");
+const crypto = require("node:crypto");
+const { isAllowedArtifactName } = require("./modules/artifact-contract");
 
 function createHttpApp(options) {
   const service = options.service;
   const artifactStore = options.artifactStore || service.artifactStore;
+  const artifactUploadIngress = options.artifactUploadIngress || service.artifactUploadIngress;
+  const artifactUploadToken = options.artifactUploadToken || service.artifactUploadToken || "";
 
   return async function routeRequest(req, res) {
     const url = new URL(req.url, `http://${req.headers.host}`);
@@ -27,6 +31,26 @@ function createHttpApp(options) {
     if (req.method === "POST" && url.pathname === "/api/build-cache/clean") {
       const body = await readJsonBody(req);
       sendJson(res, 200, await service.cleanProjectCache(body));
+      return;
+    }
+
+    const uploadMatch = url.pathname.match(/^\/api\/internal\/build-artifacts\/([^/]+)\/([^/]+)$/);
+    if (req.method === "PUT" && uploadMatch) {
+      authorizeArtifactUpload(req, artifactUploadIngress, artifactUploadToken);
+      const artifactName = decodeURIComponent(uploadMatch[2]);
+      if (!isAllowedArtifactName(artifactName)) {
+        sendJson(res, 404, { error: "not_found" });
+        return;
+      }
+      sendJson(res, 201, await artifactUploadIngress.stage(decodeURIComponent(uploadMatch[1]), artifactName, req));
+      return;
+    }
+
+    const finalizeMatch = url.pathname.match(/^\/api\/internal\/build-artifacts\/([^/]+)\/finalize$/);
+    if (req.method === "POST" && finalizeMatch) {
+      authorizeArtifactUpload(req, artifactUploadIngress, artifactUploadToken);
+      const body = await readJsonBody(req);
+      sendJson(res, 201, await artifactUploadIngress.finalize(decodeURIComponent(finalizeMatch[1]), body.artifacts));
       return;
     }
 
@@ -107,16 +131,17 @@ function sendJson(res, status, payload) {
 }
 
 function sanitizeArtifactName(value) {
-  return [
-    "bootloader.bin",
-    "partitions.bin",
-    "boot_app0.bin",
-    "firmware.bin",
-    "firmware.elf",
-    "firmware.hex",
-    "firmware.map",
-    "build.log",
-  ].includes(value) ? value : "";
+  return isAllowedArtifactName(value) ? value : "";
 }
 
-module.exports = { createHttpApp, sendJson };
+function authorizeArtifactUpload(req, ingress, configuredToken) {
+  if (!ingress || !configuredToken) throw new BuildDeployError("not_found", "Nicht gefunden.", 404);
+  const supplied = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "");
+  const expectedDigest = crypto.createHash("sha256").update(configuredToken).digest();
+  const suppliedDigest = crypto.createHash("sha256").update(supplied).digest();
+  if (!supplied || !crypto.timingSafeEqual(expectedDigest, suppliedDigest)) {
+    throw new BuildDeployError("artifact_upload_unauthorized", "Artefakt-Upload ist nicht autorisiert.", 401);
+  }
+}
+
+module.exports = { authorizeArtifactUpload, createHttpApp, sendJson };

@@ -255,7 +255,7 @@ GerNetiX School ist **kein Home Big mit anderem Gehäuse**, sondern eine bewusst
 | Gelöstes Problem | Schul-WLAN, Gastzugänge, Filter, fehlende Internetverbindung, Datenschutzvorgaben und unterschiedlich verwaltete Endgeräte dürfen den praktischen Embedded-Unterricht nicht blockieren |
 | Mehrwert | Ein vollständiger, lokaler und wiederholbarer Unterrichtsraum: Inhalte, Projekte, Firmware, Geräteworkflow und Lehrkraftsicht stehen auch ohne Internet bereit |
 | Muss enthalten | Eigenes WLAN mit klarer Kursraum-Anmeldung, getrenntes Geräte-WLAN, lokales Lernportal/PWA, lokale Kurs- und Projektbibliothek, lokaler Projekt-/Gerätespeicher, lokale Build-/Firmware-Artefakte, signiertes lokales OTA, Lehrkraftkonsole, Sicherung/Export und eine explizite Offline-/Online-Anzeige |
-| Bewusst nicht enthalten | Kein offenes Internet-Gateway, keine ungeprüfte externe KI, kein öffentlich erreichbarer Dienst, keine automatische Übertragung von Schülerdaten in die GerNetiX Cloud |
+| Bewusst nicht enthalten | Kein offenes Internet-Gateway, kein von GerNetiX bereitgestellter externer KI-Zugang, kein öffentlich erreichbarer Dienst, keine automatische Übertragung von Schülerdaten in die GerNetiX Cloud. Externe KI ist nur als bewusst konfiguriertes BYOK der Schule zulässig. |
 | Abgrenzung | Home betreibt ein privates Zuhause; School betreibt einen zeitlich und didaktisch strukturierten Klassenraum mit mehreren Lernenden und OTA-fähigem Klassensatz |
 
 #### Offline-Unterrichtsablauf
@@ -273,7 +273,7 @@ Lehrkraft schaltet GerNetiX School ein
 → Lehrkraft exportiert Ergebnisse oder synchronisiert bewusst zu einem späteren Zeitpunkt
 ```
 
-Der School Server darf im Offline-Betrieb **keine externe Namensauflösung, Telemetrie, KI-Provider, Cloud-Login oder Hintergrundsynchronisation** voraussetzen. Der Benutzer sieht jederzeit, dass er im lokalen Schulnetz arbeitet. Internet ist optional und standardmäßig weder für den Unterricht noch für den ESP32-Flash aktiviert.
+Der School Server darf im Offline-Betrieb **keine externe Namensauflösung, Telemetrie, KI-Provider, Cloud-Login oder Hintergrundsynchronisation** voraussetzen. Der Benutzer sieht jederzeit, dass er im lokalen Schulnetz arbeitet. Internet ist optional und standardmäßig weder für den Unterricht noch für den ESP32-Flash aktiviert. Externe KI ist standardmäßig deaktiviert und nicht Bestandteil der School-Lizenz. Sie darf nur bewusst mit einem eigenen Provider-Schlüssel der Schule aktiviert werden; Schlüssel, Kosten und Providervertrag verbleiben bei der Schule und der Zugriff wird nicht über GerNetiX-Credits oder den Haupt-VPS vermittelt. Ein optionales lokales Modell bleibt davon getrennt.
 
 #### WLAN, Identität und Datenschutz
 

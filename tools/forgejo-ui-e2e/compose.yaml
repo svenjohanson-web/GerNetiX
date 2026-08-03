@@ -1,0 +1,26 @@
+services:
+  ui-e2e:
+    build:
+      context: ../..
+      dockerfile: tools/forgejo-ui-e2e/Dockerfile
+    init: true
+    user: "0:0"
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    shm_size: 1gb
+    environment:
+      FORGEJO_BASE_URL: http://forgejo:3000
+      FORGEJO_TOKEN: ${FORGEJO_UI_E2E_ACCESS_TOKEN:-}
+      UI_E2E_SESSION_TOKEN: ${FORGEJO_UI_E2E_SESSION_TOKEN:?synthetischer Sitzungstoken fehlt}
+    networks:
+      - integration
+    tmpfs:
+      - /tmp
+      - /root/.cache
+    depends_on:
+      forgejo:
+        condition: service_healthy
+    profiles: ["ui-e2e"]

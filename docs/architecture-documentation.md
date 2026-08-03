@@ -41,3 +41,8 @@ Die providerneutrale Trennung von dauerhafter Control Plane, System- und
 Kunden-Workern, Grundlast-/Burst-Messung, privaten Rechnern, Cloud-Burst und
 Kubernetes steht in der
 [elastischen Worker- und Kapazitaetsarchitektur](elastic-worker-capacity-architecture.md).
+
+Die akzeptierte Portabilitaetsgrenze fuer eine spaetere eigenstaendige
+School-Deployment-Zelle sowie die Regel fuer standardmaessig deaktivierte
+externe KI und ausschliesslich lokal verwaltetes BYOK steht in
+[School-Deploymentgrenze und KI-Provider](school-deployment-architecture.md).

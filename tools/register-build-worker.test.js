@@ -19,6 +19,7 @@ test("worker setup keeps the generated secret out of the remote command", () => 
       stagingFile,
       localFile,
       password:"dedicated-secret",
+      artifactUploadToken:"artifact-secret",
       spawnSync:(command,args,options) => { invocation={command,args,options}; return {status:0}; },
     });
     assert.equal(result.workerAddress,"10.77.0.5");
@@ -26,6 +27,7 @@ test("worker setup keeps the generated secret out of the remote command", () => 
     assert.match(invocation.args.join(" "),/gernetix\/node-services:local node -e/);
     assert.match(invocation.options.input,/dedicated-secret/);
     assert.match(fs.readFileSync(localFile,"utf8"),/BUILD_POSTGRES_PASSWORD=dedicated-secret/);
+    assert.match(fs.readFileSync(localFile,"utf8"),/BUILD_ARTIFACT_UPLOAD_TOKEN=artifact-secret/);
     assert.equal(fs.statSync(localFile).mode & 0o777,0o600);
   } finally {
     fs.rmSync(root,{recursive:true,force:true});
@@ -33,7 +35,7 @@ test("worker setup keeps the generated secret out of the remote command", () => 
 });
 
 test("worker configuration selects the Mac and the restricted database login", () => {
-  const content=workerEnv({workerId:"mac-worker-01",workerAddress:"10.77.0.5",postgresAddress:"10.77.0.1",password:"secret"});
+  const content=workerEnv({workerId:"mac-worker-01",workerAddress:"10.77.0.5",postgresAddress:"10.77.0.1",password:"secret",artifactUploadToken:"artifact-secret"});
   assert.match(content,/BUILD_WORKER_BIND_ADDRESS=10\.77\.0\.5/);
   assert.match(content,/BUILD_POSTGRES_USER=gernetix_build_worker/);
   assert.doesNotMatch(remoteUpdaterSource(),/RUNTIME_POSTGRES_PASSWORD/);
@@ -62,7 +64,7 @@ test("additional worker reuses restricted credentials and is appended to the sel
   const sourceFile = path.join(root, ".env.build-worker.local");
   const localFile = path.join(root, ".env.build-worker.windows.local");
   fs.writeFileSync(stagingFile, "GERNETIX_STAGING_SSH=root@gernetix-vps\nGERNETIX_STAGING_DIR=/opt/gernetix\n");
-  fs.writeFileSync(sourceFile, "BUILD_POSTGRES_HOST=10.77.0.1\nBUILD_POSTGRES_PASSWORD=existing-secret\n", {mode:0o600});
+  fs.writeFileSync(sourceFile, "BUILD_POSTGRES_HOST=10.77.0.1\nBUILD_POSTGRES_PASSWORD=existing-secret\nBUILD_ARTIFACT_UPLOAD_TOKEN=artifact-secret\n", {mode:0o600});
   let invocation;
   try {
     const result = registerWorker({

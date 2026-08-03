@@ -24,7 +24,7 @@ function shellQuote(value) {
   return `'${String(value).replace(/'/g, `'"'"'`)}'`;
 }
 
-function workerEnv({ workerId, workerAddress, postgresAddress, password }) {
+function workerEnv({ workerId, workerAddress, postgresAddress, password, artifactUploadToken }) {
   return [
     `BUILD_WORKER_ID=${workerId}`,
     `BUILD_WORKER_BIND_ADDRESS=${workerAddress}`,
@@ -34,6 +34,10 @@ function workerEnv({ workerId, workerAddress, postgresAddress, password }) {
     "BUILD_POSTGRES_DATABASE=gernetix_runtime",
     "BUILD_POSTGRES_USER=gernetix_build_worker",
     `BUILD_POSTGRES_PASSWORD=${password}`,
+    "BUILD_ARTIFACT_PERSISTENCE_BACKEND=http",
+    "BUILD_ARTIFACT_UPLOAD_BASE_URL=https://build.gernetix.com",
+    `BUILD_ARTIFACT_UPLOAD_TOKEN=${artifactUploadToken}`,
+    "BUILD_ARTIFACT_UPLOAD_TIMEOUT_MS=120000",
     "BUILD_PUBLIC_BASE_URL=https://build.gernetix.com",
     "",
   ].join("\n");
@@ -88,6 +92,7 @@ for(const [key,value] of Object.entries(updates))if(!seen.has(key))lines.push(ke
 const temporary=file+".worker-setup.tmp";
 fs.writeFileSync(temporary,lines.join("\\n"),{mode:0o600});
 fs.renameSync(temporary,file);
+process.stdout.write("GERNETIX_ARTIFACT_UPLOAD_TOKEN="+(current.BUILD_ARTIFACT_UPLOAD_TOKEN||"")+"\\n");
 `;
 }
 
@@ -129,14 +134,17 @@ function registerWorker(options = {}) {
     cwd:repoRoot,
     encoding:"utf8",
     input:payload,
-    stdio:["pipe", "inherit", "inherit"],
+    stdio:["pipe", "pipe", "inherit"],
   });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`Worker-Registrierung wurde mit Exit-Code ${result.status} beendet.`);
+  const artifactTokenMatch = String(result.stdout || "").match(/(?:^|\n)GERNETIX_ARTIFACT_UPLOAD_TOKEN=([^\r\n]+)/);
+  const artifactUploadToken = options.artifactUploadToken || artifactTokenMatch?.[1] || reused.BUILD_ARTIFACT_UPLOAD_TOKEN || "";
+  if (!artifactUploadToken) throw new Error("BUILD_ARTIFACT_UPLOAD_TOKEN fehlt auf dem Staging-VPS.");
 
   const localFile = options.localFile || path.join(repoRoot, ".env.build-worker.local");
   const temporary = `${localFile}.tmp`;
-  fs.writeFileSync(temporary, workerEnv({workerId,workerAddress,postgresAddress,password}), {mode:0o600});
+  fs.writeFileSync(temporary, workerEnv({workerId,workerAddress,postgresAddress,password,artifactUploadToken}), {mode:0o600});
   fs.renameSync(temporary, localFile);
   fs.chmodSync(localFile, 0o600);
   return { workerId, workerAddress, postgresAddress, localFile, pool };

@@ -181,9 +181,11 @@ Neustartpersistenz und die negative Datenbankgrenze zu `gernetix_runtime`.
 **Status:** teilweise lokal erreicht. Die Karte verwendet fuer aktive
 Bindings reale Project-Server-Endpunkte, der deterministische Dry-run ist mit
 synthetischen Projektfaellen automatisiert getestet und der isolierte
-Backup-/Restore-Nachweis an einem realen Forgejo-Teststand besteht. Ein
-repraesentativer Bestandsdatenbanklauf und der UI-Nachweis gegen denselben
-realen Testdienst stehen noch aus.
+Backup-/Restore-Nachweis an einem realen Forgejo-Teststand besteht. Die
+produktive Repository-Karte besteht zusätzlich den isolierten Chromium-Lauf
+über echte sessiongeschützte Identity-Routen, Project Server und denselben
+realen Forgejo-Vertrag. Offen bleibt der repraesentative
+Bestandsdatenbanklauf.
 
 ### Gate 3 - Commitgebundener Build
 
@@ -222,12 +224,12 @@ Forgejo-/Staging-Nachweis bleibt Gate 4 vorbehalten.
 | Strang | Integrationsstatus | Noch offener Gate-Nachweis |
 | --- | --- | --- |
 | A | lokal integriert und real getestet | Upgrade-, Monitoring- und externer Backupnachweis |
-| B | lokal integriert und real getestet | gemeinsamer UI-End-to-End-Nachweis gegen denselben Testdienst |
-| C | lokal integriert | UI-Nachweis gegen denselben realen Testdienst |
+| B | lokal integriert und real getestet | kein lokaler Gate-Nachweis offen |
+| C | lokal integriert und im Browser real getestet | kein lokaler Gate-Nachweis offen |
 | D | lokal integriert; synthetische Fixtures bestehen | Dry-run mit repraesentativer Bestandsdatenbank |
 | E | lokal integriert | echter Forgejo-/Staging-Build und projektweiser Cutover |
 
 Die gemeinsame GitHub-Test-CI führt Service-, Forgejo-, Migrations-, Syntax-,
-Compose-, Dokumentations- und Graphprüfungen aus. Der Container- und
-Restore-Nachweis läuft dabei ausschließlich in kurzlebigen, aufgeräumten
-Testumgebungen und löst weder Deployment noch Cutover aus.
+Compose-, Dokumentations-, Graph- und Browserprüfungen aus. Container-,
+Restore- und UI-Nachweis laufen dabei ausschließlich in kurzlebigen,
+aufgeräumten Testumgebungen und lösen weder Deployment noch Cutover aus.

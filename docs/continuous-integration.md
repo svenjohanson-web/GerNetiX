@@ -27,6 +27,12 @@ Die Jobs sind nach Fehlerdomäne getrennt:
   Backup- und Leerstand-Restore mit Baum-, Inhalts-, Branch-, HEAD- und
   Historienvergleich. Beide Skripte räumen Container, Volumes, Netzwerke und
   lokale Testimages auch bei Fehlern auf.
+- `Forgejo repository card UI E2E` bedient die produktive Repository-Karte in
+  einem gepinnten Chromium. Der Browser liest über die echten
+  sessiongeschützten Identity-Routen und den Project-Server-HTTP-Vertrag aus
+  einem kurzlebigen echten Forgejo-Repository. Anonyme und fremde Projekte
+  werden abgewiesen; Token und interne Forgejo-URL dürfen weder in Antworten
+  noch Browseranfragen erscheinen.
 - `Syntax and Compose` parst alle versionierten JavaScript-Dateien, validiert
   alle projektrelevanten Compose-Modelle mit Platzhaltern für erforderliche
   Variablen und lehnt Whitespace-Fehler ab. Die Platzhalter sind keine
@@ -74,6 +80,7 @@ node --test \
 
 tools/forgejo-integration/run.sh
 tools/forgejo-backup-restore-e2e.sh
+tools/forgejo-ui-e2e/run.sh
 
 node tools/ci/check-javascript-syntax.js
 node tools/ci/check-compose.js

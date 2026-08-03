@@ -85,6 +85,7 @@ jobs:
           node --test
           tools/forgejo-ops-contract.test.js
           tools/forgejo-integration/contract.test.js
+          tools/forgejo-ui-e2e/contract.test.js
           tools/forgejo-backup-restore-contract.test.js
           services/project-server/test/forgejo-client.test.js
           services/project-server/test/git-project-repository-store.test.js
@@ -108,6 +109,15 @@ jobs:
         run: tools/forgejo-integration/run.sh
       - name: Run isolated Forgejo backup and restore
         run: tools/forgejo-backup-restore-e2e.sh
+
+  forgejo-ui-e2e:
+    name: Forgejo repository card UI E2E
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run session-protected repository card against isolated Forgejo
+        run: tools/forgejo-ui-e2e/run.sh
 
   repository-quality:
     name: Syntax and Compose
