@@ -48,6 +48,7 @@ test("private build and PWA hosts are WireGuard-only", () => {
   assert.match(http, /server_name build\.gernetix\.com mqtt\.gernetix\.com pwa\.gernetix\.com/);
   assert.match(tls, /server_name build\.gernetix\.com/);
   assert.match(tls, /server_name pwa\.gernetix\.com/);
+  assert.match(tls, /server_name pwa\.gernetix\.com;\s+http2 on;/);
   assert.match(tls, /proxy_pass http:\/\/build-deploy-server:4400/);
   assert.match(tls, /proxy_pass http:\/\/identity-server:4300/);
   assert.match(tls, /proxy_pass http:\/\/admin-access-server:4610/);

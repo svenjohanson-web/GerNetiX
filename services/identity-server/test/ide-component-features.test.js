@@ -24,7 +24,7 @@ test("IDE exposes component properties and an embedded web interface workspace",
   assert.match(app, /data-web-interface-tab="configuration"/);
   assert.match(app, /data-web-interface-tab="preview"/);
   assert.doesNotMatch(app, /renderProjectRealizations\(/);
-  assert.match(app, /async function loadIdeProject[\s\S]*renderIdeCodeAssistant\(project\);[\s\S]*if \(projectNeedsHardwareTools\(project\)\) await refreshUsbPorts\(false\);/);
+  assert.match(app, /async function loadIdeProject[\s\S]*renderIdeCodeAssistant\(project\);[\s\S]*if \(projectNeedsHardwareTools\(project\)\) void refreshUsbPorts\(false\);[\s\S]*const sources = await loadProjectSources\(project\);/);
 });
 
 test("software configuration views are direct entries in the component configuration folder", () => {

@@ -64,6 +64,8 @@ test("reads searches renames deletes and restores only through the active reposi
   const project = await service.createProject({ project_id: "project-git-read", user_id: "user-1", title: "Git Read" });
   const initialHead = project.repository_binding.head_sha;
   assert.ok((await service.listSources(project.project_id)).some((source) => source.commit_sha === initialHead));
+  assert.equal(store.treeReads, 1);
+  assert.equal(store.fullReads, 0, "Der IDE-Dateibaum darf keine Git-Dateiinhalte lesen");
   assert.ok((await service.searchSources(project.project_id, { query: "Serial" })).length > 0);
 
   const renamed = await service.renameSource(project.project_id, {
@@ -210,7 +212,7 @@ test("checks account storage before Forgejo commits and repository restores", as
 });
 
 class RecordingRepositoryStore {
-  constructor() { this.commits = []; this.files = new Map(); this.snapshots = new Map(); }
+  constructor() { this.commits = []; this.files = new Map(); this.snapshots = new Map(); this.treeReads = 0; this.fullReads = 0; }
   async provisionProject(input) {
     this.provisioned = input;
     for (const change of input.changes) this.files.set(change.path, change.content);
@@ -247,11 +249,20 @@ class RecordingRepositoryStore {
     return { path, content: files.get(path), size_bytes: Buffer.byteLength(files.get(path)), blob_sha: "c".repeat(40) };
   }
   async readFiles(_binding, commitSha) {
+    this.fullReads += 1;
     const files = this.snapshots.get(commitSha);
     if (!files) {
       const error = new Error("commit not found"); error.code = "repository_commit_not_found"; throw error;
     }
     return [...files].map(([path, content]) => ({ path, content, size_bytes: Buffer.byteLength(content), blob_sha: "c".repeat(40) }));
+  }
+  async tree(_binding, commitSha) {
+    this.treeReads += 1;
+    const files = this.snapshots.get(commitSha);
+    if (!files) {
+      const error = new Error("commit not found"); error.code = "repository_commit_not_found"; throw error;
+    }
+    return [...files.keys()].sort();
   }
   async restore(_binding, input) {
     this.files = new Map(this.snapshots.get(input.restore_commit_sha));

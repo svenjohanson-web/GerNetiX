@@ -52,7 +52,11 @@ class ForgejoProjectRepositoryStore {
 
   async tree(binding = {}, commitSha) {
     requireConfiguredBinding(binding, this.organization);
-    return this.git.tree({ remote_url: trustedCloneUrl(binding.clone_url, this.client.baseUrl), commit_sha: commitSha });
+    return this.git.tree({
+      remote_url: trustedCloneUrl(binding.clone_url, this.client.baseUrl),
+      commit_sha: commitSha,
+      branch: commitSha === binding.head_sha ? binding.default_branch || this.defaultBranch : "",
+    });
   }
 
   async readFile(binding = {}, commitSha, repositoryPath) {
@@ -60,13 +64,18 @@ class ForgejoProjectRepositoryStore {
     return this.git.readFile({
       remote_url: trustedCloneUrl(binding.clone_url, this.client.baseUrl),
       commit_sha: commitSha,
+      branch: commitSha === binding.head_sha ? binding.default_branch || this.defaultBranch : "",
       path: repositoryPath,
     });
   }
 
   async readFiles(binding = {}, commitSha) {
     requireConfiguredBinding(binding, this.organization);
-    return this.git.readFiles({ remote_url: trustedCloneUrl(binding.clone_url, this.client.baseUrl), commit_sha: commitSha });
+    return this.git.readFiles({
+      remote_url: trustedCloneUrl(binding.clone_url, this.client.baseUrl),
+      commit_sha: commitSha,
+      branch: commitSha === binding.head_sha ? binding.default_branch || this.defaultBranch : "",
+    });
   }
 
   async history(binding = {}, input = {}) {

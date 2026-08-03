@@ -1348,10 +1348,39 @@ async function handlePlatformSourceWrite(req, res, session, projectId, sourcePat
       content: String(body.content || ""),
       content_type: body.content_type || "text/x-c++src",
       role: body.role || "user_code",
+      ...(project.repository_binding?.state === "active" ? {
+        expected_head_sha: project.repository_binding.head_sha,
+      } : {}),
     },
   });
   touchWorkspace(session, project.project_server_id, "ide", `/app/ide/?project=${encodeURIComponent(project.project_server_id)}`);
   sendJson(res, 200, source);
+}
+
+async function persistGeneratedProjectSources(project, sources, message) {
+  const binding = project.repository_binding;
+  if (binding?.state === "active" && binding.head_sha) {
+    const result = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/repository/commits`, {
+      method: "POST",
+      body: {
+        expected_head_sha: binding.head_sha,
+        message,
+        changes: sources.map((source) => ({
+          operation: "upsert",
+          path: source.path,
+          content: source.content,
+          content_type: source.content_type,
+          role: source.role,
+        })),
+      },
+    });
+    return result.commit?.head_sha || binding.head_sha;
+  }
+  await Promise.all(sources.map((source) => projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
+    method: "PUT",
+    body: source,
+  })));
+  return "";
 }
 
 async function createCommunityProjectSnapshot(session, projectId) {
@@ -1557,13 +1586,11 @@ async function handleDevelopmentProjectArchitectureSave(req, res, session, proje
   const title = String(body.title || project.title || diagram.title || "Architektur").trim().slice(0, 120);
   const description = String(body.description || project.summary || diagram.summary || "").trim().slice(0, 1000);
   const sources = developmentProjectSources({ title, description, diagram, architectureSource: diagram.source });
-  await Promise.all(sources.map((source) => projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
-      method: "PUT",
-      body: source,
-    })));
+  const expectedHeadSha = await persistGeneratedProjectSources(project, sources, "Architekturansichten aktualisiert");
   const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
+      ...(expectedHeadSha ? { expected_head_sha: expectedHeadSha } : {}),
       title,
       description,
       view_manifest: developmentProjectViewManifest({
@@ -1991,13 +2018,11 @@ async function handleDevelopmentProjectHardwareSave(req, res, session, projectId
       })
     : existingManifest.game_configuration;
   const sources = hardwareConfigurationSources(hardwareConfiguration, project.title);
-  await Promise.all(sources.map((source) => projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}/sources`, {
-    method: "PUT",
-    body: source,
-  })));
+  const expectedHeadSha = await persistGeneratedProjectSources(project, sources, "Hardwareansichten aktualisiert");
   const persistedProject = await projectServerJson(`/api/projects/${encodeURIComponent(project.project_server_id)}`, {
     method: "PATCH",
     body: {
+      ...(expectedHeadSha ? { expected_head_sha: expectedHeadSha } : {}),
       hardware_profile_id: selectedBaseBoardId || project.hardware_profile_id,
       device_id: primaryInventoryDevice?.device_id || "",
       build_config: buildConfig || null,
@@ -3109,6 +3134,7 @@ function mapProjectServerProject(session, project) {
       summary: project.description || learningDefinition.summary,
       project_origin: "account_project",
       owner_user_id: project.user_id || userId,
+      repository_binding: project.repository_binding || null,
       hardware_profile_id: project.hardware_profile_id || learningDefinition.hardware_profile_id,
       build_config: project.build_config || learningDefinition.build_config,
       software_units: platformSoftwareUnits(project, learningDefinition.build_config),
@@ -3146,6 +3172,7 @@ function mapProjectServerProject(session, project) {
     lesson_id: `architecture_${project.project_id}`,
     learning_project_id: project.learning_project_id || "",
     owner_user_id: project.user_id || userId,
+    repository_binding: project.repository_binding || null,
     hardware_profile_id: project.hardware_profile_id || "architecture.discovery",
     build_config: project.build_config || null,
     software_units: platformSoftwareUnits(project),

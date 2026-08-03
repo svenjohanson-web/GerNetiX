@@ -1,4 +1,7 @@
 // GerNetiX platform module extracted from app.js.
+const projectSourceListLoads = new Map();
+const projectSourceContentLoads = new Map();
+
 function renderIdeShell() {
   document.querySelector("#ideDeviceSelect").innerHTML = state.devices.map((device) => `
     <option value="${escapeHtml(device.device_id)}">${escapeHtml(device.display_name)}${device.usb_flash_supported ? ` - ${device.build_target_label || "USB"}` : ""}</option>
@@ -41,7 +44,7 @@ async function loadIdeProject() {
   document.querySelector("#ideProjectBrowserTitle").textContent = project.name;
   document.querySelector("#openProjectDebugButton").classList.toggle("hidden", !ideDeviceConfigurationComponents(project).length);
   renderIdeCodeAssistant(project);
-  if (projectNeedsHardwareTools(project)) await refreshUsbPorts(false);
+  if (projectNeedsHardwareTools(project)) void refreshUsbPorts(false);
   const sources = await loadProjectSources(project);
   const requestedSourcePath = routeQuery.get("source") || "";
   state.sourcePath = sources.some((source) => source.path === requestedSourcePath)
@@ -535,8 +538,16 @@ function projectCapabilityIds(project) {
 async function loadProjectSources(project) {
   if (!project) return [];
   if (!state.projectSourcesByProjectId[project.id]) {
-    const response = await getJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources`);
-    state.projectSourcesByProjectId[project.id] = (response.items || []).sort((left, right) => left.path.localeCompare(right.path));
+    if (!projectSourceListLoads.has(project.id)) {
+      const load = getJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources`)
+        .then((response) => {
+          state.projectSourcesByProjectId[project.id] = (response.items || []).sort((left, right) => left.path.localeCompare(right.path));
+          return state.projectSourcesByProjectId[project.id];
+        })
+        .finally(() => projectSourceListLoads.delete(project.id));
+      projectSourceListLoads.set(project.id, load);
+    }
+    await projectSourceListLoads.get(project.id);
   }
   return state.projectSourcesByProjectId[project.id];
 }
@@ -1339,7 +1350,14 @@ function renderIdeCodeAssistant(project) {
 }
 
 async function loadIdeSourceContent(project, sourcePath) {
-  const source = await getJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(sourcePath)}`);
+  const key = `${project.id}\u0000${sourcePath}`;
+  if (!projectSourceContentLoads.has(key)) {
+    const load = getJson(`/api/platform/projects/${encodeURIComponent(project.id)}/sources/${encodeURIComponent(sourcePath)}`)
+      .finally(() => projectSourceContentLoads.delete(key));
+    projectSourceContentLoads.set(key, load);
+  }
+  const source = await projectSourceContentLoads.get(key);
+  if (state.activeProjectId !== project.id || state.sourcePath !== sourcePath) return;
   document.querySelector("#sourceEditor").value = source.content || "";
   clearIdeSourceDirty(project.id, sourcePath);
 }

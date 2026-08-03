@@ -8,7 +8,7 @@ function registerWebRoutes({
 }) {
   registry.register({ method: "*", path: "/app/manifest.webmanifest", handler: ({ res }) => serveStatic(res, appDir, "/manifest.webmanifest") });
   registry.register({ method: "*", path: "/app/push-sw.js", handler: ({ res }) => serveStatic(res, appDir, "/push-sw.js") });
-  registry.register({ method: "*", path: "/app/operator-shell.css", handler: ({ res }) => serveStatic(res, operatorShellDir, "/operator-shell.css") });
+  registry.register({ method: "*", path: "/app/operator-shell.css", handler: ({ res, url }) => serveStatic(res, operatorShellDir, "/operator-shell.css", { versioned: url.searchParams.has("v") }) });
   registry.register({ method: "GET", pattern: /^\/vendor\/esptool-js\//, handler: ({ res, url }) => serveVendorEsptool(res, url.pathname) });
   registry.register({ method: "*", path: "/s3-touch-spielesammlung", handler: ({ res }) => redirect(res, "/s3-touch-spielesammlung/") });
   registry.register({
@@ -37,7 +37,7 @@ function registerWebRoutes({
   for (const routePath of ["/login.html", "/login.js", "/styles.css"]) {
     registry.register({ method: "*", path: routePath, handler: ({ res, url }) => redirect(res, authRoute(url.searchParams.get("next") || "/app/dashboard/")) });
   }
-  registry.register({ method: "*", pattern: /^\/app\/auth(?:\/|$)/, handler: ({ res, url }) => serveStatic(res, appDir, normalizeAppPath(url.pathname)) });
+  registry.register({ method: "*", pattern: /^\/app\/auth(?:\/|$)/, handler: ({ res, url }) => serveStatic(res, appDir, normalizeAppPath(url.pathname), { versioned: url.searchParams.has("v") }) });
   for (const routePath of ["/hilfe", "/hilfe/", "/wissen", "/wissen/"]) {
     registry.register({ method: "*", path: routePath, handler: ({ res }) => serveStatic(res, appDir, "/index.html") });
   }
@@ -55,7 +55,7 @@ function registerWebRoutes({
   registry.register({
     method: "*",
     pattern: /^\/app\/.*\.[^/]+$/,
-    handler: ({ res, url }) => serveStatic(res, appDir, normalizeAppPath(url.pathname)),
+    handler: ({ res, url }) => serveStatic(res, appDir, normalizeAppPath(url.pathname), { versioned: url.searchParams.has("v") }),
   });
   registry.register({
     method: "*",

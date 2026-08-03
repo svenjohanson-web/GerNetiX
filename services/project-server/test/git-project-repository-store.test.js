@@ -98,7 +98,9 @@ test("creates and updates a real repository atomically with an expected head", a
   run(["-C", remote, "commit", "-m", "invalid content fixture"]);
   const invalidContentHead = run(["-C", remote, "rev-parse", "HEAD"]).trim();
   await assert.rejects(store.readFile({ remote_url: fakeRemote, commit_sha: invalidContentHead, path: "invalid-utf8.txt" }), (error) => error.code === "repository_encoding_invalid");
-  await assert.rejects(store.tree({ remote_url: fakeRemote, commit_sha: invalidContentHead }), (error) => ["repository_binary_forbidden", "repository_encoding_invalid"].includes(error.code));
+  const invalidContentTree = await store.tree({ remote_url: fakeRemote, commit_sha: invalidContentHead });
+  assert.ok(invalidContentTree.includes("invalid-utf8.txt"));
+  assert.ok(invalidContentTree.includes("binary.dat"));
 
   fs.mkdirSync(path.join(root, "outside"));
   fs.symlinkSync(path.join(root, "outside"), path.join(remote, "linked"));

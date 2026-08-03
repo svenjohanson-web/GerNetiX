@@ -327,7 +327,11 @@ class ProjectService {
     await this.ready;
     const project = await this.requireProject(projectId);
     const binding = this.activeRepositoryBinding(project);
-    if (binding) return (await this.repositoryFiles(project, input.commit_sha)).map(maskSourceContent);
+    if (binding) {
+      const commitSha = validateSha(input.commit_sha || binding.head_sha, "commit_sha");
+      const paths = await this.projectRepositoryStore.tree(binding, commitSha);
+      return paths.map((sourcePath) => repositoryTreeSource(projectId, sourcePath, commitSha));
+    }
     return (await this.repository.listSources(projectId)).map(maskSourceContent);
   }
 
@@ -2092,6 +2096,17 @@ function repositoryFileSource(projectId, file, commitSha) {
     role: inferSourceRole(file.path),
     size_bytes: file.size_bytes,
     blob_sha: file.blob_sha,
+    commit_sha: commitSha,
+    updated_at: "",
+  };
+}
+
+function repositoryTreeSource(projectId, sourcePath, commitSha) {
+  return {
+    project_id: projectId,
+    path: sourcePath,
+    content_type: mimeTypeForPath(sourcePath),
+    role: inferSourceRole(sourcePath),
     commit_sha: commitSha,
     updated_at: "",
   };

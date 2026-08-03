@@ -806,7 +806,6 @@ async function openProjectInIde(projectId) {
     lastRoute: `/app/ide/?project=${encodeURIComponent(projectId)}`,
   });
   navigate(`/app/ide/?project=${encodeURIComponent(projectId)}`);
-  await loadIdeProject();
 }
 
 function continueLastProject() {

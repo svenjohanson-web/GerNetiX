@@ -12,7 +12,7 @@ const contentTypes = {
   ".puml": "text/plain; charset=utf-8",
 };
 
-function serveStatic(res, rootDir, requestPath) {
+function serveStatic(res, rootDir, requestPath, options = {}) {
   const normalizedRequestPath = requestPath === "/" ? "/index.html" : requestPath;
   const filePath = path.normalize(path.join(rootDir, normalizedRequestPath));
 
@@ -31,10 +31,16 @@ function serveStatic(res, rootDir, requestPath) {
 
     res.writeHead(200, {
       "Content-Type": contentTypes[path.extname(filePath)] || "application/octet-stream",
-      "Cache-Control": "no-store",
+      "Cache-Control": staticCacheControl(filePath, options),
     });
     res.end(content);
   });
+}
+
+function staticCacheControl(filePath, options = {}) {
+  const extension = path.extname(filePath).toLowerCase();
+  const immutableAsset = options.versioned === true && [".css", ".ico", ".js", ".png", ".svg"].includes(extension);
+  return immutableAsset ? "public, max-age=31536000, immutable" : "no-store";
 }
 
 function normalizeAppPath(pathname) {
@@ -152,5 +158,6 @@ module.exports = {
   sendDevJson,
   sendJson,
   serveStatic,
+  staticCacheControl,
   setSessionCookie,
 };

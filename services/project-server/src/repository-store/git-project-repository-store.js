@@ -92,38 +92,33 @@ class GitProjectRepositoryStore {
   async tree(input = {}) {
     const remoteUrl = validateRemoteUrl(input.remote_url);
     const commitSha = validateSha(input.commit_sha, "commit_sha");
-    return this.withWorkspace(async (workspace) => {
-      await this.git(["init"], workspace);
-      await this.git(["remote", "add", "origin", remoteUrl], workspace);
-      await this.git(["fetch", "--no-tags", "origin"], workspace);
-      let fetchedSha;
-      try {
-        fetchedSha = await this.revParse(workspace, `${commitSha}^{commit}`);
-      } catch {
-        throw new ProjectServerError("repository_commit_not_found", "Git-Commit wurde nicht gefunden.", 404);
-      }
-      if (fetchedSha !== commitSha) throw new ProjectServerError("repository_commit_not_found", "Git-Commit wurde nicht gefunden.", 404);
-      return (await this.readTreeEntries(workspace, await this.treeEntries(workspace, commitSha))).map((entry) => entry.path);
-    });
+    const branch = input.branch ? validateBranch(input.branch) : "";
+    return this.withFetchedCommit(remoteUrl, commitSha, async (workspace) => {
+      const entries = await this.treeEntries(workspace, commitSha);
+      for (const entry of entries) this.assertReadableTreeEntry(entry);
+      return entries.map((entry) => entry.path);
+    }, branch);
   }
 
   async readFile(input = {}) {
     const remoteUrl = validateRemoteUrl(input.remote_url);
     const commitSha = validateSha(input.commit_sha, "commit_sha");
+    const branch = input.branch ? validateBranch(input.branch) : "";
     const repositoryPath = normalizeRepositoryPath(input.path);
     return this.withFetchedCommit(remoteUrl, commitSha, async (workspace) => {
       const entry = (await this.treeEntries(workspace, commitSha)).find((item) => item.path === repositoryPath);
       if (!entry) throw new ProjectServerError("repository_file_not_found", "Projektdatei wurde nicht gefunden.", 404);
       return this.readTreeEntry(workspace, entry);
-    });
+    }, branch);
   }
 
   async readFiles(input = {}) {
     const remoteUrl = validateRemoteUrl(input.remote_url);
     const commitSha = validateSha(input.commit_sha, "commit_sha");
+    const branch = input.branch ? validateBranch(input.branch) : "";
     return this.withFetchedCommit(remoteUrl, commitSha, async (workspace) => {
       return this.readTreeEntries(workspace, await this.treeEntries(workspace, commitSha));
-    });
+    }, branch);
   }
 
   async history(input = {}) {
@@ -211,12 +206,16 @@ class GitProjectRepositoryStore {
   }
 
   async readTreeEntry(workspace, entry) {
-    if (entry.mode === "120000") throw new ProjectServerError("repository_symlink_forbidden", "Symbolische Links sind in Projekt-Repositories nicht erlaubt.", 409, { path: entry.path });
-    if (entry.type !== "blob") throw new ProjectServerError("repository_entry_type_forbidden", "Nur reguläre Projektdateien sind zulässig.", 409, { path: entry.path });
-    if (entry.size_bytes > MAX_FILE_BYTES) throw new ProjectServerError("repository_file_too_large", "Eine Projektdatei darf höchstens 1 MiB groß sein.", 413, { path: entry.path });
+    this.assertReadableTreeEntry(entry);
     const result = await this.git(["cat-file", "blob", entry.blob_sha], workspace, { binaryOutput: true, maxOutputBytes: MAX_FILE_BYTES + 1 });
     const content = decodeUtf8Text(result.stdout, entry.path);
     return { ...entry, content };
+  }
+
+  assertReadableTreeEntry(entry) {
+    if (entry.mode === "120000") throw new ProjectServerError("repository_symlink_forbidden", "Symbolische Links sind in Projekt-Repositories nicht erlaubt.", 409, { path: entry.path });
+    if (entry.type !== "blob") throw new ProjectServerError("repository_entry_type_forbidden", "Nur reguläre Projektdateien sind zulässig.", 409, { path: entry.path });
+    if (entry.size_bytes > MAX_FILE_BYTES) throw new ProjectServerError("repository_file_too_large", "Eine Projektdatei darf höchstens 1 MiB groß sein.", 413, { path: entry.path });
   }
 
   async readTreeEntries(workspace, entries) {
@@ -230,11 +229,13 @@ class GitProjectRepositoryStore {
     return files;
   }
 
-  async withFetchedCommit(remoteUrl, commitSha, callback) {
+  async withFetchedCommit(remoteUrl, commitSha, callback, branch = "") {
     return this.withWorkspace(async (workspace) => {
       await this.git(["init"], workspace);
       await this.git(["remote", "add", "origin", remoteUrl], workspace);
-      await this.git(["fetch", "--no-tags", "origin"], workspace);
+      await this.git(branch
+        ? ["fetch", "--no-tags", "--depth", "1", "origin", `refs/heads/${branch}`]
+        : ["fetch", "--no-tags", "origin"], workspace);
       await this.assertCommit(workspace, commitSha);
       return callback(workspace);
     });
