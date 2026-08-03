@@ -204,7 +204,7 @@ Projekte frieren ihren aufgeloesten Boardstand im eigenen Projekt-Commit ein.
 | FG-04 | Repository-Provisionierung | teilweise umgesetzt | Projekt-/Template-Contract |
 | FG-05 | Git-basiertes Quellen-API | lokal umgesetzt, Cutover offen | CRUD-/Konflikt-/Pfadtests |
 | FG-06 | Echte Commit-Historie und Restore | lokal umgesetzt, Cutover offen | Historien-/Restore-Tests |
-| FG-07 | Commitgebundener Build | offen | Build-Reproduzierbarkeit |
+| FG-07 | Commitgebundener Build | lokal umgesetzt, Staging offen | Build-Reproduzierbarkeit |
 | FG-08 | IDE und KI-Patchfluss | offen | UI-/Agenten-Contract |
 | FG-09 | SQL-zu-Git-Migrationswerkzeug | Dry-run lokal umgesetzt | deterministischer Dry-run |
 | FG-10 | Projektweiser Cutover und Rollback | offen | Staging-Migration |
@@ -392,6 +392,20 @@ Abnahme:
 - Keine Quelle liegt im neuen Versionsdatensatz.
 
 ## FG-07 - Commitgebundener Build
+
+Lokal umgesetzt: Bei aktiver Forgejo-Bindung validiert der Project Server den
+angeforderten Commit bereits beim Anlegen des BuildJobs und persistiert
+`repository_id` und `commit_sha` als abfragbare PostgreSQL-Metadaten. Das
+BuildPackage rekonstruiert Software-Einheit, Buildkonfiguration,
+Board-Snapshot und Projektquellen erneut aus genau diesem Commit. Es besitzt
+einen deterministischen `package_sha256`; ein spaeter veraenderter Branch-Head
+veraendert das Paket nicht. Forgejo-BuildJobs speichern weder
+`project_snapshot` noch `source_snapshot`. Build-Ergebnis und
+Artefaktmetadaten uebernehmen Repository-, Commit- und Package-Referenz.
+
+Der SQL-Altpfad behaelt seine Snapshots bis zum projektweisen Cutover. Offen
+bleiben der Nachweis gegen den echten Forgejo-Container auf Staging und die
+spaetere Stilllegung des SQL-Quellenpfads.
 
 Ziel:
 
@@ -618,9 +632,10 @@ Umgesetzt im ersten Schritt:
   Feldwirkung, No-op, Secret-Redaktion und unmittelbare Projektbaum-Aktualisierung
   ab.
 
-Noch offen sind der atomare Forgejo-Commit mit `expected_head_sha`, die
-vollstaendige Laufzeitwirkung jeder Feldklasse, der Build-Drift-Abbruch und
-der End-to-End-Nachweis ueber alle Dialoge am echten Repository.
+Noch offen sind die vollstaendige Laufzeitwirkung jeder Feldklasse, der
+Build-Drift-Abbruch und der End-to-End-Nachweis ueber alle Dialoge am echten
+Repository. Der atomare Forgejo-Commit mit `expected_head_sha` ist fuer die
+vorhandenen Projektionen lokal umgesetzt.
 
 Ziel:
 

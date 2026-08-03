@@ -189,6 +189,13 @@ Backup-/Restore-Nachweis stehen noch aus.
 - Kein versteckter SQL-Konfigurationsstand wird in den Build eingeblendet.
 - Projektions- und Drift-Tests aus FG-17 bestehen.
 
+**Status:** lokal erreicht. Der Project Server persistiert Repository-ID und
+Commit-SHA am BuildJob, materialisiert wiederholt denselben Package-Hash aus
+dem festgelegten Commit und bindet Ergebnis sowie Artefaktmetadaten daran.
+Contract-Tests weisen geaenderten Branch-Head, fehlenden Commit,
+Ergebnis-Mismatch und das Fehlen dauerhafter Quell-Snapshots nach. Der echte
+Forgejo-/Staging-Nachweis bleibt Gate 4 vorbehalten.
+
 ### Gate 4 - Projektweiser Cutover
 
 - Ein ausdruecklich gewaehltes Staging-Projekt wird migriert.
@@ -216,4 +223,4 @@ Backup-/Restore-Nachweis stehen noch aus.
 | B | lokal integriert | End-to-End-Test gegen den Forgejo-Testdienst |
 | C | lokal integriert | UI-Nachweis gegen denselben realen Testdienst |
 | D | lokal integriert | Dry-run mit repraesentativer Bestandsdatenbank |
-| E | blockiert bis Gate 2 | Commit-SHA im BuildJob und BuildPackage |
+| E | lokal integriert | echter Forgejo-/Staging-Build und projektweiser Cutover |

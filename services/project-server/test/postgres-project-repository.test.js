@@ -19,6 +19,24 @@ test("creates separated project tables with cascading ownership", async () => {
   assert.match(pool.calls[0].text, /idx_project_projects_repository/);
   assert.match(pool.calls[0].text, /snapshot_sha256 text/);
   assert.match(pool.calls[0].text, /idx_project_versions_parent/);
+  assert.match(pool.calls[0].text, /commit_sha text/);
+  assert.match(pool.calls[0].text, /idx_project_build_jobs_commit/);
+});
+
+test("stores repository and commit binding as queryable build metadata", async () => {
+  const pool = new RecordingPool();
+  const repository = new PostgresProjectRepository(pool);
+  const job = {
+    build_job_id: "build-1", project_id: "project-1", user_id: "user-1",
+    repository_id: "42", commit_sha: "a".repeat(40), status: "created",
+    updated_at: "2026-08-03T12:00:00.000Z",
+  };
+  await repository.saveBuildJob(job);
+  assert.match(pool.calls[0].text, /repository_id=EXCLUDED\.repository_id/);
+  assert.match(pool.calls[0].text, /commit_sha=EXCLUDED\.commit_sha/);
+  assert.deepEqual(pool.calls[0].values.slice(0, 6), [
+    "build-1", "project-1", "user-1", "42", "a".repeat(40), "created",
+  ]);
 });
 
 test("stores projects and sources as queryable ownership plus JSON documents", async () => {

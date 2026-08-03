@@ -574,13 +574,18 @@ class ProjectService {
   async createBuildJob(projectId, input = {}) {
     await this.ready;
     const project = await this.requireProject(projectId);
+    const binding = this.activeRepositoryBinding(project);
+    const commitSha = binding ? validateSha(input.commit_sha || binding.head_sha, "commit_sha") : "";
+    const buildProject = binding
+      ? projectFromRepositoryFiles(project, await this.repositoryFiles(project, commitSha))
+      : project;
     const now = new Date().toISOString();
     const mode = input.mode || "build";
     if (!["build", "build_and_flash", "build_and_usb_flash", "prebuild"].includes(mode)) {
       throw new ProjectServerError("invalid_build_mode", "Build-Modus muss build, build_and_flash, build_and_usb_flash oder prebuild sein.");
     }
-    const softwareUnits = softwareUnitsForProject(project);
-    const requestedSoftwareUnitId = String(input.software_unit_id || project.active_software_unit_id || "").trim();
+    const softwareUnits = softwareUnitsForProject(buildProject);
+    const requestedSoftwareUnitId = String(input.software_unit_id || buildProject.active_software_unit_id || "").trim();
     const softwareUnit = softwareUnits.find((unit) => unit.software_unit_id === requestedSoftwareUnitId)
       || (!requestedSoftwareUnitId ? softwareUnits[0] : null);
     if (requestedSoftwareUnitId && !softwareUnit) {
@@ -589,7 +594,7 @@ class ProjectService {
     if (softwareUnit && !isPlatformioSoftwareUnit(softwareUnit)) {
       throw new ProjectServerError("software_unit_builder_not_supported", `Das Build-System ${softwareUnit.build_system} ist noch nicht an einen Build-Runner angebunden.`, 409);
     }
-    const buildConfig = softwareUnit?.build_config || project.build_config;
+    const buildConfig = softwareUnit?.build_config || buildProject.build_config;
     if (!buildConfig) {
       throw new ProjectServerError("project_not_buildable", "Projekt besitzt keine Build-Konfiguration und kann nicht gebaut werden.", 400);
     }
@@ -597,17 +602,20 @@ class ProjectService {
       build_job_id: input.build_job_id || createId("build_job"),
       project_id: project.project_id,
       user_id: project.user_id,
+      repository_id: binding?.repository_id || null,
+      repository_provider: binding?.provider || null,
+      commit_sha: commitSha || null,
       mode,
       status: "created",
       build_deploy_job_id: null,
       device_id: input.device_id || softwareUnit?.device_id || project.device_id || null,
       software_unit_id: softwareUnit?.software_unit_id || "",
-      software_unit: softwareUnit ? structuredClone(softwareUnit) : null,
+      software_unit: binding ? null : softwareUnit ? structuredClone(softwareUnit) : null,
       created_at: now,
       updated_at: now,
       submitted_at: null,
       finished_at: null,
-      build_config: { ...buildConfig },
+      build_config: binding ? null : { ...buildConfig },
       result: null,
       error: null,
     };
@@ -625,6 +633,32 @@ class ProjectService {
     await this.ready;
     const job = await this.getBuildJob(jobId);
     const project = await this.requireProject(job.project_id);
+    const binding = this.activeRepositoryBinding(project);
+    if (job.commit_sha) {
+      const currentCommitSha = binding?.head_sha || "";
+      const reusable = job.status === "succeeded"
+        && Boolean(binding)
+        && String(binding.repository_id) === String(job.repository_id)
+        && currentCommitSha === job.commit_sha;
+      return {
+        build_job_id: job.build_job_id,
+        project_id: job.project_id,
+        software_unit_id: job.software_unit_id || "",
+        build_status: job.status,
+        reusable,
+        reason: reusable
+          ? "build_commit_matches"
+          : job.status !== "succeeded"
+            ? "build_not_successful"
+            : !binding || String(binding.repository_id) !== String(job.repository_id)
+              ? "project_repository_changed"
+              : "project_commit_changed",
+        build_commit_sha: job.commit_sha,
+        current_commit_sha: currentCommitSha,
+        build_snapshot_sha256: job.package_sha256 || "",
+        current_snapshot_sha256: "",
+      };
+    }
     const softwareUnits = softwareUnitsForProject(project);
     const softwareUnit = softwareUnits.find((unit) => unit.software_unit_id === job.software_unit_id)
       || (!job.software_unit_id ? softwareUnits[0] : null);
@@ -665,14 +699,29 @@ class ProjectService {
     await this.ready;
     const job = await this.getBuildJob(jobId);
     const project = await this.requireProject(job.project_id);
-    const softwareUnits = softwareUnitsForProject(project);
+    const binding = this.activeRepositoryBinding(project);
+    let buildProject = project;
+    let allSources;
+    if (job.commit_sha) {
+      if (!binding || String(binding.repository_id) !== String(job.repository_id)) {
+        throw new ProjectServerError("build_repository_binding_changed", "Die Repository-Bindung des BuildJobs ist nicht mehr aktiv.", 409);
+      }
+      const commitSha = validateSha(job.commit_sha, "commit_sha");
+      allSources = await this.repositoryFiles(project, commitSha);
+      buildProject = projectFromRepositoryFiles(project, allSources);
+    } else {
+      allSources = await this.repository.listSources(project.project_id);
+    }
+    const softwareUnits = softwareUnitsForProject(buildProject);
     const softwareUnit = job.software_unit
       || softwareUnits.find((unit) => unit.software_unit_id === job.software_unit_id)
       || softwareUnits[0]
       || null;
-    const allSources = await this.repository.listSources(project.project_id);
+    if (job.software_unit_id && softwareUnit?.software_unit_id !== job.software_unit_id) {
+      throw new ProjectServerError("build_commit_software_unit_missing", "Die Softwareeinheit des BuildJobs fehlt im gebundenen Commit.", 409);
+    }
     const sources = sourcesForSoftwareUnit(allSources, softwareUnit, softwareUnits);
-    const buildConfig = job.build_config || softwareUnit?.build_config || project.build_config;
+    const buildConfig = job.build_config || softwareUnit?.build_config || buildProject.build_config;
     const contractProblems = firmwareSoftwareUnitProblems(softwareUnit, sources.map((source) => source.path), {
       pathsAreScoped: true,
       requireEntrypointSource: true,
@@ -684,15 +733,7 @@ class ProjectService {
         `Firmware-Projektstruktur ist nicht buildfaehig: ${contractProblems.join("; ")}`,
       );
     }
-    const projectSnapshot = sanitizeProject(project);
-    const snapshotHash = projectVersionHash(projectSnapshot, sources);
-    await this.repository.saveBuildJob({
-      ...job,
-      project_snapshot: projectSnapshot,
-      source_snapshot: sources,
-      snapshot_sha256: snapshotHash,
-      updated_at: new Date().toISOString(),
-    });
+    const projectSnapshot = sanitizeProject(buildProject);
     const firmwareSources = buildConfig?.firmware_basis_id === "gernetix-runtime-basissoftware"
       ? composeEsp32BasissoftwarePackage({
           basisFiles: this.loadEsp32BasissoftwareFiles(),
@@ -705,16 +746,18 @@ class ProjectService {
       job_id: job.build_job_id,
       project_id: project.project_id,
       user_id: project.user_id,
+      repository_id: job.repository_id || null,
+      commit_sha: job.commit_sha || null,
       mode: job.mode,
       device_id: job.device_id,
       software_unit_id: softwareUnit?.software_unit_id || "",
       software_unit_title: softwareUnit?.title || "Firmware",
       build_config: buildConfig,
-      created_at: new Date().toISOString(),
+      created_at: job.created_at,
     };
     const packageFiles = [
       { path: "build-job.json", content: JSON.stringify(buildJob, null, 2), content_type: "application/json" },
-      { path: "project-view-manifest.json", content: JSON.stringify(effectiveViewManifest(project), null, 2), content_type: "application/json" },
+      { path: "project-view-manifest.json", content: JSON.stringify(effectiveViewManifest(buildProject), null, 2), content_type: "application/json" },
       { path: "platformio.ini", content: platformioIni, content_type: "text/plain" },
       ...firmwareSources.filter((source) => source.path !== "platformio.ini").map((source) => ({
         path: source.path,
@@ -723,9 +766,25 @@ class ProjectService {
         sha256: source.content_sha256,
       })),
     ];
+    const packageSha256 = buildPackageHash(packageFiles);
+    await this.repository.saveBuildJob(job.commit_sha ? {
+      ...job,
+      package_sha256: packageSha256,
+      updated_at: new Date().toISOString(),
+    } : {
+      ...job,
+      project_snapshot: projectSnapshot,
+      source_snapshot: sources,
+      snapshot_sha256: projectVersionHash(projectSnapshot, sources),
+      package_sha256: packageSha256,
+      updated_at: new Date().toISOString(),
+    });
     return {
       package_id: `pkg_${job.build_job_id}`,
-      project: sanitizeProject(project),
+      package_sha256: packageSha256,
+      repository_id: job.repository_id || null,
+      commit_sha: job.commit_sha || null,
+      project: projectSnapshot,
       build_job: buildJob,
       platformio_ini: platformioIni,
       contract: createFirmwareBuildPackageContract({ softwareUnit, buildConfig, packageFiles: packageFiles.map((file) => file.path) }),
@@ -749,6 +808,9 @@ class ProjectService {
   async recordBuildResult(jobId, input = {}) {
     await this.ready;
     const job = await this.getBuildJob(jobId);
+    if (job.commit_sha && input.commit_sha && validateSha(input.commit_sha, "commit_sha") !== job.commit_sha) {
+      throw new ProjectServerError("build_result_commit_mismatch", "Build-Ergebnis und BuildJob referenzieren unterschiedliche Commits.", 409);
+    }
     const status = input.status || input.build_status || "succeeded";
     const next = {
       ...job,
@@ -756,6 +818,9 @@ class ProjectService {
       finished_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
       result: {
+        repository_id: job.repository_id || null,
+        commit_sha: job.commit_sha || null,
+        package_sha256: job.package_sha256 || null,
         build: input.build || null,
         deploy: input.deploy || null,
         logs: input.logs || [],
@@ -768,6 +833,8 @@ class ProjectService {
         artifact_id: artifact.artifact_id || createId("artifact"),
         project_id: job.project_id,
         build_job_id: job.build_job_id,
+        repository_id: job.repository_id || null,
+        commit_sha: job.commit_sha || null,
         artifact_type: artifact.artifact_type || artifact.type || "firmware",
         file_name: artifact.file_name || artifact.name || "",
         url: artifact.url || "",
@@ -1846,6 +1913,124 @@ function repositoryFileSource(projectId, file, commitSha) {
     commit_sha: commitSha,
     updated_at: "",
   };
+}
+
+function projectFromRepositoryFiles(project, sources) {
+  const fileSet = loadProjectFileSet(sources);
+  const manifest = fileSet.manifest;
+  if (String(manifest.project_id) !== String(project.project_id)) {
+    throw new ProjectServerError("build_commit_project_mismatch", "Der gebundene Commit gehört nicht zum BuildJob-Projekt.", 409);
+  }
+  const documents = new Map(fileSet.files
+    .filter((file) => file.path.endsWith(".json"))
+    .map((file) => [file.path, JSON.parse(file.content)]));
+  const hardwareAllocation = documents.get("gernetix/hardware/allocation.json") || null;
+  const boardDocuments = [...documents]
+    .filter(([path]) => /^gernetix\/hardware\/boards\/[^/]+\.json$/.test(path));
+  const hardwareFeatures = Object.fromEntries([...documents]
+    .filter(([path]) => /^gernetix\/configuration\/board-peripherals\/[^/]+\.json$/.test(path))
+    .map(([path, value]) => [path.split("/").pop().replace(/\.json$/, ""), value]));
+  const softwareUnits = fileSet.software_units.map((unit) => {
+    const unitId = projectFileId(unit.software_unit_id);
+    const componentLabel = String(unit.source_root || "").split("/").pop();
+    const component = hardwareAllocation?.components?.find((candidate) => (
+      String(candidate.label || "") === componentLabel
+      || projectFileId(candidate.component_id || "") === projectFileId(componentLabel)
+    ));
+    const boardPath = component?.board_configuration_path || (boardDocuments.length === 1 ? boardDocuments[0][0] : "");
+    const buildConfig = unit.build && typeof unit.build === "object" ? {
+      ...unit.build,
+      user_source_path: unit.build.user_source_path || unit.entrypoint || "",
+      basissoftware_configuration: documents.get(`gernetix/configuration/basissoftware/${unitId}.json`) || null,
+      component_features: documents.get(`gernetix/configuration/software-features/${unitId}.json`) || {},
+      component_hardware_features: hardwareFeatures,
+      board_configuration: boardPath ? documents.get(boardPath) || null : null,
+    } : null;
+    return {
+      software_unit_id: unit.software_unit_id,
+      title: unit.title,
+      software_kind: unit.software_kind,
+      build_system: unit.build_system,
+      source_root: unit.source_root,
+      entrypoint: unit.entrypoint || "",
+      hardware_profile_id: unit.hardware_profile_id || "",
+      device_id: "",
+      build_config: buildConfig,
+    };
+  });
+  const activeSoftwareUnitId = String(manifest.active_software_unit_id || softwareUnits[0]?.software_unit_id || "");
+  const activeSoftwareUnit = softwareUnits.find((unit) => unit.software_unit_id === activeSoftwareUnitId) || softwareUnits[0] || null;
+  return {
+    ...project,
+    title: String(manifest.title || ""),
+    description: String(manifest.description || ""),
+    hardware_profile_id: String(manifest.hardware_profile_id || activeSoftwareUnit?.hardware_profile_id || ""),
+    active_software_unit_id: activeSoftwareUnitId,
+    software_units: softwareUnits,
+    build_config: activeSoftwareUnit?.build_config || null,
+    view_manifest: repositoryViewManifest(project, documents, fileSet.files, hardwareAllocation),
+  };
+}
+
+function repositoryViewManifest(project, documents, files, hardwareAllocation) {
+  const manifestDocument = documents.get("gernetix/project.json") || {};
+  const manifest = {
+    title: manifestDocument.title || project.title,
+    summary: manifestDocument.description || project.description,
+    template_ref: manifestDocument.template_ref || null,
+  };
+  const configurationPaths = {
+    architecture_dialog: "gernetix/configuration/architecture-dialog.json",
+    communication_setup: "gernetix/configuration/communication.json",
+    home_automation_configuration: "gernetix/configuration/home-automation.json",
+    game_configuration: "gernetix/configuration/game.json",
+    pwa_dashboard: "gernetix/configuration/pwa-dashboard.json",
+    data_logger: "gernetix/configuration/data-logger.json",
+    event_configuration: "gernetix/configuration/events.json",
+  };
+  for (const [key, path] of Object.entries(configurationPaths)) {
+    if (documents.has(path)) manifest[key] = documents.get(path);
+  }
+  const views = [];
+  const architecture = files.find((file) => file.path === "gernetix/architecture/project.puml");
+  if (architecture) views.push({ id: "architecture-diagram", type: "plantuml", payload: { source: architecture.content } });
+  if (hardwareAllocation) {
+    views.push({
+      id: "hardware-configuration",
+      type: "hardware_configuration",
+      payload: {
+        ...hardwareAllocation,
+        components: (hardwareAllocation.components || []).map((component) => ({
+          ...component,
+          ...(component.board_configuration_path
+            ? { board_configuration: documents.get(component.board_configuration_path) || null }
+            : {}),
+        })),
+      },
+    });
+  }
+  if (views.length) manifest.views = views;
+  return manifest;
+}
+
+function buildPackageHash(files) {
+  const manifest = [...files]
+    .filter((file) => file.path !== "build-job.json")
+    .sort((left, right) => left.path.localeCompare(right.path))
+    .map((file) => ({
+      path: file.path,
+      content_type: file.content_type || "application/octet-stream",
+      sha256: file.sha256 || sha256(String(file.content || "")),
+    }));
+  return sha256(JSON.stringify(manifest));
+}
+
+function projectFileId(value) {
+  return String(value || "item")
+    .trim().toLowerCase()
+    .replace(/[^a-z0-9_-]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 100) || "item";
 }
 
 const SOURCE_SEARCH_STOP_WORDS = new Set(["aber", "bitte", "datei", "diese", "dieser", "einen", "einer", "etwas", "fuege", "füge", "hinzu", "machen", "mein", "meine", "mich", "projekt", "soll", "und", "werden"]);

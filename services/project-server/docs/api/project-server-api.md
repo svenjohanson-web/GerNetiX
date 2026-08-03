@@ -7,7 +7,8 @@ weiter den SQL-Altvertrag. Bei `provider: forgejo` und `state: active` kommen
 Dateiliste, Datei, Suche, Schreiben, Historie, Diff und Restore ausschliesslich
 aus Git. PostgreSQL fuehrt dann Bindung und bestaetigten Head; der
 Quellenbestand ist nur ein nicht fuehrender Uebergangscache. Der
-commitgebundene Build-Cutover bleibt offen. Ziel und
+commitgebundene Buildvertrag ist lokal umgesetzt; der projektweise
+Staging-Cutover bleibt offen. Ziel und
 Migration stehen in
 [`docs/forgejo-project-repository-work-packages.md`](../../../../docs/forgejo-project-repository-work-packages.md).
 
@@ -127,7 +128,26 @@ SQL/SQLite wird nicht als eigener Komponentenordner modelliert. Es ist eine Soft
 - `POST /api/build-jobs/{buildJobId}/result`
 - `GET /api/firmware-artifacts?project_id=...`
 
-Der Project Server kompiliert nicht selbst. `build-package` liefert einen reproduzierbaren Snapshot fuer den Build-&-Deploy-Server. Das Paket enthaelt neben `build-job.json`, `platformio.ini` und Projektquellen auch `project-view-manifest.json`.
+Der Project Server kompiliert nicht selbst. `build-package` liefert einen
+reproduzierbaren Snapshot fuer den Build-&-Deploy-Server. Das Paket enthaelt
+neben `build-job.json`, `platformio.ini` und Projektquellen auch
+`project-view-manifest.json`.
+
+Bei aktiver Forgejo-Bindung akzeptiert `POST .../build-jobs` optional einen
+vollstaendigen `commit_sha`; ohne Angabe wird der bestaetigte Head verwendet.
+Der Commit wird vor Einreihung im gebundenen Repository gelesen und zusammen
+mit `repository_id` am BuildJob gespeichert. `build-package` liest erneut
+ausschliesslich diesen Commit und liefert `repository_id`, `commit_sha` und
+den deterministischen `package_sha256`. Dieser Hash beschreibt die sortierten
+Build-Eingaben ohne jobbezogene Transportmetadaten aus `build-job.json` und
+bleibt deshalb auch bei einem neuen BuildJob desselben Commits stabil.
+BuildJob, Ergebnis und
+Artefaktmetadaten tragen dieselbe Referenz. Ein abweichender Ergebnis-Commit
+liefert `build_result_commit_mismatch`; eine geaenderte Repository-Bindung
+liefert `build_repository_binding_changed`. Bei Forgejo-BuildJobs entstehen
+keine dauerhaften `project_snapshot`- oder `source_snapshot`-Vollkopien.
+
+Nicht migrierte Projekte verwenden weiterhin den bisherigen SQL-Snapshotpfad.
 
 ## Benannte Versionen
 

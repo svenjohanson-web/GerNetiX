@@ -53,14 +53,21 @@ class PostgresProjectRepository {
         build_job_id text PRIMARY KEY,
         project_id text NOT NULL REFERENCES project_projects(project_id) ON DELETE CASCADE,
         user_id text NOT NULL,
+        repository_id text,
+        commit_sha text,
         status text NOT NULL,
         raw_json jsonb NOT NULL,
         updated_at timestamptz NOT NULL
       );
+      ALTER TABLE project_build_jobs ADD COLUMN IF NOT EXISTS repository_id text;
+      ALTER TABLE project_build_jobs ADD COLUMN IF NOT EXISTS commit_sha text;
       CREATE INDEX IF NOT EXISTS idx_project_build_jobs_project
         ON project_build_jobs (project_id, updated_at DESC);
       CREATE INDEX IF NOT EXISTS idx_project_build_jobs_user
         ON project_build_jobs (user_id, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_project_build_jobs_commit
+        ON project_build_jobs (repository_id, commit_sha)
+        WHERE repository_id IS NOT NULL AND commit_sha IS NOT NULL;
 
       CREATE TABLE IF NOT EXISTS project_artifacts (
         artifact_id text PRIMARY KEY,
@@ -238,15 +245,17 @@ class PostgresProjectRepository {
   async saveBuildJob(job) {
     await this.pool.query(`
       INSERT INTO project_build_jobs
-        (build_job_id, project_id, user_id, status, raw_json, updated_at)
-      VALUES ($1, $2, $3, $4, $5, $6)
+        (build_job_id, project_id, user_id, repository_id, commit_sha, status, raw_json, updated_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
       ON CONFLICT (build_job_id) DO UPDATE SET
         project_id=EXCLUDED.project_id,
         user_id=EXCLUDED.user_id,
+        repository_id=EXCLUDED.repository_id,
+        commit_sha=EXCLUDED.commit_sha,
         status=EXCLUDED.status,
         raw_json=EXCLUDED.raw_json,
         updated_at=EXCLUDED.updated_at
-    `, [job.build_job_id, job.project_id, job.user_id, job.status, job, job.updated_at]);
+    `, [job.build_job_id, job.project_id, job.user_id, job.repository_id || null, job.commit_sha || null, job.status, job, job.updated_at]);
     return clone(job);
   }
 

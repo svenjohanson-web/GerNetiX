@@ -118,6 +118,64 @@ test("materializes an account project from the exact active template commit", as
   assert.equal((await service.getSource(copy.project_id, "docs/template.md")).content, "immutable template content\n");
 });
 
+test("pins a build to one repository commit and never stores source snapshots", async () => {
+  const store = new RecordingRepositoryStore();
+  const repository = new InMemoryProjectRepository();
+  const service = new ProjectService({ repository, projectRepositoryStore: store });
+  const project = await service.createProject({
+    project_id: "project-commit-build", user_id: "user-1", title: "Commit Build",
+    build_config: { platform: "espressif32", board: "esp32dev", framework: "arduino" },
+  });
+  const pinnedHead = project.repository_binding.head_sha;
+  const job = await service.createBuildJob(project.project_id, { commit_sha: pinnedHead });
+  assert.equal(job.repository_id, "42");
+  assert.equal(job.commit_sha, pinnedHead);
+  assert.equal(job.build_config, null);
+  assert.equal(job.software_unit, null);
+
+  const changed = await service.commitRepositoryChanges(project.project_id, {
+    expected_head_sha: pinnedHead,
+    message: "Quellcode nach BuildJob geändert",
+    changes: [{ path: "Komponenten/IoT-Device 1/src/main.cpp", content: "int newer = 2;\n" }],
+  });
+  assert.notEqual(changed.commit.head_sha, pinnedHead);
+
+  const firstPackage = await service.createBuildPackage(job.build_job_id);
+  const secondPackage = await service.createBuildPackage(job.build_job_id);
+  const repeatedJob = await service.createBuildJob(project.project_id, { commit_sha: pinnedHead });
+  const repeatedPackage = await service.createBuildPackage(repeatedJob.build_job_id);
+  assert.equal(firstPackage.commit_sha, pinnedHead);
+  assert.equal(firstPackage.package_sha256, secondPackage.package_sha256);
+  assert.equal(firstPackage.package_sha256, repeatedPackage.package_sha256,
+    "jobbezogene Transportmetadaten dürfen den Build-Input-Hash nicht verändern");
+  assert.equal(firstPackage.files.some((file) => file.content === "int newer = 2;\n"), false);
+  const persisted = await service.getBuildJob(job.build_job_id);
+  assert.equal(Object.hasOwn(persisted, "project_snapshot"), false);
+  assert.equal(Object.hasOwn(persisted, "source_snapshot"), false);
+
+  await service.recordBuildResult(job.build_job_id, { status: "succeeded", commit_sha: pinnedHead });
+  const reuse = await service.buildReuseStatus(job.build_job_id);
+  assert.equal(reuse.reusable, false);
+  assert.equal(reuse.reason, "project_commit_changed");
+  await assert.rejects(
+    service.recordBuildResult(job.build_job_id, { status: "succeeded", commit_sha: "f".repeat(40) }),
+    (error) => error.code === "build_result_commit_mismatch",
+  );
+});
+
+test("rejects a build commit that is not reachable in the bound project repository", async () => {
+  const store = new RecordingRepositoryStore();
+  const service = new ProjectService({ repository: new InMemoryProjectRepository(), projectRepositoryStore: store });
+  const project = await service.createProject({
+    project_id: "project-missing-commit", user_id: "user-1", title: "Missing Commit",
+    build_config: { platform: "espressif32", board: "esp32dev", framework: "arduino" },
+  });
+  await assert.rejects(
+    service.createBuildJob(project.project_id, { commit_sha: "f".repeat(40) }),
+    (error) => error.code === "repository_commit_not_found",
+  );
+});
+
 class RecordingRepositoryStore {
   constructor() { this.commits = []; this.files = new Map(); this.snapshots = new Map(); }
   async provisionProject(input) {
@@ -145,14 +203,22 @@ class RecordingRepositoryStore {
     this.snapshots.set(head, new Map(this.files));
     return { head_sha: head, branch: "main", changed_paths: input.changes.map((change) => change.path), no_change: false };
   }
-  async readFile(_binding, _commitSha, path) {
-    if (!this.files.has(path)) {
+  async readFile(_binding, commitSha, path) {
+    const files = this.snapshots.get(commitSha);
+    if (!files) {
+      const error = new Error("commit not found"); error.code = "repository_commit_not_found"; throw error;
+    }
+    if (!files.has(path)) {
       const error = new Error("not found"); error.code = "repository_file_not_found"; throw error;
     }
-    return { path, content: this.files.get(path), size_bytes: Buffer.byteLength(this.files.get(path)), blob_sha: "c".repeat(40) };
+    return { path, content: files.get(path), size_bytes: Buffer.byteLength(files.get(path)), blob_sha: "c".repeat(40) };
   }
-  async readFiles() {
-    return [...this.files].map(([path, content]) => ({ path, content, size_bytes: Buffer.byteLength(content), blob_sha: "c".repeat(40) }));
+  async readFiles(_binding, commitSha) {
+    const files = this.snapshots.get(commitSha);
+    if (!files) {
+      const error = new Error("commit not found"); error.code = "repository_commit_not_found"; throw error;
+    }
+    return [...files].map(([path, content]) => ({ path, content, size_bytes: Buffer.byteLength(content), blob_sha: "c".repeat(40) }));
   }
   async restore(_binding, input) {
     this.files = new Map(this.snapshots.get(input.restore_commit_sha));
