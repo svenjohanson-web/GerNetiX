@@ -36,6 +36,7 @@ function workerEnv({ workerId, workerAddress, postgresAddress, password, artifac
     `BUILD_POSTGRES_PASSWORD=${password}`,
     "BUILD_ARTIFACT_PERSISTENCE_BACKEND=http",
     "BUILD_ARTIFACT_UPLOAD_BASE_URL=https://build.gernetix.com",
+    `BUILD_ARTIFACT_UPLOAD_HOST_ADDRESS=${postgresAddress}`,
     `BUILD_ARTIFACT_UPLOAD_TOKEN=${artifactUploadToken}`,
     "BUILD_ARTIFACT_UPLOAD_TIMEOUT_MS=120000",
     "BUILD_PUBLIC_BASE_URL=https://build.gernetix.com",

@@ -243,6 +243,12 @@ streamt jede Datei mit einem separaten Bearer-Secret ueber
 `BUILD_ARTIFACT_UPLOAD_BASE_URL` zum zentralen Build-Service. Binaries fuer
 Bootloader, Partitionen und Firmware bleiben unkomprimiert.
 
+Der Worker-Container ordnet den TLS-Namen `build.gernetix.com` ueber
+`BUILD_ARTIFACT_UPLOAD_HOST_ADDRESS` der privaten WireGuard-Adresse des
+zentralen Ingress zu. Der HTTPS-Name bleibt dadurch unveraendert und die
+Zertifikatspruefung aktiv; die absichtlich gesperrte oeffentliche VPS-Adresse
+wird nicht verwendet.
+
 Der zentrale Dienst nimmt Uploads nur fuer erlaubte Artefaktnamen an, begrenzt
 komprimierte und dekomprimierte Groesse, verifiziert Hash und Groesse und haelt
 Teiluploads im technischen Staging unsichtbar. Erst der abschliessende

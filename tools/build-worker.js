@@ -111,6 +111,9 @@ function validateConfig(config) {
   if (!/^https:\/\//i.test(publicBaseUrl)) errors.push("BUILD_PUBLIC_BASE_URL muss HTTPS verwenden.");
   const artifactUploadBaseUrl = config.BUILD_ARTIFACT_UPLOAD_BASE_URL || "https://build.gernetix.com";
   if (!/^https:\/\//i.test(artifactUploadBaseUrl)) errors.push("BUILD_ARTIFACT_UPLOAD_BASE_URL muss HTTPS verwenden.");
+  if (config.BUILD_ARTIFACT_UPLOAD_HOST_ADDRESS && !isPrivateIpv4(config.BUILD_ARTIFACT_UPLOAD_HOST_ADDRESS)) {
+    errors.push("BUILD_ARTIFACT_UPLOAD_HOST_ADDRESS muss eine private IPv4-Adresse des WireGuard-Netzes sein.");
+  }
   return errors;
 }
 

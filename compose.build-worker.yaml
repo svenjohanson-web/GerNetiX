@@ -40,6 +40,8 @@ services:
       MQTT_BROKER_URL: ""
     ports:
       - "${BUILD_WORKER_BIND_ADDRESS:?BUILD_WORKER_BIND_ADDRESS muss die private WireGuard-Adresse sein}:${BUILD_WORKER_PORT:-4400}:4400"
+    extra_hosts:
+      - "build.gernetix.com:${BUILD_ARTIFACT_UPLOAD_HOST_ADDRESS:-10.77.0.1}"
     volumes:
       - build_worker_state:/var/lib/gernetix/build
     healthcheck:

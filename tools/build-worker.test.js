@@ -79,6 +79,7 @@ test("standalone worker is build-only, PostgreSQL-coordinated and WireGuard-boun
   assert.match(compose, /INTERFACE_TELEMETRY_SQLITE_PATH: \/var\/lib\/gernetix\/build\/interface-telemetry\.sqlite/);
   assert.match(compose, /BUILD_ARTIFACT_PERSISTENCE_BACKEND: \$\{BUILD_ARTIFACT_PERSISTENCE_BACKEND:-http\}/);
   assert.match(compose, /BUILD_ARTIFACT_UPLOAD_TOKEN:/);
+  assert.match(compose, /build\.gernetix\.com:\$\{BUILD_ARTIFACT_UPLOAD_HOST_ADDRESS:-10\.77\.0\.1\}/);
   assert.match(compose, /BUILD_COORDINATION_BACKEND: postgres/);
   assert.match(compose, /BUILD_DATABASE_SCHEMA_MANAGEMENT: disabled/);
   assert.match(compose, /BUILD_POSTGRES_USER: \$\{BUILD_POSTGRES_USER:-gernetix_build_worker\}/);

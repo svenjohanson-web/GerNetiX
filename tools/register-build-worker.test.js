@@ -38,6 +38,7 @@ test("worker configuration selects the Mac and the restricted database login", (
   const content=workerEnv({workerId:"mac-worker-01",workerAddress:"10.77.0.5",postgresAddress:"10.77.0.1",password:"secret",artifactUploadToken:"artifact-secret"});
   assert.match(content,/BUILD_WORKER_BIND_ADDRESS=10\.77\.0\.5/);
   assert.match(content,/BUILD_POSTGRES_USER=gernetix_build_worker/);
+  assert.match(content,/BUILD_ARTIFACT_UPLOAD_HOST_ADDRESS=10\.77\.0\.1/);
   assert.doesNotMatch(remoteUpdaterSource(),/RUNTIME_POSTGRES_PASSWORD/);
   assert.match(remoteUpdaterSource(),/BUILD_WORKER_PRIMARY_UPSTREAMS/);
 });
